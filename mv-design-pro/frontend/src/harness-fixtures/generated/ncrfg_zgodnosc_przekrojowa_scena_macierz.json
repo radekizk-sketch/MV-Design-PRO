@@ -2,250 +2,1318 @@
   "case_id": "case-demo",
   "operator_id": "enea",
   "der_count": 2,
-  "reports": [
-    {
-      "operator_id": "enea",
-      "operator_name_pl": "Enea Operator",
-      "der_ref": "bess-1",
-      "module_type": "B",
-      "p_max_kw": 1500.0,
-      "voltage_kv": 15.0,
-      "test_results": [
-        {
-          "test_id": "T1",
-          "test_name_pl": "Test LVRT",
-          "verdict": "no_data",
-          "message_pl": "Brak krzywej LVRT — wymagane do testu RMS."
+  "pominiete": [],
+  "bieg": {
+    "contract": "NcRfgPtpireeTestResultV1",
+    "procedure_version": "PTPiREE Procedura testowania v3.0",
+    "solver_version": "ncrfg-ptpiree-whitebox-1.0",
+    "input_hash": "f88255de13f2ff212446b5add29cbea6e559e5cd65ed938fc283faa6a8f27c5c",
+    "deterministic_hash": "f2a0215dc8c779aa73b6a69d9aa531f322dd39be71b1828d62e4eb44a988c1db",
+    "modules": [
+      {
+        "der_ref": "bess-1",
+        "der_name": "bess-1",
+        "operator_id": "enea",
+        "operator_name_pl": "Enea Operator",
+        "module_type": "B",
+        "module_family": "PPM",
+        "p_max_kw": 1500.0,
+        "voltage_kv": 15.0,
+        "certificate_status": "unknown",
+        "required_count": 10,
+        "pass_count": 1,
+        "fail_count": 0,
+        "no_data_count": 9,
+        "not_required_count": 9,
+        "overall_status": "brak_danych",
+        "tests": [
+          {
+            "test_id": "T01",
+            "ability_pl": "LFSM-O - ograniczanie mocy przy nadczęstotliwości",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak droop P(f) albo martwej strefy częstotliwości. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T02",
+            "ability_pl": "LFSM-U - zwiększanie mocy przy podczęstotliwości",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak droop P(f) albo martwej strefy częstotliwości. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T03",
+            "ability_pl": "FSM - regulacja częstotliwości w paśmie normalnym",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak droop P(f) albo martwej strefy częstotliwości. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T04",
+            "ability_pl": "Regulacja odbudowy częstotliwości",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak droop P(f) albo martwej strefy częstotliwości. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T05",
+            "ability_pl": "Możliwość regulacji mocy czynnej",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak aktywnej regulacji mocy czynnej lub rampy.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak aktywnej regulacji mocy czynnej lub rampy."
+            ]
+          },
+          {
+            "test_id": "T06",
+            "ability_pl": "Tryb regulacji napięcia",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak krzywej Q(U) albo trybu regulacji Q. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T07",
+            "ability_pl": "Tryb regulacji mocy biernej Q",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak krzywej Q(U) albo trybu regulacji Q. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T08",
+            "ability_pl": "Tryb regulacji współczynnika mocy cosφ",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak minimalnego cosφ. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T09",
+            "ability_pl": "Zdolność do generacji mocy biernej",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak zakresu Q/Pn modułu.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak zakresu Q/Pn modułu."
+            ]
+          },
+          {
+            "test_id": "T10",
+            "ability_pl": "Potwierdzenie mocy maksymalnej PMAX",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "pass",
+            "summary_pl": "PMAX potwierdzone z danych katalogowych/deklaracji: 1500.0 kW.",
+            "metrics": {
+              "pmax_kw": 1500.0
+            },
+            "trace_refs": [
+              "proof:ncrfg-ptpiree:T10:pmax:1"
+            ],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T11",
+            "ability_pl": "Potwierdzenie mocy minimalnej PMIN",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak deklarowanej wartości PMIN.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak deklarowanej wartości PMIN."
+            ]
+          },
+          {
+            "test_id": "T12",
+            "ability_pl": "Zaprzestanie generacji mocy czynnej",
+            "required": true,
+            "required_reason_pl": "Wymagany dla zaprzestania generacji przy braku certyfikatu.",
+            "verdict": "no_data",
+            "summary_pl": "Brak funkcji zdalnej komendy P albo rampy wykonania.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak funkcji zdalnej komendy P albo rampy wykonania."
+            ]
+          },
+          {
+            "test_id": "T13",
+            "ability_pl": "Zmniejszenie generacji mocy czynnej",
+            "required": true,
+            "required_reason_pl": "Wymagany dla zmniejszenia generacji przy braku certyfikatu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak funkcji zdalnej komendy P albo rampy wykonania.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak funkcji zdalnej komendy P albo rampy wykonania."
+            ]
+          },
+          {
+            "test_id": "T14",
+            "ability_pl": "LVRT - pozostanie w pracy przy zapadzie napięcia",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego."
+            ]
+          },
+          {
+            "test_id": "T15",
+            "ability_pl": "HVRT - pozostanie w pracy przy wzroście napięcia",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego."
+            ]
+          },
+          {
+            "test_id": "T16",
+            "ability_pl": "Odbudowa mocy czynnej po zakłóceniu",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak czasu odbudowy mocy czynnej po FRT.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak czasu odbudowy mocy czynnej po FRT."
+            ]
+          },
+          {
+            "test_id": "T17",
+            "ability_pl": "Prąd bierny podczas FRT",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak wzmocnienia prądu biernego K_FRT.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak wzmocnienia prądu biernego K_FRT."
+            ]
+          },
+          {
+            "test_id": "T18",
+            "ability_pl": "Praca wyspowa, rozruch autonomiczny i tłumienie oscylacji",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Nie wskazano wymaganej zdolności dodatkowej.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T19",
+            "ability_pl": "Rejestracja zakłóceń i komunikacja z operatorem",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "fail",
+            "summary_pl": "Zweryfikowano obserwowalność i rejestrację zakłóceń.",
+            "metrics": {
+              "has_scada": false,
+              "has_recorder": false
+            },
+            "trace_refs": [
+              "proof:ncrfg-ptpiree:T19:observability:2"
+            ],
+            "fix_actions": [
+              "Dodaj komunikację SCADA i rejestrator zakłóceń do konfiguracji DER."
+            ]
+          },
+          {
+            "test_id": "T20",
+            "ability_pl": "Jakość energii - THD_U źródła",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak katalogowej wartości THD_U. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          }
+        ]
+      },
+      {
+        "der_ref": "pv-1",
+        "der_name": "pv-1",
+        "operator_id": "enea",
+        "operator_name_pl": "Enea Operator",
+        "module_type": "B",
+        "module_family": "PPM",
+        "p_max_kw": 1935.0,
+        "voltage_kv": 15.0,
+        "certificate_status": "ptpiree_verified",
+        "required_count": 8,
+        "pass_count": 2,
+        "fail_count": 0,
+        "no_data_count": 6,
+        "not_required_count": 11,
+        "overall_status": "brak_danych",
+        "tests": [
+          {
+            "test_id": "T01",
+            "ability_pl": "LFSM-O - ograniczanie mocy przy nadczęstotliwości",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak droop P(f) albo martwej strefy częstotliwości. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T02",
+            "ability_pl": "LFSM-U - zwiększanie mocy przy podczęstotliwości",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak droop P(f) albo martwej strefy częstotliwości. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T03",
+            "ability_pl": "FSM - regulacja częstotliwości w paśmie normalnym",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak droop P(f) albo martwej strefy częstotliwości. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T04",
+            "ability_pl": "Regulacja odbudowy częstotliwości",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak droop P(f) albo martwej strefy częstotliwości. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T05",
+            "ability_pl": "Możliwość regulacji mocy czynnej",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak aktywnej regulacji mocy czynnej lub rampy.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak aktywnej regulacji mocy czynnej lub rampy."
+            ]
+          },
+          {
+            "test_id": "T06",
+            "ability_pl": "Tryb regulacji napięcia",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak krzywej Q(U) albo trybu regulacji Q. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T07",
+            "ability_pl": "Tryb regulacji mocy biernej Q",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak krzywej Q(U) albo trybu regulacji Q. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T08",
+            "ability_pl": "Tryb regulacji współczynnika mocy cosφ",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak minimalnego cosφ. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T09",
+            "ability_pl": "Zdolność do generacji mocy biernej",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak zakresu Q/Pn modułu.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak zakresu Q/Pn modułu."
+            ]
+          },
+          {
+            "test_id": "T10",
+            "ability_pl": "Potwierdzenie mocy maksymalnej PMAX",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "pass",
+            "summary_pl": "PMAX potwierdzone z danych katalogowych/deklaracji: 1935.0 kW.",
+            "metrics": {
+              "pmax_kw": 1935.0
+            },
+            "trace_refs": [
+              "proof:ncrfg-ptpiree:T10:pmax:3"
+            ],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T11",
+            "ability_pl": "Potwierdzenie mocy minimalnej PMIN",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak deklarowanej wartości PMIN.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak deklarowanej wartości PMIN."
+            ]
+          },
+          {
+            "test_id": "T12",
+            "ability_pl": "Zaprzestanie generacji mocy czynnej",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak funkcji zdalnej komendy P albo rampy wykonania. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T13",
+            "ability_pl": "Zmniejszenie generacji mocy czynnej",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak funkcji zdalnej komendy P albo rampy wykonania. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T14",
+            "ability_pl": "LVRT - pozostanie w pracy przy zapadzie napięcia",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "pass",
+            "summary_pl": "LVRT: margines 0.0 p.u. w punkcie 0.0s.",
+            "metrics": {
+              "margin_pu": 0.0,
+              "critical_time_s": 0.0
+            },
+            "trace_refs": [
+              "proof:ncrfg-ptpiree:T14:ride_through_envelope:4"
+            ],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T15",
+            "ability_pl": "HVRT - pozostanie w pracy przy wzroście napięcia",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego."
+            ]
+          },
+          {
+            "test_id": "T16",
+            "ability_pl": "Odbudowa mocy czynnej po zakłóceniu",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak czasu odbudowy mocy czynnej po FRT.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak czasu odbudowy mocy czynnej po FRT."
+            ]
+          },
+          {
+            "test_id": "T17",
+            "ability_pl": "Prąd bierny podczas FRT",
+            "required": true,
+            "required_reason_pl": "Wymagany dla modułu typu B.",
+            "verdict": "no_data",
+            "summary_pl": "Brak wzmocnienia prądu biernego K_FRT.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": [
+              "Brak wzmocnienia prądu biernego K_FRT."
+            ]
+          },
+          {
+            "test_id": "T18",
+            "ability_pl": "Praca wyspowa, rozruch autonomiczny i tłumienie oscylacji",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Nie wskazano wymaganej zdolności dodatkowej.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          },
+          {
+            "test_id": "T19",
+            "ability_pl": "Rejestracja zakłóceń i komunikacja z operatorem",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "fail",
+            "summary_pl": "Zweryfikowano obserwowalność i rejestrację zakłóceń.",
+            "metrics": {
+              "has_scada": false,
+              "has_recorder": false
+            },
+            "trace_refs": [
+              "proof:ncrfg-ptpiree:T19:observability:5"
+            ],
+            "fix_actions": [
+              "Dodaj komunikację SCADA i rejestrator zakłóceń do konfiguracji DER."
+            ]
+          },
+          {
+            "test_id": "T20",
+            "ability_pl": "Jakość energii - THD_U źródła",
+            "required": false,
+            "required_reason_pl": "Nie jest wymagany dla tej klasy modułu bez dodatkowego żądania OS.",
+            "verdict": "not_required",
+            "summary_pl": "Brak katalogowej wartości THD_U. Test nie jest obowiązkowy w tej klasie.",
+            "metrics": {},
+            "trace_refs": [],
+            "fix_actions": []
+          }
+        ]
+      }
+    ],
+    "test_catalog": [
+      {
+        "test_id": "T01",
+        "ability_pl": "LFSM-O - ograniczanie mocy przy nadczęstotliwości",
+        "procedure_basis_pl": "Zakres testów zgodności NC RfG dla PPM/SyPGM typu C i D; dla części A/B gdy brak certyfikatu.",
+        "default_for_modules": [
+          "C",
+          "D"
+        ],
+        "conditional_pl": "Dla typu A/B wymaganie zależy od certyfikatu i decyzji właściwego OS."
+      },
+      {
+        "test_id": "T02",
+        "ability_pl": "LFSM-U - zwiększanie mocy przy podczęstotliwości",
+        "procedure_basis_pl": "Zakres testów zgodności NC RfG dla modułów typu C i D.",
+        "default_for_modules": [
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T03",
+        "ability_pl": "FSM - regulacja częstotliwości w paśmie normalnym",
+        "procedure_basis_pl": "Zakres testów zgodności NC RfG dla modułów typu C i D.",
+        "default_for_modules": [
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T04",
+        "ability_pl": "Regulacja odbudowy częstotliwości",
+        "procedure_basis_pl": "Zakres testów zgodności NC RfG dla modułów typu C i D.",
+        "default_for_modules": [
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T05",
+        "ability_pl": "Możliwość regulacji mocy czynnej",
+        "procedure_basis_pl": "Program ramowy testów PPM oraz sprawdzenia dodatkowe dla regulacji P.",
+        "default_for_modules": [
+          "B",
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T06",
+        "ability_pl": "Tryb regulacji napięcia",
+        "procedure_basis_pl": "Zakres testów zgodności PPM typu C i D.",
+        "default_for_modules": [
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T07",
+        "ability_pl": "Tryb regulacji mocy biernej Q",
+        "procedure_basis_pl": "Zakres testów zgodności PPM typu C i D.",
+        "default_for_modules": [
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T08",
+        "ability_pl": "Tryb regulacji współczynnika mocy cosφ",
+        "procedure_basis_pl": "Zakres testów zgodności PPM typu C i D.",
+        "default_for_modules": [
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T09",
+        "ability_pl": "Zdolność do generacji mocy biernej",
+        "procedure_basis_pl": "Zakres testów zgodności PPM typu B, C i D.",
+        "default_for_modules": [
+          "B",
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T10",
+        "ability_pl": "Potwierdzenie mocy maksymalnej PMAX",
+        "procedure_basis_pl": "Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.",
+        "default_for_modules": [
+          "B",
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T11",
+        "ability_pl": "Potwierdzenie mocy minimalnej PMIN",
+        "procedure_basis_pl": "Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.",
+        "default_for_modules": [
+          "B",
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T12",
+        "ability_pl": "Zaprzestanie generacji mocy czynnej",
+        "procedure_basis_pl": "Dodatkowy test zgodności, wymagany dla typu A/B przy braku certyfikatu.",
+        "default_for_modules": [],
+        "conditional_pl": "Wymagany, gdy certyfikat nie pokrywa funkcji zdalnego zaprzestania generacji."
+      },
+      {
+        "test_id": "T13",
+        "ability_pl": "Zmniejszenie generacji mocy czynnej",
+        "procedure_basis_pl": "Dodatkowy test zgodności, wymagany dla typu B przy braku certyfikatu.",
+        "default_for_modules": [],
+        "conditional_pl": "Wymagany, gdy certyfikat nie pokrywa funkcji zdalnego ograniczenia generacji."
+      },
+      {
+        "test_id": "T14",
+        "ability_pl": "LVRT - pozostanie w pracy przy zapadzie napięcia",
+        "procedure_basis_pl": "Test FRT dla modułów B/C/D oraz profili operatora.",
+        "default_for_modules": [
+          "B",
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T15",
+        "ability_pl": "HVRT - pozostanie w pracy przy wzroście napięcia",
+        "procedure_basis_pl": "Test HVRT dla modułów B/C/D oraz profili operatora.",
+        "default_for_modules": [
+          "B",
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T16",
+        "ability_pl": "Odbudowa mocy czynnej po zakłóceniu",
+        "procedure_basis_pl": "Wymaganie profilu operatora dla modułów B/C/D.",
+        "default_for_modules": [
+          "B",
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T17",
+        "ability_pl": "Prąd bierny podczas FRT",
+        "procedure_basis_pl": "Sprawdzenie wsparcia napięcia w czasie FRT.",
+        "default_for_modules": [
+          "B",
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T18",
+        "ability_pl": "Praca wyspowa, rozruch autonomiczny i tłumienie oscylacji",
+        "procedure_basis_pl": "Sprawdzenia dodatkowe wykonywane, gdy zdolność jest wymagana przez właściwego OS/OSP.",
+        "default_for_modules": [],
+        "conditional_pl": "Uruchamiane jako wymagane tylko po zaznaczeniu obowiązku w danych wejściowych."
+      },
+      {
+        "test_id": "T19",
+        "ability_pl": "Rejestracja zakłóceń i komunikacja z operatorem",
+        "procedure_basis_pl": "Dane pomocnicze wymagane do wiarygodnego programu szczegółowego testów.",
+        "default_for_modules": [
+          "C",
+          "D"
+        ],
+        "conditional_pl": null
+      },
+      {
+        "test_id": "T20",
+        "ability_pl": "Jakość energii - THD_U źródła",
+        "procedure_basis_pl": "Kontrola uzupełniająca dla przyłączenia PPM z falownikami.",
+        "default_for_modules": [],
+        "conditional_pl": "Nie zastępuje pełnego modułu harmonicznych; raportuje, jeśli dane katalogowe są dostępne."
+      }
+    ],
+    "white_box_trace": [
+      {
+        "step": 1,
+        "test_id": "T10",
+        "key": "pmax",
+        "formula": "PMAX = P deklarowane w programie szczegółowym",
+        "data": {
+          "p_max_kw": 1500.0,
+          "p_min_kw": null
         },
-        {
-          "test_id": "T2",
-          "test_name_pl": "Test HVRT",
-          "verdict": "no_data",
-          "message_pl": "Brak krzywej HVRT — wymagane do testu RMS."
+        "substitution": "PMAX = 1500.000 kW",
+        "result": {
+          "value_kw": 1500.0,
+          "ok": true
         },
-        {
-          "test_id": "T3",
-          "test_name_pl": "Test P(f) droop",
-          "verdict": "fail",
-          "message_pl": "Brak konfiguracji droop P(f) — wymagane dla modułów B/C/D."
+        "unit_check": "Moc czynna w kW.",
+        "proof_ref": "proof:ncrfg-ptpiree:T10:pmax:1"
+      },
+      {
+        "step": 2,
+        "test_id": "T19",
+        "key": "observability",
+        "formula": "status = SCADA && rejestrator zakłóceń",
+        "data": {
+          "has_scada": false,
+          "has_recorder": false
         },
-        {
-          "test_id": "T4",
-          "test_name_pl": "Test Q(U)",
-          "verdict": "fail",
-          "message_pl": "Brak krzywej Q(U) — wymagane dla pracy w trybie q_of_u."
+        "substitution": "False && False",
+        "result": {
+          "ok": false
         },
-        {
-          "test_id": "T5",
-          "test_name_pl": "Test cos φ stały",
-          "verdict": "no_data",
-          "message_pl": "Brak danych cos φ."
+        "unit_check": "Wartości logiczne bez jednostek.",
+        "proof_ref": "proof:ncrfg-ptpiree:T19:observability:2"
+      },
+      {
+        "step": 3,
+        "test_id": "T10",
+        "key": "pmax",
+        "formula": "PMAX = P deklarowane w programie szczegółowym",
+        "data": {
+          "p_max_kw": 1935.0,
+          "p_min_kw": null
         },
-        {
-          "test_id": "T6",
-          "test_name_pl": "Test ramp rate",
-          "verdict": "no_data",
-          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        "substitution": "PMAX = 1935.000 kW",
+        "result": {
+          "value_kw": 1935.0,
+          "ok": true
         },
-        {
-          "test_id": "T7",
-          "test_name_pl": "Test dead-band częstotliwości",
-          "verdict": "no_data",
-          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        "unit_check": "Moc czynna w kW.",
+        "proof_ref": "proof:ncrfg-ptpiree:T10:pmax:3"
+      },
+      {
+        "step": 4,
+        "test_id": "T14",
+        "key": "ride_through_envelope",
+        "formula": "U_sim(t) >= U_LVRT,profile(t)",
+        "data": {
+          "curve_points": [
+            {
+              "time_s": 0.0,
+              "voltage_pu": 0.05
+            },
+            {
+              "time_s": 0.15,
+              "voltage_pu": 0.05
+            },
+            {
+              "time_s": 0.7,
+              "voltage_pu": 0.5
+            },
+            {
+              "time_s": 1.5,
+              "voltage_pu": 0.85
+            },
+            {
+              "time_s": 3.0,
+              "voltage_pu": 0.9
+            }
+          ],
+          "has_dynamic_model": true
         },
-        {
-          "test_id": "T8",
-          "test_name_pl": "Test stabilności małosygnałowej",
-          "verdict": "no_module",
-          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        "substitution": "U_sim = 0.050 p.u., U_lim = 0.050 p.u.",
+        "result": {
+          "margin_pu": 0.0,
+          "critical_time_s": 0.0,
+          "ok": true
         },
-        {
-          "test_id": "T9",
-          "test_name_pl": "Test pracy wyspowej",
-          "verdict": "no_data",
-          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        "unit_check": "p.u. - p.u. = p.u.",
+        "proof_ref": "proof:ncrfg-ptpiree:T14:ride_through_envelope:4"
+      },
+      {
+        "step": 5,
+        "test_id": "T19",
+        "key": "observability",
+        "formula": "status = SCADA && rejestrator zakłóceń",
+        "data": {
+          "has_scada": false,
+          "has_recorder": false
         },
-        {
-          "test_id": "T10",
-          "test_name_pl": "Test odzysku mocy czynnej",
-          "verdict": "no_module",
-          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        "substitution": "False && False",
+        "result": {
+          "ok": false
         },
-        {
-          "test_id": "T11",
-          "test_name_pl": "Test prądu biernego podczas FRT",
-          "verdict": "no_module",
-          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
-        },
-        {
-          "test_id": "T12",
-          "test_name_pl": "Test ograniczenia mocy",
-          "verdict": "no_data",
-          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
-        },
-        {
-          "test_id": "T13",
-          "test_name_pl": "Test zakresu U/Q",
-          "verdict": "no_data",
-          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
-        },
-        {
-          "test_id": "T14",
-          "test_name_pl": "Test SCADA operatora",
-          "verdict": "fail",
-          "message_pl": "Brak komunikacji SCADA z operatorem."
-        },
-        {
-          "test_id": "T15",
-          "test_name_pl": "Test rejestracji zakłóceń",
-          "verdict": "fail",
-          "message_pl": "Brak rejestratora zakłóceń."
-        },
-        {
-          "test_id": "T16",
-          "test_name_pl": "Test FRT 3F",
-          "verdict": "no_module",
-          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
-        },
-        {
-          "test_id": "T17",
-          "test_name_pl": "Test FRT 1F",
-          "verdict": "no_module",
-          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
-        },
-        {
-          "test_id": "T18",
-          "test_name_pl": "Test harmonicznych",
-          "verdict": "no_module",
-          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
-        }
-      ],
-      "overall_pass": false,
-      "total_tests": 18,
-      "passed_count": 0,
-      "no_module_count": 6
+        "unit_check": "Wartości logiczne bez jednostek.",
+        "proof_ref": "proof:ncrfg-ptpiree:T19:observability:5"
+      }
+    ],
+    "report_pl": "Raport symulacyjny NC RfG / PTPiREE\nProcedura: PTPiREE Procedura testowania v3.0\nSolver: ncrfg-ptpiree-whitebox-1.0\n\nModuł: bess-1\nOperator: Enea Operator; typ PGM: B; Pmax: 1500.0 kW\nStatus: brak_danych; wymagane: 10; PASS: 1; FAIL: 0; brak danych: 9\n- T05 Możliwość regulacji mocy czynnej: no_data - Brak aktywnej regulacji mocy czynnej lub rampy.\n- T09 Zdolność do generacji mocy biernej: no_data - Brak zakresu Q/Pn modułu.\n- T10 Potwierdzenie mocy maksymalnej PMAX: pass - PMAX potwierdzone z danych katalogowych/deklaracji: 1500.0 kW.\n- T11 Potwierdzenie mocy minimalnej PMIN: no_data - Brak deklarowanej wartości PMIN.\n- T12 Zaprzestanie generacji mocy czynnej: no_data - Brak funkcji zdalnej komendy P albo rampy wykonania.\n- T13 Zmniejszenie generacji mocy czynnej: no_data - Brak funkcji zdalnej komendy P albo rampy wykonania.\n- T14 LVRT - pozostanie w pracy przy zapadzie napięcia: no_data - Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.\n- T15 HVRT - pozostanie w pracy przy wzroście napięcia: no_data - Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.\n- T16 Odbudowa mocy czynnej po zakłóceniu: no_data - Brak czasu odbudowy mocy czynnej po FRT.\n- T17 Prąd bierny podczas FRT: no_data - Brak wzmocnienia prądu biernego K_FRT.\n- T19 Rejestracja zakłóceń i komunikacja z operatorem: fail - Zweryfikowano obserwowalność i rejestrację zakłóceń.\n\nModuł: pv-1\nOperator: Enea Operator; typ PGM: B; Pmax: 1935.0 kW\nStatus: brak_danych; wymagane: 8; PASS: 2; FAIL: 0; brak danych: 6\n- T05 Możliwość regulacji mocy czynnej: no_data - Brak aktywnej regulacji mocy czynnej lub rampy.\n- T09 Zdolność do generacji mocy biernej: no_data - Brak zakresu Q/Pn modułu.\n- T10 Potwierdzenie mocy maksymalnej PMAX: pass - PMAX potwierdzone z danych katalogowych/deklaracji: 1935.0 kW.\n- T11 Potwierdzenie mocy minimalnej PMIN: no_data - Brak deklarowanej wartości PMIN.\n- T14 LVRT - pozostanie w pracy przy zapadzie napięcia: pass - LVRT: margines 0.0 p.u. w punkcie 0.0s.\n- T15 HVRT - pozostanie w pracy przy wzroście napięcia: no_data - Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.\n- T16 Odbudowa mocy czynnej po zakłóceniu: no_data - Brak czasu odbudowy mocy czynnej po FRT.\n- T17 Prąd bierny podczas FRT: no_data - Brak wzmocnienia prądu biernego K_FRT.\n- T19 Rejestracja zakłóceń i komunikacja z operatorem: fail - Zweryfikowano obserwowalność i rejestrację zakłóceń.",
+    "certificate_evidence": [
+      {
+        "der_ref": "bess-1",
+        "document_number": null,
+        "acceptance_date": null,
+        "wos_version": null,
+        "wipwc_version": null,
+        "ppm_scope": null,
+        "source_url": null,
+        "certificate_condition": null
+      },
+      {
+        "der_ref": "pv-1",
+        "document_number": "TC-GCC-DNVGL-SE-0124-07526-1",
+        "acceptance_date": "31.12.2026",
+        "wos_version": null,
+        "wipwc_version": "1.2",
+        "ppm_scope": "A,B,C,D",
+        "source_url": "https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-06-Wykaz-urzadzen_1.2.pdf",
+        "certificate_condition": null
+      }
+    ],
+    "reporting_status": "not_reportable",
+    "proof_status": "incomplete",
+    "evidence_limitations": [
+      "T14:NOT_SIMULATED",
+      "T15:NOT_SIMULATED",
+      "T16:DECLARATION",
+      "T17:DECLARATION"
+    ],
+    "evidence_note_pl": "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA dla testow: T14:NOT_SIMULATED, T15:NOT_SIMULATED, T16:DECLARATION, T17:DECLARATION.",
+    "evidence_per_module": {
+      "bess-1": {
+        "der_ref": "bess-1",
+        "reporting_status": "not_reportable",
+        "proof_status": "incomplete",
+        "evidence_limitations": [
+          "T14:NOT_SIMULATED",
+          "T15:NOT_SIMULATED",
+          "T16:DECLARATION",
+          "T17:DECLARATION"
+        ],
+        "evidence_note_pl": "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA dla testow: T14:NOT_SIMULATED, T15:NOT_SIMULATED, T16:DECLARATION, T17:DECLARATION."
+      },
+      "pv-1": {
+        "der_ref": "pv-1",
+        "reporting_status": "not_reportable",
+        "proof_status": "incomplete",
+        "evidence_limitations": [
+          "T14:NOT_SIMULATED",
+          "T15:NOT_SIMULATED",
+          "T16:DECLARATION",
+          "T17:DECLARATION"
+        ],
+        "evidence_note_pl": "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA dla testow: T14:NOT_SIMULATED, T15:NOT_SIMULATED, T16:DECLARATION, T17:DECLARATION."
+      }
     },
-    {
-      "operator_id": "enea",
-      "operator_name_pl": "Enea Operator",
-      "der_ref": "pv-1",
-      "module_type": "B",
-      "p_max_kw": 1935.0,
-      "voltage_kv": 15.0,
-      "test_results": [
-        {
-          "test_id": "T1",
-          "test_name_pl": "Test LVRT",
-          "verdict": "pass",
-          "message_pl": "DER pozostał w pracy podczas LVRT (margin 0.000 p.u.)."
+    "evidence_by_test": {
+      "bess-1": {
+        "T01": {
+          "capability_id": "ncrfg_ptpiree.frequency_response",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Odpowiedz czestotliwosciowa (LFSM-O/LFSM-U/FSM/odbudowa) jest podstawieniem algebraicznym przy zaszytej czestotliwosci testowej; brak przebiegu f(t)/P(t) — solvers/ncrfg_ptpiree/engine.py.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T01-T04)"
         },
-        {
-          "test_id": "T2",
-          "test_name_pl": "Test HVRT",
-          "verdict": "no_data",
-          "message_pl": "Brak krzywej HVRT — wymagane do testu RMS."
+        "T02": {
+          "capability_id": "ncrfg_ptpiree.frequency_response",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Odpowiedz czestotliwosciowa (LFSM-O/LFSM-U/FSM/odbudowa) jest podstawieniem algebraicznym przy zaszytej czestotliwosci testowej; brak przebiegu f(t)/P(t) — solvers/ncrfg_ptpiree/engine.py.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T01-T04)"
         },
-        {
-          "test_id": "T3",
-          "test_name_pl": "Test P(f) droop",
-          "verdict": "fail",
-          "message_pl": "Brak konfiguracji droop P(f) — wymagane dla modułów B/C/D."
+        "T03": {
+          "capability_id": "ncrfg_ptpiree.frequency_response",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Odpowiedz czestotliwosciowa (LFSM-O/LFSM-U/FSM/odbudowa) jest podstawieniem algebraicznym przy zaszytej czestotliwosci testowej; brak przebiegu f(t)/P(t) — solvers/ncrfg_ptpiree/engine.py.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T01-T04)"
         },
-        {
-          "test_id": "T4",
-          "test_name_pl": "Test Q(U)",
-          "verdict": "fail",
-          "message_pl": "Brak krzywej Q(U) — wymagane dla pracy w trybie q_of_u."
+        "T04": {
+          "capability_id": "ncrfg_ptpiree.frequency_response",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Odpowiedz czestotliwosciowa (LFSM-O/LFSM-U/FSM/odbudowa) jest podstawieniem algebraicznym przy zaszytej czestotliwosci testowej; brak przebiegu f(t)/P(t) — solvers/ncrfg_ptpiree/engine.py.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T01-T04)"
         },
-        {
-          "test_id": "T5",
-          "test_name_pl": "Test cos φ stały",
-          "verdict": "no_data",
-          "message_pl": "Brak danych cos φ."
+        "T05": {
+          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
         },
-        {
-          "test_id": "T6",
-          "test_name_pl": "Test ramp rate",
-          "verdict": "no_data",
-          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        "T06": {
+          "capability_id": "ncrfg_ptpiree.reactive_voltage_mode",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Tryby regulacji U/Q/cosfi i zakres mocy biernej (T06-T09) pochodza z deklaracji i profilu operatora — fakty konfiguracyjne.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T06-T09)"
         },
-        {
-          "test_id": "T7",
-          "test_name_pl": "Test dead-band częstotliwości",
-          "verdict": "no_data",
-          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        "T07": {
+          "capability_id": "ncrfg_ptpiree.reactive_voltage_mode",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Tryby regulacji U/Q/cosfi i zakres mocy biernej (T06-T09) pochodza z deklaracji i profilu operatora — fakty konfiguracyjne.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T06-T09)"
         },
-        {
-          "test_id": "T8",
-          "test_name_pl": "Test stabilności małosygnałowej",
-          "verdict": "no_module",
-          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        "T08": {
+          "capability_id": "ncrfg_ptpiree.reactive_voltage_mode",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Tryby regulacji U/Q/cosfi i zakres mocy biernej (T06-T09) pochodza z deklaracji i profilu operatora — fakty konfiguracyjne.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T06-T09)"
         },
-        {
-          "test_id": "T9",
-          "test_name_pl": "Test pracy wyspowej",
-          "verdict": "no_data",
-          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        "T09": {
+          "capability_id": "ncrfg_ptpiree.reactive_voltage_mode",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Tryby regulacji U/Q/cosfi i zakres mocy biernej (T06-T09) pochodza z deklaracji i profilu operatora — fakty konfiguracyjne.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T06-T09)"
         },
-        {
-          "test_id": "T10",
-          "test_name_pl": "Test odzysku mocy czynnej",
-          "verdict": "no_module",
-          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        "T10": {
+          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
         },
-        {
-          "test_id": "T11",
-          "test_name_pl": "Test prądu biernego podczas FRT",
-          "verdict": "no_module",
-          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        "T11": {
+          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
         },
-        {
-          "test_id": "T12",
-          "test_name_pl": "Test ograniczenia mocy",
-          "verdict": "no_data",
-          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        "T12": {
+          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
         },
-        {
-          "test_id": "T13",
-          "test_name_pl": "Test zakresu U/Q",
-          "verdict": "no_data",
-          "message_pl": "Test wymaga dodatkowych danych konfiguracyjnych."
+        "T13": {
+          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
         },
-        {
-          "test_id": "T14",
-          "test_name_pl": "Test SCADA operatora",
-          "verdict": "fail",
-          "message_pl": "Brak komunikacji SCADA z operatorem."
+        "T14": {
+          "capability_id": "ncrfg_ptpiree.ride_through",
+          "tier": "NOT_SIMULATED",
+          "tier_pl": "brak_symulacji",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Ocena LVRT/HVRT nie uruchamia zadnej symulacji: `simulated_voltage` jest przypisywane z limitu profilu, wiec margines wychodzi tozsamosciowo zerowy niezaleznie od danych modulu — solvers/ncrfg_ptpiree/engine.py:646-655.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T14/T15)"
         },
-        {
-          "test_id": "T15",
-          "test_name_pl": "Test rejestracji zakłóceń",
-          "verdict": "fail",
-          "message_pl": "Brak rejestratora zakłóceń."
+        "T15": {
+          "capability_id": "ncrfg_ptpiree.ride_through",
+          "tier": "NOT_SIMULATED",
+          "tier_pl": "brak_symulacji",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Ocena LVRT/HVRT nie uruchamia zadnej symulacji: `simulated_voltage` jest przypisywane z limitu profilu, wiec margines wychodzi tozsamosciowo zerowy niezaleznie od danych modulu — solvers/ncrfg_ptpiree/engine.py:646-655.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T14/T15)"
         },
-        {
-          "test_id": "T16",
-          "test_name_pl": "Test FRT 3F",
-          "verdict": "no_module",
-          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        "T16": {
+          "capability_id": "ncrfg_ptpiree.p_recovery",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Czas odbudowy mocy czynnej jest wartoscia zadeklarowana na wejsciu i porownana z wymaganiem profilu; nie pochodzi z przebiegu P(t).",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T16)"
         },
-        {
-          "test_id": "T17",
-          "test_name_pl": "Test FRT 1F",
-          "verdict": "no_module",
-          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        "T17": {
+          "capability_id": "ncrfg_ptpiree.reactive_current_frt",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Prad bierny podczas zwarcia jest wyliczany z zadeklarowanego wzmocnienia przy zaszytym spadku napiecia; nie pochodzi z przebiegu Iq(t).",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T17)"
         },
-        {
-          "test_id": "T18",
-          "test_name_pl": "Test harmonicznych",
-          "verdict": "no_module",
-          "message_pl": "Pełen testbench RMS dla testów dynamicznych (T1/T2/T16/T17/T18) wymaga solvera FrtHvrtSolverAdapter (PR-16-impl). Static rules (T3-T15) są implementowane teraz."
+        "T18": {
+          "capability_id": "ncrfg_ptpiree.extended_dynamic_capability",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Praca wyspowa, rozruch autonomiczny i tlumienie oscylacji sa orzekane z trzech flag zadeklarowanych na wejsciu; zadne z tych zjawisk nie jest liczone. To sa twierdzenia o ZACHOWANIU dynamicznym, wiec deklaracja ich nie dowodzi.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T18)"
+        },
+        "T19": {
+          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+        },
+        "T20": {
+          "capability_id": "ncrfg_ptpiree.power_quality_declared",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "THD_U (T20) pochodzi z rekordu katalogowego zrodla i jest porownywane z limitem profilu — fakt katalogowy, nie wynik symulacji widma.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T20)"
         }
-      ],
-      "overall_pass": false,
-      "total_tests": 18,
-      "passed_count": 1,
-      "no_module_count": 6
+      },
+      "pv-1": {
+        "T01": {
+          "capability_id": "ncrfg_ptpiree.frequency_response",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Odpowiedz czestotliwosciowa (LFSM-O/LFSM-U/FSM/odbudowa) jest podstawieniem algebraicznym przy zaszytej czestotliwosci testowej; brak przebiegu f(t)/P(t) — solvers/ncrfg_ptpiree/engine.py.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T01-T04)"
+        },
+        "T02": {
+          "capability_id": "ncrfg_ptpiree.frequency_response",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Odpowiedz czestotliwosciowa (LFSM-O/LFSM-U/FSM/odbudowa) jest podstawieniem algebraicznym przy zaszytej czestotliwosci testowej; brak przebiegu f(t)/P(t) — solvers/ncrfg_ptpiree/engine.py.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T01-T04)"
+        },
+        "T03": {
+          "capability_id": "ncrfg_ptpiree.frequency_response",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Odpowiedz czestotliwosciowa (LFSM-O/LFSM-U/FSM/odbudowa) jest podstawieniem algebraicznym przy zaszytej czestotliwosci testowej; brak przebiegu f(t)/P(t) — solvers/ncrfg_ptpiree/engine.py.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T01-T04)"
+        },
+        "T04": {
+          "capability_id": "ncrfg_ptpiree.frequency_response",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Odpowiedz czestotliwosciowa (LFSM-O/LFSM-U/FSM/odbudowa) jest podstawieniem algebraicznym przy zaszytej czestotliwosci testowej; brak przebiegu f(t)/P(t) — solvers/ncrfg_ptpiree/engine.py.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T01-T04)"
+        },
+        "T05": {
+          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+        },
+        "T06": {
+          "capability_id": "ncrfg_ptpiree.reactive_voltage_mode",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Tryby regulacji U/Q/cosfi i zakres mocy biernej (T06-T09) pochodza z deklaracji i profilu operatora — fakty konfiguracyjne.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T06-T09)"
+        },
+        "T07": {
+          "capability_id": "ncrfg_ptpiree.reactive_voltage_mode",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Tryby regulacji U/Q/cosfi i zakres mocy biernej (T06-T09) pochodza z deklaracji i profilu operatora — fakty konfiguracyjne.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T06-T09)"
+        },
+        "T08": {
+          "capability_id": "ncrfg_ptpiree.reactive_voltage_mode",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Tryby regulacji U/Q/cosfi i zakres mocy biernej (T06-T09) pochodza z deklaracji i profilu operatora — fakty konfiguracyjne.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T06-T09)"
+        },
+        "T09": {
+          "capability_id": "ncrfg_ptpiree.reactive_voltage_mode",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Tryby regulacji U/Q/cosfi i zakres mocy biernej (T06-T09) pochodza z deklaracji i profilu operatora — fakty konfiguracyjne.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T06-T09)"
+        },
+        "T10": {
+          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+        },
+        "T11": {
+          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+        },
+        "T12": {
+          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+        },
+        "T13": {
+          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+        },
+        "T14": {
+          "capability_id": "ncrfg_ptpiree.ride_through",
+          "tier": "NOT_SIMULATED",
+          "tier_pl": "brak_symulacji",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Ocena LVRT/HVRT nie uruchamia zadnej symulacji: `simulated_voltage` jest przypisywane z limitu profilu, wiec margines wychodzi tozsamosciowo zerowy niezaleznie od danych modulu — solvers/ncrfg_ptpiree/engine.py:646-655.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T14/T15)"
+        },
+        "T15": {
+          "capability_id": "ncrfg_ptpiree.ride_through",
+          "tier": "NOT_SIMULATED",
+          "tier_pl": "brak_symulacji",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Ocena LVRT/HVRT nie uruchamia zadnej symulacji: `simulated_voltage` jest przypisywane z limitu profilu, wiec margines wychodzi tozsamosciowo zerowy niezaleznie od danych modulu — solvers/ncrfg_ptpiree/engine.py:646-655.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T14/T15)"
+        },
+        "T16": {
+          "capability_id": "ncrfg_ptpiree.p_recovery",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Czas odbudowy mocy czynnej jest wartoscia zadeklarowana na wejsciu i porownana z wymaganiem profilu; nie pochodzi z przebiegu P(t).",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T16)"
+        },
+        "T17": {
+          "capability_id": "ncrfg_ptpiree.reactive_current_frt",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Prad bierny podczas zwarcia jest wyliczany z zadeklarowanego wzmocnienia przy zaszytym spadku napiecia; nie pochodzi z przebiegu Iq(t).",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T17)"
+        },
+        "T18": {
+          "capability_id": "ncrfg_ptpiree.extended_dynamic_capability",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Praca wyspowa, rozruch autonomiczny i tlumienie oscylacji sa orzekane z trzech flag zadeklarowanych na wejsciu; zadne z tych zjawisk nie jest liczone. To sa twierdzenia o ZACHOWANIU dynamicznym, wiec deklaracja ich nie dowodzi.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T18)"
+        },
+        "T19": {
+          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+        },
+        "T20": {
+          "capability_id": "ncrfg_ptpiree.power_quality_declared",
+          "tier": "DECLARATION",
+          "tier_pl": "deklaracja_wnioskodawcy",
+          "claim_kind": "DECLARED_CONFIGURATION",
+          "claim_kind_pl": "konfiguracja_zadeklarowana",
+          "regulatory_evidence_eligible": true,
+          "rationale_pl": "THD_U (T20) pochodzi z rekordu katalogowego zrodla i jest porownywane z limitem profilu — fakt katalogowy, nie wynik symulacji widma.",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T20)"
+        }
+      }
     }
-  ]
+  }
 }

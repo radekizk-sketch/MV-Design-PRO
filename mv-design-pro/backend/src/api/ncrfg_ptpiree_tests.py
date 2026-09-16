@@ -1,32 +1,24 @@
 from __future__ import annotations
 
-from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin, klucz_twin_z_sciezki
-from application.analyses.dowod_certyfikatu import (
-    NcRfgCertificateEvidence,
-    dowody_certyfikatu,
-)
+from application.analyses.dowod_certyfikatu import dowody_certyfikatu
 from application.ncrfg_compliance import (
-    NcRfgComplianceChecker,
-    build_der_compliance_list_from_enm,
+    NcRfgCaseComplianceResponse,
+    NcRfgPtpireeRunResponse,
+    odpowiedz_biegu_ncrfg,
+    zgodnosc_ncrfg_przypadku,
 )
 from catalog.profiles.nc_rfg import list_available_operators, load_nc_rfg_profile
 from compliance.nc_rfg_modul import modul_nc_rfg
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, Request, status
-from network_model.solvers.ncrfg_ptpiree import (
-    NcRfgPtpireeRunRequest,
-    NcRfgPtpireeRunResult,
-    NcRfgPtpireeSolver,
-)
+from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeRunRequest, NcRfgPtpireeSolver
 from network_model.solvers.ncrfg_ptpiree.engine import TEST_CATALOG
-from solver_input.dowod_ncrfg import ocena_dowodowa_biegu
 
 router = APIRouter(prefix="/api/ncrfg-tests", tags=["ncrfg-ptpiree-tests"])
 _solver = NcRfgPtpireeSolver()
-_compliance_checker = NcRfgComplianceChecker()
 
 
 @router.get("/catalog")
@@ -72,65 +64,28 @@ def klasyfikuj_modul_ncrfg(p_max_mw: float, napiecie_kv: float) -> dict[str, str
     return {"modul": modul_nc_rfg(p_max_mw, napiecie_kv)}
 
 
-@router.get("/cases/{case_id}/compliance")
+@router.get("/cases/{case_id}/compliance", response_model=NcRfgCaseComplianceResponse)
 def run_ncrfg_compliance_from_model(
     case_id: UUID, klucz: KluczTwin, operator_id: str
-) -> dict[str, Any]:
-    """Zgodność NC RfG liczona z MODELU (V12K-087, G-OZE-B2).
+) -> NcRfgCaseComplianceResponse:
+    """Zgodność NC RfG WSZYSTKICH DER przypadku liczona Z MODELU (karta S-3, W6-0).
 
-    Buduje wejścia DER z committed ENM przypadku (most
-    ``build_der_compliance_list_from_enm`` — zdolności FRT/PF/Q(U) z modelu,
-    zero fabrykacji) i uruchamia ``NcRfgComplianceChecker`` per źródło
-    przekształtnikowe dla wskazanego operatora. Uczciwy stan zerowy: brak DER
-    w modelu → pusta lista raportów (nie błąd). 404 dla nieznanego operatora.
+    Buduje wejścia solvera z committed ENM przypadku (most
+    ``application/ncrfg_compliance/model_bridge.py`` — zdolności FRT/P(f)/Q(U),
+    certyfikat PTPiREE, model dynamiczny i granice Q z modelu, zero fabrykacji:
+    brak danej = ``False``/``None`` → solver daje ``no_data``) i uruchamia TEN SAM
+    ``NcRfgPtpireeSolver``, co bieg macierzy ``POST /api/ncrfg-tests/run``.
+    Odpowiedź = kontrakt biegu macierzy (z polami dowodowymi karty S-1)
+    opakowany per przypadek; DER bez mocy/napięcia nazwane w ``pominiete``.
+    Uczciwy stan zerowy: brak DER w modelu → ``der_count == 0``, ``bieg = None``
+    (nie błąd). 404 dla nieznanego operatora.
     """
     if operator_id not in set(list_available_operators()):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Nieznany operator NC RfG: {operator_id}.",
         )
-    enm = get_enm(klucz)
-    der_inputs = build_der_compliance_list_from_enm(enm)
-    reports = [_compliance_checker.check(operator_id, der) for der in der_inputs]
-    return {
-        "case_id": str(case_id),
-        "operator_id": operator_id,
-        "der_count": len(reports),
-        "reports": [
-            {
-                **report.model_dump(mode="json"),
-                "overall_pass": report.overall_pass,
-                "total_tests": report.total_tests,
-                "passed_count": report.passed_count,
-                "no_module_count": report.no_module_count,
-            }
-            for report in reports
-        ],
-    }
-
-
-class NcRfgPtpireeRunResponse(NcRfgPtpireeRunResult):
-    """Wynik biegu POSZERZONY o dowód certyfikacji (P2) i stopień dowodowy (S-1).
-
-    Dziedziczy kontrakt solvera w całości — wszystkie istniejące pola zachowują
-    nazwy, typy i wartości. Nowe pola (`certificate_evidence`, `reporting_status`,
-    `proof_status`, `evidence_limitations`, `evidence_note_pl`, `evidence_per_module`,
-    `evidence_by_test`) są ADDYTYWNE — konsument sprzed tej karty czyta dokładnie
-    to samo, co czytał. Ocena dowodowa liczona `ocena_dowodowa_biegu`
-    (`solver_input.dowod_ncrfg`) — TĄ SAMĄ funkcją, którą czyta bramka
-    certyfikatu (`application/analyses/certyfikat_zgodnosci.py::zbierz_braki`).
-    """
-
-    certificate_evidence: list[NcRfgCertificateEvidence] = []
-    # Domyślne wartości FAIL-CLOSED (evidence_status_guard): gdyby jakiś inny
-    # tor budowy tego modelu pominął wywołanie ocena_dowodowa_biegu, odpowiedź
-    # ma stan pesymistyczny — nigdy ciche "reportable"/"complete".
-    reporting_status: str = "not_reportable"
-    proof_status: str = "incomplete"
-    evidence_limitations: list[str] = []
-    evidence_note_pl: str = ""
-    evidence_per_module: dict[str, dict[str, Any]] = {}
-    evidence_by_test: dict[str, dict[str, dict[str, Any]]] = {}
+    return zgodnosc_ncrfg_przypadku(get_enm(klucz), operator_id=operator_id, case_id=str(case_id))
 
 
 @router.post("/run", response_model=NcRfgPtpireeRunResponse)
@@ -147,18 +102,7 @@ def run_ncrfg_ptpiree_tests(
             detail=str(exc),
         ) from exc
     klucz_twin = None if case_id is None else klucz_twin_z_sciezki(str(case_id), http_request)
-    ocena = ocena_dowodowa_biegu(result)
-    return NcRfgPtpireeRunResponse(
-        **result.model_dump(),
-        certificate_evidence=dowody_certyfikatu(
-            klucz_twin, [module.der_ref for module in result.modules]
-        ),
-        reporting_status=ocena.reporting_status,
-        proof_status=ocena.proof_status,
-        evidence_limitations=list(ocena.evidence_limitations),
-        evidence_note_pl=ocena.evidence_note_pl,
-        evidence_per_module={
-            der_ref: modul_ocena.to_dict() for der_ref, modul_ocena in ocena.per_module.items()
-        },
-        evidence_by_test=ocena.evidence_by_test,
+    return odpowiedz_biegu_ncrfg(
+        result,
+        dowody_certyfikatu(klucz_twin, [module.der_ref for module in result.modules]),
     )

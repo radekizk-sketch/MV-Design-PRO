@@ -342,3 +342,26 @@ def susceptancja_z_pojemnosci_s_per_km(
     — DOKŁADNIE ta sama sekwencja co tor ENM → ``enm/mapping.py:1016``.
     """
     return 2 * math.pi * czestotliwosc_hz * pojemnosc_nf_per_km * 1e-9
+
+
+# =============================================================================
+# Rodzina I — udział mocy w bazie znamionowej, q = Q/Pn (karta S-3 W6-0)
+# =============================================================================
+
+
+def udzial_mocy_biernej_pu(moc_bierna_mvar: float, moc_bazowa_mw: float) -> float:
+    """Udział mocy biernej w bazie mocy znamionowej: q = Q/Pn, Q[Mvar], Pn[MW]
+    → q[p.u. Pn] (bezwymiarowy, ze znakiem Q).
+
+    Normalizacja tabliczkowa (nie fizyka pola): solver testów NC RfG / PTPiREE
+    (``network_model/solvers/ncrfg_ptpiree/engine.py::_reactive_voltage_test``)
+    porównuje zakres Q modułu z profilem operatora W BAZIE Pn
+    (``q_range_pct_pn_min/max``, ``Qmin,kvar = Pmax,kW · q``). Model ENM
+    przechowuje granice Q generatora w Mvar bezwzględnych
+    (``generator.meta.q_min_mvar``/``q_max_mvar``, ta sama baza całkowita co
+    ``generator.p_mw`` — patrz ``enm/assembler.py`` granice węzła PV), więc most
+    model → wejście solvera (``application/ncrfg_compliance/model_bridge.py``)
+    liczy udział TĄ funkcją. Kryterium ``moc_bazowa_mw > 0`` zostaje u
+    wołającego (brak mocy = brak wejścia, nie dzielenie przez zero).
+    """
+    return moc_bierna_mvar / moc_bazowa_mw

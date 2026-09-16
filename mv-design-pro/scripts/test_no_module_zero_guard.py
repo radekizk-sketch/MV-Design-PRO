@@ -44,7 +44,16 @@ def test_main_zwraca_zero_na_prawdziwym_repo() -> None:
 
 
 def test_is_allowlisted_dopasowanie_dokladne_pliku() -> None:
-    assert _is_allowlisted("application/ncrfg_compliance/checker.py", _ALLOWLIST_BACKEND)
+    assert _is_allowlisted("application/analyses/frt_trajektorie.py", _ALLOWLIST_BACKEND)
+
+
+def test_drugi_silnik_ncrfg_nie_jest_na_liscie_po_s3() -> None:
+    """Karta S-3 (2026-09-16): odroczenie karty S-4 (checker.py + trasa `/compliance`
+    + lustro FE) ZAMKNIĘTE kasacją silnika — żadne z trzech miejsc nie wraca na
+    listę; frontend nie ma ANI JEDNEGO dozwolonego miejsca."""
+    assert not _is_allowlisted("application/ncrfg_compliance/checker.py", _ALLOWLIST_BACKEND)
+    assert not _is_allowlisted("api/ncrfg_ptpiree_tests.py", _ALLOWLIST_BACKEND)
+    assert _ALLOWLIST_FRONTEND == ()
 
 
 def test_is_allowlisted_dopasowanie_po_prefiksie_katalogu() -> None:
@@ -59,8 +68,8 @@ def test_is_allowlisted_odrzuca_plik_spoza_listy() -> None:
     )
 
 
-def test_is_allowlisted_frontend_dopasowanie_dokladne() -> None:
-    assert _is_allowlisted("ui/ncrfg-tests/api.ts", _ALLOWLIST_FRONTEND)
+def test_is_allowlisted_frontend_pusta_lista_odrzuca_kazdy_plik() -> None:
+    assert not _is_allowlisted("ui/ncrfg-tests/api.ts", _ALLOWLIST_FRONTEND)
     assert not _is_allowlisted("ui2/oze/api.ts", _ALLOWLIST_FRONTEND)
 
 

@@ -5977,6 +5977,49 @@
     "title": "NakladkaRoznicResponse",
     "type": "object"
    },
+   "NcRfgCaseComplianceResponse": {
+    "description": "Zgodność NC RfG przypadku: bieg solvera na DER modelu, opakowany per przypadek.\n\n``bieg`` jest ``None`` DOKŁADNIE wtedy, gdy solver nie miał żadnego modułu do\nobjęcia (``der_count == 0``): kontrakt solvera wymaga ≥ 1 modułu, a pusty\nbieg z fabrykowanym odciskiem/raportem byłby fałszem. ``pominiete`` nazywa DER\nmodelu, których solver nie objął (brak mocy / brak napięcia przyłączenia) —\nuczciwy stan zerowy per urządzenie, nie cisza.",
+    "properties": {
+     "bieg": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NcRfgPtpireeRunResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "case_id": {
+      "title": "Case Id",
+      "type": "string"
+     },
+     "der_count": {
+      "title": "Der Count",
+      "type": "integer"
+     },
+     "operator_id": {
+      "title": "Operator Id",
+      "type": "string"
+     },
+     "pominiete": {
+      "items": {
+       "$ref": "#/components/schemas/NcRfgDerPominiety"
+      },
+      "title": "Pominiete",
+      "type": "array"
+     }
+    },
+    "required": [
+     "case_id",
+     "operator_id",
+     "der_count",
+     "pominiete",
+     "bieg"
+    ],
+    "title": "NcRfgCaseComplianceResponse",
+    "type": "object"
+   },
    "NcRfgCertificateEvidence": {
     "description": "Dowód certyfikacji PTPiREE urządzenia testowanego w biegu NC RfG.\n\nWartości pochodzą WPROST z tabliczki urządzenia w modelu (``Generator.\nmaterialized_params``), którą kreator DER zapisał z rekordu katalogowego.\nTen moduł niczego nie wylicza i niczego nie dopowiada: brak danej = ``None``\n(uczciwy stan zerowy), nigdy wartość domyślna ani zgadnięta.",
     "properties": {
@@ -6066,6 +6109,46 @@
      "der_ref"
     ],
     "title": "NcRfgCertificateEvidence",
+    "type": "object"
+   },
+   "NcRfgDerPominiety": {
+    "description": "DER modelu, którego solver NIE może objąć biegiem — jawny powód, nie cisza.\n\nTen sam słownik powodów, co blokada modułu w macierzy frontendu\n(``ui2/oze/macierz/macierzModel.ts::PowodBlokady``): brak mocy albo brak\nnapięcia przyłączenia. Solver wymaga ``p_max_kw > 0`` i ``voltage_kv > 0``\n(kontrakt B-01) — zamiast fabrykować liczbę, DER trafia tutaj.",
+    "properties": {
+     "der_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Der Name"
+     },
+     "der_ref": {
+      "title": "Der Ref",
+      "type": "string"
+     },
+     "powod": {
+      "enum": [
+       "brak_mocy",
+       "brak_napiecia"
+      ],
+      "title": "Powod",
+      "type": "string"
+     },
+     "powod_pl": {
+      "title": "Powod Pl",
+      "type": "string"
+     }
+    },
+    "required": [
+     "der_ref",
+     "der_name",
+     "powod",
+     "powod_pl"
+    ],
+    "title": "NcRfgDerPominiety",
     "type": "object"
    },
    "NcRfgPtpireeModuleInput": {
@@ -6492,7 +6575,7 @@
     "type": "object"
    },
    "NcRfgPtpireeRunResponse": {
-    "description": "Wynik biegu POSZERZONY o dowód certyfikacji (P2) i stopień dowodowy (S-1).\n\nDziedziczy kontrakt solvera w całości — wszystkie istniejące pola zachowują\nnazwy, typy i wartości. Nowe pola (`certificate_evidence`, `reporting_status`,\n`proof_status`, `evidence_limitations`, `evidence_note_pl`, `evidence_per_module`,\n`evidence_by_test`) są ADDYTYWNE — konsument sprzed tej karty czyta dokładnie\nto samo, co czytał. Ocena dowodowa liczona `ocena_dowodowa_biegu`\n(`solver_input.dowod_ncrfg`) — TĄ SAMĄ funkcją, którą czyta bramka\ncertyfikatu (`application/analyses/certyfikat_zgodnosci.py::zbierz_braki`).",
+    "description": "Wynik biegu POSZERZONY o dowód certyfikacji (P2) i stopień dowodowy (S-1).\n\nDziedziczy kontrakt solvera w całości — wszystkie istniejące pola zachowują\nnazwy, typy i wartości. Pola ``certificate_evidence``, ``reporting_status``,\n``proof_status``, ``evidence_limitations``, ``evidence_note_pl``,\n``evidence_per_module``, ``evidence_by_test`` są ADDYTYWNE. Ocena dowodowa\nliczona ``ocena_dowodowa_biegu`` (``solver_input.dowod_ncrfg``) — TĄ SAMĄ\nfunkcją, którą czyta bramka certyfikatu\n(``application/analyses/certyfikat_zgodnosci.py::zbierz_braki``).",
     "properties": {
      "certificate_evidence": {
       "default": [],
@@ -19521,7 +19604,7 @@
   },
   "/api/ncrfg-tests/cases/{case_id}/compliance": {
    "get": {
-    "description": "Zgodność NC RfG liczona z MODELU (V12K-087, G-OZE-B2).\n\nBuduje wejścia DER z committed ENM przypadku (most\n``build_der_compliance_list_from_enm`` — zdolności FRT/PF/Q(U) z modelu,\nzero fabrykacji) i uruchamia ``NcRfgComplianceChecker`` per źródło\nprzekształtnikowe dla wskazanego operatora. Uczciwy stan zerowy: brak DER\nw modelu → pusta lista raportów (nie błąd). 404 dla nieznanego operatora.",
+    "description": "Zgodność NC RfG WSZYSTKICH DER przypadku liczona Z MODELU (karta S-3, W6-0).\n\nBuduje wejścia solvera z committed ENM przypadku (most\n``application/ncrfg_compliance/model_bridge.py`` — zdolności FRT/P(f)/Q(U),\ncertyfikat PTPiREE, model dynamiczny i granice Q z modelu, zero fabrykacji:\nbrak danej = ``False``/``None`` → solver daje ``no_data``) i uruchamia TEN SAM\n``NcRfgPtpireeSolver``, co bieg macierzy ``POST /api/ncrfg-tests/run``.\nOdpowiedź = kontrakt biegu macierzy (z polami dowodowymi karty S-1)\nopakowany per przypadek; DER bez mocy/napięcia nazwane w ``pominiete``.\nUczciwy stan zerowy: brak DER w modelu → ``der_count == 0``, ``bieg = None``\n(nie błąd). 404 dla nieznanego operatora.",
     "operationId": "run_ncrfg_compliance_from_model_api_ncrfg_tests_cases__case_id__compliance_get",
     "parameters": [
      {
@@ -19548,9 +19631,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response Run Ncrfg Compliance From Model Api Ncrfg Tests Cases  Case Id  Compliance Get",
-         "type": "object"
+         "$ref": "#/components/schemas/NcRfgCaseComplianceResponse"
         }
        }
       },

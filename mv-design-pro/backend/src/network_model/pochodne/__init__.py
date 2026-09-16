@@ -49,6 +49,7 @@ from network_model.pochodne.wielkosci_pochodne import (
     rezystancja_w_temperaturze,
     susceptancja_z_pojemnosci_s_per_km,
     tan_phi_z_cos_phi,
+    udzial_mocy_biernej_pu,
     wspolczynnik_kappa,
 )
 
@@ -89,6 +90,7 @@ __all__ = [
     "simens_na_mikrosimens",
     "susceptancja_z_pojemnosci_s_per_km",
     "tan_phi_z_cos_phi",
+    "udzial_mocy_biernej_pu",
     "v_na_kv",
     "wspolczynnik_kappa",
 ]

@@ -14,12 +14,16 @@ kontrakt solvera albo jawny punkt tłumaczenia na granicy aplikacyjnej):
 
 1. **Kontrakty solverów FROZEN** (B-01, NIE DOTKNIĘTE tą kartą):
    `network_model/solvers/stability_rms/**`, `network_model/solvers/frt_hvrt/**`.
-2. **`application/ncrfg_compliance/checker.py`** — kasacja odroczona do karty
-   S-3 (jeden tor NC RfG); jego `no_module` w `NcRfgComplianceVerdict` ZOSTAJE
-   do tego czasu. Jego bezpośredni odbiorcy — `api/ncrfg_ptpiree_tests.py`
-   (pole `no_module_count`, relacja nazwy pola, nie osobna decyzja) i
-   `frontend/src/ui/ncrfg-tests/api.ts` (ten sam kontrakt po stronie FE) —
-   są tym samym odroczeniem, nie osobnym naruszeniem.
+2. **Drugi silnik NC RfG SKASOWANY (karta S-3, 2026-09-16)**:
+   `application/ncrfg_compliance/checker.py` (werdykt `no_module` w
+   `ComplianceVerdict`), pole `no_module_count` trasy
+   `api/ncrfg_ptpiree_tests.py::/compliance` i lustro kontraktu
+   `frontend/src/ui/ncrfg-tests/api.ts::NcRfgComplianceVerdict` — te trzy
+   miejsca były jednym odroczeniem karty S-4; po S-3 żadne z nich nie jest
+   na liście. Jedyny słownik werdyktów NC RfG to solver kanoniczny
+   (`pass/fail/no_data/not_required`, moduł `zgodny/niezgodny/brak_danych`)
+   + stopień dowodowy S-1. Lista frontendu jest odtąd PUSTA (`_ALLOWLIST_FRONTEND
+   == ()`, pin: `scripts/test_no_module_zero_guard.py`).
 3. **Adapter granicy aplikacyjnej** (S-4, właściwy przedmiot tej karty):
    `application/analyses/frt_trajektorie.py` i `.../frt_sekwencja.py` — JEDYNE
    miejsca, które WOLNO ZAMIENIĆ status solvera FRT `no_module` na `blocked`
@@ -59,12 +63,12 @@ _TOKEN = re.compile(r"no_module")
 _ALLOWLIST_BACKEND: tuple[str, ...] = (
     "network_model/solvers/stability_rms/",
     "network_model/solvers/frt_hvrt/",
-    "application/ncrfg_compliance/checker.py",
-    "api/ncrfg_ptpiree_tests.py",
     "application/analyses/frt_trajektorie.py",
     "application/analyses/frt_sekwencja.py",
 )
-_ALLOWLIST_FRONTEND: tuple[str, ...] = ("ui/ncrfg-tests/api.ts",)
+#: Karta S-3 (2026-09-16): frontend nie ma ANI JEDNEGO dozwolonego miejsca —
+#: lustro kontraktu drugiego silnika (`ui/ncrfg-tests/api.ts`) skasowane razem z nim.
+_ALLOWLIST_FRONTEND: tuple[str, ...] = ()
 
 _TEST_MARKERS: tuple[str, ...] = (
     "__tests__/",

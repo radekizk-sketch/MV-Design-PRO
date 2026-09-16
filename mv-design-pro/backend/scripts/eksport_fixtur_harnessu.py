@@ -51,10 +51,7 @@ from application.analyses.v126_katalog import katalog_do_dict  # noqa: E402
 from application.analyses.werdykt_projektowy import (  # noqa: E402
     zbuduj_werdykt_projektowy,
 )
-from application.ncrfg_compliance.checker import (  # noqa: E402
-    DerDataForCompliance,
-    NcRfgComplianceChecker,
-)
+from application.ncrfg_compliance import zgodnosc_ncrfg_przypadku  # noqa: E402
 from enm.canonical_analysis import (  # noqa: E402
     build_short_circuit_results,
     create_run,
@@ -62,6 +59,7 @@ from enm.canonical_analysis import (  # noqa: E402
     reset_canonical_runs,
 )
 from enm.hash import compute_enm_hash  # noqa: E402
+from enm.katalog_projektu import katalog_biezacy  # noqa: E402
 from enm.models import EnergyNetworkModel, ENMHeader  # noqa: E402
 from enm.store import reset_enm_store, set_enm  # noqa: E402
 from solver_input.v126_contracts import V126AnalysisType  # noqa: E402
@@ -74,60 +72,87 @@ CASE_ID_HARNESSU = "case-demo"
 
 #: Scena `macierz` (creator-harness-main.tsx): dwa moduły DER przyłączone przez
 #: transformator blokowy do szyny 15 kV — klasa B wg progów OD-5 (1 MW / 50 MW).
-#: Zdolności odwzorowują most model → zgodność (`model_bridge.py`) dla tabliczek
-#: zasianych w scenie: krzywa LVRT z profilu `lvrt_curve_ref`, model dynamiczny
-#: z `dynamic_model_ref`; brak droop/Q(U)/cos φ w tabliczce = brak (nie zgadywanie).
-MODULY_SCENY_MACIERZ: tuple[DerDataForCompliance, ...] = (
-    DerDataForCompliance(
-        der_ref="bess-1",
-        p_max_kw=1500.0,
-        voltage_kv=15.0,
-        has_lvrt_curve=False,
-        has_hvrt_curve=False,
-        has_pf_droop=False,
-        has_qu_curve=False,
-        has_dynamic_model=False,
-        has_scada_communication=False,
-        has_disturbance_recorder=False,
-        cos_phi_min=None,
-    ),
-    DerDataForCompliance(
-        der_ref="pv-1",
-        p_max_kw=1935.0,
-        voltage_kv=15.0,
-        has_lvrt_curve=True,
-        has_hvrt_curve=False,
-        has_pf_droop=False,
-        has_qu_curve=False,
-        has_dynamic_model=True,
-        has_scada_communication=False,
-        has_disturbance_recorder=False,
-        cos_phi_min=None,
-    ),
+#: `(der_ref, p_max_kw, voltage_kv, gen_type, karta_katalogu_ref)` 1:1 z zasiewem
+#: `useStationDerStore` sceny (para predykatów: atrapa harnessu odmawia 409, gdy
+#: raporty nie opisują tych samych modułów). Moce = liczba jednostek × moc
+#: katalogowa (BESS 3 × ABB PCS100 500 kW; PV 9 × Huawei SUN2000-215KTL 215 kW).
+DER_SCENY_MACIERZ: tuple[tuple[str, float, float, str, str], ...] = (
+    ("bess-1", 1500.0, 15.0, "bess", "bess_pcs_abb_500"),
+    ("pv-1", 1935.0, 15.0, "pv_inverter", "conv-pv-card-huawei-sun2000-215ktl"),
 )
+SZYNA_SCENY_MACIERZ = "st-demo__szyna-sn__15"
 OPERATOR_SCENY_MACIERZ = "enea"
 
 
-def zgodnosc_przekrojowa_sceny_macierz() -> dict[str, Any]:
-    """Odpowiedź `GET /api/ncrfg-tests/cases/{id}/compliance` — ten sam kształt
-    co `api/ncrfg_ptpiree_tests.py::run_ncrfg_compliance_from_model`."""
-    checker = NcRfgComplianceChecker()
-    reports = [checker.check(OPERATOR_SCENY_MACIERZ, der) for der in MODULY_SCENY_MACIERZ]
-    return {
-        "case_id": CASE_ID_HARNESSU,
-        "operator_id": OPERATOR_SCENY_MACIERZ,
-        "der_count": len(reports),
-        "reports": [
+def _tabliczka_ptpiree_z_katalogu(gen_type: str, catalog_ref: str) -> dict[str, Any]:
+    """Pola `ptpiree_*` REALNEGO rekordu katalogu (te same, które brama katalogowa
+    `add_converter_source` kopiuje na tabliczkę generatora — `_POLA_CERTYFIKATU_PTPIREE`
+    w `enm/domain_operations_v2.py`); zero wartości wpisanych ręcznie."""
+    katalog = katalog_biezacy()
+    rekord: Any = (
+        katalog.get_bess_inverter_type(catalog_ref)
+        if gen_type == "bess"
+        else katalog.get_pv_inverter_type(catalog_ref)
+    )
+    if rekord is None:
+        raise SystemExit(f"[fixtury] karta katalogu sceny macierz nie istnieje: {catalog_ref}")
+    return {k: v for k, v in rekord.to_dict().items() if k.startswith("ptpiree_")}
+
+
+def enm_sceny_macierz() -> EnergyNetworkModel:
+    """Committed ENM odpowiadający zasiewowi sceny `macierz` — WEJŚCIE mostu
+    `model_bridge.py` (ten sam most, który czyta trasa `/compliance`).
+
+    Tabliczki 1:1 z zasiewem sceny: certyfikat PTPiREE z realnego katalogu
+    (`catalogs.device_catalog_ref`/`ptpiree_certificate_ref`), model dynamiczny
+    (`catalogs.dynamic_model_ref` → `materialized_params.dynamic_model_ref`,
+    jak `set_der_catalog_bindings`), profile (`profiles.*` → `materialized_params
+    .profiles`). Brak droop/Q(U)/cosφ w zasiewie = brak w `meta` (nie zgadywanie)
+    → solver daje `no_data` dla testów wymaganych bez danych."""
+    generators: list[dict[str, Any]] = []
+    for der_ref, p_max_kw, _voltage_kv, gen_type, catalog_ref in DER_SCENY_MACIERZ:
+        tabliczka: dict[str, Any] = {
+            "catalog_item_id": catalog_ref,
+            **_tabliczka_ptpiree_z_katalogu(gen_type, catalog_ref),
+            "profiles": {"nc_rfg_profile_ref": OPERATOR_SCENY_MACIERZ},
+        }
+        if der_ref == "pv-1":
+            tabliczka["dynamic_model_ref"] = "default_pv_gfl"
+            tabliczka["profiles"]["lvrt_curve_ref"] = OPERATOR_SCENY_MACIERZ
+        generators.append(
             {
-                **report.model_dump(mode="json"),
-                "overall_pass": report.overall_pass,
-                "total_tests": report.total_tests,
-                "passed_count": report.passed_count,
-                "no_module_count": report.no_module_count,
+                "ref_id": der_ref,
+                "name": der_ref,
+                "bus_ref": SZYNA_SCENY_MACIERZ,
+                "p_mw": p_max_kw / 1000.0,
+                "gen_type": gen_type,
+                "meta": {},
+                "materialized_params": tabliczka,
             }
-            for report in reports
-        ],
-    }
+        )
+    return EnergyNetworkModel.model_validate(
+        {
+            "header": ENMHeader(name="Przyłączenie farmy PV 8 MW").model_dump(),
+            "buses": [
+                {
+                    "ref_id": SZYNA_SCENY_MACIERZ,
+                    "name": "Szyna SN 15 kV",
+                    "voltage_kv": DER_SCENY_MACIERZ[0][2],
+                }
+            ],
+            "generators": generators,
+        }
+    )
+
+
+def zgodnosc_przekrojowa_sceny_macierz() -> dict[str, Any]:
+    """Odpowiedź `GET /api/ncrfg-tests/cases/{id}/compliance` — TA SAMA funkcja
+    (`zgodnosc_ncrfg_przypadku`: most model → wejście solvera + solver kanoniczny
+    `NcRfgPtpireeSolver` + koperta dowodowa S-1), którą woła trasa
+    `api/ncrfg_ptpiree_tests.py::run_ncrfg_compliance_from_model` (karta S-3)."""
+    return zgodnosc_ncrfg_przypadku(
+        enm_sceny_macierz(), operator_id=OPERATOR_SCENY_MACIERZ, case_id=CASE_ID_HARNESSU
+    ).model_dump(mode="json")
 
 
 def werdykt_projektowy_sceny_uwaga() -> dict[str, Any]:

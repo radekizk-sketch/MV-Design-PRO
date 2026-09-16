@@ -29,6 +29,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
+from enm.models import EnergyNetworkModel
 from enm.store import get_enm
 from pydantic import BaseModel
 
@@ -98,6 +99,11 @@ _WIDOK_Z_DOWODU: tuple[tuple[str, str], ...] = (
 )
 
 
+def _tabliczki_z_enm(enm: EnergyNetworkModel) -> dict[str, dict[str, Any]]:
+    """Tabliczki urządzeń modelu (ref_id → parametry zmaterializowane)."""
+    return {generator.ref_id: generator.materialized_params or {} for generator in enm.generators}
+
+
 def _tabliczki(klucz_twin: str | None) -> dict[str, dict[str, Any]]:
     """Tabliczki urządzeń modelu przypadku (ref_id → parametry zmaterializowane).
 
@@ -106,8 +112,7 @@ def _tabliczki(klucz_twin: str | None) -> dict[str, dict[str, Any]]:
     """
     if klucz_twin is None:
         return {}
-    enm = get_enm(klucz_twin)
-    return {generator.ref_id: generator.materialized_params or {} for generator in enm.generators}
+    return _tabliczki_z_enm(get_enm(klucz_twin))
 
 
 def _dowod(der_ref: str, tabliczka: dict[str, Any]) -> NcRfgCertificateEvidence:
@@ -116,6 +121,24 @@ def _dowod(der_ref: str, tabliczka: dict[str, Any]) -> NcRfgCertificateEvidence:
         der_ref=der_ref,
         **{pole: tabliczka.get(klucz) for pole, klucz in _POLA_TABLICZKI},
     )
+
+
+def dowody_certyfikatu_z_enm(
+    enm: EnergyNetworkModel,
+    der_refs: Sequence[str],
+) -> list[NcRfgCertificateEvidence]:
+    """Dowód certyfikatu per WSKAZANE urządzenie z MODELU PODANEGO WPROST.
+
+    Karta S-3 (W6-0): zgodność przekrojowa przypadku
+    (``application/ncrfg_compliance/bieg.py::zgodnosc_ncrfg_przypadku``) ma
+    committed ENM już w ręku (buduje z niego wejścia solvera) — ta sama tabliczka
+    zasila dowód certyfikatu bez drugiego odczytu magazynu; eksport fixtur
+    harnessu (``backend/scripts/eksport_fixtur_harnessu.py``) liczy tą samą
+    funkcją na modelu, którego w magazynie nie ma. Dopasowanie PO REFERENCJI,
+    referencja spoza modelu → dowód z pustymi polami (jak ``dowody_certyfikatu``).
+    """
+    tabliczki = _tabliczki_z_enm(enm)
+    return [_dowod(der_ref, tabliczki.get(der_ref, {})) for der_ref in der_refs]
 
 
 def dowody_certyfikatu(

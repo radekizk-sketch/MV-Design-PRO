@@ -344,6 +344,28 @@ def test_susceptancja_z_pojemnosci_s_per_km_przyklad_podrecznikowy() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Rodzina I — udział mocy biernej w bazie Pn, q = Q/Pn (karta S-3 W6-0)
+# ---------------------------------------------------------------------------
+
+MOCE_BIERNE_BRZEGOWE_MVAR = [-100.0, -0.66, -0.33, -1e-6, 0.0, 1e-6, 0.33, 0.66, 100.0]
+MOCE_BAZOWE_BRZEGOWE_MW = [1e-6, 0.05, 0.215, 1.0, 1.935, 5.0, 50.0, 1.0e3]
+
+
+@pytest.mark.parametrize("pn", MOCE_BAZOWE_BRZEGOWE_MW)
+@pytest.mark.parametrize("q", MOCE_BIERNE_BRZEGOWE_MVAR)
+def test_udzial_mocy_biernej_pu_tozsamosc(q: float, pn: float) -> None:
+    """Most model → wejście solvera NC RfG (``model_bridge.py``): q = Q/Pn bit w
+    bit z dzieleniem bezpośrednim; znak Q zachowany (Qmin ujemne → q ujemne)."""
+    assert wp.udzial_mocy_biernej_pu(q, pn) == q / pn
+
+
+def test_udzial_mocy_biernej_pu_przyklad_podrecznikowy() -> None:
+    # Profil operatora wymaga zakresu ±0,33 Pn: moduł 2 MW z Q = ±0,66 Mvar ma q = ±0,33.
+    assert wp.udzial_mocy_biernej_pu(-0.66, 2.0) == pytest.approx(-0.33)
+    assert wp.udzial_mocy_biernej_pu(0.66, 2.0) == pytest.approx(0.33)
+
+
+# ---------------------------------------------------------------------------
 # Poprawność inżynierska (wartości podręcznikowe, sanity — nie tylko tożsamość)
 # ---------------------------------------------------------------------------
 

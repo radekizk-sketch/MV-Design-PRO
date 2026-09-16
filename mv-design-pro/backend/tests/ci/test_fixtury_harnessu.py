@@ -96,17 +96,39 @@ def test_atrapa_jest_deterministyczna(nazwa: str) -> None:
 
 
 def test_zgodnosc_przekrojowa_ma_ksztalt_trasy() -> None:
-    """Ten sam kształt co `run_ncrfg_compliance_from_model` (api/ncrfg_ptpiree_tests.py)."""
+    """Ten sam kształt co `run_ncrfg_compliance_from_model` (api/ncrfg_ptpiree_tests.py,
+    karta S-3): kontrakt biegu macierzy (`NcRfgPtpireeRunResponse` z polami
+    dowodowymi S-1) opakowany per przypadek — solver kanoniczny, numeracja T01–T20."""
     odpowiedz = eksport.zgodnosc_przekrojowa_sceny_macierz()
-    assert set(odpowiedz) == {"case_id", "operator_id", "der_count", "reports"}
-    assert odpowiedz["der_count"] == len(odpowiedz["reports"]) == len(eksport.MODULY_SCENY_MACIERZ)
-    for raport, modul in zip(odpowiedz["reports"], eksport.MODULY_SCENY_MACIERZ, strict=True):
-        assert raport["der_ref"] == modul.der_ref
-        assert raport["p_max_kw"] == modul.p_max_kw
-        assert raport["voltage_kv"] == modul.voltage_kv
+    assert set(odpowiedz) == {"case_id", "operator_id", "der_count", "pominiete", "bieg"}
+    assert odpowiedz["case_id"] == eksport.CASE_ID_HARNESSU
+    assert odpowiedz["operator_id"] == eksport.OPERATOR_SCENY_MACIERZ
+    assert odpowiedz["pominiete"] == []
+    bieg = odpowiedz["bieg"]
+    assert bieg is not None
+    assert bieg["contract"] == "NcRfgPtpireeTestResultV1"
+    assert odpowiedz["der_count"] == len(bieg["modules"]) == len(eksport.DER_SCENY_MACIERZ)
+    for modul, (der_ref, p_max_kw, voltage_kv, _gen_type, _karta) in zip(
+        bieg["modules"], eksport.DER_SCENY_MACIERZ, strict=True
+    ):
+        assert modul["der_ref"] == der_ref
+        assert modul["p_max_kw"] == p_max_kw
+        assert modul["voltage_kv"] == voltage_kv
         # Klasa modułu: progi OD-5 (1 MW / 50 MW) — scena zasiewa moduły klasy B.
-        assert raport["module_type"] == "B"
-        assert {"overall_pass", "total_tests", "passed_count", "no_module_count"} <= set(raport)
+        assert modul["module_type"] == "B"
+        assert {test["test_id"] for test in modul["tests"]} == {f"T{i:02d}" for i in range(1, 21)}
+        assert {t["verdict"] for t in modul["tests"]} <= {"pass", "fail", "no_data", "not_required"}
+    # Pola dowodowe S-1 obecne na kopercie biegu i per moduł (jeden kontrakt z `/run`).
+    assert {"reporting_status", "proof_status", "evidence_limitations", "evidence_by_test"} <= set(
+        bieg
+    )
+    assert set(bieg["evidence_per_module"]) == {der[0] for der in eksport.DER_SCENY_MACIERZ}
+    # Certyfikat PTPiREE z REALNEGO katalogu: PV powiązany (numer dokumentu), BESS bez.
+    dowody = {d["der_ref"]: d for d in bieg["certificate_evidence"]}
+    assert dowody["pv-1"]["document_number"]
+    assert dowody["bess-1"]["document_number"] is None
+    statusy = {m["der_ref"]: m["certificate_status"] for m in bieg["modules"]}
+    assert statusy == {"pv-1": "ptpiree_verified", "bess-1": "unknown"}
 
 
 def test_werdykt_bez_biegow_jest_niesprawdzony() -> None:

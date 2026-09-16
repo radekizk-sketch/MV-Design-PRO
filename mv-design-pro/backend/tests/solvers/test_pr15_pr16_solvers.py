@@ -1,13 +1,14 @@
-"""PR-15 + PR-16 — Testy kontraktów solverów RMS + NC RfG compliance checker."""
+"""PR-15 — Testy kontraktów solverów RMS (stability_rms) i FRT/HVRT (frt_hvrt).
+
+Karta S-3 (W6-0): dawna druga część tego pliku (PR-16, `TestNcRfgComplianceChecker`
+— drugi silnik zgodności NC RfG `application/ncrfg_compliance/checker.py`, T1–T18,
+`no_module`) skasowana razem z silnikiem; jedyna implementacja zgodności NC RfG to
+solver kanoniczny `network_model/solvers/ncrfg_ptpiree` (testy: `tests/enm/
+test_ncrfg_model_bridge.py`, `tests/api/test_ncrfg_ptpiree_api.py`).
+"""
 
 from __future__ import annotations
 
-import pytest
-from application.ncrfg_compliance import (
-    NcRfgComplianceChecker,
-    NcRfgComplianceReport,
-)
-from application.ncrfg_compliance.checker import DerDataForCompliance
 from network_model.solvers.frt_hvrt import (
     FrtHvrtResult,
     FrtHvrtSolverAdapter,
@@ -199,162 +200,3 @@ class TestFrtHvrtSolverAdapter:
         adapter = FrtHvrtSolverAdapter()
         result = adapter.run(FrtHvrtSolverInput(enm_ref="x", scenarios=[]))
         assert result.status == "input_invalid"
-
-
-# ---------------------------------------------------------------------------
-# PR-16: NC RfG compliance checker (static + dynamic mix)
-# ---------------------------------------------------------------------------
-
-
-class TestNcRfgComplianceChecker:
-    def test_classifies_module_b_for_5mw(self) -> None:
-        checker = NcRfgComplianceChecker()
-        report = checker.check(
-            operator_id="pse",
-            der_data=DerDataForCompliance(
-                der_ref="pv_5mw",
-                p_max_kw=5000.0,
-                voltage_kv=15.0,
-                has_lvrt_curve=True,
-                has_hvrt_curve=True,
-                has_pf_droop=True,
-                has_qu_curve=True,
-                has_dynamic_model=True,
-                has_scada_communication=True,
-                has_disturbance_recorder=True,
-                cos_phi_min=0.95,
-            ),
-        )
-        assert isinstance(report, NcRfgComplianceReport)
-        assert report.module_type == "B"
-        assert report.total_tests == 18
-
-    def test_static_t3_pf_droop_pass(self) -> None:
-        checker = NcRfgComplianceChecker()
-        report = checker.check(
-            operator_id="pse",
-            der_data=DerDataForCompliance(
-                der_ref="pv_1",
-                p_max_kw=2000.0,
-                voltage_kv=15.0,
-                has_pf_droop=True,
-                cos_phi_min=0.95,
-            ),
-        )
-        t3 = next(r for r in report.test_results if r.test_id == "T3")
-        assert t3.verdict == "pass"
-
-    def test_static_t3_pf_droop_fail(self) -> None:
-        checker = NcRfgComplianceChecker()
-        report = checker.check(
-            operator_id="pse",
-            der_data=DerDataForCompliance(
-                der_ref="pv_1",
-                p_max_kw=2000.0,
-                voltage_kv=15.0,
-                has_pf_droop=False,
-            ),
-        )
-        t3 = next(r for r in report.test_results if r.test_id == "T3")
-        assert t3.verdict == "fail"
-
-    def test_static_t5_cos_phi_pass(self) -> None:
-        checker = NcRfgComplianceChecker()
-        report = checker.check(
-            operator_id="pse",
-            der_data=DerDataForCompliance(
-                der_ref="pv_1",
-                p_max_kw=2000.0,
-                voltage_kv=15.0,
-                cos_phi_min=0.96,
-            ),
-        )
-        t5 = next(r for r in report.test_results if r.test_id == "T5")
-        assert t5.verdict == "pass"
-
-    def test_static_t5_cos_phi_fail(self) -> None:
-        checker = NcRfgComplianceChecker()
-        report = checker.check(
-            operator_id="pse",
-            der_data=DerDataForCompliance(
-                der_ref="pv_1",
-                p_max_kw=2000.0,
-                voltage_kv=15.0,
-                cos_phi_min=0.90,  # < 0.95
-            ),
-        )
-        t5 = next(r for r in report.test_results if r.test_id == "T5")
-        assert t5.verdict == "fail"
-
-    def test_dynamic_t1_lvrt_returns_pass_or_fail(self) -> None:
-        """PR-16-impl: T1 LVRT teraz uruchamia FRT solver i daje pass/fail."""
-        checker = NcRfgComplianceChecker()
-        report = checker.check(
-            operator_id="pse",
-            der_data=DerDataForCompliance(
-                der_ref="pv_1",
-                p_max_kw=2000.0,
-                voltage_kv=15.0,
-                has_lvrt_curve=True,
-            ),
-        )
-        t1 = next(r for r in report.test_results if r.test_id == "T1")
-        # Po PR-16-impl: realny solver daje pass/fail (nie no_module)
-        assert t1.verdict in {"pass", "fail"}
-        assert t1.message_pl is not None
-
-    def test_dynamic_t1_lvrt_no_data_when_no_curve(self) -> None:
-        checker = NcRfgComplianceChecker()
-        report = checker.check(
-            operator_id="pse",
-            der_data=DerDataForCompliance(
-                der_ref="pv_1",
-                p_max_kw=2000.0,
-                voltage_kv=15.0,
-                has_lvrt_curve=False,
-            ),
-        )
-        t1 = next(r for r in report.test_results if r.test_id == "T1")
-        assert t1.verdict == "no_data"
-
-    @pytest.mark.parametrize("operator_id", ["pse", "energa", "tauron", "enea", "pge"])
-    def test_all_5_operators_classify_5mw_as_b(self, operator_id: str) -> None:
-        """Brief 2 §16: 5 profili × 18 testów × 4 typy modułów."""
-        checker = NcRfgComplianceChecker()
-        report = checker.check(
-            operator_id=operator_id,
-            der_data=DerDataForCompliance(
-                der_ref="pv_5mw",
-                p_max_kw=5000.0,
-                voltage_kv=15.0,
-            ),
-        )
-        assert report.module_type == "B"
-        assert report.total_tests == 18
-        assert report.operator_id == operator_id
-
-    def test_compliance_report_aggregates_passed_no_module(self) -> None:
-        """PR-16-impl: T1/T2 dają teraz pass/fail (FRT solver podpięty),
-        no_module zostaje dla T8/T10/T11/T16/T17/T18 (pełen stability RMS)."""
-        checker = NcRfgComplianceChecker()
-        report = checker.check(
-            operator_id="pse",
-            der_data=DerDataForCompliance(
-                der_ref="pv_full",
-                p_max_kw=5000.0,
-                voltage_kv=15.0,
-                has_lvrt_curve=True,
-                has_hvrt_curve=True,
-                has_pf_droop=True,
-                has_qu_curve=True,
-                has_dynamic_model=True,
-                has_scada_communication=True,
-                has_disturbance_recorder=True,
-                cos_phi_min=0.96,
-            ),
-        )
-        # T3, T4, T5, T14, T15 + T1/T2 (po PR-16-impl) = ≥7 passed
-        assert report.passed_count >= 5
-        # T8, T10, T11, T16, T17, T18 = ≥3 no_module (pozostałe dynamic)
-        assert report.no_module_count >= 3
-        assert report.total_tests == 18
