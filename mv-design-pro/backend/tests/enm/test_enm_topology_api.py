@@ -154,6 +154,9 @@ def _valid_enm_with_topology():
                 "ulv_kv": 0.4,
                 "uk_percent": 4.5,
                 "pk_kw": 6.5,
+                # P0.1 nN (E063) / W5-A: stacja z odbiorem na szynie nN (bus_nn_1/load_1)
+                # deklaruje uklad sieci nN NA TRANSFORMATORZE zasilajacym.
+                "lv_earthing_system": "TN-S",
                 "catalog_ref": "CAT-TR-001",
             },
         ],
@@ -186,9 +189,7 @@ def _valid_enm_with_topology():
                 "ref_id": "sub_1",
                 "name": "Stacja 1",
                 "tags": [],
-                # P0.1 nN (karta P0.1, E063): stacja z odbiorem na szynie nN
-                # (bus_nn_1/load_1 nizej) musi deklarowac uklad uziemienia sieci nN.
-                "meta": {"nn_earthing_system": "TN-S"},
+                "meta": {},
                 "station_type": "mv_lv",
                 "bus_refs": ["bus_sn_b", "bus_nn_1"],
                 "transformer_refs": ["trafo_1"],

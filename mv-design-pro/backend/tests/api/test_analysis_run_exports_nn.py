@@ -44,6 +44,7 @@ def _enm() -> EnergyNetworkModel:
                 uk_percent=4.0,
                 pk_kw=6.5,
                 vector_group="Dyn11",
+                lv_earthing_system="TN-C-S",
             )
         ],
         branches=[
@@ -79,7 +80,6 @@ def _enm() -> EnergyNetworkModel:
                 station_type="mv_lv",
                 bus_refs=["nn"],
                 transformer_refs=["tr"],
-                meta={"nn_earthing_system": "TN-C-S"},
             )
         ],
     )

@@ -35,6 +35,7 @@ from network_model.catalog.audit2_catalogs import (
     validate_device_withstand,
     validate_hosting_capacity_export,
 )
+from network_model.core.uziemienie import TYPY_PUNKTU_NEUTRALNEGO
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/v1/catalog/audit2", tags=["Audit2 Catalogs"])
@@ -102,7 +103,7 @@ class VtGroundingValidationRequest(BaseModel):
 def validate_vt_grounding(req: VtGroundingValidationRequest) -> dict[str, Any]:
     """Naprawa eng.20: walidacja VT voltage_factor vs typ uziemienia."""
     grounding = req.grounding_type
-    if grounding not in {"isolated", "petersen_coil", "resistor_grounded", "directly_grounded"}:
+    if grounding not in TYPY_PUNKTU_NEUTRALNEGO:
         return {"ok": False, "message_pl": f"Nieznany typ uziemienia: {grounding}"}
     ok, message = is_vt_voltage_factor_valid_for_grounding(req.voltage_factor, grounding)  # type: ignore[arg-type]
     return {"ok": ok, "message_pl": message}

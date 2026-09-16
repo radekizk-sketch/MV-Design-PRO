@@ -810,7 +810,7 @@ def _fakty_pola_wytworcy(
         ),
         # Brak opisu sciezki zwarcia doziemnego zostaje BRAKIEM: regula zamieni go
         # w nazwana kwestie otwarta, zamiast wybrac rodzine funkcji za projektanta.
-        neutral_grounding_mode=sciezka.get("neutral_grounding_mode") or "nieznany",
+        neutral_grounding_mode=sciezka.get("neutral_grounding_mode") or None,
         zero_sequence_current_source=sciezka.get("zero_sequence_current_source") or "brak",
         zero_sequence_voltage_source=sciezka.get("zero_sequence_voltage_source") or "brak",
     )
@@ -1067,7 +1067,7 @@ def get_der_instrument_transformers(
     )
     tor_napieciowy = WymaganiaToruNapieciowego(
         napiecie_sieci_v=napiecie_v,
-        tryb_uziemienia=sciezka.get("neutral_grounding_mode") or "nieznany",
+        tryb_uziemienia=sciezka.get("neutral_grounding_mode") or None,
         zwarcie_doziemne_wylaczane_automatycznie=None,
         napiecia_wejsc_przekaznika_v=napiecia_wejsc,
         # Patrz komentarz przy `tor_pradowy.obciazenie_obwodu_va` — ta karta nie

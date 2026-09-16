@@ -23,6 +23,8 @@ from application.analyses.protection.catalog.catalog_store import (
     load_device_capability,
 )
 from application.catalog_governance import CatalogGovernanceService
+from enm.grupa_polaczen import GRUPY_POLACZEN_IEC60076, GrupaPolaczenIEC60076
+from enm.models import UKLADY_SIECI_NN, UkladSieciNn
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
@@ -42,12 +44,59 @@ from network_model.catalog.switchgear import (
     list_manufacturers as list_switchgear_manufacturers,
 )
 from network_model.catalog.types import normalize_ptpiree_key
+from network_model.core.uziemienie import (
+    ROLE_UZIEMNIKA,
+    TYPY_PUNKTU_NEUTRALNEGO,
+    UZIEMIENIA_EKRANU_KABLA,
+    RolaUziemnika,
+    TypPunktuNeutralnego,
+    UziemienieEkranuKabla,
+)
 from network_model.pochodne import mva_na_kva
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/catalog", tags=["Type Catalog"])
+
+
+class SlownikGrupPolaczen(BaseModel):
+    """Slownik grup polaczen transformatora (IEC 60076-1) — jedno zrodlo dla walidatora
+    (E-W5-02), OpenAPI i listy wyboru frontu (W5-A, decyzja F-4/G6)."""
+
+    grupy: list[GrupaPolaczenIEC60076]
+
+
+@router.get("/grupy-polaczen", response_model=SlownikGrupPolaczen)
+def slownik_grup_polaczen() -> SlownikGrupPolaczen:
+    """Zamkniety slownik grup polaczen transformatora dwuuzwojeniowego (notacja zegarowa)."""
+    return SlownikGrupPolaczen(grupy=list(GRUPY_POLACZEN_IEC60076))
+
+
+class SlownikiUziemienia(BaseModel):
+    """Slowniki uziemienia jednej reprezentacji (W5-A): typ punktu neutralnego
+    (`GroundingConfig.type`), uklad sieci nN (`Transformer.lv_earthing_system`), uklad
+    uziemienia ekranu kabla (`Cable.screen_bonding`), rola uziemnika pola
+    (`BayPrimaryDevice.earthing_role`). Modele ENM nie wchodza do OpenAPI (koncowki
+    zwracaja slowniki), wiec TA odpowiedz jest miejscem, w ktorym kontrakt literalow
+    staje sie widoczny w schemacie — front przypina do niego swoje literaly testem
+    (`frontend/src/types/__tests__/uziemienie.openapi.test.ts`)."""
+
+    typy_punktu_neutralnego: list[TypPunktuNeutralnego]
+    uklady_sieci_nn: list[UkladSieciNn]
+    uziemienia_ekranu_kabla: list[UziemienieEkranuKabla]
+    role_uziemnika: list[RolaUziemnika]
+
+
+@router.get("/slowniki-uziemienia", response_model=SlownikiUziemienia)
+def slowniki_uziemienia() -> SlownikiUziemienia:
+    """Zamkniete slowniki uziemienia — jedno zrodlo dla modelu, walidatora, OpenAPI i frontu."""
+    return SlownikiUziemienia(
+        typy_punktu_neutralnego=list(TYPY_PUNKTU_NEUTRALNEGO),  # type: ignore[arg-type]
+        uklady_sieci_nn=list(UKLADY_SIECI_NN),  # type: ignore[arg-type]
+        uziemienia_ekranu_kabla=list(UZIEMIENIA_EKRANU_KABLA),  # type: ignore[arg-type]
+        role_uziemnika=list(ROLE_UZIEMNIKA),  # type: ignore[arg-type]
+    )
 
 
 def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:

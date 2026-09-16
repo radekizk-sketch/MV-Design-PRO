@@ -1663,8 +1663,8 @@ def build_nn_circuit_report_section(
     )
     from application.analyses.fault_loop.service import (
         _find_station,
-        _system_for_station,
         resolve_transformer_for_bus,
+        uklad_nn_transformatora,
     )
     from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
     from application.analyses.swz.service import build_swz_view
@@ -1689,7 +1689,7 @@ def build_nn_circuit_report_section(
     dane_zrodlowe = {
         "stacja": station.name,
         "station_ref": station_ref,
-        "uklad_sieci": _system_for_station(station),
+        "uklad_sieci": uklad_nn_transformatora(trafo),
         "provenance": provenance,
     }
     transformator = {

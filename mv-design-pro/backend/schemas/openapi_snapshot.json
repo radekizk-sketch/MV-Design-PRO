@@ -10404,6 +10404,137 @@
     "title": "SladKroku",
     "type": "object"
    },
+   "SlownikGrupPolaczen": {
+    "description": "Slownik grup polaczen transformatora (IEC 60076-1) — jedno zrodlo dla walidatora\n(E-W5-02), OpenAPI i listy wyboru frontu (W5-A, decyzja F-4/G6).",
+    "properties": {
+     "grupy": {
+      "items": {
+       "enum": [
+        "Yy0",
+        "Yy6",
+        "Yyn0",
+        "Yyn6",
+        "YNy0",
+        "YNy6",
+        "YNyn0",
+        "YNyn6",
+        "Dd0",
+        "Dd6",
+        "Dz0",
+        "Dz6",
+        "Dzn0",
+        "Dzn6",
+        "Dy1",
+        "Dy5",
+        "Dy7",
+        "Dy11",
+        "Dyn1",
+        "Dyn5",
+        "Dyn7",
+        "Dyn11",
+        "Yd1",
+        "Yd5",
+        "Yd7",
+        "Yd11",
+        "YNd1",
+        "YNd5",
+        "YNd7",
+        "YNd11",
+        "Yz1",
+        "Yz5",
+        "Yz7",
+        "Yz11",
+        "Yzn1",
+        "Yzn5",
+        "Yzn7",
+        "Yzn11",
+        "YNz1",
+        "YNz5",
+        "YNz7",
+        "YNz11",
+        "YNzn1",
+        "YNzn5",
+        "YNzn7",
+        "YNzn11"
+       ],
+       "type": "string"
+      },
+      "title": "Grupy",
+      "type": "array"
+     }
+    },
+    "required": [
+     "grupy"
+    ],
+    "title": "SlownikGrupPolaczen",
+    "type": "object"
+   },
+   "SlownikiUziemienia": {
+    "description": "Slowniki uziemienia jednej reprezentacji (W5-A): typ punktu neutralnego\n(`GroundingConfig.type`), uklad sieci nN (`Transformer.lv_earthing_system`), uklad\nuziemienia ekranu kabla (`Cable.screen_bonding`), rola uziemnika pola\n(`BayPrimaryDevice.earthing_role`). Modele ENM nie wchodza do OpenAPI (koncowki\nzwracaja slowniki), wiec TA odpowiedz jest miejscem, w ktorym kontrakt literalow\nstaje sie widoczny w schemacie — front przypina do niego swoje literaly testem\n(`frontend/src/types/__tests__/uziemienie.openapi.test.ts`).",
+    "properties": {
+     "role_uziemnika": {
+      "items": {
+       "enum": [
+        "field_earth",
+        "cable_screen",
+        "structure",
+        "neutral_point",
+        "surge_ground"
+       ],
+       "type": "string"
+      },
+      "title": "Role Uziemnika",
+      "type": "array"
+     },
+     "typy_punktu_neutralnego": {
+      "items": {
+       "enum": [
+        "isolated",
+        "petersen_coil",
+        "directly_grounded",
+        "resistor_grounded"
+       ],
+       "type": "string"
+      },
+      "title": "Typy Punktu Neutralnego",
+      "type": "array"
+     },
+     "uklady_sieci_nn": {
+      "items": {
+       "enum": [
+        "TN-S",
+        "TN-C-S",
+        "TN-C",
+        "TT",
+        "IT"
+       ],
+       "type": "string"
+      },
+      "title": "Uklady Sieci Nn",
+      "type": "array"
+     },
+     "uziemienia_ekranu_kabla": {
+      "items": {
+       "enum": [
+        "single_end",
+        "both_ends",
+        "cross_bonded"
+       ],
+       "type": "string"
+      },
+      "title": "Uziemienia Ekranu Kabla",
+      "type": "array"
+     }
+    },
+    "required": [
+     "typy_punktu_neutralnego",
+     "uklady_sieci_nn",
+     "uziemienia_ekranu_kabla",
+     "role_uziemnika"
+    ],
+    "title": "SlownikiUziemienia",
+    "type": "object"
+   },
    "SolverInputResponse": {
     "description": "Response wrapper for solver-input endpoint.",
     "properties": {
@@ -16910,6 +17041,28 @@
     ]
    }
   },
+  "/api/catalog/grupy-polaczen": {
+   "get": {
+    "description": "Zamkniety slownik grup polaczen transformatora dwuuzwojeniowego (notacja zegarowa).",
+    "operationId": "slownik_grup_polaczen_api_catalog_grupy_polaczen_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SlownikGrupPolaczen"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Slownik Grup Polaczen",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
   "/api/catalog/inverter-types": {
    "get": {
     "description": "List all generic inverter/converter catalog entries from the canonical MV catalog.",
@@ -17737,6 +17890,28 @@
      }
     },
     "summary": "List Shunt Capacitor Types",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/slowniki-uziemienia": {
+   "get": {
+    "description": "Zamkniete slowniki uziemienia — jedno zrodlo dla modelu, walidatora, OpenAPI i frontu.",
+    "operationId": "slowniki_uziemienia_api_catalog_slowniki_uziemienia_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SlownikiUziemienia"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Slowniki Uziemienia",
     "tags": [
      "Type Catalog"
     ]
