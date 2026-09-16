@@ -3,11 +3,19 @@
  *
  * Endpoints:
  * - GET  /api/cases/{caseId}/enm/topology/summary → TopologyGraphSummary
+ * - GET  /api/cases/{caseId}/enm/topology          → TopologyStructure (stacje/pola)
  * - POST /api/cases/{caseId}/enm/ops              → TopologyOpResult
  * - POST /api/cases/{caseId}/enm/ops/batch         → BatchOpResult
  */
 
-import type { TopologyGraphSummary, TopologyOpResult } from '../../types/enm';
+import type {
+  Bay,
+  Corridor,
+  Junction,
+  Substation,
+  TopologyGraphSummary,
+  TopologyOpResult,
+} from '../../types/enm';
 
 const API_BASE = '/api/cases';
 
@@ -35,6 +43,30 @@ export async function fetchTopologySummary(caseId: string): Promise<TopologyGrap
   const endpoint = `${API_BASE}/${caseId}/enm/topology/summary`;
   const res = await fetch(endpoint);
   return handleResponse<TopologyGraphSummary>(res, endpoint);
+}
+
+/**
+ * Struktura topologiczna (stacje/pola/węzły/magistrale) — `GET .../enm/topology`
+ * (`backend/src/api/enm.py::get_enm_topology`). Źródło dla trybów drzewa
+ * „administracyjny" (grupowanie po `Bay.substation_ref`) i „obwodowy"
+ * (etykiety odejść z `Bay.bus_role === 'FEEDER'`); TODO-UI2 §1 p. 11.
+ */
+export interface TopologyStructure {
+  case_id: string;
+  substations: Substation[];
+  bays: Bay[];
+  junctions: Junction[];
+  corridors: Corridor[];
+  bus_count: number;
+  branch_count: number;
+  transformer_count: number;
+}
+
+/** Pobierz strukturę topologiczną (stacje, pola, węzły, magistrale). */
+export async function fetchTopologyStructure(caseId: string): Promise<TopologyStructure> {
+  const endpoint = `${API_BASE}/${caseId}/enm/topology`;
+  const res = await fetch(endpoint);
+  return handleResponse<TopologyStructure>(res, endpoint);
 }
 
 /** Wykonaj pojedynczą operację topologiczną. */

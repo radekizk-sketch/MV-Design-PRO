@@ -21,21 +21,30 @@
  *   którego `refresh` nikt nie wołał — liczniki drzewa były ZAWSZE zerowe,
  *   mimo blokad widocznych w panelu gotowości.
  *
- * TODO-KARTA: tryby „administracyjny" (grupowanie po stacjach) i „obwodowy"
- * (grupowanie po magistralach/obwodach) z audytu W-208 NIE MAJĄ jednoznacznego
- * źródła w `TopologyGraphSummary` — struktura nie niesie `substation_ref` ani
- * identyfikatora obwodu per węzeł (te pola istnieją gdzie indziej w ENM v2,
- * np. `types/enm.ts:224` `substation_ref` na innych DTO, ale nie w podsumowaniu
- * topologii konsumowanym przez `ui/topology/store.ts`). Zgodnie z kartą §3
- * („niejednoznaczne źródło → adapter-szkielet TODO-KARTA, zero zgadywania")
- * te dwa tryby zwracają `[]` do czasu wskazania właściwego źródła przez
- * kartę integracyjną / rozszerzenie backendu.
+ * TODO-UI2 §1 p. 11 (zamknięcie): tryby „administracyjny" (grupowanie po
+ * stacjach) i „obwodowy" (grupowanie po odejściach ze źródła) MAJĄ teraz
+ * jednoznaczne źródło:
+ * - „administracyjny": `Bay.bus_ref` → `Bay.substation_ref` (struktura pola SN
+ *   niesie WŁASNE przypisanie do stacji — `TopologyStructure.bays`,
+ *   `GET .../enm/topology`, ISTNIEJĄCY endpoint backendu, dotąd nie pobierany
+ *   przez `ui/topology/store.ts`) + `TopologyStructure.substations` (nazwy).
+ *   Szyna bez żadnego pola (np. węzeł T na trasie kabla między stacjami) trafia
+ *   do jawnej grupy „Poza stacją" — zero milczącego gubienia.
+ * - „obwodowy" (odejście = ścieżka od szyny zasilającej przez aparat pola —
+ *   karta §1 p. 11): graf spine/lateral (`TopologyGraphSummary`, JUŻ pobierany)
+ *   już koduje dokładnie tę ścieżkę — bezpośrednie dziecko szyny źródłowej w
+ *   drzewie zasilania JEST pierwszym aparatem pola (łącznik/wyłącznik) za
+ *   źródłem; poddrzewo tego dziecka = odejście. Reużywa TEGO SAMEGO
+ *   rekurencyjnego budowniczego poddrzewa co tryb „zasilania"
+ *   (`budujPoddrzewoSpine`, jedna implementacja, dwa grupowania wyniku) —
+ *   zero drugiej fizyki grafu.
  */
 
 import { useMemo } from 'react';
 import type { AdjacencyEntry, SpineNode, TopologyGraphSummary } from '../../../types/enm';
 import type { ReadinessIssue } from '../../../ui/types';
-import { useTopologyStore } from '../../../ui/topology/store';
+import { useTopologyStore, type TopologyState } from '../../../ui/topology/store';
+import type { TopologyStructure } from '../../../ui/topology/api';
 import { useProblemyGotowosci } from '../../spaces/gotowosc/adapters/gotowoscAdapter';
 import { LICZNIKI_ZERO, type LicznikiWezla, type TrybDrzewaTopologii, type WezelDrzewa } from '../treeModel';
 
@@ -121,6 +130,10 @@ function odgalezienieLisc(ref: string, liczniki: Map<string, LicznikiWezla>): We
   return { id: ref, etykietaPL: ref, ikona: 'odgalezienie', liczniki: liczOrDefault(liczniki, ref), dzieci: [], trybMin: 'basic' };
 }
 
+function szynaLisc(ref: string, liczniki: Map<string, LicznikiWezla>): WezelDrzewa {
+  return { id: ref, etykietaPL: ref, ikona: 'szyna', liczniki: liczOrDefault(liczniki, ref), dzieci: [], trybMin: 'basic' };
+}
+
 /** Węzły grafu bez wpisu w spine/lateral (posortowane, jak `getIsolatedNodes` w TopologyTreeView). */
 function znajdzIzolowane(topologia: TopologiaZOdpowiedzi): string[] {
   const spineSet = new Set(topologia.spine.map((s) => s.bus_ref));
@@ -133,8 +146,50 @@ function znajdzIzolowane(topologia: TopologiaZOdpowiedzi): string[] {
   return [...wszystkie].filter((n) => !spineSet.has(n) && !lateralSet.has(n)).sort();
 }
 
-/** Drzewo zasilania (od GPZ) — hierarchia wg `children_refs`, z odgałęzieniami dopiętymi do najbliższego węzła magistrali. */
-function budujDrzewoZasilania(topologia: TopologiaZOdpowiedzi, liczniki: Map<string, LicznikiWezla>): WezelDrzewa[] {
+/** Zależności współdzielone przez budowniczych poddrzewa spine (zasilania/obwodowy). */
+interface DrzewoSpineDeps {
+  byRef: Map<string, SpineNode>;
+  spineSet: Set<string>;
+  lateraleWgSasiada: Map<string, string[]>;
+  liczniki: Map<string, LicznikiWezla>;
+  /** WSPÓLNA ochrona przed cyklem (has_cycles) dla całego skanu — jeden węzeł
+   *  spine nie powtarza się w DWÓCH poddrzewach tego samego wywołania. */
+  odwiedzone: Set<string>;
+}
+
+/**
+ * Poddrzewo spine zakorzenione w `ref`: rekurencja po `children_refs` +
+ * odgałęzienia dopięte do najbliższego węzła magistrali. JEDNA implementacja
+ * dla trybu „zasilania" (korzenie = źródła) i „obwodowy" (korzenie = pierwsze
+ * dziecko źródła — pole/aparat odejścia, poddrzewo = cały odpływ).
+ */
+function budujPoddrzewoSpine(ref: string, deps: DrzewoSpineDeps): WezelDrzewa | null {
+  if (deps.odwiedzone.has(ref)) return null;
+  deps.odwiedzone.add(ref);
+  const spine = deps.byRef.get(ref);
+  const dzieciSpine = kolekcja(spine?.children_refs)
+    .filter((r) => deps.spineSet.has(r))
+    .sort()
+    .map((r) => budujPoddrzewoSpine(r, deps))
+    .filter((w): w is WezelDrzewa => w !== null);
+  const dzieciLateral = (deps.lateraleWgSasiada.get(ref) ?? [])
+    .sort()
+    .map((lat) => odgalezienieLisc(lat, deps.liczniki));
+  return {
+    id: ref,
+    etykietaPL: ref,
+    ikona: spine?.is_source ? 'zrodlo' : 'szyna',
+    liczniki: liczOrDefault(deps.liczniki, ref),
+    dzieci: [...dzieciSpine, ...dzieciLateral],
+    trybMin: 'basic',
+  };
+}
+
+/** Buduje `DrzewoSpineDeps` wspólne dla trybów „zasilania"/„obwodowy" (jedno źródło prawdy — reguła KLASA pkt 3). */
+function budujDrzewoSpineDeps(topologia: TopologiaZOdpowiedzi, liczniki: Map<string, LicznikiWezla>): {
+  deps: DrzewoSpineDeps;
+  sieroty: string[];
+} {
   const byRef = new Map(topologia.spine.map((s) => [s.bus_ref, s]));
   const spineSet = new Set(byRef.keys());
 
@@ -151,36 +206,18 @@ function budujDrzewoZasilania(topologia: TopologiaZOdpowiedzi, liczniki: Map<str
     lateraleWgSasiada.set(sasiad, lista);
   }
 
-  const odwiedzone = new Set<string>();
-  function wezelDlaSpine(ref: string): WezelDrzewa | null {
-    if (odwiedzone.has(ref)) return null; // ochrona przed cyklem (has_cycles)
-    odwiedzone.add(ref);
-    const spine = byRef.get(ref);
-    const dzieciSpine = kolekcja(spine?.children_refs)
-      .filter((r) => spineSet.has(r))
-      .sort()
-      .map(wezelDlaSpine)
-      .filter((w): w is WezelDrzewa => w !== null);
-    const dzieciLateral = (lateraleWgSasiada.get(ref) ?? [])
-      .sort()
-      .map((lat) => odgalezienieLisc(lat, liczniki));
-    return {
-      id: ref,
-      etykietaPL: ref,
-      ikona: spine?.is_source ? 'zrodlo' : 'szyna',
-      liczniki: liczOrDefault(liczniki, ref),
-      dzieci: [...dzieciSpine, ...dzieciLateral],
-      trybMin: 'basic',
-    };
-  }
+  return {
+    deps: { byRef, spineSet, lateraleWgSasiada, liczniki, odwiedzone: new Set<string>() },
+    sieroty,
+  };
+}
 
-  const korzenie = [...topologia.spine]
-    .filter((s) => s.is_source || s.depth === 0)
-    .sort((a, b) => a.bus_ref.localeCompare(b.bus_ref));
-  const drzewo = korzenie.map((s) => wezelDlaSpine(s.bus_ref)).filter((w): w is WezelDrzewa => w !== null);
-
+function grupyIzolowaneISieroty(
+  topologia: TopologiaZOdpowiedzi,
+  liczniki: Map<string, LicznikiWezla>,
+  sieroty: string[],
+): WezelDrzewa[] {
   const grupy: WezelDrzewa[] = [];
-  if (drzewo.length > 0) grupy.push(grupa('magistrala', 'Magistrala (od GPZ)', drzewo));
   if (sieroty.length > 0) {
     grupy.push(grupa('odgalezienia', 'Odgałęzienia', sieroty.sort().map((r) => odgalezienieLisc(r, liczniki))));
   }
@@ -197,22 +234,123 @@ function budujDrzewoZasilania(topologia: TopologiaZOdpowiedzi, liczniki: Map<str
   return grupy;
 }
 
+/** Drzewo zasilania (od GPZ) — hierarchia wg `children_refs`, z odgałęzieniami dopiętymi do najbliższego węzła magistrali. */
+function budujDrzewoZasilania(topologia: TopologiaZOdpowiedzi, liczniki: Map<string, LicznikiWezla>): WezelDrzewa[] {
+  const { deps, sieroty } = budujDrzewoSpineDeps(topologia, liczniki);
+
+  const korzenie = [...topologia.spine]
+    .filter((s) => s.is_source || s.depth === 0)
+    .sort((a, b) => a.bus_ref.localeCompare(b.bus_ref));
+  const drzewo = korzenie
+    .map((s) => budujPoddrzewoSpine(s.bus_ref, deps))
+    .filter((w): w is WezelDrzewa => w !== null);
+
+  const grupy: WezelDrzewa[] = [];
+  if (drzewo.length > 0) grupy.push(grupa('magistrala', 'Magistrala (od GPZ)', drzewo));
+  grupy.push(...grupyIzolowaneISieroty(topologia, liczniki, sieroty));
+  return grupy;
+}
+
+/**
+ * Drzewo „obwodowy" — grupa PER ODEJŚCIE (karta §1 p. 11: „odejście = ścieżka
+ * od szyny zasilającej przez aparat pola"). Korzeń grupy = PIERWSZE dziecko
+ * szyny źródłowej w grafie spine (pierwszy aparat pola za źródłem); poddrzewo
+ * tego dziecka (rekurencja `budujPoddrzewoSpine`, TA SAMA co tryb „zasilania")
+ * = cały odpływ. Źródło bez żadnego dziecka spine (stacja bez odejść w
+ * modelu) nie tworzy pustej grupy — nie ma czego pokazać, zero fabrykacji.
+ */
+function budujGrupowanieObwodowe(topologia: TopologiaZOdpowiedzi, liczniki: Map<string, LicznikiWezla>): WezelDrzewa[] {
+  const { deps, sieroty } = budujDrzewoSpineDeps(topologia, liczniki);
+
+  const zrodla = [...topologia.spine].filter((s) => s.is_source).sort((a, b) => a.bus_ref.localeCompare(b.bus_ref));
+  const grupy: WezelDrzewa[] = [];
+  for (const zrodlo of zrodla) {
+    const dzieciZrodla = kolekcja(zrodlo.children_refs)
+      .filter((r) => deps.spineSet.has(r))
+      .sort();
+    for (const dziecko of dzieciZrodla) {
+      const poddrzewo = budujPoddrzewoSpine(dziecko, deps);
+      if (poddrzewo) grupy.push(poddrzewo);
+    }
+  }
+  grupy.push(...grupyIzolowaneISieroty(topologia, liczniki, sieroty));
+  return grupy;
+}
+
+/**
+ * Drzewo „administracyjny" — grupowanie po stacji (`Bay.substation_ref`),
+ * karta §1 p. 11. Mapowanie szyna → stacja z `TopologyStructure.bays`
+ * (`bus_ref` → `substation_ref`); nazwa stacji z `TopologyStructure.substations`.
+ * Szyna BEZ żadnego pola (węzeł T na trasie między stacjami, punkt izolowany)
+ * trafia do jawnej grupy „Poza stacją" — zero milczącego gubienia (WHITE BOX).
+ */
+function budujGrupowanieAdministracyjne(
+  topologia: TopologiaZOdpowiedzi,
+  struktura: TopologyStructure,
+  liczniki: Map<string, LicznikiWezla>,
+): WezelDrzewa[] {
+  const stacjaSzyny = new Map<string, string>();
+  for (const pole of struktura.bays) stacjaSzyny.set(pole.bus_ref, pole.substation_ref);
+  const nazwaStacji = new Map<string, string>();
+  for (const stacja of struktura.substations) nazwaStacji.set(stacja.ref_id, stacja.name || stacja.ref_id);
+
+  const wszystkieSzyny = new Set<string>();
+  for (const wpis of topologia.adjacency) {
+    wszystkieSzyny.add(wpis.bus_ref);
+    wszystkieSzyny.add(wpis.neighbor_ref);
+  }
+  for (const s of topologia.spine) wszystkieSzyny.add(s.bus_ref);
+  for (const lat of topologia.lateralRoots) wszystkieSzyny.add(lat);
+
+  const szynyWgStacji = new Map<string, string[]>();
+  const bezStacji: string[] = [];
+  for (const szyna of wszystkieSzyny) {
+    const stacjaRef = stacjaSzyny.get(szyna);
+    if (stacjaRef) {
+      const lista = szynyWgStacji.get(stacjaRef) ?? [];
+      lista.push(szyna);
+      szynyWgStacji.set(stacjaRef, lista);
+    } else {
+      bezStacji.push(szyna);
+    }
+  }
+
+  const grupy: WezelDrzewa[] = [...szynyWgStacji.entries()]
+    .sort((a, b) => (nazwaStacji.get(a[0]) ?? a[0]).localeCompare(nazwaStacji.get(b[0]) ?? b[0], 'pl'))
+    .map(([stacjaRef, szyny]) =>
+      grupa(stacjaRef, nazwaStacji.get(stacjaRef) ?? stacjaRef, szyny.sort().map((r) => szynaLisc(r, liczniki))),
+    );
+  if (bezStacji.length > 0) {
+    grupy.push(grupa('poza-stacja', 'Poza stacją', bezStacji.sort().map((r) => szynaLisc(r, liczniki))));
+  }
+  return grupy;
+}
+
 /** Mapowanie czyste (bez React) — testowalne fixture'ami o realnym kształcie store'a. */
 export function mapowanieTopologiiDoDrzewa(
   summary: TopologyGraphSummary | null,
   issues: ReadinessIssue[],
   tryb: TrybDrzewaTopologii,
+  struktura: TopologyStructure | null = null,
 ): WezelDrzewa[] {
   if (!summary) return [];
   const liczniki = budujLicznikiZReadiness(issues);
-  if (tryb === 'zasilania') return budujDrzewoZasilania(odczytajTopologie(summary), liczniki);
-  // 'administracyjny' | 'obwodowy' — TODO-KARTA (patrz komentarz nagłówkowy pliku).
-  return [];
+  const topologia = odczytajTopologie(summary);
+  if (tryb === 'zasilania') return budujDrzewoZasilania(topologia, liczniki);
+  if (tryb === 'obwodowy') return budujGrupowanieObwodowe(topologia, liczniki);
+  // 'administracyjny': brak struktury (jeszcze nie pobrana/błąd sieci) = uczciwy
+  // stan zerowy — adapter nigdy nie zgaduje przypisania szyny do stacji.
+  if (!struktura) return [];
+  return budujGrupowanieAdministracyjne(topologia, struktura, liczniki);
 }
 
-/** Adapter read-only: `ui/topology/store.ts` (summary) + `gotowoscAdapter` (problemy). */
+/** Adapter read-only: `ui/topology/store.ts` (summary + structure) + `gotowoscAdapter` (problemy). */
 export function useTopologyTree(tryb: TrybDrzewaTopologii): WezelDrzewa[] {
-  const summary = useTopologyStore((s) => s.summary);
+  const summary = useTopologyStore((s: TopologyState) => s.summary);
+  const struktura = useTopologyStore((s: TopologyState) => s.structure);
   const issues = useProblemyGotowosci();
-  return useMemo(() => mapowanieTopologiiDoDrzewa(summary, issues, tryb), [summary, issues, tryb]);
+  return useMemo(
+    () => mapowanieTopologiiDoDrzewa(summary, issues, tryb, struktura),
+    [summary, issues, tryb, struktura],
+  );
 }

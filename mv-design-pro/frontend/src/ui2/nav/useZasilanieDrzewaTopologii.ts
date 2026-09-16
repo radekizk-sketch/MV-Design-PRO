@@ -15,6 +15,11 @@
  * - zmiana aktywnego przypadku (nowy kontekst = nowa topologia),
  * - zmiana rewizji migawki modelu (każda operacja domenowa podnosi rewizję,
  *   więc drzewo idzie w parze z kanwą i panelem gotowości).
+ *
+ * TODO-UI2 §1 p. 11: obok `summary` (tryb „zasilania") ładujemy RÓWNIEŻ
+ * `structure` (`GET .../enm/topology` — stacje/pola), źródło trybów drzewa
+ * „administracyjny"/„obwodowy" w `topologyTreeAdapter.ts`. Ten sam wyzwalacz
+ * (przypadek/rewizja) — jedna migawka topologii, dwa kształty odpowiedzi.
  */
 
 import { useEffect } from 'react';
@@ -30,9 +35,10 @@ export function useZasilanieDrzewaTopologii(): void {
   useEffect(() => {
     if (!activeCaseId) {
       // Brak przypadku ⇒ nie ma czego pokazać (uczciwy stan zerowy drzewa).
-      useTopologyStore.setState({ summary: null });
+      useTopologyStore.setState({ summary: null, structure: null });
       return;
     }
     void useTopologyStore.getState().loadSummary(activeCaseId);
+    void useTopologyStore.getState().loadStructure(activeCaseId);
   }, [activeCaseId, rewizja]);
 }
