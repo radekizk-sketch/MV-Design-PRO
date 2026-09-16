@@ -78,6 +78,32 @@ def test_czerwona_iniekcja_kazdego_wzorca() -> None:
         plik.unlink()
 
 
+def test_czerwona_iniekcja_w61() -> None:
+    """Karta W6-1 SS0 p.8: iniekcja skasowanego `load_profile_ref` jest czerwona,
+    a trzy fixtury SLD na allowliście zostają zielone (uzasadnienie w pliku
+    allowlisty)."""
+    with tempfile.TemporaryDirectory() as katalog:
+        tmp = Path(katalog)
+        _drzewo_z_konfiguracja(tmp)
+        assert sprawdz(tmp, "w61_") == [], "czyste drzewo ma być zielone"
+
+        plik = tmp / "backend/src/enm/domain_operations_v3.py"
+        plik.parent.mkdir(parents=True, exist_ok=True)
+        plik.write_text('"load_profile_ref": payload.get("load_profile_ref"),\n', encoding="utf-8")
+        naruszenia = sprawdz(tmp, "w61_")
+        assert any(
+            "domain_operations_v3.py" in n for n in naruszenia
+        ), f"iniekcja nie została wykryta: {naruszenia}"
+        plik.unlink()
+
+        # Allowlista: fixtury SLD sprzed kasacji zostają zielone.
+        plik = tmp / "frontend/src/ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json"
+        plik.parent.mkdir(parents=True, exist_ok=True)
+        plik.write_text('{"meta": {"load_profile_ref": null}}\n', encoding="utf-8")
+        assert sprawdz(tmp, "w61_") == []
+        plik.unlink()
+
+
 def test_realne_drzewo_jest_zielone() -> None:
     for grupa in GRUPY:
         naruszenia = sprawdz(ROOT, grupa)
@@ -86,5 +112,6 @@ def test_realne_drzewo_jest_zielone() -> None:
 
 if __name__ == "__main__":
     test_czerwona_iniekcja_kazdego_wzorca()
+    test_czerwona_iniekcja_w61()
     test_realne_drzewo_jest_zielone()
     print("test_grep_zero_guard: OK")

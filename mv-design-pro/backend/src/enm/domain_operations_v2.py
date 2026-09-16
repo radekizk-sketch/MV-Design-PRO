@@ -2685,7 +2685,6 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "connection_type": payload.get("connection_type", "TROJFAZOWY"),
             "feeder_ref": feeder_ref,
             "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
-            "load_profile_ref": payload.get("load_profile_ref"),
             "cos_phi": payload.get("cos_phi"),
         },
     }

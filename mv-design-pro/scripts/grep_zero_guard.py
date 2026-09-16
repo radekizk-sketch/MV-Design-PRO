@@ -9,6 +9,14 @@ Grupy konfiguracji (katalog `config/`), każda z trzema plikami
   domyślka układu nN, słowniki równoległe i komponenty frontu. Zapadka tylko w dół:
   allowlista to wyłącznie moduł migracji zastanego zapisu i jego testy (one muszą
   znać stare klucze, żeby je przenieść) — każde nowe miejsce to naruszenie.
+* ``"w61_"`` (karta W6-1 SS0 p.8) — kasacja osieroconego `Load.meta["load_profile_ref"]`
+  (zapis bez odczytu, K-E): pole `AddNNLoadPayload.load_profile_ref` (backend) i
+  `AddNNLoadPayload.load_profile_ref` (front TS) skasowane. Profile czasowe wracają w
+  W6-6 razem z konsumentem (QSTS) jako encja `ProfilCzasowy` — nowa nazwa, nie
+  wskrzeszenie tego klucza. Allowlist: 3 fixtury SLD sprzed kasacji z wpisanym
+  `"load_profile_ref": null` w `meta` (residualny klucz nieużywanego dict-a — SLD
+  determinism CI-critical, edycja treści fixtur poza zakresem tej karty, uzasadnienie
+  w pliku allowlisty).
 
 Self-test z czerwoną iniekcją: `scripts/test_grep_zero_guard.py`.
 """
@@ -23,7 +31,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = ROOT / "config"
-GRUPY: tuple[str, ...] = ("", "kod_")
+GRUPY: tuple[str, ...] = ("", "kod_", "w61_")
 TEXT_SUFFIXES = {
     ".css",
     ".html",

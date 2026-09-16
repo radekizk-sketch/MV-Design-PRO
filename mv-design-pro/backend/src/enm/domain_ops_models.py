@@ -1318,7 +1318,14 @@ class AddUPSNNPayload(_FrozenBase):
 
 
 class AddNNLoadPayload(_FrozenBase):
-    """Payload: add_nn_load — dodaje odbiór do odpływu nN."""
+    """Payload: add_nn_load — dodaje odbiór do odpływu nN.
+
+    Karta W6-1 SS0 p.8 (K-E): pole niosące referencję do profilu obciążenia
+    zostało SKASOWANE — zapisywało wartość bez żadnego czytelnika w repo.
+    Profile czasowe wracają w W6-6 razem z konsumentem (QSTS) jako encja
+    `ProfilCzasowy` — nowe pole, nie wskrzeszenie tamtego. Pilnuje
+    `scripts/grep_zero_guard.py` (grupa `w61_`, zapadka tylko w dół).
+    """
 
     feeder_ref: str
     """Referencja odpływu nN."""
@@ -1337,9 +1344,6 @@ class AddNNLoadPayload(_FrozenBase):
 
     cos_phi: float | None = None
     """Cos φ — jawnie, alternatywa dla mocy biernej."""
-
-    load_profile_ref: str | None = None
-    """Opcjonalna referencja do profilu obciążenia."""
 
     connection_type: Literal["JEDNOFAZOWY", "TROJFAZOWY"]
     """Sposób przyłączenia (PL) — bez domyślnego."""

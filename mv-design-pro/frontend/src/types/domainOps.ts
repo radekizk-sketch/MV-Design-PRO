@@ -610,7 +610,6 @@ export interface AddNNLoadPayload {
   active_power_kw: number;
   reactive_power_kvar: number | null;
   cos_phi: number | null;
-  load_profile_ref: string | null;
   connection_type: NNConnectionType;
   /**
    * Fazy przyłączenia (W5-D, `AddNnLoad.phases` w `enm/domain_ops_models.py`):
