@@ -1358,12 +1358,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Odbior S-3 NC-RFG-JEDEN-TOR na drzewie po S-2 (2026-09-16): POMIAR guardem na drzewie
     # scalonym = 3550 (3548 + 2 pola S-3: NcRfgCaseComplianceResponse/bieg.py; checker.py
     # skasowany, bieg.py dodany - liczba plikow application 231 bez zmian netto).
-    # Karta W5-D (2026-09-16): 3550 -> POMIAR_W5D (+18 pol na drzewie karty; pomiar guardem na drzewie scalonym po odbiorze W5-D):
+    # Karta W5-D (2026-09-16): 3550 -> 3568 (+18 pol; POMIAR guardem na drzewie scalonym po S-3 i W5-D, 2026-09-16):
     # `Load.phases` (enm/models.py), `AddNnLoad.phases` (enm/domain_ops_models.py),
     # pola dataclass `DrogaZerowa`/`DiagnozaNiesymetrii.droga_zerowa`/`WejscieRozplywu
     # Niesymetrycznego`/`WyspaRozplywuNiesymetrycznego` (enm/assembler.py) oraz kontrakt
     # `domain/result_contract_power_flow_unbalanced_v1.py` (wiersze per faza, VUF, wyspy).
-    assert "Pol kontraktow wejsciowych: POMIAR_W5D." in wyjscie, wyjscie
+    assert "Pol kontraktow wejsciowych: 3568." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
