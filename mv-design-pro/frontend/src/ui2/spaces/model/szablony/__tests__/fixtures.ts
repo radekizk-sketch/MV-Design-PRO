@@ -9,6 +9,7 @@
  */
 
 import type {
+  CatalogChoice,
   CategoryEntry,
   DerKindSpec,
   StationTemplateFull,
@@ -44,6 +45,11 @@ const TR_OPTIONS_MEDIUM = [
   opcja('tr-sn-nn-15-04-1000kva-dyn11', 'TR 1000 kVA SN/nN', 'TRAFO_SN_NN'),
 ];
 
+const APARATURA_POL_SN = [
+  opcja('lsn-sf6-630a-12kv', 'Łącznik SF6 630 A, 12 kV', 'APARAT_SN', { default: true }),
+  opcja('lsn-prozniowy-630a-12kv', 'Łącznik próżniowy 630 A, 12 kV', 'APARAT_SN'),
+];
+
 const NN_CB_OPTIONS = [
   opcja('cb_nn_100a', 'CB nN 100 A', 'APARAT_NN'),
   opcja('cb_nn_400a', 'CB nN 400 A', 'APARAT_NN', { default: true }),
@@ -73,6 +79,14 @@ interface SzablonPelnyOverrides {
   }>;
   der_options?: readonly DerKindSpec[];
   der_total_count_default?: number;
+  /** Aparatura pól SN wskazana przez szablon (namespace `APARAT_SN`, B-12). */
+  sn_bay_apparatus_options?: readonly CatalogChoice[];
+  /** Pola strukturalne (TODO-UI2 §1 p. 12) — domyślne 1:1 z TR_OPTIONS_MEDIUM (630 kVA, 15/0,4 kV). */
+  category_label_pl?: string;
+  rated_power_kva?: number | null;
+  voltage_hv_kv?: number | null;
+  voltage_lv_kv?: number | null;
+  bay_role_categories?: readonly string[];
 }
 
 /** Fabryka pełnego szablonu (`StationTemplateFull`, `to_dict`, schema.py:171-269). */
@@ -86,6 +100,11 @@ export function szablonPelny(over: SzablonPelnyOverrides = {}): StationTemplateF
     nc_rfg_type: over.nc_rfg_type ?? null,
     tags: over.tags ?? ['dystrybucyjna', 'typowa', '15kV'],
     icon: over.icon ?? 'station-distribution',
+    category_label_pl: over.category_label_pl ?? 'Typowe stacje SN/nN',
+    rated_power_kva: over.rated_power_kva === undefined ? 630 : over.rated_power_kva,
+    voltage_hv_kv: over.voltage_hv_kv === undefined ? 15 : over.voltage_hv_kv,
+    voltage_lv_kv: over.voltage_lv_kv === undefined ? 0.4 : over.voltage_lv_kv,
+    bay_role_categories: over.bay_role_categories ?? ['IN', 'OUT', 'TR'],
     schema: {
       transformer_options: TR_OPTIONS_MEDIUM,
       transformer_count: { default: 1, min_value: 1, max_value: 2, step: 1, label_pl: 'Liczba transformatorów' },
@@ -106,6 +125,7 @@ export function szablonPelny(over: SzablonPelnyOverrides = {}): StationTemplateF
         ]
       ).map((r) => ({ ...r, apparatus_options: [] })),
       sn_bay_protection_options: PROT_FEEDER_OPTIONS,
+      sn_bay_apparatus_options: over.sn_bay_apparatus_options ?? APARATURA_POL_SN,
       nn_feeders_count: { default: 4, min_value: 1, max_value: 8, step: 1, label_pl: 'Liczba odpływów nN' },
       nn_feeder_cb_options: NN_CB_OPTIONS,
       nn_load_default_kw: { default: 50, min_value: 0, max_value: 2000, step: 0.01, unit: 'kW', label_pl: 'Obciążenie per odpływ' },
@@ -126,10 +146,13 @@ export function szablonFarmaPv(over: SzablonPelnyOverrides = {}): StationTemplat
     id: 'tpl_farma_pv_1mw',
     name_pl: 'Farma PV 1 MW, blok transformatorowy 1.25 MVA',
     category: 'farma_pv',
+    category_label_pl: 'Farmy PV SN',
     description_pl: 'Farma PV 1 MW z blokiem transformatorowym SN.',
     use_case_pl: 'Przyłączenie farmy fotowoltaicznej do sieci SN.',
     tags: ['farma', 'PV', 'OZE'],
     icon: 'station-pv-farm',
+    rated_power_kva: 1250,
+    bay_role_categories: ['IN', 'OUT', 'TR'],
     sn_bays_count_default: 2,
     der_options: [
       {
@@ -152,10 +175,13 @@ export function szablonHybrydowy(): StationTemplateFull {
     id: 'tpl_hybrid_pv1_bess1',
     name_pl: 'Hybryda PV 1 MW + BESS 1 MW/2 MWh',
     category: 'hybrydowa',
+    category_label_pl: 'Hybrydy PV + BESS',
     description_pl: 'Farma hybrydowa PV + BESS.',
     use_case_pl: 'Farma hybrydowa PV + BESS (firmness + arbitrage).',
     tags: ['hybrydowa', 'PV+BESS', 'OZE'],
     icon: 'station-hybrid',
+    rated_power_kva: 2000,
+    bay_role_categories: ['IN', 'MEASUREMENT', 'OUT'],
     sn_bays_count_default: 3,
     sn_bay_roles: [
       { role: 'IN', label_pl: 'Pole liniowe IN' },
@@ -190,10 +216,12 @@ export function szablonSekcyjny(): StationTemplateFull {
     id: 'tpl_sekcyjna_nop',
     name_pl: 'Stacja sekcyjna z NOP',
     category: 'sekcyjna',
+    category_label_pl: 'Stacje sekcyjne / pętlowe',
     description_pl: 'Stacja sekcyjna z łącznikiem sieciowym (NOP).',
     use_case_pl: 'Domknięcie pierścienia, praca N-1.',
     tags: ['sekcyjna', 'NOP'],
     icon: 'station-sectional',
+    bay_role_categories: ['COUPLER', 'IN', 'OUT'],
     sn_bays_count_default: 3,
     sn_bay_roles: [
       { role: 'IN', label_pl: 'Pole IN sekcja A' },

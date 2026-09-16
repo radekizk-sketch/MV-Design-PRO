@@ -1,13 +1,19 @@
 /*
  * Kafel wariantu szablonu (karta §3): miniatura jednokreskowa pól SN
  * (deterministyczna, z `schema.sn_bays_count.default` — patrz komentarz
- * `renderujMiniature`), nazwa (moc/wariant są częścią `name_pl` — TODO-KARTA
- * w `FiltrySzablonow.tsx` wyjaśnia brak osobnego pola liczbowego mocy),
- * liczba pól SN (`schema.sn_bays_count.default`, ustrukturyzowana) i opis
- * zastosowania PL (`use_case_pl`). Gramatyka MODEL_INTERAKCJI §2 / karta §3:
- * 1× klik = podgląd (aktualizuje panel szczegółów), 2× klik / `Enter` =
- * „Zastosuj i edytuj" (callback `onOtworz`), prawy klik = menu kontekstowe.
- * Zero `Date.now`/`Math.random` — miniatura wyłącznie z danych szablonu.
+ * `renderujMiniature`), nazwa, liczba pól SN (`schema.sn_bays_count.default`,
+ * ustrukturyzowana) i opis zastosowania PL (`use_case_pl`). Gramatyka
+ * MODEL_INTERAKCJI §2 / karta §3: 1× klik = podgląd (aktualizuje panel
+ * szczegółów), 2× klik / `Enter` = „Zastosuj i edytuj" (callback `onOtworz`),
+ * prawy klik = menu kontekstowe. Zero `Date.now`/`Math.random` — miniatura
+ * wyłącznie z danych szablonu.
+ *
+ * Pola strukturalne (KARTA-UI2 §1 p. 12 — zamknięcie): moc/napięcia/zastosowanie
+ * czytane WPROST z `StationTemplateFull.rated_power_kva`/`voltage_hv_kv`/
+ * `voltage_lv_kv`/`category_label_pl` (katalog — `backend/.../schema.py::
+ * structural_fields`), NIE parsowane z `name_pl`. `rated_power_kva === null`
+ * (katalog niedostępny dla domyślnej opcji transformatora) → wiersz mocy
+ * pominięty, zero fabrykowanej wartości.
  */
 
 import type { KeyboardEvent, MouseEvent } from 'react';
@@ -98,7 +104,22 @@ export function KafelSzablonu({
       {doPorownania && <span className="mvd-tag mvd-tag-ok mvd-szablony-kafel-badge">{SZABLONY_STRINGS.menuPorownaj}</span>}
       {renderujMiniature(liczbaPol)}
       <h4 className="mvd-szablony-kafel-nazwa">{szablon.name_pl}</h4>
+      <span className="mvd-tag mvd-tag-mut mvd-szablony-kafel-kategoria">{szablon.category_label_pl}</span>
       <p className="mvd-szablony-kafel-opis">{szablon.use_case_pl}</p>
+      {szablon.rated_power_kva != null && (
+        <div className="mvd-kafel-kv-row">
+          <span className="mvd-kafel-kv-label">{SZABLONY_STRINGS.kafelMoc}</span>
+          <span className="mvd-kafel-kv-value mvd-num">{szablon.rated_power_kva} kVA</span>
+        </div>
+      )}
+      {(szablon.voltage_hv_kv != null || szablon.voltage_lv_kv != null) && (
+        <div className="mvd-kafel-kv-row">
+          <span className="mvd-kafel-kv-label">{SZABLONY_STRINGS.kafelNapiecia}</span>
+          <span className="mvd-kafel-kv-value mvd-num">
+            {szablon.voltage_hv_kv ?? '—'}/{szablon.voltage_lv_kv ?? '—'} kV
+          </span>
+        </div>
+      )}
       <div className="mvd-kafel-kv-row">
         <span className="mvd-kafel-kv-label">{SZABLONY_STRINGS.liczbaPolSkrot}</span>
         <span className="mvd-kafel-kv-value mvd-num">{liczbaPol}</span>

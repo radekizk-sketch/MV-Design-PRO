@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { KafelSzablonu } from '../KafelSzablonu';
+import { SZABLONY_STRINGS } from '../strings';
 import { szablonPelny, szablonSekcyjny } from './fixtures';
 
 describe('<KafelSzablonu /> — kafel wariantu (karta §3)', () => {
@@ -18,6 +19,39 @@ describe('<KafelSzablonu /> — kafel wariantu (karta §3)', () => {
     );
     expect(screen.getByText(szablon.name_pl)).toBeInTheDocument();
     expect(screen.getByText(szablon.use_case_pl)).toBeInTheDocument();
+  });
+
+  it('pokazuje pola strukturalne: kategorię, moc [kVA] i napięcia [kV] (kontrakt szablonu, nie parsowanie name_pl)', () => {
+    const szablon = szablonPelny({ rated_power_kva: 630, voltage_hv_kv: 15, voltage_lv_kv: 0.4 });
+    render(
+      <KafelSzablonu
+        szablon={szablon}
+        zaznaczony={false}
+        doPorownania={false}
+        onKlik={() => {}}
+        onOtworz={() => {}}
+        onMenuKontekstowe={() => {}}
+      />,
+    );
+    expect(screen.getByText(szablon.category_label_pl)).toBeInTheDocument();
+    expect(screen.getByText('630 kVA')).toBeInTheDocument();
+    expect(screen.getByText('15/0.4 kV')).toBeInTheDocument();
+  });
+
+  it('moc/napięcia null (katalog niedostępny) — wiersze pominięte, zero wartości fabrykowanej', () => {
+    const szablon = szablonPelny({ rated_power_kva: null, voltage_hv_kv: null, voltage_lv_kv: null });
+    render(
+      <KafelSzablonu
+        szablon={szablon}
+        zaznaczony={false}
+        doPorownania={false}
+        onKlik={() => {}}
+        onOtworz={() => {}}
+        onMenuKontekstowe={() => {}}
+      />,
+    );
+    expect(screen.queryByText(SZABLONY_STRINGS.kafelMoc)).not.toBeInTheDocument();
+    expect(screen.queryByText(SZABLONY_STRINGS.kafelNapiecia)).not.toBeInTheDocument();
   });
 
   it('pokazuje liczbę pól SN wprost z schema.sn_bays_count.default', () => {

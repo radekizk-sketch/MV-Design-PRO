@@ -24,7 +24,7 @@ describe('rolaDlaKategorii — mapowanie 10 kategorii backendu na role A–E', (
     expect(rolaDlaKategorii(kategoria)).toBe(rola);
   });
 
-  it('kategoria spoza mapy trafia domyślnie do B (fallback, TODO-KARTA)', () => {
+  it('kategoria spoza mapy trafia domyślnie do B (fallback — V12T-016, żaden szablon nie znika)', () => {
     expect(rolaDlaKategorii('nowa_kategoria_z_przyszlosci')).toBe('B');
   });
 });

@@ -11,13 +11,18 @@
  *   C — przemyslowa (istnieje częściowo — „Odbiorcze")
  *   D — prosument_pv, farma_pv, bess, hybrydowa, wiatrowa (istnieją — „Źródła i magazyny")
  *   E — sekcyjna (istnieje częściowo — „Specjalne")
- * Role A („Zasilanie sieci") i pozostała część C/E są wg dokumentu „DO DODANIA"
- * (delta backendowa, poza zakresem tej karty — §4 dokumentu) — obecnie żadna z
- * 10 kategorii nie ląduje w roli A. `rolaDlaKategorii` ma jawny fallback do B
- * dla kategorii spoza mapy (nowe kategorie dodane w backendzie zanim ta mapa
- * zostanie zaktualizowana) — TODO-KARTA: przy dodaniu kategorii ról A/C/E
- * (dokument §4) rozszerzyć `KATEGORIA_ROLA` o nowe wpisy zamiast polegać na
- * fallbacku.
+ *
+ * GRANICA PRODUKTU (rejestr długu `docs/v12xx/REJESTR_DLUGU.md` V12T-016):
+ * rola A („Zasilanie sieci" — GPZ 110/SN, rozdzielnia sieciowa RS/RSM) oraz
+ * reszta C (abonencka SN) i E (kompensacja, rezerwa zasilania) nie mają DZIŚ
+ * żadnej kategorii szablonu w backendzie — zmierzone wprost z enumeracji
+ * `TemplateCategory` (`backend/src/application/station_templates/schema.py`):
+ * dokładnie 10 wartości, wszystkie mapowane do B/C/D/E, zero do A. Dodanie
+ * tych kategorii to nowe moduły szablonów (pełny komplet danych katalogowych
+ * per `SZABLONY_STACJI_2026-07.md` §2/§4), nie zmiana tej mapy — poza
+ * zakresem karty UI (klasyfikacja/przeglądarka). `rolaDlaKategorii` ma jawny
+ * fallback do B dla kategorii spoza mapy, żeby żaden szablon nie zniknął z
+ * przeglądarki, gdy backend doda kategorię przed aktualizacją tej mapy.
  */
 
 import type { CategoryEntry } from './szablonyClient';

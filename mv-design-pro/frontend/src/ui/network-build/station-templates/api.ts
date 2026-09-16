@@ -94,6 +94,17 @@ export interface StationTemplateSummary {
   nc_rfg_type: 'A' | 'B' | 'C' | 'D' | null;
   tags: readonly string[];
   icon: string;
+  /**
+   * Pola strukturalne (KARTA-UI2 §1 p. 12): zastosowanie/moc/napięcie/role —
+   * z katalogu (`backend/.../schema.py::structural_fields`), NIE z parsowania
+   * `name_pl`. `null` = katalog nie dostarczył wartości dla domyślnej opcji
+   * transformatora szablonu (uczciwy brak, zero fabrykacji).
+   */
+  category_label_pl: string;
+  rated_power_kva: number | null;
+  voltage_hv_kv: number | null;
+  voltage_lv_kv: number | null;
+  bay_role_categories: readonly string[];
 }
 
 export interface StationTemplateFull extends StationTemplateSummary {

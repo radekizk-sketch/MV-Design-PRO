@@ -22,6 +22,11 @@ function podsumowanie(pelny: StationTemplateFull): StationTemplateSummary {
     nc_rfg_type: pelny.nc_rfg_type,
     tags: pelny.tags,
     icon: pelny.icon,
+    category_label_pl: pelny.category_label_pl,
+    rated_power_kva: pelny.rated_power_kva,
+    voltage_hv_kv: pelny.voltage_hv_kv,
+    voltage_lv_kv: pelny.voltage_lv_kv,
+    bay_role_categories: pelny.bay_role_categories,
   };
 }
 
@@ -177,7 +182,7 @@ describe('<PrzegladarkaSzablonow /> — przeglądarka biblioteki szablonów (W-2
     expect(onZastosuj).toHaveBeenCalledWith(szablon.id);
   });
 
-  it('menu kontekstowe: „Pokaż wymagania danych" jest wyszarzone, gdy karta wywołująca go nie poda', async () => {
+  it('menu kontekstowe: „Pokaż wymagania danych" jest zawsze aktywne (dostawca lokalny — kontrakt szablonu)', async () => {
     const szablon = szablonHybrydowy();
     vi.mocked(pobierzSzablony).mockImplementation((kategoria?: string) => {
       if (kategoria === 'hybrydowa') return Promise.resolve({ templates: [podsumowanie(szablon)], total: 1 });
@@ -193,7 +198,7 @@ describe('<PrzegladarkaSzablonow /> — przeglądarka biblioteki szablonów (W-2
 
     fireEvent.contextMenu(screen.getByTestId(`mvd-szablon-kafel-${szablon.id}`));
     expect(screen.getByTestId('mvd-szablony-menu')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-szablony-menu-wymagania')).toBeDisabled();
+    expect(screen.getByTestId('mvd-szablony-menu-wymagania')).not.toBeDisabled();
   });
 
   it('menu kontekstowe „Porównaj" na 2 kaflach otwiera tabelę porównania', async () => {
@@ -226,16 +231,15 @@ describe('<PrzegladarkaSzablonow /> — przeglądarka biblioteki szablonów (W-2
     await waitFor(() => expect(screen.getByTestId('mvd-porownanie')).toBeInTheDocument());
   });
 
-  it('wywołuje onPokazWymaganiaDanych z menu, gdy karta wołająca je poda', async () => {
+  it('menu „Pokaż wymagania danych" otwiera panel z kontraktem szablonu (transformator, aparatura, DER)', async () => {
     const szablon = szablonHybrydowy();
     vi.mocked(pobierzSzablony).mockImplementation((kategoria?: string) => {
       if (kategoria === 'hybrydowa') return Promise.resolve({ templates: [podsumowanie(szablon)], total: 1 });
       return Promise.resolve({ templates: [], total: 0 });
     });
     vi.mocked(pobierzSzablon).mockResolvedValue(szablon);
-    const onPokazWymaganiaDanych = vi.fn();
 
-    render(<PrzegladarkaSzablonow onZastosuj={() => {}} onPokazWymaganiaDanych={onPokazWymaganiaDanych} />);
+    render(<PrzegladarkaSzablonow onZastosuj={() => {}} />);
     await screen.findByTestId('mvd-szablony-drzewko');
     fireEvent.click(within(screen.getByTestId('mvd-szablony-rola-D')).getByRole('button', { name: 'Rozwiń' }));
     fireEvent.click(screen.getByTestId('mvd-szablony-kategoria-hybrydowa'));
@@ -243,6 +247,13 @@ describe('<PrzegladarkaSzablonow /> — przeglądarka biblioteki szablonów (W-2
 
     fireEvent.contextMenu(screen.getByTestId(`mvd-szablon-kafel-${szablon.id}`));
     fireEvent.click(screen.getByTestId('mvd-szablony-menu-wymagania'));
-    expect(onPokazWymaganiaDanych).toHaveBeenCalledWith(szablon.id);
+
+    expect(screen.getByTestId('mvd-szablony-wymagania')).toBeInTheDocument();
+    expect(screen.getByText(SZABLONY_STRINGS.wymaganiaTytul)).toBeInTheDocument();
+    expect(screen.getAllByText(szablon.name_pl).length).toBeGreaterThan(0);
+    expect(screen.getByText(SZABLONY_STRINGS.wymaganiaAparaturaPol)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('mvd-szablony-wymagania-zamknij'));
+    expect(screen.queryByTestId('mvd-szablony-wymagania')).not.toBeInTheDocument();
   });
 });
