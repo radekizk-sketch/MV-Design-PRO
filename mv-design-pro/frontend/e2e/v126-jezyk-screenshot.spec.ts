@@ -78,10 +78,21 @@ test.describe('V126-JEZYK — zrzuty okna analiz specjalistycznych', () => {
     // Defekt ze zrzutu 3/3 (2026-08-07): pasek 30 zakładek wyjeżdżał poza kadr.
     // Po karcie B-02 nawigacja jest dwupoziomowa (obszary → analizy obszaru) — bez
     // przewijania poziomego przy żadnej z trzech szerokości.
+    //
+    // Pierwsze wejście w tę scenę kompiluje na zimno CAŁY graf ekranów wyników w
+    // vite dev (pomiar 2026-09-16 po W3-J + V12.7: 31,7 s przy load average ~10,
+    // ciepłe wejścia 1,8 s) — to własność harnessu deweloperskiego, nie produktu.
+    // Bez jawnego limitu pierwsza asercja przegrywała z zimną kompilacją, a test
+    // był zielony tylko wtedy, gdy inny spec zdążył wcześniej ogrzać ten graf.
+    test.setTimeout(150_000);
+    let pierwszeWejscie = true;
     for (const szerokosc of [1280, 1440, 1920]) {
       await page.setViewportSize({ width: szerokosc, height: 900 });
       await page.goto(`${BAZA}?creator=wyniki-warsztat&theme=dark`);
-      await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible();
+      await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible({
+        timeout: pierwszeWejscie ? 90_000 : 45_000,
+      });
+      pierwszeWejscie = false;
       const przewijaniePoziome = await page.evaluate(
         () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
       );

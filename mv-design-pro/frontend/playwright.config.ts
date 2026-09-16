@@ -126,11 +126,16 @@ export default defineConfig({
   // Global timeout for each test (60s max per test)
   timeout: 60000,
 
-  // Expect timeout (for assertions). 20 s: zimny rozruch aplikacji w vite dev
-  // na wolniejszych kontenerach mierzy ~12 s (app-ready), a część speców
-  // asertuje bezpośrednio po goto bez czekania na app-ready.
+  // Expect timeout (for assertions). Z POMIARU, nie z głowy: zimny rozruch
+  // aplikacji w vite dev mierzył ~12 s (app-ready) przy poprzednim grafie modułów;
+  // 2026-09-16 (odbiór W3-J + V12.7, KaTeX w kolejnych ekranach wyników) zimna
+  // kompilacja sceny harnessu `?creator=wyniki-warsztat` (cały graf ekranów
+  // wyników) zmierzona bezpośrednio: 31,7 s przy load average ~10, ciepła 1,8 s.
+  // Część speców asertuje bezpośrednio po goto bez czekania na app-ready, więc
+  // limit asercji musi mieścić zimną kompilację NAJWIĘKSZEGO grafu; 45 s zostawia
+  // zapas pod wolniejszy runner CI, a `timeout: 60000` testu nadal ogranicza całość.
   expect: {
-    timeout: 20000,
+    timeout: 45000,
     // Visual regression tolerance (V12K-013 SLD F5 — PLAN_SLD_REWORK § 7.4)
     // Threshold 0.5% per snapshot to allow minor antialiasing differences
     // across CI environments while catching real visual regressions.
