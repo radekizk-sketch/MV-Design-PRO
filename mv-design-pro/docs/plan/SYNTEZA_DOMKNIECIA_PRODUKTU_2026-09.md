@@ -568,6 +568,7 @@ nie produkt), **ODRZUCIĆ**.
 | **OD-23** | PR #471 (Codex, 2026-08-10) — zastąpiony; do zamknięcia przez właściciela. | cudzy PR |
 | **OD-24** | Domyślne wartości fizyki w rdzeniu FROZEN `v126_academic.py` (fallbacki `neutral_earthing_type`, stała VUF 0,0) — kasacja po zgodzie; W5 pinuje wejście z modelu niezależnie (karta W5 §1 p. 12). | B-01 |
 | **OD-25** | Nowy moduł solvera pętli zwarcia TT/IT z RCD (`solvers/petla_zwarcia_tt_it.py`, IEC 60364-4-41 411.5.3/411.6) — model, katalog i gotowość nazwana w W5-E bez solvera (karta W5 §1 p. 8). | B-01 |
+| **OD-26** | Martwe pole `compliance_tests` (`T1`…`T18`) w zamrożonych profilach YAML NC RfG po kasacji drugiego silnika (S-3): usunąć z profili (B-01, zgoda właściciela) albo zostawić jako archiwum z adnotacją. | edycja zamrożonych profili (B-01) |
 
 ---
 
