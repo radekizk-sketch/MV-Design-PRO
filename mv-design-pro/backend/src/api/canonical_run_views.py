@@ -39,6 +39,7 @@ from enm.canonical_analysis import (
     build_dynamic_stability_time_series,
     build_extended_trace,
     build_phase_state_results,
+    build_power_flow_unbalanced_results,
     build_results_index,
     build_short_circuit_results,
     build_short_circuit_rozplyw,
@@ -453,6 +454,13 @@ def build_results_index_response(run: CanonicalRun) -> dict[str, Any]:
 
 def build_phase_state_results_response(run: CanonicalRun) -> dict[str, Any]:
     payload = build_phase_state_results(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
+
+
+def build_power_flow_unbalanced_results_response(run: CanonicalRun) -> dict[str, Any]:
+    """W5-D: wynik rozpływu niesymetrycznego (szyny/gałęzie per faza, VUF, założenia)."""
+    payload = build_power_flow_unbalanced_results(run)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
 

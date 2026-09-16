@@ -2805,7 +2805,7 @@
    "CreateRunRequest": {
     "properties": {
      "analysis_type": {
-      "description": "Typ analizy: SC_3F, SC_1F, SC_2F, SC_2F_G, LOAD_FLOW, PHASE_STATE_SN, DYNAMIC_STABILITY",
+      "description": "Typ analizy: SC_3F, SC_1F, SC_2F, SC_2F_G, LOAD_FLOW, PF_UNBALANCED, PHASE_STATE_SN, DYNAMIC_STABILITY",
       "title": "Analysis Type",
       "type": "string"
      },
@@ -13992,6 +13992,49 @@
      }
     },
     "summary": "Get Phase State Results"
+   }
+  },
+  "/api/analysis-runs/{run_id}/results/rozplyw-niesymetryczny": {
+   "get": {
+    "description": "Wynik rozpływu niesymetrycznego (W5-D): napięcia i prądy per faza, VUF (IEC\n61000-4-30) z solvera, straty, założenia biegu nazwane kodami kanonu.",
+    "operationId": "get_power_flow_unbalanced_results_api_analysis_runs__run_id__results_rozplyw_niesymetryczny_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Run Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Power Flow Unbalanced Results Api Analysis Runs  Run Id  Results Rozplyw Niesymetryczny Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Power Flow Unbalanced Results"
    }
   },
   "/api/analysis-runs/{run_id}/results/short-circuit": {

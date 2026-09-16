@@ -13,6 +13,7 @@ from uuid import UUID
 from api.klucz_twin_dep import KluczTwin
 from domain.execution import ExecutionAnalysisType
 from enm.canonical_analysis import (
+    ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY,
     build_execution_result_set,
 )
 from enm.canonical_analysis import (
@@ -37,7 +38,7 @@ class CreateRunRequest(BaseModel):
     analysis_type: str = Field(
         ...,
         description=(
-            "Typ analizy: SC_3F, SC_1F, SC_2F, SC_2F_G, LOAD_FLOW, "
+            "Typ analizy: SC_3F, SC_1F, SC_2F, SC_2F_G, LOAD_FLOW, PF_UNBALANCED, "
             "PHASE_STATE_SN, DYNAMIC_STABILITY"
         ),
     )
@@ -102,6 +103,8 @@ def _parse_analysis_type(value: str) -> ExecutionAnalysisType:
 def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
     if value == ExecutionAnalysisType.LOAD_FLOW:
         return "PF"
+    if value == ExecutionAnalysisType.PF_UNBALANCED:
+        return ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY
     if value in {
         ExecutionAnalysisType.SC_3F,
         ExecutionAnalysisType.SC_1F,

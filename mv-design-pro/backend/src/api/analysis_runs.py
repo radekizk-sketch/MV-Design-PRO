@@ -23,6 +23,7 @@ from api.canonical_run_views import (
     build_dynamic_stability_time_series_response,
     build_extended_trace_response,
     build_phase_state_results_response,
+    build_power_flow_unbalanced_results_response,
     build_result_items,
     build_results_index_response,
     build_run_trace_payload,
@@ -736,6 +737,15 @@ def get_short_circuit_band(
 @router.get("/analysis-runs/{run_id}/results/phase-state")
 def get_phase_state_results(run_id: UUID) -> dict[str, Any]:
     return canonicalize_json(build_phase_state_results_response(_require_canonical_run(run_id)))
+
+
+@router.get("/analysis-runs/{run_id}/results/rozplyw-niesymetryczny")
+def get_power_flow_unbalanced_results(run_id: UUID) -> dict[str, Any]:
+    """Wynik rozpływu niesymetrycznego (W5-D): napięcia i prądy per faza, VUF (IEC
+    61000-4-30) z solvera, straty, założenia biegu nazwane kodami kanonu."""
+    return canonicalize_json(
+        build_power_flow_unbalanced_results_response(_require_canonical_run(run_id))
+    )
 
 
 @router.get("/analysis-runs/{run_id}/results/dynamic-stability")

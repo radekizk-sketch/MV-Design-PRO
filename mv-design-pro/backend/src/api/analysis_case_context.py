@@ -18,6 +18,8 @@ def _infer_case_kind(run: CanonicalRun) -> str:
         return explicit
     if run.analysis_type == "PF":
         return "ROZPLYW_MAX_OBC"
+    if run.analysis_type == "rozplyw_niesymetryczny":
+        return "ROZPLYW_NIESYMETRYCZNY"
     if run.analysis_type == "short_circuit_sn":
         return "ZWARCIOWY_MAKS"
     if run.analysis_type == "phase_state_sn":
@@ -45,6 +47,8 @@ def _infer_quality_gate(run: CanonicalRun) -> str:
 def _infer_applicability_scope(run: CanonicalRun) -> list[str]:
     if run.analysis_type == "PF":
         return ["PF", "REPORT"]
+    if run.analysis_type == "rozplyw_niesymetryczny":
+        return ["PF_UNBALANCED", "REPORT"]
     if run.analysis_type == "short_circuit_sn":
         return ["SC", "REPORT"]
     if run.analysis_type == "phase_state_sn":

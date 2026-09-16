@@ -15,6 +15,7 @@ from api.canonical_run_views import (
     build_extended_trace_response,
     build_phase_state_results_response,
     build_power_flow_export_bundle,
+    build_power_flow_unbalanced_results_response,
     build_results_index_response,
     build_short_circuit_results_response,
 )
@@ -140,6 +141,8 @@ def normalize_report_options(
 def _analysis_title(run: CanonicalRun) -> str:
     if run.analysis_type == "PF":
         return "Raport rozpływu mocy"
+    if run.analysis_type == "rozplyw_niesymetryczny":
+        return "Raport rozpływu niesymetrycznego"
     if run.analysis_type == "short_circuit_sn":
         return "Raport analizy zwarciowej"
     if run.analysis_type == "phase_state_sn":
@@ -366,6 +369,9 @@ def _build_generic_export_bundle(run: CanonicalRun) -> dict[str, Any]:
     }
     if run.analysis_type == "phase_state_sn":
         bundle["phase_state"] = build_phase_state_results_response(run)
+    elif run.analysis_type == "rozplyw_niesymetryczny":
+        # W5-D: eksport JSON biegu niesie te same wiersze per faza co końcówka wyników.
+        bundle["power_flow_unbalanced"] = build_power_flow_unbalanced_results_response(run)
     elif run.analysis_type == "dynamic_stability":
         bundle["dynamic_stability"] = build_dynamic_stability_results_response(run)
         bundle["automation_trace"] = build_automation_trace_results_response(run)
