@@ -198,10 +198,26 @@ export function formatLvVoltageLabelPl(kv: number): string {
 }
 
 // =============================================================================
-// Modele dynamiczne DER (PV/BESS/FW) — karta FAB-L.
+// Modele dynamiczne DER (PV/BESS/FW) — karta FAB-L, kontrakt proweniencji W6-1.
 // Kontrakt: `api/catalog.py::list_der_dynamic_profiles` →
 // `network_model.catalog.der_dynamic` (konsumowany przez solvery RMS/FRT-HVRT).
 // =============================================================================
+
+/**
+ * Pochodzenie bloku parametrów dynamicznych (karta W6-1 SS0 p.2,
+ * `enm.dynamika_modele.ProweniencjaParametrow`) — WYMAGANA na każdym profilu.
+ * `profil_typowy_normy` jest źródłem legalnym, ale WYBRANYM JAWNIE przez
+ * projektanta — nigdy cichym podstawieniem.
+ */
+export interface DerDynamicProfileProweniencja {
+  readonly zrodlo:
+    | 'karta_producenta'
+    | 'certyfikat_jednostki'
+    | 'profil_typowy_normy'
+    | 'deklaracja_uzytkownika';
+  readonly odniesienie: string;
+  readonly data: string | null;
+}
 
 /** Profil falownika (PV/BESS) — pola 1:1 z `InverterDynamicProfile.model_dump()`. */
 export interface DerInverterDynamicProfileItem {
@@ -209,6 +225,7 @@ export interface DerInverterDynamicProfileItem {
   readonly profile_name_pl: string;
   readonly der_kind: 'PV' | 'BESS';
   readonly control_mode: 'grid_following' | 'grid_forming';
+  readonly proweniencja: DerDynamicProfileProweniencja;
   readonly tp_s: number;
   readonly tq_s: number;
   readonly p_f_droop_pu: number;
@@ -224,8 +241,6 @@ export interface DerInverterDynamicProfileItem {
   readonly p_recovery_rate_pu_per_s: number;
   readonly p_recovery_delay_ms: number;
   readonly virtual_inertia_h_s: number | null;
-  readonly source_reference: string;
-  readonly standard_compliance: readonly string[];
 }
 
 /** Profil turbiny wiatrowej — pola 1:1 z `WindTurbineDynamicProfile.model_dump()`. */
@@ -234,6 +249,7 @@ export interface DerWindDynamicProfileItem {
   readonly profile_name_pl: string;
   readonly der_kind: 'FW';
   readonly iec_type: 'type_1' | 'type_2' | 'type_3' | 'type_4';
+  readonly proweniencja: DerDynamicProfileProweniencja;
   readonly h_total_s: number;
   readonly drive_train_stiffness_pu: number;
   readonly tp_s: number;
@@ -248,8 +264,6 @@ export interface DerWindDynamicProfileItem {
   readonly slip_steady_pu: number;
   readonly v_min_continuous_pu: number;
   readonly v_max_continuous_pu: number;
-  readonly source_reference: string;
-  readonly standard_compliance: readonly string[];
 }
 
 export type DerDynamicProfileItem = DerInverterDynamicProfileItem | DerWindDynamicProfileItem;
@@ -287,17 +301,45 @@ export function selectDerDynamicProfilesForKind(
   return profiles.filter((p) => p.der_kind === kind);
 }
 
+/** Etykieta PL krótkiego źródła proweniencji (karta W6-1 SS0 p.2) — dla listy wyboru. */
+export function formatProweniencjaZrodloLabelPl(
+  zrodlo: DerDynamicProfileProweniencja['zrodlo'],
+): string {
+  switch (zrodlo) {
+    case 'karta_producenta':
+      return 'karta producenta';
+    case 'certyfikat_jednostki':
+      return 'certyfikat jednostki';
+    case 'profil_typowy_normy':
+      return 'profil typowy normy';
+    case 'deklaracja_uzytkownika':
+      return 'deklaracja użytkownika';
+    default:
+      return zrodlo;
+  }
+}
+
 /**
  * Etykieta zwięzła profilu dynamicznego — parametry White Box widoczne wprost
  * (dawny katalog frontu pokazywał WYMYŚLONE `k_factor_iq_over_du`; ten label
  * czyta REALNE pola resolvera: droop P/f dla falowników, typ IEC dla turbin).
+ *
+ * Proweniencja WIDOCZNA w etykiecie (karta W6-1 SS0 p.3): wybór profilu
+ * "typowego normy" jest jawnym wyborem projektanta z listy, nie cichym
+ * podstawieniem — etykieta niesie źródło + odniesienie, żeby ta świadomość
+ * była w samym polu wyboru, nie tylko w dokumentacji.
  */
 export function formatDerDynamicProfileLabelPl(profile: DerDynamicProfileItem): string {
+  const proweniencjaTag =
+    ` [${formatProweniencjaZrodloLabelPl(profile.proweniencja.zrodlo)}: `
+    + `${profile.proweniencja.odniesienie}]`;
   if (profile.der_kind === 'FW') {
     return `${profile.profile_name_pl} (IEC ${profile.iec_type.replace('type_', 'typu ')}, `
-      + `H=${profile.h_total_s.toFixed(1)} s, FRT ${profile.frt_response_time_ms.toFixed(0)} ms)`;
+      + `H=${profile.h_total_s.toFixed(1)} s, FRT ${profile.frt_response_time_ms.toFixed(0)} ms)`
+      + proweniencjaTag;
   }
   const tryb = profile.control_mode === 'grid_forming' ? 'grid-forming' : 'grid-following';
   return `${profile.profile_name_pl} (${tryb}, droop P/f=${(profile.p_f_droop_pu * 100).toFixed(0)}%, `
-    + `t_odp=${profile.tp_s.toFixed(2)} s)`;
+    + `t_odp=${profile.tp_s.toFixed(2)} s)`
+    + proweniencjaTag;
 }

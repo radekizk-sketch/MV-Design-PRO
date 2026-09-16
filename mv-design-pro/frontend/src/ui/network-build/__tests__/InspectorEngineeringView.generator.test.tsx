@@ -235,8 +235,11 @@ vi.mock('../station-der/derRemoteCatalogs', async (importOriginal) => {
         p_recovery_rate_pu_per_s: 0.8,
         p_recovery_delay_ms: 100.0,
         virtual_inertia_h_s: null,
-        source_reference: 'IEEE 1547-2018, IEC 62116, NC RfG art. 13–17',
-        standard_compliance: ['IEEE 1547', 'NC RfG', 'IEC 62116'],
+        proweniencja: {
+          zrodlo: 'profil_typowy_normy',
+          odniesienie: 'IEEE 1547-2018 §5-8; Rozporzadzenie (UE) 2016/631 (NC RfG) art. 13-21',
+          data: null,
+        },
       }],
       status: 'success',
       isLoading: false,
@@ -276,10 +279,11 @@ describe('InspectorEngineeringView - PV za transformatorem SN/nN', () => {
     // Karta FAB-L: etykieta modelu dynamicznego jest dziś REALNYM formatowaniem
     // (`formatDerDynamicProfileLabelPl`) profilu backendu `default_pv_gfl`, nie
     // zaszytym literałem starego katalogu frontu (usunięty razem z auto-selekcją
-    // „po rodzaju urządzenia").
+    // „po rodzaju urządzenia"). Karta W6-1: etykieta niesie proweniencję jawnie.
     expect(
       screen.getByText(
-        'Domyślny PV grid-following (IEEE 1547 / NC RfG kat. B) (grid-following, droop P/f=4%, t_odp=0.05 s)',
+        'Domyślny PV grid-following (IEEE 1547 / NC RfG kat. B) (grid-following, droop P/f=4%, t_odp=0.05 s)'
+          + ' [profil typowy normy: IEEE 1547-2018 §5-8; Rozporzadzenie (UE) 2016/631 (NC RfG) art. 13-21]',
       ),
     ).toBeInTheDocument();
     expect(screen.getByText('Obliczenia i uzasadnienie')).toBeInTheDocument();

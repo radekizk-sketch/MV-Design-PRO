@@ -16,6 +16,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   fetchDerDynamicProfiles,
   formatDerDynamicProfileLabelPl,
+  formatProweniencjaZrodloLabelPl,
   getDerDynamicProfile,
   selectDerDynamicProfilesForKind,
   type DerDynamicProfileItem,
@@ -41,8 +42,7 @@ const PV_GFL: DerDynamicProfileItem = {
   p_recovery_rate_pu_per_s: 0.2,
   p_recovery_delay_ms: 0,
   virtual_inertia_h_s: null,
-  source_reference: 'IEC 61400-27 / VDE-AR-N 4110',
-  standard_compliance: ['IEC 61400-27'],
+  proweniencja: { zrodlo: 'profil_typowy_normy', odniesienie: 'IEEE 1547-2018 §5-8', data: null },
 };
 
 const BESS_GFM: DerDynamicProfileItem = {
@@ -72,8 +72,11 @@ const WIND_TYPE4: DerDynamicProfileItem = {
   slip_steady_pu: 0,
   v_min_continuous_pu: 0.9,
   v_max_continuous_pu: 1.1,
-  source_reference: 'IEC 61400-27-1 typ 4',
-  standard_compliance: ['IEC 61400-27-1'],
+  proweniencja: {
+    zrodlo: 'profil_typowy_normy',
+    odniesienie: 'IEC 61400-27-1:2020 (generyczne modele dynamiczne typ 1-4)',
+    data: null,
+  },
 };
 
 const KATALOG: readonly DerDynamicProfileItem[] = [PV_GFL, BESS_GFM, WIND_TYPE4];
@@ -105,18 +108,42 @@ describe('selectDerDynamicProfilesForKind', () => {
 });
 
 describe('formatDerDynamicProfileLabelPl', () => {
-  it('falownik (PV/BESS): pokazuje tryb regulacji + droop P/f + czas odpowiedzi', () => {
+  it('falownik (PV/BESS): pokazuje tryb regulacji + droop P/f + czas odpowiedzi + proweniencję', () => {
     expect(formatDerDynamicProfileLabelPl(PV_GFL)).toBe(
-      'PV grid-following domyślny (grid-following, droop P/f=5%, t_odp=0.02 s)',
+      'PV grid-following domyślny (grid-following, droop P/f=5%, t_odp=0.02 s)'
+        + ' [profil typowy normy: IEEE 1547-2018 §5-8]',
     );
     expect(formatDerDynamicProfileLabelPl(BESS_GFM)).toBe(
-      'BESS grid-forming domyślny (grid-forming, droop P/f=5%, t_odp=0.02 s)',
+      'BESS grid-forming domyślny (grid-forming, droop P/f=5%, t_odp=0.02 s)'
+        + ' [profil typowy normy: IEEE 1547-2018 §5-8]',
     );
   });
 
-  it('turbina (FW): pokazuje typ IEC + inercję H + czas odpowiedzi FRT — NIE tryb falownika', () => {
+  it('turbina (FW): pokazuje typ IEC + inercję H + czas odpowiedzi FRT + proweniencję — NIE tryb falownika', () => {
     expect(formatDerDynamicProfileLabelPl(WIND_TYPE4)).toBe(
-      'Turbina typu 4 (pełny przekształtnik) (IEC typu 4, H=4.5 s, FRT 20 ms)',
+      'Turbina typu 4 (pełny przekształtnik) (IEC typu 4, H=4.5 s, FRT 20 ms)'
+        + ' [profil typowy normy: IEC 61400-27-1:2020 (generyczne modele dynamiczne typ 1-4)]',
+    );
+  });
+
+  it('proweniencja karty producenta/certyfikatu/deklaracji ma osobną etykietę PL', () => {
+    expect(formatProweniencjaZrodloLabelPl('karta_producenta')).toBe('karta producenta');
+    expect(formatProweniencjaZrodloLabelPl('certyfikat_jednostki')).toBe('certyfikat jednostki');
+    expect(formatProweniencjaZrodloLabelPl('profil_typowy_normy')).toBe('profil typowy normy');
+    expect(formatProweniencjaZrodloLabelPl('deklaracja_uzytkownika')).toBe('deklaracja użytkownika');
+  });
+
+  it('etykieta profilu z karty producenta odzwierciedla proweniencję w nawiasie', () => {
+    const zKartyProducenta: DerDynamicProfileItem = {
+      ...PV_GFL,
+      proweniencja: {
+        zrodlo: 'karta_producenta',
+        odniesienie: 'DS-SMA-2026-0417',
+        data: '2026-04-17',
+      },
+    };
+    expect(formatDerDynamicProfileLabelPl(zKartyProducenta)).toContain(
+      '[karta producenta: DS-SMA-2026-0417]',
     );
   });
 });
