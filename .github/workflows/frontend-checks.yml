@@ -80,3 +80,9 @@ jobs:
       - name: TSConfig Gate Guard
         working-directory: mv-design-pro
         run: python scripts/tsconfig_gate_guard.py
+      # Karta HARNESS-RESZTA (2026-09-16): zero literalow fizyki/recznych run_id
+      # PONAD zmierzony prog w harnessach zrzutow (`*-harness-main.tsx`) — zapadka
+      # w obie strony, tak samo jak TSConfig Gate Guard powyzej.
+      - name: Harness No Physics Literals Guard
+        working-directory: mv-design-pro
+        run: python scripts/harness_no_physics_literals_guard.py
