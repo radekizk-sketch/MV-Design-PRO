@@ -1,7 +1,28 @@
 /// <reference types="vitest" />
-import { defineConfig, loadEnv } from 'vite';
+import { realpathSync } from 'node:fs';
+import { dirname, resolve as resolvePath } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { defineConfig, loadEnv, searchForWorkspaceRoot } from 'vite';
 import react from '@vitejs/plugin-react';
 import { configDefaults } from 'vitest/config';
+
+const _dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Realpath `node_modules` względem korzenia projektu — rozwiązuje dowiązanie
+ * (worktree izolowane) na rzeczywistą ścieżkę, którą Vite porównuje z
+ * `server.fs.allow`. Brak katalogu (świeży checkout przed `npm ci`) zwraca
+ * ścieżkę NIEROZWIĄZANĄ zamiast wywalać start configu — Vite i tak odmówi
+ * serwowania z niego, dopóki nie powstanie.
+ */
+function realpathNodeModules(projectRoot: string): string {
+  const path = resolvePath(projectRoot, 'node_modules');
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -35,6 +56,26 @@ export default defineConfig(({ mode }) => {
     server: {
       host: '0.0.0.0',
       port: 5173,
+      // KARTA VITE-FS-ALLOW (2026-09-16, pomiar tego samego dnia). Gdy
+      // `node_modules` jest DOWIĄZANIEM poza korzeniem worktree (worktree
+      // izolowane współdzielą jedną realną kopię `node_modules`, żeby nie
+      // kopiować kilkuset MB per worktree), Vite dev odmawia (403) plikom spod
+      // `/@fs/<realpath>/...` (np. czcionki KaTeX, katalog `katex/dist/fonts`
+      // ładowane przez `ui/proof/MathRenderer.tsx`): `server.fs.allow`
+      // domyślnie obejmuje `searchForWorkspaceRoot(process.cwd())`, ale Vite
+      // sprawdza listę wobec REALPATH żądanego pliku (dowiązanie rozwiązane),
+      // a ten realpath leży POZA korzeniem worktree. Jawne dopisanie realpath
+      // `node_modules` (rozwiązanego RAZ, przy starcie konfiguracji —
+      // `realpathSync`, nie `readlink` w locie) naprawia to bez wyłączania
+      // ochrony (`fs.strict: false` jest ZAKAZANE — wyłączyłoby cały mechanizm
+      // zamiast rozszerzyć listę o jedną, konkretną, zweryfikowaną ścieżkę).
+      // Korzeń projektu i `searchForWorkspaceRoot` zostają — to zachowanie
+      // domyślne Vite, nadpisywane, nie zawężane, przez jawną listę.
+      fs: {
+        allow: Array.from(
+          new Set([searchForWorkspaceRoot(_dirname), _dirname, realpathNodeModules(_dirname)]),
+        ),
+      },
       // KANON PREFIKSU (karta PREFIKSY): backend wystawia KAŻDY router HTTP pod
       // `/api`, więc jedna reguła wystarczy. Wcześniej stała tu druga reguła dla
       // `/projects` — obejście tego, że router archiwum projektu był zamontowany
