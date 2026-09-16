@@ -50,7 +50,7 @@ export const PRZEBIEGI_STRINGS = {
   etykietaBlad: 'Komunikat błędu',
   etykietaId: 'Identyfikator przebiegu',
   etykietaPrzypadekId: 'Identyfikator przypadku',
-  // TODO-UI2 §1 p. 10: „Rewizja modelu" ma teraz kontrakt (`ExecutionRun.model_revision`,
+  // KARTA-UI2 §1 p. 10: „Rewizja modelu" ma teraz kontrakt (`ExecutionRun.model_revision`,
   // koperta CV-2) — `null` opisuje KONKRETNY zapisany bieg sprzed rejestru koperty,
   // nie brak funkcji ("wkrótce" byłoby fałszywe: kontrakt istnieje i jest czytany).
   pochodzenieBrakWRekordzie: 'Brak w rekordzie przebiegu (sprzed rejestru koperty rewizji)',

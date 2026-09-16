@@ -4,7 +4,7 @@
  * W pełni sterowane propsami (rekord z listy — `ExecutionRun` niesie komplet
  * pól szczegółów, `types.ts:234-243`).
  *
- * TODO-UI2 §1 p. 10 (zamknięcie): „Rewizja modelu" ma źródło (`model_revision`,
+ * KARTA-UI2 §1 p. 10 (zamknięcie): „Rewizja modelu" ma źródło (`model_revision`,
  * koperta CV-2) — wiersz w sekcji „Parametry przebiegu" jak reszta pól, `null`
  * (biegi sprzed rejestru koperty) pokazuje jawny powód, nie „wkrótce". „Wartości
  * parametrów wejściowych solvera" (surowe liczby) NIE mają i nie będą mieć pola w

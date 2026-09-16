@@ -29,7 +29,7 @@ export interface TopologyState {
   summary: TopologyGraphSummary | null;
   /**
    * Struktura topologiczna (stacje/pola/węzły/magistrale, null = nie załadowana) —
-   * TODO-UI2 §1 p. 11: źródło trybów drzewa „administracyjny"/„obwodowy".
+   * KARTA-UI2 §1 p. 11: źródło trybów drzewa „administracyjny"/„obwodowy".
    */
   structure: TopologyStructure | null;
   /** Czy trwa ładowanie. */

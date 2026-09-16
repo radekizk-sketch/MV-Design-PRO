@@ -21,7 +21,7 @@
  *   którego `refresh` nikt nie wołał — liczniki drzewa były ZAWSZE zerowe,
  *   mimo blokad widocznych w panelu gotowości.
  *
- * TODO-UI2 §1 p. 11 (zamknięcie): tryby „administracyjny" (grupowanie po
+ * KARTA-UI2 §1 p. 11 (zamknięcie): tryby „administracyjny" (grupowanie po
  * stacjach) i „obwodowy" (grupowanie po odejściach ze źródła) MAJĄ teraz
  * jednoznaczne źródło:
  * - „administracyjny": `Bay.bus_ref` → `Bay.substation_ref` (struktura pola SN

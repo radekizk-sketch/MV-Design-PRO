@@ -16,7 +16,7 @@
  * - zmiana rewizji migawki modelu (każda operacja domenowa podnosi rewizję,
  *   więc drzewo idzie w parze z kanwą i panelem gotowości).
  *
- * TODO-UI2 §1 p. 11: obok `summary` (tryb „zasilania") ładujemy RÓWNIEŻ
+ * KARTA-UI2 §1 p. 11: obok `summary` (tryb „zasilania") ładujemy RÓWNIEŻ
  * `structure` (`GET .../enm/topology` — stacje/pola), źródło trybów drzewa
  * „administracyjny"/„obwodowy" w `topologyTreeAdapter.ts`. Ten sam wyzwalacz
  * (przypadek/rewizja) — jedna migawka topologii, dwa kształty odpowiedzi.

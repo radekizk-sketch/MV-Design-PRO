@@ -17,7 +17,7 @@
  * - Stan ładowania / błędu: `isLoadingRuns` (`runStore.ts:48`), `runError`
  *   (`runStore.ts:52`).
  *
- * STAN FAKTYCZNY (TODO-UI2 §1 p. 10, poprzednie ograniczenia #1/#2/#3):
+ * STAN FAKTYCZNY (KARTA-UI2 §1 p. 10, poprzednie ograniczenia #1/#2/#3):
  * 1. `runStore.runs` niesie przebiegi WYŁĄCZNIE dla `activeStudyCaseId`
  *    (`runStore.ts:87-97`) — ALE synchronizacja tego pola z aktywnym przypadkiem
  *    powłoki (`app-state.activeCaseId`) JUŻ ISTNIEJE: `useHydratacjaPowloki.ts`
@@ -147,8 +147,11 @@ export function useWierszePrzebiegow(): PrzebiegWiersz[] {
  * Reakcja na żywo (karta §3 kryterium 2): `wyniki-gotowe` dla AKTYWNIE śledzonego
  * przypadku (`activeStudyCaseId`) odświeża listę przez ISTNIEJĄCĄ akcję
  * `loadRuns` (ponowne, autorytatywne pobranie — bez zgadywania stanu z samego
- * zdarzenia magistrali). Zdarzenie dla INNEGO przypadku jest ignorowane (lista
- * pozostaje zakresem `activeStudyCaseId` — TODO-KARTA #1). `wyniki-niewazne`
+ * zdarzenia magistrali). Zdarzenie dla INNEGO przypadku jest ignorowane (ten
+ * hak dotyczy WYŁĄCZNIE listy przebiegów aktywnie śledzonego przypadku —
+ * `activeStudyCaseId` — historia WSZYSTKICH przypadków projektu naraz płynie
+ * osobnym torem: `adapters/wszystkiePrzebiegiProjektu.ts`,
+ * `useWszystkiePrzebiegiProjektu`). `wyniki-niewazne`
  * nie zmienia danych (status przebiegu w `ExecutionRun` nie zależy od rewizji
  * modelu) — wyłącznie aktualizuje ogłoszenie ARIA-live (WHITE BOX transparentność).
  * Zwraca bieżącą treść ogłoszenia do wyrenderowania w `aria-live` (wzorzec

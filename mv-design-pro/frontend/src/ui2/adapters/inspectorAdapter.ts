@@ -4,10 +4,10 @@
  * Źródło (WYŁĄCZNIE odczyt): ui/topology/snapshotStore.ts — useSnapshotStore.snapshot
  * (EnergyNetworkModel). Adapter buduje projekcję obiektu dla inspektora powłoki:
  * sekcja „Podstawowe" + sekcja „Właściwości katalogowe" (pełne mapowanie WŁASNYCH
- * pól katalogowych/nastawczych każdego typu elementu ENM — TODO-UI2 §1 p. 11) +
+ * pól katalogowych/nastawczych każdego typu elementu ENM — KARTA-UI2 §1 p. 11) +
  * szczegóły techniczne (tryb Ekspercki).
  *
- * GRANICA (świadoma, nie TODO): zakładki „Wyniki"/„Dowody" inspektora (`obiekt.wyniki`,
+ * GRANICA (świadoma decyzja, nie zaległość): zakładki „Wyniki"/„Dowody" inspektora (`obiekt.wyniki`,
  * `obiekt.dowody` — zawsze puste tutaj) wymagają kontekstu AKTYWNEGO PRZEBIEGU
  * (który run, czy element ma dla niego ślad WHITE BOX) — dane, których ten adapter
  * (wejście: WYŁĄCZNIE `snapshot`+`id`, bez run/wyników) nie ma i nie zgaduje.
@@ -587,7 +587,7 @@ export function useRewizjaModelu(): number {
 }
 
 /**
- * „Otwórz dowód" inspektora (TODO-UI2 §0.3): dowód WHITE BOX elementu
+ * „Otwórz dowód" inspektora (KARTA-UI2 §0.3): dowód WHITE BOX elementu
  * wskazanego 2× klikiem (`InspectorPanel`/`TabDowod`, `ValueRow.dowodRef`) —
  * ZŁOŻONA z trzech istniejących, już przetestowanych elementarzy powłoki
  * (żadnej nowej magistrali/store'u):

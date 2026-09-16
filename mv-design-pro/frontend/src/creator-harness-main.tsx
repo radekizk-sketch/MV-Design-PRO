@@ -1982,7 +1982,11 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
-  if (url.includes('/api/execution/study-cases/') && url.endsWith('/runs')) {
+  if (
+    url.includes('/api/execution/study-cases/') &&
+    url.endsWith('/runs') &&
+    (init?.method ?? 'GET').toUpperCase() === 'POST'
+  ) {
     // Scena "oltc": utworzenie przebiegu LF z opcja badania OLTC (kontrakt H1).
     return new Response(
       JSON.stringify({
@@ -1990,6 +1994,38 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
         solver_input_hash: 'oltc-in-5d7f2a91', status: 'PENDING',
         started_at: null, finished_at: null, error_message: null,
       }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (
+    url.includes('/api/execution/study-cases/') &&
+    url.endsWith('/runs') &&
+    (init?.method ?? 'GET').toUpperCase() === 'GET'
+  ) {
+    // Lista przebiegow per przypadek (`listRuns`, `useWszystkiePrzebiegiProjektu`) —
+    // wywolywana przez `PulpitProjektu` (scena "pulpit") dla KAZDEGO przypadku
+    // projektu. Scena "pulpit" zasiewa `useExecutionRunsStore` z `run-lf-2` dla
+    // K1 (parytet wizualny z kafla "Ostatni przebieg" sprzed tej trasy) — inne
+    // przypadki dostaja uczciwa pusta liste (zero fabrykacji danych, ktorych
+    // scena nie zasiala).
+    const przypadekId = url.split('/api/execution/study-cases/')[1]?.split('/runs')[0] ?? '';
+    if (przypadekId === 'K1') {
+      return new Response(
+        JSON.stringify({
+          runs: [
+            {
+              id: 'run-lf-2', study_case_id: 'K1', analysis_type: 'LOAD_FLOW', status: 'DONE',
+              started_at: '2026-07-21T18:05:00Z', finished_at: '2026-07-21T18:05:04Z',
+              solver_input_hash: 'pulpit-lf2', error_message: null,
+            },
+          ],
+          count: 1,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    return new Response(
+      JSON.stringify({ runs: [], count: 0 }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }

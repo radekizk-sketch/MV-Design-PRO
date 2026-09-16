@@ -28,8 +28,12 @@
  *   SOURCES     -> 'zwarcia'   (parametry źródła to wprost dane zwarciowe —
  *                  patrz też `enm/validator.py:287` kod
  *                  `sources.no_short_circuit_params`, message_pl: „Źródło...
- *                  nie ma parametrów zwarciowych"; współwymagane też przez
- *                  LOAD_FLOW — TODO-KARTA niżej)
+ *                  nie ma parametrów zwarciowych". SOURCES jest wg
+ *                  `get_blockers_for_analysis` wymagane RÓWNIEŻ przez
+ *                  LOAD_FLOW — mapowanie kod -> cel jest jednak PER KOD, nie
+ *                  per (kod, typ analizy): ten sam wpis rejestru pod celem
+ *                  'zwarcia' pokrywa blokadę niezależnie od tego, którą
+ *                  analizę projektant akurat sprawdza)
  *   TOPOLOGY, CATALOGS, ANALYSIS -> 'wspolne' (wymóg wspólny SC/LF/zabezp.)
  *   GENERATORS  -> 'rozplyw'   (wyłącznie LOAD_FLOW wg rejestru)
  *   PROTECTION  -> 'zabezpieczenia' (wyłącznie PROTECTION wg rejestru)
@@ -89,7 +93,7 @@
  * kodem dokładnym; nieznany, nowy kod tych prefiksów -> „Pozostałe" (bez
  * zgadywania, zgodnie z kartą §2).
  *
- * ZAMKNIĘCIE (TODO-UI2 §1 p. 13): test parytetu
+ * ZAMKNIĘCIE (KARTA-UI2 §1 p. 13): test parytetu
  * (`__tests__/grupowanieCelow.parytetRejestru.test.ts`) porównuje TĘ mapę z
  * pełnym kanonicznym rejestrem (`GET /api/readiness/registry`, snapshot
  * `__tests__/fixtures/readiness_registry_snapshot.json`) — każdy kod rejestru
@@ -293,7 +297,7 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'study_case.missing_base_snapshot': 'wspolne',
   'analysis.blocked_by_readiness': 'wspolne',
 
-  // TODO-UI2 §1 p. 13 (test parytetu `grupowanieCelow.parytetRejestru.test.ts`
+  // KARTA-UI2 §1 p. 13 (test parytetu `grupowanieCelow.parytetRejestru.test.ts`
   // ujawnił 76 kodów kanonu dodanych do rejestru PO napisaniu tabeli powyżej —
   // ten sam mapowanie OBSZAR -> CEL z nagłówka pliku, kod dokładny (nie
   // fallback prefiksu: "nn"/"transformer" mają rozdzielone obszary w rejestrze,

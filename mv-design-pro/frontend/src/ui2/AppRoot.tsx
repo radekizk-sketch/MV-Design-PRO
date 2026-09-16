@@ -7,7 +7,7 @@
  *   ('drzewo-kontekstowe'); adapter store'a selekcji pozostaje fallbackiem;
  * - tryby drzewa topologii „administracyjny" (grupowanie po `Bay.substation_ref`)
  *   i „obwodowy" (grupowanie po odejściach ze źródła w drzewie zasilania) mają
- *   źródło od TODO-UI2 §1 p. 11 (`useTopologyStore.structure`,
+ *   źródło od KARTA-UI2 §1 p. 11 (`useTopologyStore.structure`,
  *   `topologyTreeAdapter.ts`); przełącznik trybu w `DrzewoPrzestrzeni` niżej,
  *   domyślny tryb „zasilania" (dotychczasowe zachowanie 1:1);
  * - hierarchia przebiegów: zakres = aktywny przypadek (agregacja wielu przypadków = E7.x).
@@ -123,7 +123,7 @@ function DrzewoPrzestrzeni({
   zaznaczonyId: string | null;
   onZaznacz: (id: string) => void;
 }) {
-  // TODO-UI2 §1 p. 11: przełącznik trybu widoczny WYŁĄCZNIE dla drzewa
+  // KARTA-UI2 §1 p. 11: przełącznik trybu widoczny WYŁĄCZNIE dla drzewa
   // topologii (przestrzeń „Model") — `administracyjny`/`obwodowy` mają teraz
   // realne źródło (`useTopologyStore.structure`, `topologyTreeAdapter.ts`),
   // więc przełącznik `ContextTree` (dotąd nigdy niewpięty — `tryb` zawsze

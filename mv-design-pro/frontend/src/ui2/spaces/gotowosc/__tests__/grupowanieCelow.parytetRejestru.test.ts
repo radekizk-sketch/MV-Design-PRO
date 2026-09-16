@@ -20,8 +20,8 @@
  *
  * Kryterium (karta §1 p. 13): KAŻDY kod kanonicznego rejestru ma grupę —
  * `celDlaKodu(code) !== 'pozostale'`. „Pozostałe" jest zarezerwowane dla
- * kodów SPOZA rejestru (generyczne E/W/I bez separatora kropkowego,
- * `enm/validator.py` — TODO-KARTA #1 nagłówka `grupowanieCelow.ts`, jawnie
+ * kodów SPOZA rejestru (generyczne E/W/I bez separatora kropkowego z
+ * `enm/validator.py` — ograniczenie 1 w nagłówku `grupowanieCelow.ts`, jawnie
  * NIE rejestrowane tu jako regresja, bo rejestr kanoniczny ich nie zna).
  */
 import { describe, expect, it } from 'vitest';

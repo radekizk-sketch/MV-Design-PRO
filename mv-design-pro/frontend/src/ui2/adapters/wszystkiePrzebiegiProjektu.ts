@@ -1,5 +1,5 @@
 /*
- * Pełna historia biegów WSZYSTKICH przypadków projektu (TODO-UI2 §1 p. 10) —
+ * Pełna historia biegów WSZYSTKICH przypadków projektu (KARTA-UI2 §1 p. 10) —
  * konsumowana przez `ui2/nav/adapters/runsTreeAdapter.ts` (drzewo przebiegów
  * WSZYSTKICH przypadków, nie tylko aktywnego) i `ui2/spaces/projekt/
  * pulpitAdapter.ts` (kolumna „Ostatni przebieg" per wiersz przypadku).
@@ -12,7 +12,7 @@
  * wydajnościowym — akceptowalnym dla widoku historii (odświeżany przy zmianie
  * listy przypadków/zdarzeniu magistrali „wyniki-gotowe", NIE w pętli
  * odpytywania) i mniejszym ryzykiem niż zmiana kontraktu `canonical_run_views.py`
- * (własność sub-karty równoległej TODO-UI2 — poza plikami tej karty).
+ * (własność sub-karty równoległej KARTA-UI2 — poza plikami tej karty).
  *
  * `useExecutionRunsStore.runs` NIE jest tu źródłem — ten store trzyma
  * WYŁĄCZNIE aktywny przypadek (`activeStudyCaseId`, patrz `runsTreeAdapter.ts`

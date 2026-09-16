@@ -75,7 +75,7 @@ export const PRZYPADKI_STRINGS = {
   kolWartosc: 'Wartość',
   kolPochodzenie: 'Pochodzenie',
 
-  // Założenia — etykiety pierwszoplanowe (TODO-UI2 §1 p. 10: temperatura/stan
+  // Założenia — etykiety pierwszoplanowe (KARTA-UI2 §1 p. 10: temperatura/stan
   // łączeń SKASOWANE — StudyCaseConfig ich nie niesie i nie będzie nosić;
   // kontrolka bez dostawcy w kontrakcie = fantom, nie „wkrótce")
   zalozenieCMax: 'Współczynnik napięciowy c (max)',

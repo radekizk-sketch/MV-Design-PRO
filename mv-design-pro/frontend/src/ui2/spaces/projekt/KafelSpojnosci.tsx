@@ -4,7 +4,7 @@
  * `FreshnessBadge` z `ui2/inspector` (SPEC_POWIAZANIA §6.2 — jeden znacznik, zakaz
  * lokalnych wariantów; karta §5 kryt. 4).
  *
- * ZAMKNIĘCIE (TODO-UI2 §1 p. 10, poprzednie ograniczenie #2): `StatusWynikowPrzypadku
+ * ZAMKNIĘCIE (KARTA-UI2 §1 p. 10, poprzednie ograniczenie #2): `StatusWynikowPrzypadku
  * .rewizja_biegu` (`ui/study-cases/types.ts:101`, dodane kartą CV-2-W PO napisaniu
  * poprzedniej treści tego komentarza) niesie liczbową rewizję modelu, na której
  * policzono AKTUALNE wyniki przypadku — dla OBU stanów aktualności (rewizja biegu

@@ -5,7 +5,7 @@
  * `StudyCase` z konfiguracją). Parametry i etykiety z ISTNIEJĄCYCH typów
  * (`CONFIG_FIELD_LABELS`, `types.ts:194`).
  *
- * TODO-UI2 §1 p. 10 (zamknięcie): „Temperatura przewodów" i „Stan łączeń" NIE są
+ * KARTA-UI2 §1 p. 10 (zamknięcie): „Temperatura przewodów" i „Stan łączeń" NIE są
  * i NIE BĘDĄ polami `StudyCaseConfig` — temperatura nie istnieje w ogóle w modelu
  * przypadku, a stan łączeniowy jest częścią `OperatingScenario` (CV-3.1), osobnego
  * bytu od konfiguracji przypadku. Wiersze „wkrótce" dla tych dwóch założeń są

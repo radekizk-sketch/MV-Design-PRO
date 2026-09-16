@@ -29,7 +29,7 @@
  *   `api.ts:51`). Klonowanie (dziedziczenie „jak…, ale…"): `useStudyCasesStore.cloneCase`
  *   (`store.ts:204` → `api.cloneStudyCase` `api.ts:107`).
  *
- * STAN FAKTYCZNY (TODO-UI2 §1 p. 10, zamknięcie poprzednich ograniczeń):
+ * STAN FAKTYCZNY (KARTA-UI2 §1 p. 10, zamknięcie poprzednich ograniczeń):
  * 1. „Temperatura przewodów" oraz „Stan łączeń" NIE są i NIE BĘDĄ polami
  *    `StudyCaseConfig` (`types.ts:46-71`; temperatura nie istnieje w modelu
  *    przypadku, stan łączeniowy jest częścią `OperatingScenario` (CV-3.1,
@@ -45,7 +45,7 @@
  *    `StudyCase` backendu wymaga migracji schematu i wszystkich konsumentów
  *    (decyzja produktowa o zakresie rodzajów przypadku) — poza plikami tej karty.
  * 3. Klonowanie (`api.cloneStudyCase`) przyjmuje WYŁĄCZNIE `new_name` — kanon
- *    (TODO-UI2 §1 p. 10: „formularz pokazuje dokładnie to, co backend przyjmuje")
+ *    (KARTA-UI2 §1 p. 10: „formularz pokazuje dokładnie to, co backend przyjmuje")
  *    potwierdza, że to jest ZAMIERZONY kształt kontraktu, nie luka: klon kopiuje
  *    konfigurację 1:1, wynik zawsze NONE, więc „aktywność"/„opis" nie mają się
  *    do czego odnieść przy dziedziczeniu — te dwa pola dotyczą wyłącznie ścieżki

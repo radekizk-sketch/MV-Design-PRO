@@ -4,12 +4,15 @@
  * inżyniera (karta §2) — cel → gotowe przykłady → istniejące projekty
  * (`AUDYT_RADY_SPECJALISTOW_2026-07.md` W-102: „start od celu").
  *
- * W pełni sterowany propsami (karta „ZAKAZ"): `projekty` z wołającego (adapter
- * `adapters/projektyAdapter.ts` jest szkieletem projekcji — źródło wymaga
- * `fetch`, patrz TODO-KARTA tamże), `onOtworzProjekt`, `onNowyProjekt`,
- * `onWczytajPrzyklad`. Zero wołań API, zero mutacji, zero fizyki (warstwa
- * prezentacji). Wpięcie do AppRoot/AppShell = karta zarządcy; wczytywanie
- * przykładów (P-01…P-05) jest wyłącznie callbackiem — realizacja = E3.
+ * W pełni sterowany propsami (karta „ZAKAZ"): `projekty` z wołającego (czysta
+ * projekcja `adapters/projektyAdapter.ts::mapujProjekty`, wołanie `fetch`
+ * żyje w kontenerze — patrz `OtworzProjektKontener.tsx`), `onOtworzProjekt`,
+ * `onNowyProjekt`, `onWczytajPrzyklad`. Zero wołań API, zero mutacji, zero
+ * fizyki (warstwa prezentacji). Wpięcie do AppRoot: `OtworzProjektKontener`
+ * (karta K4, `ui2/AppRoot.tsx`, przestrzeń „Projekt" bez `activeProjectId`);
+ * wczytywanie przykładów (P-01…P-05) jest wyłącznie callbackiem — dostawcy
+ * materializacji przykładu dziś nie ma (dowód w `OtworzProjektKontener.tsx`
+ * — pusta lista `przyklady`, sekcja się nie renderuje).
  *
  * Parytet z mostem `#dashboard` (karta KD-1, luki L-2…L-5) — WYŁĄCZNIE
  * prezentacja i potwierdzenia; realne wywołania API robi kontener:
@@ -34,7 +37,7 @@ import type { ProjektWiersz } from './adapters/projektyAdapter';
 import { Kafel } from '../Kafel';
 
 export interface OtworzProjektProps {
-  /** Lista istniejących projektów — źródło u wołającego (karta §2 TODO-KARTA). */
+  /** Lista istniejących projektów — źródło: `OtworzProjektKontener` (GET /api/projects). */
   projekty: ProjektWiersz[];
   /** Stan „ładowanie" listy istniejących projektów. */
   ladowanieProjektow?: boolean;

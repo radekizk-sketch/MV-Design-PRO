@@ -6,7 +6,7 @@
  * (nowy) lub `cloneCase` (dziedziczenie). Zero fizyki, zero mutacji modelu.
  *
  * Klonowanie (`api.cloneStudyCase`) przyjmuje WYŁĄCZNIE nową nazwę — kanon
- * (TODO-UI2 §1 p. 10): „formularz pokazuje dokładnie to, co backend przyjmuje
+ * (KARTA-UI2 §1 p. 10): „formularz pokazuje dokładnie to, co backend przyjmuje
  * (nic więcej)". Klon kopiuje konfigurację źródła 1:1 i zawsze startuje z
  * wynikiem NONE, więc „Ustaw jako aktywny" i opis (pola bez odpowiednika w
  * kontrakcie klonowania) należą WYŁĄCZNIE do ścieżki „nowy pusty" — poniżej

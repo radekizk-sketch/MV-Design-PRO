@@ -22,7 +22,7 @@
  *   `ExecutionRun.started_at/analysis_type/status` — `types.ts:234-243`; etykiety
  *   `ANALYSIS_TYPE_LABELS`/`RUN_STATUS_LABELS` — `types.ts:270-289`.
  *
- * STAN FAKTYCZNY (TODO-UI2 §1 p. 10, zamknięcie poprzednich ograniczeń §2/§4):
+ * STAN FAKTYCZNY (KARTA-UI2 §1 p. 10, zamknięcie poprzednich ograniczeń §2/§4):
  * 1. Kafel „Postęp wg celu" (audyt W-101) NIE MIAŁ źródła w store'ach read-only
  *    (brak modelu celu projektu) i był renderowany jako kafel-zaślepka
  *    „wkrótce". Karta PULPIT-NBA §0.4 USUNĘŁA tę zaślepkę wraz z komponentem
@@ -300,8 +300,9 @@ export function mapujSpojnosc(
 
 /**
  * Wiersze listy przypadków. `ostatniPrzebiegWgId` mapuje id przypadku → ISO
- * czasu ostatniego przebiegu (dostępne wyłącznie dla aktywnego przypadku —
- * TODO-KARTA #3); brak wpisu → `null` („—" w kolumnie).
+ * czasu ostatniego przebiegu — dla WSZYSTKICH przypadków projektu (patrz
+ * `ostatniPrzebiegWgPrzypadku` niżej i `useWszystkiePrzebiegiProjektu`, nie
+ * tylko dla aktywnego); brak wpisu → `null` („—" w kolumnie).
  */
 export function mapujPrzypadki(
   cases: StudyCaseListItem[],
@@ -381,7 +382,7 @@ function ostatniPrzebiegWgPrzypadku(runs: ExecutionRun[]): ReadonlyMap<string, s
 
 export function usePrzypadkiWiersze(): PrzypadekWiersz[] {
   const cases = useSortedCases();
-  // TODO-UI2 §1 p. 10 (zamknięcie): pełna historia WSZYSTKICH przypadków,
+  // KARTA-UI2 §1 p. 10 (zamknięcie): pełna historia WSZYSTKICH przypadków,
   // nie tylko aktywnego (patrz nagłówek pliku pkt 3).
   const { runs } = useWszystkiePrzebiegiProjektu();
   const ostatniPrzebiegWgId = useMemo(() => ostatniPrzebiegWgPrzypadku(runs), [runs]);

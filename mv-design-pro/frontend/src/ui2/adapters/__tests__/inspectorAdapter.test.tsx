@@ -5,10 +5,12 @@
  * `otworzDowodInspektora` (nawigacja „Otwórz dowód" — TODO-UI2 §0.3).
  */
 import { beforeEach, describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { useAppStateStore } from '../../../ui/app-state';
 import { subskrybuj } from '../../events';
+import { InspectorPanel, INSPECTOR_STRINGS, type ObiektInspektora } from '../../inspector';
 import { useShellStore } from '../../shell/useShellStore';
 import {
   KOLEKCJE_ELEMENTOW,
@@ -376,5 +378,110 @@ describe('otworzDowodInspektora — nawigacja „Otwórz dowód" (TODO-UI2 §0.3
   it('przełącza aktywną przestrzeń powłoki na "wyniki"', () => {
     otworzDowodInspektora('bus-7');
     expect(useShellStore.getState().activeSpace).toBe('wyniki');
+  });
+});
+
+/**
+ * Test natywnego klika (Zero-Debt pkt 5): renderuje PRAWDZIWY `InspectorPanel`
+ * z PRAWDZIWYM `otworzDowodInspektora` (dokładnie to samo wpięcie co
+ * `ui2/AppRoot.tsx: <InspectorPanel onOtworzDowod={otworzDowodInspektora} .../>`),
+ * klika natywnie (`fireEvent.click`, nie wywołanie funkcji wprost) i sprawdza
+ * REALNY skutek w store'ach. Fixture `dowody` jest zbudowana RĘCZNIE (nie przez
+ * `mapowanieObiektuInspektora`, który dziś zawsze zwraca `dowody: []` — patrz
+ * `V12T-017` w `docs/v12xx/REJESTR_DLUGU.md`) — test dowodzi, że MECHANIZM
+ * klik → nawigacja jest realny i poprawny; osobny test niżej dowodzi, że dziś
+ * przycisk jest nieosiągalny w praktyce (uczciwy stan zerowy, nie fabrykacja).
+ */
+describe('InspectorPanel + otworzDowodInspektora — wpięcie realne (test natywnym klikiem)', () => {
+  const powiazaniaPuste = { wchodzace: [], wychodzace: [] };
+
+  function obiektZDowodem(): ObiektInspektora {
+    return {
+      id: 'bus-7',
+      typ: 'bus',
+      typEtykieta: 'Szyna',
+      nazwa: 'Szyna GPZ-1',
+      wlasciwosci: [],
+      wyniki: [],
+      dowody: [{ ref: 'bus-7', etykieta: 'Dowód zwarcia 3-fazowego' }],
+      powiazania: powiazaniaPuste,
+    };
+  }
+
+  beforeEach(() => {
+    useShellStore.setState({ wynikiTab: null, wynikiTabElement: null, activeSpace: 'schemat' });
+    useAppStateStore.setState({ activeRunId: 'run-e2e-42' });
+  });
+
+  it('klik zakładki „Dowód" → klik „Pokaż dowód" → realna nawigacja (deep-link + przestrzeń + selekcja)', () => {
+    const odebraneSelekcje: unknown[] = [];
+    const odsubskrybuj = subskrybuj('selekcja', (z) => odebraneSelekcje.push(z));
+
+    render(
+      <InspectorPanel
+        obiekt={obiektZDowodem()}
+        rewizjaModelu={3}
+        onOtworzDowod={otworzDowodInspektora}
+        onNawiguj={() => {}}
+        onPrzelicz={() => {}}
+        trybZaawansowania="basic"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: INSPECTOR_STRINGS.tabDowod }));
+    fireEvent.click(screen.getByRole('button', { name: INSPECTOR_STRINGS.pokazDowod }));
+
+    odsubskrybuj();
+    expect(odebraneSelekcje).toEqual([{ typ: 'selekcja', obiektId: 'bus-7', zrodlo: 'inspektor' }]);
+    expect(useShellStore.getState().wynikiTab).toBe('dowod');
+    expect(useShellStore.getState().wynikiTabElement).toBe('run-e2e-42');
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+  });
+
+  it('STAN DZISIEJSZY (V12T-017): `mapowanieObiektuInspektora` niesie dowody:[] → zakładka pokazuje uczciwy stan pusty, nie fabrykuje wpisu', () => {
+    const model: EnergyNetworkModel = {
+      header: {
+        enm_version: '1.0',
+        name: 'test',
+        created_at: '',
+        updated_at: '',
+        revision: 1,
+        hash_sha256: 'x',
+        defaults: { frequency_hz: 50, unit_system: 'SI' },
+      },
+      buses: [bazowyElement('bus-7')],
+      branches: [],
+      transformers: [],
+      sources: [],
+      loads: [],
+      generators: [],
+      shunt_capacitors: [],
+      substations: [],
+      bays: [],
+      junctions: [],
+      corridors: [],
+      measurements: [],
+      protection_assignments: [],
+      branch_points: [],
+      line_runs: [],
+      connection_nodes: [],
+    } as unknown as EnergyNetworkModel;
+    const obiekt = mapowanieObiektuInspektora(model, 'bus-7');
+    expect(obiekt).not.toBeNull();
+    expect(obiekt!.dowody).toEqual([]);
+
+    render(
+      <InspectorPanel
+        obiekt={obiekt}
+        rewizjaModelu={1}
+        onOtworzDowod={otworzDowodInspektora}
+        onNawiguj={() => {}}
+        onPrzelicz={() => {}}
+        trybZaawansowania="basic"
+      />,
+    );
+    fireEvent.click(screen.getByRole('tab', { name: INSPECTOR_STRINGS.tabDowod }));
+    expect(screen.getByText(INSPECTOR_STRINGS.brakDowodow)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: INSPECTOR_STRINGS.pokazDowod })).not.toBeInTheDocument();
   });
 });

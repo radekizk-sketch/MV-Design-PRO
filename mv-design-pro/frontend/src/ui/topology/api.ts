@@ -49,7 +49,7 @@ export async function fetchTopologySummary(caseId: string): Promise<TopologyGrap
  * Struktura topologiczna (stacje/pola/węzły/magistrale) — `GET .../enm/topology`
  * (`backend/src/api/enm.py::get_enm_topology`). Źródło dla trybów drzewa
  * „administracyjny" (grupowanie po `Bay.substation_ref`) i „obwodowy"
- * (etykiety odejść z `Bay.bus_role === 'FEEDER'`); TODO-UI2 §1 p. 11.
+ * (etykiety odejść z `Bay.bus_role === 'FEEDER'`); KARTA-UI2 §1 p. 11.
  */
 export interface TopologyStructure {
   case_id: string;

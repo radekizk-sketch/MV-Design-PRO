@@ -16,7 +16,7 @@
  * `ui/study-cases/types.ts:229` `RunStatus`); brak sygnału ostrzeżenia w
  * modelu przebiegu, więc `ostrzezenia` jest zawsze 0.
  *
- * ZAMKNIĘCIE (TODO-UI2 §1 p. 10): `useExecutionRunsStore.runs` trzyma listę
+ * ZAMKNIĘCIE (KARTA-UI2 §1 p. 10): `useExecutionRunsStore.runs` trzyma listę
  * WYŁĄCZNIE dla `activeStudyCaseId` (jeden przypadek na raz — `runStore.ts:
  * 29-30,84-92`) — źródłem PEŁNEJ hierarchii (wszystkie przypadki projektu)
  * jest `useWszystkiePrzebiegiProjektu` (`ui2/adapters/wszystkiePrzebiegiProjektu.ts`,
