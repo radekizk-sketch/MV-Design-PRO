@@ -1331,7 +1331,21 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # wykluczeniach — zero formul fizycznych, czysta interpretacja rejestru).
     # Odbior S-1/S-4 na tym samym drzewie (2026-09-16, po W3-J + V12.7): POMIAR guardem na
     # drzewie scalonym = 3532 (liczba z biegu guarda na tym drzewie, nie z arytmetyki kart).
-    assert "Pol kontraktow wejsciowych: 3532." in wyjscie, wyjscie
+    # Karta S-2 AUTORYTET (2026-09-16, k_sc DEFAULT_FORBIDDEN): POMIAR guardem
+    # 3506 -> 3522 (+16, dedup po nazwie pola w zakresie skanu — liczba guarda,
+    # nie suma reczna). Nowe nosniki pol w tym zakresie: `network_model/core/
+    # autorytet_wyniku_zwarciowego.py` (`ProweniencjaWynikuZwarciowego`,
+    # `BlokadaAutorytetu`), `network_model/core/wiazanie_wyniku_zwarciowego.py`
+    # (`WiazanieWynikuZwarciowego`), `application/autorytet_biegu_zwarciowego.py`
+    # (`WejscieZwarcioweZBiegu`, `WejscieKoordynacjiZBiegow`) — wszystkie nowe
+    # moduly tej karty; plus pola addytywne na istniejacych kontraktach:
+    # `k_sc_znaczniki` (`enm/assembler.py` WejscieZwarcia), `proweniencja`
+    # (`application/equipment_proof/types.py` EquipmentProofInput),
+    # `sc_run_id_min` (`api/protection_coordination.py` RunCoordinationRequest).
+    # Odbior S-2 AUTORYTET na drzewie po W3-J + V12.7 + S-1/S-4 + HARNESS-ZWARCIA (2026-09-16):
+    # POMIAR guardem na drzewie scalonym = 3548 (3532 + 16 pol S-2; zbiory nazw rozlaczne —
+    # sprawdzone pomiarem, liczba z biegu guarda na tym drzewie, nie z arytmetyki kart).
+    assert "Pol kontraktow wejsciowych: 3548." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1352,7 +1366,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # v126_wzory.py` — rejestr wzorow LaTeX kroku sladu, karta §0.1).
         # Karta S-1/S-4 (W6-0): 479 -> 480 (+1 nowy plik `solver_input/dowod_ncrfg.py`).
         # Odbior na jednym drzewie (2026-09-16): oba nowe pliki razem -> 481 (pomiar guardem).
-        "Przeskanowano 481 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta S-2 AUTORYTET (2026-09-16): 479 -> 484 (+5 nowych plikow: `network_model/
+        # core/{wklad_zwarciowy_przeksztaltnika,zdolnosci_wkladu_zwarciowego,
+        # autorytet_wyniku_zwarciowego,wiazanie_wyniku_zwarciowego}.py` (4) +
+        # `application/autorytet_biegu_zwarciowego.py` (1) — zero plikow skasowanych.
+        # Odbior S-2 na tym samym drzewie (2026-09-16): 481 + 5 nowych plikow S-2 = 486 (pomiar guardem).
+        "Przeskanowano 486 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1374,7 +1393,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     assert "Zapadka dlugu (fizyczne): 57 plikow, suma 258." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 13 plikow, suma 31." in wyjscie, wyjscie
     per_korzen = [
-        "  network_model: pliki_skanowane=137, dlug=14 plikow/suma 77, "
+        # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
+        # `network_model/core/{wklad_zwarciowy_przeksztaltnika,zdolnosci_wkladu_
+        # zwarciowego,autorytet_wyniku_zwarciowego,wiazanie_wyniku_zwarciowego}.py`,
+        # zero wpisow w zapadce/wykluczeniach z tych plikow).
+        "  network_model: pliki_skanowane=141, dlug=14 plikow/suma 77, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).
@@ -1386,7 +1409,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta V12.7 (2026-09-16): application 229 -> 230 (+1 v126_wzory.py, patrz uzasadnienie
         # wyzej); dlug/wykluczenia application bez zmian (30/91, 4/10) — nowy plik nie ma
         # zadnej galezi zapasowej liczbowej.
-        "  application: pliki_skanowane=230, dlug=30 plikow/suma 91, "
+        # Karta S-2 AUTORYTET (2026-09-16): application 229 -> 230 (+1 nowy plik
+        # `application/autorytet_biegu_zwarciowego.py`, zero wpisow w zapadce/wykluczeniach).
+        # Odbior S-2 na jednym drzewie (2026-09-16): application 230 (V12.7) + 1 (S-2) = 231 (pomiar guardem).
+        "  application: pliki_skanowane=231, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=62, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]

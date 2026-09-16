@@ -200,6 +200,9 @@ jobs:
       - name: Brak bezposrednich parametrow zwarcia
         run: $GUARD_PY scripts/no_direct_fault_params_guard.py
 
+      - name: Autorytet wyniku zwarciowego (k_sc DEFAULT_FORBIDDEN, karta S-2)
+        run: $GUARD_PY scripts/sc_authority_guard.py
+
       - name: Brak podstawiania liczb za nieobecne dane wejsciowe solvera
         run: $GUARD_PY scripts/solver_input_substitute_guard.py
 

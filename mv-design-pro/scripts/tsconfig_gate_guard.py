@@ -291,6 +291,14 @@ POMIJANE_KATALOGI = {
 #: 119 -> 117.
 #: Odbior S-1/S-4 na drzewie po W3-J + V12.7 (2026-09-16): budzet z POMIARU guardem na drzewie
 #: scalonym — patrz liczba nizej (pomiar po ostatnim cherry-picku karty).
+#: Karta S-2 AUTORYTET (2026-09-16, k_sc DEFAULT_FORBIDDEN): guard zmierzyl
+#: 119 -> 117 na drzewie z pracy tej karty (`ui/catalog/types.ts`, `api.ts`,
+#: `AddDerWizard.tsx`, `KreatorZrodlaOze.tsx` + testy). Zapadka w dol — bez
+#: izolowania, ktore 2 bledy zniknely (pomiar wylacznie agregatem guarda, jak
+#: przewiduje jego wlasny komunikat); nie podnosic budzetu bez nowego pomiaru.
+#: Odbior S-2 AUTORYTET na drzewie po W3-J + V12.7 + S-1/S-4 + HARNESS-ZWARCIA (2026-09-16):
+#: POMIAR guardem na drzewie scalonym = 114 (bez zmian; spadek 119 -> 117 zmierzony przez
+#: karte S-2 na jej bazie to ta sama para bledow, ktora odbior fali 3 zdjal wczesniej).
 BUDZET_BLEDOW_POZA_BRAMKA = 114
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
