@@ -378,6 +378,99 @@ def test_stan_fazowy_ma_run_id_stabilny_i_pokazuje_alert_asymetrii() -> None:
     assert wiersz["ic_a"] == 100.0
 
 
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA (kontynuacja, 2026-09-16) — sceny „siła-sieci",
+# „migotanie", „kompensacja(-wynik)", „walidacja"/„rozplyw", „cieplna",
+# „arcflash": realny bieg backendu (short_circuit_sn/PF na sieci złotej).
+# ---------------------------------------------------------------------------
+
+
+def test_sila_sieci_ma_scr_realny_z_katalogu_i_werdykt_mocna() -> None:
+    widok = eksport.sila_sieci_scena_wynik()
+    _run_idy_nie_sa_uuid(widok)
+    assert widok["context"]["run_id"] == eksport.RUN_ID_SCENY_OZE_ANALIZ
+    wpis = widok["entries"][0]
+    assert wpis["bus_ref"] == "bus_nn"
+    assert wpis["modules"][0]["ref"] == "gen_pv"
+    assert wpis["s_installed_mva"] == 0.215, "moc znamionowa MUSI pochodzic z karty katalogu MV"
+    assert wpis["scr"] is not None and wpis["scr"] > widok["weak_threshold"]
+    assert wpis["verdict"] == "mocna"
+
+
+def test_migotanie_ma_pst_realny_z_katalogu() -> None:
+    widok = eksport.migotanie_scena_wynik()
+    _run_idy_nie_sa_uuid(widok)
+    bus = widok["buses"][0]
+    modul = bus["modules"][0]
+    assert modul["gen_ref"] == "gen_pv"
+    assert modul["flicker_c"] == 0.3, "wspolczynnik migotania MUSI pochodzic z karty katalogu MV"
+    assert modul["included"] is True
+    assert bus["pst"] is not None
+
+
+def test_kompensacja_dobiera_realnego_kandydata_z_katalogu() -> None:
+    widok = eksport.kompensacja_scena_wynik()
+    _run_idy_nie_sa_uuid(widok)
+    assert widok["parameters"]["bus_ref"] == "bus_sn_b"
+    assert widok["dobor"] is not None, "scena musi pokazywac REALNY dobor, nie odmowe"
+    assert widok["dobor"]["catalog_ref"] == "KOMP_SN_0V6_15KV"
+    assert widok["dobor"]["cosfi_punktu_dzien"] >= 0.95
+    assert widok["powod_braku"] is None
+
+
+def test_rozplyw_ma_ksztalt_power_flow_result_v1_z_naruszeniami() -> None:
+    widok = eksport.rozplyw_scena_wynik()
+    assert {"bus_results", "branch_results", "summary", "converged"} <= set(widok)
+    assert widok["converged"] is True
+    assert len(widok["bus_results"]) >= 2
+    assert len(widok["branch_results"]) >= 1
+    # Siec x8 obciazenia MUSI dawac realne odchylenie napiec (nie trywialne
+    # ~1.0 pu jak siec bazowa) — dowod, ze mnoznik faktycznie cos zmienia.
+    v_pu = [row["v_pu"] for row in widok["bus_results"]]
+    assert min(v_pu) < 0.95 or max(v_pu) > 1.05, v_pu
+
+
+def test_walidacja_energetyczna_na_biegu_x8_ma_naruszenie() -> None:
+    widok = eksport.walidacja_scena_wynik()
+    assert (
+        widok["summary"]["fail_count"] + widok["summary"]["warning_count"] > 0
+    ), "siec x8 musi dawac co najmniej jedno realne naruszenie/ostrzezenie"
+    kody = {item["check_type"] for item in widok["items"]}
+    assert "VOLTAGE_DEVIATION" in kody
+
+
+def test_walidacja_i_rozplyw_dziela_ten_sam_bieg() -> None:
+    rozplyw = eksport.rozplyw_scena_wynik()
+    walidacja = eksport.walidacja_scena_wynik()
+    # Oba widoki pochodza z JEDNEGO biegu kotwicy (ten sam run_id stabilizowany) —
+    # KLASA, nie instancja: dwie sceny czytajace jeden PF nie moga rozjezdzac sie
+    # w hashu wejscia.
+    _run_idy_a = _wartosci_run_id(walidacja)
+    assert eksport.RUN_ID_SCENY_ROZPLYW in _run_idy_a
+    assert rozplyw["summary"]["min_v_pu"] < 1.0
+
+
+def test_cieplna_scena_ocena_ma_pozycje_z_realnym_pradem_i_dowod_na_niej() -> None:
+    wynik = eksport.cieplna_scena_wynik()
+    _run_idy_nie_sa_uuid(wynik)
+    items = wynik["ocena"]["items"]
+    assert len(items) >= 1
+    najwiekszy = max(items, key=lambda p: (p["i_fault_a"], p["branch_id"]))
+    assert najwiekszy["i_fault_a"] > 0.0, "co najmniej jedna galaz musi niesc realny prad zwarcia"
+    dowod = eksport.cieplna_scena_dowod()
+    assert dowod["branch_id"] == najwiekszy["branch_id"]
+    assert len(dowod["kroki"]) >= 1
+
+
+def test_arcflash_scena_ma_energie_incydentu_realnie_policzona() -> None:
+    widok = eksport.arcflash_scena_wynik()
+    _run_idy_nie_sa_uuid(widok)
+    wynik = widok["results"][0]
+    assert wynik["incident_energy_cal_cm2"] > 0.0
+    assert wynik["i_bf_ka"] > 0.0
+    assert wynik["voltage_kv"] == 15.0
+
+
 def test_stabilnosc_wyniki_i_slad_dziela_ten_sam_run_id_i_scenariusz() -> None:
     wyniki = eksport.stabilnosc_scena_wyniki()
     slad = eksport.stabilnosc_scena_slad()

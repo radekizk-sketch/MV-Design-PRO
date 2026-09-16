@@ -1,0 +1,108 @@
+{
+  "result_version": "1.0.0",
+  "converged": true,
+  "iterations_count": 6,
+  "tolerance_used": 1e-08,
+  "base_mva": 100.0,
+  "slack_bus_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+  "bus_results": [
+    {
+      "bus_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "v_pu": 0.9685564216619674,
+      "angle_deg": 26.80943418011701,
+      "p_injected_mw": 0.0,
+      "q_injected_mvar": 0.0,
+      "status": "solved"
+    },
+    {
+      "bus_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "v_pu": 1.0,
+      "angle_deg": 0.0,
+      "p_injected_mw": 11.49618707383441,
+      "q_injected_mvar": 6.408801797091757,
+      "status": "solved"
+    },
+    {
+      "bus_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "v_pu": 0.7483299679385891,
+      "angle_deg": 40.55829584755105,
+      "p_injected_mw": -3.2,
+      "q_injected_mvar": -1.2,
+      "status": "solved"
+    },
+    {
+      "bus_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "v_pu": 0.968548597972639,
+      "angle_deg": 26.809274878999883,
+      "p_injected_mw": 0.0,
+      "q_injected_mvar": 0.0,
+      "status": "solved"
+    },
+    {
+      "bus_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "v_pu": 0.9201226511436266,
+      "angle_deg": 25.224671737553518,
+      "p_injected_mw": -7.6,
+      "q_injected_mvar": -2.6,
+      "status": "solved"
+    }
+  ],
+  "branch_results": [
+    {
+      "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
+      "p_from_mw": 3.541577161656858,
+      "q_from_mvar": 2.6501154533827593,
+      "p_to_mw": -3.199999999963035,
+      "q_to_mvar": -1.1999999999765036,
+      "losses_p_mw": 0.3415771616938228,
+      "losses_q_mvar": 1.4501154534062557
+    },
+    {
+      "branch_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
+      "p_from_mw": 0.0037906754848245757,
+      "q_from_mvar": -0.01272409655302043,
+      "p_to_mw": -0.00379064751575523,
+      "q_to_mvar": -0.014630705204940643,
+      "losses_p_mw": 2.7969069345702008e-08,
+      "losses_q_mvar": -0.027354801757961074
+    },
+    {
+      "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+      "p_from_mw": 11.496187073834427,
+      "q_from_mvar": 6.408801797091757,
+      "p_to_mw": -11.462925942753916,
+      "q_to_mvar": -5.577939009002701,
+      "losses_p_mw": 0.03326113108051132,
+      "losses_q_mvar": 0.830862788089056
+    },
+    {
+      "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+      "p_from_mw": 7.921271733577641,
+      "q_from_mvar": 2.955101337850869,
+      "p_to_mw": -7.599999999999782,
+      "q_to_mvar": -2.600000000000053,
+      "losses_p_mw": 0.3212717335778592,
+      "losses_q_mvar": 0.3551013378508161
+    }
+  ],
+  "summary": {
+    "total_losses_p_mw": 0.6961100543212638,
+    "total_losses_q_mvar": 2.6087247775881663,
+    "min_v_pu": 0.7483299679385891,
+    "max_v_pu": 1.0,
+    "slack_p_mw": 11.49618707383441,
+    "slack_q_mvar": 6.408801797091757
+  },
+  "unsolved_node_ids": [],
+  "kryteria_napiecia": {
+    "ostrzezenie_pct": 5.0,
+    "przekroczenie_pct": 10.0,
+    "ostrzezenie_min_pu": 0.95,
+    "ostrzezenie_max_pu": 1.05,
+    "przekroczenie_min_pu": 0.9,
+    "przekroczenie_max_pu": 1.1,
+    "podstawa_ostrzezenie_pl": "Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+    "podstawa_przekroczenie_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %.",
+    "pasmo_wiarygodnosci_pct": 10.0
+  }
+}

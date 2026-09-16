@@ -1,0 +1,63 @@
+{
+  "analysis_id": "9c5183a5284b3e1aee636f72a9f3a92321ff9bca41fbde0e645fd5ce1888b1a2",
+  "context": {
+    "project_name": "CGMES Golden Net",
+    "case_name": null,
+    "case_id": "case-demo",
+    "run_timestamp": "2026-09-16T09:00:00+00:00",
+    "snapshot_hash": "c2b25bf666754dcdcf9f3ef42eec3d0811979ac32b0f78fa905ba50cf79ec7b5",
+    "run_id": "run-sc-scena-oze-analiz"
+  },
+  "weak_threshold": 3.0,
+  "very_weak_threshold": 2.0,
+  "entries": [
+    {
+      "bus_ref": "bus_nn",
+      "nominal_kv": 0.4,
+      "s_sc_mva": 14.6134,
+      "s_installed_mva": 0.215,
+      "scr": 67.9692,
+      "verdict": "mocna",
+      "is_weak": false,
+      "why_pl": "SCR = 67.9692 ≥ 3.0 — sieć mocna w węźle; klasyczne założenia pracy źródła falownikowego pozostają ważne.",
+      "missing_data": [],
+      "white_box": [
+        {
+          "symbol": "SCR",
+          "formula_latex": "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
+          "substitution_pl": "SCR = 14.6134 MVA / 0.215 MVA",
+          "result_pl": "SCR = 67.9692 (–)"
+        },
+        {
+          "symbol": "werdykt",
+          "formula_latex": "\\mathrm{SCR} \\; \\geq \\; 3.0",
+          "substitution_pl": "próg słaby = 3.0; próg bardzo słaby = 2.0",
+          "result_pl": "sieć mocna"
+        }
+      ],
+      "modules": [
+        {
+          "ref": "gen_pv",
+          "name": "Farma PV",
+          "sn_mva": 0.215
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_buses": 1,
+    "weak_bus_count": 0,
+    "not_computed_count": 0,
+    "wscr": 67.9692,
+    "wscr_verdict": "mocna",
+    "wscr_why_pl": "WSCR = 67.9692 dla 1 źródeł — sieć mocna. WSCR ujmuje wzajemne oddziaływanie źródeł falownikowych w pobliżu (metodyka ERCOT).",
+    "wscr_white_box": [
+      {
+        "symbol": "WSCR",
+        "formula_latex": "\\mathrm{WSCR} = \\dfrac{\\sum_i S_{sc,i}'' \\cdot S_{n,i}}{\\left(\\sum_i S_{n,i}\\right)^2}",
+        "substitution_pl": "licznik Σ(S_sc·S_n) = 3.1419 MVA²; (Σ S_n)² = 0.0462 MVA²",
+        "result_pl": "WSCR = 67.9692 (–), n = 1"
+      }
+    ]
+  }
+}

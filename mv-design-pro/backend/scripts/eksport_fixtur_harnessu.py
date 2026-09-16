@@ -48,12 +48,26 @@ from api.canonical_run_views import (  # noqa: E402
     build_short_circuit_band_response,
     build_short_circuit_results_response,
     build_short_circuit_rozplyw_response,
+    get_power_flow_result,
 )
 from api.proof_pack import SCContributionsRequest, sc3f_contributions  # noqa: E402
+from application.analyses.arc_flash_view import build_arc_flash_view  # noqa: E402
+from application.analyses.dobor_kompensacji import (  # noqa: E402
+    build_compensation_sizing_view,
+)
+from application.analyses.energy_validation.service import (  # noqa: E402
+    build_energy_validation_view,
+)
+from application.analyses.grid_strength import build_grid_strength_view  # noqa: E402
+from application.analyses.migotanie import build_migotanie_view  # noqa: E402
 from application.analyses.v126_gotowosc import odpowiedz_gotowosci  # noqa: E402
 from application.analyses.v126_katalog import katalog_do_dict  # noqa: E402
 from application.analyses.werdykt_projektowy import (  # noqa: E402
     zbuduj_werdykt_projektowy,
+)
+from application.analyses.wytrzymalosc_cieplna_przewodow import (  # noqa: E402
+    build_wytrzymalosc_cieplna_view,
+    zbuduj_dowod_cieplny,
 )
 from application.ncrfg_compliance import zgodnosc_ncrfg_przypadku  # noqa: E402
 from enm.canonical_analysis import (  # noqa: E402
@@ -491,7 +505,20 @@ def _bieg_sceny_zwarcia() -> tuple[Any, EnergyNetworkModel, str]:
         enm = build_golden_enm()
         _fiksuj_niedeterminizm_sceny_zwarcia(enm)
         set_enm(CASE_ID_HARNESSU, enm)
-        with patch("enm.canonical_analysis.uuid4", return_value=_UUID_KOTWICY_SCENY_ZWARCIA):
+        # `datetime` zamrożony TU (nie tylko `uuid4`) — karta HARNESS-RESZTA
+        # (kontynuacja) dopisała konsumentów tego biegu (`cieplna_scena_wynik`/
+        # `cieplna_scena_dowod`/`arcflash_scena_wynik`), których widoki
+        # osadzają `context.run_timestamp = run.created_at` (`grid_strength.py`/
+        # `arc_flash_view.py` — TA SAMA klasa co `run.id`: `datetime.now(UTC)`
+        # wywoływane przy KAŻDYM `create_run`, więc bez zamrożenia dwa
+        # wywołania tej samej fixtury dają dwa różne znaczniki czasu — zmierzone
+        # bezpośrednio). Sceny „zwarcia"/„zwarcia-rozplyw" (już domknięte) NIE
+        # osadzają `created_at` w swoich widokach, więc ich JSON w repo jest
+        # BEZ ZMIAN mimo tej zmiany zachowania (zweryfikowane parytetem).
+        with (
+            patch("enm.canonical_analysis.uuid4", return_value=_UUID_KOTWICY_SCENY_ZWARCIA),
+            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
+        ):
             run = execute_run(
                 create_run(
                     case_id=CASE_ID_HARNESSU,
@@ -730,6 +757,225 @@ def stabilnosc_scena_slad() -> dict[str, Any]:
     return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_STABILNOSC})
 
 
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA (kontynuacja, 2026-09-16) — sceny „siła-sieci",
+# „migotanie", „kompensacja(-wynik)", „walidacja"/„rozplyw"/„uwaga", „cieplna",
+# „arcflash" — realny bieg backendu (analiza interpretacyjna na przebiegu
+# short_circuit_sn/PF sieci złotej), zero recznie wpisanych liczb fizycznych.
+# ---------------------------------------------------------------------------
+
+RUN_ID_SCENY_OZE_ANALIZ = "run-sc-scena-oze-analiz"
+_UUID_SCENY_OZE_ANALIZ = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_OZE_ANALIZ)
+
+RUN_ID_SCENY_KOMPENSACJA = "run-lf-scena-kompensacja"
+_UUID_SCENY_KOMPENSACJA = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_KOMPENSACJA)
+
+RUN_ID_SCENY_ROZPLYW = "run-lf-scena-rozplyw"
+_UUID_SCENY_ROZPLYW = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ROZPLYW)
+
+
+def _bieg_sceny_oze_analiz() -> Any:
+    """Bieg `short_circuit_sn` KOTWICY scen „siła-sieci"/„migotanie" — sieć
+    złota z `catalog_ref` DOPISANYM na `gen_pv` (`conv-pv-card-huawei-sun2000-
+    215ktl`, REALNA karta katalogu MV — `network_model/catalog/
+    mv_converter_catalog.py`, sn_mva=0.215, flicker_c=0.30), bo
+    `_installed_mva_for_generator`/`_resolve_converter`
+    (`application/analyses/grid_strength.py`) rozwiązują moc znamionowaą/
+    współczynnik migotania WYŁĄCZNIE przez `Generator.catalog_ref` — sieć
+    złota bazowa (`build_golden_enm`, bez tego pola) daje uczciwe „brak
+    danych" na KAŻDYM węźle (zmierzone bezpośrednio), co nie demonstruje
+    ekranu. Dopisanie jednego pola katalogowego na kopii ENM nie zmienia
+    topologii/fizyki reszty sieci — SCR/Pst policzone są REALNIE
+    (`build_grid_strength_view`/`build_migotanie_view`) z realnego Sk''
+    solvera i realnej mocy/współczynnika katalogu, nie wpisane ręcznie.
+    `id`/zegar przypięte jak `_bieg_sceny_zwarcia` (ta sama klasa
+    niedeterminizmu: `element.id`/`header.created_at` losowane przy
+    KAŻDYM `build_golden_enm()`)."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        enm = build_golden_enm()
+        for gen in enm.generators:
+            if gen.ref_id == "gen_pv":
+                gen.catalog_ref = "conv-pv-card-huawei-sun2000-215ktl"
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        set_enm(CASE_ID_HARNESSU, enm)
+        with (
+            patch("enm.canonical_analysis.uuid4", return_value=_UUID_SCENY_OZE_ANALIZ),
+            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
+        ):
+            run = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=CASE_ID_HARNESSU,
+                    analysis_type="short_circuit_sn",
+                ).id
+            )
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        return run
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def sila_sieci_scena_wynik() -> dict[str, Any]:
+    """Odpowiedź `GET /api/oze-analysis/grid-strength?run_id=` —
+    `build_grid_strength_view`, TA SAMA funkcja, którą woła końcówka
+    (`api/oze_analysis_runs.py::get_grid_strength`)."""
+    run = _bieg_sceny_oze_analiz()
+    widok = build_grid_strength_view(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_OZE_ANALIZ})
+
+
+def migotanie_scena_wynik() -> dict[str, Any]:
+    """Odpowiedź `GET /api/quality/flicker?run_id=` — `build_migotanie_view`,
+    TA SAMA funkcja, którą woła końcówka
+    (`api/quality_analysis_runs.py::get_flicker`)."""
+    run = _bieg_sceny_oze_analiz()
+    widok = build_migotanie_view(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_OZE_ANALIZ})
+
+
+def _bieg_sceny_kompensacja() -> Any:
+    """Bieg `PF` KOTWICY sceny „kompensacja(-wynik)" — sieć złota BEZ zmian
+    (`build_golden_enm`, jedynie ustabilizowana `_fiksuj_niedeterminizm_
+    sceny_zwarcia`), `id`/zegar przypięte jak biegi obok."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        enm = build_golden_enm()
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        set_enm(CASE_ID_HARNESSU, enm)
+        with (
+            patch("enm.canonical_analysis.uuid4", return_value=_UUID_SCENY_KOMPENSACJA),
+            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
+        ):
+            run = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU, klucz_twin=CASE_ID_HARNESSU, analysis_type="PF"
+                ).id
+            )
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        return run
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def kompensacja_scena_wynik() -> dict[str, Any]:
+    """Odpowiedź `GET /api/oze-analysis/compensation-sizing?run_id=&bus_ref=
+    bus_sn_b&cos_phi_min=0.95` — `build_compensation_sizing_view`, TA SAMA
+    funkcja, którą woła końcówka
+    (`api/oze_analysis_runs.py::get_compensation_sizing`). Węzeł `bus_sn_b`
+    (Stacja B SN sieci złotej) i próg 0,95 wybrane, bo REALNIE dają dobór
+    kandydata katalogowego (`KOMP_SN_0V6_15KV`) — inne węzły sieci złotej
+    dają uczciwe „brak baterii dla tego napięcia" (`bus_nn`, 0,4 kV) albo
+    „żaden kandydat nie spełnia" (`bus_sn_main`/`bus_sn_c`, generacja
+    lokalna już podnosi cosφ powyżej tego, co dokłada bateria) — zmierzone
+    bezpośrednio (probe), nie zgadywane."""
+    run = _bieg_sceny_kompensacja()
+    widok = build_compensation_sizing_view(run, bus_ref="bus_sn_b", cos_phi_min=0.95)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_KOMPENSACJA})
+
+
+def _bieg_sceny_rozplyw() -> Any:
+    """Bieg `PF` KOTWICY scen „rozplyw"/„walidacja"/„uwaga" — sieć złota z
+    obciążeniem ×8 (`_zlota_siec_z_obciazeniem`, TEN SAM mnożnik zmierzony
+    przez architekta dla realnych naruszeń — `test_siec_x8_obciazenia_daje_
+    realne_naruszenia_z_ujemnym_marginesem`), bo sieć złota bazowa (bez
+    przeciążenia) zbiega z pomijalnymi stratami i zerowymi naruszeniami
+    (zmierzone bezpośrednio) — nie demonstruje kolumny obciążalności/
+    walidacji energetycznej. `id`/zegar przypięte jak biegi obok."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        enm = _zlota_siec_z_obciazeniem(8.0)
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        set_enm(CASE_ID_HARNESSU, enm)
+        with (
+            patch("enm.canonical_analysis.uuid4", return_value=_UUID_SCENY_ROZPLYW),
+            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
+        ):
+            run = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU, klucz_twin=CASE_ID_HARNESSU, analysis_type="PF"
+                ).id
+            )
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        return run
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def rozplyw_scena_wynik() -> dict[str, Any]:
+    """Odpowiedź `GET /api/power-flow-runs/{id}/results`
+    (`PowerFlowResultV1` — `get_power_flow_result`, TA SAMA funkcja, którą
+    woła końcówka `api/power_flow_runs.py::get_power_flow_results`), zasiew
+    scen „rozplyw"/„uwaga" (`usePowerFlowResultsStore`)."""
+    run = _bieg_sceny_rozplyw()
+    widok = get_power_flow_result(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ROZPLYW})
+
+
+def walidacja_scena_wynik() -> dict[str, Any]:
+    """Odpowiedź `GET /api/quality/energy-validation?run_id=` —
+    `build_energy_validation_view`, TA SAMA funkcja, którą woła końcówka
+    (`api/quality_analysis_runs.py::get_energy_validation`), na TYM SAMYM
+    biegu ×8 co `rozplyw_scena_wynik` (spójność liczb między scenami "rozplyw"
+    i "walidacja" — obie czytają jeden przebieg)."""
+    run = _bieg_sceny_rozplyw()
+    widok = build_energy_validation_view(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ROZPLYW})
+
+
+def cieplna_scena_wynik() -> dict[str, Any]:
+    """Odpowiedź `GET /api/quality/conductor-thermal-withstand?run_id=` —
+    `build_wytrzymalosc_cieplna_view`, TA SAMA funkcja, którą woła końcówka
+    (`api/quality_analysis_runs.py::get_conductor_thermal_withstand`), na
+    biegu kotwicy sceny „zwarcia" (`_bieg_sceny_zwarcia` — REUŻYCIE, zero
+    nowej sieci: ta sama fizyka, ten sam bieg zapisany co scena zwarciowa)."""
+    run, _enm, _target_id = _bieg_sceny_zwarcia()
+    widok = build_wytrzymalosc_cieplna_view(run, None)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
+
+
+def cieplna_scena_dowod() -> dict[str, Any]:
+    """Odpowiedź `GET /api/quality/conductor-thermal-withstand/proof?run_id=
+    &branch_id=` — `zbuduj_dowod_cieplny`, TA SAMA funkcja, którą woła
+    końcówka. `branch_id` = gałąź z NAJWIĘKSZYM prądem zwarciowym w ocenie
+    cieplnej sceny (deterministyczny wybór max, tiebreak po `branch_id` —
+    KLASA, nie instancja: żaden branch_id nie jest zaszyty ręcznie), żeby
+    dowód demonstrował KRYTERIUM na gałęzi FAKTYCZNIE na drodze zwarcia
+    (gałęzie poza drogą mają `i_fault_a=0.0` i dowód trywialny)."""
+    run, _enm, _target_id = _bieg_sceny_zwarcia()
+    ocena = build_wytrzymalosc_cieplna_view(run, None)["ocena"]["items"]
+    najwiekszy = max(ocena, key=lambda pozycja: (pozycja["i_fault_a"], pozycja["branch_id"]))
+    widok = zbuduj_dowod_cieplny(run, najwiekszy["branch_id"], None)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
+
+
+def arcflash_scena_wynik() -> dict[str, Any]:
+    """Odpowiedź `POST /api/quality/arc-flash` — `build_arc_flash_view`, TA
+    SAMA funkcja, którą woła końcówka (`api/quality_analysis_runs.py::
+    post_arc_flash`), na biegu kotwicy sceny „zwarcia" (REUŻYCIE). Parametry
+    elektrod/odległości robocze SĄ DANYMI WEJŚCIOWYMI żądania (jak scenariusz
+    sceny stabilności obok) — norma IEEE 1584-2018 wymaga ich jawnie, solver
+    ich nie zgaduje; wartości typowe dla rozdzielni SN wnętrzowej z wyłącznikiem
+    próżniowym (VCB, odległość robocza 455 mm, odstęp elektrod 104 mm, czas
+    łuku 0,2 s — tabela 3/4/5 IEEE 1584-2018 dla klasy napięciowej 15 kV)."""
+    run, _enm, _target_id = _bieg_sceny_zwarcia()
+    widok = build_arc_flash_view(
+        run,
+        working_distance_mm=455.0,
+        conductor_gap_mm=104.0,
+        arc_time_s=0.2,
+        electrode_config="VCB",
+        enclosure_type="Typical",
+    )
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
+
+
 #: Nazwa pliku → funkcja licząca odpowiedź (kolejność = kolejność eksportu).
 FIXTURY: dict[str, Any] = {
     "ncrfg_zgodnosc_przekrojowa_scena_macierz": zgodnosc_przekrojowa_sceny_macierz,
@@ -746,6 +992,14 @@ FIXTURY: dict[str, Any] = {
     "stan_fazowy_scena_wyniki": stan_fazowy_scena_wyniki,
     "stabilnosc_scena_wyniki": stabilnosc_scena_wyniki,
     "stabilnosc_scena_slad": stabilnosc_scena_slad,
+    "sila_sieci_scena_wynik": sila_sieci_scena_wynik,
+    "migotanie_scena_wynik": migotanie_scena_wynik,
+    "kompensacja_scena_wynik": kompensacja_scena_wynik,
+    "rozplyw_scena_wynik": rozplyw_scena_wynik,
+    "walidacja_scena_wynik": walidacja_scena_wynik,
+    "cieplna_scena_wynik": cieplna_scena_wynik,
+    "cieplna_scena_dowod": cieplna_scena_dowod,
+    "arcflash_scena_wynik": arcflash_scena_wynik,
 }
 
 

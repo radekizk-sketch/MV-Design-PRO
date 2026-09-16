@@ -1,0 +1,116 @@
+{
+  "run_id": "run-sc-scena-zwarcia",
+  "aktualnosc": {
+    "aktualny": null,
+    "powod_pl": "Nie ma z czym porownac: model przypadku nie jest zaladowany w tej sesji.",
+    "model_hash": null,
+    "snapshot_hash": "3bb9b0c774d41911779ccc2e8f5e5e5bcb26370d2bd488d52d4b1668cb8b3ec6"
+  },
+  "case_id": "case-demo",
+  "analysis_type": "short_circuit_sn",
+  "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+  "tk_s": 1.0,
+  "czasy_wylaczenia": {
+    "z_nastawy": 0,
+    "z_zalozenia": 2,
+    "razem": 2
+  },
+  "normy": [
+    {
+      "norma": "PN-HD 60364-4-43",
+      "punkt": "§ 434.5.2",
+      "tresc_pl": "Warunek adiabatyczny doboru przekroju ze wzgledu na zwarcie: S ≥ √(I²·t) / k."
+    },
+    {
+      "norma": "IEC 60949",
+      "punkt": "§ 3, § 4",
+      "tresc_pl": "Obliczanie dopuszczalnych pradow zwarciowych kabli z uwzglednieniem nagrzewania nieadiabatycznego; podstawa wartosci k dla par material zyly / izolacja."
+    },
+    {
+      "norma": "IEC 60909-0",
+      "punkt": "§ 12",
+      "tresc_pl": "Prad ekwiwalentny cieplnie I_th = I″k·√(m+n); to jego uzywa kryterium, nie pradu poczatkowego."
+    }
+  ],
+  "ocena": {
+    "items": [
+      {
+        "branch_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
+        "branch_name": "Kabel SN 1",
+        "status": "PASS",
+        "i_fault_a": 0.0,
+        "i_permissible_a": null,
+        "utilization": null,
+        "s_min_mm2": null,
+        "applied_cross_section_mm2": null,
+        "uzasadnienie_pl": "Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; kryterium cieplne spełnione trywialnie.",
+        "missing_codes": [],
+        "czas_wylaczenia": {
+          "branch_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
+          "tk_s": 1.0,
+          "zrodlo": "zalozenie_przypadku",
+          "powod_pl": "Aparat Sprzeglo Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s.",
+          "urzadzenie_ref": "f3f4e56c-097c-571c-a6f3-57c51f44ff8b",
+          "urzadzenie_nazwa": "Sprzeglo Q1",
+          "funkcja": null,
+          "prad_galezi_a": 0.0,
+          "prad_rozruchowy_a": null,
+          "krzywa": null,
+          "tms": null,
+          "stala_a": null,
+          "stala_b": null
+        },
+        "i2t_a2s": null,
+        "i2t_dopuszczalne_a2s": null,
+        "margines_procent": null,
+        "kryteria": [],
+        "powod_decyzji_pl": null,
+        "zalecenia": [],
+        "wrazliwosc": [],
+        "uzasadnienie_k": null
+      },
+      {
+        "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+        "branch_name": "Linia SN 1",
+        "status": "UNAVAILABLE",
+        "i_fault_a": 643.6033616984862,
+        "i_permissible_a": null,
+        "utilization": null,
+        "s_min_mm2": null,
+        "applied_cross_section_mm2": null,
+        "uzasadnienie_pl": null,
+        "missing_codes": [
+          "conductor.thermal_data_missing"
+        ],
+        "czas_wylaczenia": {
+          "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+          "tk_s": 1.0,
+          "zrodlo": "zalozenie_przypadku",
+          "powod_pl": "Aparat Sprzeglo Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s.",
+          "urzadzenie_ref": "f3f4e56c-097c-571c-a6f3-57c51f44ff8b",
+          "urzadzenie_nazwa": "Sprzeglo Q1",
+          "funkcja": null,
+          "prad_galezi_a": 643.6033616984862,
+          "prad_rozruchowy_a": null,
+          "krzywa": null,
+          "tms": null,
+          "stala_a": null,
+          "stala_b": null
+        },
+        "i2t_a2s": null,
+        "i2t_dopuszczalne_a2s": null,
+        "margines_procent": null,
+        "kryteria": [],
+        "powod_decyzji_pl": null,
+        "zalecenia": [],
+        "wrazliwosc": [],
+        "uzasadnienie_k": null
+      }
+    ],
+    "summary": {
+      "pass_count": 1,
+      "fail_count": 0,
+      "unavailable_count": 1
+    }
+  }
+}
