@@ -2898,10 +2898,14 @@ function Harness() {
   else if (creator === 'porownanie')
     node = <EkranPorownania projektId="proj-demo" trybZaawansowania="expert" />;
   else if (creator === 'kompensacja')
+    // R2-B: preselekcja wezla z deep-linku — bus_sn_b, jedyny wezel zasiewu
+    // (linie ok. 2320 nizej) dajacy realny dobor kandydata katalogowego
+    // (HARNESS-RESZTA-kontynuacja: dawny literal 'SZ-ST7' nie istnial juz w
+    // zasiewie po konwersji sceny na realny bieg backendu).
     node = (
       <EkranKompensacji
         trybZaawansowania="expert"
-        preselekcjaWezla="SZ-ST7"
+        preselekcjaWezla="bus_sn_b"
         onPreselekcjaSkonsumowana={() => undefined}
       />
     );

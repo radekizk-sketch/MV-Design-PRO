@@ -60,11 +60,20 @@ const POMIARY_ESTYMACJI = [
 async function prowadzScene(page: Page, scena: Scena): Promise<void> {
   if (scena === 'kompensacja-wynik') {
     // Wybór węzła → jawny bieg „Oblicz" → kandydaci + werdykt → otwarty ślad.
-    await page.getByTestId('mvd-komp-wezel').selectOption('SZ-ST7');
+    // `bus_sn_b`: WYŁĄCZNIE ten węzeł sieci złotej daje realny dobór kandydata
+    // katalogowego (fixtura `kompensacja_scena_wynik.json`, `bus_ref=bus_sn_b`)
+    // — `bus_sn_main`/`bus_sn_c` dają uczciwe „żaden kandydat nie spełnia"
+    // (regresja znaleziona i naprawiona HARNESS-RESZTA-kontynuacja: stary
+    // literał `'SZ-ST7'` z ręcznie pisanego mocka nie istniał już w zasiewie
+    // po konwersji sceny na realny bieg backendu).
+    await page.getByTestId('mvd-komp-wezel').selectOption('bus_sn_b');
     await page.getByTestId('mvd-komp-oblicz').click();
     await expect(page.getByTestId('mvd-komp-wynik')).toBeVisible();
     const tabela = page.getByTestId('mvd-wyn-tabela');
-    await expect(tabela).toContainText('Bateria SN 0,6 Mvar / 15 kV');
+    // Nazwa z realnego katalogu MV (`KOMP_SN_0V6_15KV`,
+    // `network_model/catalog/mv_shunt_capacitor_catalog.py`) — nie ręcznie
+    // wymyślona etykieta.
+    await expect(tabela).toContainText('Bateria kondensatorow SN 0,6 Mvar 15 kV');
     await expect(page.getByTestId('mvd-komp-dobor-nazwa')).toContainText('0,6 Mvar');
     await page.getByTestId('mvd-komp-slad-otworz').click();
     const slad = page.getByTestId('mvd-komp-slad');
@@ -80,15 +89,21 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     }
   } else if (scena === 'sila-sieci') {
     // Wynik SCR/WSCR z zasianego przebiegu zwarciowego → otwarte OBA wywody:
-    // systemowy (WSCR) i węzłowy (słaby węzeł SZ-FW1).
+    // systemowy (WSCR) i węzłowy (bus_nn, jedyny węzeł z modułem OZE
+    // katalogowym w sieci złotej — HARNESS-RESZTA-kontynuacja: dawny słaby
+    // węzeł 'SZ-FW1' z ręcznie pisanego mocka nie odpowiadał żadnemu
+    // realnemu węzłowi po konwersji sceny na realny bieg backendu; SCR
+    // realnej farmy PV [0,215 MVA] w tym węźle daje werdykt „mocna", nie
+    // „słaba" — intencja bez zmian: DWA otwarte wywody, teraz na realnych
+    // liczbach).
     const sekcja = page.getByTestId('mvd-oze-pulpit-sila');
     await expect(page.getByTestId('mvd-oze-sila-wynik')).toBeVisible();
-    await expect(page.getByTestId('mvd-oze-sila-wscr')).toContainText('3,09');
+    await expect(page.getByTestId('mvd-oze-sila-wscr')).toContainText('67,97');
     await page.getByTestId('mvd-oze-sila-wscr-slad-otworz').click();
-    await expect(sekcja).toContainText('licznik Σ(S_sc·S_n) = 2419.2 MVA²');
-    await page.getByTestId('mvd-oze-sila-slad-otworz-SZ-FW1').click();
-    await expect(sekcja).toContainText('SCR = 45.0 MVA / 20.0 MVA');
-    await expect(page.getByTestId('mvd-oze-sila-werdykt-SZ-FW1')).toContainText('słaba');
+    await expect(sekcja).toContainText('licznik Σ(S_sc·S_n) = 3.1419 MVA²');
+    await page.getByTestId('mvd-oze-sila-slad-otworz-bus_nn').click();
+    await expect(sekcja).toContainText('SCR = 14.6134 MVA / 0.215 MVA');
+    await expect(page.getByTestId('mvd-oze-sila-werdykt-bus_nn')).toContainText('mocna');
   } else if (scena === 'odbior-zgodnosc') {
     // Pomiary z obiektu w edytorze wierszy + jawne tolerancje → raport →
     // wybór wiersza → otwarty ślad slad_pl (kroki tekstowe).
@@ -142,24 +157,30 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     await expect(page.getByTestId('mvd-ssci-slad')).toContainText('max|L|');
     await expect(page.getByTestId('mvd-ssci-slad')).toContainText('1,42');
   } else if (scena === 'migotanie') {
-    // Wiersz węzła (moduły, w tym pominięty z powodem PL) → otwarty ślad
-    // Pst/Plt/d z wzorami renderowanymi KaTeX (math-rendered).
+    // Wiersz węzła (moduły OZE) → otwarty ślad Pst/Plt/d z wzorami
+    // renderowanymi KaTeX (math-rendered). HARNESS-RESZTA-kontynuacja: dawny
+    // węzeł 'SZ-PV2'/moduł 'gen-pv-2' bez współczynnika i werdykt
+    // „przekroczenie" z ręcznie pisanego mocka nie odpowiadały żadnemu
+    // realnemu węzłowi po konwersji sceny na realny bieg backendu — jedyny
+    // węzeł sieci złotej z modułem OZE katalogowym to `bus_nn`/`gen_pv`,
+    // MA współczynnik emisji [flicker_c=0,3] (wliczony do sumowania, nie
+    // pominięty) i mieści się w granicach planowania (Pst=0,0044 ≪ 0,9);
+    // intencja bez zmian: wiersz węzła → szczegół modułu → otwarty ślad z
+    // formułą KaTeX, teraz na realnych liczbach (jeden moduł, nie dwa).
     await expect(page.getByTestId('mvd-jakosc-migotanie')).toBeVisible();
     await expect(page.getByTestId('mvd-wyn-tabela')).toContainText(
-      'przekroczenie poziomu planowania',
+      'w granicach planowania',
     );
-    await page.getByTestId('mvd-wyn-tabela').getByText('SZ-PV2').click();
+    await page.getByTestId('mvd-wyn-tabela').getByText('bus_nn').click();
     const szczegol = page.getByTestId('mvd-jakosc-migotanie-szczegol');
-    await expect(szczegol).toContainText('gen-pv-2');
-    await expect(page.getByTestId('mvd-jakosc-mig-modul-info')).toContainText(
-      'brak współczynnika emisji migotania',
-    );
+    await expect(szczegol).toContainText('gen_pv');
+    await expect(szczegol).toContainText('Wliczony do sumowania');
     await page.getByTestId('mvd-jakosc-mig-slad-otworz').click();
     const slad = page.getByTestId('mvd-jakosc-mig-slad');
     const wzor = slad.locator('[data-testid="math-rendered"]').first();
     await expect(wzor).toBeVisible();
     expect(await wzor.getAttribute('data-latex')).toContain('P_{st');
-    await expect(slad).toContainText('P_st = (0.4107^3 + 0.3423^3)^(1/3)');
+    await expect(slad).toContainText('P_st = (0.004414^3)^(1/3)');
   } else {
     // arcflash: parametry projektowe → „Przelicz" (POST) → wiersz szyny →
     // otwarty ślad IEEE 1584-2018 (I_arc, CF, E, AFB, ŚOI) w KaTeX.
@@ -168,16 +189,26 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     await page.getByTestId('mvd-jakosc-af-czas').fill('0.2');
     await page.getByTestId('mvd-jakosc-af-licz').click();
     await expect(page.getByTestId('mvd-jakosc-arcflash')).toBeVisible();
-    await page.getByTestId('mvd-wyn-tabela').getByText('Szyna SN-1').click();
+    // Kolumna „punkt" niesie surowy `bus_ref` (kontrakt IEEE 1584 buildera nie
+    // niesie nazwy PL szyny — jak `branch_id` w tabeli gałęzi rozpływu, K3/C1
+    // dowodRef) — HARNESS-RESZTA-kontynuacja: dawny literal 'Szyna SN-1' z
+    // recznie pisanego mocka nie odpowiadal zadnej realnej szynie po konwersji
+    // sceny na realny bieg backendu (`arcflash_scena_wynik.json`, pierwsza
+    // szyna zlotej sieci, `element-id` ustabilizowany `_fiksuj_niedeterminizm_
+    // sceny_zwarcia`).
+    await page
+      .getByTestId('mvd-wyn-tabela')
+      .getByText('63203cbc-ac91-5100-a0ee-a275d24514ff')
+      .click();
     await expect(page.getByTestId('mvd-jakosc-af-szczegol')).toBeVisible();
     await page.getByTestId('mvd-jakosc-af-slad-otworz').click();
     const slad = page.getByTestId('mvd-jakosc-af-slad');
     const wzor = slad.locator('[data-testid="math-rendered"]').first();
     await expect(wzor).toBeVisible();
     expect(await wzor.getAttribute('data-latex')).toContain('I_{arc');
-    await expect(slad).toContainText('I_arc = 11.8 kA');
-    await expect(slad).toContainText('E = 35.2 J/cm² = 8.413 cal/cm²');
-    await expect(slad).toContainText('AFB = 1320.0 mm');
+    await expect(slad).toContainText('I_arc = 8.5156 kA');
+    await expect(slad).toContainText('E = 32.1686 J/cm² = 7.6885 cal/cm²');
+    await expect(slad).toContainText('AFB = 1487.7103 mm');
   }
 }
 

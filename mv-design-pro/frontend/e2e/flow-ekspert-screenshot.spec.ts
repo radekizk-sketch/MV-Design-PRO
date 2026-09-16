@@ -60,29 +60,43 @@ test.describe('flow-ekspert:screenshot', () => {
           await expect(page.getByTestId('pulpit-osd-limit')).toBeVisible();
           await expect(page.getByTestId('pulpit-osd-werdykt')).toContainText('przekracza');
         } else if (scena === 'uwaga') {
-          // Scena zasiewa wynik rozpływu BEZ `kryteria_napiecia` (karta W3-J: próg
-          // wyłącznie z odpowiedzi biegu) — uczciwy stan „brak podstaw do oceny",
-          // nie „sieć w normie" (CI run 444, 2026-09-16). Lista przekroczeń z realnego
-          // biegu backendu wraca w tej scenie z kartą HARNESS-RESZTA.
-          await expect(page.getByTestId('mvd-cwu-brak-kryteriow')).toBeVisible();
-          await expect(page.getByTestId('mvd-cwu-brak-kryteriow')).toContainText('Brak podstaw do oceny');
-          await expect(page.getByTestId('mvd-cwu-w-normie')).toHaveCount(0);
+          // HARNESS-RESZTA-kontynuacja: scena „rozplyw"/„uwaga" karmiona REALNYM
+          // biegiem PF na sieci złotej z obciążeniem ×8 (`rozplyw_scena_wynik.json`)
+          // — `kryteria_napiecia` NIE jest już puste (dawny stan „brak podstaw do
+          // oceny" z CI run 444 był właściwy dla WCZEŚNIEJSZEGO, ręcznie pisanego
+          // zasiewu bez tego pola). Rejestr przekroczeń pokazuje realną listę z
+          // energy-validation buildera (m.in. odchylenie napięcia „Szyna nN"
+          // FAIL 25,17 % i obciążenie transformatora FAIL 702,1 % — ta sama sieć
+          // co scena „rozplyw").
+          await expect(page.getByTestId('mvd-cwu-podsumowanie')).toBeVisible();
+          await expect(page.getByTestId('mvd-cwu-lista')).toBeVisible();
+          expect(await page.getByTestId('mvd-cwu-pozycja').count()).toBeGreaterThan(0);
         } else if (scena === 'swiezosc') {
           await expect(page.getByTestId('mvd-casebar')).toBeVisible();
           await expect(page.getByTestId('mvd-casebar-results')).toContainText('nieaktualne');
         } else if (scena === 'walidacja') {
           // R2-A: wybor pozycji z wywodem (klik wiersza tabeli po etykiecie
-          // rodzaju kontroli) -> rozwiniety slad WHITE BOX.
+          // rodzaju kontroli) -> rozwiniety slad WHITE BOX. `.first()`
+          // (HARNESS-RESZTA-kontynuacja): realna sieć ×8 obciążenia ma
+          // „Odchylenie napięcia" na WSZYSTKICH 5 szynach (nie jednej jak dawny
+          // mock) — pierwszy wiersz (Szyna nN) ma werdykt PRZEKROCZENIE (25,17 %,
+          // realnie najniższe napięcie sieci — szyna nN za przeciążonym
+          // transformatorem 15/0.4).
           await expect(page.getByTestId('mvd-jakosc-walidacja')).toBeVisible();
-          await page.getByRole('row').filter({ hasText: 'Odchylenie napięcia' }).click();
+          await page.getByRole('row').filter({ hasText: 'Odchylenie napięcia' }).first().click();
           await page.getByTestId('mvd-jakosc-wal-slad-otworz').click();
           await expect(page.getByTestId('mvd-jakosc-wal-slad')).toContainText('Werdykt: PRZEKROCZENIE');
         } else if (scena === 'rozplyw') {
           // R3-A: podzakladka Galezie -> kolumna "Obciazenie [%]" z werdyktem
-          // backendu (TR-1 FAIL 104 %, L-14 WARNING 90 %).
+          // backendu (HARNESS-RESZTA-kontynuacja: scena "rozplyw" karmiona
+          // realnym biegiem PF na sieci zlotej z obciazeniem ×8 —
+          // `walidacja_scena_wynik.json`, TRANSFORMER_LOADING 702,1 % FAIL na
+          // galezi 158eec95…; dawny recznie wpisany werdykt "TR-1 FAIL 104 %,
+          // L-14 WARNING 90 %" nie odpowiadal zadnej realnej galezi).
           await page.getByTestId('mvd-rozplyw-podzakladka-galezie').click();
           await expect(page.getByTestId('mvd-wyn-th-obciazenie')).toBeVisible();
-          await expect(page.getByTestId('mvd-wyn-tabela')).toContainText('104,0');
+          await expect(page.getByTestId('mvd-wyn-tabela')).toContainText('702,1');
+          await expect(page.getByTestId('mvd-wyn-tabela')).toContainText('Poza zakresem');
         } else if (scena === 'zwarcia') {
           // R3-B: sekcja wkladow dla domyslnego punktu z realnego dostawcy
           // (endpoint SC3F contributions, podmieniony fetch).
@@ -139,8 +153,10 @@ test.describe('flow-ekspert:screenshot', () => {
           // Powrot do stanu bazowego sceny — zrzut zbiorczy bez zmian.
           await page.getByTestId('mvd-por-filtr-roznice').uncheck();
         } else {
-          // R2-B: pre-selekcja wezla z deep-linku widoczna w polu wyboru.
-          await expect(page.getByTestId('mvd-komp-wezel')).toHaveValue('SZ-ST7');
+          // R2-B: pre-selekcja wezla z deep-linku widoczna w polu wyboru
+          // (HARNESS-RESZTA-kontynuacja: bus_sn_b, realny wezel zasiewu sceny
+          // "kompensacja" po konwersji na fixture realnego biegu backendu).
+          await expect(page.getByTestId('mvd-komp-wezel')).toHaveValue('bus_sn_b');
         }
 
         await page.waitForTimeout(400);
