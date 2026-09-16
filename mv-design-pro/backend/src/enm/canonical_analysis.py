@@ -37,16 +37,23 @@ from enm.assembler import (
     WejscieRozplywu,
     WejscieZwarcia,
     WyspaRozplywu,
+    WyspaRozplywuNiesymetrycznego,
     _graph_id_from_ref,
     _short_circuit_requires_z0,
     _short_circuit_type_from_options,
     zloz_wejscie_rozplywu,
+    zloz_wejscie_rozplywu_niesymetrycznego,
     zloz_wejscie_zwarcia,
 )
 from enm.element_kind import rodzaj_elementu, zbuduj_indeks_rodzajow
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from enm.models import EnergyNetworkModel
+from enm.rozplyw_niesymetryczny_wynik import (
+    json_bezpieczny,
+    slad_iteracji,
+    zbuduj_wynik_rozplywu_niesymetrycznego,
+)
 from enm.rozplyw_wysp import opis_wysp, scal_rozwiazania_wysp, scal_slady_oltc
 from enm.scenariusze import (
     SCENARIUSZ_NORMALNY,
@@ -100,6 +107,10 @@ from network_model.solvers.power_flow_result import build_power_flow_result_v1
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
     PowerFlowOptions,
+)
+from network_model.solvers.power_flow_unbalanced import (
+    UnbalancedPowerFlowResult,
+    solve_unbalanced_backward_forward_sweep,
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import (
@@ -436,9 +447,16 @@ def _power_flow_proof_ref(*, run: CanonicalRun, solver_method: str) -> str:
     return f"proof:power-flow:{hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
 
 
+#: Karta W5-D (F-1): kanoniczny typ analizy rozpływu niesymetrycznego (BFS, solver FROZEN
+#: `power_flow_unbalanced.py`). Typ wykonawczy (`ExecutionAnalysisType`): `PF_UNBALANCED`.
+ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY = "rozplyw_niesymetryczny"
+
+
 def _execution_analysis_type_for_run(run: CanonicalRun) -> str:
     if run.analysis_type == "PF":
         return "LOAD_FLOW"
+    if run.analysis_type == ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY:
+        return "PF_UNBALANCED"
     if run.analysis_type == "short_circuit_sn":
         return _execution_analysis_type_for_fault(_short_circuit_type_from_options(run.options))
     if run.analysis_type == "phase_state_sn":
@@ -508,6 +526,8 @@ class CanonicalRun:
     def solver_kind(self) -> str:
         if self.analysis_type == "PF":
             return "PF"
+        if self.analysis_type == ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY:
+            return "PF_UNBALANCED"
         if self.analysis_type == "short_circuit_sn":
             return "short_circuit_sn"
         if self.analysis_type == "phase_state_sn":
@@ -853,6 +873,14 @@ def create_run(
     availability = validation.analysis_available
     if analysis_type == "PF" and not availability.load_flow:
         raise ValueError("Analiza rozpływu mocy nie jest dostepna dla biezacego snapshotu ENM")
+    # W5-D: rozpływ niesymetryczny ma TĘ SAMĄ bramkę dostępności co rozpływ NR (model
+    # z odbiorem/generacją); zdolności solvera BFS (radialność, Z0, fazy) sprawdza
+    # assembler odmową nazwaną w biegu (`enm/assembler.py::diagnoza_niesymetrii`).
+    if analysis_type == ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY and not availability.load_flow:
+        raise ValueError(
+            "Rozplyw niesymetryczny nie jest dostepny dla biezacego snapshotu ENM "
+            "(model bez odbioru/generacji albo z blokada walidacji)"
+        )
     snapshot = efektywna.snapshot
     enm_hash = efektywna.snapshot_hash
     normalized_options = {**opcje_biegu_ze_scenariusza(scenariusz_biegu), **dict(options or {})}
@@ -961,6 +989,8 @@ def _wykonaj_analize_biegu(
         )
     if run.analysis_type == "PF":
         _execute_power_flow(run, graf, uow_factory=uow_factory)
+    elif run.analysis_type == ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY:
+        _execute_power_flow_unbalanced(run)
     elif run.analysis_type == "short_circuit_sn":
         _execute_short_circuit(run, uow_factory=uow_factory)
     elif run.analysis_type == "phase_state_sn":
@@ -2653,6 +2683,137 @@ def _execute_power_flow(
         run.power_flow_trace["oltc_control"] = oltc_trace
 
 
+def _power_flow_unbalanced_proof_ref(*, run: CanonicalRun) -> str:
+    payload = {
+        "analysis_type": ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY,
+        "run_id": str(run.id),
+        "input_hash": run.input_hash,
+    }
+    digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+    return f"proof:pf_unbalanced:{digest[:16]}"
+
+
+def _execute_power_flow_unbalanced(run: CanonicalRun) -> None:
+    """Rozpływ niesymetryczny (karta W5-D): assembler ES→TV→IR → BFS FROZEN → kontrakt v1.
+
+    Jedno rozwiązanie na wyspę zasiloną (jak rozpływ NR, CV-4.3 K3b); odmowa nazwana
+    assemblera (`OdmowaWejsciaRozplywu` z kodem kanonu) kończy bieg statusem FAILED z
+    treścią kodu — bez cichego przybliżenia. Wynik: `raw_result.result_v1` wg
+    `ResultSetPowerFlowUnbalancedV1`, ślad WHITE BOX (Z_s/Z_m per gałąź: wzór, dane,
+    podstawienie, wynik; odbiory per faza; baza jednej fazy; iteracje BFS).
+    """
+    wejscie = zloz_wejscie_rozplywu_niesymetrycznego(run.snapshot or {}, run.options)
+    rozwiazania: list[tuple[WyspaRozplywuNiesymetrycznego, UnbalancedPowerFlowResult]] = []
+    for wyspa in wejscie.wyspy:
+        rozwiazania.append(
+            (
+                wyspa,
+                solve_unbalanced_backward_forward_sweep(
+                    wyspa.wejscie,
+                    tolerance=wejscie.tolerance,
+                    max_iterations=wejscie.max_iterations,
+                ),
+            )
+        )
+    wynik = zbuduj_wynik_rozplywu_niesymetrycznego(wejscie, rozwiazania)
+    proof_ref = _power_flow_unbalanced_proof_ref(run=run)
+    kompletny = wynik.converged and not wynik.unsolved_bus_ids
+    reporting_status = "reportable" if wynik.converged else "not_reportable"
+    proof_status = "complete" if wynik.converged else "partial"
+    graph = wejscie.graph
+    run.raw_result = {
+        "analysis_type": "load_flow_unbalanced",
+        "solver_method": "backward-forward-sweep",
+        "solver_version": wynik.solver_version,
+        "proof_ref": proof_ref,
+        "proof_status": proof_status,
+        "proof_status_pl": "pelny" if proof_status == "complete" else "czesciowy",
+        "reporting_status": reporting_status,
+        "reporting_status_pl": (
+            "raportowalny" if reporting_status == "reportable" else "nieraportowalny"
+        ),
+        "quality_status": (
+            "accepted" if kompletny else ("partial" if wynik.converged else "failed")
+        ),
+        "applicability_status": "applicable",
+        "dopuszczalnosc_raportowa": kompletny,
+        "reporting_limitations": (
+            []
+            if kompletny
+            else (
+                ["unsolved_nodes_outside_slack_island"]
+                if wynik.converged
+                else ["solver_non_convergence"]
+            )
+        ),
+        "result_v1": wynik.to_dict(),
+        "zalozenia": [dict(z) for z in wejscie.zalozenia],
+        "graph": {
+            "nodes": {
+                node_id: {
+                    "name": node.name,
+                    "voltage_level": node.voltage_level,
+                    "node_type": node.node_type.value,
+                    **wejscie.graph_nodes.get(node_id, {}),
+                }
+                for node_id, node in sorted(graph.nodes.items())
+            },
+            "branches": {
+                branch_id: {
+                    "name": branch.name,
+                    "from_node_id": branch.from_node_id,
+                    "to_node_id": branch.to_node_id,
+                    "rated_current_a": getattr(branch, "rated_current_a", None),
+                    **wejscie.graph_branches.get(branch_id, {}),
+                }
+                for branch_id, branch in sorted(graph.branches.items())
+            },
+        },
+    }
+    kroki: list[dict[str, Any]] = []
+    for numer, krok in enumerate(wejscie.slad, start=1):
+        kroki.append(
+            {
+                "step": numer,
+                "method_basis": "PF_UNBALANCED_BFS_V1",
+                "proof_ref": proof_ref,
+                "proof_status": proof_status,
+                "reporting_status": reporting_status,
+                **json_bezpieczny(krok),
+            }
+        )
+    for wpis in slad_iteracji(rozwiazania):
+        kroki.append(
+            {
+                "step": len(kroki) + 1,
+                "key": f"pf_unbalanced_iterations[{wpis['zrodlo_ref']}]",
+                "title": (
+                    f"Wyspa źródła {wpis['zrodlo_ref']}: iteracje BFS "
+                    f"({'zbieżny' if wpis['converged'] else 'niezbieżny'}, {wpis['iterations']})"
+                ),
+                "method_basis": "PF_UNBALANCED_BFS_V1",
+                "formula_latex": r"\max_k |V_k^{(i)} - V_k^{(i-1)}| < \varepsilon",
+                "inputs": {
+                    "tolerance": wpis["tolerance"],
+                    "max_iterations": wpis["max_iterations"],
+                },
+                "substitution": ", ".join(
+                    f"i={k['iteration']}: {k['max_mismatch_pu']:.3e}" for k in wpis["iteracje"]
+                ),
+                "result": {
+                    "converged": wpis["converged"],
+                    "iterations": wpis["iterations"],
+                    "slack_bus_id": wpis["slack_bus_id"],
+                },
+                "proof_ref": proof_ref,
+                "proof_status": proof_status,
+                "reporting_status": reporting_status,
+            }
+        )
+    run.white_box_trace = kroki
+    run.power_flow_trace = None
+
+
 def _iteracje_sladu(nr_trace: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Wpisy iteracji śladu rozpływu (``k``, normy niedopasowania, przyczyna przerwania);
     wpis rozwiązania scalonego z kilku wysp niesie dodatkowo ``slack_bus_id`` swojej
@@ -2779,6 +2940,46 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                         {"key": "q_mvar", "label_pl": "Q", "unit": "MVAr"},
                         {"key": "s_mva", "label_pl": "S", "unit": "MVA"},
                         {"key": "loading_pct", "label_pl": "Obciazenie", "unit": "%"},
+                    ],
+                },
+            ]
+        )
+    if run.analysis_type == ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY:
+        result_v1 = raw_result.get("result_v1", {})
+        tables.extend(
+            [
+                {
+                    "table_id": "buses_unbalanced",
+                    "label_pl": "Szyny (per faza)",
+                    "row_count": len(result_v1.get("bus_results", [])),
+                    "columns": [
+                        {"key": "name", "label_pl": "Nazwa"},
+                        {"key": "bus_id", "label_pl": "ID wezla"},
+                        {"key": "un_kv", "label_pl": "Un", "unit": "kV"},
+                        {"key": "ua_kv", "label_pl": "UA", "unit": "kV"},
+                        {"key": "ub_kv", "label_pl": "UB", "unit": "kV"},
+                        {"key": "uc_kv", "label_pl": "UC", "unit": "kV"},
+                        {"key": "ua_pu", "label_pl": "UA", "unit": "pu"},
+                        {"key": "ub_pu", "label_pl": "UB", "unit": "pu"},
+                        {"key": "uc_pu", "label_pl": "UC", "unit": "pu"},
+                        {"key": "voltage_unbalance_factor_pct", "label_pl": "VUF", "unit": "%"},
+                    ],
+                },
+                {
+                    "table_id": "branches_unbalanced",
+                    "label_pl": "Galezie (per faza)",
+                    "row_count": len(result_v1.get("branch_results", [])),
+                    "columns": [
+                        {"key": "name", "label_pl": "Nazwa"},
+                        {"key": "from_bus", "label_pl": "Od"},
+                        {"key": "to_bus", "label_pl": "Do"},
+                        {"key": "ia_a", "label_pl": "IA", "unit": "A"},
+                        {"key": "ib_a", "label_pl": "IB", "unit": "A"},
+                        {"key": "ic_a", "label_pl": "IC", "unit": "A"},
+                        {"key": "pa_mw", "label_pl": "PA", "unit": "MW"},
+                        {"key": "pb_mw", "label_pl": "PB", "unit": "MW"},
+                        {"key": "pc_mw", "label_pl": "PC", "unit": "MW"},
+                        {"key": "losses_p_mw", "label_pl": "Straty P", "unit": "MW"},
                     ],
                 },
             ]
@@ -3465,6 +3666,73 @@ def wiersze_swiezego_biegu_bez_rozplywu(run: CanonicalRun) -> list[dict[str, Any
     return wiersze
 
 
+def build_power_flow_unbalanced_results(run: CanonicalRun) -> dict[str, Any]:
+    """Wiersze wyniku rozpływu niesymetrycznego (W5-D) — 1:1 z ``result_v1`` biegu.
+
+    Kontrakt odpowiedzi `GET /api/analysis-runs/{id}/results/rozplyw-niesymetryczny`
+    (klient: `frontend/src/ui2/wyniki/stan-fazowy/api.ts`): szyny per faza (p.u., kV
+    faza–N, kąt, VUF), gałęzie per faza (P/Q/I), podsumowanie, założenia biegu
+    (kody kanonu), statusy dowodu/raportu. Bieg innego rodzaju = puste wiersze.
+    """
+    if run.analysis_type != ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY:
+        return {"run_id": str(run.id), "buses": [], "branches": [], "summary": None}
+    raw_result = run.raw_result or {}
+    result_v1 = raw_result.get("result_v1") or {}
+    if not result_v1:
+        return {"run_id": str(run.id), "buses": [], "branches": [], "summary": None}
+    szyny = [
+        {
+            "bus_id": row["bus_id"],
+            "element_id": row["element_id"],
+            "name": row["name"],
+            "un_kv": row["un_kv"],
+            "solved": row["solved"],
+            "zrodlo_ref": row["zrodlo_ref"],
+            "faza_a": row["faza_a"],
+            "faza_b": row["faza_b"],
+            "faza_c": row["faza_c"],
+            "voltage_unbalance_factor_pct": row["voltage_unbalance_factor_pct"],
+        }
+        for row in result_v1.get("bus_results", [])
+    ]
+    galezie = [
+        {
+            "branch_id": row["branch_id"],
+            "element_id": row["element_id"],
+            "name": row["name"],
+            "element_type": row["element_type"],
+            "from_bus_id": row["from_bus_id"],
+            "to_bus_id": row["to_bus_id"],
+            "faza_a": row["faza_a"],
+            "faza_b": row["faza_b"],
+            "faza_c": row["faza_c"],
+            "losses_p_mw": row["losses_p_mw"],
+            "losses_q_mvar": row["losses_q_mvar"],
+            "rated_current_a": row["rated_current_a"],
+        }
+        for row in result_v1.get("branch_results", [])
+    ]
+    return {
+        "run_id": str(run.id),
+        "analysis_type": "load_flow_unbalanced",
+        "solver_version": result_v1.get("solver_version"),
+        "converged": result_v1.get("converged"),
+        "wyspy": result_v1.get("wyspy", []),
+        "buses": szyny,
+        "branches": galezie,
+        "summary": result_v1.get("summary"),
+        "zalozenia": result_v1.get("zalozenia", []),
+        "proof_ref": raw_result.get("proof_ref"),
+        "proof_status": raw_result.get("proof_status"),
+        "proof_status_pl": raw_result.get("proof_status_pl"),
+        "reporting_status": raw_result.get("reporting_status"),
+        "reporting_status_pl": raw_result.get("reporting_status_pl"),
+        "quality_status": raw_result.get("quality_status"),
+        "dopuszczalnosc_raportowa": raw_result.get("dopuszczalnosc_raportowa", False),
+        "reporting_limitations": raw_result.get("reporting_limitations", []),
+    }
+
+
 def build_phase_state_results(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "phase_state_sn":
         return {"run_id": str(run.id), "rows": []}
@@ -4028,6 +4296,49 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
         ):
             if raw_result.get(oltc_key) is not None:
                 global_results[oltc_key] = raw_result[oltc_key]
+    elif run.analysis_type == ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY:
+        # W5-D: projekcja ResultSet — szyny i gałęzie per faza WPROST z `result_v1`
+        # (kontrakt `ResultSetPowerFlowUnbalancedV1`); zero drugiego parsowania.
+        wiersze = build_power_flow_unbalanced_results(run)
+        raw_result = run.raw_result or {}
+        for row in wiersze.get("buses", []):
+            element_results.append(
+                {
+                    "element_ref": row["element_id"],
+                    "element_type": "Bus",
+                    "solver_ref": row["bus_id"],
+                    "values": row,
+                    "proof_ref": raw_result.get("proof_ref"),
+                    "proof_status": raw_result.get("proof_status"),
+                    "reporting_status": raw_result.get("reporting_status"),
+                }
+            )
+        for row in wiersze.get("branches", []):
+            element_results.append(
+                {
+                    "element_ref": row["element_id"],
+                    "element_type": "Branch",
+                    "solver_ref": row["branch_id"],
+                    "values": row,
+                    "proof_ref": raw_result.get("proof_ref"),
+                    "proof_status": raw_result.get("proof_status"),
+                    "reporting_status": raw_result.get("reporting_status"),
+                }
+            )
+        global_results = {
+            **(wiersze.get("summary") or {}),
+            "converged": wiersze.get("converged"),
+            "analysis_type": "load_flow_unbalanced",
+            "solver_method": raw_result.get("solver_method"),
+            "solver_version": wiersze.get("solver_version"),
+            "zalozenia": wiersze.get("zalozenia", []),
+            "proof_ref": raw_result.get("proof_ref"),
+            "proof_status": raw_result.get("proof_status"),
+            "reporting_status": raw_result.get("reporting_status"),
+            "quality_status": raw_result.get("quality_status"),
+            "applicability_status": raw_result.get("applicability_status"),
+            "dopuszczalnosc_raportowa": raw_result.get("dopuszczalnosc_raportowa", False),
+        }
     elif run.analysis_type == "phase_state_sn":
         phase_rows = build_phase_state_results(run).get("rows", [])
         for row in phase_rows:

@@ -79,6 +79,10 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # (walidacja modelu vs gotowość jednej analizy), nie różny warunek; most
     # łączy fakty, nie poziomy.
     "W010": "inverter.k_sc_missing",
+    # Karta W5-D: „galaz nie ma skladowej zerowej (Z0)" == brak R0/X0 galezi — ten sam
+    # warunek, ktory assembler rozplywu niesymetrycznego zglasza jako odmowe nazwana
+    # (`enm/assembler.py::diagnoza_niesymetrii`) i ktory blokuje zwarcia 1F/2F-Z.
+    "W001": "branch.zero_sequence_missing",
 }
 
 # ---------------------------------------------------------------------------
@@ -111,7 +115,6 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
         "kanoniczny, wiec odwzorowanie idzie przez E009."
     ),
     "I003": "Kanon ma kod braku WYMAGANEGO pola; brak jakichkolwiek pol to inny warunek.",
-    "W001": "Kanon nie ma kodu dla braku skladowej zerowej galezi (Z0).",
     "W002": "Kanon nie ma kodu dla braku skladowej zerowej zrodla (Z0).",
     "W003": "Kanon ma `load.power_zero`; brak odbiorow I generatorow to inny warunek.",
     "W004": "Kanon nie ma kodu dla braku grupy polaczen transformatora.",

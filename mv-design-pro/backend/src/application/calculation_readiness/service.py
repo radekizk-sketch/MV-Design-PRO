@@ -19,6 +19,14 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from domain.canonical_operations import READINESS_CODES
+from enm.assembler import (
+    KOD_NIESYMETRIA_BRAK_DROGI_ZEROWEJ,
+    KOD_NIESYMETRIA_ELEMENT,
+    KOD_NIESYMETRIA_FAZY_ODBIORU,
+    KOD_NIESYMETRIA_NIERADIALNA,
+    diagnoza_niesymetrii,
+)
 from enm.models import EnergyNetworkModel
 from enm.topology import derive
 from enm.zrodlo_zwarcie import TrybDanych, dane_zwarciowe_zrodla
@@ -346,36 +354,49 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     )
 
 
+#: Odmowy STRUKTURALNE rozpływu niesymetrycznego (topologia/kontrakt solvera) —
+#: status `blocked`; pozostałe (brak Z0 gałęzi, brak grupy połączeń) to BRAK DANYCH,
+#: `partial` do 5 elementów jak przed W5-D (bieg i tak odmawia nazwanym kodem).
+_ODMOWY_STRUKTURALNE_NIESYMETRII: frozenset[str] = frozenset(
+    {
+        KOD_NIESYMETRIA_NIERADIALNA,
+        KOD_NIESYMETRIA_FAZY_ODBIORU,
+        KOD_NIESYMETRIA_ELEMENT,
+        KOD_NIESYMETRIA_BRAK_DROGI_ZEROWEJ,
+    }
+)
+
+
 def _check_asymmetry(enm: EnergyNetworkModel) -> ReadinessTypeReport:
-    missing: list[str] = []
-    blockers: list[str] = []
-
-    for branch in enm.branches:
-        if branch.type in ("line_overhead", "cable"):
-            r0 = getattr(branch, "r0_ohm_per_km", None)
-            x0 = getattr(branch, "x0_ohm_per_km", None)
-            if r0 is None or x0 is None:
-                missing.append(f"impedancja składowej zerowej '{branch.name}'")
-                blockers.append(branch.ref_id)
-
-    for tr in enm.transformers:
-        if tr.vector_group is None:
-            missing.append(f"grupa połączeń transformatora '{tr.name}'")
-            blockers.append(tr.ref_id)
-
-    if blockers:
+    """Gotowość „Asymetria" = rozpływ niesymetryczny (W5-D): TA SAMA diagnoza, którą
+    assembler `enm/assembler.py::diagnoza_niesymetrii` stosuje w biegu — jeden predykat,
+    jeden kod (predykaty parami). Do W5-D bramka liczyła własną kopię warunków
+    (r0/x0, vector_group) i nie znała granic solvera (radialność, fazy odbiorów,
+    elementy bez reprezentacji)."""
+    diagnoza = diagnoza_niesymetrii(enm)
+    if not diagnoza.odmowy:
         return ReadinessTypeReport(
             calculation_type="asymmetry",
             label_pl=CALCULATION_LABEL_PL["asymmetry"],
-            status="partial" if len(blockers) <= 5 else "blocked",
-            missing_fields_pl=missing[:5],
-            blocking_object_refs=blockers[:10],
-            recommended_action_pl="Uzupełnij r0/x0 odcinków i grupy połączeń transformatorów.",
+            status="ready",
         )
+    missing: list[str] = []
+    blockers: list[str] = []
+    strukturalna = False
+    for odmowa in diagnoza.odmowy:
+        missing.append(f"{READINESS_CODES[odmowa.kod].message_pl} (kod '{odmowa.kod}')")
+        blockers.extend(odmowa.elementy)
+        strukturalna = strukturalna or odmowa.kod in _ODMOWY_STRUKTURALNE_NIESYMETRII
     return ReadinessTypeReport(
         calculation_type="asymmetry",
         label_pl=CALCULATION_LABEL_PL["asymmetry"],
-        status="ready",
+        status="blocked" if strukturalna or len(blockers) > 5 else "partial",
+        missing_fields_pl=missing[:5],
+        blocking_object_refs=blockers[:10],
+        recommended_action_pl=(
+            "Doprowadź sieć do postaci promieniowej, uzupełnij R0/X0 odcinków i grupy "
+            "połączeń transformatorów, wskaż fazy odbiorów faza–N."
+        ),
     )
 
 

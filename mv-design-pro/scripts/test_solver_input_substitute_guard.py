@@ -1358,7 +1358,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Odbior S-3 NC-RFG-JEDEN-TOR na drzewie po S-2 (2026-09-16): POMIAR guardem na drzewie
     # scalonym = 3550 (3548 + 2 pola S-3: NcRfgCaseComplianceResponse/bieg.py; checker.py
     # skasowany, bieg.py dodany - liczba plikow application 231 bez zmian netto).
-    assert "Pol kontraktow wejsciowych: 3550." in wyjscie, wyjscie
+    # Karta W5-D (2026-09-16): 3550 -> POMIAR_W5D (+18 pol na drzewie karty; pomiar guardem na drzewie scalonym po odbiorze W5-D):
+    # `Load.phases` (enm/models.py), `AddNnLoad.phases` (enm/domain_ops_models.py),
+    # pola dataclass `DrogaZerowa`/`DiagnozaNiesymetrii.droga_zerowa`/`WejscieRozplywu
+    # Niesymetrycznego`/`WyspaRozplywuNiesymetrycznego` (enm/assembler.py) oraz kontrakt
+    # `domain/result_contract_power_flow_unbalanced_v1.py` (wiersze per faza, VUF, wyspy).
+    assert "Pol kontraktow wejsciowych: POMIAR_W5D." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1384,7 +1389,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # autorytet_wyniku_zwarciowego,wiazanie_wyniku_zwarciowego}.py` (4) +
         # `application/autorytet_biegu_zwarciowego.py` (1) — zero plikow skasowanych.
         # Odbior S-2 na tym samym drzewie (2026-09-16): 481 + 5 nowych plikow S-2 = 486 (pomiar guardem).
-        "Przeskanowano 486 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta W5-D (2026-09-16): 486 -> 489 (+3 nowe pliki: `enm/fazy_odbioru.py`,
+        # `enm/rozplyw_niesymetryczny_wynik.py`, `network_model/pochodne/
+        # skladowe_symetryczne.py`; zero wpisow w zapadce/wykluczeniach z tych plikow).
+        "Przeskanowano 489 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1410,12 +1418,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `network_model/core/{wklad_zwarciowy_przeksztaltnika,zdolnosci_wkladu_
         # zwarciowego,autorytet_wyniku_zwarciowego,wiazanie_wyniku_zwarciowego}.py`,
         # zero wpisow w zapadce/wykluczeniach z tych plikow).
-        "  network_model: pliki_skanowane=141, dlug=14 plikow/suma 77, "
+        # Karta W5-D (2026-09-16): network_model 141 -> 142 (+1 `pochodne/skladowe_symetryczne.py`).
+        "  network_model: pliki_skanowane=142, dlug=14 plikow/suma 77, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).
         "  solver_input: pliki_skanowane=11, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
-        "  enm: pliki_skanowane=41, dlug=8 plikow/suma 76, wykluczenia=0 plikow/suma 0",
+        # Karta W5-D (2026-09-16): enm 41 -> 43 (+2 `fazy_odbioru.py`, `rozplyw_niesymetryczny_wynik.py`).
+        "  enm: pliki_skanowane=43, dlug=8 plikow/suma 76, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

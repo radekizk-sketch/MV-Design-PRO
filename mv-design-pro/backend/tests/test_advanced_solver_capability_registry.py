@@ -13,6 +13,9 @@ def test_advanced_solver_capability_registry_is_complete_and_real() -> None:
         "LOAD_FLOW_NR",
         "LOAD_FLOW_GS_DIAGNOSTIC",
         "LOAD_FLOW_FD_PERFORMANCE",
+        # Karta W5-D (2026-09-16): rozpływ niesymetryczny (BFS per faza) jako bieg
+        # produktu `PF_UNBALANCED` — nowa zdolność w rejestrze.
+        "LOAD_FLOW_UNBALANCED_BFS",
         "PHASE_STATE_SN",
         "DYNAMIC_STABILITY",
         "POWER_QUALITY_HARMONICS",
@@ -62,8 +65,9 @@ def test_advanced_solver_capability_contract_reports_full_support() -> None:
     assert contract["all_implemented"] is True
     assert contract["all_proof_supported"] is True
     assert contract["all_reportable"] is True
-    # W3-D (2026-09-09): 25 -> 23 (kasacja source_compliance x2); W3-E: 2 pozycje "withdrawn", nie skasowane.
-    assert len(contract["capabilities"]) == 23
+    # W3-D (2026-09-09): 25 -> 23 (kasacja source_compliance x2); W3-E: 2 pozycje "withdrawn", nie skasowane;
+    # W5-D (2026-09-16): 23 -> 24 (LOAD_FLOW_UNBALANCED_BFS — rozpływ niesymetryczny jako bieg produktu).
+    assert len(contract["capabilities"]) == 24
     niedostepne = sorted(
         item["capability"]
         for item in contract["capabilities"]

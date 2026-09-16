@@ -168,6 +168,19 @@ def moc_zwarciowa_z_pradu_mva(napiecie_v: float, prad_a: float) -> float:
     return (SQRT3 * napiecie_v * prad_a) / 1_000_000.0
 
 
+def prad_fazy_z_mocy_i_napiecia_a(moc_pozorna_fazy_mva: float, napiecie_fazowe_kv: float) -> float:
+    """Prąd fazy z mocy pozornej JEDNEJ fazy i napięcia fazowego: I = S_f·1000/U_f,
+    S_f[MVA], U_f[kV] → I[A] (jednofazowy odpowiednik ``prad_roboczy_a``: bez √3,
+    bo moc i napięcie są już wielkościami jednej fazy).
+
+    Karta W5-D: prąd fazowy gałęzi rozpływu niesymetrycznego — solver FROZEN
+    ``power_flow_unbalanced.py`` oddaje moc S_f każdej fazy na początku gałęzi i
+    napięcie fazowe węzła w p.u.; wołający skaluje napięcie do kV (``napiecie_fazowe_v``
+    na U_LL·u_pu) i woła tę funkcję. Wynik jest MODUŁEM prądu (|S|/|U|).
+    """
+    return moc_pozorna_fazy_mva * 1000.0 / napiecie_fazowe_kv
+
+
 def impedancja_z_napiecia_i_pradu_ohm(napiecie_v: float, prad_a: float) -> float:
     """Impedancja z napięcia międzyprzewodowego i prądu: Z = U/(√3·I), U[V],
     I[A] → Z[Ω] (napięcie fazowe podzielone przez prąd — Ohm na fazę).
@@ -301,6 +314,50 @@ def impedancja_z_napiecia_i_mocy_ohm(napiecie_kv: float, moc_mva: float) -> floa
     inna fizyczna etykieta S.
     """
     return napiecie_kv**2 / moc_mva
+
+
+def moc_bazowa_fazy_mva(moc_bazowa_trojfazowa_mva: float) -> float:
+    """Baza mocy JEDNEJ fazy z bazy trójfazowej: S_b,φ = S_b/3 [MVA].
+
+    Karta W5-D: solver FROZEN ``power_flow_unbalanced.py`` liczy na wielkościach
+    jednej fazy (``s_pu = p_mw_a/base_mva``), więc dostaje bazę jednej fazy —
+    S_b/3 razem z U_LL/√3 (``napiecie_fazowe_v``); Z_b = U_LL²/S_b jest wtedy
+    ta sama co w rozpływie trójfazowym (pomiar: baza trójfazowa dawała spadki 3× za
+    małe, `scratchpad/w5d_baza_solvera.py`).
+    """
+    return moc_bazowa_trojfazowa_mva / 3.0
+
+
+def impedancja_z_jednostek_wzglednych_ohm(
+    impedancja_pu: complex, napiecie_bazowe_kv: float, moc_bazowa_mva: float
+) -> complex:
+    """Impedancja w omach z jednostek względnych: Z[Ω] = z[pu]·U_base²/S_base
+    (U[kV], S[MVA]) — odwrotność ``impedancja_z_napiecia_i_mocy_ohm`` jako bazy
+    per-unit, TA SAMA baza co ``_ohm_to_pu`` solvera FROZEN
+    ``power_flow_unbalanced.py`` (``z_ohm / (base_kv**2 / base_mva)``). Tor
+    ``pu → Ω → pu`` (mnożenie i dzielenie przez tę samą bazę) NIE jest tożsamością
+    co do bitu — IEEE 754 daje do 1 ULP różnicy (pomiar w
+    ``tests/network_model/pochodne/test_skladowe_symetryczne.py``: błąd względny
+    ≤ 2,3·10⁻¹⁶ na siatce baz 0,4–110 kV × 1–100 MVA); to jest dokładność
+    reprezentacji, nie fizyki (karta W5-D: impedancja transformatora z IR w pu
+    podana solverowi BFS w Ω).
+    """
+    return impedancja_pu * (napiecie_bazowe_kv**2 / moc_bazowa_mva)
+
+
+def impedancja_odniesiona_do_napiecia_ohm(
+    impedancja_ohm: complex, napiecie_wlasne_kv: float, napiecie_odniesienia_kv: float
+) -> complex:
+    """Impedancja przeliczona na inny poziom napięcia: Z' = Z·(U_odn/U_wł)²
+    (przekładnia znamionowa transformatora idealnego; U w kV, wynik w Ω).
+
+    Karta W5-D: solver FROZEN ``power_flow_unbalanced.py`` ma JEDNĄ bazę napięcia
+    dla całej sieci, więc gałęzie nN sieci SN/nN muszą być podane w omach
+    odniesionych do bazy SN (a napięcia węzłów nN wracają w p.u. własnego
+    napięcia znamionowego) — standardowy rachunek per-unit z przekładnią
+    znamionową (Grainger & Stevenson, „Power System Analysis", §2.3).
+    """
+    return impedancja_ohm * (napiecie_odniesienia_kv / napiecie_wlasne_kv) ** 2
 
 
 # =============================================================================

@@ -24,6 +24,7 @@ został skasowany procedurą; bramka wskrzeszenia: ``scripts/legacy_public_path_
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import partial
 from typing import Any
 from uuid import NAMESPACE_DNS, uuid5
 
@@ -34,12 +35,32 @@ from enm.mapping import (
     build_zero_sequence_zbus,
     map_enm_to_network_graph,
 )
-from enm.models import EnergyNetworkModel
+from enm.models import (
+    FAZY_ODBIORU_JEDNOFAZOWEGO,
+    FAZY_ODBIORU_MIEDZYFAZOWEGO,
+    Cable,
+    EnergyNetworkModel,
+    OverheadLine,
+    Transformer,
+    liczba_torow,
+)
 from enm.topology import Wyspa, derive
+from enm.zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
 from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
+from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
+from network_model.core.topologia import przeglad_wszerz
 from network_model.core.voltage_factor import Scenario
+from network_model.core.ybus import S_BASE_MVA
+from network_model.pochodne import (
+    impedancja_odniesiona_do_napiecia_ohm,
+    impedancja_wlasna_ohm,
+    impedancja_wzajemna_ohm,
+    impedancja_z_jednostek_wzglednych_ohm,
+    moc_bazowa_fazy_mva,
+    napiecie_fazowe_v,
+)
 from network_model.solvers.power_flow_inverter import (
     InverterControl,
     inverter_control_from_params,
@@ -52,7 +73,14 @@ from network_model.solvers.power_flow_types import (
     ShuntSpec,
     SlackSpec,
 )
+from network_model.solvers.power_flow_unbalanced import (
+    UnbalancedBranchSpec,
+    UnbalancedLoadSpec,
+    UnbalancedNetworkInput,
+)
+from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 from network_model.solvers.short_circuit_core import ShortCircuitType
+from network_model.whitebox.tracer import WhiteBoxStep, WhiteBoxTracer
 
 
 def _graph_id_from_ref(ref_id: str) -> str:
@@ -1086,4 +1114,913 @@ def zloz_wejscie_zwarcia(
         zalozenia=zalozenia,
         wklady_w_biegu=wklady_w_biegu,
         k_sc_znaczniki=k_sc_znaczniki,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rozpływ niesymetryczny (karta W5-D, §1 p. 7 karty W5; decyzja F-1) — diagnoza
+# zdolności solvera FROZEN ``power_flow_unbalanced.py`` i złożenie jego wejścia.
+#
+# Solver BFS (Shirmohammadi/Kersting) zna: JEDNĄ szynę bilansującą na wyspę, sieć
+# PROMIENIOWĄ, odbiory stałomocowe per faza w GWIEŹDZIE (faza–przewód neutralny)
+# i gałęzie jako (impedancja własna, impedancja wzajemna) na WSPÓLNEJ bazie
+# napięcia. Wszystko, czego nie zna, jest tu ODMOWĄ NAZWANĄ (kod kanonu +
+# elementy) albo ZAŁOŻENIEM NAZWANYM (kod WARNING w ``zalozenia`` wyniku) —
+# nigdy cichym przybliżeniem ani wartością domyślną fizyki.
+#
+# BAZA PER FAZA (pomiar 2026-09-16, ``scratchpad/w5d_baza_solvera.py``): solver
+# liczy ``s_pu = p_mw_a / base_mva`` i ``z_pu = Z·base_mva/base_kv²`` na
+# WIELKOŚCIACH JEDNEJ FAZY, więc bazą podaną solverowi musi być baza jednej
+# fazy — S_base/3 i U_LL/√3 (Z_base = U_LL²/S_base pozostaje wspólna). Baza
+# trójfazowa (S_base, U_LL) — konwencja starego dialektu i testu golden IEEE 34
+# — daje spadki napięcia i straty DOKŁADNIE 3× za małe (0,000341 vs 0,001023 pu
+# na sieci 2-szynowej 15 kV, 1 MW; rachunek fizyczny (P·R+Q·X)/U² = 0,001022).
+# ---------------------------------------------------------------------------
+
+KOD_NIESYMETRIA_NIERADIALNA = "power_flow.unbalanced_requires_radial"
+KOD_NIESYMETRIA_FAZY_ODBIORU = "power_flow.unbalanced_load_phases_unsupported"
+KOD_NIESYMETRIA_ELEMENT = "power_flow.unbalanced_element_unsupported"
+KOD_NIESYMETRIA_BRAK_DROGI_ZEROWEJ = "power_flow.unbalanced_no_zero_sequence_path"
+KOD_NIESYMETRIA_BRAK_Z0_GALEZI = "branch.zero_sequence_missing"
+KOD_NIESYMETRIA_BRAK_GRUPY_TR = "transformer.vector_group_missing"
+KOD_ZALOZENIE_ADMITANCJA_POPRZECZNA = "power_flow.unbalanced_shunt_admittance_omitted"
+KOD_ZALOZENIE_GALAZ_MAGNESUJACA = "power_flow.unbalanced_magnetising_branch_omitted"
+KOD_ZALOZENIE_TR_SZEREGOWY = "power_flow.unbalanced_transformer_series_model"
+#: Solver FROZEN liczy straty gałęzi z impedancji WŁASNEJ (|I|²·Z_s), bez wyrazu
+#: wzajemnego — przy Z_m ≠ 0 (Z0 ≠ Z1) straty są przybliżone (pomiar: R_s/R_1 = 5/3
+#: dla katalogowego Z0 = 3·Z1 na gałęzi z realnym I0); napięcia i prądy bez zmian.
+KOD_ZALOZENIE_STRATY_Z_IMPEDANCJI_WLASNEJ = "power_flow.unbalanced_losses_self_impedance"
+#: Droga I0 odbioru faza–N zamyka się w uziemionym uzwojeniu transformatora (Dyn, YNd…);
+#: solver szeregowy przepuszcza I0 dalej w górę (artefakt) — krawędzie powyżej punktu
+#: zamknięcia dostają Z_m := 0 (bez sprzężenia faz), założenie NAZWANE per krawędź.
+KOD_ZALOZENIE_DROGA_ZEROWA_ZAMKNIETA = "power_flow.unbalanced_zero_sequence_confined"
+#: Droga I0 odbioru faza–N bez transformatora zamykającego — powrót przez punkt neutralny
+#: źródła sieciowego (źródło idealne, uziemione w modelu BFS), założenie NAZWANE.
+KOD_ZALOZENIE_DROGA_ZEROWA_ZRODLO = "power_flow.unbalanced_zero_sequence_via_source"
+
+#: Kolejność odmów w diagnozie = kolejność zgłaszania (pierwsza odmowa niesie kod
+#: wyjątku ``OdmowaWejsciaRozplywu``; komunikat wymienia WSZYSTKIE).
+_KOLEJNOSC_ODMOW_NIESYMETRII: tuple[str, ...] = (
+    KOD_NIESYMETRIA_NIERADIALNA,
+    KOD_NIESYMETRIA_BRAK_Z0_GALEZI,
+    KOD_NIESYMETRIA_BRAK_GRUPY_TR,
+    KOD_NIESYMETRIA_FAZY_ODBIORU,
+    KOD_NIESYMETRIA_BRAK_DROGI_ZEROWEJ,
+    KOD_NIESYMETRIA_ELEMENT,
+)
+
+_FAZY: tuple[str, str, str] = ("A", "B", "C")
+
+#: Nastawy solvera BFS rozpływu niesymetrycznego (NIE dane wejściowe sieci): baza mocy
+#: systemowej, tolerancja |ΔV| między iteracjami i limit iteracji — wartości JAWNE,
+#: echo w kontrakcie wyniku (`ResultSetPowerFlowUnbalancedV1.tolerance/max_iterations`).
+OPCJE_ROZPLYWU_NIESYMETRYCZNEGO: dict[str, float | int] = {
+    "base_mva": 100.0,
+    "tolerance": 1e-6,
+    "max_iterations": 50,
+}
+
+
+def _opcje_rozplywu_niesymetrycznego(options: dict[str, Any]) -> tuple[float, float, int]:
+    """Nastawy biegu: opcje przebiegu nadpisują ``OPCJE_ROZPLYWU_NIESYMETRYCZNEGO``
+    (alias ``max_iter`` jak w rozpływie NR). Zwraca (base_mva, tolerance, max_iterations)."""
+    opcje: dict[str, Any] = dict(OPCJE_ROZPLYWU_NIESYMETRYCZNEGO)
+    for klucz in ("base_mva", "tolerance", "max_iterations"):
+        if klucz in options:
+            opcje[klucz] = options[klucz]
+    if "max_iterations" not in options and "max_iter" in options:
+        opcje["max_iterations"] = options["max_iter"]
+    return float(opcje["base_mva"]), float(opcje["tolerance"]), int(opcje["max_iterations"])
+
+
+@dataclass(frozen=True)
+class OdmowaNiesymetrii:
+    """Jedna odmowa nazwana diagnozy (kod kanonu + elementy + opis PL)."""
+
+    kod: str
+    elementy: tuple[str, ...]
+    opis: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"kod": self.kod, "elementy": list(self.elementy), "opis": self.opis}
+
+
+@dataclass(frozen=True)
+class DrogaZerowa:
+    """Droga składowej zerowej odbiorów jednofazowych (faza–N) w wyspach zasilonych.
+
+    Prąd powrotny odbioru faza–N płynie od szyny odbioru w górę (ku szynie bilansującej)
+    i zamyka się w PIERWSZYM transformatorze z uziemionym uzwojeniem po stronie odbioru
+    (Dyn, YNd, YNyn z jedną stroną uziemioną — ``enm/zero_sequence_transformer``), a bez
+    takiego transformatora — w punkcie neutralnym źródła sieciowego. Transformator bez
+    tej drogi (Yy/Dd nieuziemione, uziemienie po stronie zasilającej) przerywa obwód =
+    odmowa nazwana. Solver FROZEN (BFS, gałąź = macierz 3×3 szeregowa) NIE odwzorowuje
+    izolacji I0 przez trójkąt: powyżej punktu zamknięcia I0 płynie dalej jako artefakt
+    modelu — te krawędzie dostają Z_m := 0 (bez sprzężenia faz) z założeniem nazwanym.
+    Krawędź, którą nie płynie żaden realny I0 (odbiory symetryczne), nie potrzebuje Z0:
+    spadek = (Z_s − Z_m)·I + 3·Z_m·I0 = Z1·I przy I0 ≡ 0 — tożsamość, nie podstawienie.
+    """
+
+    #: Transformatory przerywające drogę I0 (odmowa), posortowane.
+    bez_drogi: tuple[str, ...]
+    #: Krawędzie (gałęzie, łączniki, transformatory), którymi płynie REALNY I0 —
+    #: tylko one potrzebują Z0 (brak R0/X0 gdzie indziej nie blokuje biegu).
+    z_realnym_i0: frozenset[str]
+    #: Krawędzie powyżej punktu zamknięcia (artefakt I0 modelu szeregowego).
+    artefakt: frozenset[str]
+    #: (odbiór, transformator zamykający drogę I0), posortowane.
+    zamkniecia_w_transformatorach: tuple[tuple[str, str], ...]
+    #: (odbiór, źródło sieciowe) — droga zamknięta w punkcie neutralnym źródła.
+    zamkniecia_w_zrodlach: tuple[tuple[str, str], ...]
+
+
+def _sasiedzi_posortowani(
+    sasiedzi: dict[str, list[tuple[str, str]]], szyna: str
+) -> list[tuple[str, str]]:
+    """Pary (krawędź, sąsiad) szyny w porządku (sąsiad, krawędź) — deterministyczny
+    wybór rodzica w przeglądzie wszerz jądra topologii."""
+    return [(ref, v) for v, ref in sorted(sasiedzi.get(szyna, []))]
+
+
+def _droga_zerowa(enm: EnergyNetworkModel, wyspy: tuple[Wyspa, ...]) -> DrogaZerowa:
+    """Wędrówka od każdego odbioru faza–N ku szynie bilansującej wyspy (drzewo BFS od
+    slacka po krawędziach ``_krawedzie_wyspy`` — TEN SAM zbiór krawędzi, z którego
+    ``enm/topology.derive`` buduje wyspę). Transformator bez grupy połączeń kończy
+    wędrówkę bez rozstrzygnięcia (osobna odmowa ``transformer.vector_group_missing``)."""
+    szyna_zrodla = {s.ref_id: s.bus_ref for s in enm.sources}
+    galezie = {g.ref_id: g for g in enm.branches}
+    trafa = {t.ref_id: t for t in enm.transformers}
+    bez_drogi: set[str] = set()
+    realne: set[str] = set()
+    artefakt: set[str] = set()
+    zamkniecia_tr: set[tuple[str, str]] = set()
+    zamkniecia_zr: set[tuple[str, str]] = set()
+    for wyspa in wyspy:
+        szyny = frozenset(wyspa.szyny)
+        zrodlo_ref = wyspa.zrodla_sieciowe[0]
+        slack = szyna_zrodla.get(zrodlo_ref)
+        if slack is None or slack not in szyny:
+            continue
+        sasiedzi: dict[str, list[tuple[str, str]]] = {}
+        for ref in _krawedzie_wyspy(enm, szyny):
+            if ref in galezie:
+                a, b = galezie[ref].from_bus_ref, galezie[ref].to_bus_ref
+            else:
+                a, b = trafa[ref].hv_bus_ref, trafa[ref].lv_bus_ref
+            sasiedzi.setdefault(a, []).append((b, ref))
+            sasiedzi.setdefault(b, []).append((a, ref))
+        # Drzewo od szyny bilansującej — jądro topologii (`network_model/core/topologia`),
+        # kolejność sąsiadów po (sąsiad, krawędź): deterministyczny wybór rodzica.
+        drzewo = przeglad_wszerz(slack, partial(_sasiedzi_posortowani, sasiedzi))
+        rodzic = {szyna: (para[1], para[0]) for szyna, para in drzewo.items() if para is not None}
+        for ld in sorted(enm.loads, key=lambda ld: ld.ref_id):
+            if ld.bus_ref not in szyny or ld.phases not in FAZY_ODBIORU_JEDNOFAZOWEGO:
+                continue
+            szyna = ld.bus_ref
+            droga: list[str] = []
+            zamknieta_w: str | None = None
+            przerwana = False
+            while szyna != slack and szyna in rodzic:
+                gora, ref = rodzic[szyna]
+                trafo = trafa.get(ref)
+                if trafo is not None:
+                    if not trafo.vector_group:
+                        przerwana = True
+                        break
+                    model = build_transformer_zero_seq_model(trafo)
+                    strona_odbioru_lv = szyna == trafo.lv_bus_ref
+                    zamyka = (
+                        model.connection is ZeroSeqConnection.LV_SHUNT_GROUND and strona_odbioru_lv
+                    ) or (
+                        model.connection is ZeroSeqConnection.HV_SHUNT_GROUND
+                        and not strona_odbioru_lv
+                    )
+                    if zamyka:
+                        droga.append(ref)
+                        zamknieta_w = ref
+                        szyna = gora
+                        break
+                    if model.connection is not ZeroSeqConnection.SERIES_THROUGH:
+                        bez_drogi.add(trafo.ref_id)
+                        przerwana = True
+                        break
+                droga.append(ref)
+                szyna = gora
+            realne.update(droga)
+            if przerwana:
+                continue
+            if zamknieta_w is not None:
+                zamkniecia_tr.add((ld.ref_id, zamknieta_w))
+                while szyna != slack and szyna in rodzic:
+                    gora, ref = rodzic[szyna]
+                    artefakt.add(ref)
+                    szyna = gora
+            elif szyna == slack:
+                zamkniecia_zr.add((ld.ref_id, zrodlo_ref))
+    artefakt -= realne
+    return DrogaZerowa(
+        bez_drogi=tuple(sorted(bez_drogi)),
+        z_realnym_i0=frozenset(realne),
+        artefakt=frozenset(artefakt),
+        zamkniecia_w_transformatorach=tuple(sorted(zamkniecia_tr)),
+        zamkniecia_w_zrodlach=tuple(sorted(zamkniecia_zr)),
+    )
+
+
+@dataclass(frozen=True)
+class DiagnozaNiesymetrii:
+    """Wynik diagnozy zdolności rozpływu niesymetrycznego dla wysp ZASILONYCH.
+
+    ``odmowy`` w kolejności ``_KOLEJNOSC_ODMOW_NIESYMETRII``; pusta krotka =
+    wejście da się złożyć. ``wyspy_zasilone`` = szyny wysp z jednym źródłem
+    sieciowym (``enm/topology.derive`` — TEN SAM widok, z którego assembler
+    przydziela szyny bilansujące: predykaty parami). ``droga_zerowa`` = wynik
+    wędrówki I0 odbiorów faza–N, z którego assembler bierze zbiór krawędzi z Z0.
+    """
+
+    odmowy: tuple[OdmowaNiesymetrii, ...]
+    wyspy_zasilone: tuple[tuple[str, ...], ...]
+    droga_zerowa: DrogaZerowa
+
+    @property
+    def blokuje(self) -> bool:
+        return bool(self.odmowy)
+
+
+def _wyspy_zasilone_enm(enm: EnergyNetworkModel) -> tuple[Wyspa, ...]:
+    return tuple(w for w in derive(enm).wyspy if w.zrodla_sieciowe)
+
+
+def _krawedzie_wyspy(enm: EnergyNetworkModel, szyny: frozenset[str]) -> list[str]:
+    """``ref_id`` krawędzi wyspy w ruchu: gałęzie zamknięte + transformatory o OBU
+    końcach w wyspie — TEN SAM zbiór krawędzi, z którego ``enm/topology.derive``
+    buduje wyspę i ``enm/mapping`` graf IR (łącznik otwarty nie jest krawędzią)."""
+    krawedzie: list[str] = []
+    for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
+        if galaz.status != "closed":
+            continue
+        if galaz.from_bus_ref in szyny and galaz.to_bus_ref in szyny:
+            krawedzie.append(galaz.ref_id)
+    for trafo in sorted(enm.transformers, key=lambda t: t.ref_id):
+        if trafo.hv_bus_ref in szyny and trafo.lv_bus_ref in szyny:
+            krawedzie.append(trafo.ref_id)
+    return krawedzie
+
+
+def _zaczep_poza_znamionowym(trafo: Transformer) -> bool:
+    """Przekładnia inna niż znamionowa (solver BFS nie ma zaczepu w kontrakcie):
+    ``tap_position`` ≠ 0 albo kanoniczny ``tap_changer`` poza pozycją neutralną lub
+    w regulacji automatycznej (pętla OLTC zmieniałaby przekładnię w biegu)."""
+    if trafo.tap_position not in (None, 0):
+        return True
+    tc = trafo.tap_changer
+    if tc is None or tc.regulation_type == "NONE":
+        return False
+    if tc.current_position != tc.neutral_position:
+        return True
+    return tc.control_mode == "AUTOMATIC"
+
+
+def diagnoza_niesymetrii(enm: EnergyNetworkModel) -> DiagnozaNiesymetrii:
+    """JEDYNY predykat zdolności rozpływu niesymetrycznego (gotowość + assembler).
+
+    Czyta go bramka gotowości „Asymetria" (``application/calculation_readiness/
+    service.py::_check_asymmetry``) i ``zloz_wejscie_rozplywu_niesymetrycznego`` —
+    jeden warunek, jeden kod, dwa miejsca odczytu (KLASA NIE INSTANCJA).
+    Zakres: WYŁĄCZNIE wyspy zasilone (element w wyspie bez źródła nie wchodzi do
+    solvera, więc nie może niczego blokować — jego szyny zostają nierozwiązane).
+    """
+    wyspy = _wyspy_zasilone_enm(enm)
+    szyny_zasilone: set[str] = set()
+    for wyspa in wyspy:
+        szyny_zasilone.update(wyspa.szyny)
+
+    nieradialne: list[str] = []
+    for wyspa in wyspy:
+        szyny = frozenset(wyspa.szyny)
+        krawedzie = _krawedzie_wyspy(enm, szyny)
+        if len(krawedzie) > len(szyny) - 1:
+            nieradialne.extend(krawedzie)
+    droga_zerowa = _droga_zerowa(enm, wyspy)
+    # Z0 jest potrzebne WYŁĄCZNIE krawędziom z realnym I0 (droga odbioru faza–N do
+    # punktu zamknięcia) — gałąź, którą I0 nie płynie, nie wnosi Z0 do równań.
+    bez_z0: list[str] = []
+    for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
+        if not isinstance(galaz, Cable | OverheadLine) or galaz.status != "closed":
+            continue
+        if galaz.ref_id not in droga_zerowa.z_realnym_i0:
+            continue
+        if galaz.r0_ohm_per_km is None or galaz.x0_ohm_per_km is None:
+            bez_z0.append(galaz.ref_id)
+    transformatory_wysp = [
+        trafo
+        for trafo in sorted(enm.transformers, key=lambda t: t.ref_id)
+        if trafo.hv_bus_ref in szyny_zasilone and trafo.lv_bus_ref in szyny_zasilone
+    ]
+    bez_grupy = [t.ref_id for t in transformatory_wysp if not t.vector_group]
+    miedzyfazowe = [
+        ld.ref_id
+        for ld in sorted(enm.loads, key=lambda ld: ld.ref_id)
+        if ld.bus_ref in szyny_zasilone and ld.phases in FAZY_ODBIORU_MIEDZYFAZOWEGO
+    ]
+    # Droga składowej zerowej: transformator NA DRODZE odbioru faza–N ku szynie
+    # bilansującej bez uziemionego uzwojenia po stronie odbioru i bez przejścia I0
+    # (Yy/Dd nieuziemione, uziemienie po stronie zasilającej) — prąd powrotny nie ma
+    # obwodu. Transformator poza tą drogą (np. GPZ Yd11 powyżej stacji Dyn11, w której
+    # I0 odbioru nN już się zamknął) NIE blokuje — patrz ``DrogaZerowa``.
+    bez_drogi_zerowej: list[str] = list(droga_zerowa.bez_drogi)
+    bez_reprezentacji: list[tuple[str, str]] = []
+    for gen in sorted(enm.generators, key=lambda g: g.ref_id):
+        if gen.bus_ref not in szyny_zasilone:
+            continue
+        meta = gen.meta or {}
+        if str(meta.get("control_mode") or "").strip() == "REGULACJA_NAPIECIA":
+            bez_reprezentacji.append((gen.ref_id, "węzeł regulacji napięcia (PV)"))
+    # Regulacja falownika: TEN SAM predykat aktywności co assembler rozpływu NR
+    # (`_build_converter_control_by_node`); baza mocy nie wpływa na to, CZY regulacja
+    # jest aktywna, więc pomiar idzie na bazie systemowej.
+    regulowane = _build_converter_control_by_node(enm.model_dump(mode="json"), S_BASE_MVA)
+    if regulowane:
+        for gen in sorted(enm.generators, key=lambda g: g.ref_id):
+            if gen.bus_ref in szyny_zasilone and _graph_id_from_ref(gen.bus_ref) in regulowane:
+                bez_reprezentacji.append((gen.ref_id, "regulacja falownika (cosφ/Q(U)/P(f))"))
+    for bateria in sorted(enm.shunt_capacitors, key=lambda s: s.ref_id):
+        if bateria.bus_ref in szyny_zasilone:
+            bez_reprezentacji.append((bateria.ref_id, "bateria kondensatorów (bocznik)"))
+    for ld in sorted(enm.loads, key=lambda ld: ld.ref_id):
+        if ld.bus_ref not in szyny_zasilone:
+            continue
+        if zip_coeffs_from_materialized_params(ld.materialized_params) is not None:
+            bez_reprezentacji.append((ld.ref_id, "odbiór ZIP (zależny od napięcia/częstotliwości)"))
+    for trafo in transformatory_wysp:
+        if _zaczep_poza_znamionowym(trafo):
+            bez_reprezentacji.append((trafo.ref_id, "zaczep poza pozycją znamionową / OLTC"))
+    widziane: set[str] = set()
+    bez_reprezentacji_unikalne: list[tuple[str, str]] = []
+    for ref, opis in bez_reprezentacji:
+        if ref not in widziane:
+            widziane.add(ref)
+            bez_reprezentacji_unikalne.append((ref, opis))
+
+    odmowy: list[OdmowaNiesymetrii] = []
+    if nieradialne:
+        odmowy.append(
+            OdmowaNiesymetrii(
+                KOD_NIESYMETRIA_NIERADIALNA,
+                tuple(sorted(set(nieradialne))),
+                "wyspa zasilona ma oczko (liczba gałęzi w ruchu > liczba szyn − 1)",
+            )
+        )
+    if bez_z0:
+        odmowy.append(
+            OdmowaNiesymetrii(
+                KOD_NIESYMETRIA_BRAK_Z0_GALEZI,
+                tuple(bez_z0),
+                "gałęzie bez składowej zerowej R0/X0 (bez podstawiania Z0 = Z1)",
+            )
+        )
+    if bez_grupy:
+        odmowy.append(
+            OdmowaNiesymetrii(
+                KOD_NIESYMETRIA_BRAK_GRUPY_TR,
+                tuple(bez_grupy),
+                "transformatory bez grupy połączeń (składowa zerowa nieznana)",
+            )
+        )
+    if miedzyfazowe:
+        odmowy.append(
+            OdmowaNiesymetrii(
+                KOD_NIESYMETRIA_FAZY_ODBIORU,
+                tuple(miedzyfazowe),
+                "odbiory międzyfazowe AB/BC/CA (solver zna odbiory faza–N)",
+            )
+        )
+    if bez_drogi_zerowej:
+        odmowy.append(
+            OdmowaNiesymetrii(
+                KOD_NIESYMETRIA_BRAK_DROGI_ZEROWEJ,
+                tuple(bez_drogi_zerowej),
+                "odbiór jednofazowy za transformatorem bez drogi składowej zerowej",
+            )
+        )
+    if bez_reprezentacji_unikalne:
+        odmowy.append(
+            OdmowaNiesymetrii(
+                KOD_NIESYMETRIA_ELEMENT,
+                tuple(ref for ref, _ in bez_reprezentacji_unikalne),
+                "; ".join(f"{ref}: {opis}" for ref, opis in bez_reprezentacji_unikalne),
+            )
+        )
+    kolejnosc = {kod: i for i, kod in enumerate(_KOLEJNOSC_ODMOW_NIESYMETRII)}
+    odmowy.sort(key=lambda o: kolejnosc[o.kod])
+    return DiagnozaNiesymetrii(
+        odmowy=tuple(odmowy),
+        wyspy_zasilone=tuple(tuple(w.szyny) for w in wyspy),
+        droga_zerowa=droga_zerowa,
+    )
+
+
+@dataclass(frozen=True)
+class WyspaRozplywuNiesymetrycznego:
+    """Wyspa zasilona jednym źródłem sieciowym — własne wejście solvera BFS."""
+
+    slack_node_id: str
+    zrodlo_ref: str
+    szyny: tuple[str, ...]
+    wezly: tuple[str, ...]
+    #: Napięcie znamionowe międzyprzewodowe szyny bilansującej [kV] — baza odniesienia
+    #: impedancji wyspy (solver dostaje U_LL/√3 i S_base/3: baza jednej fazy).
+    base_kv_ll: float
+    wejscie: UnbalancedNetworkInput
+
+
+@dataclass(frozen=True)
+class WejscieRozplywuNiesymetrycznego:
+    """Wejście rozpływu niesymetrycznego złożone z migawki ENM i opcji biegu."""
+
+    graph: NetworkGraph
+    enm: EnergyNetworkModel
+    #: Baza mocy TRÓJFAZOWA z opcji biegu [MVA] (jak w rozpływie NR).
+    base_mva: float
+    tolerance: float
+    max_iterations: int
+    wyspy: tuple[WyspaRozplywuNiesymetrycznego, ...]
+    graph_nodes: dict[str, dict[str, Any]]
+    graph_branches: dict[str, dict[str, Any]]
+    #: Napięcie znamionowe międzyprzewodowe każdego węzła IR [kV] (do kV/A w wyniku).
+    napiecia_znamionowe_kv: dict[str, float]
+    #: Ślad WHITE BOX złożenia: wzór, dane, podstawienie, wynik (Z_s/Z_m, odbiory per faza).
+    slad: tuple[dict[str, Any], ...]
+    #: Założenia biegu nazwane kodem kanonu (WARNING): ``{"kod", "elementy", "opis"}``.
+    zalozenia: tuple[dict[str, Any], ...]
+
+
+def _fmt_z(value: complex) -> str:
+    znak = "+" if value.imag >= 0 else "-"
+    return f"{value.real:.6g} {znak} j{abs(value.imag):.6g}"
+
+
+def _spec_galezi_z_sekwencji(
+    *,
+    tracer: WhiteBoxTracer,
+    branch_id: str,
+    ref_id: str,
+    from_id: str,
+    to_id: str,
+    z1_ohm: complex,
+    z0_ohm: complex | None,
+    napiecie_wlasne_kv: float,
+    base_kv_ll: float,
+    zrodlo_z0: str,
+    dane: dict[str, Any],
+    powod_bez_z0: str = "",
+) -> UnbalancedBranchSpec:
+    """Impedancja własna/wzajemna gałęzi ze składowych (pochodne) odniesiona do bazy
+    wyspy; ``z0_ohm=None`` = krawędź bez realnego I0 (``powod_bez_z0`` nazywa dlaczego:
+    I0 ≡ 0 z topologii albo artefakt modelu szeregowego powyżej punktu zamknięcia),
+    wtedy Z_m := 0 i Z_s := Z1 — tożsamość, nie podstawienie (spadek = (Z_s − Z_m)·I)."""
+    z1_odn = impedancja_odniesiona_do_napiecia_ohm(z1_ohm, napiecie_wlasne_kv, base_kv_ll)
+    if z0_ohm is None:
+        z_s, z_m = z1_odn, 0j
+        podstawienie = (
+            f"brak drogi I0 ({powod_bez_z0}) ⇒ "
+            f"Z_m := 0, Z_s := Z1 = {_fmt_z(z1_odn)} Ω @ {base_kv_ll:g} kV"
+        )
+    else:
+        z0_odn = impedancja_odniesiona_do_napiecia_ohm(z0_ohm, napiecie_wlasne_kv, base_kv_ll)
+        z_s = impedancja_wlasna_ohm(z0_odn, z1_odn)
+        z_m = impedancja_wzajemna_ohm(z0_odn, z1_odn)
+        podstawienie = (
+            f"Z1 = {_fmt_z(z1_odn)} Ω, Z0 = {_fmt_z(z0_odn)} Ω (@ {base_kv_ll:g} kV, "
+            f"z {napiecie_wlasne_kv:g} kV) ⇒ Z_s = ({_fmt_z(z0_odn)} + 2·({_fmt_z(z1_odn)}))/3 = "
+            f"{_fmt_z(z_s)} Ω; Z_m = ({_fmt_z(z0_odn)} − ({_fmt_z(z1_odn)}))/3 = {_fmt_z(z_m)} Ω"
+        )
+    tracer.add(
+        key=f"pf_unbalanced_branch[{ref_id}]",
+        title=f"Gałąź {ref_id}: impedancja własna i wzajemna ze składowych symetrycznych",
+        formula_latex=(
+            r"Z' = Z\cdot\left(\frac{U_{odn}}{U_{wl}}\right)^2,\quad "
+            r"Z_s = \frac{Z_0 + 2 Z_1}{3},\quad Z_m = \frac{Z_0 - Z_1}{3}"
+        ),
+        inputs={
+            **dane,
+            "z1_ohm": z1_ohm,
+            "z0_ohm": z0_ohm,
+            "zrodlo_z0": zrodlo_z0,
+            "napiecie_wlasne_kv": napiecie_wlasne_kv,
+            "base_kv_ll": base_kv_ll,
+        },
+        substitution=podstawienie,
+        result={"z_self_ohm": z_s, "z_mutual_ohm": z_m},
+    )
+    return UnbalancedBranchSpec(
+        branch_id=branch_id,
+        from_bus_id=from_id,
+        to_bus_id=to_id,
+        r_self_ohm=z_s.real,
+        x_self_ohm=z_s.imag,
+        r_mutual_ohm=z_m.real,
+        x_mutual_ohm=z_m.imag,
+    )
+
+
+def _moc_per_faza(p_mw: float, q_mvar: float, fazy: str | None) -> dict[str, tuple[float, float]]:
+    """Rozdział mocy odbioru na fazy wg ``Load.phases``: brak/``ABC`` = po 1/3 na fazę
+    (odbiór trójfazowy symetryczny); ``A``/``B``/``C`` = cała moc na jednej fazie."""
+    if fazy in FAZY_ODBIORU_JEDNOFAZOWEGO:
+        return {str(fazy): (p_mw, q_mvar)}
+    return {faza: (p_mw / 3.0, q_mvar / 3.0) for faza in _FAZY}
+
+
+def _pusta_moc_faz() -> dict[str, list[float]]:
+    return {faza: [0.0, 0.0] for faza in _FAZY}
+
+
+def _zalozenie(kod: str, elementy: list[str]) -> dict[str, Any]:
+    return {
+        "kod": kod,
+        "elementy": sorted(set(elementy)),
+        "opis": READINESS_CODES[kod].message_pl,
+    }
+
+
+def zloz_wejscie_rozplywu_niesymetrycznego(
+    snapshot: dict[str, Any] | None,
+    options: dict[str, Any],
+    graph: NetworkGraph | None = None,
+) -> WejscieRozplywuNiesymetrycznego:
+    """Złóż wejście rozpływu niesymetrycznego: migawka ENM → IR → ``UnbalancedNetworkInput``.
+
+    Tor (CV-4 — jeden assembler): ``zbuduj_graf`` (ten sam IR co rozpływ NR i zwarcie),
+    ``_wyspy_zasilone`` (ta sama szyna bilansująca per wyspa i ta sama odmowa dwóch
+    źródeł w wyspie), ``diagnoza_niesymetrii`` (ta sama diagnoza co gotowość
+    „Asymetria"). Impedancje: Z1 z IR (linia: R/X·L z ``n_parallel``; transformator:
+    ``TransformerBranch.get_impedance_pu``), Z0 z pól ENM ``r0/x0_ohm_per_km`` (linie,
+    kable; ``liczba_torow`` jak Z1) i z modelu składowej zerowej transformatora
+    (``enm/zero_sequence_transformer`` — ten sam co zwarcie 1F), złożone w Z_s/Z_m w
+    ``network_model/pochodne/skladowe_symetryczne.py`` i odniesione do napięcia szyny
+    bilansującej wyspy. Odbiory per faza z ``Load.phases``; generacja PQ = wstrzyk
+    stałomocowy rozłożony po równo na fazy (moc z IR: ``Node.active/reactive_power`` —
+    jedno źródło prawdy Q wytwórcy, jak w rozpływie NR). Łącznik zamknięty = gałąź o
+    impedancji 0 (V_to = V_from dokładnie).
+    """
+    snapshot = snapshot or {}
+    enm = EnergyNetworkModel.model_validate(snapshot)
+    graph = zbuduj_graf(snapshot) if graph is None else graph
+    graph_element_context = _build_snapshot_graph_element_context(snapshot)
+    graph_nodes = graph_element_context.get("nodes", {})
+    graph_branches = graph_element_context.get("branches", {})
+
+    diagnoza = diagnoza_niesymetrii(enm)
+    if diagnoza.blokuje:
+        pierwsza = diagnoza.odmowy[0]
+        opis = "; ".join(
+            f"{READINESS_CODES[o.kod].message_pl} [{o.kod}] — {o.opis}: "
+            f"{', '.join(o.elementy[:8])}{', …' if len(o.elementy) > 8 else ''}"
+            for o in diagnoza.odmowy
+        )
+        raise OdmowaWejsciaRozplywu(pierwsza.kod, opis, elementy=pierwsza.elementy)
+    droga_zerowa = diagnoza.droga_zerowa
+    zamkniecia_tr = dict(droga_zerowa.zamkniecia_w_transformatorach)
+    zamkniecia_zr = dict(droga_zerowa.zamkniecia_w_zrodlach)
+
+    def _powod_bez_z0(ref_id: str) -> str:
+        if ref_id in droga_zerowa.artefakt:
+            zamykajace = sorted({tr for ld, tr in droga_zerowa.zamkniecia_w_transformatorach})
+            return (
+                "I0 tej krawędzi jest artefaktem modelu szeregowego: droga I0 odbiorów "
+                f"faza–N zamknięta poniżej, w transformatorze {', '.join(zamykajace)}"
+            )
+        return "I_a+I_b+I_c ≡ 0 z topologii: tą krawędzią nie płynie I0 żadnego odbioru faza–N"
+
+    wyspy_zasilone = _wyspy_zasilone(snapshot, graph)
+    if not wyspy_zasilone:
+        raise ValueError("Brak wezla bilansujacego SLACK w kanonicznym snapshotcie ENM")
+    nastawa_u_zrodla = _nastawy_u_zrodel(snapshot)
+    base_mva, tolerance, max_iterations = _opcje_rozplywu_niesymetrycznego(options)
+
+    galaz_enm = {_graph_id_from_ref(g.ref_id): g for g in enm.branches}
+    trafo_enm = {_graph_id_from_ref(t.ref_id): t for t in enm.transformers}
+    napiecia_kv = {node_id: float(node.voltage_level) for node_id, node in graph.nodes.items()}
+    tracer = WhiteBoxTracer()
+    admitancja_pominieta: list[str] = []
+    magnesujaca_pominieta: list[str] = []
+    transformatory_szeregowe: list[str] = []
+    galezie_ze_sprzezeniem: list[str] = []
+    for ld in sorted(enm.loads, key=lambda ld: ld.ref_id):
+        if ld.ref_id in zamkniecia_tr or ld.ref_id in zamkniecia_zr:
+            punkt = zamkniecia_tr.get(ld.ref_id)
+            tracer.add(
+                key=f"pf_unbalanced_zero_sequence_path[{ld.ref_id}]",
+                title=f"Odbiór {ld.ref_id} (faza {ld.phases}): droga prądu powrotnego I0",
+                formula_latex=r"I_0 = \tfrac{1}{3}(I_a + I_b + I_c)",
+                inputs={"phases": ld.phases, "bus_ref": ld.bus_ref},
+                substitution=(
+                    f"droga I0 zamknięta w uziemionym uzwojeniu transformatora {punkt}"
+                    if punkt is not None
+                    else (
+                        "droga I0 zamknięta w punkcie neutralnym źródła sieciowego "
+                        f"{zamkniecia_zr[ld.ref_id]} (źródło idealne uziemione w modelu BFS)"
+                    )
+                ),
+                result={
+                    "zamkniecie": punkt if punkt is not None else zamkniecia_zr[ld.ref_id],
+                    "rodzaj": "transformator" if punkt is not None else "zrodlo",
+                },
+            )
+
+    wyspy: list[WyspaRozplywuNiesymetrycznego] = []
+    for wyspa, zrodlo_ref, slack_node_id in wyspy_zasilone:
+        wezly_zbior = {_graph_id_from_ref(szyna) for szyna in wyspa.szyny}
+        wezly = tuple(sorted(wezly_zbior))
+        base_kv_ll = napiecia_kv[slack_node_id]
+
+        branch_specs: list[UnbalancedBranchSpec] = []
+        for branch_id in sorted(graph.branches):
+            branch = graph.branches[branch_id]
+            if branch.from_node_id not in wezly_zbior or branch.to_node_id not in wezly_zbior:
+                continue
+            if not getattr(branch, "in_service", True):
+                continue
+            if isinstance(branch, LineBranch):
+                galaz = galaz_enm.get(branch_id)
+                if not isinstance(galaz, Cable | OverheadLine):
+                    raise ValueError(
+                        f"Gałąź IR '{branch_id}' nie ma odpowiednika linii/kabla w migawce ENM"
+                    )
+                tory = liczba_torow(galaz)
+                z1_ohm = complex(branch.r_ohm_per_km, branch.x_ohm_per_km) * branch.length_km
+                z0_ohm: complex | None
+                if galaz.ref_id in droga_zerowa.z_realnym_i0:
+                    if galaz.r0_ohm_per_km is None or galaz.x0_ohm_per_km is None:
+                        raise OdmowaWejsciaRozplywu(
+                            KOD_NIESYMETRIA_BRAK_Z0_GALEZI,
+                            READINESS_CODES[KOD_NIESYMETRIA_BRAK_Z0_GALEZI].message_pl,
+                            elementy=(galaz.ref_id,),
+                        )
+                    z0_ohm = (
+                        complex(galaz.r0_ohm_per_km, galaz.x0_ohm_per_km) * galaz.length_km / tory
+                    )
+                    zrodlo_z0_galezi = "ENM r0_ohm_per_km/x0_ohm_per_km × length_km / n_parallel"
+                else:
+                    z0_ohm = None
+                    zrodlo_z0_galezi = "Z0 nieużywane (krawędź bez realnego I0)"
+                branch_specs.append(
+                    _spec_galezi_z_sekwencji(
+                        tracer=tracer,
+                        branch_id=branch_id,
+                        ref_id=galaz.ref_id,
+                        from_id=branch.from_node_id,
+                        to_id=branch.to_node_id,
+                        z1_ohm=z1_ohm,
+                        z0_ohm=z0_ohm,
+                        napiecie_wlasne_kv=napiecia_kv[branch.from_node_id],
+                        base_kv_ll=base_kv_ll,
+                        zrodlo_z0=zrodlo_z0_galezi,
+                        powod_bez_z0=_powod_bez_z0(galaz.ref_id),
+                        dane={
+                            "r_ohm_per_km": branch.r_ohm_per_km,
+                            "x_ohm_per_km": branch.x_ohm_per_km,
+                            "r0_ohm_per_km": galaz.r0_ohm_per_km,
+                            "x0_ohm_per_km": galaz.x0_ohm_per_km,
+                            "length_km": galaz.length_km,
+                            "n_parallel": tory,
+                        },
+                    )
+                )
+                if branch.b_us_per_km > 0.0:
+                    admitancja_pominieta.append(galaz.ref_id)
+            elif isinstance(branch, TransformerBranch):
+                trafo = trafo_enm.get(branch_id)
+                if trafo is None:
+                    raise ValueError(
+                        f"Gałąź IR '{branch_id}' nie ma odpowiednika transformatora w migawce ENM"
+                    )
+                z1_pu = branch.get_impedance_pu(base_mva)
+                z1_ohm = impedancja_z_jednostek_wzglednych_ohm(z1_pu, base_kv_ll, base_mva)
+                model_z0 = build_transformer_zero_seq_model(trafo)
+                for krok in model_z0.trace:
+                    tracer.add_step(WhiteBoxStep(**krok))
+                z0_ohm_tr: complex | None
+                if trafo.ref_id not in droga_zerowa.z_realnym_i0:
+                    z0_ohm_tr = None
+                    zrodlo_z0 = (
+                        f"Z0 nieużywane (połączenie {model_z0.connection.value}; "
+                        "transformator poza drogą realnego I0)"
+                    )
+                elif model_z0.z0_pu is None:
+                    # Wędrówka ``_droga_zerowa`` nie wpuszcza połączenia OPEN na drogę
+                    # realnego I0 (odmowa w diagnozie) — strażnik spójności predykatów.
+                    raise OdmowaWejsciaRozplywu(
+                        KOD_NIESYMETRIA_BRAK_DROGI_ZEROWEJ,
+                        READINESS_CODES[KOD_NIESYMETRIA_BRAK_DROGI_ZEROWEJ].message_pl,
+                        elementy=(trafo.ref_id,),
+                    )
+                else:
+                    z0_ohm_tr = impedancja_z_jednostek_wzglednych_ohm(
+                        model_z0.z0_pu, base_kv_ll, S_BASE_MVA
+                    )
+                    zrodlo_z0 = (
+                        f"enm/zero_sequence_transformer ({model_z0.connection.value}, "
+                        f"Z0 = {_fmt_z(model_z0.z0_pu)} pu @ {S_BASE_MVA:g} MVA)"
+                    )
+                branch_specs.append(
+                    _spec_galezi_z_sekwencji(
+                        tracer=tracer,
+                        branch_id=branch_id,
+                        ref_id=trafo.ref_id,
+                        from_id=branch.from_node_id,
+                        to_id=branch.to_node_id,
+                        z1_ohm=z1_ohm,
+                        z0_ohm=z0_ohm_tr,
+                        napiecie_wlasne_kv=base_kv_ll,
+                        base_kv_ll=base_kv_ll,
+                        zrodlo_z0=zrodlo_z0,
+                        powod_bez_z0=_powod_bez_z0(trafo.ref_id),
+                        dane={
+                            "sn_mva": branch.rated_power_mva,
+                            "uk_percent": branch.uk_percent,
+                            "pk_kw": branch.pk_kw,
+                            "vector_group": trafo.vector_group,
+                            "z1_pu_base": z1_pu,
+                            "base_mva": base_mva,
+                        },
+                    )
+                )
+                transformatory_szeregowe.append(trafo.ref_id)
+                # Gałąź magnesująca jest w modelu tylko, gdy ENM NIESIE P0 albo I0 (> 0);
+                # brak danej = brak gałęzi do pominięcia (nie podstawia się zera).
+                ma_p0 = trafo.p0_kw is not None and trafo.p0_kw > 0.0
+                ma_i0 = trafo.i0_percent is not None and trafo.i0_percent > 0.0
+                if ma_p0 or ma_i0:
+                    magnesujaca_pominieta.append(trafo.ref_id)
+            else:
+                raise ValueError(
+                    f"Gałąź IR '{branch_id}' typu {type(branch).__name__} nie ma "
+                    "reprezentacji w rozpływie niesymetrycznym"
+                )
+        galezie_ze_sprzezeniem.extend(
+            wejscie_galezi.branch_id
+            for wejscie_galezi in branch_specs
+            if wejscie_galezi.r_mutual_ohm != 0.0 or wejscie_galezi.x_mutual_ohm != 0.0
+        )
+        for switch_id in sorted(graph.switches):
+            switch = graph.switches[switch_id]
+            if switch.from_node_id not in wezly_zbior or switch.to_node_id not in wezly_zbior:
+                continue
+            if not (getattr(switch, "in_service", True) and switch.is_closed):
+                continue
+            branch_specs.append(
+                UnbalancedBranchSpec(
+                    branch_id=switch_id,
+                    from_bus_id=switch.from_node_id,
+                    to_bus_id=switch.to_node_id,
+                    r_self_ohm=0.0,
+                    x_self_ohm=0.0,
+                )
+            )
+
+        # Odbiory per faza z ENM (`Load.phases`) + generacja PQ z IR (wstrzyk ujemny).
+        moc_wezla: dict[str, dict[str, list[float]]] = {}
+        suma_odbiorow: dict[str, list[float]] = {}
+        for ld in sorted(enm.loads, key=lambda ld: ld.ref_id):
+            if ld.bus_ref not in wyspa.szyny:
+                continue
+            node_id = _graph_id_from_ref(ld.bus_ref)
+            rozdzial = _moc_per_faza(float(ld.p_mw), float(ld.q_mvar), ld.phases)
+            fazy_wezla = moc_wezla.setdefault(node_id, _pusta_moc_faz())
+            for faza, (p, q) in rozdzial.items():
+                fazy_wezla[faza][0] += p
+                fazy_wezla[faza][1] += q
+            suma = suma_odbiorow.setdefault(node_id, [0.0, 0.0])
+            suma[0] += float(ld.p_mw)
+            suma[1] += float(ld.q_mvar)
+            tracer.add(
+                key=f"pf_unbalanced_load[{ld.ref_id}]",
+                title=f"Odbiór {ld.ref_id}: rozdział mocy na fazy ({ld.phases or 'ABC'})",
+                formula_latex=(
+                    r"S_{\varphi} = S/3\ (\text{ABC});\quad S_{\varphi} = S\ (\text{A|B|C})"
+                ),
+                inputs={"p_mw": ld.p_mw, "q_mvar": ld.q_mvar, "phases": ld.phases},
+                substitution=", ".join(
+                    f"{faza}: {p:.6g} MW / {q:.6g} Mvar" for faza, (p, q) in rozdzial.items()
+                ),
+                result={faza: {"p_mw": p, "q_mvar": q} for faza, (p, q) in rozdzial.items()},
+            )
+        load_specs: list[UnbalancedLoadSpec] = []
+        for node_id in wezly:
+            node = graph.nodes[node_id]
+            fazy_wezla = moc_wezla.get(node_id, _pusta_moc_faz())
+            if node_id != slack_node_id:
+                # Generacja PQ = moc netto węzła IR + suma odbiorów (konwencja IR: >0 = wstrzyk).
+                # `enm/mapping.py` koduje moc netto 0.0 węzła jako ``None`` (węzeł bez
+                # wstrzyku) — brak pola = brak składnika do dodania, nie zastępnik.
+                odb_p, odb_q = suma_odbiorow.get(node_id, [0.0, 0.0])
+                gen_p = odb_p
+                gen_q = odb_q
+                if node.active_power is not None:
+                    gen_p += float(node.active_power)
+                if node.reactive_power is not None:
+                    gen_q += float(node.reactive_power)
+                if gen_p != 0.0 or gen_q != 0.0:
+                    for faza in _FAZY:
+                        fazy_wezla[faza][0] -= gen_p / 3.0
+                        fazy_wezla[faza][1] -= gen_q / 3.0
+                    tracer.add(
+                        key=f"pf_unbalanced_generation[{node_id}]",
+                        title=(
+                            f"Węzeł {graph_nodes.get(node_id, {}).get('element_id', node_id)}: "
+                            "generacja PQ jako wstrzyk symetryczny"
+                        ),
+                        formula_latex=r"S_{\varphi,gen} = -S_{gen}/3",
+                        inputs={"p_gen_mw": gen_p, "q_gen_mvar": gen_q},
+                        substitution=f"−{gen_p:.6g}/3 MW, −{gen_q:.6g}/3 Mvar na fazę",
+                        result={"p_mw_per_phase": -gen_p / 3.0, "q_mvar_per_phase": -gen_q / 3.0},
+                    )
+            if all(p == 0.0 and q == 0.0 for p, q in fazy_wezla.values()):
+                continue
+            load_specs.append(
+                UnbalancedLoadSpec(
+                    bus_id=node_id,
+                    p_mw_a=fazy_wezla["A"][0],
+                    p_mw_b=fazy_wezla["B"][0],
+                    p_mw_c=fazy_wezla["C"][0],
+                    q_mvar_a=fazy_wezla["A"][1],
+                    q_mvar_b=fazy_wezla["B"][1],
+                    q_mvar_c=fazy_wezla["C"][1],
+                )
+            )
+
+        base_mva_fazy = moc_bazowa_fazy_mva(base_mva)
+        base_kv_fazy = napiecie_fazowe_v(base_kv_ll)
+        tracer.add(
+            key=f"pf_unbalanced_base[{zrodlo_ref}]",
+            title=f"Wyspa źródła {zrodlo_ref}: baza jednej fazy solvera BFS",
+            formula_latex=r"S_{b,\varphi} = S_b/3,\quad U_{b,\varphi} = U_{LL}/\sqrt{3}",
+            inputs={"base_mva": base_mva, "base_kv_ll": base_kv_ll},
+            substitution=(
+                f"S_b = {base_mva:g}/3 = {base_mva_fazy:.6g} MVA; "
+                f"U_b = {base_kv_ll:g}/√3 = {base_kv_fazy:.6g} kV (Z_b = U_LL²/S_b niezmienne)"
+            ),
+            result={"base_mva_fazy": base_mva_fazy, "base_kv_fazy": base_kv_fazy},
+        )
+        wyspy.append(
+            WyspaRozplywuNiesymetrycznego(
+                slack_node_id=slack_node_id,
+                zrodlo_ref=zrodlo_ref,
+                szyny=tuple(wyspa.szyny),
+                wezly=wezly,
+                base_kv_ll=base_kv_ll,
+                wejscie=UnbalancedNetworkInput(
+                    base_mva=base_mva_fazy,
+                    base_kv=base_kv_fazy,
+                    slack_bus_id=slack_node_id,
+                    bus_ids=wezly,
+                    branches=tuple(branch_specs),
+                    loads=tuple(load_specs),
+                    slack_voltage_pu=nastawa_u_zrodla.get(zrodlo_ref, 1.0),
+                ),
+            )
+        )
+
+    zalozenia: list[dict[str, Any]] = []
+    if transformatory_szeregowe:
+        zalozenia.append(_zalozenie(KOD_ZALOZENIE_TR_SZEREGOWY, transformatory_szeregowe))
+    if droga_zerowa.artefakt:
+        zalozenia.append(
+            _zalozenie(KOD_ZALOZENIE_DROGA_ZEROWA_ZAMKNIETA, sorted(droga_zerowa.artefakt))
+        )
+    if droga_zerowa.zamkniecia_w_zrodlach:
+        zalozenia.append(
+            _zalozenie(
+                KOD_ZALOZENIE_DROGA_ZEROWA_ZRODLO,
+                sorted({zr for _, zr in droga_zerowa.zamkniecia_w_zrodlach}),
+            )
+        )
+    if magnesujaca_pominieta:
+        zalozenia.append(_zalozenie(KOD_ZALOZENIE_GALAZ_MAGNESUJACA, magnesujaca_pominieta))
+    if admitancja_pominieta:
+        zalozenia.append(_zalozenie(KOD_ZALOZENIE_ADMITANCJA_POPRZECZNA, admitancja_pominieta))
+    if galezie_ze_sprzezeniem:
+        zalozenia.append(
+            _zalozenie(
+                KOD_ZALOZENIE_STRATY_Z_IMPEDANCJI_WLASNEJ,
+                [
+                    str(graph_branches.get(branch_id, {}).get("element_id") or branch_id)
+                    for branch_id in galezie_ze_sprzezeniem
+                ],
+            )
+        )
+    return WejscieRozplywuNiesymetrycznego(
+        graph=graph,
+        enm=enm,
+        base_mva=base_mva,
+        tolerance=tolerance,
+        max_iterations=max_iterations,
+        wyspy=tuple(wyspy),
+        graph_nodes=graph_nodes,
+        graph_branches=graph_branches,
+        napiecia_znamionowe_kv=napiecia_kv,
+        slad=tuple(tracer.to_list()),
+        zalozenia=tuple(zalozenia),
     )

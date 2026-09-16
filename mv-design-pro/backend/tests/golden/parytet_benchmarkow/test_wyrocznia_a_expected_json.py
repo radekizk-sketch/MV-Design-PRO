@@ -12,23 +12,25 @@ dziś wyłącznie tor kanoniczny). Rozbieżność ponad tolerancję jest DEFEKTE
 wyjaśnienia (K1.3) — nigdy nie luzuje się tolerancji, żeby przepchnąć
 niezgodność.
 
-Sieć NIESYMETRYCZNA ieee_34bus (ieee_13bus ma dodatkowo swój WŁASNY test bez
-xfail — patrz `test_ieee_13bus_pf_aproksymacja_pozytywnosekwencyjna`, weryfikuje
-tylko pozytywno-sekwencyjną aproksymację, nie prawdziwą fizykę niesymetryczną)
-ma jawny status PLANNED — `pytest.mark.xfail` z uzasadnieniem w `reason`, NIE
-cichy skip (K1.4: "nie cichy skip"). Markery `xfail` K1 dla ieee_14bus (rozbiegał
-katastroficznie) i ieee_39bus (resztkowa luka 2–4 %) ZDJĘTE w CV-4.3 K7
-(2026-09-09): przyczyny leżały w DANYCH bliźniaków, nie w solverze — patrz
-docstringi `test_ieee_14bus_pf_zgodny_z_wyrocznia_a` i
+Sieć NIESYMETRYCZNA ieee_34bus: do karty W5-D (2026-09-16) nosiła `xfail` K1.4
+(PLANNED — FROZEN `power_flow_newton` liczy wyłącznie sieci symetryczne); od W5-D
+liczy ją bieg kanoniczny `rozplyw_niesymetryczny` (FROZEN `power_flow_unbalanced.py`
+przez `enm/assembler.py`) — patrz `test_ieee_34bus_pf_niesymetryczny_zgodny_z_wyrocznia_a`
+(zero xfail/skip w tym pliku). ieee_13bus ma swój WŁASNY test — patrz
+`test_ieee_13bus_pf_aproksymacja_pozytywnosekwencyjna`, weryfikuje tylko
+pozytywno-sekwencyjną aproksymację, nie prawdziwą fizykę niesymetryczną. Markery
+`xfail` K1 dla ieee_14bus (rozbiegał katastroficznie) i ieee_39bus (resztkowa luka
+2–4 %) ZDJĘTE w CV-4.3 K7 (2026-09-09): przyczyny leżały w DANYCH bliźniaków, nie
+w solverze — patrz docstringi `test_ieee_14bus_pf_zgodny_z_wyrocznia_a` i
 `test_ieee_39bus_pf_zgodny_z_wyrocznia_a`.
 """
 
 from __future__ import annotations
 
+import dataclasses
 from pathlib import Path
 from typing import Any
 
-import pytest
 from enm.canonical_analysis import CanonicalRun, _execute_power_flow, _execute_short_circuit
 from enm.mapping import _ref_to_uuid
 from enm.models import EnergyNetworkModel
@@ -206,17 +208,125 @@ def test_ieee_13bus_pf_aproksymacja_pozytywnosekwencyjna() -> None:
     _sprawdz_pf(build_ieee_13bus_enm, "ieee_13bus.json")
 
 
-@pytest.mark.xfail(
-    reason=(
-        "K1.4: siec niesymetryczna, FROZEN power_flow_newton liczy wylacznie sieci "
-        "symetryczne (4-przewodowy tor to przyszle ADR-021) — status PLANNED, nie brak testu."
-    ),
-    strict=False,
-)
-def test_ieee_34bus_pf_planned() -> None:
+#: Składowa zerowa linii IEEE 34 (Ω/km) z macierzy impedancji fazowych Kerstinga
+#: (IEEE PES Distribution Test Feeders, konfiguracje 300 i 301; Z₀ = Z_s + 2·Z_m z
+#: uśrednionej przekątnej/pozadiagonali, Ω/mila ÷ 1,609344). Bliźniak ENM
+#: (`enm_builders/ieee_34bus.py`, tabela per-unit) i katalog `bench_ieee34bus_*` nie
+#: niosą R0/X0 — bez nich bieg kanoniczny odmawia (`branch.zero_sequence_missing`,
+#: bez podstawiania Z0 = Z1), więc test wpisuje je operacją domenową jako DANĄ
+#: WEJŚCIOWĄ z nazwanym źródłem, a nie modyfikuje katalogu golden (odciski rejestru
+#: sieci nietknięte). Dla obciążeń symetrycznych wynik NIE zależy od Z₀ (I_a+I_b+I_c ≡ 0
+#: ⇒ spadek fazy = Z₁·I) — przypięte niżej dwoma różnymi kompletami.
+_Z0_IEEE34_KERSTING_OHM_PER_KM: dict[str, tuple[float, float]] = {
+    "cfg300": (1.0873, 1.4737),
+    "cfg301": (1.4843, 1.5972),
+}
+
+#: Szyny wyroczni nieobecne w bliźniaku ENM — jawnie, z powodu (docstring buildera:
+#: BUS-862 nieosiągalna w danych starego dialektu, BUS-838 za nią). Test PILNUJE, że
+#: zbiór brakujących szyn jest DOKŁADNIE ten (nowa luka = czerwony test, nie cichy pomiń).
+_SZYNY_IEEE34_POZA_BLIZNIAKIEM = frozenset({"BUS-838", "BUS-862"})
+
+
+def _ieee34_z_skladowa_zerowa(snapshot: dict[str, Any], r0: float, x0: float) -> dict[str, Any]:
+    from enm.domain_operations import execute_domain_operation
+
+    for galaz in list(snapshot["branches"]):
+        if galaz.get("type") not in ("cable", "line_overhead"):
+            continue
+        wynik = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="update_element_parameters",
+            payload={
+                "element_ref": galaz["ref_id"],
+                "parameters": {"r0_ohm_per_km": r0, "x0_ohm_per_km": x0},
+            },
+        )
+        assert not wynik.get("error"), wynik.get("error")
+        snapshot = wynik["snapshot"]
+    return snapshot
+
+
+def _bieg_niesymetryczny_ieee34(konfiguracja: str) -> tuple[Any, CanonicalRun]:
+    from enm.canonical_analysis import _wykonaj_analize_biegu
+
     from tests.golden.enm_builders.ieee_34bus import build_ieee_34bus_enm
 
-    _sprawdz_pf(build_ieee_34bus_enm, "ieee_34bus.json")
+    result = build_ieee_34bus_enm()
+    r0, x0 = _Z0_IEEE34_KERSTING_OHM_PER_KM[konfiguracja]
+    snapshot = _ieee34_z_skladowa_zerowa(
+        EnergyNetworkModel.model_validate(result.enm).model_dump(mode="json"), r0, x0
+    )
+    run = _bieg(snapshot, "rozplyw_niesymetryczny", {"base_mva": 100.0})
+    # Bieg kanoniczny przez JEDYNY dyspozytor (`no_direct_fault_params_guard`, CV-4).
+    _wykonaj_analize_biegu(run)
+    return result, run
+
+
+def _napiecia_fazy_a(result: Any, run: CanonicalRun) -> dict[str, dict[str, float]]:
+    szyny = {row["bus_id"]: row for row in run.raw_result["result_v1"]["bus_results"]}
+    actual: dict[str, dict[str, float]] = {}
+    for lit_id, ref_id in result.bus_map.items():
+        row = szyny[_ref_to_uuid(ref_id)]
+        assert row["solved"], f"{lit_id}: szyna nierozwiązana w biegu niesymetrycznym"
+        # Sieć symetryczna (odbiory trójfazowe): |U_A| = |U_B| = |U_C| co do bitu
+        # po zaokrągleniu kontraktu — faza A reprezentuje moduł i kąt (jak NR).
+        assert row["faza_a"]["u_pu"] == row["faza_b"]["u_pu"] == row["faza_c"]["u_pu"]
+        actual[lit_id] = {"v_pu": row["faza_a"]["u_pu"], "angle_deg": row["faza_a"]["angle_deg"]}
+    return actual
+
+
+def test_ieee_34bus_pf_niesymetryczny_zgodny_z_wyrocznia_a() -> None:
+    """IEEE 34-bus przez bieg kanoniczny `rozplyw_niesymetryczny` (karta W5-D) wobec
+    wyroczni (a) `expected/ieee_34bus.json`.
+
+    Do W5-D test nosił `xfail` (K1.4: FROZEN `power_flow_newton` nie liczy sieci
+    niesymetrycznych). Bieg niesymetryczny (assembler ES→TV→IR → FROZEN
+    `power_flow_unbalanced.py`) liczy tę sieć naprawdę: 30 szyn zbieżnych, zero xfail.
+
+    CO MÓWI WYROCZNIA (uczciwie): plik deklaruje w `source_note` „BFS regression baseline
+    z naszego uproszczonego 34-bus builder" — stary dialekt (skasowany kartą K2) liczył
+    BFS na BAZIE TRÓJFAZOWEJ (S_base, U_LL), która daje spadki napięcia 3× za małe
+    (pomiar karty W5-D, `enm/assembler.py`, nagłówek sekcji rozpływu niesymetrycznego).
+    Bieg kanoniczny liczy na bazie jednej fazy (S_base/3, U_LL/√3). Pomiar 2026-09-16:
+    max|ΔU| = 2,83·10⁻⁴ pu, max|Δkąt| = 0,0121° — obie różnice mieszczą się w rtol
+    0,005 zadeklarowanym per wiersz pliku, ale stosunek spadków napięcia wynosi
+    DOKŁADNIE 3,00 — przypięty niżej, żeby „parytet" nie udawał tej samej fizyki.
+    Klasa wyroczni: REGRESSION_ONLY (rejestr §32) — nie dowód fizyki niesymetrycznej.
+    """
+    result, run = _bieg_niesymetryczny_ieee34("cfg300")
+    assert run.raw_result["result_v1"]["converged"] is True
+    actual = _napiecia_fazy_a(result, run)
+
+    expected = load_expected_values_from_json(_EXPECTED_DIR / "ieee_34bus.json")
+    brakujace = {row.bus_id for row in expected.power_flow if row.bus_id not in result.bus_map}
+    assert brakujace == _SZYNY_IEEE34_POZA_BLIZNIAKIEM, brakujace
+    expected_w_blizniaku = dataclasses.replace(
+        expected,
+        power_flow=tuple(row for row in expected.power_flow if row.bus_id in result.bus_map),
+    )
+    comparisons = compare_power_flow(actual, expected_w_blizniaku)
+    failures = [c for c in comparisons if c.status == "FAIL"]
+    assert not failures, "\n".join(
+        f"{c.element_id}.{c.quantity}: actual={c.actual} expected={c.expected} "
+        f"rtol={c.rtol} rel_diff={c.rel_diff}"
+        for c in failures
+    )
+    assert len(comparisons) == 2 * (len(expected.power_flow) - len(brakujace))
+    max_dv = max(abs(c.actual - c.expected) for c in comparisons if c.quantity == "v_pu")
+    assert max_dv <= 5e-4, f"pomiar karty: 2,83e-4 pu; teraz {max_dv:.3e}"
+
+    # Baza jednej fazy vs baza trójfazowa wyroczni: spadek na najdalszej szynie 3× większy.
+    spadek_biegu = 1.0 - min(v["v_pu"] for v in actual.values())
+    spadek_wyroczni = 1.0 - min(row.v_pu for row in expected_w_blizniaku.power_flow)
+    assert 2.9 <= spadek_biegu / spadek_wyroczni <= 3.1, (spadek_biegu, spadek_wyroczni)
+
+
+def test_ieee_34bus_wynik_symetryczny_nie_zalezy_od_z0() -> None:
+    """Dwa komplety Z₀ z literatury (cfg 300 i cfg 301) — napięcia bit w bit równe."""
+    result_a, run_a = _bieg_niesymetryczny_ieee34("cfg300")
+    result_b, run_b = _bieg_niesymetryczny_ieee34("cfg301")
+    assert _napiecia_fazy_a(result_a, run_a) == _napiecia_fazy_a(result_b, run_b)
 
 
 def test_ieee_14bus_pf_zgodny_z_wyrocznia_a() -> None:

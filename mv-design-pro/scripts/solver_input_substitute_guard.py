@@ -391,6 +391,11 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "application/stability/dynamic_stability.py",
     "application/stability/voltage_trajectory.py",
     "domain/canonical_operations.py",
+    # Karta W5-D (2026-09-16): kontrakt wyniku rozplywu niesymetrycznego (dataclass
+    # `ResultSetPowerFlowUnbalancedV1` i wiersze per faza) czytany przez
+    # `enm/rozplyw_niesymetryczny_wynik.py` i `enm/canonical_analysis.py` — pin mapy
+    # (`test_kazdy_model_czytany_przez_zakres_jest_w_mapie`) zazadal wpisu.
+    "domain/result_contract_power_flow_unbalanced_v1.py",
     "domain/study_case.py",
     "enm/domain_ops_models.py",
     "infrastructure/persistence/models.py",

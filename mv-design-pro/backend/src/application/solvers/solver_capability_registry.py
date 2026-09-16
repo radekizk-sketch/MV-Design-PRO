@@ -11,6 +11,7 @@ AnalysisCapability = Literal[
     "LOAD_FLOW_NR",
     "LOAD_FLOW_GS_DIAGNOSTIC",
     "LOAD_FLOW_FD_PERFORMANCE",
+    "LOAD_FLOW_UNBALANCED_BFS",
     "PHASE_STATE_SN",
     "DYNAMIC_STABILITY",
     "POWER_QUALITY_HARMONICS",
@@ -156,6 +157,30 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         reportable=True,
         reference_test="load-flow-fast-decoupled.test.py::test_fast_decoupled_trace_and_applicability",
         applicability="Tryb wydajnosciowy fast-decoupled przy spelnionych warunkach stosowalnosci.",
+    ),
+    # Karta W5-D (F-1): rozpływ niesymetryczny jako bieg produktu — solver FROZEN
+    # `power_flow_unbalanced.py` (BFS) przez assembler `zloz_wejscie_rozplywu_niesymetrycznego`.
+    "LOAD_FLOW_UNBALANCED_BFS": SolverCapability(
+        capability="LOAD_FLOW_UNBALANCED_BFS",
+        analysis_type="rozplyw_niesymetryczny",
+        availability="available",
+        implementation_status="implemented",
+        solver_version="load-flow-unbalanced-bfs-v1",
+        required_inputs=(
+            "snapshot",
+            "slack_node",
+            "radial_topology",
+            "branch_sequence_impedances_z1_z0",
+            "load_phases",
+        ),
+        output_contract="ResultSetPowerFlowUnbalancedV1",
+        proof_support=True,
+        reportable=True,
+        reference_test="tests/enm/test_rozplyw_niesymetryczny_bieg.py::test_bieg_deterministyczny",
+        applicability=(
+            "Rozplyw niesymetryczny sieci promieniowej z odbiorami per faza "
+            "(faza-N) — napiecia/prady per faza, VUF wg IEC 61000-4-30."
+        ),
     ),
     "PHASE_STATE_SN": SolverCapability(
         capability="PHASE_STATE_SN",

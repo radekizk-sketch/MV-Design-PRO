@@ -54,6 +54,10 @@ class ExecutionAnalysisType(StrEnum):
     SC_2F = "SC_2F"
     SC_2F_G = "SC_2F_G"
     LOAD_FLOW = "LOAD_FLOW"
+    #: Karta W5-D (F-1): rozpływ niesymetryczny (BFS, solver FROZEN
+    #: `power_flow_unbalanced.py`); kanoniczny `analysis_type = "rozplyw_niesymetryczny"`.
+    #: Człon ADDYTYWNY — istniejące wartości i ich kolejność nietknięte.
+    PF_UNBALANCED = "PF_UNBALANCED"
     PHASE_STATE_SN = "PHASE_STATE_SN"
     DYNAMIC_STABILITY = "DYNAMIC_STABILITY"
     PROTECTION = "PROTECTION"

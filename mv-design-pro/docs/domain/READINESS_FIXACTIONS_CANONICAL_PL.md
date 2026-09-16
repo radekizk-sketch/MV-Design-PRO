@@ -52,7 +52,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **118** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **129** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -94,6 +94,7 @@ Wszystkie **118** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `catalog.unknown_namespace` | CATALOGS | 1 | BLOCKER | Nieznana kategoria katalogu — brama nie dobiera kategorii za projektanta; wskaż kategorię, która istnieje w katalogu | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `import.catalog_mapping_required` | CATALOGS | 1 | BLOCKER | Import wymaga mapowania katalogowego: elementy bez przypisanego katalogu muszą zostać zmapowane przed dalszą edycją | panel: `catalog_mapper`, modal: `IMPORT_CATALOG_MAPPING` |
 | `nn.source.catalog_missing` | CATALOGS | 1 | BLOCKER | Źródło nN nie ma przypisanego katalogu urządzenia | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
+| `branch.zero_sequence_missing` | CATALOGS | 2 | BLOCKER | Gałąź nie ma składowej zerowej (R0/X0) — zwarcia doziemne i rozpływ niesymetryczny nie mogą jej policzyć; uzupełnij parametry albo katalog | panel: `inspector`, tab: `parametry`, focus: `r0_ohm_per_km` |
 | `catalog.binding_missing` | CATALOGS | 2 | BLOCKER | Element obliczeniowy nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `catalog.gate_result_mismatch` | CATALOGS | 2 | BLOCKER | Model zapisałby dla wskazanej pozycji katalogowej inne wartości niż zmaterializowane przez bramę katalogową — operacja odrzucona, model bez zmian | panel: `inspector`, tab: `katalog` |
 | `catalog.materialization_failed` | CATALOGS | 2 | BLOCKER | Materializacja parametrów z katalogu nie powiodła się | panel: `inspector`, tab: `katalog` |
@@ -165,35 +166,45 @@ Wszystkie **118** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `protection.vt_required` | PROTECTION | 3 | BLOCKER | Pole wymaga przekładnika napięciowego (VT) | panel: `inspector`, tab: `zabezpieczenia` |
 | `protection.settings_incomplete` | PROTECTION | 4 | WARNING | Nastawy przekaźnika niekompletne | panel: `inspector`, tab: `nastawy` |
 | `analysis.blocked_by_readiness` | ANALYSIS | 1 | BLOCKER | Analiza zablokowana przez niezaspokojone wymagania gotowości | panel: `readiness` |
+| `power_flow.unbalanced_requires_radial` | ANALYSIS | 1 | BLOCKER | Rozpływ niesymetryczny wymaga sieci promieniowej w scenariuszu — wyspa zasilona ma oczko (pierścień zamknięty albo gałęzie równoległe); otwórz punkt podziału albo łącznik | panel: `sld` |
 | `study_case.missing_base_snapshot` | ANALYSIS | 1 | BLOCKER | Przypadek obliczeniowy nie ma bazowego zrzutu stanu | panel: `case_manager` |
 | `analysis.dynamic_stability_scenario_incomplete` | ANALYSIS | 2 | BLOCKER | Ocena progowa stabilności dynamicznej wymaga jawnego scenariusza wyłączenia zwarcia (element zwarty, czas wyłączenia, elementy wyłączające, kąty mocy przed/w czasie/po zwarciu, napięcie i częstotliwość po zwarciu, stała czasowa odbudowy) — podaj komplet pól w opcjach biegu, solver nie ma dla nich wartości domyślnych | panel: `analizy`, tab: `stabilnosc` |
 | `fault.location_on_branch_requires_assembler` | ANALYSIS | 2 | BLOCKER | Zwarcie w punkcie na gałęzi wymaga rozdzielenia modelu w miejscu zwarcia (adapter obliczeniowy) — nieobsługiwane; wybierz lokalizację na węźle | panel: `analizy`, tab: `zwarciowa` |
 | `oltc.deadband_missing` | ANALYSIS | 2 | WARNING | Przełącznik zaczepów nie ma pasma nieczułości regulatora — bez niego nie wiadomo, jaka odchyłka napięcia jest jeszcze dopuszczalna | panel: `inspector`, tab: `regulacja`, focus: `deadband_kv` |
 | `oltc.target_voltage_missing` | ANALYSIS | 2 | WARNING | Badanie doboru zaczepów nie ma napięcia docelowego — podaj napięcie, które ma być utrzymywane na szynie regulowanej | panel: `analizy`, tab: `oltc`, focus: `napiecie_cel` |
+| `power_flow.unbalanced_element_unsupported` | ANALYSIS | 2 | BLOCKER | Element modelu nie ma reprezentacji w rozpływie niesymetrycznym (BFS): węzeł regulacji napięcia, bateria kondensatorów, zaczep poza znamionowym, odbiór ZIP albo regulacja falownika | panel: `inspector`, tab: `parametry` |
+| `power_flow.unbalanced_load_phases_unsupported` | ANALYSIS | 2 | BLOCKER | Odbiór międzyfazowy (AB/BC/CA) nie ma reprezentacji w rozpływie niesymetrycznym — solver zna wyłącznie odbiory faza–przewód neutralny (A/B/C) i trójfazowe symetryczne | panel: `inspector`, tab: `parametry`, focus: `phases` |
+| `power_flow.unbalanced_no_zero_sequence_path` | ANALYSIS | 2 | BLOCKER | Odbiór jednofazowy w wyspie z transformatorem bez drogi składowej zerowej (gwiazda nieuziemiona lub trójkąt po obu stronach) — prąd powrotny nie ma obwodu; uziem punkt neutralny albo zmień grupę połączeń | panel: `inspector`, tab: `transformator` |
 | `verdict.input_data_missing` | ANALYSIS | 2 | WARNING | Brak danych wejściowych kryterium — uzupełnij dane wskazane w pozycji werdyktu | panel: `gotowosc` |
 | `verdict.run_failed` | ANALYSIS | 2 | WARNING | Bieg zakończył się błędem — kryterium nie ma na czym się oprzeć | panel: `analizy` |
 | `verdict.run_missing` | ANALYSIS | 2 | WARNING | Brak zakończonego biegu wymaganego przez kryterium — uruchom obliczenia, by je ocenić | panel: `analizy` |
 | `verdict.run_stale` | ANALYSIS | 2 | WARNING | Model zmienił się po biegu — wynik nie opisuje bieżącego modelu; uruchom obliczenia ponownie | panel: `analizy` |
+| `power_flow.unbalanced_losses_self_impedance` | ANALYSIS | 4 | WARNING | Założenie biegu: straty gałęzi liczone z impedancji własnej \|I\|²·R_s — solver BFS pomija wyraz wzajemny, więc przy Z0 ≠ Z1 straty są przybliżone (napięcia i prądy bez zmian) | panel: `inspector`, tab: `parametry`, focus: `r0_ohm_per_km` |
+| `power_flow.unbalanced_magnetising_branch_omitted` | ANALYSIS | 4 | WARNING | Założenie biegu: gałąź magnesująca transformatora (P0, i0) pominięta — solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję zwarcia | panel: `inspector`, tab: `transformator` |
+| `power_flow.unbalanced_shunt_admittance_omitted` | ANALYSIS | 4 | WARNING | Założenie biegu: admitancja poprzeczna (pojemność) gałęzi pominięta — solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję szeregową | panel: `inspector`, tab: `parametry`, focus: `b_siemens_per_km` |
+| `power_flow.unbalanced_transformer_series_model` | ANALYSIS | 4 | WARNING | Założenie biegu: transformator jako impedancja szeregowa per faza — składowa zerowa odbiorów przenosi się przez grupę połączeń na stronę zasilającą (wynik po stronie SN przybliżony) | panel: `inspector`, tab: `transformator` |
+| `power_flow.unbalanced_zero_sequence_confined` | ANALYSIS | 4 | WARNING | Założenie biegu: prąd powrotny odbioru jednofazowego zamyka się w uziemionym uzwojeniu transformatora; krawędzie powyżej liczone bez sprzężenia faz (Z_m = 0) — solver BFS nie odwzorowuje izolacji składowej zerowej przez trójkąt/gwiazdę nieuziemioną | panel: `inspector`, tab: `transformator`, focus: `vector_group` |
+| `power_flow.unbalanced_zero_sequence_via_source` | ANALYSIS | 4 | WARNING | Założenie biegu: prąd powrotny odbioru jednofazowego zamyka się przez punkt neutralny źródła sieciowego (źródło idealne uziemione w modelu BFS) — impedancja uziemienia sieci nie wchodzi do rozpływu | panel: `inspector`, tab: `parametry`, focus: `grounding` |
 
 ## Podsumowanie statystyczne
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 73 |
-| WARNING | 44 |
+| BLOCKER | 78 |
+| WARNING | 50 |
 | INFO | 1 |
-| **Razem** | **118** |
+| **Razem** | **129** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 15 |
 | TOPOLOGY | 6 |
-| CATALOGS | 44 |
+| CATALOGS | 45 |
 | STATIONS | 12 |
 | GENERATORS | 22 |
 | PROTECTION | 9 |
-| ANALYSIS | 10 |
-| **Razem** | **118** |
+| ANALYSIS | 20 |
+| **Razem** | **129** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

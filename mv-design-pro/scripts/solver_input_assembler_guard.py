@@ -42,6 +42,13 @@ NAZWY: tuple[str, ...] = (
     "SlackSpec",
     "PVSpec",
     "ShuntSpec",
+    # Karta W5-D: kontrakt wejścia rozpływu niesymetrycznego (solver FROZEN
+    # ``power_flow_unbalanced.py``) — JEDYNY producent to assembler
+    # (``zloz_wejscie_rozplywu_niesymetrycznego``); pomiar PRZED W5-D: 0 konstrukcji
+    # produkcyjnych (2 pliki testów poza skanem), PO: 0 poza domem.
+    "UnbalancedNetworkInput",
+    "UnbalancedBranchSpec",
+    "UnbalancedLoadSpec",
 )
 
 DOM = "enm/assembler.py"
@@ -50,6 +57,13 @@ ALLOWLIST: dict[str, str] = {
     "network_model/solvers/power_flow_gauss_seidel.py": (
         "rdzeń FROZEN (B-01): fallback GS→NR buduje PowerFlowInput z pól istniejącego "
         "pf_input podanego przez assembler, nie z modelu"
+    ),
+    # Karta W5-D: ta sama klasa co wpis wyżej — rdzeń FROZEN `_load_by_bus` AGREGUJE
+    # `UnbalancedLoadSpec` per szyna z krotki `input_data.loads` JUŻ podanej przez
+    # assembler (`zloz_wejscie_rozplywu_niesymetrycznego`), nie z modelu.
+    "network_model/solvers/power_flow_unbalanced.py": (
+        "rdzeń FROZEN (B-01): agregacja odbiorów per szyna z istniejących UnbalancedLoadSpec "
+        "wejścia podanego przez assembler, nie z modelu"
     ),
     # Karta CV-4.2 (K5, K6): P11/S7, kontrakt LOCKED v1.1 (`solver_input/contracts.py`).
     # `build_solver_input` nie składa już WŁASNEGO grafu/slacka/PQ/PV równolegle do

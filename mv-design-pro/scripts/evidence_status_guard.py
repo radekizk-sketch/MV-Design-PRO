@@ -83,6 +83,13 @@ _ALLOWLIST: tuple[tuple[str, str, str], ...] = (
     ),
     (
         "enm/canonical_analysis.py",
+        "_execute_power_flow_unbalanced",
+        "Wartość WARUNKOWA na rzeczywistej fladze zbieżności solvera FROZEN BFS "
+        "(`wynik.converged`, wszystkie wyspy zasilone) — rozpływ niesymetryczny (W5-D), "
+        "wynik statyczny z kompletnymi danymi, nie zdolność dynamiczna.",
+    ),
+    (
+        "enm/canonical_analysis.py",
         "_execute_dynamic_stability",
         "Wartość WYPROWADZONA z rejestru dowodowego "
         "(`classify_dynamic_capability('dynamic_stability.fault_clear')."
