@@ -8,6 +8,7 @@ wyłącznie kontrakty, dyspozycja, persystencja i API.
 
 from __future__ import annotations
 
+import json
 from uuid import UUID, uuid4
 
 import pytest
@@ -280,6 +281,94 @@ class TestBudowaWidokowOdczytu:
         assert payload["kontrakt"] == "resultset_dynamic_v1"
         assert payload["os_czasu_s"] == []
         assert payload["probki"] == {}
+
+    def test_zbuduj_resultset_dynamiczny_v1_deterministyczny_bit_w_bit(self) -> None:
+        """Karta W6-1 SS0 p.6/DT-11: dwa zrzuty TEGO SAMEGO obiektu musza byc
+        bajt w bajt rowne (funkcja czysta: model_dump + kwantyzacja, zero
+        losowosci/czasu/IO). Iloczyn cech bogatszy niz test kontraktu
+        wyzej: kanaly, probki (z_probkami=True), zdarzenia_wykonane,
+        metryki, stopien_dowodowy, zalozenia — wszystkie pola niepuste
+        naraz, nie tylko szkielet."""
+        from application.contracts.resultset_dynamic_v1 import (
+            KanalDynamicznyV1,
+            MetrykaDynamicznaV1,
+            ResultSetDynamicV1,
+            StopienDowodowyV1,
+            TozsamoscBieguDynamicznegoV1,
+            WlasnosciBieguV1,
+            ZdarzenieWykonaneV1,
+            zbuduj_resultset_dynamiczny_v1,
+        )
+
+        wynik = ResultSetDynamicV1(
+            run_id=str(uuid4()),
+            kanaly=(
+                KanalDynamicznyV1(
+                    klucz="u_pu@b1",
+                    przestrzen="siec",
+                    jednostka="pu",
+                    element_ref="b1",
+                    opis_pl="Napiecie wezlowe.",
+                ),
+            ),
+            os_czasu_s=(0.0, 0.001, 0.002),
+            probki={"u_pu@b1": (1.0, 0.999999999123456, 0.998)},
+            zdarzenia_wykonane=(
+                ZdarzenieWykonaneV1(
+                    t_zaplanowany_s=0.001,
+                    t_wykonany_s=0.001,
+                    rodzaj="zwarcie",
+                    ref="b1",
+                    delta_x_max=1e-6,
+                    delta_y_max=1e-6,
+                    residuum_kcl_max=1e-9,
+                ),
+            ),
+            wlasnosci_biegu=WlasnosciBieguV1(
+                zbiegl=True,
+                kroki=10,
+                kroki_odrzucone=0,
+                max_residuum_f=1e-9,
+                max_residuum_g=1e-9,
+                czas_obliczen_s=0.1,
+                integrator="trapez_niejawny",
+                dt_s=0.001,
+                tolerancja=1e-6,
+            ),
+            tozsamosc=TozsamoscBieguDynamicznegoV1(
+                odcisk_migawki="a",
+                odcisk_punktu_pracy="b",
+                odcisk_nastaw_solvera="c",
+                odcisk_harmonogramu="d",
+                odcisk_implementacji="e",
+                wersja_solvera="0.0.0",
+            ),
+            metryki=(
+                MetrykaDynamicznaV1(
+                    klucz="u_min_pu", wartosc=0.998, jednostka="pu", element_ref="b1"
+                ),
+            ),
+            stopien_dowodowy=(
+                StopienDowodowyV1(
+                    capability_id="dynamika_rms",
+                    tier="UNVALIDATED_MODEL",
+                    tier_pl="Model niezwalidowany",
+                    claim_kind="MODEL_OUTPUT",
+                    claim_kind_pl="Wynik modelu",
+                    regulatory_evidence_eligible=False,
+                    rationale_pl="Rdzen W6-2 nie istnieje.",
+                    audit_ref="W6-1",
+                ),
+            ),
+            zalozenia=("Zero calkowania w W6-1.",),
+        )
+
+        pierwszy = zbuduj_resultset_dynamiczny_v1(wynik, z_probkami=True)
+        drugi = zbuduj_resultset_dynamiczny_v1(wynik, z_probkami=True)
+        assert pierwszy == drugi
+        assert json.dumps(pierwszy, sort_keys=True) == json.dumps(drugi, sort_keys=True)
+        # Kwantyzacja 9 cyfr znaczacych (DT-11) dziala na probkach.
+        assert pierwszy["probki"]["u_pu@b1"][1] == pytest.approx(0.999999999, rel=0, abs=1e-9)
 
     def test_brak_szeregow_key_error(self) -> None:
         from enm.canonical_analysis import build_dynamika_time_series
