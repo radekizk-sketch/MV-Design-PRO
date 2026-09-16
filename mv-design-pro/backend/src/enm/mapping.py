@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import math
 import uuid
-from typing import Any, Literal
+from typing import Any
 
 import numpy as np
 from network_model.catalog.types import ConverterKind
@@ -36,6 +36,12 @@ from network_model.core.machine import AsynchronousMachineSource, SynchronousMac
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
 from network_model.core.voltage_factor import Scenario, c_for_node
+from network_model.core.wklad_zwarciowy_przeksztaltnika import (
+    K_SC_ZRODLO_DEKLARACJA,
+    K_SC_ZRODLO_NIEPOPRAWNE,
+    K_SC_ZRODLO_POZA_DZIEDZINA,
+    K_SC_ZRODLO_PRAD_NIEPOPRAWNY,
+)
 from network_model.core.ybus import AdmittanceMatrixBuilder
 from network_model.pochodne import (
     impedancja_z_napiecia_i_mocy_ohm,
@@ -678,17 +684,25 @@ def _add_generator_sc_sources(
     IEC-typical default (``core/machine.py``) — WHITE BOX, the same defaulting
     pattern as the external-source ``rx`` ratio.
 
-    ``k_sc`` (udział zwarciowy falownika wg IEC 60909) — karta FAB-H (naprawa
-    znaleziska FAB-D1/D7): katalog konwertera (``ConverterType``/``PVInverterType``/
-    ``BESSInverterType``) MOŻE nieść ``k_sc`` z karty producenta (odczytany tu z
-    ``materialized_params["k_sc"]``). Gdy karta go NIE niesie, przyjmuje się IEC
-    1,1 jako ZAREJESTROWANE ZAŁOŻENIE — nie cichy numer: ``InverterSource.k_sc_zrodlo``
-    (IR, ``core/inverter.py``) niesie proweniencję ("KATALOG"/"ZALOZENIE"), a ta
-    funkcja zwraca ślad WHITE BOX (jeden wpis na każde takie założenie) surowany
-    przez wywołującego na ``graph.k_sc_assumptions_trace``; gotowość zgłasza WARNING
-    ``inverter.k_sc_assumed`` (`application/calculation_readiness/service.py`). Sieć
-    bez k_sc w KAŻDEJ karcie daje DOKŁADNIE ten sam wynik zwarciowy co przed tą
-    kartą (1,1) — zmienia się wyłącznie proweniencja i ślad, nigdy liczba.
+    ``k_sc`` (udział zwarciowy falownika wg IEC 60909) — karta S-2 AUTORYTET
+    (dyrektywa właściciela 2026-09-16: „K_sc pozostaje DEFAULT_FORBIDDEN"):
+    katalog konwertera (``ConverterType``/``PVInverterType``/``BESSInverterType``)
+    MOŻE nieść ``k_sc`` z karty producenta (odczytany tu z
+    ``materialized_params["k_sc"]``). Deklaracja — poprawna czy nie — przechodzi
+    BEZ ZMIAN do ``InverterSource.k_sc``: klasyfikację (deklaracja / domyślka
+    systemowa / dane niepoprawne / poza dziedziną wyniku / prąd znamionowy
+    niepoprawny) liczy WYŁĄCZNIE `InverterSource.k_sc_zrodlo`/`wklad_zrodlo`
+    (`network_model.core.wklad_zwarciowy_przeksztaltnika`) z TEGO SAMEGO pola —
+    ta funkcja nie duplikuje predykatu, tylko czyta jego wynik. Gdy klasyfikacja
+    nie jest DEKLARACJĄ, ta funkcja zwraca ślad WHITE BOX (jeden wpis na źródło)
+    surowany przez wywołującego na ``graph.k_sc_assumptions_trace``; gotowość
+    zgłasza kod ``inverter.k_sc_default_forbidden``
+    (`application/calculation_readiness/service.py`), a warstwa autorytetu
+    (`network_model.core.autorytet_wyniku_zwarciowego`) blokuje konsumpcję przez
+    zdolności zależne (dobór aparatury, nastawy, koordynacja, pakiety dowodowe).
+    Sieć bez k_sc w KAŻDEJ karcie daje DOKŁADNIE ten sam wynik zwarciowy co przed
+    tą kartą (1,1 jako domyślka systemowa) — zmienia się wyłącznie proweniencja i
+    ślad, nigdy liczba.
     Deterministic: iteration is id-sorted and each source id is the generator ref_id.
     A no-op when there are no generators, so machine-free networks keep a
     byte-identical SC Y-bus (the ybus machine shunt / inverter superposition are
@@ -696,7 +710,8 @@ def _add_generator_sc_sources(
 
     Returns:
         WHITE BOX trace entries (possibly empty) — one per generator whose k_sc
-        was a REGISTERED ASSUMPTION (catalog card silent on k_sc), sorted by
+        was NOT a miarodajna deklaracja (domyślka systemowa / dane niepoprawne /
+        poza dziedziną wyniku / prąd znamionowy niepoprawny), sorted by
         generator ref_id (same determinism as the generator iteration above).
     """
     from network_model.whitebox.tracer import WhiteBoxTracer
@@ -721,16 +736,26 @@ def _add_generator_sc_sources(
                 continue
             in_rated_a = prad_znamionowy_a(sr_mva, un_kv)
             k_sc_raw = mp.get("k_sc")
-            if (
-                isinstance(k_sc_raw, int | float)
-                and not isinstance(k_sc_raw, bool)
-                and k_sc_raw > 0
-            ):
-                k_sc_value = float(k_sc_raw)
-                k_sc_zrodlo: Literal["KATALOG", "ZALOZENIE"] = "KATALOG"
-            else:
-                k_sc_value = 1.1
-                k_sc_zrodlo = "ZALOZENIE"
+            # DEKLARACJA PRZECHODZI SUROWO (karta S-2 AUTORYTET): to pole niesie
+            # dokładnie to, co karta katalogowa podała — poprawne albo nie. Nie
+            # ma tu DRUGIEGO predykatu ważności: `InverterSource.k_sc_zrodlo`/
+            # `wklad_zrodlo` (jeden przedykat, `wklad_zwarciowy_przeksztaltnika`)
+            # klasyfikuje ją NIŻEJ, z tego samego pola — dwa niezależne warunki
+            # o tej samej daniej byłyby defektem czekającym na dane brzegowe
+            # (reguła KLASA NIE INSTANCJA, CLAUDE.md pkt „predykaty parami").
+            zrodlo_sc = InverterSource(
+                id=gen.ref_id,
+                name=gen.name,
+                node_id=node_id,
+                type_ref=gen.catalog_ref,
+                converter_kind=FULL_CONVERTER_SC_GEN_TYPES[gen_type],
+                in_rated_a=in_rated_a,
+                k_sc=k_sc_raw,
+                contributes_negative_sequence=True,
+                contributes_zero_sequence=False,
+            )
+            graph.add_inverter_source(zrodlo_sc)
+            if zrodlo_sc.wklad_zrodlo != K_SC_ZRODLO_DEKLARACJA:
                 tracer.add(
                     key=f"k_sc_zalozenie_{gen.ref_id}",
                     title="Założenie: udział zwarciowy falownika k_sc",
@@ -739,32 +764,10 @@ def _add_generator_sc_sources(
                         "generator_ref": gen.ref_id,
                         "catalog_ref": gen.catalog_ref,
                     },
-                    substitution=(
-                        "k_sc = 1,1 przyjęte — brak danych karty katalogowej konwertera "
-                        f"{gen.catalog_ref or '(brak referencji katalogowej)'}"
-                    ),
-                    result={"k_sc": k_sc_value},
-                    notes=(
-                        "ZAREJESTROWANE ZAŁOŻENIE (karta FAB-H): karta katalogowa "
-                        "konwertera nie niesie k_sc — przyjęto wartość domyślną IEC "
-                        "60909 (1,1). Wpisz k_sc w karcie katalogowej, aby zastąpić "
-                        "założenie zmierzoną wartością producenta."
-                    ),
+                    substitution=_k_sc_substytucja_zalozenia(zrodlo_sc, gen.catalog_ref),
+                    result={"k_sc": zrodlo_sc.k_sc_efektywny},
+                    notes=_k_sc_notatka_zalozenia(zrodlo_sc.wklad_zrodlo),
                 )
-            graph.add_inverter_source(
-                InverterSource(
-                    id=gen.ref_id,
-                    name=gen.name,
-                    node_id=node_id,
-                    type_ref=gen.catalog_ref,
-                    converter_kind=FULL_CONVERTER_SC_GEN_TYPES[gen_type],
-                    in_rated_a=in_rated_a,
-                    k_sc=k_sc_value,
-                    k_sc_zrodlo=k_sc_zrodlo,
-                    contributes_negative_sequence=True,
-                    contributes_zero_sequence=False,
-                )
-            )
         elif gen_type == "synchronous":
             cos_phi = mp.get("cos_phi") or mp.get("cos_phi_r")
             cos_phi_r = (
@@ -807,6 +810,74 @@ def _add_generator_sc_sources(
             graph.add_asynchronous_machine_source(AsynchronousMachineSource(**async_kwargs))
 
     return tracer.to_list()
+
+
+def _k_sc_substytucja_zalozenia(zrodlo: InverterSource, catalog_ref: str | None) -> str:
+    """Tekst podstawienia śladu WHITE BOX dla źródła BEZ miarodajnej deklaracji k_sc.
+
+    Cztery gałęzie — jedna na każdy znacznik niemiarodajny
+    (`network_model.core.wklad_zwarciowy_przeksztaltnika`). Tekst dla
+    ``DOMYSLNE_SYSTEMOWE`` jest BIT W BIT tożsamy z tekstem sprzed karty S-2
+    (parytet fixtur/testów, które go asertują) — pozostałe trzy są NOWE, bo
+    sprzed tej karty nie miały własnego wpisu (były cicho zrównane z brakiem).
+    """
+    ref_pl = catalog_ref or "(brak referencji katalogowej)"
+    if zrodlo.wklad_zrodlo == K_SC_ZRODLO_NIEPOPRAWNE:
+        return (
+            f"k_sc = 1,1 przyjęte do rachunku ROBOCZEGO — karta katalogowa konwertera "
+            f"{ref_pl} niesie wartość k_sc={zrodlo.k_sc!r}, niemożliwą do przyjęcia "
+            "(wymagana liczba skończona i dodatnia)"
+        )
+    if zrodlo.wklad_zrodlo == K_SC_ZRODLO_POZA_DZIEDZINA:
+        return (
+            f"k_sc = 1,1 przyjęte do rachunku ROBOCZEGO — iloczyn zadeklarowanego "
+            f"k_sc={zrodlo.k_sc!r} i prądu znamionowego źródła (karta {ref_pl}) "
+            "wykracza poza zakres liczb skończonych"
+        )
+    if zrodlo.wklad_zrodlo == K_SC_ZRODLO_PRAD_NIEPOPRAWNY:
+        return (
+            f"k_sc = 1,1 przyjęte do rachunku ROBOCZEGO — źródło (karta {ref_pl}) nie ma "
+            "poprawnego prądu znamionowego I_n, więc wkładu nie da się policzyć"
+        )
+    return f"k_sc = 1,1 przyjęte — brak danych karty katalogowej konwertera {ref_pl}"
+
+
+def _k_sc_notatka_zalozenia(wklad_zrodlo: str) -> str:
+    """Notatka śladu WHITE BOX — treść zależna od znacznika niemiarodajności.
+
+    Tekst dla ``DOMYSLNE_SYSTEMOWE`` BIT W BIT tożsamy z tekstem sprzed karty
+    S-2 (patrz `_k_sc_substytucja_zalozenia`).
+    """
+    if wklad_zrodlo == K_SC_ZRODLO_NIEPOPRAWNE:
+        return (
+            "DANE NIEPOPRAWNE (karta S-2 AUTORYTET): karta katalogowa konwertera niesie "
+            "k_sc niemożliwy do przyjęcia (NaN, ±Inf, zero, ujemny, tekst albo bool) — to "
+            "błąd danych, nie brak. Wynik zwarciowy NIE jest miarodajny dla doboru "
+            "aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Popraw k_sc w karcie "
+            "katalogowej."
+        )
+    if wklad_zrodlo == K_SC_ZRODLO_POZA_DZIEDZINA:
+        return (
+            "POZA DZIEDZINĄ WYNIKU (karta S-2 AUTORYTET): współczynnik i prąd znamionowy "
+            "są każdy z osobna poprawne, ale ich iloczyn nie jest liczbą skończoną. Wynik "
+            "zwarciowy NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani "
+            "pakietu dowodowego. Popraw dane znamionowe źródła."
+        )
+    if wklad_zrodlo == K_SC_ZRODLO_PRAD_NIEPOPRAWNY:
+        return (
+            "PRĄD ZNAMIONOWY NIEPOPRAWNY (karta S-2 AUTORYTET): źródło nie ma poprawnej "
+            "danej znamionowej, więc wkładu zwarciowego nie da się policzyć. Wynik "
+            "zwarciowy NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani "
+            "pakietu dowodowego. Uzupełnij tabliczkę znamionową źródła."
+        )
+    return (
+        "ZAREJESTROWANE ZAŁOŻENIE (karta S-2 AUTORYTET, dawniej FAB-H): karta katalogowa "
+        "konwertera nie niesie k_sc — przyjęto wartość domyślną IEC 60909 (1,1) jako "
+        "DOMYŚLKĘ SYSTEMOWĄ, nie daną inżynierską (dyrektywa właściciela: „K_sc pozostaje "
+        'DEFAULT_FORBIDDEN"). Wynik zwarciowy NIE jest miarodajny dla doboru aparatury, '
+        "nastaw zabezpieczeń ani pakietu dowodowego. Wpisz k_sc w karcie katalogowej, aby "
+        "zastąpić domyślkę zmierzoną wartością producenta."
+    )
 
 
 def build_inverter_k_sc_trace(enm: EnergyNetworkModel) -> list[dict]:

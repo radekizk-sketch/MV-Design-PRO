@@ -1662,6 +1662,17 @@ def _materialize_nn_source_params(
             "rated_power_ac_kw": result.solver_fields.get("s_n_kva"),
             "max_power_kw": result.solver_fields.get("p_max_kw"),
             "control_mode": result.solver_fields.get("control_mode"),
+            # Karta S-2 AUTORYTET (dyrektywa właściciela 2026-09-16: „K_sc
+            # pozostaje DEFAULT_FORBIDDEN"): k_sc katalogowy MUSI dotrzeć do
+            # `materialized_params`, inaczej `enm/mapping.py` nigdy nie widzi
+            # deklaracji producenta i KAŻDE źródło PV dostaje domyślkę
+            # systemową — nawet gdy karta katalogowa niesie zmierzoną wartość
+            # (`result.solver_fields` ją niesie, `PVInverterType.solver_fields`
+            # zawiera „k_sc" od karty FAB-H — ten tor ją dotąd gubił). Brak w
+            # karcie → `None`, przechodzi BEZ ZMIAN (zero fabrykacji 1,1 na tym
+            # poziomie — domyślkę przypisuje WYŁĄCZNIE mapping.py, z jawnym
+            # śladem WHITE BOX).
+            "k_sc": result.solver_fields.get("k_sc"),
         }
     elif namespace == "ZRODLO_NN_BESS":
         zmapowane = {
@@ -1674,6 +1685,9 @@ def _materialize_nn_source_params(
             # (liczył 2,0), więc ta sama pozycja dawała inne liczby w torze
             # stacyjnym i atomowym. Teraz obydwa czytają `s_n_kva` pozycji.
             "s_n_kva": result.solver_fields.get("s_n_kva"),
+            # Karta S-2 AUTORYTET — patrz komentarz w gałęzi PV powyżej, ten
+            # sam kontrakt (`BESSInverterType.solver_fields` niesie „k_sc").
+            "k_sc": result.solver_fields.get("k_sc"),
         }
     elif namespace == "CONVERTER":
         # Falownik wiatrowy: TA SAMA przestrzeń katalogu, co w torze stacyjnym
@@ -4261,6 +4275,9 @@ def _build_converter_materialized_params(
             "un_kv": z_katalogu.get("un_kv"),
             "pmax_mw": _kw_to_mw(z_katalogu.get("max_power_kw")),
             "sn_mva": _kw_to_mw(z_katalogu.get("rated_power_ac_kw")),
+            # Karta S-2 AUTORYTET: k_sc katalogowy (`_materialize_nn_source_params`
+            # go teraz niesie) — brak w karcie → `None`, zero fabrykacji tutaj.
+            "k_sc": z_katalogu.get("k_sc"),
         }
     elif technology == "BESS":
         z_katalogu, blad = _materialize_nn_source_params(
@@ -4291,6 +4308,8 @@ def _build_converter_materialized_params(
             # liczby niż tor stacyjny (`_nn_source_nameplate_from_catalog`).
             "sn_mva": _kw_to_mw(z_katalogu.get("s_n_kva")),
             "e_kwh": z_katalogu.get("usable_capacity_kwh"),
+            # Karta S-2 AUTORYTET: k_sc katalogowy — patrz komentarz w gałęzi PV.
+            "k_sc": z_katalogu.get("k_sc"),
         }
     else:
         z_katalogu, blad = _materialize_nn_source_params(
@@ -4309,6 +4328,8 @@ def _build_converter_materialized_params(
             "qmin_mvar": z_katalogu.get("qmin_mvar"),
             "qmax_mvar": z_katalogu.get("qmax_mvar"),
             "control_mode": z_katalogu.get("control_mode"),
+            # Karta S-2 AUTORYTET: k_sc katalogowy — patrz komentarz w gałęzi PV.
+            "k_sc": z_katalogu.get("k_sc"),
         }
 
     tabliczka.update(_certyfikat_ptpiree_z_katalogu(namespace, catalog_ref))

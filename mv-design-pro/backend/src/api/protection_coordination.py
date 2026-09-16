@@ -37,6 +37,11 @@ from application.analyses.protection.coordination.models import (
     FaultCurrentData,
     OperatingCurrentData,
 )
+from application.autorytet_biegu_zwarciowego import (
+    BiegNiemiarodajnyError,
+    niezgodnosci_pradow_koordynacji,
+    wejscie_koordynacji_z_biegow,
+)
 from domain.protection_device import (
     CurveStandard,
     OvercurrentProtectionSettings,
@@ -47,6 +52,8 @@ from domain.protection_device import (
 )
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import Response
+from network_model.core.autorytet_wyniku_zwarciowego import BrakAutorytetuWyniku, wymagaj_autorytetu
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from protection.curves.iec_curves import IECCurveType
 from protection.curves.ieee_curves import IEEECurveType
 from pydantic import BaseModel, Field
@@ -138,7 +145,15 @@ class CoordinationConfigRequest(BaseModel):
 
 
 class RunCoordinationRequest(BaseModel):
-    """Request to run coordination analysis."""
+    """Request to run coordination analysis.
+
+    Karta S-2 AUTORYTET: ``sc_run_id`` (bieg MAX) i ``sc_run_id_min`` (bieg MIN)
+    są WYMAGANE przy egzekucji (`_check_run_eligibility` + `wejscie_koordynacji_
+    z_biegow`) — pola pozostają ``str | None`` na poziomie pydantic (nie
+    ``Field(...)``), żeby brak dał komunikat PL jednego mostu autorytetu zamiast
+    generycznego błędu walidacji pydantic. ``fault_currents`` staje się ECHEM:
+    liczby idą do decyzji WYŁĄCZNIE z obu biegów, rozbieżność z żądaniem = 422.
+    """
 
     devices: list[DeviceRequest]
     fault_currents: list[FaultCurrentRequest]
@@ -146,6 +161,7 @@ class RunCoordinationRequest(BaseModel):
     config: CoordinationConfigRequest | None = None
     pf_run_id: str | None = None
     sc_run_id: str | None = None
+    sc_run_id_min: str | None = None
 
 
 class CoordinationSummaryResponse(BaseModel):
@@ -351,6 +367,25 @@ def run_coordination_analysis(
     pradu roboczego — inaczej 400 z uczciwym komunikatem PL (nie 500, nie
     fabrykowany PASS).
 
+    GRANICA AUTORYTETU (karta S-2 AUTORYTET) — DWIE BRAMKI, OBIE KONIECZNE.
+    Bramka pierwsza: prądy zwarciowe przychodziły dotąd jako GOŁE LICZBY w
+    żądaniu i nikt nie pytał, skąd pochodzą — wystarczyło je podać, żeby
+    dostać werdykt selektywności/czułości na dowolnie wymyślonych danych.
+    Bramka druga: proweniencja wkładu falownikowego biegów, z których te
+    liczby pochodzą, musi być miarodajna (nie domyślka systemowa). Pierwsza
+    bez drugiej przepuszczałaby liczby z powietrza policzone na dobrym
+    modelu; druga bez pierwszej — liczby z biegu policzonego z domyślki k_sc.
+
+    PRĄDY ROBOCZE POZOSTAJĄ NIEZWIĄZANE Z ŻADNYM BIEGIEM — ZMIERZONY,
+    NAZWANY BRAK (nie przeoczenie). Prąd zwarciowy jest kluczowany WĘZŁEM
+    zwarcia, prąd roboczy GAŁĘZIĄ rozpływu — przestrzenie identyfikatorów są
+    w praktyce rozłączne, a kontrakt koordynacji ma jedno pole `location_id`
+    na obie wielkości, więc związanie prądu roboczego tym samym mechanizmem
+    odrzucałoby większość realnych żądań. Domknięcie wymaga relacji
+    „zabezpieczenie → chroniona gałąź" w modelu (`BayProtectionControlUnit.
+    protected_branch_ref`, decyzja architekta A-4, wchodzi w wycinku W4) —
+    to decyzja produktowa/modelowa, nie poprawka w tym pliku.
+
     Analyzes:
     - Sensitivity (will devices trip for minimum fault?)
     - Selectivity (proper time grading between devices?)
@@ -367,6 +402,44 @@ def run_coordination_analysis(
 
     # Convert request to domain models
     devices = tuple(_convert_device(d) for d in request.devices)
+
+    try:
+        wejscie = wejscie_koordynacji_z_biegow(
+            run_id_max=request.sc_run_id, run_id_min=request.sc_run_id_min
+        )
+    except BiegNiemiarodajnyError as brak:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"powod": brak.powod, "komunikat_pl": brak.komunikat_pl},
+        ) from brak
+
+    niezgodnosci = niezgodnosci_pradow_koordynacji(
+        wejscie, [pozycja.model_dump() for pozycja in request.fault_currents]
+    )
+    if niezgodnosci:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "powod": "PRADY_NIEZGODNE_Z_BIEGIEM",
+                "komunikat_pl": (
+                    "Prądy zwarciowe podane w żądaniu różnią się od prądów policzonych w "
+                    "biegach. Nastawy powstają z wyniku solvera — przelicz biegi albo popraw "
+                    "dane w żądaniu."
+                ),
+                "niezgodnosci": list(niezgodnosci),
+            },
+        )
+
+    try:
+        wymagaj_autorytetu((ZdolnoscMiarodajna.PROTECTION_COORDINATION,), wejscie.proweniencja)
+    except BrakAutorytetuWyniku as brak:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "powod": "WEJSCIE_NIEMIARODAJNE",
+                "blokady": [b.to_dict() for b in brak.blokady],
+            },
+        ) from brak
 
     fault_currents = tuple(
         FaultCurrentData(

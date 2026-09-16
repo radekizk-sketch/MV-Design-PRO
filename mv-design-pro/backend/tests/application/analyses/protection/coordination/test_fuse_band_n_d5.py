@@ -507,6 +507,73 @@ def test_api_odrzuca_niezgodna_pare_norma_wariant(standard: str, wariant: str) -
     assert "is not a valid" not in detail
 
 
+def _zapisz_biegi_zwarciowe_l1() -> tuple[str, str, float, float]:
+    """Realne biegi MAX+MIN (karta S-2 AUTORYTET) z jedynym punktem zwarcia
+    "L1" — ta sama nazwa lokalizacji, ktorej caly ten plik juz uzywa jako
+    `location_element_id` urzadzen. Zwraca (sc_run_id, sc_run_id_min,
+    ikss_max_a, ikss_min_a) — ostatnie dwa dla ECHA `fault_currents` (pole
+    WYMAGANE w `RunCoordinationRequest`, walidowane wobec biegow)."""
+    from datetime import UTC, datetime
+
+    from enm.canonical_analysis import (
+        CanonicalRun,
+        _execute_short_circuit,
+        canonical_run_repository_scope,
+    )
+    from enm.models import Bus, EnergyNetworkModel, ENMHeader, Source
+
+    def _siec() -> EnergyNetworkModel:
+        return EnergyNetworkModel(
+            header=ENMHeader(name="Siec N-D5-FUSE (karta S-2)", revision=1),
+            buses=[Bus(ref_id="L1", name="Punkt zwarcia L1", voltage_kv=10.0)],
+            sources=[
+                Source(
+                    ref_id="s1",
+                    name="System",
+                    bus_ref="L1",
+                    model="short_circuit_power",
+                    sk3_mva=173.0,
+                    rx_ratio=0.1,
+                    sk3_min_mva=42.0,
+                    rx_ratio_min=0.15,
+                )
+            ],
+        )
+
+    utworzony = datetime(2026, 1, 1, tzinfo=UTC)
+    id_biegu: dict[str, str] = {}
+    ikss_biegu: dict[str, float] = {}
+    for scenario in ("MAX", "MIN"):
+        run = CanonicalRun(
+            id=uuid4(),
+            case_id="case-n-d5-fuse",
+            project_id="proj-n-d5-fuse",
+            analysis_type="short_circuit_sn",
+            status="FINISHED",
+            created_at=utworzony,
+            snapshot_hash="snap-n-d5-fuse",
+            input_hash=f"in-n-d5-fuse-{scenario}",
+            snapshot=_siec().model_dump(mode="json"),
+            validation={},
+            readiness={},
+            options={"fault_type": "3F", "scenario": scenario, "thermal_time_seconds": 1.0},
+        )
+        run.finished_at = utworzony
+        _execute_short_circuit(run)
+        with canonical_run_repository_scope() as repository:
+            repository.save(run)
+        id_biegu[scenario] = str(run.id)
+        grafy = run.raw_result["graph"]["nodes"]
+        for wiersz in run.raw_result["results"]:
+            ikss = wiersz.get("ikss_a")
+            if ikss is None:
+                continue
+            element_id = grafy.get(wiersz["fault_node_id"], {}).get("element_id")
+            if element_id == "L1":
+                ikss_biegu[scenario] = float(ikss)
+    return id_biegu["MAX"], id_biegu["MIN"], ikss_biegu["MAX"], ikss_biegu["MIN"]
+
+
 @pytest.mark.parametrize(
     "standard_zgloszony", ["FUSE", "IEC"], ids=["api-norma-FUSE", "api-norma-IEC"]
 )
@@ -514,6 +581,10 @@ def test_api_tcc_nie_zwraca_punktow_dla_bezpiecznika(standard_zgloszony: str) ->
     """Publiczna sciezka API: bezpiecznik nie dostaje ani jednego punktu.
 
     To dokladnie ta sciezka, na ktorej zmierzono fantom (POST run -> GET tcc).
+
+    Karta S-2 AUTORYTET: prady zwarciowe pochodza teraz z ZAPISANEGO BIEGU
+    (`sc_run_id`/`sc_run_id_min`), nie z golych liczb w zadaniu — `fault_currents`
+    ponizej jest ECHEM, ktore musi sie zgadzac z tym, co realnie policzyl solver.
     """
     from api.main import app
     from fastapi.testclient import TestClient
@@ -521,6 +592,7 @@ def test_api_tcc_nie_zwraca_punktow_dla_bezpiecznika(standard_zgloszony: str) ->
     klient = TestClient(app)
     projekt = str(uuid4())
     urzadzenie = str(uuid4())
+    sc_run_id, sc_run_id_min, ikss_max_a, ikss_min_a = _zapisz_biegi_zwarciowe_l1()
 
     odpowiedz = klient.post(
         f"/api/protection-coordination/projects/{projekt}/run",
@@ -545,7 +617,11 @@ def test_api_tcc_nie_zwraca_punktow_dla_bezpiecznika(standard_zgloszony: str) ->
                     },
                 }
             ],
-            "fault_currents": [{"location_id": "L1", "ik_max_3f_a": 5000.0, "ik_min_3f_a": 1200.0}],
+            "sc_run_id": sc_run_id,
+            "sc_run_id_min": sc_run_id_min,
+            "fault_currents": [
+                {"location_id": "L1", "ik_max_3f_a": ikss_max_a, "ik_min_3f_a": ikss_min_a}
+            ],
             "operating_currents": [{"location_id": "L1", "i_operating_a": 40.0}],
         },
     )

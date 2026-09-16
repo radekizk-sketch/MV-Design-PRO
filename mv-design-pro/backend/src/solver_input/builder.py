@@ -317,7 +317,12 @@ def _build_inverter_payloads(
 
         for field_name, value, unit in [
             ("in_rated_a", source.in_rated_a, "A"),
-            ("k_sc", source.k_sc, ""),
+            # Karta S-2 AUTORYTET: `source.k_sc` jest DEKLARACJĄ (``None`` gdy
+            # nikt nie podał). Ten payload opisuje wejście SOLVERA, więc niesie
+            # `k_sc_efektywny` — wartość FAKTYCZNIE użytą w rachunku
+            # (deklaracja albo domyślka systemowa), bit w bit tożsamą z tym, co
+            # to pole niosło przed kartą S-2.
+            ("k_sc", source.k_sc_efektywny, ""),
         ]:
             trace_entries.append(
                 ProvenanceEntry(
@@ -337,7 +342,7 @@ def _build_inverter_payloads(
                 bus_ref=source.node_id,
                 converter_kind=(source.converter_kind.value if source.converter_kind else None),
                 in_rated_a=source.in_rated_a,
-                k_sc=source.k_sc,
+                k_sc=source.k_sc_efektywny,
                 contributes_negative_sequence=source.contributes_negative_sequence,
                 contributes_zero_sequence=source.contributes_zero_sequence,
                 in_service=source.in_service,

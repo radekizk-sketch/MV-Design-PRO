@@ -1,5 +1,7 @@
 """Tests for ENM → NetworkGraph mapping and roundtrip to solver."""
 
+import math
+
 import pytest
 from enm.mapping import (
     build_inverter_k_sc_trace,
@@ -480,17 +482,21 @@ class TestGeneratorShortCircuitSources:
         assert len(inverters) == 1
         src = inverters[0]
         assert src.id == "pv1"
-        # In = S/(√3·U); Ik = k_sc·In (default 1.1)
+        # In = S/(√3·U); Ik = k_sc·In (default systemowy 1.1)
         expected_in = 2.5 * 1.0e6 / (3.0**0.5 * 15.0 * 1.0e3)
         assert src.in_rated_a == pytest.approx(expected_in, rel=1e-6)
         assert src.ik_sc_a == pytest.approx(1.1 * expected_in, rel=1e-6)
         # No rotating-machine sources for a converter.
         assert len(graph.get_synchronous_machine_sources()) == 0
-        # Karta FAB-H: karta katalogowa nie niesie k_sc => ZAREJESTROWANE
-        # ZAŁOŻENIE (proweniencja + ślad WHITE BOX), tożsame co do liczby z
-        # dotychczasowym 1,1 — sieć bez k_sc w karcie daje IDENTYCZNY wynik.
-        assert src.k_sc == pytest.approx(1.1)
-        assert src.k_sc_zrodlo == "ZALOZENIE"
+        # Karta S-2 AUTORYTET (dawniej FAB-H): karta katalogowa nie niesie
+        # k_sc => DEKLARACJA POMINIĘTA (``InverterSource.k_sc is None``), a
+        # wartość UŻYTA W RACHUNKU jest wyprowadzona (`k_sc_efektywny`) —
+        # tożsama co do liczby z dotychczasowym 1,1, więc sieć bez k_sc w
+        # karcie daje IDENTYCZNY wynik zwarciowy jak przed tą kartą.
+        assert src.k_sc is None
+        assert src.k_sc_efektywny == pytest.approx(1.1)
+        assert src.k_sc_zrodlo == "DOMYSLNE_SYSTEMOWE"
+        assert src.wklad_zrodlo == "DOMYSLNE_SYSTEMOWE"
         assert graph.k_sc_assumptions_trace == build_inverter_k_sc_trace(enm)
         trace = graph.k_sc_assumptions_trace
         assert len(trace) == 1
@@ -514,15 +520,19 @@ class TestGeneratorShortCircuitSources:
         expected_in = 2.5 * 1.0e6 / (3.0**0.5 * 15.0 * 1.0e3)
         # k_sc z karty (1,3), NIE domyślne 1,1 — wkład prądowy skaluje się ×1,3/1,1.
         assert src.k_sc == pytest.approx(1.3)
-        assert src.k_sc_zrodlo == "KATALOG"
+        assert src.k_sc_efektywny == pytest.approx(1.3)
+        assert src.k_sc_zrodlo == "DEKLARACJA"
+        assert src.wklad_zrodlo == "DEKLARACJA"
         assert src.ik_sc_a == pytest.approx(1.3 * expected_in, rel=1e-6)
         assert src.ik_sc_a != pytest.approx(1.1 * expected_in, rel=1e-6)
         # Karta jawna => brak wpisu w śladzie WHITE BOX założeń.
         assert graph.k_sc_assumptions_trace == []
 
-    def test_pv_inverter_k_sc_niedodatnie_w_karcie_traktowane_jak_brak(self):
-        """k_sc <= 0 w karcie jest danym niefizycznym — traktowany jak BRAK,
-        nie jak jawna (bezsensowna fizycznie) wartość."""
+    def test_pv_inverter_k_sc_niedodatnie_w_karcie_jest_dana_niepoprawna(self):
+        """Karta S-2 AUTORYTET: k_sc <= 0 w karcie jest DANĄ NIEPOPRAWNĄ — stan
+        ROZŁĄCZNY od „brak" (dyrektywa właściciela: „zero domyślek-fantomów").
+        Poprzedni kanon (sprzed karty S-2) traktował tę wartość jak brak —
+        naprawa u źródła zgodnie z Zero-Debt pkt 2 (zmiana kanonu)."""
         enm = self._enm_with_generator(
             ref_id="pv1",
             name="Blok PV",
@@ -532,19 +542,80 @@ class TestGeneratorShortCircuitSources:
         )
         graph = map_enm_to_network_graph(enm)
         src = graph.get_inverter_sources()[0]
-        assert src.k_sc == pytest.approx(1.1)
-        assert src.k_sc_zrodlo == "ZALOZENIE"
-        assert len(graph.k_sc_assumptions_trace) == 1
+        # DEKLARACJA JEST WIDOCZNA (0.0, nie None) — to odróżnia „podano złą
+        # daną" od „nikt nic nie podał"; wartość UŻYTA w rachunku (k_sc_efektywny)
+        # jest nadal domyślką systemową (1,1), tożsamą co do liczby.
+        assert src.k_sc == pytest.approx(0.0)
+        assert src.k_sc_efektywny == pytest.approx(1.1)
+        assert src.k_sc_zrodlo == "DANE_NIEPOPRAWNE"
+        assert src.wklad_zrodlo == "DANE_NIEPOPRAWNE"
+        trace = graph.k_sc_assumptions_trace
+        assert len(trace) == 1
+        assert "DANE NIEPOPRAWNE" in trace[0]["notes"]
+        assert "k_sc=0.0" in trace[0]["substitution"]
+
+    @pytest.mark.parametrize(
+        ("k_sc_zla_wartosc", "opis"),
+        [
+            (float("nan"), "NaN"),
+            (float("inf"), "plus-nieskonczonosc"),
+            (float("-inf"), "minus-nieskonczonosc"),
+            (-1.0, "ujemna"),
+            (True, "bool"),
+            ("1.1", "tekst"),
+        ],
+    )
+    def test_pv_inverter_k_sc_kazda_niepoprawna_deklaracja_jest_dana_niepoprawna(
+        self, k_sc_zla_wartosc: object, opis: str
+    ) -> None:
+        """Iloczyn cech (CLAUDE.md, reguła KLASA NIE INSTANCJA): KAŻDA wartość z
+        enumeracji karty S-2 (NaN, ±Inf, ujemna, bool, tekst) — nie tylko zero z
+        testu powyżej — musi klasyfikować się jako DANE_NIEPOPRAWNE, nigdy jako
+        domyślka systemowa cicho przyjęta."""
+        enm = self._enm_with_generator(
+            ref_id="pv1",
+            name="Blok PV",
+            p_mw=2.0,
+            gen_type="pv_inverter",
+            materialized_params={"un_kv": 15.0, "sn_mva": 2.5, "k_sc": k_sc_zla_wartosc},
+        )
+        graph = map_enm_to_network_graph(enm)
+        src = graph.get_inverter_sources()[0]
+        assert src.k_sc_zrodlo == "DANE_NIEPOPRAWNE", opis
+        assert src.k_sc_efektywny == pytest.approx(1.1), opis
+        assert len(graph.k_sc_assumptions_trace) == 1, opis
+
+    def test_pv_inverter_k_sc_poza_dziedzina_wyniku(self):
+        """Piąty stan (P1-DELTA-07 w wątku badawczym): współczynnik i prąd
+        znamionowy są KAŻDY z osobna poprawne, ale ich ILOCZYN wykracza poza
+        zakres liczb skończonych — inny znacznik niż DANE_NIEPOPRAWNE, bo
+        wadliwa jest PARA, nie żadna z wartości z osobna."""
+        enm = self._enm_with_generator(
+            ref_id="pv1",
+            name="Blok PV",
+            p_mw=2.0,
+            gen_type="pv_inverter",
+            materialized_params={"un_kv": 15.0, "sn_mva": 2.5, "k_sc": 1e308},
+        )
+        graph = map_enm_to_network_graph(enm)
+        src = graph.get_inverter_sources()[0]
+        assert src.k_sc == pytest.approx(1e308)
+        assert src.k_sc_zrodlo == "DEKLARACJA"
+        assert src.wklad_zrodlo == "POZA_DZIEDZINA_WYNIKU"
+        assert math.isfinite(src.ik_sc_a)
+        trace = graph.k_sc_assumptions_trace
+        assert len(trace) == 1
+        assert "POZA DZIEDZINĄ WYNIKU" in trace[0]["notes"]
 
     def test_pv_inverter_bez_zadnego_katalogu_dostaje_takie_samo_zalozenie(self):
         """Trzecia kratka iloczynu (H3): konwerter BEZ ŻADNEGO katalogu
         (``catalog_ref=None`` — stan REALNY, brama katalogowa go tu nie
         wyklucza, patrz `inverter.k_sc_missing`) przechodzi PRZEZ TĘ SAMĄ
         ścieżkę mapowania co karta obecna-ale-bez-k_sc: k_sc=1,1 przyjęte,
-        proweniencja ZALOZENIE, wpis w śladzie WHITE BOX — mapping.py samo nie
-        rozróżnia „katalog bez k_sc” od „brak katalogu” (to rozróżnienie robi
-        WYŁĄCZNIE bramka gotowości: WARNING vs BLOCKER), więc oba muszą dawać
-        identyczny wynik tutaj."""
+        proweniencja DOMYSLNE_SYSTEMOWE, wpis w śladzie WHITE BOX —
+        mapping.py samo nie rozróżnia „katalog bez k_sc” od „brak katalogu"
+        (to rozróżnienie robi WYŁĄCZNIE bramka gotowości: WARNING vs
+        BLOCKER), więc oba muszą dawać identyczny wynik tutaj."""
         enm = self._enm_with_generator(
             ref_id="pv1",
             name="Blok PV",
@@ -555,8 +626,9 @@ class TestGeneratorShortCircuitSources:
         graph = map_enm_to_network_graph(enm)
         src = graph.get_inverter_sources()[0]
         assert src.type_ref is None
-        assert src.k_sc == pytest.approx(1.1)
-        assert src.k_sc_zrodlo == "ZALOZENIE"
+        assert src.k_sc is None
+        assert src.k_sc_efektywny == pytest.approx(1.1)
+        assert src.k_sc_zrodlo == "DOMYSLNE_SYSTEMOWE"
         trace = graph.k_sc_assumptions_trace
         assert len(trace) == 1
         assert "brak referencji katalogowej" in trace[0]["substitution"]

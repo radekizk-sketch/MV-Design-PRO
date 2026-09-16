@@ -4186,9 +4186,16 @@
       "type": "string"
      },
      "required_fault_results": {
-      "additionalProperties": true,
-      "title": "Required Fault Results",
-      "type": "object"
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Required Fault Results"
      },
      "run_id": {
       "minLength": 1,
@@ -4201,8 +4208,7 @@
      "case_id",
      "run_id",
      "connection_node_id",
-     "device",
-     "required_fault_results"
+     "device"
     ],
     "title": "EquipmentProofRequest",
     "type": "object"
@@ -9561,7 +9567,7 @@
     "type": "object"
    },
    "RunCoordinationRequest": {
-    "description": "Request to run coordination analysis.",
+    "description": "Request to run coordination analysis.\n\nKarta S-2 AUTORYTET: ``sc_run_id`` (bieg MAX) i ``sc_run_id_min`` (bieg MIN)\nsą WYMAGANE przy egzekucji (`_check_run_eligibility` + `wejscie_koordynacji_\nz_biegow`) — pola pozostają ``str | None`` na poziomie pydantic (nie\n``Field(...)``), żeby brak dał komunikat PL jednego mostu autorytetu zamiast\ngenerycznego błędu walidacji pydantic. ``fault_currents`` staje się ECHEM:\nliczby idą do decyzji WYŁĄCZNIE z obu biegów, rozbieżność z żądaniem = 422.",
     "properties": {
      "config": {
       "anyOf": [
@@ -9615,6 +9621,17 @@
        }
       ],
       "title": "Sc Run Id"
+     },
+     "sc_run_id_min": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Sc Run Id Min"
      }
     },
     "required": [
@@ -18212,6 +18229,7 @@
   },
   "/api/equipment-proof/pack": {
    "post": {
+    "description": "Pakiet dowodowy doboru aparatury — WYŁĄCZNIE z liczb ZAPISANEGO BIEGU.\n\nOBEJŚCIE, KTÓRE TO ZAMYKA (karta S-2 AUTORYTET, odtworzone na HEAD\n`c307e95f`): to żądanie przyjmowało ``required_fault_results`` jako gołe\nliczby i wystawiało kompletny pakiet dowodowy, nie pytając, skąd pochodzą.\nPrzy ``run_id`` wskazującym bieg, którego nigdy nie było, dowód powstawał\ntak samo dla 12,5 kA jak dla 999 kA.\n\nDWIE RÓŻNE BRAMKI, OBIE KONIECZNE:\n1. wielkości pochodzą z BIEGU wskazanego przez ``run_id`` (nie z żądania), a\n   liczby przysłane przez klienta są wyłącznie ECHEM — rozbieżność jest odmową;\n2. proweniencja ``k_sc`` wyprowadzona ze znaczników TEGO biegu (nie z\n   migawki dołączonej do żądania) musi być miarodajna.\n\nPierwsza bramka bez drugiej przepuściłaby liczby policzone z domyślki\nsystemowej; druga bez pierwszej — liczby z powietrza policzone na dobrym\nmodelu. Dlatego są obie.",
     "operationId": "download_equipment_proof_pack_api_equipment_proof_pack_post",
     "requestBody": {
      "content": {
@@ -23464,7 +23482,7 @@
   },
   "/api/protection-coordination/projects/{project_id}/run": {
    "post": {
-    "description": "Run protection coordination analysis.\n\nEligibility (patrz `_check_run_eligibility`): wymaga co najmniej jednego\nurzadzenia, jednej lokalizacji pradu zwarciowego i jednej lokalizacji\npradu roboczego — inaczej 400 z uczciwym komunikatem PL (nie 500, nie\nfabrykowany PASS).\n\nAnalyzes:\n- Sensitivity (will devices trip for minimum fault?)\n- Selectivity (proper time grading between devices?)\n- Overload protection (won't trip on normal current?)\n\nReturns summary with overall PASS/MARGINAL/FAIL verdict.",
+    "description": "Run protection coordination analysis.\n\nEligibility (patrz `_check_run_eligibility`): wymaga co najmniej jednego\nurzadzenia, jednej lokalizacji pradu zwarciowego i jednej lokalizacji\npradu roboczego — inaczej 400 z uczciwym komunikatem PL (nie 500, nie\nfabrykowany PASS).\n\nGRANICA AUTORYTETU (karta S-2 AUTORYTET) — DWIE BRAMKI, OBIE KONIECZNE.\nBramka pierwsza: prądy zwarciowe przychodziły dotąd jako GOŁE LICZBY w\nżądaniu i nikt nie pytał, skąd pochodzą — wystarczyło je podać, żeby\ndostać werdykt selektywności/czułości na dowolnie wymyślonych danych.\nBramka druga: proweniencja wkładu falownikowego biegów, z których te\nliczby pochodzą, musi być miarodajna (nie domyślka systemowa). Pierwsza\nbez drugiej przepuszczałaby liczby z powietrza policzone na dobrym\nmodelu; druga bez pierwszej — liczby z biegu policzonego z domyślki k_sc.\n\nPRĄDY ROBOCZE POZOSTAJĄ NIEZWIĄZANE Z ŻADNYM BIEGIEM — ZMIERZONY,\nNAZWANY BRAK (nie przeoczenie). Prąd zwarciowy jest kluczowany WĘZŁEM\nzwarcia, prąd roboczy GAŁĘZIĄ rozpływu — przestrzenie identyfikatorów są\nw praktyce rozłączne, a kontrakt koordynacji ma jedno pole `location_id`\nna obie wielkości, więc związanie prądu roboczego tym samym mechanizmem\nodrzucałoby większość realnych żądań. Domknięcie wymaga relacji\n„zabezpieczenie → chroniona gałąź\" w modelu (`BayProtectionControlUnit.\nprotected_branch_ref`, decyzja architekta A-4, wchodzi w wycinku W4) —\nto decyzja produktowa/modelowa, nie poprawka w tym pliku.\n\nAnalyzes:\n- Sensitivity (will devices trip for minimum fault?)\n- Selectivity (proper time grading between devices?)\n- Overload protection (won't trip on normal current?)\n\nReturns summary with overall PASS/MARGINAL/FAIL verdict.",
     "operationId": "run_coordination_analysis_api_protection_coordination_projects__project_id__run_post",
     "parameters": [
      {

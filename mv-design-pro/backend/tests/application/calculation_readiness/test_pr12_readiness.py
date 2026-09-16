@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from application.calculation_readiness.service import (
     CALCULATION_LABEL_PL,
     CalculationReadinessService,
@@ -154,10 +155,11 @@ class TestCalculationReadinessService:
         pf = svc.evaluate_single(enm, "power_flow")
         assert pf.status == "ready"
 
-    def test_short_circuit_partial_when_converter_k_sc_assumed(self) -> None:
-        """Karta FAB-H: konwerter Z katalogiem, ale karta nie niesie k_sc =>
-        WARNING/założenie `inverter.k_sc_assumed` — zwarcia się liczą (1,1
-        przyjęte), status 'partial', nie 'blocked'/'ready' po cichu."""
+    def test_short_circuit_partial_when_converter_k_sc_default_forbidden(self) -> None:
+        """Karta S-2 AUTORYTET (dawniej FAB-H): konwerter Z katalogiem, ale karta
+        nie niesie k_sc => WARNING/domyślka systemowa `inverter.
+        k_sc_default_forbidden` — zwarcia się liczą (1,1 przyjęte jako wynik
+        ROBOCZY), status 'partial', nie 'blocked'/'ready' po cichu."""
         enm = _minimal_enm_with_pf_data()
         enm.generators.append(
             Generator(
@@ -173,7 +175,43 @@ class TestCalculationReadinessService:
         svc = CalculationReadinessService()
         sc = svc.evaluate_single(enm, "short_circuit")
         assert sc.status == "partial"
-        assert "inverter.k_sc_assumed" in (sc.recommended_action_pl or "")
+        assert "inverter.k_sc_default_forbidden" in (sc.recommended_action_pl or "")
+
+    @pytest.mark.parametrize(
+        ("k_sc_niepoprawny", "opis"),
+        [
+            (0.0, "zero"),
+            (-1.2, "ujemna"),
+            (float("nan"), "NaN"),
+            (float("inf"), "plus-nieskonczonosc"),
+            (True, "bool"),
+            ("1.1", "tekst"),
+        ],
+    )
+    def test_short_circuit_partial_dla_kazdej_niepoprawnej_deklaracji_k_sc(
+        self, k_sc_niepoprawny: object, opis: str
+    ) -> None:
+        """Iloczyn cech (CLAUDE.md, reguła KLASA NIE INSTANCJA): dana
+        NIEPOPRAWNA w karcie katalogowej (nie tylko brak, testowany powyżej)
+        dostaje TEN SAM kod co brak — jeden predykat gotowości
+        (`wspolczynnik_wkladu_zwarciowego`), a nie osobny warunek inline, który
+        mógłby się rozjechać na wartości brzegowej."""
+        enm = _minimal_enm_with_pf_data()
+        enm.generators.append(
+            Generator(
+                ref_id="pv_1",
+                name="PV-01",
+                bus_ref="bus_lv",
+                gen_type="pv_inverter",
+                p_mw=1.0,
+                catalog_ref="conv-pv-test",
+                materialized_params={"un_kv": 0.4, "sn_mva": 1.0, "k_sc": k_sc_niepoprawny},
+            )
+        )
+        svc = CalculationReadinessService()
+        sc = svc.evaluate_single(enm, "short_circuit")
+        assert sc.status == "partial", opis
+        assert "inverter.k_sc_default_forbidden" in (sc.recommended_action_pl or ""), opis
 
     def test_short_circuit_ready_when_converter_k_sc_explicit_in_catalog(self) -> None:
         """Predykaty parami — dana JAWNA: k_sc w karcie katalogowej nie

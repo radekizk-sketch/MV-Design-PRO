@@ -2224,6 +2224,15 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
         # CV-4.3 K7: założenia biegu nazwane kodem gotowości (scenariusz MIN bez S''_kQmin
         # → Z_Q z danych MAX) — addytywnie, tylko gdy bieg je ma; nigdy cicho.
         **({"zalozenia": list(wejscie.zalozenia)} if wejscie.zalozenia else {}),
+        # Karta S-2 AUTORYTET: znaczniki pochodzenia k_sc WSZYSTKICH źródeł
+        # falownikowych czynnych w grafie TEGO biegu (`ProweniencjaWynikuZwarciowego.
+        # z_grafu`, zapisane przy asemblacji wejścia — `enm/assembler.py::
+        # zloz_wejscie_zwarcia`). Odczytuje je `application.
+        # autorytet_biegu_zwarciowego` przy odtwarzaniu proweniencji zapisanego
+        # biegu (granica autorytetu wyniku zwarciowego), bez ponownego
+        # przechodzenia po modelu. Pusta krotka (sieć bez falowników) → klucz
+        # pominięty — addytywnie, jak `zalozenia`/`zrodla_sieciowe` powyżej.
+        **({"k_sc_znaczniki": list(wejscie.k_sc_znaczniki)} if wejscie.k_sc_znaczniki else {}),
         "results": rows,
         "graph": {
             "nodes": {

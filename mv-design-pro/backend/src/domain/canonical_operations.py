@@ -1111,30 +1111,40 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "control_mode"},
     ),
-    # Karta FAB-H: udział zwarciowy falownika k_sc (Ik = k_sc*In, IEC 60909-0) —
-    # karta katalogowa konwertera nie niesie k_sc, więc enm/mapping.py przyjmuje
-    # 1,1 jako ZAREJESTROWANE ZAŁOŻENIE (ślad WHITE BOX + ta proweniencja), nie
-    # cichy numer. WARNING, nie BLOCKER: 1,1 jest udokumentowaną wartością
-    # typową IEC dla jednostek z przekształtnikiem, a nie zerem/wynikiem — SC
-    # dalej liczy się poprawnie, tylko z wartością przyjętą zamiast zmierzonej.
-    "inverter.k_sc_assumed": ReadinessCodeSpec(
-        code="inverter.k_sc_assumed",
+    # Karta S-2 AUTORYTET (dawniej FAB-H; dyrektywa właściciela 2026-09-16:
+    # „K_sc pozostaje DEFAULT_FORBIDDEN"): udział zwarciowy falownika k_sc
+    # (Ik = k_sc*In, IEC 60909-0) — karta katalogowa konwertera nie niesie
+    # miarodajnej deklaracji k_sc (brak ALBO wartość niemożliwa do przyjęcia —
+    # NaN/±Inf/zero/ujemna/tekst/bool, `network_model.core.
+    # wklad_zwarciowy_przeksztaltnika`), więc `enm/mapping.py` przyjmuje 1,1
+    # jako DOMYŚLKĘ SYSTEMOWĄ (ślad WHITE BOX + ta proweniencja), nie cichy
+    # numer. Zwarcia SIĘ LICZĄ (WARNING, nie BLOCKER dla tego typu obliczenia)
+    # — ale wynik jest ROBOCZY: warstwa autorytetu (`network_model.core.
+    # autorytet_wyniku_zwarciowego`) blokuje jego konsumpcję przez zdolności
+    # zależne (dobór aparatury, nastawy zabezpieczeń, koordynacja, pakiety
+    # dowodowe) kodami SI-11x, niezależnie od tego kodu gotowości.
+    "inverter.k_sc_default_forbidden": ReadinessCodeSpec(
+        code="inverter.k_sc_default_forbidden",
         area=ReadinessArea.GENERATORS,
         priority=4,
         level=ReadinessLevel.WARNING,
         message_pl=(
-            "Udział zwarciowy falownika (k_sc) nie jest podany w karcie katalogowej "
-            "konwertera — przyjęto wartość domyślną IEC 60909 (1,1) zamiast zmierzonej"
+            "Udział zwarciowy falownika (k_sc) nie ma miarodajnej deklaracji w karcie "
+            "katalogowej konwertera — przyjęto wartość domyślną IEC 60909 (1,1) jako wynik "
+            "ROBOCZY. Domyślka systemowa NIE JEST podstawą doboru aparatury, nastaw "
+            "zabezpieczeń ani pakietu dowodowego — uzupełnij k_sc z karty producenta albo "
+            "certyfikatu jednostki wytwórczej"
         ),
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
-    # Karta FAB-H: konwerter BEZ ŻADNEGO katalogu (catalog_ref=None) — brama
-    # katalogowa nie wymaga referencji katalogowej dla Generator (E009 pilnuje
-    # tylko linii/kabli/transformatorów/źródeł, `enm/validator.py`), więc ten
-    # stan jest REALNY (np. tryb EKSPERCKI_RECZNY). Wtedy brakuje nie tylko
-    # k_sc, ale całej tabliczki znamionowej źródła zwarciowego — BLOCKER, nie
-    # WARNING (różny od inverter.k_sc_assumed powyżej: tam katalog JEST, tu go
-    # nie ma wcale).
+    # Karta S-2 AUTORYTET (dawniej FAB-H): konwerter BEZ ŻADNEGO katalogu
+    # (catalog_ref=None) — brama katalogowa nie wymaga referencji katalogowej
+    # dla Generator (E009 pilnuje tylko linii/kabli/transformatorów/źródeł,
+    # `enm/validator.py`), więc ten stan jest REALNY (np. tryb
+    # EKSPERCKI_RECZNY). Wtedy brakuje nie tylko k_sc, ale całej tabliczki
+    # znamionowej źródła zwarciowego — BLOCKER, nie WARNING (różny od
+    # inverter.k_sc_default_forbidden powyżej: tam katalog JEST, tu go nie ma
+    # wcale).
     "inverter.k_sc_missing": ReadinessCodeSpec(
         code="inverter.k_sc_missing",
         area=ReadinessArea.GENERATORS,

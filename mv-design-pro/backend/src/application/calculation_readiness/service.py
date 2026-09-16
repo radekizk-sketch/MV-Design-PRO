@@ -23,6 +23,10 @@ from enm.models import EnergyNetworkModel
 from enm.topology import derive
 from enm.zrodlo_zwarcie import TrybDanych, dane_zwarciowe_zrodla
 from network_model.catalog.governance import Poziom, wymagalnosc_katalogu
+from network_model.core.wklad_zwarciowy_przeksztaltnika import (
+    K_SC_ZRODLO_DEKLARACJA,
+    wspolczynnik_wkladu_zwarciowego,
+)
 from pydantic import BaseModel, Field
 
 CalculationType = Literal[
@@ -253,28 +257,37 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             missing.append(f"u_k transformatora '{tr.name}'")
             blockers.append(tr.ref_id)
 
-    # Karta FAB-H (uzupełniona kartą W3-I, 2026-09-09): udział zwarciowy falownika
-    # k_sc (Ik = k_sc*In, IEC 60909-0) dla generatorów pełnoprzekształtnikowych
+    # Karta S-2 AUTORYTET (dawniej FAB-H/W3-I; dyrektywa właściciela 2026-09-16:
+    # „K_sc pozostaje DEFAULT_FORBIDDEN"): udział zwarciowy falownika k_sc
+    # (Ik = k_sc*In, IEC 60909-0) dla generatorów pełnoprzekształtnikowych
     # (PV/BESS/wiatrowy) — bramka „czy ten gen_type wymaga katalogu przy
     # zwarciu" czytana z JEDYNEGO źródła prawdy (`catalog.governance.
     # wymagalnosc_katalogu`, oś `walidacja`; tabela sama importuje
     # `FULL_CONVERTER_SC_GEN_TYPES` z `enm/mapping.py` — reguła KLASA NIE
     # INSTANCJA: jeden zbiór, nie cztery niezależne warunki, które mogłyby się
-    # cicho rozjechać). Poziomy kodów `inverter.k_sc_*` BEZ ZMIAN: brak
-    # JAKIEGOKOLWIEK katalogu (`catalog_ref is None`, stan REALNY — brama
-    # katalogowa go nie wyklucza dla Generator, tylko dla linii/kabli/
-    # transformatorów/źródeł) => BLOCKER `inverter.k_sc_missing`: brakuje całej
-    # tabliczki znamionowej źródła zwarciowego, nie tylko k_sc. Katalog JEST,
-    # ale nie niesie k_sc => WARNING `inverter.k_sc_assumed`: 1,1 przyjęte,
-    # IEC-typowe — SC dalej liczy się poprawnie, tylko z założeniem zamiast
-    # zmierzonej wartości.
+    # cicho rozjechać). KLASYFIKACJA k_sc (deklaracja miarodajna / nie) czytana
+    # z JEDNEGO predykatu `wspolczynnik_wkladu_zwarciowego` — TEGO SAMEGO, który
+    # `enm/mapping.py::_add_generator_sc_sources` i `InverterSource.k_sc_zrodlo`
+    # stosują do TEJ SAMEJ danej; dwa niezależne warunki o tej samej deklaracji
+    # (tu: inline `isinstance(...) and k_sc > 0`, tam: klasyfikator) rozjechałyby
+    # się przy pierwszej wartości brzegowej (NaN/±Inf — `NaN > 0` jest fałszem,
+    # `+Inf > 0` prawdą), więc jeden przedykat gotowości mógłby milcząco różnić
+    # się od tego, co faktycznie zablokuje warstwa autorytetu. Poziomy kodów
+    # BEZ ZMIAN: brak JAKIEGOKOLWIEK katalogu (`catalog_ref is None`, stan
+    # REALNY — brama katalogowa go nie wyklucza dla Generator, tylko dla linii/
+    # kabli/transformatorów/źródeł) => BLOCKER `inverter.k_sc_missing`: brakuje
+    # całej tabliczki znamionowej źródła zwarciowego, nie tylko k_sc. Katalog
+    # JEST, ale deklaracja k_sc nie jest miarodajna (brak ALBO dana niepoprawna:
+    # NaN/±Inf/zero/ujemna/tekst/bool) => WARNING `inverter.k_sc_
+    # default_forbidden`: 1,1 przyjęte jako wynik ROBOCZY — SC dalej liczy się
+    # poprawnie (ta sama liczba), ale wynik nie jest miarodajny dla doboru/
+    # nastaw/dowodu (blokuje to warstwa autorytetu, nie ten serwis).
     zalozone_k_sc_refs: list[str] = []
     for gen in enm.generators:
         if wymagalnosc_katalogu("generator", gen_type=gen.gen_type).walidacja is Poziom.NIE:
             continue
         mp = getattr(gen, "materialized_params", None) or {}
-        k_sc = mp.get("k_sc")
-        if isinstance(k_sc, int | float) and not isinstance(k_sc, bool) and k_sc > 0:
+        if wspolczynnik_wkladu_zwarciowego(mp.get("k_sc"))[1] == K_SC_ZRODLO_DEKLARACJA:
             continue
         if gen.catalog_ref is None:
             missing.append(f"katalog konwertera '{gen.ref_id}' (kod 'inverter.k_sc_missing')")
@@ -317,10 +330,12 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             label_pl=CALCULATION_LABEL_PL["short_circuit"],
             status="partial",
             recommended_action_pl=(
-                "Zwarcia można policzyć. Założenie: "
-                f"{len(zalozone_k_sc_refs)} konwerter(ów) bez k_sc w karcie katalogowej "
-                "dostało wartość domyślną IEC 1,1 (kod 'inverter.k_sc_assumed') — "
-                "sprawdź, czy karta producenta nie niesie zmierzonej wartości." + nota_min
+                "Zwarcia można policzyć — WYNIK ROBOCZY. "
+                f"{len(zalozone_k_sc_refs)} konwerter(ów) bez miarodajnej deklaracji k_sc w "
+                "karcie katalogowej dostało wartość domyślną IEC 1,1 (kod 'inverter."
+                "k_sc_default_forbidden') — NIE jest to podstawa doboru aparatury, nastaw "
+                "zabezpieczeń ani pakietu dowodowego. Uzupełnij k_sc z karty producenta albo "
+                "certyfikatu jednostki wytwórczej." + nota_min
             ),
         )
     return ReadinessTypeReport(

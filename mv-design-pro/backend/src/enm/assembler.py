@@ -36,6 +36,7 @@ from enm.mapping import (
 )
 from enm.models import EnergyNetworkModel
 from enm.topology import Wyspa, derive
+from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
 from network_model.core.voltage_factor import Scenario
@@ -498,6 +499,15 @@ class WejscieZwarcia:
     #: czy NA ŻĄDANIE punktu (domyślnie: wiersz niesie flagę dostępności, treść liczy
     #: ``canonical_analysis.pobierz_rozplyw_biegu`` z tego samego wejścia i utrwala).
     wklady_w_biegu: bool
+    #: Karta S-2 AUTORYTET: znaczniki pochodzenia ``k_sc`` WSZYSTKICH źródeł
+    #: falownikowych czynnych w ``graph`` (`ProweniencjaWynikuZwarciowego.z_grafu`)
+    #: — WYPROWADZONE z grafu obliczeniowego BIEGU, nie z migawki dołączonej do
+    #: żądania. Pusta krotka = sieć bez czynnych falowników (proweniencja
+    #: miarodajna z definicji, wkład falownikowy nie wchodzi do równań). Zapisywane
+    #: w ``raw_result.k_sc_znaczniki`` (`enm/canonical_analysis.py`) — stąd czyta je
+    #: `application.autorytet_biegu_zwarciowego` przy odtwarzaniu proweniencji
+    #: zapisanego biegu, bez ponownego przechodzenia po modelu.
+    k_sc_znaczniki: tuple[str, ...]
 
 
 def wezly_bez_impedancji_do_odniesienia(graph: NetworkGraph) -> frozenset[str]:
@@ -1022,16 +1032,41 @@ def zloz_wejscie_zwarcia(
         else:
             raise ValueError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")
     zrodla_sieciowe_trace = tuple(build_grid_source_trace(enm, scenario_c))
-    zalozenia = tuple(
+    # Karta S-2 AUTORYTET (dyrektywa właściciela 2026-09-16: „K_sc pozostaje
+    # DEFAULT_FORBIDDEN"): ślad WHITE BOX założeń k_sc (`graph.
+    # k_sc_assumptions_trace`, wypełniony PRZEZ `map_enm_to_network_graph` w
+    # `_add_generator_sc_sources` — obliczony RAZ, tu wyłącznie ODCZYTANY, żeby
+    # nie duplikować predykatu „które źródło ma niemiarodajną deklarację") dołącza
+    # do `zalozenia` DOKŁADNIE tym samym wzorcem co `source.sk_min_missing`
+    # powyżej — jeden mechanizm założeń biegu, nie dwa równoległe.
+    k_sc_zalozenia = tuple(
         {
-            "code": wpis["zalozenie"],
-            "element_ref": wpis["ref_id"],
-            "message_pl": wpis["zalozenie_opis"],
+            "code": "inverter.k_sc_default_forbidden",
+            "element_ref": wpis["inputs"]["generator_ref"],
+            "message_pl": wpis["notes"],
             "scenariusz": scenario_c,
         }
-        for wpis in zrodla_sieciowe_trace
-        if wpis.get("zalozenie")
+        for wpis in graph.k_sc_assumptions_trace
     )
+    zalozenia = (
+        tuple(
+            {
+                "code": wpis["zalozenie"],
+                "element_ref": wpis["ref_id"],
+                "message_pl": wpis["zalozenie_opis"],
+                "scenariusz": scenario_c,
+            }
+            for wpis in zrodla_sieciowe_trace
+            if wpis.get("zalozenie")
+        )
+        + k_sc_zalozenia
+    )
+    # Proweniencja k_sc WYPROWADZONA z grafu obliczeniowego TEGO biegu (nie z
+    # migawki dołączonej do żądania) — `network_model.core.
+    # autorytet_wyniku_zwarciowego.ProweniencjaWynikuZwarciowego.z_grafu`.
+    # Zapisywana na artefakcie biegu (`enm/canonical_analysis.py`), żeby warstwa
+    # autorytetu mogła ją odtworzyć bez ponownego przechodzenia po modelu.
+    k_sc_znaczniki = ProweniencjaWynikuZwarciowego.z_grafu(graph).znaczniki_k_sc
     return WejscieZwarcia(
         enm=enm,
         graph=graph,
@@ -1050,4 +1085,5 @@ def zloz_wejscie_zwarcia(
         zrodla_sieciowe_trace=zrodla_sieciowe_trace,
         zalozenia=zalozenia,
         wklady_w_biegu=wklady_w_biegu,
+        k_sc_znaczniki=k_sc_znaczniki,
     )
