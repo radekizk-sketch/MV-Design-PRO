@@ -59,9 +59,7 @@ def test_check_allowlist_freshness_catches_orphaned_entry(monkeypatch) -> None:
     assert repr(orphan_key[1]) in violations[0]
 
 
-def test_check_allowlist_freshness_accepts_covered_entry(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_check_allowlist_freshness_accepts_covered_entry(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(guard, "REPO_ROOT", tmp_path)
     covered_key = ("frontend/src/ui/x.ts", "const napiecieMinPu = 0.95;")
     monkeypatch.setattr(guard, "ALLOWLIST", {covered_key: "b: pokryty wpis testowy"})
@@ -70,9 +68,7 @@ def test_check_allowlist_freshness_accepts_covered_entry(
     assert guard.check_allowlist_freshness([hit]) == []
     # Klucz po tresci: ta sama linia pod INNYM numerem nadal jest pokryta
     # (klasa przesuniecia linii), a zmieniona tresc pod tym samym numerem — nie.
-    assert (
-        guard.check_allowlist_freshness([(tmp_path / covered_key[0], 42, hit[2])]) == []
-    )
+    assert guard.check_allowlist_freshness([(tmp_path / covered_key[0], 42, hit[2])]) == []
     zmieniona = (tmp_path / covered_key[0], 10, "const napiecieMinPu = 0.9;")
     assert len(guard.check_allowlist_freshness([zmieniona])) == 1
 
@@ -122,9 +118,7 @@ def test_wykrywa_prog_z_kontekstem_pu_camelcase(tmp_path: Path, monkeypatch) -> 
     assert any(line_no == 1 for _p, line_no, _c in hits)
 
 
-def test_wykrywa_prog_z_kontekstem_napiecie_przecinkiem_pl(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_wykrywa_prog_z_kontekstem_napiecie_przecinkiem_pl(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(guard, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(guard, "ALLOWLIST", {})
     _pisz(tmp_path, "  uwaga: 'Norma napięciowa ±5% Un — pasmo 0,95–1,05.',\n")
@@ -134,9 +128,7 @@ def test_wykrywa_prog_z_kontekstem_napiecie_przecinkiem_pl(
     assert any(line_no == 1 for _p, line_no, _c in hits)
 
 
-def test_nie_wykrywa_liczby_bez_kontekstu_napieciowego(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_nie_wykrywa_liczby_bez_kontekstu_napieciowego(tmp_path: Path, monkeypatch) -> None:
     """Liczba 0.95/1.05 BEZ tokenu pu/napi na tej samej linii nie jest tej
     klasy defektu (np. wspolczynnik mocy nieoznaczony jako napieciowy,
     tolerancja niezwiazana z napieciem)."""

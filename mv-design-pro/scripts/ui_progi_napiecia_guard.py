@@ -338,9 +338,7 @@ def main() -> int:
         )
 
     if freshness_violations:
-        print(
-            "UI-PROGI-NAPIECIA-GUARD ALLOWLIST FRESHNESS VIOLATIONS:", file=sys.stderr
-        )
+        print("UI-PROGI-NAPIECIA-GUARD ALLOWLIST FRESHNESS VIOLATIONS:", file=sys.stderr)
         for violation in freshness_violations:
             print(f"  {violation}", file=sys.stderr)
 

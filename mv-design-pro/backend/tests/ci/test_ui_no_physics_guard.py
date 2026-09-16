@@ -104,8 +104,7 @@ def test_ui_allowlist_entries_are_not_stale():
         full_path = ui_no_physics_guard.REPO_ROOT / rel_path
         assert full_path.is_file(), f"allowlisted path does not exist: {rel_path}"
         hit_lines = {
-            content.strip()
-            for _ln, content, _pattern in ui_no_physics_guard.scan_file(full_path)
+            content.strip() for _ln, content, _pattern in ui_no_physics_guard.scan_file(full_path)
         }
         assert (
             tresc in hit_lines
@@ -442,8 +441,7 @@ USUNIETE_RACHUNKI = [
     ),
     (
         "measurementBurdenValidator — rezystancja przewodow wtornych",
-        "const rp = (2 * CU_RESISTIVITY_OHM_MM2_PER_M * cableLengthM) / "
-        "cableCrossSectionMm2;",
+        "const rp = (2 * CU_RESISTIVITY_OHM_MM2_PER_M * cableLengthM) / " "cableCrossSectionMm2;",
     ),
     (
         "lfDerivedMetrics — obciazenie liczone z ampacyjnosci",
@@ -456,9 +454,7 @@ USUNIETE_RACHUNKI = [
 ]
 
 
-@pytest.mark.parametrize(
-    "opis,linia", USUNIETE_RACHUNKI, ids=[o for o, _ in USUNIETE_RACHUNKI]
-)
+@pytest.mark.parametrize("opis,linia", USUNIETE_RACHUNKI, ids=[o for o, _ in USUNIETE_RACHUNKI])
 def test_guard_lapie_kazdy_rachunek_usuniety_karta_k7b(
     opis: str, linia: str, tmp_path: Path
 ) -> None:

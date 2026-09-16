@@ -143,9 +143,7 @@ EXCLUDED_RELATIVE_FILES = {
 # (`test_k0_nie_ma_wykluczenia`): wykluczał `K0` "przy okazji", bo obie
 # litery czytały ten sam warunek — deklaracja bez testu byłaby fałszywą
 # pewnością (reguła KLASA §4).
-CODENAME_PATTERN = re.compile(
-    r"(?<![A-Za-z0-9])(?:[pP](?!0(?![A-Za-z0-9]))|K)\d+(?![A-Za-z0-9])"
-)
+CODENAME_PATTERN = re.compile(r"(?<![A-Za-z0-9])(?:[pP](?!0(?![A-Za-z0-9]))|K)\d+(?![A-Za-z0-9])")
 
 # KRYPTONIMY KART W TEKŚCIE UŻYTKOWNIKA (odbiór S-2, 2026-09-16). Wzorzec `[pP]\d+`/`K\d+`
 # nie obejmuje identyfikatorów kart pisanych literami (`S-2`, `FAB-H`, `W3-J`, `CV-3.3-B2`),

@@ -63,9 +63,7 @@ def test_check_allowlist_freshness_catches_orphaned_entry(monkeypatch) -> None:
     assert repr(orphan_key[1]) in violations[0]
 
 
-def test_check_allowlist_freshness_accepts_covered_entry(
-    monkeypatch, tmp_path: Path
-) -> None:
+def test_check_allowlist_freshness_accepts_covered_entry(monkeypatch, tmp_path: Path) -> None:
     """Wpis z pokryciem w surowych trafieniach NIE jest zgloszony jako sierota."""
     monkeypatch.setattr(guard, "REPO_ROOT", tmp_path)
     covered_key = ("frontend/src/ui/x.ts", "reactanceOhm * lengthKm")
@@ -76,10 +74,7 @@ def test_check_allowlist_freshness_accepts_covered_entry(
     # Klucz po tresci: ta sama linia pod innym numerem nadal pokryta (klasa
     # przesuniecia linii), zmieniona tresc pod tym samym numerem — sierota.
     assert guard.check_allowlist_freshness([(hit[0], 42, hit[2], "wzorzec")]) == []
-    assert (
-        len(guard.check_allowlist_freshness([(hit[0], 10, "inna * tresc", "wzorzec")]))
-        == 1
-    )
+    assert len(guard.check_allowlist_freshness([(hit[0], 10, "inna * tresc", "wzorzec")])) == 1
 
 
 def test_orphaned_entry_but_real_violations_still_reported_bit_identical(
@@ -103,9 +98,7 @@ def test_orphaned_entry_but_real_violations_still_reported_bit_identical(
     raw_hits = guard.scan_tree_raw([physics_file.parent])
     filtered = guard.scan_tree([physics_file.parent])
 
-    assert (
-        raw_hits == filtered
-    ), "bez ALLOWLIST surowy i filtrowany zbior musza byc identyczne"
+    assert raw_hits == filtered, "bez ALLOWLIST surowy i filtrowany zbior musza byc identyczne"
     flagged_lines = {line_no for _p, line_no, _c, _pat in filtered}
     assert 2 in flagged_lines
 

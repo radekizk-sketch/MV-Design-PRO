@@ -248,11 +248,7 @@ def impedancja_zasilania_systemowego(
         tryb_uzyty = tryb
         c = c_for_node(u_nq_kv, "MAX")
         sk_deklarowane, ik_deklarowane = sk3_mva, ik3_ka
-        etykieta = (
-            tryb_uzyty.value
-            if scenario == "MAX"
-            else f"{tryb_uzyty.value}_MAX_JAKO_MIN"
-        )
+        etykieta = tryb_uzyty.value if scenario == "MAX" else f"{tryb_uzyty.value}_MAX_JAKO_MIN"
         if dodatnia(rx_ratio):
             rx_zrodlo, rx_wartosc = "MODEL", rx_ratio
         else:
@@ -357,9 +353,7 @@ def _add_series_admittance(
     if from_idx == to_idx:
         return
     if z_ohm == 0:
-        raise ZeroDivisionError(
-            "Cannot compute zero-sequence admittance: impedance is zero"
-        )
+        raise ZeroDivisionError("Cannot compute zero-sequence admittance: impedance is zero")
     z_pu = z_ohm / z_base_ohm
     y_series_pu = 1.0 / z_pu
     y_bus[from_idx, to_idx] -= y_series_pu
@@ -603,14 +597,10 @@ def build_zero_sequence_zbus(
     try:
         return np.linalg.inv(y0_bus)
     except np.linalg.LinAlgError as exc:
-        raise ValueError(
-            "Zero-sequence Y-bus is singular; cannot compute Z0-bus"
-        ) from exc
+        raise ValueError("Zero-sequence Y-bus is singular; cannot compute Z0-bus") from exc
 
 
-def build_zero_sequence_trace(
-    enm: EnergyNetworkModel, graph: NetworkGraph
-) -> list[dict]:
+def build_zero_sequence_trace(enm: EnergyNetworkModel, graph: NetworkGraph) -> list[dict]:
     """Ślad WHITE BOX budowy sieci składowej zerowej — rozbicie po elementach
     (linie/kable, źródła, transformatory z decyzją grupy połączeń). ADDYTYWNE."""
     _, _, _, _, trace = _assemble_zero_sequence_y0(enm, graph)
@@ -783,18 +773,14 @@ def _add_generator_sc_sources(
                         "generator_ref": gen.ref_id,
                         "catalog_ref": gen.catalog_ref,
                     },
-                    substitution=_k_sc_substytucja_zalozenia(
-                        zrodlo_sc, gen.catalog_ref
-                    ),
+                    substitution=_k_sc_substytucja_zalozenia(zrodlo_sc, gen.catalog_ref),
                     result={"k_sc": zrodlo_sc.k_sc_efektywny},
                     notes=_k_sc_notatka_zalozenia(zrodlo_sc.wklad_zrodlo),
                 )
         elif gen_type == "synchronous":
             cos_phi = mp.get("cos_phi") or mp.get("cos_phi_r")
             cos_phi_r = (
-                float(cos_phi)
-                if isinstance(cos_phi, int | float) and 0 < cos_phi <= 1
-                else 0.8
+                float(cos_phi) if isinstance(cos_phi, int | float) and 0 < cos_phi <= 1 else 0.8
             )
             sr_mva = _gen_rated_apparent_mva(gen, mp, cos_phi_fallback=cos_phi_r)
             if sr_mva is None or sr_mva <= 0:
@@ -810,9 +796,7 @@ def _add_generator_sc_sources(
             }
             if isinstance(xd, int | float) and xd > 0:
                 sync_kwargs["xd_subtransient_pu"] = float(xd)
-            graph.add_synchronous_machine_source(
-                SynchronousMachineSource(**sync_kwargs)
-            )
+            graph.add_synchronous_machine_source(SynchronousMachineSource(**sync_kwargs))
         elif gen_type in _ASYNC_GEN_TYPES:
             # Rated mechanical power P_rM is approximated by the electrical |p_mw|
             # (they differ by η·cosφ). Acceptable for F1 with IEC-typical model
@@ -832,9 +816,7 @@ def _add_generator_sc_sources(
             }
             if isinstance(i_lr, int | float) and i_lr > 0:
                 async_kwargs["i_lr_ratio"] = float(i_lr)
-            graph.add_asynchronous_machine_source(
-                AsynchronousMachineSource(**async_kwargs)
-            )
+            graph.add_asynchronous_machine_source(AsynchronousMachineSource(**async_kwargs))
 
     return tracer.to_list()
 
@@ -1117,9 +1099,7 @@ def map_enm_to_network_graph(
         if isinstance(branch, OverheadLine | Cable):
             b_us_per_km = 0.0
             if branch.b_siemens_per_km is not None:
-                b_us_per_km = simens_na_mikrosimens(
-                    branch.b_siemens_per_km
-                )  # S/km → μS/km
+                b_us_per_km = simens_na_mikrosimens(branch.b_siemens_per_km)  # S/km → μS/km
 
             rated_a = 0.0
             if branch.rating and branch.rating.in_a:
@@ -1191,12 +1171,8 @@ def map_enm_to_network_graph(
                 # jest poprawna informacja, nie brak danej (patrz `conductor_kind`).
                 conductor_material=getattr(branch, "conductor_material", None),
                 insulation=getattr(branch, "insulation", None),
-                operating_temperature_c=getattr(
-                    branch, "operating_temperature_c", None
-                ),
-                short_circuit_temperature_c=getattr(
-                    branch, "short_circuit_temperature_c", None
-                ),
+                operating_temperature_c=getattr(branch, "operating_temperature_c", None),
+                short_circuit_temperature_c=getattr(branch, "short_circuit_temperature_c", None),
                 thermal_source_ref=getattr(branch, "thermal_source_ref", None),
             )
             graph.add_branch(lb)
@@ -1214,11 +1190,7 @@ def map_enm_to_network_graph(
                 from_node_id=from_id,
                 to_node_id=to_id,
                 switch_type=sw_type_map.get(branch.type, SwitchType.LOAD_SWITCH),
-                state=(
-                    SwitchState.CLOSED
-                    if branch.status == "closed"
-                    else SwitchState.OPEN
-                ),
+                state=(SwitchState.CLOSED if branch.status == "closed" else SwitchState.OPEN),
                 in_service=True,
             )
             graph.add_switch(sw)
@@ -1230,11 +1202,7 @@ def map_enm_to_network_graph(
                 from_node_id=from_id,
                 to_node_id=to_id,
                 switch_type=SwitchType.FUSE,
-                state=(
-                    SwitchState.CLOSED
-                    if branch.status == "closed"
-                    else SwitchState.OPEN
-                ),
+                state=(SwitchState.CLOSED if branch.status == "closed" else SwitchState.OPEN),
                 in_service=True,
                 # Ta sama reguła, co przy transformatorze: rozstrzyga BRAK
                 # (`is None`), nie prawdziwościowość liczby. Bezpiecznik z jawnie
@@ -1242,14 +1210,10 @@ def map_enm_to_network_graph(
                 # dojść do walidacji nietknięty — a nie zostać po drodze
                 # zrównany z bezpiecznikiem bez danych.
                 rated_current_a=(
-                    branch.rated_current_a
-                    if branch.rated_current_a is not None
-                    else 0.0
+                    branch.rated_current_a if branch.rated_current_a is not None else 0.0
                 ),
                 rated_voltage_kv=(
-                    branch.rated_voltage_kv
-                    if branch.rated_voltage_kv is not None
-                    else 0.0
+                    branch.rated_voltage_kv if branch.rated_voltage_kv is not None else 0.0
                 ),
             )
             graph.add_switch(sw)
@@ -1290,9 +1254,7 @@ def map_enm_to_network_graph(
             # wchodzi wprost do przekładni t = 1 + poz·skok/100, czyli do rozpływu.
             i0_percent=trafo.i0_percent if trafo.i0_percent is not None else 0.0,
             p0_kw=trafo.p0_kw if trafo.p0_kw is not None else 0.0,
-            vector_group=(
-                trafo.vector_group if trafo.vector_group is not None else "Dyn11"
-            ),
+            vector_group=(trafo.vector_group if trafo.vector_group is not None else "Dyn11"),
             tap_position=trafo.tap_position if trafo.tap_position is not None else 0,
             tap_step_percent=(
                 trafo.tap_step_percent if trafo.tap_step_percent is not None else 2.5

@@ -293,9 +293,7 @@ const revision = "K30-38";
 describe('K11-B — nawigator kanwy', () => {
 });
 """
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".test.tsx", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".test.tsx", delete=False) as f:
             f.write(content)
             f.flush()
             path = Path(f.name)
@@ -365,9 +363,7 @@ class TestSkanBackendu:
         prozą czytaną przez projektanta, nigdy cytatem karty."""
         for token in ("K1", "K5", "K11", "K13"):
             naruszenia = self._skan(f'    message_pl="Krok ({token}) niekompletny"\n')
-            assert (
-                len(naruszenia) == 1
-            ), f"token {token} powinien byc zlapany w backendzie"
+            assert len(naruszenia) == 1, f"token {token} powinien byc zlapany w backendzie"
             assert naruszenia[0].match == token
 
     def test_kodename_w_tytule_dowodu_jest_naruszeniem(self):
@@ -460,10 +456,7 @@ class TestExcludedRelativeFilesFreshness:
     """
 
     def test_zielony_na_repo(self) -> None:
-        assert (
-            guard_module.check_excluded_relative_files_freshness(guard_module.REPO_ROOT)
-            == []
-        )
+        assert guard_module.check_excluded_relative_files_freshness(guard_module.REPO_ROOT) == []
 
     def test_wpis_ma_realne_trafienie_bez_wykluczenia(self) -> None:
         """Potwierdzenie POMIARU: jedyny dzisiejszy wpis (trade name z 'P3' w
@@ -471,9 +464,7 @@ class TestExcludedRelativeFilesFreshness:
         for rel_path in guard_module.EXCLUDED_RELATIVE_FILES:
             full_path = guard_module.REPO_ROOT / rel_path
             assert full_path.is_file(), f"brak pliku {rel_path!r}"
-            assert scan_file(
-                full_path
-            ), f"EXCLUDED_RELATIVE_FILES[{rel_path!r}] to sierota"
+            assert scan_file(full_path), f"EXCLUDED_RELATIVE_FILES[{rel_path!r}] to sierota"
 
     def test_lapie_brakujacy_plik(self, monkeypatch) -> None:
         monkeypatch.setattr(
@@ -482,9 +473,7 @@ class TestExcludedRelativeFilesFreshness:
             {"frontend/src/ui/nigdy/nieistniejacy_plik.ts"},
         )
 
-        naruszenia = guard_module.check_excluded_relative_files_freshness(
-            guard_module.REPO_ROOT
-        )
+        naruszenia = guard_module.check_excluded_relative_files_freshness(guard_module.REPO_ROOT)
 
         assert len(naruszenia) == 1
         assert "[no-codenames-wykluczenie-osierocone]" in naruszenia[0]
@@ -588,9 +577,7 @@ class TestKartaPattern:
         assert is_test_path(Path("frontend/src/ui/__tests__/a.test.tsx"))
         assert is_test_path(Path("frontend/e2e/scena.spec.ts"))
         assert not is_test_path(Path("frontend/src/ui2/wyniki/zwarcia/strings.ts"))
-        assert (
-            find_codenames_in_strings("it('karta W3-J: próg')", karta_scan=False) == []
-        )
+        assert find_codenames_in_strings("it('karta W3-J: próg')", karta_scan=False) == []
 
     def test_backend_pole_pl_z_kryptonimem_karty_jest_naruszeniem(self):
         with tempfile.TemporaryDirectory() as katalog:
@@ -612,7 +599,5 @@ class TestKartaPattern:
             assert scan_backend_file(plik) == []
 
     def test_frontend_literal_z_kryptonimem_karty_jest_naruszeniem(self):
-        assert find_codenames_in_strings("const t = 'patrz karty FAB-H';") == [
-            "karty FAB-H"
-        ]
+        assert find_codenames_in_strings("const t = 'patrz karty FAB-H';") == ["karty FAB-H"]
         assert find_codenames_in_strings("const t = 'karta katalogowa';") == []
