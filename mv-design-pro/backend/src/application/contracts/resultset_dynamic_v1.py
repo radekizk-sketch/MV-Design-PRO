@@ -32,13 +32,13 @@ MODELE:
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
 from pydantic import BaseModel, Field
 from solver_input.provenance import CapabilityEvidence
 
-RESULTSET_DYNAMIC_CONTRACT = "resultset_dynamic_v1"
+RESULTSET_DYNAMIC_CONTRACT: Final[Literal["resultset_dynamic_v1"]] = "resultset_dynamic_v1"
 
 PrzestrzenKanalu = Literal["siec", "urzadzenie", "regulator", "magazyn"]
 

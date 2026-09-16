@@ -1,6 +1,7 @@
 """CalculationReadinessService — pełen serwis gotowości obliczeń (PR-12).
 
-Brief 2 §16. Ocenia gotowość dla 9 typów obliczeń + 2 raportów:
+Brief 2 §16 + karta W6-1 SS0 p.7. Ocenia gotowość dla 9 typów obliczeń + 2
+raportów + 1 typu kontraktowego (dynamika_rms):
 1. Rozpływ mocy
 2. Spadki/wzrosty napięcia
 3. Zwarcia
@@ -11,6 +12,8 @@ Brief 2 §16. Ocenia gotowość dla 9 typów obliczeń + 2 raportów:
 8. Zgodność przyłączeniowa NC RfG
 9. Raport OSD
 10. Raport techniczny
+11. Dynamika czasowa (DAE) — kontrakty/dane wejściowe; rdzeń solvera (W6-2) nie
+    istnieje jeszcze, więc `ready` tu NIE oznacza "obliczenie dostępne".
 
 Każdy item zwraca: status + brakujące pola + obiekty blokujące + zalecaną akcję.
 """
@@ -48,6 +51,10 @@ CalculationType = Literal[
     "ncrfg_compliance",
     "report_osd",
     "report_technical",
+    #: Karta W6-1 SS0 p.7: kontrakty/gotowość dla bieg `dynamika_rms` — rdzeń
+    #: solvera DAE (W6-2) nie istnieje jeszcze; `ready` tutaj mówi WYŁĄCZNIE
+    #: "dane wejściowe kompletne", nigdy "obliczenie dostępne".
+    "dynamika_rms",
 ]
 
 ReadinessStatus = Literal[
@@ -69,6 +76,7 @@ CALCULATION_LABEL_PL: dict[CalculationType, str] = {
     "ncrfg_compliance": "Zgodność przyłączeniowa",
     "report_osd": "Raport OSD",
     "report_technical": "Raport techniczny",
+    "dynamika_rms": "Dynamika czasowa (DAE)",
 }
 
 
@@ -447,12 +455,6 @@ _DER_GEN_TYPES = (
 )
 
 
-#: Źródła rozwiązania `DerDynamicResolution` uznawane za "domyślne katalogu"
-#: (nie jawny wybór projektanta/karty) — D8: taki wynik jest dozwolony
-#: wyłącznie z WARNING `der.dynamic_profile_default` (proweniencja widoczna).
-_ZRODLA_DOMYSLNE_KATALOGU = frozenset({"default_per_kind", "default_per_converter_type"})
-
-
 def _resolve_der_dynamic_for_generator(gen):  # type: ignore[no-untyped-def]
     """Rozwiąż profil dynamiczny pojedynczego DER w ENM — albo zgłoś, że rodzaj jest nieznany.
 
@@ -466,38 +468,48 @@ def _resolve_der_dynamic_for_generator(gen):  # type: ignore[no-untyped-def]
 
     Karta FAB-D2 (D8): rodzaj DER spoza tego mapowania zwraca `None` — NIE
     "bezpieczny fallback" do PV. Podstawienie profilu PV dla nieznanego rodzaju
-    (np. syncmasz albo przyszły rodzaj DER jeszcze niezmapowany) fałszowałoby
-    model dynamiczny cichym zmyśleniem technologii źródła. Wywołujący
-    (`_check_stability`/`_check_frt_hvrt`) zgłasza to jako BLOCKER
-    `der.dynamic_profile_missing`.
+    fałszowałoby model dynamiczny cichym zmyśleniem technologii źródła.
 
-    Zwrócony `DerDynamicResolution.source` niesie proweniencję: gdy jest w
-    `_ZRODLA_DOMYSLNE_KATALOGU`, profil pochodzi z DOMYŚLNEJ wartości katalogu
-    (nie jawnego wyboru) i wywołujący zgłasza to jako WARNING/założenie
-    `der.dynamic_profile_default` — to jedyny dozwolony przypadek, w którym
-    "domyślny profil" nie jest cichym podstawieniem: proweniencja go ujawnia.
-    """
+    Karta W6-1 (SS0 p.3, kasacja "ZAWSZE zwraca profil"): resolver zwraca profil
+    WYŁĄCZNIE po jawnym wskazaniu. Jawny wybór projektanta dociera dwoma
+    drogami — obie czytane tu, jedna reguła: (1) `Generator.dynamic_profile_id`
+    (przyszłe pole ENM wprost — dziś nie istnieje, `getattr` daje `None`
+    uczciwie), (2) `materialized_params["dynamic_model_ref"]` — wiązanie
+    `DerWiazaniaEditor`/FAB-K R2 (`domain_operations_v2.py::validate_der_bindings`,
+    `application/ncrfg_compliance/model_bridge.py::has_dynamic_model`), JEDYNY
+    kanał, który dziś faktycznie zapisuje wybór profilu DER. Brak obu →
+    `DerDynamicResolution(profile=None, source="brak")` — dawny WARNING
+    `der.dynamic_profile_default` jest skasowany razem ze źródłem, które go
+    produkowało."""
     from network_model.catalog.der_dynamic import resolve_der_dynamic_profile
 
     gen_type = getattr(gen, "gen_type", None)
     explicit = getattr(gen, "dynamic_profile_id", None)
+    z_katalogu = (getattr(gen, "materialized_params", None) or {}).get("dynamic_model_ref")
 
     if gen_type == "pv_inverter":
-        return resolve_der_dynamic_profile(der_kind="PV", explicit_profile_id=explicit)
+        return resolve_der_dynamic_profile(
+            der_kind="PV", explicit_profile_id=explicit, catalog_dynamic_profile_id=z_katalogu
+        )
     if gen_type == "bess":
-        return resolve_der_dynamic_profile(der_kind="BESS", explicit_profile_id=explicit)
+        return resolve_der_dynamic_profile(
+            der_kind="BESS", explicit_profile_id=explicit, catalog_dynamic_profile_id=z_katalogu
+        )
     if gen_type == "fw_scig":
         return resolve_der_dynamic_profile(
-            der_kind="FW", explicit_profile_id=explicit, converter_type="SCIG"
+            der_kind="FW", explicit_profile_id=explicit,
+            catalog_dynamic_profile_id=z_katalogu, converter_type="SCIG",
         )
     if gen_type == "fw_dfig":
         return resolve_der_dynamic_profile(
-            der_kind="FW", explicit_profile_id=explicit, converter_type="DFIG"
+            der_kind="FW", explicit_profile_id=explicit,
+            catalog_dynamic_profile_id=z_katalogu, converter_type="DFIG",
         )
     if gen_type in ("fw_pmsg", "wind_inverter"):
         return resolve_der_dynamic_profile(
             der_kind="FW",
             explicit_profile_id=explicit,
+            catalog_dynamic_profile_id=z_katalogu,
             converter_type="full_converter",
         )
     return None
@@ -505,88 +517,113 @@ def _resolve_der_dynamic_for_generator(gen):  # type: ignore[no-untyped-def]
 
 def _rozstrzygnij_profile_der(
     der_generators: list[Any],
-) -> tuple[dict[str, Any], list[str], list[str]]:
+) -> tuple[dict[str, Any], list[str]]:
     """Rozwiąż profile dynamiczne DLA WSZYSTKICH DER — jeden przebieg, jedna reguła.
 
-    Karta FAB-D2 (D8), użyte przez `_check_stability` i `_check_frt_hvrt`
+    Karta FAB-D2 (D8) + W6-1, użyte przez `_check_stability` i `_check_frt_hvrt`
     (KLASA, NIE INSTANCJA: ta sama reguła w obu miejscach, nie dwie kopie).
 
-    Zwraca (rozwiazane, nieznane_refs, domyslne_refs):
-        rozwiazane      — ref -> DerDynamicResolution, dla DER z profilem.
-        nieznane_refs   — ref dla DER, których rodzaj nie ma mapowania w ogóle
-                           (BLOCKER `der.dynamic_profile_missing` — brak profilu,
-                           nie fallback do PV).
-        domyslne_refs   — ref dla DER rozwiązanych, ale z DOMYŚLNEJ wartości
-                           katalogu, nie jawnego wyboru (WARNING/założenie
-                           `der.dynamic_profile_default`).
+    Zwraca (rozwiazane, brakujace_refs):
+        rozwiazane      — ref -> DerDynamicResolution, dla DER z profilem
+                           JAWNIE wskazanym.
+        brakujace_refs  — ref dla DER, których rodzaj nie ma mapowania w ogóle
+                           ALBO resolver zwrócił `source="brak"` (brak jawnego
+                           wskazania) — oba są tym samym BLOCKER
+                           `der.dynamic_profile_missing` (kasacja rozróżnienia
+                           "nieznany rodzaj" vs "domyślny profil": drugi stan
+                           już nie istnieje).
     """
     rozwiazane: dict[str, Any] = {}
-    nieznane_refs: list[str] = []
-    domyslne_refs: list[str] = []
+    brakujace_refs: list[str] = []
     for gen in der_generators:
         ref = getattr(gen, "ref_id", getattr(gen, "id", "?"))
         result = _resolve_der_dynamic_for_generator(gen)
-        if result is None:
-            nieznane_refs.append(ref)
+        if result is None or result.profile is None:
+            brakujace_refs.append(ref)
             continue
         rozwiazane[ref] = result
-        if result.source in _ZRODLA_DOMYSLNE_KATALOGU:
-            domyslne_refs.append(ref)
-    return rozwiazane, nieznane_refs, domyslne_refs
+    return rozwiazane, brakujace_refs
+
+
+def _synchroniczny_ma_dynamike(gen: Any) -> bool:
+    """Czy generator synchroniczny ma kompletny blok `dynamika` (P0-10, W6-1).
+
+    Rozstrzyga WYŁĄCZNIE `Generator.dynamika` (kontrakt kanoniczny
+    `enm.dynamika_modele.MaszynaSynchroniczna`) — maszyny synchroniczne NIE
+    przechodzą przez resolver DER (nie są przekształtnikowe)."""
+    dynamika = getattr(gen, "dynamika", None)
+    return dynamika is not None and getattr(dynamika, "rodzina", None) == "synchroniczna"
 
 
 def _check_stability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
-    """Stabilność RMS — PR-15-impl + DER dynamic resolver (każdy DER ma model)."""
+    """Stabilność RMS — PR-15-impl + DER dynamic resolver + maszyny synchroniczne.
+
+    P0-10 (karta W6-1): maszyny synchroniczne SĄ źródłem dynamicznym dla
+    stabilności (przypadek klasyczny transient stability) — dawny filtr
+    `_DER_GEN_TYPES` je pomijał, więc projekt WYŁĄCZNIE z generatorem
+    synchronicznym dostawał fałszywe `n_a` ("stabilność nie dotyczy"), choć
+    to najbardziej typowy powód liczenia stabilności w ogóle.
+    """
     der_generators = [g for g in enm.generators if g.gen_type in _DER_GEN_TYPES]
-    if not der_generators:
+    sync_generators = [g for g in enm.generators if g.gen_type == "synchronous"]
+    if not der_generators and not sync_generators:
         return ReadinessTypeReport(
             calculation_type="stability",
             label_pl=CALCULATION_LABEL_PL["stability"],
             status="n_a",
             recommended_action_pl=(
-                "Brak źródeł dynamicznych (PV/BESS/FW). Stabilność RMS nie dotyczy projektu."
+                "Brak źródeł dynamicznych (maszyna synchroniczna/PV/BESS/FW). "
+                "Stabilność RMS nie dotyczy projektu."
             ),
         )
-    resolved, nieznane_refs, domyslne_refs = _rozstrzygnij_profile_der(der_generators)
-    if nieznane_refs:
+    resolved, brakujace_der = _rozstrzygnij_profile_der(der_generators)
+    brakujace_sync = [
+        getattr(g, "ref_id", getattr(g, "id", "?"))
+        for g in sync_generators
+        if not _synchroniczny_ma_dynamike(g)
+    ]
+    brakujace = brakujace_der + brakujace_sync
+    if brakujace:
+        opisy = [
+            f"profil dynamiczny DER '{ref}' (kod 'der.dynamic_profile_missing')"
+            for ref in brakujace_der
+        ] + [
+            f"blok dynamiki maszyny synchronicznej '{ref}' (kod 'der.dynamika_missing')"
+            for ref in brakujace_sync
+        ]
         return ReadinessTypeReport(
             calculation_type="stability",
             label_pl=CALCULATION_LABEL_PL["stability"],
             status="blocked",
-            missing_fields_pl=[
-                f"profil dynamiczny DER '{ref}' (kod 'der.dynamic_profile_missing')"
-                for ref in nieznane_refs
-            ],
-            blocking_object_refs=nieznane_refs,
+            missing_fields_pl=opisy,
+            blocking_object_refs=brakujace,
             recommended_action_pl=(
-                "Rodzaj DER nieznany dla stabilności RMS — przypisz obsługiwany rodzaj "
-                "(PV/BESS/turbina wiatrowa) albo profil dynamiczny wprost."
+                "Uzupełnij model dynamiczny źródeł: DER (PV/BESS/turbina wiatrowa) "
+                "wymaga jawnie wskazanego profilu (kod 'der.dynamic_profile_missing'); "
+                "maszyna synchroniczna wymaga bloku dynamiki z katalogu "
+                "MASZYNA_SYNCHRONICZNA (kod 'der.dynamika_missing')."
             ),
         )
-    status: ReadinessStatus = "partial" if domyslne_refs else "ready"
-    zalozenie = (
-        f" Założenie: {len(domyslne_refs)} DER dostało profil DOMYŚLNY katalogu "
-        "(kod 'der.dynamic_profile_default'), nie jawnie wskazany — sprawdź, czy pasuje."
-        if domyslne_refs
-        else ""
-    )
+    zrodla_opis = [f"{ref}={res.profile_id}" for ref, res in sorted(resolved.items())[:3]]
+    if sync_generators:
+        zrodla_opis.append(f"{len(sync_generators)} maszyna(y) synchroniczna(e) z blokiem dynamiki")
     return ReadinessTypeReport(
         calculation_type="stability",
         label_pl=CALCULATION_LABEL_PL["stability"],
-        status=status,
+        status="ready",
         recommended_action_pl=(
             f"Solver stabilności RMS dostępny (PR-15-impl). "
-            f"{len(der_generators)} DER z modelami dynamicznymi rozwiązanymi: "
-            + ", ".join(f"{ref}={res.profile_id}" for ref, res in sorted(resolved.items())[:3])
+            f"{len(der_generators) + len(sync_generators)} źródeł dynamicznych z modelami "
+            "rozwiązanymi: " + ", ".join(zrodla_opis)
             + ("..." if len(resolved) > 3 else "")
             + ". Można uruchomić obliczenia."
-            + zalozenie
         ),
     )
 
 
 def _check_frt_hvrt(enm: EnergyNetworkModel) -> ReadinessTypeReport:
-    """FRT/HVRT — PR-16-impl + per-DER dynamic resolver."""
+    """FRT/HVRT — PR-16-impl + per-DER dynamic resolver (falowniki wyłącznie —
+    maszyny synchroniczne nie mają odpowiedzi FRT/HVRT falownikowej)."""
     der_generators = [g for g in enm.generators if g.gen_type in _DER_GEN_TYPES]
     if not der_generators:
         return ReadinessTypeReport(
@@ -595,38 +632,102 @@ def _check_frt_hvrt(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             status="n_a",
             recommended_action_pl="Brak DER w projekcie. FRT/HVRT nie dotyczy.",
         )
-    resolved, nieznane_refs, domyslne_refs = _rozstrzygnij_profile_der(der_generators)
-    if nieznane_refs:
+    resolved, brakujace_refs = _rozstrzygnij_profile_der(der_generators)
+    if brakujace_refs:
         return ReadinessTypeReport(
             calculation_type="frt_hvrt",
             label_pl=CALCULATION_LABEL_PL["frt_hvrt"],
             status="blocked",
             missing_fields_pl=[
                 f"profil FRT/HVRT DER '{ref}' (kod 'der.dynamic_profile_missing')"
-                for ref in nieznane_refs
+                for ref in brakujace_refs
             ],
-            blocking_object_refs=nieznane_refs,
+            blocking_object_refs=brakujace_refs,
             recommended_action_pl=(
-                "Rodzaj DER nieznany dla FRT/HVRT — przypisz obsługiwany rodzaj "
-                "(PV/BESS/turbina wiatrowa) albo profil dynamiczny wprost."
+                "Wskaż profil dynamiczny wprost (operator NC RfG albo karta "
+                "katalogowa przekształtnika) dla każdego DER — brak jawnego "
+                "wskazania blokuje FRT/HVRT (kasacja domyślnego podstawienia)."
             ),
         )
-    status: ReadinessStatus = "partial" if domyslne_refs else "ready"
-    zalozenie = (
-        f" Założenie: {len(domyslne_refs)} DER dostało profil DOMYŚLNY katalogu "
-        "(kod 'der.dynamic_profile_default')."
-        if domyslne_refs
-        else ""
-    )
     return ReadinessTypeReport(
         calculation_type="frt_hvrt",
         label_pl=CALCULATION_LABEL_PL["frt_hvrt"],
-        status=status,
+        status="ready",
         recommended_action_pl=(
             f"Solver FRT/HVRT RMS dostępny (PR-16-impl). "
             f"{len(resolved)}/{len(der_generators)} DER z profilami FRT/HVRT "
-            "rozwiązanymi (catalog → operator profile → IEEE/IEC default). "
-            "Można uruchomić testbench." + zalozenie
+            "jawnie wskazanymi. Można uruchomić testbench."
+        ),
+    )
+
+
+def _check_dynamika_rms(enm: EnergyNetworkModel) -> ReadinessTypeReport:
+    """Gotowość biegu `dynamika_rms` (karta W6-1 SS0 p.7) — kontrakty, nie fizyka.
+
+    KAŻDE źródło (DER przekształtnikowe I maszyna synchroniczna) musi mieć
+    `Generator.dynamika` z proweniencją; rozpływ punktu pracy musi być `ready`.
+    Scenariusz dynamiczny (`OperatingScenario.dynamika`) jest daną PER BIEG, nie
+    modelu — jego kompletność (horyzont/zdarzenia/referencje) jest walidowana
+    przez kontrakt (`enm.scenariusze.ScenariuszDynamiczny`) i `apply_scenario`
+    przy tworzeniu biegu, NIE tutaj (ten typ czyta wyłącznie `enm`, jak
+    pozostałe 10 typów gotowości — rozszerzenie sygnatury o scenariusz jest
+    poza zakresem tej karty, nazwane świadomie w meldunku)."""
+    dynamiczne = [
+        g
+        for g in enm.generators
+        if g.gen_type in _DER_GEN_TYPES or g.gen_type == "synchronous"
+    ]
+    if not dynamiczne:
+        return ReadinessTypeReport(
+            calculation_type="dynamika_rms",
+            label_pl=CALCULATION_LABEL_PL["dynamika_rms"],
+            status="n_a",
+            recommended_action_pl=(
+                "Brak źródeł dynamicznych (maszyna synchroniczna/PV/BESS/FW) w projekcie."
+            ),
+        )
+    brakujace = [
+        getattr(g, "ref_id", getattr(g, "id", "?"))
+        for g in dynamiczne
+        if getattr(g, "dynamika", None) is None
+    ]
+    if brakujace:
+        return ReadinessTypeReport(
+            calculation_type="dynamika_rms",
+            label_pl=CALCULATION_LABEL_PL["dynamika_rms"],
+            status="blocked",
+            missing_fields_pl=[
+                f"blok dynamiki źródła '{ref}' (kod 'der.dynamika_missing')" for ref in brakujace
+            ],
+            blocking_object_refs=brakujace,
+            recommended_action_pl=(
+                "Uzupełnij blok parametrów dynamicznych (Generator.dynamika) dla "
+                "każdego źródła — profil typowy normy, karta producenta albo "
+                "certyfikat jednostki (proweniencja wymagana)."
+            ),
+        )
+    pf = _check_power_flow(enm)
+    if pf.status != "ready":
+        return ReadinessTypeReport(
+            calculation_type="dynamika_rms",
+            label_pl=CALCULATION_LABEL_PL["dynamika_rms"],
+            status="blocked" if pf.status == "blocked" else "partial",
+            missing_fields_pl=list(pf.missing_fields_pl),
+            blocking_object_refs=list(pf.blocking_object_refs),
+            recommended_action_pl=(
+                "Punkt pracy (rozpływ mocy) musi być gotowy przed biegiem dynamiki "
+                f"czasowej — {pf.recommended_action_pl or 'uzupełnij dane rozpływu.'}"
+            ),
+        )
+    return ReadinessTypeReport(
+        calculation_type="dynamika_rms",
+        label_pl=CALCULATION_LABEL_PL["dynamika_rms"],
+        status="ready",
+        recommended_action_pl=(
+            f"{len(dynamiczne)} źródeł z blokiem dynamiki, punkt pracy gotowy. "
+            "Rdzeń solvera DAE (W6-2) nie jest jeszcze wdrożony w tym repozytorium — "
+            "bieg zakończy się odmową 'dynamika.rdzen_niedostepny' do czasu jego "
+            "wdrożenia; kontrakty wejścia są już kompletne."
         ),
     )
 
@@ -727,7 +828,7 @@ class CalculationReadinessService:
     """Pełen serwis gotowości obliczeń (PR-12, brief 2 §16)."""
 
     def evaluate(self, enm: EnergyNetworkModel) -> ReadinessReport:
-        """Ocena gotowości dla wszystkich 10 typów."""
+        """Ocena gotowości dla wszystkich 11 typów."""
         return ReadinessReport(
             items=[
                 _check_power_flow(enm),
@@ -740,6 +841,7 @@ class CalculationReadinessService:
                 _check_ncrfg_compliance(enm),
                 _check_report_osd(enm),
                 _check_report_technical(enm),
+                _check_dynamika_rms(enm),
             ],
         )
 
@@ -758,5 +860,6 @@ class CalculationReadinessService:
             "ncrfg_compliance": _check_ncrfg_compliance,
             "report_osd": _check_report_osd,
             "report_technical": _check_report_technical,
+            "dynamika_rms": _check_dynamika_rms,
         }
         return check_map[calc_type](enm)

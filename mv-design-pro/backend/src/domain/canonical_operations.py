@@ -1042,34 +1042,42 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
-    # Karta FAB-D2 (D8): rodzaj DER spoza mapowania resolvera profili
-    # dynamicznych (`network_model/catalog/der_dynamic/resolver.py`) — BLOKUJE
-    # stabilność RMS/FRT-HVRT, bo solver nie ma z czego zbudować modelu
-    # dynamicznego. Zastępuje dawny cichy fallback do profilu PV.
+    # Karta FAB-D2 (D8), rozszerzone W6-1 SS0 p.3: rodzaj DER spoza mapowania
+    # resolvera profili dynamicznych (`network_model/catalog/der_dynamic/
+    # resolver.py`) ALBO resolver zwrócił `source="brak"` (brak jawnego
+    # wskazania — kasacja dawnego cichego fallbacku do profilu domyślnego,
+    # W6-1) — BLOKUJE stabilność RMS/FRT-HVRT, bo solver nie ma z czego
+    # zbudować modelu dynamicznego.
     "der.dynamic_profile_missing": ReadinessCodeSpec(
         code="der.dynamic_profile_missing",
         area=ReadinessArea.GENERATORS,
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Rodzaj źródła DER nie ma mapowania na profil dynamiczny — stabilność "
-            "RMS i FRT/LVRT/HVRT nie mogą zbudować modelu tego generatora"
+            "Rodzaj źródła DER nie ma mapowania na profil dynamiczny, albo profil "
+            "nie został wskazany jawnie — stabilność RMS i FRT/LVRT/HVRT nie mogą "
+            "zbudować modelu tego generatora"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "gen_type"},
     ),
-    # Profil ROZWIĄZANY, ale z domyślnej wartości katalogu (nie jawnego wyboru
-    # projektanta/karty katalogowej) — WARNING z proweniencją, nie blokada:
-    # solver ma z czego liczyć, ale założenie jest widoczne do weryfikacji.
-    "der.dynamic_profile_default": ReadinessCodeSpec(
-        code="der.dynamic_profile_default",
+    # Karta W6-1 SS0 p.3/p.7: brak kompletnego bloku `Generator.dynamika`
+    # (kontrakt kanoniczny `enm.dynamika_modele.ParametryDynamiczne`) dla
+    # ŹRÓDŁA DYNAMICZNEGO dowolnej rodziny (maszyna synchroniczna, GFL, GFM,
+    # magazyn, turbina wiatrowa) — używane przez readiness `stability`
+    # (maszyny synchroniczne, P0-10) i `dynamika_rms` (wszystkie rodziny).
+    # Zastępuje skasowany WARNING `der.dynamic_profile_default`: pod nowym
+    # kontraktem albo blok jest kompletny (z proweniencją), albo go nie ma —
+    # nie ma stanu pośredniego "podstawiono domyślny".
+    "der.dynamika_missing": ReadinessCodeSpec(
+        code="der.dynamika_missing",
         area=ReadinessArea.GENERATORS,
-        priority=4,
-        level=ReadinessLevel.WARNING,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Profil dynamiczny źródła DER pochodzi z wartości domyślnej katalogu "
-            "(nie z jawnego wskazania) — sprawdź, czy pasuje do rzeczywistego urządzenia"
+            "Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego "
+            "źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego"
         ),
-        fix_navigation={"panel": "inspector", "tab": "katalog"},
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "dynamika"},
     ),
     # Karta FAB-D2 (D3): Q generatora nieznany i niewyprowadzalny z jawnego
     # Q-set-pointu karty katalogowej — 0 Mvar podstawione za brak byłoby
