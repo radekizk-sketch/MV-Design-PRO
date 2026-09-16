@@ -671,6 +671,8 @@ _KLUCZE_OCENY_ELEMENTU = {
     "uzasadnienie_pl",
     "wniosek_pl",
     "dowod",
+    # Karta V12.7 §0.1/§0.8: wzór LaTeX marginesu (addytywne).
+    "margines_wzor_latex",
 }
 
 

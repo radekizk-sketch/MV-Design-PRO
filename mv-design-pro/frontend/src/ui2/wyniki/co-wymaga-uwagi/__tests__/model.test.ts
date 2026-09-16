@@ -108,6 +108,10 @@ function pozycjaWerdyktu(over: Partial<PozycjaOceny> = {}): PozycjaOceny {
     nazwa_pl: 'Obciążenie długotrwałe gałęzi',
     warunek_pl: 'I ≤ Idd',
     norma_pl: 'PN-EN 50160',
+    // V12.7: symbol i warunek jako LaTeX + zakres oceny (wymagane pola PozycjaOceny).
+    symbol_latex: 'I',
+    warunek_latex: 'I \\le I_{dd}',
+    zakres_oceny: 'kryterium',
     zrodlo: 'PF',
     element_rodzaj: 'galaz_liniowa',
     stan: 'NARUSZONE',

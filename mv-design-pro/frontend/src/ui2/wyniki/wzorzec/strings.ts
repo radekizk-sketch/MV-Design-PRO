@@ -48,4 +48,7 @@ export const WZORZEC_STRINGS = {
   // Dostępny opis kierunku sortowania (aria)
   opisSortowania: (etykieta: string, kierunek: KierunekSortowania): string =>
     `Sortowanie wg „${etykieta}": ${kierunek === 'rosnaco' ? 'rosnąco' : 'malejąco'}.`,
+
+  // Informacje audytowe (karta V12.7 §0.3) — metadane produkcyjne poza pierwszym planem
+  informacjeAudytoweTytul: 'Informacje audytowe',
 } as const;

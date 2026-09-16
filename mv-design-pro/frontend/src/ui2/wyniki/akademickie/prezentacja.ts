@@ -364,16 +364,28 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   earthing_safety: {
+    // Karta V12.7 §0.7: werdykt nazywa KRYTERIUM sprawdzone przez solver
+    // (napięcia rażenia dotykowego i krokowego), NIE cały uziom stacji —
+    // solver nie ocenia korozji, połączeń wyrównawczych ani konserwacji, więc
+    // „uziom (nie)bezpieczny" byłby werdyktem szerszym niż zakres (poprzedni
+    // tekst — ocena właściciela: fałszywe rozszerzenie na cały obiekt).
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['safety_status'],
       mapa: {
-        bezpieczny: { tekst: 'uziom bezpieczny', istotnosc: 'ok' },
+        bezpieczny: {
+          tekst: 'spełnia kryteria dopuszczalnych napięć rażenia (dotykowego i krokowego)',
+          istotnosc: 'ok',
+        },
         wymaga_ochrony: {
-          tekst: 'przekroczenie do 25 % — wymagane środki dodatkowe',
+          tekst:
+            'przekracza kryteria napięć rażenia do 25 % — wymagane środki ochrony dodatkowej',
           istotnosc: 'warn',
         },
-        niezgodny: { tekst: 'uziom niezgodny — napięcia rażenia przekroczone', istotnosc: 'err' },
+        niezgodny: {
+          tekst: 'nie spełnia kryteriów dopuszczalnych napięć rażenia (dotykowego lub krokowego)',
+          istotnosc: 'err',
+        },
       },
     },
     wielkosciGlowne: [
@@ -488,10 +500,20 @@ export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
 
   // -------------------------------------------------------------------------
   transient_trv: {
+    // Karta V12.7 §0.7/§2: werdykt nazywa KRYTERIUM (margines napięcia
+    // powrotnego), nie samo „spełnione/niespełnione" bez wskazania czego —
+    // ta ścieżka jest werdyktem POJEDYNCZYM (nie kolumną tabeli z nagłówkiem
+    // dającym kontekst), więc tekst musi nieść kryterium wprost.
     werdykt: {
       rodzaj: 'pojedynczy',
       sciezki: ['trv_status'],
-      mapa: SPELNIONY,
+      mapa: {
+        spelniony: { tekst: 'spełnia kryterium marginesu napięcia powrotnego', istotnosc: 'ok' },
+        niespelniony: {
+          tekst: 'nie spełnia kryterium marginesu napięcia powrotnego',
+          istotnosc: 'err',
+        },
+      },
     },
     wielkosciGlowne: [
       {

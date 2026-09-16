@@ -12,6 +12,7 @@
 - `docs/uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md` — rozszerzenia P1–P22 (zatwierdzone zasadą „na max")
 - `docs/uiux/AUDYT_RADY_SPECJALISTOW_2026-07.md` — audyt 13 perspektyw: rozbudowa każdego okna + delta rejestru (+16 okien)
 - `docs/uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md` — karta styku z wątkiem SLD (tokeny motywów)
+- `docs/uiux/KONTRAKT_PREZENTACJI_INZYNIERSKIEJ_V12_7.md` — KANON prezentacji inżynierskiej (V12.7): matematyka wyłącznie KaTeX (nigdy ASCII), metadane produkcyjne poza pierwszym planem, werdykt nie szerszy niż zakres kryterium, wiarygodność ≠ spełnienie, hierarchia jawności obliczeń — obowiązuje przy KAŻDEJ nowej analizie/kryterium na ekranach wyników
 - `docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md` — prompt zarządcy programu (Fable)
 - `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` — program inżynieryjny 10x (perymetr, jakość, współbieżność)
 - `docs/plan/PLAN_SLD_REWORK.md` + `docs/sld/SLD_INDUSTRIAL_SPEC_v1.md` — rework SLD (OSOBNY WĄTEK)

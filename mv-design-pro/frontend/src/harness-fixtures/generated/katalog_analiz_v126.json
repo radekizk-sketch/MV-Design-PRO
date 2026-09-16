@@ -14,22 +14,26 @@
         {
           "symbol": "THD_U",
           "nazwa_pl": "Współczynnik odkształcenia napięcia",
-          "jednostka": "%"
+          "jednostka": "%",
+          "symbol_latex": "\\mathrm{THD}_U"
         },
         {
           "symbol": "TDD",
           "nazwa_pl": "Odkształcenie prądu odbiorcy",
-          "jednostka": "%"
+          "jednostka": "%",
+          "symbol_latex": "\\mathrm{TDD}"
         },
         {
           "symbol": "K",
           "nazwa_pl": "Współczynnik K obciążenia transformatora",
-          "jednostka": "-"
+          "jednostka": "-",
+          "symbol_latex": "K"
         },
         {
           "symbol": "Z(f)",
           "nazwa_pl": "Impedancja węzła w funkcji częstotliwości",
-          "jednostka": "Ω"
+          "jednostka": "Ω",
+          "symbol_latex": "Z(f)"
         }
       ],
       "podstawa_oceny": [
@@ -39,7 +43,11 @@
           "jednostka": "%",
           "warunek_pl": "w każdym węźle modelu, dla sieci SN i nN",
           "wartosc_graniczna": 8.0,
-          "zrodlo_pl": "PN-EN 50160"
+          "zrodlo_pl": "PN-EN 50160",
+          "symbol_latex": "\\mathrm{THD}_U",
+          "warunek_latex": "\\mathrm{THD}_U \\leq 8\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
         },
         {
           "wielkosc_pl": "Odkształcenie napięcia",
@@ -47,7 +55,11 @@
           "jednostka": "%",
           "warunek_pl": "w każdym węźle modelu (granica ostrzejsza)",
           "wartosc_graniczna": 5.0,
-          "zrodlo_pl": "IEEE 519"
+          "zrodlo_pl": "IEEE 519",
+          "symbol_latex": "\\mathrm{THD}_U",
+          "warunek_latex": "\\mathrm{THD}_U \\leq 5\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
         },
         {
           "wielkosc_pl": "Odkształcenie prądu odbiorcy",
@@ -55,7 +67,11 @@
           "jednostka": "%",
           "warunek_pl": "odniesione do prądu obciążenia szyny wyznaczonego z mocy czynnej szyny",
           "wartosc_graniczna": 5.0,
-          "zrodlo_pl": "IEEE 519"
+          "zrodlo_pl": "IEEE 519",
+          "symbol_latex": "\\mathrm{TDD}",
+          "warunek_latex": "\\mathrm{TDD} \\leq 5\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
         }
       ],
       "bez_podstawy_pl": null,
@@ -96,7 +112,8 @@
       "prezentowany": true,
       "powod_wycofania_pl": null,
       "katalog_odniesienia": "harmonic-limits",
-      "uwagi_metody_pl": []
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
     },
     {
       "kod": "ssci_impedance",
@@ -111,22 +128,26 @@
         {
           "symbol": "Z_grid(f)",
           "nazwa_pl": "Impedancja sieci z szyny przekształtnika",
-          "jednostka": "Ω"
+          "jednostka": "Ω",
+          "symbol_latex": "Z_{\\mathrm{grid}}(f)"
         },
         {
           "symbol": "Z_conv(f)",
           "nazwa_pl": "Impedancja wyjściowa przekształtnika",
-          "jednostka": "Ω"
+          "jednostka": "Ω",
+          "symbol_latex": "Z_{\\mathrm{conv}}(f)"
         },
         {
           "symbol": "L(f)",
           "nazwa_pl": "Wzmocnienie pętli mniejszej Z_grid/Z_conv",
-          "jednostka": "-"
+          "jednostka": "-",
+          "symbol_latex": "L(f) = Z_{\\mathrm{grid}}(f)/Z_{\\mathrm{conv}}(f)"
         },
         {
           "symbol": "Re Z_conv,min",
           "nazwa_pl": "Najmniejsza rezystancja wyjściowa przekształtnika",
-          "jednostka": "Ω"
+          "jednostka": "Ω",
+          "symbol_latex": "\\min\\ \\mathrm{Re}\\,Z_{\\mathrm{conv}}"
         }
       ],
       "podstawa_oceny": [],
@@ -160,7 +181,8 @@
       "prezentowany": true,
       "powod_wycofania_pl": null,
       "katalog_odniesienia": "converter-modes",
-      "uwagi_metody_pl": []
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
     },
     {
       "kod": "earthing_safety",
@@ -175,27 +197,32 @@
         {
           "symbol": "R_g",
           "nazwa_pl": "Rezystancja uziomu stacji",
-          "jednostka": "Ω"
+          "jednostka": "Ω",
+          "symbol_latex": "R_g"
         },
         {
           "symbol": "GPR",
           "nazwa_pl": "Wzrost potencjału uziomu",
-          "jednostka": "kV"
+          "jednostka": "kV",
+          "symbol_latex": "\\mathrm{GPR}"
         },
         {
           "symbol": "U_dot",
           "nazwa_pl": "Napięcie dotykowe rażeniowe",
-          "jednostka": "V"
+          "jednostka": "V",
+          "symbol_latex": "U_{\\mathrm{dot}}"
         },
         {
           "symbol": "U_kr",
           "nazwa_pl": "Napięcie krokowe",
-          "jednostka": "V"
+          "jednostka": "V",
+          "symbol_latex": "U_{\\mathrm{kr}}"
         },
         {
           "symbol": "I_g",
           "nazwa_pl": "Prąd odprowadzany przez uziom",
-          "jednostka": "kA"
+          "jednostka": "kA",
+          "symbol_latex": "I_g"
         }
       ],
       "podstawa_oceny": [
@@ -203,25 +230,37 @@
           "wielkosc_pl": "Napięcie dotykowe rażeniowe",
           "symbol": "U_dot",
           "jednostka": "V",
-          "warunek_pl": "U_dot ≤ U_dot,dop; wartość dopuszczalna liczona z rezystywności warstwy powierzchniowej, jej współczynnika redukcji i czasu wyłączenia zwarcia (ciało 70 kg)",
+          "warunek_pl": "wartość dopuszczalna liczona z rezystywności warstwy powierzchniowej, jej współczynnika redukcji i czasu wyłączenia zwarcia (ciało 70 kg) — wzór obok",
           "wartosc_graniczna": "U_dot,dop = (1000 + 1,5·C_s·ρ_s)·0,157/√t_f",
-          "zrodlo_pl": "IEEE 80 (metoda Sverak) · PN-EN 50522"
+          "zrodlo_pl": "IEEE 80 (metoda Sverak) · PN-EN 50522",
+          "symbol_latex": "U_{\\mathrm{dot}}",
+          "warunek_latex": "U_{\\mathrm{dot}} \\leq U_{\\mathrm{dot,dop}}",
+          "wzor_latex": "U_{\\mathrm{dot,dop}} = \\left(1000 + 1{,}5\\, C_s\\, \\rho_s\\right)\\cdot \\dfrac{0{,}157}{\\sqrt{t_f}}",
+          "wzor_opis_pl": "ρ_s — rezystywność warstwy powierzchniowej [Ω·m]; C_s — współczynnik redukcji warstwy powierzchniowej; t_f — czas wyłączenia zwarcia [s]; ciało człowieka 70 kg. IEEE 80 (metoda Sveraka) · PN-EN 50522."
         },
         {
           "wielkosc_pl": "Napięcie krokowe",
           "symbol": "U_kr",
           "jednostka": "V",
-          "warunek_pl": "U_kr ≤ U_kr,dop; wartość dopuszczalna liczona jak wyżej",
+          "warunek_pl": "wartość dopuszczalna liczona jak dla napięcia dotykowego, ze współczynnikiem 6 zamiast 1,5 — wzór obok",
           "wartosc_graniczna": "U_kr,dop = (1000 + 6·C_s·ρ_s)·0,157/√t_f",
-          "zrodlo_pl": "IEEE 80 (metoda Sverak) · PN-EN 50522"
+          "zrodlo_pl": "IEEE 80 (metoda Sverak) · PN-EN 50522",
+          "symbol_latex": "U_{\\mathrm{kr}}",
+          "warunek_latex": "U_{\\mathrm{kr}} \\leq U_{\\mathrm{kr,dop}}",
+          "wzor_latex": "U_{\\mathrm{kr,dop}} = \\left(1000 + 6\\, C_s\\, \\rho_s\\right)\\cdot \\dfrac{0{,}157}{\\sqrt{t_f}}",
+          "wzor_opis_pl": "ρ_s — rezystywność warstwy powierzchniowej [Ω·m]; C_s — współczynnik redukcji warstwy powierzchniowej; t_f — czas wyłączenia zwarcia [s]; ciało człowieka 70 kg. IEEE 80 (metoda Sveraka) · PN-EN 50522."
         },
         {
           "wielkosc_pl": "Przekroczenie tolerowane ze środkami dodatkowymi",
           "symbol": "U/U_dop",
           "jednostka": "-",
-          "warunek_pl": "przekroczenie do 25 % daje stan „wymaga ochrony”, powyżej — „niezgodny”",
+          "warunek_pl": "przekroczenie do 25 % daje stan „wymaga ochrony\", powyżej — „niezgodny\"",
           "wartosc_graniczna": 1.25,
-          "zrodlo_pl": "reguła solvera (klasyfikacja stanu)"
+          "zrodlo_pl": "reguła solvera (klasyfikacja stanu)",
+          "symbol_latex": "U/U_{\\mathrm{dop}}",
+          "warunek_latex": "U/U_{\\mathrm{dop}} \\leq 1{,}25",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
         }
       ],
       "bez_podstawy_pl": null,
@@ -334,7 +373,8 @@
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [
         "Model sieci nie niesie geometrii uziomu ani danych gruntu — bez danych projektanta analiza nie jest uruchamiana (zakaz podstawiania uziomu domyślnego)."
-      ]
+      ],
+      "zakres_oceny": "kryterium"
     },
     {
       "kod": "insulation_coordination",
@@ -349,27 +389,32 @@
         {
           "symbol": "MCOV",
           "nazwa_pl": "Trwałe dopuszczalne napięcie pracy ogranicznika",
-          "jednostka": "kV"
+          "jednostka": "kV",
+          "symbol_latex": "\\mathrm{MCOV}"
         },
         {
           "symbol": "U_res",
           "nazwa_pl": "Napięcie obniżone przy prądzie 10 kA",
-          "jednostka": "kV"
+          "jednostka": "kV",
+          "symbol_latex": "U_{\\mathrm{res}}"
         },
         {
           "symbol": "BIL",
           "nazwa_pl": "Wytrzymałość udarowa piorunowa izolacji",
-          "jednostka": "kV"
+          "jednostka": "kV",
+          "symbol_latex": "\\mathrm{BIL}"
         },
         {
           "symbol": "TOV",
           "nazwa_pl": "Przewidywane przepięcie dorywcze",
-          "jednostka": "kV"
+          "jednostka": "kV",
+          "symbol_latex": "\\mathrm{TOV}"
         },
         {
           "symbol": "M_BIL",
           "nazwa_pl": "Margines ochrony izolacji",
-          "jednostka": "%"
+          "jednostka": "%",
+          "symbol_latex": "M_{\\mathrm{BIL}}"
         }
       ],
       "podstawa_oceny": [
@@ -379,7 +424,11 @@
           "jednostka": "%",
           "warunek_pl": "M_BIL = (BIL − U_res)/U_res·100 ≥ granica, w każdym miejscu zainstalowania",
           "wartosc_graniczna": 20.0,
-          "zrodlo_pl": "IEC 60071 (koordynacja izolacji)"
+          "zrodlo_pl": "IEC 60071 (koordynacja izolacji)",
+          "symbol_latex": "M_{\\mathrm{BIL}}",
+          "warunek_latex": "M_{\\mathrm{BIL}} = \\dfrac{\\mathrm{BIL} - U_{\\mathrm{res}}}{U_{\\mathrm{res}}}\\cdot 100\\% \\geq 20\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
         },
         {
           "wielkosc_pl": "Przepięcie dorywcze",
@@ -387,7 +436,11 @@
           "jednostka": "kV",
           "warunek_pl": "TOV ≤ U_r ogranicznika (1,25·MCOV)",
           "wartosc_graniczna": "U_r = 1,25·MCOV",
-          "zrodlo_pl": "IEC 60071 / IEC 60099-4"
+          "zrodlo_pl": "IEC 60071 / IEC 60099-4",
+          "symbol_latex": "\\mathrm{TOV}",
+          "warunek_latex": "\\mathrm{TOV} \\leq U_r",
+          "wzor_latex": "U_r = 1{,}25\\cdot \\mathrm{MCOV}",
+          "wzor_opis_pl": "MCOV — trwałe dopuszczalne napięcie pracy ogranicznika [kV]; U_r — napięcie znamionowe ogranicznika [kV]. IEC 60071 / IEC 60099-4."
         }
       ],
       "bez_podstawy_pl": null,
@@ -420,7 +473,8 @@
       "prezentowany": true,
       "powod_wycofania_pl": null,
       "katalog_odniesienia": "insulation-levels",
-      "uwagi_metody_pl": []
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
     },
     {
       "kod": "earth_fault_detection",
@@ -435,12 +489,14 @@
         {
           "symbol": "metoda",
           "nazwa_pl": "Metoda detekcji zalecana i alternatywna",
-          "jednostka": "-"
+          "jednostka": "-",
+          "symbol_latex": "\\text{metoda}"
         },
         {
           "symbol": "obsługa",
           "nazwa_pl": "Dostępność metody zalecanej w przekaźniku",
-          "jednostka": "-"
+          "jednostka": "-",
+          "symbol_latex": "\\text{obsługa}"
         }
       ],
       "podstawa_oceny": [],
@@ -473,7 +529,8 @@
       "prezentowany": true,
       "powod_wycofania_pl": null,
       "katalog_odniesienia": null,
-      "uwagi_metody_pl": []
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
     },
     {
       "kod": "neutral_earthing_design",
@@ -488,32 +545,38 @@
         {
           "symbol": "I_C",
           "nazwa_pl": "Prąd pojemnościowy doziemienia sieci",
-          "jednostka": "A"
+          "jednostka": "A",
+          "symbol_latex": "I_C"
         },
         {
           "symbol": "C_0",
           "nazwa_pl": "Pojemność doziemna sieci",
-          "jednostka": "F"
+          "jednostka": "F",
+          "symbol_latex": "C_0"
         },
         {
           "symbol": "L, X_L",
           "nazwa_pl": "Indukcyjność i reaktancja dławika",
-          "jednostka": "H, Ω"
+          "jednostka": "H, Ω",
+          "symbol_latex": "L,\\ X_L"
         },
         {
           "symbol": "I_res",
           "nazwa_pl": "Prąd resztkowy przy rozstrojeniu",
-          "jednostka": "A"
+          "jednostka": "A",
+          "symbol_latex": "I_{\\mathrm{res}}"
         },
         {
           "symbol": "R_N",
           "nazwa_pl": "Rezystancja uziemiająca punktu neutralnego",
-          "jednostka": "Ω"
+          "jednostka": "Ω",
+          "symbol_latex": "R_N"
         },
         {
           "symbol": "E",
           "nazwa_pl": "Energia wydzielona w rezystorze w czasie wyłączenia",
-          "jednostka": "J"
+          "jednostka": "J",
+          "symbol_latex": "E"
         }
       ],
       "podstawa_oceny": [
@@ -523,7 +586,11 @@
           "jednostka": "-",
           "warunek_pl": "I_res przy przyjętym rozstrojeniu ≤ udział granicznego prądu pojemnościowego",
           "wartosc_graniczna": 0.1,
-          "zrodlo_pl": "kompensacja rezonansowa Petersena · IEC 62271-203"
+          "zrodlo_pl": "kompensacja rezonansowa Petersena · IEC 62271-203",
+          "symbol_latex": "I_{\\mathrm{res}}/I_C",
+          "warunek_latex": "I_{\\mathrm{res}}/I_C \\leq 10\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
         },
         {
           "wielkosc_pl": "Energia w rezystorze (sieć uziemiona przez rezystor)",
@@ -531,7 +598,11 @@
           "jednostka": "J",
           "warunek_pl": "E = I_ef²·R·t_wył ≤ E_n rezystora",
           "wartosc_graniczna": "E ≤ E_n",
-          "zrodlo_pl": "IEC 60364 / praktyka sieci uziemionych przez rezystor"
+          "zrodlo_pl": "IEC 60364 / praktyka sieci uziemionych przez rezystor",
+          "symbol_latex": "E",
+          "warunek_latex": "E \\leq E_n",
+          "wzor_latex": "E = I_{\\mathrm{ef}}^2 \\cdot R \\cdot t_{\\text{wył}}",
+          "wzor_opis_pl": "I_ef — wynikowy prąd doziemienia [A]; R — rezystancja uziemiająca punktu neutralnego [Ω]; t_wył — czas wyłączenia zwarcia [s]; E_n — energia znamionowa rezystora [J]."
         }
       ],
       "bez_podstawy_pl": null,
@@ -616,7 +687,8 @@
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [
         "Solver przyjmuje jako napięcie sieci najwyższe napięcie znamionowe szyny modelu — w modelu z szyną WN (np. 110 kV) dobór odnosi się do tego poziomu, nie do SN."
-      ]
+      ],
+      "zakres_oceny": "kryterium"
     },
     {
       "kod": "transient_trv",
@@ -631,17 +703,20 @@
         {
           "symbol": "M_TRV",
           "nazwa_pl": "Najmniejszy margines napięcia powrotnego",
-          "jednostka": "%"
+          "jednostka": "%",
+          "symbol_latex": "M_{\\mathrm{TRV}}"
         },
         {
           "symbol": "I_2h/I_szczyt",
           "nazwa_pl": "Udział 2. harmonicznej w prądzie załączania",
-          "jednostka": "%"
+          "jednostka": "%",
+          "symbol_latex": "I_{2h}/I_{\\mathrm{szczyt}}"
         },
         {
           "symbol": "ferro",
           "nazwa_pl": "Ryzyko ferrorezonansu",
-          "jednostka": "-"
+          "jednostka": "-",
+          "symbol_latex": "\\text{ferro}"
         }
       ],
       "podstawa_oceny": [
@@ -651,7 +726,11 @@
           "jednostka": "%",
           "warunek_pl": "M_TRV = (obwiednia − u_TRV)/obwiednia·100 ≥ granica w całym przebiegu",
           "wartosc_graniczna": 10.0,
-          "zrodlo_pl": "IEC 62271-100 (obwiednia napięcia powrotnego)"
+          "zrodlo_pl": "IEC 62271-100 (obwiednia napięcia powrotnego)",
+          "symbol_latex": "M_{\\mathrm{TRV}}",
+          "warunek_latex": "M_{\\mathrm{TRV}} = \\dfrac{\\text{obwiednia} - u_{\\mathrm{TRV}}}{\\text{obwiednia}}\\cdot 100\\% \\geq 10\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
         },
         {
           "wielkosc_pl": "Blokada różnicowej od 2. harmonicznej",
@@ -659,7 +738,11 @@
           "jednostka": "%",
           "warunek_pl": "udział ≥ granica ⇒ blokada 87T zalecana",
           "wartosc_graniczna": 10.0,
-          "zrodlo_pl": "reguła solvera (praktyka zabezpieczeń różnicowych)"
+          "zrodlo_pl": "reguła solvera (praktyka zabezpieczeń różnicowych)",
+          "symbol_latex": "I_{2h}/I_{\\mathrm{szczyt}}",
+          "warunek_latex": "I_{2h}/I_{\\mathrm{szczyt}} \\geq 10\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
         }
       ],
       "bez_podstawy_pl": null,
@@ -720,7 +803,8 @@
       "prezentowany": true,
       "powod_wycofania_pl": null,
       "katalog_odniesienia": null,
-      "uwagi_metody_pl": []
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
     },
     {
       "kod": "motor_starting",
@@ -735,22 +819,26 @@
         {
           "symbol": "I_r",
           "nazwa_pl": "Prąd rozruchowy",
-          "jednostka": "A"
+          "jednostka": "A",
+          "symbol_latex": "I_r"
         },
         {
           "symbol": "ΔU",
           "nazwa_pl": "Zapad napięcia na szynie",
-          "jednostka": "%"
+          "jednostka": "%",
+          "symbol_latex": "\\Delta U"
         },
         {
           "symbol": "M_r",
           "nazwa_pl": "Moment rozruchowy",
-          "jednostka": "j.w."
+          "jednostka": "j.w.",
+          "symbol_latex": "M_r"
         },
         {
           "symbol": "I²t",
           "nazwa_pl": "Wykorzystanie dopuszczalnego czasu utyku",
-          "jednostka": "-"
+          "jednostka": "-",
+          "symbol_latex": "I^{2} t"
         }
       ],
       "podstawa_oceny": [
@@ -760,7 +848,11 @@
           "jednostka": "%",
           "warunek_pl": "ΔU ≤ granica przy prądzie rozruchowym k_LR·I_n",
           "wartosc_graniczna": 15.0,
-          "zrodlo_pl": "kryteria rozruchowe silników SN (reguła solvera)"
+          "zrodlo_pl": "kryteria rozruchowe silników SN (reguła solvera)",
+          "symbol_latex": "\\Delta U",
+          "warunek_latex": "\\Delta U \\leq 15\\%",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
         },
         {
           "wielkosc_pl": "Wskaźnik cieplny rozruchu",
@@ -768,7 +860,11 @@
           "jednostka": "-",
           "warunek_pl": "k_LR²·t_rozruchu/t_utyku ≤ granica",
           "wartosc_graniczna": 1.0,
-          "zrodlo_pl": "kryteria rozruchowe silników SN (reguła solvera)"
+          "zrodlo_pl": "kryteria rozruchowe silników SN (reguła solvera)",
+          "symbol_latex": "I^{2} t",
+          "warunek_latex": "k_{LR}^2 \\cdot \\dfrac{t_{\\mathrm{rozruchu}}}{t_{\\mathrm{utyku}}} \\leq 1",
+          "wzor_latex": "",
+          "wzor_opis_pl": ""
         },
         {
           "wielkosc_pl": "Moment rozruchowy",
@@ -776,7 +872,11 @@
           "jednostka": "j.w.",
           "warunek_pl": "M_r > M_obciążenia przy rozruchu",
           "wartosc_graniczna": "M_r > M_obc",
-          "zrodlo_pl": "kryteria rozruchowe silników SN (reguła solvera)"
+          "zrodlo_pl": "kryteria rozruchowe silników SN (reguła solvera)",
+          "symbol_latex": "M_r",
+          "warunek_latex": "M_r > M_{\\mathrm{obc}}",
+          "wzor_latex": "M_r > M_{\\mathrm{obc}}",
+          "wzor_opis_pl": "M_r — moment rozruchowy silnika w jednostkach względnych; M_obc — moment obciążenia napędzanego mechanizmu przy rozruchu, w tych samych jednostkach. Granica nie jest stałą liczbą — jest porównaniem dwóch wielkości z tego samego biegu."
         }
       ],
       "bez_podstawy_pl": null,
@@ -871,7 +971,8 @@
       "prezentowany": true,
       "powod_wycofania_pl": null,
       "katalog_odniesienia": null,
-      "uwagi_metody_pl": []
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
     },
     {
       "kod": "reliability_contingency",
@@ -886,22 +987,26 @@
         {
           "symbol": "SAIDI",
           "nazwa_pl": "Średni czas przerw na odbiorcę",
-          "jednostka": "min/rok"
+          "jednostka": "min/rok",
+          "symbol_latex": "\\mathrm{SAIDI}"
         },
         {
           "symbol": "SAIFI",
           "nazwa_pl": "Średnia liczba przerw na odbiorcę",
-          "jednostka": "1/rok"
+          "jednostka": "1/rok",
+          "symbol_latex": "\\mathrm{SAIFI}"
         },
         {
           "symbol": "CAIDI",
           "nazwa_pl": "Średni czas trwania jednej przerwy",
-          "jednostka": "min"
+          "jednostka": "min",
+          "symbol_latex": "\\mathrm{CAIDI}"
         },
         {
           "symbol": "MAIFI",
           "nazwa_pl": "Średnia liczba przerw krótkich",
-          "jednostka": "1/rok"
+          "jednostka": "1/rok",
+          "symbol_latex": "\\mathrm{MAIFI}"
         }
       ],
       "podstawa_oceny": [],
@@ -952,7 +1057,8 @@
       "katalog_odniesienia": "reliability-defaults",
       "uwagi_metody_pl": [
         "Ranking dotkliwości kontyngencji N-1 nie jest prezentowany z tej analizy — kanon liczy go pełnym rozpływem na ekranie „Kontyngencje N-1”."
-      ]
+      ],
+      "zakres_oceny": "kryterium"
     },
     {
       "kod": "uncertainty_sensitivity",
@@ -967,12 +1073,14 @@
         {
           "symbol": "U_95",
           "nazwa_pl": "Niepewność rozszerzona wyniku (k = 2)",
-          "jednostka": "%"
+          "jednostka": "%",
+          "symbol_latex": "U_{95}"
         },
         {
           "symbol": "udział",
           "nazwa_pl": "Udział parametru w całkowitej niepewności",
-          "jednostka": "%"
+          "jednostka": "%",
+          "symbol_latex": "\\text{udział}"
         }
       ],
       "podstawa_oceny": [],
@@ -1013,7 +1121,8 @@
       "prezentowany": true,
       "powod_wycofania_pl": null,
       "katalog_odniesienia": null,
-      "uwagi_metody_pl": []
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
     },
     {
       "kod": "voltage_stability",
@@ -1035,7 +1144,8 @@
       "prezentowany": false,
       "powod_wycofania_pl": "Solver nie wyznacza już wielkości tej analizy: wskaźniki stały na współczynnikach bez pokrycia w danych i normie oraz na mocy zwarciowej węzłów podstawianej z napięcia znamionowego. Powrót wymaga policzenia wielkości rozpływem, nie przywrócenia tabel.",
       "katalog_odniesienia": null,
-      "uwagi_metody_pl": []
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
     },
     {
       "kod": "hosting_capacity",
@@ -1057,7 +1167,8 @@
       "prezentowany": false,
       "powod_wycofania_pl": "Lokalna impedancja Thevenina per szyna, metodą Monte Carlo, bez sprzężenia sieci — kanon liczy zdolność przyłączeniową pełnym rozpływem przez wariant sieci (ekran „OZE › Zdolność przyłączeniowa”). Uruchomienie nowego biegu jest odmawiane.",
       "katalog_odniesienia": null,
-      "uwagi_metody_pl": []
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
     },
     {
       "kod": "opf_loss_lcc",
@@ -1079,7 +1190,8 @@
       "prezentowany": false,
       "powod_wycofania_pl": "Straty ze współczynnikiem obciążenia 0,45 zaszytym w solverze i zaczepem zawsze zerowym — kanon czyta straty z karty katalogowej transformatora (ekran „Kryteria › Wyposażenie”) i optymalizuje zaczep w badaniach OLTC. Uruchomienie nowego biegu jest odmawiane.",
       "katalog_odniesienia": null,
-      "uwagi_metody_pl": []
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
     },
     {
       "kod": "benchmark_validation",
@@ -1101,7 +1213,8 @@
       "prezentowany": false,
       "powod_wycofania_pl": "Bada, czy solver odtwarza sieci odniesienia — sprawdza narzędzie, nie projekt; miejsce tego sprawdzenia to kontrola jakości, nie ekran projektanta.",
       "katalog_odniesienia": null,
-      "uwagi_metody_pl": []
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
     }
   ]
 }

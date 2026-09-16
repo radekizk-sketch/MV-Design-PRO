@@ -65,6 +65,10 @@ export const OCENA_STRINGS = {
   liczbaElementow: (n: number): string =>
     n === 1 ? '1 element' : n >= 2 && n <= 4 ? `${n} elementy` : `${n} elementów`,
   identyfikatorModelu: 'identyfikator w modelu',
+  // Karta V12.7 §0.7 — werdykt ograniczony do zakresu z kontraktu (`zakres_oceny`),
+  // NIGDY z domysłu UI. „uklad" = kryterium złożone: ocenia CAŁY tor/układ (kilka
+  // powiązanych sprawdzeń naraz), nie pojedynczą wielkość fizyczną elementu.
+  zakresUklad: 'ocena całego układu',
 
   // Działania (powiązania z siecią)
   pokazNaSchemacie: 'Pokaż na schemacie',

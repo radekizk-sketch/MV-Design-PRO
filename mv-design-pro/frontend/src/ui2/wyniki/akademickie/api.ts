@@ -136,6 +136,13 @@ export interface KrokSladu {
   readonly proof_ref: string;
   readonly proof_status: string;
   readonly reporting_status: string;
+  /** Karta V12.7 §0.1 — zapis LaTeX `formula` (`application/analyses/
+   *  v126_wzory.py`, dołożony WIDOKIEM API `/trace`). Brak = krok bez wpisu
+   *  w rejestrze (nie renderuj `formula` jako matematyki — pokaż tekst). */
+  readonly formula_latex?: string;
+  /** Karta V12.7 §0.1 — zapis LaTeX podstawienia Z LICZB KROKU, gdy rejestr
+   *  go dostarcza; brak = `substitution` zostaje prozą (nie LaTeX). */
+  readonly substitution_latex?: string;
 }
 
 /** Odpowiedź `GET …/trace` (`AcademicWhiteBoxTraceV1`). */
@@ -159,6 +166,10 @@ export interface KrokDowodu {
   readonly result_pl?: string | null;
   readonly unit_check: string | null;
   readonly proof_status: string;
+  /** Karta V12.7 §0.1 — patrz `KrokSladu.formula_latex`, ta sama zasada. */
+  readonly formula_latex?: string;
+  /** Karta V12.7 §0.1 — patrz `KrokSladu.substitution_latex`. */
+  readonly substitution_latex?: string;
 }
 
 /** Odpowiedź `GET …/proof` (`AcademicProofPackV1`). */
@@ -320,6 +331,8 @@ export interface WielkoscKatalogu {
   readonly symbol: string;
   readonly nazwa_pl: string;
   readonly jednostka: string;
+  /** Karta V12.7 §0.1 — zapis LaTeX symbolu, renderowany `MathInline`. */
+  readonly symbol_latex: string;
 }
 
 /**
@@ -335,6 +348,15 @@ export interface PodstawaOceny {
   readonly warunek_pl: string;
   readonly wartosc_graniczna: number | string;
   readonly zrodlo_pl: string;
+  /** Karta V12.7 §0.1 — zapis LaTeX symbolu, renderowany `MathInline`. */
+  readonly symbol_latex: string;
+  /** Karta V12.7 §0.1 — pełna nierówność/warunek jako LaTeX, `MathInline`. */
+  readonly warunek_latex: string;
+  /** Karta V12.7 §0.1 — LaTeX wzoru granicy (`MathBlock`), gdy `wartosc_graniczna`
+   *  jest napisem (granica wyznaczana wzorem); pusty inaczej. */
+  readonly wzor_latex: string;
+  /** Opis parametrów `wzor_latex` — pusty, gdy `wzor_latex` pusty. */
+  readonly wzor_opis_pl: string;
 }
 
 /** Dana czytana z modelu sieci (`DanaZModelu.to_dict`) — opis, nie wartość. */
@@ -384,6 +406,10 @@ export interface KartaKatalogu {
   readonly powod_wycofania_pl: string | null;
   readonly katalog_odniesienia: string | null;
   readonly uwagi_metody_pl: readonly string[];
+  /** Karta V12.7 §0.7 — zakres, jaki wolno nazwać werdyktowi tego rodzaju:
+   *  `"kryterium"` (WYŁĄCZNIE tę wielkość) albo `"uklad"` (komplet kryteriów
+   *  oceny wykonany — wolno nazwać cały obiekt). UI czyta pole, nie zgaduje. */
+  readonly zakres_oceny: 'kryterium' | 'uklad';
 }
 
 /** Pobiera katalog kart analiz Z BACKENDU (kolejność = kolejność grup i kart kontraktu). */

@@ -28,7 +28,12 @@ export function traceStepsFixture(): TraceStep[] {
         r_ohm: { value: 0.5, unit: 'Ω' },
         x_ohm: { value: 1.2, unit: 'Ω' },
       },
+      // SC (`short_circuit_iec60909.py`) niesie parę `substitution`/
+      // `substitution_latex` — dziś zwykle IDENTYCZNE (oba LaTeX); fixture
+      // odzwierciedla to wprost (karta V12.7 §0.1: podstawienie renderowane
+      // przez MathBlock idzie WYŁĄCZNIE z `substitution_latex`).
       substitution: '$$Z_k = \\sqrt{0{,}5^2 + 1{,}2^2}$$',
+      substitution_latex: '$$Z_k = \\sqrt{0{,}5^2 + 1{,}2^2}$$',
       result: {
         z_thevenin_ohm: { value: 1.3, unit: 'Ω' },
       },
@@ -56,6 +61,21 @@ export function traceStepsFixture(): TraceStep[] {
       result: {
         i_a: { value: 200, unit: 'A' },
       },
+    },
+    {
+      step: 4,
+      title: 'Rozpływ mocy przy odkształceniu (V12.6 — bez LaTeX podstawienia)',
+      formula_latex: 'U_h = Y_h^{-1} \\cdot I_h',
+      inputs: { harmonics: { value: 5 } },
+      // Krok solvera V12.6 (`network_model/solvers/v126_academic.py`) niesie
+      // WYŁĄCZNIE opis metody prozą w `substitution` — bez `substitution_latex`.
+      // Karta V12.7 §0.1: proza NIE idzie przez MathBlock; widok pokazuje ją
+      // jako zwykły tekst (`podstawienieTekst`), `podstawienie` (LaTeX) zostaje
+      // `null`.
+      substitution:
+        'Macierz admitancyjna budowana osobno dla każdej harmonicznej; wektor prądów '
+        + 'wymuszających z widm źródeł odkształcających.',
+      result: { buses_evaluated: { value: 12 } },
     },
   ];
 }

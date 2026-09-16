@@ -55,6 +55,8 @@ function element(over: Partial<OcenaElementu> = {}): OcenaElementu {
     jednostka: '%',
     margines: 17.6,
     margines_jednostka: 'pkt proc.',
+    // V12.7: wzor marginesu z kontraktu (LaTeX), wymagane pole OcenaElementu.
+    margines_wzor_latex: 'I_{dd} - I',
     uwaga_pl: null,
     uzasadnienie_pl: null,
     wniosek_pl: 'Gałąź obciążona w granicy obciążalności długotrwałej.',
@@ -70,6 +72,10 @@ function pozycja(over: Partial<PozycjaOceny> = {}): PozycjaOceny {
     nazwa_pl: 'Obciążenie długotrwałe gałęzi',
     warunek_pl: '$I \\le I_{dd}$',
     norma_pl: 'Obciążalność katalogowa',
+    // V12.7: symbol i warunek jako LaTeX + zakres oceny (wymagane pola PozycjaOceny).
+    symbol_latex: 'I',
+    warunek_latex: 'I \\le I_{dd}',
+    zakres_oceny: 'kryterium',
     zrodlo: 'PF',
     element_rodzaj: 'galaz_liniowa',
     stan: 'SPELNIONE',

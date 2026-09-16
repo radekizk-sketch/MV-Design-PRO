@@ -57,6 +57,13 @@ jobs:
       - name: Local Truth Guard
         working-directory: mv-design-pro
         run: python scripts/local_truth_guard.py
+      # Karta V12.7 §0.11/§0.12 — matematyka widoczna dla projektanta renderuje
+      # sie KaTeX-em (`ui/proof/MathRenderer.tsx`), nigdy jako surowy zapis
+      # ASCII. Miejsce: TA bramka — skanuje teksty uzytkownika `ui2/**`, tak
+      # samo jak sasiednie kroki (codenames, dialog completeness, local truth).
+      - name: UI Math Guard
+        working-directory: mv-design-pro
+        run: python scripts/ui_math_guard.py
       # Kanon nawigacji (D1+D2+D4). Miejsce: TA bramka, nie `arch-guard.yml` —
       # guard czyta wylacznie `frontend/src` i pilnuje kontraktu warstwy
       # prezentacji (trasy, powloka, paleta), dokladnie jak sasiednie kroki

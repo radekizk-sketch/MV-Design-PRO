@@ -1305,7 +1305,18 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zyje w `analysis/normative/`, poza 5 skanowanymi korzeniami tego guarda (network_model,
     # solver_input, enm, application, api) — plikow_skanowanych/zapadka/wykluczenia per
     # korzen bez zmian (pomiar guardem na drzewie karty, zero nowych podstawien).
-    assert "Pol kontraktow wejsciowych: 3515." in wyjscie, wyjscie
+    # Karta V12.7 (2026-09-16): POMIAR guardem 3506 -> 3512 (+6 nazw pol, zbior
+    # globalny wiec bez powtorzen): `application/analyses/v126_katalog.py` —
+    # `symbol_latex`, `warunek_latex`, `wzor_latex`, `wzor_opis_pl`, `zakres_oceny`
+    # (pola LaTeX/zakresu katalogu V12.6, karta §0.1/§0.7); `application/analyses/
+    # werdykt_projektowy.py` — `margines_wzor_latex` (pozostale nowe pola tego
+    # pliku, symbol_latex/warunek_latex/zakres_oceny, juz w zbiorze z katalogu —
+    # deduplikacja nazw). Zero naruszen (zapadka/wykluczenia bez zmian) — nowe pola
+    # sa napisowe (LaTeX/opis), zadne nie przechodzi przez galaz zapasowa liczbowa.
+    # Odbior obu kart na jednym drzewie (2026-09-16, po W3-J i V12.7 razem): POMIAR guardem
+    # na drzewie scalonym = 3521 (zbiory nazw pol obu kart rozlaczne — sprawdzone
+    # pomiarem, nie arytmetyka: liczba nizej pochodzi z biegu guarda na tym drzewie).
+    assert "Pol kontraktow wejsciowych: 3521." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1322,7 +1333,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # trace_emitters/{__init__,deterministic_ids,load_flow_emitter,protection_emitter,
         # sc_emitter,wynik}.py` + `application/trace_export/{__init__,latex_generator}.py`
         # skasowane w calosci; +1 W3-G1: `application/analyses/power_flow_reconstruction.py`).
-        "Przeskanowano 479 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta V12.7 (2026-09-16): 479 -> 480 (+1 nowy modul `application/analyses/
+        # v126_wzory.py` — rejestr wzorow LaTeX kroku sladu, karta §0.1).
+        "Przeskanowano 480 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1351,7 +1364,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
-        "  application: pliki_skanowane=229, dlug=30 plikow/suma 91, "
+        # Karta V12.7 (2026-09-16): application 229 -> 230 (+1 v126_wzory.py, patrz uzasadnienie
+        # wyzej); dlug/wykluczenia application bez zmian (30/91, 4/10) — nowy plik nie ma
+        # zadnej galezi zapasowej liczbowej.
+        "  application: pliki_skanowane=230, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=62, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]

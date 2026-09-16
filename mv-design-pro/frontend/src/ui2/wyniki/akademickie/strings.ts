@@ -67,13 +67,24 @@ export const AKADEMICKIE_STRINGS = {
   kartaPodstawa: 'Podstawa oceny',
   kartaPodstawaBrak: 'Brak podstawy normatywnej',
   kartaStanDanych: 'Stan danych',
-  stanDanychPotwierdzona: 'dane kompletne — gotowość potwierdzona',
+  // Karta V12.7 §0.5: „DANE KOMPLETNE · GOTOWOŚĆ POTWIERDZONA" (wielkie litery,
+  // odróżnialny wygląd od stanu brakującego — klasa CSS `--ok` vs `--brak`).
+  stanDanychPotwierdzona: 'DANE KOMPLETNE · GOTOWOŚĆ POTWIERDZONA',
+  // Odmiana liczebnika PL po „brakuje" (dopełniacz — rządzi przypadkiem
+  // niezależnie od liczby): 1 danej wymaganej / 2–4 i 5+ danych wymaganych
+  // (karta V12.7 §0.5 — dwie POSTACIE słowne, trzy nazwane progi liczbowe;
+  // liczba n z gotowości backendu, nigdy liczona z frontu).
   stanDanychBrak: (n: number): string =>
-    n === 1 ? 'brakuje danych: 1 warunek niespełniony' : `brakuje danych: ${n} warunków niespełnionych`,
+    n === 1 ? 'BRAKUJE 1 DANEJ WYMAGANEJ' : `BRAKUJE ${n} DANYCH WYMAGANYCH`,
   stanDanychWycofana: 'analiza wycofana z powierzchni',
   stanDanychSprawdzanie: 'sprawdzanie danych modelu…',
   stanDanychNieustalony: 'stan danych nieustalony — sprawdzenie nie powiodło się',
+  // Karta V12.7 §0.5: akcja karty zależy od stanu danych — „Uzupełnij dane"
+  // (gotowość NIEPOTWIERDZONA) prowadzi do TEGO SAMEGO widoku analizy (formularz
+  // i lista braków są tam), „Uruchom analizę" (gotowość POTWIERDZONA) — tak samo.
   kartaOtworz: 'Otwórz analizę',
+  kartaUzupelnijDane: 'Uzupełnij dane',
+  kartaUruchomAnalize: 'Uruchom analizę',
   powrotDoKatalogu: 'Katalog analiz',
   powrotDoKataloguOpis: 'Wróć do katalogu kart analiz specjalistycznych',
 
@@ -119,7 +130,7 @@ export const AKADEMICKIE_STRINGS = {
   daneZModeluBrak: 'Model nie dostarcza tej analizie żadnej danej — patrz „Brakujące".',
   daneZPrzypadku: 'Z przypadku obliczeniowego',
   daneZPrzypadkuOpis:
-    'Zatwierdzony model sieci tego przypadku (rewizja i odcisk powyżej). Inne nastawy '
+    'Zatwierdzony model sieci tego przypadku (rewizja powyżej). Inne nastawy '
     + 'przypadku obliczeniowego nie wchodzą do tej analizy.',
   daneOdUzytkownika: 'Od użytkownika',
   daneOdUzytkownikaOpis:
@@ -232,6 +243,30 @@ export const AKADEMICKIE_STRINGS = {
   parametryMetodyTytul: 'Metody dostępne w przekaźniku',
   parametrySzynaWybierz: 'wybierz szynę modelu',
   parametrySzynaBrak: 'model nie zawiera szyn',
+  // Karta V12.7 §0.4: podsumowanie formularza — liczby z ODPOWIEDZI GOTOWOŚCI
+  // backendu (braki z kluczem parametru), nigdy policzone z wartości w polach.
+  // Dane opcjonalne: WYŁĄCZNIE liczba dostępnych — backend nie zgłasza braku
+  // pola opcjonalnego (jego pustka nie jest błędem), więc „ile wypełniono" nie
+  // ma odpowiednika w gotowości; pokazanie takiej liczby liczonej z DOM byłoby
+  // dokładnie zakazanym „liczeniem z DOM".
+  parametryPodsumowanie: (p: {
+    wymaganeSpelnione: number;
+    wymaganeLacznie: number;
+    opcjonalneLacznie: number;
+    gotowoscPotwierdzona: boolean;
+  }): string =>
+    `Dane wymagane: ${p.wymaganeSpelnione}/${p.wymaganeLacznie} · `
+    + `Dane opcjonalne: ${p.opcjonalneLacznie} dostępnych · `
+    + `Gotowość: ${p.gotowoscPotwierdzona ? 'potwierdzona' : 'niepotwierdzona'}`,
+
+  // Kontrakt danych analizy (karta V12.7 §0.4) — pełna tabela `od_uzytkownika`
+  kontraktDanychPokaz: 'Pokaż kontrakt danych analizy',
+  kontraktDanychUkryj: 'Ukryj kontrakt danych analizy',
+  kontraktKolKlucz: 'Klucz kontraktu',
+  kontraktKolNazwa: 'Nazwa',
+  kontraktKolJednostka: 'Jednostka',
+  kontraktKolWymagane: 'Wymagane',
+  kontraktKolOpis: 'Opis',
 
   // Wynik
   wynikPusty: 'Solver zwrócił wynik bez pól',

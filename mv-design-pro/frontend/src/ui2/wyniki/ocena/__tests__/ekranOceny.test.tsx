@@ -15,7 +15,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { useAppStateStore } from '../../../../ui/app-state';
@@ -122,15 +122,21 @@ describe('EkranOceny — realna ścieżka danych', () => {
 });
 
 describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi sieci złotej', () => {
-  it('PODSTAWA OCENY: projekt, przypadek, wariant, rewizja z odciskiem, przebiegi ZAKOŃCZONE i aktualne, pakiet wyników', async () => {
+  it('PODSTAWA OCENY: projekt, przypadek, wariant, rewizja, przebiegi ZAKOŃCZONE i aktualne, pakiet wyników; odcisk modelu poza pierwszym planem, w „Informacje audytowe" (karta V12.7 §0.3)', async () => {
     fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_OCENA));
     render(<EkranOceny trybZaawansowania="expert" />);
     const podstawa = await screen.findByTestId('mvd-ocena-podstawa');
     expect(podstawa).toHaveTextContent('Przyłączenie farmy PV 8 MW');
     expect(podstawa).toHaveTextContent('Stan normalny');
     expect(podstawa).toHaveTextContent(T.podstawaWariantOpis);
-    expect(within(podstawa).getByTestId('mvd-ocena-rewizja')).toHaveTextContent(FIXTURA_OCENA.model_hash.slice(0, 12));
+    expect(within(podstawa).getByTestId('mvd-ocena-rewizja')).not.toHaveTextContent(
+      FIXTURA_OCENA.model_hash.slice(0, 12),
+    );
     expect(within(podstawa).getByTestId('mvd-ocena-pakiet')).toHaveTextContent(`${T.pakietRozplyw}, ${T.pakietZwarcia}`);
+    // Odcisk modelu: zwinięty domyślnie, ujawniony klikiem natywnym.
+    expect(within(podstawa).queryByText(FIXTURA_OCENA.model_hash)).not.toBeInTheDocument();
+    fireEvent.click(within(podstawa).getByTestId('mvd-ocena-informacje-audytowe-przelacz'));
+    expect(within(podstawa).getByText(FIXTURA_OCENA.model_hash)).toBeInTheDocument();
     for (const rodzaj of ['PF', 'short_circuit_sn'] as const) {
       const przebieg = within(podstawa).getByTestId(`mvd-ocena-przebieg-${rodzaj}`);
       expect(przebieg).toHaveTextContent(T.przebiegZakonczony);
@@ -227,6 +233,37 @@ describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi siec
     expect(screen.getByTestId('mvd-ocena-licznik-nie-spelnia')).toHaveTextContent(String(FIXTURA_PRZEKROCZENIA.ocena.nie_spelnia));
   });
 
+  it('wiarygodność wyniku zwarciowego ≠ spełnienie wymagań (karta V12.7 §0.9): dwie NIEZALEŻNE osie w tym samym biegu', async () => {
+    fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_PRZEKROCZENIA));
+    render(<EkranOceny />);
+    await screen.findByTestId('mvd-ocena-podsumowanie');
+    // Kontrola dodatnia fixtury: wiarygodność SC jest SPEŁNIA (wynik policzony wiarygodnie),
+    // a w TYM SAMYM biegu inne kryteria mają NIE SPEŁNIA i BRAK PODSTAW — niezależne osie,
+    // nigdy scalone w jedną flagę.
+    const wiarygodnosc = FIXTURA_PRZEKROCZENIA.pozycje.find((p) => p.kryterium_id === 'wynik.wiarygodnosc_zwarciowa')!;
+    expect(wiarygodnosc.elementy.every((e) => e.wynik === 'SPELNIA')).toBe(true);
+    const nieSpelnia = FIXTURA_PRZEKROCZENIA.pozycje.find((p) => p.elementy.some((e) => e.wynik === 'NIE_SPELNIA'))!;
+    const brakPodstaw = FIXTURA_PRZEKROCZENIA.pozycje.find((p) => p.elementy.some((e) => e.wynik === 'BRAK_PODSTAW'))!;
+    expect(nieSpelnia.kryterium_id).not.toBe(wiarygodnosc.kryterium_id);
+    expect(brakPodstaw.kryterium_id).not.toBe(wiarygodnosc.kryterium_id);
+    // Wiersz wiarygodności widoczny z wynikiem SPEŁNIA, niezmieniony przez NIE SPEŁNIA/BRAK PODSTAW gdzie indziej.
+    const elementWiarygodnosci = wiarygodnosc.elementy[0];
+    const wierszWiarygodnosci = screen.getByTestId(
+      `mvd-ocena-element-${wiarygodnosc.kryterium_id}-${elementWiarygodnosci.element_id}`,
+    );
+    expect(within(wierszWiarygodnosci).getByTestId('mvd-ocena-wynik')).toHaveTextContent(T.wynikSpelnia);
+    const elementNieSpelnia = nieSpelnia.elementy.find((e) => e.wynik === 'NIE_SPELNIA')!;
+    const wierszNieSpelnia = screen.getByTestId(
+      `mvd-ocena-element-${nieSpelnia.kryterium_id}-${elementNieSpelnia.element_id}`,
+    );
+    expect(within(wierszNieSpelnia).getByTestId('mvd-ocena-wynik')).toHaveTextContent(T.wynikNieSpelnia);
+    const elementBrakPodstaw = brakPodstaw.elementy.find((e) => e.wynik === 'BRAK_PODSTAW')!;
+    const wierszBrakPodstaw = screen.getByTestId(
+      `mvd-ocena-element-${brakPodstaw.kryterium_id}-${elementBrakPodstaw.element_id ?? 'agregat'}`,
+    );
+    expect(within(wierszBrakPodstaw).getByTestId('mvd-ocena-wynik')).toHaveTextContent(T.wynikBrakPodstaw);
+  });
+
   it('język formalny (prompt §6): żadnego PASS/WARN/FAIL ani żargonu interfejsu w widocznym tekście', async () => {
     for (const fixtura of [FIXTURA_OCENA, FIXTURA_PRZEKROCZENIA]) {
       fetchMock.mockResolvedValue(odpowiedzOk(fixtura));
@@ -266,6 +303,59 @@ describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi siec
       'Brak zakończonego biegu rozpływu mocy dla tego kryterium.',
     );
     expect(pozycjeBezPodstaw({ ...FIXTURA_OCENA, pozycje: [bezBiegu] })).toHaveLength(1);
+  });
+
+  it('werdykt układu (karta V12.7 §0.7): znacznik z pola zakres_oceny, NIGDY z domysłu — TYLKO dla "uklad"', async () => {
+    const napiecie = FIXTURA_OCENA.pozycje.find((p) => p.kryterium_id === 'napiecie.odchylenie')!;
+    expect(napiecie.zakres_oceny).toBe('kryterium'); // kontrola dodatnia fixtury: domyślny zakres
+    const jakoUklad: PozycjaOceny = { ...napiecie, zakres_oceny: 'uklad' };
+    fetchMock.mockResolvedValue(
+      odpowiedzOk({
+        ...FIXTURA_OCENA,
+        pozycje: FIXTURA_OCENA.pozycje.map((p) => (p.kryterium_id === 'napiecie.odchylenie' ? jakoUklad : p)),
+      }),
+    );
+    render(<EkranOceny />);
+    await screen.findByTestId('mvd-ocena-podsumowanie');
+    expect(screen.getByTestId('mvd-ocena-zakres-uklad-napiecie.odchylenie')).toHaveTextContent(T.zakresUklad);
+    // Pozycja domyślna (kryterium) w tej samej odpowiedzi NIE niesie znacznika.
+    const inna = FIXTURA_OCENA.pozycje.find((p) => p.kryterium_id !== 'napiecie.odchylenie' && p.elementy.length > 0)!;
+    expect(screen.queryByTestId(`mvd-ocena-zakres-uklad-${inna.kryterium_id}`)).not.toBeInTheDocument();
+  });
+
+  it('werdykt układu bez zakończonego biegu: znacznik widoczny też w liście „bez podstaw"', async () => {
+    const jakoUkladBezBiegu: PozycjaOceny = {
+      ...FIXTURA_OCENA.pozycje[0],
+      kryterium_id: 'dobor.test_uklad_bez_biegu',
+      nazwa_pl: 'Kryterium złożone bez biegu',
+      zakres_oceny: 'uklad',
+      stan: 'NIESPRAWDZONE',
+      elementy: [],
+      powod_kod: 'verdict.run_missing',
+      powod_pl: 'Brak zakończonego biegu dla tego kryterium złożonego.',
+    };
+    fetchMock.mockResolvedValue(
+      odpowiedzOk({ ...FIXTURA_OCENA, pozycje: [...FIXTURA_OCENA.pozycje, jakoUkladBezBiegu] }),
+    );
+    render(<EkranOceny />);
+    await screen.findByTestId('mvd-ocena-podsumowanie');
+    const sekcja = screen.getByTestId('mvd-ocena-bez-podstaw');
+    expect(within(sekcja).getByTestId('mvd-ocena-zakres-uklad-dobor.test_uklad_bez_biegu')).toHaveTextContent(
+      T.zakresUklad,
+    );
+  });
+
+  it('matematyka wyłącznie KaTeX (karta V12.7 §0.1/§0.11): symbol i warunek w .katex, zero ASCII "<=" / "sqrt(" w tekście', async () => {
+    fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_OCENA));
+    render(<EkranOceny trybZaawansowania="expert" />);
+    await screen.findByTestId('mvd-ocena-podsumowanie');
+    const napiecie = FIXTURA_OCENA.pozycje.find((p) => p.kryterium_id === 'napiecie.odchylenie')!;
+    const wiersz = screen.getByTestId(`mvd-ocena-element-${napiecie.kryterium_id}-${napiecie.elementy[0].element_id}`);
+    expect(within(wiersz).getAllByTestId('math-rendered').length).toBeGreaterThanOrEqual(2);
+    expect(wiersz.querySelectorAll('.katex').length).toBeGreaterThan(0);
+    const widoczny = tekstEkranu();
+    expect(widoczny).not.toMatch(/<=|>=/);
+    expect(widoczny).not.toMatch(/sqrt\(/);
   });
 });
 

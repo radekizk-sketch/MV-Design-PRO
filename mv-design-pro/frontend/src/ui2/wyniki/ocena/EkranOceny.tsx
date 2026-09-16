@@ -47,11 +47,13 @@ import {
 } from './model';
 import { OCENA_STRINGS as T } from './strings';
 import {
+  InformacjeAudytowe,
   PrzyciskAkcjiStanu,
   akcjaNaprawcza,
   useAkcjaPrzejdzDoPrzypadkow,
   usePoprawWModelu,
 } from '../wzorzec';
+import { MathInline } from '../../../ui/proof';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
@@ -88,13 +90,17 @@ function PodstawaOceny({ dane, trybEkspercki }: { dane: OdpowiedzOceny; trybEksp
         <WierszPodstawy etykieta={T.podstawaWariant}>{T.podstawaWariantOpis}</WierszPodstawy>
         <WierszPodstawy etykieta={T.podstawaRewizja} testid="mvd-ocena-rewizja">
           {rewizja !== null ? <span className="mvd-num">{rewizja}</span> : T.marginesBrak}
-          {' · '}
-          {T.podstawaOdcisk} <span className="mvd-num">{dane.model_hash.slice(0, 12)}</span>
+          {/* Karta V12.7 §0.3: odcisk modelu — „Informacje audytowe" poniżej. */}
         </WierszPodstawy>
         <WierszPodstawy etykieta={T.podstawaPakiet} testid="mvd-ocena-pakiet">
           {pakietWynikowPL(dane.zrodla)}
         </WierszPodstawy>
       </div>
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-ocena-informacje-audytowe"
+        wiersze={[{ etykieta: T.podstawaOdcisk, wartosc: dane.model_hash }]}
+      />
       <ul className="mvd-ocena-przebiegi" aria-label={T.podstawaPrzebiegi}>
         {przebiegi.map((zrodlo) => (
           <li
@@ -189,18 +195,36 @@ function WierszElementu({
       </td>
       <td className="mvd-ocena-wielkosc">
         {pozycja.wielkosc_pl}
-        {pozycja.symbol !== '' && (
+        {pozycja.symbol_latex !== '' && (
           <>
             {' '}
-            <span className="mvd-num">{pozycja.symbol}</span>
+            <span className="mvd-num">
+              <MathInline latex={pozycja.symbol_latex} />
+            </span>
           </>
         )}
       </td>
       <td className="mvd-num">{fmtWartoscZJednostka(element.wartosc, element.jednostka || pozycja.jednostka)}</td>
       <td className="mvd-num">{fmtOdniesienie(element, pozycja)}</td>
-      <td className="mvd-num">{fmtMargines(element)}</td>
+      <td className="mvd-num">
+        {fmtMargines(element)}
+        {element.margines !== null && element.margines_wzor_latex !== '' && (
+          <span className="mvd-ocena-margines-wzor">
+            <MathInline latex={element.margines_wzor_latex} />
+          </span>
+        )}
+      </td>
       <td className="mvd-ocena-podstawa-kryterium">
-        <TekstZWzorami tekst={podstawaOcenyPL(pozycja)} />
+        {pozycja.warunek_latex !== '' ? (
+          <>
+            {pozycja.norma_pl && <p className="mvd-ocena-podstawa-norma">{pozycja.norma_pl}</p>}
+            <span className="mvd-num">
+              <MathInline latex={pozycja.warunek_latex} />
+            </span>
+          </>
+        ) : (
+          <TekstZWzorami tekst={podstawaOcenyPL(pozycja)} />
+        )}
       </td>
       <td className="mvd-ocena-wynik" data-testid="mvd-ocena-wynik">
         {wynikPL(element.wynik)}
@@ -261,6 +285,11 @@ function TabelaPozycji({
       <div className="mvd-ocena-pozycja-glowa">
         <span className="mvd-ocena-etap">{pozycja.etap}</span>
         <h4 className="mvd-ocena-pozycja-tytul">{pozycja.nazwa_pl}</h4>
+        {pozycja.zakres_oceny === 'uklad' && (
+          <span className="mvd-ocena-znacznik-uklad" data-testid={`mvd-ocena-zakres-uklad-${pozycja.kryterium_id}`}>
+            {T.zakresUklad}
+          </span>
+        )}
         <span className="mvd-ocena-pozycja-licznik mvd-num">{T.liczbaElementow(pozycja.elementy.length)}</span>
       </div>
       <div className="mvd-ocena-tabela-otoczka">
@@ -407,6 +436,14 @@ export function EkranOceny({ trybZaawansowania = 'basic', onOtworzDowod }: Ekran
                   >
                     <span className="mvd-ocena-etap">{pozycja.etap}</span>
                     <span className="mvd-ocena-zakres-nazwa">{pozycja.nazwa_pl}</span>
+                    {pozycja.zakres_oceny === 'uklad' && (
+                      <span
+                        className="mvd-ocena-znacznik-uklad"
+                        data-testid={`mvd-ocena-zakres-uklad-${pozycja.kryterium_id}`}
+                      >
+                        {T.zakresUklad}
+                      </span>
+                    )}
                     <span className="mvd-ocena-zakres-powod">
                       {pozycja.powod_pl ?? pozycja.wiodacy_opis_pl ?? T.wynikBrakPodstaw}
                     </span>

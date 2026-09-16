@@ -353,8 +353,13 @@ export interface TraceStep {
   formula_latex?: string;
   /** Input values with units */
   inputs?: Record<string, TraceValue>;
-  /** Substitution string (formula with values) */
+  /** Substitution string (formula with values) — human/audit copy, NOT
+   *  guaranteed to be valid LaTeX (some solvers write Polish prose here). */
   substitution?: string;
+  /** LaTeX substitution (formula with values plugged in) — render this via
+   *  MathBlock, never bare `substitution` (card V12.7 §0.1). Absent when the
+   *  solver/registry has no clean LaTeX substitution for this step. */
+  substitution_latex?: string;
   /** Result values with units */
   result?: Record<string, TraceValue>;
   /** Additional notes or references */

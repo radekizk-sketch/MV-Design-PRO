@@ -264,7 +264,16 @@ POMIJANE_KATALOGI = {
 #: WerdyktResponse` odwolywal sie do nieistniejacego/niezaimportowanego typu;
 #: poprawny typ parametru `przekroczeniaWerdyktu` to `OdpowiedzOceny`, juz
 #: zaimportowany w tym pliku). Pomiar guardem po obu zmianach: 116.
-BUDZET_BLEDOW_POZA_BRAMKA = 116
+#: Karta V12.7 (2026-09-16, worktree z bazy `c307e95f`): pomiar na tym drzewie wykazal 121 (119 + 2 —
+#: `EkranAnalizAkademickich.test.tsx` uzywal `.at(-1)` na wyniku `.filter()`,
+#: co wymaga `lib` ES2022, a plik kompiluje sie POZA bramka wlasnie w TYM
+#: pomiarze; drugie wystapienie tego samego wzorca bylo w tym samym pliku,
+#: sprzed karty V12.7 — obie miejsca zaslugiwaly na naprawe, bo scieznka byla
+#: JUZ otwarta). Naprawiono U ZRODLA (indeksowanie `tablica[tablica.length -
+#: 1]` zamiast `.at(-1)`, bez zmiany semantyki) — pomiar po naprawie: 118.
+#: Odbior W3-J + V12.7 na jednym drzewie (2026-09-16): budzet z POMIARU guardem na drzewie
+#: scalonym (nie z arytmetyki kart): 114 — V12.7 wniosla 3 nowe bledy typow w fixturach testow poza bramka (nowe wymagane pola kontraktu symbol_latex/warunek_latex/zakres_oceny/margines_wzor_latex w ocena/model.test.ts i co-wymaga-uwagi/model.test.ts) i zdjela 2 (.at(-1)); przy odbiorze naprawione U ZRODLA (fixtury uzupelnione o pola kontraktu), pomiar po naprawie 114 (116 z drzewa W3-J - 2 zdjete .at(-1) = 114).
+BUDZET_BLEDOW_POZA_BRAMKA = 114
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

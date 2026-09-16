@@ -177,6 +177,20 @@
   padding: 8px;
 }
 
+/* ---- podsumowanie formularza i kontrakt danych (karta V12.7 §0.4) ---- */
+.mvd-akad-parametry-podsumowanie {
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-akad-kontrakt {
+  margin-top: 12px;
+}
+
 /* ---- wiersze wyniku ---- */
 .mvd-akad-grupa {
   margin-top: 10px;

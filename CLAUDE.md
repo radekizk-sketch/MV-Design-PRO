@@ -897,6 +897,11 @@ Historical K30 handoff: `mv-design-pro/docs/audit/K30_SESSION_HANDOFF_2026-05-16
 3. Use Polish labels, no project codenames
 4. Add tests (Vitest for unit, Playwright for e2e)
 5. Run `npm run guard:codenames` and `scripts/forbidden_ui_terms_guard.py` to verify
+6. Any math shown to the engineer (symbol, condition, formula) must render via
+   `ui/proof/MathRenderer.tsx` from a backend `*_latex` field — never as ASCII
+   text. Production metadata (`run_id`, hashes, solver version) stays out of
+   the first-plan view via the shared `ui2/wyniki/wzorzec/InformacjeAudytowe`
+   component. See `mv-design-pro/docs/uiux/KONTRAKT_PREZENTACJI_INZYNIERSKIEJ_V12_7.md`.
 
 ### Working with Study Cases
 - Cases store config only, not model data

@@ -253,10 +253,28 @@ _KLUCZE_KARTY: frozenset[str] = frozenset(
         "powod_wycofania_pl",
         "katalog_odniesienia",
         "uwagi_metody_pl",
+        # Karta V12.7 §0.7: zakres, jaki wolno nazwać werdyktowi tego rodzaju.
+        "zakres_oceny",
     }
 )
 _KLUCZE_DANE: frozenset[str] = frozenset({"z_modelu", "od_uzytkownika", "domyslne_solvera"})
 _KLUCZE_GRUPA: frozenset[str] = frozenset({"kod", "nazwa_pl"})
+# Karta V12.7 §0.1: LaTeX addytywnie na WielkoscGlowna/PodstawaOceny.
+_KLUCZE_WIELKOSC: frozenset[str] = frozenset({"symbol", "nazwa_pl", "jednostka", "symbol_latex"})
+_KLUCZE_PODSTAWA: frozenset[str] = frozenset(
+    {
+        "wielkosc_pl",
+        "symbol",
+        "jednostka",
+        "warunek_pl",
+        "wartosc_graniczna",
+        "zrodlo_pl",
+        "symbol_latex",
+        "warunek_latex",
+        "wzor_latex",
+        "wzor_opis_pl",
+    }
+)
 
 
 def test_to_dict_ma_dokladnie_kontraktowe_klucze() -> None:
@@ -265,6 +283,31 @@ def test_to_dict_ma_dokladnie_kontraktowe_klucze() -> None:
         assert set(d.keys()) == _KLUCZE_KARTY, karta.kod
         assert set(d["grupa"].keys()) == _KLUCZE_GRUPA, karta.kod
         assert set(d["dane"].keys()) == _KLUCZE_DANE, karta.kod
+        for wielkosc in d["wielkosci_glowne"]:
+            assert set(wielkosc.keys()) == _KLUCZE_WIELKOSC, (karta.kod, wielkosc)
+        for podstawa in d["podstawa_oceny"]:
+            assert set(podstawa.keys()) == _KLUCZE_PODSTAWA, (karta.kod, podstawa)
+
+
+def test_zakres_oceny_jest_kryterium_dla_wszystkich_rodzajow_v126() -> None:
+    """Karta V12.7 §0.7 — żaden rodzaj V12.6 nie ocenia kompletu kryteriów
+    jednego obiektu (każdy sprawdza jedną wielkość fizyczną wobec jednej
+    granicy albo w ogóle nie stosuje progu), więc żaden nie dostaje
+    szerszego zakresu — pin z pomiaru, nie z domysłu."""
+    for karta in KATALOG_ANALIZ_V126:
+        assert karta.zakres_oceny == "kryterium", karta.kod
+
+
+def test_katalog_latex_bez_pustych_symboli_i_warunkow() -> None:
+    """Karta V12.7 §0.1 — test kompletności: zero pustych `*_latex` w katalogu."""
+    for karta in KATALOG_ANALIZ_V126:
+        for wielkosc in karta.wielkosci_glowne:
+            assert wielkosc.symbol_latex.strip() != "", (karta.kod, wielkosc.symbol)
+        for podstawa in karta.podstawa_oceny:
+            assert podstawa.symbol_latex.strip() != "", (karta.kod, podstawa.symbol)
+            assert podstawa.warunek_latex.strip() != "", (karta.kod, podstawa.symbol)
+            if isinstance(podstawa.wartosc_graniczna, str):
+                assert podstawa.wzor_latex.strip() != "", (karta.kod, podstawa.symbol)
 
 
 # ---------------------------------------------------------------------------

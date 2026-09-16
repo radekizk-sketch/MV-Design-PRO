@@ -191,6 +191,21 @@
   color: var(--mvd-muted);
   font-size: 11px;
 }
+/* Karta V12.7 §0.7 — znacznik zakresu werdyktu z kontraktu (`zakres_oceny ===
+   'uklad'`), NIGDY z domysłu UI. Odróżnia kryterium złożone (cały tor/układ)
+   od domyślnego kryterium pojedynczej wielkości fizycznej. */
+.mvd-ocena-znacznik-uklad {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--mvd-accent);
+  color: var(--mvd-accent);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
 .mvd-ocena-tabela-otoczka {
   overflow-x: auto;
 }
@@ -231,6 +246,16 @@
   min-width: 180px;
   color: var(--mvd-muted);
   font-size: 11.5px;
+}
+.mvd-ocena-podstawa-norma {
+  margin: 0 0 2px;
+  color: var(--mvd-ink);
+  font-size: 11.5px;
+}
+.mvd-ocena-margines-wzor {
+  display: block;
+  color: var(--mvd-muted);
+  font-size: 10.5px;
 }
 .mvd-ocena-wynik {
   font-weight: 600;

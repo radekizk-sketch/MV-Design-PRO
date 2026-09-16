@@ -30,6 +30,19 @@ describe('dowodModel — mapujKroki (czysty adapter TraceStep[])', () => {
     expect(model[1].uwagi).toBeNull();
   });
 
+  it('krok z substitution_latex → podstawienie z LaTeX, podstawienieTekst null (karta V12.7 §0.1)', () => {
+    const model = mapujKroki(traceStepsFixture());
+    expect(model[0].podstawienie).toBe('$$Z_k = \\sqrt{0{,}5^2 + 1{,}2^2}$$');
+    expect(model[0].podstawienieTekst).toBeNull();
+  });
+
+  it('krok TYLKO z substitution (proza V12.6, bez substitution_latex) → podstawienie null, podstawienieTekst niesie tekst — proza NIGDY nie renderuje się przez MathBlock', () => {
+    const model = mapujKroki(traceStepsFixture());
+    const krokProzy = model[3];
+    expect(krokProzy.podstawienie).toBeNull();
+    expect(krokProzy.podstawienieTekst).toContain('Macierz admitancyjna');
+  });
+
   it('element_id przeniesiony (do „Pokaż na schemacie"); brak → null', () => {
     const model = mapujKroki(traceStepsFixture());
     expect(model[0].elementId).toBe('BUS-GPZ');

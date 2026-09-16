@@ -69,8 +69,14 @@ export interface KrokDowoduModel {
   wzorLatex: string | null;
   /** Dane wejściowe (mapowane wielkości). */
   dane: WartoscDowodu[];
-  /** Podstawienie (LaTeX blokowy) lub `null`. */
+  /** Podstawienie jako LaTeX blokowy (`TraceStep.substitution_latex`) — `null`,
+   *  gdy krok/rejestr solvera nie niesie czystego LaTeX podstawienia (karta
+   *  V12.7 §0.1: prozy `substitution` NIE renderujemy jako matematykę). */
   podstawienie: string | null;
+  /** Podstawienie jako TEKST PL (`TraceStep.substitution`), pokazywane WYŁĄCZNIE
+   *  gdy `podstawienie` (LaTeX) jest `null` — niektóre kroki (np. V12.6) niosą
+   *  wyłącznie opis metody prozą, nie numeryczne podstawienie. */
+  podstawienieTekst: string | null;
   /** Wynik (mapowane wielkości). */
   wynik: WartoscDowodu[];
   /** Uwagi (tekst) lub `null`. */
@@ -173,7 +179,8 @@ export function mapujKroki(kroki: TraceStep[]): KrokDowoduModel[] {
       tytul: krok.title ?? `Krok ${numer}`,
       wzorLatex: krok.formula_latex ?? null,
       dane: mapujWielkosci(krok.inputs),
-      podstawienie: krok.substitution ?? null,
+      podstawienie: krok.substitution_latex ?? null,
+      podstawienieTekst: krok.substitution_latex == null ? (krok.substitution ?? null) : null,
       wynik: mapujWielkosci(krok.result),
       uwagi: krok.notes ?? null,
       elementId: krok.element_id ?? null,

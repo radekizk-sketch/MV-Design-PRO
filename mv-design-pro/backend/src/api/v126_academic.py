@@ -12,6 +12,7 @@ from application.analyses.v126_gotowosc import (
     uzupelnij_parametry_z_modelu,
 )
 from application.analyses.v126_katalog import katalog_do_dict
+from application.analyses.v126_wzory import wzbogac_kroki_latex
 from enm.canonical_analysis import create_run as _create_canonical_run
 from enm.canonical_analysis import execute_run as _execute_canonical_run
 from enm.canonical_analysis import get_run as _get_canonical_run
@@ -335,7 +336,13 @@ def get_v126_trace(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, A
         "analysis_type": run["analysis_type"],
         "trace_version": "AcademicWhiteBoxTraceV1",
         "deterministic_hash": result["deterministic_hash"],
-        "steps": result["white_box_trace"],
+        # Karta V12.7 §0.1: `steps` niesie DODATKOWO `formula_latex`/
+        # `substitution_latex` z rejestru warstwy aplikacji
+        # (`application/analyses/v126_wzory.py`) — zapis WIDOKU API, kopia
+        # (nie mutacja) `result["white_box_trace"]` solvera FROZEN;
+        # `deterministic_hash` powyżej liczony jest PRZED tym wzbogaceniem
+        # i zostaje nietknięty.
+        "steps": wzbogac_kroki_latex(result["white_box_trace"]),
     }
     # Karta W3-E: adnotacja addytywna — WHITE BOX (`steps`) zostaje SUROWY i
     # kompletny (auditowalność solvera FROZEN nietknięta), `wycofany` jedzie
@@ -375,6 +382,13 @@ def get_v126_ssci_stability(run_id: UUID) -> dict[str, Any]:
 def get_v126_proof(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any]:
     run = _require_run(run_id, analysis_type)
     proof: dict[str, Any] = run["proof"]
+    # Karta V12.7 §0.1: `steps` widoku API dostaje `formula_latex`/
+    # `substitution_latex` z tego samego rejestru co trasa `/trace` — kopia,
+    # `proof_hash` zapisany w pakiecie (liczony przy utworzeniu biegu, PRZED
+    # tym wzbogaceniem) zostaje bajtowo identyczny.
+    steps = proof.get("steps")
+    if isinstance(steps, list):
+        proof = {**proof, "steps": wzbogac_kroki_latex(steps)}
     # Karta W3-E: `wycofany` addytywnie obok pakietu dowodowego — pakiet sam w
     # sobie zostaje NIETKNIĘTY (FROZEN, kroki z `white_box_trace` solvera).
     wycofanie = _wycofanie_v126(analysis_type)

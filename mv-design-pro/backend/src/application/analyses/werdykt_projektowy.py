@@ -167,6 +167,26 @@ class DefinicjaKryterium:
     symbol: str = ""
     jednostka: str = ""
     warunek: str = WARUNEK_NIE_WIECEJ
+    #: Karta V12.7 §0.1 — zapis LaTeX SYMBOLU (`MathInline`), np. dla
+    #: `symbol = "cos φ"` → `symbol_latex = r"\cos\varphi"`. Pusty napis
+    #: WYŁĄCZNIE dla kryteriów bez symbolu liczbowego (`symbol = "-"`,
+    #: `warunek = WARUNEK_ZGODNOSC`) — test pinuje dokładnie ten wyjątek.
+    symbol_latex: str = ""
+    #: Karta V12.7 §0.1 — pełny warunek jako LaTeX (`MathInline`/`MathBlock`),
+    #: WIERNY temu samemu kryterium co `warunek_pl` (dziś tekst z osadzonym
+    #: `$...$`, renderowany dosłownie — dokładnie defekt tej karty). Pusty
+    #: napis WYŁĄCZNIE dla `WARUNEK_ZGODNOSC` (kryterium bez nierówności).
+    warunek_latex: str = ""
+    #: Karta V12.7 §0.7 — zakres, jaki werdykt tego kryterium WOLNO nazwać:
+    #: "kryterium" (werdykt nazywa WYŁĄCZNIE tę jedną wielkość — domyślne dla
+    #: 9 z 10 kryteriów: każde sprawdza jedną wielkość fizyczną wobec jednej
+    #: granicy, nie komplet wymagań obiektu) albo "uklad" (komplet kryteriów
+    #: kontraktu oceny wykonany — wolno nazwać CAŁY obiekt). Jedyny "uklad" to
+    #: KRYTERIUM_DOBOR_DER_SN: jego dostawca (raport_zgodnosci.py) sam jest
+    #: kontrolą KOMPLETU trzech kryteriów toru źródła (zgodność napięć, mocy
+    #: transformatora blokowego, kaskady prądowej) i wystawia JEDEN werdykt
+    #: dla całego toru — nie jednej wielkości.
+    zakres_oceny: str = "kryterium"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -182,6 +202,9 @@ class DefinicjaKryterium:
             "symbol": self.symbol,
             "jednostka": self.jednostka,
             "warunek": self.warunek,
+            "symbol_latex": self.symbol_latex,
+            "warunek_latex": self.warunek_latex,
+            "zakres_oceny": self.zakres_oceny,
         }
 
 
@@ -212,6 +235,8 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         symbol="|P|",
         jednostka="MW",
         warunek=WARUNEK_NIE_WIECEJ,
+        symbol_latex=r"|P|",
+        warunek_latex=r"|P| \leq P_{\text{przył}}",
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_PWP_COS_PHI,
@@ -226,6 +251,8 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         symbol="cos φ",
         jednostka="-",
         warunek=WARUNEK_NIE_MNIEJ,
+        symbol_latex=r"\cos\varphi",
+        warunek_latex=r"\cos\varphi \geq \cos\varphi_{\mathrm{wym}}",
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_NAPIECIE,
@@ -240,6 +267,8 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         symbol="|ΔU|",
         jednostka="%",
         warunek=WARUNEK_NIE_WIECEJ,
+        symbol_latex=r"|\Delta U|",
+        warunek_latex=r"|\Delta U| \leq \Delta U_{\mathrm{dop}}",
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_OBCIAZENIE_GALEZI,
@@ -254,6 +283,8 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         symbol="I/I_z",
         jednostka="%",
         warunek=WARUNEK_NIE_WIECEJ,
+        symbol_latex=r"I/I_z",
+        warunek_latex=r"I_{\mathrm{rob}} \leq I_z",
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_OBCIAZENIE_TRAFO,
@@ -268,6 +299,8 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         symbol="S/S_n",
         jednostka="%",
         warunek=WARUNEK_NIE_WIECEJ,
+        symbol_latex=r"S/S_n",
+        warunek_latex=r"S_{\mathrm{rob}} \leq S_n",
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_STRATY,
@@ -281,6 +314,8 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         symbol="ΔP/P",
         jednostka="%",
         warunek=WARUNEK_NIE_WIECEJ,
+        symbol_latex=r"\Delta P/P",
+        warunek_latex=r"\Delta P \leq \Delta P_{\text{budżet}}",
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_BILANS_Q,
@@ -294,6 +329,8 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         symbol="cos φ",
         jednostka="-",
         warunek=WARUNEK_NIE_MNIEJ,
+        symbol_latex=r"\cos\varphi",
+        warunek_latex=r"\cos\varphi \geq \cos\varphi_{\mathrm{min}}",
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_PRZEWOD_CIEPLNY,
@@ -308,6 +345,8 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         symbol="I²t",
         jednostka="A²·s",
         warunek=WARUNEK_NIE_WIECEJ,
+        symbol_latex=r"I^{2} t",
+        warunek_latex=r"I_{\mathrm{th}} \leq \dfrac{I_{\mathrm{th(1s)}}}{\sqrt{t}}",
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_WIARYGODNOSC_SC,
@@ -322,6 +361,11 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         symbol="I_k″",
         jednostka="kA",
         warunek=WARUNEK_PASMO,
+        symbol_latex=r"I_k^{\prime\prime}",
+        warunek_latex=(
+            r"I_{k,\text{dolna}}^{\prime\prime} \leq I_k^{\prime\prime} "
+            r"\leq I_{k,\text{górna}}^{\prime\prime}"
+        ),
     ),
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_DOBOR_DER_SN,
@@ -336,6 +380,7 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         symbol="-",
         jednostka="-",
         warunek=WARUNEK_ZGODNOSC,
+        zakres_oceny="uklad",
     ),
 )
 
@@ -413,6 +458,10 @@ class OcenaElementu:
     #: Zapas do granicy: dodatni = w granicy. Jednostka zapasu w ``margines_jednostka``.
     margines: float | None = None
     margines_jednostka: str = ""
+    #: Karta V12.7 §0.1/§0.8 — zapis LaTeX wzoru, którym wyliczono `margines`
+    #: (`MathInline`, obok liczby). Pusty, gdy `margines` jest `None` (pasmo,
+    #: zgodność, brak podstaw) — ten sam warunek co brak liczby marginesu.
+    margines_wzor_latex: str = ""
     #: Uwaga przy wyniku SPELNIA (np. margines w pasmie ostrzegawczym).
     uwaga_pl: str | None = None
     #: Uzasadnienie dostawcy (``why_pl`` / ``opis_pl`` / ``powod_decyzji_pl``).
@@ -435,6 +484,7 @@ class OcenaElementu:
             "jednostka": self.jednostka,
             "margines": self.margines,
             "margines_jednostka": self.margines_jednostka,
+            "margines_wzor_latex": self.margines_wzor_latex,
             "uwaga_pl": self.uwaga_pl,
             "uzasadnienie_pl": self.uzasadnienie_pl,
             "wniosek_pl": self.wniosek_pl,
@@ -616,29 +666,56 @@ def _tekst_liczby(wartosc: float | None, jednostka: str = "") -> str:
     return tekst
 
 
+#: Karta V12.7 §0.1 — wzory LaTeX marginesu, JEDNO źródło prawdy dzielone
+#: z `_zapas` (reguła KLASA §3, predykaty parami): każda gałąź poniżej
+#: odpowiada DOKŁADNIE jednej gałęzi arytmetyki `_zapas` — zmiana jednej bez
+#: drugiej jest naruszeniem tej samej reguły. Zapis generyczny („wartość" /
+#: „granica", nie nazwa konkretnej wielkości) — margines jest tym samym
+#: wzorem prezentacji dla napięcia, obciążenia, strat, cos φ.
+_MARGINES_WZOR_PUNKTY_PROC = r"\Delta = \text{granica} - \text{wartość}"
+_MARGINES_WZOR_WZGLEDNY_DOP = (
+    r"\delta = \dfrac{\text{granica} - \text{wartość}}{\text{granica}}\cdot 100\%"
+)
+_MARGINES_WZOR_WZGLEDNY_MIN = (
+    r"\delta = \dfrac{\text{wartość} - \text{granica}}{\text{granica}}\cdot 100\%"
+)
+
+
 def _zapas(
     warunek: str, wartosc: float | None, odniesienie: float | None, jednostka: str
-) -> tuple[float | None, str]:
+) -> tuple[float | None, str, str]:
     """Zapas do granicy z DWOCH liczb dostawcy (arytmetyka prezentacji, nie fizyka).
 
     Wielkosci wyrazone w % (odchylenie, obciazenie, straty): zapas w punktach
     procentowych = granica − wartosc. Pozostale: zapas wzgledny w % granicy.
     Kryterium „nie mniej niz": zapas = (wartosc − granica)/granica. Pasmo i zgodnosc
     nie maja skalarnego zapasu.
+
+    Zwraca TRÓJKĘ (zapas, jednostka_zapasu, wzor_latex) — wzór LaTeX pochodzi
+    z TEJ SAMEJ gałęzi warunku co arytmetyka (jedno źródło prawdy, karta
+    V12.7 §0.1/§0.8), nigdy nie jest dobierany osobnym warunkiem.
     """
     if wartosc is None or odniesienie is None:
-        return None, ""
+        return None, "", ""
     if warunek == WARUNEK_NIE_WIECEJ:
         if jednostka == "%":
-            return odniesienie - wartosc, "pkt proc."
+            return odniesienie - wartosc, "pkt proc.", _MARGINES_WZOR_PUNKTY_PROC
         if odniesienie == 0.0:
-            return None, ""
-        return (odniesienie - wartosc) / abs(odniesienie) * 100.0, "%"
+            return None, "", ""
+        return (
+            (odniesienie - wartosc) / abs(odniesienie) * 100.0,
+            "%",
+            _MARGINES_WZOR_WZGLEDNY_DOP,
+        )
     if warunek == WARUNEK_NIE_MNIEJ:
         if odniesienie == 0.0:
-            return None, ""
-        return (wartosc - odniesienie) / abs(odniesienie) * 100.0, "%"
-    return None, ""
+            return None, "", ""
+        return (
+            (wartosc - odniesienie) / abs(odniesienie) * 100.0,
+            "%",
+            _MARGINES_WZOR_WZGLEDNY_MIN,
+        )
+    return None, "", ""
 
 
 def _wniosek(
@@ -730,8 +807,13 @@ def _ocena_elementu(
     odn = _liczba(odniesienie)
     odn_dolne = _liczba(odniesienie_dolne)
     zapas, zapas_jedn = (_liczba(margines), margines_jednostka or "")
+    # Karta V12.7 §0.1/§0.8: wzór LaTeX marginesu idzie WYŁĄCZNIE razem z
+    # marginesem WYLICZONYM przez `_zapas` — dostawca, który podaje własny,
+    # już policzony margines (`margines=...` jawnie), nie ujawnia formuły, wg
+    # której go policzył, więc adapter nie zgaduje jej tutaj (zero fabrykacji).
+    zapas_wzor = ""
     if zapas is None:
-        zapas, zapas_jedn = _zapas(definicja.warunek, wart, odn, jedn)
+        zapas, zapas_jedn, zapas_wzor = _zapas(definicja.warunek, wart, odn, jedn)
     wniosek = _wniosek(
         wynik=wynik,
         warunek=definicja.warunek,
@@ -762,6 +844,7 @@ def _ocena_elementu(
         jednostka=jedn,
         margines=zapas,
         margines_jednostka=zapas_jedn,
+        margines_wzor_latex=zapas_wzor,
         uwaga_pl=uwaga_pl,
         uzasadnienie_pl=uzasadnienie_pl,
         wniosek_pl=wniosek,

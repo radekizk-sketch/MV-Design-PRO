@@ -35,8 +35,9 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useShellStore } from '../../shell/useShellStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { opisSwiezosci } from '../../freshness';
-import { PrzyciskAkcjiStanu, useAkcjaPrzejdzDoPrzypadkow } from '../wzorzec';
+import { InformacjeAudytowe, PrzyciskAkcjiStanu, useAkcjaPrzejdzDoPrzypadkow } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
+import { MathBlock, MathInline } from '../../../ui/proof';
 import {
   pobierzDowod,
   pobierzGotowosc,
@@ -211,6 +212,17 @@ function fmtGranica(wartosc: number | string): string {
   return typeof wartosc === 'number' ? fmtWartosc(wartosc) : wartosc;
 }
 
+/**
+ * Wzór/podstawienie kroku śladu: LaTeX (`MathBlock`), gdy rejestr
+ * (`application/analyses/v126_wzory.py`) go dostarczył (`*_latex`); w
+ * przeciwnym razie zapis tekstowy solvera WPROST — NIGDY przez `MathBlock`
+ * (karta V12.7 §0.1: proza nie jest matematyką, nawet gdy zawiera symbole).
+ */
+function WzorLubTekst({ latex, tekst }: { latex: string | undefined; tekst: string | null }) {
+  if (latex !== undefined) return <MathBlock latex={latex} />;
+  return <>{tekst ?? S.kreska}</>;
+}
+
 // ---------------------------------------------------------------------------
 // Katalog kart
 // ---------------------------------------------------------------------------
@@ -304,7 +316,10 @@ function KartaAnalizy({
           <ul className="mvd-akad-karta-lista">
             {karta.wielkosci_glowne.map((wielkosc) => (
               <li key={`${wielkosc.symbol}:${wielkosc.nazwa_pl}`}>
-                <span className="mvd-num">{wielkosc.symbol}</span> — {wielkosc.nazwa_pl}
+                <span className="mvd-num">
+                  <MathInline latex={wielkosc.symbol_latex} />
+                </span>{' '}
+                — {wielkosc.nazwa_pl}
                 {wielkosc.jednostka !== '-' && wielkosc.jednostka !== '' && ` [${wielkosc.jednostka}]`}
               </li>
             ))}
@@ -319,10 +334,17 @@ function KartaAnalizy({
           <ul className="mvd-akad-karta-lista">
             {karta.podstawa_oceny.map((podstawa) => (
               <li key={`${podstawa.symbol}:${podstawa.zrodlo_pl}`}>
-                {podstawa.wielkosc_pl} <span className="mvd-num">{podstawa.symbol}</span>{' '}
-                {podstawa.warunek_pl}{' '}
-                <span className="mvd-num">{fmtGranica(podstawa.wartosc_graniczna)}</span>
-                {podstawa.jednostka !== '-' && podstawa.jednostka !== '' && ` ${podstawa.jednostka}`}
+                {podstawa.wielkosc_pl}{' '}
+                <span className="mvd-num">
+                  <MathInline latex={podstawa.warunek_latex} />
+                </span>
+                {typeof podstawa.wartosc_graniczna === 'number' && (
+                  <>
+                    {' '}
+                    <span className="mvd-num">{fmtGranica(podstawa.wartosc_graniczna)}</span>
+                    {podstawa.jednostka !== '-' && podstawa.jednostka !== '' && ` ${podstawa.jednostka}`}
+                  </>
+                )}
                 {' — '}
                 {podstawa.zrodlo_pl}
               </li>
@@ -343,7 +365,15 @@ function KartaAnalizy({
           data-testid={`mvd-akad-karta-otworz-${karta.kod}`}
           onClick={onOtworz}
         >
-          {S.kartaOtworz}
+          {/* Karta V12.7 §0.5: etykieta akcji nazywa NASTĘPNY KROK wg stanu
+              danych — oba stany otwierają TEN SAM widok analizy (formularz +
+              lista braków dla NIEPOTWIERDZONA, przycisk uruchomienia dla
+              POTWIERDZONA), więc nawigacja się nie zmienia, zmienia się etykieta. */}
+          {gotowosc?.gotowosc === 'POTWIERDZONA'
+            ? S.kartaUruchomAnalize
+            : gotowosc?.gotowosc === 'NIEPOTWIERDZONA'
+              ? S.kartaUzupelnijDane
+              : S.kartaOtworz}
         </button>
       </div>
     </article>
@@ -368,10 +398,12 @@ function SekcjaPrzedmiot({
   przedmiot,
   modelHash,
   nazwaObiektu,
+  trybEkspercki,
 }: {
   przedmiot: PrzedmiotAnalizy | null;
   modelHash: string | null;
   nazwaObiektu: (ref: string) => string;
+  trybEkspercki: boolean;
 }) {
   const activeProjectName = useAppStateStore((s) => s.activeProjectName);
   const activeCaseName = useAppStateStore((s) => s.activeCaseName);
@@ -403,12 +435,8 @@ function SekcjaPrzedmiot({
                 {przedmiot.nazwa_modelu !== '' ? przedmiot.nazwa_modelu : S.przedmiotBrakNazwy}
                 {' · '}
                 {S.przedmiotRewizja} <span className="mvd-num">{przedmiot.rewizja}</span>
-                {modelHash && (
-                  <>
-                    {' · '}
-                    {S.przedmiotOdcisk} <span className="mvd-num">{modelHash.slice(0, 12)}</span>
-                  </>
-                )}
+                {/* Karta V12.7 §0.3: odcisk modelu (hash) NIE jest pierwszym planem
+                    — przeniesiony do „Informacje audytowe" (tryb ekspercki). */}
               </>
             ) : (
               S.kreska
@@ -454,6 +482,12 @@ function SekcjaPrzedmiot({
           </span>
         </div>
       </div>
+      {/* Karta V12.7 §0.3: odcisk modelu — poza pierwszym planem. */}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-akad-przedmiot-informacje-audytowe"
+        wiersze={modelHash ? [{ etykieta: S.przedmiotOdcisk, wartosc: modelHash }] : []}
+      />
     </section>
   );
 }
@@ -524,14 +558,12 @@ type StanGotowosciAnalizy =
 function SekcjaDane({
   karta,
   gotowosc,
-  modelHash,
   przedmiot,
   nazwaObiektu,
   formularz,
 }: {
   karta: KartaKatalogu;
   gotowosc: StanGotowosciAnalizy;
-  modelHash: string | null;
   przedmiot: PrzedmiotAnalizy | null;
   nazwaObiektu: (ref: string) => string;
   formularz: React.ReactNode;
@@ -584,12 +616,7 @@ function SekcjaDane({
               {S.przedmiotRewizja} <span className="mvd-num">{przedmiot.rewizja}</span>
             </>
           )}
-          {modelHash && (
-            <>
-              {' · '}
-              {S.przedmiotOdcisk} <span className="mvd-num">{modelHash.slice(0, 12)}</span>
-            </>
-          )}
+          {/* Karta V12.7 §0.3: odcisk modelu — „Informacje audytowe" poniżej. */}
         </p>
       </Podsekcja>
 
@@ -793,9 +820,27 @@ function SekcjaKryteria({ karta }: { karta: KartaKatalogu }) {
               {karta.podstawa_oceny.map((podstawa, indeks) => (
                 <tr key={`${podstawa.symbol}:${indeks}`}>
                   <td>{podstawa.wielkosc_pl}</td>
-                  <td className="mvd-num">{podstawa.symbol}</td>
-                  <td>{podstawa.warunek_pl}</td>
-                  <td className="mvd-num">{fmtGranica(podstawa.wartosc_graniczna)}</td>
+                  <td className="mvd-num">
+                    <MathInline latex={podstawa.symbol_latex} />
+                  </td>
+                  <td>
+                    <span className="mvd-num">
+                      <MathInline latex={podstawa.warunek_latex} />
+                    </span>
+                    <p className="mvd-akad-dane-uwaga">{podstawa.warunek_pl}</p>
+                  </td>
+                  <td className="mvd-num">
+                    {typeof podstawa.wartosc_graniczna === 'number' ? (
+                      fmtGranica(podstawa.wartosc_graniczna)
+                    ) : (
+                      <>
+                        <MathBlock latex={podstawa.wzor_latex} />
+                        {podstawa.wzor_opis_pl !== '' && (
+                          <p className="mvd-akad-dane-uwaga">{podstawa.wzor_opis_pl}</p>
+                        )}
+                      </>
+                    )}
+                  </td>
                   <td className="mvd-num">{podstawa.jednostka}</td>
                   <td>{podstawa.zrodlo_pl}</td>
                 </tr>
@@ -894,20 +939,33 @@ function PanelWerdyktu({ rodzaj, payload, karta }: { rodzaj: string; payload: un
         {tresc}
       </div>
       <div className="mvd-akad-wiersze">
-        <div className="mvd-akad-wiersz">
-          <span className="mvd-akad-wiersz-etyk">{S.podstawaEtykieta}</span>
-          <span className="mvd-akad-wiersz-wartosc">
-            {karta.podstawa_oceny.length > 0
-              ? karta.podstawa_oceny
-                  .map(
-                    (p) =>
-                      `${p.wielkosc_pl} ${p.symbol} ${p.warunek_pl} ${fmtGranica(p.wartosc_graniczna)}`
-                      + `${p.jednostka !== '-' && p.jednostka !== '' ? ` ${p.jednostka}` : ''} (${p.zrodlo_pl})`,
-                  )
-                  .join('; ')
-              : `${S.kryteriaBrakTytul}: ${karta.bez_podstawy_pl}`}
-          </span>
-        </div>
+        {karta.podstawa_oceny.length > 0 ? (
+          karta.podstawa_oceny.map((p) => (
+            <div className="mvd-akad-wiersz" key={`${p.symbol}:${p.zrodlo_pl}`}>
+              <span className="mvd-akad-wiersz-etyk">{p.wielkosc_pl}</span>
+              <span className="mvd-akad-wiersz-wartosc">
+                <span className="mvd-num">
+                  <MathInline latex={p.warunek_latex} />
+                </span>
+                {typeof p.wartosc_graniczna === 'number' && (
+                  <>
+                    {' '}
+                    <span className="mvd-num">{fmtGranica(p.wartosc_graniczna)}</span>
+                    {p.jednostka !== '-' && p.jednostka !== '' && ` ${p.jednostka}`}
+                  </>
+                )}
+                {` (${p.zrodlo_pl})`}
+              </span>
+            </div>
+          ))
+        ) : (
+          <div className="mvd-akad-wiersz">
+            <span className="mvd-akad-wiersz-etyk">{S.podstawaEtykieta}</span>
+            <span className="mvd-akad-wiersz-wartosc">
+              {`${S.kryteriaBrakTytul}: ${karta.bez_podstawy_pl}`}
+            </span>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -1248,8 +1306,12 @@ function PanelSladu({ slad }: { slad: OdpowiedzSladu }) {
             {kroki.map((krok) => (
               <tr key={krok.proof_ref} data-testid={`mvd-akad-slad-krok-${krok.step}`}>
                 <td className="mvd-num">{krok.step}</td>
-                <td className="mvd-num">{krok.formula}</td>
-                <td>{krok.substitution}</td>
+                <td className="mvd-num">
+                  <WzorLubTekst latex={krok.formula_latex} tekst={krok.formula} />
+                </td>
+                <td>
+                  <WzorLubTekst latex={krok.substitution_latex} tekst={krok.substitution} />
+                </td>
                 <td className="mvd-num">{krok.result_pl ?? S.kreska}</td>
                 <td>{krok.unit_check}</td>
               </tr>
@@ -1303,8 +1365,12 @@ function PanelDowodu({ dowod }: { dowod: PakietDowodu }) {
             {kroki.map((krok) => (
               <tr key={krok.proof_ref} data-testid={`mvd-akad-dowod-krok-${krok.ordinal}`}>
                 <td className="mvd-num">{krok.ordinal}</td>
-                <td className="mvd-num">{krok.formula ?? S.kreska}</td>
-                <td>{krok.substitution ?? S.kreska}</td>
+                <td className="mvd-num">
+                  <WzorLubTekst latex={krok.formula_latex} tekst={krok.formula} />
+                </td>
+                <td>
+                  <WzorLubTekst latex={krok.substitution_latex} tekst={krok.substitution} />
+                </td>
                 <td className="mvd-num">{krok.result_pl ?? S.kreska}</td>
                 <td>{krok.unit_check ?? S.kreska}</td>
               </tr>
@@ -1750,7 +1816,12 @@ export function EkranAnalizAkademickich({
       )}
       {karta && (
         <>
-          <SekcjaPrzedmiot przedmiot={przedmiot} modelHash={modelHash} nazwaObiektu={nazwaObiektu} />
+          <SekcjaPrzedmiot
+            przedmiot={przedmiot}
+            modelHash={modelHash}
+            nazwaObiektu={nazwaObiektu}
+            trybEkspercki={trybEkspercki}
+          />
           <SekcjaPytanie karta={karta} />
           {wybrany === 'ssci_impedance' && (
             <div className="mvd-akad-odeslanie" data-testid="mvd-akad-odeslanie-ssci">
@@ -1768,13 +1839,14 @@ export function EkranAnalizAkademickich({
           <SekcjaDane
             karta={karta}
             gotowosc={gotowoscWybranej}
-            modelHash={modelHash}
             przedmiot={przedmiot}
             nazwaObiektu={nazwaObiektu}
             formularz={
               maParametry(wybrany) ? (
                 <FormularzParametrow
                   rodzaj={wybrany}
+                  karta={karta}
+                  gotowosc={gotowoscWybranej.dane}
                   pola={pola}
                   uziom={uziom}
                   metody={metody}
@@ -1855,26 +1927,23 @@ export function EkranAnalizAkademickich({
                     </span>
                   </div>
                   <div className="mvd-akad-wiersz">
-                    <span className="mvd-akad-wiersz-etyk">{S.odcisk}</span>
-                    <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.przebieg.deterministic_hash}</span>
-                  </div>
-                  <div className="mvd-akad-wiersz">
-                    <span className="mvd-akad-wiersz-etyk">{S.runId}</span>
-                    <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.przebieg.run_id}</span>
-                  </div>
-                  <div className="mvd-akad-wiersz">
-                    <span className="mvd-akad-wiersz-etyk">{S.wersjaSolwera}</span>
-                    <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.wynik.result.solver_version}</span>
-                  </div>
-                  <div className="mvd-akad-wiersz">
-                    <span className="mvd-akad-wiersz-etyk">{S.odciskWejscia}</span>
-                    <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.wynik.result.input_hash}</span>
-                  </div>
-                  <div className="mvd-akad-wiersz">
                     <span className="mvd-akad-wiersz-etyk">{S.utworzono}</span>
                     <span className="mvd-akad-wiersz-wartosc mvd-num">{stan.dane.wynik.created_at}</span>
                   </div>
                 </div>
+                {/* Karta V12.7 §0.3: odcisk/identyfikator przebiegu, wersja solvera,
+                    odcisk danych wejściowych — poza pierwszym planem, „Informacje
+                    audytowe" (tryb ekspercki, zwinięte). */}
+                <InformacjeAudytowe
+                  trybEkspercki={trybEkspercki}
+                  testid="mvd-akad-informacje-audytowe"
+                  wiersze={[
+                    { etykieta: S.odcisk, wartosc: stan.dane.przebieg.deterministic_hash },
+                    { etykieta: S.runId, wartosc: stan.dane.przebieg.run_id },
+                    { etykieta: S.wersjaSolwera, wartosc: String(stan.dane.wynik.result.solver_version ?? '') },
+                    { etykieta: S.odciskWejscia, wartosc: String(stan.dane.wynik.result.input_hash ?? '') },
+                  ]}
+                />
               </section>
 
               <PanelWerdyktu rodzaj={wybrany} payload={stan.dane.wynik.result.result} karta={karta} />

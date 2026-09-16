@@ -46,6 +46,10 @@ export interface OcenaElementu {
   /** Zapas do granicy: dodatni = w granicy. Jednostka zapasu w `margines_jednostka`. */
   readonly margines: number | null;
   readonly margines_jednostka: string;
+  /** Karta V12.7 §0.1/§0.8 — zapis LaTeX wzoru marginesu (`MathInline`), obok
+   *  liczby. Pusty, gdy `margines` jest `null` (pasmo, zgodność, brak podstaw)
+   *  albo gdy dostawca podał margines już policzony (formuła nieznana tutaj). */
+  readonly margines_wzor_latex: string;
   /** Uwaga przy wyniku SPEŁNIA (np. zapas w paśmie ostrzegawczym). */
   readonly uwaga_pl: string | null;
   /** Uzasadnienie dostawcy (dlaczego tak oceniono). */
@@ -84,6 +88,16 @@ export interface PozycjaOceny {
   readonly symbol: string;
   readonly jednostka: string;
   readonly warunek: WarunekKryterium;
+  /** Karta V12.7 §0.1 — zapis LaTeX symbolu (`MathInline`); pusty dla kryteriów
+   *  bez symbolu liczbowego (`symbol === '-'`, `warunek === 'zgodnosc'`). */
+  readonly symbol_latex: string;
+  /** Karta V12.7 §0.1 — pełny warunek jako LaTeX (`MathInline`/`MathBlock`);
+   *  pusty dla `warunek === 'zgodnosc'`. */
+  readonly warunek_latex: string;
+  /** Karta V12.7 §0.7 — zakres, jaki werdykt tego kryterium wolno nazwać:
+   *  `"kryterium"` (WYŁĄCZNIE tę wielkość) albo `"uklad"` (komplet kryteriów
+   *  oceny wykonany — wolno nazwać cały obiekt). UI czyta pole, nie zgaduje. */
+  readonly zakres_oceny: 'kryterium' | 'uklad';
   /** Oceny per element — pozycja bez elementów = brak podstawy do oceny (patrz `powod_pl`). */
   readonly elementy: readonly OcenaElementu[];
 }

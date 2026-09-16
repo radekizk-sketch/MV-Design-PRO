@@ -49,6 +49,16 @@ describe('KrokDowodu — kanon pięciu pól', () => {
     expect(screen.queryByTestId('mvd-dowod-pole-uwagi')).not.toBeInTheDocument();
   });
 
+  it('krok TYLKO z prozą podstawienia (V12.6, bez substitution_latex) — proza renderuje się jako tekst, NIGDY przez MathBlock (karta V12.7 §0.1)', () => {
+    render(<KrokDowodu krok={model()[3]} trybZaawansowania="basic" />);
+    // Pole LaTeX (MathBlock) nie renderuje się dla prozy.
+    expect(screen.queryByTestId('mvd-dowod-pole-podstawienie')).not.toBeInTheDocument();
+    const poleTekst = screen.getByTestId('mvd-dowod-pole-podstawienie-tekst');
+    expect(poleTekst).toHaveTextContent('Macierz admitancyjna');
+    // Renderowana jako zwykły akapit — brak kontenera KaTeX/`data-latex`.
+    expect(poleTekst.querySelector('[data-latex]')).toBeNull();
+  });
+
   it('jednostka renderowana przy wartości', () => {
     render(<KrokDowodu krok={model()[1]} trybZaawansowania="basic" />);
     const wynik = screen.getByTestId('mvd-dowod-wynik');

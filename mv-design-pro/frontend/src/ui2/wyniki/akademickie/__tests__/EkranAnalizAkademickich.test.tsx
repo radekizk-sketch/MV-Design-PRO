@@ -256,7 +256,8 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
     await waitFor(() => expect(zapytaniaGotowosci(mock).some((z) => z.rodzaj === 'transient_trv')).toBe(true));
     fireEvent.change(screen.getByTestId('mvd-akad-pole-breaker_rated_voltage_kv'), { target: { value: '15,75' } });
     await waitFor(() => {
-      const ostatnie = zapytaniaGotowosci(mock).filter((z) => z.rodzaj === 'transient_trv').at(-1);
+      const zapytaniaTrv = zapytaniaGotowosci(mock).filter((z) => z.rodzaj === 'transient_trv');
+      const ostatnie = zapytaniaTrv[zapytaniaTrv.length - 1];
       expect(ostatnie?.parametry).toEqual({ breaker_rated_voltage_kv: 15.75 });
     });
     await uruchom();
@@ -294,6 +295,49 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
     expect(brak).toHaveTextContent(S.kryteriaBrakTytul);
     expect(brak).toHaveTextContent((karta('ssci_impedance').bez_podstawy_pl ?? '').slice(0, 30));
     expect(screen.queryByTestId('mvd-akad-kryteria-tabela')).toBeNull();
+  });
+});
+
+describe('EkranAnalizAkademickich — matematyka wyłącznie KaTeX (karta V12.7 §0.1/§0.11)', () => {
+  it('E. KRYTERIA: symbol i warunek każdego kryterium renderują się przez KaTeX (.katex w DOM)', async () => {
+    ustawFetchV126();
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await otworzAnalize('motor_starting');
+    const tabela = screen.getByTestId('mvd-akad-kryteria-tabela');
+    const k = karta('motor_starting');
+    // Symbol + warunek dla każdego kryterium = co najmniej dwa elementy KaTeX na wiersz.
+    expect(within(tabela).getAllByTestId('math-rendered').length).toBeGreaterThanOrEqual(
+      k.podstawa_oceny.length * 2,
+    );
+    expect(tabela.querySelectorAll('.katex').length).toBeGreaterThan(0);
+  });
+
+  it('ślad i dowód: wzór i podstawienie renderują się przez KaTeX, gdy backend niesie *_latex', async () => {
+    ustawFetchV126({ potwierdzone: ['motor_starting'], krokowSladu: 2 });
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await otworzAnalize('motor_starting');
+    await uruchom();
+    const slad = screen.getByTestId('mvd-akad-slad');
+    const dowod = screen.getByTestId('mvd-akad-dowod');
+    fireEvent.click(within(slad).getByTestId('mvd-akad-slad-przelacz'));
+    fireEvent.click(within(dowod).getByTestId('mvd-akad-dowod-przelacz'));
+    expect(within(slad).getAllByTestId('math-rendered').length).toBeGreaterThan(0);
+    expect(within(dowod).getAllByTestId('math-rendered').length).toBeGreaterThan(0);
+    expect(slad.querySelectorAll('.katex').length).toBeGreaterThan(0);
+    expect(dowod.querySelectorAll('.katex').length).toBeGreaterThan(0);
+  });
+
+  it('cały widok analizy: zero surowego ASCII ("<=" / ">=" / "sqrt(") w tekście widocznym dla projektanta', async () => {
+    ustawFetchV126({ potwierdzone: ['motor_starting'], krokowSladu: 2 });
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await otworzAnalize('motor_starting');
+    await uruchom();
+    // Ślad i dowód są domyślnie zwinięte — rozwiń, żeby sprawdzić TEŻ ich treść.
+    fireEvent.click(screen.getByTestId('mvd-akad-slad-przelacz'));
+    fireEvent.click(screen.getByTestId('mvd-akad-dowod-przelacz'));
+    const widoczny = document.body.textContent ?? '';
+    expect(widoczny).not.toMatch(/<=|>=/);
+    expect(widoczny).not.toMatch(/sqrt\(/);
   });
 });
 
@@ -459,7 +503,8 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
     fireEvent.change(screen.getByTestId('mvd-akad-pole-bus_ref'), { target: { value: 'bus_sn_b' } });
     fireEvent.change(screen.getByTestId('mvd-akad-pole-liczba'), { target: { value: '120' } });
     await waitFor(() => {
-      const ostatnie = zapytaniaGotowosci(mock).filter((z) => z.rodzaj === 'reliability_contingency').at(-1);
+      const zapytaniaNiezawodnosci = zapytaniaGotowosci(mock).filter((z) => z.rodzaj === 'reliability_contingency');
+      const ostatnie = zapytaniaNiezawodnosci[zapytaniaNiezawodnosci.length - 1];
       expect(ostatnie?.parametry).toEqual({ customer_counts: { bus_sn_b: 120 } });
     });
     await uruchom();
@@ -489,6 +534,56 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
     expect(screen.getByTestId('mvd-akad-pole-generator_ref')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-akad-pole-rzad')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-akad-pole-procent')).toBeInTheDocument();
+  });
+
+  it('formularz bez duplikacji kontraktu (karta V12.7 §0.4): plakietki WYMAGANE/OPCJONALNE, podsumowanie n/m z gotowości backendu (nie z DOM), pełna tabela zwinięta domyślnie', async () => {
+    ustawFetchV126();
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await otworzAnalize('transient_trv');
+    const k = karta('transient_trv');
+    const g = gotowosc('transient_trv');
+    const wymaganeLacznie = k.dane.od_uzytkownika.filter((p) => p.wymagane).length;
+    const opcjonalneLacznie = k.dane.od_uzytkownika.filter((p) => !p.wymagane).length;
+    // Kontrola dodatnia fixtury: karta niesie OBA rodzaje pól, inaczej test nic by nie mierzył.
+    expect(wymaganeLacznie).toBeGreaterThan(0);
+    expect(opcjonalneLacznie).toBeGreaterThan(0);
+    const brakujace = new Set(g.braki.map((b) => b.klucz_parametru).filter((x): x is string => x !== null));
+    const wymaganeSpelnione = wymaganeLacznie - brakujace.size;
+    // Kontrola dodatnia fixtury: gotowość backendu zgłasza braki dla WSZYSTKICH pól
+    // wymaganych (inaczej test nie odróżniłby liczenia z gotowości od zaszytego 0).
+    expect(wymaganeSpelnione).toBe(0);
+    // Gotowość doładowuje się asynchronicznie po otwarciu karty (odpytanie z opóźnieniem,
+    // ten sam mechanizm co `uruchom()`) — czekamy na USTABILIZOWANĄ treść, nie na stan
+    // sprzed odpowiedzi (przed odpowiedzią `gotowosc` bywa `undefined` → `?? []`).
+    const podsumowanie = screen.getByTestId('mvd-akad-parametry-podsumowanie');
+    await waitFor(() => expect(podsumowanie).toHaveTextContent(`Dane wymagane: ${wymaganeSpelnione}/${wymaganeLacznie}`));
+    expect(podsumowanie).toHaveTextContent(`Dane opcjonalne: ${opcjonalneLacznie} dostępnych`);
+    // Plakietki widoczne bezpośrednio na polach — co najmniej jedna każdego rodzaju.
+    expect(screen.getAllByText(S.daneWymagane).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(S.daneOpcjonalne).length).toBeGreaterThan(0);
+    // Pełna tabela kontraktu ZWINIĘTA domyślnie — siatka pól formularza jej nie duplikuje.
+    expect(screen.queryByTestId('mvd-akad-kontrakt-danych-tabela')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-akad-kontrakt-danych-przelacz'));
+    const tabela = screen.getByTestId('mvd-akad-kontrakt-danych-tabela');
+    expect(within(tabela).getAllByRole('row')).toHaveLength(k.dane.od_uzytkownika.length + 1);
+    for (const parametr of k.dane.od_uzytkownika) {
+      expect(tabela).toHaveTextContent(parametr.klucz);
+    }
+  });
+});
+
+describe('EkranAnalizAkademickich — stan danych karty, odmiana liczebnika PL (karta V12.7 §0.5)', () => {
+  it('BRAKUJE 1 DANEJ WYMAGANEJ (liczba pojedyncza dopełniacza)', () => {
+    expect(S.stanDanychBrak(1)).toBe('BRAKUJE 1 DANEJ WYMAGANEJ');
+  });
+
+  it.each([2, 3, 4, 5, 11, 22, 25])('BRAKUJE %i DANYCH WYMAGANYCH (dopełniacz liczby mnogiej, ta sama postać 2–4 i 5+)', (n) => {
+    expect(S.stanDanychBrak(n)).toBe(`BRAKUJE ${n} DANYCH WYMAGANYCH`);
+  });
+
+  it('DANE KOMPLETNE · GOTOWOŚĆ POTWIERDZONA — postać wizualnie odróżnialna od stanu brakującego', () => {
+    expect(S.stanDanychPotwierdzona).toBe('DANE KOMPLETNE · GOTOWOŚĆ POTWIERDZONA');
+    expect(S.stanDanychPotwierdzona).not.toBe(S.stanDanychBrak(1));
   });
 });
 
@@ -568,11 +663,14 @@ describe('EkranAnalizAkademickich — świeżość, tryb ekspercki, wejście tra
     expect(screen.getByTestId('mvd-akad-swiezosc')).toHaveTextContent('brak wyników');
   });
 
-  it('identyfikatory techniczne przebiegu są w oknie eksperckim po biegu', async () => {
+  it('identyfikatory techniczne przebiegu są w oknie eksperckim po biegu, w sekcji „Informacje audytowe" (karta V12.7 §0.3 — poza pierwszym planem, nie usunięte)', async () => {
     ustawFetchV126();
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await otworzAnalize('uncertainty_sensitivity');
     await uruchom();
+    // Zwinięta domyślnie — poza pierwszym planem, ale klik natywny ją ujawnia.
+    expect(screen.queryByText(RUN_ID)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-akad-informacje-audytowe-przelacz'));
     expect(screen.getByText(RUN_ID)).toBeInTheDocument();
   });
 
