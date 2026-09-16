@@ -154,11 +154,11 @@ ALLOWLIST: dict[tuple[str, int], str] = {
     ): "jw. — opis dopuszczalnego pasma nastawy regulacji napiecia",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/strings.ts",
-        528,
+        527,  # 528 -> 527 po S-1/S-4 (kasacja etykiety no_module wyzej w pliku; odbior 2026-09-16)
     ): "jw. — opis pasma statyzmu regulacji napiecia zrodla OZE",
     (
         "frontend/src/ui2/kreatory/zrodlo-oze/strings.ts",
-        558,
+        557,  # 558 -> 557, jw.
     ): "jw. — opis pasma nastawy w trybach regulacji mocy biernej",
     (
         "frontend/src/ui2/kreatory/kompensator/strings.ts",
