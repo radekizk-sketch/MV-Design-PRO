@@ -390,6 +390,14 @@
           },
           "formula": "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c; scenariusz MIN: c_min wyłącznie w źródle napięciowym)"
         }
+      ],
+      "zalozenia": [
+        {
+          "code": "inverter.k_sc_default_forbidden",
+          "element_ref": "gen_pv",
+          "message_pl": "ZAREJESTROWANE ZAŁOŻENIE: karta katalogowa przekształtnika nie niesie k_sc — przyjęto domyślkę systemową k_sc = 1,1 (nie jest to dana producenta ani wartość wymagana normą). Wynik zwarciowy jest roboczy: NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Wpisz k_sc z karty producenta, aby zastąpić domyślkę zmierzoną wartością.",
+          "scenariusz": "MAX"
+        }
       ]
     },
     "analysis_case_context": {
@@ -440,7 +448,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "6f9086c47f08b70970b2912fb193569b9925013ff0bf07ee653ce68f1fe861fe",
-        "result_hash": "78b7c6a136a4aee828ffbe722c32633dc8689e0db568c4df7ca2ef2de77c45fa",
+        "result_hash": "ed0677629522333fc2d352d211dfb64d9847193c67f47c835e3515f42a4d3830",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -848,6 +856,14 @@
           },
           "formula": "Z_Q = R_Q + jX_Q (impedancja jawna z modelu, bez c; scenariusz MIN: c_min wyłącznie w źródle napięciowym)"
         }
+      ],
+      "zalozenia": [
+        {
+          "code": "inverter.k_sc_default_forbidden",
+          "element_ref": "gen_pv",
+          "message_pl": "ZAREJESTROWANE ZAŁOŻENIE: karta katalogowa przekształtnika nie niesie k_sc — przyjęto domyślkę systemową k_sc = 1,1 (nie jest to dana producenta ani wartość wymagana normą). Wynik zwarciowy jest roboczy: NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Wpisz k_sc z karty producenta, aby zastąpić domyślkę zmierzoną wartością.",
+          "scenariusz": "MIN"
+        }
       ]
     },
     "analysis_case_context": {
@@ -898,7 +914,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "abba437443b1cb9fc5950b2569d819edeb101a0eb3eca0ef6a821e2555d2fed2",
-        "result_hash": "0a99a37591275172dffd6ccba02a48f107aff24346ff37b3177d895ee533009a",
+        "result_hash": "c4ba69e51f85877cb513e6262b3eb1d508b022a00df85dd9f0c79ce01c8080cf",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",

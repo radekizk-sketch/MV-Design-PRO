@@ -3074,6 +3074,13 @@ def _wpis_grafu(mapa: dict[str, Any], klucz: object) -> dict[str, Any]:
     return mapa.get(klucz, {}) if isinstance(klucz, str) else {}
 
 
+#: Próg prądu numerycznie zerowego w projekcji rozpływu zwarciowego [kA] = 1 µA.
+#: Poniżej niego kierunek z solvera jest artefaktem arytmetyki (znak ~0), nie
+#: wielkością fizyczną — patrz docstring projekcji rozpływu. Próg prezentacyjny,
+#: nie korekta wyniku: `i_ka` w wierszu pozostaje surową wartością solvera.
+PROG_PRADU_ZEROWEGO_KA = 1e-9
+
+
 def _sc_rozplyw_galeziowy(
     raw: list[dict[str, Any]] | None,
     graph_nodes: dict[str, Any],
@@ -3087,7 +3094,13 @@ def _sc_rozplyw_galeziowy(
     rozpływ prądu od źródła zastępczego (Thevenin / sieć nadrzędna,
     `_build_branch_contributions_for_thevenin`, source_id="THEVENIN_GRID").
     WYŁĄCZNIE projekcje prezentacyjne (A→kA, nazwy z grafu przebiegu) — zero
-    fizyki. Kierunek ("from_to"/"to_from") wprost z solvera. Sort deterministyczny
+    fizyki. Kierunek ("from_to"/"to_from") wprost z solvera, z jednym wyjątkiem
+    prezentacyjnym: gałąź o prądzie NUMERYCZNIE ZEROWYM (|I| < PROG_PRADU_ZEROWEGO_KA)
+    dostaje token "brak" — solver wyznacza kierunek ze znaku różnicy napięć, a dla
+    prądu rzędu 1e-18 kA znak zależy od platformy (CI 2026-09-16, run 5030: ten sam
+    commit dał "from_to" na jednym runnerze i "to_from" na drugim). Strzałka na
+    zerowym prądzie nie niesie treści inżynierskiej; FE token nieznany renderuje
+    parą węzłów bez strzałki. Sort deterministyczny
     (branch_id, source_id). Starsze wyniki bez pola → None (uczciwy brak);
     pusta lista = policzono, brak wkładów w żadnej gałęzi (sieć bez źródła
     zastępczego i bez falowników niosących prąd).
@@ -3104,6 +3117,7 @@ def _sc_rozplyw_galeziowy(
         branch = _wpis_grafu(graph_branches, branch_id)
         from_id = entry.get("from_node_id")
         to_id = entry.get("to_node_id")
+        i_ka = _amps_to_ka(entry.get("i_contrib_a"))
         flows.append(
             {
                 "branch_id": branch_id,
@@ -3113,8 +3127,12 @@ def _sc_rozplyw_galeziowy(
                 "from_node_name": _wpis_grafu(graph_nodes, from_id).get("name") or from_id,
                 "to_node_id": to_id,
                 "to_node_name": _wpis_grafu(graph_nodes, to_id).get("name") or to_id,
-                "i_ka": _amps_to_ka(entry.get("i_contrib_a")),
-                "direction": entry.get("direction"),
+                "i_ka": i_ka,
+                "direction": (
+                    "brak"
+                    if i_ka is not None and abs(i_ka) < PROG_PRADU_ZEROWEGO_KA
+                    else entry.get("direction")
+                ),
             }
         )
     flows.sort(key=lambda flow: (flow["branch_id"] or "", flow["source_id"] or ""))

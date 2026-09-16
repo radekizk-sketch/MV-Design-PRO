@@ -5,6 +5,7 @@ import json
 from datetime import UTC, datetime
 from typing import Any, Literal
 
+from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
 from enm.canonical_analysis import CanonicalRun
 
 CanonicalCompletenessStatus = Literal["complete", "partial", "failed", "not_applicable"]
@@ -161,7 +162,14 @@ def _result_hash_for_run(run: CanonicalRun) -> str | None:
     if key not in _RESULT_HASH_CACHE:
         if len(_RESULT_HASH_CACHE) >= _CONTEXT_CACHE_MAX:
             _RESULT_HASH_CACHE.pop(next(iter(_RESULT_HASH_CACHE)))
-        _RESULT_HASH_CACHE[key] = _stable_hash(run.raw_result)
+        # Skrót wyniku liczony na liczbach skwantyzowanych do CYFRY_ZNACZACE (polityka
+        # §35, ta sama kwantyzacja co hash kanoniczny ENM): surowe `float` solvera
+        # różnią się na ostatnim bicie między maszynami (CI 2026-09-16, run 5030 vs 5031:
+        # ten sam commit, dwa runnery, dwa różne `result_hash` tej samej sieci), więc
+        # skrót z surowych liczb NIE identyfikował wyniku, tylko maszynę. Tryb nieścisły:
+        # wartości niefinitowe w artefakcie zostają jak są (skrót ma być liczalny dla
+        # każdego zapisanego biegu, także historycznego).
+        _RESULT_HASH_CACHE[key] = _stable_hash(kwantyzuj_kontrakt(run.raw_result, scisle=False))
     return _RESULT_HASH_CACHE[key]
 
 

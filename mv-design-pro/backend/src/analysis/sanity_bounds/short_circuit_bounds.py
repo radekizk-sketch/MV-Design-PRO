@@ -98,22 +98,26 @@ def evaluate_short_circuit_current(
             upper_ka=None,
             in_range=False,
             status=INCOMPLETE,
-            why_pl=f"Poziom napięcia {voltage_kv} kV poza zdefiniowanymi pasmami sanity.",
+            why_pl=f"Poziom napięcia {voltage_kv:g} kV poza zdefiniowanymi pasmami sanity.",
             blocks_osd_package=False,
         )
     name, _lo_kv, _hi_kv, min_ka, max_ka = band
     in_range = min_ka <= ikss_ka <= max_ka
     if in_range:
-        why = f"Ik'' = {ikss_ka} kA mieści się w zakresie [{min_ka}; {max_ka}] kA dla {name} ({voltage_kv} kV)."
+        # Liczby w tekście z ustaloną precyzją (3 miejsca kA, `g` dla granic i napięcia):
+        # surowy `repr` floata (15–17 cyfr) różnił się ostatnią cyfrą między maszynami
+        # (CI 2026-09-16, run 5030: „4.611507168332454" vs „…455" w tym samym commicie),
+        # a projektant i tak czyta kA z dokładnością do ampera.
+        why = f"Ik'' = {ikss_ka:.3f} kA mieści się w zakresie [{min_ka:g}; {max_ka:g}] kA dla {name} ({voltage_kv:g} kV)."
     elif ikss_ka > max_ka:
         why = (
-            f"Ik'' = {ikss_ka} kA przekracza górną granicę wiarygodności {max_ka} kA "
-            f"dla {name} ({voltage_kv} kV) — wartość fizycznie wątpliwa (błąd jednostek/poziomu?). "
+            f"Ik'' = {ikss_ka:.3f} kA przekracza górną granicę wiarygodności {max_ka:g} kA "
+            f"dla {name} ({voltage_kv:g} kV) — wartość fizycznie wątpliwa (błąd jednostek/poziomu?). "
             "Zablokowane przed wejściem do pakietu OSD."
         )
     else:
         why = (
-            f"Ik'' = {ikss_ka} kA poniżej dolnej granicy {min_ka} kA dla {name} ({voltage_kv} kV) "
+            f"Ik'' = {ikss_ka:.3f} kA poniżej dolnej granicy {min_ka:g} kA dla {name} ({voltage_kv:g} kV) "
             "— sprawdź model źródła/impedancje."
         )
     return ShortCircuitSanityVerdict(

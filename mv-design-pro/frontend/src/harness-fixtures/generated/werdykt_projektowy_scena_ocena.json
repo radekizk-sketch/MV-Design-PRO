@@ -591,7 +591,7 @@
           "margines_jednostka": "",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Ik'' = 8.96999734196521 kA mieści się w zakresie [0.1; 50.0] kA dla SN (15.0 kV).",
+          "uzasadnienie_pl": "Ik'' = 8.970 kA mieści się w zakresie [0.1; 50] kA dla SN (15 kV).",
           "wniosek_pl": "Prąd zwarciowy początkowy 8,97 kA mieści się w paśmie wiarygodności [0,1; 50] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
@@ -612,7 +612,7 @@
           "margines_jednostka": "",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Ik'' = 13.986621846412516 kA mieści się w zakresie [0.5; 63.0] kA dla WN (110.0 kV).",
+          "uzasadnienie_pl": "Ik'' = 13.987 kA mieści się w zakresie [0.5; 63] kA dla WN (110 kV).",
           "wniosek_pl": "Prąd zwarciowy początkowy 13,987 kA mieści się w paśmie wiarygodności [0,5; 63] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
@@ -633,7 +633,7 @@
           "margines_jednostka": "",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Ik'' = 21.092597811767213 kA mieści się w zakresie [0.05; 150.0] kA dla nN (0.4 kV).",
+          "uzasadnienie_pl": "Ik'' = 21.093 kA mieści się w zakresie [0.05; 150] kA dla nN (0.4 kV).",
           "wniosek_pl": "Prąd zwarciowy początkowy 21,093 kA mieści się w paśmie wiarygodności [0,05; 150] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
@@ -654,7 +654,7 @@
           "margines_jednostka": "",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Ik'' = 8.96999734196521 kA mieści się w zakresie [0.1; 50.0] kA dla SN (15.0 kV).",
+          "uzasadnienie_pl": "Ik'' = 8.970 kA mieści się w zakresie [0.1; 50] kA dla SN (15 kV).",
           "wniosek_pl": "Prąd zwarciowy początkowy 8,97 kA mieści się w paśmie wiarygodności [0,1; 50] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
@@ -675,7 +675,7 @@
           "margines_jednostka": "",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Ik'' = 4.611507168332454 kA mieści się w zakresie [0.1; 50.0] kA dla SN (15.0 kV).",
+          "uzasadnienie_pl": "Ik'' = 4.612 kA mieści się w zakresie [0.1; 50] kA dla SN (15 kV).",
           "wniosek_pl": "Prąd zwarciowy początkowy 4,612 kA mieści się w paśmie wiarygodności [0,1; 50] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",

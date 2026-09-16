@@ -11,7 +11,7 @@
       "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "to_node_name": "Szyna nN",
       "i_ka": 2.2137004483243453e-16,
-      "direction": "to_from"
+      "direction": "brak"
     },
     {
       "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
@@ -44,7 +44,7 @@
       "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "to_node_name": "Szyna SN",
       "i_ka": 1.8282807406207646e-18,
-      "direction": "to_from"
+      "direction": "brak"
     },
     {
       "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
@@ -66,7 +66,7 @@
       "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "to_node_name": "Stacja C SN",
       "i_ka": 1.9668632369481116e-18,
-      "direction": "to_from"
+      "direction": "brak"
     }
   ],
   "branch_flow_trace": [
@@ -262,7 +262,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "6f9086c47f08b70970b2912fb193569b9925013ff0bf07ee653ce68f1fe861fe",
-      "result_hash": "78b7c6a136a4aee828ffbe722c32633dc8689e0db568c4df7ca2ef2de77c45fa",
+      "result_hash": "ed0677629522333fc2d352d211dfb64d9847193c67f47c835e3515f42a4d3830",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
