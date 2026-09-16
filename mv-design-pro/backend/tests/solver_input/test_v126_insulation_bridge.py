@@ -105,7 +105,7 @@ def test_arrester_with_catalog_ref_maps_all_card_params() -> None:
 def test_network_neutral_from_source_grounding_petersen_is_isolated() -> None:
     model = _model(
         devices=[_arrester_device("QA1", _ARRESTER_ID)],
-        source_grounding={"type": "petersen_coil", "x_ohm": 120.0},
+        bus_grounding={"type": "petersen_coil", "x_ohm": 120.0},
     )
     rows = build_v126_insulation_from_enm(model)
     assert rows[0].network_neutral == "isolated"
@@ -114,7 +114,7 @@ def test_network_neutral_from_source_grounding_petersen_is_isolated() -> None:
 def test_network_neutral_from_source_grounding_resistor_is_earthed() -> None:
     model = _model(
         devices=[_arrester_device("QA1", _ARRESTER_ID)],
-        source_grounding={"type": "resistor_grounded", "r_ohm": 40.0},
+        bus_grounding={"type": "resistor_grounded", "r_ohm": 40.0},
     )
     rows = build_v126_insulation_from_enm(model)
     assert rows[0].network_neutral == "earthed"
