@@ -550,6 +550,36 @@ def sn_voltage_kv(template: StationTemplate) -> float | None:
     return None
 
 
+KATEGORIE_KORZENIA_MODELU: frozenset[TemplateCategory] = frozenset({TemplateCategory.GPZ_110_SN})
+"""Kategorie szablonow, ktore SA korzeniem modelu (zrodlo zasilania sieci), a nie
+stacja wstawiana w istniejacy odcinek magistrali."""
+
+
+def kategoria_wchodzi_w_segment(category: TemplateCategory) -> bool:
+    """Ta sama regula na poziomie KATEGORII — dla kroku „wybierz kategorie" w
+    kreatorze wciecia (kontrakt `GET /api/station-templates/categories`)."""
+    return category not in KATEGORIE_KORZENIA_MODELU
+
+
+def template_wchodzi_w_segment(template: StationTemplate) -> bool:
+    """Czy szablon wstawia sie w ISTNIEJACY odcinek magistrali SN (`target_segment_id`),
+    czy jest korzeniem modelu budowanym bez odcinka.
+
+    JEDNO zrodlo prawdy dla trzech konsumentow (regula KLASA NIE INSTANCJA pkt 3,
+    predykaty parami z jednego zrodla): (1) `apply.py` — wymaganie odcinka i odmowa
+    dla korzenia ze wskazanym odcinkiem oraz wybor drogi budowy; (2) kontrakt listy
+    i szczegolu (`structural_fields` -> pole `wchodzi_w_segment`), z ktorego kreator
+    wciecia i planer masowy filtruja oferte; (3) niezmienniki e2e.
+
+    POWOD (pomiar 2026-09-17): reguła zyla w trzech miejscach jako niezalezne
+    porownania z `TemplateCategory.GPZ_110_SN` — dwa w backendzie i lista kategorii
+    zaszyta w kodzie frontu. Zgadzaly sie dzis, ale kazda nowa kategoria korzenia
+    (np. stacja zasilajaca innego napiecia) rozjechalaby je po cichu: UI nadal
+    oferowalby szablon, ktory backend odrzuci.
+    """
+    return kategoria_wchodzi_w_segment(template.category)
+
+
 def structural_fields(template: StationTemplate) -> dict[str, Any]:
     """Pola strukturalne (moc/napięcie/zastosowanie/kategorie ról) wspólne dla
     `StationTemplate.to_dict()` (pełny szczegół) i podsumowania listy
@@ -574,6 +604,7 @@ def structural_fields(template: StationTemplate) -> dict[str, Any]:
         "voltage_lv_kv": napiecie_dn_kv,
         "bay_role_categories": sorted({rola.role for rola in template.schema.sn_bay_roles}),
         "sn_voltage_kv": sn_voltage_kv(template),
+        "wchodzi_w_segment": template_wchodzi_w_segment(template),
     }
 
 

@@ -22,6 +22,7 @@ from application.station_templates import (
     get_template,
     list_templates,
     list_templates_by_category,
+    template_wchodzi_w_segment,
 )
 from application.station_templates.apply import TemplateApplyError, apply_template_to_case
 from enm.domain_operations import execute_domain_operation
@@ -277,9 +278,11 @@ def test_gpz_target_segment_id_none_jest_akceptowany() -> None:
 
 @pytest.mark.parametrize(
     "tpl_id",
-    ["tpl_gpz_110_15_2x16mva_h5", "tpl_gpz_110_20_2x16mva_h5", "tpl_gpz_110_15_2x25mva_h5"],
+    sorted(t.id for t in list_templates() if not template_wchodzi_w_segment(t)),
 )
-def test_gpz_ze_wskazanym_odcinkiem_odmawia_zamiast_budowac_nowa_wyspe(tpl_id: str) -> None:
+def test_korzen_modelu_ze_wskazanym_odcinkiem_odmawia_zamiast_budowac_nowa_wyspe(
+    tpl_id: str,
+) -> None:
     """DEFEKT ZNALEZIONY PRZEZ NIEZMIENNIK E2E (2026-09-17): żądanie „wstaw
     szablon w odcinek X" dla szablonu GPZ kończyło się SUKCESEM, ale produkt
     robił co innego niż żądanie — budował NOWY korzeń modelu (własną wyspę
@@ -287,8 +290,11 @@ def test_gpz_ze_wskazanym_odcinkiem_odmawia_zamiast_budowac_nowa_wyspe(tpl_id: s
     magistralę 15 kV wybór szablonu GPZ 110/20 dawał osobną wyspę 20 kV obok,
     zamiast stacji w magistrali projektanta.
 
-    Iloczyn cech: KAŻDY szablon GPZ × wskazany odcinek magistrali. Ciche
-    rozejście się żądania z wykonaniem jest zakazane — odmowa NAZWANA."""
+    Iloczyn cech: KAŻDY szablon będący korzeniem modelu (lista brana z
+    `template_wchodzi_w_segment`, nie z zapisanych identyfikatorów — nowa
+    kategoria korzenia wchodzi do tego testu sama) × wskazany odcinek
+    magistrali. Ciche rozejście się żądania z wykonaniem jest zakazane —
+    odmowa NAZWANA."""
     template = get_template(tpl_id)
     assert template is not None
     base_enm, odcinki = _magistrala(15.0)
@@ -296,7 +302,7 @@ def test_gpz_ze_wskazanym_odcinkiem_odmawia_zamiast_budowac_nowa_wyspe(tpl_id: s
     set_enm(klucz, EnergyNetworkModel.model_validate(base_enm))
     with pytest.raises(TemplateApplyError) as wyjatek:
         apply_template_to_case(template=template, klucz_twin=klucz, target_segment_id=odcinki[0])
-    assert wyjatek.value.code == "template.gpz_nie_wchodzi_w_segment"
+    assert wyjatek.value.code == "template.korzen_modelu_nie_wchodzi_w_segment"
     assert "korzeniem modelu" in wyjatek.value.message_pl
     # Model NIE zmienił się: odmowa przed jakąkolwiek mutacją.
     po_odmowie = get_enm(klucz).model_dump(mode="json")
@@ -305,16 +311,14 @@ def test_gpz_ze_wskazanym_odcinkiem_odmawia_zamiast_budowac_nowa_wyspe(tpl_id: s
 
 @pytest.mark.parametrize(
     "tpl_id",
-    [
-        "tpl_rs_2pola_sprzeglo",
-        "tpl_abonencka_250kva_pomiar",
-        "tpl_kompensacja_1v2mvar_15kv",
-        "tpl_rezerwa_2kierunki_sprzeglo",
-    ],
+    sorted(t.id for t in list_templates() if template_wchodzi_w_segment(t)),
 )
-def test_szablon_niekgpz_bez_target_segment_id_konczy_sie_jawnym_bledem(tpl_id: str) -> None:
-    """Iloczyn cech (KLASA NIE INSTANCJA): KAŻDA kategoria niebędąca GPZ musi
-    odmówić `target_segment_id=None` jawnym błędem — nigdy cichym 500/None."""
+def test_szablon_wciecia_bez_target_segment_id_konczy_sie_jawnym_bledem(tpl_id: str) -> None:
+    """DRUGA POŁOWA PARY PREDYKATÓW (KLASA NIE INSTANCJA pkt 3): skoro korzeń
+    modelu ODMAWIA wskazanego odcinka, to KAŻDY szablon wcięcia musi odmówić
+    jego BRAKU — oba warunki biorą się z `template_wchodzi_w_segment`, więc nie
+    mogą się rozjechać. Parametryzacja idzie po CAŁYM rejestrze (nie po czterech
+    wybranych identyfikatorach), żeby nowy szablon wszedł tu sam."""
     template = get_template(tpl_id)
     assert template is not None
     klucz = f"v12t016:{tpl_id}-none-target"

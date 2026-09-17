@@ -19,6 +19,7 @@ const MOCK_CATEGORIES = {
       icon: 'station-distribution',
       description_pl: 'Standardowe dystrybucyjne',
       template_count: 10,
+      wchodzi_w_segment: true,
     },
     {
       id: 'prosument_pv',
@@ -26,6 +27,7 @@ const MOCK_CATEGORIES = {
       icon: 'station-pv-prosument',
       description_pl: 'PV prosument',
       template_count: 6,
+      wchodzi_w_segment: true,
     },
     {
       // Kategoria KORZENIA modelu — backend buduje ja przez add_grid_source_sn
@@ -36,6 +38,7 @@ const MOCK_CATEGORIES = {
       icon: 'station-gpz',
       description_pl: 'GPZ 110/15 i 110/20 kV',
       template_count: 3,
+      wchodzi_w_segment: false,
     },
   ],
   total_templates: 57,
@@ -47,6 +50,7 @@ const MOCK_TEMPLATES_TYPOWE = {
       id: 'tpl_sn_nn_630kva',
       name_pl: 'Stacja SN/nN 630 kVA',
       category: 'typowa_sn_nn',
+      wchodzi_w_segment: true,
       description_pl: 'Najbardziej typowa 630 kVA',
       use_case_pl: 'Dystrybucyjna typowa',
       nc_rfg_type: null,
@@ -153,7 +157,7 @@ describe('StationTemplateWizard', () => {
   it('nie oferuje kategorii korzenia modelu (GPZ) w torze wciecia w odcinek', async () => {
     // Zadanie „wstaw w odcinek X" dla szablonu GPZ konczylo sie kiedys HTTP 200
     // i NOWA wyspa obok magistrali (pomiar 2026-09-17, niezmiennik e2e).
-    // Backend odmawia teraz kodem `template.gpz_nie_wchodzi_w_segment`, a ten
+    // Backend odmawia teraz kodem `template.korzen_modelu_nie_wchodzi_w_segment`, a ten
     // kreator nie pokazuje wyboru, ktory i tak skonczylby sie odmowa.
     render(<StationTemplateWizard />);
     await waitFor(() => screen.getByTestId('category-typowa_sn_nn'));
@@ -327,6 +331,7 @@ describe('StationTemplateWizard', () => {
           template_id: 'tpl_sn_nn_630kva',
           template_name_pl: 'Stacja SN/nN 630 kVA',
           category: 'typowa_sn_nn',
+          wchodzi_w_segment: true,
           nc_rfg_type: null,
           station_type: 'inline',
           catalog_profile_applied: 'ZPUE_WLOSZCZOWA',

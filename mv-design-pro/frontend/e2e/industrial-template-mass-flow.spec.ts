@@ -11,6 +11,7 @@ type TemplateSummary = {
   id: string;
   name_pl: string;
   category: string;
+  wchodzi_w_segment: boolean;
   /**
    * Napięcie SN, na którym szablon pracuje (`schema.py::sn_voltage_kv`);
    * `null` = szablon napięciowo obojętny (bez transformatora i bez baterii).
@@ -142,6 +143,12 @@ async function appendSegment(
  * (`shunt.voltage_mismatch`: bateria 20 kV na szynie 15 kV). Odmowa jest
  * poprawną fizyką i zostaje; to test miał przestać aplikować szablon 20 kV do
  * sieci 15 kV. Sama odmowa jest osobno przypięta niżej jako niezmiennik.
+ *
+ * Drugi wymiar wyboru (pomiar 2026-09-17, łańcuch f10): `wchodzi_w_segment`
+ * z kontraktu szablonu. Stacja zasilająca (GPZ 110/SN) jest KORZENIEM modelu
+ * — backend buduje ją bez odcinka i odmawia wskazanego odcinka. Przedtem
+ * szablon GPZ trafiał do przepływu masowego i po cichu stawiał osobną wyspę
+ * obok magistrali; ta odmowa też jest niżej przypięta jako niezmiennik.
  */
 function selectTemplatesForIndustrialRun(templates: TemplateSummary[]): TemplateSummary[] {
   const requiredCategories = [
@@ -157,7 +164,9 @@ function selectTemplatesForIndustrialRun(templates: TemplateSummary[]): Template
     'sekcyjna',
   ];
   const pasujaceNapieciowo = templates.filter(
-    (t) => t.sn_voltage_kv == null || t.sn_voltage_kv === NAPIECIE_MAGISTRALI_KV,
+    (t) =>
+      t.wchodzi_w_segment &&
+      (t.sn_voltage_kv == null || t.sn_voltage_kv === NAPIECIE_MAGISTRALI_KV),
   );
   const selected = new Map<string, TemplateSummary>();
   for (const category of requiredCategories) {
@@ -349,6 +358,45 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
     const trescOdmowy = (await odmowa.json()) as { detail?: { code?: string; message_pl?: string } };
     expect(trescOdmowy.detail?.code, `${szablon.id}: odmowa musi być nazwana kodem`).toBeTruthy();
     expect(trescOdmowy.detail?.message_pl, `${szablon.id}: odmowa musi mieć komunikat po polsku`).toBeTruthy();
+  }
+
+  // NIEZMIENNIK ROLI W MODELU (przypięty po czerwieni łańcucha f10, 2026-09-17):
+  // stacja zasilająca jest KORZENIEM modelu — żądanie „wstaw ją w odcinek X"
+  // NIE może skończyć się cichym sukcesem i nową wyspą obok magistrali
+  // projektanta. Iloczyn cech: KAŻDY szablon korzenia z katalogu (lista brana z
+  // kontraktu `wchodzi_w_segment`, nie z zapisanych identyfikatorów) × wskazany
+  // odcinek istniejącej magistrali.
+  const szablonyKorzenia = templatesPayload.templates.filter((t) => !t.wchodzi_w_segment);
+  expect(
+    szablonyKorzenia.length,
+    'katalog musi mieć szablony stacji zasilającej, inaczej test traci przedmiot',
+  ).toBeGreaterThan(0);
+  for (const szablon of szablonyKorzenia) {
+    const segmentRef = await appendSegment(request, seed.caseId, 91);
+    const odmowa = await request.post(`${BACKEND_BASE}/api/station-templates/${szablon.id}/apply`, {
+      data: {
+        case_id: seed.caseId,
+        target_segment_id: segmentRef,
+        insert_at_ratio: 0.5,
+        params_override: {},
+        catalog_profile: null,
+      },
+      timeout: 30000,
+    });
+    expect(
+      odmowa.ok(),
+      `${szablon.id}: stacja zasilająca NIE może wejść w odcinek magistrali`,
+    ).toBeFalsy();
+    const trescOdmowyKorzenia = (await odmowa.json()) as {
+      detail?: { code?: string; message_pl?: string };
+    };
+    expect(trescOdmowyKorzenia.detail?.code, `${szablon.id}: odmowa musi być nazwana kodem`).toBe(
+      'template.korzen_modelu_nie_wchodzi_w_segment',
+    );
+    expect(
+      trescOdmowyKorzenia.detail?.message_pl,
+      `${szablon.id}: odmowa musi mieć komunikat po polsku`,
+    ).toBeTruthy();
   }
 
   const enmResponse = await request.get(`${BACKEND_BASE}/api/cases/${seed.caseId}/enm`);

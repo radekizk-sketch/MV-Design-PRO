@@ -24,6 +24,7 @@ from application.station_templates.schema import (
     _opcja_transformatora_dla_wymaganej_mocy,
     _opcja_transformatora_wg_tokenu_id,
     resolve_template_default_shunt_choice,
+    template_wchodzi_w_segment,
     transformer_voltages_kv,
 )
 from enm.domain_operations import execute_domain_operation
@@ -86,7 +87,7 @@ def apply_template_to_case(
     Blokada jest per przypadek obliczeniowy — zastosowania szablonu na ROZNYCH
     przypadkach nadal biegna rownolegle.
     """
-    if template.category != TemplateCategory.GPZ_110_SN and not target_segment_id:
+    if template_wchodzi_w_segment(template) and not target_segment_id:
         raise TemplateApplyError(
             code="template.target_segment_required",
             message_pl=(
@@ -94,7 +95,7 @@ def apply_template_to_case(
                 "podaj target_segment_id."
             ),
         )
-    if template.category == TemplateCategory.GPZ_110_SN and target_segment_id:
+    if not template_wchodzi_w_segment(template) and target_segment_id:
         # DEFEKT ZNALEZIONY PRZEZ NIEZMIENNIK E2E (2026-09-17): żądanie mówiło
         # „wstaw w odcinek X", a produkt budował NOWY korzeń modelu (GPZ tworzy
         # własną wyspę przez `add_grid_source_sn`) i milczał o tej różnicy —
@@ -103,7 +104,7 @@ def apply_template_to_case(
         # Ciche rozejście się żądania z wykonaniem jest zakazane: odmowa NAZWANA
         # zamiast domysłu, a kreator wcięcia nie oferuje już tej kategorii.
         raise TemplateApplyError(
-            code="template.gpz_nie_wchodzi_w_segment",
+            code="template.korzen_modelu_nie_wchodzi_w_segment",
             message_pl=(
                 f"Szablon '{template.id}' to stacja zasilająca (GPZ 110/SN) — "
                 "jest korzeniem modelu, a nie stacją wstawianą w istniejący "
@@ -112,7 +113,7 @@ def apply_template_to_case(
             ),
         )
     with blokada_twin(klucz_twin):
-        if template.category == TemplateCategory.GPZ_110_SN:
+        if not template_wchodzi_w_segment(template):
             return _zastosuj_gpz_pod_blokada(
                 template=template,
                 klucz=klucz_twin,

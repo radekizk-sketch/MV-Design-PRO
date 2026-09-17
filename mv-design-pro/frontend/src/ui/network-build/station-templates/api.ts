@@ -113,6 +113,14 @@ export interface StationTemplateSummary {
    * Zrodlo: `backend/.../schema.py::sn_voltage_kv`.
    */
   sn_voltage_kv: number | null;
+  /**
+   * Czy szablon wstawia sie w ISTNIEJACY odcinek magistrali SN, czy jest
+   * korzeniem modelu (stacja zasilajaca budowana bez odcinka). Zrodlo:
+   * `backend/.../schema.py::template_wchodzi_w_segment` — front NIE powtarza
+   * u siebie listy kategorii korzenia, bo dwa niezalezne warunki rozjechalyby
+   * sie przy pierwszej nowej kategorii.
+   */
+  wchodzi_w_segment: boolean;
   bay_role_categories: readonly string[];
 }
 
@@ -120,25 +128,20 @@ export interface StationTemplateFull extends StationTemplateSummary {
   schema: TemplateSchema;
 }
 
-/**
- * Kategorie szablonow, ktorych NIE WOLNO oferowac w torze „wstaw stacje w
- * odcinek magistrali": stacja zasilajaca (GPZ 110/SN) jest KORZENIEM modelu —
- * backend buduje ja przez `add_grid_source_sn` i ignoruje wskazany odcinek.
- *
- * POWOD (pomiar 2026-09-17, niezmiennik e2e): zadanie „wstaw w odcinek X"
- * konczylo sie HTTP 200 i NOWA wyspa 20 kV obok magistrali 15 kV, bez slowa o
- * tej roznicy. Backend odmawia teraz nazwanym kodem
- * (`template.gpz_nie_wchodzi_w_segment`), a UI nie oferuje wyboru, ktory i tak
- * skonczy sie odmowa — dwie strony tej samej reguly.
- */
-export const KATEGORIE_POZA_TOREM_WCIECIA: readonly string[] = ['gpz_110_sn'];
-
 export interface CategoryEntry {
   id: string;
   label_pl: string;
   icon: string;
   description_pl: string;
   template_count: number;
+  /**
+   * Czy kategoria nalezy do toru „wstaw stacje w odcinek magistrali". Stacja
+   * zasilajaca (GPZ 110/SN) jest KORZENIEM modelu — backend buduje ja przez
+   * `add_grid_source_sn` i odmawia wskazanego odcinka kodem
+   * `template.korzen_modelu_nie_wchodzi_w_segment`. Zrodlo:
+   * `backend/.../schema.py::kategoria_wchodzi_w_segment`.
+   */
+  wchodzi_w_segment: boolean;
 }
 
 export interface CategoriesResponse {

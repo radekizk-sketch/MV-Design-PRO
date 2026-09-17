@@ -18,11 +18,13 @@ from __future__ import annotations
 import pytest
 from application.station_templates import list_templates
 from application.station_templates.schema import (
+    KATEGORIE_KORZENIA_MODELU,
     resolve_template_default_shunt_choice,
     resolve_template_default_transformer_choice,
     shunt_capacitor_rated_kv,
     sn_voltage_kv,
     structural_fields,
+    template_wchodzi_w_segment,
     transformer_voltages_kv,
 )
 
@@ -128,3 +130,31 @@ def test_rozklad_napiec_zgadza_sie_z_pomiarem_w_docstringu() -> None:
     assert napiecia.count(15.0) == 64
     assert napiecia.count(20.0) == 3
     assert napiecia.count(None) == 6
+
+
+def test_rola_szablonu_w_modelu_jest_czescia_kontraktu_oferty() -> None:
+    """Kontrakt listy i szczegółu niesie `wchodzi_w_segment` dla KAŻDEGO szablonu.
+
+    Bez tego pola front musiałby powtórzyć u siebie listę kategorii będących
+    korzeniem modelu — dokładnie ten duplikat predykatu, który reguła KLASA NIE
+    INSTANCJA (pkt 3) nazywa defektem czekającym na dane brzegowe.
+    """
+    for szablon in list_templates():
+        pola = structural_fields(szablon)
+        assert "wchodzi_w_segment" in pola, szablon.id
+        assert isinstance(pola["wchodzi_w_segment"], bool), szablon.id
+        assert pola["wchodzi_w_segment"] == template_wchodzi_w_segment(szablon), szablon.id
+
+
+def test_korzenie_modelu_to_dokladnie_szablony_gpz() -> None:
+    """Pomiar 2026-09-17 przypięty: korzeniem modelu jest dziś WYŁĄCZNIE kategoria
+    GPZ 110/SN — 3 szablony z 73. Dołożenie kategorii korzenia bez aktualizacji
+    `KATEGORIE_KORZENIA_MODELU` zapali ten test, zamiast po cichu wpuścić szablon
+    do kreatora wcięcia w magistralę."""
+    korzenie = sorted(t.id for t in list_templates() if not template_wchodzi_w_segment(t))
+    assert korzenie == [
+        "tpl_gpz_110_15_2x16mva_h5",
+        "tpl_gpz_110_15_2x25mva_h5",
+        "tpl_gpz_110_20_2x16mva_h5",
+    ]
+    assert len(KATEGORIE_KORZENIA_MODELU) == 1

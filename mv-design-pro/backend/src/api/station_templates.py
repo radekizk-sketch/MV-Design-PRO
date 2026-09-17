@@ -18,6 +18,7 @@ from application.station_templates import (
     StationTemplate,
     TemplateCategory,
     get_template,
+    kategoria_wchodzi_w_segment,
     list_templates,
     list_templates_by_category,
     structural_fields,
@@ -357,6 +358,11 @@ def list_categories() -> dict[str, Any]:
                 "icon": _CATEGORY_ICONS[cat],
                 "description_pl": _CATEGORY_DESCRIPTIONS[cat],
                 "template_count": counts.get(cat.value, 0),
+                # Rola kategorii w modelu z JEDNEGO zrodla prawdy backendu
+                # (`schema.py::KATEGORIE_KORZENIA_MODELU`): kreator wciecia w
+                # magistrale filtruje po tym polu, zamiast powtarzac u siebie
+                # liste kategorii korzenia.
+                "wchodzi_w_segment": kategoria_wchodzi_w_segment(cat),
             }
             for cat in TemplateCategory
         ],
