@@ -27,7 +27,9 @@ function mockFetch(map: Record<string, unknown>) {
   );
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('fetchConverterTypes — certyfikat PTPiREE (PV/BESS)', () => {
   it('PV: przenosi ptpiree_certificate_ref + status na ConverterType', async () => {

@@ -194,4 +194,14 @@ describe('DER type compatibility — PV / BESS / FW', () => {
     const kinds: Array<'PV' | 'BESS' | 'FW'> = ['PV', 'BESS', 'FW'];
     expect(kinds).toHaveLength(3);
   });
+
+  it('typ DerReadinessCategory obejmuje 5 kategorii macierzy gotowości', () => {
+    // Compile-time check via type narrowing (analogicznie do DerKind powyżej) —
+    // dryf kanonu kategorii (dodanie/usunięcie/zmiana nazwy) przestaje się
+    // kompilować, zanim zdąży ucichnąć w samym runtime asercji.
+    const categories: DerReadinessCategory[] = [
+      'Obliczenia', 'OZE / NC RfG', 'Ochrona', 'Jakość energii', 'Raportowanie',
+    ];
+    expect(categories).toEqual(DER_READINESS_CATEGORIES);
+  });
 });

@@ -1,4 +1,4 @@
-import type { TechnicalIconName } from '../icons/technicalIconRegistry';
+import type { ScreenIconName } from '../icons/technicalIconRegistry';
 
 import type {
   SurfaceSubjectKind,
@@ -51,7 +51,7 @@ export interface ScreenCanonDefinition {
   label: string;
   areaId: KodDziedzinyEkranu;
   area: KodDziedzinyEkranu;
-  icon: TechnicalIconName;
+  icon: ScreenIconName;
   canonicalRoute: string;
   legacyAliases: string[];
   componentKey: string;

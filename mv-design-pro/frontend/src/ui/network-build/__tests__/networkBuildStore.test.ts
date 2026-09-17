@@ -93,7 +93,7 @@ describe('computeBuildPhase', () => {
   it('returns READY when readiness.ready is true', () => {
     const enm = { ...enmWithSource(), substations: [{ id: 's1', name: 'S1', station_type: 'terminal', transformer_refs: [], bus_refs: [] }] } as unknown as EnergyNetworkModel;
     const lv = { trunks: [{ id: 't1', segments: ['seg-1'] }], terminals: [], branches: [] } as unknown as LogicalViewsV1;
-    const readiness = { ready: true, blockers: [] } as ReadinessInfo;
+    const readiness: ReadinessInfo = { ready: true, blockers: [], warnings: [] };
     expect(computeBuildPhase(enm, lv, readiness)).toBe('READY');
   });
 });

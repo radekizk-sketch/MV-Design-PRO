@@ -10,7 +10,7 @@ const mockIssue: Issue = {
   severity: 'HIGH',
   title_pl: 'Brak parametrów transformatora',
   description_pl: 'Transformator TR-01 nie ma uk%',
-  object_ref: { type: 'Transformer', id: 'tr-01', name: 'TR-01' },
+  object_ref: { type: 'TransformerBranch', id: 'tr-01', name: 'TR-01' },
 };
 
 describe('IssuePanelContainer — wrapper z dataloadera', () => {

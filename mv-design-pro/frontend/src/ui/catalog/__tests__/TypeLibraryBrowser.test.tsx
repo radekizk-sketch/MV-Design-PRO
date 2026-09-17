@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { TypeLibraryBrowser } from '../TypeLibraryBrowser';
 import * as catalogApi from '../api';
 import type { CatalogListItem } from '../api';
-import type { TypeCategory } from '../types';
+import type { PtpireeGeneratorCertificateCatalogType, TypeCategory } from '../types';
 
 vi.mock('../api');
 
@@ -186,13 +186,26 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       burden_va: 30,
     },
   ],
+  // Kategoria łączy CT+VT (dług V12T-018): `fetchTypesByCategory` zwraca
+  // `[...CTCatalogType, ...VTCatalogType]` (`api.ts`), więc fixture niesie
+  // rekordy w KSZTAŁCIE realnego dostawcy, nie zmyślony wspólny typ.
   MEASUREMENT_TRANSFORMER: [
     {
-      id: 'mt-001',
-      name: 'Zestaw pomiarowy',
+      id: 'mt-ct-001',
+      name: 'PP 400/1 A',
       manufacturer: 'MeasureTech',
-      measurement_kind: 'COMBINED',
-      accuracy_class: '0.5 / 5P20',
+      ratio_primary_a: 400,
+      ratio_secondary_a: 1,
+      accuracy_class: '5P20',
+      burden_va: 15,
+    },
+    {
+      id: 'mt-vt-001',
+      name: 'PN 15 kV',
+      manufacturer: 'MeasureTech',
+      ratio_primary_v: 15000,
+      ratio_secondary_v: 100,
+      accuracy_class: '0.5',
       burden_va: 30,
     },
   ],
@@ -241,6 +254,17 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       notes_pl: 'Dla pola liniowego SN',
     },
   ],
+  // Kategorie bez zakładki w TypeLibraryBrowser (TAB_DEFINITIONS) — Record
+  // wymaga wpisu dla KAŻDEJ TypeCategory, więc pusta lista jest uczciwym
+  // stanem (nikt nie klika tych zakładek w tym pliku testów), nie fikcją.
+  SURGE_ARRESTER: [],
+  SHUNT_CAPACITOR: [],
+  BRANCH_POLE: [],
+  ZKSN: [],
+  // PTPIREE_CERTIFICATE ma WŁASNĄ ścieżkę pobierania (strona serwerowa,
+  // `fetchPtpireeGeneratorCertificatesPage` — patrz drugi `describe` niżej);
+  // `fetchTypesByCategory` jej nie obsługuje w produkcji, więc pusta lista.
+  PTPIREE_CERTIFICATE: [],
 };
 
 describe('TypeLibraryBrowser', () => {
@@ -412,18 +436,36 @@ describe('TypeLibraryBrowser', () => {
 });
 
 describe('TypeLibraryBrowser — wykaz certyfikatów PTPiREE (strona serwerowa, dług 5 z V12K-321)', () => {
-  const pozycjeStrony: CatalogListItem[] = [
+  const pozycjeStrony: PtpireeGeneratorCertificateCatalogType[] = [
     {
       id: 'wipwc-1-2-w3254',
       name: 'Huawei SUN2000-215KTL-H3',
       manufacturer: 'Huawei Digital Power',
+      model: 'SUN2000-215KTL-H3',
+      device_type: 'Inwerter',
       document_number: 'DEKRA/2025/3254',
+      document_acceptance_date: '31.12.2026',
+      wos_version: '',
+      wipwc_version: '1.2',
+      ppm_scope: 'A,B,C,D',
+      source_url: 'https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-06-Wykaz-urzadzen_1.2.pdf',
+      manufacturer_key: 'HUAWEI DIGITAL POWER',
+      model_key: 'SUN2000 215KTL H3',
     },
     {
       id: 'wipwc-1-2-w0001',
       name: 'Afore HNS3000TL',
       manufacturer: 'Afore New Energy',
+      model: 'HNS3000TL',
+      device_type: 'Inwerter',
       document_number: 'TUV/2024/0001',
+      document_acceptance_date: '31.12.2026',
+      wos_version: 'WOS 2024',
+      wipwc_version: '1.2',
+      ppm_scope: 'A',
+      source_url: 'https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-06-Wykaz-urzadzen_1.2.pdf',
+      manufacturer_key: 'AFORE NEW ENERGY',
+      model_key: 'HNS3000TL',
     },
   ];
 

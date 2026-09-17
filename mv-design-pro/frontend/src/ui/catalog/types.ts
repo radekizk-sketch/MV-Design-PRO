@@ -152,18 +152,6 @@ export interface ConverterType extends CatalogType {
 }
 
 /**
- * Measurement Transformer Type (CT/VT).
- * Derived from backend MeasurementRating + catalog patterns.
- */
-export interface MeasurementTransformerType extends CatalogType {
-  measurement_kind: 'CT' | 'VT';
-  ratio_primary: number;
-  ratio_secondary: number;
-  accuracy_class: string;
-  burden_va: number;
-}
-
-/**
  * Protection Device Type.
  * Source: backend ProtectionDeviceType dataclass.
  */

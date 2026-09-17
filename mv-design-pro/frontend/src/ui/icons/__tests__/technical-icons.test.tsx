@@ -37,7 +37,7 @@ describe('technical-icons - rejestr ikon technicznych', () => {
   it('renderuje ikony w rozmiarach 16, 20, 24 i 32 px', () => {
     const sampleIcons = Object.keys(technicalIconRegistry).slice(0, 8) as TechnicalIconName[];
     for (const icon of sampleIcons) {
-      for (const size of [16, 20, 24, 32]) {
+      for (const size of [16, 20, 24, 32] as const) {
         const { container, unmount } = render(<TechnicalIcon name={icon} size={size} />);
         const svg = container.querySelector('svg');
         expect(svg).not.toBeNull();

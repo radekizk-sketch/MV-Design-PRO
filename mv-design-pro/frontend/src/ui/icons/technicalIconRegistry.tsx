@@ -113,6 +113,10 @@ export const screenIconRegistry = {
   'ikona-ekran-historia-audyt': 'Historia i audyt',
 } as const;
 
+/** Podzbior ikon dozwolonych w polu `icon` rejestru ekranow (jedno zrodlo
+ *  prawdy — patrz `ui/workspace/screenCanonRegistry.ts::ScreenCanonDefinition`). */
+export type ScreenIconName = keyof typeof screenIconRegistry;
+
 export const technicalIconRegistry = {
   ...areaIconRegistry,
   ...objectIconRegistry,
