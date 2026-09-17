@@ -1389,7 +1389,19 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `TemplateSchema.shunt_capacitor_options`/`grid_source_options`,
     # `application/station_templates/schema.py` — addytywne krotki CatalogChoice
     # dla nowych kategorii szablonow rola A/E; zero podstawien liczbowych).
-    assert "Pol kontraktow wejsciowych: 3708." in wyjscie, wyjscie
+    # Karta KATALOG-NIEZMIENNIKI (2026-09-17): 3708 -> 3725 (+17 pol; POMIAR guardem
+    # na drzewie karty). Nowe nosniki w zakresie skanu, wszystkie w `api/catalog.py`
+    # — kontrakt odpowiedzi przegladu wiarygodnosci katalogu:
+    # `OdstepstwoWiarygodnosciOdpowiedz` (kod, regula, pozycja_id, opis_wartosci),
+    # `PokrycieRegulyOdpowiedz` (policzone, pominiete, powod_pominiecia),
+    # `RegulaWiarygodnosciOdpowiedz` (nazwa, podstawa, uzasadnienie),
+    # `RodzinaPrzegladuOdpowiedz` (rodzina, etykieta_pl, liczba_pozycji,
+    # sprawdzone_reguly, pokrycie, liczba_odstepstw, wedlug_kodu, odstepstwa),
+    # `RodzinaBezRegulOdpowiedz` (powod), `PrzegladWiarygodnosciOdpowiedz`
+    # (rodziny, rodziny_bez_regul, reguly) — dedup po nazwie pola. Przeglad CZYTA
+    # katalog i nie podstawia ZADNEJ liczby za brak danej: pozycja, ktorej reguly nie
+    # da sie policzyc, idzie do `pominiete` z nazwanym powodem (PASS niezmieniony).
+    assert "Pol kontraktow wejsciowych: 3725." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1429,7 +1441,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/station_templates/templates/{gpz_110_sn,rozdzielnia_sieciowa,
         # stacja_abonencka,kompensacja,rezerwa_zasilania}.py` — nowe kategorie
         # szablonow stacji rola A/C/E; zero plikow skasowanych).
-        "Przeskanowano 503 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta KATALOG-NIEZMIENNIKI (2026-09-17): 503 -> 504 (+1 plik
+        # `network_model/catalog/niezmienniki_katalogu.py` — rejestr mocy regul
+        # katalogu i przeglad wiarygodnosci; modul importuje wylacznie stdlib i nie
+        # podstawia zadnej liczby za brak danej, zero plikow skasowanych).
+        "Przeskanowano 504 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1464,7 +1480,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta W5-A (2026-09-16): network_model +2: `network_model/core/uziemienie.py`
         # — slowniki uziemienia, `network_model/pochodne/skladowe_zerowe.py` — Z_0 = Z_T0 + 3*Z_N;
         # zero wpisow w zapadce/wykluczeniach; na drzewie scalonym W5-D + W5-A pomiar = 144.
-        "  network_model: pliki_skanowane=144, dlug=14 plikow/suma 77, "
+        # Karta KATALOG-NIEZMIENNIKI (2026-09-17): network_model 144 -> 145
+        # (+1 `catalog/niezmienniki_katalogu.py`); dlug i wykluczenia BEZ ZMIAN —
+        # modul rejestru regul nie podstawia zadnej liczby za brak danej.
+        "  network_model: pliki_skanowane=145, dlug=14 plikow/suma 77, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).

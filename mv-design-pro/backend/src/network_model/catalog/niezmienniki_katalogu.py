@@ -893,13 +893,22 @@ RODZINY_BEZ_REGUL: dict[str, str] = {
 }
 
 
-def _jest_liczba(wartosc: Any) -> bool:
-    """Czy wartosc jest SKONCZONA liczba (bool odpada — `True` nie jest pomiarem)."""
-    return (
-        isinstance(wartosc, int | float)
-        and not isinstance(wartosc, bool)
-        and math.isfinite(float(wartosc))
-    )
+def _pomiar(pozycja: Any, pole: str) -> float | None:
+    """Odczyt pola jako SKONCZONEJ liczby albo `None` (brak danej do policzenia).
+
+    Jedna funkcja zamiast pary „predykat + rzutowanie": predykat `bool` nie zawezal
+    typu, wiec kazde uzycie wymagalo osobnego `float(...)` na wartosci, ktora dla
+    sprawdzajacego typy nadal mogla byc `None`. Tu wynik JEST liczba albo jej nie ma.
+
+    `bool` odpada jawnie — `True` nie jest pomiarem, a `isinstance(True, int)` jest
+    prawda. NaN i obie nieskonczonosci odpadaja przez `math.isfinite`: wartosc, na
+    ktorej nie da sie porownac, nie jest policzona, tylko pominieta.
+    """
+    wartosc = getattr(pozycja, pole, None)
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+        return None
+    liczba = float(wartosc)
+    return liczba if math.isfinite(liczba) else None
 
 
 def _id_pozycji(pozycja: Any) -> str:
@@ -936,22 +945,22 @@ def _odstepstwo(kod: str, pozycja: Any, opis_wartosci: str) -> _WynikReguly:
 
 def _sprawdz_kat_w_001(pozycja: Any) -> _WynikReguly:
     """R0 >= R1 — rezystancja skladowej zerowej wobec skladowej zgodnej."""
-    r0 = getattr(pozycja, "r0_ohm_per_km", None)
-    r1 = getattr(pozycja, "r_ohm_per_km", None)
-    if not _jest_liczba(r0) or not _jest_liczba(r1):
+    r0 = _pomiar(pozycja, "r0_ohm_per_km")
+    r1 = _pomiar(pozycja, "r_ohm_per_km")
+    if r0 is None or r1 is None:
         return _NIEPOLICZONA
-    if float(r0) * LUZ_POROWNANIA < float(r1):
+    if r0 * LUZ_POROWNANIA < r1:
         return _odstepstwo("KAT-W-001", pozycja, f"R0 = {r0} Ω/km, R1 = {r1} Ω/km")
     return _WynikReguly(policzona=True)
 
 
 def _sprawdz_kat_w_002(pozycja: Any) -> _WynikReguly:
     """P0 < Pk — straty jalowe wobec strat obciazeniowych."""
-    p0 = getattr(pozycja, "p0_kw", None)
-    pk = getattr(pozycja, "pk_kw", None)
-    if not _jest_liczba(p0) or not _jest_liczba(pk):
+    p0 = _pomiar(pozycja, "p0_kw")
+    pk = _pomiar(pozycja, "pk_kw")
+    if p0 is None or pk is None:
         return _NIEPOLICZONA
-    if float(p0) >= float(pk):
+    if p0 >= pk:
         return _odstepstwo("KAT-W-002", pozycja, f"P0 = {p0} kW, Pk = {pk} kW")
     return _WynikReguly(policzona=True)
 
@@ -969,22 +978,22 @@ def _sprawdz_kat_w_003(pozycja: Any) -> _WynikReguly:
     na pierwsze prawdziwe odstepstwo. Pozycje bez dodatniej Icu ida wiec do
     `pominiete` z nazwanym powodem, a nie do odstepstw i nie do cichego zera.
     """
-    icw = getattr(pozycja, "i_th_ka", None)
-    icu = getattr(pozycja, "breaking_capacity_ka", None)
-    if not _jest_liczba(icw) or not _jest_liczba(icu) or float(icu) <= 0.0:
+    icw = _pomiar(pozycja, "i_th_ka")
+    icu = _pomiar(pozycja, "breaking_capacity_ka")
+    if icw is None or icu is None or icu <= 0.0:
         return _NIEPOLICZONA
-    if float(icw) > float(icu) * LUZ_POROWNANIA:
+    if icw > icu * LUZ_POROWNANIA:
         return _odstepstwo("KAT-W-003", pozycja, f"Icw (I_th) = {icw} kA, Icu = {icu} kA")
     return _WynikReguly(policzona=True)
 
 
 def _sprawdz_kat_w_004(pozycja: Any) -> _WynikReguly:
     """Icw <= Icu aparatu nN — jak KAT-W-003: Icu niedodatnie = zdolnosci nie ma."""
-    icw = getattr(pozycja, "icw_ka", None)
-    icu = getattr(pozycja, "i_cu_ka", None)
-    if not _jest_liczba(icw) or not _jest_liczba(icu) or float(icu) <= 0.0:
+    icw = _pomiar(pozycja, "icw_ka")
+    icu = _pomiar(pozycja, "i_cu_ka")
+    if icw is None or icu is None or icu <= 0.0:
         return _NIEPOLICZONA
-    if float(icw) > float(icu) * LUZ_POROWNANIA:
+    if icw > icu * LUZ_POROWNANIA:
         return _odstepstwo("KAT-W-004", pozycja, f"Icw = {icw} kA, Icu = {icu} kA")
     return _WynikReguly(policzona=True)
 
@@ -993,21 +1002,21 @@ def _sprawdz_kat_w_005(pozycja: Any) -> _WynikReguly:
     """0 < R/X < 1 umowy rownowaznej sieci — oba warianty (maksymalny i minimalny)."""
     policzona = False
     for nazwa_pola, etykieta in (("rx_ratio", "R/X"), ("rx_ratio_min", "R/X (min)")):
-        rx = getattr(pozycja, nazwa_pola, None)
-        if not _jest_liczba(rx):
+        rx = _pomiar(pozycja, nazwa_pola)
+        if rx is None:
             continue
         policzona = True
-        if not 0.0 < float(rx) < 1.0:
+        if not 0.0 < rx < 1.0:
             return _odstepstwo("KAT-W-005", pozycja, f"{etykieta} = {rx}")
     return _WynikReguly(policzona=policzona)
 
 
 def _sprawdz_kat_w_006(pozycja: Any) -> _WynikReguly:
     """0 < i0 % < 10 transformatora."""
-    i0 = getattr(pozycja, "i0_percent", None)
-    if not _jest_liczba(i0):
+    i0 = _pomiar(pozycja, "i0_percent")
+    if i0 is None:
         return _NIEPOLICZONA
-    if not 0.0 < float(i0) < 10.0:
+    if not 0.0 < i0 < 10.0:
         return _odstepstwo("KAT-W-006", pozycja, f"i0 = {i0} %")
     return _WynikReguly(policzona=True)
 

@@ -789,13 +789,33 @@ class TestZbierzKandydatowZKatalogu:
             assert k.zdolnosc_wylaczania_ka == mcb_typy[k.id].icn_ka
 
     def test_mccb_nastawy_resolwowane_z_katalogu_karta_d1(self) -> None:
-        """Karta D1: WSZYSTKIE 11 rekordów MCCB (WYLACZNIK_GLOWNY/ODPLYWOWY)
-        niosą nastawy resolwowane do GÓRNEGO krańca zakresu regulacji —
-        `ir_a=1,0×In` (górny kraniec `ir_range`), `ii_a=15×In`."""
+        """Karta D1: WSZYSTKIE rekordy MCCB (WYLACZNIK_GLOWNY/ODPLYWOWY) niosą
+        nastawy resolwowane do GÓRNEGO krańca zakresu regulacji —
+        `ir_a=1,0×In` (górny kraniec `ir_range`), `ii_a=15×In`.
+
+        LICZBA KANDYDATÓW WYPROWADZONA Z KATALOGU, NIE WPISANA (karta
+        KATALOG-NIEZMIENNIKI, 2026-09-17). Poprzednia wersja asertowała `== 11`,
+        czyli MIGAWKĘ zawartości katalogu z dnia karty D1 — dopisanie czterech
+        wyłączników ABB SACE Emax 2 (2000/2500/3200/4000 A) czerwieniło ten test
+        mimo że intencja („WSZYSTKIE rekordy MCCB niosą nastawy") była nadal
+        spełniona. Liczba pochodzi teraz z tego samego predykatu, którego używa
+        `zbierz_kandydatow_z_katalogu`, więc test pilnuje RELACJI, a nie stanu
+        katalogu; kontrola dodatnia (`> 0`) zostaje, bo pusty zbiór dałby zieleń
+        bez ani jednego sprawdzenia."""
         catalog = get_default_mv_catalog()
         aparaty = {t.id: t for t in catalog.list_lv_apparatus_types()}
+        oczekiwane_id = {
+            t.id
+            for t in catalog.list_lv_apparatus_types()
+            if t.device_kind in ("WYLACZNIK_GLOWNY", "WYLACZNIK_ODPLYWOWY")
+        }
         mccb = [k for k in zbierz_kandydatow_z_katalogu(catalog) if k.kind == KIND_MCCB]
-        assert len(mccb) == 11, f"Oczekiwano 11 kandydatów MCCB, jest {len(mccb)}"
+        assert oczekiwane_id, "kontrola dodatnia: katalog nN musi mieć wyłączniki MCCB"
+        assert {k.id for k in mccb} == oczekiwane_id, (
+            f"Kandydaci MCCB nie pokrywają rekordów katalogu: "
+            f"brakuje {sorted(oczekiwane_id - {k.id for k in mccb})}, "
+            f"nadmiarowi {sorted({k.id for k in mccb} - oczekiwane_id)}"
+        )
         for k in mccb:
             aparat = aparaty[k.id]
             assert aparat.ir_range is not None, f"{k.id}: brak ir_range w katalogu (regresja D1)"
