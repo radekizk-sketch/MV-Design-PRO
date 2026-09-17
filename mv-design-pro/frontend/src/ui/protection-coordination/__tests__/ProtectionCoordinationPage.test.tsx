@@ -68,6 +68,32 @@ const BIEG_LF = {
   analysis_type: 'LOAD_FLOW',
 } as never;
 
+/**
+ * Odpowiedź biegu zwarciowego w kształcie KONTRAKTU backendu
+ * (`api/canonical_run_views.py::build_short_circuit_results_response`):
+ * wiersze PLUS `konfiguracja_biegu` z wariantem zapisanym NA BIEGU. Ekran
+ * klasyfikuje przypadek maksymalny/minimalny po tym polu — nie po współczynniku
+ * `c` wiersza, który na sieci SN nie odróżnia biegów (IEC 60909-0 Tabela 1:
+ * c_min = 1,00 powyżej 1 kV).
+ */
+function odpowiedzSC(
+  runId: string,
+  scenariusz: 'MAX' | 'MIN',
+  cFactor: number,
+  ikssKa: number,
+) {
+  return {
+    run_id: runId,
+    rows: [wierszSC(cFactor, ikssKa)],
+    konfiguracja_biegu: {
+      c_factor: { tryb: 'jawny' as const, wartosc: cFactor },
+      thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' as const },
+      metoda: 'IEC 60909',
+      scenariusz,
+    },
+  };
+}
+
 function wierszSC(cFactor: number, ikssKa: number) {
   return {
     target_id: 'bus_1',
@@ -157,12 +183,13 @@ describe('ProtectionCoordinationPage — prądy tylko z biegów (naprawa fabryka
     expect(runAnalysis).not.toHaveBeenCalled();
   });
 
-  it('dwa biegi zwarciowe (c = 1,10 i c = 0,95) + rozpływ dają komplet prądów', async () => {
+  it('dwa biegi zwarciowe (scenariusz MAX i MIN) + rozpływ dają komplet prądów', async () => {
     useExecutionRunsStore.setState({ runs: [BIEG_SC_MAX, BIEG_SC_MIN, BIEG_LF] } as never);
-    fetchSC.mockImplementation(async (id: string) => ({
-      run_id: id,
-      rows: id === 'run-sc-max' ? [wierszSC(1.1, 8.4)] : [wierszSC(0.95, 3.1)],
-    }));
+    fetchSC.mockImplementation(async (id: string) =>
+      id === 'run-sc-max'
+        ? odpowiedzSC(id, 'MAX', 1.1, 8.4)
+        : odpowiedzSC(id, 'MIN', 1.0, 3.1),
+    );
     fetchBranches.mockResolvedValue({
       run_id: 'run-lf',
       rows: [
@@ -195,10 +222,11 @@ describe('ProtectionCoordinationPage — prądy tylko z biegów (naprawa fabryka
     // Same biegi zwarciowe: kryterium przeciążenia zostaje niesprawdzalne i to
     // musi być widoczne, a nie ukryte zerem.
     useExecutionRunsStore.setState({ runs: [BIEG_SC_MAX, BIEG_SC_MIN] } as never);
-    fetchSC.mockImplementation(async (id: string) => ({
-      run_id: id,
-      rows: id === 'run-sc-max' ? [wierszSC(1.1, 8.4)] : [wierszSC(0.95, 3.1)],
-    }));
+    fetchSC.mockImplementation(async (id: string) =>
+      id === 'run-sc-max'
+        ? odpowiedzSC(id, 'MAX', 1.1, 8.4)
+        : odpowiedzSC(id, 'MIN', 1.0, 3.1),
+    );
 
     render(<ProtectionCoordinationPage />);
     await dodajUrzadzenieWLokalizacji('bus_1');
@@ -256,10 +284,11 @@ describe('ProtectionCoordinationPage — lokalizacja z modelu, nie z wyobraźni'
 
   it('klon NIE przejmuje lokalizacji ani prądów urządzenia źródłowego', async () => {
     useExecutionRunsStore.setState({ runs: [BIEG_SC_MAX, BIEG_SC_MIN, BIEG_LF] } as never);
-    fetchSC.mockImplementation(async (id: string) => ({
-      run_id: id,
-      rows: id === 'run-sc-max' ? [wierszSC(1.1, 8.4)] : [wierszSC(0.95, 3.1)],
-    }));
+    fetchSC.mockImplementation(async (id: string) =>
+      id === 'run-sc-max'
+        ? odpowiedzSC(id, 'MAX', 1.1, 8.4)
+        : odpowiedzSC(id, 'MIN', 1.0, 3.1),
+    );
     fetchBranches.mockResolvedValue({
       run_id: 'run-lf',
       rows: [
@@ -405,10 +434,11 @@ describe('ProtectionCoordinationPage — nastawy trwają w konfiguracji przypadk
 
   it('zmiana nastawy po biegu pokazuje baner nieaktualności, a CTA przelicza koordynację', async () => {
     useExecutionRunsStore.setState({ runs: [BIEG_SC_MAX, BIEG_SC_MIN, BIEG_LF] } as never);
-    fetchSC.mockImplementation(async (id: string) => ({
-      run_id: id,
-      rows: id === 'run-sc-max' ? [wierszSC(1.1, 8.4)] : [wierszSC(0.95, 3.1)],
-    }));
+    fetchSC.mockImplementation(async (id: string) =>
+      id === 'run-sc-max'
+        ? odpowiedzSC(id, 'MAX', 1.1, 8.4)
+        : odpowiedzSC(id, 'MIN', 1.0, 3.1),
+    );
     fetchBranches.mockResolvedValue({
       run_id: 'run-lf',
       rows: [

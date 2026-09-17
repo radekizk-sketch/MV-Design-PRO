@@ -35,6 +35,21 @@ const DONE_SC_RUN_MIN = {
   started_at: '2026-07-18T10:00:30Z',
 } as never;
 
+/**
+ * Konfiguracja biegu zwarciowego w kształcie KONTRAKTU backendu
+ * (`api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`) — niesie
+ * WARIANT (`scenariusz`), po którym ekran dzieli wyniki na przypadek
+ * maksymalny i minimalny.
+ */
+function konfiguracjaBiegu(scenariusz: 'MAX' | 'MIN', cFactor: number) {
+  return {
+    c_factor: { tryb: 'jawny' as const, wartosc: cFactor },
+    thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' as const },
+    metoda: 'IEC 60909',
+    scenariusz,
+  };
+}
+
 /** Wiersz wyniku zwarciowego dla lokalizacji pierwszego urządzenia (`bus_1`). */
 function wierszSC(cFactor: number, ikssKa: number) {
   return {
@@ -188,19 +203,31 @@ describe('EkranKoordynacji — realna strona przy kompletnym kontekście', () =>
         return { ok: true, status: 200, json: async () => result } as Response;
       }
       // Prądy koordynacji z realnych biegów (F-K4 faza 3b): przypadek maksymalny
-      // z pierwszego biegu, minimalny z drugiego — klasyfikacja po współczynniku c.
+      // z pierwszego biegu, minimalny z drugiego — klasyfikacja po WARIANCIE
+      // ZAPISANYM NA BIEGU (`konfiguracja_biegu.scenariusz`, kontrakt
+      // `api/canonical_run_views.py::build_short_circuit_results_response`), nie po
+      // współczynniku `c` wiersza: na sieci SN c_min = 1,00 (IEC 60909-0 Tabela 1),
+      // więc `c` nie odróżnia biegu minimalnego od maksymalnego.
       if (url === '/api/analysis-runs/run-sc-1/results/short-circuit') {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ run_id: 'run-sc-1', rows: [wierszSC(1.1, 8.4)] }),
+          json: async () => ({
+            run_id: 'run-sc-1',
+            rows: [wierszSC(1.1, 8.4)],
+            konfiguracja_biegu: konfiguracjaBiegu('MAX', 1.1),
+          }),
         } as Response;
       }
       if (url === '/api/analysis-runs/run-sc-2/results/short-circuit') {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ run_id: 'run-sc-2', rows: [wierszSC(0.95, 3.1)] }),
+          json: async () => ({
+            run_id: 'run-sc-2',
+            rows: [wierszSC(1.0, 3.1)],
+            konfiguracja_biegu: konfiguracjaBiegu('MIN', 1.0),
+          }),
         } as Response;
       }
       // V12K-262: lokalizacja urządzenia pochodzi z MIGAWKI MODELU przypadku;
