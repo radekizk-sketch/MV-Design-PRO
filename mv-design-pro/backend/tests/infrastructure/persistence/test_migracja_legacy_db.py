@@ -159,6 +159,13 @@ def _tabele(engine) -> set[str]:
     return set(inspect(engine).get_table_names())
 
 
+def _klucze_obce_projektow(engine) -> set[str]:
+    """Nazwy kluczy obcych tabeli `projects` — dowód, co zdjęła kasacja tabel legacy."""
+    return {
+        klucz["name"] for klucz in inspect(engine).get_foreign_keys("projects") if klucz.get("name")
+    }
+
+
 def test_baza_bez_tabel_legacy_to_pusty_przebieg(silnik):
     init_db(silnik)
     raport = migruj_i_usun_tabele_legacy(silnik)
@@ -251,3 +258,54 @@ def test_init_db_uruchamia_migracje_na_bazie_sprzed_w1(silnik):
     init_db(silnik)  # drugi start = start aplikacji na bazie sprzed W1
     assert not (_tabele(silnik) & set(TABELE_LEGACY))
     assert has_enm(klucz_twin_projektu(pid))
+
+
+def test_kasacja_tabel_legacy_dziala_na_dialekcie_produkcyjnym(postgres_url: str) -> None:
+    """Gałąź `CASCADE` kasacji — jedyny fragment tego modułu zależny od dialektu.
+
+    DLACZEGO OSOBNY TEST (karta PG-DIALEKT, reguła KLASA pkt 4). `migruj_i_usun_
+    tabele_legacy` ma dokładnie jedno rozgałęzienie po silniku:
+    ``cascade = " CASCADE" if engine.dialect.name == "postgresql" else ""``, a jego
+    powód jest nazwany w nagłówku modułu — `projects.connection_node_id` sprzed W1
+    ma KLUCZ OBCY do `network_nodes`. Cała reszta testów tego pliku biegnie na
+    SQLite, który kluczy obcych nie egzekwuje, więc gałąź produkcyjna nie miała
+    ŻADNEGO dowodu — a migracja biegnie przy KAŻDYM starcie backendu (`init_db`),
+    czyli na produkcji przy każdym starcie kontenera.
+
+    Scenariusz odtwarza dokładnie tę zależność: tabela legacy + kolumna
+    `projects.connection_node_id` z kluczem obcym do niej. Bez `CASCADE` PostgreSQL
+    odmawia `DROP TABLE` (``DependentObjectsStillExist``) i start aplikacji na bazie
+    sprzed W1 kończy się wyjątkiem zamiast migracją.
+    """
+    engine = create_engine_from_url(postgres_url)
+    try:
+        init_db(engine)
+        with engine.begin() as polaczenie:
+            # DDL PostgreSQL, nie `_DDL` z góry tego pliku: `GUID` kompiluje się tu do
+            # natywnego `uuid` (`models.GUID.load_dialect_impl`), a `CHAR(32)` z wariantu
+            # SQLite nie dałby się powiązać kluczem obcym z `projects.connection_node_id`.
+            polaczenie.execute(
+                text(
+                    "CREATE TABLE network_nodes (id UUID PRIMARY KEY, project_id UUID, "
+                    "name VARCHAR(255), node_type VARCHAR(20), base_kv FLOAT, attrs_jsonb JSON)"
+                )
+            )
+            polaczenie.execute(
+                text(
+                    "ALTER TABLE projects ADD CONSTRAINT fk_projects_connection_node "
+                    "FOREIGN KEY (connection_node_id) REFERENCES network_nodes(id)"
+                )
+            )
+        assert "network_nodes" in _tabele(engine)
+        assert _klucze_obce_projektow(engine) & {"fk_projects_connection_node"}
+
+        raport = migruj_i_usun_tabele_legacy(engine)
+
+        assert not raport.nic_do_zrobienia
+        assert tuple(raport.tabele) == ("network_nodes",)
+        assert not (_tabele(engine) & set(TABELE_LEGACY)), "tabela legacy musi zniknąć"
+        # Tabela ZALEŻNA przeżywa — `CASCADE` zdejmuje zależny klucz obcy, nie `projects`.
+        assert "projects" in _tabele(engine)
+        assert not _klucze_obce_projektow(engine) & {"fk_projects_connection_node"}
+    finally:
+        engine.dispose()
