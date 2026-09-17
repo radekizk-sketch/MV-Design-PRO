@@ -1,0 +1,57 @@
+{
+  "analysis": "ochrona_lom",
+  "context": {
+    "enm_hash": "",
+    "enm_name": "CGMES Golden Net"
+  },
+  "fields": [],
+  "input_hash": "dfba7f78fc9eb4f6fa22b66f36ebd716e525a6aa0352a0301cfef1e0fc2e76cf",
+  "modules_without_field": [
+    "gen_pv",
+    "gen_sync"
+  ],
+  "normative_sources": {
+    "overfrequency_81O": {
+      "lower_hz": 51.5,
+      "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
+      "upper_hz": null,
+      "window_pl": "próg f ≥ 51.5 Hz"
+    },
+    "rocof_81R": {
+      "lower_hz_s": 2.0,
+      "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pracy przy zmianach częstotliwości — ROCOF withstand); wartość krajowa PTPiREE 2 Hz/s",
+      "upper_hz_s": null,
+      "window_pl": "df/dt ≥ 2.0 Hz/s"
+    },
+    "underfrequency_81U": {
+      "lower_hz": null,
+      "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
+      "upper_hz": 47.5,
+      "window_pl": "próg f ≤ 47.5 Hz"
+    },
+    "vector_shift_78": {
+      "source_pl": null,
+      "window_pl": null
+    }
+  },
+  "summary": {
+    "by_status": {
+      "ERROR": 0,
+      "INFO": 0,
+      "OK": 0,
+      "WARN": 0
+    },
+    "fields_total": 0,
+    "generating_modules_total": 2,
+    "overall_status": "INFO"
+  },
+  "whitebox": {
+    "comparisons": []
+  },
+  "zalozenia_pl": [
+    "Ocena LoM to interpretacja normatywna (porównania), nie symulacja fizyki wyspy.",
+    "Moduł wytwórczy = generator w ENM; pole przyłączeniowe = pole (bay) na szynie modułu lub o roli OZE z przypisaniem zabezpieczeń.",
+    "Okna normatywne pochodzą wyłącznie z cytowanych źródeł (NC RfG / PTPiREE); brak źródła → okno None + INFO, bez zmyślonych liczb.",
+    "Czasy przerwy SPZ pochodzą z SpzState jednostek nadrzędnych; gdy nieosiągalne w ENM — uczciwy INFO."
+  ]
+}

@@ -64,6 +64,16 @@ from api.protection_coordination import (  # noqa: E402
     get_coordination_result,
     run_coordination_analysis,
 )
+from api.v126_academic import (  # noqa: E402
+    _with_parameter_payloads,
+    _wycofanie_v126,
+    get_v126_catalog,
+    get_v126_proof,
+    get_v126_report,
+    get_v126_result,
+    get_v126_ssci_stability,
+    get_v126_trace,
+)
 from application.analyses.arc_flash_view import build_arc_flash_view  # noqa: E402
 from application.analyses.dobor_kompensacji import (  # noqa: E402
     build_compensation_sizing_view,
@@ -71,13 +81,22 @@ from application.analyses.dobor_kompensacji import (  # noqa: E402
 from application.analyses.energy_validation.service import (  # noqa: E402
     build_energy_validation_view,
 )
+from application.analyses.frt_sekwencja import build_frt_sekwencja_view  # noqa: E402
+from application.analyses.frt_trajektorie import (  # noqa: E402
+    build_frt_trajectories_view,
+)
 from application.analyses.grid_strength import build_grid_strength_view  # noqa: E402
 from application.analyses.migotanie import build_migotanie_view  # noqa: E402
+from application.analyses.ochrona_lom import build_ochrona_lom_view  # noqa: E402
 from application.analyses.state_estimation.service import (  # noqa: E402
     build_state_estimation_requirements,
     build_state_estimation_view,
 )
-from application.analyses.v126_gotowosc import odpowiedz_gotowosci  # noqa: E402
+from application.analyses.v126_gotowosc import (  # noqa: E402
+    ocen_gotowosc_v126,
+    odpowiedz_gotowosci,
+    uzupelnij_parametry_z_modelu,
+)
 from application.analyses.v126_katalog import katalog_do_dict  # noqa: E402
 from application.analyses.werdykt_projektowy import (  # noqa: E402
     zbuduj_werdykt_projektowy,
@@ -102,6 +121,7 @@ from application.proof_engine.pakiet_nastaw import (  # noqa: E402
     zbuduj_odpowiedz_dopasowania,
     zbuduj_odpowiedz_nastaw_json,
 )
+from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile  # noqa: E402
 from enm.canonical_analysis import (  # noqa: E402
     build_execution_result_set,
     build_short_circuit_results,
@@ -122,7 +142,15 @@ from enm.models import (  # noqa: E402
     TapChanger,
 )
 from enm.store import reset_enm_store, set_enm  # noqa: E402
-from solver_input.v126_contracts import V126AnalysisType  # noqa: E402
+from network_model.catalog.repository import get_default_mv_catalog  # noqa: E402
+from network_model.solvers.cable_voltage_drop import (  # noqa: E402
+    CableRatedCurrentInput,
+    compute_cable_rated_current,
+)
+from solver_input.v126_contracts import (  # noqa: E402
+    V126AnalysisType,
+    build_v126_input_from_enm,
+)
 
 from tests.cgmes.golden_enm import build_golden_enm  # noqa: E402
 
@@ -2354,6 +2382,249 @@ def odbior_zgodnosc_scena_wynik() -> dict[str, Any]:
         )
 
 
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA-2 (2026-09-17) — sceny „frt" (zdolność przetrwania zapadu
+# napięcia) i „lom" (ochrona przed pracą wyspową). Obie miały wpisane ręcznie
+# komplety punktów trajektorii, obwiedni profilu operatora i werdyktów.
+# ---------------------------------------------------------------------------
+
+#: Moduł DER sceny — REALNA karta katalogu przekształtników MV; operator —
+#: REALNY profil NC RfG (`catalog/profiles/nc_rfg/`). Oba 1:1 z zasiewem sceny
+#: (`useStationDerStore`: `device_catalog_ref`/`nc_rfg_profile_ref`).
+_DER_SCENY_FRT = "conv-pv-1mw-15kv"
+_OPERATOR_SCENY_FRT = "pse"
+_RODZAJ_TESTU_SCENY_FRT = "lvrt"
+
+#: Sekwencja zapadów sceny — PROGRAM BADANIA (głębokość [pu], czas [s]), dana
+#: wejściowa testu odbiorowego, nie wynik: pierwszy zapad w granicach obwiedni
+#: operatora, drugi głębszy i dłuższy (moduł się odłącza) — scena pokazuje OBA
+#: werdykty sekwencji.
+_SEKWENCJA_ZAPADOW_SCENY_FRT: tuple[tuple[float, float], ...] = ((0.05, 0.15), (0.02, 0.5))
+
+
+def _konwerter_i_profil_sceny_frt() -> tuple[Any, Any]:
+    konwerter = get_default_mv_catalog().get_converter_type(_DER_SCENY_FRT)
+    if konwerter is None:
+        raise SystemExit(
+            f"[fixtury] karta przekształtnika sceny FRT nie istnieje: {_DER_SCENY_FRT}"
+        )
+    return konwerter, load_nc_rfg_profile(_OPERATOR_SCENY_FRT)
+
+
+def frt_scena_trajektorie() -> dict[str, Any]:
+    """Odpowiedź `GET /api/oze-analysis/frt-trajectories`
+    (`build_frt_trajectories_view` — TA SAMA funkcja, którą woła końcówka):
+    obwiednia profilu operatora, trajektorie scenariuszy i wywód marginesu."""
+    konwerter, profil = _konwerter_i_profil_sceny_frt()
+    return canonicalize_json(
+        build_frt_trajectories_view(konwerter, profil, _RODZAJ_TESTU_SCENY_FRT)
+    )
+
+
+def frt_scena_sekwencja() -> dict[str, Any]:
+    """Odpowiedź `GET /api/oze-analysis/frt-sequence` (`build_frt_sekwencja_view`)
+    z kontekstem siły sieci — wiersz SCR z widoku D1 biegu kotwicy analiz OZE
+    (`_bieg_sceny_oze_analiz`, TEN SAM bieg, który karmi scenę „siła-sieci")."""
+    konwerter, profil = _konwerter_i_profil_sceny_frt()
+    bieg = _bieg_sceny_oze_analiz()
+    wiersze = build_grid_strength_view(bieg)["entries"]
+    widok = build_frt_sekwencja_view(
+        konwerter,
+        profil,
+        [tuple(zapad) for zapad in _SEKWENCJA_ZAPADOW_SCENY_FRT],  # type: ignore[misc]
+        grid_strength_row=wiersze[0] if wiersze else None,
+    )
+    return _ustabilizuj_identyfikatory(
+        canonicalize_json(widok), {str(bieg.id): RUN_ID_SCENY_OZE_ANALIZ}
+    )
+
+
+#: Dane odpływu nN sceny „odbior" (kreator odbioru) — moc przyłączeniowa,
+#: współczynnik mocy i napięcie szyny: DANE WEJŚCIOWE formularza sceny, 1:1 z
+#: tym, co kreator wysyła po wypełnieniu pól.
+_MOC_ODBIORU_SCENY_KW = 50.0
+_COS_PHI_ODBIORU_SCENY = 0.93
+_NAPIECIE_ODPLYWU_SCENY_V = 400.0
+
+
+def odbior_scena_prad_znamionowy() -> dict[str, Any]:
+    """Odpowiedź `POST /api/solver/cable-rated-current-preview` — podgląd prądu
+    odpływu liczony SOLVEREM (`compute_cable_rated_current`, I = S/(√3·U)), TĄ
+    SAMĄ funkcją, którą woła końcówka. Poprzednio prąd i moc pozorna były w
+    harnessie WPISANE (77,6 A / 53,8 kVA) razem z tekstem podstawienia."""
+    wynik = compute_cable_rated_current(
+        CableRatedCurrentInput(
+            active_power_kw=_MOC_ODBIORU_SCENY_KW,
+            cos_phi=_COS_PHI_ODBIORU_SCENY,
+            line_voltage_v=_NAPIECIE_ODPLYWU_SCENY_V,
+        )
+    )
+    return canonicalize_json(
+        {
+            "rated_current_a": wynik.rated_current_a,
+            "apparent_power_kva": wynik.apparent_power_kva,
+            "formula_ref": wynik.formula_ref,
+            "assumptions": list(wynik.assumptions),
+        }
+    )
+
+
+def lom_scena_wynik() -> dict[str, Any]:
+    """Odpowiedź `GET /api/oze-analysis/lom-protection` (`build_ochrona_lom_view`
+    — TA SAMA funkcja, którą woła końcówka) na sieci złotej: okna normatywne z
+    cytowanych źródeł, pola przyłączeniowe modułów i uczciwe INFO przy brakach."""
+    enm = build_golden_enm()
+    _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+    return canonicalize_json(build_ochrona_lom_view(enm))
+
+
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA-2 (2026-09-17) — scena „akademickie" (analizy
+# specjalistyczne V12.6). Wyniki solvera scena brała z fixtury testów
+# jednostkowych (realne), ale KOPERTĘ biegu, ŚLAD WHITE BOX, pakiet dowodowy i
+# raport generowała funkcja `sladDemoV126` W HARNESSIE — kroki, podstawienia i
+# wyniki pośrednie pisane ręcznie, z ręcznym `run-akad-1` jako tożsamością biegu.
+# ---------------------------------------------------------------------------
+
+RUN_ID_SCENY_AKADEMICKIEJ = "run-v126-scena-akademickie"
+
+#: Karta katalogowa przekształtnika materializowana na `gen_pv` sieci sceny —
+#: REALNY rekord katalogu MV (moc znamionowa, napięcie, tryb regulacji, widmo
+#: harmoniczne, jeśli karta je niesie). Materializacja karty na tabliczce
+#: generatora jest DOKŁADNIE tym, co robi brama katalogowa aplikacji
+#: (`set_der_catalog_bindings` → `Generator.materialized_params`); bez niej
+#: `_ocena_karty_przeksztaltnika` melduje `generator.converter_card_missing`, a
+#: rodzaje czytające przekształtniki (`ssci_impedance`,
+#: `power_quality_harmonics`) odmawiają gotowości — zmierzone bezpośrednio.
+#: Zero liczb wpisanych ręcznie: cała tabliczka pochodzi z rekordu katalogu.
+_KARTA_PRZEKSZTALTNIKA_SCENY_V126 = "conv-pv-card-huawei-sun2000-215ktl"
+
+
+def _enm_sceny_akademickiej() -> EnergyNetworkModel:
+    """Sieć złota z kartą przekształtnika ZMATERIALIZOWANĄ na `gen_pv`."""
+    enm = build_golden_enm()
+    rekord = get_default_mv_catalog().get_converter_type(_KARTA_PRZEKSZTALTNIKA_SCENY_V126)
+    if rekord is None:
+        raise SystemExit(
+            "[fixtury] karta przekształtnika sceny akademickiej nie istnieje: "
+            f"{_KARTA_PRZEKSZTALTNIKA_SCENY_V126}"
+        )
+    for generator in enm.generators:
+        if generator.ref_id == "gen_pv":
+            generator.catalog_ref = _KARTA_PRZEKSZTALTNIKA_SCENY_V126
+            generator.materialized_params = dict(rekord.to_dict())
+    _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+    return enm
+
+
+def _biegi_sceny_akademickiej() -> dict[str, Any]:
+    """Komplet biegów V12.6 sceny — po jednym na rodzaj, który złota sieć
+    UMIE policzyć z parametrami sceny (`PARAMETRY_SCENY_AKADEMICKIE`).
+
+    Rodzaje, których sieć nie odblokuje, ORAZ rodzaje wycofane z powierzchni
+    (`_wycofanie_v126`) NIE dostają biegu — scena pokazuje dla nich uczciwą
+    odmowę gotowości (fixtura `gotowosc_v126_scena_akademickie`), a nie wynik
+    policzony „na oko". Zmierzone bezpośrednio po materializacji karty
+    przekształtnika: 11 rodzajów liczy się, 1 odmawia
+    (`insulation_coordination` — sieć nie niesie danych koordynacji izolacji),
+    2 są wycofane (`hosting_capacity`, `opf_loss_lcc`).
+
+    Rodzaj `ssci_impedance` dostaje DODATKOWO werdykt stabilności
+    (`get_v126_ssci_stability` — osobna końcówka, którą czyta ekran SSCI).
+
+    Każdy bieg dostaje własny, deterministyczny `run_id` (`uuid5` z rodzaju) —
+    tożsamość, nie fizyka."""
+    reset_canonical_runs()
+    reset_enm_store()
+    komplet: dict[str, Any] = {}
+    try:
+        enm = _enm_sceny_akademickiej()
+        set_enm(CASE_ID_HARNESSU, enm)
+        for rodzaj in V126AnalysisType:
+            if _wycofanie_v126(rodzaj) is not None:
+                continue
+            parametry = uzupelnij_parametry_z_modelu(
+                enm, rodzaj, PARAMETRY_SCENY_AKADEMICKIE.get(rodzaj.value, {})
+            )
+            if not ocen_gotowosc_v126(enm, rodzaj, parametry).potwierdzona:
+                continue
+            model = _with_parameter_payloads(
+                build_v126_input_from_enm(enm, parameters=parametry), parametry
+            )
+            stabilny = f"{RUN_ID_SCENY_AKADEMICKIEJ}-{rodzaj.value}"
+            with _zamrozona_tozsamosc_biegu(
+                uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + stabilny)
+            ):
+                bieg = execute_run(
+                    create_run(
+                        case_id=CASE_ID_HARNESSU,
+                        klucz_twin=CASE_ID_HARNESSU,
+                        analysis_type=f"v126:{rodzaj.value}",
+                        options={
+                            "model": model.model_dump(mode="json"),
+                            "pominiete_zrodla": [],
+                        },
+                    ).id
+                )
+            if bieg.status != "FINISHED" or bieg.raw_result is None:
+                raise SystemExit(
+                    f"[fixtury] bieg V12.6 sceny akademickiej nie powiódł się: "
+                    f"{rodzaj.value} ({bieg.error_message})"
+                )
+            wynik = bieg.raw_result["result"]
+            mapa = {str(bieg.id): stabilny}
+            dodatkowe: dict[str, Any] = {}
+            if rodzaj is V126AnalysisType.SSCI_IMPEDANCE:
+                dodatkowe["stabilnosc"] = get_v126_ssci_stability(bieg.id)
+            komplet[rodzaj.value] = _ustabilizuj_identyfikatory(
+                canonicalize_json(
+                    {
+                        **dodatkowe,
+                        "koperta": {
+                            "run_id": str(bieg.id),
+                            "case_id": CASE_ID_HARNESSU,
+                            "analysis_type": rodzaj.value,
+                            "status": "FINISHED",
+                            "result_url": (
+                                f"/api/analysis-runs/{bieg.id}/results/v126/{rodzaj.value}"
+                            ),
+                            "trace_url": (
+                                f"/api/analysis-runs/{bieg.id}/results/v126/{rodzaj.value}/trace"
+                            ),
+                            "proof_url": (
+                                f"/api/analysis-runs/{bieg.id}/results/v126/{rodzaj.value}/proof"
+                            ),
+                            "report_url": (
+                                f"/api/analysis-runs/{bieg.id}/results/v126/{rodzaj.value}/report"
+                            ),
+                            "deterministic_hash": wynik["deterministic_hash"],
+                        },
+                        "wynik": get_v126_result(bieg.id, rodzaj),
+                        "slad": get_v126_trace(bieg.id, rodzaj),
+                        "dowod": get_v126_proof(bieg.id, rodzaj),
+                        "raport": get_v126_report(bieg.id, rodzaj),
+                    }
+                ),
+                mapa,
+            )
+        return komplet
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def akademickie_scena_biegi() -> dict[str, Any]:
+    """`{typy, biegi}`: przestrzeń nazw katalogu rodzajów analiz
+    (`GET /api/catalog/v126/analysis-types` — `get_v126_catalog`) oraz mapa
+    `rodzaj analizy → {koperta, wynik, ślad, dowód, raport}` z REALNYCH biegów
+    V12.6, złożona DOKŁADNIE tymi funkcjami, które wołają końcówki
+    (`get_v126_result`/`get_v126_trace`/`get_v126_proof`/`get_v126_report`)."""
+    return {
+        "typy": canonicalize_json(get_v126_catalog("analysis-types")),
+        "biegi": _biegi_sceny_akademickiej(),
+    }
+
+
 #: Nazwa pliku → funkcja licząca odpowiedź (kolejność = kolejność eksportu).
 FIXTURY: dict[str, Any] = {
     "ncrfg_zgodnosc_przekrojowa_scena_macierz": zgodnosc_przekrojowa_sceny_macierz,
@@ -2404,6 +2675,11 @@ FIXTURY: dict[str, Any] = {
     "estymacja_scena_wymagania": estymacja_scena_wymagania,
     "estymacja_scena_wynik": estymacja_scena_wynik,
     "odbior_zgodnosc_scena_wynik": odbior_zgodnosc_scena_wynik,
+    "frt_scena_trajektorie": frt_scena_trajektorie,
+    "frt_scena_sekwencja": frt_scena_sekwencja,
+    "lom_scena_wynik": lom_scena_wynik,
+    "odbior_scena_prad_znamionowy": odbior_scena_prad_znamionowy,
+    "akademickie_scena_biegi": akademickie_scena_biegi,
 }
 
 

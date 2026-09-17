@@ -65,10 +65,6 @@ import { EkranAnalizAkademickich } from './ui2/wyniki/akademickie';
 // (defekt ze zrzutu 3/3 wlasciciela: pasek wyjezdzal poza kadr) przy realnych
 // szerokosciach 1280/1440/1920 px - jsdom ukladu nie prowadzi.
 import { WynikiWarsztat } from './ui2/spaces/wyniki/WynikiWarsztat';
-// V126-JEZYK: scena "akademickie" karmiona REALNYMI odpowiedziami solvera
-// (ta sama fixtura, na ktorej stoi straznik prezentacji) - zrzut pokazuje
-// dokladnie to, co zobaczy projektant, a nie wyidealizowana atrape.
-import odpowiedziV126 from './ui2/wyniki/akademickie/__tests__/odpowiedziSolvera.json';
 // E2E-FULL-FIX-3 (2026-09-10): atrapy końcówek czytających STAN przypadku (committed
 // ENM, rejestr przebiegów) liczy BACKEND — `scripts/eksport_fixtur_harnessu.py` tymi
 // samymi funkcjami, co trasy; JSON w repo pilnuje `tests/ci/test_fixtury_harnessu.py`.
@@ -162,6 +158,17 @@ import oltcScenyWynik from './harness-fixtures/generated/oltc_scena_wynik.json';
 import estymacjaScenyWymagania from './harness-fixtures/generated/estymacja_scena_wymagania.json';
 import estymacjaScenyWynik from './harness-fixtures/generated/estymacja_scena_wynik.json';
 import odbiorZgodnoscScenyWynik from './harness-fixtures/generated/odbior_zgodnosc_scena_wynik.json';
+// HARNESS-RESZTA-2: sceny "frt" i "lom" — REALNE widoki backendu na REALNEJ
+// karcie przeksztaltnika i REALNYM profilu operatora NC RfG.
+import frtScenyTrajektorie from './harness-fixtures/generated/frt_scena_trajektorie.json';
+import frtScenySekwencja from './harness-fixtures/generated/frt_scena_sekwencja.json';
+import lomScenyWynik from './harness-fixtures/generated/lom_scena_wynik.json';
+import odbiorScenyPradZnamionowy from './harness-fixtures/generated/odbior_scena_prad_znamionowy.json';
+// HARNESS-RESZTA-2: scena "akademickie" — REALNE biegi V12.6 na sieci zlotej
+// (koperta, wynik, slad WHITE BOX, pakiet dowodowy, raport) plus przestrzen nazw
+// katalogu rodzajow analiz; wczesniej slad/dowod/raport skladala recznie funkcja
+// `sladDemoV126` w tym pliku.
+import akademickieScenyBiegi from './harness-fixtures/generated/akademickie_scena_biegi.json';
 import { REWIZJA_SIECI_ZLOTEJ, migawkaSieciZlotej } from './harness-fixtures/migawkaSieciZlotej';
 import { EkranOceny } from './ui2/wyniki/ocena';
 import { SekcjaSilySieci } from './ui2/oze/pulpit';
@@ -630,51 +637,6 @@ let konfiguracjaZabezpieczenPrzypadku: Record<string, unknown> = {
   overrides: {},
   bound_at: null,
 };
-/**
- * Slad WHITE BOX sceny "akademickie" (V126-JEZYK) - ksztalt 1:1 z krokiem
- * `TraceBuilder.add` po naprawie u zrodla: kolumna "Wynik" niesie POLSKA
- * postac liczby z jednostka (`result_pl`), nie zrzut slownika.
- */
-function sladDemoV126(rodzaj: string): Record<string, unknown>[] {
-  const kroki: Record<string, Record<string, unknown>[]> = {
-    earthing_safety: [
-      {
-        step: 1,
-        key: 'ieee80_sverak',
-        formula: 'Rg = rho * [1/Lc + 1/sqrt(20A)*(1 + 1/(1+h*sqrt(20/A)))]',
-        data: { area_m2: 2400, lc_m: 1180, rho_ohm_m: 100 },
-        substitution: 'R_g = 100 \u03a9\u00b7m \u00b7 (1/1180 m + cz\u0142on powierzchniowy siatki)',
-        result: { r_g_ohm: 0.371939, gpr_kv: 1.784 },
-        result_pl: 'Rezystancja uziomu: 0,371939 \u03a9; wzrost potencja\u0142u: 1,784 kV',
-        unit_check:
-          'Rezystywno\u015b\u0107 [\u03a9\u00b7m] razy odwrotno\u015b\u0107 d\u0142ugo\u015bci [1/m] daje rezystancj\u0119 [\u03a9]; '
-          + 'pr\u0105d [kA] razy rezystancja [\u03a9] daje napi\u0119cie [kV].',
-        proof_ref: 'proof:v126:earthing_safety:ieee80_sverak',
-        proof_status: 'complete',
-        reporting_status: 'reportable',
-      },
-    ],
-    voltage_stability: [
-      {
-        step: 1,
-        key: 'voltage_stability_indices',
-        formula: 'L_j ~= P_load / S_sc * 4; PM = (lambda_max - 1) * 100%',
-        data: { buses: 2 },
-        substitution:
-          'Dla ka\u017cdego w\u0119z\u0142a wyznaczono margines obci\u0105\u017calno\u015bci z krzywej P\u2013U, zapas mocy '
-          + 'biernej z krzywej Q\u2013U oraz wska\u017anik blisko\u015bci za\u0142amania napi\u0119cia L.',
-        result: { smallest_eigenvalue: 0.998667 },
-        result_pl: 'Najmniejsza warto\u015b\u0107 w\u0142asna macierzy wra\u017cliwo\u015bci: 0,998667',
-        unit_check: 'Wska\u017anik L jest bezwymiarowy; margines obci\u0105\u017calno\u015bci w %.',
-        proof_ref: 'proof:v126:voltage_stability:voltage_stability_indices',
-        proof_status: 'complete',
-        reporting_status: 'reportable',
-      },
-    ],
-  };
-  return kroki[rodzaj] ?? kroki.voltage_stability;
-}
-
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
@@ -762,21 +724,13 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       return jsonOK(wynikKoordynacjiSceny ?? koordynacjaScenyWynik);
     }
   } else if (creator === 'odbior') {
-    // Podglad pradu odbioru liczy SOLVER (I = S/(√3·U)). Bez tej atrapy scena pokazywala
-    // baner awarii uslugi zamiast wyniku — a zrzut do oceny wygladalby jak zepsuty ekran
-    // (V12K-260). Wartosci odpowiadaja danym sceny: 50 kW, cosφ 0,93, 0,4 kV.
-    if (url.includes('/cable-rated-current-preview')) {
-      return jsonOK({
-        rated_current_a: 77.6,
-        apparent_power_kva: 53.8,
-        formula_ref: 'I = S / (√3·U)',
-        assumptions: [
-          'Uklad 3-fazowy symetryczny; wspolczynnik linii √3.',
-          'S = P / cosφ = 50,0 kW / 0,93 = 53,8 kVA.',
-          'U = 0,4 kV (napiecie szyny nN odplywu).',
-        ],
-      });
-    }
+    // Podglad pradu odbioru liczy SOLVER (I = S/(√3·U)). Bez tej atrapy scena
+    // pokazywala baner awarii uslugi zamiast wyniku — a zrzut do oceny wygladalby
+    // jak zepsuty ekran (V12K-260). HARNESS-RESZTA-2: odpowiedz policzona przez
+    // `compute_cable_rated_current` (TEN SAM solver, ktory wola koncowka) na
+    // danych formularza sceny (50 kW, cosφ 0,93, 0,4 kV) — wczesniej prad i moc
+    // pozorna byly WPISANE recznie razem z tekstem podstawienia.
+    if (url.includes('/cable-rated-current-preview')) return jsonOK(odbiorScenyPradZnamionowy);
   } else if (creator === 'wiazania') {
     if (url.includes('/instrument-transformers')) return jsonOK(DOBOR_PRZEKLADNIKOW_WIAZANIA);
     if (url.includes('/protection-functions')) return jsonOK(DOBOR_FUNKCJI_WIAZANIA);
@@ -1084,137 +1038,55 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   // ---- Scena "akademickie" (V126-JEZYK): pakiet analiz specjalistycznych V12.6.
   // Wszystkie rodzaje karmione REALNYMI odpowiedziami solvera z fixtury CI.
   if (url.includes('/api/catalog/v126/analysis-types')) {
-    return new Response(
-      JSON.stringify({ namespace: 'analysis-types', items: Object.keys(odpowiedziV126) }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // HARNESS-RESZTA-2: przestrzen nazw katalogu rodzajow analiz z REALNEGO
+    // backendu (`get_v126_catalog("analysis-types")`).
+    return jsonOK(akademickieScenyBiegi.typy);
   }
   if (url.includes('/v126/') && !url.includes('ssci_impedance')) {
-    const rodzaj = Object.keys(odpowiedziV126).find((kod) => url.includes(kod)) ?? 'voltage_stability';
-    const kroki = sladDemoV126(rodzaj);
-    if (url.includes('/trace')) {
+    // Scena "akademickie": koperta biegu, wynik, slad WHITE BOX, pakiet
+    // dowodowy i raport z REALNYCH biegow V12.6 na sieci zlotej
+    // (`eksport_fixtur_harnessu.py::akademickie_scena_biegi` — DOKLADNIE te
+    // funkcje, ktore woluja koncowki). Wczesniej slad, dowod i raport skladala
+    // funkcja `sladDemoV126` W TYM PLIKU: kroki, podstawienia i wyniki posrednie
+    // pisane recznie, z wymyslonym `run-akad-1` jako tozsamoscia biegu.
+    const biegi = akademickieScenyBiegi.biegi as Record<string, {
+      koperta: unknown; wynik: unknown; slad: unknown; dowod: unknown; raport: unknown;
+    }>;
+    const rodzaj = Object.keys(biegi).find((kod) => url.includes(kod));
+    if (rodzaj === undefined) {
+      // Rodzaj, ktorego siec sceny NIE UMIE policzyc (brak karty
+      // przeksztaltnika z moca znamionowa, brak danych izolacji) albo wycofany
+      // z powierzchni — odmowa NAZWANA, nie wynik policzony "na oko". Ekran i
+      // tak nie pusci uruchomienia: gotowosc tych rodzajow jest
+      // NIEPOTWIERDZONA w fixturze `gotowosc_v126_scena_akademickie`.
       return new Response(
         JSON.stringify({
-          run_id: 'run-akad-1', analysis_type: rodzaj,
-          trace_version: 'AcademicWhiteBoxTraceV1', deterministic_hash: 'akad-hash-demo',
-          steps: kroki,
+          detail:
+            'Scena harnessu nie ma biegu tego rodzaju analizy — siec sceny nie spelnia '
+            + 'jego warunkow gotowosci (patrz fixtura gotowosci).',
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
+        { status: 422, headers: { 'Content-Type': 'application/json' } },
       );
     }
-    if (url.includes('/proof')) {
-      return new Response(
-        JSON.stringify({
-          contract: 'AcademicProofPackV1', proof_id: 'proof:v126:demo', run_id: 'run-akad-1',
-          case_id: 'case-demo', analysis_type: rodzaj, source_result_hash: 'akad-hash-demo',
-          trace_step_count: kroki.length,
-          steps: kroki.map((krok, i) => ({ ...krok, ordinal: i + 1 })),
-          proof_hash: 'akad-dowod-demo',
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-    if (url.includes('/report')) {
-      return new Response(
-        JSON.stringify({
-          contract: 'AcademicReportV1', report_id: 'report:v126:demo', run_id: 'run-akad-1',
-          case_id: 'case-demo', analysis_type: rodzaj, source_result_hash: 'akad-hash-demo',
-          source_proof_hash: 'akad-dowod-demo', export_policy: 'frozen_result_and_proof_only',
-          sections: [], report_hash: 'akad-raport-demo',
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-    if (url.includes('/results/v126/')) {
-      return new Response(
-        JSON.stringify({
-          run_id: 'run-akad-1', case_id: 'case-demo', analysis_type: rodzaj, status: 'FINISHED',
-          created_at: '2026-08-07T10:00:00+00:00',
-          result: {
-            contract: 'AcademicAnalysisResultV1', analysis_type: rodzaj,
-            solver_version: 'v126-academic-whitebox-1.1', input_hash: 'akad-wejscie-demo',
-            result: (odpowiedziV126 as Record<string, unknown>)[rodzaj],
-            white_box_trace: kroki, deterministic_hash: 'akad-hash-demo',
-          },
-          proof_ref: 'proof:v126:demo', report_ref: 'report:v126:demo',
-        }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } },
-      );
-    }
-    return new Response(
-      JSON.stringify({
-        run_id: 'run-akad-1', case_id: 'case-demo', analysis_type: rodzaj, status: 'FINISHED',
-        result_url: '', trace_url: '', proof_url: '', report_url: '',
-        deterministic_hash: 'akad-hash-demo',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    const bieg = biegi[rodzaj];
+    if (url.includes('/trace')) return jsonOK(bieg.slad);
+    if (url.includes('/proof')) return jsonOK(bieg.dowod);
+    if (url.includes('/report')) return jsonOK(bieg.raport);
+    if (url.includes('/results/v126/')) return jsonOK(bieg.wynik);
+    return jsonOK(bieg.koperta);
   }
   if (url.includes('/runs/v126/ssci_impedance')) {
-    // Scena "ssci" (V-B): utworzenie przebiegu SSCI (koperta V126RunResponse).
-    return new Response(
-      JSON.stringify({ run_id: 'run-ssci-1', status: 'DONE', deterministic_hash: 'ssci-hash-demo' }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena "ssci": utworzenie przebiegu SSCI (koperta V126RunResponse) —
+    // HARNESS-RESZTA-2: koperta REALNEGO biegu backendu.
+    return jsonOK(akademickieScenyBiegi.biegi.ssci_impedance.koperta);
   }
   if (url.includes('/results/v126/ssci_impedance/stability')) {
-    // Scena "ssci" (V-B): werdykt stabilnosci SSCI — ksztalt 1:1 z
-    // `analysis/ssci_stability/serializer.py::view_to_dict` (kryterium
-    // impedancyjne Nyquista; white_box: max|L| i margines fazy).
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'ssci-analysis-demo-01',
-        context: {
-          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
-          run_timestamp: '2026-07-22T09:00:00Z', snapshot_id: 'snap-demo', trace_id: 'run-ssci-1',
-        },
-        gain_crossover_mag: 1.0,
-        pm_risk_deg: 30.0,
-        pm_unstable_deg: 0.0,
-        verdict: {
-          converter_ref: 'INV1',
-          bus_ref: 'SZ-PV2',
-          verdict: 'niestabilny',
-          is_risk: true,
-          why_pl: 'Przebieg L(jω) okrąża punkt −1 w paśmie przecięcia modułów — niestabilność SSCI.',
-          max_minor_loop_gain: 1.42,
-          has_magnitude_crossover: true,
-          gain_crossover: { f_hz: 34.5, phase_l_deg: -178.0, phase_margin_deg: 2.0 },
-          worst_phase_margin_deg: -3.5,
-          worst_phase_margin_f_hz: 34.5,
-          offending_frequency_hz: 34.5,
-          nearest_to_minus_one: { f_hz: 34.5, mag: 1.42, phase_deg: -178.0, distance_to_minus_one: 0.42 },
-          encirclement_count: 1,
-          negative_resistance_present: true,
-          negative_resistance_f_hz: 28.0,
-          provenance: {
-            worst_quality: 'ESTIMATED',
-            worst_quality_label_pl: 'oszacowane',
-            is_estimated: true,
-            consumed_fields: ['current_loop_bandwidth_hz', 'pll_bandwidth_hz', 'filter_l_pu'],
-            tag_pl: 'Werdykt oparty na oszacowanych polach karty falownika.',
-          },
-          missing_data: [],
-          white_box: [
-            {
-              symbol: 'max|L|',
-              formula_latex: '\\max_f |L(j\\omega)|',
-              substitution_pl: 'maksimum modułu wzmocnienia pętli po częstotliwościach',
-              result_pl: '1,42',
-              unit_check_pl: '[-] (bezwymiarowe)',
-            },
-            {
-              symbol: 'Δφ',
-              formula_latex: '180^\\circ - |\\angle L|',
-              substitution_pl: '180° − |∠L| w paśmie |L| ≥ 1: 180° − 183,5°',
-              result_pl: '-3,50°',
-              unit_check_pl: '[°]',
-            },
-          ],
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena "ssci": werdykt stabilnosci SSCI (kryterium impedancyjne Nyquista)
+    // — HARNESS-RESZTA-2: REALNY widok backendu (`get_v126_ssci_stability`, TA
+    // SAMA funkcja co koncowka) na REALNYM biegu `ssci_impedance` sieci zlotej
+    // z ZMATERIALIZOWANA karta przeksztaltnika. Wczesniej caly werdykt wraz z
+    // wywodem White Box byl wpisany recznie.
+    return jsonOK(akademickieScenyBiegi.biegi.ssci_impedance.stabilnosc);
   }
   // Karta FAB-L (§0 L6): USUNIĘTA kompozycja `/api/catalog/complete-bay-templates`
   // budowana w harnessie (refy szablonów niezgodne z konwencją backendu —
@@ -1301,298 +1173,27 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     return jsonOK(zgodnoscPrzekrojowaScenyMacierz);
   }
   if (url.includes('/api/oze-analysis/lom-protection')) {
-    // Scena "lom": ocena ochrony od pracy wyspowej — ksztalt 1:1 z
-    // `application/analyses/ochrona_lom.py::build_ochrona_lom_view`; wywody
-    // per porownanie 1:1 z `_wywod_okna` (kroki {tekst, latex}, zasada KaTeX).
-    const zrodloRocof =
-      'Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b '
-      + '(zdolność pracy przy zmianach częstotliwości — ROCOF withstand); wartość krajowa PTPiREE 2 Hz/s';
-    const zrodloFreq =
-      'Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a '
-      + '(pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)';
-    const zrodloSpz = 'SpzState.fast_time_s / slow_time_s jednostek nadrzędnych (BayProtectionControlUnit)';
-    const komunikat81R =
-      'Nastawa df/dt (1.0 Hz/s) poniżej dolnego okna (2.0 Hz/s) — ryzyko zbędnych '
-      + 'wyłączeń (fałszywe wykrycie wyspy).';
-    const komunikat81U = 'Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz).';
-    const komunikatSpz =
-      'Brak danych o przerwie SPZ jednostek nadrzędnych (SpzState nieosiągalny w ENM) '
-      + '— porównanie niemożliwe.';
-    return new Response(
-      JSON.stringify({
-        analysis: 'ochrona_lom',
-        context: { enm_name: 'Przyłączenie farmy PV 8 MW', enm_hash: 'enm-3c1d9f7b52a80e46' },
-        input_hash: 'lom-9a4b7c2e6d1f0835',
-        zalozenia_pl: [
-          'Ocena LoM to interpretacja normatywna (porównania), nie symulacja fizyki wyspy.',
-          'Moduł wytwórczy = generator w ENM; pole przyłączeniowe = pole (bay) na szynie '
-          + 'modułu lub o roli OZE z przypisaniem zabezpieczeń.',
-          'Okna normatywne pochodzą wyłącznie z cytowanych źródeł (NC RfG / PTPiREE); '
-          + 'brak źródła → okno None + INFO, bez zmyślonych liczb.',
-          'Czasy przerwy SPZ pochodzą z SpzState jednostek nadrzędnych; gdy nieosiągalne '
-          + 'w ENM — uczciwy INFO.',
-        ],
-        normative_sources: {
-          rocof_81R: { window_pl: 'df/dt ≥ 2.0 Hz/s', source_pl: zrodloRocof },
-          vector_shift_78: { window_pl: null, source_pl: null },
-          underfrequency_81U: { window_pl: 'próg f ≤ 47.5 Hz', source_pl: zrodloFreq },
-          overfrequency_81O: { window_pl: 'próg f ≥ 51.5 Hz', source_pl: zrodloFreq },
-        },
-        fields: [
-          {
-            bay_ref: 'bay-pv-a', bay_name: 'Pole PV A', substation_ref: 'gpz-1',
-            bus_ref: 'bus-oze-1', generating_module_refs: ['gen-pv-1'], status: 'ERROR',
-            checks: [
-              {
-                kind: 'obecnosc', function_ansi: null, function_label_pl: null, severity: 'ERROR',
-                message_pl:
-                  'Pole modułu wytwórczego bez jakiejkolwiek funkcji ochrony od pracy '
-                  + 'wyspowej (LoM: 81R / 78 / 81U / 81O).',
-                value: null, unit: null, window: null, source_pl: null, wywod: [],
-              },
-            ],
-          },
-          {
-            bay_ref: 'bay-bess-b', bay_name: 'Pole BESS B', substation_ref: 'gpz-1',
-            bus_ref: 'bus-oze-2', generating_module_refs: ['gen-bess-1'], status: 'WARN',
-            checks: [
-              {
-                kind: 'okno_normatywne', function_ansi: '81R',
-                function_label_pl: 'Szybkość zmian częstotliwości (df/dt)', severity: 'WARN',
-                message_pl: komunikat81R,
-                value: 1.0, unit: 'Hz/s', window: 'df/dt ≥ 2.0 Hz/s', source_pl: zrodloRocof,
-                // Wywod 1:1 z `_wywod_okna('rocof_81R', 1.0, WARN)`.
-                wywod: [
-                  {
-                    tekst: 'Wzor: warunek okna normatywnego funkcji 81R (nastawa nie nizsza niz krawedz okna)',
-                    latex: '\\left(\\tfrac{df}{dt}\\right)_{nast} \\ge 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}',
-                  },
-                  {
-                    tekst: 'Dane: nastawa = 1.0000 (przekaznik pola), krawedz okna = 2.0 — dolna krawedz okna (NC RfG Art. 13(1)(b), PTPiREE 2 Hz/s).',
-                    latex: null,
-                  },
-                  {
-                    tekst: 'Podstawienie: 1.0000 >= 2.0 NIESPELNIONE',
-                    latex: '1.0000 < 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}',
-                  },
-                  { tekst: `Werdykt: WARN — ${komunikat81R}`, latex: null },
-                ],
-              },
-              {
-                kind: 'koordynacja_spz', function_ansi: null,
-                function_label_pl: 'Koordynacja czasowa z SPZ', severity: 'INFO',
-                message_pl: komunikatSpz,
-                value: 0.3, unit: 's',
-                window: { spz_fast_time_s: null, spz_slow_time_s: null }, source_pl: zrodloSpz,
-                wywod: [],
-              },
-            ],
-          },
-          {
-            bay_ref: 'bay-fw-c', bay_name: 'Pole FW C', substation_ref: 'gpz-2',
-            bus_ref: 'bus-oze-3', generating_module_refs: ['gen-fw-1', 'gen-fw-2'], status: 'INFO',
-            checks: [
-              {
-                kind: 'okno_normatywne', function_ansi: '81U',
-                function_label_pl: 'Podczęstotliwościowa (f<)', severity: 'OK',
-                message_pl: komunikat81U,
-                value: 47.5, unit: 'Hz', window: 'próg f ≤ 47.5 Hz', source_pl: zrodloFreq,
-                // Wywod 1:1 z `_wywod_okna('underfrequency_81U', 47.5, OK)`.
-                wywod: [
-                  {
-                    tekst: 'Wzor: warunek okna normatywnego funkcji 81U (nastawa nie wyzsza niz krawedz okna)',
-                    latex: 'f_{81U} \\le 47.5\\ \\text{Hz}',
-                  },
-                  {
-                    tekst: 'Dane: nastawa = 47.5000 (przekaznik pola), krawedz okna = 47.5 — gorna krawedz okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz).',
-                    latex: null,
-                  },
-                  {
-                    tekst: 'Podstawienie: 47.5000 <= 47.5 SPELNIONE',
-                    latex: '47.5000 \\le 47.5\\ \\text{Hz}',
-                  },
-                  { tekst: `Werdykt: OK — ${komunikat81U}`, latex: null },
-                ],
-              },
-              {
-                kind: 'koordynacja_spz', function_ansi: null,
-                function_label_pl: 'Koordynacja czasowa z SPZ', severity: 'INFO',
-                message_pl: komunikatSpz,
-                value: null, unit: 's',
-                window: { spz_fast_time_s: null, spz_slow_time_s: null }, source_pl: zrodloSpz,
-                wywod: [],
-              },
-            ],
-          },
-        ],
-        modules_without_field: ['gen-pv-4'],
-        summary: {
-          fields_total: 3,
-          generating_modules_total: 5,
-          by_status: { OK: 0, INFO: 1, WARN: 1, ERROR: 1 },
-          overall_status: 'ERROR',
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // HARNESS-RESZTA-2: scena "lom" — REALNY widok backendu
+    // (`eksport_fixtur_harnessu.py::lom_scena_wynik`, TA SAMA funkcja
+    // `build_ochrona_lom_view`, ktora wola koncowka) na sieci zlotej: okna
+    // normatywne z CYTOWANYCH zrodel, pola przylaczeniowe modulow i uczciwe
+    // INFO przy brakach danych. Wczesniej caly widok — z wywodami per
+    // porownanie — byl wpisany recznie.
+    return jsonOK(lomScenyWynik);
   }
   if (url.includes('/api/oze-analysis/frt-trajectories')) {
-    // Scena "frt" (T-C): trajektorie LVRT z wywodem marginesu — ksztalt 1:1 z
-    // `application/analyses/frt_trajektorie.py::build_frt_trajectories_view`
-    // (wywod z `_wywod_scenariusza`: wzor -> dane -> podstawienie -> werdykt).
-    const trajektoria = [
-      { czas_s: 0.0, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 1.0 },
-      { czas_s: 0.3, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 1.0 },
-      { czas_s: 0.5, napiecie_pu: 0.05, iq_bierny_pu: 0.153, p_czynna_pu: 0.95 },
-      { czas_s: 0.6, napiecie_pu: 0.05, iq_bierny_pu: 0.982, p_czynna_pu: 0.104 },
-      { czas_s: 0.65, napiecie_pu: 0.05, iq_bierny_pu: 1.0, p_czynna_pu: 0.05 },
-      { czas_s: 0.7, napiecie_pu: 0.525, iq_bierny_pu: 0.612, p_czynna_pu: 0.352 },
-      { czas_s: 0.75, napiecie_pu: 1.0, iq_bierny_pu: 0.048, p_czynna_pu: 0.601 },
-      { czas_s: 1.0, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 0.907 },
-      { czas_s: 1.5, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 0.982 },
-      { czas_s: 2.0, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 1.0 },
-    ];
-    return new Response(
-      JSON.stringify({
-        modul_der: { id: 'conv-pv-1mw-15kv', nazwa: 'Farma PV 1 MW / 15 kV', kind: 'PV', pmax_mw: 1.0, un_kv: 15.0 },
-        operator: { id: 'pse', nazwa: 'PSE — Polskie Sieci Elektroenergetyczne' },
-        test_kind: 'lvrt',
-        status_solvera: 'ok',
-        obwiednia_profilu: {
-          rodzaj: 'lvrt',
-          opis: 'Krzywa LVRT operatora: dozwolony przebieg napięcia (czas→napięcie) wg profilu NC RfG.',
-          punkty: [
-            { czas_s: 0.0, napiecie_pu: 0.05 },
-            { czas_s: 0.15, napiecie_pu: 0.05 },
-            { czas_s: 0.7, napiecie_pu: 0.5 },
-            { czas_s: 1.5, napiecie_pu: 0.85 },
-            { czas_s: 3.0, napiecie_pu: 0.9 },
-          ],
-        },
-        scenariusze: [
-          {
-            scenario_id: 'lvrt_conv-pv-1mw-15kv',
-            status: 'ok',
-            stayed_connected: true,
-            margin_to_curve_s: null,
-            margin_to_curve_pu: 0.0,
-            p_recovery_time_s: 0.31,
-            werdykt_pl: 'w obwiedni',
-            liczba_punktow_trajektorii: 10,
-            // Wywod 1:1 z `_wywod_scenariusza` (liczby spojne: m_U = 0.000000,
-            // 10 punktow trajektorii, t_odz = 0.310000 s).
-            wywod: [
-              {
-                tekst:
-                  'Scenariusz lvrt_conv-pv-1mw-15kv (LVRT): napiecie zaklocenia 0.0500 p.u. '
-                  + 'przez 0.1500 s (wejscie solvera FROZEN frt_hvrt).',
-                latex: null,
-              },
-              {
-                tekst:
-                  'Wzor: margines napieciowy trajektorii wzgledem krzywej minimalnej '
-                  + '(minimum roznicy napiecia trajektorii i krzywej od poczatku zaklocenia)',
-                latex: 'm_{U} = \\min_{t \\ge t_{z}}\\bigl(u(t) - u_{kr}(t)\\bigr)',
-              },
-              {
-                tekst:
-                  'Dane: margines z solvera m_U = 0.000000 p.u. '
-                  + '(FrtScenarioResult.margin_to_curve_pu), liczba punktow trajektorii: 10.',
-                latex: null,
-              },
-              {
-                tekst: 'Podstawienie: warunek utrzymania w obwiedni m_U >= 0: 0.000000 >= 0 SPELNIONE',
-                latex: 'm_{U} = 0.000000\\ \\text{p.u.} \\ge 0',
-              },
-              {
-                tekst: 'Dane: czas odzysku mocy czynnej po zakloceniu t_odz = 0.310000 s (pole wyniku solvera).',
-                latex: null,
-              },
-              { tekst: 'Werdykt: w obwiedni.', latex: null },
-            ],
-            trajektoria,
-          },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // HARNESS-RESZTA-2: scena "frt" — REALNY widok backendu
+    // (`build_frt_trajectories_view` na REALNEJ karcie przeksztaltnika
+    // `conv-pv-1mw-15kv` i REALNYM profilu operatora `pse`): obwiednia profilu,
+    // trajektorie scenariuszy i wywod marginesu. Zero recznych punktow.
+    return jsonOK(frtScenyTrajektorie);
   }
   if (url.includes('/api/oze-analysis/frt-sequence')) {
-    // Scena "frt" (T-B): sekwencja zapadow z kontekstem sily sieci — ksztalt 1:1
-    // z `application/analyses/frt_sekwencja.py::build_frt_sekwencja_view`;
-    // `kontekst_sily_sieci` = wiersz SCR z widoku sily sieci (D1) ze sladem
-    // WHITE BOX (`KrokSladuSily`). Liczby spojne: SCR = 45,0 / 20,0 = 2,25.
-    const wejscie = (glebokosc: number, czas: number) => ({
-      test_kind: 'lvrt',
-      voltage_dip_depth_pu: glebokosc,
-      fault_duration_s: czas,
-      target_der_ref: 'conv-pv-1mw-15kv',
-    });
-    return new Response(
-      JSON.stringify({
-        modul_der: { id: 'conv-pv-1mw-15kv', nazwa: 'Farma PV 1 MW / 15 kV', kind: 'PV', pmax_mw: 1.0, un_kv: 15.0 },
-        operator: { id: 'pse', nazwa: 'PSE — Polskie Sieci Elektroenergetyczne' },
-        status_solvera: 'der_dropped',
-        obwiednia_profilu: {
-          rodzaj: 'lvrt',
-          opis: 'Krzywa LVRT operatora: dozwolony przebieg napięcia (czas→napięcie) wg profilu NC RfG.',
-          punkty: [
-            { czas_s: 0.0, napiecie_pu: 0.05 },
-            { czas_s: 0.15, napiecie_pu: 0.05 },
-            { czas_s: 0.7, napiecie_pu: 0.5 },
-            { czas_s: 1.5, napiecie_pu: 0.85 },
-            { czas_s: 3.0, napiecie_pu: 0.9 },
-          ],
-        },
-        liczba_zapadow: 2,
-        zapady: [
-          {
-            scenario_id: 'seq_0_conv-pv-1mw-15kv', glebokosc_pu: 0.05, czas_s: 0.15,
-            status: 'ok', stayed_connected: true, margin_to_curve_pu: 0.0,
-            margin_to_curve_s: null, p_recovery_time_s: 0.31, werdykt_pl: 'w obwiedni',
-            wejscie_solvera: wejscie(0.05, 0.15),
-          },
-          {
-            scenario_id: 'seq_1_conv-pv-1mw-15kv', glebokosc_pu: 0.02, czas_s: 0.5,
-            status: 'der_dropped', stayed_connected: false, margin_to_curve_pu: -0.03,
-            margin_to_curve_s: null, p_recovery_time_s: null, werdykt_pl: 'moduł wypadł',
-            wejscie_solvera: wejscie(0.02, 0.5),
-          },
-        ],
-        werdykt_sekwencji_pl: 'sekwencja niezaliczona — zapad 2',
-        zalozenia_pl:
-          'Stan modułu MIĘDZY zapadami (nagrzewanie, niepełny odzysk) nie jest modelowany: '
-          + 'każdy zapad liczony od stanu ustalonego i oceniany niezależnie. Werdykt sekwencji '
-          + 'to koniunkcja werdyktów poszczególnych zapadów — kompozycja wyników solvera, '
-          + 'nie nowa fizyka.',
-        kontekst_sily_sieci: {
-          bus_ref: 'bus-oze-1',
-          nominal_kv: 15.0,
-          s_sc_mva: 45.0,
-          s_installed_mva: 20.0,
-          scr: 2.25,
-          verdict: 'sieć słaba',
-          is_weak: true,
-          why_pl: 'SCR = 2,25 poniżej progu sieci słabej (3,0).',
-          missing_data: [],
-          white_box: [
-            {
-              symbol: 'SCR',
-              formula_latex: 'SCR = S_sc / S_n',
-              substitution_pl: 'SCR = 45,0 / 20,0',
-              result_pl: 'SCR = 2,25',
-            },
-          ],
-          modules: [
-            { ref: 'gen-fw-karnice', name: 'Farma wiatrowa Karnice', sn_mva: 18.9 },
-            { ref: 'der-pv-1', name: 'Farma PV 1 MW', sn_mva: 1.1 },
-          ],
-        },
-        kontekst_sily_sieci_powod_pl: null,
-        input_hash: 'frt-seq-2b8d4e6f9a1c0357',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Sekwencja zapadow z kontekstem sily sieci — `build_frt_sekwencja_view`
+    // z wierszem SCR widoku D1 biegu kotwicy analiz OZE (TEN SAM bieg, ktory
+    // karmi scene "sila-sieci"). Program badania (glebokosc:czas) jest DANA
+    // WEJSCIOWA testu odbiorowego; werdykty liczy backend.
+    return jsonOK(frtScenySekwencja);
   }
   if (
     url.includes('/api/execution/study-cases/') &&
