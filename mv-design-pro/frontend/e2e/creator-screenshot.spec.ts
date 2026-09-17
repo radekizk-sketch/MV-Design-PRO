@@ -13,6 +13,30 @@ import { adresHarnessu } from './adresHarnessu';
 import { zbierajNieudaneZadaniaApi } from './nieudaneZadaniaApi';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Scena „wiazania" czyta REALNĄ odpowiedź końcówki doboru przekładników
+ * (`wiazania_scena_przekladniki.json`, karta HARNESS-RESZTA-2). NAPRAWA: spec
+ * cytował „wymagane: 308.0 A" z atrapy sprzed konwersji — prąd, którego żaden
+ * model nie niósł; realny tor (falownik 1,1 MVA na szynie 15 kV) daje 38,5 A.
+ * Teraz wartości rachunku pochodzą z tej samej fixtury, którą serwuje harness.
+ */
+const WIAZANIA_PRZEKLADNIKI = JSON.parse(
+  fs.readFileSync(
+    path.resolve(
+      _dirname,
+      '../src/harness-fixtures/generated/wiazania_scena_przekladniki.json',
+    ),
+    'utf-8',
+  ),
+) as {
+  przekladnik_pradowy: {
+    wynik: { kryteria: { kod: string; wymagane: string | null; dostepne: string | null }[] };
+  };
+};
+const WIAZANIA_KRYTERIUM_PRZEKLADNI = WIAZANIA_PRZEKLADNIKI.przekladnik_pradowy.wynik.kryteria.find(
+  (kryterium) => kryterium.kod === 'ct.przekladnia',
+)!;
 const HARNESS_URL = adresHarnessu('creator-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/kreatory');
 
@@ -349,10 +373,10 @@ test.describe('kreatory:screenshot', () => {
     // wartosc wymagana przez tor obok wartosci dostepnej w typie — i uczciwie nazwac
     // brak danej. Sam wpis „CT 200/5 A kl. 5P10" nie jest dowodem doboru.
     await expect(page.getByTestId('kryterium-rachunek-ct.przekladnia')).toContainText(
-      'wymagane: 308.0 A',
+      `wymagane: ${WIAZANIA_KRYTERIUM_PRZEKLADNI.wymagane}`,
     );
     await expect(page.getByTestId('kryterium-rachunek-ct.przekladnia')).toContainText(
-      'dostępne: 200.0 A',
+      `dostępne: ${WIAZANIA_KRYTERIUM_PRZEKLADNI.dostepne}`,
     );
     await expect(page.getByTestId('kryterium-werdykt-ct.wytrzymalosc_cieplna')).toHaveText(
       'brak danej',

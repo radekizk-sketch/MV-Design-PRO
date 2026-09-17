@@ -13,13 +13,22 @@ QA recznie nie sprobuje zapisac.
 
 CO PILNUJE TEN PLIK:
 
-1. Dane scen w harnessie (`device_catalog_ref`/`battery_catalog_ref`/
-   `dynamic_model_ref`/`protection_catalog_ref`/`ct_catalog_ref`/
-   `ptpiree_certificate_ref`) — kazda wartosc MUSI istniec w realnym katalogu
-   backendu, z ktorego picker faktycznie czyta (nie w drugiej, rownoleglej
-   licie utrzymywanej recznie w tescie — patrz `_nieznane_referencje_katalogowe`
-   nizej, ktora jest DOKLADNIE tym samym predykatem, ktorego uzywa
-   `set_der_catalog_bindings`).
+1. Dane scen harnessu — kazda referencja katalogowa MUSI istniec w realnym
+   katalogu backendu, z ktorego picker faktycznie czyta (nie w drugiej,
+   rownoleglej licie utrzymywanej recznie w tescie — patrz
+   `_nieznane_referencje_katalogowe` nizej, ktora jest DOKLADNIE tym samym
+   predykatem, ktorego uzywa `set_der_catalog_bindings`).
+
+   GDZIE TE DANE ZYJA (karta HARNESS-RESZTA-2, 2026-09-17). Wczesniej byly to
+   recznie pisane rekordy `derDemo({...})` w `creator-harness-main.tsx` i test
+   czytal je regexem. Rekordow juz NIE MA: kazda scena harnessu jest dzis
+   zasilana FIKSTURA wygenerowana z REALNEGO biegu backendu
+   (`backend/scripts/eksport_fixtur_harnessu.py` -> `frontend/src/
+   harness-fixtures/generated/*.json`, parytet bajtowy pilnuje
+   `tests/ci/test_fixtury_harnessu.py`). Parytet czyta wiec fikstury —
+   STRUKTURALNIE (JSON), nie regexem — a skan `.tsx` zostaje jako pulapka na
+   nawrot: gdyby ktos znow wpisal referencje recznie do harnessu, wpadnie w te
+   same asercje (suma zbiorow `_wartosci_pola` + `_wartosci_klucza_z_fikstur`).
 2. Wybrane atrapowe specy e2e (`creator-screenshot.spec.ts`,
    `fk7-dobor-screenshot.spec.ts`, `kreator-oze-max.spec.ts`), ktore prowadza
    klik po prawdziwym `<select>` zasilanym dzis realnym backendem — te same
@@ -29,26 +38,67 @@ CO PILNUJE TEN PLIK:
    pliku), jest fałszywą pewnością (reguła KLASA NIE INSTANCJA #4) — gorszy niz
    brak testu, bo usypia czujnosc.
 
-Poza zakresem CELOWO (patrz komentarz w harnessie przy
-`/api/oze-analysis/compensation-sizing`): `catalog_ref` kandydatow doboru
-kompensacji (`cap-0v3`/`cap-0v6`/`cap-0v9`) — to WYNIK ANALIZY (solver/analysis
-result, wyjatek karty (a)), terminalny i tylko-do-odczytu, nigdy nie odsylany
-z powrotem do zadnego pickera katalogu.
+HISTORIA ZAKRESU (korekta 2026-09-17). Wczesniejsza wersja tego naglowka
+wylaczala z parytetu `catalog_ref` kandydatow doboru kompensacji jako „wynik
+analizy, nigdy nie odsylany do pickera". Wylaczenie bylo zbedne: fikstura
+`kompensacja_scena_wynik.json` niesie dzis referencje `KOMP_SN_0V6_15KV`/
+`KOMP_SN_1V2_15KV`/`KOMP_SN_2V4_15KV`, ktore ISTNIEJA w katalogu
+`KOMPENSATOR_SN` (pomiar) i przechodza parytet jak kazda inna referencja.
+Wynik analizy tez wskazuje realny sprzet — i tak ma byc.
 
-Test czyta pliki frontu jako TEKST (nie uruchamia TypeScriptu/Playwrighta) —
-swiadomy wybor: parytet ma dzialac w zwyklym biegu pytest, bez node'a w petli.
+Test nie uruchamia TypeScriptu ani Playwrighta: fikstury czyta jako JSON,
+pliki frontu jako TEKST. Swiadomy wybor — parytet ma dzialac w zwyklym biegu
+pytest, bez node'a w petli.
 """
 
 from __future__ import annotations
 
+import json
 import re
+from collections.abc import Callable
+from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 _FRONTEND_ROOT = Path(__file__).resolve().parents[3] / "frontend"
 _HARNESS_TS = _FRONTEND_ROOT / "src" / "creator-harness-main.tsx"
+_FIKSTURY_DIR = _FRONTEND_ROOT / "src" / "harness-fixtures" / "generated"
 _E2E_DIR = _FRONTEND_ROOT / "e2e"
+
+
+#: Referencje katalogowe scen zbudowanych na SIECI ZLOTEJ
+#: (`backend/tests/cgmes/golden_enm.py::build_golden_enm`), ktorych realny
+#: katalog NIE ZNA — scena „pulpit"/„siec zlota"/„zbieznosc"/„skladowe".
+#:
+#: POMIAR (2026-09-17): 7 referencji z 21 unikalnych w fiksturach. Elementy
+#: sieci zlotej deklaruja `parameter_source="CATALOG"`, ale ich parametry sa
+#: WPISANE WPROST w budowniczym testowym — zadna materializacja nie zaszla
+#: (`materialized_params` puste), wiec identyfikatory nigdy nie musialy
+#: istniec. To dlug PRODUKTOWY (deklaracja pochodzenia bez pokrycia), nie
+#: usterka harnessu: naprawa = materializacja sieci zlotej z realnego katalogu,
+#: czyli INNE parametry kazdego elementu, a przez to inne wyniki WSZYSTKICH
+#: rodzin analiz — lacznie z zamrozonym zbiorem odniesienia
+#: `tests/golden/parytet_scenariuszy/zlote_hashe.json` (baseline SPRZED
+#: migracji `apply_scenario`, ktorego przeliczenie kasuje jego wartosc
+#: dowodowa). Decyzja o przeliczeniu kanonu nalezy do wlasciciela — do tego
+#: czasu zbior jest ZAMKNIETY i zapadkowy: kazda NOWA referencja bez pokrycia
+#: wywala test (nie wolno jej tu dopisac „bo tak bylo"), a znikniecie wpisu
+#: rowniez (naprawa sieci zlotej ma wrocic tu jako zmiana tej listy).
+_REFERENCJE_SIECI_ZLOTEJ_BEZ_POKRYCIA: frozenset[tuple[str | None, str]] = frozenset(
+    {
+        ("KABEL_SN", "cable-yakxs-3x120"),
+        ("LINIA_SN", "line-afl-70"),
+        ("TRAFO_SN_NN", "tr-110-15-25mva-ynd11"),
+        ("TRAFO_SN_NN", "tr-15-04-630kva-dyn11"),
+        ("ZRODLO_SN", "src-gpz-110kv-2500mva"),
+        # Wytworcy sieci zlotej niosą GOLĄ referencje (bez `catalog_namespace`),
+        # wiec nie sa wiazaniem katalogowym w rozumieniu `CatalogBinding`.
+        (None, "gen-sync-2mva"),
+        (None, "conv-pv-nn-0p5mw"),
+    }
+)
 
 
 def _tekst(path: Path) -> str:
@@ -80,62 +130,218 @@ def _identyfikatory_porownan(source: str) -> set[str]:
     return set(re.findall(r"\.id\s*===\s*'([^']+)'", source))
 
 
-def _der_kind_i_device_ref_pary(source: str) -> list[tuple[str, str]]:
-    """Pary (der_kind, device_catalog_ref) z blokow `derDemo({...})` harnessu.
+@lru_cache(maxsize=1)
+def _fikstury_scen() -> tuple[tuple[str, Any], ...]:
+    """(nazwa pliku, dane) kazdej fikstury sceny harnessu.
 
-    Katalogi DER sa PLASKIMI obiektami (`catalogs: { ...EMPTY_DER_CATALOGS,
-    pole: 'wartosc', ... }`, zero zagniezdzonych `{}`) — `[^{}]*` bezpiecznie
-    zatrzymuje sie na PIERWSZYM `}`, wiec dopasowanie nigdy nie przeskakuje do
-    NASTEPNEGO rekordu DER. `.*?` niechlanie miedzy `der_kind` a `catalogs`
-    (moga je dzielic inne pola rekordu, np. `name`/`bus_przylaczenia_ref`).
+    Fikstury powstaja z REALNYCH biegow backendu i sa danymi WSZYSTKICH scen —
+    patrz docstring modulu. Pusty katalog konczy test bledem, nie cisza.
     """
-    wzorzec = re.compile(
-        r"der_kind:\s*'(PV|BESS|FW)'.*?catalogs:\s*\{([^{}]*)\}",
-        re.DOTALL,
-    )
-    pary: list[tuple[str, str]] = []
-    for kind, blok in wzorzec.findall(source):
-        for ref in re.findall(r"device_catalog_ref:\s*\n?\s*'([^']+)'", blok):
-            pary.append((kind, ref))
-    return pary
+    pliki = sorted(_FIKSTURY_DIR.glob("*.json"))
+    if not pliki:  # pragma: no cover - zabezpieczenie przed przeniesieniem katalogu
+        pytest.fail(f"Brak fikstur scen w {_FIKSTURY_DIR} — parytet nie ma czego porownac.")
+    return tuple((p.name, json.loads(p.read_text(encoding="utf-8"))) for p in pliki)
+
+
+def _przejdz(wezel: Any, odwiedz: Callable[[dict[str, Any]], None]) -> None:
+    """Rekurencyjny przejazd po strukturze JSON (slowniki i listy, dowolna glebokosc).
+
+    Fikstury roznia sie ksztaltem (migawka ENM, wynik analizy, slad) i te same
+    pola siedza na roznych glebokosciach — przejazd po CALOSCI jest jedynym
+    sposobem, zeby parytet obejmowal KLASE („kazda referencja w danych scen"),
+    a nie wybrane sciezki, ktore ktos pamietal (regula KLASA NIE INSTANCJA #1).
+    """
+    if isinstance(wezel, dict):
+        odwiedz(wezel)
+        for podwezel in wezel.values():
+            _przejdz(podwezel, odwiedz)
+    elif isinstance(wezel, list):
+        for podwezel in wezel:
+            _przejdz(podwezel, odwiedz)
+
+
+def _wartosci_klucza_z_fikstur(klucz: str) -> set[str]:
+    """Wartosci tekstowe pola `klucz` wystepujace GDZIEKOLWIEK w fiksturach scen."""
+    znalezione: set[str] = set()
+
+    def odwiedz(slownik: dict[str, Any]) -> None:
+        wartosc = slownik.get(klucz)
+        if isinstance(wartosc, str) and wartosc:
+            znalezione.add(wartosc)
+
+    for _, dane in _fikstury_scen():
+        _przejdz(dane, odwiedz)
+    return znalezione
+
+
+def _wiazania_katalogowe_z_fikstur() -> dict[tuple[str, str], tuple[str | None, set[str]]]:
+    """(catalog_namespace, identyfikator) -> (wersja katalogu, fikstury, w ktorych wystepuje).
+
+    Wiazanie katalogowe to para PRZESTRZEN + IDENTYFIKATOR (kontrakt
+    `CatalogBinding`), niezaleznie od tego, czy element zapisal je jako
+    `catalog_ref` (element ENM) czy `catalog_item_id` (zapis wiazania w
+    `meta.catalog_binding`/`catalog_context`).
+    """
+    wiazania: dict[tuple[str, str], tuple[str | None, set[str]]] = {}
+
+    for nazwa, dane in _fikstury_scen():
+
+        def odwiedz(slownik: dict[str, Any], _nazwa: str = nazwa) -> None:
+            przestrzen = slownik.get("catalog_namespace")
+            identyfikator = slownik.get("catalog_ref") or slownik.get("catalog_item_id")
+            if not isinstance(przestrzen, str) or not isinstance(identyfikator, str):
+                return
+            parametry = slownik.get("materialized_params")
+            wersja = slownik.get("catalog_item_version")
+            if not isinstance(wersja, str) and isinstance(parametry, dict):
+                wersja = parametry.get("catalog_item_version")
+            klucz = (przestrzen, identyfikator)
+            poprzednia, zrodla = wiazania.get(klucz, (None, set()))
+            zrodla.add(_nazwa)
+            wiazania[klucz] = (
+                poprzednia or (wersja if isinstance(wersja, str) else None),
+                zrodla,
+            )
+
+        _przejdz(dane, odwiedz)
+    return wiazania
+
+
+def _gole_referencje_katalogowe_z_fikstur() -> dict[str, set[str]]:
+    """`catalog_ref` BEZ `catalog_namespace` -> fikstury, w ktorych wystepuje.
+
+    Taka referencja nie jest wiazaniem (`CatalogBinding` wymaga przestrzeni),
+    ale nadal wskazuje pozycje katalogu — i nadal moze byc zmyslona, wiec
+    parytet sprawdza ja wobec WSZYSTKICH przestrzeni katalogu.
+    """
+    gole: dict[str, set[str]] = {}
+
+    for nazwa, dane in _fikstury_scen():
+
+        def odwiedz(slownik: dict[str, Any], _nazwa: str = nazwa) -> None:
+            identyfikator = slownik.get("catalog_ref")
+            if not isinstance(identyfikator, str) or not identyfikator:
+                return
+            if isinstance(slownik.get("catalog_namespace"), str):
+                return
+            gole.setdefault(identyfikator, set()).add(_nazwa)
+
+        _przejdz(dane, odwiedz)
+    return gole
 
 
 class TestHarnessDaneScen:
-    """`creator-harness-main.tsx`: dane scen wskazuja na REALNE pozycje katalogu."""
+    """Dane scen harnessu (fikstury z realnych biegow) wskazuja REALNE pozycje katalogu."""
 
-    def test_device_catalog_ref_istnieje_w_katalogu_wlasciwego_rodzaju(self) -> None:
-        from api.catalog import (
-            list_bess_inverter_types,
-            list_pv_inverter_types,
-            list_wind_inverter_types,
+    def test_wiazania_katalogowe_scen_wskazuja_realne_pozycje_katalogu(self) -> None:
+        """Kazde wiazanie PRZESTRZEN+IDENTYFIKATOR materializuje sie w realnym katalogu.
+
+        Predykat to `materialize_catalog_binding` — DOKLADNIE ta funkcja, ktora
+        materializuje parametry elementu w produkcji (`materialize_snapshot_elements`),
+        wiec test nie odtwarza logiki „PV z listy falownikow PV, BESS z listy BESS"
+        drugi raz: przestrzen wiazania sama wybiera katalog (regula KLASA NIE
+        INSTANCJA #3 — jedno zrodlo prawdy dla warunku wejscia i wyjscia).
+        """
+        from network_model.catalog import get_default_mv_catalog
+        from network_model.catalog.materialization import materialize_catalog_binding
+        from network_model.catalog.types import CatalogBinding
+
+        wiazania = _wiazania_katalogowe_z_fikstur()
+        assert wiazania, (
+            "Zadna fikstura sceny nie niesie wiazania katalogowego — fikstury "
+            "zmienily ksztalt albo katalog fikstur jest pusty. Test milczaco "
+            "przechodzacy bez znalezisk jest falszywa pewnoscia."
         )
 
-        source = _tekst(_HARNESS_TS)
-        pary = _der_kind_i_device_ref_pary(source)
-        assert pary, (
-            "Wzorzec (der_kind, device_catalog_ref) nie znalazl NIC w harnessie — "
-            "regex nie pasuje (przeformatowanie pliku?) albo scena zniknela. Test "
-            "milczaco przechodzacy bez znalezisk jest falszywa pewnoscia."
-        )
-
-        znane_wg_rodzaju = {
-            "PV": {str(i["id"]) for i in list_pv_inverter_types()},
-            "BESS": {str(i["id"]) for i in list_bess_inverter_types()},
-            "FW": {str(i["id"]) for i in list_wind_inverter_types()},
-        }
-        for kind, ref in pary:
-            assert ref in znane_wg_rodzaju[kind], (
-                f"device_catalog_ref='{ref}' (der_kind={kind}) nie istnieje w realnym "
-                f"katalogu backendu — harness zapisywalby wartosc, ktorej picker "
-                f"nigdy by nie pokazal jako wybranej (a backend odrzucilby zapis)."
+        katalog = get_default_mv_catalog()
+        bez_pokrycia: set[tuple[str | None, str]] = set()
+        for (przestrzen, identyfikator), (wersja, zrodla) in sorted(wiazania.items()):
+            wynik = materialize_catalog_binding(
+                CatalogBinding(
+                    catalog_namespace=przestrzen,
+                    catalog_item_id=identyfikator,
+                    # Wersja NIE bierze udzialu w wyszukaniu pozycji (laduje tylko
+                    # w sladzie audytowym `MaterializationAuditEntry`) — wiazania
+                    # bez zapisanej wersji dostaja "1.0", bo `CatalogBinding`
+                    # wymaga niepustego pola.
+                    catalog_item_version=wersja or "1.0",
+                ),
+                katalog,
             )
+            if wynik.success:
+                continue
+            assert wynik.error_code == "catalog.item_not_found", (
+                f"Wiazanie {przestrzen}/{identyfikator} (fikstury: {sorted(zrodla)}) "
+                f"nie zmaterializowalo sie z powodu INNEGO niz brak pozycji: "
+                f"{wynik.error_code} — {wynik.error_message_pl}"
+            )
+            bez_pokrycia.add((przestrzen, identyfikator))
+
+        oczekiwane = {para for para in _REFERENCJE_SIECI_ZLOTEJ_BEZ_POKRYCIA if para[0] is not None}
+        assert bez_pokrycia == oczekiwane, (
+            "Zbior wiazan bez pokrycia w katalogu ZMIENIL SIE.\n"
+            f"  nowe (defekt — referencja, ktorej katalog nie zna): "
+            f"{sorted(bez_pokrycia - oczekiwane)}\n"
+            f"  zniknely (jesli to naprawa sieci zlotej — zdejmij wpis z "
+            f"`_REFERENCJE_SIECI_ZLOTEJ_BEZ_POKRYCIA`): {sorted(oczekiwane - bez_pokrycia)}"
+        )
+
+    def test_gole_referencje_katalogowe_scen_istnieja_w_jakiejs_przestrzeni(self) -> None:
+        """`catalog_ref` bez `catalog_namespace` tez musi wskazywac realna pozycje.
+
+        Gola referencja nie jest wiazaniem (`CatalogBinding` wymaga przestrzeni),
+        wiec poprzedni test jej nie widzi — a zmyslic ja rownie latwo. Pytamy
+        wiec kazda przestrzen katalogu: „znasz ten identyfikator?".
+        """
+        from network_model.catalog import get_default_mv_catalog
+        from network_model.catalog.materialization import materialize_catalog_binding
+        from network_model.catalog.types import CatalogBinding, CatalogNamespace
+
+        gole = _gole_referencje_katalogowe_z_fikstur()
+        assert gole, (
+            "Zadna fikstura sceny nie niesie golej referencji katalogowej — "
+            "wzorzec przestal pasowac (zmiana ksztaltu fikstur?)."
+        )
+
+        katalog = get_default_mv_catalog()
+        bez_pokrycia: dict[str, set[str]] = {}
+        for identyfikator, zrodla in sorted(gole.items()):
+            trafienie = any(
+                materialize_catalog_binding(
+                    CatalogBinding(
+                        catalog_namespace=przestrzen.value,
+                        catalog_item_id=identyfikator,
+                        catalog_item_version="1.0",
+                    ),
+                    katalog,
+                ).success
+                for przestrzen in CatalogNamespace
+            )
+            if not trafienie:
+                bez_pokrycia[identyfikator] = zrodla
+
+        oczekiwane = {
+            identyfikator
+            for przestrzen, identyfikator in _REFERENCJE_SIECI_ZLOTEJ_BEZ_POKRYCIA
+            if przestrzen is None
+        }
+        assert set(bez_pokrycia) == oczekiwane, (
+            "Zbior golych referencji bez pokrycia w katalogu ZMIENIL SIE.\n"
+            f"  nowe (defekt — zadna przestrzen katalogu nie zna tego "
+            f"identyfikatora): "
+            f"{ {ref: sorted(bez_pokrycia[ref]) for ref in sorted(set(bez_pokrycia) - oczekiwane)} }\n"
+            f"  zniknely (jesli to naprawa sieci zlotej — zdejmij wpis z "
+            f"`_REFERENCJE_SIECI_ZLOTEJ_BEZ_POKRYCIA`): "
+            f"{sorted(oczekiwane - set(bez_pokrycia))}"
+        )
 
     def test_battery_catalog_ref_istnieje_w_katalogu_baterii_bess(self) -> None:
         from network_model.catalog import get_default_mv_catalog
 
-        source = _tekst(_HARNESS_TS)
-        refy = _wartosci_pola(source, "battery_catalog_ref")
-        assert refy, "Brak battery_catalog_ref w harnessie — scena 'macierz' zniknela?"
+        refy = _wartosci_klucza_z_fikstur("battery_catalog_ref") | _wartosci_pola(
+            _tekst(_HARNESS_TS), "battery_catalog_ref"
+        )
+        assert refy, "Brak battery_catalog_ref w danych scen — scena 'macierz' zniknela?"
 
         katalog = get_default_mv_catalog()
         for ref in refy:
@@ -163,12 +369,18 @@ class TestHarnessDaneScen:
         from enm.domain_operations_v2 import _nieznane_referencje_katalogowe
 
         source = _tekst(_HARNESS_TS)
-        protection_refy = _wartosci_pola(source, "protection_catalog_ref")
-        ct_refy = _wartosci_pola(source, "ct_catalog_ref")
-        dynamic_refy = _wartosci_pola(source, "dynamic_model_ref")
+        protection_refy = _wartosci_klucza_z_fikstur("protection_catalog_ref") | _wartosci_pola(
+            source, "protection_catalog_ref"
+        )
+        ct_refy = _wartosci_klucza_z_fikstur("ct_catalog_ref") | _wartosci_pola(
+            source, "ct_catalog_ref"
+        )
+        dynamic_refy = _wartosci_klucza_z_fikstur("dynamic_model_ref") | _wartosci_pola(
+            source, "dynamic_model_ref"
+        )
         assert protection_refy and ct_refy and dynamic_refy, (
-            "Brak protection_catalog_ref/ct_catalog_ref/dynamic_model_ref w "
-            "harnessie — scena 'wiazania'/'frt'/'macierz' zniknela albo zmienila ksztalt."
+            "Brak protection_catalog_ref/ct_catalog_ref/dynamic_model_ref w danych "
+            "scen — scena 'wiazania'/'oze'/'macierz' zniknela albo zmienila ksztalt."
         )
 
         for ref in protection_refy:
@@ -188,9 +400,10 @@ class TestHarnessDaneScen:
     def test_ptpiree_certificate_ref_istnieje_w_katalogu_pv_i_jest_powiazany(self) -> None:
         from api.catalog import list_pv_inverter_types
 
-        source = _tekst(_HARNESS_TS)
-        refy = _wartosci_pola(source, "ptpiree_certificate_ref")
-        assert refy, "Brak ptpiree_certificate_ref w harnessie — scena 'macierz' (pv-1) zniknela?"
+        refy = _wartosci_klucza_z_fikstur("ptpiree_certificate_ref") | _wartosci_pola(
+            _tekst(_HARNESS_TS), "ptpiree_certificate_ref"
+        )
+        assert refy, "Brak ptpiree_certificate_ref w danych scen — scena 'macierz' zniknela?"
 
         powiazane = {
             str(i["ptpiree_certificate_ref"])

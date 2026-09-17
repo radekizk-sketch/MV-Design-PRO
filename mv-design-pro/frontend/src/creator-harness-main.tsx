@@ -169,6 +169,37 @@ import odbiorScenyPradZnamionowy from './harness-fixtures/generated/odbior_scena
 // katalogu rodzajow analiz; wczesniej slad/dowod/raport skladala recznie funkcja
 // `sladDemoV126` w tym pliku.
 import akademickieScenyBiegi from './harness-fixtures/generated/akademickie_scena_biegi.json';
+// HARNESS-RESZTA-2: JEDEN model stacji demo dla scen kreatorow, zbudowany TYMI
+// SAMYMI operacjami domenowymi, ktorymi buduje go projektant (GPZ 15 kV ->
+// odcinek kablowy -> stacja SN/nN z transformatorem i odplywem nN). Wczesniej
+// harness niosl ten model CZTERY RAZY, przepisany recznie.
+import stacjaDemoScenyMigawka from './harness-fixtures/generated/stacja_demo_scena_migawka.json';
+// HARNESS-RESZTA-2: migawki sieci zlotej dla scen, ktore interpretuja wyniki
+// liczone na TEJ sieci (kompensacja) oraz dla pulpitu projektu (z warunkami
+// przylaczenia w naglowku jako dana wejsciowa).
+import sieckZlotaScenyMigawka from './harness-fixtures/generated/siec_zlota_scena_migawka.json';
+import przebiegPfScenyZlotej from './harness-fixtures/generated/przebieg_pf_sceny_zlotej.json';
+import pulpitScenyMigawka from './harness-fixtures/generated/pulpit_scena_migawka.json';
+import pulpitScenyPrzebieg from './harness-fixtures/generated/pulpit_scena_przebieg.json';
+// HARNESS-RESZTA-2: scena „diagnoza" — REALNY raport silnika diagnostycznego
+// (blokada SC 1F z braku danych Z0) i REALNY bieg PF przerwany limitem iteracji.
+import diagnozaScenyDiagnostyka from './harness-fixtures/generated/diagnoza_scena_diagnostyka.json';
+import diagnozaScenyPreflight from './harness-fixtures/generated/diagnoza_scena_preflight.json';
+import diagnozaScenyPrzebieg from './harness-fixtures/generated/diagnoza_scena_przebieg.json';
+import diagnozaScenyBieg from './harness-fixtures/generated/diagnoza_scena_bieg.json';
+// HARNESS-RESZTA-2: modele scen OZE budowane operacjami domenowymi backendu
+// (`add_converter_source` + `set_der_catalog_bindings`) — moduły warsztatu
+// wytwórców front wyprowadza z nich odwzorowaniem produkcyjnym `deryZModelu`.
+import ozeScenyMigawka from './harness-fixtures/generated/oze_scena_migawka.json';
+import macierzScenyMigawka from './harness-fixtures/generated/macierz_scena_migawka.json';
+import wiazaniaScenyPrzekladniki from './harness-fixtures/generated/wiazania_scena_przekladniki.json';
+import wiazaniaScenyFunkcjeZabezpieczen from './harness-fixtures/generated/wiazania_scena_funkcje_zabezpieczen.json';
+// HARNESS-RESZTA-2: scena „porownanie" w trybie ZABEZPIECZENIA — lista biegów,
+// wynik porównania A/B i ślad White Box z REALNYCH biegów `protection_sn`
+// (dwa warianty tej samej sieci: magistrala 0,9 km wobec 1,5 km).
+import porownanieScenyBiegiZabezpieczen from './harness-fixtures/generated/porownanie_scena_biegi_zabezpieczen.json';
+import porownanieScenyWynikZabezpieczen from './harness-fixtures/generated/porownanie_scena_wynik_zabezpieczen.json';
+import porownanieScenySladZabezpieczen from './harness-fixtures/generated/porownanie_scena_slad_zabezpieczen.json';
 import { REWIZJA_SIECI_ZLOTEJ, migawkaSieciZlotej } from './harness-fixtures/migawkaSieciZlotej';
 import { EkranOceny } from './ui2/wyniki/ocena';
 import { SekcjaSilySieci } from './ui2/oze/pulpit';
@@ -185,23 +216,16 @@ import { EkranStanuFazowego } from './ui2/wyniki/stan-fazowy';
 import { EkranStabilnosci } from './ui2/wyniki/stabilnosc';
 import { useShellStore } from './ui2/shell/useShellStore';
 import {
-  EMPTY_DER_CATALOGS,
-  EMPTY_DER_PROFILES,
-  EMPTY_DER_READINESS,
+  deryZModelu,
   selectAllDers,
   useStationDerStore,
-  type StationDerConnection,
 } from './ui/network-build/station-der';
+import type { EnergyNetworkModel } from './types/enm';
 import { PvSourceSurface } from './ui/workspace/surfaces/DerSurfaces';
 import { HubDokumentacji } from './ui2/spaces/dokumentacja';
 import { PulpitProjektu } from './ui2/spaces/projekt';
 import { PanelDiagnozy } from './ui2/spaces/obliczenia/diagnoza';
 import { PrzegladarkaSzablonow } from './ui2/spaces/model/szablony';
-import {
-  diagnostykaZBrakamiFixture,
-  diagnozaNiezbieznaFixture,
-  preflightZablokowanyFixture,
-} from './ui2/spaces/obliczenia/diagnoza/__tests__/fixtures';
 import { EkranCoWymagaUwagi } from './ui2/wyniki/co-wymaga-uwagi';
 import { PozycjeDoPrzegladu } from './ui/catalog/PozycjeDoPrzegladu';
 import { CaseBar } from './ui2/shell/CaseBar';
@@ -223,14 +247,13 @@ import type { ExecutionRun } from './ui/study-cases/types';
  * „Ostatni przebieg" z rejestrem, a zapadka literalow harnessu liczy go dwa razy.
  */
 const PULPIT_PRZEBIEG_K1 = {
-  id: 'run-lf-2',
+  // HARNESS-RESZTA-2: wpis rejestru REALNEGO biegu PF policzonego na modelu tej
+  // sceny (`pulpit_scena_przebieg.json` — `CanonicalRun.to_execution_dict`).
+  // Zakres przypadku to etykieta SCENY (lista przypadków K1/K2 niżej), więc
+  // `study_case_id` zostaje podmieniony — cała reszta (identyfikator, odcisk
+  // wejścia solvera, rewizja modelu, odcisk migawki, czasy) pochodzi z biegu.
+  ...pulpitScenyPrzebieg,
   study_case_id: 'K1',
-  analysis_type: 'LOAD_FLOW',
-  status: 'DONE',
-  started_at: '2026-07-21T18:05:00Z',
-  finished_at: '2026-07-21T18:05:04Z',
-  solver_input_hash: 'pulpit-lf2',
-  error_message: null,
 } as const;
 
 const theme = new URLSearchParams(window.location.search).get('theme') === 'light'
@@ -428,169 +451,15 @@ function wynikKoordynacjiDlaZadania(cialo: BodyInit | null | undefined): WynikKo
   return podmienTozsamosciZabezpieczen(koordynacjaScenyWynik, mapa);
 }
 
-const DOBOR_FUNKCJI_WIAZANIA = {
-  generator_ref: 'der-pv-1',
-  bay_ref: 'bay-pv-1',
-  fakty: {
-    connection_side: 'SN',
-    neutral_grounding_mode: 'petersen_coil',
-    zero_sequence_current_source: 'przekladnik_ferrantiego',
-    zero_sequence_voltage_source: 'brak',
-  },
-  dobor: {
-    wymagane: [
-      {
-        kod: '50',
-        nazwa_pl: 'Nadprądowe bezzwłoczne (I>>)',
-        podstawa_pl: 'Szybkie wyłączenie zwarć międzyfazowych w polu wytwórcy (IEC 60255-151).',
-        chroniony_obiekt_pl: 'pole wytwórcy DER-1',
-        zrodlo_pomiaru_pl: 'przekładniki prądowe fazowe pola',
-      },
-      {
-        kod: '51',
-        nazwa_pl: 'Nadprądowe zwłoczne (I>)',
-        podstawa_pl: 'Rezerwa dla zwarć o mniejszym prądzie i przeciążeń toru.',
-        chroniony_obiekt_pl: 'pole wytwórcy DER-1',
-        zrodlo_pomiaru_pl: 'przekładniki prądowe fazowe pola',
-      },
-      {
-        kod: '50G',
-        nazwa_pl: 'Ziemnozwarciowe z przekładnika ziemnozwarciowego',
-        podstawa_pl:
-          'Prąd zerowy mierzony przekładnikiem obejmującym wszystkie żyły (rodzina G, '
-          + 'nie N — wynika z zadeklarowanego toru pomiaru).',
-        chroniony_obiekt_pl: 'pole wytwórcy DER-1',
-        zrodlo_pomiaru_pl: 'przekładnik ziemnozwarciowy (Ferrantiego)',
-      },
-      {
-        kod: '27',
-        nazwa_pl: 'Podnapięciowe',
-        podstawa_pl: 'Wykrycie pracy wyspowej i zapadu napięcia (NC RfG Art. 14).',
-        chroniony_obiekt_pl: 'wytwórca DER-1',
-        zrodlo_pomiaru_pl: 'przekładnik napięciowy pola',
-      },
-      {
-        kod: '81U',
-        nazwa_pl: 'Podczęstotliwościowe',
-        podstawa_pl: 'Zabezpieczenie anty-wyspowe częstotliwościowe (NC RfG Art. 13).',
-        chroniony_obiekt_pl: 'wytwórca DER-1',
-        zrodlo_pomiaru_pl: 'przekładnik napięciowy pola',
-      },
-    ],
-    kwestie_otwarte: [
-      {
-        kod: 'protection.zero_sequence_voltage_missing',
-        opis_pl: 'Model nie opisuje toru napięcia zerowego (otwarty trójkąt albo uzwojenie resztkowe).',
-        skutek_pl:
-          'Bez niego kryterium KIERUNKOWE ziemnozwarciowe (67N) nie jest wyprowadzane — '
-          + 'w sieci kompensowanej to ono rozstrzyga kierunek zwarcia.',
-      },
-      {
-        kod: 'protection.osd_requirements_not_modelled',
-        opis_pl: 'Model nie niesie wymagań zabezpieczeniowych operatora sieci.',
-        skutek_pl: 'Zweryfikuj listę z warunkami przyłączenia przed projektem nastaw.',
-      },
-    ],
-  },
-  urzadzenie: {
-    protection_catalog_ref: 'ABB_REB670',
-    nazwa: 'ABB Relion REB670',
-    brakujace_funkcje: ['50G', '81U'],
-    ostrzezenia_przeznaczenia: [
-      'ABB Relion REB670 deklaruje funkcję 87B (różnicowe szyn zbiorczych), która należy '
-      + 'do innej strefy zabezpieczeniowej niż pole wytwórcy — sprawdź, czy to właściwy '
-      + 'wybór dla tego pola.',
-    ],
-    pokrywa_wymagania: false,
-  },
-};
-
-const DOBOR_PRZEKLADNIKOW_WIAZANIA = {
-  generator_ref: 'der-pv-1',
-  bay_ref: 'bay-pv-1',
-  wejscia: {
-    napiecie_sieci_v: 15000.0,
-    prad_roboczy_a: 308.0,
-    ik_ka: null,
-    ip_ka: null,
-    run_ref_zwarciowy: null,
-    tryb_uziemienia: 'cewka_petersena',
-    zrodlo_napiecia_zerowego: 'brak',
-    zrodlo_wejsc_urzadzenia: 'szereg_preferowany_IEC_60255_1',
-  },
-  przekladnik_pradowy: {
-    catalog_ref: 'ct_200_5_5p10_10va_abb',
-    nazwa: 'CT 200/5 A kl. 5P10 10 VA',
-    wynik: {
-      kryteria: [
-        {
-          kod: 'ct.przekladnia',
-          nazwa_pl: 'Przekładnia wobec prądu roboczego toru',
-          podstawa_pl: 'Prąd pierwotny przekładnika musi pokryć prąd roboczy toru.',
-          werdykt: 'niespelnione',
-          wymagane: '308.0 A',
-          dostepne: '200.0 A',
-          komentarz_pl:
-            'Prąd roboczy przekracza prąd pierwotny — przekładnik pracowałby w '
-            + 'przeciążeniu, a pomiar byłby zafałszowany.',
-          // Karta W3-B: pola addytywne kontraktu `KryteriumDoboru.to_dict` (kody gotowosci
-          // z jadra `ct_burden_saturation` + slad WHITE BOX) — puste dla kryteriow bez wlasnego jadra.
-          kody_gotowosci: [],
-          slad: [],
-        },
-        {
-          kod: 'ct.rodzaj_rdzenia',
-          nazwa_pl: 'Rodzaj rdzenia',
-          podstawa_pl:
-            'Funkcje zabezpieczeniowe wymagają rdzenia zabezpieczeniowego (IEC 61869-2).',
-          werdykt: 'spelnione',
-          wymagane: 'rdzeń zabezpieczeniowy (klasa z literą P)',
-          dostepne: '5P10',
-          komentarz_pl: null,
-          // Karta W3-B: pola addytywne kontraktu `KryteriumDoboru.to_dict` (kody gotowosci
-          // z jadra `ct_burden_saturation` + slad WHITE BOX) — puste dla kryteriow bez wlasnego jadra.
-          kody_gotowosci: [],
-          slad: [],
-        },
-        {
-          kod: 'ct.wytrzymalosc_cieplna',
-          nazwa_pl: 'Wytrzymałość cieplna zwarciowa',
-          podstawa_pl: 'Ith ≥ Ik″·√tk — równoważność cieplna prądu zwarcia (IEC 61869-2).',
-          werdykt: 'brak_danych',
-          wymagane: null,
-          dostepne: '20.0 kA / 1 s',
-          komentarz_pl:
-            'Brakuje prądu zwarciowego, czasu jego trwania albo prądu cieplnego przekładnika.',
-          // Karta W3-B: pola addytywne kontraktu `KryteriumDoboru.to_dict` (kody gotowosci
-          // z jadra `ct_burden_saturation` + slad WHITE BOX) — puste dla kryteriow bez wlasnego jadra.
-          kody_gotowosci: [],
-          slad: [],
-        },
-      ],
-      dobor_potwierdzony: false,
-      liczba_niespelnionych: 1,
-      liczba_bez_danych: 1,
-    },
-  },
-  przekladnik_napieciowy: { catalog_ref: null, nazwa: null, wynik: null },
-};
-
-/**
- * K3-B2: scena → identyfikator przebiegu, którego kontrakt (GET
- * /api/analysis-runs/<id>) zasila znacznik świeżości nagłówka. Wartości
- * odpowiadają 1:1 runId z zasiewu store'ów danej sceny (niżej w pliku);
- * scena „cieplna" celowo dostaje wynik na rev. 1 przy migawce rev. 2
- * (wariant NIEAKTUALNY, K3-B3).
- */
 const RUN_KONTRAKT_SCENY: Record<string, string> = {
   // K3-B3: scena „cieplna" jest CELOWO wariantem NIEAKTUALNYM znacznika
-  // świeżości (migawka rev. 2 vs kontrakt biegu rev. 1, patrz zasiew sceny
-  // niżej) — 'run-sc-7' zostaje stałą etykietą TEGO scenariusza (nie
-  // identyfikatorem żadnego liczonego biegu), zmiana na realny run_id
-  // złamałaby dowodzony wariant „nieaktualne" bez żadnej korzyści (kontrakt
-  // treści cieplnej — `cieplna_scena_wynik.json` — czyta OSOBNY endpoint,
-  // niezależny od tej etykiety).
-  cieplna: 'run-sc-7',
+  // świeżości — wariant bierze się z ROZJAZDU REWIZJI (migawka rev. 2 vs
+  // `rewizja_modelu: 1` w kontrakcie biegu niżej), nie z tożsamości biegu.
+  // HARNESS-RESZTA-2: dawna ręczna etykieta 'run-sc-7' ustąpiła identyfikatorowi
+  // REALNEGO biegu zwarciowego, z którego policzono treść sekcji cieplnej
+  // (`cieplna_scena_wynik.json` — ta sama kotwica co sceny „zwarcia"/„arcflash").
+  // Wariant „nieaktualne" zostaje nietknięty: rewizje rozjeżdżają się dalej.
+  cieplna: cieplnaScenyWynik.run_id,
   // HARNESS-ZWARCIA-Z-BACKENDU / HARNESS-RESZTA: sceny czytają TEN SAM bieg
   // kotwicy realnego backendu (`*.run_id`/`*.context.run_id`), nie ręczne id.
   'zwarcia-rozplyw': zwarciaWynikiScenyZwarcia.run_id,
@@ -611,6 +480,72 @@ const RUN_KONTRAKT_SCENY: Record<string, string> = {
   arcflash: arcflashScenyWynik.context.run_id,
   migotanie: migotanieScenyWynik.context.run_id,
 };
+
+// --- Model stacji demo scen kreatorow (HARNESS-RESZTA-2) -------------------
+/**
+ * Referencje elementow stacji demo czytane Z MIGAWKI, nie wpisane: kreatory
+ * dostaja dokladnie te referencje, ktore niesie model zbudowany operacjami
+ * domenowymi. Brak elementu w migawce = blad budowy fixtury, wiec funkcja
+ * odmawia glosno zamiast po cichu podstawiac pusty tekst.
+ */
+function refZMigawkiStacji(sufiks: string, kolekcja: 'buses' | 'substations'): string {
+  const element = (stacjaDemoScenyMigawka[kolekcja] as { ref_id: string }[]).find((pozycja) =>
+    pozycja.ref_id.endsWith(sufiks),
+  );
+  if (element === undefined) {
+    throw new Error(`Migawka stacji demo nie ma elementu ${kolekcja}${sufiks}`);
+  }
+  return element.ref_id;
+}
+
+const SZYNA_SN_STACJI_DEMO = refZMigawkiStacji('/sn_bus', 'buses');
+const SZYNA_NN_STACJI_DEMO = refZMigawkiStacji('/nn_bus', 'buses');
+const STACJA_DEMO = refZMigawkiStacji('/station', 'substations');
+const NAZWA_SZYNY_SN_STACJI_DEMO = (stacjaDemoScenyMigawka.buses as { ref_id: string; name: string }[])
+  .find((szyna) => szyna.ref_id === SZYNA_SN_STACJI_DEMO)!.name;
+const NAPIECIE_SZYNY_NN_STACJI_DEMO = (
+  stacjaDemoScenyMigawka.buses as { ref_id: string; voltage_kv: number }[]
+).find((szyna) => szyna.ref_id === SZYNA_NN_STACJI_DEMO)!.voltage_kv;
+const NAPIECIE_SZYNY_SN_STACJI_DEMO = (
+  stacjaDemoScenyMigawka.buses as { ref_id: string; voltage_kv: number }[]
+).find((szyna) => szyna.ref_id === SZYNA_SN_STACJI_DEMO)!.voltage_kv;
+const NAZWA_STACJI_DEMO = (stacjaDemoScenyMigawka.substations as { ref_id: string; name: string }[])
+  .find((stacja) => stacja.ref_id === STACJA_DEMO)!.name;
+
+/**
+ * WEJŚCIA kreatora GPZ sceny „stacja" — czytane z TEGO SAMEGO modelu, który
+ * fixtura zbudowała tymi samymi operacjami domenowymi (`add_grid_source_sn`).
+ * Scena buduje w realnym backendzie sieć równoważną migawce stacji demo, więc
+ * dane wejściowe formularza mają JEDNO źródło: model. Przepisane ręcznie
+ * (stan sprzed HARNESS-RESZTA-2) były drugą kopią tych samych liczb — rozjazd
+ * z fixturą nie miał czego zapalić.
+ */
+const ZRODLO_STACJI_DEMO = (
+  stacjaDemoScenyMigawka.sources as { sk3_mva: number; rx_ratio: number }[]
+)[0];
+const TRAFO_WN_SN_STACJI_DEMO = (
+  stacjaDemoScenyMigawka.transformers as { sn_mva: number; ulv_kv: number }[]
+).find((trafo) => trafo.ulv_kv === NAPIECIE_SZYNY_SN_STACJI_DEMO)!;
+const SK3_ZRODLA_STACJI_DEMO = ZRODLO_STACJI_DEMO.sk3_mva;
+const RX_ZRODLA_STACJI_DEMO = ZRODLO_STACJI_DEMO.rx_ratio;
+const MOC_TRAFO_WN_SN_STACJI_DEMO = TRAFO_WN_SN_STACJI_DEMO.sn_mva;
+const NAPIECIE_WN_STACJI_DEMO = (
+  stacjaDemoScenyMigawka.buses as { voltage_kv: number }[]
+).reduce((maks, szyna) => Math.max(maks, szyna.voltage_kv), 0);
+
+/**
+ * Moduły warsztatu wytwórców Z MODELU — odwzorowanie PRODUKCYJNE
+ * (`station-der/zModelu.ts::deryZModelu`, to samo, które w aplikacji wpina
+ * `useSynchronizacjaDerZModelu`). Scena podaje migawkę fixtury i identyfikator
+ * projektu; referencje, napięcia przyłączenia, wiązania katalogowe i liczba
+ * jednostek pochodzą z modelu, nie z rekordu przepisanego w harnessie.
+ */
+function zasiejWytworcowZModelu(migawka: unknown, projectId: string): void {
+  useSnapshotStore.setState({ snapshot: migawka } as never);
+  useStationDerStore
+    .getState()
+    .synchronizujZModelu(deryZModelu(migawka as EnergyNetworkModel, projectId));
+}
 
 const originalFetch = window.fetch.bind(window);
 
@@ -732,8 +667,23 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // pozorna byly WPISANE recznie razem z tekstem podstawienia.
     if (url.includes('/cable-rated-current-preview')) return jsonOK(odbiorScenyPradZnamionowy);
   } else if (creator === 'wiazania') {
-    if (url.includes('/instrument-transformers')) return jsonOK(DOBOR_PRZEKLADNIKOW_WIAZANIA);
-    if (url.includes('/protection-functions')) return jsonOK(DOBOR_FUNKCJI_WIAZANIA);
+    if (url.includes('/instrument-transformers')) {
+      // HARNESS-RESZTA-2: dobór przekładników pola wytwórcy — REALNA odpowiedź
+      // backendu (`eksport_fixtur_harnessu.py::wiazania_scena_przekladniki`, TA
+      // SAMA funkcja `get_der_instrument_transformers`, którą woła końcówka) na
+      // modelu tej sceny i na REALNYM biegu zwarciowym (Ik″/ip z solvera
+      // IEC 60909). Wcześniej cały rachunek — z prądem roboczym toru i napięciem
+      // sieci — był wpisany ręcznie.
+      return jsonOK(wiazaniaScenyPrzekladniki);
+    }
+    if (url.includes('/protection-functions')) {
+      // HARNESS-RESZTA-2: wymagane funkcje zabezpieczeniowe pola wytwórcy —
+      // REALNA odpowiedź końcówki (`get_der_protection_functions`) na modelu
+      // tej sceny: wymagania wynikają z FAKTÓW modelu (strona przyłączenia,
+      // sposób uziemienia sieci, tory pomiarowe), a nazwane kwestie otwarte z
+      // tego, czego model NIE niesie. Wcześniej cała lista była wpisana ręcznie.
+      return jsonOK(wiazaniaScenyFunkcjeZabezpieczen);
+    }
   } else if (creator === 'wyniki-stabilnosc') {
     if (url.endsWith('/results/dynamic-stability')) return jsonOK(stabilnoscScenyWyniki);
     if (url.endsWith('/results/automation-trace')) return jsonOK(stabilnoscScenySlad);
@@ -866,86 +816,26 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   }
   if (url.includes('/api/protection-comparisons') && url.endsWith('/trace')) {
     // Scena "porownanie" (CV-3.3-B2), tryb "Zabezpieczenia": slad porownania
-    // (White Box, na zadanie) — ksztalt 1:1 z `ProtectionComparisonTraceResponse`
-    // (`api/protection_comparisons.py`), kroki 1:1 ze steps `application/
-    // protection_comparison/service.py` (nazwy krokow/pol/progow realne).
-    return new Response(
-      JSON.stringify({
-        comparison_id: 'cmp-zab-demo-1', run_a_id: 'run-zab-a', run_b_id: 'run-zab-b',
-        library_fingerprint_a: 'template_ref_oc_100@1', library_fingerprint_b: 'template_ref_oc_100@1',
-        steps: [
-          {
-            step: 'MATCH_EVALUATIONS', description_pl: 'Dopasowanie ewaluacji po (element chroniony, punkt zwarcia)',
-            inputs: { evaluations_a_count: 2, evaluations_b_count: 2 },
-            outputs: { matched_pairs: 2, total_rows: 2 },
-          },
-          {
-            step: 'COMPUTE_DELTAS', description_pl: 'Obliczanie różnic czasów i prądów',
-            inputs: { row_count: 2 },
-            outputs: { no_change_count: 1, trip_to_no_trip_count: 1, no_trip_to_trip_count: 0, invalid_change_count: 0 },
-          },
-          {
-            step: 'RANK_ISSUES', description_pl: 'Generowanie rankingu problemów wg severity (5→1)',
-            inputs: { row_count: 2, delay_threshold_s: 0.1, margin_threshold_percent: 5.0 },
-            outputs: { total_issues: 1, critical: 1, major: 0, moderate: 0, minor: 0 },
-          },
-        ],
-        created_at: '2026-07-22T09:05:00Z',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // (White Box, na zadanie) — HARNESS-RESZTA-2: REALNY slad serwisu
+    // (`ProtectionComparisonService.get_comparison_trace`, TA SAMA droga co
+    // koncowka) dla pary biegow tej sceny; kroki, progi i liczby z backendu.
+    return jsonOK(porownanieScenySladZabezpieczen);
   }
   if (url.includes('/protection-runs') && !url.includes('/execute')) {
     // Scena "porownanie" (CV-3.3-B2): lista zakonczonych przebiegow zabezpieczen
-    // projektu — ksztalt 1:1 z `ProtectionRunListItemResponse` (karta CV-3.3-B).
-    return new Response(
-      JSON.stringify({
-        runs: [
-          { id: 'run-zab-a', project_id: 'proj-demo', study_case_id: 'K1', analysis_type: 'protection_sn', status: 'FINISHED', created_at: '2026-07-21T10:10:00Z', finished_at: '2026-07-21T10:10:04Z', input_hash: 'hash-zab-a', snapshot_hash: 'snap-zab-a', model_revision: 1, scenario_ref: null },
-          { id: 'run-zab-b', project_id: 'proj-demo', study_case_id: 'K2', analysis_type: 'protection_sn', status: 'FINISHED', created_at: '2026-07-21T11:10:00Z', finished_at: '2026-07-21T11:10:05Z', input_hash: 'hash-zab-b', snapshot_hash: 'snap-zab-b', model_revision: 2, scenario_ref: null },
-        ],
-        total: 2,
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // projektu — HARNESS-RESZTA-2: REALNA odpowiedz koncowki
+    // (`api/protection_runs.py::list_protection_runs`) dla projektu sceny.
+    return jsonOK(porownanieScenyBiegiZabezpieczen);
   }
   if (url.includes('/api/protection-comparisons')) {
     // Scena "porownanie" (CV-3.3-B2), tryb "Zabezpieczenia": wynik porownania
-    // A/B — ksztalt 1:1 z `ProtectionComparisonResultResponse` (delty i ranking
-    // WYLACZNIE z backendu; `i_fault_a_a/b` nullowalne — FAB-E).
-    return new Response(
-      JSON.stringify({
-        comparison_id: 'cmp-zab-demo-1', run_a_id: 'run-zab-a', run_b_id: 'run-zab-b', project_id: 'proj-demo',
-        rows: [
-          { protected_element_ref: 'BRK-F01', fault_target_id: 'SZ-ST7', device_id_a: 'REL-OC-001', device_id_b: 'REL-OC-001', trip_state_a: 'TRIPS', trip_state_b: 'NO_TRIP', t_trip_s_a: 0.35, t_trip_s_b: null, i_fault_a_a: 1250.4, i_fault_a_b: 980.2, delta_t_s: null, delta_i_fault_a: -270.2, margin_percent_a: 12.5, margin_percent_b: 8.1, state_change: 'TRIP_TO_NO_TRIP' },
-          { protected_element_ref: 'BRK-F02', fault_target_id: 'SZ-PV2', device_id_a: 'REL-OC-002', device_id_b: 'REL-OC-002', trip_state_a: 'TRIPS', trip_state_b: 'TRIPS', t_trip_s_a: 0.5, t_trip_s_b: 0.5, i_fault_a_a: 640.0, i_fault_a_b: 640.0, delta_t_s: 0, delta_i_fault_a: 0, margin_percent_a: 20.0, margin_percent_b: 14.0, state_change: 'NO_CHANGE' },
-        ],
-        ranking: [
-          { issue_code: 'TRIP_LOST', severity: 5, element_ref: 'BRK-F01', fault_target_id: 'SZ-ST7', description_pl: 'Zabezpieczenie BRK-F01 traci zadziałanie na punkcie SZ-ST7 w wariancie B.', evidence_refs: [0] },
-        ],
-        summary: { total_rows: 2, no_change_count: 1, trip_to_no_trip_count: 1, no_trip_to_trip_count: 0, invalid_change_count: 0, total_issues: 1, critical_issues: 1, major_issues: 0, moderate_issues: 0, minor_issues: 0 },
-        input_hash: 'hash-cmp-zab-demo', created_at: '2026-07-22T09:00:00Z',
-        // B1 (karta CV-3.3-B): proweniencja obu biegow — pole WYMAGANE, panel
-        // eksperckiego trybu (`mvd-por-proweniencja`) czyta je bezposrednio.
-        provenance_a: {
-          run_id: 'run-zab-a', analysis_type: 'protection_sn', status: 'FINISHED',
-          snapshot_hash: 'snap-zab-a', input_hash: 'hash-zab-a', finished_at: '2026-07-21T10:10:04Z',
-          envelope: {
-            wersja: 1, project_id: 'proj-demo', model_revision: 1, snapshot_hash: 'snap-zab-a',
-            catalog_fingerprint: 'cat-demo', options_hash: 'opt-demo', semantic_fingerprint: 'sem-zab-a',
-          },
-        },
-        provenance_b: {
-          run_id: 'run-zab-b', analysis_type: 'protection_sn', status: 'FINISHED',
-          snapshot_hash: 'snap-zab-b', input_hash: 'hash-zab-b', finished_at: '2026-07-21T11:10:05Z',
-          envelope: {
-            wersja: 1, project_id: 'proj-demo', model_revision: 2, snapshot_hash: 'snap-zab-b',
-            catalog_fingerprint: 'cat-demo', options_hash: 'opt-demo', semantic_fingerprint: 'sem-zab-b',
-          },
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // A/B — HARNESS-RESZTA-2: REALNY wynik `ProtectionComparisonService.compare`
+    // na DWoCH biegach `protection_sn` tej samej sieci w dwoch wariantach
+    // modelu (magistrala 0,9 km wobec 1,5 km). Delty pradu i czasu sa skutkiem
+    // FIZYKI (dluzszy odcinek = wieksza impedancja petli zwarciowej), a nie
+    // innych liczb w atrapie; proweniencja obu biegow (`provenance_a/b`)
+    // pochodzi z kopert rewizji tych biegow.
+    return jsonOK(porownanieScenyWynikZabezpieczen);
   }
   if (url.includes('/api/oze-analysis/grid-strength')) {
     // Karta HARNESS-RESZTA (kontynuacja): scena "sila-sieci" — REALNY bieg
@@ -1319,51 +1209,12 @@ useSnapshotStore.setState({
     // się w ŻADNEJ scenie mimo kontraktu przebiegu z `rewizja_modelu`. Sceny z
     // własnym zasiewem migawki (dokumentacja rev. 7, pulpit rev. 9, zbieżność —
     // ZBIEZNOSC_SNAPSHOT, cieplna rev. 2 = wariant NIEAKTUALNY) nadpisują ją niżej.
-    header: { name: 'Projekt demonstracyjny', revision: 1 },
-    substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
-    transformers: [],
-    buses: [
-      { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
-      { ref_id: 'bus-nn-demo', name: 'Szyna nN', voltage_kv: 0.4 },
-    ],
-    sources: [],
-    loads: [],
-    bays: [],
+    ...stacjaDemoScenyMigawka,
   },
 } as never);
 
 const creator = new URLSearchParams(window.location.search).get('creator') ?? 'pole';
 
-/**
- * Rekord przyłączenia DER do zasiewu `useStationDerStore` (sceny dowodowe OZE:
- * frt/macierz). Pełny kształt `StationDerConnection` — wartości domyślne to
- * kompletne przyłączenie nN 0,4 kV w stacji demo (nadpisywane per scena).
- */
-function derDemo(
-  over: Partial<StationDerConnection> & Pick<StationDerConnection, 'id' | 'der_kind' | 'name'>,
-): StationDerConnection {
-  return {
-    project_id: 'proj-demo',
-    station_id: 'st-demo',
-    connection_side: 'nN',
-    bus_przylaczenia_ref: 'st-demo__szyna-nn__0.4',
-    bay_ref: null,
-    transformer_ref: null,
-    lv_busbar_ref: 'szyna-nn',
-    sn_connection_bus_ref: null,
-    sn_connection_point_kind: null,
-    connection_voltage_kv: 0.4,
-    catalogs: EMPTY_DER_CATALOGS,
-    profiles: EMPTY_DER_PROFILES,
-    nominal_power_kw: null,
-    unit_count: null,
-    completeness: 'complete',
-    readiness: EMPTY_DER_READINESS,
-    created_at: '2026-07-01T00:00:00Z',
-    updated_at: '2026-07-01T00:00:00Z',
-    ...over,
-  };
-}
 
 if (creator === 'arcflash') {
   // Karta HARNESS-RESZTA (kontynuacja): identyfikator biegu z REALNEGO biegu
@@ -1383,32 +1234,29 @@ if (creator === 'arcflash') {
     activeProjectName: 'Przyłączenie farmy PV 8 MW',
     activeCaseName: 'Wariant zimowy',
   } as never);
-  const szyna = (v: number, i: number) => ({ ref_id: `bus-${v}-${i}`, name: `Szyna ${v} kV`, voltage_kv: v });
+  // HARNESS-RESZTA-2: model i przebieg hubu „Dokumentacja" to MIGAWKA
+  // ZATWIERDZONA i WPIS REJESTRU jednego REALNEGO biegu PF sieci złotej
+  // (`siec_zlota_scena_migawka.json` + `przebieg_pf_sceny_zlotej.json`).
+  // Wcześniej panel „Analizowany model" liczył elementy modelu ZMYŚLONEGO
+  // (osiem gałęzi `l1…l8` bez końców), a tabliczka wersji układu pokazywała
+  // rewizję i odcisk wpisane z palca — teraz jedno i drugie pochodzi z biegu.
   useSnapshotStore.setState({
-    rewizjaBiezacegoModelu: 7,
-    snapshot: {
-      header: { name: 'Projekt demonstracyjny', revision: 7, hash_sha256: 'a1b2c3d4e5f60718' },
-      substations: [{ ref_id: 'st-demo', name: 'GPZ-01', bus_refs: ['bus-110-0', 'bus-15-0'] }],
-      // Realistyczna mała sieć SN — panel „Analizowany model" pokazuje realne liczby.
-      buses: [szyna(110, 0), szyna(15, 0), szyna(15, 1), szyna(15, 2), szyna(0.4, 0), szyna(0.4, 1)],
-      branches: [{ ref_id: 'l1' }, { ref_id: 'l2' }, { ref_id: 'l3' }, { ref_id: 'l4' }, { ref_id: 'l5' }, { ref_id: 'l6' }, { ref_id: 'l7' }, { ref_id: 'l8' }],
-      transformers: [{ ref_id: 't1' }, { ref_id: 't2' }],
-      sources: [{ ref_id: 's1' }],
-      generators: [{ ref_id: 'g1' }, { ref_id: 'g2' }],
-      loads: [{ ref_id: 'o1' }, { ref_id: 'o2' }, { ref_id: 'o3' }, { ref_id: 'o4' }, { ref_id: 'o5' }],
-      bays: [],
-    },
+    rewizjaBiezacegoModelu: sieckZlotaScenyMigawka.header.revision,
+    snapshot: sieckZlotaScenyMigawka,
   } as never);
-  const run: ExecutionRun = {
-    id: 'run-lf-1', analysis_type: 'LOAD_FLOW', status: 'DONE',
-    started_at: '2026-07-21T10:30:00Z', finished_at: '2026-07-21T10:30:00Z',
-  } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [run], activeRunId: 'run-lf-1' } as never);
+  const run = przebiegPfScenyZlotej as unknown as ExecutionRun;
+  useExecutionRunsStore.setState({
+    runs: [run], activeRunId: przebiegPfScenyZlotej.id,
+  } as never);
 } else if (creator === 'diagnoza') {
   // Diagnoza przebiegu (D7): najbardziej informacyjny stan do oceny wizualnej —
-  // preflight z blokadami + problemy modelu + bieg NIEZBIEZNY (limit iteracji).
-  // Harness jest frontend-only, wiec trzy trasy diagnostyki dostaja atrape fetch
-  // na FIKSTURACH z testow kontraktu (te same ksztalty, ktore pilnuje adapter).
+  // preflight z blokadą analizy + problemy modelu + bieg NIEZBIEŻNY (limit
+  // iteracji). HARNESS-RESZTA-2: trzy trasy diagnostyki karmione REALNYMI
+  // artefaktami backendu (`eksport_fixtur_harnessu.py`: `DiagnosticEngine.run`
+  // na sieci złotej — blokada SC 1F z powodu dwóch gałęzi bez danych Z0;
+  // `zbuduj_diagnoze_przebiegu` na biegu PF sieci ×8 z `max_iterations: 1`,
+  // przerwanym realnie kodem `PRZ-NIEZBIEZNY-LIMIT`). Wcześniej scena czytała
+  // fikstury testów FRONTU (kształt pilnowany kontraktem, liczby pisane ręcznie).
   const odpowiedzJson = (dane: unknown): Response =>
     new Response(JSON.stringify(dane), {
       status: 200,
@@ -1422,49 +1270,32 @@ if (creator === 'arcflash') {
         : wejscie instanceof URL
           ? wejscie.toString()
           : wejscie.url;
-    if (url.includes('/diagnostics/preflight')) return odpowiedzJson(preflightZablokowanyFixture());
+    if (url.includes('/diagnostics/preflight')) return odpowiedzJson(diagnozaScenyPreflight);
     if (url.includes('/api/execution/runs/') && url.includes('/diagnostics'))
-      return odpowiedzJson(diagnozaNiezbieznaFixture());
+      return odpowiedzJson(diagnozaScenyPrzebieg);
     if (url.includes('/api/cases/') && url.includes('/diagnostics'))
-      return odpowiedzJson(diagnostykaZBrakamiFixture());
+      return odpowiedzJson(diagnozaScenyDiagnostyka);
     return oryginalneFetch(wejscie, init);
   };
-  const biegDiagnozy: ExecutionRun = {
-    id: 'run-diagnoza-1',
-    analysis_type: 'LOAD_FLOW',
-    status: 'DONE',
-    started_at: '2026-08-14T09:00:00Z',
-    finished_at: '2026-08-14T09:00:04Z',
-  } as unknown as ExecutionRun;
+  const biegDiagnozy = diagnozaScenyBieg as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
     runs: [biegDiagnozy],
-    activeRunId: 'run-diagnoza-1',
-    activeStudyCaseId: 'case-oceny-diagnozy',
+    activeRunId: diagnozaScenyBieg.id,
+    activeStudyCaseId: diagnozaScenyBieg.study_case_id,
   } as never);
 } else if (creator === 'pulpit') {
   // Pulpit projektu (E1 — K2/V12K-103): kafel „Warunki przyłączenia" z warunkami
-  // OSD z nagłówka + werdykt bilansu (generacja 6,2 MW > limit 5,0 MW).
+  // OSD z nagłówka modelu + werdykt bilansu mocy znamionowej (generacja modelu
+  // ponad limitem OSD zapisanym operacją `set_connection_conditions`).
   useSnapshotStore.setState({
     rewizjaBiezacegoModelu: 9,
     snapshot: {
-      header: {
-        name: 'Przyłączenie farmy PV 8 MW', revision: 9, hash_sha256: 'f00dfacecafe0123',
-        connection_conditions: { moc_przylaczeniowa_mw: 5.0, wymagany_cos_phi: 0.95, tryb_pracy: 'praca równoległa z siecią' },
-      },
-      substations: [{ ref_id: 'st-1', name: 'GPZ-01', bus_refs: ['b110', 'b15'] }],
-      buses: [
-        { ref_id: 'b110', name: 'Szyna 110 kV', voltage_kv: 110 },
-        { ref_id: 'b15', name: 'Szyna 15 kV', voltage_kv: 15 },
-      ],
-      branches: [{ ref_id: 'l1' }, { ref_id: 'l2' }, { ref_id: 'l3' }],
-      transformers: [{ ref_id: 't1' }],
-      sources: [{ ref_id: 's1', name: 'GPZ 110/15', bus_ref: 'b15', sk3_mva: 250, ik3_ka: 9.62 }],
-      generators: [
-        { ref_id: 'g1', bus_ref: 'b15', p_mw: 4.0 },
-        { ref_id: 'g2', bus_ref: 'b15', p_mw: 2.2 },
-      ],
-      loads: [{ ref_id: 'o1', bus_ref: 'b15', p_mw: 1.4 }],
-      bays: [], junctions: [], corridors: [], measurements: [], protection_assignments: [],
+      // HARNESS-RESZTA-2: model sieci zlotej z WARUNKAMI PRZYLACZENIA w naglowku
+      // (dana wejsciowa projektu, moc przylaczeniowa PONIZEJ realnej sumy mocy
+      // generatorow modelu) — kafel „Warunki przylaczenia" liczy werdykt
+      // przekroczenia z modelu, a nie z liczb wpisanych w harnessie.
+      ...pulpitScenyMigawka,
+      header: { ...pulpitScenyMigawka.header, revision: 9 },
     },
     readiness: { ready: true, blockers: [], warnings: [] },
   } as never);
@@ -1507,17 +1338,10 @@ if (creator === 'arcflash') {
   useExecutionRunsStore.setState({
     runs: [runKomp], activeRunId: kompensacjaScenyWynik.context.run_id,
   } as never);
-  useSnapshotStore.setState({
-    snapshot: {
-      header: { name: 'CGMES Golden Net' },
-      substations: [], transformers: [], sources: [], loads: [], bays: [],
-      buses: [
-        { ref_id: 'bus_sn_main', name: 'Szyna SN', voltage_kv: 15 },
-        { ref_id: 'bus_sn_b', name: 'Stacja B SN', voltage_kv: 15 },
-        { ref_id: 'bus_sn_c', name: 'Stacja C SN', voltage_kv: 15 },
-      ],
-    },
-  } as never);
+  // HARNESS-RESZTA-2: migawka sieci zlotej — TEJ SAMEJ, na ktorej policzono
+  // wynik doboru kompensacji; nazwy i napiecia szyn z modelu, nie z listy
+  // przepisanej w harnessie.
+  useSnapshotStore.setState({ snapshot: sieckZlotaScenyMigawka } as never);
 } else if (creator === 'rozplyw') {
   // Rozplyw z kolumna obciazalnosci (R3-A/V12K-110): wynik PF read-only +
   // werdykty z podmienionego endpointu walidacji (target_id = branch_id).
@@ -1650,133 +1474,42 @@ if (creator === 'arcflash') {
     activeCaseId: 'case-demo',
     activeCaseName: 'Wariant zimowy',
   } as never);
-  useStationDerStore.setState({
-    ders: {
-      'der-pv-1': derDemo({
-        id: 'der-pv-1',
-        der_kind: 'PV',
-        name: 'Farma PV 1 MW',
-        connection_side: 'dedicated_transformer',
-        sn_connection_point_kind: 'station_bus',
-        bus_przylaczenia_ref: 'st-demo__szyna-sn__15',
-        lv_busbar_ref: null,
-        connection_voltage_kv: 15,
-        nominal_power_kw: 1000,
-        catalogs: {
-          ...EMPTY_DER_CATALOGS,
-          // Karta FAB-L (§0 L6): dawne zmyślone `pv-1` → realny identyfikator
-          // katalogu backendu (`conv-pv-1mw-15kv`, `GET /api/catalog/pv-inverter-types`).
-          device_catalog_ref: 'conv-pv-1mw-15kv',
-          protection_catalog_ref: 'ABB_REB670',
-          ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
-        },
-        profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'pse' },
-      }),
-    },
-  } as never);
+  // HARNESS-RESZTA-2: wytwórca Z MODELU sceny (`oze_scena_migawka.json` — GPZ
+  // 110/15 kV + farma PV 1 MW w polu SN z wiązaniami zapisanymi operacją
+  // `set_der_catalog_bindings`). Trzy stany, których dowodzi ta scena, są w
+  // modelu: zabezpieczenie i przekładnik prądowy przypisane, przekładnik
+  // napięciowy BEZ wiązania (polecenie wyboru).
+  zasiejWytworcowZModelu(ozeScenyMigawka, 'proj-demo');
 } else if (creator === 'frt') {
   // Scena „frt" (V-A): moduł DER z typem przekształtnika (selectAllDers) +
   // zakończony przebieg zwarciowy do doboru kontekstu siły sieci (T-B).
-  useStationDerStore.setState({
-    ders: {
-      'der-pv-1': derDemo({
-        id: 'der-pv-1',
-        der_kind: 'PV',
-        name: 'Farma PV 1 MW',
-        connection_side: 'dedicated_transformer',
-        sn_connection_point_kind: 'station_bus',
-        bus_przylaczenia_ref: 'st-demo__szyna-sn__15',
-        lv_busbar_ref: null,
-        connection_voltage_kv: 15,
-        nominal_power_kw: 1000,
-        catalogs: {
-          ...EMPTY_DER_CATALOGS,
-          device_catalog_ref: 'conv-pv-1mw-15kv',
-          // Karta FAB-L (§0 L6): dawny zmyślony `dyn-grid-following-pv` →
-          // realny profil dynamiczny backendu (`default_pv_gfl`,
-          // `GET /api/catalog/der-dynamic-profiles`).
-          dynamic_model_ref: 'default_pv_gfl',
-        },
-        profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'pse', lvrt_curve_ref: 'pse' },
-      }),
-    },
-  } as never);
+  // HARNESS-RESZTA-2: TEN SAM model pola wytwórcy co scena „wiazania" — moduł
+  // niesie model dynamiczny (`default_pv_gfl`) i profil LVRT operatora, bo oba
+  // są zapisane w modelu operacją `set_der_catalog_bindings`.
+  zasiejWytworcowZModelu(ozeScenyMigawka, 'proj-demo');
+  // HARNESS-RESZTA-2: kontekst siły sieci sceny „frt" bierze się z ZAKOŃCZONEGO
+  // biegu zwarciowego — tu REALNY bieg kotwicy analiz OZE backendu (ten sam,
+  // z którego policzono `sila_sieci_scena_wynik.json`), nie wymyślone 'run-sc-9'.
   const runSc: ExecutionRun = {
-    id: 'run-sc-9', analysis_type: 'SC_3F', status: 'DONE',
+    id: silaSieciScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
     started_at: '2026-07-22T09:15:00Z', finished_at: '2026-07-22T09:15:04Z',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({ runs: [runSc] } as never);
 } else if (creator === 'macierz') {
-  // Scena „macierz" (V-A): dwa moduły DER (kolejność selectAllDers: bess-1,
-  // pv-1) z mocą katalogową i poziomem napięcia — gotowe do biegu NC RfG.
+  // Scena „macierz" (V-A): dwa moduły DER z modelu (kolejność `selectAllDers`
+  // jest deterministyczna — sort po referencji) — gotowe do biegu NC RfG.
   useAppStateStore.setState({
     activeProjectName: 'Przyłączenie farmy PV 8 MW',
     activeCaseName: 'Stan normalny',
   } as never);
-  // Zasiew (E2E-FULL-FIX-3, 2026-09-10): moduły klasy B wg progów OD-5 (1 MW / 50 MW),
-  // przyłączone transformatorem blokowym do szyny 15 kV stacji — dawne 0,8/0,5 MW
-  // przy 0,4 kV były klasą A, a ręczna atrapa biegu twierdziła „B". Moce = liczba
-  // jednostek × moc katalogowa (ABB PCS100 500 kW; Huawei SUN2000-215KTL 215 kW).
-  useStationDerStore.setState({
-    ders: {
-      'bess-1': derDemo({
-        id: 'bess-1',
-        der_kind: 'BESS',
-        name: 'Magazyn energii 1,5 MW',
-        connection_side: 'dedicated_transformer',
-        bus_przylaczenia_ref: 'st-demo__szyna-sn__15',
-        lv_busbar_ref: null,
-        transformer_ref: 'tr-blok-bess-1',
-        sn_connection_bus_ref: 'st-demo__szyna-sn__15',
-        sn_connection_point_kind: 'station_bus',
-        connection_voltage_kv: 15,
-        nominal_power_kw: 1500,
-        unit_count: 3,
-        catalogs: {
-          ...EMPTY_DER_CATALOGS,
-          // Karta FAB-L (§0 L6): realne identyfikatory katalogu backendu
-          // (`GET /api/catalog/bess-inverter-types`, `.../bess-battery-types`).
-          device_catalog_ref: 'bess_pcs_abb_500',
-          battery_catalog_ref: 'bess_bat_lfp_2880kwh_1230vdc',
-        },
-        profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'enea' },
-      }),
-      'pv-1': derDemo({
-        id: 'pv-1',
-        der_kind: 'PV',
-        name: 'Instalacja PV 1,9 MW',
-        connection_side: 'dedicated_transformer',
-        bus_przylaczenia_ref: 'st-demo__szyna-sn__15',
-        lv_busbar_ref: null,
-        transformer_ref: 'tr-blok-pv-1',
-        sn_connection_bus_ref: 'st-demo__szyna-sn__15',
-        sn_connection_point_kind: 'station_bus',
-        connection_voltage_kv: 15,
-        nominal_power_kw: 1935,
-        unit_count: 9,
-        catalogs: {
-          ...EMPTY_DER_CATALOGS,
-          // Karta FAB-L (§0 L6): jedyny realny falownik PV z powiązanym certyfikatem
-          // PTPiREE w katalogu backendu (`GET /api/catalog/pv-inverter-types`) i realny
-          // profil dynamiczny (`GET /api/catalog/der-dynamic-profiles`).
-          device_catalog_ref: 'conv-pv-card-huawei-sun2000-215ktl',
-          ptpiree_certificate_ref:
-            'ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3',
-          // Karta CERTYFIKAT-Z-KATALOGU: backend zapisuje `ptpiree_status`
-          // ZAWSZE razem z `ptpiree_certificate_ref` (jedna adnotacja,
-          // `annotate_with_ptpiree_status`) — scena harnessu odzwierciedla ten
-          // sam kształt tabliczki.
-          ptpiree_status: 'POWIAZANY',
-          dynamic_model_ref: 'default_pv_gfl',
-        },
-        profiles: {
-          ...EMPTY_DER_PROFILES,
-          nc_rfg_profile_ref: 'enea',
-          lvrt_curve_ref: 'enea',
-        },
-      }),
-    },
-  } as never);
+  // HARNESS-RESZTA-2: moduły Z MODELU sceny (`macierz_scena_migawka.json` —
+  // TEN SAM model, z którego policzono raport zgodności przekrojowej). Moduły
+  // klasy B wg progów OD-5 (1 MW / 50 MW) przyłączone po stronie SN
+  // transformatorem blokowym: BESS 3 × ABB PCS100 500 kW, PV 9 × Huawei
+  // SUN2000-215KTL 215 kW (moce = liczba jednostek × moc katalogowa).
+  // Wcześniej scena niosła DRUGI opis tych samych modułów, pilnowany tylko
+  // porównaniem 409 przy trasie zgodności.
+  zasiejWytworcowZModelu(macierzScenyMigawka, 'proj-demo');
 } else if (creator === 'oltc') {
   // Scena „oltc" (V-A): aktywny przypadek `case-demo` z zasiewu globalnego
   // (useAppStateStore) — bieg badania przez podmienione końcówki execution.
@@ -1889,17 +1622,17 @@ if (creator === 'arcflash') {
   // stacji demo (op=add_genset_nn wybiera wariant „agregat"; snapshot globalny
   // z zasiewu wyżej ma już szynę nN stacji demo).
   useNetworkBuildStore.getState().openOperationForm('add_genset_nn' as never, {
-    station_ref: 'st-demo',
-    bus_nn_ref: 'bus-nn-demo',
+    station_ref: STACJA_DEMO,
+    bus_nn_ref: SZYNA_NN_STACJI_DEMO,
     bus_name: 'Szyna nN',
-    voltage_kv: 0.4,
-    station_label: 'Rozdzielnia GPZ-01',
+    voltage_kv: NAPIECIE_SZYNY_NN_STACJI_DEMO,
+    station_label: NAZWA_STACJI_DEMO,
   });
 } else if (creator === 'odgalezienie') {
   // Karta Z-2: kreator odgałęzienia SN startuje nowy ciąg od jawnego zacisku
   // źródła (szyna SN stacji demo) — kontekst z jawnymi etykietami źródła.
   useNetworkBuildStore.getState().openOperationForm('start_branch_segment_sn' as never, {
-    from_ref: 'bus-sn-demo',
+    from_ref: SZYNA_SN_STACJI_DEMO,
     source_type_label: 'Szyna SN',
     source_name: 'Szyna GPZ SN',
   });
@@ -1911,15 +1644,13 @@ if (creator === 'arcflash') {
   const segmentName = creator === 'slup-odgalezny' ? 'Linia napowietrzna L-7' : 'Kabel SN K-3';
   useSnapshotStore.setState({
     snapshot: {
-      header: { name: 'Projekt demonstracyjny' },
-      substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
-      buses: [
-        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
-        { ref_id: 'bus-nn-demo', name: 'Szyna nN', voltage_kv: 0.4 },
+      ...stacjaDemoScenyMigawka,
+      // Odcinek, na ktorym scena wstawia slup/ZK SN — DOKLADANY do modelu
+      // stacji demo (kreator startuje od jawnego zacisku tego odcinka).
+      branches: [
+        ...stacjaDemoScenyMigawka.branches,
+        { id: segmentId, ref_id: segmentId, name: segmentName, type: segmentType, tags: [], meta: {} },
       ],
-      transformers: [], sources: [], loads: [], generators: [], bays: [],
-      branches: [{ id: segmentId, ref_id: segmentId, name: segmentName, type: segmentType, tags: [], meta: {} }],
-      junctions: [], corridors: [], measurements: [], protection_assignments: [],
     },
   } as never);
   useNetworkBuildStore.getState().openOperationForm(
@@ -1933,19 +1664,16 @@ if (creator === 'arcflash') {
   // useFieldReadModel.ts): pole odpływowe SN stacji demo z pełnym kontraktem Bay.
   useSnapshotStore.setState({
     snapshot: {
-      header: { name: 'Projekt demonstracyjny' },
-      substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
-      buses: [
-        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
-        { ref_id: 'bus-nn-demo', name: 'Szyna nN', voltage_kv: 0.4 },
-      ],
-      transformers: [], sources: [], loads: [], generators: [],
+      ...stacjaDemoScenyMigawka,
+      // Pole odplywowe SN stacji demo — kontrakt `Bay` czytany przez
+      // `useFieldReadModel` w trybie syntezy z migawki; referencje stacji i
+      // szyny pochodza z modelu, nie z literalu.
       bays: [{
         id: 'bay-odplyw-1', ref_id: 'bay-odplyw-1', name: 'Pole odpływowe L-1',
-        tags: [], meta: {}, bay_role: 'OUT', substation_ref: 'st-demo', bus_ref: 'bus-sn-demo',
+        tags: [], meta: {}, bay_role: 'OUT', substation_ref: STACJA_DEMO,
+        bus_ref: SZYNA_SN_STACJI_DEMO,
         gpz_section_id: null, equipment_refs: [], protection_ref: null,
       }],
-      branches: [], junctions: [], corridors: [], measurements: [], protection_assignments: [],
     },
   } as never);
   useNetworkBuildStore.getState().openOperationForm(
@@ -1955,8 +1683,8 @@ if (creator === 'arcflash') {
 } else if (creator === 'pole-nn') {
   // Karta Z-2: pole odpływowe nN — jedyny publiczny write-path pola nN.
   useNetworkBuildStore.getState().openOperationForm('add_nn_outgoing_field' as never, {
-    station_ref: 'st-demo',
-    bus_nn_ref: 'bus-nn-demo',
+    station_ref: STACJA_DEMO,
+    bus_nn_ref: SZYNA_NN_STACJI_DEMO,
   });
 } else if (creator === 'przypisanie-katalogu') {
   // Karta Z-2: przypisanie typu katalogowego do istniejącego elementu (transformator demo).
@@ -1984,16 +1712,10 @@ if (creator === 'arcflash') {
   useSnapshotStore.setState({
     rewizjaBiezacegoModelu: 2,
     snapshot: {
-      header: { name: 'Projekt demonstracyjny', revision: 2 },
-      substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
-      transformers: [],
-      buses: [
-        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
-        { ref_id: 'bus-nn-demo', name: 'Szyna nN', voltage_kv: 0.4 },
-      ],
-      sources: [],
-      loads: [],
-      bays: [],
+      ...stacjaDemoScenyMigawka,
+      // K3-B3: scena „cieplna" jest CELOWO wariantem NIEAKTUALNYM znacznika
+      // swiezosci — migawka rewizji 2 wobec wyniku rewizji 1.
+      header: { ...stacjaDemoScenyMigawka.header, revision: 2 },
     },
   } as never);
 } else {
@@ -2013,18 +1735,18 @@ if (creator === 'arcflash') {
       ? 'add_grid_source_sn'
       : 'add_sn_bay';
   useNetworkBuildStore.getState().openOperationForm(op as never, {
-    station_ref: 'st-demo',
-    bus_ref: 'bus-sn-demo',
-    bus_nn_ref: 'bus-nn-demo',
-    bus_name: 'Szyna SN',
-    voltage_kv: 15,
+    station_ref: STACJA_DEMO,
+    bus_ref: SZYNA_SN_STACJI_DEMO,
+    bus_nn_ref: SZYNA_NN_STACJI_DEMO,
+    bus_name: NAZWA_SZYNY_SN_STACJI_DEMO,
+    voltage_kv: NAPIECIE_SZYNY_SN_STACJI_DEMO,
     length_m: 2500,
     from_terminal_id: 'term-demo',
     terminalId: 'term-demo',
-    terminal_voltage_label: '15 kV',
+    terminal_voltage_label: `${NAPIECIE_SZYNY_SN_STACJI_DEMO} kV`,
     feeder_ref: 'feeder-demo',
-    bus_voltage_kv: 0.4,
-    station_label: 'Rozdzielnia GPZ-01',
+    bus_voltage_kv: NAPIECIE_SZYNY_NN_STACJI_DEMO,
+    station_label: NAZWA_STACJI_DEMO,
   });
 }
 
@@ -2097,7 +1819,9 @@ function Harness() {
             surfaceId: 'harness-wiazania',
             screenCode: 'E-21',
             titlePl: 'Źródło PV',
-            entityRef: 'der-pv-1',
+            // Wytwórca Z MODELU sceny — ten sam, którego opisują fixtury
+            // doboru przekładników i funkcji zabezpieczeniowych.
+            entityRef: wiazaniaScenyPrzekladniki.generator_ref,
             entityType: null,
             routeState: { payload: {} },
             breadcrumbs: [],
@@ -2166,13 +1890,15 @@ function Harness() {
   else if (creator === 'odbior') node = <KreatorOdbioruNn />;
   else if (creator === 'zrodlo') node = <KreatorZrodloZasilania />;
   else if (creator === 'cieplna')
-    // `id: 'run-sc-7'` CELOWO nieruszone (spójne z RUN_KONTRAKT_SCENY.cieplna
-    // powyżej — ta sama etykieta wariantu K3-B3 „nieaktualne", nie
-    // identyfikator liczonego biegu; treść sekcji czyta OSOBNY, już realny
-    // endpoint `/api/quality/conductor-thermal-withstand`).
+    // HARNESS-RESZTA-2: identyfikator biegu z fixtury REALNEGO biegu backendu
+    // (`cieplna_scena_wynik.json`) — JEDNA tożsamość dla kontraktu przebiegu
+    // (RUN_KONTRAKT_SCENY.cieplna) i dla sekcji; wariant „nieaktualne" nadal
+    // z rozjazdu rewizji modelu, nie z wymyślonego identyfikatora.
     node = (
       <SekcjaWytrzymaloscCieplna
-        przebieg={{ id: 'run-sc-7', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun}
+        przebieg={{
+          id: cieplnaScenyWynik.run_id, analysis_type: 'SC_3F', status: 'DONE',
+        } as unknown as ExecutionRun}
         trybZaawansowania="expert"
         onOtworzDowod={() => undefined}
       />
@@ -2261,7 +1987,7 @@ async function zasiejSceneStacji(): Promise<void> {
       name: 'Harness — kreator stacji SN/nN',
       description: 'Scena harnessu: stacja wstawiana w odcinek magistrali',
       mode: 'TO-BE',
-      voltage_level_kv: 15,
+      voltage_level_kv: NAPIECIE_SZYNY_SN_STACJI_DEMO,
       frequency_hz: 50,
     }),
   });
@@ -2288,12 +2014,12 @@ async function zasiejSceneStacji(): Promise<void> {
   });
   const wykonaj = useSnapshotStore.getState().executeDomainOperation;
   const gpz = await wykonaj(przypadek.id, 'add_grid_source_sn', {
-    voltage_kv: 15,
-    sk3_mva: 250,
-    rx_ratio: 0.1,
+    voltage_kv: NAPIECIE_SZYNY_SN_STACJI_DEMO,
+    sk3_mva: SK3_ZRODLA_STACJI_DEMO,
+    rx_ratio: RX_ZRODLA_STACJI_DEMO,
     catalog_binding: wiazanie('ZRODLO_SN', 'src-gpz-15kv-250mva-rx010'),
-    hv_voltage_kv: 110,
-    transformer_sn_mva: 25,
+    hv_voltage_kv: NAPIECIE_WN_STACJI_DEMO,
+    transformer_sn_mva: MOC_TRAFO_WN_SN_STACJI_DEMO,
   });
   if (!gpz || gpz.error) throw new Error(`add_grid_source_sn: ${gpz?.error ?? 'brak odpowiedzi'}`);
   const odcinek = await wykonaj(przypadek.id, 'continue_trunk_segment_sn', {

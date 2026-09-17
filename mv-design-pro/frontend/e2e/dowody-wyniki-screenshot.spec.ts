@@ -38,23 +38,96 @@ const SCENY = [
 
 type Scena = (typeof SCENY)[number];
 
-/** Wiersz pomiaru edytora zgodności powykonawczej (element / wielkość / wartość). */
-const POMIARY_ODBIORU = [
-  { element: 'BUS-1', wielkosc: 'U', wartosc: '15,3' },
-  { element: 'LINE-2', wielkosc: 'P', wartosc: '4,5' },
-  { element: 'NIEZNANY-3', wielkosc: 'U', wartosc: '10' },
-  { element: 'TRAFO-4', wielkosc: 'Q', wartosc: '1,2' },
-] as const;
+/**
+ * Pomiary edytora zgodności powykonawczej — Z FIXTURY REALNEGO biegu
+ * (`odbior_zgodnosc_scena_wynik.json`, karta HARNESS-RESZTA). NAPRAWA
+ * HARNESS-RESZTA-2: spec wpisywał własny zestaw (`BUS-1`, `LINE-2`, …) i klikał
+ * wiersz `BUS-1`, którego wynik backendu nie zawiera — zrzut pokazywałby
+ * pomiary bez związku z tabelą wyników, a klik kończył się timeoutem. Teraz
+ * edytor dostaje DOKŁADNIE te pomiary, które opisuje odpowiedź.
+ * Odczyt `readFileSync`, nie `import … .json`: moduł specu jest ESM Node'a.
+ */
+const ODBIOR_SCENA_WYNIK = JSON.parse(
+  fs.readFileSync(
+    path.resolve(
+      _dirname,
+      '../src/harness-fixtures/generated/odbior_zgodnosc_scena_wynik.json',
+    ),
+    'utf-8',
+  ),
+) as {
+  wiersze: {
+    element_ref: string;
+    wielkosc: string;
+    wartosc_pomiar: number;
+    werdykt: string;
+    slad_pl: string[];
+  }[];
+  tolerancje: Record<string, number>;
+};
+const POMIARY_ODBIORU = ODBIOR_SCENA_WYNIK.wiersze.map((wiersz) => ({
+  element: wiersz.element_ref,
+  wielkosc: wiersz.wielkosc,
+  // Edytor przyjmuje liczbę w zapisie PL (przecinek dziesiętny).
+  wartosc: String(wiersz.wartosc_pomiar).replace('.', ','),
+}));
+/** Wiersz z naruszeniem — na nim scena otwiera wywód (to on niesie werdykt). */
+const ODBIOR_WIERSZ_NARUSZENIA = ODBIOR_SCENA_WYNIK.wiersze.find(
+  (wiersz) => wiersz.werdykt === 'poza tolerancją',
+)!;
 
-/** Pomiary telemetryczne estymacji WLS (6 szt. → m=6 > n=5 stanów, dof=1). */
-const POMIARY_ESTYMACJI = [
-  { typ: 'V_MAGNITUDE', wezel: 'BUS-1', wartosc: '1,05', sigma: '0,004', wezelJ: null },
-  { typ: 'V_MAGNITUDE', wezel: 'BUS-2', wartosc: '0,99', sigma: '0,004', wezelJ: null },
-  { typ: 'P_INJECTION', wezel: 'BUS-2', wartosc: '-0,35', sigma: '0,008', wezelJ: null },
-  { typ: 'Q_INJECTION', wezel: 'BUS-2', wartosc: '-0,12', sigma: '0,008', wezelJ: null },
-  { typ: 'P_FLOW', wezel: 'BUS-1', wartosc: '0,36', sigma: '0,008', wezelJ: 'BUS-2' },
-  { typ: 'Q_FLOW', wezel: 'BUS-1', wartosc: '0,13', sigma: '0,008', wezelJ: 'BUS-2' },
-] as const;
+/**
+ * Pomiary telemetryczne estymacji WLS — Z FIXTURY REALNEGO biegu
+ * (`estymacja_scena_wynik.json`, karta HARNESS-RESZTA). NAPRAWA
+ * HARNESS-RESZTA-2: spec wpisywał własny zestaw na węzłach `BUS-1`/`BUS-2`,
+ * których lista węzłów z backendu (sieć złota, referencje z modelu) nie
+ * zawiera — `selectOption` kończył się timeoutem. Teraz edytor dostaje
+ * DOKŁADNIE te pomiary, które opisuje odpowiedź estymatora.
+ */
+const ESTYMACJA_SCENA_WYNIK = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/estymacja_scena_wynik.json'),
+    'utf-8',
+  ),
+) as {
+  measurements: {
+    meas_type: string;
+    bus_ref: string;
+    bus_j_ref: string | null;
+    value: number;
+    sigma: number;
+  }[];
+  bad_data: {
+    chi_square_threshold: number;
+    lnr_measurement: { bus_ref: string } | null;
+  };
+  white_box: { objective_j: number }[];
+};
+const POMIARY_ESTYMACJI = ESTYMACJA_SCENA_WYNIK.measurements.map((pomiar) => ({
+  typ: pomiar.meas_type,
+  wezel: pomiar.bus_ref,
+  wartosc: String(pomiar.value).replace('.', ','),
+  sigma: String(pomiar.sigma).replace('.', ','),
+  wezelJ: pomiar.bus_j_ref,
+}));
+/** Format ekranu estymacji: cztery cyfry znaczące, przecinek PL (`fmtDokladny`). */
+const liczbaDokladnaPl = (wartosc: number): string =>
+  String(Number.parseFloat(wartosc.toPrecision(4))).replace('.', ',');
+
+/**
+ * Werdykt SSCI — z REALNEGO biegu backendu (`akademickie_scena_biegi.json`,
+ * karta HARNESS-RESZTA). NAPRAWA HARNESS-RESZTA-2: spec cytował max|L| = „1,42"
+ * z atrapy sprzed konwersji; realna sieć złota z kartą przekształtnika daje
+ * max|L| = 126,4445 i ten sam werdykt „niestabilny".
+ */
+const SSCI_WERDYKT = (
+  JSON.parse(
+    fs.readFileSync(
+      path.resolve(_dirname, '../src/harness-fixtures/generated/akademickie_scena_biegi.json'),
+      'utf-8',
+    ),
+  ) as { biegi: { ssci_impedance: { stabilnosc: { verdict: { max_minor_loop_gain: number } } } } }
+).biegi.ssci_impedance.stabilnosc.verdict;
 
 /** Prowadzi scenę do stanu „wywód OTWARTY" — realne kliki, zero syntetyki. */
 async function prowadzScene(page: Page, scena: Scena): Promise<void> {
@@ -120,13 +193,20 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     await expect(page.getByTestId('mvd-odbior-wynik')).toBeVisible();
     await expect(page.getByTestId('mvd-odbior-podsumowanie')).toBeVisible();
     await expect(page.getByTestId('mvd-wyn-tabela')).toContainText('poza tolerancją');
-    await page.getByTestId('mvd-wyn-tabela').getByText('BUS-1').click();
+    await page
+      .getByTestId('mvd-wyn-tabela')
+      .getByText(ODBIOR_WIERSZ_NARUSZENIA.element_ref, { exact: true })
+      .click();
     await expect(page.getByTestId('mvd-odbior-szczegol')).toBeVisible();
     await page.getByTestId('mvd-odbior-slad-otworz').click();
+    // Ślad porównania CYTOWANY z odpowiedzi backendu: pierwszy krok (wartość
+    // modelu) i werdykt — obie linie liczy `build_zgodnosc_powykonawcza_view`.
     await expect(page.getByTestId('mvd-odbior-slad')).toContainText(
-      'Model U = u_pu × U_n = 1.010000 × 15.000000 = 15.150000 kV',
+      ODBIOR_WIERSZ_NARUSZENIA.slad_pl[0],
     );
-    await expect(page.getByTestId('mvd-odbior-slad')).toContainText('Werdykt: w tolerancji');
+    await expect(page.getByTestId('mvd-odbior-slad')).toContainText(
+      ODBIOR_WIERSZ_NARUSZENIA.slad_pl[ODBIOR_WIERSZ_NARUSZENIA.slad_pl.length - 1],
+    );
   } else if (scena === 'estymacja') {
     // Wymagane wejścia (mapa węzeł→indeks) → 6 pomiarów w edytorze →
     // „Estymuj" → detekcja złych danych → otwarty ślad iteracji WLS.
@@ -142,11 +222,19 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     }
     await page.getByTestId('mvd-est-estymuj').click();
     await expect(page.getByTestId('mvd-est-wynik')).toBeVisible();
-    await expect(page.getByTestId('mvd-est-bad')).toContainText('6,635');
-    await expect(page.getByTestId('mvd-est-podejrzany')).toContainText('BUS-1');
+    // Próg testu chi-kwadrat, podejrzany pomiar i pierwsza iteracja śladu —
+    // CYTOWANE z odpowiedzi estymatora (żadnej liczby wpisanej w specu).
+    await expect(page.getByTestId('mvd-est-bad')).toContainText(
+      liczbaDokladnaPl(ESTYMACJA_SCENA_WYNIK.bad_data.chi_square_threshold),
+    );
+    await expect(page.getByTestId('mvd-est-podejrzany')).toContainText(
+      ESTYMACJA_SCENA_WYNIK.bad_data.lnr_measurement!.bus_ref,
+    );
     await page.getByTestId('mvd-est-slad-otworz').click();
     await expect(page.getByTestId('mvd-est-slad')).toBeVisible();
-    await expect(page.getByTestId('mvd-est-slad')).toContainText('27,8');
+    await expect(page.getByTestId('mvd-est-slad')).toContainText(
+      liczbaDokladnaPl(ESTYMACJA_SCENA_WYNIK.white_box[0].objective_j),
+    );
   } else if (scena === 'ssci') {
     // Jawny bieg SSCI (utworzenie przebiegu + werdykt) → otwarty ślad.
     await page.getByTestId('mvd-ssci-uruchom').click();
@@ -155,7 +243,11 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     await expect(page.getByTestId('mvd-ssci-metryki')).toBeVisible();
     await page.getByTestId('mvd-ssci-slad-otworz').click();
     await expect(page.getByTestId('mvd-ssci-slad')).toContainText('max|L|');
-    await expect(page.getByTestId('mvd-ssci-slad')).toContainText('1,42');
+    // Wzmocnienie pętli mniejszej CYTOWANE z werdyktu backendu (format śladu:
+    // liczba z kropką dziesiętną, jak w podstawieniu solvera).
+    await expect(page.getByTestId('mvd-ssci-slad')).toContainText(
+      String(SSCI_WERDYKT.max_minor_loop_gain),
+    );
   } else if (scena === 'migotanie') {
     // Wiersz węzła (moduły OZE) → otwarty ślad Pst/Plt/d z wzorami
     // renderowanymi KaTeX (math-rendered). HARNESS-RESZTA-kontynuacja: dawny
