@@ -160,6 +160,22 @@ def normalize_endpoint(endpoint: str) -> str:
     return cleaned.replace("{case_id}", "{id}")
 
 
+# Markdown pozwala wstawic pionowa kreske w tresci komorki jako `\\|` (escape).
+# Podzial po surowym `|` rozbijal wtedy wiersz na wiecej kolumn niz naglowek, a
+# kontrola dlugosci CICHO taki wiersz pomijala — wpis rejestru z kreska w tresci
+# (np. cytat `grep "auth\\|/me"` albo typ `{...} | null`) znikal guardowi z oczu
+# i jego status NIE byl sprawdzany. Dlug 2026-09-17: dwa wiersze rejestru
+# (`V12T-015`, `V12T-017`) byly niewidoczne dokladnie z tego powodu.
+WZORZEC_PODZIALU_KOMOREK = re.compile(r"(?<!\\)\|")
+
+
+def podziel_komorki(line: str) -> list[str]:
+    """Komorki wiersza tabeli: podzial po kresce NIEbedacej escapem, potem odescapowanie."""
+    return [
+        komorka.replace("\\|", "|") for komorka in WZORZEC_PODZIALU_KOMOREK.split(line.strip("|"))
+    ]
+
+
 def markdown_table_rows(text: str) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     current_headers: list[str] | None = None
@@ -172,7 +188,7 @@ def markdown_table_rows(text: str) -> list[dict[str, str]]:
             expecting_separator = False
             continue
 
-        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        cells = [cell.strip() for cell in podziel_komorki(line)]
         if expecting_separator:
             if all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells):
                 expecting_separator = False
@@ -303,13 +319,26 @@ def check_v12_debt_closure() -> list[str]:
     violations: list[str] = []
 
     if DEBT_REGISTER_PATH.exists():
-        for row in markdown_table_rows(read_text(DEBT_REGISTER_PATH)):
+        tresc_rejestru = read_text(DEBT_REGISTER_PATH)
+        sparsowane: set[str] = set()
+        for row in markdown_table_rows(tresc_rejestru):
             code = row.get("Kod", "")
             if not code.startswith("V12T-"):
                 continue
+            sparsowane.add(code)
             status = row.get("Status", "")
             if "zamkniety" not in status:
                 violations.append(f"[debt-register-open] {code} has non-closed status {status!r}")
+
+        # Wiersz rejestru, ktorego parser nie zlozyl w tabele, NIE moze przejsc w
+        # ciszy: jego status jest wtedy niesprawdzony, czyli dlug moze byc otwarty
+        # bez sladu. Uszkodzony wiersz = naruszenie do naprawy w dokumencie.
+        w_dokumencie = set(re.findall(r"^\| (V12T-\d+) ", tresc_rejestru, flags=re.MULTILINE))
+        for code in sorted(w_dokumencie - sparsowane):
+            violations.append(
+                f"[debt-register-unparsed] {code}: wiersz nie sklada sie w tabele "
+                "(liczba kolumn inna niz naglowek — kreska w tresci wymaga escape `\\|`)"
+            )
 
     if BACKLOG_PATH.exists():
         for row in markdown_table_rows(read_text(BACKLOG_PATH)):
