@@ -86,3 +86,11 @@ jobs:
       - name: Harness No Physics Literals Guard
         working-directory: mv-design-pro
         run: python scripts/harness_no_physics_literals_guard.py
+      # Karta KATALOG-NIEZMIENNIKI §5 p.2 (2026-09-17): mapowanie katalogu na
+      # granicy backend -> front nie ma prawa gubic pola kontraktu po cichu
+      # (S-2: zgubione `k_sc`, pomiar tej karty: dwanascie dalszych pol).
+      # Miejsce: TA bramka — guard czyta `frontend/src/ui/catalog/**` i kontrakt
+      # dataclass backendu, bez uruchamiania czegokolwiek.
+      - name: Katalog — parytet pol backend/front
+        working-directory: mv-design-pro
+        run: python scripts/katalog_parytet_pol_guard.py

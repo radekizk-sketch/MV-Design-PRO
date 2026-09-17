@@ -322,6 +322,14 @@ export interface VTCatalogType extends CatalogType {
  * Source: backend PVInverterType dataclass.
  */
 export interface PVInverterCatalogType extends CatalogType {
+  /**
+   * Metadane katalogowe rekordu (kontrakt `_catalog_metadata_to_dict` backendu).
+   * Karta KATALOG-NIEZMIENNIKI §5 p.2: mapowanie `fetchConverterTypes` niesie je
+   * dalej, bo projektant ma widzieć, czy pozycja jest produkcyjna i skąd pochodzi.
+   */
+  verification_status?: string | null;
+  source_reference?: string | null;
+  catalog_status?: string | null;
   s_n_kva: number;
   p_max_kw: number;
   un_kv?: number;
@@ -350,6 +358,14 @@ export interface PVInverterCatalogType extends CatalogType {
  * Source: backend BESSInverterType dataclass.
  */
 export interface BESSInverterCatalogType extends CatalogType {
+  /**
+   * Metadane katalogowe rekordu (kontrakt `_catalog_metadata_to_dict` backendu).
+   * Karta KATALOG-NIEZMIENNIKI §5 p.2: mapowanie `fetchConverterTypes` niesie je
+   * dalej, bo projektant ma widzieć, czy pozycja jest produkcyjna i skąd pochodzi.
+   */
+  verification_status?: string | null;
+  source_reference?: string | null;
+  catalog_status?: string | null;
   p_charge_kw: number;
   p_discharge_kw: number;
   e_kwh: number;

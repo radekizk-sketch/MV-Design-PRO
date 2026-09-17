@@ -127,6 +127,11 @@ class PomiarRodziny:
     wypelnienie_pol_procent: float | None
     pozycje_z_proweniencja: int
     pola_proweniencji_w_kontrakcie: tuple[str, ...]
+    #: Pola kontraktu, ktorych nie niesie ANI JEDNA pozycja rodziny. To jest
+    #: najostrzejszy sygnal braku: pole istnieje w kontrakcie, konsument moze go
+    #: zazadac, a katalog nie ma go nigdzie. Srednie wypelnienie takiego braku NIE
+    #: pokazuje — rozpuszcza go w liczbie zbiorczej.
+    pola_bez_ani_jednej_wartosci: tuple[str, ...]
     duplikaty_id: tuple[str, ...]
 
     def to_dict(self) -> dict[str, Any]:
@@ -138,6 +143,7 @@ class PomiarRodziny:
             "wypelnienie_pol_procent": self.wypelnienie_pol_procent,
             "pozycje_z_proweniencja": self.pozycje_z_proweniencja,
             "pola_proweniencji_w_kontrakcie": list(self.pola_proweniencji_w_kontrakcie),
+            "pola_bez_ani_jednej_wartosci": list(self.pola_bez_ani_jednej_wartosci),
             "duplikaty_id": list(self.duplikaty_id),
         }
 
@@ -189,6 +195,7 @@ def zmierz_rodzine(rodzina: str, pozycje: list[Any]) -> PomiarRodziny:
             wypelnienie_pol_procent=None,
             pozycje_z_proweniencja=0,
             pola_proweniencji_w_kontrakcie=(),
+            pola_bez_ani_jednej_wartosci=(),
             duplikaty_id=duplikaty,
         )
     typ = type(pozycje[0])
@@ -198,10 +205,12 @@ def zmierz_rodzine(rodzina: str, pozycje: list[Any]) -> PomiarRodziny:
 
     wypelnione = 0
     mozliwe = len(opcjonalne) * len(pozycje)
-    for pozycja in pozycje:
-        for nazwa in opcjonalne:
-            if getattr(pozycja, nazwa, None) is not None:
-                wypelnione += 1
+    puste: list[str] = []
+    for nazwa in opcjonalne:
+        niesione = sum(1 for pozycja in pozycje if getattr(pozycja, nazwa, None) is not None)
+        wypelnione += niesione
+        if niesione == 0:
+            puste.append(nazwa)
     wypelnienie = round(100.0 * wypelnione / mozliwe, 1) if mozliwe else None
 
     return PomiarRodziny(
@@ -214,6 +223,7 @@ def zmierz_rodzine(rodzina: str, pozycje: list[Any]) -> PomiarRodziny:
         wypelnienie_pol_procent=wypelnienie,
         pozycje_z_proweniencja=sum(1 for p in pozycje if _ma_proweniencje(p, pola_dokumentu)),
         pola_proweniencji_w_kontrakcie=pola_dokumentu,
+        pola_bez_ani_jednej_wartosci=tuple(puste),
         duplikaty_id=duplikaty,
     )
 
@@ -242,15 +252,21 @@ def _liczba(wartosc: float | None) -> str:
 def renderuj_tabele(pomiary: tuple[PomiarRodziny, ...]) -> str:
     wiersze = [
         "| Rodzina | Pozycji | Produkcyjnych | Pól opcjonalnych w kontrakcie | "
-        "Wypełnienie pól opcjonalnych [%] | Pozycji z proweniencją | Duplikaty id |",
-        "|---|---:|---:|---:|---:|---:|---|",
+        "Wypełnienie pól opcjonalnych [%] | Pozycji z proweniencją | "
+        "Pola bez ani jednej wartości | Duplikaty id |",
+        "|---|---:|---:|---:|---:|---:|---|---|",
     ]
     for pomiar in pomiary:
         duplikaty = ", ".join(pomiar.duplikaty_id) if pomiar.duplikaty_id else "brak"
+        puste = (
+            ", ".join(f"`{p}`" for p in pomiar.pola_bez_ani_jednej_wartosci)
+            if pomiar.pola_bez_ani_jednej_wartosci
+            else "brak"
+        )
         wiersze.append(
             f"| `{pomiar.rodzina}` | {pomiar.liczba_pozycji} | {pomiar.liczba_produkcyjnych} | "
             f"{pomiar.pola_opcjonalne} | {_liczba(pomiar.wypelnienie_pol_procent)} | "
-            f"{pomiar.pozycje_z_proweniencja} | {duplikaty} |"
+            f"{pomiar.pozycje_z_proweniencja} | {puste} | {duplikaty} |"
         )
     return "\n".join(wiersze)
 

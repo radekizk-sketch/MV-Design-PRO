@@ -175,6 +175,38 @@ def test_proweniencja_liczona_po_STRUKTURZE_a_nie_po_tresci() -> None:
     assert not _ma_proweniencje(bez, ("ptpiree_document_number",))
 
 
+def test_pole_bez_ani_jednej_wartosci_jest_nazwane() -> None:
+    """Najostrzejszy sygnal braku: pole w kontrakcie, ktorego nie niesie nikt.
+
+    Srednie wypelnienie takiego braku NIE pokazuje — rozpuszcza go w liczbie
+    zbiorczej. Pomiar zywego katalogu (2026-09-17) korzysta z tego wprost:
+    `k_sc` nie wystepuje w ZADNEJ ze 176 pozycji rodziny przeksztaltnikow.
+    """
+    pomiar = zmierz_rodzine(
+        "syntetyczna",
+        [
+            _pozycja(id="a", wartosc_opcjonalna=1.0),
+            _pozycja(id="b", wartosc_opcjonalna=2.0),
+        ],
+    )
+    assert pomiar.pola_bez_ani_jednej_wartosci == ("druga_opcjonalna", "standard")
+    assert "wartosc_opcjonalna" not in pomiar.pola_bez_ani_jednej_wartosci
+
+
+def test_pole_niesione_przez_choc_jedna_pozycje_nie_jest_puste() -> None:
+    pomiar = zmierz_rodzine(
+        "syntetyczna",
+        [_pozycja(id="a", standard="IEC 60269-1"), _pozycja(id="b")],
+    )
+    assert "standard" not in pomiar.pola_bez_ani_jednej_wartosci
+
+
+def test_kazde_pole_bez_wartosci_w_zywym_katalogu_jest_polem_opcjonalnym() -> None:
+    """Predykat parami: zbior pustych jest PODZBIOREM pol opcjonalnych rodziny."""
+    for pomiar in zmierz_katalog():
+        assert len(pomiar.pola_bez_ani_jednej_wartosci) <= pomiar.pola_opcjonalne, pomiar.rodzina
+
+
 def test_duplikat_identyfikatora_jest_wykryty() -> None:
     pomiar = zmierz_rodzine("syntetyczna", [_pozycja(id="x"), _pozycja(id="x"), _pozycja(id="y")])
     assert pomiar.duplikaty_id == ("x",)
@@ -226,9 +258,13 @@ def test_liczba_zapisana_z_przecinkiem_dziesietnym() -> None:
         wypelnienie_pol_procent=50.0,
         pozycje_z_proweniencja=2,
         pola_proweniencji_w_kontrakcie=("standard",),
+        pola_bez_ani_jednej_wartosci=("standard",),
         duplikaty_id=(),
     )
-    assert "| 50,0 |" in renderuj_blok_generowany((pomiar,))
+    blok = renderuj_blok_generowany((pomiar,))
+    assert "| 50,0 |" in blok
+    # Pole, ktorego nie niesie ANI JEDNA pozycja, MUSI byc nazwane w tabeli.
+    assert "`standard`" in blok
 
 
 def test_miernik_czyta_rejestry_surowe_nie_listy_projektanta() -> None:

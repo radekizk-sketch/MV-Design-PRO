@@ -242,6 +242,14 @@ benchmarkow, ktore listy widoczne dla projektanta pomijaja). Co mierzy kolumna:
   `source_reference` albo pole dokumentu obecne w kontrakcie rodziny (numer
   dokumentu, adres zrodla, data publikacji, norma, numer katalogowy). Nigdy po
   regexie w tresci: regex przypisalby proweniencje zdaniu w opisie.
+- **Pola bez ani jednej wartosci** — pole ISTNIEJE w kontrakcie, konsument moze go
+  zazadac, a nie niesie go ZADNA pozycja rodziny. To najostrzejszy sygnal braku:
+  srednie wypelnienie rozpuszcza go w liczbie zbiorczej. Pomiar 2026-09-17 pokazuje
+  tu wprost brak `k_sc` w calej rodzinie `converter` (176 pozycji) i `pv-inverter`
+  (66 pozycji) — udzial zwarciowy przeksztaltnika wolno wpisac WYLACZNIE z karty
+  producenta z proweniencja (wzorzec ABB Emax 2: wyciag przypiety SHA-256), wiec do
+  czasu pozyskania takiego zrodla rekordy zostaja bez tego pola, a blokada doboru
+  opartego na domyslce jest poprawnym stanem, nie defektem.
 - **Duplikaty id** — wiazanie katalogowe wskazujace na dwie pozycje jest defektem,
   nie niuansem.
 
@@ -254,32 +262,32 @@ decyzje podejmuje czlowiek.
 > `backend/scripts/inwentarz_katalogow.py`. Nie edytuj jej ręcznie —
 > aktualności pilnuje `scripts/inwentarz_katalogow_guard.py`.
 
-| Rodzina | Pozycji | Produkcyjnych | Pól opcjonalnych w kontrakcie | Wypełnienie pól opcjonalnych [%] | Pozycji z proweniencją | Duplikaty id |
-|---|---:|---:|---:|---:|---:|---|
-| `bess-battery` | 2 | 0 | 0 | — | 2 | brak |
-| `bess-inverter` | 64 | 0 | 15 | 26,9 | 64 | brak |
-| `cable` | 63 | 62 | 18 | 45,7 | 63 | brak |
-| `converter` | 176 | 0 | 51 | 20,6 | 176 | brak |
-| `ct` | 12 | 0 | 7 | 60,7 | 12 | brak |
-| `line` | 153 | 25 | 14 | 10,7 | 153 | brak |
-| `load` | 3 | 0 | 4 | 58,3 | 3 | brak |
-| `lv-apparatus` | 18 | 18 | 15 | 55,9 | 18 | brak |
-| `lv-breaker-mcb` | 60 | 0 | 2 | 0,0 | 60 | brak |
-| `lv-cable` | 17 | 0 | 14 | 78,6 | 17 | brak |
-| `lv-fuse-link` | 30 | 0 | 3 | 33,3 | 30 | brak |
-| `mv-apparatus` | 48 | 45 | 7 | 52,4 | 48 | brak |
-| `protection-curve` | 8 | 0 | 2 | 100,0 | 8 | brak |
-| `protection-device` | 12 | 0 | 6 | 79,2 | 12 | brak |
-| `protection-setting-template` | 8 | 0 | 2 | 100,0 | 8 | brak |
-| `ptpiree-certificate` | 6887 | 6887 | 3 | 100,0 | 6887 | brak |
-| `pv-inverter` | 66 | 0 | 18 | 39,6 | 66 | brak |
-| `shunt-capacitor` | 6 | 0 | 2 | 50,0 | 6 | brak |
-| `source-system` | 22 | 22 | 12 | 75,0 | 22 | brak |
-| `surge-arrester` | 12 | 0 | 3 | 100,0 | 12 | brak |
-| `switch-equipment` | 48 | 45 | 4 | 85,4 | 48 | brak |
-| `synchronous-generator` | 22 | 0 | 1 | 0,0 | 22 | brak |
-| `transformer` | 212 | 50 | 5 | 96,2 | 212 | brak |
-| `vt` | 13 | 0 | 7 | 90,1 | 13 | brak |
+| Rodzina | Pozycji | Produkcyjnych | Pól opcjonalnych w kontrakcie | Wypełnienie pól opcjonalnych [%] | Pozycji z proweniencją | Pola bez ani jednej wartości | Duplikaty id |
+|---|---:|---:|---:|---:|---:|---|---|
+| `bess-battery` | 2 | 0 | 0 | — | 2 | brak | brak |
+| `bess-inverter` | 64 | 0 | 15 | 26,9 | 64 | `k_sc`, `ptpiree_certificate_condition`, `ptpiree_certificate_ref`, `ptpiree_document_acceptance_date`, `ptpiree_document_number`, `ptpiree_ppm_scope`, `ptpiree_publication_date`, `ptpiree_source_url`, `ptpiree_wipwc_version`, `ptpiree_wos_version` | brak |
+| `cable` | 63 | 62 | 18 | 45,7 | 63 | `b0_siemens_per_km`, `ith_1s_a`, `z0_reference_bonding` | brak |
+| `converter` | 176 | 0 | 51 | 20,6 | 176 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `harmonic_spectrum_percent`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
+| `ct` | 12 | 0 | 7 | 60,7 | 12 | `idyn_ka_peak`, `rct_ohm` | brak |
+| `line` | 153 | 25 | 14 | 10,7 | 153 | `b0_siemens_per_km`, `base_type_id`, `ith_1s_a`, `manufacturer`, `trade_name` | brak |
+| `load` | 3 | 0 | 4 | 58,3 | 3 | `profile_id` | brak |
+| `lv-apparatus` | 18 | 18 | 15 | 55,9 | 18 | `curve_ref`, `ics_ka`, `poles`, `trip_unit` | brak |
+| `lv-breaker-mcb` | 60 | 0 | 2 | 0,0 | 60 | `manufacturer`, `poles` | brak |
+| `lv-cable` | 17 | 0 | 14 | 78,6 | 17 | `ith_1s_a`, `r0_ohm_per_km`, `x0_ohm_per_km` | brak |
+| `lv-fuse-link` | 30 | 0 | 3 | 33,3 | 30 | `i2t_prearc_a2s`, `manufacturer` | brak |
+| `mv-apparatus` | 48 | 45 | 7 | 52,4 | 48 | `break_time_s`, `i_dyn_ka`, `making_capacity_ka` | brak |
+| `protection-curve` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
+| `protection-device` | 12 | 0 | 6 | 79,2 | 12 | brak | brak |
+| `protection-setting-template` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
+| `ptpiree-certificate` | 6887 | 6887 | 3 | 100,0 | 6887 | brak | brak |
+| `pv-inverter` | 66 | 0 | 18 | 39,6 | 66 | `k_sc`, `ptpiree_certificate_condition`, `ptpiree_wos_version` | brak |
+| `shunt-capacitor` | 6 | 0 | 2 | 50,0 | 6 | `manufacturer` | brak |
+| `source-system` | 22 | 22 | 12 | 75,0 | 22 | `ik3_min_ka`, `rx_ratio_min`, `sk3_min_mva` | brak |
+| `surge-arrester` | 12 | 0 | 3 | 100,0 | 12 | brak | brak |
+| `switch-equipment` | 48 | 45 | 4 | 85,4 | 48 | brak | brak |
+| `synchronous-generator` | 22 | 0 | 1 | 0,0 | 22 | `manufacturer` | brak |
+| `transformer` | 212 | 50 | 5 | 96,2 | 212 | brak | brak |
+| `vt` | 13 | 0 | 7 | 90,1 | 13 | brak | brak |
 
 Rodzin objętych pomiarem: 24. Pozycji łącznie: 7962, w tym produkcyjnych: 7154. Pozycji z proweniencją strukturalną: 7962.
 

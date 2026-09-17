@@ -372,6 +372,21 @@ function resolveConverterVoltageKv(
     : null;
 }
 
+/**
+ * Znormalizowana lista przekształtników (PV + BESS + wiatr) dla pickerów kreatorów.
+ *
+ * MAPOWANIE MUSI BYĆ PEŁNE (karta KATALOG-NIEZMIENNIKI §5 p.2). Karta S-2 wykryła,
+ * że to mapowanie po cichu gubiło `k_sc` — pole, bez którego wynik zwarciowy opiera
+ * się na domyślce i przestaje być miarodajny dla doboru. Naprawa INSTANCJI (dopisanie
+ * jednego pola) zostawiłaby KLASĘ defektu: pomiar 2026-09-17 pokazał jeszcze dwanaście
+ * pól kontraktu gubionych tą samą drogą (`control_mode`, `grid_code`,
+ * `dynamic_profile_id`, pięć pól PTPiREE i trzy pola statusu katalogu).
+ *
+ * Od teraz KAŻDE pole zadeklarowane w typie `ConverterType`, które rekord backendu
+ * potrafi podać, musi być tu przypisane — pilnuje tego
+ * `scripts/katalog_parytet_pol_guard.py` (pola świadomie nienoszone mają w guardzie
+ * nazwany powód, nie milczenie).
+ */
 export async function fetchConverterTypes(): Promise<ConverterType[]> {
   const [pvTypes, bessTypes, windTypes] = await Promise.all([
     fetchPvInverterTypes(),
@@ -393,13 +408,23 @@ export async function fetchConverterTypes(): Promise<ConverterType[]> {
       cosphi_min: item.cos_phi_min,
       cosphi_max: item.cos_phi_max,
       k_sc: item.k_sc ?? null,
+      control_mode: item.control_mode ?? null,
+      grid_code: item.grid_code ?? null,
+      dynamic_profile_id: item.dynamic_profile_id ?? null,
       // Certyfikat PTPiREE — z rekordu katalogowego (backend annotate_with_ptpiree_status)
       // → materialized_params + ocena zgodności NC RfG. Bez tego link certyfikatu ginął.
       ptpiree_status: item.ptpiree_status,
       ptpiree_certificate_ref: item.ptpiree_certificate_ref ?? null,
       ptpiree_document_number: item.ptpiree_document_number ?? null,
+      ptpiree_document_acceptance_date: item.ptpiree_document_acceptance_date ?? null,
       ptpiree_wos_version: item.ptpiree_wos_version ?? null,
+      ptpiree_wipwc_version: item.ptpiree_wipwc_version ?? null,
+      ptpiree_ppm_scope: item.ptpiree_ppm_scope ?? null,
       ptpiree_source_url: item.ptpiree_source_url ?? null,
+      ptpiree_publication_date: item.ptpiree_publication_date ?? null,
+      verification_status: item.verification_status ?? null,
+      source_reference: item.source_reference ?? null,
+      catalog_status: item.catalog_status ?? null,
     }];
   });
   const bessConverters: ConverterType[] = bessTypes.flatMap((item) => {
@@ -415,11 +440,19 @@ export async function fetchConverterTypes(): Promise<ConverterType[]> {
       pmax_mw: item.p_discharge_kw / 1000,
       e_kwh: item.e_kwh,
       k_sc: item.k_sc ?? null,
+      dynamic_profile_id: item.dynamic_profile_id ?? null,
       ptpiree_status: item.ptpiree_status,
       ptpiree_certificate_ref: item.ptpiree_certificate_ref ?? null,
       ptpiree_document_number: item.ptpiree_document_number ?? null,
+      ptpiree_document_acceptance_date: item.ptpiree_document_acceptance_date ?? null,
       ptpiree_wos_version: item.ptpiree_wos_version ?? null,
+      ptpiree_wipwc_version: item.ptpiree_wipwc_version ?? null,
+      ptpiree_ppm_scope: item.ptpiree_ppm_scope ?? null,
       ptpiree_source_url: item.ptpiree_source_url ?? null,
+      ptpiree_publication_date: item.ptpiree_publication_date ?? null,
+      verification_status: item.verification_status ?? null,
+      source_reference: item.source_reference ?? null,
+      catalog_status: item.catalog_status ?? null,
     }];
   });
 
