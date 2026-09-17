@@ -183,6 +183,14 @@ E2E smoke (`35106698530` / `35106708719`), SLD Determinism (`35106698642` / `351
 (`35106698605` / `35106708643`). Obie klasy z poprzedniego wpisu (nieprzenośność fixtur między runnerami, cztery przyczyny
 czerwieni E2E full) potwierdzone jako naprawione na CI, nie tylko lokalnie. Stan CI po pushu odbioru W5-A/W5-D: kolejny wpis.
 
+**Stan 2026-09-16, szczyt `03fad2b8` (W5-D + W5-A + certyfikat z katalogu + Vite `fs.allow` + klasa benchmarków + evidence;
+push 17:25 UTC): 9/9 workflowów zielonych W OBU zdarzeniach (push i PR)** — Python tests (push `35128131319`, run 5034;
+PR `35128136755`, run 5035), Frontend E2E full (push `35128131290`, run 448; PR `35128136885`, run 449), Frontend checks
+(push `35128131307`, run 3515; PR `35128136761`, run 3516), E2E smoke (`35128131322` / `35128136762`, run 2626),
+SLD Determinism (`35128131305` / `35128136754`, run 3565), Docs (`35128131357` / `35128136782`, run 3660), Arch
+(`35128131298` / `35128136760`, run 3283), P0 Extended (`35128131328` / `35128136796`, run 1730), Physics Label
+(`35128131286` / `35128136787`, run 1729). Stan CI po pushu odbioru HARNESS-RESZTA: kolejny wpis.
+
 ## B. Ochrona gałęzi `main` (§36) — **OWNER ACTION P0**
 
 Pomiar (GitHub API `list_branches`, 2026-09-04): `main` → `protected: false`; łącznie ponad 400 gałęzi (`claude/*`, `codex/*`, `kopia/*`), żadna chroniona. Sesja agenta nie ma uprawnień administracyjnych do włączenia ochrony (brak narzędzia w MCP; wymaga roli admin repozytorium).
@@ -533,6 +541,41 @@ Metoda: `grep -n "@router\." backend/src/api/power_flow_runs.py` (15 tras potwie
   obowiązuje): pytest FULL **15 255 passed / 1 skipped / 30 deselected / 0 failed (879 s)**; pandapower **30 passed (92 s)**;
   `guardy_z_ci.py` **97/97 guardów + lint + npm + 964 self-testów — KOMPLET ZIELONY**; e2e 31 speców **200 passed / 0 failed
   (9,1 min)**. Sygnatury commitów wykonawców przepisane przed pushem (drzewo bit w bit).
+
+- 2026-09-16: **Odbiór HARNESS-RESZTA + naprawa klasy startu warsztatu wyników** (Fable, `fable-f6`; drzewo `b4d1f385` =
+  `03fad2b8` + 11 cherry-picków wykonawcy BEZ zrzutów PNG (`3f992964`…`95bdf910`: eksport fixtur scen stan-fazowy/stabilność,
+  sześciu kolejnych domen i sceny zwarcia-schemat z REALNYCH biegów backendu przez `eksport_fixtur_harnessu.py`, guard zapadki
+  literałów fizyki i ręcznych `run_id` w harnessach wpięty w `frontend-checks.yml`, 9 asercji e2e przepisanych na realne
+  wartości; po drodze zmierzony i naprawiony DEFEKT PRODUKTU: `enm/canonical_analysis.py::_sc_rozplyw_galeziowy` kluczował
+  gałęzie po kluczu słownika zamiast `branch["element_id"]` — nakładka rozpływu zwarciowego była pusta na KAŻDEJ realnej sieci,
+  nie tylko w scenie) + `23478858` (scena `gpzFeeder` harnessu deklaruje układ nN TN-C-S po walidatorze E063 z W5-A; wspólna
+  fixtura SLD `frontend/public/test-fixtures/gpzFeeder.enm.json` NIETKNIĘTA — fixtury 9 scen przeliczone na drzewie scalonym) +
+  `b4d1f385`). Zapadka guarda z pomiaru: `creator-harness-main.tsx` 164 literały fizyki / 49 → **40** ręcznych `run_id`,
+  `screenshot-harness-main.tsx` **0 / 0**. Łańcuch f6e na `23478858` (18:29–19:30 UTC): pytest FULL `-m "not pandapower"`
+  **15 292 passed / 1 skipped / 30 deselected / 0 failed (859 s)**; pandapower **30 passed (92 s)**; `guardy_z_ci.py`
+  **KOMPLET ZIELONY + 979 self-testów**; vitest FULL **891 plików / 12 277 passed / 14 todo**; e2e realny backend (35 speców =
+  lista f6c + `dowody-wyniki-screenshot`, `fk1-czas-wylaczenia-screenshot`, `fk1-linia-napowietrzna-screenshot`,
+  `zwarcia-rozplyw-screenshot`; 2 workery): **221 passed / 1 failed** — `pasma-rozplywu-jakosc` (ten sam objaw co flaky run CI
+  444: zakładka „Jakość wyników" niewidoczna po kliknięciu obszaru). Przyczyna ZMIERZONA, nie zgadnięta: spec w izolacji
+  **4/4 zielony przy `--repeat-each=4` z trace**, czerwony wyłącznie pod obciążeniem — warsztat wyników renderował obszar
+  „Ocena i przegląd" PRZED hydratacją rejestru przebiegów (K2), pomocnik `nawigacjaWynikow.ts` czytał `aria-selected` tego
+  stanu przejściowego, pomijał klik obszaru, a efekt K3-A4 po hydratacji przełączał obszar na „Rozpływ mocy i napięcia" i
+  zabierał zakładkę spod kursora. Dla użytkownika ten sam defekt = fałszywa zakładka startowa i przeskok obszaru. Naprawa
+  u źródła (`b4d1f385`, klasa nie instancja): zakładka startowa jest POCHODNĄ rodzaju aktywnego przebiegu liczoną PRZY
+  RENDERZE (nie efektem — zero klatki z poprzednią zakładką), `useWpiecieWynikow` zwraca `rejestrZsynchronizowany` (rejestr
+  wczytany dla AKTYWNEGO zakresu obliczeń i `isLoadingRuns === false`; brak zakresu = stan ustalony), start nieustalony
+  (aktywny przebieg × rodzaj `null` × rejestr niezsynchronizowany × brak wyboru ręcznego) renderuje uczciwy stan przejściowy
+  „Wczytywanie rejestru przebiegów…" z przyciskiem „Wczytaj ponownie" (wymuszona hydratacja K2 — wyjście ze stanu po
+  nieudanej hydratacji, bo K2 sama ponawia dopiero po przejściu backendu przez stan błędu), harness kreatorów zasiewa rejestr
+  przebiegów RAZEM z aktywnym zakresem (para jak po hydratacji). Testy jako iloczyn cech {zakres: brak, jest} × {rejestr:
+  cudzy zakres, wczytywanie, zsynchronizowany} × {wybór ręczny: brak, jest} × {aktywny przebieg: brak, jest}: **+8** w
+  `wynikiWarsztat.test.tsx`, **+7** w `useWpiecieWynikow.test.ts`. Łańcuch f6f na `b4d1f385` (19:51–21:05 UTC; `backend/`,
+  `scripts/`, `frontend/public/test-fixtures` i `.github` bit w bit jak `23478858` — hashe poddrzew `c880ff4c` / `ac66574c` /
+  `50a032c5` / `58fd1d1a`, więc pytest 15 292 i pandapower 30 z f6e obowiązują): `guardy_z_ci.py` **KOMPLET ZIELONY + 979
+  self-testów (299 s)**; vitest FULL **891 plików / 12 292 passed / 14 todo (2824 s)**; e2e 35 speców **222 passed / 0 failed
+  (14,0 min)**. Pozostałe domeny scen z literałami (koordynacja, dobór przekładników, porównania A/B, SSCI, zgodność
+  powykonawcza, estymacja WLS, składowe 1F, zbieżność, OLTC, pulpit, analizy specjalistyczne, FRT, praca wyspowa, kreator
+  budowy sieci) — karta HARNESS-RESZTA-2 z celem zapadki 0/0.
 
 ## G. Ustalenia adwersaryjne (§38) — po każdej granicy
 
