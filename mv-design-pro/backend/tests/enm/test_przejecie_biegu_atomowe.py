@@ -16,16 +16,19 @@ RÓWNOCZESNE wejście wielu wątków w to samo okno — dlatego bariera startowa
 (`threading.Barrier`) i realne wątki, nie `dispatch` po kolei.
 
 REGUŁA KLASA, NIE INSTANCJA. Testujemy iloczyn cech, nie przykład: przejęcie ×
-{poziom repozytorium, poziom `execute_run`} oraz × {stan startowy PENDING,
-RUNNING, FINISHED, FAILED} — żeby predykat wejścia (`claim_for_execution`) i
-predykat wyjścia (stany, którymi kończy `execute_run`) pozostały JEDNYM źródłem
-prawdy (`_STANY_NIEPRZEJMOWALNE`).
+{poziom repozytorium, poziom `execute_run`} × {stan startowy CREATED, RUNNING,
+FINISHED, FAILED} × {dialekt SQLite, dialekt PRODUKCYJNY PostgreSQL} — żeby
+predykat wejścia (`claim_for_execution`) i predykat wyjścia (stany, którymi kończy
+`execute_run`) pozostały JEDNYM źródłem prawdy (`_STANY_NIEPRZEJMOWALNE`), i to na
+silniku, na którym produkt naprawdę stoi. Stanem startowym jest CREATED, nie
+PENDING: `PENDING` to wyłącznie render HTTP stanu CREATED (patrz `_bieg` niżej) —
+poprzednia wersja tego akapitu wymieniała stan, którego domena NIE ZNA.
 """
 
 from __future__ import annotations
 
-import os
 import threading
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
@@ -48,9 +51,25 @@ from infrastructure.persistence.repositories.canonical_run_repository import (  
 LICZBA_WATKOW = 8
 
 
-@pytest.fixture(autouse=True)
-def _baza_plikowa(tmp_path, monkeypatch):
-    """Baza PLIKOWA zamiast domyślnej `mode=memory&cache=shared` z `conftest`.
+@pytest.fixture(params=("sqlite", "postgresql"))
+def baza_biegow(request, tmp_path, monkeypatch) -> Iterator[str]:
+    """Baza biegów na WSKAZANYM dialekcie — ten sam wyścig, dwa silniki.
+
+    DLACZEGO DIALEKT JEST PARAMETREM (karta PG-DIALEKT, reguła KLASA NIE INSTANCJA).
+    Przedmiotem pomiaru jest SEMANTYKA TRANSAKCJI: `UPDATE ... WHERE status NOT IN
+    (...)` z odczytem `rowcount`, zamiatanie osieroconych wierszy i nietykalność
+    wiersza przegranego wyścigu. Wzorzec jest poprawny w obu silnikach, ale
+    poprawność rozumowania to nie to samo co wykonany dowód: produkt stoi na
+    PostgreSQL (`docker-compose.yml`, `postgresql+psycopg://`, DT-13), a dowód
+    istniał wyłącznie na SQLite. Test parametryzowany dialektem sprawdza iloczyn
+    cech „niezmiennik × silnik", a nie jeden przykład.
+
+    Dialekt `postgresql` bierze adres z fikstury `postgres_url` (`tests/conftest.py`):
+    zmienna `MV_TEST_POSTGRES_URL` albo klaster efemeryczny podniesiony z binariów
+    systemowych; bez jednego i drugiego — skip nazywający BRAK BINARIÓW, nigdy cicha
+    zieleń. Fikstura jest pobierana LENIWIE, więc wariant SQLite nie podnosi serwera.
+
+    Baza SQLite jest PLIKOWA zamiast domyślnej `mode=memory&cache=shared` z `conftest`.
 
     SQLite w trybie shared-cache zgłasza `SQLITE_LOCKED` („database table is
     locked") przy równoczesnym dostępie dwóch połączeń do tej samej TABELI, a
@@ -63,7 +82,11 @@ def _baza_plikowa(tmp_path, monkeypatch):
     CZEKA. Mierzymy więc kształt, który faktycznie jest wdrażany.
     Fikstura `conftest` jawnie dopuszcza nadpisanie `DATABASE_URL` przez test.
     """
-    monkeypatch.setenv("DATABASE_URL", f"sqlite+pysqlite:///{tmp_path / 'przejecie.db'}")
+    if request.param == "sqlite":
+        adres = f"sqlite+pysqlite:///{tmp_path / 'przejecie.db'}"
+    else:
+        adres = request.getfixturevalue("postgres_url")
+    monkeypatch.setenv("DATABASE_URL", adres)
     from infrastructure.persistence.repositories import canonical_run_repository as repo
 
     def wyczysc_cache() -> None:
@@ -74,7 +97,7 @@ def _baza_plikowa(tmp_path, monkeypatch):
         repo._cached_database_url = None
 
     wyczysc_cache()
-    yield
+    yield adres
     wyczysc_cache()
 
 
@@ -133,7 +156,7 @@ def _rownolegle(zadanie, liczba: int = LICZBA_WATKOW) -> list:
     return wyniki
 
 
-def test_przejecie_wygrywa_dokladnie_jeden_watek() -> None:
+def test_przejecie_wygrywa_dokladnie_jeden_watek(baza_biegow: str) -> None:
     """Poziom repozytorium: `claim_for_execution` jest atomowe."""
     run = _bieg()
 
@@ -152,7 +175,9 @@ def test_przejecie_wygrywa_dokladnie_jeden_watek() -> None:
 
 
 @pytest.mark.parametrize("stan_startowy", sorted(_STANY_NIEPRZEJMOWALNE))
-def test_biegu_w_stanie_nieprzejmowalnym_nie_da_sie_przejac(stan_startowy: str) -> None:
+def test_biegu_w_stanie_nieprzejmowalnym_nie_da_sie_przejac(
+    stan_startowy: str, baza_biegow: str
+) -> None:
     """Predykat wejścia pokrywa KAŻDY stan blokujący — nie tylko terminalne."""
     run = _bieg(status=stan_startowy)
 
@@ -167,7 +192,7 @@ def test_biegu_w_stanie_nieprzejmowalnym_nie_da_sie_przejac(stan_startowy: str) 
 
 @pytest.mark.parametrize("stan_startowy", ["CREATED"])
 def test_execute_run_liczy_analize_dokladnie_raz(
-    stan_startowy: str, monkeypatch: pytest.MonkeyPatch
+    stan_startowy: str, baza_biegow: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Poziom `execute_run`: równoległe wywołania liczą solver DOKŁADNIE RAZ.
 
@@ -197,7 +222,9 @@ def test_execute_run_liczy_analize_dokladnie_raz(
     assert zapisany.status == "FINISHED"
 
 
-def test_execute_run_nie_powtarza_biegu_zakonczonego(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_execute_run_nie_powtarza_biegu_zakonczonego(
+    baza_biegow: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Bieg terminalny nie jest liczony ponownie (zachowanie sprzed naprawy — pin)."""
     run = _bieg(status="FINISHED")
     wejscia = 0
@@ -214,7 +241,7 @@ def test_execute_run_nie_powtarza_biegu_zakonczonego(monkeypatch: pytest.MonkeyP
     assert wynik.status == "FINISHED"
 
 
-def test_osierocony_bieg_w_running_jest_zamykany_przy_starcie() -> None:
+def test_osierocony_bieg_w_running_jest_zamykany_przy_starcie(baza_biegow: str) -> None:
     """Bieg przerwany restartem procesu MA sciezke wyjscia z RUNNING.
 
     Atomowe przejecie slusznie blokuje ponowne uruchomienie biegu w RUNNING —
@@ -243,6 +270,7 @@ def test_osierocony_bieg_w_running_jest_zamykany_przy_starcie() -> None:
 
 
 def test_bieg_odzyskany_po_zamiataniu_da_sie_uruchomic_ponownie(
+    baza_biegow: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Zamkniecie osieroconego biegu przywraca mozliwosc policzenia go od nowa.
@@ -302,6 +330,7 @@ def test_stany_konczace_sa_nieprzejmowalne() -> None:
 
 
 def test_przegrany_dostaje_stan_biezacy_i_nie_dotyka_wiersza(
+    baza_biegow: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Przegrany wyscig NIE liczy, NIE psuje wiersza i oddaje UCZCIWY stan RUNNING.
@@ -452,18 +481,30 @@ def test_kazdy_status_domenowy_ma_odwzorowanie_http() -> None:
 # --------------------------------------------------------------------------
 # `docker-compose.yml` uruchamia backend na `postgresql+psycopg://` (DT-13:
 # „Postgres docelowo, SQLite dev/test"), a `conftest.py` wymusza SQLite — wiec
-# bez tego testu atomowosc przejecia bylaby sprawdzana WYLACZNIE na dialekcie,
-# ktory nie jest produkcyjny. Test wlacza sie, gdy wskazesz baze zmienna
-# `MV_TEST_POSTGRES_URL`, np.:
-#   MV_TEST_POSTGRES_URL=postgresql+psycopg://postgres@127.0.0.1:5432/mvtest
-# Bez niej jest pomijany (a NIE cicho zielony).
-POSTGRES_URL = os.environ.get("MV_TEST_POSTGRES_URL")
+# bez dowodu na tym dialekcie atomowosc przejecia bylaby sprawdzana WYLACZNIE na
+# silniku, ktory nie jest produkcyjny.
+#
+# ZRODLO BAZY: fikstura `postgres_url` (`tests/conftest.py`) — `MV_TEST_POSTGRES_URL`
+# z otoczenia albo klaster efemeryczny podniesiony z binariow systemowych. Modulowy
+# `skipif` na `os.environ` zniknal razem z warunkiem, ktory praktycznie nigdy nie byl
+# spelniony lokalnie: decyzje o pominieciu podejmuje WYLACZNIE fikstura i tylko wtedy,
+# gdy w systemie NIE MA binariow PostgreSQL.
+#
+# TEN test stoi obok wariantow `[postgresql]` wyzej celowo: jest NAJSZERSZYM wyscigiem
+# na dialekcie produkcyjnym (`_LICZBA_WATKOW_POSTGRES` = 12 watkow — dokladnie tyle, ile
+# liczy zmierzony w docstringu dowod sprzed/po naprawie), a warianty parametryzowane
+# pokrywaja KLASE niezmiennikow (predykat przejecia, zamiatanie, nietykalnosc wiersza)
+# przy standardowej liczbie watkow.
+
+#: Liczba watkow najszerszego wyscigu na dialekcie produkcyjnym (pomiar w docstringu
+#: `test_przejecie_jest_atomowe_takze_na_postgresie`). Osobna stala, bo `LICZBA_WATKOW`
+#: obsluguje zestaw parametryzowany i zmiana jednej nie moze cicho zmieniac drugiej.
+_LICZBA_WATKOW_POSTGRES = 12
 
 
-@pytest.mark.skipif(
-    not POSTGRES_URL, reason="brak MV_TEST_POSTGRES_URL — dialekt produkcyjny niesprawdzany"
-)
-def test_przejecie_jest_atomowe_takze_na_postgresie(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_przejecie_jest_atomowe_takze_na_postgresie(
+    postgres_url: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Ten sam niezmiennik, ten sam wyscig, dialekt produkcyjny.
 
     Wzorzec `UPDATE ... WHERE status NOT IN (...)` + `rowcount` jest poprawny w
@@ -473,7 +514,7 @@ def test_przejecie_jest_atomowe_takze_na_postgresie(monkeypatch: pytest.MonkeyPa
     """
     from infrastructure.persistence.repositories import canonical_run_repository as repo
 
-    monkeypatch.setenv("DATABASE_URL", POSTGRES_URL)
+    monkeypatch.setenv("DATABASE_URL", postgres_url)
     repo._cached_engine = None
     repo._cached_session_factory = None
     repo._cached_database_url = None
@@ -490,8 +531,9 @@ def test_przejecie_jest_atomowe_takze_na_postgresie(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(ca, "_wykonaj_analize_biegu", sonda)
 
-    _rownolegle(lambda: execute_run(run.id))
+    wyniki = _rownolegle(lambda: execute_run(run.id), liczba=_LICZBA_WATKOW_POSTGRES)
 
+    assert len(wyniki) == _LICZBA_WATKOW_POSTGRES
     assert wejscia == 1, f"na Postgresie analiza policzona {wejscia} razy zamiast 1"
     zapisany = get_run(run.id)
     assert zapisany is not None
