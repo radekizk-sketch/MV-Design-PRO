@@ -126,6 +126,18 @@ jobs:
       - name: Catalog Gate Guard
         working-directory: mv-design-pro
         run: python scripts/catalog_gate_guard.py
+      # Karta KATALOG-NIEZMIENNIKI (2026-09-17): kazda twarda bramka rekordu
+      # katalogu przechodzi przez `odmowa_twarda(kod, ...)` z kodem z rejestru
+      # `niezmienniki_katalogu.py`; guard AST pilnuje klasy, nie instancji.
+      - name: Niezmienniki Katalogu Guard
+        working-directory: mv-design-pro
+        run: python scripts/niezmienniki_katalogu_guard.py
+      # Tabela gotowosci katalogow jest GENEROWANA z rejestrow repozytorium —
+      # guard pilnuje, zeby dokument nie odjechal od pomiaru (wola miernik,
+      # ktory importuje repozytorium, wiec potrzebuje venv backendu).
+      - name: Inwentarz Katalogow Guard
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/inwentarz_katalogow_guard.py
       - name: Transformer Catalog Voltage Guard
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/transformer_catalog_voltage_guard.py
@@ -193,6 +205,14 @@ jobs:
           # (laczenie sciezek w jednym wywolaniu psuje wykrywanie tak samo).
           poetry run black --check --config pyproject.toml ../scripts
           poetry run ruff check ../scripts
+          # Karta KATALOG-NIEZMIENNIKI (2026-09-17): `backend/scripts/` bylo POZA
+          # zapadka formatu i lintu — ta sama choroba, ktora V12K-301 zamknal dla
+          # `mv-design-pro/scripts/`. Pomiar w chwili wpiecia: 11 plikow bez zmian
+          # formatu, jedna uwaga ruffa (martwy `import json` w
+          # `emit_sld_network_fixture.py`) zamknieta u zrodla. Zapadka wchodzi
+          # zielona, nie jako dlug do splacenia.
+          poetry run black --check --config pyproject.toml scripts
+          poetry run ruff check scripts
 
   # Decyzja Fable (opcja 2, po meldunku bramki §0 karty PANDAPOWER-DEP): walidacja
   # krzyzowa nasz solver vs pandapower biegnie w IZOLOWANYM srodowisku, ROWNOLEGLE

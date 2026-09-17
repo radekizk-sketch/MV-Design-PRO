@@ -131,3 +131,160 @@ ARCHIWUM-CANONICAL-COMPLIANCE-2):
   `enm/domain_operations.py::assign_catalog_to_element`; pin:
   `tests/enm/test_catalog_materialization_persistence.py::test_reject_clear_catalog_for_physical_branch`,
   `tests/enm/test_domain_operations_flexible_sequences.py::test_sequence_reject_clear_and_reassign_catalog_keeps_snapshot_contract_valid`.
+
+## Zalacznik: Moc regul katalogu (klasy) i przeglad wiarygodnosci
+
+Karta KATALOG-NIEZMIENNIKI (2026-09-17). Katalog mial 33 twarde bramki rekordu
+rozsiane po pieciu modulach (`types.py` 22, `audit2_catalogs.py` 7,
+`lv_disconnection_times_iec60364_4_41.py` 2, `lv_ampacity_iec60364_5_52.py` 2) i
+ZADNA nie mowila, na czym stoi. Regula, ktora dzis przechodzi na wszystkich
+rekordach, nie jest przez to prawem fizyki: odrzucilaby pierwszy poprawny rekord
+spoza dotychczasowego zbioru. Zrodlo prawdy o mocy regul:
+`backend/src/network_model/catalog/niezmienniki_katalogu.py`.
+
+### Szesc klas mocy
+
+| Klasa | Znaczenie | Moc |
+|---|---|---|
+| `KONIECZNOSC_FIZYCZNA` | Zlamanie opisuje wielkosc, ktora nie moze istniec (moc ujemna, zbior pusty). | TWARDA |
+| `WYMOG_NORMOWY` | Relacja ZDEFINIOWANA w normie; `podstawa` nazywa norme i jej miejsce. | TWARDA |
+| `OGRANICZENIE_ZAKRESU_PRODUKTU` | Granica dziedziny produktu, nie fizyki. | TWARDA |
+| `NIESKLASYFIKOWANA` | Bramka egzekwowana twardo, ale BEZ decyzji o podstawie — rozdziela moc od twierdzenia. | TWARDA |
+| `WIARYGODNOSC` | Relacja typowa, nie konieczna — sygnal „do przegladu". | MIEKKA |
+| `REGULA_ZA_MOCNA` | Klasa HISTORYCZNA: regula zdegradowana, z obowiazkowa `klasa_docelowa`. | MIEKKA |
+
+Zbior klas twardych jest wymieniony JAWNIE (`KLASY_TWARDE`), a nie liczony jako
+dopelnienie — dopelnienie wciagneloby kazda nowa klase na strone „odmawiaj".
+
+### Egzekwowanie wyprowadzone z rejestru
+
+Kazda twarda bramka rekordu katalogu przechodzi przez
+`odmowa_twarda(kod, komunikat)`, ktora sprawdza, ze kod ISTNIEJE w rejestrze
+`REGULY_KATALOGU` i ma klase twarda; odmowa (`OdmowaKatalogu`, podklasa
+`ValueError`) niesie `.kod`. Zdanie „kazda twarda regula katalogu jest nazwana"
+ma dwa mechanizmy, nie deklaracje:
+
+- `scripts/niezmienniki_katalogu_guard.py` (AST): zero `raise ValueError` w
+  `types.py` i zero w funkcjach walidacji rekordu (`__post_init__`, `from_dict`,
+  `validate_*`, `_validate_*`) w calym `network_model/catalog/**`; kazdy literal
+  kodu w `odmowa_twarda` musi istniec w rejestrze i byc twardy. Jedyne
+  wylaczenie: modul definiujacy `odmowa_twarda`.
+- `tests/network_model/catalog/test_niezmienniki_obie_strony.py`: KAZDY kod
+  twardy ma PARE przypadkow — rekord jawnie niepoprawny odrzucany z wlasciwym
+  kodem ORAZ rekord nietypowy, lecz legalny, ktory przechodzi. Zbior kodow w
+  testach musi byc rowny zbiorowi kodow twardych rejestru.
+
+Kody: `KAT-T-001` … `KAT-T-033` (twarde), `KAT-W-001` … `KAT-W-006`
+(wiarygodnosc). Nazwe reguly wolno przeredagowac, kodu nie.
+
+### Reguly wiarygodnosci — dlaczego NIE sa bramkami
+
+| Kod | Regula | Dlaczego nie twarda |
+|---|---|---|
+| `KAT-W-001` | R0 >= R1 przewodu | R0 zalezy od konstrukcji zyly powrotnej i drogi powrotu przez ziemie — nierownosc nie jest uniwersalna. |
+| `KAT-W-002` | P0 < Pk transformatora | Typowe dla transformatorow rozdzielczych, nie koniecznosc matematyczna; odwrocenie pary zwykle znaczy zamienione kolumny przy imporcie. |
+| `KAT-W-003` | Icw <= Icu aparatu SN | Icw i Icu to ODDZIELNE wielkosci znamionowe (IEC 62271-100); globalna nierownosc po rodzinie nie ma podstawy normowej. |
+| `KAT-W-004` | Icw <= Icu aparatu nN | IEC 60947-2 definiuje Ics jako % Icu (§ 4.3.5.2.2), ale dla Icw takiej definicji NIE MA (§ 4.3.5.4). |
+| `KAT-W-005` | 0 < R/X < 1 zrodla | Rownowaznik rezystancyjny moze miec R/X >= 1; to granica zakresu, nie fizyki. |
+| `KAT-W-006` | 0 < i0 % < 10 transformatora | Zakres rozsadny dla rozdzielczych, nie uniwersalny; gorna granica byla kontrola jednostki. |
+
+POMIAR NA TYM DRZEWIE (2026-09-17): zadna z tych szesciu relacji NIE BYLA u nas
+twarda bramka, wiec nie bylo defektu falszywego odrzucania do naprawienia.
+Wartosc karty to (a) nazwanie mocy istniejacych 33 bramek i (b) przeglad
+wiarygodnosci jako zdolnosc produktu.
+
+### Przeglad wiarygodnosci jako zdolnosc produktu
+
+`GET /api/catalog/przeglad-wiarygodnosci` i
+`GET /api/catalog/przeglad-wiarygodnosci/{rodzina}` licza odstepstwa dla KAZDEJ
+rodziny, w ktorej regula ma sens (aparaty nN, aparaty SN, transformatory, linie
+SN, kable SN, kable nN, zrodla systemowe). Rodziny, w ktorych zadna regula sensu
+nie ma, sa wymienione OSOBNO z powodem (`RODZINY_BEZ_REGUL`) — rodzina pominieta
+milczeniem bylaby nierozroznialna od przeoczonej.
+
+Wynik niesie POKRYCIE per regula: ile pozycji faktycznie policzono i ile
+pominieto, z nazwanym powodem. Bez tego licznika „zero odstepstw" jest
+nierozroznialne od „reguly nie dalo sie policzyc".
+
+ZAKRES REGUL Z POMIARU, NIE Z PRZYKLADU. `KAT-W-003`/`KAT-W-004` licza sie
+wylacznie dla aparatu o DODATNIEJ zdolnosci wylaczania: 13 pozycji SN
+(odlaczniki, rozlaczniki, uziemniki) ma `breaking_capacity_ka = 0`, bo z
+definicji nie przerywaja pradu zwarciowego — zestawianie ich pradu
+krotkotrwalego ze zdolnoscia, ktorej nie maja, dawaloby 13 pozycji szumu.
+
+Ekran: sekcja „Pozycje do przegladu” w przegladarce biblioteki typow
+(`frontend/src/ui/catalog/PozycjeDoPrzegladu.tsx`) — kod reguly, identyfikator
+pozycji, wartosci, uzasadnienie z backendu i zdanie wprost: sygnal do przegladu
+karty producenta, nie odmowa. Zero fizyki we froncie.
+
+## Zalacznik: Gotowosc katalogow — POMIAR, nie deklaracja
+
+Karta KATALOG-NIEZMIENNIKI (2026-09-17). Zdanie „katalog jest gotowy" bylo dotad
+ETYKIETA wpisana do rekordu (`catalog_status = PRODUKCYJNY_V1`) i nikt nie liczyl,
+ile pol kontraktu ten rekord faktycznie niesie ani skad pochodza jego dane.
+Etykieta bez pomiaru jest grozniejsza niz jej brak, bo wylacza czujnosc: pozycja
+oznaczona jako produkcyjna, ktorej brakuje polowy pol opcjonalnych, wyglada tak
+samo jak kompletna.
+
+Tabela nizej jest GENEROWANA z rejestrow repozytorium katalogu
+(`backend/scripts/inwentarz_katalogow.py`, rejestry SUROWE — razem z rekordami
+benchmarkow, ktore listy widoczne dla projektanta pomijaja). Co mierzy kolumna:
+
+- **Pozycji / Produkcyjnych** — liczebnosc rodziny i liczba rekordow o statusie
+  `PRODUKCYJNY_V1`.
+- **Pol opcjonalnych w kontrakcie** — pola dataclass, ktore MOGA byc puste
+  (metadane katalogu wylaczone). Pole bez wartosci domyslnej jest wypelnione w
+  100 % z definicji konstruktora i niczego nie mierzy.
+- **Wypelnienie pol opcjonalnych** — udzial pol niepustych wsrod wszystkich
+  mozliwych (pozycje x pola opcjonalne). Liczba NIE jest ocena: rodzina moze
+  legalnie nie niesc pol, ktorych producent nie podaje.
+- **Pozycji z proweniencja** — proweniencja STRUKTURALNA: niepuste
+  `source_reference` albo pole dokumentu obecne w kontrakcie rodziny (numer
+  dokumentu, adres zrodla, data publikacji, norma, numer katalogowy). Nigdy po
+  regexie w tresci: regex przypisalby proweniencje zdaniu w opisie.
+- **Duplikaty id** — wiazanie katalogowe wskazujace na dwie pozycje jest defektem,
+  nie niuansem.
+
+Miernik NIE wprowadza etykiety „gotowy/niegotowy" ani progu — podaje liczby,
+decyzje podejmuje czlowiek.
+
+<!-- GENEROWANE: gotowosc katalogow — poczatek -->
+
+> Tabela jest GENEROWANA z rejestrów repozytorium katalogu przez
+> `backend/scripts/inwentarz_katalogow.py`. Nie edytuj jej ręcznie —
+> aktualności pilnuje `scripts/inwentarz_katalogow_guard.py`.
+
+| Rodzina | Pozycji | Produkcyjnych | Pól opcjonalnych w kontrakcie | Wypełnienie pól opcjonalnych [%] | Pozycji z proweniencją | Duplikaty id |
+|---|---:|---:|---:|---:|---:|---|
+| `bess-battery` | 2 | 0 | 0 | — | 2 | brak |
+| `bess-inverter` | 64 | 0 | 15 | 26,9 | 64 | brak |
+| `cable` | 63 | 62 | 18 | 45,7 | 63 | brak |
+| `converter` | 176 | 0 | 51 | 20,6 | 176 | brak |
+| `ct` | 12 | 0 | 7 | 60,7 | 12 | brak |
+| `line` | 153 | 25 | 14 | 10,7 | 153 | brak |
+| `load` | 3 | 0 | 4 | 58,3 | 3 | brak |
+| `lv-apparatus` | 18 | 18 | 15 | 55,9 | 18 | brak |
+| `lv-breaker-mcb` | 60 | 0 | 2 | 0,0 | 60 | brak |
+| `lv-cable` | 17 | 0 | 14 | 78,6 | 17 | brak |
+| `lv-fuse-link` | 30 | 0 | 3 | 33,3 | 30 | brak |
+| `mv-apparatus` | 48 | 45 | 7 | 52,4 | 48 | brak |
+| `protection-curve` | 8 | 0 | 2 | 100,0 | 8 | brak |
+| `protection-device` | 12 | 0 | 6 | 79,2 | 12 | brak |
+| `protection-setting-template` | 8 | 0 | 2 | 100,0 | 8 | brak |
+| `ptpiree-certificate` | 6887 | 6887 | 3 | 100,0 | 6887 | brak |
+| `pv-inverter` | 66 | 0 | 18 | 39,6 | 66 | brak |
+| `shunt-capacitor` | 6 | 0 | 2 | 50,0 | 6 | brak |
+| `source-system` | 22 | 22 | 12 | 75,0 | 22 | brak |
+| `surge-arrester` | 12 | 0 | 3 | 100,0 | 12 | brak |
+| `switch-equipment` | 48 | 45 | 4 | 85,4 | 48 | brak |
+| `synchronous-generator` | 22 | 0 | 1 | 0,0 | 22 | brak |
+| `transformer` | 212 | 50 | 5 | 96,2 | 212 | brak |
+| `vt` | 13 | 0 | 7 | 90,1 | 13 | brak |
+
+Rodzin objętych pomiarem: 24. Pozycji łącznie: 7962, w tym produkcyjnych: 7154. Pozycji z proweniencją strukturalną: 7962.
+
+Rodziny bez ani jednej pozycji: brak.
+
+Rodziny z duplikatami identyfikatorów: brak.
+
+<!-- GENEROWANE: gotowosc katalogow — koniec -->

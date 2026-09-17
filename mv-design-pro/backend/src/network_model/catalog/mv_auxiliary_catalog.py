@@ -594,8 +594,33 @@ _MCCB_TRIP_SETTINGS_SOURCE_PL = (
 )
 
 
+#: Proweniencja czterech wylacznikow glownych nN dopisanych z WYCIAGU katalogu
+#: technicznego ABB SACE Emax 2 (karta KATALOG-NIEZMIENNIKI). Wyciag jest
+#: przypiety odciskiem SHA-256 dokumentu i lezy w
+#: `docs/katalog/zrodla/abb_emax2_1SDC200023D0205.json`; PDF producenta NIE
+#: wchodzi do repozytorium (materiał producenta, 10,5 MB) — odtwarza sie go z
+#: adresu i odcisku, a `scripts/import_katalog_abb_emax2.py --sprawdz` porownuje
+#: wyciag z dokumentem.
+#:
+#: ZASTRZEZENIE, KTORE MUSI BYC POWIEDZIANE WPROST: kontrola krzyzowa importera
+#: zestawia DWA ROZNE miejsca TEGO SAMEGO dokumentu (tabele zamowieniowe wierszowe
+#: wobec tabeli zbiorczej str. 2/3). Wyklucza to blad ekstrakcji ukladu tabeli, ale
+#: NIE JEST weryfikacja wobec producenta — nikt nie potwierdzil tych wartosci u ABB.
+#: Dlatego status weryfikacji tych czterech pozycji to CZESCIOWO_ZWERYFIKOWANY, a
+#: nie ZWERYFIKOWANY.
+_EMAX2_WYCIAG_ZASTRZEZENIE_PL = (
+    "Dane znamionowe (Iu, Icu@440V, Icw 1s, kody zamowieniowe) z wyciagu katalogu "
+    "technicznego ABB SACE Emax 2 nr 1SDC200023D0205 (edycja 2017.01), wyciag "
+    "przypiety odciskiem SHA-256 dokumentu "
+    "4502f57f72a92209798e1792b415709d4ba8f40993c1bfb054d824f689582612. Kontrola "
+    "krzyzowa importera zestawia tabele zamowieniowe z tabela zbiorcza str. 2/3 TEGO "
+    "SAMEGO dokumentu — wyklucza blad ekstrakcji ukladu tabeli, NIE jest weryfikacja "
+    "wobec producenta. "
+) + _MCCB_TRIP_SETTINGS_SOURCE_PL
+
+
 def get_all_lv_apparatus_types() -> list[dict]:
-    """Zwraca aparature laczeniowa nN — 14 rekordow.
+    """Zwraca aparature laczeniowa nN — 18 rekordow.
 
     Zrodla:
     - WYLACZNIK_GLOWNY (ABB SACE Emax2, 630-1600 A): ABB SACE Emax2 katalog
@@ -782,6 +807,123 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "tr_range": _MCCB_TR_RANGE_S,
                 "tsd_range": _MCCB_TSD_RANGE_S,
                 "verification_note": _MCCB_TRIP_SETTINGS_SOURCE_PL,
+            },
+        },
+        # --- WYLACZNIK_GLOWNY: ABB SACE Emax 2, ramy E2.2N i E4.2N ---------
+        # Karta KATALOG-NIEZMIENNIKI: rodzina wylacznikow glownych konczyla sie
+        # na 1600 A, a strona dolna transformatora 2,5 MVA / 0,4 kV wymaga ~3608 A.
+        # Cztery pozycje z WYCIAGU dokumentu producenta (patrz
+        # `_EMAX2_WYCIAG_ZASTRZEZENIE_PL` wyzej) — nie z pamieci.
+        {
+            "id": "cb_nn_2000a",
+            "name": "Wylacznik glowny nN 2000 A",
+            "params": {
+                "device_kind": "WYLACZNIK_GLOWNY",
+                "u_n_kv": 0.4,
+                "i_n_a": 2000.0,
+                "breaking_capacity_ka": 66.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 66.0,
+                "icw_ka": 66.0,
+                "manufacturer": "ABB",
+                "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+                "catalog_status": "PRODUKCYJNY_V1",
+                "source_reference": (
+                    "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
+                    "tabela zamowieniowa str. 252, 266 — rama E2.2N, Iu=2000 A, "
+                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamowieniowe 1SDA071031R1 / 1SDA072381R1"
+                ),
+                "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _EMAX2_WYCIAG_ZASTRZEZENIE_PL,
+            },
+        },
+        {
+            "id": "cb_nn_2500a",
+            "name": "Wylacznik glowny nN 2500 A",
+            "params": {
+                "device_kind": "WYLACZNIK_GLOWNY",
+                "u_n_kv": 0.4,
+                "i_n_a": 2500.0,
+                "breaking_capacity_ka": 66.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 66.0,
+                "icw_ka": 66.0,
+                "manufacturer": "ABB",
+                "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+                "catalog_status": "PRODUKCYJNY_V1",
+                "source_reference": (
+                    "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
+                    "tabela zamowieniowa str. 252, 266 — rama E2.2N, Iu=2500 A, "
+                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamowieniowe 1SDA071061R1 / 1SDA072411R1"
+                ),
+                "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _EMAX2_WYCIAG_ZASTRZEZENIE_PL,
+            },
+        },
+        {
+            "id": "cb_nn_3200a",
+            "name": "Wylacznik glowny nN 3200 A",
+            "params": {
+                "device_kind": "WYLACZNIK_GLOWNY",
+                "u_n_kv": 0.4,
+                "i_n_a": 3200.0,
+                "breaking_capacity_ka": 66.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 66.0,
+                "icw_ka": 66.0,
+                "manufacturer": "ABB",
+                "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+                "catalog_status": "PRODUKCYJNY_V1",
+                "source_reference": (
+                    "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
+                    "tabela zamowieniowa str. 256, 270 — rama E4.2N, Iu=3200 A, "
+                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamowieniowe 1SDA071141R1 / 1SDA072491R1"
+                ),
+                "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _EMAX2_WYCIAG_ZASTRZEZENIE_PL,
+            },
+        },
+        {
+            "id": "cb_nn_4000a",
+            "name": "Wylacznik glowny nN 4000 A",
+            "params": {
+                "device_kind": "WYLACZNIK_GLOWNY",
+                "u_n_kv": 0.4,
+                "i_n_a": 4000.0,
+                "breaking_capacity_ka": 66.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 66.0,
+                "icw_ka": 66.0,
+                "manufacturer": "ABB",
+                "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+                "catalog_status": "PRODUKCYJNY_V1",
+                "source_reference": (
+                    "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
+                    "tabela zamowieniowa str. 256, 270 — rama E4.2N, Iu=4000 A, "
+                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamowieniowe 1SDA071191R1 / 1SDA072541R1"
+                ),
+                "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _EMAX2_WYCIAG_ZASTRZEZENIE_PL,
             },
         },
         # --- WYLACZNIK_ODPLYWOWY: ABB SACE Tmax XT ---

@@ -158,6 +158,7 @@ Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Ni
 - [ui/ui_canonical_parity.md](./ui/ui_canonical_parity.md) - aktywne wytyczne parity UI
 - [ui/KANON_KREATOR_SN_NN_NA_ZYWO.md](./ui/KANON_KREATOR_SN_NN_NA_ZYWO.md) - kanon budowy sieci
 - [tests/GOLDEN_NETWORKS_CANONICAL.md](./tests/GOLDEN_NETWORKS_CANONICAL.md) - goldeny i deterministyczność
+- [system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md](./system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md) - katalogi i materializacja parametrow; zalaczniki: moc regul katalogu (klasy KAT-T-*/KAT-W-*, przeglad wiarygodnosci) i mierzona gotowosc katalogow
 
 ## Active Rules
 - Aktywny root dokumentacji to `mv-design-pro/docs`.

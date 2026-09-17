@@ -5,14 +5,14 @@
     {
       "rodzina": "aparaty-nn",
       "etykieta_pl": "Aparatura nN",
-      "liczba_pozycji": 14,
+      "liczba_pozycji": 18,
       "sprawdzone_reguly": [
         "KAT-W-004"
       ],
       "pokrycie": [
         {
           "kod": "KAT-W-004",
-          "policzone": 0,
+          "policzone": 4,
           "pominiete": 14,
           "powod_pominiecia": "aparat bez dodatniej zdolnosci wylaczania Icu albo bez pradu krotkotrwalego Icw w karcie katalogowej"
         }
