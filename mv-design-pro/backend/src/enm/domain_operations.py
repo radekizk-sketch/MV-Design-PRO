@@ -10226,6 +10226,21 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         transformer["catalog_ref"] = transformer_catalog_ref
         _apply_catalog_metadata(transformer, binding_payload, default_namespace="TRAFO_SN_NN")
         _apply_materialized_transformer_fields(transformer, materialized_params)
+        # PARYTET NAPIĘCIOWY z `insert_station_on_segment_sn` (defekt klasy
+        # znaleziony 2026-09-17): bramka zgodności napięć istniała WYŁĄCZNIE na
+        # torze wcięcia w segment, a ten tor — dołożenie stacji na końcu
+        # odgałęzienia — jej nie miał. Skutek zmierzony: szablon stacji
+        # abonenckiej 20 kV zastosowany na magistrali 15 kV materializował
+        # transformator 20/0,4 kV na szynie 15 kV, bez słowa odmowy (szyny
+        # stacji 15 kV, uzwojenie górne 20 kV — model wewnętrznie sprzeczny).
+        # Ta sama funkcja, ten sam kod odmowy, obie drogi budowy stacji.
+        blad_napiecia_transformatora = _validate_transformer_voltage_compatibility(
+            transformer_data=transformer,
+            expected_hv_kv=sn_voltage_kv,
+            expected_lv_kv=nn_voltage_kv,
+        )
+        if blad_napiecia_transformatora is not None:
+            return blad_napiecia_transformatora
         # Uziemienie punktu neutralnego — PARYTET z insert (G-STK-1).
         blad_uziemienia_stacji = _apply_station_neutral_grounding(transformer, payload)
         if blad_uziemienia_stacji is not None:

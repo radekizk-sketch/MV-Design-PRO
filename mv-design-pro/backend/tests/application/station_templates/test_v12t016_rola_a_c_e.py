@@ -17,7 +17,12 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from application.station_templates import TemplateCategory, get_template, list_templates_by_category
+from application.station_templates import (
+    TemplateCategory,
+    get_template,
+    list_templates,
+    list_templates_by_category,
+)
 from application.station_templates.apply import TemplateApplyError, apply_template_to_case
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
@@ -272,6 +277,34 @@ def test_gpz_target_segment_id_none_jest_akceptowany() -> None:
 
 @pytest.mark.parametrize(
     "tpl_id",
+    ["tpl_gpz_110_15_2x16mva_h5", "tpl_gpz_110_20_2x16mva_h5", "tpl_gpz_110_15_2x25mva_h5"],
+)
+def test_gpz_ze_wskazanym_odcinkiem_odmawia_zamiast_budowac_nowa_wyspe(tpl_id: str) -> None:
+    """DEFEKT ZNALEZIONY PRZEZ NIEZMIENNIK E2E (2026-09-17): żądanie „wstaw
+    szablon w odcinek X" dla szablonu GPZ kończyło się SUKCESEM, ale produkt
+    robił co innego niż żądanie — budował NOWY korzeń modelu (własną wyspę
+    przez `add_grid_source_sn`) i milczał o tej różnicy. W kreatorze wcięcia w
+    magistralę 15 kV wybór szablonu GPZ 110/20 dawał osobną wyspę 20 kV obok,
+    zamiast stacji w magistrali projektanta.
+
+    Iloczyn cech: KAŻDY szablon GPZ × wskazany odcinek magistrali. Ciche
+    rozejście się żądania z wykonaniem jest zakazane — odmowa NAZWANA."""
+    template = get_template(tpl_id)
+    assert template is not None
+    base_enm, odcinki = _magistrala(15.0)
+    klucz = f"v12t016:{tpl_id}-z-odcinkiem"
+    set_enm(klucz, EnergyNetworkModel.model_validate(base_enm))
+    with pytest.raises(TemplateApplyError) as wyjatek:
+        apply_template_to_case(template=template, klucz_twin=klucz, target_segment_id=odcinki[0])
+    assert wyjatek.value.code == "template.gpz_nie_wchodzi_w_segment"
+    assert "korzeniem modelu" in wyjatek.value.message_pl
+    # Model NIE zmienił się: odmowa przed jakąkolwiek mutacją.
+    po_odmowie = get_enm(klucz).model_dump(mode="json")
+    assert len(po_odmowie.get("substations") or []) == len(base_enm.get("substations") or [])
+
+
+@pytest.mark.parametrize(
+    "tpl_id",
     [
         "tpl_rs_2pola_sprzeglo",
         "tpl_abonencka_250kva_pomiar",
@@ -306,3 +339,32 @@ def test_kompensacja_20kv_na_magistrali_15kv_odmawia_niezgodnoscia_napiecia() ->
             klucz_twin=klucz,
             target_segment_id=odcinki[1],
         )
+
+
+def test_kazdy_szablon_20kv_poza_gpz_odmawia_na_magistrali_15kv() -> None:
+    """KLASA, NIE INSTANCJA (2026-09-17): powyższy test pilnuje JEDNEGO szablonu
+    kompensacji. Ten pilnuje KAŻDEGO szablonu o napięciu SN 20 kV, który wchodzi
+    w odcinek (GPZ ma własną odmowę — jest korzeniem modelu): na magistrali
+    15 kV żaden nie może się zmaterializować, a odmowa musi być NAZWANA.
+
+    Bez tego testu nowy szablon 20 kV dowolnej kategorii mógłby cicho wejść na
+    szynę 15 kV, dokładnie tak jak GPZ 110/20 przed tą naprawą.
+    """
+    from application.station_templates.schema import sn_voltage_kv
+
+    kandydaci = [
+        t
+        for t in list_templates()
+        if sn_voltage_kv(t) == 20.0 and t.category != TemplateCategory.GPZ_110_SN
+    ]
+    assert kandydaci, "brak szablonów 20 kV wchodzących w odcinek — test straciłby przedmiot"
+    for template in kandydaci:
+        base_enm, odcinki = _magistrala(15.0)
+        klucz = f"v12t016:{template.id}-20kv-na-15kv"
+        set_enm(klucz, EnergyNetworkModel.model_validate(base_enm))
+        with pytest.raises(TemplateApplyError) as wyjatek:
+            apply_template_to_case(
+                template=template, klucz_twin=klucz, target_segment_id=odcinki[0]
+            )
+        assert wyjatek.value.code, f"{template.id}: odmowa musi mieć kod"
+        assert wyjatek.value.message_pl, f"{template.id}: odmowa musi mieć komunikat po polsku"

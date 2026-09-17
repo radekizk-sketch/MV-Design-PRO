@@ -505,7 +505,7 @@ def shunt_capacitor_rated_kv(shunt_ref: str | None) -> float | None:
     if item is None:
         return None
     rated_kv = getattr(item, "rated_kv", None)
-    if not isinstance(rated_kv, (int, float)) or float(rated_kv) <= 0.0:
+    if not isinstance(rated_kv, int | float) or float(rated_kv) <= 0.0:
         return None
     return float(rated_kv)
 

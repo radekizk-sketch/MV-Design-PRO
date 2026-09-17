@@ -27,6 +27,16 @@ const MOCK_CATEGORIES = {
       description_pl: 'PV prosument',
       template_count: 6,
     },
+    {
+      // Kategoria KORZENIA modelu — backend buduje ja przez add_grid_source_sn
+      // i odmawia, gdy zada sie wciecia w odcinek. Kreator wciecia NIE moze jej
+      // oferowac (patrz test nizej).
+      id: 'gpz_110_sn',
+      label_pl: 'Stacje zasilajace GPZ 110/SN',
+      icon: 'station-gpz',
+      description_pl: 'GPZ 110/15 i 110/20 kV',
+      template_count: 3,
+    },
   ],
   total_templates: 57,
 };
@@ -138,6 +148,16 @@ describe('StationTemplateWizard', () => {
       expect(screen.getByTestId('category-typowa_sn_nn')).toBeTruthy();
       expect(screen.getByTestId('category-prosument_pv')).toBeTruthy();
     });
+  });
+
+  it('nie oferuje kategorii korzenia modelu (GPZ) w torze wciecia w odcinek', async () => {
+    // Zadanie „wstaw w odcinek X" dla szablonu GPZ konczylo sie kiedys HTTP 200
+    // i NOWA wyspa obok magistrali (pomiar 2026-09-17, niezmiennik e2e).
+    // Backend odmawia teraz kodem `template.gpz_nie_wchodzi_w_segment`, a ten
+    // kreator nie pokazuje wyboru, ktory i tak skonczylby sie odmowa.
+    render(<StationTemplateWizard />);
+    await waitFor(() => screen.getByTestId('category-typowa_sn_nn'));
+    expect(screen.queryByTestId('category-gpz_110_sn')).toBeNull();
   });
 
   it('Next button disabled until category selected', async () => {

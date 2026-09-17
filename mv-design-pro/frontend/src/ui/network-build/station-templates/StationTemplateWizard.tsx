@@ -21,6 +21,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import {
+  KATEGORIE_POZA_TOREM_WCIECIA,
   applyStationTemplate,
   fetchStationTemplate,
   fetchStationTemplateCategories,
@@ -123,7 +124,13 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
     setLoading(true);
     fetchStationTemplateCategories()
       .then((res) => {
-        if (!cancelled) setCategories(res.categories);
+        if (!cancelled) {
+          // Kreator wcina stacje w ISTNIEJACY odcinek — kategorie korzenia
+          // modelu (GPZ) nie naleza do tego toru; patrz KATEGORIE_POZA_TOREM_WCIECIA.
+          setCategories(
+            res.categories.filter((kat) => !KATEGORIE_POZA_TOREM_WCIECIA.includes(kat.id)),
+          );
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err.message);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import {
+  KATEGORIE_POZA_TOREM_WCIECIA,
   applyStationTemplate,
   fetchStationTemplate,
   fetchStationTemplates,
@@ -243,7 +244,12 @@ export function StationBatchPlanner({
     fetchStationTemplates()
       .then((payload) => {
         if (cancelled) return;
-        setTemplates(Array.isArray(payload.templates) ? payload.templates : []);
+        // Planer wstawia stacje w ODCINKI magistrali (kazdy wiersz niesie
+        // targetSegmentRef), wiec kategorie korzenia modelu (GPZ) nie naleza do
+        // tej listy — inaczej wiersz konczylby sie odmowa backendu
+        // `template.gpz_nie_wchodzi_w_segment`.
+        const wszystkie = Array.isArray(payload.templates) ? payload.templates : [];
+        setTemplates(wszystkie.filter((s) => !KATEGORIE_POZA_TOREM_WCIECIA.includes(s.category)));
       })
       .catch((caught: unknown) => {
         if (cancelled) return;

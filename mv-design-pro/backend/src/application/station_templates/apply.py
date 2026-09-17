@@ -94,6 +94,23 @@ def apply_template_to_case(
                 "podaj target_segment_id."
             ),
         )
+    if template.category == TemplateCategory.GPZ_110_SN and target_segment_id:
+        # DEFEKT ZNALEZIONY PRZEZ NIEZMIENNIK E2E (2026-09-17): żądanie mówiło
+        # „wstaw w odcinek X", a produkt budował NOWY korzeń modelu (GPZ tworzy
+        # własną wyspę przez `add_grid_source_sn`) i milczał o tej różnicy —
+        # projektant wybierający szablon GPZ w kreatorze wcięcia w magistralę
+        # 15 kV dostawał osobną wyspę 20 kV zamiast stacji w swojej magistrali.
+        # Ciche rozejście się żądania z wykonaniem jest zakazane: odmowa NAZWANA
+        # zamiast domysłu, a kreator wcięcia nie oferuje już tej kategorii.
+        raise TemplateApplyError(
+            code="template.gpz_nie_wchodzi_w_segment",
+            message_pl=(
+                f"Szablon '{template.id}' to stacja zasilająca (GPZ 110/SN) — "
+                "jest korzeniem modelu, a nie stacją wstawianą w istniejący "
+                "odcinek magistrali. Zbuduj ją jako źródło zasilania sieci "
+                "(bez wskazywania odcinka)."
+            ),
+        )
     with blokada_twin(klucz_twin):
         if template.category == TemplateCategory.GPZ_110_SN:
             return _zastosuj_gpz_pod_blokada(

@@ -120,6 +120,19 @@ export interface StationTemplateFull extends StationTemplateSummary {
   schema: TemplateSchema;
 }
 
+/**
+ * Kategorie szablonow, ktorych NIE WOLNO oferowac w torze „wstaw stacje w
+ * odcinek magistrali": stacja zasilajaca (GPZ 110/SN) jest KORZENIEM modelu —
+ * backend buduje ja przez `add_grid_source_sn` i ignoruje wskazany odcinek.
+ *
+ * POWOD (pomiar 2026-09-17, niezmiennik e2e): zadanie „wstaw w odcinek X"
+ * konczylo sie HTTP 200 i NOWA wyspa 20 kV obok magistrali 15 kV, bez slowa o
+ * tej roznicy. Backend odmawia teraz nazwanym kodem
+ * (`template.gpz_nie_wchodzi_w_segment`), a UI nie oferuje wyboru, ktory i tak
+ * skonczy sie odmowa — dwie strony tej samej reguly.
+ */
+export const KATEGORIE_POZA_TOREM_WCIECIA: readonly string[] = ['gpz_110_sn'];
+
 export interface CategoryEntry {
   id: string;
   label_pl: string;
