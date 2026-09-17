@@ -616,14 +616,21 @@ po naprawie **19/19** wierszy widocznych. (6) Scena zbieżności harnessu nie mi
 12 540 testów** (rc=0); e2e realny backend, 36 speców: **224 passed** w 7,9 min (rc=0). Snapshot OpenAPI
 **308 ścieżek / 224 schematy** bez dryfu; parytet fixtur harnessu `--sprawdz` rc=0; słownik kodów gotowości rc=0.
 
-**Dług NAZWANY (nie ukryty): 1 skipped.** To `tests/enm/test_przejecie_biegu_atomowe.py::test_przejecie_jest_atomowe_takze_na_postgresie`
-— niezmiennik atomowości przejęcia biegu jest dziś dowiedziony WYŁĄCZNIE na SQLite, choć produkt stoi na
-`postgresql+psycopg` (DT-13), a PostgreSQL 16 jest w tym środowisku obecny (`/usr/lib/postgresql/16`, `psql`
-w PATH) — test nie biega, bo nikt nie podnosi klastra, nie dlatego, że go nie ma. Karta naprawcza PG-DIALEKT
-(fikstura sesyjna podnosząca efemeryczny klaster z binariów systemowych; skip dopuszczalny WYŁĄCZNIE przy braku
-binariów; usługa `postgres:16` w `python-tests.yml`; inwentarz klasy testów transakcyjnych sprawdzanych tylko na
-SQLite; iniekcja czerwona jako dowód, że test pilnuje niezmiennika na tym dialekcie) — wydana do wykonawcy
-w tej samej kolejce.
+**Dług NAZWANY (nie ukryty): 1 skipped — z KOREKTĄ pomiaru tego samego dnia.** Skip to
+`tests/enm/test_przejecie_biegu_atomowe.py::test_przejecie_jest_atomowe_takze_na_postgresie` (powód: brak
+`MV_TEST_POSTGRES_URL`). **Pierwsza wersja tego wpisu twierdziła, że niezmiennik atomowości przejęcia biegu jest
+dowiedziony WYŁĄCZNIE na SQLite — to było FAŁSZ i jest niniejszym sprostowane.** Pomiar CI na `dfa2ba96`
+(2026-09-17 19:35 UTC): `python-tests.yml` ma od dawna osobny job `Dialekt produkcyjny (PostgreSQL 16)`
+(usługa `postgres:16-alpine` z `pg_isready`, krok ustawia `MV_TEST_POSTGRES_URL` i uruchamia
+`pytest -m "not pandapower" tests/enm/test_przejecie_biegu_atomowe.py tests/infrastructure`) — **job zielony**
+(id `105350224048`). Niezmiennik JEST więc dowiedziony na dialekcie produkcyjnym przy każdym pushu.
+Rzeczywisty, węższy dług: **lokalnie** pełna regresja kończy się `1 skipped`, więc łańcuch przedpushowy i każdy
+bieg dewelopera NIE ćwiczą dialektu produkcyjnego — dowód istnieje tylko na runnerze, mimo że PostgreSQL 16 jest
+obecny w tym środowisku (`/usr/lib/postgresql/16`). Karta PG-DIALEKT, skorygowana i przekazana wykonawcy w tej
+samej kolejce, zawęża się do: fikstury sesyjnej podnoszącej efemeryczny klaster z binariów systemowych (zmienna
+z otoczenia nadal wygrywa, więc job CI działa bez zmian), inwentarza klasy testów semantyki transakcyjnej POZA
+zbiorem, który CI już puszcza po Postgresie, oraz czerwonej iniekcji na tym klastrze. Punkt „dodaj usługę
+postgres do CI" z pierwszej wersji karty został SKREŚLONY jako oparty na błędnym pomiarze.
 
 **Rozbieżność karta–brief z W6-1 (formularz zdarzeń scenariusza w UI)** pozostaje do rozstrzygnięcia w W6-2
 (karta architekta `docs/plan/KARTA_W6_2_RDZEN_DYNAMIKI_2026-09.md` — warunek wejścia spełniony po tym odbiorze).
