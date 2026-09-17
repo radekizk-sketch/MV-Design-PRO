@@ -1385,7 +1385,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # dynamicznych), `application/contracts/resultset_dynamic_v1.py` (`ResultSetDynamicV1` i
     # skladowe: kanaly/metryka/tozsamosc biegu/stopien dowodowy), `enm/models.py::
     # Generator.dynamika` — zero podstawien liczby za brak danych wejsciowych (PASS niezmieniony).
-    assert "Pol kontraktow wejsciowych: 3706." in wyjscie, wyjscie
+    # Karta SZABLONY-ROLA-A (V12T-016, 2026-09-17): 3706 -> 3708 (+2 nowe pola
+    # `TemplateSchema.shunt_capacitor_options`/`grid_source_options`,
+    # `application/station_templates/schema.py` — addytywne krotki CatalogChoice
+    # dla nowych kategorii szablonow rola A/E; zero podstawien liczbowych).
+    assert "Pol kontraktow wejsciowych: 3708." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1421,7 +1425,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta W6-1 (2026-09-16): 495 -> 498 (+3 nowe pliki: `enm/dynamika_modele.py`,
         # `application/contracts/__init__.py`, `application/contracts/resultset_dynamic_v1.py`;
         # zero plikow skasowanych w zakresie skanu).
-        "Przeskanowano 498 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta SZABLONY-ROLA-A (V12T-016, 2026-09-17): 498 -> 503 (+5 nowych plikow
+        # `application/station_templates/templates/{gpz_110_sn,rozdzielnia_sieciowa,
+        # stacja_abonencka,kompensacja,rezerwa_zasilania}.py` — nowe kategorie
+        # szablonow stacji rola A/C/E; zero plikow skasowanych).
+        "Przeskanowano 503 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1482,7 +1490,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta W6-1 (2026-09-16): application 231 -> 233 (+2 `application/contracts/
         # {__init__,resultset_dynamic_v1}.py`; zero dlugu/wykluczen — kontrakt wyniku,
         # zero zastepnikow liczbowych).
-        "  application: pliki_skanowane=233, dlug=30 plikow/suma 91, "
+        # Karta SZABLONY-ROLA-A (V12T-016, 2026-09-17): application 233 -> 238 (+5
+        # `application/station_templates/templates/{gpz_110_sn,rozdzielnia_sieciowa,
+        # stacja_abonencka,kompensacja,rezerwa_zasilania}.py`; dlug/wykluczenia bez
+        # zmian — nowe pliki definiuja wylacznie instancje StationTemplate z opcji
+        # CatalogChoice, zero zastepnikow liczbowych).
+        "  application: pliki_skanowane=238, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=62, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]
