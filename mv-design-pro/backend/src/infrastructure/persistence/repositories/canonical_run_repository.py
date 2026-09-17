@@ -20,12 +20,11 @@ from infrastructure.persistence.models import (
     CanonicalRunTimeSeriesORM,
 )
 from infrastructure.persistence.time_utils import ensure_utc
-from sqlalchemy import Engine, delete, select, update
+from sqlalchemy import CursorResult, Engine, delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 if TYPE_CHECKING:
     from enm.canonical_analysis import CanonicalRun
-    from sqlalchemy.engine import CursorResult
 
 #: Klucz surowych wkładów gałęziowych FROZEN solvera w wierszu wyniku zwarciowego.
 KLUCZ_ROZPLYWU = "branch_contributions"
@@ -432,8 +431,13 @@ class CanonicalRunRepository:
         )
         # `Session.execute` jest typowane na `Result`; `rowcount` niesie dopiero
         # `CursorResult` zwracany dla zdan DML. Rzutowanie zaweza typ do tego,
-        # co SQLAlchemy faktycznie oddaje dla UPDATE.
-        wynik = cast("CursorResult[Any]", self._session.execute(stmt))
+        # co SQLAlchemy faktycznie oddaje dla UPDATE. Import jest RUNTIME, nie
+        # `TYPE_CHECKING`: `cast()` wylicza pierwszy argument przy wywolaniu, a
+        # forma tekstowa ukrywala uzycie nazwy przed analiza martwego kodu
+        # (`scripts/vulture_guard.py` zglosil ten import jako nieuzywany, gdy
+        # zniknelo jedyne jawne uzycie tej nazwy w repo - kasacja
+        # `analysis_run_repository.mark_results_outdated`, 2026-09-17).
+        wynik = cast(CursorResult[Any], self._session.execute(stmt))
         return wynik.rowcount == 1
 
     def fail_orphaned_running(self, *, reason: str, finished_at: datetime) -> int:
@@ -477,7 +481,7 @@ class CanonicalRunRepository:
             .where(CanonicalRunORM.status == "RUNNING")
             .values(status="FAILED", error_message=reason, finished_at=finished_at)
         )
-        wynik = cast("CursorResult[Any]", self._session.execute(stmt))
+        wynik = cast(CursorResult[Any], self._session.execute(stmt))
         return wynik.rowcount
 
     def exists(self, run_id: UUID) -> bool:
