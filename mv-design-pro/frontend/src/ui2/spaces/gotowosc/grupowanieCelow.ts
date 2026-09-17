@@ -346,8 +346,13 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // GENERATORS (rozplyw)
   'bess.energy_module_missing': 'rozplyw',
   'bess.soc_limits_invalid': 'rozplyw',
-  'der.dynamic_profile_default': 'rozplyw',
+  // Kod `der.dynamic_profile_default` SKASOWANY razem ze zrodlem, ktore go
+  // emitowalo (domyslne profile dynamiczne DER; karta kontraktow czasu) —
+  // mapa celow idzie za kanonicznym rejestrem `READINESS_CODES`, nie za
+  // historia. `der.dynamika_missing` to nowy bloker bloku dynamiki maszyny
+  // synchronicznej (obszar GENERATORS, jak siostrzane kody DER).
   'der.dynamic_profile_missing': 'rozplyw',
+  'der.dynamika_missing': 'rozplyw',
   'generator.converter_card_missing': 'rozplyw',
   'generator.harmonic_spectrum_missing': 'rozplyw',
   'generator.q_missing': 'rozplyw',

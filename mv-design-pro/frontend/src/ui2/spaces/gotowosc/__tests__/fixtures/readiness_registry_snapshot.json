@@ -170,11 +170,11 @@
     },
     {
       "area": "GENERATORS",
-      "code": "der.dynamic_profile_default"
+      "code": "der.dynamic_profile_missing"
     },
     {
       "area": "GENERATORS",
-      "code": "der.dynamic_profile_missing"
+      "code": "der.dynamika_missing"
     },
     {
       "area": "GENERATORS",
