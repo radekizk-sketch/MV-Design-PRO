@@ -13,33 +13,36 @@ dla zdolności UNVALIDATED_MODEL, podczas gdy realny bieg backendu na tych
 samych danych zwraca `'czesciowy'`/`reporting_status: 'not_reportable'` —
 zmierzone przy tej karcie, naprawione konwersją sceny na fixturę).
 
-DLACZEGO ZAPADKA, A NIE „ZERO OD RAZU". Pomiar w chwili założenia (ta karta):
-`creator-harness-main.tsx` niesie WCIĄŻ dziesiątki bloków JSON pisanych
-ręcznie dla analiz, których backend NIE eksportuje jeszcze przez
-`eksport_fixtur_harnessu.py` (koordynacja zabezpieczeń, dobór przekładników,
-porównania A/B rozpływu i zabezpieczeń, SSCI, zgodność powykonawcza,
-estymacja WLS, składowe 1F, zbieżność rozpływu/OLTC, pulpit — rejestr pełny w
-meldunku karty) — zamknięcie WSZYSTKICH tych domen wymaga per-domena:
-realnego wejścia ENM, nowej funkcji eksportu, testu parytetu i przepięcia
-mocka. Wpięcie bramki zero-tolerancji TERAZ zapaliłoby CI na długo
-istniejącym stanie, co CLAUDE.md (Zero-Debt pkt 1) odróżnia od maskowania: to
-NIE jest wykluczenie pliku ani `continue-on-error` — narzędzie DZIAŁA
-NAPRAWDĘ i pilnuje, żeby literałów nie przybyło ANI JEDNEGO od tego pomiaru.
+HISTORIA PROGU. Przy założeniu zapadki (2026-09-16) `creator-harness-main.tsx`
+niósł 164 literały fizyki i 40 ręcznych `run_id` w blokach JSON pisanych dla
+analiz, których backend nie eksportował (koordynacja zabezpieczeń, dobór
+przekładników, porównania A/B rozpływu i zabezpieczeń, SSCI, zgodność
+powykonawcza, estymacja WLS, składowe 1F, zbieżność rozpływu/OLTC, pulpit).
+Każda z tych domen wymagała osobno: realnego wejścia ENM, funkcji eksportu,
+parytetu i przepięcia atrapy — dlatego bramka startowała jako zapadka, a nie
+jako zero-tolerancja. Karta HARNESS-RESZTA-2 zamknęła resztę i próg zszedł do
+0/0 (pomiar niżej).
 
-STAN (2026-09-16, karta HARNESS-RESZTA + kontynuacja). `creator-harness-
-main.tsx`: jedenaście scen zamknięte na realny bieg backendu (E-31 „stan
-fazowy SN", E-32 „stabilność dynamiczna", „siła-sieci", „migotanie",
-„kompensacja(-wynik)", „rozplyw", „walidacja", „uwaga", „cieplna",
-„arcflash") — prog literałów fizyki 229→164, ręcznych `run_id` 54→40.
-`screenshot-harness-main.tsx`: DOMKNIĘTY DO ZERA (2→0 / 1→0) — scena
-`zwarcia-schemat` (karta Z-3) przeszła z liczb pożyczonych z innej sieci na
-REALNY bieg `short_circuit_sn` na kopii `gpzFeeder.enm.json` z dołożonym
-falownikiem; przy okazji naprawiony u źródła napotkany defekt klasy
-(`enm/canonical_analysis.py::_sc_rozplyw_galeziowy` niósł klucz wewnętrzny
-grafu solvera zamiast `ref_id` domenowego — nakładka strzałek dawała PUSTY
-wynik na KAŻDEJ realnej sieci, nie tylko w tym harnessie). Próg maleje o tyle,
-ile realnie zdjęto — reszta zostaje NAZWANA, zmierzona i zamknięta w
-kolejnych kartach tej samej klasy, nie cicho pominięta.
+STAN (2026-09-17, karta HARNESS-RESZTA-2). OBA harnessy DOMKNIĘTE DO ZERA:
+`creator-harness-main.tsx` 164→0 literałów fizyki i 40→0 ręcznych `run_id`,
+`screenshot-harness-main.tsx` bez zmian (0/0 od karty Z-3). Każda scena
+kreatora czyta dziś fixturę policzoną TĄ SAMĄ funkcją, którą woła końcówka
+(`backend/scripts/eksport_fixtur_harnessu.py`, parytet w
+`backend/tests/ci/test_fixtury_harnessu.py`), a modele scen powstają
+OPERACJAMI DOMENOWYMI (`add_grid_source_sn`, `insert_station_on_segment_sn`,
+`add_converter_source`, `set_der_catalog_bindings`, `update_element_parameters`)
+— tak samo jak u projektanta. Domknięte w tej karcie: składowe, zbieżność,
+koordynacja, porównanie rozpływu, OLTC, estymacja, zgodność powykonawcza, FRT,
+LOM, akademickie, stacja demo kreatorów, pulpit, dokumentacja, diagnoza
+przebiegu, wiązania OZE (z doborem przekładników z końcówki), macierz NC RfG
+oraz porównanie A/B zabezpieczeń (dwa biegi `protection_sn` na dwóch wariantach
+modelu, z bazą przypadków w pamięci — bo bieg zabezpieczeń czyta konfigurację
+nastaw przypadku z bazy).
+
+ZAPADKA ZOSTAJE MIMO ZERA. Próg 0/0 nie jest formalnością: każdy nowy literał
+fizyki albo ręczny identyfikator biegu w harnessie zapala tę bramkę od razu, a
+jedyną legalną drogą jest dopisanie fixtury do eksportu. Podniesienie progu
+wymaga uzasadnienia w commicie i jest naruszeniem karty, nie wyjątkiem.
 
 CO ŁAPIE (dwie klasy wzorców, TYLKO w plikach `frontend/src/*harness-main.tsx`
 — fixtury `harness-fixtures/generated/*.json` są WEJŚCIEM tych plików, nie
@@ -107,14 +110,12 @@ WZORZEC_LITERALU_FIZYKI = re.compile(
 #: `run_id: 'run-…'` / `id: 'run-…'` — ręczny identyfikator biegu.
 WZORZEC_RECZNEGO_RUN_ID = re.compile(r"""\b(run_id|id)\s*:\s*'run-[^']*'""")
 
-#: ZMIERZONY stan długu w chwili założenia zapadki (karta HARNESS-RESZTA,
-#: 2026-09-16, drzewo tej karty) — PO konwersji scen E-31/E-32 na fixtury
-#: realnego biegu backendu. Ta para liczb MA MALEĆ z każdą kolejną kartą,
-#: która zamyka kolejną domenę analizy na realny bieg. Podniesienie wymaga
-#: uzasadnienia w commicie (nowy literał fizyki dołożony do harnessu jest
-#: naruszeniem karty, nie przypadkiem).
+#: ZMIERZONY stan długu (karta HARNESS-RESZTA-2, 2026-09-17): OBA harnessy
+#: bez ani jednego literału fizyki i ani jednego ręcznego identyfikatora biegu.
+#: Podniesienie któregokolwiek progu wymaga uzasadnienia w commicie — nowy
+#: literał fizyki w harnessie jest naruszeniem karty, nie przypadkiem.
 PROG: dict[str, tuple[int, int]] = {
-    "creator-harness-main.tsx": (164, 40),
+    "creator-harness-main.tsx": (0, 0),
     "screenshot-harness-main.tsx": (0, 0),
 }
 
