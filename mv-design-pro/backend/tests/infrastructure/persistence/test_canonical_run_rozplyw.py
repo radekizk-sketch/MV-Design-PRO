@@ -613,6 +613,59 @@ def test_init_db_doklada_kolumne_koperty_rewizji_do_istniejacej_bazy(tmp_path: A
     assert wiersze == [("c1", None)]
 
 
+def test_init_db_doklada_kolumne_addytywna_na_dialekcie_produkcyjnym(postgres_url: str) -> None:
+    """Ten sam mechanizm kolumn addytywnych na silniku, na ktorym stoi produkt.
+
+    DLACZEGO OSOBNY TEST NA POSTGRESIE (karta PG-DIALEKT, regula KLASA pkt 4:
+    „deklaracja bez testu = falszywa pewnosc"). `db._dolacz_kolumny_addytywne`
+    deklaruje w docstringu, ze `ALTER TABLE ... ADD COLUMN` ma skladnie WSPOLNA dla
+    SQLite i PostgreSQL, a typ kolumny kompiluje DIALEKTEM silnika — czyli galaz
+    zalezna od dialektu. Dowod istnial wylacznie na SQLite, choc mechanizm biegnie
+    przy KAZDYM starcie backendu (`init_db`), a produkcja startuje na
+    `postgresql+psycopg://` (`docker-compose.yml`, DT-13).
+
+    Roznica wobec wariantu SQLite wyzej NIE jest kosmetyczna: PostgreSQL EGZEKWUJE
+    klucz obcy, wiec wiersz rozplywu wymaga istniejacego wiersza biegu (SQLite
+    przepuszczal sierote bez `PRAGMA foreign_keys=ON`).
+    """
+    engine = create_engine_from_url(postgres_url)
+    try:
+        init_db(engine)
+        with engine.begin() as polaczenie:
+            polaczenie.execute(
+                text("ALTER TABLE canonical_run_branch_flows " "DROP COLUMN branch_flow_trace_json")
+            )
+            polaczenie.execute(
+                text(
+                    "INSERT INTO canonical_runs (id, case_id, analysis_type, status, "
+                    "result_status, created_at, snapshot_hash, input_hash, snapshot_json, "
+                    "validation_json, readiness_json, options_json, white_box_trace_json) VALUES "
+                    "('00000000-0000-0000-0000-000000000abc', 'c1', 'SC', 'FINISHED', 'VALID', "
+                    "'2026-01-01 00:00:00+00', 'h', 'i', '{}', '{}', '{}', '{}', '[]')"
+                )
+            )
+            polaczenie.execute(
+                text(
+                    "INSERT INTO canonical_run_branch_flows (run_id, fault_node_id, "
+                    "contributions_json) VALUES "
+                    "('00000000-0000-0000-0000-000000000abc', 'bus-1', '[]')"
+                )
+            )
+        assert "branch_flow_trace_json" not in _kolumny(engine, "canonical_run_branch_flows")
+
+        init_db(engine)
+        assert "branch_flow_trace_json" in _kolumny(engine, "canonical_run_branch_flows")
+        # Idempotencja: kolejne wywolanie niczego nie dokłada i nie psuje.
+        init_db(engine)
+        with engine.connect() as polaczenie:
+            wiersze = polaczenie.execute(
+                text("SELECT fault_node_id, branch_flow_trace_json FROM canonical_run_branch_flows")
+            ).all()
+        assert wiersze == [("bus-1", None)]
+    finally:
+        engine.dispose()
+
+
 # ---------------------------------------------------------------------------
 # PERF-SC-50 (krok 3): bieg DOMYŚLNY nie liczy wkładów; punkt liczy się przy pierwszym
 # żądaniu z wejścia biegu i jest utrwalany w tej samej tabeli, którą zasila tryb
