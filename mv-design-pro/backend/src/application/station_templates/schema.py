@@ -20,11 +20,11 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
-from network_model.pochodne import mva_na_kva
+from network_model.pochodne import mva_na_kva, mw_na_kw
 
 
 class TemplateCategory(StrEnum):
-    """10 kategorii templates per use-case."""
+    """15 kategorii templates per use-case (V12T-016: +5 rola A/C/E)."""
 
     TYPOWA_SN_NN = "typowa_sn_nn"  # Dystrybucyjne 100-2500 kVA
     SLUPOWA = "slupowa"  # Stacje słupowe ZSP
@@ -36,6 +36,14 @@ class TemplateCategory(StrEnum):
     PRZEMYSLOWA = "przemyslowa"  # Odbiorcze przemysłowe
     WIATROWA = "wiatrowa"  # OZE wiatrowe
     SEKCYJNA = "sekcyjna"  # Sekcyjne / pętlowe
+    # V12T-016 (rejestr długu, rola A "Zasilanie sieci" — licznik ZERO przed tą kartą):
+    GPZ_110_SN = "gpz_110_sn"  # GPZ 110/SN — WN/SN, sekcje szyn, mostek
+    ROZDZIELNIA_SIECIOWA = "rozdzielnia_sieciowa"  # RS/RSM — bez TR, pola liniowe + sprzęgło
+    # V12T-016 (rola C — delta obok istniejącej PRZEMYSLOWA):
+    STACJA_ABONENCKA = "stacja_abonencka"  # Odbiorcza SN z układem pomiarowym (CT/VT)
+    # V12T-016 (rola E — delta obok istniejącej SEKCYJNA):
+    KOMPENSACJA = "kompensacja"  # Bateria kondensatorów SN (kompensacja mocy biernej)
+    REZERWA_ZASILANIA = "rezerwa_zasilania"  # Pole rezerwowe / zasilanie SZR
 
 
 #: Etykieta PL kategorii = pole strukturalne "zastosowanie" (KARTA-UI2 §1 p. 12:
@@ -57,6 +65,11 @@ TEMPLATE_CATEGORY_LABELS_PL: dict[TemplateCategory, str] = {
     TemplateCategory.PRZEMYSLOWA: "Przemysłowe odbiorcze",
     TemplateCategory.WIATROWA: "Stacje OZE wiatrowe",
     TemplateCategory.SEKCYJNA: "Stacje sekcyjne / pętlowe",
+    TemplateCategory.GPZ_110_SN: "GPZ 110/SN",
+    TemplateCategory.ROZDZIELNIA_SIECIOWA: "Rozdzielnie sieciowe RS/RSM",
+    TemplateCategory.STACJA_ABONENCKA: "Stacje abonenckie SN z pomiarem",
+    TemplateCategory.KOMPENSACJA: "Kompensacja mocy biernej",
+    TemplateCategory.REZERWA_ZASILANIA: "Rezerwa zasilania",
 }
 
 
@@ -198,6 +211,19 @@ class TemplateSchema:
     # Catalog cascade
     manufacturer_profile_default: str = "ZPUE_WLOSZCZOWA"
 
+    # Kompensacja mocy biernej (V12T-016, rola E) — bateria kondensatorów SN
+    # (KOMPENSATOR_SN) dołączana do szyny SN stacji podczas `apply`. Pusta
+    # krotka (domyślnie) = szablon nie niesie kompensatora — addytywne pole,
+    # istniejące 57+ szablonów mają `()` bez zmiany zachowania.
+    shunt_capacitor_options: tuple[CatalogChoice, ...] = ()
+
+    # Warunki zasilania GPZ (V12T-016, rola A) — równoważnik systemowy
+    # (ZRODLO_SN) widziany z szyny SN GPZ, użyty WYŁĄCZNIE przez
+    # `apply.py::_zastosuj_gpz_pod_blokada` (droga `add_grid_source_sn`, nie
+    # `insert_station_on_segment_sn`). Pusta krotka dla wszystkich pozostałych
+    # kategorii — addytywne pole.
+    grid_source_options: tuple[CatalogChoice, ...] = ()
+
 
 def transformer_voltages_kv(transformer_ref: str | None) -> tuple[float | None, float | None]:
     """Katalogowe napięcia GN/DN wybranego transformatora [kV] — z REALNEGO
@@ -271,6 +297,173 @@ def _domyslna_opcja_transformatora(schema: TemplateSchema) -> CatalogChoice | No
     return schema.transformer_options[0] if schema.transformer_options else None
 
 
+def _opcja_transformatora_wg_tokenu_id(
+    transformer_options: tuple[CatalogChoice, ...], template_id: str
+) -> CatalogChoice | None:
+    """Opcja transformatora, której moc [kVA] koduje TOKEN identyfikatora
+    szablonu (np. `tpl_sn_nn_630kva` → `-630kva-`). `None` gdy identyfikator
+    nie koduje mocy albo żadna opcja nie niesie pasującego tokenu.
+
+    JEDNO źródło prawdy dla `resolve_template_default_transformer_choice`
+    (wyświetlanie — `structural_fields`) i `apply.py::
+    _resolve_transformer_ref_for_template` (materializacja) — promowane stąd
+    z apply.py (2026-09, przegląd V12T-016): PRZED tą kartą obie ścieżki
+    liczyły niezależnie „domyślną" opcję dwiema RÓŻNYMI regułami
+    (`_domyslna_opcja_transformatora` — flaga `default=True`/pierwsza, kontra
+    token ID) — dla 34 z 73 szablonów (zmierzone) dawały RÓŻNE wyniki, więc
+    kafel przeglądarki pokazywał moc, której `apply()` wcale by nie
+    zmaterializował (KLASA NIE INSTANCJA pkt 3: predykaty parami z jednego
+    źródła prawdy)."""
+    identyfikator = template_id.lower()
+    rating_match = re.search(r"_(\d+)kva(?:_|$)", identyfikator)
+    if rating_match is not None:
+        rating_kva = int(rating_match.group(1))
+        if rating_kva == 50:
+            # Historyczny typoszereg 50 kVA nie istnieje już w katalogu —
+            # najbliższy obecny typoszereg to 63 kVA (parytet z apply.py).
+            rating_kva = 63
+        token = f"-{rating_kva}kva-"
+        for opcja in transformer_options:
+            ref = opcja.catalog_ref
+            if isinstance(ref, str) and token in ref.lower():
+                return opcja
+        return None
+    # GPZ (110/SN, V12T-016): identyfikator koduje moc jednostkową w MVA, nie
+    # kVA (`tpl_gpz_110_15_2x16mva_h5` → 16 MVA, TRANSFORMER_WN_SN_110_15/_20
+    # ma typoszereg 10-63 MVA, poniżej progu jednego kVA). Ten sam token co
+    # katalog (`-{n}mva-`, `catalog_choice_rated_kva`), tylko wyprowadzony z
+    # identyfikatora szablonu zamiast referencji katalogowej.
+    mva_match = re.search(r"(\d+)mva(?:_|$)", identyfikator)
+    if mva_match is not None:
+        token_mva = f"-{int(mva_match.group(1))}mva-"
+        for opcja in transformer_options:
+            ref = opcja.catalog_ref
+            if isinstance(ref, str) and token_mva in ref.lower():
+                return opcja
+    return None
+
+
+def _opcja_transformatora_dla_wymaganej_mocy(
+    transformer_options: tuple[CatalogChoice, ...], required_kva: int
+) -> CatalogChoice | None:
+    """Najmniejsza opcja transformatora o mocy >= `required_kva`; gdy żadna nie
+    wystarcza — największa dostępna (transformator NIE MOŻE wypaść z pakietu
+    szablonu, nawet gdy suma DER przekracza typoszereg). `None` gdy brak opcji
+    z mocą zakodowaną w `catalog_ref`.
+
+    Promowane z `apply.py::_resolve_transformer_ref_for_template` (2026-09,
+    przegląd V12T-016) — ten sam selektor, teraz współdzielony ze ścieżką
+    wyświetlania."""
+    rated_options = sorted(
+        (
+            (rating, opcja)
+            for opcja in transformer_options
+            for rating, ref in [catalog_choice_rated_kva(opcja)]
+            if rating is not None and ref is not None
+        ),
+        key=lambda item: item[0],
+    )
+    for rating, opcja in rated_options:
+        if rating >= required_kva:
+            return opcja
+    return rated_options[-1][1] if rated_options else None
+
+
+def _der_catalog_for_power(der_spec: Any, p_mw_each: float) -> str | None:
+    """Domyślna pozycja katalogowa DER dobrana do mocy JEDNOSTKOWEJ szablonu —
+    dopasowanie DOKŁADNE mocy zakodowanej w `catalog_ref` (np. `conv-wind-
+    3mw-…`), w braku — najbliższe; brak parsowalnych tokenów ⇒ `None`.
+
+    Promowane z `apply.py` (2026-09, przegląd V12T-016) — funkcja jest CZYSTA
+    (bez zależności od `overrides`/kontekstu żądania), więc mieszka w schema.py
+    jako współdzielony prymityw dla obu ścieżek (wyświetlanie i materializacja)."""
+    options = getattr(der_spec, "catalog_options", ()) or ()
+    parsed: list[tuple[float, str]] = []
+    for option in options:
+        ref = getattr(option, "catalog_ref", None)
+        if not isinstance(ref, str):
+            continue
+        match = re.search(r"-(\d+(?:\.\d+)?)mw", ref.lower())
+        if match is not None:
+            parsed.append((float(match.group(1)), ref))
+    if not parsed:
+        return None
+    exact = [ref for power, ref in parsed if abs(power - p_mw_each) < 1e-9]
+    if exact:
+        return exact[0]
+    return min(parsed, key=lambda item: (abs(item[0] - p_mw_each), item[0]))[1]
+
+
+def _converter_apparent_power_mva(catalog_ref: object) -> float | None:
+    """Katalogowa moc pozorna jednostki przekształtnikowej [MVA] — z REALNEGO
+    rekordu katalogu (`ConverterType.sn_mva`); `None` gdy brak refu/rekordu.
+
+    Promowane z `apply.py` (2026-09, przegląd V12T-016) — jak
+    `_der_catalog_for_power`, czysty prymityw bez zależności od kontekstu
+    żądania."""
+    if not isinstance(catalog_ref, str) or not catalog_ref.strip():
+        return None
+    try:
+        from network_model.catalog import get_default_mv_catalog
+    except ImportError:
+        return None
+    item = get_default_mv_catalog().get_converter_type(catalog_ref)
+    value = getattr(item, "sn_mva", None) if item is not None else None
+    if value is None:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
+def _wymagana_moc_der_domyslna_kva(template: StationTemplate) -> int | None:
+    """Moc pozorna [kVA] wymagana przez DOMYŚLNY (bez nadpisań) mix DER
+    szablonu — `None` gdy szablon nie niesie DER-ów albo domyślna liczba
+    modułów wynosi 0. Odpowiednik `apply.py::_template_der_required_kva` z
+    PUSTYMI nadpisaniami (`overrides={}`) — dokładnie stan, który
+    `structural_fields()` ma pokazać (szablon BEZ ingerencji projektanta)."""
+    der_specs = template.schema.der_options
+    if not der_specs:
+        return None
+    der_total = template.schema.der_total_count.default
+    if der_total <= 0:
+        return None
+    total_mw = 0.0
+    for i in range(der_total):
+        spec = der_specs[i % len(der_specs)]
+        p_mw_each = spec.default_p_mw_each
+        catalog_ref = _der_catalog_for_power(spec, p_mw_each)
+        apparent_mva = _converter_apparent_power_mva(catalog_ref)
+        total_mw += apparent_mva if apparent_mva is not None else p_mw_each
+    if total_mw <= 0:
+        return None
+    return int(round(mw_na_kw(total_mw)))
+
+
+def resolve_template_default_transformer_choice(template: StationTemplate) -> CatalogChoice | None:
+    """Opcja transformatora, którą `apply()` zmaterializuje dla TEGO szablonu
+    bez żadnych nadpisań projektanta/kaskady producenta — JEDNO źródło prawdy
+    dla `structural_fields()` (wyświetlanie) i `apply.py::
+    _resolve_transformer_ref_for_template` (materializacja, ten sam porządek
+    reguł PO sprawdzeniu nadpisania/profilu, których strona wyświetlania nie
+    ma). `None` gdy szablon nie niesie `transformer_options` wcale."""
+    if not template.schema.transformer_options:
+        return None
+    wg_id = _opcja_transformatora_wg_tokenu_id(template.schema.transformer_options, template.id)
+    if wg_id is not None:
+        return wg_id
+    wymagana_kva = _wymagana_moc_der_domyslna_kva(template)
+    if wymagana_kva is not None:
+        wg_der = _opcja_transformatora_dla_wymaganej_mocy(
+            template.schema.transformer_options, wymagana_kva
+        )
+        if wg_der is not None:
+            return wg_der
+    return _domyslna_opcja_transformatora(template.schema)
+
+
 def structural_fields(template: StationTemplate) -> dict[str, Any]:
     """Pola strukturalne (moc/napięcie/zastosowanie/kategorie ról) wspólne dla
     `StationTemplate.to_dict()` (pełny szczegół) i podsumowania listy
@@ -279,7 +472,7 @@ def structural_fields(template: StationTemplate) -> dict[str, Any]:
     (reguła KLASA NIE INSTANCJA pkt 3: predykaty z jednego źródła prawdy).
     Zob. `StationTemplate.to_dict` po znaczenie `None`/`[]`.
     """
-    domyslny_tr = _domyslna_opcja_transformatora(template.schema)
+    domyslny_tr = resolve_template_default_transformer_choice(template)
     moc_kva, _ = catalog_choice_rated_kva(domyslny_tr) if domyslny_tr is not None else (None, None)
     napiecie_gn_kv, napiecie_dn_kv = (
         transformer_voltages_kv(domyslny_tr.catalog_ref)
@@ -360,6 +553,8 @@ def _schema_to_dict(schema: TemplateSchema) -> dict:
         "vt_options": [_choice_to_dict(c) for c in schema.vt_options],
         "energy_meter_options": [_choice_to_dict(c) for c in schema.energy_meter_options],
         "manufacturer_profile_default": schema.manufacturer_profile_default,
+        "shunt_capacitor_options": [_choice_to_dict(c) for c in schema.shunt_capacitor_options],
+        "grid_source_options": [_choice_to_dict(c) for c in schema.grid_source_options],
     }
 
 
