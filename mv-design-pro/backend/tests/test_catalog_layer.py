@@ -11,7 +11,6 @@ from network_model.catalog import CatalogRepository
 from network_model.catalog.types import (
     ConverterKind,
     ConverterType,
-    InverterType,
     LineType,
     TransformerType,
 )
@@ -45,16 +44,6 @@ def test_catalog_types_are_frozen() -> None:
     )
     with pytest.raises(FrozenInstanceError):
         transformer.uk_percent = 5.5
-
-    inverter = InverterType(
-        id="inv-1",
-        name="INV 1",
-        un_kv=15.0,
-        sn_mva=5.0,
-        pmax_mw=4.0,
-    )
-    with pytest.raises(FrozenInstanceError):
-        inverter.name = "INV 2"
 
     converter = ConverterType(
         id="conv-1",
@@ -200,10 +189,6 @@ def test_catalog_repository_lists_deterministically() -> None:
                 "params": {"kind": "PV", "un_kv": 15.0, "sn_mva": 1.0, "pmax_mw": 0.8},
             },
         ],
-        inverter_types=[
-            {"id": "i2", "name": "INV B", "params": {"un_kv": 15.0, "sn_mva": 2.0, "pmax_mw": 1.5}},
-            {"id": "i1", "name": "INV A", "params": {"un_kv": 15.0, "sn_mva": 1.0, "pmax_mw": 0.8}},
-        ],
     )
 
     assert [item.id for item in repo.list_line_types()] == ["a", "b"]
@@ -212,7 +197,6 @@ def test_catalog_repository_lists_deterministically() -> None:
     assert [item.id for item in repo.list_switch_equipment_types()] == ["s1", "s2"]
     assert [item.id for item in repo.list_converter_types()] == ["c1", "c2"]
     assert [item.id for item in repo.list_converter_types(kind=ConverterKind.PV)] == ["c1"]
-    assert [item.id for item in repo.list_inverter_types()] == ["i1", "i2"]
 
 
 def test_line_branch_resolve_precedence() -> None:

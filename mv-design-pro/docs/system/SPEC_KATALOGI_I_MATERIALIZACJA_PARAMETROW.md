@@ -44,7 +44,7 @@ skorygowane tego samego dnia karta W1 — z faktycznego zachowania kodu, repo > 
 - biblioteka typow sieci w bazie (P13b: manifest/eksport/import/odcisk `TypeLibraryManifest`,
   `TypeLibraryExport`, `compute_fingerprint`, `sort_types_deterministically`, HTTP
   `GET /api/catalog/export` / `POST /api/catalog/import`) oraz tabele `line_types`,
-  `cable_types`, `transformer_types`, `switch_equipment_types`, `inverter_types`,
+  `cable_types`, `transformer_types`, `switch_equipment_types`, tabela typow falownikow,
   `switch_equipment_assignments` SKASOWANE w W1 — jedyny konsument koncowek eksportu/importu
   (dwa przyciski w `ui/catalog/TypeLibraryBrowser.tsx`) skasowany razem z nimi; w bazie
   deweloperskiej 0 wierszy w kazdej tabeli. Jedyna
@@ -112,7 +112,7 @@ ARCHIWUM-CANONICAL-COMPLIANCE-2):
   rzuca `FrozenInstanceError` w czasie wykonania — egzekwuje:
   `network_model/catalog/types.py` (naglowek modulu: "All types are FROZEN
   (immutable)"; m.in. `LineType`, `CableType`, `TransformerType`, `SwitchEquipmentType`,
-  `InverterType`, `ConverterType` i pozostale klasy typow w tym pliku); pin:
+  `ConverterType` i pozostale klasy typow w tym pliku); pin:
   `tests/test_catalog_layer.py::test_catalog_types_are_frozen`,
 - `backend/src/api/catalog.py` wystawia dla definicji typow wylacznie odczyt
   (kilkadziesiat endpointow `GET .../*-types`); zero `PUT`/`PATCH` na definicje typu —

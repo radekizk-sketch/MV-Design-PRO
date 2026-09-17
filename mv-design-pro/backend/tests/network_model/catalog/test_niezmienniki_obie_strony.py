@@ -182,7 +182,10 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
     "KAT-T-010": (
         lambda: _validate_float_range("ir_range", (1.0, 0.4)),
         # min == max (aparat o jednej nastawie) jest legalne.
-        lambda: (_validate_float_range("ir_range", None), _validate_float_range("ii_range", (2.0, 2.0))),
+        lambda: (
+            _validate_float_range("ir_range", None),
+            _validate_float_range("ii_range", (2.0, 2.0)),
+        ),
     ),
     "KAT-T-011": (
         lambda: _konwerter(flicker_c=0.0),
@@ -334,9 +337,9 @@ def test_rekord_niepoprawny_jest_odrzucony_z_wlasciwym_kodem(kod: str) -> None:
     niepoprawny, _ = PRZYPADKI[kod]
     with pytest.raises(OdmowaKatalogu) as wyjatek:
         niepoprawny()
-    assert wyjatek.value.kod == kod, (
-        f"odmowa przyszla z kodu {wyjatek.value.kod}, oczekiwano {kod}: {wyjatek.value}"
-    )
+    assert (
+        wyjatek.value.kod == kod
+    ), f"odmowa przyszla z kodu {wyjatek.value.kod}, oczekiwano {kod}: {wyjatek.value}"
     assert kod in str(wyjatek.value)
 
 

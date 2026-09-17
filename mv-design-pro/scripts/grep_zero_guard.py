@@ -31,7 +31,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = ROOT / "config"
-GRUPY: tuple[str, ...] = ("", "kod_", "w61_")
+GRUPY: tuple[str, ...] = ("", "kod_", "w61_", "katalog_")
 TEXT_SUFFIXES = {
     ".css",
     ".html",

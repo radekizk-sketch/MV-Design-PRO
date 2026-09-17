@@ -37,7 +37,7 @@ regula nie zostala zdegradowana, bo zadna nie byla egzekwowana za mocno.
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, NoReturn
@@ -715,6 +715,31 @@ class OdstepstwoWiarygodnosci:
 
 
 @dataclass(frozen=True)
+class PokrycieReguly:
+    """Ile pozycji rodziny regula FAKTYCZNIE policzyla, a ilu nie dotyczy.
+
+    BEZ TEGO LICZNIKA „zero odstepstw" jest nierozroznialne od „reguly nie dalo
+    sie policzyc" — dokladnie ten ksztalt cichego zera, ktory karta zakazuje w
+    danych fizycznych. Pozycja trafia do `pominiete`, gdy rodzina ja niesie, ale
+    regula nie ma na niej sensu (brak ktorejs z porownywanych wielkosci albo
+    aparat, ktory danej zdolnosci z definicji nie ma).
+    """
+
+    kod: str
+    policzone: int
+    pominiete: int
+    powod_pominiecia: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "kod": self.kod,
+            "policzone": self.policzone,
+            "pominiete": self.pominiete,
+            "powod_pominiecia": self.powod_pominiecia,
+        }
+
+
+@dataclass(frozen=True)
 class WynikPrzegladuWiarygodnosci:
     """Wynik przegladu — OBIEKT, nie wydruk testu.
 
@@ -728,8 +753,12 @@ class WynikPrzegladuWiarygodnosci:
     rodzina: str
     etykieta_pl: str
     liczba_pozycji: int
-    sprawdzone_reguly: tuple[str, ...]
+    pokrycie: tuple[PokrycieReguly, ...]
     odstepstwa: tuple[OdstepstwoWiarygodnosci, ...]
+
+    @property
+    def sprawdzone_reguly(self) -> tuple[str, ...]:
+        return tuple(p.kod for p in self.pokrycie)
 
     @property
     def bez_odstepstw(self) -> bool:
@@ -747,6 +776,7 @@ class WynikPrzegladuWiarygodnosci:
             "etykieta_pl": self.etykieta_pl,
             "liczba_pozycji": self.liczba_pozycji,
             "sprawdzone_reguly": list(self.sprawdzone_reguly),
+            "pokrycie": [p.to_dict() for p in self.pokrycie],
             "liczba_odstepstw": len(self.odstepstwa),
             "wedlug_kodu": self.wedlug_kodu(),
             "odstepstwa": [o.to_dict() for o in self.odstepstwa],
@@ -876,111 +906,139 @@ def _id_pozycji(pozycja: Any) -> str:
     return str(getattr(pozycja, "id", "?"))
 
 
-def _sprawdz_kat_w_001(pozycja: Any) -> OdstepstwoWiarygodnosci | None:
+@dataclass(frozen=True)
+class _WynikReguly:
+    """Tri-stan predykatu: policzony czy nie, a jesli tak — czy z odstepstwem.
+
+    Dwustanowy wynik (`OdstepstwoWiarygodnosci | None`) mieszal „regula policzona,
+    wartosci sie zgadzaja" z „reguly nie dalo sie policzyc" — to ta sama klasa
+    cichego zera, ktora karta zakazuje w danych fizycznych.
+    """
+
+    policzona: bool
+    odstepstwo: OdstepstwoWiarygodnosci | None = None
+
+
+_NIEPOLICZONA = _WynikReguly(policzona=False)
+
+
+def _odstepstwo(kod: str, pozycja: Any, opis_wartosci: str) -> _WynikReguly:
+    return _WynikReguly(
+        policzona=True,
+        odstepstwo=OdstepstwoWiarygodnosci(
+            kod=kod,
+            regula=REGULY_KATALOGU[kod].nazwa,
+            pozycja_id=_id_pozycji(pozycja),
+            opis_wartosci=opis_wartosci,
+        ),
+    )
+
+
+def _sprawdz_kat_w_001(pozycja: Any) -> _WynikReguly:
     """R0 >= R1 — rezystancja skladowej zerowej wobec skladowej zgodnej."""
     r0 = getattr(pozycja, "r0_ohm_per_km", None)
     r1 = getattr(pozycja, "r_ohm_per_km", None)
     if not _jest_liczba(r0) or not _jest_liczba(r1):
-        return None
+        return _NIEPOLICZONA
     if float(r0) * LUZ_POROWNANIA < float(r1):
-        return OdstepstwoWiarygodnosci(
-            kod="KAT-W-001",
-            regula=REGULY_KATALOGU["KAT-W-001"].nazwa,
-            pozycja_id=_id_pozycji(pozycja),
-            opis_wartosci=f"R0 = {r0} Ω/km, R1 = {r1} Ω/km",
-        )
-    return None
+        return _odstepstwo("KAT-W-001", pozycja, f"R0 = {r0} Ω/km, R1 = {r1} Ω/km")
+    return _WynikReguly(policzona=True)
 
 
-def _sprawdz_kat_w_002(pozycja: Any) -> OdstepstwoWiarygodnosci | None:
+def _sprawdz_kat_w_002(pozycja: Any) -> _WynikReguly:
     """P0 < Pk — straty jalowe wobec strat obciazeniowych."""
     p0 = getattr(pozycja, "p0_kw", None)
     pk = getattr(pozycja, "pk_kw", None)
     if not _jest_liczba(p0) or not _jest_liczba(pk):
-        return None
+        return _NIEPOLICZONA
     if float(p0) >= float(pk):
-        return OdstepstwoWiarygodnosci(
-            kod="KAT-W-002",
-            regula=REGULY_KATALOGU["KAT-W-002"].nazwa,
-            pozycja_id=_id_pozycji(pozycja),
-            opis_wartosci=f"P0 = {p0} kW, Pk = {pk} kW",
-        )
-    return None
+        return _odstepstwo("KAT-W-002", pozycja, f"P0 = {p0} kW, Pk = {pk} kW")
+    return _WynikReguly(policzona=True)
 
 
-def _sprawdz_kat_w_003(pozycja: Any) -> OdstepstwoWiarygodnosci | None:
-    """Icw <= Icu aparatu SN (I_th wobec zdolnosci wylaczania)."""
+def _sprawdz_kat_w_003(pozycja: Any) -> _WynikReguly:
+    """Icw <= Icu aparatu SN — TYLKO dla aparatu o dodatniej zdolnosci wylaczania.
+
+    ZAKRES REGULY, NIE PODRASOWANIE DANYCH (pomiar 2026-09-17). Rodzina aparatow
+    SN niesie 13 pozycji z `breaking_capacity_ka = 0.0`: odlaczniki, rozlaczniki i
+    uziemniki. Zero nie jest tu brakiem danej ani bledem — jest DEKLARACJA, ze
+    aparat z definicji nie przerywa pradu zwarciowego (odlacznik lamie tylko prad
+    jalowy, uziemnik nie lamie nic). Zestawienie pradu krotkotrwalego
+    wytrzymywanego ze zdolnoscia wylaczania, ktorej aparat NIE MA, nie jest
+    sygnalem „do przegladu" tylko szumem — a 13 pozycji szumu wylaczyloby czujnosc
+    na pierwsze prawdziwe odstepstwo. Pozycje bez dodatniej Icu ida wiec do
+    `pominiete` z nazwanym powodem, a nie do odstepstw i nie do cichego zera.
+    """
     icw = getattr(pozycja, "i_th_ka", None)
     icu = getattr(pozycja, "breaking_capacity_ka", None)
-    if not _jest_liczba(icw) or not _jest_liczba(icu):
-        return None
+    if not _jest_liczba(icw) or not _jest_liczba(icu) or float(icu) <= 0.0:
+        return _NIEPOLICZONA
     if float(icw) > float(icu) * LUZ_POROWNANIA:
-        return OdstepstwoWiarygodnosci(
-            kod="KAT-W-003",
-            regula=REGULY_KATALOGU["KAT-W-003"].nazwa,
-            pozycja_id=_id_pozycji(pozycja),
-            opis_wartosci=f"Icw (I_th) = {icw} kA, Icu = {icu} kA",
-        )
-    return None
+        return _odstepstwo("KAT-W-003", pozycja, f"Icw (I_th) = {icw} kA, Icu = {icu} kA")
+    return _WynikReguly(policzona=True)
 
 
-def _sprawdz_kat_w_004(pozycja: Any) -> OdstepstwoWiarygodnosci | None:
-    """Icw <= Icu aparatu nN."""
+def _sprawdz_kat_w_004(pozycja: Any) -> _WynikReguly:
+    """Icw <= Icu aparatu nN — jak KAT-W-003: Icu niedodatnie = zdolnosci nie ma."""
     icw = getattr(pozycja, "icw_ka", None)
     icu = getattr(pozycja, "i_cu_ka", None)
-    if not _jest_liczba(icw) or not _jest_liczba(icu):
-        return None
+    if not _jest_liczba(icw) or not _jest_liczba(icu) or float(icu) <= 0.0:
+        return _NIEPOLICZONA
     if float(icw) > float(icu) * LUZ_POROWNANIA:
-        return OdstepstwoWiarygodnosci(
-            kod="KAT-W-004",
-            regula=REGULY_KATALOGU["KAT-W-004"].nazwa,
-            pozycja_id=_id_pozycji(pozycja),
-            opis_wartosci=f"Icw = {icw} kA, Icu = {icu} kA",
-        )
-    return None
+        return _odstepstwo("KAT-W-004", pozycja, f"Icw = {icw} kA, Icu = {icu} kA")
+    return _WynikReguly(policzona=True)
 
 
-def _sprawdz_kat_w_005(pozycja: Any) -> OdstepstwoWiarygodnosci | None:
-    """0 < R/X < 1 umowy rownowaznej sieci (maksymalna i minimalna)."""
+def _sprawdz_kat_w_005(pozycja: Any) -> _WynikReguly:
+    """0 < R/X < 1 umowy rownowaznej sieci — oba warianty (maksymalny i minimalny)."""
+    policzona = False
     for nazwa_pola, etykieta in (("rx_ratio", "R/X"), ("rx_ratio_min", "R/X (min)")):
         rx = getattr(pozycja, nazwa_pola, None)
         if not _jest_liczba(rx):
             continue
+        policzona = True
         if not 0.0 < float(rx) < 1.0:
-            return OdstepstwoWiarygodnosci(
-                kod="KAT-W-005",
-                regula=REGULY_KATALOGU["KAT-W-005"].nazwa,
-                pozycja_id=_id_pozycji(pozycja),
-                opis_wartosci=f"{etykieta} = {rx}",
-            )
-    return None
+            return _odstepstwo("KAT-W-005", pozycja, f"{etykieta} = {rx}")
+    return _WynikReguly(policzona=policzona)
 
 
-def _sprawdz_kat_w_006(pozycja: Any) -> OdstepstwoWiarygodnosci | None:
+def _sprawdz_kat_w_006(pozycja: Any) -> _WynikReguly:
     """0 < i0 % < 10 transformatora."""
     i0 = getattr(pozycja, "i0_percent", None)
     if not _jest_liczba(i0):
-        return None
+        return _NIEPOLICZONA
     if not 0.0 < float(i0) < 10.0:
-        return OdstepstwoWiarygodnosci(
-            kod="KAT-W-006",
-            regula=REGULY_KATALOGU["KAT-W-006"].nazwa,
-            pozycja_id=_id_pozycji(pozycja),
-            opis_wartosci=f"i0 = {i0} %",
-        )
-    return None
+        return _odstepstwo("KAT-W-006", pozycja, f"i0 = {i0} %")
+    return _WynikReguly(policzona=True)
 
 
 #: Mapa kod -> predykat przegladu. JEDNO zrodlo prawdy dla „ktore reguly umiemy
 #: policzyc": rodzina, ktora wskazuje kod bez predykatu, konczy sie bledem
 #: rejestru, a nie cichym pominieciem reguly.
-PREDYKATY_WIARYGODNOSCI = {
+PREDYKATY_WIARYGODNOSCI: dict[str, Callable[[Any], _WynikReguly]] = {
     "KAT-W-001": _sprawdz_kat_w_001,
     "KAT-W-002": _sprawdz_kat_w_002,
     "KAT-W-003": _sprawdz_kat_w_003,
     "KAT-W-004": _sprawdz_kat_w_004,
     "KAT-W-005": _sprawdz_kat_w_005,
     "KAT-W-006": _sprawdz_kat_w_006,
+}
+
+#: Powod pominiecia pozycji przez regule — nazwany, bo „pominieto 28 z 48" bez
+#: powodu jest tak samo nieme jak ciche zero.
+POWODY_POMINIECIA: dict[str, str] = {
+    "KAT-W-001": "pozycja nie niesie rezystancji skladowej zerowej (R0)",
+    "KAT-W-002": "pozycja nie niesie strat jalowych (P0) albo obciazeniowych (Pk)",
+    "KAT-W-003": (
+        "aparat bez dodatniej zdolnosci wylaczania — odlacznik, rozlacznik albo uziemnik "
+        "z definicji nie przerywa pradu zwarciowego"
+    ),
+    "KAT-W-004": (
+        "aparat bez dodatniej zdolnosci wylaczania Icu albo bez pradu krotkotrwalego Icw "
+        "w karcie katalogowej"
+    ),
+    "KAT-W-005": "zrodlo nie niesie stosunku R/X (ani wariantu maksymalnego, ani minimalnego)",
+    "KAT-W-006": "transformator nie niesie pradu biegu jalowego (i0 %)",
 }
 
 
@@ -999,22 +1057,42 @@ def przeglad_rodziny(rodzina: str, pozycje: Iterable[Any]) -> WynikPrzegladuWiar
     specyfikacja = RODZINY_PRZEGLADU[rodzina]
     lista = list(pozycje)
     odstepstwa: list[OdstepstwoWiarygodnosci] = []
+    policzone: dict[str, int] = {kod: 0 for kod in specyfikacja.kody}
+    pominiete: dict[str, int] = {kod: 0 for kod in specyfikacja.kody}
+    for kod in specyfikacja.kody:
+        if kod not in PREDYKATY_WIARYGODNOSCI:
+            raise BladRejestruNiezmiennikow(
+                f"Rodzina {rodzina!r} wskazuje kod {kod}, dla ktorego nie ma predykatu "
+                "przegladu — regula bez predykatu nie jest sprawdzana."
+            )
+        if kod not in POWODY_POMINIECIA:
+            raise BladRejestruNiezmiennikow(
+                f"Regula {kod} nie ma nazwanego powodu pominiecia — „pominieto N pozycji” "
+                "bez powodu jest tak samo nieme jak ciche zero."
+            )
     for pozycja in lista:
         for kod in specyfikacja.kody:
-            if kod not in PREDYKATY_WIARYGODNOSCI:
-                raise BladRejestruNiezmiennikow(
-                    f"Rodzina {rodzina!r} wskazuje kod {kod}, dla ktorego nie ma predykatu "
-                    "przegladu — regula bez predykatu nie jest sprawdzana."
-                )
-            odstepstwo = PREDYKATY_WIARYGODNOSCI[kod](pozycja)
-            if odstepstwo is not None:
-                odstepstwa.append(odstepstwo)
+            wynik = PREDYKATY_WIARYGODNOSCI[kod](pozycja)
+            if wynik.policzona:
+                policzone[kod] += 1
+            else:
+                pominiete[kod] += 1
+            if wynik.odstepstwo is not None:
+                odstepstwa.append(wynik.odstepstwo)
     odstepstwa.sort(key=lambda o: (o.kod, o.pozycja_id))
     return WynikPrzegladuWiarygodnosci(
         rodzina=specyfikacja.rodzina,
         etykieta_pl=specyfikacja.etykieta_pl,
         liczba_pozycji=len(lista),
-        sprawdzone_reguly=specyfikacja.kody,
+        pokrycie=tuple(
+            PokrycieReguly(
+                kod=kod,
+                policzone=policzone[kod],
+                pominiete=pominiete[kod],
+                powod_pominiecia=POWODY_POMINIECIA[kod],
+            )
+            for kod in specyfikacja.kody
+        ),
         odstepstwa=tuple(odstepstwa),
     )
 

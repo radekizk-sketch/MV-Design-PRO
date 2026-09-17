@@ -80,11 +80,10 @@ class CatalogNamespace(Enum):
     NASTAWY_ZABEZPIECZEN = "NASTAWY_ZABEZPIECZEN"
     PTPIREE_CERTYFIKAT_GENERATORA = "PTPIREE_CERTYFIKAT_GENERATORA"
     CONVERTER = "CONVERTER"
-    INVERTER = "INVERTER"
     #: CV-4.3 K1: generator SYNCHRONICZNY dołączony wprost do szyny SN/WN (bez
     #: przekształtnika) — np. blok wytwórczy modelowany jako węzeł PV w
     #: rozpływie mocy (napięcie zadane + granice mocy biernej). ODRĘBNA
-    #: przestrzeń od CONVERTER/INVERTER: `ConverterKind` = {PV, WIND, BESS}
+    #: przestrzeń od CONVERTER: `ConverterKind` = {PV, WIND, BESS}
     #: opisuje WYŁĄCZNIE źródła przekształtnikowe (falownikowe) — fizyka
     #: zwarciowa i regulacyjna maszyny synchronicznej jest inna niż falownika,
     #: więc reużycie CONVERTER zniekształcałoby oba typy fizyczne pod jedną
@@ -228,7 +227,7 @@ def _catalog_metadata_to_dict(
     return payload
 
 
-# ADR-011 §5b: optional U/f-control fields shared by ConverterType / InverterType.
+# ADR-011 §5b: optional U/f-control fields of ConverterType (jedyny rejestr przeksztaltnikow).
 # Defaults keep a source passive (constant PQ) so published types round-trip
 # unchanged. The keys mirror inverter_control_from_params' expected param names.
 _UF_CONTROL_FIELDS: tuple[str, ...] = (
@@ -1734,146 +1733,6 @@ class BESSBatteryType:
 
 
 @dataclass(frozen=True)
-class InverterType:
-    """
-    Immutable inverter type definition.
-
-    Attributes:
-        id: Unique identifier.
-        name: Type name.
-        un_kv: Rated voltage [kV].
-        sn_mva: Rated apparent power [MVA].
-        pmax_mw: Maximum active power [MW].
-        qmin_mvar: Minimum reactive power [MVAr] (optional).
-        qmax_mvar: Maximum reactive power [MVAr] (optional).
-        cosphi_min: Minimum cos(phi) (optional).
-        cosphi_max: Maximum cos(phi) (optional).
-        kind: Inverter technology family.
-        manufacturer: Manufacturer name (optional).
-        model: Model designation (optional).
-    """
-
-    id: str
-    name: str
-    un_kv: float
-    sn_mva: float
-    pmax_mw: float
-    qmin_mvar: float | None = None
-    qmax_mvar: float | None = None
-    cosphi_min: float | None = None
-    cosphi_max: float | None = None
-    kind: str = "INVERTER"
-    manufacturer: str | None = None
-    model: str | None = None
-    # ADR-011 §5b: optional U/f-control characteristic (Q(U), P(f)/LFSM, cosphi
-    # modes). All default to a passive constant-PQ source so existing published
-    # types are byte-identical (reduce-to-NR). Materialized into the source's
-    # solver params and read by inverter_control_from_params.
-    control_mode: str | None = None
-    cosphi: float | None = None
-    q_absorbing: bool = False
-    cosphi_p_points: tuple[tuple[float, float], ...] | None = None
-    qu_deadband_low_pu: float | None = None
-    qu_deadband_high_pu: float | None = None
-    qu_slope_pu_per_pu: float | None = None
-    qu_q_min_mvar: float | None = None
-    qu_q_max_mvar: float | None = None
-    lfsm_droop_pct: float | None = None
-    lfsm_deadband_hz: float | None = None
-    lfsm_allow_increase: bool = False
-    f0_hz: float | None = None
-    ptpiree_status: str | None = None
-    ptpiree_certificate_ref: str | None = None
-    ptpiree_document_number: str | None = None
-    ptpiree_document_acceptance_date: str | None = None
-    ptpiree_wos_version: str | None = None
-    ptpiree_wipwc_version: str | None = None
-    ptpiree_ppm_scope: str | None = None
-    ptpiree_source_url: str | None = None
-    ptpiree_publication_date: str | None = None
-    ptpiree_note: str | None = None
-    ptpiree_certificate_condition: str | None = None
-    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
-    source_reference: str = "Katalog falownikow MV-DESIGN-PRO"
-    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
-    contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: str | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary."""
-        return {
-            "id": self.id,
-            "name": self.name,
-            "un_kv": self.un_kv,
-            "sn_mva": self.sn_mva,
-            "pmax_mw": self.pmax_mw,
-            "qmin_mvar": self.qmin_mvar,
-            "qmax_mvar": self.qmax_mvar,
-            "cosphi_min": self.cosphi_min,
-            "cosphi_max": self.cosphi_max,
-            "kind": self.kind,
-            "manufacturer": self.manufacturer,
-            "model": self.model,
-            **_uf_control_to_dict(self),
-            "ptpiree_status": self.ptpiree_status,
-            "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
-            "ptpiree_document_number": self.ptpiree_document_number,
-            "ptpiree_document_acceptance_date": self.ptpiree_document_acceptance_date,
-            "ptpiree_wos_version": self.ptpiree_wos_version,
-            "ptpiree_wipwc_version": self.ptpiree_wipwc_version,
-            "ptpiree_ppm_scope": self.ptpiree_ppm_scope,
-            "ptpiree_source_url": self.ptpiree_source_url,
-            "ptpiree_publication_date": self.ptpiree_publication_date,
-            "ptpiree_note": self.ptpiree_note,
-            "ptpiree_certificate_condition": self.ptpiree_certificate_condition,
-            **_catalog_metadata_to_dict(
-                verification_status=self.verification_status,
-                source_reference=self.source_reference,
-                catalog_status=self.catalog_status,
-                contract_version=self.contract_version,
-                verification_note=self.verification_note,
-            ),
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "InverterType":
-        """Create from dictionary."""
-        return cls(
-            id=str(data.get("id", str(uuid4()))),
-            name=str(data.get("name", "")),
-            un_kv=wymagany_float(data, "un_kv", context="InverterType"),
-            sn_mva=wymagany_float(data, "sn_mva", context="InverterType"),
-            pmax_mw=wymagany_float(data, "pmax_mw", context="InverterType"),
-            qmin_mvar=_opcjonalny_float(data, "qmin_mvar"),
-            qmax_mvar=_opcjonalny_float(data, "qmax_mvar"),
-            cosphi_min=_opcjonalny_float(data, "cosphi_min"),
-            cosphi_max=_opcjonalny_float(data, "cosphi_max"),
-            kind=str(data.get("kind") or data.get("inverter_kind") or "INVERTER"),
-            manufacturer=data.get("manufacturer"),
-            model=data.get("model"),
-            # control_mode + U/f-control fields parsed by _uf_control_kwargs.
-            **_uf_control_kwargs(data),
-            ptpiree_status=data.get("ptpiree_status"),
-            ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
-            ptpiree_document_number=data.get("ptpiree_document_number"),
-            ptpiree_document_acceptance_date=data.get("ptpiree_document_acceptance_date"),
-            ptpiree_wos_version=data.get("ptpiree_wos_version"),
-            ptpiree_wipwc_version=data.get("ptpiree_wipwc_version"),
-            ptpiree_ppm_scope=data.get("ptpiree_ppm_scope"),
-            ptpiree_source_url=data.get("ptpiree_source_url"),
-            ptpiree_publication_date=data.get("ptpiree_publication_date"),
-            ptpiree_note=data.get("ptpiree_note"),
-            ptpiree_certificate_condition=data.get("ptpiree_certificate_condition"),
-            **_catalog_metadata_kwargs(
-                data,
-                default_source_reference="Katalog falownikow MV-DESIGN-PRO / dane referencyjne",
-                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
-                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
-            ),
-        )
-
-
-@dataclass(frozen=True)
 class SurgeArresterType:
     """Immutable MV surge arrester catalog entry."""
 
@@ -2703,7 +2562,7 @@ class SynchronousGeneratorType:
     SN/WN (bez przekształtnika) — węzeł PV rozpływu mocy: moc czynna jest
     NASTAWĄ STUDIUM (payload operacji `add_generator_sn`), a moc bierna jest
     WYNIKIEM solvera w granicach [q_min_mvar, q_max_mvar] tabliczki. Odrębna
-    od `ConverterType`/`InverterType` (falowniki) — inna fizyka zwarciowa
+    od `ConverterType` (falowniki) — inna fizyka zwarciowa
     (reaktancje synchroniczne, nie prąd ograniczony przez IGBT).
 
     Attributes:
@@ -4534,38 +4393,5 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("k_sc", "k_sc (udział zwarciowy)", ""),
         ),
         pola_opcjonalne=("harmonic_spectrum_percent", "droop_p_f_percent", "droop_q_u_percent"),
-    ),
-    CatalogNamespace.INVERTER.value: MaterializationContract(
-        namespace=CatalogNamespace.INVERTER.value,
-        # ADR-011 §5b: U/f-control characteristic materializes into the source's
-        # materialized_params. Defaults keep a passive constant-PQ source, so
-        # existing published inverter types remain byte-identical (reduce-to-NR).
-        solver_fields=(
-            "un_kv",
-            "sn_mva",
-            "pmax_mw",
-            "qmin_mvar",
-            "qmax_mvar",
-            "kind",
-            "control_mode",
-            "cosphi",
-            "q_absorbing",
-            "cosphi_p_points",
-            "qu_deadband_low_pu",
-            "qu_deadband_high_pu",
-            "qu_slope_pu_per_pu",
-            "qu_q_min_mvar",
-            "qu_q_max_mvar",
-            "lfsm_droop_pct",
-            "lfsm_deadband_hz",
-            "lfsm_allow_increase",
-            "f0_hz",
-        ),
-        ui_fields=(
-            ("un_kv", "Un [kV]", "kV"),
-            ("sn_mva", "Sn [MVA]", "MVA"),
-            ("pmax_mw", "Pmax [MW]", "MW"),
-            ("kind", "Technologia", ""),
-        ),
     ),
 }

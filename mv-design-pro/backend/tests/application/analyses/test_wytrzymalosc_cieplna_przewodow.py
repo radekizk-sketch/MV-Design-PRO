@@ -114,7 +114,6 @@ def _catalog_with_cable_type(
         transformer_types={},
         switch_equipment_types={},
         converter_types={},
-        inverter_types={},
     )
 
 

@@ -109,7 +109,6 @@ _NAMESPACE_ACCESSOR: dict[str, str] = {
     CatalogNamespace.NASTAWY_ZABEZPIECZEN.value: "get_protection_setting_template",
     CatalogNamespace.PTPIREE_CERTYFIKAT_GENERATORA.value: "get_ptpiree_generator_certificate",
     CatalogNamespace.CONVERTER.value: "get_converter_type",
-    CatalogNamespace.INVERTER.value: "get_inverter_type",
     CatalogNamespace.GENERATOR_SN.value: "get_synchronous_generator_type",
 }
 

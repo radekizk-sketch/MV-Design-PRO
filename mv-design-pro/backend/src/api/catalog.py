@@ -32,6 +32,13 @@ from network_model.catalog.der_dynamic.models import WindTurbineDynamicProfile
 from network_model.catalog.governance import ImportMode
 from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
 from network_model.catalog.mv_ptpiree_catalog import get_ptpiree_catalog_manifest
+from network_model.catalog.niezmienniki_katalogu import (
+    KODY_WIARYGODNOSCI,
+    REGULY_KATALOGU,
+    RODZINY_BEZ_REGUL,
+    przeglad_rodziny,
+    przeglad_wiarygodnosci,
+)
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.switchgear import (
     SWITCHGEAR_FAMILY_REGISTRY,
@@ -304,12 +311,6 @@ def list_bess_battery_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_bess_battery_types()]
 
 
-@router.get("/inverter-types")
-def list_inverter_types() -> list[dict[str, Any]]:
-    """List all generic inverter/converter catalog entries from the canonical MV catalog."""
-    return [item.to_dict() for item in get_default_mv_catalog().list_inverter_types()]
-
-
 @router.get("/converter-types")
 def list_converter_types(kind: str | None = None) -> list[dict[str, Any]]:
     """List all converter source types from the canonical MV catalog."""
@@ -334,6 +335,136 @@ def list_wind_inverter_types() -> list[dict[str, Any]]:
 def list_source_system_types() -> list[dict[str, Any]]:
     """List all MV system source types for GPZ / zasilanie systemowe."""
     return [item.to_dict() for item in get_default_mv_catalog().list_source_system_types()]
+
+
+class OdstepstwoWiarygodnosciOdpowiedz(BaseModel):
+    """Jedna pozycja katalogu do przegladu — sygnal, nie odmowa."""
+
+    kod: str
+    regula: str
+    pozycja_id: str
+    opis_wartosci: str
+
+
+class PokrycieRegulyOdpowiedz(BaseModel):
+    """Ile pozycji rodziny regula policzyla, a ilu nie dotyczy (z powodem)."""
+
+    kod: str
+    policzone: int
+    pominiete: int
+    powod_pominiecia: str
+
+
+class RegulaWiarygodnosciOdpowiedz(BaseModel):
+    """Opis reguly wiarygodnosci — zeby front nie mial wlasnej kopii uzasadnien."""
+
+    kod: str
+    nazwa: str
+    podstawa: str
+    uzasadnienie: str
+
+
+class RodzinaPrzegladuOdpowiedz(BaseModel):
+    """Wynik przegladu wiarygodnosci JEDNEJ rodziny katalogu."""
+
+    rodzina: str
+    etykieta_pl: str
+    liczba_pozycji: int
+    sprawdzone_reguly: list[str]
+    pokrycie: list[PokrycieRegulyOdpowiedz]
+    liczba_odstepstw: int
+    wedlug_kodu: dict[str, int]
+    odstepstwa: list[OdstepstwoWiarygodnosciOdpowiedz]
+
+
+class RodzinaBezRegulOdpowiedz(BaseModel):
+    """Rodzina katalogu POZA przegladem, z powodem merytorycznym."""
+
+    rodzina: str
+    powod: str
+
+
+class PrzegladWiarygodnosciOdpowiedz(BaseModel):
+    """Przeglad wiarygodnosci CALEGO katalogu — pozycje do przegladu, zero odmowy."""
+
+    liczba_odstepstw: int
+    wedlug_kodu: dict[str, int]
+    rodziny: list[RodzinaPrzegladuOdpowiedz]
+    rodziny_bez_regul: list[RodzinaBezRegulOdpowiedz]
+    reguly: list[RegulaWiarygodnosciOdpowiedz]
+
+
+def _pozycje_rodziny_przegladu() -> dict[str, list[Any]]:
+    """Pozycje KAZDEJ rodziny objetej przegladem — jedno miejsce wiazania z katalogiem.
+
+    Brak rodziny w tym slowniku konczy sie bledem rejestru w
+    `przeglad_wiarygodnosci` (a nie cichym raportem bez tej rodziny) — to jest ten
+    sam predykat wejscia/wyjscia z jednego zrodla, ktorego wymaga regula KLASA
+    NIE INSTANCJA.
+    """
+    katalog = get_default_mv_catalog()
+    return {
+        "aparaty-nn": list(katalog.list_lv_apparatus_types()),
+        "aparaty-sn": list(katalog.list_mv_apparatus_types()),
+        "transformatory": list(katalog.list_transformer_types()),
+        "linie-sn": list(katalog.list_line_types()),
+        "kable-sn": list(katalog.list_cable_types()),
+        "kable-nn": list(katalog.list_lv_cable_types()),
+        "zrodla-systemowe": list(katalog.list_source_system_types()),
+    }
+
+
+def _rodzina_odpowiedz(wynik: Any) -> RodzinaPrzegladuOdpowiedz:
+    return RodzinaPrzegladuOdpowiedz(**wynik.to_dict())
+
+
+@router.get("/przeglad-wiarygodnosci", response_model=PrzegladWiarygodnosciOdpowiedz)
+def przeglad_wiarygodnosci_katalogu() -> PrzegladWiarygodnosciOdpowiedz:
+    """Pozycje katalogu DO PRZEGLADU wg regul klasy WIARYGODNOSC.
+
+    Regula wiarygodnosci nigdy nie odmawia rekordu i niczego nie zmienia — jej
+    zlamanie jest sygnalem dla czlowieka z karta producenta w reku. Rodziny, w
+    ktorych zadna regula nie ma sensu, sa wymienione OSOBNO z powodem, zeby
+    rodzina pominieta nie byla nierozroznialna od przeoczonej.
+    """
+    wyniki = przeglad_wiarygodnosci(_pozycje_rodziny_przegladu())
+    laczne: dict[str, int] = {}
+    for wynik in wyniki:
+        for kod, liczba in wynik.wedlug_kodu().items():
+            laczne[kod] = laczne.get(kod, 0) + liczba
+    return PrzegladWiarygodnosciOdpowiedz(
+        liczba_odstepstw=sum(len(w.odstepstwa) for w in wyniki),
+        wedlug_kodu=dict(sorted(laczne.items())),
+        rodziny=[_rodzina_odpowiedz(w) for w in wyniki],
+        rodziny_bez_regul=[
+            RodzinaBezRegulOdpowiedz(rodzina=rodzina, powod=powod)
+            for rodzina, powod in sorted(RODZINY_BEZ_REGUL.items())
+        ],
+        reguly=[
+            RegulaWiarygodnosciOdpowiedz(
+                kod=kod,
+                nazwa=REGULY_KATALOGU[kod].nazwa,
+                podstawa=REGULY_KATALOGU[kod].podstawa,
+                uzasadnienie=REGULY_KATALOGU[kod].uzasadnienie,
+            )
+            for kod in sorted(KODY_WIARYGODNOSCI)
+        ],
+    )
+
+
+@router.get("/przeglad-wiarygodnosci/{rodzina}", response_model=RodzinaPrzegladuOdpowiedz)
+def przeglad_wiarygodnosci_rodziny(rodzina: str) -> RodzinaPrzegladuOdpowiedz:
+    """Przeglad wiarygodnosci jednej rodziny katalogu (404 dla rodziny spoza przegladu)."""
+    pozycje = _pozycje_rodziny_przegladu()
+    if rodzina not in pozycje:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                f"Rodzina '{rodzina}' nie jest objeta przegladem wiarygodnosci. "
+                f"Dostepne: {', '.join(sorted(pozycje))}."
+            ),
+        )
+    return _rodzina_odpowiedz(przeglad_rodziny(rodzina, pozycje[rodzina]))
 
 
 @router.get("/der-dynamic-profiles")
@@ -1159,6 +1290,17 @@ def _auto_populate_inverters(
     req: AutoPopulateRequest,
     normalized_element_type: str,
 ) -> AutoPopulateResponse:
+    """Podpowiedzi przeksztaltnikow z JEDYNEGO rejestru przeksztaltnikow.
+
+    ZMIANA ZRODLA (karta KATALOG-NIEZMIENNIKI §5, pomiar 2026-09-17). Funkcja
+    czytala `list_inverter_types()` — rejestr WYPROWADZANY z `converter_types`
+    przez `_derive_inverter_records`, ktory gubil 18 pol kontraktu, w tym `k_sc`,
+    `sc_model`, `dynamic_profile_id`, `grid_code` i `e_kwh` (pomiar: 176 rekordow
+    w obu rejestrach, 18 pol obecnych wylacznie w `converter_types`). Cien
+    lossy ego kontraktu nie ma prawa byc zrodlem podpowiedzi doboru: jedyny rejestr
+    przeksztaltnikow to `converter_types`, a rodzaj (`PV`/`BESS`/`WIND`) jest
+    polem typu, nie osobna klasa.
+    """
     catalog = get_default_mv_catalog()
     suggestions: list[AutoPopulateSuggestion] = []
     target_kind = None
@@ -1167,8 +1309,8 @@ def _auto_populate_inverters(
     elif normalized_element_type == "bess":
         target_kind = "BESS"
 
-    for item in catalog.list_inverter_types():
-        kind = str(item.kind).upper()
+    for item in catalog.list_converter_types():
+        kind = item.kind.value.upper()
         if target_kind is not None and kind != target_kind:
             continue
         if req.voltage_kv is not None:

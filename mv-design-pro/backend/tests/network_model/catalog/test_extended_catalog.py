@@ -50,7 +50,6 @@ class TestCatalogNamespace:
             "ZABEZPIECZENIE",
             "NASTAWY_ZABEZPIECZEN",
             "CONVERTER",
-            "INVERTER",
             "OGRANICZNIK_SN",
             "KOMPENSATOR_SN",
             "PTPIREE_CERTYFIKAT_GENERATORA",

@@ -6916,6 +6916,35 @@
     "title": "ObciazenieAparatu",
     "type": "object"
    },
+   "OdstepstwoWiarygodnosciOdpowiedz": {
+    "description": "Jedna pozycja katalogu do przegladu — sygnal, nie odmowa.",
+    "properties": {
+     "kod": {
+      "title": "Kod",
+      "type": "string"
+     },
+     "opis_wartosci": {
+      "title": "Opis Wartosci",
+      "type": "string"
+     },
+     "pozycja_id": {
+      "title": "Pozycja Id",
+      "type": "string"
+     },
+     "regula": {
+      "title": "Regula",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kod",
+     "regula",
+     "pozycja_id",
+     "opis_wartosci"
+    ],
+    "title": "OdstepstwoWiarygodnosciOdpowiedz",
+    "type": "object"
+   },
    "OperatingCurrentRequest": {
     "description": "Operating current data for a location.",
     "properties": {
@@ -7483,6 +7512,35 @@
      "odbiory"
     ],
     "title": "PodsumowanieArkuszaModel",
+    "type": "object"
+   },
+   "PokrycieRegulyOdpowiedz": {
+    "description": "Ile pozycji rodziny regula policzyla, a ilu nie dotyczy (z powodem).",
+    "properties": {
+     "kod": {
+      "title": "Kod",
+      "type": "string"
+     },
+     "policzone": {
+      "title": "Policzone",
+      "type": "integer"
+     },
+     "pominiete": {
+      "title": "Pominiete",
+      "type": "integer"
+     },
+     "powod_pominiecia": {
+      "title": "Powod Pominiecia",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kod",
+     "policzone",
+     "pominiete",
+     "powod_pominiecia"
+    ],
+    "title": "PokrycieRegulyOdpowiedz",
     "type": "object"
    },
    "PomiarWLS": {
@@ -9014,6 +9072,52 @@
     "title": "ProtectionTraceResponse",
     "type": "object"
    },
+   "PrzegladWiarygodnosciOdpowiedz": {
+    "description": "Przeglad wiarygodnosci CALEGO katalogu — pozycje do przegladu, zero odmowy.",
+    "properties": {
+     "liczba_odstepstw": {
+      "title": "Liczba Odstepstw",
+      "type": "integer"
+     },
+     "reguly": {
+      "items": {
+       "$ref": "#/components/schemas/RegulaWiarygodnosciOdpowiedz"
+      },
+      "title": "Reguly",
+      "type": "array"
+     },
+     "rodziny": {
+      "items": {
+       "$ref": "#/components/schemas/RodzinaPrzegladuOdpowiedz"
+      },
+      "title": "Rodziny",
+      "type": "array"
+     },
+     "rodziny_bez_regul": {
+      "items": {
+       "$ref": "#/components/schemas/RodzinaBezRegulOdpowiedz"
+      },
+      "title": "Rodziny Bez Regul",
+      "type": "array"
+     },
+     "wedlug_kodu": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Wedlug Kodu",
+      "type": "object"
+     }
+    },
+    "required": [
+     "liczba_odstepstw",
+     "wedlug_kodu",
+     "rodziny",
+     "rodziny_bez_regul",
+     "reguly"
+    ],
+    "title": "PrzegladWiarygodnosciOdpowiedz",
+    "type": "object"
+   },
    "PunktZwarciowyDiffResponse": {
     "description": "Jeden punkt zwarciowy porownania.\n\nPola `delta_*_percent` liczy BACKEND — w warstwie prezentacji bylaby to\narytmetyka na wynikach solvera. Brak wartosci (A = 0 albo punkt bez\nodpowiednika) jest POMIJANY w odpowiedzi, nigdy zerem.",
     "properties": {
@@ -9506,6 +9610,35 @@
     "title": "PutOverridesRequest",
     "type": "object"
    },
+   "RegulaWiarygodnosciOdpowiedz": {
+    "description": "Opis reguly wiarygodnosci — zeby front nie mial wlasnej kopii uzasadnien.",
+    "properties": {
+     "kod": {
+      "title": "Kod",
+      "type": "string"
+     },
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "podstawa": {
+      "title": "Podstawa",
+      "type": "string"
+     },
+     "uzasadnienie": {
+      "title": "Uzasadnienie",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kod",
+     "nazwa",
+     "podstawa",
+     "uzasadnienie"
+    ],
+    "title": "RegulaWiarygodnosciOdpowiedz",
+    "type": "object"
+   },
    "RejectedCandidateResponse": {
     "properties": {
      "catalog_ref": {
@@ -9581,6 +9714,86 @@
      "deterministic_signature"
     ],
     "title": "ResultSetResponse",
+    "type": "object"
+   },
+   "RodzinaBezRegulOdpowiedz": {
+    "description": "Rodzina katalogu POZA przegladem, z powodem merytorycznym.",
+    "properties": {
+     "powod": {
+      "title": "Powod",
+      "type": "string"
+     },
+     "rodzina": {
+      "title": "Rodzina",
+      "type": "string"
+     }
+    },
+    "required": [
+     "rodzina",
+     "powod"
+    ],
+    "title": "RodzinaBezRegulOdpowiedz",
+    "type": "object"
+   },
+   "RodzinaPrzegladuOdpowiedz": {
+    "description": "Wynik przegladu wiarygodnosci JEDNEJ rodziny katalogu.",
+    "properties": {
+     "etykieta_pl": {
+      "title": "Etykieta Pl",
+      "type": "string"
+     },
+     "liczba_odstepstw": {
+      "title": "Liczba Odstepstw",
+      "type": "integer"
+     },
+     "liczba_pozycji": {
+      "title": "Liczba Pozycji",
+      "type": "integer"
+     },
+     "odstepstwa": {
+      "items": {
+       "$ref": "#/components/schemas/OdstepstwoWiarygodnosciOdpowiedz"
+      },
+      "title": "Odstepstwa",
+      "type": "array"
+     },
+     "pokrycie": {
+      "items": {
+       "$ref": "#/components/schemas/PokrycieRegulyOdpowiedz"
+      },
+      "title": "Pokrycie",
+      "type": "array"
+     },
+     "rodzina": {
+      "title": "Rodzina",
+      "type": "string"
+     },
+     "sprawdzone_reguly": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Sprawdzone Reguly",
+      "type": "array"
+     },
+     "wedlug_kodu": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "title": "Wedlug Kodu",
+      "type": "object"
+     }
+    },
+    "required": [
+     "rodzina",
+     "etykieta_pl",
+     "liczba_pozycji",
+     "sprawdzone_reguly",
+     "pokrycie",
+     "liczba_odstepstw",
+     "wedlug_kodu",
+     "odstepstwa"
+    ],
+    "title": "RodzinaPrzegladuOdpowiedz",
     "type": "object"
    },
    "RunComparisonResponse": {
@@ -17206,33 +17419,6 @@
     ]
    }
   },
-  "/api/catalog/inverter-types": {
-   "get": {
-    "description": "List all generic inverter/converter catalog entries from the canonical MV catalog.",
-    "operationId": "list_inverter_types_api_catalog_inverter_types_get",
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "items": {
-          "additionalProperties": true,
-          "type": "object"
-         },
-         "title": "Response List Inverter Types Api Catalog Inverter Types Get",
-         "type": "array"
-        }
-       }
-      },
-      "description": "Successful Response"
-     }
-    },
-    "summary": "List Inverter Types",
-    "tags": [
-     "Type Catalog"
-    ]
-   }
-  },
   "/api/catalog/line-types": {
    "get": {
     "description": "List all line types from the canonical MV catalog.",
@@ -17874,6 +18060,71 @@
      }
     },
     "summary": "Get Protection Setting Template",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/przeglad-wiarygodnosci": {
+   "get": {
+    "description": "Pozycje katalogu DO PRZEGLADU wg regul klasy WIARYGODNOSC.\n\nRegula wiarygodnosci nigdy nie odmawia rekordu i niczego nie zmienia — jej\nzlamanie jest sygnalem dla czlowieka z karta producenta w reku. Rodziny, w\nktorych zadna regula nie ma sensu, sa wymienione OSOBNO z powodem, zeby\nrodzina pominieta nie byla nierozroznialna od przeoczonej.",
+    "operationId": "przeglad_wiarygodnosci_katalogu_api_catalog_przeglad_wiarygodnosci_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PrzegladWiarygodnosciOdpowiedz"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Przeglad Wiarygodnosci Katalogu",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/przeglad-wiarygodnosci/{rodzina}": {
+   "get": {
+    "description": "Przeglad wiarygodnosci jednej rodziny katalogu (404 dla rodziny spoza przegladu).",
+    "operationId": "przeglad_wiarygodnosci_rodziny_api_catalog_przeglad_wiarygodnosci__rodzina__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "rodzina",
+      "required": true,
+      "schema": {
+       "title": "Rodzina",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RodzinaPrzegladuOdpowiedz"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Przeglad Wiarygodnosci Rodziny",
     "tags": [
      "Type Catalog"
     ]

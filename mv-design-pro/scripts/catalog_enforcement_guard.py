@@ -203,8 +203,8 @@ def check_materialization_contracts() -> list[str]:
 
     for ns in CatalogNamespace:
         if ns.value not in MATERIALIZATION_CONTRACTS:
-            # CONVERTER and INVERTER may not have contracts (they use ConverterType)
-            if ns.value in ("CONVERTER", "INVERTER"):
+            # CONVERTER nie ma wlasnego kontraktu (materializacja przez ZRODLO_NN_*)
+            if ns.value == "CONVERTER":
                 continue
             errors.append(f"FAIL: No MaterializationContract for CatalogNamespace.{ns.value}")
         else:
@@ -260,7 +260,7 @@ def check_namespace_accessor_coverage() -> list[str]:
     from network_model.catalog.types import CatalogNamespace
 
     for ns in CatalogNamespace:
-        if ns.value in ("CONVERTER", "INVERTER"):
+        if ns.value == "CONVERTER":
             continue
         if ns.value not in _NAMESPACE_ACCESSOR:
             errors.append(f"FAIL: No accessor in materialization engine for namespace {ns.value}")

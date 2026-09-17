@@ -372,31 +372,6 @@ export interface BESSInverterCatalogType extends CatalogType {
 }
 
 /**
- * Generic inverter catalog type (INVERTER).
- * Source: backend InverterType dataclass.
- */
-export interface InverterCatalogType extends CatalogType {
-  kind: 'PV' | 'WIND' | 'BESS' | 'INVERTER' | string;
-  un_kv: number;
-  sn_mva: number;
-  pmax_mw: number;
-  qmin_mvar?: number | null;
-  qmax_mvar?: number | null;
-  cosphi_min?: number | null;
-  cosphi_max?: number | null;
-  model?: string | null;
-  ptpiree_status?: 'POWIAZANY' | 'NIEPOWIAZANY' | string;
-  ptpiree_certificate_ref?: string | null;
-  ptpiree_document_number?: string | null;
-  ptpiree_document_acceptance_date?: string | null;
-  ptpiree_wos_version?: string | null;
-  ptpiree_wipwc_version?: string | null;
-  ptpiree_ppm_scope?: string | null;
-  ptpiree_source_url?: string | null;
-  ptpiree_publication_date?: string | null;
-}
-
-/**
  * MV surge arrester type (OGRANICZNIK_SN).
  * Source: backend SurgeArresterType dataclass.
  */
@@ -532,7 +507,6 @@ export type CatalogNamespace =
   | 'NASTAWY_ZABEZPIECZEN'
   | 'PTPIREE_CERTYFIKAT_GENERATORA'
   | 'CONVERTER'
-  | 'INVERTER'
   | 'mv_branch_points';
 
 /**

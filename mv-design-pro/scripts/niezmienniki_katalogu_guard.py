@@ -73,9 +73,7 @@ def modul_rejestru() -> ModuleType:
     )
     if juz is not None:
         return juz
-    spec = importlib.util.spec_from_file_location(
-        "_rejestr_niezmiennikow_katalogu", PLIK_REJESTRU
-    )
+    spec = importlib.util.spec_from_file_location("_rejestr_niezmiennikow_katalogu", PLIK_REJESTRU)
     assert spec and spec.loader
     modul = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = modul
@@ -110,17 +108,17 @@ class _Skaner(ast.NodeVisitor):
         self.naruszenia: list[Naruszenie] = []
         self.kody_odmowy: list[tuple[int, str]] = []
 
-    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:  # noqa: N802
         self.stos_funkcji.append(node.name)
         self.generic_visit(node)
         self.stos_funkcji.pop()
 
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:  # noqa: N802
         self.stos_funkcji.append(node.name)
         self.generic_visit(node)
         self.stos_funkcji.pop()
 
-    def visit_Raise(self, node: ast.Raise) -> None:
+    def visit_Raise(self, node: ast.Raise) -> None:  # noqa: N802
         exc = node.exc
         nazwa = None
         if isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name):
@@ -154,7 +152,7 @@ class _Skaner(ast.NodeVisitor):
                 )
         self.generic_visit(node)
 
-    def visit_Call(self, node: ast.Call) -> None:
+    def visit_Call(self, node: ast.Call) -> None:  # noqa: N802
         wywolana = None
         if isinstance(node.func, ast.Name):
             wywolana = node.func.id
@@ -245,7 +243,7 @@ def main() -> int:
             print(f"  VIOLATION: {n.plik}:{n.linia} — {n.opis}")
         print()
         print("  Napraw: zamien `raise ValueError(...)` na")
-        print("          `odmowa_twarda(\"KAT-T-nnn\", \"...\")` i dopisz regule do")
+        print('          `odmowa_twarda("KAT-T-nnn", "...")` i dopisz regule do')
         print("          backend/src/network_model/catalog/niezmienniki_katalogu.py")
         print()
         return 1

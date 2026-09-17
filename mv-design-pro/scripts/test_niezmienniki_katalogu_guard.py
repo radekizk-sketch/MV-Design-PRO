@@ -158,7 +158,7 @@ def test_kod_wyliczany_w_czasie_wykonania_jest_naruszeniem(tmp_path: Path) -> No
         "    kod: str\n\n"
         "    def __post_init__(self) -> None:\n"
         "        if self.wartosc <= 0:\n"
-        "            odmowa_twarda(self.kod, \"wartosc\")\n",
+        '            odmowa_twarda(self.kod, "wartosc")\n',
     )
     naruszenia = zbadaj(katalog=katalog, plik_typow=katalog / "types.py")
     assert len(naruszenia) == 1, naruszenia

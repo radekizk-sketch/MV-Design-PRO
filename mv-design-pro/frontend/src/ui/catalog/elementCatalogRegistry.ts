@@ -89,7 +89,7 @@ export const TREE_NODE_TO_NAMESPACE: Readonly<Partial<Record<TreeNodeType, Catal
 export const PICKER_CATEGORY_TO_NAMESPACE: Readonly<Partial<Record<TypeCategory, CatalogNamespace>>> =
   Object.fromEntries(
     Object.entries(NAMESPACE_TO_PICKER_CATEGORY)
-      .filter(([namespace]) => !['NASTAWY_ZABEZPIECZEN', 'CONVERTER', 'INVERTER'].includes(namespace))
+      .filter(([namespace]) => !['NASTAWY_ZABEZPIECZEN', 'CONVERTER'].includes(namespace))
       .map(([namespace, category]) => [category, namespace as CatalogNamespace]),
   );
 

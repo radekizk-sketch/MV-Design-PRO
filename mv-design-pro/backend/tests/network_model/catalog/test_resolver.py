@@ -71,7 +71,6 @@ def catalog_with_types():
         transformer_types=transformer_types,
         switch_equipment_types={},
         converter_types={},
-        inverter_types={},
     )
 
 
@@ -84,7 +83,6 @@ def empty_catalog():
         transformer_types={},
         switch_equipment_types={},
         converter_types={},
-        inverter_types={},
     )
 
 

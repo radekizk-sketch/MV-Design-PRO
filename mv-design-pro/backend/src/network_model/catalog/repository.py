@@ -14,7 +14,6 @@ from .types import (
     ConverterKind,
     ConverterType,
     CTType,
-    InverterType,
     LineType,
     LoadType,
     LVApparatusType,
@@ -239,33 +238,6 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
     return derived
 
 
-def _derive_inverter_records(converter_records: Iterable[dict]) -> list[dict]:
-    derived: list[dict] = []
-    for record in converter_records:
-        params = dict(record.get("params") or {})
-        kind = _converter_kind_value(record) or "INVERTER"
-        derived.append(
-            {
-                "id": record.get("id"),
-                "name": record.get("name"),
-                "params": {
-                    "un_kv": params.get("un_kv"),
-                    "sn_mva": params.get("sn_mva"),
-                    "pmax_mw": params.get("pmax_mw"),
-                    "qmin_mvar": params.get("qmin_mvar"),
-                    "qmax_mvar": params.get("qmax_mvar"),
-                    "cosphi_min": params.get("cosphi_min"),
-                    "cosphi_max": params.get("cosphi_max"),
-                    "kind": kind,
-                    "manufacturer": params.get("manufacturer"),
-                    "model": params.get("model"),
-                    **_copy_catalog_quality(record),
-                },
-            }
-        )
-    return derived
-
-
 @dataclass(frozen=True)
 class CatalogRepository:
     """
@@ -279,7 +251,6 @@ class CatalogRepository:
     transformer_types: dict[str, TransformerType]
     switch_equipment_types: dict[str, SwitchEquipmentType]
     converter_types: dict[str, ConverterType]
-    inverter_types: dict[str, InverterType]
     protection_device_types: dict[str, ProtectionDeviceType] = field(default_factory=dict)
     protection_curves: dict[str, ProtectionCurve] = field(default_factory=dict)
     protection_setting_templates: dict[str, ProtectionSettingTemplate] = field(default_factory=dict)
@@ -314,7 +285,6 @@ class CatalogRepository:
         transformer_types: Iterable[dict],
         switch_equipment_types: Iterable[dict] | None = None,
         converter_types: Iterable[dict] | None = None,
-        inverter_types: Iterable[dict] | None = None,
         protection_device_types: Iterable[dict] | None = None,
         protection_curves: Iterable[dict] | None = None,
         protection_setting_templates: Iterable[dict] | None = None,
@@ -354,11 +324,6 @@ class CatalogRepository:
             data = {"id": record.get("id"), "name": record.get("name")}
             data.update(record.get("params") or {})
             return SwitchEquipmentType.from_dict(data)
-
-        def _build_inverter_type(record: dict) -> InverterType:
-            data = {"id": record.get("id"), "name": record.get("name")}
-            data.update(record.get("params") or {})
-            return InverterType.from_dict(data)
 
         def _build_converter_type(record: dict) -> ConverterType:
             data = {"id": record.get("id"), "name": record.get("name")}
@@ -462,14 +427,9 @@ class CatalogRepository:
 
         switch_records = list(switch_equipment_types or [])
         converter_records = list(converter_types or [])
-        inverter_records = list(inverter_types or [])
         protection_device_records = list(protection_device_types or [])
         protection_curve_records = list(protection_curves or [])
         protection_setting_template_records = list(protection_setting_templates or [])
-        if not converter_records and inverter_records:
-            converter_records = inverter_records
-        if not inverter_records and converter_records:
-            inverter_records = _derive_inverter_records(converter_records)
         mv_apparatus_records = list(mv_apparatus_types or [])
         if not mv_apparatus_records and switch_records:
             mv_apparatus_records = _derive_mv_apparatus_records(switch_records)
@@ -491,9 +451,6 @@ class CatalogRepository:
             },
             converter_types={
                 str(item.id): item for item in map(_build_converter_type, converter_records)
-            },
-            inverter_types={
-                str(item.id): item for item in map(_build_inverter_type, inverter_records)
             },
             protection_device_types={
                 str(item.id): item
@@ -587,9 +544,6 @@ class CatalogRepository:
             values = [item for item in values if item.kind == kind]
         return sorted(values, key=lambda item: str(item.id))
 
-    def list_inverter_types(self) -> list[InverterType]:
-        return self._sorted(self.inverter_types.values())
-
     def get_line_type(self, type_id: str) -> LineType | None:
         return self.line_types.get(str(type_id))
 
@@ -604,9 +558,6 @@ class CatalogRepository:
 
     def get_converter_type(self, type_id: str) -> ConverterType | None:
         return self.converter_types.get(str(type_id))
-
-    def get_inverter_type(self, type_id: str) -> InverterType | None:
-        return self.inverter_types.get(str(type_id))
 
     def list_protection_device_types(self) -> list[ProtectionDeviceType]:
         return self._sorted_pl(self.protection_device_types.values())
@@ -813,7 +764,6 @@ def get_default_mv_catalog() -> CatalogRepository:
         transformer_types=get_all_transformer_types() + get_all_benchmark_transformer_records(),
         switch_equipment_types=get_all_switch_equipment_types(),
         converter_types=get_all_converter_types(),
-        inverter_types=[],
         bess_battery_types=get_all_bess_battery_types(),
         protection_device_types=get_all_protection_device_types(),
         protection_curves=get_all_protection_curves(),

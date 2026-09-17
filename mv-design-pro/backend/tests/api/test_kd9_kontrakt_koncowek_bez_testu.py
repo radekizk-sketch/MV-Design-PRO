@@ -24,7 +24,6 @@ import pytest
 # poprawny stan zerowy tych koncowek (kazda ma zaszyty zestaw startowy).
 KATALOG_LISTOWE = [
     "/api/catalog/complete-bay-templates",
-    "/api/catalog/inverter-types",
     "/api/catalog/manufacturers",
     "/api/catalog/ptpiree/generator-certificates",
     "/api/catalog/shunt-capacitor-types",
