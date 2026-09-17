@@ -2023,3 +2023,140 @@ def test_guard_accepts_current_repo_state_s3() -> None:
     """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo (bez monkeypatch)
     musi byc czysta PO kasacji karty S-3."""
     assert guard.check_s3_ncrfg_second_engine_resurrection() == []
+
+
+# =============================================================================
+# KASACJA-UNIEWAZNIACZA (2026-09-17) — bramka wskrzeszenia ostatniego pisarza
+# statusu wynikow (`application/analysis_run/result_invalidator.py`,
+# `ResultInvalidator.invalidate_project_results`, `AnalysisRunRepository.
+# mark_results_outdated`). Iloczyn cech: {modul pod stara sciezka, klasa pod
+# INNA sciezka, funkcja pod INNA sciezka, funkcja `async`} x {definicja = czerwone,
+# komentarz/dokstring/literal tekstowy = zielone} x {osierocony `__pycache__`
+# = zielone}.
+# =============================================================================
+
+
+def _patch_uniewazniacz_tree(monkeypatch, tmp_path) -> Path:
+    src = tmp_path / "backend" / "src"
+    src.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    return src
+
+
+def test_guard_rejects_resurrected_uniewazniacz_module(tmp_path, monkeypatch) -> None:
+    src = _patch_uniewazniacz_tree(monkeypatch, tmp_path)
+    (src / "application" / "analysis_run").mkdir(parents=True)
+    (src / "application" / "analysis_run" / "result_invalidator.py").write_text(
+        "x = 1\n", encoding="utf-8"
+    )
+
+    violations = guard.check_uniewazniacz_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v and "application/analysis_run/result_invalidator.py" in v
+        for v in violations
+    )
+
+
+@pytest.mark.parametrize("nazwa", sorted(guard.FORBIDDEN_UNIEWAZNIACZ_CLASS_NAMES))
+def test_guard_rejects_resurrected_uniewazniacz_class_under_other_path(
+    tmp_path, monkeypatch, nazwa: str
+) -> None:
+    """Uniewazniacz moze wrocic pod INNYM plikiem (np. `application/swiezosc/
+    kaskada.py`) — guard skanuje CALY `backend/src`, nie tylko stara sciezke."""
+    src = _patch_uniewazniacz_tree(monkeypatch, tmp_path)
+    (src / "application" / "swiezosc").mkdir(parents=True)
+    (src / "application" / "swiezosc" / "kaskada.py").write_text(
+        f"class {nazwa}:\n    pass\n", encoding="utf-8"
+    )
+
+    violations = guard.check_uniewazniacz_resurrection()
+
+    assert any("[resurrected-class]" in v and nazwa in v and "kaskada.py" in v for v in violations)
+    assert not any("[resurrected-module]" in v for v in violations)
+
+
+@pytest.mark.parametrize("nazwa", sorted(guard.FORBIDDEN_UNIEWAZNIACZ_FUNCTION_NAMES))
+def test_guard_rejects_resurrected_uniewazniacz_function_under_other_path(
+    tmp_path, monkeypatch, nazwa: str
+) -> None:
+    """Kaskada moze wrocic jako GOLA FUNKCJA (bez klasy) i w innym miejscu —
+    `mark_results_outdated` w dowolnym repozytorium, `invalidate_project_results`
+    w dowolnym serwisie. Oba ksztalty musza byc czerwone."""
+    src = _patch_uniewazniacz_tree(monkeypatch, tmp_path)
+    (src / "infrastructure" / "persistence").mkdir(parents=True)
+    (src / "infrastructure" / "persistence" / "repo_biegow.py").write_text(
+        f"def {nazwa}(project_id):\n    return 0\n", encoding="utf-8"
+    )
+
+    violations = guard.check_uniewazniacz_resurrection()
+
+    assert any(
+        "[resurrected-function]" in v and nazwa in v and "repo_biegow.py" in v for v in violations
+    )
+    assert not any("[resurrected-module]" in v for v in violations)
+
+
+def test_guard_rejects_resurrected_uniewazniacz_async_method(tmp_path, monkeypatch) -> None:
+    """Wariant `async def` w metodzie klasy — ta sama zdolnosc, inny ksztalt
+    skladni; `ast.walk` musi go zlapac tak samo jak funkcje modulowa."""
+    src = _patch_uniewazniacz_tree(monkeypatch, tmp_path)
+    (src / "application" / "biegi").mkdir(parents=True)
+    (src / "application" / "biegi" / "serwis.py").write_text(
+        "class SerwisBiegow:\n"
+        "    async def invalidate_project_results(self, uow, project_id):\n"
+        "        return 0\n",
+        encoding="utf-8",
+    )
+
+    violations = guard.check_uniewazniacz_resurrection()
+
+    assert any(
+        "[resurrected-function]" in v and "invalidate_project_results" in v for v in violations
+    )
+
+
+def test_guard_does_not_fire_on_uniewazniacz_names_in_comments_or_strings(
+    tmp_path, monkeypatch
+) -> None:
+    """Naglowki `unit_of_work.py` i `analysis_run_repository.py` OPISUJA kasacje
+    — nazwanie jej nie moze byc naruszeniem, inaczej bramka karalaby historie."""
+    src = _patch_uniewazniacz_tree(monkeypatch, tmp_path)
+    (src / "infrastructure" / "persistence").mkdir(parents=True)
+    (src / "infrastructure" / "persistence" / "unit_of_work.py").write_text(
+        '"""Galaz `analysis_runs` zyla dla `ResultInvalidator`\n'
+        "(`invalidate_project_results` -> `mark_results_outdated`), skasowanego\n"
+        'w karcie KASACJA-UNIEWAZNIACZA."""\n'
+        "# mark_results_outdated tez nie wraca\n"
+        'POWOD = "ResultInvalidator usuniety"\n',
+        encoding="utf-8",
+    )
+
+    assert guard.check_uniewazniacz_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_uniewazniacz_resurrection(tmp_path, monkeypatch) -> None:
+    src = _patch_uniewazniacz_tree(monkeypatch, tmp_path)
+    (src / "application" / "analysis_run").mkdir(parents=True)
+    (src / "application" / "analysis_run" / "read_model.py").write_text(
+        "def build_trace_summary(trace):\n    return {}\n", encoding="utf-8"
+    )
+
+    assert guard.check_uniewazniacz_resurrection() == []
+
+
+def test_guard_ignores_orphaned_pycache_only_directory_uniewazniacz(tmp_path, monkeypatch) -> None:
+    """Osierocony bytecode sprzed kasacji nie jest wskrzeszonym zrodlem."""
+    src = _patch_uniewazniacz_tree(monkeypatch, tmp_path)
+    pycache_dir = src / "application" / "analysis_run" / "__pycache__"
+    pycache_dir.mkdir(parents=True)
+    (pycache_dir / "result_invalidator.cpython-311.pyc").write_bytes(b"\x00")
+
+    assert guard.check_uniewazniacz_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_uniewazniacz() -> None:
+    """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo (bez monkeypatch)
+    musi byc czysta PO kasacji karty KASACJA-UNIEWAZNIACZA."""
+    assert guard.check_uniewazniacz_resurrection() == []

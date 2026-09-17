@@ -252,7 +252,13 @@ def test_update_values_na_biegach_legacy_nie_jest_naruszeniem(
 ) -> None:
     """Tor legacy `analysis_runs` jest POZA karta - rozroznienie musi byc
     strukturalne (lancuch wywolan), nie nazwowe (sama obecnosc `result_status`).
-    Ten test odtwarza dokladny ksztalt `analysis_run_repository.mark_results_outdated`.
+
+    Ksztalt ponizej to `analysis_run_repository.mark_results_outdated` sprzed
+    kasacji (karta KASACJA-UNIEWAZNIACZA, 2026-09-17 - metoda i jej jedyny
+    wolajacy juz nie istnieja). Sprawdzenie zostaje, bo `AnalysisRunORM` i tabela
+    `analysis_runs` ZOSTALY jako dane zastane: gdyby rozroznienie zeszlo na
+    poziom nazwy pola, bramka zapalalaby sie na rejestrze biegow, ktorego karta
+    CV-2-W nigdy nie dotyczyla.
     """
     kod, wyjscie = _uruchom(
         tmp_path,

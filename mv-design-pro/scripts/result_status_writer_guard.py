@@ -11,7 +11,7 @@ WYPROWADZANY z biegow przypadku i koperty rewizji
 
 PO CO TA BRAMKA. Do CV-2-W status byl POLEM, a jego prawdziwosc zalezala od tego,
 czy KAZDA sciezka mutujaca model pamietala o wywolaniu "uniewazniacza". Pisarzy
-bylo siedmiu (`ResultInvalidator`, `StudyCaseService.mark_all_outdated` /
+bylo siedmiu (uniewazniacz wynikow projektu, `StudyCaseService.mark_all_outdated` /
 `mark_case_outdated` / `mark_case_fresh`, `case_repository.mark_*`,
 `invalidate_cases_for_snapshot`, `update_cases_snapshot_binding`,
 `LifecycleService`, regula OUTDATED w `StudyCase.with_network_snapshot_id` i w
@@ -45,11 +45,21 @@ CZEGO NIE WYKRYWA (i dlaczego)
 ------------------------------
 `CanonicalRun.result_status` (status BIEGU kanonicznego, `canonical_runs`) oraz
 legacy `AnalysisRun.result_status` (`analysis_runs`) sa POZA zakresem tej karty -
-to inne byty w innym slowniku (VALID/OUTDATED), kasowane razem z torem legacy
-w CV-4. Rozroznienie jest strukturalne, nie nazwowe: reguly B i C wymagaja
-konstruktora/lancucha PRZYPADKU, a regula A dziala wylacznie w plikach
-wspominajacych `StudyCase` - repozytoria biegow (`canonical_run_repository.py`,
-`analysis_run_repository.py`) nie wspominaja go ani razu (pomiar 2026-09-05).
+to inne byty w innym slowniku (VALID/OUTDATED). Rozroznienie jest strukturalne,
+nie nazwowe: reguly B i C wymagaja konstruktora/lancucha PRZYPADKU, a regula A
+dziala wylacznie w plikach wspominajacych `StudyCase` - repozytoria biegow
+(`canonical_run_repository.py`, `analysis_run_repository.py`) nie wspominaja go
+ani razu (pomiar powtorzony 2026-09-17, po kasacji uniewazniacza).
+
+STAN REJESTRU LEGACY NA DZIS (karta KASACJA-UNIEWAZNIACZA, 2026-09-17). Wersja
+z 2026-09-05 zapowiadala tu kasacje `analysis_runs` "razem z torem legacy w CV-4".
+Tor kreatora zszedl w W1 (2026-09-09), tabela ZOSTALA: liczy ja
+`ProjectRepository.has_dependencies`. Zszedl natomiast jedyny pisarz kolumny
+`analysis_runs.result_status` - `application/analysis_run/result_invalidator.py`
+razem z `AnalysisRunRepository.mark_results_outdated` (bramka wskrzeszenia:
+`scripts/legacy_public_path_guard.py::check_uniewazniacz_resurrection`). Rejestr
+legacy jest odtad DANYMI ZASTANYMI bez zadnego pisarza, a ta bramka nadal go
+swiadomie NIE obejmuje - jej zakresem jest wylacznie status PRZYPADKU.
 
 ZAKRES SKANU I JEDYNE WYLACZENIE
 --------------------------------

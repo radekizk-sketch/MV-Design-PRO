@@ -636,6 +636,53 @@ _TS_S3_FORBIDDEN_DEFS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
 )
 
 
+# Karta KASACJA-UNIEWAZNIACZA (2026-09-17) — bramka wskrzeszenia OSTATNIEGO
+# PISARZA statusu wynikow. Do CV-2-W status wynikow byl POLEM przestawianym przez
+# siedmiu "uniewazniaczy"; CV-2-W zamienila go na FUNKCJE (biegi kanoniczne x
+# rewizja modelu x odcisk katalogu, `application/result_freshness.py`) i skasowala
+# szesciu pisarzy. Siodmy — `application/analysis_run/result_invalidator.py`
+# (`ResultInvalidator.invalidate_project_results` -> `AnalysisRunRepository.
+# mark_results_outdated`) — ZOSTAL wtedy swiadomie, z jawnym warunkiem w swoim
+# wlasnym naglowku: "jedynym konsumentem jest legacy tor kreatora
+# (`application/network_wizard/service.py`) ... kasowany razem z tym torem w CV-4".
+# Tor zszedl w W1 (2026-09-09, `W1_LEGACY_RELATIVE_PATHS` wyzej), modul nie —
+# pomiar 2026-09-17: 0 wolajacych w `backend/src` (3 wzmianki, wszystkie w
+# komentarzach), 1 wolajacy w `backend/tests` (test, ktory sprawdzal, ze ten kod
+# NIE ma skutku). Kod zywy wylacznie dla wlasnego testu = dlug, wiec zeszly razem:
+# modul, `mark_results_outdated` (jedyny wolajacy) oraz trzy metody odczytu tego
+# samego repozytorium bez ani jednego wolajacego w `src` i `tests` (`get`,
+# `list_by_project`, `get_by_deterministic_key`).
+#
+# CO ZOSTAJE I DLACZEGO (zeby ta bramka nie znaczyla wiecej, niz znaczy): tabela
+# `analysis_runs`, `AnalysisRunORM` oraz `AnalysisRunRepository.create`/
+# `update_status` ZOSTAJA — tabele liczy produkcyjny `ProjectRepository.
+# has_dependencies`, a wiersze zastane musza dac sie zapisac w tescie
+# dowodzacym, ze kanoniczne routery ich NIE pokazuja
+# (`tests/test_production_canonical_only_api.py`). Nazwy `create`/`update_status`
+# CELOWO nie sa nizej: sa generyczne i zapalalyby sie na polowie repozytoriow.
+#
+# Sprawdzane: (1) modul nie istnieje, (2) zadna nazwa z
+# `FORBIDDEN_UNIEWAZNIACZ_CLASS_NAMES` nie wraca jako DEFINICJA (ast.ClassDef)
+# gdziekolwiek w `backend/src`, (3) zadna nazwa z
+# `FORBIDDEN_UNIEWAZNIACZ_FUNCTION_NAMES` nie wraca jako DEFINICJA
+# (ast.FunctionDef/ast.AsyncFunctionDef) gdziekolwiek w `backend/src` — nie
+# dowolne wystapienie identyfikatora, wiec komentarz/dokstring nazywajacy kasacje
+# (jak naglowki `unit_of_work.py` i `analysis_run_repository.py`) NIE jest
+# naruszeniem.
+UNIEWAZNIACZ_RELATIVE_PATHS: dict[str, str] = {
+    "application/analysis_run/result_invalidator.py": (
+        "uniewazniacz wynikow projektu (kaskada na `analysis_runs.result_status`) — "
+        "status wynikow jest WYPROWADZANY, nie zapisywany: "
+        "application/result_freshness.py"
+    ),
+}
+FORBIDDEN_UNIEWAZNIACZ_CLASS_NAMES = {"ResultInvalidator"}
+FORBIDDEN_UNIEWAZNIACZ_FUNCTION_NAMES = {
+    "invalidate_project_results",
+    "mark_results_outdated",
+}
+
+
 def read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="ignore")
 
@@ -1512,6 +1559,45 @@ def check_s3_ncrfg_second_engine_resurrection() -> list[str]:
     return violations
 
 
+def check_uniewazniacz_resurrection() -> list[str]:
+    """KASACJA-UNIEWAZNIACZA (2026-09-17): ostatni pisarz statusu wynikow nie
+    moze wrocic (patrz komentarz przy `UNIEWAZNIACZ_RELATIVE_PATHS`). Status
+    wynikow przypadku jest FUNKCJA biegow i koperty rewizji — kazdy nowy
+    "uniewazniacz" przywracalby stan, ktory ktos musi pamietac przestawic."""
+    violations: list[str] = []
+    for rel, label in UNIEWAZNIACZ_RELATIVE_PATHS.items():
+        path = BACKEND_SRC_DIR / rel
+        if zrodlo_istnieje(path):
+            violations.append(
+                f"[resurrected-module] backend/src/{rel}: {label} "
+                "(usuniety w karcie KASACJA-UNIEWAZNIACZA)"
+            )
+    if not BACKEND_SRC_DIR.exists():
+        return violations
+    for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+        tree = ast.parse(read_text(py_file), filename=str(py_file))
+        rel_path = (
+            py_file.relative_to(ROOT).as_posix() if py_file.is_relative_to(ROOT) else str(py_file)
+        )
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ClassDef) and node.name in FORBIDDEN_UNIEWAZNIACZ_CLASS_NAMES:
+                violations.append(
+                    f"[resurrected-class] {rel_path}:{node.lineno}: class {node.name} "
+                    "(uniewazniacz wynikow, usuniety w karcie KASACJA-UNIEWAZNIACZA) "
+                    "nie moze wrocic"
+                )
+            if (
+                isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+                and node.name in FORBIDDEN_UNIEWAZNIACZ_FUNCTION_NAMES
+            ):
+                violations.append(
+                    f"[resurrected-function] {rel_path}:{node.lineno}: def {node.name} "
+                    "(uniewazniacz wynikow, usuniety w karcie KASACJA-UNIEWAZNIACZA) "
+                    "nie moze wrocic"
+                )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -1531,6 +1617,7 @@ def main() -> int:
         + check_w3g1_run_trigger_orphan_resurrection()
         + check_w3j_voltage_criteria_resurrection()
         + check_s3_ncrfg_second_engine_resurrection()
+        + check_uniewazniacz_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")
