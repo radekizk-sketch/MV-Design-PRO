@@ -45,7 +45,6 @@ const NAMESPACE_ICONS: Record<CatalogNamespace, string> = {
   NASTAWY_ZABEZPIECZEN: 'NST',
   PTPIREE_CERTYFIKAT_GENERATORA: 'PTP',
   CONVERTER: 'CNV',
-  INVERTER: 'INV',
   mv_branch_points: 'BP',
 };
 

@@ -116,6 +116,7 @@ import walidacjaScenyWynik from './harness-fixtures/generated/walidacja_scena_wy
 import cieplnaScenyWynik from './harness-fixtures/generated/cieplna_scena_wynik.json';
 import cieplnaScenyDowod from './harness-fixtures/generated/cieplna_scena_dowod.json';
 import arcflashScenyWynik from './harness-fixtures/generated/arcflash_scena_wynik.json';
+import przegladWiarygodnosciKatalogu from './harness-fixtures/generated/przeglad_wiarygodnosci_katalogu.json';
 import { REWIZJA_SIECI_ZLOTEJ, migawkaSieciZlotej } from './harness-fixtures/migawkaSieciZlotej';
 import { EkranOceny } from './ui2/wyniki/ocena';
 import { SekcjaSilySieci } from './ui2/oze/pulpit';
@@ -150,6 +151,7 @@ import {
   preflightZablokowanyFixture,
 } from './ui2/spaces/obliczenia/diagnoza/__tests__/fixtures';
 import { EkranCoWymagaUwagi } from './ui2/wyniki/co-wymaga-uwagi';
+import { PozycjeDoPrzegladu } from './ui/catalog/PozycjeDoPrzegladu';
 import { CaseBar } from './ui2/shell/CaseBar';
 import { useShellCaseInfo } from './ui2/shell/shellStatus';
 import { useAppStateStore } from './ui/app-state';
@@ -895,6 +897,13 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   // rozpływu kolidują z szeroką regułą `/power-flow-runs` sceny „porownanie".
   const jsonOK = (body: unknown): Response =>
     new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+  // Scena „przeglad-wiarygodnosci" (karta KATALOG-NIEZMIENNIKI): odpowiedz
+  // WYLICZONA przez backend na zywym katalogu (eksport_fixtur_harnessu.py),
+  // nie recznie wpisane liczby — parytet pilnuje tests/ci/test_fixtury_harnessu.py.
+  if (creator === 'przeglad-wiarygodnosci' && url.includes('/api/catalog/przeglad-wiarygodnosci')) {
+    return jsonOK(przegladWiarygodnosciKatalogu);
+  }
 
   if (creator === 'wyniki-skladowe') {
     if (url.endsWith('/results/short-circuit')) return jsonOK(SKLADOWE_WYNIK);
@@ -2943,6 +2952,7 @@ function Harness() {
   else if (creator === 'diagnoza')
     node = <PanelDiagnozy onPrzejdzDoUruchomienia={() => undefined} />;
   else if (creator === 'uwaga') node = <EkranCoWymagaUwagi />;
+  else if (creator === 'przeglad-wiarygodnosci') node = <PozycjeDoPrzegladu />;
   else if (creator === 'swiezosc') node = <SwiezoscScena />;
   else if (creator === 'walidacja')
     node = (

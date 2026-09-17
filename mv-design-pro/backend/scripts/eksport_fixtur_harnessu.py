@@ -1156,6 +1156,21 @@ def arcflash_scena_wynik() -> dict[str, Any]:
     return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
 
 
+def przeglad_wiarygodnosci_katalogu_scena() -> dict[str, Any]:
+    """Odpowiedź `GET /api/catalog/przeglad-wiarygodnosci` — TA SAMA funkcja,
+    którą woła końcówka (`api/catalog.py::przeglad_wiarygodnosci_katalogu`).
+
+    Scena harnessu „przeglad-wiarygodnosci" karmi sekcję „Pozycje do przeglądu"
+    przeglądarki biblioteki typów TĄ fikstrurą, więc ekran pokazuje liczby
+    policzone na ŻYWYM katalogu backendu, a nie wpisane ręcznie. Rozjazd między
+    plikiem w repo a świeżym wyliczeniem jest czerwienią
+    `tests/ci/test_fixtury_harnessu.py`, a nie cichą rozbieżnością.
+    """
+    from api.catalog import przeglad_wiarygodnosci_katalogu  # noqa: PLC0415
+
+    return przeglad_wiarygodnosci_katalogu().model_dump(mode="json")
+
+
 #: Nazwa pliku → funkcja licząca odpowiedź (kolejność = kolejność eksportu).
 FIXTURY: dict[str, Any] = {
     "ncrfg_zgodnosc_przekrojowa_scena_macierz": zgodnosc_przekrojowa_sceny_macierz,
@@ -1181,6 +1196,7 @@ FIXTURY: dict[str, Any] = {
     "cieplna_scena_wynik": cieplna_scena_wynik,
     "cieplna_scena_dowod": cieplna_scena_dowod,
     "arcflash_scena_wynik": arcflash_scena_wynik,
+    "przeglad_wiarygodnosci_katalogu": przeglad_wiarygodnosci_katalogu_scena,
 }
 
 

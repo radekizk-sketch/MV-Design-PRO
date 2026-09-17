@@ -1,0 +1,266 @@
+{
+  "liczba_odstepstw": 0,
+  "wedlug_kodu": {},
+  "rodziny": [
+    {
+      "rodzina": "aparaty-nn",
+      "etykieta_pl": "Aparatura nN",
+      "liczba_pozycji": 14,
+      "sprawdzone_reguly": [
+        "KAT-W-004"
+      ],
+      "pokrycie": [
+        {
+          "kod": "KAT-W-004",
+          "policzone": 0,
+          "pominiete": 14,
+          "powod_pominiecia": "aparat bez dodatniej zdolnosci wylaczania Icu albo bez pradu krotkotrwalego Icw w karcie katalogowej"
+        }
+      ],
+      "liczba_odstepstw": 0,
+      "wedlug_kodu": {},
+      "odstepstwa": []
+    },
+    {
+      "rodzina": "aparaty-sn",
+      "etykieta_pl": "Aparatura SN",
+      "liczba_pozycji": 48,
+      "sprawdzone_reguly": [
+        "KAT-W-003"
+      ],
+      "pokrycie": [
+        {
+          "kod": "KAT-W-003",
+          "policzone": 28,
+          "pominiete": 20,
+          "powod_pominiecia": "aparat bez dodatniej zdolnosci wylaczania — odlacznik, rozlacznik albo uziemnik z definicji nie przerywa pradu zwarciowego"
+        }
+      ],
+      "liczba_odstepstw": 0,
+      "wedlug_kodu": {},
+      "odstepstwa": []
+    },
+    {
+      "rodzina": "kable-nn",
+      "etykieta_pl": "Kable nN",
+      "liczba_pozycji": 17,
+      "sprawdzone_reguly": [
+        "KAT-W-001"
+      ],
+      "pokrycie": [
+        {
+          "kod": "KAT-W-001",
+          "policzone": 0,
+          "pominiete": 17,
+          "powod_pominiecia": "pozycja nie niesie rezystancji skladowej zerowej (R0)"
+        }
+      ],
+      "liczba_odstepstw": 0,
+      "wedlug_kodu": {},
+      "odstepstwa": []
+    },
+    {
+      "rodzina": "kable-sn",
+      "etykieta_pl": "Kable SN",
+      "liczba_pozycji": 63,
+      "sprawdzone_reguly": [
+        "KAT-W-001"
+      ],
+      "pokrycie": [
+        {
+          "kod": "KAT-W-001",
+          "policzone": 62,
+          "pominiete": 1,
+          "powod_pominiecia": "pozycja nie niesie rezystancji skladowej zerowej (R0)"
+        }
+      ],
+      "liczba_odstepstw": 0,
+      "wedlug_kodu": {},
+      "odstepstwa": []
+    },
+    {
+      "rodzina": "linie-sn",
+      "etykieta_pl": "Linie napowietrzne SN",
+      "liczba_pozycji": 26,
+      "sprawdzone_reguly": [
+        "KAT-W-001"
+      ],
+      "pokrycie": [
+        {
+          "kod": "KAT-W-001",
+          "policzone": 25,
+          "pominiete": 1,
+          "powod_pominiecia": "pozycja nie niesie rezystancji skladowej zerowej (R0)"
+        }
+      ],
+      "liczba_odstepstw": 0,
+      "wedlug_kodu": {},
+      "odstepstwa": []
+    },
+    {
+      "rodzina": "transformatory",
+      "etykieta_pl": "Transformatory",
+      "liczba_pozycji": 192,
+      "sprawdzone_reguly": [
+        "KAT-W-002",
+        "KAT-W-006"
+      ],
+      "pokrycie": [
+        {
+          "kod": "KAT-W-002",
+          "policzone": 192,
+          "pominiete": 0,
+          "powod_pominiecia": "pozycja nie niesie strat jalowych (P0) albo obciazeniowych (Pk)"
+        },
+        {
+          "kod": "KAT-W-006",
+          "policzone": 192,
+          "pominiete": 0,
+          "powod_pominiecia": "transformator nie niesie pradu biegu jalowego (i0 %)"
+        }
+      ],
+      "liczba_odstepstw": 0,
+      "wedlug_kodu": {},
+      "odstepstwa": []
+    },
+    {
+      "rodzina": "zrodla-systemowe",
+      "etykieta_pl": "Zrodla systemowe (GPZ)",
+      "liczba_pozycji": 22,
+      "sprawdzone_reguly": [
+        "KAT-W-005"
+      ],
+      "pokrycie": [
+        {
+          "kod": "KAT-W-005",
+          "policzone": 22,
+          "pominiete": 0,
+          "powod_pominiecia": "zrodlo nie niesie stosunku R/X (ani wariantu maksymalnego, ani minimalnego)"
+        }
+      ],
+      "liczba_odstepstw": 0,
+      "wedlug_kodu": {},
+      "odstepstwa": []
+    }
+  ],
+  "rodziny_bez_regul": [
+    {
+      "rodzina": "bess-battery",
+      "powod": "Pakiet baterii: pojemnosc / napiecie DC / C-rate sa bramkami TWARDYMI (KAT-T-018..020)."
+    },
+    {
+      "rodzina": "bess-inverter",
+      "powod": "Przeksztaltnik magazynu: jak PV."
+    },
+    {
+      "rodzina": "branch-point",
+      "powod": "Punkt odgalezny (slup/ZKSN): geometria i wyposazenie, bez wielkosci objetych regulami."
+    },
+    {
+      "rodzina": "complete-bay-templates",
+      "powod": "Szablon pola to zestawienie pozycji katalogu, nie pozycja katalogu."
+    },
+    {
+      "rodzina": "converter",
+      "powod": "Przeksztaltnik (PV/BESS/WIND) — jak PV."
+    },
+    {
+      "rodzina": "ct",
+      "powod": "Przekladnik pradowy: znamiona dokladnosci i przetezenia, bez par objetych regulami."
+    },
+    {
+      "rodzina": "der-dynamic",
+      "powod": "Profil dynamiczny DER nie jest rekordem sprzetu — jego zakresy sa bramkami TWARDYMI wyprowadzonymi z NC RfG (KAT-T-027..029)."
+    },
+    {
+      "rodzina": "load",
+      "powod": "Typ odbioru nie niesie impedancji skladowych ani znamion zwarciowych."
+    },
+    {
+      "rodzina": "lv-breaker-mcb",
+      "powod": "Wylacznik nadpradowy MCB: kontrakt niesie pasmo wyzwalania z IEC 60898-1, bez pary Icw/Icu, na ktorej dziala regula wiarygodnosci."
+    },
+    {
+      "rodzina": "lv-fuse-link",
+      "powod": "Wkladka topikowa nie ma pradu krotkotrwalego wytrzymywanego — jej zdolnosc wylaczania jest bramka TWARDA (KAT-T-022), nie sygnalem do przegladu."
+    },
+    {
+      "rodzina": "protection-device",
+      "powod": "Zabezpieczenie: nastawy i krzywe czasowo-pradowe, bez par wielkosci znamionowych objetych regulami wiarygodnosci."
+    },
+    {
+      "rodzina": "ptpiree-certificates",
+      "powod": "Wykaz certyfikatow PTPiREE to rejestr dokumentow, nie rekordow sprzetu."
+    },
+    {
+      "rodzina": "pv-inverter",
+      "powod": "Przeksztaltnik PV: udzial zwarciowy k_sc jest bramka TWARDA (KAT-T-003); brak k_sc jest BRAKIEM DANEJ raportowanym przez miernik gotowosci, nie odstepstwem."
+    },
+    {
+      "rodzina": "shunt-capacitor",
+      "powod": "Bateria kondensatorow: moc bierna i napiecie, bez par objetych regulami."
+    },
+    {
+      "rodzina": "surge-arrester",
+      "powod": "Ogranicznik przepiec: znamiona napieciowo-energetyczne (Um, MCOV, Ures, BIL), bez par objetych regulami."
+    },
+    {
+      "rodzina": "switch-equipment",
+      "powod": "Aparat laczeniowy pola bez znamion zwarciowych w kontrakcie typu — relacje Icw/Icu niesie rodzina aparatow SN."
+    },
+    {
+      "rodzina": "switchgear-families",
+      "powod": "Rodzina rozdzielnicy to kontener konfiguracyjny, nie rekord sprzetu."
+    },
+    {
+      "rodzina": "synchronous-generator",
+      "powod": "Generator synchroniczny: reaktancje podprzejsciowe/przejsciowe i stale czasowe, bez par objetych regulami (relacja x''<x'<x nie byla u nas nigdy bramka i nie ma dzis konsumenta przegladu)."
+    },
+    {
+      "rodzina": "vt",
+      "powod": "Przekladnik napieciowy: jak CT."
+    },
+    {
+      "rodzina": "wind-inverter",
+      "powod": "Przeksztaltnik farmy wiatrowej — podzbior rodziny przeksztaltnikow."
+    }
+  ],
+  "reguly": [
+    {
+      "kod": "KAT-W-001",
+      "nazwa": "R0 >= R1 przewodu",
+      "podstawa": "Typowa konstrukcja zyly powrotnej / ekranu z powrotem ziemnym",
+      "uzasadnienie": "Rezystancja skladowej zerowej zalezy od konstrukcji zyly powrotnej, ekranu i drogi powrotu przez ziemie. Dla konstrukcji z powrotem ziemnym R0 jest zwykle kilkukrotnie wieksze, ale nie jest to nierownosc uniwersalna dla kazdej konstrukcji kabla i linii. Twarda bramka odrzucilaby poprawny rekord spoza dotychczasowego zbioru."
+    },
+    {
+      "kod": "KAT-W-002",
+      "nazwa": "P0 < Pk transformatora",
+      "podstawa": "Relacja typowa dla transformatorow rozdzielczych",
+      "uzasadnienie": "Straty jalowe sa zwykle ulamkiem strat obciazeniowych, ale nie jest to koniecznosc matematyczna dla kazdej rodziny konstrukcyjnej. Odwrocenie pary zwykle oznacza zamienione kolumny przy imporcie — i o tym ma powiedziec ostrzezenie, a nie odmowa wczytania pozycji."
+    },
+    {
+      "kod": "KAT-W-003",
+      "nazwa": "Icw <= Icu aparatu SN",
+      "podstawa": "IEC 62271-100 — Icw i Icu sa ODDZIELNYMI wielkosciami znamionowymi",
+      "uzasadnienie": "Prad krotkotrwaly wytrzymywany (przewodzenie bez uszkodzenia) i zdolnosc wylaczania (przerwanie pradu) to rozne zdolnosci, znamionowane osobno. Globalna nierownosc po calej rodzinie aparatow SN nie ma podstawy normowej i moglaby odrzucic poprawny rekord aparatu, dla ktorego norma tej relacji nie narzuca."
+    },
+    {
+      "kod": "KAT-W-004",
+      "nazwa": "Icw <= Icu aparatu nN",
+      "podstawa": "IEC 60947-2 § 4.3.5.4 (Icw) wobec § 4.3.5.2.2 (Ics jako % Icu)",
+      "uzasadnienie": "Norma definiuje Ics JAWNIE jako procent Icu (§ 4.3.5.2.2) — tamta relacja moglaby byc twarda. Dla Icw takiej definicji NIE MA: norma opisuje je osobno (§ 4.3.5.4), jako wytrzymalosc krotkotrwala wylacznika kategorii B przez zadany czas, a nie jako ulamek zdolnosci wylaczalnej. Porownywac je wolno wylacznie dla tego samego wariantu, napiecia i czasu."
+    },
+    {
+      "kod": "KAT-W-005",
+      "nazwa": "0 < R/X < 1 umowy rownowaznej sieci",
+      "podstawa": "Typowa charakterystyka rownowaznika sieci SN (silnie indukcyjna)",
+      "uzasadnienie": "Rownowaznik sieci SN jest zwykle silnie indukcyjny, ale rownowaznik rezystancyjny albo specjalnie zdefiniowany moze miec R/X >= 1. Ograniczenie nalezy do zakresu produktu, nie do fizyki — a dopoki zakres nie jest zadeklarowany, twarda bramka jest nieuzasadniona."
+    },
+    {
+      "kod": "KAT-W-006",
+      "nazwa": "0 < i0 % < 10 transformatora",
+      "podstawa": "Zakres typowy dla transformatorow rozdzielczych",
+      "uzasadnienie": "Zakres rozsadny dla transformatorow rozdzielczych, ale nie uniwersalny dla transformatorow specjalnych. Gorna granica 10 % byla kontrola jednostki (procent kontra ulamek), a nie wielkoscia normowana."
+    }
+  ]
+}

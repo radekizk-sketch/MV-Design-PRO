@@ -273,6 +273,16 @@ describe('TypeLibraryBrowser', () => {
     vi.mocked(catalogApi.fetchTypesByCategory).mockImplementation(async (category) => (
       catalogByCategory[category]
     ));
+    // Sekcja „Pozycje do przeglądu" jest częścią przeglądarki (karta
+    // KATALOG-NIEZMIENNIKI) i pobiera własny kontrakt z backendu; bez tego
+    // mocka automock zwróciłby `undefined` i sekcja rozbiłaby render.
+    vi.mocked(catalogApi.fetchPrzegladWiarygodnosci).mockResolvedValue({
+      liczba_odstepstw: 0,
+      wedlug_kodu: {},
+      rodziny: [],
+      rodziny_bez_regul: [],
+      reguly: [],
+    });
   });
 
   it('renders the full active catalog tab set', async () => {

@@ -5,6 +5,7 @@ import {
   fetchTypesByCategory,
   type CatalogListItem,
 } from './api';
+import { PozycjeDoPrzegladu } from './PozycjeDoPrzegladu';
 import type {
   CableType,
   LineType,
@@ -436,6 +437,8 @@ export function TypeLibraryBrowser({
           })}
         </div>
       </div>
+
+      <PozycjeDoPrzegladu />
 
       <div className="border-b border-gray-200 bg-white px-6 py-3">
         <input

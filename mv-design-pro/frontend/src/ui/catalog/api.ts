@@ -438,6 +438,64 @@ export async function fetchSourceSystemTypes(): Promise<SourceSystemCatalogType[
   return fetchCatalogJson<SourceSystemCatalogType[]>('/api/catalog/source-system-types');
 }
 
+/**
+ * Przegląd wiarygodności katalogu — pozycje DO PRZEGLĄDU, nie odmowy.
+ *
+ * Kształt odpowiedzi jest KONTRAKTEM backendu
+ * (`network_model/catalog/niezmienniki_katalogu.py`, trasa
+ * `GET /api/catalog/przeglad-wiarygodnosci`). Front NIE trzyma własnej kopii
+ * uzasadnień ani progów reguł — wszystko, co pokazuje, przychodzi w tej
+ * odpowiedzi. Zero fizyki w UI: przegląd liczy backend.
+ */
+export interface OdstepstwoWiarygodnosci {
+  readonly kod: string;
+  readonly regula: string;
+  readonly pozycja_id: string;
+  readonly opis_wartosci: string;
+}
+
+export interface PokrycieReguly {
+  readonly kod: string;
+  readonly policzone: number;
+  readonly pominiete: number;
+  readonly powod_pominiecia: string;
+}
+
+export interface RodzinaPrzegladu {
+  readonly rodzina: string;
+  readonly etykieta_pl: string;
+  readonly liczba_pozycji: number;
+  readonly sprawdzone_reguly: readonly string[];
+  readonly pokrycie: readonly PokrycieReguly[];
+  readonly liczba_odstepstw: number;
+  readonly wedlug_kodu: Readonly<Record<string, number>>;
+  readonly odstepstwa: readonly OdstepstwoWiarygodnosci[];
+}
+
+export interface RegulaWiarygodnosci {
+  readonly kod: string;
+  readonly nazwa: string;
+  readonly podstawa: string;
+  readonly uzasadnienie: string;
+}
+
+export interface RodzinaBezRegul {
+  readonly rodzina: string;
+  readonly powod: string;
+}
+
+export interface PrzegladWiarygodnosci {
+  readonly liczba_odstepstw: number;
+  readonly wedlug_kodu: Readonly<Record<string, number>>;
+  readonly rodziny: readonly RodzinaPrzegladu[];
+  readonly rodziny_bez_regul: readonly RodzinaBezRegul[];
+  readonly reguly: readonly RegulaWiarygodnosci[];
+}
+
+export async function fetchPrzegladWiarygodnosci(): Promise<PrzegladWiarygodnosci> {
+  return fetchCatalogJson<PrzegladWiarygodnosci>('/api/catalog/przeglad-wiarygodnosci');
+}
+
 export async function fetchBranchPointTypes(
   kind?: 'BRANCH_POLE' | 'ZKSN',
 ): Promise<BranchPointCatalogType[]> {

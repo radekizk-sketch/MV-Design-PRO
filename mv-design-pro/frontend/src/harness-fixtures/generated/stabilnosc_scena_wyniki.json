@@ -140,7 +140,7 @@
       "catalog_materialization_status": "not_materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "865d232cd1a07765f63a11432dba18dc594b862249528ec0535942e39a149190",
+      "catalog_fingerprint": "a54644714ba2627d0b848c921663bbf3f34d581f96c225d861a8710c77fa27c4",
       "model_revision": 1,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",
