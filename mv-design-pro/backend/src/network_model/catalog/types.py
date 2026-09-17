@@ -31,6 +31,7 @@ from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
+from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
 from network_model.ir_fields import (
     wymagany_float,
     wymagany_float_lub_nieznany,
@@ -141,15 +142,15 @@ def _normalize_verification_status(
     text = str(value or "").strip().upper()
     if not text:
         return default.value
-    try:
-        return CatalogVerificationStatus(text).value
-    except ValueError:
+    if text not in {status.value for status in CatalogVerificationStatus}:
         dozwolone = ", ".join(status.value for status in CatalogVerificationStatus)
-        raise ValueError(
+        odmowa_twarda(
+            "KAT-T-001",
             f"Nierozpoznany status weryfikacji katalogu: {value!r}. "
             f"Dozwolone wartości: {dozwolone} (albo brak pola dla domyślnego "
-            f"{default.value})."
-        ) from None
+            f"{default.value}).",
+        )
+    return CatalogVerificationStatus(text).value
 
 
 def _normalize_catalog_status(
@@ -163,15 +164,15 @@ def _normalize_catalog_status(
     text = str(value or "").strip().upper()
     if not text:
         return default.value
-    try:
-        return CatalogStatus(text).value
-    except ValueError:
+    if text not in {status.value for status in CatalogStatus}:
         dozwolone = ", ".join(status.value for status in CatalogStatus)
-        raise ValueError(
+        odmowa_twarda(
+            "KAT-T-002",
             f"Nierozpoznany status katalogu: {value!r}. "
             f"Dozwolone wartości: {dozwolone} (albo brak pola dla domyślnego "
-            f"{default.value})."
-        ) from None
+            f"{default.value}).",
+        )
+    return CatalogStatus(text).value
 
 
 def _normalize_source_reference(value: Any, *, default: str) -> str:
@@ -397,9 +398,10 @@ def _validate_katalogowy_k_sc(k_sc: float | None, *, kontekst: str) -> None:
     if k_sc is None:
         return
     if not math.isfinite(k_sc) or k_sc <= 0:
-        raise ValueError(
+        odmowa_twarda(
+            "KAT-T-003",
             "Wspolczynnik udzialu zwarciowego k_sc musi byc liczba skonczona > 0, "
-            f"otrzymano k_sc={k_sc!r} ({kontekst})."
+            f"otrzymano k_sc={k_sc!r} ({kontekst}).",
         )
 
 
@@ -410,26 +412,32 @@ def _validate_pq_curve(pq_curve: tuple[tuple[float, float, float], ...]) -> None
     p_mw >= 0 and q_min_mvar <= q_max_mvar; points strictly ascending by p_mw.
     """
     if not pq_curve:
-        raise ValueError("Krzywa P-Q falownika nie moze byc pusta.")
+        odmowa_twarda("KAT-T-004", "Krzywa P-Q falownika nie moze byc pusta.")
     prev_p: float | None = None
     for point in pq_curve:
         if len(point) != 3:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-005",
                 "Punkt krzywej P-Q musi miec 3 wartosci (p_mw, q_min_mvar, q_max_mvar), "
-                f"otrzymano: {point!r}."
+                f"otrzymano: {point!r}.",
             )
         p_mw, q_min_mvar, q_max_mvar = point
         if p_mw < 0:
-            raise ValueError(f"Moc czynna punktu krzywej P-Q musi byc >= 0, otrzymano p_mw={p_mw}.")
+            odmowa_twarda(
+                "KAT-T-006",
+                f"Moc czynna punktu krzywej P-Q musi byc >= 0, otrzymano p_mw={p_mw}.",
+            )
         if q_min_mvar > q_max_mvar:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-007",
                 "Punkt krzywej P-Q wymaga q_min_mvar <= q_max_mvar, otrzymano "
-                f"q_min_mvar={q_min_mvar} > q_max_mvar={q_max_mvar} (p_mw={p_mw})."
+                f"q_min_mvar={q_min_mvar} > q_max_mvar={q_max_mvar} (p_mw={p_mw}).",
             )
         if prev_p is not None and p_mw <= prev_p:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-008",
                 "Punkty krzywej P-Q musza byc uporzadkowane rosnaco po p_mw, "
-                f"otrzymano p_mw={p_mw} po p_mw={prev_p}."
+                f"otrzymano p_mw={p_mw} po p_mw={prev_p}.",
             )
         prev_p = p_mw
 
@@ -464,8 +472,9 @@ def _harmonic_spectrum_from_raw(raw: Any) -> dict[int, float] | None:
     if raw is None:
         return None
     if not isinstance(raw, dict):
-        raise ValueError(
-            f"Widmo harmonicznych musi byc obiektem {{rzad: procent}}, otrzymano {raw!r}."
+        odmowa_twarda(
+            "KAT-T-009",
+            f"Widmo harmonicznych musi byc obiektem {{rzad: procent}}, otrzymano {raw!r}.",
         )
     return {int(rzad): float(procent) for rzad, procent in raw.items()}
 
@@ -499,9 +508,10 @@ def _validate_float_range(field_name: str, value: tuple[float, float] | None) ->
         return
     lo, hi = value
     if lo > hi:
-        raise ValueError(
+        odmowa_twarda(
+            "KAT-T-010",
             f"Zakres nastawialnosci {field_name} wymaga min <= max, "
-            f"otrzymano min={lo} > max={hi}."
+            f"otrzymano min={lo} > max={hi}.",
         )
 
 
@@ -1433,36 +1443,42 @@ class ConverterType:
         if self.pq_curve is not None:
             _validate_pq_curve(self.pq_curve)
         if self.flicker_c is not None and self.flicker_c <= 0:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-011",
                 "Wspolczynnik emisji migotania flicker_c musi byc > 0, "
-                f"otrzymano flicker_c={self.flicker_c}."
+                f"otrzymano flicker_c={self.flicker_c}.",
             )
         _validate_katalogowy_k_sc(self.k_sc, kontekst="ConverterType")
         if self.droop_p_f_percent is not None and self.droop_p_f_percent <= 0:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-012",
                 "Statyzm P/f przeksztaltnika grid-forming (droop_p_f_percent) musi byc > 0, "
-                f"otrzymano {self.droop_p_f_percent}."
+                f"otrzymano {self.droop_p_f_percent}.",
             )
         if self.droop_q_u_percent is not None and self.droop_q_u_percent <= 0:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-013",
                 "Statyzm Q/U przeksztaltnika grid-forming (droop_q_u_percent) musi byc > 0, "
-                f"otrzymano {self.droop_q_u_percent}."
+                f"otrzymano {self.droop_q_u_percent}.",
             )
         if self.harmonic_spectrum_percent is not None:
             if not self.harmonic_spectrum_percent:
-                raise ValueError(
-                    "Widmo harmonicznych (harmonic_spectrum_percent) nie moze byc puste."
+                odmowa_twarda(
+                    "KAT-T-014",
+                    "Widmo harmonicznych (harmonic_spectrum_percent) nie moze byc puste.",
                 )
             for rzad, procent in self.harmonic_spectrum_percent.items():
                 if not isinstance(rzad, int) or isinstance(rzad, bool) or rzad < 2 or rzad > 50:
-                    raise ValueError(
+                    odmowa_twarda(
+                        "KAT-T-015",
                         "Rzad harmonicznej w widmie musi byc liczba calkowita 2..50, "
-                        f"otrzymano {rzad!r}."
+                        f"otrzymano {rzad!r}.",
                     )
                 if not (0.0 <= float(procent) <= 100.0):
-                    raise ValueError(
+                    odmowa_twarda(
+                        "KAT-T-016",
                         f"Udzial {rzad}. harmonicznej musi byc w zakresie 0..100 % pradu "
-                        f"znamionowego, otrzymano {procent}."
+                        f"znamionowego, otrzymano {procent}.",
                     )
 
     def validate_power_hierarchy(self) -> None:
@@ -1480,10 +1496,11 @@ class ConverterType:
         present = [(name, value) for name, value in ordered if value is not None]
         for (upper_name, upper), (lower_name, lower) in zip(present, present[1:], strict=False):
             if lower > upper:
-                raise ValueError(
+                odmowa_twarda(
+                    "KAT-T-017",
                     f"Naruszenie hierarchii mocy karty falownika: "
                     f"{lower_name}={lower} > {upper_name}={upper} "
-                    f"(wymagane Pzainst >= Pn,AC >= Pprzylacz >= Posiagl)"
+                    f"(wymagane Pzainst >= Pn,AC >= Pprzylacz >= Posiagl)",
                 )
 
     def to_dict(self) -> dict[str, Any]:
@@ -1659,13 +1676,17 @@ class BESSBatteryType:
 
     def __post_init__(self) -> None:
         if self.capacity_kwh <= 0:
-            raise ValueError(f"{self.id}: capacity_kwh musi być > 0 (jest {self.capacity_kwh}).")
+            odmowa_twarda(
+                "KAT-T-018",
+                f"{self.id}: capacity_kwh musi być > 0 (jest {self.capacity_kwh}).",
+            )
         if self.nominal_voltage_dc_v <= 0:
-            raise ValueError(
-                f"{self.id}: nominal_voltage_dc_v musi być > 0 (jest {self.nominal_voltage_dc_v})."
+            odmowa_twarda(
+                "KAT-T-019",
+                f"{self.id}: nominal_voltage_dc_v musi być > 0 (jest {self.nominal_voltage_dc_v}).",
             )
         if self.c_rate <= 0:
-            raise ValueError(f"{self.id}: c_rate musi być > 0 (jest {self.c_rate}).")
+            odmowa_twarda("KAT-T-020", f"{self.id}: c_rate musi być > 0 (jest {self.c_rate}).")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -1688,8 +1709,9 @@ class BESSBatteryType:
     def from_dict(cls, data: dict[str, Any]) -> "BESSBatteryType":
         chemistry = str(data.get("chemistry", "LFP")).upper()
         if chemistry not in ("LFP", "NMC", "LTO"):
-            raise ValueError(
-                f"Nierozpoznana chemia baterii BESS: {chemistry!r}. Dozwolone: LFP, NMC, LTO."
+            odmowa_twarda(
+                "KAT-T-021",
+                f"Nierozpoznana chemia baterii BESS: {chemistry!r}. Dozwolone: LFP, NMC, LTO.",
             )
         return cls(
             id=str(data.get("id", str(uuid4()))),
@@ -3231,11 +3253,12 @@ class LVFuseLinkType:
         # Czerwień strukturalna zamiast cichego None, żeby dowód wytrzymałości
         # nN nigdy nie odziedziczył SN-owego NIE_DOTYCZY dla wkładki.
         if self.breaking_capacity_ka is None or self.breaking_capacity_ka <= 0:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-022",
                 f"Wkładka topikowa '{self.id}' bez znamionowej zdolności wyłączania "
                 f"(breaking_capacity_ka={self.breaking_capacity_ka!r}) — IEC 60269-1 "
                 "wymaga tej wartości dla każdej wkładki; uzupełnij z karty "
-                "katalogowej/normy z proweniencją (wzorzec G-D2)."
+                "katalogowej/normy z proweniencją (wzorzec G-D2).",
             )
 
     def to_dict(self) -> dict[str, Any]:

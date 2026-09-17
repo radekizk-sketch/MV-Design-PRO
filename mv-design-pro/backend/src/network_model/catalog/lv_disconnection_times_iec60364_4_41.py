@@ -35,6 +35,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
+
 
 @dataclass(frozen=True)
 class WpisCzasuWylaczenia:
@@ -45,11 +47,14 @@ class WpisCzasuWylaczenia:
 
     def __post_init__(self) -> None:
         if not 0.0 < self.czas_s <= 5.0:
-            raise ValueError(
-                f"Czas wyłączenia musi leżeć w zakresie (0; 5] s — otrzymano {self.czas_s}."
+            odmowa_twarda(
+                "KAT-T-030",
+                f"Czas wyłączenia musi leżeć w zakresie (0; 5] s — otrzymano {self.czas_s}.",
             )
         if not self.podstawa or not self.podstawa.strip():
-            raise ValueError("Wpis tabeli czasów wyłączenia wymaga podstawy (proweniencji).")
+            odmowa_twarda(
+                "KAT-T-031", "Wpis tabeli czasów wyłączenia wymaga podstawy (proweniencji)."
+            )
 
 
 # ---------------------------------------------------------------------------

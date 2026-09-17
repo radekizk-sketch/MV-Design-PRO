@@ -39,6 +39,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
 from network_model.core.uziemienie import TypPunktuNeutralnego
 from network_model.pochodne import mva_na_kva
 
@@ -450,9 +451,11 @@ class HvFusePasmoTcc:
 
     def __post_init__(self) -> None:
         if not self.zrodlo_url.startswith(("http://", "https://")):
-            raise ValueError("Pasmo wkladki wymaga adresu http(s) tabeli producenta.")
+            odmowa_twarda("KAT-T-023", "Pasmo wkladki wymaga adresu http(s) tabeli producenta.")
         if not self.punkty:
-            raise ValueError("Pasmo bez punktow nie jest pasmem — uzyj `pasmo_tcc = None`.")
+            odmowa_twarda(
+                "KAT-T-024", "Pasmo bez punktow nie jest pasmem — uzyj `pasmo_tcc = None`."
+            )
 
     def to_dict(self) -> dict:
         return {
@@ -610,14 +613,16 @@ class DeviceWithstandItem:
 
     def __post_init__(self) -> None:
         if self.i_th_1s_ka not in IEC_62271_1_SZEREG_I_TH_KA:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-025",
                 f"{self.id}: I_th = {self.i_th_1s_ka} kA jest spoza znormalizowanego "
-                f"szeregu IEC 62271-1 {IEC_62271_1_SZEREG_I_TH_KA}."
+                f"szeregu IEC 62271-1 {IEC_62271_1_SZEREG_I_TH_KA}.",
             )
         if self.i_th_duration_s not in IEC_62271_1_CZASY_ZWARCIA_S:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-026",
                 f"{self.id}: czas trwania zwarcia {self.i_th_duration_s} s jest spoza "
-                f"znormalizowanego szeregu IEC 62271-1 {IEC_62271_1_CZASY_ZWARCIA_S}."
+                f"znormalizowanego szeregu IEC 62271-1 {IEC_62271_1_CZASY_ZWARCIA_S}.",
             )
 
     @property
@@ -770,20 +775,23 @@ class PfCurveItem:
     def __post_init__(self) -> None:
         statyzm_min, statyzm_max = NC_RFG_STATYZM_ZAKRES_PROCENT
         if not statyzm_min <= self.droop_percent <= statyzm_max:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-027",
                 f"{self.id}: statyzm {self.droop_percent} % jest poza przedzialem "
-                f"nastawialnym {statyzm_min}-{statyzm_max} % (NC RfG art. 13 ust. 2)."
+                f"nastawialnym {statyzm_min}-{statyzm_max} % (NC RfG art. 13 ust. 2).",
             )
         strefa_min, strefa_max = NC_RFG_STREFA_NIECZULOSCI_ZAKRES_HZ
         if not strefa_min <= self.deadband_hz <= strefa_max:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-028",
                 f"{self.id}: strefa nieczulosci {self.deadband_hz} Hz jest poza "
-                f"przedzialem {strefa_min}-{strefa_max} Hz (NC RfG art. 13 ust. 2)."
+                f"przedzialem {strefa_min}-{strefa_max} Hz (NC RfG art. 13 ust. 2).",
             )
         if (self.f_min_hz, self.f_max_hz) != NC_RFG_ZAKRES_PRACY_HZ:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-029",
                 f"{self.id}: zakres pracy {self.f_min_hz}-{self.f_max_hz} Hz nie jest "
-                f"zakresem z zalacznika II tab. 2 {NC_RFG_ZAKRES_PRACY_HZ}."
+                f"zakresem z zalacznika II tab. 2 {NC_RFG_ZAKRES_PRACY_HZ}.",
             )
 
     def to_dict(self) -> dict:
