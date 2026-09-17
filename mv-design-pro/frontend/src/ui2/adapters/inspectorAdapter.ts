@@ -7,13 +7,17 @@
  * pól katalogowych/nastawczych każdego typu elementu ENM — KARTA-UI2 §1 p. 11) +
  * szczegóły techniczne (tryb Ekspercki).
  *
- * GRANICA (świadoma decyzja, nie zaległość): zakładki „Wyniki"/„Dowody" inspektora (`obiekt.wyniki`,
- * `obiekt.dowody` — zawsze puste tutaj) wymagają kontekstu AKTYWNEGO PRZEBIEGU
- * (który run, czy element ma dla niego ślad WHITE BOX) — dane, których ten adapter
- * (wejście: WYŁĄCZNIE `snapshot`+`id`, bez run/wyników) nie ma i nie zgaduje.
- * Populacja tych dwóch pól należy do kart przestrzeni Wyniki (integracja
- * adapter-wyników × adapter-inspektora), nie do mapowania właściwości katalogowych
- * — różne źródła danych (model vs. wynik biegu), różny właściciel karty.
+ * Zakładki „Wyniki"/„Dowody" (integracja adapter-wyników × adapter-inspektora):
+ * czysta funkcja `mapowanieObiektuInspektora` pozostaje funkcją MODELU (wejście:
+ * `snapshot`+`id`), a kontekst AKTYWNEGO PRZEBIEGU dokłada hook `useObiektInspektora`
+ * z tych samych store'ów, które zasila warstwa integracyjna warsztatu wyników
+ * (`ui2/spaces/wyniki/useWpiecieWynikow`): rozpływ z `ui/power-flow-results/store`,
+ * zwarcia z `ui/results-inspector/store`. Element dostaje wiersz wyniku i pozycję
+ * dowodu WYŁĄCZNIE wtedy, gdy WYSTĘPUJE w wyniku aktywnego przebiegu — czyli
+ * dokładnie wtedy, gdy ma ślad WHITE BOX, do którego prowadzi „Pokaż dowód"
+ * (`otworzDowodInspektora`). Brak elementu w wyniku = uczciwy stan pusty, nigdy
+ * fabrykowany wiersz. Wszystkie liczby pochodzą WPROST z kontraktu wyniku
+ * (formatowanie, zero fizyki w prezentacji).
  *
  * Zagnieżdżone stany RUNTIME pola SN (`Bay.runtime_state`/`primary_devices`/
  * SCADA telemetry — `types/enm.ts:605-919`, ~30 interfejsów) są ŚWIADOMIE POZA
@@ -47,11 +51,18 @@ import type {
   Transformer,
 } from '../../types/enm';
 import { useAppStateStore } from '../../ui/app-state';
+import { usePowerFlowResultsStore } from '../../ui/power-flow-results/store';
+import { useResultsInspectorStore } from '../../ui/results-inspector/store';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { emituj } from '../events';
 import type { ObiektInspektora } from '../inspector';
-import type { SekcjaWlasciwosci, WierszWlasciwosci } from '../inspector/inspectorModel';
+import type {
+  PozycjaDowodu,
+  SekcjaWlasciwosci,
+  WierszWlasciwosci,
+} from '../inspector/inspectorModel';
 import { przejdzDoPrzestrzeni } from '../shell/przejsciaPrzestrzeni';
+import { useSwiezoscNaglowka } from '../freshness/useSwiezoscNaglowka';
 import { useShellStore } from '../shell/useShellStore';
 
 /** Kolekcje modelu przeszukiwane przez adapter + polskie etykiety typów. */
@@ -570,10 +581,101 @@ export function mapowanieObiektuInspektora(
   };
 }
 
-/** Hook: obiekt inspektora dla bieżącej selekcji (read-only ze snapshotu). */
+/** Liczba z kontraktu wyniku w postaci prezentacyjnej (null/undefined = brak danej). */
+function liczbaWyniku(wartosc: number | null | undefined, miejsca: number): string | null {
+  return typeof wartosc === 'number' && Number.isFinite(wartosc) ? wartosc.toFixed(miejsca) : null;
+}
+
+function wiersz(etykieta: string, wartosc: string | null, jednostka?: string): WierszWlasciwosci | null {
+  if (wartosc === null) return null;
+  return { etykieta, wartosc: { wartosc, jednostka } };
+}
+
+/**
+ * Wiersze wyniku elementu z AKTYWNEGO przebiegu rozpływu (szyna albo gałąź).
+ * Wartości wprost z `PowerFlowResultV1` — bez przeliczania czegokolwiek w UI.
+ */
+function wynikiRozplywuElementu(
+  wynik: ReturnType<typeof usePowerFlowResultsStore.getState>['results'],
+  id: string,
+): SekcjaWlasciwosci | null {
+  if (!wynik) return null;
+  const szyna = wynik.bus_results?.find((w) => w.bus_id === id);
+  if (szyna) {
+    const wiersze = [
+      wiersz('Napięcie', liczbaWyniku(szyna.v_pu, 4), 'j.w.'),
+      wiersz('Kąt fazowy', liczbaWyniku(szyna.angle_deg, 2), '°'),
+      wiersz('Moc czynna wstrzykiwana', liczbaWyniku(szyna.p_injected_mw, 3), 'MW'),
+      wiersz('Moc bierna wstrzykiwana', liczbaWyniku(szyna.q_injected_mvar, 3), 'Mvar'),
+    ].filter((w): w is WierszWlasciwosci => w !== null);
+    return wiersze.length > 0 ? { id: 'wynik-rozplyw', tytul: 'Rozpływ mocy', wiersze } : null;
+  }
+  const galaz = wynik.branch_results?.find((w) => w.branch_id === id);
+  if (galaz) {
+    const wiersze = [
+      wiersz('Moc czynna (początek)', liczbaWyniku(galaz.p_from_mw, 3), 'MW'),
+      wiersz('Moc bierna (początek)', liczbaWyniku(galaz.q_from_mvar, 3), 'Mvar'),
+      wiersz('Moc czynna (koniec)', liczbaWyniku(galaz.p_to_mw, 3), 'MW'),
+      wiersz('Moc bierna (koniec)', liczbaWyniku(galaz.q_to_mvar, 3), 'Mvar'),
+      wiersz('Straty mocy czynnej', liczbaWyniku(galaz.losses_p_mw, 4), 'MW'),
+    ].filter((w): w is WierszWlasciwosci => w !== null);
+    return wiersze.length > 0 ? { id: 'wynik-rozplyw', tytul: 'Rozpływ mocy', wiersze } : null;
+  }
+  return null;
+}
+
+/**
+ * Wiersze wyniku zwarciowego elementu z AKTYWNEGO przebiegu. Wiersz zwarciowy
+ * wskazuje element przez `element_id` (kanon) albo `target_id` (miejsce zwarcia).
+ */
+function wynikiZwarcioweElementu(
+  wynik: ReturnType<typeof useResultsInspectorStore.getState>['shortCircuitResults'],
+  id: string,
+): SekcjaWlasciwosci | null {
+  const rzad = wynik?.rows?.find((w) => (w.element_id ?? w.target_id) === id);
+  if (!rzad) return null;
+  const wiersze = [
+    wiersz('Prąd zwarciowy początkowy Ik″', liczbaWyniku(rzad.ikss_ka, 3), 'kA'),
+    wiersz('Prąd udarowy ip', liczbaWyniku(rzad.ip_ka, 3), 'kA'),
+    wiersz('Prąd cieplny Ith', liczbaWyniku(rzad.ith_ka, 3), 'kA'),
+    wiersz('Moc zwarciowa Sk″', liczbaWyniku(rzad.sk_mva, 2), 'MVA'),
+  ].filter((w): w is WierszWlasciwosci => w !== null);
+  return wiersze.length > 0
+    ? { id: 'wynik-zwarcie', tytul: 'Zwarcie', wiersze }
+    : null;
+}
+
+/**
+ * Hook: obiekt inspektora dla bieżącej selekcji — model ze snapshotu, wyniki i
+ * dowody z AKTYWNEGO przebiegu (patrz nagłówek pliku). Pozycja dowodu powstaje
+ * WYŁĄCZNIE dla elementu obecnego w wyniku biegu; jej `ref` to identyfikator
+ * elementu, którym `otworzDowodInspektora` zawęża wywód w przestrzeni Wyników.
+ */
 export function useObiektInspektora(id: string | null): ObiektInspektora | null {
   const snapshot = useSnapshotStore((s) => s.snapshot);
-  return useMemo(() => mapowanieObiektuInspektora(snapshot, id), [snapshot, id]);
+  const wynikRozplywu = usePowerFlowResultsStore((s) => s.results);
+  const wynikZwarciowy = useResultsInspectorStore((s) => s.shortCircuitResults);
+  // Świeżość dowodu = TA SAMA prawda co nagłówki ekranów wyników (jedno źródło,
+  // karta V12K-264): rewizja modelu, przy której policzono AKTYWNY przebieg.
+  const activeRunId = useAppStateStore((s) => s.activeRunId);
+  const { rewizjaDanych } = useSwiezoscNaglowka(activeRunId);
+  return useMemo(() => {
+    const obiekt = mapowanieObiektuInspektora(snapshot, id);
+    if (!obiekt || !id) return obiekt;
+    const sekcjaRozplywu = wynikiRozplywuElementu(wynikRozplywu, id);
+    const sekcjaZwarciowa = wynikiZwarcioweElementu(wynikZwarciowy, id);
+    const sekcje = [sekcjaRozplywu, sekcjaZwarciowa].filter(
+      (s): s is SekcjaWlasciwosci => s !== null,
+    );
+    const dowody: PozycjaDowodu[] = [];
+    if (sekcjaRozplywu) {
+      dowody.push({ ref: id, etykieta: 'Wywód rozpływu mocy dla elementu', rewizja: rewizjaDanych });
+    }
+    if (sekcjaZwarciowa) {
+      dowody.push({ ref: id, etykieta: 'Wywód zwarciowy dla elementu', rewizja: rewizjaDanych });
+    }
+    return { ...obiekt, wyniki: sekcje, dowody, rewizjaWynikow: rewizjaDanych };
+  }, [snapshot, id, wynikRozplywu, wynikZwarciowy, rewizjaDanych]);
 }
 
 /**

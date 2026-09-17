@@ -101,7 +101,12 @@ export interface EkranAnalizyProps {
   wiersze: WierszTabeli[];
   /** Slot wykresu (opcjonalny) — np. profil napięcia (Recharts). */
   wykres?: ReactNode;
-  onOtworzDowod: (ref: string) => void;
+  /**
+   * Dostawca dowodu WHITE BOX elementu (2x klik w komorke z `dowodRef`).
+   * BRAK propsa = ekran nie ma dowodow per element (afordancja sie nie pokazuje);
+   * pusta funkcja jest ZAKAZANA — udawalaby zdolnosc, ktorej ekran nie ma.
+   */
+  onOtworzDowod?: (ref: string) => void;
   /** Eksport przez callback (stopka) — brak = brak przycisku. */
   onEksport?: () => void;
   /** Akcja przeliczenia (pokazywana przy nieaktualnych wynikach). */

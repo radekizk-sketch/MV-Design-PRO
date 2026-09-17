@@ -265,9 +265,9 @@ function WynikRankingu({
         zalozenia={zalozenia}
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => {
-          /* ranking nie niesie odwołań do dowodów WHITE BOX — brak akcji */
-        }}
+        // Ranking przyłączeń nie niesie dowodów WHITE BOX per element (wiersz to
+        // węzeł rankingu, nie wynik pojedynczego elementu), więc ekran NIE podaje
+        // dostawcy dowodu — wzorzec nie pokazuje wtedy afordancji „pokaż dowód".
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_WIERSZA_RANKINGU}
         onWybierzWiersz={setWybranyBusRef}

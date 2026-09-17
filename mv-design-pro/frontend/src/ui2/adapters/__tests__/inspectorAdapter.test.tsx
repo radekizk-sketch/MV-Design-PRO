@@ -12,11 +12,17 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { subskrybuj } from '../../events';
 import { InspectorPanel, INSPECTOR_STRINGS, type ObiektInspektora } from '../../inspector';
 import { useShellStore } from '../../shell/useShellStore';
+import { renderHook } from '@testing-library/react';
+
+import { usePowerFlowResultsStore } from '../../../ui/power-flow-results/store';
+import { useResultsInspectorStore } from '../../../ui/results-inspector/store';
+import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
   KOLEKCJE_ELEMENTOW,
   TYPY_GALEZI,
   mapowanieObiektuInspektora,
   otworzDowodInspektora,
+  useObiektInspektora,
 } from '../inspectorAdapter';
 
 function bazowyElement(id: string, extra: Record<string, unknown> = {}) {
@@ -483,5 +489,173 @@ describe('InspectorPanel + otworzDowodInspektora — wpięcie realne (test natyw
     fireEvent.click(screen.getByRole('tab', { name: INSPECTOR_STRINGS.tabDowod }));
     expect(screen.getByText(INSPECTOR_STRINGS.brakDowodow)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: INSPECTOR_STRINGS.pokazDowod })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Zakładki „Wyniki"/„Dowody" inspektora czytają AKTYWNY przebieg (integracja
+ * adapter-wyników × adapter-inspektora). KLASA, nie instancja — iloczyn cech:
+ * {rodzaj biegu: rozpływ, zwarcie, oba, żaden} × {element: szyna w wyniku,
+ * gałąź w wyniku, element spoza wyniku}. Zasada: wiersz i pozycja dowodu
+ * powstają WYŁĄCZNIE dla elementu obecnego w wyniku (zero fabrykacji), a każda
+ * liczba jest wartością z kontraktu wyniku, nie przeliczeniem w UI.
+ */
+describe('useObiektInspektora — wyniki i dowody z aktywnego przebiegu (V12T-017)', () => {
+  const SZYNA = 'bus-insp-1';
+  const GALAZ = 'br-insp-1';
+
+  function modelZElementami(): EnergyNetworkModel {
+    const model = pustyModel() as unknown as Record<string, unknown[]>;
+    model.buses = [bazowyElement(SZYNA, { voltage_kv: 15 })];
+    model.branches = [
+      bazowyElement(GALAZ, { branch_type: 'cable', from_bus: SZYNA, to_bus: 'bus-insp-2' }),
+    ];
+    return model as unknown as EnergyNetworkModel;
+  }
+
+  beforeEach(() => {
+    useSnapshotStore.setState({ snapshot: modelZElementami() } as never);
+    usePowerFlowResultsStore.setState({ results: null } as never);
+    useResultsInspectorStore.setState({ shortCircuitResults: null } as never);
+    useAppStateStore.setState({ activeRunId: null });
+  });
+
+  it('bez wyniku biegu: brak wierszy wyniku i brak pozycji dowodu (uczciwy stan pusty)', () => {
+    const { result } = renderHook(() => useObiektInspektora(SZYNA));
+    expect(result.current?.wyniki).toEqual([]);
+    expect(result.current?.dowody).toEqual([]);
+  });
+
+  it('rozpływ: szyna obecna w wyniku dostaje wiersze z kontraktu i dowód rozpływu', () => {
+    usePowerFlowResultsStore.setState({
+      results: {
+        bus_results: [
+          { bus_id: SZYNA, v_pu: 0.9876, angle_deg: -1.25, p_injected_mw: 0.5, q_injected_mvar: 0.2 },
+        ],
+        branch_results: [],
+      },
+    } as never);
+    const { result } = renderHook(() => useObiektInspektora(SZYNA));
+    const sekcja = result.current?.wyniki.find((s) => s.id === 'wynik-rozplyw');
+    expect(sekcja?.tytul).toBe('Rozpływ mocy');
+    expect(sekcja?.wiersze.find((w) => w.etykieta === 'Napięcie')?.wartosc.wartosc).toBe('0.9876');
+    expect(result.current?.dowody).toHaveLength(1);
+    expect(result.current?.dowody[0]).toMatchObject({ ref: SZYNA, etykieta: 'Wywód rozpływu mocy dla elementu' });
+  });
+
+  it('rozpływ: gałąź obecna w wyniku dostaje własne wiersze (straty z kontraktu)', () => {
+    usePowerFlowResultsStore.setState({
+      results: {
+        bus_results: [],
+        branch_results: [
+          {
+            branch_id: GALAZ,
+            p_from_mw: 1.5,
+            q_from_mvar: 0.4,
+            p_to_mw: 1.48,
+            q_to_mvar: 0.38,
+            losses_p_mw: 0.02,
+            losses_q_mvar: 0.02,
+          },
+        ],
+      },
+    } as never);
+    const { result } = renderHook(() => useObiektInspektora(GALAZ));
+    const sekcja = result.current?.wyniki.find((s) => s.id === 'wynik-rozplyw');
+    expect(sekcja?.wiersze.find((w) => w.etykieta === 'Straty mocy czynnej')?.wartosc.wartosc).toBe('0.0200');
+    expect(result.current?.dowody).toHaveLength(1);
+  });
+
+  it('zwarcie: wiersz wskazany przez element_id daje sekcję zwarciową i dowód zwarciowy', () => {
+    useResultsInspectorStore.setState({
+      shortCircuitResults: {
+        run_id: 'run-sc-insp',
+        rows: [
+          {
+            target_id: 'inne-id',
+            element_id: SZYNA,
+            target_name: 'Szyna',
+            ikss_ka: 12.345,
+            ip_ka: 30.1,
+            ith_ka: 12.9,
+            sk_mva: 320.5,
+            fault_type: '3F',
+            flags: [],
+          },
+        ],
+      },
+    } as never);
+    const { result } = renderHook(() => useObiektInspektora(SZYNA));
+    const sekcja = result.current?.wyniki.find((s) => s.id === 'wynik-zwarcie');
+    expect(sekcja?.wiersze.find((w) => w.etykieta.startsWith('Prąd zwarciowy'))?.wartosc.wartosc).toBe('12.345');
+    expect(result.current?.dowody.map((d) => d.etykieta)).toEqual(['Wywód zwarciowy dla elementu']);
+  });
+
+  it('oba biegi naraz: dwie sekcje i dwie pozycje dowodu dla tego samego elementu', () => {
+    usePowerFlowResultsStore.setState({
+      results: {
+        bus_results: [
+          { bus_id: SZYNA, v_pu: 1, angle_deg: 0, p_injected_mw: 0, q_injected_mvar: 0 },
+        ],
+        branch_results: [],
+      },
+    } as never);
+    useResultsInspectorStore.setState({
+      shortCircuitResults: {
+        run_id: 'run-sc-insp',
+        rows: [
+          {
+            target_id: SZYNA,
+            target_name: 'Szyna',
+            ikss_ka: 10,
+            ip_ka: 25,
+            ith_ka: 10.2,
+            sk_mva: 260,
+            fault_type: '3F',
+            flags: [],
+          },
+        ],
+      },
+    } as never);
+    const { result } = renderHook(() => useObiektInspektora(SZYNA));
+    expect(result.current?.wyniki.map((s) => s.id)).toEqual(['wynik-rozplyw', 'wynik-zwarcie']);
+    expect(result.current?.dowody).toHaveLength(2);
+  });
+
+  it('element spoza wyniku: wynik biegu istnieje, ale ten element go nie ma — zero wierszy i zero dowodow', () => {
+    usePowerFlowResultsStore.setState({
+      results: {
+        bus_results: [
+          { bus_id: 'inna-szyna', v_pu: 1, angle_deg: 0, p_injected_mw: 0, q_injected_mvar: 0 },
+        ],
+        branch_results: [],
+      },
+    } as never);
+    const { result } = renderHook(() => useObiektInspektora(SZYNA));
+    expect(result.current?.wyniki).toEqual([]);
+    expect(result.current?.dowody).toEqual([]);
+  });
+
+  it('brak danej liczbowej w kontrakcie (null) nie tworzy wiersza — zero fabrykacji', () => {
+    useResultsInspectorStore.setState({
+      shortCircuitResults: {
+        run_id: 'run-sc-insp',
+        rows: [
+          {
+            target_id: SZYNA,
+            target_name: 'Szyna',
+            ikss_ka: 8.5,
+            ip_ka: null,
+            ith_ka: null,
+            sk_mva: null,
+            fault_type: '3F',
+            flags: [],
+          },
+        ],
+      },
+    } as never);
+    const { result } = renderHook(() => useObiektInspektora(SZYNA));
+    const sekcja = result.current?.wyniki.find((s) => s.id === 'wynik-zwarcie');
+    expect(sekcja?.wiersze).toHaveLength(1);
   });
 });

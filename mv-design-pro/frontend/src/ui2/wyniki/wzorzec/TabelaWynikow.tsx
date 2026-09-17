@@ -63,7 +63,7 @@ export const WYSOKOSC_WIDOKU_PX = 480;
 interface TabelaWynikowProps {
   kolumny: DefinicjaKolumny[];
   wiersze: WierszTabeli[];
-  onOtworzDowod: (ref: string) => void;
+  onOtworzDowod?: (ref: string) => void;
   trybZaawansowania: AdvancementMode;
   /** Klucz kolumny identyfikującej wiersz (domyślnie klucz pierwszej kolumny). */
   kluczWiersza?: string;
@@ -441,7 +441,7 @@ function Komorka({
 }: {
   kolumna: DefinicjaKolumny;
   komorka: WartoscKomorki | undefined;
-  onOtworzDowod: (ref: string) => void;
+  onOtworzDowod?: (ref: string) => void;
 }) {
   const wyr = wyrownanieKolumny(kolumna);
   const klasyTd = [
@@ -456,10 +456,15 @@ function Komorka({
   }
 
   const { wartosc, jednostka, dowodRef, ostrzezenie } = komorka;
-  const maDowod = dowodRef !== undefined;
+  // Afordancja dowodu istnieje tylko wtedy, gdy komorka NIESIE odwolanie i
+  // ekran MA dostawce dowodu. Ekran bez dowodow (np. ranking przylaczen —
+  // wiersz rankingu nie jest wynikiem pojedynczego elementu) po prostu nie
+  // podaje `onOtworzDowod`, zamiast przekazywac pusta funkcje: zaslepka
+  // udawalaby zdolnosc, ktorej nie ma (dyrektywa zero fabrykacji).
+  const maDowod = dowodRef !== undefined && onOtworzDowod !== undefined;
 
   const otworz = () => {
-    if (dowodRef !== undefined) onOtworzDowod(dowodRef);
+    if (dowodRef !== undefined) onOtworzDowod?.(dowodRef);
   };
   const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {
