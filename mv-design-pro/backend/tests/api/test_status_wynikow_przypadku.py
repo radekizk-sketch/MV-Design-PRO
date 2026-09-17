@@ -315,7 +315,7 @@ def test_zmiana_konfiguracji_nie_przestawia_statusu_przypadku(klient: TestClient
 
 
 # ---------------------------------------------------------------------------
-# KONCOWKI „UNIEWAZNIJ” ZNIKNELY NA AMEN
+# UNIEWAZNIACZE ZNIKNELY NA AMEN — KONCOWKI HTTP I OSTATNI PISARZ
 # ---------------------------------------------------------------------------
 
 
@@ -325,26 +325,54 @@ def test_koncowki_uniewaznienia_nie_istnieja(klient: TestClient) -> None:
     assert klient.post(f"/api/study-cases/{case_id}/invalidate").status_code == 404
 
 
-def test_invalidator_legacy_nie_dotyka_przypadkow(klient: TestClient, uow_factory) -> None:
-    """`ResultInvalidator` zostal przy torze LEGACY (`analysis_runs`) i tylko przy nim.
+@pytest.mark.parametrize("plakietka", ["FRESH", "OUTDATED", "NONE"])
+@pytest.mark.parametrize("model_zmieniony", [False, True])
+def test_zastana_plakietka_statusu_nie_jest_czytana(
+    klient: TestClient, uow_factory, plakietka: str, model_zmieniony: bool
+) -> None:
+    """Werdykt bierze sie z biegow i koperty rewizji — NIGDY z zapisanej plakietki.
 
-    Deklaracja z jego naglowka („NIE dotyka przypadkow obliczeniowych”) ma tu swoj
-    przypiety dowod: po wywolaniu na projekcie z AKTUALNYM wynikiem status
-    przypadku jest nadal FRESH, a kolumna zastana nadal nietknieta.
+    SKAD TEN TEST. Zastapil `test_invalidator_legacy_nie_dotyka_przypadkow`
+    (karta KASACJA-UNIEWAZNIACZA, 2026-09-17), ktory dowodzil tej samej rzeczy
+    przez martwy juz kod: wolal uniewazniacz biegow LEGACY
+    (`application/analysis_run/result_invalidator.py`,
+    skasowany razem z cala reszta klastra) i sprawdzal, ze przypadek zostal
+    FRESH. INTENCJA zostaje bez zmian — „status wynikow przypadku jest
+    WYPROWADZANY z biegow kanonicznych i koperty rewizji, a nie z plakietki” —
+    ale dowod idzie dzisiejsza sciezka (`application/result_freshness.py`,
+    `application/study_case/status_wynikow.py`) i jest MOCNIEJSZY: stara wersja
+    pokazywala, ze pewien pisarz plakietki jej nie psuje, ta pokazuje, ze
+    plakietka nie jest w ogole czytana.
+
+    ILOCZYN CECH: {FRESH, OUTDATED, NONE} w kolumnie zastanej × {model po biegu
+    niezmieniony, model po biegu zmieniony}. Zadna z szesciu kombinacji nie
+    przesuwa werdyktu; kolumna zostaje przy swojej zastanej wartosci, bo nikt
+    jej nie pisze (`scripts/result_status_writer_guard.py`, budzet 0).
     """
-    from application.analysis_run.result_invalidator import ResultInvalidator
-
-    project_id, case_id = _projekt_i_przypadek(klient)
+    _, case_id = _projekt_i_przypadek(klient)
     _zbuduj_model(klient, case_id)
     _policz_bieg(klient, case_id)
-    assert _status(klient, case_id)["result_status"] == "FRESH"
+    if model_zmieniony:
+        zmiana = klient.post(f"/api/cases/{case_id}/enm/domain-ops", json=MAGISTRALA)
+        assert zmiana.status_code == 200, zmiana.text
+        assert not zmiana.json().get("error"), zmiana.text
 
+    # DANE ZASTANE: taka wartosc stoi w bazie zalozonej przed CV-2-W. Zapis idzie
+    # wprost do kolumny (nie przez kod produkcyjny — tam pisarza nie ma i nie
+    # bedzie), bo odtwarzamy zastany nosnik, nie sciezke uzytkownika.
     with uow_factory() as uow:
-        ResultInvalidator().invalidate_project_results(uow, UUID(project_id))
+        row = uow.session.get(StudyCaseORM, UUID(case_id))
+        assert row is not None
+        row.result_status = plakietka
         uow.session.commit()
+    assert _kolumna_zastana(uow_factory, case_id) == plakietka
 
-    assert _status(klient, case_id)["result_status"] == "FRESH"
-    assert _kolumna_zastana(uow_factory, case_id) == "NONE"
+    oczekiwany = "OUTDATED" if model_zmieniony else "FRESH"
+    dane = _status(klient, case_id)
+    assert dane["result_status"] == oczekiwany
+    assert dane["results_valid"] is (not model_zmieniony)
+    # Odczyt statusu niczego nie zapisal — plakietka zostala taka, jaka byla.
+    assert _kolumna_zastana(uow_factory, case_id) == plakietka
 
 
 # ---------------------------------------------------------------------------

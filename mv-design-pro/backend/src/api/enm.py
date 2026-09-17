@@ -1323,9 +1323,14 @@ def _domain_ops_pod_blokada(case_id: str, klucz: str, req: DomainOpEnvelopeModel
     # SAMA czyni wyniki nieaktualnymi, bo świeżość jest WYPROWADZANA z koperty
     # rewizji biegu (`application/result_freshness.py`), a nie z osobnego stanu,
     # który ktoś musiał pamiętać przestawić. Poprzednia wersja wołała tu
-    # `ResultInvalidator` — i była to jedyna obrona przed „plakietką, która
+    # unieważniacz wyników — i była to jedyna obrona przed „plakietką, która
     # kłamie", więc każda ścieżka zapisu pominięta w tym wywołaniu (kreator,
     # zmiana typu katalogowego) zostawiała wynik oznaczony jako aktualny.
+    # STAN NA DZIŚ (karta KASACJA-UNIEWAZNIACZA, 2026-09-17): tamten
+    # unieważniacz (`application/analysis_run/result_invalidator.py`) już nie
+    # istnieje — po CV-2-W został bez konsumenta i został skasowany procedurą
+    # (bramka wskrzeszenia w `scripts/legacy_public_path_guard.py`). Nie ma
+    # więc czego tu wołać ani przywracać.
 
     return result
 

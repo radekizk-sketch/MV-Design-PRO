@@ -2,7 +2,7 @@
 
 DLUG, KTORY TEN MODUL ZAMYKA. `StudyCase.result_status` byl POLEM w bazie, a jego
 prawdziwosc zalezala od tego, czy kazda sciezka mutujaca model pamietala o
-wywolaniu „uniewazniacza”. Pisarzy bylo siedmiu (`ResultInvalidator`,
+wywolaniu „uniewazniacza”. Pisarzy bylo siedmiu (unieważniacz wyników projektu,
 `StudyCaseService.mark_*`, `case_repository.mark_*`, dwie koncowki
 `/invalidate*`, `LifecycleService`, regula OUTDATED przy zmianie migawki legacy),
 a mutujacych sciezek wiecej — wiec luka byla nieunikniona: zmiana typu
@@ -16,6 +16,16 @@ ta sama funkcja (`status_wynikow_przypadku` → `swiezosc_biegu_kanonicznego` �
 `evaluate_envelope_freshness`), ktora ocenia swiezosc pojedynczego biegu w
 nakladce SLD i w liscie biegow. Ten modul jest wylacznie DOSTAWCA WEJSC: pobiera
 biegi przypadku (kolumny lekkie) i biezacy stan modelu, nie liczy niczego sam.
+
+STAN NA DZIS (karta KASACJA-UNIEWAZNIACZA, 2026-09-17). Zaden z tych siedmiu
+pisarzy juz nie istnieje. Ostatni — `application/analysis_run/result_invalidator.py`,
+zwezony w CV-2-W do biegow LEGACY (`analysis_runs`) — przezyl tamta karte tylko
+dlatego, ze mial zostac skasowany razem z torem kreatora; tor zszedl w W1, modul
+nie, wiec zszedl teraz (bramka wskrzeszenia:
+`scripts/legacy_public_path_guard.py::check_uniewazniacz_resurrection`).
+Niezmiennik „status z biegow, nie z zapisanej plakietki” jest przypiety testami
+`tests/api/test_status_wynikow_przypadku.py` — w tym
+`test_zastana_plakietka_statusu_nie_jest_czytana` (plakietka × rzeczywisty stan).
 
 ZERO FIZYKI, ZERO INTERPRETACJI: porownywane sa numery rewizji i odciski —
 zadnych wielkosci elektrycznych.

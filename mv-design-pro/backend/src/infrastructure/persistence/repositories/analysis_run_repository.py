@@ -1,7 +1,25 @@
+"""Repozytorium biegow LEGACY (`analysis_runs`) — DANE ZASTANE, bez pisarza produkcyjnego.
+
+CO STAD ZNIKNELO I DLACZEGO (karta KASACJA-UNIEWAZNIACZA, 2026-09-17). Cztery
+metody odczytu/kaskady straciły ostatniego wolajacego i zostaly skasowane razem
+z `application/analysis_run/result_invalidator.py`:
+`mark_results_outdated` (jedyny wolajacy: skasowany modul uniewazniacza), `get`,
+`list_by_project` i `get_by_deterministic_key` (0 wolajacych w `backend/src` i w
+`backend/tests` — pomiar grepem PRZED kasacja; martwe juz przed ta karta, ta
+sama klasa defektu w tym samym pliku, wiec zeszly razem). Bramka wskrzeszenia:
+`scripts/legacy_public_path_guard.py::check_uniewazniacz_resurrection`.
+
+DLACZEGO PLIK ZOSTAJE. Tabela `analysis_runs` ma ZYWEGO konsumenta produkcyjnego
+— `infrastructure/persistence/repositories/project_repository.py::has_dependencies`
+liczy w niej wiersze projektu — wiec wiersze zastane trzeba umiec zapisac w
+tescie, ktory dowodzi, ze kanoniczne routery ich NIE pokazuja
+(`tests/test_production_canonical_only_api.py`, `tests/api/test_proof_pack_api.py`).
+Pisarza produkcyjnego ten rejestr nie ma i miec nie bedzie.
+"""
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, cast
 from uuid import UUID
 
 from domain.analysis_run import (
@@ -12,7 +30,7 @@ from domain.analysis_run import (
 )
 from infrastructure.persistence.models import AnalysisRunORM
 from infrastructure.persistence.time_utils import ensure_utc
-from sqlalchemy import CursorResult, select, update
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 
@@ -21,100 +39,52 @@ class AnalysisRunRepository:
         self._session = session
 
     def create(self, run: AnalysisRun) -> None:
+        """Zapis wiersza biegu legacy — JEDNA konstrukcja wiersza, nie dwie.
+
+        Bylo tu DWA niezalezne wyliczenia tego samego wiersza (19 pol kazde):
+        pierwsze szlo do `_materialize_contract_fields`, drugie — osobno
+        przepisane — do `session.add`. Dwie listy pol, ktore „dzis sie zgadzaja",
+        to defekt czekajacy na rozjazd: dodanie pola tylko w jednej z nich
+        materializowaloby kontrakt z INNEGO wiersza niz zapisany. Teraz wiersz
+        powstaje RAZ, a materializacja nadpisuje na nim 5 pol kontraktu.
+        """
+        row = AnalysisRunORM(
+            id=run.id,
+            project_id=run.project_id,
+            operating_case_id=run.operating_case_id,
+            analysis_type=run.analysis_type,
+            status=run.status,
+            result_status=run.result_status,
+            created_at=ensure_utc(run.created_at),
+            started_at=ensure_utc(run.started_at),
+            finished_at=ensure_utc(run.finished_at),
+            input_snapshot=run.input_snapshot,
+            input_hash=run.input_hash,
+            result_summary=run.result_summary,
+            analysis_case_context=run.analysis_case_context,
+            reproducibility_json=run.reproducibility,
+            proof_pack_ref=run.proof_pack_ref,
+            completeness_status=run.completeness_status,
+            export_artifacts_json=run.export_artifacts,
+            trace_json=run.trace_json,
+            white_box_trace=run.white_box_trace,
+            error_message=run.error_message,
+        )
         materialized = self._materialize_contract_fields(
-            AnalysisRunORM(
-                id=run.id,
-                project_id=run.project_id,
-                operating_case_id=run.operating_case_id,
-                analysis_type=run.analysis_type,
-                status=run.status,
-                result_status=run.result_status,
-                created_at=ensure_utc(run.created_at),
-                started_at=ensure_utc(run.started_at),
-                finished_at=ensure_utc(run.finished_at),
-                input_snapshot=run.input_snapshot,
-                input_hash=run.input_hash,
-                result_summary=run.result_summary,
-                analysis_case_context=run.analysis_case_context,
-                reproducibility_json=run.reproducibility,
-                proof_pack_ref=run.proof_pack_ref,
-                completeness_status=run.completeness_status,
-                export_artifacts_json=run.export_artifacts,
-                trace_json=run.trace_json,
-                white_box_trace=run.white_box_trace,
-                error_message=run.error_message,
-            ),
+            row,
             analysis_case_context=run.analysis_case_context or None,
             reproducibility=run.reproducibility or None,
             proof_pack_ref=run.proof_pack_ref,
             completeness_status=run.completeness_status,
             export_artifacts=run.export_artifacts or None,
         )
-        self._session.add(
-            AnalysisRunORM(
-                id=run.id,
-                project_id=run.project_id,
-                operating_case_id=run.operating_case_id,
-                analysis_type=run.analysis_type,
-                status=run.status,
-                result_status=run.result_status,
-                created_at=ensure_utc(run.created_at),
-                started_at=ensure_utc(run.started_at),
-                finished_at=ensure_utc(run.finished_at),
-                input_snapshot=run.input_snapshot,
-                input_hash=run.input_hash,
-                result_summary=run.result_summary,
-                analysis_case_context=materialized["analysis_case_context"],
-                reproducibility_json=materialized["reproducibility"],
-                proof_pack_ref=materialized["proof_pack_ref"],
-                completeness_status=materialized["completeness_status"],
-                export_artifacts_json=materialized["export_artifacts"],
-                trace_json=run.trace_json,
-                white_box_trace=run.white_box_trace,
-                error_message=run.error_message,
-            )
-        )
+        row.analysis_case_context = materialized["analysis_case_context"]
+        row.reproducibility_json = materialized["reproducibility"]
+        row.proof_pack_ref = materialized["proof_pack_ref"]
+        row.completeness_status = materialized["completeness_status"]
+        row.export_artifacts_json = materialized["export_artifacts"]
+        self._session.add(row)
         self._session.commit()
-
-    def get(self, run_id: UUID) -> AnalysisRun | None:
-        stmt = select(AnalysisRunORM).where(AnalysisRunORM.id == run_id)
-        row = self._session.execute(stmt).scalar_one_or_none()
-        return self._to_domain(row) if row else None
-
-    def list_by_project(
-        self, project_id: UUID, filters: dict[str, Any] | None = None
-    ) -> list[AnalysisRun]:
-        stmt = (
-            select(AnalysisRunORM)
-            .where(AnalysisRunORM.project_id == project_id)
-            .order_by(AnalysisRunORM.created_at.desc(), AnalysisRunORM.id.desc())
-        )
-        filters = filters or {}
-        if analysis_type := filters.get("analysis_type"):
-            stmt = stmt.where(AnalysisRunORM.analysis_type == analysis_type)
-        if status := filters.get("status"):
-            stmt = stmt.where(AnalysisRunORM.status == status)
-        if operating_case_id := filters.get("operating_case_id"):
-            stmt = stmt.where(AnalysisRunORM.operating_case_id == operating_case_id)
-        rows = self._session.execute(stmt).scalars().all()
-        return [self._to_domain(row) for row in rows]
-
-    def get_by_deterministic_key(
-        self,
-        project_id: UUID,
-        operating_case_id: UUID,
-        analysis_type: str,
-        input_hash: str,
-    ) -> AnalysisRun | None:
-        stmt = (
-            select(AnalysisRunORM)
-            .where(AnalysisRunORM.project_id == project_id)
-            .where(AnalysisRunORM.operating_case_id == operating_case_id)
-            .where(AnalysisRunORM.analysis_type == analysis_type)
-            .where(AnalysisRunORM.input_hash == input_hash)
-        )
-        row = self._session.execute(stmt).scalar_one_or_none()
-        return self._to_domain(row) if row else None
 
     def update_status(
         self,
@@ -173,21 +143,6 @@ class AnalysisRunRepository:
         row.export_artifacts_json = materialized["export_artifacts"]
         self._session.commit()
         return self._to_domain(row)
-
-    def mark_results_outdated(self, project_id: UUID, *, commit: bool = True) -> int:
-        stmt = (
-            update(AnalysisRunORM)
-            .where(AnalysisRunORM.project_id == project_id)
-            .values(result_status="OUTDATED")
-        )
-        # `Session.execute` jest typowane ogolnym `Result[Any]`, ale dla instrukcji DML
-        # (`update()`) SQLAlchemy ZAWSZE zwraca `CursorResult` — i tylko on niesie
-        # `rowcount`. Jawne zawezenie zamiast siegania po atrybut, ktorego deklarowany
-        # typ nie ma.
-        result = cast(CursorResult[Any], self._session.execute(stmt))
-        if commit:
-            self._session.commit()
-        return int(result.rowcount or 0)
 
     def _to_domain(self, row: AnalysisRunORM) -> AnalysisRun:
         return AnalysisRun(

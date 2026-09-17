@@ -33,9 +33,19 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
 
     CV-3.3-B: `results` (R3 `study_results`) i `study_runs` (R3) usunięte — zero
     konsumentów po przepięciu porównań i biegów na R1 (`enm.canonical_analysis`).
-    `analysis_runs`/`analysis_runs_index` ZOSTAJĄ: pierwsza żyje dla
-    `ResultInvalidator`, druga jest NIEZALEŻNĄ tabelą — karta W3-C1 (2026-09)
-    skasowała jej jedyne dwa produkcyjne miejsca zapisu
+    `analysis_runs`/`analysis_runs_index` ZOSTAJĄ jako DANE ZASTANE, obie BEZ
+    pisarza produkcyjnego. Pierwsza żyła do karty KASACJA-UNIEWAZNIACZA
+    (2026-09-17) dla unieważniacza wyników projektu
+    (`application/analysis_run/result_invalidator.py`) — ten zszedł razem z resztą
+    martwego klastra (moduł, `AnalysisRunRepository.mark_results_outdated`,
+    `get`, `list_by_project`, `get_by_deterministic_key`; bramka wskrzeszenia:
+    `scripts/legacy_public_path_guard.py::check_uniewazniacz_resurrection`).
+    Gałąź `analysis_runs` ZOSTAJE, bo tabela ma żywego konsumenta produkcyjnego
+    (`ProjectRepository.has_dependencies` liczy w niej wiersze projektu), a
+    wiersze zastane muszą dać się zapisać w teście, który dowodzi, że kanoniczne
+    routery ich NIE pokazują (`tests/test_production_canonical_only_api.py`).
+    Druga jest NIEZALEŻNĄ tabelą — karta W3-C1 (2026-09) skasowała jej jedyne
+    dwa produkcyjne miejsca zapisu
     (`application/analyses/protection/overcurrent/**`, `catalog/pipeline.py::
     run_device_mapping_v0`; dobór aparatu jest odtąd CZYSTĄ funkcją,
     `catalog/pipeline.py::dopasuj_do_aparatu`, bez tego indeksu), więc tabela
