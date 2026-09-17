@@ -2,12 +2,15 @@
 
 **Status:** WIĄŻĄCY dla Programu UI/UX 2026-07 (epik E3, okno W-203)
 **Data:** 2026-07-15 (dyrektywa właściciela: „szablonów stacji musi być więcej i grupowane w logiczne typy")
-**Stan faktyczny (zweryfikowany):** backend ma bibliotekę **57+ szablonów w 10 kategoriach**
+**Stan faktyczny (zweryfikowany, 2026-09-17 — karta SZABLONY-ROLA-A, V12T-016 zamknięty):**
+backend ma bibliotekę **73+ szablonów w 15 kategoriach**
 (`backend/src/application/station_templates/` — typowe SN/nn, słupowe ZSP, ZKSN wnętrzowe z RMU,
-prosument PV, farmy PV, BESS, hybrydowe PV+BESS, przemysłowe, wiatrowe, sekcyjne) z API
-podglądu i zastosowania (`/api/station-templates`, preview/apply, pełna edytowalność).
-Luka: UI pokazuje szablony szczątkowo, bez grupowania i bez przeglądarki. Ten dokument definiuje
-taksonomię docelową i przeglądarkę — bez zmiany istniejących definicji szablonów (zero drugiej prawdy).
+prosument PV, farmy PV, BESS, hybrydowe PV+BESS, przemysłowe, wiatrowe, sekcyjne, GPZ 110/SN,
+rozdzielnie sieciowe RS/RSM, stacje abonenckie SN z pomiarem, kompensacja mocy biernej, rezerwa
+zasilania) z API podglądu i zastosowania (`/api/station-templates`, preview/apply, pełna
+edytowalność). Rola A (poprzednio licznik zero), reszta roli C i reszta roli E (§1 tabela) mają
+teraz pełne pokrycie kategorii — delta backendowa §4 zrealizowana. Przeglądarka (`ui2/spaces/
+model/szablony`) pokazuje wszystkie 5 ról z drzewkiem A–E (`GrupyRol.ts`).
 
 ---
 
@@ -18,11 +21,11 @@ taksonomię docelową i przeglądarkę — bez zmiany istniejących definicji sz
 
 | Rola w sieci | Typy (kategorie) | Stan |
 |---|---|---|
-| **A. Zasilanie sieci** | GPZ 110/SN (2-sekcyjny, układ H5, mostek); rozdzielnia sieciowa RS/RSM | **DO DODANIA** |
+| **A. Zasilanie sieci** | GPZ 110/SN (2-sekcyjny, układ H5, mostek); rozdzielnia sieciowa RS/RSM | istnieje (`GPZ_110_SN` 3, `ROZDZIELNIA_SIECIOWA` 3 — zamknięte kartą SZABLONY-ROLA-A, V12T-016) |
 | **B. Dystrybucja SN/nn** | miejska wnętrzowa (przelotowa / odgałęźna / końcowa); kontenerowa; ZKSN wnętrzowa z RMU; słupowa ZSP (wieś, 50–400 kVA) | istnieje (typowe, zksn, słupowe) |
-| **C. Odbiorcze** | abonencka SN z układem pomiarowym; przemysłowa (rozdzielnia zakładowa) | częściowo (przemysłowe); abonencka **DO DODANIA** |
+| **C. Odbiorcze** | abonencka SN z układem pomiarowym; przemysłowa (rozdzielnia zakładowa) | istnieje (przemysłowe 5; `STACJA_ABONENCKA` 4 — zamknięte kartą SZABLONY-ROLA-A) |
 | **D. Źródła i magazyny (OZE)** | prosument PV; farma PV (blok inwerterowy + TR blokowy); wiatrowa; BESS; hybrydowa PV+BESS | istnieje (5 kategorii) |
-| **E. Specjalne** | sekcyjna (łącznik sieciowy); kompensacja mocy biernej (bateria kondensatorów / dławik); rezerwa zasilania (agregat / UPS / SZR) | częściowo (sekcyjne); kompensacja i rezerwa **DO DODANIA** |
+| **E. Specjalne** | sekcyjna (łącznik sieciowy); kompensacja mocy biernej (bateria kondensatorów / dławik); rezerwa zasilania (agregat / UPS / SZR) | istnieje (sekcyjne 3; `KOMPENSACJA` 3 — bateria kondensatorów, bez dławika; `REZERWA_ZASILANIA` 3 — pole rezerwowe, bez agregatu/UPS — zamknięte kartą SZABLONY-ROLA-A) |
 
 **Cel liczbowy:** ≥ 80 szablonów (57+ istniejących + delta A/C/E). Nowe szablony powstają w tym
 samym module backendu, tym samym schematem danych (`StationTemplate`), z pełnym kompletem danych
