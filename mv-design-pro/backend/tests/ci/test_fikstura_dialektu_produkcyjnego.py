@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.conftest import _NARZEDZIA_KLASTRA, _katalog_binariow_postgresa
+from tests.conftest import _NARZEDZIA_KLASTRA, _katalog_binariow_postgresa, klaster_postgres
 
 
 def _zbuduj_wersje(korzen: Path, wersja: str, narzedzia: tuple[str, ...]) -> Path:
@@ -79,3 +79,34 @@ def test_wersja_niepelna_ustepuje_pelnej(bez_path: None, tmp_path: Path) -> None
     pelna = _zbuduj_wersje(tmp_path, "16", _NARZEDZIA_KLASTRA)
 
     assert _katalog_binariow_postgresa(tmp_path) == pelna
+
+
+def test_klaster_nie_mieszka_w_katalogu_tymczasowym_pytest() -> None:
+    """Katalog klastra NIE moze lezec pod `tmp_path_factory` — pin zmierzonej awarii.
+
+    ZMIERZONE (2026-09-17, pelna regresja backendu, pierwsza wersja fikstury):
+    `TempPathFactory.getbasetemp()` przywraca korzeniowi `/tmp/pytest-of-<user>`
+    prawa `0700` przy kolejnych zadaniach `tmp_path`, wiec kasuje prawo PRZEJSCIA
+    nadane przy starcie klastra. Serwer dzialajacy jako konto bez uprawnien traci
+    dostep do wlasnego katalogu danych (`FATAL: could not stat data directory ...
+    Permission denied`) i zamyka sie sam, a `pg_ctl stop` w teardownie konczy sie
+    bledem — `1 error` przy 15479 zielonych testach.
+
+    Pin jest na ZRODLE, bo defekt jest w WYBORZE KATALOGU, a nie w wyniku pojedynczego
+    biegu: bieg na koncie zwyklego uzytkownika (CI) przechodzi z obiema wersjami, wiec
+    sama zieleń suity nie obroni tej decyzji przed „porzadkowym" powrotem do
+    `tmp_path_factory`.
+    """
+    import inspect
+
+    zrodlo = inspect.getsource(klaster_postgres)
+
+    assert "tempfile.mkdtemp" in zrodlo, "katalog klastra musi powstawac poza pytest"
+    # Sama NAZWA fikstury pytest wystepuje w docstringu (tlumaczy, czemu jej nie ma),
+    # wiec pinujemy WYWOLANIE i parametr, nie wzmianke.
+    assert "tmp_path_factory.mktemp" not in zrodlo, (
+        "katalog klastra wrocil pod `tmp_path_factory` — pytest utwardza swoj korzen "
+        "tymczasowy do 0700 w trakcie sesji i odcina serwerowi katalog danych"
+    )
+    assert "tmp_path_factory" not in inspect.signature(klaster_postgres).parameters
+    assert "shutil.rmtree" in zrodlo, "katalog spoza pytest musi byc kasowany przez fiksture"

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import contextlib
 import importlib.util
 import inspect
 import os
 import pwd
 import re
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -228,10 +230,11 @@ def _konto_bez_uprawnien() -> pwd.struct_passwd | None:
 def _udostepnij_przejscie(katalog: Path) -> None:
     """Dodaj prawo PRZEJSCIA dla „innych" na sciezce do katalogu klastra.
 
-    Katalog tymczasowy pytest (`/tmp/pytest-of-root`) ma prawa `0700`, wiec konto
-    bez uprawnien nie przeszloby do katalogu danych, nawet gdy sam katalog nalezy
-    juz do niego. Dokladamy WYLACZNIE bit `x` dla innych (przejscie), nigdy `r`
-    ani `w` — zawartosc pozostaje niewidoczna dla listowania.
+    Konto bez uprawnien musi PRZEJSC przez wszystkie katalogi nadrzedne, zeby
+    dosiegnac katalogu danych, ktory juz nalezy do niego. Dokladamy WYLACZNIE bit
+    `x` dla innych (przejscie), nigdy `r` ani `w` — zawartosc pozostaje niewidoczna
+    dla listowania. Przy domyslnym `TMPDIR` (`/tmp`, prawa `1777`) to pusty przebieg;
+    potrzebne dopiero przy `TMPDIR` wskazanym na katalog prywatny.
     """
     for przodek in [katalog, *katalog.parents]:
         if przodek == Path(przodek.root):
@@ -239,6 +242,23 @@ def _udostepnij_przejscie(katalog: Path) -> None:
         tryb = przodek.stat().st_mode
         if not tryb & 0o001:
             przodek.chmod(tryb | 0o001)
+
+
+def _zatrzymaj_postmastera(dane: Path) -> None:
+    """Awaryjne domkniecie serwera, gdy `pg_ctl stop` zawiodl — ZERO sierot.
+
+    `pg_ctl` potrzebuje dostepu do katalogu danych; gdy go nie dostanie, konczy sie
+    bledem i zostawia dzialajacy serwer. Identyfikator procesu glownego lezy w
+    pierwszej linii `postmaster.pid`; `SIGQUIT` to natychmiastowe zamkniecie serwera
+    (baza testowa, nie ma czego domykac lagodnie). Brak pliku = serwer juz nie zyje.
+    """
+    plik_pid = dane / "postmaster.pid"
+    try:
+        pid = int(plik_pid.read_text(encoding="utf-8").splitlines()[0])
+    except (OSError, ValueError, IndexError):
+        return
+    with contextlib.suppress(ProcessLookupError, PermissionError):
+        os.kill(pid, signal.SIGQUIT)
 
 
 def _wolny_port() -> int:
@@ -250,12 +270,24 @@ def _wolny_port() -> int:
 
 
 @pytest.fixture(scope="session")
-def klaster_postgres(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
+def klaster_postgres() -> Iterator[str]:
     """Serwer PostgreSQL dla testow dialektu produkcyjnego (adres bazy bazowej).
 
     Zwraca adres SQLAlchemy serwera. Klaster jest podnoszony RAZ na sesje pytest
     (nie per test) i zatrzymywany w teardownie razem z katalogiem danych.
     Izolacje per test daje `postgres_url` nizej.
+
+    KATALOG POZA `tmp_path_factory` — POMIAR, NIE PREFERENCJA (2026-09-17, pelna
+    regresja backendu). Pierwsza wersja trzymala klaster w katalogu sesyjnym pytest.
+    `TempPathFactory.getbasetemp()` PILNUJE praw korzenia `/tmp/pytest-of-<user>` i
+    przywraca mu `0700` przy kolejnych zadaniach `tmp_path` — czyli kasuje prawo
+    przejscia, ktore klaster dostal przy starcie. Serwer dzialajacy jako konto bez
+    uprawnien traci wtedy dostep do WLASNEGO katalogu danych: zmierzone
+    `FATAL: could not stat data directory ... Permission denied` i samoczynne
+    zamkniecie serwera, a `pg_ctl stop` w teardownie konczyl sie bledem
+    (`1 error` przy 15479 zielonych testach). Katalog tymczasowy spoza pytest
+    (`TMPDIR`, domyslnie `/tmp` o prawach `1777`) nie ma tego wlasciciela, wiec nikt
+    go nie utwardza w trakcie sesji. Sprzatamy go sami w `finally`.
     """
     z_zewnatrz = os.environ.get("MV_TEST_POSTGRES_URL")
     if z_zewnatrz:
@@ -270,7 +302,7 @@ def klaster_postgres(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
             "MV_TEST_POSTGRES_URL"
         )
 
-    katalog = tmp_path_factory.mktemp("klaster-postgres")
+    katalog = Path(tempfile.mkdtemp(prefix="klaster-postgres-"))
     dane = katalog / "dane"
     gniazda = katalog / "gniazda"
     gniazda.mkdir()
@@ -283,19 +315,23 @@ def klaster_postgres(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
         for sciezka in (katalog, gniazda, dziennik):
             os.chown(sciezka, konto.pw_uid, konto.pw_gid)
 
-    def uruchom(argv: list[str], opis: str) -> subprocess.CompletedProcess[str]:
-        def zejdz_z_roota() -> None:  # pragma: no cover — wykonuje sie w potomku
-            assert konto is not None
-            os.setgid(konto.pw_gid)
-            os.setuid(konto.pw_uid)
+    def zejdz_z_roota() -> None:  # pragma: no cover — wykonuje sie w procesie potomnym
+        assert konto is not None
+        os.setgid(konto.pw_gid)
+        os.setuid(konto.pw_uid)
 
-        wynik = subprocess.run(  # noqa: S603 — argumenty budujemy sami, bez powloki
+    def wywolaj(argv: list[str]) -> subprocess.CompletedProcess[str]:
+        """Narzedzie klastra w procesie potomnym — z kontem bez uprawnien, gdy trzeba."""
+        return subprocess.run(  # noqa: S603 — argumenty budujemy sami, bez powloki
             argv,
             capture_output=True,
             text=True,
             env={**os.environ, "HOME": str(katalog), "PGUSER": _UZYTKOWNIK_EFEMERYCZNY},
             preexec_fn=zejdz_z_roota if konto is not None else None,
         )
+
+    def uruchom(argv: list[str], opis: str) -> subprocess.CompletedProcess[str]:
+        wynik = wywolaj(argv)
         if wynik.returncode != 0:
             raise RuntimeError(
                 f"{opis} zakonczone kodem {wynik.returncode}\n"
@@ -356,23 +392,29 @@ def klaster_postgres(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
             f"postgresql+psycopg://{_UZYTKOWNIK_EFEMERYCZNY}@127.0.0.1:{port}/{_BAZA_EFEMERYCZNA}"
         )
     finally:
-        uruchom(
-            [str(binaria / "pg_ctl"), "-D", str(dane), "-m", "fast", "-w", "stop"],
-            "zatrzymanie klastra testowego",
+        # KOLEJNOSC JEST CZESCIA KONTRAKTU: najpierw domykamy serwer (i sprawdzamy,
+        # ze naprawde nie zyje), potem kasujemy katalog, a dopiero na koncu zglaszamy
+        # ewentualny blad. Zamiana kolejnosci zostawialaby przy bledzie dzialajacy
+        # serwer i katalog danych — dokladnie sierote, ktorej ten teardown zakazuje.
+        awaria: str | None = None
+        zatrzymanie = wywolaj(
+            [str(binaria / "pg_ctl"), "-D", str(dane), "-m", "fast", "-w", "stop"]
         )
+        if zatrzymanie.returncode != 0:
+            awaria = (
+                f"`pg_ctl stop -m fast` zakonczone kodem {zatrzymanie.returncode}: "
+                f"{zatrzymanie.stderr.strip()}"
+            )
+            _zatrzymaj_postmastera(dane)
         # `pg_ctl status` oddaje 3, gdy serwer NIE dziala — po sesji nie zostaje
         # proces-sierota. Sprawdzamy stan zamiast mu ufac (i bez `pgrep -f`, ktory
         # dopasowalby wlasny proces).
-        stan = subprocess.run(  # noqa: S603 — argumenty budujemy sami, bez powloki
-            [str(binaria / "pg_ctl"), "-D", str(dane), "status"],
-            capture_output=True,
-            text=True,
-        )
+        stan = wywolaj([str(binaria / "pg_ctl"), "-D", str(dane), "status"])
         if stan.returncode == 0:
-            raise RuntimeError(
-                "klaster testowy nadal dziala po `pg_ctl stop -m fast`: " + stan.stdout.strip()
-            )
+            awaria = (awaria or "") + " | klaster nadal dziala: " + stan.stdout.strip()
         shutil.rmtree(katalog, ignore_errors=True)
+        if awaria is not None:
+            raise RuntimeError("zatrzymanie klastra testowego: " + awaria)
 
 
 @pytest.fixture()
