@@ -311,7 +311,41 @@ POMIJANE_KATALOGI = {
 #: bramka (pomiar guardem na drzewie karty); zapadka w dol, nie podnosic bez nowego pomiaru.
 #: Odbior W5-D + W5-A na drzewie scalonym (2026-09-16): pomiar guardem = 112 (obie zapadki w dol
 #: zdjely rozne pozycje).
-BUDZET_BLEDOW_POZA_BRAMKA = 112
+#: Karta TYPY-TESTOW-FE / V12T-018 (2026-09-17, worktree z bazy `b2f59b0f`): dlug rejestru
+#: V12T-018 (commit `c8537620`, certyfikaty PTPiREE) domkniety U ZRODLA, nie podniesieniem
+#: budzetu. Pomiar guardem PRZED naprawa na tym drzewie: 118 (budzet stal na 112 — guard byl
+#: CZERWONY z powodu wzrostu dlugu, nie tylko brakiem obnizenia). 12 bledow w 9 plikach
+#: naprawione fikstura zgodna z kontraktem (bez `as unknown as`/`@ts-expect-error`/`any`):
+#: `MeasurementTransformerType` (martwy kontrakt, ZERO konsumentow poza wlasna deklaracja)
+#: skasowany z `ui/catalog/types.ts`; fikstura `MEASUREMENT_TRANSFORMER` w
+#: `TypeLibraryBrowser.test.tsx` przepisana na realny ksztalt `[...CTCatalogType,
+#: ...VTCatalogType]`, jak zwraca `fetchTypesByCategory` w produkcji; `pozycjeStrony` otypowane
+#: `PtpireeGeneratorCertificateCatalogType[]` z kompletem pol kontraktu. Naprawa fikstury
+#: MEASUREMENT_TRANSFORMER odslonila (przez usuniecie WCZESNIEJSZEGO bledu w tym samym
+#: literale) NIEZALEZNY, JUZ ISTNIEJACY brak w `catalogByCategory: Record<TypeCategory, ...>`
+#: (5 kategorii bez wpisu: SURGE_ARRESTER/SHUNT_CAPACITOR/BRANCH_POLE/ZKSN/
+#: PTPIREE_CERTIFICATE — TS2739, zaslaniany dotad przez inny blad w tym samym wyrazeniu) —
+#: naprawiony TU (Zero-Debt: kazdy napotkany blad w tej samej kolejce), pustymi listami
+#: (zadna z tych zakladek nie jest klikana w tym pliku testow — `TAB_DEFINITIONS`
+#: `TypeLibraryBrowser.tsx` ich nie wystawia; pusta lista to uczciwy stan, nie fikcja).
+#: Reszta: `converterTypesPtpiree.test.ts` (`afterEach` bez zwracanej wartosci `VitestUtils`),
+#: `fieldControlSelectors.test.ts` (`FieldReadModelItem` w pelni wg `BayCanonicalModel`/
+#: `BayBaseModel`, kasacja rzutowania), `technical-icons.test.tsx` (nowy eksportowany typ
+#: `ScreenIconName = keyof typeof screenIconRegistry` w `technicalIconRegistry.tsx`, pole
+#: `ScreenCanonDefinition.icon` zwezone z `TechnicalIconName` na `ScreenIconName` w
+#: `screenCanonRegistry.ts` — wszystkie 39 uzytych wartosci ikon ekranu juz byly w tym
+#: podzbiorze, zero brakujacych etykiet PL; `size` petli testu na `as const`),
+#: `IssuePanelContainer.test.tsx` (`'Transformer'` -> `'TransformerBranch'`, kanon
+#: `ElementType`), `ReadinessBlockersReview.test.tsx` (typ selektora mocka
+#: `useSnapshotStore` dopisuje `readiness: ReadinessInfo | null`, zgodnie z realnym
+#: `SnapshotState`), `networkBuildStore.test.ts` (fikstura `ReadinessInfo` z `warnings: []`),
+#: `stationSnFields.test.ts` (fikstury `Substation`/`Bay` pelne wg `ENMElement` + kontraktow
+#: wlasnych, kasacja martwego pola `type: 'bay'` spoza kontraktu `Bay`), oraz
+#: `derConfiguratorContract.test.ts` (import `DerReadinessCategory` uzyty w nowym tescie
+#: kompilacyjnym kategorii macierzy gotowosci, analogicznie do istniejacego testu `DerKind`).
+#: Pomiar PO naprawie (ten sam pelny sweep, zero nowych bledow — `comm` linia po linii
+#: PRZED/PO potwierdza wylacznie 12 usuniec, 0 dodan): 106. Budzet obnizony 112 -> 106.
+BUDZET_BLEDOW_POZA_BRAMKA = 106
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,
