@@ -1,4 +1,4 @@
-"""Tests for K30-16 station templates REST API."""
+"""Tests for K30-16/V12T-016 station templates REST API (73+ templates, 15 categories)."""
 
 from __future__ import annotations
 
@@ -11,12 +11,12 @@ def _make_client():
     return TestClient(app)
 
 
-def test_list_endpoint_returns_57_templates() -> None:
+def test_list_endpoint_returns_73_templates() -> None:
     client = _make_client()
     response = client.get("/api/station-templates")
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] >= 57
+    assert data["total"] >= 73
     assert len(data["templates"]) == data["total"]
 
 
@@ -36,13 +36,13 @@ def test_list_endpoint_invalid_category() -> None:
     assert response.status_code == 400
 
 
-def test_categories_endpoint_lists_10_categories() -> None:
+def test_categories_endpoint_lists_15_categories() -> None:
     client = _make_client()
     response = client.get("/api/station-templates/categories")
     assert response.status_code == 200
     data = response.json()
-    assert len(data["categories"]) == 10
-    assert data["total_templates"] >= 57
+    assert len(data["categories"]) == 15
+    assert data["total_templates"] >= 73
     # Each category has icon + label + count
     for cat in data["categories"]:
         assert "id" in cat
