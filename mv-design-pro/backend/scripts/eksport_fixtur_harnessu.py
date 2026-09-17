@@ -47,6 +47,7 @@ from api.analysis_runs import _catalog_completed_snapshot  # noqa: E402
 from api.canonical_run_views import (  # noqa: E402
     build_automation_trace_results_response,
     build_branch_results_response,
+    build_bus_results_response,
     build_dynamic_stability_results_response,
     build_extended_trace_response,
     build_phase_state_results_response,
@@ -72,6 +73,10 @@ from application.analyses.energy_validation.service import (  # noqa: E402
 )
 from application.analyses.grid_strength import build_grid_strength_view  # noqa: E402
 from application.analyses.migotanie import build_migotanie_view  # noqa: E402
+from application.analyses.state_estimation.service import (  # noqa: E402
+    build_state_estimation_requirements,
+    build_state_estimation_view,
+)
 from application.analyses.v126_gotowosc import odpowiedz_gotowosci  # noqa: E402
 from application.analyses.v126_katalog import katalog_do_dict  # noqa: E402
 from application.analyses.werdykt_projektowy import (  # noqa: E402
@@ -81,21 +86,31 @@ from application.analyses.wytrzymalosc_cieplna_przewodow import (  # noqa: E402
     build_wytrzymalosc_cieplna_view,
     zbuduj_dowod_cieplny,
 )
+from application.analyses.zgodnosc_powykonawcza import (  # noqa: E402
+    build_zgodnosc_powykonawcza_view,
+)
 from application.analysis_run.read_model import canonicalize_json  # noqa: E402
 from application.autorytet_biegu_zwarciowego import (  # noqa: E402
     wejscie_koordynacji_z_biegow,
 )
 from application.ncrfg_compliance import zgodnosc_ncrfg_przypadku  # noqa: E402
+from application.power_flow_comparison.service import (  # noqa: E402
+    PowerFlowComparisonService,
+)
 from application.proof_engine.pakiet_nastaw import (  # noqa: E402
     dostepnosc_pakietu_nastaw,
     zbuduj_odpowiedz_dopasowania,
     zbuduj_odpowiedz_nastaw_json,
 )
 from enm.canonical_analysis import (  # noqa: E402
+    build_execution_result_set,
     build_short_circuit_results,
     create_run,
     execute_run,
     reset_canonical_runs,
+)
+from enm.canonical_analysis import (  # noqa: E402
+    list_runs_for_project as list_canonical_runs_for_project,
 )
 from enm.domain_operations import execute_domain_operation  # noqa: E402
 from enm.hash import compute_enm_hash  # noqa: E402
@@ -1880,6 +1895,465 @@ def koordynacja_scena_wynik() -> dict[str, Any]:
         )
 
 
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA-2 (2026-09-17) — scena „porownanie" (porównanie A/B
+# rozpływu) i scena „oltc" (badania regulacji zaczepów). Do tej karty obie
+# niosły kompletne odpowiedzi wpisane ręcznie: delty napięć/mocy/strat per szyna
+# i gałąź, ranking problemów, proweniencja obu biegów, punkty przemiatania
+# zaczepów — na sieci, której nie ma (refy `SZ-GPZ`, `SZ-ST7`, `L-14`, `TR-1`).
+# ---------------------------------------------------------------------------
+
+#: Projekt scen A/B — końcówki list biegów filtrują po projekcie, a porównanie
+#: odmawia pary biegów z RÓŻNYCH projektów, więc oba biegi muszą go nieść.
+_PROJEKT_SCENY_PORONWANIE = uuid5(NAMESPACE_URL, "mv-design-pro:harness:projekt-porownanie")
+KLUCZ_TWIN_SCENY_PORONWANIE = f"proj:{_PROJEKT_SCENY_PORONWANIE}/case:{CASE_ID_HARNESSU}"
+
+RUN_ID_SCENY_PORONWANIE_A = "run-lf-scena-porownanie-a"
+RUN_ID_SCENY_PORONWANIE_B = "run-lf-scena-porownanie-b"
+_UUID_SCENY_PORONWANIE_A = uuid5(
+    NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_PORONWANIE_A
+)
+_UUID_SCENY_PORONWANIE_B = uuid5(
+    NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_PORONWANIE_B
+)
+
+#: Wariant B sceny porównania: TEN SAM model z obciążeniem ×1,6. Mnożnik dobrany
+#: tak, aby porównanie miało co pokazać (realne delty napięć i strat), a
+#: jednocześnie szyna bilansowa GPZ została BEZ RÓŻNICY (u = 1,0 pu w obu
+#: wariantach) — ekran ma filtr „tylko różnice", którego nie da się zademonstrować
+#: bez wiersza bez różnicy. Zmierzone na wyniku, nie założone.
+_MNOZNIK_OBCIAZENIA_WARIANTU_B = 1.6
+
+
+@contextmanager
+def _biegi_sceny_porownanie() -> Iterator[tuple[Any, Any]]:
+    """Dwa biegi `PF` sceny „porownanie": wariant A (sieć złota bez zmian) i
+    wariant B (ta sama sieć z obciążeniem ×1,6). Oba w TYM SAMYM projekcie —
+    `PowerFlowComparisonService` odmawia pary z różnych projektów, a końcówka
+    listy biegów filtruje po projekcie.
+
+    Menedżer kontekstu z tego samego powodu, co kotwice koordynacji: usługa
+    porównania czyta oba biegi Z REJESTRU po identyfikatorze."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        enm_a = build_golden_enm()
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm_a)
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_PORONWANIE_A):
+            set_enm(KLUCZ_TWIN_SCENY_PORONWANIE, enm_a)
+            bieg_a = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=KLUCZ_TWIN_SCENY_PORONWANIE,
+                    analysis_type="PF",
+                    project_id=str(_PROJEKT_SCENY_PORONWANIE),
+                ).id
+            )
+        enm_b = _zlota_siec_z_obciazeniem(_MNOZNIK_OBCIAZENIA_WARIANTU_B)
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm_b)
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_PORONWANIE_B):
+            set_enm(KLUCZ_TWIN_SCENY_PORONWANIE, enm_b)
+            bieg_b = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=KLUCZ_TWIN_SCENY_PORONWANIE,
+                    analysis_type="PF",
+                    project_id=str(_PROJEKT_SCENY_PORONWANIE),
+                ).id
+            )
+        yield bieg_a, bieg_b
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def _mapa_identyfikatorow_porownania(bieg_a: Any, bieg_b: Any) -> dict[str, str]:
+    mapa = {
+        str(bieg_a.id): RUN_ID_SCENY_PORONWANIE_A,
+        str(bieg_b.id): RUN_ID_SCENY_PORONWANIE_B,
+        str(_PROJEKT_SCENY_PORONWANIE): "projekt-scena-porownanie",
+    }
+    for bieg in (bieg_a, bieg_b):
+        for znacznik in (bieg.created_at, bieg.started_at, bieg.finished_at):
+            if znacznik is not None:
+                mapa[znacznik.isoformat()] = _CZAS_SCENY_WERDYKTU
+    return mapa
+
+
+def porownanie_scena_biegi_pf() -> dict[str, Any]:
+    """Odpowiedź `GET /api/projects/{id}/power-flow-runs` — lista zakończonych
+    przebiegów rozpływu projektu, z której ekran wybiera wariant A i B. Kształt
+    złożony DOKŁADNIE tak jak końcówka `api/power_flow_runs.py::
+    list_power_flow_runs` (te same pola, ten sam sort malejąco po `created_at`).
+
+    Znaczniki czasu obu biegów są tu IDENTYCZNE (zegar kotwicy zamrożony), więc
+    sort po `created_at` ich nie rozróżnia — kolejność ustala sort wtórny po
+    identyfikatorze, żeby lista była deterministyczna."""
+    with _biegi_sceny_porownanie() as (bieg_a, bieg_b):
+        biegi = [
+            {
+                "id": str(bieg.id),
+                "project_id": bieg.project_id,
+                "study_case_id": bieg.case_id,
+                "analysis_type": bieg.analysis_type,
+                "status": bieg.status,
+                "result_status": bieg.result_status,
+                "created_at": bieg.created_at.isoformat(),
+                "finished_at": bieg.finished_at.isoformat() if bieg.finished_at else None,
+                "input_hash": bieg.input_hash,
+                "snapshot_hash": bieg.snapshot_hash,
+                "model_revision": (bieg.envelope or {}).get("model_revision"),
+                "scenario_ref": (bieg.envelope or {}).get("scenario_ref"),
+                "converged": ((bieg.raw_result or {}).get("result_v1") or {}).get("converged"),
+                "iterations": ((bieg.raw_result or {}).get("result_v1") or {}).get(
+                    "iterations_count"
+                ),
+            }
+            for bieg in list_canonical_runs_for_project(
+                str(_PROJEKT_SCENY_PORONWANIE), analysis_type="PF"
+            )
+        ]
+        biegi.sort(key=lambda bieg: (bieg.get("created_at") or "", str(bieg["id"])), reverse=True)
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json({"runs": biegi, "total": len(biegi)}),
+            _mapa_identyfikatorow_porownania(bieg_a, bieg_b),
+        )
+
+
+def porownanie_scena_wynik_pf() -> dict[str, Any]:
+    """Odpowiedź `POST /api/power-flow-comparisons` (`PowerFlowComparisonService
+    .compare` — TA SAMA usługa, którą woła końcówka): delty per szyna i gałąź,
+    ranking problemów, podsumowanie i proweniencja OBU biegów."""
+    with _biegi_sceny_porownanie() as (bieg_a, bieg_b):
+        with patch("domain.power_flow_comparison.datetime", _ZegarStalyBiegu):
+            widok = (
+                PowerFlowComparisonService(None).compare(str(bieg_a.id), str(bieg_b.id)).to_dict()
+            )
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(widok), _mapa_identyfikatorow_porownania(bieg_a, bieg_b)
+        )
+
+
+def porownanie_scena_slad_pf() -> dict[str, Any]:
+    """Odpowiedź `GET /api/power-flow-comparisons/{id}/trace` — ślad WHITE BOX
+    porównania (dopasowanie szyn/gałęzi, progi rankingu)."""
+    with _biegi_sceny_porownanie() as (bieg_a, bieg_b):
+        # `created_at` wyniku i śladu porównania to `datetime.now(UTC)` w
+        # `default_factory` dataclassy domenowej (`domain/power_flow_comparison.py`)
+        # — lambda czyta nazwę modułu przy KAŻDYM wywołaniu, więc podmiana nazwy
+        # działa (zmierzone: bez niej dwa wywołania fixtury różniły się tym jednym
+        # polem).
+        with patch("domain.power_flow_comparison.datetime", _ZegarStalyBiegu):
+            usluga = PowerFlowComparisonService(None)
+            widok = usluga.get_comparison_trace(
+                usluga.compare(str(bieg_a.id), str(bieg_b.id)).to_dict()["comparison_id"]
+            ).to_dict()
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(widok), _mapa_identyfikatorow_porownania(bieg_a, bieg_b)
+        )
+
+
+RUN_ID_SCENY_OLTC = "run-lf-scena-oltc"
+_UUID_SCENY_OLTC = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_OLTC)
+
+
+@contextmanager
+def _bieg_sceny_oltc() -> Iterator[Any]:
+    """Bieg `PF` sceny „oltc" z opcją badania PRZEMIATANIA ZACZEPÓW
+    (`options={"oltc_study": "sweep"}` — DOKŁADNIE ten `solver_input`, który
+    buduje ekran dla rodzaju domyślnego, `oltcBadaniaModel.ts::
+    zbudujSolverInput`), na sieci sceny E-30 (jedyna z regulatorem OLTC —
+    badanie bez regulatora nie ma czego przemiatać i zwraca `None`)."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        enm = _enm_sceny_zbieznosc()
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_OLTC):
+            set_enm(CASE_ID_HARNESSU, enm)
+            bieg = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=CASE_ID_HARNESSU,
+                    analysis_type="PF",
+                    options={"oltc_study": "sweep"},
+                ).id
+            )
+        yield bieg
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def oltc_scena_przebieg() -> dict[str, Any]:
+    """Kontrakt przebiegu wykonawczego (`CanonicalRun.to_execution_dict` — TEN
+    SAM kształt, który zwracają końcówki `POST /api/execution/study-cases/{id}/runs`
+    i `POST /api/execution/runs/{id}/execute`)."""
+    with _bieg_sceny_oltc() as bieg:
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(bieg.to_execution_dict()), {str(bieg.id): RUN_ID_SCENY_OLTC}
+        )
+
+
+def oltc_scena_wynik() -> dict[str, Any]:
+    """Odpowiedź `GET /api/execution/runs/{id}/results`
+    (`build_execution_result_set` — TA SAMA funkcja, którą woła końcówka):
+    `global_results.oltc_sweep` z REALNEGO przemiatania zaczepów solvera
+    (`network_model/solvers/power_flow_oltc_studies.py`) oraz `oltc_control`
+    z pętli regulacji tego samego biegu."""
+    with _bieg_sceny_oltc() as bieg:
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(build_execution_result_set(bieg)), {str(bieg.id): RUN_ID_SCENY_OLTC}
+        )
+
+
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA-2 (2026-09-17) — sceny „estymacja" (estymacja stanu WLS)
+# i „odbior-zgodnosc" (zgodność powykonawcza). Obie liczą wynik z POMIARÓW, a
+# pomiar jest DANĄ WEJŚCIOWĄ projektu (odczyt z rejestratora/protokołu odbioru),
+# nie wynikiem solvera — dokładnie ten sam status, co parametry elektrod sceny
+# arc flash albo prądy fazowe sceny stanu fazowego. Pomiary sceny są WYPROWADZONE
+# Z WYNIKU biegu (wartość modelu + JAWNIE NAZWANA odchyłka), żeby scena pokazała
+# komplet werdyktów, jakie ekran umie pokazać; wszystkie liczby ocen, rezyduów,
+# χ² i odchyłek liczy backend.
+# ---------------------------------------------------------------------------
+
+RUN_ID_SCENY_POMIAROWEJ = "run-lf-scena-pomiary"
+_UUID_SCENY_POMIAROWEJ = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_POMIAROWEJ)
+
+#: Niepewności pomiarowe telemetrii sceny WLS [pu] — DANE WEJŚCIOWE estymatora
+#: (klasa dokładności przetwornika), nie wynik. Wartości typowe dla telemetrii
+#: SCADA średniego napięcia: moduł napięcia 0,4 %, moce 0,8 %.
+_SIGMA_NAPIECIA_WLS = 0.004
+_SIGMA_MOCY_WLS = 0.008
+
+#: Odchyłka pomiaru napięcia JEDNEGO węzła sceny WLS [pu] — pomiar obarczony
+#: błędem grubym (uszkodzony przetwornik). Bez niego scena nie pokazuje sekcji
+#: detekcji złych danych (χ² i największe rezyduum znormalizowane), która jest
+#: sednem tego ekranu. 0,02 pu = 5 σ przy σ = 0,004 pu (próg LNR = 3).
+_BLAD_GRUBY_POMIARU_WLS = 0.02
+
+#: Odchyłki pomiarów odbiorowych sceny zgodności powykonawczej [%] — protokół
+#: odbioru zawsze różni się od modelu; te dwie wartości dobrane tak, by jedna
+#: mieściła się w tolerancji napięciowej (5 %), a druga wychodziła poza
+#: tolerancję mocy (10 %) — ekran pokazuje wtedy OBA werdykty.
+_ODCHYLKA_W_TOLERANCJI_PCT = 1.0
+_ODCHYLKA_POZA_TOLERANCJA_PCT = 12.5
+
+#: Tolerancje odbioru sceny [%] — JAWNE (kontrakt zabrania domyślnych: brak
+#: udokumentowanego źródła normatywnego, `zgodnosc_powykonawcza.py`).
+_TOLERANCJA_NAPIECIA_PCT = 5.0
+_TOLERANCJA_MOCY_PCT = 10.0
+
+
+@contextmanager
+def _bieg_sceny_pomiarowej() -> Iterator[Any]:
+    """Bieg `PF` KOTWICY scen „estymacja"/„odbior-zgodnosc" — sieć złota bez
+    zmian. Oba ekrany interpretują TEN SAM przebieg (spójność liczb między
+    scenami), jak „rozplyw" i „walidacja" obok."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        enm = build_golden_enm()
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_POMIAROWEJ):
+            set_enm(CASE_ID_HARNESSU, enm)
+            bieg = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU, klucz_twin=CASE_ID_HARNESSU, analysis_type="PF"
+                ).id
+            )
+        yield bieg
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def estymacja_scena_wymagania() -> dict[str, Any]:
+    """Odpowiedź `GET /api/quality/state-estimation/requirements`
+    (`build_state_estimation_requirements` — TA SAMA funkcja, którą woła
+    końcówka): mapa węzeł→indeks, węzeł bilansowy, minimalna liczba pomiarów."""
+    with _bieg_sceny_pomiarowej() as bieg:
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(build_state_estimation_requirements(bieg)),
+            _mapa_identyfikatorow_sceny_pomiarowej(bieg),
+        )
+
+
+def _mapa_identyfikatorow_sceny_pomiarowej(bieg: Any) -> dict[str, str]:
+    mapa = {str(bieg.id): RUN_ID_SCENY_POMIAROWEJ}
+    for znacznik in (bieg.created_at, bieg.started_at, bieg.finished_at):
+        if znacznik is not None:
+            mapa[znacznik.isoformat()] = _CZAS_SCENY_WERDYKTU
+    return mapa
+
+
+def _pomiary_wls_sceny(bieg: Any) -> list[dict[str, Any]]:
+    """Telemetria sceny WLS zbudowana z WYNIKU biegu: moduł napięcia każdego
+    węzła oraz iniekcje P/Q węzłów nie-bilansowych. Węzeł o NAJMNIEJSZYM
+    `bus_ref` (sort deterministyczny) dostaje pomiar napięcia obarczony błędem
+    grubym — jedyna liczba sceny, która świadomie NIE jest odczytem modelu, i
+    dlatego nazwana wprost (uszkodzony przetwornik, `_BLAD_GRUBY_POMIARU_WLS`).
+    """
+    wynik = get_power_flow_result(bieg)
+    wezly = {wiersz["bus_id"]: wiersz for wiersz in wynik["bus_results"]}
+    slack = build_state_estimation_requirements(bieg)["slack_bus_ref"]
+    uszkodzony = sorted(wezly)[0]
+    pomiary: list[dict[str, Any]] = []
+    for bus_ref in sorted(wezly):
+        wiersz = wezly[bus_ref]
+        pomiary.append(
+            {
+                "meas_type": "V_MAGNITUDE",
+                "bus_ref": bus_ref,
+                "value": float(wiersz["v_pu"])
+                + (_BLAD_GRUBY_POMIARU_WLS if bus_ref == uszkodzony else 0.0),
+                "sigma": _SIGMA_NAPIECIA_WLS,
+            }
+        )
+    for bus_ref in sorted(wezly):
+        if bus_ref == slack:
+            continue
+        wiersz = wezly[bus_ref]
+        for rodzaj, klucz in (("P_INJECTION", "p_injected_mw"), ("Q_INJECTION", "q_injected_mvar")):
+            pomiary.append(
+                {
+                    "meas_type": rodzaj,
+                    "bus_ref": bus_ref,
+                    # Kontrakt estymatora: wartości w jednostkach względnych na
+                    # bazie mocy Y-bus (`base_mva`), a wiersz rozpływu niesie MW
+                    # i Mvar — przeliczenie jednostki, nie fizyka.
+                    "value": float(wiersz[klucz]) / float(wynik["base_mva"]),
+                    "sigma": _SIGMA_MOCY_WLS,
+                }
+            )
+    return pomiary
+
+
+def estymacja_scena_wynik() -> dict[str, Any]:
+    """Odpowiedź `POST /api/quality/state-estimation` (`build_state_estimation_view`
+    — TA SAMA funkcja, którą woła końcówka): estymowany stan, rezydua
+    znormalizowane, test χ² i detekcja złych danych, ze śladem WHITE BOX
+    iteracji (`include_trace=True`, jak ekran w trybie eksperckim)."""
+    with _bieg_sceny_pomiarowej() as bieg:
+        widok = build_state_estimation_view(bieg, _pomiary_wls_sceny(bieg), include_trace=True)
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(widok), _mapa_identyfikatorow_sceny_pomiarowej(bieg)
+        )
+
+
+def _pomiary_odbiorowe_sceny(bieg: Any) -> list[dict[str, Any]]:
+    """Protokół odbioru sceny zgodności powykonawczej — po jednym pomiarze na
+    każdy werdykt, jaki ekran umie pokazać:
+
+    1. napięcie węzła W TOLERANCJI (odchyłka `_ODCHYLKA_W_TOLERANCJI_PCT`),
+    2. moc czynna gałęzi POZA TOLERANCJĄ (`_ODCHYLKA_POZA_TOLERANCJA_PCT`),
+    3. pomiar elementu, którego NIE MA w modelu (brak odpowiednika),
+    4. moc bierna gałęzi, której wynik rozpływu nie niesie (brak wyniku) —
+       pozycja powstaje TYLKO wtedy, gdy sieć ma taką gałąź. Na sieci złotej
+       KAŻDA gałąź niesie moc bierną (zmierzone), więc czwarty werdykt na tej
+       scenie nie występuje; scena pokazuje trzy, bo tyle sieć uczciwie daje —
+       dołożenie czwartego wymagałoby pomiaru elementu wymyślonego.
+
+    Wartości 1 i 2 pochodzą Z WYNIKU biegu powiększonego o nazwaną odchyłkę —
+    protokół odbioru z definicji różni się od modelu, a bez różnicy ekran nie
+    pokazałby ANI JEDNEGO werdyktu poza „w tolerancji"."""
+    # Dopasowanie pomiaru do modelu idzie po `element_id` wierszy widoków
+    # szyn/gałęzi (= `ref_id` ENM) — TA SAMA przestrzeń nazw, której używa
+    # `zgodnosc_powykonawcza._bus_upu_by_element`/`_branch_pq_by_element`.
+    napiecia_wezlow = {
+        str(szyna.get("ref_id")): szyna.get("voltage_kv")
+        for szyna in (bieg.snapshot or {}).get("buses") or []
+    }
+    wezly = sorted(
+        (
+            wiersz
+            for wiersz in build_bus_results_response(bieg)["rows"]
+            if isinstance(wiersz.get("element_id"), str)
+            and wiersz.get("u_pu") is not None
+            and napiecia_wezlow.get(str(wiersz["element_id"])) is not None
+        ),
+        key=lambda wiersz: str(wiersz["element_id"]),
+    )
+    galezie = sorted(
+        (
+            wiersz
+            for wiersz in build_branch_results_response(bieg)["rows"]
+            if isinstance(wiersz.get("element_id"), str) and wiersz.get("p_mw") is not None
+        ),
+        key=lambda wiersz: str(wiersz["element_id"]),
+    )
+    wezel = wezly[0]
+    # Gałąź o NAJWIĘKSZEJ mocy czynnej (tiebreak po refie) — na niej odchyłka
+    # poza tolerancją jest czytelna, a wybór deterministyczny.
+    galaz = max(galezie, key=lambda wiersz: (abs(float(wiersz["p_mw"])), str(wiersz["element_id"])))
+    # Gałąź BEZ wyniku mocy biernej (jeśli sieć taką ma) — czwarty werdykt
+    # ekranu („brak wyniku dla elementu"); gdy każda gałąź ma Q, pomiar
+    # dotyczy gałęzi wyłącznikowej, której rozpływ nie liczy mocy.
+    bez_q = next(
+        (
+            wiersz
+            for wiersz in sorted(
+                build_branch_results_response(bieg)["rows"],
+                key=lambda wiersz: str(wiersz.get("element_id")),
+            )
+            if isinstance(wiersz.get("element_id"), str) and wiersz.get("q_mvar") is None
+        ),
+        None,
+    )
+    napiecie_modelu_kv = float(wezel["u_pu"]) * float(napiecia_wezlow[str(wezel["element_id"])])
+    pomiary = [
+        {
+            "element_ref": str(wezel["element_id"]),
+            "wielkosc": "U",
+            "wartosc": napiecie_modelu_kv * (1.0 + _ODCHYLKA_W_TOLERANCJI_PCT / 100.0),
+            "jednostka": "kV",
+        },
+        {
+            "element_ref": str(galaz["element_id"]),
+            "wielkosc": "P",
+            "wartosc": float(galaz["p_mw"]) * (1.0 + _ODCHYLKA_POZA_TOLERANCJA_PCT / 100.0),
+            "jednostka": "MW",
+        },
+        {
+            # Element z protokołu odbioru, którego w modelu NIE MA — pole
+            # rezerwowe rozdzielni, którego projektant nie odwzorował.
+            "element_ref": "POLE-REZERWOWE-12",
+            "wielkosc": "U",
+            "wartosc": 15.0,
+            "jednostka": "kV",
+        },
+    ]
+    if bez_q is not None:
+        pomiary.append(
+            {
+                "element_ref": str(bez_q["element_id"]),
+                "wielkosc": "Q",
+                "wartosc": 1.2,
+                "jednostka": "Mvar",
+            }
+        )
+    return pomiary
+
+
+def odbior_zgodnosc_scena_wynik() -> dict[str, Any]:
+    """Odpowiedź `POST /api/quality/as-built-compliance`
+    (`build_zgodnosc_powykonawcza_view` — TA SAMA funkcja, którą woła końcówka):
+    porównanie pomiar↔model ze śladem per wiersz (model → pomiar → odchyłka →
+    tolerancja → werdykt) i jawnymi tolerancjami żądania."""
+    with _bieg_sceny_pomiarowej() as bieg:
+        widok = build_zgodnosc_powykonawcza_view(
+            bieg,
+            _pomiary_odbiorowe_sceny(bieg),
+            {
+                "napiecie_pct": _TOLERANCJA_NAPIECIA_PCT,
+                "moc_pct": _TOLERANCJA_MOCY_PCT,
+            },
+        )
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(widok), _mapa_identyfikatorow_sceny_pomiarowej(bieg)
+        )
+
+
 #: Nazwa pliku → funkcja licząca odpowiedź (kolejność = kolejność eksportu).
 FIXTURY: dict[str, Any] = {
     "ncrfg_zgodnosc_przekrojowa_scena_macierz": zgodnosc_przekrojowa_sceny_macierz,
@@ -1922,6 +2396,14 @@ FIXTURY: dict[str, Any] = {
     "koordynacja_scena_nastawy": koordynacja_scena_nastawy,
     "koordynacja_scena_nastawy_dopasowanie": koordynacja_scena_nastawy_dopasowanie,
     "koordynacja_scena_wynik": koordynacja_scena_wynik,
+    "porownanie_scena_biegi_pf": porownanie_scena_biegi_pf,
+    "porownanie_scena_wynik_pf": porownanie_scena_wynik_pf,
+    "porownanie_scena_slad_pf": porownanie_scena_slad_pf,
+    "oltc_scena_przebieg": oltc_scena_przebieg,
+    "oltc_scena_wynik": oltc_scena_wynik,
+    "estymacja_scena_wymagania": estymacja_scena_wymagania,
+    "estymacja_scena_wynik": estymacja_scena_wynik,
+    "odbior_zgodnosc_scena_wynik": odbior_zgodnosc_scena_wynik,
 }
 
 

@@ -1,0 +1,81 @@
+{
+  "analysis_id": "run-lf-scena-pomiary",
+  "input_hash": "84e471da339a9dfffcbd7d90526ad579f9cf0498cc0a0e75c8dff1ceffc498b7",
+  "podsumowanie": {
+    "brak_odpowiednika": 1,
+    "brak_wyniku": 0,
+    "liczba_punktow": 3,
+    "najwieksza_odchylka_element_ref": "line_b_c",
+    "najwieksza_odchylka_pct": -12.5,
+    "najwieksza_odchylka_wielkosc": "P",
+    "poza_tolerancja": 1,
+    "w_tolerancji": 1
+  },
+  "tolerancje": {
+    "moc_pct": 10.0,
+    "napiecie_pct": 5.0
+  },
+  "wiersze": [
+    {
+      "element_ref": "POLE-REZERWOWE-12",
+      "jednostka": "kV",
+      "odchylka_bezwzgledna": null,
+      "odchylka_pct": null,
+      "slad_pl": [
+        "Element 'POLE-REZERWOWE-12' nie występuje jako węzeł w wyniku rozpływu."
+      ],
+      "tolerancja_pct": null,
+      "wartosc_model": null,
+      "wartosc_pomiar": 15.0,
+      "werdykt": "brak odpowiednika w modelu",
+      "wielkosc": "U"
+    },
+    {
+      "element_ref": "bus_hv",
+      "jednostka": "kV",
+      "odchylka_bezwzgledna": 1.1,
+      "odchylka_pct": 1.0,
+      "slad_pl": [
+        "Model U = u · U_n (napięcie względne · znamionowe) = 1.000000 × 110.000000 = 110.000000 kV",
+        "Pomiar U = 111.100000 kV",
+        "Odchyłka = pomiar − model = 1.100000 kV (1.000000%)",
+        "Tolerancja = ±5.000000%",
+        "Werdykt: w tolerancji"
+      ],
+      "tolerancja_pct": 5.0,
+      "wartosc_model": 110.0,
+      "wartosc_pomiar": 111.1,
+      "werdykt": "w tolerancji",
+      "wielkosc": "U"
+    },
+    {
+      "element_ref": "line_b_c",
+      "jednostka": "MW",
+      "odchylka_bezwzgledna": -0.099645,
+      "odchylka_pct": -12.5,
+      "slad_pl": [
+        "Model P na początku gałęzi = -0.797159 MW",
+        "Pomiar P = -0.896804 MW",
+        "Odchyłka = pomiar − model = -0.099645 MW (-12.500000%)",
+        "Tolerancja = ±10.000000%",
+        "Werdykt: poza tolerancją"
+      ],
+      "tolerancja_pct": 10.0,
+      "wartosc_model": -0.797159,
+      "wartosc_pomiar": -0.896804,
+      "werdykt": "poza tolerancją",
+      "wielkosc": "P"
+    }
+  ],
+  "zalozenia_pl": [
+    "Porównanie 1:1 pomiar–model (wynik rozpływu tylko do odczytu, bez modyfikacji); bez estymacji stanu i bez korekt modelu.",
+    "Napięcie przeliczane na kV z wartości względnej przez napięcie znamionowe węzła: $U = u \\cdot U_{n}$.",
+    "Moce P/Q odczytywane na początku gałęzi (w kierunku od węzła początkowego).",
+    "Konwencja znaku mocy biernej nierozstrzygnięta w danych pomiarowych: Q porównywane po wartości bezwzględnej $|Q|$; znak odchyłki nie jest interpretowany.",
+    "Tolerancje wyłącznie jawne (z żądania); brak udokumentowanego źródła normatywnego dla wartości domyślnych, więc domyślnych nie przyjęto."
+  ],
+  "zrodlo_tolerancji": {
+    "moc_pct": "jawna (żądanie)",
+    "napiecie_pct": "jawna (żądanie)"
+  }
+}

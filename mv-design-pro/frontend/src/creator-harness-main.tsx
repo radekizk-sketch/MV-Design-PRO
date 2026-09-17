@@ -146,6 +146,22 @@ import koordynacjaScenyPakietDostepnoscMin from './harness-fixtures/generated/ko
 import koordynacjaScenyNastawy from './harness-fixtures/generated/koordynacja_scena_nastawy.json';
 import koordynacjaScenyNastawyDopasowanie from './harness-fixtures/generated/koordynacja_scena_nastawy_dopasowanie.json';
 import koordynacjaScenyWynik from './harness-fixtures/generated/koordynacja_scena_wynik.json';
+// HARNESS-RESZTA-2: scena "porownanie" (A/B rozplywu) — dwa REALNE biegi PF
+// jednego projektu (siec zlota i ta sama siec z obciazeniem x1,6) + wynik i slad
+// `PowerFlowComparisonService`; scena "oltc" — REALNY bieg PF z opcja badania
+// `oltc_study: "sweep"` na sieci z regulatorem zaczepow.
+import porownanieScenyBiegiPf from './harness-fixtures/generated/porownanie_scena_biegi_pf.json';
+import porownanieScenyWynikPf from './harness-fixtures/generated/porownanie_scena_wynik_pf.json';
+import porownanieScenySladPf from './harness-fixtures/generated/porownanie_scena_slad_pf.json';
+import oltcScenyPrzebieg from './harness-fixtures/generated/oltc_scena_przebieg.json';
+import oltcScenyWynik from './harness-fixtures/generated/oltc_scena_wynik.json';
+// HARNESS-RESZTA-2: sceny "estymacja" (WLS) i "odbior-zgodnosc" — REALNY bieg PF
+// sieci zlotej; telemetria i protokol odbioru sa DANA WEJSCIOWA sceny (wartosc
+// modelu + nazwana odchylka), a rezydua, chi-kwadrat, odchylki i werdykty liczy
+// backend TYMI SAMYMI funkcjami, ktore wolaja koncowki.
+import estymacjaScenyWymagania from './harness-fixtures/generated/estymacja_scena_wymagania.json';
+import estymacjaScenyWynik from './harness-fixtures/generated/estymacja_scena_wynik.json';
+import odbiorZgodnoscScenyWynik from './harness-fixtures/generated/odbior_zgodnosc_scena_wynik.json';
 import { REWIZJA_SIECI_ZLOTEJ, migawkaSieciZlotej } from './harness-fixtures/migawkaSieciZlotej';
 import { EkranOceny } from './ui2/wyniki/ocena';
 import { SekcjaSilySieci } from './ui2/oze/pulpit';
@@ -574,8 +590,8 @@ const RUN_KONTRAKT_SCENY: Record<string, string> = {
   zwarcia: zwarciaWynikiScenyZwarcia.run_id,
   rozplyw: rozplywScenyWynik.run_id,
   walidacja: walidacjaScenyWynik.context.run_id,
-  estymacja: 'run-lf-6',
-  'odbior-zgodnosc': 'run-lf-5',
+  estymacja: estymacjaScenyWynik.analysis_id,
+  'odbior-zgodnosc': odbiorZgodnoscScenyWynik.analysis_id,
   // Ekran zbieznosci dostal znacznik swiezosci naglowka (karta wynikow), wiec
   // od tej chwili WOLA kontrakt przebiegu. Bez wpisu zapytanie szlo do realnego
   // backendu i wracalo 404 — bramka „zero bledow konsoli" specow zrzutowych
@@ -874,62 +890,25 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     return jsonOK(zwarciaPasmoScenyZwarcia);
   }
   if (url.includes('/power-flow-runs')) {
-    // Scena "porownanie": lista zakonczonych przebiegow rozplywu projektu.
-    return new Response(
-      JSON.stringify({
-        runs: [
-          { id: 'run-a', project_id: 'proj-demo', study_case_id: 'K1', status: 'FINISHED', result_status: 'FRESH', created_at: '2026-07-21T10:00:00Z', finished_at: '2026-07-21T10:00:04Z', input_hash: 'hash-a', snapshot_hash: 'snap-run-a', model_revision: 1, scenario_ref: null, converged: true, iterations: 5 },
-          { id: 'run-b', project_id: 'proj-demo', study_case_id: 'K2', status: 'FINISHED', result_status: 'FRESH', created_at: '2026-07-21T11:00:00Z', finished_at: '2026-07-21T11:00:05Z', input_hash: 'hash-b', snapshot_hash: 'snap-run-b', model_revision: 2, scenario_ref: null, converged: true, iterations: 6 },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // HARNESS-RESZTA-2: lista zakonczonych przebiegow rozplywu projektu sceny
+    // "porownanie" — REALNE biegi backendu (`eksport_fixtur_harnessu.py::
+    // porownanie_scena_biegi_pf`, ksztalt 1:1 z koncowka
+    // `api/power_flow_runs.py::list_power_flow_runs`): wariant A = siec zlota,
+    // wariant B = ta sama siec z obciazeniem x1,6.
+    return jsonOK(porownanieScenyBiegiPf);
+  }
+  if (url.includes('/api/power-flow-comparisons') && url.endsWith('/trace')) {
+    // Slad WHITE BOX porownania (dopasowanie szyn/galezi, progi rankingu) —
+    // `PowerFlowComparisonService.get_comparison_trace`, TA SAMA usluga, ktora
+    // wola koncowka.
+    return jsonOK(porownanieScenySladPf);
   }
   if (url.includes('/api/power-flow-comparisons')) {
-    // Scena "porownanie" (R3-C): wynik porownania A/B — ksztalt 1:1 z
-    // `PowerFlowComparisonResult` (delty i ranking WYLACZNIE z backendu).
-    return new Response(
-      JSON.stringify({
-        comparison_id: 'cmp-demo-1', run_a_id: 'run-a', run_b_id: 'run-b', project_id: 'proj-demo',
-        bus_diffs: [
-          { bus_id: 'SZ-GPZ', v_pu_a: 1.0, v_pu_b: 1.0, angle_deg_a: 0, angle_deg_b: 0, p_injected_mw_a: 6.4, p_injected_mw_b: 5.1, q_injected_mvar_a: 1.9, q_injected_mvar_b: 1.4, delta_v_pu: 0, delta_angle_deg: 0, delta_p_mw: -1.3, delta_q_mvar: -0.5 },
-          { bus_id: 'SZ-ST7', v_pu_a: 0.941, v_pu_b: 0.972, angle_deg_a: -2.9, angle_deg_b: -2.1, p_injected_mw_a: -1.2, p_injected_mw_b: -1.2, q_injected_mvar_a: -0.4, q_injected_mvar_b: -0.1, delta_v_pu: 0.031, delta_angle_deg: 0.8, delta_p_mw: 0, delta_q_mvar: 0.3 },
-          { bus_id: 'SZ-PV2', v_pu_a: 1.062, v_pu_b: 1.038, angle_deg_a: 1.4, angle_deg_b: 1.1, p_injected_mw_a: 3.9, p_injected_mw_b: 2.6, q_injected_mvar_a: 0.2, q_injected_mvar_b: 0.4, delta_v_pu: -0.024, delta_angle_deg: -0.3, delta_p_mw: -1.3, delta_q_mvar: 0.2 },
-          // KD-1 (L-14): szyna BEZ ROZNIC miedzy A i B — filtr „tylko roznice" ma ja ukryc.
-          { bus_id: 'SZ-ST3', v_pu_a: 0.995, v_pu_b: 0.995, angle_deg_a: -1.2, angle_deg_b: -1.2, p_injected_mw_a: -0.8, p_injected_mw_b: -0.8, q_injected_mvar_a: -0.3, q_injected_mvar_b: -0.3, delta_v_pu: 0, delta_angle_deg: 0, delta_p_mw: 0, delta_q_mvar: 0 },
-        ],
-        branch_diffs: [
-          { branch_id: 'L-14', p_from_mw_a: 2.31, p_from_mw_b: 1.62, q_from_mvar_a: 0.72, q_from_mvar_b: 0.48, p_to_mw_a: -2.28, p_to_mw_b: -1.6, q_to_mvar_a: -0.7, q_to_mvar_b: -0.47, losses_p_mw_a: 0.031, losses_p_mw_b: 0.015, losses_q_mvar_a: 0.018, losses_q_mvar_b: 0.009, delta_p_from_mw: -0.69, delta_q_from_mvar: -0.24, delta_p_to_mw: 0.68, delta_q_to_mvar: 0.23, delta_losses_p_mw: -0.016, delta_losses_q_mvar: -0.009 },
-          { branch_id: 'TR-1', p_from_mw_a: 1.66, p_from_mw_b: 1.31, q_from_mvar_a: 0.5, q_from_mvar_b: 0.38, p_to_mw_a: -1.64, p_to_mw_b: -1.3, q_to_mvar_a: -0.48, q_to_mvar_b: -0.37, losses_p_mw_a: 0.021, losses_p_mw_b: 0.013, losses_q_mvar_a: 0.02, losses_q_mvar_b: 0.012, delta_p_from_mw: -0.35, delta_q_from_mvar: -0.12, delta_p_to_mw: 0.34, delta_q_to_mvar: 0.11, delta_losses_p_mw: -0.008, delta_losses_q_mvar: -0.008 },
-        ],
-        ranking: [
-          { issue_code: 'VOLTAGE_DELTA_HIGH', severity: 4, element_ref: 'SZ-ST7', description_pl: 'Napiecie na szynie ST-7 rosnie o 0.031 pu po zalaczeniu kompensacji.', evidence_ref: 1 },
-          { issue_code: 'LOSSES_DECREASED', severity: 2, element_ref: 'L-14', description_pl: 'Straty czynne odcinka L-14 spadaja o 16 kW.', evidence_ref: 2 },
-        ],
-        summary: { total_buses: 4, total_branches: 2, converged_a: true, converged_b: true, total_losses_p_mw_a: 0.052, total_losses_p_mw_b: 0.028, delta_total_losses_p_mw: -0.024, max_delta_v_pu: 0.031, max_delta_angle_deg: 0.8, total_issues: 2, critical_issues: 0, major_issues: 1, moderate_issues: 0, minor_issues: 1 },
-        input_hash: 'hash-cmp-demo', created_at: '2026-07-22T09:00:00Z',
-        // B1 (karta CV-3.3-B): proweniencja obu biegow — pole WYMAGANE przez
-        // `PowerFlowComparisonResult`, panel eksperckiego trybu (`mvd-por-
-        // proweniencja`) czyta je bezposrednio, bez ochrony na `undefined`.
-        provenance_a: {
-          run_id: 'run-a', analysis_type: 'PF', status: 'FINISHED',
-          snapshot_hash: 'snap-run-a', input_hash: 'hash-a', finished_at: '2026-07-21T10:00:04Z',
-          envelope: {
-            wersja: 1, project_id: 'proj-demo', model_revision: 1, snapshot_hash: 'snap-run-a',
-            catalog_fingerprint: 'cat-demo', options_hash: 'opt-demo', semantic_fingerprint: 'sem-run-a',
-          },
-        },
-        provenance_b: {
-          run_id: 'run-b', analysis_type: 'PF', status: 'FINISHED',
-          snapshot_hash: 'snap-run-b', input_hash: 'hash-b', finished_at: '2026-07-21T11:00:05Z',
-          envelope: {
-            wersja: 1, project_id: 'proj-demo', model_revision: 2, snapshot_hash: 'snap-run-b',
-            catalog_fingerprint: 'cat-demo', options_hash: 'opt-demo', semantic_fingerprint: 'sem-run-b',
-          },
-        },
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Wynik porownania A/B — REALNE delty, ranking i proweniencja OBU biegow
+    // (`PowerFlowComparisonService.compare`). Szyna bilansowa GPZ wychodzi z
+    // ZEROWA roznica napiecia (u = 1,0 pu w obu wariantach) — to na niej
+    // spec sprawdza filtr "tylko roznice".
+    return jsonOK(porownanieScenyWynikPf);
   }
   if (url.includes('/api/protection-comparisons') && url.endsWith('/trace')) {
     // Scena "porownanie" (CV-3.3-B2), tryb "Zabezpieczenia": slad porownania
@@ -1039,176 +1018,26 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     return jsonOK(migotanieScenyWynik);
   }
   if (url.includes('/api/quality/as-built-compliance')) {
-    // Scena "odbior-zgodnosc" (V-B): raport zgodnosci powykonawczej — ksztalt
-    // 1:1 z `application/analyses/zgodnosc_powykonawcza.py::build_zgodnosc_
-    // powykonawcza_view`; slad_pl per wiersz (model -> pomiar -> odchylka ->
-    // tolerancja -> werdykt); echo pomiarow wpisanych w edytorze speca.
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'run-lf-5',
-        input_hash: 'zgodnosc-hash-demo',
-        tolerancje: { napiecie_pct: 5, moc_pct: 10 },
-        zrodlo_tolerancji: { napiecie_pct: 'jawna (żądanie)', moc_pct: 'jawna (żądanie)' },
-        zalozenia_pl: [
-          'Porównanie 1:1 pomiar–model (wynik rozpływu FROZEN); bez estymacji stanu '
-          + '(solver WLS istnieje, ale nie jest używany) i bez korekt modelu.',
-          'Napięcie U przeliczane na kV z u_pu przez napięcie znamionowe węzła (U = u_pu · U_n).',
-          'Moce P/Q odczytywane z gałęzi w kierunku „from" (p_from_mw / q_from_mvar).',
-          'Konwencja znaku Q nierozstrzygnięta (V12K-040): Q porównywane po wartości '
-          + 'bezwzględnej |Q|; znak odchyłki nie jest interpretowany.',
-          'Tolerancje wyłącznie jawne (z żądania); brak udokumentowanego źródła '
-          + 'normatywnego dla wartości domyślnych, więc domyślnych nie przyjęto.',
-        ],
-        podsumowanie: {
-          liczba_punktow: 4, w_tolerancji: 1, poza_tolerancja: 1,
-          brak_odpowiednika: 1, brak_wyniku: 1,
-          najwieksza_odchylka_pct: 12.5,
-          najwieksza_odchylka_element_ref: 'LINE-2',
-          najwieksza_odchylka_wielkosc: 'P',
-        },
-        wiersze: [
-          {
-            element_ref: 'BUS-1', wielkosc: 'U', jednostka: 'kV',
-            wartosc_pomiar: 15.3, wartosc_model: 15.15,
-            odchylka_bezwzgledna: 0.15, odchylka_pct: 0.99, tolerancja_pct: 5,
-            werdykt: 'w tolerancji',
-            slad_pl: [
-              'Model U = u_pu × U_n = 1.010000 × 15.000000 = 15.150000 kV',
-              'Pomiar U = 15.300000 kV',
-              'Odchyłka = pomiar − model = 0.150000 kV (0.990099%)',
-              'Tolerancja = ±5.000000%',
-              'Werdykt: w tolerancji',
-            ],
-          },
-          {
-            element_ref: 'LINE-2', wielkosc: 'P', jednostka: 'MW',
-            wartosc_pomiar: 4.5, wartosc_model: 4.0,
-            odchylka_bezwzgledna: 0.5, odchylka_pct: 12.5, tolerancja_pct: 10,
-            werdykt: 'poza tolerancją',
-            slad_pl: [
-              'Model P_from = 4.000000 MW',
-              'Pomiar P = 4.500000 MW',
-              'Odchyłka = pomiar − model = 0.500000 MW (12.500000%)',
-              'Tolerancja = ±10.000000%',
-              'Werdykt: poza tolerancją',
-            ],
-          },
-          {
-            element_ref: 'NIEZNANY-3', wielkosc: 'U', jednostka: 'kV',
-            wartosc_pomiar: 10.0, wartosc_model: null,
-            odchylka_bezwzgledna: null, odchylka_pct: null, tolerancja_pct: null,
-            werdykt: 'brak odpowiednika w modelu',
-            slad_pl: ['Element „NIEZNANY-3" nie występuje jako węzeł w wyniku rozpływu.'],
-          },
-          {
-            element_ref: 'TRAFO-4', wielkosc: 'Q', jednostka: 'Mvar',
-            wartosc_pomiar: 1.2, wartosc_model: null,
-            odchylka_bezwzgledna: null, odchylka_pct: null, tolerancja_pct: null,
-            werdykt: 'brak wyniku dla elementu',
-            slad_pl: ['Brak wyniku Q (kierunek „from") dla gałęzi „TRAFO-4".'],
-          },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // HARNESS-RESZTA-2: scena "odbior-zgodnosc" — REALNY bieg backendu
+    // (`eksport_fixtur_harnessu.py::odbior_zgodnosc_scena_wynik`, TA SAMA
+    // funkcja `build_zgodnosc_powykonawcza_view`, ktora wola koncowka) na biegu
+    // PF sieci zlotej. Pomiary sceny sa DANA WEJSCIOWA protokolu odbioru
+    // (wartosc modelu + nazwana odchylka); wszystkie odchylki, tolerancje i
+    // werdykty liczy backend.
+    return jsonOK(odbiorZgodnoscScenyWynik);
   }
   if (url.includes('/api/quality/state-estimation/requirements')) {
-    // Scena "estymacja" (V-B): wymagane wejscia WLS — ksztalt 1:1 z
-    // `application/analyses/state_estimation/service.py` (requirements).
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'run-lf-6',
-        context: {
-          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
-          run_timestamp: '2026-07-22T08:50:00Z', snapshot_id: 'snap-demo', trace_id: 'run-lf-6',
-        },
-        base_mva: 100.0,
-        slack_bus_ref: 'BUS-1',
-        slack_index: 0,
-        n_buses: 3,
-        n_states: 5,
-        min_measurements: 5,
-        buses: [
-          { bus_ref: 'BUS-1', index: 0, name: 'Szyna GPZ', voltage_kv: 110.0, is_slack: true },
-          { bus_ref: 'BUS-2', index: 1, name: 'Szyna SN', voltage_kv: 15.0, is_slack: false },
-          { bus_ref: 'BUS-3', index: 2, name: null, voltage_kv: 15.0, is_slack: false },
-        ],
-        measurement_types: [
-          { code: 'V_MAGNITUDE', label_pl: 'Moduł napięcia węzła |V| [pu]', requires_bus_j: false },
-          { code: 'P_INJECTION', label_pl: 'Iniekcja mocy czynnej w węźle P [pu]', requires_bus_j: false },
-          { code: 'Q_INJECTION', label_pl: 'Iniekcja mocy biernej w węźle Q [pu]', requires_bus_j: false },
-          { code: 'P_FLOW', label_pl: 'Przepływ mocy czynnej w gałęzi P_ij [pu]', requires_bus_j: true },
-          { code: 'Q_FLOW', label_pl: 'Przepływ mocy biernej w gałęzi Q_ij [pu]', requires_bus_j: true },
-        ],
-        note_pl:
-          'Pomiary muszą być w jednostkach względnych (pu) na tej samej bazie mocy '
-          + '(base_mva) co macierz Y-bus.',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena "estymacja": wymagane wejscia WLS — REALNY bieg backendu
+    // (`build_state_estimation_requirements`, TA SAMA funkcja co koncowka).
+    return jsonOK(estymacjaScenyWymagania);
   }
   if (url.includes('/api/quality/state-estimation')) {
-    // Scena "estymacja" (V-B): wynik WLS — ksztalt 1:1 z `_serialize_result`.
-    // Liczby spojne: 6 pomiarow (echo edytora speca), n=5 stanow, dof=1;
-    // chi² = 27.8 > prog 6.635 (alfa 0.01, dof 1); LNR 5.2 > 3.0 na pomiarze
-    // |V| BUS-1 (pomiar 1.05 vs estymata 1.029 -> rezyduum 0.021 = 5.25·sigma).
-    return new Response(
-      JSON.stringify({
-        analysis_id: 'run-lf-6',
-        context: {
-          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
-          run_timestamp: '2026-07-22T08:50:00Z', snapshot_id: 'snap-demo', trace_id: 'run-lf-6',
-        },
-        status: 'OK',
-        status_pl: 'zbieżny',
-        missing_data: [{ code: 'wezly_bez_pomiaru', bus_refs: ['BUS-3'] }],
-        solver_version: 'state_estimation_wls@1.0.0',
-        validation_status: 'SYNTETYCZNY (walidacja płaskim stanem, nie SCADA/PMU)',
-        estimate_id: 'estymata-hash-demo',
-        base_mva: 100.0,
-        slack_bus_ref: 'BUS-1',
-        slack_index: 0,
-        converged: true,
-        iterations: 3,
-        n_states: 5,
-        m_measurements: 6,
-        degrees_of_freedom: 1,
-        objective_j: 27.8,
-        note: null,
-        buses: [
-          { bus_ref: 'BUS-1', index: 0, name: 'Szyna GPZ', voltage_kv: 110.0, is_slack: true, v_magnitude_pu: 1.029, v_angle_rad: 0.0, v_angle_deg: 0.0 },
-          { bus_ref: 'BUS-2', index: 1, name: 'Szyna SN', voltage_kv: 15.0, is_slack: false, v_magnitude_pu: 0.9912, v_angle_rad: -0.0262, v_angle_deg: -1.5 },
-          { bus_ref: 'BUS-3', index: 2, name: null, voltage_kv: 15.0, is_slack: false, v_magnitude_pu: 1.0103, v_angle_rad: 0.014, v_angle_deg: 0.8 },
-        ],
-        measurements: [
-          { meas_type: 'V_MAGNITUDE', bus_ref: 'BUS-1', bus_j_ref: null, value: 1.05, sigma: 0.004, label: null, index: 0, normalized_residual: 5.2, residual: 0.021, suspect: true },
-          { meas_type: 'V_MAGNITUDE', bus_ref: 'BUS-2', bus_j_ref: null, value: 0.99, sigma: 0.004, label: null, index: 1, normalized_residual: 0.3, residual: -0.0012, suspect: false },
-          { meas_type: 'P_INJECTION', bus_ref: 'BUS-2', bus_j_ref: null, value: -0.35, sigma: 0.008, label: null, index: 2, normalized_residual: 0.4, residual: 0.002, suspect: false },
-          { meas_type: 'Q_INJECTION', bus_ref: 'BUS-2', bus_j_ref: null, value: -0.12, sigma: 0.008, label: null, index: 3, normalized_residual: 0.2, residual: 0.001, suspect: false },
-          { meas_type: 'P_FLOW', bus_ref: 'BUS-1', bus_j_ref: 'BUS-2', value: 0.36, sigma: 0.008, label: null, index: 4, normalized_residual: 0.5, residual: 0.003, suspect: false },
-          { meas_type: 'Q_FLOW', bus_ref: 'BUS-1', bus_j_ref: 'BUS-2', value: 0.13, sigma: 0.008, label: null, index: 5, normalized_residual: 0.3, residual: -0.002, suspect: false },
-        ],
-        bad_data: {
-          chi_square_value: 27.8,
-          chi_square_threshold: 6.635,
-          degrees_of_freedom: 1,
-          alpha: 0.01,
-          chi_square_flag: true,
-          largest_normalized_residual: 5.2,
-          lnr_measurement_index: 0,
-          lnr_threshold: 3.0,
-          lnr_flag: true,
-          normalized_residuals: [5.2, 0.3, 0.4, 0.2, 0.5, 0.3],
-          lnr_measurement: { index: 0, meas_type: 'V_MAGNITUDE', bus_ref: 'BUS-1', bus_j_ref: null, label: null },
-        },
-        white_box: [
-          { iteration: 0, objective_j: 41.2, max_abs_residual: 0.062, step_norm: 0.031, h_jacobian: [[1, 0]], gain_matrix_g: [[2, 0]], residual_r: [0.062, 0.002], delta_x: [0.028, 0.001], state_x: [1.0, 0.0] },
-          { iteration: 1, objective_j: 27.9, max_abs_residual: 0.021, step_norm: 0.0009, h_jacobian: [[1, 0]], gain_matrix_g: [[2, 0]], residual_r: [0.021, 0.002], delta_x: [0.0009, 0.0], state_x: [1.029, -0.026] },
-          { iteration: 2, objective_j: 27.8, max_abs_residual: 0.021, step_norm: 0.00001, h_jacobian: [[1, 0]], gain_matrix_g: [[2, 0]], residual_r: [0.021, 0.002], delta_x: [0.0, 0.0], state_x: [1.029, -0.0262] },
-        ],
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena "estymacja": wynik WLS — REALNY solver na telemetrii sceny
+    // (`build_state_estimation_view`). Jeden pomiar napiecia niesie JAWNIE
+    // nazwany blad gruby (uszkodzony przetwornik), zeby ekran pokazal sekcje
+    // detekcji zlych danych: test chi-kwadrat i najwieksze rezyduum
+    // znormalizowane — liczby z solvera, nie z atrapy.
+    return jsonOK(estymacjaScenyWynik);
   }
   // ---- B-02 / W3-E: katalog kart „Analizy specjalistyczne" i gotowość analiz —
   // odpowiedzi policzone BACKENDEM (`scripts/eksport_fixtur_harnessu.py`:
@@ -1770,15 +1599,10 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     url.endsWith('/runs') &&
     (init?.method ?? 'GET').toUpperCase() === 'POST'
   ) {
-    // Scena "oltc": utworzenie przebiegu LF z opcja badania OLTC (kontrakt H1).
-    return new Response(
-      JSON.stringify({
-        id: 'run-oltc-1', study_case_id: 'case-demo', analysis_type: 'LOAD_FLOW',
-        solver_input_hash: 'oltc-in-5d7f2a91', status: 'PENDING',
-        started_at: null, finished_at: null, error_message: null,
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena "oltc": utworzenie przebiegu LF z opcja badania OLTC (kontrakt H1)
+    // — HARNESS-RESZTA-2: kontrakt przebiegu z REALNEGO biegu backendu
+    // (`to_execution_dict`), ze statusem PENDING sprzed wykonania.
+    return jsonOK({ ...oltcScenyPrzebieg, status: 'PENDING', started_at: null, finished_at: null });
   }
   if (
     url.includes('/api/execution/study-cases/') &&
@@ -1808,77 +1632,18 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     );
   }
   if (url.includes('/api/execution/runs/') && url.endsWith('/execute')) {
-    return new Response(
-      JSON.stringify({
-        id: 'run-oltc-1', study_case_id: 'case-demo', analysis_type: 'LOAD_FLOW',
-        solver_input_hash: 'oltc-in-5d7f2a91', status: 'DONE',
-        started_at: '2026-07-22T10:00:00Z', finished_at: '2026-07-22T10:00:03Z',
-        error_message: null,
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // HARNESS-RESZTA-2: kontrakt przebiegu po wykonaniu — REALNY bieg backendu.
+    return jsonOK(oltcScenyPrzebieg);
   }
   if (url.includes('/api/execution/runs/') && url.endsWith('/results')) {
-    // Scena "oltc": wynik badania sweep — ksztalt 1:1 z
-    // `power_flow_oltc_studies.py::TapSweepResult.to_dict()` w
-    // `global_results.oltc_sweep`; wywod 1:1 z `_wywod_sweep` (liczby spojne
-    // miedzy tabela punktow a krokami: t(n) = 1 + (n - 0) * 1.2500 / 100).
-    const punkty = [
-      { position: -2, tap_ratio: 0.975, controlled_bus_kv: 15.303, losses_mw: 0.2131, min_bus_kv: 14.883, max_bus_kv: 15.303 },
-      { position: -1, tap_ratio: 0.9875, controlled_bus_kv: 15.109, losses_mw: 0.2094, min_bus_kv: 14.689, max_bus_kv: 15.109 },
-      { position: 0, tap_ratio: 1.0, controlled_bus_kv: 14.92, losses_mw: 0.2067, min_bus_kv: 14.5, max_bus_kv: 14.92 },
-      { position: 1, tap_ratio: 1.0125, controlled_bus_kv: 14.736, losses_mw: 0.2052, min_bus_kv: 14.316, max_bus_kv: 14.736 },
-      { position: 2, tap_ratio: 1.025, controlled_bus_kv: 14.556, losses_mw: 0.2049, min_bus_kv: 14.136, max_bus_kv: 14.556 },
-    ];
-    return new Response(
-      JSON.stringify({
-        run_id: 'run-oltc-1', analysis_type: 'LOAD_FLOW',
-        validation_snapshot: {}, readiness_snapshot: {}, element_results: [],
-        global_results: {
-          oltc_sweep: {
-            branch_id: 'TR-1',
-            controlled_bus_id: 'SZ-SN',
-            points: punkty.map((p) => ({ ...p, converged: true })),
-            wywod: [
-              {
-                tekst:
-                  'Badanie: przeglad pozycji zaczepow (sweep) — rozplyw liczony solverem '
-                  + 'FROZEN dla kazdej ustalonej pozycji zaczepu.',
-                latex: null,
-              },
-              {
-                tekst:
-                  'Zakres pozycji: n = -2..2 (liczba punktow: 5); transformator TR-1, '
-                  + 'szyna regulowana: SZ-SN.',
-                latex: null,
-              },
-              {
-                tekst: 'Wzor: przekladnia zaczepu t(n) = 1 + (n - n0) * du / 100',
-                latex: 't(n) = 1 + \\frac{(n - n_{0}) \\cdot \\Delta u}{100}',
-              },
-              { tekst: 'Dane: krok zaczepu du = 1.2500 %, pozycja neutralna n0 = 0.', latex: null },
-              ...punkty.map((p) => ({
-                tekst:
-                  `Pozycja n = ${p.position}: t = ${p.tap_ratio.toFixed(6)}, `
-                  + `U szyny regulowanej = ${p.controlled_bus_kv.toFixed(3)} kV, `
-                  + `straty = ${p.losses_mw.toFixed(6)} MW, zbiezny = TAK.`,
-                latex:
-                  `t(${p.position}) = 1 + \\frac{(${p.position} - 0) \\cdot 1.2500}{100}`
-                  + ` = ${p.tap_ratio.toFixed(6)}`,
-              })),
-              {
-                tekst:
-                  'Kryterium odczytu: napiecie szyny regulowanej i straty czynne '
-                  + 'pochodza z rozwiazania rozplywu (bez ocen w tej warstwie).',
-                latex: null,
-              },
-            ],
-          },
-        },
-        deterministic_signature: 'oltc-sweep-sig-8c3e1f5a',
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } },
-    );
+    // Scena "oltc": wynik badania PRZEMIATANIA ZACZEPOW — HARNESS-RESZTA-2:
+    // REALNY bieg backendu (`eksport_fixtur_harnessu.py::oltc_scena_wynik`,
+    // TA SAMA funkcja `build_execution_result_set`, ktora wola koncowka) z
+    // opcja `oltc_study: "sweep"` na sieci sceny E-30 (jedynej z regulatorem
+    // OLTC). `global_results.oltc_sweep` niesie punkty policzone solverem
+    // FROZEN (`network_model/solvers/power_flow_oltc_studies.py`) wraz z
+    // wywodem — zero recznie wpisanych liczb.
+    return jsonOK(oltcScenyWynik);
   }
   if (url.includes('/enm/field-view')) {
     // Sceny "przekaznik"/"pomiar" (karta Z-2): pusty widok pola z backendu —
@@ -2199,17 +1964,23 @@ if (creator === 'arcflash') {
 } else if (creator === 'odbior-zgodnosc') {
   // Runda dowodowa V-B: „Zgodnosc powykonawcza" — wymaga zakonczonego
   // przebiegu rozplywu (slad_pl per wiersz z podmienionego fetch).
-  const runLf5: ExecutionRun = {
-    id: 'run-lf-5', analysis_type: 'LOAD_FLOW', status: 'DONE',
+  const runOdbioru: ExecutionRun = {
+    // HARNESS-RESZTA-2: identyfikator z fixtury REALNEGO biegu backendu.
+    id: odbiorZgodnoscScenyWynik.analysis_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
   } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [runLf5], activeRunId: 'run-lf-5' } as never);
+  useExecutionRunsStore.setState({
+    runs: [runOdbioru], activeRunId: odbiorZgodnoscScenyWynik.analysis_id,
+  } as never);
 } else if (creator === 'estymacja') {
   // Runda dowodowa V-B: „Estymacja stanu (WLS)" — wymaga zakonczonego
   // przebiegu rozplywu (zrodlo Y-bus); wymagania + wynik z podmienionego fetch.
-  const runLf6: ExecutionRun = {
-    id: 'run-lf-6', analysis_type: 'LOAD_FLOW', status: 'DONE',
+  const runEstymacji: ExecutionRun = {
+    // HARNESS-RESZTA-2: identyfikator z fixtury REALNEGO biegu backendu.
+    id: estymacjaScenyWynik.analysis_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
   } as unknown as ExecutionRun;
-  useExecutionRunsStore.setState({ runs: [runLf6], activeRunId: 'run-lf-6' } as never);
+  useExecutionRunsStore.setState({
+    runs: [runEstymacji], activeRunId: estymacjaScenyWynik.analysis_id,
+  } as never);
 } else if (creator === 'akademickie') {
   // B-02 / W3-E: migawka z NAZWAMI obiektów sieci złotej (te same referencje, które
   // niosą fixtury gotowości liczone backendem — `bus_sn_b` → „Stacja B SN") oraz
