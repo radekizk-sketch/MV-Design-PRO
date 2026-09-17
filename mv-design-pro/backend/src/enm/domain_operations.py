@@ -5753,6 +5753,28 @@ def _materialize_nn_source(
         _validate_converter_transformer_capacity,
     )
 
+    station = next(
+        (
+            sub
+            for sub in new_enm.get("substations", [])
+            if isinstance(sub, dict) and sub.get("ref_id") == station_id
+        ),
+        None,
+    )
+    # PRÓG WEJŚCIA PRZED odczytem szyny nN (V12T-016 — KLASA NIE INSTANCJA):
+    # stacja BEZ transformatora (`transformer.create=False`) nie ma już szyny
+    # nN wcale (naprawa „wyspy grafu" E003 tej samej karty), więc odczyt
+    # napięcia szyny zawodziłby PIERWSZY i maskował właściwy powód
+    # (`converter.bus_voltage_missing` zamiast `<technologia>.
+    # transformer_required`) — ten sam próg co tor atomowy
+    # (`add_converter_source`), tylko sprawdzony wcześniej, żeby komunikat
+    # nazywał PRZYCZYNĘ („brak transformatora"), nie SKUTEK („brak szyny").
+    if station is not None and not _has_transformer_in_path(new_enm, station):
+        return _error_response(
+            f"Źródło {_technology} wymaga transformatora w ścieżce zasilania stacji.",
+            f"{_technology.lower()}.transformer_required",
+        )
+
     # ZGODNOŚĆ NAPIĘĆ — ten sam werdykt co w torze atomowym. Bez tego falownik
     # 0,69 kV siadał CICHO na szynie 0,4 kV (zmierzone: `un_kv=0.69` przy szynie
     # 0,4 kV, brak błędu), a jego moc czynna wchodziła do bilansu rozpływu —
@@ -5772,24 +5794,7 @@ def _materialize_nn_source(
             "converter.voltage_mismatch",
         )
 
-    station = next(
-        (
-            sub
-            for sub in new_enm.get("substations", [])
-            if isinstance(sub, dict) and sub.get("ref_id") == station_id
-        ),
-        None,
-    )
     if station is not None:
-        # Ten sam PRÓG wejścia co w torze atomowym: źródło po stronie nN wymaga
-        # transformatora w ścieżce zasilania. Bez tego stacja bez transformatora
-        # przyjmowała źródło, które operacja atomowa odrzuca — ten sam rozjazd
-        # werdyktów co przy kontroli mocy, tylko o krok wcześniej.
-        if not _has_transformer_in_path(new_enm, station):
-            return _error_response(
-                f"Źródło {_technology} wymaga transformatora w ścieżce zasilania stacji.",
-                f"{_technology.lower()}.transformer_required",
-            )
         capacity_error = _validate_converter_transformer_capacity(
             new_enm,
             station=station,
@@ -6921,27 +6926,43 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     events.append({"event_seq": ev_seq, "event_type": "DEVICES_CREATED_SN", "element_id": stn_id})
 
     # --- Create nN bus ---
-    result = create_node(
-        new_enm,
-        {
-            "ref_id": nn_bus_id,
-            "name": "Szyna nN stacji",
-            "voltage_kv": nn_voltage_kv,
-        },
-    )
-    if not result.success:
-        return _error_response("Nie udało się utworzyć szyny nN.", "station.insert.nn_bus_failed")
-    new_enm = result.enm
-    created.append(nn_bus_id)
+    # KLASA NIE INSTANCJA (V12T-016, przegląd szablonów stacji bez
+    # transformatora): stacja BEZ transformatora (`transformer.create=False`
+    # — „złącze pętlowe"/rozdzielnia sieciowa/kompensacja/rezerwa zasilania)
+    # nie ma fizycznie strony nN. Bezwarunkowe tworzenie szyny nN zostawiało
+    # WYSPĘ grafu odciętą od źródła (walidator E003 „Graf niespójny") —
+    # zmierzone: `insert_station_on_segment_sn` z `transformer.create=False`
+    # dawało `readiness.ready=False` dla KAŻDEGO szablonu bez transformatora,
+    # mimo że operacja formalnie kończyła się sukcesem (istniejące testy
+    # `test_station_without_create_transformer_passes` i
+    # `test_add_sn_bay_przyjmuje_uklad_energii_za_czysta_petla_osd` sprawdzały
+    # wyłącznie sukces operacji, nigdy gotowości modelu).
+    if transformer.get("create", True):
+        result = create_node(
+            new_enm,
+            {
+                "ref_id": nn_bus_id,
+                "name": "Szyna nN stacji",
+                "voltage_kv": nn_voltage_kv,
+            },
+        )
+        if not result.success:
+            return _error_response(
+                "Nie udało się utworzyć szyny nN.", "station.insert.nn_bus_failed"
+            )
+        new_enm = result.enm
+        created.append(nn_bus_id)
 
-    # Update substation bus_refs
-    for sub in new_enm.get("substations", []):
-        if sub.get("ref_id") == stn_id:
-            sub["bus_refs"].append(nn_bus_id)
-            break
+        # Update substation bus_refs
+        for sub in new_enm.get("substations", []):
+            if sub.get("ref_id") == stn_id:
+                sub["bus_refs"].append(nn_bus_id)
+                break
 
-    ev_seq += 1
-    events.append({"event_seq": ev_seq, "event_type": "BUS_NN_CREATED", "element_id": nn_bus_id})
+        ev_seq += 1
+        events.append(
+            {"event_seq": ev_seq, "event_type": "BUS_NN_CREATED", "element_id": nn_bus_id}
+        )
 
     # --- Create Transformer ---
     if transformer.get("create", True):
