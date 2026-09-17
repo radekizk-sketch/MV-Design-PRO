@@ -464,6 +464,92 @@ def resolve_template_default_transformer_choice(template: StationTemplate) -> Ca
     return _domyslna_opcja_transformatora(template.schema)
 
 
+def resolve_template_default_shunt_choice(template: StationTemplate) -> CatalogChoice | None:
+    """Opcja baterii kondensatorów, którą `apply()` zmaterializuje dla TEGO
+    szablonu bez nadpisania projektanta (`overrides["shunt_capacitor_ref"]`):
+    oznaczona `default=True`, w jej braku pierwsza z listy. `None` gdy szablon
+    nie niesie `shunt_capacitor_options` wcale.
+
+    JEDNO źródło reguły dla wyświetlania (`structural_fields`) i materializacji
+    (`apply.py` krok 6) — bez tego strona wyświetlająca mogłaby zapowiadać inną
+    baterię niż ta, którą apply faktycznie wstawi (reguła KLASA NIE INSTANCJA
+    pkt 3: predykat wejścia i wyjścia z jednego źródła prawdy).
+    """
+    for opcja in template.schema.shunt_capacitor_options:
+        if opcja.default:
+            return opcja
+    return (
+        template.schema.shunt_capacitor_options[0]
+        if template.schema.shunt_capacitor_options
+        else None
+    )
+
+
+def shunt_capacitor_rated_kv(shunt_ref: str | None) -> float | None:
+    """Napięcie znamionowe baterii kondensatorów [kV] z REALNEGO rekordu
+    katalogu (`KOMPENSATOR_SN`), nie z tokenu w `catalog_ref` ani z etykiety.
+    `None` gdy brak referencji/rekordu/katalogu — uczciwy brak, nie domyślona
+    liczba.
+
+    To ta sama wielkość, którą przy materializacji porównuje z napięciem szyny
+    `enm/domain_operations_v2.py` (odmowa `shunt.voltage_mismatch`): strona
+    wyświetlająca i strona wykonująca czytają JEDNO pole katalogu.
+    """
+    if not isinstance(shunt_ref, str) or not shunt_ref.strip():
+        return None
+    try:
+        from network_model.catalog import get_default_mv_catalog
+    except ImportError:
+        return None
+    item = get_default_mv_catalog().get_shunt_capacitor_type(shunt_ref)
+    if item is None:
+        return None
+    rated_kv = getattr(item, "rated_kv", None)
+    if not isinstance(rated_kv, (int, float)) or float(rated_kv) <= 0.0:
+        return None
+    return float(rated_kv)
+
+
+def sn_voltage_kv(template: StationTemplate) -> float | None:
+    """Napięcie SN [kV], na którym szablon pracuje — wyprowadzone z jego własnej
+    zawartości, nie z nazwy ani z kategorii:
+
+    1. szablon GPZ (niesie `grid_source_options`, droga `add_grid_source_sn`)
+       TWORZY szynę SN — jego napięciem SN jest strona DOLNA transformatora
+       110/SN (strona górna to sieć 110 kV, a nie napięcie pracy pól SN);
+    2. szablon wpinany w segment magistrali (`insert_station_on_segment_sn`)
+       WYMAGA szyny o napięciu strony GÓRNEJ swojego transformatora SN/nN;
+    3. szablon bez transformatora, za to z baterią kondensatorów (kompensacja)
+       wymaga napięcia znamionowego rekordu `KOMPENSATOR_SN`;
+    4. `None` = szablon napięciowo obojętny (ani transformatora, ani baterii —
+       rozdzielnia sieciowa, rezerwa zasilania): wchodzi na szynę SN o dowolnym
+       napięciu, bo nie wnosi żadnego elementu wiążącego napięcie.
+
+    POWÓD (pomiar 2026-09-17, czerwony `industrial-template-mass-flow` na CI):
+    przed tym polem kontrakt szablonu niósł napięcie WYŁĄCZNIE jako dane
+    transformatora (`voltage_hv_kv`), więc szablon kompensacji 20 kV wyglądał w
+    przeglądarce na pasujący do sieci 15 kV, a backend odrzucał go — słusznie —
+    dopiero przy zastosowaniu (`shunt.voltage_mismatch`). Pole zamyka lukę:
+    wymaganie napięciowe jest częścią oferty, a nie niespodzianką po kliknięciu.
+    Pomiar rozkładu na 73 szablonach (2026-09-17): 15 kV — 64, 20 kV — 3
+    (`tpl_gpz_110_20_2x16mva_h5`, `tpl_kompensacja_1v8mvar_20kv`,
+    `tpl_abonencka_630kva_pomiar_20kv`), napięciowo obojętne — 6 (3 rozdzielnie
+    sieciowe + 3 warianty rezerwy zasilania).
+    """
+    transformator = resolve_template_default_transformer_choice(template)
+    if transformator is not None:
+        napiecie_gn_kv, napiecie_dn_kv = transformer_voltages_kv(transformator.catalog_ref)
+        if template.schema.grid_source_options:
+            if napiecie_dn_kv is not None:
+                return napiecie_dn_kv
+        elif napiecie_gn_kv is not None:
+            return napiecie_gn_kv
+    bateria = resolve_template_default_shunt_choice(template)
+    if bateria is not None:
+        return shunt_capacitor_rated_kv(bateria.catalog_ref)
+    return None
+
+
 def structural_fields(template: StationTemplate) -> dict[str, Any]:
     """Pola strukturalne (moc/napięcie/zastosowanie/kategorie ról) wspólne dla
     `StationTemplate.to_dict()` (pełny szczegół) i podsumowania listy
@@ -487,6 +573,7 @@ def structural_fields(template: StationTemplate) -> dict[str, Any]:
         "voltage_hv_kv": napiecie_gn_kv,
         "voltage_lv_kv": napiecie_dn_kv,
         "bay_role_categories": sorted({rola.role for rola in template.schema.sn_bay_roles}),
+        "sn_voltage_kv": sn_voltage_kv(template),
     }
 
 

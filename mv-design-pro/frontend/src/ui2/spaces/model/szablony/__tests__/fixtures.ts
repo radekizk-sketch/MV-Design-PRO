@@ -98,6 +98,7 @@ interface SzablonPelnyOverrides {
   rated_power_kva?: number | null;
   voltage_hv_kv?: number | null;
   voltage_lv_kv?: number | null;
+  sn_voltage_kv?: number | null;
   bay_role_categories?: readonly string[];
 }
 
@@ -116,6 +117,7 @@ export function szablonPelny(over: SzablonPelnyOverrides = {}): StationTemplateF
     rated_power_kva: over.rated_power_kva === undefined ? 630 : over.rated_power_kva,
     voltage_hv_kv: over.voltage_hv_kv === undefined ? 15 : over.voltage_hv_kv,
     voltage_lv_kv: over.voltage_lv_kv === undefined ? 0.4 : over.voltage_lv_kv,
+    sn_voltage_kv: over.sn_voltage_kv === undefined ? 15 : over.sn_voltage_kv,
     bay_role_categories: over.bay_role_categories ?? ['IN', 'OUT', 'TR'],
     schema: {
       transformer_options: TR_OPTIONS_MEDIUM,

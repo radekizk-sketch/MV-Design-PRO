@@ -23,6 +23,7 @@ from application.station_templates.schema import (
     _der_catalog_for_power,
     _opcja_transformatora_dla_wymaganej_mocy,
     _opcja_transformatora_wg_tokenu_id,
+    resolve_template_default_shunt_choice,
     transformer_voltages_kv,
 )
 from enm.domain_operations import execute_domain_operation
@@ -608,8 +609,12 @@ def _zastosuj_szablon_pod_blokada(
     # kondensatorów SN na szynie SN stacji, gdy szablon ją niesie.
     if station_ref and template.schema.shunt_capacitor_options:
         sn_bus_ref = _szyna_sn_stacji_dla_szablonu(enm_dict, station_ref, nn_bus_ref)
-        shunt_catalog_ref = overrides.get("shunt_capacitor_ref") or _first_default_choice(
-            template.schema.shunt_capacitor_options
+        # Domyślny wybór baterii idzie przez `schema.resolve_template_default_shunt_choice`
+        # — TĘ SAMĄ regułę pokazuje `structural_fields()` w `required_sn_voltage_kv`,
+        # więc oferta i materializacja nie mogą się rozjechać.
+        domyslna_bateria = resolve_template_default_shunt_choice(template)
+        shunt_catalog_ref = overrides.get("shunt_capacitor_ref") or (
+            domyslna_bateria.catalog_ref if domyslna_bateria is not None else None
         )
         if sn_bus_ref and shunt_catalog_ref:
             shunt_result = execute_domain_operation(

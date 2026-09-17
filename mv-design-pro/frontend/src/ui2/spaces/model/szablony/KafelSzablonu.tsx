@@ -120,6 +120,20 @@ export function KafelSzablonu({
           </span>
         </div>
       )}
+      {/*
+        Napięcie SN szablonu = WYMAGANIE stosowalnosci (szyna o tym napieciu),
+        osobne od danych transformatora powyzej: szablon kompensacji nie ma
+        transformatora wcale, a GPZ 110/SN ma na gorze 110 kV. `null` znaczy
+        „napieciowo obojetny", nie „brak danych" — i tak jest napisane.
+      */}
+      <div className="mvd-kafel-kv-row">
+        <span className="mvd-kafel-kv-label">{SZABLONY_STRINGS.kafelNapiecieSn}</span>
+        <span className="mvd-kafel-kv-value mvd-num">
+          {szablon.sn_voltage_kv != null
+            ? `${szablon.sn_voltage_kv} kV`
+            : SZABLONY_STRINGS.kafelNapiecieSnDowolne}
+        </span>
+      </div>
       <div className="mvd-kafel-kv-row">
         <span className="mvd-kafel-kv-label">{SZABLONY_STRINGS.liczbaPolSkrot}</span>
         <span className="mvd-kafel-kv-value mvd-num">{liczbaPol}</span>

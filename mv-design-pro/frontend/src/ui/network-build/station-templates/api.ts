@@ -104,6 +104,15 @@ export interface StationTemplateSummary {
   rated_power_kva: number | null;
   voltage_hv_kv: number | null;
   voltage_lv_kv: number | null;
+  /**
+   * Napiecie SN [kV], na ktorym szablon pracuje — WYMAGANIE stosowalnosci, nie
+   * dana transformatora: szablon wpinany w magistrale wymaga szyny o tym
+   * napieciu, szablon GPZ takie napiecie TWORZY, szablon kompensacji bierze je
+   * z rekordu baterii kondensatorow. `null` = szablon napieciowo obojetny
+   * (rozdzielnia sieciowa, rezerwa zasilania) — wchodzi na kazde napiecie SN.
+   * Zrodlo: `backend/.../schema.py::sn_voltage_kv`.
+   */
+  sn_voltage_kv: number | null;
   bay_role_categories: readonly string[];
 }
 

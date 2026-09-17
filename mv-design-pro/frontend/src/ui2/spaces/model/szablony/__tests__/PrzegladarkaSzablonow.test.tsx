@@ -25,6 +25,7 @@ function podsumowanie(pelny: StationTemplateFull): StationTemplateSummary {
     category_label_pl: pelny.category_label_pl,
     rated_power_kva: pelny.rated_power_kva,
     voltage_hv_kv: pelny.voltage_hv_kv,
+    sn_voltage_kv: pelny.sn_voltage_kv,
     voltage_lv_kv: pelny.voltage_lv_kv,
     bay_role_categories: pelny.bay_role_categories,
   };

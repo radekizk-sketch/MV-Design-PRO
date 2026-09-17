@@ -82,13 +82,23 @@ describe('pasujeMoc — zakres mocy [kVA] (pole strukturalne rated_power_kva)', 
   });
 });
 
-describe('pasujeNapiecie — dopasowanie równościowe (pole strukturalne voltage_hv_kv)', () => {
+describe('pasujeNapiecie — dopasowanie równościowe (pole strukturalne sn_voltage_kv)', () => {
   it('filtr null dopasowuje wszystko, także napięcie null', () => {
     expect(pasujeNapiecie(15, null)).toBe(true);
     expect(pasujeNapiecie(null, null)).toBe(true);
   });
-  it('napięcie null NIE pasuje do ustawionego filtra', () => {
-    expect(pasujeNapiecie(null, 15)).toBe(false);
+  // INTENCJA ZACHOWANA, KANON ZMIENIONY (2026-09-17): dopóki filtr czytał
+  // `voltage_hv_kv`, `null` znaczyło „katalog nie dał napięcia" — brak danych,
+  // więc uczciwe było wykluczenie. Po przejściu filtra na `sn_voltage_kv`
+  // `null` znaczy co innego: szablon NIE WIĄŻE napięcia (rozdzielnia sieciowa,
+  // rezerwa zasilania — bez transformatora i bez baterii), więc wchodzi na
+  // szynę o dowolnym napięciu SN i musi być widoczny przy każdym filtrze.
+  // Wykluczanie go ukrywałoby przed projektantem szablony, które faktycznie
+  // pasują. Brak danych katalogowych nadal wyklucza — ale dla mocy
+  // (`rated_power_kva`), gdzie `null` wciąż znaczy „nie wiem".
+  it('napięcie null (szablon napięciowo obojętny) pasuje do KAŻDEGO filtra', () => {
+    expect(pasujeNapiecie(null, 15)).toBe(true);
+    expect(pasujeNapiecie(null, 20)).toBe(true);
   });
   it('dopasowuje wyłącznie dokładną wartość (poziom dyskretny, nie zakres)', () => {
     expect(pasujeNapiecie(15, 15)).toBe(true);
@@ -114,7 +124,7 @@ describe('filtryAktywne', () => {
     expect(filtryAktywne({ ...FILTRY_PUSTE, fraza: 'x' })).toBe(true);
     expect(filtryAktywne({ ...FILTRY_PUSTE, liczbaPolMin: 1 })).toBe(true);
     expect(filtryAktywne({ ...FILTRY_PUSTE, mocMinKva: 100 })).toBe(true);
-    expect(filtryAktywne({ ...FILTRY_PUSTE, napiecieHvKv: 15 })).toBe(true);
+    expect(filtryAktywne({ ...FILTRY_PUSTE, napiecieSnKv: 15 })).toBe(true);
     expect(filtryAktywne({ ...FILTRY_PUSTE, kategoria: 'bess' })).toBe(true);
   });
 });
@@ -145,8 +155,8 @@ describe('filtrujSzablony — kompozycja filtrów (funkcja czysta, iloczyn cech)
   });
 
   it('filtruje po napięciu (obie fixture mają domyślnie 15 kV — filtr 20 kV nie dopasowuje nic)', () => {
-    expect(filtrujSzablony(listaSzablonow, { ...FILTRY_PUSTE, napiecieHvKv: 20 })).toEqual([]);
-    expect(filtrujSzablony(listaSzablonow, { ...FILTRY_PUSTE, napiecieHvKv: 15 })).toHaveLength(2);
+    expect(filtrujSzablony(listaSzablonow, { ...FILTRY_PUSTE, napiecieSnKv: 20 })).toEqual([]);
+    expect(filtrujSzablony(listaSzablonow, { ...FILTRY_PUSTE, napiecieSnKv: 15 })).toHaveLength(2);
   });
 
   it('filtruje po zastosowaniu (kategorii)', () => {
@@ -224,7 +234,7 @@ describe('<FiltrySzablonow /> — panel kontrolek (sterowany propsami)', () => {
   });
 
   it('brak wartości napięcia w liście → select napięcia nie renderuje się (zero fabrykowania)', () => {
-    const bezNapiecia = [szablonPelny({ voltage_hv_kv: null })];
+    const bezNapiecia = [szablonPelny({ voltage_hv_kv: null, sn_voltage_kv: null })];
     render(<FiltrySzablonow szablony={bezNapiecia} filtry={FILTRY_PUSTE} onZmiana={() => {}} />);
     expect(screen.queryByTestId('mvd-szablony-filtr-napiecie')).not.toBeInTheDocument();
   });

@@ -30,6 +30,8 @@ export const SZABLONY_STRINGS = {
   wlasny: 'własny',
   kafelMoc: 'Moc',
   kafelNapiecia: 'Napięcia',
+  kafelNapiecieSn: 'Napięcie SN',
+  kafelNapiecieSnDowolne: 'dowolne',
 
   // Filtry
   filtryTytul: 'Filtry',

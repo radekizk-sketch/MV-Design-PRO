@@ -5,18 +5,19 @@
  * propsami (bez stanu wewnętrznego poza tym, co dostał).
  *
  * Moc, napięcie i zastosowanie mają pola STRUKTURALNE (`rated_power_kva`,
- * `voltage_hv_kv`, `category`/`category_label_pl` —
- * `backend/src/application/station_templates/schema.py::structural_fields`,
- * `StationTemplateSummary.rated_power_kva`/`voltage_hv_kv`/`category_label_pl`),
- * z KATALOGU (token `catalog_ref` domyślnej opcji transformatora), NIE z
+ * `sn_voltage_kv`, `category`/`category_label_pl` —
+ * `backend/src/application/station_templates/schema.py::structural_fields`),
+ * z KATALOGU (rekord transformatora albo baterii kondensatorów), NIE z
  * parsowania `name_pl`/`label_pl`. Filtr mocy jest zakresem liczbowym (jak
  * „liczba pól SN" — moc jest wielkością ciągłą); filtr napięcia i zastosowania
  * są listami wyboru zbudowanymi z wartości FAKTYCZNIE obecnych w bieżącej
  * liście szablonów (napięcie SN jest wielkością dyskretną/znormalizowaną —
  * lista wyboru, nie zakres; zero fabrykowania wartości, których przeglądarka
- * nie widzi). `rated_power_kva`/`voltage_hv_kv === null` (katalog niedostępny
- * dla domyślnej opcji transformatora szablonu) NIE pasuje do żadnego
- * ustawionego filtra — uczciwe wykluczenie, nie zgadywanie.
+ * nie widzi). `rated_power_kva === null` (katalog nie dał mocy dla domyślnej
+ * opcji) NIE pasuje do ustawionego filtra mocy — uczciwe wykluczenie.
+ * `sn_voltage_kv === null` znaczy co innego: szablon napięciowo OBOJĘTNY
+ * (rozdzielnia sieciowa, rezerwa zasilania — nie wnosi elementu wiążącego
+ * napięcie), więc pasuje do każdego wybranego napięcia.
  *
  * Pole wyszukiwania tekstowego POZOSTAJE (słowa kluczowe, `tags`,
  * `description_pl`, `use_case_pl`) — to inny wymiar niż moc/zastosowanie,
@@ -37,8 +38,14 @@ export interface FiltrySzablonowStan {
   liczbaPolMax: number | null;
   mocMinKva: number | null;
   mocMaxKva: number | null;
-  /** `null` = wszystkie napięcia SN (górne napięcie transformatora, `voltage_hv_kv`). */
-  napiecieHvKv: number | null;
+  /**
+   * `null` = wszystkie napięcia SN. Filtruje po `sn_voltage_kv` — napięciu SN,
+   * na którym szablon PRACUJE (wymaga go od szyny albo je tworzy), a NIE po
+   * `voltage_hv_kv`, które jest daną transformatora: dla GPZ 110/SN strona
+   * górna to 110 kV, a szablon kompensacji nie ma transformatora wcale.
+   * Korekta z pomiaru 2026-09-17 (czerwony `industrial-template-mass-flow`).
+   */
+  napiecieSnKv: number | null;
   /** `null` = wszystkie zastosowania (kategorie). */
   kategoria: string | null;
 }
@@ -49,7 +56,7 @@ export const FILTRY_PUSTE: FiltrySzablonowStan = {
   liczbaPolMax: null,
   mocMinKva: null,
   mocMaxKva: null,
-  napiecieHvKv: null,
+  napiecieSnKv: null,
   kategoria: null,
 };
 
@@ -61,7 +68,7 @@ export function filtryAktywne(filtry: FiltrySzablonowStan): boolean {
     filtry.liczbaPolMax != null ||
     filtry.mocMinKva != null ||
     filtry.mocMaxKva != null ||
-    filtry.napiecieHvKv != null ||
+    filtry.napiecieSnKv != null ||
     filtry.kategoria != null
   );
 }
@@ -113,13 +120,16 @@ export function pasujeZastosowanie(kategoriaSzablonu: string, kategoriaFiltru: s
 }
 
 /**
- * Dopasowanie napięcia górnego (SN) transformatora — pole strukturalne
- * `voltage_hv_kv`. Wielkość DYSKRETNA (poziomy znormalizowane, nie zakres
- * ciągły jak moc) — dopasowanie równościowe, `null` filtru = wszystkie.
- * `napiecie === null` (katalog niedostępny) nie pasuje do ustawionego filtra.
+ * Dopasowanie napięcia SN szablonu — pole strukturalne `sn_voltage_kv`
+ * (napięcie, na którym szablon pracuje). Wielkość DYSKRETNA (poziomy
+ * znormalizowane, nie zakres ciągły jak moc) — dopasowanie równościowe,
+ * `null` filtru = wszystkie. `napiecie === null` znaczy szablon napięciowo
+ * OBOJĘTNY (rozdzielnia sieciowa, rezerwa zasilania): pasuje do KAŻDEGO
+ * ustawionego napięcia, bo wchodzi na szynę o dowolnym napięciu SN.
  */
 export function pasujeNapiecie(napiecie: number | null, napiecieFiltru: number | null): boolean {
   if (napiecieFiltru == null) return true;
+  if (napiecie == null) return true;
   return napiecie === napiecieFiltru;
 }
 
@@ -133,7 +143,7 @@ export function filtrujSzablony(
       pasujeFraza(s, filtry.fraza) &&
       pasujeLiczbaPol(liczbaPolSN(s), filtry.liczbaPolMin, filtry.liczbaPolMax) &&
       pasujeMoc(s.rated_power_kva, filtry.mocMinKva, filtry.mocMaxKva) &&
-      pasujeNapiecie(s.voltage_hv_kv, filtry.napiecieHvKv) &&
+      pasujeNapiecie(s.sn_voltage_kv, filtry.napiecieSnKv) &&
       pasujeZastosowanie(s.category, filtry.kategoria),
   );
 }
@@ -149,10 +159,10 @@ function kategorieObecne(
     .sort((a, b) => a.label_pl.localeCompare(b.label_pl, 'pl'));
 }
 
-/** Napięcia górne (SN) FAKTYCZNIE obecne w liście (bez `null`), rosnąco. */
+/** Napięcia SN FAKTYCZNIE obecne w liście (bez szablonów obojętnych), rosnąco. */
 function napieciaObecne(szablony: readonly StationTemplateFull[]): readonly number[] {
   const zbior = new Set<number>();
-  for (const s of szablony) if (s.voltage_hv_kv != null) zbior.add(s.voltage_hv_kv);
+  for (const s of szablony) if (s.sn_voltage_kv != null) zbior.add(s.sn_voltage_kv);
   return [...zbior].sort((a, b) => a - b);
 }
 
@@ -209,11 +219,11 @@ export function FiltrySzablonow({ szablony, filtry, onZmiana }: FiltrySzablonowP
           <span>{SZABLONY_STRINGS.filtrNapiecie}</span>
           <select
             className="mvd-input"
-            value={filtry.napiecieHvKv ?? ''}
+            value={filtry.napiecieSnKv ?? ''}
             onChange={(event) =>
               onZmiana({
                 ...filtry,
-                napiecieHvKv: event.target.value === '' ? null : Number(event.target.value),
+                napiecieSnKv: event.target.value === '' ? null : Number(event.target.value),
               })
             }
             data-testid="mvd-szablony-filtr-napiecie"

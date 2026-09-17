@@ -11,7 +11,15 @@ type TemplateSummary = {
   id: string;
   name_pl: string;
   category: string;
+  /**
+   * Napięcie SN, na którym szablon pracuje (`schema.py::sn_voltage_kv`);
+   * `null` = szablon napięciowo obojętny (bez transformatora i bez baterii).
+   */
+  sn_voltage_kv: number | null;
 };
+
+/** Napięcie magistrali budowanej w tym przepływie (jedno źródło liczby). */
+const NAPIECIE_MAGISTRALI_KV = 15.0;
 
 type DomainOpResponse = {
   error?: string | null;
@@ -124,6 +132,17 @@ async function appendSegment(
   return refs[refs.length - 1];
 }
 
+/**
+ * Wybór 50 szablonów do przepływu masowego — WYŁĄCZNIE takich, które pasują do
+ * napięcia budowanej magistrali (15 kV) albo są napięciowo obojętne.
+ *
+ * POWÓD (pomiar 2026-09-17, CI Frontend E2E full run 452): wcześniej wybór szedł
+ * po kategoriach i kolejności listy, więc po dołożeniu szablonów 20 kV do
+ * zestawu trafił `tpl_kompensacja_1v8mvar_20kv`, a backend — SŁUSZNIE — odmówił
+ * (`shunt.voltage_mismatch`: bateria 20 kV na szynie 15 kV). Odmowa jest
+ * poprawną fizyką i zostaje; to test miał przestać aplikować szablon 20 kV do
+ * sieci 15 kV. Sama odmowa jest osobno przypięta niżej jako niezmiennik.
+ */
 function selectTemplatesForIndustrialRun(templates: TemplateSummary[]): TemplateSummary[] {
   const requiredCategories = [
     'typowa_sn_nn',
@@ -137,14 +156,17 @@ function selectTemplatesForIndustrialRun(templates: TemplateSummary[]): Template
     'wiatrowa',
     'sekcyjna',
   ];
+  const pasujaceNapieciowo = templates.filter(
+    (t) => t.sn_voltage_kv == null || t.sn_voltage_kv === NAPIECIE_MAGISTRALI_KV,
+  );
   const selected = new Map<string, TemplateSummary>();
   for (const category of requiredCategories) {
-    const found = templates.find((template) => template.category === category);
+    const found = pasujaceNapieciowo.find((template) => template.category === category);
     if (found) {
       selected.set(found.id, found);
     }
   }
-  for (const template of templates) {
+  for (const template of pasujaceNapieciowo) {
     if (selected.size >= 50) {
       break;
     }
@@ -304,6 +326,30 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
     }
   }
   expect(new Set(appliedTemplateIds).size).toBe(50);
+
+  // NIEZMIENNIK NAPIĘCIOWY (przypięty po czerwieni CI z 2026-09-17): szablon o
+  // innym napięciu SN niż szyna NIE wchodzi po cichu — backend odmawia, i to
+  // odmową NAZWANĄ, a nie błędem 500 ani cichym wstawieniem elementu o złym
+  // napięciu. Iloczyn cech: KAŻDY szablon 20 kV z katalogu × magistrala 15 kV.
+  const szablony20kV = templatesPayload.templates.filter((t) => t.sn_voltage_kv === 20.0);
+  expect(szablony20kV.length, 'katalog musi mieć szablony 20 kV, inaczej test traci przedmiot').toBeGreaterThan(0);
+  for (const szablon of szablony20kV) {
+    const segmentRef = await appendSegment(request, seed.caseId, 90);
+    const odmowa = await request.post(`${BACKEND_BASE}/api/station-templates/${szablon.id}/apply`, {
+      data: {
+        case_id: seed.caseId,
+        target_segment_id: segmentRef,
+        insert_at_ratio: 0.5,
+        params_override: {},
+        catalog_profile: null,
+      },
+      timeout: 30000,
+    });
+    expect(odmowa.ok(), `${szablon.id}: szablon 20 kV NIE może wejść na szynę 15 kV`).toBeFalsy();
+    const trescOdmowy = (await odmowa.json()) as { detail?: { code?: string; message_pl?: string } };
+    expect(trescOdmowy.detail?.code, `${szablon.id}: odmowa musi być nazwana kodem`).toBeTruthy();
+    expect(trescOdmowy.detail?.message_pl, `${szablon.id}: odmowa musi mieć komunikat po polsku`).toBeTruthy();
+  }
 
   const enmResponse = await request.get(`${BACKEND_BASE}/api/cases/${seed.caseId}/enm`);
   expect(enmResponse.ok()).toBeTruthy();
