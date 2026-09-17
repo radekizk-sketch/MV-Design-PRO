@@ -57,7 +57,11 @@ import {
   fetchCurrentCaseSnapshot,
   fetchShortCircuitResults,
 } from '../results-inspector/api';
-import { podzielWierszeNaPrzypadki, zbudujPradyKoordynacji } from './pradyZBiegow';
+import {
+  podzielWierszeNaPrzypadki,
+  zbudujPradyKoordynacji,
+  type BiegZwarciowyDoPodzialu,
+} from './pradyZBiegow';
 import type { BrakDanejPradowej } from './pradyZBiegow';
 import { lokalizacjeKoordynacji } from './lokalizacjeZModelu';
 import type { LokalizacjaModelu } from './lokalizacjeZModelu';
@@ -443,7 +447,6 @@ function TabNavigation({ activeTab, onTabChange, result }: TabNavigationProps) {
 // Main Page Component
 // =============================================================================
 
-type ShortCircuitRowLite = Awaited<ReturnType<typeof fetchShortCircuitResults>>['rows'][number];
 type BranchRowLite = Awaited<ReturnType<typeof fetchBranchResults>>['rows'][number];
 
 export function ProtectionCoordinationPage() {
@@ -598,11 +601,10 @@ export function ProtectionCoordinationPage() {
     let anulowane = false;
 
     void (async () => {
-      const wierszeZwarciowe: ShortCircuitRowLite[] = [];
+      const wynikiZwarciowe: BiegZwarciowyDoPodzialu[] = [];
       for (const bieg of biegiZwarciowe) {
         try {
-          const wynik = await fetchShortCircuitResults(bieg.id);
-          wierszeZwarciowe.push(...wynik.rows);
+          wynikiZwarciowe.push(await fetchShortCircuitResults(bieg.id));
         } catch {
           // Brak wyniku biegu = brak danych; nie zastępujemy go niczym.
         }
@@ -616,7 +618,7 @@ export function ProtectionCoordinationPage() {
         }
       }
       if (anulowane) return;
-      const { max, min } = podzielWierszeNaPrzypadki(wierszeZwarciowe);
+      const { max, min } = podzielWierszeNaPrzypadki(wynikiZwarciowe);
       const prady = zbudujPradyKoordynacji({
         // V12K-262: urządzenie bez wskazanego elementu pomijamy TUTAJ, żeby nie
         // raportować mu „braku prądu zwarciowego" — prawdziwym brakiem jest

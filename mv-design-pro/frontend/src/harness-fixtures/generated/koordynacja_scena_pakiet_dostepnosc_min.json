@@ -1,0 +1,19 @@
+{
+  "dostepny": true,
+  "linie": [
+    {
+      "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
+      "nastepne_szyny_kandydujace": [
+        "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+      ],
+      "nazwa": "Magistrala GPZ (1)"
+    },
+    {
+      "line_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
+      "nastepne_szyny_kandydujace": [],
+      "nazwa": "Magistrala GPZ (2) (1)"
+    }
+  ],
+  "powod_pl": null,
+  "run_id": "run-sc-scena-koordynacja-min"
+}

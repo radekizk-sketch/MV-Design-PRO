@@ -156,3 +156,124 @@ def test_dwa_pobrania_tego_samego_biegu_sa_bajt_w_bajt_identyczne() -> None:
 def test_linia_nieznana_konczy_sie_pakiet_nastaw_error() -> None:
     with pytest.raises(PakietNastawError):
         zbuduj_pakiet_nastaw(_kotwica(), line_id="nieznana", next_bus_id="b_b", c_min=1.0)
+
+
+# ---------------------------------------------------------------------------
+# Parytet dostepnosci i budowy (karta HARNESS-RESZTA-2, 2026-09-17)
+# ---------------------------------------------------------------------------
+
+
+def _siec_z_szyna_pomocnicza() -> EnergyNetworkModel:
+    """Siec, w ktorej KONIEC magistrali jest szyna POMOCNICZA (`helper_bus`).
+
+    Dokladnie ten ksztalt (magistrala zakonczona zaciskiem technicznym) niosa
+    wszystkie sieci rejestru zbudowane operacjami `continue_trunk_segment_sn`:
+    szyna `helper_bus` jest pomijana jako punkt raportowalny
+    (`enm/assembler.py::skip_short_circuit_target`), wiec para „odcinek ->
+    ta szyna" nie da sie policzyc mimo poprawnej topologii i kompletu danych
+    katalogowych.
+    """
+    siec = _siec()
+    siec.buses.append(
+        Bus(ref_id="b_help", name="Zacisk koncowy", voltage_kv=15.0, tags=["helper_bus"])
+    )
+    siec.branches.append(_linia("ln3", od="b_b", do="b_help"))
+    return siec
+
+
+def _kotwica_sieci(siec: EnergyNetworkModel) -> CanonicalRun:
+    run = CanonicalRun(
+        id=uuid4(),
+        case_id="case-parytet-nastaw",
+        project_id="proj-parytet-nastaw",
+        analysis_type="short_circuit_sn",
+        status="FINISHED",
+        created_at=datetime(2024, 1, 1, tzinfo=UTC),
+        snapshot_hash="snap-hash-parytet",
+        input_hash="in-hash-parytet",
+        snapshot=siec.model_dump(mode="json"),
+        validation={},
+        readiness={},
+        options={"fault_type": "3F", "c_factor": 1.10, "thermal_time_seconds": 1.0},
+    )
+    run.finished_at = run.created_at
+    _execute_short_circuit(run)
+    return run
+
+
+def test_kazda_reklamowana_para_dostepnosci_daje_nastawy_na_kazdej_sieci_rejestru() -> None:
+    """ILOCZYN CECH: siec rejestru x reklamowana para (odcinek, szyna) x obie strony.
+
+    Kontrakt: KAZDA para, ktora `dostepnosc_pakietu_nastaw` pokazuje projektantowi,
+    MUSI dac sie policzyc. Pomiar przed naprawa (karta HARNESS-RESZTA-2): 12 par
+    reklamowanych na szesciu sieciach, 0 policzalnych — ekran nastaw prowadzil w
+    slepy zaulek na kazdej sieci, jaka repozytorium ma. Test jedzie po WSZYSTKICH
+    budowniczych rejestru (nie po jednym przykladzie z karty) plus po sieci
+    syntetycznej z szyna pomocnicza, ktora odtwarza przyczyne rozjazdu.
+    """
+    from application.proof_engine.pakiet_nastaw import zbuduj_odpowiedz_nastaw_json
+    from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs
+    from enm.store import reset_enm_store, set_enm
+
+    from tests.reference_networks import builders
+
+    sieci: list[tuple[str, CanonicalRun]] = [
+        ("syntetyczna_z_szyna_pomocnicza", _kotwica_sieci(_siec_z_szyna_pomocnicza())),
+        ("syntetyczna_podstawowa", _kotwica_sieci(_siec())),
+    ]
+    for nazwa_budowniczego in (
+        "build_gn01_sn_promieniowa",
+        "build_gn02_sn_odgalezienie",
+        "build_gn03_sn_pierscien",
+        "build_gn04_sn_nn_oze",
+        "build_gn05_sn_nn_oze_ochrona",
+    ):
+        opis = getattr(builders, nazwa_budowniczego)()
+        siec = EnergyNetworkModel.model_validate(opis["enm"])
+        reset_canonical_runs()
+        reset_enm_store()
+        try:
+            set_enm("case-parytet", siec)
+            sieci.append(
+                (
+                    nazwa_budowniczego,
+                    execute_run(
+                        create_run(
+                            case_id="case-parytet",
+                            klucz_twin="case-parytet",
+                            analysis_type="short_circuit_sn",
+                        ).id
+                    ),
+                )
+            )
+        finally:
+            reset_canonical_runs()
+            reset_enm_store()
+
+    reklamowane = 0
+    for nazwa_sieci, kotwica in sieci:
+        dostepnosc = dostepnosc_pakietu_nastaw(kotwica)
+        if not dostepnosc["dostepny"]:
+            # Odmowa MUSI byc nazwana — nigdy cichy brak.
+            assert dostepnosc["powod_pl"], nazwa_sieci
+            assert dostepnosc["linie"] == [], nazwa_sieci
+            continue
+        # Dostepny znaczy: CO NAJMNIEJ JEDNA para do policzenia (inaczej ekran
+        # obiecuje sciezke, ktorej nie ma).
+        assert any(
+            pozycja["nastepne_szyny_kandydujace"] for pozycja in dostepnosc["linie"]
+        ), nazwa_sieci
+        for pozycja in dostepnosc["linie"]:
+            for szyna in pozycja["nastepne_szyny_kandydujace"]:
+                reklamowane += 1
+                odpowiedz = zbuduj_odpowiedz_nastaw_json(
+                    kotwica, line_id=pozycja["line_id"], next_bus_id=szyna, c_min=1.0
+                )
+                assert odpowiedz["dostepnosc_pakietu"] is True, (
+                    nazwa_sieci,
+                    pozycja["line_id"],
+                    szyna,
+                )
+                assert odpowiedz["wynik"]["delayed"]["i_setting_a"] > 0.0
+
+    assert reklamowane > 0, "test nie sprawdzil ANI JEDNEJ pary — bramka bylaby niema"

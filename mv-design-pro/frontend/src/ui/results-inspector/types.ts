@@ -337,6 +337,17 @@ export interface KonfiguracjaBieguZwarcia {
   c_factor: CFactorBiegu;
   thermal_time_seconds: ThermalTimeBiegu;
   metoda: string;
+  /**
+   * Wariant zwarciowy ZAPISANY na wyniku biegu: `MAX` (selektywność,
+   * wytrzymałość) albo `MIN` (czułość). `null`/brak = bieg nie zapisał
+   * scenariusza — uczciwy brak, NIGDY domyślne „MAX".
+   *
+   * HARNESS-RESZTA-2 (2026-09-17): bez tego pola klient zgadywał wariant ze
+   * współczynnika `c` wiersza, co na sieci SN jest zawsze fałszywe — IEC 60909-0
+   * Tabela 1 daje c_min = 1,00 powyżej 1 kV (0,95 tylko dla nN), więc bieg
+   * MINIMALNY na szynie 15 kV nie różni się progiem `c >= 1` od maksymalnego.
+   */
+  scenariusz?: 'MAX' | 'MIN' | null;
 }
 
 /**

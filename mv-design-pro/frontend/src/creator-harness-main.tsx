@@ -117,6 +117,35 @@ import cieplnaScenyWynik from './harness-fixtures/generated/cieplna_scena_wynik.
 import cieplnaScenyDowod from './harness-fixtures/generated/cieplna_scena_dowod.json';
 import arcflashScenyWynik from './harness-fixtures/generated/arcflash_scena_wynik.json';
 import przegladWiarygodnosciKatalogu from './harness-fixtures/generated/przeglad_wiarygodnosci_katalogu.json';
+// HARNESS-RESZTA-2 (2026-09-17): sceny "wyniki-skladowe" (E-29) i
+// "wyniki-zbieznosc" (E-30) karmione WYLACZNIE wynikami REALNEGO biegu
+// backendu (`eksport_fixtur_harnessu.py` — DOKLADNIE tymi funkcjami, ktore
+// woluja koncowki `/results/short-circuit`, `/results/trace`, `/snapshot`
+// oraz `/power-flow-runs/{id}`, `.../results`, `.../trace`): bieg
+// `short_circuit_sn` z `fault_type: 1F` na sieci zlotej (skladowe Z1/Z2/Z0 ze
+// sladu solvera FROZEN) i bieg `PF` tej samej sieci z regulatorem OLTC na
+// transformatorze `tr_hv_sn` (iteracje Newtona-Raphsona + decyzje regulatora).
+import skladoweScenyWynik from './harness-fixtures/generated/skladowe_scena_wynik.json';
+import skladoweScenySlad from './harness-fixtures/generated/skladowe_scena_slad.json';
+import skladoweScenyMigawka from './harness-fixtures/generated/skladowe_scena_migawka.json';
+import zbieznoscScenyNaglowek from './harness-fixtures/generated/zbieznosc_scena_naglowek.json';
+import zbieznoscScenyWynik from './harness-fixtures/generated/zbieznosc_scena_wynik.json';
+import zbieznoscScenySlad from './harness-fixtures/generated/zbieznosc_scena_slad.json';
+import zbieznoscScenyMigawka from './harness-fixtures/generated/zbieznosc_scena_migawka.json';
+// HARNESS-RESZTA-2 (2026-09-17): scena "koordynacja" (E-28) — magistrala SN z
+// dwiema stacjami zbudowana TYMI SAMYMI operacjami domenowymi, ktorymi buduje ja
+// projektant; dwa biegi `short_circuit_sn` (MAX/MIN), bieg `PF`, dostepnosc
+// pakietu nastaw, nastawy metoda Hoppela, dopasowanie aparatu i wynik REALNEGO
+// analizatora koordynacji (`OvercurrentCoordinationAnalyzer` przez koncowke).
+import koordynacjaScenyMigawka from './harness-fixtures/generated/koordynacja_scena_migawka.json';
+import koordynacjaScenyZwarciaMax from './harness-fixtures/generated/koordynacja_scena_zwarcia_max.json';
+import koordynacjaScenyZwarciaMin from './harness-fixtures/generated/koordynacja_scena_zwarcia_min.json';
+import koordynacjaScenyGalezie from './harness-fixtures/generated/koordynacja_scena_galezie.json';
+import koordynacjaScenyPakietDostepnoscMax from './harness-fixtures/generated/koordynacja_scena_pakiet_dostepnosc_max.json';
+import koordynacjaScenyPakietDostepnoscMin from './harness-fixtures/generated/koordynacja_scena_pakiet_dostepnosc_min.json';
+import koordynacjaScenyNastawy from './harness-fixtures/generated/koordynacja_scena_nastawy.json';
+import koordynacjaScenyNastawyDopasowanie from './harness-fixtures/generated/koordynacja_scena_nastawy_dopasowanie.json';
+import koordynacjaScenyWynik from './harness-fixtures/generated/koordynacja_scena_wynik.json';
 import { REWIZJA_SIECI_ZLOTEJ, migawkaSieciZlotej } from './harness-fixtures/migawkaSieciZlotej';
 import { EkranOceny } from './ui2/wyniki/ocena';
 import { SekcjaSilySieci } from './ui2/oze/pulpit';
@@ -207,434 +236,174 @@ document.body.style.background = theme === 'light_technical' ? '#f5f7fa' : '#071
 // identyfikatory realne (patrz historia zmian tej karty) — parytet pilnowany
 // testem `backend/tests/e2e/test_creator_harness_katalogi_parytet.py`.
 
-// --- Fixture'y scen dowodowych E-29..E-32 (karta Z-1) ----------------------
-// Wartości przepisane 1:1 z kontraktów backendu (te same kształty, co w testach
-// jednostkowych modułów). ZERO fizyki w harnessie — liczby pochodzą z solvera/
-// śladu/snapshotu; harness jedynie serwuje odpowiedzi zamiast żywego backendu.
-
-// E-29 „Składowe symetryczne i sieć zerowa" (ui2/wyniki/skladowe):
-//  short-circuit (bilans F1 + werdykt), trace (krok „Zk" ze składowymi Z1/Z2/Z0),
-//  snapshot (uziemienie punktu neutralnego).
-const SKLADOWE_WYNIK = {
-  run_id: 'run-1f',
-  rows: [
-    {
-      target_id: 'node-1',
-      element_id: 'bus/gpz/sn',
-      target_name: 'Szyna GPZ',
-      // Liczby SPÓJNE ze składowymi śladu (Z1=Z2=0,1+j0,4; Z0=0,3+j0,9):
-      // ΣZ = 0,5+j1,7 → |Zk|=1,7720 Ω; Ik1″=√3·c·Un/|ΣZ|=√3·1,1·15000/1,7720=16,128 kA;
-      // X/R=1,7/0,5=3,400; κ=1,02+0,98·e^(−3·0,5/1,7)=1,4255; ip=κ·√2·Ik″=32,51 kA.
-      ikss_ka: 16.128,
-      ip_ka: 32.51,
-      ith_ka: 16.2,
-      sk_mva: 419.0,
-      fault_type: '1F',
-      flags: [],
-      rk_ohm: 0.5,
-      xk_ohm: 1.7,
-      zk_ohm: 1.772,
-      xr_ratio: 3.4,
-      kappa: 1.4255,
-      c_factor: 1.1,
-      tk_s: 1.0,
-      reporting_status: 'reportable',
-      reporting_status_pl: 'raportowalny',
-      proof_status_pl: 'pelny',
-      reporting_limitations: [],
-    },
-  ],
-};
-
-const SKLADOWE_SLAD = {
-  run_id: 'run-1f',
-  snapshot_id: 'snap-1',
-  input_hash: 'hash-1',
-  catalog_context: [],
-  white_box_trace: [
-    {
-      key: 'Zk',
-      step: 1,
-      target_id: 'node-1',
-      title: 'Impedancja zastępcza w punkcie zwarcia',
-      formula_latex: 'Z_k = Z_1 + Z_2 + Z_0',
-      // Pełne podstawienie dyplomowe (wzór → liczby → wynik z jednostką),
-      // spójne z wierszem bilansu (|Zk|=1,7720 Ω).
-      substitution:
-        'Z_k = (0{,}1 + j\\,0{,}4) + (0{,}1 + j\\,0{,}4) + (0{,}3 + j\\,0{,}9) = 0{,}5 + j\\,1{,}7\\ \\Omega,\\quad |Z_k| = 1{,}7720\\ \\Omega',
-      inputs: {
-        z1_ohm: { re: 0.1, im: 0.4 },
-        z2_ohm: { re: 0.1, im: 0.4 },
-        z0_ohm: { re: 0.3, im: 0.9 },
-      },
-    },
-  ],
-};
-
-const SKLADOWE_SNAPSHOT = {
-  run_id: 'run-1f',
-  snapshot_id: 'snap-1',
-  snapshot: {
-    buses: [
-      {
-        id: 'b1',
-        ref_id: 'bus/gpz/sn',
-        name: 'Szyna GPZ',
-        tags: [],
-        meta: {},
-        voltage_kv: 15,
-        phase_system: '3ph',
-      },
-    ],
-    // W5-A: punkt neutralny sieci SN żyje na ŹRÓDLE stojącym na szynie
-    // (`Source.neutral_grounding`), nie na szynie — `Bus.grounding` skasowane.
-    sources: [
-      {
-        id: 's1',
-        ref_id: 'src/gpz',
-        name: 'Zasilanie GPZ',
-        tags: [],
-        meta: {},
-        bus_ref: 'bus/gpz/sn',
-        model: 'short_circuit_power',
-        neutral_grounding: { type: 'petersen_coil', x_ohm: 120 },
-      },
-    ],
-    transformers: [],
-  },
-};
-
-// E-30 „Zbieżność rozpływu i zaczepy" (ui2/wyniki/zbieznosc): header + wynik
-// rozpływu (summary) + ślad (iteracje + pętla OLTC).
-const ZBIEZNOSC_HEADER = {
-  id: 'run-lf-1',
-  project_id: 'proj-demo',
-  study_case_id: 'case-1',
-  status: 'FINISHED',
-  result_status: 'VALID',
-  created_at: '2026-07-20T09:59:00Z',
-  finished_at: '2026-07-20T10:00:00Z',
-  input_hash: 'hash-1',
-  converged: true,
-  iterations: 4,
-};
-
-const ZBIEZNOSC_WYNIK = {
-  result_version: '1.0',
-  converged: true,
-  iterations_count: 4,
-  tolerance_used: 1e-6,
-  base_mva: 100,
-  slack_bus_id: 'BUS-GPZ',
-  bus_results: [],
-  branch_results: [],
-  summary: {
-    total_losses_p_mw: 0.1234,
-    total_losses_q_mvar: 0.0456,
-    min_v_pu: 0.978,
-    max_v_pu: 1.012,
-    slack_p_mw: 5.4321,
-    slack_q_mvar: 1.2345,
-  },
-};
-
-const ZBIEZNOSC_SLAD = {
-  solver_version: 'load-flow-newton-raphson-v1',
-  solver_method: 'newton-raphson',
-  input_hash: 'hash-1',
-  snapshot_id: 'snap-1',
-  case_id: 'case-1',
-  run_id: 'run-lf-1',
-  init_state: {},
-  init_method: 'flat_start',
-  tolerance: 1e-6,
-  max_iterations: 50,
-  base_mva: 100,
-  slack_bus_id: 'BUS-GPZ',
-  pq_bus_ids: [],
-  pv_bus_ids: [],
-  // 4 iteracje SPÓJNE z werdyktem („zbieżny w 4 iteracjach") i tolerancją 1e-6
-  // (ostatnia norma poniżej tolerancji).
-  iterations: [
-    { k: 1, norm_mismatch: 0.5, max_mismatch_pu: 0.2 },
-    { k: 2, norm_mismatch: 0.012, max_mismatch_pu: 0.005 },
-    { k: 3, norm_mismatch: 0.00035, max_mismatch_pu: 0.00011 },
-    { k: 4, norm_mismatch: 8.7e-7, max_mismatch_pu: 2.9e-7 },
-  ],
-  converged: true,
-  final_iterations_count: 4,
-  oltc_control: {
-    regulators: [
-      {
-        branch_id: 'uuid-tr-1',
-        regulated_winding: 'HV',
-        controlled_bus_id: 'BUS-SN',
-        setpoint_kv: 15.2,
-        deadband_kv: 0.2,
-        initial_position: 0,
-        min_position: -9,
-        max_position: 9,
-      },
-    ],
-    converged: true,
-    iterations_count: 2,
-    switch_counts: { 'uuid-tr-1': 2 },
-    total_switch_count: 2,
-    final_positions: { 'uuid-tr-1': -2 },
-    initial_positions: { 'uuid-tr-1': 0 },
-  },
-};
-
-const ZBIEZNOSC_SNAPSHOT = {
-  header: { revision: 7, hash_sha256: 'abcdef1234567890' },
-  buses: [],
-  branches: [],
-  transformers: [
-    {
-      ref_id: 'TR-1',
-      name: 'TR 110/15',
-      hv_bus_ref: 'B1',
-      lv_bus_ref: 'B2',
-      sn_mva: 16,
-      uhv_kv: 110,
-      ulv_kv: 15,
-      uk_percent: 10,
-      pk_kw: 80,
-      tap_changer: {
-        regulation_type: 'OLTC',
-        regulated_winding: 'HV',
-        neutral_position: 0,
-        current_position: -1,
-        min_position: -9,
-        max_position: 9,
-        step_percent: 1.25,
-        control_mode: 'AUTOMATIC',
-        voltage_setpoint_kv: 15.2,
-        deadband_kv: 0.2,
-      },
-    },
-  ],
-  sources: [],
-  loads: [],
-  generators: [],
-  substations: [],
-  bays: [],
-  junctions: [],
-  corridors: [],
-  measurements: [],
-  protection_assignments: [],
-};
-
-// E-31 „Stan fazowy SN" (ui2/wyniki/stan-fazowy) i E-32 „Stabilność
-// dynamiczna" (ui2/wyniki/stabilnosc): fixtury z REALNEGO biegu backendu —
-// `stanFazowyScenyWyniki`/`stabilnoscScenyWyniki`/`stabilnoscScenySlad`
-// zaimportowane u góry pliku (HARNESS-RESZTA, 2026-09-16).
+// --- Fixture'y scen dowodowych E-29..E-32 -------------------------------
+// HARNESS-RESZTA-2 (2026-09-17): sceny E-29 „Składowe symetryczne i sieć zerowa"
+// oraz E-30 „Zbieżność rozpływu i zaczepy" karmione WYŁĄCZNIE odpowiedziami
+// REALNEGO biegu backendu (`skladoweScenyWynik`/`skladoweScenySlad`/
+// `skladoweScenyMigawka` — bieg `short_circuit_sn` z `fault_type: 1F` na sieci
+// złotej; `zbieznoscScenyNaglowek`/`zbieznoscScenyWynik`/`zbieznoscScenySlad`/
+// `zbieznoscScenyMigawka` — bieg `PF` tej samej sieci z regulatorem OLTC na
+// transformatorze `tr_hv_sn`), zaimportowanymi u góry pliku. Poprzednio oba
+// komplety były blokami JSON pisanymi RĘCZNIE: bilans 1F, składowe Z1/Z2/Z0,
+// iteracje Newtona-Raphsona i pętla OLTC wyglądały jak wynik solvera, ale
+// żaden solver ich nie policzył.
+//
+// E-31 „Stan fazowy SN" i E-32 „Stabilność dynamiczna": fixtury realnego biegu
+// (`stanFazowyScenyWyniki`/`stabilnoscScenyWyniki`/`stabilnoscScenySlad`,
+// HARNESS-RESZTA, 2026-09-16).
 
 /**
- * Scena E-28 „Koordynacja zabezpieczeń" (V12K-262). Do tej pory ekran TCC nie miał
- * ANI JEDNEJ sceny — najbardziej graficzny ekran systemu (krzywe czasowo-prądowe
- * log-log, marginesy CTI, werdykty par) nie był widziany przez żadną bramkę.
+ * Scena E-28 „Koordynacja zabezpieczeń" (V12K-262). Najbardziej graficzny ekran
+ * systemu (krzywe czasowo-prądowe log-log, marginesy CTI, werdykty par).
  *
  * Łańcuch odtworzony w całości, bo ekran go WYMAGA i nie da się go obejść:
- * zakończony bieg zwarciowy → wiersze wyniku dla szyn `bus_1`/`bus_2` → prądy
- * koordynacji (zero losowania, F-K4) → analiza → wynik z krzywymi. Kadr powstaje
- * po NATYWNYCH klikach (szablon urządzenia → uruchom analizę), a nie po wymuszeniu
- * stanu store — inaczej zrzut dowodziłby działania atrapy, nie ekranu.
- */
-/**
- * Wiersze biegow zwarciowych sceny E-28.
+ * zakończony bieg zwarciowy → wiersze wyniku → prądy koordynacji (zero
+ * losowania, F-K4) → analiza → wynik z krzywymi. Kadr powstaje po NATYWNYCH
+ * klikach (szablon urządzenia → wskazanie lokalizacji → uruchom analizę), a nie
+ * po wymuszeniu stanu store — inaczej zrzut dowodziłby działania atrapy.
  *
- * `element_id` to `ref_id` elementu ENM — DOKLADNIE ta przestrzen nazw, po ktorej
- * `pradyZBiegow` dopasowuje prady do urzadzenia (`canonical_analysis`:
- * `_build_snapshot_graph_element_context` ustawia `element_id = ref_id`).
- *
- * `c_factor` jest OBOWIAZKOWY: `podzielWierszeNaPrzypadki` klasyfikuje przypadek
- * maksymalny/minimalny wylacznie po nim (IEC 60909: c_max = 1,10, c_min = 0,95),
- * a koordynacja wymaga OBU. Wiersz bez `c_factor` nie trafia do zadnego zbioru —
- * scena bez tego pola pokazywala uczciwy, ale pusty stan „brak pradow".
+ * HARNESS-RESZTA-2 (2026-09-17): wszystkie liczby sceny pochodzą z REALNYCH
+ * biegów backendu (`harness-fixtures/generated/koordynacja_scena_*.json`) —
+ * patrz importy u góry pliku i podmieniony `fetch` niżej.
  */
-const KOORD_WIERSZE_SC_MAX = [
-  {
-    target_id: 'gpz/sekcja_a/bus_sn', element_id: 'gpz/sekcja_a/bus_sn',
-    target_name: 'GPZ Wschod — szyna SN sekcja A',
-    ikss_ka: 8.4, ip_ka: 21.0, ith_ka: 8.4, sk_mva: 218.2,
-    fault_type: '3F', c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, flags: [],
-  },
-  {
-    target_id: 'stacja_s02/bus_sn', element_id: 'stacja_s02/bus_sn',
-    target_name: 'Stacja S02 — szyna SN',
-    ikss_ka: 3.1, ip_ka: 7.6, ith_ka: 3.1, sk_mva: 80.5,
-    fault_type: '3F', c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, flags: [],
-  },
-];
 
-const KOORD_WIERSZE_SC_MIN = [
-  {
-    target_id: 'gpz/sekcja_a/bus_sn', element_id: 'gpz/sekcja_a/bus_sn',
-    target_name: 'GPZ Wschod — szyna SN sekcja A',
-    ikss_ka: 6.9, ip_ka: 17.2, ith_ka: 6.9, sk_mva: 179.3,
-    fault_type: '3F', c_factor: 0.95, un_kv: 15.0, tk_s: 1.0, flags: [],
-  },
-  {
-    target_id: 'stacja_s02/bus_sn', element_id: 'stacja_s02/bus_sn',
-    target_name: 'Stacja S02 — szyna SN',
-    ikss_ka: 2.4, ip_ka: 5.9, ith_ka: 2.4, sk_mva: 62.4,
-    fault_type: '3F', c_factor: 0.95, un_kv: 15.0, tk_s: 1.0, flags: [],
-  },
-];
-
-const KOORD_WYNIKI_GALEZI = {
-  run_id: 'run-lf-koord',
-  rows: [
-    {
-      branch_id: 'gpz/sekcja_a/bus_sn', element_id: 'gpz/sekcja_a/bus_sn',
-      name: 'Pole liniowe GPZ → S02',
-      from_bus: 'gpz/sekcja_a/bus_sn', to_bus: 'stacja_s02/bus_sn',
-      i_a: 154.0, s_mva: 4.0, p_mw: 3.9, q_mvar: 0.8, loading_pct: 38.5, flags: [],
-    },
-    {
-      branch_id: 'stacja_s02/bus_sn', element_id: 'stacja_s02/bus_sn',
-      name: 'Pole liniowe S02 → odbiory',
-      from_bus: 'stacja_s02/bus_sn', to_bus: 'stacja_s03/bus_sn',
-      i_a: 96.0, s_mva: 2.5, p_mw: 2.4, q_mvar: 0.5, loading_pct: 24.0, flags: [],
-    },
-  ],
-};
+/** Wynik analizy koordynacji zwrócony w tym biegu sceny (spójny między `/run`,
+ *  `/tcc` i pełnym wynikiem — ekran woła trzy końcówki po kolei). */
+type WynikKoordynacjiSceny = typeof koordynacjaScenyWynik;
+let wynikKoordynacjiSceny: WynikKoordynacjiSceny | null = null;
 
 /**
- * Migawka modelu przypadku — zrodlo LISTY WYBORU lokalizacji (V12K-262).
- * Tylko pola, ktore czyta `lokalizacjeKoordynacji`; `ref_id` zgodne z wierszami
- * wynikow, bo to jedna przestrzen nazw.
+ * Tożsamości zabezpieczeń są WYMYŚLANE PRZEZ EKRAN (`crypto.randomUUID()` w
+ * `ProtectionCoordinationPage.handleApplyTemplate`), więc fixtura policzona
+ * backendem nie może ich znać. Mapujemy je po `location_element_id` — tożsamość
+ * domenowa, jedyna wspólna dla obu stron. Fizyka (werdykty, marginesy, krzywe,
+ * ślad) zostaje BEZ ZMIAN z realnego biegu.
  */
-const KOORD_MIGAWKA_MODELU = {
-  header: { schema_version: '1.0', project_id: 'proj-demo' },
-  buses: [
-    {
-      id: 'b1', ref_id: 'gpz/sekcja_a/bus_sn', name: 'GPZ Wschod — szyna SN sekcja A',
-      voltage_kv: 15.0, phase_system: '3ph', tags: [], meta: {},
-    },
-    {
-      id: 'b2', ref_id: 'stacja_s02/bus_sn', name: 'Stacja S02 — szyna SN',
-      voltage_kv: 15.0, phase_system: '3ph', tags: [], meta: {},
-    },
-  ],
-  branches: [
-    {
-      id: 'l1', ref_id: 'lin/gpz_s02', name: 'Magistrala GPZ → S02',
-      from_bus_ref: 'gpz/sekcja_a/bus_sn', to_bus_ref: 'stacja_s02/bus_sn',
-      status: 'closed', type: 'line_overhead', tags: [], meta: {},
-    },
-  ],
-  transformers: [],
-  sources: [], loads: [], generators: [], substations: [], bays: [], junctions: [],
-  corridors: [], measurements: [], protection_assignments: [],
-};
+function podmienTozsamosciZabezpieczen(
+  wynik: WynikKoordynacjiSceny,
+  mapa: ReadonlyMap<string, string>,
+): WynikKoordynacjiSceny {
+  let tekst = JSON.stringify(wynik);
+  for (const [zFixtury, zZadania] of mapa) tekst = tekst.split(zFixtury).join(zZadania);
+  return JSON.parse(tekst) as WynikKoordynacjiSceny;
+}
 
-const KOORD_KRZYWA_NADRZEDNA = [
-  { current_a: 480, current_multiple: 1.0, time_s: 100 },
-  { current_a: 960, current_multiple: 2.0, time_s: 3.4 },
-  { current_a: 1920, current_multiple: 4.0, time_s: 1.05 },
-  { current_a: 3840, current_multiple: 8.0, time_s: 0.52 },
-  { current_a: 8400, current_multiple: 17.5, time_s: 0.33 },
-];
+/**
+ * Odcisk nastaw zabezpieczenia — WYŁĄCZNIE wielkości, które wchodzą do fizyki
+ * koordynacji (prądy rozruchowe, czas członu bezzwłocznego, rodzina i wariant
+ * krzywej, mnożnik czasowy). Porównanie całych obiektów `settings` jest
+ * niemożliwe: żądanie niesie postać SZABLONU ekranu, a fixtura postać
+ * KANONICZNĄ backendu (dopisane `stage_50_high`/`stage_51n` = null,
+ * `reset_time_s`, `definite_time_s`, liczby jako float). Odcisk porównuje
+ * dokładnie to, od czego zależy wynik — nie kształt serializacji.
+ */
+function odciskNastaw(settings: unknown): string {
+  const stopien = (dane: unknown): string => {
+    if (dane === null || typeof dane !== 'object') return 'brak';
+    const s = dane as {
+      enabled?: boolean;
+      pickup_current_a?: number;
+      time_s?: number | null;
+      curve_settings?: { standard?: string; variant?: string; time_multiplier?: number } | null;
+    };
+    const krzywa = s.curve_settings
+      ? `${s.curve_settings.standard}/${s.curve_settings.variant}/${s.curve_settings.time_multiplier}`
+      : 'bez-krzywej';
+    return `${s.enabled === true}|${Number(s.pickup_current_a)}|${s.time_s ?? 'null'}|${krzywa}`;
+  };
+  const s = (settings ?? {}) as Record<string, unknown>;
+  return ['stage_51', 'stage_50', 'stage_50_high', 'stage_51n', 'stage_50n']
+    .map((klucz) => `${klucz}=${stopien(s[klucz] ?? null)}`)
+    .join(';');
+}
 
-const KOORD_KRZYWA_PODRZEDNA = [
-  { current_a: 240, current_multiple: 1.0, time_s: 100 },
-  { current_a: 480, current_multiple: 2.0, time_s: 1.9 },
-  { current_a: 960, current_multiple: 4.0, time_s: 0.58 },
-  { current_a: 1920, current_multiple: 8.0, time_s: 0.29 },
-  { current_a: 3100, current_multiple: 12.9, time_s: 0.22 },
-];
+/** Prądy zwarciowe [A] lokalizacji wprost z fixtur obu biegów (ta sama droga
+ *  kA → A, co `pradyZBiegow.ts`), do porównania z prądami żądania. */
+function pradAZFixtury(
+  fixtura: { rows: readonly { element_id?: string | null; ikss_ka?: number | null }[] },
+  lokalizacja: string,
+): number | null {
+  for (const wiersz of fixtura.rows) {
+    if (wiersz.element_id === lokalizacja && typeof wiersz.ikss_ka === 'number') {
+      return wiersz.ikss_ka * 1000;
+    }
+  }
+  return null;
+}
 
-const KOORD_WYNIK = {
-  run_id: 'run-koord-1',
-  project_id: 'proj-demo',
-  sensitivity_checks: [
-    {
-      device_id: 'dev-nadrzedne', analysis_current_a: 2900, pickup_current_a: 480,
-      sensitivity_ratio: 6.04, required_ratio: 1.5, verdict: 'PASS',
-      verdict_pl: 'Czułość zapewniona', notes_pl: 'Ik″ min 2,90 kA / I_pickup 480 A',
-    },
-    {
-      device_id: 'dev-podrzedne', analysis_current_a: 1200, pickup_current_a: 240,
-      sensitivity_ratio: 5.0, required_ratio: 1.5, verdict: 'PASS',
-      verdict_pl: 'Czułość zapewniona', notes_pl: 'Ik″ min 1,20 kA / I_pickup 240 A',
-    },
-  ],
-  selectivity_checks: [
-    {
-      upstream_device_id: 'dev-nadrzedne', downstream_device_id: 'dev-podrzedne',
-      analysis_current_a: 3100, t_upstream_s: 0.33, t_downstream_s: 0.22,
-      margin_s: 0.11, required_margin_s: 0.3, verdict: 'FAIL',
-      verdict_pl: 'Brak selektywności',
-      notes_pl: 'Margines CTI 0,11 s poniżej wymaganych 0,30 s przy Ik″ 3,10 kA',
-    },
-  ],
-  overload_checks: [
-    {
-      device_id: 'dev-nadrzedne', operating_current_a: 154, pickup_current_a: 480,
-      margin_ratio: 3.12, verdict: 'PASS', verdict_pl: 'Brak zadziałania',
-      notes_pl: 'I_robocze 154 A / I_pickup 480 A',
-    },
-    {
-      device_id: 'dev-podrzedne', operating_current_a: 154, pickup_current_a: 240,
-      margin_ratio: 1.56, verdict: 'PASS', verdict_pl: 'Brak zadziałania',
-      notes_pl: 'I_robocze 154 A / I_pickup 240 A',
-    },
-  ],
-  tcc_curves: [
-    {
-      device_id: 'dev-nadrzedne', device_name: 'Zabezpieczenie nadrzędne GPZ (50/51)',
-      curve_type: 'IEC_SI', pickup_current_a: 480, time_multiplier: 0.3,
-      color: '#2563eb', points: KOORD_KRZYWA_NADRZEDNA,
-    },
-    {
-      device_id: 'dev-podrzedne', device_name: 'Zabezpieczenie pola S02 (50/51)',
-      curve_type: 'IEC_SI', pickup_current_a: 240, time_multiplier: 0.18,
-      color: '#dc2626', points: KOORD_KRZYWA_PODRZEDNA,
-    },
-  ],
-  fault_markers: [
-    {
-      id: 'fm-3f', label_pl: 'Ik″ 3-fazowe (Stacja S02)', current_a: 3100,
-      fault_type: '3F', location: 'stacja_s02/bus_sn',
-    },
-    {
-      id: 'fm-1f', label_pl: 'Ik″ 1-fazowe (Stacja S02)', current_a: 1200,
-      fault_type: '1F', location: 'stacja_s02/bus_sn',
-    },
-  ],
-  overall_verdict: 'FAIL',
-  overall_verdict_pl: 'Brak selektywności w jednej parze',
-  created_at: '2026-07-28T08:10:00Z',
-  // `trace_steps` NIE JEST opcjonalne w kontrakcie (`CoordinationResult`) —
-  // backend zawsze je emituje (`protection_coordination.py`: `result.get(..., [])`).
-  // Scena bez tego pola wywracala CALY ekran bialym ekranem; od V12K-262 klient
-  // API nazywa taki rozjazd, a atrapa trzyma pelny ksztalt.
-  trace_steps: [
-    {
-      step: 'wejscia',
-      description_pl: 'Prądy zwarciowe z biegów c = 1,10 i c = 0,95; prąd roboczy z rozpływu.',
-      inputs: { ik_max_a: 8400, ik_min_a: 6900, i_rob_a: 154.0 },
-      outputs: { pary_do_sprawdzenia: 1 },
-    },
-    {
-      step: 'selektywnosc',
-      description_pl: 'Różnica czasów zadziałania pary przy prądzie zwarciowym odbioru.',
-      inputs: { t_nadrzedne_s: 0.33, t_podrzedne_s: 0.22 },
-      outputs: { delta_t_s: 0.11, wymagane_s: 0.3 },
-    },
-  ],
-  summary: {
-    total_devices: 2,
-    total_checks: 5,
-    sensitivity: { pass: 2, marginal: 0, fail: 0, error: 0 },
-    selectivity: { pass: 0, marginal: 0, fail: 1, error: 0 },
-    overload: { pass: 2, marginal: 0, fail: 0, error: 0 },
-    overall_verdict: 'FAIL',
-    overall_verdict_pl: 'Brak selektywności w jednej parze',
-  },
-};
+/**
+ * Wynik koordynacji dla ŻĄDANIA ekranu — albo nazwana odmowa 409.
+ *
+ * PARA PREDYKATÓW (KLASA, NIE INSTANCJA — wzorzec sceny `macierz`): fixtura
+ * opisuje DOKŁADNIE jedno żądanie (dwa zabezpieczenia z szablonu 50/51 na
+ * szynach SN obu stacji, prądy zwarciowe z biegów MAX i MIN). Gdy ekran wyśle
+ * co innego, atrapa ODMAWIA zamiast podać wynik policzony dla innych danych.
+ * Tolerancja porównania prądów 1e-9 względna — DOKŁADNIE ta sama, którą stosuje
+ * backend (`TOLERANCJA_WZGLEDNA_PRADU`, `application/autorytet_biegu_
+ * zwarciowego.py`); to margines podwójnego przeliczenia jednostek (A → kA → A),
+ * nie tolerancja inżynierska.
+ *
+ * PRĄDY ROBOCZE NIE SĄ CZĘŚCIĄ PARY — NAZWANY BRAK PRODUKTU. Prąd zwarciowy
+ * jest kluczowany SZYNĄ, prąd roboczy GAŁĘZIĄ rozpływu, a kontrakt koordynacji
+ * ma jedno pole `location_id` na obie wielkości; relacji „zabezpieczenie →
+ * chroniona gałąź" model jeszcze nie niesie (nazwane w docstringu końcówki
+ * `run_coordination_analysis` jako decyzja A-4). Ekran uczciwie melduje ten brak
+ * panelem „brak prądu roboczego", a analizator zwraca werdykt ERROR — scena
+ * pokazuje obie strony tego braku zamiast go zakrywać wierszami gałęziowymi o
+ * identyfikatorach szyn (tak robiła atrapa sprzed tej karty).
+ */
+function wynikKoordynacjiDlaZadania(cialo: BodyInit | null | undefined): WynikKoordynacjiSceny | Response {
+  const odmowa = (powod: string): Response =>
+    new Response(JSON.stringify({ detail: `atrapa koordynacji: ${powod} — uruchom scripts/eksport_fixtur_harnessu.py` }), {
+      status: 409,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+  const zadanie = JSON.parse(String(cialo ?? '{}')) as {
+    devices?: { id?: string; location_element_id?: string; settings?: unknown }[];
+    fault_currents?: { location_id?: string; ik_max_3f_a?: number; ik_min_3f_a?: number }[];
+  };
+  const zZadania = zadanie.devices ?? [];
+  const zFixtury = koordynacjaScenyWynik.devices;
+  if (zZadania.length !== zFixtury.length) {
+    return odmowa(`fixtura opisuje ${zFixtury.length} zabezpieczeń, żądanie niesie ${zZadania.length}`);
+  }
+
+  const mapa = new Map<string, string>();
+  for (const urzadzenieFixtury of zFixtury) {
+    const dopasowane = zZadania.find(
+      (u) => u.location_element_id === urzadzenieFixtury.location_element_id,
+    );
+    if (dopasowane?.id === undefined) {
+      return odmowa(`żądanie nie ma zabezpieczenia w lokalizacji ${urzadzenieFixtury.location_element_id}`);
+    }
+    if (odciskNastaw(dopasowane.settings) !== odciskNastaw(urzadzenieFixtury.settings)) {
+      return odmowa(
+        `nastawy zabezpieczenia w lokalizacji ${urzadzenieFixtury.location_element_id} różnią się od nastaw fixtury `
+        + `(żądanie: ${odciskNastaw(dopasowane.settings)}; fixtura: ${odciskNastaw(urzadzenieFixtury.settings)})`,
+      );
+    }
+    mapa.set(urzadzenieFixtury.id, dopasowane.id);
+  }
+
+  for (const pozycja of zadanie.fault_currents ?? []) {
+    const lokalizacja = pozycja.location_id ?? '';
+    for (const [klucz, fixtura] of [
+      ['ik_max_3f_a', koordynacjaScenyZwarciaMax],
+      ['ik_min_3f_a', koordynacjaScenyZwarciaMin],
+    ] as const) {
+      const podany = pozycja[klucz];
+      const zBiegu = pradAZFixtury(fixtura, lokalizacja);
+      if (typeof podany !== 'number') continue;
+      if (zBiegu === null) return odmowa(`bieg nie ma prądu zwarciowego dla lokalizacji ${lokalizacja}`);
+      if (Math.abs(podany - zBiegu) > 1e-9 * Math.max(Math.abs(zBiegu), 1)) {
+        return odmowa(`${lokalizacja}.${klucz}: żądanie ${podany} A, bieg ${zBiegu} A`);
+      }
+    }
+  }
+
+  return podmienTozsamosciZabezpieczen(koordynacjaScenyWynik, mapa);
+}
 
 const DOBOR_FUNKCJI_WIAZANIA = {
   generator_ref: 'der-pv-1',
@@ -811,9 +580,11 @@ const RUN_KONTRAKT_SCENY: Record<string, string> = {
   // od tej chwili WOLA kontrakt przebiegu. Bez wpisu zapytanie szlo do realnego
   // backendu i wracalo 404 — bramka „zero bledow konsoli" specow zrzutowych
   // slusznie to lapala. Wartosc czytana z TEGO SAMEGO bytu, ktory scena zasiewa
-  // (`ZBIEZNOSC_HEADER.id`), zeby nie powstal drugi literal tego samego biegu;
-  // przeniesienie sceny na fixture realnego biegu nalezy do karty harnessu.
-  'wyniki-zbieznosc': ZBIEZNOSC_HEADER.id,
+  // (naglowek REALNEGO biegu backendu — HARNESS-RESZTA-2), zeby nie powstal
+  // drugi identyfikator tego samego biegu.
+  'wyniki-zbieznosc': zbieznoscScenyNaglowek.id,
+  // Scena E-29 czyta wyniki biegu 1F REALNEGO backendu (HARNESS-RESZTA-2).
+  'wyniki-skladowe': skladoweScenyWynik.run_id,
   arcflash: arcflashScenyWynik.context.run_id,
   migotanie: migotanieScenyWynik.context.run_id,
 };
@@ -906,119 +677,73 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   }
 
   if (creator === 'wyniki-skladowe') {
-    if (url.endsWith('/results/short-circuit')) return jsonOK(SKLADOWE_WYNIK);
-    if (url.endsWith('/results/trace')) return jsonOK(SKLADOWE_SLAD);
-    if (url.endsWith('/snapshot')) return jsonOK(SKLADOWE_SNAPSHOT);
+    if (url.endsWith('/results/short-circuit')) return jsonOK(skladoweScenyWynik);
+    if (url.endsWith('/results/trace')) return jsonOK(skladoweScenySlad);
+    if (url.endsWith('/snapshot')) return jsonOK(skladoweScenyMigawka);
   } else if (creator === 'wyniki-zbieznosc') {
-    if (url.includes('/power-flow-runs/') && url.endsWith('/results')) return jsonOK(ZBIEZNOSC_WYNIK);
-    if (url.includes('/power-flow-runs/') && url.endsWith('/trace')) return jsonOK(ZBIEZNOSC_SLAD);
-    if (url.includes('/power-flow-runs/')) return jsonOK(ZBIEZNOSC_HEADER);
+    if (url.includes('/power-flow-runs/') && url.endsWith('/results')) return jsonOK(zbieznoscScenyWynik);
+    if (url.includes('/power-flow-runs/') && url.endsWith('/trace')) return jsonOK(zbieznoscScenySlad);
+    if (url.includes('/power-flow-runs/')) return jsonOK(zbieznoscScenyNaglowek);
   } else if (creator === 'wyniki-stan-fazowy') {
     if (url.includes('/results/phase-state')) return jsonOK(stanFazowyScenyWyniki);
   } else if (creator === 'koordynacja') {
-    // Dwa OSOBNE biegi zwarciowe (kanoniczny bieg liczy jeden scenariusz `c`):
-    // maksymalny dla selektywnosci, minimalny dla czulosci.
+    // HARNESS-RESZTA-2 (2026-09-17): CALA scena E-28 karmiona REALNYM biegiem
+    // backendu (`eksport_fixtur_harnessu.py`, sekcja „scena koordynacja"):
+    // magistrala SN z dwiema stacjami zbudowana TYMI SAMYMI operacjami
+    // domenowymi, ktorymi buduje ja projektant, dwa biegi `short_circuit_sn`
+    // (wariant MAX i MIN), bieg `PF`, dostepnosc pakietu nastaw, nastawy
+    // Hoppela, dopasowanie aparatu i wynik analizatora koordynacji.
+    // Poprzednio KAZDA z tych liczb byla wpisana recznie na siec, ktora nie
+    // istnieje (refy `gpz/sekcja_a/bus_sn`, `stacja_s02/bus_sn`).
     if (url.includes('/results/short-circuit')) {
-      const min = url.includes('run-sc-koord-min');
-      return jsonOK({
-        run_id: min ? 'run-sc-koord-min' : 'run-sc-koord-max',
-        rows: min ? KOORD_WIERSZE_SC_MIN : KOORD_WIERSZE_SC_MAX,
-      });
+      const min = url.includes(koordynacjaScenyZwarciaMin.run_id);
+      return jsonOK(min ? koordynacjaScenyZwarciaMin : koordynacjaScenyZwarciaMax);
     }
-    if (url.includes('/results/branches')) return jsonOK(KOORD_WYNIKI_GALEZI);
-    if (url.includes('/enm')) return jsonOK(KOORD_MIGAWKA_MODELU);
-    // Karta W3-C1: metodyka nastaw jest Hoppel/IRiESD. Sekcja próbuje kandydatów
-    // SC_3F DONE od NAJNOWSZEGO — `run-sc-koord-min` (c_min, 08:02) jest tu
-    // celowo NOWSZY niż `run-sc-koord-max` (c_max, 08:00), tak jak w realnej
-    // sieci mogą współistnieć oba warianty; backend (nie UI) osądza c_max, więc
-    // scena pokazuje dokładnie tę odmowę i przejście do kolejnego kandydata.
-    if (url.includes('/analysis-runs/run-sc-koord-min/pakiet-dowodowy-nastaw/dostepnosc')) {
-      return jsonOK({
-        run_id: 'run-sc-koord-min',
-        dostepny: false,
-        powod_pl: 'Ten przebieg jest wariantem MINIMALNYM (współczynnik napięciowy c < 1,0) — '
-          + 'pakiet nastaw wymaga kotwicy z gałęzi MAKSYMALNEJ (c_max ≥ 1,0).',
-        linie: [],
-      });
+    if (url.includes('/results/branches')) return jsonOK(koordynacjaScenyGalezie);
+    if (url.includes('/enm')) return jsonOK(koordynacjaScenyMigawka);
+    // Sekcja nastaw probuje kandydatow SC_3F DONE od NAJNOWSZEGO —
+    // bieg MINIMALNY jest w zasiewie sceny celowo NOWSZY niz maksymalny, tak jak
+    // w realnej sieci moga wspolistniec oba warianty; backend (nie UI) osadza
+    // c_max, wiec scena pokazuje dokladnie te odmowe (tresc `powod_pl` z
+    // REALNEJ odpowiedzi `dostepnosc_pakietu_nastaw`) i przejscie do kolejnego
+    // kandydata.
+    if (url.includes(`/analysis-runs/${koordynacjaScenyZwarciaMin.run_id}/pakiet-dowodowy-nastaw/dostepnosc`)) {
+      return jsonOK(koordynacjaScenyPakietDostepnoscMin);
     }
-    if (url.includes('/analysis-runs/run-sc-koord-max/pakiet-dowodowy-nastaw/dostepnosc')) {
-      return jsonOK({
-        run_id: 'run-sc-koord-max',
-        dostepny: true,
-        powod_pl: null,
-        linie: [
-          { line_id: 'ln-koord-1', nazwa: 'Linia GPZ – Stacja przyłączeniowa', nastepne_szyny_kandydujace: ['bus_1'] },
-        ],
-      });
+    if (url.includes(`/analysis-runs/${koordynacjaScenyZwarciaMax.run_id}/pakiet-dowodowy-nastaw/dostepnosc`)) {
+      return jsonOK(koordynacjaScenyPakietDostepnoscMax);
     }
-    if (url.includes('/analysis-runs/run-sc-koord-max/nastawy/dopasowanie')) {
-      return jsonOK({
-        status: 'SUCCEEDED',
-        compatible: true,
-        violations: [],
-        mapped_settings: { I51: 132.5, T51: 0.6, I50: 2480.0, CURVE: 'DT' },
-        assumptions: ['LOGICAL_MAPPING_ONLY', 'NO_VENDOR_PARAM_IDS'],
-        vendor_mapping: {
-          vendor: 'ABB',
-          vendor_settings: { 'ABB.OC.I51_PICKUP_A': 132.5, 'ABB.OC.T51_DELAY_S': 0.6, 'ABB.OC.I50_HIGHSET_A': 2480.0 },
-          vendor_violations: [],
-          vendor_assumptions: ['VENDOR_KEYS_SYMBOLIC_V0'],
-        },
-        wymaganie: {
-          curve: 'DT', i_pickup_51_a: 132.5, tms_51: null, t_51_s: 0.6, i_inst_50_a: 2480.0,
-          i_pickup_51n_a: null, tms_51n: null, i_inst_50n_a: null,
-        },
-        device_id: 'ABB_REF601',
-        capability: {},
-        proweniencja_nastaw: {
-          kotwica_run_id: 'run-sc-koord-max', c_max: 1.1, c_min: 1.0, line_id: 'ln-koord-1',
-          next_bus_id: 'bus_1', project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Wariant zimowy',
-          line_name: 'Linia GPZ – Stacja przyłączeniowa', run_timestamp: '2026-07-28T08:00:00+00:00',
-          solver_version: 'IEC_60909;load-flow-newton-raphson-v1', engine_input: {},
-        },
-      });
+    if (url.includes(`/analysis-runs/${koordynacjaScenyZwarciaMax.run_id}/nastawy/dopasowanie`)) {
+      return jsonOK(koordynacjaScenyNastawyDopasowanie);
     }
-    if (url.includes('/analysis-runs/run-sc-koord-max/nastawy')) {
-      return jsonOK({
-        wynik: {
-          line_id: 'ln-koord-1', line_name: 'Linia GPZ – Stacja przyłączeniowa',
-          delayed: {
-            i_setting_a: 132.5, t_setting_s: 0.6, i_load_max_a: 110.4, k_b: 1.2,
-            sensitivity_ratio: 12.4, is_valid: true, validation_notes: [], trace: [],
-          },
-          instantaneous: {
-            i_setting_a: 2480.0, i_min_selectivity_a: 2200.0, i_max_thermal_a: 3500.0,
-            i_max_sensitivity_a: 3100.0, range_valid: true, k_b: 1.2, k_bth: 1.1,
-            is_valid: true, validation_notes: [], trace: [],
-          },
-          thermal: {
-            i_th_dop_a: 9800.0, j_thn: 94.0, cross_section_mm2: 120.0, t_fault_s: 0.37,
-            ik_max_a: 6200.0, is_adequate: true, margin_percent: 36.7, trace: [],
-          },
-          spz: {
-            spz_allowed: true, total_fault_time_s: 0.6, i_th_required_a: 6200.0,
-            i_th_available_a: 12000.0, blocking_recommended: false, trace: [],
-          },
-          overall_valid: true, summary_notes: [],
-        },
-        wejscie: {
-          kotwica_run_id: 'run-sc-koord-max', c_max: 1.1, c_min: 1.0, line_id: 'ln-koord-1',
-          next_bus_id: 'bus_1', project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Wariant zimowy',
-          line_name: 'Linia GPZ – Stacja przyłączeniowa', run_timestamp: '2026-07-28T08:00:00+00:00',
-          solver_version: 'IEC_60909;load-flow-newton-raphson-v1', engine_input: {},
-        },
-        dostepnosc_pakietu: true,
-      });
+    if (url.includes(`/analysis-runs/${koordynacjaScenyZwarciaMax.run_id}/nastawy`)) {
+      return jsonOK(koordynacjaScenyNastawy);
     }
     if (url.includes('/api/protection-coordination/') && url.endsWith('/run')) {
-      return jsonOK({ run_id: 'run-koord-1', ...KOORD_WYNIK.summary });
+      const wynik = wynikKoordynacjiDlaZadania(init?.body);
+      if (wynik instanceof Response) return wynik;
+      wynikKoordynacjiSceny = wynik;
+      return jsonOK({
+        run_id: wynik.run_id,
+        project_id: wynik.project_id,
+        overall_verdict: wynik.overall_verdict,
+        overall_verdict_pl: wynik.summary.overall_verdict_pl,
+        total_devices: wynik.summary.total_devices,
+        total_checks: wynik.summary.total_checks,
+        sensitivity_pass: wynik.summary.sensitivity.pass,
+        sensitivity_fail: wynik.summary.sensitivity.fail,
+        selectivity_pass: wynik.summary.selectivity.pass,
+        selectivity_fail: wynik.summary.selectivity.fail,
+        overload_pass: wynik.summary.overload.pass,
+        overload_fail: wynik.summary.overload.fail,
+      });
     }
     if (url.includes('/api/protection-coordination/') && url.endsWith('/tcc')) {
-      return jsonOK({ curves: KOORD_WYNIK.tcc_curves, fault_markers: KOORD_WYNIK.fault_markers });
+      const wynik = wynikKoordynacjiSceny ?? koordynacjaScenyWynik;
+      return jsonOK({ curves: wynik.tcc_curves, fault_markers: wynik.fault_markers });
     }
     if (url.includes('/api/protection-coordination/')) {
-      // Wynik pelny: pary, marginesy i krzywe z NAZWAMI urzadzen dodanych klikiem.
-      return jsonOK(KOORD_WYNIK);
+      return jsonOK(wynikKoordynacjiSceny ?? koordynacjaScenyWynik);
     }
   } else if (creator === 'odbior') {
     // Podglad pradu odbioru liczy SOLVER (I = S/(√3·U)). Bez tej atrapy scena pokazywala
@@ -2690,7 +2415,8 @@ if (creator === 'arcflash') {
   useExecutionRunsStore.setState({
     runs: [
       {
-        id: 'run-1f',
+        // HARNESS-RESZTA-2: identyfikator z fixtury REALNEGO biegu 1F backendu.
+        id: skladoweScenyWynik.run_id,
         analysis_type: 'SC_1F',
         status: 'DONE',
         finished_at: '2026-07-21T10:00:00Z',
@@ -2700,17 +2426,18 @@ if (creator === 'arcflash') {
   } as never);
 } else if (creator === 'wyniki-zbieznosc') {
   // Scena E-30 (karta Z-1): zakończony rozpływ (LOAD_FLOW) + snapshot z
-  // transformatorem OLTC (założenia zaczepów modelu).
+  // transformatorem OLTC (założenia zaczepów modelu) — HARNESS-RESZTA-2:
+  // migawka i przebieg pochodzą z TEGO SAMEGO realnego biegu backendu.
   useShellStore.setState({ advancementMode: 'expert' });
   useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
   useSnapshotStore.setState({
-    snapshot: ZBIEZNOSC_SNAPSHOT,
-    rewizjaBiezacegoModelu: ZBIEZNOSC_SNAPSHOT.header.revision,
+    snapshot: zbieznoscScenyMigawka,
+    rewizjaBiezacegoModelu: zbieznoscScenyMigawka.header.revision,
   } as never);
   useExecutionRunsStore.setState({
     runs: [
       {
-        id: 'run-lf-1',
+        id: zbieznoscScenyNaglowek.id,
         analysis_type: 'LOAD_FLOW',
         status: 'DONE',
         finished_at: '2026-07-20T10:00:00Z',
@@ -2729,23 +2456,24 @@ if (creator === 'arcflash') {
   useExecutionRunsStore.setState({
     runs: [
       {
-        id: 'run-sc-koord-max',
+        // HARNESS-RESZTA-2: identyfikatory z fixtur REALNYCH biegow backendu.
+        id: koordynacjaScenyZwarciaMax.run_id,
         analysis_type: 'SC_3F',
         status: 'DONE',
         finished_at: '2026-07-28T08:00:00Z',
         started_at: '2026-07-28T07:59:00Z',
       } as unknown as ExecutionRun,
       {
-        // Bieg MINIMALNY (c = 0,95) — bez niego czulosc jest niesprawdzalna, a
+        // Bieg MINIMALNY (c_min) — bez niego czulosc jest niesprawdzalna, a
         // `zbudujPradyKoordynacji` w ogole nie tworzy pozycji pradowej.
-        id: 'run-sc-koord-min',
+        id: koordynacjaScenyZwarciaMin.run_id,
         analysis_type: 'SC_3F',
         status: 'DONE',
         finished_at: '2026-07-28T08:02:00Z',
         started_at: '2026-07-28T08:01:00Z',
       } as unknown as ExecutionRun,
       {
-        id: 'run-lf-koord',
+        id: koordynacjaScenyGalezie.run_id,
         analysis_type: 'LOAD_FLOW',
         status: 'DONE',
         finished_at: '2026-07-28T08:05:00Z',

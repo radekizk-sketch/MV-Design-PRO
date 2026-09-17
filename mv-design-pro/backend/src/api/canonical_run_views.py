@@ -537,6 +537,27 @@ def _thermal_time_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
     return {"wartosc": 1.0, "pochodzenie": "domyslna_assemblera"}
 
 
+def _scenariusz_biegu_zwarcia(run: CanonicalRun) -> str | None:
+    """`MAX`/`MIN` ZAPISANE na wyniku biegu — z artefaktu, nie z domysłu.
+
+    TO SAMO ŹRÓDŁO, które czyta most autorytetu koordynacji
+    (`application/autorytet_biegu_zwarciowego.py::_scenariusz_biegu`:
+    `run.raw_result["scenario"]`). `None` znaczy „bieg nie zapisał scenariusza"
+    (starszy artefakt) — uczciwy brak, nigdy domyślne „MAX".
+
+    DLACZEGO POLE ISTNIEJE (karta HARNESS-RESZTA-2, 2026-09-17). Klient nie miał
+    ŻADNEGO sposobu odróżnić wyniku wariantu maksymalnego od minimalnego i
+    zgadywał go ze współczynnika `c` wiersza (`pradyZBiegow.ts`:
+    `c >= 1 → MAX`). Na sieci ŚREDNIEGO napięcia ten domysł jest zawsze
+    fałszywy: IEC 60909-0 Tabela 1 daje c_min = 1,00 dla napięć > 1 kV (0,95
+    tylko dla nN), więc wiersze biegu MINIMALNEGO na szynie 15 kV niosą
+    c = 1,00 i trafiały do zbioru MAKSYMALNEGO. Skutek zmierzony na realnym
+    biegu: ekran koordynacji meldował „Brak biegu zwarciowego minimalnego" i
+    NIE LICZYŁ czułości na ŻADNEJ sieci SN, mimo dwóch policzonych biegów."""
+    scenariusz = (run.raw_result or {}).get("scenario")
+    return str(scenariusz).upper() if isinstance(scenariusz, str) and scenariusz else None
+
+
 def build_konfiguracja_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
     """Konfiguracja ZAPISANA na biegu zwarciowym (karta UI2 p.7) —
     addytywna projekcja `run.options` (ZAPISANE opcje, nie AKTYWNY przypadek
@@ -546,6 +567,7 @@ def build_konfiguracja_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
         "c_factor": _c_factor_biegu_zwarcia(run),
         "thermal_time_seconds": _thermal_time_biegu_zwarcia(run),
         "metoda": "IEC 60909",
+        "scenariusz": _scenariusz_biegu_zwarcia(run),
     }
 
 

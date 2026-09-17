@@ -12,7 +12,15 @@ strefy) — więcej niż jeden opcjonalny `punkt`, którym operuje brama sióstr
 
 WZORZEC IDENTYCZNY: dostępność i budowa czytają JEDNO źródło prawdy (funkcje modułu
 `batch_run.py`), więc „dostępny" nie może rozjechać się z „da się pobrać" (reguła
-predykatów parami).
+predykatów parami). To zdanie było DEKLARACJĄ BEZ TESTU do karty HARNESS-RESZTA-2
+(2026-09-17): dostępność czytała tylko topologię i komplet danych katalogowych,
+a budowa wymagała DODATKOWO prądu zwarcia 3F na trzech szynach — na sześciu
+sieciach repozytorium dawało to 12 reklamowanych par i 0 działających (pomiar
+w docstringu `batch_run.szyna_ma_prad_zwarciowy`). Oba końce czytają teraz ten
+sam predykat, a parytet pilnuje `tests/application/test_pakiet_nastaw.py::
+test_kazda_reklamowana_para_dostepnosci_daje_nastawy_na_kazdej_sieci_rejestru`
+(iloczyn cech: sieć rejestru × reklamowana para odcinek/szyna × obie strony
+predykatu).
 """
 
 from __future__ import annotations
@@ -33,6 +41,7 @@ from application.protection_settings.batch_run import (
     kandydaci_nastepnej_szyny,
     linie_kandydujace,
     oblicz_nastawy,
+    szyna_ma_prad_zwarciowy,
 )
 from enm.canonical_analysis import CanonicalRun
 
@@ -53,6 +62,14 @@ _POWOD_BRAK_LINII = (
     "Migawka tego przebiegu nie zawiera żadnej linii ani kabla z kompletem danych "
     "katalogowych (przekrój, materiał przewodu, prąd znamionowy) — nastaw nie da "
     "się dobrać bez tych danych."
+)
+_POWOD_BRAK_PARY_Z_PRADEM = (
+    "Żaden odcinek tej migawki nie ma kompletu trzech szyn z policzonym prądem "
+    "zwarcia trójfazowego (początek i koniec chronionego odcinka oraz kolejna "
+    "szyna strefy selektywności). Nastawy I>/I>> liczą się wyłącznie z prądów "
+    "zwarciowych w tych trzech punktach — szyny pomocnicze magistrali nie są "
+    "raportowalnymi punktami zwarcia. Wstaw stację na odcinku (jej szyna SN jest "
+    "punktem raportowalnym) albo wskaż odcinek między dwiema szynami stacyjnymi."
 )
 
 
@@ -88,18 +105,37 @@ def dostepnosc_pakietu_nastaw(run: CanonicalRun) -> dict[str, Any]:
     if not linie:
         return _niedostepny(run, _POWOD_BRAK_LINII)
 
+    # PREDYKAT PARAMI (karta HARNESS-RESZTA-2, 2026-09-17). Do tej karty ta
+    # funkcja filtrowała kandydatów WYŁĄCZNIE topologią i kompletem danych
+    # katalogowych, a `zbuduj_wejscie_nastaw` odmawiała potem każdej parze, w
+    # której którakolwiek z TRZECH szyn (początek i koniec chronionego odcinka,
+    # kolejna szyna) nie była raportowalnym punktem zwarcia kotwicy. Pomiar na
+    # HEAD: 12 reklamowanych par na 6 sieciach repozytorium, 0 działających —
+    # pełny rozkład w docstringu `batch_run.szyna_ma_prad_zwarciowy`. Teraz oba
+    # końce czytają TEN SAM predykat.
+    wynik = run.raw_result
+    pozycje = [
+        {
+            "line_id": linia.ref_id,
+            "nazwa": linia.nazwa,
+            "nastepne_szyny_kandydujace": [
+                szyna
+                for szyna in kandydaci_nastepnej_szyny(run.snapshot, linia.ref_id)
+                if szyna_ma_prad_zwarciowy(wynik, szyna)
+            ],
+        }
+        for linia in linie
+        if szyna_ma_prad_zwarciowy(wynik, linia.from_bus_ref)
+        and szyna_ma_prad_zwarciowy(wynik, linia.to_bus_ref)
+    ]
+    if not any(pozycja["nastepne_szyny_kandydujace"] for pozycja in pozycje):
+        return _niedostepny(run, _POWOD_BRAK_PARY_Z_PRADEM)
+
     return {
         "run_id": str(run.id),
         "dostepny": True,
         "powod_pl": None,
-        "linie": [
-            {
-                "line_id": linia.ref_id,
-                "nazwa": linia.nazwa,
-                "nastepne_szyny_kandydujace": kandydaci_nastepnej_szyny(run.snapshot, linia.ref_id),
-            }
-            for linia in linie
-        ],
+        "linie": pozycje,
     }
 
 

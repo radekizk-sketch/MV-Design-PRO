@@ -31,26 +31,38 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
-from uuid import NAMESPACE_URL, uuid5
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR / "src"))
 sys.path.insert(0, str(BACKEND_DIR))
 
+from api.analysis_runs import _catalog_completed_snapshot  # noqa: E402
 from api.canonical_run_views import (  # noqa: E402
     build_automation_trace_results_response,
+    build_branch_results_response,
     build_dynamic_stability_results_response,
+    build_extended_trace_response,
     build_phase_state_results_response,
+    build_power_flow_run_header,
     build_short_circuit_band_response,
     build_short_circuit_results_response,
     build_short_circuit_rozplyw_response,
     get_power_flow_result,
+    get_power_flow_trace,
 )
 from api.proof_pack import SCContributionsRequest, sc3f_contributions  # noqa: E402
+from api.protection_coordination import (  # noqa: E402
+    RunCoordinationRequest,
+    get_coordination_result,
+    run_coordination_analysis,
+)
 from application.analyses.arc_flash_view import build_arc_flash_view  # noqa: E402
 from application.analyses.dobor_kompensacji import (  # noqa: E402
     build_compensation_sizing_view,
@@ -69,16 +81,31 @@ from application.analyses.wytrzymalosc_cieplna_przewodow import (  # noqa: E402
     build_wytrzymalosc_cieplna_view,
     zbuduj_dowod_cieplny,
 )
+from application.analysis_run.read_model import canonicalize_json  # noqa: E402
+from application.autorytet_biegu_zwarciowego import (  # noqa: E402
+    wejscie_koordynacji_z_biegow,
+)
 from application.ncrfg_compliance import zgodnosc_ncrfg_przypadku  # noqa: E402
+from application.proof_engine.pakiet_nastaw import (  # noqa: E402
+    dostepnosc_pakietu_nastaw,
+    zbuduj_odpowiedz_dopasowania,
+    zbuduj_odpowiedz_nastaw_json,
+)
 from enm.canonical_analysis import (  # noqa: E402
     build_short_circuit_results,
     create_run,
     execute_run,
     reset_canonical_runs,
 )
+from enm.domain_operations import execute_domain_operation  # noqa: E402
 from enm.hash import compute_enm_hash  # noqa: E402
 from enm.katalog_projektu import katalog_biezacy  # noqa: E402
-from enm.models import EnergyNetworkModel, ENMHeader, Generator  # noqa: E402
+from enm.models import (  # noqa: E402
+    EnergyNetworkModel,
+    ENMHeader,
+    Generator,
+    TapChanger,
+)
 from enm.store import reset_enm_store, set_enm  # noqa: E402
 from solver_input.v126_contracts import V126AnalysisType  # noqa: E402
 
@@ -460,17 +487,28 @@ def _fiksuj_niedeterminizm_sceny_zwarcia(enm: EnergyNetworkModel) -> None:
     wiąże REFERENCJĘ DO OBIEKTU FUNKCJI w chwili DEFINICJI KLASY (import
     modułu), nie odczytuje nazwy `uuid4` z przestrzeni modułu przy KAŻDYM
     wywołaniu — podmiana nazwy PO imporcie nie ma żadnego efektu. Nadpisanie
-    PO konstrukcji jest więc jedynym miejscem skutecznym."""
-    for element in (
-        list(enm.buses)
-        + list(enm.sources)
-        + list(enm.transformers)
-        + list(enm.branches)
-        + list(enm.loads)
-        + list(enm.generators)
-        + list(enm.substations)
-    ):
-        element.id = uuid5(NAMESPACE_URL, f"mv-design-pro:harness:element-id:{element.ref_id}")
+    PO konstrukcji jest więc jedynym miejscem skutecznym.
+
+    ZAKRES: KAŻDA kolekcja modelu, nie wypisana lista siedmiu (karta
+    HARNESS-RESZTA-2 — instancja zamiast klasy: pierwotna wersja wymieniała
+    `buses`/`sources`/`transformers`/`branches`/`loads`/`generators`/
+    `substations`, więc `corridors`, `bays`, `junctions`, `measurements`,
+    `protection_assignments`, `branch_points`, `line_runs`,
+    `connection_nodes` i `shunt_capacitors` zostawały z losowym `id` — sieci
+    scen sprzed tej karty po prostu ich nie miały. Scena koordynacji, budowana
+    operacjami domenowymi, ma korytarz magistrali i jej `corridors[0].id`
+    różnił się między dwoma wywołaniami fixtury: zmierzone bezpośrednio).
+    Iteracja idzie po polach modelu, więc nowa kolekcja ENM jest objęta
+    automatycznie — nie trzeba pamiętać o dopisaniu jej tutaj."""
+    for nazwa_pola in type(enm).model_fields:
+        wartosc = getattr(enm, nazwa_pola, None)
+        if not isinstance(wartosc, list):
+            continue
+        for element in wartosc:
+            ref_id = getattr(element, "ref_id", None)
+            if not isinstance(ref_id, str) or not hasattr(element, "id"):
+                continue
+            element.id = uuid5(NAMESPACE_URL, f"mv-design-pro:harness:element-id:{ref_id}")
     enm.header.created_at = _CZAS_NAGLOWKA_SCENY_ZWARCIA
     enm.header.updated_at = _CZAS_NAGLOWKA_SCENY_ZWARCIA
 
@@ -504,21 +542,18 @@ def _bieg_sceny_zwarcia() -> tuple[Any, EnergyNetworkModel, str]:
     try:
         enm = build_golden_enm()
         _fiksuj_niedeterminizm_sceny_zwarcia(enm)
-        set_enm(CASE_ID_HARNESSU, enm)
-        # `datetime` zamrożony TU (nie tylko `uuid4`) — karta HARNESS-RESZTA
-        # (kontynuacja) dopisała konsumentów tego biegu (`cieplna_scena_wynik`/
-        # `cieplna_scena_dowod`/`arcflash_scena_wynik`), których widoki
-        # osadzają `context.run_timestamp = run.created_at` (`grid_strength.py`/
-        # `arc_flash_view.py` — TA SAMA klasa co `run.id`: `datetime.now(UTC)`
-        # wywoływane przy KAŻDYM `create_run`, więc bez zamrożenia dwa
-        # wywołania tej samej fixtury dają dwa różne znaczniki czasu — zmierzone
-        # bezpośrednio). Sceny „zwarcia"/„zwarcia-rozplyw" (już domknięte) NIE
-        # osadzają `created_at` w swoich widokach, więc ich JSON w repo jest
-        # BEZ ZMIAN mimo tej zmiany zachowania (zweryfikowane parytetem).
-        with (
-            patch("enm.canonical_analysis.uuid4", return_value=_UUID_KOTWICY_SCENY_ZWARCIA),
-            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
-        ):
+        with _zamrozona_tozsamosc_biegu(_UUID_KOTWICY_SCENY_ZWARCIA):
+            set_enm(CASE_ID_HARNESSU, enm)
+            # `datetime` zamrożony TU (nie tylko `uuid4`) — karta HARNESS-RESZTA
+            # (kontynuacja) dopisała konsumentów tego biegu (`cieplna_scena_wynik`/
+            # `cieplna_scena_dowod`/`arcflash_scena_wynik`), których widoki
+            # osadzają `context.run_timestamp = run.created_at` (`grid_strength.py`/
+            # `arc_flash_view.py` — TA SAMA klasa co `run.id`: `datetime.now(UTC)`
+            # wywoływane przy KAŻDYM `create_run`, więc bez zamrożenia dwa
+            # wywołania tej samej fixtury dają dwa różne znaczniki czasu — zmierzone
+            # bezpośrednio). Sceny „zwarcia"/„zwarcia-rozplyw" (już domknięte) NIE
+            # osadzają `created_at` w swoich widokach, więc ich JSON w repo jest
+            # BEZ ZMIAN mimo tej zmiany zachowania (zweryfikowane parytetem).
             run = execute_run(
                 create_run(
                     case_id=CASE_ID_HARNESSU,
@@ -704,14 +739,8 @@ def _bieg_sceny_rozplyw_zwarciowy_gpz_feeder() -> tuple[Any, str, str | None]:
     try:
         enm = _gpz_feeder_enm_z_falownikiem()
         _fiksuj_niedeterminizm_sceny_zwarcia(enm)
-        set_enm(CASE_ID_HARNESSU, enm)
-        with (
-            patch(
-                "enm.canonical_analysis.uuid4",
-                return_value=_UUID_SCENY_ROZPLYW_ZWARCIOWY_GPZ_FEEDER,
-            ),
-            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
-        ):
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_ROZPLYW_ZWARCIOWY_GPZ_FEEDER):
+            set_enm(CASE_ID_HARNESSU, enm)
             run = execute_run(
                 create_run(
                     case_id=CASE_ID_HARNESSU,
@@ -812,6 +841,36 @@ class _ZegarStalyBiegu:
         return _CZAS_BIEGU_STALY
 
 
+@contextmanager
+def _zamrozona_tozsamosc_biegu(uuid_kotwicy: UUID) -> Iterator[None]:
+    """JEDNO miejsce zamrażania tożsamości i zegara biegu kotwicy — wszystkie
+    kotwice tego skryptu (zwarcia, stan fazowy, stabilność, analizy OZE,
+    kompensacja, rozpływ, składowe, zbieżność) wchodzą DOKŁADNIE przez ten
+    menedżer (karta HARNESS-RESZTA-2: predykat z jednego źródła prawdy —
+    wcześniej ten sam blok `with (patch…, patch…)` był przepisany ósmy raz i
+    KAŻDE nowe źródło niedeterminizmu trzeba było dopisać w ośmiu miejscach).
+
+    Zamrażane są TRZY nazwy, każda zmierzona jako realne źródło rozjazdu:
+    1. `enm.canonical_analysis.uuid4` — `run.id` wchodzi do SHA-256
+       (`proof_ref`, `reproducibility.result_hash`), więc zamiana tekstowa po
+       fakcie nie cofnie różnicy dwóch losowych `uuid4()`.
+    2. `enm.canonical_analysis.datetime` — `run.created_at`/`started_at`
+       (osadzane w `context.run_timestamp` widoków).
+    3. `enm.store.datetime` — `set_enm` znakuje `header.updated_at` przy
+       KAŻDYM zapisie modelu, a ten znacznik trafia do `run.snapshot`
+       (zmierzone: fixtury migawki biegu `skladowe_scena_migawka`/
+       `zbieznosc_scena_migawka` różniły się tym jednym polem między dwoma
+       wywołaniami). `compute_enm_hash` znacznika NIE obejmuje, więc
+       zamrożenie nie zmienia żadnego hasza istniejących fixtur
+       (zweryfikowane parytetem `--sprawdz`: 28 plików bit w bit)."""
+    with (
+        patch("enm.canonical_analysis.uuid4", return_value=uuid_kotwicy),
+        patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
+        patch("enm.store.datetime", _ZegarStalyBiegu),
+    ):
+        yield
+
+
 #: Docelowa szyna sceny stanu fazowego — `bus_sn_b` (siec zlota) niesie
 #: galaz zasilajaca `cab_main_b` i odbior `load_c` dalej w sieci, wiec
 #: asymetria pradow fazowych (opcje ponizej) ma widoczny wplyw na straty per
@@ -836,10 +895,7 @@ def _bieg_sceny_stan_fazowy() -> Any:
     reset_enm_store()
     try:
         set_enm(CASE_ID_HARNESSU, build_golden_enm())
-        with (
-            patch("enm.canonical_analysis.uuid4", return_value=_UUID_SCENY_STAN_FAZOWY),
-            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
-        ):
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_STAN_FAZOWY):
             return execute_run(
                 create_run(
                     case_id=CASE_ID_HARNESSU,
@@ -894,10 +950,7 @@ def _bieg_sceny_stabilnosc() -> Any:
     reset_enm_store()
     try:
         set_enm(CASE_ID_HARNESSU, build_golden_enm())
-        with (
-            patch("enm.canonical_analysis.uuid4", return_value=_UUID_SCENY_STABILNOSC),
-            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
-        ):
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_STABILNOSC):
             return execute_run(
                 create_run(
                     case_id=CASE_ID_HARNESSU,
@@ -971,11 +1024,8 @@ def _bieg_sceny_oze_analiz() -> Any:
             if gen.ref_id == "gen_pv":
                 gen.catalog_ref = "conv-pv-card-huawei-sun2000-215ktl"
         _fiksuj_niedeterminizm_sceny_zwarcia(enm)
-        set_enm(CASE_ID_HARNESSU, enm)
-        with (
-            patch("enm.canonical_analysis.uuid4", return_value=_UUID_SCENY_OZE_ANALIZ),
-            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
-        ):
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_OZE_ANALIZ):
+            set_enm(CASE_ID_HARNESSU, enm)
             run = execute_run(
                 create_run(
                     case_id=CASE_ID_HARNESSU,
@@ -1017,11 +1067,8 @@ def _bieg_sceny_kompensacja() -> Any:
     try:
         enm = build_golden_enm()
         _fiksuj_niedeterminizm_sceny_zwarcia(enm)
-        set_enm(CASE_ID_HARNESSU, enm)
-        with (
-            patch("enm.canonical_analysis.uuid4", return_value=_UUID_SCENY_KOMPENSACJA),
-            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
-        ):
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_KOMPENSACJA):
+            set_enm(CASE_ID_HARNESSU, enm)
             run = execute_run(
                 create_run(
                     case_id=CASE_ID_HARNESSU, klucz_twin=CASE_ID_HARNESSU, analysis_type="PF"
@@ -1063,11 +1110,8 @@ def _bieg_sceny_rozplyw() -> Any:
     try:
         enm = _zlota_siec_z_obciazeniem(8.0)
         _fiksuj_niedeterminizm_sceny_zwarcia(enm)
-        set_enm(CASE_ID_HARNESSU, enm)
-        with (
-            patch("enm.canonical_analysis.uuid4", return_value=_UUID_SCENY_ROZPLYW),
-            patch("enm.canonical_analysis.datetime", _ZegarStalyBiegu),
-        ):
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_ROZPLYW):
+            set_enm(CASE_ID_HARNESSU, enm)
             run = execute_run(
                 create_run(
                     case_id=CASE_ID_HARNESSU, klucz_twin=CASE_ID_HARNESSU, analysis_type="PF"
@@ -1169,6 +1213,671 @@ def przeglad_wiarygodnosci_katalogu_scena() -> dict[str, Any]:
     from api.catalog import przeglad_wiarygodnosci_katalogu  # noqa: PLC0415
 
     return przeglad_wiarygodnosci_katalogu().model_dump(mode="json")
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA-2 (2026-09-17) — sceny „wyniki-skladowe" (E-29) i
+# „wyniki-zbieznosc" (E-30). Obie były karmione blokami JSON pisanymi RĘCZNIE
+# (bilans 1F, składowe Z1/Z2/Z0 śladu, iteracje Newtona-Raphsona, pętla OLTC) —
+# liczby wyglądały jak wynik solvera, ale żaden solver ich nie policzył.
+# ---------------------------------------------------------------------------
+
+RUN_ID_SCENY_SKLADOWE = "run-sc-scena-skladowe"
+_UUID_SCENY_SKLADOWE = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_SKLADOWE)
+
+RUN_ID_SCENY_ZBIEZNOSC = "run-lf-scena-zbieznosc"
+_UUID_SCENY_ZBIEZNOSC = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZBIEZNOSC)
+
+
+def _bieg_sceny_skladowe() -> Any:
+    """Bieg zwarcia JEDNOFAZOWEGO (`options={"fault_type": "1F"}` — TEN SAM
+    klucz, który czyta `_short_circuit_type_from_options` przy tworzeniu biegu)
+    KOTWICY sceny „wyniki-skladowe" (E-29 „Składowe symetryczne i sieć
+    zerowa") na sieci złotej `build_golden_enm`.
+
+    Sieć złota ma komplet składowej zerowej (`availability.short_circuit_1f`
+    — bez niego `create_run` odmawia: „Zwarcie 1F/2F+Z wymaga kompletnej
+    skladowej zerowej Z0 w ENM"), więc bieg 1F wykonuje się na niej BEZ
+    dokładania czegokolwiek do modelu (zmierzone bezpośrednio: 5 punktów
+    zwarcia, krok śladu `Zk` z `z1_ohm`/`z2_ohm`/`z0_ohm` jako liczby
+    zespolone — dokładnie to, co czyta `skladoweModel.ts`).
+
+    `id`/zegar przypięte jak `_bieg_sceny_zwarcia` (ta sama klasa
+    niedeterminizmu)."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        enm = build_golden_enm()
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_SKLADOWE):
+            set_enm(CASE_ID_HARNESSU, enm)
+            run = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=CASE_ID_HARNESSU,
+                    analysis_type="short_circuit_sn",
+                    options={"fault_type": "1F"},
+                ).id
+            )
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        return run
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def skladowe_scena_wynik() -> dict[str, Any]:
+    """Odpowiedź `GET /api/analysis-runs/{id}/results/short-circuit` biegu 1F
+    (`build_short_circuit_results_response` — TA SAMA funkcja, którą woła
+    końcówka `api/analysis_runs.py::get_short_circuit_results`, czytana przez
+    `fetchShortCircuitResults` ekranu E-29)."""
+    run = _bieg_sceny_skladowe()
+    widok = build_short_circuit_results_response(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_SKLADOWE})
+
+
+def skladowe_scena_slad() -> dict[str, Any]:
+    """Odpowiedź `GET /api/analysis-runs/{id}/results/trace`
+    (`build_extended_trace_response` — TA SAMA funkcja, którą woła końcówka
+    `get_extended_trace`, czytana przez `fetchExtendedTrace`). Niesie krok
+    solvera FROZEN `Zk` ze składowymi Z1/Z2/Z0 — jedyne źródło tych liczb dla
+    ekranu E-29 (`skladowe/model.ts`)."""
+    run = _bieg_sceny_skladowe()
+    widok = build_extended_trace_response(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_SKLADOWE})
+
+
+def skladowe_scena_migawka() -> dict[str, Any]:
+    """Odpowiedź `GET /api/analysis-runs/{id}/snapshot` — ZAMROŻONA wersja
+    układu biegu, złożona DOKŁADNIE tak jak końcówka
+    (`api/analysis_runs.py::get_analysis_run_snapshot`:
+    `_catalog_completed_snapshot` + `canonicalize_json`). Ekran E-29 czyta z
+    niej uziemienie punktu neutralnego źródła (`Source.neutral_grounding`)."""
+    run = _bieg_sceny_skladowe()
+    widok = canonicalize_json(
+        {
+            "run_id": str(run.id),
+            "snapshot_id": run.snapshot_hash,
+            "snapshot": _catalog_completed_snapshot(run.snapshot),
+        }
+    )
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_SKLADOWE})
+
+
+#: Regulator OLTC transformatora `tr_hv_sn` sieci złotej — sieć złota BAZOWA nie
+#: ma ŻADNEGO przełącznika zaczepów pod obciążeniem (zmierzone bezpośrednio:
+#: `tap_changer is None` na obu transformatorach), więc pętla regulacji w ogóle
+#: się nie uruchamia (`oltc_control is None`) i ekran E-30 nie ma czego pokazać w
+#: sekcjach „regulacja zaczepów przebiegu"/„założenia zaczepów modelu". Zaczep
+#: jest DANĄ MODELU (jak `catalog_ref` dopisany na `gen_pv` dla sceny siły
+#: sieci), nie wynikiem — decyzje regulatora, pozycje końcowe i liczbę przełączeń
+#: liczy WYŁĄCZNIE pętla OLTC solvera rozpływu. Nastawa 15,4 kV z pasmem 0,1 kV
+#: dobrana tak, aby regulator FAKTYCZNIE przełączał (napięcie szyny SN bez
+#: regulacji: 15,0075 kV — zmierzone; regulacja schodzi do pozycji −2 i kończy
+#: `within_deadband`), bo regulator, który od razu jest w paśmie, nie
+#: demonstruje ani jednej decyzji.
+_ZACZEP_SCENY_ZBIEZNOSC = TapChanger(
+    regulation_type="OLTC",
+    regulated_winding="HV",
+    neutral_position=0,
+    current_position=0,
+    min_position=-9,
+    max_position=9,
+    step_percent=1.25,
+    control_mode="AUTOMATIC",
+    voltage_setpoint_kv=15.4,
+    deadband_kv=0.1,
+)
+
+
+def _enm_sceny_zbieznosc() -> EnergyNetworkModel:
+    """Sieć złota z regulatorem OLTC na transformatorze `tr_hv_sn`
+    (`controlled_bus_ref` = szyna dolnego napięcia tego transformatora — jedno
+    źródło prawdy, bez drugiego literału refu szyny)."""
+    enm = build_golden_enm()
+    for transformator in enm.transformers:
+        if transformator.ref_id == "tr_hv_sn":
+            transformator.tap_changer = _ZACZEP_SCENY_ZBIEZNOSC.model_copy(
+                update={"controlled_bus_ref": transformator.lv_bus_ref}
+            )
+    _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+    return enm
+
+
+def _bieg_sceny_zbieznosc() -> Any:
+    """Bieg `PF` KOTWICY sceny „wyniki-zbieznosc" (E-30 „Zbieżność rozpływu i
+    zaczepy") — sieć złota z regulatorem OLTC (wyżej). `id`/zegar przypięte jak
+    biegi obok."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        enm = _enm_sceny_zbieznosc()
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_ZBIEZNOSC):
+            set_enm(CASE_ID_HARNESSU, enm)
+            run = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU, klucz_twin=CASE_ID_HARNESSU, analysis_type="PF"
+                ).id
+            )
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        return run
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def zbieznosc_scena_naglowek() -> dict[str, Any]:
+    """Odpowiedź `GET /api/power-flow-runs/{id}`
+    (`build_power_flow_run_header` — TA SAMA funkcja, którą woła końcówka
+    `api/power_flow_runs.py`), czytana przez `useAnalysisRunContract`
+    i nagłówek ekranu E-30."""
+    run = _bieg_sceny_zbieznosc()
+    widok = build_power_flow_run_header(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZBIEZNOSC})
+
+
+def zbieznosc_scena_wynik() -> dict[str, Any]:
+    """Odpowiedź `GET /api/power-flow-runs/{id}/results` (`PowerFlowResultV1`
+    — `get_power_flow_result`), zasiew `usePowerFlowResultsStore` sceny E-30.
+    `run_id` DOPISANY poza kontraktem (jak w `rozplyw_scena_wynik`) —
+    metadana harnessu, nie fizyka wyniku."""
+    run = _bieg_sceny_zbieznosc()
+    widok = get_power_flow_result(run)
+    widok = _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZBIEZNOSC})
+    return {**widok, "run_id": RUN_ID_SCENY_ZBIEZNOSC}
+
+
+def zbieznosc_scena_slad() -> dict[str, Any]:
+    """Odpowiedź `GET /api/power-flow-runs/{id}/trace` (`get_power_flow_trace`
+    — TA SAMA funkcja, którą woła końcówka): iteracje Newtona-Raphsona
+    (`iterations`) ORAZ ślad pętli OLTC (`oltc_control`: decyzje regulatora,
+    liczby przełączeń, pozycje końcowe) — obie sekcje ekranu E-30."""
+    run = _bieg_sceny_zbieznosc()
+    widok = get_power_flow_trace(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZBIEZNOSC})
+
+
+def zbieznosc_scena_migawka() -> dict[str, Any]:
+    """Migawka modelu przypadku sceny E-30 (`useSnapshotStore`) — ZAMROŻONA
+    wersja układu biegu, złożona DOKŁADNIE jak końcówka `/snapshot`; niesie
+    transformator z regulatorem OLTC (sekcja „założenia zaczepów modelu")."""
+    run = _bieg_sceny_zbieznosc()
+    return canonicalize_json(_catalog_completed_snapshot(run.snapshot))
+
+
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA-2 (2026-09-17) — scena „koordynacja" (E-28 „Koordynacja
+# zabezpieczeń"). Największy blok ręcznych liczb harnessu: wiersze dwóch biegów
+# zwarciowych, wiersze gałęziowe rozpływu, migawka modelu, krzywe TCC, werdykty
+# par, ślad analizy, nastawy I>/I>> i dopasowanie aparatu — wszystko pisane
+# ręcznie na sieci, która NIE ISTNIEJE (refy `gpz/sekcja_a/bus_sn`,
+# `stacja_s02/bus_sn` nie występują w żadnej sieci rejestru).
+#
+# WYBÓR SIECI SCENY. Ani sieć złota, ani `gpzFeeder.enm.json` nie niosą kształtu,
+# którego ten ekran wymaga (zmierzone bezpośrednio): sieć złota ma JEDEN odcinek
+# z kompletem danych katalogowych i ZERO kandydatów kolejnej strefy; gpzFeeder
+# kończy magistralę zaciskiem technicznym (`helper_bus`), który nie jest
+# raportowalnym punktem zwarcia. Dodatkowo obie mają falownik bez deklaracji
+# `k_sc`, więc brama autorytetu koordynacji (`wymagaj_autorytetu`,
+# `SI-110`) odmawia wyniku. Scena buduje więc WŁASNĄ sieć — DOKŁADNIE tymi
+# operacjami domenowymi, którymi buduje ją projektant w aplikacji
+# (`add_grid_source_sn`, `continue_trunk_segment_sn`,
+# `insert_station_on_segment_sn`, `add_load_sn`) — dwie stacje SN/nN na jednej
+# magistrali, bez źródeł wytwórczych. Refy elementów są deterministyczne
+# (pochodne treści operacji — zmierzone: dwa niezależne przebiegi budowy dają
+# ten sam `seg/.../segment`).
+# ---------------------------------------------------------------------------
+
+RUN_ID_SCENY_KOORD_MAX = "run-sc-scena-koordynacja-max"
+RUN_ID_SCENY_KOORD_MIN = "run-sc-scena-koordynacja-min"
+RUN_ID_SCENY_KOORD_PF = "run-lf-scena-koordynacja"
+RUN_ID_SCENY_KOORD_ANALIZA = "run-koordynacja-scena"
+_UUID_SCENY_KOORD_MAX = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_KOORD_MAX)
+_UUID_SCENY_KOORD_MIN = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_KOORD_MIN)
+_UUID_SCENY_KOORD_PF = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_KOORD_PF)
+_CZAS_ANALIZY_KOORDYNACJI = "2026-09-17T08:00:00+00:00"
+#: Identyfikator projektu sceny koordynacji — deterministyczny `uuid5`
+#: (końcówka wymaga UUID, a harness nie ma rejestru projektów).
+_PROJEKT_SCENY_KOORDYNACJA = uuid5(NAMESPACE_URL, "mv-design-pro:harness:projekt-koordynacja")
+
+#: Karty katalogowe sceny — REALNE identyfikatory katalogu projektu (te same,
+#: których używa spec `e2e/nastawy-koordynacji-hoppel.spec.ts` budując sieć przez
+#: `/api/cases/{id}/enm/domain-ops`).
+_KATALOG_KABLA_KOORD = "cable-tfk-yakxs-3x120"
+_KATALOG_TRAFO_KOORD = "tr-sn-nn-15-04-630kva-dyn11"
+_KATALOG_ZRODLA_KOORD = "src-gpz-15kv-250mva-rx010"
+_KATALOG_APARATU_KOORD = "sw-cb-abb-vd4-17kv-630a"
+
+#: Aparat, wobec którego scena sprawdza dopasowanie nastaw — REALNY rekord
+#: katalogu analitycznego (`GET /api/catalog/protection/device-types`).
+_APARAT_DOPASOWANIA_KOORD = "ABB_REF601"
+
+#: Nazwa szablonu zabezpieczenia — 1:1 z `DEVICE_TEMPLATES[relay-50-51].name`
+#: (to tę nazwę klika spec zrzutów w oknie szablonów).
+NAZWA_SZABLONU_ZABEZPIECZENIA_KOORD = "Przekaznik 50/51 (typowy)"
+
+#: Identyfikator projektu w WYNIKU koordynacji: końcówka wymaga UUID, ale w
+#: harnessie nie ma rejestru projektów, więc w fixturze zostaje stabilna
+#: etykieta zamiast losowego identyfikatora (metadana, nie fizyka).
+PROJEKT_SCENY_KOORDYNACJA_PL = "projekt-scena-koordynacja"
+
+#: Szablon zabezpieczenia sceny — 1:1 z `DEVICE_TEMPLATES[relay-50-51]`
+#: (`frontend/src/ui/protection-coordination/types.ts`), czyli DOKŁADNIE to, co
+#: wysyła ekran po kliknięciu „Zastosuj szablon" w spec `wszystkie-sceny-
+#: screenshot.spec.ts`. Rozjazd tego szablonu z szablonem UI wykrywa atrapa
+#: harnessu (odmowa 409, jak scena `macierz`), nie cicha podmiana liczb.
+_SZABLON_ZABEZPIECZENIA_KOORD: dict[str, Any] = {
+    "stage_51": {
+        "enabled": True,
+        "pickup_current_a": 400,
+        "curve_settings": {
+            "standard": "IEC",
+            "variant": "SI",
+            "pickup_current_a": 400,
+            "time_multiplier": 0.3,
+        },
+        "directional": False,
+    },
+    "stage_50": {
+        "enabled": True,
+        "pickup_current_a": 2000,
+        "time_s": 0.1,
+        "directional": False,
+    },
+}
+
+#: Odbiory stacji sceny — DANE WEJŚCIOWE projektu (moc przyłączeniowa stacji
+#: SN/nN, typowa dla stacji miejskiej 630 kVA obciążonej w ~40%), nie wynik.
+#: Bez nich magistrala jest praktycznie nieobciążona (prąd rzędu 2 A zmierzony
+#: na modelu bez odbiorów), a nastawa I> = k_b·I_obc wychodziła 2,8 A — liczba
+#: prawdziwa, ale nieczytelna jako demonstracja ekranu.
+_MOC_ODBIORU_STACJI_KW = 250.0
+_COS_PHI_ODBIORU_STACJI = 0.95
+
+
+def _operacja_sceny_koordynacja(
+    enm: dict[str, Any], nazwa: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    """Jedna operacja domenowa budowy sieci sceny — TA SAMA funkcja, którą woła
+    końcówka `POST /api/cases/{id}/enm/domain-ops` (`execute_domain_operation`).
+    Błąd operacji kończy eksport: sieć sceny nie może powstać „częściowo"."""
+    wynik = execute_domain_operation(enm, nazwa, payload)
+    if wynik.get("error") is not None:
+        raise SystemExit(f"[fixtury] operacja {nazwa} sceny koordynacji: {wynik['error']}")
+    snapshot = wynik.get("snapshot")
+    if not isinstance(snapshot, dict):
+        raise SystemExit(f"[fixtury] operacja {nazwa} sceny koordynacji nie zwrociła migawki")
+    return snapshot
+
+
+def _enm_sceny_koordynacja() -> tuple[EnergyNetworkModel, str, str]:
+    """Sieć sceny E-28 + `(ref chronionego odcinka, ref kolejnej szyny)`.
+
+    Kształt: GPZ 110/15 kV → magistrala kablowa → Stacja S01 (SN/nN) →
+    magistrala → Stacja S02 (SN/nN). Obie szyny SN stacji są RAPORTOWALNYMI
+    punktami zwarcia, więc odcinek S01→S02 ma komplet trzech szyn z prądem
+    zwarciowym (warunek nastaw I>/I>>), a obie nadają się na lokalizację
+    zabezpieczenia. ZERO źródeł wytwórczych — sieć bez falownika nie niesie
+    znacznika `DOMYSLNE_SYSTEMOWE` proweniencji `k_sc`, więc brama autorytetu
+    koordynacji przepuszcza wynik (na sieci złotej odmawiała: kod SI-110,
+    zmierzone).
+
+    Układ sieci nN (`lv_earthing_system`) deklarowany JAWNIE dla każdego
+    transformatora SN/nN — walidator odmawia biegu bez tej deklaracji (E063),
+    a operacja wstawienia stacji jej nie zgaduje. To dana wejściowa sceny,
+    jak w `_gpz_feeder_enm_z_falownikiem` obok."""
+    enm = EnergyNetworkModel(header=ENMHeader(name="Magistrala SN — scena koordynacji")).model_dump(
+        mode="json"
+    )
+    enm = _operacja_sceny_koordynacja(
+        enm,
+        "add_grid_source_sn",
+        {
+            "voltage_kv": 15.0,
+            "source_name": "GPZ Wschód",
+            "sk3_mva": 250.0,
+            "rx_ratio": 0.1,
+            "catalog_ref": _KATALOG_ZRODLA_KOORD,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
+    )
+    enm = _operacja_sceny_koordynacja(
+        enm,
+        "continue_trunk_segment_sn",
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 900,
+                "name": "Magistrala GPZ",
+                "catalog_ref": _KATALOG_KABLA_KOORD,
+            }
+        },
+    )
+    segment_zrodlowy = [
+        galaz["ref_id"]
+        for galaz in enm["branches"]
+        if galaz.get("type") in ("cable", "line_overhead")
+    ][-1]
+
+    stacja_wspolna: dict[str, Any] = {
+        "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
+        "insert_at": {"mode": "RATIO", "value": 0.5},
+        "sn_fields": [
+            {"field_role": "LINIA_IN"},
+            {"field_role": "LINIA_OUT"},
+            {"field_role": "TRANSFORMATOROWE"},
+        ],
+        "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_KOORD},
+        "nn_block": {"outgoing_feeders_nn_count": 1},
+    }
+    for segment, nazwa_stacji in (
+        (segment_zrodlowy, "Stacja S01"),
+        (f"{segment_zrodlowy}_R", "Stacja S02"),
+    ):
+        enm = _operacja_sceny_koordynacja(
+            enm,
+            "insert_station_on_segment_sn",
+            {
+                **stacja_wspolna,
+                "segment_id": segment,
+                "station": {
+                    "station_type": "B",
+                    "station_name": nazwa_stacji,
+                    "sn_voltage_kv": 15.0,
+                    "nn_voltage_kv": 0.4,
+                },
+            },
+        )
+
+    for szyna_nn in sorted(
+        szyna["ref_id"] for szyna in enm["buses"] if szyna["ref_id"].endswith("/nn_bus")
+    ):
+        enm = _operacja_sceny_koordynacja(
+            enm,
+            "add_load_sn",
+            {
+                "bus_ref": szyna_nn,
+                "name": "Odbiór stacji",
+                "active_power_kw": _MOC_ODBIORU_STACJI_KW,
+                "cos_phi": _COS_PHI_ODBIORU_STACJI,
+            },
+        )
+
+    model = EnergyNetworkModel.model_validate(enm)
+    for transformator in model.transformers:
+        if transformator.ulv_kv < 1.0 and transformator.lv_earthing_system is None:
+            transformator.lv_earthing_system = "TN-C-S"
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    # Chroniony odcinek = `segment_R_L` (S01 → S02): JEDYNY odcinek magistrali
+    # między dwiema szynami stacyjnymi, więc jedyny z kompletem trzech szyn
+    # raportowalnych. Kolejna szyna = szyna SN Stacji S02 (koniec tego odcinka
+    # ma dalej `segment_R_R`, którego drugi koniec jest zaciskiem technicznym).
+    return model, f"{segment_zrodlowy}_L", f"{segment_zrodlowy}_R_L"
+
+
+@contextmanager
+def _biegi_sceny_koordynacja() -> Iterator[tuple[Any, Any, Any, EnergyNetworkModel, str]]:
+    """Trzy biegi KOTWIC sceny E-28 na sieci wyżej + ref chronionego odcinka:
+    zwarcie 3F w wariancie MAKSYMALNYM (selektywność, nastawy), zwarcie 3F w
+    wariancie MINIMALNYM (czułość — `options={"scenario": "min"}`, TEN SAM
+    klucz, który czyta `_scenariusz_z_opcji`) i rozpływ mocy (prądy robocze
+    gałęzi). Oba biegi zwarciowe stoją na TEJ SAMEJ migawce modelu —
+    `wejscie_koordynacji_z_biegow` odmawia pary z dwóch różnych modeli.
+
+    MENEDŻER KONTEKSTU, nie zwykła funkcja: `run_coordination_analysis` i
+    `wejscie_koordynacji_z_biegow` czytają biegi Z REJESTRU po identyfikatorze,
+    więc rejestr musi ŻYĆ przez cały czas liczenia fixtury (zmierzone: zwrócenie
+    biegów po `reset_canonical_runs()` kończyło się `BiegNiemiarodajnyError`
+    „bieg nie istnieje"). `reset_*` po wyjściu — jak każda kotwica tego
+    skryptu, żeby nie zostawić stanu innym fixturom."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        model, linia, _szyna = _enm_sceny_koordynacja()
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_KOORD_MAX):
+            set_enm(CASE_ID_HARNESSU, model)
+            bieg_max = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=CASE_ID_HARNESSU,
+                    analysis_type="short_circuit_sn",
+                ).id
+            )
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_KOORD_MIN):
+            bieg_min = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=CASE_ID_HARNESSU,
+                    analysis_type="short_circuit_sn",
+                    options={"scenario": "min"},
+                ).id
+            )
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_KOORD_PF):
+            bieg_pf = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU, klucz_twin=CASE_ID_HARNESSU, analysis_type="PF"
+                ).id
+            )
+        _fiksuj_niedeterminizm_sceny_zwarcia(model)
+        yield bieg_max, bieg_min, bieg_pf, model, linia
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def _mapa_identyfikatorow_koordynacji(bieg_max: Any, bieg_min: Any, bieg_pf: Any) -> dict[str, str]:
+    return {
+        str(bieg_max.id): RUN_ID_SCENY_KOORD_MAX,
+        str(bieg_min.id): RUN_ID_SCENY_KOORD_MIN,
+        str(bieg_pf.id): RUN_ID_SCENY_KOORD_PF,
+    }
+
+
+def koordynacja_scena_zwarcia_max() -> dict[str, Any]:
+    """Odpowiedź `GET …/results/short-circuit` biegu MAKSYMALNEGO (c_max = 1,10)
+    — wiersze, z których ekran koordynacji buduje prądy zwarciowe maksymalne
+    (`pradyZBiegow.ts::pradyZwarcioweZBiegu`, dopasowanie po `element_id`)."""
+    with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, _model, _linia):
+        return _ustabilizuj_identyfikatory(
+            build_short_circuit_results_response(bieg_max),
+            _mapa_identyfikatorow_koordynacji(bieg_max, bieg_min, bieg_pf),
+        )
+
+
+def koordynacja_scena_zwarcia_min() -> dict[str, Any]:
+    """Odpowiedź `GET …/results/short-circuit` biegu MINIMALNEGO (c_min) —
+    bez niego czułość zabezpieczeń jest niesprawdzalna (`zbudujPradyKoordynacji`
+    w ogóle nie tworzy pozycji prądowej)."""
+    with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, _model, _linia):
+        return _ustabilizuj_identyfikatory(
+            build_short_circuit_results_response(bieg_min),
+            _mapa_identyfikatorow_koordynacji(bieg_max, bieg_min, bieg_pf),
+        )
+
+
+def koordynacja_scena_galezie() -> dict[str, Any]:
+    """Odpowiedź `GET …/results/branches` biegu rozpływu
+    (`build_branch_results_response`) — prądy robocze gałęzi magistrali."""
+    with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, _model, _linia):
+        return _ustabilizuj_identyfikatory(
+            build_branch_results_response(bieg_pf),
+            _mapa_identyfikatorow_koordynacji(bieg_max, bieg_min, bieg_pf),
+        )
+
+
+def koordynacja_scena_migawka() -> dict[str, Any]:
+    """Migawka modelu przypadku (`GET /api/cases/{id}/enm`) — źródło LISTY
+    WYBORU lokalizacji zabezpieczenia na ekranie (`lokalizacjeZModelu.ts`)."""
+    with _biegi_sceny_koordynacja() as (_bieg_max, _bieg_min, _bieg_pf, model, _linia):
+        return canonicalize_json(model.model_dump(mode="json"))
+
+
+def koordynacja_scena_pakiet_dostepnosc_max() -> dict[str, Any]:
+    """Odpowiedź `GET …/pakiet-dowodowy-nastaw/dostepnosc` biegu MAKSYMALNEGO
+    (`dostepnosc_pakietu_nastaw`) — lista odcinków-kandydatów z szynami kolejnej
+    strefy selektywności."""
+    with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, _model, _linia):
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(dostepnosc_pakietu_nastaw(bieg_max)),
+            _mapa_identyfikatorow_koordynacji(bieg_max, bieg_min, bieg_pf),
+        )
+
+
+def koordynacja_scena_pakiet_dostepnosc_min() -> dict[str, Any]:
+    """To samo dla biegu MINIMALNEGO — odpowiedź jest ODMOWĄ nazwaną
+    (`dostepny: false`, powód: wariant minimalny nie może być kotwicą nastaw).
+    Scena pokazuje dokładnie tę odmowę i przejście do kolejnego kandydata."""
+    with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, _model, _linia):
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(dostepnosc_pakietu_nastaw(bieg_min)),
+            _mapa_identyfikatorow_koordynacji(bieg_max, bieg_min, bieg_pf),
+        )
+
+
+def _pozycja_nastaw_sceny_koordynacja(bieg_max: Any, linia: str) -> dict[str, Any]:
+    """Pozycja dostępności pakietu nastaw dla chronionego odcinka sceny — wybór
+    wskazany przez BUDOWĘ sieci (ref odcinka S01→S02), potwierdzony przez
+    `dostepnosc_pakietu_nastaw` (jedno źródło prawdy listy kandydatów; po
+    naprawie predykatu parami z tej karty lista niesie WYŁĄCZNIE pary, które
+    da się policzyć)."""
+    dostepnosc = dostepnosc_pakietu_nastaw(bieg_max)
+    return next(
+        wiersz
+        for wiersz in dostepnosc["linie"]
+        if wiersz["line_id"] == linia and wiersz["nastepne_szyny_kandydujace"]
+    )
+
+
+def koordynacja_scena_nastawy() -> dict[str, Any]:
+    """Odpowiedź `GET …/nastawy` (`zbuduj_odpowiedz_nastaw_json` — metoda
+    Hoppela/IRiESD, TA SAMA funkcja, którą woła końcówka) dla chronionego
+    odcinka S01→S02 i szyny SN Stacji S02 jako kolejnej strefy."""
+    with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, _model, linia):
+        pozycja = _pozycja_nastaw_sceny_koordynacja(bieg_max, linia)
+        widok = zbuduj_odpowiedz_nastaw_json(
+            bieg_max,
+            line_id=pozycja["line_id"],
+            next_bus_id=pozycja["nastepne_szyny_kandydujace"][0],
+            c_min=1.0,
+        )
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(widok), _mapa_identyfikatorow_koordynacji(bieg_max, bieg_min, bieg_pf)
+        )
+
+
+def koordynacja_scena_nastawy_dopasowanie() -> dict[str, Any]:
+    """Odpowiedź `GET …/nastawy/dopasowanie` (`zbuduj_odpowiedz_dopasowania`) —
+    TA SAMA fizyka nastaw zmapowana na wymaganie wobec aparatu i sprawdzona
+    wobec REALNEGO rekordu katalogu analitycznego."""
+    with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, _model, linia):
+        pozycja = _pozycja_nastaw_sceny_koordynacja(bieg_max, linia)
+        widok = zbuduj_odpowiedz_dopasowania(
+            bieg_max,
+            device_id=_APARAT_DOPASOWANIA_KOORD,
+            line_id=pozycja["line_id"],
+            next_bus_id=pozycja["nastepne_szyny_kandydujace"][0],
+            c_min=1.0,
+        )
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(widok), _mapa_identyfikatorow_koordynacji(bieg_max, bieg_min, bieg_pf)
+        )
+
+
+def _szyny_zabezpieczen_koordynacji(model: EnergyNetworkModel) -> list[str]:
+    """Lokalizacje dwóch zabezpieczeń sceny: szyny SN obu stacji (posortowane —
+    kolejność deterministyczna, niezależna od kolejności budowy)."""
+    return sorted(szyna.ref_id for szyna in model.buses if szyna.ref_id.endswith("/sn_bus"))
+
+
+def koordynacja_scena_wynik() -> dict[str, Any]:
+    """Pełny wynik analizy koordynacji (`POST /api/protection-coordination/
+    projects/{id}/run` + `GET /{run_id}`) policzony REALNYM analizatorem
+    (`OvercurrentCoordinationAnalyzer` przez końcówkę `run_coordination_
+    analysis` — z kompletem jej bramek: autorytet wkładu zwarciowego, zgodność
+    prądów żądania z prądami biegów, gotowość payloadu).
+
+    IDENTYFIKATORY ZABEZPIECZEŃ. Ekran generuje je `crypto.randomUUID()` przy
+    kliknięciu „Zastosuj szablon", więc fixtura NIE MOŻE ich znać. Fixtura
+    używa `uuid5` z refu lokalizacji (deterministyczne), a atrapa harnessu
+    podmienia je na identyfikatory z ŻĄDANIA, dopasowując po
+    `location_element_id` — tożsamość, nie fizyka.
+
+    PRĄDY ROBOCZE — NAZWANY BRAK PRODUKTU, NIE FABRYKACJA. Prąd zwarciowy jest
+    kluczowany SZYNĄ, prąd roboczy GAŁĘZIĄ rozpływu, a kontrakt koordynacji ma
+    jedno pole `location_id` na obie wielkości; relacji „zabezpieczenie →
+    chroniona gałąź" model jeszcze nie niesie (nazwane w docstringu końcówki
+    `run_coordination_analysis` jako decyzja A-4). Żądanie niesie więc prądy
+    robocze GAŁĘZI (realne, z biegu rozpływu), a analizator zwraca dla obu
+    zabezpieczeń uczciwy werdykt `ERROR` „Brak danych o prądzie roboczym dla
+    lokalizacji …". Poprzednia scena ukrywała ten brak, podając wiersze
+    GAŁĘZIOWE o identyfikatorach SZYN — liczby wyglądały na wynik rozpływu,
+    a opisywały byt, którego nie ma."""
+    with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, model, _linia):
+        wejscie = wejscie_koordynacji_z_biegow(
+            run_id_max=str(bieg_max.id), run_id_min=str(bieg_min.id)
+        )
+        galezie = build_branch_results_response(bieg_pf)["rows"]
+        lokalizacje = _szyny_zabezpieczen_koordynacji(model)
+        zadanie = RunCoordinationRequest(
+            devices=[
+                {
+                    "id": str(
+                        uuid5(NAMESPACE_URL, "mv-design-pro:harness:koordynacja:" + lokalizacja)
+                    ),
+                    "name": NAZWA_SZABLONU_ZABEZPIECZENIA_KOORD,
+                    "device_type": "RELAY",
+                    "location_element_id": lokalizacja,
+                    "settings": _SZABLON_ZABEZPIECZENIA_KOORD,
+                }
+                for lokalizacja in lokalizacje
+            ],
+            fault_currents=[
+                {
+                    "location_id": lokalizacja,
+                    "ik_max_3f_a": wejscie.prady_max_a[lokalizacja],
+                    "ik_min_3f_a": wejscie.prady_min_a[lokalizacja],
+                }
+                for lokalizacja in lokalizacje
+            ],
+            operating_currents=[
+                {"location_id": wiersz["element_id"], "i_operating_a": wiersz["i_a"]}
+                for wiersz in galezie
+                if isinstance(wiersz.get("i_a"), int | float) and wiersz["i_a"] > 0.0
+            ],
+            pf_run_id=str(bieg_pf.id),
+            sc_run_id=str(bieg_max.id),
+            sc_run_id_min=str(bieg_min.id),
+        )
+        # Zegar zamrożony na czas analizy: `ProtectionDevice.created_at`
+        # (`domain/protection_device.py`, `default_factory` z `datetime.now(UTC)`)
+        # i `CoordinationResult.created_at` (`…/coordination/models.py`) znakują
+        # się przy KAŻDYM wywołaniu — bez tego dwa wywołania fixtury różniły się
+        # znacznikami obu urządzeń (zmierzone bezpośrednio). Tu `default_factory`
+        # jest LAMBDĄ czytającą nazwę `datetime` z przestrzeni modułu przy
+        # wywołaniu, więc podmiana nazwy DZIAŁA (inaczej niż `Field(
+        # default_factory=uuid4)` Pydantica — patrz `_fiksuj_niedeterminizm_
+        # sceny_zwarcia`).
+        with (
+            patch("domain.protection_device.datetime", _ZegarStalyBiegu),
+            patch(
+                "application.analyses.protection.coordination.models.datetime",
+                _ZegarStalyBiegu,
+            ),
+            patch(
+                "application.analyses.protection.coordination.analyzer.datetime",
+                _ZegarStalyBiegu,
+            ),
+        ):
+            podsumowanie = run_coordination_analysis(_PROJEKT_SCENY_KOORDYNACJA, zadanie)
+        widok = get_coordination_result(podsumowanie["run_id"])
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(widok),
+            {
+                **_mapa_identyfikatorow_koordynacji(bieg_max, bieg_min, bieg_pf),
+                str(podsumowanie["run_id"]): RUN_ID_SCENY_KOORD_ANALIZA,
+                str(widok["created_at"]): _CZAS_ANALIZY_KOORDYNACJI,
+                str(_PROJEKT_SCENY_KOORDYNACJA): PROJEKT_SCENY_KOORDYNACJA_PL,
+            },
+        )
 
 
 #: Nazwa pliku → funkcja licząca odpowiedź (kolejność = kolejność eksportu).
@@ -1197,6 +1906,22 @@ FIXTURY: dict[str, Any] = {
     "cieplna_scena_dowod": cieplna_scena_dowod,
     "arcflash_scena_wynik": arcflash_scena_wynik,
     "przeglad_wiarygodnosci_katalogu": przeglad_wiarygodnosci_katalogu_scena,
+    "skladowe_scena_wynik": skladowe_scena_wynik,
+    "skladowe_scena_slad": skladowe_scena_slad,
+    "skladowe_scena_migawka": skladowe_scena_migawka,
+    "zbieznosc_scena_naglowek": zbieznosc_scena_naglowek,
+    "zbieznosc_scena_wynik": zbieznosc_scena_wynik,
+    "zbieznosc_scena_slad": zbieznosc_scena_slad,
+    "zbieznosc_scena_migawka": zbieznosc_scena_migawka,
+    "koordynacja_scena_migawka": koordynacja_scena_migawka,
+    "koordynacja_scena_zwarcia_max": koordynacja_scena_zwarcia_max,
+    "koordynacja_scena_zwarcia_min": koordynacja_scena_zwarcia_min,
+    "koordynacja_scena_galezie": koordynacja_scena_galezie,
+    "koordynacja_scena_pakiet_dostepnosc_max": koordynacja_scena_pakiet_dostepnosc_max,
+    "koordynacja_scena_pakiet_dostepnosc_min": koordynacja_scena_pakiet_dostepnosc_min,
+    "koordynacja_scena_nastawy": koordynacja_scena_nastawy,
+    "koordynacja_scena_nastawy_dopasowanie": koordynacja_scena_nastawy_dopasowanie,
+    "koordynacja_scena_wynik": koordynacja_scena_wynik,
 }
 
 

@@ -25,6 +25,20 @@ const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/sceny');
 
+/**
+ * HARNESS-RESZTA-2 (2026-09-17): asercje sceny koordynacji CYTUJĄ fixturę
+ * REALNEGO biegu backendu (tę samą, którą serwuje harness) — zero refów sieci
+ * wpisanych w specu. Odczyt przez `readFileSync`, nie `import … .json`: moduł
+ * specu jest ESM Node'a, gdzie import JSON wymaga atrybutu `with { type: 'json' }`
+ * (zmierzone: bez tego bieg kończy się `TypeError` przed zebraniem testów).
+ */
+const KOORDYNACJA_SCENA_WYNIK = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/koordynacja_scena_wynik.json'),
+    'utf-8',
+  ),
+) as { devices: { location_element_id: string }[] };
+
 /** Sceny kadrowane przez `creator-screenshot.spec.ts` — tam mają własne interakcje. */
 const JUZ_KADROWANE = new Set([
   'pole', 'oze', 'arcflash', 'magistrala', 'kompensator', 'transformator', 'odbior', 'wiazania',
@@ -178,7 +192,11 @@ test.describe('koordynacja:screenshot', () => {
       // Dwa zabezpieczenia z szablonu — realną drogą projektanta: szablon,
       // WSKAZANIE ELEMENTU MODELU z listy (V12K-262: lokalizacji nie da się już
       // dostać „za darmo", bo ekran jej nie wymyśla), zapis konfiguracji.
-      const elementy = ['gpz/sekcja_a/bus_sn', 'stacja_s02/bus_sn'];
+      // HARNESS-RESZTA-2 (2026-09-17): refy CYTOWANE Z FIXTURY realnego biegu
+      // backendu (szyny SN obu stacji magistrali sceny) — wcześniej spec podawał
+      // refy sieci, która nie istnieje w żadnym modelu repozytorium.
+      const elementy = KOORDYNACJA_SCENA_WYNIK.devices.map((u) => u.location_element_id);
+      expect(elementy.length, 'fixtura koordynacji musi opisywać dwa zabezpieczenia').toBe(2);
       for (const element of elementy) {
         await page.getByTitle('Zastosuj szablon').click();
         // Klik ZAWĘŻONY do okna szablonów: po dodaniu pierwszego zabezpieczenia ta sama
@@ -190,18 +208,29 @@ test.describe('koordynacja:screenshot', () => {
         await page.getByRole('button', { name: 'Zapisz konfigurację' }).click();
       }
 
-      // Bramka lokalizacji jest zdjęta, prądy z obu biegów (c = 1,10 i c = 0,95)
-      // związały się z elementami — dopiero teraz analiza ma na czym liczyć.
-      await expect(page.getByTestId('coordination-missing-currents')).toHaveCount(0);
+      // Prądy ZWARCIOWE obu biegów (c_max i c_min) związały się z elementami.
+      // Prąd ROBOCZY związać się NIE MOŻE i ekran uczciwie to melduje: prąd
+      // zwarciowy jest kluczowany SZYNĄ, prąd roboczy GAŁĘZIĄ rozpływu, a modelu
+      // nie niesie relacji „zabezpieczenie → chroniona gałąź" (decyzja A-4,
+      // nazwana w docstringu końcówki `run_coordination_analysis`). Do karty
+      // HARNESS-RESZTA-2 atrapa zakrywała ten brak, podając wiersze GAŁĘZIOWE o
+      // identyfikatorach SZYN — panel milczał, a werdykt przeciążeniowy wyglądał
+      // na policzony. Bramka pilnuje teraz, że brak jest NAZWANY na ekranie.
+      const brakiPradow = page.getByTestId('coordination-missing-currents');
+      await expect(brakiPradow, 'ekran musi nazwać brak prądu roboczego').toBeVisible();
+      await expect(brakiPradow).toContainText('prądu roboczego');
       const uruchom = page.getByTestId('run-analysis-button');
       await expect(uruchom).toBeEnabled();
       await uruchom.click();
 
       // Werdykt pary z NARUSZENIEM musi dojechać na ekran wraz z widoczną akcją
       // naprawczą (V12K-261) — to jest dowód, że łańcuch domknął się do końca.
+      // Tożsamość zabezpieczenia nadrzędnego wymyśla EKRAN (`crypto.randomUUID()`
+      // przy zastosowaniu szablonu), więc spec nie może jej znać — czyta ją z
+      // wiersza selektywności, który ekran wyrenderował.
       await page.getByTestId('tab-selectivity').click();
       await expect(page.getByTestId('selectivity-table')).toBeVisible({ timeout: 15000 });
-      await expect(page.getByTestId('selectivity-fix-dev-nadrzedne')).toBeVisible();
+      await expect(page.locator('[data-testid^="selectivity-fix-"]').first()).toBeVisible();
 
       // Krzywe czasowo-prądowe: sedno tego ekranu i jedyny wykres log-log w systemie.
       await page.getByTestId('tab-tcc').click();

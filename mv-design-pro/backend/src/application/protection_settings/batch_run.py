@@ -209,6 +209,34 @@ def kandydaci_nastepnej_szyny(snapshot: dict[str, Any] | None, line_id: str) -> 
     return sorted(kandydaci)
 
 
+def szyna_ma_prad_zwarciowy(raw_result: dict[str, Any] | None, bus_ref: str) -> bool:
+    """Czy WYNIK kotwicy niesie prąd zwarcia 3F dla tej szyny modelu.
+
+    JEDEN predykat dla WEJŚCIA (lista kandydatów pokazywana projektantowi) i
+    WYJŚCIA (`zbuduj_wejscie_nastaw`, które bez tego prądu odmawia) — reguła
+    „predykaty parami" z jednego źródła prawdy.
+
+    DLACZEGO POWSTAŁ (karta HARNESS-RESZTA-2, 2026-09-17). Dostępność pakietu
+    nastaw (`application/proof_engine/pakiet_nastaw.py::dostepnosc_pakietu_nastaw`)
+    deklarowała w docstringu, że „dostępny" nie może rozjechać się z „da się
+    pobrać" — a rozjeżdżała się na KAŻDEJ sieci rejestru. Pomiar bezpośredni na
+    HEAD (bieg `short_circuit_sn` + próba `zbuduj_odpowiedz_nastaw_json` dla
+    KAŻDEJ reklamowanej pary): GN_01 3 pary / 0 działających, GN_02 2/0,
+    GN_03 3/0, GN_04 1/0, GN_05 1/0, `gpzFeeder.enm.json` 2/0 — RAZEM 12
+    reklamowanych par, 0 działających, wszystkie z tym samym powodem
+    („kotwica nie zawiera prądu zwarcia 3F dla początku, końca chronionego
+    odcinka albo kolejnej szyny"). Ekran nastaw prowadził projektanta w ślepy
+    zaułek na każdej sieci, jaką repozytorium ma.
+
+    Powód rozjazdu: kandydatów wyznaczała WYŁĄCZNIE topologia i komplet danych
+    katalogowych, a budowa wymaga DODATKOWO, żeby trzy szyny (początek i koniec
+    chronionego odcinka oraz kolejna szyna) były RAPORTOWALNYMI punktami
+    zwarcia biegu — szyny pomocnicze magistrali (`helper_bus`,
+    `enm/assembler.py::skip_short_circuit_target`) punktami nie są.
+    """
+    return _prad_zwarciowy_w_wezle(raw_result, ref_to_graph_id(bus_ref)) is not None
+
+
 def _opcjonalna_liczba(wartosc: Any) -> float | None:
     if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
         return None
