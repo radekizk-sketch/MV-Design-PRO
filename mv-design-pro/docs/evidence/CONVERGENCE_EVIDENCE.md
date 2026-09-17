@@ -191,6 +191,14 @@ SLD Determinism (`35128131305` / `35128136754`, run 3565), Docs (`35128131357` /
 (`35128131298` / `35128136760`, run 3283), P0 Extended (`35128131328` / `35128136796`, run 1730), Physics Label
 (`35128131286` / `35128136787`, run 1729). Stan CI po pushu odbioru HARNESS-RESZTA: kolejny wpis.
 
+**Stan 2026-09-17, szczyt `f084723f` (HARNESS-RESZTA + naprawa klasy startu warsztatu wyników + evidence; push 16:17 UTC):
+9/9 workflowów zielonych W OBU zdarzeniach (push i PR)** — Python tests (push `35245693453`, run 5036; PR `35245699960`,
+run 5037), Frontend E2E full (push `35245693488`, run 450; PR `35245699747`, run 451), Frontend checks (push `35245693561`,
+run 3517; PR `35245700159`, run 3518), E2E smoke (`35245693479` / `35245699770`, run 2627/2628), SLD Determinism
+(`35245693509` / `35245699680`, run 3566/3567), Docs (`35245693478` / `35245699682`, run 3661/3662), Arch (`35245693495` /
+`35245700056`, run 3284/3285), P0 Extended (`35245693521` / `35245699819`, run 1731/1732), Physics Label (`35245693547` /
+`35245700063`, run 1730/1731). Stan CI po pushu odbioru W6-1 + TODO-UI2: kolejny wpis.
+
 ## B. Ochrona gałęzi `main` (§36) — **OWNER ACTION P0**
 
 Pomiar (GitHub API `list_branches`, 2026-09-04): `main` → `protected: false`; łącznie ponad 400 gałęzi (`claude/*`, `codex/*`, `kopia/*`), żadna chroniona. Sesja agenta nie ma uprawnień administracyjnych do włączenia ochrony (brak narzędzia w MCP; wymaga roli admin repozytorium).
@@ -576,6 +584,49 @@ Metoda: `grep -n "@router\." backend/src/api/power_flow_runs.py` (15 tras potwie
   (14,0 min)**. Pozostałe domeny scen z literałami (koordynacja, dobór przekładników, porównania A/B, SSCI, zgodność
   powykonawcza, estymacja WLS, składowe 1F, zbieżność, OLTC, pulpit, analizy specjalistyczne, FRT, praca wyspowa, kreator
   budowy sieci) — karta HARNESS-RESZTA-2 z celem zapadki 0/0.
+
+### F.W6-1 + TODO-UI2 + typy testów FE + szablony (łańcuch f7, drzewo `a4a2a817`, 2026-09-17)
+
+**Skład drzewa (46 commitów nad `f084723f`).** W6-1 „kontrakty czasu" (11 cherry-picków): `Generator.dynamika`
+addytywnie POZA odciskiem modelu — 55/56 sieci rejestru bajtowo równe (jedyna różnica: sieć z nowym polem),
+katalog `der_dynamic` bez profili domyślnych (resolver oddaje `brak`, zamiast domyślki), kontrakt
+`ResultSetDynamicV1` z szeregami w osobnej tabeli, rodzaj biegu `dynamika_rms` z odmową NAZWANĄ
+`dynamika.rdzen_niedostepny` (bez wyniku-atrapy — rdzeń DAE to karta W6-2), gotowość per rodzina źródła,
+archiwum wątku badawczego. TODO-UI2 klasa A (9 commitów: ekrany wyników + trzy guardy klasy) i klasa B
+(11 commitów: przestrzenie i powłoka). Karta typów testów FE (2 commity): budżet zapadki `tsconfig_gate_guard`
+112 → **106 z pomiaru** (tylko w dół). Karta szablonów stacji, rola A (8 commitów).
+
+**Naprawy architekta przy scaleniu (defekty szwu, każdy u źródła).** (1) Scena pulpitu harnessu miała DWA
+źródła prawdy o przebiegu (mock listy GET i zasiew store) — jeden kontrakt `PULPIT_PRZEBIEG_K1` konsumowany przez
+oba, zapadka literałów wróciła do 164/40 BEZ podnoszenia progu. (2) Inspektor pokazywał wyniki i dowody bez
+związku z aktywnym biegiem (V12T-017) — mapowanie czyste zostaje modelowe, hook dokłada kontekst biegu
+(`rewizjaDanych` ze świeżości), dowód elementu niesie rewizję. (3) Afordancja dowodu w tabeli wyników pojawiała
+się bez dostawcy (V12T-019) — warunek to teraz `dowodRef` I dostawca; pusta zaślepka `onOtworzDowod` w rankingu
+OZE skasowana (wiersze rankingu nie mają dowodu per element — uzasadnienie merytoryczne w kodzie). (4) Mapa celów
+frontu deklarowała kod gotowości skasowany przez W6-1 i nie znała nowego blokera — mapa poprawiona, migawka
+rejestru przeliczona generatorem (**134 kody**). (5) `v12xx_canon_guard` nie widział **2 z 19** wierszy rejestru
+długu (dzielił wiersz po KAŻDYM `|`, także po `\|` w treści) — parser poprawiony, dołożone naruszenie
+`[debt-register-unparsed]` (wiersz `V12T-`, którego parser nie złoży, jest błędem, nie ciszą) + 2 self-testy;
+po naprawie **19/19** wierszy widocznych. (6) Scena zbieżności harnessu nie miała kontraktu przebiegu po wpięciu
+świeżości — wpis mapy scen reużywający nagłówka sceny.
+
+**Weryfikacja na drzewie scalonym (łańcuch f7, kody wyjścia łapane bezpośrednio):** pytest pełny
+`-m "not pandapower"` **15 461 passed / 1 skipped** (rc=0, 640 s); wyrocznia pandapower **rc=0**;
+`guardy_z_ci.py` **KOMPLET ZIELONY** + **1018** testów własnych guardów (rc=0); vitest pełny **893 pliki /
+12 540 testów** (rc=0); e2e realny backend, 36 speców: **224 passed** w 7,9 min (rc=0). Snapshot OpenAPI
+**308 ścieżek / 224 schematy** bez dryfu; parytet fixtur harnessu `--sprawdz` rc=0; słownik kodów gotowości rc=0.
+
+**Dług NAZWANY (nie ukryty): 1 skipped.** To `tests/enm/test_przejecie_biegu_atomowe.py::test_przejecie_jest_atomowe_takze_na_postgresie`
+— niezmiennik atomowości przejęcia biegu jest dziś dowiedziony WYŁĄCZNIE na SQLite, choć produkt stoi na
+`postgresql+psycopg` (DT-13), a PostgreSQL 16 jest w tym środowisku obecny (`/usr/lib/postgresql/16`, `psql`
+w PATH) — test nie biega, bo nikt nie podnosi klastra, nie dlatego, że go nie ma. Karta naprawcza PG-DIALEKT
+(fikstura sesyjna podnosząca efemeryczny klaster z binariów systemowych; skip dopuszczalny WYŁĄCZNIE przy braku
+binariów; usługa `postgres:16` w `python-tests.yml`; inwentarz klasy testów transakcyjnych sprawdzanych tylko na
+SQLite; iniekcja czerwona jako dowód, że test pilnuje niezmiennika na tym dialekcie) — wydana do wykonawcy
+w tej samej kolejce.
+
+**Rozbieżność karta–brief z W6-1 (formularz zdarzeń scenariusza w UI)** pozostaje do rozstrzygnięcia w W6-2
+(karta architekta `docs/plan/KARTA_W6_2_RDZEN_DYNAMIKI_2026-09.md` — warunek wejścia spełniony po tym odbiorze).
 
 ## G. Ustalenia adwersaryjne (§38) — po każdej granicy
 
