@@ -1,10 +1,10 @@
-"""Station Templates API — K30-16 user-requested 57+ templates.
+"""Station Templates API — K30-16/V12T-016, 73+ templates across 15 categories.
 
 REST endpoints:
-- GET /api/station-templates — list all 57 templates
+- GET /api/station-templates — list all 73+ templates
 - GET /api/station-templates?category=<cat> — filter by category
 - GET /api/station-templates/{template_id} — full schema + editable params
-- GET /api/station-templates/categories — list 10 categories with counts
+- GET /api/station-templates/categories — list 15 categories with counts
 """
 
 from __future__ import annotations
@@ -83,7 +83,15 @@ class ApplyTemplateRequest(BaseModel):
     """K30-20: Apply template payload."""
 
     case_id: str = Field(..., description="Target case UUID")
-    target_segment_id: str = Field(..., description="Trunk segment_ref where station gets inserted")
+    target_segment_id: str | None = Field(
+        default=None,
+        description=(
+            "Trunk segment_ref where station gets inserted. Optional ONLY for "
+            "category GPZ_110_SN (V12T-016) — GPZ is the model's root (add_grid_"
+            "source_sn), not an insertion into an existing segment; every other "
+            "category requires it (apply_template_to_case rejects None explicitly)."
+        ),
+    )
     insert_at_ratio: float = Field(default=0.5, ge=0.0, le=1.0, description="Position on segment")
     params_override: dict[str, Any] = Field(default_factory=dict, description="User-edited params")
     catalog_profile: str | None = Field(default=None, description="Manufacturer profile cascade")
@@ -339,7 +347,7 @@ def list_station_templates(
 
 @router.get("/categories")
 def list_categories() -> dict[str, Any]:
-    """Return 10 categories z counts dla wizard step 1 (Kategoria)."""
+    """Return 15 categories z counts dla wizard step 1 (Kategoria)."""
     counts = count_by_category()
     return {
         "categories": [
@@ -395,6 +403,12 @@ _CATEGORY_ICONS: dict[TemplateCategory, str] = {
     TemplateCategory.PRZEMYSLOWA: "station-industrial",
     TemplateCategory.WIATROWA: "station-wind",
     TemplateCategory.SEKCYJNA: "station-sectional",
+    # V12T-016 (rejestr długu, rola A/C/E — licznik ZERO przed tą kartą):
+    TemplateCategory.GPZ_110_SN: "station-gpz",
+    TemplateCategory.ROZDZIELNIA_SIECIOWA: "station-switching",
+    TemplateCategory.STACJA_ABONENCKA: "station-metering",
+    TemplateCategory.KOMPENSACJA: "station-capacitor",
+    TemplateCategory.REZERWA_ZASILANIA: "station-reserve",
 }
 
 _CATEGORY_DESCRIPTIONS: dict[TemplateCategory, str] = {
@@ -408,4 +422,9 @@ _CATEGORY_DESCRIPTIONS: dict[TemplateCategory, str] = {
     TemplateCategory.PRZEMYSLOWA: "Stacje przemysłowe odbiorcze (zakłady, silniki)",
     TemplateCategory.WIATROWA: "Stacje OZE wiatrowe (Vestas V90/V112)",
     TemplateCategory.SEKCYJNA: "Stacje sekcyjne/pętlowe z NOP/SZR",
+    TemplateCategory.GPZ_110_SN: "GPZ 110/SN — korzeń sieci, 2-sekcyjny układ H5 z mostkiem",
+    TemplateCategory.ROZDZIELNIA_SIECIOWA: "Rozdzielnie sieciowe RS/RSM — bez transformatora",
+    TemplateCategory.STACJA_ABONENCKA: "Stacje odbiorcze SN z układem pomiarowo-rozliczeniowym",
+    TemplateCategory.KOMPENSACJA: "Bateria kondensatorów SN — kompensacja mocy biernej",
+    TemplateCategory.REZERWA_ZASILANIA: "Węzeł SN z zasilaniem rezerwowym (automatyka SZR)",
 }

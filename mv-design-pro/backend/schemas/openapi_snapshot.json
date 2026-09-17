@@ -36,14 +36,20 @@
       "type": "object"
      },
      "target_segment_id": {
-      "description": "Trunk segment_ref where station gets inserted",
-      "title": "Target Segment Id",
-      "type": "string"
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Trunk segment_ref where station gets inserted. Optional ONLY for category GPZ_110_SN (V12T-016) — GPZ is the model's root (add_grid_source_sn), not an insertion into an existing segment; every other category requires it (apply_template_to_case rejects None explicitly).",
+      "title": "Target Segment Id"
      }
     },
     "required": [
-     "case_id",
-     "target_segment_id"
+     "case_id"
     ],
     "title": "ApplyTemplateRequest",
     "type": "object"
@@ -26287,7 +26293,7 @@
   },
   "/api/station-templates/categories": {
    "get": {
-    "description": "Return 10 categories z counts dla wizard step 1 (Kategoria).",
+    "description": "Return 15 categories z counts dla wizard step 1 (Kategoria).",
     "operationId": "list_categories_api_station_templates_categories_get",
     "responses": {
      "200": {
