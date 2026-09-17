@@ -160,8 +160,8 @@ def test_mapa_celow_frontu_nie_ma_sierot_w_przestrzeni_der() -> None:
     operations.py`, kanał certyfikatu PTPiREE). To za wąsko: `grupowanieCelow.ts`
     mapuje CAŁY kanoniczny rejestr gotowości (`READINESS_CODES`, parytet z
     `GET /api/readiness/registry` pilnowany osobnym testem FE), nie tylko kody
-    tego jednego pliku — np. `der.dynamic_profile_missing`/`der.dynamic_profile_
-    default` (obszar GENERATORS, blokują LOAD_FLOW wg `get_blockers_for_analysis`)
+    tego jednego pliku — np. `der.dynamic_profile_missing`/`der.dynamika_missing`
+    (obszar GENERATORS, blokują LOAD_FLOW wg `get_blockers_for_analysis`)
     są emitowane przez `application/calculation_readiness/service.py` +
     `application/analyses/frt_trajektorie.py`, osobny moduł od kanału certyfikatu.
     Realny „sierota" to kod, którego NIE MA w kanonicznym rejestrze wcale —
