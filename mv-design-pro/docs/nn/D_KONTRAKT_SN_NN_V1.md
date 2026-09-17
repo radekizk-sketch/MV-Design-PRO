@@ -70,9 +70,16 @@ zdolność wyłączalna→SHORT_CIRCUIT_MAX; SWZ/czułość→SHORT_CIRCUIT_MIN 
 1. Operacje nN przechodzą przez `execute_domain_operation` → `set_enm` → bump `ENMHeader.
    revision` + łańcuch 5 hashy → `compute_dispatch_input_hash` wykrywa nieaktualność
    automatycznie (mechanizm istniejący).
-2. **Domknięcie N-D (P0.1):** dispatcher operacji domenowych wywołuje `ResultInvalidator`
-   (flip `StudyCase.result_status` → OUTDATED) — dziś robi to tylko legacy wizard; bez tego
-   plakietki świeżości UI kłamią po edycji nN.
+2. **Domknięcie N-D (P0.1) — ZAMKNIĘTE INACZEJ NIŻ ZAPISANO (korekta 2026-09-17).** Pierwotny
+   zapis żądał, żeby dispatcher operacji domenowych wołał unieważniacz wyników (flip
+   `StudyCase.result_status` → OUTDATED). Ta droga NIE ISTNIEJE i nie wolno jej odtwarzać:
+   karta CV-2-W (2026-09-05) zamieniła status wyników przypadku z POLA na FUNKCJĘ (biegi
+   kanoniczne × rewizja modelu × odcisk katalogu — `application/result_freshness.py`,
+   `application/study_case/status_wynikow.py`), więc nie ma stanu, który trzeba przestawiać, i
+   plakietka nie ma jak skłamać po edycji nN — każda operacja domenowa bumpuje rewizję ENM, a ta
+   sama funkcja liczy świeżość przy odczycie. Zapis kolumny pilnuje `scripts/result_status_writer_guard.py`
+   (budżet 0), a wskrzeszenie unieważniacza — `scripts/legacy_public_path_guard.py`
+   (karta KASACJA-UNIEWAZNIACZA, 2026-09-17: moduł skasowany po pomiarze 0 wołających).
 3. Impact analysis (§59–60 zlecenia): zakres inwalidacji wg osi hashy — zmiana kabla nN zmienia
    `input_hash` (unieważnia PF/SC/SWZ), NIE zmienia `semantic_hash` konfiguracji stacji SN;
    prezentacja „co unieważni ta zmiana" = odczyt różnicy osi (P1).
