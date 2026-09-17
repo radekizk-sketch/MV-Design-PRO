@@ -160,6 +160,24 @@ import { usePowerFlowResultsStore } from './ui/power-flow-results/store';
 import type { ExecutionRun } from './ui/study-cases/types';
 
 // --- Motyw ---------------------------------------------------------------
+/**
+ * Scena „pulpit": JEDEN kontrakt przebiegu zakresu K1 — czyta go i atrapa listy
+ * przebiegow (`listRuns` wolane przez `useWszystkiePrzebiegiProjektu`), i zasiew
+ * `useExecutionRunsStore`. Dwa niezalezne literaly tego samego biegu (stan sprzed
+ * tej stalej) to dwa zrodla prawdy: rozjazd identyfikatora rozspaja kafel
+ * „Ostatni przebieg" z rejestrem, a zapadka literalow harnessu liczy go dwa razy.
+ */
+const PULPIT_PRZEBIEG_K1 = {
+  id: 'run-lf-2',
+  study_case_id: 'K1',
+  analysis_type: 'LOAD_FLOW',
+  status: 'DONE',
+  started_at: '2026-07-21T18:05:00Z',
+  finished_at: '2026-07-21T18:05:04Z',
+  solver_input_hash: 'pulpit-lf2',
+  error_message: null,
+} as const;
+
 const theme = new URLSearchParams(window.location.search).get('theme') === 'light'
   ? 'light_technical'
   : 'dark_scada';
@@ -2004,21 +2022,16 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   ) {
     // Lista przebiegow per przypadek (`listRuns`, `useWszystkiePrzebiegiProjektu`) —
     // wywolywana przez `PulpitProjektu` (scena "pulpit") dla KAZDEGO przypadku
-    // projektu. Scena "pulpit" zasiewa `useExecutionRunsStore` z `run-lf-2` dla
-    // K1 (parytet wizualny z kafla "Ostatni przebieg" sprzed tej trasy) — inne
+    // projektu. Scena "pulpit" zasiewa `useExecutionRunsStore` TYM SAMYM
+    // kontraktem (`PULPIT_PRZEBIEG_K1`) dla K1 (parytet wizualny z kafla
+    // "Ostatni przebieg" sprzed tej trasy) — inne
     // przypadki dostaja uczciwa pusta liste (zero fabrykacji danych, ktorych
     // scena nie zasiala).
     const przypadekId = url.split('/api/execution/study-cases/')[1]?.split('/runs')[0] ?? '';
     if (przypadekId === 'K1') {
       return new Response(
         JSON.stringify({
-          runs: [
-            {
-              id: 'run-lf-2', study_case_id: 'K1', analysis_type: 'LOAD_FLOW', status: 'DONE',
-              started_at: '2026-07-21T18:05:00Z', finished_at: '2026-07-21T18:05:04Z',
-              solver_input_hash: 'pulpit-lf2', error_message: null,
-            },
-          ],
+          runs: [PULPIT_PRZEBIEG_K1],
           count: 1,
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
@@ -2331,10 +2344,7 @@ if (creator === 'arcflash') {
     ],
     activeCase: { id: 'K1', name: 'Stan normalny', result_status: 'FRESH', results_valid: true } as never,
   } as never);
-  const run: ExecutionRun = {
-    id: 'run-lf-2', analysis_type: 'LOAD_FLOW', status: 'DONE',
-    started_at: '2026-07-21T18:05:00Z', finished_at: '2026-07-21T18:05:04Z',
-  } as unknown as ExecutionRun;
+  const run = PULPIT_PRZEBIEG_K1 as unknown as ExecutionRun;
   useExecutionRunsStore.setState({ runs: [run], activeStudyCaseId: 'K1' } as never);
 } else if (creator === 'uwaga') {
   // Rejestr „Co wymaga uwagi" (A1/V12K-098 + kontekstowe akcje K1/V12K-101):

@@ -11,7 +11,7 @@
       "from_node_name": "Szyna GPZ S1 15 kV",
       "to_node_id": "stn/980a625dd13777cd339a1a173a2a2864/sn_bus",
       "to_node_name": "Stacja S01 (typ B)",
-      "i_ka": 9.120809586194339,
+      "i_ka": 9.120809586194344,
       "direction": "from_to"
     },
     {
@@ -22,7 +22,7 @@
       "from_node_name": "Szyna GPZ S1 15 kV",
       "to_node_id": "stn/0188f98f1309b5535301f05ec09e6133/sn_bus",
       "to_node_name": "Stacja S02 (typ B)",
-      "i_ka": 0.016054228105759835,
+      "i_ka": 0.01605422810575986,
       "direction": "to_from"
     }
   ]
