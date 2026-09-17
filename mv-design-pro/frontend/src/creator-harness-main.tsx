@@ -804,6 +804,13 @@ const RUN_KONTRAKT_SCENY: Record<string, string> = {
   walidacja: walidacjaScenyWynik.context.run_id,
   estymacja: 'run-lf-6',
   'odbior-zgodnosc': 'run-lf-5',
+  // Ekran zbieznosci dostal znacznik swiezosci naglowka (karta wynikow), wiec
+  // od tej chwili WOLA kontrakt przebiegu. Bez wpisu zapytanie szlo do realnego
+  // backendu i wracalo 404 — bramka „zero bledow konsoli" specow zrzutowych
+  // slusznie to lapala. Wartosc czytana z TEGO SAMEGO bytu, ktory scena zasiewa
+  // (`ZBIEZNOSC_HEADER.id`), zeby nie powstal drugi literal tego samego biegu;
+  // przeniesienie sceny na fixture realnego biegu nalezy do karty harnessu.
+  'wyniki-zbieznosc': ZBIEZNOSC_HEADER.id,
   arcflash: arcflashScenyWynik.context.run_id,
   migotanie: migotanieScenyWynik.context.run_id,
 };
