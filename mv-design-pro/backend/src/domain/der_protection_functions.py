@@ -76,6 +76,13 @@ class FaktyPolaWytworcy:
     der_id: str
     der_kind: RodzajDer
     connection_side: str
+    #: NAZWA wytwórcy z modelu — etykieta chronionego obiektu pokazywana
+    #: inżynierowi. Bez niej opis funkcji sklejał się z REFERENCJĄ modelu
+    #: („pole wytwórcy pv/cf52e8ef.../converter"), czyli identyfikator maszynowy
+    #: wychodził na pierwszy plan ekranu doboru zabezpieczeń (zmierzone na
+    #: modelu zbudowanym operacjami domenowymi). Brak nazwy = zostaje
+    #: referencja: uczciwiej pokazać identyfikator niż wymyślić etykietę.
+    der_nazwa: str | None = None
     nominal_power_kw: float | None = None
     block_transformer_catalog_ref: str | None = None
     neutral_grounding_mode: TrybUziemienia = None
@@ -135,7 +142,7 @@ def dobierz_funkcje(fakty: FaktyPolaWytworcy) -> WynikDoboru:
 
     wymagane: list[FunkcjaWymagana] = []
     otwarte: list[KwestiaOtwarta] = []
-    obiekt = f"pole wytwórcy {fakty.der_id}"
+    obiekt = f"pole wytwórcy {fakty.der_nazwa or fakty.der_id}"
 
     # --- Zwarcia miedzyfazowe: podstawa kazdego pola, niezalezna od uziemienia --------
     wymagane.append(

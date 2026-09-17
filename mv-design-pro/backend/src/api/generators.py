@@ -801,6 +801,7 @@ def _fakty_pola_wytworcy(
     sciezka = sciezka_zwarcia or {}
     return FaktyPolaWytworcy(
         der_id=str(generator.get("ref_id") or ""),
+        der_nazwa=(str(generator.get("name")).strip() or None if generator.get("name") else None),
         der_kind=rodzaj,  # type: ignore[arg-type]
         connection_side=strona,
         nominal_power_kw=(mw_na_kw(p_mw) if isinstance(p_mw, int | float) else None),

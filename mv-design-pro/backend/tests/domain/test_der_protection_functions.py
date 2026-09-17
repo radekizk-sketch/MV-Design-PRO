@@ -207,3 +207,25 @@ class TestTrybUziemieniaZModelu:
         wynik = dobierz_funkcje(fakty(neutral_grounding_mode=None))
         assert "protection.neutral_grounding_unknown" in kody_otwartych(wynik)
         assert "67N" not in wynik.kody()
+
+
+class TestEtykietaChronionegoObiektu:
+    """Chroniony obiekt opisany NAZWĄ wytwórcy, nie referencją modelu.
+
+    Dyrektywa właściciela: metadane implementacyjne (identyfikatory, hashe) nie
+    wychodzą na pierwszy plan ekranu projektanta. Referencje modelu budowanego
+    operacjami domenowymi wyglądają jak `pv/cf52e8ef…/converter` — w opisie
+    funkcji zabezpieczeniowej to szum, a nie informacja."""
+
+    def test_etykieta_uzywa_nazwy_wytworcy(self) -> None:
+        wynik = dobierz_funkcje(fakty(der_nazwa="Farma PV 1 MW"))
+        assert wynik.wymagane
+        for funkcja in wynik.wymagane:
+            assert "Farma PV 1 MW" in funkcja.chroniony_obiekt_pl
+            assert "DER-1" not in funkcja.chroniony_obiekt_pl
+
+    def test_bez_nazwy_zostaje_referencja_zamiast_wymyslonej_etykiety(self) -> None:
+        wynik = dobierz_funkcje(fakty(der_nazwa=None))
+        assert wynik.wymagane
+        for funkcja in wynik.wymagane:
+            assert "DER-1" in funkcja.chroniony_obiekt_pl

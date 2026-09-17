@@ -1389,19 +1389,19 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `TemplateSchema.shunt_capacitor_options`/`grid_source_options`,
     # `application/station_templates/schema.py` — addytywne krotki CatalogChoice
     # dla nowych kategorii szablonow rola A/E; zero podstawien liczbowych).
-    # Karta KATALOG-NIEZMIENNIKI (2026-09-17): 3708 -> 3725 (+17 pol; POMIAR guardem
-    # na drzewie karty). Nowe nosniki w zakresie skanu, wszystkie w `api/catalog.py`
-    # — kontrakt odpowiedzi przegladu wiarygodnosci katalogu:
-    # `OdstepstwoWiarygodnosciOdpowiedz` (kod, regula, pozycja_id, opis_wartosci),
-    # `PokrycieRegulyOdpowiedz` (policzone, pominiete, powod_pominiecia),
-    # `RegulaWiarygodnosciOdpowiedz` (nazwa, podstawa, uzasadnienie),
-    # `RodzinaPrzegladuOdpowiedz` (rodzina, etykieta_pl, liczba_pozycji,
-    # sprawdzone_reguly, pokrycie, liczba_odstepstw, wedlug_kodu, odstepstwa),
-    # `RodzinaBezRegulOdpowiedz` (powod), `PrzegladWiarygodnosciOdpowiedz`
-    # (rodziny, rodziny_bez_regul, reguly) — dedup po nazwie pola. Przeglad CZYTA
-    # katalog i nie podstawia ZADNEJ liczby za brak danej: pozycja, ktorej reguly nie
-    # da sie policzyc, idzie do `pominiete` z nazwanym powodem (PASS niezmieniony).
-    assert "Pol kontraktow wejsciowych: 3725." in wyjscie, wyjscie
+    # Dwie karty tej samej fali podnioszly ten sam licznik; wartosc ponizej jest
+    # POMIAREM guardem na drzewie polaczonym, nie suma arytmetyczna kart.
+    # KATALOG-NIEZMIENNIKI (2026-09-17): +17 pol kontraktu przegladu wiarygodnosci
+    # katalogu w `api/catalog.py` (`OdstepstwoWiarygodnosciOdpowiedz`,
+    # `PokrycieRegulyOdpowiedz`, `RegulaWiarygodnosciOdpowiedz`,
+    # `RodzinaPrzegladuOdpowiedz`, `RodzinaBezRegulOdpowiedz`,
+    # `PrzegladWiarygodnosciOdpowiedz`) — przeglad CZYTA katalog, pozycja
+    # niepoliczalna idzie do `pominiete` z nazwanym powodem.
+    # HARNESS-RESZTA-2 (2026-09-17): +1 pole `FaktyPolaWytworcy.der_nazwa`
+    # (`domain/der_protection_functions.py`) — nazwa wytworcy w etykiecie
+    # chronionego obiektu, `str | None = None`, brak danej meldowany jako brak.
+    # W obu wypadkach zero podstawien liczbowych — PASS bramki niezmieniony.
+    assert "Pol kontraktow wejsciowych: 3726." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
