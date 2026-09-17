@@ -107,13 +107,23 @@ def test_zgodnosc_przekrojowa_ma_ksztalt_trasy() -> None:
     bieg = odpowiedz["bieg"]
     assert bieg is not None
     assert bieg["contract"] == "NcRfgPtpireeTestResultV1"
-    assert odpowiedz["der_count"] == len(bieg["modules"]) == len(eksport.DER_SCENY_MACIERZ)
-    for modul, (der_ref, p_max_kw, voltage_kv, _gen_type, _karta) in zip(
-        bieg["modules"], eksport.DER_SCENY_MACIERZ, strict=True
-    ):
-        assert modul["der_ref"] == der_ref
-        assert modul["p_max_kw"] == p_max_kw
-        assert modul["voltage_kv"] == voltage_kv
+    # HARNESS-RESZTA-2: oczekiwania wyprowadzone Z MODELU sceny (zbudowanego
+    # operacjami domenowymi), nie z listy gotowych modułów przepisanej obok —
+    # referencje i napięcia nadaje domena, a nie autor testu.
+    model = eksport.enm_sceny_macierz()
+    napiecia = {szyna.ref_id: szyna.voltage_kv for szyna in model.buses}
+    oczekiwane = {
+        generator.ref_id: (
+            round(generator.p_mw * 1000.0, 6),
+            napiecia[generator.bus_ref],
+        )
+        for generator in model.generators
+    }
+    assert odpowiedz["der_count"] == len(bieg["modules"]) == len(oczekiwane)
+    for modul in bieg["modules"]:
+        p_max_kw, voltage_kv = oczekiwane[modul["der_ref"]]
+        assert modul["p_max_kw"] == pytest.approx(p_max_kw)
+        assert modul["voltage_kv"] == pytest.approx(voltage_kv)
         # Klasa modułu: progi OD-5 (1 MW / 50 MW) — scena zasiewa moduły klasy B.
         assert modul["module_type"] == "B"
         assert {test["test_id"] for test in modul["tests"]} == {f"T{i:02d}" for i in range(1, 21)}
@@ -122,13 +132,20 @@ def test_zgodnosc_przekrojowa_ma_ksztalt_trasy() -> None:
     assert {"reporting_status", "proof_status", "evidence_limitations", "evidence_by_test"} <= set(
         bieg
     )
-    assert set(bieg["evidence_per_module"]) == {der[0] for der in eksport.DER_SCENY_MACIERZ}
-    # Certyfikat PTPiREE z REALNEGO katalogu: PV powiązany (numer dokumentu), BESS bez.
+    assert set(bieg["evidence_per_module"]) == set(oczekiwane)
+    # Certyfikat PTPiREE z REALNEGO katalogu: falownik PV z wykazu PTPiREE ma
+    # numer dokumentu, falownik BESS spoza wykazu — nie ma. Moduły rozpoznawane
+    # po technologii Z MODELU (`gen_type`), nie po ręcznej etykiecie.
+    technologia = {generator.ref_id: generator.gen_type for generator in model.generators}
     dowody = {d["der_ref"]: d for d in bieg["certificate_evidence"]}
-    assert dowody["pv-1"]["document_number"]
-    assert dowody["bess-1"]["document_number"] is None
     statusy = {m["der_ref"]: m["certificate_status"] for m in bieg["modules"]}
-    assert statusy == {"pv-1": "ptpiree_verified", "bess-1": "unknown"}
+    for der_ref, rodzaj in technologia.items():
+        if rodzaj == "pv_inverter":
+            assert dowody[der_ref]["document_number"]
+            assert statusy[der_ref] == "ptpiree_verified"
+        else:
+            assert dowody[der_ref]["document_number"] is None
+            assert statusy[der_ref] == "unknown"
 
 
 def test_werdykt_bez_biegow_jest_niesprawdzony() -> None:

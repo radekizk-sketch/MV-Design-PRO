@@ -7,18 +7,18 @@
     "contract": "NcRfgPtpireeTestResultV1",
     "procedure_version": "PTPiREE Procedura testowania v3.0",
     "solver_version": "ncrfg-ptpiree-whitebox-1.0",
-    "input_hash": "f88255de13f2ff212446b5add29cbea6e559e5cd65ed938fc283faa6a8f27c5c",
-    "deterministic_hash": "f2a0215dc8c779aa73b6a69d9aa531f322dd39be71b1828d62e4eb44a988c1db",
+    "input_hash": "b26d39cedaf82f9d54bc7bd370508cb9bc1e80de2de96d2433408553e332021f",
+    "deterministic_hash": "e07ca31f0285d839b0564ee2f38d816171898bcf826acc6f50ff8ae5cf638579",
     "modules": [
       {
-        "der_ref": "bess-1",
-        "der_name": "bess-1",
+        "der_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
+        "der_name": "Magazyn energii 1,5 MW",
         "operator_id": "enea",
         "operator_name_pl": "Enea Operator",
         "module_type": "B",
         "module_family": "PPM",
         "p_max_kw": 1500.0,
-        "voltage_kv": 15.0,
+        "voltage_kv": 0.4,
         "certificate_status": "unknown",
         "required_count": 10,
         "pass_count": 1,
@@ -279,14 +279,14 @@
         ]
       },
       {
-        "der_ref": "pv-1",
-        "der_name": "pv-1",
+        "der_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
+        "der_name": "Instalacja PV 1,9 MW",
         "operator_id": "enea",
         "operator_name_pl": "Enea Operator",
         "module_type": "B",
         "module_family": "PPM",
         "p_max_kw": 1935.0,
-        "voltage_kv": 15.0,
+        "voltage_kv": 0.8,
         "certificate_status": "ptpiree_verified",
         "required_count": 8,
         "pass_count": 2,
@@ -851,10 +851,10 @@
         "proof_ref": "proof:ncrfg-ptpiree:T19:observability:5"
       }
     ],
-    "report_pl": "Raport symulacyjny NC RfG / PTPiREE\nProcedura: PTPiREE Procedura testowania v3.0\nSolver: ncrfg-ptpiree-whitebox-1.0\n\nModuł: bess-1\nOperator: Enea Operator; typ PGM: B; Pmax: 1500.0 kW\nStatus: brak_danych; wymagane: 10; PASS: 1; FAIL: 0; brak danych: 9\n- T05 Możliwość regulacji mocy czynnej: no_data - Brak aktywnej regulacji mocy czynnej lub rampy.\n- T09 Zdolność do generacji mocy biernej: no_data - Brak zakresu Q/Pn modułu.\n- T10 Potwierdzenie mocy maksymalnej PMAX: pass - PMAX potwierdzone z danych katalogowych/deklaracji: 1500.0 kW.\n- T11 Potwierdzenie mocy minimalnej PMIN: no_data - Brak deklarowanej wartości PMIN.\n- T12 Zaprzestanie generacji mocy czynnej: no_data - Brak funkcji zdalnej komendy P albo rampy wykonania.\n- T13 Zmniejszenie generacji mocy czynnej: no_data - Brak funkcji zdalnej komendy P albo rampy wykonania.\n- T14 LVRT - pozostanie w pracy przy zapadzie napięcia: no_data - Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.\n- T15 HVRT - pozostanie w pracy przy wzroście napięcia: no_data - Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.\n- T16 Odbudowa mocy czynnej po zakłóceniu: no_data - Brak czasu odbudowy mocy czynnej po FRT.\n- T17 Prąd bierny podczas FRT: no_data - Brak wzmocnienia prądu biernego K_FRT.\n- T19 Rejestracja zakłóceń i komunikacja z operatorem: fail - Zweryfikowano obserwowalność i rejestrację zakłóceń.\n\nModuł: pv-1\nOperator: Enea Operator; typ PGM: B; Pmax: 1935.0 kW\nStatus: brak_danych; wymagane: 8; PASS: 2; FAIL: 0; brak danych: 6\n- T05 Możliwość regulacji mocy czynnej: no_data - Brak aktywnej regulacji mocy czynnej lub rampy.\n- T09 Zdolność do generacji mocy biernej: no_data - Brak zakresu Q/Pn modułu.\n- T10 Potwierdzenie mocy maksymalnej PMAX: pass - PMAX potwierdzone z danych katalogowych/deklaracji: 1935.0 kW.\n- T11 Potwierdzenie mocy minimalnej PMIN: no_data - Brak deklarowanej wartości PMIN.\n- T14 LVRT - pozostanie w pracy przy zapadzie napięcia: pass - LVRT: margines 0.0 p.u. w punkcie 0.0s.\n- T15 HVRT - pozostanie w pracy przy wzroście napięcia: no_data - Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.\n- T16 Odbudowa mocy czynnej po zakłóceniu: no_data - Brak czasu odbudowy mocy czynnej po FRT.\n- T17 Prąd bierny podczas FRT: no_data - Brak wzmocnienia prądu biernego K_FRT.\n- T19 Rejestracja zakłóceń i komunikacja z operatorem: fail - Zweryfikowano obserwowalność i rejestrację zakłóceń.",
+    "report_pl": "Raport symulacyjny NC RfG / PTPiREE\nProcedura: PTPiREE Procedura testowania v3.0\nSolver: ncrfg-ptpiree-whitebox-1.0\n\nModuł: Magazyn energii 1,5 MW\nOperator: Enea Operator; typ PGM: B; Pmax: 1500.0 kW\nStatus: brak_danych; wymagane: 10; PASS: 1; FAIL: 0; brak danych: 9\n- T05 Możliwość regulacji mocy czynnej: no_data - Brak aktywnej regulacji mocy czynnej lub rampy.\n- T09 Zdolność do generacji mocy biernej: no_data - Brak zakresu Q/Pn modułu.\n- T10 Potwierdzenie mocy maksymalnej PMAX: pass - PMAX potwierdzone z danych katalogowych/deklaracji: 1500.0 kW.\n- T11 Potwierdzenie mocy minimalnej PMIN: no_data - Brak deklarowanej wartości PMIN.\n- T12 Zaprzestanie generacji mocy czynnej: no_data - Brak funkcji zdalnej komendy P albo rampy wykonania.\n- T13 Zmniejszenie generacji mocy czynnej: no_data - Brak funkcji zdalnej komendy P albo rampy wykonania.\n- T14 LVRT - pozostanie w pracy przy zapadzie napięcia: no_data - Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.\n- T15 HVRT - pozostanie w pracy przy wzroście napięcia: no_data - Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.\n- T16 Odbudowa mocy czynnej po zakłóceniu: no_data - Brak czasu odbudowy mocy czynnej po FRT.\n- T17 Prąd bierny podczas FRT: no_data - Brak wzmocnienia prądu biernego K_FRT.\n- T19 Rejestracja zakłóceń i komunikacja z operatorem: fail - Zweryfikowano obserwowalność i rejestrację zakłóceń.\n\nModuł: Instalacja PV 1,9 MW\nOperator: Enea Operator; typ PGM: B; Pmax: 1935.0 kW\nStatus: brak_danych; wymagane: 8; PASS: 2; FAIL: 0; brak danych: 6\n- T05 Możliwość regulacji mocy czynnej: no_data - Brak aktywnej regulacji mocy czynnej lub rampy.\n- T09 Zdolność do generacji mocy biernej: no_data - Brak zakresu Q/Pn modułu.\n- T10 Potwierdzenie mocy maksymalnej PMAX: pass - PMAX potwierdzone z danych katalogowych/deklaracji: 1935.0 kW.\n- T11 Potwierdzenie mocy minimalnej PMIN: no_data - Brak deklarowanej wartości PMIN.\n- T14 LVRT - pozostanie w pracy przy zapadzie napięcia: pass - LVRT: margines 0.0 p.u. w punkcie 0.0s.\n- T15 HVRT - pozostanie w pracy przy wzroście napięcia: no_data - Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.\n- T16 Odbudowa mocy czynnej po zakłóceniu: no_data - Brak czasu odbudowy mocy czynnej po FRT.\n- T17 Prąd bierny podczas FRT: no_data - Brak wzmocnienia prądu biernego K_FRT.\n- T19 Rejestracja zakłóceń i komunikacja z operatorem: fail - Zweryfikowano obserwowalność i rejestrację zakłóceń.",
     "certificate_evidence": [
       {
-        "der_ref": "bess-1",
+        "der_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
         "document_number": null,
         "acceptance_date": null,
         "wos_version": null,
@@ -864,7 +864,7 @@
         "certificate_condition": null
       },
       {
-        "der_ref": "pv-1",
+        "der_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
         "document_number": "TC-GCC-DNVGL-SE-0124-07526-1",
         "acceptance_date": "31.12.2026",
         "wos_version": null,
@@ -884,8 +884,8 @@
     ],
     "evidence_note_pl": "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA dla testow: T14:NOT_SIMULATED, T15:NOT_SIMULATED, T16:DECLARATION, T17:DECLARATION.",
     "evidence_per_module": {
-      "bess-1": {
-        "der_ref": "bess-1",
+      "bess/5bd678b5dbce96516c72492e40298e5f/converter": {
+        "der_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
         "reporting_status": "not_reportable",
         "proof_status": "incomplete",
         "evidence_limitations": [
@@ -896,8 +896,8 @@
         ],
         "evidence_note_pl": "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA dla testow: T14:NOT_SIMULATED, T15:NOT_SIMULATED, T16:DECLARATION, T17:DECLARATION."
       },
-      "pv-1": {
-        "der_ref": "pv-1",
+      "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter": {
+        "der_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
         "reporting_status": "not_reportable",
         "proof_status": "incomplete",
         "evidence_limitations": [
@@ -910,7 +910,7 @@
       }
     },
     "evidence_by_test": {
-      "bess-1": {
+      "bess/5bd678b5dbce96516c72492e40298e5f/converter": {
         "T01": {
           "capability_id": "ncrfg_ptpiree.frequency_response",
           "tier": "DECLARATION",
@@ -1112,7 +1112,7 @@
           "audit_ref": "karta_s1_s4_dowod.md §0.2 (T20)"
         }
       },
-      "pv-1": {
+      "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter": {
         "T01": {
           "capability_id": "ncrfg_ptpiree.frequency_response",
           "tier": "DECLARATION",

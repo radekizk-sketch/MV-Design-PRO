@@ -58,12 +58,17 @@ from api.canonical_run_views import (  # noqa: E402
     get_power_flow_result,
     get_power_flow_trace,
 )
+from api.generators import (  # noqa: E402
+    get_der_instrument_transformers,
+    get_der_protection_functions,
+)
 from api.proof_pack import SCContributionsRequest, sc3f_contributions  # noqa: E402
 from api.protection_coordination import (  # noqa: E402
     RunCoordinationRequest,
     get_coordination_result,
     run_coordination_analysis,
 )
+from api.protection_runs import list_protection_runs  # noqa: E402
 from api.v126_academic import (  # noqa: E402
     _with_parameter_payloads,
     _wycofanie_v126,
@@ -75,6 +80,9 @@ from api.v126_academic import (  # noqa: E402
     get_v126_trace,
 )
 from application.analyses.arc_flash_view import build_arc_flash_view  # noqa: E402
+from application.analyses.diagnoza_przebiegu import (  # noqa: E402
+    zbuduj_diagnoze_przebiegu,
+)
 from application.analyses.dobor_kompensacji import (  # noqa: E402
     build_compensation_sizing_view,
 )
@@ -121,7 +129,15 @@ from application.proof_engine.pakiet_nastaw import (  # noqa: E402
     zbuduj_odpowiedz_dopasowania,
     zbuduj_odpowiedz_nastaw_json,
 )
+from application.protection_comparison.service import (  # noqa: E402
+    ProtectionComparisonService,
+)
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile  # noqa: E402
+from diagnostics.engine import DiagnosticEngine  # noqa: E402
+from diagnostics.preflight import (  # noqa: E402
+    build_preflight_from_diagnostic_report,
+)
+from domain.study_case import ProtectionConfig, StudyCase  # noqa: E402
 from enm.canonical_analysis import (  # noqa: E402
     build_execution_result_set,
     build_short_circuit_results,
@@ -134,14 +150,21 @@ from enm.canonical_analysis import (  # noqa: E402
 )
 from enm.domain_operations import execute_domain_operation  # noqa: E402
 from enm.hash import compute_enm_hash  # noqa: E402
-from enm.katalog_projektu import katalog_biezacy  # noqa: E402
+from enm.mapping import map_enm_to_network_graph  # noqa: E402
 from enm.models import (  # noqa: E402
+    ConnectionConditions,
     EnergyNetworkModel,
     ENMHeader,
     Generator,
     TapChanger,
 )
 from enm.store import reset_enm_store, set_enm  # noqa: E402
+from infrastructure.persistence.db import (  # noqa: E402
+    create_engine_from_url,
+    create_session_factory,
+    init_db,
+)
+from infrastructure.persistence.unit_of_work import build_uow_factory  # noqa: E402
 from network_model.catalog.repository import get_default_mv_catalog  # noqa: E402
 from network_model.solvers.cable_voltage_drop import (  # noqa: E402
     CableRatedCurrentInput,
@@ -159,79 +182,331 @@ FIXTURES_DIR = BACKEND_DIR.parent / "frontend" / "src" / "harness-fixtures" / "g
 #: Identyfikator przypadku zasiewu globalnego harnessu (`useAppStateStore`).
 CASE_ID_HARNESSU = "case-demo"
 
-#: Scena `macierz` (creator-harness-main.tsx): dwa moduły DER przyłączone przez
-#: transformator blokowy do szyny 15 kV — klasa B wg progów OD-5 (1 MW / 50 MW).
-#: `(der_ref, p_max_kw, voltage_kv, gen_type, karta_katalogu_ref)` 1:1 z zasiewem
-#: `useStationDerStore` sceny (para predykatów: atrapa harnessu odmawia 409, gdy
-#: raporty nie opisują tych samych modułów). Moce = liczba jednostek × moc
-#: katalogowa (BESS 3 × ABB PCS100 500 kW; PV 9 × Huawei SUN2000-215KTL 215 kW).
-DER_SCENY_MACIERZ: tuple[tuple[str, float, float, str, str], ...] = (
-    ("bess-1", 1500.0, 15.0, "bess", "bess_pcs_abb_500"),
-    ("pv-1", 1935.0, 15.0, "pv_inverter", "conv-pv-card-huawei-sun2000-215ktl"),
+#: Moduły OZE sceny `macierz` (creator-harness-main.tsx) — WEJŚCIE kreatora
+#: źródła OZE, nie opis gotowego modelu: technologia, przestrzeń i karta
+#: katalogu falownika, moc grupy, liczba jednostek, napięcie wyjściowe falownika
+#: oraz transformator blokowy toru DER-SN. Identyfikatory, napięcia szyn i
+#: tabliczki NIE są tu wpisane — wynikają z modelu zbudowanego operacją domenową
+#: `add_converter_source` (`_enm_sceny_macierz` niżej), tak jak u projektanta.
+#:
+#: HARNESS-RESZTA-2: wcześniej ta stała opisywała gotowe moduły
+#: (`der_ref`/`p_max_kw`/`voltage_kv` wpisane ręcznie) i musiała być trzymana w
+#: zgodzie z ręcznym zasiewem `useStationDerStore` — dwa opisy tego samego bytu.
+#: Moce = liczba jednostek × moc katalogowa (BESS 3 × ABB PCS100 500 kW;
+#: PV 9 × Huawei SUN2000-215KTL 215 kW).
+MODULY_SCENY_MACIERZ: tuple[dict[str, Any], ...] = (
+    {
+        "technologia": "BESS",
+        "przestrzen_katalogu": "ZRODLO_NN_BESS",
+        "karta_katalogu": "bess_pcs_abb_500",
+        "bateria": "bess_bat_lfp_2880kwh_1230vdc",
+        "moc_mw": 1.5,
+        "liczba_jednostek": 3,
+        "napiecie_falownika_kv": 0.4,
+        "transformator_blokowy": "tr-sn-nn-15-04-2000kva-dyn11",
+        "moc_transformatora_mva": 2.0,
+        "nazwa": "Magazyn energii 1,5 MW",
+        "profile": {"nc_rfg_profile_ref": "enea"},
+    },
+    {
+        "technologia": "PV",
+        "przestrzen_katalogu": "ZRODLO_NN_PV",
+        "karta_katalogu": "conv-pv-card-huawei-sun2000-215ktl",
+        "bateria": None,
+        "moc_mw": 1.935,
+        "liczba_jednostek": 9,
+        "napiecie_falownika_kv": 0.8,
+        "transformator_blokowy": "tr-sn-nn-15-0p8-2p5mva-dyn11-inverter",
+        "moc_transformatora_mva": 2.5,
+        "nazwa": "Instalacja PV 1,9 MW",
+        "profile": {
+            "nc_rfg_profile_ref": "enea",
+            "lvrt_curve_ref": "enea",
+            "dynamic_model_ref": "default_pv_gfl",
+        },
+    },
 )
-SZYNA_SCENY_MACIERZ = "st-demo__szyna-sn__15"
 OPERATOR_SCENY_MACIERZ = "enea"
 
 
-def _tabliczka_ptpiree_z_katalogu(gen_type: str, catalog_ref: str) -> dict[str, Any]:
-    """Pola `ptpiree_*` REALNEGO rekordu katalogu (te same, które brama katalogowa
-    `add_converter_source` kopiuje na tabliczkę generatora — `_POLA_CERTYFIKATU_PTPIREE`
-    w `enm/domain_operations_v2.py`); zero wartości wpisanych ręcznie."""
-    katalog = katalog_biezacy()
-    rekord: Any = (
-        katalog.get_bess_inverter_type(catalog_ref)
-        if gen_type == "bess"
-        else katalog.get_pv_inverter_type(catalog_ref)
+def _wiazanie_katalogowe(przestrzen: str, pozycja: str) -> dict[str, Any]:
+    """Wiązanie katalogowe payloadu operacji — kształt 1:1 z kreatorami UI."""
+    return {
+        "catalog_namespace": przestrzen,
+        "catalog_item_id": pozycja,
+        "catalog_item_version": "2024.1",
+        "materialize": True,
+        "snapshot_mapping_version": "1.0",
+    }
+
+
+def _gpz_sceny_oze(nazwa_projektu: str) -> tuple[dict[str, Any], str, str]:
+    """GPZ 110/15 kV jako punkt przyłączenia scen OZE — zbudowany operacją
+    `add_grid_source_sn` (ta sama, którą woła kreator źródła zasilania).
+    Zwraca `(enm, ref stacji, ref szyny SN)`."""
+    enm = EnergyNetworkModel(header=ENMHeader(name=nazwa_projektu)).model_dump(mode="json")
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "add_grid_source_sn",
+        {
+            "voltage_kv": 15.0,
+            "source_name": "GPZ 110/15",
+            "sk3_mva": 250.0,
+            "rx_ratio": 0.1,
+            "catalog_ref": _KATALOG_ZRODLA_KOORD,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
-    if rekord is None:
-        raise SystemExit(f"[fixtury] karta katalogu sceny macierz nie istnieje: {catalog_ref}")
-    return {k: v for k, v in rekord.to_dict().items() if k.startswith("ptpiree_")}
+    stacja = next(s["ref_id"] for s in enm["substations"] if s["ref_id"].endswith("/substation"))
+    szyna_sn = next(b["ref_id"] for b in enm["buses"] if b["ref_id"].endswith("/bus_sn"))
+    return enm, stacja, szyna_sn
+
+
+def _dodaj_modul_oze_sn(
+    enm: dict[str, Any], stacja: str, szyna_sn: str, modul: dict[str, Any]
+) -> dict[str, Any]:
+    """Moduł wytwórczy przyłączony po stronie SN transformatorem blokowym —
+    KOMPLETNY tor DER-SN operacji `add_converter_source` (`der_topology`,
+    `connection_level='sn'`): szyna nN producenta → transformator blokowy →
+    kabel SN → dedykowane pole SN na szynie stacji. Dokładnie ten tor buduje
+    kreator źródła OZE, więc referencje, tabliczka (w tym certyfikat PTPiREE)
+    i liczba jednostek pochodzą z modelu, nie z listy przepisanej obok."""
+    payload: dict[str, Any] = {
+        "source_technology": modul["technologia"],
+        "connection_variant": "block_transformer",
+        "station_ref": stacja,
+        "bus_nn_ref": szyna_sn,
+        "source_name": modul["nazwa"],
+        "quantity": modul["liczba_jednostek"],
+        "power_setpoint_mw": modul["moc_mw"],
+        "catalog_binding": _wiazanie_katalogowe(
+            modul["przestrzen_katalogu"], modul["karta_katalogu"]
+        ),
+        "der_topology": {
+            "connection_level": "sn",
+            "inverter_output_voltage_kv": modul["napiecie_falownika_kv"],
+            "has_manufacturer_lv_switchgear": True,
+            "lv_switchgear_variant": "multi-feeder",
+            "has_block_transformer": True,
+            "block_transformer": {
+                "rated_power_mva": modul["moc_transformatora_mva"],
+                "primary_voltage_kv": 15.0,
+                "secondary_voltage_kv": modul["napiecie_falownika_kv"],
+                "catalog_ref": modul["transformator_blokowy"],
+                "catalog_binding": _wiazanie_katalogowe(
+                    "TRANSFORMATOR_SN_NN", modul["transformator_blokowy"]
+                ),
+            },
+            "has_dedicated_mv_field": True,
+            "mv_bus_ref": szyna_sn,
+            "mv_field_configuration": {
+                "switching_device": "CB",
+                "ct": True,
+                "vt": True,
+                "earthing_switch": True,
+                "surge_arrester": True,
+                "protection_relay": True,
+                "cable_head": True,
+                "cable_length_km": 0.05,
+                "apparatus_catalog_binding": _wiazanie_katalogowe(
+                    "APARAT_SN", _KATALOG_APARATU_KOORD
+                ),
+                "cable_catalog_ref": _KATALOG_KABLA_KOORD,
+                "cable_catalog_binding": _wiazanie_katalogowe("KABEL_SN", _KATALOG_KABLA_KOORD),
+            },
+        },
+    }
+    if modul["bateria"] is not None:
+        payload["battery_catalog_ref"] = modul["bateria"]
+    enm = _operacja_domenowa_sceny(enm, "add_converter_source", payload)
+    profile = modul.get("profile") or {}
+    if profile:
+        generator = enm["generators"][-1]["ref_id"]
+        enm = _operacja_domenowa_sceny(
+            enm,
+            "set_der_catalog_bindings",
+            {"generator_ref": generator, **profile},
+        )
+    return enm
 
 
 def enm_sceny_macierz() -> EnergyNetworkModel:
-    """Committed ENM odpowiadający zasiewowi sceny `macierz` — WEJŚCIE mostu
-    `model_bridge.py` (ten sam most, który czyta trasa `/compliance`).
+    """Committed ENM sceny `macierz` — WEJŚCIE mostu `model_bridge.py` (ten sam
+    most, który czyta trasa `/compliance`) I JEDNOCZEŚNIE migawka zasiewająca
+    `useStationDerStore` sceny (`macierz_scena_migawka` niżej).
 
-    Tabliczki 1:1 z zasiewem sceny: certyfikat PTPiREE z realnego katalogu
-    (`catalogs.device_catalog_ref`/`ptpiree_certificate_ref`), model dynamiczny
-    (`catalogs.dynamic_model_ref` → `materialized_params.dynamic_model_ref`,
-    jak `set_der_catalog_bindings`), profile (`profiles.*` → `materialized_params
-    .profiles`). Brak droop/Q(U)/cosφ w zasiewie = brak w `meta` (nie zgadywanie)
-    → solver daje `no_data` dla testów wymaganych bez danych."""
-    generators: list[dict[str, Any]] = []
-    for der_ref, p_max_kw, _voltage_kv, gen_type, catalog_ref in DER_SCENY_MACIERZ:
-        tabliczka: dict[str, Any] = {
-            "catalog_item_id": catalog_ref,
-            **_tabliczka_ptpiree_z_katalogu(gen_type, catalog_ref),
-            "profiles": {"nc_rfg_profile_ref": OPERATOR_SCENY_MACIERZ},
-        }
-        if der_ref == "pv-1":
-            tabliczka["dynamic_model_ref"] = "default_pv_gfl"
-            tabliczka["profiles"]["lvrt_curve_ref"] = OPERATOR_SCENY_MACIERZ
-        generators.append(
-            {
-                "ref_id": der_ref,
-                "name": der_ref,
-                "bus_ref": SZYNA_SCENY_MACIERZ,
-                "p_mw": p_max_kw / 1000.0,
-                "gen_type": gen_type,
-                "meta": {},
-                "materialized_params": tabliczka,
-            }
-        )
-    return EnergyNetworkModel.model_validate(
+    HARNESS-RESZTA-2: model budowany OPERACJAMI DOMENOWYMI (`add_grid_source_sn`
+    + `add_converter_source` z kompletnym torem DER-SN + `set_der_catalog_bindings`),
+    a nie składany ręcznie ze słowników. Znaczenie: tabliczki (certyfikat PTPiREE,
+    moc znamionowa, napięcie falownika) materializuje brama katalogowa, referencje
+    nadaje domena, a scena i raport zgodności czytają JEDEN model — wcześniej
+    harness niósł drugi opis tych samych modułów, pilnowany porównaniem 409."""
+    enm, stacja, szyna_sn = _gpz_sceny_oze("Przyłączenie farmy PV 8 MW")
+    for modul in MODULY_SCENY_MACIERZ:
+        enm = _dodaj_modul_oze_sn(enm, stacja, szyna_sn, modul)
+    model = EnergyNetworkModel.model_validate(enm)
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    return model
+
+
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA-2 (2026-09-17) — sceny „wiazania" i „frt": POLE WYTWÓRCY
+# na szynie SN GPZ. Obie sceny zasiewały warsztat wytwórców ręcznie pisanym
+# rekordem `StationDerConnection` (napięcie przyłączenia, referencje szyny i
+# pola, wiązania katalogowe), a dobór przekładników dostawał całą odpowiedź
+# końcówki wpisaną z palca — z prądem roboczym toru i napięciem sieci, których
+# żaden model nie niósł. Teraz: model budowany operacjami domenowymi, moduły do
+# warsztatu wyprowadzone odwzorowaniem produkcyjnym (`deryZModelu`), a dobór
+# przekładników policzony TĄ SAMĄ funkcją, którą woła końcówka — na REALNYM
+# biegu zwarciowym tej sieci (Ik″/ip z solvera IEC 60909).
+# ---------------------------------------------------------------------------
+
+#: Karta katalogu falownika PV pola wytwórcy (15 kV, 1 MW) — ta sama, z której
+#: liczone są fikstury FRT (`_DER_SCENY_FRT`).
+_KATALOG_PV_SCENY_POLA = "conv-pv-1mw-15kv"
+
+#: Wiązania katalogowe pola wytwórcy: zabezpieczenie i przekładnik PRĄDOWY
+#: przypisane, przekładnik NAPIĘCIOWY świadomie PUSTY — scena „wiazania"
+#: dowodzi właśnie stanu „wybierz wariant katalogowy" i osi zabezpieczeń z
+#: NAZWANYM brakiem, więc to dana sceny, nie niedopatrzenie.
+_WIAZANIA_SCENY_POLA_OZE: dict[str, Any] = {
+    "protection_catalog_ref": "ABB_REB670",
+    "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
+    "dynamic_model_ref": "default_pv_gfl",
+    "nc_rfg_profile_ref": "pse",
+    "lvrt_curve_ref": "pse",
+}
+
+#: Przypadek scen OZE — UUID, bo końcówka doboru przekładników waliduje kontekst
+#: projektu i przypadku po formacie identyfikatora (`project_case.invalid_uuid`).
+_PRZYPADEK_SCENY_POLA_OZE = str(uuid5(NAMESPACE_URL, "mv-design-pro:harness:przypadek-pole-oze"))
+_PROJEKT_SCENY_POLA_OZE = str(uuid5(NAMESPACE_URL, "mv-design-pro:harness:projekt-pole-oze"))
+
+RUN_ID_SCENY_POLA_OZE = "run-sc-scena-pole-oze"
+_UUID_SCENY_POLA_OZE = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_POLA_OZE)
+
+
+def _enm_sceny_pola_oze() -> EnergyNetworkModel:
+    """Model scen „wiazania"/„frt": GPZ 110/15 kV + farma PV 1 MW w polu SN
+    (operacja `add_converter_source`, wariant z transformatorem blokowym) z
+    wiązaniami katalogowymi zapisanymi operacją `set_der_catalog_bindings` —
+    dokładnie tak, jak robi to projektant w konfiguratorze wytwórcy."""
+    enm, stacja, szyna_sn = _gpz_sceny_oze("Przyłączenie farmy PV 8 MW")
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "add_converter_source",
         {
-            "header": ENMHeader(name="Przyłączenie farmy PV 8 MW").model_dump(),
-            "buses": [
-                {
-                    "ref_id": SZYNA_SCENY_MACIERZ,
-                    "name": "Szyna SN 15 kV",
-                    "voltage_kv": DER_SCENY_MACIERZ[0][2],
-                }
-            ],
-            "generators": generators,
-        }
+            "source_technology": "PV",
+            "connection_variant": "block_transformer",
+            "station_ref": stacja,
+            "bus_nn_ref": szyna_sn,
+            "source_name": "Farma PV 1 MW",
+            "quantity": 1,
+            "power_setpoint_mw": 1.0,
+            "catalog_binding": _wiazanie_katalogowe("CONVERTER", _KATALOG_PV_SCENY_POLA),
+        },
     )
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "set_der_catalog_bindings",
+        {"generator_ref": enm["generators"][-1]["ref_id"], **_WIAZANIA_SCENY_POLA_OZE},
+    )
+    model = EnergyNetworkModel.model_validate(enm)
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    return model
+
+
+def oze_scena_migawka() -> dict[str, Any]:
+    """Migawka modelu scen „wiazania"/„frt" (`useSnapshotStore`) — front
+    wyprowadza z niej moduły warsztatu wytwórców odwzorowaniem produkcyjnym
+    (`station-der/zModelu.ts::deryZModelu`)."""
+    return canonicalize_json(_enm_sceny_pola_oze().model_dump(mode="json"))
+
+
+def _bieg_zwarciowy_sceny_pola_oze() -> tuple[Any, EnergyNetworkModel]:
+    """Bieg `short_circuit_sn` modelu pola wytwórcy — źródło Ik″/ip dla doboru
+    przekładników (bez niego kryteria cieplne i dynamiczne CT są NAZWANYM
+    brakiem danej, a scena ma pokazywać pełny rachunek)."""
+    enm = _enm_sceny_pola_oze()
+    with _zamrozona_tozsamosc_biegu(_UUID_SCENY_POLA_OZE):
+        set_enm(_PRZYPADEK_SCENY_POLA_OZE, enm)
+        run = execute_run(
+            create_run(
+                case_id=_PRZYPADEK_SCENY_POLA_OZE,
+                klucz_twin=_PRZYPADEK_SCENY_POLA_OZE,
+                analysis_type="short_circuit_sn",
+            ).id
+        )
+    return run, enm
+
+
+class _ZadanieBezBazy:
+    """Minimalne żądanie dla końcówki: kontekst projektu/przypadku sprawdzany
+    jest fabryką `UnitOfWork` aplikacji, a eksport fixtur bazy nie otwiera —
+    `_validate_project_case_context` przy jej braku kończy się bez zastrzeżeń
+    (ta sama ścieżka, którą idzie proces bez skonfigurowanej bazy)."""
+
+    class _Aplikacja:
+        class state:  # noqa: N801 — atrybut `app.state` kontraktu FastAPI
+            pass
+
+    app = _Aplikacja()
+
+
+def wiazania_scena_przekladniki() -> dict[str, Any]:
+    """Odpowiedź `GET /api/projects/{p}/cases/{c}/generators/{ref}/instrument-transformers`
+    (`get_der_instrument_transformers` — TA SAMA funkcja, którą woła końcówka)
+    dla pola wytwórcy sceny „wiazania": prąd roboczy toru z solvera, Ik″/ip z
+    REALNEGO biegu zwarciowego, kryteria normowe CT z katalogu. Przekładnik
+    napięciowy zostaje bez doboru (brak wiązania) — uczciwy stan „wybierz"."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        run, enm = _bieg_zwarciowy_sceny_pola_oze()
+        widok = get_der_instrument_transformers(
+            project_id=_PROJEKT_SCENY_POLA_OZE,
+            case_id=_PRZYPADEK_SCENY_POLA_OZE,
+            klucz=_PRZYPADEK_SCENY_POLA_OZE,
+            generator_ref=enm.generators[0].ref_id,
+            request=_ZadanieBezBazy(),  # type: ignore[arg-type]
+        )
+        return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_POLA_OZE})
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def wiazania_scena_funkcje_zabezpieczen() -> dict[str, Any]:
+    """Odpowiedź `GET …/generators/{ref}/protection-functions`
+    (`get_der_protection_functions` — TA SAMA funkcja, którą woła końcówka):
+    WYMAGANE funkcje zabezpieczeniowe pola wytwórcy (z faktów modelu: strona
+    przyłączenia, sposób uziemienia sieci, tory pomiarowe) i ocena wybranego
+    urządzenia wobec nich. Zero nastaw i zero fizyki — to katalog wymagań."""
+    reset_enm_store()
+    try:
+        enm = _enm_sceny_pola_oze()
+        set_enm(_PRZYPADEK_SCENY_POLA_OZE, enm)
+        return canonicalize_json(
+            get_der_protection_functions(
+                project_id=_PROJEKT_SCENY_POLA_OZE,
+                case_id=_PRZYPADEK_SCENY_POLA_OZE,
+                klucz=_PRZYPADEK_SCENY_POLA_OZE,
+                generator_ref=enm.generators[0].ref_id,
+                request=_ZadanieBezBazy(),  # type: ignore[arg-type]
+            )
+        )
+    finally:
+        reset_enm_store()
+
+
+def macierz_scena_migawka() -> dict[str, Any]:
+    """Migawka modelu sceny `macierz` (`useSnapshotStore`) — TEN SAM model, z
+    którego policzono `ncrfg_zgodnosc_przekrojowa_scena_macierz`. Moduły do
+    warsztatu wytwórców front wyprowadza z niej odwzorowaniem produkcyjnym
+    (`station-der/zModelu.ts::deryZModelu`), więc zasiew sceny nie jest już
+    drugim opisem tych samych wytwórców."""
+    return canonicalize_json(enm_sceny_macierz().model_dump(mode="json"))
 
 
 def zgodnosc_przekrojowa_sceny_macierz() -> dict[str, Any]:
@@ -1536,12 +1811,14 @@ _MOC_ODBIORU_STACJI_KW = 250.0
 _COS_PHI_ODBIORU_STACJI = 0.95
 
 
-def _operacja_sceny_koordynacja(
+def _operacja_domenowa_sceny(
     enm: dict[str, Any], nazwa: str, payload: dict[str, Any]
 ) -> dict[str, Any]:
     """Jedna operacja domenowa budowy sieci sceny — TA SAMA funkcja, którą woła
     końcówka `POST /api/cases/{id}/enm/domain-ops` (`execute_domain_operation`).
-    Błąd operacji kończy eksport: sieć sceny nie może powstać „częściowo"."""
+    Błąd operacji kończy eksport: sieć sceny nie może powstać „częściowo".
+    Wspólna dla WSZYSTKICH sieci scen budowanych operacjami (koordynacja,
+    stacja demo) — jedno miejsce obsługi błędu."""
     wynik = execute_domain_operation(enm, nazwa, payload)
     if wynik.get("error") is not None:
         raise SystemExit(f"[fixtury] operacja {nazwa} sceny koordynacji: {wynik['error']}")
@@ -1570,7 +1847,7 @@ def _enm_sceny_koordynacja() -> tuple[EnergyNetworkModel, str, str]:
     enm = EnergyNetworkModel(header=ENMHeader(name="Magistrala SN — scena koordynacji")).model_dump(
         mode="json"
     )
-    enm = _operacja_sceny_koordynacja(
+    enm = _operacja_domenowa_sceny(
         enm,
         "add_grid_source_sn",
         {
@@ -1583,7 +1860,7 @@ def _enm_sceny_koordynacja() -> tuple[EnergyNetworkModel, str, str]:
             "transformer_sn_mva": 25.0,
         },
     )
-    enm = _operacja_sceny_koordynacja(
+    enm = _operacja_domenowa_sceny(
         enm,
         "continue_trunk_segment_sn",
         {
@@ -1616,7 +1893,7 @@ def _enm_sceny_koordynacja() -> tuple[EnergyNetworkModel, str, str]:
         (segment_zrodlowy, "Stacja S01"),
         (f"{segment_zrodlowy}_R", "Stacja S02"),
     ):
-        enm = _operacja_sceny_koordynacja(
+        enm = _operacja_domenowa_sceny(
             enm,
             "insert_station_on_segment_sn",
             {
@@ -1634,7 +1911,7 @@ def _enm_sceny_koordynacja() -> tuple[EnergyNetworkModel, str, str]:
     for szyna_nn in sorted(
         szyna["ref_id"] for szyna in enm["buses"] if szyna["ref_id"].endswith("/nn_bus")
     ):
-        enm = _operacja_sceny_koordynacja(
+        enm = _operacja_domenowa_sceny(
             enm,
             "add_load_sn",
             {
@@ -2469,13 +2746,146 @@ def odbior_scena_prad_znamionowy() -> dict[str, Any]:
     )
 
 
+#: Transformator stacji sceny LoM — 2 MVA, bo pole wytwórcy tej sceny niesie
+#: falownik 1,1 MVA: brama katalogowa `add_converter_source` odmawia przyłączenia
+#: źródła o mocy większej niż transformator stacji (zmierzone).
+_KATALOG_TRAFO_SCENY_LOM = "tr-sn-nn-15-04-2000kva-dyn11"
+
+#: Przekaźnik pola wytwórcy sceny LoM — REALNA pozycja katalogu zabezpieczeń.
+_KATALOG_PRZEKAZNIKA_SCENY_LOM = "EM_ETANGO_1250_V0"
+
+#: NASTAWY funkcji ochrony od pracy wyspowej (LoM) pola wytwórcy — DANE
+#: PROJEKTOWE sceny (to inżynier je wpisuje), nie wynik. Dobrane tak, żeby ekran
+#: pokazał OBA stany, których dowodzi: 81R PONIŻEJ okna normatywnego (1,0 Hz/s
+#: wobec wymaganych ≥ 2,0 Hz/s — ryzyko zbędnych wyłączeń, werdykt WARN z pełnym
+#: wywodem) oraz 81U/81O DOKŁADNIE na krawędziach pasma 47,5–51,5 Hz (werdykt
+#: spełniony). Ocena — w tym werdykt i wywód — pochodzi WYŁĄCZNIE z backendu.
+_NASTAWY_LOM_SCENY: tuple[dict[str, Any], ...] = (
+    {"function_type": "rocof_81R", "threshold_hz_s": 1.0, "time_delay_s": 0.2},
+    {"function_type": "underfrequency_81U", "threshold_hz": 47.5, "time_delay_s": 0.5},
+    {"function_type": "overfrequency_81O", "threshold_hz": 51.5, "time_delay_s": 0.5},
+)
+
+
+def _enm_sceny_lom() -> EnergyNetworkModel:
+    """Model sceny „lom": GPZ 110/15 kV → magistrala → stacja SN/nN z trzema
+    polami SN (aparat pola z katalogu) → farma PV 1 MW w polu wytwórcy, a na
+    polu LINIA_OUT przekaźnik z nastawami funkcji LoM (operacja `add_relay`).
+
+    Wszystko operacjami domenowymi — tą samą drogą, którą model buduje
+    projektant. Scena „lom" istnieje po to, żeby pokazać OCENĘ nastaw wobec okien
+    normatywnych; model bez przekaźnika dawałby wyłącznie uczciwe „pole bez
+    żadnej funkcji LoM" (zmierzone) i ekran nie miałby czego tłumaczyć."""
+    enm = EnergyNetworkModel(header=ENMHeader(name="Pole wytwórcy — scena LoM")).model_dump(
+        mode="json"
+    )
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "add_grid_source_sn",
+        {
+            "voltage_kv": 15.0,
+            "source_name": "GPZ 110/15",
+            "sk3_mva": 250.0,
+            "rx_ratio": 0.1,
+            "catalog_ref": _KATALOG_ZRODLA_KOORD,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
+    )
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "continue_trunk_segment_sn",
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 600,
+                "name": "Magistrala wytwórcy",
+                "catalog_ref": _KATALOG_KABLA_KOORD,
+            }
+        },
+    )
+    segment = [
+        galaz["ref_id"]
+        for galaz in enm["branches"]
+        if galaz.get("type") in ("cable", "line_overhead")
+    ][-1]
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "insert_station_on_segment_sn",
+        {
+            "segment_id": segment,
+            "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
+            "insert_at": {"mode": "RATIO", "value": 0.5},
+            "sn_fields": [
+                {"field_role": "LINIA_IN"},
+                {"field_role": "LINIA_OUT"},
+                {"field_role": "TRANSFORMATOROWE"},
+            ],
+            "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_SCENY_LOM},
+            "nn_block": {"outgoing_feeders_nn_count": 1},
+            "station": {
+                "station_type": "B",
+                "station_name": "Stacja wytwórcy",
+                "sn_voltage_kv": 15.0,
+                "nn_voltage_kv": 0.4,
+            },
+        },
+    )
+    stacja = next(s["ref_id"] for s in enm["substations"] if s["ref_id"].endswith("/station"))
+    szyna_sn = next(b["ref_id"] for b in enm["buses"] if b["ref_id"].endswith("/sn_bus"))
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "add_converter_source",
+        {
+            "source_technology": "PV",
+            "connection_variant": "block_transformer",
+            "station_ref": stacja,
+            "bus_nn_ref": szyna_sn,
+            "source_name": "Farma PV 1 MW",
+            "quantity": 1,
+            "power_setpoint_mw": 1.0,
+            "catalog_binding": _wiazanie_katalogowe("CONVERTER", _KATALOG_PV_SCENY_POLA),
+        },
+    )
+    pole_wytworcy = next(
+        spec["field_ref"]
+        for stacja_modelu in enm["substations"]
+        for spec in (stacja_modelu.get("meta") or {}).get("field_specs") or []
+        if spec.get("bay_role") == "OUT"
+        and spec.get("bus_ref") == szyna_sn
+        and spec.get("equipment_refs")
+    )
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "add_relay",
+        {
+            "field_ref": pole_wytworcy,
+            "relay_type": "CZESTOTLIWOSCIOWY",
+            "name": "Zabezpieczenie od pracy wyspowej pola wytwórcy",
+            "catalog_binding": _wiazanie_katalogowe(
+                "ZABEZPIECZENIE", _KATALOG_PRZEKAZNIKA_SCENY_LOM
+            ),
+            "settings": [dict(nastawa) for nastawa in _NASTAWY_LOM_SCENY],
+        },
+    )
+    model = EnergyNetworkModel.model_validate(enm)
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    return model
+
+
 def lom_scena_wynik() -> dict[str, Any]:
     """Odpowiedź `GET /api/oze-analysis/lom-protection` (`build_ochrona_lom_view`
-    — TA SAMA funkcja, którą woła końcówka) na sieci złotej: okna normatywne z
-    cytowanych źródeł, pola przyłączeniowe modułów i uczciwe INFO przy brakach."""
-    enm = build_golden_enm()
-    _fiksuj_niedeterminizm_sceny_zwarcia(enm)
-    return canonicalize_json(build_ochrona_lom_view(enm))
+    — TA SAMA funkcja, którą woła końcówka) na modelu pola wytwórcy: okna
+    normatywne z cytowanych źródeł, ocena nastaw przekaźnika pola z wywodem i
+    uczciwe ERROR/INFO dla pól bez funkcji LoM.
+
+    HARNESS-RESZTA-2: wcześniej scena liczyła widok na sieci złotej, która NIE MA
+    pól przyłączeniowych — widok wracał pusty („moduły bez pola"), więc ekran nie
+    miał czego pokazać. Przy okazji naprawiony u źródła defekt klasy:
+    `build_ochrona_lom_view` czytał pola WYŁĄCZNIE z legacy `bays`, a operacje
+    domenowe zapisują je w `substations[].meta.field_specs` — analiza była ślepa
+    na każdy model zbudowany dzisiejszymi operacjami."""
+    return canonicalize_json(build_ochrona_lom_view(_enm_sceny_lom()))
 
 
 # ---------------------------------------------------------------------------
@@ -2625,9 +3035,496 @@ def akademickie_scena_biegi() -> dict[str, Any]:
     }
 
 
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA-2 (2026-09-17) — MODEL STACJI DEMO wspólny dla scen
+# kreatorów (pole SN, źródło OZE, transformator, kompensator, magistrala,
+# odbiór nN, źródło zasilania, odgałęzienie, słup, ZK SN, przekaźnik, pomiar,
+# pole nN, przypisanie katalogu, edycja parametrów).
+#
+# Do tej karty harness niósł ten model CZTERY RAZY, przepisany ręcznie
+# (`bus-sn-demo` 15 kV / `bus-nn-demo` 0,4 kV, stacja `st-demo`) — cztery kopie
+# tej samej sieci, każda mogąca się rozjechać, i żadna nie pochodząca z modelu,
+# który aplikacja umie zbudować. Teraz jest JEDEN model zbudowany TYMI SAMYMI
+# operacjami domenowymi, którymi buduje go projektant.
+# ---------------------------------------------------------------------------
+
+#: Nazwa stacji demo — etykieta widoczna w formularzach kreatorów (dana sceny).
+NAZWA_STACJI_DEMO = "Rozdzielnia GPZ-01"
+
+
+def stacja_demo_scena_migawka() -> dict[str, Any]:
+    """Migawka modelu stacji demo (`useSnapshotStore` scen kreatorów): GPZ 15 kV
+    → odcinek kablowy → stacja SN/nN z transformatorem i odpływem nN. Zbudowana
+    operacjami `add_grid_source_sn` / `continue_trunk_segment_sn` /
+    `insert_station_on_segment_sn` — DOKŁADNIE tymi, które wołają kreatory w
+    aplikacji, więc referencje, nazwy i napięcia są takie, jakie projektant
+    zobaczy na realnym projekcie (a nie `bus-sn-demo` z harnessu)."""
+    enm = EnergyNetworkModel(header=ENMHeader(name="Projekt demonstracyjny")).model_dump(
+        mode="json"
+    )
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "add_grid_source_sn",
+        {
+            "voltage_kv": 15.0,
+            "source_name": "GPZ 110/15",
+            "sk3_mva": 250.0,
+            "rx_ratio": 0.1,
+            "catalog_ref": _KATALOG_ZRODLA_KOORD,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
+    )
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "continue_trunk_segment_sn",
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 600,
+                "name": "Magistrala demonstracyjna",
+                "catalog_ref": _KATALOG_KABLA_KOORD,
+            }
+        },
+    )
+    segment = [
+        galaz["ref_id"]
+        for galaz in enm["branches"]
+        if galaz.get("type") in ("cable", "line_overhead")
+    ][-1]
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "insert_station_on_segment_sn",
+        {
+            "segment_id": segment,
+            "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
+            "insert_at": {"mode": "RATIO", "value": 0.5},
+            "sn_fields": [
+                {"field_role": "LINIA_IN"},
+                {"field_role": "LINIA_OUT"},
+                {"field_role": "TRANSFORMATOROWE"},
+            ],
+            "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_KOORD},
+            "nn_block": {"outgoing_feeders_nn_count": 1},
+            "station": {
+                "station_type": "B",
+                "station_name": NAZWA_STACJI_DEMO,
+                "sn_voltage_kv": 15.0,
+                "nn_voltage_kv": 0.4,
+            },
+        },
+    )
+    model = EnergyNetworkModel.model_validate(enm)
+    for transformator in model.transformers:
+        if transformator.ulv_kv < 1.0 and transformator.lv_earthing_system is None:
+            transformator.lv_earthing_system = "TN-C-S"
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    return canonicalize_json(model.model_dump(mode="json"))
+
+
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA-2 (2026-09-17) — migawki modelu scen „kompensacja" i
+# „pulpit". Obie sceny miały w harnessie przepisany ręcznie wycinek sieci
+# (szyny z napięciami, źródło z Sk″, generatory i odbiory z mocami), mimo że
+# opisywały sieć złotą, którą backend zna.
+# ---------------------------------------------------------------------------
+
+#: Moc przyłączeniowa z warunków przyłączenia OSD sceny „pulpit" [MW] — DANA
+#: WEJŚCIOWA projektu (nagłówek ENM `connection_conditions`, zapisywana przez
+#: kreator warunków przyłączenia), nie wynik. Dobrana PONIŻEJ realnej sumy mocy
+#: generatorów sieci złotej (2,4 MW — zmierzone), żeby kafel „Warunki
+#: przyłączenia" pokazał werdykt PRZEKROCZENIA policzony z modelu, a nie stan
+#: „wszystko w limicie", którego nie widać.
+_MOC_PRZYLACZENIOWA_SCENY_PULPIT_MW = 2.0
+_COS_PHI_WYMAGANY_SCENY_PULPIT = 0.95
+_TRYB_PRACY_SCENY_PULPIT = "praca równoległa z siecią"
+
+
+RUN_ID_SCENY_PULPIT = "run-lf-scena-pulpit"
+_UUID_SCENY_PULPIT = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_PULPIT)
+
+
+def _enm_sceny_pulpit() -> EnergyNetworkModel:
+    """Sieć złota Z WARUNKAMI PRZYŁĄCZENIA w nagłówku — model sceny „pulpit".
+    Warunki są DANĄ WEJŚCIOWĄ projektu (operacja `set_connection_conditions`);
+    wszystkie liczby sieci pochodzą z modelu."""
+    enm = build_golden_enm()
+    enm.header.connection_conditions = ConnectionConditions(
+        moc_przylaczeniowa_mw=_MOC_PRZYLACZENIOWA_SCENY_PULPIT_MW,
+        wymagany_cos_phi=_COS_PHI_WYMAGANY_SCENY_PULPIT,
+        tryb_pracy=_TRYB_PRACY_SCENY_PULPIT,
+    )
+    _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+    return enm
+
+
+def _bieg_sceny_pulpit() -> Any:
+    """Bieg `PF` sceny „pulpit" — kafel „Ostatni przebieg" pokazuje REALNY
+    przebieg policzony na modelu TEJ SCENY (nie wymyślony wpis rejestru)."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        enm = _enm_sceny_pulpit()
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_PULPIT):
+            set_enm(CASE_ID_HARNESSU, enm)
+            run = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU, klucz_twin=CASE_ID_HARNESSU, analysis_type="PF"
+                ).id
+            )
+        return run
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def siec_zlota_scena_migawka() -> dict[str, Any]:
+    """Migawka ZATWIERDZONA biegu sieci złotej (`run.snapshot` złożony tak jak
+    końcówka `/snapshot`) — zasiew `useSnapshotStore` scen, które interpretują
+    wyniki policzone na TYM biegu („kompensacja", „dokumentacja"). Nazwy,
+    napięcia i odcisk modelu pochodzą z biegu, nie z listy przepisanej w
+    harnessie."""
+    run = _bieg_sceny_kompensacja()
+    return canonicalize_json(_catalog_completed_snapshot(run.snapshot))
+
+
+def przebieg_pf_sceny_zlotej() -> dict[str, Any]:
+    """Wpis rejestru przebiegów (`CanonicalRun.to_execution_dict` — kształt
+    `ExecutionRun` czytany przez `useExecutionRunsStore`) dla biegu PF sieci
+    złotej: TEN SAM bieg, z którego pochodzi `siec_zlota_scena_migawka`."""
+    run = _bieg_sceny_kompensacja()
+    return _ustabilizuj_identyfikatory(
+        run.to_execution_dict(), {str(run.id): RUN_ID_SCENY_KOMPENSACJA}
+    )
+
+
+def pulpit_scena_migawka() -> dict[str, Any]:
+    """Migawka ZATWIERDZONA biegu sceny „pulpit" — sieć złota z warunkami
+    przyłączenia w nagłówku. Kafel „Warunki przyłączenia" liczy werdykt
+    przekroczenia z TEGO modelu (suma mocy znamionowej generatorów wobec mocy
+    przyłączeniowej), a nie z liczb wpisanych w harnessie."""
+    run = _bieg_sceny_pulpit()
+    return canonicalize_json(_catalog_completed_snapshot(run.snapshot))
+
+
+def pulpit_scena_przebieg() -> dict[str, Any]:
+    """Wpis rejestru przebiegów sceny „pulpit" (`to_execution_dict`) — kafel
+    „Ostatni przebieg" i atrapa listy przebiegów czytają JEDEN byt."""
+    run = _bieg_sceny_pulpit()
+    return _ustabilizuj_identyfikatory(run.to_execution_dict(), {str(run.id): RUN_ID_SCENY_PULPIT})
+
+
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA-2 (2026-09-17) — scena „diagnoza" (D7). Trzy trasy
+# diagnostyki miały w harnessie fikstury z testów FRONTU (kształt pilnowany
+# kontraktem, ale liczby pisane ręcznie) i wymyślony identyfikator biegu.
+# Teraz: REALNY raport silnika diagnostycznego na sieci złotej (blokada SC 1F
+# z powodu braku danych Z0 — zmierzona, nie wpisana) oraz REALNY bieg PF
+# PRZERWANY limitem iteracji (`max_iterations: 1` na sieci ×8), czyli dokładnie
+# ten stan, który ekran ma tłumaczyć inżynierowi.
+# ---------------------------------------------------------------------------
+
+RUN_ID_SCENY_DIAGNOZA = "run-lf-scena-diagnoza"
+_UUID_SCENY_DIAGNOZA = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_DIAGNOZA)
+
+#: Limit iteracji biegu sceny „diagnoza" — DANA WEJŚCIOWA biegu (opcja solvera),
+#: nie wynik. Jeden krok Newtona-Raphsona na sieci ×8 kończy się przerwaniem
+#: `max_iter` (zmierzone: `PRZ-NIEZBIEZNY-LIMIT`), więc ekran diagnozy pokazuje
+#: realną historię iteracji i realną przyczynę zamiast opisu z palca.
+_LIMIT_ITERACJI_SCENY_DIAGNOZA = 1
+
+
+def _raport_diagnostyczny_sceny_diagnoza() -> Any:
+    """Raport silnika diagnostycznego (`DiagnosticEngine.run`) sieci złotej —
+    TA SAMA funkcja, którą wołają końcówki `/api/cases/{id}/diagnostics`
+    i `.../diagnostics/preflight`."""
+    enm = build_golden_enm()
+    _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+    return DiagnosticEngine().run(map_enm_to_network_graph(enm))
+
+
+def diagnoza_scena_diagnostyka() -> dict[str, Any]:
+    """Odpowiedź `GET /api/cases/{id}/diagnostics` — problemy modelu i macierz
+    dostępności analiz (sieć złota: SC 1F BLOKADA `E-D06`, bo dwie gałęzie nie
+    niosą danych Z0 — realny brak modelu, nie scenariusz z palca)."""
+    return canonicalize_json(_raport_diagnostyczny_sceny_diagnoza().to_dict())
+
+
+def diagnoza_scena_preflight() -> dict[str, Any]:
+    """Odpowiedź `GET /api/cases/{id}/diagnostics/preflight`
+    (`build_preflight_from_diagnostic_report` — TA SAMA funkcja co końcówka)
+    na TYM SAMYM raporcie co `diagnoza_scena_diagnostyka`."""
+    preflight = build_preflight_from_diagnostic_report(_raport_diagnostyczny_sceny_diagnoza())
+    return canonicalize_json(preflight.to_dict())
+
+
+def _bieg_sceny_diagnoza() -> Any:
+    """Bieg `PF` sceny „diagnoza" — sieć złota ×8 z limitem jednej iteracji:
+    REALNE przerwanie `max_iter` (kod `PRZ-NIEZBIEZNY-LIMIT`)."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        enm = _zlota_siec_z_obciazeniem(8.0)
+        _fiksuj_niedeterminizm_sceny_zwarcia(enm)
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_DIAGNOZA):
+            set_enm(CASE_ID_HARNESSU, enm)
+            run = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=CASE_ID_HARNESSU,
+                    analysis_type="PF",
+                    options={"max_iterations": _LIMIT_ITERACJI_SCENY_DIAGNOZA},
+                ).id
+            )
+        return run
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def diagnoza_scena_przebieg() -> dict[str, Any]:
+    """Odpowiedź `GET /api/execution/runs/{id}/diagnostics`
+    (`zbuduj_diagnoze_przebiegu` — TA SAMA funkcja co końcówka) dla biegu
+    PRZERWANEGO limitem iteracji."""
+    run = _bieg_sceny_diagnoza()
+    widok = zbuduj_diagnoze_przebiegu(run)
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_DIAGNOZA})
+
+
+def diagnoza_scena_bieg() -> dict[str, Any]:
+    """Wpis rejestru przebiegów (`to_execution_dict`) TEGO SAMEGO biegu, który
+    opisuje `diagnoza_scena_przebieg` — zasiew `useExecutionRunsStore` sceny."""
+    run = _bieg_sceny_diagnoza()
+    return _ustabilizuj_identyfikatory(
+        run.to_execution_dict(), {str(run.id): RUN_ID_SCENY_DIAGNOZA}
+    )
+
+
+# ---------------------------------------------------------------------------
+# Karta HARNESS-RESZTA-2 (2026-09-17) — scena „porownanie", tryb ZABEZPIECZENIA.
+# Lista biegów, wynik porównania A/B i ślad White Box były w harnessie wpisane
+# ręcznie: identyfikatory biegów (`run-zab-a`/`run-zab-b`), wiersze z prądami
+# i czasami zadziałania, ranking problemów i proweniencja obu biegów. Teraz
+# wszystko pochodzi z REALNEGO toru: dwa biegi `protection_sn` (ocena IEC 60255
+# wobec prądu zwarciowego biegu źródłowego) policzone na DWÓCH wariantach tej
+# samej sieci i porównane serwisem `ProtectionComparisonService`.
+#
+# DLACZEGO WARIANT B TO DŁUŻSZY ODCINEK: bieg zabezpieczeń czyta konfigurację
+# nastaw przypadku Z BAZY, więc scena zakłada bazę w pamięci (SQLite) z dwoma
+# przypadkami tego samego projektu. Różnica między wariantami jest MODELOWA
+# (dłuższa magistrala → większa impedancja → mniejszy prąd zwarciowy → inny
+# czas zadziałania), a nie „inne liczby w atrapie" — dokładnie ta sama recepta,
+# którą sprawdza e2e na żywym backendzie (`porownanie-zwarc-delty.spec.ts`).
+# ---------------------------------------------------------------------------
+
+_PROJEKT_SCENY_ZABEZPIECZEN = uuid5(NAMESPACE_URL, "mv-design-pro:harness:projekt-zabezpieczenia")
+_PRZYPADEK_SCENY_ZAB_A = uuid5(NAMESPACE_URL, "mv-design-pro:harness:przypadek-zab-a")
+_PRZYPADEK_SCENY_ZAB_B = uuid5(NAMESPACE_URL, "mv-design-pro:harness:przypadek-zab-b")
+
+RUN_ID_SCENY_ZAB_SC_A = "run-sc-scena-zabezpieczenia-a"
+RUN_ID_SCENY_ZAB_SC_B = "run-sc-scena-zabezpieczenia-b"
+RUN_ID_SCENY_ZAB_A = "run-zab-scena-a"
+RUN_ID_SCENY_ZAB_B = "run-zab-scena-b"
+_UUID_SCENY_ZAB_SC_A = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZAB_SC_A)
+_UUID_SCENY_ZAB_SC_B = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZAB_SC_B)
+_UUID_SCENY_ZAB_A = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZAB_A)
+_UUID_SCENY_ZAB_B = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZAB_B)
+
+#: Szablon nastaw przypadku — REALNA pozycja katalogu zabezpieczeń
+#: (`get_protection_setting_template`), ta sama dla obu wariantów: porównanie
+#: ma pokazać skutek zmiany MODELU, nie zmiany szablonu.
+_SZABLON_NASTAW_SCENY_ZAB = "template_ref_oc_100"
+
+#: Długość magistrali w wariancie B [km] — DANA WEJŚCIOWA wariantu (operacja
+#: `update_element_parameters`). Dłuższy odcinek to większa impedancja pętli,
+#: więc mniejszy prąd zwarciowy i dłuższy czas zadziałania: różnica, którą
+#: porównanie A/B ma pokazać, jest skutkiem FIZYKI, nie innej atrapy.
+_DLUGOSC_MAGISTRALI_WARIANTU_B_KM = 1.5
+
+_CZAS_PRZYPADKU_SCENY_ZAB = datetime(2026, 9, 16, 8, 0, 0, tzinfo=UTC)
+
+
+def _baza_w_pamieci_sceny_zabezpieczen() -> Any:
+    """Fabryka `UnitOfWork` na bazie W PAMIĘCI z dwoma przypadkami projektu,
+    każdy z konfiguracją nastaw wskazującą REALNY szablon katalogu. Bieg
+    zabezpieczeń czyta tę konfigurację z bazy (`_execute_protection`), więc bez
+    niej scena nie ma z czego policzyć oceny — atrapa wyniku byłaby fabrykacją."""
+    silnik = create_engine_from_url("sqlite+pysqlite:///:memory:")
+    init_db(silnik)
+    uow_factory = build_uow_factory(create_session_factory(silnik))
+    konfiguracja = ProtectionConfig(
+        template_ref=_SZABLON_NASTAW_SCENY_ZAB,
+        template_fingerprint=f"{_SZABLON_NASTAW_SCENY_ZAB}@1",
+        bound_at=_CZAS_PRZYPADKU_SCENY_ZAB,
+    )
+    for przypadek, nazwa in (
+        (_PRZYPADEK_SCENY_ZAB_A, "Stan normalny"),
+        (_PRZYPADEK_SCENY_ZAB_B, "Magistrala wydłużona"),
+    ):
+        with uow_factory() as uow:
+            uow.cases.add_study_case(
+                StudyCase(
+                    id=przypadek,
+                    project_id=_PROJEKT_SCENY_ZABEZPIECZEN,
+                    name=nazwa,
+                    description="",
+                    protection_config=konfiguracja,
+                    created_at=_CZAS_PRZYPADKU_SCENY_ZAB,
+                    updated_at=_CZAS_PRZYPADKU_SCENY_ZAB,
+                )
+            )
+    return uow_factory
+
+
+def _enm_wariantu_b_sceny_zabezpieczen(enm: EnergyNetworkModel) -> EnergyNetworkModel:
+    """Wariant B: magistrala GPZ wydłużona operacją `update_element_parameters`
+    (ta sama, którą woła projektant), więc różnica wariantów jest zapisana w
+    MODELU i policzona przez solver."""
+    dane = enm.model_dump(mode="json")
+    magistrala = next(
+        galaz["ref_id"]
+        for galaz in dane["branches"]
+        if galaz.get("type") in ("cable", "line_overhead")
+    )
+    dane = _operacja_domenowa_sceny(
+        dane,
+        "update_element_parameters",
+        {
+            "element_ref": magistrala,
+            "parameters": {
+                "length_km": _DLUGOSC_MAGISTRALI_WARIANTU_B_KM,
+                "parameter_source": "CATALOG",
+            },
+        },
+    )
+    model = EnergyNetworkModel.model_validate(dane)
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    return model
+
+
+@contextmanager
+def _biegi_sceny_zabezpieczen() -> Iterator[tuple[Any, Any, Any]]:
+    """Dwa biegi `protection_sn` (warianty A i B) w JEDNYM rejestrze — wołający
+    dostaje `(bieg A, bieg B, fabryka UnitOfWork)`. Rejestr żyje do końca bloku,
+    bo serwis porównania czyta biegi po identyfikatorze."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        uow_factory = _baza_w_pamieci_sceny_zabezpieczen()
+        enm_a, _odcinek, _szyna = _enm_sceny_koordynacja()
+        enm_b = _enm_wariantu_b_sceny_zabezpieczen(enm_a)
+
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_ZAB_SC_A):
+            set_enm(str(_PRZYPADEK_SCENY_ZAB_A), enm_a)
+            sc_a = execute_run(
+                create_run(
+                    case_id=str(_PRZYPADEK_SCENY_ZAB_A),
+                    klucz_twin=str(_PRZYPADEK_SCENY_ZAB_A),
+                    analysis_type="short_circuit_sn",
+                    project_id=str(_PROJEKT_SCENY_ZABEZPIECZEN),
+                ).id
+            )
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_ZAB_A):
+            bieg_a = execute_run(
+                create_run(
+                    case_id=str(_PRZYPADEK_SCENY_ZAB_A),
+                    klucz_twin=str(_PRZYPADEK_SCENY_ZAB_A),
+                    analysis_type="protection_sn",
+                    project_id=str(_PROJEKT_SCENY_ZABEZPIECZEN),
+                    options={"sc_run_id": str(sc_a.id)},
+                ).id,
+                uow_factory=uow_factory,
+            )
+
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_ZAB_SC_B):
+            set_enm(str(_PRZYPADEK_SCENY_ZAB_B), enm_b)
+            sc_b = execute_run(
+                create_run(
+                    case_id=str(_PRZYPADEK_SCENY_ZAB_B),
+                    klucz_twin=str(_PRZYPADEK_SCENY_ZAB_B),
+                    analysis_type="short_circuit_sn",
+                    project_id=str(_PROJEKT_SCENY_ZABEZPIECZEN),
+                ).id
+            )
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_ZAB_B):
+            bieg_b = execute_run(
+                create_run(
+                    case_id=str(_PRZYPADEK_SCENY_ZAB_B),
+                    klucz_twin=str(_PRZYPADEK_SCENY_ZAB_B),
+                    analysis_type="protection_sn",
+                    project_id=str(_PROJEKT_SCENY_ZABEZPIECZEN),
+                    options={"sc_run_id": str(sc_b.id)},
+                ).id,
+                uow_factory=uow_factory,
+            )
+        yield bieg_a, bieg_b, uow_factory
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def _mapa_identyfikatorow_sceny_zabezpieczen(bieg_a: Any, bieg_b: Any) -> dict[str, str]:
+    """Stabilne etykiety obu biegów zabezpieczeń i obu biegów źródłowych."""
+    return {
+        str(bieg_a.id): RUN_ID_SCENY_ZAB_A,
+        str(bieg_b.id): RUN_ID_SCENY_ZAB_B,
+        str(bieg_a.options["sc_run_id"]): RUN_ID_SCENY_ZAB_SC_A,
+        str(bieg_b.options["sc_run_id"]): RUN_ID_SCENY_ZAB_SC_B,
+        str(_PRZYPADEK_SCENY_ZAB_A): "case-zab-a",
+        str(_PRZYPADEK_SCENY_ZAB_B): "case-zab-b",
+        str(_PROJEKT_SCENY_ZABEZPIECZEN): "proj-zab",
+    }
+
+
+def porownanie_scena_biegi_zabezpieczen() -> dict[str, Any]:
+    """Odpowiedź `GET /api/projects/{id}/protection-runs` (`list_protection_runs`
+    — TA SAMA funkcja, którą woła końcówka): lista zakończonych biegów
+    zabezpieczeń projektu do wyboru pary A/B."""
+    with _biegi_sceny_zabezpieczen() as (bieg_a, bieg_b, _uow):
+        # `run_status=None` JAWNIE: parametr końcówki ma domyślną wartość
+        # `Query(default=None)`, więc wywołanie bez niego przekazałoby obiekt
+        # `Query` (nie `None`) i filtr statusu odrzuciłby WSZYSTKIE biegi —
+        # zmierzone: lista wracała pusta.
+        widok = list_protection_runs(_PROJEKT_SCENY_ZABEZPIECZEN, run_status=None)
+        return _ustabilizuj_identyfikatory(
+            widok, _mapa_identyfikatorow_sceny_zabezpieczen(bieg_a, bieg_b)
+        )
+
+
+def porownanie_scena_wynik_zabezpieczen() -> dict[str, Any]:
+    """Odpowiedź `POST /api/protection-comparisons` (`ProtectionComparisonService
+    .compare` — TA SAMA droga co końcówka): wiersze per (element chroniony,
+    punkt zwarcia), ranking problemów, podsumowanie i proweniencja OBU biegów."""
+    with _biegi_sceny_zabezpieczen() as (bieg_a, bieg_b, uow_factory):
+        # Znacznik czasu porównania powstaje przy składaniu wyniku
+        # (`domain/protection_comparison.py`) — zamrożony jak w porównaniu
+        # rozpływu obok, inaczej fixtura zmienia się przy każdym eksporcie.
+        with patch("domain.protection_comparison.datetime", _ZegarStalyBiegu):
+            wynik = ProtectionComparisonService(uow_factory).compare(str(bieg_a.id), str(bieg_b.id))
+        return _ustabilizuj_identyfikatory(
+            wynik.to_dict(), _mapa_identyfikatorow_sceny_zabezpieczen(bieg_a, bieg_b)
+        )
+
+
+def porownanie_scena_slad_zabezpieczen() -> dict[str, Any]:
+    """Odpowiedź `GET /api/protection-comparisons/{id}/trace` — ślad White Box
+    porównania (kroki dopasowania, liczenia różnic i rankingu z progami)."""
+    with _biegi_sceny_zabezpieczen() as (bieg_a, bieg_b, uow_factory):
+        serwis = ProtectionComparisonService(uow_factory)
+        with patch("domain.protection_comparison.datetime", _ZegarStalyBiegu):
+            slad = serwis.get_comparison_trace(f"{bieg_a.id}::{bieg_b.id}")
+        return _ustabilizuj_identyfikatory(
+            slad.to_dict(), _mapa_identyfikatorow_sceny_zabezpieczen(bieg_a, bieg_b)
+        )
+
+
 #: Nazwa pliku → funkcja licząca odpowiedź (kolejność = kolejność eksportu).
 FIXTURY: dict[str, Any] = {
     "ncrfg_zgodnosc_przekrojowa_scena_macierz": zgodnosc_przekrojowa_sceny_macierz,
+    "macierz_scena_migawka": macierz_scena_migawka,
+    "oze_scena_migawka": oze_scena_migawka,
+    "wiazania_scena_przekladniki": wiazania_scena_przekladniki,
+    "wiazania_scena_funkcje_zabezpieczen": wiazania_scena_funkcje_zabezpieczen,
     "werdykt_projektowy_scena_uwaga": werdykt_projektowy_sceny_uwaga,
     "katalog_analiz_v126": katalog_analiz_v126,
     "gotowosc_v126_scena_akademickie": gotowosc_v126_scena_akademickie,
@@ -2670,6 +3567,9 @@ FIXTURY: dict[str, Any] = {
     "porownanie_scena_biegi_pf": porownanie_scena_biegi_pf,
     "porownanie_scena_wynik_pf": porownanie_scena_wynik_pf,
     "porownanie_scena_slad_pf": porownanie_scena_slad_pf,
+    "porownanie_scena_biegi_zabezpieczen": porownanie_scena_biegi_zabezpieczen,
+    "porownanie_scena_wynik_zabezpieczen": porownanie_scena_wynik_zabezpieczen,
+    "porownanie_scena_slad_zabezpieczen": porownanie_scena_slad_zabezpieczen,
     "oltc_scena_przebieg": oltc_scena_przebieg,
     "oltc_scena_wynik": oltc_scena_wynik,
     "estymacja_scena_wymagania": estymacja_scena_wymagania,
@@ -2680,6 +3580,15 @@ FIXTURY: dict[str, Any] = {
     "lom_scena_wynik": lom_scena_wynik,
     "odbior_scena_prad_znamionowy": odbior_scena_prad_znamionowy,
     "akademickie_scena_biegi": akademickie_scena_biegi,
+    "stacja_demo_scena_migawka": stacja_demo_scena_migawka,
+    "siec_zlota_scena_migawka": siec_zlota_scena_migawka,
+    "przebieg_pf_sceny_zlotej": przebieg_pf_sceny_zlotej,
+    "pulpit_scena_migawka": pulpit_scena_migawka,
+    "pulpit_scena_przebieg": pulpit_scena_przebieg,
+    "diagnoza_scena_diagnostyka": diagnoza_scena_diagnostyka,
+    "diagnoza_scena_preflight": diagnoza_scena_preflight,
+    "diagnoza_scena_przebieg": diagnoza_scena_przebieg,
+    "diagnoza_scena_bieg": diagnoza_scena_bieg,
 }
 
 

@@ -2,14 +2,198 @@
   "analysis": "ochrona_lom",
   "context": {
     "enm_hash": "",
-    "enm_name": "CGMES Golden Net"
+    "enm_name": "Pole wytwórcy — scena LoM"
   },
-  "fields": [],
-  "input_hash": "dfba7f78fc9eb4f6fa22b66f36ebd716e525a6aa0352a0301cfef1e0fc2e76cf",
-  "modules_without_field": [
-    "gen_pv",
-    "gen_sync"
+  "fields": [
+    {
+      "bay_name": "Pole PV nN",
+      "bay_ref": "nn/3821c319753930c3ae26e6814b072bb7/source_field",
+      "bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
+      "checks": [
+        {
+          "function_ansi": null,
+          "function_label_pl": null,
+          "kind": "obecnosc",
+          "message_pl": "Pole modułu wytwórczego bez jakiejkolwiek funkcji ochrony od pracy wyspowej (LoM: 81R / 78 / 81U / 81O).",
+          "severity": "ERROR",
+          "source_pl": null,
+          "unit": null,
+          "value": null,
+          "window": null,
+          "wywod": []
+        }
+      ],
+      "generating_module_refs": [
+        "pv/675a792b8e1a66e52396a0a3e4ca8bcf/converter"
+      ],
+      "status": "ERROR",
+      "substation_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/station"
+    },
+    {
+      "bay_name": "Pole LINIA_IN 1",
+      "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/000",
+      "bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
+      "checks": [
+        {
+          "function_ansi": null,
+          "function_label_pl": null,
+          "kind": "obecnosc",
+          "message_pl": "Pole modułu wytwórczego bez jakiejkolwiek funkcji ochrony od pracy wyspowej (LoM: 81R / 78 / 81U / 81O).",
+          "severity": "ERROR",
+          "source_pl": null,
+          "unit": null,
+          "value": null,
+          "window": null,
+          "wywod": []
+        }
+      ],
+      "generating_module_refs": [
+        "pv/675a792b8e1a66e52396a0a3e4ca8bcf/converter"
+      ],
+      "status": "ERROR",
+      "substation_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/station"
+    },
+    {
+      "bay_name": "Pole LINIA_OUT 2",
+      "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
+      "bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
+      "checks": [
+        {
+          "function_ansi": "81R",
+          "function_label_pl": "Szybkość zmian częstotliwości (df/dt)",
+          "kind": "okno_normatywne",
+          "message_pl": "Nastawa df/dt (1.0 Hz/s) poniżej dolnego okna (2.0 Hz/s) — ryzyko zbędnych wyłączeń (fałszywe wykrycie wyspy).",
+          "severity": "WARN",
+          "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pracy przy zmianach częstotliwości — ROCOF withstand); wartość krajowa PTPiREE 2 Hz/s",
+          "unit": "Hz/s",
+          "value": 1.0,
+          "window": "df/dt ≥ 2.0 Hz/s",
+          "wywod": [
+            {
+              "latex": "\\left(\\tfrac{df}{dt}\\right)_{nast} \\ge 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}",
+              "tekst": "Wzor: warunek okna normatywnego funkcji 81R (nastawa nie nizsza niz krawedz okna)"
+            },
+            {
+              "latex": null,
+              "tekst": "Dane: nastawa = 1.0000 (przekaznik pola), krawedz okna = 2.0 — dolna krawedz okna (NC RfG Art. 13(1)(b), PTPiREE 2 Hz/s)."
+            },
+            {
+              "latex": "1.0000 < 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}",
+              "tekst": "Podstawienie: 1.0000 >= 2.0 NIESPELNIONE"
+            },
+            {
+              "latex": null,
+              "tekst": "Werdykt: WARN — Nastawa df/dt (1.0 Hz/s) poniżej dolnego okna (2.0 Hz/s) — ryzyko zbędnych wyłączeń (fałszywe wykrycie wyspy)."
+            }
+          ]
+        },
+        {
+          "function_ansi": "81U",
+          "function_label_pl": "Podczęstotliwościowa (f<)",
+          "kind": "okno_normatywne",
+          "message_pl": "Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz).",
+          "severity": "OK",
+          "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
+          "unit": "Hz",
+          "value": 47.5,
+          "window": "próg f ≤ 47.5 Hz",
+          "wywod": [
+            {
+              "latex": "f_{81U} \\le 47.5\\ \\text{Hz}",
+              "tekst": "Wzor: warunek okna normatywnego funkcji 81U (nastawa nie wyzsza niz krawedz okna)"
+            },
+            {
+              "latex": null,
+              "tekst": "Dane: nastawa = 47.5000 (przekaznik pola), krawedz okna = 47.5 — gorna krawedz okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)."
+            },
+            {
+              "latex": "47.5000 \\le 47.5\\ \\text{Hz}",
+              "tekst": "Podstawienie: 47.5000 <= 47.5 SPELNIONE"
+            },
+            {
+              "latex": null,
+              "tekst": "Werdykt: OK — Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz)."
+            }
+          ]
+        },
+        {
+          "function_ansi": "81O",
+          "function_label_pl": "Nadczęstotliwościowa (f>)",
+          "kind": "okno_normatywne",
+          "message_pl": "Próg 81O (51.5 Hz) w oknie normatywnym (≥ 51.5 Hz).",
+          "severity": "OK",
+          "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
+          "unit": "Hz",
+          "value": 51.5,
+          "window": "próg f ≥ 51.5 Hz",
+          "wywod": [
+            {
+              "latex": "f_{81O} \\ge 51.5\\ \\text{Hz}",
+              "tekst": "Wzor: warunek okna normatywnego funkcji 81O (nastawa nie nizsza niz krawedz okna)"
+            },
+            {
+              "latex": null,
+              "tekst": "Dane: nastawa = 51.5000 (przekaznik pola), krawedz okna = 51.5 — dolna krawedz okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)."
+            },
+            {
+              "latex": "51.5000 \\ge 51.5\\ \\text{Hz}",
+              "tekst": "Podstawienie: 51.5000 >= 51.5 SPELNIONE"
+            },
+            {
+              "latex": null,
+              "tekst": "Werdykt: OK — Próg 81O (51.5 Hz) w oknie normatywnym (≥ 51.5 Hz)."
+            }
+          ]
+        },
+        {
+          "function_ansi": null,
+          "function_label_pl": "Koordynacja czasowa z SPZ",
+          "kind": "koordynacja_spz",
+          "message_pl": "Brak danych o przerwie SPZ jednostek nadrzędnych (SpzState nieosiągalny w ENM) — porównanie niemożliwe.",
+          "severity": "INFO",
+          "source_pl": "SpzState.fast_time_s / slow_time_s jednostek nadrzędnych (BayProtectionControlUnit)",
+          "unit": "s",
+          "value": 0.2,
+          "window": {
+            "spz_fast_time_s": null,
+            "spz_slow_time_s": null
+          },
+          "wywod": []
+        }
+      ],
+      "generating_module_refs": [
+        "pv/675a792b8e1a66e52396a0a3e4ca8bcf/converter"
+      ],
+      "status": "WARN",
+      "substation_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/station"
+    },
+    {
+      "bay_name": "Pole TRANSFORMATOROWE 3",
+      "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002",
+      "bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
+      "checks": [
+        {
+          "function_ansi": null,
+          "function_label_pl": null,
+          "kind": "obecnosc",
+          "message_pl": "Pole modułu wytwórczego bez jakiejkolwiek funkcji ochrony od pracy wyspowej (LoM: 81R / 78 / 81U / 81O).",
+          "severity": "ERROR",
+          "source_pl": null,
+          "unit": null,
+          "value": null,
+          "window": null,
+          "wywod": []
+        }
+      ],
+      "generating_module_refs": [
+        "pv/675a792b8e1a66e52396a0a3e4ca8bcf/converter"
+      ],
+      "status": "ERROR",
+      "substation_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/station"
+    }
   ],
+  "input_hash": "65e253c2dd2555a7c6a9e208895aab39a2d96d118e776de2a5b7fe853a509e6e",
+  "modules_without_field": [],
   "normative_sources": {
     "overfrequency_81O": {
       "lower_hz": 51.5,
@@ -36,17 +220,91 @@
   },
   "summary": {
     "by_status": {
-      "ERROR": 0,
+      "ERROR": 3,
       "INFO": 0,
       "OK": 0,
-      "WARN": 0
+      "WARN": 1
     },
-    "fields_total": 0,
-    "generating_modules_total": 2,
-    "overall_status": "INFO"
+    "fields_total": 4,
+    "generating_modules_total": 1,
+    "overall_status": "ERROR"
   },
   "whitebox": {
-    "comparisons": []
+    "comparisons": [
+      {
+        "bay_ref": "nn/3821c319753930c3ae26e6814b072bb7/source_field",
+        "function_ansi": null,
+        "kind": "obecnosc",
+        "message_pl": "Pole modułu wytwórczego bez jakiejkolwiek funkcji ochrony od pracy wyspowej (LoM: 81R / 78 / 81U / 81O).",
+        "severity": "ERROR",
+        "source_pl": null,
+        "value": null,
+        "window": null
+      },
+      {
+        "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/000",
+        "function_ansi": null,
+        "kind": "obecnosc",
+        "message_pl": "Pole modułu wytwórczego bez jakiejkolwiek funkcji ochrony od pracy wyspowej (LoM: 81R / 78 / 81U / 81O).",
+        "severity": "ERROR",
+        "source_pl": null,
+        "value": null,
+        "window": null
+      },
+      {
+        "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
+        "function_ansi": "81R",
+        "kind": "okno_normatywne",
+        "message_pl": "Nastawa df/dt (1.0 Hz/s) poniżej dolnego okna (2.0 Hz/s) — ryzyko zbędnych wyłączeń (fałszywe wykrycie wyspy).",
+        "severity": "WARN",
+        "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b (zdolność pracy przy zmianach częstotliwości — ROCOF withstand); wartość krajowa PTPiREE 2 Hz/s",
+        "value": 1.0,
+        "window": "df/dt ≥ 2.0 Hz/s"
+      },
+      {
+        "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
+        "function_ansi": "81U",
+        "kind": "okno_normatywne",
+        "message_pl": "Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz).",
+        "severity": "OK",
+        "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
+        "value": 47.5,
+        "window": "próg f ≤ 47.5 Hz"
+      },
+      {
+        "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
+        "function_ansi": "81O",
+        "kind": "okno_normatywne",
+        "message_pl": "Próg 81O (51.5 Hz) w oknie normatywnym (≥ 51.5 Hz).",
+        "severity": "OK",
+        "source_pl": "Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a (pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)",
+        "value": 51.5,
+        "window": "próg f ≥ 51.5 Hz"
+      },
+      {
+        "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
+        "function_ansi": null,
+        "kind": "koordynacja_spz",
+        "message_pl": "Brak danych o przerwie SPZ jednostek nadrzędnych (SpzState nieosiągalny w ENM) — porównanie niemożliwe.",
+        "severity": "INFO",
+        "source_pl": "SpzState.fast_time_s / slow_time_s jednostek nadrzędnych (BayProtectionControlUnit)",
+        "value": 0.2,
+        "window": {
+          "spz_fast_time_s": null,
+          "spz_slow_time_s": null
+        }
+      },
+      {
+        "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002",
+        "function_ansi": null,
+        "kind": "obecnosc",
+        "message_pl": "Pole modułu wytwórczego bez jakiejkolwiek funkcji ochrony od pracy wyspowej (LoM: 81R / 78 / 81U / 81O).",
+        "severity": "ERROR",
+        "source_pl": null,
+        "value": null,
+        "window": null
+      }
+    ]
   },
   "zalozenia_pl": [
     "Ocena LoM to interpretacja normatywna (porównania), nie symulacja fizyki wyspy.",
