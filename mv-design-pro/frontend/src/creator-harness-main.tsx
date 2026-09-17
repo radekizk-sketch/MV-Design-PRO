@@ -143,6 +143,7 @@ import { PvSourceSurface } from './ui/workspace/surfaces/DerSurfaces';
 import { HubDokumentacji } from './ui2/spaces/dokumentacja';
 import { PulpitProjektu } from './ui2/spaces/projekt';
 import { PanelDiagnozy } from './ui2/spaces/obliczenia/diagnoza';
+import { PrzegladarkaSzablonow } from './ui2/spaces/model/szablony';
 import {
   diagnostykaZBrakamiFixture,
   diagnozaNiezbieznaFixture,
@@ -816,6 +817,18 @@ const RUN_KONTRAKT_SCENY: Record<string, string> = {
 };
 
 const originalFetch = window.fetch.bind(window);
+
+/**
+ * Identyfikator sceny z adresu URL, niezależny od stałej modułowej `creator`
+ * (zadeklarowanej niżej w pliku) — funkcja jest odpytywana wewnątrz zamknięcia
+ * `window.fetch` PODCZAS wywołań fetch (po pełnym załadowaniu modułu), więc
+ * odczyt wprost z `window.location.search` w miejscu użycia jest bezpieczniejszy
+ * niż poleganie na kolejności deklaracji stałej modułowej.
+ */
+function creatorZUrl(): string {
+  return new URLSearchParams(window.location.search).get('creator') ?? 'pole';
+}
+
 /**
  * Konfiguracja zabezpieczeń przypadku zasiewu (`GET`/`PUT /api/study-cases/{id}/
  * protection-config`, P14c) — stan atrapy trzymany jak w backendzie (zapis widoczny
@@ -1646,13 +1659,24 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   // Backend jest stateless/deterministyczny (`list_complete_bay_templates_endpoint`,
   // zero zależności DB) i zwraca bogatszy, realny skład (44 szablony dla ZPUE
   // Włoszczowa, 13 dla ABB — zweryfikowane pomiarem) — trasa idzie do niego.
-  if (url.includes('/api/station-templates')) {
+  if (url.includes('/api/station-templates') && creatorZUrl() !== 'szablony') {
     // Biblioteka szablonów stacji — krok 0 kreatora. Pusta lista = uczciwy stan
     // „brak szablonów", ekran działa dalej (ścieżka „od zera").
     return new Response(JSON.stringify({ templates: [], total: 0 }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
+  }
+  if (url.includes('/api/station-templates') && creatorZUrl() === 'szablony') {
+    // Scena „szablony" (V12T-016, karta SZABLONY-ROLA-A): przeglądarka
+    // biblioteki szablonów (`ui2/spaces/model/szablony`) — w odróżnieniu od
+    // kreatora stacji (mock pustej listy wyżej) ta scena istnieje WPROST po
+    // to, żeby pokazać rzeczywistą, pełną bibliotekę (73 szablony, 15
+    // kategorii, rola A „Zasilanie sieci" już niepusta) — atrapa
+    // przeczyłaby własnemu celowi sceny. Przechodzi do PRAWDZIWEGO
+    // backendu (ten sam wzorzec co scena „stacja" — `zasiejSceneStacji`
+    // niżej — realny projekt/przypadek zamiast ręcznie sklejonej liczby).
+    return originalFetch(input, init);
   }
   if (url.includes('/api/quality/conductor-thermal-withstand/proof')) {
     // Karta HARNESS-RESZTA (kontynuacja): dowod cieplny GALEZI Z NAJWIEKSZYM
@@ -3065,6 +3089,12 @@ function Harness() {
   else if (creator === 'przypisanie-katalogu') node = <KreatorPrzypisaniaKatalogu />;
   else if (creator === 'edycja-parametrow') node = <KreatorEdycjiParametrow />;
   else if (creator === 'stacja') node = <KreatorStacjiSnNn />;
+  else if (creator === 'szablony')
+    // Scena „szablony" (V12T-016, karta SZABLONY-ROLA-A): przeglądarka
+    // biblioteki szablonów stacji z widoczną rolą A „Zasilanie sieci"
+    // (GPZ 110/SN, rozdzielnia sieciowa RS/RSM) — dotąd licznik zero.
+    // Dane REALNE z backendu (patrz wyjątek fetch-mocka wyżej), nie atrapa.
+    node = <PrzegladarkaSzablonow onZastosuj={() => undefined} />;
   else node = <KreatorPolaSn />;
 
   return (

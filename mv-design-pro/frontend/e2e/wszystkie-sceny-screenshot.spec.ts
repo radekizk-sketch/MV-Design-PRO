@@ -28,6 +28,9 @@ const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/sceny');
 /** Sceny kadrowane przez `creator-screenshot.spec.ts` — tam mają własne interakcje. */
 const JUZ_KADROWANE = new Set([
   'pole', 'oze', 'arcflash', 'magistrala', 'kompensator', 'transformator', 'odbior', 'wiazania',
+  // V12T-016 (karta SZABLONY-ROLA-A): `szablony-rola-a-screenshot.spec.ts`
+  // rozwija i wybiera rolę A (drzewko startuje zwinięte) — własna interakcja.
+  'szablony',
 ]);
 
 const SCENY = [

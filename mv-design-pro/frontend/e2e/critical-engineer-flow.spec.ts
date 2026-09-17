@@ -21,23 +21,30 @@ import { test, expect } from '@playwright/test';
 const API_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 
 test.describe('critical engineer flow — station templates end-to-end', () => {
-  test('GET /api/station-templates returns 57+ templates across 10 categories', async ({ request }) => {
+  test('GET /api/station-templates returns 73+ templates across 15 categories', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/station-templates`);
     expect(response.ok()).toBe(true);
     const data = await response.json();
-    expect(data.total).toBeGreaterThanOrEqual(57);
+    expect(data.total).toBeGreaterThanOrEqual(73);
     expect(data.templates.length).toBe(data.total);
-    // Verify all 10 categories represented
+    // Verify all 15 categories represented (K30-16's 10 + V12T-016's 5: rola
+    // A GPZ_110_SN/ROZDZIELNIA_SIECIOWA, rola C STACJA_ABONENCKA, rola E
+    // KOMPENSACJA/REZERWA_ZASILANIA).
     const categories = new Set(data.templates.map((t: { category: string }) => t.category));
-    expect(categories.size).toBe(10);
+    expect(categories.size).toBe(15);
+    expect(categories.has('gpz_110_sn')).toBe(true);
+    expect(categories.has('rozdzielnia_sieciowa')).toBe(true);
+    expect(categories.has('stacja_abonencka')).toBe(true);
+    expect(categories.has('kompensacja')).toBe(true);
+    expect(categories.has('rezerwa_zasilania')).toBe(true);
   });
 
-  test('GET /api/station-templates/categories returns 10 categories', async ({ request }) => {
+  test('GET /api/station-templates/categories returns 15 categories incl. rola A', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/station-templates/categories`);
     expect(response.ok()).toBe(true);
     const data = await response.json();
-    expect(data.categories.length).toBe(10);
-    expect(data.total_templates).toBeGreaterThanOrEqual(57);
+    expect(data.categories.length).toBe(15);
+    expect(data.total_templates).toBeGreaterThanOrEqual(73);
 
     // Verify icons present per category
     for (const cat of data.categories) {
@@ -46,6 +53,14 @@ test.describe('critical engineer flow — station templates end-to-end', () => {
       expect(cat.icon).toBeTruthy();
       expect(cat.template_count).toBeGreaterThan(0);
     }
+
+    // V12T-016 (rola A „Zasilanie sieci" — licznik ZERO przed tą kartą):
+    // GPZ_110_SN musi mieć ≥1 szablon, żeby przeglądarka nie pokazała
+    // ponownie zerowego licznika roli A.
+    const gpz = data.categories.find((c: { id: string }) => c.id === 'gpz_110_sn');
+    expect(gpz).toBeTruthy();
+    expect(gpz.template_count).toBeGreaterThanOrEqual(1);
+    expect(gpz.label_pl).toBe('GPZ 110/SN');
   });
 
   test('GET /api/station-templates/{id} returns full schema z editable params', async ({ request }) => {
@@ -136,6 +151,62 @@ test.describe('critical engineer flow — station templates end-to-end', () => {
       (s) => String(s['catalog_ref'] ?? ''),
     );
     expect(refs.some((r) => r.includes('yhakxs') || r.includes('150'))).toBe(true);
+  });
+
+  // V12T-016 (karta SZABLONY-ROLA-A): dokumentacja u góry pliku obiecuje
+  // krok „4. Template apply endpoint (creates station)" od K30-28, ale ŻADEN
+  // test w tym pliku nigdy nie wywoływał `/apply` — luka między deklaracją a
+  // pokryciem. GPZ_110_SN (rola A) jest tu wybrany CELOWO: to jedyna
+  // kategoria, dla której `target_segment_id` jest opcjonalny (GPZ jest
+  // korzeniem modelu — `add_grid_source_sn`, nie wcięcie w istniejący
+  // segment) — test dowodzi końca do końca, że kontrakt API (`target_
+  // segment_id: str | None`) i domena (`apply_template_to_case`) działają
+  // razem na PRAWDZIWYM backendzie, nie tylko w testach jednostkowych.
+  test('POST /api/station-templates/tpl_gpz_110_15_2x16mva_h5/apply creates GPZ without target_segment_id', async ({
+    request,
+  }) => {
+    const suffix = String(Date.now());
+    const projectResponse = await request.post(`${API_BASE}/api/projects`, {
+      data: {
+        name: `E2E GPZ ${suffix}`,
+        description: 'V12T-016 rola A — apply GPZ_110_SN na pustym projekcie',
+        mode: 'TO-BE',
+        voltage_level_kv: 15.0,
+        frequency_hz: 50.0,
+      },
+    });
+    expect(projectResponse.ok()).toBe(true);
+    const project = (await projectResponse.json()) as { id: string };
+
+    const caseResponse = await request.post(`${API_BASE}/api/study-cases`, {
+      data: {
+        project_id: project.id,
+        name: `Przypadek GPZ ${suffix}`,
+        description: '',
+        config: {},
+        set_active: true,
+      },
+    });
+    expect(caseResponse.ok()).toBe(true);
+    const studyCase = (await caseResponse.json()) as { id: string };
+
+    const applyResponse = await request.post(
+      `${API_BASE}/api/station-templates/tpl_gpz_110_15_2x16mva_h5/apply`,
+      {
+        data: {
+          case_id: studyCase.id,
+          target_segment_id: null,
+          params_override: {},
+        },
+      },
+    );
+    expect(applyResponse.ok(), await applyResponse.text()).toBe(true);
+    const result = await applyResponse.json();
+    expect(result.template_id).toBe('tpl_gpz_110_15_2x16mva_h5');
+    expect(typeof result.station_ref).toBe('string');
+    expect(result.station_ref.length).toBeGreaterThan(0);
+    expect(result.created_element_refs.length).toBeGreaterThan(0);
+    expect(result.snapshot_hash).toBeTruthy();
   });
 
   // Endpoint zweryfikowany jako WPIĘTY (karta FE-HIGIENA, 2026-09-05):

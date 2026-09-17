@@ -1,11 +1,17 @@
 /*
  * Fixture'y o kształcie 1:1 z realnych odpowiedzi `/api/station-templates/*`
  * (`backend/src/api/station_templates.py`). `KATEGORIE_FIXTURE` odwzorowuje
- * dokładnie 10 kategorii z `_CATEGORY_LABELS`/`_CATEGORY_DESCRIPTIONS`
- * (station_templates.py:252-289) wraz z realnymi licznikami z backendu
- * (`count_by_category` — 57 szablonów łącznie, `service.py`). `szablonPelny`
- * to fabryka pełnego szablonu (`StationTemplateFull`) z realistycznymi
- * wartościami pól schematu (`schema.py:104-269`).
+ * dokładnie 15 kategorii z `_CATEGORY_ICONS`/`_CATEGORY_DESCRIPTIONS`
+ * (station_templates.py) wraz z realnymi licznikami z backendu
+ * (`count_by_category` — 73 szablony łącznie, `service.py`; K30-16's 57 +
+ * V12T-016's 16). Korekta 2026-09-17 (karta SZABLONY-ROLA-A): poprzednia
+ * wersja miała TRZY błędne liczniki K30-16 (zksn_wnetrzowa=6 zamiast 8,
+ * farma_pv=6 zamiast 5, przemyslowa=6 zamiast 5 — błędy wzajemnie się
+ * znosiły w sumie 57, więc test sumy przechodził mimo błędnych wartości per
+ * kategoria); wszystkie 15 liczników zweryfikowane wprost względem
+ * `application/station_templates/templates/__init__.py::ALL_TEMPLATES`.
+ * `szablonPelny` to fabryka pełnego szablonu (`StationTemplateFull`) z
+ * realistycznymi wartościami pól schematu (`schema.py`).
  */
 
 import type {
@@ -18,14 +24,20 @@ import type {
 export const KATEGORIE_FIXTURE: CategoryEntry[] = [
   { id: 'typowa_sn_nn', label_pl: 'Typowe stacje SN/nN', icon: 'station-distribution', description_pl: 'Standardowe stacje dystrybucyjne 100-2500 kVA', template_count: 10 },
   { id: 'slupowa', label_pl: 'Stacje słupowe ZSP', icon: 'station-pole', description_pl: 'Stacje słupowe ZSP (50-400 kVA, wieś)', template_count: 6 },
-  { id: 'zksn_wnetrzowa', label_pl: 'Stacje ZKSN wnętrzowe', icon: 'station-indoor', description_pl: 'Stacje wnętrzowe z RMU (630-2500 kVA, miasto)', template_count: 6 },
+  { id: 'zksn_wnetrzowa', label_pl: 'Stacje ZKSN wnętrzowe', icon: 'station-indoor', description_pl: 'Stacje wnętrzowe z RMU (630-2500 kVA, miasto)', template_count: 8 },
   { id: 'prosument_pv', label_pl: 'Mikroinstalacje PV prosument', icon: 'station-pv-prosument', description_pl: 'Mikroinstalacje PV 5-250 kW (NC RfG typ A-C)', template_count: 6 },
-  { id: 'farma_pv', label_pl: 'Farmy PV SN', icon: 'station-pv-farm', description_pl: 'Farmy PV SN 0.5-5 MW z block transformer', template_count: 6 },
+  { id: 'farma_pv', label_pl: 'Farmy PV SN', icon: 'station-pv-farm', description_pl: 'Farmy PV SN 0.5-5 MW z block transformer', template_count: 5 },
   { id: 'bess', label_pl: 'Magazyny BESS', icon: 'station-bess', description_pl: 'Magazyny BESS 0.5-5 MW z usługami systemowymi', template_count: 5 },
   { id: 'hybrydowa', label_pl: 'Hybrydy PV + BESS', icon: 'station-hybrid', description_pl: 'Farmy hybrydowe PV + BESS', template_count: 5 },
-  { id: 'przemyslowa', label_pl: 'Przemysłowe odbiorcze', icon: 'station-industrial', description_pl: 'Stacje przemysłowe odbiorcze (zakłady, silniki)', template_count: 6 },
+  { id: 'przemyslowa', label_pl: 'Przemysłowe odbiorcze', icon: 'station-industrial', description_pl: 'Stacje przemysłowe odbiorcze (zakłady, silniki)', template_count: 5 },
   { id: 'wiatrowa', label_pl: 'Stacje OZE wiatrowe', icon: 'station-wind', description_pl: 'Stacje OZE wiatrowe (Vestas V90/V112)', template_count: 4 },
   { id: 'sekcyjna', label_pl: 'Stacje sekcyjne / pętlowe', icon: 'station-sectional', description_pl: 'Stacje sekcyjne/pętlowe z NOP/SZR', template_count: 3 },
+  // V12T-016 (rejestr długu, zamknięty kartą SZABLONY-ROLA-A, 2026-09-17):
+  { id: 'gpz_110_sn', label_pl: 'GPZ 110/SN', icon: 'station-gpz', description_pl: 'GPZ 110/SN — korzeń sieci, 2-sekcyjny układ H5 z mostkiem', template_count: 3 },
+  { id: 'rozdzielnia_sieciowa', label_pl: 'Rozdzielnie sieciowe RS/RSM', icon: 'station-switching', description_pl: 'Rozdzielnie sieciowe RS/RSM — bez transformatora', template_count: 3 },
+  { id: 'stacja_abonencka', label_pl: 'Stacje abonenckie SN z pomiarem', icon: 'station-metering', description_pl: 'Stacje odbiorcze SN z układem pomiarowo-rozliczeniowym', template_count: 4 },
+  { id: 'kompensacja', label_pl: 'Kompensacja mocy biernej', icon: 'station-capacitor', description_pl: 'Bateria kondensatorów SN — kompensacja mocy biernej', template_count: 3 },
+  { id: 'rezerwa_zasilania', label_pl: 'Rezerwa zasilania', icon: 'station-reserve', description_pl: 'Węzeł SN z zasilaniem rezerwowym (automatyka SZR)', template_count: 3 },
 ];
 
 /** Fabryka opcji katalogowej (`CatalogChoice`, schema.py:60-68). */
