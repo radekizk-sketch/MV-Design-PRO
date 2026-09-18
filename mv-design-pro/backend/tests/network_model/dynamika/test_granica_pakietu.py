@@ -19,6 +19,7 @@ inna zaleznosc wchodzi do pomiaru.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -40,18 +41,14 @@ def _korzen_zrodel() -> Path:
     raise AssertionError("Nie znaleziono katalogu zrodel backendu")
 
 
-def _katalog_skryptow() -> Path:
-    for rodzic in Path(__file__).resolve().parents:
-        kandydat = rodzic / "scripts" / "dynamika_granica_importow.py"
-        if kandydat.exists():
-            return kandydat.parent
-    raise AssertionError("Nie znaleziono `scripts/dynamika_granica_importow.py`")
-
-
+# Korzen zrodel trafia do podprocesu przez `PYTHONPATH`, a NIE przez manipulacje
+# `sys.path` — testy tego repozytorium nie dokladaja do sciezki niczego poza `src`
+# (pilnuje `tests/ci/test_testy_nie_cieniuja_pakietow_zrodlowych.py`: wstrzykniecie
+# katalogu `tests/` przeslonilo by pakiet zrodlowy pakietem testowym o tej samej
+# nazwie — `tests/network_model` vs `network_model`).
 _PROGRAM = """
 import json, sys, types
 korzen = sys.argv[1]
-sys.path.insert(0, korzen)
 # Puste moduly-rodzice: gorliwe `__init__.py` pakietow FROZEN (B-01) nie wchodza
 # do pomiaru. Kazda inna zaleznosc wchodzi.
 for nazwa, podkatalog in (
@@ -72,11 +69,15 @@ print(json.dumps(sorted(sys.modules)))
 
 
 def _wlasne_domkniecie() -> list[str]:
+    korzen = str(_korzen_zrodel())
+    srodowisko = dict(os.environ)
+    srodowisko["PYTHONPATH"] = korzen
     wynik = subprocess.run(  # noqa: S603 — staly, lokalny argv
-        [sys.executable, "-c", _PROGRAM, str(_korzen_zrodel())],
+        [sys.executable, "-c", _PROGRAM, korzen],
         capture_output=True,
         text=True,
         check=False,
+        env=srodowisko,
     )
     assert wynik.returncode == 0, wynik.stdout + wynik.stderr
     return json.loads(wynik.stdout.strip().splitlines()[-1])
@@ -103,14 +104,10 @@ def test_rdzen_nie_wciaga_bibliotek_spoza_allowlisty() -> None:
     assert "network_model.pochodne" in moduly
 
 
-def test_zaden_modul_rdzenia_nie_odwoluje_sie_do_zamrozonych_solverow() -> None:
-    """B-01: rdzen stoi OBOK rdzeni FROZEN — pomiar po drzewie skladni.
-
-    Pomiar wykonaniem tego nie pokaze: `network_model.solvers.__init__` (FROZEN)
-    laduje rdzenie zamrozone przy kazdym imporcie czegokolwiek z tego pakietu.
-    Dlatego ZAKAZ dotyczy odwolan w ZRODLACH i tak jest sprawdzany.
-    """
-    sys.path.insert(0, str(_katalog_skryptow()))
-    from dynamika_granica_importow import znajdz_naruszenia  # noqa: PLC0415
-
-    assert znajdz_naruszenia() == []
+# ZAKAZ ODWOLAN DO ZAMROZONYCH RDZENI (B-01) jest sprawdzany po DRZEWIE SKLADNI, a
+# nie wykonaniem: `network_model.solvers.__init__` (FROZEN) laduje rdzenie zamrozone
+# przy kazdym imporcie czegokolwiek z tego pakietu, wiec pomiar wykonaniem nigdy by
+# tego nie rozdzielil. Sprawdzenie zyje w self-tescie bramki
+# `scripts/test_dynamika_granica_importow_guard.py` (tam mieszka implementacja
+# reguly i tam wstrzykiwane sa czerwone iniekcje) — powtarzanie go tutaj wymagaloby
+# dokladania `scripts/` do `sys.path`, czego testy tego repozytorium nie robia.
