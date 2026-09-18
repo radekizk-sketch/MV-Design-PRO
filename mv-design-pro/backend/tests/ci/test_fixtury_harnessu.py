@@ -4,6 +4,29 @@ JSON w `frontend/src/harness-fixtures/generated/` MUSI być równy świeżo
 policzonej odpowiedzi (`scripts/eksport_fixtur_harnessu.py`) — rozjazd znaczy,
 że kontrakt albo dane sceny się zmieniły, a zrzut do oceny pokazywałby stan
 sprzed zmiany. Dwa uruchomienia dają identyczny wynik (determinizm atrapy).
+
+PRZENOŚNOŚĆ MIĘDZY MASZYNAMI (2026-09-18). Fixtury powstają na maszynie sesji,
+a porównanie liczy odpowiedź na runnerze CI. Repo ma dla tej klasy rozstrzygnięcie
+(karty CI-PARYTET-3/4/5, `docs/evidence/CONVERGENCE_EVIDENCE.md`): surowy wynik
+solvera NIE jest przenośny przy ŻADNEJ siatce kwantyzacji, bo BLAS/LAPACK dwóch
+maszyn sumuje inaczej. Żądanie równości bit w bit od takich wielkości nie mierzy
+zgodności fixtury z backendem, tylko szum numeryczny. Dlatego porównanie jest
+rozdzielone na trzy warstwy, a każda ma własny, ZMIERZONY próg:
+
+1. SZKIELET — zbiór kluczy, długości list, typy, `bool`, liczby całkowite,
+   wartości nieliczbowe (etykiety, kody, jednostki, statusy) — DOKŁADNIE.
+2. LICZBY — tolerancja WZGLĘDNA `RTOL_FIXTUR` plus pasmo martwe zera
+   `PASMO_ZERA_FIXTUR` (oba wyprowadzone z pomiaru, uzasadnienie przy stałych).
+   Tekst niosący liczby policzone (`POLA_TEKSTU_Z_LICZBAMI`) porównuje się po
+   strukturze (dokładnie) i po liczbach (tą samą tolerancją), nie po napisie.
+3. SKRÓTY NAD LICZBAMI NIEPRZENOŚNYMI (`POLA_SKROTOW_NIEPRZENOSNYCH`) — wychodzą
+   z porównania międzymaszynowego, ale NIE z testu: sprawdzany jest kształt
+   (prefiks i długość ciągu szesnastkowego, dokładnie), obecność i stabilność w
+   obrębie jednej maszyny (`test_atrapa_jest_deterministyczna`).
+
+Obie listy pól są ZAMKNIĘTE i przypięte self-testem
+(`test_listy_pol_wylaczonych_sa_zamkniete`) — dopisanie pola jest świadomą
+decyzją, nie cichym przyrostem.
 """
 
 from __future__ import annotations
@@ -22,20 +45,158 @@ eksport = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(eksport)
 
 
-#: Tolerancja liczb fixtur (ta sama klasa co parytet assemblera na CI, karta
-#: CI-PARYTET-2): szkielet (klucze, typy, długości list, teksty, liczby całkowite)
-#: DOKŁADNIE, liczby zmiennoprzecinkowe z tolerancją. Dowód klasy: CI run
-#: 34467401727 na b89c13b3 — dwie fixtury sceny werdyktu (wartości i marginesy z
-#: realnego rozpływu/zwarcia sieci złotej) rozjechały się między maszynami na
-#: 10.–11. cyfrze znaczącej (np. 8.913153836959333 vs 8.913153836847659), choć
-#: lokalnie test był zielony. Szum solvera (~1e-10 względnie) przekracza ziarno
-#: kwantyzacji ADR-018 (9 cyfr), więc samo zaokrąglenie nie zamyka klasy —
-#: potrzebna tolerancja porównania, dla KAŻDEJ fixtury z liczbami solvera.
-RTOL_FIXTUR = 1e-6
-ATOL_FIXTUR = 1e-6
+#: Tolerancja WZGLĘDNA liczb fixtur. POMIAR (CI run 35290801270, job `pytest`,
+#: commit 8d795200 — 7 czerwonych przy 15 878 zielonych): największa zmierzona
+#: rozbieżność międzymaszynowa to `estymacja $.measurements[9].normalized_residual`
+#: 1.4209582645767669 (sesja) vs 1.4209749416592783 (runner) = 1,2·10⁻⁵ względnie;
+#: druga co do wielkości `$.measurements[5].normalized_residual` = 6,8·10⁻⁶,
+#: `$.white_box[2].gain_matrix_g[0][4]` = 1,2·10⁻⁶. Próg 1·10⁻⁴ to zapas ×8,5 nad
+#: zmierzonym maksimum (limit karty: ×10). Rozwiązanie WLS jest najczulszą
+#: wielkością tego zbioru (residuum znormalizowane dzieli się przez pierwiastek
+#: kowariancji residuum, która przy niskiej redundancji lokalnej dąży do zera) —
+#: gdyby przyszły bieg CI przekroczył ten próg, odpowiedzią NIE jest podniesienie
+#: progu, tylko pytanie, czy ta wielkość ma prawo być w fiksturze.
+RTOL_FIXTUR = 1e-4
+
+#: Pasmo martwe zera (bezwzględne). POMIAR: największe zmierzone „zero numeryczne”
+#: między maszynami to człon 1,27454e-09 w śladzie składowych
+#: (`skladowe $.white_box_trace[2].substitution`: 5,11591e-13 na sesji wobec
+#: 1,27454e-09 na runnerze, OBOK członu −j 10162,6 w tym samym wyrażeniu) — obie
+#: wartości są fizycznie zerem części rzeczywistej Z₀. Pasmo 1·10⁻⁸ to zapas ×7,8
+#: nad tym pomiarem (limit karty: ×10) i ×43 nad najgorszą różnicą sondy szumu
+#: BLAS (`zwarcia $.branch_flow_trace[].result.i_contrib_a`: 2,3·10⁻¹⁰).
+#: Pasmo obowiązuje tylko wtedy, gdy OBIE wartości w nim leżą — 1e-9 wobec 5,0 to
+#: nadal różnica. Poprzednie 1e-6 było o dwa rzędy ZA SZEROKIE: zrównywało z zerem
+#: realne współczynniki katalogowe tablic łuku (`arcflash
+#: $.coefficient_table.incident_energy.VOA|V2700.k[6]` = 8,346e-07).
+PASMO_ZERA_FIXTUR = 1e-8
+
+#: Pola, których wartość jest SKRÓTEM policzonym nad liczbami nieprzenośnymi
+#: (wynik solvera). Lista ZAMKNIĘTA — pin: `test_listy_pol_wylaczonych_sa_zamkniete`.
+#: Źródła: (a) tabela pomiaru CI 35290801270 (`result_hash`, `export_ref`,
+#: `deterministic_signature`, `analysis_case_context.reproducibility.result_hash`);
+#: (b) sonda szumu BLAS (szum względny 1e-12 wstrzyknięty w wyniki `np.linalg.*`,
+#: deterministyczny jako funkcja WEJŚCIA) na komplecie fixtur — rozjechały się
+#: dokładnie te pola i żadne inne.
+#: ŚWIADOMIE POZA LISTĄ: `input_hash`, `snapshot_hash`, `snapshot_ref`, `enm_hash`,
+#: `model_hash`, `options_hash`, `solver_input_hash`, `catalog_fingerprint`,
+#: `catalog_materialization_hash`, `hash_sha256`, `semantic_fingerprint`,
+#: `effect_signature`, `deterministic_id`, `snapshot_id` — to skróty nad WEJŚCIEM;
+#: sonda nie ruszyła ich przy 1e-12 i bieg CI ich nie zgłosił. Są najsilniejszym
+#: sygnałem, jaki ten test ma (dryf danych wejściowych), więc ich wyłączenie
+#: oślepiłoby go na realną regresję.
+POLA_SKROTOW_NIEPRZENOSNYCH: frozenset[str] = frozenset(
+    {
+        "analysis_id",
+        "deterministic_hash",
+        "deterministic_signature",
+        "estimate_id",
+        "export_ref",
+        "proof_hash",
+        "proof_id",
+        "proof_ref",
+        "report_hash",
+        "report_id",
+        "report_ref",
+        "result_hash",
+        "source_proof_hash",
+        "source_result_hash",
+        "value",
+    }
+)
+
+#: Pola tekstowe niosące liczby POLICZONE (ślad White Box, uzasadnienia, etykiety
+#: metryk raportu). Porównanie: struktura napisu DOKŁADNIE, liczby w napisie tą
+#: samą tolerancją co liczby JSON — człon numerycznie zerowy nie może wywracać
+#: porównania. Lista ZAMKNIĘTA — pin: `test_listy_pol_wylaczonych_sa_zamkniete`.
+#: Pomiar: skan kompletu fixtur po kluczach tekstowych niosących liczbę o ≥4
+#: cyfrach znaczących albo w notacji wykładniczej. Reguła NIE jest globalna dla
+#: wszystkich napisów, bo identyfikatory bywają mylone z liczbami (fragment UUID
+#: `…-5e63-…` jest poprawnym literałem zmiennoprzecinkowym, `31.12.2026` datą) —
+#: poza tą listą napisy porównuje się DOKŁADNIE.
+POLA_TEKSTU_Z_LICZBAMI: frozenset[str] = frozenset(
+    {
+        "description_pl",
+        "latex",
+        "result_pl",
+        "slad_pl",
+        "substitution",
+        "substitution_latex",
+        "substitution_pl",
+        "tekst",
+        "uzasadnienie_pl",
+        "value",
+        "wartosc_pl",
+        "why_pl",
+        "wiodacy_opis_pl",
+        "wscr_why_pl",
+        "z_tk_formula_latex",
+    }
+)
+
+#: Ciąg szesnastkowy skrótu w napisie (goły albo po prefiksie rodzaju, np.
+#: `proof:short-circuit:<64hex>`, `report:v126:<rodzaj>:<16hex>`).
+_HEX_SKROTU = re.compile(r"[0-9a-f]{16,}")
+#: Literał liczbowy w tekście. Odgrodzony z obu stron od znaków alfanumerycznych i
+#: kropki, żeby `15kv`, `v1.2.3` ani `lvrt_conv-pv-1mw` nie były czytane jak liczby.
+_LICZBA_W_TEKSCIE = re.compile(
+    r"(?<![0-9A-Za-z_.])[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?(?![0-9A-Za-z_])"
+)
+#: UUID w tekście — jego fragmenty bywają poprawnymi literałami liczbowymi
+#: (`c767-5e63-8e7e`), więc leżące w nim „liczby” są częścią SZKIELETU napisu.
+_UUID_W_TEKSCIE = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.IGNORECASE
+)
 
 
-def roznice_z_tolerancja(zloty: object, teraz: object, sciezka: str = "$") -> list[str]:
+def liczby_rowne(a: float, b: float) -> bool:
+    """Równość liczb w klasie przenośności: pasmo martwe zera albo tolerancja względna."""
+    if a == b:
+        return True
+    if abs(a) <= PASMO_ZERA_FIXTUR and abs(b) <= PASMO_ZERA_FIXTUR:
+        return True
+    return abs(a - b) <= RTOL_FIXTUR * max(abs(a), abs(b))
+
+
+def szkielet_skrotu(tekst: str) -> str:
+    """Napis ze skrótami zastąpionymi znacznikiem DŁUGOŚCI — prefiks rodzaju
+    (`proof:short-circuit:` wobec `proof:power-flow:`) i długość ciągu zostają
+    porównywane dokładnie, treść skrótu wypada."""
+    return _HEX_SKROTU.sub(lambda m: f"<{len(m.group(0))}hex>", tekst)
+
+
+def _rozbij_tekst(tekst: str) -> tuple[str, list[str]]:
+    """(szkielet napisu, literały liczbowe) — liczby w UUID zostają w szkielecie."""
+    zakazane = [m.span() for m in _UUID_W_TEKSCIE.finditer(tekst)]
+    szkielet: list[str] = []
+    liczby: list[str] = []
+    koniec = 0
+    for m in _LICZBA_W_TEKSCIE.finditer(tekst):
+        if any(p <= m.start() and m.end() <= k for p, k in zakazane):
+            continue
+        szkielet.append(tekst[koniec : m.start()])
+        szkielet.append("\x00")
+        liczby.append(m.group(0))
+        koniec = m.end()
+    szkielet.append(tekst[koniec:])
+    return "".join(szkielet), liczby
+
+
+def _roznice_w_tekscie(zloty: str, teraz: str, sciezka: str) -> list[str]:
+    szkielet_a, liczby_a = _rozbij_tekst(zloty)
+    szkielet_b, liczby_b = _rozbij_tekst(teraz)
+    if szkielet_a != szkielet_b:
+        return [f"{sciezka}: struktura tekstu {zloty!r} != {teraz!r}"]
+    return [
+        f"{sciezka}: liczba w tekście {a} != {b} (poza tolerancją; {zloty!r} != {teraz!r})"
+        for a, b in zip(liczby_a, liczby_b, strict=True)
+        if not liczby_rowne(float(a), float(b))
+    ]
+
+
+def roznice_z_tolerancja(
+    zloty: object, teraz: object, sciezka: str = "$", klucz: str | None = None
+) -> list[str]:
     """Lista ścieżek, na których fixtura z repo różni się od odpowiedzi backendu."""
     if isinstance(zloty, bool) or isinstance(teraz, bool):
         # `bool` jest częścią kontraktu (True != 1): typ i wartość dokładnie.
@@ -45,16 +206,14 @@ def roznice_z_tolerancja(zloty: object, teraz: object, sciezka: str = "$") -> li
     if isinstance(zloty, int | float) and isinstance(teraz, int | float):
         if isinstance(zloty, int) and isinstance(teraz, int):
             return [] if zloty == teraz else [f"{sciezka}: {zloty!r} != {teraz!r}"]
-        if abs(float(zloty) - float(teraz)) <= ATOL_FIXTUR + RTOL_FIXTUR * abs(float(zloty)):
+        if liczby_rowne(float(zloty), float(teraz)):
             return []
         return [f"{sciezka}: {zloty!r} != {teraz!r} (poza tolerancją)"]
     if isinstance(zloty, dict) and isinstance(teraz, dict):
         if set(zloty) != set(teraz):
             return [f"{sciezka}: klucze {sorted(set(zloty) ^ set(teraz))}"]
         return [
-            r
-            for klucz in zloty
-            for r in roznice_z_tolerancja(zloty[klucz], teraz[klucz], f"{sciezka}.{klucz}")
+            r for k in zloty for r in roznice_z_tolerancja(zloty[k], teraz[k], f"{sciezka}.{k}", k)
         ]
     if isinstance(zloty, list) and isinstance(teraz, list):
         if len(zloty) != len(teraz):
@@ -62,8 +221,21 @@ def roznice_z_tolerancja(zloty: object, teraz: object, sciezka: str = "$") -> li
         return [
             r
             for i, (a, b) in enumerate(zip(zloty, teraz, strict=True))
-            for r in roznice_z_tolerancja(a, b, f"{sciezka}[{i}]")
+            for r in roznice_z_tolerancja(a, b, f"{sciezka}[{i}]", klucz)
         ]
+    if isinstance(zloty, str) and isinstance(teraz, str):
+        if (
+            klucz in POLA_SKROTOW_NIEPRZENOSNYCH
+            and _HEX_SKROTU.search(zloty)
+            and _HEX_SKROTU.search(teraz)
+        ):
+            # Skrót nad liczbami nieprzenośnymi: kształt dokładnie, treść poza
+            # porównaniem międzymaszynowym (stabilność lokalna pilnuje determinizm).
+            if szkielet_skrotu(zloty) == szkielet_skrotu(teraz):
+                return []
+            return [f"{sciezka}: kształt skrótu {zloty!r} != {teraz!r}"]
+        if klucz in POLA_TEKSTU_Z_LICZBAMI:
+            return _roznice_w_tekscie(zloty, teraz, sciezka)
     return [] if zloty == teraz else [f"{sciezka}: {zloty!r} != {teraz!r}"]
 
 
@@ -71,13 +243,173 @@ def test_roznice_z_tolerancja_rozroznia_szum_od_regresji() -> None:
     """Pin komparatora: szum ostatnich cyfr przechodzi, zmiana kształtu/typu/tekstu
     i różnica ponad tolerancję — nie (deklaracja bez testu = fałszywa pewność)."""
     assert roznice_z_tolerancja({"a": [8.913153836959333]}, {"a": [8.913153836847659]}) == []
-    assert roznice_z_tolerancja(1.0, 1.0 + 5e-6) != []
+    assert roznice_z_tolerancja(1.0, 1.0 + 5e-6) == []
+    assert roznice_z_tolerancja(1.0, 1.0 + 2e-4) != []
     assert roznice_z_tolerancja({"a": 1}, {"a": 1.0}) == []
     assert roznice_z_tolerancja(True, 1) != []
     assert roznice_z_tolerancja({"a": 1}, {"b": 1}) != []
     assert roznice_z_tolerancja([1, 2], [1]) != []
     assert roznice_z_tolerancja("x", "y") != []
     assert roznice_z_tolerancja(None, 0.0) != []
+    # Para z POMIARU CI 35290801270 — dokładnie ta, która zapalała test.
+    assert roznice_z_tolerancja(1.4209582645767669, 1.4209749416592783) == []
+    assert roznice_z_tolerancja(-1404211.347412109, -1404209.641607789) == []
+    # 1 % to nadal regresja, nie szum — także na wartości ujemnej i w liście.
+    assert roznice_z_tolerancja([1.4209582645767669], [1.4209582645767669 * 1.01]) != []
+    assert roznice_z_tolerancja(-1404211.347412109, -1404211.347412109 * 0.99) != []
+
+
+def test_pasmo_zera_nie_polyka_wartosci_kontraktowych() -> None:
+    """Pasmo martwe działa TYLKO wtedy, gdy obie wartości w nim leżą. Iloczyn cech:
+    {zero × zero, zero × wartość, parametr solvera × parametr solvera} — parametr
+    `tolerance_used = 1e-8` jest wartością kontraktu, nie szumem, więc jego zmiana
+    o rząd wielkości musi być czerwona."""
+    assert roznice_z_tolerancja(5.11591e-13, 1.27454e-09) == []
+    assert roznice_z_tolerancja(0.0, 9.9e-09) == []
+    assert roznice_z_tolerancja(-8e-09, 7e-09) == []
+    assert roznice_z_tolerancja(1e-09, 5.0) != []
+    assert roznice_z_tolerancja(1e-08, 1e-06) != []
+    assert roznice_z_tolerancja({"tolerance_used": 1e-08}, {"tolerance_used": 0.0}) == []
+    assert roznice_z_tolerancja({"tolerance_used": 1e-08}, {"tolerance_used": 1e-05}) != []
+
+
+def test_skroty_nieprzenosne_porownywane_po_ksztalcie_a_nie_po_tresci() -> None:
+    """Iloczyn cech: {pole na liście, pole spoza listy} × {inna treść skrótu, inny
+    prefiks rodzaju, inna długość, brak pola, wartość nie będąca skrótem}."""
+    a, b = "a" * 64, "b" * 64  # dwa różne skróty tej samej długości
+    assert roznice_z_tolerancja({"result_hash": a}, {"result_hash": b}) == []
+    assert (
+        roznice_z_tolerancja(
+            {"proof_ref": f"proof:short-circuit:{a}"}, {"proof_ref": f"proof:short-circuit:{b}"}
+        )
+        == []
+    )
+    # Rodzaj dowodu i długość skrótu to KSZTAŁT — porównywane dokładnie.
+    assert (
+        roznice_z_tolerancja(
+            {"proof_ref": f"proof:short-circuit:{a}"}, {"proof_ref": f"proof:power-flow:{b}"}
+        )
+        != []
+    )
+    assert (
+        roznice_z_tolerancja(
+            {"proof_id": f"proof:v126:ssci:{'a' * 16}"}, {"proof_id": f"proof:v126:ssci:{'b' * 64}"}
+        )
+        != []
+    )
+    # Brak pola i pole puste to nie „inny skrót”, tylko regresja kontraktu.
+    assert roznice_z_tolerancja({"result_hash": a}, {"result_hash": None}) != []
+    assert roznice_z_tolerancja({"result_hash": a}, {"inny": a}) != []
+    assert roznice_z_tolerancja({"result_hash": a}, {"result_hash": ""}) != []
+    # Skrót pod polem SPOZA listy (wejściowy) — porównywany dokładnie.
+    assert roznice_z_tolerancja({"input_hash": a}, {"input_hash": b}) != []
+    assert roznice_z_tolerancja({"snapshot_hash": a}, {"snapshot_hash": b}) != []
+    assert roznice_z_tolerancja({"enm_hash": a}, {"enm_hash": b}) != []
+    # `value` metryki raportu niesie i skróty, i zwykły tekst — reguła skrótu
+    # włącza się WYŁĄCZNIE dla wartości o kształcie skrótu.
+    assert roznice_z_tolerancja({"value": a}, {"value": b}) == []
+    assert roznice_z_tolerancja({"value": "5 pozycji"}, {"value": "6 pozycji"}) != []
+    assert roznice_z_tolerancja({"value": "zgodny"}, {"value": "niezgodny"}) != []
+
+
+def test_tekst_sladu_porownywany_po_strukturze_i_liczbach() -> None:
+    """Iloczyn cech: {człon zerowy, liczba znacząca, etykieta, jednostka, UUID} ×
+    {pole na liście tekstów, pole spoza listy}. Para bazowa jest POMIAREM z CI
+    35290801270 (`skladowe $.white_box_trace[2].substitution`)."""
+    sesja = r"\left(0.0541396 + j 1.06265\right) + \left(5.11591e-13 - j 10162.6\right)"
+    runner = r"\left(0.0541396 + j 1.06265\right) + \left(1.27454e-09 - j 10162.6\right)"
+    assert roznice_z_tolerancja({"substitution": sesja}, {"substitution": runner}) == []
+    assert roznice_z_tolerancja({"substitution_latex": sesja}, {"substitution_latex": runner}) == []
+    # Liczba znacząca zmieniona o 1 % — czerwone mimo identycznej struktury.
+    assert (
+        roznice_z_tolerancja(
+            {"substitution": sesja}, {"substitution": sesja.replace("10162.6", "10264.2")}
+        )
+        != []
+    )
+    # Zmiana etykiety/jednostki/operatora to zmiana STRUKTURY — czerwone.
+    assert (
+        roznice_z_tolerancja(
+            {"substitution": sesja},
+            {"substitution": sesja.replace(r"+ j 1.06265", r"- j 1.06265")},
+        )
+        != []
+    )
+    assert (
+        roznice_z_tolerancja(
+            {"result_pl": "Impedancja przy 1.0 Hz: 1.6434 Ω"},
+            {"result_pl": "Impedancja przy 1.0 Hz: 1.6434 mΩ"},
+        )
+        != []
+    )
+    assert (
+        roznice_z_tolerancja(
+            {"wartosc_pl": "SPELNIONA — prog = 0.448 kA"},
+            {"wartosc_pl": "NIESPELNIONA — prog = 0.448 kA"},
+        )
+        != []
+    )
+    # Identyfikator w tekście nie jest liczbą, choć jego fragment nią wygląda.
+    uuid_a = "296d2c10-c767-5e63-8e7e-c4130fb47b94"
+    uuid_b = "296d2c10-c767-5e64-8e7e-c4130fb47b94"
+    assert roznice_z_tolerancja({"tekst": f"bieg {uuid_a}"}, {"tekst": f"bieg {uuid_b}"}) != []
+    # Ten sam napis pod kluczem SPOZA listy — porównywany dokładnie.
+    assert roznice_z_tolerancja({"opis": sesja}, {"opis": runner}) != []
+
+
+def test_listy_pol_wylaczonych_sa_zamkniete() -> None:
+    """Obie listy są ZAMKNIĘTE: dopisanie pola musi być świadomą zmianą tego pinu,
+    nie cichym przyrostem (deklaracja bez testu = fałszywa pewność)."""
+    assert POLA_SKROTOW_NIEPRZENOSNYCH == {
+        "analysis_id",
+        "deterministic_hash",
+        "deterministic_signature",
+        "estimate_id",
+        "export_ref",
+        "proof_hash",
+        "proof_id",
+        "proof_ref",
+        "report_hash",
+        "report_id",
+        "report_ref",
+        "result_hash",
+        "source_proof_hash",
+        "source_result_hash",
+        "value",
+    }
+    assert POLA_TEKSTU_Z_LICZBAMI == {
+        "description_pl",
+        "latex",
+        "result_pl",
+        "slad_pl",
+        "substitution",
+        "substitution_latex",
+        "substitution_pl",
+        "tekst",
+        "uzasadnienie_pl",
+        "value",
+        "wartosc_pl",
+        "why_pl",
+        "wiodacy_opis_pl",
+        "wscr_why_pl",
+        "z_tk_formula_latex",
+    }
+    # Skróty nad WEJŚCIEM nigdy nie wchodzą na listę wyłączeń — to jedyny sygnał
+    # dryfu danych wejściowych, jaki ten test ma.
+    assert POLA_SKROTOW_NIEPRZENOSNYCH.isdisjoint(
+        {
+            "catalog_fingerprint",
+            "catalog_materialization_hash",
+            "enm_hash",
+            "hash_sha256",
+            "input_hash",
+            "model_hash",
+            "options_hash",
+            "snapshot_hash",
+            "snapshot_ref",
+            "solver_input_hash",
+        }
+    )
 
 
 @pytest.mark.parametrize("nazwa", sorted(eksport.FIXTURY))
@@ -90,9 +422,70 @@ def test_json_w_repo_rowny_odpowiedzi_backendu(nazwa: str) -> None:
     assert roznice == [], "\n".join(roznice)
 
 
+def _skroty_nieprzenosne(
+    dane: object, sciezka: str = "$", klucz: str | None = None
+) -> dict[str, str]:
+    """Wszystkie wartości pól z `POLA_SKROTOW_NIEPRZENOSNYCH` o kształcie skrótu."""
+    if isinstance(dane, dict):
+        znalezione: dict[str, str] = {}
+        for k, v in dane.items():
+            znalezione.update(_skroty_nieprzenosne(v, f"{sciezka}.{k}", k))
+        return znalezione
+    if isinstance(dane, list):
+        znalezione = {}
+        for i, v in enumerate(dane):
+            znalezione.update(_skroty_nieprzenosne(v, f"{sciezka}[{i}]", klucz))
+        return znalezione
+    if isinstance(dane, str) and klucz in POLA_SKROTOW_NIEPRZENOSNYCH and _HEX_SKROTU.search(dane):
+        return {sciezka: dane}
+    return {}
+
+
 @pytest.mark.parametrize("nazwa", sorted(eksport.FIXTURY))
 def test_atrapa_jest_deterministyczna(nazwa: str) -> None:
-    assert eksport.FIXTURY[nazwa]() == eksport.FIXTURY[nazwa]()
+    pierwsze = eksport.FIXTURY[nazwa]()
+    drugie = eksport.FIXTURY[nazwa]()
+    assert pierwsze == drugie
+    # Skróty wyłączone z porównania MIĘDZYMASZYNOWEGO nie znikają z testu: w
+    # obrębie jednej maszyny dwa kolejne wyliczenia dają ten sam skrót, a jego
+    # kształt jest pinowany z pomiaru (16 znaków hex dla identyfikatorów
+    # `proof:v126:…`/`report:v126:…`, 64 dla skrótów pełnych).
+    skroty_a = _skroty_nieprzenosne(pierwsze)
+    skroty_b = _skroty_nieprzenosne(drugie)
+    assert skroty_a == skroty_b
+    for sciezka, wartosc in skroty_a.items():
+        dlugosci = {len(m.group(0)) for m in _HEX_SKROTU.finditer(wartosc)}
+        assert dlugosci <= {16, 64}, (nazwa, sciezka, wartosc)
+
+
+def test_fixtury_niosa_skroty_nieprzenosne() -> None:
+    """Pin inwentarza: pola wyłączone z porównania międzymaszynowego MUSZĄ w
+    fikstrach realnie występować. Gdyby zniknęły, lista wyłączeń stałaby się
+    martwa i milcząco osłabiałaby test przy następnym ich powrocie."""
+    obecne: set[str] = set()
+    for sciezka in sorted(eksport.FIXTURES_DIR.glob("*.json")):
+        dane = json.loads(sciezka.read_text(encoding="utf-8"))
+        obecne.update(
+            klucz.rsplit(".", 1)[-1].split("[")[0] for klucz in _skroty_nieprzenosne(dane)
+        )
+    # POMIAR 2026-09-18 na komplecie fixtur repo (69 plików).
+    assert obecne == {
+        "analysis_id",
+        "deterministic_hash",
+        "deterministic_signature",
+        "estimate_id",
+        "export_ref",
+        "proof_hash",
+        "proof_id",
+        "proof_ref",
+        "report_hash",
+        "report_id",
+        "report_ref",
+        "result_hash",
+        "source_proof_hash",
+        "source_result_hash",
+        "value",
+    }
 
 
 def test_zgodnosc_przekrojowa_ma_ksztalt_trasy() -> None:
