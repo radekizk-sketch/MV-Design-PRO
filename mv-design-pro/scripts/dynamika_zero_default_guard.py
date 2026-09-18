@@ -7,10 +7,13 @@ pola wymaganego (Pydantic `ValidationError`), nigdy cichą domyślką (zero
 fabrykacji, ZASADA NR 1 CLAUDE.md; dopełnienie precedensu k_sc DEFAULT_FORBIDDEN
 — S-2, karta W6-0).
 
-SCAN FILES (KLASA, nie jeden plik — ten sam kontrakt żyje w dwóch miejscach):
+SCAN FILES (KLASA, nie jeden plik — ten sam kontrakt żyje w trzech miejscach):
   backend/src/enm/dynamika_modele.py                          (ParametryDynamiczne)
   backend/src/network_model/catalog/der_dynamic/models.py     (profile DER — mapują
                                                                  się 1:1 na powyższe)
+  backend/src/network_model/solvers/dynamika/kontrakty.py     (wejście rdzenia DAE:
+                                                                 nastawy solvera i
+                                                                 elementy sieci)
 
 CO JEST DOZWOLONE (jedyne dwa legalne wyjątki, oba NIEliczbowe albo jawnie None):
   * `rodzina`/`typ`/`tryb`/`priorytet_ogranicznika`/... — dyskryminator/literał
@@ -41,6 +44,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SCAN_FILES: tuple[str, ...] = (
     "backend/src/enm/dynamika_modele.py",
     "backend/src/network_model/catalog/der_dynamic/models.py",
+    # Karta W6-2: TRZECIE miejsce, w którym żyje kontrakt danych dynamiki —
+    # wejście rdzenia DAE (`WejscieDynamiki`, `NastawySolvera`, elementy sieci).
+    # Ten sam zakaz domyślek liczbowych: brak nastawy albo brak parametru sieci
+    # to brak pola wymaganego, nigdy cicha wartość zastępcza.
+    "backend/src/network_model/solvers/dynamika/kontrakty.py",
 )
 
 #: Pola dozwolone z domyślką TEKSTOWĄ (dyskryminator wariantu, nie wielkość

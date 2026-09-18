@@ -1389,7 +1389,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `TemplateSchema.shunt_capacitor_options`/`grid_source_options`,
     # `application/station_templates/schema.py` — addytywne krotki CatalogChoice
     # dla nowych kategorii szablonow rola A/E; zero podstawien liczbowych).
-    # Dwie karty tej samej fali podnioszly ten sam licznik; wartosc ponizej jest
+    # Trzy karty tej samej fali podnioszly ten sam licznik; wartosc ponizej jest
     # POMIAREM guardem na drzewie polaczonym, nie suma arytmetyczna kart.
     # KATALOG-NIEZMIENNIKI (2026-09-17): +17 pol kontraktu przegladu wiarygodnosci
     # katalogu w `api/catalog.py` (`OdstepstwoWiarygodnosciOdpowiedz`,
@@ -1400,8 +1400,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # HARNESS-RESZTA-2 (2026-09-17): +1 pole `FaktyPolaWytworcy.der_nazwa`
     # (`domain/der_protection_functions.py`) — nazwa wytworcy w etykiecie
     # chronionego obiektu, `str | None = None`, brak danej meldowany jako brak.
-    # W obu wypadkach zero podstawien liczbowych — PASS bramki niezmieniony.
-    assert "Pol kontraktow wejsciowych: 3726." in wyjscie, wyjscie
+    # W6-2 (2026-09-18): +71 pol kontraktu rdzenia dynamiki
+    # (`network_model/solvers/dynamika/kontrakty.py` i moduly pakietu:
+    # `WejscieDynamiki`, `NastawySolvera`, elementy sieci, harmonogram zdarzen,
+    # protokol urzadzenia, struktury wyniku i tozsamosci). KAZDE z tych pol jest
+    # WYMAGANE — zero domyslek liczbowych, pilnuje `dynamika_zero_default_guard`.
+    # We wszystkich trzech wypadkach zero podstawien — PASS bramki niezmieniony.
+    assert "Pol kontraktow wejsciowych: 3797." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1449,7 +1454,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/analysis_run/result_invalidator.py` — martwy uniewazniacz
         # wynikow skasowany procedura po pomiarze 0 wolajacych w `backend/src`;
         # zapadka idzie W DOL, bo z zakresu skanu UBYL plik, nie przybyl).
-        "Przeskanowano 503 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta W6-2 (2026-09-17): 503 -> 523 (+20 plikow nowego pakietu
+        # `network_model/solvers/dynamika/**` — rdzen DAE dynamiki RMS: kontrakty,
+        # konwencje, siec, calkowanie, zdarzenia, re-inicjalizacja, skonczonosc,
+        # tozsamosc, wynik, silnik, `urzadzenia/**` i `walidacja/**`; zero plikow
+        # skasowanych, zero nowych wpisow w zapadce dlugu i w wykluczeniach —
+        # pakiet nie podstawia zadnej liczby za nieobecna dana wejsciowa, brak danej
+        # konczy sie odmowa `dynamika.<pole>_missing`).
+        "Przeskanowano 523 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1487,7 +1499,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta KATALOG-NIEZMIENNIKI (2026-09-17): network_model 144 -> 145
         # (+1 `catalog/niezmienniki_katalogu.py`); dlug i wykluczenia BEZ ZMIAN —
         # modul rejestru regul nie podstawia zadnej liczby za brak danej.
-        "  network_model: pliki_skanowane=145, dlug=14 plikow/suma 77, "
+        # Karta W6-2 (2026-09-17): network_model 145 -> 165 (+20 plikow pakietu
+        # `solvers/dynamika/**`); dlug i wykluczenia BEZ ZMIAN. Pakiet UJAWNIL za to
+        # jedno ZASTANE podstawienie w cudzym pliku: jego kontrakt `SkokObciazenia`
+        # wnosi do mapy pol nazwy `delta_p_pu`/`delta_q_pu`, przez co bramka
+        # zobaczyla `mismatch.get("delta_q_pu", 0.0)` w
+        # `network_model/proof/power_flow_proof_builder.py`. To bylo REALNE
+        # podstawienie: `power_flow_fast_decoupled` zapisuje dla wezla PV SAMO
+        # `delta_p_pu` (wezel PV nie ma rownania mocy biernej), wiec dowod drukowal
+        # `ΔQ = 0` jako wielkosc ZMIERZONA. Naprawione u zrodla (brakujaca skladowa
+        # jest pomijana), nie dopisane do zapadki.
+        "  network_model: pliki_skanowane=165, dlug=14 plikow/suma 77, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).

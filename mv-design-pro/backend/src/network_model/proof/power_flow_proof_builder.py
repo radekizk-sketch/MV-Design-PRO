@@ -391,31 +391,32 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
         input_values: list[ProofValue] = []
         substitution_parts: list[str] = []
 
+        # ZERO FABRYKACJI W DOWODZIE. Slad niezbilansowania NIE MUSI miec obu
+        # skladowych: wezel PV nie ma rownania mocy biernej, wiec
+        # `power_flow_fast_decoupled` zapisuje dla niego SAMO `delta_p_pu`
+        # (patrz budowa `mismatch_per_bus` w tamtym solverze). Poprzednia wersja
+        # brala `mismatch.get("delta_q_pu", 0.0)` i drukowala w dowodzie
+        # `ΔQ = 0,000 p.u.` jako WIELKOSC ZMIERZONA — czyli dowod twierdzil, ze
+        # niezbilansowanie mocy biernej wynosi zero tam, gdzie nie zostalo w ogole
+        # policzone. Teraz brakujaca skladowa jest POMIJANA: dowod pokazuje
+        # wylacznie to, co slad naprawde niesie.
         for bus_id, mismatch in sorted(it.mismatch_per_bus.items()):
-            delta_p = mismatch.get("delta_p_pu", 0.0)
-            delta_q = mismatch.get("delta_q_pu", 0.0)
-
-            input_values.append(
-                _build_proof_value(
-                    f"\\Delta P_{{{bus_id}}}",
-                    delta_p,
-                    "p.u.",
-                    f"mismatch_per_bus.{bus_id}.delta_p_pu",
+            czesci_wezla: list[str] = []
+            for klucz, symbol in (("delta_p_pu", "\\Delta P"), ("delta_q_pu", "\\Delta Q")):
+                if klucz not in mismatch:
+                    continue
+                wartosc = mismatch[klucz]
+                input_values.append(
+                    _build_proof_value(
+                        f"{symbol}_{{{bus_id}}}",
+                        wartosc,
+                        "p.u.",
+                        f"mismatch_per_bus.{bus_id}.{klucz}",
+                    )
                 )
-            )
-            input_values.append(
-                _build_proof_value(
-                    f"\\Delta Q_{{{bus_id}}}",
-                    delta_q,
-                    "p.u.",
-                    f"mismatch_per_bus.{bus_id}.delta_q_pu",
-                )
-            )
-
-            substitution_parts.append(
-                f"\\Delta P_{{{bus_id}}} = {_format_float(delta_p)}, "
-                f"\\Delta Q_{{{bus_id}}} = {_format_float(delta_q)}"
-            )
+                czesci_wezla.append(f"{symbol}_{{{bus_id}}} = {_format_float(wartosc)}")
+            if czesci_wezla:
+                substitution_parts.append(", ".join(czesci_wezla))
 
         substitution_latex = f"\\text{{Iteracja }} k={k}:\\quad " + ", \\quad ".join(
             substitution_parts[:3]

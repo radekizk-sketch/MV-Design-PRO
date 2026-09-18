@@ -46,9 +46,13 @@ jobs:
       # (`pandapower-cross-validation`) — tu sa jawnie DESELEKCJONOWANE, nie
       # pomijane warunkowo (brak biblioteki w tym venv jest stanem stalym z
       # architektury, nie przypadkiem srodowiska).
+      # Marker `andes` (karta W6-2): wyrocznia zewnetrzna dynamiki wymaga ANDES,
+      # ktory NIE wchodzi do zaleznosci produkcyjnych. Testy z tym markerem biegna
+      # wylacznie w jobie `andes-cross-validation` ponizej — tu sa jawnie
+      # DESELEKCJONOWANE, nie pomijane warunkowo (zero skipow w glownym biegu).
       - name: Run pytest
         working-directory: mv-design-pro/backend
-        run: poetry run pytest -q -m "not pandapower"
+        run: poetry run pytest -q -m "not pandapower and not andes"
       # KD-9: testy WLASNE guardow leza w `mv-design-pro/scripts`, czyli POZA
       # `testpaths = ["tests"]` backendu — `poetry run pytest -q` powyzej nigdy
       # ich nie zbieral, a zaden workflow ich nie wolal. 10 plikow / 71 testow
@@ -100,6 +104,14 @@ jobs:
       - name: Dynamika Zero-Default Guard
         working-directory: mv-design-pro
         run: python scripts/dynamika_zero_default_guard.py
+      # Karta W6-2 SS0 p.1: rdzen dynamiki RMS stoi OBOK zamrozonych rdzeni
+      # solverow (B-01) i ma byc lisciem grafu importow backendu — wolno mu
+      # `numpy`, `scipy.sparse`, `network_model.pochodne` i zamkniety zbior
+      # modulow jezykowych stdlib, nic wiecej. Ta sama regula biegnie w
+      # `solver_boundary_guard` (P0 Extended Guards) z TEJ SAMEJ implementacji.
+      - name: Dynamika Import Boundary Guard
+        working-directory: mv-design-pro
+        run: python scripts/dynamika_granica_importow_guard.py
       # CV-2-W: status wynikow PRZYPADKU jest wyprowadzany z jego biegow i koperty
       # rewizji (application/study_case/status_wynikow.py). Kolumna
       # `study_cases.result_status` to dane zastane — zaden kod jej nie pisze.
@@ -277,6 +289,56 @@ jobs:
         working-directory: mv-design-pro/backend
         run: poetry run pytest -q -m pandapower tests
 
+  # Karta W6-2 SS0 p.7 c (regula A-10): wyrocznia ZEWNETRZNA dynamiki (ANDES)
+  # biegnie w IZOLOWANYM srodowisku, ROWNOLEGLE do jobu `pytest` (brak `needs:`
+  # celowo). POWOD IZOLACJI: ANDES jest odniesieniem pomiarowym, nie skladnikiem
+  # produktu — nie wchodzi do `pyproject` backendu, zeby zaden bieg produkcyjny
+  # nie mogl od niego zalezec. Klucz cache ma sufiks `-andes`, rozny od klucza
+  # jobu `pytest`, zeby venv z ANDES nie trafil do cache glownego venv solverow
+  # (ta sama ostroznosc, co przy pandapower).
+  #
+  # Ten sam katalog `tests` co job `pytest`, dzielony JEDNYM markerem
+  # (`-m andes` tu, `-m "not ... and not andes"` tam) — zaden test nie moze
+  # wypasc z obu jobow.
+  andes-cross-validation:
+    name: Wyrocznia dynamiki ANDES (izolowany venv)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # tests/ci/test_guard_diff_base.py wymaga fetch-depth: 0 przy KAZDYM
+          # checkoucie w kazdym workflowie wolajacym pytest.
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.x'
+          cache: pip
+          cache-dependency-path: mv-design-pro/backend/poetry.lock
+      - name: Install Poetry
+        run: pipx install poetry
+      - name: Cache Poetry and virtualenv (klucz IZOLOWANY od jobu pytest)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            ~/.cache/pypoetry/virtualenvs
+          key: poetry-andes-${{ runner.os }}-${{ hashFiles('mv-design-pro/backend/poetry.lock') }}
+          restore-keys: |
+            poetry-andes-${{ runner.os }}-
+      - name: Install dependencies
+        working-directory: mv-design-pro/backend
+        run: poetry install --no-interaction --with dev
+      - name: Install ANDES (IZOLOWANE — wyrocznia, nie zaleznosc produktu)
+        working-directory: mv-design-pro/backend
+        run: poetry run pip install "andes==1.9.3"
+      - name: Wyrocznia dynamiki (marker `andes`, caly katalog tests)
+        working-directory: mv-design-pro/backend
+        run: poetry run pytest -q -m andes tests
+
   # ZNALEZISKO BRAMKI ADWERSARIALNEJ (2026-09-08, Z-3): dialekt PRODUKCYJNY nie mial
   # zadnego pokrycia w CI. `tests/conftest.py` wymusza SQLite dla kazdego testu, a
   # `docker-compose.yml` uruchamia backend na `postgresql+psycopg://` (DT-13:
@@ -339,4 +401,6 @@ jobs:
         working-directory: mv-design-pro/backend
         env:
           MV_TEST_POSTGRES_URL: postgresql+psycopg://postgres:postgres@127.0.0.1:5432/mvtest
-        run: poetry run pytest -q -m "not pandapower" tests/enm/test_przejecie_biegu_atomowe.py tests/infrastructure
+        run: >-
+          poetry run pytest -q -m "not pandapower and not andes"
+          tests/enm/test_przejecie_biegu_atomowe.py tests/infrastructure
