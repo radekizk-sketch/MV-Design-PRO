@@ -337,3 +337,91 @@ Uczciwie, żeby nie wyglądało na kompletność, której nie ma:
   inżyniera, próbkowanie rzadsze dla kanałów drugoplanowych). Pomiar jest częścią W6-A, wybór
   strategii **po** pomiarze, nie przed,
 * **nie zawiera** projektu prezentacji (W6-I).
+
+---
+
+## 13. WYKONANIE — stan po wdrożeniu (dopisane po autoryzacji W6-A)
+
+### 13.1 Co powstało
+
+| Element | Miejsce |
+|---|---|
+| Warstwa obserwabli `z(t)` | `backend/src/network_model/solvers/dynamika/obserwable.py` (nowy moduł) |
+| Pochodna napięć z różniczkowania równania algebraicznego | `obserwable.py::pochodna_napiec` |
+| Częstotliwość węzła: wartość + niepewność + stan jakości | `obserwable.py::czestotliwosc_wezla` |
+| Wielkości OBU zacisków gałęzi | `obserwable.py::wielkosci_galezi` |
+| Kanały wyniku | `silnik.py::_kanaly_obserwabli`, `silnik.py::_probkuj_obserwable` |
+| Przestrzeń `obserwabla` w kontrakcie | `application/contracts/resultset_dynamic_v1.py::PrzestrzenKanalu` |
+| Falsyfikacja | `backend/tests/network_model/dynamika/test_obserwable.py` (24 testy) |
+
+**Kanały na węzeł:** `f_hz@`, `u_f_hz@`, `jakosc_f@`.
+**Kanały na gałąź:** `i_od_pu@`, `i_do_pu@`, `p_od_pu@`, `q_od_pu@`, `p_do_pu@`, `q_do_pu@`.
+
+### 13.2 Miejsce obliczenia — priorytet 1 z §3.5 osiągnięty
+
+Pochodna napięć **nie jest różnicą próbek**. Różniczkowanie `g(x,y) = 0` po czasie daje układ
+liniowy `(∂g/∂y)·ẏ = (∂I/∂x)·ẋ`, którego macierz to **dokładnie ten sam jakobian**, którym Newton
+rozwiązuje algebrę (`siec.jakobian_algebry`), a prawa strona składa się z bloków
+`jakobian_prad_stan` urządzeń. Konsekwencje: brak błędu rzędu kroku wyjścia, brak potrzeby
+rozwijania fazy (kąt nie jest różniczkowany numerycznie), brak impulsu na granicy zdarzenia.
+
+### 13.3 Falsyfikacja — wynik
+
+```
+PYTHONPATH=$PWD:$PWD/src python -m pytest tests/network_model/dynamika/test_obserwable.py -q
+→ 24 passed
+```
+
+Regresja pakietu dynamiki + adaptera + API: **1 645 passed, 3 deselected** (odznaczone to wyrocznia
+ANDES w osobnym środowisku).
+
+**F-2 na biegu — najważniejszy test.** Wyspa bez szyny sztywnej: maszyna klasyczna + odbiór o
+stałej mocy, skok obciążenia w `t = 0,2 s`. Ponieważ SEM maszyny klasycznej i moc mechaniczna są
+między zdarzeniami stałe, a odbiór o stałej mocy jest ekwiwariantny względem obrotu, cały układ
+fazorów obraca się sztywno z kątem wirnika — więc `f_i = f_n·ω` musi zachodzić **na każdej szynie
+i w każdej próbce**. Zachodzi z tolerancją względną 1e-6. Test padłby natychmiast przy usunięciu
+członu `f_n` albo przy potraktowaniu kąta jako kąta układu nieruchomego.
+
+**Znalezisko przy pisaniu tego testu:** pierwsza wersja używała maszyny 6. rzędu i **padła** —
+słusznie. Przy zmiennych strumieniach przejściowych SEM nie jest stała, więc tożsamość
+`f_i = f_n·ω` **nie obowiązuje**. To nie był błąd obserwabli, tylko błąd doboru układu do
+tożsamości. Zapis tutaj, żeby nikt nie „naprawił" tego kiedyś rozluźnieniem tolerancji.
+
+**Iniekcje** (5 przypadków) dowodzą, że powyższe testy wykrywają: brak członu `f_n`, estymator
+różnicowy przy zawinięciu fazy, zamianę zacisków gałęzi, błędne sprzężenie w `S = V·conj(I)`,
+pominiętą połowę susceptancji.
+
+### 13.4 Ograniczenie polityki jakości — uczciwie
+
+Podstawienie wzorów daje: `u(f) > |f − f_n|` **dokładnie dla `|V| < 4·tolerancja`**. Pasmo
+`OGRANICZONA` jest więc **wąskie** i przylega do pasma `NIEDOSTEPNA`.
+
+**Co to znaczy:** polityka chroni przed **numeryczną** bezsensownością kąta i nic ponad to.
+**Nie orzeka**, od jak głębokiego zapadu inżynier ma przestać mówić o częstotliwości węzła.
+Ta druga, **fizyczna** granica wymaga polityki wyprowadzonej i **zwalidowanej** — i pozostaje
+jawną luką przypisaną do fali walidacyjnej. Nie zastępujemy jej progiem przyjętym z góry, bo
+to jest dokładnie to, co OD-36 odrzuca.
+
+Wartość przy stanie `NIEDOSTEPNA` niesie niepewność równą **całej częstotliwości znamionowej** —
+konsument ignorujący kod jakości widzi wtedy, że liczba nie niesie treści.
+
+### 13.5 Pomiar kosztu kanałów
+
+Na układzie SMIB (2 szyny, 1 gałąź, 2 urządzenia): `siec` 4 kanały, `urzadzenie` 10,
+**`obserwabla` 12**, razem 26. Przyrost: **3 kanały na szynę + 6 na gałąź**.
+
+Dla sieci rzędu 50 szyn i 60 gałęzi daje to ~510 kanałów obserwabli. Pomiar na sieci tej skali
+**nie został jeszcze wykonany** — i dopóki nie zostanie, strategia zakresu (wybór gałęzi
+z zainteresowania, rzadsze próbkowanie drugiego planu) **nie jest wybierana**. Wybór przed
+pomiarem byłby zgadywaniem.
+
+### 13.6 Czego W6-A nie dostarczyła
+
+* **ROCOF** — zgodnie z decyzją pozostaje CELEM, nie jest promowany; wymaga własnej kwalifikacji
+  estymatora, okna i semantyki zdarzeń,
+* **prąd bierny wsparcia i stan ogranicznika** urządzeń (C2–C5 z macierzy) — kanały urządzeniowe
+  nie zostały rozszerzone w tej fali,
+* **wyrocznia zewnętrzna dla `f_i`** (przypadek F-7 z §9.1) — porównanie z niezależnym narzędziem
+  nie zostało wykonane; tożsamości analityczne F-1…F-5 i parytet B-8 to dowody **wewnętrzne**,
+* **jednostka amperowa** prądów gałęzi — kontrakt wystawia jednostki względne; przeliczenie na
+  ampery należy do warstwy prezentacji przez pakiet wielkości pochodnych.

@@ -1430,7 +1430,18 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # po nazwie ich nie liczy. Pole jest WYPROWADZONE z wyniku rozplywu, nigdy
     # podstawione: brak szyny w wyniku konczy sie odmowa
     # `dynamika.punkt_pracy_niepelny`, nie zerem. PASS bramki niezmieniony.
-    assert "Pol kontraktow wejsciowych: 3829." in wyjscie, wyjscie
+    # W6-A (2026-09-18): 3829 -> 3836 (+7 pol, zero skasowanych). POMIAR: zbior
+    # `contract_fields()` zrzucony NA DRZEWIE z `obserwable.py` i BEZ niego, roznica
+    # policzona `comm` na posortowanych zbiorach, nie arytmetyka. Nowe nazwy pochodza
+    # z dwoch nosnikow warstwy obserwabli `z(t)`
+    # (`network_model/solvers/dynamika/obserwable.py`): `CzestotliwoscWezla`
+    # (`f_hz`, `niepewnosc_hz`, `jakosc`) i `WielkosciGalezi` (`i_od_pu`, `i_do_pu`,
+    # `s_od_pu`, `s_do_pu`). ZADNE z nich nie jest dana WEJSCIOWA — wszystkie sa
+    # WYPROWADZONE ze stanow urzadzen i rozwiazania algebraicznego jawnym wzorem, wiec
+    # nie istnieje dla nich „brak danej", ktory mozna by podstawic liczba; brak
+    # wiarygodnosci kata konczy sie stanem jakosci, nie wartoscia zastepcza.
+    # PASS bramki niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 3836." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1501,7 +1512,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # nastawy numerycznej, scenariusza albo punktu pracy konczy sie nazwana
         # odmowa z rejestru `KODY_ODMOW_ADAPTERA`, plaski start 1,0 p.u. jest w nim
         # ZAKAZANY. Zero plikow skasowanych).
-        "Przeskanowano 534 plikow w zakresie: network_model, solver_input, enm, "
+        "Przeskanowano 535 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1554,7 +1565,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # dynamicznych); dlug i wykluczenia BEZ ZMIAN (14 plikow/suma 77,
         # 3 pliki/suma 6) — zaden z nowych plikow nie ma wpisu ani w zapadce,
         # ani w wykluczeniach.
-        "  network_model: pliki_skanowane=175, dlug=14 plikow/suma 77, "
+        "  network_model: pliki_skanowane=176, dlug=14 plikow/suma 77, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).

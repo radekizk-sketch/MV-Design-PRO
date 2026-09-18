@@ -11,10 +11,12 @@ spotykaja sie w jednym procesie, i dlatego kazdy rozjazd pol wywraca wlasnie tu.
 from __future__ import annotations
 
 import math
+from typing import get_args
 
 import pytest
 from application.contracts.resultset_dynamic_v1 import (
     RESULTSET_DYNAMIC_CONTRACT,
+    PrzestrzenKanalu,
     ResultSetDynamicV1,
     zbuduj_resultset_dynamiczny_v1,
 )
@@ -62,12 +64,37 @@ def test_ladunek_waliduje_sie_kontraktem_wyniku(ladunek: dict) -> None:
 
 
 def test_kanaly_maja_dozwolona_przestrzen_i_jednostke(ladunek: dict) -> None:
+    """Zbior dozwolonych przestrzeni czytany z KONTRAKTU, nie przepisany recznie.
+
+    Poprzednia wersja powtarzala czworke nazw w tekscie testu. Gdy karta W6-A dolozyla
+    przestrzen `obserwabla` (wielkosci wyprowadzone: czestotliwosc wezla, wielkosci
+    zaciskow galezi), test padal na WLASNEJ kopii zbioru, nie na defekcie produktu —
+    czyli pilnowal czegos innego, niz deklaruje. Warunek pochodzi teraz z jednego zrodla
+    prawdy: literalu kontraktu.
+    """
+    dozwolone = set(get_args(PrzestrzenKanalu))
     wynik = ResultSetDynamicV1.model_validate(ladunek)
     assert wynik.kanaly
     for kanal in wynik.kanaly:
-        assert kanal.przestrzen in {"siec", "urzadzenie", "regulator", "magazyn"}
+        assert kanal.przestrzen in dozwolone
         assert kanal.jednostka
         assert kanal.opis_pl
+
+
+def test_przestrzen_obserwabli_jest_w_kontrakcie_i_w_wyniku(ladunek: dict) -> None:
+    """Deklaracja rozdzialu x/y/z ma przypiety test (regula KLASA par. 4).
+
+    Rozdzial przestrzeni nie jest komentarzem: kontrakt MUSI znac `obserwabla`, a bieg
+    MUSI wystawiac w niej kanaly — inaczej „rozdzielilismy semantycznie" bylo zdaniem
+    bez pokrycia.
+    """
+    assert "obserwabla" in set(get_args(PrzestrzenKanalu))
+    wynik = ResultSetDynamicV1.model_validate(ladunek)
+    obserwable = [kanal for kanal in wynik.kanaly if kanal.przestrzen == "obserwabla"]
+    assert obserwable, "bieg nie wystawil ani jednego kanalu przestrzeni obserwabli"
+    klucze = {kanal.klucz.split("@", 1)[0] for kanal in obserwable}
+    assert {"f_hz", "u_f_hz", "jakosc_f"} <= klucze
+    assert {"i_od_pu", "i_do_pu", "p_od_pu", "q_od_pu", "p_do_pu", "q_do_pu"} <= klucze
 
 
 def test_zdarzenia_wykonane_niosa_pomiar_reinicjalizacji(ladunek: dict) -> None:

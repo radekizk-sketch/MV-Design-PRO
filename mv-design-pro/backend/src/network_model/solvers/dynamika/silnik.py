@@ -60,6 +60,11 @@ from .kontrakty import (
     WejscieDynamiki,
     odmowa_braku_pola,
 )
+from .obserwable import (
+    czestotliwosc_wezla,
+    pochodna_napiec,
+    wielkosci_galezi,
+)
 from .reinicjalizacja import reinicjalizuj
 from .siec import ModelSieci, residuum_algebry, zloz_model_sieci
 from .skonczonosc import sprawdz_napiecia
@@ -165,7 +170,7 @@ class SilnikDynamiki:
         indeks_wpisu = chwila.indeks_wpisu
         max_residuum_g = max(max_residuum_g, chwila.residuum_kcl_max)
 
-        self._probkuj(probki, os_czasu, t_s, model, urzadzenia, stany, napiecia)
+        self._probkuj(probki, os_czasu, t_s, model, odbiory, urzadzenia, stany, napiecia)
         indeks_probki = 1
 
         dt_biezace = nastawy.dt_s
@@ -236,7 +241,7 @@ class SilnikDynamiki:
             max_residuum_g = max(max_residuum_g, chwila.residuum_kcl_max)
 
             if self._jest_chwila_probki(t_s, indeks_probki, nastawy):
-                self._probkuj(probki, os_czasu, t_s, model, urzadzenia, stany, napiecia)
+                self._probkuj(probki, os_czasu, t_s, model, odbiory, urzadzenia, stany, napiecia)
                 indeks_probki += 1
 
         if indeks_wpisu != len(wpisy):
@@ -604,6 +609,67 @@ class SilnikDynamiki:
                     opis_pl=f"Moc bierna oddawana do sieci przez {urzadzenie.ident}",
                 )
             )
+        kanaly.extend(self._kanaly_obserwabli(model))
+        return tuple(kanaly)
+
+    def _kanaly_obserwabli(self, model: ModelSieci) -> tuple[KanalWyniku, ...]:
+        """Kanaly przestrzeni `z` (W6-A): czestotliwosc wezlow i wielkosci zaciskow galezi.
+
+        Przestrzen `obserwabla` jest ODDZIELNA od `siec` i `urzadzenie`, bo te wielkosci nie
+        sa ani stanem, ani zmienna algebraiczna — sa wyprowadzone jawnym wzorem z obu.
+        Czestotliwosc idzie ZAWSZE w trojce: wartosc, niepewnosc, stan jakosci; publikowanie
+        samej wartosci pozwalaloby odczytac liczbe z glebokiego zapadu jako pomiar.
+        """
+        kanaly: list[KanalWyniku] = []
+        for ident in model.identy_wezlow:
+            kanaly.append(
+                KanalWyniku(
+                    klucz=f"f_hz@{ident}",
+                    przestrzen="obserwabla",
+                    jednostka="Hz",
+                    element_ref=ident,
+                    opis_pl=f"Czestotliwosc elektryczna szyny {ident}",
+                )
+            )
+            kanaly.append(
+                KanalWyniku(
+                    klucz=f"u_f_hz@{ident}",
+                    przestrzen="obserwabla",
+                    jednostka="Hz",
+                    element_ref=ident,
+                    opis_pl=f"Niepewnosc czestotliwosci szyny {ident}",
+                )
+            )
+            kanaly.append(
+                KanalWyniku(
+                    klucz=f"jakosc_f@{ident}",
+                    przestrzen="obserwabla",
+                    jednostka="kod",
+                    element_ref=ident,
+                    opis_pl=f"Stan jakosci czestotliwosci szyny {ident}",
+                )
+            )
+        for galaz in model.galezie:
+            for przyrostek, opis in (
+                ("i_od_pu", "Modul pradu zacisku poczatkowego"),
+                ("i_do_pu", "Modul pradu zacisku koncowego"),
+                ("p_od_pu", "Moc czynna wplywajaca do galezi zaciskiem poczatkowym"),
+                ("q_od_pu", "Moc bierna wplywajaca do galezi zaciskiem poczatkowym"),
+                ("p_do_pu", "Moc czynna wplywajaca do galezi zaciskiem koncowym"),
+                ("q_do_pu", "Moc bierna wplywajaca do galezi zaciskiem koncowym"),
+            ):
+                kanaly.append(
+                    KanalWyniku(
+                        klucz=f"{przyrostek}@{galaz.ident}",
+                        przestrzen="obserwabla",
+                        jednostka="pu",
+                        element_ref=galaz.ident,
+                        opis_pl=(
+                            f"{opis} galezi {galaz.ident} "
+                            f"({galaz.wezel_od} -> {galaz.wezel_do})"
+                        ),
+                    )
+                )
         return tuple(kanaly)
 
     def _probkuj(
@@ -612,6 +678,7 @@ class SilnikDynamiki:
         os_czasu: list[float],
         t_s: float,
         model: ModelSieci,
+        odbiory: tuple[OdbiorDynamiki, ...],
         urzadzenia: tuple[Urzadzenie, ...],
         stany: tuple[np.ndarray, ...],
         napiecia: np.ndarray,
@@ -629,6 +696,43 @@ class SilnikDynamiki:
             moc = napiecie * urzadzenie.prad_pu(stan, napiecie).conjugate()
             probki[f"p_pu@{urzadzenie.ident}"].append(float(moc.real))
             probki[f"q_pu@{urzadzenie.ident}"].append(float(moc.imag))
+        self._probkuj_obserwable(probki, model, odbiory, urzadzenia, stany, napiecia)
+
+    def _probkuj_obserwable(
+        self,
+        probki: dict[str, list[float]],
+        model: ModelSieci,
+        odbiory: tuple[OdbiorDynamiki, ...],
+        urzadzenia: tuple[Urzadzenie, ...],
+        stany: tuple[np.ndarray, ...],
+        napiecia: np.ndarray,
+    ) -> None:
+        """Przestrzen `z` (W6-A) — czestotliwosc wezlow i wielkosci zaciskow galezi.
+
+        Pochodna napiec liczy sie RAZ na probke, z rozniczkowania rownania algebraicznego;
+        kazdy wezel czyta z niej swoja skladowa. Zaden kanal tej przestrzeni nie jest
+        rozniczkowany numerycznie po osi wyjscia.
+        """
+        nastawy = self.wejscie.nastawy
+        pochodne_napiec = pochodna_napiec(model, odbiory, urzadzenia, stany, napiecia)
+        for pozycja, ident in enumerate(model.identy_wezlow):
+            czestotliwosc = czestotliwosc_wezla(
+                complex(napiecia[pozycja]),
+                complex(pochodne_napiec[pozycja]),
+                f_bazowa_hz=self.wejscie.f_bazowa_hz,
+                tolerancja_algebry=nastawy.tolerancja,
+            )
+            probki[f"f_hz@{ident}"].append(czestotliwosc.f_hz)
+            probki[f"u_f_hz@{ident}"].append(czestotliwosc.niepewnosc_hz)
+            probki[f"jakosc_f@{ident}"].append(czestotliwosc.jakosc)
+        for galaz in model.galezie:
+            wielkosci = wielkosci_galezi(model, galaz, napiecia)
+            probki[f"i_od_pu@{galaz.ident}"].append(abs(wielkosci.i_od_pu))
+            probki[f"i_do_pu@{galaz.ident}"].append(abs(wielkosci.i_do_pu))
+            probki[f"p_od_pu@{galaz.ident}"].append(float(wielkosci.s_od_pu.real))
+            probki[f"q_od_pu@{galaz.ident}"].append(float(wielkosci.s_od_pu.imag))
+            probki[f"p_do_pu@{galaz.ident}"].append(float(wielkosci.s_do_pu.real))
+            probki[f"q_do_pu@{galaz.ident}"].append(float(wielkosci.s_do_pu.imag))
 
     def _metryki(
         self,

@@ -41,7 +41,11 @@ from solver_input.provenance import CapabilityEvidence
 
 RESULTSET_DYNAMIC_CONTRACT: Final[Literal["resultset_dynamic_v1"]] = "resultset_dynamic_v1"
 
-PrzestrzenKanalu = Literal["siec", "urzadzenie", "regulator", "magazyn"]
+PrzestrzenKanalu = Literal["siec", "urzadzenie", "regulator", "magazyn", "obserwabla"]
+"""Przestrzen kanalu (W6-A): `siec` i `urzadzenie` to zmienne algebraiczne i stany,
+`obserwabla` to wielkosc WYPROWADZONA z obu jawnym wzorem (czestotliwosc wezla,
+wielkosci zaciskow galezi). Rozdzial jest semantyczny — serializacja jest wspolna,
+ale znaczenie kanalu nie moze sie zgubic w jednym slowniku."""
 
 
 class KanalDynamicznyV1(BaseModel):
