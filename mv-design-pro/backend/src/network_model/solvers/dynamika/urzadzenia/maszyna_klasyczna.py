@@ -87,6 +87,11 @@ class MaszynaKlasyczna:
         return NAZWY_STANOW_MASZYNY_KLASYCZNEJ
 
     @property
+    def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
+        """Model klasyczny nie ma ani jednego ogranicznika — wszystkie stany wolne."""
+        return (None, None, None, None)
+
+    @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         """Kazdy stan maszyny klasycznej MUSI byc rownowaga w punkcie pracy."""
         return ()

@@ -166,6 +166,13 @@ class RdzenGFL:
     def ma_zwolnienie_odbudowy(self) -> bool:
         return self.p_odbudowa_opoznienie_s > 0.0
 
+    @property
+    def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
+        """Zaden stan rdzenia nadaznego nie potrzebuje rzutowania (uzasadnienie w
+        `PrzeksztaltnikGFL.granice_stanow`). Deklaracja zyje TUTAJ, zeby magazyn i
+        turbina skladaly swoje granice z rdzenia, a nie z wlasnej kopii wiedzy."""
+        return tuple(None for _ in self.uklad.nazwy)
+
     # -- wielkosci posrednie ---------------------------------------------
 
     def czestotliwosc_pll(self, stany: dict[str, Dual], napiecie: Zespolona) -> Dual:
@@ -174,27 +181,55 @@ class RdzenGFL:
         uchyb = -napiecie_dq.re
         return uchyb * self.pll_kp + stany[STAN_CALKI_PLL]
 
-    def poza_pasmem_ciaglym(self, modul_napiecia_pu: float) -> bool:
-        """JEDEN predykat trybu: ponizej progu FRT albo powyzej gornej granicy ciaglej.
+    def glebokosc_zapadu(self, modul_napiecia: Dual) -> Dual:
+        """Udzial zapadu `(U_prog - U)/U_prog` obciety do [0, 1] — CIAGLY.
 
-        Uzywaja go TRZY miejsca — prad wsparcia, bramka statyzmu Q/U i cel stanu
-        zwolnienia odbudowy. Trzy niezalezne warunki, ktore „dzis sie zgadzaja",
-        bylyby defektem czekajacym na dane brzegowe (CLAUDE.md, predykaty parami).
+        Zero powyzej progu FRT, jeden przy napieciu zerowym. Sluzy zwolnieniu
+        ogranicznika tempa odbudowy mocy czynnej. Skala jest wzieta z SAMEGO
+        progu, wiec nie ma tu ani jednej dobranej liczby.
+
+        DLACZEGO NIE SYGNAL DWUSTANOWY. Skok sygnalu „w zapadzie / poza zapadem"
+        wprowadzalby do pochodnej stanu zwolnienia skok o `1/T_op`, czyli do
+        residuum kroku skok o `dt/(2 T_op)`. Metoda niejawna gubi wtedy
+        rozwiazanie rownania kroku dokladnie w chwili ustapienia zapadu (pomiar
+        przed poprawka: bieg z przeksztaltnikiem padal przy usunieciu zwarcia,
+        residuum 3,9e-03 na `odbudowa_zwolnienie_pu`, zaden nawrot go nie obnizyl).
         """
-        return modul_napiecia_pu < self.prog_frt_pu or modul_napiecia_pu > self.u_max_ciagle_pu
+        return ogranicz((self.prog_frt_pu - modul_napiecia) / self.prog_frt_pu, 0.0, 1.0)
 
     def wsparcie_napieciowe(self, modul_napiecia: Dual) -> Dual:
         """Prad bierny wsparcia napiecia poza pasmem pracy ciaglej (FRT / HVRT).
+
+        Funkcja jest CIAGLA: oba czlony zerują sie dokladnie na swoim progu, wiec
+        wejscie w tryb wsparcia i wyjscie z niego nie daja skoku zadania.
 
         Ta sama funkcja liczy wsparcie w biegu i przy odczycie nastawy z punktu
         pracy (`stany_rownowagi`), wiec rownowaga poczatkowa nie moze rozminac sie
         z tym, co model policzy w chwili `t = 0`.
         """
-        if not self.poza_pasmem_ciaglym(modul_napiecia.wartosc):
-            return Dual(0.0)
         if modul_napiecia.wartosc < self.prog_frt_pu:
             return (self.prog_frt_pu - modul_napiecia) * self.k_frt
-        return (self.u_max_ciagle_pu - modul_napiecia) * self.k_frt
+        if modul_napiecia.wartosc > self.u_max_ciagle_pu:
+            return (self.u_max_ciagle_pu - modul_napiecia) * self.k_frt
+        return Dual(0.0)
+
+    def korekta_statyzmu_biernego(self, modul_napiecia: Dual, odniesienie: Dual) -> Dual:
+        """Korekta mocy biernej ze statyzmu Q/U — CIAGLA i ograniczona pasmem pracy.
+
+        Napiecie wchodzace do statyzmu jest sprowadzone do pasma pracy ciaglej
+        `[u_min, u_max]`: poza pasmem statyzm NASYCA sie zamiast rosnac dalej, a
+        rolę regulacji przejmuje prad wsparcia. Bramkowanie statyzmu warunkiem
+        „czy jestesmy w pasmie" dawaloby SKOK zadania o cala wartosc statyzmu na
+        krawedzi pasma (pomiar przed poprawka: 2,8 pu skoku przy progu FRT 0,9 pu
+        i odniesieniu 1,05 pu — bieg padal przy usunieciu zwarcia, residuum
+        1,6e-02 na `i_bierny_pu`). Nasycenie daje TE SAMA granice dzialania
+        statyzmu bez skoku.
+        """
+        if self.droop_q_u_pu <= 0.0:
+            return Dual(0.0)
+        napiecie_w_pasmie = ogranicz(modul_napiecia, self.u_min_ciagle_pu, self.u_max_ciagle_pu)
+        odchylka = strefa_martwa(napiecie_w_pasmie - odniesienie, self.martwa_strefa_u_pu)
+        return -odchylka / self.droop_q_u_pu
 
     def zadania_pradu(
         self, stany: dict[str, Dual], napiecie: Zespolona, okno: OknoMocy, opis: str
@@ -211,17 +246,10 @@ class RdzenGFL:
             zadanie_czynne = zadanie_czynne - odchylka_hz / (self.f_bazowa_hz * self.droop_p_f_pu)
         zadanie_czynne = okno.ogranicz(zadanie_czynne)
 
-        zadanie_bierne = stany[STAN_ZADANIA_BIERNEGO]
+        zadanie_bierne = stany[STAN_ZADANIA_BIERNEGO] + self.korekta_statyzmu_biernego(
+            modul, stany[STAN_ODNIESIENIA_NAPIECIA]
+        )
         wsparcie = self.wsparcie_napieciowe(modul)
-        if (
-            not self.poza_pasmem_ciaglym(modul.wartosc)
-            and self.droop_q_u_pu > 0.0
-            and modul.wartosc >= self.u_min_ciagle_pu
-        ):
-            odchylka_napiecia = strefa_martwa(
-                modul - stany[STAN_ODNIESIENIA_NAPIECIA], self.martwa_strefa_u_pu
-            )
-            zadanie_bierne = zadanie_bierne - odchylka_napiecia / self.droop_q_u_pu
 
         return zadanie_czynne / modul, zadanie_bierne / modul + wsparcie, modul
 
@@ -283,7 +311,7 @@ class RdzenGFL:
             STAN_ODNIESIENIA_NAPIECIA: Dual(0.0),
         }
         if self.ma_zwolnienie_odbudowy:
-            cel = Dual(0.0 if self.poza_pasmem_ciaglym(modul.wartosc) else 1.0)
+            cel = 1.0 - self.glebokosc_zapadu(modul)
             pochodne[STAN_ZWOLNIENIA_ODBUDOWY] = (
                 cel - stany[STAN_ZWOLNIENIA_ODBUDOWY]
             ) / self.p_odbudowa_opoznienie_s
@@ -339,7 +367,7 @@ class RdzenGFL:
             STAN_ODNIESIENIA_NAPIECIA: modul,
         }
         if self.ma_zwolnienie_odbudowy:
-            wartosci[STAN_ZWOLNIENIA_ODBUDOWY] = 0.0 if self.poza_pasmem_ciaglym(modul) else 1.0
+            wartosci[STAN_ZWOLNIENIA_ODBUDOWY] = 1.0 - self.glebokosc_zapadu(Dual(modul)).wartosc
         return wartosci
 
 
@@ -416,6 +444,20 @@ class PrzeksztaltnikGFL:
     @property
     def nazwy_stanow(self) -> tuple[str, ...]:
         return self.rdzen.uklad.nazwy
+
+    @property
+    def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
+        """Zaden stan nadaznego nie potrzebuje rzutowania — i to jest WYNIK, nie brak.
+
+        Skladowe pradu sa czlonami inercyjnymi ZADAN, ktore ogranicznik sprowadza
+        do kola `|I| <= i_max` PRZED calkowaniem. Czlon inercyjny daje srednia
+        wazona przeszlych wejsc, a kolo jest zbiorem WYPUKLYM, wiec prad
+        rzeczywisty nie moze z niego wyjsc — ograniczenie jest dotrzymane z
+        konstrukcji, bez ani jednego rzutowania. Stan zwolnienia odbudowy jest
+        czlonem inercyjnym sygnalu dwustanowego, wiec z tego samego powodu lezy
+        w [0, 1]. Stany odniesien maja zerowa pochodna.
+        """
+        return tuple(None for _ in self.nazwy_stanow)
 
     @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:

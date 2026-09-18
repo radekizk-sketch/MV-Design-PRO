@@ -63,7 +63,6 @@ from .okno_mocy import OknoMocy
 from .pochodne_kierunkowe import Dual, Zespolona
 from .przeksztaltnik_gfl import RdzenGFL
 from .przeksztaltnik_gfm import RdzenGFM
-from .regulatory import pochodna_z_ogranicznikiem_nienawrotnym
 from .uklad_stanow import UkladStanow
 
 STAN_NALADOWANIA = "soc_pu"
@@ -101,16 +100,22 @@ class Zasobnik:
             okno = okno.zwezone(dol_pu=0.0)
         return okno
 
-    def pochodna_naladowania(self, moc_czynna_pu: Dual, soc: Dual) -> Dual:
-        """`d(SOC)/dt` z ogranicznikiem nienawrotnym na granicach zakresu."""
+    def pochodna_naladowania(self, moc_czynna_pu: Dual) -> Dual:
+        """`d(SOC)/dt` — calka mocy stalopradowej; zakres egzekwuje CALKOWANIE.
+
+        Zerowanie pochodnej na granicy zakresu bylo by ogranicznikiem NIECIAGLYM
+        w rownaniu, czyli dokladnie tym, co odbiera rownaniu kroku rozwiazanie
+        (patrz `regulatory.NIENAWROTNOSC_JEST_W_CALKOWANIU`). Zakres jest tu
+        zgloszony jako `granice_stanow` i dotrzymany DOKLADNIE przez zbior aktywny
+        calkowania.
+        """
         sprawnosc = (
             self.sprawnosc_rozladowania
             if moc_czynna_pu.wartosc >= 0.0
             else 1.0 / self.sprawnosc_ladowania
         )
         moc_stalopradowa_kw = moc_czynna_pu * (mw_na_kw(self.s_bazowa_mva) / sprawnosc)
-        pochodna = -moc_stalopradowa_kw / (self.pojemnosc_kwh * SEKUND_W_GODZINIE)
-        return pochodna_z_ogranicznikiem_nienawrotnym(pochodna, soc, self.soc_min, self.soc_max)
+        return -moc_stalopradowa_kw / (self.pojemnosc_kwh * SEKUND_W_GODZINIE)
 
 
 def zbuduj_zasobnik(
@@ -165,6 +170,20 @@ class Magazyn:
         return self.uklad.nazwy
 
     @property
+    def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
+        """Stan naladowania ma TWARDA granice — to trzeci stopien ochrony zakresu.
+
+        Dwa pierwsze (okno zadania i ogranicznik nienawrotny pochodnej) dzialaja
+        wewnatrz rownan; trzeci jest rzutowaniem w calkowaniu i to on gwarantuje
+        DOKLADNOSC granicy: bez niego trapez moglby przestrzelic o `dt/2 * f`
+        w kroku, w ktorym SOC dochodzi do konca zakresu. Stany przeksztaltnika
+        granic nie potrzebuja (patrz jego wlasna deklaracja).
+        """
+        granice: list[tuple[float, float] | None] = list(self.rdzen.granice_stanow)
+        granice.append((self.zasobnik.soc_min, self.zasobnik.soc_max))
+        return tuple(granice)
+
+    @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         """Stan naladowania DRYFUJE w punkcie pracy — to fizyka, nie niespojnosc."""
         return (STAN_NALADOWANIA,)
@@ -181,9 +200,7 @@ class Magazyn:
     ) -> list[Dual]:
         pochodne = self.rdzen.rownania(stany, napiecie, okno, self._opis)
         moc_czynna = self.rdzen.moc_czynna(stany, napiecie)
-        pochodne[STAN_NALADOWANIA] = self.zasobnik.pochodna_naladowania(
-            moc_czynna, stany[STAN_NALADOWANIA]
-        )
+        pochodne[STAN_NALADOWANIA] = self.zasobnik.pochodna_naladowania(moc_czynna)
         return self.uklad.uporzadkuj(pochodne)
 
     def stan_poczatkowy(self, napiecie_pu: complex, moc_pu: complex) -> np.ndarray:

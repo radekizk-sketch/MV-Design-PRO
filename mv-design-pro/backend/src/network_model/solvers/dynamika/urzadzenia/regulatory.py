@@ -100,15 +100,18 @@ def pochodna_opoznienia(wejscie: Dual, stan: Dual, t_opoznienia_s: float) -> Dua
     return (wejscie - stan) / t_opoznienia_s
 
 
-def pochodna_z_ogranicznikiem_nienawrotnym(
-    pochodna: Dual, stan: Dual, dol: float, gora: float
-) -> Dual:
-    """Wyzeruj pochodne, ktora wypychalaby stan poza [dol, gora] (anti-windup)."""
-    if stan.wartosc >= gora and pochodna.wartosc > 0.0:
-        return Dual(0.0)
-    if stan.wartosc <= dol and pochodna.wartosc < 0.0:
-        return Dual(0.0)
-    return pochodna
+#: GDZIE JEST OGRANICZNIK NIENAWROTNY. Nie ma go w pochodnych — i to jest decyzja
+#: mierzona, nie przeoczenie. Zerowanie pochodnej na granicy („anti-windup w
+#: rownaniu") czyni funkcje NIECIAGLA, a metoda niejawna gubi wtedy rozwiazanie
+#: rownania kroku: residuum stawalo w miejscu na 4,2e-02 niezaleznie od liczby
+#: nawrotow i od skrocenia kroku do 2e-05 s (maszyna z AVR Ka=200, Ta=0,05 s,
+#: zwarcie na zaciskach). Granica jest wiec ZADEKLAROWANA przez urzadzenie
+#: (`Urzadzenie.granice_stanow`) i egzekwowana przez calkowanie jako ograniczenie
+#: ALGEBRAICZNE `x = granica` ze zbiorem aktywnym. Efekt fizyczny jest ten sam
+#: (stan nie wychodzi poza zakres i nie „odrabia" calki po zejsciu z limitu), a
+#: rownanie kroku ma rozwiazanie i jest DOKLADNE — bez przestrzelenia rzedu
+#: `dt/2 * f` (pomiar przed naprawa: Efd = 7,165 pu przy granicy 6,0 pu).
+NIENAWROTNOSC_JEST_W_CALKOWANIU = True
 
 
 # ---------------------------------------------------------------------------
@@ -141,12 +144,9 @@ class RegulatorNapieciaSEXS:
         return pochodna_opoznienia(wejscie, stan, self.tb_s)
 
     def pochodna_wzbudzenia(self, wejscie: Dual, stan_wyprzedzenia: Dual | None, efd: Dual) -> Dual:
-        """`dEfd/dt = (Ka*y - Efd)/Ta` z ogranicznikiem nienawrotnym."""
+        """`dEfd/dt = (Ka*y - Efd)/Ta` — BEZ ogranicznika (patrz staly modulu)."""
         wyjscie = wyjscie_wyprzedzenia(wejscie, stan_wyprzedzenia, self.tc_s, self.tb_s)
-        pochodna = (wyjscie * self.ka - efd) / self.ta_s
-        return pochodna_z_ogranicznikiem_nienawrotnym(
-            pochodna, efd, self.efd_min_pu, self.efd_max_pu
-        )
+        return (wyjscie * self.ka - efd) / self.ta_s
 
     def odniesienie_rownowagi(self, napiecie_zaciskow_pu: float, efd_pu: float) -> float:
         """`Vref` zgodne z rownowaga: `Efd = Ka (Vref - Vt)` przy `Vs = 0`."""
@@ -361,7 +361,7 @@ __all__ = [
     "RegulatorObrotowTGOV1",
     "StabilizatorPSS1A",
     "pochodna_opoznienia",
-    "pochodna_z_ogranicznikiem_nienawrotnym",
+    "NIENAWROTNOSC_JEST_W_CALKOWANIU",
     "wyjscie_wyprzedzenia",
     "zbuduj_regulator_napiecia",
     "zbuduj_regulator_obrotow",

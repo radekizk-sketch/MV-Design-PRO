@@ -53,6 +53,11 @@ class SzynaSztywna:
         return NAZWY_STANOW_SZYNY_SZTYWNEJ
 
     @property
+    def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
+        """Szyna sztywna nie ma ogranicznikow — obie skladowe SEM sa wolne."""
+        return (None, None)
+
+    @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         """SEM szyny sztywnej jest stala — obie skladowe sa rownowaga."""
         return ()

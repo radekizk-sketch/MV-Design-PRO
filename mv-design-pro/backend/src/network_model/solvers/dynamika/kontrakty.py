@@ -375,6 +375,33 @@ class Urzadzenie(Protocol):
         """Nazwy stanow roznicowych — dlugosc = wymiar `x` tego urzadzenia."""
 
     @property
+    def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
+        """Twarde granice stanow — po jednym wpisie na stan, `None` gdy stan jest wolny.
+
+        PO CO TO JEST W KONTRAKCIE, A NIE W URZADZENIU. Ogranicznik NIENAWROTNY
+        (anti-windup) jest funkcja NIECIAGLA: pochodna stanu skacze do zera w
+        chwili dojscia do granicy. W metodzie NIEJAWNEJ oznacza to, ze residuum
+        kroku `R(x1) = x1 - x0 - dt/2 (f0 + f(x1))` ma SKOK w punkcie granicy o
+        `dt/2 * f(granica)` — jesli rozwiazanie lezy w tym skoku, rownanie kroku
+        NIE MA rozwiazania i Newton nie ma do czego zbiegac. Pomiar (maszyna z
+        AVR Ka=200, Ta=0,05 s i stabilizatorem, zwarcie na zaciskach): residuum
+        stawalo w miejscu na 4,2e-02 i nie malalo ani po jedenastu nawrotach, ani
+        po skroceniu kroku do 2e-05 s; ten sam bieg bez ogranicznika wzbudzenia
+        zbiegal w TRZECH iteracjach.
+
+        Dlatego granica NIE jest sprawa samego urzadzenia: zna ja calkowanie,
+        ktore dla stanu wypchnietego poza granice zamienia rownanie rozniczkowe
+        wiersza na rownanie ALGEBRAICZNE `x = granica` (klasyczny Newton z
+        rzutowaniem, aktywny zbior wyznaczany w kazdej iteracji). Rownanie kroku
+        odzyskuje rozwiazanie, Newton zbiega, a granica jest dotrzymana DOKLADNIE
+        — nie z przestrzeleniem rzedu `dt/2 * f`, ktore daloby samo zerowanie
+        pochodnej (pomiar przed naprawa: Efd = 7,165 pu przy granicy 6,0 pu).
+
+        Urzadzenie bez ogranicznikow zwraca same `None` — i wtedy nic sie nie
+        zmienia ani w rownaniach, ani w koszcie kroku.
+        """
+
+    @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         """Stany, ktorych pochodna w punkcie pracy NIE MUSI byc zerowa.
 

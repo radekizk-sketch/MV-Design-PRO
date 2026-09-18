@@ -46,6 +46,11 @@ class UrzadzenieOdlaczone:
         return self.bazowe.nazwy_stanow
 
     @property
+    def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
+        """Odlaczenie nie zmienia ogranicznikow urzadzenia — przenosimy je bez zmian."""
+        return self.bazowe.granice_stanow
+
+    @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         """Opakowanie PRZENOSI deklaracje urzadzenia bazowego, nie tworzy wlasnej."""
         return self.bazowe.stany_bez_rownowagi

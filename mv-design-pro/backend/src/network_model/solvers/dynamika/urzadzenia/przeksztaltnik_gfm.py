@@ -129,6 +129,13 @@ class RdzenGFM:
         return self.tryb == TRYB_MASZYNA_WIRTUALNA
 
     @property
+    def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
+        """Zaden stan rdzenia tworzacego siec nie potrzebuje rzutowania
+        (uzasadnienie w `PrzeksztaltnikGFM.granice_stanow`). Deklaracja zyje
+        TUTAJ, zeby magazyn skladal swoje granice z rdzenia, a nie z kopii."""
+        return tuple(None for _ in self.uklad.nazwy)
+
+    @property
     def impedancja_pu(self) -> complex:
         return complex(self.r_wirtualne_pu, self.x_wirtualne_pu)
 
@@ -382,6 +389,17 @@ class PrzeksztaltnikGFM:
     @property
     def nazwy_stanow(self) -> tuple[str, ...]:
         return self.rdzen.uklad.nazwy
+
+    @property
+    def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
+        """Zaden stan tworzacego siec nie ma twardej granicy.
+
+        Ograniczenie pradu dziala na WIELKOSC ALGEBRAICZNA (impedancja efektywna
+        albo modul zadania SEM), nie na stan rozniczkowy: nie ma calki, ktora
+        moglaby wyjsc poza zakres. Filtry mocy sa czlonami inercyjnymi mocy
+        rzeczywistej, a odniesienia maja zerowa pochodna.
+        """
+        return tuple(None for _ in self.nazwy_stanow)
 
     @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:

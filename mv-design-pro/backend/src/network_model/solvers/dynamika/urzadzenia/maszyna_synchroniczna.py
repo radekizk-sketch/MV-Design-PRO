@@ -251,6 +251,33 @@ class MaszynaSynchroniczna:
         return self.uklad.nazwy
 
     @property
+    def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
+        """Twarda granica ma DOKLADNIE JEDEN stan: napiecie wzbudzenia z regulatorem.
+
+        Pozostale ograniczniki modelu sa ograniczeniami SYGNALU, nie stanu, i
+        dlatego nie potrzebuja mechanizmu rzutowania:
+        * granice mocy turbiny dzialaja na ZADANIE `Pref - dOmega/R`, a stan
+          zaworu jest czlonem inercyjnym tego zadania — czlon inercyjny sygnalu
+          ograniczonego sam nie wychodzi poza jego zakres (jest srednia wazona
+          przeszlych wartosci wejscia);
+        * to samo dotyczy czlonu wyprzedzajacego turbiny i wyjscia stabilizatora;
+        * bez regulatora napiecia `Efd` jest STALA punktu pracy (pochodna zero),
+          wiec granica nie ma na czym zadzialac.
+
+        Napiecie wzbudzenia Z REGULATOREM jest inne: jego wejsciem jest `Ka * u`,
+        wielkosc NIEOGRANICZONA (pomiar: przy zwarciu na zaciskach regulator zada
+        Efd = 22,9 pu przy granicy 6,0 pu), wiec bez rzutowania stan przestrzeliwa
+        granice o `dt/2 * f`.
+        """
+        granice: list[tuple[float, float] | None] = []
+        for nazwa in self.uklad.nazwy:
+            if nazwa == STAN_WZBUDZENIA and self.wzbudzenie is not None:
+                granice.append((self.wzbudzenie.efd_min_pu, self.wzbudzenie.efd_max_pu))
+            else:
+                granice.append(None)
+        return tuple(granice)
+
+    @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         """Kazdy stan maszyny — wirnika, strumieni i regulatorow — MUSI byc rownowaga."""
         return ()

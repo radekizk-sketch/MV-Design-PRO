@@ -84,6 +84,34 @@ class KontekstKroku:
             for nazwa in urzadzenie.nazwy_stanow
         )
 
+    @property
+    def granice_stanow(self) -> tuple[np.ndarray, np.ndarray]:
+        """Dolne i gorne granice ZLACZONEGO wektora stanow (`-inf`/`+inf` = wolny).
+
+        Zlozone z deklaracji urzadzen (`Urzadzenie.granice_stanow`), w tej samej
+        kolejnosci, co `spakuj_stany`. Urzadzenie, ktore poda liste o innej
+        dlugosci niz jego uklad stanow, jest bledem programu — nie powodem do
+        dopelnienia domyslkami.
+        """
+        dolne: list[float] = []
+        gorne: list[float] = []
+        for urzadzenie in self.urzadzenia:
+            granice = urzadzenie.granice_stanow
+            if len(granice) != len(urzadzenie.nazwy_stanow):
+                raise AssertionError(
+                    f"Urzadzenie {urzadzenie.ident!r} podalo {len(granice)} granic wobec "
+                    f"{len(urzadzenie.nazwy_stanow)} stanow — deklaracja granic musi byc "
+                    "kompletna"
+                )
+            for granica in granice:
+                if granica is None:
+                    dolne.append(-np.inf)
+                    gorne.append(np.inf)
+                else:
+                    dolne.append(granica[0])
+                    gorne.append(granica[1])
+        return np.array(dolne, dtype=float), np.array(gorne, dtype=float)
+
 
 def spakuj_stany(stany: tuple[np.ndarray, ...]) -> np.ndarray:
     """Zlacz stany urzadzen w jeden wektor (kolejnosc = kolejnosc urzadzen)."""
@@ -122,17 +150,83 @@ def pochodne_ukladu(
     return pochodne
 
 
+def maska_nasycenia(
+    wektor_stanow: np.ndarray,
+    dolne: np.ndarray,
+    gorne: np.ndarray,
+    reszta_swobodna: np.ndarray,
+) -> np.ndarray:
+    """Zbior AKTYWNY ograniczen: stany, ktore rownanie kroku wypycha poza granice.
+
+    Wiersz stanu aktywnego niesie rownanie ALGEBRAICZNE `x = granica` zamiast
+    rozniczkowego; zbior jest wyznaczany w KAZDEJ iteracji, wiec stan wychodzi z
+    niego, gdy tylko rozwiazanie wraca do wnetrza zakresu.
+
+    WARUNEK JEST DWUCZLONOWY (komplementarnosc), i to jest istota rzeczy. Sam
+    warunek polozenia (`x >= granica`) daje CYKL: Newton sprowadza stan dokladnie
+    na granice, warunek przestaje obowiazywac, wiersz wraca do postaci
+    rozniczkowej z niezerowym residuum, ktore wypycha stan z powrotem — i tak w
+    kolko (pomiar przed poprawka: residuum stalo na 4,2e-02 przez trzy iteracje,
+    zaden nawrot go nie obnizyl). Drugim czlonem jest ZNAK residuum swobodnego:
+    `R = x - x0 - dt/2 (f0 + f)` ujemne przy gornej granicy znaczy „rownanie
+    chcialoby stanu WIEKSZEGO niz granica", czyli ograniczenie jest naprawde
+    aktywne. Przy zmianie kierunku (regulator schodzi z limitu) `R` zmienia znak,
+    wiersz wraca do postaci rozniczkowej i stan plynnie opuszcza granice.
+    """
+    przy_gornej = (wektor_stanow >= gorne) & (reszta_swobodna <= 0.0)
+    przy_dolnej = (wektor_stanow <= dolne) & (reszta_swobodna >= 0.0)
+    return przy_gornej | przy_dolnej
+
+
+def rzutuj_stany(wektor_stanow: np.ndarray, dolne: np.ndarray, gorne: np.ndarray) -> np.ndarray:
+    """Sprowadz stany do ich zakresu — granica jest dotrzymana DOKLADNIE."""
+    return np.minimum(np.maximum(wektor_stanow, dolne), gorne)
+
+
+def _najwieksze_residua(
+    kontekst: KontekstKroku, wektor_residuum: np.ndarray, ile: int = 5
+) -> tuple[tuple[str, float], ...]:
+    """Najwieksze residua kroku Z ADRESEM rownania — odmowa ma niesc POMIAR.
+
+    Bez tego „krok niezbiezny" mowi tylko, ze cos nie wyszlo; z adresem mowi
+    KTORE rownanie nie domknelo sie do tolerancji, czyli od czego zaczac.
+    """
+    adresy = list(kontekst.adresy_stanow)
+    liczba_wezlow = kontekst.model.liczba_wezlow
+    for ident in kontekst.model.identy_wezlow:
+        adresy.append(f"KCL.Re[{ident}]")
+    for ident in kontekst.model.identy_wezlow:
+        adresy.append(f"KCL.Im[{ident}]")
+    if len(adresy) != wektor_residuum.shape[0]:
+        return (("(niezgodna dlugosc adresow)", float(np.max(np.abs(wektor_residuum)))),)
+    del liczba_wezlow
+    kolejnosc = np.argsort(-np.abs(wektor_residuum))[:ile]
+    return tuple((adresy[int(i)], float(wektor_residuum[int(i)])) for i in kolejnosc)
+
+
 def _jakobian_sprzezony(
     kontekst: KontekstKroku,
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
     dt_s: float,
+    nasycone: np.ndarray | None = None,
 ) -> sparse.csc_matrix:
-    """Jakobian ukladu sprzezonego trapezu: bloki `dR_x/dx`, `dR_x/dy`, `dR_y/dx`, `dR_y/dy`."""
+    """Jakobian ukladu sprzezonego trapezu: bloki `dR_x/dx`, `dR_x/dy`, `dR_y/dx`, `dR_y/dy`.
+
+    Wiersze stanow ZE ZBIORU AKTYWNEGO (`nasycone`) niosa rownanie `x = granica`,
+    wiec ich wiersz jakobianu to wiersz macierzy jednostkowej. Blok `dR_y/dx`
+    zostaje bez zmian — prad urzadzenia nadal zalezy od tego stanu, zmienia sie
+    wylacznie rownanie, ktore ten stan WYZNACZA.
+    """
     liczba_wezlow = kontekst.model.liczba_wezlow
     wymiary = kontekst.wymiary_stanow
     liczba_stanow = int(sum(wymiary))
     polowa_kroku = dt_s / 2.0
+    maska = (
+        np.zeros(liczba_stanow, dtype=bool)
+        if nasycone is None
+        else np.asarray(nasycone, dtype=bool)
+    )
 
     wiersze: list[int] = []
     kolumny: list[int] = []
@@ -146,6 +240,11 @@ def _jakobian_sprzezony(
         blok_fy = urzadzenie.jakobian_stan_napiecie(stan, napiecie)
         blok_iy = urzadzenie.jakobian_prad_stan(stan, napiecie)
         for wiersz in range(wymiar):
+            if maska[przesuniecie + wiersz]:
+                wiersze.append(przesuniecie + wiersz)
+                kolumny.append(przesuniecie + wiersz)
+                wartosci.append(1.0)
+                continue
             for kolumna in range(wymiar):
                 wartosc = -polowa_kroku * float(blok_ff[wiersz, kolumna])
                 if wiersz == kolumna:
@@ -284,18 +383,30 @@ class TrapezNiejawny:
 
         stan_poczatkowy = spakuj_stany(stany)
         pochodne_poczatkowe = pochodne_ukladu(kontekst, stany, napiecia, t_s)
+        dolne, gorne = kontekst.granice_stanow
 
         niewiadome = np.concatenate((stan_poczatkowy, napiecia.real.copy(), napiecia.imag.copy()))
 
         def rozloz(wektor: np.ndarray) -> tuple[tuple[np.ndarray, ...], np.ndarray]:
-            stany_biezace = rozpakuj_stany(wektor[:liczba_stanow], wymiary)
+            """Rozdziel wektor niewiadomych; stany SPROWADZONE do swoich granic.
+
+            Rzutowanie jest tutaj, a nie dopiero na koncu kroku, z dwoch powodow:
+            urzadzenie liczy pochodne zawsze w swoim zakresie dopuszczalnym
+            (regulator nie „widzi" wzbudzenia 22 pu, ktorego nie potrafi wydac),
+            a stan zwrocony z kroku dotrzymuje granicy DOKLADNIE, bez przestrzelenia
+            rzedu `dt/2 * f`.
+            """
+            stany_biezace = rozpakuj_stany(
+                rzutuj_stany(wektor[:liczba_stanow], dolne, gorne), wymiary
+            )
             napiecia_biezace = (
                 wektor[liczba_stanow : liczba_stanow + liczba_wezlow]
                 + 1j * wektor[liczba_stanow + liczba_wezlow :]
             )
             return stany_biezace, napiecia_biezace
 
-        def residuum(wektor: np.ndarray) -> np.ndarray:
+        def residuum_swobodne(wektor: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+            """Residuum kroku BEZ zbioru aktywnego: (czesc stanow, czesc algebry)."""
             stany_biezace, napiecia_biezace = rozloz(wektor)
             pochodne_biezace = pochodne_ukladu(
                 kontekst, stany_biezace, napiecia_biezace, t_s + dt_s
@@ -312,9 +423,39 @@ class TrapezNiejawny:
                 stany_biezace,
                 napiecia_biezace,
             )
+            return reszta_stanow, reszta_algebry
+
+        def residuum(wektor: np.ndarray, zbior: np.ndarray) -> np.ndarray:
+            """Residuum kroku dla USTALONEGO zbioru aktywnego ograniczen.
+
+            Zbior jest argumentem, a nie wielkoscia liczona w srodku, i to jest
+            istota poprawnosci nawrotu: gdyby zbior zmienial sie przy kazdym
+            wywolaniu, funkcja badana przez warunek Armijo bylaby NIECIAGLA w
+            punkcie biezacym (dowolnie maly ruch w dol od granicy przywracalby
+            wiersz rozniczkowy z duzym residuum), wiec zaden nawrot nie mialby
+            szans obnizyc normy. Zbior zmienia sie WYLACZNIE miedzy iteracjami.
+            """
+            reszta_stanow, reszta_algebry = residuum_swobodne(wektor)
+            if zbior.any():
+                granica = rzutuj_stany(wektor[:liczba_stanow], dolne, gorne)
+                reszta_stanow = np.where(zbior, wektor[:liczba_stanow] - granica, reszta_stanow)
             return np.concatenate((reszta_stanow, reszta_algebry))
 
-        wektor_residuum = residuum(niewiadome)
+        def zbior_z(wektor: np.ndarray, poprzedni: np.ndarray) -> np.ndarray:
+            """Zbior aktywny w punkcie `wektor`, ROSNACY w obrebie jednego kroku.
+
+            Monotonicznosc (suma z poprzednim) gwarantuje skonczonosc petli:
+            liczba przelaczen zbioru jest ograniczona liczba stanow z granica.
+            Zwolnienie ograniczenia nastepuje na POCZATKU nastepnego kroku, gdzie
+            warunek komplementarnosci liczy sie od stanu poczatkowego — regulator
+            schodzacy z limitu ma wtedy residuum swobodne o przeciwnym znaku i nie
+            wchodzi do zbioru wcale.
+            """
+            reszta_stanow, _ = residuum_swobodne(wektor)
+            return poprzedni | maska_nasycenia(wektor[:liczba_stanow], dolne, gorne, reszta_stanow)
+
+        zbior_aktywny = zbior_z(niewiadome, np.zeros(liczba_stanow, dtype=bool))
+        wektor_residuum = residuum(niewiadome, zbior_aktywny)
         norma = float(np.linalg.norm(wektor_residuum))
         nawroty_lacznie = 0
 
@@ -331,7 +472,9 @@ class TrapezNiejawny:
                     liczba_stanow,
                 )
             stany_biezace, napiecia_biezace = rozloz(niewiadome)
-            jakobian = _jakobian_sprzezony(kontekst, stany_biezace, napiecia_biezace, dt_s)
+            jakobian = _jakobian_sprzezony(
+                kontekst, stany_biezace, napiecia_biezace, dt_s, zbior_aktywny
+            )
             try:
                 rozklad = sparse_linalg.splu(jakobian)
             except RuntimeError as blad:
@@ -354,12 +497,13 @@ class TrapezNiejawny:
                     alfa *= 0.5
                     nawroty_lacznie += 1
                     continue
-                residuum_kandydata = residuum(kandydat)
+                residuum_kandydata = residuum(kandydat, zbior_aktywny)
                 norma_kandydata = float(np.linalg.norm(residuum_kandydata))
                 if norma_kandydata <= (1.0 - WSPOLCZYNNIK_ARMIJO * alfa) * norma:
                     niewiadome = kandydat
-                    wektor_residuum = residuum_kandydata
-                    norma = norma_kandydata
+                    zbior_aktywny = zbior_z(kandydat, zbior_aktywny)
+                    wektor_residuum = residuum(kandydat, zbior_aktywny)
+                    norma = float(np.linalg.norm(wektor_residuum))
                     nawroty_lacznie += nawrot
                     przyjeto = True
                     break
@@ -368,11 +512,13 @@ class TrapezNiejawny:
                 raise OdmowaDynamiki(
                     KOD_KROK_NIEZBIEZNY,
                     f"Zaden nawrot nie obnizyl residuum kroku przy t={t_s} s "
-                    f"(dt={dt_s} s, iteracja {iteracja}, residuum {norma})",
+                    f"(dt={dt_s} s, iteracja {iteracja}, residuum {norma}); "
+                    f"najwieksze residua: {_najwieksze_residua(kontekst, wektor_residuum)}",
                     t_s=t_s,
                     dt_s=dt_s,
                     iteracja=iteracja,
                     residuum=norma,
+                    najwieksze_residua=_najwieksze_residua(kontekst, wektor_residuum),
                 )
 
         if norma <= nastawy.tolerancja:
@@ -447,9 +593,16 @@ class RungeKutta4Jawny:
     ) -> WynikKroku:
         wymiary = kontekst.wymiary_stanow
         stan_poczatkowy = spakuj_stany(stany)
+        dolne, gorne = kontekst.granice_stanow
 
         def pochodne_w(wektor: np.ndarray, chwila: float, start: np.ndarray) -> np.ndarray:
-            stany_biezace = rozpakuj_stany(wektor, wymiary)
+            """Pochodne w stadium RK; stan stadium SPROWADZONY do granic.
+
+            Metoda jawna nie rozwiazuje rownania kroku, wiec nie ma tu zbioru
+            aktywnego — rzutowanie stadiow i wyniku jest jedynym mechanizmem, i
+            jest TEN SAM, co w trapezie (jedno zrodlo prawdy granicy).
+            """
+            stany_biezace = rozpakuj_stany(rzutuj_stany(wektor, dolne, gorne), wymiary)
             napiecia_biezace = self._algebra(kontekst, stany_biezace, start, chwila)
             return pochodne_ukladu(kontekst, stany_biezace, napiecia_biezace, chwila)
 
@@ -459,7 +612,7 @@ class RungeKutta4Jawny:
         k4 = pochodne_w(stan_poczatkowy + dt_s * k3, t_s + dt_s, napiecia)
         stan_koncowy = stan_poczatkowy + (dt_s / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
 
-        stany_koncowe = rozpakuj_stany(stan_koncowy, wymiary)
+        stany_koncowe = rozpakuj_stany(rzutuj_stany(stan_koncowy, dolne, gorne), wymiary)
         wynik_algebry = rozwiaz_algebre(
             kontekst.model,
             kontekst.odbiory,
@@ -538,7 +691,9 @@ __all__ = [
     "TrapezNiejawny",
     "WynikKroku",
     "blad_lokalny",
+    "maska_nasycenia",
     "pochodne_ukladu",
     "rozpakuj_stany",
+    "rzutuj_stany",
     "spakuj_stany",
 ]

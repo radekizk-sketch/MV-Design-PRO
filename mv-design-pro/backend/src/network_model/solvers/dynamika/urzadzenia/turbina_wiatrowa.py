@@ -93,7 +93,6 @@ from .przeksztaltnik_gfl import (
     STAN_PRADU_CZYNNEGO,
     RdzenGFL,
 )
-from .regulatory import pochodna_z_ogranicznikiem_nienawrotnym
 from .uklad_stanow import UkladStanow
 
 STAN_PREDKOSCI_WIRNIKA = "omega_wirnika_pu"
@@ -122,9 +121,21 @@ class Crowbar:
     def zalacza_sie_natychmiast(self) -> bool:
         return self.czas_zwloki_s <= 0.0
 
-    def wyzwolenie(self, modul_pradu: Dual) -> float:
-        """1 gdy prad przekracza prog, 0 w przeciwnym razie (sygnal dwustanowy)."""
-        return 1.0 if modul_pradu.wartosc > self.prog_pradu_pu else 0.0
+    def wyzwolenie(self, modul_pradu: Dual) -> Dual:
+        """Stopien przekroczenia progu pradu, `clamp(|I|/I_prog - 1, 0, 1)` — CIAGLY.
+
+        Zero przy pradzie rownym progowi, jeden przy PODWOJONYM progu; skala jest
+        wzieta z samego progu, wiec nie ma tu ani jednej dobranej liczby.
+
+        DLACZEGO NIE SYGNAL DWUSTANOWY. Skok sygnalu wyzwalajacego daje skok
+        pochodnej stanu crowbar oraz skok gornej granicy okna mocy, czyli SKOK
+        residuum kroku. Metoda niejawna gubi wtedy rozwiazanie rownania kroku
+        dokladnie w chwili zadzialania zabezpieczenia — a wiec w jedynej chwili,
+        dla ktorej ten model istnieje. Narastanie stopnia przekroczenia jest
+        ciaglym opisem tego samego zjawiska (im glebsze przekroczenie, tym
+        pewniejsze i pelniejsze zadzialanie) i jest tu nazwane wprost.
+        """
+        return ogranicz(modul_pradu / self.prog_pradu_pu - 1.0, 0.0, 1.0)
 
     def sygnal(self, stan: Dual, modul_pradu: Dual) -> Dual:
         """Sygnal zadzialania crowbar (0..1) uzyty do zamkniecia okna mocy."""
@@ -135,17 +146,21 @@ class Crowbar:
     def pochodna(self, stan: Dual, modul_pradu: Dual) -> Dual:
         """Zalaczenie ze zwloka, zanik ze stala czasu trwania.
 
-        O WYBORZE STALEJ CZASOWEJ decyduje SYGNAL WYZWALAJACY (czy prad przekracza
-        prog), a nie znak roznicy `wyzwolenie - stan`. Ten drugi warunek stawialby
-        punkt przelaczenia dokladnie tam, gdzie stan siedzi w rownowadze (zero), i
-        pochodna nie istnialaby w punkcie pracy — jedyna nieciaglosc tego bloku ma
-        byc PRZEKROCZENIEM PROGU PRADU, bo tylko ono jest zdarzeniem fizycznym.
+        Stala czasowa jest MIESZANA ciagle miedzy zwloka zalaczenia a czasem
+        trwania w rytm sygnalu wyzwalajacego (`1/T = w/T_zw + (1-w)/T_tr`).
+        Przelaczanie warunkiem „czy wyzwolone" wprowadzaloby skok pochodnej o
+        `x (1/T_tr - 1/T_zw)` — ta sama klasa defektu, co skok samego sygnalu.
+        Przy ZEROWEJ zwloce mieszanie nie ma sensu (odwrotnosc rozbiega), wiec
+        zalaczenie jest natychmiastowe przez `max(stan, wyzwolenie)`, a stan
+        odpowiada wylacznie za podtrzymanie przez czas trwania.
         """
         wyzwolenie = self.wyzwolenie(modul_pradu)
         if self.zalacza_sie_natychmiast:
             return (self.sygnal(stan, modul_pradu) - stan) / self.czas_trwania_s
-        stala = self.czas_zwloki_s if wyzwolenie > 0.0 else self.czas_trwania_s
-        return (Dual(wyzwolenie) - stan) / stala
+        odwrotnosc = wyzwolenie * (1.0 / self.czas_zwloki_s) + (1.0 - wyzwolenie) * (
+            1.0 / self.czas_trwania_s
+        )
+        return (wyzwolenie - stan) * odwrotnosc
 
 
 @dataclass(frozen=True)
@@ -167,12 +182,15 @@ class TorMechaniczny:
     def pochodna_predkosci(self, moc_aero: Dual, moc_elektryczna: Dual) -> Dual:
         return (moc_aero - moc_elektryczna) / (2.0 * self.h_calkowite_s)
 
-    def pochodna_kata(self, predkosc: Dual, kat: Dual) -> Dual:
-        """Calka przesterowania z ogranicznikiem SZYBKOSCI i NIENAWROTNYM zakresu."""
-        pochodna = ogranicz(predkosc - 1.0, -1.0, 1.0) * self.pitch_tempo_rad_s
-        return pochodna_z_ogranicznikiem_nienawrotnym(
-            pochodna, kat, self.pitch_min_rad, self.pitch_max_rad
-        )
+    def pochodna_kata(self, predkosc: Dual) -> Dual:
+        """Calka przesterowania z ogranicznikiem SZYBKOSCI; ZAKRES egzekwuje calkowanie.
+
+        Ogranicznik szybkosci jest tutaj, bo jest CIAGLY i jest wlasnoscia
+        serwomechanizmu. Zakres kata jest zgloszony jako `granice_stanow` i
+        egzekwowany zbiorem aktywnym calkowania — patrz
+        `regulatory.NIENAWROTNOSC_JEST_W_CALKOWANIU`.
+        """
+        return ogranicz(predkosc - 1.0, -1.0, 1.0) * self.pitch_tempo_rad_s
 
 
 @dataclass(frozen=True)
@@ -192,6 +210,24 @@ class TurbinaWiatrowa:
     @property
     def nazwy_stanow(self) -> tuple[str, ...]:
         return self.uklad.nazwy
+
+    @property
+    def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
+        """Twarde granice maja kat lopat i sygnal crowbar — obie sa CALKAMI.
+
+        Kat lopat calkuje przesterowanie predkosci, wiec bez rzutowania
+        wychodzilby poza zakres konstrukcyjny o `dt/2 * tempo`; sygnal crowbar
+        calkuje sygnal dwustanowy i musi zostac w [0, 1], zeby domkniecie okna
+        mocy mialo sens fizyczny. Stany przeksztaltnika granic nie potrzebuja —
+        deklaracje bierzemy z JEGO rdzenia, nie z wlasnej kopii wiedzy.
+        """
+        granice: list[tuple[float, float] | None] = list(self.rdzen.granice_stanow)
+        granice.append(None)  # omega_wirnika_pu — predkosc nie ma twardej granicy
+        granice.append((self.tor.pitch_min_rad, self.tor.pitch_max_rad))
+        granice.append(None)  # p_aerodynamiczna_odniesienia_pu — stala punktu pracy
+        if self.crowbar is not None:
+            granice.append((0.0, 1.0))
+        return tuple(granice)
 
     @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
@@ -225,9 +261,7 @@ class TurbinaWiatrowa:
         moc_aero = self.tor.moc_aerodynamiczna(stany)
         moc_elektryczna = self.rdzen.moc_czynna(stany, napiecie)
         pochodne[STAN_PREDKOSCI_WIRNIKA] = self.tor.pochodna_predkosci(moc_aero, moc_elektryczna)
-        pochodne[STAN_KATA_LOPAT] = self.tor.pochodna_kata(
-            stany[STAN_PREDKOSCI_WIRNIKA], stany[STAN_KATA_LOPAT]
-        )
+        pochodne[STAN_KATA_LOPAT] = self.tor.pochodna_kata(stany[STAN_PREDKOSCI_WIRNIKA])
         pochodne[STAN_MOCY_AERODYNAMICZNEJ] = Dual(0.0)
         if self.crowbar is not None:
             pochodne[STAN_CROWBAR] = self.crowbar.pochodna(
