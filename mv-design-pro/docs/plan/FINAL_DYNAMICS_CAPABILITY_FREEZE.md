@@ -15,6 +15,12 @@ Sekcje A–H i J–L tamtego dokumentu (rozpoznanie, klasyfikacja wejść/wyjś�
 zamrożenie §25) pozostają w mocy jako materiał dowodowy. Macierz stanu zastanego:
 `docs/audit/CURRENT_DYNAMIC_CAPABILITY_MATRIX.md`.
 
+> **PRZYJĘTE PRZEZ WŁAŚCICIELA (2026-09-18, „OWNER DECISIONS AFTER FINAL DYNAMICS CAPABILITY
+> FREEZE", baza `cb2cb93e`).** Ten dokument jest obowiązującą definicją celu produktu. Mapa dróg
+> W6-A…W6-E + równoległa W6-F przyjęta koncepcyjnie. Decyzje i korekty właściciela naniesione w §7.
+> Rozdzielenie scenariusza odniesienia na SO-1A i SO-1B — §0.2. Kontrakt techniczny fali W6-A:
+> `docs/plan/W6_A_KONTRAKT_OBSERWABLI.md` (do przeglądu architektonicznego).
+
 **Baza pomiarowa:** HEAD `131a5586` (rozpoznanie wykonane na `957e2a5f`, bez zmian kodu od tego
 czasu — oba commity dokumentacyjne).
 
@@ -57,6 +63,18 @@ ENM → rozpływ → inicjalizacja dynamiki → zdarzenia → RMS/DAE → trajek
 ```
 
 Użytkownik **nie wpisuje** `U_post`, `f_post` ani `δ_fault`. Program je wyznacza.
+
+### 0.2 SO-1A i SO-1B — rozdzielenie ciężaru dowodowego (decyzja właściciela)
+
+| | **SO-1A — wyłączenie zaplanowane** | **SO-1B — wyłączenie z zabezpieczenia** |
+|---|---|---|
+| Inżynier podaje | zwarcie i chwile usunięcia oraz ponownego załączenia | zwarcie oraz **konfigurację zabezpieczenia i wyłącznika** |
+| Program wyznacza | przebiegi, metryki | **chwilę zadziałania**, przebiegi, metryki |
+| Dowodzi | deterministycznego wykonania RMS i zdarzeń | **pełnego łańcucha przyczynowego** |
+| Wymaga fal | W6-A | W6-A + W6-B + W6-C |
+
+**Zamrożone: zaliczenie SO-1A nie jest dowodem na istnienie SO-1B** i nie zalicza ani jednego
+wiersza przypisanego do W6-C.
 
 *Uwaga terminologiczna:* właściciel użył w opisie skrótu „PCC". W modelu i w kodzie obowiązuje
 zakaz tego terminu (`scripts/pcc_zero_guard.py`, lista terminów zakazanych w rdzeniu), więc w całym
@@ -107,6 +125,7 @@ Klucz łączący z tablicą B: kolumna **ZDOLNOŚĆ**.
 | **C3** GFM: odpowiedź `U`/`f`, statyzm / bezwładność wirtualna | ocena pracy wyspowej i wsparcia sieci | PARTIAL | CURRENT | `kat_rad`, `omega_pu` (tryb maszyny wirtualnej), filtry `P`/`Q`, zadania | częstotliwość wytwarzana przez GFM jako obserwabla węzła (zależy od B2) | W6-A |
 | **C4** BESS: `P`, `Q`, `I`, `SOC`, `P-f`, `Q-U`, limit prądu | ocena magazynu jako środka zaradczego | PARTIAL | CURRENT | stany przekształtnika + `soc_pu` | prąd jako obserwabla, jawny sygnał limitu, odpowiedź `P-f` wymaga B2 | W6-A |
 | **C5** Wiatr: wirnik, crowbar, `P`, `Q`, odbudowa | zachowanie farmy po zwarciu | PARTIAL | CURRENT | `omega_wirnika_pu`, `pitch_rad`, `p_aerodynamiczna_odniesienia_pu`, `crowbar_pu` | typy 1 i 2 (dziś odmowa), prąd jako obserwabla | W6-A, W6-J |
+| **C6** Silnik indukcyjny (duże napędy SN) | zachowanie napięciowe po zwarciu: zapad, zatrzymanie, prąd przy odbudowie | GAP | CURRENT | — | **cała rodzina modelu** | **do decyzji OD-37** |
 | **D1** Zwarcie trójfazowe | podstawowa klasa zakłócenia | CURRENT | CURRENT | — | — | — |
 | **D2** Zwarcie niesymetryczne | większość zwarć w sieci SN to zwarcia niesymetryczne | GAP (odmowa jawna) | CURRENT | — | składowe symetryczne w torze czasowym | **W6-K** |
 | **D3** Sekwencje wyłączania | rzeczywisty przebieg likwidacji zwarcia | PARTIAL | CURRENT | zdjęcie zwarcia jako osobny wpis z własnym czasem | chwila wyłączenia z **decyzji zabezpieczenia**, nie z wpisu | **W6-C** |
@@ -166,6 +185,7 @@ Ta sama kolumna kluczowa **ZDOLNOŚĆ**. `—` = brak luki w tym wymiarze.
 | **C3** | częstotliwość wytwarzana przez GFM jako obserwabla | — | **brak wyroczni GFM** | — | kanały | prezentacja | B2, H4 | odpowiedź GFM w obu trybach porównana z wyrocznią |
 | **C4** | prąd jako obserwabla, jawny stan limitu | — | **brak wyroczni magazynu** | — | kanały | prezentacja | B2, B4, H4 | odpowiedź `P-f` i `Q-U` magazynu porównana z prawem kontraktu i wyrocznią |
 | **C5** | typy 1 i 2; prąd jako obserwabla | — | **brak wyroczni turbiny** | — | kanały | prezentacja | B4, H4 | zachowanie crowbar i odbudowa `P` po zwarciu porównane z wyrocznią |
+| **C6** | model silnika indukcyjnego (rząd do ustalenia), moment obciążenia, poślizg | — | brak wyroczni | — | kanały | prezentacja | OD-37 | zatrzymanie silnika po zwarciu odtworzone i porównane z wyrocznią |
 | **D1** | — | — | — | — | — | edytor zdarzeń | — | zwarcie 3F w SO-1 |
 | **D2** | **składowe symetryczne w torze czasowym** | układ równań dla składowej przeciwnej i zerowej | wyrocznia dla zwarcia 1F | rodzaj zdarzenia wykonywany zamiast odmawiany | — | wybór typu bez ślepej uliczki | model fazowy (W5) | zwarcie 1F i 2F policzone i porównane z wyrocznią |
 | **D3** | — | — | — | **chwila wyłączenia z decyzji zabezpieczenia** | — | — | D14 | w SO-1 projektant podaje nastawy, nie chwilę otwarcia; program wyznacza 180 ms |
@@ -287,6 +307,22 @@ Dochodzą dwie nowe:
 | **OD-34** | Skąd zabezpieczenie w pętli czasu bierze nastawy (wiersz D14) | (a) z modelu — nastawy pól z ENM, jedna prawda z torem koordynacji; (b) z osobnego kontraktu scenariusza dynamicznego | **(a)**. Wariant (b) tworzy drugą prawdę nastaw i wprost łamie zasadę jednego modelu |
 
 ---
+
+### 7.1 Rozstrzygnięcia właściciela z 2026-09-18 (wiążące)
+
+| Id | Rozstrzygnięcie | Skutek |
+|----|-----------------|--------|
+| **OD-30** | **PRZYJĘTE CO DO ZASADY, ale nie jako zwykła pochodna numeryczna.** Kanoniczna częstotliwość węzła wyprowadzana z kąta fazora składowej zgodnej, **po udowodnieniu konwencji układu odniesienia z faktycznej formulacji solvera** — bez dodawania ani odejmowania `f_n` „z założenia". Wielkość sieciowa, rozłączna od częstotliwości pętli synchronizacji, częstotliwości urządzenia tworzącego sieć i prędkości wirnika. **Zakaz** wprowadzania średniej ważonej bezwładnością jako kanonicznej częstotliwości sieci. Wymagana domena ważności i obsługa nieciągłości. | Dowód i kontrakt: `W6_A_KONTRAKT_OBSERWABLI.md` §3–§5. Moja pierwotna rekomendacja („pochodna kąta + pomiar PLL") była **za krótka** — brakowało domeny ważności, rozwinięcia fazy i traktowania zdarzeń |
+| **OD-33** | **JEDNO kanoniczne, wersjonowane źródło prawdy.** Kopia frontowa jest architektonicznie nieprawidłowa i idzie do kasacji po dowodzie martwoty. **Zakaz wyboru którejkolwiek z istniejących obwiedni „bo już jest"** — najpierw proweniencja: dokument → wydanie → zakres stosowania → typ modułu wytwórczego → parametryzacja → punkty. Ocena należy do domeny, wizualizacja do frontu | Dochodzenie: `docs/audit/FRT_PROWENIENCJA_NORMATYWNA.md`. **Korekta mojego meldunku: reprezentacji są TRZY, nie dwie**, a tor produkcyjny korzysta z rejestru profili operatorskich, nie ze stałej, którą wskazałem jako „backendową" |
+| **OD-34** | **PRZYJĘTE: model jest jedynym źródłem prawdy nastaw.** Scenariusz opisuje zakłócenie, model zabezpieczenia opisuje zachowanie, solver wyznacza wielkości mierzone, logika wyznacza decyzję, silnik zdarzeń wykonuje łączenie. **Zakaz** drugiej kopii nastaw w scenariuszu. Zabezpieczenie w pętli **nie sprowadza się** do czasu z krzywej — obejmuje rozruch, powrót, wielkość mierzoną, warunki kierunkowe, zwłokę i czas własny wyłącznika; brakujące ogniwa są jawnymi lukami | Wchodzi do zakresu W6-C jako pełny łańcuch; `compute_curve_trip_time` jest jednym ogniwem, nie całością |
+
+### 7.2 Nowe pozycje do decyzji (wynikłe z kontraktu W6-A i dyspozycji)
+
+| Id | Sprawa | Rekomendacja |
+|----|--------|--------------|
+| **OD-35** | Tor statyczny rozpływu wystawia prąd JEDNEJ strony gałęzi pod nazwą sugerującą wielkość gałęzi; kontrakt dynamiczny tego nie powtarza — powstają dwa znaczenia tej samej nazwy | wystawić drugą stronę w warstwie odczytu, bez ruszania zamrożonego rdzenia (`W6_A_KONTRAKT_OBSERWABLI.md` §10) |
+| **OD-36** | Żądana dokładność kąta, z której wynika granica domeny ważności częstotliwości | jawne pole nastaw biegu z wartością wymaganą, nie domyślną |
+| **OD-37** | **Silnik indukcyjny jako rodzina dynamiczna** (wiersz C6) — duże napędy SN decydują o zachowaniu napięciowym po zwarciu; rodzina występuje w martwym module, nie ma jej w bibliotece ani w macierzy | przyjąć do celu (rozszerzenie, nie redukcja); fala do ustalenia po W6-A |
 
 ## 8. Niezmiennik końcowy
 
