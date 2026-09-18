@@ -1125,3 +1125,70 @@ czterech (`black`/`ruff` dla `src tests`, `../scripts` i `scripts` — wszystkie
 self-testów, pytest **16 069 passed / 0 skipped** (753 s). Stan CI na `839fc1eb`: 8/9 — dialekt produkcyjny,
 E2E full, wyrocznie pandapower i ANDES, komplet guardów i frontend zielone; jedyna czerwień to
 opisany wyżej krok lintu, zamknięty w `beb5030d`.
+
+### F.W6-3A — biblioteka urządzeń dynamicznych (łańcuch f18, drzewo `8b9931e2`, 2026-09-18)
+
+Pięć rodzin z kontraktu ENM (maszyna synchroniczna z regulatorami, przekształtnik GFL, przekształtnik
+GFM, magazyn, turbina wiatrowa IEC 61400-27-1) + fabryka `zbuduj_urzadzenie` jako JEDYNY szew między
+kontraktem a rdzeniem. **B-01 dotrzymane — potwierdzone niezależnie**: `git diff --stat` po scaleniu
+pokazuje wyłącznie `network_model/solvers/dynamika/**`, jego testy i jedną zapadkę; żaden zamrożony
+rdzeń nie tknięty.
+
+**Iniekcja czerwieni wykryła defekty PRODUKTU, nie tylko testów.** Biblioteka była „gotowa i zielona"
+przed iniekcją; pierwszy przebieg 12 iniekcji dał **5 ZIELONYCH** — pięć testów nie widziało defektu,
+który miały łapać. Końcowo **20 iniekcji / 20 czerwonych** (maszyna 3 · GFL 3 · GFM 4 · magazyn 2 ·
+turbina 3 · fabryka 2 · całkowanie 3), kontrola po przywróceniu zielona.
+
+Defekty produktu naprawione u źródła:
+- **Crowbar DFIG był bezczynny.** Sygnał skalował przekroczenie samym progiem (`|I|/I_prog − 1`), więc
+  pełne zadziałanie wymagało prądu 2× progu — a prąd zwarciowy jest przycięty ogranicznikiem: iloraz
+  `i_max/I_pracy` = **1,40**, więc sygnał nie przekraczał **0,40**. Pomiar: moc **0,1998 pu** przy
+  oknie zamkniętym do **0,2135…0,2397 pu** — domknięcie NIGDY nie było wiążące, a iniekcja dawała
+  przebieg identyczny co do bitu. Skala biegnie teraz od progu do `i_max` (obie liczby z kontraktu);
+  próg ≥ `i_max` → nazwana odmowa.
+- **Uchyb PLL liczony w DWÓCH miejscach** — przestawienie znaku w jednej kopii zmieniało tylko statyzm
+  P/f, pętla działała dalej, żaden test nie miał szans. Jedno źródło: `uchyb_synchronizacji`.
+- **Fabryka turbiny budowała liczby zastępcze** (`s_n_mva = 1.0`, okno `[0,0]`, crowbar wyrzucany mimo
+  obecności w kontrakcie) tylko po to, by konstruktor odmówił — usunięte; typ sprawdzany PRZED blokami.
+- **Nasycenie SEM GFM** miało pionową styczną i reżim bez rozwiązania: bieg padał przy **t = 0,514 s**,
+  residuum **2,8e-03** na `kat_rad`, niezależnie od skrócenia kroku. Zastąpione ściąganiem
+  lipschitzowskim z obcięciem modułu prądu.
+
+Defekty testów jako KLASA (inwentarz, nie instancje):
+- **Pasmo „rzędu wielkości" (0,1 < iloraz < 10) jako wyrocznia** — dokładnie 2 wystąpienia, oba ślepe.
+  FRT mierzył w rzeczywistości zacięcie ogranicznika (statyzm Q/U nasycony na `u_min` żąda 1,14 pu) →
+  pomiar różnicowy A/B z poprawką `q_zadane/|V|`, iloraz **0,9998** zamiast 0,892. Statyzm GFM: bieg
+  szedł w trybie `vsm`, a przestawiony wiersz leżał w `droop` — **kod nie wykonywał się ani razu**;
+  każdy tryb ma teraz dowód tam, gdzie żyje, na równości 1e-12.
+- **Dowód ogranicznika GFM mierzył sam MODUŁ**, a moduł obie strategie dają identyczny (0,48 = `i_max`);
+  różni je KIERUNEK: **0,078…0,687 rad** — to jest teraz sprawdzane.
+- **Zbiór aktywny twardych granic nie miał ANI JEDNEGO testu**: iniekcja sprowadzająca go do pustego
+  przechodziła całą regresję (323 testy), bo rzutowanie stanów samo dotrzymuje granic — różnica na
+  przebiegu **1,59e-09** (Efd), SOC bit-identyczny. Predykat ma teraz dowód na iloczynie cech.
+- **Wyrocznia równania ruchu myliła moc przez szczelinę z mocą na zaciskach** (różnica `R_a|I|²` =
+  0,0169…0,0207 pu); rozjazd **7,49e-02 → 1,14e-04**.
+
+**Weryfikacja architekta na scalonym drzewie (nie meldunek wykonawcy):** pytest pełny
+`-m "not pandapower and not andes"` **16 234 passed / 0 skipped** (917 s; +165 wobec 16 069 przed
+scaleniem) · wyrocznia pandapower **30 passed** · wyrocznia ANDES **3 passed** · `guardy_z_ci.py`
+**KOMPLET ZIELONY** + **1 058** self-testów · mypy **718 plików bez uwag**. Zapadka
+`solver_input_substitute_guard` podniesiona Z POMIARU: pól kontraktów **3797 → 3828** (+31, zero
+skasowanych), plików **523 → 533**; dług i wykluczenia BEZ ZMIAN. Frontend nietknięty (zero plików),
+więc vitest/e2e z `2d53c1c7` (CI 9/9) pozostają wiążące.
+
+**DŁUG JAWNIE NAZWANY — karta go NIE zamyka:**
+1. **Biblioteka nie ma konsumenta produkcyjnego.** Zmierzone niezależnie: `grep` po `backend/src` z
+   wyłączeniem samego pakietu daje **zero** wywołań `zbuduj_urzadzenie` i `SilnikDynamiki`. Według
+   reguły repo („funkcja istniejąca tylko w testach, niewpięta w ścieżkę użytkownika, to dług") to jest
+   dług — zaplanowany (adapter W6-3B), ale nie zamknięty. **„Testy zielone" ≠ „zdolność działa".**
+2. **Crowbar nie zmienia mocy biernej** — fizyczne zwarcie wirnika przestawia maszynę w pracę
+   indukcyjną z poborem Q, a kontrakt ENM nie niesie schematu zastępczego; skutek NIE jest udawany,
+   brak skutku przypięty testem.
+3. **Domknięcie okna crowbar działa tylko przy zapasie w ograniczniku**: różnica mocy z/bez crowbar
+   **8,4e-05 pu** (zwarcie umiarkowane), **8,3e-17 pu** (głębokie), **2,7e-02 pu** z zapasem. To granica
+   zakresu, nie defekt — udokumentowana i przypięta.
+4. **Warianty kontraktu bez parametrów → nazwana odmowa, nie model**: AVR `IEEE_AC1A`, regulator
+   obrotów `HYGOV`; **turbiny typu 1/2** — brak schematu zastępczego maszyny indukcyjnej w kontrakcie.
+5. **Pola kontraktu nieskonsumowane** z uzasadnieniem i pinem: `sztywnosc_walu_pu`, `tlumienie_walu_pu`
+   (model dwumasowy wymaga PODZIAŁU bezwładności, kontrakt niesie tylko całkowitą), `poslizg_ustalony_pu`,
+   `reg_pradu_kp`/`reg_pradu_ki` (pętla prądu to poziom EMT).
