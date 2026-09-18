@@ -1729,13 +1729,16 @@ class OdmowaBieguDynamikiRms(ValueError):
 def _execute_dynamika_rms(run: CanonicalRun) -> None:
     """Wykonawca `dynamika_rms` (karta W6-1) — ODMAWIA zawsze, bez fasady.
 
-    Karta W6-1 dostarcza WYŁĄCZNIE kontrakty (`ParametryDynamiczne`,
-    `ScenariuszDynamiczny`, `ResultSetDynamicV1`) i gotowość — rdzeń DAE
-    (`network_model/solvers/dynamika/`) jest zakresem W6-2 (B-01: nowy pakiet
-    obok rdzeni FROZEN, jeszcze nieutworzony). Rejestracja rodzaju biegu w
-    `api/v125_contracts.py` istnieje już teraz (kontrakt/metadane), ale ŻADEN
-    bieg tego typu nie może dziś zakończyć się wynikiem — odmowa jest jedynym
-    uczciwym zachowaniem (zero fabrykacji: brak solvera ≠ wynik zerowy/pusty).
+    Karta W6-1 dostarczyła kontrakty (`ParametryDynamiczne`,
+    `ScenariuszDynamiczny`, `ResultSetDynamicV1`) i gotowość, karta W6-2 rdzeń
+    DAE (`network_model/solvers/dynamika/`, B-01: nowy pakiet OBOK rdzeni
+    FROZEN). Rdzeń więc ISTNIEJE — brakuje ADAPTERA, który złoży jego wejście z
+    migawki efektywnej i punktu pracy z rozpływu, a wynik odda jako
+    `ResultSetDynamicV1` (zakres karty W6-3,
+    `docs/plan/KARTA_W6_3_URZADZENIA_I_ADAPTER_2026-09.md`). Do czasu wpięcia
+    adaptera ŻADEN bieg tego typu nie może zakończyć się wynikiem — odmowa jest
+    jedynym uczciwym zachowaniem (zero fabrykacji: brak złożonego wejścia ≠
+    wynik zerowy/pusty).
     """
     raise OdmowaBieguDynamikiRms(
         KOD_RDZEN_DYNAMIKI_NIEDOSTEPNY,

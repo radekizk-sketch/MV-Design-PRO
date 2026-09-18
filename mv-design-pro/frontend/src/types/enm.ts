@@ -451,8 +451,10 @@ export interface Load extends ENMElement {
 
 // ---------------------------------------------------------------------------
 // Parametry dynamiczne zrodel (karta W6-1) — lustro 1:1 `enm/dynamika_modele.py`.
-// Kontrakt wejsciowy DAE (Generator.dynamika); solver (W6-2) nie istnieje,
-// zero fizyki tutaj. Unia dyskryminowana po `rodzina`.
+// Kontrakt wejsciowy DAE (Generator.dynamika); rdzen solvera ISTNIEJE od karty
+// W6-2 (`network_model/solvers/dynamika/**`), ale nie jest jeszcze wpiety w tor
+// biegu — to zakres karty W6-3. Zero fizyki tutaj. Unia dyskryminowana po
+// `rodzina`.
 // ---------------------------------------------------------------------------
 
 export type ZrodloProweniencjiDynamiki =
@@ -684,8 +686,9 @@ export interface Generator extends ENMElement {
 
   /**
    * Parametry dynamiczne zrodla dla biegow czasowych RMS/DAE (karta W6-1).
-   * Kontrakt wejsciowy — rdzen solvera (W6-2) jeszcze nie istnieje, wiec kazdy
-   * bieg `dynamika_rms` konczy sie nazwana odmowa niezaleznie od tego pola.
+   * Kontrakt wejsciowy. Rdzen solvera istnieje (karta W6-2), lecz nie ma
+   * jeszcze adaptera wpinajacego go w tor biegu (karta W6-3), wiec kazdy bieg
+   * `dynamika_rms` konczy sie dzis nazwana odmowa niezaleznie od tego pola.
    */
   dynamika?: ParametryDynamiczne | null;
 }
