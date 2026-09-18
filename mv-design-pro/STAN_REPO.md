@@ -17,16 +17,16 @@
 
 ---
 
-## 1. ZDROWIE SYSTEMU (pomiar na `c307e95f`, 2026-09-16)
+## 1. ZDROWIE SYSTEMU (pomiar łańcuchem f11 na `54150172`, 2026-09-18)
 
 | Sprawdzenie | Wynik |
 |---|---|
-| Backend `pytest tests/ -m "not pandapower"` | **14 557 passed**, 1 skipped (bramka `MV_TEST_POSTGRES_URL`), 1 xfailed (IEEE 13-bus PLANNED), 0 failed — 790 s |
+| Backend `pytest tests/ -m "not pandapower"` | **15 885 passed**, **0 skipped**, 0 failed — 884 s. Pominięcie za bramką `MV_TEST_POSTGRES_URL` ZNIKŁO: fikstura sesji podnosi efemeryczny klaster PostgreSQL z binariów systemowych, więc dialekt produkcyjny ćwiczy KAŻDY bieg lokalny, nie tylko job CI |
 | Wyrocznia pandapower (`-m pandapower`, osobne środowisko) | **30 passed** |
-| `scripts/guardy_z_ci.py` | 85 guardów wołanych przez CI: 84 zielone + `tsconfig_gate_guard` czerwony z zapadki W DÓŁ (dług typów poza bramką 119 → 117; budżet obniżany w odbiorze fali 3); lint jak CI 4/4; 799 testów własnych guardów |
-| Frontend | tsc 0, eslint 0 (w `guardy_z_ci`); pełny vitest i e2e w łańcuchu przedpushowym fali 3 (wynik w evidence §F po zakończeniu) |
-| CI (GitHub, 9 workflowów) | ostatni pełny wpis: evidence §A (szczyt `b89c13b3`); fala 3 po pushu = kolejny wpis |
-| Skala (pomiar 2026-09-09/16) | ~9 080 funkcji testowych backendu; ~10 580 testów frontendu w 892 plikach; 85 guardów CI + testy własne |
+| `scripts/guardy_z_ci.py` | 102 wywołania guardów wołanych przez CI — komplet zielony po naprawie zapadki typów (dług poza bramką 106 → **105**, obniżony z pomiaru); lint jak CI 4/4; **1038** testów własnych guardów |
+| Frontend | tsc 0, eslint 0 (w `guardy_z_ci`); vitest pełny **894 pliki / 12 548 testów + 14 todo**; e2e realny backend — wynik w evidence §F |
+| CI (GitHub, 9 workflowów) | ostatni pełny pomiar: `fd03065e` 8/9 zielonych, czerwony wyłącznie Frontend E2E full (`industrial-template-mass-flow`, odmowa `shunt.voltage_mismatch`) — przyczyna naprawiona w tej fali, wpis po pushu |
+| Skala (pomiar 2026-09-18) | ~15 900 testów backendu w pełnej regresji; 12 548 testów frontendu w 894 plikach; guardy CI + 1038 testów własnych |
 
 ---
 

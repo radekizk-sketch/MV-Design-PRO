@@ -635,6 +635,65 @@ postgres do CI" z pierwszej wersji karty został SKREŚLONY jako oparty na błę
 **Rozbieżność karta–brief z W6-1 (formularz zdarzeń scenariusza w UI)** pozostaje do rozstrzygnięcia w W6-2
 (karta architekta `docs/plan/KARTA_W6_2_RDZEN_DYNAMIKI_2026-09.md` — warunek wejścia spełniony po tym odbiorze).
 
+### F.PG-DIALEKT + KATALOG-NIEZMIENNIKI + SZABLONY-NAPIECIE + HARNESS-RESZTA-2 (łańcuch f11, drzewo `54150172` → `dca43db2`, 2026-09-18)
+
+**Skład drzewa (24 commity nad `fd03065e`).** PG-DIALEKT (5 commitów): fikstura sesji pytest podnosi
+**efemeryczny klaster PostgreSQL** z binariów systemowych (zmienna `MV_TEST_POSTGRES_URL` z otoczenia nadal
+wygrywa, więc job CI działa bez zmian), dialekt bazy jako **parametr** wyścigu przejęcia biegu, kasacja tabel
+legacy i addytywność kolumn dowiedzione na dialekcie produkcyjnym; klaster przeniesiony poza katalog tymczasowy
+pytest (`tmp_path_factory` traciło prawo przejścia, serwer padał — defekt fikstury naprawiony i przypięty
+iniekcją). KATALOG-NIEZMIENNIKI (6 commitów): rejestr reguł katalogu KAT-T/KAT-W z odmową twardą, przegląd
+wiarygodności jako **zdolność produktu** (dwie trasy + ekran + scena harnessu), mierzona gotowość rodzin
+katalogowych, cztery wyłączniki nN z wyciągu producenta, kasacja stratnego rejestru przekształtników.
+SZABLONY-NAPIECIE (3 commity) — opis niżej. HARNESS-RESZTA-2 (8 cherry-picków): sceny składowe, zbieżność,
+koordynacja, porównanie, OLTC, estymacja, FRT/LoM, odbiór-zgodność, akademickie i SSCI karmione wynikami
+**realnych biegów backendu**; zapadka literałów harnessu kreatora **164/40 → 0/0**.
+
+**Dwa defekty KLASY znalezione własnymi niezmiennikami (nie audytem, nie recenzją).**
+(1) **Bramka napięciowa istniała na JEDNEJ z dwóch dróg budowy stacji.** `insert_station_on_segment_sn`
+sprawdzała zgodność napięć transformatora z szyną, `append_station_on_endpoint` — nie. Pomiar bezpośredni:
+szablon `tpl_abonencka_630kva_pomiar_20kv` na magistrali 15 kV materializował transformator
+`tr-sn-nn-20-04-630kva-dyn11` (20/0,4 kV) na szynach SN 15,0 kV — bez słowa ostrzeżenia. Ta sama funkcja
+walidująca wpięta na obu drogach.
+(2) **Reguła „korzeń modelu" żyła w TRZECH niezależnych kopiach** — dwa porównania z kategorią GPZ w `apply.py`
+(wymaganie odcinka / odmowa przy wskazanym odcinku) i trzecia jako lista kategorii zaszyta we froncie. Zgadzały
+się w dniu pomiaru; pierwsza nowa kategoria korzenia rozjechałaby je po cichu (UI oferuje, backend odmawia).
+Naprawa: jeden predykat `template_wchodzi_w_segment` / `kategoria_wchodzi_w_segment` w `schema.py`, pole
+`wchodzi_w_segment` w kontrakcie szablonu **i** kategorii, kasacja duplikatu we froncie, kod odmowy nazwany po
+KLASIE (`template.korzen_modelu_nie_wchodzi_w_segment`). Obie połówki pary predykatów parametryzowane po CAŁYM
+rejestrze 73 szablonów: korzeń + odcinek ⇒ odmowa nazwana; wcięcie bez odcinka ⇒ `template.target_segment_required`.
+Do tego napięcie SN jako część kontraktu oferty (`sn_voltage_kv`, pomiar rozkładu przypięty testem: 73 szablony =
+64 × 15 kV + 3 × 20 kV + 6 napięciowo obojętnych) — bo wcześniej szablon kompensacji 20 kV wyglądał w
+przeglądarce na pasujący do sieci 15 kV, a backend odrzucał go dopiero po kliknięciu.
+
+**Defekty szwu przy scaleniu (każdy u źródła).** (a) Fixtury scen harnessu niosły odcisk katalogu z drzewa
+wykonawcy, a ta sama fala zmieniła katalog — przeliczone generatorem na drzewie połączonym; różnica obejmuje
+WYŁĄCZNIE `catalog_fingerprint` (11 miejsc) i `semantic_fingerprint` (4), zero wielkości fizycznych; parytet
+`tests/ci/test_fixtury_harnessu.py` **8 failed → 166 passed**. (b) Dwie karty podniosły ten sam licznik pól
+kontraktu wejściowego — pin ustawiony z **pomiaru guardem na drzewie połączonym (3726)**, nie z sumy
+arytmetycznej kart (3725 + 1), z oboma powodami w komentarzu. (c) Mocki `StationTemplateSummary` w teście planera
+masowego były NIEPEŁNE względem kontraktu (6 brakujących pól) — test ćwiczył inny kształt niż produkt; fixtury
+uzupełnione, dług typów poza bramką **106 → 105**, zapadka obniżona z pomiaru (w obie strony).
+
+**Weryfikacja (łańcuch f11, kody wyjścia łapane bezpośrednio):** pytest pełny `-m "not pandapower"`
+**15 885 passed / 0 skipped** (rc=0, 884 s) — **pierwsza pełna regresja bez ANI JEDNEGO pominięcia**, dialekt
+produkcyjny ćwiczony lokalnie; wyrocznia pandapower **30 passed** (rc=0); `guardy_z_ci.py` **komplet zielony**
+(102 wywołania guardów + lint jak CI 4/4 + tsc + eslint) + **1038** testów własnych guardów; vitest pełny
+**894 pliki / 12 548 testów + 14 todo** (rc=0); e2e realny backend, 8 speców krytycznych dla tej fali
+(przepływ masowy szablonów, bieg krytyczny, dowody OZE, szablony rola A, przegląd wiarygodności, konfigurator
+DER, wszystkie sceny, kreator): **104 passed** w 5,4 min (rc=0).
+
+**Uczciwie o zakresie pomiaru.** Etapy pytest / pandapower / vitest / e2e biegły na `54150172`; delta do
+pushowanego `dca43db2` to DOKŁADNIE dwa pliki — fikstura testu planera i zapadka typów — każdy zmierzony
+bezpośrednio (`tsconfig_gate_guard` rc=0 przy 105/105, `StationBatchPlanner.test.tsx` 10 passed), a komplet
+guardów przebiegnięty ponownie na drzewie ostatecznym. Pełny zestaw e2e (wszystkie 90 speców) puszcza CI
+w workflow `frontend-e2e-full` — to on jest bramką, nie lokalny podzbiór.
+
+**Stan CI PRZED tą falą (pomiar `fd03065e`, 2026-09-17 20:03 UTC):** 8/9 workflowów zielonych w obu zdarzeniach;
+czerwony wyłącznie `Frontend E2E full` — jeden spec, `industrial-template-mass-flow`, odmowa
+`shunt.voltage_mismatch` na `tpl_kompensacja_1v8mvar_20kv` (432 passed / 1 failed, run `35266287860`).
+Przyczyna naprawiona w tej fali kontraktem napięcia i roli szablonu; weryfikacja po pushu.
+
 ## G. Ustalenia adwersaryjne (§38) — po każdej granicy
 
 **W3 fala 3 — granice (2026-09-16):** (1) „zielony spec podkarty = zielony ekran" OBALONE: W3-G3 dodała sekcję pasma z pobraniem po `runId`, a sceny harnessu zwarć niosły biegi-atrapy — pełny bieg e2e (152 testy) złapał 4 czerwone, których 6 specy podkart nie widziało; klasa = każda scena harnessu z ręcznymi liczbami solvera jest bombą dla każdej nowej sekcji ekranu; odpowiedź = fixtury z realnego biegu backendu (karta HARNESS-ZWARCIA-Z-BACKENDU), a nie atrapa końcówki pasma. (2) Zapadka `tsconfig_gate_guard` „w obie strony" zadziałała jak zaprojektowano: naprawy typów w testach poza bramką (recenzja G1/G2) obniżyły dług 119 → 117 i guard ODMÓWIŁ zielonego bez utrwalenia (budżet obniżony w tym samym odbiorze). (3) Parytet fixtur harnessu na CI (klasa z fali B-02): szum zmiennoprzecinkowy liczb kontraktu między maszynami → komparator z tolerancją 1e-6 + kwantyzacja `WerdyktProjektowy.to_dict()` (ADR-018) zamiast luzowania asercji; pin bool/int dokładny (KLASA: `True == 1` w Pythonie maskowałoby typ). (4) Nawigacja wynikowa dwupoziomowa po B-02 unieważniła lokatory zakładek w 7 specach fal 1–3 (strict mode: dwie zakładki o tej samej nazwie) — naprawione helperem `otworzZakladkeWynikow` (jedno miejsce), nie per spec. (5) Odczyt CI przy odbiorze (nie lokalny bieg) ujawnił trzecią klasę: test czasowy `test_lekkie_zadanie_przechodzi_w_trakcie_biegow` czerwony na runnerze (run 4946, `20890e88`) i zielony w biegu PR tego samego commitu — „liczba sond w partii jest bezwymiarowa" była deklaracją bez testu na innej maszynie; odpowiedź = usunięcie czasu z werdyktu (spotkanie w oknie solvera, karta CI-WSPOLBIEZNOSC), nie trzecia kalibracja progu ani powiększenie modelu (to była naprawa instancji W1). Lekcja procesowa: lokalna zieleń pełnego `pytest` na 4 rdzeniach NIE jest dowodem odporności testu czasowego na inną maszynę — każdy test z zegarem w werdykcie to dług do przepisania, nie do „obserwacji".
