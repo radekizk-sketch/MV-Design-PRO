@@ -1076,3 +1076,52 @@ w tym `npm run type-check` i `npm run lint` zielone · mypy **708 plików bez uw
 **894 pliki / 12 548 passed + 14 todo** · e2e na realnym backendzie **89 passed** (3,8 min; pięć
 specyfikacji, w tym naprawiona `dowody-flow-ekspert-screenshot`). Zrzuty PNG odtworzone z HEAD —
 regeneraty nie wchodzą do commitu.
+
+### F.PRZYRZĄD, KTÓRY NIE ODTWARZA CI — dwie warstwy fałszywej zieleni (łańcuchy f16/f17, 2026-09-18)
+
+Domknięcie trzech czerwieni z `9d07e5a9` odsłoniło **klasę ważniejszą od samych czerwieni**: narzędzie
+weryfikujące, które nie odtwarza warunku produkcyjnego, produkuje zieleń NIEZALEŻNĄ od stanu kodu.
+W jednej fali trafiły się dwa niezależne przypadki tej klasy.
+
+**Warstwa 1 — klaster testowy na `trust`.** Poprawka gubionego hasła (`1fa04d1b`) była prawdziwa, ale
+lokalna regresja jej nie łapała, bo fikstura stawiała PostgreSQL z `initdb -A trust`, który przyjmuje
+połączenie bez względu na to, czy adres niesie hasło. Klaster odtwarza teraz warunek CI
+(`scram-sha-256`, hasło ze znakami specjalnymi wymuszające `URL.create`). Dowód: przywrócenie
+`str(URL)` daje lokalnie **12 failed / 48 passed** — dokładnie tyle, ile zgłosiło CI.
+
+**Warstwa 2 — odbicie lintu niekompletne wobec workflowa.** `guardy_z_ci.py::LINT_JAK_CI` niosło
+CZTERY wywołania, workflow uruchamia SZEŚĆ: karta KATALOG-NIEZMIENNIKI dopisała `black`/`ruff` dla
+`backend/scripts` do CI i nie dopisała ich do odbicia. Lokalny łańcuch meldował „KOMPLET ZIELONY" na
+drzewie, które CI odrzucało (`black --check` na `eksport_fixtur_harnessu.py`, run 35309735634).
+Czerwień była przy tym niewidoczna przez trzy poprzednie biegi, bo krok lintu stoi ZA pytestem,
+a pytest padał pierwszy — defekt formatu czekał w cieniu defektu testów.
+
+**Dlaczego pin tego nie złapał (reguła predykatów parami).** Self-test sprawdzał TYLKO jeden kierunek —
+że każdy wpis odbicia występuje w workflowie — i przypinał liczbę ręcznie (`== 4`). Żaden z tych
+warunków nie wykrywa wywołania DODANEGO DO CI i pominiętego w odbiciu. Dwa niezależne warunki, które
+„dziś się zgadzają", są defektem czekającym na dane brzegowe. Warunek wejścia i wyjścia pochodzi teraz
+z JEDNEGO źródła: test parsuje workflow i żąda RÓWNOŚCI zbiorów, a komunikat nazywa brakujące i
+nadmiarowe wywołania. Znalezisko uboczne tej samej klasy w sąsiednim teście: fikstura oznaczała czerwone
+wywołanie po obecności flagi `--config`, która po dopisaniu `scripts` niesie już dwa polecenia — test
+pilnowałby czegoś innego, niż deklaruje; wskazuje teraz polecenie DOKŁADNIE.
+
+**Tolerancja parytetu właściwa dla ilorazów ograniczonych.** Ostatnia czerwień parytetu fikstur:
+`koordynacja $.rows[2].cos_phi` 3,9231140792499414e-07 wobec 3,923647677786405e-07 — **5,336e-11
+bezwzględnie**, ale **1,36e-4 względnie**, tuż nad RTOL. Dla wielkości bezwymiarowej ograniczonej
+(ilorazu o naturalnej skali 1, którego licznik może dążyć do zera przy skończonym mianowniku)
+tolerancja WZGLĘDNA jest złym przyrządem — `cos φ` gałęzi niosącej praktycznie samą moc bierną ma
+nieograniczony błąd względny przy znikomym bezwzględnym. Pasmo bezwzględne 1e-9 działa jako
+ALTERNATYWA obok tolerancji względnej i wyłącznie dla pól tej klasy (`cos_phi`, `fraction`,
+`voltage_unbalance_u2_u1` — członkostwo z DEFINICJI wielkości, nie z zaobserwowanego zakresu; poza
+listą świadomie `rx_ratio` i `iq_bierny_pu`, dla których naturalną skalą jest własna wartość).
+Porównanie traci przez to wyłącznie czułość poniżej 1e-9 bezwzględnie — pięć rzędów poniżej czwartego
+miejsca po przecinku na ekranie i osiem rzędów poniżej progów normowych. Iniekcje czerwieni: pasmo
+ustawione na 0 → test pada; pasmo uczynione globalnym (bez sprawdzenia klucza) → test pada.
+
+**Pomiar łańcuchów f16/f17.** f16 (drzewo `839fc1eb`): pytest **16 069 passed / 0 skipped** (751 s),
+pandapower 30, ANDES 3, guardy KOMPLET + 1 058 self-testów, mypy 708 plików. f17 (drzewo `beb5030d`,
+po uzupełnieniu odbicia lintu): guardy KOMPLET ZIELONY z **sześcioma** wywołaniami lintu zamiast
+czterech (`black`/`ruff` dla `src tests`, `../scripts` i `scripts` — wszystkie zielone) + 1 058
+self-testów, pytest **16 069 passed / 0 skipped** (753 s). Stan CI na `839fc1eb`: 8/9 — dialekt produkcyjny,
+E2E full, wyrocznie pandapower i ANDES, komplet guardów i frontend zielone; jedyna czerwień to
+opisany wyżej krok lintu, zamknięty w `beb5030d`.
