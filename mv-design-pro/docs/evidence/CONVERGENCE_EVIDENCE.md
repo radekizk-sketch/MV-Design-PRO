@@ -1192,3 +1192,79 @@ więc vitest/e2e z `2d53c1c7` (CI 9/9) pozostają wiążące.
 5. **Pola kontraktu nieskonsumowane** z uzasadnieniem i pinem: `sztywnosc_walu_pu`, `tlumienie_walu_pu`
    (model dwumasowy wymaga PODZIAŁU bezwładności, kontrakt niesie tylko całkowitą), `poslizg_ustalony_pu`,
    `reg_pradu_kp`/`reg_pradu_ki` (pętla prądu to poziom EMT).
+
+### F.W6-3B — adapter dynamiki: bieg `dynamika_rms` kończy się WYNIKIEM (łańcuch f19, drzewo `ca691907`, 2026-09-18)
+
+Do tej fali `_execute_dynamika_rms` **odmawiał bezwarunkowo** — rdzeń DAE (W6-2) i biblioteka urządzeń
+(W6-3A) żyły wyłącznie w testach. Adapter zamyka ten dług: migawka efektywna + punkt pracy ze
+wskazanego biegu rozpływu → `WejscieDynamiki` → `SilnikDynamiki` → `ResultSetDynamicV1` w `raw_result`
+plus szeregi czasowe. Ścieżka przez HTTP udowodniona testem, nie deklaracją. Pomiar wykonawcy AST na
+wszystkich ośmiu wykonawcach biegu: **0/8 odmawia bezwarunkowo** (przed falą 1/8).
+
+**Rozstrzygnięcia, które decydują o poprawności inżynierskiej:**
+- **Punkt pracy jest DANĄ WEJŚCIOWĄ biegu** (`options.pf_run_id`, wzorzec `sc_run_id` zabezpieczeń),
+  a nie „ostatnim rozpływem, jaki był". Płaski start 1,0 p.u. nie ma w adapterze żadnej drogi.
+- **Podział mocy węzła JEDNYM predykatem**: `S_urz = S_net(rozpływ) + Σ S_odbiorów szyny`. Prąd
+  urządzenia i prądy odbiorów sumują się do wstrzyku węzłowego rozpływu NIEZALEŻNIE od tego, czy Q
+  źródła jest nastawą (PQ), wynikiem regulacji napięcia (PV), kształtowania falownika (Q(U)/cos φ) czy
+  bilansem szyny zasilającej. Dwa niezależne warunki („moc źródła z nastawy" + „moc odbioru z modelu")
+  zgadzałyby się wyłącznie dla węzłów PQ bez regulacji — to jest dokładnie ta klasa, którą
+  „predykaty parami" nakazuje sprowadzić do jednego źródła.
+- **Parytet Y-bus adaptera z rozpływem** jest warunkiem sensu punktu pracy i jest PRZYPIĘTY testem:
+  max |Δ| = **4,07·10⁻¹²** przy normie macierzy 1,59·10⁴ (≈2,6·10⁻¹⁶ względnie).
+- **Stopień dowodowy `UNVALIDATED_MODEL`**, nigdy `VALIDATED_SIMULATION` z automatu: bieg JEST
+  policzony i startuje z równowagi wyznaczonej rozpływem (‖g(x₀,y₀)‖ = **7,15·10⁻⁹** przy
+  `eps_init` 1·10⁻⁶), ale poprawność modelu dla pełnej biblioteki urządzeń nie jest WYKAZANA.
+- Rejestr odmów adaptera: **15 kodów, ZAMKNIĘTY** (kod spoza rejestru rzuca `AssertionError`, przypięte
+  testem). Kody rdzenia (13) idą w górę nietknięte — m.in. zwarcie niesymetryczne przenoszone bez
+  zawężenia, żeby niesymetria nie weszła po cichu jako 3F.
+
+**Iniekcja czerwieni: 16 iniekcji, 0 luk** — w tym dwie, które wykryły REALNE luki w testach wykonawcy
+(pierwszy przebieg był zielony): `zloz_widok_sieci` jako funkcja publiczna nie miała własnego testu
+odmowy dla wiszącej referencji, a sieć wzorcowa G16 nie miała baterii w stanie `open`, więc filtr
+statusu nie był ćwiczony.
+
+**Dwie naprawy ARCHITEKTA w tej samej kolejce** (wykonawca słusznie zgłosił je jako decyzje poza swoją
+kartą; obie okazały się poważniejsze, niż wyglądały):
+
+1. **Rdzeń opisywał sam siebie nieprawdziwie** (`45fca115`). `ZALOZENIA_RDZENIA` twierdziło „maszyna
+   klasyczna 2. rzędu i szyna sztywna" jeszcze po W6-3A, która dołożyła pięć rodzin — a to zdanie
+   trafia do pola `zalozenia` KAŻDEGO wyniku, czyli wprost do projektanta. To nie jest bramka B-01:
+   pakiet `solvers/dynamika/**` powstał w W6-2 jako nowy, obok rdzeni zamrożonych. Naprawa nie polega
+   na przepisaniu zdania — dokładnie tak się rozjechało — tylko na WYPROWADZENIU go z rejestru
+   `RODZINY_OBSLUGIWANE`, z pinem sprawdzającym zgodność w OBIE STRONY.
+2. **Klasa „cichego pominięcia" była domknięta w połowie** (`ca691907`). Odmowa dla ŹRÓDŁA z wiszącą
+   referencją szyny istniała od CV-3.3-B, ale gałęzie, transformatory i wytwórcy byli nadal pomijani
+   `continue` w PIĘCIU miejscach `enm/mapping.py` (składanie Y1, Y0 i grafu IR). Skutek jest gorszy niż
+   brak elementu: rozpływ i zwarcia liczą SIEĆ INNĄ NIŻ ZAPISANA, bez śladu w wyniku i bez kodu
+   gotowości; walidator ENM tego nie blokuje, więc assembler jest ostatnim miejscem, które może
+   powiedzieć prawdę. Pomiar bezpieczeństwa zmiany: **żadna fikstura ani sieć wzorcowa nie miała
+   wiszącej referencji**, więc dla istniejących danych to zachowanie tożsame — złote hashe nietknięte.
+   Znalezisko uboczne: helper `zloz` w teście adaptera budował graf jako ARGUMENT, czyli PRZED własną
+   odmową modelu — odwrotnie niż produkcja; test sprawdzałby komunikat innej warstwy, niż mówi jego
+   nazwa. Helper mirroruje teraz `_execute_dynamika_rms`.
+
+**DŁUG JAWNIE NAZWANY — fala go NIE zamyka:**
+1. **Zdolność nie ma POWIERZCHNI.** Osiągalna wyłącznie przez API HTTP; żaden ekran `ui2/wyniki/**` nie
+   woła `dynamika_rms` ani nie czyta `resultset_dynamic_v1` (pomiar: jedyne trafienie w `frontend/` to
+   komentarz w `types/enm.ts`). Zakres W6-3C razem z konwergencją `_execute_dynamic_stability`
+   i odcięciem `stability_rms`. Do tego czasu: „backend z tokiem pracy, bez powierzchni".
+2. **Brak niezależnej wyroczni dla rodziny DYNAMICS.** G16 jest `REGRESSION_ONLY` i dowodzi ŚCIEŻKI,
+   nie fizyki; wyrocznie analityczne rdzenia żyją na układzie maszyna–szyna sztywna. Walidacja
+   krzyżowa ANDES dla pełnej biblioteki na sieci rzeczywistej pozostaje otwarta — i to jest powód
+   stopnia dowodowego `UNVALIDATED_MODEL`.
+3. **Impedancja zastępcza łącznika zamkniętego w DWÓCH miejscach** — zmienna lokalna w zamrożonym
+   rdzeniu rozpływu (niedostępna importem) i stała w adapterze. Konsolidacja wymaga edycji rdzenia
+   FROZEN, więc jest bramką właściciela; do tego czasu rozjazd wywala test parytetu Y-bus, nie produkcję.
+4. **Odbiór ZIP i zwarcia niesymetryczne kończą bieg odmową** — granica rdzenia (odbiór stałomocowy
+   z kontraktu; składowe symetryczne to zakres W6-4), nie wybór adaptera.
+
+**Weryfikacja architekta na scalonym drzewie (łańcuch f19, `ca691907`):** pytest pełny
+`-m "not pandapower and not andes"` **16 297 passed / 0 skipped** (919 s; +63 wobec 16 234 przed falą)
+· wyrocznia pandapower **30 passed** · wyrocznia ANDES **3 passed** · `guardy_z_ci.py` **KOMPLET
+ZIELONY** + **1 058** self-testów · mypy **719 plików bez uwag** · vitest pełny **894 pliki / 12 548 passed + 14 todo**. Zapadka `solver_input_substitute_guard` podniesiona Z POMIARU: pól **3828 → 3829** (jedyna
+nowa nazwa `PunktPracyRozplywu.wstrzyki_pu`), plików 533 → 534; dług i wykluczenia bez zmian. Złote
+hashe: **+6 kluczy** parytetu assemblera i **+3** parytetu P11 dla nowej sieci G16, **0 zmienionych,
+0 usuniętych** — wykonawca odrzucił propozycję generatora, który chciał przepisać 50 wpisów CUDZYCH
+sieci różnicami 1e-14…1e-16 (szum zmiennoprzecinkowy tej maszyny), i scalił wyłącznie nowe klucze.
+To jest właściwa decyzja: cicha re-baseline złotych hashy kasuje sygnał, dla którego one istnieją.
