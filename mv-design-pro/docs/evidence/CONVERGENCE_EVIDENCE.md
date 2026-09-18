@@ -999,3 +999,80 @@ i `no-zero-spam.test.ts`, jedyne dwa trafienia zewnętrzne poza modułem), oba s
 **teza wskrzeszenia SIĘ BRONI** po korekcie — 0 pozostałych odwołań do skasowanej ścieżki poza bramką wskrzeszenia
 samą w sobie (weryfikowalne — `check_w3j_voltage_criteria_resurrection`, 9 self-testów, w tym test na sztucznie
 wskrzeszonym pliku w INNYM miejscu niż oryginalne, zgodnie z konwencją tej bramki).
+
+### F.CI-CZERWIEŃ 3× — dialekt produkcyjny, parytet fikstur, spec dowodów (łańcuch f15, drzewo `66e33aa8`, 2026-09-18)
+
+Trzy niezależne czerwienie na pchniętym `9d07e5a9` (Python tests run 5045, E2E full run 458). Każda była
+**prawdziwa** — żadnej nie dało się odpisać na infrastrukturę — i każda miała inny mechanizm.
+
+**1. Dialekt produkcyjny (12 czerwonych).** `str(URL)` w SQLAlchemy MASKUJE hasło ciągiem `***`, więc adres
+bazy testowej budowany przy dokładaniu `search_path` tracił hasło. Objaw z dziennika serwera CI:
+`FATAL: password authentication failed for user "postgres"`, `pg_hba.conf` linia 128
+(`host all all all scram-sha-256`). Naprawa u źródła: `render_as_string(hide_password=False)` (`1fa04d1b`),
+plus **5 testów przypinających klasę** (hasło zwykłe / ze znakami specjalnymi / z ukośnikiem, adres bez
+hasła zostaje bez hasła, oraz pin, że `str(URL)` NADAL maskuje — żeby obejście dało się uprościć, gdy
+SQLAlchemy to zmieni).
+
+**Drugi defekt tej samej klasy — dlaczego lokalna regresja tego NIE złapała (`66e33aa8`).** Fikstura
+efemerycznego klastra stawiała go z `initdb -A trust`. Klaster na `trust` przyjmuje połączenie
+NIEZALEŻNIE od tego, czy adres niesie hasło — więc **każdy** defekt gubiący hasło po drodze przechodzi
+lokalnie na zielono i zapala się dopiero na CI. Zielona lokalna regresja przy czerwonym CI to fałszywa
+pewność, a nie szczęście. Klaster testowy odtwarza teraz warunek CI: `scram-sha-256` (ta sama metoda,
+której używa obraz `postgres` w workflow), hasło ze znakami specjalnymi (`:@/#`) wymuszające budowę
+adresu przez `URL.create` zamiast sklejania napisów, `PGPASSWORD` w środowisku narzędzi klastra, plik
+hasła kasowany w `finally` zaraz po `initdb`. **Dowód, że harness łapie teraz klasę (iniekcja czerwieni,
+nie deklaracja):** przywrócenie `str(URL)` daje lokalnie **12 failed / 48 passed** — DOKŁADNIE tyle
+przypadków, ile zgłosiło CI. Na kodzie poprawnym 60 passed w 5,06 s.
+
+**2. Parytet fikstur harnessu (5 czerwonych, wykonawca `2c3e0436`).** Test żądał równości bit w bit od
+wielkości, o których repo już wie, że przenośne nie są (karty CI-PARYTET-3/4/5): rozwiązanie WLS, człon
+bliski zeru w śladzie składowych i **skróty policzone nad tymi liczbami** (`result_hash`,
+`deterministic_signature`, `export_ref`). Solver i fikstury bez zmian — naprawione jest POROWNANIE, w
+trzech warstwach z progami Z POMIARU: szkielet dokładnie; liczby z tolerancją względną 1e-4 (zapas ×8,5
+nad zmierzonym maksimum 1,2e-5 na `normalized_residual`) i pasmem martwym zera 1e-8 (zapas ×7,8 nad
+zmierzonym 1,27454e-09), działającym TYLKO gdy obie wartości w nim leżą; skróty nad liczbami
+nieprzenośnymi — po kształcie (prefiks rodzaju, długość ciągu szesnastkowego), obecności i stabilności na
+jednej maszynie. Znalezisko uboczne: dotychczasowe `ATOL 1e-6` było **785× powyżej zmierzonego szumu** i
+zrównywało z zerem realne współczynniki katalogowe tablic łuku (8,346e-07). Skróty nad WEJŚCIEM
+(`input_hash`, `snapshot_hash`, `enm_hash`, `model_hash`, `catalog_*`) świadomie POZA listą — to jedyny
+sygnał dryfu danych wejściowych, jaki ten test ma. Obie listy pól ZAMKNIĘTE i przypięte self-testem;
+zero wykluczeń scen (parametryzacja bez zmian, 171 passed).
+
+**3. Spec dowodów E-29/E-30 (4 czerwone, `0d5bb13b`).** `dowody-flow-ekspert-screenshot.spec.ts` pilnował
+liczb WPISANYCH RĘCZNIE (`0,1000 + j 0,4000`, `0,1234`, `uuid-tr-1`, `8,700e-7`, `1,7720`,
+„Zasilanie GPZ"), a karta HARNESS-RESZTA-2 podmieniła sceny E-29/E-30 na wyniki REALNEGO biegu backendu.
+Ekran pokazywał poprawne liczby — to test pamiętał stare. Naprawa idzie w KLASĘ, nie w instancję:
+podmiana literałów na nowe unieważniłaby się przy następnym biegu generatora fikstur, więc **każde**
+oczekiwanie czyta TĘ SAMĄ fiksturę, którą scena podaje ekranowi. Spec sprawdza teraz PRZEPŁYW
+(backend → fikstura → ekran): Z1/Z0 z `skladowe_scena_wynik.rows[0]` (część rzeczywista i moduł urojonej
+osobno — znak ekran składa typograficznie U+2212, format pl-PL bez separatora tysięcy z pomiaru renderu);
+podstawienie KaTeX musi być JEDNYM z `substitution_latex` śladu WHITE BOX sceny (równość tekst-do-tekstu)
+plus warunek niezdegenerowania wywodu; wpis uziemienia punktu neutralnego musi nazywać element
+ISTNIEJĄCY w migawce sceny (realna scena uziemia stronę DN transformatora, nie „Zasilanie GPZ" z dawnej
+ręcznej fikstury); zbieżność — liczba iteracji, cztery liczby bilansu, identyfikator gałęzi regulatora
+OLTC i ostatnia norma niezbilansowania, z asercją `ostatnia norma < tolerancja biegu` (uczciwy dowód
+zbieżności zamiast zapamiętanej liczby).
+
+**Wniosek metodyczny.** Dwie z trzech czerwieni to ten sam błąd na dwóch piętrach: **test pilnował
+zapamiętanej wartości zamiast kontraktu**. Fikstura harnessu i spec e2e przestają być prawdą, gdy dane
+pochodzą z realnego biegu — prawdą jest relacja między źródłem a ekranem. Trzecia (dialekt) pokazuje
+wariant groźniejszy: harness, który nie potrafi odtworzyć warunku produkcyjnego, produkuje zieleń
+NIEZALEŻNĄ od poprawności kodu.
+
+**Korekta wcześniejszego meldunku (uczciwość w obie strony).** W odbiorze W6-2 zapisałem dług: „job
+wyroczni ANDES nigdy nie biegł na runnerze". To już NIEPRAWDA — na `9d07e5a9` job
+*Wyrocznia dynamiki ANDES (izolowany venv)* (105457720974, `Python tests` run 5045) wykonał krok
+„marker `andes`, cały katalog tests" w **2 min 58 s ze statusem success**. Wyrocznia zewnętrzna biegnie
+więc na CI naprawdę, nie tylko w opisie. Lokalny łańcuch pokazywał dla tego kroku `rc=5` („no tests
+collected") — przyczyna zmierzona: izolowany venv ANDES nie ma zależności backendu, a
+`backend/tests/conftest.py::pytest_ignore_collect` wycisza wtedy CAŁE zbieranie poza `tests/proof_engine`.
+Wskazanie pliku wprost omija to wyciszenie i daje 3 passed. To ograniczenie LOKALNEGO środowiska, nie luka
+w pokryciu: job CI ma komplet zależności i zbiera cały katalog `tests` z markerem.
+
+**Pomiar łańcucha f15 (drzewo `66e33aa8`, 2026-09-18).** pytest pełny `-m "not pandapower and not andes"`
+**16 068 passed / 0 skipped / 33 deselected** (751 s) · wyrocznia pandapower **30 passed** · wyrocznia ANDES
+**3 passed** (forma plikowa) · `guardy_z_ci.py` **KOMPLET ZIELONY** + **1 058** testów własnych guardów (181 s),
+w tym `npm run type-check` i `npm run lint` zielone · mypy **708 plików bez uwag** · vitest pełny
+**894 pliki / 12 548 passed + 14 todo** · e2e na realnym backendzie **89 passed** (3,8 min; pięć
+specyfikacji, w tym naprawiona `dowody-flow-ekspert-screenshot`). Zrzuty PNG odtworzone z HEAD —
+regeneraty nie wchodzą do commitu.

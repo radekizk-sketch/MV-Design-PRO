@@ -21,12 +21,13 @@
 
 | Sprawdzenie | Wynik |
 |---|---|
-| Backend `pytest tests/ -m "not pandapower"` | **15 885 passed**, **0 skipped**, 0 failed — 884 s. Pominięcie za bramką `MV_TEST_POSTGRES_URL` ZNIKŁO: fikstura sesji podnosi efemeryczny klaster PostgreSQL z binariów systemowych, więc dialekt produkcyjny ćwiczy KAŻDY bieg lokalny, nie tylko job CI |
+| Backend `pytest tests/ -m "not pandapower and not andes"` | **16 068 passed**, **0 skipped**, 0 failed — 751 s (łańcuch f15, drzewo `66e33aa8`). Pominięcie za bramką `MV_TEST_POSTGRES_URL` ZNIKŁO: fikstura sesji podnosi efemeryczny klaster PostgreSQL z binariów systemowych, więc dialekt produkcyjny ćwiczy KAŻDY bieg lokalny, nie tylko job CI |
 | Wyrocznia pandapower (`-m pandapower`, osobne środowisko) | **30 passed** |
-| `scripts/guardy_z_ci.py` | 102 wywołania guardów wołanych przez CI — komplet zielony po naprawie zapadki typów (dług poza bramką 106 → **105**, obniżony z pomiaru); lint jak CI 4/4; **1038** testów własnych guardów |
+| Wyrocznia dynamiki ANDES (`-m andes`, osobne środowisko) | **3 passed** lokalnie; na CI job *Wyrocznia dynamiki ANDES* zielony (2 min 58 s, run 5045) |
+| `scripts/guardy_z_ci.py` | 102 wywołania guardów wołanych przez CI — komplet zielony po naprawie zapadki typów (dług poza bramką 106 → **105**, obniżony z pomiaru); lint jak CI 4/4; **1058** testów własnych guardów |
 | Frontend | tsc 0, eslint 0 (w `guardy_z_ci`); vitest pełny **894 pliki / 12 548 testów + 14 todo**; e2e realny backend — wynik w evidence §F |
-| CI (GitHub, 9 workflowów) | ostatni pełny pomiar: `fd03065e` 8/9 zielonych, czerwony wyłącznie Frontend E2E full (`industrial-template-mass-flow`, odmowa `shunt.voltage_mismatch`) — przyczyna naprawiona w tej fali, wpis po pushu |
-| Skala (pomiar 2026-09-18) | ~15 900 testów backendu w pełnej regresji; 12 548 testów frontendu w 894 plikach; guardy CI + 1038 testów własnych |
+| CI (GitHub, 9 workflowów) | ostatni pełny pomiar: `9d07e5a9` 7/9 zielonych — czerwone `Python tests` (dialekt produkcyjny 12 + parytet fikstur 5) i `Frontend E2E full` (4 przypadki dowodów E-29/E-30). Wszystkie trzy przyczyny naprawione u źródła w tej fali (evidence §F), wpis po pushu |
+| Skala (pomiar 2026-09-18, łańcuch f15) | 16 068 testów backendu w pełnej regresji; 12 548 testów frontendu w 894 plikach; guardy CI + 1058 testów własnych |
 
 ---
 
