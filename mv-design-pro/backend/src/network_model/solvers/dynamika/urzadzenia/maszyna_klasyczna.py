@@ -87,6 +87,11 @@ class MaszynaKlasyczna:
         return NAZWY_STANOW_MASZYNY_KLASYCZNEJ
 
     @property
+    def stany_bez_rownowagi(self) -> tuple[str, ...]:
+        """Kazdy stan maszyny klasycznej MUSI byc rownowaga w punkcie pracy."""
+        return ()
+
+    @property
     def admitancja_pu(self) -> complex:
         return admitancja_wewnetrzna(self.ra_pu, self.x_prim_pu)
 

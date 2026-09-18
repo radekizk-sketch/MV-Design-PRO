@@ -60,6 +60,25 @@ KOD_REINICJALIZACJA_NIEZBIEZNA = "dynamika.reinicjalizacja_niezbiezna"
 KOD_NASTAWY_SPRZECZNE = "dynamika.nastawy_sprzeczne"
 #: Wejscie sieciowe sprzeczne (wezel bez indeksu, galaz do nieistniejacego wezla).
 KOD_SIEC_NIESPOJNA = "dynamika.siec_niespojna"
+#: Rodzina parametrow dynamicznych spoza zbioru, ktory biblioteka urzadzen umie
+#: zbudowac (karta W6-3A). NIGDY cicha degradacja do maszyny klasycznej: brak
+#: modelu rodziny jest informacja dla projektanta, nie powodem do podmiany fizyki.
+KOD_RODZINA_NIEOBSLUGIWANA = "dynamika.rodzina_urzadzenia_nieobslugiwana"
+#: Parametry urzadzenia sa wewnetrznie sprzeczne w sposob, ktorego kontrakt ENM
+#: nie waliduje (np. czlon wyprzedzajacy bez czlonu opozniajacego = rozniczkowanie
+#: idealne, zerowa impedancja wirtualna zrodla napieciowego, dopasowanie krzywej
+#: nasycenia bez rozwiazania). Zwiazek miedzy polami, nie brak pola.
+KOD_PARAMETRY_SPRZECZNE = "dynamika.parametry_urzadzenia_sprzeczne"
+#: Wariant bloku regulacji nazwany w kontrakcie, ktorego POZOSTALE pola kontraktu
+#: nie parametryzuja (np. wzbudnica wirujaca IEEE AC1A bez stalej czasowej
+#: wzbudnicy). Model o tej nazwie nie da sie zlozyc z dostepnych danych, a
+#: podstawienie innej struktury pod ta sama nazwa byloby fabrykacja.
+KOD_WARIANT_BEZ_PARAMETROW = "dynamika.wariant_regulatora_bez_parametrow"
+#: Punkt pracy lezy poza ograniczeniem urzadzenia (prad ponad `i_max`, wzbudzenie
+#: poza [Efd_min, Efd_max], moc turbiny poza [P_min, P_max], SOC poza zakresem),
+#: wiec rownowaga poczatkowa nie istnieje — odmowa NAZWANA zamiast biegu, ktory
+#: „startuje skokiem" i tlumaczy pierwsza sekunde artefaktem rozruchu.
+KOD_PUNKT_PRACY_POZA_OGRANICZENIEM = "dynamika.punkt_pracy_poza_ograniczeniem"
 
 #: Zamkniety rejestr kodow odmow tego rdzenia. Nowy kod DOPISUJESZ tutaj —
 #: `OdmowaDynamiki` odrzuca kod spoza rejestru (deklaracja z przypietym testem,
@@ -69,8 +88,12 @@ KODY_ODMOW: tuple[str, ...] = (
     KOD_INICJALIZACJA_NIEZBIEZNA,
     KOD_KROK_NIEZBIEZNY,
     KOD_NASTAWY_SPRZECZNE,
+    KOD_PARAMETRY_SPRZECZNE,
+    KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
     KOD_REINICJALIZACJA_NIEZBIEZNA,
+    KOD_RODZINA_NIEOBSLUGIWANA,
     KOD_SIEC_NIESPOJNA,
+    KOD_WARIANT_BEZ_PARAMETROW,
     KOD_WARTOSC_NIESKONCZONA,
     KOD_ZDARZENIE_BEZ_ELEMENTU,
     KOD_ZWARCIE_NIESYMETRYCZNE,
@@ -351,6 +374,27 @@ class Urzadzenie(Protocol):
     def nazwy_stanow(self) -> tuple[str, ...]:
         """Nazwy stanow roznicowych — dlugosc = wymiar `x` tego urzadzenia."""
 
+    @property
+    def stany_bez_rownowagi(self) -> tuple[str, ...]:
+        """Stany, ktorych pochodna w punkcie pracy NIE MUSI byc zerowa.
+
+        PO CO TO ISTNIEJE. Bramka rownowagi silnika (SS0 p.3) zada, zeby punkt
+        pracy z rozpływu spelnial `f(x0, y0) = 0` — inaczej bieg startuje skokiem,
+        a pierwsza sekunda przebiegu jest „artefaktem rozruchu". Dla stanow
+        elektromechanicznych i regulacyjnych to jest wlasciwe. Ale sa wielkosci,
+        ktore w poprawnym punkcie pracy Z DEFINICJI dryfuja: stan naladowania
+        magazynu, ktory sie laduje albo rozladowuje, jest calka mocy i jego
+        pochodna jest niezerowa dokladnie wtedy, gdy magazyn pracuje.
+
+        Gdyby bramka nie miala tego wyjatku, KAZDY bieg z pracujacym magazynem
+        konczylby sie odmowa `dynamika.inicjalizacja_niezbiezna` — czyli rodzina
+        urzadzen istnialaby w testach, a nie na sciezce uzytkownika. Wyjatek jest
+        DEKLAROWANY PER URZADZENIE i jawnie widoczny w sladzie White Box, a nie
+        wpisany w silnik jako wyjatek dla nazwy stanu.
+
+        Wiekszosc urzadzen zwraca krotke pusta — kazdy ich stan ma byc rownowaga.
+        """
+
     def stan_poczatkowy(self, napiecie_pu: complex, moc_pu: complex) -> np.ndarray:
         """Stan rownowagi dla zadanego punktu pracy (napiecie zaciskow + moc oddawana)."""
 
@@ -426,8 +470,12 @@ __all__ = [
     "KOD_INICJALIZACJA_NIEZBIEZNA",
     "KOD_KROK_NIEZBIEZNY",
     "KOD_NASTAWY_SPRZECZNE",
+    "KOD_PARAMETRY_SPRZECZNE",
+    "KOD_PUNKT_PRACY_POZA_OGRANICZENIEM",
     "KOD_REINICJALIZACJA_NIEZBIEZNA",
+    "KOD_RODZINA_NIEOBSLUGIWANA",
     "KOD_SIEC_NIESPOJNA",
+    "KOD_WARIANT_BEZ_PARAMETROW",
     "KOD_WARTOSC_NIESKONCZONA",
     "KOD_ZDARZENIE_BEZ_ELEMENTU",
     "KOD_ZWARCIE_NIESYMETRYCZNE",

@@ -87,6 +87,21 @@ def zmiana_bazy_stalej_bezwladnosci(
     return h_s * (s_bazowa_urzadzenia_mva / s_bazowa_ukladu_mva)
 
 
+def zmiana_bazy_mocy_wzglednej(
+    wartosc_pu: float, s_bazowa_urzadzenia_mva: float, s_bazowa_ukladu_mva: float
+) -> float:
+    """Moc (albo granice mocy) w pu z bazy URZADZENIA na baze UKLADU.
+
+    Kierunek jest TEN SAM, co dla stalej bezwladnosci (`wartosc * S_urz/S_uklad`) i
+    ODWROTNY niz dla impedancji — dlatego przelicznik jest jeden, a ta funkcja
+    tylko nazywa go po wielkosci, ktora przelicza. Uzywaja jej granice mocy
+    turbiny, granice ladowania/rozladowania magazynu i moce znamionowe
+    przeksztaltnikow; gdyby kazde z tych miejsc mialo wlasny mnoznik, jedno z nich
+    predzej czy pozniej poszloby w druga strone.
+    """
+    return zmiana_bazy_stalej_bezwladnosci(wartosc_pu, s_bazowa_urzadzenia_mva, s_bazowa_ukladu_mva)
+
+
 def moc_pu(moc_mva: float, s_bazowa_mva: float) -> float:
     """Moc [MVA/MW/Mvar] na jednostki wzgledne bazy ukladu."""
     if s_bazowa_mva <= 0.0:
@@ -131,5 +146,6 @@ __all__ = [
     "pulsacja_bazowa_rad_s",
     "siec_na_dq",
     "zmiana_bazy_impedancji",
+    "zmiana_bazy_mocy_wzglednej",
     "zmiana_bazy_stalej_bezwladnosci",
 ]

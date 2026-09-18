@@ -22,6 +22,9 @@ from __future__ import annotations
 
 import numpy as np
 
+from ..kontrakty import KOD_WARTOSC_NIESKONCZONA, OdmowaDynamiki
+from .pochodne_kierunkowe import Dual, Zespolona, kwadrat, pierwiastek
+
 
 def blok_mnozenia_zespolonego(mnoznik: complex) -> np.ndarray:
     """Blok 2x2 odwzorowania rzeczywistego dla `z -> mnoznik * z`.
@@ -56,9 +59,31 @@ def jakobian_prad_napiecie_zrodla(admitancja: complex) -> np.ndarray:
     return blok_mnozenia_zespolonego(-admitancja)
 
 
+def modul_niezerowy(fazor: Zespolona, opis: str) -> Dual:
+    """`|z|` z gradientem; zerowy fazor konczy sie NAZWANA odmowa, nie zerem.
+
+    Modul w zerze jest ciagly, ale NIE ROZNICZKOWALNY — kierunek gradientu nie
+    istnieje. Urzadzenie, ktore czyta modul napiecia zaciskow (regulator
+    napiecia, ogranicznik pradu, nasycenie obwodu magnetycznego), przy zerowym
+    fazorze nie ma okreslonego wejscia regulacji. Cicha podmiana na zero dalaby
+    jakobian niezgodny z wlasna funkcja i „dzialajacy" bieg z bezsensownym
+    sterowaniem, dlatego jest tu wykluczona z konstrukcji.
+    """
+    kwadrat_modulu = kwadrat(fazor.re) + kwadrat(fazor.im)
+    if kwadrat_modulu.wartosc <= 0.0:
+        raise OdmowaDynamiki(
+            KOD_WARTOSC_NIESKONCZONA,
+            f"{opis}: modul zerowego fazora nie ma pochodnej — regulacja nie ma "
+            "okreslonego wejscia przy dokladnie zerowym napieciu",
+            wielkosc=opis,
+        )
+    return pierwiastek(kwadrat_modulu)
+
+
 __all__ = [
     "admitancja_wewnetrzna",
     "blok_mnozenia_zespolonego",
     "jakobian_prad_napiecie_zrodla",
+    "modul_niezerowy",
     "prad_zrodla_napieciowego",
 ]

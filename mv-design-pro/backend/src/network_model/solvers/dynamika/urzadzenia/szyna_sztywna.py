@@ -53,6 +53,11 @@ class SzynaSztywna:
         return NAZWY_STANOW_SZYNY_SZTYWNEJ
 
     @property
+    def stany_bez_rownowagi(self) -> tuple[str, ...]:
+        """SEM szyny sztywnej jest stala — obie skladowe sa rownowaga."""
+        return ()
+
+    @property
     def admitancja_pu(self) -> complex:
         return admitancja_wewnetrzna(self.r_pu, self.x_pu)
 

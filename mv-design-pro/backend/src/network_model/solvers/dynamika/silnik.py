@@ -320,7 +320,23 @@ class SilnikDynamiki:
         reszta_algebry = residuum_algebry(
             kontekst.model, kontekst.odbiory, kontekst.urzadzenia, stany, napiecia
         )
-        norma_f = float(np.max(np.abs(pochodne))) if pochodne.size else 0.0
+        # Stany zgloszone jako `stany_bez_rownowagi` (SS0 p.3 + kontrakt protokolu)
+        # sa wylaczone z NORMY bramki, ale NIE ze sladu: ich residua wchodza do
+        # diagnostyki z jawna etykieta, zeby czytelnik widzial, ktora wielkosc
+        # dryfuje i jak szybko. Wyjatek jest deklarowany przez URZADZENIE, nie
+        # zaszyty w silniku po nazwie stanu — inaczej kazde nowe urzadzenie z
+        # calka zasobu wymagaloby edycji rdzenia.
+        maska_rownowagi = np.ones(pochodne.shape[0], dtype=bool)
+        przesuniecie = 0
+        for urzadzenie in kontekst.urzadzenia:
+            bez_rownowagi = set(urzadzenie.stany_bez_rownowagi)
+            for pozycja, nazwa in enumerate(urzadzenie.nazwy_stanow):
+                if nazwa in bez_rownowagi:
+                    maska_rownowagi[przesuniecie + pozycja] = False
+            przesuniecie += len(urzadzenie.nazwy_stanow)
+        pochodne_rownowagi = pochodne[maska_rownowagi]
+
+        norma_f = float(np.max(np.abs(pochodne_rownowagi))) if pochodne_rownowagi.size else 0.0
         norma_g = float(np.max(np.abs(reszta_algebry))) if reszta_algebry.size else 0.0
 
         residua_urzadzen: list[tuple[str, tuple[tuple[str, float], ...]]] = []
@@ -358,6 +374,11 @@ class SilnikDynamiki:
             "residuum_f": kwantyzuj(norma_f),
             "residuum_g": kwantyzuj(norma_g),
             "eps_init": kwantyzuj(nastawy.eps_init),
+            "stany_bez_rownowagi": [
+                f"{urzadzenie.ident}.{nazwa}"
+                for urzadzenie in kontekst.urzadzenia
+                for nazwa in urzadzenie.stany_bez_rownowagi
+            ],
             "urzadzenia": [
                 {"urzadzenie": ident, "residua_stanow": [list(pozycja) for pozycja in residua]}
                 for ident, residua in residua_urzadzen

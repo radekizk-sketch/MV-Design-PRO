@@ -45,6 +45,11 @@ class UrzadzenieOdlaczone:
     def nazwy_stanow(self) -> tuple[str, ...]:
         return self.bazowe.nazwy_stanow
 
+    @property
+    def stany_bez_rownowagi(self) -> tuple[str, ...]:
+        """Opakowanie PRZENOSI deklaracje urzadzenia bazowego, nie tworzy wlasnej."""
+        return self.bazowe.stany_bez_rownowagi
+
     def stan_poczatkowy(self, napiecie_pu: complex, moc_pu: complex) -> np.ndarray:
         return self.bazowe.stan_poczatkowy(napiecie_pu, moc_pu)
 
