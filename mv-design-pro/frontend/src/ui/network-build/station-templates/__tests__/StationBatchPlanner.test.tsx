@@ -15,6 +15,12 @@ const templates: StationTemplateSummary[] = [
     nc_rfg_type: null,
     tags: [],
     icon: 'station',
+    category_label_pl: 'Typowe stacje SN/nN',
+    rated_power_kva: 630,
+    voltage_hv_kv: 15,
+    voltage_lv_kv: 0.4,
+    sn_voltage_kv: 15,
+    bay_role_categories: ['IN', 'OUT', 'TR'],
   },
   {
     id: 'tpl_pv_500kw',
@@ -26,6 +32,12 @@ const templates: StationTemplateSummary[] = [
     nc_rfg_type: 'B',
     tags: [],
     icon: 'pv',
+    category_label_pl: 'Farmy PV',
+    rated_power_kva: 630,
+    voltage_hv_kv: 15,
+    voltage_lv_kv: 0.4,
+    sn_voltage_kv: 15,
+    bay_role_categories: ['IN', 'OUT', 'TR'],
   },
   {
     id: 'tpl_bess_500kw',
@@ -37,6 +49,12 @@ const templates: StationTemplateSummary[] = [
     nc_rfg_type: 'B',
     tags: [],
     icon: 'bess',
+    category_label_pl: 'Magazyny energii',
+    rated_power_kva: 630,
+    voltage_hv_kv: 15,
+    voltage_lv_kv: 0.4,
+    sn_voltage_kv: 15,
+    bay_role_categories: ['IN', 'OUT', 'TR'],
   },
 ];
 

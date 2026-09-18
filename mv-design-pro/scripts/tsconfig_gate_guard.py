@@ -345,7 +345,13 @@ POMIJANE_KATALOGI = {
 #: kompilacyjnym kategorii macierzy gotowosci, analogicznie do istniejacego testu `DerKind`).
 #: Pomiar PO naprawie (ten sam pelny sweep, zero nowych bledow — `comm` linia po linii
 #: PRZED/PO potwierdza wylacznie 12 usuniec, 0 dodan): 106. Budzet obnizony 112 -> 106.
-BUDZET_BLEDOW_POZA_BRAMKA = 106
+#: Fala SZABLONY-NAPIECIE (2026-09-18, pomiar guardem): mocki podsumowania szablonu w
+#: `StationBatchPlanner.test.tsx` byly NIEPELNE wzgledem `StationTemplateSummary` (brak
+#: `category_label_pl`, `rated_power_kva`, `voltage_hv_kv`, `voltage_lv_kv`, `sn_voltage_kv`,
+#: `bay_role_categories`) — trzy bledy TS2740 poza bramka. Uzupelnione do pelnego kontraktu
+#: (fikstura testu ma odpowiadac odpowiedzi backendu, inaczej test cwiczy inny ksztalt niz
+#: produkt). Pomiar PO naprawie: 105. Budzet obnizony 106 -> 105.
+BUDZET_BLEDOW_POZA_BRAMKA = 105
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,
