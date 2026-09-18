@@ -71,6 +71,41 @@ RTOL_FIXTUR = 1e-4
 #: $.coefficient_table.incident_energy.VOA|V2700.k[6]` = 8,346e-07).
 PASMO_ZERA_FIXTUR = 1e-8
 
+#: Pasmo BEZWZGLEDNE dla wielkosci BEZWYMIAROWYCH OGRANICZONYCH (ilorazow o
+#: naturalnej skali 1). POWOD, NIE WYGODA: dla takiej wielkosci tolerancja
+#: WZGLEDNA jest zlym przyrzadem, gdy licznik ilorazu daza do zera przy skonczonym
+#: mianowniku — `cos phi` galezi niosacej praktycznie sama moc bierna wychodzi
+#: rzedu 1e-7 i jego blad wzgledny jest nieograniczony, choc bezwzgledny jest
+#: znikomy. POMIAR (CI run 35305960018, job `pytest`, commit 07d93d01):
+#: `koordynacja $.rows[2].cos_phi` 3.9231140792499414e-07 (sesja) wobec
+#: 3.923647677786405e-07 (runner) = 5,336e-11 BEZWZGLEDNIE (1,36e-4 wzglednie,
+#: tuz nad RTOL). Pasmo 1e-9 to zapas x18,7 nad tym pomiarem.
+#: DLACZEGO TO NIE OSLEPIA TESTU: regula dziala jako ALTERNATYWA obok tolerancji
+#: wzglednej, wiec jedyne, co traci porownanie, to czulosc PONIZEJ 1e-9 W
+#: WARTOSCI BEZWZGLEDNEJ — piec rzedow ponizej czwartego miejsca po przecinku,
+#: ktore te wielkosci pokazuja na ekranie, i osiem rzedow ponizej progow
+#: normowych (cos phi 0,90/0,95). Zadna realna regresja nie miesci sie ponizej.
+PASMO_BEZWYMIAROWYCH = 1e-9
+
+#: Pola z klasy wyzej. Lista ZAMKNIETA — pin: `test_listy_pol_wylaczonych_sa_zamkniete`.
+#: Czlonkostwo rozstrzyga DEFINICJA wielkosci (iloraz ograniczony do [-1, 1]),
+#: nie zaobserwowany zakres w fiksturach:
+#:   * `cos_phi` = P/S, |cos phi| <= 1 z definicji;
+#:   * `fraction` = udzial, [0, 1] z definicji (dzis 1,6e-17, czyli i tak w pasmie
+#:     zera — wchodzi jako czlonek KLASY, nie jako lata na dzisiejsza wartosc);
+#:   * `voltage_unbalance_u2_u1` = U2/U1, [0, 1] z definicji (dzis 0,0).
+#: SWIADOMIE POZA LISTA: `rx_ratio` (R/X bywa > 1, nie jest ograniczony),
+#: `iq_bierny_pu` (prad w jednostkach wzglednych moze przekroczyc 1 w przeciazeniu)
+#: — dla nich naturalna skala to ich wlasna wartosc, wiec tolerancja wzgledna jest
+#: przyrzadem wlasciwym.
+POLA_BEZWYMIAROWE_OGRANICZONE: frozenset[str] = frozenset(
+    {
+        "cos_phi",
+        "fraction",
+        "voltage_unbalance_u2_u1",
+    }
+)
+
 #: Pola, których wartość jest SKRÓTEM policzonym nad liczbami nieprzenośnymi
 #: (wynik solvera). Lista ZAMKNIĘTA — pin: `test_listy_pol_wylaczonych_sa_zamkniete`.
 #: Źródła: (a) tabela pomiaru CI 35290801270 (`result_hash`, `export_ref`,
@@ -149,11 +184,14 @@ _UUID_W_TEKSCIE = re.compile(
 )
 
 
-def liczby_rowne(a: float, b: float) -> bool:
-    """Równość liczb w klasie przenośności: pasmo martwe zera albo tolerancja względna."""
+def liczby_rowne(a: float, b: float, klucz: str | None = None) -> bool:
+    """Równość liczb w klasie przenośności: pasmo martwe zera, pasmo wielkości
+    bezwymiarowych ograniczonych (tylko dla pól tej klasy) albo tolerancja względna."""
     if a == b:
         return True
     if abs(a) <= PASMO_ZERA_FIXTUR and abs(b) <= PASMO_ZERA_FIXTUR:
+        return True
+    if klucz in POLA_BEZWYMIAROWE_OGRANICZONE and abs(a - b) <= PASMO_BEZWYMIAROWYCH:
         return True
     return abs(a - b) <= RTOL_FIXTUR * max(abs(a), abs(b))
 
@@ -182,7 +220,7 @@ def _rozbij_tekst(tekst: str) -> tuple[str, list[str]]:
     return "".join(szkielet), liczby
 
 
-def _roznice_w_tekscie(zloty: str, teraz: str, sciezka: str) -> list[str]:
+def _roznice_w_tekscie(zloty: str, teraz: str, sciezka: str, klucz: str | None = None) -> list[str]:
     szkielet_a, liczby_a = _rozbij_tekst(zloty)
     szkielet_b, liczby_b = _rozbij_tekst(teraz)
     if szkielet_a != szkielet_b:
@@ -190,7 +228,7 @@ def _roznice_w_tekscie(zloty: str, teraz: str, sciezka: str) -> list[str]:
     return [
         f"{sciezka}: liczba w tekście {a} != {b} (poza tolerancją; {zloty!r} != {teraz!r})"
         for a, b in zip(liczby_a, liczby_b, strict=True)
-        if not liczby_rowne(float(a), float(b))
+        if not liczby_rowne(float(a), float(b), klucz)
     ]
 
 
@@ -206,7 +244,7 @@ def roznice_z_tolerancja(
     if isinstance(zloty, int | float) and isinstance(teraz, int | float):
         if isinstance(zloty, int) and isinstance(teraz, int):
             return [] if zloty == teraz else [f"{sciezka}: {zloty!r} != {teraz!r}"]
-        if liczby_rowne(float(zloty), float(teraz)):
+        if liczby_rowne(float(zloty), float(teraz), klucz):
             return []
         return [f"{sciezka}: {zloty!r} != {teraz!r} (poza tolerancją)"]
     if isinstance(zloty, dict) and isinstance(teraz, dict):
@@ -235,7 +273,7 @@ def roznice_z_tolerancja(
                 return []
             return [f"{sciezka}: kształt skrótu {zloty!r} != {teraz!r}"]
         if klucz in POLA_TEKSTU_Z_LICZBAMI:
-            return _roznice_w_tekscie(zloty, teraz, sciezka)
+            return _roznice_w_tekscie(zloty, teraz, sciezka, klucz)
     return [] if zloty == teraz else [f"{sciezka}: {zloty!r} != {teraz!r}"]
 
 
@@ -394,6 +432,16 @@ def test_listy_pol_wylaczonych_sa_zamkniete() -> None:
         "wscr_why_pl",
         "z_tk_formula_latex",
     }
+    assert POLA_BEZWYMIAROWE_OGRANICZONE == {
+        "cos_phi",
+        "fraction",
+        "voltage_unbalance_u2_u1",
+    }
+    # Wielkości, dla których naturalną skalą jest ich WŁASNA wartość, nie 1 —
+    # pasmo bezwzględne byłoby dla nich błędnym przyrządem.
+    assert POLA_BEZWYMIAROWE_OGRANICZONE.isdisjoint(
+        {"b_siemens_per_km", "iq_bierny_pu", "losses_p_mw", "rx_ratio", "tau_s"}
+    )
     # Skróty nad WEJŚCIEM nigdy nie wchodzą na listę wyłączeń — to jedyny sygnał
     # dryfu danych wejściowych, jaki ten test ma.
     assert POLA_SKROTOW_NIEPRZENOSNYCH.isdisjoint(
@@ -410,6 +458,36 @@ def test_listy_pol_wylaczonych_sa_zamkniete() -> None:
             "solver_input_hash",
         }
     )
+
+
+def test_pasmo_bezwymiarowych_dziala_tylko_dla_swojej_klasy_i_tylko_przy_zerze() -> None:
+    """Pin klasy „iloraz ograniczony blisko zera".
+
+    Pomiar z CI (run 35305960018): `cos_phi` galezi niosacej praktycznie sama moc
+    bierna rozjechal sie o 5,3e-11 BEZWZGLEDNIE, czyli 1,36e-4 wzglednie — tuz nad
+    RTOL. Test pilnuje CZTERECH wlasnosci naraz, bo kazda z nich osobno da sie
+    spelnic zla poprawka: (1) szum przechodzi, (2) realna zmiana tej samej
+    wielkosci nadal pada, (3) pasmo NIE jest globalne — to samo zestawienie liczb
+    na polu spoza klasy pada, (4) blisko jednosci czulosc jest nienaruszona.
+    """
+    # (1) zmierzona para z CI — szum, nie regresja.
+    sesja, runner = 3.9231140792499414e-07, 3.923647677786405e-07
+    assert liczby_rowne(sesja, runner, "cos_phi")
+
+    # (2) realna zmiana wielkosci blisko zera (1e-3 to juz inny stan galezi) pada.
+    assert not liczby_rowne(sesja, 1.0e-3, "cos_phi")
+
+    # (3) pasmo jest ZWIAZANE Z KLUCZEM: ta sama para na polu spoza klasy pada,
+    #     bo dla wielkosci o wlasnej skali tolerancja wzgledna jest wlasciwa.
+    assert not liczby_rowne(sesja, runner, "rx_ratio")
+    assert not liczby_rowne(sesja, runner, None)
+
+    # (4) blisko jednosci pasmo bezwzgledne niczego nie rozluznia — rzadzi RTOL.
+    assert liczby_rowne(0.95, 0.95 * (1 + 0.5 * RTOL_FIXTUR), "cos_phi")
+    assert not liczby_rowne(0.95, 0.95 * (1 + 2 * RTOL_FIXTUR), "cos_phi")
+
+    # (5) zapas nad pomiarem jest taki, jak deklaruje komentarz stalej.
+    assert PASMO_BEZWYMIAROWYCH / abs(runner - sesja) > 10.0
 
 
 @pytest.mark.parametrize("nazwa", sorted(eksport.FIXTURY))
