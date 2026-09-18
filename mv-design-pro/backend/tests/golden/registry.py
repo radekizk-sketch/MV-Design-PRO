@@ -404,6 +404,38 @@ REJESTR: tuple[WpisRejestru, ...] = (
         ),
     ),
     WpisRejestru(
+        id="G16",
+        klasa_przypadku="bieg czasowy RMS (DAE): maszyna synchroniczna + przekształtnik GFL",
+        cel=(
+            "ścieżka użytkownika biegu czasowego: migawka -> rozpływ (punkt pracy) -> "
+            "bieg `dynamika_rms` -> kontrakt `resultset_dynamic_v1`"
+        ),
+        topologia=(
+            "GPZ 110/15 kV (TR Dyn11 z zaczepem) -> dwie sekcje SN ze sprzęgłem -> kabel -> "
+            "odpływ -> linia -> szyna OZE; bateria kondensatorów, odłącznik otwarty"
+        ),
+        poziomy_napiec="110/15 kV",
+        uziemienie="wg buildera (punkt neutralny nie wchodzi do składowej zgodnej)",
+        scenariusz="zwarcie 3F na sekcji B z wyłączeniem; skok obciążenia odpływu",
+        analizy=("LF", "DYNAMIKA_RMS"),
+        inwarianty=(
+            "macierz admitancyjna biegu czasowego = macierz rozpływu (ta sama migawka)",
+            "ta sama piątka odcisków tożsamości => ten sam wynik po kwantyzacji",
+        ),
+        wyrocznie=(),
+        budowniczowie=("tests.golden.enm_builders.dynamika_rms:build_dynamika_rms_enm",),
+        konsumenci=("solver dynamiki", "adapter biegu czasowego", "kontrakt wyniku czasowego"),
+        status=StatusSieci.PARTIAL,
+        proweniencja=(
+            "karta W6-3B (2026-09-18): rejestr nie miał ANI JEDNEJ sieci z blokiem "
+            "`Generator.dynamika`, więc rodzina DYNAMICS nie miała na czym być liczona. "
+            "Wyrocznie ANALITYCZNE rdzenia (kryterium równych pól, analiza małosygnałowa) "
+            "żyją na układzie maszyna-szyna sztywna w `tests/network_model/dynamika/uklady.py`; "
+            "ta sieć jest REGRESSION_ONLY i dowodzi ŚCIEŻKI, nie fizyki — PARTIAL do czasu "
+            "wyroczni niezależnej dla pełnej biblioteki urządzeń (OD: walidacja krzyżowa ANDES)"
+        ),
+    ),
+    WpisRejestru(
         id="B-BENCH",
         klasa_przypadku="benchmarki opublikowane IEEE / CIGRE / IEC 60909 / pandapower",
         cel="walidacja krzyżowa solverów LF i SC",

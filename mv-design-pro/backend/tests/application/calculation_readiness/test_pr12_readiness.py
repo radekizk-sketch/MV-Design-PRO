@@ -616,7 +616,9 @@ class TestCalculationReadinessService:
         svc = CalculationReadinessService()
         wynik = svc.evaluate_single(enm, "dynamika_rms")
         assert wynik.status == "blocked"
-        assert "der.dynamika_missing" in " ".join(wynik.missing_fields_pl)
+        # Karta W6-3B: kod przeniesiony na rejestr odmow adaptera — bramka i bieg
+        # czytaja TEN SAM predykat (`enm.adapter_dynamiki.braki_modelu_dynamiki`).
+        assert "dynamika.zrodlo_bez_bloku_dynamiki" in " ".join(wynik.missing_fields_pl)
         assert "pv_1" in wynik.blocking_object_refs
 
     def test_dynamika_rms_ready_with_dynamika_and_pf_ready(self) -> None:
@@ -662,11 +664,19 @@ class TestCalculationReadinessService:
         svc = CalculationReadinessService()
         pf = svc.evaluate_single(enm, "power_flow")
         assert pf.status == "ready", f"fixture PF musi byc ready dla tego testu: {pf}"
-        wynik = svc.evaluate_single(enm, "dynamika_rms")
+        # Karta W6-3B: punkt pracy (zakonczony bieg rozplywu tej migawki) jest
+        # warunkiem PER BIEG — bramka czyta go od wolajacego. Brak informacji
+        # (`None`) i jawny brak biegu daja `partial` z NAZWANYM wymaganiem;
+        # `ready` wymaga potwierdzenia, ze punkt pracy istnieje.
+        nieznany = svc.evaluate_single(enm, "dynamika_rms")
+        assert nieznany.status == "partial"
+        assert "dynamika.punkt_pracy_brak" in " ".join(nieznany.missing_fields_pl)
+        bez_punktu = svc.evaluate_single(enm, "dynamika_rms", punkt_pracy_rozplywu=False)
+        assert bez_punktu.status == "partial"
+        assert "rozpływ" in (bez_punktu.recommended_action_pl or "")
+        wynik = svc.evaluate_single(enm, "dynamika_rms", punkt_pracy_rozplywu=True)
         assert wynik.status == "ready"
-        assert "rdzen_niedostepny" in (wynik.recommended_action_pl or "") or (
-            "rdzeń" in (wynik.recommended_action_pl or "").lower()
-        )
+        assert "punkt pracy z rozpływu" in (wynik.recommended_action_pl or "")
 
     def test_dynamika_rms_blocked_when_pf_blocked(self) -> None:
         """Rozpływ punktu pracy musi byc `ready` — dynamika_rms dziedziczy stan PF."""

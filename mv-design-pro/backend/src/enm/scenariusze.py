@@ -438,9 +438,10 @@ class OperatingScenario(BaseModel):
     """
     Harmonogram zdarzen czasowych (karta W6-1 SS0 p.5). `None` = brak scenariusza
     dynamicznego (domyslne — addytywne). `apply_scenario` NIE stosuje tych
-    zdarzen do migawki (solver W6-2 czyta harmonogram bezposrednio) — scenariusz
-    statyczny (`out_of_service`/`setpoints`) pozostaje jedynym stanem
-    POCZATKOWYM migawki efektywnej.
+    zdarzen do migawki — scenariusz statyczny (`out_of_service`/`setpoints`)
+    pozostaje jedynym stanem POCZATKOWYM migawki efektywnej, a harmonogram jest
+    DANA WEJSCIOWA biegu czasowego: `opcje_biegu_ze_scenariusza` rzutuje go na
+    `options["dynamika"]`, skad czyta go adapter (karta W6-3B).
     """
 
     @model_validator(mode="after")
@@ -779,17 +780,30 @@ def referencja_koperty(
 
 
 def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
-    """Projekcja scenariusza zwarciowego na opcje biegu — JEDNO zrodlo prawdy.
+    """Projekcja scenariusza (zwarciowego i dynamicznego) na opcje biegu — JEDNO zrodlo prawdy.
 
     Wykonawca kanoniczny (`enm/canonical_analysis._execute_short_circuit`) czyta
     `fault_type`, `c_factor`, `thermal_time_seconds` i `location` Z WIERZCHU opcji;
-    klucz `config` zostaje jako pochodzenie (WHITE BOX). Scenariusz bez
-    `fault_spec` nie wnosi zadnych opcji.
+    klucz `config` zostaje jako pochodzenie (WHITE BOX).
+
+    Karta W6-3B: harmonogram dynamiczny (`ScenariuszDynamiczny`) idzie ta sama
+    droga pod kluczem `dynamika` — dzieki temu wchodzi do `input_hash` biegu
+    (dwa biegi o roznych harmonogramach sa ROZNYMI biegami) i czyta go adapter
+    (`enm/adapter_dynamiki.py::scenariusz_z_opcji`) z JEDNEGO miejsca, niezaleznie
+    od tego, czy harmonogram przyszedl ze scenariusza nazwanego, czy wprost w
+    `options` zadania. Klucz pojawia sie WYLACZNIE, gdy scenariusz go niesie —
+    payload i hash scenariuszy bez dynamiki sa bajtowo te same.
+
+    Scenariusz bez `fault_spec` i bez `dynamika` nie wnosi zadnych opcji.
     """
+    opcje: dict[str, Any] = {}
+    if scenariusz.dynamika is not None:
+        opcje["dynamika"] = scenariusz.dynamika.model_dump(mode="json")
     spec = scenariusz.fault_spec
     if spec is None:
-        return {}
+        return opcje
     return {
+        **opcje,
         "scenario_id": str(spec.scenario_id),
         "fault_type": spec.fault_type.value,
         "location": spec.location.to_dict(),

@@ -1420,7 +1420,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # (konsumowane, nieskonsumowane, wariant, napiecie_pu, moc_pu, okno_mocy).
     # KAZDE z tych pol jest WYMAGANE — zero domyslek liczbowych; zero podstawien
     # liczby za nieobecna dana wejsciowa, PASS bramki niezmieniony.
-    assert "Pol kontraktow wejsciowych: 3828." in wyjscie, wyjscie
+    # W6-3B (2026-09-18): 3828 -> 3829 (+1 pole, zero skasowanych). POMIAR: zbior
+    # `contract_fields()` zrzucony z `enm/adapter_dynamiki.py` i bez niego, roznica
+    # policzona na zbiorach, nie z arytmetyki karty. Jedyna NOWA nazwa w repo to
+    # `PunktPracyRozplywu.wstrzyki_pu` (moc wypadkowa szyny z biegu rozplywu, w
+    # konwencji generacji) — pozostale pola adaptera (`kod`, `komunikat_pl`,
+    # `elementy`, `napiecia_pu`, `base_mva`, `run_id`, `snapshot_hash`, `wezly`,
+    # `galezie`, `odsprzegi`, `odbiory`) noszą nazwy juz obecne w repo, wiec dedup
+    # po nazwie ich nie liczy. Pole jest WYPROWADZONE z wyniku rozplywu, nigdy
+    # podstawione: brak szyny w wyniku konczy sie odmowa
+    # `dynamika.punkt_pracy_niepelny`, nie zerem. PASS bramki niezmieniony.
+    assert "Pol kontraktow wejsciowych: 3829." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1484,7 +1494,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # dlugu i w wykluczeniach — brak danej kontraktu konczy sie odmowa
         # `dynamika.rodzina_nieobslugiwana` / `dynamika.wariant_bez_parametrow`,
         # nigdy podstawieniem liczby).
-        "Przeskanowano 533 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta W6-3B (2026-09-18): 533 -> 534 (+1 plik `enm/adapter_dynamiki.py` —
+        # adapter biegu czasowego: sklada wejscie rdzenia z migawki efektywnej i
+        # punktu pracy z rozplywu. Zero nowych wpisow w zapadce dlugu i w
+        # wykluczeniach: modul nie podstawia zadnej liczby za brak danej — brak
+        # nastawy numerycznej, scenariusza albo punktu pracy konczy sie nazwana
+        # odmowa z rejestru `KODY_ODMOW_ADAPTERA`, plaski start 1,0 p.u. jest w nim
+        # ZAKAZANY. Zero plikow skasowanych).
+        "Przeskanowano 534 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1550,7 +1567,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # na drzewie scalonym W5-D + W5-A pomiar = 46.
         # Karta W6-1 (2026-09-16): enm 46 -> 47 (+1 `enm/dynamika_modele.py`; zero
         # dlugu/wykluczen — czysty kontrakt Pydantic, brak zastepnikow liczbowych).
-        "  enm: pliki_skanowane=47, dlug=7 plikow/suma 73, wykluczenia=0 plikow/suma 0",
+        # Karta W6-3B (2026-09-18): enm 47 -> 48 (+1 `enm/adapter_dynamiki.py`; zero
+        # dlugu/wykluczen — adapter SKLADA i MAPUJE, kazdy brak danej konczy sie
+        # nazwana odmowa, nie liczba podstawiona za brak).
+        "  enm: pliki_skanowane=48, dlug=7 plikow/suma 73, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

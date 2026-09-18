@@ -13,6 +13,10 @@ from application.automation.trace import (
     build_automation_trace,
     build_post_fault_topology_effect,
 )
+from application.contracts.resultset_dynamic_v1 import (
+    ResultSetDynamicV1,
+    zbuduj_resultset_dynamiczny_v1,
+)
 from application.proof_engine.packs.phase_state_sn import (
     PhaseStateSNProofPack,
     PhaseStateSNProofPackInput,
@@ -33,6 +37,16 @@ from application.v126_artifacts import (
     build_v126_report_artifact,
 )
 from domain.canonical_operations import READINESS_CODES
+from enm.adapter_dynamiki import (
+    KLUCZ_BIEGU_ROZPLYWU,
+    KOD_PUNKT_PRACY_BRAK,
+    OdmowaWejsciaDynamiki,
+    PunktPracyRozplywu,
+    odmow_gdy_braki_modelu,
+    punkt_pracy_z_biegu_rozplywu,
+    zalozenia_wejscia,
+    zloz_wejscie_dynamiki,
+)
 from enm.assembler import (
     WejscieRozplywu,
     WejscieZwarcia,
@@ -41,6 +55,8 @@ from enm.assembler import (
     _graph_id_from_ref,
     _short_circuit_requires_z0,
     _short_circuit_type_from_options,
+    czestotliwosc_studium_hz,
+    zbuduj_graf,
     zloz_wejscie_rozplywu,
     zloz_wejscie_rozplywu_niesymetrycznego,
     zloz_wejscie_zwarcia,
@@ -83,6 +99,11 @@ from network_model.pochodne import (
     kv_na_v,
     napiecie_fazowe_v,
     v_na_kv,
+)
+from network_model.solvers.dynamika import (
+    WERSJA_SOLVERA,
+    SilnikDynamiki,
+    ladunek_resultset_dynamic_v1,
 )
 from network_model.solvers.phase_state_sn import (
     OpenPhaseFlags,
@@ -1706,46 +1727,124 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
     run.power_flow_trace = None
 
 
-#: Kod gotowości odmowy biegu `dynamika_rms` (karta W6-1 SS0 p.7): rdzeń DAE
-#: (`network_model/solvers/dynamika/`) NIE ISTNIEJE jeszcze — W6-2 go podpina.
-#: Rejestr: `domain/canonical_operations.py::READINESS_CODES`.
-KOD_RDZEN_DYNAMIKI_NIEDOSTEPNY = "dynamika.rdzen_niedostepny"
+#: Identyfikator zdolności dowodowej biegu czasowego w rejestrze proweniencji
+#: (`solver_input/provenance.py`). Stopień dowodowy WYNIKU bierze się STAMTĄD —
+#: solver, który sam sobie nadaje stopień, jest dokładnie tym, czego zakazuje
+#: zasada zero fabrykacji.
+ZDOLNOSC_DYNAMIKI_RMS = "dynamika_rms.przebieg_czasowy"
 
 
-class OdmowaBieguDynamikiRms(ValueError):
-    """Odmowa biegu `dynamika_rms` — rdzeń solvera DAE nie istnieje (W6-1 przed W6-2).
+def _bieg_rozplywu_punktu_pracy(run: CanonicalRun) -> PunktPracyRozplywu:
+    """Punkt pracy biegu dynamiki: ZAKOŃCZONY rozpływ na TEJ SAMEJ migawce.
 
-    Ta sama droga odmowy co pozostałe nazwane odmowy biegu
-    (`OdmowaBieguStabilnosciDynamicznej`, `OdmowaWejsciaRozplywu`): `execute_run`
-    łapie ją ogólnym `except Exception`, zapisuje status FAILED i komunikat PL
-    z kodem — BEZ FASADY (żaden liczbowy wynik, żaden fałszywy sukces).
+    Identyfikator biegu rozpływu jest DANĄ WEJŚCIOWĄ biegu dynamiki
+    (`options.pf_run_id`) — ten sam wzorzec odwołania między biegami, co
+    `options.sc_run_id` analizy zabezpieczeń. Punkt pracy ma wtedy własną
+    tożsamość, własny hash i własną ścieżkę audytu, zamiast być „jakimś
+    rozpływem, który akurat był ostatni".
     """
-
-    def __init__(self, kod: str, komunikat: str) -> None:
-        super().__init__(f"{komunikat} (kod gotowości: {kod})")
-        self.kod = kod
+    surowy = (run.options or {}).get(KLUCZ_BIEGU_ROZPLYWU)
+    if not surowy:
+        raise OdmowaWejsciaDynamiki(
+            KOD_PUNKT_PRACY_BRAK,
+            "Bieg dynamiki czasowej wymaga punktu pracy z rozpływu mocy: wskaż zakończony "
+            f"bieg rozpływu tej samej migawki w opcjach biegu (`{KLUCZ_BIEGU_ROZPLYWU}`). "
+            "Start od napięć znamionowych byłby wynikiem policzonym z danych, których nikt "
+            "nie wyznaczył",
+            elementy=(KLUCZ_BIEGU_ROZPLYWU,),
+        )
+    try:
+        identyfikator = UUID(str(surowy))
+    except ValueError as exc:
+        raise OdmowaWejsciaDynamiki(
+            KOD_PUNKT_PRACY_BRAK,
+            f"Wskazany bieg rozpływu {surowy!r} nie jest poprawnym identyfikatorem",
+            elementy=(str(surowy),),
+        ) from exc
+    bieg_pf = get_run(identyfikator)
+    if bieg_pf is None:
+        raise OdmowaWejsciaDynamiki(
+            KOD_PUNKT_PRACY_BRAK,
+            f"Wskazany bieg rozpływu {surowy!r} nie istnieje",
+            elementy=(str(surowy),),
+        )
+    return punkt_pracy_z_biegu_rozplywu(
+        run_id=str(bieg_pf.id),
+        analysis_type=bieg_pf.analysis_type,
+        status=bieg_pf.status,
+        snapshot_hash=bieg_pf.snapshot_hash,
+        raw_result=bieg_pf.raw_result,
+        snapshot=run.snapshot or {},
+        oczekiwany_snapshot_hash=run.snapshot_hash,
+    )
 
 
 def _execute_dynamika_rms(run: CanonicalRun) -> None:
-    """Wykonawca `dynamika_rms` (karta W6-1) — ODMAWIA zawsze, bez fasady.
+    """Wykonawca `dynamika_rms` (karta W6-3B) — adapter do rdzenia DAE, zero fizyki.
 
-    Karta W6-1 dostarczyła kontrakty (`ParametryDynamiczne`,
-    `ScenariuszDynamiczny`, `ResultSetDynamicV1`) i gotowość, karta W6-2 rdzeń
-    DAE (`network_model/solvers/dynamika/`, B-01: nowy pakiet OBOK rdzeni
-    FROZEN). Rdzeń więc ISTNIEJE — brakuje ADAPTERA, który złoży jego wejście z
-    migawki efektywnej i punktu pracy z rozpływu, a wynik odda jako
-    `ResultSetDynamicV1` (zakres karty W6-3,
-    `docs/plan/KARTA_W6_3_URZADZENIA_I_ADAPTER_2026-09.md`). Do czasu wpięcia
-    adaptera ŻADEN bieg tego typu nie może zakończyć się wynikiem — odmowa jest
-    jedynym uczciwym zachowaniem (zero fabrykacji: brak złożonego wejścia ≠
-    wynik zerowy/pusty).
+    Łańcuch biegu: migawka efektywna + punkt pracy z rozpływu → `WejscieDynamiki`
+    (`enm/adapter_dynamiki.py`) → `SilnikDynamiki` (rdzeń W6-2, FROZEN wobec tej
+    warstwy) → ładunek `resultset_dynamic_v1` (`solvers/dynamika/wynik.py`) →
+    `ResultSetDynamicV1` (kontrakt aplikacyjny) w `run.raw_result`.
+
+    SZEREGI CZASOWE NIE WCHODZĄ DO WIERSZA BIEGU (PERF-SC-50, karta W6-1 SS0 p.6):
+    `raw_result` niesie metadane, metryki, tożsamość i stopień dowodowy, a próbki
+    trafiają do `canonical_run_time_series` (endpoint `.../time-series` na żądanie).
+
+    Każda odmowa — adaptera (`OdmowaWejsciaDynamiki`) i rdzenia (`OdmowaDynamiki`) —
+    idzie w górę nietknięta: `execute_run` zapisuje status FAILED z komunikatem PL
+    i kodem. Bieg, który nie ma punktu pracy albo nie zbiega, NIE oddaje wyniku
+    pustego ani „rozgrzewkowego".
     """
-    raise OdmowaBieguDynamikiRms(
-        KOD_RDZEN_DYNAMIKI_NIEDOSTEPNY,
-        "Rdzeń solvera dynamiki czasowej (DAE) nie jest jeszcze wdrożony w tym "
-        "repozytorium — kontrakty (dane wejściowe, gotowość) są gotowe, ale "
-        "obliczenie nie może zostać wykonane.",
+    punkt = _bieg_rozplywu_punktu_pracy(run)
+    snapshot = run.snapshot or {}
+    # Bramka warunków MODELOWYCH przed budową grafu IR: mapowanie ENM→graf ma
+    # własne, węższe odmowy dla części tych samych stanów, więc bez tego
+    # wyprzedzenia projektant dostałby komunikat mapowania zamiast kodu biegu
+    # czasowego. Ten sam predykat, co bramka gotowości.
+    odmow_gdy_braki_modelu(EnergyNetworkModel.model_validate(snapshot))
+    wejscie = zloz_wejscie_dynamiki(
+        snapshot,
+        run.options or {},
+        punkt=punkt,
+        graph=zbuduj_graf(snapshot),
+        f_bazowa_hz=czestotliwosc_studium_hz(snapshot),
     )
+    wynik = SilnikDynamiki(wejscie=wejscie).uruchom()
+    ladunek = ladunek_resultset_dynamic_v1(wynik, run_id=str(run.id))
+    ewidencja = classify_dynamic_capability(ZDOLNOSC_DYNAMIKI_RMS)
+    kontrakt = ResultSetDynamicV1.model_validate(
+        {
+            **ladunek,
+            "stopien_dowodowy": [ewidencja.to_dict()],
+            "zalozenia": [*ladunek["zalozenia"], *zalozenia_wejscia(snapshot)],
+        }
+    )
+    run.raw_result = {
+        **zbuduj_resultset_dynamiczny_v1(kontrakt, z_probkami=False),
+        # Tożsamość punktu pracy jest częścią WYNIKU, nie ciekawostką śladu:
+        # bez niej nie da się powiedzieć, OD JAKIEGO stanu ruszył przebieg.
+        "pf_run_id": punkt.run_id,
+    }
+    run.white_box_trace = [
+        {
+            "step": 1,
+            "key": "dynamika_rms",
+            "title": "Bieg dynamiki czasowej (DAE, składowa zgodna)",
+            "method_basis": WERSJA_SOLVERA,
+            "result": wynik.slad_white_box,
+        }
+    ]
+    run.power_flow_trace = None
+    with canonical_run_repository_scope() as repository:
+        repository.zapisz_szeregi_dynamiczne(
+            run.id,
+            [float(chwila) for chwila in kontrakt.os_czasu_s],
+            {
+                klucz: [float(wartosc) for wartosc in szereg]
+                for klucz, szereg in kontrakt.probki.items()
+            },
+        )
 
 
 def build_dynamika_results(run: CanonicalRun) -> dict[str, Any]:
@@ -1754,9 +1853,9 @@ def build_dynamika_results(run: CanonicalRun) -> dict[str, Any]:
     Zwraca `ResultSetDynamicV1` zapisany w `run.raw_result` (kanały, metryki,
     tożsamość, własności biegu, stopień dowodowy) — `os_czasu_s`/`probki`
     ZAWSZE puste (szeregi w osobnej tabeli, endpoint `.../time-series`).
-    Brak wyniku (żaden bieg `dynamika_rms` nie kończy się dziś sukcesem — W6-1
-    przed W6-2) → `KeyError` (API tłumaczy na 404 nazwany, ten sam wzorzec co
-    `build_short_circuit_rozplyw`)."""
+    Brak wyniku (bieg nieuruchomiony albo zakończony odmową — nazwaną, nie
+    pustym wynikiem) → `KeyError` (API tłumaczy na 404 nazwany, ten sam wzorzec
+    co `build_short_circuit_rozplyw`)."""
     if run.analysis_type != "dynamika_rms":
         raise KeyError(f"Przebieg nie jest bieg dynamiki czasowej: {run.id}")
     if not run.raw_result:

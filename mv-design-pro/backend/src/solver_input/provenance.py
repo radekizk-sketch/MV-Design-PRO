@@ -337,6 +337,22 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref=f"{_AUDIT_CARD} §0.5",
         ),
         CapabilityEvidence(
+            capability_id="dynamika_rms.przebieg_czasowy",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            rationale_pl=(
+                "Bieg RMS calkuje rownania ruchu ukladu na widoku sieci rozpływu "
+                "(rdzen DAE, network_model/solvers/dynamika/), wiec wynik JEST "
+                "policzony — ale poprawnosc modelu nie jest WYKAZANA: rdzen ma "
+                "wyrocznie analityczne dla ukladu maszyna-szyna sztywna, nie ma "
+                "walidacji przebiegow dla pelnej biblioteki urzadzen na sieci "
+                "rzeczywistej. Parametry z profilu typowego normy sa deklaracja "
+                "projektanta (enm/dynamika_modele.py::ProweniencjaParametrow), "
+                "wiec awans do VALIDATED_SIMULATION wymaga dowodu walidacji tej "
+                "zdolnosci, nie samego faktu, ze bieg sie wykonal."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.5 (W6-3B: adapter biegu czasowego)",
+        ),
+        CapabilityEvidence(
             capability_id="frt_hvrt.trajectory",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             rationale_pl=(

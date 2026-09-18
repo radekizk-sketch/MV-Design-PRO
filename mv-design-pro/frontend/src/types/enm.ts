@@ -685,10 +685,11 @@ export interface Generator extends ENMElement {
   nc_rfg_module?: 'A' | 'B' | 'C' | 'D' | null;
 
   /**
-   * Parametry dynamiczne zrodla dla biegow czasowych RMS/DAE (karta W6-1).
-   * Kontrakt wejsciowy. Rdzen solvera istnieje (karta W6-2), lecz nie ma
-   * jeszcze adaptera wpinajacego go w tor biegu (karta W6-3), wiec kazdy bieg
-   * `dynamika_rms` konczy sie dzis nazwana odmowa niezaleznie od tego pola.
+   * Parametry dynamiczne zrodla dla biegow czasowych RMS/DAE (karty W6-1..W6-3).
+   * Kontrakt wejsciowy KAZDEGO wytworcy: bez tego bloku bieg `dynamika_rms`
+   * odmawia nazwanym kodem `dynamika.zrodlo_bez_bloku_dynamiki`. Bieg startuje
+   * z punktu pracy wskazanego rozplywu (`solver_input.pf_run_id`) i oddaje
+   * `resultset_dynamic_v1`.
    */
   dynamika?: ParametryDynamiczne | null;
 }

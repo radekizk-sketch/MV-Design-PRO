@@ -323,12 +323,10 @@ def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
         "short_circuit_sn": "iec60909_short_circuit",
         "phase_state_sn": "phase_state_sn_radial",
         "dynamic_stability": "dynamic_stability_fault_clear",
-        # Karta W6-1: `dynamika_rms` jest ZAREJESTROWANY w rejestrze rodzajow
-        # biegu (kontrakty/readiness gotowe), ale rdzen solvera (W6-2,
-        # `network_model/solvers/dynamika/`) NIE ISTNIEJE jeszcze — kazdy bieg
-        # tego typu konczy sie odmowa `dynamika.rdzen_niedostepny`
-        # (`enm/canonical_analysis.py::OdmowaBieguDynamikiRms`), wiec ta pozycja
-        # mapy nigdy dzis nie opisuje UKONCZONEGO biegu.
+        # Karta W6-3B: `dynamika_rms` konczy sie WYNIKIEM — rdzen DAE (W6-2,
+        # `network_model/solvers/dynamika/`) jest wpiety adapterem
+        # (`enm/adapter_dynamiki.py`), a punkt pracy pochodzi ze wskazanego
+        # biegu rozplywu tej samej migawki (`options.pf_run_id`).
         "dynamika_rms": "dynamika_rms_dae",
     }.get(run.analysis_type, run.analysis_type)
     # CV-2 (H2): wersja solvera WYLACZNIE ze sladu solvera albo z opcji biegu;

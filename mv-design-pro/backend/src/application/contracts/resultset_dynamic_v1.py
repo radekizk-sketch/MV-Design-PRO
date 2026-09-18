@@ -5,9 +5,10 @@ CANONICAL ALIGNMENT:
   `ResultSetV1` NIE jest rozszerzany; biegi statyczne (PF/SC) i biegi czasowe
   (`dynamika_rms`) maja rozlaczne kontrakty w JEDNYM rejestrze biegow
   (`CanonicalRun`).
-- FROZEN dopiero PO odbiorze W6-2 (rdzen solvera) — w tej karcie ksztalt jest
-  projektowany, ale W6-1 sam NIE produkuje zadnej instancji z prawdziwym biegiem
-  (dyspozytor odmawia `dynamika.rdzen_niedostepny` — solver nie istnieje).
+- Kontrakt PRODUKCYJNY od karty W6-3B: wykonawca `dynamika_rms`
+  (`enm/canonical_analysis.py::_execute_dynamika_rms`) buduje kazda instancje z
+  ladunku rdzenia (`solvers/dynamika/wynik.py::ladunek_resultset_dynamic_v1`);
+  bieg konczy sie wynikiem albo NAZWANA odmowa, nigdy fasada.
 - Zero fizyki: modul niesie WYLACZNIE ksztalt danych i pomocnicze funkcje
   budowy/kwantyzacji, zadnego rownania ruchu ani calkowania.
 - Szeregi czasowe (`os_czasu_s`/`probki`) NIE wchodza do `CanonicalRun.raw_result`

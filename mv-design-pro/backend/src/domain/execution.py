@@ -61,9 +61,9 @@ class ExecutionAnalysisType(StrEnum):
     PHASE_STATE_SN = "PHASE_STATE_SN"
     DYNAMIC_STABILITY = "DYNAMIC_STABILITY"
     PROTECTION = "PROTECTION"
-    #: Karta W6-1: rejestracja rodzaju biegu `dynamika_rms` (kontrakty/gotowość
-    #: gotowe). Wykonanie ODMAWIA zawsze `dynamika.rdzen_niedostepny` — rdzeń
-    #: DAE (W6-2, `network_model/solvers/dynamika/`) jeszcze nie istnieje.
+    #: Rodzaj biegu `dynamika_rms` (karta W6-1 rejestracja, W6-2 rdzeń DAE,
+    #: W6-3 urządzenia i adapter). Wykonanie kończy się WYNIKIEM
+    #: (`resultset_dynamic_v1`) albo NAZWANĄ odmową — nigdy fasadą.
     DYNAMIKA_RMS = "DYNAMIKA_RMS"
 
 

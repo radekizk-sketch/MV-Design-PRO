@@ -12,8 +12,8 @@ raportów + 1 typu kontraktowego (dynamika_rms):
 8. Zgodność przyłączeniowa NC RfG
 9. Raport OSD
 10. Raport techniczny
-11. Dynamika czasowa (DAE) — kontrakty/dane wejściowe; rdzeń solvera (W6-2) nie
-    istnieje jeszcze, więc `ready` tu NIE oznacza "obliczenie dostępne".
+11. Dynamika czasowa (DAE) — dane modelu + punkt pracy z rozpływu; scenariusz
+    czasowy i nastawy numeryczne są daną per bieg (sprawdza je adapter biegu).
 
 Każdy item zwraca: status + brakujące pola + obiekty blokujące + zalecaną akcję.
 """
@@ -23,6 +23,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from domain.canonical_operations import READINESS_CODES
+from enm.adapter_dynamiki import KOD_PUNKT_PRACY_BRAK, braki_modelu_dynamiki
 from enm.assembler import (
     KOD_NIESYMETRIA_BRAK_DROGI_ZEROWEJ,
     KOD_NIESYMETRIA_ELEMENT,
@@ -51,9 +52,9 @@ CalculationType = Literal[
     "ncrfg_compliance",
     "report_osd",
     "report_technical",
-    #: Karta W6-1 SS0 p.7: kontrakty/gotowość dla bieg `dynamika_rms` — rdzeń
-    #: solvera DAE (W6-2) nie istnieje jeszcze; `ready` tutaj mówi WYŁĄCZNIE
-    #: "dane wejściowe kompletne", nigdy "obliczenie dostępne".
+    #: Bieg czasowy DAE (karty W6-1..W6-3B). `ready` mówi „dane MODELU kompletne
+    #: i punkt pracy z rozpływu dostępny"; scenariusz czasowy i nastawy numeryczne
+    #: są daną PER BIEG (opcje), więc bramka modelowa ich nie widzi.
     "dynamika_rms",
 ]
 
@@ -666,21 +667,32 @@ def _check_frt_hvrt(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     )
 
 
-def _check_dynamika_rms(enm: EnergyNetworkModel) -> ReadinessTypeReport:
-    """Gotowość biegu `dynamika_rms` (karta W6-1 SS0 p.7) — kontrakty, nie fizyka.
+def _check_dynamika_rms(
+    enm: EnergyNetworkModel, *, punkt_pracy_rozplywu: bool | None = None
+) -> ReadinessTypeReport:
+    """Gotowość biegu `dynamika_rms` — DOKŁADNIE te warunki, którymi odmawia bieg.
 
-    KAŻDE źródło (DER przekształtnikowe I maszyna synchroniczna) musi mieć
-    `Generator.dynamika` z proweniencją; rozpływ punktu pracy musi być `ready`.
-    Scenariusz dynamiczny (`OperatingScenario.dynamika`) jest daną PER BIEG, nie
-    modelu — jego kompletność (horyzont/zdarzenia/referencje) jest walidowana
-    przez kontrakt (`enm.scenariusze.ScenariuszDynamiczny`) i `apply_scenario`
-    przy tworzeniu biegu, NIE tutaj (ten typ czyta wyłącznie `enm`, jak
-    pozostałe 10 typów gotowości — rozszerzenie sygnatury o scenariusz jest
-    poza zakresem tej karty, nazwane świadomie w meldunku)."""
+    PARYTET Z BIEGIEM (karta W6-3B, reguła predykatów parami). Warunki MODELOWE
+    czyta `enm.adapter_dynamiki.braki_modelu_dynamiki` — TA SAMA funkcja, którą
+    woła adapter przed złożeniem wejścia, więc „gotowość mówi ready, a bieg
+    odmawia" nie ma gdzie powstać. Do karty W6-1 ta bramka sprawdzała WŁASNY,
+    węższy warunek (blok `Generator.dynamika` wyłącznie dla DER i maszyn
+    synchronicznych), więc wytwórca bez `gen_type` — którego adapter i tak
+    odmawia — przechodził jako gotowy; rodzina bez modelu elektrycznego, odbiór
+    ZIP i dwa urządzenia na jednej szynie nie były sprawdzane wcale.
+
+    `punkt_pracy_rozplywu` — czy dla TEJ migawki istnieje zakończony bieg
+    rozpływu (punkt pracy). To warunek PER BIEG, nie modelu, więc podaje go
+    wołający, który zna rejestr biegów; `None` (wołający nie wie) daje `partial`
+    z nazwanym wymaganiem — fail-closed, bo „nie wiadomo" nie jest „gotowe".
+
+    Scenariusz dynamiczny i nastawy numeryczne są daną PER BIEG (opcje biegu) —
+    ich kompletność sprawdza adapter nazwaną odmową przy wykonaniu; model ich
+    nie niesie, więc bramka modelowa nie ma czego o nich orzec."""
     dynamiczne = [
         g for g in enm.generators if g.gen_type in _DER_GEN_TYPES or g.gen_type == "synchronous"
     ]
-    if not dynamiczne:
+    if not enm.generators:
         return ReadinessTypeReport(
             calculation_type="dynamika_rms",
             label_pl=CALCULATION_LABEL_PL["dynamika_rms"],
@@ -689,24 +701,18 @@ def _check_dynamika_rms(enm: EnergyNetworkModel) -> ReadinessTypeReport:
                 "Brak źródeł dynamicznych (maszyna synchroniczna/PV/BESS/FW) w projekcie."
             ),
         )
-    brakujace = [
-        getattr(g, "ref_id", getattr(g, "id", "?"))
-        for g in dynamiczne
-        if getattr(g, "dynamika", None) is None
-    ]
-    if brakujace:
+    braki = braki_modelu_dynamiki(enm)
+    if braki:
         return ReadinessTypeReport(
             calculation_type="dynamika_rms",
             label_pl=CALCULATION_LABEL_PL["dynamika_rms"],
             status="blocked",
-            missing_fields_pl=[
-                f"blok dynamiki źródła '{ref}' (kod 'der.dynamika_missing')" for ref in brakujace
-            ],
-            blocking_object_refs=brakujace,
+            missing_fields_pl=[f"{brak.komunikat_pl} (kod '{brak.kod}')" for brak in braki],
+            blocking_object_refs=[element for brak in braki for element in brak.elementy],
             recommended_action_pl=(
-                "Uzupełnij blok parametrów dynamicznych (Generator.dynamika) dla "
-                "każdego źródła — profil typowy normy, karta producenta albo "
-                "certyfikat jednostki (proweniencja wymagana)."
+                "Uzupełnij dane wejściowe biegu czasowego: blok parametrów dynamicznych "
+                "(Generator.dynamika) dla każdego wytwórcy, rodzinę parametrów z modelem "
+                "elektrycznym, odbiory o stałej mocy i najwyżej jedno urządzenie na szynie."
             ),
         )
     pf = _check_power_flow(enm)
@@ -722,15 +728,38 @@ def _check_dynamika_rms(enm: EnergyNetworkModel) -> ReadinessTypeReport:
                 f"czasowej — {pf.recommended_action_pl or 'uzupełnij dane rozpływu.'}"
             ),
         )
+    if punkt_pracy_rozplywu is not True:
+        nieznany = punkt_pracy_rozplywu is None
+        return ReadinessTypeReport(
+            calculation_type="dynamika_rms",
+            label_pl=CALCULATION_LABEL_PL["dynamika_rms"],
+            status="partial",
+            missing_fields_pl=[
+                "zakończony bieg rozpływu mocy na tej migawce (punkt pracy biegu czasowego, "
+                f"kod '{KOD_PUNKT_PRACY_BRAK}')"
+            ],
+            recommended_action_pl=(
+                (
+                    "Dane modelu są kompletne. Nie wiadomo, czy dla tej migawki istnieje "
+                    "zakończony bieg rozpływu — bieg czasowy startuje z punktu pracy "
+                    "rozpływu i bez niego odmówi."
+                )
+                if nieznany
+                else (
+                    "Dane modelu są kompletne. Uruchom rozpływ mocy na tej migawce — bieg "
+                    "czasowy startuje z jego punktu pracy; start od napięć znamionowych "
+                    "byłby wynikiem policzonym z danych, których nikt nie wyznaczył."
+                )
+            ),
+        )
     return ReadinessTypeReport(
         calculation_type="dynamika_rms",
         label_pl=CALCULATION_LABEL_PL["dynamika_rms"],
         status="ready",
         recommended_action_pl=(
-            f"{len(dynamiczne)} źródeł z blokiem dynamiki, punkt pracy gotowy. "
-            "Rdzeń solvera DAE (W6-2) nie jest jeszcze wdrożony w tym repozytorium — "
-            "bieg zakończy się odmową 'dynamika.rdzen_niedostepny' do czasu jego "
-            "wdrożenia; kontrakty wejścia są już kompletne."
+            f"{len(dynamiczne)} źródeł z blokiem dynamiki, punkt pracy z rozpływu dostępny. "
+            "Podaj scenariusz czasowy (horyzont, krok wyjścia, zdarzenia) i nastawy "
+            "numeryczne solvera w opcjach biegu."
         ),
     )
 
@@ -830,8 +859,16 @@ def _check_report_technical(enm: EnergyNetworkModel) -> ReadinessTypeReport:
 class CalculationReadinessService:
     """Pełen serwis gotowości obliczeń (PR-12, brief 2 §16)."""
 
-    def evaluate(self, enm: EnergyNetworkModel) -> ReadinessReport:
-        """Ocena gotowości dla wszystkich 11 typów."""
+    def evaluate(
+        self, enm: EnergyNetworkModel, *, punkt_pracy_rozplywu: bool | None = None
+    ) -> ReadinessReport:
+        """Ocena gotowości dla wszystkich 11 typów.
+
+        `punkt_pracy_rozplywu` (karta W6-3B) — czy dla TEJ migawki istnieje
+        zakończony bieg rozpływu. Warunek PER BIEG, którego model nie niesie,
+        więc podaje go wołający znający rejestr biegów; czyta go wyłącznie
+        gotowość biegu czasowego (`_check_dynamika_rms`).
+        """
         return ReadinessReport(
             items=[
                 _check_power_flow(enm),
@@ -844,14 +881,20 @@ class CalculationReadinessService:
                 _check_ncrfg_compliance(enm),
                 _check_report_osd(enm),
                 _check_report_technical(enm),
-                _check_dynamika_rms(enm),
+                _check_dynamika_rms(enm, punkt_pracy_rozplywu=punkt_pracy_rozplywu),
             ],
         )
 
     def evaluate_single(
-        self, enm: EnergyNetworkModel, calc_type: CalculationType
+        self,
+        enm: EnergyNetworkModel,
+        calc_type: CalculationType,
+        *,
+        punkt_pracy_rozplywu: bool | None = None,
     ) -> ReadinessTypeReport:
         """Ocena pojedynczego typu obliczeń."""
+        if calc_type == "dynamika_rms":
+            return _check_dynamika_rms(enm, punkt_pracy_rozplywu=punkt_pracy_rozplywu)
         check_map = {
             "power_flow": _check_power_flow,
             "voltage_profile": _check_voltage_profile,
@@ -863,6 +906,5 @@ class CalculationReadinessService:
             "ncrfg_compliance": _check_ncrfg_compliance,
             "report_osd": _check_report_osd,
             "report_technical": _check_report_technical,
-            "dynamika_rms": _check_dynamika_rms,
         }
         return check_map[calc_type](enm)

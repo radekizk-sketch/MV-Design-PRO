@@ -1,9 +1,18 @@
-"""Bieg `dynamika_rms` (karta W6-1 SS0 p.6-7): rejestracja rodzaju biegu, odmowa
-nazwana `dynamika.rdzen_niedostepny` (rdzeń W6-2 nie istnieje), kontrakt
-`ResultSetDynamicV1` (metadane bez próbek + szeregi czasowe na żądanie).
+"""Bieg `dynamika_rms`: ścieżka użytkownika od żądania HTTP do wyniku (karty W6-1, W6-3B).
 
-Zero fizyki: żaden test tu nie zakłada, że solver istnieje ani liczy cokolwiek —
-wyłącznie kontrakty, dyspozycja, persystencja i API.
+Co ten moduł sprawdza:
+
+* dyspozycja i rejestracja rodzaju biegu (W6-1) — tworzenie, listing, kontrakty odczytu;
+* PEŁNA ŚCIEŻKA UŻYTKOWNIKA (W6-3B): rozpływ mocy → bieg czasowy wskazujący ten
+  rozpływ jako punkt pracy → `ResultSetDynamicV1` z niepustymi kanałami, zdarzeniami
+  i metrykami → szeregi czasowe na żądanie osobnym endpointem;
+* NAZWANE odmowy na tej samej ścieżce (brak punktu pracy, brak nastaw, brak
+  scenariusza) — status FAILED z kodem, nigdy pusty wynik;
+* determinizm biegu przez HTTP: dwa biegi o tej samej piątce odcisków dają ten sam
+  ładunek wyniku i te same szeregi.
+
+Zero fizyki w testach: wartości liczbowe nie są tu porównywane z wyroczniami (te
+żyją w `tests/network_model/dynamika/`), sprawdzana jest ŚCIEŻKA i KONTRAKT.
 """
 
 from __future__ import annotations
@@ -142,7 +151,11 @@ class TestOdmowaBiegu:
         assert created.json()["analysis_type"] == "DYNAMIKA_RMS"
         assert created.json()["status"] == "PENDING"
 
-    def test_wykonanie_biegu_dynamika_rms_odmawia_nazwanym_kodem(self, client: TestClient) -> None:
+    def test_wykonanie_bez_punktu_pracy_odmawia_nazwanym_kodem(self, client: TestClient) -> None:
+        """Bieg bez wskazanego rozpływu NIE startuje od napięć znamionowych.
+
+        Start od 1,0 p.u. byłby wynikiem policzonym z danych, których nikt nie
+        wyznaczył — odmowa jest jedynym uczciwym zachowaniem."""
         case_id = _nowy_przypadek(client)
         _seed_minimal_enm(client, case_id)
         created = client.post(
@@ -156,7 +169,7 @@ class TestOdmowaBiegu:
         payload = executed.json()
         assert payload["status"] == "FAILED"
         assert payload["error_message"] is not None
-        assert "kod gotowości: dynamika.rdzen_niedostepny" in payload["error_message"]
+        assert "kod gotowości: dynamika.punkt_pracy_brak" in payload["error_message"]
 
     def test_listing_biegow_nie_wywala_sie_na_dynamika_rms(self, client: TestClient) -> None:
         """Regresja: `_execution_analysis_type_for_run` miala twardy `raise` dla
@@ -576,3 +589,249 @@ def test_reproducibility_niesie_solver_family_dynamika_rms() -> None:
     assert repro["solver_family"] == "dynamika_rms_dae"
     assert repro["formula_set_version"] == "resultset_dynamic_v1"
     assert repro["standard_basis_ref"] == "DYNAMIKA_RMS_DAE_V1"
+
+
+# ---------------------------------------------------------------------------
+# Ścieżka użytkownika (karta W6-3B): rozpływ → bieg czasowy → wynik → szeregi
+# ---------------------------------------------------------------------------
+
+
+#: Nastawy numeryczne biegu — komplet pól kontraktu solvera (zero domyślek).
+NASTAWY_SOLVERA = {
+    "dt_s": 0.002,
+    "dt_min_s": 0.002,
+    "dt_max_s": 0.002,
+    "tolerancja": 1.0e-10,
+    "tolerancja_kroku": 1.0e-6,
+    "eps_init": 1.0e-6,
+    "max_iteracji_newtona": 40,
+    "max_nawrotow": 30,
+    "integrator": "trapez_niejawny",
+}
+
+#: Scenariusz czasowy: zwarcie 3F na sekcji B z wyłączeniem po 100 ms.
+SCENARIUSZ_CZASOWY = {
+    "horyzont_s": 0.4,
+    "krok_wyjscia_s": 0.02,
+    "zdarzenia": [
+        {
+            "rodzaj": "zwarcie",
+            "t_s": 0.1,
+            "bus_ref": "b-sn-b",
+            "typ": "3F",
+            "r_f_ohm": 0.0,
+            "x_f_ohm": 1.0,
+            "t_usuniecia_s": 0.2,
+        }
+    ],
+}
+
+
+def _seed_siec_wzorcowa(client: TestClient, case_id: str) -> None:
+    """Sieć wzorcowa G16 (rejestr `tests/golden/registry.py`) jako model przypadku."""
+    from application.twin_key import klucz_twin_dla_przypadku
+    from enm.models import EnergyNetworkModel
+    from enm.store import set_enm
+
+    from tests.golden.enm_builders.dynamika_rms import build_dynamika_rms_enm
+
+    klucz = klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+    set_enm(klucz, EnergyNetworkModel.model_validate(build_dynamika_rms_enm()))
+
+
+def _uruchom_rozplyw(client: TestClient, case_id: str) -> str:
+    created = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={"analysis_type": "LOAD_FLOW", "solver_input": {}},
+    )
+    assert created.status_code == 201, created.text
+    run_id = created.json()["id"]
+    executed = client.post(f"/api/execution/runs/{run_id}/execute")
+    assert executed.status_code == 200, executed.text
+    assert executed.json()["status"] == "DONE", executed.json()["error_message"]
+    return str(run_id)
+
+
+def _uruchom_dynamike(client: TestClient, case_id: str, solver_input: dict) -> dict:
+    created = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={"analysis_type": "DYNAMIKA_RMS", "solver_input": solver_input},
+    )
+    assert created.status_code == 201, created.text
+    run_id = created.json()["id"]
+    executed = client.post(f"/api/execution/runs/{run_id}/execute")
+    assert executed.status_code == 200, executed.text
+    return {"run_id": str(run_id), **executed.json()}
+
+
+class TestSciezkaUzytkownika:
+    def test_bieg_konczy_sie_wynikiem_a_nie_odmowa(self, client: TestClient) -> None:
+        """Dowód zdolności: bieg `dynamika_rms` oddaje `ResultSetDynamicV1`.
+
+        To jest dokładnie to, czego przed kartą W6-3B nie było: rdzeń DAE i
+        biblioteka urządzeń istniały, a jedyny punkt wejścia odmawiał zawsze.
+        """
+        case_id = _nowy_przypadek(client)
+        _seed_siec_wzorcowa(client, case_id)
+        pf_run_id = _uruchom_rozplyw(client, case_id)
+
+        bieg = _uruchom_dynamike(
+            client,
+            case_id,
+            {
+                "pf_run_id": pf_run_id,
+                "dynamika": SCENARIUSZ_CZASOWY,
+                "nastawy_solvera": NASTAWY_SOLVERA,
+            },
+        )
+        assert bieg["status"] == "DONE", bieg["error_message"]
+
+        wynik = client.get(f"/api/analysis-runs/{bieg['run_id']}/results/dynamika")
+        assert wynik.status_code == 200, wynik.text
+        ladunek = wynik.json()
+        assert ladunek["kontrakt"] == "resultset_dynamic_v1"
+        assert ladunek["pf_run_id"] == pf_run_id
+        assert ladunek["wlasnosci_biegu"]["zbiegl"] is True
+        assert ladunek["wlasnosci_biegu"]["kroki"] > 0
+        # Szeregi NIE wchodzą do wiersza biegu (lekcja wydajnościowa) — wchodzą
+        # do osobnej tabeli i wracają osobnym endpointem.
+        assert ladunek["os_czasu_s"] == [] and ladunek["probki"] == {}
+
+        klucze = {kanal["klucz"] for kanal in ladunek["kanaly"]}
+        assert {"u_pu@b-sn-b", "omega_pu@gen-synchroniczny", "p_pu@gen-pv"} <= klucze
+        assert [(z["rodzaj"], z["ref"]) for z in ladunek["zdarzenia_wykonane"]] == [
+            ("zwarcie", "b-sn-b"),
+            ("zdjecie_zwarcia", "b-sn-b"),
+        ]
+        assert {m["klucz"] for m in ladunek["metryki"]} >= {"u_min_pu", "t_u_min_s"}
+        # Stopień dowodowy pochodzi z rejestru proweniencji, nie z solvera.
+        (stopien,) = ladunek["stopien_dowodowy"]
+        assert stopien["capability_id"] == "dynamika_rms.przebieg_czasowy"
+        assert stopien["regulatory_evidence_eligible"] is False
+        # Proweniencja parametrów KAŻDEGO wytwórcy jest w założeniach wyniku.
+        zalozenia = " ".join(ladunek["zalozenia"])
+        assert "gen-synchroniczny" in zalozenia and "karta_producenta" in zalozenia
+        assert "gen-pv" in zalozenia and "profil_typowy_normy" in zalozenia
+
+        szeregi = client.get(
+            f"/api/analysis-runs/{bieg['run_id']}/results/dynamika/time-series",
+            params={"kanaly": "u_pu@b-sn-b"},
+        )
+        assert szeregi.status_code == 200, szeregi.text
+        probki = szeregi.json()["probki"]["u_pu@b-sn-b"]
+        assert len(probki) == len(szeregi.json()["os_czasu_s"]) > 1
+        assert min(probki) < 0.9 * probki[0], "zwarcie musi obniżyć napięcie szyny"
+
+    def test_determinizm_dwa_biegi_ten_sam_wynik(self, client: TestClient) -> None:
+        """Ta sama piątka odcisków ⇒ ten sam ładunek i te same szeregi.
+
+        `czas_obliczen_s` jest pomiarem zegara, nie wielkością fizyczną — jedyne
+        pole wyłączone z porównania.
+        """
+        case_id = _nowy_przypadek(client)
+        _seed_siec_wzorcowa(client, case_id)
+        pf_run_id = _uruchom_rozplyw(client, case_id)
+        solver_input = {
+            "pf_run_id": pf_run_id,
+            "dynamika": SCENARIUSZ_CZASOWY,
+            "nastawy_solvera": NASTAWY_SOLVERA,
+        }
+        pierwszy = _uruchom_dynamike(client, case_id, solver_input)
+        drugi = _uruchom_dynamike(client, case_id, solver_input)
+        assert pierwszy["status"] == "DONE" and drugi["status"] == "DONE"
+
+        a = client.get(f"/api/analysis-runs/{pierwszy['run_id']}/results/dynamika").json()
+        b = client.get(f"/api/analysis-runs/{drugi['run_id']}/results/dynamika").json()
+        assert a["tozsamosc"] == b["tozsamosc"], "ta sama piątka odcisków musi się zgadzać"
+        # Poza porównaniem zostają WYŁĄCZNIE pola, które z definicji różnią się
+        # między dwoma biegami i nie są wynikiem fizyki: tożsamość biegu
+        # (`run_id`, `pf_run_id`), kontekst przypadku budowany przez warstwę API
+        # z identyfikatorów i znaczników czasu (`analysis_case_context`) oraz
+        # pomiar zegara (`czas_obliczen_s`). Każde inne pole MUSI być identyczne.
+        POZA_POROWNANIEM = {"run_id", "pf_run_id", "analysis_case_context"}
+        for ladunek in (a, b):
+            for klucz in POZA_POROWNANIEM:
+                ladunek.pop(klucz, None)
+            ladunek["wlasnosci_biegu"].pop("czas_obliczen_s")
+        assert set(a) == set(b)
+        assert {"kanaly", "zdarzenia_wykonane", "metryki", "tozsamosc", "zalozenia"} <= set(a)
+        assert json.dumps(a, sort_keys=True) == json.dumps(b, sort_keys=True)
+
+        szeregi_a = client.get(
+            f"/api/analysis-runs/{pierwszy['run_id']}/results/dynamika/time-series"
+        ).json()
+        szeregi_b = client.get(
+            f"/api/analysis-runs/{drugi['run_id']}/results/dynamika/time-series"
+        ).json()
+        assert szeregi_a["os_czasu_s"] == szeregi_b["os_czasu_s"]
+        assert szeregi_a["probki"] == szeregi_b["probki"]
+
+    def test_odmowa_bez_nastaw_numerycznych(self, client: TestClient) -> None:
+        case_id = _nowy_przypadek(client)
+        _seed_siec_wzorcowa(client, case_id)
+        pf_run_id = _uruchom_rozplyw(client, case_id)
+        bieg = _uruchom_dynamike(
+            client, case_id, {"pf_run_id": pf_run_id, "dynamika": SCENARIUSZ_CZASOWY}
+        )
+        assert bieg["status"] == "FAILED"
+        assert "dynamika.nastawy_solvera_brak" in bieg["error_message"]
+
+    def test_odmowa_bez_scenariusza_czasowego(self, client: TestClient) -> None:
+        case_id = _nowy_przypadek(client)
+        _seed_siec_wzorcowa(client, case_id)
+        pf_run_id = _uruchom_rozplyw(client, case_id)
+        bieg = _uruchom_dynamike(
+            client, case_id, {"pf_run_id": pf_run_id, "nastawy_solvera": NASTAWY_SOLVERA}
+        )
+        assert bieg["status"] == "FAILED"
+        assert "dynamika.scenariusz_dynamiczny_brak" in bieg["error_message"]
+
+    def test_odmowa_gdy_punkt_pracy_z_innego_biegu_niz_rozplyw(self, client: TestClient) -> None:
+        """Bieg wskazany jako punkt pracy MUSI być rozpływem — nie dowolnym biegiem."""
+        case_id = _nowy_przypadek(client)
+        _seed_siec_wzorcowa(client, case_id)
+        obcy = client.post(
+            f"/api/execution/study-cases/{case_id}/runs",
+            json={"analysis_type": "SC_3F", "solver_input": {}},
+        )
+        assert obcy.status_code == 201, obcy.text
+        bieg = _uruchom_dynamike(
+            client,
+            case_id,
+            {
+                "pf_run_id": obcy.json()["id"],
+                "dynamika": SCENARIUSZ_CZASOWY,
+                "nastawy_solvera": NASTAWY_SOLVERA,
+            },
+        )
+        assert bieg["status"] == "FAILED"
+        assert "dynamika.punkt_pracy_nie_jest_rozplywem" in bieg["error_message"]
+
+    def test_odmowa_gdy_rodzaj_zdarzenia_spoza_zbioru_rdzenia(self, client: TestClient) -> None:
+        """Komenda regulacji jest w kontrakcie danych, rdzeń jej nie wykonuje."""
+        case_id = _nowy_przypadek(client)
+        _seed_siec_wzorcowa(client, case_id)
+        pf_run_id = _uruchom_rozplyw(client, case_id)
+        scenariusz = {
+            "horyzont_s": 0.4,
+            "krok_wyjscia_s": 0.02,
+            "zdarzenia": [
+                {
+                    "rodzaj": "komenda_regulacji",
+                    "t_s": 0.2,
+                    "ref_id": "gen-synchroniczny",
+                    "nastawa": {"p_mw": 4.0},
+                }
+            ],
+        }
+        bieg = _uruchom_dynamike(
+            client,
+            case_id,
+            {
+                "pf_run_id": pf_run_id,
+                "dynamika": scenariusz,
+                "nastawy_solvera": NASTAWY_SOLVERA,
+            },
+        )
+        assert bieg["status"] == "FAILED"
+        assert "dynamika.rodzaj_zdarzenia_nieobslugiwany" in bieg["error_message"]

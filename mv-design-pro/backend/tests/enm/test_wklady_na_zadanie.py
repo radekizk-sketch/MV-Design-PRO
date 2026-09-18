@@ -15,8 +15,15 @@ from __future__ import annotations
 
 import copy
 from typing import Any
+from uuid import uuid4
 
 import pytest
+from domain.fault_scenario import (
+    FaultLocation,
+    FaultScenario,
+    FaultType,
+    ShortCircuitConfig,
+)
 from enm.assembler import zloz_wejscie_zwarcia
 from enm.canonical_analysis import (
     _execute_short_circuit,
@@ -26,6 +33,7 @@ from enm.canonical_analysis import (
     pobierz_slad_rozplywu_biegu,
 )
 from enm.models import EnergyNetworkModel
+from enm.scenariusze import OperatingScenario, RodzajScenariusza
 from infrastructure.persistence.repositories.canonical_run_repository import (
     KLUCZ_DOSTEPNOSCI_ROZPLYWU,
     KLUCZ_ROZPLYWU,
@@ -114,33 +122,49 @@ def test_zmiana_wejscia_po_biegu_odmawia_wkladow_na_zadanie() -> None:
         pobierz_rozplyw_biegu(run, punkt)
 
 
+def _scenariusz_zwarciowy(flaga: bool) -> OperatingScenario:
+    """Scenariusz z REALNEGO kontraktu — nie atrapa o tym samym kształcie.
+
+    Wcześniejsza wersja tego testu budowała ręczne obiekty `_Spec`/`_Scen` z
+    czterema polami, które akurat czyta projekcja. Atrapa przechodzi wtedy, gdy
+    kontrakt się zmieni (nowe pole czytane przez projekcję nie istnieje w
+    atrapie) — test maskujący, nie chroniący (CLAUDE.md, Zero-Debt §5). Pomiar:
+    dopisanie projekcji harmonogramu dynamicznego (karta W6-3B) wywróciło ten
+    test `AttributeError`-em, choć produkcja działała poprawnie.
+    """
+    return OperatingScenario(
+        scenario_id="s1",
+        name="Zwarcie 3F na szynie",
+        kind=RodzajScenariusza.FAULT_STUDY,
+        fault_spec=FaultScenario(
+            scenario_id=uuid4(),
+            study_case_id=uuid4(),
+            name="Zwarcie 3F",
+            fault_type=FaultType.SC_3F,
+            location=FaultLocation(element_ref="b1", location_type="BUS"),
+            config=ShortCircuitConfig(
+                c_factor=1.1,
+                thermal_time_seconds=1.0,
+                include_branch_contributions=flaga,
+            ),
+        ),
+    )
+
+
 def test_scenariusz_z_include_branch_contributions_liczy_wklady_w_biegu() -> None:
-    from domain.fault_scenario import FaultScenario  # noqa: F401  (kontrakt istnieje)
     from enm.scenariusze import opcje_biegu_ze_scenariusza
 
     # projekcja scenariusza: flaga True -> tryb in_run; False -> klucz nieobecny (hash bez zmian)
-    class _Spec:
-        def __init__(self, flaga: bool) -> None:
-            self.scenario_id = "s1"
-            self.fault_type = type("T", (), {"value": "SC_3F"})()
-            self.location = type("L", (), {"to_dict": lambda self: {"element_ref": "b1"}})()
-            self.config = type(
-                "C",
-                (),
-                {
-                    "to_dict": lambda self: {},
-                    "c_factor": 1.1,
-                    "thermal_time_seconds": 1.0,
-                    "include_branch_contributions": flaga,
-                },
-            )()
-
-    class _Scen:
-        def __init__(self, flaga: bool) -> None:
-            self.fault_spec = _Spec(flaga)
-
-    assert opcje_biegu_ze_scenariusza(_Scen(True))["branch_contributions_mode"] == "in_run"
-    assert "branch_contributions_mode" not in opcje_biegu_ze_scenariusza(_Scen(False))
+    assert (
+        opcje_biegu_ze_scenariusza(_scenariusz_zwarciowy(True))["branch_contributions_mode"]
+        == "in_run"
+    )
+    assert "branch_contributions_mode" not in opcje_biegu_ze_scenariusza(
+        _scenariusz_zwarciowy(False)
+    )
+    # Scenariusz BEZ harmonogramu dynamicznego nie wnosi klucza `dynamika` —
+    # payload i hash scenariuszy sprzed karty W6-3B pozostają bajtowo te same.
+    assert "dynamika" not in opcje_biegu_ze_scenariusza(_scenariusz_zwarciowy(False))
 
 
 def test_nieznany_tryb_wkladow_jest_odmowa_nazwana() -> None:
