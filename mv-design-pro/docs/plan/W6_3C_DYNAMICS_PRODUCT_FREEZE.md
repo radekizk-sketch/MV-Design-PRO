@@ -6,6 +6,8 @@ wstępnym jakiegokolwiek kodu W6-3C (§28: „DO NOT IMPLEMENT W6-3C UI UNTIL TH
 DOCUMENT IS COMPLETE").
 
 **HEAD rozpoznania:** `957e2a5f`.
+> **SUPERSESJA CZĘŚCIOWA (2026-09-18, korekta właściciela „FINAL DYNAMICS CAPABILITY FREEZE").** Sekcja **I** tego dokumentu (wycinki W6-3C…W6-4) jest **UNIEWAŻNIONA**: wyprowadzała podział prac ze stanu kodu, a właściciel polecił wyprowadzić go z ZAMROŻONEJ ZDOLNOŚCI DOCELOWEJ. Obowiązujący podział: `docs/plan/FINAL_DYNAMICS_CAPABILITY_FREEZE.md` §5. Sekcje A–H, J–L oraz §I.3 (pozycje Zero-Debt) pozostają w mocy.
+
 **Macierz szczegółowa:** `docs/audit/CURRENT_DYNAMIC_CAPABILITY_MATRIX.md` (dowody `plik:linia`,
 komendy i wyniki). Ten dokument jej nie powtarza — streszcza i rozstrzyga.
 
@@ -297,7 +299,9 @@ do jednej odznaki, pokazywać `STABLE/UNSTABLE` jako jedynej reprezentacji wynik
 
 ---
 
-## I. Wycinki wdrożeniowe
+## I. Wycinki wdrożeniowe — §I.1 i §I.2 UNIEWAŻNIONE
+
+> Podział na W6-3C…W6-4 poniżej powstał przed korektą właściciela i był wyprowadzony ze stanu kodu. Obowiązująca mapa dróg (fale W6-A…W6-K, wyprowadzone z macierzy zdolności docelowej) żyje w `docs/plan/FINAL_DYNAMICS_CAPABILITY_FREEZE.md` §5. Poniższe §I.1 i §I.2 zostawiamy jako zapis toku rozumowania, nie jako plan. **§I.3 (Zero-Debt) obowiązuje bez zmian.**
 
 Dyrektywa §I jest wprost: „Do not attempt to fit everything into W6-3C." Podział poniżej jest
 wykonaniem tego polecenia, nie odroczeniem — każdy wycinek ma zamknięty zakres i własną bramkę.
