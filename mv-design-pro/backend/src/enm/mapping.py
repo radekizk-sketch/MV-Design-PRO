@@ -90,6 +90,24 @@ def _odmowa_zrodla_bez_szyny(source_ref: str, bus_ref: str) -> str:
     )
 
 
+def _odmowa_elementu_bez_szyny(rodzaj: str, ref_id: str, bus_ref: str) -> str:
+    """Odmowa assemblera dla elementu wskazujacego nieistniejaca szyne.
+
+    TA SAMA KLASA, CO `_odmowa_zrodla_bez_szyny` — domknieta do konca (pomiar
+    2026-09-18, karta W6-3B). Odmowa dla ZRODLA istniala od CV-3.3-B, ale
+    galezie, transformatory i wytworcy byly nadal pomijane cichym `continue` w
+    PIECIU miejscach tego modulu. Skutek jest gorszy niz brak elementu: rozplyw i
+    zwarcia licza SIEC INNA NIZ ZAPISANA, bez sladu w wyniku i bez kodu
+    gotowosci. Walidator ENM tego stanu nie blokuje (`enm/validator` nie ma
+    reguly dla wiszacej referencji galezi), wiec assembler jest tu ostatnim
+    miejscem, ktore moze powiedziec prawde.
+    """
+    return (
+        f"{rodzaj} '{ref_id}' wskazuje nieistniejaca szyne '{bus_ref}' — "
+        "assembler nie pomija elementow po cichu, bo bieg liczylby siec inna niz zapisana."
+    )
+
+
 def ref_to_graph_id(ref_id: str) -> str:
     """Identyfikator elementu w grafie domenowym dla ``ref_id`` modelu ENM.
 
@@ -400,6 +418,9 @@ def _assemble_zero_sequence_y0(
 
         from_id = ref_to_node_id.get(branch.from_bus_ref)
         to_id = ref_to_node_id.get(branch.to_bus_ref)
+        if from_id is None or to_id is None:
+            brakujaca = branch.from_bus_ref if from_id is None else branch.to_bus_ref
+            raise ValueError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
         if from_id not in node_index or to_id not in node_index:
             continue
         from_idx = node_index[from_id]
@@ -530,6 +551,9 @@ def _assemble_zero_sequence_y0(
     for trafo in sorted(enm.transformers, key=lambda t: t.ref_id):
         hv_id = ref_to_node_id.get(trafo.hv_bus_ref)
         lv_id = ref_to_node_id.get(trafo.lv_bus_ref)
+        if hv_id is None or lv_id is None:
+            brakujaca = trafo.hv_bus_ref if hv_id is None else trafo.lv_bus_ref
+            raise ValueError(_odmowa_elementu_bez_szyny("Transformator", trafo.ref_id, brakujaca))
         if hv_id not in node_index or lv_id not in node_index:
             continue
         model = build_transformer_zero_seq_model(trafo)
@@ -733,7 +757,7 @@ def _add_generator_sc_sources(
             continue
         node_id = ref_to_node_id.get(gen.bus_ref)
         if node_id is None:
-            continue
+            raise ValueError(_odmowa_elementu_bez_szyny("Wytworca", gen.ref_id, gen.bus_ref))
         mp = gen.materialized_params or {}
         un_kv = _gen_rated_voltage_kv(gen, mp, bus_voltage_by_ref)
         if un_kv is None:
@@ -1092,7 +1116,8 @@ def map_enm_to_network_graph(
         from_id = ref_to_node_id.get(branch.from_bus_ref)
         to_id = ref_to_node_id.get(branch.to_bus_ref)
         if from_id is None or to_id is None:
-            continue
+            brakujaca = branch.from_bus_ref if from_id is None else branch.to_bus_ref
+            raise ValueError(_odmowa_elementu_bez_szyny("Galaz", branch.ref_id, brakujaca))
 
         branch_id = _ref_to_uuid(branch.ref_id)
 
@@ -1223,7 +1248,8 @@ def map_enm_to_network_graph(
         hv_id = ref_to_node_id.get(trafo.hv_bus_ref)
         lv_id = ref_to_node_id.get(trafo.lv_bus_ref)
         if hv_id is None or lv_id is None:
-            continue
+            brakujaca = trafo.hv_bus_ref if hv_id is None else trafo.lv_bus_ref
+            raise ValueError(_odmowa_elementu_bez_szyny("Transformator", trafo.ref_id, brakujaca))
 
         tap_changer = _map_tap_changer(trafo.tap_changer, ref_to_node_id)
         # G-STK-6: n identycznych jednostek równoległych → impedancja zastępcza

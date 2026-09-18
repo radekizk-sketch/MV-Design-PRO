@@ -141,6 +141,16 @@ def punkt_pracy(snapshot: dict[str, Any], bieg: CanonicalRun) -> PunktPracyRozpl
 
 
 def zloz(snapshot: dict[str, Any], options: dict[str, Any], punkt: PunktPracyRozplywu):
+    """Ta sama KOLEJNOSC co `_execute_dynamika_rms`, nie skrot testowy.
+
+    Odmowa modelu idzie PRZED budowa grafu — bo assembler (`enm/mapping.py`) od
+    2026-09-18 tez odmawia elementowi z wiszaca referencja szyny (wczesniej
+    pomijal go po cichu, przez co rozplyw i zwarcia liczyly siec inna niz
+    zapisana). Gdyby helper budowal graf jako ARGUMENT, jak robil do tej pory,
+    pierwszy odezwalby sie assembler i test sprawdzalby komunikat innej warstwy
+    niz ta, o ktorej mowi jego nazwa.
+    """
+    odmow_gdy_braki_modelu(EnergyNetworkModel.model_validate(snapshot))
     return zloz_wejscie_dynamiki(
         snapshot,
         options,
