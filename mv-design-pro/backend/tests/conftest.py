@@ -173,6 +173,15 @@ _KONTA_BEZ_UPRAWNIEN: tuple[str, ...] = ("postgres", "nobody")
 _BAZA_EFEMERYCZNA = "mvtest"
 _UZYTKOWNIK_EFEMERYCZNY = "postgres"
 
+#: Haslo superuzytkownika klastra efemerycznego. ISTNIENIE HASLA JEST CZESCIA
+#: KONTRAKTU FIKSTURY, nie ozdoba: klaster na `trust` przyjmuje kazde polaczenie
+#: bez wzgledu na to, czy adres bazy niesie haslo, wiec KAZDY defekt gubiacy
+#: haslo po drodze (np. `str(URL)` maskujacy je ciagiem `***`) jest lokalnie
+#: NIEWIDOCZNY i wychodzi dopiero na CI, gdzie usluga postgres wymaga
+#: uwierzytelnienia. Znaki specjalne (`:@/#`) sa celowe — pilnuja, ze adres
+#: powstaje z `URL.create` (cytowanie komponentow), a nie ze sklejania napisow.
+_HASLO_EFEMERYCZNE = "mv:test@haslo/ze#znakami"
+
 
 #: Narzedzia, ktorych KOMPLET jest potrzebny do podniesienia klastra efemerycznego.
 _NARZEDZIA_KLASTRA: tuple[str, ...] = ("initdb", "pg_ctl", "createdb")
@@ -326,7 +335,12 @@ def klaster_postgres() -> Iterator[str]:
             argv,
             capture_output=True,
             text=True,
-            env={**os.environ, "HOME": str(katalog), "PGUSER": _UZYTKOWNIK_EFEMERYCZNY},
+            env={
+                **os.environ,
+                "HOME": str(katalog),
+                "PGUSER": _UZYTKOWNIK_EFEMERYCZNY,
+                "PGPASSWORD": _HASLO_EFEMERYCZNE,
+            },
             preexec_fn=zejdz_z_roota if konto is not None else None,
         )
 
@@ -342,20 +356,38 @@ def klaster_postgres() -> Iterator[str]:
             )
         return wynik
 
-    uruchom(
-        [
-            str(binaria / "initdb"),
-            "-D",
-            str(dane),
-            "-U",
-            _UZYTKOWNIK_EFEMERYCZNY,
-            "-A",
-            "trust",
-            "--encoding=UTF8",
-            "--locale=C",
-        ],
-        "initdb klastra testowego",
-    )
+    # UWIERZYTELNIANIE HASLEM, NIE `trust` — POMIAR, NIE PREFERENCJA (2026-09-18).
+    # Wczesniejsza wersja stawiala klaster na `trust`. Klaster na `trust` przyjmuje
+    # polaczenie NIEZALEZNIE od tego, czy adres bazy niesie haslo, wiec defekt
+    # gubiacy haslo w adresie (`str(URL)` maskujacy je ciagiem `***` przy dokladaniu
+    # `search_path`) przechodzil lokalnie na zielono i zapalal sie dopiero na CI,
+    # gdzie usluga postgres wymaga uwierzytelnienia (12 czerwonych przypadkow).
+    # Klaster testowy odtwarza wiec warunek CI: `scram-sha-256`, ta sama metoda,
+    # ktorej uzywa obraz `postgres` w workflow. Plik hasla ginie zaraz po `initdb`.
+    plik_hasla = katalog / "haslo"
+    plik_hasla.write_text(_HASLO_EFEMERYCZNE, encoding="utf-8")
+    plik_hasla.chmod(0o600)
+    if konto is not None:
+        os.chown(plik_hasla, konto.pw_uid, konto.pw_gid)
+    try:
+        uruchom(
+            [
+                str(binaria / "initdb"),
+                "-D",
+                str(dane),
+                "-U",
+                _UZYTKOWNIK_EFEMERYCZNY,
+                "-A",
+                "scram-sha-256",
+                "--pwfile",
+                str(plik_hasla),
+                "--encoding=UTF8",
+                "--locale=C",
+            ],
+            "initdb klastra testowego",
+        )
+    finally:
+        plik_hasla.unlink(missing_ok=True)
     port = _wolny_port()
     # `-F` = bez fsync. To baza TESTOWA, ktora ginie razem z katalogiem — trwalosc
     # po awarii zasilania nie jest tu niczyim wymaganiem, a koszt zapisu spada.
@@ -388,9 +420,18 @@ def klaster_postgres() -> Iterator[str]:
             ],
             "utworzenie bazy testowej",
         )
-        yield (
-            f"postgresql+psycopg://{_UZYTKOWNIK_EFEMERYCZNY}@127.0.0.1:{port}/{_BAZA_EFEMERYCZNA}"
-        )
+        # Adres z `URL.create`, NIE ze sklejania napisow: haslo niesie znaki
+        # specjalne (`:@/#`), ktore w napisie trzeba by cytowac recznie.
+        from sqlalchemy.engine import URL
+
+        yield URL.create(
+            "postgresql+psycopg",
+            username=_UZYTKOWNIK_EFEMERYCZNY,
+            password=_HASLO_EFEMERYCZNE,
+            host="127.0.0.1",
+            port=port,
+            database=_BAZA_EFEMERYCZNA,
+        ).render_as_string(hide_password=False)
     finally:
         # KOLEJNOSC JEST CZESCIA KONTRAKTU: najpierw domykamy serwer (i sprawdzamy,
         # ze naprawde nie zyje), potem kasujemy katalog, a dopiero na koncu zglaszamy
