@@ -385,7 +385,7 @@ MV-Design-PRO/
 │   │   │       ├── theme/             # Motyw i tokeny
 │   │   │       ├── wyniki/            # Ekrany wynikow (rozplyw, zwarcia, porownanie, estymacja, skladowe)
 │   │   └── e2e/                  # Playwright end-to-end tests
-│   ├── scripts/                  # CI/CD guard scripts (83 guards + 36 self-tests, 2026-09-10)
+│   ├── scripts/                  # CI/CD guard scripts (96 guards + 51 self-tests, measured 2026-09-18)
 │   └── docs/                     # Detailed documentation (150+ files)
 │       ├── spec/                 # DETAILED SPECIFICATION (18 chapters + supplements - SOURCE OF TRUTH)
 │       ├── ui/                   # UI contracts (35+ canonical contracts)
@@ -623,10 +623,14 @@ docker-compose logs -f backend
 docker-compose down
 ```
 
-### Guard Scripts (83 guards + 36 self-tests; list below is a selection)
+### Guard Scripts (96 guards + 51 self-tests; list below is a selection)
 
-Counts measured 2026-09-10 via `ls scripts/*_guard.py scripts/*_guards.py | grep -v test_ | wc -l`
-(guards) and `ls scripts/test_*guard*.py | wc -l` (self-tests).
+Counts measured 2026-09-18 via `ls scripts/*_guard.py scripts/*_guards.py | grep -v '/test_' | wc -l`
+(guards) and `ls scripts/test_*guard*.py | wc -l` (self-tests). The 2026-09-10 numbers
+(83 + 36) were stale: waves W6-1/W6-2, KATALOG-NIEZMIENNIKI and the deletion procedures
+added guards without the count being re-measured. `guardy_z_ci.py` issues 104 guard
+invocations (some guards run more than once with different scopes) and the self-test
+suite counts 1058 tests.
 ```bash
 cd mv-design-pro
 
@@ -846,7 +850,10 @@ The system is fully functional with:
 - 19 analysis modules (incl. Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds,
   Energy Validation — see inventory)
 - Full frontend (63 UI modules): SLD editor, Results, Study Cases, Proof Inspector, Protection, NC RfG tests
-- ~9 080 backend test functions (`grep def test_`, 2026-09-09); ~10 580 frontend tests in 892 files; 83 guard scripts + 36 guard self-tests (measured 2026-09-10)
+- 9 447 backend test functions (`grep -rn "def test_" backend/tests --include=*.py`, 2026-09-18);
+  12 548 frontend tests in 894 files (full vitest run); 96 guard scripts + 51 guard self-tests
+  (measured 2026-09-18) — full backend regression `-m "not pandapower and not andes"`:
+  **16 058 passed, 0 skipped**
 - Project import/export (ZIP, deterministic, versioned), CAD geometry editing in SLD,
   PDF/DOCX report generation, ENM v1.0 (EnergyNetworkModel)
 

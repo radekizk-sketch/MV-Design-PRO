@@ -694,6 +694,88 @@ czerwony wyłącznie `Frontend E2E full` — jeden spec, `industrial-template-ma
 `shunt.voltage_mismatch` na `tpl_kompensacja_1v8mvar_20kv` (432 passed / 1 failed, run `35266287860`).
 Przyczyna naprawiona w tej fali kontraktem napięcia i roli szablonu; weryfikacja po pushu.
 
+### F.KASACJA-UNIEWAZNIACZA + W6-2 „rdzeń dynamiki" (łańcuchy f13/f14, drzewo `8a379f4b`, 2026-09-18)
+
+**KASACJA-UNIEWAZNIACZA (5 commitów).** Martwy `ResultInvalidator` (36 linii) i cztery martwe metody
+`AnalysisRunRepository` zdjęte procedurą kasacji. Pomiar PRZED: 0 konsumentów produkcyjnych, 1 test;
+warunek, dla którego moduł miał zostać (`application/network_wizard/service.py`), zniknął w W1. PO:
+`grep -rn "ResultInvalidator\|invalidate_project_results" backend/src backend/tests` = **0 trafień**,
+metody repozytorium 9 → 5. Gałąź `uow.analysis_runs` ZOSTAJE — wynik pomiaru, nie zaniechanie: tabelę
+liczy żywy konsument produkcyjny (`project_repository.py::has_dependencies`), a `create`/`update_status`
+są potrzebne testom, które dowodzą, że kanoniczne routery IGNORUJĄ wiersze legacy. Bramka wskrzeszenia
+(`legacy_public_path_guard::check_uniewazniacz_resurrection`, AST po definicjach, nie po wystąpieniach)
++ **9 self-testów** + czerwona iniekcja na realnym drzewie (wskrzeszenie w DWÓCH miejscach → rc=1,
+5 naruszeń). Niezmiennik §0 p. 3 przepisany MOCNIEJ niż był: dawny test pokazywał, że pewien pisarz nie
+psuje plakietki statusu; nowy (`test_zastana_plakietka_statusu_nie_jest_czytana`, 6 kombinacji:
+plakietka FRESH/OUTDATED/NONE × model po biegu zmieniony/niezmieniony) pokazuje, że plakietka **nie jest
+czytana w ogóle**. Znalezisko uboczne tej samej klasy w tym samym pliku: `AnalysisRunRepository.create`
+budował wiersz z DWÓCH niezależnych list 19 pól — dodanie pola do jednej materializowałoby kontrakt z
+innego wiersza niż zapisany; scalone w jedno źródło.
+
+**W6-2 „rdzeń dynamiki" (6 commitów, pakiet 20 plików / 4699 wierszy, 131 funkcji testowych).** Pierwszy
+solver RMS w produkcie: DAE ze sprzężeniem sieciowym, trapez niejawny rozwiązywany Newtonem na układzie
+sprzężonym (x,y) z globalizacją, zdarzenia z dokładnym czasem, re-inicjalizacja algebry z diagnostyką
+liczoną NIEZALEŻNIE od solvera. **B-01 dotrzymane: żaden istniejący plik `network_model/solvers/**` nie
+jest edytowany** (pomiar `git diff --stat` po tym katalogu = wyłącznie nowe pliki `solvers/dynamika/**`);
+profile YAML NC RfG i kontrakty FROZEN PF/SC nietknięte.
+
+Wyrocznie analityczne (bramka odbioru §0 p. 7):
+- **CCT**: równe pola dają 0,250510 s, bisekcja na silniku 0,250510 s — **błąd 0,000 %** (próg karty 2 %);
+- **rząd metody**: drabina dt = 5 / 2,5 / 1,25 ms wobec odniesienia 0,15625 ms → ilorazy **3,889 / 4,003 /
+  4,048** (rząd 2 trapezu); błąd lokalny z punktu spójnego 7,428 / 7,725 / 7,865 (`dt³`), z niespójnego
+  **2,000** — obie własności przypięte, żeby nikt nie stroił tolerancji pod pierwszy pomiar;
+- **całka pierwsza przy D = 0**: dryf 6,02e-07 / 1,51e-07 / 3,76e-08 dla dt = 2 / 1 / 0,5 ms, ilorazy
+  **4,000 / 4,000**;
+- **analiza małosygnałowa**: wartości własne ±8,397594j → `f_mod` = 1,336519 Hz; z przebiegu 1,333266 Hz —
+  **0,243 %** (próg 1 %); predykat pary D = 0 / 2 / 8 → `zeta` monotonicznie rosnące;
+- **inicjalizacja**: SMIB `max‖f‖ = 3,17e-20`, `max‖g‖ = 8,88e-16`; sieć 50 stacji 2,87e-14 / 8,68e-10;
+- **wydajność (PERF-DYN-0)**: 50 stacji / 6 źródeł / 49 odbiorów, 10 s symulacji, dt = 1 ms →
+  **10 000 kroków w 28,55 s** wobec budżetu 60 s;
+- **determinizm**: dwa biegi = identyczna piątka odcisków i identyczny ładunek `ResultSetDynamicV1`
+  (poza `czas_obliczen_s`, który nie wchodzi do żadnego odcisku).
+
+**Defekt klasy złapany przy budowie rdzenia: cichy skip zdarzenia.** Wybór wpisów harmonogramu szedł przez
+równość bitową czasu, a `0,1 + 0,05 = 0,15000000000000002` ≠ `15 · 0,01 = 0,15`. Zdjęcie zwarcia NIE
+WYKONYWAŁO SIĘ NIGDY, a maszyna „traciła synchronizm" (**63,52 rad zamiast 0,64 rad**) — wynik wyglądał
+jak fizyka. Naprawa: wybór prefiksowy + bramka kompletności harmonogramu na końcu biegu + test jako
+iloczyn cech osi czasu (7 reprezentacji chwili).
+
+**Pre-existing fabrykacja odsłonięta i naprawiona u źródła:**
+`network_model/proof/power_flow_proof_builder.py` drukował `ΔQ = 0` jako wielkość ZMIERZONĄ dla węzłów PV,
+które nie mają równania mocy biernej (`power_flow_fast_decoupled` zapisuje dla nich samo `delta_p_pu`).
+Atrybucja dowiedziona pomiarem: `solver_input_substitute_guard` na czystym obrazie HEAD rc=0, z pakietem
+dynamiki rc=1 na tych dwóch wierszach. Naprawione (brakująca składowa pomijana), NIE dopisane do zapadki.
+
+**Weryfikacja (łańcuch f13 na `5bd855ec`, łańcuch f14 na `8a379f4b`, kody wyjścia bezpośrednio):**
+f13 — pytest `-m "not pandapower"` **15 890 passed / 0 skipped** (rc=0), pandapower 30 (rc=0),
+`guardy_z_ci.py` KOMPLET + 1047 (rc=0), mypy **0 błędów w 688 plikach** (rc=0).
+f14 — pytest `-m "not pandapower and not andes"` **16 058 passed / 33 deselected** (rc=0, 750 s),
+pandapower **30 passed** (rc=0), `guardy_z_ci.py` **KOMPLET ZIELONY** (104 wywołania) + **1058** testów
+własnych (rc=0), mypy **0 błędów w 708 plikach** (rc=0), vitest **894 pliki / 12 548 testów** (rc=0),
+e2e realny backend 4 specy krytyczne **81 passed** (rc=0).
+Wyrocznia ANDES 1.9.3 w izolowanym środowisku: **3 passed** (rc=0) — uruchomiona na PLIKU
+(`-m andes tests/network_model/dynamika/test_wyrocznia_andes.py`), bo lokalny venv wyroczni nie ma
+kompletu zależności backendu do zebrania całego katalogu; job CI `andes-cross-validation` instaluje
+`poetry install --with dev` + `andes==1.9.3` i woła `-m andes tests`, więc tam zbiór jest pełny.
+Trzy piny licznika pól kontraktu z trzech kart złożone **pomiarem na drzewie połączonym (3797)**, nie sumą
+arytmetyczną (3726 + 71).
+
+**Dług NAZWANY po tej fali (nie ukryty):**
+1. **Rdzeń dynamiki NIE jest na ścieżce użytkownika.** `enm/canonical_analysis.py::_execute_dynamika_rms`
+   nadal odmawia `dynamika.rdzen_niedostepny`; brak adaptera ENM/assembler → `WejscieDynamiki`. Karta
+   przypisuje adapter i pakiet dowodowy do W6-3/W6-5, ale wobec ZASADY NR 1 to jest dług: dziś rdzeń żyje
+   w testach i we własnym kontrakcie.
+2. **Job CI `andes-cross-validation` nigdy nie biegł na runnerze** — pierwszy realny bieg po tym pushu.
+3. **Podłoga różnicy wobec ANDES = 1,35e-04 rad w oknie zwarcia, przyczyna NIEUSTALONA.** Nie maleje z
+   krokiem (1,419e-04 / 1,420e-04 dla dt = 0,5 / 0,25 ms), więc nie jest błędem całkowania; wykluczone
+   pomiarem: częstotliwość bazowa wyroczni, jej tolerancja Newtona, model admitancji zwarcia. Progi w
+   teście to pomiar z zapasem 3,5×, nie deklaracja zgodności.
+4. **Ogranicznik kroku adaptacyjnego** ma stałe 0,9 / ×2 / ×0,1 — wartości klasyczne, opisane w module,
+   ale NIE zmierzone na tym repo.
+5. **Liczby guardów w `CLAUDE.md` kłamały** (83 + 36 z 2026-09-10; plik projektowy 86 + 35). Pomiar
+   2026-09-18: **96 guardów + 51 self-testów**, 104 wywołania w `guardy_z_ci.py`. Poprawione wraz z liczbą
+   funkcji testowych backendu (9 447) i testów frontendu (12 548 w 894 plikach).
+
 ## G. Ustalenia adwersaryjne (§38) — po każdej granicy
 
 **W3 fala 3 — granice (2026-09-16):** (1) „zielony spec podkarty = zielony ekran" OBALONE: W3-G3 dodała sekcję pasma z pobraniem po `runId`, a sceny harnessu zwarć niosły biegi-atrapy — pełny bieg e2e (152 testy) złapał 4 czerwone, których 6 specy podkart nie widziało; klasa = każda scena harnessu z ręcznymi liczbami solvera jest bombą dla każdej nowej sekcji ekranu; odpowiedź = fixtury z realnego biegu backendu (karta HARNESS-ZWARCIA-Z-BACKENDU), a nie atrapa końcówki pasma. (2) Zapadka `tsconfig_gate_guard` „w obie strony" zadziałała jak zaprojektowano: naprawy typów w testach poza bramką (recenzja G1/G2) obniżyły dług 119 → 117 i guard ODMÓWIŁ zielonego bez utrwalenia (budżet obniżony w tym samym odbiorze). (3) Parytet fixtur harnessu na CI (klasa z fali B-02): szum zmiennoprzecinkowy liczb kontraktu między maszynami → komparator z tolerancją 1e-6 + kwantyzacja `WerdyktProjektowy.to_dict()` (ADR-018) zamiast luzowania asercji; pin bool/int dokładny (KLASA: `True == 1` w Pythonie maskowałoby typ). (4) Nawigacja wynikowa dwupoziomowa po B-02 unieważniła lokatory zakładek w 7 specach fal 1–3 (strict mode: dwie zakładki o tej samej nazwie) — naprawione helperem `otworzZakladkeWynikow` (jedno miejsce), nie per spec. (5) Odczyt CI przy odbiorze (nie lokalny bieg) ujawnił trzecią klasę: test czasowy `test_lekkie_zadanie_przechodzi_w_trakcie_biegow` czerwony na runnerze (run 4946, `20890e88`) i zielony w biegu PR tego samego commitu — „liczba sond w partii jest bezwymiarowa" była deklaracją bez testu na innej maszynie; odpowiedź = usunięcie czasu z werdyktu (spotkanie w oknie solvera, karta CI-WSPOLBIEZNOSC), nie trzecia kalibracja progu ani powiększenie modelu (to była naprawa instancji W1). Lekcja procesowa: lokalna zieleń pełnego `pytest` na 4 rdzeniach NIE jest dowodem odporności testu czasowego na inną maszynę — każdy test z zegarem w werdykcie to dług do przepisania, nie do „obserwacji".
