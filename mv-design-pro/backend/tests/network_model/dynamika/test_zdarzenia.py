@@ -18,7 +18,9 @@ from network_model.solvers.dynamika import (
 )
 from network_model.solvers.dynamika.kontrakty import (
     KOD_ZDARZENIE_BEZ_ELEMENTU,
+    KOD_ZWARCIE_METALICZNE,
     KOD_ZWARCIE_NIESYMETRYCZNE,
+    WezelDynamiki,
 )
 from network_model.solvers.dynamika.zdarzenia import (
     odbiory_po_zdarzeniach,
@@ -399,3 +401,59 @@ def test_zdarzenie_w_chwili_horyzontu_tez_sie_wykonuje() -> None:
     ).uruchom()
     assert [zdarzenie.rodzaj for zdarzenie in wynik.zdarzenia_wykonane] == ["odlaczenie_zrodla"]
     assert wynik.zdarzenia_wykonane[0].t_wykonany_s == 0.5
+
+
+def test_zwarcie_metaliczne_konczy_sie_nazwana_odmowa_a_nie_dzieleniem_przez_zero() -> None:
+    """Zwarcie o zerowej impedancji: NAZWANA odmowa rdzenia, nie `ZeroDivisionError`.
+
+    KOREKTA 2026-09-18 (bramka SO-1A). Docstring `konwencje.admitancja_zwarcia_pu`
+    deklarowal, ze zwarcie metaliczne „jest odrzucane przez wolajacego
+    (`zdarzenia.py`)" — deklaracja BEZ POKRYCIA. Kontrakt danych
+    (`enm/scenariusze.py::Zwarcie`) przyjmuje `r_f_ohm = x_f_ohm = 0` (oba pola
+    `ge=0.0`), wiec projektant mogl wpisac wartosc, ktora konczyla bieg golym
+    `ZeroDivisionError` — wyjatkiem, ktorego `execute_run` nie lapie, czyli
+    bledem 500 zamiast komunikatu. Ten test przypina obietnice do zachowania.
+    """
+    harmonogram = HarmonogramDynamiki(
+        zdarzenia=(
+            ZwarcieWezla(
+                t_s=0.1, wezel="szyna", typ="3F", r_f_ohm=0.0, x_f_ohm=0.0, t_usuniecia_s=None
+            ),
+        )
+    )
+    with pytest.raises(OdmowaDynamiki) as blad:
+        zbuduj_harmonogram(
+            harmonogram,
+            wezly=(WezelDynamiki(ident="szyna", u_n_kv=15.0),),
+            galezie=(),
+            odbiory=(),
+            urzadzenia=(),
+            s_bazowa_mva=100.0,
+            horyzont_s=1.0,
+        )
+    assert blad.value.kod == KOD_ZWARCIE_METALICZNE
+    assert "szyna" in str(blad.value)
+
+
+def test_zwarcie_o_niezerowej_impedancji_przechodzi_ta_sama_sciezka() -> None:
+    """Predykat parami: warunek WEJSCIA (odmowa) i WYJSCIA (admitancja) z jednego
+    zrodla — niezerowa impedancja ma dawac skonczona admitancje, nie druga odmowe."""
+    harmonogram = HarmonogramDynamiki(
+        zdarzenia=(
+            ZwarcieWezla(
+                t_s=0.1, wezel="szyna", typ="3F", r_f_ohm=0.5, x_f_ohm=0.0, t_usuniecia_s=None
+            ),
+        )
+    )
+    wpisy = zbuduj_harmonogram(
+        harmonogram,
+        wezly=(WezelDynamiki(ident="szyna", u_n_kv=15.0),),
+        galezie=(),
+        odbiory=(),
+        urzadzenia=(),
+        s_bazowa_mva=100.0,
+        horyzont_s=1.0,
+    )
+    assert len(wpisy) == 1
+    assert wpisy[0].admitancja_pu is not None
+    assert abs(wpisy[0].admitancja_pu) == pytest.approx(15.0**2 / 100.0 / 0.5)

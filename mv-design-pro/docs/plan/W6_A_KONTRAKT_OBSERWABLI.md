@@ -707,3 +707,148 @@ czasowej (zwarcie → zdjęcie po 180 ms → horyzont 10 s), ale na innym skład
 * **C** — pozostawić **OPEN**.
 
 Do czasu rozstrzygnięcia pozycja ma status **OPEN**, a nie „wykonane z odstępstwem".
+
+---
+
+## Załącznik Z3 — SO-1A wykonane (bramka właścicielska, 2026-09-18)
+
+Pozycja Z2.6 była **OPEN**: kryterium odbioru „PV 2,75 MW i magazyn energii w miejscu
+przyłączenia" nie było wykonane, bo sieć G16 niesie PV 1,6 MW i maszynę synchroniczną.
+Właściciel wybrał **wariant A** (zbudować kanoniczny przypadek i go wykonać). Ten załącznik
+opisuje, co przy tym wyszło.
+
+### Z3.1 Sieć wzorcowa G17 i macierz zgodności
+
+Nowa sieć rejestru: `tests/golden/enm_builders/so1a_pv_magazyn.py` (wpis **G17**).
+Wykonanie: `tests/e2e/test_so1a_scenariusz_odniesienia.py` (10 testów).
+
+| Wymaganie zamrożenia §0.1/§0.2 | Implementacja przypadku | Zgodność |
+|---|---|---|
+| instalacja PV **2,75 MW** | `gen-pv`, `p_mw = 2.75`, `gen_type = pv_inverter`, rodzina `przeksztaltnikowa_gfl`, `s_n = 3,0 MVA` | **TAK** |
+| **magazyn energii** | `gen-magazyn`, `gen_type = bess`, rodzina `magazyn`, 2 MWh / ±1 MW, przekształtnik **GFM** (VSM) | **TAK** |
+| obydwa **w miejscu przyłączenia** | wspólna szyna `b-przylacze` | **TAK** |
+| zwarcie **na szynie SN** w `t = 1 s` | `zwarcie` 3F na `b-sn-stacja`, `t_s = 1.000` | **TAK** |
+| zabezpieczenie otwiera wyłącznik **po 180 ms** | `wylaczenie_galezi` na `wyl-pole` (`type: breaker`), `t_s = 1.180`; zdjęcie zwarcia `t_usuniecia_s = 1.180` | **TAK co do chwili**; chwila pochodzi z wpisu inżyniera, nie z nastaw — to jest definicja SO-1A (§0.2), wyznaczenie jej z zabezpieczenia to SO-1B |
+| **po 1 s** ponowne załączenie | `zalaczenie_galezi` na `wyl-pole`, `t_s = 2.180` | **TAK** |
+| zbadaj zachowanie sieci **przez 10 s** | `horyzont_s = 10.0`, 501 próbek co 20 ms | **TAK** |
+| łańcuch ENM → rozpływ → inicjalizacja → zdarzenia → RMS | `_execute_power_flow` (realny solver) → `pf_run_id` → `punkt_pracy_z_biegu_rozplywu` → `zloz_wejscie_dynamiki` → `SilnikDynamiki` | **TAK** |
+| użytkownik nie wpisuje `U_post`, `f_post`, `δ_fault` | żaden stan początkowy nie jest budowany ręcznie | **TAK** |
+
+**Dwie wielkości przypadku NIE pochodzą z zamrożenia i są nazwane wprost:**
+
+1. **Rezystancja łuku `R_f = 0,5 Ω`.** Zwarcie metaliczne (`R_f = X_f = 0`) nie ma w modelu
+   węzłowym skończonej admitancji — rdzeń odmawia nazwanym kodem
+   `dynamika.zwarcie_metaliczne_bez_admitancji`. Wartość odpowiada łukowi ~0,3 m przy
+   prądzie zwarciowym rzędu kilku kA (wzór Warringtona). **Pomiar wrażliwości** (nie jest
+   to dobór pod zbieżność): bieg wykonuje się dla 5,0 / 2,0 / 1,0 / 0,5 / 0,2 Ω, a zapad na
+   przyłączu sięga odpowiednio 0,93 / 0,72 / 0,49 / 0,29 / 0,14 pu. Przy `R_f ≤ 0,1 Ω`
+   (napięcie resztkowe < 0,05 pu) re-inicjalizacja algebry nie zbiega — to **granica modelu
+   odbioru o stałej mocy**, którą rdzeń deklaruje wprost (`dynamika.odbior_zip_nieobslugiwany`),
+   a nie defekt wykryty w tej rundzie.
+2. **Topologia pierścieniowa.** Wariant promieniowy (stacja zasilana wyłącznie przez
+   wyłącznik) po jego otwarciu zostawia podsieć bez źródła albo — gdy OZE jest za
+   wyłącznikiem — **wyspę**. Jedno i drugie to zdolność **D11, przypisana w zamrożeniu do
+   fali W6-B**. SO-1A dowodzi fali W6-A, więc jego układ nie może zależeć od zdolności
+   następnej fali. Pierścień spełnia opis scenariusza i jest dobrze postawiony w każdej
+   chwili biegu.
+
+### Z3.2 Co bieg pokazał (dowód wykonania, nie walidacji fizycznej)
+
+Wszystkie cztery zdarzenia wykonane **w chwilach zaplanowanych**, każde ze **zerową** zmianą
+stanów różniczkowych (`delta_x_max = 0`, układ DAE indeksu 1) i residuum KCL ≤ 5,6·10⁻¹¹:
+
+| zdarzenie | `t` zaplan. | `t` wykon. | `Δy_max` | residuum KCL |
+|---|---|---|---|---|
+| `zwarcie` (b-sn-stacja) | 1,000 | 1,000 | 9,387·10⁻¹ | 1,288·10⁻¹² |
+| `zdjecie_zwarcia` | 1,180 | 1,180 | 9,220·10⁻¹ | 5,587·10⁻¹¹ |
+| `wylaczenie_galezi` (wyl-pole) | 1,180 | 1,180 | 9,220·10⁻¹ | 5,587·10⁻¹¹ |
+| `zalaczenie_galezi` (wyl-pole) | 2,180 | 2,180 | 9,782·10⁻³ | 4,091·10⁻¹² |
+
+Bieg: 1137 kroków, 16 odrzuconych, `max‖f‖ = 9,78·10⁻¹¹`, `max‖g‖ = 4,63·10⁻¹⁰`,
+501 próbek × 79 kanałów, czas 18,8 s.
+
+Obserwable w chwilach charakterystycznych (`b-przylacze` — miejsce przyłączenia):
+
+| faza | `t` [s] | `U` [pu] | `f` [Hz] | `u_f,est` [Hz] | jakość |
+|---|---|---|---|---|---|
+| przed zwarciem | 0,50 | 1,05812 | 50,0000000 | 6,3·10⁻¹¹ | NIEROZRÓŻNIALNA |
+| zwarcie (granica prawostronna) | 1,000 | 0,29457 | 46,5160888 | 7,2·10⁻¹² | ROZRÓŻNIALNA |
+| w zwarciu | 1,100 | 0,29716 | 49,9980460 | 1,8·10⁻¹² | ROZRÓŻNIALNA |
+| zdjęcie + otwarcie | 1,180 | 1,04739 | 72,9606320 | 2,1·10⁻⁸ | ROZRÓŻNIALNA |
+| po zdjęciu | 1,200 | 1,05233 | 50,0401355 | 1,4·10⁻¹² | ROZRÓŻNIALNA |
+| ponowne załączenie | 2,180 | 1,05773 | 49,9985580 | — | ROZRÓŻNIALNA |
+| koniec horyzontu | 10,00 | ≈ wartość sprzed zwarcia | ≈ 50 | — | ROZRÓŻNIALNA |
+
+Stan **NIEROZRÓŻNIALNA przed zwarciem jest poprawnym werdyktem, nie brakiem**: układ jest w
+stanie ustalonym, więc odchyłki od 50 Hz nie da się odróżnić od szumu numerycznego.
+
+**Instalacje na szynie przyłączenia:** PV startuje z `p = 0,0275 pu = 2,75 MW`, magazyn z
+`p = 0,005 pu = 0,50 MW` — **każdy ze SWOJEJ mocy**, nie z wypadkowej szyny (patrz Z3.3).
+W zwarciu PV przechodzi w tryb FRT (`i_czynny ≈ 0`, `i_bierny = 0,0358 pu`,
+`odbudowa_zwolnienie_pu = 0,577`), po zdjęciu odbudowuje moc i w `t = 10 s` wraca do
+2,75 MW. Stan naładowania magazynu maleje z 0,550000 do 0,549269 — znak bilansu energii
+zgodny z rozładowaniem.
+
+**Topologia:** po otwarciu wyłącznika wszystkie sześć kanałów zacisków `wyl-pole` jest
+**dokładnie zerem**; po ponownym załączeniu gałąź znów przewodzi. Szyna stacji magistralnej
+jest zasilana przez cały bieg (zasilanie przechodzi na drugą stronę pierścienia).
+
+**Determinizm (§9 bramki):** dwa biegi tego samego scenariusza dają **0 różnic** na
+39 579 liczbach próbek, komplecie 79 kanałów, śladzie zdarzeń, odciskach tożsamości,
+metrykach, śladzie White Box (w tym ślad topologii i kroki szczegółowe) oraz własnościach
+biegu. Porównanie NIE ogranicza się do kodu wyjścia.
+
+**Granica prawostronna (§7):** próbka w chwili zdarzenia opisuje układ PO zdarzeniu,
+poprzednia — PRZED nim. Częstotliwość w chwili zdarzenia jest wartością `Im(V̇/V)`
+wyliczoną z rozwiązania, a nie różnicą próbek: przed zdarzeniem `f = 50,000000 Hz`, w
+chwili zdarzenia `f = 46,76 / 73,11 Hz` w zależności od skoku kąta.
+
+**Jakość przy najgłębszym zapadzie (§8):** w biegu z `R_f = 0,2 Ω` napięcie schodzi do
+**0,0249 pu**, a największe `u_f,est` w całym biegu wynosi **2,1·10⁻⁹ Hz** — dziewięć rzędów
+wielkości poniżej raportowanych odchyłek. Faza jest więc numerycznie wyznaczona i werdykt
+ROZRÓŻNIALNA jest uzasadniony; stan NIEDOSTĘPNA nie zapala się nigdzie, bo `|V| > u_V` z
+ogromnym zapasem. Żaden próg napięciowy nie bierze w tym udziału.
+
+### Z3.3 Dwa defekty wykryte przez SO-1A i naprawione u źródła
+
+**D-1. Kilku wytwórców na jednej szynie było odmawiane bez podstawy.**
+Adapter odmawiał kodem `dynamika.wiele_urzadzen_w_wezle` KAŻDEJ szynie z więcej niż jednym
+urządzeniem, z uzasadnieniem „rozpływ podaje moc WYPADKOWĄ szyny, więc podziału nie da się
+wyprowadzić bez zgadywania". **Uzasadnienie było fałszywe dla klasy wytwórca+wytwórca** —
+`Generator.p_mw`/`q_mvar` są danymi per wytwórca i to z nich assembler zbudował wstrzyk
+węzłowy. Pomiar na G17: suma z modelu minus wypadkowa szyny = **dokładnie 0,000e+00 pu**.
+Przez tę odmowę **kanoniczny SO-1A był niewykonalny**, bo jego opis wymaga PV i magazynu na
+jednej szynie.
+
+Naprawa (klasa, nie instancja): odmowa modelowa zawężona do przypadku, w którym podziału
+naprawdę nie da się wyprowadzić — **źródło sieciowe (szyna sztywna, bez zadeklarowanej mocy)
+dzielące szynę z innym urządzeniem**. Dla kilku wytwórców adapter przypisuje każdemu jego
+moc z modelu i sprawdza uzgodnienie z wypadkową szyny; niezgodność (rozpływ przesunął moc:
+przełączenie PV→PQ, ograniczenie Q, bilans szyny bilansującej) kończy się nowym, nazwanym
+kodem `dynamika.podzial_mocy_wezla_niespojny`. **Tolerancja nie jest nowym progiem**:
+niezgodność mierzy się w prądzie (`|ΔS/V*|`, ta sama wielkość co residuum algebry) i
+porównuje z `eps_init` — tą samą liczbą, którą rdzeń rozstrzyga, czy punkt startowy jest
+równowagą.
+
+Testy: `TestPodzialMocyWezla` (4 przypadki klasy) + `test_punkt_pracy_dzieli_moc_wezla_miedzy_obie_instalacje`.
+**Mutacja M-S1** (każdy wytwórca dostaje wypadkową szyny — dawne zachowanie rozciągnięte na N)
+zabija **3 testy**; sam fakt, że bieg się wykonuje, defektu NIE wykrywa.
+
+**D-2. Zwarcie metaliczne kończyło się gołym `ZeroDivisionError`.**
+Docstring `konwencje.admitancja_zwarcia_pu` deklarował, że taki przypadek „jest odrzucany
+przez wołającego (`zdarzenia.py`)" — **deklaracja bez pokrycia**: wołający nie sprawdzał
+niczego. Kontrakt danych (`enm/scenariusze.py::Zwarcie`) przyjmuje `r_f_ohm = x_f_ohm = 0`
+(oba pola `ge=0.0`), więc projektant mógł wpisać wartość kończącą bieg wyjątkiem, którego
+`execute_run` nie łapie — czyli błędem 500 zamiast komunikatu. Naprawa: nazwana odmowa
+`dynamika.zwarcie_metaliczne_bez_admitancji` w `zdarzenia.py`, docstring zgodny z kodem,
+dwa testy (odmowa dla zerowej impedancji, skończona admitancja dla niezerowej).
+
+### Z3.4 Czego SO-1A nie dowodzi
+
+* **Zgodności przebiegów z narzędziem zewnętrznym** (wyrocznia H4). To jest fala **W6-F**.
+  ZWALIDOWANE FIZYCZNIE = **NIE**, bez zmian wobec Z2.5.
+* **Wyznaczenia chwili otwarcia z nastaw zabezpieczenia** — to SO-1B (fale W6-B i W6-C).
+  Zaliczenie SO-1A nie zalicza ani jednego wiersza przypisanego do W6-C (zamrożenie §0.2).
+* **Pracy wyspowej** (D11, fala W6-B) — układ SO-1A celowo jej nie wywołuje.
+* **Metryk scenariusza** (nadir, zenith, ROCOF max, czas ustalenia — wiersz E3, fala W6-D).
+  SO-1A dostarcza przebiegi, z których te metryki będą liczone; sam ich nie liczy.

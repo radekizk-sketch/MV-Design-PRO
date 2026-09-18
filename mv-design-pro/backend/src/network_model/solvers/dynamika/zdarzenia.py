@@ -29,6 +29,7 @@ from typing import Literal
 
 from .kontrakty import (
     KOD_ZDARZENIE_BEZ_ELEMENTU,
+    KOD_ZWARCIE_METALICZNE,
     KOD_ZWARCIE_NIESYMETRYCZNE,
     GalazDynamiki,
     HarmonogramDynamiki,
@@ -148,6 +149,22 @@ def zbuduj_harmonogram(
                     f"{TYP_ZWARCIA_TROJFAZOWEGO}",
                     typ=zdarzenie.typ,
                     wezel=zdarzenie.wezel,
+                )
+            # KOREKTA 2026-09-18 (bramka SO-1A). Docstring `admitancja_zwarcia_pu`
+            # deklarowal, ze zwarcie metaliczne "jest odrzucane przez wolajacego
+            # (`zdarzenia.py`)" — i to byla deklaracja BEZ POKRYCIA: wolajacy nie
+            # sprawdzal niczego, wiec `R_f = X_f = 0` (wartosc, ktora kontrakt
+            # danych `enm/scenariusze.py` przyjmuje: oba pola `ge=0.0`) konczylo
+            # bieg golym `ZeroDivisionError`. Odmowa rdzenia jest NAZWANA — inaczej
+            # `execute_run` nie ma czego zlapac i projektant dostaje bledy 500.
+            if zdarzenie.r_f_ohm == 0.0 and zdarzenie.x_f_ohm == 0.0:
+                raise OdmowaDynamiki(
+                    KOD_ZWARCIE_METALICZNE,
+                    f"Zwarcie metaliczne (R_f = X_f = 0) w wezle {zdarzenie.wezel!r} nie ma "
+                    "skonczonej admitancji, wiec nie da sie go wstawic do macierzy "
+                    "wezlowej. Podaj niezerowa impedancje zwarcia (rezystancja luku).",
+                    wezel=zdarzenie.wezel,
+                    t_s=zdarzenie.t_s,
                 )
             admitancja = admitancja_zwarcia_pu(
                 zdarzenie.r_f_ohm,

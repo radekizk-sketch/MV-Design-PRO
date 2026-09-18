@@ -52,6 +52,8 @@ KOD_KROK_NIEZBIEZNY = "dynamika.krok_niezbiezny"
 KOD_WARTOSC_NIESKONCZONA = "dynamika.wartosc_nieskonczona"
 #: Zwarcie niesymetryczne (2F/1F/2FZ) — modelowane dopiero skladowymi (SS0 p.5).
 KOD_ZWARCIE_NIESYMETRYCZNE = "dynamika.zwarcie_niesymetryczne_nieobslugiwane"
+#: Zwarcie metaliczne (R_f = X_f = 0) — w modelu wezlowym nie ma skonczonej admitancji.
+KOD_ZWARCIE_METALICZNE = "dynamika.zwarcie_metaliczne_bez_admitancji"
 #: Zdarzenie wskazuje element, ktorego model nie ma (zero cichego pominiecia).
 KOD_ZDARZENIE_BEZ_ELEMENTU = "dynamika.zdarzenie_bez_elementu"
 #: Re-inicjalizacja algebry po zdarzeniu nie zbiegla (SS0 p.5).
@@ -96,6 +98,7 @@ KODY_ODMOW: tuple[str, ...] = (
     KOD_WARIANT_BEZ_PARAMETROW,
     KOD_WARTOSC_NIESKONCZONA,
     KOD_ZDARZENIE_BEZ_ELEMENTU,
+    KOD_ZWARCIE_METALICZNE,
     KOD_ZWARCIE_NIESYMETRYCZNE,
 )
 
@@ -505,6 +508,7 @@ __all__ = [
     "KOD_WARIANT_BEZ_PARAMETROW",
     "KOD_WARTOSC_NIESKONCZONA",
     "KOD_ZDARZENIE_BEZ_ELEMENTU",
+    "KOD_ZWARCIE_METALICZNE",
     "KOD_ZWARCIE_NIESYMETRYCZNE",
     "GalazDynamiki",
     "HarmonogramDynamiki",

@@ -26,6 +26,7 @@ from enm.adapter_dynamiki import (
     KOD_ELEMENT_BEZ_SZYNY,
     KOD_NASTAWY_BRAK,
     KOD_ODBIOR_ZIP,
+    KOD_PODZIAL_MOCY_NIESPOJNY,
     KOD_PUNKT_PRACY_INNA_MIGAWKA,
     KOD_PUNKT_PRACY_NIE_ROZPLYW,
     KOD_PUNKT_PRACY_NIEPELNY,
@@ -52,6 +53,7 @@ from network_model.solvers.dynamika import OdmowaDynamiki, SilnikDynamiki, zloz_
 from network_model.solvers.power_flow_newton_internal import build_slack_island, build_ybus_pu
 
 from tests.golden.enm_builders.dynamika_rms import build_dynamika_rms_enm
+from tests.golden.enm_builders.so1a_pv_magazyn import MAGAZYN_GFM_1000_KW
 
 #: Nastawy numeryczne używane w testach tego modułu — komplet pól kontraktu
 #: (adapter nie ma domyślek, więc każdy test musi je podać w całości).
@@ -315,6 +317,25 @@ class TestParytetYbus:
 
 
 class TestPodzialMocyWezla:
+    """Kilku wytworcow na jednej szynie: dana wejsciowa albo nazwana odmowa.
+
+    INWENTARZ KLASY. Wspolny mechanizm dotyczy KAZDEJ szyny z wiecej niz jednym
+    urzadzeniem dynamicznym; klasa dzieli sie na cztery przypadki i wszystkie
+    cztery sa tu sprawdzone:
+
+    1. jeden wytworca na szynie — cala moc wezla idzie do niego (zachowanie
+       sprzed tej karty, przypiete osobno, zeby naprawa go nie ruszyla);
+    2. kilku wytworcow, suma mocy z modelu UZGADNIA SIE z wypadkowa szyny —
+       kazdy dostaje SWOJA moc;
+    3. kilku wytworcow, suma NIE uzgadnia sie — nazwana odmowa;
+    4. zrodlo sieciowe razem z wytworca — odmowa MODELOWA (szyna sztywna nie ma
+       zadeklarowanej mocy), sprawdzona w `TestBrakiModelu` wyzej.
+
+    Iloczyn cech, na ktorym podzial mogl by sie schowac: RODZINA urzadzenia
+    (nadazna vs magazyn — rozne stany poczatkowe z tej samej mocy) x ZNAK mocy
+    biernej x UDZIAL w mocy szyny. Przypadek 2 cwiczy wszystkie trzy naraz.
+    """
+
     def test_moc_urzadzenia_jest_wstrzykiem_powiekszonym_o_odbiory_szyny(
         self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
     ) -> None:
@@ -346,6 +367,96 @@ class TestPodzialMocyWezla:
         inicjalizacja = wynik.slad_white_box["inicjalizacja"]
         assert inicjalizacja["residuum_f"] < NASTAWY["eps_init"]
         assert inicjalizacja["residuum_g"] < NASTAWY["eps_init"]
+
+    @staticmethod
+    def _z_dwoma_wytworcami(
+        snapshot_g16: dict[str, Any], *, p_drugiego_mw: float, q_drugiego_mvar: float
+    ) -> dict[str, Any]:
+        """Szyna `b-oze` dostaje DRUGIEGO wytworcę; moc pierwszego zmniejsza się
+        o moc drugiego, więc wypadkowa szyny — a z nią cały rozpływ — zostaje
+        bez zmian. Bez tego test mierzyłby dwie rzeczy naraz."""
+        snapshot = copy.deepcopy(snapshot_g16)
+        pierwszy = snapshot["generators"][1]
+        assert pierwszy["ref_id"] == "gen-pv" and pierwszy["bus_ref"] == "b-oze"
+        drugi = copy.deepcopy(pierwszy)
+        drugi.update(
+            {
+                "id": "6a1d0000-0000-4000-8000-0000000000fd",
+                "ref_id": "gen-magazyn",
+                "name": "Magazyn energii przy instalacji PV",
+                "gen_type": "bess",
+                "p_mw": p_drugiego_mw,
+                "q_mvar": q_drugiego_mvar,
+                "dynamika": copy.deepcopy(MAGAZYN_GFM_1000_KW),
+            }
+        )
+        pierwszy["p_mw"] = round(pierwszy["p_mw"] - p_drugiego_mw, 12)
+        pierwszy["q_mvar"] = round((pierwszy.get("q_mvar") or 0.0) - q_drugiego_mvar, 12)
+        snapshot["generators"].append(drugi)
+        return snapshot
+
+    def test_dwaj_wytworcy_dostaja_swoje_moce_a_nie_wypadkowa_szyny(
+        self, snapshot_g16: dict[str, Any]
+    ) -> None:
+        """Przypadek 2 — i zarazem test FALSYFIKUJACY: gdyby adapter dawal obu
+        urzadzeniom wypadkowa szyny, obie asercje padlyby rownoczesnie."""
+        snapshot = self._z_dwoma_wytworcami(snapshot_g16, p_drugiego_mw=0.4, q_drugiego_mvar=-0.05)
+        rozplyw = _bieg_rozplywu(snapshot)
+        punkt = punkt_pracy(snapshot, rozplyw)
+        wejscie = zloz(snapshot, opcje(), punkt)
+        moce = wejscie.punkt_pracy.moce_zrodel_pu
+        baza = punkt.base_mva
+        assert moce["gen-magazyn"] == pytest.approx(complex(0.4 / baza, -0.05 / baza), rel=1e-12)
+        assert moce["gen-pv"] == pytest.approx(complex(1.2 / baza, 0.05 / baza), rel=1e-12)
+        # Suma odtwarza wypadkowa szyny DOKLADNIE — punkt pracy pozostaje rownowaga
+        # ukladu DAE, wiec rdzen nie odmawia inicjalizacji.
+        odbior_oze = sum(complex(o.p_pu, o.q_pu) for o in wejscie.odbiory if o.wezel == "b-oze")
+        assert moce["gen-magazyn"] + moce["gen-pv"] == pytest.approx(
+            punkt.wstrzyki_pu["b-oze"] + odbior_oze, rel=1e-12, abs=1e-15
+        )
+        # Bieg rusza — czyli podzial jest rownowaga, a nie tylko ladna liczba.
+        assert SilnikDynamiki(wejscie=wejscie).uruchom().wlasnosci.zbiegl is True
+
+    def test_podzial_niespojny_z_rozplywem_konczy_sie_nazwana_odmowa(
+        self, snapshot_g16: dict[str, Any]
+    ) -> None:
+        """Przypadek 3: model deklaruje inna sume niz wypadkowa szyny z rozplywu.
+
+        Tu podzial przesuniecia NIE jest wyprowadzalny z zadnej danej — i wtedy
+        adapter odmawia, zamiast rozdzielac reszte po uwazaniu.
+        """
+        snapshot = self._z_dwoma_wytworcami(snapshot_g16, p_drugiego_mw=0.4, q_drugiego_mvar=0.0)
+        rozplyw = _bieg_rozplywu(snapshot)
+        punkt = punkt_pracy(snapshot, rozplyw)
+        # Rozplyw JUZ policzony — dopiero teraz psujemy deklaracje modelu, wiec
+        # wypadkowa szyny zostaje ta sama, a suma z modelu przestaje ja odtwarzac.
+        snapshot["generators"][-1]["p_mw"] = 0.9
+        with pytest.raises(OdmowaWejsciaDynamiki) as blad:
+            zloz(snapshot, opcje(), punkt)
+        assert blad.value.kod == KOD_PODZIAL_MOCY_NIESPOJNY
+        assert blad.value.elementy == ("gen-magazyn", "gen-pv")
+
+    def test_prog_niespojnosci_pochodzi_z_eps_init_a_nie_z_wlasnej_stalej(
+        self, snapshot_g16: dict[str, Any]
+    ) -> None:
+        """Deklaracja „tolerancja to eps_init" ma PRZYPIETY test.
+
+        Ta sama niespojnosc przechodzi przy luznym `eps_init` i odmawia przy
+        ostrym — wiec prog naprawde pochodzi z nastawy biegu, a nie z zaszytej
+        liczby, ktora „dzis sie zgadza".
+        """
+        snapshot = self._z_dwoma_wytworcami(snapshot_g16, p_drugiego_mw=0.4, q_drugiego_mvar=0.0)
+        rozplyw = _bieg_rozplywu(snapshot)
+        punkt = punkt_pracy(snapshot, rozplyw)
+        snapshot["generators"][-1]["p_mw"] = 0.4 + 1.0e-6  # 1e-8 pu mocy => ~1e-8 pu pradu
+
+        luzne = opcje(nastawy_solvera={**NASTAWY, "eps_init": 1.0e-6})
+        assert zloz(snapshot, luzne, punkt) is not None
+
+        ostre = opcje(nastawy_solvera={**NASTAWY, "eps_init": 1.0e-12})
+        with pytest.raises(OdmowaWejsciaDynamiki) as blad:
+            zloz(snapshot, ostre, punkt)
+        assert blad.value.kod == KOD_PODZIAL_MOCY_NIESPOJNY
 
 
 # ---------------------------------------------------------------------------
@@ -751,7 +862,35 @@ class TestBrakiModelu:
         assert [brak.kod for brak in braki] == [KOD_ODBIOR_ZIP]
         assert braki[0].elementy == ("odb-odplyw",)
 
-    def test_dwa_urzadzenia_na_jednej_szynie(self, snapshot_g16: dict[str, Any]) -> None:
+    def test_zrodlo_sieciowe_razem_z_wytworca_na_jednej_szynie(
+        self, snapshot_g16: dict[str, Any]
+    ) -> None:
+        """Szyna sztywna + wytworca = podzial mocy wezla NIEWYZNACZALNY.
+
+        Zrodlo sieciowe wchodzi do biegu jako warunek brzegowy BEZ zadeklarowanej
+        mocy (`zbuduj_szyne_sztywna` nie przyjmuje punktu pracy), wiec brakuje
+        jednego z dwoch skladnikow podzialu. Tego nie da sie uzgodnic zadna dana
+        wejsciowa — i dlatego to zostaje odmowa MODELOWA, w odroznieniu od kilku
+        wytworcow na jednej szynie (patrz `TestPodzialMocyWezla`).
+        """
+        snapshot = copy.deepcopy(snapshot_g16)
+        snapshot["generators"][1]["bus_ref"] = "b-110"
+        braki = braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot))
+        assert [brak.kod for brak in braki] == [KOD_WIELE_URZADZEN_W_WEZLE]
+        assert "b-110" in braki[0].elementy[0]
+        assert "gen-pv" in braki[0].elementy[0] and "zrodlo-110" in braki[0].elementy[0]
+
+    def test_kilku_wytworcow_na_jednej_szynie_nie_jest_brakiem_modelu(
+        self, snapshot_g16: dict[str, Any]
+    ) -> None:
+        """Dwoch wytworcow na szynie to POPRAWNY model — instalacja PV i magazyn
+        w jednym miejscu przylaczenia, kilka falownikow na wspolnej rozdzielnicy.
+
+        `Generator.p_mw`/`q_mvar` sa danymi PER WYTWORCA i to z nich assembler
+        zbudowal wstrzyk wezlowy rozplywu, wiec podzial nie jest domyslem. Warunek
+        uzgodnienia zalezy od punktu pracy, wiec sprawdza go adapter (patrz
+        `TestPodzialMocyWezla`), a nie bramka modelowa.
+        """
         snapshot = copy.deepcopy(snapshot_g16)
         snapshot["generators"].append(
             {
@@ -761,9 +900,7 @@ class TestBrakiModelu:
                 "name": "Druga instalacja PV",
             }
         )
-        braki = braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot))
-        assert [brak.kod for brak in braki] == [KOD_WIELE_URZADZEN_W_WEZLE]
-        assert "b-oze" in braki[0].elementy[0]
+        assert braki_modelu_dynamiki(EnergyNetworkModel.model_validate(snapshot)) == ()
 
     def test_element_na_nieistniejacej_szynie(
         self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
@@ -840,7 +977,7 @@ class TestBrakiModelu:
         uszkodzenia.append((KOD_ODBIOR_ZIP, zip_odbior))
 
         kolizja = copy.deepcopy(snapshot_g16)
-        kolizja["generators"][1]["bus_ref"] = "b-sn-b"
+        kolizja["generators"][1]["bus_ref"] = "b-110"
         uszkodzenia.append((KOD_WIELE_URZADZEN_W_WEZLE, kolizja))
 
         wiszaca = copy.deepcopy(snapshot_g16)

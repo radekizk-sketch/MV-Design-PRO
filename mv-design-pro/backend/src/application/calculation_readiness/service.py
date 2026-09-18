@@ -679,7 +679,7 @@ def _check_dynamika_rms(
     węższy warunek (blok `Generator.dynamika` wyłącznie dla DER i maszyn
     synchronicznych), więc wytwórca bez `gen_type` — którego adapter i tak
     odmawia — przechodził jako gotowy; rodzina bez modelu elektrycznego, odbiór
-    ZIP i dwa urządzenia na jednej szynie nie były sprawdzane wcale.
+    ZIP i źródło sieciowe dzielące szynę z wytwórcą nie były sprawdzane wcale.
 
     `punkt_pracy_rozplywu` — czy dla TEJ migawki istnieje zakończony bieg
     rozpływu (punkt pracy). To warunek PER BIEG, nie modelu, więc podaje go
@@ -709,7 +709,7 @@ def _check_dynamika_rms(
             recommended_action_pl=(
                 "Uzupełnij dane wejściowe biegu czasowego: blok parametrów dynamicznych "
                 "(Generator.dynamika) dla każdego wytwórcy, rodzinę parametrów z modelem "
-                "elektrycznym, odbiory o stałej mocy i najwyżej jedno urządzenie na szynie."
+                "elektrycznym, odbiory o stałej mocy i osobną szynę dla źródła sieciowego."
             ),
         )
     pf = _check_power_flow(enm)

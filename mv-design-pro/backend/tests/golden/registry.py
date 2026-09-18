@@ -436,6 +436,45 @@ REJESTR: tuple[WpisRejestru, ...] = (
         ),
     ),
     WpisRejestru(
+        id="G17",
+        klasa_przypadku="scenariusz odniesienia SO-1A: instalacja PV 2,75 MW + magazyn energii",
+        cel=(
+            "wykonanie zamrożonego scenariusza odniesienia SO-1A: migawka -> rozpływ "
+            "(punkt pracy) -> zdarzenia (zwarcie 3F, zdjęcie, otwarcie i ponowne "
+            "załączenie wyłącznika) -> bieg RMS 10 s -> obserwable inżynierskie"
+        ),
+        topologia=(
+            "GPZ 110/15 kV (TR Dyn11 z zaczepem) -> szyna SN; magistrala SN w pierścieniu "
+            "zamkniętym: wyłącznik -> pole -> kabel -> szyna stacji, oraz linia napowietrzna "
+            "-> miejsce przyłączenia -> kabel domykający; PV 2,75 MW (GFL) i magazyn "
+            "1 MW/2 MWh (GFM) na szynie przyłączenia"
+        ),
+        poziomy_napiec="110/15 kV",
+        uziemienie="wg buildera (punkt neutralny nie wchodzi do składowej zgodnej)",
+        scenariusz=(
+            "zwarcie 3F na szynie SN stacji magistralnej w t = 1,000 s; zdjęcie zwarcia i "
+            "otwarcie wyłącznika w t = 1,180 s; ponowne załączenie w t = 2,180 s; horyzont 10 s"
+        ),
+        analizy=("LF", "DYNAMIKA_RMS"),
+        inwarianty=(
+            "każde zdarzenie wykonane w chwili zaplanowanej, ze zerową zmianą stanów różniczkowych",
+            "otwarta gałąź niesie dokładnie zero we wszystkich sześciu kanałach zacisków",
+            "dwa biegi tej samej piątki odcisków dają identyczny wynik (501 próbek x 79 kanałów)",
+            "podział mocy węzła: każda instalacja startuje ze SWOJEJ mocy z modelu",
+        ),
+        wyrocznie=(),
+        budowniczowie=("tests.golden.enm_builders.so1a_pv_magazyn:build_so1a_pv_magazyn_enm",),
+        konsumenci=("bramka akceptacyjna SO-1A", "solver dynamiki", "adapter biegu czasowego"),
+        status=StatusSieci.PARTIAL,
+        proweniencja=(
+            "bramka właścicielska SO-1A (2026-09-18): sieć G16 ma PV 1,6 MW i maszynę "
+            "synchroniczną — bez magazynu — więc NIE spełnia opisu scenariusza odniesienia "
+            "z `docs/plan/FINAL_DYNAMICS_CAPABILITY_FREEZE.md` §0.1. Ta sieć odwzorowuje go "
+            "dosłownie. REGRESSION_ONLY: dowodzi WYKONANIA łańcucha, nie zgodności przebiegów "
+            "z narzędziem zewnętrznym (wyrocznia H4, fala W6-F) — PARTIAL do czasu tej wyroczni"
+        ),
+    ),
+    WpisRejestru(
         id="B-BENCH",
         klasa_przypadku="benchmarki opublikowane IEEE / CIGRE / IEC 60909 / pandapower",
         cel="walidacja krzyżowa solverów LF i SC",

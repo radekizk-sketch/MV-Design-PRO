@@ -87,6 +87,19 @@ horyzont 10 s (limit kontraktu to 600 s, `enm/scenariusze.py:169`). Niewykonalne
 wynikać z zadziałania zabezpieczenia, a nie z ręcznego wpisu projektanta** — dziś projektant musi
 sam zaplanować chwilę otwarcia. To jest luka klasy EVENT-ENGINE, nie luka interfejsu.
 
+> **AKTUALIZACJA 2026-09-18 (bramka właścicielska po fali W6-A).** **SO-1A jest wykonane**:
+> sieć wzorcowa **G17** (`tests/golden/enm_builders/so1a_pv_magazyn.py`) niesie PV 2,75 MW i
+> magazyn energii na wspólnej szynie przyłączenia, a bieg
+> `tests/e2e/test_so1a_scenariusz_odniesienia.py` przechodzi cały łańcuch ENM → rozpływ →
+> `pf_run_id` → adapter → RMS z zamrożonymi chwilami 1,000 / 1,180 / 2,180 s i horyzontem 10 s.
+> Zdarzenia wykonują się w chwilach zaplanowanych, dwa biegi dają wynik identyczny co do
+> ostatniej próbki. Dowód i dwa defekty naprawione przy okazji: `W6_A_KONTRAKT_OBSERWABLI.md`
+> załącznik **Z3**.
+>
+> **SO-1B pozostaje niewykonalne bez zmian** — chwila otwarcia w SO-1A pochodzi z wpisu
+> inżyniera, tak jak definiuje to §0.2, a nie z nastaw zabezpieczenia. Zaliczenie SO-1A
+> **nie zalicza** ani jednego wiersza przypisanego do W6-B ani W6-C.
+
 ---
 
 ## 1. Słowniki kolumn

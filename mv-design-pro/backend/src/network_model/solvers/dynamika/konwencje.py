@@ -123,9 +123,11 @@ def admitancja_zwarcia_pu(
     (`impedancja_z_napiecia_i_mocy_ohm`) — ta sama formula, ktora wyznacza baze
     pu w rozpływie i w zwarciach, wiec rdzen dynamiki nie ma jej wlasnej kopii.
 
-    Zwarcie metaliczne (`R_f = X_f = 0`) nie ma skonczonej admitancji, wiec jest
-    odrzucane przez wolajacego (`zdarzenia.py`) jako dana wejsciowa — tu ta sama
-    sytuacja konczy sie `ZeroDivisionError`, a nie cichym „bardzo duza liczba".
+    Zwarcie metaliczne (`R_f = X_f = 0`) nie ma skonczonej admitancji. Wolajacy
+    (`zdarzenia.py::zbuduj_harmonogram`) odrzuca je NAZWANA odmowa
+    `KOD_ZWARCIE_METALICZNE` — z testem przypietym do tej obietnicy. Ten `raise`
+    zostaje jako ostatnia bariera dla kazdej innej sciezki wywolania: „bardzo duza
+    liczba" byla by cicha fabrykacja.
     """
     z_bazowa_ohm = impedancja_z_napiecia_i_mocy_ohm(u_n_kv, s_bazowa_mva)
     z_zwarcia_pu = complex(r_f_ohm, x_f_ohm) / z_bazowa_ohm

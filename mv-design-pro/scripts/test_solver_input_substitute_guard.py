@@ -1449,7 +1449,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # obie niepewnosci sa LICZONE z residuum i jakobianu, a gdy jakobian jest osobliwy,
     # obserwabla wraca jako NIEDOSTEPNA — nie jako podstawiona liczba. PASS bramki
     # niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 3839." in wyjscie, wyjscie
+    # Bramka SO-1A (2026-09-18): 3839 -> 3840 (+1 pole, zero skasowanych, zero nowych
+    # plikow). POMIAR: zbior `contract_fields()` zrzucony NA DRZEWIE i na HEAD, roznica
+    # policzona `comm` na posortowanych zbiorach — jedyna nowa nazwa to `moce_pu`
+    # z `enm/adapter_dynamiki.py::UrzadzeniaDynamiki`. To jest WYNIK podzialu mocy wezla
+    # miedzy wytworcow, nie dana wejsciowa: kazda pozycja pochodzi albo z wypadkowej szyny
+    # z rozplywu (jeden wytworca), albo z `Generator.p_mw` i `moc_bierna_wytworcy` po
+    # sprawdzeniu uzgodnienia z ta wypadkowa (kilku wytworcow). Braku danej nie ma czym
+    # podstawic: Q nieznane jest POMINIETE tak samo jak w `enm/mapping.py`, a niespojnosc
+    # konczy sie odmowa `dynamika.podzial_mocy_wezla_niespojny`, nie liczba zastepcza.
+    # PASS bramki niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 3840." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

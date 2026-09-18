@@ -70,6 +70,7 @@ from enm.models import (
     Cable,
     EnergyNetworkModel,
     FuseBranch,
+    Generator,
     OverheadLine,
     ShuntCapacitor,
     Source,
@@ -150,8 +151,12 @@ KOD_SKOK_POZA_ODBIOREM = "dynamika.skok_obciazenia_poza_odbiorem"
 KOD_ZRODLO_BEZ_DYNAMIKI = "dynamika.zrodlo_bez_bloku_dynamiki"
 #: Rodzina parametrów, dla której biblioteka urządzeń nie ma modelu.
 KOD_RODZINA_BEZ_MODELU = "dynamika.rodzina_urzadzenia_bez_modelu"
-#: Dwa urządzenia dynamiczne na jednej szynie — podział mocy węzła niewyznaczalny.
+#: Źródło sieciowe (szyna sztywna) razem z innym urządzeniem na jednej szynie —
+#: szyna sztywna nie ma zadeklarowanej mocy, więc podziału nie da się wyprowadzić.
 KOD_WIELE_URZADZEN_W_WEZLE = "dynamika.wiele_urzadzen_w_wezle"
+#: Kilku wytwórców na jednej szynie, ale suma ich mocy z modelu NIE uzgadnia się
+#: z wypadkową szyny z rozpływu — podział byłby domysłem.
+KOD_PODZIAL_MOCY_NIESPOJNY = "dynamika.podzial_mocy_wezla_niespojny"
 #: Odbiór ZIP — rdzeń zna wyłącznie odbiór o stałej mocy.
 KOD_ODBIOR_ZIP = "dynamika.odbior_zip_nieobslugiwany"
 #: Źródło sieciowe bez impedancji zastępczej — szyna sztywna jej wymaga.
@@ -173,6 +178,7 @@ KODY_ODMOW_ADAPTERA: tuple[str, ...] = (
     KOD_PUNKT_PRACY_INNA_MIGAWKA,
     KOD_PUNKT_PRACY_NIEPELNY,
     KOD_PUNKT_PRACY_NIE_ROZPLYW,
+    KOD_PODZIAL_MOCY_NIESPOJNY,
     KOD_RODZINA_BEZ_MODELU,
     KOD_SCENARIUSZ_BRAK,
     KOD_SKOK_POZA_ODBIOREM,
@@ -314,24 +320,44 @@ def braki_modelu_dynamiki(enm: EnergyNetworkModel) -> tuple[BrakDynamiki, ...]:
             )
         )
 
-    urzadzenia_wezla: dict[str, list[str]] = {}
+    # Szyna sztywna (źródło sieciowe) NIE MA zadeklarowanej mocy — jest warunkiem
+    # brzegowym, a nie wytwórcą projektu (`zloz_urzadzenia` buduje ją z samej
+    # impedancji). Dlatego na szynie ze źródłem sieciowym podziału mocy węzła
+    # między źródło a wytwórcę nie da się wyprowadzić z ŻADNEJ danej wejściowej:
+    # brakuje jednego z dwóch składników. To zostaje odmową MODELOWĄ.
+    #
+    # KOREKTA 2026-09-18 (bramka SO-1A). Do tej pory ten warunek odrzucał KAŻDĄ
+    # szynę z dwoma urządzeniami, także dwoma WYTWÓRCAMI — z uzasadnieniem, że
+    # „rozpływ podaje moc wypadkową szyny". Uzasadnienie było fałszywe dla klasy
+    # wytwórca+wytwórca: `Generator.p_mw`/`q_mvar` to dane PER WYTWÓRCA i to
+    # WŁAŚNIE z nich assembler zbudował wstrzyk węzłowy rozpływu. Podział jest
+    # więc daną wejściową, nie domysłem — pod warunkiem, że suma mocy wytwórców
+    # z modelu UZGADNIA SIĘ z wypadkową szyny (rozpływ mógł ją przesunąć:
+    # przełączenie PV→PQ, ograniczenie Q, bilans szyny bilansującej). Uzgodnienie
+    # zależy od punktu pracy, którego model nie zna, więc sprawdza je adapter
+    # przy składaniu wejścia (`_moce_urzadzen_pu`, kod
+    # `dynamika.podzial_mocy_wezla_niespojny`) — tak samo jak inne warunki PER BIEG.
+    wytworcy_wezla: dict[str, list[str]] = {}
     for gen in enm.generators:
-        urzadzenia_wezla.setdefault(gen.bus_ref, []).append(gen.ref_id)
+        wytworcy_wezla.setdefault(gen.bus_ref, []).append(gen.ref_id)
+    urzadzenia_wezla: dict[str, list[str]] = {}
     for zrodlo in enm.sources:
         urzadzenia_wezla.setdefault(zrodlo.bus_ref, []).append(zrodlo.ref_id)
     kolizje = tuple(
-        f"{szyna}: {', '.join(sorted(refy))}"
+        f"{szyna}: {', '.join(sorted([*refy, *wytworcy_wezla.get(szyna, ())]))}"
         for szyna, refy in sorted(urzadzenia_wezla.items())
-        if len(refy) > 1
+        if len(refy) + len(wytworcy_wezla.get(szyna, ())) > 1
     )
     if kolizje:
         braki.append(
             BrakDynamiki(
                 kod=KOD_WIELE_URZADZEN_W_WEZLE,
                 komunikat_pl=(
-                    "Na jednej szynie stoi więcej niż jedno urządzenie dynamiczne — rozpływ "
-                    "podaje moc WYPADKOWĄ szyny, więc podziału tej mocy między urządzenia nie "
-                    f"da się wyprowadzić bez zgadywania. Szyny: {'; '.join(kolizje)}."
+                    "Na jednej szynie stoi źródło sieciowe razem z innym urządzeniem "
+                    "dynamicznym. Źródło sieciowe wchodzi do biegu czasowego jako szyna "
+                    "sztywna — warunek brzegowy BEZ zadeklarowanej mocy — więc podziału mocy "
+                    "węzła między nie a pozostałe urządzenia nie da się wyprowadzić z żadnej "
+                    f"danej wejściowej. Szyny: {'; '.join(kolizje)}."
                 ),
                 elementy=kolizje,
             )
@@ -848,15 +874,30 @@ def _moc_baterii_mvar(bateria: ShuntCapacitor) -> float:
 # ---------------------------------------------------------------------------
 
 
-def _moc_urzadzenia_pu(
+@dataclass(frozen=True)
+class UrzadzeniaDynamiki:
+    """Urządzenia biegu razem z mocą punktu pracy KAŻDEGO z nich.
+
+    Moc idzie razem z urządzeniem, bo stan początkowy urządzenia i pozycja
+    `PunktPracy.moce_zrodel_pu`, którą rdzeń tym stanem weryfikuje, muszą pochodzić
+    z JEDNEGO podziału mocy węzła. Dwa niezależne przebiegi tego samego rachunku
+    zgadzałyby się tak długo, jak długo oba czytałyby wypadkową szyny — i rozjechały
+    się w pierwszym węźle z kilkoma wytwórcami.
+    """
+
+    urzadzenia: tuple[Urzadzenie, ...]
+    moce_pu: dict[str, complex]
+
+
+def _moc_wypadkowa_urzadzen_pu(
     *,
     szyna: str,
     punkt: PunktPracyRozplywu,
     odbiory: tuple[OdbiorDynamiki, ...],
 ) -> complex:
-    """Moc oddawana przez urządzenie szyny = wstrzyk wypadkowy + moc odbiorów szyny.
+    """Moc WSZYSTKICH urządzeń szyny = wstrzyk wypadkowy + moc odbiorów szyny.
 
-    JEDEN predykat podziału mocy węzła (patrz docstring modułu): prąd urządzenia i
+    JEDEN predykat podziału mocy węzła (patrz docstring modułu): prądy urządzeń i
     prądy odbiorów sumują się dokładnie do wstrzyku węzłowego rozpływu, więc punkt
     pracy JEST równowagą układu DAE niezależnie od tego, czy moc bierna źródła
     pochodzi z nastawy, z regulacji napięcia, z kształtowania falownika, czy z
@@ -869,6 +910,81 @@ def _moc_urzadzenia_pu(
     return punkt.wstrzyki_pu[szyna] + moc_odbiorow
 
 
+def _moce_urzadzen_pu(
+    *,
+    szyna: str,
+    wytworcy: tuple[Generator, ...],
+    punkt: PunktPracyRozplywu,
+    odbiory: tuple[OdbiorDynamiki, ...],
+    eps_init: float,
+) -> dict[str, complex]:
+    """Podział mocy szyny między jej wytwórców — dana wejściowa albo nazwana odmowa.
+
+    JEDEN WYTWÓRCA: cała moc szyny idzie do niego. To jest zachowanie sprzed karty
+    SO-1A, bit w bit — moc bierna po regulacji napięcia, po ograniczeniu albo z
+    bilansu szyny bilansującej NIE jest tym, co stoi w `Generator.q_mvar`, a punkt
+    pracy ma być równowagą, więc bierze się ją z rozpływu.
+
+    KILKU WYTWÓRCÓW (instalacja PV i magazyn w jednym miejscu przyłączenia, kilka
+    falowników na wspólnej szynie): każdy dostaje SWOJĄ moc z modelu. To nie jest
+    domysł — `Generator.p_mw`/`q_mvar` to dane per wytwórca i to z nich assembler
+    zbudował wstrzyk węzłowy, który rozpływ zwrócił. Warunkiem jest UZGODNIENIE:
+    suma mocy z modelu musi odtwarzać wypadkową szyny. Jeśli rozpływ ją przesunął
+    (przełączenie PV→PQ, ograniczenie Q, szyna bilansująca), to podziału przesunięcia
+    nie da się wyprowadzić z żadnej danej — i wtedy jest nazwana odmowa, nie rozdział
+    reszty po uważaniu.
+
+    TOLERANCJA NIE JEST NOWYM PROGIEM. Niezgodność mierzy się w prądzie
+    (`|ΔS/V*|`, ta sama wielkość, co residuum algebry `g = Y·V − I`) i porównuje z
+    `eps_init` — TĄ SAMĄ liczbą, którą rdzeń rozstrzyga, czy punkt startowy jest
+    równowagą (`silnik.py`, `KOD_INICJALIZACJA_NIEZBIEZNA`). Podział przekraczający ją
+    i tak zostałby odrzucony przez rdzeń; ta odmowa tylko NAZYWA przyczynę zamiast
+    zostawiać projektanta z komunikatem o niezbieżnej inicjalizacji.
+    """
+    wypadkowa = _moc_wypadkowa_urzadzen_pu(szyna=szyna, punkt=punkt, odbiory=odbiory)
+    if len(wytworcy) == 1:
+        return {wytworcy[0].ref_id: wypadkowa}
+
+    # Moc bierna wytwórcy rozstrzyga JEDNO wspólne źródło prawdy
+    # (`solver_input/moc_bierna_wytworcy.py`) — to samo, z którego assembler i
+    # `enm/mapping.py` zbudowały wstrzyk węzłowy rozpływu. Druga, niezależna
+    # reguła („weź `q_mvar`, a gdy brak, podstaw zero") zgadzałaby się dopóty,
+    # dopóki wszystkie wytwórcy mają Q jawne, i rozjechała się przy pierwszej
+    # karcie z Q-set-pointem. Q NIEZNANE = wkład POMINIĘTY (nie zero) — dokładnie
+    # jak w `mapping.py`, więc obie strony uzgodnienia pomijają je tak samo.
+    from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
+
+    z_modelu: dict[str, complex] = {}
+    for gen in wytworcy:
+        q_mvar = moc_bierna_wytworcy(gen, gen.materialized_params).q_mvar
+        z_modelu[gen.ref_id] = complex(
+            moc_pu(float(gen.p_mw), punkt.base_mva),
+            0.0 if q_mvar is None else moc_pu(float(q_mvar), punkt.base_mva),
+        )
+    niezgodnosc_mocy = sum(z_modelu.values(), complex(0.0, 0.0)) - wypadkowa
+    napiecie = punkt.napiecia_pu[szyna]
+    if napiecie == 0:
+        raise OdmowaWejsciaDynamiki(
+            KOD_PODZIAL_MOCY_NIESPOJNY,
+            f"Szyna {szyna!r} ma w rozpływie napięcie zerowe, więc podziału mocy węzła "
+            "między jej wytwórców nie da się wyrazić w prądzie",
+            elementy=tuple(sorted(z_modelu)),
+        )
+    niezgodnosc_pradu = abs(niezgodnosc_mocy / napiecie.conjugate())
+    if niezgodnosc_pradu > eps_init:
+        raise OdmowaWejsciaDynamiki(
+            KOD_PODZIAL_MOCY_NIESPOJNY,
+            f"Na szynie {szyna!r} pracuje kilku wytwórców ({', '.join(sorted(z_modelu))}), "
+            "ale suma ich mocy z modelu nie odtwarza wypadkowej szyny z rozpływu "
+            f"(niezgodność {niezgodnosc_pradu:.3e} pu prądu wobec eps_init {eps_init:.3e}). "
+            "Rozpływ przesunął moc węzła (regulacja napięcia, ograniczenie mocy biernej "
+            "albo bilans szyny bilansującej), a podziału tego przesunięcia między "
+            "wytwórców nie da się wyprowadzić z danych wejściowych",
+            elementy=tuple(sorted(z_modelu)),
+        )
+    return z_modelu
+
+
 def zloz_urzadzenia(
     snapshot: dict[str, Any],
     graph: NetworkGraph,
@@ -877,7 +993,8 @@ def zloz_urzadzenia(
     odbiory: tuple[OdbiorDynamiki, ...],
     base_mva: float,
     f_bazowa_hz: float,
-) -> tuple[Urzadzenie, ...]:
+    eps_init: float,
+) -> UrzadzeniaDynamiki:
     """Urządzenia dynamiczne: źródła sieciowe jako szyny sztywne, wytwórcy przez fabrykę.
 
     Fabryka (`solvers/dynamika/urzadzenia/fabryka.py::zbuduj_urzadzenie`) jest
@@ -888,6 +1005,8 @@ def zloz_urzadzenia(
     """
     enm = EnergyNetworkModel.model_validate(snapshot)
     urzadzenia: list[Urzadzenie] = []
+
+    moce: dict[str, complex] = {}
 
     impedancje_zrodel = {zrodlo.name: zrodlo.z_ohm for zrodlo in graph.get_grid_sc_sources()}
     for zrodlo in sorted(enm.sources, key=lambda s: s.ref_id):
@@ -917,6 +1036,25 @@ def zloz_urzadzenia(
                 s_bazowa_mva=base_mva,
             )
         )
+        # Szyna sztywna jest sama na swojej szynie (bramka `KOD_WIELE_URZADZEN_W_WEZLE`),
+        # więc cała moc węzła należy do niej.
+        moce[zrodlo.ref_id] = _moc_wypadkowa_urzadzen_pu(
+            szyna=zrodlo.bus_ref, punkt=punkt, odbiory=odbiory
+        )
+
+    wytworcy_szyny: dict[str, list[Generator]] = {}
+    for gen in sorted(enm.generators, key=lambda g: g.ref_id):
+        wytworcy_szyny.setdefault(gen.bus_ref, []).append(gen)
+    for szyna, wytworcy in sorted(wytworcy_szyny.items()):
+        moce.update(
+            _moce_urzadzen_pu(
+                szyna=szyna,
+                wytworcy=tuple(wytworcy),
+                punkt=punkt,
+                odbiory=odbiory,
+                eps_init=eps_init,
+            )
+        )
 
     for gen in sorted(enm.generators, key=lambda g: g.ref_id):
         parametry = gen.dynamika
@@ -936,11 +1074,11 @@ def zloz_urzadzenia(
                 f_bazowa_hz=f_bazowa_hz,
                 punkt_pracy_wezla=PunktPracyUrzadzenia(
                     napiecie_pu=punkt.napiecia_pu[gen.bus_ref],
-                    moc_pu=_moc_urzadzenia_pu(szyna=gen.bus_ref, punkt=punkt, odbiory=odbiory),
+                    moc_pu=moce[gen.ref_id],
                 ),
             )
         )
-    return tuple(urzadzenia)
+    return UrzadzeniaDynamiki(urzadzenia=tuple(urzadzenia), moce_pu=moce)
 
 
 def _impedancja_zrodla_ohm(
@@ -983,25 +1121,25 @@ def zloz_wejscie_dynamiki(
     scenariusz = scenariusz_z_opcji(options)
     nastawy = nastawy_z_opcji(options, scenariusz)
     widok = zloz_widok_sieci(snapshot, graph, base_mva=base_mva)
-    urzadzenia = zloz_urzadzenia(
+    zlozone = zloz_urzadzenia(
         snapshot,
         graph,
         punkt=punkt,
         odbiory=widok.odbiory,
         base_mva=base_mva,
         f_bazowa_hz=f_bazowa_hz,
+        eps_init=nastawy.eps_init,
     )
+    urzadzenia = zlozone.urzadzenia
     harmonogram = harmonogram_z_scenariusza(
         scenariusz,
         identy_odbiorow=frozenset(odbior.ident for odbior in widok.odbiory),
         base_mva=base_mva,
     )
-    moce_zrodel = {
-        urzadzenie.ident: _moc_urzadzenia_pu(
-            szyna=urzadzenie.wezel, punkt=punkt, odbiory=widok.odbiory
-        )
-        for urzadzenie in urzadzenia
-    }
+    # Moc punktu pracy KAŻDEGO urządzenia pochodzi z tego samego podziału, z którego
+    # zbudowano jego stan początkowy — drugie, niezależne wyliczenie tej samej
+    # wielkości byłoby dwiema prawdami o jednym punkcie pracy.
+    moce_zrodel = {urzadzenie.ident: zlozone.moce_pu[urzadzenie.ident] for urzadzenie in urzadzenia}
     return WejscieDynamiki(
         wezly=widok.wezly,
         galezie=widok.galezie,
@@ -1057,6 +1195,7 @@ __all__ = [
     "KOD_PUNKT_PRACY_INNA_MIGAWKA",
     "KOD_PUNKT_PRACY_NIEPELNY",
     "KOD_PUNKT_PRACY_NIE_ROZPLYW",
+    "KOD_PODZIAL_MOCY_NIESPOJNY",
     "KOD_RODZINA_BEZ_MODELU",
     "KOD_SCENARIUSZ_BRAK",
     "KOD_SKOK_POZA_ODBIOREM",
