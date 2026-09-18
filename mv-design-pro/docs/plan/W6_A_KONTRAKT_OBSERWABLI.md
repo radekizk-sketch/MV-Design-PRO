@@ -133,15 +133,34 @@ kontraktu obserwabli**, nie adnotacją interfejsu.
 | `NISKIE_NAPIECIE_NIEWIARYGODNA` | kąt istnieje numerycznie, ale jego błąd przekracza założoną granicę | poniżej |
 | `NIEDOSTEPNA` | węzeł bez rozwiązania (wyspa bez źródła, brak zbieżności w tej chwili) | brak rozwiązania algebraicznego |
 
-**Kryterium nie może być liczbą przyjętą „na oko".** Wyprowadzenie: solver rozwiązuje `g(x,y)=0`
-do tolerancji `ε_g`; niepewność składowych napięcia jest rzędu `ε_g`, więc niepewność kąta wynosi
+**Kryterium nie może być liczbą przyjętą „na oko" — ale nie może też być ZAŁOŻENIEM.**
 
-$$\Delta\theta_i \approx \frac{\varepsilon_g}{|V_i|}$$
+> **KOREKTA 2026-09-18 (runda domknięcia W6-A §5, dowód wykonywalny).** Wyprowadzenie poniżej
+> pierwotnie brzmiało: „solver rozwiązuje `g(x,y)=0` do tolerancji `ε_g`, więc niepewność
+> składowych napięcia jest rzędu `ε_g`". **To zdanie jest fałszywe i zostało obalone pomiarem.**
+> Newton kończy przy `‖r‖ ≤ ε_g`, ale błąd rozwiązania spełnia `Δy = J_y^{-1} r` — jest więc
+> wzmocniony przez `J_y^{-1}`. W punkcie pracy w ostatnim promilu obciążalności (`P = 1,0079`
+> przy `P_max = 1,0083`) zmierzone wzmocnienie wynosi **8,4×**, a meldowana niepewność
+> częstotliwości była **2,45 raza mniejsza** od rzeczywistego błędu — przy kodzie jakości
+> „wiarygodna". Analogicznie obalone zostało założenie, że błąd względny pochodnej równa się
+> błędowi względnemu napięcia (niedoszacowanie 1,83×).
 
-Stąd granica napięcia, poniżej której kąt przestaje być wiarygodny, wynika z **żądanej dokładności
-kąta** `Δθ_dop` (wielkość wejściowa, jawna, nie ukryta stała):
+Obie niepewności są dziś **mierzone**, każda z wielkości, które solver i tak ma:
 
-$$|V_i| < \frac{\varepsilon_g}{\Delta\theta_{dop}} \;\Rightarrow\; \texttt{NISKIE\_NAPIECIE\_NIEWIARYGODNA}$$
+$$u_V = \left| J_y^{-1} r \right| \text{ na węźle}, \qquad
+u_{\dot V} = \left| \dot V(y - J_y^{-1} r) - \dot V(y) \right|$$
+
+Rozkład LU jest ten sam, którym liczona jest pochodna, więc `u_V` kosztuje jedno dodatkowe
+podstawienie; `u_V̇` wymaga drugiej faktoryzacji (pomiar narzutu: §15 raportu domknięcia).
+Propagacja jest **wyprowadzona**, nie dobrana:
+
+$$u_{\dot\theta} \le \frac{u_{\dot V}}{|V|} + 3\,\frac{|\dot V|\,u_V}{|V|^2},
+\qquad u_f = \frac{u_{\dot\theta}}{2\pi}$$
+
+Granica niedostępności wynika stąd wprost i **nie jest progiem napięciowym** (OD-36):
+
+$$|V_i| \le u_V \;\Rightarrow\; \texttt{NIEDOSTEPNA}
+\qquad\text{(fazor leży wewnątrz własnej kuli niepewności)}$$
 
 **Zakaz zamrożony:** wartość niedostępna **nie jest** zastępowana częstotliwością znamionową.
 Kanał zwraca stan jakości, a nie „ładną liczbę".
@@ -393,8 +412,14 @@ pominiętą połowę susceptancji.
 
 ### 13.4 Ograniczenie polityki jakości — uczciwie
 
-Podstawienie wzorów daje: `u(f) > |f − f_n|` **dokładnie dla `|V| < 4·tolerancja`**. Pasmo
-`OGRANICZONA` jest więc **wąskie** i przylega do pasma `NIEDOSTEPNA`.
+Podstawienie wzorów daje: `u(f) > |f − f_n|` **dokładnie dla `|V| < 3·u_V`** (przy `u_V̇ = 0`),
+gdzie `u_V` jest **zmierzonym** błędem napięcia, nie tolerancją Newtona. Pasmo `OGRANICZONA`
+jest więc wąskie i przylega do pasma `NIEDOSTEPNA`.
+
+> **KOREKTA 2026-09-18.** Wcześniejsza wersja tego zdania podawała granicę `|V| < 4·tolerancja`.
+> Współczynnik 4 zawierał człon pochodzący z ZAŁOŻENIA o proporcjonalności błędu pochodnej;
+> po zastąpieniu obu niepewności pomiarem zostaje czysty współczynnik 3 z różniczkowania
+> `θ̇ = Im(V̇·conj(V))/|V|²` (licznik ×1, mianownik ×2).
 
 **Co to znaczy:** polityka chroni przed **numeryczną** bezsensownością kąta i nic ponad to.
 **Nie orzeka**, od jak głębokiego zapadu inżynier ma przestać mówić o częstotliwości węzła.
@@ -425,3 +450,99 @@ pomiarem byłby zgadywaniem.
   nie zostało wykonane; tożsamości analityczne F-1…F-5 i parytet B-8 to dowody **wewnętrzne**,
 * **jednostka amperowa** prądów gałęzi — kontrakt wystawia jednostki względne; przeliczenie na
   ampery należy do warstwy prezentacji przez pakiet wielkości pochodnych.
+
+---
+
+## Załącznik Z — RUNDA DOMKNIĘCIA W6-A (2026-09-18), dowody wykonywalne
+
+Baza: `903cd222`. Tryb: WERYFIKUJ → ODTWÓRZ → SFALSYFIKUJ → WYJAŚNIJ → NAPRAW TYLKO Z DOWODEM.
+Wszystkie liczby poniżej pochodzą z uruchomień, nie z oszacowań.
+
+### Z.1 Znaleziska
+
+| ID | waga | hipoteza | odtworzone | przyczyna źródłowa | naprawa |
+|---|---|---|---|---|---|
+| Z-01 | P0 | `u_f_hz` nie ogranicza rzeczywistego błędu | TAK — iloraz 2,45 przy `jakość = wiarygodna` | `u_V` **zakładane** równe tolerancji Newtona, gdy błąd rozwiązania to `J_y^{-1} r` (wzmocnienie 8,4×); dodatkowo błąd pochodnej zakładany proporcjonalny (1,83×) | obie niepewności **mierzone**, propagacja wyprowadzona; pokrycie 140/140 punktów, najgorszy iloraz 0,769 |
+| Z-02 | P1 | zbieżność algebry nie dowodzi istnienia pochodnej | TAK — jakobian osobliwy daje surowy `RuntimeError` scipy | `splu` bez osłony w `pochodna_napiec` | odmowa **nazwana** `dynamika.algebra_niezbiezna`; w próbkowaniu → `NIEDOSTEPNA`, bieg trwa |
+| Z-03 | P1 | gałąź otwarta w ENM jest nieosiągalna dla zdarzeń | TAK — `zalaczenie_galezi` na `kab-rezerwa` odmówione | `adapter_dynamiki.py` pomija `not in_service` (`continue`) | **NIE naprawione** — zakres W6-B (wymaga modelu stanu łączeniowego w rdzeniu) |
+| Z-04 | P2 | iloczyn cech przekładnia × susceptancja bez testu | TAK — B-5 i B-6 rozłączne | test przypinał instancje, nie iloczyn | testy B-9 (przekładnia × susceptancja) i B-10 (bilans zacisków = straty) |
+| Z-05 | P2 | rozłączne przestrzenie nazw rozpływu i dynamiki | TAK — rozpływ adresuje `id` grafu, dynamika `ref` ENM | most `ref_to_graph_id` jest jedyny i niejawny | most **jawny** w teście B-8; do rozważenia jako pozycja kontraktu odczytu |
+
+### Z.2 Rzeczywiste B-8 (§10) — ENM → rozpływ → `pf_run_id` → adapter → RMS
+
+22 porównane wielkości na sieci G16, najgorszy błąd względny **2,58e-12**; `|V|` i `θ` zgodne
+**co do bitu** (0,00e+00). Pokrycie: przepływ wsteczny (`lin-oze`), kabel rezystancyjny z
+susceptancją (`kab-odplyw`), transformator z zaczepem poza znamionowym i przesunięciem grupy
+`Dyn11` (`tr-gpz`). Poza porównaniem: sprzęgło szyn `spr-szyn` — tor rozpływu zwija łączniki i
+nie wystawia dla niego wiersza. Tolerancja testu 1e-9 wyprowadzona z arytmetyki, nie dobrana
+do obserwacji (cztery rzędy zapasu).
+
+### Z.3 SO-1A (§12) — wykonanie, nie deklaracja
+
+Wykonane: zwarcie 3F `t = 1,000 s` → zdjęcie `t = 1,180 s` → otwarcie sprzęgła `t = 1,180 s`
+→ horyzont **10,000 s**. 1057 kroków, 6 odrzuconych, 501 próbek, 73 kanały.
+`max‖f‖ = 9,78e-09`, **max residuum KCL = 7,15e-09**. Chwile wykonania zdarzeń **równe
+zaplanowanym co do bitu**. Skok algebraiczny reinicjalizacji: `Δy_max = 8,05e-01` (zwarcie),
+`6,25e-01` (zdjęcie + otwarcie); residuum po reinicjalizacji `6,99e-10` i `1,72e-15`.
+Powtórzenie biegu: odcisk próbek **identyczny** (`37e257b10cb05ae2c1a735d8`).
+
+**Noga ponownego załączenia NIE przechodzi** i to jest fizyka, nie luka narzędzia: po sekundzie
+pracy wyspowej kąt wyspy odjeżdża, a załączenie sprzęgła bez synchronizacji daje skok kąta,
+którego pętla synchronizacji przekształtnika PV nie nadąża odtworzyć — rdzeń odmawia z
+diagnozą wskazującą `gen-pv.pll_kat_rad` jako największe residuum. Ten sam wynik przy
+scenariuszu **bez zwarcia** (samo otwarcie i zamknięcie sprzęgła), co izoluje przyczynę.
+Zdarzenie `synchronizacja` jest w kontrakcie danych, ale rdzeń go **nie wykonuje** (odmowa
+`dynamika.rodzaj_zdarzenia_nieobslugiwany`) — to jest brakujące ogniwo nogi SPZ, pozycja W6-B.
+
+Odstępstwo od litery SO-1A, nazwane wprost: sieć wzorcowa G16 niesie PV 1,6 MW i maszynę
+synchroniczną, a nie „PV 2,75 MW i magazyn". Noga magazynowa scenariusza **nie jest ćwiczona**.
+
+### Z.4 Narzut wydajnościowy (§15) — zmierzony
+
+Sieć 5-szynowa, najlepszy z 3 przebiegów, ten sam punkt pracy i scenariusz:
+
+| horyzont / próbek | bez obserwabli | W6-A z jedną faktoryzacją | W6-A z niepewnością mierzoną |
+|---|---|---|---|
+| 2,0 s / 101 | 1,467 s | 1,541 s (+5,0 %) | 1,691 s (+15,2 %) |
+| 2,0 s / 401 | 2,844 s | 3,318 s (+16,6 %) | 3,770 s (+32,5 %) |
+| 10,0 s / 501 | 8,197 s | 8,784 s (+7,2 %) | 9,393 s (+14,6 %) |
+
+Narzut skaluje się **gęstością próbkowania**, nie horyzontem — obserwabla liczy się raz na
+próbkę. Koszt pomiaru niepewności to druga faktoryzacja. Optymalizacja przez ponowne użycie
+rozkładu LU (`δV̇ = J^{-1}(δb − δJ·V̇)`) jest możliwa i **świadomie niewdrożona**: dawałaby tę
+samą wielkość pierwszego rzędu, ale bez dowodu równoważności nie wolno zamieniać poprawności
+na czas.
+
+### Z.5 Macierz mutacyjna (§16)
+
+| mutacja | wykrywający test | dowód |
+|---|---|---|
+| M-01 usunięcie członu `f_n` | `test_f2_bieg_wyspowy…` | ZABITA |
+| M-02 odwrócenie znaku prawej strony DAE | `test_f2_bieg_wyspowy…` | ZABITA |
+| M-03 estymator różnicowy kąta | `test_z2_iniekcja_rozniczkowanie…`, `test_f3…` | wykazana wykonywalnie (nie mutacja źródła — produkcja nie ma miejsca na różnicę) |
+| M-04 różniczkowanie przez nieciągłość | `test_z1_probka_w_chwili_zdarzenia…` | ZABITA (zamiana kolejności zdarzenie/próbka) |
+| M-05 zamiana orientacji zacisków | `test_b3…` | ZABITA |
+| M-06 `S = V·I` zamiast `V·conj(I)` | `test_b7…` | ZABITA |
+| M-07 pełne `B` zamiast `B/2` | `test_b5…` | ZABITA |
+| M-08 przekładnia po złej stronie | `test_b6…` | ZABITA |
+| M-09 znak przesunięcia fazowego | `test_b6…` | ZABITA |
+| M-10 zła baza mocy (×2) | `test_b8_parytet…realnej_sciezce…` | ZABITA |
+| M-11 rozjazd inicjalizacji rozpływ→RMS | `test_b8_parytet…realnej_sciezce…` | ZABITA |
+| M-12 fałszywa promocja jakości | `test_niepewnosc_ogranicza…` | ZABITE 4 warianty (a: `u_V̇ = 0`; b: `u_V = 0`; c: człon pochodnej wycięty; d: powrót do proporcjonalności) |
+
+**Uczciwie:** pierwsza wersja testu pokrycia przypinała TYLKO punkt blisko granicy obciążalności
+i mutacje M-12a/M-12c **przeżyły** — bo w tym punkcie dominuje błąd napięcia. Test został
+rozszerzony o drugi reżim (`P = 0,99`, start 1,00), w którym dominuje błąd pochodnej. To jest
+ta sama pułapka, przed którą ostrzega reguła KLASA, NIE INSTANCJA.
+
+### Z.6 Stan walidacji po rundzie
+
+| stan | wartość | podstawa |
+|---|---|---|
+| WYKONYWALNE NUMERYCZNIE | **TAK** | SO-1A 10 s, residuum KCL 7,15e-09, odtwarzalność bit w bit |
+| KWALIFIKOWANE NUMERYCZNIE | **TAK** | rzeczywiste B-8 2,58e-12, 12 mutacji zabitych, niepewność pokrywa błąd w 140/140 punktach |
+| ZWALIDOWANE FIZYCZNIE | **NIE** | brak porównania z wyrocznią zewnętrzną dla częstotliwości (F-7) |
+| KWALIFIKOWANE INŻYNIERSKO | **NIE** | polityka jakości jest numeryczna; bieg SO-1A publikuje `f = −17,15 Hz` na szynie PV w czasie zwarcia z kodem „wiarygodna" — liczba poprawna dla modelu fazorowego, ale nazwa „częstotliwość szyny" ją nadinterpretuje |
+
+Ostatni wiersz jest **mierzonym** uzasadnieniem, dlaczego fizyczna granica ważności musi wyjść
+z fali walidacyjnej (W6-F), a nie z progu przyjętego z góry.

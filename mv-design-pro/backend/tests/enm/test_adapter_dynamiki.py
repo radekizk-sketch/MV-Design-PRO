@@ -855,3 +855,97 @@ class TestBrakiModelu:
             assert raport.status == "blocked", kod
             assert kod in " ".join(raport.missing_fields_pl), kod
             assert braki_modelu_dynamiki(enm)[0].kod == kod
+
+
+# ---------------------------------------------------------------------------
+# B-8 RZECZYWISTE (W6-A par. 10): ENM -> rozplyw -> pf_run_id -> adapter -> RMS
+# ---------------------------------------------------------------------------
+
+
+def test_b8_parytet_chwili_zerowej_na_realnej_sciezce_produktu(
+    snapshot_g16: dict[str, Any],
+    rozplyw_g16: CanonicalRun,
+    punkt_g16: PunktPracyRozplywu,
+) -> None:
+    """Chwila zerowa biegu czasowego MUSI opisywac ten sam punkt pracy, co rozplyw.
+
+    DLACZEGO TO NIE JEST TO SAMO, CO WYROCZNIA ANALITYCZNA. Test analityczny w
+    `test_obserwable.py` porownuje bieg z punktem pracy policzonym recznie z fazorow —
+    sprawdza FIZYKE. Ten test przechodzi CALA SCIEZKE PRODUKTU: migawka ENM, realny
+    solver rozplywu, `pf_run_id`, odczyt wyniku, adapter, zlozenie wejscia dynamiki,
+    silnik. Rozjazd tutaj oznacza defekt w ktorymkolwiek ogniwie — bazie jednostek,
+    orientacji galezi, konwencji transformatora, odczycie wyniku — a nie w fizyce.
+
+    ROZLACZNE PRZESTRZENIE NAZW. Rozplyw adresuje elementy IDENTYFIKATOREM GRAFU,
+    dynamika — REFERENCJA ENM. Jedynym mostem jest `ref_to_graph_id`; test przechodzi
+    przez niego jawnie, zeby zlaczenie nie bylo domyslem czytelnika.
+
+    POKRYCIE G16 (przypadki wymagane przy odbiorze): linia z przeplywem WSTECZNYM
+    (`lin-oze`, generacja oddaje moc do sieci), kabel REZYSTANCYJNY z susceptancja
+    poprzeczna (`kab-odplyw`, straty czynne i generacja bierna niezerowe), transformator
+    z zaczepem POZA znamionowym (`tr-gpz`, `tap_position=2`, `tap_step_percent=1,5`) i z
+    PRZESUNIECIEM FAZOWYM grupy `Dyn11`. Sprzeglo szyn (`spr-szyn`) nie ma wiersza w
+    wyniku rozplywu, bo tor rozplywu zwija laczniki — i to jest jedyna galaz poza
+    porownaniem, nazwana tu wprost, a nie przemilczana.
+    """
+    wejscie = zloz(
+        snapshot_g16,
+        opcje(dynamika={"horyzont_s": 0.02, "krok_wyjscia_s": 0.02, "zdarzenia": []}),
+        punkt_g16,
+    )
+    wynik = SilnikDynamiki(wejscie=wejscie).uruchom()
+    rezultat = rozplyw_g16.raw_result["result_v1"]
+
+    wezly = {
+        ref_to_graph_id(klucz[len("u_pu@") :]): klucz[len("u_pu@") :]
+        for klucz in wynik.probki
+        if klucz.startswith("u_pu@")
+    }
+    galezie = {
+        ref_to_graph_id(klucz[len("p_od_pu@") :]): klucz[len("p_od_pu@") :]
+        for klucz in wynik.probki
+        if klucz.startswith("p_od_pu@")
+    }
+
+    # Tolerancja NIE jest dobrana do zaobserwowanej rozbieznosci: oba tory licza te sama
+    # algebre w tej samej bazie, wiec jedyna dopuszczalna roznica to zaokraglenie
+    # podwojnej precyzji spietrzone na kilkunastu dzialaniach — stad 1e-9 wzglednie,
+    # cztery rzedy wielkosci nad zmierzonym maksimum (2,6e-12).
+    tolerancja_wzgledna = 1.0e-9
+    porownane = 0
+
+    for wiersz in rezultat["bus_results"]:
+        ref = wezly[wiersz["bus_id"]]
+        for pole, kanal in (("v_pu", f"u_pu@{ref}"), ("angle_deg", f"kat_deg@{ref}")):
+            oczekiwane = float(wiersz[pole])
+            zmierzone = float(wynik.probki[kanal][0])
+            assert zmierzone == pytest.approx(
+                oczekiwane, rel=tolerancja_wzgledna, abs=1.0e-9
+            ), f"szyna {ref}, {pole}"
+            porownane += 1
+
+    s_bazowa = wejscie.s_bazowa_mva
+    for wiersz in rezultat["branch_results"]:
+        ref = galezie[wiersz["branch_id"]]
+        for pole, kanal in (
+            ("p_from_mw", f"p_od_pu@{ref}"),
+            ("q_from_mvar", f"q_od_pu@{ref}"),
+            ("p_to_mw", f"p_do_pu@{ref}"),
+            ("q_to_mvar", f"q_do_pu@{ref}"),
+        ):
+            oczekiwane = float(wiersz[pole])
+            zmierzone = float(wynik.probki[kanal][0]) * s_bazowa
+            assert zmierzone == pytest.approx(
+                oczekiwane, rel=tolerancja_wzgledna, abs=1.0e-9
+            ), f"galaz {ref}, {pole}"
+            porownane += 1
+
+    assert porownane == 22, f"porownano {porownane} wielkosci zamiast 22 — zmienil sie zakres G16"
+    # Przeplyw wsteczny, straty czynne i generacja bierna MUSZA byc niezerowe, inaczej
+    # test przechodzilby takze dla sieci, w ktorej te przypadki nie wystepuja.
+    wiersze = {ref_to_graph_id(galezie[w["branch_id"]]): w for w in rezultat["branch_results"]}
+    oze = wiersze[ref_to_graph_id("lin-oze")]
+    kabel = wiersze[ref_to_graph_id("kab-odplyw")]
+    assert oze["p_from_mw"] < 0.0 < oze["p_to_mw"], "brak przeplywu wstecznego w zakresie B-8"
+    assert kabel["p_from_mw"] + kabel["p_to_mw"] > 1.0e-4, "brak strat czynnych w zakresie B-8"
+    assert kabel["q_from_mvar"] + kabel["q_to_mvar"] < -1.0e-4, "brak susceptancji w zakresie B-8"

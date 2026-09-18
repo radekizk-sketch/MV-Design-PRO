@@ -61,8 +61,9 @@ from .kontrakty import (
     odmowa_braku_pola,
 )
 from .obserwable import (
+    czestotliwosc_niedostepna,
     czestotliwosc_wezla,
-    pochodna_napiec,
+    pochodna_napiec_z_niepewnoscia,
     wielkosci_galezi,
 )
 from .reinicjalizacja import reinicjalizuj
@@ -709,22 +710,37 @@ class SilnikDynamiki:
     ) -> None:
         """Przestrzen `z` (W6-A) — czestotliwosc wezlow i wielkosci zaciskow galezi.
 
-        Pochodna napiec liczy sie RAZ na probke, z rozniczkowania rownania algebraicznego;
-        kazdy wezel czyta z niej swoja skladowa. Zaden kanal tej przestrzeni nie jest
-        rozniczkowany numerycznie po osi wyjscia.
+        Pochodna napiec i obie jej niepewnosci licza sie RAZ na probke, z rozniczkowania
+        rownania algebraicznego; kazdy wezel czyta z nich swoja skladowa. Zaden kanal tej
+        przestrzeni nie jest rozniczkowany numerycznie po osi wyjscia.
+
+        ZBIEZNOSC NIE JEST WIARYGODNOSCIA. Jesli jakobian algebry jest osobliwy w punkcie
+        probki albo w punkcie skorygowanym o blad pierwszorzedowy, to pochodna rozwiazania
+        ALBO nie istnieje, ALBO nie da sie ograniczyc jej bledu — i wtedy kazdy wezel
+        dostaje stan NIEDOSTEPNA. Bieg trwa dalej, bo algebra zbiegla; ale zbiezny Newton
+        nie jest dowodem, ze wyprowadzona z niego czestotliwosc cokolwiek znaczy.
         """
-        nastawy = self.wejscie.nastawy
-        pochodne_napiec = pochodna_napiec(model, odbiory, urzadzenia, stany, napiecia)
-        for pozycja, ident in enumerate(model.identy_wezlow):
-            czestotliwosc = czestotliwosc_wezla(
-                complex(napiecia[pozycja]),
-                complex(pochodne_napiec[pozycja]),
-                f_bazowa_hz=self.wejscie.f_bazowa_hz,
-                tolerancja_algebry=nastawy.tolerancja,
-            )
-            probki[f"f_hz@{ident}"].append(czestotliwosc.f_hz)
-            probki[f"u_f_hz@{ident}"].append(czestotliwosc.niepewnosc_hz)
-            probki[f"jakosc_f@{ident}"].append(czestotliwosc.jakosc)
+        f_bazowa_hz = self.wejscie.f_bazowa_hz
+        try:
+            pomiar = pochodna_napiec_z_niepewnoscia(model, odbiory, urzadzenia, stany, napiecia)
+        except OdmowaDynamiki:
+            niedostepna = czestotliwosc_niedostepna(f_bazowa_hz)
+            for ident in model.identy_wezlow:
+                probki[f"f_hz@{ident}"].append(niedostepna.f_hz)
+                probki[f"u_f_hz@{ident}"].append(niedostepna.niepewnosc_hz)
+                probki[f"jakosc_f@{ident}"].append(niedostepna.jakosc)
+        else:
+            for pozycja, ident in enumerate(model.identy_wezlow):
+                czestotliwosc = czestotliwosc_wezla(
+                    complex(napiecia[pozycja]),
+                    complex(pomiar.pochodna_pu_s[pozycja]),
+                    f_bazowa_hz=f_bazowa_hz,
+                    niepewnosc_napiecia_pu=float(pomiar.niepewnosc_napiecia_pu[pozycja]),
+                    niepewnosc_pochodnej_pu_s=float(pomiar.niepewnosc_pochodnej_pu_s[pozycja]),
+                )
+                probki[f"f_hz@{ident}"].append(czestotliwosc.f_hz)
+                probki[f"u_f_hz@{ident}"].append(czestotliwosc.niepewnosc_hz)
+                probki[f"jakosc_f@{ident}"].append(czestotliwosc.jakosc)
         for galaz in model.galezie:
             wielkosci = wielkosci_galezi(model, galaz, napiecia)
             probki[f"i_od_pu@{galaz.ident}"].append(abs(wielkosci.i_od_pu))

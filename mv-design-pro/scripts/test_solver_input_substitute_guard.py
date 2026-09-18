@@ -1441,7 +1441,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # nie istnieje dla nich „brak danej", ktory mozna by podstawic liczba; brak
     # wiarygodnosci kata konczy sie stanem jakosci, nie wartoscia zastepcza.
     # PASS bramki niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 3836." in wyjscie, wyjscie
+    # W6-A korekta par. 5 (2026-09-18): 3836 -> 3839 (+3 pola, zero skasowanych, zero nowych
+    # plikow). POMIAR: zbior `contract_fields()` zrzucony NA DRZEWIE i BEZ `obserwable.py`,
+    # roznica policzona `comm`. Nosnikiem jest `PochodnaZNiepewnoscia` (`pochodna_pu_s`,
+    # `niepewnosc_napiecia_pu`, `niepewnosc_pochodnej_pu_s`) — struktura WYNIKU pomiaru
+    # niepewnosci, nie danych wejsciowych. Zaden z tych kanalow nie ma stanu „brak danej":
+    # obie niepewnosci sa LICZONE z residuum i jakobianu, a gdy jakobian jest osobliwy,
+    # obserwabla wraca jako NIEDOSTEPNA — nie jako podstawiona liczba. PASS bramki
+    # niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 3839." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
