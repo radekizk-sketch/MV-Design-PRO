@@ -1445,7 +1445,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `network_model/catalog/niezmienniki_katalogu.py` — rejestr mocy regul
         # katalogu i przeglad wiarygodnosci; modul importuje wylacznie stdlib i nie
         # podstawia zadnej liczby za brak danej, zero plikow skasowanych).
-        "Przeskanowano 504 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta KASACJA-UNIEWAZNIACZA (2026-09-17): 504 -> 503 (-1 plik
+        # `application/analysis_run/result_invalidator.py` — martwy uniewazniacz
+        # wynikow skasowany procedura po pomiarze 0 wolajacych w `backend/src`;
+        # zapadka idzie W DOL, bo z zakresu skanu UBYL plik, nie przybyl).
+        "Przeskanowano 503 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1514,7 +1518,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # stacja_abonencka,kompensacja,rezerwa_zasilania}.py`; dlug/wykluczenia bez
         # zmian — nowe pliki definiuja wylacznie instancje StationTemplate z opcji
         # CatalogChoice, zero zastepnikow liczbowych).
-        "  application: pliki_skanowane=238, dlug=30 plikow/suma 91, "
+        # Karta KASACJA-UNIEWAZNIACZA (2026-09-17): application 238 -> 237 (-1
+        # `application/analysis_run/result_invalidator.py`, skasowany martwy
+        # uniewazniacz wynikow; dlug/wykluczenia bez zmian — ten plik nie mial
+        # ani jednego wpisu w zapadce ani w wykluczeniach, wiec ubyl tylko z
+        # licznika skanu).
+        "  application: pliki_skanowane=237, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=62, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]
