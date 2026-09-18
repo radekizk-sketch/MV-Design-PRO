@@ -17,7 +17,9 @@ from network_model.solvers.dynamika.calkowanie import (
     RungeKutta4Jawny,
     TrapezNiejawny,
     blad_lokalny,
+    maska_nasycenia,
     rozpakuj_stany,
+    rzutuj_stany,
     spakuj_stany,
 )
 from network_model.solvers.dynamika.kontrakty import KOD_KROK_NIEZBIEZNY
@@ -291,3 +293,69 @@ def test_nieosiagalna_tolerancja_kroku_konczy_sie_odmowa() -> None:
         ).uruchom()
     assert blad.value.kod == KOD_KROK_NIEZBIEZNY
     assert "blad_lokalny" in blad.value.szczegoly
+
+
+def test_maska_nasycenia_jest_warunkiem_dwuczlonowym() -> None:
+    """Zbior aktywny wymaga POLOZENIA na granicy ORAZ znaku residuum swobodnego.
+
+    To jest dowod przypiety do mocnego zdania z docstringu `maska_nasycenia`
+    („warunek jest dwuczlonowy, i to jest istota rzeczy"). Bez niego deklaracja
+    zyje bez pokrycia: iniekcja sprowadzajaca zbior aktywny do pustego
+    przechodzila przez CALA regresje dynamiki (323 testy) na zielono, bo
+    rzutowanie stanow w `rozloz` samo dotrzymuje granic — roznica na przebiegu
+    siega 1,59e-09, czyli tyle, co tolerancja Newtona. Zbior aktywny odpowiada
+    NIE za dotrzymanie granicy, tylko za to, ze rozwiazanie kroku LEZY w
+    granicach zamiast byc przycietym po fakcie: wiersz stanu aktywnego niesie
+    rownanie `x = granica`, a jego wiersz jakobianu jest tozsamoscia, wiec jest
+    bezwarunkowo dobrze uwarunkowany. Sprawdzamy wiec sam predykat, i to na
+    ILOCZYNIE CECH, a nie na jednym przykladzie.
+
+    Iloczyn cech: {ponizej, dokladnie na, powyzej granicy} x {residuum swobodne
+    ujemne, zerowe, dodatnie} x {granica dolna, gorna}.
+    """
+    dolne = np.zeros(6)
+    gorne = np.ones(6)
+
+    stany_gorne = np.array([1.0, 1.0, 1.0, 0.999, 1.001, 0.5])
+    reszta_gorna = np.array([-1.0e-3, 0.0, +1.0e-3, -1.0e-3, -1.0e-3, -1.0e-3])
+    assert maska_nasycenia(stany_gorne, dolne, gorne, reszta_gorna).tolist() == [
+        True,
+        True,
+        False,
+        False,
+        True,
+        False,
+    ], (
+        "Gorna granica: aktywna przy x >= gora ORAZ reszcie <= 0. Sam warunek polozenia "
+        "dawalby cykl — Newton sprowadza stan na granice, warunek znika, wiersz wraca do "
+        "postaci rozniczkowej z niezerowym residuum i wypycha stan z powrotem"
+    )
+
+    stany_dolne = np.array([0.0, 0.0, 0.0, 0.001, -0.001, 0.5])
+    reszta_dolna = np.array([+1.0e-3, 0.0, -1.0e-3, +1.0e-3, +1.0e-3, +1.0e-3])
+    assert maska_nasycenia(stany_dolne, dolne, gorne, reszta_dolna).tolist() == [
+        True,
+        True,
+        False,
+        False,
+        True,
+        False,
+    ], "Dolna granica: aktywna przy x <= dol ORAZ reszcie >= 0"
+
+    na_gornej = np.array([1.0])
+    jedna_dolna = np.array([0.0])
+    jedna_gorna = np.array([1.0])
+    assert maska_nasycenia(na_gornej, jedna_dolna, jedna_gorna, np.array([-1.0])).tolist() == [
+        True
+    ], "Regulator trzymany na limicie ma zostac w zbiorze aktywnym"
+    assert maska_nasycenia(na_gornej, jedna_dolna, jedna_gorna, np.array([+1.0])).tolist() == [
+        False
+    ], "Regulator schodzacy z limitu MUSI wyjsc ze zbioru aktywnego, i to natychmiast"
+
+
+def test_rzutowanie_stanow_dotrzymuje_obu_granic() -> None:
+    """`rzutuj_stany` sprowadza KAZDY stan do swojego zakresu — obie strony."""
+    stany = np.array([-5.0, 0.5, 5.0, 0.0, 1.0])
+    dolne = np.zeros(5)
+    gorne = np.ones(5)
+    assert rzutuj_stany(stany, dolne, gorne).tolist() == [0.0, 0.5, 1.0, 0.0, 1.0]

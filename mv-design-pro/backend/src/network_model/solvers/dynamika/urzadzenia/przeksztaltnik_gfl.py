@@ -175,11 +175,27 @@ class RdzenGFL:
 
     # -- wielkosci posrednie ---------------------------------------------
 
-    def czestotliwosc_pll(self, stany: dict[str, Dual], napiecie: Zespolona) -> Dual:
-        """Odchylka pulsacji z PLL: `kp*eps + x_pll`, gdzie `eps = -V_d`."""
+    def uchyb_synchronizacji(self, stany: dict[str, Dual], napiecie: Zespolona) -> Dual:
+        """Uchyb petli synchronizacji `eps = -V_d` — JEDYNE miejsce tego wzoru.
+
+        Zerem tego uchybu jest dokladnie `theta_PLL = arg(V)`, czyli zsynchronizowanie
+        z napieciem wezla; znak ujemny daje ujemne sprzezenie zwrotne, wiec petla
+        do tego zera ZBIEGA, a nie od niego ucieka.
+
+        DLACZEGO OSOBNA FUNKCJA. Uchyb potrzebny jest w DWOCH miejscach: w odchylce
+        pulsacji (`kp eps + x`) i wprost w pochodnej calki (`ki eps`). Wczesniej
+        kazde z nich liczylo go u siebie — dwie niezalezne kopie tego samego wzoru,
+        ktore „dzis sie zgadzaja". Iniekcja przestawiajaca znak w jednej z nich
+        zmieniala tylko statyzm P/f, a petla dalej dzialala poprawnie, wiec zaden
+        test nie mial szans tego zobaczyc. Jedno zrodlo prawdy usuwa te klase
+        rozjazdu (CLAUDE.md, KLASA NIE INSTANCJA p. 3).
+        """
         napiecie_dq = napiecie * obrot(stany[STAN_KATA_PLL] - CWIERC_OBROTU_RAD).sprzezenie()
-        uchyb = -napiecie_dq.re
-        return uchyb * self.pll_kp + stany[STAN_CALKI_PLL]
+        return -napiecie_dq.re
+
+    def czestotliwosc_pll(self, stany: dict[str, Dual], napiecie: Zespolona) -> Dual:
+        """Odchylka pulsacji z PLL: `kp*eps + x_pll`."""
+        return self.uchyb_synchronizacji(stany, napiecie) * self.pll_kp + stany[STAN_CALKI_PLL]
 
     def glebokosc_zapadu(self, modul_napiecia: Dual) -> Dual:
         """Udzial zapadu `(U_prog - U)/U_prog` obciety do [0, 1] — CIAGLY.
@@ -290,9 +306,8 @@ class RdzenGFL:
     def rownania(
         self, stany: dict[str, Dual], napiecie: Zespolona, okno: OknoMocy, opis: str
     ) -> dict[str, Dual]:
-        napiecie_dq = napiecie * obrot(stany[STAN_KATA_PLL] - CWIERC_OBROTU_RAD).sprzezenie()
-        uchyb_pll = -napiecie_dq.re
-        odchylka_pulsacji = uchyb_pll * self.pll_kp + stany[STAN_CALKI_PLL]
+        uchyb_pll = self.uchyb_synchronizacji(stany, napiecie)
+        odchylka_pulsacji = self.czestotliwosc_pll(stany, napiecie)
 
         zadanie_czynne, zadanie_bierne, modul = self.prady_zadane(stany, napiecie, okno, opis)
 

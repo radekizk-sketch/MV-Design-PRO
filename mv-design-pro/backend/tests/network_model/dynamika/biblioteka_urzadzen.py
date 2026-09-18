@@ -29,9 +29,9 @@ from network_model.solvers.dynamika import (
     WezelDynamiki,
 )
 from network_model.solvers.dynamika.urzadzenia import (
-    Crowbar,
     Magazyn,
     MaszynaSynchroniczna,
+    NastawyCrowbar,
     PrzeksztaltnikGFL,
     PrzeksztaltnikGFM,
     RdzenGFL,
@@ -71,9 +71,7 @@ class UkladDwuwezlowy:
     szyna: SzynaSztywna
     punkt_pracy: PunktPracy
 
-    def wejscie(
-        self, harmonogram: HarmonogramDynamiki, nastawy: NastawySolvera
-    ) -> WejscieDynamiki:
+    def wejscie(self, harmonogram: HarmonogramDynamiki, nastawy: NastawySolvera) -> WejscieDynamiki:
         return WejscieDynamiki(
             wezly=self.wezly,
             galezie=self.galezie,
@@ -420,7 +418,7 @@ def turbina(
     ident: str = "WT1",
     wezel: str = "GEN",
     typ: str = "wiatr_typ_4",
-    crowbar: Crowbar | None = None,
+    crowbar: NastawyCrowbar | None = None,
     s_n_mva: float = 30.0,
     rdzen: RdzenGFL | None = None,
     **nadpisania: float,
@@ -443,8 +441,8 @@ def turbina(
 
 def crowbar_typowy(
     *, prog_pradu_pu: float = 1.05, czas_zwloki_s: float = 0.02, czas_trwania_s: float = 0.15
-) -> Crowbar:
-    return Crowbar(
+) -> NastawyCrowbar:
+    return NastawyCrowbar(
         prog_pradu_pu=prog_pradu_pu,
         czas_zwloki_s=czas_zwloki_s,
         czas_trwania_s=czas_trwania_s,

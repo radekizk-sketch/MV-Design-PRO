@@ -23,17 +23,12 @@ cyklu"):
 
 Znak: dodatnia moc oddawana do sieci OBNIZA stan naladowania.
 
-NIENARUSZALNOSC ZAKRESU SOC JEST DWUSTOPNIOWA — i oba stopnie pochodza z tego
-samego predykatu (`OknoMocy`), a nie z dwoch niezaleznych warunkow:
-
-1. **Okno zadania.** Przy `SOC <= SOC_min` okno mocy zamyka sie od gory (koniec
-   rozladowania), przy `SOC >= SOC_max` od dolu (koniec ladowania). Rdzen
-   przeksztaltnika ogranicza tym oknem SWOJE zadanie mocy czynnej.
-2. **Ogranicznik nienawrotny na calce SOC.** Pochodna, ktora wypchnelaby SOC poza
-   zakres, jest ZEROWANA. To jest zabezpieczenie ostateczne: przeksztaltnik
-   tworzacy siec oddaje moc, ktora narzuca mu SIEC (okno ogranicza zadanie, nie
-   moc rzeczywista), wiec bez tego stopnia SOC moglby wyjsc poza zakres mimo
-   poprawnego zadania. Dokladnie tak dziala uklad zarzadzania bateria.
+NIENARUSZALNOSC ZAKRESU SOC. Zakres `[SOC_min, SOC_max]` jest TWARDA GRANICA
+STANU (`granice_stanow`), egzekwowana przez zbior aktywny calkowania — stan
+naladowania nie wychodzi poza zakres w ZADNYM kroku i dochodzi do granicy
+DOKLADNIE, bez przestrzelenia. Okno mocy zasobnika NIE zalezy od stanu
+naladowania; dlaczego — patrz `Zasobnik.okno_mocy` (skokowe zamykanie okna
+odbiera rownaniu kroku rozwiazanie, a zakres i tak jest juz dotrzymany).
 
 REGULACJA CZESTOTLIWOSCI MAGAZYNU. Blok `regulacja_f` jest regulacja P/f TEGO
 SAMEGO rodzaju, co statyzm przeksztaltnika — przylozenie obu naraz liczyloby te
@@ -87,18 +82,27 @@ class Zasobnik:
     soc_poczatkowy: float
     s_bazowa_mva: float
 
-    def okno_bazowe(self) -> OknoMocy:
-        """Okno mocy wynikajace z granic ladowania i rozladowania (bez SOC)."""
-        return OknoMocy(dol_pu=-self.p_ladowania_max_pu, gora_pu=self.p_rozladowania_max_pu)
+    def okno_mocy(self) -> OknoMocy:
+        """Okno mocy z granic ladowania i rozladowania kontraktu.
 
-    def okno_dla_soc(self, soc: float) -> OknoMocy:
-        """Okno zwezone przez stan naladowania — pusty nie oddaje, pelny nie przyjmuje."""
-        okno = self.okno_bazowe()
-        if soc <= self.soc_min:
-            okno = okno.zwezone(gora_pu=0.0)
-        if soc >= self.soc_max:
-            okno = okno.zwezone(dol_pu=0.0)
-        return okno
+        OKNO NIE ZALEZY OD STANU NALADOWANIA — i to jest decyzja mierzona, nie
+        przeoczenie. Zamykanie okna przy dojsciu SOC do konca zakresu jest
+        funkcja SKOKOWA stanu, a wiec wprowadza do residuum kroku skok o cala
+        szerokosc okna (pomiar: bieg magazynu padal w chwili dojscia SOC do
+        granicy — residuum 6,8e-05 na `i_czynny_pu` nie malalo ani po 60
+        iteracjach, ani po dwukrotnym skroceniu kroku). Zakres SOC jest
+        dotrzymany DOKLADNIE przez twarda granice stanu (`granice_stanow` +
+        zbior aktywny calkowania), wiec wynik biegu nigdy nie wychodzi poza
+        `[SOC_min, SOC_max]`.
+
+        CZEGO TEN MODEL NIE OBEJMUJE, powiedziane wprost: odciecia mocy przez
+        uklad zarzadzania bateria po dojsciu do konca zakresu. To jest funkcja
+        DZIEDZINY WOLNEJ (godziny pracy zasobu), a nie dynamiki RMS o horyzoncie
+        sekund; magazyn dochodzacy do granicy SOC w ciagu przebiegu oznacza, ze
+        zalozenia badania leza poza zakresem waznosci tego modelu, i tak nalezy
+        to czytac.
+        """
+        return OknoMocy(dol_pu=-self.p_ladowania_max_pu, gora_pu=self.p_rozladowania_max_pu)
 
     def pochodna_naladowania(self, moc_czynna_pu: Dual) -> Dual:
         """`d(SOC)/dt` — calka mocy stalopradowej; zakres egzekwuje CALKOWANIE.
@@ -171,13 +175,12 @@ class Magazyn:
 
     @property
     def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
-        """Stan naladowania ma TWARDA granice — to trzeci stopien ochrony zakresu.
+        """Stan naladowania ma TWARDA granice — jedyny mechanizm ochrony zakresu.
 
-        Dwa pierwsze (okno zadania i ogranicznik nienawrotny pochodnej) dzialaja
-        wewnatrz rownan; trzeci jest rzutowaniem w calkowaniu i to on gwarantuje
-        DOKLADNOSC granicy: bez niego trapez moglby przestrzelic o `dt/2 * f`
-        w kroku, w ktorym SOC dochodzi do konca zakresu. Stany przeksztaltnika
-        granic nie potrzebuja (patrz jego wlasna deklaracja).
+        Rzutowanie w calkowaniu gwarantuje DOKLADNOSC granicy: bez niego trapez
+        przestrzeliwalby o `dt/2 * f` w kroku, w ktorym SOC dochodzi do konca
+        zakresu. Stany przeksztaltnika granic nie potrzebuja (patrz jego wlasna
+        deklaracja).
         """
         granice: list[tuple[float, float] | None] = list(self.rdzen.granice_stanow)
         granice.append((self.zasobnik.soc_min, self.zasobnik.soc_max))
@@ -192,9 +195,6 @@ class Magazyn:
     def _opis(self) -> str:
         return f"magazyn {self.ident}"
 
-    def _okno(self, stan: np.ndarray) -> OknoMocy:
-        return self.zasobnik.okno_dla_soc(float(stan[self.uklad.indeks(STAN_NALADOWANIA)]))
-
     def _pochodne_dual(
         self, stany: dict[str, Dual], napiecie: Zespolona, okno: OknoMocy
     ) -> list[Dual]:
@@ -204,7 +204,7 @@ class Magazyn:
         return self.uklad.uporzadkuj(pochodne)
 
     def stan_poczatkowy(self, napiecie_pu: complex, moc_pu: complex) -> np.ndarray:
-        okno = self.zasobnik.okno_dla_soc(self.zasobnik.soc_poczatkowy)
+        okno = self.zasobnik.okno_mocy()
         if not (self.zasobnik.soc_min <= self.zasobnik.soc_poczatkowy <= self.zasobnik.soc_max):
             raise OdmowaDynamiki(
                 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
@@ -219,16 +219,20 @@ class Magazyn:
 
     def pochodne(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
         stany, napiecie = self.uklad.bez_gradientu(stan, napiecie_pu)
-        pochodne = self._pochodne_dual(stany, napiecie, self._okno(stan))
+        pochodne = self._pochodne_dual(stany, napiecie, self.zasobnik.okno_mocy())
         return np.array([wielkosc.wartosc for wielkosc in pochodne], dtype=float)
 
     def jakobian_stan_stan(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
         stany, napiecie = self.uklad.zaszczep(stan, napiecie_pu)
-        return self.uklad.blok_po_stanach(self._pochodne_dual(stany, napiecie, self._okno(stan)))
+        return self.uklad.blok_po_stanach(
+            self._pochodne_dual(stany, napiecie, self.zasobnik.okno_mocy())
+        )
 
     def jakobian_stan_napiecie(self, stan: np.ndarray, napiecie_pu: complex) -> np.ndarray:
         stany, napiecie = self.uklad.zaszczep(stan, napiecie_pu)
-        return self.uklad.blok_po_napieciu(self._pochodne_dual(stany, napiecie, self._okno(stan)))
+        return self.uklad.blok_po_napieciu(
+            self._pochodne_dual(stany, napiecie, self.zasobnik.okno_mocy())
+        )
 
     def prad_pu(self, stan: np.ndarray, napiecie_pu: complex) -> complex:
         stany, napiecie = self.uklad.bez_gradientu(stan, napiecie_pu)

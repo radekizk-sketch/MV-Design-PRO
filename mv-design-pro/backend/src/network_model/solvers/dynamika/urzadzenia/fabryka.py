@@ -43,7 +43,6 @@ from ..kontrakty import (
 from .magazyn import Magazyn, zbuduj_magazyn, zbuduj_zasobnik
 from .maszyna_synchroniczna import MaszynaSynchroniczna, zbuduj_maszyne_synchroniczna
 from .okno_mocy import (
-    OknoMocy,
     moc_znamionowa_pu,
     okno_symetryczne,
     okno_tylko_oddawanie,
@@ -63,8 +62,9 @@ from .regulatory import (
 from .turbina_wiatrowa import (
     TYPY_BEZ_MODELU_ELEKTRYCZNEGO,
     TYPY_ZLOZALNE,
-    Crowbar,
+    NastawyCrowbar,
     TurbinaWiatrowa,
+    sprawdz_typ_turbiny,
     zbuduj_turbine_wiatrowa,
 )
 
@@ -727,21 +727,23 @@ def _zbuduj_turbine(
 ) -> TurbinaWiatrowa:
     przeksztaltnik = parametry.przeksztaltnik
     crowbar = parametry.crowbar
+    # TYP NAJPIERW, DOPIERO POTEM BLOKI. Typy 1/2 nie maja przeksztaltnika z
+    # definicji, wiec pytanie o blok zadane wczesniej odpowiadaloby im odmowa
+    # „brak bloku przeksztaltnika" zamiast wlasciwej „kontrakt nie niesie
+    # schematu zastepczego maszyny". Ten sam warunek obowiazuje konstruktor
+    # biblioteki — dlatego jest JEDNA funkcja, a nie kopia w kazdym z tych miejsc.
+    sprawdz_typ_turbiny(parametry.rodzina)
     if przeksztaltnik is None:
-        return zbuduj_turbine_wiatrowa(
-            ident=ident,
-            wezel=wezel,
+        # Kontrakt ENM sam pilnuje, ze typ 3/4 niesie blok przeksztaltnika
+        # (walidator `TurbinaWiatrowa`), wiec tu dochodzi sie tylko przy zmianie
+        # kontraktu. Odmowa jest NAZWANA, bo alternatywa byloby zlozenie turbiny
+        # z liczb, ktorych nikt nie podal.
+        raise OdmowaDynamiki(
+            KOD_PARAMETRY_SPRZECZNE,
+            f"Turbina {parametry.rodzina!r} wymaga bloku przeksztaltnika — bez niego "
+            "nie ma sprzezenia z siecia",
+            urzadzenie=ident,
             typ=parametry.rodzina,
-            rdzen=None,
-            h_calkowite_s=parametry.h_calkowite_s,
-            pitch_tempo_deg_s=parametry.pitch_tempo_deg_s,
-            pitch_min_deg=parametry.pitch_min_deg,
-            pitch_max_deg=parametry.pitch_max_deg,
-            crowbar=None,
-            okno_mocy=OknoMocy(dol_pu=0.0, gora_pu=0.0),
-            s_n_mva=1.0,
-            s_bazowa_mva=s_bazowa_mva,
-            f_bazowa_hz=f_bazowa_hz,
         )
     return zbuduj_turbine_wiatrowa(
         ident=ident,
@@ -757,7 +759,7 @@ def _zbuduj_turbine(
         crowbar=(
             None
             if crowbar is None
-            else Crowbar(
+            else NastawyCrowbar(
                 prog_pradu_pu=crowbar.prog_pradu_pu,
                 czas_zwloki_s=crowbar.czas_zwloki_s,
                 czas_trwania_s=crowbar.czas_trwania_s,

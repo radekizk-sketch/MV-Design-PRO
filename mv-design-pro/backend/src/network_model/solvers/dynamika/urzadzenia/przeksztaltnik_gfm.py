@@ -42,13 +42,14 @@ liczby (`strategia_ograniczenia`):
   zmian (skalowanie jest rzeczywiste), przeksztaltnik pozostaje zrodlem
   napieciowym o wiekszej impedancji — to jest kanoniczne „current-limiting
   virtual impedance".
-* **`nasycenie_zadania`** — nasycany jest MODUL ZADANIA SEM: szukamy `E'` na tym
-  samym kacie, przy ktorym `|E' exp(j delta) - V| = i_max |Z_w|`. Kierunek pradu
-  ZMIENIA sie (inaczej niz wyzej), bo zmienia sie wierzcholek trojkata napiec —
-  i o to wlasnie chodzi: to sa dwa rozne mechanizmy, nie dwie nazwy jednego.
-  Gdy okrag ograniczenia nie siega promienia (`wyroznik < 0`), brane jest `E'`
-  MINIMALIZUJACE prad (rzut `V` na kierunek `delta`, obciety do nieujemnych) —
-  rozwiazanie dokladne zadania „najmniejszy mozliwy prad", a nie wartosc dobrana.
+* **`nasycenie_zadania`** — nasycany jest MODUL ZADANIA SEM: modul jest sciagany
+  ku rzutowi `V` na kierunek kata (punkt najmniejszego pradu na tym kierunku) w
+  stosunku `i_max |Z_w| / |E - V|`, a gdy sama skladowa prostopadla przekracza
+  ogranicznik, prad jest dodatkowo obcinany co do modulu. Kierunek pradu ZMIENIA
+  sie (inaczej niz wyzej), bo zmienia sie wierzcholek trojkata napiec — i o to
+  wlasnie chodzi: to sa dwa rozne mechanizmy, nie dwie nazwy jednego. Szczegolowe
+  uzasadnienie, dlaczego NIE jest to dokladne rozwiazanie `|I| = i_max` (pionowa
+  styczna i rezim bez rozwiazania), stoi przy samym wzorze w `prad_siec`.
 
 BAZY. `i_max`, `H_w` i `D_w` przeliczaja sie jak moc (mnoznik `S_urz/S_uklad`),
 statyzmy `mp`/`mq` i impedancja wirtualna — jak impedancja (mnoznik odwrotny).
@@ -76,7 +77,6 @@ from .pochodne_kierunkowe import (
     Dual,
     Zespolona,
     kwadrat,
-    maksimum,
     obrot,
     pierwiastek,
 )
@@ -200,20 +200,40 @@ class RdzenGFM:
             )
         kierunek = obrot(stany[STAN_KATA])
         rzut = napiecie.re * kierunek.re + napiecie.im * kierunek.im
-        wyroznik = kwadrat(rzut) - (kwadrat(napiecie.re) + kwadrat(napiecie.im)) + promien * promien
-        if wyroznik.wartosc <= 0.0:
-            modul_nasycony = maksimum(rzut, 0.0)
-        else:
-            polowa_cieciwy = pierwiastek(wyroznik)
-            granica_gorna = rzut + polowa_cieciwy
-            modul = self.modul_sem(stany)
-            modul_nasycony = (
-                granica_gorna
-                if modul.wartosc >= granica_gorna.wartosc
-                else maksimum(rzut - polowa_cieciwy, 0.0)
-            )
-        sem_nasycona = kierunek * modul_nasycony
-        return (sem_nasycona - napiecie) / impedancja
+        # NASYCENIE ZADANIA: modul zadania SEM jest sciagany W STRONE RZUTU
+        # napiecia na kierunek kata, w stosunku `i_max |Z_w| / |E - V|`. Rzut
+        # jest punktem NAJMNIEJSZEGO pradu na tym kierunku, wiec kazde sciagniecie
+        # ku niemu prad OBNIZA, a wspolczynnik jest dobrany tak, zeby przy
+        # wejsciu w nasycenie (`|E - V| = i_max |Z_w|`) byl rowny jedynce —
+        # przejscie jest wiec CIAGLE.
+        #
+        # DLACZEGO NIE DOKLADNE ROZWIAZANIE `|I| = i_max`. Modul SEM spelniajacy
+        # te rownosc to `rzut +- sqrt(rzut^2 - |V|^2 + (i_max |Z_w|)^2)`, czyli
+        # funkcja o PIONOWEJ STYCZNEJ w miejscu zerowania sie wyroznika — a tam,
+        # gdzie wyroznik jest ujemny, rozwiazania nie ma wcale (zaden modul SEM
+        # nie daje juz pradu rownego `i_max`). Metoda niejawna przechodzaca przez
+        # to miejsce tam i z powrotem gubi zbieznosc (pomiar: bieg padal przy
+        # t = 0,514 s, residuum 2,8e-03 na `kat_rad`, niezaleznie od skrocenia
+        # kroku). Sciaganie proporcjonalne jest LIPSCHITZOWSKIE w calym zakresie
+        # i nie ma rezimu bez rozwiazania.
+        #
+        # CZYM SIE ROZNI OD IMPEDANCJI WIRTUALNEJ. Tam skalowana jest CALA
+        # roznica `E - V`, wiec kierunek pradu zostaje bez zmian. Tutaj skalowana
+        # jest wylacznie skladowa RÓWNOLEGLA do kierunku kata (`E - rzut`), a
+        # skladowa prostopadla (`rzut * A - V`) zostaje — kierunek pradu SIE
+        # ZMIENIA. To sa dwa rozne mechanizmy, nie dwie nazwy jednego.
+        modul = self.modul_sem(stany)
+        sciagniecie = promien / pierwiastek(kwadrat_roznicy)
+        sem_nasycona = kierunek * (rzut + (modul - rzut) * sciagniecie)
+        prad = (sem_nasycona - napiecie) / impedancja
+        kwadrat_pradu = kwadrat(prad.re) + kwadrat(prad.im)
+        if kwadrat_pradu.wartosc <= self.i_max_pu * self.i_max_pu:
+            return prad
+        # OSTATNI STOPIEN: przy zapadzie tak glebokim, ze sama skladowa
+        # prostopadla przekracza ogranicznik, sciaganie modulu SEM nie wystarcza
+        # — prad jest wtedy obcinany co do modulu. Przejscie jest ciagle, bo
+        # obciecie wlacza sie dokladnie w chwili osiagniecia `i_max`.
+        return prad * (self.i_max_pu / pierwiastek(kwadrat_pradu))
 
     def moc_czynna(self, stany: dict[str, Dual], napiecie: Zespolona) -> Dual:
         """Moc czynna oddawana do sieci — wspolny kontrakt rdzeni GFL i GFM."""

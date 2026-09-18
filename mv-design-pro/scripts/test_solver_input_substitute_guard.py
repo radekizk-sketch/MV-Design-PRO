@@ -1406,7 +1406,21 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # protokol urzadzenia, struktury wyniku i tozsamosci). KAZDE z tych pol jest
     # WYMAGANE — zero domyslek liczbowych, pilnuje `dynamika_zero_default_guard`.
     # We wszystkich trzech wypadkach zero podstawien — PASS bramki niezmieniony.
-    assert "Pol kontraktow wejsciowych: 3797." in wyjscie, wyjscie
+    # W6-3A (2026-09-18): 3797 -> 3828 (+31 pol, zero skasowanych). POMIAR: zbior
+    # `contract_fields()` zrzucony na drzewie bazowym karty (839fc1eb) i na drzewie
+    # karty, roznica policzona `comm`, nie arytmetyka. Nowe nosniki to biblioteka
+    # urzadzen dynamicznych `network_model/solvers/dynamika/urzadzenia/**`:
+    # `okno_mocy.py::OknoMocy` (dol_pu, gora_pu, domkniecie_gory),
+    # `uklad_stanow.py::UkladStanow` (nazwy, uklad), `maszyna_synchroniczna.py`
+    # (napiecie_d, napiecie_q, prad_d, prad_q, prad_siec, moc_elektryczna,
+    # strumien_szczeliny, nasycenie, wspolczynnik), `magazyn.py::Zasobnik`
+    # (pojemnosc_kwh, p_ladowania_max_pu, p_rozladowania_max_pu, zasobnik, rdzen),
+    # `turbina_wiatrowa.py` (pitch_min_rad, pitch_max_rad, pitch_tempo_rad_s, tor,
+    # prog_pu, prad_pelnego_zadzialania_pu), `fabryka.py::INWENTARZ_POL`
+    # (konsumowane, nieskonsumowane, wariant, napiecie_pu, moc_pu, okno_mocy).
+    # KAZDE z tych pol jest WYMAGANE — zero domyslek liczbowych; zero podstawien
+    # liczby za nieobecna dana wejsciowa, PASS bramki niezmieniony.
+    assert "Pol kontraktow wejsciowych: 3828." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1461,7 +1475,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # skasowanych, zero nowych wpisow w zapadce dlugu i w wykluczeniach —
         # pakiet nie podstawia zadnej liczby za nieobecna dana wejsciowa, brak danej
         # konczy sie odmowa `dynamika.<pole>_missing`).
-        "Przeskanowano 523 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta W6-3A (2026-09-18): 523 -> 533 (+10 plikow biblioteki urzadzen
+        # dynamicznych `network_model/solvers/dynamika/urzadzenia/**`:
+        # `pochodne_kierunkowe.py`, `uklad_stanow.py`, `okno_mocy.py`,
+        # `regulatory.py`, `maszyna_synchroniczna.py`, `przeksztaltnik_gfl.py`,
+        # `przeksztaltnik_gfm.py`, `magazyn.py`, `turbina_wiatrowa.py`,
+        # `fabryka.py`; zero plikow skasowanych, zero nowych wpisow w zapadce
+        # dlugu i w wykluczeniach — brak danej kontraktu konczy sie odmowa
+        # `dynamika.rodzina_nieobslugiwana` / `dynamika.wariant_bez_parametrow`,
+        # nigdy podstawieniem liczby).
+        "Przeskanowano 533 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1509,7 +1532,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `delta_p_pu` (wezel PV nie ma rownania mocy biernej), wiec dowod drukowal
         # `ΔQ = 0` jako wielkosc ZMIERZONA. Naprawione u zrodla (brakujaca skladowa
         # jest pomijana), nie dopisane do zapadki.
-        "  network_model: pliki_skanowane=165, dlug=14 plikow/suma 77, "
+        # Karta W6-3A (2026-09-18): network_model 165 -> 175 (+10 plikow
+        # `solvers/dynamika/urzadzenia/**`, biblioteka piecu rodzin urzadzen
+        # dynamicznych); dlug i wykluczenia BEZ ZMIAN (14 plikow/suma 77,
+        # 3 pliki/suma 6) — zaden z nowych plikow nie ma wpisu ani w zapadce,
+        # ani w wykluczeniach.
+        "  network_model: pliki_skanowane=175, dlug=14 plikow/suma 77, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).

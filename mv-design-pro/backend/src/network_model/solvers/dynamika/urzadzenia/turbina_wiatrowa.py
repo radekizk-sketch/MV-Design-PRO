@@ -85,7 +85,7 @@ from ..kontrakty import (
     KOD_WARIANT_BEZ_PARAMETROW,
     OdmowaDynamiki,
 )
-from ..konwencje import pulsacja_bazowa_rad_s
+from ..konwencje import pulsacja_bazowa_rad_s, zmiana_bazy_mocy_wzglednej
 from .okno_mocy import OknoMocy
 from .pochodne_kierunkowe import Dual, Zespolona, kwadrat, maksimum, ogranicz, pierwiastek
 from .przeksztaltnik_gfl import (
@@ -109,11 +109,78 @@ TYPY_BEZ_MODELU_ELEKTRYCZNEGO: tuple[str, ...] = ("wiatr_typ_1", "wiatr_typ_2")
 TYP_Z_CROWBAR = "wiatr_typ_3"
 
 
+def sprawdz_typ_turbiny(typ: str) -> None:
+    """Odmow dla typu bez modelu elektrycznego i dla typu spoza zbioru kontraktu.
+
+    Osobna funkcja, bo pytanie „czy ten typ turbiny da sie w ogole zlozyc"
+    zadaja DWA miejsca: konstruktor biblioteki i fabryka kontraktu ENM. Fabryka
+    musi je zadac ZANIM siegnie po blok przeksztaltnika, inaczej typom 1/2 —
+    ktore przeksztaltnika nie maja z definicji — odpowiadalaby odmowa „brak
+    bloku przeksztaltnika" zamiast wlasciwej „brak schematu zastepczego
+    maszyny". Jedno zrodlo prawdy zamiast dwoch kopii warunku.
+    """
+    if typ in TYPY_BEZ_MODELU_ELEKTRYCZNEGO:
+        raise OdmowaDynamiki(
+            KOD_WARIANT_BEZ_PARAMETROW,
+            f"Turbina {typ!r} to maszyna indukcyjna przylaczona wprost do sieci. "
+            "Kontrakt nie niesie jej schematu zastepczego (Rs, Xs, Rr, Xr, Xm) ani "
+            "mocy znamionowej, wiec prad wezlowy nie ma z czego powstac. Zlozalne "
+            f"typy: {TYPY_ZLOZALNE}",
+            typ=typ,
+            zlozalne=TYPY_ZLOZALNE,
+        )
+    if typ not in TYPY_ZLOZALNE:
+        raise OdmowaDynamiki(
+            KOD_PARAMETRY_SPRZECZNE,
+            f"Typ turbiny {typ!r} spoza zbioru kontraktu "
+            f"{(*TYPY_BEZ_MODELU_ELEKTRYCZNEGO, *TYPY_ZLOZALNE)}",
+            typ=typ,
+        )
+
+
 @dataclass(frozen=True)
-class Crowbar:
-    """Zabezpieczenie wirnika DFIG — prog pradu, zwloka zalaczenia, czas trwania."""
+class NastawyCrowbar:
+    """Nastawy crowbar WPROST Z KONTRAKTU, w bazie urzadzenia.
+
+    Osobny typ od `Crowbar`, bo model zabezpieczenia potrzebuje jeszcze pradu
+    pelnego zadzialania — a ten NIE jest nastawa: bierze sie z ogranicznika
+    pradu przeksztaltnika tej samej turbiny. Gdyby oba zyly w jednym typie,
+    kontrakt niosl by pole, ktore i tak jest nadpisywane przy budowie, czyli
+    drugie zrodlo prawdy o tej samej liczbie.
+    """
 
     prog_pradu_pu: float
+    czas_zwloki_s: float
+    czas_trwania_s: float
+
+
+@dataclass(frozen=True)
+class Crowbar:
+    """Zabezpieczenie wirnika DFIG — model w bazie UKLADU, gotowy do liczenia.
+
+    CO TEN MODEL OBEJMUJE, A CZEGO NIE — powiedziane wprost, bo zakres jest
+    ograniczony kontraktem, nie wygoda:
+
+    * OBEJMUJE zamkniecie okna mocy CZYNNEJ proporcjonalnie do sygnalu
+      zadzialania. Skutek na mocy oddawanej widac jednak tylko wtedy, gdy
+      ogranicznik pradu przeksztaltnika ma zapas: przy priorytecie skladowej
+      biernej i nasyconym statyzmie Q/U cale kolo pradu zajmuje skladowa bierna,
+      wiec skladowa czynna jest zerowa NIEZALEZNIE od crowbar. POMIAR na
+      nastawach domyslnych tej biblioteki: przy zwarciu umiarkowanym roznica
+      mocy czynnej miedzy turbina z crowbar i bez wynosi 8,4e-05 pu, przy
+      zwarciu glebokim 8,3e-17 pu (przebieg co do bitu ten sam). Przy zapasie w
+      ograniczniku ta sama para biegow rozni sie o 2,7e-02 pu. To NIE jest
+      defekt modelu — przeksztaltnik w glebokim zapadzie i tak nie oddaje mocy
+      czynnej — ale jest granica tego, co crowbar w tym modelu zmienia.
+    * NIE OBEJMUJE zmiany zachowania w mocy BIERNEJ. Fizyczny crowbar zwiera
+      wirnik, maszyna przechodzi w prace indukcyjna i zaczyna POBIERAC moc
+      bierna. Kontrakt ENM nie niesie schematu zastepczego maszyny indukcyjnej
+      (Rs, Xs, Rr, Xr, Xm) — tego samego, ktorego brak konczy sie odmowa dla
+      typow 1 i 2 — wiec ten skutek nie ma z czego powstac i NIE jest udawany.
+    """
+
+    prog_pradu_pu: float
+    prad_pelnego_zadzialania_pu: float
     czas_zwloki_s: float
     czas_trwania_s: float
 
@@ -122,20 +189,40 @@ class Crowbar:
         return self.czas_zwloki_s <= 0.0
 
     def wyzwolenie(self, modul_pradu: Dual) -> Dual:
-        """Stopien przekroczenia progu pradu, `clamp(|I|/I_prog - 1, 0, 1)` — CIAGLY.
+        """Stopien zadzialania, `clamp((|I| - I_prog)/(I_pelne - I_prog), 0, 1)` — CIAGLY.
 
-        Zero przy pradzie rownym progowi, jeden przy PODWOJONYM progu; skala jest
-        wzieta z samego progu, wiec nie ma tu ani jednej dobranej liczby.
+        Zero przy pradzie rownym progowi, JEDEN przy pradzie `I_pelne` = `i_max`
+        przeksztaltnika. Obie liczby skali pochodza z kontraktu (prog crowbar i
+        ogranicznik pradu przeksztaltnika), wiec nie ma tu ani jednej dobranej
+        wartosci.
+
+        DLACZEGO SKALA SIEGA `i_max`, A NIE PODWOJONEGO PROGU. Pierwsza wersja
+        skalowala przekroczenie samym progiem (`|I|/I_prog - 1`), czyli pelne
+        zadzialanie wymagalo pradu DWUKROTNIE wiekszego od progu. Takiego pradu
+        w tym modelu nie ma i byc nie moze: prog musi lezec POWYZEJ pradu punktu
+        pracy (inaczej crowbar zwiera wirnik juz w rownowadze i punkt pracy nie
+        jest rownowaga), a prad zwarciowy jest z gory przyciety przez `i_max`
+        przeksztaltnika. Iloraz `i_max / I_pracy` w tej bibliotece wynosi 1,40,
+        wiec sygnal nie mogl przekroczyc 0,40, a okno mocy zamykalo sie najwyzej
+        do 60% mocy znamionowej — czyli WYZEJ niz moc, ktora urzadzenie i tak
+        oddaje w zapadzie i tuz po nim (ogranicznik pradu z priorytetem biernej
+        i ogranicznik tempa odbudowy trzymaja ja nizej). Domkniecie okna bylo
+        przez to BEZCZYNNE: pomiar pokazal moc 0,1998 pu przy oknie zamknietym
+        do 0,2135…0,2397 pu, a iniekcja „pomin domkniecie okna" dawala przebieg
+        co do bitu identyczny. Skala od progu do `i_max` wiaze pelne zadzialanie
+        z chwila, w ktorej przeksztaltnik i tak nie moze wiecej — a to jest
+        fizyczny sens zwarcia wirnika.
 
         DLACZEGO NIE SYGNAL DWUSTANOWY. Skok sygnalu wyzwalajacego daje skok
         pochodnej stanu crowbar oraz skok gornej granicy okna mocy, czyli SKOK
         residuum kroku. Metoda niejawna gubi wtedy rozwiazanie rownania kroku
         dokladnie w chwili zadzialania zabezpieczenia — a wiec w jedynej chwili,
-        dla ktorej ten model istnieje. Narastanie stopnia przekroczenia jest
+        dla ktorej ten model istnieje. Narastanie stopnia zadzialania jest
         ciaglym opisem tego samego zjawiska (im glebsze przekroczenie, tym
         pewniejsze i pelniejsze zadzialanie) i jest tu nazwane wprost.
         """
-        return ogranicz(modul_pradu / self.prog_pradu_pu - 1.0, 0.0, 1.0)
+        zakres = self.prad_pelnego_zadzialania_pu - self.prog_pradu_pu
+        return ogranicz((modul_pradu - self.prog_pradu_pu) / zakres, 0.0, 1.0)
 
     def sygnal(self, stan: Dual, modul_pradu: Dual) -> Dual:
         """Sygnal zadzialania crowbar (0..1) uzyty do zamkniecia okna mocy."""
@@ -347,7 +434,7 @@ def zbuduj_turbine_wiatrowa(
     pitch_tempo_deg_s: float,
     pitch_min_deg: float,
     pitch_max_deg: float,
-    crowbar: Crowbar | None,
+    crowbar: NastawyCrowbar | None,
     okno_mocy: OknoMocy,
     s_n_mva: float,
     s_bazowa_mva: float,
@@ -358,23 +445,7 @@ def zbuduj_turbine_wiatrowa(
     Zmiana bazy dotyczy WYLACZNIE stalej bezwladnosci (jak moc); kat lopat i jego
     tempo sa wielkosciami geometrycznymi i baza mocy ich nie dotyczy.
     """
-    if typ in TYPY_BEZ_MODELU_ELEKTRYCZNEGO:
-        raise OdmowaDynamiki(
-            KOD_WARIANT_BEZ_PARAMETROW,
-            f"Turbina {typ!r} to maszyna indukcyjna przylaczona wprost do sieci. "
-            "Kontrakt nie niesie jej schematu zastepczego (Rs, Xs, Rr, Xr, Xm) ani "
-            "mocy znamionowej, wiec prad wezlowy nie ma z czego powstac. Zlozalne "
-            f"typy: {TYPY_ZLOZALNE}",
-            typ=typ,
-            zlozalne=TYPY_ZLOZALNE,
-        )
-    if typ not in TYPY_ZLOZALNE:
-        raise OdmowaDynamiki(
-            KOD_PARAMETRY_SPRZECZNE,
-            f"Typ turbiny {typ!r} spoza zbioru kontraktu "
-            f"{(*TYPY_BEZ_MODELU_ELEKTRYCZNEGO, *TYPY_ZLOZALNE)}",
-            typ=typ,
-        )
+    sprawdz_typ_turbiny(typ)
     if rdzen is None:
         raise OdmowaDynamiki(
             KOD_PARAMETRY_SPRZECZNE,
@@ -396,8 +467,39 @@ def zbuduj_turbine_wiatrowa(
             pitch_min_deg=pitch_min_deg,
             pitch_max_deg=pitch_max_deg,
         )
+    crowbar_w_bazie = (
+        None
+        if crowbar is None
+        else Crowbar(
+            # PROG PRADU JEST WIELKOSCIA WZGLEDNA BAZY URZADZENIA i musi przejsc
+            # zmiane bazy tak samo, jak `i_max` przeksztaltnika — inaczej prog
+            # podany jako 1,05 pu aparatu 30 MVA bylby porownywany z pradem w
+            # bazie 100 MVA, czyli dzialal przy pradzie ponad trzykrotnie
+            # wiekszym (albo, przy progu mniejszym od pradu punktu pracy,
+            # zwieralby wirnik juz w rownowadze — pomiar: ||f|| = 5,4 w bramce
+            # rownowagi zamiast zera).
+            prog_pradu_pu=zmiana_bazy_mocy_wzglednej(crowbar.prog_pradu_pu, s_n_mva, s_bazowa_mva),
+            # PRAD PELNEGO ZADZIALANIA to ogranicznik pradu przeksztaltnika —
+            # jest juz w bazie ukladu, bo rdzen przyszedl przeliczony.
+            prad_pelnego_zadzialania_pu=rdzen.i_max_pu,
+            czas_zwloki_s=crowbar.czas_zwloki_s,
+            czas_trwania_s=crowbar.czas_trwania_s,
+        )
+    )
+    if crowbar_w_bazie is not None and (
+        crowbar_w_bazie.prog_pradu_pu >= crowbar_w_bazie.prad_pelnego_zadzialania_pu
+    ):
+        raise OdmowaDynamiki(
+            KOD_PARAMETRY_SPRZECZNE,
+            f"Prog crowbar {crowbar_w_bazie.prog_pradu_pu} pu nie lezy ponizej ogranicznika "
+            f"pradu przeksztaltnika {crowbar_w_bazie.prad_pelnego_zadzialania_pu} pu — "
+            "zabezpieczenie o progu na ograniczniku albo powyzej nie moze zadzialac nigdy",
+            urzadzenie=ident,
+            prog_pradu_pu=crowbar_w_bazie.prog_pradu_pu,
+            i_max_pu=crowbar_w_bazie.prad_pelnego_zadzialania_pu,
+        )
     tor = TorMechaniczny(
-        h_calkowite_s=h_calkowite_s * (s_n_mva / s_bazowa_mva),
+        h_calkowite_s=zmiana_bazy_mocy_wzglednej(h_calkowite_s, s_n_mva, s_bazowa_mva),
         pitch_tempo_rad_s=math.radians(pitch_tempo_deg_s),
         pitch_min_rad=math.radians(pitch_min_deg),
         pitch_max_rad=math.radians(pitch_max_deg),
@@ -408,7 +510,7 @@ def zbuduj_turbine_wiatrowa(
         typ=typ,
         rdzen=rdzen,
         tor=tor,
-        crowbar=crowbar,
+        crowbar=crowbar_w_bazie,
         okno_mocy=okno_mocy,
         omega_bazowa_rad_s=pulsacja_bazowa_rad_s(f_bazowa_hz),
         uklad=_uklad_stanow_turbiny(rdzen, crowbar is not None),
@@ -424,6 +526,8 @@ __all__ = [
     "TYPY_ZLOZALNE",
     "TYP_Z_CROWBAR",
     "Crowbar",
+    "NastawyCrowbar",
+    "sprawdz_typ_turbiny",
     "TorMechaniczny",
     "TurbinaWiatrowa",
     "zbuduj_turbine_wiatrowa",

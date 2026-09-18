@@ -247,9 +247,7 @@ def _napiecie_jalowe_jako_wektor(urzadzenie: Urzadzenie, stan: np.ndarray) -> np
     return np.array([napiecie.real, napiecie.imag], dtype=float)
 
 
-def _porownaj_kolumne(
-    analityczna: np.ndarray, numeryczna: np.ndarray, opis: str
-) -> float:
+def _porownaj_kolumne(analityczna: np.ndarray, numeryczna: np.ndarray, opis: str) -> float:
     """Porownanie z progiem BEZWZGLEDNYM i WZGLEDNYM; zwraca zmierzony blad."""
     blad = float(np.max(np.abs(analityczna - numeryczna)))
     skala = float(max(np.max(np.abs(analityczna)), np.max(np.abs(numeryczna))))
@@ -334,7 +332,7 @@ def _sprawdz_wszystkie_bloki(
 
 @pytest.mark.parametrize(
     ("opis", "urzadzenie", "p_pu"),
-    [(opis, urzadzenie, p_pu) for opis, urzadzenie, p_pu in wszystkie_konfiguracje()],
+    list(wszystkie_konfiguracje()),
     ids=[opis for opis, _, _ in wszystkie_konfiguracje()],
 )
 def test_jakobiany_zgodne_z_roznica_skonczona(
@@ -359,7 +357,7 @@ def test_jakobiany_zgodne_z_roznica_skonczona(
 
 @pytest.mark.parametrize(
     ("opis", "urzadzenie", "p_pu"),
-    [(opis, urzadzenie, p_pu) for opis, urzadzenie, p_pu in wszystkie_konfiguracje()],
+    list(wszystkie_konfiguracje()),
     ids=[opis for opis, _, _ in wszystkie_konfiguracje()],
 )
 def test_punkt_pracy_jest_rownowaga(opis: str, urzadzenie: Urzadzenie, p_pu: float) -> None:
@@ -376,14 +374,14 @@ def test_punkt_pracy_jest_rownowaga(opis: str, urzadzenie: Urzadzenie, p_pu: flo
     for nazwa, wartosc in zip(urzadzenie.nazwy_stanow, pochodne, strict=True):
         if nazwa in bez_rownowagi:
             continue
-        assert abs(float(wartosc)) < TOLERANCJA_ROWNOWAGI, (
-            f"{opis}: stan {nazwa!r} nie jest w rownowadze (pochodna {wartosc})"
-        )
+        assert (
+            abs(float(wartosc)) < TOLERANCJA_ROWNOWAGI
+        ), f"{opis}: stan {nazwa!r} nie jest w rownowadze (pochodna {wartosc})"
 
 
 @pytest.mark.parametrize(
     ("opis", "urzadzenie", "p_pu"),
-    [(opis, urzadzenie, p_pu) for opis, urzadzenie, p_pu in wszystkie_konfiguracje()],
+    list(wszystkie_konfiguracje()),
     ids=[opis for opis, _, _ in wszystkie_konfiguracje()],
 )
 def test_punkt_pracy_odtwarza_moc(opis: str, urzadzenie: Urzadzenie, p_pu: float) -> None:
@@ -392,14 +390,14 @@ def test_punkt_pracy_odtwarza_moc(opis: str, urzadzenie: Urzadzenie, p_pu: float
     stan = urzadzenie.stan_poczatkowy(uklad.napiecie_gen_pu, uklad.moc_gen_pu)
     prad = urzadzenie.prad_pu(stan, uklad.napiecie_gen_pu)
     moc = uklad.napiecie_gen_pu * prad.conjugate()
-    assert abs(moc - uklad.moc_gen_pu) < 1.0e-12, (
-        f"{opis}: moc odtworzona {moc} rozni sie od mocy punktu pracy {uklad.moc_gen_pu}"
-    )
+    assert (
+        abs(moc - uklad.moc_gen_pu) < 1.0e-12
+    ), f"{opis}: moc odtworzona {moc} rozni sie od mocy punktu pracy {uklad.moc_gen_pu}"
 
 
 @pytest.mark.parametrize(
     ("opis", "urzadzenie", "p_pu"),
-    [(opis, urzadzenie, p_pu) for opis, urzadzenie, p_pu in wszystkie_konfiguracje()],
+    list(wszystkie_konfiguracje()),
     ids=[opis for opis, _, _ in wszystkie_konfiguracje()],
 )
 def test_urzadzenie_odlaczone_nie_wstrzykuje_pradu(
@@ -463,9 +461,7 @@ def test_zmiana_bazy_maszyny_nie_zmienia_wielkosci_fizycznych() -> None:
     }
     pola_polowka = {
         nazwa: (
-            wartosc
-            if nazwa in bez_bazy
-            else (wartosc / 2.0 if nazwa in jak_moc else wartosc * 2.0)
+            wartosc if nazwa in bez_bazy else (wartosc / 2.0 if nazwa in jak_moc else wartosc * 2.0)
         )
         for nazwa, wartosc in PARAMETRY_MASZYNY.items()
         if nazwa != "s_n_mva"
