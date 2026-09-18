@@ -689,9 +689,6 @@ def _check_dynamika_rms(
     Scenariusz dynamiczny i nastawy numeryczne są daną PER BIEG (opcje biegu) —
     ich kompletność sprawdza adapter nazwaną odmową przy wykonaniu; model ich
     nie niesie, więc bramka modelowa nie ma czego o nich orzec."""
-    dynamiczne = [
-        g for g in enm.generators if g.gen_type in _DER_GEN_TYPES or g.gen_type == "synchronous"
-    ]
     if not enm.generators:
         return ReadinessTypeReport(
             calculation_type="dynamika_rms",
@@ -757,7 +754,7 @@ def _check_dynamika_rms(
         label_pl=CALCULATION_LABEL_PL["dynamika_rms"],
         status="ready",
         recommended_action_pl=(
-            f"{len(dynamiczne)} źródeł z blokiem dynamiki, punkt pracy z rozpływu dostępny. "
+            f"{len(enm.generators)} źródeł z blokiem dynamiki, punkt pracy z rozpływu dostępny. "
             "Podaj scenariusz czasowy (horyzont, krok wyjścia, zdarzenia) i nastawy "
             "numeryczne solvera w opcjach biegu."
         ),
