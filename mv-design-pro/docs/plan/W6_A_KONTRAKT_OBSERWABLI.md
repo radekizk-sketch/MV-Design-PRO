@@ -1,3 +1,47 @@
+> **KOREKTA 2026-09-18 (runda kwalifikacyjna, §2 i §3).** Zdanie „`|J^-1 r|` ogranicza błąd"
+> **też jest fałszywe** i zostało obalone. Z rozwinięcia Taylora `y - y* = J^-1 r + J^-1 R_2`,
+> a dla odbioru o stałej mocy stała Lipschitza jakobianu rośnie jak `1/|V|^3`, więc człon
+> drugiego rzędu nie znika. Pomiar wobec wyroczni **analitycznej liczonej w 60 cyfrach**
+> (postać zamknięta, bez wspólnego jakobianu i bez wspólnego Newtona) daje `rho_V > 1`.
+> Oddzielnie obalona została propagacja różniczkowa `3x`: dla `V = 1`, `Vdot = j`,
+> `dV = -0,9` rzeczywista zmiana wynosi 9, a formuła daje 2,7.
+
+Obie niepewności są **mierzone**, a propagacja jest **skończona**:
+
+$$u_V = \left| J_y^{-1} r \right|, \qquad
+u_{\dot V} = \left| \dot V(y - J_y^{-1} r) - \dot V(y) \right|$$
+
+$$\boxed{\;u_{\dot\theta} \;\le\; \frac{u_{\dot V}}{|V| - u_V}
+\;+\; \frac{|\dot V|\,u_V}{|V|\,(|V| - u_V)}\;}, \qquad u_V < |V|$$
+
+Nierówność wynika z **tożsamości** `theta_dot = Im(Vdot/V)` i dokładnej różnicy
+
+$$\frac{\dot V^{*}}{V^{*}} - \frac{\dot V}{V}
+= \frac{\delta\dot V\,V - \dot V\,\delta V}{V\,(V + \delta V)}$$
+
+po nierówności trójkąta i `|V + dV| >= |V| - u_V`. Jest **ciasna** — osiągana dla `dV`
+antyrównoległego do `V` — więc nie zawiera dobranego zapasu.
+
+**STATUS DOWODOWY — trzy różne poziomy, nie wolno ich mylić:**
+
+| Element | Status |
+|---|---|
+| `theta_dot = Im(Vdot conj(V))/|V|^2 = Im(Vdot/V)` | **TOŻSAMOŚĆ** (dowiedziona) |
+| propagacja `(u_V, u_Vdot) -> u_theta_dot` | **NIERÓWNOŚĆ DOWIEDZIONA**, warunkowo: pod założeniem `|dV| <= u_V`, `|dVdot| <= u_Vdot` |
+| `u_V = \|J^-1 r\|` jako opis `\|y - y*\|` | **ESTYMATA pierwszego rzędu** — NIE granica |
+| `u_f` jako opis pełnego błędu `f` | **ESTYMATA**; nie obejmuje błędu całkowania, modelu ani parametrów |
+
+Granica niedostępności wynika stąd wprost i **nie jest progiem napięciowym** (OD-36):
+
+$$|V_i| \le u_V \;\Rightarrow\; \texttt{NIEDOSTEPNA}
+\qquad\text{(mianownik nierówności przestaje być dodatni)}$$
+
+**Kody stanu mówią, co predykat sprawdza** (korekta nazw 2026-09-18):
+`ROZROZNIALNA` / `NIEROZROZNIALNA` / `NIEDOSTEPNA`. Predykat brzmi dosłownie „odchyłka od
+częstotliwości znamionowej przewyższa oszacowany błąd numeryczny", czyli jest **rozróżnialna
+na tle szumu numerycznego**. Nie orzeka wiarygodności inżynierskiej ani sensu fizycznego —
+poprzednia nazwa `WIARYGODNA` obiecywała jedno i drugie. Kanał nazywa się `u_f_est_hz`.
+
 # W6-A — KONTRAKT TECHNICZNY OBSERWABLI DYNAMICZNYCH
 
 **Zlecenie:** decyzje właściciela po zamrożeniu zdolności docelowej (2026-09-18), punkty NEXT
@@ -412,14 +456,12 @@ pominiętą połowę susceptancji.
 
 ### 13.4 Ograniczenie polityki jakości — uczciwie
 
-Podstawienie wzorów daje: `u(f) > |f − f_n|` **dokładnie dla `|V| < 3·u_V`** (przy `u_V̇ = 0`),
-gdzie `u_V` jest **zmierzonym** błędem napięcia, nie tolerancją Newtona. Pasmo `OGRANICZONA`
-jest więc wąskie i przylega do pasma `NIEDOSTEPNA`.
+Podstawienie wzorów daje: `u(f) > |f − f_n|` **dokładnie dla `|V| < 2·u_V`** (przy `u_Vdot = 0`),
+gdzie `u_V` jest **zmierzoną** estymatą błędu napięcia.
 
-> **KOREKTA 2026-09-18.** Wcześniejsza wersja tego zdania podawała granicę `|V| < 4·tolerancja`.
-> Współczynnik 4 zawierał człon pochodzący z ZAŁOŻENIA o proporcjonalności błędu pochodnej;
-> po zastąpieniu obu niepewności pomiarem zostaje czysty współczynnik 3 z różniczkowania
-> `θ̇ = Im(V̇·conj(V))/|V|²` (licznik ×1, mianownik ×2).
+> **HISTORIA WSPÓŁCZYNNIKA**, bo każde przejście usuwało jedno założenie, a nie dobierało stałej:
+> `4·tolerancja` (niepewność **założona** równa tolerancji Newtona) → `3·u_V` (niepewność
+> **mierzona**, propagacja **różniczkowa**) → `2·u_V` (propagacja **skończona**).
 
 **Co to znaczy:** polityka chroni przed **numeryczną** bezsensownością kąta i nic ponad to.
 **Nie orzeka**, od jak głębokiego zapadu inżynier ma przestać mówić o częstotliwości węzła.
@@ -546,3 +588,122 @@ ta sama pułapka, przed którą ostrzega reguła KLASA, NIE INSTANCJA.
 
 Ostatni wiersz jest **mierzonym** uzasadnieniem, dlaczego fizyczna granica ważności musi wyjść
 z fali walidacyjnej (W6-F), a nie z progu przyjętego z góry.
+
+---
+
+## Załącznik Z2 — RUNDA KWALIFIKACYJNA W6-A (2026-09-18), audyt niezależny
+
+Baza: `865c287f`. Zarzut właściciela: poprzednia runda **pomieszała poziomy dowodu** —
+nazywała estymatę granicą, a liczbę z sesji dowodem. Poniżej rozstrzygnięcie każdego zarzutu.
+
+### Z2.1 Werdykt wobec zarzutów
+
+| ID | zarzut | odtworzony | matematycznie słuszny | stan końcowy |
+|---|---|---|---|---|
+| **§1** | „140 × 5" nie istnieje w repozytorium | **TAK** — commitowany test miał 2 reżimy × 3 tolerancje × 2 szyny = **12 porównań** | tak | **NAPRAWIONE**: `kwalifikacja_niepewnosci.py` w repo, uruchamiany testem i z wiersza poleceń |
+| **A-01** | `\|J^-1 r\|` nie jest granicą | **TAK** — `rho_V > 1` wobec wyroczni analitycznej w 60 cyfrach | tak (człon `J^-1 R_2`) | **PRZYJĘTY**: kontrakt mówi ESTYMATA; przekroczenie przypięte testem |
+| **A-02** | propagacja `3x` pada dla zaburzeń skończonych | **TAK** — kontrprzykład `V=1, Vdot=j, dV=-0,9`: 9 wobec 2,7; 400 000 losowań: najgorszy iloraz **8,61** | tak | **NAPRAWIONE**: nierówność skończona, ciasna (najgorszy iloraz **0,969**) |
+| **A-03** | `WIARYGODNA` obiecuje więcej, niż sprawdza | **TAK** — bieg SO-1A publikował `-17,15 Hz` jako „wiarygodną" | tak | **NAPRAWIONE**: `ROZROZNIALNA` / `NIEROZROZNIALNA`, kanał `u_f_est_hz` |
+| **A-04** | brak błędu całkowania w `u_f` | **TAK** — przy `h = 4 ms` błąd czasowy 2,14e-12 Hz wobec estymaty 6,45e-14 Hz (**33×**) | tak | **NAZWANE**: wykluczenie w kontrakcie + test strukturalny sygnatury |
+| **A-05** | punkt skorygowany liczony przed klasyfikacją | **TAK** (analiza kodu) | tak | **NAPRAWIONE**: kolejność odwrócona; nieobliczalny punkt ⇒ `u_Vdot = inf` ⇒ `NIEDOSTEPNA` |
+| **Z-03** | gałąź otwarta nieosiągalna dla zdarzeń | **TAK** | tak | **OPEN → W6-B** (wymaga modelu stanu łączeniowego, nie łatki) |
+
+### Z2.2 Hipotezy, które PADŁY — zapisane, nie usunięte
+
+**H1 — „estymata myli się o rzędy wielkości".** Pierwszy pomiar dał `rho_V = 8,9e6`.
+**Artefakt.** Przy `P → P_max` obie gałęzie krzywej PV zbiegają się (przy `0,99999 P_max`
+rozstęp `|V_B|` to 3,5e-3), Newton z różnych punktów startowych ląduje na różnych gałęziach,
+a porównanie mierzyło wtedy **odległość między rozwiązaniami**, nie błąd jednego z nich.
+Sweep odrzuca dziś punkty o rozstępie poniżej `MIN_ROZSTEP_GALEZI_PU`.
+
+**H2 — „wyrocznia analityczna w podwójnej precyzji wystarczy".** Nie wystarczy: wyróżnik
+`E^2 - 4(v^2 + X_tot Q)` przy nosie krzywej to różnica prawie równych liczb (1,21 − 1,209754),
+tracąca ~4 cyfry. Wyrocznia liczy się dziś w `decimal` z 60 cyframi; residuum produkcyjne w
+punkcie wzorcowym wynosi ~1e-16 na **obu** gałęziach.
+
+**H3 — „rho > 1 na pełnej siatce dowodzi wady estymaty".** Częściowo artefakt: przy ciasnej
+tolerancji błąd i estymata schodzą do poziomu zaokrąglenia i iloraz mierzy szum arytmetyki.
+Raport podaje **oba** zbiory; zapadki dotyczą wielkości nad podłogą szumu.
+
+**H4 — „porządek zbieżności czasowej da się zmierzyć na SMIB".** Nie udało się: na układzie
+odniesienia błąd dyskretyzacji już dla `h ≤ 20 ms` leży na poziomie zaokrąglenia (~1e-13 Hz),
+więc ilorazy są szumem i **rząd nie został potwierdzony empirycznie**. Wykluczenie błędu
+całkowania z `u_f_est_hz` jest ustalone **konstrukcyjnie** (funkcja nie widzi kroku), a nie
+przez badanie rzędu. Sztywniejszy przypadek walidacyjny → dług otwarty.
+
+### Z2.3 Sweep kwalifikacyjny — reprodukowalny
+
+```
+cd mv-design-pro/backend
+PYTHONPATH=$PWD:$PWD/src python -m tests.network_model.dynamika.kwalifikacja_niepewnosci [--pelny]
+```
+
+Siatka: iloczyn `P` (5 ułamków obciążalności) × `Q` × `R/X` × susceptancja × przekładnia
+zespolona × punkt startowy × **5 tolerancji Newtona**, dwie rodziny wyroczni (analityczna
+w 60 cyfrach oraz zaciśnięcie z tego samego punktu).
+
+Siatka CI, wielkości **nad podłogą szumu**:
+
+| metryka | p50 | p90 | p99 | max |
+|---|---|---|---|---|
+| `rho_V` | 1,0000 | 1,0003 | 1,0015 | **1,0015** |
+| `rho_Vdot` | 1,0000 | 1,0007 | 1,0043 | **1,0043** |
+| `rho_f` | 0,2981 | 0,7279 | 0,7990 | **0,7990** |
+
+Czyta się to tak: estymaty `u_V` i `u_Vdot` są **przekraczane** o ułamki procenta (bo są
+estymatami pierwszego rzędu), a `u_f` **pokrywa** błąd z zapasem — bo nierówność skończona
+jest zachowawcza wobec kierunku rzeczywistego zaburzenia. To jest własność **empiryczna
+zbadanej klasy**, nie twierdzenie.
+
+### Z2.4 Macierz mutacyjna M-Q01…M-Q17
+
+16 mutacji **źródła** zabitych; jedna (`M-Q14`) obsłużona testem alternatywnej
+implementacji, bo produkcja nie ma miejsca na różnicę skończoną; jedna (`M-Q02`, znak
+korekty Newtona) **nieobserwowalna w wyniku** — moduł `|Vdot(y∓J^-1 r) − Vdot(y)|` jest w
+pierwszym rzędzie niewrażliwy na znak — więc przypięta **testem AST** i nazwana strukturalną.
+
+### Z2.5 F-7 — status i specyfikacja przypadku walidacyjnego
+
+**STATUS: NIEWYKONANE.** Most do ANDES (`tests/network_model/dynamika/wyrocznia_andes.py`)
+porównuje **kąt wirnika** `GENCLS.delta` — stan maszyny, nie wielkość sieciową. Zielony job
+ANDES w CI **nie jest** dowodem F-7, bo porównuje inną wielkość fizyczną niż `f_hz@szyna`.
+
+**SPECYFIKACJA PRZYPADKU** (do wykonania w fali walidacyjnej, nie w tej rundzie):
+
+1. **Układ:** ten sam SMIB, którego most już używa — równoważność elektryczna jest w moście
+   udowodniona i zmierzona (`|delta_rel| = 7e-10 rad` przy inicjalizacji).
+2. **Wielkość porównywana:** ANDES `BusFreq` (wyjście `f`, p.u.) wobec naszego `f_hz@`.
+   **Uwaga metodyczna — to NIE jest ta sama definicja:** `BusFreq` liczy pochodną kąta przez
+   filtr washout + dolnoprzepustowy o stałej `Tf`, a my liczymy pochodną **analitycznie**.
+   Porównanie wymaga albo (a) ustawienia `Tf` na tyle małego, by opóźnienie filtru zeszło
+   poniżej progu walidacyjnego, albo (b) przepuszczenia **naszego** przebiegu przez ten sam
+   filtr przed porównaniem. Wariant (b) jest uczciwszy i nie wymaga strojenia wyroczni.
+3. **Reżimy:** (i) stan ustalony — obie strony muszą dać `f_n`; (ii) rozbieg wyspowy bez
+   regulatora — obie strony muszą dać `f_n·omega`; (iii) okno zwarcia — tu rozbieżność
+   definicji jest największa i to jest właściwy przedmiot pomiaru.
+4. **Oś czasu:** wspólna siatka wyjścia albo interpolacja o **kontrolowanym** błędzie;
+   `unwrap` kąta wyłącznie po stronie wyroczni, jeśli jej wyjście tego wymaga.
+5. **Tolerancja WYPROWADZONA**, nie dobrana: suma (a) błędu dyskretyzacji obu stron przy
+   zadanym kroku, (b) opóźnienia filtru wyroczni, (c) różnicy modelu maszyny. Bez tego
+   rozkładu wynik nie jest walidacją, tylko zgodnością liczb.
+6. **Kryterium:** `e_inf = max_t |f_MV(t) − f_ref(t)|` poniżej tak wyprowadzonej tolerancji,
+   raportowane **odcinkami** (przed / w oknie / po), jak już robi to porównanie kąta.
+
+Dopóki to nie zostanie wykonane: **ZWALIDOWANE FIZYCZNIE = NIE**.
+
+### Z2.6 SO-1A — kryterium odbioru NIE zostało wykonane
+
+Kryterium zamrożone w `FINAL_DYNAMICS_CAPABILITY_FREEZE.md` §0.1 brzmi: **„Instalacja PV
+2,75 MW i magazyn energii pracują w miejscu przyłączenia"**. Sieć wzorcowa G16 niesie
+**PV 1,6 MW i maszynę synchroniczną** — magazynu nie ma.
+
+Poprzednia runda nazwała to „odstępstwem od litery". To była zła nazwa. Poprawnie:
+**acceptance criterion not exercised**. Wykonany został scenariusz o tej samej strukturze
+czasowej (zwarcie → zdjęcie po 180 ms → horyzont 10 s), ale na innym składzie źródeł, więc
+**nie zalicza** kryterium SO-1A. Możliwości są trzy i wybór należy do właściciela:
+
+* **A** — zbudować sieć wzorcową z PV 2,75 MW i magazynem, wykonać scenariusz;
+* **B** — formalnie zmienić kryterium decyzją właściciela (z zapisem w dokumencie zamrożenia);
+* **C** — pozostawić **OPEN**.
+
+Do czasu rozstrzygnięcia pozycja ma status **OPEN**, a nie „wykonane z odstępstwem".

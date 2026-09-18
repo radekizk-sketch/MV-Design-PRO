@@ -39,44 +39,63 @@ a `dI/dx` sklada sie z blokow `jakobian_prad_stan` urzadzen. Dzieki temu:
   stanu, nigdy przez granice zdarzenia.
 
 NIEPEWNOSC JEST MIERZONA, NIE ZAKLADANA (korekta W6-A par. 5, 2026-09-18). Wczesniejsza
-wersja brala za niepewnosc napiecia SAMA TOLERANCJE Newtona. To zalozenie jest falszywe i
-zostalo obalone pomiarem: Newton konczy przy `||r|| <= tol`, ale blad rozwiazania spelnia
-`Delta y = J^-1 r`, wiec jest wzmocniony przez `J^-1`. W punkcie pracy blisko nosa krzywej PV
-zmierzono wzmocnienie 8,4x, a meldowana niepewnosc byla 2,45 raza MNIEJSZA od rzeczywistego
-bledu czestotliwosci — przy kodzie jakosci „wiarygodna". Dlatego obie niepewnosci sa dzis
-LICZONE, kazda z wielkosci, ktore solver i tak ma:
+wersja brala za niepewnosc napiecia SAMA TOLERANCJE Newtona. To zalozenie jest falszywe:
+Newton konczy przy `||r|| <= tol`, ale blad rozwiazania spelnia `Delta y = J^-1 r`, wiec
+jest wzmocniony przez `J^-1` (zmierzone wzmocnienie 8,4x blisko granicy obciazalnosci).
 
-* `u_V` — pierwszorzedowy blad napiecia `|J^-1 r|` NA WEZLE (residuum i jakobian z tego
-  samego punktu; rozklad LU jest ten sam, ktorym liczymy pochodna, wiec to jeden dodatkowy
-  podstawienie w przod i w tyl),
-* `u_Vdot` — rzeczywista zmiana pochodnej miedzy punktem obliczonym a skorygowanym
-  `y - Delta y`, czyli WLASNY blad pochodnej. Zalozenie „blad wzgledny pochodnej rowna sie
-  bledowi wzglednemu napiecia" tez zostalo obalone pomiarem (iloraz 1,83), wiec go nie ma.
+ESTYMATA, NIE CERTYFIKAT (korekta W6-A par. 2, runda niezaleznej kwalifikacji 2026-09-18).
+Nazywanie `J^-1 r` GRANICA bledu jest nieuprawnione i zostalo obalone. Z rozwiniecia Taylora
+wokol punktu obliczonego `y`:
 
-Propagacja jest WYPROWADZONA, nie dobrana. Dla `theta_dot = Im(Vdot conj(V))/|V|^2`:
+    0 = g(y*) = g(y) + J(y)(y* - y) + R_2  =>  y - y* = J^-1 r + J^-1 R_2 ,
 
-    |d theta_dot / d Vdot| <= 1/|V|            (zaburzenie samej pochodnej)
-    |d theta_dot / d V|    <= 3 |Vdot| / |V|^2 (licznik 1x + mianownik 2x, bo
-                                                |theta_dot| <= |Vdot|/|V|)
+gdzie `R_2` jest reszta drugiego rzedu. Dla odbioru o stalej mocy `I ~ 1/conj(V)`, wiec
+jakobian jest lipschitzowski jedynie LOKALNIE, ze stala rosnaca jak `1/|V|^3`; czlon
+`J^-1 R_2` nie znika i blisko granicy obciazalnosci potrafi przewazyc. Pomiar wobec
+wyroczni ANALITYCZNEJ liczonej w 60 cyfrach pokazuje `|y - y*| / |J^-1 r|` powyzej jedynki.
+Dlatego:
 
-    u_theta_dot <= u_Vdot/|V| + 3 |Vdot| u_V / |V|^2 ,   u_f = u_theta_dot / 2pi .
+    u_V, u_Vdot, u_f  SA ESTYMATAMI BLEDU PIERWSZEGO RZEDU (a posteriori),
+    NIE SA certyfikowanymi ograniczeniami gornymi.
 
-ZASIEG TEJ POLITYKI — UCZCIWIE. Kryterium jest NUMERYCZNE: orzeka o wiarygodnosci kata
-wobec bledu rozwiazania algebry, a NIE o tym, od jak glebokiego zapadu inzynier ma przestac
-mowic o czestotliwosci wezla. Ta druga, FIZYCZNA granica wymaga polityki wyprowadzonej i
-ZWALIDOWANEJ (fala walidacyjna) i pozostaje jawna luka — nie zastepujemy jej progiem
-przyjetym z gory.
+Nazwy kanalu (`u_f_est_hz`) i stanow jakosci mowia dokladnie to i nic wiecej.
+
+PROPAGACJA JEST SKONCZONA, NIE ROZNICZKOWA. Poprzednia formula
+`u_Vdot/|V| + 3 |Vdot| u_V/|V|^2` jest poprawna tylko w granicy `u_V -> 0` i PADA przy
+zaburzeniu skonczonym: dla `V = 1`, `Vdot = j`, `dV = -0,9` rzeczywista zmiana wynosi 9,
+a formula daje 2,7. Poniewaz `theta_dot = Im(Vdot/V)` (tozsamosc), zachodzi DOKLADNIE
+
+    Vdot*/V* - Vdot/V = (dVdot * V - Vdot * dV) / (V (V + dV)) ,
+
+skad przy `|dV| <= u_V < |V|` oraz `|dVdot| <= u_Vdot` (nierownosc trojkata i
+`|V + dV| >= |V| - u_V`) wynika nierownosc SKONCZONA, ciasna i osiagana:
+
+    |d theta_dot| <= u_Vdot/(|V| - u_V) + |Vdot| u_V / (|V| (|V| - u_V)) ,
+    u_f = |d theta_dot| / 2pi .
+
+Ta nierownosc jest DOWIEDZIONA — ale warunkowo: obowiazuje POD ZALOZENIEM `|dV| <= u_V`,
+a samo `u_V` jest estymata. Kontrakt niesie wiec: rygorystyczna propagacje estymaty, nie
+rygorystyczna granice bledu.
+
+CZEGO `u_f_est_hz` NIE OBEJMUJE — nazwane wprost:
+* bledu CALKOWANIA w czasie (stany `x` traktowane jako dokladne w chwili probki),
+* bledu modelu i parametrow,
+* bledu reprezentacji fazorowej wobec przebiegu chwilowego,
+* jakiejkolwiek oceny SENSU FIZYCZNEGO pojecia „czestotliwosc szyny".
+
+ZASIEG POLITYKI JAKOSCI — UCZCIWIE. Predykat stanu jest NUMERYCZNY i brzmi doslownie:
+„odchylka od czestotliwosci znamionowej jest wieksza od oszacowanego bledu numerycznego",
+czyli odchylka jest ROZROZNIALNA na tle szumu numerycznego. Nie orzeka, ze wartosc jest
+wiarygodna inzyniersko ani ze ma sens fizyczny — stad nazwy stanow po korekcie.
 
 DOMENA WAZNOSCI (decyzja wlasciciela OD-36: to NIE jest nastawa uzytkownika). Kat fazora
-traci sens, gdy fazor lezy WEWNATRZ WLASNEJ KULI NIEPEWNOSCI, czyli gdy `|V| <= u_V`. To
-kryterium jest wyprowadzone z pomiaru, nie z progu napieciowego przyjetego z gory.
-Obserwabla wraca jako WARTOSC + NIEPEWNOSC + STAN JAKOSCI; wartosc niedostepna NIE jest
-zastepowana czestotliwoscia znamionowa.
+traci sens, gdy fazor lezy WEWNATRZ WLASNEJ KULI NIEPEWNOSCI, czyli gdy `|V| <= u_V` — to
+jest dokladnie warunek, przy ktorym mianownik nierownosci skonczonej przestaje byc dodatni.
+Kryterium jest wyprowadzone z pomiaru, nie z progu napieciowego przyjetego z gory.
 
-ZBIEZNOSC NIE JEST WIARYGODNOSCIA (par. 6). Jesli jakobian algebry jest osobliwy w punkcie
-probki albo w punkcie skorygowanym, niepewnosci NIE DA SIE zmierzyc — i wtedy obserwabla
-jest NIEDOSTEPNA, a bieg trwa dalej. Zbiezny Newton nie jest dowodem, ze wyprowadzona z
-niego czestotliwosc cokolwiek znaczy.
+ZBIEZNOSC NIE JEST WIARYGODNOSCIA (par. 6). Jesli jakobian algebry jest osobliwy, albo
+punkt skorygowany lezy tam, gdzie model odbioru o stalej mocy przestaje byc obliczalny,
+niepewnosci NIE DA SIE zmierzyc — i wtedy obserwabla jest NIEDOSTEPNA, a bieg trwa dalej.
 """
 
 from __future__ import annotations
@@ -100,22 +119,27 @@ from .siec import ModelSieci, jakobian_algebry, residuum_algebry
 #: Kody stanu jakosci obserwabli (szeregi wyniku sa float-only i bez NaN, wiec stan
 #: jakosci jest kodem liczbowym o ZAMKNIETYM zbiorze wartosci; mapowanie jest czescia
 #: kontraktu i ma przypiety test).
-JAKOSC_WIARYGODNA = 0.0
-JAKOSC_OGRANICZONA = 1.0
+#:
+#: NAZWY MOWIA, CO PREDYKAT SPRAWDZA. Poprzednie `WIARYGODNA` sugerowalo werdykt
+#: inzynierski, a sprawdzane jest wylacznie to, czy odchylka od czestotliwosci znamionowej
+#: przewyzsza OSZACOWANY blad numeryczny. Bieg scenariusza odniesienia publikowal z kodem
+#: „wiarygodna" wartosc -17,15 Hz na szynie w glebokim zapadzie — liczbe poprawna dla modelu
+#: fazorowego, ale nie bedaca „czestotliwoscia szyny" w sensie inzynierskim.
+JAKOSC_ROZROZNIALNA = 0.0
+JAKOSC_NIEROZROZNIALNA = 1.0
 JAKOSC_NIEDOSTEPNA = 2.0
 
 #: Opisy stanow jakosci — jedno zrodlo prawdy dla wyniku i dla prezentacji.
 OPIS_JAKOSCI_PL: dict[float, str] = {
-    JAKOSC_WIARYGODNA: "wiarygodna",
-    JAKOSC_OGRANICZONA: "ograniczona wiarygodnosc",
+    JAKOSC_ROZROZNIALNA: "odchylka rozroznialna numerycznie",
+    JAKOSC_NIEROZROZNIALNA: "odchylka nierozroznialna od bledu numerycznego",
     JAKOSC_NIEDOSTEPNA: "niedostepna",
 }
 
-#: Czulosc pochodnej kata na blad MODULU napiecia — wyprowadzona, nie dobrana:
-#: zaburzenie `V` wchodzi raz przez licznik `Im(Vdot conj(V))` i dwa razy przez mianownik
-#: `|V|^2`, a `|theta_dot| <= |Vdot|/|V|`, wiec `|d theta_dot / d V| <= 3 |Vdot| / |V|^2`.
-#: Czlon od bledu samej pochodnej ma wspolczynnik `1/|V|` i nie potrzebuje stalej.
-WSPOLCZYNNIK_CZULOSCI_MODULU = 3.0
+#: Propagacja skonczona NIE ma dobieranej stalej: wspolczynniki `1/(|V| - u_V)` oraz
+#: `|Vdot|/(|V| (|V| - u_V))` wychodza wprost z tozsamosci `theta_dot = Im(Vdot/V)` i
+#: nierownosci trojkata. Poprzednia stala 3,0 pochodzila z oszacowania ROZNICZKOWEGO, ktore
+#: dla zaburzen skonczonych jest falszywe (kontrprzyklad V=1, Vdot=j, dV=-0,9: 9 wobec 2,7).
 
 
 @dataclass(frozen=True)
@@ -223,18 +247,22 @@ def pochodna_napiec_z_niepewnoscia(
     stany: tuple[np.ndarray, ...],
     napiecia: np.ndarray,
 ) -> PochodnaZNiepewnoscia:
-    """Pochodna napiec i obie niepewnosci — KAZDA ZMIERZONA, zadna zalozona.
+    """Pochodna napiec i obie ESTYMATY bledu — kazda mierzona, zadna zalozona.
 
-    `u_V` bierze sie z pierwszorzedowego bledu rozwiazania algebry: skoro `g(y_obl) = r`
-    i `g(y_scisle) = 0`, to `y_obl - y_scisle = J^-1 r` z dokladnoscia do wyrazow drugiego
-    rzedu. Rozklad LU jest TEN SAM, ktorym liczymy pochodna, wiec kosztuje to jedno
-    dodatkowe podstawienie, nie druga faktoryzacje.
+    `u_V` to pierwszorzedowa poprawka Newtona `|J^-1 r|` na wezle. Rozklad LU jest TEN SAM,
+    ktorym liczymy pochodna, wiec kosztuje to jedno dodatkowe podstawienie.
 
-    `u_Vdot` bierze sie z ponownego wyznaczenia pochodnej w punkcie SKORYGOWANYM
-    `y_obl - J^-1 r`. To druga faktoryzacja i jest konieczna: pomiar pokazal, ze blad
-    pochodnej NIE jest proporcjonalny do bledu napiecia (jakobian tez jest zlozony w
-    punkcie obarczonym bledem), a zalozenie proporcjonalnosci niedoszacowywalo niepewnosc
-    1,83 raza w ukladzie blisko granicy obciazalnosci.
+    `u_Vdot` to zmiana pochodnej miedzy punktem obliczonym a skorygowanym `y - J^-1 r`.
+    Druga faktoryzacja jest konieczna: pomiar obalil zalozenie, ze blad pochodnej jest
+    proporcjonalny do bledu napiecia.
+
+    KOLEJNOSC JEST CZESCIA KONTRAKTU (korekta par. 7 rundy kwalifikacyjnej). Punkt
+    skorygowany liczymy DOPIERO po sprawdzeniu, czy w ogole wolno go dotknac. Gdy
+    ktorykolwiek wezel spelnia `|V| <= u_V`, punkt skorygowany lezy na zerze fazora albo za
+    nim, a odbior o stalej mocy ma tam `1/|V|^2` i `1/|V|^4` — jakobian w takim punkcie jest
+    smieciem, ktory zanieczyscilby `u_Vdot` WSZYSTKICH wezlow (faktoryzacja jest wspolna).
+    Wtedy niepewnosci pochodnej sa NIESKONCZONE, co przez nierownosc propagacji czyni kazdy
+    wezel NIEDOSTEPNYM — bez zadnego progu i bez podstawionej liczby.
     """
     liczba = model.liczba_wezlow
     jakobian = jakobian_algebry(model, odbiory, urzadzenia, stany, napiecia)
@@ -245,13 +273,41 @@ def pochodna_napiec_z_niepewnoscia(
     blad_napiecia = _zespolone(
         rozklad.solve(residuum_algebry(model, odbiory, urzadzenia, stany, napiecia)), liczba
     )
-    pochodna_skorygowana = pochodna_napiec(
-        model, odbiory, urzadzenia, stany, napiecia - blad_napiecia
+    niepewnosc_napiecia = np.abs(blad_napiecia)
+    napiecia_skorygowane = napiecia - blad_napiecia
+
+    punkt_skorygowany_obliczalny = bool(
+        np.all(np.abs(napiecia) > niepewnosc_napiecia)
+        and np.all(np.isfinite(niepewnosc_napiecia))
+        and np.all(np.isfinite(napiecia_skorygowane.real))
+        and np.all(np.isfinite(napiecia_skorygowane.imag))
+        and np.all(np.abs(napiecia_skorygowane) > 0.0)
     )
+    if not punkt_skorygowany_obliczalny:
+        return PochodnaZNiepewnoscia(
+            pochodna_pu_s=pochodna,
+            niepewnosc_napiecia_pu=niepewnosc_napiecia,
+            niepewnosc_pochodnej_pu_s=np.full(liczba, np.inf, dtype=float),
+        )
+
+    try:
+        pochodna_skorygowana = pochodna_napiec(
+            model, odbiory, urzadzenia, stany, napiecia_skorygowane
+        )
+    except OdmowaDynamiki:
+        return PochodnaZNiepewnoscia(
+            pochodna_pu_s=pochodna,
+            niepewnosc_napiecia_pu=niepewnosc_napiecia,
+            niepewnosc_pochodnej_pu_s=np.full(liczba, np.inf, dtype=float),
+        )
+
+    niepewnosc_pochodnej = np.abs(pochodna_skorygowana - pochodna)
+    if not bool(np.all(np.isfinite(niepewnosc_pochodnej))):
+        niepewnosc_pochodnej = np.full(liczba, np.inf, dtype=float)
     return PochodnaZNiepewnoscia(
         pochodna_pu_s=pochodna,
-        niepewnosc_napiecia_pu=np.abs(blad_napiecia),
-        niepewnosc_pochodnej_pu_s=np.abs(pochodna_skorygowana - pochodna),
+        niepewnosc_napiecia_pu=niepewnosc_napiecia,
+        niepewnosc_pochodnej_pu_s=niepewnosc_pochodnej,
     )
 
 
@@ -275,33 +331,37 @@ def czestotliwosc_wezla(
     niepewnosc_napiecia_pu: float,
     niepewnosc_pochodnej_pu_s: float,
 ) -> CzestotliwoscWezla:
-    """Czestotliwosc elektryczna JEDNEGO wezla z fazora, jego pochodnej i niepewnosci obu.
+    """Czestotliwosc elektryczna JEDNEGO wezla z fazora, jego pochodnej i estymat bledu obu.
 
-    `d theta/dt = Im(Vdot conj(V)) / |V|^2` — tozsamosc, nie przyblizenie: dla
+    WARTOSC jest TOZSAMOSCIA: `d theta/dt = Im(Vdot conj(V))/|V|^2 = Im(Vdot/V)`, bo dla
     `V = |V| e^{j theta}` zachodzi `Vdot conj(V) = |V| d|V|/dt + j |V|^2 d theta/dt`.
 
-    Obie niepewnosci sa WEJSCIEM, bo obie sa MIERZONE przez
-    `pochodna_napiec_z_niepewnoscia`; ta funkcja niczego nie zaklada o dokladnosci
-    rozwiazania algebry. Propagacja wg wyprowadzenia z naglowka modulu:
+    NIEPEWNOSC jest ESTYMATA propagowana nierownoscia SKONCZONA (wyprowadzenie w naglowku
+    modulu), a nie oszacowaniem rozniczkowym:
 
-        u_theta_dot <= u_Vdot/|V| + 3 |Vdot| u_V / |V|^2 .
+        u_theta_dot <= u_Vdot/(|V| - u_V) + |Vdot| u_V / (|V| (|V| - u_V)) ,   u_V < |V| .
+
+    Nierownosc jest ciasna — osiagana dla `dV` antyrownoleglego do `V` — wiec nie zawiera
+    zadnego dobranego zapasu. Obowiazuje POD ZALOZENIEM `|dV| <= u_V` i `|dVdot| <= u_Vdot`;
+    samo `u_V` jest estymata pierwszego rzedu, wiec wynik NIE jest certyfikowana granica.
     """
     modul = abs(napiecie_pu)
-    if modul <= niepewnosc_napiecia_pu:
-        # Fazor lezy WEWNATRZ wlasnej kuli niepewnosci — jego kat nie niesie informacji.
+    if not math.isfinite(niepewnosc_napiecia_pu) or modul <= niepewnosc_napiecia_pu:
+        # Fazor lezy WEWNATRZ wlasnej kuli niepewnosci — jego kat nie niesie informacji, a
+        # mianownik nierownosci propagacji przestaje byc dodatni.
         return czestotliwosc_niedostepna(f_bazowa_hz)
 
     pochodna_kata = (pochodna_napiecia_pu_s * napiecie_pu.conjugate()).imag / (modul * modul)
     f_hz = f_bazowa_hz + pochodna_kata / (2.0 * math.pi)
+    zapas_modulu = modul - niepewnosc_napiecia_pu
     niepewnosc_hz = (
-        niepewnosc_pochodnej_pu_s / modul
-        + WSPOLCZYNNIK_CZULOSCI_MODULU
-        * abs(pochodna_napiecia_pu_s)
-        * niepewnosc_napiecia_pu
-        / (modul * modul)
+        niepewnosc_pochodnej_pu_s / zapas_modulu
+        + abs(pochodna_napiecia_pu_s) * niepewnosc_napiecia_pu / (modul * zapas_modulu)
     ) / (2.0 * math.pi)
+    if not math.isfinite(niepewnosc_hz) or not math.isfinite(f_hz):
+        return czestotliwosc_niedostepna(f_bazowa_hz)
     odchylka_hz = abs(f_hz - f_bazowa_hz)
-    jakosc = JAKOSC_OGRANICZONA if niepewnosc_hz > odchylka_hz else JAKOSC_WIARYGODNA
+    jakosc = JAKOSC_NIEROZROZNIALNA if niepewnosc_hz > odchylka_hz else JAKOSC_ROZROZNIALNA
     return CzestotliwoscWezla(f_hz=f_hz, niepewnosc_hz=niepewnosc_hz, jakosc=jakosc)
 
 
@@ -340,10 +400,9 @@ def wielkosci_galezi(
 
 __all__ = [
     "JAKOSC_NIEDOSTEPNA",
-    "JAKOSC_OGRANICZONA",
-    "JAKOSC_WIARYGODNA",
+    "JAKOSC_NIEROZROZNIALNA",
+    "JAKOSC_ROZROZNIALNA",
     "OPIS_JAKOSCI_PL",
-    "WSPOLCZYNNIK_CZULOSCI_MODULU",
     "CzestotliwoscWezla",
     "PochodnaZNiepewnoscia",
     "WielkosciGalezi",

@@ -93,7 +93,7 @@ def test_przestrzen_obserwabli_jest_w_kontrakcie_i_w_wyniku(ladunek: dict) -> No
     obserwable = [kanal for kanal in wynik.kanaly if kanal.przestrzen == "obserwabla"]
     assert obserwable, "bieg nie wystawil ani jednego kanalu przestrzeni obserwabli"
     klucze = {kanal.klucz.split("@", 1)[0] for kanal in obserwable}
-    assert {"f_hz", "u_f_hz", "jakosc_f"} <= klucze
+    assert {"f_hz", "u_f_est_hz", "jakosc_f"} <= klucze
     assert {"i_od_pu", "i_do_pu", "p_od_pu", "q_od_pu", "p_do_pu", "q_do_pu"} <= klucze
 
 

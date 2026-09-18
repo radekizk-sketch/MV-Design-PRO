@@ -634,11 +634,11 @@ class SilnikDynamiki:
             )
             kanaly.append(
                 KanalWyniku(
-                    klucz=f"u_f_hz@{ident}",
+                    klucz=f"u_f_est_hz@{ident}",
                     przestrzen="obserwabla",
                     jednostka="Hz",
                     element_ref=ident,
-                    opis_pl=f"Niepewnosc czestotliwosci szyny {ident}",
+                    opis_pl=f"Oszacowanie bledu numerycznego czestotliwosci szyny {ident}",
                 )
             )
             kanaly.append(
@@ -647,7 +647,7 @@ class SilnikDynamiki:
                     przestrzen="obserwabla",
                     jednostka="kod",
                     element_ref=ident,
-                    opis_pl=f"Stan jakosci czestotliwosci szyny {ident}",
+                    opis_pl=f"Rozroznialnosc odchylki czestotliwosci szyny {ident}",
                 )
             )
         for galaz in model.galezie:
@@ -727,7 +727,7 @@ class SilnikDynamiki:
             niedostepna = czestotliwosc_niedostepna(f_bazowa_hz)
             for ident in model.identy_wezlow:
                 probki[f"f_hz@{ident}"].append(niedostepna.f_hz)
-                probki[f"u_f_hz@{ident}"].append(niedostepna.niepewnosc_hz)
+                probki[f"u_f_est_hz@{ident}"].append(niedostepna.niepewnosc_hz)
                 probki[f"jakosc_f@{ident}"].append(niedostepna.jakosc)
         else:
             for pozycja, ident in enumerate(model.identy_wezlow):
@@ -739,7 +739,7 @@ class SilnikDynamiki:
                     niepewnosc_pochodnej_pu_s=float(pomiar.niepewnosc_pochodnej_pu_s[pozycja]),
                 )
                 probki[f"f_hz@{ident}"].append(czestotliwosc.f_hz)
-                probki[f"u_f_hz@{ident}"].append(czestotliwosc.niepewnosc_hz)
+                probki[f"u_f_est_hz@{ident}"].append(czestotliwosc.niepewnosc_hz)
                 probki[f"jakosc_f@{ident}"].append(czestotliwosc.jakosc)
         for galaz in model.galezie:
             wielkosci = wielkosci_galezi(model, galaz, napiecia)
