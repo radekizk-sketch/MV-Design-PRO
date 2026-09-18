@@ -15,6 +15,7 @@ from network_model.solvers.dynamika import (
 )
 from network_model.solvers.dynamika.kontrakty import KOD_INICJALIZACJA_NIEZBIEZNA
 from network_model.solvers.dynamika.silnik import ZALOZENIA_RDZENIA, jednostka_stanu
+from network_model.solvers.dynamika.urzadzenia.fabryka import RODZINY_OBSLUGIWANE
 
 from tests.network_model.dynamika.uklady import (
     X_ZWARCIA_OHM,
@@ -300,3 +301,25 @@ def test_stan_bez_sufiksu_jednostki_jest_bledem_kontraktu() -> None:
     """Kanal bez jednostki bylby liczba bez znaczenia fizycznego — zero zgadywania."""
     with pytest.raises(AssertionError, match="sufiksu jednostki"):
         jednostka_stanu("cos_bez_jednostki")
+
+
+def test_zalozenia_wymieniaja_dokladnie_rodziny_fabryki() -> None:
+    """Deklaracja o urzadzeniach zgodna z rejestrem W OBIE STRONY.
+
+    DEFEKT, KTORY TO USUWA (pomiar 2026-09-18): wiersz zalozen mowil „maszyna
+    klasyczna 2. rzedu i szyna sztywna" jeszcze po karcie W6-3A, ktora dolozyla
+    piec rodzin — a `zalozenia` ida do pola wyniku czytanego przez projektanta.
+    Deklaracja bez pinu to falszywa pewnosc: gorsza niz brak zdania, bo wylacza
+    czujnosc. Test sprawdza OBA kierunki (zadna rodzina nie ginie, zadna nie jest
+    dopisana z palca), wiec kolejne rozszerzenie fabryki nie moze przejsc po cichu.
+    """
+    wiersze = [w for w in ZALOZENIA_RDZENIA if w.startswith("Rodziny urzadzen skladane")]
+    assert len(wiersze) == 1, ZALOZENIA_RDZENIA
+    wymienione = {
+        nazwa.strip()
+        for nazwa in wiersze[0].split(":", 1)[1].rstrip(".").split(",")
+        if nazwa.strip()
+    }
+    assert wymienione == set(RODZINY_OBSLUGIWANE)
+    # Rejestr nie moze zostac pusty — pusty zbior spelnilby rownosc wyzej trywialnie.
+    assert len(RODZINY_OBSLUGIWANE) >= 5

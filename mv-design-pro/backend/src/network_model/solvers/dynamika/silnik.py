@@ -64,6 +64,7 @@ from .reinicjalizacja import reinicjalizuj
 from .siec import ModelSieci, residuum_algebry, zloz_model_sieci
 from .skonczonosc import sprawdz_napiecia
 from .tozsamosc import kwantyzuj, skrot_kanoniczny, zbuduj_tozsamosc
+from .urzadzenia.fabryka import RODZINY_OBSLUGIWANE
 from .urzadzenia.odlaczone import UrzadzenieOdlaczone
 from .wynik import KanalWyniku, Metryka, WlasnosciBiegu, WynikDynamiki, ZdarzenieWykonane
 from .zdarzenia import (
@@ -732,12 +733,20 @@ class SilnikDynamiki:
 
 #: Zalozenia modelu — wchodza do wyniku, zeby czytelnik przebiegu wiedzial, co
 #: model OBEJMUJE, a czego nie, bez siegania do dokumentacji.
+#:
+#: WIERSZ O URZADZENIACH JEST WYPROWADZONY Z REJESTRU, NIE PRZEPISANY. POMIAR,
+#: NIE OSTROZNOSC (2026-09-18): zdanie brzmialo „maszyna klasyczna 2. rzedu i
+#: szyna sztywna" jeszcze po karcie W6-3A, ktora dolozyla piec rodzin — a trafia
+#: ono do pola `zalozenia` KAZDEGO wyniku, czyli wprost do projektanta. Deklaracja
+#: przepisana recznie rozjezdza sie z kodem przy pierwszym rozszerzeniu; zrodlem
+#: jest wiec `RODZINY_OBSLUGIWANE` fabryki, a zgodnosc w OBIE STRONY pilnuje
+#: `test_zalozenia_wymieniaja_dokladnie_rodziny_fabryki`.
 ZALOZENIA_RDZENIA: tuple[str, ...] = (
     "Model RMS skladowej zgodnej: os czasu niesie obwiednie fazorow, nie przebiegi chwilowe.",
     "Odbiory o stalej mocy — przy glebokiej zapadzie napiecia uklad algebraiczny moze nie "
     "miec rozwiazania (odmowa nazwana, nie ekstrapolacja).",
     "Zwarcia wylacznie trojfazowe; niesymetria wymaga skladowych symetrycznych.",
-    "Urzadzenia rdzenia: maszyna klasyczna 2. rzedu i szyna sztywna.",
+    "Rodziny urzadzen skladane przez rdzen: " + ", ".join(RODZINY_OBSLUGIWANE) + ".",
     "Probka w chwili t jest stanem PO wykonaniu wszystkich zdarzen tej chwili.",
 )
 
