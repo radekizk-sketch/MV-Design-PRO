@@ -17,21 +17,57 @@ import guardy_z_ci as runner
 WORKFLOW_PYTHON_TESTS = runner.WORKFLOWS_DIR / "python-tests.yml"
 
 
-def test_lint_jak_ci_odwzorowuje_krok_workflowa_co_do_polecen() -> None:
-    """Cztery wywolania z `python-tests.yml` (black/ruff dla src tests i ../scripts)."""
+def _lint_z_workflowa() -> set[str]:
+    """Wywolania black/ruff, ktore `python-tests.yml` NAPRAWDE uruchamia."""
     tekst = WORKFLOW_PYTHON_TESTS.read_text(encoding="utf-8")
-    for _nazwa, polecenie in runner.LINT_JAK_CI:
-        wzorzec = r"poetry run " + re.escape(" ".join(polecenie))
-        assert re.search(wzorzec, tekst), f"workflow nie wola: {' '.join(polecenie)}"
-    assert len(runner.LINT_JAK_CI) == 4
+    znalezione: set[str] = set()
+    for linia in tekst.splitlines():
+        obciete = linia.strip()
+        if obciete.startswith("#"):
+            continue
+        dopasowanie = re.match(r"poetry run ((?:black|ruff)\b.*)$", obciete)
+        if dopasowanie:
+            znalezione.add(" ".join(dopasowanie.group(1).split()))
+    return znalezione
+
+
+def test_lista_lintu_pokrywa_workflow() -> None:
+    """Odbicie lintu = zbior wywolan workflowa, W OBIE STRONY.
+
+    DEFEKT, KTORY TO USUWA (pomiar 2026-09-18, CI run 35309735634): poprzednia
+    wersja sprawdzala TYLKO jeden kierunek — ze kazdy wpis odbicia wystepuje w
+    workflowie — i przypinala liczbe recznie (`== 4`). Zaden z tych warunkow nie
+    wykrywa wywolania DOPISANEGO DO CI i pominietego w odbiciu: karta
+    KATALOG-NIEZMIENNIKI dodala `black`/`ruff` dla `backend/scripts`, odbicie
+    zostalo z czterema wpisami, lokalny lancuch meldowal "KOMPLET ZIELONY", a CI
+    zapalalo `black --check` na `eksport_fixtur_harnessu.py`. Dwa niezalezne
+    warunki, ktore "dzis sie zgadzaja", to defekt czekajacy na dane brzegowe —
+    dlatego warunek WEJSCIA i WYJSCIA pochodzi teraz z JEDNEGO zrodla: workflowa.
+    """
+    z_workflowa = _lint_z_workflowa()
+    z_odbicia = {" ".join(polecenie) for _nazwa, polecenie in runner.LINT_JAK_CI}
+    assert z_odbicia == z_workflowa, (
+        "odbicie lintu rozjechalo sie z workflowem — "
+        f"brakuje w odbiciu: {sorted(z_workflowa - z_odbicia)}; "
+        f"nadmiarowe w odbiciu: {sorted(z_odbicia - z_workflowa)}"
+    )
+    # Nazwy w odbiciu musza byc unikalne — inaczej meldunek o czerwonym wywolaniu
+    # wskazywalby dwa rozne polecenia tym samym napisem.
+    nazwy = [nazwa for nazwa, _polecenie in runner.LINT_JAK_CI]
+    assert len(nazwy) == len(set(nazwy))
 
 
 def test_lint_jak_ci_melduje_czerwone_wywolanie_po_nazwie(monkeypatch) -> None:
     wywolane: list[list[str]] = []
 
+    # Czerwone wskazujemy PO DOKLADNYM poleceniu, nie po obecnosci flagi: po
+    # dopisaniu `scripts` do odbicia `--config` niesie WIECEJ niz jedno wywolanie
+    # i test pilnowalby czegos innego, niz deklaruje (pomiar 2026-09-18).
+    czerwone_polecenie = ["black", "--check", "--config", "pyproject.toml", "../scripts"]
+
     def _run(polecenie, **_kwargs):
         wywolane.append(list(polecenie))
-        czerwone = "--config" in polecenie  # black ../scripts
+        czerwone = list(polecenie[2:]) == czerwone_polecenie
         return subprocess.CompletedProcess(polecenie, 1 if czerwone else 0, "", "would reformat x")
 
     monkeypatch.setattr(runner.subprocess, "run", _run)

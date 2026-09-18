@@ -82,6 +82,14 @@ def guardy_z_workflowow() -> list[str]:
 
 
 #: Wywolania lintu z `python-tests.yml` (krok "black/ruff"), 1:1 co do sciezek i konfiguracji.
+#: KOMPLETNOSC TEJ KROTKI JEST CZESCIA KONTRAKTU, nie wygoda — pilnuje jej
+#: `test_guardy_z_ci.py::test_lista_lintu_pokrywa_workflow`. POWOD Z POMIARU
+#: (2026-09-18, CI run 35309735634): lista niosla CZTERY wywolania, a workflow
+#: uruchamia SZESC — `backend/scripts` dopisano do CI kartą KATALOG-NIEZMIENNIKI i
+#: NIE dopisano do tego odbicia. Skutek: lokalny lancuch meldowal zielen, a CI
+#: zapalalo `black --check` na `backend/scripts/eksport_fixtur_harnessu.py`. To ta
+#: sama choroba co klaster testowy na `trust`: przyrzad, ktory nie odtwarza warunku
+#: produkcyjnego, produkuje zielen NIEZALEZNA od stanu kodu.
 LINT_JAK_CI: tuple[tuple[str, list[str]], ...] = (
     ("black src tests", ["black", "--check", "src", "tests"]),
     ("ruff src tests", ["ruff", "check", "src", "tests"]),
@@ -90,6 +98,11 @@ LINT_JAK_CI: tuple[tuple[str, list[str]], ...] = (
         ["black", "--check", "--config", "pyproject.toml", "../scripts"],
     ),
     ("ruff ../scripts", ["ruff", "check", "../scripts"]),
+    (
+        "black scripts",
+        ["black", "--check", "--config", "pyproject.toml", "scripts"],
+    ),
+    ("ruff scripts", ["ruff", "check", "scripts"]),
 )
 
 
@@ -211,11 +224,14 @@ def main() -> int:
     # Trzecia czesc kroku CI (dopisana 2026-09-05 po CZERWONYCH runach 4879/4881:
     # `black --check --config pyproject.toml ../scripts` zapalil sie na dwoch
     # skryptach guardow, a bramka odbioru meldowala "KOMPLET ZIELONY" — bo nie
-    # uruchamiala lintu, ktory CI uruchamia w TYM SAMYM kroku co pytest). Dokladnie
-    # cztery wywolania z `python-tests.yml`: black/ruff dla `src tests` oraz — OSOBNO,
-    # z jawna konfiguracja — dla `../scripts` (black bez `--config` szuka pyproject
-    # w gore od pliku i trafia poza projekt backendu).
-    print("\n--- lint jak CI (black/ruff: src tests, ../scripts) ---")
+    # uruchamiala lintu, ktory CI uruchamia w TYM SAMYM kroku co pytest). SZESC
+    # wywolan z `python-tests.yml`: black/ruff dla `src tests` oraz — OSOBNO, z jawna
+    # konfiguracja — dla `../scripts` i dla `scripts` (black bez `--config` szuka
+    # pyproject w gore od pliku i trafia poza projekt backendu). Komplet tej listy
+    # pilnuje `test_guardy_z_ci.py::test_lista_lintu_pokrywa_workflow`: 2026-09-18
+    # brakowalo w niej dwoch ostatnich wywolan, wiec lokalny lancuch byl slepy na
+    # format `backend/scripts` (CI run 35309735634).
+    print("\n--- lint jak CI (black/ruff: src tests, ../scripts, scripts) ---")
     lint_czerwone = _lint_jak_ci()
 
     # Czwarta czesc: kroki npm z `frontend-checks.yml` (type-check, eslint).

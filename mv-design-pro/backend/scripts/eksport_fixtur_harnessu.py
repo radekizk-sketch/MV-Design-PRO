@@ -1531,6 +1531,8 @@ def przeglad_wiarygodnosci_katalogu_scena() -> dict[str, Any]:
     from api.catalog import przeglad_wiarygodnosci_katalogu  # noqa: PLC0415
 
     return przeglad_wiarygodnosci_katalogu().model_dump(mode="json")
+
+
 # ---------------------------------------------------------------------------
 # Karta HARNESS-RESZTA-2 (2026-09-17) — sceny „wyniki-skladowe" (E-29) i
 # „wyniki-zbieznosc" (E-30). Obie były karmione blokami JSON pisanymi RĘCZNIE
