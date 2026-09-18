@@ -435,9 +435,15 @@ def postgres_url(klaster_postgres: str) -> Iterator[str]:
     try:
         with administracyjny.connect() as polaczenie:
             polaczenie.execute(text(f'CREATE SCHEMA "{nazwa}"'))
-        yield str(
-            make_url(klaster_postgres).update_query_dict({"options": f"-csearch_path={nazwa}"})
-        )
+        # `str(URL)` SQLAlchemy MASKUJE haslo ciagiem `***` (to jest `__str__`,
+        # nie przypadek) — adres zbudowany tak nie da sie polaczyc z serwerem
+        # wymagajacym hasla. Lokalnie defekt byl NIEWIDOCZNY, bo efemeryczny
+        # klaster stoi na `-A trust` i hasla w adresie nie ma wcale; zapalil sie
+        # dopiero na CI (`FATAL: password authentication failed for user
+        # "postgres"`, 12 testow, 2026-09-18). Renderujemy jawnie z haslem.
+        yield make_url(klaster_postgres).update_query_dict(
+            {"options": f"-csearch_path={nazwa}"}
+        ).render_as_string(hide_password=False)
     finally:
         with administracyjny.connect() as polaczenie:
             # Limit czekania na blokade: gdyby test zostawil otwarte polaczenie do
