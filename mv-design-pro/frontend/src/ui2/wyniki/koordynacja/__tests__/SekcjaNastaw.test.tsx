@@ -1,64 +1,169 @@
 /**
- * Sekcja „Nastawy wyznaczone z analizy" (karta F-K5, dług V12K-189).
+ * Sekcja „Nastawy nadprądowe I>/I>>" — metoda Hoppela/IRiESD (karta W3-C1).
  *
- * Test pilnuje tego, co było długiem: nastawa, której projekt NIE wyliczył, musi być
- * widoczna jako STAN z powodem i drogą do naprawy — nie jako puste pole i nie jako
- * liczba zastępcza. Kliki natywne (userEvent), `fetch` mockowany 1:1 z kontraktem
- * końcówki `/api/protection/overcurrent-settings`.
+ * Kliki natywne (userEvent), `fetch` mockowany 1:1 z kontraktem końcówek
+ * `pakiet-dowodowy-nastaw/dostepnosc`, `nastawy`, `nastawy/dopasowanie`,
+ * `catalog/protection/device-types`.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Mock } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import { useAppStateStore } from '../../../../ui/app-state';
+import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import { SekcjaNastaw } from '../SekcjaNastaw';
 import { KOORDYNACJA_STRINGS as T } from '../strings';
 
-/** Odpowiedź końcówki: I> wyznaczone, pozostałe trzy NIEDOSTĘPNE (sam bieg 3F). */
-const ODPOWIEDZ_Z_BRAKAMI = {
-  run_id: 'protection.overcurrent.v0:abc',
-  case_id: 'case-1',
-  analysis_type: 'protection.overcurrent.v0',
-  status: 'DEGRADED',
-  prezentacja: {
-    pozycje: [
-      {
-        klucz: 'i_pickup_51_a',
-        etykieta: 'I> (51) — prad rozruchowy zwloczny',
-        jednostka: 'A',
-        wartosc: 132.5,
-        stan: 'DOSTEPNA',
-        komunikat_pl: null,
-        powod_pl: null,
-        fix_action_id: null,
-        fix_navigation: null,
-      },
-      {
-        klucz: 'i_inst_50_a',
-        etykieta: 'I>> (50) — nastawa bezzwloczna',
-        jednostka: 'A',
-        wartosc: null,
-        stan: 'NIEDOSTEPNA',
-        komunikat_pl: 'Niedostepna — uzupelnij dane wejsciowe',
-        powod_pl: 'Brak prądu zwarciowego z biegu SC — uruchom analizę zwarciową',
-        fix_action_id: 'fix_protection_run_short_circuit',
-        fix_navigation: { panel: 'analizy', tab: 'zwarciowa' },
-      },
-    ],
-    kompletne: false,
-    brakujace: ['i_inst_50_a'],
-    kody_gotowosci: ['protection.fault_current_missing'],
-    podsumowanie_pl: 'Niedostepne nastawy: 1 z 4 — uzupelnij dane wejsciowe wskazane przy pozycjach.',
-  },
+const RUN_SC_MAX = {
+  id: 'run-sc-max',
+  study_case_id: 'case-1',
+  analysis_type: 'SC_3F',
+  status: 'DONE',
+  finished_at: '2026-09-09T08:00:00Z',
+  started_at: '2026-09-09T07:59:00Z',
+} as never;
+
+const DOSTEPNOSC_OK = {
+  run_id: 'run-sc-max',
+  dostepny: true,
+  powod_pl: null,
+  linie: [
+    { line_id: 'ln1', nazwa: 'Linia GPZ – Stacja A', nastepne_szyny_kandydujace: ['b_b'] },
+    { line_id: 'ln2', nazwa: 'Linia Stacja A – Stacja B', nastepne_szyny_kandydujace: [] },
+  ],
 };
 
-let fetchMock: ReturnType<typeof vi.fn>;
+const WYNIK_NASTAW = {
+  wynik: {
+    line_id: 'ln1',
+    line_name: 'Linia GPZ – Stacja A',
+    delayed: {
+      i_setting_a: 48.5,
+      t_setting_s: 0.3,
+      i_load_max_a: 40.4,
+      k_b: 1.2,
+      sensitivity_ratio: 87.27,
+      is_valid: true,
+      validation_notes: [],
+      trace: [],
+    },
+    instantaneous: {
+      i_setting_a: 5820.5,
+      i_min_selectivity_a: 5000.0,
+      i_max_thermal_a: 7000.0,
+      i_max_sensitivity_a: 6500.0,
+      range_valid: true,
+      k_b: 1.2,
+      k_bth: 1.1,
+      is_valid: true,
+      validation_notes: [],
+      trace: [],
+    },
+    thermal: {
+      i_th_dop_a: 18544.2,
+      j_thn: 94.0,
+      cross_section_mm2: 120.0,
+      t_fault_s: 0.37,
+      ik_max_a: 8000.0,
+      is_adequate: true,
+      margin_percent: 56.9,
+      trace: [],
+    },
+    spz: {
+      spz_allowed: true,
+      total_fault_time_s: 0.6,
+      i_th_required_a: 8000.0,
+      i_th_available_a: 15000.0,
+      blocking_recommended: false,
+      trace: [],
+    },
+    overall_valid: true,
+    summary_notes: [],
+  },
+  wejscie: {
+    kotwica_run_id: 'run-sc-max',
+    c_max: 1.1,
+    c_min: 1.0,
+    line_id: 'ln1',
+    next_bus_id: 'b_b',
+    project_name: 'Projekt testowy',
+    case_name: 'case-1',
+    line_name: 'Linia GPZ – Stacja A',
+    run_timestamp: '2026-09-09T08:00:00+00:00',
+    solver_version: 'IEC_60909;load-flow-newton-raphson-v1',
+    engine_input: {},
+  },
+  dostepnosc_pakietu: true,
+};
+
+const APARATY = [
+  { id: 'ABB_REF601', name_pl: 'ABB REF601' },
+  { id: 'REF-OC-100', name_pl: 'Profil referencyjny (nie produkt producenta) - OC-100' },
+];
+
+const DOPASOWANIE_ZGODNE = {
+  status: 'SUCCEEDED',
+  compatible: true,
+  violations: [],
+  mapped_settings: { I51: 48.5, T51: 0.3, I50: 5820.5, CURVE: 'DT' },
+  assumptions: ['LOGICAL_MAPPING_ONLY', 'NO_VENDOR_PARAM_IDS'],
+  vendor_mapping: {
+    vendor: 'ABB',
+    vendor_settings: { 'ABB.OC.I51_PICKUP_A': 48.5 },
+    vendor_violations: [],
+    vendor_assumptions: ['VENDOR_KEYS_SYMBOLIC_V0'],
+  },
+  wymaganie: {
+    curve: 'DT',
+    i_pickup_51_a: 48.5,
+    tms_51: null,
+    t_51_s: 0.3,
+    i_inst_50_a: 5820.5,
+    i_pickup_51n_a: null,
+    tms_51n: null,
+    i_inst_50n_a: null,
+  },
+  device_id: 'ABB_REF601',
+  capability: {},
+  proweniencja_nastaw: WYNIK_NASTAW.wejscie,
+};
+
+// Typ mocka = sygnatura implementacji (vitest 1.x: `Mock<TArgs, TReturn>`); `ReturnType<typeof vi.fn>`
+// dawal `Mock<any[], unknown>`, do ktorego `vi.fn(async (input) => Response)` nie jest przypisywalny (TS2322).
+type FetchMock = Mock<[input: RequestInfo | URL], Promise<Response>>;
+let fetchMock: FetchMock;
+
+function ustawKontekst() {
+  useAppStateStore.getState().setActiveProject('project-1', 'GPZ Wschód');
+}
+
+function mockDomyslny() {
+  fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/pakiet-dowodowy-nastaw/dostepnosc')) {
+      return { ok: true, status: 200, json: async () => DOSTEPNOSC_OK } as Response;
+    }
+    if (url.includes('/nastawy/dopasowanie')) {
+      return { ok: true, status: 200, json: async () => DOPASOWANIE_ZGODNE } as Response;
+    }
+    if (url.includes('/nastawy')) {
+      return { ok: true, status: 200, json: async () => WYNIK_NASTAW } as Response;
+    }
+    if (url.includes('/api/catalog/protection/device-types')) {
+      return { ok: true, status: 200, json: async () => APARATY } as Response;
+    }
+    throw new Error(`Niespodziewane wywołanie fetch: ${url}`);
+  });
+  vi.stubGlobal('fetch', fetchMock);
+}
 
 beforeEach(() => {
+  useAppStateStore.getState().reset();
+  useExecutionRunsStore.getState().reset();
   useShellStore.setState({ activeSpace: 'wyniki' } as never);
-  fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ODPOWIEDZ_Z_BRAKAMI }) as unknown as Response);
-  vi.stubGlobal('fetch', fetchMock);
 });
 
 afterEach(() => {
@@ -66,150 +171,208 @@ afterEach(() => {
   cleanup();
 });
 
-describe('SekcjaNastaw — niedostępna nastawa jest STANEM, nie pustym polem', () => {
-  it('pokazuje wartość wyznaczoną i jawny brak z powodem', async () => {
+describe('SekcjaNastaw — brak kotwicy', () => {
+  it('zero SC_3F DONE runs: stan zerowy z akcją "Uruchom zwarcie 3F (c_max)"', async () => {
+    ustawKontekst();
+    mockDomyslny();
     render(<SekcjaNastaw caseId="case-1" />);
 
-    await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
-    expect(String(fetchMock.mock.calls[0][0])).toBe(
-      '/api/protection/overcurrent-settings?case_id=case-1',
-    );
-
-    // Nastawa wyznaczona: liczba z backendu, jednostka z kontraktu.
-    expect(screen.getByText('132.5 A')).toBeInTheDocument();
-    // Nastawa niedostępna: NAZWANY stan + powód, zero liczby zastępczej.
-    const brak = screen.getByTestId('mvd-koordynacja-nastawa-i_inst_50_a');
-    expect(brak.getAttribute('data-stan')).toBe('NIEDOSTEPNA');
-    expect(brak.textContent).toContain('Niedostepna');
-    expect(brak.textContent).toContain('uruchom analizę zwarciową');
-    expect(brak.textContent).not.toContain('0.0 A');
-    // Niekompletny zestaw jest oznaczony jako taki (nie czyta się jak wynik w normie).
-    expect(
-      screen.getByTestId('mvd-koordynacja-nastawy-podsumowanie').getAttribute('data-kompletne'),
-    ).toBe('nie');
-  });
-
-  it('akcja naprawcza prowadzi do przestrzeni z kanonicznej nawigacji (native click)', async () => {
-    const user = userEvent.setup();
-    render(<SekcjaNastaw caseId="case-1" />);
-    await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
-
-    await user.click(screen.getByTestId('mvd-koordynacja-nastawa-i_inst_50_a-akcja'));
-
-    // `fix_navigation.panel = 'analizy'` ⇒ przestrzeń obliczeń: tam uruchamia się bieg
-    // zwarciowy, którego brakuje. Kierunek pochodzi z backendu, nie z domysłu UI.
-    expect(useShellStore.getState().activeSpace).toBe('obliczenia');
-  });
-
-  it('nierozpoznany panel nawigacji nie dostaje przycisku (lepiej brak niż zła droga)', async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        ...ODPOWIEDZ_Z_BRAKAMI,
-        prezentacja: {
-          ...ODPOWIEDZ_Z_BRAKAMI.prezentacja,
-          pozycje: [
-            {
-              ...ODPOWIEDZ_Z_BRAKAMI.prezentacja.pozycje[1],
-              fix_navigation: { panel: 'nieznany-panel' },
-            },
-          ],
-        },
-      }),
-    } as unknown as Response);
-
-    render(<SekcjaNastaw caseId="case-1" />);
-    await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
-
-    expect(screen.getByTestId('mvd-koordynacja-nastawa-i_inst_50_a')).toBeInTheDocument();
-    expect(screen.queryByTestId('mvd-koordynacja-nastawa-i_inst_50_a-akcja')).toBeNull();
-  });
-
-  it('brak biegu nastaw (404) to uczciwy stan zerowy z drogą do obliczeń', async () => {
-    fetchMock.mockResolvedValue({
-      ok: false,
-      status: 404,
-      json: async () => ({ detail: 'brak' }),
-    } as unknown as Response);
-    const user = userEvent.setup();
-
-    render(<SekcjaNastaw caseId="case-1" />);
     await waitFor(() =>
       expect(screen.getByTestId('mvd-koordynacja-nastawy-brak')).toBeInTheDocument(),
     );
-    expect(screen.getByText(T.nastawyBrakBieguTytul)).toBeInTheDocument();
+    expect(screen.getByText(T.nastawyBrakKotwicyTytul)).toBeInTheDocument();
+    // Lista aparatów katalogu wczytuje się niezależnie od kotwicy (wzbogacenie
+    // sekcji dopasowania) — bez kandydatów na kotwicę nie ma jednak ŻADNEGO
+    // wywołania trasy `dostepnosc`/`nastawy`.
+    const wywolaniaNastaw = fetchMock.mock.calls.filter((c) =>
+      String(c[0]).includes('/pakiet-dowodowy-nastaw') || String(c[0]).includes('/nastawy'),
+    );
+    expect(wywolaniaNastaw).toHaveLength(0);
+  });
 
+  it('kandydat istnieje, ale backend odmawia (np. bieg c_min) — powód backendu widoczny', async () => {
+    ustawKontekst();
+    useExecutionRunsStore.setState({ runs: [RUN_SC_MAX] });
+    fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/pakiet-dowodowy-nastaw/dostepnosc')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            run_id: 'run-sc-max',
+            dostepny: false,
+            powod_pl: 'Ten przebieg jest wariantem MINIMALNYM.',
+            linie: [],
+          }),
+        } as Response;
+      }
+      throw new Error(`Niespodziewane wywołanie: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<SekcjaNastaw caseId="case-1" />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-koordynacja-nastawy-brak')).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/wariantem MINIMALNYM/)).toBeInTheDocument();
+  });
+
+  it('akcja stanu zerowego prowadzi do przestrzeni obliczeń (native click)', async () => {
+    ustawKontekst();
+    mockDomyslny();
+    const user = userEvent.setup();
+    render(<SekcjaNastaw caseId="case-1" />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-koordynacja-nastawy-brak')).toBeInTheDocument(),
+    );
     await user.click(screen.getByTestId('mvd-koordynacja-nastawy-brak-akcja'));
     expect(useShellStore.getState().activeSpace).toBe('obliczenia');
   });
+});
 
-  it('awaria końcówki jest odróżniona od braku biegu', async () => {
-    fetchMock.mockResolvedValue({
-      ok: false,
-      status: 422,
-      json: async () => ({ detail: 'Bieg nie niesie zestawu nastaw' }),
-    } as unknown as Response);
+describe('SekcjaNastaw — brak kandydatów (dostępność bez linii)', () => {
+  it('dostępny bieg bez linii z kompletem danych katalogowych pokazuje uczciwy powód', async () => {
+    ustawKontekst();
+    useExecutionRunsStore.setState({ runs: [RUN_SC_MAX] });
+    fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/pakiet-dowodowy-nastaw/dostepnosc')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ run_id: 'run-sc-max', dostepny: true, powod_pl: null, linie: [] }),
+        } as Response;
+      }
+      if (url.includes('/api/catalog/protection/device-types')) {
+        return { ok: true, status: 200, json: async () => [] } as Response;
+      }
+      throw new Error(`Niespodziewane wywołanie: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
     render(<SekcjaNastaw caseId="case-1" />);
 
     await waitFor(() =>
-      expect(screen.getByTestId('mvd-koordynacja-nastawy-blad')).toBeInTheDocument(),
+      expect(screen.getByTestId('mvd-koordynacja-nastawy-brak-odcinkow')).toBeInTheDocument(),
     );
-    expect(screen.getByText(/nie niesie zestawu nastaw/)).toBeInTheDocument();
-    expect(screen.queryByTestId('mvd-koordynacja-nastawy-brak')).toBeNull();
+    expect(screen.getByText(T.nastawyBrakOdcinkowTytul)).toBeInTheDocument();
   });
 });
 
-/**
- * V12K-262 — stan spoza kontraktu nie może czytać się jak nastawa WYZNACZONA.
- *
- * `WierszNastawy` sprawdzał `stan !== 'NIEDOSTEPNA'`, więc odpowiedź ze stanem
- * spoza kontraktu (starsza wersja API, atrapa, proxy) renderowała się jako
- * „Wyznaczona" — przy PUSTEJ wartości. To najgorszy możliwy kierunek awarii dla
- * wielkości, którą nastawia się na przekaźniku.
- */
-describe('SekcjaNastaw — stan spoza kontraktu jest odrzucany, nie zgadywany', () => {
-  it('odpowiedź ze stanem spoza kontraktu daje NAZWANY błąd, a nie „Wyznaczona"', async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({
-        run_id: 'r1',
-        case_id: 'case-1',
-        analysis_type: 'protection.overcurrent.v0',
-        status: 'DONE',
-        prezentacja: {
-          kompletne: false,
-          brakujace: [],
-          kody_gotowosci: [],
-          podsumowanie_pl: 'x',
-          pozycje: [
-            {
-              klucz: 'i_pickup_51_a',
-              etykieta: 'I> (51)',
-              jednostka: 'A',
-              wartosc: null,
-              // Stan, którego kontrakt NIE zna.
-              stan: 'niewyznaczalna',
-              komunikat_pl: null,
-              powod_pl: null,
-              fix_action_id: null,
-              fix_navigation: null,
-            },
-          ],
-        },
-      }),
-    } as unknown as Response);
+describe('SekcjaNastaw — wynik', () => {
+  it('wybór odcinka i szyny (native), policzenie nastaw, tabela wyniku widoczna', async () => {
+    ustawKontekst();
+    useExecutionRunsStore.setState({ runs: [RUN_SC_MAX] });
+    mockDomyslny();
+    const user = userEvent.setup();
 
     render(<SekcjaNastaw caseId="case-1" />);
 
+    await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
+
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln1');
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-szyna'), 'b_b');
+    await user.click(screen.getByTestId('mvd-koordynacja-nastawy-policz'));
+
     await waitFor(() =>
-      expect(screen.getByTestId('mvd-koordynacja-nastawy-blad')).toBeInTheDocument(),
+      expect(screen.getByTestId('mvd-koordynacja-nastawy-wynik')).toBeInTheDocument(),
     );
-    expect(screen.getByText(/nieoczekiwany kształt/)).toBeInTheDocument();
-    // Żaden wiersz nie powstał — więc nic nie mogło się przedstawić jako wyznaczone.
-    expect(screen.queryByTestId('mvd-koordynacja-nastawa-i_pickup_51_a')).toBeNull();
-    expect(screen.queryByText(T.nastawyStanDostepna)).toBeNull();
+    expect(screen.getByText('48.5 A')).toBeInTheDocument();
+    expect(screen.getByText('5820.5 A')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-werdykt').textContent).toBe(
+      T.nastawyWynikKompletny,
+    );
+
+    const wywolanie = fetchMock.mock.calls.find(([u]) =>
+      String(u).includes('/nastawy?'),
+    );
+    expect(wywolanie).toBeTruthy();
+    const url = new URL(String(wywolanie?.[0]), 'http://localhost');
+    expect(url.searchParams.get('linia')).toBe('ln1');
+    expect(url.searchParams.get('nastepna_szyna')).toBe('b_b');
+    expect(url.searchParams.get('c_min')).toBe('1');
+  });
+
+  it('odcinek bez gałęzi w dół pokazuje uczciwy powód zamiast pustego selecta szyny', async () => {
+    ustawKontekst();
+    useExecutionRunsStore.setState({ runs: [RUN_SC_MAX] });
+    mockDomyslny();
+    const user = userEvent.setup();
+
+    render(<SekcjaNastaw caseId="case-1" />);
+    await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
+
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln2');
+
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-brak-szyn')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-koordynacja-nastawy-select-szyna')).toBeNull();
+  });
+
+  it('422 z backendu pokazuje treść odpowiedzi, nie ogólnik', async () => {
+    ustawKontekst();
+    useExecutionRunsStore.setState({ runs: [RUN_SC_MAX] });
+    const user = userEvent.setup();
+    fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/pakiet-dowodowy-nastaw/dostepnosc')) {
+        return { ok: true, status: 200, json: async () => DOSTEPNOSC_OK } as Response;
+      }
+      if (url.includes('/api/catalog/protection/device-types')) {
+        return { ok: true, status: 200, json: async () => [] } as Response;
+      }
+      if (url.includes('/nastawy?')) {
+        return {
+          ok: false,
+          status: 422,
+          json: async () => ({ detail: 'Element ln1 nie jest linią z kompletem danych katalogowych.' }),
+        } as Response;
+      }
+      throw new Error(`Niespodziewane wywołanie: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<SekcjaNastaw caseId="case-1" />);
+    await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln1');
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-szyna'), 'b_b');
+    await user.click(screen.getByTestId('mvd-koordynacja-nastawy-policz'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-koordynacja-nastawy-wynik-blad')).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/nie jest linią z kompletem danych katalogowych/)).toBeInTheDocument();
+  });
+});
+
+describe('SekcjaNastaw — dopasowanie do aparatu', () => {
+  it('wybór aparatu (native) po policzeniu nastaw pokazuje wynik dopasowania', async () => {
+    ustawKontekst();
+    useExecutionRunsStore.setState({ runs: [RUN_SC_MAX] });
+    mockDomyslny();
+    const user = userEvent.setup();
+
+    render(<SekcjaNastaw caseId="case-1" />);
+    await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln1');
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-szyna'), 'b_b');
+    await user.click(screen.getByTestId('mvd-koordynacja-nastawy-policz'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-koordynacja-nastawy-wynik')).toBeInTheDocument(),
+    );
+
+    await user.selectOptions(
+      await screen.findByTestId('mvd-koordynacja-dopasowanie-select-aparat'),
+      'ABB_REF601',
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-koordynacja-dopasowanie-wynik')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('mvd-koordynacja-dopasowanie-werdykt').textContent).toBe(
+      T.nastawyDopasowanieZgodny,
+    );
   });
 });

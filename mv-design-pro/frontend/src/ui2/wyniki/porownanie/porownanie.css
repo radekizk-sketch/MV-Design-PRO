@@ -204,6 +204,38 @@
   border-bottom-color: var(--mvd-accent);
 }
 
+/* ---- proweniencja biegów A/B (B1/B5, karta CV-3.3-B, tryb ekspercki) ---- */
+.mvd-por-proweniencja {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+  background: var(--mvd-panel);
+}
+.mvd-por-proweniencja-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-por-proweniencja-kolumny {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.mvd-por-proweniencja-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+.mvd-por-proweniencja-naglowek {
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+
 /* ---- szczegół problemu ---- */
 .mvd-por-szczegol {
   display: flex;

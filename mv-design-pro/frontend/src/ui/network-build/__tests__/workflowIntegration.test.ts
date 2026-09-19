@@ -18,13 +18,12 @@ import type { ReadinessInfo } from '../../../types/enm';
 
 function readinessWithBlockers(codes: string[]): ReadinessInfo {
   return {
-    is_ready: false,
+    ready: false,
     blockers: codes.map((code, i) => ({
       code,
       severity: 'BLOCKER' as const,
       message_pl: `Blokada: ${code}`,
       element_ref: `elem-${i}`,
-      element_refs: [`elem-${i}`],
     })),
     warnings: [],
   };
@@ -111,7 +110,7 @@ describe('blocker categorization E2E', () => {
 
   it('returns zeros for ready network', () => {
     const readiness: ReadinessInfo = {
-      is_ready: true,
+      ready: true,
       blockers: [],
       warnings: [],
     };
@@ -126,13 +125,6 @@ describe('blocker categorization E2E', () => {
 
 describe('station completeness assessment', () => {
   it('station is incomplete without transformers', () => {
-    const station = {
-      id: 'st-1',
-      name: 'Station 1',
-      station_type: 'mv_lv',
-      transformer_refs: [],
-      bus_refs: ['bus-1'],
-    };
     const trCount = 0;
     const bayCount = 2;
     const isComplete = trCount > 0 && bayCount > 0;
@@ -157,7 +149,7 @@ describe('station completeness assessment', () => {
   it('station is incomplete with blockers even if has elements', () => {
     const trCount = 1;
     const bayCount = 2;
-    const blockerCount = 1;
+    const blockerCount: number = 1;
     const isComplete = trCount > 0 && bayCount > 0 && blockerCount === 0;
     expect(isComplete).toBe(false);
   });

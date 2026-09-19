@@ -16,6 +16,8 @@ KONWENCJE:
 
 from typing import Any
 
+from network_model.pochodne import mwh_na_kwh
+
 from .mv_ptpiree_catalog import annotate_with_ptpiree_status
 from .types import CATALOG_CONTRACT_VERSION, CatalogStatus, CatalogVerificationStatus
 
@@ -260,7 +262,7 @@ def _build_nn_converter_family(
     for power_mw in powers_mw:
         power_token = _catalog_token(power_mw)
         q_limit = _reactive_limit(power_mw)
-        energy_kwh = power_mw * energy_hours * 1000 if energy_hours is not None else None
+        energy_kwh = mwh_na_kwh(power_mw * energy_hours) if energy_hours is not None else None
         records.append(
             _converter_record(
                 item_id=f"conv-{kind.lower()}-nn-{power_token}mw-{voltage_token}kv",

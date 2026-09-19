@@ -91,8 +91,14 @@ describe('Property Grid Validation', () => {
     });
 
     it('should validate required reference fields', () => {
+      // Odbiór K7c-FE (2026-09-09, karta KASACJA-DATA-MANAGER — błąd napotkany przy
+      // pełnym vitest src/ui, naprawiony u źródła): `validateField` dopasowuje regułę
+      // po `${elementType}.${field.key}` (`property-grid/validation.ts`); rejestr ma
+      // wpis `LineBranch.from_bus_ref`, nie `LineBranch.from_bus_id` (klucz-fantom
+      // sprzed naprawy w 387024dc) — z tamtym kluczem `requiredRef` nigdy się nie
+      // uruchamiało, więc pusta referencja przechodziła walidację.
       const field: PropertyField = {
-        key: 'from_bus_id',
+        key: 'from_bus_ref',
         label: 'Szyna początkowa',
         value: '',
         type: 'ref',

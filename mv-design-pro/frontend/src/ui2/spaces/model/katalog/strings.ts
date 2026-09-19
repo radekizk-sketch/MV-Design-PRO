@@ -27,7 +27,6 @@ export const STRINGS = {
   kartaPochodzenie: 'Pochodzenie danych',
   kartaBrakParametrow: 'Brak udokumentowanych parametrów dla tego typu.',
   producentNieznany: 'Producent nieznany',
-  wkrotce: 'wkrótce',
 
   pochodzenieZrodlo: 'Źródło danych',
   pochodzenieWeryfikacja: 'Status weryfikacji',
@@ -89,4 +88,5 @@ export const ETYKIETY_STATUSU_KATALOGU: Readonly<Record<string, string>> = {
   REFERENCYJNY_V1: 'Referencyjny',
   ANALITYCZNY_V1: 'Analityczny',
   TESTOWY: 'Testowy',
+  PROJEKTOWY_V1: 'Projektowy (dane z arkusza)',
 };

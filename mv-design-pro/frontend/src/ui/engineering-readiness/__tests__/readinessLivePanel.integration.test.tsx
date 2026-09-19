@@ -6,10 +6,10 @@ import type { ReadinessIssue, FixAction } from '../../types';
 
 function makeFixAction(): FixAction {
   return {
-    type: 'OPEN_MODAL',
+    action_type: 'OPEN_MODAL',
     modal_type: 'catalog_select',
-    target_element_id: 'line_sn_1',
-    payload: { panel: 'Katalog' },
+    element_ref: 'line_sn_1',
+    payload_hint: { panel: 'Katalog' },
   };
 }
 
@@ -50,7 +50,7 @@ describe('ReadinessLivePanel — integracja działań naprawczych', () => {
     fireEvent.click(screen.getByText('Skonfiguruj'));
     expect(onFixAction).toHaveBeenCalledTimes(1);
     expect(onFixAction).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'OPEN_MODAL', modal_type: 'catalog_select' }),
+      expect.objectContaining({ action_type: 'OPEN_MODAL', modal_type: 'catalog_select' }),
       'line_sn_1',
     );
 
@@ -106,6 +106,8 @@ describe('ReadinessLivePanel — kanoniczny priorytet (V12K-206)', () => {
         ]}
         status="FAIL"
         loading={false}
+        onNavigateToElement={vi.fn()}
+        onFixAction={vi.fn()}
       />,
     );
 
@@ -127,6 +129,8 @@ describe('ReadinessLivePanel — kanoniczny priorytet (V12K-206)', () => {
         ]}
         status="FAIL"
         loading={false}
+        onNavigateToElement={vi.fn()}
+        onFixAction={vi.fn()}
       />,
     );
 
@@ -146,6 +150,8 @@ describe('ReadinessLivePanel — kanoniczny priorytet (V12K-206)', () => {
         ]}
         status="FAIL"
         loading={false}
+        onNavigateToElement={vi.fn()}
+        onFixAction={vi.fn()}
       />,
     );
 

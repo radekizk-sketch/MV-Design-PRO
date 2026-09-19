@@ -43,6 +43,7 @@ import {
   type PierscienFormData,
   type RodzajOdcinka,
 } from './pierscienModel';
+import { OPCJE_UZIEMIENIA_EKRANU } from '../../../types/uziemienie';
 import { PIERSCIEN_STRINGS as T } from './strings';
 
 const KROKI: readonly KrokKreatora[] = [
@@ -93,10 +94,17 @@ export function KreatorPierscienia() {
   const [kable, setKable] = useState<CableType[]>([]);
   const [linie, setLinie] = useState<LineType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jawny znacznik
+  // ładowania katalogu, niezależny od `kable/linie.length` (katalog pusty PO
+  // wczytaniu wygląda inaczej niż katalog W TRAKCIE wczytywania). Dotyczy
+  // wyłącznie akcji „Domknij" (`connect_secondary_ring_sn` wymaga
+  // `catalog_ref` — `walidujDomkniecie`); „Zapisz NOP" katalogu nie używa.
+  const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
+    setKatalogLadowanie(true);
     Promise.all([fetchCableTypes(), fetchLineTypes()])
       .then(([k, l]) => {
         if (cancelled) return;
@@ -108,6 +116,9 @@ export function KreatorPierscienia() {
         setKable([]);
         setLinie([]);
         setBladKatalogu(getCatalogErrorMessage(e));
+      })
+      .finally(() => {
+        if (!cancelled) setKatalogLadowanie(false);
       });
     return () => {
       cancelled = true;
@@ -228,6 +239,18 @@ export function KreatorPierscienia() {
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
   const naNop = krok === 'nop';
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
+  // dla `disabled`/`data-status`, PER AKCJA (dwa alternatywne kroki zapisu
+  // tego kreatora mają różne zależności: „Domknij" potrzebuje katalogu,
+  // „Zapisz NOP" — nie).
+  const stanDomkniecia: 'ladowanie' | 'zablokowany' | 'gotowy' =
+    !hasZaciski || !activeCaseId
+      ? 'zablokowany'
+      : katalogLadowanie
+        ? 'ladowanie'
+        : 'gotowy';
+  const stanNop: 'zablokowany' | 'gotowy' = !activeCaseId ? 'zablokowany' : 'gotowy';
+  const stanGotowosci = naNop ? stanNop : stanDomkniecia;
 
   return (
     <KreatorRama
@@ -240,11 +263,20 @@ export function KreatorPierscienia() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={bledy.length > 0 ? T.walidacjaStopka : !hasZaciski ? T.brakZaciskowOpis : null}
+      walidacja={
+        !naNop && stanDomkniecia === 'ladowanie'
+          ? T.katalogLadowanieStopka
+          : bledy.length > 0
+            ? T.walidacjaStopka
+            : !hasZaciski
+              ? T.brakZaciskowOpis
+              : null
+      }
+      status={stanGotowosci}
       akcjaGlowna={
         naNop
-          ? { etykieta: T.zapiszNop, onClick: onZapiszNop, zablokowana: !activeCaseId, testid: 'mvd-kreator-pierscien-zapisz-nop' }
-          : { etykieta: T.domknij, onClick: onDomknij, zablokowana: !hasZaciski || !activeCaseId, testid: 'mvd-kreator-pierscien-domknij' }
+          ? { etykieta: T.zapiszNop, onClick: onZapiszNop, zablokowana: stanNop !== 'gotowy', testid: 'mvd-kreator-pierscien-zapisz-nop' }
+          : { etykieta: T.domknij, onClick: onDomknij, zablokowana: stanDomkniecia !== 'gotowy', testid: 'mvd-kreator-pierscien-domknij' }
       }
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-pierscien-anuluj' }}
       licznikKrokow={T.licznik(krokIndex + 1, KROKI.length)}
@@ -274,6 +306,16 @@ export function KreatorPierscienia() {
               opcje={T.rodzajOpcje}
               testid="mvd-kreator-pierscien-rodzaj"
             />
+            {dane.rodzaj === 'KABEL' ? (
+              <PoleWyboru
+                etykieta={T.ekranUziemienie}
+                wartosc={dane.screen_bonding}
+                onZmiana={(v) => zmien('screen_bonding', v as PierscienFormData['screen_bonding'])}
+                opcje={OPCJE_UZIEMIENIA_EKRANU}
+                pomoc={T.ekranUziemieniePomoc}
+                testid="mvd-kreator-pierscien-ekran"
+              />
+            ) : null}
             <PoleLiczbowe
               etykieta={T.dlugosc}
               wartosc={dane.dlugosc_m}

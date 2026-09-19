@@ -28,6 +28,7 @@ import {
 } from '../api';
 import { useNcRfgStore } from '../ncRfgStore';
 import { PanelModulu } from './PanelModulu';
+import { SekcjaZgodnosciPrzekrojowej } from './SekcjaZgodnosciPrzekrojowej';
 import { SzczegolWerdyktu } from './SzczegolWerdyktu';
 import {
   mapujMacierz,
@@ -107,6 +108,12 @@ export function MacierzNcRfg({
   const opisyBazowe = useMemo(() => zbudujModuly(ders), [ders]);
   // K6 / H-5: stan zerowy strumienia OZE prowadzi do dodania modulu wytworczego.
   const akcjaZrodlo = useAkcjaDodajZrodloOze();
+  // W3-D: nazwy modulow dla sekcji zgodnosci przekrojowej (ten sam zrodlo co
+  // kolumny macierzy — der_ref -> nazwa czytelna, zamiast surowego identyfikatora).
+  const nazwyModulowPrzekrojowe = useMemo(
+    () => Object.fromEntries(opisyBazowe.map((opis) => [opis.derRef, opis.nazwa])),
+    [opisyBazowe],
+  );
 
   // Stan biegu NC RfG — wspólny store (widoczny również w pulpicie instalacji OZE).
   const katalog = useNcRfgStore((s) => s.katalog);
@@ -401,6 +408,30 @@ export function MacierzNcRfg({
           {MACIERZ_STRINGS.bladBiegu}: {bladBiegu}
         </div>
       ) : null}
+
+      {/* Karta S-1 (W6-0): baner biegu — stopień dowodowy z `ocena_dowodowa_biegu`.
+          Zero oceny lokalnej: `wynik.reporting_status` pochodzi z backendu. */}
+      {wynik && wynik.reporting_status === 'not_reportable' ? (
+        <div className="mvd-oze-blad" data-testid="mvd-oze-baner-brak-dowodu">
+          <strong>{MACIERZ_STRINGS.banerBrakDowoduTytul}</strong>
+          <p style={{ margin: '4px 0 0' }}>{wynik.evidence_note_pl}</p>
+        </div>
+      ) : null}
+
+      {/* Karta S-3 (2026-09-16, jeden tor NC RfG; dawniej W3-D): zgodnosc przekrojowa
+          — wszystkie DER modelu naraz, liczona z ENM TYM SAMYM solverem i w TYM SAMYM
+          kontrakcie co bieg macierzy (`GET /api/ncrfg-tests/cases/{case_id}/compliance`),
+          niezaleznie od recznego biegu ponizej. Odeslanie „Pokaz w macierzy" wybiera
+          modul w panelu/kolumnie macierzy per DER (ten sam mechanizm co klik naglowka). */}
+      <SekcjaZgodnosciPrzekrojowej
+        caseId={aktywnyPrzypadek}
+        operatorId={operatorId}
+        nazwyModulow={nazwyModulowPrzekrojowe}
+        onWybierzModul={(derRef) => {
+          setWybranyModul(derRef);
+          setWybranaKomorka(null);
+        }}
+      />
 
       {certyfikat || certBraki || certBlad || certLadowanie ? (
         <section className="mvd-oze-cert" data-testid="mvd-oze-certyfikat">
@@ -768,6 +799,7 @@ export function MacierzNcRfg({
                 zdolnosci={opisWybrany.zdolnosci}
                 pochodzenie={opisWybrany.pochodzenieZdolnosci}
                 numeryczne={opisWybrany.numeryczne}
+                ocenaModulu={wynik?.evidence_per_module[opisWybrany.derRef] ?? null}
                 onZmienZdolnosc={(klucz, wartosc) =>
                   zmienZdolnosc(opisWybrany.derRef, klucz, wartosc)
                 }

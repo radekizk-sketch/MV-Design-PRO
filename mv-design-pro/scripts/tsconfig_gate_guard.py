@@ -162,12 +162,210 @@ POMIJANE_KATALOGI = {
 #     `base_template`, więc przestały być niezgodne z typem.
 # `e2e/` i `playwright.config.ts` weszły DO bramki (0 błędów) — nie są już
 # długiem, tylko zasięgiem.
-BUDZET_BLEDOW_POZA_BRAMKA = 531
+#   * Karta CI-B (pomiar 2026-09-04): na HEAD dług byl 658 (urosl z 531 bez
+#     sparowanego wpisu w rejestrze — przyczyna wzrostu nie jest znana tej
+#     karcie, tylko zastany fakt). Sprowadzony do 137 U ZRODLA, bez wyciszen i
+#     bez zmiany zachowania produktu (poza jednym addytywnym poszerzeniem typu
+#     `TraceValue` — patrz commit). Najwieksze klasy: brakujacy `import {
+#     describe, it, expect } from 'vitest'` w 3 plikach (259 bledow, TS2304 +
+#     TS2582 — testy polegaly wylacznie na globalach `vitest.config` przy
+#     type-checku, ktory globali nie widzi), martwy `@ts-expect-error` na
+#     shimie `URL.createObjectURL`/`revokeObjectURL` w 13 plikach (38 bledow —
+#     TS DOM lib w uzywanej wersji TS juz zna te metody statyczne, wiec
+#     zabezpieczenie stalo sie zbedne), fikstury niezgodne z kanonicznym
+#     ksztaltem typu (ENM `EnmFragment`/`StationTransformerUnit`/
+#     `ReadinessEntry.severity`/`KontekstJakosci.case_id+snapshot_hash+run_id`/
+#     `DerCatalogSelections` czesciowe nadpisania w `derFixture`), oraz
+#     `Array.prototype.at()` niedostepne pod zamrozonym `lib: ES2020` (20
+#     wystapien w 8 plikach — nowy `src/test/arrayAt.ts`, rownowaznik `at()`
+#     dla testow, zamiast luzowania `lib` calego projektu).
+#   * Karta CV-3.3-B (pomiar 2026-09-05): 137 -> 139 przy dopisaniu
+#     `provenance_a`/`provenance_b` (pole WYMAGANE, B1) do
+#     `PowerFlowComparisonResult`/`ProtectionComparisonResult` bez aktualizacji
+#     WSZYSTKICH fikstur budujacych te typy literalem — `src/ui/power-flow-
+#     comparison/__tests__/power-flow-comparison.test.ts` i `src/ui/protection-
+#     comparison/__tests__/protection-comparison.test.ts` (osobne od
+#     `ui2/wyniki/porownanie/__tests__/fixtures.ts`, ktore juz mialo poprawke).
+#     Naprawione U ZRODLA (fixture proweniencji w obu plikach) + przy okazji
+#     zdjety 1 pre-existing martwy import `PowerFlowComparisonTab`
+#     (`power-flow-comparison.test.ts`, TS6133, napotkany w tym samym imporcie
+#     — Zero-Debt). Sprowadzone do 136.
+#   * Karta FAB-K (pomiar 2026-09-05): 137 -> 129, U ZRODLA. Karta zwezyla
+#     `ConnectionSide` (6 wartosci -> 2: `nN`/`dedicated_transformer`) i usunela
+#     fantomy `voltage_level_ref`/`connection_node_ref`/`internal_cable_ref`/
+#     `regulation_profile_ref` z `StationDerConnection` — kazdy plik testowy
+#     poza bramka, ktory jeszcze niosl STARE nazwy pol/wartosci (fikstury
+#     `station-der/__tests__/*`, `workspace/surfaces/__tests__/*`,
+#     `station-configurator/cards/__tests__/*`, `der-configurator/__tests__/*`,
+#     `ui2/oze/macierz/__tests__/fixtures.ts`, `ui2/spaces/wyniki/__tests__/*`),
+#     naprawiony U ZRODLA (nazwa/wartosc pola, nie wyciszenie). Przy okazji:
+#     `DerConfigurator.tsx` (breadcrumb karty DER, poza bramka testow — w
+#     BRAMCE, 0 bledow w bramce bez zmian) niosl WLASNA, DRUGA kopie etykiet
+#     `connectionSide` z czterema martwymi kluczami sprzed tej karty
+#     (`SN`/`at_zksn`/`at_branch_pole`/`at_cable_joint`, nieosiagalnymi przez
+#     zadna realna wartosc `ConnectionSide`) — zamieniona na reuzycie
+#     `punktPrzylaczeniaOpisPl` (`station-der/readiness.ts`, ta sama funkcja,
+#     ktorej juz uzywaly komunikaty blokerow gotowosci), zamiast dwoch kopii tej
+#     samej fizyki. Dlug NIE ROSL — zmalal jako SKUTEK UBOCZNY naprawy klasy pol
+#     DER (karta FAB-K), nie osobnej sesji sprzatania tego pliku.
+#   * Scalenie FAB-K z CV-3.3-B (koordynator, pomiar 2026-09-05): 129 -> 128.
+#     Po scaleniu bylo 130: dwa pliki testow korzenia aplikacji (`App.test`,
+#     `ui2/__tests__/integracja.test`) niosly DWA importy tego samego helpera
+#     (`renderWithQueryClient as render` z b40e1778 i `renderWithQueryClient`
+#     z FAB-K, ktory zamienil wywolania) — alias zostal bez uzycia (TS6133).
+#     Usuniety alias, nie prog. Do tego FAB-K skasowala martwy import
+#     `PowerFlowComparisonTab` niezaleznie od CV-3.3-B (ta sama naprawa w obu
+#     kartach) — laczny stan po scaleniu: 128.
+#   * CV-4.3 K7 odbior (Fable, pomiar 2026-09-09): 128 -> 127. Karta K7-FE dolozyla +1
+#     (mock podgladu IEC 60909 w `KreatorZrodloZasilania.test.tsx` typowany wnioskowanym
+#     literalem bez bloku `scenariusz_min`) -> mock typowany kontraktem
+#     `GridSourcePreviewResponse` (-1); przy okazji naprawiony u zrodla pre-existing TS1117
+#     (duplikat `itemsByBayId` w literale `InspectorEngineeringView.test.tsx`, od #433 — drugi
+#     klucz po cichu zerowal fiksture read-modelu) (-1). Razem 127.
+#: W2-B odbior (2026-09-09): trzy testy `Etap3Configurators.test.tsx` budowaly `routeState`
+#: bez obowiazkowego `route` (dwa nowe + jeden zastany `der-sources`) — naprawione u zrodla,
+#: pomiar guardem 127 -> 126.
+#: W3-C1 (2026-09-09): 130 -> 125 (dlug PRZED karta stal juz na 130 — 4 bledy
+#: TS6133 w plikach karta nie dotyka, spoza jej zakresu, zmierzone jako
+#: pre-existing: `ui/history/__tests__/HistoryStore.test.ts` (nieuzywany import
+#: `vi`, nieuzywana zmienna `cmd1`), `ui/engineering-readiness/__tests__/
+#: EngineeringReadinessPanel.test.ts` (nieuzywana stala `BY_SEVERITY_THREE_
+#: BLOCKERS`), `ui/fault-scenarios/__tests__/faultScenariosStore.test.ts`
+#: (nieuzywana funkcja `makeScenario`) — naprawione U ZRODLA (usuniete martwe
+#: importy/zmienne/funkcja, zero zmiany zachowania: 41 testow tych 3 plikow
+#: nadal zielone). Usuniecie CALEJ funkcji `makeScenario` zdjelo PRZY OKAZJI
+#: takze jej WLASNY blad TS2322 (literal zwracany z jej ciala nie pasowal do
+#: `FaultScenario`) — martwy kod nie moze naruszac kontraktu, ktorego nikt nie
+#: czyta. Razem -5 bledow (130 -> 125), jeden ponizej progu 126: zapadka w
+#: obie strony wymaga obnizenia, nie tylko braku wzrostu.
+#: Odbior fali 2 W3 (2026-09-10): drzewo scalone W3-F/B/I/C1/C2 mialo 126 (budzet 125):
+#: W3-C1 zmierzyla 125 PRZED wlasnymi testami ekranu koordynacji (4 bledy w
+#: `SekcjaNastaw.test.tsx` — typ mocka fetch `ReturnType<typeof vi.fn>` vs
+#: implementacja — i `EkranKoordynacji.test.tsx` — mock bez parametru, `c[0]` na
+#: krotce `[]`), W3-B dolozyla 1 (`konfiguratorRozdzielnicy.test.ts` — literal bez
+#: `ct_moc_stykow_va`/`vt_moc_stykow_va` wlasnego typu). Wszystkie naprawione
+#: U ZRODLA (typy zgodne z implementacja, zero wyciszen); ta sama naprawa zdjela
+#: tez wczesniejszy blad `c[0]` w `EkranKoordynacji.test.tsx` (ten sam mock bez
+#: parametru) — pomiar guardem po naprawie: 126 -> 119, zapadka w dol.
+#: Odbior fali 3 W3 (2026-09-16, drzewo `c307e95f`): poprawki recenzji G1/G2/G3 naprawily
+#: u zrodla dwa bledy typow w testach poza bramka (`sekcjaPorownaniaMetod.test.tsx` —
+#: typ mocka `createAndExecuteRun` jako `Mock<[caseId, request], Promise<ExecutionRun>>`
+#: zamiast `ReturnType<typeof vi.fn>`; fikstura `CIEPLNA_FIXTURE` uzupelniona o pola
+#: kontraktu zamiast rzutowania) — pomiar guardem w lancuchu przedpushowym: 119 -> 117,
+#: zapadka w dol (guard sam zameldowal `[dlug-zmalal]`).
+#: W3-J (2026-09-16, odbior na drzewie `474f847a` po fali 3): 117 -> 116. Trzy pliki testowe usuniete razem z martwym
+#: kodem, ktory testowaly (`ui2/kreatory/magistrala/__tests__/WykresSpadku.
+#: test.tsx`, `ui/voltage-profile/__tests__/{VoltageHeatmap,
+#: voltageProfileAnalyzer}.test.ts` — kasacja duplikatow kryteriow
+#: napieciowych, patrz karta), co obnizylo dlug POZA BRAMKA o czesc tej
+#: roznicy; jeden REALNY blad typu naprawiony U ZRODLA przy okazji (nie
+#: naprawa TEJ karty, ale napotkany w pliku, ktory karta i tak edytowala —
+#: `ui2/wyniki/co-wymaga-uwagi/__tests__/model.test.ts:153`, `{} as
+#: WerdyktResponse` odwolywal sie do nieistniejacego/niezaimportowanego typu;
+#: poprawny typ parametru `przekroczeniaWerdyktu` to `OdpowiedzOceny`, juz
+#: zaimportowany w tym pliku). Pomiar guardem po obu zmianach: 116.
+#: Karta V12.7 (2026-09-16, worktree z bazy `c307e95f`): pomiar na tym drzewie wykazal 121 (119 + 2 —
+#: `EkranAnalizAkademickich.test.tsx` uzywal `.at(-1)` na wyniku `.filter()`,
+#: co wymaga `lib` ES2022, a plik kompiluje sie POZA bramka wlasnie w TYM
+#: pomiarze; drugie wystapienie tego samego wzorca bylo w tym samym pliku,
+#: sprzed karty V12.7 — obie miejsca zaslugiwaly na naprawe, bo scieznka byla
+#: JUZ otwarta). Naprawiono U ZRODLA (indeksowanie `tablica[tablica.length -
+#: 1]` zamiast `.at(-1)`, bez zmiany semantyki) — pomiar po naprawie: 118.
+#: Odbior W3-J + V12.7 na jednym drzewie (2026-09-16): budzet z POMIARU guardem na drzewie
+#: scalonym (nie z arytmetyki kart): 114 — V12.7 wniosla 3 nowe bledy typow w fixturach testow poza bramka (nowe wymagane pola kontraktu symbol_latex/warunek_latex/zakres_oceny/margines_wzor_latex w ocena/model.test.ts i co-wymaga-uwagi/model.test.ts) i zdjela 2 (.at(-1)); przy odbiorze naprawione U ZRODLA (fixtury uzupelnione o pola kontraktu), pomiar po naprawie 114 (116 z drzewa W3-J - 2 zdjete .at(-1) = 114).
+#: Karta S-1/S-4 (W6-0, 2026-09-16): pelny bieg `guardy_z_ci.py` (obowiazkowy
+#: w DoD karty) zmierzyl 119 -> 117, powtorzone niezaleznie dwoma biegami
+#: `tsc` (sam guard w ramach sweepu + osobne wywolanie `zmierz_dlug()`) —
+#: NIE fluke przerwanego pomiaru. Karta S-1/S-4 dotyka w tej sesji 6 plikow
+#: kwalifikujacych sie „poza bramka" (`__tests__/fixtures.ts` w
+#: `ui2/oze/frt`, `ui2/oze/macierz`, `ui2/oze/wniosek`;
+#: `ui2/oze/frt/__tests__/EkranFrt.test.tsx`;
+#: `ui2/oze/macierz/__tests__/panelModulu.test.tsx`;
+#: `ui2/wyniki/stabilnosc/__tests__/EkranStabilnosci.test.tsx`) — WYLACZNIE
+#: dopiskami (zero usuniec, `git diff --stat` bez ani jednej linii „-"), a
+#: zaden z tych 6 plikow nie wystepuje w liscie 117 bledow POZA BRAMKA
+#: zmierzonej po zmianie. Spadek nie jest wiec przyczynowo zwiazany z kartą
+#: S-1/S-4 — to dlug PRZEDTEM juz nizszy niz zapisany budzet, napotkany przy
+#: obowiazkowym pelnym sweepie i naprawiony TU (CLAUDE.md Zero-Debt pkt 1:
+#: „kazdy NAPOTKANY blad naprawiasz — takze pre-existing"). Zapadka w dol:
+#: 119 -> 117.
+#: Odbior S-1/S-4 na drzewie po W3-J + V12.7 (2026-09-16): budzet z POMIARU guardem na drzewie
+#: scalonym — patrz liczba nizej (pomiar po ostatnim cherry-picku karty).
+#: Karta S-2 AUTORYTET (2026-09-16, k_sc DEFAULT_FORBIDDEN): guard zmierzyl
+#: 119 -> 117 na drzewie z pracy tej karty (`ui/catalog/types.ts`, `api.ts`,
+#: `AddDerWizard.tsx`, `KreatorZrodlaOze.tsx` + testy). Zapadka w dol — bez
+#: izolowania, ktore 2 bledy zniknely (pomiar wylacznie agregatem guarda, jak
+#: przewiduje jego wlasny komunikat); nie podnosic budzetu bez nowego pomiaru.
+#: Odbior S-2 AUTORYTET na drzewie po W3-J + V12.7 + S-1/S-4 + HARNESS-ZWARCIA (2026-09-16):
+#: POMIAR guardem na drzewie scalonym = 114 (bez zmian; spadek 119 -> 117 zmierzony przez
+#: karte S-2 na jej bazie to ta sama para bledow, ktora odbior fali 3 zdjal wczesniej).
+#: Karta W5-D (2026-09-16): pomiar guardem na drzewie karty = 113. Karta dopisala 2 nowe
+#: pliki testow poza bramka bez bledow i przepisala fixtury przebiegow w
+#: `ui2/wyniki/stan-fazowy/__tests__/ekranStanuFazowego.test.tsx` z `as never` na obiekty
+#: TYPOWANE kontraktem `ExecutionRun` (naprawa U ZRODLA: zdjeta 1 zastana pozycja TS2698
+#: „Spread types may only be created from object types" i NIE dopisana nowa tego samego
+#: wzorca). Zapadka w dol: 114 -> 113.
+#: W5-A (2026-09-16): 114 -> 113 na drzewie karty — kasacja czterech martwych plikow frontu uziemienia
+#: (panel i selektor ukladu w `ui/topology`, ich typy, odznaka uziemienia w `ui/sld/v2/renderer`
+#: + testy; nazwy plikow pilnuje `grep_zero_guard` grupa `kod_`) zdjela jeden blad typow POZA
+#: bramka (pomiar guardem na drzewie karty); zapadka w dol, nie podnosic bez nowego pomiaru.
+#: Odbior W5-D + W5-A na drzewie scalonym (2026-09-16): pomiar guardem = 112 (obie zapadki w dol
+#: zdjely rozne pozycje).
+#: Karta TYPY-TESTOW-FE / V12T-018 (2026-09-17, worktree z bazy `b2f59b0f`): dlug rejestru
+#: V12T-018 (commit `c8537620`, certyfikaty PTPiREE) domkniety U ZRODLA, nie podniesieniem
+#: budzetu. Pomiar guardem PRZED naprawa na tym drzewie: 118 (budzet stal na 112 — guard byl
+#: CZERWONY z powodu wzrostu dlugu, nie tylko brakiem obnizenia). 12 bledow w 9 plikach
+#: naprawione fikstura zgodna z kontraktem (bez `as unknown as`/`@ts-expect-error`/`any`):
+#: `MeasurementTransformerType` (martwy kontrakt, ZERO konsumentow poza wlasna deklaracja)
+#: skasowany z `ui/catalog/types.ts`; fikstura `MEASUREMENT_TRANSFORMER` w
+#: `TypeLibraryBrowser.test.tsx` przepisana na realny ksztalt `[...CTCatalogType,
+#: ...VTCatalogType]`, jak zwraca `fetchTypesByCategory` w produkcji; `pozycjeStrony` otypowane
+#: `PtpireeGeneratorCertificateCatalogType[]` z kompletem pol kontraktu. Naprawa fikstury
+#: MEASUREMENT_TRANSFORMER odslonila (przez usuniecie WCZESNIEJSZEGO bledu w tym samym
+#: literale) NIEZALEZNY, JUZ ISTNIEJACY brak w `catalogByCategory: Record<TypeCategory, ...>`
+#: (5 kategorii bez wpisu: SURGE_ARRESTER/SHUNT_CAPACITOR/BRANCH_POLE/ZKSN/
+#: PTPIREE_CERTIFICATE — TS2739, zaslaniany dotad przez inny blad w tym samym wyrazeniu) —
+#: naprawiony TU (Zero-Debt: kazdy napotkany blad w tej samej kolejce), pustymi listami
+#: (zadna z tych zakladek nie jest klikana w tym pliku testow — `TAB_DEFINITIONS`
+#: `TypeLibraryBrowser.tsx` ich nie wystawia; pusta lista to uczciwy stan, nie fikcja).
+#: Reszta: `converterTypesPtpiree.test.ts` (`afterEach` bez zwracanej wartosci `VitestUtils`),
+#: `fieldControlSelectors.test.ts` (`FieldReadModelItem` w pelni wg `BayCanonicalModel`/
+#: `BayBaseModel`, kasacja rzutowania), `technical-icons.test.tsx` (nowy eksportowany typ
+#: `ScreenIconName = keyof typeof screenIconRegistry` w `technicalIconRegistry.tsx`, pole
+#: `ScreenCanonDefinition.icon` zwezone z `TechnicalIconName` na `ScreenIconName` w
+#: `screenCanonRegistry.ts` — wszystkie 39 uzytych wartosci ikon ekranu juz byly w tym
+#: podzbiorze, zero brakujacych etykiet PL; `size` petli testu na `as const`),
+#: `IssuePanelContainer.test.tsx` (`'Transformer'` -> `'TransformerBranch'`, kanon
+#: `ElementType`), `ReadinessBlockersReview.test.tsx` (typ selektora mocka
+#: `useSnapshotStore` dopisuje `readiness: ReadinessInfo | null`, zgodnie z realnym
+#: `SnapshotState`), `networkBuildStore.test.ts` (fikstura `ReadinessInfo` z `warnings: []`),
+#: `stationSnFields.test.ts` (fikstury `Substation`/`Bay` pelne wg `ENMElement` + kontraktow
+#: wlasnych, kasacja martwego pola `type: 'bay'` spoza kontraktu `Bay`), oraz
+#: `derConfiguratorContract.test.ts` (import `DerReadinessCategory` uzyty w nowym tescie
+#: kompilacyjnym kategorii macierzy gotowosci, analogicznie do istniejacego testu `DerKind`).
+#: Pomiar PO naprawie (ten sam pelny sweep, zero nowych bledow — `comm` linia po linii
+#: PRZED/PO potwierdza wylacznie 12 usuniec, 0 dodan): 106. Budzet obnizony 112 -> 106.
+#: Fala SZABLONY-NAPIECIE (2026-09-18, pomiar guardem): mocki podsumowania szablonu w
+#: `StationBatchPlanner.test.tsx` byly NIEPELNE wzgledem `StationTemplateSummary` (brak
+#: `category_label_pl`, `rated_power_kva`, `voltage_hv_kv`, `voltage_lv_kv`, `sn_voltage_kv`,
+#: `bay_role_categories`) — trzy bledy TS2740 poza bramka. Uzupelnione do pelnego kontraktu
+#: (fikstura testu ma odpowiadac odpowiedzi backendu, inaczej test cwiczy inny ksztalt niz
+#: produkt). Pomiar PO naprawie: 105. Budzet obnizony 106 -> 105.
+BUDZET_BLEDOW_POZA_BRAMKA = 105
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,
 #: WSZYSTKIE w plikach testowych.
-BUDZET_WYCISZEN = 35
+#: Karta CI-B (pomiar 2026-09-04): na HEAD 39 (urosl bez wpisu w rejestrze).
+#: 38 z 39 to DOKLADNIE ten sam martwy `@ts-expect-error` na shimie
+#: `URL.createObjectURL`/`revokeObjectURL` opisany wyzej — usuniete U ZRODLA
+#: (nie wyciszeniem: TS sam meldowal je jako "Unused '@ts-expect-error'
+#: directive", TS2578, wiec byly juz policzone w BUDZET_BLEDOW_POZA_BRAMKA
+#: TEZ jako blad). Zostaje 1: `src/ui/sld/v3/export/__tests__/
+#: eksportDokumentu.test.ts` — celowe, dokumentuje ze format spoza rejestru
+#: nie przechodzi ANI typu, ANI wykonania (jedyny prawdziwy powod wyciszenia
+#: w calym repo).
+BUDZET_WYCISZEN = 1
 
 #: Zapadka na pusty skan: `frontend/src` to tysiące modułów. Mniej niż tyle
 #: znaczy, że zmienił się układ katalogów, a nie że kodu ubyło.

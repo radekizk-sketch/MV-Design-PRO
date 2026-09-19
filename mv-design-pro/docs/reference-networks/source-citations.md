@@ -112,9 +112,22 @@ industry-standard library używana w GE, ABB, Siemens, badaniach naukowych):
 | Voltage angles (3 dec. places) | Match |
 | Convergence iterations | Identyczne |
 
-Test cases:
+Test cases (oznaczone markerem pytest `pandapower` — patrz niżej):
 - `tests/application/reference_networks/test_pandapower_cross_validation.py` — 6 testów PASS
-- `tests/application/reference_networks/test_proof_of_correctness.py` — 13 testów PASS
+- `tests/application/reference_networks/test_pandapower_bridge.py` — 4 testy PASS (konwersja ENM -> pandapower)
+- `tests/application/reference_networks/test_proof_of_correctness.py` — 13 testów PASS (bez markera, liczby zaszyte jako stała referencja)
 
 Powyższe stanowi matematyczny dowód poprawności naszego solvera Newton-Raphson:
 implementacja jest identyczna pod względem wyników z industry-verified library.
+
+**Jak to faktycznie biegnie (od 2026-09-05).** `pandapower` nie jest zależnością
+głównego venv solverów (konflikt: `pandapower<3.6` wymaga `scipy<1.17`, a główny
+venv pinuje `scipy==1.17.0` dla stabilności złotych hashy) — 10 testów powyżej
+nosi marker pytest `pandapower` i biegnie WYŁĄCZNIE w izolowanym środowisku:
+w CI to osobny job `pandapower-cross-validation` w
+`.github/workflows/python-tests.yml` (równoległy do głównego jobu `pytest`,
+który jawnie deselekcjonuje ten marker: `-m "not pandapower"`); lokalnie —
+osobny `venv` z `pandapower==3.5.4` doinstalowanym NAD zależnościami backendu,
+uruchomiony jako `pytest -m pandapower tests/application/reference_networks`
+z `mv-design-pro/backend`. Główny venv (`scipy==1.17.0`) nigdy nie instaluje
+pandapower i pozostaje nietknięty.

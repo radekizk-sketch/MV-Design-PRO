@@ -13,8 +13,6 @@ from enm.models import (
     BayEnergizationSafetyState,
     BayInterlockSet,
     BayMeasurementChain,
-    BayMeasurements,
-    BayMeasurementSet,
     BayOperatingState,
     BayPowerFlowSourceContribution,
     BayPrimaryDevice,
@@ -31,7 +29,6 @@ from enm.models import (
     Branch,
     EnergyNetworkModel,
     Generator,
-    GroundingConfig,
     InterlockEntry,
     Measurement,
     ProtectionAssignment,
@@ -42,6 +39,7 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from network_model.core.uziemienie import TypPunktuNeutralnego
 
 CANONICAL_BAY_ROLE_MAP: dict[str, str] = {
     "IN": "LINIA_IN",
@@ -679,6 +677,13 @@ def _build_measurement_chain(
         zero_sequence_current_source = "suma_ct"
     else:
         zero_sequence_current_source = "brak"
+    # Karta FAB-D1 (D9): brak realnej integracji telemetrii w tym budowniczym —
+    # funkcja opisuje TOPOLOGIĘ łańcucha pomiarowego (które CT/VT są podłączone),
+    # nie ODCZYT z encji `Measurement`. `BayMeasurements(frequency_hz=50.0)`
+    # twierdziło "pomiar 50 Hz", którego nikt nie wykonał (POMIAR sfabrykowany).
+    # Zestaw pomiarowy zostaje PUSTY (kontrakt `BayMeasurementChain.
+    # measurement_sets` domyślnie `[]`) — UI pokazuje brak danych, zamiast
+    # fabrykowanej wartości.
     return BayMeasurementChain(
         chain_ref=f"measurement-chain:{bay.ref_id}",
         ct_refs=ct_refs,
@@ -688,14 +693,6 @@ def _build_measurement_chain(
         zero_sequence_current_source=zero_sequence_current_source,
         zero_sequence_voltage_source="otwarty_trojkat_vt" if uses_3u0 else "brak",
         topology=topology,
-        measurement_sets=[
-            BayMeasurementSet(
-                side="pole",
-                values=BayMeasurements(
-                    frequency_hz=50.0,
-                ),
-            )
-        ],
     )
 
 
@@ -1317,26 +1314,24 @@ def _resolve_neutral_grounding_mode(
     *,
     sources: list[Source],
     transformers: list[Transformer],
-) -> str:
+) -> TypPunktuNeutralnego | None:
+    """Sposob pracy punktu neutralnego przy szynie pola — ten sam slownik co
+    `GroundingConfig.type` (W5-A: koniec polskich literalow w kontrakcie).
+    Nosniki: punkt neutralny transformatora przy szynie, potem opis punktu
+    neutralnego zrodla (GPZ) na tej szynie."""
     for transformer in transformers:
         if transformer.hv_neutral is not None:
-            return _map_grounding_type(transformer.hv_neutral)
+            return transformer.hv_neutral.type
         if transformer.lv_neutral is not None:
-            return _map_grounding_type(transformer.lv_neutral)
-    # V12K-246: brak danych o punkcie neutralnym to „nieznany", NIE „bezposrednio
-    # uziemiony". Poprzedni domysl zamienial BRAK DANEJ w najmniej ostrozny werdykt:
-    # w sieci bezposrednio uziemionej prad zwarcia doziemnego jest duzy i mierzalny
-    # kryterium nadpradowym, wiec dobor zabezpieczen NIE zglaszal potrzeby kryterium
-    # kierunkowego — a polskie sieci SN sa w wiekszosci kompensowane albo uziemione
-    # przez rezystor. Obecnosc zrodla na szynie nie mowi NIC o sposobie uziemienia.
-    return "nieznany"
-
-
-def _map_grounding_type(grounding: GroundingConfig) -> str:
-    mapping = {
-        "isolated": "izolowany",
-        "petersen_coil": "cewka_petersena",
-        "resistor_grounded": "rezystor",
-        "directly_grounded": "bezposrednio_uziemiony",
-    }
-    return mapping.get(grounding.type, "nieznany")
+            return transformer.lv_neutral.type
+    for source in sources:
+        if source.neutral_grounding is not None:
+            return source.neutral_grounding.type
+    # V12K-246: brak danych o punkcie neutralnym to `None` (nieznany), NIE
+    # „bezposrednio uziemiony". Poprzedni domysl zamienial BRAK DANEJ w najmniej
+    # ostrozny werdykt: w sieci bezposrednio uziemionej prad zwarcia doziemnego jest
+    # duzy i mierzalny kryterium nadpradowym, wiec dobor zabezpieczen NIE zglaszal
+    # potrzeby kryterium kierunkowego — a polskie sieci SN sa w wiekszosci
+    # kompensowane albo uziemione przez rezystor. Obecnosc zrodla na szynie BEZ
+    # opisu punktu neutralnego nie mowi NIC o sposobie uziemienia.
+    return None

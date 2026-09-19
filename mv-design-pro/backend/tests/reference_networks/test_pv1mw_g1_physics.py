@@ -14,7 +14,8 @@ Both passed the ≤Icw verdict ("✓") while the physics was inverted — exactl
 import math
 
 import pytest
-from application.reference_networks.station_archetype_substrate import build_g4_pvtr
+
+from tests.reference_networks.station_archetype_substrate import build_g4_pvtr
 
 
 def _node(companion: dict, bus: str) -> tuple[float, float, float, float]:

@@ -151,6 +151,7 @@ describe('DoborToruSn — krok doboru toru SN', () => {
         onCableLengthChange={() => {}}
         onVectorGroupChange={() => {}}
         onLayingConditionsChange={() => {}}
+        onScreenBondingChange={() => {}}
         onZastosuj={onZastosuj}
         applied={false}
       />,
@@ -183,6 +184,7 @@ describe('DoborToruSn — krok doboru toru SN', () => {
         onCableLengthChange={() => {}}
         onVectorGroupChange={onVectorGroupChange}
         onLayingConditionsChange={() => {}}
+        onScreenBondingChange={() => {}}
         onZastosuj={() => {}}
         applied={false}
       />,
@@ -210,6 +212,7 @@ describe('DoborToruSn — krok doboru toru SN', () => {
         onCableLengthChange={() => {}}
         onVectorGroupChange={() => {}}
         onLayingConditionsChange={() => {}}
+        onScreenBondingChange={() => {}}
         onZastosuj={() => {}}
         applied={false}
       />,
@@ -256,6 +259,7 @@ function wyrenderujKrok(
       onCableLengthChange={() => {}}
       onVectorGroupChange={() => {}}
       onLayingConditionsChange={opcje.onLayingConditionsChange ?? (() => {})}
+      onScreenBondingChange={() => {}}
       onZastosuj={onZastosuj}
       applied={false}
     />,

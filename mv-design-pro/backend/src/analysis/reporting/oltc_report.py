@@ -19,8 +19,12 @@ class OltcRegulatorReport:
     controlled_bus_id: str | None
     setpoint_kv: float | None
     deadband_kv: float | None
-    initial_position: int
-    final_position: int
+    # FAB-E (E1): None gdy ANI slad solvera (initial_positions/final_positions),
+    # ANI konfiguracja regulatora (meta.initial_position) nie niosa pozycji —
+    # 0 to prawidlowa pozycja NEUTRALNA dla wielu OLTC, wiec fabrykowane 0
+    # bylo by NIEODROZNIALNE od "regulator faktycznie startowal z neutralnej".
+    initial_position: int | None
+    final_position: int | None
     switch_count: int
     u_controlled_before_kv: float | None
     u_controlled_after_kv: float | None
@@ -64,6 +68,23 @@ _EMPTY = OltcReportSection(
 )
 
 
+def _pozycja_tap_lub_none(
+    pozycje_ze_sladu: dict[str, Any], branch_id: str | None, meta: dict[str, Any]
+) -> int | None:
+    """Pozycja zaczepu OLTC: slad solvera -> konfiguracja regulatora -> None.
+
+    FAB-E (E1): 0 jest prawdziwa pozycja NEUTRALNA dla wielu OLTC, wiec brak
+    danych w OBU zrodlach konczy sie None (nie fikcyjne 0/"neutralna").
+    """
+    z_ladu = pozycje_ze_sladu.get(branch_id) if branch_id is not None else None
+    if z_ladu is not None:
+        return int(z_ladu)
+    z_konfiguracji = meta.get("initial_position")
+    if z_konfiguracji is not None:
+        return int(z_konfiguracji)
+    return None
+
+
 def _decision_by_branch(oltc: dict[str, Any], branch_id: str, first: bool) -> dict[str, Any] | None:
     iterations = oltc.get("iterations") or []
     order = iterations if first else list(reversed(iterations))
@@ -99,10 +120,8 @@ def build_oltc_report_section(oltc_control: dict[str, Any] | None) -> OltcReport
                 controlled_bus_id=meta.get("controlled_bus_id"),
                 setpoint_kv=meta.get("setpoint_kv"),
                 deadband_kv=meta.get("deadband_kv"),
-                initial_position=int(
-                    initial_positions.get(branch_id, meta.get("initial_position", 0))
-                ),
-                final_position=int(final_positions.get(branch_id, meta.get("initial_position", 0))),
+                initial_position=_pozycja_tap_lub_none(initial_positions, branch_id, meta),
+                final_position=_pozycja_tap_lub_none(final_positions, branch_id, meta),
                 switch_count=int(switch_counts.get(branch_id, 0)),
                 u_controlled_before_kv=(first or {}).get("u_controlled_kv"),
                 u_controlled_after_kv=(last or {}).get("u_controlled_kv"),
@@ -124,6 +143,12 @@ def _fmt_kv(value: float | None) -> str:
     return f"{value:.3f} kV" if isinstance(value, int | float) else "—"
 
 
+def _fmt_pos(value: int | None) -> str:
+    """FAB-E (E1): pozycja zaczepu nieznana (ani sladu solvera, ani
+    konfiguracji) -> "—", nigdy fikcyjne 0 (nieodroznialne od neutralnej)."""
+    return str(value) if isinstance(value, int) else "—"
+
+
 def render_oltc_report_text(section: OltcReportSection) -> str:
     """Polish plain-text rendering for inclusion in a PF report."""
     if not section.present:
@@ -137,7 +162,7 @@ def render_oltc_report_text(section: OltcReportSection) -> str:
     for r in section.regulators:
         lines.append(
             f"  Transformator {r.branch_id} (uzwojenie {r.regulated_winding}): "
-            f"pozycja {r.initial_position} → {r.final_position} "
+            f"pozycja {_fmt_pos(r.initial_position)} → {_fmt_pos(r.final_position)} "
             f"({r.switch_count} przeł.), U zadane {_fmt_kv(r.setpoint_kv)}, "
             f"U szyny {_fmt_kv(r.u_controlled_before_kv)} → {_fmt_kv(r.u_controlled_after_kv)}"
         )
@@ -154,8 +179,8 @@ def render_oltc_report_latex(section: OltcReportSection) -> str:
     rows = []
     for r in section.regulators:
         rows.append(
-            f"{r.branch_id} & {r.regulated_winding} & {r.initial_position} & "
-            f"{r.final_position} & {r.switch_count} \\\\"
+            f"{r.branch_id} & {r.regulated_winding} & {_fmt_pos(r.initial_position)} & "
+            f"{_fmt_pos(r.final_position)} & {r.switch_count} \\\\"
         )
     body = "\n".join(rows)
     return (

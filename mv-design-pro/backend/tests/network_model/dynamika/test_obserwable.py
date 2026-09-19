@@ -1,0 +1,1241 @@
+"""Falsyfikacja obserwabli W6-A: czestotliwosc wezla i wielkosci zaciskow galezi.
+
+TO NIE SA TESTY DEKLARACJI. Kazdy przypadek ma wynik oczekiwany wyprowadzony PRZED
+uruchomieniem — z tozsamosci fazorowej albo z rachunku analitycznego ukladu — a na koncu
+pliku stoi rodzina INIEKCJI: wariant kodu z konkretnym defektem i dowod, ze te testy go
+zlapia. Test, ktory nie pada na zepsutej implementacji, niczego nie pilnuje.
+"""
+
+from __future__ import annotations
+
+import cmath
+import math
+
+import numpy as np
+import pytest
+from network_model.solvers.dynamika import (
+    GalazDynamiki,
+    HarmonogramDynamiki,
+    OdbiorDynamiki,
+    PunktPracy,
+    SilnikDynamiki,
+    SkokObciazenia,
+    WejscieDynamiki,
+    WezelDynamiki,
+)
+from network_model.solvers.dynamika.obserwable import (
+    JAKOSC_NIEDOSTEPNA,
+    JAKOSC_NIEROZROZNIALNA,
+    JAKOSC_ROZROZNIALNA,
+    OPIS_JAKOSCI_PL,
+    CzestotliwoscWezla,
+    czestotliwosc_wezla,
+    rozdzielczosc_porownania_hz,
+    wielkosci_galezi,
+)
+from network_model.solvers.dynamika.siec import zloz_model_sieci
+
+from tests.network_model.dynamika.uklady import (
+    F_BAZOWA_HZ,
+    S_BAZOWA_MVA,
+    U_N_KV,
+    X_LINII_PU,
+    nastawy,
+    zbuduj_smib,
+)
+
+#: Niepewnosc napiecia uzywana w testach jednostkowych czestotliwosci — WEJSCIE
+#: funkcji, nie nastawa solvera (od korekty par. 5 niepewnosc jest mierzona).
+NIEPEWNOSC_NAPIECIA = 1.0e-10
+
+
+# ---------------------------------------------------------------------------
+# F-1..F-5: czestotliwosc wezla — tozsamosci fazorowe (wynik znany przed biegiem)
+# ---------------------------------------------------------------------------
+
+
+def test_f1_stan_ustalony_daje_dokladnie_czestotliwosc_znamionowa() -> None:
+    """Zerowa pochodna fazora => f = f_n CO DO BITU, bez wzgledu na modul i kat."""
+    for modul, kat in ((1.0, 0.0), (0.93, 2.1), (1.07, -3.0)):
+        wynik = czestotliwosc_wezla(
+            modul * cmath.exp(1j * kat),
+            0j,
+            f_bazowa_hz=F_BAZOWA_HZ,
+            niepewnosc_napiecia_pu=0.0,
+            niepewnosc_pochodnej_pu_s=0.0,
+        )
+        assert wynik.f_hz == F_BAZOWA_HZ
+        assert wynik.niepewnosc_hz == 0.0
+        # KOREKTA KONTRAKTU (P1-DELTA-40). Wczesniej stalo tu ROZROZNIALNA i to bylo
+        # falszywe semantycznie: etykieta mowi „odchylka od f_n przewyzsza oszacowany
+        # blad numeryczny", a tutaj odchylka jest ZEROWA. Zero nie przewyzsza zera.
+        # Intencja testu bez zmian: stan ustalony daje f_n co do bitu i zerowa niepewnosc.
+        assert wynik.jakosc == JAKOSC_NIEROZROZNIALNA
+
+
+@pytest.mark.parametrize("poslizg", [-0.02, -1e-4, 1e-4, 0.05])
+def test_f2_jednostajny_obrot_wszystkich_fazorow_daje_f_n_razy_predkosc(poslizg: float) -> None:
+    """F-2 (tozsamosc): `V_i = A_i e^{j(theta_i + s omega_0 t)}` => `f_i = f_n (1+s)`.
+
+    To jest test UKLADU ODNIESIENIA. Gdyby kat solvera byl liczony w ukladzie
+    nieruchomym, poprawny wzor nie mialby czlonu `f_n` i ten test padlby dla kazdego
+    niezerowego poslizgu. Wynik NIE zalezy ani od modulu, ani od kata poczatkowego —
+    dlatego sprawdzamy kilka roznych wezlow naraz.
+    """
+    omega_0 = 2.0 * math.pi * F_BAZOWA_HZ
+    for modul, kat in ((1.0, 0.0), (0.88, 1.3), (1.04, -2.7)):
+        napiecie = modul * cmath.exp(1j * kat)
+        wynik = czestotliwosc_wezla(
+            napiecie,
+            1j * poslizg * omega_0 * napiecie,
+            f_bazowa_hz=F_BAZOWA_HZ,
+            niepewnosc_napiecia_pu=0.0,
+            niepewnosc_pochodnej_pu_s=0.0,
+        )
+        assert wynik.f_hz == pytest.approx(F_BAZOWA_HZ * (1.0 + poslizg), rel=1e-12)
+
+
+def test_f3_przejscie_kata_przez_pi_nie_tworzy_impulsu() -> None:
+    """Zawijanie fazy nie istnieje w tej formulacji — i to jest sprawdzalne.
+
+    Dwa fazory lezace po obu stronach granicy `+/-pi`, obracajace sie z ta sama
+    predkoscia, musza dac te sama czestotliwosc. Estymator na roznicy katow dalby tutaj
+    skok o `2 pi / dt`.
+    """
+    omega_0 = 2.0 * math.pi * F_BAZOWA_HZ
+    poslizg = 0.01
+    tuz_przed = cmath.exp(1j * (math.pi - 1e-9))
+    tuz_za = cmath.exp(1j * (-math.pi + 1e-9))
+    przed = czestotliwosc_wezla(
+        tuz_przed,
+        1j * poslizg * omega_0 * tuz_przed,
+        f_bazowa_hz=F_BAZOWA_HZ,
+        niepewnosc_napiecia_pu=0.0,
+        niepewnosc_pochodnej_pu_s=0.0,
+    )
+    za = czestotliwosc_wezla(
+        tuz_za,
+        1j * poslizg * omega_0 * tuz_za,
+        f_bazowa_hz=F_BAZOWA_HZ,
+        niepewnosc_napiecia_pu=0.0,
+        niepewnosc_pochodnej_pu_s=0.0,
+    )
+    assert przed.f_hz == pytest.approx(za.f_hz, rel=1e-12)
+    assert przed.f_hz == pytest.approx(F_BAZOWA_HZ * (1.0 + poslizg), rel=1e-12)
+
+
+def test_f4_zapad_do_zera_konczy_sie_stanem_niedostepnym_a_nie_liczba() -> None:
+    """Fazor wewnatrz kuli niepewnosci => brak informacji o kacie.
+
+    Wartosc nie jest po cichu podstawiana jako znamionowa: NIEPEWNOSC rowna sie wtedy
+    calej czestotliwosci znamionowej, wiec nawet konsument ignorujacy kod jakosci widzi,
+    ze liczba nic nie znaczy.
+    """
+    wynik = czestotliwosc_wezla(
+        complex(NIEPEWNOSC_NAPIECIA / 2.0, 0.0),
+        complex(1.0, 1.0),
+        f_bazowa_hz=F_BAZOWA_HZ,
+        niepewnosc_napiecia_pu=NIEPEWNOSC_NAPIECIA,
+        niepewnosc_pochodnej_pu_s=0.0,
+    )
+    assert wynik.jakosc == JAKOSC_NIEDOSTEPNA
+    assert wynik.niepewnosc_hz == F_BAZOWA_HZ
+
+
+def test_f4b_pasmo_nierozroznialnosci_jest_wyprowadzone_a_nie_zgadniete() -> None:
+    """Podstawienie wzorow daje granice `|V| = 2 * u_V` — i tak zachowuje sie kod.
+
+    `|Vdot| = s omega_0 |V|`, wiec przy `u_Vdot = 0` propagacja skonczona daje
+    `u_f = s f_n u_V / (|V| - u_V)`, a odchylka to `s f_n`. Warunek `u_f > odchylka`
+    sprowadza sie do `u_V > |V| - u_V`, czyli `|V| < 2 u_V` — BEZ dobranej liczby i BEZ
+    progu napieciowego (OD-36). Test sprawdza OBIE strony granicy.
+
+    HISTORIA WSPOLCZYNNIKA. `4 * tolerancja` (niepewnosc ZALOZONA rowna tolerancji) ->
+    `3 * u_V` (niepewnosc mierzona, propagacja ROZNICZKOWA) -> `2 * u_V` (propagacja
+    SKONCZONA). Kazde przejscie usuwalo jedno zalozenie, nie dobieralo stalej.
+    """
+    niepewnosc_napiecia = 1.0e-8
+    omega_0 = 2.0 * math.pi * F_BAZOWA_HZ
+    poslizg = 1.0e-3
+    for mnoznik, oczekiwany in (
+        (1.5, JAKOSC_NIEROZROZNIALNA),
+        (8.0, JAKOSC_ROZROZNIALNA),
+    ):
+        napiecie = complex(mnoznik * niepewnosc_napiecia, 0.0)
+        wynik = czestotliwosc_wezla(
+            napiecie,
+            1j * poslizg * omega_0 * napiecie,
+            f_bazowa_hz=F_BAZOWA_HZ,
+            niepewnosc_napiecia_pu=niepewnosc_napiecia,
+            niepewnosc_pochodnej_pu_s=0.0,
+        )
+        assert wynik.jakosc == oczekiwany, f"mnoznik {mnoznik}"
+
+
+def _czestotliwosc_o_zadanych_skladowych(
+    odchylka_pulsacji: float, niepewnosc_pulsacji: float
+) -> CzestotliwoscWezla:
+    """Wymus DOKLADNIE zadane `|f - f_n|` i `u_f` przez fazor jednostkowy.
+
+    Dla `V = 1`, `u_V = 0` propagacja skonczona upraszcza sie do `u_f = u_Vdot/(2 pi)`,
+    a tozsamosc do `f - f_n = Im(Vdot)/(2 pi)`. Obie strony porownania sa wiec
+    STEROWALNE niezaleznie, co pozwala postawic przypadek dokladnie na granicy.
+    """
+    return czestotliwosc_wezla(
+        complex(1.0, 0.0),
+        complex(0.0, odchylka_pulsacji),
+        f_bazowa_hz=F_BAZOWA_HZ,
+        niepewnosc_napiecia_pu=0.0,
+        niepewnosc_pochodnej_pu_s=niepewnosc_pulsacji,
+    )
+
+
+@pytest.mark.parametrize(
+    ("opis", "krotnosc_niepewnosci", "oczekiwana"),
+    [
+        ("Q-1  d_f < u_f", 2.0, JAKOSC_NIEROZROZNIALNA),
+        ("Q-2  d_f = u_f (RYGIEL KONTRAKTU)", 1.0, JAKOSC_NIEROZROZNIALNA),
+        ("Q-3  d_f > u_f z zapasem", 0.5, JAKOSC_ROZROZNIALNA),
+    ],
+)
+def test_q123_etykieta_jakosci_idzie_za_ostra_nierownoscia_kontraktu(
+    opis: str, krotnosc_niepewnosci: float, oczekiwana: float
+) -> None:
+    """Kontrakt: ROZROZNIALNA <=> `|f - f_n| > u_f`. Nierownosc jest OSTRA.
+
+    P1-DELTA-40: kod realizowal `>=`, wiec rownosc — w tym zwyrodniala rownosc 0 = 0
+    stanu ustalonego — dostawala etykiete „odchylka rozroznialna numerycznie". Zdanie
+    „zero przewyzsza zero" jest falszywe, a etykieta idzie do wyniku biegu jako kanal
+    `jakosc_f@<wezel>`, wiec falsz nie konczyl sie na nazwie.
+    """
+    pulsacja = 2.0 * math.pi  # 1 Hz odchylki
+    wynik = _czestotliwosc_o_zadanych_skladowych(pulsacja, krotnosc_niepewnosci * pulsacja)
+    assert abs(wynik.f_hz - F_BAZOWA_HZ) == pytest.approx(1.0, abs=1e-15), opis
+    assert wynik.niepewnosc_hz == pytest.approx(krotnosc_niepewnosci, abs=1e-15), opis
+    assert wynik.jakosc == oczekiwana, opis
+
+
+def test_q4_jeden_ulp_nie_przestawia_etykiety_jakosci() -> None:
+    """Q-4: etykieta ma opisywac ODCHYLKE, a nie ostatni bit zaokraglenia.
+
+    Mechaniczne `>` zamiast `>=` zamknieloby P1-DELTA-40 i OTWORZYLO gorszy defekt:
+    dwa biegi rozniace sie jednym ULP w `u_f` dostawalyby rozne kody jakosci tej samej
+    wielkosci fizycznej. Dlatego porownanie ma rozdzielczosc WYPROWADZONA z arytmetyki
+    (`rozdzielczosc_porownania_hz`), a nie dobrana stala.
+
+    Test przesuwa `u_Vdot` o kolejne ULP w obie strony wokol rownosci i zada, zeby
+    etykieta ANI RAZU nie drgnela. Falsyfikacja jest wbudowana: gdyby przesuniecia nie
+    zmienialy faktycznie `u_f`, test przechodzilby nic nie sprawdzajac, wiec zbior
+    uzyskanych niepewnosci musi miec tyle elementow, ile przesuniec.
+    """
+    pulsacja = 2.0 * math.pi
+    niepewnosci: set[float] = set()
+    for kroki_ulp in range(-40, 41):
+        niepewnosc_pulsacji = pulsacja
+        cel = math.inf if kroki_ulp > 0 else -math.inf
+        for _ in range(abs(kroki_ulp)):
+            niepewnosc_pulsacji = math.nextafter(niepewnosc_pulsacji, cel)
+        wynik = _czestotliwosc_o_zadanych_skladowych(pulsacja, niepewnosc_pulsacji)
+        niepewnosci.add(wynik.niepewnosc_hz)
+        assert wynik.jakosc == JAKOSC_NIEROZROZNIALNA, (
+            f"przesuniecie o {kroki_ulp} ULP przestawilo etykiete: u_f={wynik.niepewnosc_hz!r}, "
+            f"d_f={abs(wynik.f_hz - F_BAZOWA_HZ)!r}"
+        )
+    assert (
+        len(niepewnosci) > 1
+    ), "Zadne z przesuniec nie zmienilo `u_f` — test nie sprawdzil stabilnosci etykiety"
+
+
+def test_q4b_odchylka_ponad_rozdzielczoscia_arytmetyki_jest_rozroznialna() -> None:
+    """Pasmo nierozroznialnosci jest WASKIE — 1e-09 Hz ponad `u_f` juz je opuszcza.
+
+    Bez tego testu poprzedni moglby przejsc przy dowolnie szerokim progu (np. 1 Hz),
+    czyli przy progu, ktory zjadlby cala tresc inzynierska. Rozdzielczosc dla 50 Hz to
+    7,105e-15 Hz, wiec 1e-09 Hz daje ponad piec rzedow zapasu w druga strone.
+    """
+    pulsacja = 2.0 * math.pi
+    nadwyzka_hz = 1.0e-9
+    wynik = _czestotliwosc_o_zadanych_skladowych(pulsacja, pulsacja - nadwyzka_hz * 2.0 * math.pi)
+    odchylka_hz = abs(wynik.f_hz - F_BAZOWA_HZ)
+    rozdzielczosc = rozdzielczosc_porownania_hz(F_BAZOWA_HZ, wynik.f_hz, wynik.niepewnosc_hz)
+    assert (
+        odchylka_hz - wynik.niepewnosc_hz > 100.0 * rozdzielczosc
+    ), "Fikstura nie wyszla poza pasmo rozdzielczosci — test nie sprawdzilby niczego"
+    assert wynik.jakosc == JAKOSC_ROZROZNIALNA
+
+
+def test_rozdzielczosc_porownania_jest_ziarnistoscia_arytmetyki_a_nie_stala() -> None:
+    """Prog SKALUJE SIE z wielkosciami, ktore porownuje — inaczej bylby stala.
+
+    Deklaracja „zadnej dobranej stalej" ma przypiety test (regula KLASA par. 4):
+    rozdzielczosc przy 50 Hz i przy 50 kHz MUSI sie roznic, i to o tyle, ile wynosi
+    stosunek ziarnistosci reprezentacji tych liczb.
+    """
+    przy_50_hz = rozdzielczosc_porownania_hz(50.0, 50.0, 0.0)
+    przy_50_khz = rozdzielczosc_porownania_hz(50_000.0, 50_000.0, 0.0)
+    assert przy_50_hz == math.ulp(50.0)
+    assert przy_50_khz == math.ulp(50_000.0)
+    assert przy_50_khz > przy_50_hz
+    # Niepewnosc o duzym module podnosi prog tak samo jak sama czestotliwosc.
+    assert rozdzielczosc_porownania_hz(50.0, 50.0, 1.0e6) == math.ulp(1.0e6)
+
+
+def test_kody_jakosci_sa_zamknietym_zbiorem_z_opisem() -> None:
+    """Deklaracja „zamkniety zbior kodow" ma przypiety test (regula KLASA par. 4)."""
+    assert set(OPIS_JAKOSCI_PL) == {JAKOSC_ROZROZNIALNA, JAKOSC_NIEROZROZNIALNA, JAKOSC_NIEDOSTEPNA}
+    assert len({JAKOSC_ROZROZNIALNA, JAKOSC_NIEROZROZNIALNA, JAKOSC_NIEDOSTEPNA}) == 3
+
+
+# ---------------------------------------------------------------------------
+# B-1..B-7: wielkosci zaciskow galezi — rachunek analityczny
+# ---------------------------------------------------------------------------
+
+
+def _model_dwuwezlowy(
+    *, b_poprzeczna_pu: float = 0.0, przekladnia: complex = 1 + 0j, y_szeregowa_pu: complex
+):
+    galaz = GalazDynamiki(
+        ident="L1",
+        wezel_od="A",
+        wezel_do="B",
+        y_szeregowa_pu=y_szeregowa_pu,
+        b_poprzeczna_pu=b_poprzeczna_pu,
+        przekladnia=przekladnia,
+    )
+    model = zloz_model_sieci((WezelDynamiki("A", U_N_KV), WezelDynamiki("B", U_N_KV)), (galaz,), ())
+    return model, galaz
+
+
+def test_b1_galaz_bezstratna_ma_zerowy_bilans_mocy_i_przeciwne_prady() -> None:
+    """Reaktancja czysta: `s_od + s_do = 0` DOKLADNIE, `i_od = -i_do`."""
+    model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / complex(0.0, X_LINII_PU))
+    napiecia = np.array([1.05 * cmath.exp(1j * 0.25), complex(1.0, 0.0)], dtype=complex)
+    wynik = wielkosci_galezi(model, galaz, napiecia)
+    assert wynik.i_do_pu == pytest.approx(-wynik.i_od_pu, rel=1e-12)
+    assert (wynik.s_od_pu + wynik.s_do_pu).real == pytest.approx(0.0, abs=1e-12)
+
+
+def test_b2_galaz_rezystancyjna_ma_strate_rowna_kwadratowi_pradu() -> None:
+    """`Re(s_od + s_do) = |i|^2 R` — wartosc policzona niezaleznie od kodu produktu."""
+    rezystancja = 0.08
+    reaktancja = 0.2
+    impedancja = complex(rezystancja, reaktancja)
+    model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / impedancja)
+    napiecia = np.array([1.04 * cmath.exp(1j * 0.18), complex(1.0, 0.0)], dtype=complex)
+    wynik = wielkosci_galezi(model, galaz, napiecia)
+    prad_oczekiwany = (napiecia[0] - napiecia[1]) / impedancja
+    strata_oczekiwana = abs(prad_oczekiwany) ** 2 * rezystancja
+    assert wynik.i_od_pu == pytest.approx(prad_oczekiwany, rel=1e-12)
+    assert (wynik.s_od_pu + wynik.s_do_pu).real == pytest.approx(strata_oczekiwana, rel=1e-10)
+
+
+def test_b3_odwrocenie_przeplywu_zmienia_znak_mocy_a_nie_orientacji() -> None:
+    """Kierunek przeplywu zmienia ZNAK `Re(s_od)`; orientacja `od -> do` zostaje.
+
+    Orientacja jest wlasnoscia GALEZI (wezel_od/wezel_do), nie chwilowego kierunku —
+    gdyby kod liczyl ja z biezacego przeplywu, ten test by tego nie wykryl... dlatego
+    sprawdzamy oba znaki PRZY TEJ SAMEJ definicji galezi.
+    """
+    model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / complex(0.02, 0.2))
+    naprzod = np.array([1.05 * cmath.exp(1j * 0.2), complex(1.0, 0.0)], dtype=complex)
+    wstecz = np.array([complex(1.0, 0.0), 1.05 * cmath.exp(1j * 0.2)], dtype=complex)
+    assert wielkosci_galezi(model, galaz, naprzod).s_od_pu.real > 0.0
+    assert wielkosci_galezi(model, galaz, wstecz).s_od_pu.real < 0.0
+
+
+def test_b4_galaz_wylaczona_nie_przewodzi() -> None:
+    """Galaz poza zbiorem aktywnych: oba prady i obie moce DOKLADNIE zerowe."""
+    model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / complex(0.0, X_LINII_PU))
+    model_bez = zloz_model_sieci(model.wezly, model.galezie, (), galezie_aktywne=frozenset())
+    napiecia = np.array([1.05 * cmath.exp(1j * 0.25), complex(1.0, 0.0)], dtype=complex)
+    wynik = wielkosci_galezi(model_bez, galaz, napiecia)
+    assert wynik.i_od_pu == 0j
+    assert wynik.i_do_pu == 0j
+    assert wynik.s_od_pu == 0j
+    assert wynik.s_do_pu == 0j
+
+
+def test_b5_susceptancja_poprzeczna_rozjezdza_prady_zaciskow() -> None:
+    """Model pi: `i_od != -i_do` o prad ladowania; polowa susceptancji na zacisk."""
+    b_calkowite = 0.12
+    y_szeregowa = 1.0 / complex(0.0, X_LINII_PU)
+    model, galaz = _model_dwuwezlowy(y_szeregowa_pu=y_szeregowa, b_poprzeczna_pu=b_calkowite)
+    napiecia = np.array([complex(1.0, 0.0), complex(1.0, 0.0)], dtype=complex)
+    wynik = wielkosci_galezi(model, galaz, napiecia)
+    # Przy rownych napieciach prad szeregowy znika, zostaje samo ladowanie polowa b.
+    assert wynik.i_od_pu == pytest.approx(complex(0.0, b_calkowite / 2.0), rel=1e-12)
+    assert wynik.i_do_pu == pytest.approx(complex(0.0, b_calkowite / 2.0), rel=1e-12)
+
+
+def test_b6_transformator_z_przekladnia_zgadza_sie_z_wzorami_ybus() -> None:
+    """Przekladnia zespolona: wartosci policzone niezaleznie ze wzorow modelu pi."""
+    przekladnia = 1.025 * cmath.exp(1j * (math.pi / 6.0))
+    y_szeregowa = 1.0 / complex(0.01, 0.1)
+    model, galaz = _model_dwuwezlowy(y_szeregowa_pu=y_szeregowa, przekladnia=przekladnia)
+    napiecia = np.array([1.03 * cmath.exp(1j * 0.12), complex(1.0, 0.0)], dtype=complex)
+    wynik = wielkosci_galezi(model, galaz, napiecia)
+    modul_kwadrat = abs(przekladnia) ** 2
+    i_od_oczekiwany = (
+        napiecia[0] * y_szeregowa / modul_kwadrat
+        - (napiecia[1] * y_szeregowa) / przekladnia.conjugate()
+    )
+    i_do_oczekiwany = -(napiecia[0] * y_szeregowa) / przekladnia + napiecia[1] * y_szeregowa
+    assert wynik.i_od_pu == pytest.approx(i_od_oczekiwany, rel=1e-12)
+    assert wynik.i_do_pu == pytest.approx(i_do_oczekiwany, rel=1e-12)
+
+
+def test_b7_moc_zacisku_jest_iloczynem_napiecia_i_sprzezonego_pradu() -> None:
+    """Konwencja `S = V conj(I)` — sprawdzana WPROST, bo pomylka sprzezenia odwraca Q."""
+    model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / complex(0.03, 0.25))
+    napiecia = np.array([1.02 * cmath.exp(1j * 0.3), 0.99 * cmath.exp(-1j * 0.05)], dtype=complex)
+    wynik = wielkosci_galezi(model, galaz, napiecia)
+    assert wynik.s_od_pu == pytest.approx(napiecia[0] * wynik.i_od_pu.conjugate(), rel=1e-12)
+    assert wynik.s_do_pu == pytest.approx(napiecia[1] * wynik.i_do_pu.conjugate(), rel=1e-12)
+
+
+# ---------------------------------------------------------------------------
+# Poziom BIEGU: F-2 na ukladzie wyspowym i B-8 parytet chwili zerowej
+# ---------------------------------------------------------------------------
+
+
+def _wyspa_maszyna_odbior(delta_p_pu: float) -> WejscieDynamiki:
+    """Wyspa: maszyna na GEN, odbior o stalej mocy na ODB, jedna galaz miedzy nimi.
+
+    BRAK SZYNY SZTYWNEJ — czestotliwosc wyspy wyznacza WYLACZNIE maszyna. Skok obciazenia
+    w `t = 0,2 s` wytraca uklad z rownowagi, wiec predkosc wirnika odjezdza od jedynki i
+    tozsamosc `f_i = f_n * omega` przestaje byc trywialna.
+    """
+    napiecie_odb = complex(1.0, 0.0)
+    p_odbioru_pu, q_odbioru_pu = 0.5, 0.1
+    prad = complex(p_odbioru_pu, -q_odbioru_pu) / napiecie_odb.conjugate()
+    napiecie_gen = napiecie_odb + complex(0.0, X_LINII_PU) * prad
+    return WejscieDynamiki(
+        wezly=(WezelDynamiki("GEN", U_N_KV), WezelDynamiki("ODB", U_N_KV)),
+        galezie=(
+            GalazDynamiki(
+                ident="LINIA",
+                wezel_od="GEN",
+                wezel_do="ODB",
+                y_szeregowa_pu=1.0 / complex(0.0, X_LINII_PU),
+                b_poprzeczna_pu=0.0,
+                przekladnia=complex(1.0, 0.0),
+            ),
+        ),
+        odsprzegi=(),
+        odbiory=(OdbiorDynamiki(ident="ODB1", wezel="ODB", p_pu=p_odbioru_pu, q_pu=q_odbioru_pu),),
+        urzadzenia=(zbuduj_smib().maszyna,),
+        punkt_pracy=PunktPracy(
+            napiecia_pu={"GEN": napiecie_gen, "ODB": napiecie_odb},
+            moce_zrodel_pu={"G1": napiecie_gen * prad.conjugate()},
+        ),
+        harmonogram=HarmonogramDynamiki(
+            zdarzenia=(
+                SkokObciazenia(t_s=0.2, odbior="ODB1", delta_p_pu=delta_p_pu, delta_q_pu=0.0),
+            )
+        ),
+        nastawy=nastawy(horyzont_s=1.0, krok_wyjscia_s=0.02),
+        s_bazowa_mva=S_BAZOWA_MVA,
+        f_bazowa_hz=F_BAZOWA_HZ,
+    )
+
+
+def test_f2_bieg_wyspowy_kazda_szyna_czyta_czestotliwosc_maszyny() -> None:
+    """F-2 NA BIEGU: w wyspie z jednym zrodlem KAZDA szyna ma `f = f_n * omega` maszyny.
+
+    Miedzy zdarzeniami sila elektromotoryczna i moc mechaniczna maszyny klasycznej sa
+    stale, a odbior o stalej mocy jest ekwiwariantny wzgledem obrotu, wiec caly uklad
+    fazorow obraca sie sztywno z katem wirnika. Tozsamosc jest wiec DOKLADNA, nie
+    przyblizona — i lamie sie natychmiast, gdy z formuly zniknie czlon `f_n` albo gdy
+    kat solvera zostanie potraktowany jako kat w ukladzie nieruchomym.
+    """
+    wynik = SilnikDynamiki(wejscie=_wyspa_maszyna_odbior(delta_p_pu=0.15)).uruchom()
+    omega = wynik.probki["omega_pu@G1"]
+    assert max(abs(wartosc - 1.0) for wartosc in omega) > 1.0e-4, "skok nie wytracil predkosci"
+    for ident in ("GEN", "ODB"):
+        szereg = wynik.probki[f"f_hz@{ident}"]
+        assert len(szereg) == len(omega)
+        for chwila, (f_hz, omega_pu) in enumerate(zip(szereg, omega, strict=True)):
+            assert f_hz == pytest.approx(
+                F_BAZOWA_HZ * omega_pu, rel=1e-6
+            ), f"szyna {ident}, probka {chwila}"
+
+
+def test_f5_kazda_probka_biegu_ze_zdarzeniem_jest_skonczona_i_ma_kod_jakosci() -> None:
+    """Zdarzenie nieciagle nie produkuje wartosci spoza zbioru ani kodu spoza slownika."""
+    wynik = SilnikDynamiki(wejscie=_wyspa_maszyna_odbior(delta_p_pu=0.3)).uruchom()
+    dozwolone = set(OPIS_JAKOSCI_PL)
+    for ident in ("GEN", "ODB"):
+        for f_hz in wynik.probki[f"f_hz@{ident}"]:
+            assert math.isfinite(f_hz)
+        for niepewnosc in wynik.probki[f"u_f_est_hz@{ident}"]:
+            assert math.isfinite(niepewnosc) and niepewnosc >= 0.0
+        for kod in wynik.probki[f"jakosc_f@{ident}"]:
+            assert kod in dozwolone
+
+
+def test_b8_parytet_chwili_zerowej_z_punktem_pracy() -> None:
+    """B-8: w `t = 0` wielkosci zaciskow galezi zgadzaja sie z punktem pracy rozpływu.
+
+    Punkt pracy ukladu SMIB jest policzony z fazorow (`uklady.zbuduj_smib`), wiec prad
+    galezi w chwili zerowej jest znany PRZED biegiem. Rozjazd tutaj oznacza, ze cala
+    reszta przebiegu opisuje inny uklad niz ten, ktory projektant wybral.
+    """
+    uklad = zbuduj_smib()
+    wejscie = uklad.wejscie(HarmonogramDynamiki(zdarzenia=()), nastawy(horyzont_s=0.1))
+    wynik = SilnikDynamiki(wejscie=wejscie).uruchom()
+
+    napiecie_gen = uklad.punkt_pracy.napiecia_pu["GEN"]
+    napiecie_sys = uklad.punkt_pracy.napiecia_pu["SYS"]
+    prad_oczekiwany = (napiecie_gen - napiecie_sys) / complex(0.0, X_LINII_PU)
+    moc_oczekiwana = napiecie_gen * prad_oczekiwany.conjugate()
+
+    assert wynik.probki["i_od_pu@LINIA"][0] == pytest.approx(abs(prad_oczekiwany), rel=1e-8)
+    assert wynik.probki["p_od_pu@LINIA"][0] == pytest.approx(moc_oczekiwana.real, rel=1e-8)
+    assert wynik.probki["q_od_pu@LINIA"][0] == pytest.approx(moc_oczekiwana.imag, abs=1e-8)
+    assert wynik.probki["f_hz@GEN"][0] == pytest.approx(F_BAZOWA_HZ, abs=1e-9)
+
+
+# ---------------------------------------------------------------------------
+# INIEKCJE: dowod, ze powyzsze testy lapia konkretne defekty
+# ---------------------------------------------------------------------------
+
+
+def test_iniekcja_brak_czlonu_czestotliwosci_znamionowej_jest_wykrywalna() -> None:
+    """Defekt: `f = (1/2pi) dtheta/dt` bez `f_n` (kat wziety jako kat ukladu nieruchomego)."""
+    omega_0 = 2.0 * math.pi * F_BAZOWA_HZ
+    poslizg = 0.02
+    napiecie = 1.02 * cmath.exp(1j * 0.4)
+    pochodna = 1j * poslizg * omega_0 * napiecie
+    poprawne = czestotliwosc_wezla(
+        napiecie,
+        pochodna,
+        f_bazowa_hz=F_BAZOWA_HZ,
+        niepewnosc_napiecia_pu=0.0,
+        niepewnosc_pochodnej_pu_s=0.0,
+    ).f_hz
+    zepsute = (pochodna * napiecie.conjugate()).imag / abs(napiecie) ** 2 / (2.0 * math.pi)
+    assert poprawne == pytest.approx(F_BAZOWA_HZ * (1.0 + poslizg), rel=1e-12)
+    assert abs(poprawne - zepsute) == pytest.approx(F_BAZOWA_HZ, rel=1e-9)
+
+
+def test_iniekcja_estymator_roznicowy_na_siatce_wyjscia_daje_impuls_przy_zawinieciu() -> None:
+    """Defekt: pochodna z roznicy katow probek — na granicy `+/-pi` daje wartosc absurdalna.
+
+    Ten test nie sprawdza produktu; dowodzi, ze test F-3 rozroznia obie implementacje.
+    """
+    krok_wyjscia_s = 0.01
+    kat_przed = math.pi - 1e-9
+    kat_po = -math.pi + 1e-9
+    zepsute_hz = F_BAZOWA_HZ + (kat_po - kat_przed) / (2.0 * math.pi * krok_wyjscia_s)
+    assert abs(zepsute_hz - F_BAZOWA_HZ) > 90.0
+
+
+def test_iniekcja_zamiana_zaciskow_galezi_jest_wykrywalna() -> None:
+    """Defekt: `i_do` policzony wzorem `i_od` (odwrocona orientacja)."""
+    model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / complex(0.03, 0.22))
+    napiecia = np.array([1.05 * cmath.exp(1j * 0.22), complex(0.99, 0.0)], dtype=complex)
+    wynik = wielkosci_galezi(model, galaz, napiecia)
+    zepsute_s_do = napiecia[1] * wynik.i_od_pu.conjugate()
+    assert abs(zepsute_s_do - wynik.s_do_pu) > 1.0e-3
+
+
+def test_iniekcja_bledne_sprzezenie_odwraca_znak_mocy_biernej() -> None:
+    """Defekt: `S = V * I` zamiast `V * conj(I)` — znak `Q` sie odwraca."""
+    model, galaz = _model_dwuwezlowy(y_szeregowa_pu=1.0 / complex(0.03, 0.22))
+    napiecia = np.array([1.05 * cmath.exp(1j * 0.22), complex(0.99, 0.0)], dtype=complex)
+    wynik = wielkosci_galezi(model, galaz, napiecia)
+    zepsute = napiecia[0] * wynik.i_od_pu
+    assert wynik.s_od_pu.imag != pytest.approx(zepsute.imag, abs=1e-6)
+
+
+def test_iniekcja_polowa_susceptancji_pominieta_jest_wykrywalna() -> None:
+    """Defekt: caly `b` zamiast `b/2` na zacisk — test B-5 pada."""
+    b_calkowite = 0.12
+    model, galaz = _model_dwuwezlowy(
+        y_szeregowa_pu=1.0 / complex(0.0, X_LINII_PU), b_poprzeczna_pu=b_calkowite
+    )
+    napiecia = np.array([complex(1.0, 0.0), complex(1.0, 0.0)], dtype=complex)
+    wynik = wielkosci_galezi(model, galaz, napiecia)
+    assert wynik.i_od_pu.imag == pytest.approx(b_calkowite / 2.0, rel=1e-12)
+    assert wynik.i_od_pu.imag != pytest.approx(b_calkowite, rel=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# RUNDA DOMKNIECIA W6-A (2026-09-18): F-6, pokrycie niepewnosci, semantyka
+# granicy zdarzenia, iloczyn cech galezi, zbieznosc != wiarygodnosc
+# ---------------------------------------------------------------------------
+
+
+def test_f6_trajektoria_zadana_analitycznie_jest_odtworzona_co_do_szostej_cyfry() -> None:
+    """F-6: `V(t) = A(t) e^{j theta(t)}` o ZNANEJ pochodnej kata, zbudowane poza solverem.
+
+    Ani fazor, ani jego pochodna, ani wartosc oczekiwana nie przechodza przez kod
+    produkcyjny: `A`, `theta` i ich pochodne sa wypisane recznie, a `Vdot` zlozone ze
+    wzoru `Vdot = (A' + j A theta') e^{j theta}`. Test sprawdza wiec, czy implementacja
+    odtwarza ZADANA z gory pochodna kata, a nie czy jest zgodna sama ze soba.
+
+    Trajektoria jest celowo niestacjonarna w OBU skladowych (modul faluje, kat ma
+    czlon kwadratowy i oscylacyjny), wiec czlon `A'` nie moze zniknac bez sladu —
+    implementacja mylaca `Im(Vdot conj(V))` z `|Vdot|` albo gubiaca dzielenie przez
+    `|V|^2` pada tu natychmiast.
+    """
+    for t in (0.0, 0.13, 0.5, 1.7, 3.3):
+        amplituda = 1.0 + 0.3 * math.sin(5.0 * t)
+        amplituda_prim = 1.5 * math.cos(5.0 * t)
+        kat = 0.4 * t * t - 0.7 * math.cos(3.0 * t)
+        kat_prim = 0.8 * t + 2.1 * math.sin(3.0 * t)
+        obrot = cmath.exp(1j * kat)
+        napiecie = amplituda * obrot
+        pochodna = (amplituda_prim + 1j * amplituda * kat_prim) * obrot
+        wynik = czestotliwosc_wezla(
+            napiecie,
+            pochodna,
+            f_bazowa_hz=F_BAZOWA_HZ,
+            niepewnosc_napiecia_pu=0.0,
+            niepewnosc_pochodnej_pu_s=0.0,
+        )
+        assert wynik.f_hz == pytest.approx(
+            F_BAZOWA_HZ + kat_prim / (2.0 * math.pi), rel=1e-12
+        ), f"t={t}"
+
+
+def _uklad_z_odbiorem(p_odbioru_pu: float) -> tuple[object, ...]:
+    """Maszyna — linia — odbior o stalej mocy tuz przed nosem krzywej PV.
+
+    `P_max = E^2 / (2 X)` dla `E = 1,10` i `X = 0,60` wynosi 1,0083, wiec `P = 1,0079`
+    lezy w ostatnim promilu obciazalnosci: Newton wciaz zbiega, ale `J^-1` jest tam o
+    rzad wielkosci wieksze niz w punkcie znamionowym. To jest wlasnie przypadek, w
+    ktorym „zbiegl" nie znaczy „wiarygodny".
+    """
+    from network_model.solvers.dynamika.urzadzenia.maszyna_klasyczna import MaszynaKlasyczna
+
+    model = zloz_model_sieci(
+        (WezelDynamiki("A", U_N_KV), WezelDynamiki("B", U_N_KV)),
+        (
+            GalazDynamiki(
+                ident="L1",
+                wezel_od="A",
+                wezel_do="B",
+                y_szeregowa_pu=1.0 / complex(0.0, 0.30),
+                b_poprzeczna_pu=0.0,
+                przekladnia=complex(1.0, 0.0),
+            ),
+        ),
+        (),
+    )
+    odbiory = (OdbiorDynamiki(ident="O1", wezel="B", p_pu=p_odbioru_pu, q_pu=0.0),)
+    maszyna = MaszynaKlasyczna(
+        ident="G1",
+        wezel="A",
+        h_s=3.5,
+        d_pu=0.0,
+        x_prim_pu=0.30,
+        ra_pu=0.0,
+        omega_bazowa_rad_s=2.0 * math.pi * F_BAZOWA_HZ,
+    )
+    stany = (np.array([0.0, 1.002, p_odbioru_pu, 1.10], dtype=float),)
+    return model, odbiory, (maszyna,), stany
+
+
+def test_niepewnosc_ogranicza_rzeczywisty_blad_takze_blisko_granicy_obciazalnosci() -> None:
+    """P0 W6-A par. 5: `u_f` MUSI ograniczac blad czestotliwosci, nie tylko go udawac.
+
+    METODA. Ten sam punkt pracy rozwiazujemy dwa razy: z tolerancja badana i z tolerancja
+    o osiem rzedow ciasniejsza. Roznica czestotliwosci miedzy rozwiazaniami to RZECZYWISTY
+    blad przy tolerancji badanej. Niepewnosc zameldowana przy tolerancji badanej musi go
+    pokryc.
+
+    HISTORIA. Przed korekta z 2026-09-18 niepewnosc byla liczona z SAMEJ TOLERANCJI
+    Newtona. W tym punkcie dawalo to `u = 5,07e-07 Hz` przy rzeczywistym bledzie
+    `1,24e-06 Hz` (iloraz 2,45) i przy kodzie jakosci „wiarygodna" — czyli liczbe
+    zanizona 2,45 raza, przedstawiona jako pewna. Zrodlem bledu bylo zalozenie
+    `u_V = ||r||`, podczas gdy blad rozwiazania to `J^-1 r`; w tym punkcie wzmocnienie
+    wynosi 8,4x. Test jest przypiety do KONKRETNEGO punktu, zeby regresja modelu jakosci
+    byla wykrywalna, a nie rozmyta w usrednieniu.
+    """
+    from network_model.solvers.dynamika.obserwable import pochodna_napiec_z_niepewnoscia
+    from network_model.solvers.dynamika.siec import rozwiaz_algebre
+
+    wspolne = {"max_iteracji": 400, "max_nawrotow": 90, "t_s": 0.0}
+
+    def czestotliwosci(
+        model, odbiory, urzadzenia, stany, napiecia: np.ndarray
+    ) -> list[CzestotliwoscWezla]:
+        pomiar = pochodna_napiec_z_niepewnoscia(model, odbiory, urzadzenia, stany, napiecia)
+        return [
+            czestotliwosc_wezla(
+                complex(napiecia[i]),
+                complex(pomiar.pochodna_pu_s[i]),
+                f_bazowa_hz=F_BAZOWA_HZ,
+                niepewnosc_napiecia_pu=float(pomiar.niepewnosc_napiecia_pu[i]),
+                niepewnosc_pochodnej_pu_s=float(pomiar.niepewnosc_pochodnej_pu_s[i]),
+            )
+            for i in range(model.liczba_wezlow)
+        ]
+
+    # DWA rozlaczne rezimy bledu, bo skladniki niepewnosci dominuja w roznych punktach:
+    #  * P = 1,0079 ze startu 0,70 — dominuje blad NAPIECIA (`|J^-1 r|`, wzmocnienie 8,4x),
+    #  * P = 0,99 ze startu 1,00   — dominuje blad POCHODNEJ (jakobian zlozony w punkcie
+    #    obarczonym bledem); pominiecie tego czlonu niedoszacowuje niepewnosc 1,83 raza.
+    # Jeden punkt nie pilnuje obu — to jest KLASA defektu, nie jego instancja.
+    for p_odbioru_pu, start_modul, tolerancje in (
+        (1.0079, 0.70, (1.0e-4, 1.0e-5, 1.0e-6)),
+        (0.99, 1.00, (1.0e-4, 1.0e-5, 1.0e-6)),
+    ):
+        model, odbiory, urzadzenia, stany = _uklad_z_odbiorem(p_odbioru_pu)
+        start = np.array([complex(1.0, 0.0), complex(start_modul, -0.25)], dtype=complex)
+        for tolerancja in tolerancje:
+            badany = rozwiaz_algebre(
+                model, odbiory, urzadzenia, stany, start, tolerancja=tolerancja, **wspolne
+            )
+            odniesienie = rozwiaz_algebre(
+                model, odbiory, urzadzenia, stany, badany.napiecia, tolerancja=1.0e-14, **wspolne
+            )
+            zmierzone = czestotliwosci(model, odbiory, urzadzenia, stany, badany.napiecia)
+            scisle = czestotliwosci(model, odbiory, urzadzenia, stany, odniesienie.napiecia)
+            for pozycja, ident in enumerate(model.identy_wezlow):
+                blad_hz = abs(zmierzone[pozycja].f_hz - scisle[pozycja].f_hz)
+                assert zmierzone[pozycja].niepewnosc_hz >= blad_hz, (
+                    f"P={p_odbioru_pu}, start={start_modul}, tolerancja {tolerancja:g}, "
+                    f"szyna {ident}: niepewnosc {zmierzone[pozycja].niepewnosc_hz:.3e} Hz "
+                    f"NIE pokrywa bledu {blad_hz:.3e} Hz"
+                )
+
+
+def test_niepewnosc_rosnie_gdy_jakobian_algebry_staje_sie_gorzej_uwarunkowany() -> None:
+    """Model jakosci MUSI reagowac na uwarunkowanie, inaczej jest ozdoba.
+
+    Ten sam uklad przy tej samej tolerancji, raz w polowie obciazalnosci, raz w ostatnim
+    promilu. Zmierzona niepewnosc napiecia — `|J^-1 r|` — musi byc w punkcie blizszym
+    granicy WIEKSZA. Test pada dla kazdej implementacji, ktora zwraca wielkosc zalezna
+    wylacznie od tolerancji.
+    """
+    from network_model.solvers.dynamika.obserwable import pochodna_napiec_z_niepewnoscia
+    from network_model.solvers.dynamika.siec import rozwiaz_algebre
+    from network_model.solvers.dynamika.urzadzenia.maszyna_klasyczna import MaszynaKlasyczna
+
+    def niepewnosc_napiecia(p_odbioru_pu: float) -> float:
+        model = zloz_model_sieci(
+            (WezelDynamiki("A", U_N_KV), WezelDynamiki("B", U_N_KV)),
+            (
+                GalazDynamiki(
+                    ident="L1",
+                    wezel_od="A",
+                    wezel_do="B",
+                    y_szeregowa_pu=1.0 / complex(0.0, 0.30),
+                    b_poprzeczna_pu=0.0,
+                    przekladnia=complex(1.0, 0.0),
+                ),
+            ),
+            (),
+        )
+        odbiory = (OdbiorDynamiki(ident="O1", wezel="B", p_pu=p_odbioru_pu, q_pu=0.0),)
+        urzadzenia = (
+            MaszynaKlasyczna(
+                ident="G1",
+                wezel="A",
+                h_s=3.5,
+                d_pu=0.0,
+                x_prim_pu=0.30,
+                ra_pu=0.0,
+                omega_bazowa_rad_s=2.0 * math.pi * F_BAZOWA_HZ,
+            ),
+        )
+        stany = (np.array([0.0, 1.002, p_odbioru_pu, 1.10], dtype=float),)
+        rozwiazanie = rozwiaz_algebre(
+            model,
+            odbiory,
+            urzadzenia,
+            stany,
+            np.array([complex(1.0, 0.0), complex(0.70, -0.25)], dtype=complex),
+            tolerancja=1.0e-4,
+            max_iteracji=400,
+            max_nawrotow=90,
+            t_s=0.0,
+        )
+        pomiar = pochodna_napiec_z_niepewnoscia(
+            model, odbiory, urzadzenia, stany, rozwiazanie.napiecia
+        )
+        return float(pomiar.niepewnosc_napiecia_pu.max())
+
+    assert niepewnosc_napiecia(1.0079) > niepewnosc_napiecia(0.5)
+
+
+def test_jakobian_osobliwy_konczy_sie_odmowa_nazwana_a_nie_bledem_scipy() -> None:
+    """par. 6: „algebra zbiegla" nie jest dowodem, ze pochodna z niej istnieje.
+
+    Wezel bez zadnej galezi, odsprzegu, odbioru i urzadzenia daje w Ybus wiersz i kolumne
+    zerowa, wiec jakobian algebry jest OSOBLIWY. Wyznaczenie `dV/dt` musi wtedy skonczyc
+    sie odmowa NAZWANA (kod kontraktu), a nie surowym `RuntimeError` z biblioteki
+    rzadkiej algebry — bo tylko nazwana odmowa daje sie obsluzyc wyzej.
+    """
+    from network_model.solvers.dynamika.kontrakty import KOD_ALGEBRA_NIEZBIEZNA, OdmowaDynamiki
+    from network_model.solvers.dynamika.obserwable import pochodna_napiec
+
+    model = zloz_model_sieci((WezelDynamiki("SAM", U_N_KV),), (), ())
+    with pytest.raises(OdmowaDynamiki) as odmowa:
+        pochodna_napiec(model, (), (), (), np.array([complex(1.0, 0.0)], dtype=complex))
+    assert odmowa.value.kod == KOD_ALGEBRA_NIEZBIEZNA
+
+
+def _wyspa_z_druga_galezia(t_otwarcia_s: float) -> WejscieDynamiki:
+    """Wyspa jak w F-2, ale z DRUGIM torem, ktory scenariusz otwiera w zadanej chwili.
+
+    Punkt pracy liczony jest dla reaktancji ZASTEPCZEJ obu rownoleglych torow
+    (`X_z = X * 2X / (X + 2X) = 2X/3`), bo inaczej zadany punkt nie jest rownowaga i
+    bramka inicjalizacji — slusznie — odmawia biegu.
+    """
+    from network_model.solvers.dynamika import ZmianaGalezi
+
+    napiecie_odb = complex(1.0, 0.0)
+    p_odbioru_pu, q_odbioru_pu = 0.5, 0.1
+    prad = complex(p_odbioru_pu, -q_odbioru_pu) / napiecie_odb.conjugate()
+    reaktancja_zastepcza_pu = 2.0 * X_LINII_PU / 3.0
+    napiecie_gen = napiecie_odb + complex(0.0, reaktancja_zastepcza_pu) * prad
+    return WejscieDynamiki(
+        wezly=(WezelDynamiki("GEN", U_N_KV), WezelDynamiki("ODB", U_N_KV)),
+        galezie=(
+            GalazDynamiki(
+                ident="LINIA",
+                wezel_od="GEN",
+                wezel_do="ODB",
+                y_szeregowa_pu=1.0 / complex(0.0, X_LINII_PU),
+                b_poprzeczna_pu=0.0,
+                przekladnia=complex(1.0, 0.0),
+            ),
+            GalazDynamiki(
+                ident="LINIA2",
+                wezel_od="GEN",
+                wezel_do="ODB",
+                y_szeregowa_pu=1.0 / complex(0.0, 2.0 * X_LINII_PU),
+                b_poprzeczna_pu=0.0,
+                przekladnia=complex(1.0, 0.0),
+            ),
+        ),
+        odsprzegi=(),
+        odbiory=(OdbiorDynamiki(ident="ODB1", wezel="ODB", p_pu=p_odbioru_pu, q_pu=q_odbioru_pu),),
+        urzadzenia=(zbuduj_smib().maszyna,),
+        punkt_pracy=PunktPracy(
+            napiecia_pu={"GEN": napiecie_gen, "ODB": napiecie_odb},
+            moce_zrodel_pu={"G1": napiecie_gen * prad.conjugate()},
+        ),
+        harmonogram=HarmonogramDynamiki(
+            zdarzenia=(ZmianaGalezi(t_s=t_otwarcia_s, galaz="LINIA2", zalaczona=False),)
+        ),
+        nastawy=nastawy(horyzont_s=0.6, krok_wyjscia_s=0.02),
+        s_bazowa_mva=S_BAZOWA_MVA,
+        f_bazowa_hz=F_BAZOWA_HZ,
+    )
+
+
+def test_z1_probka_w_chwili_zdarzenia_jest_granica_prawostronna() -> None:
+    """par. 7: kontrakt probki w chwili `t_e` to granica PRAWOSTRONNA — jawnie i z testem.
+
+    Silnik wykonuje zdarzenie i reinicjalizuje algebre PRZED pobraniem probki, wiec probka
+    w chwili zdarzenia opisuje siec PO zmianie. Galaz otwarta w `t_e` musi wiec w tej samej
+    probce miec prad DOKLADNIE zerowy, a w probce poprzedniej — niezerowy. Bez tego zapisu
+    konsument nie wie, czy `t_e` czyta stan sprzed, czy po lączeniu.
+    """
+    t_otwarcia_s = 0.20
+    wynik = SilnikDynamiki(wejscie=_wyspa_z_druga_galezia(t_otwarcia_s)).uruchom()
+    os_czasu = list(wynik.os_czasu_s)
+    indeks = min(range(len(os_czasu)), key=lambda pozycja: abs(os_czasu[pozycja] - t_otwarcia_s))
+    assert os_czasu[indeks] == pytest.approx(
+        t_otwarcia_s, abs=1e-12
+    ), "brak probki w chwili zdarzenia"
+
+    prad_w_chwili = wynik.probki["i_od_pu@LINIA2"][indeks]
+    prad_przed = wynik.probki["i_od_pu@LINIA2"][indeks - 1]
+    assert prad_w_chwili == 0.0, "probka w chwili zdarzenia czyta stan SPRZED laczenia"
+    assert prad_przed > 1.0e-3, "drugi tor nie przewodzil przed otwarciem — scenariusz pusty"
+    for przyrostek in ("i_do_pu", "p_od_pu", "q_od_pu", "p_do_pu", "q_do_pu"):
+        assert wynik.probki[f"{przyrostek}@LINIA2"][indeks] == 0.0
+
+
+def test_z2_iniekcja_rozniczkowanie_przez_nieciaglosc_daje_impuls() -> None:
+    """par. 7 / M-04: dowod, ze tor analityczny NIE rozniczkuje przez granice zdarzenia.
+
+    Bierzemy TEN SAM bieg i liczymy czestotliwosc dwiema drogami: kanalem `f_hz@`
+    (rozniczkowanie rownania algebraicznego) oraz roznica wsteczna katow `kat_deg@` po
+    siatce wyjscia — czyli tak, jak zrobilby to konsument bez dostepu do rdzenia. W chwili
+    otwarcia galezi kat skacze, wiec estymator roznicowy produkuje IMPULS, a kanal
+    analityczny nie. Rozjazd jest dowodem rozdzielnosci obu drog; jego brak oznaczalby,
+    ze kanal analityczny jest w istocie roznica probek.
+    """
+    t_otwarcia_s = 0.20
+    wynik = SilnikDynamiki(wejscie=_wyspa_z_druga_galezia(t_otwarcia_s)).uruchom()
+    os_czasu = list(wynik.os_czasu_s)
+    indeks = min(range(len(os_czasu)), key=lambda pozycja: abs(os_czasu[pozycja] - t_otwarcia_s))
+    katy = wynik.probki["kat_deg@ODB"]
+    krok_s = os_czasu[indeks] - os_czasu[indeks - 1]
+    roznicowa_hz = F_BAZOWA_HZ + math.radians(katy[indeks] - katy[indeks - 1]) / (
+        2.0 * math.pi * krok_s
+    )
+    analityczna_hz = wynik.probki["f_hz@ODB"][indeks]
+    assert abs(roznicowa_hz - F_BAZOWA_HZ) > 10.0 * abs(analityczna_hz - F_BAZOWA_HZ), (
+        "estymator roznicowy nie wyprodukowal impulsu na granicy zdarzenia — "
+        "scenariusz nie cwiczy nieciaglosci"
+    )
+    assert abs(analityczna_hz - F_BAZOWA_HZ) < 1.0, "kanal analityczny niesie impuls zdarzenia"
+
+
+def test_b9_przekladnia_i_susceptancja_naraz_zgadzaja_sie_ze_wzorami_ybus() -> None:
+    """ILOCZYN CECH (regula KLASA par. 2): przekladnia zespolona RAZEM z susceptancja.
+
+    Test B-6 cwiczyl przekladnie przy `b = 0`, a B-5 susceptancje przy `a = 1`. Defekt
+    mieszczacy sie dokladnie w ich iloczynie — polowa susceptancji podzielona przez
+    `|a|^2` albo nie — nie mial gdzie sie pokazac. Wartosci oczekiwane wypisane sa tu ze
+    wzorow modelu pi, nie z implementacji.
+    """
+    przekladnia = 0.975 * cmath.exp(-1j * (math.pi / 9.0))
+    y_szeregowa = 1.0 / complex(0.02, 0.18)
+    b_poprzeczna = 0.26
+    model, galaz = _model_dwuwezlowy(
+        y_szeregowa_pu=y_szeregowa, b_poprzeczna_pu=b_poprzeczna, przekladnia=przekladnia
+    )
+    napiecia = np.array([1.04 * cmath.exp(1j * 0.21), 0.97 * cmath.exp(-1j * 0.08)], dtype=complex)
+    wynik = wielkosci_galezi(model, galaz, napiecia)
+
+    polowa = complex(0.0, b_poprzeczna / 2.0)
+    modul_kwadrat = abs(przekladnia) ** 2
+    i_od_oczekiwany = (
+        napiecia[0] * (y_szeregowa + polowa) / modul_kwadrat
+        - (napiecia[1] * y_szeregowa) / przekladnia.conjugate()
+    )
+    i_do_oczekiwany = -(napiecia[0] * y_szeregowa) / przekladnia + napiecia[1] * (
+        y_szeregowa + polowa
+    )
+    assert wynik.i_od_pu == pytest.approx(i_od_oczekiwany, rel=1e-12)
+    assert wynik.i_do_pu == pytest.approx(i_do_oczekiwany, rel=1e-12)
+
+
+def test_b10_bilans_zaciskow_rowna_sie_stratom_galezi() -> None:
+    """`S_od + S_do` to STRATA galezi — czesc czynna dodatnia, bierna zgodna z modelem.
+
+    Dla galezi bez przekladni i bez susceptancji strata czynna rowna sie `|I|^2 R`, a
+    bierna `|I|^2 X`; przy wlaczonej susceptancji dochodzi generacja bierna obu polowek,
+    wiec czesc bierna bilansu maleje o `(|V_od|^2 + |V_do|^2) b/2`. Obie tozsamosci sa
+    wypisane ze wzorow, nie odczytane z implementacji.
+    """
+    y_szeregowa = 1.0 / complex(0.04, 0.22)
+    napiecia = np.array([1.03 * cmath.exp(1j * 0.17), 0.98 * cmath.exp(-1j * 0.06)], dtype=complex)
+
+    model, galaz = _model_dwuwezlowy(y_szeregowa_pu=y_szeregowa)
+    wynik = wielkosci_galezi(model, galaz, napiecia)
+    prad_szeregowy = (napiecia[0] - napiecia[1]) * y_szeregowa
+    impedancja = 1.0 / y_szeregowa
+    bilans = wynik.s_od_pu + wynik.s_do_pu
+    assert bilans.real == pytest.approx(abs(prad_szeregowy) ** 2 * impedancja.real, rel=1e-10)
+    assert bilans.imag == pytest.approx(abs(prad_szeregowy) ** 2 * impedancja.imag, rel=1e-10)
+    assert bilans.real > 0.0
+
+    b_poprzeczna = 0.18
+    model_b, galaz_b = _model_dwuwezlowy(y_szeregowa_pu=y_szeregowa, b_poprzeczna_pu=b_poprzeczna)
+    wynik_b = wielkosci_galezi(model_b, galaz_b, napiecia)
+    bilans_b = wynik_b.s_od_pu + wynik_b.s_do_pu
+    generacja_bierna = (abs(napiecia[0]) ** 2 + abs(napiecia[1]) ** 2) * b_poprzeczna / 2.0
+    assert bilans_b.real == pytest.approx(bilans.real, rel=1e-10)
+    assert bilans_b.imag == pytest.approx(bilans.imag - generacja_bierna, rel=1e-10)
+
+
+# ---------------------------------------------------------------------------
+# RUNDA KWALIFIKACYJNA W6-A (2026-09-18): estymata vs granica, propagacja
+# skonczona, kolejnosc fail-closed, sweep klasy
+# ---------------------------------------------------------------------------
+
+
+def test_a02_propagacja_skonczona_trzyma_tam_gdzie_rozniczkowa_pada() -> None:
+    """A-02: kontrprzyklad skonczony obala oszacowanie rozniczkowe, nie obala skonczonego.
+
+    Dla `V = 1`, `Vdot = j`, `dV = -0,9`, `dVdot = 0`:
+      * `theta_dot(V, Vdot) = 1`, `theta_dot(0,1, j) = 10`, wiec RZECZYWISTA zmiana to 9,
+      * oszacowanie ROZNICZKOWE `u_Vdot/|V| + 3|Vdot|u_V/|V|^2` daje 2,7 — mniej niz 9,
+      * nierownosc SKONCZONA `u_Vdot/(|V|-u_V) + |Vdot|u_V/(|V|(|V|-u_V))` daje dokladnie 9.
+
+    Test sprawdza, ze PRODUKCJA niesie wariant skonczony: liczy `u_f` dla tych samych
+    danych i wymaga, by pokryl rzeczywista zmiane. Implementacja z formula 3x tutaj pada.
+    """
+    napiecie, pochodna = complex(1.0, 0.0), complex(0.0, 1.0)
+    niepewnosc_napiecia = 0.9
+    zaburzone = napiecie + complex(-0.9, 0.0)
+    rzeczywista_zmiana_hz = abs(
+        (pochodna * zaburzone.conjugate()).imag / abs(zaburzone) ** 2
+        - (pochodna * napiecie.conjugate()).imag / abs(napiecie) ** 2
+    ) / (2.0 * math.pi)
+
+    wynik = czestotliwosc_wezla(
+        napiecie,
+        pochodna,
+        f_bazowa_hz=F_BAZOWA_HZ,
+        niepewnosc_napiecia_pu=niepewnosc_napiecia,
+        niepewnosc_pochodnej_pu_s=0.0,
+    )
+    oszacowanie_rozniczkowe_hz = (3.0 * abs(pochodna) * niepewnosc_napiecia) / (
+        2.0 * math.pi * abs(napiecie) ** 2
+    )
+    assert oszacowanie_rozniczkowe_hz < rzeczywista_zmiana_hz, "kontrprzyklad przestal dzialac"
+    assert wynik.niepewnosc_hz == pytest.approx(rzeczywista_zmiana_hz, rel=1e-12)
+
+
+def test_a02_niepewnosc_rosnie_nieograniczenie_gdy_u_v_zbliza_sie_do_modulu() -> None:
+    """Mianownik `|V| - u_V` jest CZESCIA kontraktu: przy `u_V -> |V|` estymata rozbiega.
+
+    Oszacowanie rozniczkowe jest w tym rezimie ograniczone i dlatego falszywe. Test pilnuje,
+    ze produkcja NIE wraca do wariantu ograniczonego: kolejne `u_V` coraz blizsze `|V|` musza
+    dawac scisle rosnaca niepewnosc, a rownosc `u_V = |V|` — stan NIEDOSTEPNA.
+    """
+    napiecie, pochodna = complex(1.0, 0.0), complex(0.0, 1.0)
+    poprzednia = 0.0
+    for ulamek in (0.5, 0.9, 0.99, 0.999):
+        wynik = czestotliwosc_wezla(
+            napiecie,
+            pochodna,
+            f_bazowa_hz=F_BAZOWA_HZ,
+            niepewnosc_napiecia_pu=ulamek,
+            niepewnosc_pochodnej_pu_s=0.0,
+        )
+        assert wynik.niepewnosc_hz > poprzednia
+        poprzednia = wynik.niepewnosc_hz
+    graniczny = czestotliwosc_wezla(
+        napiecie,
+        pochodna,
+        f_bazowa_hz=F_BAZOWA_HZ,
+        niepewnosc_napiecia_pu=1.0,
+        niepewnosc_pochodnej_pu_s=0.0,
+    )
+    assert graniczny.jakosc == JAKOSC_NIEDOSTEPNA
+
+
+def test_a05_punkt_skorygowany_poza_domena_nie_liczy_sie_wcale() -> None:
+    """A-05: kolejnosc fail-closed — nie wolno dotknac punktu skorygowanego przed klasyfikacja.
+
+    Odbior o stalej mocy ma w jakobianie `1/|V|^2` i `1/|V|^4`, wiec punkt skorygowany lezacy
+    na zerze fazora albo za nim daje smieciowy jakobian. Wymuszamy taki przypadek: niepewnosc
+    napiecia wieksza od modulu. Kontrakt: stan NIEDOSTEPNA, zadnego wyjatku, zadnego NaN,
+    zadnej liczby udajacej pomiar.
+    """
+    for modul, niepewnosc in ((1.0e-9, 1.0e-6), (0.5, 0.5), (0.5, 12.0)):
+        wynik = czestotliwosc_wezla(
+            complex(modul, 0.0),
+            complex(3.0, -4.0),
+            f_bazowa_hz=F_BAZOWA_HZ,
+            niepewnosc_napiecia_pu=niepewnosc,
+            niepewnosc_pochodnej_pu_s=1.0,
+        )
+        assert wynik.jakosc == JAKOSC_NIEDOSTEPNA, f"|V|={modul}, u_V={niepewnosc}"
+        assert math.isfinite(wynik.f_hz) and math.isfinite(wynik.niepewnosc_hz)
+    niedostepna = czestotliwosc_wezla(
+        complex(1.0, 0.0),
+        complex(1.0, 0.0),
+        f_bazowa_hz=F_BAZOWA_HZ,
+        niepewnosc_napiecia_pu=0.1,
+        niepewnosc_pochodnej_pu_s=math.inf,
+    )
+    assert niedostepna.jakosc == JAKOSC_NIEDOSTEPNA
+
+
+def test_a05_pomiar_niepewnosci_nie_dotyka_punktu_skorygowanego_poza_domena() -> None:
+    """Ten sam kontrakt na poziomie POMIARU, nie tylko klasyfikacji.
+
+    Szyna bez zadnego elementu ma w Ybus wiersz zerowy; jakobian jest osobliwy, wiec
+    `pochodna_napiec` odmawia NAZWANYM kodem, a nie surowym bledem biblioteki rzadkiej.
+    """
+    from network_model.solvers.dynamika.kontrakty import KOD_ALGEBRA_NIEZBIEZNA, OdmowaDynamiki
+    from network_model.solvers.dynamika.obserwable import pochodna_napiec_z_niepewnoscia
+
+    model = zloz_model_sieci((WezelDynamiki("SAM", U_N_KV),), (), ())
+    with pytest.raises(OdmowaDynamiki) as odmowa:
+        pochodna_napiec_z_niepewnoscia(
+            model, (), (), (), np.array([complex(1.0, 0.0)], dtype=complex)
+        )
+    assert odmowa.value.kod == KOD_ALGEBRA_NIEZBIEZNA
+
+
+def test_a01_estymata_bledu_napiecia_nie_jest_granica() -> None:
+    """A-01: `|J^-1 r|` bywa MNIEJSZE od rzeczywistego bledu — to estymata, nie granica.
+
+    Twierdzenie, ze poprawka Newtona ogranicza blad, jest nieuprawnione: z rozwiniecia
+    Taylora `y - y* = J^-1 r + J^-1 R_2`, a dla odbioru o stalej mocy stala Lipschitza
+    jakobianu rosnie jak `1/|V|^3`, wiec czlon drugiego rzedu nie znika.
+
+    POMIAR wobec wyroczni ANALITYCZNEJ (postac zamknieta w 60 cyfrach, bez wspoldzielenia
+    jakobianu ani Newtona) daje `rho_V > 1` — estymata jest przekraczana. Test przypina samo
+    istnienie takiego punktu, zeby nikt nie wrocil do nazywania `u_V` granica; nie przypina
+    jego wielkosci, bo ta zalezy od arytmetyki maszyny.
+
+    UCZCIWIE — CZEGO TEN TEST NIE DOWODZI. Pierwsza wersja tego pomiaru zameldowala iloraz
+    8,9e6; okazal sie ARTEFAKTEM: przy `P -> P_max` obie galezie krzywej PV zbiegaja sie,
+    Newton z roznego startu lada na roznych galeziach, a porownanie mierzylo wtedy odleglosc
+    MIEDZY ROZWIAZANIAMI, nie blad jednego z nich. Sweep odrzuca dzis punkty o rozstepie
+    galezi ponizej `MIN_ROZSTEP_GALEZI_PU`, a hipoteza „estymata myli sie o rzedy wielkosci"
+    zostala OBALONA — pozostaje przekroczenie o ulamki procenta.
+    """
+    from tests.network_model.dynamika.kwalifikacja_niepewnosci import przemiataj
+
+    wyniki = przemiataj(pelna=False)
+    assert wyniki, "siatka kwalifikacyjna nie zmierzyla ani jednego punktu"
+    analityczne = [w for w in wyniki if w.wyrocznia == "analityczna" and w.nad_szumem]
+    assert analityczne, "brak mierzalnych punktow z wyrocznia analityczna"
+    assert max(w.rho_v for w in analityczne) > 1.0, (
+        "na tej siatce |J^-1 r| nie zostal przekroczony przez rzeczywisty blad — "
+        "siatka przestala dotykac rezimu, w ktorym czlon drugiego rzedu jest istotny"
+    )
+
+
+def test_sweep_kwalifikacyjny_jest_odtwarzalny_i_ma_zmierzone_zapadki() -> None:
+    """Liczba kwalifikacyjna MUSI dac sie odtworzyc z drzewa (par. 1 rundy kwalifikacyjnej).
+
+    HISTORIA. Runda 1 zameldowala „140 punktow x 5 tolerancji, najgorszy iloraz 0,769".
+    Ta liczba powstala w skrypcie sesyjnym, ktorego w repozytorium nie bylo — czyli nie byla
+    dowodem. Sweep zyje dzis w `kwalifikacja_niepewnosci.py` i biegnie w tym tescie.
+
+    ROZDZIAL SZUMU. Przy ciasnej tolerancji blad i estymata schodza do poziomu zaokraglenia
+    podwojnej precyzji; iloraz mierzy wtedy szum arytmetyki, nie jakosc estymaty. Zapadki
+    dotycza wielkosci NAD podloga szumu; zbior pelny jest raportowany, ale nie bramkowany.
+
+    ZAPADKI SA POMIAREM, NIE TWIERDZENIEM. `rho_f <= 1` na tej klasie jest wlasnoscia
+    EMPIRYCZNA: propagacja skonczona jest zachowawcza wobec kierunku rzeczywistego
+    zaburzenia, wiec pokrywa blad mimo ze jej wejscia (`u_V`, `u_Vdot`) same siegaja jedynki.
+    Wzrost ktorejkolwiek zapadki to sygnal do zbadania, nie do podniesienia progu.
+    """
+    from tests.network_model.dynamika.kwalifikacja_niepewnosci import przemiataj
+
+    wyniki = przemiataj(pelna=False)
+    assert len(wyniki) >= 150, f"siatka CI zmierzyla {len(wyniki)} punktow — za malo na klase"
+    mierzalne = [w for w in wyniki if w.nad_szumem]
+    assert len(mierzalne) >= 40, (
+        f"tylko {len(mierzalne)} punktow nad podloga szumu — siatka przestala dotykac "
+        "rezimu, w ktorym blad jest w ogole mierzalny"
+    )
+    assert max(w.rho_f for w in mierzalne) <= 1.0, "estymata czestotliwosci przestala pokrywac blad"
+    assert max(w.rho_v for w in mierzalne) <= 1.05, "estymata bledu napiecia pogorszyla sie"
+    assert max(w.rho_vdot for w in mierzalne) <= 1.05, "estymata bledu pochodnej pogorszyla sie"
+
+
+def test_a01_punkt_skorygowany_jest_krokiem_w_strone_rozwiazania() -> None:
+    """Kierunek korekty Newtona jest CZESCIA kontraktu, nie szczegolem implementacji.
+
+    Sam MODUL `|J^-1 r|` jest w pierwszym rzedzie niewrazliwy na znak korekty, wiec test
+    porownujacy tylko niepewnosci nie odrozni `y - J^-1 r` od `y + J^-1 r`. Rozroznia je
+    jednak wlasnosc, o ktora tu chodzi: punkt skorygowany ma byc BLIZEJ rozwiazania, czyli
+    ma miec MNIEJSZE residuum. Bez tego `u_Vdot` mierzyloby zmiane pochodnej w kierunku
+    oddalajacym sie od rozwiazania, a `napiecia_skorygowane` nie byloby oszacowaniem `y*`.
+    """
+    from network_model.solvers.dynamika.obserwable import pochodna_napiec_z_niepewnoscia
+    from network_model.solvers.dynamika.siec import residuum_algebry, rozwiaz_algebre
+
+    model, odbiory, urzadzenia, stany = _uklad_z_odbiorem(1.0079)
+    rozwiazanie = rozwiaz_algebre(
+        model,
+        odbiory,
+        urzadzenia,
+        stany,
+        np.array([complex(1.0, 0.0), complex(0.70, -0.25)], dtype=complex),
+        tolerancja=1.0e-4,
+        max_iteracji=400,
+        max_nawrotow=90,
+        t_s=0.0,
+    )
+    pomiar = pochodna_napiec_z_niepewnoscia(model, odbiory, urzadzenia, stany, rozwiazanie.napiecia)
+    # Odtworzenie punktu skorygowanego z opublikowanej niepewnosci nie jest mozliwe (modul
+    # gubi kierunek), wiec liczymy korekte tak, jak robi to produkcja, i sprawdzamy OBIE
+    # strony: krok „w dol" ma obnizyc residuum, krok „w gore" — podniesc.
+    from network_model.solvers.dynamika.siec import jakobian_algebry
+    from scipy.sparse import linalg as sparse_linalg
+
+    liczba = model.liczba_wezlow
+    reszta = residuum_algebry(model, odbiory, urzadzenia, stany, rozwiazanie.napiecia)
+    rozklad = sparse_linalg.splu(
+        jakobian_algebry(model, odbiory, urzadzenia, stany, rozwiazanie.napiecia)
+    )
+    krok = rozklad.solve(reszta)
+    korekta = krok[:liczba] + 1j * krok[liczba:]
+    assert np.allclose(
+        np.abs(korekta), pomiar.niepewnosc_napiecia_pu, rtol=1e-12
+    ), "produkcja liczy niepewnosc napiecia z innej wielkosci niz krok Newtona"
+
+    norma = float(np.linalg.norm(reszta))
+    w_dol = float(
+        np.linalg.norm(
+            residuum_algebry(model, odbiory, urzadzenia, stany, rozwiazanie.napiecia - korekta)
+        )
+    )
+    w_gore = float(
+        np.linalg.norm(
+            residuum_algebry(model, odbiory, urzadzenia, stany, rozwiazanie.napiecia + korekta)
+        )
+    )
+    assert w_dol < norma, "krok `y - J^-1 r` nie zbliza sie do rozwiazania"
+    assert w_gore > norma, "krok `y + J^-1 r` nie oddala sie — przypadek nie rozroznia znaku"
+
+
+def test_kontrakt_niepewnosci_nie_moze_objac_bledu_calkowania() -> None:
+    """A-04: `u_f_est_hz` NIE obejmuje bledu calkowania — i jest to prawda STRUKTURALNA.
+
+    `czestotliwosc_wezla` dostaje wylacznie fazor, jego pochodna i estymaty bledu obu; nie
+    dostaje ani kroku calkowania, ani rzedu integratora, ani historii. Nie ma wiec z czego
+    policzyc bledu dyskretyzacji w czasie — i nie wolno czytac tej wielkosci jako bledu
+    calkowitego. Test pilnuje tego u zrodla, zeby deklaracja z naglowka modulu nie byla
+    obietnica bez pokrycia (regula KLASA par. 4).
+
+    POMIAR TOWARZYSZACY (nie asercja, bo wartosci sa na poziomie zaokraglenia i nieprzenosne):
+    na ukladzie SMIB ze skokiem obciazenia blad czasowy przy `h = 4 ms` wynosil 2,14e-12 Hz
+    przy estymacie 6,45e-14 Hz — czyli 33 razy wiecej niz to, co estymata opisuje.
+    """
+    import inspect
+
+    from network_model.solvers.dynamika.obserwable import (
+        czestotliwosc_wezla as funkcja_czestotliwosci,
+    )
+
+    parametry = set(inspect.signature(funkcja_czestotliwosci).parameters)
+    assert parametry == {
+        "napiecie_pu",
+        "pochodna_napiecia_pu_s",
+        "f_bazowa_hz",
+        "niepewnosc_napiecia_pu",
+        "niepewnosc_pochodnej_pu_s",
+    }, f"zmienil sie kontrakt wejscia niepewnosci: {sorted(parametry)}"
+    zakazane = {"dt_s", "krok", "rzad", "integrator", "historia", "tolerancja_kroku"}
+    assert not (parametry & zakazane), (
+        "funkcja dostala dostep do wielkosci calkowania — jesli ma obejmowac blad czasowy, "
+        "trzeba to WYPROWADZIC i nazwac, a nie dodac po cichu"
+    )
+
+
+def test_a01_znak_korekty_newtona_jest_przypiety_w_zrodle() -> None:
+    """M-Q02: znak korekty NIE jest obserwowalny w wyniku — wiec przypinamy go w zrodle.
+
+    `u_Vdot = |Vdot(y -+ J^-1 r) - Vdot(y)|` jest w PIERWSZYM RZEDZIE niewrazliwe na znak,
+    bo `Vdot(y + d) - Vdot(y) ~ +J_Vdot d`, a `Vdot(y - d) - Vdot(y) ~ -J_Vdot d` — te same
+    moduly. Zadna asercja na opublikowanych wielkosciach nie odrozni wiec `y - J^-1 r` od
+    `y + J^-1 r`; mutacja znaku jest wzgledem kontraktu wyjscia ROWNOWAZNA.
+
+    Wlasnosc jest jednak istotna: punkt skorygowany ma byc oszacowaniem `y*`, a nie punktem
+    po przeciwnej stronie. Skoro nie da sie tego sprawdzic przez wynik, sprawdzamy przez
+    SKLADNIE — tak jak repozytorium robi to dla innych wlasnosci strukturalnych. Test
+    swiadomie siega do AST, i to jest zapisane, a nie ukryte.
+    """
+    import ast
+    import inspect
+
+    from network_model.solvers.dynamika import obserwable
+
+    drzewo = ast.parse(inspect.getsource(obserwable))
+    przypisania = [
+        wezel
+        for wezel in ast.walk(drzewo)
+        if isinstance(wezel, ast.Assign)
+        and any(
+            isinstance(cel, ast.Name) and cel.id == "napiecia_skorygowane" for cel in wezel.targets
+        )
+    ]
+    assert len(przypisania) == 1, "punkt skorygowany powstaje w wiecej niz jednym miejscu"
+    wyrazenie = przypisania[0].value
+    assert isinstance(wyrazenie, ast.BinOp) and isinstance(wyrazenie.op, ast.Sub), (
+        "punkt skorygowany musi byc KROKIEM W STRONE rozwiazania (`y - J^-1 r`); "
+        "znak dodatni oddala od rozwiazania i czyni `napiecia_skorygowane` bezsensownym "
+        "jako oszacowanie `y*`"
+    )
+    assert isinstance(wyrazenie.left, ast.Name) and wyrazenie.left.id == "napiecia"
+    assert isinstance(wyrazenie.right, ast.Name) and wyrazenie.right.id == "blad_napiecia"

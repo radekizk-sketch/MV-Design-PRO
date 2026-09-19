@@ -26,7 +26,6 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum, StrEnum
 from typing import Any
-from uuid import UUID, uuid4
 
 # =============================================================================
 # ENUMS AND TYPES
@@ -124,13 +123,17 @@ class ProtectionComparisonRow:
         trip_state_b: Trip state from Run B
         t_trip_s_a: Trip time from Run A [s] (None if NO_TRIP/INVALID)
         t_trip_s_b: Trip time from Run B [s]
-        i_fault_a_a: Fault current from Run A [A]
-        i_fault_a_b: Fault current from Run B [A]
+        i_fault_a_a: Fault current from Run A [A] (None if element not evaluated in Run A)
+        i_fault_a_b: Fault current from Run B [A] (None if element not evaluated in Run B)
         delta_t_s: Time difference (B - A) [s] (None if not both TRIPS)
-        delta_i_fault_a: Current difference (B - A) [A]
+        delta_i_fault_a: Current difference (B - A) [A] (None if either side not evaluated)
         margin_percent_a: Margin from Run A [%]
         margin_percent_b: Margin from Run B [%]
         state_change: Classification of state change
+
+    FAB-E (E1): i_fault_a_a/i_fault_a_b/delta_i_fault_a to ``| None`` — element
+    nieobecny w run A LUB run B (eval_a/eval_b brak) daje None, nigdy
+    fabrykowane 0.0 A, co wyglądałoby jak realny zanik prądu zwarciowego.
     """
 
     protected_element_ref: str
@@ -141,10 +144,10 @@ class ProtectionComparisonRow:
     trip_state_b: str
     t_trip_s_a: float | None
     t_trip_s_b: float | None
-    i_fault_a_a: float
-    i_fault_a_b: float
+    i_fault_a_a: float | None
+    i_fault_a_b: float | None
     delta_t_s: float | None
-    delta_i_fault_a: float
+    delta_i_fault_a: float | None
     margin_percent_a: float | None
     margin_percent_b: float | None
     state_change: StateChange
@@ -181,10 +184,16 @@ class ProtectionComparisonRow:
             trip_state_b=str(data["trip_state_b"]),
             t_trip_s_a=float(data["t_trip_s_a"]) if data.get("t_trip_s_a") is not None else None,
             t_trip_s_b=float(data["t_trip_s_b"]) if data.get("t_trip_s_b") is not None else None,
-            i_fault_a_a=float(data["i_fault_a_a"]),
-            i_fault_a_b=float(data["i_fault_a_b"]),
+            i_fault_a_a=(
+                float(data["i_fault_a_a"]) if data.get("i_fault_a_a") is not None else None
+            ),
+            i_fault_a_b=(
+                float(data["i_fault_a_b"]) if data.get("i_fault_a_b") is not None else None
+            ),
             delta_t_s=float(data["delta_t_s"]) if data.get("delta_t_s") is not None else None,
-            delta_i_fault_a=float(data["delta_i_fault_a"]),
+            delta_i_fault_a=(
+                float(data["delta_i_fault_a"]) if data.get("delta_i_fault_a") is not None else None
+            ),
             margin_percent_a=(
                 float(data["margin_percent_a"])
                 if data.get("margin_percent_a") is not None
@@ -326,6 +335,9 @@ class ProtectionComparisonResult:
         ranking: Tuple of ranking issues (sorted by severity DESC)
         summary: Summary statistics
         input_hash: SHA-256 hash of inputs for caching
+        provenance_a: proweniencja biegu A (B1: `RunProvenance.to_dict()` —
+            snapshot_hash/input_hash/koperta biegu R1)
+        provenance_b: proweniencja biegu B — jak wyżej
         created_at: Comparison timestamp
     """
 
@@ -337,6 +349,8 @@ class ProtectionComparisonResult:
     ranking: tuple[RankingIssue, ...]
     summary: ProtectionComparisonSummary
     input_hash: str
+    provenance_a: dict[str, Any] = field(default_factory=dict)
+    provenance_b: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
@@ -350,6 +364,8 @@ class ProtectionComparisonResult:
             "ranking": [i.to_dict() for i in self.ranking],
             "summary": self.summary.to_dict(),
             "input_hash": self.input_hash,
+            "provenance_a": self.provenance_a,
+            "provenance_b": self.provenance_b,
             "created_at": self.created_at.isoformat(),
         }
 
@@ -365,6 +381,8 @@ class ProtectionComparisonResult:
             ranking=tuple(RankingIssue.from_dict(i) for i in data.get("ranking", [])),
             summary=ProtectionComparisonSummary.from_dict(data["summary"]),
             input_hash=str(data["input_hash"]),
+            provenance_a=data.get("provenance_a", {}),
+            provenance_b=data.get("provenance_b", {}),
             created_at=(
                 datetime.fromisoformat(data["created_at"])
                 if "created_at" in data
@@ -467,96 +485,14 @@ class ProtectionComparisonTrace:
 
 
 # =============================================================================
-# COMPARISON ENTITY (FOR PERSISTENCE)
-# =============================================================================
-
-
-class ProtectionComparisonStatus(StrEnum):
-    """Status of a protection comparison."""
-
-    CREATED = "CREATED"
-    COMPUTING = "COMPUTING"
-    FINISHED = "FINISHED"
-    FAILED = "FAILED"
-
-
-@dataclass(frozen=True)
-class ProtectionComparison:
-    """
-    Protection comparison entity.
-
-    Tracks the lifecycle of a protection comparison from creation to completion.
-    Supports caching: same (run_a_id, run_b_id) pair returns cached result.
-
-    Attributes:
-        id: Unique comparison identifier (UUID)
-        project_id: Parent project ID
-        run_a_id: First protection run ID
-        run_b_id: Second protection run ID
-        status: Comparison lifecycle status
-        input_hash: SHA-256 hash for deduplication/caching
-        result_json: Full comparison result (after FINISHED)
-        trace_json: Full trace data (after FINISHED)
-        error_message: Error details (after FAILED)
-        created_at: Creation timestamp
-        finished_at: Completion timestamp
-    """
-
-    id: UUID
-    project_id: UUID
-    run_a_id: str
-    run_b_id: str
-    status: ProtectionComparisonStatus
-    input_hash: str = ""
-    result_json: dict[str, Any] | None = None
-    trace_json: dict[str, Any] | None = None
-    error_message: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    finished_at: datetime | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict."""
-        return {
-            "id": str(self.id),
-            "project_id": str(self.project_id),
-            "run_a_id": self.run_a_id,
-            "run_b_id": self.run_b_id,
-            "status": self.status.value,
-            "input_hash": self.input_hash,
-            "result_json": self.result_json,
-            "trace_json": self.trace_json,
-            "error_message": self.error_message,
-            "created_at": self.created_at.isoformat(),
-            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> ProtectionComparison:
-        """Deserialize from dict."""
-        return cls(
-            id=UUID(data["id"]),
-            project_id=UUID(data["project_id"]),
-            run_a_id=str(data["run_a_id"]),
-            run_b_id=str(data["run_b_id"]),
-            status=ProtectionComparisonStatus(data["status"]),
-            input_hash=data.get("input_hash", ""),
-            result_json=data.get("result_json"),
-            trace_json=data.get("trace_json"),
-            error_message=data.get("error_message"),
-            created_at=(
-                datetime.fromisoformat(data["created_at"])
-                if "created_at" in data
-                else datetime.now(UTC)
-            ),
-            finished_at=(
-                datetime.fromisoformat(data["finished_at"]) if data.get("finished_at") else None
-            ),
-        )
-
-
-# =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
+#
+# CV-3.3-B: `ProtectionComparisonStatus` + `ProtectionComparison` (byt trwałości
+# dla cache'a R3 `study_results`) usunięte — porównanie jest odtąd BEZSTANOWE
+# (żadna trwałość poza dwoma biegami R1, które i tak są append-only): ten sam
+# `comparison_id` zawsze przelicza się identycznie (patrz
+# `application/protection_comparison/service.py`).
 
 
 def compute_comparison_input_hash(run_a_id: str, run_b_id: str) -> str:
@@ -580,34 +516,6 @@ def compute_comparison_input_hash(run_a_id: str, run_b_id: str) -> str:
     return hashlib.sha256(canonical_input.encode()).hexdigest()
 
 
-def new_protection_comparison(
-    *,
-    project_id: UUID,
-    run_a_id: str,
-    run_b_id: str,
-) -> ProtectionComparison:
-    """
-    Factory function to create a new ProtectionComparison.
-
-    Args:
-        project_id: ID of the project
-        run_a_id: ID of the first protection run
-        run_b_id: ID of the second protection run
-
-    Returns:
-        New ProtectionComparison in CREATED status
-    """
-    input_hash = compute_comparison_input_hash(run_a_id, run_b_id)
-    return ProtectionComparison(
-        id=uuid4(),
-        project_id=project_id,
-        run_a_id=run_a_id,
-        run_b_id=run_b_id,
-        status=ProtectionComparisonStatus.CREATED,
-        input_hash=input_hash,
-    )
-
-
 # =============================================================================
 # ERRORS
 # =============================================================================
@@ -625,6 +533,20 @@ class ProtectionRunNotFoundError(ProtectionComparisonError):
     def __init__(self, run_id: str):
         self.run_id = run_id
         super().__init__(f"Protection run nie znaleziony: {run_id}")
+
+
+class ProtectionRunWrongTypeError(ProtectionComparisonError):
+    """CV-3.3-B: bieg R1 istnieje, ale nie jest biegiem zabezpieczeń.
+
+    Osobny błąd od `ProtectionRunNotFoundError` — 422, nie 404: bieg NAPRAWDĘ
+    istnieje, tylko porównanie zabezpieczeń nie może go zinterpretować (inny
+    rodzaj analizy). Router mapuje to na `422 Unprocessable Entity`.
+    """
+
+    def __init__(self, run_id: str, analysis_type: str):
+        self.run_id = run_id
+        self.analysis_type = analysis_type
+        super().__init__(f"Bieg {run_id} nie jest biegiem zabezpieczeń (rodzaj: {analysis_type})")
 
 
 class ProtectionRunNotFinishedError(ProtectionComparisonError):
@@ -651,11 +573,3 @@ class ProtectionComparisonNotFoundError(ProtectionComparisonError):
     def __init__(self, comparison_id: str):
         self.comparison_id = comparison_id
         super().__init__(f"Protection comparison nie znalezione: {comparison_id}")
-
-
-class ProtectionResultNotFoundError(ProtectionComparisonError):
-    """Raised when protection results are not found for a run."""
-
-    def __init__(self, run_id: str):
-        self.run_id = run_id
-        super().__init__(f"Wyniki protection nie znalezione dla run: {run_id}")

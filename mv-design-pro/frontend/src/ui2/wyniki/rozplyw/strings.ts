@@ -7,14 +7,7 @@
  * dziesiętny zgodnie z konwencją PL.
  */
 
-/**
- * Normatywny przedział napięcia SN ±5% Un (0,95–1,05 p.u.) — EN 50160 / IRiESD.
- * To NIE jest heurystyka solvera: stała NORMATYWNA, jawnie ujawniana w sekcji
- * ZAŁOŻENIA (WHITE BOX, W-602) i użyta wyłącznie do prezentacyjnego oznaczenia
- * wartości poza zakresem (tag), bez korekty wyniku fizycznego.
- */
-export const NAPIECIE_MIN_PU = 0.95;
-export const NAPIECIE_MAX_PU = 1.05;
+import type { KryteriaNapieciowe } from '../../../ui/power-flow-results/types';
 
 export const ROZPLYW_STRINGS = {
   // Nagłówek analizy
@@ -44,10 +37,11 @@ export const ROZPLYW_STRINGS = {
   // WYŁĄCZNIE z backendowej walidacji energetycznej (BRANCH/TRANSFORMER_LOADING).
   kolObciazenie: 'Obciążenie',
 
-  // Podzakładki okna rozpływu (karta E8.3)
+  // Podzakładki okna rozpływu (karta E8.3, uzupełnienie W3-H)
   ariaPodzakladki: 'Podzakładki wyniku rozpływu',
   podzakladkaSzyny: 'Szyny',
   podzakladkaGalezie: 'Gałęzie',
+  podzakladkaRegulacjaOze: 'Regulacja Q OZE',
 
   // Suma strat gałęzi (wiersz podsumowania pod tabelą, karta E8.3)
   sumaStrat: 'Suma strat gałęzi',
@@ -59,7 +53,11 @@ export const ROZPLYW_STRINGS = {
   zalLiczbaIteracji: 'Liczba iteracji',
   zalZbieznosc: 'Zbieżność',
   zalPrzedzialNapiecia: 'Dopuszczalny przedział napięcia',
-  zalPrzedzialNapieciaUwaga: 'Norma napięciowa ±5% Un (EN 50160) — służy oznaczeniu wartości poza zakresem.',
+  // Karta W3-J: BEZ liczby wpisanej na sztywno — podstawa (z liczbą procentu)
+  // pochodzi WPROST z odpowiedzi biegu (`kryteria.podstawa_ostrzezenie_pl`);
+  // ten tekst pokazuje się WYŁĄCZNIE gdy kryteria są niedostępne w wyniku
+  // (starszy zapisany bieg sprzed karty W3-J) — uczciwy stan, nie fabrykacja.
+  zalPrzedzialNapieciaNiedostepne: 'Kryterium napięciowe niedostępne w tym wyniku.',
   zbieznoscTak: 'Tak',
   zbieznoscNie: 'Nie',
 
@@ -81,6 +79,26 @@ export const ROZPLYW_STRINGS = {
   // Uczciwy brak danych (R3-A): brak pozycji walidacji dla gałęzi lub brak
   // odpowiedzi walidacji → komórka bez wartości i bez werdyktu.
   kreska: '—',
+
+  // Podzakładka „Regulacja Q OZE" (karta W3-H, badanie śladu WHITE BOX —
+  // wariant B, zero fabrykacji, mapa aneks J5 / domena 5 #1 / domena 3 #10).
+  analizaRegulacjaOze: 'Rozpływ mocy — regulacja mocy biernej falowników',
+  regulacjaOzeTytul:
+    'Wykres „Q wstrzyknięte w biegu vs prawo Q(U)/cosφ(P)" niedostępny',
+  regulacjaOzeOpis:
+    'Zbadano ślad WHITE BOX realnych przebiegów solverów rozpływu (Newton-Raphson, ' +
+    'Gauss-Seidel, fast-decoupled): dla żadnego z nich wynik przekazywany dalej do ' +
+    'przebiegu (raport, ślad zapisany w przebiegu) nie niesie per generator trybu ' +
+    'regulacji (stały współczynnik mocy cosφ, cosφ(P), Q(U)), wstrzykniętej mocy ' +
+    'biernej, napięcia w punkcie pracy ani informacji o osiągnięciu ograniczenia Q — ' +
+    'nawet gdy przebieg solvera Newtona-Raphsona wewnętrznie te wartości liczy, ślad ' +
+    'zapisywany dla przebiegu ich nie zachowuje.',
+  regulacjaOzeOpisUzupelnienie:
+    'Krzywa prawa sterowania z nastaw źródła pozostaje dostępna w kreatorze źródła ' +
+    'OZE jako podgląd parametrów (bez punktu pracy z przebiegu, bez fizyki sieci).',
+  regulacjaOzeDecyzja:
+    'Decyzja właściciela OD-15 rozstrzygnie, czy solver dostanie pola addytywne śladu ' +
+    'niosące te wartości per generator.',
 } as const;
 
 /** Format liczby z przecinkiem dziesiętnym (deterministyczny). */
@@ -113,9 +131,18 @@ export function fmtTolerancja(n: number): string {
   return n.toExponential().replace('.', ',');
 }
 
-/** Czy napięcie [p.u.] jest poza normatywnym przedziałem ±5% Un. */
-export function napiecePozaZakresem(vPu: number): boolean {
-  return vPu < NAPIECIE_MIN_PU || vPu > NAPIECIE_MAX_PU;
+/**
+ * Czy napięcie [p.u.] jest poza kryterium ostrzeżenia — próg WYŁĄCZNIE
+ * z odpowiedzi backendu (karta W3-J, `analysis.normative.kryteria_napiecia`),
+ * zero progu wymyślonego w UI. Brak kryteriów w wyniku (starszy zapisany
+ * bieg) = uczciwe "nie da się ocenić" (`false`), NIGDY domyślna liczba.
+ */
+export function napiecePozaZakresem(
+  vPu: number,
+  kryteria: KryteriaNapieciowe | undefined,
+): boolean {
+  if (!kryteria) return false;
+  return vPu < kryteria.ostrzezenie_min_pu || vPu > kryteria.ostrzezenie_max_pu;
 }
 
 /**

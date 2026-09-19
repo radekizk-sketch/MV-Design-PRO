@@ -75,6 +75,21 @@ export const ZBIEZNOSC_STRINGS = {
     + 'regulacji zaczepów nie może być pokazany.',
   oltcLadowanie: 'Ładowanie śladu solvera…',
 
+  // Wyspy zasilone (rozpływ liczony per wyspa — sieć z kilkoma źródłami sieciowymi).
+  wyspyTytul: 'Wyspy zasilone w przebiegu (rozpływ per wyspa)',
+  wyspyOpis: 'Sieć ma kilka wysp z własnym źródłem sieciowym — solver rozwiązał każdą '
+    + 'osobno z własną szyną bilansującą; bilans mocy przebiegu jest sumą wysp, a szyna '
+    + 'bilansująca w założeniach to szyna pierwszej wyspy.',
+  wyspyKolSzyna: 'Szyna bilansująca',
+  wyspyKolZrodlo: 'Źródło sieciowe',
+  wyspyKolSzynyPq: 'Szyny PQ',
+  wyspyKolSzynyPv: 'Szyny PV',
+  wyspyKolIteracje: 'Iteracje',
+  wyspyKolZbieznosc: 'Zbieżność',
+  wyspyZbiezna: 'zbieżna',
+  wyspyNiezbiezna: 'NIEZBIEŻNA',
+  zalSzynyBilansujaceUwaga: 'kilka wysp zasilonych — po jednej szynie bilansującej na wyspę',
+
   // Założenia zaczepów w modelu (bieżąca wersja układu — snapshot ENM).
   modelTytul: 'Założenia zaczepów w modelu (bieżąca wersja układu)',
   modelOpis: 'Konfiguracja przełączników zaczepów transformatorów z BIEŻĄCEJ wersji '

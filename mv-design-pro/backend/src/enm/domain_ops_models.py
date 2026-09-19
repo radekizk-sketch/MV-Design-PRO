@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from enm.models import PhaseSet
 from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
@@ -751,6 +752,18 @@ class AddGridSourceSNPayload(_FrozenBase):
     rx_ratio: float | None = None
     """Stosunek R/X impedancji zwarciowej."""
 
+    sk3_min_mva: float | None = None
+    """Minimalna moc zwarciowa trójfazowa [MVA] — scenariusz MIN (CV-4.3 K7)."""
+
+    ik3_min_ka: float | None = None
+    """Minimalny prąd zwarciowy trójfazowy [kA] — scenariusz MIN (CV-4.3 K7)."""
+
+    rx_ratio_min: float | None = None
+    """Stosunek R/X impedancji zwarciowej dla scenariusza MIN (CV-4.3 K7)."""
+
+    u_set_pu: float | None = None
+    """Napięcie zadane szyny bilansującej [p.u. Un szyny], pasmo 0,8–1,2; brak = 1,0."""
+
     line_fields_per_section: int | None = None
     """Liczba pól liniowych odpływowych tworzonych na każdej sekcji GPZ."""
 
@@ -1250,6 +1263,10 @@ class AddConverterSourcePayload(_FrozenBase):
     # V12K-063 (G-OZE-B3): nachylenie Q(U) [pu Q na pu U] — wartość rządząca trybem Q_OD_U;
     # bez niej wybór trybu Q(U) był pasywny (phantom). Konsumowany przez kanoniczny PF.
     qu_slope_pu_per_pu: float | None = None
+    # Karta CV-4.1b (A3-04): nastawa napięcia [pu] rządząca trybem REGULACJA_NAPIECIA
+    # (węzeł PV w rozpływie — napięcie zadane, moc bierna wynikiem solvera w paśmie
+    # q_min_mvar/q_max_mvar powyżej). Brak → tryb niekompletny (walidator ENM blokuje).
+    u_set_pu: float | None = None
     # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości charakterystyki Q(U) [pu U] —
     # zakres napięcia, w którym Q=0 (NC RfG). Brak → domyślnie punkt 1.0/1.0 (reakcja
     # natychmiastowa). Konsumowany przez kanoniczny PF falownika (q_from_voltage).
@@ -1263,8 +1280,8 @@ class AddConverterSourcePayload(_FrozenBase):
     # V12K-087 (G-OZE-B2): jawne deklaracje zdolności FRT (NC RfG) — czy jednostka
     # ma zaprogramowaną charakterystykę przejścia przez zanik (LVRT) i przepięcie
     # (HVRT). Nie da się wyprowadzić z karty katalogowej (envelope Q tylko), więc
-    # deklaruje je projektant. Konsumowane przez most zgodności NC RfG
-    # (build_der_compliance_from_generator → NcRfgComplianceChecker). Brak → False.
+    # deklaruje je projektant. Konsumowane przez most model → wejście solvera NC RfG
+    # (S-3: `ncrfg_compliance/model_bridge.py` → `NcRfgPtpireeModuleInput`). Brak → False.
     has_lvrt_curve: bool | None = None
     has_hvrt_curve: bool | None = None
     bess_mode: str | None = None
@@ -1301,7 +1318,14 @@ class AddUPSNNPayload(_FrozenBase):
 
 
 class AddNNLoadPayload(_FrozenBase):
-    """Payload: add_nn_load — dodaje odbiór do odpływu nN."""
+    """Payload: add_nn_load — dodaje odbiór do odpływu nN.
+
+    Karta W6-1 SS0 p.8 (K-E): pole niosące referencję do profilu obciążenia
+    zostało SKASOWANE — zapisywało wartość bez żadnego czytelnika w repo.
+    Profile czasowe wracają w W6-6 razem z konsumentem (QSTS) jako encja
+    `ProfilCzasowy` — nowe pole, nie wskrzeszenie tamtego. Pilnuje
+    `scripts/grep_zero_guard.py` (grupa `w61_`, zapadka tylko w dół).
+    """
 
     feeder_ref: str
     """Referencja odpływu nN."""
@@ -1321,66 +1345,14 @@ class AddNNLoadPayload(_FrozenBase):
     cos_phi: float | None = None
     """Cos φ — jawnie, alternatywa dla mocy biernej."""
 
-    load_profile_ref: str | None = None
-    """Opcjonalna referencja do profilu obciążenia."""
-
     connection_type: Literal["JEDNOFAZOWY", "TROJFAZOWY"]
     """Sposób przyłączenia (PL) — bez domyślnego."""
 
+    phases: PhaseSet | None = None
+    """Fazy przyłączenia (W5-D, `enm/models.py::PhaseSet`); brak = trójfazowy symetryczny."""
+
     load_name: str | None = None
     load_label: str | None = None
-
-
-# ===========================================================================
-# 6. CANONICAL OPERATION NAMES — kanoniczne nazwy operacji
-# ===========================================================================
-
-
-CANONICAL_OPS: set[str] = {
-    # V1 — budowa SN
-    "add_grid_source_sn",
-    "add_sn_bay",
-    "add_sn_bay_from_catalog",
-    "continue_trunk_segment_sn",
-    "insert_station_on_segment_sn",
-    "start_branch_segment_sn",
-    "insert_section_switch_sn",
-    "connect_secondary_ring_sn",
-    "set_normal_open_point",
-    "add_transformer_sn_nn",
-    "assign_catalog_to_element",
-    "update_element_parameters",
-    "add_converter_source",
-    "add_genset_nn",
-    "add_ups_nn",
-    "add_nn_load",
-    # V2 — ochrona
-    "add_ct",
-    "add_vt",
-    "add_relay",
-    "update_relay_settings",
-    "link_relay_to_field",
-    "calculate_tcc_curve",
-    "validate_selectivity",
-    # V2 — Study Case
-    "create_study_case",
-    "set_case_switch_state",
-    "set_case_normal_state",
-    "set_case_source_mode",
-    "set_case_time_profile",
-    "run_short_circuit",
-    "run_power_flow",
-    "run_time_series_power_flow",
-    "compare_study_cases",
-    # V2 — nN
-    "add_nn_outgoing_field",
-    "set_source_operating_mode",
-    "set_dynamic_profile",
-    # V2 — uniwersalne
-    "rename_element",
-    "set_label",
-}
-"""Zbiór kanonicznych nazw operacji domenowych."""
 
 
 DOMAIN_EVENT_TYPES: list[str] = [

@@ -13,14 +13,19 @@ const env = getPlaywrightEnv({
   ...process.env,
   PLAYWRIGHT_REAL_BACKEND: '1',
 });
+// Porty z env (PLAYWRIGHT_BACKEND_PORT / PLAYWRIGHT_FRONTEND_PORT) pozwalają uruchomić
+// dwa biegi na jednej maszynie równolegle (każdy z własnymi serwerami i własną,
+// świeżą bazą — patrz playwright.config.ts). Domyślnie 8000 / 5173 jak w CI.
+const backendPort = env.PLAYWRIGHT_BACKEND_PORT ?? '8000';
+const frontendPort = env.PLAYWRIGHT_FRONTEND_PORT ?? '5173';
 if (!env.PLAYWRIGHT_BACKEND_URL) {
-  env.PLAYWRIGHT_BACKEND_URL = 'http://127.0.0.1:8000';
+  env.PLAYWRIGHT_BACKEND_URL = `http://127.0.0.1:${backendPort}`;
 }
 if (!env.PLAYWRIGHT_BACKEND_HEALTH_URL) {
   env.PLAYWRIGHT_BACKEND_HEALTH_URL = new URL('/ready', withTrailingSlash(env.PLAYWRIGHT_BACKEND_URL)).toString();
 }
 if (!env.PLAYWRIGHT_FRONTEND_URL) {
-  env.PLAYWRIGHT_FRONTEND_URL = 'http://127.0.0.1:5173';
+  env.PLAYWRIGHT_FRONTEND_URL = `http://127.0.0.1:${frontendPort}`;
 }
 if (!env.VITE_API_URL_DEV) {
   env.VITE_API_URL_DEV = env.PLAYWRIGHT_BACKEND_URL;

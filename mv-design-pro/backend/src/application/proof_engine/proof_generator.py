@@ -99,6 +99,15 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from application.proof_engine.unit_verifier import UnitVerifier
+from network_model.pochodne import (
+    SQRT2,
+    SQRT3,
+    a_na_ka,
+    calka_joule_ka2s,
+    czlon_wykladniczy_kappa,
+    prad_z_mocy_pozornej_ka,
+    v_na_kv,
+)
 from network_model.solvers.machine_sc_iec60909 import (
     MachinePartialContribution,
     MachineShortCircuitResult,
@@ -198,18 +207,18 @@ class SC3FInput:
             run_timestamp=datetime.utcnow(),
             solver_version=solver_version,
             c_factor=result.c_factor,
-            u_n_kv=result.un_v / 1000.0,
+            u_n_kv=v_na_kv(result.un_v),
             z_thevenin_ohm=result.zkk_ohm,
-            ikss_ka=result.ikss_a / 1000.0,
-            ip_ka=result.ip_a / 1000.0,
-            ith_ka=result.ith_a / 1000.0,
+            ikss_ka=a_na_ka(result.ikss_a),
+            ip_ka=a_na_ka(result.ip_a),
+            ith_ka=a_na_ka(result.ith_a),
             sk_mva=result.sk_mva,
             kappa=result.kappa,
             rx_ratio=result.rx_ratio,
             tk_s=result.tk_s,
             m_factor=m_factor,
             n_factor=n_factor,
-            ib_ka=result.ib_a / 1000.0,
+            ib_ka=a_na_ka(result.ib_a),
             tb_s=result.tb_s,
         )
 
@@ -408,7 +417,7 @@ class ProofGenerator:
             i_ka = None
             u_ll_kv = resolved.u_ll_kv or resolved.u_nom_kv
             if s_mva is not None and u_ll_kv:
-                i_ka = s_mva / (math.sqrt(3.0) * u_ll_kv)
+                i_ka = prad_z_mocy_pozornej_ka(s_mva, u_ll_kv)
 
             delta_u_r = None
             if resolved.r_ohm is not None and resolved.p_mw is not None and resolved.u_nom_kv:
@@ -699,7 +708,7 @@ class ProofGenerator:
         # formatujący wielkości już obecne w dowodzie (ith, tk); ta sama
         # projekcja co kanoniczny pełny bilans wierszy wyników (i2t_ka2s).
         # =====================================================================
-        i2t_ka2s = data.ith_ka**2 * data.tk_s
+        i2t_ka2s = calka_joule_ka2s(data.ith_ka, data.tk_s)
         step_number += 1
         steps.append(
             cls._create_sc3f_step_i2t(
@@ -738,7 +747,7 @@ class ProofGenerator:
                     steps.append(cls._create_sc3f_step_machine_q(step_number, machine, t_min_s))
                 step_number += 1
                 steps.append(cls._create_sc3f_step_machine_ib(step_number, machine))
-            ib_machines_ka = data.machine_result.ib_machines_a / 1000.0
+            ib_machines_ka = a_na_ka(data.machine_result.ib_machines_a)
 
         # =====================================================================
         # Podsumowanie
@@ -1019,7 +1028,7 @@ class ProofGenerator:
         )
 
         if fault_type == "SC1FZ":
-            sqrt3 = math.sqrt(3.0)
+            sqrt3 = SQRT3
             substitution = (
                 f"I_k'' = \\frac{{\\sqrt{{3}} \\cdot {c_factor:.4f} \\cdot {u_n_kv:.4f}}}"
                 f"{{|Z_k|}} = "
@@ -1072,7 +1081,7 @@ class ProofGenerator:
         """Step: κ (impact coefficient)."""
         equation = EQ_SC1_009
         rx_ratio = r_equiv / x_equiv if x_equiv != 0 else 0.0
-        exp_term = math.exp(-3 * rx_ratio)
+        exp_term = czlon_wykladniczy_kappa(rx_ratio)
 
         input_values = (
             ProofValue.create("R_k", r_equiv, "Ω", "r_equiv_ohm"),
@@ -1118,7 +1127,7 @@ class ProofGenerator:
     ) -> ProofStep:
         """Step: ip (peak impulse current)."""
         equation = EQ_SC1_010
-        sqrt2 = math.sqrt(2.0)
+        sqrt2 = SQRT2
 
         input_values = (
             ProofValue.create("\\kappa", kappa, "—", "kappa"),
@@ -1591,7 +1600,7 @@ class ProofGenerator:
         """Krok 2: Początkowy prąd zwarciowy I_k'' (c TUTAJ — jedyne miejsce)."""
         equation = EQ_SC3F_004
 
-        sqrt3 = math.sqrt(3)
+        sqrt3 = SQRT3
 
         input_values = (
             ProofValue.create("c", c_factor, "—", "c_factor"),
@@ -1664,8 +1673,8 @@ class ProofGenerator:
         """Krok maszynowy: współczynnik zanikania μ (§6.6.1)."""
         equation = EQ_SC3F_011
         ratio = machine.ratio_ik_ir
-        ikss_p = machine.ikss_partial_a / 1000.0
-        ir = machine.ir_a / 1000.0
+        ikss_p = a_na_ka(machine.ikss_partial_a)
+        ir = a_na_ka(machine.ir_a)
         if ratio <= 2.0:
             substitution = (
                 f"\\mu = 1 \\quad (I_k''/I_r = {ratio:.3f} \\leq 2,\\ "
@@ -1732,8 +1741,8 @@ class ProofGenerator:
     ) -> ProofStep:
         """Krok maszynowy: prąd wyłączeniowy symetryczny i_b = μ·q·I″k (§6.6)."""
         equation = EQ_SC3F_013
-        ikss_p = machine.ikss_partial_a / 1000.0
-        ib = machine.ib_a / 1000.0
+        ikss_p = a_na_ka(machine.ikss_partial_a)
+        ib = a_na_ka(machine.ib_a)
         substitution = (
             f"i_b = {machine.mu:.4f} \\cdot {machine.q:.4f} \\cdot {ikss_p:.4f} = "
             f"{ib:.4f}\\,\\text{{kA}}"
@@ -1773,7 +1782,7 @@ class ProofGenerator:
         equation = EQ_SC3F_005
 
         rx_ratio = r_th / x_th if x_th != 0 else 0
-        exp_term = math.exp(-3 * rx_ratio)
+        exp_term = czlon_wykladniczy_kappa(rx_ratio)
 
         input_values = (
             ProofValue.create("R_{th}", r_th, "Ω", "r_thevenin_ohm"),
@@ -1820,7 +1829,7 @@ class ProofGenerator:
         """Krok 4: Prąd udarowy i_p."""
         equation = EQ_SC3F_006
 
-        sqrt2 = math.sqrt(2)
+        sqrt2 = SQRT2
 
         input_values = (
             ProofValue.create("\\kappa", kappa, "—", "kappa"),
@@ -2072,7 +2081,7 @@ class ProofGenerator:
         """Krok 7: Moc zwarciowa S_k''."""
         equation = EQ_SC3F_007
 
-        sqrt3 = math.sqrt(3)
+        sqrt3 = SQRT3
 
         input_values = (
             ProofValue.create("U_n", u_n_kv, "kV", "u_n_kv"),
@@ -3407,7 +3416,7 @@ class ProofGenerator:
             return data.i2t_ka2s
         if data.ith_ka is None or data.tk_s is None:
             return None
-        return data.ith_ka**2 * data.tk_s
+        return calka_joule_ka2s(data.ith_ka, data.tk_s)
 
     @classmethod
     def _resolve_device_i2t(cls, data: ProtectionProofInput) -> float | None:
@@ -3415,7 +3424,7 @@ class ProofGenerator:
             return data.ith_limit_ka2s
         if data.ith_device_ka is None or data.t_th_s is None:
             return None
-        return data.ith_device_ka**2 * data.t_th_s
+        return calka_joule_ka2s(data.ith_device_ka, data.t_th_s)
 
     @classmethod
     def _compare_limit(
@@ -3897,8 +3906,8 @@ class ProofGenerator:
             data.element_kind in (LoadElementKind.LINE, LoadElementKind.CABLE)
             or data.in_a is not None
         )
-        i_ka = s_mva / (math.sqrt(3) * data.u_ll_kv) if compute_current else None
-        in_ka = data.in_a / 1000.0 if data.in_a is not None else None
+        i_ka = prad_z_mocy_pozornej_ka(s_mva, data.u_ll_kv) if compute_current else None
+        in_ka = a_na_ka(data.in_a) if data.in_a is not None else None
 
         k_i_percent = 100.0 * (i_ka / in_ka) if i_ka is not None and in_ka is not None else None
 
@@ -3968,6 +3977,15 @@ class ProofGenerator:
                     cls._create_lc_step_k_s(
                         step_number=step_number,
                         s_mva=s_mva,
+                        # FAB-E (E1): `or 0.0` tu jest MARTWY, nie fabrykacja —
+                        # data.sn_mva jest juz zweryfikowane non-None wyzej
+                        # (linia ~3884: raise dla TRANSFORMER bez sn_mva), a ten
+                        # branch wykonuje sie TYLKO dla TRANSFORMER, wiec
+                        # sn_mva/k_s_percent sa tu zawsze rzeczywistymi liczbami.
+                        # `or 0.0` zostaje wylacznie, zeby mypy zwezil
+                        # `float | None` na `float` bez lokalnej zmiennej
+                        # posredniej (usuniecie go daje blad mypy arg-type —
+                        # zweryfikowane, nie hipoteza).
                         sn_mva=data.sn_mva or 0.0,
                         k_s_percent=k_s_percent or 0.0,
                     )

@@ -116,7 +116,7 @@
 - **8 generators attached** (PV nn_side: S02/S04/S07/S11/S14/S17/S19/S21)
 - 1 SC_3F run DONE (snapshot hash deterministic)
 - 1 LOAD_FLOW run DONE (Newton-Raphson converged)
-- **1 PROTECTION run DONE** (REX-100 trip @ 165.6 ms)
+- **1 PROTECTION run DONE** (REF-OC-100 trip @ 165.6 ms)
 - 6 export formats (DOCX 38 KB + PDF 4 KB + JSON 183 KB + proof JSON 593 KB + proof LaTeX 106 KB + proof PDF 56 KB)
 
 ### Specialist scores final K20-18

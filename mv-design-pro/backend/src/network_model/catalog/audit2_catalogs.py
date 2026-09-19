@@ -39,6 +39,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
+from network_model.core.uziemienie import TypPunktuNeutralnego
+from network_model.pochodne import mva_na_kva
+
 #: Wersja katalogow audytu 2 = DATA PRZEGLADU PROWENIENCJI (ISO-8601).
 #:
 #: Do karty K-Q pozycje deklarowaly `catalog_version = "2024.1"` — numer, ktory
@@ -447,9 +451,11 @@ class HvFusePasmoTcc:
 
     def __post_init__(self) -> None:
         if not self.zrodlo_url.startswith(("http://", "https://")):
-            raise ValueError("Pasmo wkladki wymaga adresu http(s) tabeli producenta.")
+            odmowa_twarda("KAT-T-023", "Pasmo wkladki wymaga adresu http(s) tabeli producenta.")
         if not self.punkty:
-            raise ValueError("Pasmo bez punktow nie jest pasmem — uzyj `pasmo_tcc = None`.")
+            odmowa_twarda(
+                "KAT-T-024", "Pasmo bez punktow nie jest pasmem — uzyj `pasmo_tcc = None`."
+            )
 
     def to_dict(self) -> dict:
         return {
@@ -607,14 +613,16 @@ class DeviceWithstandItem:
 
     def __post_init__(self) -> None:
         if self.i_th_1s_ka not in IEC_62271_1_SZEREG_I_TH_KA:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-025",
                 f"{self.id}: I_th = {self.i_th_1s_ka} kA jest spoza znormalizowanego "
-                f"szeregu IEC 62271-1 {IEC_62271_1_SZEREG_I_TH_KA}."
+                f"szeregu IEC 62271-1 {IEC_62271_1_SZEREG_I_TH_KA}.",
             )
         if self.i_th_duration_s not in IEC_62271_1_CZASY_ZWARCIA_S:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-026",
                 f"{self.id}: czas trwania zwarcia {self.i_th_duration_s} s jest spoza "
-                f"znormalizowanego szeregu IEC 62271-1 {IEC_62271_1_CZASY_ZWARCIA_S}."
+                f"znormalizowanego szeregu IEC 62271-1 {IEC_62271_1_CZASY_ZWARCIA_S}.",
             )
 
     @property
@@ -767,20 +775,23 @@ class PfCurveItem:
     def __post_init__(self) -> None:
         statyzm_min, statyzm_max = NC_RFG_STATYZM_ZAKRES_PROCENT
         if not statyzm_min <= self.droop_percent <= statyzm_max:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-027",
                 f"{self.id}: statyzm {self.droop_percent} % jest poza przedzialem "
-                f"nastawialnym {statyzm_min}-{statyzm_max} % (NC RfG art. 13 ust. 2)."
+                f"nastawialnym {statyzm_min}-{statyzm_max} % (NC RfG art. 13 ust. 2).",
             )
         strefa_min, strefa_max = NC_RFG_STREFA_NIECZULOSCI_ZAKRES_HZ
         if not strefa_min <= self.deadband_hz <= strefa_max:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-028",
                 f"{self.id}: strefa nieczulosci {self.deadband_hz} Hz jest poza "
-                f"przedzialem {strefa_min}-{strefa_max} Hz (NC RfG art. 13 ust. 2)."
+                f"przedzialem {strefa_min}-{strefa_max} Hz (NC RfG art. 13 ust. 2).",
             )
         if (self.f_min_hz, self.f_max_hz) != NC_RFG_ZAKRES_PRACY_HZ:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-029",
                 f"{self.id}: zakres pracy {self.f_min_hz}-{self.f_max_hz} Hz nie jest "
-                f"zakresem z zalacznika II tab. 2 {NC_RFG_ZAKRES_PRACY_HZ}."
+                f"zakresem z zalacznika II tab. 2 {NC_RFG_ZAKRES_PRACY_HZ}.",
             )
 
     def to_dict(self) -> dict:
@@ -931,7 +942,7 @@ class BlockTransformerItem:
 
     @property
     def sn_kva(self) -> float:
-        return float(self._params["rated_power_mva"]) * 1000.0
+        return mva_na_kva(float(self._params["rated_power_mva"]))
 
     @property
     def hv_kv(self) -> float:
@@ -1121,15 +1132,12 @@ def get_block_transformer(btr_id: str) -> BlockTransformerItem | None:
 # parytet obu warstw pilnuje `tests/network_model/test_audit2_katalogi_parytet.py`.
 
 
-GroundingType = Literal["isolated", "petersen_coil", "resistor_grounded", "directly_grounded"]
-
-
 @dataclass(frozen=True)
 class MvNeutralGroundingItem:
     id: str
     catalog_namespace: str
     catalog_version: str
-    grounding_type: GroundingType
+    grounding_type: TypPunktuNeutralnego
     label_pl: str
     description_pl: str
     #: Rezystancja uziemienia [Ohm] definiujaca wariant (gdy resistor_grounded).
@@ -1267,7 +1275,7 @@ def select_block_transformers_for_der(
 
 
 def is_vt_voltage_factor_valid_for_grounding(
-    voltage_factor: float, grounding_type: GroundingType
+    voltage_factor: float, grounding_type: TypPunktuNeutralnego
 ) -> tuple[bool, str]:
     """Walidacja F_v przekladnika napieciowego wobec uziemienia sieci (IEC 61869-3 tab. 2).
 
@@ -1285,13 +1293,8 @@ def is_vt_voltage_factor_valid_for_grounding(
     """
     from domain.dobor_przekladnika import wymagany_wspolczynnik_napieciowy
 
-    tryb = {
-        "isolated": "izolowany",
-        "petersen_coil": "cewka_petersena",
-        "resistor_grounded": "rezystor",
-        "directly_grounded": "bezposrednio_uziemiony",
-    }.get(grounding_type)
-    wymagany = wymagany_wspolczynnik_napieciowy(tryb, "faza_ziemia")
+    # W5-A: jeden slownik typow punktu neutralnego — bez mapowania na literaly PL.
+    wymagany = wymagany_wspolczynnik_napieciowy(grounding_type, "faza_ziemia")
     if wymagany is None:
         return False, f"Nieznany typ uziemienia: {grounding_type}"
     if voltage_factor < wymagany:

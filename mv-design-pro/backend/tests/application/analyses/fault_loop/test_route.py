@@ -185,6 +185,20 @@ class TestRouteSegments:
         segments = route_segments(path)
         assert segments[0].n_parallel == 3
 
+    def test_n_parallel_absent_rowny_jawnemu_1(self) -> None:
+        """Karta CI-A (2026-09-04): brak `n_parallel` (None) daje ten sam
+        wynik co jawne `n_parallel=1` — odczyt przez `enm.models.liczba_torow`
+        (JEDYNA definicja, KLASA NIE INSTANCJA), nie już własne
+        `branch.n_parallel or 1` tego modułu."""
+        brak = route_segments(
+            path_to_bus(_enm([_cable("c1", "nn", "b1")], ["nn", "b1"]), "nn", "b1")
+        )
+        jawne = route_segments(
+            path_to_bus(_enm([_cable("c1", "nn", "b1", n_parallel=1)], ["nn", "b1"]), "nn", "b1")
+        )
+        assert brak[0].n_parallel == 1
+        assert brak[0].n_parallel == jawne[0].n_parallel
+
 
 class TestRouteSegmentsMinScenario:
     def test_applies_temperature_correction_when_theta_k_known(self) -> None:

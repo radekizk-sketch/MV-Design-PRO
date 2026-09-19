@@ -418,8 +418,8 @@ class TestZrodloNnJestZrodlemEnergizacji:
 
 class TestOdniesienieNPe:
     def test_uklad_niezadeklarowany_daje_brak_ukladu(self) -> None:
-        enm = zbuduj_stacje_nn()
-        enm.substations[0].meta = {}
+        # W5-A: brak układu = transformator zasilający bez `lv_earthing_system`.
+        enm = zbuduj_stacje_nn(uklad_uziemienia=None)
         graph = build_lv_domain_view(enm, "stn")
         neutral = graph["islands"][0]["neutral_reference"]
         assert neutral["status"] == "brak_ukladu"

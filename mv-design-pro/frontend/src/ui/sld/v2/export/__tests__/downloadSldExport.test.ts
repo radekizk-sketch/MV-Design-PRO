@@ -24,14 +24,10 @@ function makeSvgElement(): SVGSVGElement {
 // jsdom does not implement URL.createObjectURL / revokeObjectURL — we have to
 // shim them on the URL object so vi.spyOn can hook into them.
 beforeEach(() => {
-  // @ts-expect-error jsdom shim
   if (typeof URL.createObjectURL !== 'function') {
-    // @ts-expect-error jsdom shim
     URL.createObjectURL = () => 'blob:shim';
   }
-  // @ts-expect-error jsdom shim
   if (typeof URL.revokeObjectURL !== 'function') {
-    // @ts-expect-error jsdom shim
     URL.revokeObjectURL = () => {};
   }
 });

@@ -101,7 +101,7 @@ export function przebiegRozplywu(
  * do śladu innego przebiegu byłoby fałszywym dowodem (zero fabrykacji).
  * Komórka `null` → „—" bez dowodu (nie ma liczby, nie ma wywodu).
  */
-function komorkaLiczba(
+export function komorkaLiczba(
   wartosc: number | null,
   format: (n: number) => string,
   opcje?: { jednostka?: string; ostrzezenie?: boolean; dowodRef?: string },

@@ -31,13 +31,14 @@ from domain.power_flow_comparison import (
     PowerFlowComparisonError,
     PowerFlowComparisonNotFoundError,
     PowerFlowProjectMismatchError,
-    PowerFlowResultNotFoundError,
     PowerFlowRunNotFinishedError,
     PowerFlowRunNotFoundError,
+    PowerFlowRunWrongTypeError,
 )
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.reporting.czcionki import zarejestruj_czcionki
+from network_model.reporting.missing_value import format_wynik
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
@@ -73,19 +74,24 @@ class BusDiffRowResponse(BaseModel):
     w warstwie prezentacji byłaby to arytmetyka na wynikach solvera. Pola są
     addytywne i opcjonalne: brak wartości (A = 0 → różnica względna nie istnieje)
     jest POMIJANY w odpowiedzi (`response_model_exclude_none`), nigdy zerem.
+
+    FAB-E (E1): v_pu/angle_deg (i ich delty) to `| None` — szyna obecna tylko w
+    jednym z porownywanych biegow daje None, nigdy fabrykowane 0.0 (zanik
+    napiecia). p_injected_mw/q_injected_mvar pozostaja required (zawsze 0.0 —
+    dlug architektoniczny poza zakresem karty, patrz domain/power_flow_comparison.py).
     """
 
     bus_id: str
-    v_pu_a: float
-    v_pu_b: float
-    angle_deg_a: float
-    angle_deg_b: float
+    v_pu_a: float | None
+    v_pu_b: float | None
+    angle_deg_a: float | None
+    angle_deg_b: float | None
     p_injected_mw_a: float
     p_injected_mw_b: float
     q_injected_mvar_a: float
     q_injected_mvar_b: float
-    delta_v_pu: float
-    delta_angle_deg: float
+    delta_v_pu: float | None
+    delta_angle_deg: float | None
     delta_p_mw: float
     delta_q_mvar: float
     delta_v_percent: float | None = None
@@ -95,27 +101,31 @@ class BusDiffRowResponse(BaseModel):
 
 
 class BranchDiffRowResponse(BaseModel):
-    """Single branch diff row (L-13: `delta_*_percent` — patrz BusDiffRowResponse)."""
+    """Single branch diff row (L-13: `delta_*_percent` — patrz BusDiffRowResponse).
+
+    FAB-E (E1): wszystkie pola to `| None` — galaz obecna tylko w jednym z
+    porownywanych biegow daje None, nigdy fabrykowane 0.0 MW/Mvar.
+    """
 
     branch_id: str
-    p_from_mw_a: float
-    p_from_mw_b: float
-    q_from_mvar_a: float
-    q_from_mvar_b: float
-    p_to_mw_a: float
-    p_to_mw_b: float
-    q_to_mvar_a: float
-    q_to_mvar_b: float
-    losses_p_mw_a: float
-    losses_p_mw_b: float
-    losses_q_mvar_a: float
-    losses_q_mvar_b: float
-    delta_p_from_mw: float
-    delta_q_from_mvar: float
-    delta_p_to_mw: float
-    delta_q_to_mvar: float
-    delta_losses_p_mw: float
-    delta_losses_q_mvar: float
+    p_from_mw_a: float | None
+    p_from_mw_b: float | None
+    q_from_mvar_a: float | None
+    q_from_mvar_b: float | None
+    p_to_mw_a: float | None
+    p_to_mw_b: float | None
+    q_to_mvar_a: float | None
+    q_to_mvar_b: float | None
+    losses_p_mw_a: float | None
+    losses_p_mw_b: float | None
+    losses_q_mvar_a: float | None
+    losses_q_mvar_b: float | None
+    delta_p_from_mw: float | None
+    delta_q_from_mvar: float | None
+    delta_p_to_mw: float | None
+    delta_q_to_mvar: float | None
+    delta_losses_p_mw: float | None
+    delta_losses_q_mvar: float | None
     delta_p_from_percent: float | None = None
     delta_q_from_percent: float | None = None
     delta_p_to_percent: float | None = None
@@ -135,7 +145,12 @@ class RankingIssueResponse(BaseModel):
 
 
 class ComparisonSummaryResponse(BaseModel):
-    """Comparison summary statistics."""
+    """Comparison summary statistics.
+
+    FAB-E (E1): max_delta_v_pu/max_delta_angle_deg to `| None` — brak zadnej
+    porownywalnej szyny (obie strony bez wspolnych bus_id) daje None, nigdy
+    fabrykowane 0.0 (wygladaloby jak "brak zmian w calej sieci").
+    """
 
     total_buses: int
     total_branches: int
@@ -144,14 +159,28 @@ class ComparisonSummaryResponse(BaseModel):
     total_losses_p_mw_a: float
     total_losses_p_mw_b: float
     delta_total_losses_p_mw: float
-    max_delta_v_pu: float
-    max_delta_angle_deg: float
+    max_delta_v_pu: float | None
+    max_delta_angle_deg: float | None
     total_issues: int
     critical_issues: int
     major_issues: int
     moderate_issues: int
     minor_issues: int
     delta_total_losses_p_percent: float | None = None
+
+
+class RunProvenanceResponse(BaseModel):
+    """Proweniencja jednego biegu R1 wewnątrz odpowiedzi porównania (B1, karta
+    CV-3.3-B): porównanie bez tego jest porównaniem bez dowodu CO było
+    porównywane. `envelope` bywa `None` dla biegów sprzed CV-2 (uczciwy brak)."""
+
+    run_id: str
+    analysis_type: str
+    status: str
+    snapshot_hash: str
+    input_hash: str
+    finished_at: str | None
+    envelope: dict[str, Any] | None
 
 
 class PowerFlowComparisonResultResponse(BaseModel):
@@ -166,6 +195,8 @@ class PowerFlowComparisonResultResponse(BaseModel):
     ranking: list[RankingIssueResponse]
     summary: ComparisonSummaryResponse
     input_hash: str
+    provenance_a: RunProvenanceResponse
+    provenance_b: RunProvenanceResponse
     created_at: str
 
 
@@ -179,13 +210,18 @@ class TraceStepResponse(BaseModel):
 
 
 class PowerFlowComparisonTraceResponse(BaseModel):
-    """Full comparison trace response."""
+    """Full comparison trace response.
+
+    CV-3.3-B: `snapshot_hash_a`/`snapshot_hash_b` (dawniej `snapshot_id_a/b`) —
+    odcisk migawki modelu biegu R1 (`CanonicalRun.snapshot_hash`), zastępuje
+    R2 `snapshot_id`, którego R1 nie niesie.
+    """
 
     comparison_id: str
     run_a_id: str
     run_b_id: str
-    snapshot_id_a: str | None
-    snapshot_id_b: str | None
+    snapshot_hash_a: str | None
+    snapshot_hash_b: str | None
     input_hash_a: str
     input_hash_b: str
     solver_version: str
@@ -277,6 +313,11 @@ def create_power_flow_comparison(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Power flow run nie znaleziony: {e.run_id}",
         ) from e
+    except PowerFlowRunWrongTypeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Bieg {e.run_id} nie jest biegiem rozplywu mocy (rodzaj: {e.analysis_type})",
+        ) from e
     except PowerFlowRunNotFinishedError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -284,13 +325,8 @@ def create_power_flow_comparison(
         ) from e
     except PowerFlowProjectMismatchError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Runs naleza do roznych projektow: {e.run_a_project} vs {e.run_b_project}",
-        ) from e
-    except PowerFlowResultNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Wyniki power flow nie znalezione dla run: {e.run_id}",
         ) from e
     except PowerFlowComparisonError as e:
         raise HTTPException(
@@ -527,7 +563,9 @@ def export_power_flow_comparison_docx(
     add_row(summary_table, "Zbieznosc A", "Tak" if summary.get("converged_a") else "Nie")
     add_row(summary_table, "Zbieznosc B", "Tak" if summary.get("converged_b") else "Nie")
     add_row(summary_table, "Delta strat P [MW]", f"{summary.get('delta_total_losses_p_mw', 0):.4g}")
-    add_row(summary_table, "Max delta V [pu]", f"{summary.get('max_delta_v_pu', 0):.4g}")
+    # FAB-E (E1): max_delta_v_pu bywa None (brak wspolnych szyn miedzy biegami)
+    # — "brak danych" zamiast fikcyjnego 0.0 pu (wygladaloby jak brak zmian).
+    add_row(summary_table, "Max delta V [pu]", format_wynik(summary.get("max_delta_v_pu"), ".4g"))
     add_row(summary_table, "Liczba problemow", summary.get("total_issues"))
     add_row(summary_table, "Krytyczne", summary.get("critical_issues"))
     add_row(summary_table, "Powazne", summary.get("major_issues"))
@@ -554,7 +592,16 @@ def export_power_flow_comparison_docx(
 
         for issue in ranking[:30]:
             row = rank_table.add_row().cells
-            row[0].text = severity_labels.get(issue.get("severity", 1), "?")
+            severity_wpisu = issue.get("severity")
+            if severity_wpisu is None:
+                # FAB-E (E2): brak surowosci to wpis USZKODZONY, nie "Info" z
+                # domyslu — cichy default 1 udawalby najmniejsza istotnosc
+                # zamiast sygnalizowac niekompletne dane porownania.
+                raise ValueError(
+                    f"Wpis rankingu problemow bez pola 'severity' "
+                    f"(issue_code={issue.get('issue_code')!r}) — uszkodzone dane porownania."
+                )
+            row[0].text = severity_labels.get(severity_wpisu, "?")
             row[1].text = issue.get("issue_code", "—")
             row[2].text = str(issue.get("element_ref", "—"))[:16]
             row[3].text = issue.get("description_pl", "—")[:50]
@@ -666,7 +713,16 @@ def export_power_flow_comparison_pdf(
 
     c.setFont("DejaVuSans", 9)
     for issue in ranking[:15]:
-        severity = severity_labels.get(issue.get("severity", 1), "?")
+        severity_wpisu = issue.get("severity")
+        if severity_wpisu is None:
+            # FAB-E (E2): brak surowosci to wpis USZKODZONY, nie "Info" z
+            # domyslu — cichy default 1 udawalby najmniejsza istotnosc zamiast
+            # sygnalizowac niekompletne dane porownania.
+            raise ValueError(
+                f"Wpis rankingu problemow bez pola 'severity' "
+                f"(issue_code={issue.get('issue_code')!r}) — uszkodzone dane porownania."
+            )
+        severity = severity_labels.get(severity_wpisu, "?")
         text = (
             f"[{severity}] {issue.get('issue_code', '—')}: {issue.get('description_pl', '—')[:50]}"
         )

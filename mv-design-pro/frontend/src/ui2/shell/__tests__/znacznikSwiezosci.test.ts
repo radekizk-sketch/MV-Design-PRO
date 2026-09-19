@@ -1,135 +1,123 @@
 /*
- * Testy czystego helpera znacznika świeżości (karta K4/D1 + dług V12K-309 poz. 2)
- * — fixture'ami, bez Reacta. Pilnują też spójności etykiet powłoki ze
- * STATUS_WYNIKOW_LABEL (brak/aktualne/nieaktualne — §0 karty K4).
+ * Testy czystego helpera znacznika świeżości (karta K4/D1) — fixture'ami, bez
+ * Reacta. Pilnują też spójności etykiet powłoki ze STATUS_WYNIKOW_LABEL
+ * (brak/aktualne/nieaktualne — §0 karty K4).
  *
- * ILOCZYN CECH, nie przykład z karty. Defekt („Wyniki: aktualne" przy modelu
- * nowszym od wyniku) mógł się schować w KAŻDEJ kombinacji trzech niezależnych
- * cech, więc przechodzimy je krzyżowo:
- *   status serwerowy   × { NONE, FRESH, OUTDATED, FRESH+results_valid=false }
- *   rewizja wyniku     × { starsza, równa, nowsza, nieznana }
- *   rewizja modelu     × { znana, nieznana }
- * Pomiar audytu (model rew. 9, wynik z rew. 8) jest JEDNĄ komórką tej tabeli.
+ * CO ZMIENIŁA KARTA CV-2-W. Wcześniej chip liczył świeżość SAM: brał serwerowy
+ * `result_status` i nadpisywał go własnym porównaniem pary rewizji, bo status na
+ * serwerze zmieniał się dopiero, gdy KTOŚ unieważnił przypadek (dług V12K-309
+ * poz. 2: model rew. 9, wynik z rew. 8, chip „aktualne"). Defekt naprawiono U
+ * ŹRÓDŁA: backend WYPROWADZA status przypadku z jego biegów i koperty rewizji,
+ * więc druga derywacja w powłoce zniknęła — razem ze stanem „nieustalone",
+ * którego backend nigdy nie orzekał.
+ *
+ * INTENCJA POPRZEDNICH TESTÓW ŻYJE DALEJ, ale tam, gdzie teraz zapada werdykt:
+ * `backend/tests/api/test_status_wynikow_przypadku.py` (mutacja modelu po biegu →
+ * OUTDATED bez pisarza; inny odcisk katalogu → OUTDATED; jeden świeży bieg wśród
+ * starych → FRESH). Tutaj sprawdzamy JEDYNIE to, co należy do powłoki: wierne
+ * pokazanie werdyktu i akcję przy wyniku nieaktualnym.
  */
 
 import { describe, it, expect } from 'vitest';
-import { znacznikSwiezosci, type RewizjeSwiezosci } from '../znacznikSwiezosci';
+import { znacznikSwiezosci } from '../znacznikSwiezosci';
 import { SHELL_STRINGS } from '../strings';
 import { STATUS_WYNIKOW_LABEL } from '../../spaces/projekt/strings';
 import { studyCaseFixture } from '../../spaces/obliczenia/__tests__/fixtures';
-import type { StudyCaseResultStatus } from '../../../ui/study-cases/types';
+import type { StudyCase, StudyCaseResultStatus } from '../../../ui/study-cases/types';
 
-function przypadek(status: StudyCaseResultStatus, resultsValid = status === 'FRESH') {
+const ZMIANA = {
+  rewizja: 9,
+  operacja: 'continue_trunk_segment_sn',
+  opis_pl: 'Dołożono odcinek magistrali',
+  elementy: ['bus-3', 'branch-2'],
+};
+
+function przypadek(status: StudyCaseResultStatus, over: Partial<StudyCase> = {}): StudyCase {
   return studyCaseFixture('K-1', 'Zwarcia maks.', {
     result_status: status,
-    results_valid: resultsValid,
+    results_valid: status === 'FRESH',
+    result_status_reason: status === 'OUTDATED' ? 'model-zmieniony' : 'model-niezmieniony',
+    result_status_reason_pl:
+      status === 'OUTDATED'
+        ? 'Model zmienił się po obliczeniu — wynik opisuje poprzedni stan sieci.'
+        : 'Model nie zmienił się od chwili obliczenia.',
+    rewizja_biegu: status === 'NONE' ? null : 8,
+    rewizja_biezaca: 9,
+    zmiany_od_biegu: status === 'OUTDATED' ? [ZMIANA] : [],
     is_active: true,
+    ...over,
   });
 }
 
-/** Rewizje zgodne — wynik policzony na bieżącym modelu. */
-const ZGODNE: RewizjeSwiezosci = { rewizjaWyniku: 9, rewizjaModelu: 9 };
-/** Pomiar audytu V12K-309 poz. 2: model pojechał dalej niż wynik. */
-const MODEL_NOWSZY: RewizjeSwiezosci = { rewizjaWyniku: 8, rewizjaModelu: 9 };
-const BEZ_REWIZJI_WYNIKU: RewizjeSwiezosci = { rewizjaWyniku: null, rewizjaModelu: 9 };
-const BEZ_REWIZJI_MODELU: RewizjeSwiezosci = { rewizjaWyniku: 8, rewizjaModelu: null };
+describe('znacznikSwiezosci — mapowanie werdyktu serwera na model znacznika', () => {
+  it('null (brak aktywnego przypadku) → NONE, „Wyniki: brak", bez akcji i bez przyczyny', () => {
+    const model = znacznikSwiezosci(null);
+    expect(model.status).toBe('NONE');
+    expect(model.etykieta).toBe(SHELL_STRINGS.resultsNone);
+    expect(model.klikalny).toBe(false);
+    // Nie ma przypadku — nie ma czego tłumaczyć; chrom nie wymyśla zdania.
+    expect(model.przyczynaPl).toBeNull();
+    expect(model.zmiany).toEqual([]);
+  });
 
-describe('znacznikSwiezosci — mapowanie StudyCase|null + para rewizji na model znacznika', () => {
-  it('null (brak aktywnego przypadku) → NONE, „Wyniki: brak", bez akcji', () => {
-    const model = znacznikSwiezosci(null, ZGODNE);
+  it('NONE → „Wyniki: brak", bez akcji', () => {
+    const model = znacznikSwiezosci(przypadek('NONE'));
     expect(model.status).toBe('NONE');
     expect(model.etykieta).toBe(SHELL_STRINGS.resultsNone);
     expect(model.klikalny).toBe(false);
   });
 
-  it('NONE → „Wyniki: brak", bez akcji (nie ma czego porównywać)', () => {
-    const model = znacznikSwiezosci(przypadek('NONE'), MODEL_NOWSZY);
-    expect(model.status).toBe('NONE');
-    expect(model.etykieta).toBe(SHELL_STRINGS.resultsNone);
-    expect(model.klikalny).toBe(false);
-  });
-
-  it('FRESH + rewizje ZGODNE → „Wyniki: aktualne", bez akcji', () => {
-    const model = znacznikSwiezosci(przypadek('FRESH'), ZGODNE);
+  it('FRESH → „Wyniki: aktualne", bez akcji, z przyczyną z backendu', () => {
+    const model = znacznikSwiezosci(przypadek('FRESH'));
     expect(model.status).toBe('FRESH');
     expect(model.etykieta).toBe(SHELL_STRINGS.resultsFresh);
     expect(model.klikalny).toBe(false);
+    expect(model.przyczynaPl).toBe('Model nie zmienił się od chwili obliczenia.');
+    expect(model.zmiany).toEqual([]);
   });
 
-  it('OUTDATED (serwer) → „Wyniki: nieaktualne", klikalny — nawet przy zgodnych rewizjach', () => {
-    const model = znacznikSwiezosci(przypadek('OUTDATED'), ZGODNE);
+  it('OUTDATED → „Wyniki: nieaktualne", klikalny, z przyczyną i LISTĄ ZMIAN', () => {
+    const model = znacznikSwiezosci(przypadek('OUTDATED'));
     expect(model.status).toBe('OUTDATED');
     expect(model.etykieta).toBe(SHELL_STRINGS.resultsOutdated);
     expect(model.klikalny).toBe(true);
+    expect(model.przyczynaPl).toContain('Model zmienił się');
+    // „Która zmiana unieważniła wynik" — prosto z werdyktu, bez drugiego zapytania.
+    expect(model.zmiany).toEqual([ZMIANA]);
   });
 
-  it('niespójna para FRESH + results_valid=false → traktowana jako nieaktualne', () => {
-    const model = znacznikSwiezosci(przypadek('FRESH', false), ZGODNE);
-    expect(model.status).toBe('OUTDATED');
-    expect(model.klikalny).toBe(true);
-  });
-});
-
-describe('świeżość liczona PORÓWNANIEM REWIZJI, nie samym statusem serwera (V12K-309 poz. 2)', () => {
-  it('POMIAR AUDYTU: model rew. 9, wynik z rew. 8, serwer FRESH → „nieaktualne"', () => {
-    const model = znacznikSwiezosci(przypadek('FRESH'), MODEL_NOWSZY);
-    expect(model.status).toBe('OUTDATED');
-    expect(model.etykieta).toBe(SHELL_STRINGS.resultsOutdated);
-    // Kanon: zmiana modelu unieważnia wyniki przypadku ⇒ jest dokąd pójść.
-    expect(model.klikalny).toBe(true);
+  it('para rewizji pochodzi Z WERDYKTU, nie z porównania po stronie chromu', () => {
+    const model = znacznikSwiezosci(przypadek('OUTDATED'));
+    expect(model.rewizjaBiegu).toBe(8);
+    expect(model.rewizjaModelu).toBe(9);
   });
 
-  it('rewizje równe → „aktualne"; różnica JEDNEJ rewizji już wywraca werdykt', () => {
-    expect(znacznikSwiezosci(przypadek('FRESH'), { rewizjaWyniku: 4, rewizjaModelu: 4 }).status)
-      .toBe('FRESH');
-    expect(znacznikSwiezosci(przypadek('FRESH'), { rewizjaWyniku: 3, rewizjaModelu: 4 }).status)
-      .toBe('OUTDATED');
+  it('chrom NIE nadpisuje werdyktu serwera własnym porównaniem rewizji', () => {
+    // Rewizje rozjechane, ale serwer mówi FRESH (np. bieg policzony na tej samej
+    // treści modelu). Dwa niezależne warunki „dziś zgodne" były defektem czekającym
+    // na dane brzegowe — chrom pokazuje werdykt, którego nie liczył.
+    const model = znacznikSwiezosci(
+      przypadek('FRESH', { rewizja_biegu: 8, rewizja_biezaca: 9 }),
+    );
+    expect(model.status).toBe('FRESH');
+    expect(model.etykieta).toBe(SHELL_STRINGS.resultsFresh);
   });
 
-  it('brak rewizji WYNIKU → „nieustalone", NIGDY „aktualne" (brak kontraktu)', () => {
-    const model = znacznikSwiezosci(przypadek('FRESH'), BEZ_REWIZJI_WYNIKU);
-    expect(model.status).toBe('NIEUSTALONE');
-    expect(model.etykieta).toBe(SHELL_STRINGS.resultsUnknown);
-    expect(model.etykieta).not.toBe(SHELL_STRINGS.resultsFresh);
-    expect(model.klikalny).toBe(false);
-  });
-
-  it('brak rewizji MODELU → „nieustalone" (druga strona porównania też jest wymagana)', () => {
-    const model = znacznikSwiezosci(przypadek('FRESH'), BEZ_REWIZJI_MODELU);
-    expect(model.status).toBe('NIEUSTALONE');
-    expect(model.etykieta).toBe(SHELL_STRINGS.resultsUnknown);
-  });
-
-  it('stan bez wyniku NIE przechodzi w „nieustalone" mimo braku rewizji', () => {
-    // NONE opisuje brak wyniku, a nie nierozstrzygniętą świeżość — inaczej
-    // świeży projekt bez obliczeń straszyłby „nieustalone".
-    expect(znacznikSwiezosci(przypadek('NONE'), BEZ_REWIZJI_WYNIKU).status).toBe('NONE');
-    expect(znacznikSwiezosci(null, BEZ_REWIZJI_WYNIKU).status).toBe('NONE');
-  });
-
-  it('serwerowy OUTDATED zostaje OUTDATED także bez rewizji (brak fałszywego „nie wiem")', () => {
-    expect(znacznikSwiezosci(przypadek('OUTDATED'), BEZ_REWIZJI_WYNIKU).status).toBe('OUTDATED');
-    expect(znacznikSwiezosci(przypadek('FRESH', false), BEZ_REWIZJI_WYNIKU).status).toBe('OUTDATED');
-  });
-
-  it('ILOCZYN CECH: żadna kombinacja nie daje „aktualne" przy modelu nowszym od wyniku', () => {
-    const statusy: Array<[StudyCaseResultStatus, boolean]> = [
-      ['NONE', false],
-      ['FRESH', true],
-      ['FRESH', false],
-      ['OUTDATED', false],
+  it('ILOCZYN CECH: etykieta i klikalność zależą WYŁĄCZNIE od statusu', () => {
+    const statusy: StudyCaseResultStatus[] = ['NONE', 'FRESH', 'OUTDATED'];
+    const pary: Array<[number | null, number | null]> = [
+      [8, 9],
+      [9, 9],
+      [null, 9],
+      [8, null],
     ];
-    const rewizje: RewizjeSwiezosci[] = [
-      MODEL_NOWSZY,
-      { rewizjaWyniku: 0, rewizjaModelu: 12 },
-      { rewizjaWyniku: 11, rewizjaModelu: 12 },
-    ];
-
-    for (const [status, valid] of statusy) {
-      for (const para of rewizje) {
-        const model = znacznikSwiezosci(przypadek(status, valid), para);
-        expect(model.status).not.toBe('FRESH');
-        expect(model.etykieta).not.toBe(SHELL_STRINGS.resultsFresh);
+    for (const status of statusy) {
+      for (const [biegu, biezaca] of pary) {
+        const model = znacznikSwiezosci(
+          przypadek(status, { rewizja_biegu: biegu, rewizja_biezaca: biezaca }),
+        );
+        expect(model.status).toBe(status);
+        expect(model.klikalny).toBe(status === 'OUTDATED');
       }
     }
   });
@@ -139,15 +127,14 @@ describe('spójność etykiet chromu', () => {
   it('etykiety powłoki są spójne ze STATUS_WYNIKOW_LABEL (brak/aktualne/nieaktualne)', () => {
     const statusy: StudyCaseResultStatus[] = ['NONE', 'FRESH', 'OUTDATED'];
     for (const status of statusy) {
-      const model = znacznikSwiezosci(przypadek(status), ZGODNE);
-      // Przy rewizjach zgodnych status chromu = status serwerowy 1:1.
+      const model = znacznikSwiezosci(przypadek(status));
       expect(model.status).toBe(status);
       expect(model.etykieta).toBe(`Wyniki: ${STATUS_WYNIKOW_LABEL[status]}`);
     }
   });
 
-  it('„nieustalone" jest stanem WYŁĄCZNIE chromu — nie ma go w słowniku serwerowym', () => {
-    expect(Object.keys(STATUS_WYNIKOW_LABEL)).not.toContain('NIEUSTALONE');
-    expect(SHELL_STRINGS.resultsUnknown.startsWith('Wyniki: ')).toBe(true);
+  it('chrom nie ma stanu spoza słownika serwerowego (koniec „nieustalone")', () => {
+    expect(Object.keys(STATUS_WYNIKOW_LABEL).sort()).toEqual(['FRESH', 'NONE', 'OUTDATED']);
+    expect(SHELL_STRINGS).not.toHaveProperty('resultsUnknown');
   });
 });

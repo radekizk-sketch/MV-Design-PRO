@@ -55,6 +55,9 @@ function Podsumowanie({ dane, testid }: { dane: PodsumowanieArkusza; testid: str
 
 /** Adres zastrzeżenia w arkuszu — projektant ma wiedzieć, gdzie poprawić. */
 function adresZastrzezenia(pozycja: ZastrzezenieArkusza): string {
+  // `arkusz === 'model'`: zastrzeżenie kompilatora/walidatora do sieci złożonej ze
+  // wszystkich arkuszy naraz (np. szyna bez zasilania) — nie ma wiersza do wskazania.
+  if (pozycja.arkusz === 'model') return T.zastrzezenieModel;
   const czesci = [`${T.zastrzezenieArkusz} „${pozycja.arkusz}"`];
   czesci.push(
     pozycja.wiersz === null
@@ -85,7 +88,7 @@ function ListaZastrzezen({ pozycje }: { pozycje: readonly ZastrzezenieArkusza[] 
   );
 }
 
-/** Lista komunikatów tekstowych backendu (uwagi / odcinki bez katalogu). */
+/** Lista komunikatów tekstowych backendu (uwagi / elementy z typem z arkusza). */
 function ListaKomunikatow({
   tytul,
   pozycje,
@@ -115,9 +118,6 @@ function werdyktImportu(wynik: WynikImportuArkusza): {
   wariant: 'ok' | 'warn' | 'err';
 } {
   if (wynik.status === 'ZAIMPORTOWANO') return { tekst: T.raportZaimportowano, wariant: 'ok' };
-  if (wynik.status === 'WYMAGA_MAPOWANIA_KATALOGU') {
-    return { tekst: T.raportBramkaKatalogu, wariant: 'warn' };
-  }
   return { tekst: T.raportOdrzucono, wariant: 'err' };
 }
 
@@ -308,9 +308,9 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
             testid="mvd-ark-ostrzezenia"
           />
           <ListaKomunikatow
-            tytul={T.bezKataloguTytul}
-            pozycje={podglad.elementy_bez_katalogu}
-            testid="mvd-ark-bez-katalogu"
+            tytul={T.typyProjektuTytul}
+            pozycje={podglad.elementy_typow_projektu}
+            testid="mvd-ark-typy-projektu"
           />
         </section>
       )}
@@ -337,9 +337,9 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
           {wynik.podsumowanie && (
             <Podsumowanie dane={wynik.podsumowanie} testid="mvd-ark-raport-liczby" />
           )}
-          {wynik.odcisk_migawki && (
-            <div className="mvd-ark-kv-siatka">
-              <Wiersz etykieta={T.raportMigawka} wartosc={wynik.odcisk_migawki.slice(0, 16)} />
+          {wynik.enm_hash && (
+            <div className="mvd-ark-kv-siatka" data-testid="mvd-ark-raport-odcisk">
+              <Wiersz etykieta={T.raportOdcisk} wartosc={wynik.enm_hash.slice(0, 16)} />
             </div>
           )}
           <ListaKomunikatow
@@ -348,9 +348,9 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
             testid="mvd-ark-raport-ostrzezenia"
           />
           <ListaKomunikatow
-            tytul={T.bezKataloguTytul}
-            pozycje={wynik.elementy_bez_katalogu}
-            testid="mvd-ark-raport-bez-katalogu"
+            tytul={T.typyProjektuTytul}
+            pozycje={wynik.elementy_typow_projektu}
+            testid="mvd-ark-raport-typy-projektu"
           />
           <div className="mvd-ark-akcje">
             {wynik.project_id ? (
@@ -369,8 +369,8 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
           </div>
           {wynik.project_id ? (
             <p className="mvd-ark-nastepny" data-testid="mvd-ark-nastepny-krok">
-              {wynik.mapowanie_katalogowe_wymagane
-                ? T.raportNastepnyKrokKatalog
+              {wynik.elementy_typow_projektu.length > 0
+                ? T.raportNastepnyKrokTypy
                 : T.raportNastepnyKrok}
             </p>
           ) : null}

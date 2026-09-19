@@ -41,7 +41,7 @@ def test_konsumenci_predykatu_der_uzywaja_tego_samego_obiektu() -> None:
 
 
 def test_klasyfikacja_zwarciowa_odrebna_ale_pokrywa_cala_klase_der() -> None:
-    pelne_przeksztaltniki = set(mapping._FULL_CONVERTER_SC_GEN_TYPES)
+    pelne_przeksztaltniki = set(mapping.FULL_CONVERTER_SC_GEN_TYPES)
     maszyny_wirujace = set(mapping._ASYNC_GEN_TYPES)
     # Rozlacznosc: typ ma dokladnie jeden model zwarciowy.
     assert not pelne_przeksztaltniki & maszyny_wirujace

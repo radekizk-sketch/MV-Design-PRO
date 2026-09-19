@@ -116,7 +116,7 @@ describe('operationSuccessMessages map', () => {
     // `Zapisano` dopisane w V12K-263 — jest forma DOKONANA (jak reszta listy),
     // a lista byla wyliczeniem czasownikow uzytych do tej pory, nie regula jezykowa.
     // Test zlapal moje dwa nowe komunikaty i to jest jego zamierzone dzialanie.
-    const perfectivePrefixes = /^(Dodano|Wstawiono|Przedłużono|Rozpoczęto|Zamknięto|Ustawiono|Zaktualizowano|Przypisano|Usunięto|Zmieniono|Obliczono|Zwalidowano|Utworzono|Uruchomiono|Porównano|Wyeksportowano|Powiązano|Zapisano)/;
+    const perfectivePrefixes = /^(Dodano|Wstawiono|Przedłużono|Rozpoczęto|Zamknięto|Ustawiono|Zaktualizowano|Przypisano|Usunięto|Zmieniono|Obliczono|Zwalidowano|Utworzono|Uruchomiono|Porównano|Wyeksportowano|Powiązano|Zapisano|Podzielono|Scalono|Skopiowano)/;
     for (const [op, msg] of Object.entries(OPERATION_SUCCESS_MESSAGES)) {
       expect(msg, `${op}: "${msg}"`).toMatch(perfectivePrefixes);
     }

@@ -71,6 +71,14 @@ export function wynikNcRfgFixture(): NcRfgRunResult {
     deterministic_hash: 'ncrfg-det-hash',
     modules: [],
     certificate_evidence: [],
+    // Karta S-1 (W6-0): ocena dowodowa biegu — okno wniosku nie czyta tych pól
+    // wprost, ale kontrakt NcRfgRunResult je wymaga (addytywne, nigdy null).
+    reporting_status: 'reportable',
+    proof_status: 'complete',
+    evidence_limitations: [],
+    evidence_note_pl: '',
+    evidence_per_module: {},
+    evidence_by_test: {},
     test_catalog: [],
     white_box_trace: [],
     report_pl: '',

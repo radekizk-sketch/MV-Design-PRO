@@ -48,7 +48,8 @@ describe('PrzegladDowodu — nagłówek i kompozycja', () => {
 
   it('spis kroków + widok pierwszego kroku (kanon pięciu pól)', () => {
     render(<PrzegladDowodu {...props()} />);
-    expect(screen.getAllByTestId('mvd-dowod-spis-poz')).toHaveLength(3);
+    // 4 kroki fixture (karta V12.7: doszedł krok 4, proza podstawienia bez LaTeX).
+    expect(screen.getAllByTestId('mvd-dowod-spis-poz')).toHaveLength(4);
     const krok = screen.getByTestId('mvd-dowod-krok');
     // Domyślnie pierwszy krok — pełny kanon.
     expect(within(krok).getByText('Impedancja zwarciowa Thevenina')).toBeInTheDocument();

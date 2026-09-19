@@ -30,10 +30,9 @@ numerycznej, a nie równości bitowej.
 
 from __future__ import annotations
 
-from collections import deque
-
 from analysis.voltage_profile.models import VoltageProfileSegment, VoltageProfileSegmentPath
 from network_model.core.graph import NetworkGraph
+from network_model.core.topologia import przeglad_wszerz
 from network_model.solvers.power_flow_result import PowerFlowResultV1
 
 # Pasmo nN: `voltage_kv < 1.0` (ta sama granica co prywatna
@@ -175,22 +174,23 @@ class VoltageProfileSegmentBuilder:
         if source_id == target_id:
             return []
 
-        visited = {source_id}
-        queue: deque[str] = deque([source_id])
-        predecessor: dict[str, tuple[str, str, str]] = {}
-        while queue:
-            current = queue.popleft()
-            if current == target_id:
-                break
+        def _sasiedzi(current: str) -> list[tuple[tuple[str, str], str]]:
+            wynik: list[tuple[tuple[str, str], str]] = []
             for neighbor in sorted(nx_graph.neighbors(current)):
-                if neighbor in visited:
-                    continue
                 edge_data = nx_graph.get_edge_data(current, neighbor)
                 edge_key = sorted(edge_data.keys())[0]
                 edge_kind = edge_data[edge_key].get("edge_kind", "branch")
-                visited.add(neighbor)
-                predecessor[neighbor] = (current, edge_key, edge_kind)
-                queue.append(neighbor)
+                wynik.append(((edge_key, edge_kind), neighbor))
+            return wynik
+
+        # Jedyne jądro przeglądu (``network_model.core.topologia.przeglad_wszerz``, CV-4.3):
+        # poprzednik z PIERWSZEJ drogi w kolejności posortowanych sąsiadów — jak dotąd.
+        drzewo = przeglad_wszerz(source_id, _sasiedzi)
+        predecessor: dict[str, tuple[str, str, str]] = {
+            wezel: (rodzic[1], rodzic[0][0], rodzic[0][1])
+            for wezel, rodzic in drzewo.items()
+            if rodzic is not None
+        }
 
         if target_id not in predecessor:
             raise VoltageProfileSegmentPathError(

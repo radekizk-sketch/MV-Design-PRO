@@ -1,0 +1,110 @@
+{
+  "run_id": "run-ps-scena-stan-fazowy",
+  "rows": [
+    {
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "element_id": "bus_sn_b",
+      "target_name": "bus_sn_b",
+      "ua_kv": 8.646754037844387,
+      "ub_kv": 8.652454037844388,
+      "uc_kv": 8.650254037844388,
+      "ia_a": 135.0,
+      "ib_a": 78.0,
+      "ic_a": 100.0,
+      "phase_losses_kw": {
+        "A": 1.8225,
+        "B": 0.6083999999999999,
+        "C": 1.0
+      },
+      "voltage_unbalance_percent": 0.035453528708033095,
+      "current_unbalance_percent": 29.392971246006393,
+      "losses_unbalance_percent": 59.360517648430445,
+      "flags": {
+        "has_fault": false,
+        "has_open_phase": false,
+        "faulted_phases": [],
+        "open_phases": [],
+        "voltage_unbalance_alert": false,
+        "current_unbalance_alert": true,
+        "losses_unbalance_alert": true
+      },
+      "proof_ref": "proof:phase-state-sn:f498df8cf313db66aa599cd5ece8102503e901b06d6debce4a3a02837cc3b38f",
+      "proof_status": "complete",
+      "proof_status_pl": "pelny",
+      "reporting_status": "reportable",
+      "reporting_status_pl": "raportowalny",
+      "dopuszczalnosc_raportowa": true,
+      "reporting_limitations": []
+    }
+  ],
+  "analysis_case_context": {
+    "case_ref": "case-demo",
+    "case_kind": "STAN_FAZOWY_SN",
+    "rodzaj_przypadku": "STAN_FAZOWY_SN",
+    "snapshot_ref": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849",
+    "rewizja_modelu": 1,
+    "variant_ref": null,
+    "run_ref": "run-ps-scena-stan-fazowy",
+    "proof_pack_ref": "proof-pack:run-ps-scena-stan-fazowy",
+    "quality_gate": "G4",
+    "applicability_scope": [
+      "PHASE_STATE_SN",
+      "REPORT"
+    ],
+    "completeness": "complete",
+    "completeness_legacy": "pelny",
+    "missing_prerequisites": [],
+    "assumptions": {
+      "source_assumptions_ref": "phase_state_source_snapshot",
+      "load_assumptions_ref": "phase_state_load_snapshot",
+      "switching_state_ref": null,
+      "grounding_assumptions_ref": "network_grounding_snapshot",
+      "temperature_assumptions_ref": "temperature_short_circuit",
+      "transformer_tap_assumptions_ref": "tap_frozen",
+      "ibg_assumptions_ref": "ibg_model_snapshot"
+    },
+    "lineage": {
+      "project_ref": null,
+      "run_ref": "run-ps-scena-stan-fazowy",
+      "analysis_type": "phase_state_sn",
+      "snapshot_ref": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849"
+    },
+    "reproducibility": {
+      "case_ref": "case-demo",
+      "analysis_case_ref": "case-demo",
+      "snapshot_ref": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849",
+      "enm_hash": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849",
+      "enm_snapshot_ref": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849",
+      "enm_projection_version": "v12xx.m1.1",
+      "variant_ref": null,
+      "operating_variant_ref": null,
+      "switching_snapshot_ref": null,
+      "solver_family": "phase_state_sn_radial",
+      "solver_version": null,
+      "method_version": "canonical_run_v1",
+      "formula_set_version": "phase_state_sn_v1",
+      "standard_basis_ref": "PHASE_STATE_SN_RADIAL_V1",
+      "input_hash": "adefa706b69950c3fa17594c7efab654eeca17402dc319cda153d4a5fe70c470",
+      "result_hash": "5e92a76ee94da75f1fb0d5685734c680c4ad16aadd522bd4befcbfeedbaf9a8c",
+      "domain_model_version": "1.0",
+      "bay_contract_version": "V12.5",
+      "results_contract_version": "V12.5",
+      "proof_renderer_version": "white_box_trace_v1",
+      "catalog_snapshot_ref": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849",
+      "catalog_materialization_ref": "catalog-materialization:6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
+      "catalog_materialization_hash": "6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
+      "catalog_materialization_status": "not_materialized",
+      "catalog_materialization_contract_version": "catalog_materialization_v1",
+      "catalog_schema_version": null,
+      "catalog_fingerprint": "0115ee1a3faf1c42a814ef7cf160e7277ae2f926b1fdb48aced9919e0d6b2d95",
+      "model_revision": 1,
+      "tolerance_policy_ref": "solver_tolerance/default",
+      "rounding_policy_ref": "rounding/default",
+      "quality_gate_policy_version": "v12_5_quality_gate",
+      "report_contract_version": "analysis_report_v2",
+      "export_generator_version": "v12_5_export_artifact/1.0",
+      "result_rules_version": "result_rules_v12_5",
+      "ruleset_version": "result_rules_v12_5"
+    }
+  }
+}

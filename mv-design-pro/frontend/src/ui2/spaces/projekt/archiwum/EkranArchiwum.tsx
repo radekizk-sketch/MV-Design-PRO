@@ -110,21 +110,12 @@ function PodgladPaczki({ podglad }: { podglad: PodgladArchiwum }) {
       </div>
       {z ? (
         <div className="mvd-arch-kv-siatka" data-testid="mvd-arch-podglad-zawartosc">
-          <Wiersz etykieta={T.podgladWezly} wartosc={String(z.nodes_count)} />
-          <Wiersz etykieta={T.podgladGalezie} wartosc={String(z.branches_count)} />
-          <Wiersz etykieta={T.podgladZrodla} wartosc={String(z.sources_count)} />
-          <Wiersz etykieta={T.podgladOdbiory} wartosc={String(z.loads_count)} />
-          <Wiersz etykieta={T.podgladSchematy} wartosc={String(z.sld_diagrams_count)} />
           <Wiersz
             etykieta={T.podgladWarianty}
             wartosc={String(z.study_cases_count + z.operating_cases_count)}
           />
-          <Wiersz
-            etykieta={T.podgladPrzebiegi}
-            wartosc={String(z.analysis_runs_count + z.study_runs_count)}
-          />
-          <Wiersz etykieta={T.podgladWyniki} wartosc={String(z.results_count)} />
-          <Wiersz etykieta={T.podgladDowody} wartosc={String(z.proofs_count)} />
+          <Wiersz etykieta={T.podgladPrzebiegi} wartosc={String(z.canonical_runs_count)} />
+          <Wiersz etykieta={T.podgladModele} wartosc={String(z.enm_models_count)} />
         </div>
       ) : null}
     </div>

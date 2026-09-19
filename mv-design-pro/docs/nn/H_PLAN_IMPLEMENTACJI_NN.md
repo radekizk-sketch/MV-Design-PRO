@@ -26,7 +26,7 @@ Kolejność wewnątrz P0 jest zależnościowa — nie podlega zrównolegleniu be
 | Migracja | `enm/domain_operations_v2.py` (promocja `nn_field_specs` → `SwitchBranch`; `add_nn_load` za aparat) + migrator odczytu w `enm/store.py` | C §4.2, LV-INV-12 |
 | Walidator | `enm/validator.py` (E060–E064, W060, W062) | C §5 |
 | Mapping | `enm/mapping.py` (gałęzie nN → NetworkGraph; KABEL_NN w materializacji impedancji) | jedna prawda grafu |
-| Inwalidacja | dispatcher `execute_domain_operation` → `ResultInvalidator` | D §6.2 |
+| Inwalidacja | BEZ PISARZA: świeżość WYPROWADZANA z biegów i koperty rewizji (`application/result_freshness.py`) — unieważniacz skasowany 2026-09-17, wskrzeszenie blokuje `scripts/legacy_public_path_guard.py` | D §6.2 (korekta) |
 | Testy | `tests/enm/test_nn_topology_ops.py`, `tests/enm/test_nn_validator.py`, aktualizacja `tests/enm/test_ports.py` | I §2 |
 
 ## P0.2 — Katalog nN (rozszerzenia schematów + dane)

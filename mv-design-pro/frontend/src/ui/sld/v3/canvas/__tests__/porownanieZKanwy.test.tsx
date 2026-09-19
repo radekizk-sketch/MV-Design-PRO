@@ -132,9 +132,7 @@ function odpowiedzNakladki(): NakladkaRoznic {
 }
 
 beforeEach(() => {
-  // @ts-expect-error jsdom shim
   if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-  // @ts-expect-error jsdom shim
   if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
   window.location.hash = '';
   useSnapshotStore.getState().reset();

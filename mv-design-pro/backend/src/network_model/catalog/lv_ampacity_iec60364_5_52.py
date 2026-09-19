@@ -46,6 +46,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
+
 
 @dataclass(frozen=True)
 class WpisNormyNN:
@@ -61,12 +63,13 @@ class WpisNormyNN:
 
     def __post_init__(self) -> None:
         if not 0.0 < self.wartosc <= 1.3:
-            raise ValueError(
+            odmowa_twarda(
+                "KAT-T-032",
                 f"Wartość współczynnika tablicowego musi leżeć w zakresie (0; 1,3] — "
-                f"otrzymano {self.wartosc}."
+                f"otrzymano {self.wartosc}.",
             )
         if not self.podstawa or not self.podstawa.strip():
-            raise ValueError("Wpis tablicy normy wymaga podstawy (proweniencji).")
+            odmowa_twarda("KAT-T-033", "Wpis tablicy normy wymaga podstawy (proweniencji).")
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,14 @@
+# version: KATALOG-NIEZMIENNIKI §5 p.1 (2026-09-17) — kasacja drugiego, LOSSY
+# rejestru przeksztaltnikow `InverterType` i trasy `/api/catalog/inverter-types`.
+# Pomiar PRZED kasacja: 176 rekordow w obu rejestrach, 18 pol kontraktu obecnych
+# WYLACZNIE w `converter_types` (k_sc, sc_model, sc_pq_split, sc_transient_k,
+# sc_sustained_k, dynamic_profile_id, grid_code, e_kwh, p_installed_mw, pn_ac_mw,
+# p_connection_mw, p_achievable_mw, current_loop_bandwidth_hz,
+# voltage_loop_bandwidth_hz, pll_bandwidth_hz, control_delay_ms, filter_l_pu,
+# filter_r_pu); 0 konsumentow we froncie i w e2e.
+# Postaci UZYCIA, nie kazde slowo w prozie. Lookbehind chroni rodziny, ktore
+# ZOSTAJA: `pv-inverter-types`, `bess-inverter-types`, `wind-inverter-types`,
+# `pv_inverter_types`, `bess_inverter_types`.
+\bInverterType\b
+\binverter_types\b
+(?<![\w-])inverter-types\b

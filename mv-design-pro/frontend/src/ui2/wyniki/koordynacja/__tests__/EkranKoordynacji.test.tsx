@@ -35,6 +35,21 @@ const DONE_SC_RUN_MIN = {
   started_at: '2026-07-18T10:00:30Z',
 } as never;
 
+/**
+ * Konfiguracja biegu zwarciowego w kształcie KONTRAKTU backendu
+ * (`api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`) — niesie
+ * WARIANT (`scenariusz`), po którym ekran dzieli wyniki na przypadek
+ * maksymalny i minimalny.
+ */
+function konfiguracjaBiegu(scenariusz: 'MAX' | 'MIN', cFactor: number) {
+  return {
+    c_factor: { tryb: 'jawny' as const, wartosc: cFactor },
+    thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' as const },
+    metoda: 'IEC 60909',
+    scenariusz,
+  };
+}
+
 /** Wiersz wyniku zwarciowego dla lokalizacji pierwszego urządzenia (`bus_1`). */
 function wierszSC(cFactor: number, ikssKa: number) {
   return {
@@ -188,19 +203,31 @@ describe('EkranKoordynacji — realna strona przy kompletnym kontekście', () =>
         return { ok: true, status: 200, json: async () => result } as Response;
       }
       // Prądy koordynacji z realnych biegów (F-K4 faza 3b): przypadek maksymalny
-      // z pierwszego biegu, minimalny z drugiego — klasyfikacja po współczynniku c.
+      // z pierwszego biegu, minimalny z drugiego — klasyfikacja po WARIANCIE
+      // ZAPISANYM NA BIEGU (`konfiguracja_biegu.scenariusz`, kontrakt
+      // `api/canonical_run_views.py::build_short_circuit_results_response`), nie po
+      // współczynniku `c` wiersza: na sieci SN c_min = 1,00 (IEC 60909-0 Tabela 1),
+      // więc `c` nie odróżnia biegu minimalnego od maksymalnego.
       if (url === '/api/analysis-runs/run-sc-1/results/short-circuit') {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ run_id: 'run-sc-1', rows: [wierszSC(1.1, 8.4)] }),
+          json: async () => ({
+            run_id: 'run-sc-1',
+            rows: [wierszSC(1.1, 8.4)],
+            konfiguracja_biegu: konfiguracjaBiegu('MAX', 1.1),
+          }),
         } as Response;
       }
       if (url === '/api/analysis-runs/run-sc-2/results/short-circuit') {
         return {
           ok: true,
           status: 200,
-          json: async () => ({ run_id: 'run-sc-2', rows: [wierszSC(0.95, 3.1)] }),
+          json: async () => ({
+            run_id: 'run-sc-2',
+            rows: [wierszSC(1.0, 3.1)],
+            konfiguracja_biegu: konfiguracjaBiegu('MIN', 1.0),
+          }),
         } as Response;
       }
       // V12K-262: lokalizacja urządzenia pochodzi z MIGAWKI MODELU przypadku;
@@ -250,46 +277,32 @@ describe('EkranKoordynacji — realna strona przy kompletnym kontekście', () =>
 });
 
 // ---------------------------------------------------------------------------
-// Karta F-K5 (dług V12K-189): sekcja nastaw NA EKRANIE, przed selektywnością.
-// Test celowo ćwiczy WPIĘCIE (nie sam komponent): bez aktywnego przypadku sekcji
-// nie ma czym zapytać, a kolejność „nastawy → selektywność" jest kontraktem flow.
+// Karta W3-C1: sekcja nastaw (metoda Hoppela) NA EKRANIE, przed selektywnością.
+// Test celowo ćwiczy WPIĘCIE (nie sam komponent, patrz SekcjaNastaw.test.tsx):
+// bez aktywnego przypadku sekcji nie ma czym zapytać, a kolejność
+// „nastawy → selektywność" jest kontraktem flow.
 // ---------------------------------------------------------------------------
 
-const NASTAWY_ODPOWIEDZ = {
-  run_id: 'protection.overcurrent.v0:e2e',
-  case_id: 'case-1',
-  analysis_type: 'protection.overcurrent.v0',
-  status: 'DEGRADED',
-  prezentacja: {
-    pozycje: [
-      {
-        klucz: 'i_inst_50_a',
-        etykieta: 'I>> (50) — nastawa bezzwloczna',
-        jednostka: 'A',
-        wartosc: null,
-        stan: 'NIEDOSTEPNA',
-        komunikat_pl: 'Niedostepna — uzupelnij dane wejsciowe',
-        powod_pl: 'Brak prądu zwarciowego z biegu SC',
-        fix_action_id: 'fix_protection_run_short_circuit',
-        fix_navigation: { panel: 'analizy' },
-      },
-    ],
-    kompletne: false,
-    brakujace: ['i_inst_50_a'],
-    kody_gotowosci: ['protection.fault_current_missing'],
-    podsumowanie_pl: 'Niedostepne nastawy: 1 z 4',
-  },
+const DOSTEPNOSC_E2E = {
+  run_id: 'run-sc-1',
+  dostepny: true,
+  powod_pl: null,
+  linie: [{ line_id: 'ln1', nazwa: 'Linia testowa', nastepne_szyny_kandydujace: ['b_b'] }],
 };
 
-describe('EkranKoordynacji — nastawy z analizy (karta F-K5)', () => {
+describe('EkranKoordynacji — nastawy z analizy (karta W3-C1)', () => {
   it('z aktywnym przypadkiem sekcja nastaw jest na ekranie PRZED stroną selektywności', async () => {
     ustawKompletnyKontekst();
     useAppStateStore.getState().setActiveCase('case-1', 'Warian bazowy');
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: RequestInfo | URL) => {
-        if (String(input).startsWith('/api/protection/overcurrent-settings')) {
-          return { ok: true, status: 200, json: async () => NASTAWY_ODPOWIEDZ } as Response;
+        const url = String(input);
+        if (url.includes('/pakiet-dowodowy-nastaw/dostepnosc')) {
+          return { ok: true, status: 200, json: async () => DOSTEPNOSC_E2E } as Response;
+        }
+        if (url.includes('/api/catalog/protection/device-types')) {
+          return { ok: true, status: 200, json: async () => [] } as Response;
         }
         // Strona selektywności ma własne wywołania — dla tego testu nieistotne.
         return { ok: true, status: 200, json: async () => ({ rows: [] }) } as Response;
@@ -302,7 +315,7 @@ describe('EkranKoordynacji — nastawy z analizy (karta F-K5)', () => {
     const strona = screen.getByTestId('mvd-koordynacja-strona');
     // Kolejność w DOM = kolejność pracy inżyniera: najpierw nastawy, potem selektywność.
     expect(sekcja.compareDocumentPosition(strona) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(sekcja.textContent).toContain('Niedostepna');
+    expect(sekcja.textContent).toContain('Linia testowa');
     vi.unstubAllGlobals();
   });
 
@@ -312,15 +325,19 @@ describe('EkranKoordynacji — nastawy z analizy (karta F-K5)', () => {
     // dokładnie stan „projekt jest, przypadku nie ma".
     ustawKompletnyKontekst();
     useAppStateStore.setState({ activeCaseId: null } as never);
-    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }) as Response);
+    // Parametr w sygnaturze mocka: bez niego typ krotki wywolan to `[]` i `c[0]` jest bledem TS2493.
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL) => ({ ok: true, status: 200, json: async () => ({}) }) as Response,
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     render(<EkranKoordynacji />);
 
     expect(screen.queryByTestId('mvd-koordynacja-nastawy')).toBeNull();
     expect(screen.queryByTestId('mvd-koordynacja-nastawy-ladowanie')).toBeNull();
-    const wywolaniaNastaw = fetchMock.mock.calls.filter((c) =>
-      String(c[0]).startsWith('/api/protection/overcurrent-settings'),
+    const wywolaniaNastaw = fetchMock.mock.calls.filter(
+      (c) =>
+        String(c[0]).includes('/pakiet-dowodowy-nastaw') || String(c[0]).includes('/nastawy'),
     );
     expect(wywolaniaNastaw).toHaveLength(0);
     vi.unstubAllGlobals();

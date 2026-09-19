@@ -29,7 +29,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from enm.canonical_analysis import CanonicalRun
+from enm.canonical_analysis import STATUS_WYKONAWCZY, CanonicalRun
 
 # ---------------------------------------------------------------------------
 # Kody diagnozy przebiegu (stabilne, mapowane na zdania inżynierskie w UI)
@@ -74,14 +74,10 @@ _PRZYCZYNA_LIMIT_ITERACJI = "max_iter"
 #: IEC 60909, stan fazowy) są rozwiązywane wprost — nie mają zbieżności.
 _TYPY_ITERACYJNE = frozenset({"PF"})
 
-#: Mapowanie statusu biegu kanonicznego na słownik wykonawczy — JEDNO źródło
-#: prawdy wspólne z `CanonicalRun.to_execution_dict`.
-_STATUS_WYKONAWCZY = {
-    "CREATED": "PENDING",
-    "RUNNING": "RUNNING",
-    "FINISHED": "DONE",
-    "FAILED": "FAILED",
-}
+#: Mapowanie statusu biegu kanonicznego na slownik wykonawczy. Deklaracja „JEDNO
+#: zrodlo prawdy" byla wczesniej nieprawdziwa: stal tu DRUGI, doslowny egzemplarz
+#: tego samego slownika. Teraz jest to REFERENCJA do jedynego zrodla w domenie.
+_STATUS_WYKONAWCZY = STATUS_WYKONAWCZY
 
 
 def _liczba_lub_none(wartosc: Any) -> float | None:
@@ -167,7 +163,11 @@ def zbuduj_diagnoze_przebiegu(run: CanonicalRun) -> dict[str, Any]:
     Returns:
         Kontrakt odczytowy powierzchni „Diagnoza przebiegu".
     """
-    status_wykonawczy = _STATUS_WYKONAWCZY.get(run.status, run.status)
+    # Status spoza mapowania NIE jest przepuszczany po cichu: przelot oddawal
+    # surowy status domenowy jako status kontraktu HTTP, wiec nowy stan wygladalby
+    # na poprawny. Pin: tests/enm/test_przejecie_biegu_atomowe.py
+    # ::test_kazdy_status_domenowy_ma_odwzorowanie_http.
+    status_wykonawczy = _STATUS_WYKONAWCZY[run.status]
     iteracyjna = run.analysis_type in _TYPY_ITERACYJNE
 
     surowy = run.raw_result or {}

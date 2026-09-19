@@ -11,6 +11,8 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 
 import { audit2QueryKeys } from '../../../query-client';
+import { createRun, executeRun, getRunResults } from '../../study-cases/api';
+import type { RunStatus } from '../../study-cases/types';
 import {
   deleteStationAudit2Config,
   fetchAudit2CatalogSnapshot,
@@ -18,9 +20,7 @@ import {
   generateAudit2Report,
   listStationAudit2Configs,
   putStationAudit2Config,
-  runAudit2PowerFlow,
-  type Audit2PowerFlowRequest,
-  type Audit2PowerFlowResponse,
+  type AuditCatalogSnapshot,
   type Audit2ProofPackRequest,
   type Audit2ProofPackResponse,
   type Audit2ReportRequest,
@@ -33,7 +33,7 @@ import {
 // Catalog snapshot — immutable, cache forever
 // =============================================================================
 
-export function useAudit2CatalogSnapshot(): UseQueryResult<unknown, Error> {
+export function useAudit2CatalogSnapshot(): UseQueryResult<AuditCatalogSnapshot, Error> {
   return useQuery({
     queryKey: audit2QueryKeys.catalogSnapshot(),
     queryFn: fetchAudit2CatalogSnapshot,
@@ -167,12 +167,79 @@ export function useGenerateAudit2Report() {
   });
 }
 
+// =============================================================================
+// Rozpływ mocy rozszerzony (konfiguracja stacji audytu 2) — karta CV-4.2.
+//
+// Zastępuje dawny stub `POST /api/cases/audit2-power-flow` (fabrykowany
+// PowerFlowInput z `pq=[]` i `slack-stub` — usunięty), biegiem KANONICZNYM:
+// `createRun` -> `executeRun` -> `getRunResults` (`ui/study-cases/api.ts`,
+// ta sama droga co reszta aplikacji). Konfiguracja stacji trafia do solvera
+// przez `solver_input.audit2_project_id`/`audit2_station_id`, które
+// `enm/assembler.py::zloz_wejscie_rozplywu` już odczytuje z opcji biegu
+// (Phase 41 audit2 extensions) — zero nowej ścieżki fizyki.
+// =============================================================================
+
+export interface ExtendedPowerFlowRunArgs {
+  readonly caseId: string;
+  readonly audit2ProjectId: string;
+  readonly audit2StationId: string;
+  readonly baseMva?: number;
+}
+
+export interface ExtendedPowerFlowRunResult {
+  readonly status: RunStatus;
+  readonly errorMessage: string | null;
+  readonly busCount: number;
+  readonly branchCount: number;
+  readonly sourceCount: number;
+  /** Czy zapisana konfiguracja stacji (zaczepy/statyzm P(f)/impedancja bloku)
+   * została faktycznie zastosowana do modelu przed obliczeniem. */
+  readonly audit2Applied: boolean;
+}
+
+export async function runExtendedPowerFlow(
+  args: ExtendedPowerFlowRunArgs,
+): Promise<ExtendedPowerFlowRunResult> {
+  const created = await createRun(args.caseId, {
+    analysis_type: 'LOAD_FLOW',
+    solver_input: {
+      base_mva: args.baseMva ?? 100.0,
+      audit2_project_id: args.audit2ProjectId,
+      audit2_station_id: args.audit2StationId,
+    },
+  });
+  const executed = await executeRun(created.id);
+  if (executed.status !== 'DONE') {
+    return {
+      status: executed.status,
+      errorMessage: executed.error_message,
+      busCount: 0,
+      branchCount: 0,
+      sourceCount: 0,
+      audit2Applied: false,
+    };
+  }
+  const results = await getRunResults(executed.id);
+  const countElements = (elementType: string): number =>
+    results.element_results.filter((row) => row.element_type === elementType).length;
+  return {
+    status: executed.status,
+    errorMessage: null,
+    busCount: countElements('Bus'),
+    branchCount: countElements('Branch'),
+    sourceCount: countElements('Source'),
+    audit2Applied: results.global_results.audit2_applied !== undefined,
+  };
+}
+
 /**
- * Phase 37: hook do uruchomienia audit2 power flow.
- * Pelna petla: DB audit2 -> wrapper -> audit trail.
+ * Hook do uruchomienia rozszerzonego rozpływu mocy z konfiguracją stacji
+ * audytu 2 (zaczepy, statyzm P(f), impedancja transformatora blokowego).
+ * Pełna pętla: bieg kanoniczny -> wynik solvera -> ślad zastosowanej
+ * konfiguracji.
  */
-export function useRunAudit2PowerFlow() {
-  return useMutation<Audit2PowerFlowResponse, Error, Audit2PowerFlowRequest>({
-    mutationFn: runAudit2PowerFlow,
+export function useRunExtendedPowerFlow() {
+  return useMutation<ExtendedPowerFlowRunResult, Error, ExtendedPowerFlowRunArgs>({
+    mutationFn: runExtendedPowerFlow,
   });
 }

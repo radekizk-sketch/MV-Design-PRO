@@ -1,15 +1,27 @@
 #!/usr/bin/env python3
-"""SolverBoundaryGuard — blokuje PR-y LF modyfikujące solvery SC/Protection.
+"""SolverBoundaryGuard — granica warstwy solverów: zmiany chronionych rdzeni
+oraz granica importów nowego rdzenia dynamiki.
 
-Sprawdza git diff i failuje jeśli dotknięte są chronione pliki solverów.
+CZĘŚĆ 1 (delta): sprawdza git diff i failuje, jeśli dotknięte są chronione pliki
+solverów SC/Protection.
 
 SANKCJE (2026-07-22): zmiana chronionego pliku jest dopuszczalna WYŁĄCZNIE
 z jawną sankcją w SANCTIONED_CHANGES (ścieżka -> wpis rejestru V12K-*
 z uzasadnieniem). Guard pozostaje czerwony dla każdej nieusankcjonowanej
 zmiany — sankcja jest audytowalna i punktowa, nie wyłącza ochrony.
+
+CZĘŚĆ 2 (statyczna, karta W6-2 §0 p.1): rdzeń dynamiki RMS
+(`network_model/solvers/dynamika/**`) powstał OBOK zamrożonych rdzeni, nie w
+nich (B-01). „Obok" znaczy także: bez importu z nich i bez importu warstw nad
+nimi. Ta część NIE jest drugą kopią sprawdzenia — woła
+`scripts/dynamika_granica_importow.py`, czyli TĘ SAMĄ implementację, którą
+uruchamia samodzielna bramka `dynamika_granica_importow_guard.py`. Dwie kopie
+listy dozwolonych modułów „zgadzałyby się dziś" i rozjechały przy pierwszym
+nowym imporcie (reguła KLASA, NIE INSTANCJA).
 """
 import sys
 
+from dynamika_granica_importow import raport as raport_granicy_dynamiki
 from guard_diff_base import zmienione_pliki
 
 WATCHED_PATHS = [
@@ -91,7 +103,29 @@ SANCTIONED_CHANGES = {
 }
 
 
+def sprawdz_granice_dynamiki() -> int:
+    """Granica importów rdzenia dynamiki (karta W6-2 §0 p.1) — 0 = zielono."""
+    liczba_plikow, naruszenia = raport_granicy_dynamiki()
+    if liczba_plikow == 0:
+        print(
+            "BŁĄD [SolverBoundaryGuard]: pakiet `network_model/solvers/dynamika` nie ma "
+            "ani jednego pliku — pusty skan nie jest sukcesem."
+        )
+        return 1
+    if naruszenia:
+        print("BŁĄD [SolverBoundaryGuard]: rdzeń dynamiki narusza granicę importów:")
+        for naruszenie in naruszenia:
+            print(f"  - {naruszenie}")
+        return 1
+    print(
+        f"OK [SolverBoundaryGuard]: rdzeń dynamiki — {liczba_plikow} plików, "
+        "0 naruszeń granicy importów."
+    )
+    return 0
+
+
 def main() -> int:
+    kod_granicy_dynamiki = sprawdz_granice_dynamiki()
     # Baza porownania z odpornego helpera: brak bazy => JAWNY blad, nigdy
     # ciche „nic sie nie zmienilo" (patrz scripts/guard_diff_base.py).
     wynik = zmienione_pliki()
@@ -123,7 +157,7 @@ def main() -> int:
         return 1
 
     print("OK [SolverBoundaryGuard]: Brak zmian w chronionych plikach solverów.")
-    return 0
+    return kod_granicy_dynamiki
 
 
 if __name__ == "__main__":

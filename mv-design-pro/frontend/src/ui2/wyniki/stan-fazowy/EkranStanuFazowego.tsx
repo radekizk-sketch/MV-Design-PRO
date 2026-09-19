@@ -13,9 +13,17 @@
  *    stan obwodu (zwarcie/otwarta faza) → ograniczenia raportowe →
  *    następny krok (dowód obliczeń / powrót do huba).
  *
- * Dane WYŁĄCZNIE z kanonicznej końcówki wyników (`api.ts` — klient dobudowany
- * addytywnie, backend nietknięty). ZERO fizyki, ZERO mutacji modelu.
- * Stylowanie tokenami --mvd-* (oba motywy z automatu).
+ * DWA ŹRÓDŁA (karta W5-D): przebieg stanu fazowego SN (`PHASE_STATE_SN`, jak
+ * wyżej) ALBO rozpływ niesymetryczny (`PF_UNBALANCED`, solver BFS per faza):
+ * założenia biegu (solver, zbieżność, wyspy, statusy) → napięcia fazowe każdej
+ * szyny + VUF z solvera → prądy fazowe gałęzi + straty → podsumowanie →
+ * ZAŁOŻENIA biegu nazwane kodami kanonu → ograniczenia raportowe. Nazwa źródła
+ * jest zawsze na ekranie; stan każdego wskaźnika jest podany PER ŹRÓDŁO
+ * (odchylenie od średniej faz — solver stanu fazowego; VUF — rozpływ
+ * niesymetryczny), bez zdania „nie jest liczony" tam, gdzie liczy drugi solver.
+ *
+ * Dane WYŁĄCZNIE z kanonicznych końcówek wyników (`api.ts`). ZERO fizyki,
+ * ZERO mutacji modelu. Stylowanie tokenami --mvd-* (oba motywy z automatu).
  */
 
 import './stan-fazowy.css';
@@ -27,13 +35,24 @@ import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStor
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
 import { akcjaNaprawcza, SekcjaZalozen, usePoprawWModelu } from '../wzorzec';
-import { fetchWynikiStanuFazowego, type WynikiStanuFazowego } from './api';
 import {
+  fetchWynikiRozplywuNiesymetrycznego,
+  fetchWynikiStanuFazowego,
+  type WynikiRozplywuNiesymetrycznego,
+  type WynikiStanuFazowego,
+} from './api';
+import {
+  naPodsumowanieNiesymetrii,
   naPozycjeAsymetrii,
   naWierszeFaz,
+  naWierszeGaleziNiesymetrycznych,
+  naWierszeSzynNiesymetrycznych,
+  naZalozeniaBiegu,
+  naZalozeniaRozplywuNiesymetrycznego,
   naZalozeniaStanuFazowego,
   naZdarzeniaObwodu,
   wybierzPrzebiegFazowy,
+  zrodloPrzebiegu,
 } from './stanFazowyModel';
 import { STAN_FAZOWY_STRINGS as T } from './strings';
 
@@ -77,23 +96,37 @@ export function EkranStanuFazowego() {
   const clearRouteManagedSurface = useNetworkBuildStore((s) => s.clearRouteManagedSurface);
 
   const przebieg = wybierzPrzebiegFazowy(przebiegi, activeRunId);
+  const zrodlo = przebieg ? zrodloPrzebiegu(przebieg) : null;
 
   const [wyniki, setWyniki] = useState<WynikiStanuFazowego | null>(null);
+  const [wynikiRn, setWynikiRn] = useState<WynikiRozplywuNiesymetrycznego | null>(null);
   const [ladowanie, setLadowanie] = useState(false);
   const [blad, setBlad] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!przebieg) {
+    if (!przebieg || !zrodlo) {
       setWyniki(null);
+      setWynikiRn(null);
       return;
     }
     let aktywne = true;
     setLadowanie(true);
     setBlad(null);
-    fetchWynikiStanuFazowego(przebieg.id)
-      .then((odp) => {
-        if (aktywne) setWyniki(odp);
-      })
+    const pobranie =
+      zrodlo === 'stan_fazowy'
+        ? fetchWynikiStanuFazowego(przebieg.id).then((odp) => {
+            if (aktywne) {
+              setWyniki(odp);
+              setWynikiRn(null);
+            }
+          })
+        : fetchWynikiRozplywuNiesymetrycznego(przebieg.id).then((odp) => {
+            if (aktywne) {
+              setWynikiRn(odp);
+              setWyniki(null);
+            }
+          });
+    pobranie
       .catch((err: unknown) => {
         if (aktywne) setBlad(err instanceof Error ? err.message : String(err));
       })
@@ -103,9 +136,13 @@ export function EkranStanuFazowego() {
     return () => {
       aktywne = false;
     };
-  }, [przebieg?.id]);
+  }, [przebieg?.id, zrodlo]);
 
   const wiersz = wyniki && wyniki.run_id === przebieg?.id ? wyniki.rows[0] ?? null : null;
+  const rn = wynikiRn && wynikiRn.run_id === przebieg?.id ? wynikiRn : null;
+  const rnBezWierszy = rn !== null && rn.buses.length === 0;
+  const zaladowane = zrodlo === 'stan_fazowy' ? wyniki !== null : rn !== null;
+  const proofRef = zrodlo === 'stan_fazowy' ? wiersz?.proof_ref : rn?.proof_ref;
 
   const poprawWModelu = usePoprawWModelu();
 
@@ -145,11 +182,11 @@ export function EkranStanuFazowego() {
           <h4>{T.bladTytul}</h4>
           <p>{blad}</p>
         </div>
-      ) : ladowanie || !wyniki ? (
+      ) : ladowanie || !zaladowane ? (
         <div className="mvd-fazowy-stan" data-testid="mvd-fazowy-ladowanie" data-tone="loading">
           <p>{T.ladowanie}</p>
         </div>
-      ) : !wiersz ? (
+      ) : (zrodlo === 'stan_fazowy' && !wiersz) || rnBezWierszy ? (
         <StanZerowy
           tytul={T.brakWierszyTytul}
           opis={T.brakWierszyOpis}
@@ -157,8 +194,161 @@ export function EkranStanuFazowego() {
           onAkcja={() => setActiveSpace('obliczenia')}
           testid="mvd-fazowy-brak-wierszy"
         />
-      ) : (
-        <>
+      ) : rn ? (
+        <div data-testid="mvd-fazowy-rozplyw-niesymetryczny" data-zrodlo="rozplyw_niesymetryczny">
+          <SekcjaZalozen zalozenia={naZalozeniaRozplywuNiesymetrycznego(rn)} />
+
+          <section className="mvd-fazowy-sekcja" aria-label={T.rnSzynyTytul}>
+            <h4>{T.rnSzynyTytul}</h4>
+            <p className="mvd-fazowy-nota">{T.rnSzynyNota}</p>
+            <div className="mvd-fazowy-tabela-wrap">
+              <table className="mvd-fazowy-tabela" data-testid="mvd-fazowy-rn-szyny">
+                <thead>
+                  <tr>
+                    <th>{T.rnKolSzyna}</th>
+                    <th>
+                      {T.rnKolUn} <span className="mvd-fazowy-jedn">[{T.jednKV}]</span>
+                    </th>
+                    <th>
+                      {T.rnKolUA} <span className="mvd-fazowy-jedn">[{T.jednKV}]</span>
+                    </th>
+                    <th>
+                      {T.rnKolUB} <span className="mvd-fazowy-jedn">[{T.jednKV}]</span>
+                    </th>
+                    <th>
+                      {T.rnKolUC} <span className="mvd-fazowy-jedn">[{T.jednKV}]</span>
+                    </th>
+                    <th>
+                      {T.rnKolVuf} <span className="mvd-fazowy-jedn">[{T.jednProcent}]</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {naWierszeSzynNiesymetrycznych(rn).map((s) => (
+                    <tr key={s.id} data-testid="mvd-fazowy-rn-szyna" data-max-vuf={s.najwiekszyVuf || undefined}>
+                      <td>{s.nazwa}</td>
+                      <td className="mvd-num">{s.unKv}</td>
+                      {s.fazy ? (
+                        <>
+                          <td className="mvd-num">{s.fazy.uA}</td>
+                          <td className="mvd-num">{s.fazy.uB}</td>
+                          <td className="mvd-num">{s.fazy.uC}</td>
+                          <td className="mvd-num">{s.fazy.vuf}</td>
+                        </>
+                      ) : (
+                        <td colSpan={4} className="mvd-fazowy-nota">
+                          {T.rnNierozwiazana}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="mvd-fazowy-sekcja" aria-label={T.rnGalezieTytul}>
+            <h4>{T.rnGalezieTytul}</h4>
+            <p className="mvd-fazowy-nota">{T.rnGalezieNota}</p>
+            <div className="mvd-fazowy-tabela-wrap">
+              <table className="mvd-fazowy-tabela" data-testid="mvd-fazowy-rn-galezie">
+                <thead>
+                  <tr>
+                    <th>{T.rnKolGalaz}</th>
+                    <th>{T.rnKolRodzaj}</th>
+                    <th>
+                      {T.rnKolIA} <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
+                    </th>
+                    <th>
+                      {T.rnKolIB} <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
+                    </th>
+                    <th>
+                      {T.rnKolIC} <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
+                    </th>
+                    <th>
+                      {T.rnKolIn} <span className="mvd-fazowy-jedn">[{T.jednA}]</span>
+                    </th>
+                    <th>
+                      {T.rnKolStraty} <span className="mvd-fazowy-jedn">[{T.jednKW}]</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {naWierszeGaleziNiesymetrycznych(rn).map((g) => (
+                    <tr key={g.id} data-testid="mvd-fazowy-rn-galaz">
+                      <td>{g.nazwa}</td>
+                      <td>{g.rodzaj}</td>
+                      <td className="mvd-num">{g.iA}</td>
+                      <td className="mvd-num">{g.iB}</td>
+                      <td className="mvd-num">{g.iC}</td>
+                      <td className="mvd-num">{g.iN}</td>
+                      <td className="mvd-num">{g.stratyKw}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="mvd-fazowy-sekcja" aria-label={T.rnPodsumowanieTytul}>
+            <h4>{T.rnPodsumowanieTytul}</h4>
+            <dl className="mvd-fazowy-siatka" data-testid="mvd-fazowy-rn-podsumowanie">
+              {naPodsumowanieNiesymetrii(rn).map((p) => (
+                <div className="mvd-fazowy-pozycja" key={p.etykieta} data-werdykt="brak">
+                  <dt>{p.etykieta}</dt>
+                  <dd>
+                    <span className="mvd-num">{p.wartosc}</span>
+                    {p.jednostka ? (
+                      <>
+                        {' '}
+                        <span className="mvd-fazowy-jedn">{p.jednostka}</span>
+                      </>
+                    ) : null}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <section className="mvd-fazowy-sekcja" aria-label={T.rnZalozeniaTytul}>
+            <h4>{T.rnZalozeniaTytul}</h4>
+            <p className="mvd-fazowy-nota">{T.rnZalozeniaNota}</p>
+            {naZalozeniaBiegu(rn).length === 0 ? (
+              <p className="mvd-fazowy-nota" data-testid="mvd-fazowy-rn-bez-zalozen">
+                {T.rnBezZalozen}
+              </p>
+            ) : (
+              <ul className="mvd-fazowy-zdarzenia" data-testid="mvd-fazowy-rn-zalozenia">
+                {naZalozeniaBiegu(rn).map((z) => (
+                  <li key={z.kod} data-kod={z.kod}>
+                    <b>{z.opis}</b>
+                    {z.elementy ? (
+                      <>
+                        {' '}
+                        <span className="mvd-fazowy-jedn">
+                          ({T.rnElementy}: {z.elementy})
+                        </span>
+                      </>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {(rn.reporting_limitations ?? []).length > 0 && (
+            <section className="mvd-fazowy-sekcja" aria-label={T.ograniczeniaTytul}>
+              <h4>{T.ograniczeniaTytul}</h4>
+              <ul className="mvd-fazowy-zdarzenia" data-testid="mvd-fazowy-ograniczenia">
+                {(rn.reporting_limitations ?? []).map((o) => (
+                  <li key={o}>{o}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+      ) : wiersz ? (
+        <div data-testid="mvd-fazowy-stan-fazowy" data-zrodlo="stan_fazowy">
           <SekcjaZalozen zalozenia={naZalozeniaStanuFazowego(wiersz)} />
 
           <section className="mvd-fazowy-sekcja" aria-label={T.fazyTytul}>
@@ -261,14 +451,14 @@ export function EkranStanuFazowego() {
               </ul>
             </section>
           )}
-        </>
-      )}
+        </div>
+      ) : null}
 
       <div className="mvd-fazowy-stopka">
         <span className="mvd-fazowy-lbl">{T.nastepnyEyebrow}</span>
         <p>{T.nastepnyOpis}</p>
         <div className="mvd-fazowy-stopka-akcje">
-          {wiersz?.proof_ref && (
+          {proofRef && (
             <button
               type="button"
               className="mvd-fazowy-nastepny"

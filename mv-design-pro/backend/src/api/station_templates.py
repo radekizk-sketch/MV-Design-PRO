@@ -1,10 +1,10 @@
-"""Station Templates API — K30-16 user-requested 57+ templates.
+"""Station Templates API — K30-16/V12T-016, 73+ templates across 15 categories.
 
 REST endpoints:
-- GET /api/station-templates — list all 57 templates
+- GET /api/station-templates — list all 73+ templates
 - GET /api/station-templates?category=<cat> — filter by category
 - GET /api/station-templates/{template_id} — full schema + editable params
-- GET /api/station-templates/categories — list 10 categories with counts
+- GET /api/station-templates/categories — list 15 categories with counts
 """
 
 from __future__ import annotations
@@ -12,12 +12,16 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from api.klucz_twin_dep import klucz_twin_z_sciezki
 from application.station_templates import (
+    TEMPLATE_CATEGORY_LABELS_PL,
     StationTemplate,
     TemplateCategory,
     get_template,
+    kategoria_wchodzi_w_segment,
     list_templates,
     list_templates_by_category,
+    structural_fields,
 )
 from application.station_templates.apply import (
     TemplateApplyError,
@@ -33,37 +37,34 @@ from application.station_templates.user_store import (
 from application.station_templates.user_store import (
     zapisz_szablon_uzytkownika as save_user_template,
 )
-from fastapi import APIRouter, Body, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/station-templates", tags=["station-templates"])
 
 
 def klucz_przypadku(case_id: str) -> str:
-    """JEDYNE źródło prawdy o kluczu magazynu ENM dla końcówek szablonów.
+    """Waliduj postać KANONICZNĄ `case_id` — WYŁĄCZNIE format wejścia.
 
-    ROZSTRZYGNIĘCIE (dług 2 z V12K-315, rozjazd normalizacji klucza przypadku).
-    Wygrywa **surowy łańcuch z adresu**, bo TAK klucz wyprowadza magazyn ENM
-    (`enm.store._case_path` liczy SHA-256 z tekstu identyfikatora, a blokada
-    `blokada_przypadku` indeksuje słownik tym samym tekstem) i tak samo robią
-    WSZYSTKIE pozostałe końcówki (`/api/cases/{case_id}/enm/**` przekazuje
-    `case_id` wprost). Normalizacja mogła zostać tylko wtedy, gdyby objęła też
-    magazyn — a magazynu ta karta nie zmienia, więc normalizacja znika.
+    HISTORIA (dług 2 z V12K-315, rozjazd normalizacji klucza przypadku).
+    Zanim magazyn ENM przeszedł na klucz Canonical Project Twin (CV-1-W,
+    `enm.klucz_twin.klucz_twin_projektu`), tekst `case_id` z adresu BYŁ
+    bajtowo kluczem magazynu — funkcja pilnowała wtedy, żeby ta końcówka nie
+    normalizowała `case_id` przez `str(UUID(...))` inaczej niż reszta API,
+    bo dwie postacie tego samego identyfikatora trafiałyby w DWA różne wpisy
+    magazynu.
 
-    Ta końcówka normalizowała klucz przez `str(UUID(...))`, czyli sprowadzała
-    identyfikator do postaci kanonicznej (małe litery, myślniki, bez klamer i
-    prefiksu `urn:uuid:`). Dopóki identyfikatory pochodzą z backendu, obie
-    postacie są identyczne — ale dla postaci NIEKANONICZNEJ zastosowanie
-    szablonu operowałoby na INNYM wpisie magazynu niż operacje domenowe: praca
-    lądowałaby pod kluczem `str(UUID(x))`, a `GET /api/cases/{x}/enm` czytałby
-    pusty model spod `x`. Blokada współbieżności też brałaby wtedy inny zamek,
-    więc szablon i operacje domenowe biegłyby równolegle po jednym modelu.
-
-    Funkcja jest ZWRACAJĄCĄ TOŻSAMOŚĆ z jawną walidacją formatu: identyfikator
-    musi być poprawnym UUID (kontrakt `case_id` całego API), ale wynik nigdy nie
-    jest przekształceniem wejścia. Postać niekanoniczna jest ODRZUCANA, a nie
-    po cichu tłumaczona — inaczej wróciłby ten sam rozjazd, tylko w innym
-    miejscu.
+    PO CV-1-W. Klucz magazynu ENM to `projekt:<uuid>`, wyprowadzany przez
+    `application.twin_key.klucz_twin_dla_przypadku` (JEDYNE miejsce
+    tłumaczenia `case_id -> klucz`, wołane w `apply_station_template`
+    poniżej) — bajtowa tożsamość `case_id` PRZESTAŁA być kluczem magazynu,
+    więc ryzyko rozjazdu, dla którego ta funkcja powstała, już nie istnieje
+    (obie postacie tego samego UUID tłumaczą się na TEN SAM klucz projektu,
+    bo tłumacz sam parsuje `case_id` przez `UUID(...)`). Funkcja zostaje jako
+    walidacja FORMATU wejścia API — identyfikator musi być poprawnym UUID w
+    postaci kanonicznej (kontrakt `case_id` całego API); wynik nigdy nie jest
+    przekształceniem wejścia, postać niekanoniczna jest ODRZUCANA jawnym
+    błędem, nigdy po cichu naprawiana.
 
     Podnosi ``ValueError`` dla identyfikatora spoza kontraktu.
     """
@@ -83,7 +84,15 @@ class ApplyTemplateRequest(BaseModel):
     """K30-20: Apply template payload."""
 
     case_id: str = Field(..., description="Target case UUID")
-    target_segment_id: str = Field(..., description="Trunk segment_ref where station gets inserted")
+    target_segment_id: str | None = Field(
+        default=None,
+        description=(
+            "Trunk segment_ref where station gets inserted. Optional ONLY for "
+            "category GPZ_110_SN (V12T-016) — GPZ is the model's root (add_grid_"
+            "source_sn), not an insertion into an existing segment; every other "
+            "category requires it (apply_template_to_case rejects None explicitly)."
+        ),
+    )
     insert_at_ratio: float = Field(default=0.5, ge=0.0, le=1.0, description="Position on segment")
     params_override: dict[str, Any] = Field(default_factory=dict, description="User-edited params")
     catalog_profile: str | None = Field(default=None, description="Manufacturer profile cascade")
@@ -216,6 +225,7 @@ def preview_station_template(
 @router.post("/{template_id}/apply")
 def apply_station_template(
     template_id: str,
+    http_request: Request,
     request: ApplyTemplateRequest = Body(...),
 ) -> dict[str, Any]:
     """K30-20: apply station template do live case ENM.
@@ -240,18 +250,19 @@ def apply_station_template(
         raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
 
     try:
-        # JEDNO ŹRÓDŁO PRAWDY o kluczu magazynu — patrz `klucz_przypadku`.
-        # `UUID(...)` niżej jest bezskutkowe co do treści klucza: funkcja gwarantuje
-        # `str(UUID(klucz)) == klucz`, więc `apply_template_to_case` trafia w TEN SAM
-        # wpis magazynu, w który trafiają operacje domenowe pod tym samym adresem.
-        klucz = klucz_przypadku(request.case_id)
+        # Walidacja FORMATU (postac kanoniczna UUID) — patrz `klucz_przypadku`.
+        case_id_kanoniczny = klucz_przypadku(request.case_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid case_id: {exc}") from exc
+
+    # JEDYNE miejsce tlumaczenia case_id -> klucz magazynu ENM (CV-1-W) — 404
+    # gdy przypadek nie nalezy do zadnego projektu.
+    klucz_twin = klucz_twin_z_sciezki(case_id_kanoniczny, http_request)
 
     try:
         result = apply_template_to_case(
             template=template,
-            case_id=UUID(klucz),
+            klucz_twin=klucz_twin,
             target_segment_id=request.target_segment_id,
             insert_at_ratio=request.insert_at_ratio,
             params_override=request.params_override,
@@ -337,16 +348,21 @@ def list_station_templates(
 
 @router.get("/categories")
 def list_categories() -> dict[str, Any]:
-    """Return 10 categories z counts dla wizard step 1 (Kategoria)."""
+    """Return 15 categories z counts dla wizard step 1 (Kategoria)."""
     counts = count_by_category()
     return {
         "categories": [
             {
                 "id": cat.value,
-                "label_pl": _CATEGORY_LABELS[cat],
+                "label_pl": TEMPLATE_CATEGORY_LABELS_PL[cat],
                 "icon": _CATEGORY_ICONS[cat],
                 "description_pl": _CATEGORY_DESCRIPTIONS[cat],
                 "template_count": counts.get(cat.value, 0),
+                # Rola kategorii w modelu z JEDNEGO zrodla prawdy backendu
+                # (`schema.py::KATEGORIE_KORZENIA_MODELU`): kreator wciecia w
+                # magistrale filtruje po tym polu, zamiast powtarzac u siebie
+                # liste kategorii korzenia.
+                "wchodzi_w_segment": kategoria_wchodzi_w_segment(cat),
             }
             for cat in TemplateCategory
         ],
@@ -364,7 +380,11 @@ def get_station_template(template_id: str) -> dict[str, Any]:
 
 
 def _to_summary(t: StationTemplate) -> dict[str, Any]:
-    """Lightweight summary dla list endpoint (no schema details)."""
+    """Lightweight summary dla list endpoint (bez `schema` — parametry
+    edytowalne) — ALE pola strukturalne (moc/napięcie/zastosowanie/kategorie
+    ról, KARTA-UI2 §1 p. 12) SĄ tu, bo to one zasilają filtr przeglądarki, a
+    ten czyta listę, nie szczegół. `structural_fields` jest tym samym
+    obliczeniem co w `StationTemplate.to_dict()` (jedno źródło prawdy)."""
     return {
         "id": t.id,
         "name_pl": t.name_pl,
@@ -374,21 +394,9 @@ def _to_summary(t: StationTemplate) -> dict[str, Any]:
         "nc_rfg_type": t.nc_rfg_type,
         "tags": list(t.tags),
         "icon": t.icon,
+        **structural_fields(t),
     }
 
-
-_CATEGORY_LABELS: dict[TemplateCategory, str] = {
-    TemplateCategory.TYPOWA_SN_NN: "Typowe stacje SN/nN",
-    TemplateCategory.SLUPOWA: "Stacje słupowe ZSP",
-    TemplateCategory.ZKSN_WNETRZOWA: "Stacje ZKSN wnętrzowe",
-    TemplateCategory.PROSUMENT_PV: "Mikroinstalacje PV prosument",
-    TemplateCategory.FARMA_PV: "Farmy PV SN",
-    TemplateCategory.BESS: "Magazyny BESS",
-    TemplateCategory.HYBRYDOWA: "Hybrydy PV + BESS",
-    TemplateCategory.PRZEMYSLOWA: "Przemysłowe odbiorcze",
-    TemplateCategory.WIATROWA: "Stacje OZE wiatrowe",
-    TemplateCategory.SEKCYJNA: "Stacje sekcyjne / pętlowe",
-}
 
 _CATEGORY_ICONS: dict[TemplateCategory, str] = {
     TemplateCategory.TYPOWA_SN_NN: "station-distribution",
@@ -401,6 +409,12 @@ _CATEGORY_ICONS: dict[TemplateCategory, str] = {
     TemplateCategory.PRZEMYSLOWA: "station-industrial",
     TemplateCategory.WIATROWA: "station-wind",
     TemplateCategory.SEKCYJNA: "station-sectional",
+    # V12T-016 (rejestr długu, rola A/C/E — licznik ZERO przed tą kartą):
+    TemplateCategory.GPZ_110_SN: "station-gpz",
+    TemplateCategory.ROZDZIELNIA_SIECIOWA: "station-switching",
+    TemplateCategory.STACJA_ABONENCKA: "station-metering",
+    TemplateCategory.KOMPENSACJA: "station-capacitor",
+    TemplateCategory.REZERWA_ZASILANIA: "station-reserve",
 }
 
 _CATEGORY_DESCRIPTIONS: dict[TemplateCategory, str] = {
@@ -414,4 +428,9 @@ _CATEGORY_DESCRIPTIONS: dict[TemplateCategory, str] = {
     TemplateCategory.PRZEMYSLOWA: "Stacje przemysłowe odbiorcze (zakłady, silniki)",
     TemplateCategory.WIATROWA: "Stacje OZE wiatrowe (Vestas V90/V112)",
     TemplateCategory.SEKCYJNA: "Stacje sekcyjne/pętlowe z NOP/SZR",
+    TemplateCategory.GPZ_110_SN: "GPZ 110/SN — korzeń sieci, 2-sekcyjny układ H5 z mostkiem",
+    TemplateCategory.ROZDZIELNIA_SIECIOWA: "Rozdzielnie sieciowe RS/RSM — bez transformatora",
+    TemplateCategory.STACJA_ABONENCKA: "Stacje odbiorcze SN z układem pomiarowo-rozliczeniowym",
+    TemplateCategory.KOMPENSACJA: "Bateria kondensatorów SN — kompensacja mocy biernej",
+    TemplateCategory.REZERWA_ZASILANIA: "Węzeł SN z zasilaniem rezerwowym (automatyka SZR)",
 }

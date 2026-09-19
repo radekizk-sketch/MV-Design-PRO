@@ -674,8 +674,30 @@ export interface PunktTrajektoriiFrt {
   readonly p_czynna_pu: number;
 }
 
-/** Status solvera FRT/HVRT (1:1 z `FrtHvrtStatus`). */
-export type StatusSolveraFrt = 'ok' | 'der_dropped' | 'no_module' | 'input_invalid';
+/**
+ * Status solvera FRT/HVRT — jak `FrtHvrtStatus` solvera FROZEN, ALE bez
+ * stanu „brak modelu numerycznego": karta S-4 mapuje go NA GRANICY
+ * aplikacyjnej na `blocked` z `kod_gotowosci` nazwanym w widoku (ZASADA NR 1:
+ * brak modelu dynamicznego nie jest osobnym stanem po stronie prezentacji,
+ * tylko zablokowaną gotowością z powodem).
+ */
+export type StatusSolveraFrt = 'ok' | 'der_dropped' | 'blocked' | 'input_invalid';
+
+/**
+ * Stopień dowodowy wyniku (1:1 z `CapabilityEvidence.to_dict()`,
+ * `solver_input.provenance` — karta S-1). Trzecia oś proweniencji: czy WYNIK
+ * wolno przedstawić jako dowód spełnienia wymagania normatywnego.
+ */
+export interface OcenaDowodowaZdolnosci {
+  readonly capability_id: string | null;
+  readonly tier: string | null;
+  readonly tier_pl: string | null;
+  readonly claim_kind: string | null;
+  readonly claim_kind_pl: string | null;
+  readonly regulatory_evidence_eligible: boolean;
+  readonly rationale_pl: string;
+  readonly audit_ref: string;
+}
 
 /**
  * Wynik pojedynczego scenariusza FRT/HVRT (1:1 z `FrtScenarioResult` + werdykt PL
@@ -720,8 +742,19 @@ export interface WidokTrajektoriiFrt {
   readonly operator: OperatorFrt;
   readonly test_kind: RodzajTestuFrt;
   readonly status_solvera: StatusSolveraFrt;
-  readonly obwiednia_profilu: ObwiedniaProfiluFrt;
+  /**
+   * Obecne WYŁĄCZNIE, gdy `status_solvera !== 'blocked'` — przy `blocked`
+   * (brak modelu dynamicznego DER na granicy aplikacyjnej, karta S-4) widok
+   * niesie zamiast tego `kod_gotowosci` + `missing_fields_pl`.
+   */
+  readonly obwiednia_profilu?: ObwiedniaProfiluFrt;
   readonly scenariusze: readonly ScenariuszFrt[];
+  /** Stopień dowodowy trajektorii (karta S-1) — nieobecny przy `blocked`. */
+  readonly ocena_dowodowa?: OcenaDowodowaZdolnosci;
+  /** Kod gotowości (istniejący rejestr) — obecny WYŁĄCZNIE przy `blocked`. */
+  readonly kod_gotowosci?: string;
+  /** Nazwane braki (istniejący wzorzec readiness) — obecne WYŁĄCZNIE przy `blocked`. */
+  readonly missing_fields_pl?: readonly string[];
 }
 
 /** Parametry jawnego biegu trajektorii FRT (moduł DER + operator + rodzaj testu). */
@@ -957,14 +990,26 @@ export interface WidokSekwencjiFrt {
   readonly modul_der: ModulDerFrt;
   readonly operator: OperatorFrt;
   readonly status_solvera: StatusSolveraFrt;
-  readonly obwiednia_profilu: ObwiedniaProfiluFrt;
   readonly liczba_zapadow: number;
   readonly zapady: readonly ZapadSekwencjiFrt[];
-  readonly werdykt_sekwencji_pl: string;
-  readonly zalozenia_pl: string;
-  readonly kontekst_sily_sieci: WpisSilyWezla | null;
-  readonly kontekst_sily_sieci_powod_pl: string | null;
-  readonly input_hash: string;
+  /**
+   * Pola poniżej są obecne WYŁĄCZNIE, gdy `status_solvera !== 'blocked'` — przy
+   * `blocked` (brak modelu dynamicznego DER na granicy aplikacyjnej, karta S-4)
+   * widok niesie zamiast nich `kod_gotowosci` + `missing_fields_pl`, a
+   * `liczba_zapadow`/`zapady` są uczciwie puste.
+   */
+  readonly obwiednia_profilu?: ObwiedniaProfiluFrt;
+  readonly werdykt_sekwencji_pl?: string;
+  readonly zalozenia_pl?: string;
+  readonly kontekst_sily_sieci?: WpisSilyWezla | null;
+  readonly kontekst_sily_sieci_powod_pl?: string | null;
+  readonly input_hash?: string;
+  /** Stopień dowodowy trajektorii (karta S-1) — nieobecny przy `blocked`. */
+  readonly ocena_dowodowa?: OcenaDowodowaZdolnosci;
+  /** Kod gotowości (istniejący rejestr) — obecny WYŁĄCZNIE przy `blocked`. */
+  readonly kod_gotowosci?: string;
+  /** Nazwane braki (istniejący wzorzec readiness) — obecne WYŁĄCZNIE przy `blocked`. */
+  readonly missing_fields_pl?: readonly string[];
 }
 
 /** Jeden zapad w edytorze sekwencji (para głębokość p.u. + czas s). */

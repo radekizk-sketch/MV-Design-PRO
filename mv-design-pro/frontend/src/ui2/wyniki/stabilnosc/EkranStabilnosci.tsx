@@ -32,10 +32,12 @@ import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
 import { akcjaNaprawcza, SekcjaZalozen, usePoprawWModelu } from '../wzorzec';
 import { usePrzebiegStabilnosci, useWynikStabilnosci } from './api';
+import { FormularzScenariusza } from './FormularzScenariusza';
 import { elementWerdyktuStabilnosci } from './model';
 import {
   fmtMs,
   fmtWskaznik,
+  naKryteriaOcenyProgowej,
   naruszoneKryteriaPL,
   naSeriePrzebiegu,
   naWielkosciStabilnosci,
@@ -125,14 +127,19 @@ export function EkranStabilnosci() {
       </header>
 
       {!przebieg ? (
-        <Stan
-          tytul={T.zeroTytul}
-          opis={T.zeroOpis}
-          akcja={T.zeroAkcja}
-          onAkcja={() => setActiveSpace('obliczenia')}
-          tone="idle"
-          testid="mvd-stabilnosc-zero"
-        />
+        <div className="mvd-stabilnosc-stan" data-testid="mvd-stabilnosc-zero" data-tone="idle">
+          <h4>{T.zeroTytul}</h4>
+          <p>{T.zeroOpis}</p>
+          <FormularzScenariusza />
+          <button
+            type="button"
+            className="mvd-stabilnosc-akcja"
+            data-testid="mvd-stabilnosc-zero-akcja"
+            onClick={() => setActiveSpace('obliczenia')}
+          >
+            {T.zeroAkcja}
+          </button>
+        </div>
       ) : dane?.stan === 'laduje' ? (
         <Stan
           tytul={T.ladowanieTytul}
@@ -266,6 +273,35 @@ export function EkranStabilnosci() {
               </p>
             )}
           </section>
+
+          {/* Kryteria oceny progowej JAWNIE nazwane (karta W2 pkt 1) — starszy wiersz
+              bez pola nie renderuje sekcji (uczciwy brak, zero zgadywania progów). */}
+          {naKryteriaOcenyProgowej(wiersz).length > 0 && (
+            <section className="mvd-stabilnosc-sekcja" data-testid="mvd-stabilnosc-kryteria">
+              <h4>{T.kryteriaTytul}</h4>
+              <p className="mvd-stabilnosc-nota">{T.kryteriaOpis}</p>
+              <table className="mvd-stabilnosc-tabela">
+                <thead>
+                  <tr>
+                    <th scope="col">{T.kolKryterium}</th>
+                    <th scope="col">{T.kolProg}</th>
+                    <th scope="col">{T.kolPochodzenie}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {naKryteriaOcenyProgowej(wiersz).map((kryterium) => (
+                    <tr key={kryterium.key} data-testid={`mvd-stabilnosc-kryterium-${kryterium.key}`}>
+                      <td>{kryterium.label_pl}</td>
+                      <td className="mvd-num">
+                        {fmtWskaznik(kryterium.value)} {kryterium.unit}
+                      </td>
+                      <td>{kryterium.source_pl}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          )}
 
           <section className="mvd-stabilnosc-sekcja" data-testid="mvd-stabilnosc-przebieg">
             <h4>{T.przebiegTytul}</h4>

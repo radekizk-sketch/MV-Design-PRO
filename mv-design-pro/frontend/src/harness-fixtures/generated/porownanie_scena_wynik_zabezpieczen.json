@@ -1,0 +1,85 @@
+{
+  "comparison_id": "run-zab-scena-a::run-zab-scena-b",
+  "run_a_id": "run-zab-scena-a",
+  "run_b_id": "run-zab-scena-b",
+  "project_id": "proj-zab",
+  "rows": [
+    {
+      "protected_element_ref": "004329a5-e3ab-548f-9e8c-3abe8c925494",
+      "fault_target_id": "004329a5-e3ab-548f-9e8c-3abe8c925494",
+      "device_id_a": "device_004329a5-e3ab-548f-9e8c-3abe8c925494",
+      "device_id_b": "device_004329a5-e3ab-548f-9e8c-3abe8c925494",
+      "trip_state_a": "TRIPS",
+      "trip_state_b": "TRIPS",
+      "t_trip_s_a": 0.152972,
+      "t_trip_s_b": 0.153103,
+      "i_fault_a_a": 18535.690848310023,
+      "i_fault_a_b": 18365.450326007598,
+      "delta_t_s": 0.00013099999999999223,
+      "delta_i_fault_a": -170.24052230242523,
+      "margin_percent_a": 18535590.85,
+      "margin_percent_b": 18365350.33,
+      "state_change": "NO_CHANGE"
+    }
+  ],
+  "ranking": [
+    {
+      "issue_code": "MARGIN_DECREASED",
+      "severity": 3,
+      "element_ref": "004329a5-e3ab-548f-9e8c-3abe8c925494",
+      "fault_target_id": "004329a5-e3ab-548f-9e8c-3abe8c925494",
+      "description_pl": "Zmniejszenie marginesu bezpieczeństwa (Δmargin = -170240.5%)",
+      "evidence_refs": [
+        0
+      ]
+    }
+  ],
+  "summary": {
+    "total_rows": 1,
+    "no_change_count": 1,
+    "trip_to_no_trip_count": 0,
+    "no_trip_to_trip_count": 0,
+    "invalid_change_count": 0,
+    "total_issues": 1,
+    "critical_issues": 0,
+    "major_issues": 0,
+    "moderate_issues": 1,
+    "minor_issues": 0
+  },
+  "input_hash": "cbe51e91ee9429666345674aa270d1af5c74cea33607a37c93bc4bdf5ca4dc71",
+  "provenance_a": {
+    "run_id": "run-zab-scena-a",
+    "analysis_type": "protection_sn",
+    "status": "FINISHED",
+    "snapshot_hash": "5691f47212d903ae17cb29cec545fd14b009c5ecf294af4211520abbfe74a9c5",
+    "input_hash": "0d1089968ca7724a14787298640923ffa3531292dcbd5f8ffd5863868c9f9551",
+    "finished_at": "2026-09-16T09:00:00+00:00",
+    "envelope": {
+      "catalog_fingerprint": "0115ee1a3faf1c42a814ef7cf160e7277ae2f926b1fdb48aced9919e0d6b2d95",
+      "model_revision": 2,
+      "options_hash": "0d1089968ca7724a14787298640923ffa3531292dcbd5f8ffd5863868c9f9551",
+      "project_id": "proj-zab",
+      "semantic_fingerprint": "fe3cb31bd7bece7e17e04312ac96e4ccf6438c178c6d305b64e5fca1742e43f2",
+      "snapshot_hash": "5691f47212d903ae17cb29cec545fd14b009c5ecf294af4211520abbfe74a9c5",
+      "wersja": 1
+    }
+  },
+  "provenance_b": {
+    "run_id": "run-zab-scena-b",
+    "analysis_type": "protection_sn",
+    "status": "FINISHED",
+    "snapshot_hash": "73c101991dfaae8f6dd3c3b2f0d8b55737d9540a47049c766ecd4ebe727cff7f",
+    "input_hash": "9ba411445ce8b685826fc349bbdbf154b635e1eb8f6b7018fa0083f68febc2c0",
+    "finished_at": "2026-09-16T09:00:00+00:00",
+    "envelope": {
+      "catalog_fingerprint": "0115ee1a3faf1c42a814ef7cf160e7277ae2f926b1fdb48aced9919e0d6b2d95",
+      "model_revision": 2,
+      "options_hash": "9ba411445ce8b685826fc349bbdbf154b635e1eb8f6b7018fa0083f68febc2c0",
+      "project_id": "proj-zab",
+      "semantic_fingerprint": "0e833ac7749395e14c5a38f69e02130c736b3294803acc7e847ac35506f13e75",
+      "snapshot_hash": "73c101991dfaae8f6dd3c3b2f0d8b55737d9540a47049c766ecd4ebe727cff7f",
+      "wersja": 1
+    }
+  },
+  "created_at": "2026-09-16T09:00:00+00:00"
+}

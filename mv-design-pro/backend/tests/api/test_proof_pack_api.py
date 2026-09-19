@@ -7,10 +7,16 @@ from uuid import uuid4
 
 import pytest
 from api.main import app
-from application.proof_engine.proof_generator import ProofGenerator, SC3FInput
 from domain.analysis_run import AnalysisRun
 from domain.models import OperatingCase, Project
 from domain.project_design_mode import ProjectDesignMode
+from enm.canonical_analysis import (
+    CanonicalRun,
+    _execute_short_circuit,
+    canonical_run_repository_scope,
+    reset_canonical_runs,
+)
+from enm.models import Bus, EnergyNetworkModel, ENMHeader, Source, Transformer
 from fastapi.testclient import TestClient
 from infrastructure.persistence.db import (
     create_engine_from_url,
@@ -21,33 +27,8 @@ from infrastructure.persistence.repositories import (
     AnalysisRunRepository,
     CaseRepository,
     ProjectRepository,
-    ResultRepository,
 )
 from infrastructure.persistence.unit_of_work import build_uow_factory
-
-
-def _build_sc3f_proof():
-    test_input = SC3FInput(
-        project_name="Test Project",
-        case_name="Test Case SC3F",
-        fault_node_id="B2",
-        fault_type="THREE_PHASE",
-        run_timestamp=datetime(2026, 1, 27, 10, 30, 0),
-        solver_version="1.0.0-test",
-        c_factor=1.10,
-        u_n_kv=15.0,
-        z_thevenin_ohm=complex(0.749, 3.419),
-        ikss_ka=2.722,
-        ip_ka=5.882,
-        ith_ka=2.722,
-        sk_mva=70.7,
-        kappa=1.528,
-        rx_ratio=0.219,
-        tk_s=1.0,
-        m_factor=1.0,
-        n_factor=0.0,
-    )
-    return ProofGenerator.generate_sc3f_proof(test_input)
 
 
 def _prepare_api_client(tmp_path):
@@ -88,13 +69,11 @@ def _prepare_api_client(tmp_path):
     )
     AnalysisRunRepository(session).create(run)
 
-    proof = _build_sc3f_proof()
-    ResultRepository(session).add_result(
-        run_id=run_id,
-        project_id=project_id,
-        result_type="proof_document",
-        payload=proof.to_dict(),
-    )
+    # CV-3.3-B: zapis dowodu przez (usuniety) `ResultRepository` byl tu MARTWY —
+    # `/api/proof/{project}/{case}/{run}/pack` konczy sie 410 BEZWARUNKOWO
+    # (test_proof_pack_api_returns_zip/404_when_missing ponizej), wiec nikt
+    # tego zapisu nigdy nie odczytywal (usunieta razem z nim funkcja pomocnicza
+    # `_build_sc3f_proof`, jedyny jej wolajacy).
 
     missing_run_id = uuid4()
     run_missing = AnalysisRun(
@@ -615,7 +594,145 @@ def test_sc_asymmetrical_pack_jest_deterministyczny_bajt_w_bajt(tmp_path):
     assert pierwszy.content == drugi.content
 
 
-def test_pakiet_dowodowy_aparatury_bez_oznaczen_roboczych(tmp_path):
+# =============================================================================
+# /api/equipment-proof/pack — karta S-2 AUTORYTET: wielkości zwarciowe WYŁĄCZNIE
+# z ZAPISANEGO BIEGU KANONICZNEGO (`enm.canonical_analysis.CanonicalRun`), nie
+# z `domain.analysis_run.AnalysisRun` (magazyn legacy, martwy dla tej trasy —
+# patrz komentarz CV-3.3-B powyżej) i nie z liczb w żądaniu. Sieć testowa: GPZ
+# 110 kV (S''k=300 MVA) -> T1 10 MVA/10,5 % -> szyna SN 10 kV, żeby rzeczywisty
+# wynik (u_kv=10,0; ikss_ka≈4,54; ip_ka≈11,46; ith_ka≈4,63; tk_s=1,0) pasował
+# pod aparaty katalogowe VD4 12 kV/20 kA i NAL 12 kV używane niżej.
+# =============================================================================
+
+
+def _siec_equipment_proof() -> EnergyNetworkModel:
+    return EnergyNetworkModel(
+        header=ENMHeader(name="Siec equipment-proof (karta S-2)", revision=1),
+        buses=[
+            Bus(ref_id="hv", name="GPZ 110", voltage_kv=110.0),
+            Bus(ref_id="mv", name="Stacja SN", voltage_kv=10.0),
+        ],
+        sources=[
+            Source(
+                ref_id="s1",
+                name="System 110 kV",
+                bus_ref="hv",
+                model="short_circuit_power",
+                sk3_mva=300.0,
+                rx_ratio=0.1,
+            )
+        ],
+        transformers=[
+            Transformer(
+                ref_id="t1",
+                name="T1",
+                hv_bus_ref="hv",
+                lv_bus_ref="mv",
+                sn_mva=10.0,
+                uhv_kv=110.0,
+                ulv_kv=10.0,
+                uk_percent=10.5,
+                pk_kw=80.0,
+                vector_group="YNd11",
+            )
+        ],
+    )
+
+
+def _zapisz_bieg_equipment_proof() -> tuple[CanonicalRun, str, dict]:
+    """Zapisuje bieg zwarciowy kanoniczny i zwraca (bieg, punkt_zwarcia, wynik
+    wiersza szyny SN) — DOKŁADNIE to, co `application.autorytet_biegu_
+    zwarciowego.wejscie_zwarciowe_z_biegu` będzie czytać z magazynu."""
+    reset_canonical_runs()
+    run_id = uuid4()
+    utworzony = datetime(2026, 1, 1, tzinfo=UTC)
+    run = CanonicalRun(
+        id=run_id,
+        case_id="case-equipment-proof",
+        project_id="proj-equipment-proof",
+        analysis_type="short_circuit_sn",
+        status="FINISHED",
+        created_at=utworzony,
+        snapshot_hash="snap-equipment-proof",
+        input_hash="in-equipment-proof",
+        snapshot=_siec_equipment_proof().model_dump(mode="json"),
+        validation={},
+        readiness={},
+        options={"fault_type": "3F", "scenario": "max", "thermal_time_seconds": 1.0},
+    )
+    run.finished_at = utworzony
+    _execute_short_circuit(run)
+    with canonical_run_repository_scope() as repository:
+        repository.save(run)
+    wiersz_mv = next(w for w in run.raw_result["results"] if w["un_v"] == 10000.0)
+    return run, str(wiersz_mv["fault_node_id"]), wiersz_mv
+
+
+def test_obejscie_bieg_nieistniejacy_plus_999_ka_odrzucony_przez_http():
+    """OBEJŚCIE ODTWORZONE NA POZIOMIE HTTP (karta S-2 AUTORYTET, DoD §3):
+    dokładnie ten payload, który przed kartą S-2 dawał HTTP 200 z kompletnym
+    pakietem dowodowym niezależnie od tego, czy ``ikss_ka`` było 12,5 czy 999 —
+    teraz MUSI dać 422, zanim jakikolwiek bajt pakietu powstanie."""
+    with TestClient(app) as client:
+        payload = {
+            "project_id": "proj-1",
+            "case_id": "case-1",
+            "run_id": "BIEG-KTORY-NIGDY-NIE-ISTNIAL",
+            "connection_node_id": "dowolny-punkt",
+            "device": {
+                "device_id": "wyl-01",
+                "name_pl": "Wylacznik pola liniowego",
+                "u_m_kv": 17.5,
+                "i_cu_ka": 20.0,
+                "i_dyn_ka": 50.0,
+                "i_th_ka": 20.0,
+                "t_th_s": 1.0,
+            },
+            "required_fault_results": {
+                "u_kv": 15.0,
+                "ikss_ka": 999.0,
+                "ip_ka": 999.0,
+                "ith_ka": 999.0,
+                "tk_s": 1.0,
+            },
+        }
+        response = client.post("/api/equipment-proof/pack", json=payload)
+
+    assert response.status_code == 422, response.text
+    detail = response.json()["detail"]
+    assert detail["powod"] == "BIEG_NIE_ISTNIEJE"
+
+
+def test_run_id_real_ale_echo_999_ka_odrzucony_przez_http():
+    """Wariant z PRAWDZIWYM `run_id` (bieg istnieje) i echem 999 kA — musi być
+    odrzucony jako WYNIK_NIEZGODNY_Z_BIEGIEM, nie po cichu przyjęty."""
+    with TestClient(app) as client:
+        run, punkt_zwarcia, _wynik = _zapisz_bieg_equipment_proof()
+        payload = {
+            "project_id": "proj-1",
+            "case_id": "case-1",
+            "run_id": str(run.id),
+            "connection_node_id": punkt_zwarcia,
+            "device": {
+                "device_id": "wyl-01",
+                "name_pl": "Wylacznik pola liniowego",
+                "u_m_kv": 17.5,
+                "i_cu_ka": 20.0,
+                "i_dyn_ka": 50.0,
+                "i_th_ka": 20.0,
+                "t_th_s": 1.0,
+            },
+            "required_fault_results": {"ikss_ka": 999.0},
+        }
+        response = client.post("/api/equipment-proof/pack", json=payload)
+
+    assert response.status_code == 422, response.text
+    detail = response.json()["detail"]
+    assert detail["powod"] == "WYNIK_NIEZGODNY_Z_BIEGIEM"
+    assert detail["niezgodnosci"]
+
+
+def test_pakiet_dowodowy_aparatury_bez_oznaczen_roboczych():
     """Nazwa pobieranego pliku i rodzaj dowodu w manifescie bez nazw roboczych.
 
     Nazwa pliku trafia do katalogu pobran uzytkownika, a `manifest.json` do
@@ -625,33 +742,27 @@ def test_pakiet_dowodowy_aparatury_bez_oznaczen_roboczych(tmp_path):
     """
     import re
 
-    client, data = _prepare_api_client(tmp_path)
-    payload = {
-        "project_id": str(data["project_id"]),
-        "case_id": str(data["case_id"]),
-        "run_id": str(data["run_id"]),
-        "connection_node_id": "bus-main",
-        "device": {
-            "device_id": "wyl-01",
-            "name_pl": "Wylacznik pola liniowego",
-            "u_m_kv": 17.5,
-            "i_cu_ka": 20.0,
-            "i_dyn_ka": 50.0,
-            "i_th_ka": 20.0,
-            "t_th_s": 1.0,
-        },
-        "required_fault_results": {
-            "u_kv": 15.0,
-            "ikss_ka": 8.0,
-            "ip_ka": 20.0,
-            "ith_ka": 8.0,
-            "tk_s": 1.0,
-        },
-    }
+    with TestClient(app) as client:
+        run, punkt_zwarcia, _wynik = _zapisz_bieg_equipment_proof()
+        payload = {
+            "project_id": "proj-1",
+            "case_id": "case-1",
+            "run_id": str(run.id),
+            "connection_node_id": punkt_zwarcia,
+            "device": {
+                "device_id": "wyl-01",
+                "name_pl": "Wylacznik pola liniowego",
+                "u_m_kv": 17.5,
+                "i_cu_ka": 20.0,
+                "i_dyn_ka": 50.0,
+                "i_th_ka": 20.0,
+                "t_th_s": 1.0,
+            },
+        }
 
-    response = client.post("/api/equipment-proof/pack", json=payload)
+        response = client.post("/api/equipment-proof/pack", json=payload)
 
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     wzorzec = re.compile(r"\b[pP](?!0\b)\d+\b")
     assert not wzorzec.search(response.headers["content-disposition"])
     with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
@@ -667,41 +778,39 @@ def test_pakiet_dowodowy_aparatury_bez_oznaczen_roboczych(tmp_path):
     assert not wzorzec.search(dokument["header"]["solver_version"])
 
 
-def test_pakiet_dowodowy_wylacznik_sn_z_type_ref_bez_jawnych_um_icu_czyta_katalog(tmp_path):
+def test_pakiet_dowodowy_wylacznik_sn_z_type_ref_bez_jawnych_um_icu_czyta_katalog():
     """Karta UM-ICU-KATALOG (most, poz. c): klient poda TYLKO ``type_ref``
     (bez u_m_kv/i_cu_ka) -> backend rozwiazuje je z katalogu aparatury SN.
+
+    Karta S-2 AUTORYTET: ``required_fault_results`` POMINIĘTE (echo opcjonalne)
+    — wielkości zwarciowe (u_kv=10,0; ikss_ka≈4,54) pochodzą WYŁĄCZNIE z
+    zapisanego biegu (`_zapisz_bieg_equipment_proof`).
     """
     import json as _json
 
-    client, data = _prepare_api_client(tmp_path)
-    payload = {
-        "project_id": str(data["project_id"]),
-        "case_id": str(data["case_id"]),
-        "run_id": str(data["run_id"]),
-        "connection_node_id": "bus-main",
-        "device": {
-            "device_id": "wyl-vd4-01",
-            "name_pl": "Wylacznik pola liniowego VD4",
-            "type_ref": "sw-cb-abb-vd4-12kv-630a",
-            "i_dyn_ka": 50.0,
-            "i_th_ka": 20.0,
-            "t_th_s": 1.0,
-        },
-        "required_fault_results": {
-            "u_kv": 10.0,
-            "ikss_ka": 15.0,
-            "ip_ka": 20.0,
-            "ith_ka": 15.0,
-            "tk_s": 1.0,
-        },
-    }
+    with TestClient(app) as client:
+        run, punkt_zwarcia, _wynik = _zapisz_bieg_equipment_proof()
+        payload = {
+            "project_id": "proj-1",
+            "case_id": "case-1",
+            "run_id": str(run.id),
+            "connection_node_id": punkt_zwarcia,
+            "device": {
+                "device_id": "wyl-vd4-01",
+                "name_pl": "Wylacznik pola liniowego VD4",
+                "type_ref": "sw-cb-abb-vd4-12kv-630a",
+                "i_dyn_ka": 50.0,
+                "i_th_ka": 20.0,
+                "t_th_s": 1.0,
+            },
+        }
 
-    response = client.post("/api/equipment-proof/pack", json=payload)
+        response = client.post("/api/equipment-proof/pack", json=payload)
 
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
         dokument = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
-    # VD4 12kV 630A z katalogu: U_m=12kV >= 10kV wymagane; I_cu=20kA >= 15kA -> PASS.
+    # VD4 12kV 630A z katalogu: U_m=12kV >= 10,0kV (biegu); I_cu=20kA >= 4,54kA -> PASS.
     u_m_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "U_m")
     icu_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "I_{cu}")
     assert u_m_value["value"] == 12.0
@@ -710,38 +819,34 @@ def test_pakiet_dowodowy_wylacznik_sn_z_type_ref_bez_jawnych_um_icu_czyta_katalo
     assert dokument["summary"]["key_results"]["icu_ok"]["value"] == "PASS"
 
 
-def test_pakiet_dowodowy_rozlacznik_sn_z_type_ref_daje_nie_dotyczy_dla_icu(tmp_path):
+def test_pakiet_dowodowy_rozlacznik_sn_z_type_ref_daje_nie_dotyczy_dla_icu():
     """Rozłącznik z katalogu (LOAD_SWITCH, bez zdolności wyłączania zwarć)
     -> Icu = NIE_DOTYCZY w dowodzie pobranym z rzeczywistego API, U_m liczone.
+
+    Karta S-2 AUTORYTET: liczby z zapisanego biegu, echo pominięte.
     """
     import json as _json
 
-    client, data = _prepare_api_client(tmp_path)
-    payload = {
-        "project_id": str(data["project_id"]),
-        "case_id": str(data["case_id"]),
-        "run_id": str(data["run_id"]),
-        "connection_node_id": "bus-main",
-        "device": {
-            "device_id": "rozl-nal-01",
-            "name_pl": "Rozlacznik pola liniowego ABB NAL",
-            "type_ref": "sw-ls-abb-nal-12kv-400a",
-            "i_dyn_ka": 50.0,
-            "i_th_ka": 20.0,
-            "t_th_s": 1.0,
-        },
-        "required_fault_results": {
-            "u_kv": 10.0,
-            "ikss_ka": 8.0,
-            "ip_ka": 20.0,
-            "ith_ka": 8.0,
-            "tk_s": 1.0,
-        },
-    }
+    with TestClient(app) as client:
+        run, punkt_zwarcia, _wynik = _zapisz_bieg_equipment_proof()
+        payload = {
+            "project_id": "proj-1",
+            "case_id": "case-1",
+            "run_id": str(run.id),
+            "connection_node_id": punkt_zwarcia,
+            "device": {
+                "device_id": "rozl-nal-01",
+                "name_pl": "Rozlacznik pola liniowego ABB NAL",
+                "type_ref": "sw-ls-abb-nal-12kv-400a",
+                "i_dyn_ka": 50.0,
+                "i_th_ka": 20.0,
+                "t_th_s": 1.0,
+            },
+        }
 
-    response = client.post("/api/equipment-proof/pack", json=payload)
+        response = client.post("/api/equipment-proof/pack", json=payload)
 
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
         dokument = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
     assert dokument["summary"]["key_results"]["icu_ok"]["value"] == "NIE_DOTYCZY"
@@ -750,40 +855,37 @@ def test_pakiet_dowodowy_rozlacznik_sn_z_type_ref_daje_nie_dotyczy_dla_icu(tmp_p
     assert dokument["summary"]["overall_status"] == "PASS"
 
 
-def test_pakiet_dowodowy_jawne_um_icu_klienta_nadrzedne_wobec_katalogu(tmp_path):
+def test_pakiet_dowodowy_jawne_um_icu_klienta_nadrzedne_wobec_katalogu():
     """Jawne u_m_kv/i_cu_ka w payloadzie SĄ NADRZĘDNE — most nie nadpisuje
     świadomej decyzji inżyniera (np. inny egzemplarz niż katalogowy typowy).
+
+    Karta S-2 AUTORYTET: dotyczy WYŁĄCZNIE tabliczki aparatu (`device`), nie
+    wielkości zwarciowych — te nadal pochodzą z zapisanego biegu.
     """
     import json as _json
 
-    client, data = _prepare_api_client(tmp_path)
-    payload = {
-        "project_id": str(data["project_id"]),
-        "case_id": str(data["case_id"]),
-        "run_id": str(data["run_id"]),
-        "connection_node_id": "bus-main",
-        "device": {
-            "device_id": "wyl-override-01",
-            "name_pl": "Wylacznik z jawnym nadpisaniem",
-            "type_ref": "sw-cb-abb-vd4-12kv-630a",
-            "u_m_kv": 99.0,
-            "i_cu_ka": 77.0,
-            "i_dyn_ka": 50.0,
-            "i_th_ka": 20.0,
-            "t_th_s": 1.0,
-        },
-        "required_fault_results": {
-            "u_kv": 10.0,
-            "ikss_ka": 8.0,
-            "ip_ka": 20.0,
-            "ith_ka": 8.0,
-            "tk_s": 1.0,
-        },
-    }
+    with TestClient(app) as client:
+        run, punkt_zwarcia, _wynik = _zapisz_bieg_equipment_proof()
+        payload = {
+            "project_id": "proj-1",
+            "case_id": "case-1",
+            "run_id": str(run.id),
+            "connection_node_id": punkt_zwarcia,
+            "device": {
+                "device_id": "wyl-override-01",
+                "name_pl": "Wylacznik z jawnym nadpisaniem",
+                "type_ref": "sw-cb-abb-vd4-12kv-630a",
+                "u_m_kv": 99.0,
+                "i_cu_ka": 77.0,
+                "i_dyn_ka": 50.0,
+                "i_th_ka": 20.0,
+                "t_th_s": 1.0,
+            },
+        }
 
-    response = client.post("/api/equipment-proof/pack", json=payload)
+        response = client.post("/api/equipment-proof/pack", json=payload)
 
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     with zipfile.ZipFile(io.BytesIO(response.content)) as archiwum:
         dokument = _json.loads(archiwum.read("proof_pack/proof.json").decode("utf-8"))
     u_m_value = next(v for v in dokument["steps"][0]["input_values"] if v["symbol"] == "U_m")

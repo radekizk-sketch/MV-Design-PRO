@@ -153,34 +153,43 @@ export function zbudujPradyKoordynacji(params: {
   return { faultCurrents, operatingCurrents, braki };
 }
 
+/** Odpowiedź biegu zwarciowego w zakresie, którego potrzebuje klasyfikacja. */
+export interface BiegZwarciowyDoPodzialu {
+  readonly rows: readonly ShortCircuitRow[];
+  readonly konfiguracja_biegu?: { readonly scenariusz?: 'MAX' | 'MIN' | null } | null;
+}
+
 /**
- * Podział wierszy zwarciowych na przypadek MAKSYMALNY i MINIMALNY po REALNEJ
- * danej wyniku — współczynniku napięciowym `c` (IEC 60909: c_max ≈ 1,10,
- * c_min ≈ 0,95). Kanoniczny bieg liczy JEDEN scenariusz
- * (`canonical_analysis.py:895` — `options.c_factor`), więc pełna koordynacja
- * wymaga dwóch biegów; klasyfikacja po `c` nie wymaga zgadywania z metadanych.
+ * Podział wyników zwarciowych na przypadek MAKSYMALNY i MINIMALNY po
+ * SCENARIUSZU ZAPISANYM NA BIEGU (`konfiguracja_biegu.scenariusz`, projekcja
+ * `raw_result["scenario"]` — to samo źródło, które czyta most autorytetu
+ * koordynacji po stronie serwera). Kanoniczny bieg liczy JEDEN scenariusz, więc
+ * pełna koordynacja wymaga dwóch biegów.
  *
- * Wiersz bez `c_factor` nie trafia do żadnego zbioru — nie wiemy, którym
- * przypadkiem jest, a przypisanie go „na wyczucie" fałszowałoby albo
- * selektywność (za mały Ik_max), albo czułość (za duży Ik_min).
+ * NAPRAWA DOMYSŁU (karta HARNESS-RESZTA-2, 2026-09-17). Do tej karty klasyfikacja
+ * szła po współczynniku `c` wiersza z progiem `c >= 1 → MAX`. Na sieci ŚREDNIEGO
+ * napięcia ten próg jest zawsze fałszywy: IEC 60909-0 Tabela 1 daje c_min = 1,00
+ * powyżej 1 kV (0,95 wyłącznie dla nN), więc wiersze biegu MINIMALNEGO na szynie
+ * 15 kV wpadały do zbioru MAKSYMALNEGO. Zmierzone na realnych biegach magistrali
+ * SN: 2 biegi (MAX i MIN), 9 wierszy każdy — po podziale po `c` zbiór MIN miał
+ * WYŁĄCZNIE wiersze szyn nN (c = 0,95), więc żadne zabezpieczenie na szynie SN nie
+ * dostawało Ik_min i ekran meldował „Brak biegu zwarciowego minimalnego" mimo
+ * dwóch policzonych biegów. Domysł w warstwie prezentacji zastąpiony daną z
+ * kontraktu — bieg bez zapisanego scenariusza trafia do `bezScenariusza` (uczciwy
+ * brak), nigdy do „MAX z domyślki".
  */
-export function podzielWierszeNaPrzypadki(wiersze: readonly ShortCircuitRow[]): {
+export function podzielWierszeNaPrzypadki(biegi: readonly BiegZwarciowyDoPodzialu[]): {
   readonly max: readonly ShortCircuitRow[];
   readonly min: readonly ShortCircuitRow[];
-  readonly bezWspolczynnika: readonly ShortCircuitRow[];
+  readonly bezScenariusza: readonly ShortCircuitRow[];
 } {
   const max: ShortCircuitRow[] = [];
   const min: ShortCircuitRow[] = [];
-  const bezWspolczynnika: ShortCircuitRow[] = [];
-  for (const wiersz of wiersze) {
-    const c = wiersz.c_factor;
-    if (typeof c !== 'number' || !Number.isFinite(c)) {
-      bezWspolczynnika.push(wiersz);
-    } else if (c >= 1) {
-      max.push(wiersz);
-    } else {
-      min.push(wiersz);
-    }
+  const bezScenariusza: ShortCircuitRow[] = [];
+  for (const bieg of biegi) {
+    const scenariusz = bieg.konfiguracja_biegu?.scenariusz ?? null;
+    const cel = scenariusz === 'MAX' ? max : scenariusz === 'MIN' ? min : bezScenariusza;
+    cel.push(...bieg.rows);
   }
-  return { max, min, bezWspolczynnika };
+  return { max, min, bezScenariusza };
 }

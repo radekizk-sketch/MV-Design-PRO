@@ -123,6 +123,7 @@ def test_osd_gate_never_blocks_datasheet_fields() -> None:
         "cosphi_max",
         "manufacturer",
         "model",
+        "k_sc",
         "sc_model",
         "sc_pq_split",
         "sc_transient_k",

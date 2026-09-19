@@ -27,6 +27,7 @@ from network_model.catalog.switchgear import (
 from network_model.catalog.switchgear.apparatus_vocabulary import (
     FAMILY_APPARATUS_FOR_ENM_KIND,
 )
+from network_model.pochodne import mva_na_kva
 
 from .models import (
     ComplianceCheck,
@@ -495,11 +496,13 @@ def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Compliance
                     "osd_enea.station.transformer_power_limit",
                     ok,
                     (
-                        f"Transformator '{transformer_ref}' {transformer.sn_mva * 1000:g} kVA "
-                        f"≤ granicy {limit_mva * 1000:g} kVA dla konstrukcji „{construction}”."
+                        f"Transformator '{transformer_ref}' {mva_na_kva(transformer.sn_mva):g} "
+                        f"kVA ≤ granicy {mva_na_kva(limit_mva):g} kVA dla konstrukcji "
+                        f"„{construction}”."
                         if ok
-                        else f"Transformator '{transformer_ref}' {transformer.sn_mva * 1000:g} kVA "
-                        f"przekracza granicę {limit_mva * 1000:g} kVA dla stacji "
+                        else f"Transformator '{transformer_ref}' "
+                        f"{mva_na_kva(transformer.sn_mva):g} kVA "
+                        f"przekracza granicę {mva_na_kva(limit_mva):g} kVA dla stacji "
                         f"„{construction}” (Zeszyt 1 rys. 1 s. 10 / Zeszyt 3 §4.1 s. 7)."
                     ),
                 )

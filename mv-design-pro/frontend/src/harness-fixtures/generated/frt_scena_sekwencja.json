@@ -1,0 +1,123 @@
+{
+  "input_hash": "62c6693636084cd68a316340d1cd6b655271526c64baae32c3a4a9641853a3a6",
+  "kontekst_sily_sieci": {
+    "bus_ref": "bus_nn",
+    "is_weak": false,
+    "missing_data": [],
+    "modules": [
+      {
+        "name": "Farma PV",
+        "ref": "gen_pv",
+        "sn_mva": 0.215
+      }
+    ],
+    "nominal_kv": 0.4,
+    "s_installed_mva": 0.215,
+    "s_sc_mva": 14.6134,
+    "scr": 67.9692,
+    "verdict": "mocna",
+    "white_box": [
+      {
+        "formula_latex": "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
+        "result_pl": "SCR = 67.9692 (–)",
+        "substitution_pl": "SCR = 14.6134 MVA / 0.215 MVA",
+        "symbol": "SCR"
+      },
+      {
+        "formula_latex": "\\mathrm{SCR} \\; \\geq \\; 3.0",
+        "result_pl": "sieć mocna",
+        "substitution_pl": "próg słaby = 3.0; próg bardzo słaby = 2.0",
+        "symbol": "werdykt"
+      }
+    ],
+    "why_pl": "SCR = 67.9692 ≥ 3.0 — sieć mocna w węźle; klasyczne założenia pracy źródła falownikowego pozostają ważne."
+  },
+  "kontekst_sily_sieci_powod_pl": null,
+  "liczba_zapadow": 2,
+  "modul_der": {
+    "id": "conv-pv-1mw-15kv",
+    "kind": "PV",
+    "nazwa": "Farma PV 1 MW / 15 kV",
+    "pmax_mw": 1.0,
+    "un_kv": 15.0
+  },
+  "obwiednia_profilu": {
+    "opis": "Krzywa LVRT operatora: dozwolony przebieg napięcia (czas→napięcie) wg profilu NC RfG.",
+    "punkty": [
+      {
+        "czas_s": 0.0,
+        "napiecie_pu": 0.05
+      },
+      {
+        "czas_s": 0.15,
+        "napiecie_pu": 0.05
+      },
+      {
+        "czas_s": 0.7,
+        "napiecie_pu": 0.5
+      },
+      {
+        "czas_s": 1.5,
+        "napiecie_pu": 0.85
+      },
+      {
+        "czas_s": 3.0,
+        "napiecie_pu": 0.9
+      }
+    ],
+    "rodzaj": "lvrt"
+  },
+  "ocena_dowodowa": {
+    "audit_ref": "karta_s1_s4_dowod.md §0.9",
+    "capability_id": "frt_hvrt.trajectory",
+    "claim_kind": "DYNAMIC_PERFORMANCE",
+    "claim_kind_pl": "zachowanie_dynamiczne",
+    "rationale_pl": "Trajektoria napiecia MVP jest funkcja zadana parametryzowana wejsciem scenariusza, nie rozwiazaniem sieci sprzezonym z reszta modulu — network_model/solvers/frt_hvrt/engine.py.",
+    "regulatory_evidence_eligible": false,
+    "tier": "UNVALIDATED_MODEL",
+    "tier_pl": "model_niezwalidowany"
+  },
+  "operator": {
+    "id": "pse",
+    "nazwa": "PSE — Polskie Sieci Elektroenergetyczne"
+  },
+  "status_solvera": "der_dropped",
+  "werdykt_sekwencji_pl": "sekwencja niezaliczona — zapad 2",
+  "zalozenia_pl": "Stan modułu MIĘDZY zapadami (nagrzewanie, niepełny odzysk) nie jest modelowany: każdy zapad liczony od stanu ustalonego i oceniany niezależnie. Werdykt sekwencji to koniunkcja werdyktów poszczególnych zapadów — kompozycja wyników solvera, nie nowa fizyka.",
+  "zapady": [
+    {
+      "czas_s": 0.15,
+      "glebokosc_pu": 0.05,
+      "margin_to_curve_pu": 0.0,
+      "margin_to_curve_s": null,
+      "p_recovery_time_s": 0.27,
+      "scenario_id": "zapad_1",
+      "status": "ok",
+      "stayed_connected": true,
+      "wejscie_solvera": {
+        "fault_duration_s": 0.15,
+        "target_der_ref": "conv-pv-1mw-15kv",
+        "test_kind": "lvrt",
+        "voltage_dip_depth_pu": 0.05
+      },
+      "werdykt_pl": "w obwiedni"
+    },
+    {
+      "czas_s": 0.5,
+      "glebokosc_pu": 0.02,
+      "margin_to_curve_pu": -0.03,
+      "margin_to_curve_s": null,
+      "p_recovery_time_s": 0.296,
+      "scenario_id": "zapad_2",
+      "status": "der_dropped",
+      "stayed_connected": false,
+      "wejscie_solvera": {
+        "fault_duration_s": 0.5,
+        "target_der_ref": "conv-pv-1mw-15kv",
+        "test_kind": "lvrt",
+        "voltage_dip_depth_pu": 0.02
+      },
+      "werdykt_pl": "moduł wypadł"
+    }
+  ]
+}

@@ -44,6 +44,25 @@ Pakiet obejmuje 20 testów:
 - T19 telemechanika, SCADA i rejestrator zakłóceń.
 - T20 jakość energii jako test uzupełniający THD_U.
 
+### 3.1. Klasyfikacja testów wobec Procedury testowania PTPiREE wer. 3.0 (karta S-3, pomiar 2026-09-16)
+
+Źródło: Procedura testowania PTPiREE wer. 3.0 (obowiązuje od 2026-01-01),
+https://ptpiree.pl/kodeksy-sieci/procedura-testowania/ — Tabela 1 procedury NIE numeruje
+testów; numeracja `T01…T20` jest własną numeracją repozytorium (jedyna kanoniczna przestrzeń
+numeracji: `network_model/solvers/ncrfg_ptpiree/engine.py::TEST_CATALOG`). Bez zmiany numeracji,
+zero zmian w solverze. Dawna druga przestrzeń `T1…T18` silnika `application/ncrfg_compliance/
+checker.py` skasowana (karta S-3) bez mapowania — nie ma konsumenta, który by go potrzebował.
+
+| Zakres | Testy | Podstawa w Procedurze wer. 3.0 |
+|---|---|---|
+| Testy zgodności PTPiREE (Tabela 1) | T01–T13 | LFSM-O/LFSM-U, FSM, regulacja odbudowy częstotliwości, regulacja mocy czynnej, tryby regulacji U / Q / cosφ, zdolność do generacji mocy biernej, potwierdzenie PMAX/PMIN, zaprzestanie i zmniejszenie generacji mocy czynnej |
+| Symulacje zgodności / certyfikat NC RfG | T14–T18 | LVRT/HVRT (przejście przez zakłócenie), odbudowa P po zwarciu, prąd bierny podczas zwarcia, sprawdzenia dodatkowe procedury dla pracy wyspowej / rozruchu autonomicznego / tłumienia oscylacji — wykonywane, „gdy zdolność jest wymagana" przez właściwego OS/OSP |
+| Wymagania konfiguracyjne / pomiarowe NC RfG | T19–T20 | telemechanika, komunikacja SCADA i rejestrator zakłóceń; jakość energii (THD_U) jako kontrola uzupełniająca |
+
+Stopień dowodowy każdego testu (czy wynik wolno przedstawić jako dowód regulacyjny) niesie
+osobna oś proweniencji z karty S-1 (`solver_input/dowod_ncrfg.py::TEST_ZDOLNOSC`) — klasyfikacja
+powyżej porządkuje ZAKRES procedury, nie zastępuje oceny dowodowej.
+
 ## 4. Kontrakt backend
 
 Backendowa ścieżka jest addytywna:

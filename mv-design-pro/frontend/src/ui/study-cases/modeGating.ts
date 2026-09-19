@@ -94,14 +94,6 @@ export function useCanEditCaseConfig(): boolean {
   return mode === 'MODEL_EDIT';
 }
 
-export function useNotifyModelChange(): () => Promise<void> {
-  const invalidateAllCases = useStudyCasesStore((state) => state.invalidateAllCases);
-
-  return useCallback(async () => {
-    await invalidateAllCases();
-  }, [invalidateAllCases]);
-}
-
 export function useCaseModeConstraints(): {
   mode: RuntimeOperatingMode;
   canManage: boolean;

@@ -10,12 +10,32 @@ export const STABILNOSC_STRINGS = {
     + 'scenariusza zakłócenia, kryteriów wersjonowanych i werdyktu backendu '
     + '(analiza stabilności typu „wyłączenie zwarcia").',
 
-  // Stan zerowy.
-  zeroTytul: 'Brak zakończonego przebiegu stabilności dynamicznej',
-  zeroOpis: 'Ekran interpretuje wynik analizy stabilności dynamicznej (scenariusz '
-    + '„wyłączenie zwarcia"). Uruchom tę analizę z przestrzeni obliczeń, aby zobaczyć '
-    + 'werdykt, marginesy i ślad automatyki.',
+  // Stan zerowy — bez scenariusza ekran pokazuje FORMULARZ, nie werdykt (karta W2 pkt 1).
+  zeroTytul: 'Ocena progowa wymaga jawnego scenariusza zwarcia',
+  zeroOpis: 'Backend nie ma wartości domyślnych dla scenariusza wyłączenia zwarcia — '
+    + 'podaj poniżej komplet pól, aby uzyskać ocenę progową. Brak dowolnego pola kończy '
+    + 'bieg odmową, nie werdyktem policzonym dla zgadniętego scenariusza.',
   zeroAkcja: 'Przejdź do obliczeń',
+
+  // Formularz scenariusza — pola = DOKŁADNIE kontrakt opcji biegu
+  // (`enm/canonical_analysis.py::_POLA_SCENARIUSZA_STABILNOSCI_DYNAMICZNEJ`), bez
+  // wartości podpowiadanych jako „typowe" (pola startują puste).
+  formularzTytul: 'Scenariusz wyłączenia zwarcia',
+  formularzOpis: 'Wszystkie pola są wymagane — solver nie ma dla nich wartości domyślnych.',
+  poleElement: 'Element objęty zwarciem (referencja w modelu)',
+  poleCzasWylaczenia: 'Czas wyłączenia zwarcia',
+  poleElementyWylaczajace: 'Elementy wyłączające (referencje oddzielone przecinkiem)',
+  poleKatPrzed: 'Kąt mocy przed zwarciem',
+  poleKatWCzasie: 'Kąt mocy w czasie zwarcia',
+  poleKatPo: 'Kąt mocy po zwarciu',
+  poleNapiecie: 'Napięcie po zwarciu',
+  poleCzestotliwosc: 'Częstotliwość po zwarciu',
+  poleStalaCzasowa: 'Stała czasowa odbudowy napięcia/częstotliwości (τ)',
+  formularzUruchom: 'Uruchom ocenę progową',
+  formularzWToku: 'Bieg w toku…',
+  bladWymagane: 'pole wymagane',
+  bladDodatnie: 'wartość musi być dodatnia',
+  bladListaPusta: 'podaj co najmniej jedną referencję',
 
   // Stany dostawcy danych.
   ladowanieTytul: 'Ładowanie wyniku stabilności',
@@ -35,10 +55,12 @@ export const STABILNOSC_STRINGS = {
   zalMaksCzas: 'Dopuszczalny czas wyłączenia (kryterium)',
   zalKryteria: 'Wersja kryteriów',
 
-  // Werdykt.
-  werdyktTytul: 'Werdykt stabilności',
+  // Werdykt — nagłówek wyniku mówi WPROST, że to ocena progowa zadanego scenariusza,
+  // nie symulacja RMS (karta W2 pkt 1: solver realny RMS to osobna zdolność, W6).
+  werdyktTytul: 'Ocena progowa zadanego scenariusza (bez symulacji RMS)',
   werdyktOpis: 'Werdykt, wskaźnik i czynnik ograniczający pochodzą wprost z backendu '
-    + '(zero interpretacji w interfejsie).',
+    + '(zero interpretacji w interfejsie) — dla SCENARIUSZA podanego w formularzu, nie '
+    + 'symulacji przebiegu elektromechanicznego RMS.',
   werdyktStatus: 'Werdykt',
   werdyktStabilny: 'STABILNY',
   werdyktNiestabilny: 'NIESTABILNY',
@@ -47,6 +69,14 @@ export const STABILNOSC_STRINGS = {
   werdyktCzynnik: 'Czynnik ograniczający',
   werdyktNaruszone: 'Naruszone kryteria',
   werdyktBrakNaruszen: 'brak naruszeń',
+
+  // Kryteria oceny progowej — JAWNIE nazwane, z notą o pochodzeniu (karta W2 pkt 1).
+  kryteriaTytul: 'Kryteria oceny progowej',
+  kryteriaOpis: 'Progi, wobec których werdykt jest oceniany — nazwane wprost, z notą, '
+    + 'skąd pochodzą.',
+  kolKryterium: 'Kryterium',
+  kolProg: 'Próg',
+  kolPochodzenie: 'Pochodzenie',
 
   // Tabela wielkości po zakłóceniu.
   wielkosciTytul: 'Wielkości po zakłóceniu',

@@ -99,7 +99,7 @@ afterEach(() => {
 /** Przeprowadź pełny bieg studium dla węzła bus-a i wejdź w przegląd (krok 4). */
 async function przeprowadzBieg() {
   ustawGotowyRozplyw();
-  render(<KreatorStudium trybZaawansowania="basic" />);
+  render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
   fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
   fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
   // Przycisk biegu odblokowuje się dopiero po prefillu typu z katalogu
@@ -114,7 +114,7 @@ async function przeprowadzBieg() {
 describe('KreatorStudium — dokument studium (przycisk i dostępność)', () => {
   it('przycisk nieaktywny bez zakończonego biegu, z tytułem PL', async () => {
     ustawGotowyRozplyw();
-    render(<KreatorStudium trybZaawansowania="basic" />);
+    render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     // Montaż kreatora pobiera katalogi (konwertery + klasy NC RfG) — realny
     // efekt mikrotaskowy, którego skutek (prefill kroku 2) nie ma reprezentacji
     // w UI kroku 4, więc nie ma na co czekać przez findBy*/waitFor. Puste
@@ -156,9 +156,7 @@ describe('KreatorStudium — dokument studium (żądanie i podgląd)', () => {
 
   it('żądania dokumentu niosą aktywny przypadek (bez niego nie ma dowodu PTPiREE)', async () => {
     useAppStateStore.setState({ activeCaseId: 'case-oze-1' } as never);
-    // @ts-expect-error shim jsdom
     if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-    // @ts-expect-error shim jsdom
     if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
@@ -251,9 +249,7 @@ describe('KreatorStudium — dokument studium (błędy)', () => {
 
 describe('KreatorStudium — dokument studium (pobrania plików)', () => {
   function przechwycPobranie() {
-    // @ts-expect-error shim jsdom
     if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-    // @ts-expect-error shim jsdom
     if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
     const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});

@@ -117,6 +117,8 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     assert r.get("error") is None, f"KROK 1 (GPZ): {r.get('error')}"
@@ -533,8 +535,11 @@ def test_converter_source_requires_explicit_connection_variant(technology: str) 
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
+    assert r.get("error") is None, f"GPZ: {r.get('error')}"
     enm = r["snapshot"]
 
     # Bez connection_variant → odrzucone

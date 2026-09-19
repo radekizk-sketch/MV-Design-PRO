@@ -7,13 +7,18 @@ Komunikaty po polsku.
 
 from __future__ import annotations
 
-import math
 import os
 
-import networkx as nx
+from catalog.profiles.nc_rfg import load_nc_rfg_profile
+from network_model.catalog.governance import (
+    brakuje_wymaganej_referencji,
+    wymagalnosc_katalogu,
+)
+from network_model.pochodne import prad_z_mocy_pozornej_ka
 from pydantic import BaseModel
 
 from .fix_actions import FixAction
+from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna, parsuj_grupe_polaczen
 from .interlock_rules import earthing_interlock_violation
 from .migrations.nn_field_specs_promocja import (
     META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA,
@@ -45,6 +50,10 @@ from .severity import (
     is_warning_severity,
     severity_rank,
 )
+from .topology import derive
+from .uklad_sieci_nn import transformatory_bez_ukladu_nn
+from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
+from .zrodlo_zwarcie import PASMO_U_SET_PU, dane_zwarciowe_zrodla, u_set_pu_w_pasmie
 
 # V12S-007: voltage band thresholds (kV).
 # Pasma napieciowe domeny:
@@ -123,6 +132,8 @@ class ENMValidator:
         self._check_transformer_sn_bay(enm, issues)
         # P0.1 nN (karta P0.1, C §5): topologia obwodow nN — E060-E064/W060/W062
         self._check_nn_topology(enm, issues)
+        # W5-A: jedna reprezentacja uziemienia — E-W5-01..03, W-W5-01
+        self._check_uziemienie_w5(enm, issues)
 
         # Deterministic sort: severity_rank → code → first element_ref
         issues.sort(
@@ -288,16 +299,40 @@ class ENMValidator:
                     )
                 )
 
-        # E008: Źródło bez parametrów zwarciowych
+        # sources.bus_missing: Źródło bez istniejącej szyny (odbiór CV-3.3-B).
+        # Jedyny emiter kanonicznego `source.connection_missing` był w skasowanym
+        # torze R2 (`analysis_run/service.py`), a assembler kanoniczny
+        # (`enm/mapping.py`) POMIJAŁ takie źródło bez śladu — sieć liczyła się
+        # bez zasilania, którego projektant nie widział. Most gotowości odwzorowuje
+        # ten kod na kanon (`domain/readiness_bridge.py`).
+        bus_refs_zrodel = {b.ref_id for b in enm.buses}
         for source in enm.sources:
-            has_sk = source.sk3_mva is not None and source.sk3_mva > 0
-            has_rx = (
-                source.r_ohm is not None
-                and source.x_ohm is not None
-                and (source.r_ohm > 0 or source.x_ohm > 0)
+            if source.bus_ref and source.bus_ref in bus_refs_zrodel:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="sources.bus_missing",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"Źródło '{source.ref_id}' nie jest podłączone do istniejącej "
+                        f"szyny (bus_ref='{source.bus_ref}')."
+                    ),
+                    element_refs=[source.ref_id],
+                    wizard_step_hint="K2",
+                    suggested_fix="Podłącz źródło do istniejącej szyny.",
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=source.ref_id,
+                        modal_type="SourceModal",
+                        payload_hint={"required": "bus_assignment"},
+                    ),
+                )
             )
-            has_ik = source.ik3_ka is not None and source.ik3_ka > 0
-            if not (has_sk or has_rx or has_ik):
+
+        # E008: Źródło bez parametrów zwarciowych — predykat z JEDNEGO źródła prawdy
+        # (`enm/zrodlo_zwarcie.py`, ten sam, którego używa mapper; CV-4.3 K7).
+        for source in enm.sources:
+            if not dane_zwarciowe_zrodla(source).policzalne:
                 issues.append(
                     ValidationIssue(
                         code="sources.no_short_circuit_params",
@@ -423,9 +458,264 @@ class ENMValidator:
                     )
                 )
 
-        # E009: Brak referencji katalogowej (CATALOG-FIRST)
+        # generators.voltage_control_incomplete (karta CV-4.1b, A3-04): generator w
+        # trybie regulacji napięcia — DOWOLNY gen_type (AVR generatora synchronicznego
+        # reguluje napięcie tak samo jak falownik w tym trybie; ten tryb nie jest
+        # ograniczony do DER, w przeciwieństwie do E028/E029 wyżej) — bez kompletnej
+        # nastawy. Bez tej blokady tor kanoniczny (`enm/mapping.py`) budowałby węzeł
+        # PV z brakującą albo niefizyczną nastawą napięcia, którą solver FROZEN
+        # (węzeł PV) wymaga jako DANEJ WEJŚCIOWEJ — nigdy jako wartości domyślnej.
+        for gen in enm.generators:
+            meta = getattr(gen, "meta", None) or {}
+            if str(meta.get("control_mode") or "").strip() != "REGULACJA_NAPIECIA":
+                continue
+            u_set_pu = meta.get("u_set_pu")
+            u_set_valid = (
+                isinstance(u_set_pu, int | float)
+                and not isinstance(u_set_pu, bool)
+                and 0.9 <= float(u_set_pu) <= 1.1
+            )
+            q_min_mvar = meta.get("q_min_mvar")
+            q_max_mvar = meta.get("q_max_mvar")
+            q_bounds_valid = (
+                isinstance(q_min_mvar, int | float)
+                and not isinstance(q_min_mvar, bool)
+                and isinstance(q_max_mvar, int | float)
+                and not isinstance(q_max_mvar, bool)
+                and float(q_min_mvar) < float(q_max_mvar)
+            )
+            if u_set_valid and q_bounds_valid:
+                continue
+            braki: list[str] = []
+            if not u_set_valid:
+                braki.append("nastawa napięcia u_set_pu w paśmie [0,9; 1,1] pu")
+            if not q_bounds_valid:
+                braki.append("granice mocy biernej q_min_mvar < q_max_mvar")
+            issues.append(
+                ValidationIssue(
+                    code="generators.voltage_control_incomplete",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"Generator '{gen.ref_id}' w trybie regulacji napięcia "
+                        f"(REGULACJA_NAPIECIA) nie ma: {'; '.join(braki)}."
+                    ),
+                    element_refs=[gen.ref_id],
+                    wizard_step_hint="K6",
+                    suggested_fix=(
+                        f"Uzupełnij nastawę napięcia (u_set_pu) i granice mocy biernej "
+                        f"(q_min_mvar/q_max_mvar) generatora '{gen.name or gen.ref_id}'."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=gen.ref_id,
+                        modal_type="GeneratorModal",
+                        payload_hint={"required": "voltage_setpoint"},
+                    ),
+                )
+            )
+
+        # sources.u_set_pu_out_of_range: napięcie zadane szyny bilansującej poza pasmem
+        # `PASMO_U_SET_PU` (ten sam predykat co operacja domenowa — predykaty parami);
+        # model spoza operacji (import XLSX/CGMES/ZIP) nie może wnieść do solvera
+        # nastawy 0 p.u. albo 10 p.u. jako „napięcia zadanego".
+        for source in enm.sources:
+            if source.u_set_pu is None or u_set_pu_w_pasmie(source.u_set_pu):
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="sources.u_set_pu_out_of_range",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"Źródło '{source.ref_id}': napięcie zadane szyny bilansującej "
+                        f"u_set_pu={source.u_set_pu:g} p.u. leży poza pasmem "
+                        f"{PASMO_U_SET_PU[0]:g}–{PASMO_U_SET_PU[1]:g} p.u."
+                    ),
+                    element_refs=[source.ref_id],
+                    wizard_step_hint="K2",
+                    suggested_fix=(
+                        "Podaj napięcie zadane w p.u. napięcia znamionowego szyny "
+                        "(np. 1,0 = znamionowe) albo usuń nastawę."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=source.ref_id,
+                        modal_type="SourceModal",
+                        payload_hint={"required": "u_set_pu_in_band"},
+                    ),
+                )
+            )
+
+        # sources.sk_min_exceeds_max (CV-4.3 K7): dane scenariusza MIN sprzeczne z MAX.
+        # Z definicji S''_kQmin ≤ S''_kQmax i I''_kQmin ≤ I''_kQmax (IEC 60909-0:2016 §6.2.1:
+        # minimum to najsłabszy stan zasilania); odwrotność oznacza zamienione pola albo
+        # dane z różnych szyn — BLOCKER, bo bieg MIN dałby prąd WIĘKSZY niż MAX.
+        for source in enm.sources:
+            sprzeczne: list[str] = []
+            if (
+                source.sk3_min_mva is not None
+                and source.sk3_mva is not None
+                and source.sk3_mva > 0
+                and source.sk3_min_mva > source.sk3_mva
+            ):
+                sprzeczne.append(
+                    f"Sk''min={source.sk3_min_mva:g} MVA > Sk''max={source.sk3_mva:g} MVA"
+                )
+            if (
+                source.ik3_min_ka is not None
+                and source.ik3_ka is not None
+                and source.ik3_ka > 0
+                and source.ik3_min_ka > source.ik3_ka
+            ):
+                sprzeczne.append(f"Ik''min={source.ik3_min_ka:g} kA > Ik''max={source.ik3_ka:g} kA")
+            if sprzeczne:
+                issues.append(
+                    ValidationIssue(
+                        code="sources.sk_min_exceeds_max",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Źródło '{source.ref_id}': dane scenariusza minimalnego przekraczają "
+                            f"maksymalne ({'; '.join(sprzeczne)}) — bieg MIN dałby prąd większy "
+                            f"niż MAX."
+                        ),
+                        element_refs=[source.ref_id],
+                        wizard_step_hint="K2",
+                        suggested_fix=(
+                            "Podaj Sk''min ≤ Sk''max (albo Ik''min ≤ Ik''max) z warunków "
+                            "przyłączenia OSD dla tej samej szyny."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=source.ref_id,
+                            modal_type="SourceModal",
+                            payload_hint={"required": "sk_min_le_sk_max"},
+                        ),
+                    )
+                )
+
+        # generators.voltage_control_profile_missing / generators.voltage_control_not_permitted
+        # (domknięcie CV-4.1b przy odbiorze, 2026-09-05): kreator OZE bramkuje tryb
+        # REGULACJA_NAPIECIA profilem NC RfG operatora (`reactive_power.
+        # voltage_control_modes` zawiera `voltage_control`). Bramka WYŁĄCZNIE w UI
+        # byłaby fantomem: model przyjmowałby stan, którego UI nie pokazuje (reguła
+        # zero fabrykacji — każda kontrolka UI ma odpowiednik w backendzie). Tryb i
+        # profil trafiają do modelu DWIEMA operacjami (`add_converter_source` →
+        # `update_der_bindings`), więc jedynym miejscem, które widzi oba naraz, jest
+        # walidator modelu — nie operacja zapisu. Profil czytany z tego samego
+        # magazynu, do którego pisze `update_der_bindings` (`materialized_params.
+        # profiles.nc_rfg_profile_ref` — nie `meta`). Pomiar katalogu 2026-09-05:
+        # wszystkie 5 profili operatorów (enea/energa/pge/pse/tauron) dopuszcza
+        # `voltage_control`, więc dziś blokuje wyłącznie brak/nieznany profil — reguła
+        # jest funkcją danych katalogu, nie zaszytej listy.
+        for gen in enm.generators:
+            meta = getattr(gen, "meta", None) or {}
+            if str(meta.get("control_mode") or "").strip() != "REGULACJA_NAPIECIA":
+                continue
+            # CV-4.3 K1 (2026-09-06): bramka NC RfG operatora dotyczy TECHNOLOGII
+            # DER podłączonej przez przekształtnik (kreator OZE, `add_converter_source`
+            # — pv_inverter/wind_inverter/fw_*/bess), nie generatora SYNCHRONICZNEGO
+            # (`add_generator_sn` — blok wytwórczy przyłączony wprost, np. IEEE/CIGRE
+            # generator w sieci referencyjnej). Warunek sprawdzał WYŁĄCZNIE tryb
+            # regulacji, ignorując `gen_type` — luka nigdy nie ujawniona, bo PRZED tą
+            # kartą żadna operacja nie tworzyła generatora `synchronous` w trybie
+            # REGULACJA_NAPIECIA (`add_genset_nn` nie ma trybu regulacji wcale).
+            # Katalog profili operatorów (enea/energa/pge/pse/tauron) jest z natury
+            # regulacją PRZYŁĄCZENIA DER, nie generacji klasycznej w sieci akademickiej
+            # (IEEE/CIGRE) — wymaganie go tam byłoby fabrykacją zgodności bez treści.
+            if gen.gen_type == "synchronous":
+                continue
+            materialized = getattr(gen, "materialized_params", None) or {}
+            profile = materialized.get("profiles") if isinstance(materialized, dict) else None
+            profile_ref_raw = (
+                profile.get("nc_rfg_profile_ref") if isinstance(profile, dict) else None
+            )
+            profile_ref = str(profile_ref_raw or "").strip()
+            fix_action = FixAction(
+                action_type="OPEN_MODAL",
+                element_ref=gen.ref_id,
+                modal_type="GeneratorModal",
+                payload_hint={"required": "nc_rfg_profile_ref"},
+            )
+            if not profile_ref:
+                issues.append(
+                    ValidationIssue(
+                        code="generators.voltage_control_profile_missing",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Generator '{gen.ref_id}' w trybie regulacji napięcia "
+                            "(REGULACJA_NAPIECIA) nie ma profilu NC RfG operatora — tryb "
+                            "wymaga profilu dopuszczającego regulację napięcia "
+                            "(voltage_control)."
+                        ),
+                        element_refs=[gen.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            f"Wybierz profil NC RfG operatora dla generatora "
+                            f"'{gen.name or gen.ref_id}' (krok „zgodność” kreatora OZE)."
+                        ),
+                        fix_action=fix_action,
+                    )
+                )
+                continue
+            try:
+                nc_rfg_profile = load_nc_rfg_profile(profile_ref)
+            except FileNotFoundError:
+                issues.append(
+                    ValidationIssue(
+                        code="generators.voltage_control_profile_missing",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Generator '{gen.ref_id}' w trybie regulacji napięcia wskazuje "
+                            f"profil NC RfG '{profile_ref}', którego nie ma w katalogu "
+                            "operatorów."
+                        ),
+                        element_refs=[gen.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            f"Wybierz istniejący profil NC RfG operatora dla generatora "
+                            f"'{gen.name or gen.ref_id}'."
+                        ),
+                        fix_action=fix_action,
+                    )
+                )
+                continue
+            if "voltage_control" not in nc_rfg_profile.reactive_power.voltage_control_modes:
+                issues.append(
+                    ValidationIssue(
+                        code="generators.voltage_control_not_permitted",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Profil NC RfG operatora '{profile_ref}' nie dopuszcza trybu "
+                            f"regulacji napięcia (voltage_control) dla generatora "
+                            f"'{gen.ref_id}'."
+                        ),
+                        element_refs=[gen.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            f"Zmień tryb regulacji generatora '{gen.name or gen.ref_id}' "
+                            "albo wybierz profil operatora dopuszczający regulację napięcia."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=gen.ref_id,
+                            modal_type="GeneratorModal",
+                            payload_hint={"required": "control_mode"},
+                        ),
+                    )
+                )
+
+        # E009: Brak referencji katalogowej (CATALOG-FIRST) — predykat „czy ten
+        # rodzaj wymaga katalogu" czytany z JEDYNEGO źródła prawdy
+        # (`catalog.governance.wymagalnosc_katalogu`, karta W3-I) zamiast
+        # trzech niezależnych, dosłownie powielonych warunków. Poziomy
+        # (BLOCKER dla linii/kabli/transformatorów/źródeł, wyjątek
+        # `MANUAL_EQUIVALENT` dla źródeł) są DOKŁADNIE te same, jakie ta
+        # reguła sprawdzała przed kartą — konwergencja miejsca, nie polityki.
         for branch in enm.branches:
-            if isinstance(branch, OverheadLine | Cable) and not branch.catalog_ref:
+            if not isinstance(branch, OverheadLine | Cable):
+                continue
+            if brakuje_wymaganej_referencji(
+                wymagalnosc_katalogu(branch.type).walidacja, branch.catalog_ref
+            ):
                 issues.append(
                     ValidationIssue(
                         code="E009",
@@ -447,7 +737,9 @@ class ENMValidator:
                 )
 
         for trafo in enm.transformers:
-            if not trafo.catalog_ref:
+            if brakuje_wymaganej_referencji(
+                wymagalnosc_katalogu("transformer").walidacja, trafo.catalog_ref
+            ):
                 issues.append(
                     ValidationIssue(
                         code="E009",
@@ -469,7 +761,19 @@ class ENMValidator:
                 )
 
         for source in enm.sources:
-            if not source.catalog_ref:
+            # CV-4.3 K1 (2026-09-06): `parameter_source="MANUAL_EQUIVALENT"` jest
+            # TRZECIM, jawnie zamodelowanym stanem pola (patrz `Source.parameter_source`
+            # w `enm/models.py` — Literal["CATALOG","OVERRIDE","MANUAL_EQUIVALENT"]),
+            # ustawianym przez `add_grid_source_sn` dla źródła z jawnym Sk''/RX bez
+            # pozycji katalogowej — udokumentowana, zamierzona ścieżka (K1.2 tej karty:
+            # "source manual_equivalent with explicit Sk/RX"), nie luka do wypełnienia.
+            # Wyjątek żyje TERAZ w `wymagalnosc_katalogu` (karta W3-I) — ta sama
+            # tabela, którą czyta bramka ZIP i CGMES, więc nie może się już od nich
+            # rozjechać (CGMES tego wyjątku nie znał przed kartą — naprawione tam).
+            poziom = wymagalnosc_katalogu(
+                "source", parameter_source=source.parameter_source
+            ).walidacja
+            if brakuje_wymaganej_referencji(poziom, source.catalog_ref):
                 issues.append(
                     ValidationIssue(
                         code="E009",
@@ -485,6 +789,51 @@ class ENMValidator:
                             action_type="SELECT_CATALOG",
                             element_ref=source.ref_id,
                             modal_type="SourceModal",
+                            payload_hint={"required": "catalog_ref"},
+                        ),
+                    )
+                )
+
+        # W010: Generator przekształtnikowy bez ŻADNEJ referencji katalogowej —
+        # karta W3-I (§0.15 karty konwergencji fizyki), NOWY kod. Przed tą kartą
+        # E009 milczał dla generatorów (nie iterował `enm.generators` wcale),
+        # mimo że tworzenie generatora przekształtnikowego bez katalogu odmawia
+        # (422 `catalog.ref_required`) i gotowość zwarciowa go blokuje
+        # (`inverter.k_sc_missing`, `application/calculation_readiness/
+        # service.py:264-275`) — trzy poziomy w trzech miejscach bez wspólnego
+        # źródła. IMPORTANT (nie BLOCKER): brak KATALOGU nie blokuje modelu jako
+        # całości (rozpływ i inne analizy nadal policzalne) — blokuje WYŁĄCZNIE
+        # gotowość obliczeniową zwarcia DLA TEGO generatora (osobny, niezmieniony
+        # kod `inverter.k_sc_missing`, BLOCKER na tamtej osi). Bez katalogu brakuje
+        # CAŁEJ tabliczki znamionowej źródła zwarciowego (nie tylko k_sc) — to NIE
+        # jest przypadek „katalog jest, ale bez k_sc" (`inverter.k_sc_assumed`,
+        # WARNING, 1,1 przyjęte); ten komunikat nie obiecuje założenia, bo go nie
+        # będzie — kanon tej samej sytuacji: `domain/readiness_bridge.py::
+        # ODWZOROWANIE_WALIDATOR_NA_KANON["W010"]`.
+        for generator in enm.generators:
+            poziom = wymagalnosc_katalogu("generator", gen_type=generator.gen_type).walidacja
+            if brakuje_wymaganej_referencji(poziom, generator.catalog_ref):
+                issues.append(
+                    ValidationIssue(
+                        code="W010",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"Generator przekształtnikowy '{generator.ref_id}' nie ma "
+                            f"referencji katalogowej (catalog_ref). Model pozostaje "
+                            f"ogólnie użyteczny, ale obliczenia zwarciowe dla tego "
+                            f"generatora są zablokowane w gotowości obliczeniowej "
+                            f"(kod 'inverter.k_sc_missing') do czasu przypisania katalogu."
+                        ),
+                        element_refs=[generator.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            "Przypisz typ przekształtnika z katalogu i zapisz catalog_ref, "
+                            "żeby zwarcie liczyło się ze zmierzonym k_sc."
+                        ),
+                        fix_action=FixAction(
+                            action_type="SELECT_CATALOG",
+                            element_ref=generator.ref_id,
+                            modal_type="GeneratorModal",
                             payload_hint={"required": "catalog_ref"},
                         ),
                     )
@@ -564,7 +913,7 @@ class ENMValidator:
             bus = buses_by_ref.get(source.bus_ref) if source.bus_ref else None
             if bus is None or not bus.voltage_kv or bus.voltage_kv <= 0:
                 continue
-            expected_ik_ka = source.sk3_mva / (math.sqrt(3.0) * bus.voltage_kv)
+            expected_ik_ka = prad_z_mocy_pozornej_ka(source.sk3_mva, bus.voltage_kv)
             if abs(source.ik3_ka - expected_ik_ka) / expected_ik_ka > 0.05:
                 issues.append(
                     ValidationIssue(
@@ -629,6 +978,45 @@ class ENMValidator:
                 )
             )
 
+        # W033 dla scenariusza MIN (CV-4.3 K7): ta sama reguła 5 % dla pary Sk''min/Ik''min.
+        for source in enm.sources:
+            if not (
+                source.sk3_min_mva
+                and source.sk3_min_mva > 0
+                and source.ik3_min_ka
+                and source.ik3_min_ka > 0
+            ):
+                continue
+            bus = buses_by_ref.get(source.bus_ref) if source.bus_ref else None
+            if bus is None or not bus.voltage_kv or bus.voltage_kv <= 0:
+                continue
+            expected_ik_min_ka = prad_z_mocy_pozornej_ka(source.sk3_min_mva, bus.voltage_kv)
+            if abs(source.ik3_min_ka - expected_ik_min_ka) / expected_ik_min_ka > 0.05:
+                issues.append(
+                    ValidationIssue(
+                        code="sources.sk_min_ik_min_voltage_inconsistent",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"Źródło '{source.ref_id}': Ik''min={source.ik3_min_ka:.2f} kA nie "
+                            f"zgadza się z Sk''min={source.sk3_min_mva:.0f} MVA przy "
+                            f"U={bus.voltage_kv:g} kV (oczekiwane "
+                            f"Ik''min=Sk''min/(√3·U)={expected_ik_min_ka:.2f} kA). "
+                            f"Dane scenariusza minimalnego muszą dotyczyć TEJ SAMEJ szyny."
+                        ),
+                        element_refs=[source.ref_id],
+                        wizard_step_hint="K2",
+                        suggested_fix=(
+                            "Podaj Sk''min i Ik''min wyznaczone dla szyny, na której stoi źródło."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=source.ref_id,
+                            modal_type="SourceModal",
+                            payload_hint={"required": "short_circuit_min_params_consistent"},
+                        ),
+                    )
+                )
+
         # W035 (Reference Engine V1, spec §6, V12K-060): walidacja referencyjna
         # NA ŻYWO — profile pól IEC 62271 (required/one_of/forbidden/kolejność/
         # aparat boczny w osi) + rodziny producentów dla pól związanych przez
@@ -681,12 +1069,9 @@ class ENMValidator:
                         )
                     )
 
-        # W002: Brak Z₀ źródła
+        # W002: Brak Z₀ źródła — predykat `dane_zerowe` z `enm/zrodlo_zwarcie.py` (K7).
         for source in enm.sources:
-            has_z0 = (
-                source.r0_ohm is not None and source.x0_ohm is not None
-            ) or source.z0_z1_ratio is not None
-            if not has_z0:
+            if not dane_zwarciowe_zrodla(source).z0:
                 issues.append(
                     ValidationIssue(
                         code="W002",
@@ -806,9 +1191,15 @@ class ENMValidator:
                     )
                 )
 
-        # I002: Gałąź bez katalogu
+        # I002: Gałąź bez katalogu — sama para (rodzaj, brak catalog_ref) co
+        # E009 wyżej (osobny kod INFO, informacyjny odpowiednik BLOCKER-a),
+        # czytana z tej samej tabeli (`catalog.governance`, karta W3-I).
         for branch in enm.branches:
-            if isinstance(branch, OverheadLine | Cable) and not branch.catalog_ref:
+            if not isinstance(branch, OverheadLine | Cable):
+                continue
+            if brakuje_wymaganej_referencji(
+                wymagalnosc_katalogu(branch.type).walidacja, branch.catalog_ref
+            ):
                 issues.append(
                     ValidationIssue(
                         code="I002",
@@ -1169,29 +1560,15 @@ class ENMValidator:
     def _check_graph_connectivity(
         self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
     ) -> None:
-        g = nx.Graph()
-        bus_refs = {b.ref_id for b in enm.buses}
-        for ref in bus_refs:
-            g.add_node(ref)
-
-        for branch in enm.branches:
-            if branch.status == "closed":
-                if branch.from_bus_ref in bus_refs and branch.to_bus_ref in bus_refs:
-                    g.add_edge(branch.from_bus_ref, branch.to_bus_ref)
-
-        for trafo in enm.transformers:
-            if trafo.hv_bus_ref in bus_refs and trafo.lv_bus_ref in bus_refs:
-                g.add_edge(trafo.hv_bus_ref, trafo.lv_bus_ref)
-
-        source_bus_refs = {s.bus_ref for s in enm.sources if s.bus_ref in bus_refs}
-
-        components = list(nx.connected_components(g))
-        if len(components) <= 1:
+        # Jedyny serwis topologii (CV-4.3): wyspy z ``enm.topology.derive`` — ta sama
+        # definicja krawędzi (gałąź ``closed`` + transformator) co w mapowaniu ENM → IR.
+        widok = derive(enm)
+        if len(widok.wyspy) <= 1:
             return
 
-        for comp in components:
-            if not comp.intersection(source_bus_refs):
-                island_refs = sorted(comp)
+        for wyspa in widok.wyspy:
+            if not wyspa.zasilona:
+                island_refs = list(wyspa.szyny)
                 issues.append(
                     ValidationIssue(
                         code="E003",
@@ -1249,7 +1626,7 @@ class ENMValidator:
         czestotliwosc na DWOCH poziomach: `header.defaults.frequency_hz` (jedna
         czestotliwosc studium, `models.py:121`) oraz opcjonalnie na szynie
         (`Bus.frequency_hz`, `models.py:181`). Solwery rozplywu i zwarciowe
-        czytaja wylacznie poziom studium (`canonical_analysis::_study_frequency_hz`),
+        czytaja wylacznie poziom studium (`enm/assembler.py::czestotliwosc_studium_hz`),
         ale kontrakt V12.6 bierze czestotliwosc bazowa Z PIERWSZEJ SZYNY
         (`solver_input/v126_contracts.py:555`: `enm.buses[0].frequency_hz or 50.0`).
         Model z szyna 60 Hz w studium 50 Hz jest wiec wewnetrznie sprzeczny, a
@@ -1444,6 +1821,214 @@ class ENMValidator:
     # P0.1 nN: topologia obwodow nN (E060-E064, W060, W062)
     # ------------------------------------------------------------------
 
+    def _check_uziemienie_w5(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
+        """W5-A: spojnosc jednej reprezentacji uziemienia punktu neutralnego.
+
+        E-W5-01 - konfiguracja punktu neutralnego niespojna z fizyka, ktora ja
+               czyta (JEDEN predykat `enm/uziemienie.py`, ten sam co operacje
+               domenowe i model skladowej zerowej): rezystor bez R_N, dlawik bez
+               X_N (zrodlo, hv_neutral, lv_neutral); zrodlo SN opisane jako
+               `isolated` z podanym SKONCZONYM Z0 (r0/x0 albo z0/z1) — opis i
+               liczby mowia co innego; zrodlo SN opisane jako uziemione bez
+               zadnych liczb Z0 — solver 1F pominalby bocznik zerowy, czyli
+               liczyl siec izolowana wbrew opisowi.
+        E-W5-02 - grupa polaczen transformatora spoza slownika IEC 60076-1
+               (`enm/grupa_polaczen.py`; ten sam slownik czyta OpenAPI i front).
+        E-W5-03 - uziemienie (typ uziemiony) na uzwojeniu, ktorego litera grupy nie
+               wyprowadza punktu neutralnego (bez N/n, np. `D`, `Y`, `Z`) — brak
+               fizycznego zacisku do uziemienia; decyzja F-4: litera rozstrzyga.
+        W-W5-01 - kabel z zadeklarowanym ukladem uziemienia ekranu innym niz uklad
+               odniesienia katalogowych r0/x0 (`materialized_params.z0_reference_bonding`)
+               albo katalog bez ukladu odniesienia — skladowa zerowa kabla NIE jest
+               przeliczana (brak geometrii ulozenia), rozjazd jest nazwany.
+        """
+        bus_by_ref = {b.ref_id: b for b in enm.buses}
+
+        def _fix(ref: str, modal: str, pole: str) -> FixAction:
+            return FixAction(
+                action_type="OPEN_MODAL",
+                element_ref=ref,
+                modal_type=modal,
+                payload_hint={"required": pole},
+            )
+
+        # --- zrodla: Source.neutral_grounding vs r0/x0 | z0_z1 ---------------
+        for source in enm.sources:
+            cfg = source.neutral_grounding
+            if cfg is None:
+                continue
+            blad = blad_konfiguracji_uziemienia(cfg.type, cfg.r_ohm, cfg.x_ohm)
+            if blad is not None:
+                issues.append(
+                    ValidationIssue(
+                        code="E-W5-01",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=f"Zrodlo '{source.ref_id}': {blad}.",
+                        element_refs=[source.ref_id],
+                        wizard_step_hint="K1",
+                        suggested_fix="Uzupelnij impedancje punktu neutralnego zrodla.",
+                        fix_action=_fix(source.ref_id, "SourceModal", "neutral_grounding"),
+                    )
+                )
+                continue
+            bus = bus_by_ref.get(source.bus_ref)
+            po_stronie_sn = (
+                source.source_side != "HV_110"
+                and bus is not None
+                and _voltage_band(bus.voltage_kv) == "SN"
+            )
+            if not po_stronie_sn:
+                continue
+            ma_z0 = (
+                source.r0_ohm is not None
+                or source.x0_ohm is not None
+                or source.z0_z1_ratio is not None
+            )
+            if cfg.type == "isolated" and ma_z0:
+                issues.append(
+                    ValidationIssue(
+                        code="E-W5-01",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Zrodlo '{source.ref_id}': punkt neutralny opisany jako izolowany, "
+                            "a podano skonczona impedancje zerowa (r0/x0 albo z0/z1) — opis i "
+                            "liczby sa sprzeczne (siec izolowana nie ma bocznika zerowego)."
+                        ),
+                        element_refs=[source.ref_id],
+                        wizard_step_hint="K1",
+                        suggested_fix=(
+                            "Usun r0/x0 (z0/z1) zrodla albo zmien typ punktu neutralnego."
+                        ),
+                        fix_action=_fix(source.ref_id, "SourceModal", "neutral_grounding"),
+                    )
+                )
+            elif uziemienie_grounded(cfg.type) and not ma_z0:
+                issues.append(
+                    ValidationIssue(
+                        code="E-W5-01",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Zrodlo '{source.ref_id}': punkt neutralny opisany jako uziemiony "
+                            f"({cfg.type}), a zrodlo nie ma impedancji zerowej (r0/x0 albo z0/z1) — "
+                            "zwarcie 1F liczyloby siec bez bocznika zerowego zrodla, wbrew opisowi."
+                        ),
+                        element_refs=[source.ref_id],
+                        wizard_step_hint="K1",
+                        suggested_fix=(
+                            "Podaj r0/x0 (z0/z1) zrodla albo zbuduj GPZ kreatorem z transformatorem "
+                            "WN/SN — Z0 zostanie wyprowadzone z opisu punktu neutralnego."
+                        ),
+                        fix_action=_fix(source.ref_id, "SourceModal", "zero_sequence"),
+                    )
+                )
+
+        # --- transformatory: grupa polaczen, punkty neutralne -----------------
+        for trafo in enm.transformers:
+            grupa = None
+            if trafo.vector_group is not None:
+                if not grupa_polaczen_poprawna(trafo.vector_group):
+                    issues.append(
+                        ValidationIssue(
+                            code="E-W5-02",
+                            severity=SEVERITY_BLOCKER,
+                            message_pl=(
+                                f"Transformator '{trafo.ref_id}': grupa polaczen "
+                                f"'{trafo.vector_group}' spoza slownika IEC 60076-1 "
+                                f"({len(GRUPY_POLACZEN_IEC60076)} grup)."
+                            ),
+                            element_refs=[trafo.ref_id],
+                            wizard_step_hint="K6",
+                            suggested_fix="Wybierz grupe polaczen ze slownika IEC 60076-1.",
+                            fix_action=_fix(trafo.ref_id, "TransformerModal", "vector_group"),
+                        )
+                    )
+                else:
+                    grupa = parsuj_grupe_polaczen(trafo.vector_group)
+            for strona, cfg, pole in (
+                ("gornego (SN/WN)", trafo.hv_neutral, "hv_neutral"),
+                ("dolnego (nN/SN)", trafo.lv_neutral, "lv_neutral"),
+            ):
+                if cfg is None:
+                    continue
+                blad = blad_konfiguracji_uziemienia(cfg.type, cfg.r_ohm, cfg.x_ohm)
+                if blad is not None:
+                    issues.append(
+                        ValidationIssue(
+                            code="E-W5-01",
+                            severity=SEVERITY_BLOCKER,
+                            message_pl=(
+                                f"Transformator '{trafo.ref_id}', punkt neutralny uzwojenia "
+                                f"{strona}: {blad}."
+                            ),
+                            element_refs=[trafo.ref_id],
+                            wizard_step_hint="K6",
+                            suggested_fix="Uzupelnij impedancje punktu neutralnego.",
+                            fix_action=_fix(trafo.ref_id, "TransformerModal", pole),
+                        )
+                    )
+                    continue
+                if grupa is None or not uziemienie_grounded(cfg.type):
+                    continue
+                punkt_dostepny = (
+                    grupa.gn_punkt_neutralny if pole == "hv_neutral" else grupa.dn_punkt_neutralny
+                )
+                litera = grupa.gn_typ if pole == "hv_neutral" else grupa.dn_typ
+                if not punkt_dostepny:
+                    issues.append(
+                        ValidationIssue(
+                            code="E-W5-03",
+                            severity=SEVERITY_BLOCKER,
+                            message_pl=(
+                                f"Transformator '{trafo.ref_id}': uziemienie ({cfg.type}) "
+                                f"uzwojenia {strona}, ktorego litera grupy '{litera}' "
+                                f"({trafo.vector_group}) nie wyprowadza punktu neutralnego — "
+                                "brak zacisku N do uziemienia."
+                            ),
+                            element_refs=[trafo.ref_id],
+                            wizard_step_hint="K6",
+                            suggested_fix=(
+                                "Wybierz grupe z wyprowadzonym punktem neutralnym (YN/yn/ZN/zn) "
+                                "albo usun konfiguracje uziemienia tej strony."
+                            ),
+                            fix_action=_fix(trafo.ref_id, "TransformerModal", pole),
+                        )
+                    )
+
+        # --- kable: uklad uziemienia ekranu vs uklad odniesienia katalogu -----
+        for branch in enm.branches:
+            if not isinstance(branch, Cable) or branch.screen_bonding is None:
+                continue
+            params = (
+                branch.materialized_params if isinstance(branch.materialized_params, dict) else {}
+            )
+            odniesienie = params.get("z0_reference_bonding")
+            if odniesienie == branch.screen_bonding:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="W-W5-01",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"Kabel '{branch.ref_id}': zadeklarowany uklad uziemienia ekranu "
+                        f"'{branch.screen_bonding}' "
+                        + (
+                            f"rozni sie od ukladu odniesienia katalogowych r0/x0 '{odniesienie}'"
+                            if odniesienie is not None
+                            else "bez ukladu odniesienia katalogowych r0/x0 (typ nie deklaruje "
+                            "z0_reference_bonding)"
+                        )
+                        + " — skladowa zerowa kabla nie jest przeliczana; wynik 1F/2FG "
+                        "obowiazuje dla ukladu odniesienia."
+                    ),
+                    element_refs=[branch.ref_id],
+                    wizard_step_hint="K3",
+                    suggested_fix=(
+                        "Dobierz typ kabla z r0/x0 dla tego ukladu ekranu albo zmien deklaracje."
+                    ),
+                    fix_action=_fix(branch.ref_id, "BranchModal", "screen_bonding"),
+                )
+            )
+
     def _check_nn_topology(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
         """P0.1 nN (karta P0.1; C §5; D LV-INV-01/03/11/12).
 
@@ -1464,9 +2049,11 @@ class ENMValidator:
                grupuje CALE pasmo „nN" (<1 kV) jako JEDNO pasmo (0,4 kV i 0,69 kV
                nalezą do tego samego pasma), wiec nie wykrywa mieszania
                poziomow WEWNATRZ pasma (LV-INV-11).
-        E063 - stacja zasilajaca odbiory nN, ktora nie deklaruje ukladu
-               uziemienia sieci nN (meta.nn_earthing_system) — wymagane dla
-               kryterium SWZ/ochrony przeciwporazeniowej (IEC 60364-4-41).
+        E063 - transformator SN/nN stacji zasilajacej odbiory/generatory nN bez
+               ukladu uziemienia sieci nN (`Transformer.lv_earthing_system`, W5-A
+               §1 p. 2 — JEDEN predykat `enm/uklad_sieci_nn.py`, ten sam co
+               ELIG_FLNN_MISSING_EARTHING_SYSTEM) — wymagane dla kryterium
+               SWZ/ochrony przeciwporazeniowej (IEC 60364-4-41).
         E064 - ProtectionAssignment.breaker_ref wskazuje galaz, ktorej NIE MA w
                modelu (LV-INV-03 — zabezpieczenie musi byc fizycznie w torze;
                kontrola ogolna, nie ograniczona do pasma nN — dowolna dolaczajaca
@@ -1487,22 +2074,12 @@ class ENMValidator:
             return _voltage_band(bus.voltage_kv) == "nN"
 
         # --- E060: ciaglosc zasilania odbiorow/generatorow nN ---------------
-        graf = nx.Graph()
-        for bus in enm.buses:
-            graf.add_node(bus.ref_id)
-        for branch in enm.branches:
-            if branch.status != "closed":
-                continue
-            if branch.from_bus_ref in bus_by_ref and branch.to_bus_ref in bus_by_ref:
-                graf.add_edge(branch.from_bus_ref, branch.to_bus_ref)
-        for trafo in enm.transformers:
-            if trafo.hv_bus_ref in bus_by_ref and trafo.lv_bus_ref in bus_by_ref:
-                graf.add_edge(trafo.hv_bus_ref, trafo.lv_bus_ref)
+        # Jedyny serwis topologii (CV-4.3): te same wyspy co E003 i mapowanie ENM → IR.
         source_bus_refs = {s.bus_ref for s in enm.sources if s.bus_ref in bus_by_ref}
         skladowa_wezla: dict[str, frozenset[str]] = {}
-        for skladowa in nx.connected_components(graf):
-            zamrozona = frozenset(skladowa)
-            for ref in skladowa:
+        for wyspa in derive(enm).wyspy:
+            zamrozona = frozenset(wyspa.szyny)
+            for ref in wyspa.szyny:
                 skladowa_wezla[ref] = zamrozona
 
         def _ma_sciezke_do_zrodla(bus_ref: str) -> bool:
@@ -1657,34 +2234,25 @@ class ENMValidator:
                 )
             )
 
-        # --- E063: uklad uziemienia sieci nN stacji z odbiorami nN ------------
-        for sub in enm.substations:
-            bus_refs_stacji = set(sub.bus_refs)
-            ma_odbior_nn = any(
-                load.bus_ref in bus_refs_stacji and _bus_w_pasmie_nn(load.bus_ref)
-                for load in enm.loads
-            )
-            if not ma_odbior_nn:
-                continue
-            sub_meta = sub.meta if isinstance(sub.meta, dict) else {}
-            if sub_meta.get("nn_earthing_system"):
-                continue
+        # --- E063: uklad uziemienia sieci nN transformatora stacji z odbiorami nN
+        for sub, trafo in transformatory_bez_ukladu_nn(enm):
             issues.append(
                 ValidationIssue(
                     code="E063",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Stacja '{sub.ref_id}' zasila odbiory nN, ale nie deklaruje "
-                        f"ukladu uziemienia sieci nN (meta.nn_earthing_system)."
+                        f"Transformator '{trafo.ref_id}' stacji '{sub.ref_id}' zasila "
+                        f"odbiory nN, ale nie deklaruje ukladu uziemienia sieci nN "
+                        f"(lv_earthing_system)."
                     ),
-                    element_refs=[sub.ref_id],
+                    element_refs=[trafo.ref_id, sub.ref_id],
                     wizard_step_hint="K6",
                     suggested_fix=("Wybierz uklad uziemienia sieci nN (TN-S/TN-C/TN-C-S/TT/IT)."),
                     fix_action=FixAction(
                         action_type="OPEN_MODAL",
-                        element_ref=sub.ref_id,
-                        modal_type="SubstationModal",
-                        payload_hint={"required": "nn_earthing_system"},
+                        element_ref=trafo.ref_id,
+                        modal_type="TransformerModal",
+                        payload_hint={"required": "lv_earthing_system"},
                     ),
                 )
             )

@@ -1,4 +1,5 @@
-import type { CatalogContextEntry, ExtendedTrace, TraceStep, TraceValue } from '../../results-inspector/types';
+import type { CatalogContextEntry, ExtendedTrace, TraceStep } from '../../results-inspector/types';
+import { rozpakujWartoscSladu } from '../../results-inspector/traceValue';
 
 const LABELS = {
   documentTitle: 'Ślad obliczeń',
@@ -31,28 +32,39 @@ const PHASE_LABELS: Record<string, string> = {
   OUTPUT: 'Wyniki',
 };
 
+// Rozpakowanie surowej wartości kroku śladu WHITE BOX (skalar / {re,im} /
+// opakowany TraceValue) jest WSPÓLNE dla całego frontu — patrz
+// `results-inspector/traceValue.ts::rozpakujWartoscSladu` (KLASA NIE
+// INSTANCJA, karta WB-2; ta funkcja była kopią `TraceStepView.tsx::formatValue`).
+// Formatowanie do napisu zostaje tutaj (per ekran/eksport).
 function formatValue(value: unknown): string {
-  if (value === null || value === undefined) return '-';
-  if (typeof value === 'number') {
-    if (Math.abs(value) < 0.01 && value !== 0) {
-      return value.toExponential(3);
-    }
-    return value.toLocaleString('pl-PL', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 4,
-    });
+  const { wartosc, re, im, unit } = rozpakujWartoscSladu(value);
+
+  if (typeof re === 'number' && typeof im === 'number') {
+    // Brak dedykowanego formatu zespolonego w tym eksporcie — surowy JSON
+    // składowych, jak dotychczas, NIGDY "[object Object]".
+    return JSON.stringify({ re, im });
   }
-  if (typeof value === 'boolean') return value ? 'Tak' : 'Nie';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'object') {
-    const traceValue = value as TraceValue;
-    if ('value' in traceValue) {
-      const formatted = formatValue(traceValue.value);
-      return traceValue.unit ? `${formatted} ${traceValue.unit}` : formatted;
+
+  if (wartosc === null) return '-';
+
+  let formatted: string;
+  if (typeof wartosc === 'number') {
+    if (Math.abs(wartosc) < 0.01 && wartosc !== 0) {
+      formatted = wartosc.toExponential(3);
+    } else {
+      formatted = wartosc.toLocaleString('pl-PL', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 4,
+      });
     }
-    return JSON.stringify(value);
+  } else if (typeof wartosc === 'boolean') {
+    formatted = wartosc ? 'Tak' : 'Nie';
+  } else {
+    formatted = wartosc;
   }
-  return String(value);
+
+  return unit ? `${formatted} ${unit}` : formatted;
 }
 
 function escapeHtml(text: string): string {

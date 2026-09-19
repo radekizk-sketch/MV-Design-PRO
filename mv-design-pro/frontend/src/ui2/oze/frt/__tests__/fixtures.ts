@@ -218,6 +218,23 @@ export function widokModulWypadlFixture(): WidokTrajektoriiFrt {
   };
 }
 
+/**
+ * Karta S-4 (W6-0): status solvera `no_module` zmapowany NA GRANICY na
+ * `blocked` — widok bez `obwiednia_profilu`/`ocena_dowodowa`, z nazwanym
+ * kodem gotowości i brakami (1:1 z `_widok_bez_modelu_dynamicznego`).
+ */
+export function widokBrakModeluFixture(): WidokTrajektoriiFrt {
+  return {
+    modul_der: modulPv1Mw(),
+    operator: operatorPse(),
+    test_kind: 'lvrt',
+    status_solvera: 'blocked',
+    kod_gotowosci: 'der.dynamic_profile_missing',
+    missing_fields_pl: ['Brak modelu dynamicznego DER w wejściu solvera.'],
+    scenariusze: [],
+  };
+}
+
 /** Widok HVRT „w obwiedni": wzrost napięcia do 1,30 p.u.; moduł utrzymał pracę. */
 export function widokHvrtWObwiedniFixture(): WidokTrajektoriiFrt {
   const trajektoria = [

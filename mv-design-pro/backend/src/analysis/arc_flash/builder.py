@@ -65,6 +65,7 @@ from analysis.arc_flash.models import (
     WhiteBoxStep,
     compute_arc_flash_id,
 )
+from network_model.pochodne import ka_na_a, kv_na_v, s_na_ms
 
 # Publiczne progi rozmiaru obudowy IEEE 1584-2018 (Tab. 7 / model EES) [mm].
 # To ramy modelu (granice przedziałów), nie współczynniki regresji.
@@ -282,7 +283,7 @@ class ArcFlashBuilder:
         if not table.is_complete_for(cfg, enc_type):
             return self._incomplete_table_result(item, table.missing_for(cfg, enc_type))
 
-        arc_time_ms = arc_time * 1000.0  # równanie energii IEEE używa t w ms
+        arc_time_ms = s_na_ms(arc_time)  # równanie energii IEEE używa t w ms
         steps: list[WhiteBoxStep] = []
 
         # 3a) Prąd łuku I_arc w trzech kotwach + interpolacja po U (Tab. 1, Eq 1).
@@ -502,7 +503,7 @@ class ArcFlashBuilder:
         if not table.is_complete_for(cfg, enc_type):
             return self._incomplete_table_result(item, table.missing_for(cfg, enc_type))
 
-        arc_time_ms = arc_time * 1000.0
+        arc_time_ms = s_na_ms(arc_time)
         steps: list[WhiteBoxStep] = []
 
         arc_coeffs_600 = table.arc_entry(cfg, VoltageAnchor.V600)
@@ -765,13 +766,13 @@ class ArcFlashBuilder:
         )
 
         ibf_range_pl = (
-            f"{VALIDITY_IBF_MIN_KA_LV * 1000:.0f} A–{VALIDITY_IBF_MAX_KA_LV:.0f} kA (U<=600 V)"
+            f"{ka_na_a(VALIDITY_IBF_MIN_KA_LV):.0f} A–{VALIDITY_IBF_MAX_KA_LV:.0f} kA (U<=600 V)"
             if voltage <= float(VoltageAnchor.V600.value)
-            else f"{VALIDITY_IBF_MIN_KA_HV * 1000:.0f} A–{VALIDITY_IBF_MAX_KA_HV:.0f} kA (600 V<U<=15 kV)"
+            else f"{ka_na_a(VALIDITY_IBF_MIN_KA_HV):.0f} A–{VALIDITY_IBF_MAX_KA_HV:.0f} kA (600 V<U<=15 kV)"
         )
         why = (
             f"POZA zakresem ważności IEEE 1584-2018 (U={_round(voltage, 2)} kV, "
-            f"I_bf={_round(i_bf, 2)} kA; zakres: {VALIDITY_VOLTAGE_MIN_KV*1000:.0f} V–"
+            f"I_bf={_round(i_bf, 2)} kA; zakres: {kv_na_v(VALIDITY_VOLTAGE_MIN_KV):.0f} V–"
             f"{VALIDITY_VOLTAGE_MAX_KV:.0f} kV, I_bf {ibf_range_pl} dla tej klasy napięcia). "
             f"Zastosowano {ARC_FLASH_RALPH_LEE_LABEL}: "
             f"E ≈ {_round(e_lee, 2)} cal/cm², AFB ≈ {_round(afb_lee, 1)} mm, ŚOI = {ppe}. "

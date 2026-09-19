@@ -370,6 +370,83 @@ def _is_generating_field(bay: Bay, gen_buses: dict[str, list[str]]) -> bool:
     return bay.bus_ref in gen_buses or bay.bay_role == "OZE"
 
 
+#: Klucze metadanych stacji, pod którymi ŻYJĄ POLA w kanonicznej postaci modelu
+#: (`substations[].meta`) — te same, które czyta warstwa operacji domenowych
+#: (`enm/domain_operations_v2.py::_field_ref_exists` / `_field_record`).
+_KLUCZE_SPECYFIKACJI_POL: tuple[str, ...] = ("field_specs", "nn_field_specs")
+
+#: Role pola dopuszczone kontraktem `Bay.bay_role`. Specyfikacja z rolą spoza
+#: tej listy NIE jest po cichu przepisywana na rolę zastępczą — patrz
+#: `_pole_ze_specyfikacji` (brak roli = brak pola, z jawnym pominięciem).
+_ROLE_POLA: frozenset[str] = frozenset(
+    {"IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"}
+)
+
+
+def _pole_ze_specyfikacji(spec: dict[str, Any], substation_ref: str) -> Bay | None:
+    """Pole przyłączeniowe z kanonicznej specyfikacji stacji (`meta.field_specs`).
+
+    Zwraca `None`, gdy specyfikacja nie niesie kompletu tożsamości pola
+    (referencja, szyna, rola z kontraktu) — ocena LoM woli POMINĄĆ pole, którego
+    nie umie zidentyfikować, niż zgadywać jego rolę albo szynę.
+    """
+    field_ref = spec.get("field_ref")
+    bus_ref = spec.get("bus_ref")
+    bay_role = spec.get("bay_role")
+    if not isinstance(field_ref, str) or not isinstance(bus_ref, str):
+        return None
+    if not isinstance(bay_role, str) or bay_role not in _ROLE_POLA:
+        return None
+    meta = spec.get("meta")
+    return Bay(
+        ref_id=field_ref,
+        name=str(spec.get("name") or field_ref),
+        bay_role=bay_role,  # type: ignore[arg-type]  # sprawdzone wobec `_ROLE_POLA`
+        substation_ref=substation_ref,
+        bus_ref=bus_ref,
+        gpz_section_id=spec.get("gpz_section_id"),
+        equipment_refs=[str(ref) for ref in (spec.get("equipment_refs") or [])],
+        protection_ref=spec.get("protection_ref"),
+        protection_codes=[str(kod) for kod in (spec.get("protection_codes") or [])],
+        tags=[str(tag) for tag in (spec.get("tags") or [])],
+        meta=dict(meta) if isinstance(meta, dict) else {},
+    )
+
+
+def _pola_przylaczeniowe(enm: EnergyNetworkModel) -> list[Bay]:
+    """WSZYSTKIE pola przyłączeniowe modelu — z OBU reprezentacji pola.
+
+    DLACZEGO (karta HARNESS-RESZTA-2, 2026-09-17; defekt zmierzony wprost).
+    Ocena LoM czytała WYŁĄCZNIE `enm.bays`, a operacje domenowe, którymi
+    projektant buduje sieć (`insert_station_on_segment_sn`,
+    `append_station_on_endpoint` w części torów, `add_converter_source`), zapisują
+    pola w kanonicznej postaci `substations[].meta.field_specs` /
+    `nn_field_specs` — `bays` zostaje PUSTE. Skutek: na każdym modelu zbudowanym
+    dzisiejszymi operacjami ekran „Ochrona przed pracą wyspową" meldował
+    „moduły bez pola przyłączeniowego" i NIE oceniał niczego, choć pola w modelu
+    są (pomiar: model sceny harnessu — 2 moduły wytwórcze, 0 ocenionych pól).
+    Warstwa operacji czyta obie postacie od dawna (`_field_ref_exists`,
+    `_field_record`) — ta funkcja zrównuje z nią warstwę analizy.
+
+    Pierwszeństwo ma `enm.bays` (postać jawna): pole o tej samej referencji nie
+    jest dokładane dwa razy.
+    """
+    pola: list[Bay] = list(enm.bays)
+    znane: set[str] = {bay.ref_id for bay in pola}
+    for stacja in enm.substations:
+        meta = stacja.meta if isinstance(stacja.meta, dict) else {}
+        for klucz in _KLUCZE_SPECYFIKACJI_POL:
+            for spec in meta.get(klucz) or []:
+                if not isinstance(spec, dict):
+                    continue
+                pole = _pole_ze_specyfikacji(spec, stacja.ref_id)
+                if pole is None or pole.ref_id in znane:
+                    continue
+                znane.add(pole.ref_id)
+                pola.append(pole)
+    return pola
+
+
 def _lom_settings_by_type(
     assignment: ProtectionAssignment | None,
 ) -> dict[str, ProtectionSetting]:
@@ -591,7 +668,7 @@ def build_ochrona_lom_view(enm: EnergyNetworkModel) -> dict[str, Any]:
     protection_by_ref = {a.ref_id: a for a in enm.protection_assignments}
 
     generating_bays = sorted(
-        (bay for bay in enm.bays if _is_generating_field(bay, gen_buses)),
+        (bay for bay in _pola_przylaczeniowe(enm) if _is_generating_field(bay, gen_buses)),
         key=lambda bay: bay.ref_id,
     )
 

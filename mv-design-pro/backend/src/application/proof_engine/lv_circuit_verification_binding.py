@@ -46,7 +46,6 @@ NIGDY domyślna/zgadnięta wartość.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -57,14 +56,12 @@ from application.analyses.fault_loop.route import (
     route_segments_min_scenario,
 )
 from application.analyses.fault_loop.service import (
-    _DEFAULT_SYSTEM,
-    _NON_TN_SYSTEMS,
-    _SYSTEM_MAP,
     _find_station,
-    _system_for_station,
     _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
+    odmowa_ukladu_nn,
     resolve_transformer_for_bus,
+    uklad_nn_transformatora,
 )
 from application.analyses.swz.werdykt import AparatZabezpieczajacy, ocen_swz
 from application.proof_engine.packs.lv_circuit_verification import (
@@ -76,6 +73,7 @@ from application.proof_engine.packs.lv_circuit_verification import (
 )
 from enm.models import EnergyNetworkModel, FuseBranch, SwitchBranch
 from network_model.catalog.lv_mccb_settings_iec60947_2 import resolwuj_nastawy_mccb
+from network_model.pochodne import kv_na_v, napiecie_fazowe_v
 from network_model.solvers.cable_ampacity_derating import WspolczynnikiObciazalnosciNN
 from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
 from network_model.solvers.fault_loop_builder import (
@@ -84,6 +82,7 @@ from network_model.solvers.fault_loop_builder import (
     sum_phase_and_return_route,
 )
 from network_model.solvers.fault_loop_iec60364 import compute_fault_loop
+from solver_input.uklad_sieci_nn import typ_sieci_solvera
 
 
 class LVCircuitVerificationInputError(ValueError):
@@ -245,22 +244,18 @@ def _petla_zwarcia_min(
     if station is None:
         return None, ["station"], None
 
-    system = _system_for_station(station)
-    if system in _NON_TN_SYSTEMS:
-        return (
-            None,
-            [],
-            (
-                f"Układ {system}: SWZ/pętla TN (IEC 60364-4-41) nie dotyczy — inny mechanizm "
-                "ochrony przeciwporażeniowej."
-            ),
-        )
-
     # Transformator ZASILAJĄCY punkt obwodu (właściciel szyny po zamkniętych
     # gałęziach), nie „pierwszy transformator stacji" — klasa B-02 (2×TR).
     trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
         return None, transformer_missing, None
+
+    # W5-A: układ sieci nN z transformatora zasilającego; brak/TT/IT = odmowa nazwana.
+    system = uklad_nn_transformatora(trafo)
+    odmowa = odmowa_ukladu_nn({}, system)
+    if odmowa is not None:
+        return None, list(odmowa.get("missing_data", [])), odmowa.get("reason_pl")
+    assert system is not None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
@@ -277,8 +272,8 @@ def _petla_zwarcia_min(
         return None, ["route"], str(exc)
 
     phase_component, return_component = sum_phase_and_return_route(segments)
-    net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    net_type, protection = typ_sieci_solvera(system)
+    u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
     request = FaultLoopBuildRequest(
         fault_node_id=bus_ref,

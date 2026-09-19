@@ -255,9 +255,36 @@ def rule_transformer_voltage_polarity(enm: dict) -> list[ValidationIssue]:
         lv_bus = buses_by_ref.get(lv_ref)
         if not hv_bus or not lv_bus:
             continue
+        # Brak `voltage_kv` na szynie != 0 kV — domyślne 0 wyłączało poniższy
+        # warunek (`hv_v > 0 and ...`) w milczeniu, więc kontrola polarności
+        # cicho "przechodziła" tam, gdzie w ogóle nie dało się jej wykonać.
+        # Brak danej dostaje WŁASNY, jawny kod zamiast fałszywego "OK".
+        hv_voltage_raw = hv_bus.get("voltage_kv")
+        lv_voltage_raw = lv_bus.get("voltage_kv")
+        if hv_voltage_raw is None or lv_voltage_raw is None:
+            brakujace_strony = [
+                strona
+                for strona, wartosc in (("HV", hv_voltage_raw), ("LV", lv_voltage_raw))
+                if wartosc is None
+            ]
+            issues.append(
+                ValidationIssue(
+                    code="semantic.transformer_bus_voltage_missing",
+                    message=(
+                        f"Transformator '{tr.get('ref_id')}' — nie da się sprawdzić "
+                        f"polaryzacji: szyna(-y) {', '.join(brakujace_strony)} nie ma "
+                        "znanego napięcia (voltage_kv)."
+                    ),
+                    severity=Severity.WARNING,
+                    element_id=tr.get("ref_id"),
+                    field="voltage_kv",
+                    suggested_fix="Uzupełnij napięcie znamionowe szyny HV i LV.",
+                )
+            )
+            continue
         try:
-            hv_v = float(hv_bus.get("voltage_kv", 0))
-            lv_v = float(lv_bus.get("voltage_kv", 0))
+            hv_v = float(hv_voltage_raw)
+            lv_v = float(lv_voltage_raw)
         except (TypeError, ValueError):
             continue
         if hv_v > 0 and lv_v > 0 and hv_v < lv_v:

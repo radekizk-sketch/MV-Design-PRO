@@ -21,6 +21,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Literal
 
+from network_model.pochodne import kv_na_v
+
 # =============================================================================
 # Source Enums — skąd pochodzą wartości bazowe
 # =============================================================================
@@ -201,7 +203,7 @@ class BaseValues:
         """Napięcie odniesienia [V]."""
         if self.un_kv is None:
             return None
-        return self.un_kv * 1000.0
+        return kv_na_v(self.un_kv)
 
     @property
     def has_un(self) -> bool:

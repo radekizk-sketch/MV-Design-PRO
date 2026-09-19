@@ -67,6 +67,7 @@ def _ready_nn_enm() -> EnergyNetworkModel:
                 uk_percent=4.0,
                 pk_kw=6.5,
                 vector_group="Dyn11",
+                lv_earthing_system="TN-C-S",
                 catalog_ref="TR_CAT",
             )
         ],
@@ -101,7 +102,6 @@ def _ready_nn_enm() -> EnergyNetworkModel:
                 station_type="mv_lv",
                 bus_refs=["sn", "nn"],
                 transformer_refs=["tr"],
-                meta={"nn_earthing_system": "TN-C-S"},
             )
         ],
     )
@@ -163,13 +163,15 @@ class TestFaultLoopNnEligibilityMissingStation:
 
 
 class TestFaultLoopNnEligibilityMissingEarthingSystem:
-    """Stacja bez zadeklarowanego układu uziemienia nN → blokada per-stacja."""
+    """Transformator SN/nN bez zadeklarowanego układu sieci nN → blokada PER TRANSFORMATOR
+    (W5-A: nośnikiem układu jest `Transformer.lv_earthing_system`, jeden predykat
+    `enm/uklad_sieci_nn.py` wspólny z E063 walidatora)."""
 
     @staticmethod
     def _enm_no_earthing() -> EnergyNetworkModel:
         enm = _ready_nn_enm()
-        station = enm.substations[0].model_copy(update={"meta": {}})
-        return enm.model_copy(update={"substations": [station]})
+        trafo = enm.transformers[0].model_copy(update={"lv_earthing_system": None})
+        return enm.model_copy(update={"transformers": [trafo]})
 
     def test_fault_loop_nn_ineligible(self):
         row = _row(self._enm_no_earthing(), AnalysisType.FAULT_LOOP_NN)
@@ -177,11 +179,15 @@ class TestFaultLoopNnEligibilityMissingEarthingSystem:
         codes = [b.code for b in row.blockers]
         assert "ELIG_FLNN_MISSING_EARTHING_SYSTEM" in codes
 
-    def test_blocker_element_ref_is_station(self):
-        row = _row(self._enm_no_earthing(), AnalysisType.FAULT_LOOP_NN)
+    def test_blocker_element_ref_is_transformer(self):
+        enm = self._enm_no_earthing()
+        row = _row(enm, AnalysisType.FAULT_LOOP_NN)
         blocker = next(b for b in row.blockers if b.code == "ELIG_FLNN_MISSING_EARTHING_SYSTEM")
-        assert blocker.element_ref == "stn"
-        assert blocker.element_type == "station"
+        assert blocker.element_ref == enm.transformers[0].ref_id
+        assert blocker.element_type == "transformer"
+        assert blocker.fix_action is not None
+        assert blocker.fix_action.modal_type == "TransformerModal"
+        assert blocker.fix_action.payload_hint == {"required": "lv_earthing_system"}
 
 
 class TestFaultLoopNnEligibilityMissingTransformerData:
@@ -216,9 +222,10 @@ class TestFaultLoopNnEligibilityTtItSystemsSkipTransformerCheck:
     @staticmethod
     def _enm_tt_no_vector_group() -> EnergyNetworkModel:
         enm = _ready_nn_enm()
-        trafo = enm.transformers[0].model_copy(update={"vector_group": None})
-        station = enm.substations[0].model_copy(update={"meta": {"nn_earthing_system": "TT"}})
-        return enm.model_copy(update={"transformers": [trafo], "substations": [station]})
+        trafo = enm.transformers[0].model_copy(
+            update={"vector_group": None, "lv_earthing_system": "TT"}
+        )
+        return enm.model_copy(update={"transformers": [trafo]})
 
     def test_no_transformer_loop_data_blocker_for_tt(self):
         row = _row(self._enm_tt_no_vector_group(), AnalysisType.FAULT_LOOP_NN)

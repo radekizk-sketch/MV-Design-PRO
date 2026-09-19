@@ -14,6 +14,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
@@ -24,7 +25,7 @@ const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const APARAT_POLA_ID = 'sw-cb-abb-vd4-17kv-630a';
 const CT_ID = 'ct_400_5_5p20_15va_abb';
-const PRZEKAZNIK_ID = 'ACME_REX100_v1';
+const PRZEKAZNIK_ID = 'REF-OC-100';
 const CATALOG_VERSION = '2024.1';
 
 const THEMES = [
@@ -126,6 +127,8 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   let op: DomainOpResponse = {};
@@ -322,7 +325,7 @@ test.describe('kd6:zrzuty', () => {
 
       await page.setViewportSize({ width: 1360, height: 1040 });
       await otworz(page, scena, mode, `/#analysis?run=${scena.runId}`);
-      await page.getByRole('tab', { name: /Zwarcia/ }).click();
+      await otworzZakladkeWynikow(page, 'zwarcia');
       await expect(page.getByTestId('mvd-zwarcia-ekran')).toBeVisible({ timeout: 30000 });
       await page
         .getByRole('row', { name: new RegExp(escapeRegExp(scena.punktNazwa)) })

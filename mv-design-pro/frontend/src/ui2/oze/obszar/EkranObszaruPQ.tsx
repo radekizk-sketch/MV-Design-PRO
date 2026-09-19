@@ -97,10 +97,12 @@ function WynikObszaru({
   dane,
   trybZaawansowania,
   krzywaProducenta,
+  onOtworzDowod,
 }: {
   dane: WidokObszaruPQ;
   trybZaawansowania: AdvancementMode;
   krzywaProducenta?: readonly (readonly [number, number, number])[];
+  onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = trybZaawansowania === 'expert';
   const [sladWidoczny, setSladWidoczny] = useState(false);
@@ -183,7 +185,7 @@ function WynikObszaru({
       <TabelaWynikow
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
       />
 
@@ -380,9 +382,12 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
 
 export interface EkranObszaruPQProps {
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
+   * z rodzica, `WynikiWarsztat`), nie zaślepka. */
+  onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranObszaruPQ({ trybZaawansowania }: EkranObszaruPQProps) {
+export function EkranObszaruPQ({ trybZaawansowania, onOtworzDowod }: EkranObszaruPQProps) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
   const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
@@ -620,6 +625,7 @@ export function EkranObszaruPQ({ trybZaawansowania }: EkranObszaruPQProps) {
                 dane={stan.dane}
                 trybZaawansowania={trybZaawansowania}
                 krzywaProducenta={krzywaProducenta}
+                onOtworzDowod={onOtworzDowod}
               />
               {/* Akcja wyjściowa PO biegu — pasmo z tego wyniku zasila
                   ograniczenia Q generatora w modelu. */}

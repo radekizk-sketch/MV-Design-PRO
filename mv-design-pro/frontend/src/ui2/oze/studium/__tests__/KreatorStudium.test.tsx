@@ -66,7 +66,7 @@ afterEach(() => {
 describe('KreatorStudium — krok 1 (warianty)', () => {
   it('pokazuje hint inżynierski i listę węzłów; „Dalej" zablokowane bez wyboru', async () => {
     ustawGotowyRozplyw();
-    render(<KreatorStudium trybZaawansowania="basic" />);
+    render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     // Montaż kreatora pobiera katalogi (konwertery + klasy NC RfG) — realny
     // efekt mikrotaskowy, którego skutek (prefill kroku 2) nie ma reprezentacji
     // w UI kroku 1, więc nie ma na co czekać przez findBy*/waitFor. Puste
@@ -81,7 +81,7 @@ describe('KreatorStudium — krok 1 (warianty)', () => {
 
   it('wybór węzła odblokowuje przejście dalej', async () => {
     ustawGotowyRozplyw();
-    render(<KreatorStudium trybZaawansowania="basic" />);
+    render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     // Jak wyżej: skutek pobrania katalogów jest niewidoczny w kroku 1 —
     // domknięcie mikrotasków montażu jawnym act(async).
     await act(async () => {});
@@ -97,7 +97,7 @@ describe('KreatorStudium — krok 1 (warianty)', () => {
 describe('KreatorStudium — krok 2 (parametry źródła)', () => {
   it('wstępnie wypełnia typ pierwszym rekordem rodzaju i pokazuje moc z rekordu', async () => {
     ustawGotowyRozplyw();
-    render(<KreatorStudium trybZaawansowania="basic" />);
+    render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.click(screen.getByTestId('mvd-studium-krok-2'));
 
     const typ = (await screen.findByTestId('mvd-studium-typ')) as HTMLSelectElement;
@@ -109,7 +109,7 @@ describe('KreatorStudium — krok 2 (parametry źródła)', () => {
 
   it('zmiana rodzaju na FW przełącza katalog typów na WIND i moc typu', async () => {
     ustawGotowyRozplyw();
-    render(<KreatorStudium trybZaawansowania="basic" />);
+    render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.click(screen.getByTestId('mvd-studium-krok-2'));
     await screen.findByTestId('mvd-studium-typ');
 
@@ -127,7 +127,7 @@ describe('KreatorStudium — krok 2 (parametry źródła)', () => {
 describe('KreatorStudium — krok 3 (analizy)', () => {
   it('bez zakończonego rozpływu pokazuje instrukcję, bez wywołania analiz', async () => {
     useSnapshotStore.setState({ snapshot: snapshotFixture() });
-    render(<KreatorStudium trybZaawansowania="basic" />);
+    render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
     expect(await screen.findByTestId('mvd-studium-brak-przebiegu')).toHaveTextContent(
       'Brak zakończonego przebiegu rozpływu mocy',
@@ -137,7 +137,7 @@ describe('KreatorStudium — krok 3 (analizy)', () => {
 
   it('jawny bieg woła istniejące końcówki i przechodzi do przeglądu', async () => {
     ustawGotowyRozplyw();
-    render(<KreatorStudium trybZaawansowania="basic" />);
+    render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
     fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
 
@@ -161,7 +161,7 @@ describe('KreatorStudium — krok 3 (analizy)', () => {
         ? Promise.reject(new Error('Błąd siatki P–Q'))
         : Promise.resolve(widokObszaruFixture()),
     );
-    render(<KreatorStudium trybZaawansowania="basic" />);
+    render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
     fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-b'));
     fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
@@ -184,7 +184,7 @@ describe('KreatorStudium — krok 3 (analizy)', () => {
 
 async function przeprowadzIWejdzDoPrzegladu(tryb: 'basic' | 'expert') {
   ustawGotowyRozplyw();
-  render(<KreatorStudium trybZaawansowania={tryb} />);
+  render(<KreatorStudium trybZaawansowania={tryb} onOtworzDowod={vi.fn()} />);
   fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
   fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
   // Przycisk biegu odblokowuje się dopiero po prefillu typu z katalogu

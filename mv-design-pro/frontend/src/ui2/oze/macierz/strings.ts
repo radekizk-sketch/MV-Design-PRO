@@ -69,6 +69,12 @@ export const MACIERZ_STRINGS = {
   szczegolTytul: 'Szczegół werdyktu',
   szczegolWybierz: 'Wybierz komórkę macierzy, aby zobaczyć uzasadnienie, metryki i akcje naprawcze.',
   uzasadnienie: 'Uzasadnienie',
+  // Stopień dowodowy testu (karta S-1, W6-0) — na czym opiera się werdykt.
+  podstawaWerdyktu: 'Podstawa werdyktu',
+  // Baner biegu, gdy `reporting_status === 'not_reportable'` (karta S-1 §0.9).
+  banerBrakDowoduTytul:
+    'Pakiet ma charakter diagnostyczno-inżynierski — BRAK WYSTARCZAJĄCEGO DOWODU '
+    + 'SPEŁNIENIA WYMAGANIA dla co najmniej jednego testu wymaganego.',
   wymaganie: 'Podstawa wymagania',
   metryki: 'Metryki',
   akcjeNaprawcze: 'Akcje naprawcze',
@@ -113,6 +119,39 @@ export const MACIERZ_STRINGS = {
   certyfikatDowodWipwc: 'Wersja WiPWC',
   certyfikatDowodData: 'Data akceptacji',
   certyfikatDowodWarunek: 'Warunek ważności',
+
+  // Zgodność przekrojowa przypadku (karta S-3 — jeden tor NC RfG; dawniej W3-D):
+  // wszystkie DER naraz, liczone z modelu TYM SAMYM solverem i w TYM SAMYM
+  // kontrakcie co macierz obok (bez ręcznego kompletowania zdolności).
+  zgodnoscPrzekrojowaTytul: 'Zgodność przekrojowa przypadku',
+  zgodnoscPrzekrojowaOpis:
+    'Werdykt NC RfG liczony z bieżącego modelu dla wszystkich źródeł naraz — ten sam ' +
+    'solver i ten sam kontrakt co macierz obok, bez ręcznego kompletowania zdolności; ' +
+    'brak danej w modelu = brak danych, nigdy wartość domyślna. Ten sam operator co macierz obok.',
+  zgodnoscPrzekrojowaOdswiez: 'Odśwież',
+  zgodnoscPrzekrojowaLadowanie: 'Sprawdzam zgodność…',
+  zgodnoscPrzekrojowaBrakPrzypadku: 'Wybierz aktywny przypadek, aby sprawdzić zgodność przekrojową.',
+  zgodnoscPrzekrojowaBrakDer:
+    'Model nie zawiera żadnego źródła przekształtnikowego (PV/BESS/FW) — dodaj układ ' +
+    'wytwórczy, aby zobaczyć zgodność NC RfG.',
+  zgodnoscPrzekrojowaBlad: 'Nie udało się sprawdzić zgodności przekrojowej',
+  zgodnoscPrzekrojowaOperator: 'Operator (profil zgodności)',
+  zgodnoscPrzekrojowaWerdyktZgodny: 'zgodny',
+  zgodnoscPrzekrojowaWerdyktNiezgodny: 'niezgodny',
+  zgodnoscPrzekrojowaWerdyktBrakDanych: 'brak danych',
+  zgodnoscPrzekrojowaKolModul: 'Moduł',
+  zgodnoscPrzekrojowaKolWerdykt: 'Status modułu',
+  zgodnoscPrzekrojowaKolSpelnione: 'Spełnione / wymagane',
+  zgodnoscPrzekrojowaKolNiespelnione: 'Niespełnione',
+  zgodnoscPrzekrojowaKolBrakDanych: 'Brak danych',
+  zgodnoscPrzekrojowaKolDowod: 'Stopień dowodowy',
+  // Stopień dowodowy (karta S-1): etykiety `reporting_status` z backendu — bez oceny lokalnej.
+  zgodnoscPrzekrojowaDowodBiegu: 'Stopień dowodowy biegu',
+  zgodnoscPrzekrojowaDowodTak: 'wystarczający do zgłoszenia',
+  zgodnoscPrzekrojowaDowodNie: 'brak wystarczającego dowodu',
+  zgodnoscPrzekrojowaPokazWMacierzy: 'Pokaż w macierzy',
+  zgodnoscPrzekrojowaPominieteTytul: 'Moduły nieobjęte biegiem',
+  zgodnoscPrzekrojowaNiespelnioneTytul: 'Niespełnione wymagania i braki danych',
 
   // Panel modułu
   panelTytul: 'Dane wejściowe modułu',

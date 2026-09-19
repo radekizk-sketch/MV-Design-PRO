@@ -163,11 +163,11 @@ export function buildCanonicalGpzProps(
     alarms: options.alarms,
     transformers,
     sections: lvSections,
-    // V12K-219: sposób pracy punktu neutralnego sieci SN — z `Bus.grounding`
-    // szyny SN GPZ (jedyna szyna stacji o napięciu z pasma SN). Mapowanie 1:1
-    // z kanonu ENM, zero domysłu: brak `grounding` daje `null`, a schemat wtedy
-    // nie rysuje aparatu uziemiającego.
-    snNeutralEarthing: deriveSnNeutralEarthing(substation, enm.buses ?? []),
+    // V12K-219 / W5-A: sposób pracy punktu neutralnego sieci SN — z
+    // `Source.neutral_grounding` źródła GPZ tej stacji (jedyny nośnik po kasacji
+    // `Bus.grounding`). Mapowanie 1:1 z kanonu ENM, zero domysłu: brak opisu daje
+    // `null`, a schemat wtedy nie rysuje aparatu uziemiającego.
+    snNeutralEarthing: deriveSnNeutralEarthing(substation, enm.buses ?? [], enm.sources ?? []),
     couplers: buildCouplers(substation, allBays),
     hvSections: buildHvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null, protectionCtx),
     // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
@@ -268,6 +268,9 @@ function deriveHvSystemSource(
     name,
     sk3Mva: source.sk3_mva ?? null,
     ik3Ka: source.ik3_ka ?? null,
+    sk3MinMva: source.sk3_min_mva ?? null,
+    ik3MinKa: source.ik3_min_ka ?? null,
+    uSetPu: source.u_set_pu ?? null,
     voltageKv: sourceBus?.voltage_kv ?? null,
     // WN-WYNIK (uczciwość w obrębie pliku): „czy źródło stoi po stronie WN" to
     // pytanie o ZBIÓR szyn WN stacji, nie o pierwszą z nich — GPZ 2×TR ma dwie
@@ -813,7 +816,7 @@ function extractInManipulation(
  *
  * Szukamy szyny SN tej stacji (napięcie w pasmie SN: 1 kV < U ≤ 60 kV — ta sama
  * granica co `hvBusRef` powyżej, tylko z drugiej strony) i przepisujemy jej
- * `grounding`. Rozstrzygnięcie należy do MODELU: `isolated` to informacja
+ * `Source.neutral_grounding`. Rozstrzygnięcie należy do MODELU: `isolated` to informacja
  * inżynierska (sieć pracuje z izolowanym punktem neutralnym), a BRAK pola to
  * brak danej — te dwa stany nie mogą się zlać, bo prąd zwarcia doziemnego różni
  * się między konfiguracjami o rzędy wielkości.
@@ -821,12 +824,22 @@ function extractInManipulation(
 function deriveSnNeutralEarthing(
   substation: Substation,
   buses: readonly Bus[],
+  sources: readonly Source[],
 ): GpzCanonicalRendererProps['snNeutralEarthing'] {
-  const snBus = buses.find(
-    (b) => substation.bus_refs?.includes(b.ref_id) && b.voltage_kv > 1 && b.voltage_kv <= 60,
+  const stationBusRefs = new Set(substation.bus_refs ?? []);
+  const source = sources.find(
+    (s) =>
+      Boolean(s.neutral_grounding)
+      && (s.substation_ref === substation.ref_id || stationBusRefs.has(s.bus_ref)),
   );
-  const g = snBus?.grounding;
+  const g = source?.neutral_grounding;
   if (!g) return null;
+  // Rysowany przy szynie SN (transformator Yd11 nie ma punktu neutralnego SN) —
+  // szyna SN stacji istnieje niezależnie od tego, czy źródło stoi po stronie 110 kV.
+  const snBus = buses.find(
+    (b) => stationBusRefs.has(b.ref_id) && b.voltage_kv > 1 && b.voltage_kv <= 60,
+  );
+  if (!snBus) return null;
   const kind =
     g.type === 'resistor_grounded'
       ? 'resistor'

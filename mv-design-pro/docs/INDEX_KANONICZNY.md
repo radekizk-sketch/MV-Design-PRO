@@ -51,9 +51,9 @@ Data aktualizacji: **2026-04-24**
 
 - [analysis/SENSITIVITY_ANALYSIS_CANONICAL_PLUS.md](./analysis/SENSITIVITY_ANALYSIS_CANONICAL_PLUS.md)
 - [analysis/P26_AUTO_RECOMMENDATIONS_CANONICAL_PLUS.md](./analysis/P26_AUTO_RECOMMENDATIONS_CANONICAL_PLUS.md)
-- [analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md](./analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md)
+- [analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md](./analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md) (kod usunięty CV-3.2, dokument historyczny)
 - [analysis/P33_LF_SENSITIVITY_CANONICAL_KILLER.md](./analysis/P33_LF_SENSITIVITY_CANONICAL_KILLER.md)
-- [architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md](./architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md)
+- [architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md](./architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md) (kod usunięty CV-3.2, dokument historyczny)
 - [analysis/URUCHAMIANIE_ANALIZ_I_GOTOWOSC.md](./analysis/URUCHAMIANIE_ANALIZ_I_GOTOWOSC.md)
 - [analysis/NC_RFG_PTPiREE_TESTY_KANON.md](./analysis/NC_RFG_PTPiREE_TESTY_KANON.md)
 
@@ -63,6 +63,18 @@ Data aktualizacji: **2026-04-24**
 - [audit/AUDYT_KATALOG_FIRST_END_TO_END.md](./audit/AUDYT_KATALOG_FIRST_END_TO_END.md)
 - [audit/REPO_HYGIENE_PO_FAZIE_KATALOG_FIRST.md](./audit/REPO_HYGIENE_PO_FAZIE_KATALOG_FIRST.md)
 - [tests/GOLDEN_NETWORKS_CANONICAL.md](./tests/GOLDEN_NETWORKS_CANONICAL.md)
+
+## 5a. Audyt donorów open-source (2026-09-07, baza CV-4.3 K6)
+
+Due diligence transplantacji open-source. Podrzędne wobec kanonu V12.xx i
+[architecture/DECISION_FREEZE_REGISTER.md](./architecture/DECISION_FREEZE_REGISTER.md).
+
+- [architecture/OPEN_SOURCE_DONOR_AUDIT.md](./architecture/OPEN_SOURCE_DONOR_AUDIT.md) — ustalenia zweryfikowane
+- [architecture/DONOR_DECISION_MATRIX.md](./architecture/DONOR_DECISION_MATRIX.md) — decyzje per podsystem
+- [architecture/DONOR_ADOPTION_ARCHITECTURE.md](./architecture/DONOR_ADOPTION_ARCHITECTURE.md) — architektura docelowa
+- [architecture/DONOR_IMPLEMENTATION_BACKLOG.md](./architecture/DONOR_IMPLEMENTATION_BACKLOG.md) — karty i blokery
+- [architecture/DONOR_AUDIT_CHECKPOINT.md](./architecture/DONOR_AUDIT_CHECKPOINT.md) — pomiary własne (F-1…F-18)
+- [architecture/donor-raw/](./architecture/donor-raw/) — surowe raporty agentów, **NIEwiążące**
 
 ## 6. Status dokumentów historycznych
 

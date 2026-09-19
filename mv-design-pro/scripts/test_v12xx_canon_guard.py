@@ -136,6 +136,72 @@ def test_debt_closure_rejects_open_debt_status(tmp_path, monkeypatch) -> None:
     assert any("[debt-register-open]" in violation for violation in violations)
 
 
+def test_debt_closure_widzi_wiersz_z_escapowana_kreska(tmp_path, monkeypatch) -> None:
+    """Kreska w tresci komorki (`\\|`) nie moze ukryc wpisu przed kontrola statusu.
+
+    Dlug zmierzony 2026-09-17: dwa wiersze rejestru (`V12T-015`, `V12T-017`)
+    mialy w tresci pionowa kreske (cytat polecenia `grep` i typ `{...} \\| null`),
+    przez co podzial po surowym `|` dawal wiecej kolumn niz naglowek, a kontrola
+    dlugosci CICHO je pomijala — status tych wpisow nie byl sprawdzany wcale.
+    """
+    debt_path = write_doc(
+        tmp_path,
+        "REJESTR_DLUGU.md",
+        """
+| Kod | Obszar | Status |
+|---|---|---|
+| V12T-050 | UI (cytat `grep "auth\\|/me"` w tresci) | otwarty |
+""",
+    )
+    backlog_path = write_doc(
+        tmp_path,
+        "BACKLOG_WDROZENIOWY_V12_XX.md",
+        """
+| Kod | Zadanie | Status |
+|---|---|---|
+| V12-BL-001 | Kanon | zamkniete |
+""",
+    )
+    red_team_path = write_doc(tmp_path, "RED_TEAM_FINAL_V12_XX.md", "Brak blokad.")
+    monkeypatch.setattr(guard, "DEBT_REGISTER_PATH", debt_path)
+    monkeypatch.setattr(guard, "BACKLOG_PATH", backlog_path)
+    monkeypatch.setattr(guard, "RED_TEAM_PATH", red_team_path)
+
+    violations = guard.check_v12_debt_closure()
+
+    assert any("[debt-register-open] V12T-050" in violation for violation in violations)
+
+
+def test_debt_closure_zglasza_wiersz_nie_do_sparsowania(tmp_path, monkeypatch) -> None:
+    """Wiersz rejestru poza tabela = naruszenie, nie cisza (status niesprawdzony)."""
+    debt_path = write_doc(
+        tmp_path,
+        "REJESTR_DLUGU.md",
+        """
+| Kod | Obszar | Status |
+|---|---|---|
+| V12T-051 | UI | typ {a, b} | null | zamkniety |
+""",
+    )
+    backlog_path = write_doc(
+        tmp_path,
+        "BACKLOG_WDROZENIOWY_V12_XX.md",
+        """
+| Kod | Zadanie | Status |
+|---|---|---|
+| V12-BL-001 | Kanon | zamkniete |
+""",
+    )
+    red_team_path = write_doc(tmp_path, "RED_TEAM_FINAL_V12_XX.md", "Brak blokad.")
+    monkeypatch.setattr(guard, "DEBT_REGISTER_PATH", debt_path)
+    monkeypatch.setattr(guard, "BACKLOG_PATH", backlog_path)
+    monkeypatch.setattr(guard, "RED_TEAM_PATH", red_team_path)
+
+    violations = guard.check_v12_debt_closure()
+
+    assert any("[debt-register-unparsed] V12T-051" in violation for violation in violations)
+
+
 def test_debt_closure_rejects_open_backlog_status(tmp_path, monkeypatch) -> None:
     debt_path = write_doc(
         tmp_path,
@@ -372,7 +438,10 @@ def test_playwright_webserver_lifecycle_accepts_cwd_backend_handoff(tmp_path, mo
         "playwright.config.ts",
         """
 const backendCwd = fileURLToPath(new URL('../backend/', import.meta.url));
-const backendServerCommand = 'poetry run python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000';
+const backendPort = new URL(backendUrl).port || '8000';
+const backendPython = process.env.PLAYWRIGHT_BACKEND_PYTHON ?? 'poetry run python';
+const backendServerCommand =
+  `${backendPython} -m uvicorn src.api.main:app --host 127.0.0.1 --port ${backendPort}`;
 export default defineConfig({
   webServer: [{
     command: backendServerCommand,

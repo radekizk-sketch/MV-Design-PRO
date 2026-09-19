@@ -111,9 +111,14 @@ export interface PunktObwiedniWykresu {
   readonly napiecie: number;
 }
 
-/** Adapter: obwiednia profilu → punkty wykresu (kolejność źródłowa). */
+/**
+ * Adapter: obwiednia profilu → punkty wykresu (kolejność źródłowa).
+ * `obwiednia_profilu` jest nieobecna WYŁĄCZNIE przy `status_solvera ===
+ * 'blocked'` (karta S-4) — wywołujący (`WynikTrajektorii`) renderuje się
+ * tylko poza tym stanem, ale sygnatura pozostaje uczciwa: brak → pusto.
+ */
 export function punktyObwiedniFrt(widok: WidokTrajektoriiFrt): PunktObwiedniWykresu[] {
-  return widok.obwiednia_profilu.punkty.map((pt) => ({
+  return (widok.obwiednia_profilu?.punkty ?? []).map((pt) => ({
     czas: pt.czas_s,
     napiecie: pt.napiecie_pu,
   }));

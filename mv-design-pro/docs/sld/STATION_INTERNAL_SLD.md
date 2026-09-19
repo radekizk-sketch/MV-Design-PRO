@@ -84,7 +84,8 @@ Scenariusz „D" rebuild-u:
    - powstaje transformator z portami `sn_transformer_in`, `nn_transformer_out`;
    - powstaje szyna nN i odpływy.
 
-Backend: `application/sld/internal_layout.py` (PR-5).
+Backend: `application/sld/internal_layout.py` (PR-5) skasowany w W1 (2026-09-09) — 0 konsumentów produkcyjnych;
+układ wnętrza stacji rysuje klient (`ui/sld/v3`), projekcja backendowa = wycinek W7 mapy.
 
 ---
 

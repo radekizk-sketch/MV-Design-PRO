@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException
 from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
 from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
 from network_model.catalog.mv_transformer_catalog import get_sn_nn_transformer_types
+from network_model.pochodne import ka_na_a, kv_na_v, moc_zwarciowa_z_pradu_mva
 from network_model.solvers.cable_ampacity_derating import (
     NAZWA_WARUNKI_KATALOGOWE,
     NAZWA_WLASNE,
@@ -69,12 +70,34 @@ class GridSourcePreviewRequest(BaseModel):
     rx_ratio: float | None = Field(default=None, ge=0)
     r_ohm: float | None = Field(default=None, ge=0)
     x_ohm: float | None = Field(default=None, gt=0)
+    # CV-4.3 K7: dane scenariusza MIN (addytywne) — podgląd oddaje blok ``min`` z DRUGIEGO
+    # wywołania tej samej zamrożonej funkcji; tryb impedancyjny nie ma wariantu MIN.
+    sk3_min_mva: float | None = Field(default=None, gt=0)
+    ik3_min_ka: float | None = Field(default=None, gt=0)
+    rx_ratio_min: float | None = Field(default=None, ge=0)
     zero_sequence_enabled: bool = False
     r0_ohm: float | None = Field(default=None, ge=0)
     x0_ohm: float | None = Field(default=None, gt=0)
     z0_z1_ratio: float | None = Field(default=None, gt=0)
     tk_s: float = Field(default=1.0, gt=0)
     tb_s: float = Field(default=0.1, gt=0)
+
+
+class GridSourcePreviewMinResponse(BaseModel):
+    """Blok scenariusza MIN podglądu (CV-4.3 K7): te same wielkości co dla MAX, policzone
+    zamrożonym solverem podglądu z S''_kQmin (albo S''_kQmin = √3·U·I''_kQmin dla danych
+    prądowych) i R/X = rx_ratio_min → rx_ratio."""
+
+    sk_mva: float
+    ik3_ka: float
+    ik1_ka: float | None
+    ip_ka: float
+    ith_ka: float
+    kappa: float
+    z1_ohm: ComplexOhmResponse
+    z0_ohm: ComplexOhmResponse | None
+    tryb_danych: Literal["MOC_ZWARCIOWA", "PRAD_ZWARCIOWY"]
+    rx_ratio_zrodlo: Literal["MODEL_MIN", "MODEL_MAX"]
 
 
 class GridSourcePreviewResponse(BaseModel):
@@ -87,6 +110,75 @@ class GridSourcePreviewResponse(BaseModel):
     z1_ohm: ComplexOhmResponse
     z0_ohm: ComplexOhmResponse | None
     formula_ref: str
+    #: CV-4.3 K7: ``None`` = nie podano danych MIN (scenariusz MIN biegu liczony z danych
+    #: MAX z jawnym założeniem ``source.sk_min_missing``). Nazwa ``scenariusz_min`` (nie
+    #: ``min``): nazwy pól kontraktów trafiają do inwentarza guarda podstawień.
+    scenariusz_min: GridSourcePreviewMinResponse | None = None
+
+
+def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinResponse | None:
+    if request.sk3_min_mva is None and request.ik3_min_ka is None:
+        if request.rx_ratio_min is not None:
+            raise ValueError(
+                "rx_ratio_min bez sk3_min_mva/ik3_min_ka nie ma zastosowania — scenariusz MIN "
+                "bez własnej mocy zwarciowej liczy się z danych MAX."
+            )
+        return None
+    if request.short_circuit_mode == "IMPEDANCE":
+        raise ValueError(
+            "Tryb impedancyjny (R+jX) nie ma wariantu MIN: dane sk3_min_mva/ik3_min_ka/"
+            "rx_ratio_min podaj w trybie mocy zwarciowej albo je usuń."
+        )
+    if request.sk3_min_mva is not None:
+        sk_min_mva = request.sk3_min_mva
+        tryb: Literal["MOC_ZWARCIOWA", "PRAD_ZWARCIOWY"] = "MOC_ZWARCIOWA"
+    else:
+        assert request.ik3_min_ka is not None
+        sk_min_mva = moc_zwarciowa_z_pradu_mva(
+            kv_na_v(request.voltage_kv), ka_na_a(request.ik3_min_ka)
+        )
+        tryb = "PRAD_ZWARCIOWY"
+    if request.sk3_mva is not None and sk_min_mva > request.sk3_mva:
+        raise ValueError(
+            f"Sk3 min ({sk_min_mva:g} MVA) przekracza Sk3 max ({request.sk3_mva:g} MVA) — dane "
+            "scenariusza minimalnego muszą być nie większe niż maksymalnego."
+        )
+    rx_min: float | None
+    rx_zrodlo: Literal["MODEL_MIN", "MODEL_MAX"]
+    if request.rx_ratio_min is not None:
+        rx_min, rx_zrodlo = request.rx_ratio_min, "MODEL_MIN"
+    else:
+        rx_min, rx_zrodlo = request.rx_ratio, "MODEL_MAX"
+    wynik = compute_grid_source_preview(
+        GridSourcePreviewInput(
+            voltage_kv=request.voltage_kv,
+            short_circuit_mode="SHORT_CIRCUIT_POWER",
+            sk3_mva=sk_min_mva,
+            rx_ratio=rx_min,
+            zero_sequence_enabled=request.zero_sequence_enabled,
+            r0_ohm=request.r0_ohm,
+            x0_ohm=request.x0_ohm,
+            z0_z1_ratio=request.z0_z1_ratio,
+            tk_s=request.tk_s,
+            tb_s=request.tb_s,
+        )
+    )
+    return GridSourcePreviewMinResponse(
+        sk_mva=wynik.sk_mva,
+        ik3_ka=wynik.ik3_ka,
+        ik1_ka=wynik.ik1_ka,
+        ip_ka=wynik.ip_ka,
+        ith_ka=wynik.ith_ka,
+        kappa=wynik.kappa,
+        z1_ohm=ComplexOhmResponse(r_ohm=wynik.z1_ohm.real, x_ohm=wynik.z1_ohm.imag),
+        z0_ohm=(
+            ComplexOhmResponse(r_ohm=wynik.z0_ohm.real, x_ohm=wynik.z0_ohm.imag)
+            if wynik.z0_ohm is not None
+            else None
+        ),
+        tryb_danych=tryb,
+        rx_ratio_zrodlo=rx_zrodlo,
+    )
 
 
 @router.post("/api/solver/grid-source-preview", response_model=GridSourcePreviewResponse)
@@ -110,6 +202,7 @@ def preview_grid_source_short_circuit(
                 tb_s=request.tb_s,
             )
         )
+        blok_min = _podglad_min(request)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -127,6 +220,7 @@ def preview_grid_source_short_circuit(
             else None
         ),
         formula_ref=result.formula_ref,
+        scenariusz_min=blok_min,
     )
 
 
@@ -792,7 +886,7 @@ def preview_der_selection(
             CableSelectionInput(
                 transformer_current_a=transformer_current_a,
                 length_km=request.cable_length_km,
-                line_voltage_v=request.sn_bus_voltage_kv * 1000.0,
+                line_voltage_v=kv_na_v(request.sn_bus_voltage_kv),
                 cos_phi=cos_phi_load,
                 candidates=_cable_candidates(),
                 reserve_pu=request.cable_reserve_pu,

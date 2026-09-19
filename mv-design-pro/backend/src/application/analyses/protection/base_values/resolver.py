@@ -28,8 +28,6 @@ ZASADA KLUCZOWA:
 
 from __future__ import annotations
 
-import math
-
 from application.analyses.protection.base_values.models import (
     BaseValues,
     BaseValueSourceIn,
@@ -38,6 +36,7 @@ from application.analyses.protection.base_values.models import (
     ProtectedElementType,
     TransformerSide,
 )
+from network_model.pochodne import prad_roboczy_a
 
 
 def resolve_base_values(ctx: ProtectedElementContext) -> BaseValues:
@@ -249,7 +248,7 @@ def _resolve_in_transformer(
 
     # Oblicz In = Sn / (√3 × Un)
     # Sn [MVA], Un [kV] → In [kA], więc ×1000 dla [A]
-    in_a = (sn * 1000.0) / (math.sqrt(3) * un_side)
+    in_a = prad_roboczy_a(sn, un_side)
 
     return (
         in_a,

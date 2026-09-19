@@ -20,6 +20,8 @@ export interface TransformatorFormData {
   hv_bus_ref: string;
   lv_bus_ref: string;
   catalog_ref: string | null;
+  /** W5-A (F-4): grupa połączeń wybrana JAWNIE ze słownika IEC 60076-1; `null` = z katalogu. */
+  vector_group: string | null;
   nazwa: string;
   regulation_type: RegulationType;
   regulated_winding: RegulatedWinding;
@@ -42,6 +44,7 @@ export const DANE_DOMYSLNE: TransformatorFormData = {
   hv_bus_ref: '',
   lv_bus_ref: '',
   catalog_ref: null,
+  vector_group: null,
   nazwa: '',
   regulation_type: 'NONE',
   regulated_winding: 'HV',
@@ -86,6 +89,8 @@ export interface ParametryTransformatora {
   voltage_hv_kv: number;
   voltage_lv_kv: number;
   uk_percent: number;
+  /** Grupa połączeń z rekordu katalogu (`null`, gdy rekord jej nie deklaruje). */
+  vector_group: string | null;
   tap_min: number;
   tap_max: number;
   tap_step_percent: number;
@@ -103,6 +108,7 @@ export function parametryZKatalogu(
     voltage_hv_kv: it.voltage_hv_kv,
     voltage_lv_kv: it.voltage_lv_kv,
     uk_percent: it.uk_percent,
+    vector_group: typeof it.vector_group === 'string' && it.vector_group ? it.vector_group : null,
     tap_min: it.tap_min,
     tap_max: it.tap_max,
     tap_step_percent: it.tap_step_percent,
@@ -156,6 +162,7 @@ export function zbudujPayload(
     lv_bus_ref: data.lv_bus_ref,
     catalog_binding: normalizeCatalogBinding(data.catalog_ref, 'TRAFO_SN_NN'),
     ...(data.nazwa.trim() ? { name: data.nazwa.trim() } : {}),
+    ...(data.vector_group ? { vector_group: data.vector_group } : {}),
     ...(kontekst.station_ref ? { station_ref: kontekst.station_ref } : {}),
   };
   if (data.regulation_type !== 'NONE') {

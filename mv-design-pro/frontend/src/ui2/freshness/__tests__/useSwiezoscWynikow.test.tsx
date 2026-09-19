@@ -8,8 +8,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { act, cleanup, renderHook } from '@testing-library/react';
 
 import { useAppStateStore } from '../../../ui/app-state/store';
+import { useStudyCasesStore } from '../../../ui/study-cases/store';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import type { EnergyNetworkModel } from '../../../types/enm';
+import { studyCaseFixture } from '../../spaces/obliczenia/__tests__/fixtures';
 import { emituj, magistrala } from '../../events/bus';
 import type { TypZdarzenia, ZdarzenieMagistrali } from '../../events/types';
 
@@ -45,12 +47,14 @@ function emitujAct(zdarzenie: ZdarzenieMagistrali): void {
 beforeEach(() => {
   useSnapshotStore.getState().reset();
   useAppStateStore.getState().reset();
+  useStudyCasesStore.setState({ activeCase: null });
 });
 
 afterEach(() => {
   cleanup();
   useSnapshotStore.getState().reset();
   useAppStateStore.getState().reset();
+  useStudyCasesStore.setState({ activeCase: null });
 });
 
 describe("useSwiezoscWynikow — stan początkowy ze store'ów (§3.1)", () => {
@@ -67,7 +71,7 @@ describe("useSwiezoscWynikow — stan początkowy ze store'ów (§3.1)", () => {
     expect(result.current).toEqual({ stan: 'aktualne', rewizjaDanej: 5, rewizjaModelu: 5 });
   });
 
-  it("activeCaseResultStatus='OUTDATED' -> stan 'nieaktualne', rewizjaDanej nieznana (brak zgadywania)", () => {
+  it("activeCaseResultStatus='OUTDATED', BRAK aktywnego przypadku w store'ze -> rewizjaDanej nieznana (brak zgadywania)", () => {
     useSnapshotStore.setState({ snapshot: snapshotZRewizja(9), rewizjaBiezacegoModelu: 9 });
     useAppStateStore.setState({ activeCaseResultStatus: 'OUTDATED' });
 
@@ -78,6 +82,46 @@ describe("useSwiezoscWynikow — stan początkowy ze store'ów (§3.1)", () => {
       przyczyna: 'model-zmieniony',
     });
     expect(result.current.rewizjaDanej).toBeUndefined();
+  });
+
+  it("activeCaseResultStatus='OUTDATED', przypadek BEZ zakończonego biegu (rewizja_biegu: null) -> rewizjaDanej nieznana", () => {
+    // CV-2: koperta rewizji przypadku istnieje, ale przypadek nie ma jeszcze
+    // ŻADNEGO zakończonego biegu — `rewizja_biegu: null` zostaje `undefined`,
+    // nie 0 ani inną zgadniętą wartością.
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(9), rewizjaBiezacegoModelu: 9 });
+    useAppStateStore.setState({ activeCaseResultStatus: 'OUTDATED' });
+    useStudyCasesStore.setState({
+      activeCase: studyCaseFixture('case-1', 'Przypadek bez biegów', {
+        result_status: 'NONE',
+        rewizja_biegu: null,
+      }),
+    });
+
+    const { result } = renderHook(() => useSwiezoscWynikow());
+    expect(result.current.rewizjaDanej).toBeUndefined();
+  });
+
+  it("activeCaseResultStatus='OUTDATED', przypadek Z zakończonym biegiem -> rewizjaDanej z koperty rewizji (CV-2), realna para OD STARTU hooka", () => {
+    // Naprawa karty TODO-UI2 p.9: `StudyCase.rewizja_biegu` (backend
+    // `status_wynikow_przypadku`, wyprowadzone z koperty rewizji) daje realną
+    // parę rewizji BEZ czekania na kolejne zdarzenie magistrali.
+    useSnapshotStore.setState({ snapshot: snapshotZRewizja(9), rewizjaBiezacegoModelu: 9 });
+    useAppStateStore.setState({ activeCaseResultStatus: 'OUTDATED' });
+    useStudyCasesStore.setState({
+      activeCase: studyCaseFixture('case-1', 'Przypadek z biegiem', {
+        result_status: 'OUTDATED',
+        rewizja_biegu: 7,
+        rewizja_biezaca: 9,
+      }),
+    });
+
+    const { result } = renderHook(() => useSwiezoscWynikow());
+    expect(result.current).toEqual({
+      stan: 'nieaktualne',
+      rewizjaDanej: 7,
+      rewizjaModelu: 9,
+      przyczyna: 'model-zmieniony',
+    });
   });
 });
 

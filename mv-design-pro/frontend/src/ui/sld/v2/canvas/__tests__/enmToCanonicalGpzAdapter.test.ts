@@ -32,6 +32,10 @@ type EnmFragment = Pick<
   // `resolveBayCtRatingAnnotations`, reużyte ze stacji).
   | 'protection_assignments'
   | 'measurements'
+  // F13.1 (spec §21.1, D3-1): derywacja kolumny WN gdy `gpz_hv_sections`
+  // puste czyta `snapshot.sources` — `buildCanonicalGpzProps` wymaga tej
+  // kolekcji dokładnie jak produkcyjny wywołujący (`buildScene.ts`).
+  | 'sources'
 >;
 
 function emptyEnm(): EnmFragment {
@@ -44,6 +48,7 @@ function emptyEnm(): EnmFragment {
     branches: [],
     protection_assignments: [],
     measurements: [],
+    sources: [],
   };
 }
 

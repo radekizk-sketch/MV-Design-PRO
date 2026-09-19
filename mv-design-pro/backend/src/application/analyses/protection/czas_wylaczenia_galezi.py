@@ -30,7 +30,6 @@ identyfikatorze, wiec dla tego samego modelu wynik jest identyczny.
 
 from __future__ import annotations
 
-from collections import deque
 from dataclasses import dataclass
 from typing import Any
 
@@ -42,6 +41,7 @@ from enm.models import EnergyNetworkModel
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.switch import SwitchState, SwitchType
+from network_model.core.topologia import przeglad_wszerz_od
 from network_model.solvers.protection_iec60255 import (
     IEC60255_CURVE_PARAMS,
     IEC60255CurveType,
@@ -209,30 +209,37 @@ def znajdz_aparat_chroniacy(graph: NetworkGraph, branch_id: str) -> str | None:
     if not start:
         return None
 
-    # Kolejka: (wezel, id ostatniego napotkanego aparatu wylaczajacego).
-    kolejka: deque[tuple[str, str | None]] = deque((w, None) for w in start)
-    # Odwiedzone pary wezel+aparat: ten sam wezel osiagniety „zza” innego aparatu
-    # to inny stan ochrony, wiec klucz musi obejmowac oba.
-    odwiedzone: set[tuple[str, str | None]] = set(kolejka)
+    # Stan przegladu: (wezel, id ostatniego napotkanego aparatu wylaczajacego) — ten
+    # sam wezel osiagniety „zza” innego aparatu to inny stan ochrony. Przeglad
+    # wszerz po stanach prowadzi jedyne jadro topologii
+    # (``network_model.core.topologia.przeglad_wszerz``, CV-4.3); kolejnosc odkrycia
+    # stanow jest ta sama co dawnej kolejki, wiec pierwszy stan, z ktorego widac
+    # szukana galaz z niepustym aparatem, jest ten sam.
+    Stan = tuple[str, str | None]
 
-    while kolejka:
-        wezel, ostatni_aparat = kolejka.popleft()
+    def _nastepne(stan: Stan) -> list[tuple[None, Stan]]:
+        wezel, ostatni_aparat = stan
+        wynik: list[tuple[None, Stan]] = []
         for sasiad, rodzaj, ident in sasiedztwo.get(wezel, []):
             if rodzaj == "galaz" and ident == branch_id:
-                # Dotarlismy do szukanej galezi — chroni ja ostatni aparat na drodze.
-                if ostatni_aparat is not None:
-                    return ostatni_aparat
                 continue
             nowy_aparat = ostatni_aparat
             if rodzaj == "lacznik":
                 switch = graph.switches[ident]
                 if switch.switch_type in _APARATY_WYLACZAJACE:
                     nowy_aparat = ident
-            stan = (sasiad, nowy_aparat)
-            if stan in odwiedzone:
-                continue
-            odwiedzone.add(stan)
-            kolejka.append(stan)
+            wynik.append((None, (sasiad, nowy_aparat)))
+        return wynik
+
+    kolejnosc = przeglad_wszerz_od([(w, None) for w in start], _nastepne)
+    for wezel, ostatni_aparat in kolejnosc:
+        if ostatni_aparat is None:
+            continue
+        if any(
+            rodzaj == "galaz" and ident == branch_id
+            for _sasiad, rodzaj, ident in sasiedztwo.get(wezel, [])
+        ):
+            return ostatni_aparat
     return None
 
 

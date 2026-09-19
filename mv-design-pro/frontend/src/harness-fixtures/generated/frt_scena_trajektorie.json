@@ -1,0 +1,3097 @@
+{
+  "modul_der": {
+    "id": "conv-pv-1mw-15kv",
+    "kind": "PV",
+    "nazwa": "Farma PV 1 MW / 15 kV",
+    "pmax_mw": 1.0,
+    "un_kv": 15.0
+  },
+  "obwiednia_profilu": {
+    "opis": "Krzywa LVRT operatora: dozwolony przebieg napięcia (czas→napięcie) wg profilu NC RfG.",
+    "punkty": [
+      {
+        "czas_s": 0.0,
+        "napiecie_pu": 0.05
+      },
+      {
+        "czas_s": 0.15,
+        "napiecie_pu": 0.05
+      },
+      {
+        "czas_s": 0.7,
+        "napiecie_pu": 0.5
+      },
+      {
+        "czas_s": 1.5,
+        "napiecie_pu": 0.85
+      },
+      {
+        "czas_s": 3.0,
+        "napiecie_pu": 0.9
+      }
+    ],
+    "rodzaj": "lvrt"
+  },
+  "ocena_dowodowa": {
+    "audit_ref": "karta_s1_s4_dowod.md §0.9",
+    "capability_id": "frt_hvrt.trajectory",
+    "claim_kind": "DYNAMIC_PERFORMANCE",
+    "claim_kind_pl": "zachowanie_dynamiczne",
+    "rationale_pl": "Trajektoria napiecia MVP jest funkcja zadana parametryzowana wejsciem scenariusza, nie rozwiazaniem sieci sprzezonym z reszta modulu — network_model/solvers/frt_hvrt/engine.py.",
+    "regulatory_evidence_eligible": false,
+    "tier": "UNVALIDATED_MODEL",
+    "tier_pl": "model_niezwalidowany"
+  },
+  "operator": {
+    "id": "pse",
+    "nazwa": "PSE — Polskie Sieci Elektroenergetyczne"
+  },
+  "scenariusze": [
+    {
+      "liczba_punktow_trajektorii": 500,
+      "margin_to_curve_pu": 0.0,
+      "margin_to_curve_s": null,
+      "p_recovery_time_s": 0.27,
+      "scenario_id": "lvrt_conv-pv-1mw-15kv",
+      "status": "ok",
+      "stayed_connected": true,
+      "trajektoria": [
+        {
+          "czas_s": 0.0,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.01,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.02,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.03,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.04,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.05,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.06,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.07,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.08,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.09,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.1,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.11,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.12,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.13,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.14,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.15,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.16,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.17,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.18,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.19,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.2,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.21,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.22,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.23,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.24,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.25,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.26,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.27,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.28,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.29,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.3,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.31,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.32,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.33,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.34,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.35,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.36,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.37,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.38,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.39,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.4,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.41,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.42,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.43,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.44,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.45,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.46,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.47,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.48,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.49,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 0.5,
+          "iq_bierny_pu": 0.05,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.990263
+        },
+        {
+          "czas_s": 0.51,
+          "iq_bierny_pu": 0.4312,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.898086
+        },
+        {
+          "czas_s": 0.52,
+          "iq_bierny_pu": 0.659438,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.814723
+        },
+        {
+          "czas_s": 0.53,
+          "iq_bierny_pu": 0.796093,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.73933
+        },
+        {
+          "czas_s": 0.54,
+          "iq_bierny_pu": 0.877913,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.671147
+        },
+        {
+          "czas_s": 0.55,
+          "iq_bierny_pu": 0.926902,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.609483
+        },
+        {
+          "czas_s": 0.56,
+          "iq_bierny_pu": 0.956234,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.553716
+        },
+        {
+          "czas_s": 0.57,
+          "iq_bierny_pu": 0.973795,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.503281
+        },
+        {
+          "czas_s": 0.58,
+          "iq_bierny_pu": 0.98431,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.457668
+        },
+        {
+          "czas_s": 0.59,
+          "iq_bierny_pu": 0.990606,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.416417
+        },
+        {
+          "czas_s": 0.6,
+          "iq_bierny_pu": 0.994375,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.37911
+        },
+        {
+          "czas_s": 0.61,
+          "iq_bierny_pu": 0.996632,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.34537
+        },
+        {
+          "czas_s": 0.62,
+          "iq_bierny_pu": 0.997984,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.314856
+        },
+        {
+          "czas_s": 0.63,
+          "iq_bierny_pu": 0.998793,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.28726
+        },
+        {
+          "czas_s": 0.64,
+          "iq_bierny_pu": 0.999277,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.262303
+        },
+        {
+          "czas_s": 0.65,
+          "iq_bierny_pu": 0.999567,
+          "napiecie_pu": 0.05,
+          "p_czynna_pu": 0.24947
+        },
+        {
+          "czas_s": 0.66,
+          "iq_bierny_pu": 0.999741,
+          "napiecie_pu": 0.145,
+          "p_czynna_pu": 0.321234
+        },
+        {
+          "czas_s": 0.67,
+          "iq_bierny_pu": 0.999845,
+          "napiecie_pu": 0.24,
+          "p_czynna_pu": 0.386136
+        },
+        {
+          "czas_s": 0.68,
+          "iq_bierny_pu": 0.999907,
+          "napiecie_pu": 0.335,
+          "p_czynna_pu": 0.444833
+        },
+        {
+          "czas_s": 0.69,
+          "iq_bierny_pu": 0.999944,
+          "napiecie_pu": 0.43,
+          "p_czynna_pu": 0.497916
+        },
+        {
+          "czas_s": 0.7,
+          "iq_bierny_pu": 0.995453,
+          "napiecie_pu": 0.525,
+          "p_czynna_pu": 0.545925
+        },
+        {
+          "czas_s": 0.71,
+          "iq_bierny_pu": 0.93207,
+          "napiecie_pu": 0.62,
+          "p_czynna_pu": 0.589342
+        },
+        {
+          "czas_s": 0.72,
+          "iq_bierny_pu": 0.817881,
+          "napiecie_pu": 0.715,
+          "p_czynna_pu": 0.628609
+        },
+        {
+          "czas_s": 0.73,
+          "iq_bierny_pu": 0.673271,
+          "napiecie_pu": 0.81,
+          "p_czynna_pu": 0.66412
+        },
+        {
+          "czas_s": 0.74,
+          "iq_bierny_pu": 0.510448,
+          "napiecie_pu": 0.905,
+          "p_czynna_pu": 0.696236
+        },
+        {
+          "czas_s": 0.75,
+          "iq_bierny_pu": 0.33672,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.725282
+        },
+        {
+          "czas_s": 0.76,
+          "iq_bierny_pu": 0.201607,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.75155
+        },
+        {
+          "czas_s": 0.77,
+          "iq_bierny_pu": 0.120709,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.775306
+        },
+        {
+          "czas_s": 0.78,
+          "iq_bierny_pu": 0.072273,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.796791
+        },
+        {
+          "czas_s": 0.79,
+          "iq_bierny_pu": 0.043273,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.816221
+        },
+        {
+          "czas_s": 0.8,
+          "iq_bierny_pu": 0.025909,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.833794
+        },
+        {
+          "czas_s": 0.81,
+          "iq_bierny_pu": 0.015513,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.849686
+        },
+        {
+          "czas_s": 0.82,
+          "iq_bierny_pu": 0.009288,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.864059
+        },
+        {
+          "czas_s": 0.83,
+          "iq_bierny_pu": 0.005561,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.877057
+        },
+        {
+          "czas_s": 0.84,
+          "iq_bierny_pu": 0.00333,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.888813
+        },
+        {
+          "czas_s": 0.85,
+          "iq_bierny_pu": 0.001994,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.899444
+        },
+        {
+          "czas_s": 0.86,
+          "iq_bierny_pu": 0.001194,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.909059
+        },
+        {
+          "czas_s": 0.87,
+          "iq_bierny_pu": 0.000715,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.917755
+        },
+        {
+          "czas_s": 0.88,
+          "iq_bierny_pu": 0.000428,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.925619
+        },
+        {
+          "czas_s": 0.89,
+          "iq_bierny_pu": 0.000256,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.932731
+        },
+        {
+          "czas_s": 0.9,
+          "iq_bierny_pu": 0.000153,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.939163
+        },
+        {
+          "czas_s": 0.91,
+          "iq_bierny_pu": 9.2e-05,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.94498
+        },
+        {
+          "czas_s": 0.92,
+          "iq_bierny_pu": 5.5e-05,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.950241
+        },
+        {
+          "czas_s": 0.93,
+          "iq_bierny_pu": 3.3e-05,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.954999
+        },
+        {
+          "czas_s": 0.94,
+          "iq_bierny_pu": 2e-05,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.959302
+        },
+        {
+          "czas_s": 0.95,
+          "iq_bierny_pu": 1.2e-05,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.963193
+        },
+        {
+          "czas_s": 0.96,
+          "iq_bierny_pu": 7e-06,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.966713
+        },
+        {
+          "czas_s": 0.97,
+          "iq_bierny_pu": 4e-06,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.969896
+        },
+        {
+          "czas_s": 0.98,
+          "iq_bierny_pu": 3e-06,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.972774
+        },
+        {
+          "czas_s": 0.99,
+          "iq_bierny_pu": 2e-06,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.975377
+        },
+        {
+          "czas_s": 1.0,
+          "iq_bierny_pu": 1e-06,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.977732
+        },
+        {
+          "czas_s": 1.01,
+          "iq_bierny_pu": 1e-06,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.979861
+        },
+        {
+          "czas_s": 1.02,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.981787
+        },
+        {
+          "czas_s": 1.03,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.983528
+        },
+        {
+          "czas_s": 1.04,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.985103
+        },
+        {
+          "czas_s": 1.05,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.986528
+        },
+        {
+          "czas_s": 1.06,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.987816
+        },
+        {
+          "czas_s": 1.07,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.988981
+        },
+        {
+          "czas_s": 1.08,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.990034
+        },
+        {
+          "czas_s": 1.09,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.990987
+        },
+        {
+          "czas_s": 1.1,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.991849
+        },
+        {
+          "czas_s": 1.11,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.992628
+        },
+        {
+          "czas_s": 1.12,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.993333
+        },
+        {
+          "czas_s": 1.13,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.993971
+        },
+        {
+          "czas_s": 1.14,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.994547
+        },
+        {
+          "czas_s": 1.15,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.995069
+        },
+        {
+          "czas_s": 1.16,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.99554
+        },
+        {
+          "czas_s": 1.17,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.995967
+        },
+        {
+          "czas_s": 1.18,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.996352
+        },
+        {
+          "czas_s": 1.19,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.996701
+        },
+        {
+          "czas_s": 1.2,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.997017
+        },
+        {
+          "czas_s": 1.21,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.997302
+        },
+        {
+          "czas_s": 1.22,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.99756
+        },
+        {
+          "czas_s": 1.23,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.997793
+        },
+        {
+          "czas_s": 1.24,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.998004
+        },
+        {
+          "czas_s": 1.25,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.998195
+        },
+        {
+          "czas_s": 1.26,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.998368
+        },
+        {
+          "czas_s": 1.27,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.998524
+        },
+        {
+          "czas_s": 1.28,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.998665
+        },
+        {
+          "czas_s": 1.29,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.998792
+        },
+        {
+          "czas_s": 1.3,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.998908
+        },
+        {
+          "czas_s": 1.31,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999012
+        },
+        {
+          "czas_s": 1.32,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999107
+        },
+        {
+          "czas_s": 1.33,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999192
+        },
+        {
+          "czas_s": 1.34,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999269
+        },
+        {
+          "czas_s": 1.35,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999339
+        },
+        {
+          "czas_s": 1.36,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999402
+        },
+        {
+          "czas_s": 1.37,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.99946
+        },
+        {
+          "czas_s": 1.38,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999511
+        },
+        {
+          "czas_s": 1.39,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999558
+        },
+        {
+          "czas_s": 1.4,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.9996
+        },
+        {
+          "czas_s": 1.41,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999638
+        },
+        {
+          "czas_s": 1.42,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999673
+        },
+        {
+          "czas_s": 1.43,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999704
+        },
+        {
+          "czas_s": 1.44,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999733
+        },
+        {
+          "czas_s": 1.45,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999758
+        },
+        {
+          "czas_s": 1.46,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999781
+        },
+        {
+          "czas_s": 1.47,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999802
+        },
+        {
+          "czas_s": 1.48,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999821
+        },
+        {
+          "czas_s": 1.49,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999838
+        },
+        {
+          "czas_s": 1.5,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999854
+        },
+        {
+          "czas_s": 1.51,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999868
+        },
+        {
+          "czas_s": 1.52,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.99988
+        },
+        {
+          "czas_s": 1.53,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999892
+        },
+        {
+          "czas_s": 1.54,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999902
+        },
+        {
+          "czas_s": 1.55,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999911
+        },
+        {
+          "czas_s": 1.56,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.99992
+        },
+        {
+          "czas_s": 1.57,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999928
+        },
+        {
+          "czas_s": 1.58,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999935
+        },
+        {
+          "czas_s": 1.59,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999941
+        },
+        {
+          "czas_s": 1.6,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999946
+        },
+        {
+          "czas_s": 1.61,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999952
+        },
+        {
+          "czas_s": 1.62,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999956
+        },
+        {
+          "czas_s": 1.63,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.99996
+        },
+        {
+          "czas_s": 1.64,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999964
+        },
+        {
+          "czas_s": 1.65,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999968
+        },
+        {
+          "czas_s": 1.66,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999971
+        },
+        {
+          "czas_s": 1.67,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999973
+        },
+        {
+          "czas_s": 1.68,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999976
+        },
+        {
+          "czas_s": 1.69,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999978
+        },
+        {
+          "czas_s": 1.7,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.99998
+        },
+        {
+          "czas_s": 1.71,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999982
+        },
+        {
+          "czas_s": 1.72,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999984
+        },
+        {
+          "czas_s": 1.73,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999985
+        },
+        {
+          "czas_s": 1.74,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999987
+        },
+        {
+          "czas_s": 1.75,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999988
+        },
+        {
+          "czas_s": 1.76,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999989
+        },
+        {
+          "czas_s": 1.77,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.99999
+        },
+        {
+          "czas_s": 1.78,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999991
+        },
+        {
+          "czas_s": 1.79,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999992
+        },
+        {
+          "czas_s": 1.8,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999993
+        },
+        {
+          "czas_s": 1.81,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999994
+        },
+        {
+          "czas_s": 1.82,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999994
+        },
+        {
+          "czas_s": 1.83,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999995
+        },
+        {
+          "czas_s": 1.84,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999995
+        },
+        {
+          "czas_s": 1.85,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999996
+        },
+        {
+          "czas_s": 1.86,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999996
+        },
+        {
+          "czas_s": 1.87,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999996
+        },
+        {
+          "czas_s": 1.88,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999997
+        },
+        {
+          "czas_s": 1.89,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999997
+        },
+        {
+          "czas_s": 1.9,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999997
+        },
+        {
+          "czas_s": 1.91,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999998
+        },
+        {
+          "czas_s": 1.92,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999998
+        },
+        {
+          "czas_s": 1.93,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999998
+        },
+        {
+          "czas_s": 1.94,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999998
+        },
+        {
+          "czas_s": 1.95,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999998
+        },
+        {
+          "czas_s": 1.96,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999999
+        },
+        {
+          "czas_s": 1.97,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999999
+        },
+        {
+          "czas_s": 1.98,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999999
+        },
+        {
+          "czas_s": 1.99,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999999
+        },
+        {
+          "czas_s": 2.0,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999999
+        },
+        {
+          "czas_s": 2.01,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999999
+        },
+        {
+          "czas_s": 2.02,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999999
+        },
+        {
+          "czas_s": 2.03,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999999
+        },
+        {
+          "czas_s": 2.04,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999999
+        },
+        {
+          "czas_s": 2.05,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999999
+        },
+        {
+          "czas_s": 2.06,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 0.999999
+        },
+        {
+          "czas_s": 2.07,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.08,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.09,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.1,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.11,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.12,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.13,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.14,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.15,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.16,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.17,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.18,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.19,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.2,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.21,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.22,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.23,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.24,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.25,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.26,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.27,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.28,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.29,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.3,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.31,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.32,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.33,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.34,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.35,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.36,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.37,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.38,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.39,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.4,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.41,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.42,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.43,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.44,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.45,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.46,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.47,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.48,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.49,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.5,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.51,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.52,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.53,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.54,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.55,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.56,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.57,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.58,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.59,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.6,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.61,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.62,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.63,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.64,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.65,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.66,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.67,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.68,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.69,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.7,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.71,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.72,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.73,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.74,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.75,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.76,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.77,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.78,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.79,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.8,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.81,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.82,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.83,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.84,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.85,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.86,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.87,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.88,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.89,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.9,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.91,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.92,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.93,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.94,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.95,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.96,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.97,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.98,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 2.99,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.0,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.01,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.02,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.03,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.04,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.05,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.06,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.07,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.08,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.09,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.1,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.11,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.12,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.13,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.14,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.15,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.16,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.17,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.18,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.19,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.2,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.21,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.22,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.23,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.24,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.25,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.26,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.27,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.28,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.29,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.3,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.31,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.32,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.33,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.34,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.35,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.36,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.37,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.38,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.39,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.4,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.41,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.42,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.43,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.44,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.45,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.46,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.47,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.48,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.49,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.5,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.51,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.52,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.53,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.54,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.55,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.56,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.57,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.58,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.59,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.6,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.61,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.62,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.63,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.64,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.65,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.66,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.67,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.68,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.69,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.7,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.71,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.72,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.73,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.74,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.75,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.76,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.77,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.78,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.79,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.8,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.81,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.82,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.83,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.84,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.85,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.86,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.87,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.88,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.89,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.9,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.91,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.92,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.93,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.94,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.95,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.96,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.97,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.98,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 3.99,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.0,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.01,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.02,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.03,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.04,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.05,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.06,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.07,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.08,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.09,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.1,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.11,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.12,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.13,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.14,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.15,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.16,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.17,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.18,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.19,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.2,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.21,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.22,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.23,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.24,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.25,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.26,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.27,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.28,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.29,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.3,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.31,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.32,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.33,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.34,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.35,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.36,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.37,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.38,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.39,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.4,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.41,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.42,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.43,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.44,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.45,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.46,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.47,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.48,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.49,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.5,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.51,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.52,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.53,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.54,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.55,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.56,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.57,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.58,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.59,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.6,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.61,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.62,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.63,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.64,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.65,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.66,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.67,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.68,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.69,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.7,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.71,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.72,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.73,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.74,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.75,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.76,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.77,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.78,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.79,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.8,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.81,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.82,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.83,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.84,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.85,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.86,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.87,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.88,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.89,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.9,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.91,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.92,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.93,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.94,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.95,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.96,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.97,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.98,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        },
+        {
+          "czas_s": 4.99,
+          "iq_bierny_pu": 0.0,
+          "napiecie_pu": 1.0,
+          "p_czynna_pu": 1.0
+        }
+      ],
+      "wejscie_solvera": {
+        "fault_duration_s": 0.15,
+        "target_der_ref": "conv-pv-1mw-15kv",
+        "test_kind": "lvrt",
+        "voltage_dip_depth_pu": 0.05
+      },
+      "werdykt_pl": "w obwiedni",
+      "wywod": [
+        {
+          "latex": null,
+          "tekst": "Scenariusz lvrt_conv-pv-1mw-15kv (LVRT): napiecie zaklocenia 0.0500 p.u. przez 0.1500 s (echo wejscia solvera prob FRT/HVRT)."
+        },
+        {
+          "latex": "m_{U} = \\min_{t \\ge t_{z}}\\bigl(u(t) - u_{kr}(t)\\bigr)",
+          "tekst": "Wzor: margines napieciowy trajektorii wzgledem krzywej minimalnej (minimum roznicy napiecia trajektorii i krzywej od poczatku zaklocenia)"
+        },
+        {
+          "latex": null,
+          "tekst": "Dane: margines z wyniku solvera m_U = 0.000000 p.u., liczba punktow trajektorii: 500."
+        },
+        {
+          "latex": "m_{U} = 0.000000\\ \\text{p.u.} \\ge 0",
+          "tekst": "Podstawienie: warunek utrzymania w obwiedni m_U >= 0: 0.000000 >= 0 SPELNIONE"
+        },
+        {
+          "latex": null,
+          "tekst": "Dane: czas odzysku mocy czynnej po zakloceniu t_odz = 0.270000 s (pole wyniku solvera)."
+        },
+        {
+          "latex": null,
+          "tekst": "Werdykt: w obwiedni."
+        }
+      ]
+    }
+  ],
+  "status_solvera": "ok",
+  "test_kind": "lvrt"
+}

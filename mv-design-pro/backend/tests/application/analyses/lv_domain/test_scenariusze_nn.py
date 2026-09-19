@@ -125,8 +125,17 @@ class TestFaktyScenariuszy:
         assert len(konflikt["graph"]["islands"]) == 1
         assert konflikt["graph"]["islands"][0]["energization_state"] == "CONFLICT"
         assert "NN-AUD-06" in _kody(konflikt)
-        # Ograniczenie zarejestrowane: kotwice Thevenina bez danych (dwa węzły SLACK).
-        assert all(u["status"] == "brak danych" for u in dwie["upstream_equivalents"])
+        # CV-4.3 K3b: IR przyjmuje węzeł SLACK per źródło — każda kotwica liczy równoważnik
+        # Thevenina z WŁASNEJ wyspy (do K3b: „brak danych", dwa węzły SLACK odrzucane w IR).
+        kotwice = {u["transformer_ref"]: u for u in dwie["upstream_equivalents"]}
+        assert {u["status"] for u in kotwice.values()} == {"OK"}
+        assert kotwice["TA"]["equivalent_id"] != kotwice["TB"]["equivalent_id"]
+        assert (
+            kotwice["TA"]["upstream_node_id"] == "sn" and kotwice["TB"]["upstream_node_id"] == "sn2"
+        )
+        # 06 (sprzęgło zamknięte): jedna wyspa z dwoma źródłami — równoważnik liczy superpozycję
+        # obu GPZ (IEC 60909), konflikt pracy równoległej zostaje w komunikatach (NN-AUD-06).
+        assert {u["status"] for u in konflikt["upstream_equivalents"]} == {"OK"}
 
     def test_07_08_09_wyspy_der(self, projekcje) -> None:
         podazajace = _wyspa_szyny(projekcje["07_island_grid_following"], "RGN-D_szyna")

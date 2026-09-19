@@ -32,6 +32,7 @@
  * elementów — element bez danej przechodziłby test tak samo jak element z daną.
  */
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -155,6 +156,8 @@ async function zbudujSiec(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
   });
 
   const trunk = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {
@@ -235,7 +238,7 @@ async function otworzPowloke(
 async function otworzMacierzZgodnosci(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Wyniki i dowody \d$/ }).click();
   await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 30000 });
-  await page.getByTestId('mvd-wyniki-zakladka-ncrfg').click();
+  await otworzZakladkeWynikow(page, 'ncrfg');
   await expect(page.getByTestId('mvd-oze-macierz-ncrfg')).toBeVisible({ timeout: 30000 });
 }
 
@@ -277,6 +280,13 @@ test('krytyczny łańcuch dowodu PTPiREE: kreator OZE → tabliczka w modelu →
   // ------------------------------------------------------------------
   await otworzMacierzZgodnosci(page);
   await expect(page.getByTestId('mvd-oze-pusty')).toContainText('Brak modułów wytwórczych do oceny');
+  // W3-D: sekcja "Zgodność przekrojowa przypadku" czyta model NA ŻYWO,
+  // niezależnie od macierzy per DER — bez modułu w modelu pokazuje WŁASNY
+  // uczciwy stan zerowy (nie ukrywa się razem z macierzą, nie udaje danych).
+  await expect(page.getByTestId('mvd-oze-zgodnosc-przekrojowa')).toBeVisible({ timeout: 30000 });
+  await expect(page.getByTestId('mvd-oze-zgodnosc-przekrojowa-brak-der')).toBeVisible({
+    timeout: 30000,
+  });
   await page.getByRole('button', { name: 'Dodaj źródło OZE' }).click();
   await expect(page.getByTestId('mvd-kreator-oze')).toBeVisible({ timeout: 30000 });
   // Kreator MUSI mieć kontekst rozdzielni z modelu (inaczej zapis jest zablokowany).
@@ -378,6 +388,17 @@ test('krytyczny łańcuch dowodu PTPiREE: kreator OZE → tabliczka w modelu →
   await przeladujPowloke(page);
   await otworzMacierzZgodnosci(page);
   await expect(page.getByTestId('mvd-oze-macierz-tabela')).toBeVisible({ timeout: 30000 });
+  // W3-D: sekcja przekrojowa widzi OBA źródła NA ŻYWO z modelu, BEZ klikania
+  // „Przeprowadź testy zgodności" (krok niżej) — dowód, że jest niezależna od
+  // biegu macierzy per DER, nie jego duplikatem. Kanon zastępujący skasowany
+  // `application/compliance/source_compliance.py` (karta W3-D).
+  await expect(page.getByTestId('mvd-oze-zgodnosc-przekrojowa-tabela')).toBeVisible({
+    timeout: 30000,
+  });
+  await expect(page.getByTestId(`mvd-oze-zgodnosc-przekrojowa-werdykt-${refPowiazany}`)).toBeVisible();
+  await expect(
+    page.getByTestId(`mvd-oze-zgodnosc-przekrojowa-werdykt-${refNiepowiazany}`),
+  ).toBeVisible();
   // Zdolność „zaprzestanie generacji" (test T12) jest daną DEKLAROWANĄ projektanta —
   // bez niej bramka kompletności certyfikatu odrzuca dokument (uczciwa lista braków).
   await zadeklarujZdolnoscModulu(page, refPowiazany);

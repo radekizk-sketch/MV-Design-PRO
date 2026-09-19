@@ -263,8 +263,24 @@ def zbuduj(tryb: str) -> dict[str, Any]:
             klienci.append(wynik.get("station_ref"))
 
     gotowosc = zadanie("GET", f"/api/cases/{sesja.case_id}/engineering-readiness")
-    zwarcie = zadanie("POST", f"/api/cases/{sesja.case_id}/runs/short-circuit", {})
-    rozplyw = zadanie("POST", f"/api/cases/{sesja.case_id}/runs/power-flow", {})
+    # K5.1 (CV-4.3-A4, 2026-09-06): `POST /api/cases/{id}/runs/{short-circuit,
+    # power-flow}` skasowane procedurą siedmiu kroków (0 konsumentów produkcyjnych
+    # poza tym skryptem, zmierzone przy karcie) — bieg powstaje odtąd torem
+    # kanonicznym: `POST /api/execution/study-cases/{id}/runs` -> `.../execute`.
+    zwarcie_bieg = zadanie(
+        "POST",
+        f"/api/execution/study-cases/{sesja.case_id}/runs",
+        {"analysis_type": "SC_3F"},
+    )
+    zadanie("POST", f"/api/execution/runs/{zwarcie_bieg['id']}/execute")
+    zwarcie = zadanie("GET", f"/api/analysis-runs/{zwarcie_bieg['id']}/results/short-circuit")
+    rozplyw_bieg = zadanie(
+        "POST",
+        f"/api/execution/study-cases/{sesja.case_id}/runs",
+        {"analysis_type": "LOAD_FLOW"},
+    )
+    zadanie("POST", f"/api/execution/runs/{rozplyw_bieg['id']}/execute")
+    rozplyw = zadanie("GET", f"/api/power-flow-runs/{rozplyw_bieg['id']}/results")
 
     return {
         "tryb": tryb,
@@ -276,10 +292,15 @@ def zbuduj(tryb: str) -> dict[str, Any]:
         "stacje_klientow": klienci,
         "odmowy_wciecia": odmowy,
         "ready": gotowosc.get("ready"),
-        "sc_run": zwarcie.get("run_id"),
-        "sc_rows": len(zwarcie.get("results", [])),
-        "pf_run": rozplyw.get("run_id"),
-        "pf_converged": (rozplyw.get("summary") or {}).get("converged"),
+        "sc_run": zwarcie_bieg.get("id"),
+        "sc_rows": len(zwarcie.get("rows", [])),
+        "pf_run": rozplyw_bieg.get("id"),
+        # NAPRAWIONE PRZY OKAZJI (Zero-Debt — błąd napotkany, nie tej karty):
+        # dawne `(rozplyw.get("summary") or {}).get("converged")` czytało klucz
+        # `"summary"`, którego odpowiedź `.../runs/power-flow` NIGDY nie niosła
+        # (pole `converged` było i jest NAJWYŻSZEGO POZIOMU w `result`/wyniku PF)
+        # — `pf_converged` w każdym dotychczasowym raporcie JSON wychodził `None`.
+        "pf_converged": rozplyw.get("converged"),
         "_case": sesja.case_id,
     }
 

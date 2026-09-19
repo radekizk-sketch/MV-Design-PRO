@@ -22,6 +22,7 @@ from application.proof_engine.types import (
     SymbolDefinition,
     UnitCheckResult,
 )
+from network_model.pochodne import calka_joule_ka2s
 
 STATUS_PASS = "PASS"
 STATUS_FAIL = "FAIL"
@@ -198,8 +199,8 @@ class EquipmentProofGenerator:
             # odniesienia porównanie energii cieplnej I²t (kryterialne, bez
             # fizyki): Ith_req²·tk ≤ Ithr²·t_thr. Wielkości z kontraktu:
             # ith_ka+tk_s z wyniku, i_th_ka+t_th_s z katalogu aparatu.
-            required_i2t = required_val**2 * required_time
-            device_i2t = device_val**2 * device_time
+            required_i2t = calka_joule_ka2s(required_val, required_time)
+            device_i2t = calka_joule_ka2s(device_val, device_time)
             status = STATUS_PASS if device_i2t >= required_i2t else STATUS_FAIL
             return EquipmentProofCheckResult(
                 name="Ith",
@@ -519,8 +520,8 @@ class EquipmentProofGenerator:
                     _symbol("t_k", "s", "Czas zwarcia", "tk_s"),
                 ),
             )
-            required_i2t = required_val**2 * required_time
-            device_i2t = device_val**2 * device_time
+            required_i2t = calka_joule_ka2s(required_val, required_time)
+            device_i2t = calka_joule_ka2s(device_val, device_time)
             substitution = (
                 f"I_{{th,req}}^2 \\cdot t_k = {required_val:.4f}^2 \\cdot {required_time:.4f} = "
                 f"{required_i2t:.4f}\\,\\text{{kA}}^2\\text{{s}} "

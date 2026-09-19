@@ -213,7 +213,7 @@ describe('validateCommand — AttachDer', () => {
       attachmentPortId: '',
       parentStationId: null,
       nominalPowerKw: 100,
-      portKind: 'output',
+      portKind: 'nn_der_pv',
     };
     const result = validateCommand(emptyBuildSequence(), cmd);
     expect(result.valid).toBe(false);
@@ -228,7 +228,7 @@ describe('validateCommand — AttachDer', () => {
       attachmentPortId: 'port_x',
       parentStationId: null,
       nominalPowerKw: 100,
-      portKind: 'output',
+      portKind: 'nn_der_pv',
     };
     expect(validateCommand(emptyBuildSequence(), cmd).valid).toBe(true);
   });
@@ -307,7 +307,7 @@ describe('buildSequenceStats', () => {
       attachmentPortId: 'port_x',
       parentStationId: 'st_1',
       nominalPowerKw: 100,
-      portKind: 'output',
+      portKind: 'nn_der_pv',
     });
     const stats = buildSequenceStats(seq);
     expect(stats.gpzCount).toBe(1);
@@ -402,7 +402,7 @@ describe('inferBuildPhase', () => {
       attachmentPortId: 'port_x',
       parentStationId: 'st_1',
       nominalPowerKw: 100,
-      portKind: 'output',
+      portKind: 'nn_der_pv',
     });
     expect(inferBuildPhase(seq)).toBe('READY');
   });

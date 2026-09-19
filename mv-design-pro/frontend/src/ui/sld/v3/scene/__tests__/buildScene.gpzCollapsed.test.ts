@@ -100,13 +100,31 @@ describe('KD-5 — L0: blok GPZ ZWINIĘTY (jeden symbol, zero geometrii pól wew
     expect(gpzCollapseGaps(sceneL0)).toEqual([]);
   });
 
-  it('GPZ wnosi na L0 dokładnie 3 symbole (blok + sieć zewnętrzna + aparat pola magistrali) wobec 16 na L1', () => {
+  it('GPZ wnosi na L0 dokładnie 3 symbole (blok + sieć zewnętrzna + aparat pola magistrali) wobec 15 na L1', () => {
     // POMIAR BAZOWY (fixtura niezmienna — liczby przybite jak golden): przed
     // zwinięciem GPZ rysował na L0 16 symboli po 16 px świata, co przy skali
     // przeglądu 0,1203 dawało ≈1,9 px na symbol (V12K-285).
+    //
+    // AKTUALIZACJA (SUB-52s, 2026-09-04): 16 → 15 na L1/L2. Przyczyna NIE jest
+    // topologiczna karta SUB-52s (E063/E003) — to DRYF NIEZALEŻNY materializacji
+    // katalogu transformatora GPZ (`tr-wn-sn-110-15-25mva-yd11`): pole
+    // `hv_neutral` transformatora GPZ (`gpz/…/transformer/001/wn_sn`) miało
+    // {type: directly_grounded} w fixturze zatwierdzonej 2026-09-01 (LV DOMAIN
+    // PROJECTION), a po regeneracji dzisiejszym kodem wychodzi `null`
+    // (dowód: `git show HEAD:<stara fixtura>` vs regenerowana, pola
+    // transformatora GPZ id-stripped — TYLKO `hv_neutral` i `i0_percent`
+    // 0,2→0,35 się różnią, reszta identyczna). Symbol `neutralEarthing`
+    // (`gpz/…/section/001`) rysuje się WYŁĄCZNIE gdy transformator niesie
+    // `hv_neutral`/`lv_neutral` — brak wartości = brak symbolu, nie regresja
+    // renderu. SUB-52s nigdy nie woła `add_grid_source_sn` (jedyne miejsce
+    // budowy GPZ) ani nie zmienia go w `sld_substrate_52s.py` (`git diff`
+    // dowodzi); jedyny setter `hv_neutral`, `_apply_station_neutral_grounding`,
+    // wywoływany jest WYŁĄCZNIE z operacji budowy STACJI SN/nN
+    // (`insert_station_on_segment_sn`/`append_station_on_endpoint`), nigdy z
+    // budowy GPZ. Pełny wywód: `kosztSceny.test.ts` pkt (13).
     expect(gpzSymbols(sceneL0).map((s) => s.symbolId).sort()).toEqual(['breaker', 'gpzCollapsed', 'gridSource']);
-    expect(gpzSymbols(sceneL1).length).toBe(16);
-    expect(gpzSymbols(sceneL2).length).toBe(16);
+    expect(gpzSymbols(sceneL1).length).toBe(15);
+    expect(gpzSymbols(sceneL2).length).toBe(15);
   });
 
   it('blok niesie TOŻSAMOŚĆ (ref GPZ + pas nazwy z napięciem i stanem) — nie anonimowy prostokąt', () => {

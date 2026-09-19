@@ -250,8 +250,12 @@ def policz(graph, scenario: FaultScenario):
     return scenario.to_dict()
 """
 
-#: Zastane wywołania `application/reference_networks/computation.py` w kształcie
-#: zgodnym z budżetem zapadki (2 x reguła A) — dokładnie tyle, ile plik ma dziś.
+#: Fikstura syntetyczna (nie realny plik) — kartę K2 (2026-09-09) usunięto jedyny
+#: realny wpis zapadki, `application/reference_networks/computation.py`; te trzy
+#: testy mechaniki zapadki (przepuszcza/łapie/żąda obniżenia) monkeypatchują
+#: WŁASNY, syntetyczny wpis `LEGACY_DIRECT_SOLVER_CALLERS` zamiast zależeć od
+#: prawdziwej, zmiennej w czasie zawartości `LEGACY_DIRECT_SOLVER_CALLERS` — 2 x
+#: reguła A, dokładnie tyle, ile fikstura poniżej ma wywołań.
 ZASTANE_ZGODNE_Z_BUDZETEM = """\
 from network_model.solvers import ShortCircuitIEC60909Solver
 
@@ -489,12 +493,21 @@ def test_pozycyjne_wywolanie_bez_wezla_w_sygnaturze_nie_jest_naruszeniem(
 # --- ZAPADKA NA WYWOLANIE (audyt 2026-08-01, znalezisko N2) ------------------------------
 
 
+#: Wpis zapadki dla fikstury syntetycznej powyżej (patrz komentarz przy
+#: ZASTANE_ZGODNE_Z_BUDZETEM) — TA SAMA ścieżka we wszystkich trzech testach.
+_SYNTETYCZNA_SCIEZKA = "application/legacy_fixture/policz.py"
+_SYNTETYCZNA_ZAPADKA = {
+    _SYNTETYCZNA_SCIEZKA: {"A:compute_2ph_short_circuit": 1, "A:compute_3ph_short_circuit": 1},
+}
+
+
 def test_zapadka_przepuszcza_dokladnie_zastane_wywolania(tmp_path, monkeypatch, capsys) -> None:
     root = _drzewo(
         tmp_path,
-        {"application/reference_networks/computation.py": ZASTANE_ZGODNE_Z_BUDZETEM},
+        {_SYNTETYCZNA_SCIEZKA: ZASTANE_ZGODNE_Z_BUDZETEM},
     )
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    monkeypatch.setattr(guard, "LEGACY_DIRECT_SOLVER_CALLERS", _SYNTETYCZNA_ZAPADKA)
     # patrz komentarz w test_odczyt_wyniku_nie_jest_naruszeniem powyzej.
     monkeypatch.setattr(guard, "WHITELISTED_PATHS", set())
 
@@ -508,15 +521,16 @@ def test_zapadka_lapie_nowe_wywolanie_w_pliku_z_listy(tmp_path, monkeypatch, cap
     """Sedno N2: plik z zapadki NIE MOZE cicho urosnac o kolejne wejscie w solver."""
     root = _drzewo(
         tmp_path,
-        {"application/reference_networks/computation.py": ZASTANE_PLUS_NOWE_WYWOLANIE},
+        {_SYNTETYCZNA_SCIEZKA: ZASTANE_PLUS_NOWE_WYWOLANIE},
     )
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    monkeypatch.setattr(guard, "LEGACY_DIRECT_SOLVER_CALLERS", _SYNTETYCZNA_ZAPADKA)
 
     rc = guard.main()
 
     out = capsys.readouterr().out
     assert rc == 1
-    assert "computation.py" in out
+    assert "policz.py" in out
     assert "zapadka zastanych wywolan 'A:compute_3ph_short_circuit'" in out
     assert "budzet 1, znaleziono 2" in out
 
@@ -525,9 +539,10 @@ def test_zapadka_zada_obnizenia_budzetu_gdy_dlug_zmalal(tmp_path, monkeypatch, c
     """Zapadka dziala w obie strony (konwencja mypy_ratchet_guard)."""
     root = _drzewo(
         tmp_path,
-        {"application/reference_networks/computation.py": ZASTANE_MINUS_WYWOLANIE},
+        {_SYNTETYCZNA_SCIEZKA: ZASTANE_MINUS_WYWOLANIE},
     )
     monkeypatch.setattr(guard, "BACKEND_SRC", root)
+    monkeypatch.setattr(guard, "LEGACY_DIRECT_SOLVER_CALLERS", _SYNTETYCZNA_ZAPADKA)
 
     rc = guard.main()
 
@@ -717,7 +732,12 @@ def test_bramka_na_szczycie_repo_jest_zielona_i_niepusta() -> None:
     assert "skipping guard" not in completed.stdout
     match = re.search(r"Scanned (\d+) Python file\(s\)", completed.stdout)
     assert match is not None, f"bramka nie zaraportowala liczby plikow:\n{completed.stdout}"
-    assert int(match.group(1)) > 700, "skan mniejszy niz backend/src — bramka patrzy nie tam"
+    # Prog obnizony 700 -> 650 karta K2 (2026-09-09): application/reference_networks/**
+    # skasowane w calosci (21 plikow) + api/reference_networks.py — pomiar po karcie: 695.
+    # Nadal daleko od "prawie nic" (skan < 700 -> patrzylby nie tam), zapadka celowo
+    # luzna (sanity check, nie precyzyjny pin liczby plikow — ta zyje w
+    # test_solver_input_substitute_guard.py).
+    assert int(match.group(1)) > 650, "skan mniejszy niz backend/src — bramka patrzy nie tam"
     assert completed.returncode == 0, completed.stdout
 
 

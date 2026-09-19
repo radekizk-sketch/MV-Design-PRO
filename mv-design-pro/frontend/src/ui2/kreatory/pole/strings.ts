@@ -16,6 +16,11 @@ export const POLE_STRINGS = {
   rola: 'Rola pola',
   rolaPomoc: 'Rola pola wyznacza wymagane zabezpieczenia (np. 50/51/67, 87T, 27/59/81 dla OZE).',
 
+  rolaUziemnika: 'Rola uziemnika pola',
+  rolaUziemnikaPomoc:
+    'Typologia uziemienia (spec SLD §12.5): uziemnik pola, uziemienie ekranów kabla, konstrukcji '
+    + 'albo punktu neutralnego. Domyślnie wg szablonu pola (uziemnik pola); rola bez uziemnika w torze '
+    + 'jest odrzucana przez backend.',
   aparat: 'Rodzaj aparatu',
   aparatPomoc: 'Wyłącznik łączy przy zwarciu (pola z 50/51/67); rozłącznik/odłącznik bez zwarcia.',
 
@@ -75,6 +80,10 @@ export const POLE_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem pola.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać pole SN.',
+  // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
+  // katalog aparatów pola / rodzin rozdzielnic ładuje się asynchronicznie;
+  // zapis bez niego byłby cichym no-op na pustym `catalog_ref`, więc blokujemy JAWNIE.
+  katalogLadowanieStopka: 'Ładowanie katalogu aparatów pola SN — zapis będzie dostępny po wczytaniu.',
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: pole rozdzielnicy SN i skład aparatury',

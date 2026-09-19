@@ -5,8 +5,9 @@
  * Rysunek bez metryki nie jest dokumentem projektowym (PN-EN ISO 7200 wymaga
  * m.in. tytułu, formatu arkusza, skali i daty). Arkusz v3 miał na to gotowe
  * miejsce — `SheetFrame` przyjmuje slot `titleBlock` — ale NIKT go nie
- * wypełniał, a jedyny istniejący komponent metryki (`v2/canvas/SldTitleBlock.
- * tsx`) NIE nadaje się do reużycia w tym torze z dwóch mierzalnych powodów:
+ * wypełniał, a jedyny ówczesny komponent metryki (`v2/canvas/SldTitleBlock.
+ * tsx`, od FAB-F USUNIĘTY na amen) NIE nadawał się do reużycia w tym torze
+ * z dwóch mierzalnych powodów:
  *  1. FABRYKACJA — jego `DEFAULTS` podstawiają dane, których w projekcie nie
  *     ma („Sieć: K30 (30 stacji)", „GPZ-A 110/15 kV", „Operator OSD: ENEA"),
  *     więc pusty projekt dostałby cudzą metrykę. Karta S9-6 wymaga wprost

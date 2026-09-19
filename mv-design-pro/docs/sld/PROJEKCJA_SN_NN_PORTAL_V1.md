@@ -111,6 +111,7 @@ ATOMOWO, z JEDNEGO obiektu ENM pobranego raz:
 | podstawa energizacji §17 | `graph.measured_voltage_states`, `graph.energization_basis_pl` | ENM nie niesie pomiarów obecności napięcia — stany są TOPOLOGICZNE („NIEZASILONA (WG AKTUALNEJ TOPOLOGII)"), a mapa pomiarów jest pusta i jawna |
 | audyt topologii §34 | `validation_messages[]` | `NN-AUD-01…18` z `severity` (BLOCKER/IMPORTANT/INFO), `message_pl`, `element_refs`; NN-AUD-18 (INFO, R2 §6) = sprzęgło bez klasy funkcjonalnej aparatu — na schemacie symbol ogólny łącznika, nie dorysowany wyłącznik |
 | odcisk projekcji | `projection_hash` | deterministyczny |
+| kanonizacja liczb (M0-2, ADR-018, 2026-09-02) | wszystkie `float` ładunku kwantyzowane do 9 cyfr znaczących PRZED serializacją i odciskiem (`application/analyses/kontrakt_liczb.py`) | odcisk zależy od modelu, nie od jądra BLAS maszyny — dowód: 7/18 fixtur miało w CI inny odcisk przez różnice 1 ULP (`r_ohm`, `rx_ratio`, `sk_mva`); test klasy `test_kwantyzacja_kontraktu.py` (idempotencja + zaburzenie ±1 ULP każdej liczby) |
 
 Reguły energizacji (`lv_domain/energization.py`, jedna definicja dla szyn,
 odcinków i wysp):
@@ -154,12 +155,14 @@ Pozostałe zasady:
   nieznany → 404. Klient odrzuca odpowiedź z inną wersją kontraktu, brakiem
   stanów szyn / komunikatów audytu lub inną tożsamością żądania
   (`lv-domain/projectionApi.ts`).
-- **Ograniczenie zarejestrowane (nie ukryte):** dwa NIEZALEŻNE źródła SN w
-  jednym modelu to dwa węzły SLACK — zamrożony rdzeń
-  (`network_model/core/graph.py::_validate_single_slack`, B-01) odrzuca taki
-  graf, więc kotwice SN meldują `brak danych: upstream_network_topology_invalid`;
-  tożsamość systemów (`upstream_system_id`, nazwy źródeł) pochodzi z grafu
-  ENM i jest rysowana mimo to (scenariusze 05/06).
+- **Ograniczenie ZNIESIONE (CV-4.3 K3b, 2026-09-06):** dwa NIEZALEŻNE źródła SN
+  w jednym modelu to dwa węzły SLACK — IR przyjmuje po jednym na źródło
+  (dawny inwariant `_validate_single_slack` był regułą wejścia rozpływu, nie
+  IR), więc kotwice SN obu systemów dostają równoważnik Thevenina
+  (scenariusz 05: każda z własnej wyspy; 06: superpozycja obu źródeł w jednej
+  wyspie — zwarcie liczy, rozpływ odmawia nazwanym kodem
+  `source.multiple_grid_sources_in_island`); tożsamość systemów
+  (`upstream_system_id`, nazwy źródeł) nadal z grafu ENM.
 
 Piny (testy): `backend/tests/application/analyses/lv_domain/
 test_projection_v1.py` (w tym `TestAtomowoscProjekcji`, profil napięć po

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from uuid import UUID
-
 from api.main import app
 from application.v126_artifacts import build_v126_proof_artifact, build_v126_report_artifact
 from enm.models import EnergyNetworkModel, ENMHeader
@@ -56,6 +54,7 @@ def _academic_input() -> V126AcademicInput:
                 ulv_kv=15.0,
                 uk_percent=10.5,
                 pk_kw=90.0,
+                p0_kw=18.0,
             )
         ],
         harmonic_sources=[
@@ -161,70 +160,84 @@ def test_earthing_uses_ieee80_contract() -> None:
 
 def test_v126_api_run_result_and_trace() -> None:
     reset_enm_store()
-    case_id = UUID("11111111-1111-1111-1111-111111111111")
-    set_enm(
-        str(case_id),
-        EnergyNetworkModel.model_validate(
-            {
-                "header": ENMHeader(name="test").model_dump(),
-                "buses": [
-                    {
-                        "id": "11111111-1111-1111-1111-111111111101",
-                        "ref_id": "B1",
-                        "name": "GPZ",
-                        "voltage_kv": 15.0,
-                    },
-                    {
-                        "id": "11111111-1111-1111-1111-111111111102",
-                        "ref_id": "B2",
-                        "name": "Stacja",
-                        "voltage_kv": 15.0,
-                    },
-                ],
-                "branches": [
-                    {
-                        "id": "11111111-1111-1111-1111-111111111201",
-                        "ref_id": "K1",
-                        "name": "Kabel",
-                        "type": "cable",
-                        "from_bus_ref": "B1",
-                        "to_bus_ref": "B2",
-                        "length_km": 2.0,
-                        "r_ohm_per_km": 0.2,
-                        "x_ohm_per_km": 0.12,
-                    }
-                ],
-                "loads": [
-                    {
-                        "id": "11111111-1111-1111-1111-111111111301",
-                        "ref_id": "L1",
-                        "name": "Odbior",
-                        "bus_ref": "B2",
-                        "p_mw": 1.0,
-                        "q_mvar": 0.3,
-                    }
-                ],
-            }
-        ),
-    )
-    client = TestClient(app)
-    response = client.post(
-        f"/api/cases/{case_id}/runs/v126/voltage_stability",
-        json={"parameters": {}},
-    )
-    assert response.status_code == 200
-    run_id = response.json()["run_id"]
+    # CV-1-W: przypadek bez wiersza w bazie dostaje 404 z magazynu ENM
+    # (inwariant I-2) — realny projekt+przypadek zamiast dowolnego UUID-a,
+    # `with` uruchamia lifespan (realne `uow_factory`, wymagane do tłumaczenia).
+    with TestClient(app) as client:
+        project_resp = client.post("/api/projects", json={"name": "V12.6 academic — test"})
+        assert project_resp.status_code == 201, project_resp.text
+        project_id = project_resp.json()["id"]
+        case_resp = client.post(
+            "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+        )
+        assert case_resp.status_code == 201, case_resp.text
+        case_id = case_resp.json()["id"]
 
-    result = client.get(f"/api/analysis-runs/{run_id}/results/v126/voltage_stability")
-    trace = client.get(f"/api/analysis-runs/{run_id}/results/v126/voltage_stability/trace")
-    proof = client.get(f"/api/analysis-runs/{run_id}/results/v126/voltage_stability/proof")
-    report = client.get(f"/api/analysis-runs/{run_id}/results/v126/voltage_stability/report")
+        from application.twin_key import klucz_twin_dla_przypadku
 
-    assert result.status_code == 200
-    assert trace.status_code == 200
-    assert proof.status_code == 200
-    assert report.status_code == 200
-    assert trace.json()["steps"][0]["proof_status"] == "complete"
-    assert result.json()["proof_ref"] == proof.json()["proof_id"]
-    assert result.json()["report_ref"] == report.json()["report_id"]
-    assert report.json()["source_proof_hash"] == proof.json()["proof_hash"]
+        klucz = klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+        set_enm(
+            klucz,
+            EnergyNetworkModel.model_validate(
+                {
+                    "header": ENMHeader(name="test").model_dump(),
+                    "buses": [
+                        {
+                            "id": "11111111-1111-1111-1111-111111111101",
+                            "ref_id": "B1",
+                            "name": "GPZ",
+                            "voltage_kv": 15.0,
+                        },
+                        {
+                            "id": "11111111-1111-1111-1111-111111111102",
+                            "ref_id": "B2",
+                            "name": "Stacja",
+                            "voltage_kv": 15.0,
+                        },
+                    ],
+                    "branches": [
+                        {
+                            "id": "11111111-1111-1111-1111-111111111201",
+                            "ref_id": "K1",
+                            "name": "Kabel",
+                            "type": "cable",
+                            "from_bus_ref": "B1",
+                            "to_bus_ref": "B2",
+                            "length_km": 2.0,
+                            "r_ohm_per_km": 0.2,
+                            "x_ohm_per_km": 0.12,
+                        }
+                    ],
+                    "loads": [
+                        {
+                            "id": "11111111-1111-1111-1111-111111111301",
+                            "ref_id": "L1",
+                            "name": "Odbior",
+                            "bus_ref": "B2",
+                            "p_mw": 1.0,
+                            "q_mvar": 0.3,
+                        }
+                    ],
+                }
+            ),
+        )
+        response = client.post(
+            f"/api/cases/{case_id}/runs/v126/voltage_stability",
+            json={"parameters": {}},
+        )
+        assert response.status_code == 200
+        run_id = response.json()["run_id"]
+
+        result = client.get(f"/api/analysis-runs/{run_id}/results/v126/voltage_stability")
+        trace = client.get(f"/api/analysis-runs/{run_id}/results/v126/voltage_stability/trace")
+        proof = client.get(f"/api/analysis-runs/{run_id}/results/v126/voltage_stability/proof")
+        report = client.get(f"/api/analysis-runs/{run_id}/results/v126/voltage_stability/report")
+
+        assert result.status_code == 200
+        assert trace.status_code == 200
+        assert proof.status_code == 200
+        assert report.status_code == 200
+        assert trace.json()["steps"][0]["proof_status"] == "complete"
+        assert result.json()["proof_ref"] == proof.json()["proof_id"]
+        assert result.json()["report_ref"] == report.json()["report_id"]
+        assert report.json()["source_proof_hash"] == proof.json()["proof_hash"]

@@ -74,9 +74,13 @@ describe('NcRfgTestsTab', () => {
       station_id: 'station-1',
       der_kind: 'PV',
       name: 'PV S01',
-      connection_side: 'SN',
+      // Karta FAB-K (§0 R3/R4): dawny gołosłowny `'SN'` i osobna referencja
+      // `voltage_level_ref` USUNIĘTE — transformator dedykowany na szynie SN
+      // stacji, napięcie WYŁĄCZNIE z modelu (`connection_voltage_kv`).
+      connection_side: 'dedicated_transformer',
+      sn_connection_point_kind: 'station_bus',
       bus_przylaczenia_ref: 'pcc-pv-1',
-      voltage_level_ref: '15 kV',
+      connection_voltage_kv: 15,
       nominal_power_kw: 500,
       catalogs: {
         device_catalog_ref: 'ptpiree-pv-inverter-500',
@@ -84,7 +88,8 @@ describe('NcRfgTestsTab', () => {
       profiles: {
         lvrt_curve_ref: 'lvrt-enea',
         hvrt_curve_ref: 'hvrt-enea',
-        regulation_profile_ref: 'qu-enea',
+        // Karta FAB-K (§0 R2): `regulation_profile_ref` USUNIĘTY jako fantom —
+        // backend nie ma katalogu nazwanych profili regulacji Q(U).
       },
     });
 

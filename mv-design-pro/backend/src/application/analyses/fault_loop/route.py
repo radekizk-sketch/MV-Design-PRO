@@ -26,19 +26,21 @@ danych żyły powrotnej dla ``OverheadLine`` — poza zakresem P0.6, P1 wg
 
 from __future__ import annotations
 
-from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from typing import TypeAlias
 
 from application.solvers.lv_temperature_correction import r_theta_ohm_per_km
 from enm.models import (
+    Branch,
     Cable,
     EnergyNetworkModel,
     FuseBranch,
     OverheadLine,
     SwitchBranch,
+    liczba_torow,
 )
+from network_model.core.topologia import przeglad_wszerz, sciezka_do
 from network_model.solvers.fault_loop_builder import RouteSegmentImpedance
 
 Odcinek: TypeAlias = Cable | FuseBranch | OverheadLine | SwitchBranch
@@ -94,25 +96,24 @@ def bfs_paths_from(enm: EnergyNetworkModel, root_bus_ref: str) -> dict[str, LvBu
             f"Szyna źródłowa '{root_bus_ref}' nie istnieje w modelu — brak trasy do policzenia."
         )
     adjacency = _closed_adjacency(enm)
-    visited = {root_bus_ref}
-    paths: dict[str, LvBusPath] = {root_bus_ref: LvBusPath(bus_ref=root_bus_ref, branches=())}
-    queue: deque[str] = deque([root_bus_ref])
-    while queue:
-        current = queue.popleft()
-        current_path = paths[current].branches
-        neighbors = sorted(
-            adjacency.get(current, []),
-            key=lambda item: (item[1].ref_id, item[0]),
-        )
-        for neighbor_bus_ref, branch in neighbors:
-            if neighbor_bus_ref in visited:
-                continue
-            visited.add(neighbor_bus_ref)
-            paths[neighbor_bus_ref] = LvBusPath(
-                bus_ref=neighbor_bus_ref,
-                branches=current_path + (branch,),
+
+    def _sasiedzi(bus_ref: str) -> list[tuple[Branch, str]]:
+        return [
+            (branch, neighbor)
+            for neighbor, branch in sorted(
+                adjacency.get(bus_ref, []), key=lambda item: (item[1].ref_id, item[0])
             )
-            queue.append(neighbor_bus_ref)
+        ]
+
+    # Jedyne jądro przeglądu (``network_model.core.topologia.przeglad_wszerz``, CV-4.3):
+    # rodzic z PIERWSZEJ drogi w kolejności (branch.ref_id, sąsiad) — jak dotąd.
+    drzewo = przeglad_wszerz(root_bus_ref, _sasiedzi)
+    paths: dict[str, LvBusPath] = {}
+    for bus_ref in drzewo:
+        kroki = sciezka_do(drzewo, bus_ref) or []
+        paths[bus_ref] = LvBusPath(
+            bus_ref=bus_ref, branches=tuple(branch for _od, branch, _do in kroki)
+        )
     return paths
 
 
@@ -160,7 +161,10 @@ def route_segments(path: LvBusPath) -> list[RouteSegmentImpedance]:
                     "return_conductor_x_ohm_per_km). Pętla zwarcia wymaga R I X żyły "
                     "powrotnej z KABEL_NN — fail-closed, zero fabrykacji (§0.1 karty P0.6)."
                 )
-            n_parallel = branch.n_parallel or 1
+            # Karta CI-A (2026-09-04): JEDYNA definicja tej reguly (KLASA NIE
+            # INSTANCJA) — patrz `enm.models.liczba_torow` (ten sam wzorzec,
+            # co `enm/mapping.py::map_enm_to_network_graph`).
+            n_parallel = liczba_torow(branch)
             segments.append(
                 RouteSegmentImpedance(
                     label=f"Kabel {branch.name or branch.ref_id}",

@@ -2553,7 +2553,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           if (dropResult) {
             // F11.4-B: `buildDerDropDetailDrawerData` — WSPÓŁDZIELONA z v2
             // (dawniej zduplikowana tu, patrz nagłówek modułu współdzielonego).
-            setDetailDrawerData(buildDerDropDetailDrawerData(sldData, id, dropResult.kind));
+            setDetailDrawerData(buildDerDropDetailDrawerData(snapshot, sldData, id, dropResult.kind));
           }
         } else {
           derDrag.cancel();

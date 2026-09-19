@@ -391,31 +391,32 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
         input_values: list[ProofValue] = []
         substitution_parts: list[str] = []
 
+        # ZERO FABRYKACJI W DOWODZIE. Slad niezbilansowania NIE MUSI miec obu
+        # skladowych: wezel PV nie ma rownania mocy biernej, wiec
+        # `power_flow_fast_decoupled` zapisuje dla niego SAMO `delta_p_pu`
+        # (patrz budowa `mismatch_per_bus` w tamtym solverze). Poprzednia wersja
+        # brala `mismatch.get("delta_q_pu", 0.0)` i drukowala w dowodzie
+        # `ΔQ = 0,000 p.u.` jako WIELKOSC ZMIERZONA — czyli dowod twierdzil, ze
+        # niezbilansowanie mocy biernej wynosi zero tam, gdzie nie zostalo w ogole
+        # policzone. Teraz brakujaca skladowa jest POMIJANA: dowod pokazuje
+        # wylacznie to, co slad naprawde niesie.
         for bus_id, mismatch in sorted(it.mismatch_per_bus.items()):
-            delta_p = mismatch.get("delta_p_pu", 0.0)
-            delta_q = mismatch.get("delta_q_pu", 0.0)
-
-            input_values.append(
-                _build_proof_value(
-                    f"\\Delta P_{{{bus_id}}}",
-                    delta_p,
-                    "p.u.",
-                    f"mismatch_per_bus.{bus_id}.delta_p_pu",
+            czesci_wezla: list[str] = []
+            for klucz, symbol in (("delta_p_pu", "\\Delta P"), ("delta_q_pu", "\\Delta Q")):
+                if klucz not in mismatch:
+                    continue
+                wartosc = mismatch[klucz]
+                input_values.append(
+                    _build_proof_value(
+                        f"{symbol}_{{{bus_id}}}",
+                        wartosc,
+                        "p.u.",
+                        f"mismatch_per_bus.{bus_id}.{klucz}",
+                    )
                 )
-            )
-            input_values.append(
-                _build_proof_value(
-                    f"\\Delta Q_{{{bus_id}}}",
-                    delta_q,
-                    "p.u.",
-                    f"mismatch_per_bus.{bus_id}.delta_q_pu",
-                )
-            )
-
-            substitution_parts.append(
-                f"\\Delta P_{{{bus_id}}} = {_format_float(delta_p)}, "
-                f"\\Delta Q_{{{bus_id}}} = {_format_float(delta_q)}"
-            )
+                czesci_wezla.append(f"{symbol}_{{{bus_id}}} = {_format_float(wartosc)}")
+            if czesci_wezla:
+                substitution_parts.append(", ".join(czesci_wezla))
 
         substitution_latex = f"\\text{{Iteracja }} k={k}:\\quad " + ", \\quad ".join(
             substitution_parts[:3]
@@ -603,8 +604,21 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
         substitution_parts: list[str] = []
 
         for bus_id, state in sorted(state_next.items()):
-            v_pu = state.get("v_pu", 1.0)
-            theta_rad = state.get("theta_rad", 0.0)
+            v_pu = state.get("v_pu")
+            theta_rad = state.get("theta_rad")
+            if v_pu is None or theta_rad is None:
+                # FAB-E (E1): stan iteracji NR aktualizuje CALY wektor stanu na
+                # raz — kontrakt frozen (`power_flow_newton.py`) gwarantuje
+                # komplet v_pu/theta_rad dla kazdej szyny w state_next. Brak
+                # ktoregos oznacza uszkodzony slad obliczen, wiec Proof Engine
+                # (czysta interpretacja, ZERO wtornych obliczen) nie wolno
+                # fabrykowac plaskiego startu (1.0 p.u./0 rad) w formalnym
+                # dowodzie — to bylby fikcyjny wynik podpisany jako obliczony.
+                raise ValueError(
+                    f"Slad iteracji {k}: state_next['{bus_id}'] bez pola "
+                    f"{'v_pu' if v_pu is None else 'theta_rad'} — uszkodzony slad NR, "
+                    "Proof Engine nie moze fabrykowac stanu poczatkowego."
+                )
             theta_deg = math.degrees(theta_rad)
 
             input_values.append(
@@ -758,9 +772,19 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
 
         if self._trace.iterations and self._trace.iterations[-1].state_next:
             for bus_id, state in self._trace.iterations[-1].state_next.items():
+                v_pu = state.get("v_pu")
+                theta_rad = state.get("theta_rad")
+                if v_pu is None or theta_rad is None:
+                    # FAB-E (E1): jak w _build_state_update_step — stan
+                    # koncowy NR ma komplet v_pu/theta_rad z kontraktu frozen;
+                    # brak = uszkodzony slad, nie plaski start 1.0/0 rad.
+                    raise ValueError(
+                        f"Stan koncowy: state_next['{bus_id}'] bez pola "
+                        f"{'v_pu' if v_pu is None else 'theta_rad'} — uszkodzony slad NR."
+                    )
                 final_state[bus_id] = {
-                    "v_pu": state.get("v_pu", 1.0),
-                    "theta_rad": state.get("theta_rad", 0.0),
+                    "v_pu": v_pu,
+                    "theta_rad": theta_rad,
                 }
 
         # Dodaj wyniki mocy z result

@@ -214,6 +214,7 @@ def build_golden_network() -> EnergyNetworkModel:
                 pk_kw=6.5,
                 p0_kw=1.0,
                 vector_group="Dyn11",
+                lv_earthing_system="TN-S",
                 catalog_ref="TR_15_04_630kVA_Dyn11",
             )
         )
@@ -239,7 +240,6 @@ def build_golden_network() -> EnergyNetworkModel:
                 # P0.1 nN (karta P0.1, E063): stacja zasilająca odbiory nN musi
                 # deklarować układ uziemienia sieci nN — TN-S jest standardem
                 # sieci miejskich/kablowych, jakie reprezentuje ta złota sieć.
-                meta={"nn_earthing_system": "TN-S"},
             )
         )
 

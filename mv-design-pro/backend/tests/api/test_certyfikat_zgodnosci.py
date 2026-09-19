@@ -29,14 +29,25 @@ from network_model.solvers.ncrfg_ptpiree import (
     NcRfgPtpireeSolver,
 )
 
+#: Karta S-1 (dowod dynamiczny): klasa B/C/D ma T14/T15/T16/T17 STRUKTURALNIE
+#: WYMAGANE (`default_for_modules=["B","C","D"]`), a te zdolnosci sa dzis
+#: NOT_SIMULATED/DECLARATION (DYNAMIC_PERFORMANCE) — nieprzydatne dowodowo
+#: niezaleznie od werdyktu testu (`ocena_dowodowa_biegu`). Certyfikat wiec
+#: NIGDY nie powstanie dla klasy B/C/D, dopoki zdolnosc nie zostanie
+#: podniesiona do VALIDATED_SIMULATION (OD-20). Fikstura „pelna" jest wiec
+#: klasy A (215 kW / 0,8 kV, jak `_MODULU_KLASY_A` nizej) — jedyna klasa BEZ
+#: testow dynamicznych w `default_for_modules` — z certyfikatem PTPiREE
+#: (precedens FAB-K: zero testow wymaganych + certyfikat = WNIOSEK
+#: klasyfikacji, nie luka), zeby testy DOCX/PDF/determinizmu mialy realna,
+#: bogata (wszystkie pola opcjonalne) sciezke pozytywna.
 _MODULE_FULL: dict = {
     "der_ref": "pv-1",
-    "der_name": "PV 2 MW",
+    "der_name": "PV 215 kW",
     "der_kind": "PV",
     "operator_id": "enea",
-    "p_max_kw": 2000,
-    "p_min_kw": 100,
-    "voltage_kv": 15,
+    "p_max_kw": 215,
+    "p_min_kw": 10,
+    "voltage_kv": 0.8,
     "certificate_status": "ptpiree_verified",
     "has_lvrt_curve": True,
     "has_hvrt_curve": True,
@@ -118,33 +129,140 @@ def test_certyfikat_pozytywny_werdykt_zgodny() -> None:
     assert view["kontrakt"] == "CertyfikatZgodnosciNcRfgV1"
     assert view["werdykt_zbiorczy"]["status"] == "zgodny"
     assert view["werdykt_zbiorczy"]["modulow_niezgodnych"] == 0
-    assert view["moduly"][0]["klasa"] == "B"
+    assert view["moduly"][0]["klasa"] == "A"
     assert view["odcisk_wejscia_sha256"]
 
 
 def test_certyfikat_negatywny_powstaje_z_werdyktem_niezgodnym() -> None:
+    # Klasa A BEZ certyfikatu PTPiREE: T12 (zaprzestanie generacji, zdolność
+    # konfiguracyjna zadeklarowana — evidence-eligible, karta S-1) staje się
+    # WYMAGANY (`_is_required`); rampa dużo wolniejsza niż referencyjna
+    # (`ramp_rate_pct_per_min=0.1`) daje werdykt `fail` — bramka dowodowa
+    # przepuszcza (DECLARED_CONFIGURATION+DECLARATION jest evidence-eligible),
+    # bramka kompletności też (dane są, tylko niekorzystne) → certyfikat
+    # powstaje z werdyktem negatywnym (dokument stwierdza stan, nie blokuje).
     view = build_certyfikat_view(
-        _run_result(_module(reactive_current_gain=1.0)),
+        _run_result(
+            _module(
+                certificate_status="unknown",
+                stop_generation_enabled=True,
+                ramp_rate_pct_per_min=0.1,
+            )
+        ),
         nazwa_projektu="Projekt A",
     )
     assert view["werdykt_zbiorczy"]["status"] == "niezgodny"
     assert view["werdykt_zbiorczy"]["modulow_niezgodnych"] == 1
     assert view["moduly"][0]["status_pl"] == "Niezgodny"
+    assert any(t["test_id"] == "T12" and t["werdykt"] == "fail" for t in view["moduly"][0]["testy"])
 
 
 def test_braki_blokuja_generacje_lista_pl() -> None:
-    run_result = _run_result(_module(p_recovery_time_s=None, reactive_current_gain=None))
+    # Klasa A BEZ certyfikatu PTPiREE i bez funkcji zdalnej komendy P: T12
+    # staje się wymagany i pozostaje `no_data` (brak `stop_generation_enabled`).
+    run_result = _run_result(_module(certificate_status="unknown"))
     with pytest.raises(CertyfikatBrakiError) as exc:
         build_certyfikat_view(run_result, nazwa_projektu="Projekt A")
     braki = exc.value.braki
     assert braki
     assert any("brak danych do oceny" in b for b in braki)
-    assert any("T16" in b for b in braki)
-    assert any("T17" in b for b in braki)
+    assert any("T12" in b for b in braki)
 
 
 def test_zbierz_braki_pusta_lista_gdy_komplet() -> None:
     assert zbierz_braki(_run_result(_module())) == []
+
+
+# --------------------------------------------------------------------------- #
+# Karta FAB-K: moduł klasy A (zero testów WYMAGANYCH z klasyfikacji — żaden test
+# katalogu nie ma klasy A w `default_for_modules`, patrz `engine.py`) — ILOCZYN
+# CECH certyfikat × podstawa, nie jeden przykład z karty. Regresja odkryta
+# empirycznie (e2e `critical-oze-evidence.spec.ts`, moduł 215 kW/0,8 kV) PO
+# naprawie frontu (karta FAB-K R1), który dotąd czytał `ptpiree_certificate_ref`
+# z pola nigdy niezapisywanego przez backend — `certificate_status` był więc
+# ZAWSZE "unknown" i ta gałąź nigdy się nie uruchamiała: luka była niewidoczna,
+# dopóki front nie zaczął poprawnie zgłaszać zweryfikowanego certyfikatu.
+# --------------------------------------------------------------------------- #
+_MODULU_KLASY_A: dict = {
+    "der_ref": "pv-a-1",
+    "der_name": "PV 215 kW",
+    "der_kind": "PV",
+    "operator_id": "enea",
+    "p_max_kw": 215,
+    "voltage_kv": 0.8,
+    "certificate_status": "ptpiree_verified",
+}
+
+
+def test_klasa_a_z_certyfikatem_ptpiree_ma_zero_wymaganych_ale_to_NIE_jest_brak() -> None:
+    """Moduł klasy A bez ŻADNEGO testu z klasyfikacji, ALE ze zweryfikowanym
+    certyfikatem PTPiREE — certyfikat producenta jest samodzielną podstawą,
+    zero testów NC RfG jest tu WNIOSKIEM klasyfikacji, nie luką dowodową."""
+    run_result = _run_result(dict(_MODULU_KLASY_A))
+    modul = run_result.modules[0]
+    assert modul.module_type == "A"
+    assert modul.required_count == 0
+    assert zbierz_braki(run_result) == []
+    # Certyfikat MUSI faktycznie powstać (nie tylko `zbierz_braki` pusta) —
+    # dowód end-to-end przez `build_certyfikat_view`, nie tylko przez samą
+    # funkcję bramki (przypadek z karty PRZEGLAD_FALI_2026-08-01: naprawiono
+    # jedną funkcję, nie ścieżkę produkcyjną).
+    view = build_certyfikat_view(run_result, nazwa_projektu="Projekt A")
+    assert view["moduly"][0]["klasa"] == "A"
+
+
+def test_klasa_a_bez_certyfikatu_wymaga_t12_i_zostaje_brakiem_gdy_niekompletny() -> None:
+    """PREDYKAT PAROWY z testem wyżej — TA SAMA klasa A, ALE BEZ certyfikatu:
+    `required_count` NIE jest tu 0 (T12 „zaprzestanie generacji" staje się
+    WYMAGANY właśnie DLATEGO, że certyfikatu brak — `_is_required` w
+    `engine.py`), więc gałąź „required_count == 0" tej karty nigdy się nie
+    uruchamia dla tego przypadku z innego powodu niż w teście wyżej. Test
+    pilnuje WŁAŚNIE tej pary predykatów: `required_count == 0` i
+    `certificate_status == "ptpiree_verified"` idą razem dla klasy A (żaden
+    inny test katalogu nie ma klasy A w `default_for_modules`) — nie da się
+    skonstruować „klasa A + zero wymaganych + bez certyfikatu" wcale, bo T12
+    WYPEŁNIA lukę. Zostaje więc niekompletny (brak danych numerycznych, których
+    fikstura celowo nie podaje) — bramka braków nadal blokuje, innym powodem."""
+    for status in ("unknown", "none", "expired"):
+        run_result = _run_result(dict(_MODULU_KLASY_A, certificate_status=status))
+        modul = run_result.modules[0]
+        assert modul.module_type == "A"
+        assert modul.required_count >= 1, (
+            status,
+            "T12 musi stac sie wymagany bez certyfikatu",
+        )
+        with pytest.raises(CertyfikatBrakiError):
+            build_certyfikat_view(run_result, nazwa_projektu="Projekt A")
+
+
+def test_certyfikowany_modul_z_INNYM_brakiem_nadal_jest_blokowany() -> None:
+    """PREDYKAT PAROWY właściwy dla naprawy: certyfikat PTPiREE zwalnia
+    WYŁĄCZNIE z braku „required_count == 0" — moduł certyfikowany (`_MODULE_FULL`
+    ma `certificate_status="ptpiree_verified"` od zawsze), który MA testy
+    wymagane z klasyfikacji (klasa B), ale jeden z nich ma werdykt `no_data`
+    (`test_braki_blokuja_generacje_lista_pl` powyżej — TA SAMA fikstura),
+    MUSI zostać zablokowany jak każdy inny. Ten test czyni PAROWANIE jawnym
+    (asercja na `certificate_status`), zamiast polegać na przypadkowej wartości
+    domyślnej fikstury — naprawa nie zdejmuje bramki z certyfikowanych modułów
+    w całości, tylko dokładnie z powodu „required_count == 0"."""
+    run_result = _run_result(
+        _module(
+            p_max_kw=2000,
+            voltage_kv=15,
+            p_recovery_time_s=None,
+            reactive_current_gain=None,
+        )
+    )
+    modul = run_result.modules[0]
+    assert modul.module_type == "B"
+    assert modul.certificate_status == "ptpiree_verified"
+    assert modul.required_count > 0
+    braki = zbierz_braki(run_result)
+    assert braki
+    assert not any("brak podstawy do certyfikacji" in b for b in braki)
+    assert any("brak danych do oceny" in b for b in braki)
+    with pytest.raises(CertyfikatBrakiError):
+        build_certyfikat_view(run_result, nazwa_projektu="Projekt A")
 
 
 def test_docx_determinizm_bajtowy() -> None:
@@ -198,7 +316,13 @@ def test_endpoint_json_200_zgodny(client: TestClient) -> None:
 def test_endpoint_json_negatywny_200(client: TestClient) -> None:
     response = client.post(
         "/api/oze-analysis/compliance-certificate",
-        json=_payload(_module(reactive_current_gain=1.0)),
+        json=_payload(
+            _module(
+                certificate_status="unknown",
+                stop_generation_enabled=True,
+                ramp_rate_pct_per_min=0.1,
+            )
+        ),
     )
     assert response.status_code == 200
     assert response.json()["werdykt_zbiorczy"]["status"] == "niezgodny"
@@ -207,7 +331,7 @@ def test_endpoint_json_negatywny_200(client: TestClient) -> None:
 def test_endpoint_braki_422_z_lista(client: TestClient) -> None:
     response = client.post(
         "/api/oze-analysis/compliance-certificate",
-        json=_payload(_module(p_recovery_time_s=None, reactive_current_gain=None)),
+        json=_payload(_module(certificate_status="unknown")),
     )
     assert response.status_code == 422
     detail = response.json()["detail"]
@@ -254,7 +378,7 @@ def test_endpoint_docx_determinizm(client: TestClient) -> None:
 def test_endpoint_docx_braki_422(client: TestClient) -> None:
     response = client.post(
         "/api/oze-analysis/compliance-certificate.docx",
-        json=_payload(_module(p_recovery_time_s=None, reactive_current_gain=None)),
+        json=_payload(_module(certificate_status="unknown")),
     )
     assert response.status_code == 422
     assert "braki" in response.json()["detail"]
@@ -313,7 +437,7 @@ def test_endpoint_pdf_determinizm(client: TestClient) -> None:
 def test_endpoint_pdf_braki_422(client: TestClient) -> None:
     response = client.post(
         "/api/oze-analysis/compliance-certificate.pdf",
-        json=_payload(_module(p_recovery_time_s=None, reactive_current_gain=None)),
+        json=_payload(_module(certificate_status="unknown")),
     )
     assert response.status_code == 422
     assert "braki" in response.json()["detail"]

@@ -1,21 +1,23 @@
 /*
  * Znacznik świeżości wyników w pasku aktywnego przypadku — ŚCIEŻKA REALNA
- * (karta K4/D1 + dług V12K-309 poz. 2).
+ * (karta K4/D1, dług V12K-309 poz. 2 domknięty w CV-2-W).
  *
- * DEFEKT (pomiar audytu 2026-08-01): po edycji modelu następującej PO biegu
- * chip trwał na „Wyniki: aktualne" — model rew. 9, wynik z rew. 8. Serwerowy
- * `result_status` zmienia się dopiero, gdy KTOŚ unieważni przypadek, a edycja
- * modelu przez tę ścieżkę nie przechodzi. Kanon mówi wprost: zmiana modelu
- * unieważnia wyniki przypadku — chrom temu przeczył.
+ * DEFEKT (pomiar audytu 2026-08-01): po edycji modelu następującej PO biegu chip
+ * trwał na „Wyniki: aktualne" — model rew. 9, wynik z rew. 8. Serwerowy
+ * `result_status` zmieniał się dopiero, gdy KTOŚ unieważnił przypadek, a edycja
+ * modelu przez tę ścieżkę nie przechodziła.
  *
- * DLACZEGO PRZEPISANY. Poprzednia wersja tego pliku wpisywała `activeCase`
- * wprost do store'u (`useStudyCasesStore.setState`) i sprawdzała, że chip
- * pokazuje etykietę odpowiadającą wpisanemu statusowi. Taki test przechodził
- * ZAWSZE — także z defektem — bo mierzył przepisanie pola, a nie werdykt
- * świeżości (CLAUDE.md Zero-Debt pkt 5: test maskujący defekt produktu).
- * Tutaj store'y zasilają PRODUKCYJNE hooki (`useLegacyOrchestrator` +
- * `useHydratacjaPowloki`) odpowiedziami serwera w kształcie backendu, chip jest
- * produkcyjny, a klik — natywny.
+ * GDZIE JEST TERAZ NAPRAWA. U ŹRÓDŁA: status wyników przypadku jest WYPROWADZANY
+ * przez backend z jego biegów i koperty rewizji (`application/study_case/
+ * status_wynikow.py`), razem z przyczyną po polsku i listą zmian, które go
+ * unieważniły. Powłoka NIE liczy już świeżości drugi raz — poprzednia wersja
+ * porównywała parę rewizji na własną rękę, co było drugą prawdą o jednym stanie.
+ *
+ * CZEGO PILNUJE TEN PLIK. Że chrom pokazuje WERDYKT SERWERA wiernie i że NIC w
+ * store'ach (w szczególności podgląd przebiegu z inną rewizją migawki) nie jest
+ * w stanie tego werdyktu wywrócić. Store'y zasilają PRODUKCYJNE hooki
+ * (`useLegacyOrchestrator` + `useHydratacjaPowloki`) odpowiedziami serwera w
+ * kształcie backendu, chip jest produkcyjny, a klik — natywny.
  */
 
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -35,6 +37,7 @@ import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStor
 import { useSelectionStore } from '../../../ui/selection/store';
 import { getProject } from '../../../ui/projects/api';
 import { getStudyCase } from '../../../ui/study-cases/api';
+import type { StudyCaseResultStatus } from '../../../ui/study-cases/types';
 
 vi.mock('../../../ui/projects/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../ui/projects/api')>();
@@ -48,16 +51,14 @@ vi.mock('../../../ui/study-cases/api', async (importOriginal) => {
 
 const PROJECT_ID = 'proj-swiezosc';
 const CASE_ID = 'case-swiezosc';
-/*
- * Osobny identyfikator przebiegu na scenariusz. `useAnalysisRunContract` trzyma
- * pamięć podręczną kontraktów per przebieg NA POZIOMIE MODUŁU (rewizja biegu jest
- * niezmienna, więc w produkcji to poprawne) — wspólny identyfikator sprawiłby, że
- * drugi scenariusz czytałby kontrakt pierwszego zamiast własnej odpowiedzi serwera.
- */
-const RUN_MODEL_NOWSZY = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
-const RUN_ZGODNY = '1d7f4a52-0c33-4a1e-9a58-2b4c6d8e0f13';
-const RUN_BEZ_REWIZJI = 'b2c4e6a8-1357-42d9-8e0b-3f5a7c9d1e24';
+const RUN_ID = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
 const MODEL_HASH = 'a1b2c3d4e5f60718293a4b5c6d7e8f901a2b3c4d5e6f708192a3b4c5d6e7f809';
+
+const PRZYCZYNA_MODEL = 'Model zmienił się po obliczeniu — wynik opisuje poprzedni stan sieci.';
+const PRZYCZYNA_KATALOG =
+  'Biblioteka typów katalogowych zmieniła się po obliczeniu — parametry '
+  + 'zmaterializowane w chwili biegu mogą różnić się od obowiązujących.';
+const PRZYCZYNA_SWIEZY = 'Model nie zmienił się od chwili obliczenia.';
 
 /** Migawka ENM o zadanej rewizji — kształt jak w odpowiedzi domain-ops. */
 function enmSnapshot(revision: number) {
@@ -102,18 +103,70 @@ function domainOpResponse(revision: number) {
   };
 }
 
-/** Przypadek w kształcie `StudyCaseResponse` (api/study_cases.py) — serwer mówi FRESH. */
-function studyCaseResponse() {
+interface WerdyktSerwera {
+  readonly status: StudyCaseResultStatus;
+  readonly przyczyna: string;
+  readonly kod: string;
+  readonly rewizjaBiegu: number | null;
+  readonly rewizjaBiezaca: number;
+  readonly zmiany: ReadonlyArray<{
+    rewizja: number;
+    operacja: string | null;
+    opis_pl: string;
+    elementy: string[];
+  }>;
+}
+
+const WERDYKT_SWIEZY: WerdyktSerwera = {
+  status: 'FRESH',
+  kod: 'model-niezmieniony',
+  przyczyna: PRZYCZYNA_SWIEZY,
+  rewizjaBiegu: 8,
+  rewizjaBiezaca: 8,
+  zmiany: [],
+};
+
+const WERDYKT_MODEL_ZMIENIONY: WerdyktSerwera = {
+  status: 'OUTDATED',
+  kod: 'model-zmieniony',
+  przyczyna: PRZYCZYNA_MODEL,
+  rewizjaBiegu: 8,
+  rewizjaBiezaca: 9,
+  zmiany: [
+    {
+      rewizja: 9,
+      operacja: 'continue_trunk_segment_sn',
+      opis_pl: 'Dołożono odcinek magistrali',
+      elementy: ['LIN-2'],
+    },
+  ],
+};
+
+const WERDYKT_KATALOG: WerdyktSerwera = {
+  status: 'OUTDATED',
+  kod: 'katalog-zmieniony',
+  przyczyna: PRZYCZYNA_KATALOG,
+  rewizjaBiegu: 8,
+  rewizjaBiezaca: 8,
+  zmiany: [],
+};
+
+/** Przypadek w kształcie `StudyCaseResponse` (api/study_cases.py, CV-2-W). */
+function studyCaseResponse(werdykt: WerdyktSerwera) {
   return {
     id: CASE_ID,
     project_id: PROJECT_ID,
     name: 'Zwarcia maks.',
     description: '',
     config: {},
-    result_status: 'FRESH',
-    results_valid: true,
+    result_status: werdykt.status,
+    results_valid: werdykt.status === 'FRESH',
+    result_status_reason: werdykt.kod,
+    result_status_reason_pl: werdykt.przyczyna,
+    rewizja_biegu: werdykt.rewizjaBiegu,
+    rewizja_biezaca: werdykt.rewizjaBiezaca,
+    zmiany_od_biegu: werdykt.zmiany,
     is_active: true,
-    result_refs: [],
     revision: 3,
     created_at: '2026-08-01T09:00:00Z',
     updated_at: '2026-08-01T09:30:00Z',
@@ -134,49 +187,16 @@ function runRecord(runId: string) {
   };
 }
 
-/**
- * Kontrakt przebiegu (`/api/analysis-runs/{id}`) — pole `rewizja_modelu` w
- * `analysis_case_context` (backend: api/analysis_case_context.py, V12K-264).
- * `null` odwzorowuje bieg zapisany przed wprowadzeniem tej liczby.
- */
-function analysisRunContract(runId: string, rewizjaModelu: number | null) {
-  return {
-    id: runId,
-    analysis_type: 'short_circuit_sn',
-    status: 'FINISHED',
-    result_status: 'VALID',
-    results_valid: true,
-    created_at: '2026-08-01T09:20:00Z',
-    finished_at: '2026-08-01T09:20:11Z',
-    input_hash: 'sha-in',
-    summary_json: {},
-    analysis_case_context: {
-      case_ref: CASE_ID,
-      case_kind: 'ZWARCIOWY_MAKS',
-      snapshot_ref: MODEL_HASH,
-      run_ref: runId,
-      quality_gate: 'G4',
-      applicability_scope: ['SC', 'REPORT'],
-      completeness: 'complete',
-      missing_prerequisites: [],
-      assumptions: {},
-      lineage: {},
-      rewizja_modelu: rewizjaModelu,
-    },
-  };
-}
-
 function jsonResponse(body: unknown) {
   return { ok: true, status: 200, json: async () => body };
 }
 
 /**
  * Zaślepka sieci w kształcie realnego backendu.
- * @param runId identyfikator przebiegu tego scenariusza
+ * @param werdykt werdykt świeżości, który serwer oddaje przy przypadku
  * @param rewizjaModelu rewizja BIEŻĄCEGO modelu (odpowiedź domain-ops)
- * @param rewizjaWyniku rewizja, na której policzono bieg (kontrakt przebiegu)
  */
-function stubFetch(runId: string, rewizjaModelu: number, rewizjaWyniku: number | null) {
+function stubFetch(werdykt: WerdyktSerwera, rewizjaModelu: number) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: unknown) => {
@@ -185,7 +205,7 @@ function stubFetch(runId: string, rewizjaModelu: number, rewizjaWyniku: number |
         return jsonResponse({ id: PROJECT_ID, name: 'Sieć SN Przykładowa' });
       }
       if (url === `/api/study-cases/project/${PROJECT_ID}/active`) {
-        return jsonResponse(studyCaseResponse());
+        return jsonResponse(studyCaseResponse(werdykt));
       }
       if (url === `/api/study-cases/project/${PROJECT_ID}`) {
         return jsonResponse([
@@ -193,21 +213,23 @@ function stubFetch(runId: string, rewizjaModelu: number, rewizjaWyniku: number |
             id: CASE_ID,
             name: 'Zwarcia maks.',
             description: '',
-            result_status: 'FRESH',
-            results_valid: true,
+            result_status: werdykt.status,
+            results_valid: werdykt.status === 'FRESH',
+            result_status_reason: werdykt.kod,
+            result_status_reason_pl: werdykt.przyczyna,
+            rewizja_biegu: werdykt.rewizjaBiegu,
+            rewizja_biezaca: werdykt.rewizjaBiezaca,
+            zmiany_od_biegu: werdykt.zmiany,
             is_active: true,
             updated_at: '2026-08-01T09:30:00Z',
           },
         ]);
       }
       if (url === `/api/study-cases/${CASE_ID}`) {
-        return jsonResponse(studyCaseResponse());
+        return jsonResponse(studyCaseResponse(werdykt));
       }
       if (url === `/api/execution/study-cases/${CASE_ID}/runs`) {
-        return jsonResponse({ runs: [runRecord(runId)] });
-      }
-      if (url === `/api/analysis-runs/${runId}`) {
-        return jsonResponse(analysisRunContract(runId, rewizjaWyniku));
+        return jsonResponse({ runs: [runRecord(RUN_ID)] });
       }
       if (url === `/api/cases/${CASE_ID}/enm/domain-ops`) {
         return jsonResponse(domainOpResponse(rewizjaModelu));
@@ -236,12 +258,11 @@ const initialNetworkBuildState = useNetworkBuildStore.getState();
 const initialSelectionState = useSelectionStore.getState();
 const initialStudyCasesState = useStudyCasesStore.getState();
 
-/** Czeka, aż chrom pozna OBIE rewizje (model z migawki, wynik z kontraktu). */
-async function poczekajNaZnacznik(): Promise<void> {
+/** Czeka, aż chrom pozna werdykt serwera i migawkę modelu. */
+async function poczekajNaZnacznik(status: StudyCaseResultStatus): Promise<void> {
   await waitFor(() => {
     expect(useSnapshotStore.getState().snapshot?.header.revision).toBeDefined();
-    expect(useStudyCasesStore.getState().activeCase?.result_status).toBe('FRESH');
-    expect(useExecutionRunsStore.getState().runs).toHaveLength(1);
+    expect(useStudyCasesStore.getState().activeCase?.result_status).toBe(status);
   });
 }
 
@@ -272,31 +293,50 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('Znacznik świeżości wyników w pasku aktywnego przypadku (K4/D1 + V12K-309 poz. 2)', () => {
+describe('Znacznik świeżości wyników w pasku aktywnego przypadku (K4/D1 + CV-2-W)', () => {
   it('POMIAR AUDYTU: model rew. 9, wynik z rew. 8 → „Wyniki: nieaktualne" i natywny klik prowadzi do obliczeń', async () => {
-    stubFetch(RUN_MODEL_NOWSZY, 9, 8);
+    stubFetch(WERDYKT_MODEL_ZMIENIONY, 9);
     window.location.hash = `#sld?project=${PROJECT_ID}&case=${CASE_ID}`;
 
     render(<Probe />);
-    await poczekajNaZnacznik();
+    await poczekajNaZnacznik('OUTDATED');
 
     const chip = await screen.findByText(SHELL_STRINGS.resultsOutdated);
     const przycisk = screen.getByTestId('mvd-casebar-results');
     expect(przycisk).toContainElement(chip);
-    // Serwer nadal melduje FRESH — werdykt bierze się z porównania rewizji.
-    expect(useStudyCasesStore.getState().activeCase?.result_status).toBe('FRESH');
     expect(przycisk.tagName).toBe('BUTTON');
+    // Podpowiedź niesie PRZYCZYNĘ z serwera — chrom niczego nie tłumaczy sam.
+    expect(przycisk.getAttribute('title')).toContain(PRZYCZYNA_MODEL);
 
     fireEvent.click(przycisk);
     expect(useShellStore.getState().activeSpace).toBe('obliczenia');
   });
 
-  it('rewizje zgodne (model 8, wynik 8) → „Wyniki: aktualne", znacznik statyczny', async () => {
-    stubFetch(RUN_ZGODNY, 8, 8);
+  it('PRZYCZYNA „katalog zmieniony" (model bez zmian) też zapala „nieaktualne" z tekstem serwera', async () => {
+    // Do CV-2 zmiana typu katalogowego nie unieważniała NICZEGO: rewizje modelu
+    // były zgodne, więc każde porównanie rewizji po stronie UI mówiło „aktualne".
+    stubFetch(WERDYKT_KATALOG, 8);
     window.location.hash = `#sld?project=${PROJECT_ID}&case=${CASE_ID}`;
 
     render(<Probe />);
-    await poczekajNaZnacznik();
+    await poczekajNaZnacznik('OUTDATED');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
+        SHELL_STRINGS.resultsOutdated,
+      );
+    });
+    const chip = screen.getByTestId('mvd-casebar-results');
+    expect(chip.getAttribute('title')).toContain('Biblioteka typów katalogowych');
+    expect(chip).not.toHaveTextContent(SHELL_STRINGS.resultsFresh);
+  });
+
+  it('werdykt FRESH → „Wyniki: aktualne", znacznik statyczny', async () => {
+    stubFetch(WERDYKT_SWIEZY, 8);
+    window.location.hash = `#sld?project=${PROJECT_ID}&case=${CASE_ID}`;
+
+    render(<Probe />);
+    await poczekajNaZnacznik('FRESH');
 
     await waitFor(() => {
       expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
@@ -305,94 +345,53 @@ describe('Znacznik świeżości wyników w pasku aktywnego przypadku (K4/D1 + V1
     });
     const chip = screen.getByTestId('mvd-casebar-results');
     expect(chip.tagName).toBe('SPAN');
+    expect(chip.getAttribute('title')).toBe(PRZYCZYNA_SWIEZY);
 
-    // Sedno: znacznik AKTUALNY jest statyczny — klik NIE nawiguje. Dawniej test
-    // zapisywał to jako „przestrzeń == 'projekt'", czyli utrwalał wartość
-    // domyślną powłoki; po kanonie D1 trasa `#sld` ląduje w „Schemacie", więc
-    // literał mówiłby o czymś innym niż intencja. Porównujemy PRZED/PO.
+    // Znacznik AKTUALNY jest statyczny — klik NIE nawiguje. Porównujemy PRZED/PO,
+    // bo trasa `#sld` ląduje w „Schemacie" i literał mówiłby o czymś innym.
     const przestrzenPrzedKlikiem = useShellStore.getState().activeSpace;
     fireEvent.click(chip);
     expect(useShellStore.getState().activeSpace).toBe(przestrzenPrzedKlikiem);
   });
 
-  it('PODGLĄD PRZEBIEGU w store nie oślepia chipu: werdykt trwa przy rewizji BIEŻĄCEGO modelu (S9-11 / W-5)', async () => {
-    // Wejście na link przebiegu wpisuje do `useSnapshotStore` migawkę SPRZED
-    // biegu (`setAnalysisRunSnapshot`). Jej `header.revision` równa się rewizji
-    // wyniku ZAWSZE — naiwne porównanie z nią wychodziłoby „aktualne"
-    // niezależnie od tego, jak daleko pojechał żywy model. Do karty S9-11 chip
-    // odpowiadał na to „nieustalone" (ślepota zamiast fałszu — dług
-    // S9-3-DLUG-W5); teraz rewizja bieżącego modelu żyje w OSOBNYM polu
-    // (`rewizjaBiezacegoModelu`), którego podgląd nie dotyka — chip mówi
-    // PRAWDĘ w obu kierunkach. Obie akcje store'u są PRODUKCYJNE.
-    stubFetch(RUN_ZGODNY, 8, 8);
+  it('ŻADNA zmiana migawki w store nie wywraca werdyktu serwera (koniec drugiej derywacji)', async () => {
+    // Wejście na link przebiegu wpisuje do `useSnapshotStore` migawkę SPRZED biegu
+    // (`setAnalysisRunSnapshot`), a operacja domenowa — migawkę nowszą
+    // (`setSnapshot`). Dopóki chrom liczył świeżość SAM, obie te akcje przestawiały
+    // chip (raz na „aktualne", raz na „nieustalone") niezależnie od tego, co orzekł
+    // serwer. Teraz werdykt ma jedno źródło: odpowiedź o przypadku.
+    stubFetch(WERDYKT_SWIEZY, 8);
     window.location.hash = `#sld?project=${PROJECT_ID}&case=${CASE_ID}`;
 
     render(<Probe />);
-    await poczekajNaZnacznik();
-
-    // Model żywy: rewizje zgodne ⇒ uczciwe „aktualne".
+    await poczekajNaZnacznik('FRESH');
     await waitFor(() => {
       expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
         SHELL_STRINGS.resultsFresh,
       );
     });
 
-    // Kierunek 1: model NIE zmienił się od biegu — podgląd przebiegu w store
-    // nie zmienia werdyktu („aktualne" zostaje, bez ślepego „nieustalone").
     const migawka = useSnapshotStore.getState().snapshot;
     expect(migawka).not.toBeNull();
+
+    // Podgląd przebiegu (rewizja migawki = rewizja wyniku) — bez zmiany werdyktu.
     act(() => {
       useSnapshotStore.getState().setAnalysisRunSnapshot(migawka!, 'snap-podglad');
     });
+    // Model jedzie dalej (rew. 9, akcja produkcyjna `setSnapshot`) — chip NADAL
+    // pokazuje to, co orzekł serwer; przeliczenie werdyktu należy do backendu przy
+    // następnym odczycie przypadku, nie do arytmetyki w powłoce.
+    act(() => {
+      useSnapshotStore.getState().setSnapshot(domainOpResponse(9) as never);
+    });
+
     await waitFor(() => {
       expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
         SHELL_STRINGS.resultsFresh,
       );
     });
-
-    // Kierunek 2 (PUŁAPKA z pomiaru audytu): model jedzie dalej (rew. 9,
-    // odpowiedź domain-ops — akcja produkcyjna `setSnapshot`)…
-    act(() => {
-      useSnapshotStore.getState().setSnapshot(
-        domainOpResponse(9) as never,
-      );
-    });
-    await waitFor(() => {
-      expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
-        SHELL_STRINGS.resultsOutdated,
-      );
-    });
-
-    // …a potem wraca PODGLĄD przebiegu z rew. 8 (= rewizja wyniku). Naiwne
-    // porównanie z rewizją migawki dałoby „aktualne" — chip MUSI trwać na
-    // „nieaktualne", bo bieżący model to wciąż rew. 9.
-    act(() => {
-      useSnapshotStore.getState().setAnalysisRunSnapshot(migawka!, 'snap-podglad-2');
-    });
-    await waitFor(() => {
-      expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
-        SHELL_STRINGS.resultsOutdated,
-      );
-    });
     expect(screen.getByTestId('mvd-casebar-results')).not.toHaveTextContent(
-      SHELL_STRINGS.resultsFresh,
-    );
-  });
-
-  it('kontrakt przebiegu bez rewizji → „Wyniki: nieustalone", nigdy „aktualne"', async () => {
-    stubFetch(RUN_BEZ_REWIZJI, 9, null);
-    window.location.hash = `#sld?project=${PROJECT_ID}&case=${CASE_ID}`;
-
-    render(<Probe />);
-    await poczekajNaZnacznik();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('mvd-casebar-results')).toHaveTextContent(
-        SHELL_STRINGS.resultsUnknown,
-      );
-    });
-    expect(screen.getByTestId('mvd-casebar-results')).not.toHaveTextContent(
-      SHELL_STRINGS.resultsFresh,
+      SHELL_STRINGS.resultsOutdated,
     );
   });
 });

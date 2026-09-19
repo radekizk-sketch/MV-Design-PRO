@@ -9,6 +9,7 @@
 import type { MouseEvent } from 'react';
 
 import type { BayPrimaryDeviceKind, BayPrimaryPlacement } from '../../../../types/enm';
+import type { UkladSieciNn } from '../../../../types/uziemienie';
 import {
   COLOR_BG,
   COLOR_BUS_LV,
@@ -297,7 +298,7 @@ export interface MiniBlockRmuRendererProps {
   readonly transformerVectorGroup?: string | null;
   /** K30-116 audyt #2 MAJOR: schemat uziemienia per PN-EN 60364-1 § 312.
    * Wymagane przez OSD do procedur manewrów i testów impedancji. */
-  readonly earthingScheme?: 'TN-C' | 'TN-S' | 'TN-C-S' | 'IT' | 'TT' | null;
+  readonly earthingScheme?: UkladSieciNn | null;
   /** Aktualna skala viewportu SLD. Uzywana tylko do czytelnosci etykiet overview. */
   readonly viewportScale?: number;
 }

@@ -1,0 +1,402 @@
+{
+  "context": {
+    "project_name": "CGMES Golden Net",
+    "case_name": null,
+    "case_id": "case-demo",
+    "run_timestamp": "2026-09-16T09:00:00+00:00",
+    "snapshot_hash": "53eee2f2b0bcee9859b1d988bafb7d352ac0db99cdac53fa689b66300d38650e",
+    "run_id": "run-lf-scena-rozplyw"
+  },
+  "config": {
+    "loading_warn_pct": 80.0,
+    "loading_fail_pct": 100.0,
+    "voltage_warn_pct": 5.0,
+    "voltage_fail_pct": 10.0,
+    "loss_warn_pct": 5.0,
+    "loss_fail_pct": 10.0
+  },
+  "items": [
+    {
+      "check_type": "TRANSFORMER_LOADING",
+      "target_id": "158eec95-939b-5b35-97ad-9433334b5506",
+      "target_name": "TR 15/0.4",
+      "observed_value": 702.1164546964296,
+      "unit": "%",
+      "limit_warn": 80.0,
+      "limit_fail": 100.0,
+      "margin_pct": 602.1164546964296,
+      "status": "FAIL",
+      "why_pl": "Obciazenie 702.12 % przekracza limit 100.0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzor: obciazenie = max(|S_gora|, |S_dol|) / S_n * 100%",
+          "latex": "\\varepsilon = \\frac{\\max(|S_{\\text{gora}}|, |S_{\\text{dol}}|)}{S_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: S = 4.4233 MVA (wynik PF), S_n = 0.6300 MVA",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: obciazenie = 702.12 %",
+          "latex": "\\varepsilon = \\frac{4.4233}{0.6300} \\cdot 100\\% = 702.12\\%"
+        },
+        {
+          "tekst": "Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Werdykt: PRZEKROCZENIE",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "BRANCH_LOADING",
+      "target_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+      "target_name": "Linia SN 1",
+      "observed_value": 159.99158905812325,
+      "unit": "%",
+      "limit_warn": 80.0,
+      "limit_fail": 100.0,
+      "margin_pct": 59.99158905812325,
+      "status": "FAIL",
+      "why_pl": "Obciazenie 159.99 % przekracza limit 100.0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzor: obciazenie = |I| / I_n * 100%",
+          "latex": "\\varepsilon = \\frac{|I|}{I_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: |I| = 0.3360 kA (wynik PF), I_n = 0.2100 kA (dane galezi)",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: obciazenie = 159.99 %",
+          "latex": "\\varepsilon = \\frac{0.3360}{0.2100} \\cdot 100\\% = 159.99\\%"
+        },
+        {
+          "tekst": "Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Werdykt: PRZEKROCZENIE",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "VOLTAGE_DEVIATION",
+      "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "target_name": "Szyna nN",
+      "observed_value": 25.16700320630986,
+      "unit": "%",
+      "limit_warn": 5.0,
+      "limit_fail": 10.0,
+      "margin_pct": 15.167003206309861,
+      "status": "FAIL",
+      "why_pl": "Odchylenie napieciowe 25.17 % przekracza limit 10.0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzor: odchylenie = |U - U_n| / U_n * 100%",
+          "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: U = 0.2993 kV (wynik PF), U_n = 0.4000 kV",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: odchylenie = 25.17 %",
+          "latex": "\\delta U = \\frac{|0.2993 - 0.4000|}{0.4000} \\cdot 100\\% = 25.17\\%"
+        },
+        {
+          "tekst": "Progi: ostrzezenie 5.0 %, przekroczenie 10.0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Werdykt: PRZEKROCZENIE",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "REACTIVE_BALANCE",
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "target_name": "Węzeł bilansujący",
+      "observed_value": 0.873445737511107,
+      "unit": "cos(phi)",
+      "limit_warn": 0.9,
+      "limit_fail": 0.8,
+      "margin_pct": null,
+      "status": "WARNING",
+      "why_pl": "cos(phi) = 0.873 — bilans mocy biernej na granicy akceptowalnosci.",
+      "white_box": [
+        {
+          "tekst": "Wzor: tan(phi) = |Q_slack / P_slack|; cos(phi) = cos(arctan(tan(phi)))",
+          "latex": "\\cos\\varphi = \\cos\\!\\left(\\arctan\\left|\\frac{Q_{\\text{slack}}}{P_{\\text{slack}}}\\right|\\right)"
+        },
+        {
+          "tekst": "Dane: Q_slack = 0.064088 p.u., P_slack = 0.114962 p.u. (wynik PF)",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: tan(phi) = 0.5575, cos(phi) = 0.873",
+          "latex": "\\tan\\varphi = 0.5575 \\Rightarrow \\cos\\varphi = 0.873"
+        },
+        {
+          "tekst": "Progi: ostrzezenie cos(phi) < 0.9, przekroczenie cos(phi) < 0.8",
+          "latex": null
+        },
+        {
+          "tekst": "Werdykt: OSTRZEZENIE",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "VOLTAGE_DEVIATION",
+      "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "target_name": "Stacja C SN",
+      "observed_value": 7.987734885748926,
+      "unit": "%",
+      "limit_warn": 5.0,
+      "limit_fail": 10.0,
+      "margin_pct": -2.0122651142510737,
+      "status": "WARNING",
+      "why_pl": "Odchylenie napieciowe 7.99 % zbliza sie do limitu 10.0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzor: odchylenie = |U - U_n| / U_n * 100%",
+          "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: U = 13.8018 kV (wynik PF), U_n = 15.0000 kV",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: odchylenie = 7.99 %",
+          "latex": "\\delta U = \\frac{|13.8018 - 15.0000|}{15.0000} \\cdot 100\\% = 7.99\\%"
+        },
+        {
+          "tekst": "Progi: ostrzezenie 5.0 %, przekroczenie 10.0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Werdykt: OSTRZEZENIE",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "LOSS_BUDGET",
+      "target_id": "network",
+      "target_name": "Sieć",
+      "observed_value": 6.055138541703279,
+      "unit": "%",
+      "limit_warn": 5.0,
+      "limit_fail": 10.0,
+      "margin_pct": -3.944861458296721,
+      "status": "WARNING",
+      "why_pl": "Straty sieciowe 6.06 % zbliza sie do limitu 10.0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzor: straty = |P_strat / P_slack| * 100%",
+          "latex": "\\Delta P\\% = \\left|\\frac{P_{\\text{strat}}}{P_{\\text{slack}}}\\right| \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: P_strat = 0.006961 p.u., P_slack = 0.114962 p.u. (wynik PF)",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: straty = 6.06 %",
+          "latex": "\\Delta P\\% = \\left|\\frac{0.006961}{0.114962}\\right| \\cdot 100\\% = 6.06\\%"
+        },
+        {
+          "tekst": "Progi: ostrzezenie 5.0 %, przekroczenie 10.0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Werdykt: OSTRZEZENIE",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "VOLTAGE_DEVIATION",
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "target_name": "Stacja B SN",
+      "observed_value": 3.145140202841716,
+      "unit": "%",
+      "limit_warn": 5.0,
+      "limit_fail": 10.0,
+      "margin_pct": -6.854859797158284,
+      "status": "PASS",
+      "why_pl": "Odchylenie napieciowe 3.15 % ponizej limitu 5.0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzor: odchylenie = |U - U_n| / U_n * 100%",
+          "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: U = 14.5282 kV (wynik PF), U_n = 15.0000 kV",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: odchylenie = 3.15 %",
+          "latex": "\\delta U = \\frac{|14.5282 - 15.0000|}{15.0000} \\cdot 100\\% = 3.15\\%"
+        },
+        {
+          "tekst": "Progi: ostrzezenie 5.0 %, przekroczenie 10.0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Werdykt: ZGODNY",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "VOLTAGE_DEVIATION",
+      "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "target_name": "Szyna SN",
+      "observed_value": 3.144357833908877,
+      "unit": "%",
+      "limit_warn": 5.0,
+      "limit_fail": 10.0,
+      "margin_pct": -6.855642166091123,
+      "status": "PASS",
+      "why_pl": "Odchylenie napieciowe 3.14 % ponizej limitu 5.0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzor: odchylenie = |U - U_n| / U_n * 100%",
+          "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: U = 14.5283 kV (wynik PF), U_n = 15.0000 kV",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: odchylenie = 3.14 %",
+          "latex": "\\delta U = \\frac{|14.5283 - 15.0000|}{15.0000} \\cdot 100\\% = 3.14\\%"
+        },
+        {
+          "tekst": "Progi: ostrzezenie 5.0 %, przekroczenie 10.0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Werdykt: ZGODNY",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "VOLTAGE_DEVIATION",
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "target_name": "GPZ 110kV",
+      "observed_value": 0.0,
+      "unit": "%",
+      "limit_warn": 5.0,
+      "limit_fail": 10.0,
+      "margin_pct": -10.0,
+      "status": "PASS",
+      "why_pl": "Odchylenie napieciowe 0.00 % ponizej limitu 5.0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzor: odchylenie = |U - U_n| / U_n * 100%",
+          "latex": "\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: U = 110.0000 kV (wynik PF), U_n = 110.0000 kV",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: odchylenie = 0.00 %",
+          "latex": "\\delta U = \\frac{|110.0000 - 110.0000|}{110.0000} \\cdot 100\\% = 0.00\\%"
+        },
+        {
+          "tekst": "Progi: ostrzezenie 5.0 %, przekroczenie 10.0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Werdykt: ZGODNY",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "TRANSFORMER_LOADING",
+      "target_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+      "target_name": "TR 110/15",
+      "observed_value": 52.647515832710326,
+      "unit": "%",
+      "limit_warn": 80.0,
+      "limit_fail": 100.0,
+      "margin_pct": -47.352484167289674,
+      "status": "PASS",
+      "why_pl": "Obciazenie 52.65 % ponizej limitu 80.0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzor: obciazenie = max(|S_gora|, |S_dol|) / S_n * 100%",
+          "latex": "\\varepsilon = \\frac{\\max(|S_{\\text{gora}}|, |S_{\\text{dol}}|)}{S_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: S = 13.1619 MVA (wynik PF), S_n = 25.0000 MVA",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: obciazenie = 52.65 %",
+          "latex": "\\varepsilon = \\frac{13.1619}{25.0000} \\cdot 100\\% = 52.65\\%"
+        },
+        {
+          "tekst": "Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Werdykt: ZGODNY",
+          "latex": null
+        }
+      ]
+    },
+    {
+      "check_type": "BRANCH_LOADING",
+      "target_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
+      "target_name": "Kabel SN 1",
+      "observed_value": 0.18843286145941207,
+      "unit": "%",
+      "limit_warn": 80.0,
+      "limit_fail": 100.0,
+      "margin_pct": -99.81156713854058,
+      "status": "PASS",
+      "why_pl": "Obciazenie 0.19 % ponizej limitu 80.0 %.",
+      "white_box": [
+        {
+          "tekst": "Wzor: obciazenie = |I| / I_n * 100%",
+          "latex": "\\varepsilon = \\frac{|I|}{I_n} \\cdot 100\\%"
+        },
+        {
+          "tekst": "Dane: |I| = 0.0005 kA (wynik PF), I_n = 0.2800 kA (dane galezi)",
+          "latex": null
+        },
+        {
+          "tekst": "Wynik: obciazenie = 0.19 %",
+          "latex": "\\varepsilon = \\frac{0.0005}{0.2800} \\cdot 100\\% = 0.19\\%"
+        },
+        {
+          "tekst": "Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %",
+          "latex": null
+        },
+        {
+          "tekst": "Werdykt: ZGODNY",
+          "latex": null
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "pass_count": 5,
+    "warning_count": 3,
+    "fail_count": 3,
+    "not_computed_count": 0,
+    "worst_item_target_id": "158eec95-939b-5b35-97ad-9433334b5506",
+    "worst_item_margin_pct": 602.1164546964296
+  }
+}

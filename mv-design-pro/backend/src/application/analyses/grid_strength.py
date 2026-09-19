@@ -95,13 +95,27 @@ def _installed_mva_for_generator(gen: dict[str, Any]) -> float | None:
     return unit_sn * resolve_n_parallel(gen)
 
 
-def _installed_mva_by_bus(snapshot: dict[str, Any]) -> dict[str, float]:
+def _installed_mva_by_bus(snapshot: dict[str, Any]) -> dict[str, float | None]:
     """Suma mocy zainstalowanej źródeł IBG per węzeł (ref_id szyny).
 
     Agreguje po WSZYSTKICH elementach-źródłach IBG przyłączonych do danej szyny
-    (test: „suma mocy wielu źródeł w jednym węźle").
+    (test: „suma mocy wielu źródeł w jednym węźle"). Gdy KTÓRYKOLWIEK generator
+    w węźle ma nieznaną moc znamionową (``_installed_mva_for_generator`` →
+    ``None``), suma CAŁEGO węzła jest ``None`` — nie da się uczciwie podać
+    sumy zainstalowanej mocy, gdy jeden ze składników jest nieznany, niezależnie
+    od tego, czy w tym samym węźle są też generatory o znanej mocy (FAB-E, E1:
+    brak wyniku ≠ zero).
+
+    Poprzednia wersja trzymała ``0.0`` jako sentinel „nieznane" i wpisywała go
+    WYŁĄCZNIE przez ``setdefault`` — gdy w tym samym węźle wcześniej lub później
+    trafił generator o ZNANEJ mocy, jego suma cicho „wygrywała" i sentinel nigdy
+    nie był widoczny (defekt KLASA NIE INSTANCJA: ten sam plik ma trzy siostrzane
+    funkcje — ``_sk_mva_by_bus``, ``_nominal_kv_by_bus``, ``BusSourceModule.sn_mva``
+    przez ``_modules_by_bus`` — i wszystkie poprawnie zwracają ``float | None``;
+    tylko ta jedna używała fikcyjnego zera zamiast jawnego braku).
     """
-    by_bus: dict[str, float] = {}
+    suma: dict[str, float] = {}
+    nieznane: set[str] = set()
     for gen in snapshot.get("generators") or []:
         if not isinstance(gen, dict):
             continue
@@ -112,12 +126,11 @@ def _installed_mva_by_bus(snapshot: dict[str, Any]) -> dict[str, float]:
             continue
         installed = _installed_mva_for_generator(gen)
         if installed is None:
-            # Węzeł hostuje IBG, ale bez znanej mocy znamionowej — utrzymujemy
-            # klucz z sumą 0.0, aby builder wydał uczciwie „brak danych".
-            by_bus.setdefault(bus_ref, 0.0)
+            nieznane.add(bus_ref)
+            suma.setdefault(bus_ref, 0.0)
             continue
-        by_bus[bus_ref] = by_bus.get(bus_ref, 0.0) + installed
-    return by_bus
+        suma[bus_ref] = suma.get(bus_ref, 0.0) + installed
+    return {bus_ref: (None if bus_ref in nieznane else total) for bus_ref, total in suma.items()}
 
 
 def _modules_by_bus(snapshot: dict[str, Any]) -> dict[str, tuple[BusSourceModule, ...]]:
@@ -220,7 +233,9 @@ def build_grid_strength_view(run: CanonicalRun) -> dict[str, Any]:
             bus_ref=bus_ref,
             nominal_kv=kv_by_bus.get(bus_ref),
             s_sc_mva=sk_by_bus.get(bus_ref),
-            s_installed_mva=(installed if installed > 0.0 else None),
+            # `_installed_mva_by_bus` już zwraca `None` dla węzła z nieznaną
+            # mocą zainstalowaną — przekazanie wprost, bez własnej translacji.
+            s_installed_mva=installed,
             modules=modules_by_bus.get(bus_ref, ()),
         )
         for bus_ref, installed in installed_by_bus.items()

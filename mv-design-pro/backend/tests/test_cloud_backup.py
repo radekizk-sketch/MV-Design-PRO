@@ -536,6 +536,39 @@ class TestHashVerification:
 # ============================================================================
 
 
+class TestCloudBackupEntrySizeBytesOptional:
+    """FAB-E (E1): size_bytes nieznany (np. GCS Blob.size=None) to None, nigdy
+    fabrykowane 0 B (wygladaloby jak pusty/uszkodzony plik kopii). Zero
+    chmury tutaj — konstrukcja dataclass/pydantic wprost, zgodnie z
+    konwencja tego pliku ("Wyłącznie LocalBackupProvider (zero chmury w
+    testach)")."""
+
+    def test_cloud_backup_entry_accepts_none_size_bytes(self) -> None:
+        entry = CloudBackupEntry(
+            backup_id="20240101-000000+0000_abcd1234",
+            project_id="proj-1",
+            archive_hash="abcd1234",
+            timestamp="2024-01-01T00:00:00+00:00",
+            size_bytes=None,
+            url="gs://bucket/key.mvdp.zip",
+            key="backups/proj-1/20240101-000000+0000_abcd1234.mvdp.zip",
+        )
+        assert entry.size_bytes is None
+
+    def test_backup_entry_response_accepts_none_size_bytes(self) -> None:
+        from api.cloud_backup import BackupEntryResponse
+
+        response = BackupEntryResponse(
+            backup_id="20240101-000000+0000_abcd1234",
+            project_id="proj-1",
+            archive_hash="abcd1234",
+            timestamp="2024-01-01T00:00:00+00:00",
+            size_bytes=None,
+            url="gs://bucket/key.mvdp.zip",
+        )
+        assert response.size_bytes is None
+
+
 class TestCreateBackupProvider:
     """Testy funkcji fabrykującej."""
 

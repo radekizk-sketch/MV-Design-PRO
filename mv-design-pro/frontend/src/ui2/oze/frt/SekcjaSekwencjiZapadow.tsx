@@ -85,9 +85,11 @@ function StanPanel({
 function WynikSekwencji({
   dane,
   trybZaawansowania,
+  onOtworzDowod,
 }: {
   dane: WidokSekwencjiFrt;
   trybZaawansowania: AdvancementMode;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
   // Ślad WHITE BOX kontekstu siły sieci — NA ŻĄDANIE (domyślnie zwinięty).
@@ -114,13 +116,13 @@ function WynikSekwencji({
       <TabelaWynikow
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
       />
 
       <section className="mvd-frt-sekw-kontekst" data-testid="mvd-frt-sekw-kontekst">
         <h4 className="mvd-frt-sekw-kontekst-tytul">{FRT_STRINGS.sekwKontekstTytul}</h4>
-        {kontekst === null ? (
+        {kontekst == null ? (
           <p className="mvd-frt-sekw-kontekst-powod" data-testid="mvd-frt-sekw-kontekst-powod">
             {dane.kontekst_sily_sieci_powod_pl ?? FRT_STRINGS.kreska}
           </p>
@@ -210,12 +212,16 @@ export interface SekcjaSekwencjiZapadowProps {
   /** Operator OSD (z górnego doboru) — pusty łańcuch blokuje bieg. */
   operatorId: string;
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
+   * z `EkranFrt`, nie zaślepka). */
+  onOtworzDowod: (ref: string) => void;
 }
 
 export function SekcjaSekwencjiZapadow({
   derRef,
   operatorId,
   trybZaawansowania,
+  onOtworzDowod,
 }: SekcjaSekwencjiZapadowProps) {
   const [zapady, setZapady] = useState<ParaZapaduFrt[]>([ZAPAD_DOMYSLNY]);
   const [wybranyRun, setWybranyRun] = useState('');
@@ -441,8 +447,25 @@ export function SekcjaSekwencjiZapadow({
               wariant="blad"
               testid="mvd-frt-sekw-blad"
             />
+          ) : stan.dane.status_solvera === 'blocked' ? (
+            // Karta S-4: brak modelu dynamicznego solvera FROZEN mapowany NA
+            // GRANICY na `blocked` — panel dedykowany (uczciwy stan zerowy).
+            <StanPanel
+              komunikat={FRT_STRINGS.brakModeluTytul}
+              opis={
+                stan.dane.missing_fields_pl && stan.dane.missing_fields_pl.length > 0
+                  ? stan.dane.missing_fields_pl.join(' ')
+                  : FRT_STRINGS.brakModeluOpis
+              }
+              wariant="blad"
+              testid="mvd-frt-sekw-brak-modelu"
+            />
           ) : (
-            <WynikSekwencji dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+            <WynikSekwencji
+              dane={stan.dane}
+              trybZaawansowania={trybZaawansowania}
+              onOtworzDowod={onOtworzDowod}
+            />
           )}
         </>
       )}

@@ -41,7 +41,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { Bus, EnergyNetworkModel, Load, Substation, SwitchBranch } from '../../../../../../types/enm';
+import type { Bus, Cable, EnergyNetworkModel, Load, Substation, SwitchBranch } from '../../../../../../types/enm';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -115,7 +115,7 @@ function nnMcb(
   }) as unknown as SwitchBranch;
 }
 
-function nnCable(ref: string, name: string, fromBusRef: string, toBusRef: string): Record<string, unknown> {
+function nnCable(ref: string, name: string, fromBusRef: string, toBusRef: string): Cable {
   return withId(ref, {
     name,
     type: 'cable',
@@ -125,7 +125,7 @@ function nnCable(ref: string, name: string, fromBusRef: string, toBusRef: string
     length_km: 0.03,
     r_ohm_per_km: 0.32,
     x_ohm_per_km: 0.08,
-  });
+  }) as unknown as Cable;
 }
 
 function nnLoad(ref: string, name: string, busRef: string, pMw: number): Load {

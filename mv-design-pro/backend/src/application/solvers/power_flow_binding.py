@@ -123,7 +123,7 @@ def rozplyw_z_biegu(
 
     return RozplywZBiegu(
         wynik=wynik,
-        max_mismatch_pu=_max_mismatch_ze_sladu(white_box_trace),
+        max_mismatch_pu=max_mismatch_ze_sladu(white_box_trace),
         solver_version=wersja,
     )
 
@@ -198,7 +198,7 @@ def _odtworz_galaz(surowa: Any) -> PowerFlowBranchResult:
     )
 
 
-def _max_mismatch_ze_sladu(white_box_trace: list[dict[str, Any]] | None) -> float:
+def max_mismatch_ze_sladu(white_box_trace: list[dict[str, Any]] | None) -> float:
     """Końcowe niedopasowanie rozpływu — z kroku KOŃCOWEGO śladu White Box.
 
     To ta sama liczba, którą solver porównał z tolerancją (``solution.max_mismatch``),
@@ -219,6 +219,79 @@ def _max_mismatch_ze_sladu(white_box_trace: list[dict[str, Any]] | None) -> floa
         "Ślad obliczeń przebiegu nie niesie końcowego niedopasowania rozpływu — "
         "bez niego nie da się udowodnić zbieżności. Uruchom obliczenie ponownie."
     )
+
+
+def max_mismatch_ze_sladu_lub_brak(white_box_trace: list[dict[str, Any]] | None) -> float | None:
+    """Jak `max_mismatch_ze_sladu`, ale BRAK jest wartością (`None`), nie odmową.
+
+    Dla widoków interpretacji (nie dowodów) brak kroku końcowego w śladzie nie
+    blokuje odczytu wyniku — pole jest wtedy jawnym „brak danych", NIGDY `0.0`
+    (zero sugerowałoby idealną zbieżność, której nikt nie zmierzył; FAB-E).
+    """
+    try:
+        return max_mismatch_ze_sladu(white_box_trace)
+    except BrakDanychRozplywuError:
+        return None
+
+
+@dataclass(frozen=True)
+class SkalaryRozplywu:
+    """Skalary biegu rozpływu z FROZEN `PowerFlowResultV1` — zawsze serializowane."""
+
+    iterations_count: int
+    tolerance_used: float
+    base_mva: float
+
+
+def skalary_wyniku_rozplywu(result_v1: dict[str, Any]) -> SkalaryRozplywu:
+    """Odczytaj `iterations_count`, `tolerance_used`, `base_mva` z artefaktu wyniku.
+
+    Kontrakt FROZEN `network_model/solvers/power_flow_result.py::PowerFlowResultV1`
+    serializuje te trzy pola ZAWSZE (wymagane, bez wartości domyślnych). Ich brak
+    to artefakt uszkodzony albo niekompletny — ODMOWA z nazwaniem pola, a nie
+    podstawienie `0`/`0.0`/`100.0` (do FAB-E i jeszcze po niej widok interpretacji
+    fabrykował `base_mva = 100 MVA` i „zero iteracji", a bilans energii — 100 MVA).
+    Jedno miejsce odczytu dla wszystkich odtwarzaczy wyniku z zapisu biegu.
+    """
+    iteracje = result_v1.get("iterations_count")
+    tolerancja = result_v1.get("tolerance_used")
+    base_mva = result_v1.get("base_mva")
+    for nazwa, wartosc in (
+        ("iterations_count", iteracje),
+        ("tolerance_used", tolerancja),
+        ("base_mva", base_mva),
+    ):
+        if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
+            raise BrakDanychRozplywuError(
+                f"Artefakt wyniku rozpływu nie zawiera liczbowego pola {nazwa!r} — "
+                "wynik niekompletny, odczyt odmawia zamiast podstawiać liczbę. "
+                "Uruchom obliczenie ponownie."
+            )
+    assert isinstance(iteracje, int | float) and isinstance(tolerancja, int | float)
+    assert isinstance(base_mva, int | float)
+    if float(base_mva) <= 0:
+        raise BrakDanychRozplywuError(
+            "Artefakt wyniku rozpływu niesie niedodatnią moc bazową — wynik niekompletny."
+        )
+    return SkalaryRozplywu(
+        iterations_count=int(iteracje),
+        tolerance_used=float(tolerancja),
+        base_mva=float(base_mva),
+    )
+
+
+def skalary_wyniku_rozplywu_lub_brak(result_v1: dict[str, Any]) -> SkalaryRozplywu | None:
+    """Jak `skalary_wyniku_rozplywu`, ale BRAK jest wartością (`None`), nie odmową.
+
+    Dla analiz o kontrakcie „dane niepełne → pozycja NIE OBLICZONA, bez wyjątku"
+    (walidacja energii): skalary są wtedy jawnie nieznane, nigdy podstawione.
+    Wszystko-albo-nic: niekompletna trójka to jeden brak artefaktu, nie trzy osobne
+    predykaty.
+    """
+    try:
+        return skalary_wyniku_rozplywu(result_v1)
+    except BrakDanychRozplywuError:
+        return None
 
 
 def _lista(zrodlo: dict[str, Any], klucz: str) -> list[Any]:

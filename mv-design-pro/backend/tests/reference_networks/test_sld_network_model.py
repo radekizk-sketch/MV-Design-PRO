@@ -7,7 +7,8 @@ from __future__ import annotations
 import json
 
 import pytest
-from application.reference_networks.sld_network_model import distill_sld_network
+
+from tests.golden.sld_network_model import distill_sld_network
 
 from .sld_substrate_52s import build_sld_substrate_52s
 

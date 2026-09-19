@@ -1,7 +1,23 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
+
+/**
+ * Karta FAB-J: `InspectorEngineeringView` czyta katalog operatorów NC RfG
+ * (`useNcRfgOperatorCatalog`) przez React Query — bez providera `useQueryClient()`
+ * rzuca "No QueryClient set". Brak podstawienia `fetch` jest zamierzony: zapytanie
+ * ma bezpieczny fallback (`.data ?? []`), więc odrzucone żądanie w środowisku
+ * testowym zostawia katalog operatorów pusty.
+ */
+function render(ui: ReactElement) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 
 const openOperationForm = vi.fn();
 
@@ -550,7 +566,7 @@ describe('InspectorEngineeringView', () => {
               whole_power_path_ok: true,
             },
             earth_fault_path: {
-              neutral_grounding_mode: 'rezystor',
+              neutral_grounding_mode: 'resistor_grounded',
               zero_sequence_current_source: 'suma_ct',
               zero_sequence_voltage_source: 'otwarty_trojkat_vt',
               closure_path_elements: [],
@@ -828,7 +844,7 @@ describe('InspectorEngineeringView', () => {
               whole_power_path_ok: true,
             },
             earth_fault_path: {
-              neutral_grounding_mode: 'rezystor',
+              neutral_grounding_mode: 'resistor_grounded',
               zero_sequence_current_source: 'suma_ct',
               zero_sequence_voltage_source: 'otwarty_trojkat_vt',
               closure_path_elements: [],
@@ -846,7 +862,6 @@ describe('InspectorEngineeringView', () => {
           },
         }],
       ]),
-      itemsByBayId: new Map(),
       isLoading: false,
       error: null,
     };

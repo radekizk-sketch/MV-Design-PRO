@@ -7,11 +7,9 @@ opt-in ``zapisz_do_magazynu`` przechwytujący REALNY dokument do magazynu F-E8.3
 from __future__ import annotations
 
 import pytest
-from api.main import app
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.store import reset_enm_store, set_enm
-from fastapi.testclient import TestClient
 from infrastructure.persistence.repositories.document_store_repository import (
     document_store_repository_scope,
 )
@@ -22,14 +20,36 @@ _CABLE = "cable-base-epr-al-1c-240"
 #: istniało; operacja przyjmowała je bez sprawdzenia — defekt G).
 _APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
 
-client = TestClient(app)
-
 
 @pytest.fixture(autouse=True)
 def _reset() -> None:
     reset_enm_store()
     yield
     reset_enm_store()
+
+
+def _nowy_przypadek(client) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tego pliku potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego napisu.
+    """
+    project_resp = client.post("/api/projects", json={"name": "DER-SN dokumenty — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
+def _klucz(client, case_id: str) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
 
 
 def _sn_station_enm() -> dict:
@@ -142,31 +162,33 @@ def _der_sn_payload() -> dict:
     }
 
 
-def _seed_case(case_id: str) -> None:
+def _seed_case(client, case_id: str) -> None:
     result = execute_domain_operation(_sn_station_enm(), "add_converter_source", _der_sn_payload())
     assert not result.get("error"), result.get("error")
-    set_enm(case_id, EnergyNetworkModel.model_validate(result["snapshot"]))
+    set_enm(_klucz(client, case_id), EnergyNetworkModel.model_validate(result["snapshot"]))
 
 
-def test_compliance_report_endpoint_returns_checklist() -> None:
-    _seed_case("case-d4-report")
-    resp = client.get("/api/der-sn/case-d4-report/compliance-report", params={"run_status": "DONE"})
+def test_compliance_report_endpoint_returns_checklist(app_client) -> None:
+    case_id = _nowy_przypadek(app_client)
+    _seed_case(app_client, case_id)
+    resp = app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["werdykt"] in {"ZGODNY", "ZGODNY_Z_UWAGAMI"}
     assert body["podsumowanie"]["fail"] == 0
     # Determinizm dwóch wywołań.
     assert (
-        client.get(
-            "/api/der-sn/case-d4-report/compliance-report", params={"run_status": "DONE"}
+        app_client.get(
+            f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"}
         ).json()
         == body
     )
 
 
-def test_bom_endpoint_returns_positions() -> None:
-    _seed_case("case-d4-bom")
-    resp = client.get("/api/der-sn/case-d4-bom/bom")
+def test_bom_endpoint_returns_positions(app_client) -> None:
+    case_id = _nowy_przypadek(app_client)
+    _seed_case(app_client, case_id)
+    resp = app_client.get(f"/api/der-sn/{case_id}/bom")
     assert resp.status_code == 200, resp.text
     body = resp.json()
     kategorie = [p["kategoria"] for p in body["pozycje"]]
@@ -174,25 +196,27 @@ def test_bom_endpoint_returns_positions() -> None:
     assert body["pozycje"][0]["lp"] == 1
 
 
-def test_missing_track_returns_404() -> None:
-    set_enm("case-empty", EnergyNetworkModel.model_validate(_sn_station_enm()))
-    assert client.get("/api/der-sn/case-empty/bom").status_code == 404
-    assert client.get("/api/der-sn/case-empty/compliance-report").status_code == 404
+def test_missing_track_returns_404(app_client) -> None:
+    case_id = _nowy_przypadek(app_client)
+    set_enm(_klucz(app_client, case_id), EnergyNetworkModel.model_validate(_sn_station_enm()))
+    assert app_client.get(f"/api/der-sn/{case_id}/bom").status_code == 404
+    assert app_client.get(f"/api/der-sn/{case_id}/compliance-report").status_code == 404
 
 
-def test_missing_case_returns_404() -> None:
-    assert client.get("/api/der-sn/nieznany/bom").status_code == 404
+def test_missing_case_returns_404(app_client) -> None:
+    assert app_client.get("/api/der-sn/nieznany/bom").status_code == 404
 
 
-def test_opt_in_store_captures_documents() -> None:
-    _seed_case("case-d4-store")
-    resp = client.get(
-        "/api/der-sn/case-d4-store/bom",
+def test_opt_in_store_captures_documents(app_client) -> None:
+    case_id = _nowy_przypadek(app_client)
+    _seed_case(app_client, case_id)
+    resp = app_client.get(
+        f"/api/der-sn/{case_id}/bom",
         params={"zapisz_do_magazynu": True, "project_id": "proj-d4"},
     )
     assert resp.status_code == 200
-    client.get(
-        "/api/der-sn/case-d4-store/compliance-report",
+    app_client.get(
+        f"/api/der-sn/{case_id}/compliance-report",
         params={"zapisz_do_magazynu": True, "project_id": "proj-d4", "run_status": "DONE"},
     )
     with document_store_repository_scope() as repo:
@@ -247,14 +271,16 @@ def _der_payload_4mva(*, cable_ref: str, laying_conditions: object | None) -> di
     return payload
 
 
-def _seed_case_4mva(case_id: str, *, cable_ref: str, laying_conditions: object | None) -> None:
+def _seed_case_4mva(
+    client, case_id: str, *, cable_ref: str, laying_conditions: object | None
+) -> None:
     result = execute_domain_operation(
         _sn_station_enm(),
         "add_converter_source",
         _der_payload_4mva(cable_ref=cable_ref, laying_conditions=laying_conditions),
     )
     assert not result.get("error"), result.get("error")
-    set_enm(case_id, EnergyNetworkModel.model_validate(result["snapshot"]))
+    set_enm(_klucz(client, case_id), EnergyNetworkModel.model_validate(result["snapshot"]))
 
 
 def _odstepstwo_przekroju(body: dict) -> dict | None:
@@ -265,21 +291,21 @@ def _odstepstwo_przekroju(body: dict) -> dict | None:
     return None
 
 
-def test_warunki_ulozenia_z_modelu_nie_daja_falszywego_odstepstwa() -> None:
+def test_warunki_ulozenia_z_modelu_nie_daja_falszywego_odstepstwa(app_client) -> None:
     """Kabel 70 mm² dobrany dla warunków ziemnych NIE MOŻE być odstępstwem.
 
     Propozycja przy warunkach ziemnych to 70 mm² (50 mm² odpada: 119,3 A < 154,0 A),
     więc zastosowanie 70 mm² jest zgodne z propozycją. Gdyby raport liczył propozycję
     dla warunków katalogowych, dostałby 50 mm² i zgłosił ⚠ za dobrą decyzję.
     """
+    case_id = _nowy_przypadek(app_client)
     _seed_case_4mva(
-        "case-fk7-zgodny",
+        app_client,
+        case_id,
         cable_ref="cable-base-xlpe-cu-1c-70",
         laying_conditions={"set_name": "ziemia_3_kable_warstwa_200mm"},
     )
-    resp = client.get(
-        "/api/der-sn/case-fk7-zgodny/compliance-report", params={"run_status": "DONE"}
-    )
+    resp = app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
     assert resp.status_code == 200, resp.text
     pozycja = _odstepstwo_przekroju(resp.json())
     assert pozycja is not None, "sekcja odstępstw D2 musi zawierać przekrój kabla"
@@ -289,21 +315,21 @@ def test_warunki_ulozenia_z_modelu_nie_daja_falszywego_odstepstwa() -> None:
     assert pozycja["code"] == "der_sn.d2.zgodne"
 
 
-def test_realne_odstepstwo_przekroju_nadal_jest_zglaszane() -> None:
+def test_realne_odstepstwo_przekroju_nadal_jest_zglaszane(app_client) -> None:
     """Odwrotna strona: 50 mm² przy warunkach ziemnych to PRAWDZIWE odstępstwo (⚠).
 
     Kabel przechodzi katalogowo (160 A ≥ 154,0 A), ale w ziemi w grupie przenosi
     119,3 A — czyli mniej niż prąd toru. Powiązanie warunków z modelem musi ten
     przypadek nadal wyłapać, a nie „wyciszyć" odstępstw w ogóle.
     """
+    case_id = _nowy_przypadek(app_client)
     _seed_case_4mva(
-        "case-fk7-odstepstwo",
+        app_client,
+        case_id,
         cable_ref="cable-polish-yhakxs-1c-50",
         laying_conditions={"set_name": "ziemia_3_kable_warstwa_200mm"},
     )
-    resp = client.get(
-        "/api/der-sn/case-fk7-odstepstwo/compliance-report", params={"run_status": "DONE"}
-    )
+    resp = app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
     assert resp.status_code == 200, resp.text
     pozycja = _odstepstwo_przekroju(resp.json())
     assert pozycja is not None
@@ -313,16 +339,46 @@ def test_realne_odstepstwo_przekroju_nadal_jest_zglaszane() -> None:
     assert pozycja["code"] == "der_sn.d2.odstepstwo"
 
 
-def test_tor_bez_zapisu_warunkow_liczy_sie_jak_dotad() -> None:
+def _seed_case_4mva_bez_przekroju_kabla(client, case_id: str, *, cable_ref: str) -> None:
+    """Jak ``_seed_case_4mva``, ale kabel MV traci ``cross_section_mm2`` PO
+    materializacji (symuluje tor zapisany zanim to pole zaczęło być
+    materializowane — nadal PRZECHODZI walidację modelu, bo pole jest
+    opcjonalne, więc to REALNY, osiągalny stan magazynu, nie fikcja testu)."""
+    result = execute_domain_operation(
+        _sn_station_enm(),
+        "add_converter_source",
+        _der_payload_4mva(cable_ref=cable_ref, laying_conditions=None),
+    )
+    assert not result.get("error"), result.get("error")
+    for branch in result["snapshot"].get("branches", []):
+        if branch.get("type") == "cable":
+            branch["cross_section_mm2"] = None
+    set_enm(_klucz(client, case_id), EnergyNetworkModel.model_validate(result["snapshot"]))
+
+
+def test_brak_przekroju_kabla_pomija_sekcje_d2_nie_fabrykuje_zera(app_client) -> None:
+    """FAB-E (E1): kabel zastosowany bez znanego ``cross_section_mm2`` (pole
+    opcjonalne w modelu) → sekcja odstępstw D2 pominięta ("brak" — ``None``),
+    NIE zgłasza fikcyjnego „zastosowano 0 mm²" jako fałszywego odstępstwa.
+    Przypadek seedowany przez realny projekt (klucz twin, CV-1-W)."""
+    case_id = _nowy_przypadek(app_client)
+    _seed_case_4mva_bez_przekroju_kabla(app_client, case_id, cable_ref="cable-polish-yhakxs-1c-50")
+    resp = app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
+    assert resp.status_code == 200, resp.text
+    pozycja = _odstepstwo_przekroju(resp.json())
+    assert pozycja is None, "brak danych zastosowanego przekroju nie może dać pozycji odstępstw"
+
+
+def test_tor_bez_zapisu_warunkow_liczy_sie_jak_dotad(app_client) -> None:
     """Tory zbudowane przed tą kartą: warunki katalogowe ⇒ propozycja 50 mm²."""
+    case_id = _nowy_przypadek(app_client)
     _seed_case_4mva(
-        "case-fk7-katalogowy",
+        app_client,
+        case_id,
         cable_ref="cable-polish-yhakxs-1c-50",
         laying_conditions=None,
     )
-    resp = client.get(
-        "/api/der-sn/case-fk7-katalogowy/compliance-report", params={"run_status": "DONE"}
-    )
+    resp = app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
     assert resp.status_code == 200, resp.text
     pozycja = _odstepstwo_przekroju(resp.json())
     assert pozycja is not None

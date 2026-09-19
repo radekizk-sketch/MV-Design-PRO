@@ -19,7 +19,11 @@ from pydantic import BaseModel, Field
 # Contract version
 # ---------------------------------------------------------------------------
 
-SOLVER_INPUT_CONTRACT_VERSION = "1.0"
+#: 1.1 (karta FAB-D2, D2): TransformerPayload.i0_percent/p0_kw/vector_group
+#: stają się Optional — brak danej w katalogu/instancji nie jest już
+#: fabrykowany jako 0.0/"Dyn11". Zmiana addytywna (typ pola, nie kształt
+#: kontraktu) — istniejące payloady z jawną wartością serializują się identycznie.
+SOLVER_INPUT_CONTRACT_VERSION = "1.1"
 
 
 # ---------------------------------------------------------------------------
@@ -157,9 +161,14 @@ class TransformerPayload(BaseModel):
     voltage_lv_kv: float
     uk_percent: float
     pk_kw: float
-    i0_percent: float
-    p0_kw: float
-    vector_group: str
+    # `None` = dana nieznana w katalogu/instancji (karta FAB-D2, D2) — gałąź
+    # magnesująca transformatora nieuwzględniona w tym wejściu (WARNING
+    # `transformer.no_load_params_missing`, ślad White Box niesie założenie).
+    i0_percent: float | None
+    p0_kw: float | None
+    # `None` = grupa połączeń nieznana — BLOCKER `transformer.vector_group_missing`
+    # dla analiz zależnych od składowej zerowej (SHORT_CIRCUIT_1F).
+    vector_group: str | None
     tap_position: int
     tap_step_percent: float
     in_service: bool = True

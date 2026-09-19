@@ -111,13 +111,12 @@ from application.analyses.fault_loop.route import (
 # transformator/układ sieci nN są wyławiane IDENTYCZNIE niezależnie od tego,
 # KTO o nie pyta — czwarte miejsce reużycia tej samej ekstrakcji, nie nowa.
 from application.analyses.fault_loop.service import (
-    _NON_TN_SYSTEMS,
     _find_station,
-    _system_for_station,
     assign_station_lv_buses,
     build_feeder_fault_loop_view,
     resolve_transformer_for_bus,
     station_transformers,
+    uklad_nn_transformatora,
 )
 from application.analyses.nn_device_selection import (
     KIND_FUSE_SWITCH,
@@ -140,7 +139,9 @@ from enm.canonical_analysis import (
 from enm.hash import compute_enm_hash
 from enm.mapping import ref_to_graph_id
 from enm.models import Cable, EnergyNetworkModel, Substation, Transformer
+from enm.uklad_sieci_nn import uklad_nn_stacji
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
+from network_model.pochodne import ka_na_a, km_na_m, prad_roboczy_a
 from network_model.solvers.cable_ampacity_derating import (
     obciazalnosc_skorygowana,
     wspolczynniki_nn,
@@ -150,6 +151,7 @@ from network_model.solvers.conductor_thermal_withstand import (
     check_conductor_thermal_withstand,
 )
 from network_model.solvers.protection_lv_curves import FUSE_GG_IF_MULTIPLIER, MCCB_I2_MULTIPLIER
+from solver_input.uklad_sieci_nn import uklad_tn
 
 # Rodzaje gałęzi rozpoznawane jako „aparat" u początku odpływu — DOKŁADNIE ten
 # sam zestaw co `EkranSwzNn.tsx::TYPY_APARATU` (frontend nN STUDIO), żeby
@@ -351,7 +353,7 @@ def _ib_z_tabliczki(p_mw: float, q_mvar: float, u_ll_kv: float) -> float:
     s_mva = math.hypot(p_mw, q_mvar)
     if u_ll_kv <= 0:
         return 0.0
-    return s_mva * 1000.0 / (math.sqrt(3.0) * u_ll_kv)
+    return prad_roboczy_a(s_mva, u_ll_kv)
 
 
 # =============================================================================
@@ -449,7 +451,7 @@ def _i2t_dla_kabla(
         )
     wynik = check_conductor_thermal_withstand(
         ConductorThermalInput(
-            ith_a=ith_ka * 1000.0,
+            ith_a=ka_na_a(ith_ka),
             fault_duration_s=fault_duration_s,
             ith_1s_a=cable.ith_1s_a,
             jth_1s_a_per_mm2=cable.jth_1s_a_per_mm2,
@@ -491,7 +493,7 @@ def _kable_na_trasie(path: LvBusPath) -> tuple[Cable, ...]:
 
 
 def _dlugosc_calkowita_m(kable: tuple[Cable, ...]) -> float:
-    return sum(c.length_km for c in kable) * 1000.0
+    return km_na_m(sum(c.length_km for c in kable))
 
 
 def _przewod_z_kabla(cable: Cable) -> dict[str, Any]:
@@ -511,7 +513,7 @@ def _build_row(
     enm: EnergyNetworkModel,
     station: Substation,
     trafo: Transformer,
-    system: str,
+    system: str | None,
     root_branch_ref: str,
     bus_refs_odplywu: list[str],
     hop_counts: dict[str, int],
@@ -614,7 +616,13 @@ def _build_row(
 
     # --- Dobór aparatu (Ik1_min/U0/status z wybierz_aparat_dla_obwodu_nn) --
     dobor_wejscie = None
-    if system in _NON_TN_SYSTEMS:
+    if system is None:
+        dobor_status = "brak danych"
+        dobor_reason = (
+            "Transformator zasilający nie deklaruje układu uziemienia sieci nN — "
+            "SWZ/pętla TN nie jest liczona (brak danej nie jest zastępowany układem domyślnym)."
+        )
+    elif not uklad_tn(system):
         dobor_status = "nie dotyczy"
         dobor_reason = (
             f"Układ {system}: SWZ/pętla TN (IEC 60364-4-41) nie dotyczy — inny mechanizm "
@@ -907,7 +915,7 @@ def build_nn_circuit_sheet(
             "reason_pl": None,
         }
 
-    system = _system_for_station(station)
+    system = uklad_nn_stacji(enm, station)
     provenance = _build_provenance(
         enm=enm,
         load_flow_run=load_flow_run,
@@ -938,11 +946,12 @@ def build_nn_circuit_sheet(
             }
 
     worst_impedancyjny: dict[str, str | None] = {}
-    if system not in _NON_TN_SYSTEMS:
-        widok_petli = build_feeder_fault_loop_view(enm, station_ref)
-        if widok_petli.get("status") == "OK":
-            for f in widok_petli.get("feeders", []):
-                worst_impedancyjny[f["feeder_root_branch_ref"]] = f.get("worst_point_bus_ref")
+    # Widok pętli sam odmawia (brak układu / TT / IT) per transformator — tu
+    # zbieramy wyłącznie policzone punkty najgorsze.
+    widok_petli = build_feeder_fault_loop_view(enm, station_ref)
+    if widok_petli.get("status") == "OK":
+        for f in widok_petli.get("feeders", []):
+            worst_impedancyjny[f["feeder_root_branch_ref"]] = f.get("worst_point_bus_ref")
 
     # Kolejność wierszy: po `feeder_root_branch_ref` w obrębie CAŁEJ stacji
     # (jak dotąd), niezależnie od transformatora — numeracja `nr` ciągła.
@@ -982,7 +991,7 @@ def build_nn_circuit_sheet(
                 enm=enm,
                 station=station,
                 trafo=trafo,
-                system=system,
+                system=uklad_nn_transformatora(trafo),
                 root_branch_ref=root_branch_ref,
                 bus_refs_odplywu=bus_refs_odplywu,
                 hop_counts=hop_counts,
@@ -1034,7 +1043,7 @@ def build_nn_circuit_sheet_row_for_breaker(
     trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
         return {"status": "brak danych", "missing_data": transformer_missing, "reason_pl": None}
-    system = _system_for_station(station)
+    system = uklad_nn_transformatora(trafo)
     try:
         hop_count = len(path_to_bus(enm, trafo.lv_bus_ref, bus_ref).branches)
     except RouteExtractionError as exc:

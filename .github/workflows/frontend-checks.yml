@@ -57,6 +57,13 @@ jobs:
       - name: Local Truth Guard
         working-directory: mv-design-pro
         run: python scripts/local_truth_guard.py
+      # Karta V12.7 §0.11/§0.12 — matematyka widoczna dla projektanta renderuje
+      # sie KaTeX-em (`ui/proof/MathRenderer.tsx`), nigdy jako surowy zapis
+      # ASCII. Miejsce: TA bramka — skanuje teksty uzytkownika `ui2/**`, tak
+      # samo jak sasiednie kroki (codenames, dialog completeness, local truth).
+      - name: UI Math Guard
+        working-directory: mv-design-pro
+        run: python scripts/ui_math_guard.py
       # Kanon nawigacji (D1+D2+D4). Miejsce: TA bramka, nie `arch-guard.yml` —
       # guard czyta wylacznie `frontend/src` i pilnuje kontraktu warstwy
       # prezentacji (trasy, powloka, paleta), dokladnie jak sasiednie kroki
@@ -73,3 +80,17 @@ jobs:
       - name: TSConfig Gate Guard
         working-directory: mv-design-pro
         run: python scripts/tsconfig_gate_guard.py
+      # Karta HARNESS-RESZTA (2026-09-16): zero literalow fizyki/recznych run_id
+      # PONAD zmierzony prog w harnessach zrzutow (`*-harness-main.tsx`) — zapadka
+      # w obie strony, tak samo jak TSConfig Gate Guard powyzej.
+      - name: Harness No Physics Literals Guard
+        working-directory: mv-design-pro
+        run: python scripts/harness_no_physics_literals_guard.py
+      # Karta KATALOG-NIEZMIENNIKI §5 p.2 (2026-09-17): mapowanie katalogu na
+      # granicy backend -> front nie ma prawa gubic pola kontraktu po cichu
+      # (S-2: zgubione `k_sc`, pomiar tej karty: dwanascie dalszych pol).
+      # Miejsce: TA bramka — guard czyta `frontend/src/ui/catalog/**` i kontrakt
+      # dataclass backendu, bez uruchamiania czegokolwiek.
+      - name: Katalog — parytet pol backend/front
+        working-directory: mv-design-pro
+        run: python scripts/katalog_parytet_pol_guard.py

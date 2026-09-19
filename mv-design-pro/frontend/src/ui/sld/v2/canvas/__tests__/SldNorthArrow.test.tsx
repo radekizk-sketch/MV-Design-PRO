@@ -7,7 +7,7 @@ import { render } from '@testing-library/react';
 
 import { SldNorthArrow } from '../SldNorthArrow';
 
-describe('SldNorthArrow — K30-47 orientation marker', () => {
+describe('SldNorthArrow — orientation marker', () => {
   it('visible=true (default) → root group renderowany', () => {
     const { container } = render(<svg><SldNorthArrow /></svg>);
     expect(container.querySelector('[data-testid="sld-v2-north-arrow"]')).toBeTruthy();

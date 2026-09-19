@@ -10,12 +10,18 @@ export { SzczegolWerdyktu } from './SzczegolWerdyktu';
 export type { SzczegolWerdyktuProps } from './SzczegolWerdyktu';
 export { PanelModulu } from './PanelModulu';
 export type { PanelModuluProps } from './PanelModulu';
+export { SekcjaZgodnosciPrzekrojowej } from './SekcjaZgodnosciPrzekrojowej';
+export type { SekcjaZgodnosciPrzekrojowejProps } from './SekcjaZgodnosciPrzekrojowej';
 export {
   zbudujModuly,
   zbudujWejscieModulu,
   mapujMacierz,
   podsumowanieModulu,
+  podsumowanieModuluZWyniku,
+  podsumowaniaZBiegu,
+  agregujPodsumowania,
   podsumowanieProjektu,
+  testyNiespelnione,
   rozwiazNapiecieKv,
   rozwiazCertyfikat,
 } from './macierzModel';
@@ -33,4 +39,13 @@ export type {
   PodsumowanieModulu,
   PodsumowanieProjektu,
 } from './macierzModel';
+export {
+  rozwiazStanZgodnosciPrzekrojowej,
+  wierszeZgodnosciPrzekrojowej,
+  podsumowanieZgodnosciPrzekrojowej,
+  brakiZgodnosciPrzekrojowej,
+  stopienDowodowyModulu,
+  nazwaModuluPrzekrojowego,
+} from './zgodnoscPrzekrojowaModel';
+export type { StanZgodnosciPrzekrojowej, BrakiModulu } from './zgodnoscPrzekrojowaModel';
 export { MACIERZ_STRINGS } from './strings';

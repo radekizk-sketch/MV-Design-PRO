@@ -7,7 +7,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render as rtlRender, type RenderOptions } from '@testing-library/react';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { vi } from 'vitest';
 
 const EMPTY_AUDIT2_SNAPSHOT = {
@@ -92,5 +92,18 @@ export function renderWithQueryClient(
       mutations: { retry: false },
     },
   });
-  return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>, options);
+  // Dostawca jako `wrapper` RTL, nie ręczne opakowanie `ui`: tylko wtedy
+  // `rerender(<Inny />)` zwrócony przez render trzyma ten sam QueryClient.
+  // Ręczne `<Provider>{ui}</Provider>` gubiło dostawcę przy pierwszym
+  // `rerender` (etap10-acceptance H: PV → BESS → FW na jednym korzeniu) —
+  // komponent czytający snapshot audytu 2 przez React Query padał z
+  // „No QueryClient set”. Zewnętrzny `options.wrapper` jest zachowany
+  // (składany wewnątrz dostawcy).
+  const ZewnetrznyWrapper = options?.wrapper;
+  const Wrapper = ({ children }: { children: ReactNode }): ReactElement => (
+    <QueryClientProvider client={qc}>
+      {ZewnetrznyWrapper ? <ZewnetrznyWrapper>{children}</ZewnetrznyWrapper> : children}
+    </QueryClientProvider>
+  );
+  return rtlRender(ui, { ...options, wrapper: Wrapper });
 }

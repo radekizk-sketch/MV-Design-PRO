@@ -60,18 +60,17 @@ describe('KartaPrzypadku — karta z konfiguracją', () => {
     expect(within(zalozenia).getAllByText(T.pochodzenieKonfiguracja)).toHaveLength(2);
   });
 
-  it('sekcja „Założenia": temperatura i stan łączeń oznaczone „wkrótce" (brak w typach)', () => {
+  it('sekcja „Założenia": temperatura/stan łączeń NIE są renderowane (kontrolka bez dostawcy w StudyCaseConfig = fantom, TODO-UI2 §1 p. 10)', () => {
     render(
       <KartaPrzypadku przypadek={studyCaseFixture('K1', 'A')} ladowanie={false} blad={null} />,
     );
-    expect(screen.getByTestId('mvd-karta-zalozenie-temperatura')).toHaveTextContent(
-      T.zalozenieTemperatura,
-    );
-    expect(screen.getByTestId('mvd-karta-zalozenie-laczenia')).toHaveTextContent(
-      T.zalozenieStanLaczen,
-    );
+    expect(screen.queryByTestId('mvd-karta-zalozenie-temperatura')).toBeNull();
+    expect(screen.queryByTestId('mvd-karta-zalozenie-laczenia')).toBeNull();
     const zalozenia = screen.getByRole('region', { name: T.sekcjaZalozenia });
-    expect(within(zalozenia).getAllByText(T.pochodzenieWkrotce)).toHaveLength(2);
+    expect(within(zalozenia).queryByText('Temperatura przewodów')).toBeNull();
+    expect(within(zalozenia).queryByText('Stan łączeń (konfiguracja pól)')).toBeNull();
+    // Jedyne jawne założenie, które `StudyCaseConfig` faktycznie niesie.
+    expect(within(zalozenia).getAllByText(T.zalozenieCMax).length).toBeGreaterThan(0);
   });
 
   it('renderuje sekcje konfiguracji (zwarcia, rozpływ, opcje, operator)', () => {

@@ -19,6 +19,7 @@ from enm.models import (
     Generator,
     ProtectionAssignment,
     ProtectionSetting,
+    Substation,
 )
 
 
@@ -417,3 +418,113 @@ def test_wywod_deterministic_two_builds_identical() -> None:
     w1 = [c["wywod"] for c in _checks(_view())]
     w2 = [c["wywod"] for c in _checks(_view())]
     assert json.dumps(w1, sort_keys=True) == json.dumps(w2, sort_keys=True)
+
+
+# ---------------------------------------------------------------------------
+# Pola w KANONICZNEJ postaci modelu (`substations[].meta.field_specs`)
+# ---------------------------------------------------------------------------
+
+
+def _specyfikacja_pola(
+    field_ref: str = "stn/1/sn_field/001",
+    bus_ref: str = "bus_oze",
+    bay_role: str = "OUT",
+    protection_ref: str | None = "prot_lom",
+) -> dict:
+    """Specyfikacja pola tak, jak zapisują ją operacje domenowe (`insert_station_
+    on_segment_sn`, `add_converter_source`) — w `Substation.meta.field_specs`."""
+    return {
+        "field_ref": field_ref,
+        "name": "Pole LINIA_OUT 2",
+        "bay_role": bay_role,
+        "bus_ref": bus_ref,
+        "equipment_refs": ["cb_1"],
+        "protection_ref": protection_ref,
+        "tags": [],
+        "meta": {"field_role": "LINIA_OUT"},
+    }
+
+
+def _enm_z_polem_kanonicznym(
+    specs: list[dict],
+    *,
+    protection_assignments: list[ProtectionAssignment] | None = None,
+    bays: list[Bay] | None = None,
+    klucz_specyfikacji: str = "field_specs",
+) -> EnergyNetworkModel:
+    return EnergyNetworkModel(
+        header=ENMHeader(name="LoM pola kanoniczne", hash_sha256="hash-lom-pola"),
+        buses=[Bus(ref_id="bus_oze", name="Szyna OZE", voltage_kv=15.0)],
+        generators=[_generator()],
+        bays=bays or [],
+        substations=[
+            Substation(
+                ref_id="stn/1/station",
+                name="Stacja",
+                station_type="mv_lv",
+                bus_refs=["bus_oze"],
+                meta={klucz_specyfikacji: specs},
+            )
+        ],
+        protection_assignments=protection_assignments or [],
+    )
+
+
+@pytest.mark.parametrize("klucz", ["field_specs", "nn_field_specs"])
+def test_pole_w_kanonicznej_postaci_modelu_jest_oceniane(klucz: str) -> None:
+    """Pole zapisane przez operacje domenowe (meta stacji) MUSI być oceniane.
+
+    DEFEKT, KTÓRY TO ZAMYKA (2026-09-17, zmierzony wprost): ocena LoM czytała
+    pola WYŁĄCZNIE z legacy `bays`, którego dzisiejsze operacje domenowe NIE
+    zapisują — model zbudowany kreatorem (GPZ → magistrala → stacja → pole
+    wytwórcy) dawał widok z ZEREM ocenionych pól i komunikatem „moduły bez pola
+    przyłączeniowego", choć pola w modelu są. Test pokrywa OBA klucze
+    specyfikacji (`field_specs` SN i `nn_field_specs` nN), bo defekt siedział w
+    źródle danych, nie w konkretnym polu.
+    """
+    setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=1.0, time_delay_s=0.2)
+    enm = _enm_z_polem_kanonicznym(
+        [_specyfikacja_pola()],
+        protection_assignments=[_assignment([setting])],
+        klucz_specyfikacji=klucz,
+    )
+    view = build_ochrona_lom_view(enm)
+    assert view["modules_without_field"] == []
+    assert [pole["bay_ref"] for pole in view["fields"]] == ["stn/1/sn_field/001"]
+    rocof = [c for c in _checks(view, "stn/1/sn_field/001") if c["function_ansi"] == "81R"]
+    assert rocof and rocof[0]["severity"] == "WARN"
+
+
+def test_pole_jawne_i_kanoniczne_o_tej_samej_referencji_liczy_sie_raz() -> None:
+    """Ta sama referencja w `bays` i w `meta.field_specs` = JEDNO pole w widoku.
+
+    Predykaty parami: zbiór pól wchodzących do oceny i zbiór pól „pokrytych"
+    (do wyliczenia modułów bez pola) pochodzą z jednego odczytu — duplikat
+    podwoiłby wiersze ekranu i licznik statusów."""
+    setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=3.0)
+    enm = _enm_z_polem_kanonicznym(
+        [_specyfikacja_pola(field_ref="bay_oze")],
+        protection_assignments=[_assignment([setting])],
+        bays=[_bay(ref="bay_oze")],
+    )
+    view = build_ochrona_lom_view(enm)
+    assert [pole["bay_ref"] for pole in view["fields"]] == ["bay_oze"]
+    assert view["summary"]["fields_total"] == 1
+
+
+def test_specyfikacja_bez_tozsamosci_pola_jest_pomijana_bez_zgadywania() -> None:
+    """Specyfikacja bez referencji/szyny/roli z kontraktu NIE staje się polem.
+
+    Ocena LoM woli pominąć pole, którego nie umie zidentyfikować, niż podstawić
+    rolę albo szynę „domyślną" — moduł zostaje wtedy uczciwie zgłoszony jako
+    wytwórca BEZ pola przyłączeniowego."""
+    enm = _enm_z_polem_kanonicznym(
+        [
+            {"field_ref": "bez_szyny", "bay_role": "OUT"},
+            {"bus_ref": "bus_oze", "bay_role": "OUT"},
+            _specyfikacja_pola(field_ref="zla_rola", bay_role="NIEZNANA"),
+        ]
+    )
+    view = build_ochrona_lom_view(enm)
+    assert view["fields"] == []
+    assert view["modules_without_field"] == ["gen_pv"]

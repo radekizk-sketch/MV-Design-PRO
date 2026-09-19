@@ -1,7 +1,11 @@
 """Końcówki API jakości wyników dla gotowych przebiegów (fundament okna W-607).
 
-- ``GET /api/quality/sanity-bounds?run_id=`` — wiarygodność Ik'' per węzeł na
-  bazie przebiegu zwarciowego (``short_circuit_sn``),
+- ``GET /api/quality/sanity-bounds?run_id=`` — pasma zdrowego rozsądku wyniku,
+  dwie niezależne oceny wg rodzaju przebiegu (rozszerzenie ADDYTYWNE, karta
+  W3-G2): przebieg zwarciowy (``short_circuit_sn``) → wiarygodność Ik'' per
+  węzeł (BEZ ZMIAN wobec stanu sprzed karty); przebieg rozpływu (``PF``) →
+  pasma napięć szyn (Un ± 10 %, PN-EN 50160), obciążeń gałęzi (In katalogu) i
+  strat czynnych sieci. Inny rodzaj przebiegu → 422 (bez zmian),
 - ``GET /api/quality/energy-validation?run_id=`` — walidacja energetyczna
   (obciążenia, odchylenia napięć, budżet strat, bilans Q) na bazie przebiegu
   rozpływu (``PF``),
@@ -39,10 +43,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
+from api.klucz_twin_dep import KluczTwin
 from application.analyses.arc_flash_view import build_arc_flash_view
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.migotanie import build_migotanie_view
-from application.analyses.sanity_bounds import build_sanity_bounds_view
+from application.analyses.sanity_bounds import (
+    build_power_flow_sanity_bounds_view,
+    build_sanity_bounds_view,
+)
 from application.analyses.state_estimation import (
     build_state_estimation_requirements,
     build_state_estimation_view,
@@ -60,7 +68,7 @@ from application.analyses.zgodnosc_powykonawcza import (
 )
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -147,8 +155,17 @@ def _require_run(run_id: UUID) -> CanonicalRun:
 
 @router.get("/api/quality/sanity-bounds")
 def get_sanity_bounds(run_id: UUID = Query(...)) -> dict[str, Any]:
+    """Pasma wiarygodności — dispatch wg rodzaju przebiegu (karta W3-G2, addytywnie).
+
+    ``PF`` → nowe pasma rozpływu (napięcia/obciążenia/straty); każdy inny rodzaj
+    (WŁĄCZNIE z ``short_circuit_sn``) idzie do ``build_sanity_bounds_view`` —
+    ścieżka zwarciowa jest BIT W BIT tą samą funkcją i tym samym wynikiem co
+    przed kartą.
+    """
     run = _require_run(run_id)
     try:
+        if run.analysis_type == "PF":
+            return build_power_flow_sanity_bounds_view(run)
         return build_sanity_bounds_view(run)
     except ValueError as exc:
         raise HTTPException(
@@ -211,7 +228,7 @@ def get_flicker(run_id: UUID = Query(...)) -> dict[str, Any]:
 
 
 @router.get("/api/quality/conductor-thermal-withstand")
-def get_conductor_thermal_withstand(run_id: UUID = Query(...)) -> dict[str, Any]:
+def get_conductor_thermal_withstand(request: Request, run_id: UUID = Query(...)) -> dict[str, Any]:
     """Wytrzymalosc zwarciowa przewodow dla przebiegu zwarciowego (karta F-K1 faza 3).
 
     Kryterium IEC 60949 (I_th <= I_th(1s)/sqrt(t)) per galaz: czy przekroj wytrzyma
@@ -219,8 +236,9 @@ def get_conductor_thermal_withstand(run_id: UUID = Query(...)) -> dict[str, Any]
     kodem gotowosci — nigdy milczacego PASS.
     """
     run = _require_run(run_id)
+    uow_factory = getattr(request.app.state, "uow_factory", None)
     try:
-        return build_wytrzymalosc_cieplna_view(run)
+        return build_wytrzymalosc_cieplna_view(run, uow_factory)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -230,6 +248,7 @@ def get_conductor_thermal_withstand(run_id: UUID = Query(...)) -> dict[str, Any]
 
 @router.get("/api/quality/conductor-thermal-withstand/proof")
 def get_conductor_thermal_withstand_proof(
+    request: Request,
     run_id: UUID = Query(...),
     branch_id: str = Query(...),
 ) -> dict[str, Any]:
@@ -242,7 +261,8 @@ def get_conductor_thermal_withstand_proof(
     """
     run = _require_run(run_id)
     try:
-        return zbuduj_dowod_cieplny(run, branch_id)
+        # PERF-SC-50: wkłady na żądanie z wejścia biegu — fabryka UoW jak przy biegu.
+        return zbuduj_dowod_cieplny(run, branch_id, getattr(request.app.state, "uow_factory", None))
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -453,7 +473,9 @@ def post_arc_flash_report_docx(zadanie: ArcFlashReportZadanie) -> Response:
 
 
 @router.get("/api/quality/design-verdict")
-def get_design_verdict(case_id: str = Query(...)) -> dict[str, Any]:
+def get_design_verdict(
+    request: Request, klucz: KluczTwin, case_id: str = Query(...)
+) -> dict[str, Any]:
     """Agregat werdyktu projektowego dla przypadku obliczeniowego (karta F-K3).
 
     JEDYNA koncowka tej rodziny parametryzowana PRZYPADKIEM, nie przebiegiem — i
@@ -464,4 +486,7 @@ def get_design_verdict(case_id: str = Query(...)) -> dict[str, Any]:
     zakres kryteriow, ktorych system NIE sprawdza automatycznie. Bieg nieaktualny
     wobec biezacego modelu daje NIESPRAWDZONE (regula 4 kanonu), nigdy spelnienie.
     """
-    return build_werdykt_projektowy_view(case_id)
+    # PERF-SC-50: wkłady na żądanie z wejścia biegu — fabryka UoW jak przy biegu.
+    return build_werdykt_projektowy_view(
+        case_id, klucz, getattr(request.app.state, "uow_factory", None)
+    )

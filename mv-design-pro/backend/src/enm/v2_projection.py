@@ -22,6 +22,7 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
 from pydantic import BaseModel, Field
 
 ProjectionQuality = Literal["pelna", "czesciowa", "wymaga_decyzji"]
@@ -73,7 +74,7 @@ class V2SwitchingStateSnapshot(BaseModel):
 
 class V2ZeroSequenceConfig(BaseModel):
     element_ref: str
-    element_kind: Literal["branch", "source", "transformer", "bus"]
+    element_kind: Literal["branch", "source", "transformer"]
     r0: float | None = None
     x0: float | None = None
     b0: float | None = None
@@ -296,6 +297,9 @@ def _build_zero_sequence_configs(enm: EnergyNetworkModel) -> list[V2ZeroSequence
                 element_kind="source",
                 r0=source.r0_ohm,
                 x0=source.x0_ohm,
+                grounding_type=(
+                    source.neutral_grounding.type if source.neutral_grounding else None
+                ),
                 quality_status=(
                     "pelna"
                     if source.r0_ohm is not None and source.x0_ohm is not None
@@ -312,20 +316,6 @@ def _build_zero_sequence_configs(enm: EnergyNetworkModel) -> list[V2ZeroSequence
                 element_kind="transformer",
                 grounding_type=grounding.type if grounding else None,
                 quality_status="pelna" if transformer.vector_group and grounding else "czesciowa",
-            )
-        )
-
-    for bus in sorted(enm.buses, key=lambda item: item.ref_id):
-        if bus.grounding is None:
-            continue
-        configs.append(
-            V2ZeroSequenceConfig(
-                element_ref=bus.ref_id,
-                element_kind="bus",
-                r0=bus.grounding.r_ohm,
-                x0=bus.grounding.x_ohm,
-                grounding_type=bus.grounding.type,
-                quality_status="pelna",
             )
         )
 
@@ -467,7 +457,10 @@ def _build_migration_warnings(enm: EnergyNetworkModel) -> list[V2MigrationWarnin
                     ),
                 )
             )
-        if generator.gen_type in _converter_generator_types() and not generator.catalog_ref:
+        if brakuje_wymaganej_referencji(
+            wymagalnosc_katalogu("generator", gen_type=generator.gen_type).import_,
+            generator.catalog_ref,
+        ):
             warnings.append(
                 V2MigrationWarning(
                     code="V12-MIG-GEN-002",
@@ -525,15 +518,14 @@ def _readiness_for_element(element: object) -> ReadinessStatus:
     if isinstance(element, OverheadLine | Cable | Transformer | Source):
         return "gotowy" if getattr(element, "catalog_ref", None) else "wymaga_uzupelnienia"
     if isinstance(element, Generator):
-        if element.gen_type in _converter_generator_types() and not element.catalog_ref:
+        if brakuje_wymaganej_referencji(
+            wymagalnosc_katalogu("generator", gen_type=element.gen_type).walidacja,
+            element.catalog_ref,
+        ):
             return "wymaga_uzupelnienia"
     if isinstance(element, ProtectionAssignment) and not element.ct_ref:
         return "wymaga_uzupelnienia"
     return "gotowy"
-
-
-def _converter_generator_types() -> set[str]:
-    return {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
 
 
 def _source_type_for_generator(generator: Generator) -> str:
@@ -604,7 +596,10 @@ def _source_profile_quality(
     generator: Generator,
     source_profile: dict | None,
 ) -> ProjectionQuality:
-    if not generator.catalog_ref:
+    if brakuje_wymaganej_referencji(
+        wymagalnosc_katalogu("generator", gen_type=generator.gen_type).walidacja,
+        generator.catalog_ref,
+    ):
         return "czesciowa"
     if source_profile is None:
         return "czesciowa"

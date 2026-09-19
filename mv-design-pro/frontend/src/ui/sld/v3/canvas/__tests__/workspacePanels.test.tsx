@@ -39,14 +39,10 @@ function rozwinZwinieteNarzedzia(): void {
 beforeEach(() => {
   // jsdom nie implementuje URL.createObjectURL/revokeObjectURL — shim przed
   // spy (ten sam wzorzec co `v2/export/__tests__/SldExportButton.test.tsx`).
-  // @ts-expect-error jsdom shim
   if (typeof URL.createObjectURL !== 'function') {
-    // @ts-expect-error jsdom shim
     URL.createObjectURL = () => 'blob:shim';
   }
-  // @ts-expect-error jsdom shim
   if (typeof URL.revokeObjectURL !== 'function') {
-    // @ts-expect-error jsdom shim
     URL.revokeObjectURL = () => {};
   }
 });

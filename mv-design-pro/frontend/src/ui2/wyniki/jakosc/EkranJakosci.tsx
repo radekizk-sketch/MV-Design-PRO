@@ -26,6 +26,8 @@ import { EkranAnalizy, useAkcjaUruchomObliczenie, usePoprawWModelu } from '../wz
 import { PrzyciskAkcjiStanu } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 import { PanelDowoduCieplnego } from './PanelDowoduCieplnego';
+import { SekcjaPasmRozplywu } from './SekcjaPasmRozplywu';
+import { SekcjaPorownaniaMetod } from './SekcjaPorownaniaMetod';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
   fetchArcFlash,
@@ -108,9 +110,11 @@ import {
 // Zasób jakości — stan pobierania (brak przebiegu / ładowanie / błąd / gotowe)
 // ---------------------------------------------------------------------------
 
-type StanZasobu = 'brakPrzebiegu' | 'ladowanie' | 'blad' | 'gotowe';
+export type StanZasobu = 'brakPrzebiegu' | 'ladowanie' | 'blad' | 'gotowe';
 
-function useZasobJakosci<T>(
+/** Eksportowany dla sekcji w osobnych plikach (karta W3-G2: „Pasma rozpływu") —
+ * jeden hak pobierania dla WSZYSTKICH sekcji ekranu Jakość, zero duplikacji. */
+export function useZasobJakosci<T>(
   runId: string | null,
   pobierz: (id: string) => Promise<T>,
 ): { stan: StanZasobu; dane: T | null } {
@@ -151,7 +155,7 @@ function useZasobJakosci<T>(
 // Elementy wspólne (tag statusu, chip podsumowania, panele stanu)
 // ---------------------------------------------------------------------------
 
-function TagStatusu({ tekst, istotnosc }: { tekst: string; istotnosc: IstotnoscStatusu }) {
+export function TagStatusu({ tekst, istotnosc }: { tekst: string; istotnosc: IstotnoscStatusu }) {
   return (
     <span className={`mvd-jakosc-tag mvd-jakosc-tag--${istotnosc}`} data-testid="mvd-jakosc-tag">
       {tekst}
@@ -159,7 +163,7 @@ function TagStatusu({ tekst, istotnosc }: { tekst: string; istotnosc: IstotnoscS
   );
 }
 
-function Chip({
+export function Chip({
   etykieta,
   wartosc,
   istotnosc,
@@ -176,7 +180,7 @@ function Chip({
   );
 }
 
-function StanSekcji({
+export function StanSekcji({
   tytul,
   komunikat,
   opis,
@@ -211,7 +215,8 @@ function StanSekcji({
 // Sekcja 1 — Wiarygodność zwarciowa
 // ---------------------------------------------------------------------------
 
-interface SekcjaProps {
+/** Eksportowany dla sekcji w osobnych plikach (karta W3-G2). */
+export interface SekcjaProps {
   przebieg: ExecutionRun | null;
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
@@ -287,6 +292,13 @@ export function SekcjaWiarygodnosci({
         kluczWiersza={KLUCZ_WIARYGODNOSCI_WEZEL}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
+        // Karta UI2 p.6: wiarygodność zwarciowa liczona per węzeł (Bus).
+        typElementuWiersza={() => 'Bus'}
+        // Poprawka KLASA NIE INSTANCJA: `KLUCZ_WIARYGODNOSCI_WEZEL` niesie
+        // `target_id` (techniczny), kolumna „Węzeł" pokazuje `target_name`.
+        nazwaElementuWiersza={(klucz) =>
+          items.find((it) => it.target_id === klucz)?.target_name ?? undefined
+        }
       />
       <div className="mvd-jakosc-podsumowanie" data-testid="mvd-jakosc-wiarygodnosc-podsumowanie">
         <Chip etykieta={JAKOSC_STRINGS.podsumZweryfikowane} wartosc={summary.credible_count} istotnosc="ok" />
@@ -421,6 +433,23 @@ export function SekcjaWalidacji({ przebieg, trybZaawansowania, onOtworzDowod, on
         kluczWiersza={KLUCZ_WIERSZA_WALIDACJI}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
+        // Karta UI2 p.6: JEDNA mapa (`wierszeSelektora`) i JEDNO mapowanie
+        // (`typElementuWalidacji`) co akcja „Popraw w modelu" niżej.
+        typElementuWiersza={(klucz) => {
+          const it = wierszeSelektora.get(klucz);
+          return it ? typElementuWalidacji(it.check_type) ?? undefined : undefined;
+        }}
+        // Poprawka KLASA NIE INSTANCJA: `KLUCZ_WIERSZA_WALIDACJI` jest kompozytem
+        // tabeli (`check_type::target_id::index`, `target_id` NIE jest tu
+        // unikatowy — p. `jakoscModel.ts`), NIE identyfikatorem elementu — bez
+        // tego resolvera SLD próbowałoby wycentrować się na kompozycie zamiast
+        // na realnym elemencie. Ten sam `target_id`/`target_name`, którego już
+        // używa `onPoprawWModelu` niżej (JEDNO źródło prawdy — `wierszeSelektora`).
+        elementIdWiersza={(klucz) => wierszeSelektora.get(klucz)?.target_id}
+        nazwaElementuWiersza={(klucz) => {
+          const it = wierszeSelektora.get(klucz);
+          return it ? it.target_name ?? it.target_id : undefined;
+        }}
         onPoprawWModelu={(klucz) => {
           const it = wierszeSelektora.get(klucz);
           const typ = it ? typElementuWalidacji(it.check_type) : null;
@@ -758,6 +787,8 @@ export function SekcjaMigotania({
         kluczWiersza={KLUCZ_WIERSZA_MIGOTANIE}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
+        // Karta UI2 p.6: migotanie liczone per węzeł (Bus).
+        typElementuWiersza={() => 'Bus'}
         // K1 / F-E6.3: werdykt tej sekcji = migotanie (Pst/Plt/d%) → rodzaj 'migotanie'.
         onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', ref, 'migotanie')}
       />
@@ -1171,6 +1202,8 @@ export function SekcjaArcFlash({
             kluczWiersza={KLUCZ_WIERSZA_ARC_FLASH}
             onWybierzWiersz={setWybrany}
             wybranyWiersz={wybrany}
+            // Karta UI2 p.6: wiersz = `bus_ref` (arc flash liczony per węzeł).
+            typElementuWiersza={() => 'Bus'}
           />
           <SzczegolArcFlash wynik={wybranyWynik} trybZaawansowania={trybZaawansowania} />
           <div className="mvd-jakosc-af-raport" data-testid="mvd-jakosc-af-raport">
@@ -1415,10 +1448,23 @@ export function SekcjaWytrzymaloscCieplna({
         kluczWiersza={KLUCZ_CIEPLNA_GALAZ}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
+        // Karta UI2 p.6: ten sam typ co akcja „Popraw w modelu" niżej —
+        // wytrzymałość cieplna przewodów (IEC 60949) dotyczy WYŁĄCZNIE linii/kabli.
+        typElementuWiersza={() => 'LineBranch'}
+        // Poprawka KLASA NIE INSTANCJA: `KLUCZ_CIEPLNA_GALAZ` niesie `branch_id`
+        // (techniczny), kolumna „Przewód" pokazuje `branch_name || branch_id`
+        // (ten sam wzorzec co `naWierszeCieplne` wyżej) — `onPoprawWModelu`
+        // NIŻEJ miał ten sam defekt (przekazywał `klucz` jako nazwę), naprawiony
+        // razem (dług PRZED-ISTNIEJĄCY napotkany przy tej samej naprawie klasy).
+        nazwaElementuWiersza={(klucz) => {
+          const pozycja = items.find((it) => it.branch_id === klucz);
+          return pozycja ? pozycja.branch_name || pozycja.branch_id : undefined;
+        }}
         onPoprawWModelu={(klucz) => {
           // Naruszone kryterium cieplne poprawia się ZMIANA PRZEKROJU tej gałęzi,
           // więc prowadzimy wprost do niej w modelu.
-          poprawWModelu(klucz, 'LineBranch', klucz);
+          const pozycja = items.find((it) => it.branch_id === klucz);
+          poprawWModelu(klucz, 'LineBranch', pozycja ? pozycja.branch_name || pozycja.branch_id : klucz);
         }}
       />
       <DowodCieplnyGalezi
@@ -1540,7 +1586,18 @@ export function EkranJakosci({ trybZaawansowania, onOtworzDowod, onEksport }: Ek
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport ? eksport : undefined}
       />
+      {/* W3-G1 (aneks D2): walidacja krzyżowa metod rozpływu NR↔FD — sekcja
+          OSOBNA (nie edytuje sekcji powyżej/poniżej), znajduje własne dwa
+          biegi (nie bierze `przebiegPF`, bo potrzebuje DWÓCH biegów naraz). */}
+      <SekcjaPorownaniaMetod trybZaawansowania={trybZaawansowania} onOtworzDowod={onOtworzDowod} />
       <SekcjaWarunkowPrzylaczenia
+        przebieg={przebiegPF}
+        trybZaawansowania={trybZaawansowania}
+        onOtworzDowod={onOtworzDowod}
+        onEksport={onEksport ? eksport : undefined}
+      />
+      {/* Karta W3-G2: pasma zdrowego rozsądku rozpływu (napięcia/obciążenia/straty) */}
+      <SekcjaPasmRozplywu
         przebieg={przebiegPF}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}

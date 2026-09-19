@@ -1,5 +1,4 @@
-"""Dowód end-to-end „do ostatniego klika": grupa połączeń transformatora steruje
-prądem zwarcia doziemnego 1F, a ten steruje nastawami ziemnozwarciowymi 50N/51N
+"""Dowód: grupa połączeń transformatora steruje prądem zwarcia doziemnego 1F
 (karta V-SM-1, program MODEL SOLVERA TR — SM-1..SM-3, kanon V12K-181).
 
 Łańcuch dowodzony (każde ogniwo to REALNY kod produkcyjny, zero fabrykacji):
@@ -8,10 +7,6 @@ prądem zwarcia doziemnego 1F, a ten steruje nastawami ziemnozwarciowymi 50N/51N
                  ─► z0_bus
                  ─► ShortCircuitIEC60909Solver.compute_1ph_short_circuit
                  ─► ShortCircuitResult.ikss_a  (I″k1 na szynie nN)
-                 ─► build_protection_input (``…protection.overcurrent.input_adapter``)
-                 ─► fault_levels["ik_min_1ph"]
-                 ─► compute_overcurrent_settings (``…protection.overcurrent.calculator``)
-                 ─► i_pickup_51n_a / i_inst_50n_a  (nastawy 50N/51N)
 
 Dwie sieci RÓŻNIĄCE SIĘ WYŁĄCZNIE grupą połączeń (poza tym identyczne — to samo
 źródło, ta sama impedancja rozproszenia TR, ten sam węzeł zwarcia):
@@ -22,14 +17,25 @@ Dwie sieci RÓŻNIĄCE SIĘ WYŁĄCZNIE grupą połączeń (poza tym identyczne 
       więc Z0 na szynie nN rośnie o (zredukowaną) impedancję zerową źródła.
 
 Skutek fizyczny (IEC 60909, składowe symetryczne): Z0(Dyn) < Z0(YNyn) ⇒
-|Z1+Z2+Z0|(Dyn) < |…|(YNyn) ⇒ I″k1(Dyn) > I″k1(YNyn). Konsument ziemnozwarciowy
-MUSI odziedziczyć tę różnicę: nastawy 50N/51N(Dyn) > 50N/51N(YNyn). Gdyby
-konsument NIE reagował na grupę (przerwa łańcucha) — asercje by padły.
+|Z1+Z2+Z0|(Dyn) < |…|(YNyn) ⇒ I″k1(Dyn) > I″k1(YNyn).
 
 Wartości referencyjne (hand-calc, słabe źródło HV r0=2, x0=20 Ω):
     Z_T0 na nN = 0.0396 + j0.98921 Ω (uk=11%, pk=110 kW, 25 MVA, 15 kV) —
     NIEZALEŻNE od źródła dla Dyn (delta blokuje), więc I″k1(Dyn)=9750.24 A stałe;
     YNyn: I″k1=8649.10 A (Z0 powiększone o drogę szeregową źródła).
+
+KASACJA (karta W3-C1, 2026-09): konsument ziemnozwarciowy 50N/51N
+(``application/analyses/protection/overcurrent/**``, metodyka V12K-189) miał
+ZERO producentów w drzewie produkcyjnym — skasowany razem z resztą V12K-189
+(jedna metodyka nastaw nadprądowych = Hoppel/IRiESD, `application/
+protection_settings/`, który 50N/51N NIE wyznacza — metoda dotyczy WYŁĄCZNIE
+stopni fazowych, `ProtectionRequirementV0.i_pickup_51n_a/i_inst_50n_a` zostają
+`None` z definicji). Ogniwo 2 tego łańcucha (nastawy 50N/51N reagujące na
+grupę) zeszło razem z konsumentem, którego dowodziło; ogniwo 1 (fizyka
+zwarcia 1F reagująca na grupę połączeń, solver + `enm.mapping`) zostaje —
+`_run_1ph_on_lv`/`_hand_zt0_ohm_lv` są też dzielone z
+``test_vector_group_earth_fault_touch_voltage.py`` (dowód napięcia dotykowego
+na TEJ SAMEJ parze sieci).
 """
 
 from __future__ import annotations
@@ -37,13 +43,6 @@ from __future__ import annotations
 import math
 
 import pytest
-from application.analyses.protection.overcurrent.calculator import (
-    K_EF_PICKUP_DEFAULT,
-    K_SC_INST_DEFAULT,
-    compute_overcurrent_settings,
-)
-from application.analyses.protection.overcurrent.input_adapter import build_protection_input
-from application.analyses.protection.overcurrent.settings import OvercurrentSettingsV0
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import Bus, EnergyNetworkModel, ENMHeader, Source, Transformer
 from network_model.solvers.short_circuit_iec60909 import (
@@ -60,7 +59,6 @@ _PK_KW = 110.0
 # Słabe źródło HV — wyraźna różnica Z0 na drodze szeregowej YNyn (r0=2, x0=20 Ω).
 _SRC_R0 = 2.0
 _SRC_X0 = 20.0
-_CONNECTION_NODE = {"id": "BN-nN", "voltage_kv": _ULV_KV, "rated_current_a": 250.0}
 
 
 def _hand_zt0_ohm_lv() -> complex:
@@ -118,28 +116,6 @@ def _run_1ph_on_lv(vector_group: str, c_factor: float = 1.1) -> ShortCircuitResu
     return result
 
 
-def _settings_for(vector_group: str) -> tuple[ShortCircuitResult, OvercurrentSettingsV0]:
-    """Pełny łańcuch konsumenta: SC 1F → build_protection_input → nastawy 50N/51N.
-
-    Bieg MINIMALNY (c = 0,95, IEC 60909-0 Tabela 1) — nastawy zabezpieczeń dobiera
-    się od najsłabszego zwarcia, bo to ono musi je jeszcze pobudzić. Do V12K-189
-    łańcuch szedł biegiem maksymalnym (c = 1,10), co adapter poprawnie klasyfikuje
-    jako `ik_max_1ph`; nastawy nie miały wtedy danych i wpadały w wartość zastępczą.
-    Dowód wpływu grupy połączeń na Z0 (testy wyżej) zostaje na c = 1,10 — tam bada
-    się impedancję, nie nastawę.
-    """
-    sc_result = _run_1ph_on_lv(vector_group, c_factor=0.95)
-    protection_input = build_protection_input(
-        sc_result,
-        case_id="case-vsm1",
-        base_snapshot_id="snap-vsm1",
-        connection_node=_CONNECTION_NODE,
-        topology_ref=None,
-    )
-    settings = compute_overcurrent_settings(protection_input)
-    return sc_result, settings
-
-
 # ---------------------------------------------------------------------------
 # Ogniwo 1: grupa steruje prądem zwarcia doziemnego 1F (solver)
 # ---------------------------------------------------------------------------
@@ -174,75 +150,3 @@ class TestGroupControlsEarthFaultCurrent:
         """
         assert _run_1ph_on_lv("Dyn11").ikss_a == pytest.approx(8849.00, rel=1e-4)
         assert _run_1ph_on_lv("YNyn0").ikss_a == pytest.approx(7932.23, rel=1e-4)
-
-
-# ---------------------------------------------------------------------------
-# Ogniwo 2: konsument ziemnozwarciowy 50N/51N dziedziczy różnicę grupy
-# ---------------------------------------------------------------------------
-
-
-class TestEarthFaultProtectionReactsToGroup:
-    def test_consumer_uses_real_1ph_current_no_fallback(self) -> None:
-        """Brak fallbacku 51N/50N ⇒ ik_min_1ph z solvera REALNIE dotarł do konsumenta."""
-        _, settings = _settings_for("Dyn11")
-        assert "fallback_pickup_51n_a_missing_ik_min_1ph" not in settings.warnings
-        assert "fallback_inst_50n_a_missing_ik_min_1ph" not in settings.warnings
-
-    def test_settings_equal_k_times_earth_fault_current(self) -> None:
-        """Nastawy = dokładnie k·I″k1 (konsument liczy od prądu 1F, nie od stałej)."""
-        for vg in ("Dyn11", "YNyn0"):
-            sc_result, settings = _settings_for(vg)
-            assert settings.i_pickup_51n_a == pytest.approx(K_EF_PICKUP_DEFAULT * sc_result.ikss_a)
-            assert settings.i_inst_50n_a == pytest.approx(K_SC_INST_DEFAULT * sc_result.ikss_a)
-
-    def test_group_changes_earth_fault_settings(self) -> None:
-        """DOWÓD „do ostatniego klika": zmiana grupy zmienia nastawy 50N/51N w tym
-        samym kierunku co I″k1 (Dyn > YNyn). Gdyby konsument nie reagował — padnie."""
-        _, s_dyn = _settings_for("Dyn11")
-        _, s_ynyn = _settings_for("YNyn0")
-        assert s_dyn.i_pickup_51n_a > s_ynyn.i_pickup_51n_a
-        assert s_dyn.i_inst_50n_a > s_ynyn.i_inst_50n_a
-        # Ta sama względna różnica co w prądzie (nastawa jest proporcjonalna do I″k1).
-        ratio_pickup = s_ynyn.i_pickup_51n_a / s_dyn.i_pickup_51n_a
-        ratio_inst = s_ynyn.i_inst_50n_a / s_dyn.i_inst_50n_a
-        assert ratio_pickup == pytest.approx(ratio_inst)
-        # RE-BASELINE odniesienia prądowego (V12K-184): 8649.10/9750.24 → 7932.23/8849.00.
-        # Stosunek rośnie z 0.887065 na 0.896398 — obie grupy dostały ten sam,
-        # wcześniej zwierany przyczynek Z_Q do składowej zgodnej, więc ich RÓŻNICA
-        # (pochodząca z Z0) waży teraz relatywnie mniej. Różnica pozostaje realna
-        # (10.36 %, próg 5 % w teście wyżej), a kierunek Dyn > YNyn niezmieniony.
-        # Stosunek jest NIEZALEŻNY od gałęzi c (skaluje obie grupy tak samo) —
-        # dlatego przejście łańcucha nastaw na bieg minimalny (V12K-189) go nie ruszyło.
-        assert ratio_pickup == pytest.approx(6850.56 / 7642.32, rel=1e-3)
-
-    def test_reference_settings(self) -> None:
-        """Wartości referencyjne nastaw (hand-calc: 51N=0.2·I, 50N=0.8·I).
-
-        RE-BASELINE (V12K-189): łańcuch nastaw idzie teraz biegiem MINIMALNYM
-        (c = 0,95) — nastawę dobiera się od najsłabszego zwarcia, bo to ono musi
-        zabezpieczenie jeszcze pobudzić. Wcześniej szedł biegiem maksymalnym
-        (c = 1,10) i nastawy nie miały danych, bo adapter klasyfikuje taki wynik
-        jako `ik_max_1ph`; brak wpadał w wartość zastępczą. Prądy skalują się
-        wprost współczynnikiem c (impedancja od c nie zależy):
-        Dyn  I″k1(0,95) = 7642.32 A ⇒ 0.2·I = 1528.46 / 0.8·I = 6113.85;
-        YNyn I″k1(0,95) = 6850.56 A ⇒ 0.2·I = 1370.11 / 0.8·I = 5480.45.
-        Sprawdzenie skali: 7642.32/8849.00 = 0.8636 = 0.95/1.10.
-        """
-        _, s_dyn = _settings_for("Dyn11")
-        _, s_ynyn = _settings_for("YNyn0")
-        assert s_dyn.i_pickup_51n_a == pytest.approx(1528.464, rel=1e-4)
-        assert s_dyn.i_inst_50n_a == pytest.approx(6113.854, rel=1e-4)
-        assert s_ynyn.i_pickup_51n_a == pytest.approx(1370.112, rel=1e-4)
-        assert s_ynyn.i_inst_50n_a == pytest.approx(5480.447, rel=1e-4)
-
-
-# ---------------------------------------------------------------------------
-# Ogniwo 3: determinizm łańcucha (ten sam wynik dla tej samej grupy)
-# ---------------------------------------------------------------------------
-
-
-class TestChainDeterminism:
-    def test_deterministic_settings(self) -> None:
-        _, a = _settings_for("Dyn11")
-        _, b = _settings_for("Dyn11")
-        assert a.to_dict() == b.to_dict()

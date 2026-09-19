@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import type { RawOverlayElement, RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
-import { buildSceneV3 } from '../../scene/buildScene';
+import { buildSceneV3, type SceneV3 } from '../../scene/buildScene';
 import {
   buildFaultFlowOverlayFromScene,
   buildFlowOverlayFromScene,

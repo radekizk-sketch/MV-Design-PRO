@@ -57,7 +57,12 @@ export const ZWARCIA_STRINGS = {
   zalMetodaWartosc: 'IEC 60909',
   zalWspolczynnikC: 'Współczynnik napięciowy c',
   zalCzasCieplny: 'Czas cieplny',
-  zalWartoscZKonfiguracji: 'Wartość pochodzi z konfiguracji przebiegu — niedostępna w kontrakcie wyników (read-only).',
+  // Karta UI2 p.7: c/czas cieplny z ZAPISANEJ konfiguracji TEGO biegu
+  // (`konfiguracja_biegu` odpowiedzi), nie z aktywnego przypadku obliczeniowego.
+  zalWspolczynnikCAuto: 'dobierany automatycznie per węzeł',
+  zalWspolczynnikCAutoUwaga: 'Wartość c dobrana z pasma napięciowego każdego węzła (IEC 60909) — brak jednej wspólnej liczby dla całego biegu.',
+  zalCzasCieplnyDomyslny: 'Bieg nie miał jawnie ustawionego czasu cieplnego — zastosowano wartość domyślną solvera.',
+  zalKonfiguracjaBieguNiedostepna: 'Starszy zapis przebiegu sprzed uzupełnienia kontraktu — konfiguracja biegu niedostępna.',
 
   // Sekcja wkładów
   wkladyTytul: 'Wkłady do zwarcia',
@@ -103,6 +108,88 @@ export const ZWARCIA_STRINGS = {
   rozplywBrakWkladow: 'Brak wkładów gałęziowych dla tego punktu zwarcia.',
   rozplywBrakWkladowOpis:
     'Policzono rozpływ, ale żadna gałąź nie niesie prądu zwarciowego dla tego punktu — sieć bez źródła zastępczego (nieskończonej szyny / sieci nadrzędnej) i bez falowników zasilających to zwarcie.',
+
+  // Sekcja śladu WHITE BOX podziału prądu zwarciowego (karta WB-ROZPLYW, TH-1)
+  sladRozplywuTytul: 'Podział prądu zwarciowego — ślad obliczeń',
+  sladRozplywuOpis:
+    'Kroki podziału prądu zwarciowego od źródła zastępczego (sieć nadrzędna, Thevenin) na gałęzie — iniekcja jednostkowa w węźle zwarcia, współczynniki podziału z macierzy Z-bus, bilans kontrolny KCL. Wyłącznie odczyt śladu WHITE BOX solvera IEC 60909, zero obliczeń w interfejsie.',
+  sladRozplywuNiedostepny:
+    'Ślad podziału niedostępny dla tego biegu (bieg sprzed zapisu śladu albo bez wkładów).',
+  sladRozplywuNiedostepnyOpis:
+    'Starszy wynik nie niesie śladu podziału prądu zwarciowego. Uruchom ponownie obliczenie zwarciowe, aby go uzyskać.',
+  sladRozplywuPusty: 'Brak kroków podziału dla tego punktu zwarcia.',
+  sladRozplywuPustyOpis:
+    'Rozpływ policzony, ale ślad WHITE BOX dokumentuje wyłącznie podział prądu od sieci zastępczej (Thevenina) — ten punkt zwarcia nie ma wkładu z tego źródła.',
+  sladRozplywuBlad: 'Nie udało się pobrać śladu podziału prądu zwarciowego.',
+  sladRozplywuBladOpis:
+    'Błąd pobrania z serwera (sieć albo backend). Spróbuj ponownie później albo odśwież przebieg.',
+
+  // Sekcja „Źródła sieciowe (Z_Q)" (CV-4.3 K6/K7) — ślad WHITE BOX wyprowadzenia
+  // impedancji zastępczej źródeł sieciowych biegu (IEC 60909-0:2016 §6.2.1 eq. 6).
+  zrodlaTytul: 'Źródła sieciowe (Z_Q)',
+  zrodlaOpis:
+    'Wyprowadzenie impedancji zastępczej źródeł sieciowych zasilających ten bieg '
+    + '(IEC 60909-0:2016 §6.2.1 eq. 6) — jeden wiersz na scenariusz źródła. Wartości '
+    + 'wprost ze śladu solvera, zero obliczeń w interfejsie.',
+  zrodlaNiedostepne: 'Bieg nie niesie śladu źródeł sieciowych.',
+  zrodlaNiedostepneOpis:
+    'Starszy wynik nie ma tego pola albo bieg nie ma źródła sieciowego (sieć zasilana '
+    + 'wyłącznie generatorami/maszynami). Uruchom ponownie obliczenie zwarciowe, aby go uzyskać.',
+  zrodlaKolZrodlo: 'Źródło',
+  zrodlaKolScenariusz: 'Scenariusz',
+  zrodlaKolTryb: 'Tryb danych',
+  zrodlaKolMocPrad: 'S″kQ / I″kQ',
+  zrodlaKolC: 'c',
+  zrodlaKolRx: 'R/X',
+  zrodlaKolZq: '|Z_Q|',
+  zrodlaKolWzor: 'Wzór',
+
+  // Sekcja „Pasmo MIN/MAX" (karta W3-G3, aneks D7) — oba scenariusze c_max/c_min
+  // JEDNEGO przypadku obok siebie, z proweniencją każdej strony.
+  pasmoTytul: 'Pasmo MIN/MAX (IEC 60909)',
+  pasmoOpis:
+    'Wielkości zwarciowe przy c_max i c_min tego samego przypadku obok siebie — '
+    + 'dwa biegi kanoniczne z jednej migawki modelu, zero obliczeń w interfejsie.',
+  pasmoKolIkssMax: 'Ik" (max)',
+  pasmoKolIkssMin: 'Ik" (min)',
+  pasmoKolIpMax: 'ip (max)',
+  pasmoKolIpMin: 'ip (min)',
+  pasmoKolIthMax: 'Ith (max)',
+  pasmoKolIthMin: 'Ith (min)',
+  pasmoKolSkMax: 'Sk" (max)',
+  pasmoKolSkMin: 'Sk" (min)',
+  pasmoKolRkMax: 'Rk (max)',
+  pasmoKolRkMin: 'Rk (min)',
+  pasmoKolXkMax: 'Xk (max)',
+  pasmoKolXkMin: 'Xk (min)',
+  pasmoKolZkMax: '|Zk| (max)',
+  pasmoKolZkMin: '|Zk| (min)',
+  pasmoKolXRMax: 'X/R (max)',
+  pasmoKolXRMin: 'X/R (min)',
+  pasmoKolKappaMax: 'κ (max)',
+  pasmoKolKappaMin: 'κ (min)',
+  pasmoWczytywanie: 'Wczytywanie pasma MIN/MAX…',
+  pasmoBladPobrania: 'Nie udało się pobrać pasma MIN/MAX dla tego przebiegu.',
+  pasmoBladPobraniaOpis: 'Błąd pobrania z serwera (sieć albo backend). Spróbuj ponownie później.',
+  pasmoBrakScenariusz: (scenariusz: 'MAX' | 'MIN') =>
+    `Brak biegu ${scenariusz === 'MAX' ? 'MAX (c_max)' : 'MIN (c_min)'} tego przypadku.`,
+  pasmoUruchomScenariusz: (scenariusz: 'MAX' | 'MIN') =>
+    `Uruchom bieg ${scenariusz === 'MAX' ? 'MAX (c_max)' : 'MIN (c_min)'}`,
+  pasmoUruchomScenariuszOpis: (scenariusz: 'MAX' | 'MIN') =>
+    `Uruchamia przebieg zwarciowy IEC 60909 przy scenariuszu ${scenariusz === 'MAX' ? 'maksymalnym (c_max)' : 'minimalnym (c_min)'} dla tego przypadku i dokłada go do pasma.`,
+  pasmoProwenencjaZapisany: (id: string) => `Bieg zapisany · ${id}`,
+  pasmoProwenencjaObliczony: (idKotwicy: string) =>
+    `Policzone na żądanie z biegu ${idKotwicy} (bez zapisu)`,
+  pasmoRewizja: (rewizja: number | null | undefined) =>
+    rewizja === null || rewizja === undefined ? 'rewizja nieznana' : `rewizja modelu ${rewizja}`,
+  pasmoRozbieznoscRewizji: 'Bieg MAX i bieg MIN pochodzą z różnych rewizji modelu — porównanie jest orientacyjne.',
+  pasmoScenariuszKotwicy: (scenariusz: 'MAX' | 'MIN') =>
+    `Bieg kotwicy: scenariusz ${scenariusz === 'MAX' ? 'MAX (c_max)' : 'MIN (c_min)'}.`,
+
+  // Sekcja ZAŁOŻENIA — wpisy `raw_result.zalozenia` (CV-4.3 K7): jedno założenie
+  // = jeden element + scenariusz, treść (message_pl) wprost z backendu (WHITE BOX).
+  zalozenieEtykieta: (elementRef: string) => `Źródło ${elementRef}`,
+  zalozenieUwaga: (code: string, scenariusz: string) => `Kod: ${code} · scenariusz ${scenariusz}`,
 
   // Akcja synchronizacji ze schematem (karta W-C, pkt 6)
   pokazNaSchemacie: 'Pokaż na schemacie',
@@ -167,8 +254,10 @@ export function rodzajZwarciaPL(faultType: string | null): string {
  * Słownik polskich etykiet flag wiersza zwarciowego (`ShortCircuitRow.flags`).
  * Spójny z kanoniczną pulą tokenów flag repozytorium
  * (`ui/results-inspector/types.ts:460-464`). Tokeny nierozpoznane pokazywane są
- * dosłownie (dane, nie literał UI). Docelowa pula flag zwarciowych = własność
- * backendu (patrz TODO-KARTA w `zwarciaModel.ts`).
+ * dosłownie (dane, nie literał UI). Docelowa pula flag zwarciowych jest
+ * WŁASNOŚCIĄ BACKENDU (dziś pusta — `enm/canonical_analysis.py`, pole `flags`
+ * emitowane jako `[]`); ten słownik NIE zgaduje tokenów, których backend
+ * jeszcze nie wysyła.
  */
 const FLAGI_ZWARCIA_PL: Record<string, string> = {
   SLACK: 'Węzeł bilansujący',
@@ -259,4 +348,51 @@ const ZRODLO_ROZPLYWU_PL: Record<string, string> = {
 /** Mapuje source_id wpisu rozpływu na etykietę PL (sieć nadrzędna vs źródło). */
 export function zrodloRozplywuPL(sourceId: string): string {
   return ZRODLO_ROZPLYWU_PL[sourceId] ?? sourceId;
+}
+
+/**
+ * Słownik polskich nazw TRYBU DANYCH bazowego (bez sufiksu scenariusza) śladu
+ * źródeł sieciowych (CV-4.3 K6/K7) — klucze = prefiks tokenu `tryb`
+ * (`enm/mapping.py::impedancja_zasilania_systemowego`, `TrybDanych.value`).
+ */
+const TRYB_ZRODLA_BAZA_PL: Record<string, string> = {
+  MOC_ZWARCIOWA: 'moc zwarciowa S″kQ',
+  PRAD_ZWARCIOWY: 'prąd zwarciowy I″kQ',
+  IMPEDANCJA_JAWNA: 'impedancja jawna (R+jX)',
+};
+
+/**
+ * Mapuje token `tryb` śladu źródła sieciowego na tekst PL (CV-4.3 K6/K7). Token
+ * bazowy niesie tryb danych; sufiks `_MIN` = scenariusz MIN z własnymi danymi,
+ * `_MAX_JAKO_MIN` = scenariusz MIN BEZ własnych danych (Z_Q z MAX — ten sam
+ * sygnał co `raw_result.zalozenia` / kod `source.sk_min_missing`, tylko czytelny
+ * wprost w tabeli, bez przełączania na sekcję założeń).
+ */
+export function trybZrodlaSiecowegoPL(tryb: string): string {
+  if (tryb.endsWith('_MAX_JAKO_MIN')) {
+    const baza = tryb.slice(0, -'_MAX_JAKO_MIN'.length);
+    return `${TRYB_ZRODLA_BAZA_PL[baza] ?? baza} (dane MAX — brak własnych danych MIN)`;
+  }
+  if (tryb.endsWith('_MIN')) {
+    const baza = tryb.slice(0, -'_MIN'.length);
+    return `${TRYB_ZRODLA_BAZA_PL[baza] ?? baza} (MIN)`;
+  }
+  return TRYB_ZRODLA_BAZA_PL[tryb] ?? tryb;
+}
+
+/**
+ * Słownik polskich nazw pochodzenia R/X śladu źródła sieciowego (CV-4.3 K6/K7) —
+ * klucze = `rx_ratio_zrodlo` (`enm/mapping.py`, ten sam token co
+ * `GridSourcePreviewMinResponse.rx_ratio_zrodlo`).
+ */
+const RX_RATIO_ZRODLO_PL: Record<string, string> = {
+  MODEL: 'wpisane w model',
+  MODEL_MAX: 'wpisane w model (MAX)',
+  MODEL_MIN: 'wpisane w model (MIN)',
+  IEC_60909_DOMYSLNY_0_1: 'domyślne IEC 60909 (0,1)',
+};
+
+/** Mapuje `rx_ratio_zrodlo` na etykietę PL (read-only, bez fizyki). */
+export function rxRatioZrodloPL(zrodlo: string): string {
+  return RX_RATIO_ZRODLO_PL[zrodlo] ?? zrodlo;
 }

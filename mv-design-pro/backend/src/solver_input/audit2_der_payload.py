@@ -13,7 +13,7 @@ INVARIANTS:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol
 
 from network_model.catalog.audit2_catalogs import (
     get_bess_operation_mode,
@@ -282,3 +282,39 @@ def extract_solver_extensions_from_payload(
         "power_flow_extensions": pf_extensions,
         "protection_extensions": protection_extensions,
     }
+
+
+class KonfiguracjaAudit2Stacji(Protocol):
+    """Kształt zapisanej konfiguracji audytu 2 stacji (wiersz ``station_audit2_configs``).
+
+    Protokół zamiast importu ORM: ``solver_input`` nie zna warstwy persystencji —
+    dostaje wiersz od wołającego (repozytorium ``UnitOfWork.audit2_station_configs``).
+    """
+
+    station_id: str
+    mv_neutral_grounding_ref: str | None
+    tap_changer_refs: list[Any]
+    der_specs: list[dict[str, Any]]
+    transformer_tap_changers: dict[str, Any]
+
+
+def rozszerzenia_audit2_z_konfiguracji(cfg: KonfiguracjaAudit2Stacji) -> dict[str, Any]:
+    """Rozszerzenia solverów z zapisanej konfiguracji audytu 2 (CV-4.2b).
+
+    JEDYNA droga ``wiersz konfiguracji → rozszerzenia`` — wspólna dla wykonawcy biegu
+    kanonicznego (``enm.canonical_analysis.rozszerzenia_audit2_dla_opcji``), kontraktu
+    P11 (``api/solver_input.py``) i końcówki diagnostycznej
+    (``api/audit2_station_config.py``). Do tej karty każde z tych miejsc rozwijało
+    wiersz osobno (trzy kopie tej samej sekwencji ``build_station_audit2_payload`` +
+    ``extract_solver_extensions_from_payload``).
+    """
+    payload = build_station_audit2_payload(
+        station_id=cfg.station_id,
+        mv_neutral_grounding_ref=cfg.mv_neutral_grounding_ref,
+        tap_changer_refs=[str(ref) for ref in (cfg.tap_changer_refs or [])],
+        der_specs=list(cfg.der_specs or []),
+        transformer_tap_changers={
+            str(k): str(v) for k, v in dict(cfg.transformer_tap_changers or {}).items()
+        },
+    )
+    return extract_solver_extensions_from_payload(payload)

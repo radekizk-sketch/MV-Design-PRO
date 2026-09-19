@@ -46,6 +46,7 @@ import {
   type OdgaleznieFormData,
   type RodzajOdcinka,
 } from './odgaleznieModel';
+import { OPCJE_UZIEMIENIA_EKRANU } from '../../../types/uziemienie';
 import { ODGALEZIENIE_STRINGS as T } from './strings';
 
 const KROKI: readonly KrokKreatora[] = [
@@ -105,10 +106,15 @@ export function KreatorOdgalezienia() {
   const [kable, setKable] = useState<CableType[]>([]);
   const [linie, setLinie] = useState<LineType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jawny znacznik
+  // ładowania katalogu, niezależny od `kable/linie.length` (katalog pusty PO
+  // wczytaniu wygląda inaczej niż katalog W TRAKCIE wczytywania).
+  const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
+    setKatalogLadowanie(true);
     Promise.all([fetchCableTypes(), fetchLineTypes()])
       .then(([c, l]) => {
         if (cancelled) return;
@@ -120,6 +126,9 @@ export function KreatorOdgalezienia() {
         setKable([]);
         setLinie([]);
         setBladKatalogu(getCatalogErrorMessage(e));
+      })
+      .finally(() => {
+        if (!cancelled) setKatalogLadowanie(false);
       });
     return () => {
       cancelled = true;
@@ -171,7 +180,16 @@ export function KreatorOdgalezienia() {
 
   const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
 
-  const zapisMozliwy = hasZrodlo && Boolean(activeCaseId);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
+  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
+  // karta i ten sam mechanizm powtórzony w tym pliku).
+  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
+    !hasZrodlo || !activeCaseId
+      ? 'zablokowany'
+      : katalogLadowanie
+        ? 'ladowanie'
+        : 'gotowy';
+  const zapisMozliwy = stanGotowosci === 'gotowy';
 
   const onZapisz = useCallback(async () => {
     if (!hasZrodlo) {
@@ -278,7 +296,16 @@ export function KreatorOdgalezienia() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={bledy.length > 0 ? T.walidacjaStopka : !hasZrodlo ? T.brakZrodlaOpis : null}
+      walidacja={
+        stanGotowosci === 'ladowanie'
+          ? T.katalogLadowanieStopka
+          : bledy.length > 0
+            ? T.walidacjaStopka
+            : !hasZrodlo
+              ? T.brakZrodlaOpis
+              : null
+      }
+      status={stanGotowosci}
       akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !zapisMozliwy, testid: 'mvd-kreator-odgalezienie-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-odgalezienie-anuluj' }}
       krokWstecz={
@@ -320,6 +347,16 @@ export function KreatorOdgalezienia() {
               wylaczone={rodzajZablokowany}
               testid="mvd-kreator-odgalezienie-rodzaj"
             />
+            {rodzaj === 'cable' ? (
+              <PoleWyboru
+                etykieta={T.ekranUziemienie}
+                wartosc={dane.screen_bonding}
+                onZmiana={(v) => zmien('screen_bonding', v as OdgaleznieFormData['screen_bonding'])}
+                opcje={OPCJE_UZIEMIENIA_EKRANU}
+                pomoc={T.ekranUziemieniePomoc}
+                testid="mvd-kreator-odgalezienie-ekran"
+              />
+            ) : null}
             <PoleLiczbowe
               etykieta={T.dlugosc}
               jednostka="km"

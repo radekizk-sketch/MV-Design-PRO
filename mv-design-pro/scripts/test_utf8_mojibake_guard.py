@@ -107,12 +107,18 @@ def test_zakres_obejmuje_pozostale_drzewa_z_trescia_autorska() -> None:
 
 
 def test_zakres_obejmuje_pliki_korzenia_ktorych_nie_bylo_na_liscie() -> None:
-    """Stara lista wymieniała 4 pliki korzenia; reszta była niewidoczna."""
+    """Stara lista wymieniała 4 pliki korzenia; reszta była niewidoczna.
+
+    `mv-design-pro/CANONICAL_COMPLIANCE.md` zastąpiony `mv-design-pro/AGENTS.md`
+    2026-09-09 (karta ARCHIWUM-CANONICAL-COMPLIANCE) -- oryginalny plik przeniesiony
+    do `docs/audit/archive/CANONICAL_COMPLIANCE_2026-01.md`, więc przestał być
+    przykładem pliku KORZENIA; AGENTS.md pełni tę samą rolę pinu regresji.
+    """
     zakres = _zbior_zakresu()
     for plik in (
         "mv-design-pro/README.md",
         "mv-design-pro/STAN_REPO.md",
-        "mv-design-pro/CANONICAL_COMPLIANCE.md",
+        "mv-design-pro/AGENTS.md",
         "CLAUDE.md",
     ):
         assert plik in zakres, f"plik korzenia poza zakresem: {plik}"

@@ -71,7 +71,8 @@
  * `power_flow_newton_internal.py::build_power_spec_v2` neguje ponownie
  * oczekując konwencji obciążeniowej. Naprawione konwersją gen→load NA
  * GRANICY budowy `PQSpec` (`canonical_analysis.py` oraz analogiczny
- * `application/reference_networks/sld_substrate_power_flow.py`); `mapping.py`
+ * `backend/tests/golden/sld_substrate_power_flow.py` — przeniesiony z
+ * `application/reference_networks/` kartą K2, 2026-09-09); `mapping.py`
  * i solver NIETKNIĘTE (oba poprawne na własnych warunkach). Dowód fizyczny:
  * `backend/tests/test_canonical_analysis_api.py
  * ::test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct`
@@ -457,7 +458,7 @@ const FLOW_METRIC_CODE_I = 'I_A';
  *  `"LOAD_FLOW"`, przenoszone 1:1 przez `build_execution_result_set` →
  *  `build_resultset_v1(analysis_type=...)` → `/api/execution/runs/{run_id}/
  *  results/v1` → `RawOverlayPayload.analysis_type`). Payload NIEZNANEGO typu
- *  (SC_3F, PHASE_STATE_SN, DYNAMIC_STABILITY, SOURCE_COMPLIANCE, przyszłe)
+ *  (SC_3F, PHASE_STATE_SN, DYNAMIC_STABILITY, przyszłe)
  *  ⇒ nakładka pusta — uczciwe nic zamiast czytania `P_MW` z niewiadomego
  *  przebiegu. Denylista sprzed poprawki przepuszczałaby każdy nowy typ. */
 function isLoadFlowPayload(payload: RawOverlayPayload): boolean {

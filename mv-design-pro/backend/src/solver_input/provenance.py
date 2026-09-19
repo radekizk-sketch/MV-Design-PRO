@@ -67,6 +67,333 @@ _FIELD_QUALITY_LABEL_PL: dict[FieldQuality, str] = {
 }
 
 
+class EvidenceTier(StrEnum):
+    """Stopien dowodowy WYNIKU obliczenia (trzecia os proweniencji, karta S-1).
+
+    Orthogonal do dwoch osi powyzej:
+
+    - :class:`SourceKind` — skad wartosc WEJSCIOWA pochodzi w potoku;
+    - :class:`FieldQuality` — jak bardzo wiarygodna jest wartosc WEJSCIOWA;
+    - ``EvidenceTier`` — czy WYNIK obliczenia wolno przedstawic jako dowod
+      spelnienia wymagania normatywnego.
+
+    Rozroznienie, ktorego dwie starsze osie nie wyrazaja: wejscie moze byc
+    danymi z karty katalogowej najwyzszej jakosci, a mimo to obliczenie, ktore
+    je konsumuje, moze nie miec ustalonej poprawnosci fizycznej. Dopuszczalnosc
+    dowodowa jest cecha OBLICZENIA (zdolnosci), nie pojedynczego pola.
+
+    Poziomy:
+
+    - ``VALIDATED_SIMULATION``: obliczenie fizyczne o ustalonej poprawnosci
+      modelu i zachowania numerycznego (istnieje dowod walidacji). JEDYNY
+      poziom dopuszczalny jako dowod regulacyjny.
+    - ``DECLARATION``: wartosc zadeklarowana przez wnioskodawce (albo
+      odczytana z profilu) i porownana z wymaganiem. Uprawniona kontrola
+      wymagania — ale obliczenie niczego nie wykazalo.
+    - ``UNVALIDATED_MODEL``: obliczenie zostalo wykonane, ale model za nim nie
+      ma ustalonej poprawnosci fizycznej, wiec jego wynik nie moze wspierac
+      wniosku normatywnego.
+    - ``NOT_SIMULATED``: zadne obliczenie fizyczne nie zostalo wykonane;
+      wielkosc „symulowana" przypisana takiemu wynikowi nie jest wartoscia
+      policzona.
+
+    Zasada nadrzedna (lustro reguly FieldQuality): awans do
+    ``VALIDATED_SIMULATION`` wynika z WYKAZANEJ zdolnosci, nigdy z nazwania.
+    Oznaczenie zdolnosci jako zwalidowanej nie czyni jej zwalidowana — poziom
+    podnosi sie wylacznie, gdy istnieje dowod walidacji.
+    """
+
+    VALIDATED_SIMULATION = "VALIDATED_SIMULATION"
+    DECLARATION = "DECLARATION"
+    UNVALIDATED_MODEL = "UNVALIDATED_MODEL"
+    NOT_SIMULATED = "NOT_SIMULATED"
+
+    @property
+    def regulatory_evidence_eligible(self) -> bool:
+        """True wylacznie dla poziomu dopuszczalnego jako dowod regulacyjny (fail-closed)."""
+        return self is EvidenceTier.VALIDATED_SIMULATION
+
+    @property
+    def label_pl(self) -> str:
+        """Etykieta PL (bez kodow projektowych)."""
+        return _EVIDENCE_TIER_LABEL_PL[self]
+
+
+#: Zdanie kanoniczne uzywane wszedzie, gdzie wynik NIE jest dowodem
+#: regulacyjnym. Swiadomie mowi o BRAKU DOWODU, a nie o niespelnieniu
+#: wymagania — to dwa rozne stany („nie spelnia" jest wynikiem wykazanym i
+#: raportowalnym; „brak dowodu" to inny stan) i mylenie ich byloby rownie
+#: nieuczciwe jak falszywy wynik pozytywny.
+BRAK_DOWODU_PL = "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA"
+
+_EVIDENCE_TIER_LABEL_PL: dict[EvidenceTier, str] = {
+    EvidenceTier.VALIDATED_SIMULATION: "symulacja_zwalidowana",
+    EvidenceTier.DECLARATION: "deklaracja_wnioskodawcy",
+    EvidenceTier.UNVALIDATED_MODEL: "model_niezwalidowany",
+    EvidenceTier.NOT_SIMULATED: "brak_symulacji",
+}
+
+
+class ClaimKind(StrEnum):
+    """Rodzaj twierdzenia, ktore wynik zdolnosci wspiera.
+
+    - ``DYNAMIC_PERFORMANCE``: narzedzie orzeka, jak modul ZACHOWUJE SIE w
+      czasie (LVRT/HVRT, odbudowa mocy czynnej, odpowiedz czestotliwosciowa,
+      praca wyspowa, stabilnosc). Wylacznie zwalidowana symulacja moze
+      wspierac takie twierdzenie.
+    - ``DECLARED_CONFIGURATION``: narzedzie orzeka ZADEKLAROWANY albo
+      katalogowy FAKT o module (tryb regulacji, telemechanika, THD z rekordu
+      katalogowego) porownany z wymaganiem. Deklaracja jest wlasciwa
+      podstawa takiego twierdzenia.
+
+    Domyslnie ``DYNAMIC_PERFORMANCE`` — SUROWSZE odczytanie, zeby zdolnosc
+    zarejestrowana bez przemyslenia nie stala sie dopuszczalna przez pominiecie.
+    """
+
+    DYNAMIC_PERFORMANCE = "DYNAMIC_PERFORMANCE"
+    DECLARED_CONFIGURATION = "DECLARED_CONFIGURATION"
+
+    @property
+    def label_pl(self) -> str:
+        return _CLAIM_KIND_LABEL_PL[self]
+
+
+_CLAIM_KIND_LABEL_PL: dict[ClaimKind, str] = {
+    ClaimKind.DYNAMIC_PERFORMANCE: "zachowanie_dynamiczne",
+    ClaimKind.DECLARED_CONFIGURATION: "konfiguracja_zadeklarowana",
+}
+
+
+@dataclass(frozen=True)
+class CapabilityEvidence:
+    """Klasyfikacja dowodowa jednej zdolnosci obliczeniowej.
+
+    Attributes:
+        capability_id: Stabilny, kropkowany identyfikator zdolnosci
+            (np. ``"ncrfg_ptpiree.ride_through"``). Nazywa OBLICZENIE, nie pole.
+        tier: Stopien dowodowy wynikow tej zdolnosci.
+        rationale_pl: Techniczne uzasadnienie stopnia (bez jezyka miekkiego).
+        audit_ref: Odniesienie do dowodu stojacego za klasyfikacja.
+        claim_kind: Rodzaj twierdzenia, ktore ta zdolnosc wspiera. Domyslnie
+            ``DYNAMIC_PERFORMANCE`` (surowsze odczytanie).
+    """
+
+    capability_id: str
+    tier: EvidenceTier
+    rationale_pl: str
+    audit_ref: str
+    claim_kind: ClaimKind = ClaimKind.DYNAMIC_PERFORMANCE
+
+    @property
+    def regulatory_evidence_eligible(self) -> bool:
+        """Czy wynik TEJ zdolnosci wolno przedstawic jako dowod TEGO twierdzenia?
+
+        Fail-closed w obu osiach:
+
+        - twierdzenie o zachowaniu dynamicznym wymaga ``VALIDATED_SIMULATION``;
+        - twierdzenie o konfiguracji zadeklarowanej dodatkowo dopuszcza
+          ``DECLARATION`` (deklaracja JEST wlasciwa podstawa faktu
+          zadeklarowanego) — ale nigdy nie dopuszcza ``UNVALIDATED_MODEL`` ani
+          ``NOT_SIMULATED``, co oznaczaloby zle zarejestrowana zdolnosc.
+        """
+        if self.tier is EvidenceTier.VALIDATED_SIMULATION:
+            return True
+        if self.claim_kind is ClaimKind.DECLARED_CONFIGURATION:
+            return self.tier is EvidenceTier.DECLARATION
+        return False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "capability_id": self.capability_id,
+            "tier": self.tier.value,
+            "tier_pl": self.tier.label_pl,
+            "claim_kind": self.claim_kind.value,
+            "claim_kind_pl": self.claim_kind.label_pl,
+            "regulatory_evidence_eligible": self.regulatory_evidence_eligible,
+            "rationale_pl": self.rationale_pl,
+            "audit_ref": self.audit_ref,
+        }
+
+
+#: Odniesienie audytowe dla rejestru ponizej — karta naprawcza S-1 (dowod
+#: repo: solver NC RfG T14/T15 jest tautologia, `_execute_dynamic_stability`
+#: wpisywal `reportable`/`complete` na sztywno; patrz `SYNTEZA_DOMKNIECIA_
+#: PRODUKTU_2026-09.md` A-2/A-6).
+_AUDIT_CARD = "karta_s1_s4_dowod.md"
+
+# Klasyfikacja dowodowa zdolnosci dynamicznych/normatywnych.
+#
+# KAZDY wpis jest DECLARATION, UNVALIDATED_MODEL albo NOT_SIMULATED: na dzien
+# tej karty ZADNA zdolnosc dynamiczna w repozytorium nie ma ustalonej
+# poprawnosci fizycznej, wiec zadna nie jest dopuszczalna jako dowod
+# regulacyjny. Wpis wolno podniesc do VALIDATED_SIMULATION WYLACZNIE razem z
+# dowodem walidacji tej zdolnosci (siec referencyjna / wyrocznia zewnetrzna /
+# rozwiazanie analityczne) — poza zakresem tej karty (OD-20).
+#
+# Rejestr NIE jest wyczerpujacy dla przyszlych zdolnosci: nieznany
+# capability_id rozwiazuje sie do UNVALIDATED_MODEL (fail-closed) w
+# `classify_dynamic_capability` — nowy albo przemianowany silnik dynamiczny
+# jest niedopuszczalny, dopoki nie zostanie swiadomie sklasyfikowany.
+_DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
+    entry.capability_id: entry
+    for entry in (
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.frequency_response",
+            tier=EvidenceTier.DECLARATION,
+            rationale_pl=(
+                "Odpowiedz czestotliwosciowa (LFSM-O/LFSM-U/FSM/odbudowa) jest "
+                "podstawieniem algebraicznym przy zaszytej czestotliwosci "
+                "testowej; brak przebiegu f(t)/P(t) — solvers/ncrfg_ptpiree/"
+                "engine.py."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T01-T04)",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.ride_through",
+            tier=EvidenceTier.NOT_SIMULATED,
+            rationale_pl=(
+                "Ocena LVRT/HVRT nie uruchamia zadnej symulacji: "
+                "`simulated_voltage` jest przypisywane z limitu profilu, wiec "
+                "margines wychodzi tozsamosciowo zerowy niezaleznie od danych "
+                "modulu — solvers/ncrfg_ptpiree/engine.py:646-655."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T14/T15)",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.p_recovery",
+            tier=EvidenceTier.DECLARATION,
+            rationale_pl=(
+                "Czas odbudowy mocy czynnej jest wartoscia zadeklarowana na "
+                "wejsciu i porownana z wymaganiem profilu; nie pochodzi z "
+                "przebiegu P(t)."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T16)",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.reactive_current_frt",
+            tier=EvidenceTier.DECLARATION,
+            rationale_pl=(
+                "Prad bierny podczas zwarcia jest wyliczany z zadeklarowanego "
+                "wzmocnienia przy zaszytym spadku napiecia; nie pochodzi z "
+                "przebiegu Iq(t)."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T17)",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.extended_dynamic_capability",
+            tier=EvidenceTier.DECLARATION,
+            rationale_pl=(
+                "Praca wyspowa, rozruch autonomiczny i tlumienie oscylacji sa "
+                "orzekane z trzech flag zadeklarowanych na wejsciu; zadne z "
+                "tych zjawisk nie jest liczone. To sa twierdzenia o "
+                "ZACHOWANIU dynamicznym, wiec deklaracja ich nie dowodzi."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T18)",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.declared_configuration",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), "
+                "zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/"
+                "SCADA/rejestrator (T19) sa faktami konfiguracyjnymi "
+                "porownanymi z wymaganiem profilu — deklaracja jest tu "
+                "wlasciwa podstawa dowodowa."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T05, T10-T13, T19)",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.reactive_voltage_mode",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Tryby regulacji U/Q/cosfi i zakres mocy biernej (T06-T09) "
+                "pochodza z deklaracji i profilu operatora — fakty "
+                "konfiguracyjne."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T06-T09)",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.power_quality_declared",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "THD_U (T20) pochodzi z rekordu katalogowego zrodla i jest "
+                "porownywane z limitem profilu — fakt katalogowy, nie wynik "
+                "symulacji widma."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T20)",
+        ),
+        CapabilityEvidence(
+            capability_id="dynamic_stability.fault_clear",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            rationale_pl=(
+                "Katy wirnika i wielkosci pozwarciowe pochodza z opcji biegu "
+                "(z wartosciami domyslnymi); werdykt jest porownaniem "
+                "progowym wzgledem tych katow, nie calkowaniem rownan ruchu "
+                "ukladu — enm/canonical_analysis.py::_execute_dynamic_stability."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.5",
+        ),
+        CapabilityEvidence(
+            capability_id="dynamika_rms.przebieg_czasowy",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            rationale_pl=(
+                "Bieg RMS calkuje rownania ruchu ukladu na widoku sieci rozpływu "
+                "(rdzen DAE, network_model/solvers/dynamika/), wiec wynik JEST "
+                "policzony — ale poprawnosc modelu nie jest WYKAZANA: rdzen ma "
+                "wyrocznie analityczne dla ukladu maszyna-szyna sztywna, nie ma "
+                "walidacji przebiegow dla pelnej biblioteki urzadzen na sieci "
+                "rzeczywistej. Parametry z profilu typowego normy sa deklaracja "
+                "projektanta (enm/dynamika_modele.py::ProweniencjaParametrow), "
+                "wiec awans do VALIDATED_SIMULATION wymaga dowodu walidacji tej "
+                "zdolnosci, nie samego faktu, ze bieg sie wykonal."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.5 (W6-3B: adapter biegu czasowego)",
+        ),
+        CapabilityEvidence(
+            capability_id="frt_hvrt.trajectory",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            rationale_pl=(
+                "Trajektoria napiecia MVP jest funkcja zadana parametryzowana "
+                "wejsciem scenariusza, nie rozwiazaniem sieci sprzezonym z "
+                "reszta modulu — network_model/solvers/frt_hvrt/engine.py."
+            ),
+            audit_ref=f"{_AUDIT_CARD} §0.9",
+        ),
+    )
+}
+
+
+def classify_dynamic_capability(capability_id: str) -> CapabilityEvidence:
+    """Zwroc klasyfikacje dowodowa zdolnosci dynamicznej (fail-closed).
+
+    Niezarejestrowany identyfikator jest klasyfikowany ``UNVALIDATED_MODEL`` —
+    nowy albo przemianowany silnik dynamiczny jest niedopuszczalny jako dowod
+    regulacyjny, dopoki nie zostanie swiadomie sklasyfikowany, wiec pominiecie
+    rejestracji nie moze cicho wyprodukowac dopuszczalnego dowodu.
+    """
+    known = _DYNAMIC_CAPABILITY_EVIDENCE.get(capability_id)
+    if known is not None:
+        return known
+    return CapabilityEvidence(
+        capability_id=capability_id,
+        tier=EvidenceTier.UNVALIDATED_MODEL,
+        rationale_pl=(
+            "Zdolnosc dynamiczna nie jest sklasyfikowana w rejestrze "
+            "dowodowym; domyslnie nieprzydatna jako dowod regulacyjny "
+            "(fail-closed)."
+        ),
+        audit_ref=f"{_AUDIT_CARD} §0.1 (fail-closed)",
+    )
+
+
+def registered_dynamic_capabilities() -> tuple[str, ...]:
+    """Identyfikatory zdolnosci w rejestrze dowodowym, posortowane deterministycznie."""
+    return tuple(sorted(_DYNAMIC_CAPABILITY_EVIDENCE))
+
+
 @dataclass(frozen=True)
 class SourceRef:
     """Reference to the source of a parameter value."""

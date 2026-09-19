@@ -325,13 +325,21 @@ wyznacza `grep` po nazwach, nie katalog, w którym leży zmiana.
 1. `test_biegi_rownolegle_sa_deterministyczne` — K=10 zadań mieszanych:
    (a) wszystkie 200, (b) odcisk **fizyki** identyczny z biegiem szeregowym,
    (c) próg przepustowości 3,0× (§8.1).
-2. `test_lekkie_zadanie_przechodzi_w_trakcie_biegow[rozpływ|zwarcie]` — miara
-   §3: p95 sondy < połowa czasu partii, **osobno dla każdej końcówki biegu**.
-3. `test_odczyt_nie_czeka_na_bieg_analizy[rozpływ|zwarcie]` — najostrzejsza
-   postać: lekki odczyt kończy się PRZED równoległym biegiem.
+2. `test_lekkie_zadanie_obsluzone_gdy_biegi_stoja_w_oknie_solvera[rozpływ|zwarcie][K=1|K=10]`
+   — miara §3 BEZ ZEGARA (karta CI-WSPOLBIEZNOSC, 2026-09-16): K biegów parkuje
+   na spotkaniu w jedynym dyspozytorze fizyki (`_wykonaj_analize_biegu`), lekki
+   odczyt `GET /api/health` musi zostać obsłużony, ZANIM biegi zostaną zwolnione;
+   po zwolnieniu biegi liczą naprawdę. **Osobno dla każdego rodzaju biegu** i dla
+   K=1 (najostrzejsza postać) oraz K=10 (pojemność puli). Zastąpił dwa testy
+   czasowe (`test_lekkie_zadanie_przechodzi_w_trakcie_biegow` — licznik sond w
+   locie, `test_odczyt_nie_czeka_na_bieg_analizy` — porządek zakończeń z
+   częstości), których miary okazały się zależne od maszyny (CI run 34451122681:
+   5 sond na partię wobec 6–14 lokalnie; historia trzech pokoleń w docstringu
+   modułu).
 
-**Progi są względne**, nie milisekundowe — ten sam kod na wolniejszym runnerze
-CI daje ten sam wynik.
+**Próg przepustowości jest względny** (iloraz dwóch partii w tym samym procesie,
+z podłogą +2 s), a **werdykt responsywności nie ma progu czasowego w ogóle** —
+ten sam kod na wolniejszym runnerze CI daje ten sam wynik.
 
 **Dlaczego per końcówka (reguła KLASA, NIE INSTANCJA).** Pomiar zbiorczy
 przechodzi także wtedy, gdy offload cofnięto na JEDNEJ końcówce, bo druga wciąż

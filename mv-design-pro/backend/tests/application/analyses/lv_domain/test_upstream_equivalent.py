@@ -244,14 +244,15 @@ class TestHonestFailures:
         assert "transformer" in snap["missing_data"]
 
     def test_topologically_invalid_model_never_crashes(self) -> None:
-        """Dwa węzły SLACK (dwa źródła bez wspólnej referencji) — sieć
-        niepoprawna topologicznie musi dać uczciwy brak, nigdy wyjątek."""
+        """Źródło na szynie, której nie ma w modelu — sieć niepoprawna
+        topologicznie musi dać uczciwy brak, nigdy wyjątek (do CV-4.3 K3b tę
+        klasę reprezentował drugi węzeł SLACK, który IR dziś przyjmuje)."""
         enm = _base_enm()
         enm.sources.append(
             Source(
                 ref_id="src2",
                 name="GPZ2",
-                bus_ref="nn_a",
+                bus_ref="szyna_ktorej_nie_ma",
                 model="thevenin",
                 r_ohm=0.1,
                 x_ohm=0.5,
@@ -259,3 +260,24 @@ class TestHonestFailures:
         )
         snap = build_upstream_equivalent_snapshot(enm, "case-1", "root")
         assert snap["status"] == "brak danych"
+        assert "upstream_network_topology_invalid" in snap["missing_data"]
+
+    def test_two_grid_sources_in_one_island_superpose(self) -> None:
+        """CV-4.3 K3b: dwa źródła sieciowe w jednej wyspie = dwa węzły SLACK w IR;
+        równoważnik Thevenina liczy superpozycję (IEC 60909: bocznik Y_Q każdego
+        źródła), więc moc zwarciowa w węźle SN ROŚNIE względem jednego źródła."""
+        jedno = build_upstream_equivalent_snapshot(_base_enm(), "case-1", "root")
+        enm = _base_enm()
+        enm.sources.append(
+            Source(
+                ref_id="src2",
+                name="GPZ2",
+                bus_ref="sn",
+                model="thevenin",
+                r_ohm=0.1,
+                x_ohm=0.5,
+            )
+        )
+        dwa = build_upstream_equivalent_snapshot(enm, "case-1", "root")
+        assert jedno["status"] == "OK" and dwa["status"] == "OK"
+        assert dwa["sk_mva"] > jedno["sk_mva"]

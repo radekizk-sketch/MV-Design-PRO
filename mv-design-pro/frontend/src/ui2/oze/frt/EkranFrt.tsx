@@ -93,9 +93,11 @@ function StanPanel({
 function WynikTrajektorii({
   dane,
   trybZaawansowania,
+  onOtworzDowod,
 }: {
   dane: WidokTrajektoriiFrt;
   trybZaawansowania: AdvancementMode;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
 
@@ -151,6 +153,12 @@ function WynikTrajektorii({
           <dt>{FRT_STRINGS.zalozeniaStatusSolvera}</dt>
           <dd>{etykietaStatusuFrt(dane.status_solvera)}</dd>
         </div>
+        {dane.ocena_dowodowa && (
+          <div className="mvd-frt-zal-para" data-testid="mvd-frt-ocena-dowodowa">
+            <dt>{FRT_STRINGS.zalozeniaPodstawa}</dt>
+            <dd>{dane.ocena_dowodowa.tier_pl ?? dane.ocena_dowodowa.tier}</dd>
+          </div>
+        )}
       </dl>
 
       <div className="mvd-frt-wykres-blok">
@@ -160,7 +168,7 @@ function WynikTrajektorii({
       <TabelaWynikow
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
       />
 
@@ -196,9 +204,13 @@ function WynikTrajektorii({
 
 export interface EkranFrtProps {
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (wzorzec wspólny,
+   * `ui2/wyniki/wzorzec`). Realny dostawca z rodzica (`WynikiWarsztat`), nie
+   * zaślepka — wpięty też do zagnieżdżonej `SekcjaSekwencjiZapadow`. */
+  onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranFrt({ trybZaawansowania }: EkranFrtProps) {
+export function EkranFrt({ trybZaawansowania, onOtworzDowod }: EkranFrtProps) {
   const ders = useStationDerStore((state) => selectAllDers(state));
   const moduly = useMemo<OpcjaModuluFrt[]>(() => opcjeModulowFrt(ders), [ders]);
   // K6 / H-5: stan zerowy strumienia OZE prowadzi do dodania modulu wytworczego.
@@ -404,9 +416,27 @@ export function EkranFrt({ trybZaawansowania }: EkranFrtProps) {
               wariant="blad"
               testid="mvd-frt-blad"
             />
+          ) : stan.dane.status_solvera === 'blocked' ? (
+            // Karta S-4: brak modelu dynamicznego solvera FROZEN mapowany NA
+            // GRANICY na `blocked` — panel dedykowany (uczciwy stan zerowy),
+            // zamiast próby narysowania wykresu/tabeli z pustych danych.
+            <StanPanel
+              komunikat={FRT_STRINGS.brakModeluTytul}
+              opis={
+                stan.dane.missing_fields_pl && stan.dane.missing_fields_pl.length > 0
+                  ? stan.dane.missing_fields_pl.join(' ')
+                  : FRT_STRINGS.brakModeluOpis
+              }
+              wariant="blad"
+              testid="mvd-frt-brak-modelu"
+            />
           ) : (
             <>
-              <WynikTrajektorii dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+              <WynikTrajektorii
+                dane={stan.dane}
+                trybZaawansowania={trybZaawansowania}
+                onOtworzDowod={onOtworzDowod}
+              />
               {/* K5-B (H-3 pkt 4): pętla werdykt → zgodność. Klucz = id modułu
                   DER (`wybranyModul`) — ta sama tożsamość co kolumny macierzy
                   NC RfG (`zbudujModuly` → der.id). Werdykt POCHODZI z biegu
@@ -436,6 +466,7 @@ export function EkranFrt({ trybZaawansowania }: EkranFrtProps) {
             derRef={derRef}
             operatorId={wybranyOperator}
             trybZaawansowania={trybZaawansowania}
+            onOtworzDowod={onOtworzDowod}
           />
         </>
       ) : null}

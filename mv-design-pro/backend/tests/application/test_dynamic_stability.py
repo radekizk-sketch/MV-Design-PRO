@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from application.stability.dynamic_stability import (
+    DynamicStabilityThresholds,
     FaultClearScenario,
     FaultClearSourceState,
     evaluate_fault_clear_dynamic_stability,
@@ -80,6 +81,44 @@ def test_fault_clear_evaluator_is_deterministic() -> None:
     second = evaluate_fault_clear_dynamic_stability(scenario).to_dict()
 
     assert first == second
+
+
+def test_thresholds_are_named_explicitly_as_threshold_criteria() -> None:
+    """Karta W2 pkt 1: progi (150 ms/120°/0,95/0,98) JAWNIE nazwani w wyniku jako
+    „kryteria oceny progowej", z etykietą PL, jednostką i notą o pochodzeniu
+    (kryterium przyjęte w opcjach biegu, nie zaszyte — repo nie ma cytatu normy)."""
+    kryteria = DynamicStabilityThresholds().kryteria_oceny_progowej()
+
+    klucze = {pozycja["key"] for pozycja in kryteria}
+    assert klucze == {
+        "max_clearing_time_ms",
+        "max_angle_swing_deg",
+        "min_voltage_recovery_pu",
+        "min_frequency_recovery_pu",
+    }
+    for pozycja in kryteria:
+        assert isinstance(pozycja["label_pl"], str) and pozycja["label_pl"]
+        assert isinstance(pozycja["unit"], str) and pozycja["unit"]
+        assert "opcjach biegu" in pozycja["source_pl"]
+        assert "nie zaszyty" in pozycja["source_pl"]
+
+
+def test_thresholds_are_overridable_not_hardcoded() -> None:
+    """„Edytowalne, nie zaszyte": progi podane wprost wygrywają z wartością
+    domyślną klasy — to jest cała różnica między parametrem biegu a stałą."""
+    progi = DynamicStabilityThresholds(
+        max_clearing_time_ms=200.0,
+        max_angle_swing_deg=90.0,
+        min_voltage_recovery_pu=0.9,
+        min_frequency_recovery_pu=0.97,
+    )
+    wartosci = {pozycja["key"]: pozycja["value"] for pozycja in progi.kryteria_oceny_progowej()}
+    assert wartosci == {
+        "max_clearing_time_ms": 200.0,
+        "max_angle_swing_deg": 90.0,
+        "min_voltage_recovery_pu": 0.9,
+        "min_frequency_recovery_pu": 0.97,
+    }
 
 
 def test_fault_clear_requires_clearing_path() -> None:

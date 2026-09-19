@@ -45,15 +45,9 @@ export const ARCHIWUM_STRINGS = {
   podgladWersja: 'Wersja zapisu',
   podgladData: 'Data spakowania',
   podgladOdcisk: 'Odcisk paczki',
-  podgladWezly: 'Węzły',
-  podgladGalezie: 'Gałęzie',
-  podgladZrodla: 'Źródła',
-  podgladOdbiory: 'Odbiory',
-  podgladSchematy: 'Schematy',
   podgladWarianty: 'Warianty obliczeniowe',
   podgladPrzebiegi: 'Przebiegi obliczeń',
-  podgladWyniki: 'Wyniki',
-  podgladDowody: 'Dowody obliczeń',
+  podgladModele: 'Zapisy modelu sieci',
 
   // Raport wyniku importu
   raportTytul: 'Wynik odtworzenia',

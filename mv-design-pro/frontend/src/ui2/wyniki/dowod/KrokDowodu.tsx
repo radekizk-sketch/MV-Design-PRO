@@ -107,13 +107,20 @@ export function KrokDowodu({ krok, trybZaawansowania }: KrokDowoduProps) {
         </section>
       )}
 
-      {/* Podstawienie */}
+      {/* Podstawienie — LaTeX gdy solver/rejestr go niesie; inaczej opis metody
+          prozą (karta V12.7 §0.1: proza NIGDY nie idzie przez MathBlock). */}
       {krok.podstawienie && (
         <section className="mvd-dowod-pole" data-testid="mvd-dowod-pole-podstawienie">
           <h4 className="mvd-dowod-pole-tytul">{TRACE_FIELD_LABELS.substitution}</h4>
           <div className="mvd-dowod-latex">
             <MathBlock latex={krok.podstawienie} />
           </div>
+        </section>
+      )}
+      {!krok.podstawienie && krok.podstawienieTekst && (
+        <section className="mvd-dowod-pole" data-testid="mvd-dowod-pole-podstawienie-tekst">
+          <h4 className="mvd-dowod-pole-tytul">{TRACE_FIELD_LABELS.substitution}</h4>
+          <p className="mvd-dowod-uwagi">{krok.podstawienieTekst}</p>
         </section>
       )}
 

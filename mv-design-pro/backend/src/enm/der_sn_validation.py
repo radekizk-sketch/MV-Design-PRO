@@ -14,9 +14,10 @@ zwarcia i straty liczą wyłącznie dedykowane solvery na zmaterializowanym torz
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from typing import Literal
+
+from network_model.pochodne import moc_pozorna_z_czynnej_mva, prad_znamionowy_a
 
 # ---------------------------------------------------------------------------
 # Tolerancje napięciowe — JEDNA konwencja repo (nie nowa).
@@ -82,7 +83,7 @@ def rated_current_a(sn_mva: float, voltage_kv: float) -> float | None:
     """Prąd znamionowy z tabliczki: I = S / (√3·U). None gdy dane niekompletne."""
     if sn_mva <= 0 or voltage_kv <= 0:
         return None
-    return sn_mva * 1_000_000.0 / (math.sqrt(3.0) * voltage_kv * 1_000.0)
+    return prad_znamionowy_a(sn_mva, voltage_kv)
 
 
 def validate_connection_method(
@@ -225,7 +226,7 @@ def converter_apparent_power_mva(active_power_mw: float, cos_phi: float | None) 
     jednostek — n_parallel — bo tak liczy `_resolve_converter_defaults`).
     """
     if cos_phi is not None and 0.0 < cos_phi <= 1.0:
-        return active_power_mw / cos_phi
+        return moc_pozorna_z_czynnej_mva(active_power_mw, cos_phi)
     return active_power_mw
 
 

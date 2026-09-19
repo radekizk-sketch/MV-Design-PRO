@@ -136,12 +136,59 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
       name: 'GPZ Referencyjny 15 kV',
       sk3Mva: 250,
       ik3Ka: 9.62,
+      // CV-4.3 K7: fixtura `systemSource()` nie niesie danych scenariusza MIN —
+      // adapter oddaje null (zero fabrykacji), patrz test MIN niżej.
+      sk3MinMva: null,
+      ik3MinKa: null,
+      // CV-4.3 K7c: fixtura `systemSource()` nie niesie napięcia zadanego —
+      // adapter oddaje null (zero fabrykacji), patrz test u_set_pu niżej.
+      uSetPu: null,
       voltageKv: 15,
       sourceOnHvBus: false,
       // Napięcie SZYNY WN — osobny kanał dla etykiety „Szyna WN · 110 kV"
       // (regres „Szyna WN · 15 kV" wykryty renderem gpzFeeder).
       hvBusVoltageKv: 110,
     });
+  });
+
+  // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — ta sama szyna
+  // źródła co Sk3/Ik3 maks. powyżej (predykaty parami, jedno źródło prawdy).
+  it('źródło z danymi MIN ⇒ hvSystemSource niesie sk3MinMva/ik3MinKa Z DANYCH', () => {
+    const enm = fullFixture();
+    const props = buildCanonicalGpzProps(
+      { ...enm, sources: [systemSource('src-1', { sk3_min_mva: 150, ik3_min_ka: 5.8 })] },
+      'gpz-1',
+      { x: 0, y: 0 },
+    );
+    expect(props.hvSystemSource).toMatchObject({ sk3MinMva: 150, ik3MinKa: 5.8 });
+  });
+
+  // CV-4.3 K7c: napięcie zadane szyny bilansującej — ta sama szyna źródła co
+  // Sk3/Ik3 (i MIN) powyżej (predykaty parami, jedno źródło prawdy).
+  it('źródło z u_set_pu ⇒ hvSystemSource niesie uSetPu Z DANYCH (CV-4.3 K7c)', () => {
+    const enm = fullFixture();
+    const props = buildCanonicalGpzProps(
+      { ...enm, sources: [systemSource('src-1', { u_set_pu: 1.06 })] },
+      'gpz-1',
+      { x: 0, y: 0 },
+    );
+    expect(props.hvSystemSource).toMatchObject({ uSetPu: 1.06 });
+  });
+
+  // Iloczyn cech: u_set_pu × scenariusz MIN jednocześnie — DWA bloki
+  // opcjonalne na tym samym źródle nie mogą się wzajemnie wypierać (predykaty
+  // niezależne, nie parami).
+  it('źródło z u_set_pu ORAZ danymi MIN jednocześnie ⇒ hvSystemSource niesie OBA komplety danych', () => {
+    const enm = fullFixture();
+    const props = buildCanonicalGpzProps(
+      {
+        ...enm,
+        sources: [systemSource('src-1', { u_set_pu: 0.95, sk3_min_mva: 150, ik3_min_ka: 5.8 })],
+      },
+      'gpz-1',
+      { x: 0, y: 0 },
+    );
+    expect(props.hvSystemSource).toMatchObject({ uSetPu: 0.95, sk3MinMva: 150, ik3MinKa: 5.8 });
   });
 
   it('brak transformatora WN/SN (uhv_kv<=60) w ENM ⇒ hvSystemSource null (kolumna WN nierysowana)', () => {
@@ -276,6 +323,60 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     // jest napięciem szyny źródła (15 kV) — spójne z Sk″/Ik″.
     expect(label!.rows[1].text).toBe('Ekwiwalent sieci zasilającej');
     expect(label!.rows[2].text).toBe('Sk″ 250 MVA · Ik″ 9,62 kA · 15 kV');
+  });
+
+  // CV-4.3 K7: gdy ENM niesie dane scenariusza MIN, tabliczka rozdziela
+  // maks./min. — bez danych MIN pozostaje „Sk″ 250 MVA" jak wyżej (zero
+  // fabrykacji: sprawdzone w teście poprzedzającym, fixtura tam bez MIN).
+  it('źródło z danymi MIN ⇒ tabliczka „Sk″maks/Sk″min" i „Ik″maks/Ik″min"', () => {
+    const enm = fullFixture();
+    const props = buildCanonicalGpzProps(
+      { ...enm, sources: [systemSource('src-1', { sk3_min_mva: 150, ik3_min_ka: 5.8 })] },
+      'gpz-1',
+      { x: 0, y: 0 },
+    );
+    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
+    const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
+    expect(label).toBeDefined();
+    expect(label!.rows[2].text).toBe('Sk″maks 250 / Sk″min 150 MVA · Ik″maks 9,62 / Ik″min 5,8 kA · 15 kV');
+  });
+
+  // CV-4.3 K7c: napięcie zadane szyny bilansującej dokleja CZWARTY, niezależny
+  // człon tabliczki — bez u_set_pu tabliczka zostaje jak w teście wyżej
+  // (zero fabrykacji: sprawdzone tam, fixtura bez u_set_pu).
+  it('źródło z u_set_pu ⇒ tabliczka dokleja człon „Uzad X pu" (CV-4.3 K7c)', () => {
+    const enm = fullFixture();
+    const props = buildCanonicalGpzProps(
+      { ...enm, sources: [systemSource('src-1', { u_set_pu: 1.06 })] },
+      'gpz-1',
+      { x: 0, y: 0 },
+    );
+    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
+    const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
+    expect(label).toBeDefined();
+    expect(label!.rows[2].text).toBe('Sk″ 250 MVA · Ik″ 9,62 kA · 15 kV · Uzad 1,06 pu');
+  });
+
+  // Iloczyn cech: u_set_pu × scenariusz MIN jednocześnie na tabliczce — oba
+  // człony niezależne muszą współistnieć w JEDNEJ linii, w stałej kolejności
+  // (Sk″ · Ik″ · kV · Uzad), niezależnie od tego, że MIN sam rozdziela
+  // maks./min. wewnątrz swoich dwóch pierwszych członów.
+  it('źródło z u_set_pu ORAZ danymi MIN jednocześnie ⇒ tabliczka niesie OBA rozszerzenia w jednej linii', () => {
+    const enm = fullFixture();
+    const props = buildCanonicalGpzProps(
+      {
+        ...enm,
+        sources: [systemSource('src-1', { u_set_pu: 0.95, sk3_min_mva: 150, ik3_min_ka: 5.8 })],
+      },
+      'gpz-1',
+      { x: 0, y: 0 },
+    );
+    const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1' }]);
+    const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
+    expect(label).toBeDefined();
+    expect(label!.rows[2].text).toBe(
+      'Sk″maks 250 / Sk″min 150 MVA · Ik″maks 9,62 / Ik″min 5,8 kA · 15 kV · Uzad 0,95 pu',
+    );
   });
 
   it('brak dopasowania hvSystemSource.sourceRef do wpisu gridSources ⇒ ZERO etykiety (glif źródła zostaje)', () => {

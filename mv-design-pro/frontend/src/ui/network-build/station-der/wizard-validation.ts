@@ -5,16 +5,6 @@
  *  - validateWizardSelections: catalog_refs muszą istnieć w katalogu
  */
 
-import {
-  BESS_BATTERY_CATALOG,
-  BESS_PCS_CATALOG,
-  HVRT_CURVE_CATALOG,
-  LV_VOLTAGE_LEVEL_CATALOG,
-  LVRT_CURVE_CATALOG,
-  NC_RFG_PROFILE_CATALOG,
-  PV_INVERTER_CATALOG,
-  WIND_TURBINE_CATALOG,
-} from './catalogs';
 import type { DerKindUnified } from './types';
 
 /**
@@ -50,9 +40,13 @@ export function generateDeterministicDerId(input: DeterministicIdInput): string 
 
 export interface WizardSelections {
   readonly connectionSide: string | null;
-  readonly voltageLevelRef: string | null;
   readonly pccLabel: string;
-  readonly bayName: string;
+  /**
+   * Karta FAB-K: punkt przyłączenia SN — szyna ISTNIEJĄCA w modelu, wymagana
+   * gdy `connectionSide==='dedicated_transformer'`. Zastępuje dawne `bayName`
+   * (etykieta tekstowa fabrykująca pseudo-referencję w UI).
+   */
+  readonly snConnectionBusRef: string | null;
   readonly deviceCatalogRef: string | null;
   readonly batteryCatalogRef: string | null;
   readonly ncRfgProfileRef: string | null;
@@ -67,7 +61,18 @@ export interface ValidationResult {
 }
 
 export interface WizardValidationContext {
+  /**
+   * Katalog urządzeń DER (PV/BESS/FW) pochodzi WYŁĄCZNIE z backendu (karta FAB-I)
+   * — wołający MUSI przekazać identyfikatory faktycznie zaoferowane projektantowi
+   * (lista z `fetchDerConverterTypes`). Bez tego pola żaden `deviceCatalogRef` nie
+   * przejdzie walidacji: brak listy zastępczej w tym module, tak jak nie ma jej
+   * już w kreatorze.
+   */
   readonly allowedDeviceCatalogIds?: readonly string[];
+  /** Karta FAB-J: identyfikatory pakietów baterii BESS z `/api/catalog/bess-battery-types`. */
+  readonly allowedBatteryCatalogIds?: readonly string[];
+  /** Karta FAB-J: `operator_id` z `GET /api/ncrfg-tests/catalog` (pse/energa/tauron/enea/pge). */
+  readonly allowedNcRfgOperatorIds?: readonly string[];
 }
 
 /**
@@ -91,60 +96,61 @@ export function validateWizardSelections(
     errors.push('Etykieta PCC nie może być pusta.');
   }
 
-  // Voltage level (tylko nN)
-  if (selections.connectionSide === 'nN') {
-    if (!selections.voltageLevelRef || !LV_VOLTAGE_LEVEL_CATALOG.find((l) => l.id === selections.voltageLevelRef)) {
-      errors.push('Wybrany poziom napięcia nN nie istnieje w katalogu LvVoltageLevelCatalog.');
-    }
+  // Punkt przyłączenia SN (karta FAB-K) — WYŁĄCZNIE dla dedicated_transformer;
+  // musi wskazywać element ISTNIEJĄCY w modelu (backend odrzuca 422 bez niego —
+  // `generator.sn_connection_bus_missing`), więc kreator nie może pozwolić na
+  // zapis bez tego pola.
+  if (selections.connectionSide === 'dedicated_transformer' && !selections.snConnectionBusRef) {
+    errors.push('Punkt przyłączenia SN (szyna stacji / ZK SN / słup rozgałęźny / odgałęzienie) jest wymagany.');
   }
 
-  // Device catalog (per kind)
+  // Device catalog (per kind) — WYŁĄCZNIE backend (karta FAB-I). Katalog lokalny
+  // (`catalogs.ts`) NIE jest już drugim źródłem prawdy o poprawności wyboru: ten
+  // sam mechanizm, który dawał kreatorowi fabrykowaną listę zastępczą, tu dawałby
+  // przejście walidacji dla urządzenia, którego backend nigdy nie zaoferował.
   if (!selections.deviceCatalogRef) {
     errors.push('Wybór urządzenia z katalogu jest wymagany.');
   } else {
-    const deviceCatalog =
-      derKind === 'PV' ? PV_INVERTER_CATALOG
-      : derKind === 'BESS' ? BESS_PCS_CATALOG
-      : WIND_TURBINE_CATALOG;
-    const allowedDeviceCatalogIds = new Set([
-      ...deviceCatalog.map((device) => device.id),
-      ...(context.allowedDeviceCatalogIds ?? []),
-    ]);
+    const allowedDeviceCatalogIds = new Set(context.allowedDeviceCatalogIds ?? []);
     if (!allowedDeviceCatalogIds.has(selections.deviceCatalogRef)) {
       errors.push(
-        `Urządzenie "${selections.deviceCatalogRef}" nie istnieje w katalogu dla DER ${derKind}.`,
+        `Urządzenie "${selections.deviceCatalogRef}" nie istnieje w katalogu backendu dla DER ${derKind}.`,
       );
     }
   }
 
-  // Bateria BESS
+  // Bateria BESS — WYŁĄCZNIE `/api/catalog/bess-battery-types` (karta FAB-J).
   if (derKind === 'BESS') {
+    const allowedBatteryCatalogIds = new Set(context.allowedBatteryCatalogIds ?? []);
     if (!selections.batteryCatalogRef) {
       errors.push('BESS wymaga wyboru baterii z katalogu.');
-    } else if (!BESS_BATTERY_CATALOG.find((b) => b.id === selections.batteryCatalogRef)) {
-      errors.push(`Bateria "${selections.batteryCatalogRef}" nie istnieje w katalogu.`);
+    } else if (!allowedBatteryCatalogIds.has(selections.batteryCatalogRef)) {
+      errors.push(`Bateria "${selections.batteryCatalogRef}" nie istnieje w katalogu backendu.`);
     }
   }
 
-  // Profil NC RfG
+  // Profil NC RfG — WYŁĄCZNIE operatorzy z `GET /api/ncrfg-tests/catalog` (karta FAB-J).
+  const allowedNcRfgOperatorIds = new Set(context.allowedNcRfgOperatorIds ?? []);
   if (!selections.ncRfgProfileRef) {
     errors.push('Profil NC RfG operatora jest wymagany.');
-  } else if (!NC_RFG_PROFILE_CATALOG.find((p) => p.id === selections.ncRfgProfileRef)) {
-    errors.push(`Profil NC RfG "${selections.ncRfgProfileRef}" nie istnieje w katalogu.`);
+  } else if (!allowedNcRfgOperatorIds.has(selections.ncRfgProfileRef)) {
+    errors.push(`Profil NC RfG "${selections.ncRfgProfileRef}" nie istnieje w katalogu backendu.`);
   }
 
-  // LVRT curve
+  // LVRT / HVRT — karta FAB-J: backend niesie JEDNĄ parę krzywych ride-through
+  // na operatora (`NcRfgOperatorItem.ride_through`), więc krzywa wybrana NIE
+  // JEST niezależną decyzją — musi być tym samym operatorem, co profil NC RfG
+  // (kreator ustawia ją automatycznie razem z profilem, patrz AddDerWizard).
   if (!selections.lvrtCurveRef) {
     errors.push('Krzywa LVRT jest wymagana.');
-  } else if (!LVRT_CURVE_CATALOG.find((c) => c.id === selections.lvrtCurveRef)) {
-    errors.push(`Krzywa LVRT "${selections.lvrtCurveRef}" nie istnieje w katalogu.`);
+  } else if (selections.lvrtCurveRef !== selections.ncRfgProfileRef) {
+    errors.push('Krzywa LVRT musi pochodzić z tego samego operatora co profil NC RfG.');
   }
 
-  // HVRT curve
   if (!selections.hvrtCurveRef) {
     errors.push('Krzywa HVRT jest wymagana.');
-  } else if (!HVRT_CURVE_CATALOG.find((c) => c.id === selections.hvrtCurveRef)) {
-    errors.push(`Krzywa HVRT "${selections.hvrtCurveRef}" nie istnieje w katalogu.`);
+  } else if (selections.hvrtCurveRef !== selections.ncRfgProfileRef) {
+    errors.push('Krzywa HVRT musi pochodzić z tego samego operatora co profil NC RfG.');
   }
 
   return { ok: errors.length === 0, errors };

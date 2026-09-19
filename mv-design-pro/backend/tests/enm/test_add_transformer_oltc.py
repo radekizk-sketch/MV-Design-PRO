@@ -145,3 +145,48 @@ def test_tap_range_reversed_is_rejected() -> None:
     )
     assert result.get("error")
     assert result.get("error_code") == "transformer.tap_changer_invalid"
+
+
+def test_dwa_transformatory_z_tej_samej_szyny_hv_auto_lv_bez_kolizji() -> None:
+    """CV-4.3 K1 — KLASA NIE INSTANCJA: seed nowej szyny nN auto-tworzonej
+    (`lv_voltage_kv`, bez `lv_bus_ref`) nie niósł `catalog_ref`/zaczepu, więc
+    DWA różne transformatory (różny typ katalogowy, różny zaczep pozanominalny)
+    odchodzące z TEJ SAMEJ szyny HV na TO SAMO napięcie LV kolidowały —
+    dokładnie ta sama klasa, którą ta karta naprawiła wcześniej w
+    `continue_trunk_segment_sn`/`start_branch_segment_sn`/
+    `connect_secondary_ring_sn` (seed bez catalog_ref/nazwy). Znalezisko:
+    sieć IEEE 39-bus (BR40/BR41, oba B18->345 kV, różny katalog/zaczep)."""
+    enm = {"buses": [{"ref_id": "bus-hv", "name": "Szyna HV", "voltage_kv": 345.0}]}
+    wspolny_payload = {
+        "hv_bus_ref": "bus-hv",
+        "lv_voltage_kv": 345.0,
+        "transformer_regulation_type": "DETC",
+        "transformer_tap_neutral_position": 0,
+        "transformer_tap_min_position": 0,
+        "transformer_tap_max_position": 1,
+        "transformer_tap_current_position": 1,
+    }
+    r1 = execute_domain_operation(
+        enm,
+        "add_transformer_sn_nn",
+        {
+            **wspolny_payload,
+            **_binding(),
+            "transformer_tap_step_percent": 6.0,
+        },
+    )
+    assert not r1.get("error"), r1
+    r2 = execute_domain_operation(
+        r1["snapshot"],
+        "add_transformer_sn_nn",
+        {
+            **wspolny_payload,
+            "transformer_catalog_ref": "bench_ieee14bus_br15",
+            "transformer_tap_step_percent": 6.0,
+        },
+    )
+    assert not r2.get("error"), r2
+    trafos = r2["snapshot"]["transformers"]
+    assert len(trafos) == 2
+    assert trafos[0]["ref_id"] != trafos[1]["ref_id"]
+    assert trafos[0]["lv_bus_ref"] != trafos[1]["lv_bus_ref"]

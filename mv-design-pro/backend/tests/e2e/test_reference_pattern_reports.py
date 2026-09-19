@@ -429,24 +429,39 @@ class TestPdfWzorzecC:
 class TestErrorHandling:
     """Testy obsługi błędów."""
 
-    @pytest.mark.skipif(_DOCX_AVAILABLE, reason="Test dla brakującej biblioteki")
     def test_docx_import_error_when_missing(
-        self, pattern_a_result, report_metadata, tmp_path: Path
+        self, pattern_a_result, report_metadata, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Weryfikuje komunikat błędu gdy python-docx niedostępny."""
+        """Weryfikuje komunikat błędu gdy python-docx niedostępny.
+
+        python-docx jest zależnością dev (pyproject.toml), zawsze obecną w
+        poprawnie skonfigurowanym środowisku — bramkowanie testu realną
+        dostępnością (`skipif(_DOCX_AVAILABLE, ...)`) oznaczało, że test
+        NIGDY nie biegł w regresji. Symulacja braku przez monkeypatch flagi
+        modułu ćwiczy realną ścieżkę ImportError bezwarunkowo.
+        """
         from application.reference_patterns import export_reference_pattern_to_docx
+        from application.reference_patterns import reporting as reference_patterns_reporting
+
+        monkeypatch.setattr(reference_patterns_reporting, "_DOCX_AVAILABLE", False)
 
         with pytest.raises(ImportError, match="python-docx"):
             export_reference_pattern_to_docx(
                 pattern_a_result, tmp_path / "test.docx", report_metadata
             )
 
-    @pytest.mark.skipif(_PDF_AVAILABLE, reason="Test dla brakującej biblioteki")
     def test_pdf_import_error_when_missing(
-        self, pattern_a_result, report_metadata, tmp_path: Path
+        self, pattern_a_result, report_metadata, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Weryfikuje komunikat błędu gdy reportlab niedostępny."""
+        """Weryfikuje komunikat błędu gdy reportlab niedostępny.
+
+        Patrz uzasadnienie w ``test_docx_import_error_when_missing`` — ten sam
+        mechanizm dla reportlab (dev dependency zawsze obecna).
+        """
         from application.reference_patterns import export_reference_pattern_to_pdf
+        from application.reference_patterns import reporting as reference_patterns_reporting
+
+        monkeypatch.setattr(reference_patterns_reporting, "_PDF_AVAILABLE", False)
 
         with pytest.raises(ImportError, match="reportlab"):
             export_reference_pattern_to_pdf(

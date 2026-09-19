@@ -15,7 +15,7 @@
  *     `buildSldOperationContext` + `operationOpenMessage` (~405-546, ostatnia
  *     to prywatny helper `buildSldOperationContext`, nieeksportowany również
  *     tutaj), `ACTION_TO_SCREEN` (~700), `routeSurfaceLabelPl` (~728),
- *     `ACTION_ROADMAP_HINT_PL` (~762), `DELETE_ACTION_OBJECT_LABEL_PL` +
+ *     `DELETE_ACTION_OBJECT_LABEL_PL` +
  *     `isSldDeleteAction` (~790-802), `DRAWER_ACTION_LABEL_PL` (~666, użyty
  *     przez oba kontenery przy wiązaniu akcji drawera z `getMenuActions`).
  *
@@ -61,6 +61,16 @@ export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   // Etap 3:
   'open-source': 'E-10', // GPZ konfigurator
   'add-section': 'E-10',
+  // Karta W2-B (klasa ACTION_ROADMAP_HINT_PL, hint-przekierowanie): dane
+  // zwarciowe źródła/sekcji GPZ mieszkają w karcie "Strona 110 kV" tego
+  // samego konfiguratora — martwy toast zamieniony na nawigację z
+  // deep-linkiem `payload.defaultCard` (`ACTION_DEFAULT_CARD` niżej, czytany
+  // przez `gpzDefaultCard` w `GpzConfiguratorSurface.tsx`, wzorzec
+  // `stationDefaultCard`). `elementId` dla 'show-sc-data' (menu sekcji) jest
+  // refem szyny, nie Source — patrz rozwiązanie `resolveGpzSourceRefForSectionBus`
+  // w gałęzi nawigacyjnej `useSldActionExecutor`.
+  'show-sc-source': 'E-10',
+  'show-sc-data': 'E-10',
   'open-bay': 'E-11',
   'configure-equipment': 'E-11',
   'configure-cts-vts': 'E-11',
@@ -71,6 +81,12 @@ export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'edit-line': 'E-12',
   'change-catalog': 'E-12',
   'show-thermal': 'E-12',
+  // Karta W2-B (klasa ACTION_ROADMAP_HINT_PL, hint-przekierowanie): zmiana
+  // rodziny odcinka (kabel ↔ linia napowietrzna) to pole "Rodzina" na karcie
+  // DOMYŚLNEJ konfiguratora odcinka ("Identyfikacja", `SnSegmentSurface.tsx`
+  // `SelectField label="Rodzina"`) — bez potrzeby osobnego `defaultCard`.
+  'change-family-to-overhead': 'E-12',
+  'change-family-to-cable': 'E-12',
   'open-zksn-card': 'E-14',
   'open-branch-pole-card': 'E-15',
   // Etap 5: układy PV/BESS/FW:
@@ -85,6 +101,17 @@ export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   // realny dostawca wyników to zakładka „Rozpływ" warsztatu Wyników ui2 —
   // dedykowana gałąź deep-linku w useSldActionExecutor (koniec celowania
   // w legacy powierzchnię E-24).
+};
+
+/** Karta W2-B (klasa ACTION_ROADMAP_HINT_PL, hint-przekierowanie): część akcji
+ *  nawigacyjnych z `ACTION_TO_SCREEN` musi otworzyć KONKRETNĄ kartę
+ *  konfiguratora, nie jego kartę domyślną — deep-link `payload.defaultCard`,
+ *  wzorzec `stationDefaultCard`/`gpzDefaultCard` (`*ConfiguratorSurface.tsx`).
+ *  Klucz spoza tej mapy = brak payloadu, konfigurator otwiera się na karcie
+ *  domyślnej (bez zmiany zachowania dla pozostałych akcji `ACTION_TO_SCREEN`). */
+export const ACTION_DEFAULT_CARD: Readonly<Record<string, string>> = {
+  'show-sc-source': 'hv-side',
+  'show-sc-data': 'hv-side',
 };
 
 export function routeSurfaceLabelPl(screenCode: string): string {
@@ -120,36 +147,44 @@ export function routeSurfaceLabelPl(screenCode: string): string {
   }
 }
 
-/** Akcje, które są zaplanowane w kolejnych etapach roadmapy — toast informacyjny. */
-export const ACTION_ROADMAP_HINT_PL: Readonly<Record<string, string>> = {
-  'insert-gpz': 'Wstawianie Głównego Punktu Zasilającego: Etap 6 roadmapy (insert tool). Tymczasowo użyj operacji domenowej add_grid_source_sn z panelu ENM.',
-  'add-section': 'Dodawanie sekcji rozdzielni SN: Etap 4 roadmapy (sieć terenowa).',
-  'add-bay': 'Dodawanie pola SN: Etap 4 roadmapy.',
-  'extend-trunk': 'Wyprowadzanie ciągu głównego: Etap 4 roadmapy.',
-  'start-branch': 'Rozpoczynanie odgałęzienia: Etap 4 roadmapy.',
-  'insert-station': 'Wstawianie stacji transformatorowej: Etap 4 roadmapy.',
-  'insert-zksn': 'Wstawianie złącza kablowego SN: Etap 4 roadmapy.',
-  'insert-sectional': 'Wstawianie łącznika sekcyjnego: Etap 4 roadmapy.',
-  // Karta S9-5: wpis 'insert-joint' USUNIĘTY razem z pozycją menu (mufa
-  // kablowa nie ma operacji domenowej ani edytora — patrz `SLD_MENU_REGISTRY`).
-  'insert-pole': 'Wstawianie słupa rozgałęźnego: Etap 4 roadmapy.',
-  'add-source': 'Wybór PV, BESS albo farmy wiatrowej odbywa się w karcie "Układy PV/BESS/FW" konfiguratora stacji.',
-  'add-load': 'Dodawanie obciążenia nN: Etap 4 roadmapy.',
-  'continue-trunk': 'Kontynuacja ciągu głównego: Etap 4 roadmapy.',
-  'set-switch-state': 'Zmiana stanu łącznika: Etap 6 roadmapy.',
-  'show-measurements': 'Podgląd pomiarów pola: Etap 7 roadmapy.',
-  'show-sc-source': 'Dane zwarciowe źródła GPZ są dostępne w karcie "Strona 110 kV" konfiguratora GPZ.',
-  'show-sc-data': 'Dane zwarciowe sekcji są dostępne w konfiguratorze GPZ, w karcie "Strona 110 kV".',
-  'change-family-to-overhead': 'Zmiana rodziny odbywa się w konfiguratorze odcinka, w karcie "Identyfikacja i rodzina".',
-  'change-family-to-cable': 'Zmiana rodziny odbywa się w konfiguratorze odcinka, w karcie "Identyfikacja i rodzina".',
-  'delete-bay': 'Usuwanie pola SN: Etap 4 roadmapy.',
-  'delete-segment': 'Usuwanie odcinka: Etap 4 roadmapy.',
-  'delete-station': 'Usuwanie stacji: Etap 4 roadmapy.',
-  'delete-pv': 'Usuwanie źródła PV: Etap 5 roadmapy.',
-  'delete-bess': 'Usuwanie BESS: Etap 5 roadmapy.',
-  'delete-fw': 'Usuwanie farmy wiatrowej: Etap 5 roadmapy.',
-};
-
+/**
+ * Karta W2-B (KLASA NIE INSTANCJA — mapa domknięcia aneks 3a.C, C8: martwy
+ * hint `'set-switch-state'` obok działającej ścieżki to była INSTANCJA;
+ * poniżej rozstrzygnięcie całej KLASY): `ACTION_ROADMAP_HINT_PL` USUNIĘTA W
+ * CAŁOŚCI. Inwentarz 24 kluczy tabeli (zmierzone z kodu — nie 31, jak
+ * podawał opis karty; rozbieżność odnotowana w meldunku wykonawcy):
+ *
+ * 19 kluczy miały REALNY handler WCZEŚNIEJ w kolejności gałęzi poniżej
+ * (`opByAction` w `buildSldOperationContext` / `ACTION_TO_SCREEN` /
+ * `isSldDeleteAction` / branch 1b `add-source` stacji) — hint był martwym,
+ * nieosiągalnym kodem: `insert-gpz` (branch bez wymogu elementId),
+ * `add-section` (przechwycone wcześniej przez `ACTION_TO_SCREEN`), `add-bay`,
+ * `extend-trunk`, `start-branch`, `insert-station`, `insert-zksn`,
+ * `insert-sectional`, `insert-pole`, `add-source` (branch 1b, kind==='station'
+ * zawsze prawdziwe dla jedynego wpisu rejestru menu), `add-load`,
+ * `continue-trunk` (predykat `trunkStartFieldAvailable` w menu i fieldRef-check
+ * w `buildSldOperationContext` czytają TEN SAM resolver
+ * `resolveGpzTrunkStartFieldRef` — predykaty parami, nie ma stanu, w którym
+ * pozycja jest klikalna, a operacja odmawia), `set-switch-state`,
+ * `delete-bay`, `delete-segment`, `delete-station`, `delete-pv`,
+ * `delete-bess`, `delete-fw`.
+ *
+ * Pozostałe 5 kluczy było hintami-PRZEKIEROWANIAMI do REALNIE istniejących
+ * miejsc — zamienione na nawigację (fix_navigation), nie skasowane:
+ * `show-sc-source`/`show-sc-data` → `ACTION_TO_SCREEN['E-10']` +
+ * `ACTION_DEFAULT_CARD` (karta "Strona 110 kV" konfiguratora GPZ, weryfikacja
+ * `resolveGpzSourceRefForSectionBus` dla refu sekcji); `change-family-to-overhead`/
+ * `change-family-to-cable` → `ACTION_TO_SCREEN['E-12']` (pole "Rodzina" na
+ * karcie domyślnej konfiguratora odcinka); `show-measurements` → branch 1c
+ * niżej w `useSldActionExecutor`, deep-link do panelu inspektora
+ * `field_measurements` — TA SAMA zdolność "Pomiary pola", którą
+ * `network-build/cards/BayCard.tsx` już otwiera przyciskiem
+ * (`commonInspectorActions`). ZERO pozycji `SLD_MENU_REGISTRY` usunięto w tej
+ * karcie — wszystkie 24 klucze miały realnego dostawcę w kodzie, tylko
+ * nienazwanego (dlatego `dead_click_guard.py` zaakceptował tabelę hintów jako
+ * "pokrycie" — karta zamyka tę furtkę: usuwa całą kategorię pokrycia
+ * "uczciwy toast roadmapy" z guarda, patrz `check_sld_menu_path`).
+ */
 export const DELETE_ACTION_OBJECT_LABEL_PL: Readonly<Record<string, string>> = {
   'delete-bay': 'pole SN',
   'delete-segment': 'odcinek SN',
@@ -369,6 +404,40 @@ export function stationRefOfBusOrSource(
   return station?.ref_id ?? station?.id ?? null;
 }
 
+/**
+ * Karta W2-B (klasa ACTION_ROADMAP_HINT_PL, hint-przekierowanie
+ * `show-sc-data`): sekcja GPZ (`kind === 'section'`, elementId = ref szyny
+ * sekcji) nie ma WŁASNEGO Source — dane zwarciowe WN mieszkają na Source
+ * rozdzielni-właścicielki tej szyny. Realny FK: `Source.substation_ref`
+ * wskazujący na `Substation.ref_id` (ten sam FK, którego czyta
+ * `InspectorEngineeringView.tsx` przy dopasowaniu źródła do stacji: `s =>
+ * s.ref_id === elementId || s.id === elementId || s.substation_ref ===
+ * elementId`). Rozwiązanie w dwóch krokach: (1) `elementId` może już BYĆ
+ * refem Source (np. dla `show-sc-source`, kind='gpz') — zwracamy go wprost;
+ * (2) inaczej traktujemy `elementId` jako ref szyny, znajdujemy właścicielkę
+ * przez `stationRefOfBusOrSource`, potem Source z `substation_ref` na nią
+ * wskazującym. Brak dopasowania (rozdzielnia bez Source albo Source bez FK) =
+ * `null` — wołający zostawia oryginalny ref nietknięty (uczciwa degradacja,
+ * ten sam wzorzec co `resolveCanonicalSectionBusRef` wyżej), nigdy nie
+ * fabrykuje nawigacji do nieistniejącego obiektu.
+ */
+export function resolveGpzSourceRefForSectionBus(
+  snapshot: EnergyNetworkModel | null,
+  elementId: string,
+): string | null {
+  if (!snapshot || !elementId) return null;
+  const directSource = (snapshot.sources ?? []).find(
+    (candidate) => candidate.ref_id === elementId || candidate.id === elementId,
+  );
+  if (directSource) return directSource.ref_id ?? directSource.id ?? null;
+  const substationRef = stationRefOfBusOrSource(snapshot, elementId);
+  if (!substationRef) return null;
+  const source = (snapshot.sources ?? []).find(
+    (candidate) => candidate.substation_ref === substationRef,
+  );
+  return source?.ref_id ?? source?.id ?? null;
+}
+
 export function resolveGpzTrunkStartFieldRef(
   snapshot: EnergyNetworkModel | null,
   stationRef: string | null,
@@ -558,8 +627,11 @@ export function buildSldOperationContext(
  * `SldWorkspaceContainer.handleAction`): readOnly-guard → delete (z
  * potwierdzeniem `notify` sticky) → nawigacja (`ACTION_TO_SCREEN`) →
  * `buildSldOperationContext` (formularze operacji domenowych) → add-source
- * stacji (skrót do E-13 karty DER) → roadmap hint (`ACTION_ROADMAP_HINT_PL`)
- * → fallback techniczny.
+ * stacji (skrót do E-13 karty DER) → show-measurements pola (skrót do panelu
+ * inspektora `field_measurements`) → fallback techniczny. Karta W2-B: gałąź
+ * „roadmap hint" (`ACTION_ROADMAP_HINT_PL`) USUNIĘTA w całości — każdy klucz
+ * tabeli miał realnego dostawcę (inwentarz w komentarzu przy
+ * `DELETE_ACTION_OBJECT_LABEL_PL`).
  */
 export function useSldActionExecutor(
   { readOnly }: { readonly readOnly: boolean },
@@ -570,6 +642,10 @@ export function useSldActionExecutor(
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
+  // Karta W2-B: 'show-measurements' (menu pola) otwiera WPROST panel
+  // inspektora "Pomiary pola" — ta sama zdolność, którą `BayCard.tsx` już
+  // udostępnia przyciskiem (`openInspectorPanel('field_measurements', ...)`).
+  const openInspectorPanel = useNetworkBuildStore((state) => state.openInspectorPanel);
   const selectElement = useSelectionStore((state) => state.selectElement);
   const setWynikiTab = useShellStore((state) => state.setWynikiTab);
   const setActiveSpace = useShellStore((state) => state.setActiveSpace);
@@ -669,10 +745,23 @@ export function useSldActionExecutor(
         const apparatusSelection = kind === 'apparatus' && elementId
           ? parseGpzApparatusSelectionId(elementId)
           : null;
-        const navigationElementId = apparatusSelection?.bayRef ?? elementId;
+        let navigationElementId = apparatusSelection?.bayRef ?? elementId;
+        // Karta W2-B ('show-sc-data' z menu sekcji): elementId to szyna
+        // sekcji, nie ref Source — dane zwarciowe WN mieszkają na Source
+        // rozdzielni-właścicielki tej szyny. Rozwiązanie REALNYM FK
+        // (`resolveGpzSourceRefForSectionBus`); nierozwiązywalne = uczciwa
+        // degradacja, ref zostaje nietknięty (jak `resolveCanonicalSectionBusRef`
+        // wyżej). Dla 'show-sc-source' (kind='gpz') elementId już JEST refem
+        // Source — resolver go zwraca bez zmian (gałąź `directSource`).
+        if (navigationElementId && (actionId === 'show-sc-source' || actionId === 'show-sc-data')) {
+          navigationElementId = resolveGpzSourceRefForSectionBus(snapshot, navigationElementId)
+            ?? navigationElementId;
+        }
+        const defaultCard = ACTION_DEFAULT_CARD[actionId];
         openRouteSurface(screenCode as Parameters<typeof openRouteSurface>[0], {
           entityRef: navigationElementId ?? null,
           subjectKind: 'helper_context',
+          ...(defaultCard ? { payload: { defaultCard } } : {}),
         });
         toastBus.publish('info', `Otworzono ${routeSurfaceLabelPl(screenCode)}.`);
         return;
@@ -709,10 +798,15 @@ export function useSldActionExecutor(
         return;
       }
 
-      // 2) Akcje roadmapowe — toast informacyjny z dokładną etapowością.
-      const hint = ACTION_ROADMAP_HINT_PL[actionId];
-      if (hint) {
-        notify(hint, 'info');
+      // 1c) Karta W2-B (klasa ACTION_ROADMAP_HINT_PL): 'show-measurements' z
+      //     menu pola → panel inspektora 'field_measurements' (E-11, "Pomiary
+      //     pola") — TA SAMA zdolność, którą `BayCard.tsx` już otwiera
+      //     przyciskiem `commonInspectorActions`
+      //     (`network-build/networkBuildStore.ts::openInspectorPanel`).
+      //     Deep-link zamiast dwóch kliknięć (otwórz pole → "Pomiary pola").
+      if (actionId === 'show-measurements' && kind === 'bay' && elementId) {
+        openInspectorPanel('field_measurements', elementId, 'BaySN');
+        toastBus.publish('info', 'Otworzono pomiary pola.');
         return;
       }
 
@@ -725,6 +819,6 @@ export function useSldActionExecutor(
       // Konsumujemy parametr kind, żeby spełnić noUnusedParameters w trybie strict.
       void kind;
     },
-    [activeCaseId, executeDomainOperation, logicalViews, openOperationForm, openRouteSurface, readOnly, selectElement, setActiveSpace, setWynikiTab, snapshot],
+    [activeCaseId, executeDomainOperation, logicalViews, openInspectorPanel, openOperationForm, openRouteSurface, readOnly, selectElement, setActiveSpace, setWynikiTab, snapshot],
   );
 }

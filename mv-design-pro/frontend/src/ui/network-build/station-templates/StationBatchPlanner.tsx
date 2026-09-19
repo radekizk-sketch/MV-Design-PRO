@@ -106,12 +106,13 @@ function deterministicLengthM(index: number): number {
 }
 
 function rowStatus(
-  template: StationTemplateSummary | null,
+  /** Wyłącznie obecność szablonu jest tu potrzebna — żadne inne pole nie jest czytane. */
+  templatePresent: boolean,
   targetSegmentRef: string | null,
   lengthM: number | null,
 ): { status: BatchRowStatus; missingFields: string[] } {
   const missingFields: string[] = [];
-  if (!template) missingFields.push('szablon stacji');
+  if (!templatePresent) missingFields.push('szablon stacji');
   if (!targetSegmentRef) missingFields.push('odcinek docelowy');
   if (typeof lengthM !== 'number' || !Number.isFinite(lengthM) || lengthM <= 0) missingFields.push('długość odcinka');
   if (missingFields.includes('szablon stacji')) return { status: 'brak_szablonu', missingFields };
@@ -145,22 +146,7 @@ export function applyRowOverrides(
     const override = overrides[row.rowId];
     if (!override) return row;
     const lengthM = override.lengthM !== undefined ? override.lengthM : row.lengthM;
-    const statusInfo = rowStatus(
-      row.templateId
-        ? {
-            id: row.templateId,
-            name_pl: row.templateName,
-            category: row.category,
-            description_pl: '',
-            use_case_pl: '',
-            nc_rfg_type: null,
-            tags: [],
-            icon: '',
-          }
-        : null,
-      row.targetSegmentRef,
-      lengthM,
-    );
+    const statusInfo = rowStatus(row.templateId != null, row.targetSegmentRef, lengthM);
     return {
       ...row,
       lengthM,
@@ -188,7 +174,7 @@ export function buildStationBatchPlan(
     const targetSegmentRef = segmentRefs[index] ?? null;
     const medium: BatchMedium = rowIndex % 7 === 0 ? 'LINIA_NAPOWIETRZNA_SN' : 'KABEL_SN';
     const lengthM = deterministicLengthM(rowIndex);
-    const statusInfo = rowStatus(template, targetSegmentRef, lengthM);
+    const statusInfo = rowStatus(template != null, targetSegmentRef, lengthM);
     return {
       rowId: `batch-station-${rowIndex}`,
       index: rowIndex,
@@ -257,7 +243,13 @@ export function StationBatchPlanner({
     fetchStationTemplates()
       .then((payload) => {
         if (cancelled) return;
-        setTemplates(Array.isArray(payload.templates) ? payload.templates : []);
+        // Planer wstawia stacje w ODCINKI magistrali (kazdy wiersz niesie
+        // targetSegmentRef), wiec kategorie korzenia modelu (GPZ) nie naleza do
+        // tej listy — inaczej wiersz konczylby sie odmowa backendu
+        // `template.korzen_modelu_nie_wchodzi_w_segment`. Regula z kontraktu
+        // szablonu (`wchodzi_w_segment`), nie z listy kategorii we froncie.
+        const wszystkie = Array.isArray(payload.templates) ? payload.templates : [];
+        setTemplates(wszystkie.filter((szablon) => szablon.wchodzi_w_segment));
       })
       .catch((caught: unknown) => {
         if (cancelled) return;

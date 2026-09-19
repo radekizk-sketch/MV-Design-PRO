@@ -84,11 +84,6 @@ def _enm_canonical_dict(enm: EnergyNetworkModel) -> dict[str, Any]:
                 "updated_at",
                 "created_at",
                 "hash_sha256",
-                "semantic_hash",
-                "input_hash",
-                "case_hash",
-                "variant_hash",
-                "switching_snapshot_hash",
             }
         },
     )

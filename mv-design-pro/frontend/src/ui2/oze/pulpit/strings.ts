@@ -234,12 +234,8 @@ export function formatKv(kv: number | null): string {
   return `${formatLiczba(kv, 2)} kV`;
 }
 
-/** Etykiety strony przyłączenia (Polish labels — bez surowych identyfikatorów). */
+/** Etykiety poziomu przyłączenia (Polish labels — bez surowych identyfikatorów). */
 export const ETYKIETY_STRONY: Record<ConnectionSide, string> = {
-  SN: 'strona SN',
   nN: 'strona nN',
   dedicated_transformer: 'transformator dedykowany',
-  at_zksn: 'złącze kablowe SN',
-  at_branch_pole: 'słup odgałęźny',
-  at_cable_joint: 'mufa kablowa',
 };

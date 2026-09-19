@@ -20,6 +20,7 @@ import pytest
 from application.analyses.wniosek_osd import (
     WniosekOsdBrakiError,
     WniosekOsdIdentyfikacja,
+    _bilans_mocy_sekcja,
     build_wniosek_osd_view,
     render_wniosek_osd_docx,
     render_wniosek_pdf,
@@ -46,14 +47,18 @@ OSD_JSON = "/api/oze-analysis/osd-application"
 OSD_DOCX = "/api/oze-analysis/osd-application.docx"
 OSD_PDF = "/api/oze-analysis/osd-application.pdf"
 
+#: Karta S-1 (dowod dynamiczny): klasa A (215 kW/0,8 kV) — jedyna klasa BEZ
+#: testow dynamicznych T14-T17 w `default_for_modules`, wiec certyfikat (i
+#: wniosek OSD, ktory dzieli bramke z `certyfikat_zgodnosci.py`) faktycznie
+#: powstaje; z certyfikatem PTPiREE (precedens FAB-K, required_count == 0).
 _MODULE_FULL: dict = {
     "der_ref": "pv-1",
-    "der_name": "PV 2 MW",
+    "der_name": "PV 215 kW",
     "der_kind": "PV",
     "operator_id": "enea",
-    "p_max_kw": 2000,
-    "p_min_kw": 100,
-    "voltage_kv": 15,
+    "p_max_kw": 215,
+    "p_min_kw": 10,
+    "voltage_kv": 0.8,
     "certificate_status": "ptpiree_verified",
     "has_lvrt_curve": True,
     "has_hvrt_curve": True,
@@ -98,12 +103,14 @@ def _augmented_enm():
 
 def _pf_run() -> CanonicalRun:
     set_enm("c-pf", _augmented_enm())
-    return execute_run(create_run(case_id="c-pf", analysis_type="PF").id)
+    return execute_run(create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id)
 
 
 def _sc_run() -> CanonicalRun:
     set_enm("c-sc", _augmented_enm())
-    return execute_run(create_run(case_id="c-sc", analysis_type="short_circuit_sn").id)
+    return execute_run(
+        create_run(case_id="c-sc", klucz_twin="c-sc", analysis_type="short_circuit_sn").id
+    )
 
 
 def _ncrfg(module: dict | None = None) -> NcRfgPtpireeSolver:
@@ -198,6 +205,31 @@ def test_bilans_zawiera_moc_zainstalowana() -> None:
     assert bilans["moc_zainstalowana_w_punkcie_mva"] == pytest.approx(2.75)
 
 
+def _pf_run_plain_golden() -> CanonicalRun:
+    """PF na CZYSTYM golden network (bez augmentacji tego pliku testowego) —
+    ``gen_pv`` nie ma ``materialized_params``, a jego ``catalog_ref`` w golden
+    nie odpowiada żadnej pozycji katalogu domyślnego (rozjazd nazwy), więc
+    jego moc zainstalowana jest GENUINIE nieznana solverowi/katalogowi."""
+    set_enm("c-pf-plain", build_golden_enm())
+    return execute_run(
+        create_run(case_id="c-pf-plain", klucz_twin="c-pf-plain", analysis_type="PF").id
+    )
+
+
+def test_moc_w_punkcie_nieznana_nie_fabrykuje_zera() -> None:
+    """FAB-E (E1): źródło IBG w punkcie przyłączenia bez znanej mocy znamionowej
+    (brak ``materialized_params``, ``catalog_ref`` bez odpowiednika w katalogu)
+    → ``moc_zainstalowana_w_punkcie_mva`` JEST ``None``, nie fikcyjne 0.0
+    (przed naprawą ``_installed_mva_by_bus`` sentinel 0.0 przechodził tu
+    niezauważony, bo węzeł nie miał żadnego INNEGO, znanego źródła)."""
+    bilans = _bilans_mocy_sekcja(_pf_run_plain_golden(), "bus_nn")
+    assert bilans["moc_zainstalowana_w_punkcie_mva"] is None
+    # Suma całkowita też nie crashuje i nie liczy nieznanego wkładu jako 0 MVA —
+    # jedyne źródło IBG w całej sieci jest nieznane, więc suma jest 0.0 (pusta
+    # po odrzuceniu nieznanych, E3 klasa (b) — nie fabrykacja z fragmentu).
+    assert bilans["moc_zainstalowana_zrodel_mva"] == 0.0
+
+
 def test_zwarcia_sekcja_ma_ik_i_sk() -> None:
     zwarcia = _view()["zwarcia_punkt_przylaczenia"]
     assert zwarcia["bus_ref"] == "bus_nn"
@@ -238,7 +270,9 @@ def test_braki_nieznany_bus_ref() -> None:
 
 
 def test_braki_modulow_nc_rfg() -> None:
-    ncrfg = _ncrfg({"p_recovery_time_s": None, "reactive_current_gain": None})
+    # Klasa A bez certyfikatu PTPiREE: T12 staje się wymagany i pozostaje
+    # `no_data` bez `stop_generation_enabled` — patrz test_certyfikat_zgodnosci.py.
+    ncrfg = _ncrfg({"certificate_status": "unknown"})
     braki = zbierz_braki_wniosku(_pf_run(), _sc_run(), "bus_nn", ncrfg)
     assert any(b.startswith("Zgodność NC RfG:") for b in braki)
     assert any("brak danych do oceny" in b for b in braki)
@@ -262,7 +296,7 @@ def test_kolejnosc_brakow_deterministyczna() -> None:
         _fake_run("short_circuit_sn", "FINISHED"),
         _fake_run("PF", "FINISHED"),
         "bus_nn",
-        _ncrfg({"p_recovery_time_s": None, "reactive_current_gain": None}),
+        _ncrfg({"certificate_status": "unknown"}),
     )
     assert "nie jest rozpływem" in braki[0]
     assert "nie jest zwarciowy" in braki[1]

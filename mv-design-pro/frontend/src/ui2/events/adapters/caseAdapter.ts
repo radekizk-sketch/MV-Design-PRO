@@ -8,6 +8,15 @@
  * czytal stan SERWEROWY przypadku zamiast lokalnego przypuszczenia. Adapter
  * nadal nie ma wlasnego `fetch` ani wlasnej kopii danych.
  *
+ * CV-2-W ROZSZERZA TEN WYJATEK NA ZMIANE MODELU. Werdykt swiezosci przypadku
+ * (status + przyczyna + lista zmian) liczy backend, wiec po edycji modelu chrom
+ * MUSI go pobrac ponownie — inaczej trwalby na ostatnim znanym „aktualne" az do
+ * nastepnego biegu. Poprzednio ratowala go druga derywacja w powloce (porownanie
+ * pary rewizji), ktora byla wlasnie druga prawda o jednym stanie i zniknela.
+ * Odswiezenie idzie TA SAMA akcja store'u, wiec „zero wlasnego `fetch`" zostaje
+ * w mocy; wyzwalaczem jest zdarzenie 'model-zmieniony' z magistrali (to samo,
+ * ktore emituje `snapshotAdapter` po kazdej zmianie migawki).
+ *
  * Zrodla store'ow (WYLACZNIE odczyt/subscribe — zero zapisu):
  *
  * 1. frontend/src/ui/app-state/store.ts — useAppStateStore.activeCaseId
@@ -34,7 +43,7 @@
 import { useAppStateStore } from '../../../ui/app-state/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../ui/study-cases/store';
-import { emituj } from '../bus';
+import { emituj, subskrybuj } from '../bus';
 
 let ostrzezonoRaz = false;
 function ostrzezRaz(komunikat: string, err: unknown): void {
@@ -143,14 +152,33 @@ function startRunStoreAdapter(): () => void {
 }
 
 /**
- * Uruchamia oba pod-adaptery (app-state + runStore) -> magistrala. Wywolac raz
- * przy starcie powloki. Zwraca funkcje odsubskrybowania obu.
+ * CV-2-W: po ZMIANIE MODELU werdykt swiezosci przypadku trzeba pobrac ponownie —
+ * policzyl go backend z biegow i koperty rewizji, a chrom go tylko pokazuje.
+ * Bez tego chip trwalby na ostatnim znanym statusie mimo modelu, ktory pojechal
+ * dalej (dokladnie defekt V12K-309 poz. 2, tyle ze z drugiej strony).
+ */
+function startModelChangeAdapter(): () => void {
+  try {
+    return subskrybuj('model-zmieniony', () => {
+      odswiezAktywnyPrzypadek();
+    });
+  } catch (err) {
+    ostrzezRaz('[ui2/events] caseAdapter: subskrypcja magistrali niedostepna — adapter no-op', err);
+    return () => {};
+  }
+}
+
+/**
+ * Uruchamia pod-adaptery (app-state + runStore + zmiana modelu) -> magistrala.
+ * Wywolac raz przy starcie powloki. Zwraca funkcje odsubskrybowania wszystkich.
  */
 export function startCaseAdapter(): () => void {
   const zatrzymajAppState = startAppStateAdapter();
   const zatrzymajRunStore = startRunStoreAdapter();
+  const zatrzymajZmianeModelu = startModelChangeAdapter();
   return () => {
     zatrzymajAppState();
     zatrzymajRunStore();
+    zatrzymajZmianeModelu();
   };
 }

@@ -34,6 +34,9 @@ export function EkranAnalizy({
   kluczWiersza,
   onWybierzWiersz,
   wybranyWiersz,
+  typElementuWiersza,
+  elementIdWiersza,
+  nazwaElementuWiersza,
   onPoprawWModelu,
   wierszDecyzyjny,
   rodzajWiersza,
@@ -100,6 +103,9 @@ export function EkranAnalizy({
         kluczWiersza={kluczWiersza}
         onWybierzWiersz={onWybierzWiersz}
         wybranyWiersz={wybranyWiersz}
+        typElementuWiersza={typElementuWiersza}
+        elementIdWiersza={elementIdWiersza}
+        nazwaElementuWiersza={nazwaElementuWiersza}
         onPoprawWModelu={onPoprawWModelu}
         wierszDecyzyjny={wierszDecyzyjny}
         rodzajWiersza={rodzajWiersza}

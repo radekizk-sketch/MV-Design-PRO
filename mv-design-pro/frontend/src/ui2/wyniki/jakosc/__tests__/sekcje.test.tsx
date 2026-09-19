@@ -269,3 +269,48 @@ describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () =
     expect(screen.getAllByTestId('mvd-wyn-popraw')).toHaveLength(1);
   });
 });
+
+describe('SekcjaWalidacji — klik NATYWNY na wierszu (karta TODO-UI2 p.6, poprawka KLASA NIE INSTANCJA)', () => {
+  beforeEach(() => {
+    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+  });
+
+  // `KLUCZ_WIERSZA_WALIDACJI` jest KOMPOZYTEM tabeli (`check_type::target_id::
+  // index`, patrz `jakoscModel.ts`) — bez `elementIdWiersza` klik natywny
+  // zapisałby ten kompozyt jako `selectedElement.id`, a SLD próbowałoby
+  // wycentrować się na elemencie, którego w modelu NIE MA. Ten sam wiersz, którego
+  // przycisk „Popraw w modelu" (opisany wyżej) już poprawnie używał `target_id`.
+  it('klik na wierszu (nie przycisk decyzji) zapisuje REALNY target_id, nie kompozytowy klucz wiersza tabeli', async () => {
+    mockedWalidacja.mockResolvedValue(WALIDACJA_FIXTURE);
+    render(<SekcjaWalidacji {...propsWalidacja()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-walidacja')).toBeTruthy());
+
+    // Wiersz transformatora (WARNING, TRANSFORMER_LOADING) — obiekt widoczny w
+    // tabeli to `target_name` ('Transformator 1'), klucz wiersza to kompozyt.
+    fireEvent.click(screen.getByText('Transformator 1'));
+
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'tr-1',
+      type: 'TransformerBranch',
+      name: 'Transformator 1',
+    });
+  });
+
+  it('klik na wierszu bez nazwy (target_name pusty) zapisuje target_id jako nazwę (uczciwy spadek, zero fabrykacji)', async () => {
+    const fixtura: WalidacjaResponse = {
+      ...WALIDACJA_FIXTURE,
+      items: [{ ...WALIDACJA_FIXTURE.items[1], target_name: null }],
+    };
+    mockedWalidacja.mockResolvedValue(fixtura);
+    render(<SekcjaWalidacji {...propsWalidacja()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-walidacja')).toBeTruthy());
+
+    fireEvent.click(screen.getByText('tr-1'));
+
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'tr-1',
+      type: 'TransformerBranch',
+      name: 'tr-1',
+    });
+  });
+});

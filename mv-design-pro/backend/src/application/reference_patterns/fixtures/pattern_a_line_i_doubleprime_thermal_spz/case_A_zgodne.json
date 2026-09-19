@@ -1,71 +1,61 @@
 {
-  "_description": "Wzorzec A — Przypadek A: ZGODNE (wszystkie kryteria spelnione, prawidlowe okno nastaw)",
+  "_description": "Wzorzec A — Przypadek A: ZGODNE (wszystkie kryteria spelnione, prawidlowe szerokie okno nastaw)",
   "_pattern_id": "RP-LINE-I2-THERMAL-SPZ",
   "_expected_verdict": "ZGODNE",
-  "_notes_pl": "Typowa linia kablowa SN 15kV, Al 150mm2, SPZ jednokrotne. Szerokie okno nastaw umozliwia swobodny dobor nastawy I>>. Wszystkie kryteria (selektywnosc, czulosc, cieplne) spelnione z zapasem.",
+  "_notes_pl": "Typowa linia napowietrzna SN 15kV, Al 150mm2, SPZ wlaczone. Silnik: ProtectionSettingsEngine (Hoppel/IRiESD), karta W3-C2. Szerokie okno nastaw umozliwia swobodny dobor nastawy I>>. Wszystkie kryteria (selektywnosc, czulosc, cieplne, SPZ) spelnione z zapasem.",
 
-  "line_id": "line-ref-A-zgodne",
+  "line_id": "linia-ref-a-zgodne",
   "line_name": "Linia SN 15kV GPZ Polnoc - RS Centrum (referencja ZGODNE)",
-  "ct_ratio": 80.0,
 
-  "conductor": {
-    "material": "XLPE_AL",
-    "cross_section_mm2": 150.0,
-    "jthn_a_mm2": 94.0,
-    "theta_b_deg": 40.0,
-    "theta_k_deg": 250.0
-  },
+  "cross_section_mm2": 150.0,
+  "conductor_material": "Al",
+  "length_km": 8.0,
+  "i_nominal_a": 300.0,
 
-  "spz_config": {
-    "mode": "SINGLE",
-    "t_dead_1_s": 0.5,
-    "t_dead_2_s": 15.0,
-    "t_fault_max_s": 0.5
-  },
+  "ik3_max_beginning_a": 3500.0,
+  "ik3_min_beginning_a": 3000.0,
+  "ik3_max_end_a": 1800.0,
+  "ik3_min_end_a": 1500.0,
+  "ik2_min_end_a": 1300.0,
+  "ik_max_next_bus_a": 1200.0,
 
-  "local_generation": {
-    "enabled": false
-  },
+  "i_load_max_a": 150.0,
 
-  "ik_max_busbars_a": 3500.0,
-  "ik_min_busbars_a": 3000.0,
-  "ik_max_next_protection_a": 1200.0,
-  "ik_min_2f_busbars_a": 2600.0,
+  "delta_t_s": 0.3,
+  "k_b": 1.2,
+  "k_bth": 1.1,
+  "t_upstream_s": 0.0,
+  "spz_enabled": true,
+  "spz_pause_s": 0.5,
 
-  "t_nast_1_s": 0.5,
-  "t_nast_2_s": 0.0,
-  "t_breaker_s": 0.05,
-
-  "kb": 1.2,
-  "kc": 1.5,
-  "kbth": 0.9,
+  "lokalna_generacja_aktywna": false,
+  "lokalna_generacja_typ_zrodla": null,
+  "lokalna_generacja_wklad_a": 0.0,
+  "lokalna_generacja_prog_udzialu_zsz": null,
 
   "_expected_results": {
-    "_comment": "Obliczenia referencyjne",
+    "_comment": "Z faktycznego przebiegu ProtectionSettingsEngine.calculate() (karta W3-C2)",
     "i_min_sel_primary_a": 1440.0,
-    "i_max_sens_primary_a": 2000.0,
-    "ithn_a": 14100.0,
-    "tk_s": 1.1,
-    "ithdop_a": 13442.0,
-    "i_max_th_primary_a": 12098.0,
-    "i_max_primary_a": 2000.0,
-    "window_width_a": 560.0,
-    "relative_window_width_pct": 38.9,
+    "i_max_sens_primary_a": 2500.0,
+    "i_max_th_primary_a": 57324.7,
+    "window_i_min_primary_a": 1440.0,
+    "window_i_max_primary_a": 2500.0,
     "window_valid": true,
+    "limiting_criterion_max": "sensitivity",
+    "recommended_setting_primary_a": 1970.0,
+    "tk_total_s": 0.6,
+    "ithn_a": 14100.0,
+    "ithdop_a": 18203.0,
     "spz_allowed": true,
     "verdict": "ZGODNE"
   },
 
   "_calculation_trace": {
-    "_step_1_selectivity": "I_min_sel = kb * Ik_max_next = 1.2 * 1200 = 1440 A",
-    "_step_2_sensitivity": "I_max_sens = Ik_min / kc = 3000 / 1.5 = 2000 A",
-    "_step_3_thermal_tk": "tk = n_cycles * (t_fault + t_breaker) = 2 * (0.5 + 0.05) = 1.1 s",
-    "_step_4_thermal_ithn": "Ithn = S * jthn = 150 * 94 = 14100 A",
-    "_step_5_thermal_ithdop": "Ithdop = Ithn / sqrt(tk) = 14100 / sqrt(1.1) = 13442 A",
-    "_step_6_thermal_imax": "I_max_th = kbth * Ithdop = 0.9 * 13442 = 12098 A",
-    "_step_7_window": "[I_min, I_max] = [max(I_min_sel), min(I_max_sens, I_max_th)] = [1440, min(2000, 12098)] = [1440, 2000] A",
-    "_step_8_window_valid": "I_max (2000) > I_min (1440) => okno prawidlowe",
-    "_step_9_relative_width": "(2000 - 1440) / 1440 = 38.9% > 5% => NIE waskie",
-    "_step_10_verdict": "Okno prawidlowe, szerokie, wszystkie kryteria PASS => ZGODNE"
+    "_step_1_selectivity": "I_min_sel = k_b * Ik_max_next = 1.2 * 1200 = 1440 A",
+    "_step_2_sensitivity": "I_max_sens = Ik3_min_beginning / k_b = 3000 / 1.2 = 2500 A",
+    "_step_3_thermal_window": "I_max_th = (s*jthn/sqrt(0.05)) / k_bth = (150*94/0.2236) / 1.1 = 63056.7/1.1 = 57324.7 A",
+    "_step_4_window": "[I_min, I_max] = [1440, min(2500, 57324.7)] = [1440, 2500] A, szerokosc wzgledna 73.6% > 5% => nie waskie",
+    "_step_5_spz_cycle": "t_total = 0.05 + 0.5 + 0.05 = 0.6 s; Ithdop = 150*94/sqrt(0.6) = 14100/0.7746 = 18203.0 A; wymagane 3500 A <= 18203.0 A => SPZ dozwolone",
+    "_step_6_verdict": "Okno prawidlowe i szerokie, wszystkie kryteria PASS, SPZ dozwolone => ZGODNE"
   }
 }

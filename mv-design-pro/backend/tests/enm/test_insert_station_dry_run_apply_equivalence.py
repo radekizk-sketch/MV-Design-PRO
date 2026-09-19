@@ -38,6 +38,17 @@ def _empty_enm() -> dict:
 def op(snap: dict, name: str, payload: dict) -> dict:
     if name == "add_grid_source_sn" and "catalog_ref" not in payload:
         payload = {**payload, "catalog_ref": CATALOG_ZRODLO_250}
+    if name == "add_grid_source_sn" and (
+        "transformer_catalog_ref" not in payload
+        and "transformer_catalog_binding" not in payload
+        and "hv_voltage_kv" not in payload
+        and "transformer_sn_mva" not in payload
+    ):
+        # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary hv_voltage_kv
+        # + transformer_sn_mva (albo transformer_catalog_ref) — odtwarzamy jako
+        # dana fikstury zalozenie, ktore wczesniej wchodzilo domyslnie
+        # (25 MVA @ 110 kV).
+        payload = {**payload, "hv_voltage_kv": 110.0, "transformer_sn_mva": 25.0}
     result = execute_domain_operation(snap, name, payload)
     err = result.get("error")
     assert not err, f"Operacja '{name}' zwróciła błąd: {err} (code={result.get('error_code')})"

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { InspectorPanel } from '../InspectorPanel';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
+import { at } from '../../../test/arrayAt';
 
 describe('InspectorPanel', () => {
   const selectedRow = {
@@ -39,7 +40,7 @@ describe('InspectorPanel', () => {
       screen.getByText('Wywód obliczeń jest dostępny w dedykowanej zakładce „Wywód”.'),
     ).toBeInTheDocument();
     expect(screen.getByText('pakietu wywodu', { exact: false })).toBeInTheDocument();
-    const proofButton = screen.getAllByRole('button', { name: 'Otwórz wywód obliczeń' }).at(-1);
+    const proofButton = at(screen.getAllByRole('button', { name: 'Otwórz wywód obliczeń' }), -1);
     expect(proofButton).toBeDefined();
     expect(proofButton).toBeDisabled();
     expect(screen.getByTestId('open-proof-trace-blocked-proof')).toHaveTextContent(
@@ -79,6 +80,77 @@ describe('InspectorPanel', () => {
     fireEvent.click(screen.getByTestId('tab-limits'));
     expect(screen.getByText('Przekroczenie')).toBeInTheDocument();
     expect(screen.queryByText('VIOLATION')).not.toBeInTheDocument();
+  });
+
+  it('karta W3-J: zakładka Limity szyny klasyfikuje napięcie WYŁĄCZNIE wobec kryteriów z biegu', () => {
+    render(
+      <InspectorPanel
+        selectedRow={{
+          type: 'bus',
+          data: {
+            bus_id: 'bus_1',
+            name: 'Szyna 1',
+            un_kv: 15,
+            u_kv: 15.75,
+            u_pu: 1.05,
+            angle_deg: -1.2,
+            flags: [],
+            kryteria_napiecia: {
+              ostrzezenie_pct: 5,
+              przekroczenie_pct: 10,
+              ostrzezenie_min_pu: 0.95,
+              ostrzezenie_max_pu: 1.05,
+              przekroczenie_min_pu: 0.9,
+              przekroczenie_max_pu: 1.1,
+              podstawa_ostrzezenie_pl: 'Praktyka projektowa SN / IRiESD.',
+              podstawa_przekroczenie_pl: 'PN-EN 50160.',
+              pasmo_wiarygodnosci_pct: 10,
+            },
+          },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('tab-limits'));
+    // Na granicy pasma ostrzeżenia (dokładnie ostrzezenie_max_pu) -> W normie.
+    expect(screen.getByText('W normie')).toBeInTheDocument();
+    expect(screen.getByText('0,90 pu')).toBeInTheDocument();
+    expect(screen.getByText('1,10 pu')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('tab-parameters'));
+    expect(screen.getByText('Limit dolny napięcia')).toBeInTheDocument();
+    expect(screen.getAllByText('0,90 pu').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1,10 pu').length).toBeGreaterThan(0);
+  });
+
+  it('karta W3-J: bez kryteriów w wyniku zakładka Limity pokazuje uczciwy stan, nie domyślną liczbę', () => {
+    render(
+      <InspectorPanel
+        selectedRow={{
+          type: 'bus',
+          data: {
+            bus_id: 'bus_2',
+            name: 'Szyna 2',
+            un_kv: 15,
+            u_kv: 12.0,
+            u_pu: 0.8,
+            angle_deg: -3.4,
+            flags: [],
+          },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('tab-limits'));
+    expect(screen.getByText('Kryterium niedostępne')).toBeInTheDocument();
+    // Zero fabrykacji: żaden domyślny limit (0,90/1,10) nie jest renderowany.
+    expect(screen.queryByText('0,90 pu')).not.toBeInTheDocument();
+    expect(screen.queryByText('1,10 pu')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('tab-parameters'));
+    expect(screen.getByText('Limit dolny napięcia')).toBeInTheDocument();
+    expect(screen.queryByText('0,90 pu')).not.toBeInTheDocument();
+    expect(screen.queryByText('1,10 pu')).not.toBeInTheDocument();
   });
 
   it('nawiguje do wywodu aktywnego uruchomienia, gdy run jest dostępny', () => {

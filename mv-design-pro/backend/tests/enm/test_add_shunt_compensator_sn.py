@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 
 import pytest
-from enm.canonical_analysis import _build_shunt_specs_from_snapshot
+from enm.assembler import _build_shunt_specs_from_snapshot
 from enm.domain_operations import execute_domain_operation
 from network_model.solvers.shunt_compensator_preview import (
     ShuntCompensatorPreviewInput,

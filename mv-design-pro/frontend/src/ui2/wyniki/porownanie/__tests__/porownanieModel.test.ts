@@ -6,6 +6,7 @@ import {
   KOLUMNY_SZYN_DIFF,
   etykietaPrzebiegu,
   mapaWagElementow,
+  naLinieProweniencji,
   naWierszeGalezi,
   naWierszeRankingu,
   naWierszeSzynDiff,
@@ -17,6 +18,7 @@ import { POROWNANIE_STRINGS } from '../strings';
 import {
   branchDiffFixture,
   busDiffFixture,
+  provenanceFixture,
   rankingFixture,
   runFixture,
   summaryFixture,
@@ -174,7 +176,9 @@ describe('naZalozeniaPorownania — podsumowanie A · B · Δ', () => {
 describe('etykietaPrzebiegu — data + zbieżność; id tylko w trybie eksperckim', () => {
   it('tryb podstawowy: analiza, data deterministyczna, zbieżność bez identyfikatorów', () => {
     const label = etykietaPrzebiegu(runFixture(), false);
-    expect(label).toBe('Rozpływ mocy · 2026-07-10 08:15 · Zbieżny');
+    // B5 (karta CV-3.3-B): etykieta niesie dowód KTÓRY stan modelu bieg opisuje
+    // (rewizja + krótki odcisk migawki) między analizą a datą.
+    expect(label).toBe('Rozpływ mocy · rew. 1 · snap-a · 2026-07-10 08:15 · Zbieżny');
     expect(label).not.toContain('run-a');
     expect(label).not.toContain('case-1');
   });
@@ -192,12 +196,14 @@ describe('etykietaPrzebiegu — data + zbieżność; id tylko w trybie ekspercki
 
   it('nazwa przypadku dopisana obok znacznika czasu (przed zbieżnością)', () => {
     const label = etykietaPrzebiegu(runFixture(), false, 'Wariant letni');
-    expect(label).toBe('Rozpływ mocy · 2026-07-10 08:15 · Wariant letni · Zbieżny');
+    expect(label).toBe(
+      'Rozpływ mocy · rew. 1 · snap-a · 2026-07-10 08:15 · Wariant letni · Zbieżny',
+    );
   });
 
   it('brak nazwy przypadku (null) → dzisiejsza etykieta, zero zgadywania', () => {
     const label = etykietaPrzebiegu(runFixture(), false, null);
-    expect(label).toBe('Rozpływ mocy · 2026-07-10 08:15 · Zbieżny');
+    expect(label).toBe('Rozpływ mocy · rew. 1 · snap-a · 2026-07-10 08:15 · Zbieżny');
   });
 
   it('tryb ekspercki zachowuje identyfikatory obok nazwy przypadku', () => {
@@ -205,6 +211,87 @@ describe('etykietaPrzebiegu — data + zbieżność; id tylko w trybie ekspercki
     expect(label).toContain('Wariant letni');
     expect(label).toContain('case-1');
     expect(label).toContain('run-a');
+  });
+
+  // B5 (karta CV-3.3-B): dowód KTÓRY stan modelu bieg opisuje — rewizja albo
+  // scenariusz (pierwszeństwo scenariusza) + krótki odcisk migawki modelu.
+  it('scenariusz roboczy ma pierwszeństwo przed samą rewizją modelu', () => {
+    const label = etykietaPrzebiegu(
+      runFixture({ scenario_ref: ['S-LETNI', 3], model_revision: 7 }),
+      false,
+    );
+    expect(label).toContain('scenariusz S-LETNI rew. 3');
+    expect(label).not.toContain('rew. 7');
+  });
+
+  it('brak rewizji i scenariusza (null) → kreska, zero zgadywania', () => {
+    const label = etykietaPrzebiegu(
+      runFixture({ model_revision: null, scenario_ref: null }),
+      false,
+    );
+    expect(label).toBe(`Rozpływ mocy · ${POROWNANIE_STRINGS.kreska} · snap-a · 2026-07-10 08:15 · Zbieżny`);
+  });
+
+  it('pole rewizji spoza kontraktu (undefined) NIE renderuje się jako "rew. undefined"', () => {
+    // Obrona w głąb: fixture spoza kontraktu (np. stary zapis bez tego pola)
+    // musi dać uczciwą kreskę, nie String(undefined) wyciekający do UI.
+    const uszkodzonyRun = { ...runFixture(), model_revision: undefined } as unknown as Parameters<
+      typeof etykietaPrzebiegu
+    >[0];
+    const label = etykietaPrzebiegu(uszkodzonyRun, false);
+    expect(label).not.toContain('undefined');
+    expect(label).toContain(POROWNANIE_STRINGS.kreska);
+  });
+
+  it('brak odcisku migawki (pusty string) → kreska zamiast pustej komórki', () => {
+    const label = etykietaPrzebiegu(runFixture({ snapshot_hash: '' }), false);
+    expect(label).toBe(`Rozpływ mocy · rew. 1 · ${POROWNANIE_STRINGS.kreska} · 2026-07-10 08:15 · Zbieżny`);
+  });
+});
+
+describe('naLinieProweniencji — panel ekspercki proweniencji biegu (B1/B5, CV-3.3-B)', () => {
+  it('koperta wypełniona: rewizja i oba odciski skrócone do 12 znaków', () => {
+    const linie = naLinieProweniencji(provenanceFixture());
+    const rewizja = linie.find((l) => l.etykieta === POROWNANIE_STRINGS.proweniencjaRewizja);
+    const odciskModelu = linie.find(
+      (l) => l.etykieta === POROWNANIE_STRINGS.proweniencjaOdciskModelu,
+    );
+    expect(rewizja?.wartosc).toBe('rew. 1');
+    expect(odciskModelu?.wartosc).toBe('snap-a');
+  });
+
+  it('koperta ze scenariuszem roboczym: rewizja pokazuje scenariusz, nie model_revision', () => {
+    const linie = naLinieProweniencji(
+      provenanceFixture({
+        envelope: {
+          wersja: 2,
+          project_id: 'proj-1',
+          model_revision: 5,
+          snapshot_hash: 'snap-a',
+          catalog_fingerprint: 'cat-a',
+          options_hash: 'opt-a',
+          semantic_fingerprint: 'sem-a',
+          scenario_ref: { scenario_id: 'S-ZIMA', revision: 2 },
+          scenario_hash: 'scen-hash',
+        },
+      }),
+    );
+    const rewizja = linie.find((l) => l.etykieta === POROWNANIE_STRINGS.proweniencjaRewizja);
+    expect(rewizja?.wartosc).toBe('scenariusz S-ZIMA rew. 2');
+  });
+
+  it('brak koperty (bieg sprzed CV-2) → uczciwy komunikat, nie kreska udająca zero', () => {
+    const linie = naLinieProweniencji(provenanceFixture({ envelope: null }));
+    const rewizja = linie.find((l) => l.etykieta === POROWNANIE_STRINGS.proweniencjaRewizja);
+    expect(rewizja?.wartosc).toBe(POROWNANIE_STRINGS.kopertaBrak);
+  });
+
+  it('rodzaj analizy i status pochodzą wprost z proweniencji, bez tłumaczenia', () => {
+    const linie = naLinieProweniencji(provenanceFixture({ analysis_type: 'protection_sn', status: 'FINISHED' }));
+    const rodzaj = linie.find((l) => l.etykieta === POROWNANIE_STRINGS.proweniencjaRodzaj);
+    const status = linie.find((l) => l.etykieta === POROWNANIE_STRINGS.proweniencjaStatus);
+    expect(rodzaj?.wartosc).toBe('protection_sn');
+    expect(status?.wartosc).toBe('FINISHED');
   });
 });
 

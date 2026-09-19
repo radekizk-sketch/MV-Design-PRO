@@ -54,6 +54,7 @@ from application.analyses.pq_coverage import build_pq_coverage_view
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from enm.canonical_analysis import CanonicalRun
 from network_model.catalog.types import ConverterType
+from network_model.pochodne import mw_na_kw
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from pydantic import BaseModel, Field
@@ -229,7 +230,7 @@ def _klasa_nc_rfg(
             "klasa": None,
             "opis_pl": "Klasa nieokreślona — brak dodatniej mocy przyłączalnej.",
         }
-    p_max_kw = max_moc_mw * 1000.0
+    p_max_kw = mw_na_kw(max_moc_mw)
     modul = profile.classify_module(p_max_kw, napiecie_kv if napiecie_kv is not None else 0.0)
     if modul is None:
         return {

@@ -22,6 +22,11 @@ export const MAGISTRALA_STRINGS = {
   typKabelBlad: 'Nie udało się pobrać katalogu kabli SN.',
   typLiniaBlad: 'Nie udało się pobrać katalogu linii SN.',
   typPomoc: 'Typ wnosi rezystancję, reaktancję i prąd znamionowy — wartości z katalogu, nie z ręki.',
+  ekranUziemienie: 'Uziemienie ekranu kabla',
+  ekranUziemieniePomoc:
+    'Deklaracja układu uziemienia ekranu kabla (jednostronne / dwustronne / krzyżowe). '
+    + 'Katalogowe R0/X0 obowiązują dla układu odniesienia typu — rozjazd nazywa walidator '
+    + '(W-W5-01), nigdy nie przelicza (brak geometrii ułożenia).',
 
   nazwa: 'Nazwa odcinka',
   nazwaPlaceholder: 'np. Magistrala A / odcinek 1',
@@ -130,6 +135,15 @@ export const MAGISTRALA_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem odcinka.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać odcinek.',
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — katalog kabli/linii
+  // ładuje się asynchronicznie z backendu; bez typu z katalogu zapis nie ma
+  // z czego policzyć odcinka, więc zapis jest w tym oknie ŚWIADOMIE
+  // zablokowany, a nie milczący.
+  katalogLadowanieStopka: 'Ładowanie katalogu typów odcinków SN — zapis będzie dostępny po wczytaniu.',
+  // S9-5: druga jawna przyczyna blokady zapisu — pole „Długość odcinka" bez
+  // dodatniej wartości (klasa: zapis musi ODZWIERCIEDLAĆ to, co realnie
+  // wpisano, nie być klikalny niezależnie od stanu pola).
+  dlugoscWymaganaStopka: 'Podaj dodatnią długość odcinka, aby odblokować zapis.',
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: magistrala SN — odcinek linii/kabla i spadek napięcia',
@@ -152,14 +166,14 @@ export const MAGISTRALA_STRINGS = {
     + 'cieplnie ($I_{th} \\ge I_k \\cdot \\sqrt{t_k}$); spadek napięcia na całej magistrali powinien mieścić się w '
     + 'dopuszczalnym zakresie (typowo kilka %).',
   teoriaPodstawa: 'Podstawa: PN-EN 50160 (napięcie), N SEP-E-004 (linie i kable), IEC 60909 (zwarcia), IRiESD.',
-  teoriaJakCzytac:
-    'Linia = napięcie wzdłuż magistrali od źródła (1,0 pu) do końca odcinka. Nachylenie zależy '
-    + 'poglądowo od cosφ (niższy cosφ → stromszy spadek: większy udział składowej biernej na '
-    + 'reaktancji). Pasmo poniżej limitu = poza dopuszczalnym zakresem napięcia. Rzeczywisty ΔU '
-    + '(z katalogowego R/X, długości i obciążenia) liczy rozpływ mocy.',
-  wykresAria: 'Poglądowy profil napięcia wzdłuż magistrali w funkcji cosφ',
-  wykresOsX: 'Pozycja wzdłuż magistrali',
-  wykresOsU: 'Napięcie U [pu]',
-  wykresLimit: 'dopuszczalny limit',
-  wykresZrodlo: 'źródło',
+  // Karta W3-J (2026-09-16): usunięto fabrykowaną krzywą poglądową (SVG liczący
+  // „spadek 4% × (cosφ+sinφ)" bez podstawy fizycznej — R≈X to założenie
+  // WYMYŚLONE dla ilustracji, nie parametr katalogowy odcinka). Kreator NIE ma
+  // dostępu do wyniku rozpływu dla jeszcze niezapisanej magistrali, więc
+  // pokazuje uczciwy stan zamiast liczyć cokolwiek w UI.
+  spadekNiedostepnyTytul: 'Spadek napięcia policzy rozpływ mocy po zapisaniu magistrali.',
+  spadekNiedostepnyOpis:
+    'Rzeczywisty spadek napięcia (ΔU) na tym odcinku zależy od katalogowych parametrów R/X, '
+    + 'długości i obciążenia — wyznacza go solver rozpływu mocy dla zapisanego modelu sieci, '
+    + 'nie ten formularz. Zapisz magistralę, a następnie uruchom rozpływ, aby zobaczyć wynik.',
 } as const;

@@ -46,15 +46,14 @@ from analysis.normative.models import NormativeConfig
 from analysis.sensitivity.builder import SensitivityBuilder
 from analysis.voltage_profile.builder import VoltageProfileBuilder
 from analysis.voltage_profile.models import VoltageProfileContext, VoltageProfileView
+from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 
 # Jedno źródło odtwarzania wyniku FROZEN i grafu ze snapshotu przebiegu
 # (KLASA-NIE-INSTANCJA: druga kopia mapowania byłaby defektem oczekującym
 # na rozjazd konwencji — import świadomy, funkcje współdzielone w pakiecie).
-from application.analyses.energy_validation.service import (
-    _graph,
-    _reconstruct_power_flow_result,
-)
-from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
+# Karta W3-G2: wyodrębnione z energy_validation.service do dedykowanego modułu
+# (sanity-bounds rozpływu potrzebuje dokładnie tej samej pary wynik/graf).
+from application.analyses.power_flow_reconstruction import graf_z_biegu, wynik_rozplywu_z_biegu
 from application.proof_engine.proof_generator import (
     LoadFlowBusInput,
     LoadFlowElementInput,
@@ -178,8 +177,8 @@ def _zloz_widoki(
     run: CanonicalRun,
 ) -> tuple[ProofDocument, VoltageProfileView, NetworkGraph]:
     """Wspólny fundament: dowód spadków napięć + profil napięć z przebiegu PF."""
-    pf_result = _reconstruct_power_flow_result(run)
-    graph = _graph(run)
+    pf_result = wynik_rozplywu_z_biegu(run)
+    graph = graf_z_biegu(run)
 
     profil = VoltageProfileBuilder(graph=graph, context=_kontekst_profilu(run)).build(
         pf_result,

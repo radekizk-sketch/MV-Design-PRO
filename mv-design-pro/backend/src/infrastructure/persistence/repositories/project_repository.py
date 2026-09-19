@@ -38,7 +38,6 @@ class ProjectRepository:
             connection_node_id=project.connection_node_id,
             connection_description=project.connection_description,
             owner_id=project.owner_id,
-            active_network_snapshot_id=project.active_network_snapshot_id,
             sources_jsonb=[],
             created_at=project.created_at,
             updated_at=project.updated_at,
@@ -103,7 +102,6 @@ class ProjectRepository:
         row.connection_node_id = project.connection_node_id
         row.connection_description = project.connection_description
         row.owner_id = project.owner_id
-        row.active_network_snapshot_id = project.active_network_snapshot_id
         row.updated_at = project.updated_at
         if commit:
             self._session.commit()
@@ -216,28 +214,6 @@ class ProjectRepository:
         if commit:
             self._session.commit()
 
-    # P10a: Active network snapshot management
-    def get_active_snapshot_id(self, project_id: UUID) -> str | None:
-        """P10a: Get the active network snapshot ID for a project."""
-        stmt = select(ProjectORM.active_network_snapshot_id).where(
-            ProjectORM.id == project_id,
-            ProjectORM.deleted_at.is_(None),
-        )
-        return self._session.execute(stmt).scalar_one_or_none()
-
-    def set_active_snapshot_id(
-        self, project_id: UUID, snapshot_id: str | None, *, commit: bool = True
-    ) -> None:
-        """P10a: Set the active network snapshot ID for a project."""
-        stmt = select(ProjectORM).where(
-            ProjectORM.id == project_id,
-            ProjectORM.deleted_at.is_(None),
-        )
-        row = self._session.execute(stmt).scalar_one()
-        row.active_network_snapshot_id = snapshot_id
-        if commit:
-            self._session.commit()
-
     def _orm_to_domain(self, orm: ProjectORM) -> Project:
         """Convert ORM object to domain model."""
         return Project(
@@ -251,7 +227,6 @@ class ProjectRepository:
             connection_node_id=orm.connection_node_id,
             connection_description=orm.connection_description,
             owner_id=orm.owner_id,
-            active_network_snapshot_id=orm.active_network_snapshot_id,
             created_at=orm.created_at,
             updated_at=orm.updated_at,
             deleted_at=orm.deleted_at,

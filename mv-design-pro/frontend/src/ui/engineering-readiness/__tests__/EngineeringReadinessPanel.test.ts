@@ -93,12 +93,6 @@ const MIXED_ISSUES: ReadinessIssue[] = [
   makeInfo('I001', 'sw_1'),
 ];
 
-const BY_SEVERITY_THREE_BLOCKERS: Record<ReadinessSeverity, number> = {
-  BLOCKER: 3,
-  IMPORTANT: 0,
-  INFO: 0,
-};
-
 const BY_SEVERITY_MIXED: Record<ReadinessSeverity, number> = {
   BLOCKER: 3,
   IMPORTANT: 2,

@@ -19,7 +19,6 @@ nie ma, nie może zatrzymać testów zgodności.
 
 from __future__ import annotations
 
-import uuid
 from pathlib import Path
 from typing import Any
 
@@ -69,9 +68,33 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     reset_enm_store()
 
 
-def _przypadek_z_der(tabliczka: dict[str, Any] | None) -> str:
+def _nowy_przypadek(client: TestClient) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tego pliku potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego UUID-a.
+    """
+    project_resp = client.post("/api/projects", json={"name": "Dowod certyfikatu NC RfG — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
+def _klucz(client: TestClient, case_id: str) -> str:
+    """Klucz magazynu ENM dla `case_id` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+
+
+def _przypadek_z_der(client: TestClient, tabliczka: dict[str, Any] | None) -> str:
     """Przypadek z jednym źródłem DER o zadanej tabliczce. Zwraca `case_id`."""
-    case_id = str(uuid.uuid4())
+    case_id = _nowy_przypadek(client)
     model = EnergyNetworkModel(
         header=ENMHeader(name="Dowod certyfikatu PTPiREE"),
         buses=[Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15.0)],
@@ -86,7 +109,7 @@ def _przypadek_z_der(tabliczka: dict[str, Any] | None) -> str:
             )
         ],
     )
-    set_enm(case_id, model)
+    set_enm(_klucz(client, case_id), model)
     return case_id
 
 
@@ -101,7 +124,7 @@ def _bieg(client: TestClient, *, case_id: str | None) -> dict[str, Any]:
 
 def test_dowod_certyfikatu_cytuje_tabliczke_urzadzenia(client: TestClient) -> None:
     """Komplet pól dowodowych trafia do wyniku biegu WPROST z modelu."""
-    case_id = _przypadek_z_der(TABLICZKA_Z_CERTYFIKATEM)
+    case_id = _przypadek_z_der(client, TABLICZKA_Z_CERTYFIKATEM)
     wynik = _bieg(client, case_id=case_id)
 
     dowody = wynik["certificate_evidence"]
@@ -123,7 +146,7 @@ def test_urzadzenie_bez_danych_certyfikatu_daje_pola_none_a_bieg_dziala(
     client: TestClient,
 ) -> None:
     """Uczciwy stan zerowy: brak danej to None, nie wartość wzięta znikąd."""
-    case_id = _przypadek_z_der(None)
+    case_id = _przypadek_z_der(client, None)
     wynik = _bieg(client, case_id=case_id)
 
     dowod = wynik["certificate_evidence"][0]
@@ -148,11 +171,12 @@ def test_urzadzenie_bez_danych_certyfikatu_daje_pola_none_a_bieg_dziala(
 def test_tabliczka_niepelna_niesie_tylko_to_co_jest(client: TestClient) -> None:
     """Częściowe dane — dzisiejszy stan zapisu kreatora — nie są uzupełniane."""
     case_id = _przypadek_z_der(
+        client,
         {
             "ptpiree_document_number": "WOS/2024/PV-900",
             "ptpiree_wos_version": "WOS 2021",
             "ptpiree_source_url": "https://ptpiree.pl/wykaz/pv-900",
-        }
+        },
     )
     dowod = _bieg(client, case_id=case_id)["certificate_evidence"][0]
 
@@ -179,7 +203,7 @@ def test_bieg_bez_wskazanego_przypadku_dziala_i_nie_zmysla_dowodu(
 
 def test_urzadzenie_spoza_modelu_nie_dostaje_cudzego_dowodu(client: TestClient) -> None:
     """Dopasowanie po referencji — nie „pierwszy lepszy DER w modelu"."""
-    case_id = _przypadek_z_der(TABLICZKA_Z_CERTYFIKATEM)
+    case_id = _przypadek_z_der(client, TABLICZKA_Z_CERTYFIKATEM)
     odpowiedz = client.post(
         f"/api/ncrfg-tests/run?case_id={case_id}",
         json={"modules": [{**MODUL_BIEGU, "der_ref": "gen_innego_projektu"}]},
@@ -197,7 +221,7 @@ def test_kontrakt_dotychczasowych_pol_wyniku_jest_nietkniety(client: TestClient)
     Porównanie idzie polem po polu z biegiem BEZ przypadku — dowód certyfikatu
     jest jedyną różnicą, w szczególności odcisk deterministyczny się nie rusza.
     """
-    case_id = _przypadek_z_der(TABLICZKA_Z_CERTYFIKATEM)
+    case_id = _przypadek_z_der(client, TABLICZKA_Z_CERTYFIKATEM)
     z_dowodem = _bieg(client, case_id=case_id)
     bez_przypadku = _bieg(client, case_id=None)
 

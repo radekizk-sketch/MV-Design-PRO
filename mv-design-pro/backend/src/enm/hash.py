@@ -48,13 +48,75 @@ _ELEMENT_KEYS = (
 )
 
 
+#: Pola elementow DODANE PO ZAMROZENIU odciskow, ktore w postaci kanonicznej hasha
+#: wystepuja WYLACZNIE, gdy niosa wartosc (kontrakt „addytywnie, `exclude_none`" —
+#: dyrektywa wlasciciela 2026-07-19 pkt 11: nowe pole nie moze przestawic odciskow
+#: istniejacych modeli; ten sam wzorzec, co `connection_conditions` w naglowku).
+#: `None` = dana zadeklarowana jako NIEZNANA, wiec nie jest trescia modelu; wartosc
+#: zmienia wynik biegu (Z_Qmin), wiec zmienia odcisk. Kazdy wpis z karta i powodem;
+#: przypiete testem `tests/enm/test_hash_pola_addytywne.py` (odcisk bez danych MIN
+#: rowny odciskowi postaci sprzed karty; z danymi MIN — inny; trzy funkcje hasha zgodne).
+_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
+    # CV-4.3 K7: dane zwarciowe scenariusza MIN zrodla sieciowego (IEC 60909-0 eq. 6 z c_min).
+    # + napięcie zadane szyny bilansującej (bliźniaki literatury ze slackiem ≠ 1,0 p.u.).
+    # + W5-A: opis punktu neutralnego sieci SN zasilanej z równoważnika (jedyny
+    # nośnik po kasacji `Bus.grounding`; migawki bez opisu haszują jak przed kartą).
+    "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu", "neutral_grounding"),
+    # Karta W5-D (F-1): fazy przylaczenia odbioru. `None` = odbior trojfazowy
+    # symetryczny (jedyne znaczenie, jakie `Load` mial przed karta) — poza odciskiem;
+    # wskazana faza zmienia wynik rozplywu niesymetrycznego, wiec zmienia odcisk.
+    "loads": ("phases",),
+    # W5-A: układ sieci nN typowany na transformatorze (w miejsce
+    # dawnego klucza meta stacji) i układ uziemienia ekranu kabla.
+    "transformers": ("lv_earthing_system",),
+    "branches": ("screen_bonding",),
+    # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
+    # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego
+    # dla przyszlego solvera W6-2 (jeszcze nie istnieje) — nie jest trescia modelu
+    # dzisiejszych biegow SC/PF; podana wartosc zmieni tylko przyszly bieg
+    # dynamika_rms, wiec dopiero wtedy zmienia odcisk.
+    "generators": ("dynamika",),
+}
+
+#: W5-A: pola SKASOWANE z modelu, ktore odcisk ZACHOWUJE jako `null`. Przed kasacja
+#: `model_dump` wypisywal `"grounding": null` na KAZDEJ szynie i ten `null` wchodzil
+#: do odcisku; zniknięcie klucza zmieniloby odcisk kazdej migawki z szyna, a rewizje
+#: (`enm/rewizje.py`) weryfikuja tresc hashem — cala historia stalaby sie
+#: „uszkodzona". Odciski modeli sa zamrozone (Determinism Rule), wiec kanoniczna
+#: postac elementu pod hash niesie skasowany klucz jako `null`. Szyna, ktora MIALA
+#: wartosc, zmienia odcisk (wartosc przeniesiona na `Source.neutral_grounding`) —
+#: to zmiana swiadoma, nazwana w raporcie migracji (`enm/uziemienie.py`).
+#: Przypiete testem `tests/enm/test_hash_w5_uziemienie.py`.
+_POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {"buses": ("grounding",)}
+
+
+def _postac_kanoniczna_elementu(item: dict[str, Any], key: str) -> None:
+    """JEDNA regula postaci elementu pod odcisk (trzy hashe pelne + semantyczny):
+    bez `id`, bez pol addytywnych o wartosci `None`, ze skasowanymi polami jako `null`."""
+    item.pop("id", None)
+    for pole in _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE.get(key, ()):
+        if pole in item and item[pole] is None:
+            del item[pole]
+    for pole in _POLA_SKASOWANE_W_ODCISKU.get(key, ()):
+        item.setdefault(pole, None)
+
+
 def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:
-    """Usun losowe pola 'id' (UUID) z list elementow — ref_id jest tozsamoscia."""
+    """Postac kanoniczna elementow pod hash: bez losowych `id` (UUID — `ref_id` jest
+    tozsamoscia), bez pol addytywnych o wartosci `None`
+    (`_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`) i ze skasowanymi polami jako `null`
+    (`_POLA_SKASOWANE_W_ODCISKU`). JEDYNE miejsce tej reguly — wolaja ja
+    `compute_enm_hash`, `_input_payload` i `hash_migawki_enm`, wiec trzy odciski
+    nie moga sie rozjechac."""
+    # W1: sekcja `katalog_projektu` jest addytywna — brak sekcji i `None` to ten sam
+    # model (odciski sprzed pola bajtowo niezmienione); obecna sekcja wchodzi do hasha.
+    if payload.get("katalog_projektu") is None:
+        payload.pop("katalog_projektu", None)
     for key in _ELEMENT_KEYS:
         if key in payload and isinstance(payload[key], list):
             for item in payload[key]:
                 if isinstance(item, dict):
-                    item.pop("id", None)
+                    _postac_kanoniczna_elementu(item, key)
     return payload
 
 
@@ -81,7 +143,7 @@ def _strip_keys(payload: dict[str, Any], keys: tuple[str, ...]) -> None:
 
 # semantic_hash: topologia, role, pasma napieciowe, catalog_ref
 # Excluded: parametry obliczeniowe (R/X/B/Z0/Z2), dlugosci, ratingi, switching state
-_SEMANTIC_INCLUDE_BUS = ("ref_id", "name", "voltage_kv", "zone", "grounding")
+_SEMANTIC_INCLUDE_BUS = ("ref_id", "name", "voltage_kv", "zone")
 _SEMANTIC_INCLUDE_BRANCH = (
     "ref_id",
     "name",
@@ -108,6 +170,9 @@ _SEMANTIC_INCLUDE_SOURCE = (
     "catalog_ref",
     "catalog_namespace",
     "gpz_section_id",
+    # W5-A: sposób pracy punktu neutralnego sieci SN jest semantyką sieci (przed
+    # kartą niósł ją klucz `grounding` szyny w tej samej projekcji).
+    "neutral_grounding",
 )
 _SEMANTIC_INCLUDE_GENERATOR = (
     "ref_id",
@@ -150,28 +215,42 @@ _SEMANTIC_INCLUDE_SUBSTATION = (
 )
 
 
-def _project(item: dict[str, Any], include: tuple[str, ...]) -> dict[str, Any]:
-    return {k: item[k] for k in include if k in item}
+def _project(item: dict[str, Any], include: tuple[str, ...], key: str) -> dict[str, Any]:
+    """Projekcja semantyczna elementu + ta sama postac kanoniczna co hashe pelne
+    (W5-A: `Bus.grounding` skasowane → w projekcji jako `null`, jak przed karta;
+    `Source.neutral_grounding` = `None` → poza projekcja, jak kazde pole addytywne)."""
+    wynik = {k: item[k] for k in include if k in item}
+    _postac_kanoniczna_elementu(wynik, key)
+    return wynik
 
 
 def _semantic_payload(enm: EnergyNetworkModel) -> dict[str, Any]:
     raw = enm.model_dump(mode="json", exclude={"header"})
     return {
-        "buses": [_project(b, _SEMANTIC_INCLUDE_BUS) for b in raw.get("buses", [])],
-        "branches": [_project(b, _SEMANTIC_INCLUDE_BRANCH) for b in raw.get("branches", [])],
-        "transformers": [
-            _project(t, _SEMANTIC_INCLUDE_TRANSFORMER) for t in raw.get("transformers", [])
+        "buses": [_project(b, _SEMANTIC_INCLUDE_BUS, "buses") for b in raw.get("buses", [])],
+        "branches": [
+            _project(b, _SEMANTIC_INCLUDE_BRANCH, "branches") for b in raw.get("branches", [])
         ],
-        "sources": [_project(s, _SEMANTIC_INCLUDE_SOURCE) for s in raw.get("sources", [])],
-        "generators": [_project(g, _SEMANTIC_INCLUDE_GENERATOR) for g in raw.get("generators", [])],
-        "loads": [_project(ld, _SEMANTIC_INCLUDE_LOAD) for ld in raw.get("loads", [])],
+        "transformers": [
+            _project(t, _SEMANTIC_INCLUDE_TRANSFORMER, "transformers")
+            for t in raw.get("transformers", [])
+        ],
+        "sources": [
+            _project(s, _SEMANTIC_INCLUDE_SOURCE, "sources") for s in raw.get("sources", [])
+        ],
+        "generators": [
+            _project(g, _SEMANTIC_INCLUDE_GENERATOR, "generators")
+            for g in raw.get("generators", [])
+        ],
+        "loads": [_project(ld, _SEMANTIC_INCLUDE_LOAD, "loads") for ld in raw.get("loads", [])],
         "shunt_capacitors": [
-            _project(sc, _SEMANTIC_INCLUDE_SHUNT_CAPACITOR)
+            _project(sc, _SEMANTIC_INCLUDE_SHUNT_CAPACITOR, "shunt_capacitors")
             for sc in raw.get("shunt_capacitors", [])
         ],
-        "bays": [_project(b, _SEMANTIC_INCLUDE_BAY) for b in raw.get("bays", [])],
+        "bays": [_project(b, _SEMANTIC_INCLUDE_BAY, "bays") for b in raw.get("bays", [])],
         "substations": [
-            _project(s, _SEMANTIC_INCLUDE_SUBSTATION) for s in raw.get("substations", [])
+            _project(s, _SEMANTIC_INCLUDE_SUBSTATION, "substations")
+            for s in raw.get("substations", [])
         ],
     }
 
@@ -263,6 +342,53 @@ def compute_variant_hash(variant_payload: dict[str, Any]) -> str:
     return _canonical_sha256(variant_payload)
 
 
+#: Pola naglowka wykluczane z hasha modelu — JEDNA lista dla `compute_enm_hash`
+#: (hash z obiektu) i `hash_migawki_enm` (hash ze slownika `model_dump`): oba
+#: odciski musza byc rowne co do bitu dla tej samej tresci (przypiete testem
+#: `tests/enm/test_scenariusze.py::test_hash_migawki_rowny_hashowi_modelu`).
+_POLA_NAGLOWKA_POZA_HASHEM = (
+    "updated_at",
+    "created_at",
+    "hash_sha256",
+    # Warunki przyłączenia OSD (dane WEJŚCIOWE dokumentu, czytane w warstwie
+    # interpretacji — nie przez solver). Wykluczone jak pozostałe pola zmienne
+    # nagłówka: deklaracja pola w ENMHeader (naprawa defektu utrwalania, karta
+    # POMIAR-RODZAJ) nie może przestawić odcisków istniejących modeli.
+    "connection_conditions",
+)
+
+
+def hash_migawki_enm(snapshot: dict[str, Any]) -> str:
+    """Hash modelu policzony ze SLOWNIKA migawki (`EnergyNetworkModel.model_dump(mode="json")`).
+
+    Ta sama regula co `compute_enm_hash` (te same wykluczenia naglowka, te same
+    usuniete UUID elementow, ten sam kanoniczny JSON), ale bez odtwarzania obiektu
+    modelu — dla migawek efektywnych scenariuszy (CV-3.1, `enm/scenariusze.py`),
+    ktore powstaja jako slowniki z narzuconymi nadpisaniami i sa hashowane
+    setki razy (sondy zdolnosci przylaczeniowej). Rownosc z `compute_enm_hash`
+    dla migawki bez nadpisan jest przypieta testem; migawka przekazana przez
+    wolajacego NIE jest modyfikowana (praca na glebokiej kopii).
+    """
+    data = _kopia_pod_hash(snapshot)
+    _strip_uuids(data)
+    return _canonical_sha256(data)
+
+
+def _kopia_pod_hash(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Kopia migawki dokladnie tak gleboka, jak siegaja mutacje hashowania:
+    naglowek bez pol zmiennych, elementy list skopiowane plytko (z nich znika
+    wylacznie `id`). Zadna struktura wolajacego nie jest dotykana."""
+    data: dict[str, Any] = {}
+    for klucz, wartosc in snapshot.items():
+        if klucz == "header" and isinstance(wartosc, dict):
+            data[klucz] = {k: v for k, v in wartosc.items() if k not in _POLA_NAGLOWKA_POZA_HASHEM}
+        elif klucz in _ELEMENT_KEYS and isinstance(wartosc, list):
+            data[klucz] = [dict(item) if isinstance(item, dict) else item for item in wartosc]
+        else:
+            data[klucz] = wartosc
+    return data
+
+
 def compute_enm_hash(enm: EnergyNetworkModel) -> str:
     """DEPRECATED w docstring (BEZ runtime warning — determinizm zachowany).
 
@@ -277,26 +403,6 @@ def compute_enm_hash(enm: EnergyNetworkModel) -> str:
       compute_case_hash               — parametry przypadku
       compute_variant_hash            — delty wariantu
     """
-    data = enm.model_dump(
-        mode="json",
-        exclude={
-            "header": {
-                "updated_at",
-                "created_at",
-                "hash_sha256",
-                "semantic_hash",
-                "input_hash",
-                "case_hash",
-                "variant_hash",
-                "switching_snapshot_hash",
-                # Warunki przyłączenia OSD (dane WEJŚCIOWE dokumentu, czytane
-                # w warstwie interpretacji — nie przez solver). Wykluczone jak
-                # pozostałe pola zmienne nagłówka: deklaracja pola w ENMHeader
-                # (naprawa defektu utrwalania, karta POMIAR-RODZAJ) nie może
-                # przestawić odcisków istniejących modeli.
-                "connection_conditions",
-            }
-        },
-    )
+    data = enm.model_dump(mode="json", exclude={"header": set(_POLA_NAGLOWKA_POZA_HASHEM)})
     _strip_uuids(data)
     return _canonical_sha256(data)

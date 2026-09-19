@@ -7,7 +7,7 @@ import { SldRevisionTable, type SldRevisionEntry } from '../SldRevisionTable';
 
 afterEach(() => cleanup());
 
-describe('SldRevisionTable — K30-100 tabela rewizji OSD', () => {
+describe('SldRevisionTable — tabela rewizji OSD', () => {
   it('renderuje empty state gdy brak entries', () => {
     const { container } = render(<svg><SldRevisionTable /></svg>);
     expect(container.querySelector('[data-testid="sld-v2-revision-empty"]')).toBeTruthy();

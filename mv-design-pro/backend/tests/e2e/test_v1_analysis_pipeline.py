@@ -111,6 +111,8 @@ def _build_v1_network() -> dict:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
         },
     )
     assert r.get("error") is None, f"GPZ: {r.get('error')}"
@@ -400,7 +402,20 @@ class TestV1ReadinessPipeline:
     """E2E: Readiness/fixactions pipeline w kontekście analizy."""
 
     def test_readiness_ok_after_full_build(self) -> None:
-        """Po pełnej budowie sieci: readiness nie ma blokerów krytycznych."""
+        """Po pełnej budowie sieci: readiness nie ma blokerów krytycznych.
+
+        Karta FAB-G (przy okazji, Zero-Debt pkt 1 — bląd napotkany przy
+        inwentarzu wywolan add_grid_source_sn): payload nie mial ANI
+        catalog_ref/catalog_binding zrodla, ANI tabliczki transformatora
+        WN/SN, wiec KROK 1 zawsze konczyl sie bledem `catalog.ref_required`,
+        `enm = r["snapshot"]` bylo `None`, a KROK 2 (`continue_trunk_segment_sn`
+        na `enm=None`) wpadal w ogolny except dispatchera i tez zwracal blad —
+        ktorego `readiness` (zawsze niepuste w kazdej odpowiedzi bledu) czynilo
+        asercje `assert readiness is not None` prawdziwa BEZ WZGLEDU na to, czy
+        siec faktycznie sie zbudowala. Test dostaje teraz jawna tabliczke
+        zrodla+transformatora i sprawdza brak bledu na KAZDYM kroku, wiec
+        rzeczywiscie dowodzi tego, co deklaruje docstring.
+        """
         enm = _empty_enm()
         r = execute_domain_operation(
             enm,
@@ -408,8 +423,12 @@ class TestV1ReadinessPipeline:
             {
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
+                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
             },
         )
+        assert r.get("error") is None, f"GPZ: {r.get('error')}"
         enm = r["snapshot"]
 
         r = execute_domain_operation(
@@ -423,6 +442,7 @@ class TestV1ReadinessPipeline:
                 },
             },
         )
+        assert r.get("error") is None, f"Odcinek: {r.get('error')}"
         enm = r["snapshot"]
         readiness = r.get("readiness", {})
 
@@ -430,7 +450,14 @@ class TestV1ReadinessPipeline:
         assert readiness is not None, "Brak readiness w odpowiedzi"
 
     def test_missing_catalog_generates_blocker(self) -> None:
-        """Brak katalogu → catalog.ref_required error."""
+        """Brak katalogu NA ODCINKU → catalog.ref_required error.
+
+        Karta FAB-G (przy okazji): KROK 1 (GPZ) musi sam SKUTECZNIE się
+        zbudować (jawna tabliczka zrodla+transformatora), inaczej blokada
+        zmierzona ponizej pochodzi od nieudanego KROKU 1 (dispatcher.
+        unhandled_exception na enm=None), a nie od braku katalogu na
+        odcinku, ktory ten test deklaruje jako swoj przedmiot.
+        """
         enm = _empty_enm()
         r = execute_domain_operation(
             enm,
@@ -438,8 +465,12 @@ class TestV1ReadinessPipeline:
             {
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
+                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "hv_voltage_kv": 110.0,
+                "transformer_sn_mva": 25.0,
             },
         )
+        assert r.get("error") is None, f"GPZ: {r.get('error')}"
         enm = r["snapshot"]
 
         # Próba dodania segmentu BEZ catalog_ref
@@ -450,9 +481,10 @@ class TestV1ReadinessPipeline:
                 "segment": {"rodzaj": "KABEL", "dlugosc_m": 300},
             },
         )
-        assert (
-            r.get("error") is not None or r.get("error_code") == "catalog.ref_required"
-        ), "Oczekiwano blokady catalog.ref_required"
+        assert r.get("error_code") == "catalog.ref_required", (
+            f"Oczekiwano blokady catalog.ref_required, otrzymano "
+            f"{r.get('error_code')}: {r.get('error')}"
+        )
 
 
 # ---------------------------------------------------------------------------

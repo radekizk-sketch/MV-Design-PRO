@@ -4,12 +4,15 @@
  * inżyniera (karta §2) — cel → gotowe przykłady → istniejące projekty
  * (`AUDYT_RADY_SPECJALISTOW_2026-07.md` W-102: „start od celu").
  *
- * W pełni sterowany propsami (karta „ZAKAZ"): `projekty` z wołającego (adapter
- * `adapters/projektyAdapter.ts` jest szkieletem projekcji — źródło wymaga
- * `fetch`, patrz TODO-KARTA tamże), `onOtworzProjekt`, `onNowyProjekt`,
- * `onWczytajPrzyklad`. Zero wołań API, zero mutacji, zero fizyki (warstwa
- * prezentacji). Wpięcie do AppRoot/AppShell = karta zarządcy; wczytywanie
- * przykładów (P-01…P-05) jest wyłącznie callbackiem — realizacja = E3.
+ * W pełni sterowany propsami (karta „ZAKAZ"): `projekty` z wołającego (czysta
+ * projekcja `adapters/projektyAdapter.ts::mapujProjekty`, wołanie `fetch`
+ * żyje w kontenerze — patrz `OtworzProjektKontener.tsx`), `onOtworzProjekt`,
+ * `onNowyProjekt`, `onWczytajPrzyklad`. Zero wołań API, zero mutacji, zero
+ * fizyki (warstwa prezentacji). Wpięcie do AppRoot: `OtworzProjektKontener`
+ * (karta K4, `ui2/AppRoot.tsx`, przestrzeń „Projekt" bez `activeProjectId`);
+ * wczytywanie przykładów (P-01…P-05) jest wyłącznie callbackiem — dostawcy
+ * materializacji przykładu dziś nie ma (dowód w `OtworzProjektKontener.tsx`
+ * — pusta lista `przyklady`, sekcja się nie renderuje).
  *
  * Parytet z mostem `#dashboard` (karta KD-1, luki L-2…L-5) — WYŁĄCZNIE
  * prezentacja i potwierdzenia; realne wywołania API robi kontener:
@@ -34,7 +37,7 @@ import type { ProjektWiersz } from './adapters/projektyAdapter';
 import { Kafel } from '../Kafel';
 
 export interface OtworzProjektProps {
-  /** Lista istniejących projektów — źródło u wołającego (karta §2 TODO-KARTA). */
+  /** Lista istniejących projektów — źródło: `OtworzProjektKontener` (GET /api/projects). */
   projekty: ProjektWiersz[];
   /** Stan „ładowanie" listy istniejących projektów. */
   ladowanieProjektow?: boolean;
@@ -71,6 +74,12 @@ export interface OtworzProjektProps {
   onWrocDoPulpitu?: () => void;
   /** Operacja (tworzenie / otwarcie / usunięcie) w toku. */
   wToku?: boolean;
+  /**
+   * Inne drogi zdobycia projektu (E1): import z arkusza XLSX i odtworzenie z
+   * archiwum ZIP. Brak funkcji = wejście się nie renderuje (zero martwych kontrolek).
+   */
+  onOtworzImportArkusza?: () => void;
+  onOtworzArchiwum?: () => void;
 }
 
 export function OtworzProjekt({
@@ -86,6 +95,8 @@ export function OtworzProjekt({
   aktywnyProjekt = null,
   onWrocDoPulpitu,
   wToku = false,
+  onOtworzImportArkusza,
+  onOtworzArchiwum,
 }: OtworzProjektProps) {
   const [zaznaczonyId, setZaznaczonyId] = useState<string | null>(null);
   const [doUsunieciaId, setDoUsunieciaId] = useState<string | null>(null);
@@ -134,6 +145,38 @@ export function OtworzProjekt({
         >
           {OTWORZ_STRINGS.wlasnaNazwa}
         </button>
+      )}
+
+      {(onOtworzImportArkusza || onOtworzArchiwum) && (
+        <section
+          className="mvd-otworz-przyklady"
+          aria-label={OTWORZ_STRINGS.inneDrogiTytul}
+          data-testid="mvd-projekty-inne-drogi"
+        >
+          <h3 className="mvd-pulpit-cases-title">{OTWORZ_STRINGS.inneDrogiTytul}</h3>
+          <div className="mvd-otworz-przyklady-grid">
+            {onOtworzImportArkusza && (
+              <Kafel
+                tytul={OTWORZ_STRINGS.drogaArkusz}
+                onKlik={onOtworzImportArkusza}
+                ariaLabel={OTWORZ_STRINGS.drogaArkuszAkcja}
+                testId="mvd-projekty-droga-arkusz"
+              >
+                <p className="mvd-otworz-przyklad-opis">{OTWORZ_STRINGS.drogaArkuszOpis}</p>
+              </Kafel>
+            )}
+            {onOtworzArchiwum && (
+              <Kafel
+                tytul={OTWORZ_STRINGS.drogaArchiwum}
+                onKlik={onOtworzArchiwum}
+                ariaLabel={OTWORZ_STRINGS.drogaArchiwumAkcja}
+                testId="mvd-projekty-droga-archiwum"
+              >
+                <p className="mvd-otworz-przyklad-opis">{OTWORZ_STRINGS.drogaArchiwumOpis}</p>
+              </Kafel>
+            )}
+          </div>
+        </section>
       )}
 
       {przyklady.length > 0 && (

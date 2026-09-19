@@ -538,19 +538,38 @@ function ArtifactsDisplay() {
 
   const sections = [
     {
-      title: 'Czas zwarcia i wytrzymałość cieplna',
+      title: 'Analiza cieplna cyklu SPZ',
       items: [
-        { label: 'tk (czas zwarcia sumaryczny)', value: artifacts.tk_total_s, unit: 's' },
-        { label: 'Ithn (prąd znamionowy cieplny)', value: artifacts.ithn_a, unit: 'A' },
-        { label: 'Ithdop (prąd dopuszczalny cieplnie)', value: artifacts.ithdop_a, unit: 'A' },
+        { label: 'tk (czas cyklu SPZ)', value: artifacts.tk_total_s, unit: 's' },
+        { label: 'Ithn (prąd znamionowy cieplny)', value: artifacts.ithn_a ?? undefined, unit: 'A' },
+        {
+          label: 'Ithdop (prąd dopuszczalny w cyklu SPZ)',
+          value: artifacts.ithdop_a,
+          unit: 'A',
+        },
+        {
+          label: 'Wymagana wytrzymałość (I_k3_max)',
+          value: artifacts.spz_i_th_required_a,
+          unit: 'A',
+        },
+        {
+          label: 'SPZ dozwolone',
+          value:
+            artifacts.spz_enabled === false
+              ? 'SPZ wyłączone'
+              : artifacts.spz_allowed
+                ? 'Tak'
+                : 'Nie — zalecana blokada',
+          unit: '',
+        },
       ],
     },
     {
-      title: 'Okno nastaw I>> [strona pierwotna]',
+      title: 'Okno nastaw I>>',
       items: [
         { label: 'I_min (selektywność)', value: artifacts.window_i_min_primary_a, unit: 'A' },
         { label: 'I_max (okno)', value: artifacts.window_i_max_primary_a, unit: 'A' },
-        { label: 'Zalecana nastawa (wtórna)', value: artifacts.recommended_setting_secondary_a, unit: 'A' },
+        { label: 'Zalecana nastawa I>>', value: artifacts.recommended_setting_primary_a, unit: 'A' },
       ],
     },
     {
@@ -558,7 +577,7 @@ function ArtifactsDisplay() {
       items: [
         { label: 'I_min_sel (selektywność)', value: artifacts.i_min_sel_primary_a, unit: 'A' },
         { label: 'I_max_sens (czułość)', value: artifacts.i_max_sens_primary_a, unit: 'A' },
-        { label: 'I_max_th (cieplne)', value: artifacts.i_max_th_primary_a, unit: 'A' },
+        { label: 'I_max_th (cieplne, zadziałanie chwilowe)', value: artifacts.i_max_th_primary_a, unit: 'A' },
       ],
     },
     {
@@ -569,10 +588,60 @@ function ArtifactsDisplay() {
         { label: 'Okno nastaw prawidłowe', value: artifacts.window_valid ? 'Tak' : 'Nie', unit: '' },
       ],
     },
+    {
+      title: 'Generacja lokalna (E-L)',
+      items: [
+        {
+          label: 'Tryb E-L aktywny',
+          value: artifacts.generacja_lokalna_aktywna ? 'Tak' : 'Nie',
+          unit: '',
+        },
+        {
+          label: 'Wkład E-L do prądu zwarciowego',
+          value: artifacts.generacja_lokalna_aktywna ? artifacts.generacja_lokalna_wklad_el_a : undefined,
+          unit: 'A',
+        },
+        {
+          label: 'Wkład systemu',
+          value: artifacts.generacja_lokalna_aktywna
+            ? artifacts.generacja_lokalna_wklad_systemu_a
+            : undefined,
+          unit: 'A',
+        },
+        {
+          label: 'Ryzyko blokady ZSZ',
+          value: !artifacts.generacja_lokalna_aktywna
+            ? undefined
+            : artifacts.generacja_lokalna_ryzyko_zsz === null ||
+                artifacts.generacja_lokalna_ryzyko_zsz === undefined
+              ? 'Niedostępne (brak progu)'
+              : artifacts.generacja_lokalna_ryzyko_zsz
+                ? 'Tak'
+                : 'Nie',
+          unit: '',
+        },
+      ],
+    },
   ];
 
   return (
     <div className="space-y-4">
+      {artifacts.window_conflict_pl && (
+        <div className="rounded border border-rose-200 bg-rose-50 p-4">
+          <h4 className="text-sm font-semibold text-rose-700">Konflikt okna nastaw</h4>
+          <p className="mt-1 text-sm text-rose-700">{artifacts.window_conflict_pl}</p>
+        </div>
+      )}
+      {artifacts.window_recommendations_pl && artifacts.window_recommendations_pl.length > 0 && (
+        <div className="rounded border border-amber-200 bg-amber-50 p-4">
+          <h4 className="text-sm font-semibold text-amber-700">Rekomendacje</h4>
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-amber-800">
+            {artifacts.window_recommendations_pl.map((rekomendacja, idx) => (
+              <li key={idx}>{rekomendacja}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {sections.map((section) => (
         <div key={section.title} className="rounded border border-slate-200 bg-white">
           <div className="border-b border-slate-200 bg-slate-50 px-4 py-2">

@@ -12,8 +12,13 @@ AnalysisRunStatus = Literal["CREATED", "VALIDATED", "RUNNING", "FINISHED", "FAIL
 ResultStatus = Literal["VALID", "OUTDATED"]
 AnalysisCompletenessStatus = Literal["complete", "partial", "failed", "not_applicable"]
 
-DEFAULT_OPERATING_VARIANT_REF = "variant.uklad_normalny"
-DEFAULT_SWITCHING_SNAPSHOT_REF = "switching.uklad_normalny.base"
+# CV-2 (H2/H3): `DEFAULT_OPERATING_VARIANT_REF = "variant.uklad_normalny"` i
+# `DEFAULT_SWITCHING_SNAPSHOT_REF = "switching.uklad_normalny.base"` USUNIETE —
+# bieg, ktory nie wybral wariantu ani migawki lacznikowej, nie moze twierdzic,
+# ze policzono go „w ukladzie normalnym" (etykieta bez encji = fabrykacja).
+# Brak jest oddawany jako `None`; pole `variation_ref`/`scenario_ref` z realnym
+# dostawca przychodzi w CV-3 (OperatingScenario). Stale wersji KONTRAKTOW
+# (nizej) nazywaja kod, nie dane — zostaja.
 DEFAULT_CATALOG_MATERIALIZATION_CONTRACT_VERSION = "catalog_materialization_v1"
 DEFAULT_ENM_PROJECTION_VERSION = "v12xx.m1.1"
 DEFAULT_REPORT_CONTRACT_VERSION = "analysis_report_v2"
@@ -169,12 +174,12 @@ def build_analysis_run_reproducibility(run: AnalysisRun) -> dict[str, Any]:
     catalog_materialization_hash = (
         _stable_hash(catalog_materialization_entries) if catalog_materialization_entries else None
     )
-    variant_ref = str(run.input_snapshot.get("variant_ref") or DEFAULT_OPERATING_VARIANT_REF)
-    switching_snapshot_ref = str(
-        run.input_snapshot.get("switching_snapshot_ref")
-        or run.input_snapshot.get("switching_state_ref")
-        or DEFAULT_SWITCHING_SNAPSHOT_REF
+    variant_surowy = run.input_snapshot.get("variant_ref")
+    variant_ref = str(variant_surowy) if variant_surowy else None
+    switching_surowy = run.input_snapshot.get("switching_snapshot_ref") or run.input_snapshot.get(
+        "switching_state_ref"
     )
+    switching_snapshot_ref = str(switching_surowy) if switching_surowy else None
     solver_family = {
         "PF": "power_flow_newton",
         "short_circuit_sn": "iec60909_short_circuit",
@@ -192,7 +197,9 @@ def build_analysis_run_reproducibility(run: AnalysisRun) -> dict[str, Any]:
         "operating_variant_ref": variant_ref,
         "switching_snapshot_ref": switching_snapshot_ref,
         "solver_family": solver_family,
-        "solver_version": trace_json.get("solver_version") or "1.0.0",
+        # Wersja solvera WYLACZNIE ze sladu solvera; brak sladu = brak wersji
+        # (dotad stala "1.0.0" udawala odczyt).
+        "solver_version": trace_json.get("solver_version") or None,
         "method_version": "analysis_run_service_v1",
         "formula_set_version": {
             "PF": "pf_result_v1",
@@ -224,7 +231,10 @@ def build_analysis_run_reproducibility(run: AnalysisRun) -> dict[str, Any]:
             run.input_snapshot.get("catalog_materialization_contract_version")
             or DEFAULT_CATALOG_MATERIALIZATION_CONTRACT_VERSION
         ),
-        "catalog_schema_version": "catalog_v1",
+        # Tozsamosc katalogu to odcisk biblioteki typow (`RevisionEnvelope.
+        # catalog_fingerprint`, CV-2) — bieg legacy go nie zapisal, wiec None;
+        # stala "catalog_v1" nie miala zrodla.
+        "catalog_schema_version": None,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
         "quality_gate_policy_version": "v12_5_quality_gate",

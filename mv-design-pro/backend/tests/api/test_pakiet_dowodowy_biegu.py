@@ -38,15 +38,9 @@ from tests.catalog_test_helpers import gpz_source_record
 
 
 def _reset_backend_state() -> None:
-    from api.execution_runs import get_engine
     from enm.canonical_analysis import reset_canonical_runs
     from enm.store import reset_enm_store
 
-    engine = get_engine()
-    engine._runs.clear()
-    engine._result_sets.clear()
-    engine._study_cases.clear()
-    engine._case_runs.clear()
     reset_canonical_runs()
     reset_enm_store()
 
@@ -190,6 +184,27 @@ def _wykonaj_bieg(
     return str(run_id)
 
 
+def _nowy_przypadek(client: TestClient) -> tuple[str, str]:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć (klucz_magazynu, case_id).
+
+    CV-1-W: magazyn ENM jest kluczowany kluczem projektu, nie surowym `case_id`
+    — przypadek bez wiersza w bazie dostaje teraz 404 (inwariant I-2), więc testy
+    potrzebują PRAWDZIWEJ pary projekt+przypadek. Seedowanie modelu (`_seed_enm*`
+    poniżej) idzie pod zwrócony `klucz` (klucz magazynu ENM projektu); wywołania
+    API (`_wykonaj_bieg` i inne) idą pod zwrócony `case_id`.
+    """
+    from enm.klucz_twin import klucz_twin_projektu
+
+    project_resp = client.post("/api/projects", json={"name": "Pakiet dowodowy — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return klucz_twin_projektu(project_id), case_resp.json()["id"]
+
+
 def _wpisy_zip(content: bytes) -> set[str]:
     with zipfile.ZipFile(io.BytesIO(content)) as archiwum:
         return set(archiwum.namelist())
@@ -213,8 +228,8 @@ def test_dostepnosc_pakietu_dla_rodzajow_zwarciowych(
     client: TestClient, analysis_type: str, oczekiwany_rodzaj: str
 ) -> None:
     """Każdy rodzaj zwarcia dostaje pakiet WŁAŚCIWY dla swoich danych."""
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm(klucz)
     run_id = _wykonaj_bieg(client, case_id, analysis_type)
 
     response = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc")
@@ -238,8 +253,8 @@ def test_dostepnosc_pakietu_rodzaj_bez_pakietu_z_powodem(client: TestClient) -> 
     mocy przestał być przykładem „rodzaju bez pakietu" z chwilą, gdy dostał
     własny pakiet (karta PACK-ROZPLYW); intencja pinu bez zmian.
     """
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm(klucz)
     run_id = _wykonaj_bieg(client, case_id, "PHASE_STATE_SN")
 
     response = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc")
@@ -255,8 +270,8 @@ def test_dostepnosc_pakietu_rodzaj_bez_pakietu_z_powodem(client: TestClient) -> 
 
 def test_pakiet_niedostepny_odmawia_zamiast_zwracac_pusty_plik(client: TestClient) -> None:
     """Pobranie pakietu dla rodzaju bez pakietu = odmowa z powodem, nie pusty ZIP."""
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm(klucz)
     run_id = _wykonaj_bieg(client, case_id, "PHASE_STATE_SN")
 
     response = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
@@ -281,8 +296,8 @@ def test_pakiet_sc3f_niesie_dowod_zrodlo_wykaz_i_odcisk(client: TestClient) -> N
     To jest RÓŻNICA wobec podglądu śladu w oknie dowodu: ślad pokazuje kroki,
     pakiet niesie zamknięty, policzalny artefakt z sumami kontrolnymi.
     """
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm(klucz)
     run_id = _wykonaj_bieg(client, case_id, "SC_3F")
 
     response = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
@@ -303,8 +318,8 @@ def test_pakiet_zwarc_niesymetrycznych_niesie_trzy_rodzaje_zwarcia(client: TestC
     Zamknięcie luki kontraktu: to wywołanie NIE podaje Z1/Z2/Z0 ani U_f ani
     operatora Fortescue — całość liczy serwer ze snapshotu biegu.
     """
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm(klucz)
     run_id = _wykonaj_bieg(client, case_id, "SC_1F")
 
     response = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
@@ -332,8 +347,8 @@ def test_pakiet_zwarc_niesymetrycznych_niesie_trzy_rodzaje_zwarcia(client: TestC
 
 def test_wskazany_punkt_daje_inny_pakiet_niz_domyslny(client: TestClient) -> None:
     """Punkt zwarcia realnie steruje treścią pakietu (a nie tylko nazwą pliku)."""
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm(klucz)
     run_id = _wykonaj_bieg(client, case_id, "SC_3F")
 
     punkty = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc").json()["punkty"]
@@ -358,8 +373,8 @@ def test_wskazany_punkt_daje_inny_pakiet_niz_domyslny(client: TestClient) -> Non
 
 def test_punkt_spoza_przebiegu_odmawia_z_powodem(client: TestClient) -> None:
     """Punkt, którego bieg nie policzył, nie jest ofertą — odmowa zamiast zmyślenia."""
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm(klucz)
     run_id = _wykonaj_bieg(client, case_id, "SC_3F")
 
     response = client.get(
@@ -383,8 +398,8 @@ def test_pakiet_jest_deterministyczny_bajt_w_bajt(client: TestClient, analysis_t
     Pin obejmuje OBA rodzaje pakietu — znacznik czasu dowodu bierze się z biegu,
     nie z zegara serwera, więc powtórzenie nie może dać innych bajtów.
     """
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm(klucz)
     run_id = _wykonaj_bieg(client, case_id, analysis_type)
 
     pierwszy = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
@@ -403,8 +418,8 @@ def test_nazwa_pliku_i_manifest_bez_oznaczen_roboczych(client: TestClient) -> No
     """
     import re
 
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm(klucz)
     run_id = _wykonaj_bieg(client, case_id, "SC_3F")
 
     response = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
@@ -810,8 +825,8 @@ def test_pakiet_rozplywu_powstaje_dla_kazdej_kombinacji_cech_modelu(
     pokazuje, że odtwarzanie WEJŚĆ było niepotrzebne — dowód opisuje WYNIK, a
     wynik bieg już zapisał; dlatego żadna z tych cech nie odbiera pakietu.
     """
-    case_id = str(uuid4())
-    _seed_enm_rozplyw(case_id, falowniki=falowniki, zip_model=zip_model, oltc=oltc)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm_rozplyw(klucz, falowniki=falowniki, zip_model=zip_model, oltc=oltc)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     dostepnosc = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc")
@@ -859,8 +874,8 @@ def test_bilans_w_dowodzie_domyka_sie_dla_kazdej_kombinacji_cech(
     wariancie bez ZIP i bez regulacji, a pozostałe siedem pokazałoby projektantowi
     fałszywą różnicę rzędu 0,7 MW.
     """
-    case_id = str(uuid4())
-    _seed_enm_rozplyw(case_id, falowniki=falowniki, zip_model=zip_model, oltc=oltc)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm_rozplyw(klucz, falowniki=falowniki, zip_model=zip_model, oltc=oltc)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
@@ -890,8 +905,8 @@ def test_pakiet_rozplywu_jest_deterministyczny_bajt_w_bajt(
     pakietu — dlatego powtórzenie nie może dać innych bajtów (i dlatego
     ``from_power_flow_result`` nie wolno było zostawić z ``datetime.utcnow()``).
     """
-    case_id = str(uuid4())
-    _seed_enm_rozplyw(case_id, falowniki=falowniki, zip_model=zip_model, oltc=oltc)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm_rozplyw(klucz, falowniki=falowniki, zip_model=zip_model, oltc=oltc)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     pierwszy = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
@@ -909,8 +924,8 @@ def test_rozne_cechy_modelu_daja_rozne_pakiety(client: TestClient) -> None:
     """
     pakiety = []
     for zip_model in (False, True):
-        case_id = str(uuid4())
-        _seed_enm_rozplyw(case_id, zip_model=zip_model)
+        klucz, case_id = _nowy_przypadek(client)
+        _seed_enm_rozplyw(klucz, zip_model=zip_model)
         run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
         odpowiedz = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
         assert odpowiedz.status_code == 200, odpowiedz.text
@@ -933,8 +948,8 @@ def test_bieg_niezbiezny_daje_pakiet_ktory_MOWI_o_braku_zbieznosci(
     jako poprawnego — dlatego krok zbieżności kończy się niepowodzeniem, a
     podsumowanie niesie ostrzeżenie.
     """
-    case_id = str(uuid4())
-    _seed_enm_rozplyw(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm_rozplyw(klucz)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW", {"max_iterations": 1})
 
     dostepnosc = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc").json()
@@ -960,9 +975,9 @@ def test_bieg_rozplywu_bez_wyniku_nie_ma_pakietu_z_powodem_po_polsku(
     """
     from enm.canonical_analysis import create_run
 
-    case_id = str(uuid4())
-    _seed_enm_rozplyw(case_id)
-    run = create_run(case_id=case_id, analysis_type="PF")
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm_rozplyw(klucz)
+    run = create_run(case_id=case_id, klucz_twin=klucz, analysis_type="PF")
 
     dostepnosc = client.get(f"/api/analysis-runs/{run.id}/pakiet-dowodowy/dostepnosc")
     assert dostepnosc.status_code == 200, dostepnosc.text
@@ -988,8 +1003,8 @@ def test_odcinek_spoza_przebiegu_odmawia_zamiast_podstawic_pierwszy(
     przebiegu: projektant, który poprosił o odcinek A, nie może dostać dokumentu
     o odcinku B ani dokumentu bez dowodu spadku.
     """
-    case_id = str(uuid4())
-    _seed_enm_rozplyw(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm_rozplyw(klucz)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     odpowiedz = client.get(
@@ -1013,8 +1028,8 @@ def test_pakiet_rozplywu_bez_oznaczen_roboczych_w_CALEJ_zawartosci(
     """
     import re
 
-    case_id = str(uuid4())
-    _seed_enm_rozplyw(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm_rozplyw(klucz)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     odpowiedz = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
@@ -1059,8 +1074,8 @@ def test_dowod_strat_zgadza_sie_z_wynikiem_biegu_w_kazdym_wariancie(
     je z modelu albo liczył od nowa, rozjechałby się z tabelą wyników w co
     najmniej siedmiu z ośmiu wariantów.
     """
-    case_id = str(uuid4())
-    _seed_enm_rozplyw(case_id, falowniki=falowniki, zip_model=zip_model, oltc=oltc)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm_rozplyw(klucz, falowniki=falowniki, zip_model=zip_model, oltc=oltc)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
@@ -1111,8 +1126,8 @@ def test_spadek_z_dowodu_zgadza_sie_ze_spadkiem_policzonym_przez_solver(
     ΔU = 0,03 % (kabel SN). Próg 1 V wynika z tego pomiaru, nie z wygody:
     większy rozjazd znaczyłby, że dowód opisuje inny przebieg niż tabela wyników.
     """
-    case_id = str(uuid4())
-    globals()[seed](case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    globals()[seed](klucz)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
@@ -1168,8 +1183,8 @@ def test_napiecie_konca_z_dowodu_zgadza_sie_z_napieciem_biegu_karta_podstawa_vdr
     idzie więc po ``dowod["header"]``/``node_voltage_kv`` znalezionych po
     ``element_id`` (dowolna długość łańcucha), nie po „dokładnie jednej gałęzi".
     """
-    case_id = str(uuid4())
-    globals()[seed](case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    globals()[seed](klucz)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
@@ -1226,8 +1241,8 @@ def test_napiecie_konca_z_dowodu_zgadza_sie_z_napieciem_biegu_karta_podstawa_vdr
 
 def test_wskazany_odcinek_daje_inny_dowod_spadku_niz_domyslny(client: TestClient) -> None:
     """Wybór odcinka steruje TREŚCIĄ dowodu, a nie tylko nazwą pliku."""
-    case_id = str(uuid4())
-    _seed_enm(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm(klucz)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     dostepnosc = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc").json()
@@ -1254,8 +1269,8 @@ def test_rozplyw_bez_odcinkow_ma_pakiet_ale_bez_dowodu_spadku(client: TestClient
     tak jak rodzaje zwarciowe, ta sieć straciłaby CAŁY pakiet — a nie ma w niej
     nic wadliwego, po prostu nie ma czego udokumentować dowodem spadku.
     """
-    case_id = str(uuid4())
-    _seed_enm_rozplyw_bez_odcinkow(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm_rozplyw_bez_odcinkow(klucz)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     dostepnosc = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc")
@@ -1283,8 +1298,8 @@ def test_trzy_dowody_pakietu_maja_ROZNE_tozsamosci_artefaktow(client: TestClient
     ``artifact_id`` i ``document_id`` — pakiet twierdziłby, że bilans, straty i
     spadek napięcia to jeden i ten sam dokument.
     """
-    case_id = str(uuid4())
-    _seed_enm_rozplyw(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm_rozplyw(klucz)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
 
     pakiet = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy")
@@ -1306,8 +1321,8 @@ def test_pakiet_zbiorczy_ze_wskazanym_odcinkiem_jest_deterministyczny(
     client: TestClient,
 ) -> None:
     """Dwa pobrania tego samego przebiegu i odcinka = identyczny plik."""
-    case_id = str(uuid4())
-    _seed_enm_rozplyw(case_id)
+    klucz, case_id = _nowy_przypadek(client)
+    _seed_enm_rozplyw(klucz)
     run_id = _wykonaj_bieg(client, case_id, "LOAD_FLOW")
     odcinek = client.get(f"/api/analysis-runs/{run_id}/pakiet-dowodowy/dostepnosc").json()[
         "punkty"

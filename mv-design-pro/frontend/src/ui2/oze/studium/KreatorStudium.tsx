@@ -312,9 +312,12 @@ function SzczegolWariantu({
 
 export interface KreatorStudiumProps {
   trybZaawansowania: AdvancementMode;
+  /** 2× klik na wartości z dowodem → zakładka „Dowód obliczeń" (realny dostawca
+   * z rodzica, `WynikiWarsztat`), nie zaślepka. */
+  onOtworzDowod: (ref: string) => void;
 }
 
-export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
+export function KreatorStudium({ trybZaawansowania, onOtworzDowod }: KreatorStudiumProps) {
   const trybEkspercki = trybZaawansowania === 'expert';
 
   const runs = useExecutionRunsStore((s) => s.runs);
@@ -749,6 +752,7 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
               trybZaawansowania={trybZaawansowania}
               wybranyWariant={wybranyWariant}
               ustawWariant={setWybranyWariant}
+              onOtworzDowod={onOtworzDowod}
             />
           )}
 
@@ -857,12 +861,14 @@ function PrzegladStudium({
   trybZaawansowania,
   wybranyWariant,
   ustawWariant,
+  onOtworzDowod,
 }: {
   stan: StanStudium;
   kontekst: KontekstWierszaStudium;
   trybZaawansowania: AdvancementMode;
   wybranyWariant: string | null;
   ustawWariant: (busRef: string | null) => void;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const kolumny = useMemo(() => kolumnyStudium(), []);
   const wiersze = useMemo(() => wierszeStudium(stan, kontekst), [stan, kontekst]);
@@ -876,7 +882,7 @@ function PrzegladStudium({
       <TabelaWynikow
         kolumny={kolumny}
         wiersze={wiersze}
-        onOtworzDowod={() => undefined}
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_WIERSZA_STUDIUM}
         onWybierzWiersz={ustawWariant}

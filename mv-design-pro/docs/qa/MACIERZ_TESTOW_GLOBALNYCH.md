@@ -21,8 +21,6 @@ Backend analiza i topologia:
 - `backend/tests/enm/test_enm_topology_api.py`
 - `backend/tests/test_canonical_analysis_api.py`
 - `backend/tests/enm/test_canonical_analysis_trace_catalog_context.py`
-- `backend/tests/application/analysis_run/test_catalog_context.py`
-- `backend/tests/test_p11a_results_inspector.py`
 
 Frontend katalog-first i workflow:
 - `frontend/src/ui/network-build/__tests__/catalogBrowser.test.tsx`

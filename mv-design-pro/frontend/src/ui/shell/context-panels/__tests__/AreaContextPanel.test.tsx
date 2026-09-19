@@ -56,6 +56,36 @@ import { useShellStore } from '../../../../ui2/shell/useShellStore';
 import { useSelectionStore } from '../../../selection/store';
 import { type SnapshotState, useSnapshotStore } from '../../../topology/snapshotStore';
 import { AreaContextPanel } from '../AreaContextPanel';
+import type { EnergyNetworkModel } from '../../../../types/enm';
+
+/** Baza pustego ENM (wszystkie kolekcje wymagane przez `EnergyNetworkModel`) —
+ *  testy poniżej dokladaja tylko kolekcje, ktore realnie badaja. */
+function emptySnapshot(over: Partial<EnergyNetworkModel> = {}): EnergyNetworkModel {
+  return {
+    header: {
+      enm_version: '1.0',
+      name: 'Model testowy',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      revision: 1,
+      hash_sha256: 'test-snapshot',
+      defaults: { frequency_hz: 50, unit_system: 'SI' },
+    },
+    buses: [],
+    branches: [],
+    transformers: [],
+    sources: [],
+    loads: [],
+    generators: [],
+    substations: [],
+    bays: [],
+    junctions: [],
+    corridors: [],
+    measurements: [],
+    protection_assignments: [],
+    ...over,
+  };
+}
 
 describe('AreaContextPanel - routing dziewięciu obszarów', () => {
   it('renderuje panel Model sieci', () => {
@@ -131,21 +161,24 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
   it('Schemat: odcinki SN pokazują typ katalogowy zamiast surowego typu cable', () => {
     act(() => {
       useSnapshotStore.setState({
-        snapshot: {
-          sources: [],
-          buses: [],
-          bays: [],
-          substations: [],
+        snapshot: emptySnapshot({
           branches: [{
             id: 'seg-1',
             ref_id: 'SEG-1',
             name: 'T1',
+            tags: [],
+            meta: {},
             type: 'cable',
+            from_bus_ref: 'bus-a',
+            to_bus_ref: 'bus-b',
+            status: 'closed',
             catalog_ref: 'XRUHAKXS 120/25',
             length_km: 0.21,
+            r_ohm_per_km: 0.253,
+            x_ohm_per_km: 0.083,
           }],
-        } as SnapshotState['snapshot'],
-        readiness: { ready: true, blockers: [], warnings: [] } as SnapshotState['readiness'],
+        }),
+        readiness: { ready: true, blockers: [], warnings: [] } satisfies SnapshotState['readiness'],
       });
     });
 
@@ -160,13 +193,17 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
 
   it('Schemat: powtarzający się kod blokera nie generuje duplikatu klucza React', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const snapshot = {
-      sources: [],
-      buses: [{ id: 'bus-sn-1', ref_id: 'bus-sn-1', name: 'Szyna SN 1' }],
-      bays: [],
-      branches: [],
-      substations: [],
-    } as SnapshotState['snapshot'];
+    const snapshot = emptySnapshot({
+      buses: [{
+        id: 'bus-sn-1',
+        ref_id: 'bus-sn-1',
+        name: 'Szyna SN 1',
+        tags: [],
+        meta: {},
+        voltage_kv: 15,
+        phase_system: '3ph',
+      }],
+    });
     const readiness = {
       ready: false,
       blockers: [
@@ -174,15 +211,17 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
           code: 'switch.catalog_ref_missing',
           element_ref: 'stn/1/sn_field_breaker/000',
           message_pl: 'Łącznik pola SN 1 nie ma przypisanej referencji katalogowej.',
+          severity: 'BLOCKER',
         },
         {
           code: 'switch.catalog_ref_missing',
           element_ref: 'stn/1/sn_field_breaker/001',
           message_pl: 'Łącznik pola SN 2 nie ma przypisanej referencji katalogowej.',
+          severity: 'BLOCKER',
         },
       ],
       warnings: [],
-    } as SnapshotState['readiness'];
+    } satisfies SnapshotState['readiness'];
     act(() => {
       useSnapshotStore.setState({
         snapshot,
@@ -211,20 +250,20 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
     act(() => {
       useSelectionStore.getState().clearSelection();
       useSnapshotStore.setState({
-        snapshot: {
-          sources: [],
-          buses: [],
-          bays: [],
-          substations: [],
+        snapshot: emptySnapshot({
           branches: [{
             id: 'brk-1',
             ref_id: 'stn/1/sn_field_breaker/000',
             name: 'Wyłącznik pola SN 1',
+            tags: [],
+            meta: {},
             type: 'breaker',
+            from_bus_ref: 'bus-a',
+            to_bus_ref: 'bus-b',
             status: 'closed',
           }],
-        } as SnapshotState['snapshot'],
-        readiness: { ready: false, blockers: [], warnings: [] } as SnapshotState['readiness'],
+        }),
+        readiness: { ready: false, blockers: [], warnings: [] } satisfies SnapshotState['readiness'],
       });
     });
 

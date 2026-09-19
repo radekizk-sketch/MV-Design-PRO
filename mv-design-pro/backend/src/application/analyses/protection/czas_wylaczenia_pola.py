@@ -44,6 +44,7 @@ from application.analyses.protection.czas_wylaczenia_galezi import (
 from application.field_read_model import collect_bays
 from enm.models import EnergyNetworkModel
 from network_model.catalog import get_default_mv_catalog
+from network_model.pochodne import ka_na_a
 
 # ---------------------------------------------------------------------------
 # Kody gotowości i źródła — brak nazwany wprost
@@ -129,7 +130,7 @@ def czasy_wylaczenia_pol_stacji(
         return {}
 
     aparaty = aparaty_pol_stacji(enm, stacja)
-    prad_a = ik_ka * 1000.0 if ik_ka is not None else None
+    prad_a = ka_na_a(ik_ka) if ik_ka is not None else None
     wynik: dict[str, dict[str, Any]] = {}
 
     for bay in collect_bays(enm):

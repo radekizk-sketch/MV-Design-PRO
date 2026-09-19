@@ -46,7 +46,7 @@ Draft UI nie jest prawda domenowa. Moze byc niekompletny, bledny i porzucony. So
 | Test | Warstwa | Dowod |
 |---|---|---|
 | `tests/enm/test_canonical_analysis_draft_isolation.py` | backend solver | `execute_run` uzywa snapshotu zamrozonego przy `create_run`, mimo pozniejszej zmiany ENM store. |
-| `tests/enm/test_enm_api.py::TestRunDispatch::test_run_dispatch_ignores_client_snapshot_body` | backend API | `POST /runs/short-circuit` ignoruje snapshot i ENM w ciele zadania. |
+| `tests/enm/test_enm_api.py::TestRunDispatch::test_run_dispatch_ignores_client_snapshot_body` | backend API | `POST /api/execution/study-cases/{id}/runs` (tor kanoniczny, CV-4.3-A4/K5.1 — dawna trasa `POST /runs/short-circuit` skasowana procedurą siedmiu kroków) ignoruje snapshot i ENM w ciele zadania; `CreateRunRequest` (Pydantic) strukturalnie odrzuca dowolne pole poza `analysis_type`/`solver_input`, ENM zawsze z `get_enm(klucz_twin)` wewnatrz `create_run`. |
 | `src/ui/study-cases/__tests__/api.draft-isolation.test.ts` | frontend API | `createRun` nie wysyla `snapshot`, `enm`, `buses` ani `branches`. |
 
 ## Byt pierwszej klasy, wynik pochodny i blokada

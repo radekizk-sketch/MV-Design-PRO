@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   KLUCZ_PUNKT,
+  KLUCZ_ZRODLA_SIECIOWE,
   KOLUMNY_ZWARC,
+  KOLUMNY_ZRODEL_SIECIOWYCH,
   KONFIG_WYKRESU_ZWARC,
   WIELKOSCI_WYKRESU,
   filtrujWierszeWkladow,
@@ -11,6 +13,7 @@ import {
   naSlupkiUdzialow,
   naSlupkiWielkosci,
   naWierszeWkladow,
+  naWierszeZrodelSieciowych,
   naWierszeZwarc,
   naZalozeniaZwarc,
 } from '../zwarciaModel';
@@ -21,14 +24,22 @@ import {
   fmtMVA,
   fmtWspolczynnik,
   rodzajZwarciaPL,
+  rxRatioZrodloPL,
+  trybZrodlaSiecowegoPL,
   typMaszynyPL,
   uwagiZwarciaPL,
 } from '../strings';
 import {
+  konfiguracjaBieguFixture,
   shortCircuitResultsFixture,
   shortCircuitRowFixture,
   wkladyFixture,
   wkladyZeSzczegolemFixture,
+  zalozenieBieguFixture,
+  zrodloSiecioweSladImpedancjaJawnaFixture,
+  zrodloSiecioweSladMaxFixture,
+  zrodloSiecioweSladMinBrakDanychFixture,
+  zrodloSiecioweSladMinZDanymiFixture,
 } from './fixtures';
 
 describe('mapujWierszZwarcia — projekcja ShortCircuitRow → wiersz wzorca (fixture 1:1)', () => {
@@ -111,9 +122,19 @@ describe('uwagiZwarciaPL — flagi na tekst uwag', () => {
   });
 });
 
-describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny)', () => {
-  it('metoda jest stałą normatywną; c i czas z propsów gdy podane', () => {
-    const zalozenia = naZalozeniaZwarc(1.1, 1.0);
+describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny) z konfiguracji ZAPISANEJ na biegu', () => {
+  // Karta TODO-UI2 p.7: `konfiguracja_biegu` to konfiguracja TEGO biegu
+  // (`api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`), nigdy
+  // aktywnego przypadku obliczeniowego — iloczyn cech: {c jawny / c auto-per-
+  // -węzeł} × {czas z opcji / czas domyślny assemblera} × {konfiguracja
+  // nieobecna (starszy zapis)}.
+  it('metoda jest stałą normatywną; c jawny i czas z opcji biegu', () => {
+    const zalozenia = naZalozeniaZwarc(
+      konfiguracjaBieguFixture({
+        c_factor: { tryb: 'jawny', wartosc: 1.1 },
+        thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'opcje_biegu' },
+      }),
+    );
     expect(zalozenia[0]).toEqual({
       etykieta: ZWARCIA_STRINGS.zalMetoda,
       wartosc: 'IEC 60909',
@@ -122,19 +143,126 @@ describe('naZalozeniaZwarc — założenia (metoda IEC 60909, c, czas cieplny)',
       etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
       wartosc: fmtWspolczynnik(1.1),
     });
+    expect(zalozenia[1].uwaga).toBeUndefined();
     expect(zalozenia[2]).toMatchObject({
       etykieta: ZWARCIA_STRINGS.zalCzasCieplny,
       wartosc: fmtCzas(1.0),
       jednostka: ZWARCIA_STRINGS.jednS,
     });
+    expect(zalozenia[2].uwaga).toBeUndefined();
   });
 
-  it('brak c/czasu → „—" z uwagą o pochodzeniu (NIE zgaduj)', () => {
-    const zalozenia = naZalozeniaZwarc();
+  it('c auto-per-węzeł (brak jawnego override) → uczciwy opis, NIE liczba zmyślona', () => {
+    const zalozenia = naZalozeniaZwarc(
+      konfiguracjaBieguFixture({ c_factor: { tryb: 'auto_per_wezel', wartosc: null } }),
+    );
+    expect(zalozenia[1]).toMatchObject({
+      etykieta: ZWARCIA_STRINGS.zalWspolczynnikC,
+      wartosc: ZWARCIA_STRINGS.zalWspolczynnikCAuto,
+      uwaga: ZWARCIA_STRINGS.zalWspolczynnikCAutoUwaga,
+    });
+  });
+
+  it('czas cieplny domyślny assemblera (brak w opcjach biegu) → wartość NAZWANA jako domyślna', () => {
+    const zalozenia = naZalozeniaZwarc(
+      konfiguracjaBieguFixture({
+        thermal_time_seconds: { wartosc: 1.0, pochodzenie: 'domyslna_assemblera' },
+      }),
+    );
+    expect(zalozenia[2]).toMatchObject({
+      wartosc: fmtCzas(1.0),
+      uwaga: ZWARCIA_STRINGS.zalCzasCieplnyDomyslny,
+    });
+  });
+
+  it('konfiguracja biegu nieobecna (starszy zapis sprzed karty) → „—" z uwagą o pochodzeniu (NIE zgaduj)', () => {
+    const zalozenia = naZalozeniaZwarc(undefined);
     expect(zalozenia[1].wartosc).toBe(ZWARCIA_STRINGS.kreska);
-    expect(zalozenia[1].uwaga).toBe(ZWARCIA_STRINGS.zalWartoscZKonfiguracji);
+    expect(zalozenia[1].uwaga).toBe(ZWARCIA_STRINGS.zalKonfiguracjaBieguNiedostepna);
     expect(zalozenia[2].wartosc).toBe(ZWARCIA_STRINGS.kreska);
+    expect(zalozenia[2].uwaga).toBe(ZWARCIA_STRINGS.zalKonfiguracjaBieguNiedostepna);
     expect(zalozenia[2].jednostka).toBeUndefined();
+  });
+
+  // CV-4.3 K7: `raw_result.zalozenia` — jedno wiersz na założenie biegu, treść
+  // (message_pl) WPROST z backendu, nigdy cicho.
+  it('dokłada wiersz na każde założenie biegu (raw_result.zalozenia) — treść z backendu', () => {
+    const zalozenieA = zalozenieBieguFixture({ element_ref: 's1' });
+    const zalozenieB = zalozenieBieguFixture({ element_ref: 's2', code: 'source.sk_min_missing' });
+    const zalozenia = naZalozeniaZwarc(konfiguracjaBieguFixture(), [zalozenieA, zalozenieB]);
+    expect(zalozenia).toHaveLength(5); // 3 bazowe + 2 ze źródeł
+    expect(zalozenia[3]).toEqual({
+      etykieta: ZWARCIA_STRINGS.zalozenieEtykieta('s1'),
+      wartosc: zalozenieA.message_pl,
+      uwaga: ZWARCIA_STRINGS.zalozenieUwaga('source.sk_min_missing', 'MIN'),
+    });
+    expect(zalozenia[4].etykieta).toBe(ZWARCIA_STRINGS.zalozenieEtykieta('s2'));
+  });
+
+  it('bez założeń biegu (undefined/pusta lista) → tylko 3 wiersze bazowe (bez zmian)', () => {
+    expect(naZalozeniaZwarc(konfiguracjaBieguFixture(), undefined)).toHaveLength(3);
+    expect(naZalozeniaZwarc(konfiguracjaBieguFixture(), [])).toHaveLength(3);
+  });
+});
+
+describe('naWierszeZrodelSieciowych — ślad Z_Q źródeł sieciowych (CV-4.3 K6/K7)', () => {
+  it('tryb MOC_ZWARCIOWA (MAX): mapuje S″kQ, c, R/X + źródło, |Z_Q|, wzór', () => {
+    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladMaxFixture()]);
+    expect(w.zrodlo).toEqual({ wartosc: 's1' });
+    expect(w.scenariusz).toEqual({ wartosc: 'MAX' });
+    expect(w.tryb).toEqual({ wartosc: trybZrodlaSiecowegoPL('MOC_ZWARCIOWA') });
+    expect(w.mocPrad).toEqual({ wartosc: `${fmtMVA(250.0)} ${ZWARCIA_STRINGS.jednMVA}` });
+    expect(w.c).toEqual({ wartosc: fmtWspolczynnik(1.1) });
+    expect(w.rx.wartosc).toBe(`${fmtWspolczynnik(0.1)} (${rxRatioZrodloPL('MODEL')})`);
+    expect(w.zq).toMatchObject({ wartosc: expect.stringContaining('0,6600') });
+    expect(w.wzor).toEqual({ wartosc: zrodloSiecioweSladMaxFixture().formula });
+    expect(w[KLUCZ_ZRODLA_SIECIOWE]).toEqual({ wartosc: 's1::MAX' });
+  });
+
+  it('tryb MOC_ZWARCIOWA_MIN (MIN z danymi): scenariusz MIN, R/X źródło MODEL_MIN, brak zalozenia w tekście', () => {
+    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladMinZDanymiFixture()]);
+    expect(w.scenariusz).toEqual({ wartosc: 'MIN' });
+    expect(w.tryb.wartosc).toBe(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA_MIN'));
+    expect(w.tryb.wartosc).toContain('MIN');
+    expect(w.rx.wartosc).toContain(rxRatioZrodloPL('MODEL_MIN'));
+  });
+
+  it('tryb *_MAX_JAKO_MIN (MIN bez danych): etykieta trybu nazywa brak danych własnych', () => {
+    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladMinBrakDanychFixture()]);
+    expect(w.tryb.wartosc).toBe(trybZrodlaSiecowegoPL('MOC_ZWARCIOWA_MAX_JAKO_MIN'));
+    expect(w.tryb.wartosc).toMatch(/brak własnych danych MIN/);
+  });
+
+  it('tryb IMPEDANCJA_JAWNA: brak S″kQ/c/R-X/|Z_Q| → komórki „—" (uczciwy brak, nie 0)', () => {
+    const [w] = naWierszeZrodelSieciowych([zrodloSiecioweSladImpedancjaJawnaFixture()]);
+    expect(w.mocPrad).toEqual({ wartosc: ZWARCIA_STRINGS.kreska });
+    expect(w.c).toEqual({ wartosc: ZWARCIA_STRINGS.kreska });
+    expect(w.rx).toEqual({ wartosc: ZWARCIA_STRINGS.kreska });
+    expect(w.zq.wartosc).toBe(ZWARCIA_STRINGS.kreska);
+  });
+
+  it('tryb PRAD_ZWARCIOWY (I″kQ zamiast S″kQ): kolumna S″kQ/I″kQ pokazuje prąd w kA', () => {
+    const [w] = naWierszeZrodelSieciowych([
+      zrodloSiecioweSladMaxFixture({ tryb: 'PRAD_ZWARCIOWY', sk3_mva: undefined, ik3_ka: 9.6 }),
+    ]);
+    expect(w.mocPrad).toEqual({ wartosc: `${fmtKA(9.6)} ${ZWARCIA_STRINGS.jednKA}` });
+  });
+
+  it('zachowuje kolejność źródłową (kolejność backendu, bez ponownego sortowania)', () => {
+    const wiersze = naWierszeZrodelSieciowych([
+      zrodloSiecioweSladMaxFixture({ ref_id: 's2' }),
+      zrodloSiecioweSladMaxFixture({ ref_id: 's1' }),
+    ]);
+    expect(wiersze.map((w) => w.zrodlo.wartosc)).toEqual(['s2', 's1']);
+  });
+});
+
+describe('KOLUMNY_ZRODEL_SIECIOWYCH — kolumny deklaratywne', () => {
+  it('niesie kolumny źródło/scenariusz/tryb/moc-prąd/c/R-X/|Z_Q|/wzór', () => {
+    const klucze = KOLUMNY_ZRODEL_SIECIOWYCH.map((k) => k.klucz);
+    expect(klucze).toEqual(
+      expect.arrayContaining(['zrodlo', 'scenariusz', 'tryb', 'mocPrad', 'c', 'rx', 'zq', 'wzor']),
+    );
   });
 });
 

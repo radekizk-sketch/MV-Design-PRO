@@ -37,13 +37,36 @@ POLE_KATALOGOWE = "ZPUE_WLOSZCZOWA__ROTOBLOK__TRANSFORMER"
 
 
 @pytest.fixture()
-def klient(tmp_path, monkeypatch) -> TestClient:  # type: ignore[no-untyped-def]
+def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:  # type: ignore[no-untyped-def]
+    from api.dependencies import get_uow_factory
+
     monkeypatch.setenv("ENM_STORE_DIR", str(tmp_path))
     reset_enm_store()
     wyczysc_dziennik()
+    app.dependency_overrides[get_uow_factory] = lambda: uow_factory
+    app.state.uow_factory = uow_factory
     yield TestClient(app)
+    app.dependency_overrides.pop(get_uow_factory, None)
+    app.state.uow_factory = None
     reset_enm_store()
     wyczysc_dziennik()
+
+
+def _nowy_przypadek(klient: TestClient) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć `case_id`.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — testy tego pliku potrzebują prawdziwej pary
+    projekt+przypadek zamiast dowolnego napisu.
+    """
+    project_resp = klient.post("/api/projects", json={"name": "Pole katalogowe — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = klient.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
 
 
 def _operacja(
@@ -63,7 +86,13 @@ def _ciag_sn(klient: TestClient, case_id: str) -> dict[str, Any]:
         klient,
         case_id,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": REF_ZRODLO},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "catalog_ref": REF_ZRODLO,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
     )
     wynik = _operacja(
         klient,
@@ -117,7 +146,7 @@ def _pola_stacji(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
 
 def test_tryb_proby_zwraca_werdykt_i_niczego_nie_zapisuje(klient: TestClient) -> None:
     """(a) Werdykt konfiguracji bez mutacji — odcisk modelu bez zmian."""
-    case_id = "pole-katalogowe-proba"
+    case_id = _nowy_przypadek(klient)
     snapshot = _ciag_sn(klient, case_id)
     odcisk_przed = _odcisk(klient, case_id)
     pol_przed = len(_pola_stacji(snapshot))
@@ -149,7 +178,7 @@ def test_tryb_proby_zwraca_werdykt_i_niczego_nie_zapisuje(klient: TestClient) ->
 
 def test_wykonanie_zapisuje_pole_z_wyposazeniem_katalogowym(klient: TestClient) -> None:
     """(b) Pole trafia do modelu z pełnym BOM-em i referencjami katalogowymi."""
-    case_id = "pole-katalogowe-wykonanie"
+    case_id = _nowy_przypadek(klient)
     snapshot = _ciag_sn(klient, case_id)
     odcisk_przed = _odcisk(klient, case_id)
     znane = {spec["field_ref"] for spec in _pola_stacji(snapshot)}
@@ -187,7 +216,7 @@ def test_wykonanie_zapisuje_pole_z_wyposazeniem_katalogowym(klient: TestClient) 
 
 def test_konfiguracja_spoza_katalogu_nie_zmienia_modelu(klient: TestClient) -> None:
     """Niezgodność katalogowa: polskie zdanie walidatora, model bez zmian."""
-    case_id = "pole-katalogowe-niezgodne"
+    case_id = _nowy_przypadek(klient)
     snapshot = _ciag_sn(klient, case_id)
     odcisk_przed = _odcisk(klient, case_id)
 
@@ -216,7 +245,7 @@ def test_brama_katalogowa_obejmuje_nowa_operacje(klient: TestClient) -> None:
     przechodziłaby obok bramy i meldowała `HTTP 200` z kodem błędu w treści —
     inny kontrakt odpowiedzi dla dokładnie tej samej literówki.
     """
-    case_id = "pole-katalogowe-brama"
+    case_id = _nowy_przypadek(klient)
     snapshot = _ciag_sn(klient, case_id)
     odcisk_przed = _odcisk(klient, case_id)
 
@@ -248,7 +277,7 @@ def test_proba_z_nieistniejaca_pozycja_aparatu_takze_konczy_sie_422(
     meldowałby VALID dla aparatu, którego w katalogu nie ma — a błąd
     wychodziłby dopiero przy zapisie.
     """
-    case_id = "pole-katalogowe-proba-zla-pozycja"
+    case_id = _nowy_przypadek(klient)
     snapshot = _ciag_sn(klient, case_id)
     odcisk_przed = _odcisk(klient, case_id)
 

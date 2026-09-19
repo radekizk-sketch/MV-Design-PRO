@@ -66,7 +66,7 @@ function formatFlags(flags: string[]): string {
   return flags.map((flag) => FLAG_LABELS[flag] ?? flag).join(', ');
 }
 
-function formatLimitStatus(status: 'OK' | 'WARNING' | 'VIOLATION'): string {
+function formatLimitStatus(status: 'OK' | 'WARNING' | 'VIOLATION' | 'UNAVAILABLE'): string {
   switch (status) {
     case 'OK':
       return 'W normie';
@@ -74,6 +74,8 @@ function formatLimitStatus(status: 'OK' | 'WARNING' | 'VIOLATION'): string {
       return 'Ostrzeżenie';
     case 'VIOLATION':
       return 'Przekroczenie';
+    case 'UNAVAILABLE':
+      return 'Kryterium niedostępne';
   }
 }
 
@@ -146,15 +148,23 @@ function buildShortCircuitOverviewSections(data: ShortCircuitResultData): Inspec
   ];
 }
 
+/**
+ * Karta W3-J (2026-09-16): limity referencyjne WYŁĄCZNIE z `data.kryteria_napiecia`
+ * (kryteria biegu) — usunięte zaszyte „0.90 pu"/„1.10 pu". Brak kryteriów
+ * (wiersz bez wzbogacenia biegu) = kreska, nie domyślna liczba.
+ */
 function buildBusParametersSections(data: BusResultData): InspectorSection[] {
+  const kryteria = data.kryteria_napiecia;
+  const limitDolny = kryteria ? `${formatNumber(kryteria.przekroczenie_min_pu, 2)} pu` : '—';
+  const limitGorny = kryteria ? `${formatNumber(kryteria.przekroczenie_max_pu, 2)} pu` : '—';
   return [
     {
       id: 'electrical',
       label: INSPECTOR_SECTION_LABELS.electrical,
       fields: [
         { key: 'un_kv', label: 'Napięcie znamionowe', value: data.un_kv, unit: 'kV' },
-        { key: 'v_min', label: 'Limit dolny napięcia', value: '0.90 pu' },
-        { key: 'v_max', label: 'Limit górny napięcia', value: '1.10 pu' },
+        { key: 'v_min', label: 'Limit dolny napięcia', value: limitDolny },
+        { key: 'v_max', label: 'Limit górny napięcia', value: limitGorny },
       ],
     },
   ];
@@ -241,9 +251,24 @@ function buildShortCircuitResultsSections(data: ShortCircuitResultData): Inspect
   ];
 }
 
+/**
+ * Karta W3-J (2026-09-16): próg WYŁĄCZNIE z `data.kryteria_napiecia` (kryteria
+ * biegu, `analysis.normative.kryteria_napiecia`) — zero progu wymyślonego w
+ * UI. Brak kryteriów (wiersz bez wzbogacenia biegu) = uczciwy stan
+ * „Kryterium niedostępne" (status UNAVAILABLE), NIGDY domyślna liczba.
+ */
 function buildBusLimitsSections(data: BusResultData): InspectorSection[] {
   const uPu = data.u_pu ?? 0;
-  const status = uPu >= 0.95 && uPu <= 1.05 ? 'OK' : uPu >= 0.9 && uPu <= 1.1 ? 'WARNING' : 'VIOLATION';
+  const kryteria = data.kryteria_napiecia;
+  const status: 'OK' | 'WARNING' | 'VIOLATION' | 'UNAVAILABLE' = !kryteria
+    ? 'UNAVAILABLE'
+    : uPu >= kryteria.ostrzezenie_min_pu && uPu <= kryteria.ostrzezenie_max_pu
+      ? 'OK'
+      : uPu >= kryteria.przekroczenie_min_pu && uPu <= kryteria.przekroczenie_max_pu
+        ? 'WARNING'
+        : 'VIOLATION';
+  const limitDolny = kryteria ? `${formatNumber(kryteria.przekroczenie_min_pu, 2)} pu` : '—';
+  const limitGorny = kryteria ? `${formatNumber(kryteria.przekroczenie_max_pu, 2)} pu` : '—';
 
   return [
     {
@@ -251,8 +276,8 @@ function buildBusLimitsSections(data: BusResultData): InspectorSection[] {
       label: 'Limity napięciowe',
       fields: [
         { key: 'v_limit_check', label: 'Napięcie [p.u.]', value: formatNumber(uPu, 4), highlight: status === 'VIOLATION' ? 'error' : status === 'WARNING' ? 'warning' : undefined },
-        { key: 'v_min', label: 'Limit dolny', value: '0.90 pu' },
-        { key: 'v_max', label: 'Limit górny', value: '1.10 pu' },
+        { key: 'v_min', label: 'Limit dolny', value: limitDolny },
+        { key: 'v_max', label: 'Limit górny', value: limitGorny },
         { key: 'v_status', label: 'Status', value: formatLimitStatus(status) },
       ],
     },

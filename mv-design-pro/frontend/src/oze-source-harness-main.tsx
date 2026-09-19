@@ -8,6 +8,14 @@
  */
 import { useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+// Ten sam dostawca React Query co `main.tsx` (jeden klient z `./query-client`):
+// komponenty montowane w harnessie czytają katalogi backendu przez `useQuery`
+// (od karty FAB-J m.in. kreator OZE i snapshot audytu 2) — bez dostawcy strona
+// harnessu padała przy montażu i korzeń z `data-status` nigdy nie powstawał
+// (5 czerwonych specyfikacji `creator-screenshot` w CI). Klasa: KAŻDE wejście
+// `*-harness-main.tsx`, nie tylko kreatora.
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './query-client';
 
 import { OzeSourceArchetype } from './ui/sld/v2/station-rozdzielnia/OzeSourceArchetype';
 import { OZE_ARCHETYPES_2A } from './ui/sld/v2/station-rozdzielnia/companions/ozeArchetypes2a';
@@ -107,5 +115,9 @@ function Harness(): JSX.Element {
 
 const container = document.getElementById('root');
 if (container) {
-  createRoot(container).render(<Harness />);
+  createRoot(container).render(
+    <QueryClientProvider client={queryClient}>
+      <Harness />
+    </QueryClientProvider>,
+  );
 }

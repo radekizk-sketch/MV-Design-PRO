@@ -267,87 +267,168 @@ interface OdciskiLod {
  * 22672/45656/45656 (`buildScene.test.ts`, uzasadnienie tamże); zero nowych
  * kolizji (sekcja „budżet" tego pliku, `sceneConformance`, `w1cMatrixGen`).
  * Kolejność `plany` odpowiada `SKALE`.
+ *
+ * AKTUALIZACJA ŚWIADOMA (SUB-52s, 2026-09-04) — WSZYSTKIE odciski przeliczone
+ * ponownie (sceny, declutter, plany; obie sieci × L0/L1/L2). DWIE NIEZALEŻNE
+ * przyczyny w regenerowanej fixturze `sldSubstrate52s.enm.json`:
+ *   (12) TOPOLOGIA — substrat miał stację (dawna „Stacja L6-3") odciętą od
+ *        źródła za otwartym łącznikiem NO: ENMValidator E003 (wyspa, BLOCKER),
+ *        nie funkcja fixtury. Naprawa (`sld_substrate_52s.py` krok 5d) spina
+ *        koniec tego odgałęzienia z końcem SĄSIEDNIEGO („Stacja L7-4") nową
+ *        gałęzią kablową — łącznik NO zostaje otwarty (rezerwa), ale
+ *        odgałęzienie ma teraz DRUGĄ drogę do źródła. To zmienia przydział
+ *        rodzic/głębokość drzewa BFS dla stacji tego rejonu (dowód:
+ *        `sldNetwork53.ts` po regeneracji — S52/S53 zamieniają się
+ *        identyfikatorem i rodzicem), więc inaczej wypada rezerwacja kanału
+ *        pionowego między wierszami (`totalVerticalSegmentLength` 22672/45656/
+ *        45656 → 20936/43912/43912, SPADEK — `buildScene.test.ts`, uzasadnienie
+ *        tamże) — zmienia się scena, a przez nią declutter i plan.
+ *   (13) DRYF NIEZALEŻNY OD TEJ KARTY — transformator GPZ (katalog
+ *        `tr-wn-sn-110-15-25mva-yd11`): `hv_neutral` {type:directly_grounded}
+ *        → null, `i0_percent` 0,2 → 0,35 (dowód: `git show HEAD:<stara
+ *        fixtura>` vs regenerowana, pola transformatora GPZ id-stripped —
+ *        WSZYSTKO inne na GPZ identyczne). Materializacja katalogu tego
+ *        transformatora (`_materialize_catalog_payload`/dane katalogowe SN/WN)
+ *        zmieniła się MIĘDZY ostatnim zatwierdzeniem fixtury (LV DOMAIN
+ *        PROJECTION, 2026-09-01) a dniem dzisiejszym, NIEZALEŻNIE od tej karty
+ *        (SUB-52s dotyka wyłącznie `insert_station_on_segment_sn` — stacje SN/
+ *        nN — i `connect_secondary_ring_sn`; `git diff` na `sld_substrate_52s.py`
+ *        nie rusza wywołania `add_grid_source_sn`, jedynego miejsca budowy GPZ;
+ *        `_apply_station_neutral_grounding`, jedyny setter `hv_neutral`, nigdy
+ *        nie jest wołany z `add_grid_source_sn`). Usunięcie symbolu
+ *        `neutralEarthing` z bloku GPZ na L1/L2 (`buildScene.gpzCollapsed.
+ *        test.ts`, uzasadnienie tamże) pochodzi WYŁĄCZNIE stąd, nie z (12).
+ * Każda karta regenerująca tę fixturę odziedziczy (13), dopóki katalog/
+ * materializacja transformatora GPZ nie zostaną ujednolicone osobną kartą —
+ * poza zakresem SUB-52s (walidator E063/E003, nie katalog transformatorów WN).
+ *
+ * AKTUALIZACJA ŚWIADOMA (SLD-LOC, 2026-09-05) — WSZYSTKIE odciski przeliczone
+ * ponownie (sceny, declutter, plany; obie sieci × L0/L1/L2). PRZYCZYNA:
+ * naprawa lokalności pionowej kotwic stacji (karta SLD-LOC — defekt: dopisanie
+ * stacji na ogonie JEDNEGO ciągu magistrali przesuwało pionowo kotwice
+ * WSZYSTKICH innych, niepowiązanych stacji, bo fallback-numeracja stacji bez
+ * jawnej nazwy [`stationCodeFromName`, WSZYSTKIE 54 stacje tej fixtury — żadna
+ * nie pasuje do regexów jawnego kodu] dzieliła JEDEN licznik GLOBALNY między
+ * WSZYSTKIMI ciągami sieci). Naprawa (`enmToSldAdapter.ts`
+ * `fallbackSequenceBaseByRunId`, `buildStations`, pełny docstring tam z
+ * trzema zbadanymi wariantami rozmiaru bloku): baza numeracji KAŻDEGO ciągu
+ * = jego INDEKS w `sortedRuns` (kolejność UKŁADU, `compareLineRunsForLayout`
+ * — STRUKTURALNA właściwość ciągu: prefiks syntetyczny id, `run_kind`, id
+ * jako remis — NIE zależy od liczby stacji ciągu) × rozmiar bloku
+ * (`Math.max` liczby stacji najliczniejszego ciągu TEJ sieci, policzony PER
+ * BUDOWA — jedyny z trzech wariantów, który na PEŁNEJ regresji katalogu
+ * testów SLD v3 nie łamie ŻADNEGO z trzech niezależnych niezmienników
+ * geometrycznych spoza kart tej naprawy). Jednoznaczna Z KONSTRUKCJI (zero
+ * kolizji kodów) i LOKALNA (dopisanie stacji do ciągu A nie zmienia indeksu
+ * ani rangi ciągu B w `sortedRuns` — jego `run_kind`/id, jedyne kryteria
+ * sortowania, są niezależne od LICZBY stacji, które niesie). Magistrala
+ * (`gpz/<hash>/corridor_01`, 12 stacji T1..T12, `run_kind=main_trunk`)
+ * PRZETWARZANA JEST ZAWSZE PIERWSZA w `sortedRuns` (kindRank 0), więc jej
+ * baza = `0×BLOK+1 = 1` NIEZALEŻNIE od rozmiaru bloku — kody „S01".."S12"
+ * ZOSTAJĄ BEZ ZMIAN względem dawnego licznika globalnego. Delta odcisków
+ * pochodzi z INNYCH (nie-magistrala) ciągów: ich baza = indeks×12 (block=12,
+ * zmierzone maksimum stacji w jednym ciągu tej sieci) zamiast ciągłego
+ * zliczania globalnego licznika — te same DWUCYFROWE szerokości kodu, ale
+ * inne KONKRETNE wartości (np. „S25" zamiast „S16"). Kod fallback jest
+ * TREŚCIĄ pasma nazw stacji na KAŻDYM LOD (`scene/buildScene.ts:1105`),
+ * więc zmienia się scena na każdym LOD, a przez nią declutter i plan. Pełny
+ * pomiar i uzasadnienie mechanizmu: `buildScene.test.ts` (F9.7 `vertical_
+ * length_probe`, ta sama fixtura, `totalVerticalSegmentLength`
+ * 20936/43912/43912 → 21040/44016/44016, delta jednolita +104 na L0/L1/L2 —
+ * dowód, że to JEDEN mechanizm, nie kilka). Zero nowych kolizji: macierz
+ * lokalności (`buildScene.p1Recenzja.test.ts`, karta SLD-LOC L4 — 9/9
+ * kombinacji topologia×edycja `pionowe=0`); `busbar_label_probe`
+ * (`buildScene.test.ts`) — 53 etykiety, 53 UNIKALNE teksty (dawny globalny
+ * licznik dawał tu tylko 12 unikalnych — regresja odwrotna wobec defektu,
+ * nie nowa); `crossings.test.ts` junction_dot_probe, `buildScene.
+ * w3Labels.test.ts` anty-dryf, `obszarBezpieczny.contract.test.tsx`,
+ * `buildScene.sheetRows.test.ts` S9-1 — wszystkie BEZ ZMIAN (dwie odrzucone
+ * próby rozmiaru bloku — stała mała=10, stała duża=1000 — łamały te same
+ * niezmienniki, patrz docstring w adapterze); `npm run accept:sld-v3` ALL
+ * PASS (sufit `VERTICAL_LENGTH_BASELINE`/`VERTICAL_LENGTH_BY_CAUSE_BASELINE`,
+ * ery LV DOMAIN PROJECTION, nigdy nie obniżony przy SUB-52s, pochłania
+ * deltę bez zmiany progu).
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: 'a7c566690bc47f43e7c6494b68a5eb09',
-      declutter: '8715508fce9e188144ed82cc2ee11348',
+      scena: 'a701991c79abcc0306239b4cb80fd513',
+      declutter: '00eb03eda1bc39c491cc280d6f6a9c3a',
       plany: [
-        '632c1a54eb61195cf6c9624ead7bbfa7',
-        'eab5d3278e6ee1e81d6ddb500261347c',
-        '7cbc3b66a2d6ba3b09932c1c3b95f88b',
-        'ddc7214f70617056c1913bf41030bac7',
-        '2090840c41e45bcbe3e1173badf1ce5a',
-        'a0b09a5af0017d1b5673c4f6b198d547',
-        'a0b09a5af0017d1b5673c4f6b198d547',
+        'c65fb4356ef44da5307ed55358ebf1b4',
+        '2ed95578f5f403ab6227bc9ee59f505f',
+        '1973b6089ddb8e818df4d64ae7ca6991',
+        '0e60d57d6c3e1e94e6c205377be042d9',
+        '08211a61c49b1f5b7171458039376022',
+        '88bb8ac8cbf89618b5ef8df6bec4d668',
+        '88bb8ac8cbf89618b5ef8df6bec4d668',
       ],
     },
     {
-      scena: 'bbfbe78396089ff687565b75ff7f6c55',
-      declutter: '3acb01e2f33122f9d38b28e537cd01f2',
+      scena: 'bdc075cb55899e7b1f1b9b2decf2084f',
+      declutter: 'a0dc919370db047c3f81222f8dd9311a',
       plany: [
-        '37994213b2c575807453514ffecdea40',
-        '52bacb1e52b7dbffcf8a6229426d192b',
-        'ac93c57d28112d73cb029bd6073b2a89',
-        'c24a5a89cae0e4b18e343648b174d543',
-        '1a0b254edcd693c1b747dc18f8eb3b00',
-        '547f5ea3a5d3693a6e952e82c686e717',
-        '547f5ea3a5d3693a6e952e82c686e717',
+        '76c8b7d64f0cdcc1a49067f7b005bedb',
+        '0567de88219b44faae550b95c0a64ab8',
+        'edca883a0c9722fa821df7043cc61b3d',
+        'd82559dec4bcb649fd831f35a4d0e511',
+        '99ac527d93a6dc8d3cb4b6215eb6f47c',
+        '28c505637eab0a69ca9fe20f1b5e6276',
+        '28c505637eab0a69ca9fe20f1b5e6276',
       ],
     },
     {
-      scena: 'af1dac6d0644171f95adbab8b82f20ac',
-      declutter: '07c11089d7c932c5245b2c0ab07f208c',
+      scena: '365814fa0978d7130b930040690824ea',
+      declutter: 'ffc8d354abd8d2c2f01a0a32d9298c58',
       plany: [
-        'b2f045922746e328f00bcaa2f97a368d',
-        'a0687b60110dac560e5c1a388974c273',
-        'a0abfe0f841f3ee6b7b80e3bb878e305',
-        '03d06ff336d573695d2c41529639ec7f',
-        'a804315e42a65dde65cd165714e62490',
-        '32bbf23bcf18400985551c04c328d0b1',
-        '32bbf23bcf18400985551c04c328d0b1',
+        'af5b1cc0f94952e5313e8b903070d56f',
+        '8c84b4497a1de90b2e6de3d9c0076f8a',
+        '417ae859ca0e6f33823441b1f3b186b6',
+        'b22911c6444e88bd4012788595ee162b',
+        '0ce4f6d8bbb6659b8038722e421c2ae5',
+        '146506e476133ffe0ed75e4a4fa8de56',
+        '146506e476133ffe0ed75e4a4fa8de56',
       ],
     },
   ],
   podwojona: [
     {
-      scena: '161f9762f835fe0a20f07ffd41216cc6',
-      declutter: '83af32526845ee87c15a904f4967ef62',
+      scena: 'c362feda72f652e3e91a55c3704f59ee',
+      declutter: '96a6141a779dc70afefc853a7480be12',
       plany: [
-        '167339a75e4cca2fe570dbced978415f',
-        'b0939ff8a3c8638ad8de5b6fee2b57d7',
-        '53ccd7d7a2f5a2c8b94e467e6fa3fba4',
-        'c8328cec63152de3c1f22445df47f3fd',
-        'd8d78a8e2c9d9fc08b17ceea60e863f8',
-        'cecec226759adfa890cd204361806a2a',
-        'cecec226759adfa890cd204361806a2a',
+        '26be52c61f133278c997f834d8c05fc2',
+        '7b5a5fcf4b26999c3ce9e76d22917233',
+        'f71bd00477056245ff42b60e11ec632a',
+        '0b17ea8fbf77c8f7abf2edde6dd9bb01',
+        '2dc4641839d0666d6b722129486b91bd',
+        '29d42d24bfbdb273fdef233a499f09a0',
+        '29d42d24bfbdb273fdef233a499f09a0',
       ],
     },
     {
-      scena: '374c98d9f7cde5438e1638edf3ca443d',
-      declutter: '74c389320f53a6cc48137f9a02dbf8db',
+      scena: 'e81cc97b7eac93312ab9548c562d85dd',
+      declutter: '235de096da9cb53dffe633ed6381bbb4',
       plany: [
-        'd6bbe75ddbd4279b2b24b85d98dc9e0d',
-        'b5f1255f161e2c3e4c96640bd3580ab1',
-        '1aae6d6ab2d74ae15b00893c013b878d',
-        'b1ddeeafe5b3520437ba166f4cbf17f9',
-        'ed2dbc339a378acfeb8e1d3f02ff2adc',
-        '1c86ee2bc8220bb7155433381a6ebae6',
-        '1c86ee2bc8220bb7155433381a6ebae6',
+        '27582e5dd94d1f5b124cdb394e125476',
+        '85f568dbdeb499f41084651a84993181',
+        '2bfa11a60f2cfcbf6158aa812410412d',
+        'de79ade39ca2d2bd9543514ae4d43739',
+        '77794d2d858a8129a9ae8ea0e922a7c8',
+        'e9bc15dbccc8ac3507b8d72777cee808',
+        'e9bc15dbccc8ac3507b8d72777cee808',
       ],
     },
     {
-      scena: '1a1ec3e4774b224fe363273668542c3f',
-      declutter: '610e7bc0b840db2f50bbd6700b938125',
+      scena: 'c26590fb30a25dd2a6f19ee4766d6bf5',
+      declutter: 'd3554a0688a066a1801642379018678f',
       plany: [
-        'bb63776976c8776e27d78f490fa9487f',
-        '285d204e220a07c8da379c209f26a9cd',
-        '5d13cdf2316ed73d289d9ee56d715c53',
-        '4f9ff672374e80e4fecacd6f825570fd',
-        'ba2e688913d41b65c4f330562bc79045',
-        '24bb366572f2a47bdc197d8d8408054f',
-        '24bb366572f2a47bdc197d8d8408054f',
+        '5355b948dca2bbcea54ac9bd7ce3c413',
+        '70b25ad61cb96c731597c0c50bdc1270',
+        '43d8f6bf85f609086df7e7078027ff93',
+        'bc7a771c792915639fd90d5848a1d964',
+        '561a9ce4dad19abcb71d5d3d27d99a54',
+        '572958f56d57bb2efb36ebb016b9f9cc',
+        '572958f56d57bb2efb36ebb016b9f9cc',
       ],
     },
   ],

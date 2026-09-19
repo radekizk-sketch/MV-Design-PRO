@@ -750,3 +750,69 @@ class TestWhiteBoxTrace:
         combined = " ".join(descriptions)
 
         assert any(word in combined for word in polish_indicators)
+
+
+# =============================================================================
+# Test: domain.protection_device check types (przeniesione z FIX-12D, W3-C2)
+# =============================================================================
+#
+# Karta W3-C2 (2026-09-09) kasuje `application/analyses/protection/
+# line_overcurrent_setting/**` wraz z jego testem. Klasa `TestFix12Integration`
+# w tamtym pliku testowala WYLACZNIE `domain.protection_device` (import/
+# serializacja `InstantaneousSelectivityCheck` i rodzenstwa) — nie miala
+# ZADNEGO zwiazku z FIX-12D/`line_overcurrent_setting` poza nazwa pliku,
+# w ktorym historycznie wylladowala. Ten sam modul jest juz importowany w tym
+# pliku (patrz naglowek) i pokrywany testami koordynacji — przeniesiono tu
+# (bez zmian tresci) test serializacji `check_type`, ktory NIE mial zadnego
+# innego pokrycia w repo (zmierzone grepem: `"check_type"] == "instantaneous_
+# selectivity"` wystepowalo wylacznie w skasowanym pliku).
+class TestProtectionDeviceCheckTypes:
+    """Testy typow sprawdzen `domain.protection_device` (import + serializacja)."""
+
+    def test_instantaneous_selectivity_check_import(self):
+        """Test InstantaneousSelectivityCheck can be imported."""
+        from domain.protection_device import InstantaneousSelectivityCheck
+
+        assert InstantaneousSelectivityCheck is not None
+
+    def test_instantaneous_sensitivity_check_import(self):
+        """Test InstantaneousSensitivityCheck can be imported."""
+        from domain.protection_device import InstantaneousSensitivityCheck
+
+        assert InstantaneousSensitivityCheck is not None
+
+    def test_instantaneous_thermal_check_import(self):
+        """Test InstantaneousThermalCheck can be imported."""
+        from domain.protection_device import InstantaneousThermalCheck
+
+        assert InstantaneousThermalCheck is not None
+
+    def test_spz_from_instantaneous_check_import(self):
+        """Test SPZFromInstantaneousCheck can be imported."""
+        from domain.protection_device import SPZFromInstantaneousCheck
+
+        assert SPZFromInstantaneousCheck is not None
+
+    def test_check_serialization(self):
+        """Test check types serialize correctly."""
+        from domain.protection_device import (
+            CoordinationVerdict,
+            InstantaneousSelectivityCheck,
+        )
+
+        check = InstantaneousSelectivityCheck(
+            line_id="line-001",
+            i_setting_a=6000.0,
+            i_min_required_a=5400.0,
+            ik_max_next_a=4500.0,
+            kb_used=1.2,
+            ct_ratio=80.0,
+            verdict=CoordinationVerdict.PASS,
+            notes_pl="Selektywność prawidłowa",
+        )
+
+        data = check.to_dict()
+        assert data["check_type"] == "instantaneous_selectivity"
+        assert data["check_type_pl"] == "Selektywność I>>"
+        assert data["verdict"] == "PASS"
+        assert data["verdict_pl"] == "Prawidłowa"

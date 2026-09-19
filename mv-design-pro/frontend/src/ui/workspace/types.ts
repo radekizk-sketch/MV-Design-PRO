@@ -536,7 +536,7 @@ const ROUTE_MANAGED_SCREEN_CODES = new Set<WorkspaceSurfaceCode>([
   'E-34',
   'E-36',
   'E-38',
-  'E-39',
+  // E-39 skasowane karta K2 (2026-09-09) — patrz screenCanonRegistry.ts.
   ...HELPER_SURFACE_CODES,
 ]);
 
@@ -618,7 +618,7 @@ const READ_ONLY_SCREENS = new Set<WorkspaceScreenCode>([
   'E-36',
   'E-37',
   'E-38',
-  'E-39',
+  // E-39 skasowane karta K2 (2026-09-09).
 ]);
 
 const TRANSACTIONAL_SCREENS = new Set<WorkspaceScreenCode>([
@@ -797,7 +797,7 @@ export const SCREEN_MATRIX: Record<WorkspaceScreenCode, WorkspaceScreenMatrixEnt
   'E-36': screen('E-36', 'proof_pack', ['wejscie', 'procedura', 'wynik', 'ograniczenia'], 'wejscie', ['analysis_case_context'], 'E-35'),
   'E-37': screen('E-37', 'report', ['zakres', 'podglad', 'eksport', 'uzasadnienia'], 'zakres', ['analysis_case_context'], 'E-35'),
   'E-38': screen('E-38', null, ['katalogi', 'wyszukiwarka', 'powiazania'], 'katalogi', [], 'catalog_admin'),
-  'E-39': screen('E-39', null, ['lista', 'uruchomienie', 'raport', 'dynamika', 'nc_rfg'], 'lista', [], 'E-35'),
+  // E-39 skasowane karta K2 (2026-09-09) — patrz screenCanonRegistry.ts.
   'E-40': screen('E-40', 'analysis_run', ['widmo', 'z-f', 'flicker', 'trace'], 'widmo', ['analysis_case_context'], 'E-35'),
   'E-41': screen('E-41', 'analysis_run', ['pv', 'qv', 'modalna', 'l-index'], 'pv', ['analysis_case_context'], 'E-35'),
   'E-42': screen('E-42', 'analysis_run', ['n-1', 'n-2', 'saidi-saifi', 'monte-carlo'], 'n-1', ['analysis_case_context'], 'E-35'),
@@ -807,7 +807,10 @@ export const SCREEN_MATRIX: Record<WorkspaceScreenCode, WorkspaceScreenMatrixEnt
   'E-46': screen('E-46', 'analysis_run', ['zapad', 'moment-poslizg', 'i2t'], 'zapad', ['analysis_case_context'], 'E-35'),
   'E-47': screen('E-47', 'analysis_run', ['mapa', 'monte-carlo', 'limity'], 'mapa', ['analysis_case_context'], 'E-35'),
   'E-48': screen('E-48', 'analysis_run', ['opf', 'straty', 'lcc', 'co2'], 'opf', ['analysis_case_context'], 'E-35'),
-  'E-49': screen('E-49', 'analysis_run', ['ieee', 'cigre', 'regresja'], 'ieee', ['analysis_case_context'], 'E-39'),
+  // E-49 rodzic zmieniony z E-39 (skasowany karta K2) na E-35 — jak siostrzane
+  // ekrany akademickie E-40..E-48/E-50; E-49 ma visibleInNavigation=false
+  // od V126-WYGASZENIE (2026-08-07), zanim ta karta zaczęła pracę.
+  'E-49': screen('E-49', 'analysis_run', ['ieee', 'cigre', 'regresja'], 'ieee', ['analysis_case_context'], 'E-35'),
   'E-50': screen('E-50', 'analysis_run', ['k2', 'wrazliwosc', 'ranking'], 'k2', ['analysis_case_context'], 'E-35'),
 };
 
@@ -867,7 +870,7 @@ export const SCREEN_TRANSITIONS: Record<WorkspaceScreenCode, ScreenTransitionPol
   'E-36': transition('E-36', ['E-26', 'E-27', 'E-28', 'E-29', 'E-30', 'E-31', 'E-32', 'E-33', 'E-34', 'E-35', 'E-37'], ['E-37'], 'parent', 'E-35'),
   'E-37': transition('E-37', ['E-01', 'E-35', 'E-36', 'variants_runs', 'case_context'], ['E-35', 'E-36'], 'parent', 'E-35'),
   'E-38': transition('E-38', ['E-01', 'E-02', 'catalog_admin', 'catalog_picker'], ['catalog_picker', 'E-24', 'E-25', 'E-26'], 'parent', 'E-01'),
-  'E-39': transition('E-39', ['E-01', 'E-06', 'E-35'], ['E-35', 'E-36', 'E-37'], 'parent', 'E-35'),
+  // E-39 skasowane karta K2 (2026-09-09) — patrz screenCanonRegistry.ts.
   'E-40': transition('E-40', ['E-01', 'E-35'], ['E-36', 'E-37'], 'parent', 'E-35'),
   'E-41': transition('E-41', ['E-01', 'E-35'], ['E-36', 'E-37'], 'parent', 'E-35'),
   'E-42': transition('E-42', ['E-01', 'E-35'], ['E-36', 'E-37'], 'parent', 'E-35'),
@@ -877,7 +880,7 @@ export const SCREEN_TRANSITIONS: Record<WorkspaceScreenCode, ScreenTransitionPol
   'E-46': transition('E-46', ['E-01', 'E-35'], ['E-36', 'E-37'], 'parent', 'E-35'),
   'E-47': transition('E-47', ['E-01', 'E-35'], ['E-36', 'E-37'], 'parent', 'E-35'),
   'E-48': transition('E-48', ['E-01', 'E-35'], ['E-36', 'E-37'], 'parent', 'E-35'),
-  'E-49': transition('E-49', ['E-01', 'E-35', 'E-39'], ['E-36', 'E-37', 'E-39'], 'parent', 'E-39'),
+  'E-49': transition('E-49', ['E-01', 'E-35'], ['E-36', 'E-37'], 'parent', 'E-35'),
   'E-50': transition('E-50', ['E-01', 'E-35'], ['E-36', 'E-37'], 'parent', 'E-35'),
 };
 
@@ -912,7 +915,7 @@ export const DEFAULT_LOCK_SCOPE_BY_SCREEN: Partial<Record<WorkspaceScreenCode, E
   'E-20': 'subtree',
   'E-22': 'subtree',
   'E-25': 'subtree',
-  'E-39': 'entity',
+  // E-39 skasowane karta K2 (2026-09-09).
 };
 
 export const ISSUE_MATRIX: Record<string, CanonicalIssuePolicy> = {

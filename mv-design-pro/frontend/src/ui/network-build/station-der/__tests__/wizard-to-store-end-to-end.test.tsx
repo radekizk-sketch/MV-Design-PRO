@@ -18,25 +18,227 @@ import { useAppStateStore } from '../../../app-state/store';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { AddDerWizard } from '../AddDerWizard';
 
-function render(ui: ReactElement) {
-  global.fetch = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({
-      bess_operation_modes: [],
-      tap_changers: [],
-      hv_fuses: [],
-      device_withstand: [],
-      pf_curves: [],
-      block_transformers: [],
-      mv_neutral_groundings: [],
-    }),
-  }) as never;
+type ConverterKind = 'PV' | 'BESS' | 'WIND';
+interface ConverterFixture {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: ConverterKind;
+  readonly un_kv: number;
+  readonly pmax_mw: number;
+  readonly sn_mva?: number;
+  readonly manufacturer?: string;
+  readonly qmin_mvar?: number;
+  readonly qmax_mvar?: number;
+}
+
+// Karta FAB-J: krzywe P(f), operatorzy NC RfG i transformatory dedykowane —
+// kształt 1:1 z backendu (ten sam mirror testowy co `AddDerWizard.test.tsx`).
+const PF_CURVE_FIXTURES = [
+  {
+    id: 'pf_droop_5', catalog_namespace: 'pf_curve', catalog_version: '1.0',
+    label_pl: 'P(f) statyzm 5%', f_ref_hz: 50, droop_percent: 5,
+    f_min_hz: 47.5, f_max_hz: 51.5, deadband_hz: 0.2, zrodlo_pl: 'Fikstura testowa',
+  },
+];
+const NC_RFG_OPERATOR_FIXTURES = [
+  {
+    operator_id: 'pse', operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne', last_revision: '2024-Q4',
+    reactive_power: { q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [] },
+    ride_through: { lvrt: [{ time_s: 0, voltage_pu: 0.05 }], hvrt: [{ time_s: 0, voltage_pu: 1.3 }] },
+  },
+  {
+    operator_id: 'enea', operator_name_pl: 'Enea Operator', last_revision: '2024-Q4',
+    reactive_power: { q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [] },
+    ride_through: { lvrt: [{ time_s: 0, voltage_pu: 0.05 }], hvrt: [{ time_s: 0, voltage_pu: 1.3 }] },
+  },
+];
+const BESS_BATTERY_FIXTURES = [
+  {
+    id: 'bess_bat_test_2880kwh', name: 'Pakiet bateryjny LFP 2880 kWh', chemistry: 'LFP',
+    capacity_kwh: 2880, nominal_voltage_dc_v: 1230, c_rate: 0.5,
+    verification_status: 'VERIFIED', source_reference: 'Fikstura testowa',
+    catalog_status: 'PUBLISHED', contract_version: '1.0',
+  },
+];
+function blockTransformerFixture(
+  id: string, snKva: number, hvKv: number, lvKv: number,
+): Record<string, unknown> {
+  return {
+    id, catalog_namespace: 'block_transformer', catalog_version: '1.0',
+    label_pl: `Transformator dedykowany ${hvKv}/${lvKv} kV · ${snKva} kVA · Dyn11`,
+    transformer_type_ref: `tr-test-${id}`,
+    sn_kva: snKva, hv_kv: hvKv, lv_kv: lvKv,
+    uk_percent: 6, pk_kw: snKva * 0.01, p0_kw: snKva * 0.002, i0_percent: 0.5,
+    vector_group: 'Dyn11', is_mv_to_mv: lvKv > 1,
+    applicable_der_kinds: ['PV', 'BESS', 'FW'],
+    galvanic_isolation: true, source_reference: 'Fikstura testowa', verification_status: 'VERIFIED',
+  };
+}
+// Karta FAB-J: 4000 kVA jest tu CELOWO — falownik 2500 kW wymaga ≥2778 kVA
+// (cos φ 0,90), więc auto-dobór wybiera najmniejszy typoszereg, który to
+// przenosi. Bez pozycji 4000 kVA test 1 nie miałby czego dobrać.
+const BLOCK_TRANSFORMER_FIXTURES = [
+  blockTransformerFixture('btr_pv_15_069_2500', 2500, 15, 0.69),
+  blockTransformerFixture('btr_der_15_069_4000', 4000, 15, 0.69),
+];
+
+// Karta FAB-L: tryby pracy magazynu — kształt 1:1 z backendu
+// (`audit2_catalogs.py::BessOperationModeItem.to_dict`). FCR-N i wsparcie
+// napięciowe wymagają 4Q (testowy PCS ma symetryczny qmin/qmax < 0 < qmax,
+// więc `deviceFourQuadrantCapable` w `AddDerWizard.tsx` rozpoznaje go jako 4Q).
+const BESS_OPERATION_MODE_FIXTURES = [
+  {
+    id: 'mode_fcr_n', catalog_namespace: 'bess_operation_mode', catalog_version: '1.0',
+    label_pl: 'FCR-N (rezerwa pierwotna symetryczna)', description_pl: 'Fikstura testowa.',
+    mode_code: 'fcr_n', requires_four_quadrant: true, requires_grid_forming: false,
+  },
+  {
+    id: 'mode_voltage_support', catalog_namespace: 'bess_operation_mode', catalog_version: '1.0',
+    label_pl: 'Wsparcie napięciowe Q(U)', description_pl: 'Fikstura testowa.',
+    mode_code: 'voltage_support', requires_four_quadrant: true, requires_grid_forming: false,
+  },
+];
+
+const AUDIT2_SNAPSHOT_BODY = {
+  bess_operation_modes: BESS_OPERATION_MODE_FIXTURES,
+  tap_changers: [],
+  hv_fuses: [],
+  device_withstand: [],
+  pf_curves: PF_CURVE_FIXTURES,
+  block_transformers: BLOCK_TRANSFORMER_FIXTURES,
+  mv_neutral_groundings: [],
+};
+
+/**
+ * Mirror TESTOWY klasyfikacji modułu NC RfG — jedyne źródło progów zostaje
+ * `compliance/nc_rfg_modul.py`; ten mirror tylko UDAJE backend w teście.
+ */
+function klasyfikujModulNcRfgDlaTestu(pMaxMw: number, napiecieKv: number): 'A' | 'B' | 'C' | 'D' {
+  if (napiecieKv >= 110) return 'D';
+  const pMaxKw = pMaxMw * 1000;
+  if (pMaxKw >= 75_000) return 'D';
+  if (pMaxKw >= 10_000) return 'C';
+  if (pMaxKw >= 200) return 'B';
+  return 'A';
+}
+
+// Naprawa FAB-I (2026-09-05): katalog urządzeń DER pochodzi WYŁĄCZNIE z backendu
+// — kreator nie ma już listy zastępczej `catalogs.ts`, więc identyfikatory tego
+// pliku (przeniesione 1:1, liczbowo bez zmian z `PV_INVERTER_CATALOG`/
+// `BESS_PCS_CATALOG`) muszą przyjść z mocka granicy `fetch`, nie z importu.
+const PV_CONVERTER_FIXTURES: readonly ConverterFixture[] = [
+  { id: 'pv_inv_catalog_50', name: 'Pakiet katalogowy PV 50', kind: 'PV', un_kv: 0.4, pmax_mw: 0.05, sn_mva: 0.05, manufacturer: 'MV-DESIGN-PRO' },
+  { id: 'pv_inv_huawei_185', name: 'Huawei SUN2000-185KTL', kind: 'PV', un_kv: 0.4, pmax_mw: 0.185, sn_mva: 0.185, manufacturer: 'Huawei' },
+  { id: 'pv_inv_sma_2500', name: 'SMA Sunny Central 2500-EV', kind: 'PV', un_kv: 0.69, pmax_mw: 2.5, sn_mva: 2.5, manufacturer: 'SMA' },
+];
+// Karta FAB-J: qmin/qmax realne — jedyny dowód zdolności do pracy w czterech
+// ćwiartkach (decyzja #6), inaczej tryby BESS wymagający jej (FCR-N, Q(U))
+// nie pojawiłyby się wcale.
+const BESS_CONVERTER_FIXTURES: readonly ConverterFixture[] = [
+  { id: 'bess_pcs_sma_2200', name: 'SMA Sunny Central Storage 2200', kind: 'BESS', un_kv: 0.69, pmax_mw: 2.2, sn_mva: 2.2, manufacturer: 'SMA', qmin_mvar: -2.2, qmax_mvar: 2.2 },
+];
+const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixture[]>> = {
+  PV: PV_CONVERTER_FIXTURES,
+  BESS: BESS_CONVERTER_FIXTURES,
+  WIND: [],
+};
+
+/** Mockuje granicę `fetch` (wzorzec `mockConverterCatalogFetch` z `SldDetailDrawer.test.tsx`). */
+function mockDerWizardFetch(
+  converters: Readonly<Partial<Record<ConverterKind, readonly ConverterFixture[]>>> = DEFAULT_CONVERTERS,
+): void {
+  global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/api/ncrfg-tests/modul')) {
+      const params = new URL(url, 'http://localhost').searchParams;
+      const modul = klasyfikujModulNcRfgDlaTestu(
+        Number(params.get('p_max_mw')), Number(params.get('napiecie_kv')),
+      );
+      return new Response(JSON.stringify({ modul }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url.includes('/api/ncrfg-tests/catalog')) {
+      return new Response(
+        JSON.stringify({
+          procedure_version: 'test', source_ref: 'test', tests: [],
+          operators: NC_RFG_OPERATOR_FIXTURES,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (url.includes('/api/catalog/bess-battery-types')) {
+      return new Response(JSON.stringify(BESS_BATTERY_FIXTURES), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url.includes('/api/catalog/converter-types')) {
+      const match = /[?&]kind=([^&]+)/.exec(url);
+      const kind = match ? (decodeURIComponent(match[1]) as ConverterKind) : null;
+      const records = kind
+        ? (converters[kind] ?? [])
+        : Object.values(converters).flatMap((list) => list ?? []);
+      return new Response(JSON.stringify(records), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify(AUDIT2_SNAPSHOT_BODY), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }) as unknown as typeof fetch;
+}
+
+function render(
+  ui: ReactElement,
+  converters: Readonly<Partial<Record<ConverterKind, readonly ConverterFixture[]>>> = DEFAULT_CONVERTERS,
+) {
+  mockDerWizardFetch(converters);
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
 }
 import { useStationDerStore, selectAllDers } from '../store';
+
+/**
+ * Karta FAB-K (§0 R3/R4, KLASA NIE INSTANCJA): krok „Punkt" wymaga REALNEJ
+ * migawki — szyny nN stacji (`resolveStationNnBus`) dla `nn_side`, punktu
+ * przyłączenia SN istniejącego w modelu (`selectSnConnectionPointCandidates`)
+ * dla `dedicated_transformer`. Zero fabrykowanego wyboru w UI oznacza zero
+ * postępu bez migawki — testy integracyjne muszą ją dostarczyć (ten sam
+ * wzorzec co `AddDerWizard.test.tsx::defaultBaseSnapshot`).
+ */
+function station001Snapshot(): Record<string, unknown> {
+  return {
+    substations: [
+      {
+        ref_id: 'station-001',
+        id: 'station-001',
+        bus_refs: ['station-001/sn', 'station-001/nn'],
+        transformer_refs: ['station-001/tr'],
+      },
+    ],
+    transformers: [
+      {
+        ref_id: 'station-001/tr',
+        name: 'TR stacyjny station-001',
+        hv_bus_ref: 'station-001/sn',
+        lv_bus_ref: 'station-001/nn',
+        sn_mva: 10,
+        uhv_kv: 15,
+        ulv_kv: 0.4,
+      },
+    ],
+    buses: [
+      { ref_id: 'station-001/sn', id: 'station-001/sn', name: 'Szyna SN station-001', voltage_kv: 15 },
+      { ref_id: 'station-001/nn', id: 'station-001/nn', name: 'Szyna nN station-001', voltage_kv: 0.4 },
+    ],
+  };
+}
 
 describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
   beforeEach(() => {
@@ -45,6 +247,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     useSnapshotStore.getState().reset();
     useAppStateStore.getState().setActiveProject('projekt-test-001', 'Projekt testowy');
     useAppStateStore.getState().setActiveCase('case-test-001', 'Zakres testowy', 'ShortCircuitCase', 'NONE');
+    useSnapshotStore.setState({ caseId: 'case-test-001', snapshot: station001Snapshot() } as never);
   });
 
   it('zapisuje block_transformer_catalog_ref w store dla dedicated_transformer', async () => {
@@ -64,24 +267,30 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.click(screen.getByTestId('variant-dedicated_transformer'));
     fireEvent.click(screen.getByTestId('add-der-next'));
 
-    // Krok 2: PCC + nazwa + block-trafo z katalogu.
+    // Krok 2: PCC + nazwa + punkt przyłączenia SN (element istniejący w modelu,
+    // karta FAB-K §0 R3) + block-trafo z katalogu.
     fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'PV Test' } });
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-01' } });
+    fireEvent.change(screen.getByTestId('add-der-sn-connection-point'), {
+      target: { value: 'station-001/sn' },
+    });
     fireEvent.change(screen.getByTestId('add-der-block-transformer'), {
       target: { value: 'btr_pv_15_069_2500' },
     });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
-    // Krok 3: device.
+    // Krok 3: device — katalog backendu jest asynchroniczny (zero listy zastępczej).
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_sma_2500' },
     });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
-    // Krok 4: profile + LVRT/HVRT + P(f).
-    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_pse' } });
-    fireEvent.change(screen.getByTestId('add-der-lvrt'), { target: { value: 'lvrt_pse_b' } });
-    fireEvent.change(screen.getByTestId('add-der-hvrt'), { target: { value: 'hvrt_pse_b' } });
+    // Krok 4: profil (LVRT/HVRT read-only, tożsamościowo związane z operatorem
+    // — karta FAB-J) + P(f).
+    await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'pse' } });
+    await waitFor(() => expect(screen.getByTestId('add-der-pf-curve')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-pf-curve'), { target: { value: 'pf_droop_5' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
@@ -119,19 +328,23 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('variant-dedicated_transformer'));
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'BESS Test' } });
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-02' } });
-    fireEvent.change(screen.getByTestId('add-der-bay-name'), { target: { value: 'POLE-BESS-01' } });
+    fireEvent.change(screen.getByTestId('add-der-sn-connection-point'), {
+      target: { value: 'station-001/sn' },
+    });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'bess_pcs_sma_2200' },
     });
+    await waitFor(() => expect(screen.getByTestId('add-der-battery')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-battery'), {
-      target: { value: 'bess_bat_byd_2880' },
+      target: { value: 'bess_bat_test_2880kwh' },
     });
 
     // Tryby BESS — multi-select (FCR-N + voltage_support).
@@ -140,9 +353,8 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
 
     fireEvent.click(screen.getByTestId('add-der-next'));
 
-    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_pse' } });
-    fireEvent.change(screen.getByTestId('add-der-lvrt'), { target: { value: 'lvrt_pse_b' } });
-    fireEvent.change(screen.getByTestId('add-der-hvrt'), { target: { value: 'hvrt_pse_b' } });
+    await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'pse' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
     fireEvent.click(screen.getByTestId('add-der-create'));
@@ -165,10 +377,8 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     );
     useSnapshotStore.setState({
       caseId: 'case-snapshot-001',
-      snapshot: {
-        substations: [{ ref_id: 'station-001', id: 'station-001' }],
-      } as never,
-    });
+      snapshot: station001Snapshot(),
+    } as never);
 
     render(
       <AddDerWizard
@@ -186,13 +396,17 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'PV Test' } });
     fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-01' } });
-    fireEvent.change(screen.getByTestId('add-der-voltage-level'), { target: { value: 'lv_0_4kV' } });
+    // Napięcie nN to REALNA szyna stacji z migawki (karta FAB-K, §0 R4) —
+    // dostępna od razu, zero czekania na katalog przekształtników.
+    expect(screen.getByTestId('add-der-nn-bus-readonly')).toHaveTextContent('0,4');
     fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_huawei_185' },
     });
     fireEvent.click(screen.getByTestId('add-der-next'));
-    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_enea' } });
+    await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'enea' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.click(screen.getByTestId('add-der-create'));
 
@@ -211,10 +425,8 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
   it('przekazuje do API katalogową moc PV 50 kW bez sztucznej podłogi 100 kW', async () => {
     useSnapshotStore.setState({
       caseId: 'case-snapshot-001',
-      snapshot: {
-        substations: [{ ref_id: 'station-001', id: 'station-001' }],
-      } as never,
-    });
+      snapshot: station001Snapshot(),
+    } as never);
 
     render(
       <AddDerWizard
@@ -230,7 +442,12 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
 
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
+    // Domyślny poziom napięcia nN wypełnia się dopiero po rozstrzygnięciu
+    // asynchronicznego zapytania o katalog przekształtników (karta FAB-J).
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_catalog_50' },
     });
@@ -238,7 +455,8 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     // V12K-245: operator NIE jest preselekcjonowany — test przechodzi ta sama sciezke,
     // co projektant, czyli WYBIERA profil (wczesniej „Dalej" dzialalo, bo krok byl
     // wypelniony zestawem ENEA, ktorego nikt nie wskazal).
-    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_enea' } });
+    await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'enea' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.click(screen.getByTestId('add-der-create'));
 
@@ -271,13 +489,19 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
 
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
+    // Domyślny poziom napięcia nN wypełnia się dopiero po rozstrzygnięciu
+    // asynchronicznego zapytania o katalog przekształtników (karta FAB-J).
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
     fireEvent.change(screen.getByTestId('add-der-device'), {
       target: { value: 'pv_inv_catalog_50' },
     });
     fireEvent.change(screen.getByTestId('add-der-unit-count'), { target: { value: '8' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
-    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_enea' } });
+    await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'enea' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.click(screen.getByTestId('add-der-create'));
 
@@ -299,7 +523,7 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     // moc, a mapowanie z backendu zawsze ustawia pole), ale mapowanie ustawia ZERO, gdy
     // `pmax_mw` jest zerowe albo nieliczbowe — i to jest wariant OSIAGALNY: generator
     // o mocy 0 MW jest rowna fabrykacja co 500 kW.
-    const konwerterBezMocy = [
+    const konwerterBezMocy: readonly ConverterFixture[] = [
       {
         id: 'conv_bez_mocy',
         name: 'Falownik bez tabliczki',
@@ -310,39 +534,35 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
         manufacturer: 'Nieznany',
       },
     ];
-    global.fetch = vi.fn(async (url: string) => ({
-      ok: true,
-      json: async () =>
-        String(url).includes('converter') ? konwerterBezMocy : {
-          bess_operation_modes: [],
-          tap_changers: [],
-          hv_fuses: [],
-          device_withstand: [],
-          pf_curves: [],
-          block_transformers: [],
-          mv_neutral_groundings: [],
-        },
-    })) as never;
 
-    rtlRender(
-      <QueryClientProvider
-        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-      >
-        <AddDerWizard
-          isOpen
-          stationId="station-001"
-          stationName="Stacja Test"
-          derKind="PV"
-          projectId="projekt-test-001"
-          onClose={() => {}}
-          nowIso="2026-04-01T00:00:00Z"
-        />
-      </QueryClientProvider>,
+    render(
+      <AddDerWizard
+        isOpen
+        stationId="station-001"
+        stationName="Stacja Test"
+        derKind="PV"
+        projectId="projekt-test-001"
+        onClose={() => {}}
+        nowIso="2026-04-01T00:00:00Z"
+      />,
+      { PV: konwerterBezMocy, BESS: [], WIND: [] },
     );
 
     fireEvent.click(screen.getByTestId('variant-nN'));
     fireEvent.click(screen.getByTestId('add-der-next'));
+    // Domyślny poziom napięcia nN wypełnia się dopiero po rozstrzygnięciu
+    // asynchronicznego zapytania o katalog przekształtników (karta FAB-J).
+    await waitFor(() =>
+      expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('add-der-next'));
+    // Falownik o mocy 0 kW jest ODFILTROWANY z mapowania backendu (`nominal_power_kw
+    // > 0`), więc katalog kończy w stanie „error" (0 pozycji), nie „backend" —
+    // czekamy na ROZSTRZYGNIĘCIE (dowolny finalny stan), nie na „gotowe".
+    await waitFor(() => {
+      const rozstrzygniety = screen.queryByTestId('add-der-device-catalog-error')
+        ?? !(screen.getByTestId('add-der-device') as HTMLSelectElement).disabled;
+      expect(rozstrzygniety).toBeTruthy();
+    });
     const wybor = screen.getByTestId('add-der-device') as HTMLSelectElement;
     const bezMocy = Array.from(wybor.options).find((o) => o.value === 'conv_bez_mocy');
     if (!bezMocy) {
@@ -352,7 +572,8 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     }
     fireEvent.change(wybor, { target: { value: 'conv_bez_mocy' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
-    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_enea' } });
+    await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'enea' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.click(screen.getByTestId('add-der-create'));
 

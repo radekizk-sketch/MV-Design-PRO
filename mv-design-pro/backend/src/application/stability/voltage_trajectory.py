@@ -20,6 +20,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from network_model.pochodne import ms_na_s
+
 
 @dataclass(frozen=True)
 class VoltageTrajectoryPoint:
@@ -37,9 +39,21 @@ class VoltageTrajectoryPoint:
         }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class TrajectoryGenerationParams:
-    """Parametry generacji trajectory."""
+    """Parametry generacji trajectory.
+
+    `recovery_time_constant_s` (τ) NIE MA wartości domyślnej (karta W2 pkt 1,
+    zero fabrykacji): stała czasowa odbudowy napięcia/częstotliwości była
+    zaszyta na 0,3 s bez podstawy w danych scenariusza. Wywołujący musi podać
+    ją jawnie — dla `enm/canonical_analysis.py::_execute_dynamic_stability` to
+    pole `recovery_time_constant_s` kontraktu opcji biegu (brak = odmowa
+    biegu, patrz tam); dawny `api/reference_networks.py` (usunięty karta K2,
+    2026-09-09) już podawał ją jawnie (0,25 s) przed tą kartą. `kw_only=True`,
+    bo pole bez domyślnej wartości nie
+    może następować po polach z domyślną w zwykłej kolejności pozycyjnej —
+    wszyscy dotychczasowi wołający już używają nazwanych argumentów.
+    """
 
     pre_fault_duration_s: float = 0.1  # 100ms before fault
     clearing_time_ms: float = 150.0  # fault duration
@@ -51,7 +65,7 @@ class TrajectoryGenerationParams:
     pre_fault_frequency_pu: float = 1.0
     during_fault_frequency_pu: float = 1.0  # frequency holds in short fault
     post_fault_frequency_pu: float = 1.0
-    recovery_time_constant_s: float = 0.3  # exponential rise τ
+    recovery_time_constant_s: float  # exponential rise τ — jawny, patrz docstring klasy
 
 
 def generate_voltage_trajectory(
@@ -69,7 +83,7 @@ def generate_voltage_trajectory(
     """
     points: list[VoltageTrajectoryPoint] = []
 
-    clearing_time_s = params.clearing_time_ms / 1000.0
+    clearing_time_s = ms_na_s(params.clearing_time_ms)
     total_time_s = params.pre_fault_duration_s + clearing_time_s + params.recovery_duration_s
     start_time_s = -params.pre_fault_duration_s
     n_samples = int(math.ceil(total_time_s / params.sample_dt_s)) + 1

@@ -28,7 +28,7 @@ function lfPayload(elements: RawOverlayPayload['elements']): RawOverlayPayload {
   };
 }
 
-describe('computeLfDerivedMetrics — K30-49 LF data plumbing', () => {
+describe('computeLfDerivedMetrics — LF data plumbing', () => {
   it('payload=null → empty maps', () => {
     const result = computeLfDerivedMetrics(null, [], []);
     expect(result.voltageDeviationPctByStationId.size).toBe(0);

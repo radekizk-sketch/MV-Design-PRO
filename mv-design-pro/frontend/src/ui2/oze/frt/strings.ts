@@ -70,6 +70,9 @@ export const FRT_STRINGS = {
   zalozeniaPmax: 'Moc maksymalna Pmax',
   zalozeniaUn: 'Napięcie znamionowe Un',
   zalozeniaStatusSolvera: 'Status solvera',
+  // Stopień dowodowy trajektorii (karta S-1 §0.9) — czy wynik wolno
+  // przedstawić jako dowód regulacyjny (dziś: nie, model niezwalidowany).
+  zalozeniaPodstawa: 'Stopień dowodowy',
 
   // Tabela scenariuszy
   kolScenariusz: 'Scenariusz',
@@ -97,8 +100,18 @@ export const FRT_STRINGS = {
   // Status solvera (etykiety PL)
   statusOk: 'OK — moduł utrzymał pracę',
   statusDerDropped: 'Moduł wypadł z synchronizacji',
-  statusNoModule: 'Brak modelu modułu',
+  // Karta S-4: brak modelu dynamicznego DER w wejściu solvera mapowany na
+  // granicy na `blocked` — nazwany kod gotowości i brakujące pola towarzyszą
+  // temu stanowi w widoku (`kod_gotowosci` / `missing_fields_pl`), ta
+  // etykieta jest tylko nagłówkiem statusu.
+  statusBlocked: 'Brak modelu dynamicznego modułu',
   statusInputInvalid: 'Niepoprawne wejście solvera',
+
+  // Panel „brak modelu dynamicznego" (status_solvera === 'blocked', karta S-4)
+  brakModeluTytul: 'Brak modelu dynamicznego modułu',
+  brakModeluOpis:
+    'Trajektorii FRT/HVRT nie da się policzyć — modułowi brakuje danych do zbudowania '
+    + 'modelu dynamicznego. Uzupełnij dane wskazane niżej i uruchom bieg ponownie.',
 
   // Tryb ekspercki
   ekspModulId: 'Identyfikator typu przekształtnika',
@@ -176,8 +189,8 @@ export function etykietaStatusuFrt(status: string): string {
       return FRT_STRINGS.statusOk;
     case 'der_dropped':
       return FRT_STRINGS.statusDerDropped;
-    case 'no_module':
-      return FRT_STRINGS.statusNoModule;
+    case 'blocked':
+      return FRT_STRINGS.statusBlocked;
     case 'input_invalid':
       return FRT_STRINGS.statusInputInvalid;
     default:

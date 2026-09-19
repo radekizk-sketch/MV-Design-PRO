@@ -19,6 +19,29 @@ def _normalize_floor(observed: float, floor: float) -> float:
     return _round_metric(max(0.0, min(1.0, observed / floor)))
 
 
+#: Etykiety PL i jednostki kryteriów oceny progowej — KLASA, nie zestaw ad-hoc:
+#: jedna definicja dzielona przez `to_dict` (klucze kontraktu, bez zmian) i
+#: `kryteria_oceny_progowej` (prezentacja jawna w wyniku biegu, karta W2 pkt 1).
+_KRYTERIA_ETYKIETY_PL: tuple[tuple[str, str, str], ...] = (
+    ("max_clearing_time_ms", "Maksymalny czas wyłączenia zwarcia", "ms"),
+    ("max_angle_swing_deg", "Maksymalne wychylenie kąta mocy", "°"),
+    ("min_voltage_recovery_pu", "Minimalne napięcie po zwarciu", "p.u."),
+    ("min_frequency_recovery_pu", "Minimalna częstotliwość po zwarciu", "p.u."),
+)
+
+#: Repozytorium nie niesie cytatu normy dla tych czterech wartości (zmierzone:
+#: brak odniesienia w `docs/` i w tym module) — kryteria są PRZYJĘTE w opcjach
+#: biegu (nazwa pola w `run.options` == klucz progu poniżej), edytowalne przez
+#: wołającego, NIE zaszyte na stałe w solverze — patrz `enm/canonical_analysis.py
+#: ::_progi_oceny_stabilnosci_z_opcji`, jedyne miejsce, które je materializuje
+#: z opcji biegu (karta W2 pkt 1).
+KRYTERIA_PROWENIENCJA_PL = (
+    "Kryterium przyjęte w opcjach biegu tej analizy (pole o tej samej nazwie w "
+    "kontrakcie opcji) — repozytorium nie niesie cytatu normy dla tej wartości; "
+    "próg jest edytowalny przez opcje biegu, nie zaszyty na stałe w solverze."
+)
+
+
 @dataclass(frozen=True)
 class DynamicStabilityThresholds:
     max_clearing_time_ms: float = 150.0
@@ -33,6 +56,24 @@ class DynamicStabilityThresholds:
             "min_voltage_recovery_pu": _round_metric(self.min_voltage_recovery_pu),
             "min_frequency_recovery_pu": _round_metric(self.min_frequency_recovery_pu),
         }
+
+    def kryteria_oceny_progowej(self) -> list[dict[str, object]]:
+        """Progi NAZWANE jawnie jako „kryteria oceny progowej" w wyniku biegu.
+
+        Karta W2 pkt 1: progi (150 ms / 120° / 0,95 / 0,98) mają być jawnie
+        nazwane w wyniku z odniesieniem, skąd pochodzą; repo nie ma cytatu normy
+        dla nich, więc nazwane są jako kryteria przyjęte w opcjach biegu.
+        """
+        return [
+            {
+                "key": klucz,
+                "label_pl": etykieta,
+                "value": _round_metric(getattr(self, klucz)),
+                "unit": jednostka,
+                "source_pl": KRYTERIA_PROWENIENCJA_PL,
+            }
+            for klucz, etykieta, jednostka in _KRYTERIA_ETYKIETY_PL
+        ]
 
 
 @dataclass(frozen=True)

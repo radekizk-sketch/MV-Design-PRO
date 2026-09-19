@@ -49,6 +49,32 @@ tylko „nie było czego liczyć". Dokładnie tego rozróżnienia pilnuje teraz 
 Klucze DOPISANE (kontrakt addytywny, FROZEN nietknięty): `brak_danych` na
 poziomie wyniku, w każdym wierszu `pv_curves`/`qv_curves`/`l_index_per_bus`
 oraz w `modal_analysis` — powód po polsku mówiący, jakich danych brakuje.
+
+2026-09-05, karta FAB-D2 (D2), rodzaj `opf_loss_lcc`. `V126TransformerInput.p0_kw`
+niesie teraz `None` zamiast cichego 0.0 (`solver_input/v126_contracts.py` przestał
+podstawiać `transformer.p0_kw or 0.0`), a model wejściowy tej fixtury dostał
+JAWNĄ stratę jałową (18,0 kW — nameplate 16 MVA), zamiast dalej polegać na
+cichym zerze. `transformer_losses_kw` = `p0_kw + pk_kw·0,45²`.
+
+  wielkość                 PRZED       PO
+  ------------------------ ----------- -----------
+  transformer_losses_kw    18,225      36,225
+  total_losses_kw          23,39789    41,39789
+  annual_losses_kwh        93591,556   165591,556
+  annual_co2_kg            67385,92    119225,92
+  lcc_loss_opex_pv_pln     935175,54   1654606,25
+
+Straty jałowe transformatora BYŁY pomijane w LCC strat — 16 MVA GPZ bez
+uwzględnienia strat jałowych zaniżało roczne zużycie energii i koszt cyklu
+życia strat o realną wielkość (18 kW × 8760 h ≈ 158 MWh/rok pominięte).
+
+Skutek uboczny UJAWNIONY, nie ukryty: rodzaj `hosting_capacity` (Monte Carlo)
+też przesunął `hosting_capacity_mw` 7,6 → 7,8 MW dla szyny stacji — ziarno
+losowania (`_hosting_capacity_bus_seed`) pochodzi z SKRÓTU CAŁEGO ładunku
+wejściowego (odtwarzalność wymaga, by ten sam ładunek dawał ten sam wynik), więc
+KAŻDA zmiana ładunku — nawet pola, którego ta analiza fizycznie nie czyta —
+przesuwa ziarno i wynik losowania w paśmie niepewności Monte Carlo. To nie jest
+zmiana merytoryczna zdolności przyłączeniowej, tylko przesunięcie próbki losowej.
 """
 
 from __future__ import annotations
@@ -137,6 +163,7 @@ def model_wejsciowy() -> V126AcademicInput:
                 ulv_kv=15.0,
                 uk_percent=10.5,
                 pk_kw=90.0,
+                p0_kw=18.0,
             )
         ],
         harmonic_sources=[

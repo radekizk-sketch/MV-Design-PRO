@@ -1,7 +1,7 @@
 name: Frontend E2E full
 
 # Karta E2E-MOCK-BEZ-CI / TESTY-DRYF-E2E (2026-08-12): pełna suita
-# `npm run test:e2e` (82 pliki e2e/*.spec.ts, wszystkie hitujące realny
+# `npm run test:e2e` (90 plików e2e/*.spec.ts wg pomiaru 2026-09-09, wszystkie hitujące realny
 # backend — `PLAYWRIGHT_REAL_BACKEND=1` wymuszony bezwarunkowo w
 # `playwright-run.mjs`) nie miała ŻADNEGO workflow CI mimo unikalnego
 # pokrycia (kreatory, SLD, zrzuty audytowe, motyw) niepokrytego przez

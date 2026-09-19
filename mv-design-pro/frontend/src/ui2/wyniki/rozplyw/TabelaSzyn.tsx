@@ -3,8 +3,8 @@
  * napięcia szyn z wyniku rozpływu mocy, z wykresem profilu napięcia. Read-only
  * dowód użycia wzorca `EkranAnalizy`: mapuje REALNY kształt `PowerFlowResultV1`
  * (adapter) → propsy wzorca. Zero fizyki, zero mutacji; store czytany wyłącznie
- * do odczytu (`useWynikRozplywu`). Ograniczenia świeżości/dowodu per-szyna:
- * TODO-KARTA w `adapters/rozplywAdapter.ts`.
+ * do odczytu (`useWynikRozplywu`). Znacznik świeżości nagłówka (rewizja biegu
+ * vs bieżąca) i `dowodRef` per komórka — patrz `adapters/rozplywAdapter.ts`.
  */
 
 import './rozplyw.css';
@@ -71,14 +71,22 @@ export function TabelaSzyn({
         naglowek={{ analizaPL: ROZPLYW_STRINGS.analiza, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaRozplywu(wynik)}
         kolumny={KOLUMNY_SZYN}
-        wiersze={naWierszeSzyn(wynik.bus_results)}
-        wykres={<ProfilNapiecChart punkty={naProfilNapiec(wynik.bus_results)} />}
+        wiersze={naWierszeSzyn(wynik.bus_results, wynik.kryteria_napiecia)}
+        wykres={
+          <ProfilNapiecChart
+            punkty={naProfilNapiec(wynik.bus_results)}
+            kryteria={wynik.kryteria_napiecia}
+          />
+        }
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_SZYNA}
         wybranyWiersz={wybranyWiersz}
         onWybierzWiersz={onWybierzWiersz}
+        // Karta UI2 p.6: wiersz tabeli szyn = ZAWSZE element sieci typu
+        // Bus (kolumna główna jest bus_id) — synchronizacja z SLD/inspektorem.
+        typElementuWiersza={() => 'Bus'}
         // K1 / F-E6.3: werdykt tej tabeli = napięcie poza zakresem → rodzaj 'napiecie'.
         onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', ref, 'napiecie')}
       />

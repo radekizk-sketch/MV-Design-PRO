@@ -21,7 +21,7 @@ def fakty(**nadpisania) -> FaktyPolaWytworcy:
         "der_kind": "PV",
         "connection_side": "SN",
         "nominal_power_kw": 1000.0,
-        "neutral_grounding_mode": "rezystor",
+        "neutral_grounding_mode": "resistor_grounded",
         "zero_sequence_current_source": "suma_ct",
         "zero_sequence_voltage_source": "otwarty_trojkat_vt",
     }
@@ -75,14 +75,14 @@ class TestRodzinaZiemnozwarciowa:
 
 
 class TestKierunkowoscZiemnozwarciowa:
-    @pytest.mark.parametrize("tryb", ["izolowany", "cewka_petersena"])
+    @pytest.mark.parametrize("tryb", ["isolated", "petersen_coil"])
     def test_siec_maloparadowa_z_torem_napieciowym_wymaga_67N(self, tryb: str) -> None:
         wynik = dobierz_funkcje(
             fakty(neutral_grounding_mode=tryb, zero_sequence_voltage_source="otwarty_trojkat_vt")
         )
         assert "67N" in wynik.kody()
 
-    @pytest.mark.parametrize("tryb", ["izolowany", "cewka_petersena"])
+    @pytest.mark.parametrize("tryb", ["isolated", "petersen_coil"])
     def test_bez_toru_napieciowego_67N_NIE_jest_wymagane_tylko_NAZWANE_jako_brak(
         self, tryb: str
     ) -> None:
@@ -95,10 +95,12 @@ class TestKierunkowoscZiemnozwarciowa:
 
     def test_siec_z_rezystorem_nie_wymusza_kierunkowosci(self) -> None:
         # Kontrola odwrotna: prad doziemny jest wtedy wymuszony i mierzalny nadpradowo.
-        assert "67N" not in dobierz_funkcje(fakty(neutral_grounding_mode="rezystor")).kody()
+        assert (
+            "67N" not in dobierz_funkcje(fakty(neutral_grounding_mode="resistor_grounded")).kody()
+        )
 
     def test_nieznane_uziemienie_jest_kwestia_otwarta(self) -> None:
-        wynik = dobierz_funkcje(fakty(neutral_grounding_mode="nieznany"))
+        wynik = dobierz_funkcje(fakty(neutral_grounding_mode=None))
         assert "protection.neutral_grounding_unknown" in kody_otwartych(wynik)
 
 
@@ -176,7 +178,8 @@ class TestOcenaUrzadzenia:
 
 
 class TestTrybUziemieniaZModelu:
-    """V12K-246: brak danych o punkcie neutralnym to „nieznany", nie domysl."""
+    """V12K-246 / W5-A: brak danych o punkcie neutralnym to ``None`` (nie literał „nieznany"
+    ani domysł) — jeden słownik `GroundingConfig.type`, brak nazwany wprost."""
 
     def test_brak_danych_o_neutralnym_daje_nieznany_a_nie_bezposrednie_uziemienie(self) -> None:
         # POMIAR PRZED NAPRAWA: `_resolve_neutral_grounding_mode` zwracalo
@@ -196,11 +199,33 @@ class TestTrybUziemieniaZModelu:
             voltage_kv=15.0,
             model="thevenin",
         )
-        assert _resolve_neutral_grounding_mode(sources=[zrodlo], transformers=[]) == "nieznany"
-        assert _resolve_neutral_grounding_mode(sources=[], transformers=[]) == "nieznany"
+        assert _resolve_neutral_grounding_mode(sources=[zrodlo], transformers=[]) is None
+        assert _resolve_neutral_grounding_mode(sources=[], transformers=[]) is None
 
     def test_nieznany_tryb_przechodzi_w_kwestie_otwarta_doboru(self) -> None:
         # Lancuch: model nie wie -> regula NAZYWA brak zamiast wybrac za projektanta.
-        wynik = dobierz_funkcje(fakty(neutral_grounding_mode="nieznany"))
+        wynik = dobierz_funkcje(fakty(neutral_grounding_mode=None))
         assert "protection.neutral_grounding_unknown" in kody_otwartych(wynik)
         assert "67N" not in wynik.kody()
+
+
+class TestEtykietaChronionegoObiektu:
+    """Chroniony obiekt opisany NAZWĄ wytwórcy, nie referencją modelu.
+
+    Dyrektywa właściciela: metadane implementacyjne (identyfikatory, hashe) nie
+    wychodzą na pierwszy plan ekranu projektanta. Referencje modelu budowanego
+    operacjami domenowymi wyglądają jak `pv/cf52e8ef…/converter` — w opisie
+    funkcji zabezpieczeniowej to szum, a nie informacja."""
+
+    def test_etykieta_uzywa_nazwy_wytworcy(self) -> None:
+        wynik = dobierz_funkcje(fakty(der_nazwa="Farma PV 1 MW"))
+        assert wynik.wymagane
+        for funkcja in wynik.wymagane:
+            assert "Farma PV 1 MW" in funkcja.chroniony_obiekt_pl
+            assert "DER-1" not in funkcja.chroniony_obiekt_pl
+
+    def test_bez_nazwy_zostaje_referencja_zamiast_wymyslonej_etykiety(self) -> None:
+        wynik = dobierz_funkcje(fakty(der_nazwa=None))
+        assert wynik.wymagane
+        for funkcja in wynik.wymagane:
+            assert "DER-1" in funkcja.chroniony_obiekt_pl

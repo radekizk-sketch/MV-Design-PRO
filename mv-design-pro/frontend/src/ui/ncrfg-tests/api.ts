@@ -110,6 +110,31 @@ export interface NcRfgCertificateEvidence {
   readonly source_url: string | null;
 }
 
+/**
+ * Ocena dowodowa jednego testu (1:1 z `CapabilityEvidence.to_dict()`,
+ * `solver_input.provenance` — karta S-1). Trzecia oś proweniencji: czy WYNIK
+ * tego testu wolno przedstawić jako dowód spełnienia wymagania normatywnego.
+ */
+export interface OcenaDowodowaTestuNcRfg {
+  readonly capability_id: string | null;
+  readonly tier: string | null;
+  readonly tier_pl: string | null;
+  readonly claim_kind: string | null;
+  readonly claim_kind_pl: string | null;
+  readonly regulatory_evidence_eligible: boolean;
+  readonly rationale_pl: string;
+  readonly audit_ref: string;
+}
+
+/** Ocena dowodowa jednego modułu biegu NC RfG (1:1 z `OcenaDowodowaModulu.to_dict()`). */
+export interface OcenaDowodowaModuluNcRfg {
+  readonly der_ref: string;
+  readonly reporting_status: 'reportable' | 'not_reportable';
+  readonly proof_status: 'complete' | 'incomplete';
+  readonly evidence_limitations: readonly string[];
+  readonly evidence_note_pl: string;
+}
+
 export interface NcRfgRunResult {
   readonly contract: 'NcRfgPtpireeTestResultV1';
   readonly procedure_version: string;
@@ -119,6 +144,19 @@ export interface NcRfgRunResult {
   readonly modules: readonly NcRfgModuleResult[];
   /** Dowód certyfikatu per testowane urządzenie (pusty bez wskazania przypadku). */
   readonly certificate_evidence: readonly NcRfgCertificateEvidence[];
+  /**
+   * Stopień dowodowy biegu (karta S-1, W6-0) — `ocena_dowodowa_biegu`
+   * (`solver_input.dowod_ncrfg`), TA SAMA funkcja, którą czyta bramka
+   * certyfikatu. Kryterium: czy KTÓRYŚ test WYMAGANY któregokolwiek modułu
+   * opiera się na zdolności nieprzydatnej dowodowo (werdykt pass/fail NIE
+   * wchodzi do tej oceny).
+   */
+  readonly reporting_status: 'reportable' | 'not_reportable';
+  readonly proof_status: 'complete' | 'incomplete';
+  readonly evidence_limitations: readonly string[];
+  readonly evidence_note_pl: string;
+  readonly evidence_per_module: Readonly<Record<string, OcenaDowodowaModuluNcRfg>>;
+  readonly evidence_by_test: Readonly<Record<string, Readonly<Record<string, OcenaDowodowaTestuNcRfg>>>>;
   readonly test_catalog: readonly NcRfgTestDefinition[];
   readonly white_box_trace: readonly {
     readonly step: number;
@@ -132,6 +170,38 @@ export interface NcRfgRunResult {
     readonly proof_ref: string;
   }[];
   readonly report_pl: string;
+}
+
+/**
+ * DER modelu, którego solver NIE objął biegiem zgodności przypadku (karta S-3):
+ * brak dodatniej mocy albo brak napięcia szyny przyłączenia. Ten sam słownik
+ * powodów co blokada modułu w macierzy (`macierzModel.ts::PowodBlokady`) —
+ * jeden model werdyktu, nie drugi.
+ */
+export interface NcRfgDerPominiety {
+  readonly der_ref: string;
+  readonly der_name: string | null;
+  readonly powod: 'brak_mocy' | 'brak_napiecia';
+  readonly powod_pl: string;
+}
+
+/**
+ * Zgodność NC RfG WSZYSTKICH DER przypadku naraz (karta S-3, 2026-09-16 —
+ * „jeden tor NC RfG") — kontrakt `GET /api/ncrfg-tests/cases/{case_id}/compliance`.
+ * Backend buduje wejścia solvera Z committed ENM (`application/ncrfg_compliance/
+ * model_bridge.py`, zero fabrykacji: brak danej = no_data) i uruchamia TEN SAM
+ * `NcRfgPtpireeSolver`, co bieg macierzy `runNcRfgPtpireeTests`; `bieg` to TEN SAM
+ * kontrakt `NcRfgRunResult` (z polami dowodowymi karty S-1) opakowany per przypadek.
+ * `bieg === null` DOKŁADNIE wtedy, gdy `der_count === 0` (solver wymaga ≥ 1 modułu —
+ * pusty bieg z fabrykowanym odciskiem byłby fałszem).
+ */
+export interface NcRfgCaseComplianceResponse {
+  readonly case_id: string;
+  readonly operator_id: string;
+  /** Liczba DER objętych biegiem (= `bieg.modules.length`). */
+  readonly der_count: number;
+  readonly pominiete: readonly NcRfgDerPominiety[];
+  readonly bieg: NcRfgRunResult | null;
 }
 
 async function getJson<T>(url: string): Promise<T> {
@@ -170,4 +240,19 @@ export function runNcRfgPtpireeTests(
     ? `/api/ncrfg-tests/run?case_id=${encodeURIComponent(caseId)}`
     : '/api/ncrfg-tests/run';
   return postJson<NcRfgRunResult>(url, request);
+}
+
+/**
+ * Zgodność NC RfG przekrojowo — wszystkie DER przypadku, liczone na żywo
+ * z committed ENM (bez budowania wejść modułów po stronie klienta, w
+ * odróżnieniu od `runNcRfgPtpireeTests`).
+ */
+export function fetchNcRfgCaseCompliance(
+  caseId: string,
+  operatorId: string,
+): Promise<NcRfgCaseComplianceResponse> {
+  return getJson<NcRfgCaseComplianceResponse>(
+    `/api/ncrfg-tests/cases/${encodeURIComponent(caseId)}/compliance` +
+      `?operator_id=${encodeURIComponent(operatorId)}`,
+  );
 }

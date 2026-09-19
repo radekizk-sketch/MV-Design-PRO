@@ -29,7 +29,6 @@ def gpz_materialized_params(
         "sk3_mva": sk3_mva,
         "rx_ratio": rx_ratio,
         "short_circuit_model": "short_circuit_power",
-        "earthing_system": "PUNKT_NEUTRALNY_UZIEMIONY",
         "supply_role": "ZASILANIE_SYSTEMOWE",
         "manufacturer": "OSD",
         "series": "Warunki zasilania GPZ",
@@ -54,6 +53,13 @@ def gpz_payload(
             sk3_mva=sk3_mva,
             rx_ratio=rx_ratio,
         ),
+        # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary hv_voltage_kv
+        # + transformer_sn_mva (albo transformer_catalog_ref) — odtwarzamy jako
+        # dana fikstury zalozenie, ktore wczesniej wchodzilo domyslnie
+        # (25 MVA @ 110 kV). `voltage_kv` powyzej wybiera stronę SN w mapie
+        # katalogowej, wiec para zostaje poprawna dla kazdego wywolania.
+        "hv_voltage_kv": 110.0,
+        "transformer_sn_mva": 25.0,
     }
     payload.update(extra)
     return payload

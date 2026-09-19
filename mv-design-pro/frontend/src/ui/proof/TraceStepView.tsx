@@ -16,8 +16,9 @@
  * NOTE: Nazwy kodowe NIGDY nie są pokazywane w UI.
  */
 
-import type { TraceStep, TraceValue } from '../results-inspector/types';
+import type { TraceStep } from '../results-inspector/types';
 import { TRACE_VALUE_LABELS } from '../results-inspector/types';
+import { rozpakujWartoscSladu } from '../results-inspector/traceValue';
 import { MathRenderer } from './MathRenderer';
 
 // =============================================================================
@@ -34,32 +35,36 @@ interface TraceStepViewProps {
 // =============================================================================
 
 /**
- * Formatuj wartość numeryczną z odpowiednią precyzją.
+ * Formatuj surową wartość wpisu `inputs`/`result` kroku śladu WHITE BOX
+ * (skalar / liczba zespolona `{re, im}` / opakowany `TraceValue`) z
+ * odpowiednią precyzją. Rozpakowanie kształtu jest WSPÓLNE dla całego frontu
+ * — patrz `results-inspector/traceValue.ts::rozpakujWartoscSladu` (KLASA NIE
+ * INSTANCJA, karta WB-2); ta funkcja tylko formatuje jego wynik do napisu.
  */
 function formatValue(value: unknown): string {
-  if (value === null || value === undefined) return '—';
-  if (typeof value === 'number') {
+  const { wartosc, re, im, unit } = rozpakujWartoscSladu(value);
+
+  if (typeof re === 'number' && typeof im === 'number') {
+    // Ten widok nie ma dedykowanego formatu zespolonego (re + j·im) —
+    // surowy JSON składowych, jak dotychczas, NIGDY "[object Object]".
+    return JSON.stringify({ re, im });
+  }
+
+  if (wartosc === null) return '—';
+
+  let formatted: string;
+  if (typeof wartosc === 'number') {
     // Inteligentne formatowanie: więcej miejsc dla małych liczb
-    if (Math.abs(value) < 0.01 && value !== 0) {
-      return value.toExponential(3);
-    }
-    return value.toLocaleString('pl-PL', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 4,
-    });
+    formatted = Math.abs(wartosc) < 0.01 && wartosc !== 0
+      ? wartosc.toExponential(3)
+      : wartosc.toLocaleString('pl-PL', { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+  } else if (typeof wartosc === 'boolean') {
+    formatted = wartosc ? 'Tak' : 'Nie';
+  } else {
+    formatted = wartosc;
   }
-  if (typeof value === 'boolean') return value ? 'Tak' : 'Nie';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'object') {
-    // TraceValue object
-    const tv = value as TraceValue;
-    if ('value' in tv) {
-      const formatted = formatValue(tv.value);
-      return tv.unit ? `${formatted} ${tv.unit}` : formatted;
-    }
-    return JSON.stringify(value);
-  }
-  return String(value);
+
+  return unit ? `${formatted} ${unit}` : formatted;
 }
 
 /**

@@ -35,6 +35,16 @@ def op(snap: dict[str, Any], name: str, payload: dict[str, Any]) -> dict[str, An
     if name == "add_grid_source_sn":
         payload = {
             **({"catalog_ref": CATALOG_ZRODLO_250} if "catalog_ref" not in payload else {}),
+            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
+            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref) —
+            # odtwarzamy jako dana fikstury zalozenie, ktore wczesniej wchodzilo
+            # domyslnie (25 MVA @ 110 kV).
+            **(
+                {"hv_voltage_kv": 110.0, "transformer_sn_mva": 25.0}
+                if "transformer_catalog_ref" not in payload
+                and "transformer_catalog_binding" not in payload
+                else {}
+            ),
             "gpz_line_field_apparatus": {
                 "apparatus_kind": "BREAKER",
                 "catalog_binding": {

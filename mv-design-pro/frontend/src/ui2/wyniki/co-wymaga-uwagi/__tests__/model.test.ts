@@ -5,8 +5,9 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { przekroczeniaRozplywu, przekroczeniaWerdyktu, przekroczeniaZbieznosci } from '../model';
-import type { PozycjaWerdyktu, WerdyktResponse } from '../../werdykt/api';
+import { brakKryteriowRozplywu,
+  przekroczeniaRozplywu, przekroczeniaWerdyktu, przekroczeniaZbieznosci } from '../model';
+import type { OdpowiedzOceny, PozycjaOceny } from '../../ocena/api';
 import { CO_WYMAGA_UWAGI_STRINGS as T } from '../strings';
 import { busResultFixture, powerFlowResultFixture } from '../../rozplyw/__tests__/fixtures';
 
@@ -62,6 +63,25 @@ describe('przekroczeniaRozplywu — konsolidacja przekroczeń napięć szyn', ()
     const wynik = powerFlowResultFixture();
     expect(przekroczeniaRozplywu(wynik)).toEqual(przekroczeniaRozplywu(wynik));
   });
+
+  it('brakKryteriowRozplywu: para predykatów z przekroczeniaRozplywu (brak kryteriów = brak podstaw, nie norma)', () => {
+    const bez = powerFlowResultFixture({
+      kryteria_napiecia: undefined,
+      bus_results: [busResultFixture({ bus_id: 'SZ-ST2', v_pu: 0.5 })],
+    });
+    expect(brakKryteriowRozplywu(bez)).toBe(true);
+    expect(przekroczeniaRozplywu(bez)).toEqual([]);
+    expect(brakKryteriowRozplywu(powerFlowResultFixture())).toBe(false);
+    expect(brakKryteriowRozplywu(null)).toBe(false);
+  });
+
+  it('karta W3-J: bez kryteriów w wyniku (starszy zapisany bieg) → pusta lista, nie domyślny próg', () => {
+    const wynik = powerFlowResultFixture({
+      kryteria_napiecia: undefined,
+      bus_results: [busResultFixture({ bus_id: 'SZ-ST2', v_pu: 0.5 })],
+    });
+    expect(przekroczeniaRozplywu(wynik)).toEqual([]);
+  });
 });
 
 /*
@@ -93,13 +113,17 @@ describe('przekroczeniaZbieznosci — brak zbieżności to przekroczenie (lit. d
   });
 });
 
-function pozycjaWerdyktu(over: Partial<PozycjaWerdyktu> = {}): PozycjaWerdyktu {
+function pozycjaWerdyktu(over: Partial<PozycjaOceny> = {}): PozycjaOceny {
   return {
     kryterium_id: 'galaz.obciazenie_dlugotrwale',
     etap: 'E5',
     nazwa_pl: 'Obciążenie długotrwałe gałęzi',
     warunek_pl: 'I ≤ Idd',
     norma_pl: 'PN-EN 50160',
+    // V12.7: symbol i warunek jako LaTeX + zakres oceny (wymagane pola PozycjaOceny).
+    symbol_latex: 'I',
+    warunek_latex: 'I \\le I_{dd}',
+    zakres_oceny: 'kryterium',
     zrodlo: 'PF',
     element_rodzaj: 'galaz_liniowa',
     stan: 'NARUSZONE',
@@ -112,11 +136,17 @@ function pozycjaWerdyktu(over: Partial<PozycjaWerdyktu> = {}): PozycjaWerdyktu {
     powod_kod: null,
     powod_pl: null,
     run_id: 'run-1',
+    grupa: 'obciazalnosc',
+    wielkosc_pl: 'Obciążenie długotrwałe',
+    symbol: 'I',
+    jednostka: '%',
+    warunek: 'nie_wiecej_niz',
+    elementy: [],
     ...over,
   };
 }
 
-function werdyktFixture(pozycje: PozycjaWerdyktu[]): WerdyktResponse {
+function werdyktFixture(pozycje: PozycjaOceny[]): OdpowiedzOceny {
   return {
     werdykt: 'NARUSZONE',
     case_id: 'case-1',
@@ -125,6 +155,8 @@ function werdyktFixture(pozycje: PozycjaWerdyktu[]): WerdyktResponse {
     zrodla: [],
     podsumowanie: { spelnione: 0, naruszone: pozycje.length, niesprawdzone: 0, nie_dotyczy: 0, razem: pozycje.length },
     zakres_poza_automatem: [],
+    ocena: { oceniono: 0, spelnia: 0, nie_spelnia: 0, brak_podstaw: 0 },
+    grupy: [{ kod: 'obciazalnosc', nazwa_pl: 'Obciążalność' }],
   };
 }
 
@@ -134,7 +166,7 @@ describe('przekroczeniaWerdyktu — kryteria projektowe backendu (lit. a-c)', ()
   });
 
   it('odpowiedź niezgodna z kontraktem (brak tablicy pozycji) → brak pozycji, bez awarii', () => {
-    expect(przekroczeniaWerdyktu({} as WerdyktResponse, false)).toEqual([]);
+    expect(przekroczeniaWerdyktu({} as OdpowiedzOceny, false)).toEqual([]);
   });
 
   it('bierze WYŁĄCZNIE kryteria NARUSZONE (spełnione/niesprawdzone pomijane)', () => {

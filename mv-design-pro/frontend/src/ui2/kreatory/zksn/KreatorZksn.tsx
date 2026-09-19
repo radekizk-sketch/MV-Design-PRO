@@ -119,10 +119,15 @@ export function KreatorZksn() {
 
   const [typy, setTypy] = useState<BranchPointCatalogType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jawny znacznik
+  // ładowania katalogu, niezależny od `typy.length` (katalog pusty PO
+  // wczytaniu wygląda inaczej niż katalog W TRAKCIE wczytywania).
+  const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
+    setKatalogLadowanie(true);
     fetchBranchPointTypes('ZKSN')
       .then((t) => {
         if (!cancelled) setTypy(Array.isArray(t) ? t : []);
@@ -131,6 +136,9 @@ export function KreatorZksn() {
         if (cancelled) return;
         setTypy([]);
         setBladKatalogu(e instanceof Error ? e.message : T.typBlad);
+      })
+      .finally(() => {
+        if (!cancelled) setKatalogLadowanie(false);
       });
     return () => {
       cancelled = true;
@@ -170,7 +178,16 @@ export function KreatorZksn() {
 
   const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
 
-  const zapisMozliwy = hasOdcinek && !problemTor && Boolean(activeCaseId);
+  // S9-5 (klasa: bramka enable bez sygnału gotowości) — jedno źródło prawdy
+  // dla `disabled` i `data-status` (patrz `KreatorMagistralaSn.tsx`, ta sama
+  // karta i ten sam mechanizm powtórzony w tym pliku).
+  const stanGotowosci: 'ladowanie' | 'zablokowany' | 'gotowy' =
+    !hasOdcinek || Boolean(problemTor) || !activeCaseId
+      ? 'zablokowany'
+      : katalogLadowanie
+        ? 'ladowanie'
+        : 'gotowy';
+  const zapisMozliwy = stanGotowosci === 'gotowy';
 
   const onZapisz = useCallback(async () => {
     if (!hasOdcinek) {
@@ -258,10 +275,13 @@ export function KreatorZksn() {
       aside={aside}
       bladGlobalny={bladGlobalny}
       walidacja={
-        bledy.length > 0
-          ? T.walidacjaStopka
-          : problemTor ?? (!hasOdcinek ? T.brakOdcinkaOpis : null)
+        stanGotowosci === 'ladowanie'
+          ? T.katalogLadowanieStopka
+          : bledy.length > 0
+            ? T.walidacjaStopka
+            : problemTor ?? (!hasOdcinek ? T.brakOdcinkaOpis : null)
       }
+      status={stanGotowosci}
       akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !zapisMozliwy, testid: 'mvd-kreator-zksn-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-zksn-anuluj' }}
       krokWstecz={

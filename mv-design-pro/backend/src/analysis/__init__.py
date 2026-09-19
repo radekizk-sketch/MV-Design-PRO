@@ -7,7 +7,6 @@ __all__ = [
     "protection_curves_it",
     "protection_insight",
     "recommendations",
-    "scenario_comparison",
     "sensitivity",
     "voltage_profile",
 ]

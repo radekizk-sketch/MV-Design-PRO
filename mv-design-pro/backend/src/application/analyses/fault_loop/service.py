@@ -1,7 +1,8 @@
 """Widok pętli zwarcia nN z modelu (G-STK-4, karta P0.6 — G-05).
 
 Domyka łańcuch uziemienia G-STK-1 „do ostatniego klika": konfiguracja układu
-sieci nN (``substation.meta.nn_earthing_system``) + impedancja transformatora
+sieci nN (``Transformer.lv_earthing_system``, W5-A — brak = odmowa nazwana,
+nigdy domyślny TN-C-S) + impedancja transformatora
 (z uk%/Sn/Ulv/Pk, składowa zgodna z grupą połączeń — zob. niżej) + REALNA
 trasa kablowa (P0.6) + upstream Thevenin sieci SN (P0.6) → impedancja pętli
 zwarcia w DOWOLNYM punkcie nN i prąd zwarcia jednofazowego Ik. Ochrona
@@ -34,7 +35,6 @@ transformatora, którego szyna nN jest ich korzeniem.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -46,6 +46,7 @@ from enm.zero_sequence_transformer import (
 )
 from network_model.core.graph import NetworkGraph
 from network_model.core.ybus import S_BASE_MVA
+from network_model.pochodne import kv_na_v, napiecie_fazowe_v
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
     LoopImpedanceComponent,
@@ -62,6 +63,7 @@ from network_model.solvers.fault_loop_iec60364 import (
     compute_fault_loop,
 )
 from network_model.solvers.short_circuit_core import build_zbus
+from solver_input.uklad_sieci_nn import typ_sieci_solvera, uklad_tn
 
 from .route import (
     LvBusPath,
@@ -73,15 +75,9 @@ from .route import (
     route_segments,
 )
 
-# Układ sieci nN → (typ solvera, sposób ochrony). TT/IT: metoda pętli TN nie
-# dotyczy (inna fizyka zwarcia doziemnego) — raportujemy uczciwie, nie liczymy.
-_SYSTEM_MAP: dict[str, tuple[NetworkType, ProtectionArrangement]] = {
-    "TN-S": (NetworkType.TN_S, ProtectionArrangement.PE),
-    "TN-C-S": (NetworkType.TN_C_S, ProtectionArrangement.PEN),
-    "TN-C": (NetworkType.TN_C, ProtectionArrangement.PEN),
-}
-_DEFAULT_SYSTEM = "TN-C-S"
-_NON_TN_SYSTEMS = {"TT", "IT"}
+#: Klucz `missing_data` przy braku układu sieci nN na transformatorze (W5-A §1 p. 2:
+#: brak = odmowa nazwana, NIGDY domyślka — skasowana domyślka ``"TN-C-S"``).
+BRAK_UKLADU_NN = "lv_earthing_system"
 
 # Połączenia sekwencji zerowej dające LOKALNĄ drogę uziemienia po stronie nN
 # (punkt gwiazdowy uzwojenia nN jest bezpośrednio/dostępnie uziemiony) — jedyne
@@ -432,8 +428,39 @@ def _upstream_thevenin_lv_component(
     return component, []
 
 
-def _system_for_station(station: Substation) -> str:
-    return str((station.meta or {}).get("nn_earthing_system") or _DEFAULT_SYSTEM)
+def uklad_nn_transformatora(trafo: Transformer) -> str | None:
+    """Układ sieci nN z transformatora ZASILAJĄCEGO (jedyny nośnik, W5-A) — brak = ``None``."""
+    return trafo.lv_earthing_system
+
+
+def odmowa_ukladu_nn(context: dict[str, Any], uklad: str | None) -> dict[str, Any] | None:
+    """Odmowa NAZWANA, gdy pętli TN nie da się liczyć: brak układu albo układ TT/IT.
+
+    Zwraca gotową odpowiedź widoku albo ``None`` (układ TN — licz dalej). Jedno
+    miejsce dla widoków pętli zwarcia, SWZ, doboru aparatów nN i wiązania dowodu.
+    """
+    if uklad is None:
+        return {
+            **context,
+            "status": "brak danych",
+            "missing_data": [BRAK_UKLADU_NN],
+            "reason_pl": (
+                "Transformator zasilający nie deklaruje układu uziemienia sieci nN "
+                "(TN-S/TN-C-S/TN-C/TT/IT) — pętla zwarcia TN nie jest liczona; brak danej "
+                "nie jest zastępowany żadnym układem domyślnym."
+            ),
+        }
+    if not uklad_tn(uklad):
+        return {
+            **context,
+            "status": "nie dotyczy",
+            "reason_pl": (
+                f"Układ {uklad}: ochrona przeciwporażeniowa nie opiera się na samoczynnym "
+                "wyłączeniu z pętli zwarcia TN (IEC 60364-4-41). Pętla TN nie jest liczona."
+            ),
+            "missing_data": [],
+        }
+    return None
 
 
 def _build_fault_loop_at_route(
@@ -487,27 +514,22 @@ def build_station_fault_loop_view(
     if station is None:
         return {"status": "brak danych", "missing_data": ["station"], "station_ref": station_ref}
 
-    system = _system_for_station(station)
     context: dict[str, Any] = {
         "station_ref": station_ref,
         "station_name": station.name,
-        "network_system": system,
+        "network_system": None,
     }
-
-    if system in _NON_TN_SYSTEMS:
-        return {
-            **context,
-            "status": "nie dotyczy",
-            "reason_pl": (
-                f"Układ {system}: ochrona przeciwporażeniowa nie opiera się na samoczynnym "
-                "wyłączeniu z pętli zwarcia TN (IEC 60364-4-41). Pętla TN nie jest liczona."
-            ),
-            "missing_data": [],
-        }
 
     trafo, transformer_missing = resolve_station_transformer(enm, station, transformer_ref)
     if trafo is None:
         return {**context, "status": "brak danych", "missing_data": transformer_missing}
+
+    system = uklad_nn_transformatora(trafo)
+    context["network_system"] = system
+    odmowa = odmowa_ukladu_nn(context, system)
+    if odmowa is not None:
+        return odmowa
+    assert system is not None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
@@ -517,8 +539,8 @@ def build_station_fault_loop_view(
     if upstream is None:
         return {**context, "status": "brak danych", "missing_data": upstream_missing}
 
-    net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    net_type, protection = typ_sieci_solvera(system)
+    u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
     zero_component = LoopImpedanceComponent(label="—", r_ohm=0.0, x_ohm=0.0)
 
     result = _build_fault_loop_at_route(
@@ -576,24 +598,12 @@ def build_fault_loop_view_at_point(
             "bus_ref": bus_ref,
         }
 
-    system = _system_for_station(station)
     context: dict[str, Any] = {
         "station_ref": station_ref,
         "station_name": station.name,
-        "network_system": system,
+        "network_system": None,
         "bus_ref": bus_ref,
     }
-
-    if system in _NON_TN_SYSTEMS:
-        return {
-            **context,
-            "status": "nie dotyczy",
-            "reason_pl": (
-                f"Układ {system}: ochrona przeciwporażeniowa nie opiera się na samoczynnym "
-                "wyłączeniu z pętli zwarcia TN (IEC 60364-4-41). Pętla TN nie jest liczona."
-            ),
-            "missing_data": [],
-        }
 
     trafo, transformer_missing = (
         resolve_transformer_for_bus(enm, station, bus_ref)
@@ -602,6 +612,13 @@ def build_fault_loop_view_at_point(
     )
     if trafo is None:
         return {**context, "status": "brak danych", "missing_data": transformer_missing}
+
+    system = uklad_nn_transformatora(trafo)
+    context["network_system"] = system
+    odmowa = odmowa_ukladu_nn(context, system)
+    if odmowa is not None:
+        return odmowa
+    assert system is not None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
@@ -623,8 +640,8 @@ def build_fault_loop_view_at_point(
         }
 
     phase_component, return_component = sum_phase_and_return_route(segments)
-    net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    net_type, protection = typ_sieci_solvera(system)
+    u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
     result = _build_fault_loop_at_route(
         fault_node_id=bus_ref,
@@ -700,24 +717,11 @@ def build_feeder_fault_loop_view_for_transformer(
             "feeders": [],
         }
 
-    system = _system_for_station(station)
     context: dict[str, Any] = {
         "station_ref": station_ref,
         "station_name": station.name,
-        "network_system": system,
+        "network_system": None,
     }
-
-    if system in _NON_TN_SYSTEMS:
-        return {
-            **context,
-            "status": "nie dotyczy",
-            "reason_pl": (
-                f"Układ {system}: ochrona przeciwporażeniowa nie opiera się na samoczynnym "
-                "wyłączeniu z pętli zwarcia TN (IEC 60364-4-41). Pętla TN nie jest liczona."
-            ),
-            "missing_data": [],
-            "feeders": [],
-        }
 
     trafo, transformer_missing = resolve_station_transformer(enm, station, transformer_ref)
     if trafo is None:
@@ -727,6 +731,13 @@ def build_feeder_fault_loop_view_for_transformer(
             "missing_data": transformer_missing,
             "feeders": [],
         }
+
+    system = uklad_nn_transformatora(trafo)
+    context["network_system"] = system
+    odmowa = odmowa_ukladu_nn(context, system)
+    if odmowa is not None:
+        return {**odmowa, "feeders": []}
+    assert system is not None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
@@ -741,8 +752,8 @@ def build_feeder_fault_loop_view_for_transformer(
             "feeders": [],
         }
 
-    net_type, protection = _SYSTEM_MAP.get(system, _SYSTEM_MAP[_DEFAULT_SYSTEM])
-    u_phase_v = trafo.ulv_kv * 1000.0 / math.sqrt(3.0)
+    net_type, protection = typ_sieci_solvera(system)
+    u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
     assignment = assign_station_lv_buses(enm, station_transformers(enm, station))
     paths = assignment.paths_by_transformer.get(trafo.ref_id, {})
@@ -872,24 +883,11 @@ def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> d
             "feeders": [],
         }
 
-    system = _system_for_station(station)
     context: dict[str, Any] = {
         "station_ref": station_ref,
         "station_name": station.name,
-        "network_system": system,
+        "network_system": None,
     }
-
-    if system in _NON_TN_SYSTEMS:
-        return {
-            **context,
-            "status": "nie dotyczy",
-            "reason_pl": (
-                f"Układ {system}: ochrona przeciwporażeniowa nie opiera się na samoczynnym "
-                "wyłączeniu z pętli zwarcia TN (IEC 60364-4-41). Pętla TN nie jest liczona."
-            ),
-            "missing_data": [],
-            "feeders": [],
-        }
 
     transformers = station_transformers(enm, station)
     if not transformers:
@@ -899,6 +897,12 @@ def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> d
         build_feeder_fault_loop_view_for_transformer(enm, station_ref, trafo.ref_id)
         for trafo in transformers
     ]
+    # Układ sieci nN jest własnością TRANSFORMATORA (W5-A): widok stacji niesie
+    # układ pierwszego transformatora; „nie dotyczy" (TT/IT) — gdy WSZYSTKIE
+    # transformatory stacji tak deklarują.
+    context["network_system"] = per_transformer[0].get("network_system")
+    if all(view.get("status") == "nie dotyczy" for view in per_transformer):
+        return {**per_transformer[0], **context, "feeders": []}
     computable = [view for view in per_transformer if view.get("status") == "OK"]
     missing_data = sorted(
         {

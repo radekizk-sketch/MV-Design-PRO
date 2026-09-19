@@ -11,18 +11,21 @@ import {
 import { derFixture, katalogFixture, wynikFixture } from './fixtures';
 
 describe('rozwiazNapiecieKv — napięcie WYŁĄCZNIE z modelu (ZAKAZ zgadywania)', () => {
-  it('rozwiązuje 0,4 kV z poziomu napięcia przyłączenia (voltage_level_ref)', () => {
-    expect(rozwiazNapiecieKv(derFixture({ id: 'pv-1', voltage_level_ref: 'lv_0_4kV' }))).toBe(0.4);
+  it('rozwiązuje 0,4 kV z napięcia szyny przyłączenia (connection_voltage_kv)', () => {
+    expect(rozwiazNapiecieKv(derFixture({ id: 'pv-1', connection_voltage_kv: 0.4 }))).toBe(0.4);
   });
 
-  it('zwraca null gdy brak poziomu napięcia — NIE zgaduje 15 kV', () => {
-    const der = derFixture({ id: 'pv-1', voltage_level_ref: null, connection_side: 'SN' });
+  it('zwraca null gdy brak napięcia szyny przyłączenia — NIE zgaduje 15 kV', () => {
+    const der = derFixture({ id: 'pv-1', connection_voltage_kv: null, connection_side: 'dedicated_transformer' });
     expect(rozwiazNapiecieKv(der)).toBeNull();
   });
 
-  it('zwraca null dla nieznanego odwołania poziomu napięcia', () => {
-    expect(rozwiazNapiecieKv(derFixture({ id: 'pv-1', voltage_level_ref: 'nieistnieje' }))).toBeNull();
-  });
+  // Karta FAB-K (§0 R4): dawny test „nieznane odwołanie poziomu napięcia"
+  // (`voltage_level_ref: 'nieistnieje'`) sprawdzał odporność na ZGADYWALNY,
+  // tekstowy identyfikator referencji katalogowej — pole USUNIĘTE jako fantom.
+  // `connection_voltage_kv` jest typowane jako `number | null` (kompilator
+  // eliminuje klasę „nieparsowalny string" u źródła, nie w runtime) — scenariusz
+  // testu przestał być możliwy do skonstruowania, nie tylko przestał występować.
 });
 
 describe('zbudujModuly — projekcja realnego źródła DER', () => {
@@ -36,7 +39,7 @@ describe('zbudujModuly — projekcja realnego źródła DER', () => {
   });
 
   it('brak napięcia → blokada „brak_napiecia" (jawny stan braku danych)', () => {
-    const [modul] = zbudujModuly([derFixture({ id: 'pv-1', voltage_level_ref: null })]);
+    const [modul] = zbudujModuly([derFixture({ id: 'pv-1', connection_voltage_kv: null })]);
     expect(modul.napiecieKv).toBeNull();
     expect(modul.powodBlokady).toBe('brak_napiecia');
   });
@@ -61,17 +64,49 @@ describe('zbudujModuly — projekcja realnego źródła DER', () => {
     ]);
     expect(modul.certyfikat).toBe('ptpiree_verified');
   });
+
+  /**
+   * Karta CERTYFIKAT-Z-KATALOGU (zero fabrykacji, KLASA NIE INSTANCJA): status
+   * certyfikatu WYŁĄCZNIE z pola backendu (`ptpiree_status`/
+   * `ptpiree_certificate_ref`), nigdy z zawartości `device_catalog_ref`.
+   * Iloczyn cech pełny w `station-der/__tests__/certyfikatPtpiree.test.ts`;
+   * tu — dowód regresji na poziomie adaptera macierzy (`zbudujModuly`), który
+   * konsumuje predykat.
+   */
+  it('device_catalog_ref zawiera "ptpiree" w nazwie, ale backend NIE potwierdził → unknown (dawna fabrykacja usunięta)', () => {
+    const [modul] = zbudujModuly([
+      derFixture({
+        id: 'pv-1',
+        catalogs: { ptpiree_certificate_ref: null, ptpiree_status: null, device_catalog_ref: 'device-ptpiree-lookalike' },
+      }),
+    ]);
+    expect(modul.certyfikat).toBe('unknown');
+  });
+
+  it('ptpiree_status=POWIAZANY bez słowa "ptpiree" w device_catalog_ref → ptpiree_verified', () => {
+    const [modul] = zbudujModuly([
+      derFixture({
+        id: 'pv-1',
+        catalogs: {
+          ptpiree_certificate_ref: 'cert-huawei-215ktl',
+          ptpiree_status: 'POWIAZANY',
+          device_catalog_ref: 'conv-pv-card-huawei-sun2000-215ktl',
+        },
+      }),
+    ]);
+    expect(modul.certyfikat).toBe('ptpiree_verified');
+  });
 });
 
 describe('zbudujWejscieModulu — wejście biegu', () => {
   it('moduł zablokowany → null (nie trafia do biegu)', () => {
-    const [modul] = zbudujModuly([derFixture({ id: 'pv-1', voltage_level_ref: null })]);
+    const [modul] = zbudujModuly([derFixture({ id: 'pv-1', connection_voltage_kv: null })]);
     expect(zbudujWejscieModulu(modul, 'enea')).toBeNull();
   });
 
   it('składa NcRfgModuleInput z napięciem z modelu, mocą i operatorem', () => {
     const [modul] = zbudujModuly([
-      derFixture({ id: 'pv-1', nominal_power_kw: 500, voltage_level_ref: 'lv_0_4kV' }),
+      derFixture({ id: 'pv-1', nominal_power_kw: 500, connection_voltage_kv: 0.4 }),
     ]);
     const wejscie = zbudujWejscieModulu(modul, 'pge');
     expect(wejscie).not.toBeNull();
@@ -86,7 +121,7 @@ describe('mapujMacierz — siatka test × moduł', () => {
   const moduly = zbudujModuly([
     derFixture({ id: 'pv-1', name: 'PV Dach A' }),
     derFixture({ id: 'bess-1', name: 'Magazyn energii 1', der_kind: 'BESS', nominal_power_kw: 800 }),
-    derFixture({ id: 'fw-1', name: 'Farma wiatrowa', der_kind: 'FW', voltage_level_ref: null }),
+    derFixture({ id: 'fw-1', name: 'Farma wiatrowa', der_kind: 'FW', connection_voltage_kv: null }),
   ]);
 
   it('wiersze = testy katalogu; kolumny = wszystkie moduły', () => {
@@ -121,7 +156,7 @@ describe('podsumowania per moduł i per projekt', () => {
   const moduly = zbudujModuly([
     derFixture({ id: 'pv-1', name: 'PV Dach A' }),
     derFixture({ id: 'bess-1', name: 'Magazyn energii 1', der_kind: 'BESS' }),
-    derFixture({ id: 'fw-1', name: 'Farma wiatrowa', der_kind: 'FW', voltage_level_ref: null }),
+    derFixture({ id: 'fw-1', name: 'Farma wiatrowa', der_kind: 'FW', connection_voltage_kv: null }),
   ]);
 
   it('per moduł: zgodny/niezgodny z wyniku; zablokowany → brak_danych', () => {

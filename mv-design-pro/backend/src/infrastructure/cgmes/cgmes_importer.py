@@ -41,10 +41,13 @@ from enm.models import (
     SwitchBranch,
 )
 from enm.validator import ENMValidator, ValidationResult
+from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
+from network_model.pochodne import m_na_km
 
 from .profiles import NS_CIM, NS_RDF
 from .refmap import CgmesRefMap
 from .units import (
+    a_to_ka,
     total_ohm_to_per_km,
     total_siemens_to_per_km,
     v_to_kv,
@@ -254,7 +257,7 @@ def import_from_eq_tp(
         name = _text(seg, "IdentifiedObject.name") or mrid
         ref = ref_of(mrid, name)
         length_m = _float(_text(seg, "Conductor.length")) or 0.0
-        length_km = length_m / 1000.0
+        length_km = m_na_km(length_m)
         a, b = endpoint_bus_refs(mrid)
         if a is None or b is None or length_km <= 0:
             continue
@@ -386,6 +389,15 @@ def import_from_eq_tp(
             continue
         r1 = _float(_text(inj, "ExternalNetworkInjection.maxR1"))
         x1 = _float(_text(inj, "ExternalNetworkInjection.maxX1"))
+        # CV-4.3 K7: deklaracja zwarciowa źródła czytana W CAŁOŚCI — prądy początkowe
+        # MAX/MIN (`*InitialSymShCCurrent`, A -> kA -> `ik3_ka`/`ik3_min_ka`) i stosunki R/X
+        # (`maxR1ToX1Ratio`/`minR1ToX1Ratio` -> `rx_ratio`/`rx_ratio_min`). Stan PRZED czytał
+        # wyłącznie R1/X1: źródło zadeklarowane mocą/prądem zwarciowym wracało z importu BEZ
+        # danych zwarciowych (niepoliczalne, E008), a R/X gubiony po cichu. Atrybut
+        # nieobecny = pole `None` (zero fabrykacji) — o trybie danych rozstrzyga
+        # `enm.zrodlo_zwarcie.tryb_danych` (R+jX > Sk'' > Ik''), nie importer.
+        ik_max_a = _float(_text(inj, "ExternalNetworkInjection.maxInitialSymShCCurrent"))
+        ik_min_a = _float(_text(inj, "ExternalNetworkInjection.minInitialSymShCCurrent"))
         sources.append(
             Source(
                 ref_id=ref,
@@ -394,6 +406,10 @@ def import_from_eq_tp(
                 model="external_grid",
                 r_ohm=r1,
                 x_ohm=x1,
+                ik3_ka=a_to_ka(ik_max_a) if ik_max_a is not None else None,
+                rx_ratio=_float(_text(inj, "ExternalNetworkInjection.maxR1ToX1Ratio")),
+                ik3_min_ka=a_to_ka(ik_min_a) if ik_min_a is not None else None,
+                rx_ratio_min=_float(_text(inj, "ExternalNetworkInjection.minR1ToX1Ratio")),
                 r0_ohm=_float(_text(inj, "ExternalNetworkInjection.maxR0")),
                 x0_ohm=_float(_text(inj, "ExternalNetworkInjection.maxX0")),
                 catalog_ref=None,
@@ -468,15 +484,36 @@ def _ostrzezenia_importu(
 
 
 def _elements_without_catalog(enm: EnergyNetworkModel) -> list[str]:
-    """Return ref_ids of catalog-bound elements missing a catalog_ref."""
+    """Return ref_ids of catalog-bound elements missing a catalog_ref.
+
+    Side-car (lossless) round-trip only — `catalog.governance.wymagalnosc_
+    katalogu` (oś `import_`), jedyne źródło prawdy wspólne z walidatorem E009,
+    bramką ZIP i XLSX (karta W3-I). Karta W3-I (2026-09-09): PRZED tą kartą
+    to sprawdzenie nie znało wyjątku `parameter_source == "MANUAL_EQUIVALENT"`
+    (K1.2) — źródło z jawnym Sk''/RX, poprawne wg E009, wracało z side-car
+    round-tripu oznaczone `CATALOG_MAPPING_REQUIRED`. Rozjazd nazwany w
+    meldunku karty — naprawiony tu; test round-tripu w
+    `tests/cgmes/test_cgmes_katalog_predykat.py`.
+
+    Third-party EQ+TP path (`import_from_eq_tp`) NIE woła tej funkcji — buduje
+    własną listę inline, bo TAM każdy element jest z definicji migracyjnym
+    artefaktem bez katalogu (CIM nie niesie referencji katalogowej wcale),
+    niezależnie od rodzaju — to inna decyzja biznesowa, nie duplikat tego
+    predykatu (patrz `import_from_eq_tp`).
+    """
     missing: list[str] = []
     for branch in enm.branches:
-        if isinstance(branch, OverheadLine | Cable) and not branch.catalog_ref:
+        if brakuje_wymaganej_referencji(
+            wymagalnosc_katalogu(branch.type).import_, branch.catalog_ref
+        ):
             missing.append(branch.ref_id)
     for trafo in enm.transformers:
-        if not trafo.catalog_ref:
+        if brakuje_wymaganej_referencji(
+            wymagalnosc_katalogu("transformer").import_, trafo.catalog_ref
+        ):
             missing.append(trafo.ref_id)
     for source in enm.sources:
-        if not source.catalog_ref:
+        poziom = wymagalnosc_katalogu("source", parameter_source=source.parameter_source).import_
+        if brakuje_wymaganej_referencji(poziom, source.catalog_ref):
             missing.append(source.ref_id)
     return sorted(set(missing))

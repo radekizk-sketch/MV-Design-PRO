@@ -20,6 +20,7 @@ import { useEffect } from 'react';
 
 import { useAppStateStore } from '../../app-state';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { useAudit2CatalogSnapshot } from './audit2-hooks';
 import { useStationDerStore } from './store';
 import { deryZModelu } from './zModelu';
 
@@ -31,9 +32,13 @@ export function useSynchronizacjaDerZModelu(): void {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
   const synchronizuj = useStationDerStore((s) => s.synchronizujZModelu);
+  // Karta FAB-J: snapshot audytu 2 dla inferencji transformatora dedykowanego
+  // (`inferBlockTransformerCatalogRef`) — bez niego wytwórcy legacy bez
+  // `meta.block_transformer_catalog_ref` nie dostaną wywnioskowanej pozycji.
+  const blockTransformers = useAudit2CatalogSnapshot().data?.block_transformers ?? [];
 
   useEffect(() => {
     if (!snapshot) return;
-    synchronizuj(deryZModelu(snapshot, activeProjectId));
-  }, [snapshot, activeProjectId, synchronizuj]);
+    synchronizuj(deryZModelu(snapshot, activeProjectId, blockTransformers));
+  }, [snapshot, activeProjectId, synchronizuj, blockTransformers]);
 }

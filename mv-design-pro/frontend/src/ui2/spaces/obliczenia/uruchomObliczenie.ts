@@ -127,9 +127,17 @@ export async function waitForExecutionRunTerminalState(
 
 /**
  * Uruchamia obliczenie WSKAZANEGO rodzaju dla aktywnego zakresu obliczeń.
+ * `solverInput` (opcjonalny) — jawne opcje biegu (np. scenariusz stabilności
+ * dynamicznej); przekazywany 1:1 do `POST /api/execution/study-cases/{id}/runs`
+ * jako `solver_input` (pole `options` po stronie backendu, `enm/canonical_analysis.py`).
+ * Brak = pusty obiekt, tak jak dotychczas (kontrakt `CreateRunRequest.solver_input`
+ * ma domyślną wartość `{}` po stronie backendu).
  * Zwraca `true`, gdy przebieg zakończył się wynikiem (status DONE bez awarii).
  */
-export async function uruchomObliczenie(analysisType: ExecutionAnalysisType): Promise<boolean> {
+export async function uruchomObliczenie(
+  analysisType: ExecutionAnalysisType,
+  solverInput?: Record<string, unknown>,
+): Promise<boolean> {
   const stanAplikacji = useAppStateStore.getState();
   const activeCaseId = stanAplikacji.activeCaseId;
 
@@ -164,6 +172,7 @@ export async function uruchomObliczenie(analysisType: ExecutionAnalysisType): Pr
     const przebiegi = useExecutionRunsStore.getState();
     const createdRun = await przebiegi.createAndExecuteRun(caseIdForRun, {
       analysis_type: analysisType,
+      ...(solverInput !== undefined ? { solver_input: solverInput } : {}),
     });
     const run = await waitForExecutionRunTerminalState(
       createdRun,
@@ -218,13 +227,16 @@ export async function uruchomObliczenie(analysisType: ExecutionAnalysisType): Pr
  * wykonanie → odpytywanie), bo store kończy `isExecutingRun` przed pollingiem.
  */
 export function useUruchomObliczenie(): {
-  uruchom: (analysisType: ExecutionAnalysisType) => void;
+  uruchom: (analysisType: ExecutionAnalysisType, solverInput?: Record<string, unknown>) => void;
   wToku: boolean;
 } {
   const [wToku, setWToku] = useState(false);
-  const uruchom = useCallback((analysisType: ExecutionAnalysisType) => {
-    setWToku(true);
-    void uruchomObliczenie(analysisType).finally(() => setWToku(false));
-  }, []);
+  const uruchom = useCallback(
+    (analysisType: ExecutionAnalysisType, solverInput?: Record<string, unknown>) => {
+      setWToku(true);
+      void uruchomObliczenie(analysisType, solverInput).finally(() => setWToku(false));
+    },
+    [],
+  );
   return { uruchom, wToku };
 }

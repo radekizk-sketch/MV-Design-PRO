@@ -162,30 +162,71 @@ describe('zbudujPradyKoordynacji — zero fabrykacji', () => {
   });
 });
 
-describe('podzielWierszeNaPrzypadki — klasyfikacja po współczynniku c (IEC 60909)', () => {
-  it('c = 1,10 to przypadek maksymalny, c = 0,95 minimalny', () => {
+describe('podzielWierszeNaPrzypadki — klasyfikacja po SCENARIUSZU biegu', () => {
+  const bieg = (
+    scenariusz: 'MAX' | 'MIN' | null,
+    wiersze: ShortCircuitRow[],
+  ): { rows: ShortCircuitRow[]; konfiguracja_biegu?: { scenariusz: 'MAX' | 'MIN' | null } } =>
+    scenariusz === null
+      ? { rows: wiersze }
+      : { rows: wiersze, konfiguracja_biegu: { scenariusz } };
+
+  it('bieg MAX i bieg MIN trafiają do właściwych zbiorów', () => {
     const wynik = podzielWierszeNaPrzypadki([
-      wierszSC({ c_factor: 1.1, ikss_ka: 8.4 }),
-      wierszSC({ c_factor: 0.95, ikss_ka: 3.1 }),
+      bieg('MAX', [wierszSC({ c_factor: 1.1, ikss_ka: 8.4 })]),
+      bieg('MIN', [wierszSC({ c_factor: 0.95, ikss_ka: 3.1 })]),
     ]);
 
     expect(wynik.max.map((w) => w.ikss_ka)).toEqual([8.4]);
     expect(wynik.min.map((w) => w.ikss_ka)).toEqual([3.1]);
-    expect(wynik.bezWspolczynnika).toEqual([]);
+    expect(wynik.bezScenariusza).toEqual([]);
   });
 
-  it('wiersz bez c nie trafia do żadnego przypadku (zero zgadywania)', () => {
-    const wynik = podzielWierszeNaPrzypadki([wierszSC({ c_factor: null })]);
+  /**
+   * ILOCZYN CECH: wariant biegu (MIN) × pasmo napięciowe punktu (SN vs nN).
+   * IEC 60909-0 Tabela 1: c_min = 1,00 powyżej 1 kV, 0,95 dla nN. Bieg MINIMALNY
+   * na sieci SN niesie WIĘC c = 1,00 na szynach SN i 0,95 na szynach nN — dawna
+   * klasyfikacja progiem `c >= 1` wrzucała wiersze SN tego biegu do zbioru
+   * MAKSYMALNEGO i ekran koordynacji nigdy nie dostawał Ik_min dla zabezpieczenia
+   * na szynie SN (zmierzone na realnych biegach magistrali SN, karta
+   * HARNESS-RESZTA-2).
+   */
+  it('bieg MIN na sieci SN (c_min = 1,00 wg IEC 60909 Tab. 1) NIE trafia do zbioru MAX', () => {
+    const wynik = podzielWierszeNaPrzypadki([
+      bieg('MAX', [wierszSC({ element_id: 'bus/sn/1', c_factor: 1.1, ikss_ka: 9.06 })]),
+      bieg('MIN', [
+        wierszSC({ element_id: 'bus/sn/1', c_factor: 1.0, ikss_ka: 8.41 }),
+        wierszSC({ element_id: 'bus/nn/1', c_factor: 0.95, ikss_ka: 18.5 }),
+      ]),
+    ]);
+
+    expect(wynik.max.map((w) => w.ikss_ka)).toEqual([9.06]);
+    expect(wynik.min.map((w) => w.ikss_ka)).toEqual([8.41, 18.5]);
+
+    const prady = zbudujPradyKoordynacji({
+      urzadzenia: [urzadzenie({ location_element_id: 'bus/sn/1' })],
+      wierszeMax: wynik.max,
+      wierszeMin: wynik.min,
+      wierszeGalezi: [wierszGalezi()],
+    });
+    expect(prady.faultCurrents).toEqual([
+      { location_id: 'bus/sn/1', ik_max_3f_a: 9060, ik_min_3f_a: 8410 },
+    ]);
+    expect(prady.braki).toEqual([]);
+  });
+
+  it('bieg bez zapisanego scenariusza nie trafia do żadnego przypadku (zero zgadywania)', () => {
+    const wynik = podzielWierszeNaPrzypadki([bieg(null, [wierszSC({ c_factor: 1.1 })])]);
 
     expect(wynik.max).toEqual([]);
     expect(wynik.min).toEqual([]);
-    expect(wynik.bezWspolczynnika).toHaveLength(1);
+    expect(wynik.bezScenariusza).toHaveLength(1);
   });
 
   it('dwa biegi razem dają komplet prądów koordynacji', () => {
     const { max, min } = podzielWierszeNaPrzypadki([
-      wierszSC({ c_factor: 1.1, ikss_ka: 8.4 }),
-      wierszSC({ c_factor: 0.95, ikss_ka: 3.1 }),
+      bieg('MAX', [wierszSC({ c_factor: 1.1, ikss_ka: 8.4 })]),
+      bieg('MIN', [wierszSC({ c_factor: 0.95, ikss_ka: 3.1 })]),
     ]);
     const wynik = zbudujPradyKoordynacji({
       urzadzenia: [urzadzenie()],

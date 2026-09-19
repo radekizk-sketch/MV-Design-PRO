@@ -1,0 +1,1002 @@
+{
+  "63203cbc-ac91-5100-a0ee-a275d24514ff": {
+    "standard": "IEC 60909-0:2016 §6.6",
+    "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+    "c_factor": 1.1,
+    "t_min_s": 0.1,
+    "contributions": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "machine_type": "SYNCHRONOUS",
+        "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+        "z_internal_ohm": {
+          "re": 0.9536697247706422,
+          "im": 13.623853211009173
+        },
+        "ir_a": 96.22504486493763,
+        "ikss_partial_a": 643.6441371387431,
+        "ratio_ik_ir": 6.688946085108799,
+        "mu": 0.7046722960377743,
+        "q": 1.0,
+        "ib_a": 453.55819194881013,
+        "is_synchronous_machine": true,
+        "p_per_pole_mw": 0.0,
+        "wywod": [
+          {
+            "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+            "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+          },
+          {
+            "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
+          },
+          {
+            "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 6.69",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
+          },
+          {
+            "tekst": "Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.705",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+          },
+          {
+            "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.454 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
+          }
+        ]
+      }
+    ],
+    "ikss_machines_a": 643.6441371387431,
+    "ib_machines_a": 453.55819194881013,
+    "motors_negligible": true,
+    "white_box": {
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
+      "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "z_kk_ohm": {
+        "re": 0.05413962601553557,
+        "im": 1.062646512021273
+      },
+      "i_base_a": 3849.0017945975055,
+      "ikss_total_a": 8953.06173406898,
+      "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
+      "n_synchronous": 1,
+      "n_asynchronous": 0,
+      "n_dfig": 0,
+      "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
+      "ikss_async_machines_a": 0,
+      "small_motor_limit_a": 447.65308670344905,
+      "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
+    },
+    "wywod": [
+      {
+        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+        "latex": null
+      },
+      {
+        "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 8.953 kA, c = 1.10, t_min = 0.10 s",
+        "latex": null
+      },
+      {
+        "tekst": "— Generator synchroniczny (SYNCHRONOUS) —",
+        "latex": null
+      },
+      {
+        "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+        "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+      },
+      {
+        "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
+      },
+      {
+        "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 6.69",
+        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
+      },
+      {
+        "tekst": "Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.705",
+        "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+      },
+      {
+        "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.454 kA",
+        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
+      },
+      {
+        "tekst": "Suma wkladow maszyn: I''k,M = 0.644 kA, I_b,M = 0.454 kA",
+        "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
+      },
+      {
+        "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.448 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.448) -> SPELNIONA (silniki pomijalne w Ib)",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+      }
+    ],
+    "wywod_sekcje": [
+      {
+        "tytul": "Dane wejściowe i model",
+        "kroki": [
+          {
+            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+            "latex": null
+          },
+          {
+            "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 8.953 kA, c = 1.10, t_min = 0.10 s",
+            "latex": null
+          }
+        ],
+        "norma": "IEC 60909-0:2016"
+      },
+      {
+        "tytul": "Wkład: Generator synchroniczny",
+        "kroki": [
+          {
+            "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+            "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+          },
+          {
+            "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
+          },
+          {
+            "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 6.69",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
+          },
+          {
+            "tekst": "Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.705",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+          },
+          {
+            "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.454 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
+          }
+        ],
+        "norma": "IEC 60909-0:2016 §6.6"
+      },
+      {
+        "tytul": "Suma wkładów i reguły",
+        "kroki": [
+          {
+            "tekst": "Suma wkladow maszyn: I''k,M = 0.644 kA, I_b,M = 0.454 kA",
+            "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
+          },
+          {
+            "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.448 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.448) -> SPELNIONA (silniki pomijalne w Ib)",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+          }
+        ],
+        "norma": "IEC 60909-0:2016 §6.6"
+      }
+    ],
+    "walidacja_iec": [
+      {
+        "pozycja_pl": "Norma bazowa metody",
+        "wartosc_pl": "IEC 60909-0:2016",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Współczynnik napięciowy c",
+        "wartosc_pl": "c = 1.10 (z tego przebiegu)",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Metoda obliczenia wkładów",
+        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Maszyny asynchroniczne",
+        "wartosc_pl": "nieobecne w modelu",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Reguła małych silników (5%)",
+        "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 0.448 kA)",
+        "status": "PASS"
+      },
+      {
+        "pozycja_pl": "Determinizm kontraktu (input_hash)",
+        "wartosc_pl": "obecny: 3fcc1859ae51...",
+        "status": "PASS"
+      }
+    ],
+    "input_hash": "3fcc1859ae51ec40e2cf3f84874b0f6d1fd4ca725ebbf9a5f53e84c7321433d2"
+  },
+  "80c21edb-e0ec-5378-acd6-e90f5ec0bc57": {
+    "standard": "IEC 60909-0:2016 §6.6",
+    "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+    "c_factor": 1.1,
+    "t_min_s": 0.1,
+    "contributions": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "machine_type": "SYNCHRONOUS",
+        "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+        "z_internal_ohm": {
+          "re": 0.9536697247706422,
+          "im": 13.623853211009173
+        },
+        "ir_a": 96.22504486493763,
+        "ikss_partial_a": 81.961475008182,
+        "ratio_ik_ir": 0.851768633864748,
+        "mu": 1.0,
+        "q": 1.0,
+        "ib_a": 81.961475008182,
+        "is_synchronous_machine": true,
+        "p_per_pole_mw": 0.0,
+        "wywod": [
+          {
+            "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+            "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+          },
+          {
+            "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0356}{0.0413 \\cdot 6.0699} \\cdot 525\\;\\mathrm{A} = 0.082\\;\\mathrm{kA}"
+          },
+          {
+            "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 0.85",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.082}{0.096} = 0.85"
+          },
+          {
+            "tekst": "Wspolczynnik zaniku: I''k/Ir <= 2 -> mu = 1 (zwarcie odlegle od generatora, par. 6.6.1)",
+            "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
+          },
+          {
+            "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.082 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 0.082\\;\\mathrm{kA} = 0.082\\;\\mathrm{kA}"
+          }
+        ]
+      }
+    ],
+    "ikss_machines_a": 81.961475008182,
+    "ib_machines_a": 81.961475008182,
+    "motors_negligible": true,
+    "white_box": {
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
+      "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "z_kk_ohm": {
+        "re": 0.49775018509306584,
+        "im": 4.970639317498279
+      },
+      "i_base_a": 524.863881081478,
+      "ikss_total_a": 13984.46527056067,
+      "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
+      "n_synchronous": 1,
+      "n_asynchronous": 0,
+      "n_dfig": 0,
+      "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
+      "ikss_async_machines_a": 0,
+      "small_motor_limit_a": 699.2232635280335,
+      "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
+    },
+    "wywod": [
+      {
+        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+        "latex": null
+      },
+      {
+        "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 13.984 kA, c = 1.10, t_min = 0.10 s",
+        "latex": null
+      },
+      {
+        "tekst": "— Generator synchroniczny (SYNCHRONOUS) —",
+        "latex": null
+      },
+      {
+        "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+        "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+      },
+      {
+        "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0356}{0.0413 \\cdot 6.0699} \\cdot 525\\;\\mathrm{A} = 0.082\\;\\mathrm{kA}"
+      },
+      {
+        "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 0.85",
+        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.082}{0.096} = 0.85"
+      },
+      {
+        "tekst": "Wspolczynnik zaniku: I''k/Ir <= 2 -> mu = 1 (zwarcie odlegle od generatora, par. 6.6.1)",
+        "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
+      },
+      {
+        "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.082 kA",
+        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 0.082\\;\\mathrm{kA} = 0.082\\;\\mathrm{kA}"
+      },
+      {
+        "tekst": "Suma wkladow maszyn: I''k,M = 0.082 kA, I_b,M = 0.082 kA",
+        "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
+      },
+      {
+        "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.699 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.699) -> SPELNIONA (silniki pomijalne w Ib)",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 13.984\\;\\mathrm{kA} = 0.699\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+      }
+    ],
+    "wywod_sekcje": [
+      {
+        "tytul": "Dane wejściowe i model",
+        "kroki": [
+          {
+            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+            "latex": null
+          },
+          {
+            "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 13.984 kA, c = 1.10, t_min = 0.10 s",
+            "latex": null
+          }
+        ],
+        "norma": "IEC 60909-0:2016"
+      },
+      {
+        "tytul": "Wkład: Generator synchroniczny",
+        "kroki": [
+          {
+            "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+            "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+          },
+          {
+            "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0356}{0.0413 \\cdot 6.0699} \\cdot 525\\;\\mathrm{A} = 0.082\\;\\mathrm{kA}"
+          },
+          {
+            "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 0.85",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.082}{0.096} = 0.85"
+          },
+          {
+            "tekst": "Wspolczynnik zaniku: I''k/Ir <= 2 -> mu = 1 (zwarcie odlegle od generatora, par. 6.6.1)",
+            "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
+          },
+          {
+            "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.082 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 0.082\\;\\mathrm{kA} = 0.082\\;\\mathrm{kA}"
+          }
+        ],
+        "norma": "IEC 60909-0:2016 §6.6"
+      },
+      {
+        "tytul": "Suma wkładów i reguły",
+        "kroki": [
+          {
+            "tekst": "Suma wkladow maszyn: I''k,M = 0.082 kA, I_b,M = 0.082 kA",
+            "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
+          },
+          {
+            "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.699 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.699) -> SPELNIONA (silniki pomijalne w Ib)",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 13.984\\;\\mathrm{kA} = 0.699\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+          }
+        ],
+        "norma": "IEC 60909-0:2016 §6.6"
+      }
+    ],
+    "walidacja_iec": [
+      {
+        "pozycja_pl": "Norma bazowa metody",
+        "wartosc_pl": "IEC 60909-0:2016",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Współczynnik napięciowy c",
+        "wartosc_pl": "c = 1.10 (z tego przebiegu)",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Metoda obliczenia wkładów",
+        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Maszyny asynchroniczne",
+        "wartosc_pl": "nieobecne w modelu",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Reguła małych silników (5%)",
+        "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 0.699 kA)",
+        "status": "PASS"
+      },
+      {
+        "pozycja_pl": "Determinizm kontraktu (input_hash)",
+        "wartosc_pl": "obecny: 60168aff769b...",
+        "status": "PASS"
+      }
+    ],
+    "input_hash": "60168aff769b294e488b3ecf9f3c32dd6406d84f3a32e9716028121d8dfe1035"
+  },
+  "d70aff7b-d056-5804-acce-c9bc5707612b": {
+    "standard": "IEC 60909-0:2016 §6.6",
+    "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+    "c_factor": 1.1,
+    "t_min_s": 0.1,
+    "contributions": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "machine_type": "SYNCHRONOUS",
+        "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+        "z_internal_ohm": {
+          "re": 0.9536697247706422,
+          "im": 13.623853211009173
+        },
+        "ir_a": 96.22504486493763,
+        "ikss_partial_a": 1540.7438760141677,
+        "ratio_ik_ir": 16.011880048242848,
+        "mu": 0.6242864101877741,
+        "q": 1.0,
+        "ib_a": 961.8654633756817,
+        "is_synchronous_machine": true,
+        "p_per_pole_mw": 0.0,
+        "wywod": [
+          {
+            "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+            "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+          },
+          {
+            "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{7.4083 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.541\\;\\mathrm{kA}"
+          },
+          {
+            "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 16.01",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{1.541}{0.096} = 16.01"
+          },
+          {
+            "tekst": "Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.624",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 16.01} = 0.624"
+          },
+          {
+            "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.962 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.624 \\cdot 1.000 \\cdot 1.541\\;\\mathrm{kA} = 0.962\\;\\mathrm{kA}"
+          }
+        ]
+      }
+    ],
+    "ikss_machines_a": 1540.7438760141677,
+    "ib_machines_a": 961.8654633756817,
+    "motors_negligible": true,
+    "white_box": {
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
+      "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "z_kk_ohm": {
+        "re": 0.0025853234455180648,
+        "im": 0.011567826009893416
+      },
+      "i_base_a": 144337.56729740644,
+      "ikss_total_a": 21431.679778309033,
+      "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
+      "n_synchronous": 1,
+      "n_asynchronous": 0,
+      "n_dfig": 0,
+      "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
+      "ikss_async_machines_a": 0,
+      "small_motor_limit_a": 1071.5839889154518,
+      "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
+    },
+    "wywod": [
+      {
+        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+        "latex": null
+      },
+      {
+        "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 21.432 kA, c = 1.10, t_min = 0.10 s",
+        "latex": null
+      },
+      {
+        "tekst": "— Generator synchroniczny (SYNCHRONOUS) —",
+        "latex": null
+      },
+      {
+        "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+        "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+      },
+      {
+        "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{7.4083 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.541\\;\\mathrm{kA}"
+      },
+      {
+        "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 16.01",
+        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{1.541}{0.096} = 16.01"
+      },
+      {
+        "tekst": "Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.624",
+        "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 16.01} = 0.624"
+      },
+      {
+        "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.962 kA",
+        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.624 \\cdot 1.000 \\cdot 1.541\\;\\mathrm{kA} = 0.962\\;\\mathrm{kA}"
+      },
+      {
+        "tekst": "Suma wkladow maszyn: I''k,M = 1.541 kA, I_b,M = 0.962 kA",
+        "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
+      },
+      {
+        "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 1.072 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 1.072) -> SPELNIONA (silniki pomijalne w Ib)",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 21.432\\;\\mathrm{kA} = 1.072\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+      }
+    ],
+    "wywod_sekcje": [
+      {
+        "tytul": "Dane wejściowe i model",
+        "kroki": [
+          {
+            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+            "latex": null
+          },
+          {
+            "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 21.432 kA, c = 1.10, t_min = 0.10 s",
+            "latex": null
+          }
+        ],
+        "norma": "IEC 60909-0:2016"
+      },
+      {
+        "tytul": "Wkład: Generator synchroniczny",
+        "kroki": [
+          {
+            "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+            "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+          },
+          {
+            "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{7.4083 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.541\\;\\mathrm{kA}"
+          },
+          {
+            "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 16.01",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{1.541}{0.096} = 16.01"
+          },
+          {
+            "tekst": "Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.624",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 16.01} = 0.624"
+          },
+          {
+            "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.962 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.624 \\cdot 1.000 \\cdot 1.541\\;\\mathrm{kA} = 0.962\\;\\mathrm{kA}"
+          }
+        ],
+        "norma": "IEC 60909-0:2016 §6.6"
+      },
+      {
+        "tytul": "Suma wkładów i reguły",
+        "kroki": [
+          {
+            "tekst": "Suma wkladow maszyn: I''k,M = 1.541 kA, I_b,M = 0.962 kA",
+            "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
+          },
+          {
+            "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 1.072 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 1.072) -> SPELNIONA (silniki pomijalne w Ib)",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 21.432\\;\\mathrm{kA} = 1.072\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+          }
+        ],
+        "norma": "IEC 60909-0:2016 §6.6"
+      }
+    ],
+    "walidacja_iec": [
+      {
+        "pozycja_pl": "Norma bazowa metody",
+        "wartosc_pl": "IEC 60909-0:2016",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Współczynnik napięciowy c",
+        "wartosc_pl": "c = 1.10 (z tego przebiegu)",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Metoda obliczenia wkładów",
+        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Maszyny asynchroniczne",
+        "wartosc_pl": "nieobecne w modelu",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Reguła małych silników (5%)",
+        "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 1.072 kA)",
+        "status": "PASS"
+      },
+      {
+        "pozycja_pl": "Determinizm kontraktu (input_hash)",
+        "wartosc_pl": "obecny: 2425e22fffaf...",
+        "status": "PASS"
+      }
+    ],
+    "input_hash": "2425e22fffaf974ce69636ee785a82cc60eaa680342024078115b91ba40887ff"
+  },
+  "d93618a6-23da-5d59-ae10-a7242961b790": {
+    "standard": "IEC 60909-0:2016 §6.6",
+    "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+    "c_factor": 1.1,
+    "t_min_s": 0.1,
+    "contributions": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "machine_type": "SYNCHRONOUS",
+        "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+        "z_internal_ohm": {
+          "re": 0.9536697247706422,
+          "im": 13.623853211009173
+        },
+        "ir_a": 96.22504486493763,
+        "ikss_partial_a": 643.6441371387431,
+        "ratio_ik_ir": 6.688946085108799,
+        "mu": 0.7046722960377743,
+        "q": 1.0,
+        "ib_a": 453.55819194881013,
+        "is_synchronous_machine": true,
+        "p_per_pole_mw": 0.0,
+        "wywod": [
+          {
+            "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+            "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+          },
+          {
+            "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
+          },
+          {
+            "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 6.69",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
+          },
+          {
+            "tekst": "Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.705",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+          },
+          {
+            "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.454 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
+          }
+        ]
+      }
+    ],
+    "ikss_machines_a": 643.6441371387431,
+    "ib_machines_a": 453.55819194881013,
+    "motors_negligible": true,
+    "white_box": {
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
+      "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "z_kk_ohm": {
+        "re": 0.05413962601553557,
+        "im": 1.062646512021273
+      },
+      "i_base_a": 3849.0017945975055,
+      "ikss_total_a": 8953.06173406898,
+      "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
+      "n_synchronous": 1,
+      "n_asynchronous": 0,
+      "n_dfig": 0,
+      "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
+      "ikss_async_machines_a": 0,
+      "small_motor_limit_a": 447.65308670344905,
+      "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
+    },
+    "wywod": [
+      {
+        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+        "latex": null
+      },
+      {
+        "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 8.953 kA, c = 1.10, t_min = 0.10 s",
+        "latex": null
+      },
+      {
+        "tekst": "— Generator synchroniczny (SYNCHRONOUS) —",
+        "latex": null
+      },
+      {
+        "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+        "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+      },
+      {
+        "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
+      },
+      {
+        "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 6.69",
+        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
+      },
+      {
+        "tekst": "Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.705",
+        "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+      },
+      {
+        "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.454 kA",
+        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
+      },
+      {
+        "tekst": "Suma wkladow maszyn: I''k,M = 0.644 kA, I_b,M = 0.454 kA",
+        "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
+      },
+      {
+        "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.448 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.448) -> SPELNIONA (silniki pomijalne w Ib)",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+      }
+    ],
+    "wywod_sekcje": [
+      {
+        "tytul": "Dane wejściowe i model",
+        "kroki": [
+          {
+            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+            "latex": null
+          },
+          {
+            "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 8.953 kA, c = 1.10, t_min = 0.10 s",
+            "latex": null
+          }
+        ],
+        "norma": "IEC 60909-0:2016"
+      },
+      {
+        "tytul": "Wkład: Generator synchroniczny",
+        "kroki": [
+          {
+            "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+            "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+          },
+          {
+            "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
+          },
+          {
+            "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 6.69",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
+          },
+          {
+            "tekst": "Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.705",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+          },
+          {
+            "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.454 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
+          }
+        ],
+        "norma": "IEC 60909-0:2016 §6.6"
+      },
+      {
+        "tytul": "Suma wkładów i reguły",
+        "kroki": [
+          {
+            "tekst": "Suma wkladow maszyn: I''k,M = 0.644 kA, I_b,M = 0.454 kA",
+            "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
+          },
+          {
+            "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.448 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.448) -> SPELNIONA (silniki pomijalne w Ib)",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+          }
+        ],
+        "norma": "IEC 60909-0:2016 §6.6"
+      }
+    ],
+    "walidacja_iec": [
+      {
+        "pozycja_pl": "Norma bazowa metody",
+        "wartosc_pl": "IEC 60909-0:2016",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Współczynnik napięciowy c",
+        "wartosc_pl": "c = 1.10 (z tego przebiegu)",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Metoda obliczenia wkładów",
+        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Maszyny asynchroniczne",
+        "wartosc_pl": "nieobecne w modelu",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Reguła małych silników (5%)",
+        "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 0.448 kA)",
+        "status": "PASS"
+      },
+      {
+        "pozycja_pl": "Determinizm kontraktu (input_hash)",
+        "wartosc_pl": "obecny: 207adc9ba02d...",
+        "status": "PASS"
+      }
+    ],
+    "input_hash": "207adc9ba02d65dc70306cbf25899c1614728d76c7ca3135acba02ae20894424"
+  },
+  "e22c09ea-bf55-54b7-8c57-88efc2eb8989": {
+    "standard": "IEC 60909-0:2016 §6.6",
+    "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+    "c_factor": 1.1,
+    "t_min_s": 0.1,
+    "contributions": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "machine_type": "SYNCHRONOUS",
+        "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+        "z_internal_ohm": {
+          "re": 0.9536697247706422,
+          "im": 13.623853211009173
+        },
+        "ir_a": 96.22504486493763,
+        "ikss_partial_a": 697.5284696120004,
+        "ratio_ik_ir": 7.248928494562491,
+        "mu": 0.6907812470719705,
+        "q": 1.0,
+        "ib_a": 481.83958610678076,
+        "is_synchronous_machine": true,
+        "p_per_pole_mw": 0.0,
+        "wywod": [
+          {
+            "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+            "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+          },
+          {
+            "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.9197}{0.9197 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.698\\;\\mathrm{kA}"
+          },
+          {
+            "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 7.25",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.698}{0.096} = 7.25"
+          },
+          {
+            "tekst": "Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.691",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 7.25} = 0.691"
+          },
+          {
+            "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.482 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.691 \\cdot 1.000 \\cdot 0.698\\;\\mathrm{kA} = 0.482\\;\\mathrm{kA}"
+          }
+        ]
+      }
+    ],
+    "ikss_machines_a": 697.5284696120004,
+    "ib_machines_a": 481.83958610678076,
+    "motors_negligible": true,
+    "white_box": {
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
+      "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "z_kk_ohm": {
+        "re": 0.7557255080898564,
+        "im": 1.9264383236339513
+      },
+      "i_base_a": 3849.0017945975055,
+      "ikss_total_a": 4603.471933192969,
+      "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
+      "n_synchronous": 1,
+      "n_asynchronous": 0,
+      "n_dfig": 0,
+      "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
+      "ikss_async_machines_a": 0,
+      "small_motor_limit_a": 230.17359665964847,
+      "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
+    },
+    "wywod": [
+      {
+        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+        "latex": null
+      },
+      {
+        "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 4.603 kA, c = 1.10, t_min = 0.10 s",
+        "latex": null
+      },
+      {
+        "tekst": "— Generator synchroniczny (SYNCHRONOUS) —",
+        "latex": null
+      },
+      {
+        "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+        "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+      },
+      {
+        "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.9197}{0.9197 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.698\\;\\mathrm{kA}"
+      },
+      {
+        "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 7.25",
+        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.698}{0.096} = 7.25"
+      },
+      {
+        "tekst": "Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.691",
+        "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 7.25} = 0.691"
+      },
+      {
+        "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.482 kA",
+        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.691 \\cdot 1.000 \\cdot 0.698\\;\\mathrm{kA} = 0.482\\;\\mathrm{kA}"
+      },
+      {
+        "tekst": "Suma wkladow maszyn: I''k,M = 0.698 kA, I_b,M = 0.482 kA",
+        "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
+      },
+      {
+        "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.230 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.230) -> SPELNIONA (silniki pomijalne w Ib)",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.603\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+      }
+    ],
+    "wywod_sekcje": [
+      {
+        "tytul": "Dane wejściowe i model",
+        "kroki": [
+          {
+            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+            "latex": null
+          },
+          {
+            "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 4.603 kA, c = 1.10, t_min = 0.10 s",
+            "latex": null
+          }
+        ],
+        "norma": "IEC 60909-0:2016"
+      },
+      {
+        "tytul": "Wkład: Generator synchroniczny",
+        "kroki": [
+          {
+            "tekst": "Impedancja zastepcza maszyny: Z''m = 0.9537 + j13.6239 ohm",
+            "latex": "Z''_m = 0.9537 + j\\,13.6239\\;\\Omega,\\qquad |Z''_m| = 13.6572\\;\\Omega"
+          },
+          {
+            "tekst": "Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z''))",
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.9197}{0.9197 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.698\\;\\mathrm{kA}"
+          },
+          {
+            "tekst": "Krotnosc pradu znamionowego: I''k/Ir = 7.25",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.698}{0.096} = 7.25"
+          },
+          {
+            "tekst": "Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.691",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 7.25} = 0.691"
+          },
+          {
+            "tekst": "Prad wylaczeniowy symetryczny: Ib = 0.482 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.691 \\cdot 1.000 \\cdot 0.698\\;\\mathrm{kA} = 0.482\\;\\mathrm{kA}"
+          }
+        ],
+        "norma": "IEC 60909-0:2016 §6.6"
+      },
+      {
+        "tytul": "Suma wkładów i reguły",
+        "kroki": [
+          {
+            "tekst": "Suma wkladow maszyn: I''k,M = 0.698 kA, I_b,M = 0.482 kA",
+            "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
+          },
+          {
+            "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.230 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.230) -> SPELNIONA (silniki pomijalne w Ib)",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.603\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+          }
+        ],
+        "norma": "IEC 60909-0:2016 §6.6"
+      }
+    ],
+    "walidacja_iec": [
+      {
+        "pozycja_pl": "Norma bazowa metody",
+        "wartosc_pl": "IEC 60909-0:2016",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Współczynnik napięciowy c",
+        "wartosc_pl": "c = 1.10 (z tego przebiegu)",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Metoda obliczenia wkładów",
+        "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Maszyny asynchroniczne",
+        "wartosc_pl": "nieobecne w modelu",
+        "status": "INFO"
+      },
+      {
+        "pozycja_pl": "Reguła małych silników (5%)",
+        "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 0.230 kA)",
+        "status": "PASS"
+      },
+      {
+        "pozycja_pl": "Determinizm kontraktu (input_hash)",
+        "wartosc_pl": "obecny: f53345f5e5a5...",
+        "status": "PASS"
+      }
+    ],
+    "input_hash": "f53345f5e5a582a0614dbadc5bb96b7fa1dee546adcd78dd809acc62c5c9d0f0"
+  }
+}

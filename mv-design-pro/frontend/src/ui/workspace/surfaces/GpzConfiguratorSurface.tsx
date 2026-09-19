@@ -31,8 +31,6 @@ interface GpzData {
   hvRX: number | null;
   transformerCatalogId: string;
   transformerNominalMva: number | null;
-  transformerUkPercent: number | null;
-  transformerVectorGroup: string;
   sectionsCount: number;
   hasCoupler: boolean;
   busbarSystem: string;
@@ -62,8 +60,6 @@ function emptyGpzData(): GpzData {
     hvRX: null,
     transformerCatalogId: DEFAULT_TRAFO_110_CATALOG_ID,
     transformerNominalMva: null,
-    transformerUkPercent: null,
-    transformerVectorGroup: 'YNyn0',
     sectionsCount: 2,
     hasCoupler: true,
     busbarSystem: 'pojedynczy sekcjonowany',
@@ -71,9 +67,34 @@ function emptyGpzData(): GpzData {
   };
 }
 
+const GPZ_DEFAULT_CARD_IDS = new Set<GpzCardId>([
+  'identification',
+  'hv-side',
+  'transformer',
+  'sections',
+  'bays-balance',
+]);
+
+/** Karta W2-B (klasa `ACTION_ROADMAP_HINT_PL`): deep-link na konkretną kartę
+ *  E-10 — wzorzec `stationDefaultCard` z `StationConfiguratorSurface.tsx`.
+ *  Akcje menu SLD "Pokaż dane zwarciowe źródła" (GPZ) / "Pokaż dane
+ *  zwarciowe sekcji" (`show-sc-source`/`show-sc-data`,
+ *  `shared/sldActionExecutor.ts`) otwierają WPROST kartę "Strona 110 kV"
+ *  zamiast zostawiać użytkownika na domyślnej "Identyfikacja". Nieznana/
+ *  brakująca wartość = uczciwy domyślny start. */
+function gpzDefaultCard(surface: WorkspaceSurfaceDescriptor): GpzCardId {
+  const payload = surface.routeState?.payload;
+  const defaultCard = payload && typeof payload === 'object'
+    ? (payload as Record<string, unknown>).defaultCard
+    : null;
+  return typeof defaultCard === 'string' && GPZ_DEFAULT_CARD_IDS.has(defaultCard as GpzCardId)
+    ? (defaultCard as GpzCardId)
+    : 'identification';
+}
+
 export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.Element {
   const { surface } = props;
-  const [activeCard, setActiveCard] = useState<GpzCardId>('identification');
+  const [activeCard, setActiveCard] = useState<GpzCardId>(() => gpzDefaultCard(surface));
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const gpzRef = surface.entityRef ?? null;
   const [data, setData] = useState<GpzData>(() => emptyGpzData());
@@ -258,19 +279,9 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
               onChange={(v) => setData((d) => ({ ...d, transformerNominalMva: v }))}
               placeholder="25 / 40 / 63"
             />
-            <NumberField
-              label="uk"
-              unit="%"
-              value={data.transformerUkPercent}
-              onChange={(v) => setData((d) => ({ ...d, transformerUkPercent: v }))}
-              placeholder="np. 12,5"
-            />
-            <Field
-              label="Układ połączeń (grupa)"
-              value={data.transformerVectorGroup}
-              onChange={(v) => setData((d) => ({ ...d, transformerVectorGroup: v }))}
-              placeholder="YNyn0 / Dyn5 / Dyn11"
-            />
+            {/* W5-A: u_k i grupa połączeń to TABLICZKA z pozycji katalogowej wybranej wyżej —
+                wolne pola tekstowe (z domyślną „YNyn0") były fantomem: nic ich nie czytało,
+                a grupa spoza słownika IEC 60076-1 nie ma prawa wejść do modelu. */}
           </div>
         )}
 

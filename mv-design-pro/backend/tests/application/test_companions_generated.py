@@ -29,7 +29,8 @@ import re
 from pathlib import Path
 
 import pytest
-from application.reference_networks.station_archetype_substrate import (
+
+from tests.reference_networks.station_archetype_substrate import (
     _companions_dir,
     render_companions,
 )
@@ -62,7 +63,7 @@ def test_kazdy_artefakt_generated_jest_bajtowo_rowny_generatorowi(
         assert kanonizuj(na_dysku) == kanonizuj(tresc), (
             f"artefakt {nazwa} ROZJECHANY z generatorem (reczna edycja albo zmiana "
             "solvera bez regeneracji). Zregeneruj: cd mv-design-pro/backend && "
-            "poetry run python -m application.reference_networks."
+            "poetry run python -m tests.reference_networks."
             "station_archetype_substrate --write"
         )
 
@@ -92,11 +93,10 @@ def test_fixtura_sld_network_53_jest_bajtowo_rowna_generatorowi() -> None:
     uruchamialnym w CI (substrat lezy w backend/tests). Do karty X4 rozjazd byl
     niewykrywalny; zmierzone przy wdrozeniu: source_hash artefaktu wskazywal
     substrat sprzed zmian modelu."""
-    from application.reference_networks.sld_network_model import (
+    from tests.golden.sld_network_model import (
         distill_sld_network,
         render_sld_network_fixture,
     )
-
     from tests.reference_networks.sld_substrate_52s import build_sld_substrate_52s
 
     env = build_sld_substrate_52s()

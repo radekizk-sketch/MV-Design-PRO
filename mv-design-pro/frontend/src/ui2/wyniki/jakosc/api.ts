@@ -11,6 +11,17 @@
  *   (`analysis/sanity_bounds/short_circuit_bounds.py:46-57`). Pole `status`
  *   niesie GOTOWY tekst polski wprost z backendu („zweryfikowany" /
  *   „poza zakresem wiarygodności" / „dane niekompletne").
+ * - Pasma zdrowego rozsądku rozpływu — TA SAMA końcówka `GET /api/quality/
+ *   sanity-bounds?run_id=`, dispatch wg rodzaju przebiegu (karta W3-G2,
+ *   rozszerzenie ADDYTYWNE): przebieg PF →
+ *   `application/analyses/sanity_bounds.py:build_power_flow_sanity_bounds_view`
+ *   (kształt `analysis_id`/`context`/`converged`/`napiecia`/`obciazenia`/`straty`);
+ *   `napiecia`/`obciazenia` = `{items, summary}` (dla `napiecia` dodatkowo
+ *   `norm_ref`/`band_pct`), pojedynczy element = `VoltageBandSanityVerdict`/
+ *   `BranchLoadingSanityVerdict.to_dict` + `target_id`/`target_name`
+ *   (`analysis/sanity_bounds/power_flow_bounds.py`); `straty` = pojedynczy
+ *   `NetworkLossesSanityVerdict.to_dict` (agregat sieciowy, nie lista). Status
+ *   niesie TEN SAM gotowy tekst polski co wiarygodność zwarciowa (trzy stany).
  * - Walidacja energetyczna — `GET /api/quality/energy-validation?run_id=`:
  *   `quality_analysis_runs.py:50-59` →
  *   `application/analyses/energy_validation/service.py:build_energy_validation_view`
@@ -73,6 +84,84 @@ export interface WiarygodnoscResponse {
   readonly context: KontekstJakosci | null;
   readonly items: readonly WiarygodnoscItem[];
   readonly summary: WiarygodnoscSummary;
+}
+
+// ---------------------------------------------------------------------------
+// Pasma zdrowego rozsądku rozpływu (karta W3-G2) — TA SAMA końcówka co powyżej,
+// przebieg PF zamiast SC.
+// ---------------------------------------------------------------------------
+
+/** Podsumowanie trójstanowe (zweryfikowany/poza zakresem/niekompletne) sekcji. */
+export interface PasmaSummary {
+  readonly credible_count: number;
+  readonly out_of_range_count: number;
+  readonly incomplete_count: number;
+}
+
+/** Ocena wiarygodności napięcia jednej szyny wobec pasma Un ± 10 % (PN-EN 50160). */
+export interface NapieciePasmoItem {
+  readonly target_id: string;
+  readonly target_name: string | null;
+  readonly nominal_kv: number | null;
+  readonly actual_kv: number | null;
+  readonly lower_kv: number | null;
+  readonly upper_kv: number | null;
+  readonly deviation_pct: number | null;
+  readonly in_range: boolean;
+  readonly status: string;
+  readonly why_pl: string;
+}
+
+/** Ocena wiarygodności obciążenia jednej gałęzi (linia/kabel) wobec In katalogu. */
+export interface ObciazeniePasmoItem {
+  readonly target_id: string;
+  readonly target_name: string | null;
+  readonly current_ka: number | null;
+  readonly rated_current_a: number | null;
+  readonly loading_pct: number | null;
+  readonly in_range: boolean;
+  readonly status: string;
+  readonly why_pl: string;
+}
+
+/** Ocena wiarygodności strat czynnych sieci wobec sumy mocy czynnej odbiorów. */
+export interface StratyPasmoWerdykt {
+  readonly losses_active_mw: number | null;
+  readonly load_active_total_mw: number | null;
+  readonly losses_pct_of_load: number | null;
+  readonly threshold_pct: number;
+  readonly threshold_why_pl: string;
+  readonly in_range: boolean;
+  readonly status: string;
+  readonly why_pl: string;
+}
+
+/** Pełna odpowiedź `GET /api/quality/sanity-bounds` dla przebiegu PF. */
+export interface PasmaRozplywuResponse {
+  readonly analysis_id: string;
+  readonly context: KontekstJakosci | null;
+  /** Bieg NIEZBIEŻNY ⇒ wszystkie pozycje niżej mają status „dane niekompletne". */
+  readonly converged: boolean;
+  readonly napiecia: {
+    readonly items: readonly NapieciePasmoItem[];
+    /** Cytat normy (PN-EN 50160) — proweniencja progu. */
+    readonly norm_ref: string;
+    readonly band_pct: number;
+    readonly summary: PasmaSummary;
+  };
+  readonly obciazenia: {
+    readonly items: readonly ObciazeniePasmoItem[];
+    readonly summary: PasmaSummary;
+  };
+  readonly straty: StratyPasmoWerdykt;
+}
+
+/** Pobiera pasma zdrowego rozsądku rozpływu dla przebiegu PF (ta sama końcówka
+ * co wiarygodność zwarciowa — dispatch po stronie backendu wg rodzaju biegu). */
+export function fetchPasmaRozplywu(runId: string): Promise<PasmaRozplywuResponse> {
+  return getJson<PasmaRozplywuResponse>(
+    `/api/quality/sanity-bounds?run_id=${encodeURIComponent(runId)}`,
+  );
 }
 
 // ---------------------------------------------------------------------------

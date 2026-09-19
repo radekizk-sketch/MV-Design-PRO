@@ -19,6 +19,11 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
+from application.migracja_legacy import OdmowaMigracji, graf_z_modelu_legacy
+from application.twin_key import (
+    kolejnosc_promocji,
+    migruj_projekt_z_legacy_z_repozytorium,
+)
 from domain.project_archive import (
     ARCHIVE_FORMAT_ID,
     ARCHIVE_SCHEMA_VERSION,
@@ -29,21 +34,32 @@ from domain.project_archive import (
     EnmSection,
     InterpretationsSection,
     IssuesSection,
-    NetworkModelSection,
     ProjectArchive,
     ProjectMeta,
-    ProofsSection,
     ResultsSection,
     RunsSection,
-    SldSection,
     archive_to_dict,
     compute_archive_fingerprints,
-    compute_hash,
     dict_to_archive,
     verify_archive_integrity,
 )
-from enm.store import get_enm, has_enm, restore_enm
-from network_model.catalog.governance import wymaga_referencji_katalogowej
+from enm.canonical_analysis import odtworz_bieg_z_archiwum
+from enm.kompilator_grafu import BenchmarkBuildError, BladGrafuWejsciowego, kompiluj_graf
+from enm.models import EnergyNetworkModel
+from enm.store import (
+    ZrodloZmiany,
+    get_enm,
+    has_enm,
+    migruj_klucz_przypadku_do_projektu,
+    restore_enm,
+    set_enm,
+)
+from infrastructure.persistence.repositories.canonical_run_repository import (
+    CanonicalRunRepository,
+)
+from infrastructure.persistence.repositories.case_repository import CaseRepository
+from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -52,26 +68,11 @@ if TYPE_CHECKING:
 
 from infrastructure.persistence.models import (
     AnalysisRunIndexORM,
-    AnalysisRunORM,
-    DesignEvidenceORM,
-    DesignProposalORM,
-    DesignSpecORM,
-    NetworkBranchORM,
-    NetworkLoadORM,
-    NetworkNodeORM,
-    NetworkSnapshotORM,
-    NetworkSourceORM,
+    CanonicalRunORM,
     OperatingCaseORM,
     ProjectORM,
     ProjectSettingsORM,
-    SldAnnotationORM,
-    SldBranchSymbolORM,
-    SldDiagramORM,
-    SldNodeSymbolORM,
     StudyCaseORM,
-    StudyResultORM,
-    StudyRunORM,
-    SwitchingStateORM,
 )
 
 
@@ -138,7 +139,12 @@ class ProjectArchiveService:
         return zip_buffer.getvalue()
 
     def _collect_project_data(self, project: ProjectORM) -> ProjectArchive:
-        """Zbierz wszystkie dane projektu."""
+        """Zbierz wszystkie dane projektu.
+
+        W1-B-ARCH: format 3.0.0 nie niesie już sekcji `network_model`/
+        `sld_diagrams`/`proofs` — tabele ORM, które je zasilały, skasował W1.
+        Sieć projektu (jedyny nośnik: ENM) zbiera `_collect_enm` niżej.
+        """
         project_id = project.id
 
         # Metadane projektu (bez exported_at - dla determinizmu)
@@ -147,7 +153,6 @@ class ProjectArchiveService:
             "name": project.name,
             "description": project.description,
             "schema_version": project.schema_version,
-            "active_network_snapshot_id": project.active_network_snapshot_id,
             "connection_node_id": (
                 str(project.connection_node_id) if project.connection_node_id else None
             ),
@@ -155,12 +160,6 @@ class ProjectArchiveService:
             "created_at": project.created_at.isoformat(),
             "updated_at": project.updated_at.isoformat(),
         }
-
-        # Model sieci
-        network_model_dict = self._collect_network_model(project_id)
-
-        # SLD
-        sld_dict = self._collect_sld(project_id)
 
         # Cases
         cases_dict = self._collect_cases(project_id)
@@ -171,27 +170,21 @@ class ProjectArchiveService:
         # Results
         results_dict = self._collect_results(project_id)
 
-        # Proofs
-        proofs_dict = self._collect_proofs(project_id)
-
         # Interpretations (placeholder)
         interpretations_dict: dict[str, Any] = {"cached": []}
 
         # Issues (placeholder - generowane dynamicznie)
         issues_dict: dict[str, Any] = {"snapshot": []}
 
-        # ENM (modele EnergyNetworkModel per przypadek — N-D1)
-        enm_dict = self._collect_enm(cases_dict)
+        # ENM (model EnergyNetworkModel projektu, wpis per przypadek — N-D1, CV-1-W)
+        enm_dict = self._collect_enm(project_id, cases_dict)
 
         # Oblicz fingerprints
         fingerprints = compute_archive_fingerprints(
             project_meta=project_meta_dict,
-            network_model=network_model_dict,
-            sld=sld_dict,
             cases=cases_dict,
             runs=runs_dict,
             results=results_dict,
-            proofs=proofs_dict,
             interpretations=interpretations_dict,
             issues=issues_dict,
             enm=enm_dict,
@@ -206,7 +199,6 @@ class ProjectArchiveService:
                 name=project.name,
                 description=project.description,
                 schema_version=project.schema_version,
-                active_network_snapshot_id=project.active_network_snapshot_id,
                 connection_node_id=(
                     str(project.connection_node_id) if project.connection_node_id else None
                 ),
@@ -214,38 +206,16 @@ class ProjectArchiveService:
                 created_at=project.created_at.isoformat(),
                 updated_at=project.updated_at.isoformat(),
             ),
-            network_model=NetworkModelSection(
-                nodes=network_model_dict["nodes"],
-                branches=network_model_dict["branches"],
-                sources=network_model_dict["sources"],
-                loads=network_model_dict["loads"],
-                snapshots=network_model_dict["snapshots"],
-            ),
-            sld_diagrams=SldSection(
-                diagrams=sld_dict["diagrams"],
-                node_symbols=sld_dict["node_symbols"],
-                branch_symbols=sld_dict["branch_symbols"],
-                annotations=sld_dict["annotations"],
-            ),
             cases=CasesSection(
                 study_cases=cases_dict["study_cases"],
                 operating_cases=cases_dict["operating_cases"],
-                switching_states=cases_dict["switching_states"],
                 settings=cases_dict["settings"],
             ),
             runs=RunsSection(
-                analysis_runs=runs_dict["analysis_runs"],
+                canonical_runs=runs_dict["canonical_runs"],
                 analysis_runs_index=runs_dict["analysis_runs_index"],
-                study_runs=runs_dict["study_runs"],
             ),
-            results=ResultsSection(
-                study_results=results_dict["study_results"],
-            ),
-            proofs=ProofsSection(
-                design_specs=proofs_dict["design_specs"],
-                design_proposals=proofs_dict["design_proposals"],
-                design_evidence=proofs_dict["design_evidence"],
-            ),
+            results=ResultsSection(),
             interpretations=InterpretationsSection(
                 cached=interpretations_dict["cached"],
             ),
@@ -258,14 +228,24 @@ class ProjectArchiveService:
             fingerprints=fingerprints,
         )
 
-    def _collect_enm(self, cases_dict: dict[str, Any]) -> dict[str, Any]:
-        """Zbierz modele ENM dla wszystkich przypadków projektu (N-D1).
+    def _collect_enm(self, project_id: UUID, cases_dict: dict[str, Any]) -> dict[str, Any]:
+        """Zbierz model ENM projektu i zapisz go pod KAŻDYM jego przypadkiem (N-D1, CV-1-W).
 
-        ENM żyje we flat-file store keyed by case_id (enm/store.py), poza ORM —
-        bez tej sekcji stacje/transformatory/strona nN znikały przy round-tripie
-        archiwum. Zbieramy wyłącznie przypadki z ISTNIEJĄCYM snapshotem
-        (has_enm) — zero fabrykacji pustych modeli. Sortowanie po case_id dla
-        determinizmu.
+        CV-1-W: magazyn ENM (enm/store.py) jest kluczowany kluczem Canonical
+        Project Twin (`projekt:<uuid>`) — WSZYSTKIE przypadki jednego projektu
+        czytają JEDEN model, więc model czytamy RAZ, pod kluczem PROJEKTU (nie
+        per przypadek). Kontrakt sekcji `EnmSection` (`domain/project_archive.
+        py`) i test round-trip (`tests/application/project_archive/
+        test_enm_archive_section.py`) niosą jednak WPIS PER `case_id` — ten
+        kształt zostaje NIETKNIĘTY (addytywny import/eksport, zero migracji
+        schematu archiwum): każdy przypadek dostaje wpis z TĄ SAMĄ treścią
+        modelu projektu. Brak modelu (projekt jeszcze bez ENM) → pusta lista,
+        zero fabrykacji. Projekt BEZ ŻADNEGO przypadku (study/operating), ale
+        Z modelem (W1-B-ARCH — wykryte przy karcie, klasa nie instancja §4:
+        deklaracja „brak modelu → pusta lista" nie miała testu dla „brak
+        PRZYPADKU → model") dostaje JEDEN wpis-sentinel `case_id: None` — bez
+        niego model istniałby w magazynie, a archiwum wywoziłoby go jako
+        nieobecny.
         """
         case_ids: set[str] = set()
         for case_data in cases_dict.get("study_cases", []):
@@ -273,212 +253,35 @@ class ProjectArchiveService:
         for case_data in cases_dict.get("operating_cases", []):
             case_ids.add(str(case_data["id"]))
 
+        # MIGRACJA PRZED ODCZYTEM (przegląd adwersaryjny CV-1). Eksport bywa
+        # PIERWSZYM dostępem do magazynu w procesie (restart backendu, worker
+        # zadań w tle) — a modele projektów sprzed CV-1 leżą wtedy jeszcze pod
+        # kluczami przypadków. Samo `klucz_twin_projektu(project_id)` niczego nie
+        # migruje, więc `has_enm` oddawało `False` i archiwum ZIP wychodziło BEZ
+        # SIECI: import takiego archiwum tworzył projekt bez modelu, a projektant
+        # nie dostawał żadnego sygnału. Lista przypadków i kolejność promocji idą
+        # z repozytorium przypadków — tego samego źródła, co migracja wołana z
+        # `klucz_twin_dla_przypadku`.
+        klucz_projektu = migruj_projekt_z_legacy_z_repozytorium(
+            project_id, CaseRepository(self._session)
+        ).klucz_projektu
         models: list[dict[str, Any]] = []
-        for case_id in sorted(case_ids):
-            if not has_enm(case_id):
-                continue
-            enm = get_enm(case_id)
-            models.append(
-                {
-                    "case_id": case_id,
-                    "snapshot": enm.model_dump(mode="json"),
-                }
-            )
+        if has_enm(klucz_projektu):
+            snapshot = get_enm(klucz_projektu).model_dump(mode="json")
+            if case_ids:
+                for case_id in sorted(case_ids):
+                    models.append({"case_id": case_id, "snapshot": snapshot})
+            else:
+                # Model ISTNIEJE, ale projekt (jeszcze) nie ma ŻADNEGO przypadku
+                # (ani study, ani operating) — bez tego wpisu pętla wyżej nigdy
+                # by się nie wykonała i model zniknąłby z archiwum MIMO że
+                # `has_enm` mówi „jest" (dokładnie ta sama klasa defektu, którą
+                # ta karta naprawia gdzie indziej: model niesiony, a archiwum go
+                # nie wywozi). `case_id: None` niesie go WPROST, bez pośrednictwa
+                # przypadku — `_restore_project` rozpoznaje sentinel i kładzie
+                # go na klucz PROJEKTU wprost, bez prób odnalezienia przypadku.
+                models.append({"case_id": None, "snapshot": snapshot})
         return {"models": models}
-
-    def _collect_network_model(self, project_id: UUID) -> dict[str, Any]:
-        """Zbierz model sieci."""
-        # Nodes - sortowane po ID dla determinizmu
-        nodes_query = (
-            select(NetworkNodeORM)
-            .where(NetworkNodeORM.project_id == project_id)
-            .order_by(NetworkNodeORM.id)
-        )
-        nodes = self._session.execute(nodes_query).scalars().all()
-        nodes_data = [
-            {
-                "id": str(n.id),
-                "name": n.name,
-                "node_type": n.node_type,
-                "base_kv": n.base_kv,
-                "attrs_jsonb": n.attrs_jsonb,
-            }
-            for n in nodes
-        ]
-
-        # Branches
-        branches_query = (
-            select(NetworkBranchORM)
-            .where(NetworkBranchORM.project_id == project_id)
-            .order_by(NetworkBranchORM.id)
-        )
-        branches = self._session.execute(branches_query).scalars().all()
-        branches_data = [
-            {
-                "id": str(b.id),
-                "name": b.name,
-                "branch_type": b.branch_type,
-                "from_node_id": str(b.from_node_id),
-                "to_node_id": str(b.to_node_id),
-                "in_service": b.in_service,
-                "params_jsonb": b.params_jsonb,
-            }
-            for b in branches
-        ]
-
-        # Sources
-        sources_query = (
-            select(NetworkSourceORM)
-            .where(NetworkSourceORM.project_id == project_id)
-            .order_by(NetworkSourceORM.id)
-        )
-        sources = self._session.execute(sources_query).scalars().all()
-        sources_data = [
-            {
-                "id": str(s.id),
-                "node_id": str(s.node_id),
-                "source_type": s.source_type,
-                "payload_jsonb": s.payload_jsonb,
-                "in_service": s.in_service,
-            }
-            for s in sources
-        ]
-
-        # Loads
-        loads_query = (
-            select(NetworkLoadORM)
-            .where(NetworkLoadORM.project_id == project_id)
-            .order_by(NetworkLoadORM.id)
-        )
-        loads = self._session.execute(loads_query).scalars().all()
-        loads_data = [
-            {
-                "id": str(lo.id),
-                "node_id": str(lo.node_id),
-                "payload_jsonb": lo.payload_jsonb,
-                "in_service": lo.in_service,
-            }
-            for lo in loads
-        ]
-
-        # Snapshots
-        snapshots_query = select(NetworkSnapshotORM).order_by(NetworkSnapshotORM.created_at)
-        snapshots = self._session.execute(snapshots_query).scalars().all()
-        # Filtruj snapshoty należące do tego projektu (sprawdzając network_model_id)
-        snapshots_data = [
-            {
-                "snapshot_id": s.snapshot_id,
-                "parent_snapshot_id": s.parent_snapshot_id,
-                "created_at": s.created_at.isoformat(),
-                "schema_version": s.schema_version,
-                "network_model_id": s.network_model_id,
-                "fingerprint": s.fingerprint,
-                "snapshot_json": s.snapshot_json,
-            }
-            for s in snapshots
-            if s.network_model_id == str(project_id)
-        ]
-
-        return {
-            "nodes": nodes_data,
-            "branches": branches_data,
-            "sources": sources_data,
-            "loads": loads_data,
-            "snapshots": snapshots_data,
-        }
-
-    def _collect_sld(self, project_id: UUID) -> dict[str, Any]:
-        """Zbierz diagramy SLD."""
-        # Diagrams
-        diagrams_query = (
-            select(SldDiagramORM)
-            .where(SldDiagramORM.project_id == project_id)
-            .order_by(SldDiagramORM.id)
-        )
-        diagrams = self._session.execute(diagrams_query).scalars().all()
-        diagrams_data = [
-            {
-                "id": str(d.id),
-                "name": d.name,
-                "sld_jsonb": d.sld_jsonb,
-                "dirty_flag": d.dirty_flag,
-                "created_at": d.created_at.isoformat(),
-                "updated_at": d.updated_at.isoformat(),
-            }
-            for d in diagrams
-        ]
-
-        diagram_ids = [d.id for d in diagrams]
-
-        # Node symbols
-        node_symbols_data = []
-        if diagram_ids:
-            node_symbols_query = (
-                select(SldNodeSymbolORM)
-                .where(SldNodeSymbolORM.diagram_id.in_(diagram_ids))
-                .order_by(SldNodeSymbolORM.id)
-            )
-            node_symbols = self._session.execute(node_symbols_query).scalars().all()
-            node_symbols_data = [
-                {
-                    "id": str(ns.id),
-                    "diagram_id": str(ns.diagram_id),
-                    "node_id": str(ns.node_id),
-                    "x": ns.x,
-                    "y": ns.y,
-                    "label": ns.label,
-                    "is_connection_node": ns.is_connection_node,
-                }
-                for ns in node_symbols
-            ]
-
-        # Branch symbols
-        branch_symbols_data = []
-        if diagram_ids:
-            branch_symbols_query = (
-                select(SldBranchSymbolORM)
-                .where(SldBranchSymbolORM.diagram_id.in_(diagram_ids))
-                .order_by(SldBranchSymbolORM.id)
-            )
-            branch_symbols = self._session.execute(branch_symbols_query).scalars().all()
-            branch_symbols_data = [
-                {
-                    "id": str(bs.id),
-                    "diagram_id": str(bs.diagram_id),
-                    "branch_id": str(bs.branch_id),
-                    "from_node_id": str(bs.from_node_id),
-                    "to_node_id": str(bs.to_node_id),
-                    "points_jsonb": bs.points_jsonb,
-                }
-                for bs in branch_symbols
-            ]
-
-        # Annotations
-        annotations_data = []
-        if diagram_ids:
-            annotations_query = (
-                select(SldAnnotationORM)
-                .where(SldAnnotationORM.diagram_id.in_(diagram_ids))
-                .order_by(SldAnnotationORM.id)
-            )
-            annotations = self._session.execute(annotations_query).scalars().all()
-            annotations_data = [
-                {
-                    "id": str(a.id),
-                    "diagram_id": str(a.diagram_id),
-                    "text": a.text,
-                    "x": a.x,
-                    "y": a.y,
-                }
-                for a in annotations
-            ]
-
-        return {
-            "diagrams": diagrams_data,
-            "node_symbols": node_symbols_data,
-            "branch_symbols": branch_symbols_data,
-            "annotations": annotations_data,
-        }
 
     def _collect_cases(self, project_id: UUID) -> dict[str, Any]:
         """Zbierz przypadki obliczeniowe."""
@@ -494,7 +297,6 @@ class ProjectArchiveService:
                 "id": str(sc.id),
                 "name": sc.name,
                 "description": sc.description,
-                "network_snapshot_id": sc.network_snapshot_id,
                 "study_jsonb": sc.study_jsonb,
                 "is_active": sc.is_active,
                 "result_status": sc.result_status,
@@ -525,28 +327,6 @@ class ProjectArchiveService:
             for oc in operating_cases
         ]
 
-        operating_case_ids = [oc.id for oc in operating_cases]
-
-        # Switching states
-        switching_states_data = []
-        if operating_case_ids:
-            switching_states_query = (
-                select(SwitchingStateORM)
-                .where(SwitchingStateORM.case_id.in_(operating_case_ids))
-                .order_by(SwitchingStateORM.id)
-            )
-            switching_states = self._session.execute(switching_states_query).scalars().all()
-            switching_states_data = [
-                {
-                    "id": str(ss.id),
-                    "case_id": str(ss.case_id),
-                    "element_id": str(ss.element_id),
-                    "element_type": ss.element_type,
-                    "in_service": ss.in_service,
-                }
-                for ss in switching_states
-            ]
-
         # Project settings
         settings_orm = self._session.get(ProjectSettingsORM, project_id)
         settings_data = None
@@ -567,46 +347,67 @@ class ProjectArchiveService:
         return {
             "study_cases": study_cases_data,
             "operating_cases": operating_cases_data,
-            "switching_states": switching_states_data,
             "settings": settings_data,
         }
 
     def _collect_runs(self, project_id: UUID) -> dict[str, Any]:
-        """Zbierz wykonania analiz."""
-        # Analysis runs
-        analysis_runs_query = (
-            select(AnalysisRunORM)
-            .where(AnalysisRunORM.project_id == project_id)
-            .order_by(AnalysisRunORM.created_at)
+        """Zbierz biegi kanoniczne (R1) i indeks koordynacji zabezpieczeń.
+
+        CV-3.3-B: `analysis_runs` (R2, `AnalysisRunORM`) i `study_runs` (R3,
+        `StudyRunORM`) usunięte razem z torem, który je pisał — jedyny rejestr
+        biegów projektu to `canonical_runs` (`CanonicalRunORM`), pełny zrzut
+        pól (bez `CanonicalRunBranchFlowORM` — rozpływ gałęziowy zwarcia jest
+        odtwarzalny na żądanie z tego samego biegu, nie jest tożsamością biegu;
+        wyłączony świadomie z zakresu tej karty ze względu na rozmiar — patrz
+        `CanonicalRunBranchFlowORM` docstring, „104 punkty zwarcia × 11 506
+        wpisów" na sieci 50 stacji).
+        """
+        canonical_runs_query = (
+            select(CanonicalRunORM)
+            .where(CanonicalRunORM.project_id == str(project_id))
+            .order_by(CanonicalRunORM.created_at)
         )
-        analysis_runs = self._session.execute(analysis_runs_query).scalars().all()
-        analysis_runs_data = [
+        canonical_runs = self._session.execute(canonical_runs_query).scalars().all()
+        canonical_runs_data = [
             {
-                "id": str(ar.id),
-                "operating_case_id": str(ar.operating_case_id),
-                "analysis_type": ar.analysis_type,
-                "status": ar.status,
-                "result_status": ar.result_status,
-                "created_at": ar.created_at.isoformat(),
-                "started_at": ar.started_at.isoformat() if ar.started_at else None,
-                "finished_at": ar.finished_at.isoformat() if ar.finished_at else None,
-                "input_snapshot": ar.input_snapshot,
-                "input_hash": ar.input_hash,
-                "result_summary": ar.result_summary,
-                "trace_json": ar.trace_json,
-                "white_box_trace": ar.white_box_trace,
-                "error_message": ar.error_message,
+                "id": str(cr.id),
+                "case_id": cr.case_id,
+                "analysis_type": cr.analysis_type,
+                "status": cr.status,
+                "result_status": cr.result_status,
+                "created_at": cr.created_at.isoformat(),
+                "started_at": cr.started_at.isoformat() if cr.started_at else None,
+                "finished_at": cr.finished_at.isoformat() if cr.finished_at else None,
+                "snapshot_hash": cr.snapshot_hash,
+                "input_hash": cr.input_hash,
+                "snapshot": cr.snapshot_json,
+                "validation": cr.validation_json,
+                "readiness": cr.readiness_json,
+                "options": cr.options_json,
+                "error_message": cr.error_message,
+                "raw_result": cr.raw_result_json,
+                "white_box_trace": cr.white_box_trace_json,
+                "power_flow_trace": cr.power_flow_trace_json,
+                "envelope": cr.envelope_json,
             }
-            for ar in analysis_runs
+            for cr in canonical_runs
         ]
 
-        # Analysis runs index
-        run_ids = [str(ar.id) for ar in analysis_runs]
+        # Analysis runs index — CV-3.3-B: NIEZALEŻNA tabela, nie R2 (pełne
+        # uzasadnienie i historia kasacji jej producentów: pkt 16 niżej, przy
+        # eksporcie). Naprawa u źródła: filtr PO `case_id` (kolumna istnieje
+        # na wpisie), nie po członkostwie w R2 `analysis_runs` — poprzedni
+        # filtr (`run_id IN (id R2 tego projektu)`) pomijał KAŻDY historyczny
+        # wpis indeksu, bo jego identyfikatory biegów nigdy nie były wierszami
+        # `AnalysisRunORM` (dwa niezależne byty od zawsze, nie dopiero po
+        # kasacji karty W3-C1).
+        case_ids_query = select(StudyCaseORM.id).where(StudyCaseORM.project_id == project_id)
+        case_ids = [str(cid) for cid in self._session.execute(case_ids_query).scalars().all()]
         analysis_runs_index_data = []
-        if run_ids:
+        if case_ids:
             index_query = (
                 select(AnalysisRunIndexORM)
-                .where(AnalysisRunIndexORM.run_id.in_(run_ids))
+                .where(AnalysisRunIndexORM.case_id.in_(case_ids))
                 .order_by(AnalysisRunIndexORM.created_at_utc)
             )
             index_entries = self._session.execute(index_query).scalars().all()
@@ -626,131 +427,16 @@ class ProjectArchiveService:
                 for ie in index_entries
             ]
 
-        # Study runs
-        study_runs_query = (
-            select(StudyRunORM)
-            .where(StudyRunORM.project_id == project_id)
-            .order_by(StudyRunORM.started_at)
-        )
-        study_runs = self._session.execute(study_runs_query).scalars().all()
-        study_runs_data = [
-            {
-                "id": str(sr.id),
-                "case_id": str(sr.case_id),
-                "analysis_type": sr.analysis_type,
-                "input_hash": sr.input_hash,
-                "network_snapshot_id": sr.network_snapshot_id,
-                "solver_version_hash": sr.solver_version_hash,
-                "result_state": sr.result_state,
-                "status": sr.status,
-                "started_at": sr.started_at.isoformat(),
-                "finished_at": sr.finished_at.isoformat() if sr.finished_at else None,
-            }
-            for sr in study_runs
-        ]
-
         return {
-            "analysis_runs": analysis_runs_data,
+            "canonical_runs": canonical_runs_data,
             "analysis_runs_index": analysis_runs_index_data,
-            "study_runs": study_runs_data,
         }
 
     def _collect_results(self, project_id: UUID) -> dict[str, Any]:
-        """Zbierz wyniki."""
-        results_query = (
-            select(StudyResultORM)
-            .where(StudyResultORM.project_id == project_id)
-            .order_by(StudyResultORM.created_at)
-        )
-        results = self._session.execute(results_query).scalars().all()
-        results_data = [
-            {
-                "id": str(r.id),
-                "run_id": str(r.run_id),
-                "result_type": r.result_type,
-                "result_jsonb": r.result_jsonb,
-                "created_at": r.created_at.isoformat(),
-            }
-            for r in results
-        ]
-
-        return {"study_results": results_data}
-
-    def _collect_proofs(self, project_id: UUID) -> dict[str, Any]:
-        """Zbierz dowody (design specs, proposals, evidence)."""
-        # Najpierw pobierz operating case IDs dla tego projektu
-        operating_cases_query = select(OperatingCaseORM.id).where(
-            OperatingCaseORM.project_id == project_id
-        )
-        operating_case_ids = [row[0] for row in self._session.execute(operating_cases_query).all()]
-
-        design_specs_data = []
-        design_proposals_data = []
-        design_evidence_data = []
-
-        if operating_case_ids:
-            # Design specs
-            specs_query = (
-                select(DesignSpecORM)
-                .where(DesignSpecORM.case_id.in_(operating_case_ids))
-                .order_by(DesignSpecORM.created_at)
-            )
-            specs = self._session.execute(specs_query).scalars().all()
-            design_specs_data = [
-                {
-                    "id": str(s.id),
-                    "case_id": str(s.case_id),
-                    "base_snapshot_id": s.base_snapshot_id,
-                    "spec_json": s.spec_json,
-                    "created_at": s.created_at.isoformat(),
-                    "updated_at": s.updated_at.isoformat(),
-                }
-                for s in specs
-            ]
-
-            # Design proposals
-            proposals_query = (
-                select(DesignProposalORM)
-                .where(DesignProposalORM.case_id.in_(operating_case_ids))
-                .order_by(DesignProposalORM.created_at)
-            )
-            proposals = self._session.execute(proposals_query).scalars().all()
-            design_proposals_data = [
-                {
-                    "id": str(p.id),
-                    "case_id": str(p.case_id),
-                    "input_snapshot_id": p.input_snapshot_id,
-                    "proposal_json": p.proposal_json,
-                    "status": p.status,
-                    "created_at": p.created_at.isoformat(),
-                    "updated_at": p.updated_at.isoformat(),
-                }
-                for p in proposals
-            ]
-
-            # Design evidence
-            evidence_query = (
-                select(DesignEvidenceORM)
-                .where(DesignEvidenceORM.case_id.in_(operating_case_ids))
-                .order_by(DesignEvidenceORM.created_at)
-            )
-            evidence = self._session.execute(evidence_query).scalars().all()
-            design_evidence_data = [
-                {
-                    "id": str(e.id),
-                    "case_id": str(e.case_id),
-                    "snapshot_id": e.snapshot_id,
-                    "evidence_json": e.evidence_json,
-                    "created_at": e.created_at.isoformat(),
-                }
-                for e in evidence
-            ]
-
-        return {
-            "design_specs": design_specs_data,
-            "design_proposals": design_proposals_data,
-            "design_evidence": design_evidence_data,
-        }
+        """CV-3.3-B: `study_results` (R3, `StudyResultORM`) usunięty — wynik
+        biegu jest częścią samego `canonical_runs` (`CanonicalRun.raw_result`,
+        zbierany w `_collect_runs`), nie osobnym rekordem."""
+        return {}
 
     # ========================================================================
     # IMPORT
@@ -788,13 +474,19 @@ class ProjectArchiveService:
 
                 project_json = zf.read("project.json").decode("utf-8")
 
-            # Parsuj JSON
+            # Parsuj JSON — `archive_dict` to SUROWY słownik (obie wersje formatu);
+            # `dict_to_archive` z niego ignoruje sekcje, których 3.0.0 nie ma
+            # (`network_model`/`sld_diagrams`/`proofs`) — ale `_restore_project`
+            # sięga po `archive_dict` wprost, gdy trzeba skompilować model z
+            # danych legacy (archiwum 2.x bez `enm.models`, W1-B-ARCH §0.2).
             archive_dict = json.loads(project_json)
             archive = dict_to_archive(archive_dict)
 
-            # Weryfikacja integralności
+            # Weryfikacja integralności — NA SUROWYM słowniku (§0.3), dokładna
+            # dla obu wersji formatu (3.0.0 i 2.x), nie tylko dla sekcji, które
+            # `ProjectArchive` formatu 3.0.0 jeszcze zna.
             if verify_integrity:
-                integrity_errors = verify_archive_integrity(archive)
+                integrity_errors = verify_archive_integrity(archive_dict)
                 if integrity_errors:
                     return ArchiveImportResult(
                         status=ArchiveImportStatus.FAILED,
@@ -810,11 +502,19 @@ class ProjectArchiveService:
                     f"Zmigrowano z wersji {archive.schema_version} do {ARCHIVE_SCHEMA_VERSION}"
                 )
 
-            # Zapisz do bazy danych
-            project_id = self._restore_project(archive, new_project_name)
+            # Zapisz do bazy danych (dopisuje ostrzeżenia — np. model 2.x nie do
+            # odtworzenia, W1-B-ARCH §0.2 — nigdy cicho).
+            project_id = self._restore_project(archive, archive_dict, new_project_name, warnings)
 
-            # Bramka katalogowa po imporcie — sprawdz elementy bez catalog_ref
-            elements_no_catalog = _find_elements_without_catalog(archive)
+            # Bramka katalogowa po imporcie — sprawdz elementy modelu ENM (jedynego
+            # nośnika sieci, W1-B-ARCH §0.4) bez catalog_ref. Model może nie istnieć
+            # (import bez sieci, albo model 2.x nie odtworzony — ostrzeżenie już
+            # wyżej) — wtedy bramka jest pusta, nie błędna.
+            klucz_projektu = migruj_projekt_z_legacy_z_repozytorium(
+                project_id, CaseRepository(self._session)
+            ).klucz_projektu
+            model_projektu = get_enm(klucz_projektu) if has_enm(klucz_projektu) else None
+            elements_no_catalog = _find_elements_without_catalog(model_projektu)
             catalog_mapping_needed = len(elements_no_catalog) > 0
 
             if catalog_mapping_needed:
@@ -857,9 +557,28 @@ class ProjectArchiveService:
                 errors=["Nieprawidłowy format archiwum ZIP"],
             )
 
-    def _restore_project(self, archive: ProjectArchive, new_project_name: str | None) -> UUID:
-        """Przywróć projekt z archiwum do bazy danych."""
-        # Mapowanie starych ID na nowe (dla zachowania referencji)
+    def _restore_project(
+        self,
+        archive: ProjectArchive,
+        raw_archive: dict[str, Any],
+        new_project_name: str | None,
+        warnings: list[str],
+    ) -> UUID:
+        """Przywróć projekt z archiwum do bazy danych.
+
+        `raw_archive` — SUROWY słownik `project.json` (przed `dict_to_archive`),
+        potrzebny wyłącznie do sekcji `network_model` archiwów 2.x (W1-B-ARCH
+        §0.2): `ProjectArchive` formatu 3.0.0 już jej nie niesie. `warnings` —
+        akumulator ostrzeżeń wołającego (`import_project`); ta metoda dopisuje
+        do niego, gdy model 2.x nie daje się odtworzyć (import kończy się mimo
+        to powodzeniem — projekt/przypadki/biegi zostają przywrócone).
+        """
+        # Mapowanie starych ID na nowe (dla zachowania referencji) — po W1-B-ARCH
+        # obejmuje już tylko projekt (nieużywane niżej, ale nieszkodliwe),
+        # przypadki obliczeniowe (operating/study) i biegi kanoniczne: węzły/
+        # gałęzie/źródła/odbiory/snapshoty modelu sieci nie istnieją od W1 —
+        # sieć żyje wyłącznie w ENM, którego kompilator generuje WŁASNE ref_id
+        # (nie da się — i nie trzeba — wymusić identycznych dosłownie ID).
         id_map: dict[str, UUID] = {}
 
         # Generuj nowe ID projektu
@@ -868,132 +587,24 @@ class ProjectArchiveService:
 
         now = datetime.now(UTC)
 
-        # 1. Projekt
+        # 1. Projekt. `connection_node_id` (W1: bez klucza obcego — dawna tabela
+        # `network_nodes` skasowana) przechodzi WPROST — nie ma już tabeli węzłów,
+        # z której dawny import budował mapowanie stary_id -> nowy_id.
         project_orm = ProjectORM(
             id=new_project_id,
             name=new_project_name or archive.project_meta.name,
             description=archive.project_meta.description,
             schema_version=archive.project_meta.schema_version,
-            active_network_snapshot_id=None,  # Ustawimy później
-            connection_node_id=None,  # Ustawimy później
+            connection_node_id=(
+                UUID(archive.project_meta.connection_node_id)
+                if archive.project_meta.connection_node_id
+                else None
+            ),
             sources_jsonb=archive.project_meta.sources,
             created_at=now,
             updated_at=now,
         )
         self._session.add(project_orm)
-        self._session.flush()
-
-        # 2. Network nodes - najpierw musimy utworzyć wszystkie węzły
-        for node_data in archive.network_model.nodes:
-            old_id = node_data["id"]
-            new_id = uuid4()
-            id_map[old_id] = new_id
-
-            node_orm = NetworkNodeORM(
-                id=new_id,
-                project_id=new_project_id,
-                name=node_data["name"],
-                node_type=node_data["node_type"],
-                base_kv=node_data["base_kv"],
-                attrs_jsonb=node_data["attrs_jsonb"],
-            )
-            self._session.add(node_orm)
-
-        self._session.flush()
-
-        # Aktualizuj connection_node_id jeśli był ustawiony
-        if archive.project_meta.connection_node_id:
-            connection_new_id = id_map.get(archive.project_meta.connection_node_id)
-            if connection_new_id:
-                project_orm.connection_node_id = connection_new_id
-
-        # 3. Network branches
-        for branch_data in archive.network_model.branches:
-            old_id = branch_data["id"]
-            new_id = uuid4()
-            id_map[old_id] = new_id
-
-            branch_orm = NetworkBranchORM(
-                id=new_id,
-                project_id=new_project_id,
-                name=branch_data["name"],
-                branch_type=branch_data["branch_type"],
-                from_node_id=id_map[branch_data["from_node_id"]],
-                to_node_id=id_map[branch_data["to_node_id"]],
-                in_service=branch_data["in_service"],
-                params_jsonb=branch_data["params_jsonb"],
-            )
-            self._session.add(branch_orm)
-
-        # 4. Network sources
-        for source_data in archive.network_model.sources:
-            old_id = source_data["id"]
-            new_id = uuid4()
-            id_map[old_id] = new_id
-
-            source_orm = NetworkSourceORM(
-                id=new_id,
-                project_id=new_project_id,
-                node_id=id_map[source_data["node_id"]],
-                source_type=source_data["source_type"],
-                payload_jsonb=source_data["payload_jsonb"],
-                in_service=source_data["in_service"],
-            )
-            self._session.add(source_orm)
-
-        # 5. Network loads
-        for load_data in archive.network_model.loads:
-            old_id = load_data["id"]
-            new_id = uuid4()
-            id_map[old_id] = new_id
-
-            load_orm = NetworkLoadORM(
-                id=new_id,
-                project_id=new_project_id,
-                node_id=id_map[load_data["node_id"]],
-                payload_jsonb=load_data["payload_jsonb"],
-                in_service=load_data["in_service"],
-            )
-            self._session.add(load_orm)
-
-        # 6. Network snapshots (przechowaj mapowanie snapshot_id)
-        snapshot_id_map: dict[str, str] = {}
-        for snapshot_data in archive.network_model.snapshots:
-            old_snapshot_id = snapshot_data["snapshot_id"]
-            # Generuj nowy snapshot_id (hash + timestamp)
-            new_snapshot_id = compute_hash(
-                {"old": old_snapshot_id, "new_project": str(new_project_id), "ts": now.isoformat()}
-            )[:64]
-            snapshot_id_map[old_snapshot_id] = new_snapshot_id
-
-            # Aktualizuj snapshot_json z nowymi ID
-            updated_snapshot_json = self._remap_snapshot_json(
-                snapshot_data["snapshot_json"], id_map
-            )
-
-            snapshot_orm = NetworkSnapshotORM(
-                snapshot_id=new_snapshot_id,
-                parent_snapshot_id=(
-                    snapshot_id_map.get(snapshot_data["parent_snapshot_id"])
-                    if snapshot_data["parent_snapshot_id"]
-                    else None
-                ),
-                created_at=now,
-                schema_version=snapshot_data["schema_version"],
-                network_model_id=str(new_project_id),
-                fingerprint=snapshot_data["fingerprint"],
-                snapshot_json=updated_snapshot_json,
-            )
-            self._session.add(snapshot_orm)
-
-        # Aktualizuj active_network_snapshot_id
-        if archive.project_meta.active_network_snapshot_id:
-            new_active_snapshot_id = snapshot_id_map.get(
-                archive.project_meta.active_network_snapshot_id
-            )
-            if new_active_snapshot_id:
-                project_orm.active_network_snapshot_id = new_active_snapshot_id
-
         self._session.flush()
 
         # 7. Operating cases
@@ -1026,11 +637,6 @@ class ProjectArchiveService:
                 project_id=new_project_id,
                 name=sc_data["name"],
                 description=sc_data["description"],
-                network_snapshot_id=(
-                    snapshot_id_map.get(sc_data["network_snapshot_id"])
-                    if sc_data["network_snapshot_id"]
-                    else None
-                ),
                 study_jsonb=sc_data["study_jsonb"],
                 is_active=sc_data["is_active"],
                 result_status=sc_data["result_status"],
@@ -1041,29 +647,14 @@ class ProjectArchiveService:
             )
             self._session.add(sc_orm)
 
-        # 9. Switching states
-        for ss_data in archive.cases.switching_states:
-            old_case_id = ss_data["case_id"]
-            new_case_id = id_map.get(old_case_id)
-            if not new_case_id:
-                continue
-
-            ss_orm = SwitchingStateORM(
-                id=uuid4(),
-                case_id=new_case_id,
-                element_id=id_map.get(ss_data["element_id"], UUID(ss_data["element_id"])),
-                element_type=ss_data["element_type"],
-                in_service=ss_data["in_service"],
-            )
-            self._session.add(ss_orm)
-
-        # 10. Project settings
+        # 10. Project settings. `connection_node_id` przechodzi WPROST (jak w
+        # sekcji 1) — nie ma już tabeli węzłów, z której budowałoby się mapowanie.
         if archive.cases.settings:
             settings = archive.cases.settings
             settings_orm = ProjectSettingsORM(
                 project_id=new_project_id,
                 connection_node_id=(
-                    id_map.get(settings["connection_node_id"])
+                    UUID(settings["connection_node_id"])
                     if settings.get("connection_node_id")
                     else None
                 ),
@@ -1079,163 +670,69 @@ class ProjectArchiveService:
 
         self._session.flush()
 
-        # 11. SLD diagrams
-        for diag_data in archive.sld_diagrams.diagrams:
-            old_id = diag_data["id"]
-            new_id = uuid4()
-            id_map[old_id] = new_id
-
-            diag_orm = SldDiagramORM(
-                id=new_id,
-                project_id=new_project_id,
-                name=diag_data["name"],
-                sld_jsonb=diag_data["sld_jsonb"],
-                dirty_flag=diag_data["dirty_flag"],
-                created_at=now,
-                updated_at=now,
-            )
-            self._session.add(diag_orm)
-
-        self._session.flush()
-
-        # 12. SLD node symbols
-        for ns_data in archive.sld_diagrams.node_symbols:
-            old_diagram_id = ns_data["diagram_id"]
-            new_diagram_id = id_map.get(old_diagram_id)
-            if not new_diagram_id:
-                continue
-
-            ns_orm = SldNodeSymbolORM(
-                id=uuid4(),
-                diagram_id=new_diagram_id,
-                node_id=id_map.get(ns_data["node_id"], UUID(ns_data["node_id"])),
-                x=ns_data["x"],
-                y=ns_data["y"],
-                label=ns_data.get("label"),
-                is_connection_node=ns_data.get("is_connection_node", False),
-            )
-            self._session.add(ns_orm)
-
-        # 13. SLD branch symbols
-        for bs_data in archive.sld_diagrams.branch_symbols:
-            old_diagram_id = bs_data["diagram_id"]
-            new_diagram_id = id_map.get(old_diagram_id)
-            if not new_diagram_id:
-                continue
-
-            bs_orm = SldBranchSymbolORM(
-                id=uuid4(),
-                diagram_id=new_diagram_id,
-                branch_id=id_map.get(bs_data["branch_id"], UUID(bs_data["branch_id"])),
-                from_node_id=id_map.get(bs_data["from_node_id"], UUID(bs_data["from_node_id"])),
-                to_node_id=id_map.get(bs_data["to_node_id"], UUID(bs_data["to_node_id"])),
-                points_jsonb=bs_data["points_jsonb"],
-            )
-            self._session.add(bs_orm)
-
-        # 14. SLD annotations
-        for ann_data in archive.sld_diagrams.annotations:
-            old_diagram_id = ann_data["diagram_id"]
-            new_diagram_id = id_map.get(old_diagram_id)
-            if not new_diagram_id:
-                continue
-
-            ann_orm = SldAnnotationORM(
-                id=uuid4(),
-                diagram_id=new_diagram_id,
-                text=ann_data["text"],
-                x=ann_data["x"],
-                y=ann_data["y"],
-            )
-            self._session.add(ann_orm)
-
-        # 15. Study runs
-        for sr_data in archive.runs.study_runs:
-            old_id = sr_data["id"]
-            new_id = uuid4()
-            id_map[old_id] = new_id
-
-            sr_orm = StudyRunORM(
-                id=new_id,
-                project_id=new_project_id,
-                case_id=id_map.get(sr_data["case_id"], UUID(sr_data["case_id"])),
-                analysis_type=sr_data["analysis_type"],
-                input_hash=sr_data["input_hash"],
-                network_snapshot_id=(
-                    snapshot_id_map.get(sr_data["network_snapshot_id"])
-                    if sr_data.get("network_snapshot_id")
-                    else None
-                ),
-                solver_version_hash=sr_data.get("solver_version_hash"),
-                result_state=sr_data["result_state"],
-                status=sr_data["status"],
-                started_at=datetime.fromisoformat(sr_data["started_at"]),
-                finished_at=(
-                    datetime.fromisoformat(sr_data["finished_at"])
-                    if sr_data.get("finished_at")
-                    else None
-                ),
-            )
-            self._session.add(sr_orm)
-
-        self._session.flush()
-
-        # 16. Analysis runs
-        for ar_data in archive.runs.analysis_runs:
-            old_id = ar_data["id"]
-            new_id = uuid4()
-            id_map[old_id] = new_id
-
-            ar_orm = AnalysisRunORM(
-                id=new_id,
-                project_id=new_project_id,
-                operating_case_id=id_map.get(
-                    ar_data["operating_case_id"], UUID(ar_data["operating_case_id"])
-                ),
-                analysis_type=ar_data["analysis_type"],
-                status=ar_data["status"],
-                result_status=ar_data["result_status"],
-                created_at=datetime.fromisoformat(ar_data["created_at"]),
-                started_at=(
-                    datetime.fromisoformat(ar_data["started_at"])
-                    if ar_data.get("started_at")
-                    else None
-                ),
-                finished_at=(
-                    datetime.fromisoformat(ar_data["finished_at"])
-                    if ar_data.get("finished_at")
-                    else None
-                ),
-                input_snapshot=ar_data["input_snapshot"],
-                input_hash=ar_data["input_hash"],
-                result_summary=ar_data["result_summary"],
-                trace_json=ar_data.get("trace_json"),
-                white_box_trace=ar_data.get("white_box_trace"),
-                error_message=ar_data.get("error_message"),
-            )
-            self._session.add(ar_orm)
-
-        self._session.flush()
-
-        # 17. Analysis runs index
-        for idx_data in archive.runs.analysis_runs_index:
-            old_run_id = idx_data["run_id"]
-            # Mapuj run_id - sprawdź czy to UUID czy string hash
-            new_run_id = str(id_map.get(old_run_id, old_run_id))
-
-            idx_orm = AnalysisRunIndexORM(
+        # 15. Canonical runs (R1) — CV-3.3-B. Dwa przebiegi:
+        #   (a) nowe id dla KAŻDEGO biegu + zebranie mapy stary->nowy PRZED
+        #       zapisem, bo bieg zabezpieczeń (`options["sc_run_id"]`) może
+        #       odwoływać się do biegu zwarciowego, który w archiwum idzie PO
+        #       nim (kolejność w archiwum nie jest gwarantowana);
+        #   (b) zapis z case_id/project_id/options.sc_run_id przemapowanymi
+        #       na nowe identyfikatory.
+        # `envelope`/`snapshot` NIE są przemapowywane — to zapis HISTORYCZNY
+        # (opisuje stan modelu w chwili eksportu). Przemapowanie `project_id`
+        # wewnątrz koperty złamałoby `RevisionEnvelope.spojna` (odcisk
+        # semantyczny liczony nad tym polem) i zameldowałoby OUTDATED z
+        # przyczyną „koperta niespójna" zamiast uczciwego porównania z
+        # bieżącym modelem po imporcie.
+        canonical_run_id_map: dict[str, UUID] = {
+            cr_data["id"]: uuid4() for cr_data in archive.runs.canonical_runs
+        }
+        canonical_run_repo = CanonicalRunRepository(self._session)
+        for cr_data in archive.runs.canonical_runs:
+            new_run_id = canonical_run_id_map[cr_data["id"]]
+            options = dict(cr_data.get("options") or {})
+            if cr_data["analysis_type"] == "protection_sn" and options.get("sc_run_id"):
+                options["sc_run_id"] = str(
+                    canonical_run_id_map.get(str(options["sc_run_id"]), options["sc_run_id"])
+                )
+            run = odtworz_bieg_z_archiwum(
+                cr_data,
                 run_id=new_run_id,
+                case_id=str(id_map.get(cr_data["case_id"], cr_data["case_id"])),
+                project_id=str(new_project_id),
+                options=options,
+            )
+            canonical_run_repo.create(run)
+            id_map[cr_data["id"]] = new_run_id
+
+        self._session.flush()
+
+        # 16. Analysis runs index — CV-3.3-B: NIEZALEŻNA tabela
+        # (`AnalysisRunIndexORM`, R1-niezwiązana). Karta W3-C1 (2026-09)
+        # skasowała jej JEDYNE dwa produkcyjne miejsca zapisu
+        # (`application/analyses/protection/overcurrent/**` — cały pakiet —
+        # i `catalog/pipeline.py::run_device_mapping_v0`, zero konsumentów
+        # `ui2/wyniki/koordynacja` w chwili kasacji, zmierzone grepem; dobór
+        # aparatu jest odtąd CZYSTĄ funkcją, `catalog/pipeline.py::
+        # dopasuj_do_aparatu`, bez koperty biegu i bez tego indeksu) — sekcja
+        # archiwum pozostaje READ-ONLY odbiorcą HISTORYCZNYCH wpisów
+        # (odtwarzalność starych archiwów), bez nowego pisarza. `run_id` NIE
+        # jest przemapowywany: identyfikatory tego historycznego indeksu nie
+        # są id `CanonicalRun` (własny `AnalysisRunEnvelope`, także skasowany
+        # razem z resztą V12K-189) — przemapowanie przez `id_map` podstawiłoby
+        # losowy, niepowiązany identyfikator.
+        # `base_snapshot_id` (W1: pole bez klucza obcego, String(64) — nie
+        # dosłowny `NetworkSnapshotORM.snapshot_id`, tabela snapshotów już nie
+        # istnieje) przechodzi WPROST, bez próby przemapowania.
+        for idx_data in archive.runs.analysis_runs_index:
+            idx_orm = AnalysisRunIndexORM(
+                run_id=idx_data["run_id"],
                 analysis_type=idx_data["analysis_type"],
                 case_id=(
                     str(id_map.get(idx_data["case_id"], idx_data["case_id"]))
                     if idx_data.get("case_id")
                     else None
                 ),
-                base_snapshot_id=(
-                    snapshot_id_map.get(idx_data["base_snapshot_id"])
-                    if idx_data.get("base_snapshot_id")
-                    else None
-                ),
+                base_snapshot_id=idx_data.get("base_snapshot_id"),
                 primary_artifact_type=idx_data["primary_artifact_type"],
                 primary_artifact_id=idx_data["primary_artifact_id"],
                 fingerprint=idx_data["fingerprint"],
@@ -1245,112 +742,128 @@ class ProjectArchiveService:
             )
             self._session.add(idx_orm)
 
-        # 18. Study results
-        for res_data in archive.results.study_results:
-            # U5: osobna zmienna UUID — reużycie `new_run_id: str` z pętli #17
-            # dawało niezgodność typów (UUID | None przypisywane do str).
-            mapped_result_run_id = id_map.get(res_data["run_id"])
-            if mapped_result_run_id is None:
-                continue
-
-            res_orm = StudyResultORM(
-                id=uuid4(),
-                run_id=mapped_result_run_id,
-                project_id=new_project_id,
-                result_type=res_data["result_type"],
-                result_jsonb=res_data["result_jsonb"],
-                created_at=datetime.fromisoformat(res_data["created_at"]),
-            )
-            self._session.add(res_orm)
-
-        # 19. Design specs
-        for spec_data in archive.proofs.design_specs:
-            old_case_id = spec_data["case_id"]
-            new_case_id = id_map.get(old_case_id)
-            if not new_case_id:
-                continue
-
-            spec_orm = DesignSpecORM(
-                id=uuid4(),
-                case_id=new_case_id,
-                base_snapshot_id=snapshot_id_map.get(spec_data["base_snapshot_id"])
-                or spec_data["base_snapshot_id"],
-                spec_json=spec_data["spec_json"],
-                created_at=datetime.fromisoformat(spec_data["created_at"]),
-                updated_at=datetime.fromisoformat(spec_data["updated_at"]),
-            )
-            self._session.add(spec_orm)
-
-        # 20. Design proposals
-        for prop_data in archive.proofs.design_proposals:
-            old_case_id = prop_data["case_id"]
-            new_case_id = id_map.get(old_case_id)
-            if not new_case_id:
-                continue
-
-            prop_orm = DesignProposalORM(
-                id=uuid4(),
-                case_id=new_case_id,
-                input_snapshot_id=snapshot_id_map.get(prop_data["input_snapshot_id"])
-                or prop_data["input_snapshot_id"],
-                proposal_json=prop_data["proposal_json"],
-                status=prop_data["status"],
-                created_at=datetime.fromisoformat(prop_data["created_at"]),
-                updated_at=datetime.fromisoformat(prop_data["updated_at"]),
-            )
-            self._session.add(prop_orm)
-
-        # 21. Design evidence
-        for evid_data in archive.proofs.design_evidence:
-            old_case_id = evid_data["case_id"]
-            new_case_id = id_map.get(old_case_id)
-            if not new_case_id:
-                continue
-
-            evid_orm = DesignEvidenceORM(
-                id=uuid4(),
-                case_id=new_case_id,
-                snapshot_id=snapshot_id_map.get(evid_data["snapshot_id"])
-                or evid_data["snapshot_id"],
-                evidence_json=evid_data["evidence_json"],
-                created_at=datetime.fromisoformat(evid_data["created_at"]),
-            )
-            self._session.add(evid_orm)
-
         # flush to ensure IDs are available; commit handled by UnitOfWork
         self._session.flush()
 
-        # 22. Modele ENM per przypadek (N-D1) — przywrócenie 1:1 pod NOWE id
-        # przypadków (id_map), bez bumpu rewizji (round-trip zachowuje hashe).
-        for enm_entry in archive.enm.models:
-            old_case_id = str(enm_entry.get("case_id") or "")
-            snapshot = enm_entry.get("snapshot")
-            new_case_id = id_map.get(old_case_id)
-            if new_case_id is None or not isinstance(snapshot, dict):
-                continue
-            restore_enm(str(new_case_id), snapshot)
+        # 22. Model(e) ENM (N-D1, CV-1-W) — magazyn jest kluczowany kluczem
+        # PROJEKTU, więc przywracamy JEDEN model projektu, nie po jednym per
+        # przypadek. Archiwa wyeksportowane PO tej karcie niosą IDENTYCZNĄ
+        # treść pod każdym `case_id` (jeden odczyt przy eksporcie — patrz
+        # `_collect_enm`), więc "pierwszy" i "reszta" są bajtowo tym samym
+        # modelem. Archiwa SPRZED tej karty mogły nieść RÓŻNE snapshoty per
+        # przypadek (każdy przypadek miał wtedy własny model) — nic nie może
+        # zniknąć: pierwszy wpis (aktywny przypadek archiwum, w jego braku
+        # pierwszy w porządku `case_id` — ta sama reguła co migracja legacy w
+        # `application/twin_key.migruj_projekt_z_legacy`) staje się modelem
+        # PROJEKTU pod jego kluczem twin bez bumpu rewizji (round-trip
+        # zachowuje hashe); pozostałe wpisy idą przez `store.migruj_klucz_
+        # przypadku_do_projektu` do `legacy_przypadki/` z wierszem manifestu
+        # (ZGODNY dla duplikatu treści, ROZBIEZNY dla realnej rozbieżności).
+        entries_by_old_case: dict[str, dict[str, Any]] = {
+            str(entry.get("case_id") or ""): entry["snapshot"]
+            for entry in archive.enm.models
+            if isinstance(entry.get("snapshot"), dict)
+        }
+        # Klucz docelowy budujemy tą samą drogą co eksport — przez migrację, a
+        # nie przez czystą funkcję klucza. Dla ŚWIEŻEGO projektu migracja jest
+        # pustym przebiegiem (żaden z nowo utworzonych przypadków nie ma jeszcze
+        # pliku w magazynie), ale droga do magazynu ma być JEDNA: „czysty klucz
+        # projektu, bo akurat tutaj nie ma czego migrować" jest rozumowaniem,
+        # które przestaje być prawdziwe po pierwszej zmianie tej funkcji.
+        klucz_projektu_docelowy = migruj_projekt_z_legacy_z_repozytorium(
+            new_project_id, CaseRepository(self._session)
+        ).klucz_projektu
+        if entries_by_old_case:
+            old_active_case_id = next(
+                (
+                    str(sc["id"])
+                    for sc in archive.cases.study_cases
+                    if sc.get("is_active") and str(sc["id"]) in entries_by_old_case
+                ),
+                None,
+            )
+            # Ta sama reguła kolejności co migracja plików zastanych
+            # (`application/twin_key.kolejnosc_promocji`) — jedna reguła, trzy
+            # źródła listy przypadków (baza, eksport, wpisy archiwum).
+            kolejnosc_starych = kolejnosc_promocji(sorted(entries_by_old_case), old_active_case_id)
+            for indeks, old_case_id in enumerate(kolejnosc_starych):
+                snapshot = entries_by_old_case[old_case_id]
+                if not old_case_id:
+                    # Sentinel `_collect_enm` (case_id: None) — model istniał,
+                    # ale ŻADEN przypadek go nie niósł (projekt bez przypadków
+                    # w chwili eksportu). Idzie WPROST na klucz projektu — nie
+                    # ma przypadku do wyszukania w `id_map`, więc próba
+                    # `id_map.get(old_case_id)` (pusty klucz) zawsze zwracałaby
+                    # `None` i po cichu gubiła model (dokładnie ten defekt,
+                    # który ten sentinel naprawia).
+                    if indeks == 0:
+                        restore_enm(klucz_projektu_docelowy, snapshot)
+                    continue
+                new_case_id = id_map.get(old_case_id)
+                if new_case_id is None:
+                    continue
+                if indeks == 0:
+                    restore_enm(klucz_projektu_docelowy, snapshot)
+                else:
+                    # Zapis TYMCZASOWY pod kluczem nowego przypadku — jedyny
+                    # sposób, żeby `migruj_klucz_przypadku_do_projektu` (który
+                    # czyta model spod klucza przypadku) mógł porównać hashem
+                    # i odłożyć bez utraty danych.
+                    restore_enm(str(new_case_id), snapshot)
+                    migruj_klucz_przypadku_do_projektu(
+                        str(new_case_id),
+                        klucz_projektu_docelowy,
+                        przyjmij_jako_model_projektu=False,
+                    )
+        else:
+            # W1-B-ARCH §0.2: archiwum 2.x BEZ `enm.models` — jedyny ślad sieci
+            # jest w surowej sekcji `network_model` (`ProjectArchive` formatu
+            # 3.0.0 jej już nie niesie, stąd `raw_archive`, nie `archive`).
+            # Kompilacja tym samym kompilatorem grafu co arkusz XLSX i
+            # buildery sieci referencyjnych (`enm/kompilator_grafu.py`) —
+            # ZERO drugiej implementacji tej samej drogi.
+            siec_legacy = raw_archive.get("network_model") or {}
+            wezly_legacy = siec_legacy.get("nodes") or []
+            if wezly_legacy:
+                try:
+                    graf = graf_z_modelu_legacy(
+                        nazwa=archive.project_meta.name,
+                        wezly=wezly_legacy,
+                        galezie=siec_legacy.get("branches") or [],
+                        zrodla=siec_legacy.get("sources") or [],
+                        odbiory=siec_legacy.get("loads") or [],
+                        proweniencja=f"archiwum:{archive.project_meta.id}",
+                    )
+                    wynik_kompilacji = kompiluj_graf(graf)
+                    model = EnergyNetworkModel.model_validate(wynik_kompilacji.enm)
+                except (
+                    OdmowaMigracji,
+                    BladGrafuWejsciowego,
+                    BenchmarkBuildError,
+                    ValidationError,
+                ) as blad:
+                    # Odmowa nazwana — projekt/przypadki/biegi ZOSTAJĄ przywrócone,
+                    # projekt zostaje bez modelu (zero cichego pomijania, §0.2).
+                    warnings.append(f"Model sieci z archiwum 2.x nie został odtworzony: {blad}")
+                else:
+                    set_enm(
+                        klucz_projektu_docelowy,
+                        model,
+                        zrodlo_zmiany=ZrodloZmiany(
+                            operacja=None,
+                            opis_pl=(
+                                "Model odtworzony z archiwum 2.x (sekcja network_model, "
+                                "W1-B-ARCH)"
+                            ),
+                            ladunek={
+                                "zrodlo": "import_archiwum_legacy",
+                                "archiwum": archive.project_meta.id,
+                            },
+                            utworzone=_wszystkie_ref_id(wynik_kompilacji.enm),
+                        ),
+                    )
 
         return new_project_id
-
-    def _remap_snapshot_json(
-        self, snapshot_json: dict[str, Any], id_map: dict[str, UUID]
-    ) -> dict[str, Any]:
-        """Przemapuj ID w snapshot_json na nowe wartości."""
-
-        # Głęboka kopia i podmiana ID
-        def remap_value(value: Any) -> Any:
-            if isinstance(value, str):
-                # Sprawdź czy to UUID do przemapowania
-                if value in id_map:
-                    return str(id_map[value])
-                return value
-            if isinstance(value, dict):
-                return {k: remap_value(v) for k, v in value.items()}
-            if isinstance(value, list):
-                return [remap_value(item) for item in value]
-            return value
-
-        return remap_value(snapshot_json)
 
     # ========================================================================
     # PREVIEW (dla UI)
@@ -1387,7 +900,10 @@ class ProjectArchiveService:
                     manifest_data = json.loads(zf.read("manifest.json").decode("utf-8"))
                     exported_at = manifest_data.get("exported_at")
 
-            # Zbuduj podsumowanie
+            # Zbuduj podsumowanie. W1-B-ARCH: model sieci żyje wyłącznie w ENM
+            # (sekcja `enm`) — `network_model`/`sld_diagrams`/`proofs` nie mają
+            # już źródła danych, więc podgląd liczy to, co archiwum NAPRAWDĘ
+            # niesie (przypadki, biegi, wpisy modelu ENM per przypadek).
             return {
                 "valid": True,
                 "format_id": archive.format_id,
@@ -1397,22 +913,10 @@ class ProjectArchiveService:
                 "exported_at": exported_at,
                 "archive_hash": archive.fingerprints.archive_hash,
                 "summary": {
-                    "nodes_count": len(archive.network_model.nodes),
-                    "branches_count": len(archive.network_model.branches),
-                    "sources_count": len(archive.network_model.sources),
-                    "loads_count": len(archive.network_model.loads),
-                    "snapshots_count": len(archive.network_model.snapshots),
-                    "sld_diagrams_count": len(archive.sld_diagrams.diagrams),
                     "study_cases_count": len(archive.cases.study_cases),
                     "operating_cases_count": len(archive.cases.operating_cases),
-                    "analysis_runs_count": len(archive.runs.analysis_runs),
-                    "study_runs_count": len(archive.runs.study_runs),
-                    "results_count": len(archive.results.study_results),
-                    "proofs_count": (
-                        len(archive.proofs.design_specs)
-                        + len(archive.proofs.design_proposals)
-                        + len(archive.proofs.design_evidence)
-                    ),
+                    "canonical_runs_count": len(archive.runs.canonical_runs),
+                    "enm_models_count": len(archive.enm.models),
                 },
             }
 
@@ -1424,49 +928,57 @@ class ProjectArchiveService:
             return {"valid": False, "error": "Nieprawidłowy format archiwum ZIP"}
 
 
-def _find_elements_without_catalog(archive: ProjectArchive) -> list[str]:
+def _find_elements_without_catalog(model: EnergyNetworkModel | None) -> list[str]:
     """Znajdz elementy techniczne bez referencji katalogowej.
 
-    Sprawdza branches (segmenty SN) z network_model.branches
-    oraz szuka transformatorow w snapshotach.
-    Zwraca liste ref_id elementow bez catalog_ref.
+    W1-B-ARCH §0.4: liczy się z MODELU ENM (przywróconego z sekcji `enm`, albo
+    skompilowanego z danych legacy w `_restore_project`) — jedynego nośnika
+    sieci od W1. Sprawdza gałęzie, transformatory i źródła systemowe wg
+    JEDYNEGO źródła prawdy `catalog.governance.wymagalnosc_katalogu` (oś
+    `import_`) — wspólnego z walidatorem E009, bramką CGMES i XLSX (karta
+    W3-I), żeby bramka katalogowa nie rozjechała się między importerami.
+    Model nieobecny (import bez sieci, albo model 2.x nie odtworzony —
+    ostrzeżenie już nazwane wyżej) → pusta lista, zero fabrykacji.
+
+    Karta W3-I (2026-09-09): PRZED tą kartą ta bramka sprawdzała WYŁĄCZNIE
+    gałęzie i transformatory — źródła systemowe nie były sprawdzane wcale,
+    mimo że CGMES (`infrastructure/cgmes/cgmes_importer.py::
+    _elements_without_catalog`) i walidator (E009) je sprawdzają. Rozjazd
+    nazwany w meldunku karty — teraz ZIP sprawdza źródła tak samo jak
+    pozostałych pięć miejsc (z wyjątkiem `parameter_source ==
+    "MANUAL_EQUIVALENT"`, K1.2).
+
+    Zwraca listę ref_id elementów bez catalog_ref.
     """
+    if model is None:
+        return []
     elements_no_catalog: list[str] = []
-    seen: set[str] = set()
-
-    # Typy branchow wymagajace katalogu — predykat wspolny dla WSZYSTKICH drog
-    # wejscia modelu (archiwum ZIP i import XLSX), zeby bramka katalogowa nie
-    # rozjechala sie miedzy importerami (`catalog.governance`).
-
-    # Sprawdz branches z modelu sieci
-    for branch in archive.network_model.branches:
-        branch_type = branch.get("type", "")
-        ref_id = branch.get("ref_id", branch.get("id", ""))
-        if wymaga_referencji_katalogowej(branch_type) and ref_id not in seen:
-            if not branch.get("catalog_ref"):
-                elements_no_catalog.append(ref_id)
-                seen.add(ref_id)
-
-    # Sprawdz snapshoty (dla transformatorow i dodatkowych branchow)
-    for snapshot in archive.network_model.snapshots:
-        graph = snapshot.get("graph", {}) if isinstance(snapshot, dict) else {}
-        if not graph:
-            continue
-
-        for branch in graph.get("branches", []):
-            branch_type = branch.get("type", "")
-            ref_id = branch.get("ref_id", "")
-            if wymaga_referencji_katalogowej(branch_type) and ref_id not in seen:
-                if not branch.get("catalog_ref"):
-                    elements_no_catalog.append(ref_id)
-                    seen.add(ref_id)
-
-        for device in graph.get("devices", []):
-            device_type = device.get("device_type", "")
-            ref_id = device.get("ref_id", "")
-            if device_type == "transformer" and ref_id not in seen:
-                if not device.get("catalog_ref"):
-                    elements_no_catalog.append(ref_id)
-                    seen.add(ref_id)
-
+    for branch in model.branches:
+        poziom = wymagalnosc_katalogu(branch.type).import_
+        if brakuje_wymaganej_referencji(poziom, branch.catalog_ref):
+            elements_no_catalog.append(branch.ref_id)
+    for transformer in model.transformers:
+        poziom = wymagalnosc_katalogu("transformer").import_
+        if brakuje_wymaganej_referencji(poziom, transformer.catalog_ref):
+            elements_no_catalog.append(transformer.ref_id)
+    for source in model.sources:
+        poziom = wymagalnosc_katalogu("source", parameter_source=source.parameter_source).import_
+        if brakuje_wymaganej_referencji(poziom, source.catalog_ref):
+            elements_no_catalog.append(source.ref_id)
     return elements_no_catalog
+
+
+def _wszystkie_ref_id(enm_dict: dict[str, Any]) -> tuple[str, ...]:
+    """Ref_id KAŻDEGO elementu modelu ENM (surowy słownik) — posortowane dla
+    determinizmu. Karmi `ZrodloZmiany.utworzone` przy kompilacji modelu z
+    archiwum 2.x (W1-B-ARCH §0.2): dziennik zmian ma nazywać WSZYSTKO, co
+    powstało, nie tylko szyny/gałęzie — stąd generyczne przejście po każdej
+    liście elementów modelu, a nie wyliczanka pojedynczych kolekcji."""
+    ref_idy: list[str] = []
+    for klucz, wartosc in enm_dict.items():
+        if klucz == "header" or not isinstance(wartosc, list):
+            continue
+        for element in wartosc:
+            if isinstance(element, dict) and "ref_id" in element:
+                ref_idy.append(str(element["ref_id"]))
+    return tuple(sorted(ref_idy))

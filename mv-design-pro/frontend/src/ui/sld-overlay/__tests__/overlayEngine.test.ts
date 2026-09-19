@@ -28,11 +28,46 @@ import {
   ANIMATION_TOKEN_MAP,
   VISUAL_STATE_STYLE,
 } from '../overlayTypes';
-import type { BusSymbol, BranchSymbol, SwitchSymbol } from '../../sld-editor/types';
-
 // =============================================================================
 // TEST DATA
 // =============================================================================
+
+/**
+ * Symbole SLD renderowane na kanwie — `applyOverlayToSymbols` czyta z nich
+ * WYLACZNIE `elementId` (parametr `symbols: readonly unknown[]`, `OverlayEngine.ts`),
+ * wiec fiksturki maja swoj WLASNY, pelny ksztalt geometryczny (pozycja/rozmiar),
+ * a nie waski most migracyjny `sld-editor/types.ts` (ten niesie TYLKO pola
+ * czytane przez `topologyInputReader.ts`, bez geometrii renderu).
+ */
+interface TestSldSymbolBase {
+  readonly id: string;
+  readonly elementId: string;
+  readonly elementName: string;
+  readonly inService: boolean;
+  readonly position: { x: number; y: number };
+}
+
+interface BusSymbol extends TestSldSymbolBase {
+  readonly elementType: 'Bus';
+  readonly width: number;
+  readonly height: number;
+}
+
+interface BranchSymbol extends TestSldSymbolBase {
+  readonly elementType: 'LineBranch';
+  readonly fromNodeId: string;
+  readonly toNodeId: string;
+  readonly points: readonly { x: number; y: number }[];
+  readonly branchType: 'LINE' | 'CABLE';
+}
+
+interface SwitchSymbol extends TestSldSymbolBase {
+  readonly elementType: 'Switch';
+  readonly fromNodeId: string;
+  readonly toNodeId: string;
+  readonly switchState: 'OPEN' | 'CLOSED';
+  readonly switchType: 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'FUSE';
+}
 
 const createBusSymbol = (id: string, elementId: string): BusSymbol => ({
   id,

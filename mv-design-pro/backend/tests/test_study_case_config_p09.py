@@ -1,8 +1,9 @@
 """
 Tests for P0.9 StudyCaseConfig extensions (V12K-014 operator profile + sc_input_mode toggle).
 
-Verifies the domain.study_case.StudyCaseConfig class (not domain.study_case_engine —
-the two are parallel; see test_study_case_engine.py docstring for context).
+Verifies the domain.study_case.StudyCaseConfig class (the parallel
+domain.study_case_engine module and its tests were removed CV-3.2 — dead code,
+0 importers in src; semantics live in enm/scenariusze.py::OperatingScenario).
 
 Scope:
 - Default values per /goal V12K (ENEA Operator + simplified SC mode)

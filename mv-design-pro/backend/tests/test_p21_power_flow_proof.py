@@ -818,6 +818,65 @@ class TestEdgeCases:
         assert len(proof.iterations) == 0
         assert proof.summary.iterations_count == 0
 
+    def test_missing_theta_rad_in_state_next_raises_not_flat_start(self):
+        """FAB-E (E1): brak theta_rad w state_next NIE jest fikcyjnym 0 rad.
+
+        Kontrakt frozen NR aktualizuje CALY wektor stanu na raz — brak
+        theta_rad dla jednej szyny oznacza uszkodzony slad, nie plaski start.
+        Proof Engine (czysta interpretacja, ZERO obliczen wtornych) musi
+        odmowic zbudowania dowodu z takiego sladu, zamiast podpisac fikcyjna
+        wartosc jako obliczony wynik.
+        """
+        from network_model.proof import build_power_flow_proof
+
+        trace = create_mock_trace()
+        result = create_mock_result()
+        # Uszkadzamy slad: iteracja 1 traci theta_rad dla BUS_001.
+        del trace.iterations[0].state_next["BUS_001"]["theta_rad"]
+
+        with pytest.raises(ValueError, match="BUS_001.*theta_rad|theta_rad.*BUS_001"):
+            build_power_flow_proof(
+                trace=trace,
+                result=result,
+                project_name="Test Project",
+                case_name="Test Case",
+                run_timestamp="2024-01-15T10:30:00+00:00",
+            )
+
+    def test_missing_v_pu_in_init_state_exports_as_brak_danych_not_flat_start(self):
+        """FAB-E (E1): brak v_pu w init_state w eksporcie LaTeX to „brak danych", nie 1.0 p.u.
+
+        ``PowerFlowProofBuilder`` przenosi ``init_state`` 1:1 (bez walidacji
+        pol) — to ``export_proof_to_latex`` (``power_flow_proof_export.py``,
+        tabela stanu poczatkowego) pierwszy odczytuje ``v_pu``/``theta_rad``
+        pojedynczo. Przed poprawka brakujace pole bylo czytane jako fikcyjny
+        start plaski (1.0 p.u. / 0 rad), co w formalnym dowodzie wygladalo
+        jak realna wartosc uzyta przez solver.
+        """
+        from network_model.proof import build_power_flow_proof, export_proof_to_latex
+
+        trace = create_mock_trace()
+        result = create_mock_result()
+        del trace.init_state["BUS_002"]["v_pu"]
+
+        proof = build_power_flow_proof(
+            trace=trace,
+            result=result,
+            project_name="Test Project",
+            case_name="Test Case",
+            run_timestamp="2024-01-15T10:30:00+00:00",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "proof.tex"
+            export_proof_to_latex(proof, path)
+            content = path.read_text(encoding="utf-8")
+
+        assert "brak danych" in content
+        # BUS_001 (kompletny) nadal renderuje sie normalnie — poprawka nie
+        # ukrywa prawdziwych wartosci za "brak danych".
+        assert "1.0000" in content
+
 
 # =============================================================================
 # Equation registry tests

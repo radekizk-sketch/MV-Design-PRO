@@ -65,6 +65,9 @@ def _make_valid_catalog() -> CatalogRepository:
                     "x_ohm_per_km": 0.377,
                     "b_us_per_km": 2.84,
                     "rated_current_a": 210.0,
+                    "max_temperature_c": 80.0,
+                    "voltage_rating_kv": 15.0,
+                    "cross_section_mm2": 70.0,
                 },
             }
         ],
@@ -341,6 +344,101 @@ class TestEligibilityBlockers:
         assert result.eligible is False
         blocker_codes = [b.code for b in result.blockers]
         assert "SI-004" in blocker_codes
+
+
+def _make_transformer_network(
+    *,
+    i0_percent: float | None,
+    p0_kw: float | None,
+    vector_group: str | None,
+) -> NetworkGraph:
+    """Sieć z jednym poprawnym transformatorem BEZ type_ref (dane instancji),
+    z parametryzowaną kompletnością i0/p0/vector_group (karta FAB-D2, D2)."""
+    g = NetworkGraph()
+    g.add_node(
+        Node(
+            id="slack",
+            name="Slack",
+            node_type=NodeType.SLACK,
+            voltage_level=110.0,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+        )
+    )
+    g.add_node(
+        Node(
+            id="sn",
+            name="SN",
+            node_type=NodeType.PQ,
+            voltage_level=15.0,
+            active_power=0.0,
+            reactive_power=0.0,
+        )
+    )
+    g.add_branch(
+        TransformerBranch(
+            id="trafo_1",
+            name="Transformer 1",
+            branch_type=BranchType.TRANSFORMER,
+            from_node_id="slack",
+            to_node_id="sn",
+            rated_power_mva=10.0,
+            voltage_hv_kv=110.0,
+            voltage_lv_kv=15.0,
+            uk_percent=10.5,
+            pk_kw=50.0,
+            i0_percent=i0_percent,
+            p0_kw=p0_kw,
+            vector_group=vector_group,
+        )
+    )
+    return g
+
+
+class TestEligibilityTransformerNameplateCompleteness:
+    """Karta FAB-D2 (D2): i0/p0 (WARNING, wszystkie typy) i vector_group
+    (BLOCKER, TYLKO SHORT_CIRCUIT_1F — składowa zerowa) — brak != 0.0/"Dyn11"."""
+
+    def test_no_load_params_missing_warns_but_stays_eligible(self):
+        g = _make_transformer_network(i0_percent=None, p0_kw=None, vector_group="Dyn11")
+        catalog = _make_empty_catalog()
+        for analysis_type in (
+            SolverAnalysisType.SHORT_CIRCUIT_3F,
+            SolverAnalysisType.SHORT_CIRCUIT_1F,
+            SolverAnalysisType.LOAD_FLOW,
+        ):
+            result = check_eligibility(g, catalog, analysis_type)
+            assert result.eligible is True, analysis_type
+            warning_codes = [w.code for w in result.warnings]
+            assert "transformer.no_load_params_missing" in warning_codes, analysis_type
+
+    def test_no_load_params_present_no_warning(self):
+        """Predykaty parami — dana JAWNA: i0/p0 obecne, żadnego ostrzeżenia."""
+        g = _make_transformer_network(i0_percent=0.5, p0_kw=8.0, vector_group="Dyn11")
+        catalog = _make_empty_catalog()
+        result = check_eligibility(g, catalog, SolverAnalysisType.LOAD_FLOW)
+        warning_codes = [w.code for w in result.warnings]
+        assert "transformer.no_load_params_missing" not in warning_codes
+
+    def test_vector_group_missing_blocks_only_sc1f(self):
+        g = _make_transformer_network(i0_percent=0.5, p0_kw=8.0, vector_group=None)
+        catalog = _make_empty_catalog()
+
+        sc1f = check_eligibility(g, catalog, SolverAnalysisType.SHORT_CIRCUIT_1F)
+        assert sc1f.eligible is False
+        assert "transformer.vector_group_missing" in [b.code for b in sc1f.blockers]
+
+        for analysis_type in (SolverAnalysisType.SHORT_CIRCUIT_3F, SolverAnalysisType.LOAD_FLOW):
+            result = check_eligibility(g, catalog, analysis_type)
+            assert result.eligible is True, analysis_type
+            assert "transformer.vector_group_missing" not in [b.code for b in result.blockers]
+
+    def test_vector_group_present_no_block_on_sc1f(self):
+        """Predykaty parami — dana JAWNA: vector_group obecny, SC_1F przechodzi."""
+        g = _make_transformer_network(i0_percent=0.5, p0_kw=8.0, vector_group="Dyn11")
+        catalog = _make_empty_catalog()
+        result = check_eligibility(g, catalog, SolverAnalysisType.SHORT_CIRCUIT_1F)
+        assert "transformer.vector_group_missing" not in [b.code for b in result.blockers]
 
 
 class TestEligibilityWarnings:

@@ -43,6 +43,19 @@ export interface KreatorRamaProps {
   krokDalej?: AkcjaKreatora;
   /** Etykieta licznika kroków, np. „Krok 2 z 7". */
   licznikKrokow?: string;
+  /**
+   * Sygnał gotowości formularza (karta E2E-S95, klasa: bramka enable bez
+   * jawnego sygnału gotowości) — renderowany jako `data-status` na korzeniu
+   * kreatora. Moduł wołający MUSI wyprowadzić tę wartość z DOKŁADNIE TEGO
+   * SAMEGO wyrażenia, które zasila `akcjaGlowna.zablokowana` (jedno źródło
+   * prawdy — reguła KLASA NIE INSTANCJA, §"Predykaty parami"): `'gotowy'`
+   * zawsze i tylko wtedy, gdy zapis jest odblokowany. Dzięki temu e2e/testy
+   * czekają na REALNY stan gotowości zamiast odpytywać `disabled` z gołym
+   * limitem czasu, który nie odróżnia „zaraz się odblokuje" od „utknęło".
+   * Brak (`undefined`) = kreator nie rozróżnia stanów (bez zmiany zachowania
+   * dla kreatorów, które jeszcze go nie wystawiają).
+   */
+  status?: 'ladowanie' | 'zablokowany' | 'gotowy';
 }
 
 export function KreatorRama({
@@ -64,9 +77,14 @@ export function KreatorRama({
   krokWstecz,
   krokDalej,
   licznikKrokow,
+  status,
 }: KreatorRamaProps) {
   return (
-    <div className={pelny ? 'mvd-kreator mvd-kreator--pelny' : 'mvd-kreator'} data-testid={testid}>
+    <div
+      className={pelny ? 'mvd-kreator mvd-kreator--pelny' : 'mvd-kreator'}
+      data-testid={testid}
+      data-status={status}
+    >
       <header className="mvd-kreator-head">
         <div className="mvd-kreator-head-gora">
           <div>

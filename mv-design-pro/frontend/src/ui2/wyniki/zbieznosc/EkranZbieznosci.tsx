@@ -29,10 +29,13 @@ import { usePowerFlowResultsStore } from '../../../ui/power-flow-results/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../shell/useShellStore';
+import { FreshnessBadge } from '../../inspector';
+import { useSwiezoscNaglowka } from '../../freshness';
 import { akcjaNaprawcza, SekcjaZalozen, usePoprawWModelu, WZORZEC_STRINGS } from '../wzorzec';
 import {
   naBilansPrzebiegu,
   naWierszeIteracji,
+  naWierszeWysp,
   naWierszeOltcPrzebiegu,
   naWierszeZaczepowModelu,
   naZalozeniaZbieznosci,
@@ -110,8 +113,15 @@ export function EkranZbieznosci() {
   const wynikAktualny = przebieg && selectedRunId === przebieg.id ? wynik : null;
   const sladAktualny = przebieg && selectedRunId === przebieg.id ? slad : null;
   const oltc = sladAktualny?.oltc_control ?? null;
+  const wierszeWysp = naWierszeWysp(sladAktualny);
   const wierszeModelu = naWierszeZaczepowModelu(snapshot);
   const poprawWModelu = usePoprawWModelu();
+  // Karta UI2 p.9: znacznik świeżości NAGŁÓWKA — ten sam hook współdzielony
+  // co EkranZwarc/TabelaSzyn (V12K-264), ten ekran wcześniej nie miał go wcale
+  // (BRAK ZDOLNOŚCI, nie regresja — brak jakiegokolwiek importu/wywołania).
+  const swiezosc = useSwiezoscNaglowka(przebieg?.id ?? null);
+  const maSwiezosc =
+    swiezosc.rewizjaModelu !== undefined && swiezosc.rewizjaDanych !== undefined;
 
   const otworzWyniki = (tab: string) => {
     setWynikiTab(tab);
@@ -124,6 +134,13 @@ export function EkranZbieznosci() {
         <span className="mvd-zbieznosc-lbl">{T.eyebrow}</span>
         <h3>{T.tytul}</h3>
         <p className="mvd-zbieznosc-cel">{T.cel}</p>
+        {maSwiezosc && (
+          <FreshnessBadge
+            rewizjaDanej={swiezosc.rewizjaDanych!}
+            rewizjaModelu={swiezosc.rewizjaModelu!}
+            testId="mvd-zbieznosc-swiezosc"
+          />
+        )}
       </header>
 
       {!activeProjectId ? (
@@ -200,6 +217,39 @@ export function EkranZbieznosci() {
               ))}
             </dl>
           </section>
+
+          {wierszeWysp.length >= 2 && (
+            <section className="mvd-zbieznosc-sekcja" aria-label={T.wyspyTytul}>
+              <h4>{T.wyspyTytul}</h4>
+              <p className="mvd-zbieznosc-nota">{T.wyspyOpis}</p>
+              <div className="mvd-zbieznosc-tabela-wrap">
+                <table className="mvd-zbieznosc-tabela" data-testid="mvd-zbieznosc-wyspy-tabela">
+                  <thead>
+                    <tr>
+                      <th>{T.wyspyKolSzyna}</th>
+                      <th>{T.wyspyKolZrodlo}</th>
+                      <th>{T.wyspyKolSzynyPq}</th>
+                      <th>{T.wyspyKolSzynyPv}</th>
+                      <th>{T.wyspyKolIteracje}</th>
+                      <th>{T.wyspyKolZbieznosc}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {wierszeWysp.map((w) => (
+                      <tr key={w.szynaBilansujaca} data-testid={`mvd-zbieznosc-wyspa-${w.szynaBilansujaca}`}>
+                        <td className="mvd-zbieznosc-id">{w.szynaBilansujaca}</td>
+                        <td className="mvd-zbieznosc-id">{w.zrodloRef}</td>
+                        <td className="mvd-num">{w.liczbaSzynPq}</td>
+                        <td className="mvd-num">{w.liczbaSzynPv}</td>
+                        <td className="mvd-num">{w.iteracje}</td>
+                        <td>{w.zbiezna ? T.wyspyZbiezna : T.wyspyNiezbiezna}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
           <section className="mvd-zbieznosc-sekcja" aria-label={T.oltcTytul}>
             <h4>{T.oltcTytul}</h4>

@@ -1,0 +1,13 @@
+{
+  "analysis_type": "LOAD_FLOW",
+  "created_at": "2026-09-16T09:00:00+00:00",
+  "error_message": null,
+  "finished_at": "2026-09-16T09:00:00+00:00",
+  "id": "run-lf-scena-oltc",
+  "model_revision": 1,
+  "snapshot_hash": "ce6de8c1f2ebcf3faf86233128c0d9f7e4442a57a573072aa2ecd030067d151e",
+  "solver_input_hash": "e3d977f2e0d1a3410b51765548b3f6b7b235b3bda7c8009c91685ea1714237f4",
+  "started_at": "2026-09-16T09:00:00+00:00",
+  "status": "DONE",
+  "study_case_id": "case-demo"
+}

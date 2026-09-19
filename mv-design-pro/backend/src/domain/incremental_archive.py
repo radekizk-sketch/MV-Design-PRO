@@ -39,15 +39,20 @@ from domain.project_archive import (
 INCREMENTAL_FORMAT_ID = "MV-DESIGN-PRO-INCREMENTAL"
 INCREMENTAL_SCHEMA_VERSION = "1.0.0"
 
-# Mapowanie nazw sekcji na pola ArchiveFingerprints i klucze dict
+# Mapowanie nazw sekcji na pola ArchiveFingerprints i klucze dict.
+#
+# W1-B-ARCH: `network_model`/`sld_diagrams`/`proofs` skasowane razem z sekcjami
+# `ProjectArchive` formatu 3.0.0, którym odpowiadały (W1 skasował tabele ORM,
+# które je zasilały — nie ma już dla nich źródła danych). Ten moduł operuje
+# WYŁĄCZNIE na `ProjectArchive`/`ArchiveFingerprints` (zawsze format 3.0.0,
+# bo powstają z `dict_to_archive`, która te sekcje już pomija) — bez gałęzi
+# „jeśli stara wersja" (§0.5): eksport przyrostowy nigdy nie produkuje/konsumuje
+# archiwum 2.x wprost.
 SECTION_NAMES: tuple[str, ...] = (
     "project_meta",
-    "network_model",
-    "sld_diagrams",
     "cases",
     "runs",
     "results",
-    "proofs",
     "interpretations",
     "issues",
     "enm",
@@ -55,12 +60,9 @@ SECTION_NAMES: tuple[str, ...] = (
 
 _FINGERPRINT_FIELD_MAP: dict[str, str] = {
     "project_meta": "project_meta_hash",
-    "network_model": "network_model_hash",
-    "sld_diagrams": "sld_hash",
     "cases": "cases_hash",
     "runs": "runs_hash",
     "results": "results_hash",
-    "proofs": "proofs_hash",
     "interpretations": "interpretations_hash",
     "issues": "issues_hash",
     "enm": "enm_hash",
@@ -225,12 +227,9 @@ def _compute_deterministic_signature(
         "fingerprints": {
             "archive_hash": fingerprints.archive_hash,
             "project_meta_hash": fingerprints.project_meta_hash,
-            "network_model_hash": fingerprints.network_model_hash,
-            "sld_hash": fingerprints.sld_hash,
             "cases_hash": fingerprints.cases_hash,
             "runs_hash": fingerprints.runs_hash,
             "results_hash": fingerprints.results_hash,
-            "proofs_hash": fingerprints.proofs_hash,
             "interpretations_hash": fingerprints.interpretations_hash,
             "issues_hash": fingerprints.issues_hash,
             "enm_hash": fingerprints.enm_hash,
@@ -408,12 +407,9 @@ def apply_incremental_archive(
     base_dict["fingerprints"] = {
         "archive_hash": incremental.fingerprints.archive_hash,
         "project_meta_hash": incremental.fingerprints.project_meta_hash,
-        "network_model_hash": incremental.fingerprints.network_model_hash,
-        "sld_hash": incremental.fingerprints.sld_hash,
         "cases_hash": incremental.fingerprints.cases_hash,
         "runs_hash": incremental.fingerprints.runs_hash,
         "results_hash": incremental.fingerprints.results_hash,
-        "proofs_hash": incremental.fingerprints.proofs_hash,
         "interpretations_hash": incremental.fingerprints.interpretations_hash,
         "issues_hash": incremental.fingerprints.issues_hash,
         "enm_hash": incremental.fingerprints.enm_hash,
@@ -430,42 +426,21 @@ def _empty_section_data(section_name: str) -> dict[str, Any]:
             "name": "",
             "description": None,
             "schema_version": "",
-            "active_network_snapshot_id": None,
             "connection_node_id": None,
             "sources": [],
             "created_at": "",
             "updated_at": "",
         },
-        "network_model": {
-            "nodes": [],
-            "branches": [],
-            "sources": [],
-            "loads": [],
-            "snapshots": [],
-        },
-        "sld_diagrams": {
-            "diagrams": [],
-            "node_symbols": [],
-            "branch_symbols": [],
-            "annotations": [],
-        },
         "cases": {
             "study_cases": [],
             "operating_cases": [],
-            "switching_states": [],
             "settings": None,
         },
         "runs": {
-            "analysis_runs": [],
+            "canonical_runs": [],
             "analysis_runs_index": [],
-            "study_runs": [],
         },
-        "results": {"study_results": []},
-        "proofs": {
-            "design_specs": [],
-            "design_proposals": [],
-            "design_evidence": [],
-        },
+        "results": {},
         "interpretations": {"cached": []},
         "issues": {"snapshot": []},
         "enm": {"models": []},
@@ -500,12 +475,9 @@ def _incremental_to_dict(archive: IncrementalArchive) -> dict[str, Any]:
             "fingerprints": {
                 "archive_hash": archive.fingerprints.archive_hash,
                 "project_meta_hash": archive.fingerprints.project_meta_hash,
-                "network_model_hash": archive.fingerprints.network_model_hash,
-                "sld_hash": archive.fingerprints.sld_hash,
                 "cases_hash": archive.fingerprints.cases_hash,
                 "runs_hash": archive.fingerprints.runs_hash,
                 "results_hash": archive.fingerprints.results_hash,
-                "proofs_hash": archive.fingerprints.proofs_hash,
                 "interpretations_hash": (archive.fingerprints.interpretations_hash),
                 "issues_hash": archive.fingerprints.issues_hash,
                 "enm_hash": archive.fingerprints.enm_hash,
@@ -543,12 +515,9 @@ def _dict_to_incremental(data: dict[str, Any]) -> IncrementalArchive:
     fingerprints = ArchiveFingerprints(
         archive_hash=fp["archive_hash"],
         project_meta_hash=fp["project_meta_hash"],
-        network_model_hash=fp["network_model_hash"],
-        sld_hash=fp["sld_hash"],
         cases_hash=fp["cases_hash"],
         runs_hash=fp["runs_hash"],
         results_hash=fp["results_hash"],
-        proofs_hash=fp["proofs_hash"],
         interpretations_hash=fp.get("interpretations_hash", ""),
         issues_hash=fp.get("issues_hash", ""),
         enm_hash=fp.get("enm_hash", ""),

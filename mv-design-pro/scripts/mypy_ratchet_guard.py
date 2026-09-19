@@ -114,8 +114,13 @@ def uruchom_mypy() -> tuple[int, int, str]:
     uznawany wyłącznie wtedy, gdy mypy zameldował, ile plików źródłowych naprawdę
     sprawdził — i gdy ta liczba jest wiarygodna.
     """
+    # mypy uruchamiany INTERPRETEREM, ktory uruchomil guarda (`sys.executable`),
+    # nie przez `poetry run`: w CI to ten sam venv Poetry (`poetry run python
+    # ../scripts/mypy_ratchet_guard.py`), a w katalogu roboczym git (worktree)
+    # `poetry run` rozwiazywal INNY, pusty venv i guard meldowal „mypy przerwal
+    # analize" mimo zielonego `mypy src` — falszywa czerwien srodowiska, nie pomiar.
     wynik = subprocess.run(
-        ["poetry", "run", "mypy", "src"],
+        [sys.executable, "-m", "mypy", "src"],
         cwd=BACKEND,
         capture_output=True,
         text=True,
@@ -140,8 +145,9 @@ def uruchom_mypy() -> tuple[int, int, str]:
         raise SystemExit(
             "mypy_ratchet_guard: mypy PRZERWAL analize (podsumowanie bez liczby "
             "sprawdzonych plikow zrodlowych) — pomiar dlugu nie powstal.\n"
-            "Najczestsza przyczyna: srodowisko bez zaleznosci projektu "
-            "(`cd backend && poetry install --with dev`).\n"
+            "Najczestsza przyczyna: interpreter uruchamiajacy guarda nie ma zaleznosci "
+            f"projektu (uzyty: {sys.executable}; `cd backend && poetry install --with dev`, "
+            "a guarda uruchamiaj interpreterem venv Poetry).\n"
             f"Wyjscie:\n{wyjscie[-2000:]}"
         )
     if int(sprawdzone.group(1)) < MIN_SPRAWDZONYCH_PLIKOW:

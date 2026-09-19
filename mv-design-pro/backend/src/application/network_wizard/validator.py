@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from enm.zrodlo_zwarcie import dane_zerowe, tryb_danych
+
 from .schema import (
     AnalysisReadiness,
     ElementCounts,
@@ -77,6 +79,37 @@ def _eval_k2(enm: dict[str, Any]) -> StepState:
         )
     if sources:
         completion += 33
+        # CV-4.3 K7: parytet z bramką domenową E008 (`sources.no_short_circuit_params`,
+        # ten sam warunek fizyczny, ten sam wizard_step_hint="K2") — predykat z JEDNEGO
+        # źródła prawdy (`enm/zrodlo_zwarcie.py`), nie własny warunek „czy jest Sk''".
+        # Bez tej kontroli krok K2 meldował „complete", choć źródło bez Sk''/Ik''/R+jX
+        # nie jest policzalne (ten sam warunek walidator ENM blokuje na ścieżce operacji).
+        for source in sources:
+            if (
+                tryb_danych(
+                    r_ohm=source.get("r_ohm"),
+                    x_ohm=source.get("x_ohm"),
+                    sk3_mva=source.get("sk3_mva"),
+                    ik3_ka=source.get("ik3_ka"),
+                )
+                is None
+            ):
+                issues.append(
+                    WizardIssue(
+                        code="K2_SOURCE_NO_SHORT_CIRCUIT_PARAMS",
+                        severity=IssueSeverity.BLOCKER,
+                        message_pl=(
+                            f"Źródło '{source.get('name') or source.get('ref_id') or '?'}' "
+                            "nie ma parametrów zwarciowych (brak Sk'', Ik'' lub R/X)."
+                        ),
+                        element_ref=source.get("ref_id"),
+                        wizard_step_hint="K2",
+                        suggested_fix=(
+                            "Wprowadź moc zwarciową Sk'' (lub prąd Ik'') albo impedancję "
+                            "R+jX źródła."
+                        ),
+                    )
+                )
     else:
         issues.append(
             WizardIssue(
@@ -228,7 +261,9 @@ def _eval_k7(enm: dict[str, Any]) -> StepState:
     src_no_z0 = [
         s
         for s in sources
-        if s.get("r0_ohm") is None and s.get("x0_ohm") is None and s.get("z0_z1_ratio") is None
+        if not dane_zerowe(
+            r0_ohm=s.get("r0_ohm"), x0_ohm=s.get("x0_ohm"), z0_z1_ratio=s.get("z0_z1_ratio")
+        )
     ]
     if lines_no_z0:
         issues.append(
@@ -292,9 +327,9 @@ def _compute_readiness(enm: dict[str, Any], prereq_steps: list[StepState]) -> Re
     )
     all_src_z0 = (
         all(
-            s.get("r0_ohm") is not None
-            or s.get("x0_ohm") is not None
-            or s.get("z0_z1_ratio") is not None
+            dane_zerowe(
+                r0_ohm=s.get("r0_ohm"), x0_ohm=s.get("x0_ohm"), z0_z1_ratio=s.get("z0_z1_ratio")
+            )
             for s in sources
         )
         if sources

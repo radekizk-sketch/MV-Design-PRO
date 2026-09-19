@@ -16,6 +16,7 @@
 
 import type {
   NcRfgCertificateStatus,
+  NcRfgDerPominiety,
   NcRfgModuleInput,
   NcRfgModuleResult,
   NcRfgRunResult,
@@ -23,12 +24,13 @@ import type {
   NcRfgTestDefinition,
   NcRfgTestResult,
   NcRfgVerdict,
+  OcenaDowodowaTestuNcRfg,
 } from '../../../ui/ncrfg-tests/api';
-import {
-  getLvVoltageLevel,
-  type DerKindUnified,
-  type StationDerConnection,
+import type {
+  DerKindUnified,
+  StationDerConnection,
 } from '../../../ui/network-build/station-der';
+import { statusCertyfikatuPtpiree } from '../../../ui/network-build/station-der';
 
 // =============================================================================
 // Typy warstwy prezentacji
@@ -106,6 +108,11 @@ export interface KomorkaMacierzy {
   readonly wynik: NcRfgTestResult | null;
   /** Powód braku danych modułu (gdy stan === 'brak_danych_modul'). */
   readonly powodModulu: PowodBlokady | null;
+  /**
+   * Stopień dowodowy tego testu (karta S-1, W6-0) — z `evidence_by_test` biegu.
+   * `null` gdy stan !== 'wynik' (brak biegu / moduł zablokowany).
+   */
+  readonly ocenaDowodowa: OcenaDowodowaTestuNcRfg | null;
 }
 
 /** Wiersz macierzy = jeden wymóg/test × wszystkie moduły. */
@@ -143,24 +150,17 @@ export interface PodsumowanieProjektu {
 // =============================================================================
 
 /**
- * Napięcie przyłączenia [kV] z modelu — DWIE realne dane modelowe, w kolejności:
- *   1. `voltage_level_ref` → katalog poziomów napięć nN/SN (`nominal_kv`) — wybór
- *      projektanta zapisany kreatorem stacji,
- *   2. `connection_voltage_kv` — napięcie SZYNY PRZYŁĄCZENIA odczytane z migawki
- *      (wytwórca zapisany kreatorem źródła OZE nie ma referencji poziomu, a katalog
- *      poziomów nie zna np. 0,8 kV falowników string — bez tego kroku moduł obecny
- *      w modelu meldował „brak danych" i bieg zgodności był dla niego zablokowany).
+ * Napięcie przyłączenia [kV] z modelu — `connection_voltage_kv`, napięcie SZYNY
+ * PRZYŁĄCZENIA odczytane z migawki (`buses[].voltage_kv` szyny wytwórcy).
  *
- * Brak obu → `null` (moduł trafi w stan „brak danych"). NIE stosujemy domyślnej
+ * Karta FAB-K: JEDYNE źródło od tej karty — dawny `voltage_level_ref` (osobna
+ * referencja katalogu poziomów, zapisywana WYŁĄCZNIE przez kreator stacji) był
+ * FANTOMEM (backend go nie przyjmuje) i USUNIĘTY z kontraktu.
+ *
+ * Brak → `null` (moduł trafi w stan „brak danych"). NIE stosujemy domyślnej
  * wartości 15 kV ani wnioskowania z `connection_side`.
  */
 export function rozwiazNapiecieKv(der: StationDerConnection): number | null {
-  if (der.voltage_level_ref) {
-    const poziom = getLvVoltageLevel(der.voltage_level_ref);
-    if (poziom && Number.isFinite(poziom.nominal_kv) && poziom.nominal_kv > 0) {
-      return poziom.nominal_kv;
-    }
-  }
   const zModelu = der.connection_voltage_kv;
   if (typeof zModelu === 'number' && Number.isFinite(zModelu) && zModelu > 0) {
     return zModelu;
@@ -168,11 +168,16 @@ export function rozwiazNapiecieKv(der: StationDerConnection): number | null {
   return null;
 }
 
-/** Status certyfikatu z modelu/katalogu (wzór NcRfgTestsTab.tsx:134-138). */
+/**
+ * Status certyfikatu PTPiREE — JEDYNIE z pola backendu (karta
+ * CERTYFIKAT-Z-KATALOGU): patrz `station-der/certyfikatPtpiree.ts` dla
+ * pełnego uzasadnienia i parytetu z `certificate_status_z_tabliczki`
+ * (`application/ncrfg_compliance/model_bridge.py`). Dawny wzór zgadywał z
+ * nazwy referencji katalogowej (`device_catalog_ref?.includes('ptpiree')`) —
+ * fabrykacja usunięta.
+ */
 export function rozwiazCertyfikat(der: StationDerConnection): NcRfgCertificateStatus {
-  const ref = der.catalogs.ptpiree_certificate_ref;
-  const device = der.catalogs.device_catalog_ref;
-  return ref || device?.includes('ptpiree') ? 'ptpiree_verified' : 'unknown';
+  return statusCertyfikatuPtpiree(der);
 }
 
 // =============================================================================
@@ -199,8 +204,13 @@ function zdolnosciWstepne(der: StationDerConnection): {
 } {
   const lvrt = Boolean(der.profiles.lvrt_curve_ref);
   const hvrt = Boolean(der.profiles.hvrt_curve_ref);
-  const pf = Boolean(der.profiles.pf_curve_ref || der.profiles.regulation_profile_ref);
-  const qu = Boolean(der.profiles.regulation_profile_ref);
+  const pf = Boolean(der.profiles.pf_curve_ref);
+  // Karta FAB-K: `regulation_profile_ref` (referencja „profilu regulacji Q(U)")
+  // był FANTOMEM — backend nie ma katalogu nazwanych profili regulacji; Q(U)
+  // jest liczbą (`qu_slope_pu_per_pu`) zapisywaną wprost na generatorze, nie
+  // referencją katalogową. Brak sygnału zostaje BRAKIEM (false), nie zgadywaniem
+  // z pola, które nigdy nie miało zapisu produkcyjnego.
+  const qu = false;
   const dyn = Boolean(der.catalogs.dynamic_model_ref);
 
   const zdolnosci: ZdolnosciModulu = {
@@ -371,6 +381,7 @@ export function mapujMacierz(
           werdykt: null,
           wynik: null,
           powodModulu: modul.powodBlokady,
+          ocenaDowodowa: null,
         };
       }
       const wynikModulu = znajdzWynikModulu(wynik, modul.derRef);
@@ -383,6 +394,7 @@ export function mapujMacierz(
           werdykt: null,
           wynik: null,
           powodModulu: null,
+          ocenaDowodowa: null,
         };
       }
       return {
@@ -392,10 +404,37 @@ export function mapujMacierz(
         werdykt: wynikTestu.verdict,
         wynik: wynikTestu,
         powodModulu: null,
+        ocenaDowodowa: wynik?.evidence_by_test[modul.derRef]?.[test.test_id] ?? null,
       };
     });
     return { test, komorki };
   });
+}
+
+/**
+ * Podsumowanie modułu Z WYNIKU BIEGU — JEDEN rdzeń dla macierzy per DER
+ * (`podsumowanieModulu`) i sekcji „Zgodność przekrojowa przypadku"
+ * (`podsumowaniaZBiegu`): status, klasa i liczniki pochodzą WYŁĄCZNIE z
+ * `NcRfgModuleResult` solvera; moduł zablokowany (brak mocy/napięcia) albo bez
+ * wyniku → `brak_danych` z zerowymi licznikami (karta S-3: jeden model werdyktu).
+ */
+export function podsumowanieModuluZWyniku(
+  w: NcRfgModuleResult | null,
+  derRef: string,
+  nazwa: string,
+  zablokowany: boolean,
+): PodsumowanieModulu {
+  return {
+    derRef,
+    nazwa,
+    overallStatus: zablokowany ? 'brak_danych' : (w?.overall_status ?? 'brak_danych'),
+    moduleType: zablokowany ? null : (w?.module_type ?? null),
+    requiredCount: zablokowany ? 0 : (w?.required_count ?? 0),
+    passCount: zablokowany ? 0 : (w?.pass_count ?? 0),
+    failCount: zablokowany ? 0 : (w?.fail_count ?? 0),
+    noDataCount: zablokowany ? 0 : (w?.no_data_count ?? 0),
+    zablokowany,
+  };
 }
 
 /** Podsumowanie per moduł (z wyniku biegu; moduł zablokowany → brak danych). */
@@ -404,24 +443,38 @@ export function podsumowanieModulu(
   wynik: NcRfgRunResult | null,
 ): PodsumowanieModulu {
   const zablokowany = opis.powodBlokady !== null;
-  const w = zablokowany ? null : znajdzWynikModulu(wynik, opis.derRef);
-  return {
-    derRef: opis.derRef,
-    nazwa: opis.nazwa,
-    overallStatus: zablokowany ? 'brak_danych' : (w?.overall_status ?? 'brak_danych'),
-    moduleType: w?.module_type ?? null,
-    requiredCount: w?.required_count ?? 0,
-    passCount: w?.pass_count ?? 0,
-    failCount: w?.fail_count ?? 0,
-    noDataCount: w?.no_data_count ?? 0,
+  return podsumowanieModuluZWyniku(
+    zablokowany ? null : znajdzWynikModulu(wynik, opis.derRef),
+    opis.derRef,
+    opis.nazwa,
     zablokowany,
-  };
+  );
 }
 
-/** Podsumowanie całego projektu — agregacja z wyniku biegu i modułów. */
-export function podsumowanieProjektu(
-  moduly: readonly OpisModulu[],
-  wynik: NcRfgRunResult | null,
+/**
+ * Podsumowania modułów z biegu zgodności PRZYPADKU (`NcRfgCaseComplianceResponse`):
+ * moduły objęte biegiem w kolejności solvera (= kolejność DER w modelu), potem DER
+ * pominięte przez backend (brak mocy/napięcia) jako zablokowane. Nazwa ze
+ * słownika macierzy (`der_ref → nazwa`), inaczej `der_name` z biegu, inaczej sam
+ * `der_ref` (uczciwy fallback, nigdy pusty tekst).
+ */
+export function podsumowaniaZBiegu(
+  bieg: NcRfgRunResult | null,
+  pominiete: readonly NcRfgDerPominiety[],
+  nazwyModulow: Readonly<Record<string, string>>,
+): PodsumowanieModulu[] {
+  const objete = (bieg?.modules ?? []).map((m) =>
+    podsumowanieModuluZWyniku(m, m.der_ref, nazwyModulow[m.der_ref] ?? m.der_name ?? m.der_ref, false),
+  );
+  const zablokowane = pominiete.map((p) =>
+    podsumowanieModuluZWyniku(null, p.der_ref, nazwyModulow[p.der_ref] ?? p.der_name ?? p.der_ref, true),
+  );
+  return [...objete, ...zablokowane];
+}
+
+/** Agregacja podsumowań modułów → podsumowanie projektu (jedna arytmetyka liczników). */
+export function agregujPodsumowania(
+  podsumowania: readonly PodsumowanieModulu[],
 ): PodsumowanieProjektu {
   let zgodne = 0;
   let niezgodne = 0;
@@ -429,8 +482,7 @@ export function podsumowanieProjektu(
   let wymaganeRazem = 0;
   let spelnioneRazem = 0;
 
-  for (const modul of moduly) {
-    const p = podsumowanieModulu(modul, wynik);
+  for (const p of podsumowania) {
     wymaganeRazem += p.requiredCount;
     spelnioneRazem += p.passCount;
     if (p.overallStatus === 'zgodny') zgodne += 1;
@@ -439,11 +491,33 @@ export function podsumowanieProjektu(
   }
 
   return {
-    liczbaModulow: moduly.length,
+    liczbaModulow: podsumowania.length,
     zgodne,
     niezgodne,
     brakDanych,
     wymaganeRazem,
     spelnioneRazem,
   };
+}
+
+/** Podsumowanie całego projektu — agregacja z wyniku biegu i modułów. */
+export function podsumowanieProjektu(
+  moduly: readonly OpisModulu[],
+  wynik: NcRfgRunResult | null,
+): PodsumowanieProjektu {
+  return agregujPodsumowania(moduly.map((modul) => podsumowanieModulu(modul, wynik)));
+}
+
+/**
+ * Testy WYMAGANE modułu, których wymóg nie jest spełniony (`fail`) albo nie ma
+ * danych do oceny (`no_data`) — lista akcji naprawczych sekcji przekrojowej i
+ * dokumentów. Werdykt `pass`/`not_required` nie jest brakiem; test niewymagany z
+ * werdyktem `fail` (solver liczy go informacyjnie) też nie — liczniki solvera
+ * (`fail_count`/`no_data_count`) liczą tylko wymagane i ta funkcja jest z nimi
+ * spójna (predykaty parami).
+ */
+export function testyNiespelnione(modul: NcRfgModuleResult): readonly NcRfgTestResult[] {
+  return modul.tests.filter(
+    (test) => test.required && (test.verdict === 'fail' || test.verdict === 'no_data'),
+  );
 }

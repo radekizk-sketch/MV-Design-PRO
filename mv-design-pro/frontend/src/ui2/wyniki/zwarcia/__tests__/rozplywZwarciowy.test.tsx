@@ -5,10 +5,11 @@
  * i store overlay REALNE (asercje na stanie), nawigacja zamockowana (side
  * effect na window.location poza zakresem jsdom testu).
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { fireEvent, screen, within } from '@testing-library/react';
 
 import { EkranZwarc } from '../EkranZwarc';
+import { atrapaFetchPasma, renderEkranZwarc } from './renderEkranZwarc';
 import { ZWARCIA_STRINGS } from '../strings';
 import { kierunekPrzeplywuPL, naWierszeRozplywu, rozplywDlaWiersza } from '../zwarciaModel';
 import { useResultsInspectorStore } from '../../../../ui/results-inspector/store';
@@ -49,6 +50,7 @@ function ustawWynikZRozplywem() {
 }
 
 beforeEach(() => {
+  atrapaFetchPasma();
   useResultsInspectorStore.getState().reset();
   useSelectionStore.getState().clearSelection();
   useSelectionStore.getState().centerSldOnElement(null);
@@ -56,8 +58,12 @@ beforeEach(() => {
   navigateToSldMock.mockClear();
 });
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe('zwarciaModel — projekcje rozpływu (czyste)', () => {
-  it('kierunekPrzeplywuPL obraca parę węzłów wg tokenu solvera', () => {
+  it('kierunekPrzeplywuPL obraca parę węzłów wg tokenu solvera', async () => {
     const [doGpz, zSt1] = rozplywFixture();
     expect(kierunekPrzeplywuPL(doGpz)).toBe('Szyna OZE → Szyna GPZ 15 kV'); // to_from
     expect(kierunekPrzeplywuPL(zSt1)).toBe('Szyna ST1 15 kV → Szyna GPZ 15 kV'); // from_to
@@ -66,7 +72,7 @@ describe('zwarciaModel — projekcje rozpływu (czyste)', () => {
     );
   });
 
-  it('naWierszeRozplywu: nazwa gałęzi, kierunek, prąd (format PL), klucz unikalny', () => {
+  it('naWierszeRozplywu: nazwa gałęzi, kierunek, prąd (format PL), klucz unikalny', async () => {
     const wiersze = naWierszeRozplywu(rozplywFixture());
     expect(wiersze[0].galaz.wartosc).toBe('Kabel OZE');
     expect(wiersze[0].prad.wartosc).toBe('0,245');
@@ -74,7 +80,7 @@ describe('zwarciaModel — projekcje rozpływu (czyste)', () => {
     expect(wiersze[0].identyfikator.wartosc).toBe('BR-KABEL-1::GEN-PV');
   });
 
-  it('rozplywDlaWiersza: pole addytywne → lista; brak pola → null (starszy wynik)', () => {
+  it('rozplywDlaWiersza: pole addytywne → lista; brak pola → null (starszy wynik)', async () => {
     expect(rozplywDlaWiersza(shortCircuitRowFixture())).toEqual([]);
     expect(
       rozplywDlaWiersza(shortCircuitRowFixture({ branch_contributions: undefined })),
@@ -84,7 +90,7 @@ describe('zwarciaModel — projekcje rozpływu (czyste)', () => {
     ).toBeNull();
   });
 
-  it('V12K-132: kolumna źródła rozróżnia „sieć nadrzędna" (Thevenin) od maszyny', () => {
+  it('V12K-132: kolumna źródła rozróżnia „sieć nadrzędna" (Thevenin) od maszyny', async () => {
     const flows = [
       {
         branch_id: 'BR-TX-1',
@@ -119,9 +125,9 @@ describe('zwarciaModel — projekcje rozpływu (czyste)', () => {
 });
 
 describe('EkranZwarc — sekcja „Rozpływ prądu zwarciowego" (pkt 2)', () => {
-  it('wpisy wiersza → tabela gałęzi z kierunkiem i |I| [kA]', () => {
+  it('wpisy wiersza → tabela gałęzi z kierunkiem i |I| [kA]', async () => {
     ustawWynikZRozplywem();
-    render(<EkranZwarc {...props()} />);
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     const sekcja = screen.getByTestId('mvd-zwarcia-rozplyw');
     // Tytuł sekcji łączy etykietę i nazwę punktu w jednym nagłówku.
     expect(sekcja).toHaveTextContent(ZWARCIA_STRINGS.rozplywTytul);
@@ -132,12 +138,12 @@ describe('EkranZwarc — sekcja „Rozpływ prądu zwarciowego" (pkt 2)', () => 
     expect(tabela.getByText('0,061')).toBeInTheDocument();
   });
 
-  it('pusta lista (policzono, brak falowników) → uczciwy komunikat o kontrakcie', () => {
+  it('pusta lista (policzono, brak falowników) → uczciwy komunikat o kontrakcie', async () => {
     useResultsInspectorStore.setState({
       shortCircuitResults: shortCircuitResultsFixture(),
       selectedRunId: 'sc-run-1',
     });
-    render(<EkranZwarc {...props()} />);
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     const sekcja = screen.getByTestId('mvd-zwarcia-rozplyw');
     expect(within(sekcja).getByTestId('mvd-zwarcia-rozplyw-pusty')).toBeInTheDocument();
     expect(
@@ -145,12 +151,12 @@ describe('EkranZwarc — sekcja „Rozpływ prądu zwarciowego" (pkt 2)', () => 
     ).toBeInTheDocument();
   });
 
-  it('starszy wynik bez pola (null) → stan „niedostępny w tym przebiegu"', () => {
+  it('starszy wynik bez pola (null) → stan „niedostępny w tym przebiegu"', async () => {
     useResultsInspectorStore.setState({
       shortCircuitResults: shortCircuitResultsFixture(),
       selectedRunId: 'sc-run-1',
     });
-    render(<EkranZwarc {...props()} />);
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     // Natywny klik wiersza BUS-ST2 (starszy wynik: branch_contributions null).
     fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[2]);
     const sekcja = screen.getByTestId('mvd-zwarcia-rozplyw');
@@ -160,25 +166,25 @@ describe('EkranZwarc — sekcja „Rozpływ prądu zwarciowego" (pkt 2)', () => 
     ).toBeInTheDocument();
   });
 
-  it('kolumny eksperckie (źródło, identyfikator gałęzi) tylko w trybie eksperckim', () => {
+  it('kolumny eksperckie (źródło, identyfikator gałęzi) tylko w trybie eksperckim', async () => {
     ustawWynikZRozplywem();
-    const { unmount } = render(<EkranZwarc {...props({ trybZaawansowania: 'expert' })} />);
+    const { unmount } = await renderEkranZwarc(<EkranZwarc {...props({ trybZaawansowania: 'expert' })} />);
     const sekcja = within(screen.getByTestId('mvd-zwarcia-rozplyw'));
     expect(sekcja.getByTestId('mvd-wyn-th-zrodlo')).toBeInTheDocument();
     // Oba wpisy fixture niosą to samo źródło — kolumna ekspercka widoczna per wiersz.
     expect(sekcja.getAllByText('GEN-PV')).toHaveLength(2);
     unmount();
     ustawWynikZRozplywem();
-    render(<EkranZwarc {...props({ trybZaawansowania: 'basic' })} />);
+    await renderEkranZwarc(<EkranZwarc {...props({ trybZaawansowania: 'basic' })} />);
     const sekcjaBasic = within(screen.getByTestId('mvd-zwarcia-rozplyw'));
     expect(sekcjaBasic.queryByTestId('mvd-wyn-th-zrodlo')).not.toBeInTheDocument();
   });
 });
 
 describe('EkranZwarc — „Pokaż na schemacie" (pkt 6) + overlay rozpływu (pkt 7)', () => {
-  it('natywny klik → selekcja elementu, centrowanie SLD, overlay, nawigacja', () => {
+  it('natywny klik → selekcja elementu, centrowanie SLD, overlay, nawigacja', async () => {
     ustawWynikZRozplywem();
-    render(<EkranZwarc {...props()} />);
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     fireEvent.click(screen.getByTestId('mvd-zwarcia-pokaz-sld'));
 
     // Selekcja we wspólnym store (wzorzec V12K-073): element_id wiersza.
@@ -213,9 +219,9 @@ describe('EkranZwarc — „Pokaż na schemacie" (pkt 6) + overlay rozpływu (pk
     expect(navigateToSldMock).toHaveBeenCalledTimes(1);
   });
 
-  it('klik innego punktu przełącza akcję na jego element (wiersz → schemat)', () => {
+  it('klik innego punktu przełącza akcję na jego element (wiersz → schemat)', async () => {
     ustawWynikZRozplywem();
-    render(<EkranZwarc {...props()} />);
+    await renderEkranZwarc(<EkranZwarc {...props()} />);
     fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[1]); // BUS-ST1
     fireEvent.click(screen.getByTestId('mvd-zwarcia-pokaz-sld'));
     expect(useSelectionStore.getState().selectedElement?.id).toBe('EL-ST1');

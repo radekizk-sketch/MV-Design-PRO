@@ -38,6 +38,7 @@ import { dirname, resolve } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { act, cleanup, fireEvent, render } from '@testing-library/react';
+import { at } from '../../../../../test/arrayAt';
 
 import type { EnergyNetworkModel, SelectionHint } from '../../../../../types/enm';
 import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
@@ -346,11 +347,11 @@ describe('SldCanvasV3Workspace — „pokaż na schemacie" kadruje wskazany elem
     // na pola), więc ref bierzemy stamtąd — kotwica i tak działa na wszystkich
     // trzech poziomach (wymóg `kotwicaWidoku`).
     const scene = buildSceneV3(enmDuza, 0);
-    const refStacji = [...scene.symbols]
+    const refyStacji = [...scene.symbols]
       .filter((s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef)
       .map((s) => s.meta!.ownerRef!)
-      .sort()
-      .at(-1)!;
+      .sort();
+    const refStacji = at(refyStacji, -1)!;
     expect(refStacji, 'fixtura ma symbole stacji na poziomie przeglądu').toBeTruthy();
 
     act(() => {

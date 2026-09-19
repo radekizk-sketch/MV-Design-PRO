@@ -196,8 +196,9 @@ class TestSolverInputDeterminism:
 
         assert json1 != json2, "Different case_id should produce different output"
 
-    def test_version_is_1_0(self):
-        """Envelope version is locked to 1.0."""
+    def test_version_is_1_1(self):
+        """Envelope version is locked to 1.1 (karta FAB-D2, D2 — patrz
+        test_solver_input_schema_lock.py::test_contract_version_is_1_1)."""
         graph = _make_test_network()
         catalog = _make_empty_catalog()
 
@@ -208,7 +209,7 @@ class TestSolverInputDeterminism:
             enm_revision="rev-1",
             analysis_type=SolverAnalysisType.SHORT_CIRCUIT_3F,
         )
-        assert env.solver_input_version == "1.0"
+        assert env.solver_input_version == "1.1"
 
     def test_bus_order_deterministic(self):
         """Buses are sorted by ref_id regardless of insertion order."""
@@ -348,3 +349,67 @@ class TestTransformerVectorGroupSolverInput:
             t for t in env.trace if t.element_ref == "trafo_1" and "vector_group" in t.field_path
         ]
         assert len(vg_traces) == 1
+        # Predykaty parami — dana JAWNA (i0/p0 obecne): brak notatki-założenia.
+        i0_trace = next(
+            t for t in env.trace if t.field_path == "transformers[ref_id=trafo_1].i0_percent"
+        )
+        assert i0_trace.note is None
+
+
+class TestTransformerNoLoadParamsMissingWhiteBox:
+    """Karta FAB-D2 (D2): brak i0_percent/p0_kw != 0.0 — payload niesie `None`,
+    ślad White Box niesie założenie JAWNIE (nie cichy fallback)."""
+
+    def test_missing_i0_p0_payload_none_and_trace_carries_assumption(self):
+        graph = _make_test_network()
+        # Transformator BEZ danych gałęzi magnesującej (i0/p0 nieznane).
+        graph.branches["trafo_1"].i0_percent = None
+        graph.branches["trafo_1"].p0_kw = None
+        catalog = _make_empty_catalog()
+
+        env = build_solver_input(
+            graph=graph,
+            catalog=catalog,
+            case_id="case-no-load",
+            enm_revision="rev-1",
+            analysis_type=SolverAnalysisType.LOAD_FLOW,
+        )
+
+        tr = env.payload["transformers"][0]
+        assert tr["i0_percent"] is None
+        assert tr["p0_kw"] is None
+
+        i0_trace = next(
+            t for t in env.trace if t.field_path == "transformers[ref_id=trafo_1].i0_percent"
+        )
+        p0_trace = next(
+            t for t in env.trace if t.field_path == "transformers[ref_id=trafo_1].p0_kw"
+        )
+        assert i0_trace.note is not None
+        assert "transformer.no_load_params_missing" in i0_trace.note
+        assert "gałąź magnesująca" in i0_trace.note
+        assert p0_trace.note == i0_trace.note
+
+        # Kod ostrzeżenia jest też w eligibility (D2 §0: budowniczy WEJŚCIA +
+        # gotowość, dwa różne kanały, jedna przyczyna).
+        warning_codes = [w.code for w in env.eligibility.warnings]
+        assert "transformer.no_load_params_missing" in warning_codes
+
+    def test_present_i0_p0_no_assumption_note(self):
+        """Predykaty parami — dana JAWNA: i0/p0 obecne, brak notatki."""
+        graph = _make_test_network()
+        catalog = _make_empty_catalog()
+
+        env = build_solver_input(
+            graph=graph,
+            catalog=catalog,
+            case_id="case-with-load",
+            enm_revision="rev-1",
+            analysis_type=SolverAnalysisType.LOAD_FLOW,
+        )
+        p0_trace = next(
+            t for t in env.trace if t.field_path == "transformers[ref_id=trafo_1].p0_kw"
+        )
+        assert p0_trace.note is None
+        warning_codes = [w.code for w in env.eligibility.warnings]
+        assert "transformer.no_load_params_missing" not in warning_codes

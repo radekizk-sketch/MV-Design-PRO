@@ -96,14 +96,20 @@ TABLICZKA_PELNA: dict = {
     "ptpiree_certificate_condition": "Tylko z modułem sterowania SG-CTRL.",
 }
 
+#: Karta S-1 (dowod dynamiczny): klasa A (215 kW/0,8 kV) — jedyna klasa BEZ
+#: testow dynamicznych T14-T17 w `default_for_modules` (nieprzydatnych
+#: dowodowo dzis, patrz `test_certyfikat_zgodnosci.py`) — z certyfikatem
+#: PTPiREE (precedens FAB-K) daje realna sciezke pozytywna dla testow tego
+#: pliku (przedmiotem sa dowody tabliczki/dokumenty, nie sama bramka
+#: dowodowa T01-T20, wiec fikstura wybiera klase omijajaca ta bramke).
 _MODULE_FULL: dict = {
     "der_ref": _DER_REF,
-    "der_name": "PV 2 MW",
+    "der_name": "PV 215 kW",
     "der_kind": "PV",
     "operator_id": "enea",
-    "p_max_kw": 2000,
-    "p_min_kw": 100,
-    "voltage_kv": 15,
+    "p_max_kw": 215,
+    "p_min_kw": 10,
+    "voltage_kv": 0.8,
     "certificate_status": "ptpiree_verified",
     "has_lvrt_curve": True,
     "has_hvrt_curve": True,
@@ -134,26 +140,68 @@ def _reset() -> None:
     reset_enm_store()
 
 
-def _przypadek_z_urzadzeniem(tabliczka: dict | None, *, ref_id: str = _DER_REF) -> str:
-    """Przypadek z jednym źródłem DER o zadanej tabliczce. Zwraca ``case_id``."""
-    case_id = str(uuid4())
-    set_enm(
-        case_id,
-        EnergyNetworkModel(
-            header=ENMHeader(name="Dowod certyfikatu w dokumentach"),
-            buses=[Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15.0)],
-            generators=[
-                Generator(
-                    ref_id=ref_id,
-                    name="PV 2 MW",
-                    bus_ref="bus_sn",
-                    p_mw=2.0,
-                    gen_type="pv_inverter",
-                    materialized_params=tabliczka,
-                )
-            ],
-        ),
+def _model_z_urzadzeniem(tabliczka: dict | None, *, ref_id: str = _DER_REF) -> EnergyNetworkModel:
+    return EnergyNetworkModel(
+        header=ENMHeader(name="Dowod certyfikatu w dokumentach"),
+        buses=[Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15.0)],
+        generators=[
+            Generator(
+                ref_id=ref_id,
+                name="PV 2 MW",
+                bus_ref="bus_sn",
+                p_mw=2.0,
+                gen_type="pv_inverter",
+                materialized_params=tabliczka,
+            )
+        ],
     )
+
+
+def _przypadek_z_urzadzeniem(tabliczka: dict | None, *, ref_id: str = _DER_REF) -> str:
+    """Przypadek z jednym źródłem DER o zadanej tabliczce. Zwraca ``case_id``.
+
+    Ten `case_id` jest tu SUROWYM kluczem magazynu (bez bazy) — testy poniżej
+    przekazują go WPROST jako `klucz_twin` do `dowody_certyfikatu*` (wołanie
+    bezpośrednie, nie przez API), więc nie potrzebują tłumaczenia CV-1. Testy
+    REALNEJ ścieżki HTTP (`app_client.post(...case_id=...)`) używają zamiast
+    tego `_przypadek_z_urzadzeniem_http` poniżej.
+    """
+    case_id = str(uuid4())
+    set_enm(case_id, _model_z_urzadzeniem(tabliczka, ref_id=ref_id))
+    return case_id
+
+
+def _nowy_przypadek(client) -> str:
+    """Utwórz REALNY projekt + przypadek przez API; zwróć ``case_id``.
+
+    CV-1-W: przypadek bez wiersza w bazie dostaje teraz 404 z magazynu ENM
+    (inwariant I-2) — końcówki ``/api/oze-analysis/...`` tłumaczą ``case_id``
+    na klucz projektu (``api/oze_analysis_runs.py::_klucz_opcjonalny``).
+    """
+    project_resp = client.post("/api/projects", json={"name": "Dowod certyfikatu — test"})
+    assert project_resp.status_code == 201, project_resp.text
+    project_id = project_resp.json()["id"]
+    case_resp = client.post(
+        "/api/study-cases", json={"project_id": project_id, "name": "Przypadek testu"}
+    )
+    assert case_resp.status_code == 201, case_resp.text
+    return str(case_resp.json()["id"])
+
+
+def _klucz(client, case_id: str) -> str:
+    """Klucz magazynu ENM dla ``case_id`` — TO SAMO tłumaczenie co warstwa API (CV-1)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
+
+
+def _przypadek_z_urzadzeniem_http(client, tabliczka: dict | None, *, ref_id: str = _DER_REF) -> str:
+    """Jak ``_przypadek_z_urzadzeniem``, ale dla testów REALNEJ ścieżki HTTP:
+    tworzy prawdziwy projekt+przypadek i zasiewa model pod kluczem
+    PRZETŁUMACZONYM (nie surowym ``case_id``, którego żaden odczyt API już nie
+    widzi — magazyn jest kluczowany kluczem PROJEKTU, CV-1-W)."""
+    case_id = _nowy_przypadek(client)
+    set_enm(_klucz(client, case_id), _model_z_urzadzeniem(tabliczka, ref_id=ref_id))
     return case_id
 
 
@@ -165,12 +213,14 @@ def _ncrfg():
 
 def _pf_run() -> CanonicalRun:
     set_enm("c-pf", build_golden_enm())
-    return execute_run(create_run(case_id="c-pf", analysis_type="PF").id)
+    return execute_run(create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id)
 
 
 def _sc_run() -> CanonicalRun:
     set_enm("c-sc", build_golden_enm())
-    return execute_run(create_run(case_id="c-sc", analysis_type="short_circuit_sn").id)
+    return execute_run(
+        create_run(case_id="c-sc", klucz_twin="c-sc", analysis_type="short_circuit_sn").id
+    )
 
 
 def _identyfikacja_wniosku() -> WniosekOsdIdentyfikacja:
@@ -509,7 +559,7 @@ def test_docx_dokumentow_bez_przypadku_nie_pokazuje_sekcji_dowodu() -> None:
 # Końcówki API — case_id dopina dowód, jego brak zachowuje kontrakt
 # --------------------------------------------------------------------------- #
 def test_endpoint_certyfikatu_z_przypadkiem_niesie_dowod(app_client) -> None:
-    case_id = _przypadek_z_urzadzeniem(TABLICZKA_PELNA)
+    case_id = _przypadek_z_urzadzeniem_http(app_client, TABLICZKA_PELNA)
     resp = app_client.post(f"{CERT_JSON}?case_id={case_id}", json=_payload_certyfikatu())
 
     assert resp.status_code == 200, resp.text
@@ -526,7 +576,7 @@ def test_endpoint_certyfikatu_bez_przypadku_zachowuje_kontrakt(app_client) -> No
 
 
 def test_endpoint_wniosku_z_przypadkiem_niesie_dowod(app_client) -> None:
-    case_id = _przypadek_z_urzadzeniem(TABLICZKA_PELNA)
+    case_id = _przypadek_z_urzadzeniem_http(app_client, TABLICZKA_PELNA)
     resp = app_client.post(
         f"{OSD_JSON}?case_id={case_id}", json=_payload_wniosku(_pf_run(), _sc_run())
     )
@@ -544,7 +594,7 @@ def test_endpoint_wniosku_bez_przypadku_zachowuje_kontrakt(app_client) -> None:
 
 
 def test_endpoint_studium_z_przypadkiem_niesie_dowod(app_client) -> None:
-    case_id = _przypadek_z_urzadzeniem(TABLICZKA_PELNA, ref_id="pv-w-modelu")
+    case_id = _przypadek_z_urzadzeniem_http(app_client, TABLICZKA_PELNA, ref_id="pv-w-modelu")
     run = _pf_run()
     resp = app_client.post(f"{STUDY_JSON}?case_id={case_id}", json=_payload_studium(run))
 
@@ -575,7 +625,7 @@ def test_endpointy_plikow_przyjmuja_przypadek_i_niosa_dowod(
     app_client, sciezka: str, buduj_payload: str
 ) -> None:
     """Każda z 6 końcówek plikowych przyjmuje case_id i cytuje numer dokumentu."""
-    case_id = _przypadek_z_urzadzeniem(TABLICZKA_PELNA, ref_id="pv-1")
+    case_id = _przypadek_z_urzadzeniem_http(app_client, TABLICZKA_PELNA, ref_id="pv-1")
     if buduj_payload == "certyfikat":
         payload = _payload_certyfikatu()
     elif buduj_payload == "wniosek":

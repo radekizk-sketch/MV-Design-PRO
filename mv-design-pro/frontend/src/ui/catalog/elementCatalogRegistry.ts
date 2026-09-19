@@ -43,7 +43,6 @@ export const NAMESPACE_TO_PICKER_CATEGORY: Readonly<Record<CatalogNamespace, Typ
   NASTAWY_ZABEZPIECZEN: 'PROTECTION_DEVICE',
   PTPIREE_CERTYFIKAT_GENERATORA: 'PTPIREE_CERTIFICATE',
   CONVERTER: 'CONVERTER',
-  INVERTER: 'CONVERTER',
   mv_branch_points: 'BRANCH_POLE',
 } as const;
 
@@ -74,7 +73,6 @@ export const NAMESPACE_LABEL_PL: Readonly<Record<CatalogNamespace, string>> = {
   NASTAWY_ZABEZPIECZEN: 'Szablony nastaw zabezpieczeń',
   PTPIREE_CERTYFIKAT_GENERATORA: 'Certyfikaty PTPiREE generatorów',
   CONVERTER: 'Typy konwerterów',
-  INVERTER: 'Typy inwerterów',
   mv_branch_points: 'Typy punktów rozgałęzienia SN',
 } as const;
 
@@ -89,7 +87,7 @@ export const TREE_NODE_TO_NAMESPACE: Readonly<Partial<Record<TreeNodeType, Catal
 export const PICKER_CATEGORY_TO_NAMESPACE: Readonly<Partial<Record<TypeCategory, CatalogNamespace>>> =
   Object.fromEntries(
     Object.entries(NAMESPACE_TO_PICKER_CATEGORY)
-      .filter(([namespace]) => !['NASTAWY_ZABEZPIECZEN', 'CONVERTER', 'INVERTER'].includes(namespace))
+      .filter(([namespace]) => !['NASTAWY_ZABEZPIECZEN', 'CONVERTER'].includes(namespace))
       .map(([namespace, category]) => [category, namespace as CatalogNamespace]),
   );
 

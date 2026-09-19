@@ -10,10 +10,8 @@
  */
 
 import type { WierszGotowosci } from '../rama';
-import type {
-  GpzGroundingType,
-  ManualSourceShortCircuitMode,
-} from '../../../ui/network-build/forms/catalogPayload';
+import type { ManualSourceShortCircuitMode } from '../../../ui/network-build/forms/catalogPayload';
+import { PUNKTY_NEUTRALNE_IMPEDANCYJNE, type TypPunktuNeutralnego } from '../../../types/uziemienie';
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import type { MVApparatusType, SourceSystemCatalogType } from '../../../ui/catalog/types';
 import type {
@@ -48,6 +46,22 @@ export interface GridSourceFormData {
   sk3_mva: number | null;
   sk3_hv_mva: number | null;
   rx_ratio: number | null;
+  /**
+   * Dane scenariusza MIN (CV-4.3 K7) — warunki przyłączenia OSD, minimalna moc/prąd
+   * zwarciowy. Opcjonalne (puste domyślnie, zero fabrykacji); ta sama strona
+   * (SN/WN) co `sk3_mva`/`sk3_hv_mva`; brak wariantu w trybie impedancyjnym.
+   */
+  sk3_min_mva: number | null;
+  ik3_min_ka: number | null;
+  rx_ratio_min: number | null;
+  /**
+   * Napięcie zadane szyny bilansującej (CV-4.3 K7c) — p.u. napięcia znamionowego
+   * szyny źródła; `null` = znamionowe (1,0 p.u.). Niezależne od scenariusza MIN
+   * i od strony/postaci parametru zwarciowego — backend (`_resolve_manual_source_
+   * equivalent`) czyta je BEZWARUNKOWO przed rozgałęzieniem na tryb, więc pole w
+   * UI jest widoczne we WSZYSTKICH podtrybach ręcznych (SN/WN, moc/impedancja).
+   */
+  u_set_pu: number | null;
   short_circuit_input_side: ShortCircuitInputSide;
   short_circuit_mode: ManualSourceShortCircuitMode;
   r_ohm: number | null;
@@ -68,7 +82,7 @@ export interface GridSourceFormData {
   r0_ohm: number | null;
   x0_ohm: number | null;
   z0_z1_ratio: number | null;
-  grounding_type: GpzGroundingType;
+  grounding_type: TypPunktuNeutralnego;
   grounding_r_ohm: number | null;
   grounding_x_ohm: number | null;
   thermal_time_s: number;
@@ -112,6 +126,10 @@ export const DANE_DOMYSLNE: GridSourceFormData = {
   sk3_mva: 310,
   sk3_hv_mva: null,
   rx_ratio: 0.12,
+  sk3_min_mva: null,
+  ik3_min_ka: null,
+  rx_ratio_min: null,
+  u_set_pu: null,
   short_circuit_input_side: 'SN',
   short_circuit_mode: 'SHORT_CIRCUIT_POWER',
   r_ohm: null,
@@ -215,9 +233,66 @@ function isPositive(value: number | null): value is number {
 
 // ------------------------------------------------------------- Walidacja
 
+/**
+ * Walidacja danych scenariusza MIN (CV-4.3 K7) — TYLKO to, co backend odrzuca
+ * 422 (`_resolve_manual_source_equivalent`): dodatnie wartości, Sk″min ≤ Sk″(maks)
+ * gdy oba podane, R/X (MIN) bez własnej mocy/prądu MIN nie ma zastosowania.
+ * `maxSk3Mva` = wartość MAKS. tej samej strony (SN albo 110 kV — ta sama, którą
+ * porównuje backend), żeby predykat min ≤ max czytał z JEDNEGO źródła prawdy.
+ */
+function walidujDaneScenariuszaMin(
+  data: GridSourceFormData,
+  maxSk3Mva: number | null,
+): BladPolaZrodla[] {
+  const errors: BladPolaZrodla[] = [];
+  if (data.sk3_min_mva !== null && data.sk3_min_mva <= 0) {
+    errors.push({ field: 'sk3_min_mva', message: 'Moc zwarciowa Sk″min musi być dodatnia.' });
+  }
+  if (data.ik3_min_ka !== null && data.ik3_min_ka <= 0) {
+    errors.push({ field: 'ik3_min_ka', message: 'Prąd zwarciowy Ik″min musi być dodatni.' });
+  }
+  if (data.rx_ratio_min !== null && data.rx_ratio_min < 0) {
+    errors.push({ field: 'rx_ratio_min', message: 'Stosunek R/X (MIN) musi być nieujemny.' });
+  }
+  if (
+    data.sk3_min_mva !== null
+    && isPositive(data.sk3_min_mva)
+    && maxSk3Mva !== null
+    && isPositive(maxSk3Mva)
+    && data.sk3_min_mva > maxSk3Mva
+  ) {
+    errors.push({
+      field: 'sk3_min_mva',
+      message: 'Sk″min nie może przekraczać Sk″ (wartości maksymalnej).',
+    });
+  }
+  if (data.rx_ratio_min !== null && data.sk3_min_mva === null && data.ik3_min_ka === null) {
+    errors.push({
+      field: 'rx_ratio_min',
+      message: 'R/X (MIN) wymaga podania Sk″min albo Ik″min — bez własnej mocy/prądu zwarciowego scenariusz MIN liczy się z danych maksymalnych.',
+    });
+  }
+  return errors;
+}
+
+/** Pasmo dopuszczalne napięcia zadanego szyny bilansującej (CV-4.3 K7c) — ten
+ *  sam przedział co backend (`zrodlo_zwarcie.py::PASMO_U_SET_PU`). */
+export const PASMO_U_SET_PU: readonly [number, number] = [0.8, 1.2];
+
 export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
   const errors: BladPolaZrodla[] = [];
   const sourceDescriptor = 'wybranego katalogu systemowego';
+
+  // CV-4.3 K7c: napięcie zadane szyny bilansującej — opcjonalne (zero fabrykacji,
+  // brak = znamionowe), ale gdy podane, musi mieścić się w paśmie backendu
+  // (`source.manual_equivalent_invalid`). Niezależne od trybu/strony (patrz
+  // komentarz przy polu w `GridSourceFormData`), więc sprawdzane BEZWARUNKOWO.
+  if (data.u_set_pu !== null && (data.u_set_pu < PASMO_U_SET_PU[0] || data.u_set_pu > PASMO_U_SET_PU[1])) {
+    errors.push({
+      field: 'u_set_pu',
+      message: `Napięcie zadane szyny bilansującej musi mieścić się w paśmie ${PASMO_U_SET_PU[0]}–${PASMO_U_SET_PU[1]} p.u.`,
+    });
+  }
 
   if (!data.source_name.trim()) {
     errors.push({ field: 'source_name', message: 'Nazwa GPZ jest wymagana.' });
@@ -233,6 +308,12 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
   }
   if (!Number.isInteger(data.transformer_count) || data.transformer_count < 1 || data.transformer_count > 4) {
     errors.push({ field: 'transformer_count', message: 'Liczba transformatorów 110/SN musi mieścić się w zakresie 1-4.' });
+  }
+  if (!data.transformer_catalog_ref?.trim()) {
+    // Karta FAB-G: operacja domenowa wymaga jawnej pozycji katalogowej
+    // transformatora WN/SN (albo pary hv_voltage_kv + transformer_sn_mva) —
+    // bez tego pola backend odrzuca operację kodem catalog.ref_required.
+    errors.push({ field: 'transformer_catalog_ref', message: 'Dobierz transformator 110/SN z katalogu.' });
   }
   if (!Number.isInteger(data.line_fields_per_section) || data.line_fields_per_section < 1 || data.line_fields_per_section > 12) {
     errors.push({ field: 'line_fields_per_section', message: 'Liczba pól liniowych na sekcję musi mieścić się w zakresie 1-12.' });
@@ -264,12 +345,24 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
       if (data.rx_ratio === null || data.rx_ratio < 0) {
         errors.push({ field: 'rx_ratio', message: 'Stosunek R/X musi być nieujemny.' });
       }
+      errors.push(...walidujDaneScenariuszaMin(data, data.sk3_hv_mva));
     } else if (data.short_circuit_mode === 'IMPEDANCE') {
       if (data.r_ohm === null || data.r_ohm < 0) {
         errors.push({ field: 'r_ohm', message: 'W trybie impedancyjnym rezystancja R musi być nieujemna.' });
       }
       if (!isPositive(data.x_ohm)) {
         errors.push({ field: 'x_ohm', message: 'W trybie impedancyjnym reaktancja X musi być dodatnia.' });
+      }
+      // CV-4.3 K7: tryb impedancyjny (R+jX) jest FIZYCZNY (bez c) i nie ma wariantu
+      // MIN — backend odrzuca 422 (source.manual_equivalent_invalid), gdy dane MIN
+      // trafią w tym trybie. Pola MIN są w tym trybie ukryte w UI (KreatorZrodloZasilania),
+      // ale walidacja formularza jest drugą linią obrony (np. przy przełączeniu trybu
+      // z zachowanymi wcześniej wpisanymi wartościami).
+      if (data.sk3_min_mva !== null || data.ik3_min_ka !== null || data.rx_ratio_min !== null) {
+        errors.push({
+          field: 'sk3_min_mva',
+          message: 'Tryb impedancyjny (R+jX) nie ma wariantu MIN — usuń dane Sk″min/Ik″min/R/X (MIN) albo przełącz na tryb mocy zwarciowej.',
+        });
       }
     } else {
       if (!isPositive(data.sk3_mva)) {
@@ -278,6 +371,7 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
       if (data.rx_ratio === null || data.rx_ratio < 0) {
         errors.push({ field: 'rx_ratio', message: 'Stosunek R/X musi być nieujemny.' });
       }
+      errors.push(...walidujDaneScenariuszaMin(data, data.sk3_mva));
     }
   } else {
     if (!isPositive(data.sk3_mva)) {
@@ -364,7 +458,8 @@ export function zbudujZadaniePodgladu(data: GridSourceFormData): GridSourcePrevi
   if (!isPositive(previewVoltageKv) || !Number.isFinite(data.thermal_time_s) || data.thermal_time_s <= 0) {
     return null;
   }
-  if (data.manual_mode && data.short_circuit_mode === 'IMPEDANCE') {
+  const impedancyjny = data.manual_mode && data.short_circuit_mode === 'IMPEDANCE';
+  if (impedancyjny) {
     if (data.r_ohm === null || data.r_ohm < 0 || !isPositive(data.x_ohm)) {
       return null;
     }
@@ -378,6 +473,13 @@ export function zbudujZadaniePodgladu(data: GridSourceFormData): GridSourcePrevi
   ) {
     return null;
   }
+  // CV-4.3 K7: rx_ratio_min bez sk3_min_mva/ik3_min_ka sam backend odrzuca 422 —
+  // podgląd nie wysyła kombinacji, o której wie z góry, że solver ją odrzuci
+  // (ta sama walidacja co `walidujDaneScenariuszaMin`, jedno źródło prawdy o
+  // predykacie "MIN bez własnej mocy/prądu").
+  if (data.rx_ratio_min !== null && data.sk3_min_mva === null && data.ik3_min_ka === null) {
+    return null;
+  }
 
   return {
     voltage_kv: previewVoltageKv,
@@ -386,6 +488,11 @@ export function zbudujZadaniePodgladu(data: GridSourceFormData): GridSourcePrevi
     rx_ratio: data.rx_ratio,
     r_ohm: data.r_ohm,
     x_ohm: data.x_ohm,
+    // CV-4.3 K7: scenariusz MIN — TYLKO w trybie mocy zwarciowej (impedancja jawna
+    // nie ma wariantu MIN; backend odrzuca 422, więc podgląd go nigdy nie wysyła).
+    sk3_min_mva: impedancyjny ? null : data.sk3_min_mva,
+    ik3_min_ka: impedancyjny ? null : data.ik3_min_ka,
+    rx_ratio_min: impedancyjny ? null : data.rx_ratio_min,
     zero_sequence_enabled: data.zero_sequence_enabled,
     r0_ohm: data.r0_ohm,
     x0_ohm: data.x0_ohm,
@@ -458,14 +565,24 @@ function buildZeroSequence(data: GridSourceFormData) {
   };
 }
 
+/** `GroundingConfig` 1:1 z kontraktem backendu (`Source.neutral_grounding`) — literały wspólne
+ *  (`types/uziemienie.ts`), bez własnego aliasu uziemienia sztywnego. Składowa dominująca tylko dla
+ *  wariantów impedancyjnych; backend odrzuca brak R_N / X_N (predykat `blad_konfiguracji_uziemienia`). */
 function buildGrounding(data: GridSourceFormData) {
-  const groundingType = data.grounding_type === 'solid_grounded' ? 'directly_grounded' : data.grounding_type;
-  const grounding: { type: GpzGroundingType | 'directly_grounded'; r_ohm?: number | null; x_ohm?: number | null } = {
-    type: groundingType,
+  const grounding: { type: TypPunktuNeutralnego; r_ohm?: number | null; x_ohm?: number | null } = {
+    type: data.grounding_type,
   };
-  if (groundingType === 'resistor_grounded') grounding.r_ohm = data.grounding_r_ohm;
-  if (groundingType === 'petersen_coil') grounding.x_ohm = data.grounding_x_ohm;
+  if (data.grounding_type === 'resistor_grounded') grounding.r_ohm = data.grounding_r_ohm;
+  if (data.grounding_type === 'petersen_coil') grounding.x_ohm = data.grounding_x_ohm;
   return grounding;
+}
+
+/** Brak składowej dominującej impedancji punktu neutralnego (R_N rezystora / X_N dławika). */
+export function brakImpedancjiUziemienia(data: GridSourceFormData): boolean {
+  if (!PUNKTY_NEUTRALNE_IMPEDANCYJNE.has(data.grounding_type)) return false;
+  return data.grounding_type === 'petersen_coil'
+    ? !isPositive(data.grounding_x_ohm)
+    : !isPositive(data.grounding_r_ohm);
 }
 
 function buildManualEquivalent(data: GridSourceFormData): Record<string, unknown> {
@@ -475,6 +592,11 @@ function buildManualEquivalent(data: GridSourceFormData): Record<string, unknown
     hv_voltage_kv: data.hv_voltage_kv,
     short_circuit_input_side: data.short_circuit_input_side,
     short_circuit_mode: data.short_circuit_mode,
+    // CV-4.3 K7c: backend czyta u_set_pu BEZWARUNKOWO (przed rozgałęzieniem na
+    // short_circuit_mode) — w `common`, więc obecne w OBU gałęziach poniżej
+    // (impedancja i moc zwarciowa). Opcjonalne: brak klucza = nie wysyłamy
+    // (zero fabrykacji, ten sam wzorzec co dane scenariusza MIN niżej).
+    ...(data.u_set_pu !== null ? { u_set_pu: data.u_set_pu } : {}),
   };
   if (data.short_circuit_mode === 'IMPEDANCE') {
     return {
@@ -492,6 +614,12 @@ function buildManualEquivalent(data: GridSourceFormData): Record<string, unknown
       ? { sk3_hv_mva: data.sk3_hv_mva }
       : { sk3_mva: data.sk3_mva }),
     rx_ratio: data.rx_ratio,
+    // CV-4.3 K7: dane scenariusza MIN — TA SAMA strona (SN/WN) co sk3_mva/sk3_hv_mva
+    // powyżej (backend czyta manual.get("sk3_min_mva", ...) niezależnie od strony).
+    // Opcjonalne: brak klucza = nie wysyłamy (zero fabrykacji, R2 karty K7-FE).
+    ...(data.sk3_min_mva !== null ? { sk3_min_mva: data.sk3_min_mva } : {}),
+    ...(data.ik3_min_ka !== null ? { ik3_min_ka: data.ik3_min_ka } : {}),
+    ...(data.rx_ratio_min !== null ? { rx_ratio_min: data.rx_ratio_min } : {}),
   };
 }
 
@@ -588,7 +716,7 @@ export function wierszeGotowosci(data: GridSourceFormData): WierszGotowosci[] {
     ['Parametry zwarciowe', hasShortCircuitInput ? 'kompletne' : 'brak', 'Kompletne'],
     [
       'Uziemienie neutralnego',
-      data.grounding_type === 'resistor_grounded' && !isPositive(data.grounding_r_ohm) ? 'brak' : 'kompletne',
+      brakImpedancjiUziemienia(data) ? 'brak' : 'kompletne',
       'Kompletne',
     ],
     ['Parametry normowe', 'kompletne', 'Kompletne'],
@@ -684,7 +812,7 @@ export function zbudujOznaczenieGpz(sourceName: string): string {
   return `GPZ-${(token || 'SN').toUpperCase()}-01`;
 }
 
-export function opisUziemienia(type: GpzGroundingType): string {
+export function opisUziemienia(type: TypPunktuNeutralnego): string {
   switch (type) {
     case 'resistor_grounded':
       return 'Najczęściej stosowane w SN. Rezystor ogranicza prąd zwarcia 1-faz do bezpiecznej wartości (zwykle 100-1000 A). Wymaga zabezpieczeń 51G/67N na polach.';
@@ -692,7 +820,7 @@ export function opisUziemienia(type: GpzGroundingType): string {
       return 'Sieć IT — punkt neutralny nieuziemiony. Bardzo mały prąd zwarcia 1-faz (pojemnościowy). Wymaga ciągłej kontroli izolacji.';
     case 'petersen_coil':
       return 'Cewka rezonansowa (Petersena) kompensuje prąd pojemnościowy. Niemal zerowy prąd zwarcia doziemnego. Zalecane dla rozległych sieci SN kablowych.';
-    case 'solid_grounded':
+    case 'directly_grounded':
       return 'Sztywne uziemienie. Bardzo duże prądy zwarcia 1-faz. Wymaga aparatury o wysokim Ik″ i pełnej koordynacji zabezpieczeń ziemnozwarciowych.';
     default:
       return 'Wybierz typ uziemienia.';

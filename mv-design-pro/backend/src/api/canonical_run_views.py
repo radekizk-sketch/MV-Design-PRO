@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from math import radians
 from typing import Any
 from uuid import UUID
 
+from analysis.normative.kryteria_napiecia import zbuduj_kryteria_napiecia
 from analysis.power_flow.result import PowerFlowResult
 from analysis.power_flow_interpretation import (
     InterpretationContext,
@@ -21,8 +23,12 @@ from api.v125_contracts import (
 from application.analysis_run import build_trace_summary
 from application.result_freshness import (
     FreshnessVerdict,
-    current_model_hash,
-    evaluate_result_freshness,
+    StanBiezacyModelu,
+    swiezosc_biegu_kanonicznego,
+)
+from application.solvers.power_flow_binding import (
+    max_mismatch_ze_sladu_lub_brak,
+    skalary_wyniku_rozplywu,
 )
 from enm.canonical_analysis import (
     CanonicalRun,
@@ -31,13 +37,17 @@ from enm.canonical_analysis import (
     build_bus_results,
     build_dynamic_stability_results,
     build_dynamic_stability_time_series,
+    build_dynamika_results,
+    build_dynamika_time_series,
     build_extended_trace,
     build_phase_state_results,
+    build_power_flow_unbalanced_results,
     build_results_index,
     build_short_circuit_results,
     build_short_circuit_rozplyw,
-    build_source_compliance_results,
+    dobierz_pasmo_min_max_zwarcia,
 )
+from network_model.pochodne import a_na_ka
 
 
 def build_run_trace_payload(run: CanonicalRun) -> dict[str, Any] | list[dict[str, Any]] | None:
@@ -111,7 +121,7 @@ def build_run_summary_json(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type == "short_circuit_sn":
         rows = (run.raw_result or {}).get("results") or []
         ikss_values = [
-            float(row["ikss_a"]) / 1000.0 for row in rows if row.get("ikss_a") is not None
+            a_na_ka(float(row["ikss_a"])) for row in rows if row.get("ikss_a") is not None
         ]
         return {
             "row_count": len(rows),
@@ -135,15 +145,6 @@ def build_run_summary_json(run: CanonicalRun) -> dict[str, Any]:
             "stability_index": row.get("stability_index"),
             "limiting_factor": row.get("limiting_factor"),
         }
-    if run.analysis_type == "source_compliance":
-        rows = build_source_compliance_results(run).get("rows", [])
-        row = rows[0] if rows else {}
-        return {
-            "row_count": len(rows),
-            "source_type": row.get("source_type"),
-            "verdict": row.get("verdict"),
-            "reporting_status": row.get("reporting_status"),
-        }
     return {"row_count": 0}
 
 
@@ -154,7 +155,6 @@ def build_result_items(run: CanonicalRun) -> dict[str, Any]:
         "short_circuit_sn": "short_circuit_sn",
         "phase_state_sn": "phase_state_sn",
         "dynamic_stability": "dynamic_stability",
-        "source_compliance": "source_compliance",
     }.get(run.analysis_type, run.analysis_type)
     payload_summary = build_run_summary_json(run)
     return {
@@ -176,7 +176,9 @@ def build_result_items(run: CanonicalRun) -> dict[str, Any]:
     }
 
 
-def build_run_freshness(run: CanonicalRun) -> FreshnessVerdict:
+def build_run_freshness(
+    run: CanonicalRun, uow_factory: Callable[[], Any] | None
+) -> FreshnessVerdict:
     """Swiezosc wyniku biegu kanonicznego wzgledem BIEZACEGO modelu przypadku.
 
     DLUG ZAMKNIETY (K-S, klasa). Nakladka oddawala tu `run.result_status`, czyli
@@ -184,12 +186,17 @@ def build_run_freshness(run: CanonicalRun) -> FreshnessVerdict:
     — do tego w slowniku nieznanym konsumentowi (`SldOverlay.tsx` porownuje z
     `'OUTDATED'`). Status jest teraz liczony z POROWNANIA odcisku modelu biegu
     (`CanonicalRun.snapshot_hash`) z odciskiem modelu biezacego, tym samym
-    mechanizmem co nakladka zabezpieczen.
+    mechanizmem co nakladka zabezpieczen. `uow_factory` (CV-1-W) tlumaczy
+    `run.case_id` na klucz magazynu ENM (`StanBiezacyModelu.dla_przypadku`).
+
+    CV-2: bieg z koperta rewizji (`CanonicalRun.envelope`) jest oceniany z
+    koperty — rewizja modelu, odcisk katalogu, lista zmian z dziennika; bieg bez
+    koperty (sprzed rejestru rewizji) wraca na sciezke odcisku modelu. JEDNA
+    funkcja (`application/result_freshness.swiezosc_biegu_kanonicznego`) dla
+    nakladki, listy biegow i statusu przypadku.
     """
-    return evaluate_result_freshness(
-        has_result=run.status == "FINISHED" and bool(run.raw_result),
-        run_model_hashes=(run.snapshot_hash,),
-        current_hash=current_model_hash(run.case_id),
+    return swiezosc_biegu_kanonicznego(
+        run, StanBiezacyModelu.dla_przypadku(run.case_id, uow_factory)
     )
 
 
@@ -198,6 +205,7 @@ def build_sld_overlay(
     *,
     diagram_id: UUID,
     sld_payload: dict[str, Any],
+    uow_factory: Callable[[], Any] | None,
 ) -> dict[str, Any]:
     bus_rows = {row["bus_id"]: row for row in build_bus_results(run).get("rows", [])}
     branch_rows = {row["branch_id"]: row for row in build_branch_results(run).get("rows", [])}
@@ -205,8 +213,6 @@ def build_sld_overlay(
     phase_rows = {row["target_id"]: row for row in build_phase_state_results(run).get("rows", [])}
     stability_rows = build_dynamic_stability_results(run).get("rows", [])
     stability_row = stability_rows[0] if stability_rows else {}
-    compliance_rows = build_source_compliance_results(run).get("rows", [])
-    compliance_row = compliance_rows[0] if compliance_rows else {}
 
     node_symbols = list(sld_payload.get("nodes", []))
     if not node_symbols:
@@ -242,11 +248,6 @@ def build_sld_overlay(
                     if node_id == str(stability_row.get("source_id") or "")
                     else None
                 ),
-                "source_compliance_verdict": (
-                    compliance_row.get("verdict")
-                    if node_id == str(compliance_row.get("source_ref") or "")
-                    else None
-                ),
             }
         )
 
@@ -273,7 +274,7 @@ def build_sld_overlay(
     return {
         "diagram_id": str(diagram_id),
         "run_id": str(run.id),
-        **build_run_freshness(run).to_overlay_fields(),
+        **build_run_freshness(run, uow_factory).to_overlay_fields(),
         "nodes": nodes,
         "buses": nodes,
         "branches": branches,
@@ -320,7 +321,13 @@ def get_power_flow_result(run: CanonicalRun) -> dict[str, Any]:
     result_v1 = (run.raw_result or {}).get("result_v1") or None
     if result_v1 is None:
         raise ValueError(f"Wyniki rozpływu mocy nie są dostępne dla przebiegu {run.id}")
-    return result_v1
+    # Karta W3-J: kryteria napięciowe ADDYTYWNE, budowane ŚWIEŻO z jednego źródła
+    # prawdy (`analysis.normative.kryteria_napiecia`) — to konfiguracja, nie wynik
+    # fizyczny biegu, więc nie jest przechowywana w `raw_result`. Kopia płytka
+    # (nie mutacja `result_v1` w miejscu): ten słownik jest referencją do wnętrza
+    # `run.raw_result`, a wołający (np. `build_power_flow_interpretation`) czyta
+    # go dalej — dopisanie klucza w miejscu przeciekałoby do zapisu biegu.
+    return {**result_v1, "kryteria_napiecia": zbuduj_kryteria_napiecia().to_dict()}
 
 
 def get_power_flow_trace(run: CanonicalRun) -> dict[str, Any]:
@@ -340,36 +347,56 @@ def get_power_flow_trace(run: CanonicalRun) -> dict[str, Any]:
     return trace
 
 
+def _pf_bus_scalar(rows: list[dict[str, Any]], klucz: str) -> dict[str, float]:
+    """Mapa bus_id -> wartosc skalarna wyniku PF, POMIJAJAC wiersze bez pola.
+
+    FAB-E (E1): brak ``v_pu``/``angle_deg`` w wierszu wyniku NIE jest wartoscia
+    0 — szyna bez tej wartosci zostaje pominieta (brak wpisu), zamiast fikcyjnie
+    zgloszonego zerowego napiecia/kata (co dla ``v_pu`` wygenerowaloby fałszywe
+    "znacznie obnizone napiecie — istotny problem" w interpretacji).
+    """
+    return {str(row["bus_id"]): float(row[klucz]) for row in rows if row.get(klucz) is not None}
+
+
+def _pf_branch_s_mva(rows: list[dict[str, Any]], klucz_p: str, klucz_q: str) -> dict[str, complex]:
+    """Mapa branch_id -> moc pozorna [MVA], POMIJAJAC galezie bez kompletu danych.
+
+    FAB-E (E1): brak ``p_*_mw``/``q_*_mvar`` NIE jest moca zerowa — galaz bez
+    kompletu danych zostaje pominieta (brak wpisu) zamiast fikcyjnego 0+0j.
+    """
+    wynik: dict[str, complex] = {}
+    for row in rows:
+        p_mw = row.get(klucz_p)
+        q_mvar = row.get(klucz_q)
+        if p_mw is None or q_mvar is None:
+            continue
+        wynik[str(row["branch_id"])] = complex(float(p_mw), float(q_mvar))
+    return wynik
+
+
 def build_power_flow_interpretation(run: CanonicalRun) -> dict[str, Any]:
     result_v1 = get_power_flow_result(run)
     bus_results = result_v1.get("bus_results", [])
     branch_results = result_v1.get("branch_results", [])
 
+    # Skalary biegu WYLACZNIE z artefaktu (kontrakt FROZEN serializuje je zawsze;
+    # brak = odmowa z nazwa pola), koncowe niedopasowanie ze sladu White Box albo
+    # jawny brak — bez `or 0` / `or 100.0` / `0.0` (FAB-E, klasa „brak = zero").
+    skalary = skalary_wyniku_rozplywu(result_v1)
     power_flow_result = PowerFlowResult(
         converged=bool(result_v1.get("converged", False)),
-        iterations=int(result_v1.get("iterations_count", 0)),
-        tolerance=float(result_v1.get("tolerance_used", 0.0)),
-        max_mismatch_pu=0.0,
-        base_mva=float(result_v1.get("base_mva", 100.0)),
+        iterations=skalary.iterations_count,
+        tolerance=skalary.tolerance_used,
+        max_mismatch_pu=max_mismatch_ze_sladu_lub_brak(run.white_box_trace),
+        base_mva=skalary.base_mva,
         slack_node_id=str(result_v1.get("slack_bus_id", "")),
-        node_u_mag_pu={str(row["bus_id"]): float(row.get("v_pu", 0.0)) for row in bus_results},
+        node_u_mag_pu=_pf_bus_scalar(bus_results, "v_pu"),
         node_angle_rad={
-            str(row["bus_id"]): radians(float(row.get("angle_deg", 0.0))) for row in bus_results
+            bus_id: radians(v_deg)
+            for bus_id, v_deg in _pf_bus_scalar(bus_results, "angle_deg").items()
         },
-        branch_s_from_mva={
-            str(row["branch_id"]): complex(
-                float(row.get("p_from_mw", 0.0)),
-                float(row.get("q_from_mvar", 0.0)),
-            )
-            for row in branch_results
-        },
-        branch_s_to_mva={
-            str(row["branch_id"]): complex(
-                float(row.get("p_to_mw", 0.0)),
-                float(row.get("q_to_mvar", 0.0)),
-            )
-            for row in branch_results
-        },
+        branch_s_from_mva=_pf_branch_s_mva(branch_results, "p_from_mw", "q_from_mvar"),
+        branch_s_to_mva=_pf_branch_s_mva(branch_results, "p_to_mw", "q_to_mvar"),
     )
 
     context = InterpretationContext(
@@ -433,6 +460,13 @@ def build_phase_state_results_response(run: CanonicalRun) -> dict[str, Any]:
     return payload
 
 
+def build_power_flow_unbalanced_results_response(run: CanonicalRun) -> dict[str, Any]:
+    """W5-D: wynik rozpływu niesymetrycznego (szyny/gałęzie per faza, VUF, założenia)."""
+    payload = build_power_flow_unbalanced_results(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
+
+
 def build_dynamic_stability_results_response(run: CanonicalRun) -> dict[str, Any]:
     payload = build_dynamic_stability_results(run)
     payload["analysis_case_context"] = build_analysis_case_context(run)
@@ -445,14 +479,24 @@ def build_dynamic_stability_time_series_response(run: CanonicalRun) -> dict[str,
     return payload
 
 
-def build_automation_trace_results_response(run: CanonicalRun) -> dict[str, Any]:
-    payload = build_automation_trace_results(run)
+def build_dynamika_results_response(run: CanonicalRun) -> dict[str, Any]:
+    """Metadane `ResultSetDynamicV1` (karta W6-1) — `KeyError` się propaguje (API: 404)."""
+    payload = build_dynamika_results(run)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
 
 
-def build_source_compliance_results_response(run: CanonicalRun) -> dict[str, Any]:
-    payload = build_source_compliance_results(run)
+def build_dynamika_time_series_response(
+    run: CanonicalRun, klucze_kanalow: list[str] | None
+) -> dict[str, Any]:
+    """Próbki szeregów czasowych `dynamika_rms` (karta W6-1) — `KeyError` się propaguje (API: 404)."""
+    payload = build_dynamika_time_series(run, klucze_kanalow)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
+
+
+def build_automation_trace_results_response(run: CanonicalRun) -> dict[str, Any]:
+    payload = build_automation_trace_results(run)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
 
@@ -469,18 +513,161 @@ def build_branch_results_response(run: CanonicalRun) -> dict[str, Any]:
     return payload
 
 
+def _c_factor_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
+    """Współczynnik napięciowy c ZAPISANY na biegu — jawny override ALBO
+    auto-per-węzeł (`enm/assembler.zloz_wejscie_zwarcia`: `options.get("c_factor")`
+    `None` -> AUTO z pasma napięciowego węzła, wartość -> OVERRIDE płaski).
+    Karta UI2 p.7: bez tego pola front nie ma jak odróżnić "policzono z c
+    z konfiguracji tego biegu" od domysłu — `EkranZwarc` czytał c z AKTYWNEGO
+    przypadku, nie z biegu, którego wynik ogląda (dwie różne rzeczy)."""
+    jawny = run.options.get("c_factor")
+    if jawny is not None:
+        return {"tryb": "jawny", "wartosc": float(jawny)}
+    return {"tryb": "auto_per_wezel", "wartosc": None}
+
+
+def _thermal_time_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
+    """Czas cieplny [s] ZAPISANY na biegu; brak w opcjach = wartość, którą
+    assembler FAKTYCZNIE zastosował (`zloz_wejscie_zwarcia`:
+    `float(options.get("thermal_time_seconds", 1.0))`) — oznaczona jawnie jako
+    domyślna assemblera, nie ukryta jako gdyby pochodziła z opcji biegu."""
+    jawny = run.options.get("thermal_time_seconds")
+    if jawny is not None:
+        return {"wartosc": float(jawny), "pochodzenie": "opcje_biegu"}
+    return {"wartosc": 1.0, "pochodzenie": "domyslna_assemblera"}
+
+
+def _scenariusz_biegu_zwarcia(run: CanonicalRun) -> str | None:
+    """`MAX`/`MIN` ZAPISANE na wyniku biegu — z artefaktu, nie z domysłu.
+
+    TO SAMO ŹRÓDŁO, które czyta most autorytetu koordynacji
+    (`application/autorytet_biegu_zwarciowego.py::_scenariusz_biegu`:
+    `run.raw_result["scenario"]`). `None` znaczy „bieg nie zapisał scenariusza"
+    (starszy artefakt) — uczciwy brak, nigdy domyślne „MAX".
+
+    DLACZEGO POLE ISTNIEJE (karta HARNESS-RESZTA-2, 2026-09-17). Klient nie miał
+    ŻADNEGO sposobu odróżnić wyniku wariantu maksymalnego od minimalnego i
+    zgadywał go ze współczynnika `c` wiersza (`pradyZBiegow.ts`:
+    `c >= 1 → MAX`). Na sieci ŚREDNIEGO napięcia ten domysł jest zawsze
+    fałszywy: IEC 60909-0 Tabela 1 daje c_min = 1,00 dla napięć > 1 kV (0,95
+    tylko dla nN), więc wiersze biegu MINIMALNEGO na szynie 15 kV niosą
+    c = 1,00 i trafiały do zbioru MAKSYMALNEGO. Skutek zmierzony na realnym
+    biegu: ekran koordynacji meldował „Brak biegu zwarciowego minimalnego" i
+    NIE LICZYŁ czułości na ŻADNEJ sieci SN, mimo dwóch policzonych biegów."""
+    scenariusz = (run.raw_result or {}).get("scenario")
+    return str(scenariusz).upper() if isinstance(scenariusz, str) and scenariusz else None
+
+
+def build_konfiguracja_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
+    """Konfiguracja ZAPISANA na biegu zwarciowym (karta UI2 p.7) —
+    addytywna projekcja `run.options` (ZAPISANE opcje, nie AKTYWNY przypadek
+    obliczeniowy). `metoda` jest stałą normatywną rodziny solvera (IEC 60909
+    solver_input/eligibility) — nie zgadywanie, jedyna metoda SC w tym repo."""
+    return {
+        "c_factor": _c_factor_biegu_zwarcia(run),
+        "thermal_time_seconds": _thermal_time_biegu_zwarcia(run),
+        "metoda": "IEC 60909",
+        "scenariusz": _scenariusz_biegu_zwarcia(run),
+    }
+
+
 def build_short_circuit_results_response(run: CanonicalRun) -> dict[str, Any]:
     payload = build_short_circuit_results(run)
     payload["analysis_case_context"] = build_analysis_case_context(run)
+    payload["konfiguracja_biegu"] = build_konfiguracja_biegu_zwarcia(run)
     return payload
 
 
-def build_short_circuit_rozplyw_response(run: CanonicalRun, target_id: str) -> dict[str, Any]:
+def build_short_circuit_rozplyw_response(
+    run: CanonicalRun, target_id: str, *, uow_factory: Callable[[], Any] | None = None
+) -> dict[str, Any]:
     # V12K-281 (K13): rozpływ gałęziowy jednego punktu zwarcia na żądanie —
     # wiersze zbiorcze nie niosą już rozpływu (raport/odpowiedź 730 MB).
-    payload = build_short_circuit_rozplyw(run, target_id)
+    # PERF-SC-50: treść liczona na żądanie z wejścia biegu (fabryka UoW dla audytu 2).
+    payload = build_short_circuit_rozplyw(run, target_id, uow_factory=uow_factory)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
+
+
+#: Komunikat PL per kod odmowy strony pasma (karta W3-G3) — NAZWANY, nigdy cichy
+#: (KLASA, NIE INSTANCJA §4: deklaracja bez testu = fałszywa pewność — przypięte
+#: `tests/api/test_short_circuit_band.py`). Prefiks `blad_solvera_wariantu:` (typ
+#: wyjątku dołączony w `dobierz_pasmo_min_max_zwarcia`) obsłużony osobno niżej.
+_POWOD_NIEDOSTEPNOSCI_PASMA_PL: dict[str, str] = {
+    "wspolczynnik_c_recznie_ustawiony": (
+        "Bieg kotwicy ma ręcznie ustawiony współczynnik c (niezależny od pasma "
+        "MAX/MIN) — jednoznaczny bieg przeciwnego scenariusza nie jest policzalny "
+        "automatycznie. Uruchom osobny bieg zwarciowy z automatycznym doborem c."
+    ),
+    "kotwica_jest_wariantem_scenariusza": (
+        "Bieg kotwicy sam jest wariantem scenariusza roboczego (nadpisania modelu) "
+        "— pasmo MIN/MAX buduje się wyłącznie ze stanu normalnego. Uruchom bieg "
+        "zwarciowy na stanie normalnym, aby zobaczyć pasmo."
+    ),
+}
+
+
+def _powod_niedostepnosci_pasma_pl(kod: str | None) -> str | None:
+    if kod is None:
+        return None
+    if kod in _POWOD_NIEDOSTEPNOSCI_PASMA_PL:
+        return _POWOD_NIEDOSTEPNOSCI_PASMA_PL[kod]
+    if kod.startswith("blad_solvera_wariantu:"):
+        return (
+            "Obliczenie przeciwnego scenariusza (w pamięci, z tej samej migawki "
+            "kotwicy) zakończyło się błędem solvera — sprawdź dane katalogowe i "
+            "topologię sieci albo uruchom bieg tego scenariusza osobno."
+        )
+    return f"Pasmo MIN/MAX niedostępne (kod: {kod})."
+
+
+def _strona_pasma_zwarcia(bieg: CanonicalRun | None, zrodlo: str | None) -> dict[str, Any] | None:
+    """Projekcja jednej strony pasma (MAX albo MIN) na JSON — `None` = strona
+    niedostępna (wołający czyta `brakujacy_scenariusz`/`powod_niedostepnosci`).
+
+    `run_id` obecny WYŁĄCZNIE dla `zrodlo == "biegu_zapisanego"` — strona
+    `"obliczony_na_zadanie"` dzieli `id` z kotwicą (`bieg_wariantu` go nie
+    generuje na nowo), więc wystawienie go jako `run_id` TEJ strony byłoby
+    fabrykacją niezależnej tożsamości biegu (zero fabrykacji, dyrektywa
+    właściciela). Ta strona niesie za to `bieg_bazowy_id` — z czego policzona.
+    """
+    if bieg is None:
+        return None
+    return {
+        "zrodlo": zrodlo,
+        "run_id": str(bieg.id) if zrodlo == "biegu_zapisanego" else None,
+        "bieg_bazowy_id": str(bieg.id),
+        "wynik": build_short_circuit_results(bieg),
+        "analysis_case_context": build_analysis_case_context(bieg),
+    }
+
+
+def build_short_circuit_band_response(
+    run: CanonicalRun, *, uow_factory: Callable[[], Any] | None = None
+) -> dict[str, Any]:
+    """Pasmo MIN/MAX zwarcia z JEDNEGO przypadku obok siebie (karta W3-G3,
+    aneks D7, mapa domknięcia 3 #12) — projekcja `PasmoMinMaxZwarcia` na JSON.
+
+    Orkiestracja doboru pary (bieg zapisany innego biegu przypadku → wariant w
+    pamięci → nazwana odmowa) żyje w `enm.canonical_analysis.
+    dobierz_pasmo_min_max_zwarcia` (zero fizyki tutaj — ten moduł WYŁĄCZNIE
+    projektuje wynik orkiestracji na JSON, jak `build_short_circuit_results_response`
+    obok). Świeżość PARY (różne rewizje obu stron) NIE jest liczona tutaj —
+    każda strona niesie WŁASNĄ `analysis_case_context.rewizja_modelu`, front
+    (`ui2/freshness`) porównuje obie liczby tym samym mechanizmem, którym już
+    ostrzega o pojedynczym biegu nieaktualnym względem modelu.
+    """
+    pasmo = dobierz_pasmo_min_max_zwarcia(run, uow_factory=uow_factory)
+    return {
+        "run_id_kotwicy": str(pasmo.run_kotwicy_id),
+        "scenariusz_kotwicy": pasmo.scenariusz_kotwicy,
+        "typ_zwarcia_kotwicy": pasmo.typ_zwarcia,
+        "brakujacy_scenariusz": pasmo.scenariusz_brakujacy,
+        "powod_niedostepnosci": pasmo.powod_niedostepnosci,
+        "powod_niedostepnosci_pl": _powod_niedostepnosci_pasma_pl(pasmo.powod_niedostepnosci),
+        "max": _strona_pasma_zwarcia(pasmo.bieg_max, pasmo.zrodlo_max),
+        "min": _strona_pasma_zwarcia(pasmo.bieg_min, pasmo.zrodlo_min),
+    }
 
 
 def build_extended_trace_response(run: CanonicalRun) -> dict[str, Any]:

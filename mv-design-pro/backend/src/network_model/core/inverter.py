@@ -6,6 +6,11 @@ import uuid
 from dataclasses import dataclass, field
 
 from network_model.catalog.types import ConverterKind
+from network_model.core.wklad_zwarciowy_przeksztaltnika import (
+    prad_wkladu_zwarciowego,
+    wspolczynnik_wkladu_zwarciowego,
+)
+from network_model.ir_fields import wymagany_float
 
 
 @dataclass
@@ -23,17 +28,80 @@ class InverterSource:
     type_ref: str | None = field(default=None)
     converter_kind: ConverterKind | None = field(default=None)
     in_rated_a: float = field(default=0.0)
-    k_sc: float = field(default=1.1)
+    #: Współczynnik wkładu zwarciowego Z DEKLARACJI — karta producenta albo
+    #: certyfikat jednostki wytwórczej. ``None`` znaczy „nikt nie podał" i JEST
+    #: informacją, nie brakiem do wypełnienia liczbą (karta S-2 AUTORYTET,
+    #: dyrektywa właściciela 2026-09-16: „K_sc pozostaje DEFAULT_FORBIDDEN").
+    #:
+    #: JEDNO POLE, NIE DWA. Wartość użyta w rachunku (`k_sc_efektywny`) i
+    #: znacznik pochodzenia (`k_sc_zrodlo`) są z niego WYPROWADZANE, a nie
+    #: trzymane obok w osobnym polu. Dwie dane, które muszą się zgadzać, to
+    #: wzorzec, który reguła KLASA NIE INSTANCJA (CLAUDE.md) nazywa defektem
+    #: czekającym na dane brzegowe — tu nie da się go odtworzyć, bo obie
+    #: odpowiedzi liczy ten sam predykat (`wklad_zwarciowy_przeksztaltnika.
+    #: wspolczynnik_wkladu_zwarciowego`) z tego samego pola.
+    #:
+    #: Jawny argument konstruktora JEST deklaracją: ``InverterSource(k_sc=1.35)``
+    #: znaczy „ktoś tę wartość podał" — także wtedy, gdy wartość jest fizycznie
+    #: niepoprawna (0, ujemna, NaN, ±Inf): to odróżnia „podano złą daną" od
+    #: „nikt nic nie podał" (`k_sc_zrodlo` poniżej rozróżnia oba stany).
+    #: Domyślka powstaje WYŁĄCZNIE z POMINIĘCIA argumentu (``None``), nigdy z
+    #: wpisania liczby równej domyślce.
+    k_sc: float | None = field(default=None)
     contributes_negative_sequence: bool = field(default=False)
     contributes_zero_sequence: bool = field(default=False)
     in_service: bool = field(default=True)
 
     @property
+    def k_sc_efektywny(self) -> float:
+        """Współczynnik użyty w rachunku: deklaracja albo domyślka systemowa."""
+        return wspolczynnik_wkladu_zwarciowego(self.k_sc)[0]
+
+    @property
+    def k_sc_zrodlo(self) -> str:
+        """Pochodzenie współczynnika — WYPROWADZONE z tej samej deklaracji.
+
+        Jeden z ``DEKLARACJA`` / ``DOMYSLNE_SYSTEMOWE`` / ``DANE_NIEPOPRAWNE``
+        (`network_model.core.wklad_zwarciowy_przeksztaltnika`). Znacznik nie da
+        się rozjechać z wartością, bo obie odpowiedzi liczy ten sam predykat z
+        tego samego pola.
+        """
+        return wspolczynnik_wkladu_zwarciowego(self.k_sc)[1]
+
+    @property
     def ik_sc_a(self) -> float:
+        """RMS wkład prądowy do zwarcia ``I_k = k_sc · I_n`` — ZAWSZE skończony.
+
+        Skończone, dodatnie ``k_sc`` i skończone, dodatnie ``I_n`` mogą dać
+        nieskończony ILOCZYN (np. ``k_sc = 1e308``, ``I_n = 1000 A``) — każde z
+        osobna poprawne, para poza dziedziną liczb skończonych. Kontrola
+        dziedziny WYNIKU siedzi w `wklad_zwarciowy_przeksztaltnika.
+        prad_wkladu_zwarciowego`, czyli w tym samym module co predykat
+        wejściowy — dwa warunki opisujące tę samą daną muszą pochodzić z
+        jednego źródła prawdy.
         """
-        Zwraca RMS wkład prądowy do zwarcia: Ik = k_sc * In.
+        return prad_wkladu_zwarciowego(self.k_sc, self.in_rated_a)[0]
+
+    @property
+    def wklad_zrodlo(self) -> str:
+        """Pochodzenie WKŁADU (nie samego współczynnika) — z kontrolą dziedziny.
+
+        Różni się od `k_sc_zrodlo` w DWÓCH przypadkach, i oba dotyczą prądu
+        znamionowego, a nie współczynnika:
+
+        1. deklaracja poprawna, ale ILOCZYN z prądem znamionowym wychodzi poza
+           zakres liczb skończonych (``POZA_DZIEDZINA_WYNIKU``),
+        2. prąd znamionowy jest nieobecny, zerowy, ujemny albo nieskończony, więc
+           wkładu NIE DA SIĘ policzyć (``PRAD_ZNAMIONOWY_NIEPOPRAWNY`` — zerowy
+           wkład zaniżałby prąd zwarciowy i przepuścił aparat o za małej
+           zdolności wyłączalnej, więc brak danej NIE WOLNO udawać wkładem
+           zerowym).
+
+        To ten znacznik czyta warstwa gotowości i autorytetu
+        (`network_model.core.autorytet_wyniku_zwarciowego.
+        ProweniencjaWynikuZwarciowego.z_grafu`).
         """
-        return self.k_sc * self.in_rated_a
+        return prad_wkladu_zwarciowego(self.k_sc, self.in_rated_a)[1]
 
     def to_dict(self) -> dict:
         """
@@ -46,6 +114,12 @@ class InverterSource:
             "type_ref": self.type_ref,
             "converter_kind": self.converter_kind.value if self.converter_kind else None,
             "in_rated_a": self.in_rated_a,
+            # DEKLARACJA, nie wartość efektywna — inaczej obieg
+            # `from_dict(to_dict(x))` zamieniałby domyślkę systemową w deklarację
+            # (``1.1`` jest liczbą dodatnią, więc przy odczycie przeszłaby jako
+            # „ktoś to podał"). Migawka niosłaby wtedy informację, że projektant
+            # zadeklarował współczynnik, którego nigdy nie widział — i po jednym
+            # zapisie modelu ślad White Box przestałby odróżniać oba przypadki.
             "k_sc": self.k_sc,
             "contributes_negative_sequence": self.contributes_negative_sequence,
             "contributes_zero_sequence": self.contributes_zero_sequence,
@@ -56,6 +130,15 @@ class InverterSource:
     def from_dict(cls, data: dict) -> "InverterSource":
         """
         Deserializes inverter source from a dictionary.
+
+        ``k_sc`` przechodzi BEZ zmian (nie ``wymagany_float`` — pole jest
+        opcjonalne odkąd deklaracja stała się jedynym źródłem prawdy): snapshoty
+        sprzed karty S-2 i snapshoty, w których nikt k_sc nie podał, nie niosą
+        tego klucza, a brak MUSI zostać brakiem (``None``), nie zamienić się w
+        wymyśloną liczbę. Wartość obecna w zapisie — poprawna albo nie — wraca
+        DOKŁADNIE taka, jaka była zapisana; klasyfikację (`k_sc_zrodlo`) liczą
+        właściwości powyżej z tego samego pola, więc odczyt i zapis nie mogą się
+        rozjechać.
         """
         return cls(
             id=str(data.get("id", str(uuid.uuid4()))),
@@ -67,8 +150,8 @@ class InverterSource:
                 if data.get("converter_kind") is not None
                 else None
             ),
-            in_rated_a=float(data.get("in_rated_a", 0.0)),
-            k_sc=float(data.get("k_sc", 1.1)),
+            in_rated_a=wymagany_float(data, "in_rated_a", context="InverterSource"),
+            k_sc=data.get("k_sc"),
             contributes_negative_sequence=bool(data.get("contributes_negative_sequence", False)),
             contributes_zero_sequence=bool(data.get("contributes_zero_sequence", False)),
             in_service=bool(data.get("in_service", True)),

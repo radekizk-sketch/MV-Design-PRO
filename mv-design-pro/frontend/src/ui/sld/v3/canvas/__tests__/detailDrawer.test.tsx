@@ -78,7 +78,7 @@ describe('SldCanvasV3Workspace — F8c pkt 2 / F11.4-B: drawer szczegółów (Sl
     expect(label.textContent).not.toBe('');
   });
 
-  it('(b) Escape zamyka drawer (zachowanie wbudowane w SldDetailDrawer, K30-88, reużyte bez zmian)', () => {
+  it('(b) Escape zamyka drawer (zachowanie wbudowane w SldDetailDrawer, reużyte bez zmian)', () => {
     const scene = buildSceneV3(enm, 0);
     const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);

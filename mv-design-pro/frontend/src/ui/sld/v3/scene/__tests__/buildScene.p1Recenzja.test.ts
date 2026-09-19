@@ -52,7 +52,11 @@ import {
   appendUnitToTrunk,
   permuteRecords,
   sceneSignature,
+  radialize,
+  insertUnitMidLateral,
+  appendLateralBranch,
 } from './syntheticNetworks';
+import type { EnergyNetworkModel } from '../../../../../types/enm';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bigFixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -392,5 +396,140 @@ describe('RECENZJA EKSPERCKA — lokalność zmiany (+1 stacja na ogonie magistr
     expect(stab.anchorMovementCount).toBe(0);
     expect(stab.totalAnchorDisplacement).toBe(0);
     expect(stab.unchangedSubtreeMovementCount).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// KARTA SLD-LOC (lokalność pionowa kotwic stacji przy sieci z pierścieniem) —
+// §0 L4: MACIERZ KLASY, nie instancja z karty. Defekt zmierzony w karcie
+// (dopisanie 1 stacji na ogonie magistrali w sieci z pierścieniem przesuwało
+// PIONOWO 94 ze 106 kotwic — patrz commit fixujący `enmToSldAdapter.ts`
+// `stationSequence`) był JEDNYM punktem iloczynu cech: topologia (pierścień)
+// × miejsce edycji (ogon magistrali). Reguła KLASA §2 (ten plik, nagłówek
+// CLAUDE.md): nowe testy muszą pokryć CAŁY iloczyn, w którym defekt mógłby
+// się schować, nie tylko scenariusz z karty — stąd pełna macierz 3×3 niżej
+// (topologia × typ edycji), z TYM SAMYM predykatem lokalności co P1.4 wyżej
+// (podział wierszy arkusza niezmieniony ⇒ Δy=0 dla KAŻDEJ zachowanej kotwicy).
+// ---------------------------------------------------------------------------
+describe('RECENZJA EKSPERCKA — macierz lokalności (karta SLD-LOC L4): topologia × typ edycji', () => {
+  // TRZY TOPOLOGIE (WYTYCZNE §3 rodzina H, ~106 stacji każda — by podział na
+  // wiersze arkusza miał się czym zajmować, jak w P1.4 wyżej):
+  //  - promieniowa: `radialize` usuwa WSZYSTKIE gałęzie domykające pętlę
+  //    (drzewo rozpinające, teoria grafów — zero hardcode refów), zostaje
+  //    czysta sieć drzewiasta.
+  //  - 1 pierścień: kopia BEZ pierścienia (`radialize(bigEnm)`) + kopia Z
+  //    pierścieniem (`bigEnm` w oryginale) — DOKŁADNIE jeden pierścień w
+  //    całej sieci 106-stacyjnej.
+  //  - 2 pierścienie: `synthLargeTrunk(bigEnm, 2)` = `mediumEnm` z P1.4 —
+  //    KAŻDA z 2 kopii substratu niesie WŁASNY pierścień (SUB-52s).
+  const radialNetwork = synthLargeTrunk(radialize(bigEnm), 2);
+  const oneRingNetwork = appendUnitToTrunk(radialize(bigEnm), bigEnm, 'ring1cp');
+  const twoRingNetwork = synthLargeTrunk(bigEnm, 2);
+
+  interface TopologyCase {
+    readonly nazwa: string;
+    readonly network: EnergyNetworkModel;
+  }
+  const topologies: readonly TopologyCase[] = [
+    { nazwa: 'sieć promieniowa (0 pierścieni)', network: radialNetwork },
+    { nazwa: 'sieć z pierścieniem (1 pierścień)', network: oneRingNetwork },
+    { nazwa: 'sieć z dwoma pierścieniami', network: twoRingNetwork },
+  ];
+
+  // TRZY MIEJSCA EDYCJI (+1 stacja/+1 odgałęzienie) — wszystkie z ISTNIEJĄCYCH
+  // budowniczych (`appendUnitToTrunk` już użyty w P1.4; `insertUnitMidLateral`/
+  // `appendLateralBranch` reużywają TĘ SAMĄ maszynerię splicingu ENM
+  // (`syntheticNetworks.ts`), zero ręcznych JSON-ów):
+  //  - na ogonie magistrali (P1.4 — powtórzone tu dla KOMPLETNOŚCI iloczynu,
+  //    nie zaufania „już przetestowane gdzie indziej").
+  //  - w środku odgałęzienia: rozcina ŚRODKOWY odcinek PIERWSZEGO
+  //    odgałęzienia konwencją `_L`/`_R` realnej operacji domenowej
+  //    `insert_station_on_segment_sn`.
+  //  - nowe odgałęzienie: zaczepione na WOLNYM polu SN nowo dopisanym do
+  //    stacji magistrali (kształt pola skopiowany z realnego wzorca — zero
+  //    fabrykacji).
+  interface EditCase {
+    readonly nazwa: string;
+    readonly apply: (n: EnergyNetworkModel) => EnergyNetworkModel;
+  }
+  const edits: readonly EditCase[] = [
+    { nazwa: '+1 stacja na ogonie magistrali', apply: (n) => appendUnitToTrunk(n, openTrunkChain) },
+    { nazwa: '+1 stacja w środku odgałęzienia', apply: (n) => insertUnitMidLateral(n, openTrunkChain) },
+    { nazwa: '+1 odgałęzienie', apply: (n) => appendLateralBranch(n, openTrunkChain) },
+  ];
+
+  for (const topo of topologies) {
+    for (const edit of edits) {
+      it(`${topo.nazwa} × ${edit.nazwa}: podział wierszy niezmieniony ⇒ Δy=0 dla zachowanych kotwic`, () => {
+        const before = buildSceneV3(topo.network, 0);
+        const edited = edit.apply(topo.network);
+        const after = buildSceneV3(edited, 0);
+        const stab = anchorDisplacementMetrics(before, after);
+        const rowsBefore = sheetRowStationIds(before).map((r) => r.length);
+        const rowsAfter = sheetRowStationIds(after).map((r) => r.length);
+        console.log(
+          `[MACIERZ LOKALNOŚCI SLD-LOC] ${topo.nazwa} × ${edit.nazwa}: ` +
+            `wiersze ${rowsBefore.join('+')} → ${rowsAfter.join('+')}, ` +
+            `przesunięte=${stab.anchorMovementCount} nieruszone=${stab.unchangedSubtreeMovementCount} ` +
+            `poziome=${stab.movedHorizontalCount} pionowe=${stab.movedVerticalCount}`,
+        );
+
+        // Bilans: każda zachowana stacja jest albo nieruszona, albo policzona
+        // jako ruch (TA SAMA asercja co P1.4 — dowód, że miara nie gubi stacji).
+        const retained = [...stationCollapsedAnchors(before).keys()].filter((k) =>
+          stationCollapsedAnchors(after).has(k),
+        ).length;
+        expect(stab.anchorMovementCount + stab.unchangedSubtreeMovementCount).toBe(retained);
+
+        // TEN SAM predykat lokalności co P1.4 wyżej (WYTYCZNE §9): podział
+        // wierszy arkusza niezmieniony (poza ewentualnym +1 w OSTATNIM
+        // wierszu) ⇒ ZERO przesunięć pionowych. Podział zmieniony ⇒ wiersze
+        // PRZED pierwszym zmienionym muszą zostać bit-identyczne (lokalność
+        // mierzona WIERSZAMI, nie stacjami — przebudowa wiersza, który
+        // zmienił skład, jest z konstrukcji globalna DLA TEGO WIERSZA i
+        // wszystkich pod nim, ale nigdy nad nim).
+        const podzialNietkniety =
+          rowsAfter.length === rowsBefore.length
+          && rowsBefore.every((n, i) => rowsAfter[i] === n || (i === rowsBefore.length - 1 && rowsAfter[i] === n + 1));
+        if (podzialNietkniety) {
+          expect(stab.movedVerticalCount).toBe(0);
+        } else {
+          const pierwszyZmieniony = rowsBefore.findIndex((n, i) => rowsAfter[i] !== n);
+          expect(pierwszyZmieniony).toBeGreaterThanOrEqual(0);
+          for (let i = 0; i < pierwszyZmieniony; i++) {
+            expect(sheetRowStationIds(after)[i]).toEqual(sheetRowStationIds(before)[i]);
+          }
+        }
+        for (const d of stab.displacements) {
+          expect(d.dx % GRID === 0).toBe(true);
+          expect(d.dy % GRID === 0).toBe(true);
+          if (podzialNietkniety) expect(d.dy).toBe(0);
+        }
+      });
+    }
+  }
+
+  // ZNALEZISKO UBOCZNE (UCZCIWOŚĆ — CLAUDE.md „Raportuj stan zgodnie z
+  // prawdą"), POZA ZAKRESEM tej karty (lokalność PIONOWA, nie routing pól):
+  // scena „+1 odgałęzienie" na stacji, która JUŻ ma jedno odgałęzienie,
+  // mierzy `crossingCount=2` (nie 0) na WSZYSTKICH trzech topologiach —
+  // niezależnie od tego, KTÓRĄ stację ciągu wybierze `appendLateralBranch`
+  // (pierwszą czy ostatnią origin), więc przyczyną NIE jest długość pionu
+  // zejścia (kanał wielowierszowy), tylko sam fakt DRUGIEGO odgałęzienia z
+  // tej samej stacji — `computeRowChannelPlan` (`scene/buildScene.ts`)
+  // liczony PER WIERSZ najwyraźniej nie rezerwuje kanałów dla >1 odgałęzienia
+  // tej samej stacji tak, by się wzajemnie omijały. To ODRĘBNA klasa defektu
+  // (routing pól, nie lokalność pionowa Δy — poza L1 tej karty) i wymaga
+  // WŁASNEJ karty naprawczej z osobnym pomiarem/dowodem; nie jest tu ukrywane
+  // (test niżej dokumentuje znalezisko LICZBĄ, zgodnie z regułą KLASA §4 —
+  // deklaracja bez testu = fałszywa pewność), ale go NIE naprawia (poza
+  // zakresem SLD-LOC) ani nie wymaga zera (asercja `toBeGreaterThanOrEqual`,
+  // nie `toBe`, żeby przyszła naprawa tego OSOBNEGO defektu nie wywróciła tej
+  // karty).
+  it('ZNALEZISKO (poza zakresem SLD-LOC): 2. odgałęzienie tej samej stacji krzyżuje się z czymś — dokumentacja liczbą, do osobnej karty routingu pól', () => {
+    const after = buildSceneV3(appendLateralBranch(twoRingNetwork, openTrunkChain), 0);
+    const m = layoutMetricsReport(after);
+    console.log('[ZNALEZISKO poza zakresem SLD-LOC] +1 odgałęzienie (stacja z 2. lateralem) crossingCount=', m.crossingCount);
+    expect(m.crossingCount).toBeGreaterThanOrEqual(0);
   });
 });

@@ -78,22 +78,38 @@ export interface TraceStep {
 
 export interface PatternArtifacts {
   tk_total_s?: number;
-  ithn_a?: number;
+  ithn_a?: number | null;
   ithdop_a?: number;
   i_min_sel_primary_a?: number;
-  i_min_sel_secondary_a?: number;
   i_max_sens_primary_a?: number;
-  i_max_sens_secondary_a?: number;
   i_max_th_primary_a?: number;
-  i_max_th_secondary_a?: number;
   window_i_min_primary_a?: number;
   window_i_max_primary_a?: number;
-  window_i_min_secondary_a?: number;
-  window_i_max_secondary_a?: number;
   window_valid?: boolean;
   limiting_criterion_min?: string;
   limiting_criterion_max?: string;
-  recommended_setting_secondary_a?: number;
+  /**
+   * Zalecana nastawa I>> — silnik Hoppla (karta W3-C2) nie modeluje strony
+   * wtórnej/przekładni CT (inaczej niż dawny FIX-12D), więc pole zastąpiło
+   * `recommended_setting_secondary_a`.
+   */
+  recommended_setting_primary_a?: number;
+  /** Tekst konfliktu okna nastaw (null gdy okno prawidłowe) — rozszerzenie W3-C2. */
+  window_conflict_pl?: string | null;
+  /** Rekomendacje okna nastaw (dopasowanie do parametrów Hoppla) — rozszerzenie W3-C2. */
+  window_recommendations_pl?: string[];
+  /** Analiza cieplna pełnego cyklu SPZ (`_analyze_spz`, już kanon). */
+  spz_i_th_required_a?: number;
+  spz_allowed?: boolean;
+  /** false gdy SPZ wyłączone dla tego wejścia. */
+  spz_enabled?: boolean;
+  /** Diagnostyka generacji lokalnej (E-L) — rozszerzenie W3-C2. */
+  generacja_lokalna_aktywna?: boolean;
+  generacja_lokalna_wklad_el_a?: number;
+  generacja_lokalna_wklad_systemu_a?: number;
+  generacja_lokalna_udzial_el?: number | null;
+  /** null = NIEDOSTĘPNY (brak jawnie podanego progu udziału E-L). */
+  generacja_lokalna_ryzyko_zsz?: boolean | null;
 }
 
 // =============================================================================

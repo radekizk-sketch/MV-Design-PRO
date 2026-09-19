@@ -35,7 +35,7 @@ const baseProjection: SldShortCircuitProjection = {
   ],
 };
 
-describe('SldShortCircuitOverlay — K30-48 SC results projection', () => {
+describe('SldShortCircuitOverlay — SC results projection', () => {
   it('projection=null → null (back-compat)', () => {
     const { container } = render(<svg><SldShortCircuitOverlay projection={null} /></svg>);
     expect(container.querySelector('[data-testid="sld-v2-sc-overlay"]')).toBeFalsy();

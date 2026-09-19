@@ -1,7 +1,7 @@
 """Piny granicy typow i normalizacji PTPiREE (dlugi 2 i 3 z rejestru V12K-321).
 
 Dlug 2: adnotacja `annotate_with_ptpiree_status` produkowala 11 pol
-`ptpiree_*`, a typowane klasy katalogu (ConverterType, InverterType,
+`ptpiree_*`, a typowane klasy katalogu (ConverterType,
 PVInverterType, BESSInverterType) niosly tylko 9 — `ptpiree_note` i
 `ptpiree_certificate_condition` ginely na granicy typow, wiec API katalogowe
 ich nie serwowalo (most kreatora DER omijal granice reczna adnotacja).
@@ -22,7 +22,6 @@ from network_model.catalog.mv_ptpiree_catalog import annotate_with_ptpiree_statu
 from network_model.catalog.types import (
     BESSInverterType,
     ConverterType,
-    InverterType,
     PVInverterType,
     normalize_ptpiree_key,
 )
@@ -39,7 +38,7 @@ _TABLICZKA_NIEPOWIAZANA = {
     "params": {"manufacturer": "Nie istnieje", "model": "XYZ-0"},
 }
 
-_KLASY_TYPOWANE = (ConverterType, InverterType, PVInverterType, BESSInverterType)
+_KLASY_TYPOWANE = (ConverterType, PVInverterType, BESSInverterType)
 
 
 def _produkty_adnotacji() -> set[str]:
@@ -62,6 +61,17 @@ def test_typy_katalogu_niosa_komplet_produktow_adnotacji() -> None:
         )
 
 
+#: Minimalne pola FIZYCZNE wymagane przez `from_dict` kazdej klasy typowanej
+#: (karta FAB-D2, D4: brak pola wymaganego podnosi wyjatek) — test sprawdza
+#: WYLACZNIE granice pol ptpiree_*, wiec reszta niesie realistyczna, byle jaka
+#: wartosc znamionowa, nie zero.
+_MINIMALNE_POLA_FIZYCZNE: dict[type, dict[str, float]] = {
+    ConverterType: {"un_kv": 0.4, "sn_mva": 0.05, "pmax_mw": 0.05},
+    PVInverterType: {"s_n_kva": 50.0, "p_max_kw": 50.0, "un_kv": 0.4},
+    BESSInverterType: {"p_charge_kw": 50.0, "p_discharge_kw": 50.0, "e_kwh": 100.0, "un_kv": 0.4},
+}
+
+
 def test_granica_typow_przenosi_note_i_warunek_w_obie_strony() -> None:
     for klasa in _KLASY_TYPOWANE:
         obiekt = klasa.from_dict(
@@ -69,6 +79,7 @@ def test_granica_typow_przenosi_note_i_warunek_w_obie_strony() -> None:
                 "name": "Testowa przetwornica",
                 "ptpiree_note": "Pozycja wykazu: wiersz 1.",
                 "ptpiree_certificate_condition": "tylko z modulem X",
+                **_MINIMALNE_POLA_FIZYCZNE[klasa],
             }
         )
         eksport = obiekt.to_dict()

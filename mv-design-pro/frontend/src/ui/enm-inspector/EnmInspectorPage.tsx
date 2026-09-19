@@ -23,18 +23,16 @@ import { useEnmInspectorStore } from './store';
 import { EnmTree } from './EnmTree';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { PreflightMatrix } from './PreflightMatrix';
-import { EnmDiffView } from './EnmDiffView';
 import { ReferencePanel } from './ReferencePanel';
 import { fetchDiagnostics, fetchPreflight } from './api';
 import type { DiagnosticReport, PreflightReport, DiagnosticIssue } from './types';
 
-type InspectorTab = 'tree' | 'diagnostics' | 'preflight' | 'diff' | 'reference';
+type InspectorTab = 'tree' | 'diagnostics' | 'preflight' | 'reference';
 
 const TABS: { id: InspectorTab; label: string }[] = [
   { id: 'tree', label: 'Drzewo ENM' },
   { id: 'diagnostics', label: 'Diagnostyka' },
   { id: 'preflight', label: 'Pre-flight' },
-  { id: 'diff', label: 'Rewizje' },
   // Reference Engine V1 (REFERENCE_ENGINE_SPEC_V1.md §9): Reference Score +
   // sprawdzenia ✓/✗ per pakiet referencyjny.
   { id: 'reference', label: 'Referencje' },
@@ -201,9 +199,6 @@ export function EnmInspectorPage() {
         )}
         {activeTab === 'preflight' && (
           <PreflightMatrix report={preflightReport} loading={loading} />
-        )}
-        {activeTab === 'diff' && (
-          <EnmDiffView report={null} loading={false} />
         )}
         {activeTab === 'reference' && <ReferencePanel caseId={activeCaseId} />}
       </div>

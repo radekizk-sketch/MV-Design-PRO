@@ -2,9 +2,14 @@
  * Szczegóły przebiegu obliczeniowego (W-503, karta E7.2 §2) — parametry
  * wejściowe = odtwarzalność (AUDYT_RADY_SPECJALISTOW W-503, WHITE BOX).
  * W pełni sterowane propsami (rekord z listy — `ExecutionRun` niesie komplet
- * pól szczegółów, `types.ts:234-243`). Pola nieobecne w rekordzie przebiegu
- * (surowe wartości parametrów, rewizja modelu z chwili liczenia) → wiersze
- * „wkrótce" (bez zgadywania — karta §2, TODO-KARTA adaptera #2/#3).
+ * pól szczegółów, `types.ts:234-243`).
+ *
+ * KARTA-UI2 §1 p. 10 (zamknięcie): „Rewizja modelu" ma źródło (`model_revision`,
+ * koperta CV-2) — wiersz w sekcji „Parametry przebiegu" jak reszta pól, `null`
+ * (biegi sprzed rejestru koperty) pokazuje jawny powód, nie „wkrótce". „Wartości
+ * parametrów wejściowych solvera" (surowe liczby) NIE mają i nie będą mieć pola w
+ * `ExecutionRun` (odtwarzalność przez `solver_input_hash`, nie przez zrzut
+ * wartości) — wiersz SKASOWANY (kontrolka bez dostawcy = fantom), nie relabelowany.
  *
  * Identyfikatory przebiegu/przypadku WYŁĄCZNIE w sekcji „Szczegóły techniczne"
  * w trybie eksperckim (MODEL_INTERAKCJI §2.7; wzorzec `SzczegolyTechniczne`
@@ -47,16 +52,6 @@ function WierszParametru({
     <tr data-testid={testid}>
       <td>{etykieta}</td>
       <td className="mvd-num">{wartosc}</td>
-    </tr>
-  );
-}
-
-function WierszWkrotce({ etykieta, testid }: { etykieta: string; testid?: string }) {
-  return (
-    <tr data-testid={testid}>
-      <td>{etykieta}</td>
-      <td className="mvd-num mvd-wkrotce-wartosc">{T.brakWartosci}</td>
-      <td className="mvd-przebieg-pochodzenie mvd-wkrotce">{T.pochodzenieWkrotce}</td>
     </tr>
   );
 }
@@ -323,27 +318,23 @@ export function SzczegolyPrzebiegu({
                 {formatOdcisk(przebieg.odcisk)}
               </td>
             </tr>
+            <tr
+              data-testid="mvd-przebieg-rewizja"
+              className={przebieg.rewizjaModelu === null ? 'mvd-wkrotce' : undefined}
+            >
+              <td>{T.etykietaRewizjaModelu}</td>
+              <td
+                className={`mvd-num${przebieg.rewizjaModelu === null ? ' mvd-wkrotce-wartosc' : ''}`}
+                title={przebieg.rewizjaModelu === null ? T.pochodzenieBrakWRekordzie : undefined}
+              >
+                {przebieg.rewizjaModelu ?? T.brakWartosci}
+              </td>
+            </tr>
           </tbody>
         </table>
       </section>
 
       <SekcjaKontraktAnalizy runId={przebieg.id} trybEkspercki={trybEkspercki} />
-
-      <section className="mvd-przebieg-sekcja" aria-label={T.sekcjaWkrotce}>
-        <h4 className="mvd-przebieg-sekcja-tytul">{T.sekcjaWkrotce}</h4>
-        <table className="mvd-przebieg-tabela">
-          <tbody>
-            <WierszWkrotce
-              etykieta={T.etykietaRewizjaModelu}
-              testid="mvd-przebieg-wkrotce-rewizja"
-            />
-            <WierszWkrotce
-              etykieta={T.etykietaParametryWejsciowe}
-              testid="mvd-przebieg-wkrotce-parametry"
-            />
-          </tbody>
-        </table>
-      </section>
 
       {trybEkspercki && (
         <section

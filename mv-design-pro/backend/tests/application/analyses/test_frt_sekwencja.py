@@ -7,19 +7,26 @@ koniunkcja. Kontekst SCR/WSCR dołączany z widoku siły sieci D1 (golden networ
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 from application.analyses.frt_sekwencja import (
     _MAX_ZAPADY,
     _WERDYKT_SEKWENCJA_W_OBWIEDNI,
     build_frt_sekwencja_view,
 )
-from application.analyses.frt_trajektorie import _WERDYKT_MODUL_WYPADL, _WERDYKT_W_OBWIEDNI
+from application.analyses.frt_trajektorie import (
+    _WERDYKT_MODUL_WYPADL,
+    _WERDYKT_W_OBWIEDNI,
+    KOD_GOTOWOSCI_BRAK_MODELU_DYNAMICZNEGO,
+)
 from application.analyses.grid_strength import build_grid_strength_view
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile
 from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs
 from enm.models import GenLimits
 from enm.store import reset_enm_store, set_enm
 from network_model.catalog.types import ConverterKind, ConverterType
+from network_model.solvers.frt_hvrt.contracts import FrtHvrtResult
 
 from tests.cgmes.golden_enm import build_golden_enm
 
@@ -207,7 +214,9 @@ class TestGridStrengthContextFromGoldenRun:
         )
         enm = enm.model_copy(update={"generators": gens})
         set_enm("c1", enm)
-        run = execute_run(create_run(case_id="c1", analysis_type="short_circuit_sn").id)
+        run = execute_run(
+            create_run(case_id="c1", klucz_twin="c1", analysis_type="short_circuit_sn").id
+        )
         assert run.status == "FINISHED", run.error_message
         entries = {e["bus_ref"]: e for e in build_grid_strength_view(run)["entries"]}
         return entries[bus_ref]
@@ -219,3 +228,32 @@ class TestGridStrengthContextFromGoldenRun:
         assert view["kontekst_sily_sieci"]["scr"] is not None
         assert "verdict" in view["kontekst_sily_sieci"]
         assert view["kontekst_sily_sieci_powod_pl"] is None
+
+
+def test_no_module_status_mapped_to_blocked_at_boundary() -> None:
+    """Karta S-4 (W6-0), KLASA NIE INSTANCJA — ta sama granica co D6
+    (trajektorie): status solvera FROZEN `no_module` NIGDY nie dociera do FE,
+    mapowany na `blocked` z kodem gotowości `der.dynamic_profile_missing`."""
+    converter = _converter()
+    with patch(
+        "application.analyses.frt_sekwencja.FrtHvrtSolverAdapter.run",
+        return_value=FrtHvrtResult(
+            status="no_module",
+            no_module_reason_pl="Brak zdefiniowanego profilu dynamicznego DER.",
+        ),
+    ):
+        view = build_frt_sekwencja_view(converter, _PROFILE, [_ZAPAD_OK])
+    assert view["status_solvera"] == "blocked"
+    assert view["kod_gotowosci"] == KOD_GOTOWOSCI_BRAK_MODELU_DYNAMICZNEGO
+    assert view["missing_fields_pl"] == ["Brak zdefiniowanego profilu dynamicznego DER."]
+    assert view["liczba_zapadow"] == 0
+    assert view["zapady"] == []
+    assert "no_module" not in str(view)
+
+
+def test_ocena_dowodowa_sekwencji_unvalidated_model() -> None:
+    """Karta S-1 §0.9: sekwencja FRT niesie ten sam stopień dowodowy co
+    trajektoria pojedyncza — UNVALIDATED_MODEL."""
+    view = build_frt_sekwencja_view(_converter(), _PROFILE, [_ZAPAD_OK])
+    assert view["ocena_dowodowa"]["capability_id"] == "frt_hvrt.trajectory"
+    assert view["ocena_dowodowa"]["tier"] == "UNVALIDATED_MODEL"

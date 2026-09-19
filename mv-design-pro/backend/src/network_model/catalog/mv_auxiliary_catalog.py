@@ -594,8 +594,33 @@ _MCCB_TRIP_SETTINGS_SOURCE_PL = (
 )
 
 
+#: Proweniencja czterech wylacznikow glownych nN dopisanych z WYCIAGU katalogu
+#: technicznego ABB SACE Emax 2 (karta KATALOG-NIEZMIENNIKI). Wyciag jest
+#: przypiety odciskiem SHA-256 dokumentu i lezy w
+#: `docs/katalog/zrodla/abb_emax2_1SDC200023D0205.json`; PDF producenta NIE
+#: wchodzi do repozytorium (materiał producenta, 10,5 MB) — odtwarza sie go z
+#: adresu i odcisku, a `scripts/import_katalog_abb_emax2.py --sprawdz` porownuje
+#: wyciag z dokumentem.
+#:
+#: ZASTRZEZENIE, KTORE MUSI BYC POWIEDZIANE WPROST: kontrola krzyzowa importera
+#: zestawia DWA ROZNE miejsca TEGO SAMEGO dokumentu (tabele zamowieniowe wierszowe
+#: wobec tabeli zbiorczej str. 2/3). Wyklucza to blad ekstrakcji ukladu tabeli, ale
+#: NIE JEST weryfikacja wobec producenta — nikt nie potwierdzil tych wartosci u ABB.
+#: Dlatego status weryfikacji tych czterech pozycji to CZESCIOWO_ZWERYFIKOWANY, a
+#: nie ZWERYFIKOWANY.
+_EMAX2_WYCIAG_ZASTRZEZENIE_PL = (
+    "Dane znamionowe (Iu, Icu@440V, Icw 1s, kody zamowieniowe) z wyciagu katalogu "
+    "technicznego ABB SACE Emax 2 nr 1SDC200023D0205 (edycja 2017.01), wyciag "
+    "przypiety odciskiem SHA-256 dokumentu "
+    "4502f57f72a92209798e1792b415709d4ba8f40993c1bfb054d824f689582612. Kontrola "
+    "krzyzowa importera zestawia tabele zamowieniowe z tabela zbiorcza str. 2/3 TEGO "
+    "SAMEGO dokumentu — wyklucza blad ekstrakcji ukladu tabeli, NIE jest weryfikacja "
+    "wobec producenta. "
+) + _MCCB_TRIP_SETTINGS_SOURCE_PL
+
+
 def get_all_lv_apparatus_types() -> list[dict]:
-    """Zwraca aparature laczeniowa nN — 14 rekordow.
+    """Zwraca aparature laczeniowa nN — 18 rekordow.
 
     Zrodla:
     - WYLACZNIK_GLOWNY (ABB SACE Emax2, 630-1600 A): ABB SACE Emax2 katalog
@@ -782,6 +807,123 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "tr_range": _MCCB_TR_RANGE_S,
                 "tsd_range": _MCCB_TSD_RANGE_S,
                 "verification_note": _MCCB_TRIP_SETTINGS_SOURCE_PL,
+            },
+        },
+        # --- WYLACZNIK_GLOWNY: ABB SACE Emax 2, ramy E2.2N i E4.2N ---------
+        # Karta KATALOG-NIEZMIENNIKI: rodzina wylacznikow glownych konczyla sie
+        # na 1600 A, a strona dolna transformatora 2,5 MVA / 0,4 kV wymaga ~3608 A.
+        # Cztery pozycje z WYCIAGU dokumentu producenta (patrz
+        # `_EMAX2_WYCIAG_ZASTRZEZENIE_PL` wyzej) — nie z pamieci.
+        {
+            "id": "cb_nn_2000a",
+            "name": "Wylacznik glowny nN 2000 A",
+            "params": {
+                "device_kind": "WYLACZNIK_GLOWNY",
+                "u_n_kv": 0.4,
+                "i_n_a": 2000.0,
+                "breaking_capacity_ka": 66.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 66.0,
+                "icw_ka": 66.0,
+                "manufacturer": "ABB",
+                "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+                "catalog_status": "PRODUKCYJNY_V1",
+                "source_reference": (
+                    "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
+                    "tabela zamowieniowa str. 252, 266 — rama E2.2N, Iu=2000 A, "
+                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamowieniowe 1SDA071031R1 / 1SDA072381R1"
+                ),
+                "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _EMAX2_WYCIAG_ZASTRZEZENIE_PL,
+            },
+        },
+        {
+            "id": "cb_nn_2500a",
+            "name": "Wylacznik glowny nN 2500 A",
+            "params": {
+                "device_kind": "WYLACZNIK_GLOWNY",
+                "u_n_kv": 0.4,
+                "i_n_a": 2500.0,
+                "breaking_capacity_ka": 66.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 66.0,
+                "icw_ka": 66.0,
+                "manufacturer": "ABB",
+                "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+                "catalog_status": "PRODUKCYJNY_V1",
+                "source_reference": (
+                    "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
+                    "tabela zamowieniowa str. 252, 266 — rama E2.2N, Iu=2500 A, "
+                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamowieniowe 1SDA071061R1 / 1SDA072411R1"
+                ),
+                "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _EMAX2_WYCIAG_ZASTRZEZENIE_PL,
+            },
+        },
+        {
+            "id": "cb_nn_3200a",
+            "name": "Wylacznik glowny nN 3200 A",
+            "params": {
+                "device_kind": "WYLACZNIK_GLOWNY",
+                "u_n_kv": 0.4,
+                "i_n_a": 3200.0,
+                "breaking_capacity_ka": 66.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 66.0,
+                "icw_ka": 66.0,
+                "manufacturer": "ABB",
+                "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+                "catalog_status": "PRODUKCYJNY_V1",
+                "source_reference": (
+                    "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
+                    "tabela zamowieniowa str. 256, 270 — rama E4.2N, Iu=3200 A, "
+                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamowieniowe 1SDA071141R1 / 1SDA072491R1"
+                ),
+                "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _EMAX2_WYCIAG_ZASTRZEZENIE_PL,
+            },
+        },
+        {
+            "id": "cb_nn_4000a",
+            "name": "Wylacznik glowny nN 4000 A",
+            "params": {
+                "device_kind": "WYLACZNIK_GLOWNY",
+                "u_n_kv": 0.4,
+                "i_n_a": 4000.0,
+                "breaking_capacity_ka": 66.0,
+                "u_m_kv": 0.69,
+                "i_cu_ka": 66.0,
+                "icw_ka": 66.0,
+                "manufacturer": "ABB",
+                "verification_status": "CZESCIOWO_ZWERYFIKOWANY",
+                "catalog_status": "PRODUKCYJNY_V1",
+                "source_reference": (
+                    "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
+                    "tabela zamowieniowa str. 256, 270 — rama E4.2N, Iu=4000 A, "
+                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamowieniowe 1SDA071191R1 / 1SDA072541R1"
+                ),
+                "contract_version": "2.0",
+                "ir_range": _MCCB_IR_RANGE_X_IN,
+                "isd_range": _MCCB_ISD_RANGE_X_IR,
+                "ii_range": _MCCB_II_RANGE_X_IN,
+                "tr_range": _MCCB_TR_RANGE_S,
+                "tsd_range": _MCCB_TSD_RANGE_S,
+                "verification_note": _EMAX2_WYCIAG_ZASTRZEZENIE_PL,
             },
         },
         # --- WYLACZNIK_ODPLYWOWY: ABB SACE Tmax XT ---
@@ -1735,93 +1877,105 @@ def get_all_protection_device_types() -> list[dict]:
             "verification_note": verification_note,
         }
 
-    abb_source_reference = "ABB REX / dane referencyjne MV-DESIGN-PRO"
+    # Karta FAB-A/D-33 (2026-09, decyzja wlasciciela): poprzednie identyfikatory
+    # tych piecu pozycji byly fikcyjna nazwa producenta i modelu, falszywie
+    # przypisana marce ABB (prawdziwa rodzina ABB to Relion REF6xx/RET6xx/
+    # REB670/REG670, obecna osobno w katalogu analitycznym — zob. devices_v0.json).
+    # Zastapione jawnymi PROFILAMI REFERENCYJNYMI bez marki: nazwa opisuje funkcje
+    # (OC = nadpradowy, EF = ziemnozwarciowy), nie producenta. `vendor`/`series`
+    # sa NIEOBECNE — nigdy tekst udajacy producenta.
+    referencyjny_source_reference = (
+        "Profil referencyjny MV-DESIGN-PRO / IEC 60255 — nie dane producenta"
+    )
+    referencyjny_note = (
+        "Profil referencyjny (nie produkt producenta): parametry sa zalozeniem "
+        "projektowym wg IEC 60255, nie karta katalogowa producenta."
+    )
     etango_source_reference = "Elektrometal e2TANGO / dane referencyjne MV-DESIGN-PRO"
-    abb_note = "Rekord czesciowo zweryfikowany; zakres funkcji i parametrow wymaga potwierdzenia w karcie producenta."
     etango_note = "Rekord analityczny; zakresy i warianty wymagaja weryfikacji producenta przed uzyciem produkcyjnym."
     return [
         {
-            "id": "ACME_REX500_v1",
-            "name_pl": "Przekaznik ABB REX-500",
+            "id": "REF-OC-EF-500",
+            "name_pl": "Profil referencyjny (nie produkt producenta) OC/EF 500",
             "params": {
-                "vendor": "ABB",
-                "series": "REX",
+                "vendor": None,
+                "series": None,
                 "revision": "v1",
-                "analytical_library_ref": "ACME_REX500_v1",
+                "analytical_library_ref": "REF-OC-EF-500",
                 "notes_pl": "Rekord zgodny z katalogiem analitycznym ochrony.",
                 **_device_meta(
-                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
-                    source_reference=abb_source_reference,
-                    catalog_status="ANALITYCZNY_V1",
-                    verification_note=abb_note,
+                    verification_status="REFERENCYJNY",
+                    source_reference=referencyjny_source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=referencyjny_note,
                 ),
             },
         },
         {
-            "id": "ACME_REX200_v1",
-            "name_pl": "Przekaznik ABB REX-200",
+            "id": "REF-OC-200",
+            "name_pl": "Profil referencyjny (nie produkt producenta) OC 200",
             "params": {
-                "vendor": "ABB",
-                "series": "REX",
+                "vendor": None,
+                "series": None,
                 "revision": "v1",
-                "analytical_library_ref": "ACME_REX200_v1",
+                "analytical_library_ref": "REF-OC-200",
                 "notes_pl": "Rekord zgodny z katalogiem analitycznym ochrony.",
                 **_device_meta(
-                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
-                    source_reference=abb_source_reference,
-                    catalog_status="ANALITYCZNY_V1",
-                    verification_note=abb_note,
+                    verification_status="REFERENCYJNY",
+                    source_reference=referencyjny_source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=referencyjny_note,
                 ),
             },
         },
         {
-            "id": "ACME_REX100_v1",
-            "name_pl": "Przekaznik ABB REX-100",
+            "id": "REF-OC-100",
+            "name_pl": "Profil referencyjny (nie produkt producenta) OC 100",
             "params": {
-                "vendor": "ABB",
-                "series": "REX",
+                "vendor": None,
+                "series": None,
                 "revision": "v1",
-                "analytical_library_ref": "ACME_REX100_v1",
-                "notes_pl": "Rekord referencyjny rodziny REX dla nizszych zakresow linii i transformatorow.",
+                "analytical_library_ref": "REF-OC-100",
+                "notes_pl": "Rekord referencyjny dla nizszych zakresow linii i transformatorow.",
                 **_device_meta(
-                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
-                    source_reference=abb_source_reference,
-                    catalog_status="ANALITYCZNY_V1",
-                    verification_note=abb_note,
+                    verification_status="REFERENCYJNY",
+                    source_reference=referencyjny_source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=referencyjny_note,
                 ),
             },
         },
         {
-            "id": "ACME_REX300_v1",
-            "name_pl": "Przekaznik ABB REX-300",
+            "id": "REF-OC-EF-300",
+            "name_pl": "Profil referencyjny (nie produkt producenta) OC/EF 300",
             "params": {
-                "vendor": "ABB",
-                "series": "REX",
+                "vendor": None,
+                "series": None,
                 "revision": "v1",
-                "analytical_library_ref": "ACME_REX300_v1",
-                "notes_pl": "Rekord referencyjny rodziny REX dla typowych pol SN.",
+                "analytical_library_ref": "REF-OC-EF-300",
+                "notes_pl": "Rekord referencyjny dla typowych pol SN.",
                 **_device_meta(
-                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
-                    source_reference=abb_source_reference,
-                    catalog_status="ANALITYCZNY_V1",
-                    verification_note=abb_note,
+                    verification_status="REFERENCYJNY",
+                    source_reference=referencyjny_source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=referencyjny_note,
                 ),
             },
         },
         {
-            "id": "ACME_REX700_v1",
-            "name_pl": "Przekaznik ABB REX-700",
+            "id": "REF-OC-EF-700",
+            "name_pl": "Profil referencyjny (nie produkt producenta) OC/EF 700",
             "params": {
-                "vendor": "ABB",
-                "series": "REX",
+                "vendor": None,
+                "series": None,
                 "revision": "v1",
-                "analytical_library_ref": "ACME_REX700_v1",
-                "notes_pl": "Rekord referencyjny rodziny REX dla rozbudowanych zastosowan SN.",
+                "analytical_library_ref": "REF-OC-EF-700",
+                "notes_pl": "Rekord referencyjny dla rozbudowanych zastosowan SN.",
                 **_device_meta(
-                    verification_status="CZESCIOWO_ZWERYFIKOWANY",
-                    source_reference=abb_source_reference,
-                    catalog_status="ANALITYCZNY_V1",
-                    verification_note=abb_note,
+                    verification_status="REFERENCYJNY",
+                    source_reference=referencyjny_source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=referencyjny_note,
                 ),
             },
         },
@@ -2064,43 +2218,43 @@ def get_all_protection_setting_templates() -> list[dict]:
 
     return [
         {
-            "id": "template_rex500_oc",
-            "name_pl": "Szablon ABB REX-500 - nadpradowy",
+            "id": "template_ref_oc_ef_500",
+            "name_pl": "Szablon profilu referencyjnego OC/EF 500 - nadpradowy",
             "params": {
-                "device_type_ref": "ACME_REX500_v1",
+                "device_type_ref": "REF-OC-EF-500",
                 "curve_ref": "curve_iec_normal_inverse",
                 "setting_fields": [
                     {"name": "I>", "unit": "A", "min": 0.1, "max": 10.0},
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 5.0},
                 ],
-                **_template_meta(name="ABB REX-500 - nadpradowy"),
+                **_template_meta(name="profilu referencyjnego OC/EF 500 - nadpradowy"),
             },
         },
         {
-            "id": "template_rex300_oc",
-            "name_pl": "Szablon ABB REX-300 - nadpradowy",
+            "id": "template_ref_oc_ef_300",
+            "name_pl": "Szablon profilu referencyjnego OC/EF 300 - nadpradowy",
             "params": {
-                "device_type_ref": "ACME_REX300_v1",
+                "device_type_ref": "REF-OC-EF-300",
                 "curve_ref": "curve_iec_very_inverse",
                 "setting_fields": [
                     {"name": "I>", "unit": "A", "min": 0.1, "max": 12.0},
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 6.0},
                     {"name": "I>>", "unit": "A", "min": 1.0, "max": 80.0},
                 ],
-                **_template_meta(name="ABB REX-300 - nadpradowy"),
+                **_template_meta(name="profilu referencyjnego OC/EF 300 - nadpradowy"),
             },
         },
         {
-            "id": "template_rex100_oc",
-            "name_pl": "Szablon ABB REX-100 - nadpradowy",
+            "id": "template_ref_oc_100",
+            "name_pl": "Szablon profilu referencyjnego OC 100 - nadpradowy",
             "params": {
-                "device_type_ref": "ACME_REX100_v1",
+                "device_type_ref": "REF-OC-100",
                 "curve_ref": "curve_iec_normal_inverse",
                 "setting_fields": [
                     {"name": "I>", "unit": "A", "min": 0.1, "max": 8.0},
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 5.0},
                 ],
-                **_template_meta(name="ABB REX-100 - nadpradowy"),
+                **_template_meta(name="profilu referencyjnego OC 100 - nadpradowy"),
             },
         },
         {

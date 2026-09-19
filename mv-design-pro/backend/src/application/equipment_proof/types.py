@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from application.analyses.design_synth.canonical import canonicalize_json
+from application.analyses.kanon_json import canonicalize_json
+from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,18 @@ class EquipmentProofInput:
     connection_node_id: str
     device: DeviceRating
     required_fault_results: dict[str, Any]
+    #: Karta S-2 AUTORYTET — granica autorytetu wyniku zwarciowego. Domyślnie
+    #: `bez_sladu()` (FAIL-CLOSED): wejście skonstruowane wprost w kodzie
+    #: wywołującym, bez przejścia przez `application.autorytet_biegu_
+    #: zwarciowego.wejscie_zwarciowe_z_biegu`, jest NIEMIARODAJNE dopóki
+    #: wołający jawnie nie poda proweniencji wyprowadzonej z biegu. Ścieżka HTTP
+    #: (`api/equipment_proof_pack.py`) ZAWSZE nadpisuje tę wartość wynikiem
+    #: mostu; testy jednostkowe `EquipmentProofGenerator.generate` (który tego
+    #: pola NIE czyta — sprawdza je wyłącznie `build_equipment_proof_pack`)
+    #: działają bez zmian na tej domyślce.
+    proweniencja: ProweniencjaWynikuZwarciowego = field(
+        default_factory=ProweniencjaWynikuZwarciowego.bez_sladu
+    )
 
     def to_dict(self) -> dict[str, Any]:
         payload = {

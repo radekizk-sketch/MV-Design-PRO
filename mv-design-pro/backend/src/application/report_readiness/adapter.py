@@ -55,7 +55,6 @@ class ReportReadinessAdapter:
             "ready": "gotowe",
             "partial": "wynik częściowy",
             "blocked": "zablokowany",
-            "no_module": "brak modułu obliczeniowego",
             "n_a": "nie dotyczy",
         }
         return ReportReadinessStatus(

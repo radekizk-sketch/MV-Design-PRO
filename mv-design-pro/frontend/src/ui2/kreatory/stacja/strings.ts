@@ -669,11 +669,12 @@ export const STACJA_STRINGS = {
   uziemieniePunktPomoc:
     'Bezpośrednio uziemiony ⇒ duży prąd zwarcia doziemnego (układy TN). Rezystor/cewka '
     + 'ograniczają prąd doziemny. Izolowany ⇒ mały prąd pojemnościowy (układ IT).',
-  uziemienieRezystancja: 'Rezystancja uziemienia punktu neutralnego [Ω]',
+  uziemienieRezystancja: 'Rezystancja uziemienia R_N [Ω]',
+  uziemienieReaktancja: 'Reaktancja dławika Petersena X_N [Ω]',
   uziemienieRezystancjaPlaceholder: 'np. 10',
   uziemienieRezystancjaPomoc:
-    'Podaj tylko dla uziemienia impedancyjnego (rezystor / cewka). Puste — backend przyjmuje '
-    + 'model bez jawnej impedancji (nie zgadujemy wartości).',
+    'Wymagana dla uziemienia impedancyjnego: rezystor — R_N, cewka Petersena — X_N. '
+    + 'Backend odrzuca konfigurację bez składowej dominującej (nie podstawia zera).',
   teoriaUziemienieTytul: 'Teoria: uziemienie punktu neutralnego a zwarcie doziemne',
   teoriaUziemienieOpis:
     'Sposób pracy punktu neutralnego wyznacza charakter zwarcia doziemnego: sieć bezpośrednio '
@@ -684,8 +685,9 @@ export const STACJA_STRINGS = {
     + 'ziemnozwarciowych (51N/67N) i na napięcia dotyku.',
   teoriaUziemienieWymog:
     'Dobierz układ uziemienia i punkt neutralny do wymagań ochrony przeciwporażeniowej (czas wyłączenia '
-    + 'pętli zwarcia) oraz ciągłości zasilania. Wartość rezystancji podawaj tylko wtedy, gdy jest znana '
-    + 'z projektu — inaczej pozostaw pole puste.',
+    + 'pętli zwarcia) oraz ciągłości zasilania. Impedancję punktu neutralnego (R_N rezystora, '
+    + 'X_N dławika) podaj z projektu — bez niej uziemienie impedancyjne nie jest konfiguracją '
+    + '(odmowa, nie zero).',
   teoriaUziemieniePodstawa:
     'Podstawa: PN-HD 60364-4-41 (ochrona przeciwporażeniowa), IEC 60364-4-41 (pętla zwarcia), '
     + 'N SEP-E-001, IRiESD.',

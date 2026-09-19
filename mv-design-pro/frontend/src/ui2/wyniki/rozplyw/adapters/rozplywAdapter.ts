@@ -12,22 +12,26 @@
  * - Store read-only: `usePowerFlowResultsStore.results` (`ui/power-flow-results/store.ts:44`),
  *   `runHeader.id` (`store.ts:41`, `PowerFlowRunHeader.id` `types.ts:28`).
  *
- * TODO-KARTA (ograniczenia — brak źródła w kontrakcie read-only, karta §2 „NIE zgaduj"):
- * 1. Świeżość (FreshnessBadge) wymaga LICZBOWEJ rewizji modelu z chwili liczenia.
- *    `PowerFlowResultV1`/`PowerFlowRunHeader` NIE niosą liczbowej rewizji — jedynie
- *    `result_status` (enum FRESH/OUTDATED, `types.ts:204-209`) i `input_hash`
- *    (`types.ts:34`). Mapowanie enum→liczba byłoby zgadywaniem → nagłówek TabelaSzyn
- *    NIE podaje rewizji (badge pominięty). Numeryczną świeżość dostarczy karta
- *    integracyjna (spięcie ze snapshot store'em modelu).
- * 2. Populacja store'u (`selectRun`/`loadResults`, `store.ts:109-184`) należy do
- *    okna inspektora rozpływu; ten adapter wyłącznie CZYTA `results` (read-only).
+ * ŚWIEŻOŚĆ NAGŁÓWKA (FreshnessBadge): `PowerFlowResultV1`/`PowerFlowRunHeader`
+ * same NIE niosą liczbowej rewizji z chwili liczenia — źródłem jest `useSwiezoscNaglowka(runId)`
+ * (`ui2/freshness`), który czyta `analysisCaseContext.rewizjaModelu` z kontraktu
+ * biegu (`useAnalysisRunContract`, V12K-264) niezależnie od kształtu wyniku PF.
+ * `TabelaSzyn`/`EkranRozplywu` wołają ten hook przy budowie `naglowek`, nie ten
+ * adapter (adapter zostaje czystymi funkcjami projekcji, zero Reacta/store'ów
+ * z wyjątkiem `useWynikRozplywu` niżej).
+ *
+ * Populacja store'u (`selectRun`/`loadResults`, `store.ts:109-184`) należy do
+ * okna inspektora rozpływu; ten adapter wyłącznie CZYTA `results` (read-only).
  *
  * DOWÓD PER-WARTOŚĆ (karta K3 / C1 — domknięcie `dowodRef`): wielkości tabel
  * (napięcia, kąty, moce, straty) pochodzą WPROST z wyników przebiegu rozpływu,
  * a ich wywód WHITE BOX niesie ślad tego przebiegu (zakładka „Dowód obliczeń").
  * Ref dowodu = identyfikator elementu z kontraktu (`bus_id`/`branch_id`) — jak we
- * wzorcu zwarciowym (`zwarciaModel.ts`: `element_id ?? target_id`); przygotowany
- * pod fokus kroku po `TraceStep.element_id` (TODO E9.x w `DowodPrzebiegu`).
+ * wzorcu zwarciowym (`zwarciaModel.ts`: `element_id ?? target_id`). Fokus kroku
+ * po tym ref-ie DOMKNIĘTY (karta KD-4, luka L-11): `DowodPrzebiegu.tsx`
+ * (`ui2/spaces/wyniki/`) przyjmuje `wskazanyElementRef` z 2× klika i woła
+ * `resolveTraceStepsForElement(slad, {id, name})` — generyczny dostawca po
+ * `TraceStep`, bez rozróżniania bus/branch (ten sam mechanizm dla obu tabel).
  * Wcześniejsza decyzja E8.1 (komórki bez `dowodRef`, bo brak `evidence_ref`
  * per szyna) została nadpisana kartą K3: kryterium jest realne odwołanie
  * elementowe w kontrakcie, nie osobne pole dowodowe.
@@ -43,6 +47,7 @@
  */
 
 import type {
+  KryteriaNapieciowe,
   PowerFlowBranchResult,
   PowerFlowBusResult,
   PowerFlowResultV1,
@@ -68,8 +73,6 @@ import {
   fmtStrataKw,
   fmtTolerancja,
   napiecePozaZakresem,
-  NAPIECIE_MAX_PU,
-  NAPIECIE_MIN_PU,
 } from '../strings';
 
 // ---------------------------------------------------------------------------
@@ -98,14 +101,19 @@ export interface PunktProfilu {
 
 /** Mapuje wiersze szyn na wiersze tabeli wzorca (kolejność ze źródła zachowana).
  * `dowodRef` = `bus_id` (K3/C1): 2× klik na wielkości wynikowej otwiera dowód
- * WHITE BOX przebiegu rozpływu — realne odwołanie z kontraktu, zero fabrykacji. */
-export function naWierszeSzyn(busResults: PowerFlowBusResult[]): WierszTabeli[] {
+ * WHITE BOX przebiegu rozpływu — realne odwołanie z kontraktu, zero fabrykacji.
+ * `kryteria` (karta W3-J): próg ostrzeżenia WYŁĄCZNIE z odpowiedzi backendu —
+ * brak kryteriów (starszy zapisany wynik) = komórka bez tagu ostrzeżenia. */
+export function naWierszeSzyn(
+  busResults: PowerFlowBusResult[],
+  kryteria: KryteriaNapieciowe | undefined,
+): WierszTabeli[] {
   return busResults.map((r) => ({
     [KLUCZ_SZYNA]: { wartosc: r.bus_id },
     napiecie: {
       wartosc: fmtPU(r.v_pu),
       sortKey: r.v_pu,
-      ostrzezenie: napiecePozaZakresem(r.v_pu),
+      ostrzezenie: napiecePozaZakresem(r.v_pu, kryteria),
       dowodRef: r.bus_id,
     },
     kat: { wartosc: fmtKat(r.angle_deg), sortKey: r.angle_deg, dowodRef: r.bus_id },
@@ -114,8 +122,13 @@ export function naWierszeSzyn(busResults: PowerFlowBusResult[]): WierszTabeli[] 
   }));
 }
 
-/** Buduje sekcję ZAŁOŻENIA z parametrów przebiegu (WHITE BOX, W-602). */
+/** Buduje sekcję ZAŁOŻENIA z parametrów przebiegu (WHITE BOX, W-602).
+ * Karta W3-J: przedział napięcia i jego podstawa normatywna pochodzą WPROST
+ * z `wynik.kryteria_napiecia` (odpowiedź backendu) — brak kryteriów w wyniku
+ * (starszy zapisany bieg sprzed karty W3-J) daje uczciwy stan „kryterium
+ * niedostępne", NIGDY domyślną liczbę. */
 export function naZalozeniaRozplywu(wynik: PowerFlowResultV1): WierszZalozenia[] {
+  const kryteria = wynik.kryteria_napiecia;
   return [
     { etykieta: ROZPLYW_STRINGS.zalMocBazowa, wartosc: fmtBaza(wynik.base_mva), jednostka: ROZPLYW_STRINGS.jednMVA },
     { etykieta: ROZPLYW_STRINGS.zalTolerancja, wartosc: fmtTolerancja(wynik.tolerance_used) },
@@ -125,12 +138,18 @@ export function naZalozeniaRozplywu(wynik: PowerFlowResultV1): WierszZalozenia[]
       etykieta: ROZPLYW_STRINGS.zalZbieznosc,
       wartosc: wynik.converged ? ROZPLYW_STRINGS.zbieznoscTak : ROZPLYW_STRINGS.zbieznoscNie,
     },
-    {
-      etykieta: ROZPLYW_STRINGS.zalPrzedzialNapiecia,
-      wartosc: `${fmtPU(NAPIECIE_MIN_PU)}–${fmtPU(NAPIECIE_MAX_PU)}`,
-      jednostka: ROZPLYW_STRINGS.jednPU,
-      uwaga: ROZPLYW_STRINGS.zalPrzedzialNapieciaUwaga,
-    },
+    kryteria
+      ? {
+          etykieta: ROZPLYW_STRINGS.zalPrzedzialNapiecia,
+          wartosc: `${fmtPU(kryteria.ostrzezenie_min_pu)}–${fmtPU(kryteria.ostrzezenie_max_pu)}`,
+          jednostka: ROZPLYW_STRINGS.jednPU,
+          uwaga: kryteria.podstawa_ostrzezenie_pl,
+        }
+      : {
+          etykieta: ROZPLYW_STRINGS.zalPrzedzialNapiecia,
+          wartosc: ROZPLYW_STRINGS.kreska,
+          uwaga: ROZPLYW_STRINGS.zalPrzedzialNapieciaNiedostepne,
+        },
   ];
 }
 

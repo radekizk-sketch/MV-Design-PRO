@@ -8,6 +8,7 @@
  * 100% POLISH UI
  */
 
+import type { KryteriaNapieciowe } from '../power-flow-results/types';
 import type { ElementType, ValidationMessage } from '../types';
 
 /**
@@ -82,6 +83,9 @@ export interface BusResultData {
   u_pu: number | null;
   angle_deg: number | null;
   flags: string[];
+  /** Karta W3-J — kryteria napięciowe biegu (addytywne); brak = kryterium
+   * niedostępne w zakładce „Limity" (uczciwy stan, nie domyślna liczba). */
+  kryteria_napiecia?: KryteriaNapieciowe | null;
 }
 
 /**

@@ -9,17 +9,23 @@ KANON (BINDING):
 - 100% jezyk polski w description_pl
 - Brak norm, brak "OK / VIOLATION"
 
-REGULY SEVERITY (jawne, stale):
-- Voltage: |V - 1.0| < 2% -> INFO, 2-5% -> WARN, >5% -> HIGH
+REGULY SEVERITY (jawne, stale; napieciowe od karty W3-J sourcowane z
+`analysis.normative.kryteria_napiecia` — jedno zrodlo prawdy, patrz modul):
+- Voltage: |V - 1.0| < 5% -> INFO, 5-10% -> WARN, >10% -> HIGH
 - Branch loading: jesli dostepne dane o obciazeniu
 """
 
 from __future__ import annotations
 
 import hashlib
+import logging
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from analysis.normative.kryteria_napiecia import (
+    KRYTERIUM_OSTRZEZENIE_PROCENT,
+    KRYTERIUM_PRZEKROCZENIE_PROCENT,
+)
 from analysis.power_flow_interpretation.models import (
     BranchLoadingFinding,
     FindingSeverity,
@@ -32,9 +38,12 @@ from analysis.power_flow_interpretation.models import (
     VoltageFinding,
 )
 from analysis.power_flow_interpretation.serializer import SEVERITY_ORDER
+from network_model.pochodne import mvar_na_kvar, mw_na_kw
 
 if TYPE_CHECKING:
     from analysis.power_flow.result import PowerFlowResult
+
+logger = logging.getLogger(__name__)
 
 
 # =============================================================================
@@ -45,9 +54,17 @@ if TYPE_CHECKING:
 # Version interpretacji - zmiana = nowa wersja
 INTERPRETATION_VERSION = "1.0.0"
 
-# Progi napieciowe (BINDING - stale)
-VOLTAGE_INFO_MAX_PCT = 2.0  # |V - 1.0| < 2% -> INFO
-VOLTAGE_WARN_MAX_PCT = 5.0  # 2-5% -> WARN, >5% -> HIGH
+# Progi napieciowe (BINDING - stale). Karta W3-J: jedno zrodlo prawdy
+# (`analysis.normative.kryteria_napiecia`) — dawna trzecia, WLASNA granica
+# INFO tego modulu (2.0 %) NIE miala cytowanej podstawy normatywnej i zostala
+# SKASOWANA (uczciwie: dwie granice, obie sourcowane z nazwanego kryterium,
+# nie trzy, z ktorych jedna byla zaszyta bez zrodla). Ksztalt pozostaje
+# TRZYPOZIOMOWY (INFO/WARN/HIGH): granica INFO<->WARN = kryterium OSTRZEZENIA
+# projektowe (5 %), granica WARN<->HIGH = kryterium PRZEKROCZENIA PN-EN 50160
+# (10 %) — obie granice maja teraz cytowana podstawe (patrz
+# `KRYTERIUM_OSTRZEZENIE_PODSTAWA_PL`/`KRYTERIUM_PRZEKROCZENIE_PODSTAWA_PL`).
+VOLTAGE_INFO_MAX_PCT = KRYTERIUM_OSTRZEZENIE_PROCENT  # |V - 1.0| < 5% -> INFO
+VOLTAGE_WARN_MAX_PCT = KRYTERIUM_PRZEKROCZENIE_PROCENT  # 5-10% -> WARN, >10% -> HIGH
 
 # Progi obciazenia galezi (opcjonalne - jesli brak danych o prądowosci znamionowej)
 # Te progi sa uzywane tylko jesli mamy dane o obciazeniu wzglednym
@@ -195,10 +212,10 @@ class PowerFlowInterpretationBuilder:
     def _classify_voltage_severity(self, deviation_pct: float) -> FindingSeverity:
         """Classify voltage deviation into severity level.
 
-        BINDING RULES:
-        - |V - 1.0| < 2% -> INFO
-        - 2-5% -> WARN
-        - >5% -> HIGH
+        BINDING RULES (karta W3-J — sourced from analysis.normative.kryteria_napiecia):
+        - |V - 1.0| < 5% (KRYTERIUM_OSTRZEZENIE_PROCENT) -> INFO
+        - 5-10% -> WARN
+        - >10% (KRYTERIUM_PRZEKROCZENIE_PROCENT) -> HIGH
         """
         if deviation_pct < VOLTAGE_INFO_MAX_PCT:
             return FindingSeverity.INFO
@@ -247,10 +264,27 @@ class PowerFlowInterpretationBuilder:
         branch_s_from = power_flow_result.branch_s_from_mva
         branch_s_to = power_flow_result.branch_s_to_mva
 
-        # Iterate over branches (deterministycznie posortowane po ID)
-        for branch_id in sorted(branch_s_from.keys()):
-            s_from = branch_s_from.get(branch_id, 0.0 + 0.0j)
-            s_to = branch_s_to.get(branch_id, 0.0 + 0.0j)
+        # Iterate over branches (deterministycznie posortowane po ID) — suma obu
+        # zbiorow kluczy, bo FAB-E (E1): brak jednej strony NIE jest moca zerowa,
+        # wiec galaz moze dzis istniec tylko w jednym ze slownikow.
+        for branch_id in sorted(set(branch_s_from.keys()) | set(branch_s_to.keys())):
+            if branch_id not in branch_s_from or branch_id not in branch_s_to:
+                # Strata galezi (p_from + p_to) wymaga OBU stron — brakujacej
+                # strony NIE wolno domyslic jako 0+0j (fikcyjne straty), wiec
+                # galaz jest pomijana z jawnym powodem w logu (analogicznie do
+                # `analysis.boundary.identifier`), nie fikcyjnym wynikiem.
+                logger.warning(
+                    "PowerFlowInterpretationBuilder: galaz %s bez kompletu mocy "
+                    "pozornej (from=%s, to=%s obecne) — pominieta w obserwacjach "
+                    "obciazenia galezi (bieg %s).",
+                    branch_id,
+                    branch_id in branch_s_from,
+                    branch_id in branch_s_to,
+                    run_id,
+                )
+                continue
+            s_from = branch_s_from[branch_id]
+            s_to = branch_s_to[branch_id]
 
             # Extract real/imag parts (handle both complex and dict formats)
             if isinstance(s_from, dict):
@@ -326,7 +360,7 @@ class PowerFlowInterpretationBuilder:
 
         Deterministyczne: losses_kw = losses_mw * 1000, round(6).
         """
-        losses_kw = round(abs(losses_p_mw) * 1000.0, 6)
+        losses_kw = round(mw_na_kw(abs(losses_p_mw)), 6)
         if losses_kw < BRANCH_LOSSES_INFO_MAX_KW:
             return FindingSeverity.INFO
         elif losses_kw <= BRANCH_LOSSES_WARN_MAX_KW:
@@ -345,8 +379,8 @@ class PowerFlowInterpretationBuilder:
         """Build Polish description for branch finding."""
         branch_short = branch_id[:12] if len(branch_id) > 12 else branch_id
 
-        losses_p_kw = losses_p_mw * 1000.0
-        losses_q_kvar = losses_q_mvar * 1000.0
+        losses_p_kw = mw_na_kw(losses_p_mw)
+        losses_q_kvar = mvar_na_kvar(losses_q_mvar)
 
         loading_info = ""
         if loading_pct is not None:
@@ -411,7 +445,7 @@ class PowerFlowInterpretationBuilder:
                         element_type="branch_loading",
                         element_id=f.branch_id,
                         severity=f.severity,
-                        magnitude=abs(f.losses_p_mw) * 1000.0,  # kW for comparison
+                        magnitude=mw_na_kw(abs(f.losses_p_mw)),  # kW for comparison
                         description_pl=f.description_pl,
                     )
                 )
@@ -465,7 +499,7 @@ class PowerFlowInterpretationBuilder:
         )
 
         rules_applied = (
-            "VOLTAGE_DEVIATION: |V - 1.0| < 2% -> INFO, 2-5% -> WARN, >5% -> HIGH",
+            "VOLTAGE_DEVIATION: |V - 1.0| < 5% -> INFO, 5-10% -> WARN, >10% -> HIGH",
             f"BRANCH_LOSSES: <{BRANCH_LOSSES_INFO_MAX_KW}kW -> INFO, {BRANCH_LOSSES_INFO_MAX_KW}-{BRANCH_LOSSES_WARN_MAX_KW}kW -> WARN, >{BRANCH_LOSSES_WARN_MAX_KW}kW -> HIGH",
             "RANKING: severity DESC, magnitude DESC, element_type ASC, element_id ASC",
         )

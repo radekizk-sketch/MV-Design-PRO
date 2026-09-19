@@ -172,7 +172,6 @@ python scripts/overlay_no_physics_guard.py
 python scripts/load_flow_no_heuristics_guard.py
 python scripts/protection_no_heuristics_guard.py
 python scripts/sld_determinism_guards.py
-python scripts/trace_determinism_guard.py
 python scripts/resultset_v1_schema_guard.py
 python scripts/docs_guard.py
 ```

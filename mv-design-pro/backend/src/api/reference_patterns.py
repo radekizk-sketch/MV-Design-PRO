@@ -370,7 +370,7 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
         ("Prad dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A"),
         ("I_min okna nastaw (pierwotna)", artifacts.get("window_i_min_primary_a"), "A"),
         ("I_max okna nastaw (pierwotna)", artifacts.get("window_i_max_primary_a"), "A"),
-        ("Zalecana nastawa (wtorna)", artifacts.get("recommended_setting_secondary_a"), "A"),
+        ("Zalecana nastawa I>>", artifacts.get("recommended_setting_primary_a"), "A"),
         ("Okno nastaw prawidlowe", "Tak" if artifacts.get("window_valid") else "Nie", ""),
         ("Kryterium limitujace I_min", artifacts.get("limiting_criterion_min"), ""),
         ("Kryterium limitujace I_max", artifacts.get("limiting_criterion_max"), ""),
@@ -580,8 +580,8 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
     )
     add_artifact_row(
         window_table,
-        "Zalecana nastawa (wtorna)",
-        artifacts.get("recommended_setting_secondary_a"),
+        "Zalecana nastawa I>>",
+        artifacts.get("recommended_setting_primary_a"),
         "A",
     )
     add_artifact_row(
