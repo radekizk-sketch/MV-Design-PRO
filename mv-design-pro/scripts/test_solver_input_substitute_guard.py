@@ -97,8 +97,7 @@ def test_forma_or_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
         capsys,
         {
             "network_model/solvers/jakosc.py": (
-                "def licz(model, f_hz):\n"
-                "    return f_hz / (model.fault_level_mva or 50.0)\n"
+                "def licz(model, f_hz):\n" "    return f_hz / (model.fault_level_mva or 50.0)\n"
             )
         },
     )
@@ -106,9 +105,7 @@ def test_forma_or_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     assert "A:or:model.fault_level_mva" in wyjscie
 
 
-def test_forma_wyrazenia_warunkowego_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_forma_wyrazenia_warunkowego_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     kod, wyjscie = _uruchom(
         tmp_path,
         monkeypatch,
@@ -131,8 +128,7 @@ def test_forma_getattr_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
         capsys,
         {
             "network_model/solvers/most.py": (
-                "def licz(branch):\n"
-                '    return float(getattr(branch, "nominal_kv", 15.0))\n'
+                "def licz(branch):\n" '    return float(getattr(branch, "nominal_kv", 15.0))\n'
             )
         },
     )
@@ -140,9 +136,7 @@ def test_forma_getattr_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     assert "C:getattr:nominal_kv" in wyjscie
 
 
-def test_forma_getattr_w_zlozeniu_or_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_forma_getattr_w_zlozeniu_or_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """TRZECIA DROGA do tej samej klasy (karta MOST-WEJSCIA-V126, 2026-08-08).
 
     `getattr(obiekt, "pole", None) or <liczba>` jest doslownie forma A, tylko
@@ -170,9 +164,7 @@ def test_forma_getattr_w_zlozeniu_or_jest_naruszeniem(
     assert "A:or:branch.load_mvar" in wyjscie
 
 
-def test_getattr_z_liczbowym_zapasem_liczy_sie_raz(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_getattr_z_liczbowym_zapasem_liczy_sie_raz(tmp_path, monkeypatch, capsys) -> None:
     """PREDYKATY PARAMI: jedno miejsce w kodzie = jedna pozycja budzetu.
 
     Gdy `getattr` ma zapas LICZBOWY i stoi jeszcze w `or`, to nadal JEDNO
@@ -221,9 +213,7 @@ def test_stala_modulu_nie_ukrywa_podstawienia(tmp_path, monkeypatch, capsys) -> 
     assert "A:or:source.load_mvar" in wyjscie
 
 
-def test_stala_modulu_niebedaca_liczba_nie_jest_trafieniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_stala_modulu_niebedaca_liczba_nie_jest_trafieniem(tmp_path, monkeypatch, capsys) -> None:
     """Kontrola dwustronna do testu wyzej — granica jest w LICZBIE, nie w NAZWIE.
 
     Stala modulu zwiazana z napisem albo z wyrazeniem pozostaje poza regula, tak
@@ -255,11 +245,7 @@ def test_most_wejsc_jest_w_zakresie(tmp_path, monkeypatch, capsys) -> None:
         tmp_path,
         monkeypatch,
         capsys,
-        {
-            "solver_input/most.py": (
-                "def buduj(branch):\n    return branch.nominal_kv or 15.0\n"
-            )
-        },
+        {"solver_input/most.py": ("def buduj(branch):\n    return branch.nominal_kv or 15.0\n")},
     )
     assert kod == 1, wyjscie
     assert "solver_input/most.py" in wyjscie
@@ -298,9 +284,7 @@ def test_forma_d_subskrypcja_or_jest_naruszeniem(tmp_path, monkeypatch, capsys) 
     assert "D:dictor:dane.nominal_kv" in wyjscie
 
 
-def test_forma_d_get_bez_zapasu_or_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_forma_d_get_bez_zapasu_or_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """`slownik.get("pole") or <liczba>` — forma D, wariant `.get` 1-argumentowy."""
     kod, wyjscie = _uruchom(
         tmp_path,
@@ -332,9 +316,7 @@ def test_forma_f_get_z_zapasem_jest_naruszeniem(tmp_path, monkeypatch, capsys) -
     assert "F:dictget:dane.nominal_kv" in wyjscie
 
 
-def test_forma_g_ifexp_slownikowy_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_forma_g_ifexp_slownikowy_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """`... slownik["pole"] ... if <warunek> else <liczba>` — forma G."""
     kod, wyjscie = _uruchom(
         tmp_path,
@@ -351,9 +333,7 @@ def test_forma_g_ifexp_slownikowy_jest_naruszeniem(
     assert "G:dictifexp:dane.load_mvar" in wyjscie
 
 
-def test_dict_get_z_liczbowym_zapasem_liczy_sie_raz(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_dict_get_z_liczbowym_zapasem_liczy_sie_raz(tmp_path, monkeypatch, capsys) -> None:
     """PREDYKATY PARAMI (analogon testu formy C): jedno miejsce = jedna pozycja.
 
     `slownik.get("pole", <liczba>) or <liczba>` jest DOSLOWNIE forma F (2-argu-
@@ -484,9 +464,7 @@ def test_galaz_none_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     assert kod == 0, wyjscie
 
 
-def test_pominiecie_elementu_nie_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_pominiecie_elementu_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """Wzorzec z `_grid_source_shunt_admittance` — dana nieobecna, wezel pominiety."""
     kod, wyjscie = _uruchom(
         tmp_path,
@@ -505,9 +483,7 @@ def test_pominiecie_elementu_nie_jest_naruszeniem(
     assert kod == 0, wyjscie
 
 
-def test_odczyt_slownika_parametrow_nie_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_odczyt_slownika_parametrow_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """Parametr projektowy z kontrolka w oknie dociera slownikiem, nie polem kontraktu.
 
     Rozroznienie jest STRUKTURALNE (klucz slownika nie jest zadeklarowanym polem),
@@ -555,8 +531,7 @@ def test_odczyt_slownikowy_koliduje_gdy_klucz_pasuje_do_innego_pola(
         capsys,
         {
             "network_model/solvers/kolizja.py": (
-                "def licz(model):\n"
-                '    return model.parameters.get("nominal_kv", 15.0)\n'
+                "def licz(model):\n" '    return model.parameters.get("nominal_kv", 15.0)\n'
             )
         },
     )
@@ -582,9 +557,7 @@ def test_galaz_nieliczbowa_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -
     assert kod == 0, wyjscie
 
 
-def test_galaz_zapasowa_z_realnej_danej_nie_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_galaz_zapasowa_z_realnej_danej_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """Gdy galaz zapasowa LICZY z innej danej rzeczywistej, to nie jest zmyslenie.
 
     Wzorzec z `_insulation`: `mcov` wyprowadzone z `u_m_kv`, wiec wynik nadal stoi
@@ -614,9 +587,7 @@ def test_galaz_zapasowa_z_realnej_danej_nie_jest_naruszeniem(
     import ast
 
     wyrazenie = ast.parse(galaz, mode="eval").body
-    assert guard.is_numeric(
-        wyrazenie
-    ), "galaz nie jest liczbowa — test cwiczy inna regule"
+    assert guard.is_numeric(wyrazenie), "galaz nie jest liczbowa — test cwiczy inna regule"
     assert guard.nested_contract_field(wyrazenie, {"nominal_kv"}) == "item.nominal_kv"
 
 
@@ -676,9 +647,7 @@ def test_niedobor_wobec_budzetu_jest_naruszeniem(tmp_path, monkeypatch, capsys) 
         monkeypatch,
         capsys,
         {"network_model/solvers/naprawiony.py": "def licz(model):\n    return 1.0\n"},
-        zapadka={
-            "network_model/solvers/naprawiony.py": {"A:or:model.fault_level_mva": 1}
-        },
+        zapadka={"network_model/solvers/naprawiony.py": {"A:or:model.fault_level_mva": 1}},
     )
     assert kod == 1, wyjscie
     assert "Dlug ZMALAL" in wyjscie
@@ -724,9 +693,7 @@ def test_wykluczenie_przepuszcza_zastany_budzet(tmp_path, monkeypatch, capsys) -
     assert kod == 0, wyjscie
 
 
-def test_nadwyzka_ponad_wykluczenie_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_nadwyzka_ponad_wykluczenie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """NOWE wystapienie tej samej formy w PLIKU Z WYKLUCZENIEM zapala bramke.
 
     Wykluczenie NIE jest cicha, rosnaca zgoda (§0.5 ZAKAZY: „obnizanie
@@ -751,9 +718,7 @@ def test_nadwyzka_ponad_wykluczenie_jest_naruszeniem(
     assert "budzet 1, znaleziono 2" in wyjscie
 
 
-def test_niedobor_wobec_wykluczenia_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_niedobor_wobec_wykluczenia_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """Zapadka wykluczen dziala W OBIE STRONY — zniknięcie wzorca zada obnizenia."""
     kod, wyjscie = _uruchom(
         tmp_path,
@@ -844,9 +809,7 @@ def test_wykluczenie_niesie_powod_przy_kazdym_pliku() -> None:
     zrodlo = Path(guard.__file__).read_text(encoding="utf-8")
     blok = zrodlo.split("WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {", 1)[1]
     blok = blok.split("\n}\n", 1)[0]
-    assert (
-        guard.WYKLUCZENIA_SKANERA
-    ), "Budzet wykluczen pusty — parser albo lista do poprawy."
+    assert guard.WYKLUCZENIA_SKANERA, "Budzet wykluczen pusty — parser albo lista do poprawy."
     for rel in guard.WYKLUCZENIA_SKANERA:
         przed = blok.split(f'"{rel}":', 1)[0]
         komentarz = [w for w in przed.splitlines() if w.strip().startswith("#")]
@@ -933,9 +896,7 @@ def test_czysty_zakres_daje_zielen(tmp_path, monkeypatch, capsys) -> None:
         tmp_path,
         monkeypatch,
         capsys,
-        {
-            "network_model/solvers/czysty.py": "def licz(bus):\n    return bus.nominal_kv * 2.0\n"
-        },
+        {"network_model/solvers/czysty.py": "def licz(bus):\n    return bus.nominal_kv * 2.0\n"},
     )
     assert kod == 0, wyjscie
     assert "PASS" in wyjscie
@@ -1646,8 +1607,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).
         # Karta W5-A (2026-09-16): solver_input 11 -> 12 (+1 `solver_input/uklad_sieci_nn.py` —
         # jedna funkcja mapujaca literal modelu -> enum solvera FROZEN; zero dlugu/wykluczen).
-        "  solver_input: pliki_skanowane=12, dlug=2 plikow/suma 8, "
-        "wykluczenia=0 plikow/suma 0",
+        "  solver_input: pliki_skanowane=12, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         # Karta W5-D (2026-09-16): enm 41 -> 43 (+2 `fazy_odbioru.py`, `rozplyw_niesymetryczny_wynik.py`).
         # Karta W5-A (2026-09-16): enm +3 `enm/{grupa_polaczen,uziemienie,uklad_sieci_nn}.py`,
         # dlug 8/76 -> 7/73 (wpis `enm/zero_sequence_transformer.py` usuniety z zapadki, patrz wyzej);
@@ -1693,9 +1653,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "A:or:wynik_q.q_mvar",
         "A:or:moc_bierna_wytworcy.q_mvar",
     ):
-        assert (
-            sygnatura not in wyjscie
-        ), f"Sygnatura FAB-H wrocila do drzewa: {sygnatura!r}"
+        assert sygnatura not in wyjscie, f"Sygnatura FAB-H wrocila do drzewa: {sygnatura!r}"
     assert "naruszen." not in wyjscie, wyjscie
     assert "PASS: zadnego nowego podstawienia" in wyjscie, wyjscie
     assert kod == 0, wyjscie
@@ -1776,9 +1734,7 @@ def test_iniekcja_cos_phi_w_modelu_domenowym_jest_naruszeniem(
     assert guard.main() == 0, "Kontrola dwustronna: bez `core` w mapie ma byc cicho."
     capsys.readouterr()
 
-    monkeypatch.setattr(
-        guard, "CONTRACT_SOURCES", ("solver_input", "network_model/core")
-    )
+    monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("solver_input", "network_model/core"))
     assert guard.main() == 1
     assert "A:or:gen.cos_phi" in capsys.readouterr().out
 
@@ -1794,15 +1750,12 @@ def test_kazdy_model_czytany_przez_zakres_jest_w_mapie() -> None:
     dwa zbiory ROZLACZNE, ktorych SUMA pokrywa komplet wyprowadzony z kodu.
     """
     korzenie = guard.model_roots_read_by_scope()
-    assert (
-        korzenie
-    ), "Parser importow nie zobaczyl zadnego modelu — wyrocznia do poprawy."
+    assert korzenie, "Parser importow nie zobaczyl zadnego modelu — wyrocznia do poprawy."
 
     bez_decyzji = sorted(
         rel
         for rel in korzenie
-        if not guard.is_covered_by_contract_sources(rel)
-        and rel not in guard.MODEL_ROOTS_POZA_MAPA
+        if not guard.is_covered_by_contract_sources(rel) and rel not in guard.MODEL_ROOTS_POZA_MAPA
     )
     assert bez_decyzji == [], (
         "Moduly-modele czytane przez warstwe objeta skanem, a nieujete w mapie pol: "
@@ -1830,9 +1783,7 @@ def test_wylaczenie_wygrywa_z_pokryciem_prefiksem() -> None:
     zrodlo pol lezy gdzie indziej.
     """
     bezprzedmiotowe = sorted(
-        rel
-        for rel in guard.MODEL_ROOTS_POZA_MAPA
-        if not guard.is_covered_by_contract_sources(rel)
+        rel for rel in guard.MODEL_ROOTS_POZA_MAPA if not guard.is_covered_by_contract_sources(rel)
     )
     assert bezprzedmiotowe == [], (
         f"Wpisy wykluczen bez skutku (modul i tak poza pokryciem): {bezprzedmiotowe}. "
@@ -1930,9 +1881,7 @@ def test_kontrakt_zadeklarowany_w_skanowanej_warstwie_jest_w_mapie(
     assert guard.main() == 0, "Kontrola dwustronna: bez warstwy w mapie ma byc cicho."
     capsys.readouterr()
 
-    monkeypatch.setattr(
-        guard, "CONTRACT_SOURCES", ("solver_input", "network_model/solvers")
-    )
+    monkeypatch.setattr(guard, "CONTRACT_SOURCES", ("solver_input", "network_model/solvers"))
     assert guard.main() == 1
     assert "A:or:wejscie.transformer_current_a" in capsys.readouterr().out
 
@@ -1980,15 +1929,11 @@ def test_wylaczenie_korzenia_dziala_takze_na_mape_pol() -> None:
         for node in ast.walk(drzewo):
             if isinstance(node, ast.ClassDef):
                 for stmt in node.body:
-                    if isinstance(stmt, ast.AnnAssign) and isinstance(
-                        stmt.target, ast.Name
-                    ):
+                    if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
                         wlasne.add(stmt.target.id)
         # Pola WYLACZNIE tego modulu nie moga trafic do mapy przez zaden inny korzen.
         tylko_tam = {"real", "imag"} & wlasne
-        assert (
-            tylko_tam
-        ), f"{rel}: modul nie deklaruje juz kolidujacych pol — zdejmij wpis."
+        assert tylko_tam, f"{rel}: modul nie deklaruje juz kolidujacych pol — zdejmij wpis."
         assert not (tylko_tam & pola), (
             f"{rel}: pola {sorted(tylko_tam & pola)} wrocily do mapy mimo wykluczenia — "
             "warunek wejscia i wyjscia ze zbioru rozjechal sie (regula KLASA §3)."
@@ -2041,13 +1986,9 @@ def test_nieskonczonosc_nie_jest_meldunkiem_braku() -> None:
 
     # Wlasnosc, na ktorej stoi rozroznienie — sprawdzana, nie zakladana.
     assert math.isnan(float("nan") / 2.0), "NaN musi propagowac przez dzialanie"
-    assert math.isfinite(
-        1.0 / float("inf")
-    ), "nieskonczonosc jest POCHLANIANA przez dzielenie"
+    assert math.isfinite(1.0 / float("inf")), "nieskonczonosc jest POCHLANIANA przez dzielenie"
 
-    assert not guard.is_not_a_number_literal(
-        ast.parse('float("inf")', mode="eval").body
-    )
+    assert not guard.is_not_a_number_literal(ast.parse('float("inf")', mode="eval").body)
     assert guard.is_numeric(ast.parse('float("inf")', mode="eval").body)
     # Warianty zapisu tej samej wartosci — regula nie moze ich przepuscic.
     for zapis in ('float("inf")', 'float("-inf")', 'float("Infinity")', 'float("INF")'):
@@ -2078,9 +2019,7 @@ def test_nieskonczonosc_nie_jest_meldunkiem_braku() -> None:
 # karcie (nosnik uzyty jako BAZA dalszej dereferencji nie dubluje formy B).
 
 
-def test_forma_h_odczyt_atrybutu_i_lub_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_forma_h_odczyt_atrybutu_i_lub_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """Odczyt `.attr` × podstawienie `or` — dokladnie przyklad `ia = aparat.ii_a
     ... margines = ik1_min_a / ia if ia > 0 else float("inf")` (`werdykt.py`),
     tu w najprostszej postaci `or`."""
@@ -2142,9 +2081,7 @@ def test_forma_h_odczyt_atrybutu_i_opakowania_int_jest_naruszeniem(
     assert "H:local:model.fault_level_mva" in wyjscie, wyjscie
 
 
-def test_forma_h_odczytu_dict_get_i_lub_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_forma_h_odczytu_dict_get_i_lub_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """Odczyt `.get("pole")` (BEZ zapasu — inaczej byloby juz forma F na tej
     samej linii) × podstawienie `or`."""
     kod, wyjscie = _uruchom(
@@ -2205,9 +2142,7 @@ def test_forma_h_odczytu_dict_get_i_opakowania_float_jest_naruszeniem(
     assert "H:local:dane.fault_level_mva" in wyjscie, wyjscie
 
 
-def test_forma_h_odczytu_subskrypcji_i_lub_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_forma_h_odczytu_subskrypcji_i_lub_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """Odczyt `["pole"]` (subskrypcja, rodzina D/G) × podstawienie `or`."""
     kod, wyjscie = _uruchom(
         tmp_path,
@@ -2293,9 +2228,7 @@ def test_forma_h_nadpisanie_przed_uzyciem_nie_jest_naruszeniem(
     assert "H:local:" not in wyjscie, wyjscie
 
 
-def test_forma_h_nosnik_z_innej_funkcji_nie_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_forma_h_nosnik_z_innej_funkcji_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """ZASIEG FUNKCYJNY (§0 pkt 2): nosnik ustanowiony w JEDNEJ funkcji nie
     przenika do INNEJ funkcji o tej samej nazwie zmiennej lokalnej — druga
     funkcja czyta `poziom` jako PARAMETR (nigdy nie odczytany z pola w JEJ
@@ -2320,9 +2253,7 @@ def test_forma_h_nosnik_z_innej_funkcji_nie_jest_naruszeniem(
     assert "H:local:" not in wyjscie, wyjscie
 
 
-def test_forma_h_pole_spoza_kontraktu_nie_jest_naruszeniem(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_forma_h_pole_spoza_kontraktu_nie_jest_naruszeniem(tmp_path, monkeypatch, capsys) -> None:
     """Pole NIEZADEKLAROWANE w kontrakcie (nie ma go w `KONTRAKT` — analogon
     `model.parameters.get(...)` z formy A/D) nie ustanawia nosnika, wiec
     pozniejsze `or <liczba>` na tej nazwie NIE jest trafieniem."""
