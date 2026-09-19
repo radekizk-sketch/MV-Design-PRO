@@ -278,6 +278,16 @@ class MaszynaSynchroniczna:
         return tuple(granice)
 
     @property
+    def zakresy_waznosci(self) -> tuple[tuple[float, float] | None, ...]:
+        """Zaden stan maszyny nie ma zakresu waznosci — i to jest inna rzecz niz
+        brak ogranicznika. Ogranicznik wzbudzenia WYZEJ jest czlonem modelu:
+        wzbudnica naprawde nie wyda wiecej, a strumienie ten limit czytaja.
+        Zakres waznosci bylby zalozeniem badania, poza ktorym rownania przestaja
+        obowiazywac — maszyna synchroniczna takiego zalozenia nie ma, bo paliwo
+        turbiny nie jest w tym modelu zasobem o skonczonej pojemnosci."""
+        return tuple(None for _ in self.uklad.nazwy)
+
+    @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         """Kazdy stan maszyny — wirnika, strumieni i regulatorow — MUSI byc rownowaga."""
         return ()

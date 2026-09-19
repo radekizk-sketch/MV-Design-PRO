@@ -62,10 +62,12 @@ from network_model.solvers.dynamika import (
 from network_model.solvers.dynamika.calkowanie import KontekstKroku
 from network_model.solvers.dynamika.kontrakty import (
     KOD_PARAMETRY_SPRZECZNE,
+    KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY,
     OdmowaDynamiki,
     Urzadzenie,
 )
 from network_model.solvers.dynamika.siec import zloz_model_sieci
+from network_model.solvers.dynamika.urzadzenia.magazyn import SEKUND_W_GODZINIE, Zasobnik
 from network_model.solvers.dynamika.urzadzenia.pochodne_kierunkowe import Dual, Zespolona
 from network_model.solvers.dynamika.urzadzenia.przeksztaltnik_gfm import PrzeksztaltnikGFM
 from network_model.solvers.dynamika.walidacja import Mod, mody
@@ -816,34 +818,60 @@ def test_magazyn_mod_przeksztaltnika_zgodny_z_przebiegiem() -> None:
 
 
 @pytest.mark.parametrize(
-    ("opis", "soc_poczatkowy", "p_pu"),
+    ("opis", "soc_poczatkowy", "p_pu", "granica"),
     [
-        ("rozladowanie do dolnej granicy", 0.1001, 0.24),
-        ("ladowanie do gornej granicy", 0.8999, -0.24),
+        ("rozladowanie do dolnej granicy", 0.1001, 0.24, 0.10),
+        ("ladowanie do gornej granicy", 0.8999, -0.24, 0.90),
     ],
 )
-def test_magazyn_nie_wychodzi_poza_zakres_naladowania(
-    opis: str, soc_poczatkowy: float, p_pu: float
+def test_magazyn_wychodzacy_poza_zakres_naladowania_konczy_bieg_odmowa(
+    opis: str, soc_poczatkowy: float, p_pu: float, granica: float
 ) -> None:
-    """SOC nie wychodzi poza `[SOC_min, SOC_max]` w ZADNYM kroku.
+    """Dojscie SOC do konca zakresu to KONIEC WAZNOSCI MODELU — odmowa, nie przebieg.
+
+    KOREKTA KANONU (runda adversarialna po b31f57c7). Wczesniej ten test sprawdzal,
+    ze SOC „nie wychodzi poza zakres", bo stan byl rzutowany na granice przez zbior
+    aktywny calkowania. Rzutowanie DOTRZYMYWALO zakresu i jednoczesnie FALSZOWALO
+    bilans energii: przeksztaltnik oddawal dalej pelna moc z ogniw, ktore juz nie
+    mialy z czego jej wziac. Pomiar na tej samej fiksturze: z ogniw mialo ubyc
+    14,337 kWh, ubylo 2,000 kWh — 12,337 kWh (86 % bilansu) wzietych ZNIKAD, bez
+    jednego sygnalu w wyniku. Intencja testu bez zmian: zakres SOC nie moze byc
+    cicho naruszony. Zmienil sie sposob jego dotrzymania — patrz
+    `Magazyn.zakresy_waznosci`.
 
     Stan poczatkowy jest tuz przy granicy, a moc maksymalna — po to, zeby granica
     ZOSTALA OSIAGNIETA w przebiegu. Test na magazynie w polowie zakresu nie
-    sprawdzalby ogranicznika, tylko to, ze nigdzie sie nie zblizyl.
+    sprawdzalby niczego poza tym, ze nigdzie sie nie zblizyl.
     """
     urzadzenie = magazyn(soc_poczatkowy=soc_poczatkowy)
     uklad = zloz_uklad(urzadzenie, p_pu=p_pu)
+    with pytest.raises(OdmowaDynamiki) as blad:
+        bieg_ze_zwarciem(uklad, horyzont_s=2.0, czas_trwania_s=0.08)
+    assert blad.value.kod == KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY, opis
+    assert blad.value.szczegoly["adresy"] == ("BESS1.soc_pu",), opis
+    tresc = str(blad.value)
+    assert f"granica {'dolna' if p_pu > 0.0 else 'gorna'} {granica}" in tresc, opis
+    # Odmowa MUSI padac na PIERWSZYM kroku za granica, nie na koncu horyzontu. Dowod
+    # nie z zegara, tylko z PRZEKROCZENIA: w jednym kroku stan moze odjechac najwyzej
+    # o `|dSOC/dt| * dt = (25000/0,93)/(20000*3600) * 0,002 = 7,5e-07`. Wieksze
+    # przekroczenie znaczyloby, ze straznik obudzil sie pozniej.
+    krok_dryfu = (25_000.0 / 0.93) / (20_000.0 * SEKUND_W_GODZINIE) * 0.002
+    assert float(blad.value.szczegoly["przekroczenia"][0]) < krok_dryfu, opis
+    assert float(blad.value.szczegoly["t_s"]) < 2.0, opis
+    assert float(blad.value.szczegoly["granice"][0]) == granica, opis
+
+
+def test_magazyn_w_srodku_zakresu_nie_jest_zatrzymywany_przez_straznik_waznosci() -> None:
+    """Strona przeciwna: straznik nie moze zjadac biegow, ktore sa w zakresie.
+
+    Bez tego testu poprzedni przechodzilby rowniez przy strazniku, ktory odmawia
+    ZAWSZE. Magazyn w polowie zakresu przy tej samej mocy przechodzi caly horyzont.
+    """
+    uklad = zloz_uklad(magazyn(soc_poczatkowy=0.5), p_pu=0.24)
     wynik = bieg_ze_zwarciem(uklad, horyzont_s=2.0, czas_trwania_s=0.08)
     soc = _szereg(wynik, "soc_pu@BESS1")
-    zasobnik = urzadzenie.zasobnik
-    assert soc.min() >= zasobnik.soc_min - 1.0e-12, f"{opis}: SOC spadl do {soc.min()}"
-    assert soc.max() <= zasobnik.soc_max + 1.0e-12, f"{opis}: SOC wzrosl do {soc.max()}"
-    granica = zasobnik.soc_min if p_pu > 0.0 else zasobnik.soc_max
-    osiagniete = soc.min() if p_pu > 0.0 else soc.max()
-    assert osiagniete == pytest.approx(granica, abs=1.0e-9), (
-        f"{opis}: SOC nie doszedl do granicy {granica} (osiagnieto {osiagniete}) — "
-        "test nie sprawdzil ogranicznika"
-    )
+    assert wynik.os_czasu_s[-1] == pytest.approx(2.0, abs=1e-9)
+    assert 0.1 < float(soc.min()) < 0.5
 
 
 def test_magazyn_rozladowanie_i_ladowanie_maja_przeciwne_znaki_dryfu_soc() -> None:
@@ -875,6 +903,168 @@ def test_magazyn_rozladowanie_i_ladowanie_maja_przeciwne_znaki_dryfu_soc() -> No
             f"{sprawnosc_opis}: tempo {zmierzone_tempo} 1/s wobec bilansu energii "
             f"{oczekiwane_tempo} 1/s"
         )
+
+
+#: Prog wzglednej niezgodnosci bilansu energii magazynu. POMIAR na czterech
+#: fiksturach ponizej: najwieksze `|eps_E| / |dE|` wyniosло 7,0e-11 i pochodzi z
+#: tolerancji algebry (1e-11 na residuum `g`, ktore przenosi sie na `P` z mnoznikiem
+#: rzedu modulu napiecia). 1e-08 daje dwa rzedy zapasu nad pomiarem, a blad ZNAKU,
+#: BAZY albo sprawnosci przesuwa bilans o kilka procent do kilkuset procent — czyli
+#: o siedem rzedow wiecej, niz ten prog przepuszcza.
+PROG_BILANSU_ENERGII = 1.0e-8
+
+
+def bieg_bez_zaklocenia(uklad: UkladDwuwezlowy, *, horyzont_s: float, dt_s: float) -> WynikDynamiki:
+    """Bieg z PUSTYM harmonogramem i siatka wyjscia rowna krokowi calkowania.
+
+    Obie wlasnosci sa potrzebne wyrocznie energii: brak zdarzen znaczy brak probek
+    bedacych granica PRAWOSTRONNA nieciaglosci, a rownosc siatek znaczy, ze
+    kwadratura trapezowa po osi wyjscia odtwarza DOKLADNIE te sume, ktora zlozyl
+    trapez niejawny. Wyrocznia z inna siatka mierzylaby roznice kwadratur, nie bilans.
+    """
+    nast = nastawy(dt_s=dt_s, horyzont_s=horyzont_s, krok_wyjscia_s=dt_s)
+    return SilnikDynamiki(uklad.wejscie(HarmonogramDynamiki(()), nast)).uruchom()
+
+
+def bilans_energii_kwh(
+    wynik: WynikDynamiki, zasobnik: Zasobnik, *, ident: str = "BESS1", od_s: float = 0.0
+) -> tuple[float, float, float]:
+    """(`dE` modelu, `dE` wyroczni, `eps_E`) — DWIE DROGI do tej samej wielkosci.
+
+    MODEL: `(SOC_k - SOC_p) * E_n`, czyli liczba, ktora przeszla przez caly stos —
+    rownania rdzenia przeksztaltnika, algebre sieci, trapez niejawny.
+
+    WYROCZNIA: calka mocy STALOPRADOWEJ z ZAREJESTROWANEJ mocy na zaciskach, zlozona
+    wprost ze zdania energetycznego kontraktu (`magazyn.py`, naglowek): z ogniw ubywa
+    `P_ac / eta_roz` przy oddawaniu, a przybywa `|P_ac| * eta_lad` przy pobieraniu.
+    Wyrocznia NIE wola kodu modelu — bierze kanal wyniku i wzor z kontraktu.
+
+    Zgodnosc tych dwoch liczb jest jednoczesnie dowodem ZNAKU, BAZY MOCY (pu -> MW ->
+    kW), przelicznika `3600`, ROZDZIELENIA sprawnosci na dwa kierunki oraz tego, ze
+    pochodna trafia do stanu `soc_pu`, a nie obok.
+    """
+    czas = np.asarray(wynik.os_czasu_s, dtype=float)
+    soc = _szereg(wynik, f"soc_pu@{ident}")
+    moc_pu = _szereg(wynik, f"p_pu@{ident}")
+    wybor = czas >= od_s - 1.0e-12
+    czas, soc, moc_pu = czas[wybor], soc[wybor], moc_pu[wybor]
+
+    energia_modelu = float((soc[-1] - soc[0]) * zasobnik.pojemnosc_kwh)
+    moc_kw = moc_pu * zasobnik.s_bazowa_mva * 1000.0
+    moc_stalopradowa_kw = np.where(
+        moc_kw >= 0.0,
+        moc_kw / zasobnik.sprawnosc_rozladowania,
+        moc_kw * zasobnik.sprawnosc_ladowania,
+    )
+    energia_wyroczni = -float(np.trapz(moc_stalopradowa_kw, czas)) / SEKUND_W_GODZINIE
+    return energia_modelu, energia_wyroczni, energia_modelu - energia_wyroczni
+
+
+@pytest.mark.parametrize(
+    ("opis", "p_pu", "znak_soc"),
+    [
+        ("rozladowanie P > 0", 0.20, -1.0),
+        ("ladowanie P < 0", -0.20, 1.0),
+        ("moc zerowa", 0.0, 0.0),
+    ],
+)
+def test_magazyn_bilans_energii_zgadza_sie_z_wyrocznia_kontraktu(
+    opis: str, p_pu: float, znak_soc: float
+) -> None:
+    """`dE` modelu = `dE` wyroczni w KAZDYM z trzech rezimow mocy.
+
+    Trzy rezimy, a nie jeden, bo sprawnosc wchodzi w bilans ROZNIE w kazda strone i
+    blad w jednej galezi nie zostawia sladu w drugiej. Przypadek `P = 0` pilnuje
+    trzeciej rzeczy: prawo nie moze produkowac dryfu tam, gdzie mocy nie ma.
+    """
+    urzadzenie = magazyn()
+    uklad = zloz_uklad(urzadzenie, p_pu=p_pu)
+    wynik = bieg_bez_zaklocenia(uklad, horyzont_s=2.0, dt_s=0.002)
+    energia_modelu, energia_wyroczni, epsilon = bilans_energii_kwh(wynik, urzadzenie.zasobnik)
+
+    soc = _szereg(wynik, "soc_pu@BESS1")
+    if znak_soc == 0.0:
+        assert float(soc[-1]) == float(soc[0]), f"{opis}: SOC dryfuje przy zerowej mocy"
+        assert energia_modelu == 0.0
+        assert abs(energia_wyroczni) < 1.0e-12, f"{opis}: wyrocznia {energia_wyroczni} kWh"
+        return
+    assert math.copysign(1.0, energia_modelu) == znak_soc, f"{opis}: zly znak bilansu"
+    odniesienie = max(abs(energia_modelu), abs(energia_wyroczni))
+    assert abs(epsilon) / odniesienie < PROG_BILANSU_ENERGII, (
+        f"{opis}: dE_model={energia_modelu} kWh, dE_wyrocznia={energia_wyroczni} kWh, "
+        f"eps_E={epsilon} kWh"
+    )
+
+
+def test_magazyn_bilans_energii_trzyma_przy_ZMIANIE_ZNAKU_mocy_w_biegu() -> None:
+    """Jeden bieg, obie sprawnosci — kierunek mocy zmienia sie wielokrotnie.
+
+    Poprzednie trzy przypadki mierza kazda galaz OSOBNO, wiec przejsc miedzy nimi nie
+    sprawdzaja: kod wybierajacy sprawnosc raz na bieg (zamiast raz na probke) byl by
+    dla nich nieodrozialny. Tutaj magazyn startuje przy pobieraniu mocy (`P0 < 0`),
+    zwarcie wytraca wirtualna maszyne z rownowagi i po jego usunieciu moc oscyluje
+    przez zero — POMIAR na tej fiksturze: 242 probki dodatnie i 668 ujemnych.
+
+    Okno pomiaru zaczyna sie PO usunieciu zwarcia. Wewnatrz niego nie ma zdarzenia, a
+    wiec nie ma probki bedacej granica prawostronna nieciaglosci; kwadratura wyroczni
+    odtwarza wtedy sume trapezu niejawnego dokladnie. Probka w chwili zdarzenia jest
+    z definicji granica PRAWOSTRONNA (`test_z1` w `test_obserwable`), wiec krok
+    konczacy sie w tej chwili calkuje inna wartosc, niz ta probka pokazuje — to jest
+    wlasnosc semantyki zdarzen, nie bilansu, i dlatego lezy poza oknem.
+    """
+    urzadzenie = magazyn(rdzen=rdzen_gfm(tryb="vsm"))
+    uklad = zloz_uklad(urzadzenie, p_pu=-0.02)
+    nast = nastawy(dt_s=0.002, horyzont_s=2.0, krok_wyjscia_s=0.002)
+    harmonogram = HarmonogramDynamiki(
+        (
+            ZwarcieWezla(
+                t_s=0.1,
+                wezel="GEN",
+                typ="3F",
+                r_f_ohm=0.0,
+                x_f_ohm=X_ZWARCIA_OHM,
+                t_usuniecia_s=0.18,
+            ),
+        )
+    )
+    wynik = SilnikDynamiki(uklad.wejscie(harmonogram, nast)).uruchom()
+
+    czas = np.asarray(wynik.os_czasu_s, dtype=float)
+    moc = _szereg(wynik, "p_pu@BESS1")
+    okno = czas > 0.18 + 1.0e-9
+    dodatnie = int((moc[okno] > 0.0).sum())
+    ujemne = int((moc[okno] < 0.0).sum())
+    assert dodatnie > 100 and ujemne > 100, (
+        f"Fikstura nie zmienia znaku mocy (dodatnich {dodatnie}, ujemnych {ujemne}) — "
+        "test nie sprawdzilby rozdzielenia sprawnosci"
+    )
+
+    energia_modelu, energia_wyroczni, epsilon = bilans_energii_kwh(
+        wynik, urzadzenie.zasobnik, od_s=0.18 + 1.0e-9
+    )
+    odniesienie = max(abs(energia_modelu), abs(energia_wyroczni))
+    assert (
+        abs(epsilon) / odniesienie < PROG_BILANSU_ENERGII
+    ), f"dE_model={energia_modelu} kWh, dE_wyrocznia={energia_wyroczni} kWh, eps_E={epsilon} kWh"
+
+
+def test_magazyn_bilans_energii_rozroznia_kierunek_sprawnosci() -> None:
+    """Ta sama moc co do modulu w obie strony daje ROZNE `|dE|` — i to wg kontraktu.
+
+    Dowod, ze sprawnosci nie sa jedna liczba „sprawnosc cyklu" ani nie sa pominiete.
+    Stosunek `|dE_rozladowania| / |dE_ladowania|` musi rownac sie
+    `1/(eta_roz * eta_lad)` — wielkosci z kontraktu, nie z kodu modelu.
+    """
+    urzadzenie = magazyn()
+    zasobnik = urzadzenie.zasobnik
+    energie: dict[str, float] = {}
+    for kierunek, p_pu in (("rozladowanie", 0.20), ("ladowanie", -0.20)):
+        wynik = bieg_bez_zaklocenia(zloz_uklad(magazyn(), p_pu=p_pu), horyzont_s=2.0, dt_s=0.002)
+        energie[kierunek], _, _ = bilans_energii_kwh(wynik, zasobnik)
+    oczekiwany_stosunek = 1.0 / (zasobnik.sprawnosc_rozladowania * zasobnik.sprawnosc_ladowania)
+    assert abs(energie["rozladowanie"]) / abs(energie["ladowanie"]) == pytest.approx(
+        oczekiwany_stosunek, rel=1.0e-9
+    ), f"zmierzone {energie}"
 
 
 # ---------------------------------------------------------------------------

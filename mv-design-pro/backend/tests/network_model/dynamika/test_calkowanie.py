@@ -359,3 +359,42 @@ def test_rzutowanie_stanow_dotrzymuje_obu_granic() -> None:
     dolne = np.zeros(5)
     gorne = np.ones(5)
     assert rzutuj_stany(stany, dolne, gorne).tolist() == [0.0, 0.5, 1.0, 0.0, 1.0]
+
+
+@pytest.mark.parametrize("integrator", [TrapezNiejawny(), RungeKutta4Jawny()])
+def test_krok_nie_pamieta_niczego_sprzed_swojego_wejscia(integrator) -> None:
+    """Krok jest funkcja `(x, y, t, dt)` — CALA historia jest w argumentach.
+
+    Dlaczego to ma wlasny test, skoro „to widac w kodzie". Semantyka zdarzen w tym
+    rdzeniu brzmi: ZDARZENIE -> TOPOLOGIA -> RE-INICJALIZACJA ALGEBRY -> DALEJ. Jest
+    ona poprawna TYLKO wtedy, gdy krok po nieciaglosci nie niesie ani jednej wartosci
+    sprzed niej. Metoda WIELOKROKOWA (Adams, BDF) niesie — jej wzor czyta `f` z
+    poprzednich krokow — i wtedy pierwsze kroki po zdarzeniu calkuja czesciowo model
+    sprzed zdarzenia. Rejestr `INTEGRATORY` ma dzis dwie metody JEDNOKROKOWE i to
+    jest wlasnosc, na ktorej stoi semantyka zdarzen, a nie szczegol implementacji.
+
+    Test wykonuje ten sam krok DWA RAZY, rozdzielajac je krokiem z zupelnie innego
+    stanu i z innym `dt`. Gdyby integrator trzymal cokolwiek miedzy wywolaniami,
+    drugi wynik roznilby sie od pierwszego.
+    """
+    kontekst, stany, napiecia = _kontekst(zbuduj_smib())
+
+    pierwszy = integrator.krok(kontekst, stany, napiecia, 0.0, 0.002)
+
+    zaburzone = tuple(stan + 0.37 for stan in stany)
+    integrator.krok(kontekst, zaburzone, napiecia * 0.9, 1.234, 0.0005)
+
+    drugi = integrator.krok(kontekst, stany, napiecia, 0.0, 0.002)
+    for przed, po in zip(pierwszy.stany, drugi.stany, strict=True):
+        assert np.array_equal(przed, po), "Krok zapamietal cos miedzy wywolaniami"
+    assert np.array_equal(pierwszy.napiecia, drugi.napiecia)
+
+
+def test_rejestr_integratorow_zawiera_wylacznie_metody_jednokrokowe() -> None:
+    """Deklaracja „metody jednokrokowe" ma przypiety test (regula KLASA par. 4).
+
+    Dopisanie metody wielokrokowej do rejestru wywala ten test i zmusza do
+    rozstrzygniecia, co taka metoda robi z semantyka zdarzen — zamiast cicho ja
+    zlamac. Nazwy sa czescia kontraktu wyniku (`WlasnosciBiegu.integrator`).
+    """
+    assert set(INTEGRATORY) == {"trapez_niejawny", "rk4_jawny"}

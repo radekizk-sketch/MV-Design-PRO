@@ -136,6 +136,14 @@ class RdzenGFM:
         return tuple(None for _ in self.uklad.nazwy)
 
     @property
+    def zakresy_waznosci(self) -> tuple[tuple[float, float] | None, ...]:
+        """Rownania rdzenia tworzacego siec sa wazne w calej przestrzeni swoich
+        stanow — model wirtualnej maszyny i filtry mocy nie opisuja zasobu, ktory
+        moglby sie wyczerpac. Deklaracja zyje TUTAJ, zeby magazyn skladal swoja z
+        rdzenia, a nie z kopii."""
+        return tuple(None for _ in self.uklad.nazwy)
+
+    @property
     def impedancja_pu(self) -> complex:
         return complex(self.r_wirtualne_pu, self.x_wirtualne_pu)
 
@@ -420,6 +428,12 @@ class PrzeksztaltnikGFM:
         rzeczywistej, a odniesienia maja zerowa pochodna.
         """
         return tuple(None for _ in self.nazwy_stanow)
+
+    @property
+    def zakresy_waznosci(self) -> tuple[tuple[float, float] | None, ...]:
+        """Przeksztaltnik bez zasobnika nie ma zakresu waznosci na zadnym stanie —
+        energia plynie z instalacji pierwotnej, ktorej ten model nie obejmuje."""
+        return self.rdzen.zakresy_waznosci
 
     @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:

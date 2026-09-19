@@ -92,6 +92,12 @@ class MaszynaKlasyczna:
         return (None, None, None, None)
 
     @property
+    def zakresy_waznosci(self) -> tuple[tuple[float, float] | None, ...]:
+        """Rownania modelu klasycznego sa wazne w calej przestrzeni stanow — kat, predkosc
+        i obie skladowe SEM nie maja zakresu, poza ktorym model przestaje obowiazywac."""
+        return (None, None, None, None)
+
+    @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         """Kazdy stan maszyny klasycznej MUSI byc rownowaga w punkcie pracy."""
         return ()

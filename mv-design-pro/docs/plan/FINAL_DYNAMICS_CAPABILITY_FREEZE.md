@@ -350,3 +350,32 @@ Konsekwencje operacyjne, wiążące dla każdej następnej karty:
 3. Brakująca obserwabla docelowa pozostaje w macierzy jako GAP i **nie znika przez to, że któraś
    fala jej nie objęła**.
 4. Żadna fala nie ma prawa zawęzić celu z sekcji 0.
+
+---
+
+## 9. ZAKRES WAŻNOŚCI MODELU — pojęcie dopisane do zamrożenia (2026-09-18)
+
+Runda adwersarialna po `b31f57c7` (dowód: `W6_A_KONTRAKT_OBSERWABLI.md`, załącznik Z4) wykryła
+klasę defektu, której macierz nie nazywała, więc dopisujemy ją do zamrożonego słownika.
+
+**OGRANICZNIK ≠ ZAKRES WAŻNOŚCI.** Ogranicznik (`Urzadzenie.granice_stanow`) jest członem
+modelu: wzbudnica naprawdę nie wyda więcej niż `Efd_max`, a pozostałe równania stan sprowadzony
+na granicę CZYTAJĄ i odpowiadają na niego poprawnie — bieg leci dalej i jest prawdziwy. Zakres
+ważności (`Urzadzenie.zakresy_waznosci`) jest założeniem badania: poza nim model nie ma równań,
+bo nikt ich nie napisał. Stanu sprowadzonego na taką granicę nie czyta żadne równanie, więc
+rzutowanie nie uzgadnia modelu — zamraża jedną liczbę i zostawia resztę w biegu.
+
+**Konsekwencja zamrożona:** wyjście stanu poza zakres ważności kończy bieg **odmową nazwaną**
+(`dynamika.zakres_waznosci_przekroczony`, z adresem stanu, chwilą, wartością, granicą i
+przekroczeniem), a nie flagą w wyniku. Próbki policzone poza zakresem ważności nie są „mniej
+pewne" — nie pochodzą z żadnego modelu, a użytkownik nie ma jak odgadnąć, które odrzucić.
+
+**Stan dzisiejszy:** dokładnie jeden stan w całej bibliotece ma zakres ważności — `soc_pu`
+magazynu (`[SOC_min, SOC_max]`). Inwentarz jest przypięty testem; dopisanie zakresu gdziekolwiek
+indziej wywala go i wymusza świadome rozstrzygnięcie, czy to ogranicznik, czy zakres ważności.
+
+**Co z tego wynika dla fal:** odcięcie mocy przez układ zarządzania baterią po dojściu SOC do
+końca zakresu jest funkcją dziedziny wolnej (godziny), nie dynamiki RMS o horyzoncie sekund;
+jako **zdarzenie warunkowe** (wyzwalane stanem) należy do **W6-B**, nie do W6-A. Do czasu jego
+wdrożenia bieg z magazynem dochodzącym do granicy SOC jest badaniem poza zakresem ważności i
+kończy się odmową — to jest odpowiedź poprawna, nie brak funkcji.

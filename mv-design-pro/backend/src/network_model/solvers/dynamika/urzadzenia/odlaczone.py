@@ -51,6 +51,15 @@ class UrzadzenieOdlaczone:
         return self.bazowe.granice_stanow
 
     @property
+    def zakresy_waznosci(self) -> tuple[tuple[float, float] | None, ...]:
+        """Odlaczenie nie zmienia zakresu waznosci modelu — przenosimy go bez zmian.
+
+        Urzadzenie odlaczone od sieci nadal calkuje swoje stany (magazyn dalej
+        zmienia stan naladowania, jesli jego przeksztaltnik pracuje na wyspie), wiec
+        zalozenia badania obowiazuja tak samo."""
+        return self.bazowe.zakresy_waznosci
+
+    @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         """Opakowanie PRZENOSI deklaracje urzadzenia bazowego, nie tworzy wlasnej."""
         return self.bazowe.stany_bez_rownowagi

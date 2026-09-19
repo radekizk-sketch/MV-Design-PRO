@@ -30,6 +30,7 @@ from network_model.solvers.dynamika.obserwable import (
     OPIS_JAKOSCI_PL,
     CzestotliwoscWezla,
     czestotliwosc_wezla,
+    rozdzielczosc_porownania_hz,
     wielkosci_galezi,
 )
 from network_model.solvers.dynamika.siec import zloz_model_sieci
@@ -65,7 +66,11 @@ def test_f1_stan_ustalony_daje_dokladnie_czestotliwosc_znamionowa() -> None:
         )
         assert wynik.f_hz == F_BAZOWA_HZ
         assert wynik.niepewnosc_hz == 0.0
-        assert wynik.jakosc == JAKOSC_ROZROZNIALNA
+        # KOREKTA KONTRAKTU (P1-DELTA-40). Wczesniej stalo tu ROZROZNIALNA i to bylo
+        # falszywe semantycznie: etykieta mowi „odchylka od f_n przewyzsza oszacowany
+        # blad numeryczny", a tutaj odchylka jest ZEROWA. Zero nie przewyzsza zera.
+        # Intencja testu bez zmian: stan ustalony daje f_n co do bitu i zerowa niepewnosc.
+        assert wynik.jakosc == JAKOSC_NIEROZROZNIALNA
 
 
 @pytest.mark.parametrize("poslizg", [-0.02, -1e-4, 1e-4, 0.05])
@@ -165,6 +170,114 @@ def test_f4b_pasmo_nierozroznialnosci_jest_wyprowadzone_a_nie_zgadniete() -> Non
             niepewnosc_pochodnej_pu_s=0.0,
         )
         assert wynik.jakosc == oczekiwany, f"mnoznik {mnoznik}"
+
+
+def _czestotliwosc_o_zadanych_skladowych(
+    odchylka_pulsacji: float, niepewnosc_pulsacji: float
+) -> CzestotliwoscWezla:
+    """Wymus DOKLADNIE zadane `|f - f_n|` i `u_f` przez fazor jednostkowy.
+
+    Dla `V = 1`, `u_V = 0` propagacja skonczona upraszcza sie do `u_f = u_Vdot/(2 pi)`,
+    a tozsamosc do `f - f_n = Im(Vdot)/(2 pi)`. Obie strony porownania sa wiec
+    STEROWALNE niezaleznie, co pozwala postawic przypadek dokladnie na granicy.
+    """
+    return czestotliwosc_wezla(
+        complex(1.0, 0.0),
+        complex(0.0, odchylka_pulsacji),
+        f_bazowa_hz=F_BAZOWA_HZ,
+        niepewnosc_napiecia_pu=0.0,
+        niepewnosc_pochodnej_pu_s=niepewnosc_pulsacji,
+    )
+
+
+@pytest.mark.parametrize(
+    ("opis", "krotnosc_niepewnosci", "oczekiwana"),
+    [
+        ("Q-1  d_f < u_f", 2.0, JAKOSC_NIEROZROZNIALNA),
+        ("Q-2  d_f = u_f (RYGIEL KONTRAKTU)", 1.0, JAKOSC_NIEROZROZNIALNA),
+        ("Q-3  d_f > u_f z zapasem", 0.5, JAKOSC_ROZROZNIALNA),
+    ],
+)
+def test_q123_etykieta_jakosci_idzie_za_ostra_nierownoscia_kontraktu(
+    opis: str, krotnosc_niepewnosci: float, oczekiwana: float
+) -> None:
+    """Kontrakt: ROZROZNIALNA <=> `|f - f_n| > u_f`. Nierownosc jest OSTRA.
+
+    P1-DELTA-40: kod realizowal `>=`, wiec rownosc — w tym zwyrodniala rownosc 0 = 0
+    stanu ustalonego — dostawala etykiete „odchylka rozroznialna numerycznie". Zdanie
+    „zero przewyzsza zero" jest falszywe, a etykieta idzie do wyniku biegu jako kanal
+    `jakosc_f@<wezel>`, wiec falsz nie konczyl sie na nazwie.
+    """
+    pulsacja = 2.0 * math.pi  # 1 Hz odchylki
+    wynik = _czestotliwosc_o_zadanych_skladowych(pulsacja, krotnosc_niepewnosci * pulsacja)
+    assert abs(wynik.f_hz - F_BAZOWA_HZ) == pytest.approx(1.0, abs=1e-15), opis
+    assert wynik.niepewnosc_hz == pytest.approx(krotnosc_niepewnosci, abs=1e-15), opis
+    assert wynik.jakosc == oczekiwana, opis
+
+
+def test_q4_jeden_ulp_nie_przestawia_etykiety_jakosci() -> None:
+    """Q-4: etykieta ma opisywac ODCHYLKE, a nie ostatni bit zaokraglenia.
+
+    Mechaniczne `>` zamiast `>=` zamknieloby P1-DELTA-40 i OTWORZYLO gorszy defekt:
+    dwa biegi rozniace sie jednym ULP w `u_f` dostawalyby rozne kody jakosci tej samej
+    wielkosci fizycznej. Dlatego porownanie ma rozdzielczosc WYPROWADZONA z arytmetyki
+    (`rozdzielczosc_porownania_hz`), a nie dobrana stala.
+
+    Test przesuwa `u_Vdot` o kolejne ULP w obie strony wokol rownosci i zada, zeby
+    etykieta ANI RAZU nie drgnela. Falsyfikacja jest wbudowana: gdyby przesuniecia nie
+    zmienialy faktycznie `u_f`, test przechodzilby nic nie sprawdzajac, wiec zbior
+    uzyskanych niepewnosci musi miec tyle elementow, ile przesuniec.
+    """
+    pulsacja = 2.0 * math.pi
+    niepewnosci: set[float] = set()
+    for kroki_ulp in range(-40, 41):
+        niepewnosc_pulsacji = pulsacja
+        cel = math.inf if kroki_ulp > 0 else -math.inf
+        for _ in range(abs(kroki_ulp)):
+            niepewnosc_pulsacji = math.nextafter(niepewnosc_pulsacji, cel)
+        wynik = _czestotliwosc_o_zadanych_skladowych(pulsacja, niepewnosc_pulsacji)
+        niepewnosci.add(wynik.niepewnosc_hz)
+        assert wynik.jakosc == JAKOSC_NIEROZROZNIALNA, (
+            f"przesuniecie o {kroki_ulp} ULP przestawilo etykiete: u_f={wynik.niepewnosc_hz!r}, "
+            f"d_f={abs(wynik.f_hz - F_BAZOWA_HZ)!r}"
+        )
+    assert (
+        len(niepewnosci) > 1
+    ), "Zadne z przesuniec nie zmienilo `u_f` — test nie sprawdzil stabilnosci etykiety"
+
+
+def test_q4b_odchylka_ponad_rozdzielczoscia_arytmetyki_jest_rozroznialna() -> None:
+    """Pasmo nierozroznialnosci jest WASKIE — 1e-09 Hz ponad `u_f` juz je opuszcza.
+
+    Bez tego testu poprzedni moglby przejsc przy dowolnie szerokim progu (np. 1 Hz),
+    czyli przy progu, ktory zjadlby cala tresc inzynierska. Rozdzielczosc dla 50 Hz to
+    7,105e-15 Hz, wiec 1e-09 Hz daje ponad piec rzedow zapasu w druga strone.
+    """
+    pulsacja = 2.0 * math.pi
+    nadwyzka_hz = 1.0e-9
+    wynik = _czestotliwosc_o_zadanych_skladowych(pulsacja, pulsacja - nadwyzka_hz * 2.0 * math.pi)
+    odchylka_hz = abs(wynik.f_hz - F_BAZOWA_HZ)
+    rozdzielczosc = rozdzielczosc_porownania_hz(F_BAZOWA_HZ, wynik.f_hz, wynik.niepewnosc_hz)
+    assert (
+        odchylka_hz - wynik.niepewnosc_hz > 100.0 * rozdzielczosc
+    ), "Fikstura nie wyszla poza pasmo rozdzielczosci — test nie sprawdzilby niczego"
+    assert wynik.jakosc == JAKOSC_ROZROZNIALNA
+
+
+def test_rozdzielczosc_porownania_jest_ziarnistoscia_arytmetyki_a_nie_stala() -> None:
+    """Prog SKALUJE SIE z wielkosciami, ktore porownuje — inaczej bylby stala.
+
+    Deklaracja „zadnej dobranej stalej" ma przypiety test (regula KLASA par. 4):
+    rozdzielczosc przy 50 Hz i przy 50 kHz MUSI sie roznic, i to o tyle, ile wynosi
+    stosunek ziarnistosci reprezentacji tych liczb.
+    """
+    przy_50_hz = rozdzielczosc_porownania_hz(50.0, 50.0, 0.0)
+    przy_50_khz = rozdzielczosc_porownania_hz(50_000.0, 50_000.0, 0.0)
+    assert przy_50_hz == math.ulp(50.0)
+    assert przy_50_khz == math.ulp(50_000.0)
+    assert przy_50_khz > przy_50_hz
+    # Niepewnosc o duzym module podnosi prog tak samo jak sama czestotliwosc.
+    assert rozdzielczosc_porownania_hz(50.0, 50.0, 1.0e6) == math.ulp(1.0e6)
 
 
 def test_kody_jakosci_sa_zamknietym_zbiorem_z_opisem() -> None:

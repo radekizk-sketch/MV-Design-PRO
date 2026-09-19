@@ -323,6 +323,32 @@ def czestotliwosc_niedostepna(f_bazowa_hz: float) -> CzestotliwoscWezla:
     )
 
 
+def rozdzielczosc_porownania_hz(f_bazowa_hz: float, f_hz: float, niepewnosc_hz: float) -> float:
+    """Najmniejsza roznica `|f - f_n| - u_f`, ktora w tej arytmetyce cokolwiek znaczy.
+
+    PO CO TO ISTNIEJE. Kontrakt mowi `ROZROZNIALNA <=> |f - f_n| > u_f`. Postawione
+    wprost na liczbach zmiennoprzecinkowych to porownanie ROZSTRZYGA O ETYKIECIE NA
+    OSTATNIM BICIE: dwa biegi rozniace sie jednym ULP w `u_f` dostawalyby rozne kody
+    jakosci tej samej wielkosci fizycznej. Etykieta ma mowic o odchylce, nie o
+    zaokragleniu.
+
+    WYPROWADZENIE (nie dobrana stala). `|f - f_n|` powstaje przez ODEJMOWANIE dwoch
+    liczb rzedu `f_n`, wiec traci cyfry znaczace: jego blad bezwzgledny jest rzedu
+    `ulp(f_n)` (dla `f_n = 50 Hz` to 7,105e-15 Hz) NIEZALEZNIE od tego, jak mala jest
+    sama odchylka. Gdy `f` odjedzie daleko od `f_n`, dominuje `ulp(f)`. Druga strona
+    porownania wnosi wlasna ziarnistosc reprezentacji `ulp(u_f)`. Rozdzielczosc calego
+    porownania jest wiec najwieksza z tych trzech — i tyle, ile jej jest, tyle wynosi
+    prog. Zadnej stalej w rodzaju 1e-6 Hz tu nie ma i byc nie moze: wzielaby sie znikad
+    i zaczelaby decydowac o tresci inzynierskiej.
+
+    KIERUNEK ZAOKRAGLENIA JEST ROZSTRZYGNIETY NA KORZYSC OSTROZNOSCI. Roznica mieszczaca
+    sie w rozdzielczosci daje NIEROZROZNIALNA — bo skoro arytmetyka nie umie rozstrzygnac,
+    czy odchylka przewyzsza wlasny blad, to twierdzenie, ze przewyzsza, byloby
+    deklaracja bez pokrycia.
+    """
+    return max(math.ulp(f_bazowa_hz), math.ulp(f_hz), math.ulp(niepewnosc_hz))
+
+
 def czestotliwosc_wezla(
     napiecie_pu: complex,
     pochodna_napiecia_pu_s: complex,
@@ -361,7 +387,12 @@ def czestotliwosc_wezla(
     if not math.isfinite(niepewnosc_hz) or not math.isfinite(f_hz):
         return czestotliwosc_niedostepna(f_bazowa_hz)
     odchylka_hz = abs(f_hz - f_bazowa_hz)
-    jakosc = JAKOSC_NIEROZROZNIALNA if niepewnosc_hz > odchylka_hz else JAKOSC_ROZROZNIALNA
+    jakosc = (
+        JAKOSC_ROZROZNIALNA
+        if odchylka_hz - niepewnosc_hz
+        > rozdzielczosc_porownania_hz(f_bazowa_hz, f_hz, niepewnosc_hz)
+        else JAKOSC_NIEROZROZNIALNA
+    )
     return CzestotliwoscWezla(f_hz=f_hz, niepewnosc_hz=niepewnosc_hz, jakosc=jakosc)
 
 

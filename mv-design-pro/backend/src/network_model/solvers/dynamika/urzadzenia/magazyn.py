@@ -23,12 +23,13 @@ cyklu"):
 
 Znak: dodatnia moc oddawana do sieci OBNIZA stan naladowania.
 
-NIENARUSZALNOSC ZAKRESU SOC. Zakres `[SOC_min, SOC_max]` jest TWARDA GRANICA
-STANU (`granice_stanow`), egzekwowana przez zbior aktywny calkowania — stan
-naladowania nie wychodzi poza zakres w ZADNYM kroku i dochodzi do granicy
-DOKLADNIE, bez przestrzelenia. Okno mocy zasobnika NIE zalezy od stanu
-naladowania; dlaczego — patrz `Zasobnik.okno_mocy` (skokowe zamykanie okna
-odbiera rownaniu kroku rozwiazanie, a zakres i tak jest juz dotrzymany).
+ZAKRES SOC JEST ZAKRESEM WAZNOSCI, NIE OGRANICZNIKIEM. `[SOC_min, SOC_max]`
+opisuje, dla jakich stanow napisano rownania — a nie czlon modelu, ktory cokolwiek
+zatrzymuje. Wyjscie poza ten zakres konczy bieg odmowa
+`dynamika.zakres_waznosci_przekroczony` (`zakresy_waznosci`), bo od tej chwili
+przeksztaltnik oddawalby moc, ktorej zrodla w modelu nie ma. Okno mocy zasobnika
+NIE zalezy od stanu naladowania; dlaczego — patrz `Zasobnik.okno_mocy` (skokowe
+zamykanie okna odbiera rownaniu kroku rozwiazanie).
 
 REGULACJA CZESTOTLIWOSCI MAGAZYNU. Blok `regulacja_f` jest regulacja P/f TEGO
 SAMEGO rodzaju, co statyzm przeksztaltnika — przylozenie obu naraz liczyloby te
@@ -90,28 +91,28 @@ class Zasobnik:
         funkcja SKOKOWA stanu, a wiec wprowadza do residuum kroku skok o cala
         szerokosc okna (pomiar: bieg magazynu padal w chwili dojscia SOC do
         granicy — residuum 6,8e-05 na `i_czynny_pu` nie malalo ani po 60
-        iteracjach, ani po dwukrotnym skroceniu kroku). Zakres SOC jest
-        dotrzymany DOKLADNIE przez twarda granice stanu (`granice_stanow` +
-        zbior aktywny calkowania), wiec wynik biegu nigdy nie wychodzi poza
-        `[SOC_min, SOC_max]`.
+        iteracjach, ani po dwukrotnym skroceniu kroku). Zamkniecie okna nie jest
+        wiec droga do dotrzymania zakresu; zakres jest ZAKRESEM WAZNOSCI i konczy
+        sie odmowa (`Magazyn.zakresy_waznosci`), a nie cichym przycieciem.
 
         CZEGO TEN MODEL NIE OBEJMUJE, powiedziane wprost: odciecia mocy przez
         uklad zarzadzania bateria po dojsciu do konca zakresu. To jest funkcja
         DZIEDZINY WOLNEJ (godziny pracy zasobu), a nie dynamiki RMS o horyzoncie
         sekund; magazyn dochodzacy do granicy SOC w ciagu przebiegu oznacza, ze
-        zalozenia badania leza poza zakresem waznosci tego modelu, i tak nalezy
-        to czytac.
+        zalozenia badania leza poza zakresem waznosci tego modelu — i wtedy bieg
+        konczy sie odmowa, a nie przebiegiem (patrz `Magazyn.zakresy_waznosci`).
         """
         return OknoMocy(dol_pu=-self.p_ladowania_max_pu, gora_pu=self.p_rozladowania_max_pu)
 
     def pochodna_naladowania(self, moc_czynna_pu: Dual) -> Dual:
-        """`d(SOC)/dt` — calka mocy stalopradowej; zakres egzekwuje CALKOWANIE.
+        """`d(SOC)/dt` — calka mocy stalopradowej, BEZ wyjatku na koncach zakresu.
 
-        Zerowanie pochodnej na granicy zakresu bylo by ogranicznikiem NIECIAGLYM
+        Zerowanie pochodnej na granicy zakresu byloby ogranicznikiem NIECIAGLYM
         w rownaniu, czyli dokladnie tym, co odbiera rownaniu kroku rozwiazanie
-        (patrz `regulatory.NIENAWROTNOSC_JEST_W_CALKOWANIU`). Zakres jest tu
-        zgloszony jako `granice_stanow` i dotrzymany DOKLADNIE przez zbior aktywny
-        calkowania.
+        (patrz `regulatory.NIENAWROTNOSC_JEST_W_CALKOWANIU`) — i do tego
+        UDAWALOBY, ze model wie, co robi bateria po opróznieniu. Prawo calkowania
+        obowiazuje w calym zakresie waznosci bez wyjatkow, a jego koniec melduje
+        odmowa (`Magazyn.zakresy_waznosci`).
         """
         sprawnosc = (
             self.sprawnosc_rozladowania
@@ -175,16 +176,45 @@ class Magazyn:
 
     @property
     def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
-        """Stan naladowania ma TWARDA granice — jedyny mechanizm ochrony zakresu.
+        """Magazyn nie ma ANI JEDNEGO ogranicznika stanu — zakres SOC to co innego.
 
-        Rzutowanie w calkowaniu gwarantuje DOKLADNOSC granicy: bez niego trapez
-        przestrzeliwalby o `dt/2 * f` w kroku, w ktorym SOC dochodzi do konca
-        zakresu. Stany przeksztaltnika granic nie potrzebuja (patrz jego wlasna
-        deklaracja).
+        Stan naladowania byl tu zadeklarowany jako twarda granica i to bylo
+        POMYLENIE DWOCH ROZNYCH RZECZY (pelne wyprowadzenie:
+        `kontrakty.Urzadzenie.zakresy_waznosci`). Ogranicznik jest czlonem modelu,
+        a stan sprowadzony na granice CZYTAJA pozostale rownania — `Efd` czyta
+        strumien maszyny, kat lopat czyta moc aerodynamiczna. Stanu naladowania
+        NIE CZYTA nic: przeksztaltnik pracuje tak samo przy SOC 0,55 i przy
+        SOC 0,10. Rzutowanie zamrazalo wiec jedna liczbe i zostawialo reszte modelu
+        w biegu — magazyn oddawal moc z pustych ogniw, a przebieg wygladal
+        zwyczajnie (pomiar w `zakresy_waznosci` ponizej).
+
+        Zakres SOC jest ZAKRESEM WAZNOSCI i jest egzekwowany odmowa — patrz
+        `zakresy_waznosci`. Stany przeksztaltnika granic nie potrzebuja (patrz jego
+        wlasna deklaracja).
         """
-        granice: list[tuple[float, float] | None] = list(self.rdzen.granice_stanow)
-        granice.append((self.zasobnik.soc_min, self.zasobnik.soc_max))
-        return tuple(granice)
+        return self.rdzen.granice_stanow + (None,)
+
+    @property
+    def zakresy_waznosci(self) -> tuple[tuple[float, float] | None, ...]:
+        """Stan naladowania jest wazny TYLKO w `[SOC_min, SOC_max]` — poza nim nie
+        ma rownan.
+
+        POMIAR, ktory to rozstrzygnal (magazyn 20 MWh, rozladowanie 24 MW, start
+        SOC = 0,1001 przy SOC_min = 0,10, horyzont 2 s). Przy rzutowaniu stanu bieg
+        konczyl sie normalnie, z kompletem probek i statusem poprawnym, a bilans
+        energii rozjezdzal sie tak: z ogniw mialo ubyc 14,337 kWh, ubylo 2,000 kWh
+        — 12,337 kWh oddane do sieci ZNIKAD (86 % bilansu przebiegu). Symetrycznie
+        przy SOC_max: 10,667 kWh pochlonietych przez bateria, ktora juz jest pelna.
+        Zaden kanal wyniku tego nie pokazywal.
+
+        CZEGO TEN MODEL NIE OBEJMUJE, powiedziane wprost: odciecia mocy przez uklad
+        zarzadzania bateria po dojsciu do konca zakresu. To jest funkcja DZIEDZINY
+        WOLNEJ (godziny pracy zasobu), a nie dynamiki RMS o horyzoncie sekund.
+        Magazyn dochodzacy do granicy SOC w ciagu przebiegu oznacza, ze zalozenia
+        badania leza poza zakresem waznosci tego modelu — i wlasnie to melduje
+        odmowa, zamiast podawac przebieg, ktorego nikt nie policzyl.
+        """
+        return self.rdzen.zakresy_waznosci + ((self.zasobnik.soc_min, self.zasobnik.soc_max),)
 
     @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:

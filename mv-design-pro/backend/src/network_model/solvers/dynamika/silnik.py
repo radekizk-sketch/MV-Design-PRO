@@ -49,6 +49,7 @@ from .calkowanie import (
     KontekstKroku,
     blad_lokalny,
     pochodne_ukladu,
+    spakuj_stany,
 )
 from .kontrakty import (
     KOD_INICJALIZACJA_NIEZBIEZNA,
@@ -72,6 +73,7 @@ from .skonczonosc import sprawdz_napiecia
 from .tozsamosc import kwantyzuj, skrot_kanoniczny, zbuduj_tozsamosc
 from .urzadzenia.fabryka import RODZINY_OBSLUGIWANE
 from .urzadzenia.odlaczone import UrzadzenieOdlaczone
+from .waznosc import sprawdz_zakresy_waznosci
 from .wynik import KanalWyniku, Metryka, WlasnosciBiegu, WynikDynamiki, ZdarzenieWykonane
 from .zdarzenia import (
     StanScenariusza,
@@ -218,6 +220,15 @@ class SilnikDynamiki:
                 napiecia = wynik_kroku.napiecia
                 t_s += krok
                 sprawdz_napiecia(napiecia, model.identy_wezlow, t_s)
+                dolne_wazne, gorne_wazne = kontekst.zakresy_waznosci
+                sprawdz_zakresy_waznosci(
+                    spakuj_stany(stany),
+                    dolne_wazne,
+                    gorne_wazne,
+                    kontekst.adresy_stanow,
+                    nastawy,
+                    t_s,
+                )
                 kroki += 1
                 iteracje_max = max(iteracje_max, wynik_kroku.iteracje)
                 max_residuum_f = max(max_residuum_f, wynik_kroku.residuum_stanow)

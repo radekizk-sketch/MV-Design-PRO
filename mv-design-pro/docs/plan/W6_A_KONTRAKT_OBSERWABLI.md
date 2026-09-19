@@ -852,3 +852,258 @@ dwa testy (odmowa dla zerowej impedancji, skończona admitancja dla niezerowej).
 * **Pracy wyspowej** (D11, fala W6-B) — układ SO-1A celowo jej nie wywołuje.
 * **Metryk scenariusza** (nadir, zenith, ROCOF max, czas ustalenia — wiersz E3, fala W6-D).
   SO-1A dostarcza przebiegi, z których te metryki będą liczone; sam ich nie liczy.
+
+---
+
+## Załącznik Z4 — RUNDA ADVERSARIALNA PO `b31f57c7` (2026-09-18)
+
+**Tryb:** REPRODUKUJ → PRZYCZYNA ŹRÓDŁOWA → MINIMALNA NAPRAWA → FALSYFIKUJ → REGRESJA.
+**Werdykt wejściowy recenzenta zewnętrznego:** REJECT CURRENT DELTA.
+**Zakres przeglądu:** `865c287f..b31f57c7`. **Zakres tej rundy:** wyłącznie W6-A; W6-B nie ruszone.
+
+### Z4.1 P1-DELTA-40 — reprodukcja PRZED naprawą
+
+Miejsce: `backend/src/network_model/solvers/dynamika/obserwable.py:364` (stan `b31f57c7`).
+
+```python
+odchylka_hz = abs(f_hz - f_bazowa_hz)
+jakosc = JAKOSC_NIEROZROZNIALNA if niepewnosc_hz > odchylka_hz else JAKOSC_ROZROZNIALNA
+```
+
+Predykat kodu: `ROZROZNIALNA ⟺ d_f ≥ u_f`. Kontrakt (§4 tego dokumentu):
+`ROZROZNIALNA ⟺ d_f > u_f`. Rozjazd dotyczy DOKŁADNIE równości.
+
+Reprodukcja wykonana przed jakąkolwiek zmianą kodu (4 przypadki, 2 niezgodne):
+
+| przypadek | wejście | `f_hz` | `d_f` | `u_f,est` | kontrakt `d_f > u_f` | kod PRZED | oczekiwane |
+|-----------|---------|--------|-------|-----------|----------------------|-----------|------------|
+| Q-1 | V=1, V̇=2πj, u_V̇=4π | 51,0 | 1,0 | 2,0 | FAŁSZ | NIEROZRÓŻNIALNA | NIEROZRÓŻNIALNA |
+| Q-2a | V=1, V̇=0, u_V=0, u_V̇=0 | 50,0 | 0,0 | 0,0 | **FAŁSZ** | **ROZRÓŻNIALNA** | NIEROZRÓŻNIALNA |
+| Q-2b | V=1, V̇=2πj, u_V̇=2π | 51,0 | 1,0 | 1,0 | **FAŁSZ** | **ROZRÓŻNIALNA** | NIEROZRÓŻNIALNA |
+| Q-3 | V=1, V̇=2πj, u_V̇=π | 51,0 | 1,0 | 0,5 | PRAWDA | ROZRÓŻNIALNA | ROZRÓŻNIALNA |
+
+Q-2a to stan ustalony każdego biegu: przy zerowej pochodnej fazora etykieta „odchyłka
+rozróżnialna numerycznie" twierdziła, że **zero przewyższa zero**. Kanał `jakosc_f@<węzeł>`
+idzie do wyniku, więc fałsz nie kończył się na nazwie.
+
+### Z4.2 Naprawa — rozdzielczość WYPROWADZONA, nie przestawiony operator
+
+Mechaniczne `>=` → `>` zamknęłoby DELTA-40 i otworzyło gorszy defekt: dwa biegi różniące się
+jednym ULP w `u_f` dostawałyby różne kody jakości tej samej wielkości fizycznej.
+
+Wyprowadzenie (`obserwable.rozdzielczosc_porownania_hz`): `|f − f_n|` powstaje przez
+odejmowanie liczb rzędu `f_n`, więc jego błąd bezwzględny jest rzędu `ulp(f_n)`
+(**7,105e-15 Hz** dla 50 Hz) **niezależnie** od tego, jak mała jest sama odchyłka; przy `f`
+daleko od `f_n` dominuje `ulp(f)`; druga strona porównania wnosi `ulp(u_f)`. Stąd
+
+```
+rozdzielczosc_hz = max(ulp(f_n), ulp(f), ulp(u_f))
+ROZROZNIALNA ⟺ (d_f − u_f) > rozdzielczosc_hz
+```
+
+Kierunek zaokrąglenia rozstrzygnięty na korzyść ostrożności: różnica mieszcząca się w
+rozdzielczości daje NIEROZRÓŻNIALNA. Żadnej stałej progowej nie ma i być nie może.
+
+PO naprawie: 4/4 przypadki zgodne z kontraktem. Testy: `test_obserwable.py`
+— `test_q123_etykieta_jakosci_idzie_za_ostra_nierownoscia_kontraktu` (3 przypadki),
+`test_q4_jeden_ulp_nie_przestawia_etykiety_jakosci` (81 przesunięć ULP w obie strony,
+z falsyfikacją: zbiór uzyskanych `u_f` musi mieć >1 element),
+`test_q4b_odchylka_ponad_rozdzielczoscia_arytmetyki_jest_rozroznialna` (pasmo jest wąskie —
+1e-09 Hz już je opuszcza, >100× rozdzielczości),
+`test_rozdzielczosc_porownania_jest_ziarnistoscia_arytmetyki_a_nie_stala` (próg skaluje się
+z 50 Hz na 50 kHz). **Korekta testu istniejącego:**
+`test_f1_stan_ustalony_daje_dokladnie_czestotliwosc_znamionowa` żądał ROZRÓŻNIALNEJ dla
+stanu ustalonego — to była ta sama pomyłka zapisana w teście; intencja (f = f_n co do bitu,
+u = 0) bez zmian.
+
+### Z4.3 Semantyka etykiety — sprawdzona u WSZYSTKICH konsumentów
+
+`JAKOSC_ROZROZNIALNA` znaczy **wyłącznie**: „numerycznie wyznaczona odchyłka częstotliwości
+od znamionowej przewyższa oszacowany poziom błędu tej obserwabli". NIE znaczy: poprawna
+fizycznie · zwalidowana · dokładna pomiarowo · zgodna z NC RfG · zakwalifikowana inżyniersko.
+
+Inwentarz konsumentów (pomiar grepem, nie pamięć): jedynym producentem kanału jest
+`silnik.py:646` (deklaracja kanału), `:731` i `:743` (próbkowanie). Poza rdzeniem dynamiki
+**żaden** moduł backendu ani frontu nie czyta `jakosc_f@` i nie ma miejsca, w którym
+przechodziłby on na PASS / ZWALIDOWANE / ZGODNE. Nazwy `WIARYGODNA` nie ma w repo i nie
+wraca (§Z2.1).
+
+### Z4.4 BILANS ENERGII MAGAZYNU — P0 REPRODUKOWALNY, naprawiony u źródła
+
+**Wyrocznia** (niezależna od kodu modelu): energia ogniw `E = SOC · E_n` [kWh]; zdanie
+energetyczne kontraktu mówi, że z ogniw ubywa `P_ac/η_roz` przy oddawaniu i przybywa
+`|P_ac|·η_ład` przy pobieraniu. Liczba MODELU: `(SOC_k − SOC_p)·E_n` przepuszczona przez cały
+stos. Liczba WYROCZNI: kwadratura trapezowa **zarejestrowanego** `p_pu@BESS1` przez to
+zdanie. `ε_E = ΔE_model − ΔE_wyroczni`.
+
+Pomiar na `b31f57c7` (magazyn 20 MWh / 25 MW, baza 100 MVA, horyzont 2 s, `dt = dt_wyj = 2 ms`):
+
+| przypadek | ΔE model [kWh] | ΔE wyrocznia [kWh] | ε_E [kWh] | ε względne | werdykt |
+|-----------|----------------|--------------------|-----------|------------|---------|
+| E-1 rozładowanie P=+0,20 pu | −11,947431302061773 | −11,94743130227001 | 2,08e-10 | 1,7e-11 | OK |
+| E-2 ładowanie P=−0,20 pu | +10,555555556290841 | +10,555555555555555 | 7,35e-10 | 7,0e-11 | OK |
+| E-3 P=0 | 0,0 | −6,40e-16 | 6,40e-16 | — | OK |
+| **E-4 granica SOC min** | **−2,000** | **−14,336917562724011** | **+12,337** | **0,8605** | **P0** |
+| **E-5 granica SOC max** | **+2,000** | **+12,666666666666666** | **−10,667** | **−0,8421** | **P0** |
+| E-6 zmiana znaku P | −2,9488195456961463 | −2,948883902276891 | 6,44e-05 | 2,2e-05 | patrz niżej |
+
+**Znak, obie sprawności, baza mocy i przelicznik 3600 są POPRAWNE** — E-1/E-2/E-3 zgadzają
+się z wyrocznią na poziomie tolerancji algebry (1e-11 na residuum `g`). Historyczny zarzut
+„zły znak albo zła baza energii BESS" jest **NIEREPRODUKOWALNY**.
+
+Prompt właścicielski żąda w tym miejscu wskazania commitu, który zarzut zamknął. **Takiego
+commitu NIE MA i nie mogło być**: `git log -p --all` po `magazyn.py` pokazuje, że linia
+`return -moc_stalopradowa_kw / (pojemnosc_kwh * SEKUND_W_GODZINIE)` oraz rozdzielenie
+sprawności na dwa kierunki istnieją **od commitu tworzącego plik** (`e4c32f9e`) i nigdy nie
+miały innej postaci (zbiór wariantów tej linii w całej historii ma jeden element). Zarzut
+nie został naprawiony — on nigdy nie był prawdziwy w tym repozytorium. Zapisujemy to jako
+FAŁSZYWY, a nie jako ZAMKNIĘTY, bo te dwie rzeczy znaczą co innego przy następnym audycie.
+
+Reprodukowalny jest **inny, cięższy defekt tej samej dziedziny**: na granicy zakresu SOC
+model oddawał do sieci 24 MW przez 1,7 s **z pustych ogniw**, a bieg kończył się normalnie,
+ze statusem poprawnym i kompletem próbek. 86 % bilansu energii przebiegu brane ZNIKĄD.
+Symetrycznie przy SOC max: 10,667 kWh pochłonięte przez baterię, która już jest pełna.
+
+**Przyczyna źródłowa — pomylenie dwóch różnych mechanizmów.** `soc_pu` był zadeklarowany w
+`granice_stanow`, czyli jako OGRANICZNIK. Ogranicznik jest członem modelu i stan sprowadzony
+na granicę CZYTAJĄ pozostałe równania (strumień maszyny czyta `efd_pu`, moc aerodynamiczna
+czyta `pitch_rad`, okno mocy czyta `crowbar_pu`). Stanu naładowania **nie czyta nic** —
+przekształtnik pracuje tak samo przy SOC 0,55 i przy SOC 0,10 — więc rzutowanie niczego nie
+uzgadniało: zamrażało jedną liczbę i zostawiało resztę modelu w biegu.
+
+**Naprawa minimalna** (nie przeprojektowanie): `soc_pu` przeniesiony z `granice_stanow` do
+nowej deklaracji `zakresy_waznosci` (`kontrakty.Urzadzenie`), a wyjście poza zakres kończy
+bieg odmową `dynamika.zakres_waznosci_przekroczony` z adresem stanu, chwilą, wartością,
+granicą i przekroczeniem (`dynamika/waznosc.py`). Okno mocy **nie** zamyka się skokowo —
+decyzja zmierzona w `Zasobnik.okno_mocy` zostaje bez zmian. Zdarzenia warunkowe (odcięcie
+BMS) pozostają poza zakresem tej rundy zgodnie z §14 promptu.
+
+Margines odmowy jest WYPROWADZONY, nie dobrany: `⌈horyzont_s / dt_min_s⌉ · ulp(granica)` —
+największe przesunięcie, które można przypisać samej arytmetyce (nastawy domyślne: 1,4e-14;
+najcięższe SO-1A: 1,1e-08). Realne wyjście poza zakres jest o rzędy wielkości większe.
+
+PO naprawie: E-1/E-2/E-3/E-6 bez zmian co do bitu; E-4 → odmowa w `t = 0,280 s`
+(przekroczenie 3,58e-07, tj. jeden krok dryfu), E-5 → odmowa w `t = 0,316 s`
+(przekroczenie 6,67e-08).
+
+**Przypadek E-6 (zmiana znaku P)** mierzony jest w oknie PO zdjęciu zwarcia, bo próbka w
+chwili zdarzenia jest granicą PRAWOSTRONNĄ nieciągłości (Z1 w `test_obserwable`) — krok
+kończący się w tej chwili całkuje inną wartość, niż ta próbka pokazuje. To własność semantyki
+zdarzeń, nie bilansu. W oknie bez zdarzeń (242 próbki dodatnie, 668 ujemnych — kierunek mocy
+zmienia się wielokrotnie) `ε_E` schodzi do poziomu tolerancji algebry.
+
+**Inwentarz klasy** (reguła KLASA, punkt 1): cztery twarde granice stanu w całej bibliotece —
+`efd_pu` (wzbudzenie z AVR), `pitch_rad` (kąt łopat), `crowbar_pu` (sygnał dwustanowy),
+`soc_pu`. Pierwsze trzy są ogranicznikami rzeczywistymi i ich stan CZYTAJĄ inne równania;
+czwarty nie. Klasa ma dokładnie jednego członka z defektem i jest to stwierdzone pomiarem,
+przypiętym testem `test_inwentarz_zakresow_waznosci_calej_biblioteki_jest_przypiety`.
+
+### Z4.5 Macierz uzgodnienia otwartych znalezisk
+
+| ID | zarzut pierwotny | kod, którego dotyczy | reprodukcja na HEAD | waga | stan | dowód | blokuje W6-A? | blokuje W6-B? |
+|----|------------------|----------------------|---------------------|------|------|-------|---------------|---------------|
+| DELTA-40 | równość `d_f = u_f` daje ROZRÓŻNIALNA | `obserwable.py:364` | **TAK** (Z4.1) | P1 | **ZAMKNIĘTE** | Q-1…Q-4 + M1 | nie (już nie) | nie |
+| DELTA-39 | `u_f` jako granica, nie estymata | `obserwable.py` | nie — zamknięte w `b31f57c7` | P1 | ZAMKNIĘTE wcześniej | 200 000 perturbacji, 0 naruszeń, max iloraz 0,994619903212 | nie | nie |
+| BESS-ENERGIA | zły znak / zła baza energii | `magazyn.py` | **NIE** (E-1/E-2/E-3 zgodne z wyrocznią) | — | **FAŁSZYWY** | Z4.4 tabela | nie | nie |
+| BESS-GRANICA | (nowy, wykryty w tej rundzie) energia znikąd na granicy SOC | `magazyn.py` + `calkowanie.py` | **TAK**, 86 % bilansu | **P0** | **ZAMKNIĘTE** | Z4.4 + M5 + test odmowy | było TAK | nie |
+| NaN/Inf | wartość niearytmetyczna w wyniku | `skonczonosc.py`, `obserwable.py` | nie | — | ZAMKNIĘTE + wzmocnione | Z4.6 + M7 | nie | nie |
+| REINIT/HISTORIA | historia całkowania sprzed nieciągłości | `calkowanie.py` | nie (obie metody JEDNOKROKOWE) | — | ZAMKNIĘTE | Z4.7 | nie | nie |
+| BAZY DER/BESS | mieszanie baz mocy | `magazyn.py`, `konwencje.py` | nie | — | ZAMKNIĘTE + wzmocnione | Z4.8 + M6 | nie | nie |
+| TOŻSAMOŚĆ ZDARZEŃ | brak deterministycznej kolejności | `zdarzenia.py` | nie | — | ZAMKNIĘTE | Z4.9 + M8 | nie | nie |
+| Z-03 | gałąź otwarta w ENM nieosiągalna dla zdarzeń | `adapter_dynamiki.py:759` | TAK, ale **odmowa nazwana** | P1 | **OPEN — POPRAWNIE ODROCZONE DO W6-B** | Z4.10 | nie | **TAK** |
+| F-7 | brak wyroczni zewnętrznej dla `f` | — | n/d | P1 | **OPEN — dług W6-F** | Z2.5 bez zmian | nie | nie |
+| SO-1A | kryterium odbioru niewykonane | — | n/d | — | ZAMKNIĘTE w Z3 | Z3 + Z4.11 | nie | nie |
+| WALIDACJA FIZYCZNA | ZWALIDOWANE FIZYCZNIE = TAK bez wyroczni | — | n/d | — | **ZWALIDOWANE FIZYCZNIE = NIE** | Z2.5, Z3.4 | nie | nie |
+| NC RfG | zgodność normatywna mylona z symulacją | — | n/d | — | rozdzielone: SYMULACJA ≠ WALIDACJA ≠ ZGODNOŚĆ | Z4.10 | nie | nie |
+
+### Z4.6 NaN/Inf — FAIL CLOSED, dowód NA ŚCIEŻCE BIEGU
+
+Straże istniały (`skonczonosc.sprawdz_wektor` przy pochodnych, `sprawdz_napiecia` po algebrze
+i po każdym przyjętym kroku, `czestotliwosc_niedostepna` przy `|V| ≤ u_V` i przy osobliwym
+jakobianie). **Luka dowodu:** testy wołały funkcję straży wprost, więc usunięcie jej WYWOŁANIA
+z `pochodne_ukladu` zostawiłoby je zielone. Domknięte dwoma testami:
+
+* `test_silnik.py::test_NaN_w_pochodnej_konczy_bieg_odmowa_z_adresem_zamiast_wejsc_do_wyniku`
+  — atrapa urządzenia skażająca jedną składową pochodnej; żądana odmowa
+  `dynamika.wartosc_nieskonczona` z adresem `G1.omega_pu`, indeksem 1;
+* `test_silnik.py::test_zaden_kanal_wyniku_nie_wpuszcza_NaN_ani_Inf_jako_wartosci_inzynierskiej`
+  — CAŁY ResultSet biegu ze zwarciem i skokiem obciążenia, wszystkie kanały.
+
+Niedostępna częstotliwość NIE jest podstawiana zerem ani `f_n` bez semantyki: wraca z
+`niepewnosc = f_n` (cała znamionowa) i kodem `JAKOSC_NIEDOSTEPNA`, więc konsument ignorujący
+kod i tak widzi, że liczba nie niesie treści.
+
+### Z4.7 Re-inicjalizacja i historia całkowania
+
+Semantyka ZDARZENIE → TOPOLOGIA → RE-INICJALIZACJA ALGEBRY → DALEJ jest poprawna **tylko**
+przy metodzie jednokrokowej: metoda wielokrokowa (Adams, BDF) czyta `f` z poprzednich kroków
+i pierwsze kroki po zdarzeniu całkowałyby częściowo model sprzed niego. Rejestr `INTEGRATORY`
+ma dziś dwie metody jednokrokowe i to jest własność, na której stoi semantyka zdarzeń.
+Przypięte: `test_calkowanie.py::test_krok_nie_pamieta_niczego_sprzed_swojego_wejscia`
+(ten sam krok dwa razy, rozdzielony krokiem z innego stanu i innym `dt`, wynik co do bitu
+identyczny — dla obu integratorów) oraz
+`test_rejestr_integratorow_zawiera_wylacznie_metody_jednokrokowe`.
+
+Ciągłość stanów różniczkowych przez zdarzenie, ponowne rozwiązanie algebry i niezależny pomiar
+skoku `Δy` były już przypięte w `test_reinicjalizacja.py` (8 testów, w tym mutacja migawki
+zabijająca diagnostykę).
+
+### Z4.8 Bazy DER/BESS
+
+Rdzeń dynamiki jest modelem WZGLĘDNYM: przejście `I_pu ↔ I_A` w nim nie występuje (pomiar:
+zero wystąpień jednostek amperowych w `solvers/dynamika/**`), prądy opuszczają rdzeń w pu.
+Bazy w grze: `S_b` układu (100 MVA), `S_n` przekształtnika, granice mocy zasobnika w kW
+bezwzględnych, pojemność w kWh przy BEZWYMIAROWYM SOC (baza energii = sama pojemność).
+Przeliczniki mają jedno źródło (`konwencje.py`) z jawnie nazwaną parą kierunków
+(impedancja w jedną stronę, moc i H w drugą).
+
+Dziurą w dowodzie było to, że baza maszyny i ogranicznik przekształtnika miały testy
+niezmienniczości, a **zasobnik nie miał żadnego**. Domknięte trzema testami
+(`test_biblioteka_urzadzen.py`): jawna arytmetyka wszystkich przejść
+(`rezerwa = 0,1·30/100 = 0,03`, `ładowanie = 25000/1000/100 − 0,03 = 0,22`), ta sama rezerwa
+fizyczna w dwóch bazach przekształtnika dająca to samo okno, oraz `dSOC/dt` zależne od mocy
+FIZYCZNEJ, nie od liczby względnej (10 MW to 10 MW w bazie 100 i w bazie 50 MVA).
+Mutacja M6 (baza przekształtnika zamiast bazy układu) jest przez nie zabijana.
+
+### Z4.9 Tożsamość i kolejność zdarzeń
+
+Bez zmian w tej rundzie — kontrakt publiczny nietknięty. Stan przypięty wcześniej:
+kolejność kanoniczna stabilna po czasie, zdarzenia równoczesne dzielą jeden pomiar chwili,
+permutacja zdarzeń równoczesnych nie zmienia wyniku, zdarzenie wykonuje się niezależnie od
+reprezentacji chwili, brak cichego pominięcia (`AssertionError` przy niewykonanych wpisach).
+Mutacja M8 (zdjęcie sortowania) zabijana przez `test_kolejnosc_kanoniczna_jest_stabilna_po_czasie`.
+
+### Z4.10 Z-03, F-7, NC RfG
+
+**Z-03** — gałąź z `in_service = False` jest pomijana przy budowie modelu
+(`adapter_dynamiki.py:759`), więc `zalaczenie_galezi` na niej kończy się odmową
+`dynamika.zdarzenie_bez_elementu`. To NIE jest bieżąca niespójność kontraktu: zdolności nie
+ma i jej brak jest **meldowany odmową nazwaną**, a nie cichym pominięciem. Klasyfikacja:
+**OPEN — POPRAWNIE ODROCZONE DO W6-B** (wymaga modelu stanu łączeniowego w rdzeniu, nie łatki).
+W tej rundzie nienaprawiane zgodnie z §12 promptu.
+
+**F-7** — bez zmian wobec Z2.5: wyrocznia zewnętrzna dla `f_hz@szyna` nie istnieje, ANDES w CI
+porównuje inną wielkość fizyczną i dowodem F-7 nie jest. Dług fali **W6-F**.
+
+**Rozdzielenie trzech rzeczy, których nie wolno mylić:** SYMULACJA (bieg się policzył,
+residua w normie) ≠ WALIDACJA FIZYCZNA (zgodność z niezależną wyrocznią — **NIE**, F-7) ≠
+ZGODNOŚĆ NORMATYWNA (NC RfG / PTPiREE — osobna domena, nie wynika z żadnego z poprzednich).
+
+### Z4.11 Macierz mutacyjna M1–M8 — WYKONANA
+
+Każda iniekcja nałożona na drzewo roboczne, testy uruchomione, plik przywrócony. Zarzut
+recenzenta („16 KILLED nie zostało niezależnie powtórzone") dotyczył Z.5 i jest tu domknięty
+przebiegiem, nie cytatem.
+
+| # | iniekcja | plik | test, który spadł | kod wyjścia |
+|---|----------|------|-------------------|-------------|
+| M1 | równość `d_f = u_f` znów ROZRÓŻNIALNA | `obserwable.py` | `test_f1_stan_ustalony_daje_dokladnie_czestotliwosc_znamionowa` | 1 ZABITA |
+| M2 | znak mocy elektrycznej w równaniu ruchu | `maszyna_klasyczna.py` | `test_cct_z_bisekcji_zgadza_sie_z_kryterium_rownych_pol` | 1 ZABITA |
+| M3 | `S = V·I` zamiast `V·conj(I)` | `obserwable.py` | `test_b1_galaz_bezstratna_ma_zerowy_bilans_mocy_i_przeciwne_prady` | 1 ZABITA |
+| M4 | przekładnia po złej stronie gałęzi w Ybus | `siec.py` | `test_ybus_z_przekladnia_zespolona` | 1 ZABITA |
+| M5 | znak mocy magazynu w prawie energii | `magazyn.py` | `test_magazyn_wychodzacy_poza_zakres_naladowania_konczy_bieg_odmowa` | 1 ZABITA |
+| M6 | baza mocy magazynu: przekształtnik zamiast układu | `magazyn.py` | `test_bazy_magazynu_sa_rozdzielone_i_policzalne_z_kontraktu` | 1 ZABITA |
+| M7 | strażnik skończoności zdjęty ze ścieżki pochodnych | `calkowanie.py` | `test_NaN_w_pochodnej_konczy_bieg_odmowa_z_adresem…` | 1 ZABITA |
+| M8 | kolejność kanoniczna zdarzeń zdjęta | `zdarzenia.py` | `test_kolejnosc_kanoniczna_jest_stabilna_po_czasie` | 1 ZABITA |
+
+**ZABITYCH: 8 / 8.**

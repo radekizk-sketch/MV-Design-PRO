@@ -317,6 +317,15 @@ class TurbinaWiatrowa:
         return tuple(granice)
 
     @property
+    def zakresy_waznosci(self) -> tuple[tuple[float, float] | None, ...]:
+        """Zaden stan turbiny nie ma zakresu waznosci. Kat lopat i sygnal crowbar
+        maja OGRANICZNIKI (wyzej) — czlony modelu, ktore pozostale rownania
+        czytaja. Wiatr nie jest w tym modelu zasobem o skonczonej pojemnosci, wiec
+        nie ma stanu, ktorego wyjscie poza zakres zostawialoby rownania bez
+        pokrycia."""
+        return tuple(None for _ in self.uklad.nazwy)
+
+    @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         """Kazdy stan turbiny MUSI byc rownowaga w punkcie pracy."""
         return ()

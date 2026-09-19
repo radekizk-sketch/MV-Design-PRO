@@ -173,6 +173,14 @@ class RdzenGFL:
         turbina skladaly swoje granice z rdzenia, a nie z wlasnej kopii wiedzy."""
         return tuple(None for _ in self.uklad.nazwy)
 
+    @property
+    def zakresy_waznosci(self) -> tuple[tuple[float, float] | None, ...]:
+        """Rownania rdzenia nadaznego sa wazne w calej przestrzeni swoich stanow —
+        petla synchronizacji, czlony inercyjne pradow i odniesienia nie opisuja
+        zasobu, ktory moglby sie wyczerpac. Deklaracja zyje TUTAJ z tego samego
+        powodu, co `granice_stanow`: magazyn i turbina skladaja swoja z rdzenia."""
+        return tuple(None for _ in self.uklad.nazwy)
+
     # -- wielkosci posrednie ---------------------------------------------
 
     def uchyb_synchronizacji(self, stany: dict[str, Dual], napiecie: Zespolona) -> Dual:
@@ -473,6 +481,12 @@ class PrzeksztaltnikGFL:
         w [0, 1]. Stany odniesien maja zerowa pochodna.
         """
         return tuple(None for _ in self.nazwy_stanow)
+
+    @property
+    def zakresy_waznosci(self) -> tuple[tuple[float, float] | None, ...]:
+        """Przeksztaltnik bez zasobnika nie ma zakresu waznosci na zadnym stanie —
+        energia plynie z instalacji pierwotnej, ktorej ten model nie obejmuje."""
+        return self.rdzen.zakresy_waznosci
 
     @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:

@@ -41,7 +41,9 @@ from network_model.solvers.dynamika.urzadzenia import (
     UrzadzenieOdlaczone,
     zbuduj_maszyne_synchroniczna,
     zbuduj_rdzen_gfl,
+    zbuduj_zasobnik,
 )
+from network_model.solvers.dynamika.urzadzenia.pochodne_kierunkowe import Dual
 
 from tests.network_model.dynamika.biblioteka_urzadzen import (
     F_BAZOWA_HZ,
@@ -503,6 +505,103 @@ def test_zmiana_bazy_maszyny_nie_zmienia_wielkosci_fizycznych() -> None:
     )
 
 
+def test_bazy_magazynu_sa_rozdzielone_i_policzalne_z_kontraktu() -> None:
+    """KAZDE przejscie bazy zasobnika, z jawna arytmetyka — nie „wyglada dobrze".
+
+    Magazyn miesza w jednym kontrakcie CZTERY rozne bazy i to jest miejsce, w ktorym
+    blad skali nie daje sie odroznic od fizyki:
+    * `S_b` = baza mocy UKLADU (tu 100 MVA) — w niej zyja wszystkie wielkosci rdzenia;
+    * `S_n` = moc znamionowa PRZEKSZTALTNIKA (30 MVA) — w niej kontrakt podaje
+      `p_rezerwa_pu`, bo to nastawa urzadzenia;
+    * granice mocy zasobnika sa w kW BEZWZGLEDNYCH, nie w pu czegokolwiek;
+    * pojemnosc jest w kWh, a stan naladowania BEZWYMIAROWY — wiec baza energii to
+      sama pojemnosc i zadne przeliczenie bazy jej nie dotyczy.
+
+    Liczby sa wyprowadzone recznie z kontraktu:
+    `rezerwa = 0,1 * 30/100 = 0,03 pu`, `ladowanie = 25000/1000/100 - 0,03 = 0,22 pu`.
+    """
+    zasobnik = zbuduj_zasobnik(
+        e_n_kwh=20_000.0,
+        p_ladowania_max_kw=25_000.0,
+        p_rozladowania_max_kw=20_000.0,
+        sprawnosc_ladowania=0.95,
+        sprawnosc_rozladowania=0.93,
+        soc_min=0.1,
+        soc_max=0.9,
+        soc_poczatkowy=0.5,
+        p_rezerwa_pu=0.1,
+        s_n_przeksztaltnika_mva=30.0,
+        s_bazowa_mva=S_BAZOWA_MVA,
+    )
+    assert zasobnik.p_ladowania_max_pu == pytest.approx(0.22, abs=1e-15)
+    assert zasobnik.p_rozladowania_max_pu == pytest.approx(0.20 - 0.03, abs=1e-15)
+    assert zasobnik.pojemnosc_kwh == 20_000.0
+    assert zasobnik.s_bazowa_mva == S_BAZOWA_MVA
+    okno = zasobnik.okno_mocy()
+    assert (okno.dol_pu, okno.gora_pu) == (-0.22, pytest.approx(0.17, abs=1e-15))
+
+
+def test_ta_sama_rezerwa_fizyczna_w_dwoch_bazach_przeksztaltnika_daje_to_samo_okno() -> None:
+    """3 MW rezerwy to 3 MW — niezaleznie od tego, czy przeksztaltnik ma 30 czy 50 MVA.
+
+    Kontrakt podaje rezerwe W BAZIE PRZEKSZTALTNIKA, wiec ta sama liczba pu przy innej
+    mocy znamionowej znaczy INNA moc fizyczna. Test podaje te sama moc FIZYCZNA
+    wyrazona w dwoch bazach i zada identycznego okna: to jest dokladnie ten predykat,
+    ktory lamie sie, gdy ktos zapomni przelicznika albo da go w druga strone.
+    """
+    wspolne = {
+        "e_n_kwh": 20_000.0,
+        "p_ladowania_max_kw": 25_000.0,
+        "p_rozladowania_max_kw": 25_000.0,
+        "sprawnosc_ladowania": 0.95,
+        "sprawnosc_rozladowania": 0.93,
+        "soc_min": 0.1,
+        "soc_max": 0.9,
+        "soc_poczatkowy": 0.5,
+        "s_bazowa_mva": S_BAZOWA_MVA,
+    }
+    trzydziesci = zbuduj_zasobnik(p_rezerwa_pu=0.1, s_n_przeksztaltnika_mva=30.0, **wspolne)
+    piecdziesiat = zbuduj_zasobnik(p_rezerwa_pu=0.06, s_n_przeksztaltnika_mva=50.0, **wspolne)
+    assert trzydziesci.okno_mocy() == piecdziesiat.okno_mocy()
+
+
+def test_tempo_naladowania_zalezy_od_mocy_FIZYCZNEJ_a_nie_od_liczby_wzglednej() -> None:
+    """Ten sam zasobnik w dwoch bazach ukladu: 10 MW to 10 MW, wiec `dSOC/dt` jest jedno.
+
+    To jest predykat, ktory zabija blad bazy mocy w prawie energii. W bazie 100 MVA
+    10 MW ma liczbe 0,10 pu, w bazie 50 MVA — 0,20 pu. Gdyby `pochodna_naladowania`
+    czytala liczbe wzgledna bez przeliczenia na moc fizyczna (albo czytala baze
+    PRZEKSZTALTNIKA zamiast bazy UKLADU), oba biegi dalyby tempo rozne dwukrotnie —
+    i zaden test na pojedynczej bazie by tego nie zobaczyl.
+
+    Wartosc odniesienia jest policzona z kontraktu, nie z kodu:
+    `10 000 kW / 0,93 / (20 000 kWh * 3600 s) = 1,4936e-04 1/s`.
+    """
+    wspolne = {
+        "e_n_kwh": 20_000.0,
+        "p_ladowania_max_kw": 25_000.0,
+        "p_rozladowania_max_kw": 25_000.0,
+        "sprawnosc_ladowania": 0.95,
+        "sprawnosc_rozladowania": 0.93,
+        "soc_min": 0.1,
+        "soc_max": 0.9,
+        "soc_poczatkowy": 0.5,
+        "p_rezerwa_pu": 0.0,
+        "s_n_przeksztaltnika_mva": 30.0,
+    }
+    moc_fizyczna_mw = 10.0
+    oczekiwane_1_s = -(moc_fizyczna_mw * 1000.0 / 0.93) / (20_000.0 * 3600.0)
+    tempa: list[float] = []
+    for s_bazowa_mva in (S_BAZOWA_MVA, S_BAZOWA_MVA / 2.0):
+        zasobnik = zbuduj_zasobnik(s_bazowa_mva=s_bazowa_mva, **wspolne)
+        moc_pu_ukladu = moc_fizyczna_mw / s_bazowa_mva
+        tempa.append(zasobnik.pochodna_naladowania(Dual(moc_pu_ukladu)).wartosc)
+    assert tempa[0] == pytest.approx(oczekiwane_1_s, rel=1e-12), f"zmierzono {tempa}"
+    assert tempa[0] == pytest.approx(
+        tempa[1], rel=1e-12
+    ), f"To samo 10 MW dalo rozne tempo w dwoch bazach ukladu: {tempa}"
+
+
 def test_zmiana_bazy_przeksztaltnika_nie_zmienia_ogranicznika() -> None:
     """Ogranicznik pradu przeksztaltnika jest ta sama GRANICA FIZYCZNA w obu bazach.
 
@@ -536,3 +635,76 @@ def test_zmiana_bazy_przeksztaltnika_nie_zmienia_ogranicznika() -> None:
     assert rdzen.i_max_pu == pytest.approx(rdzen_w_bazie.i_max_pu)
     assert rdzen.k_frt == pytest.approx(rdzen_w_bazie.k_frt)
     assert rdzen.p_odbudowa_pu_na_s == pytest.approx(rdzen_w_bazie.p_odbudowa_pu_na_s)
+
+
+# ---------------------------------------------------------------------------
+# Deklaracje granic i zakresow waznosci — INWENTARZ KLASY, nie przyklad
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("opis", "urzadzenie", "p_pu"),
+    list(wszystkie_konfiguracje()),
+    ids=[opis for opis, _, _ in wszystkie_konfiguracje()],
+)
+def test_deklaracje_granic_i_zakresow_sa_kompletne(
+    opis: str, urzadzenie: Urzadzenie, p_pu: float
+) -> None:
+    """Obie deklaracje maja DOKLADNIE tyle wpisow, ile urzadzenie ma stanow.
+
+    Niekompletna deklaracja nie jest „brakiem ograniczen" — jest rozjazdem indeksow,
+    po ktorym granica jednego stanu trafia na inny. Kontrakt wymaga kompletu i
+    calkowanie to sprawdza, ale sprawdzenie w silniku lapie dopiero bieg; ten test
+    lapie sama deklaracje, dla KAZDEJ konfiguracji biblioteki.
+    """
+    del p_pu
+    liczba = len(urzadzenie.nazwy_stanow)
+    assert len(urzadzenie.granice_stanow) == liczba, f"{opis}: granice_stanow"
+    assert len(urzadzenie.zakresy_waznosci) == liczba, f"{opis}: zakresy_waznosci"
+
+
+def test_inwentarz_zakresow_waznosci_calej_biblioteki_jest_przypiety() -> None:
+    """Zakres waznosci ma DOKLADNIE JEDEN stan w calej bibliotece: `soc_pu` magazynu.
+
+    To jest INWENTARZ KLASY, nie przyklad (regula KLASA par. 1). Roznica miedzy
+    ogranicznikiem a zakresem waznosci decyduje o tym, czy bieg leci dalej z
+    rzutowanym stanem, czy konczy sie odmowa — wiec kazde nowe wystapienie musi byc
+    ROZSTRZYGNIETE swiadomie, a nie dopisane mimochodem. Ten test wymusza to
+    rozstrzygniecie: dopisanie zakresu gdziekolwiek indziej wywala go i kaze wpisac
+    nowe miejsce tutaj wraz z uzasadnieniem.
+
+    Dlaczego akurat SOC. Ogranicznik jest czlonem modelu i pozostale rownania CZYTAJA
+    stan sprowadzony na granice (strumien maszyny czyta `efd_pu`, moc aerodynamiczna
+    czyta `pitch_rad`, okno mocy czyta `crowbar_pu`). Stanu naladowania nie czyta nic
+    — przeksztaltnik pracuje tak samo przy SOC 0,55 i przy SOC 0,10 — wiec rzutowanie
+    nie uzgadnialoby modelu, tylko zamrazalo jedna liczbe (pomiar: 86 % bilansu
+    energii przebiegu wziete znikad; patrz `Magazyn.zakresy_waznosci`).
+    """
+    z_zakresem: set[tuple[str, str]] = set()
+    z_ogranicznikiem: set[tuple[str, str]] = set()
+    for opis, urzadzenie, _ in wszystkie_konfiguracje():
+        rodzina = opis.split()[0]
+        for nazwa, zakres, granica in zip(
+            urzadzenie.nazwy_stanow,
+            urzadzenie.zakresy_waznosci,
+            urzadzenie.granice_stanow,
+            strict=True,
+        ):
+            if zakres is not None:
+                z_zakresem.add((rodzina, nazwa))
+            if granica is not None:
+                z_ogranicznikiem.add((rodzina, nazwa))
+    assert {nazwa for _, nazwa in z_zakresem} == {"soc_pu"}, (
+        f"Nowy zakres waznosci poza magazynem: {sorted(z_zakresem)}. Rozstrzygnij, czy to "
+        "ogranicznik (bieg leci dalej), czy zakres waznosci (bieg konczy sie odmowa), i "
+        "dopisz uzasadnienie do tego testu."
+    )
+    assert {nazwa for _, nazwa in z_ogranicznikiem} == {
+        "efd_pu",
+        "pitch_rad",
+        "crowbar_pu",
+    }, f"Zmienil sie zbior ogranicznikow: {sorted(z_ogranicznikiem)}"
+    assert not ({nazwa for _, nazwa in z_zakresem} & {nazwa for _, nazwa in z_ogranicznikiem}), (
+        "Zaden stan nie moze byc jednoczesnie ogranicznikiem i zakresem waznosci — "
+        "rzutowanie i odmowa wykluczaja sie"
+    )

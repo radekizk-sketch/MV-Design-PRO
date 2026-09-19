@@ -81,6 +81,12 @@ KOD_WARIANT_BEZ_PARAMETROW = "dynamika.wariant_regulatora_bez_parametrow"
 #: wiec rownowaga poczatkowa nie istnieje — odmowa NAZWANA zamiast biegu, ktory
 #: „startuje skokiem" i tlumaczy pierwsza sekunde artefaktem rozruchu.
 KOD_PUNKT_PRACY_POZA_OGRANICZENIEM = "dynamika.punkt_pracy_poza_ograniczeniem"
+#: Stan wyszedl poza ZAKRES WAZNOSCI modelu urzadzenia (nie poza ogranicznik — te
+#: dwie rzeczy sa rozne, patrz `Urzadzenie.zakresy_waznosci`). Przyklad jedyny w
+#: obecnej bibliotece: stan naladowania magazynu opuszczajacy `[SOC_min, SOC_max]`.
+#: Od tej chwili urzadzenie oddawaloby do sieci moc, ktorej zrodla nie ma w
+#: modelu — kazda dalsza probka byla by trajektoria nieosiagalna energetycznie.
+KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY = "dynamika.zakres_waznosci_przekroczony"
 
 #: Zamkniety rejestr kodow odmow tego rdzenia. Nowy kod DOPISUJESZ tutaj —
 #: `OdmowaDynamiki` odrzuca kod spoza rejestru (deklaracja z przypietym testem,
@@ -97,6 +103,7 @@ KODY_ODMOW: tuple[str, ...] = (
     KOD_SIEC_NIESPOJNA,
     KOD_WARIANT_BEZ_PARAMETROW,
     KOD_WARTOSC_NIESKONCZONA,
+    KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY,
     KOD_ZDARZENIE_BEZ_ELEMENTU,
     KOD_ZWARCIE_METALICZNE,
     KOD_ZWARCIE_NIESYMETRYCZNE,
@@ -405,6 +412,44 @@ class Urzadzenie(Protocol):
         """
 
     @property
+    def zakresy_waznosci(self) -> tuple[tuple[float, float] | None, ...]:
+        """Zakresy WAZNOSCI MODELU — po jednym wpisie na stan, `None` gdy stan jest wolny.
+
+        TO NIE JEST DRUGA NAZWA `granice_stanow`. Roznica jest merytoryczna i
+        rozstrzyga o tym, co silnik ma zrobic, gdy stan dojdzie do konca zakresu:
+
+        * `granice_stanow` opisuje OGRANICZNIK, czyli czlon modelu. Wzbudnica
+          naprawde nie wyda wiecej niz `Efd_max`, lopata naprawde nie obroci sie
+          za oporem mechanicznym, sygnal dwustanowy naprawde lezy w [0, 1].
+          Stan sprowadzony na granice jest stanem POPRAWNYM, a pozostale rownania
+          go CZYTAJA i odpowiadaja na niego wlasciwie (strumien maszyny czyta
+          `Efd`, moc aerodynamiczna czyta kat lopat, okno mocy czyta crowbar).
+          Dlatego rzutowanie jest tu modelem fizyki i bieg leci dalej.
+        * `zakresy_waznosci` opisuje ZALOZENIE BADANIA. Poza nim model nie ma
+          rownan — nie dlatego, ze cos je zatrzymuje, tylko dlatego, ze nikt ich
+          nie napisal. Stanu sprowadzonego na taka granice NIE CZYTA zadne
+          rownanie, wiec rzutowanie niczego nie uzgadnia: zamraza jedna liczbe i
+          zostawia reszte modelu w niezmienionym biegu.
+
+        DLACZEGO TO MA WLASNY MECHANIZM (pomiar, nie przeczucie). Stan naladowania
+        magazynu byl zadeklarowany jako `granice_stanow`. Bieg z SOC dochodzacym
+        do `SOC_min` konczyl sie normalnie, ze statusem poprawnym i pelnym
+        kompletem probek, a magazyn oddawal do sieci 24 MW przez 1,7 s po
+        opróznieniu ogniw. Pomiar bilansu: z ogniw mialo ubyc 14,337 kWh, ubylo
+        2,000 kWh — 12,337 kWh energii wzietej ZNIKAD (86 % bilansu przebiegu).
+        Symetrycznie przy `SOC_max`: 10,667 kWh pochlonietych przez pelna baterie.
+        Rzutowanie nie chronilo wyniku, tylko ukrywalo, ze wynik jest nieosiagalny.
+
+        KONTRAKT: wyjscie stanu poza swoj zakres waznosci konczy bieg odmowa
+        `dynamika.zakres_waznosci_przekroczony` z adresem stanu, chwila, wartoscia
+        i przekroczona granica. Odmowa, nie flaga w wyniku: probki policzone poza
+        zakresem waznosci nie sa „mniej pewne", tylko nie pochodza z zadnego
+        modelu, a uzytkownik nie ma jak odgadnac, ktore odrzucic.
+
+        Urzadzenie, ktorego kazdy stan jest wazny wszedzie, zwraca same `None`.
+        """
+
+    @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         """Stany, ktorych pochodna w punkcie pracy NIE MUSI byc zerowa.
 
@@ -508,6 +553,7 @@ __all__ = [
     "KOD_WARIANT_BEZ_PARAMETROW",
     "KOD_WARTOSC_NIESKONCZONA",
     "KOD_ZDARZENIE_BEZ_ELEMENTU",
+    "KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY",
     "KOD_ZWARCIE_METALICZNE",
     "KOD_ZWARCIE_NIESYMETRYCZNE",
     "GalazDynamiki",

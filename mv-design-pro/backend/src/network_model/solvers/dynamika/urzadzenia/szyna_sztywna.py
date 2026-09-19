@@ -58,6 +58,12 @@ class SzynaSztywna:
         return (None, None)
 
     @property
+    def zakresy_waznosci(self) -> tuple[tuple[float, float] | None, ...]:
+        """Model szyny sztywnej jest wazny dla kazdej wartosci SEM — nie ma zasobu,
+        ktory moglby sie wyczerpac, ani zalozenia o zakresie skladowych."""
+        return (None, None)
+
+    @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         """SEM szyny sztywnej jest stala — obie skladowe sa rownowaga."""
         return ()
