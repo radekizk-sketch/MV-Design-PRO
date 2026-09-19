@@ -1107,3 +1107,289 @@ przebiegiem, nie cytatem.
 | M8 | kolejność kanoniczna zdarzeń zdjęta | `zdarzenia.py` | `test_kolejnosc_kanoniczna_jest_stabilna_po_czasie` | 1 ZABITA |
 
 **ZABITYCH: 8 / 8.**
+
+---
+
+## Załącznik Z5 — RUNDA 6: audyt przyczynowy A1/K1 + bramka odbioru W6-A (2026-09-19)
+
+Runda wykonana na `2804c80e891dee2f89919c46df38f4a66fd42456` przy drzewie CZYSTYM
+(`git status --short` puste przed i po). Każda liczba niżej pochodzi z przebiegu
+wykonanego w TEJ rundzie — nie z cytatu poprzedniego meldunku ani z treści commita.
+Dwie sondy własne okazały się wadliwe i są opisane razem z poprawkami (Z5.6, Z5.7):
+zero naruszeń bez rozdzielczości pomiaru nie jest dowodem.
+
+### Z5.1 BRAMKA A — rekonstrukcja przyczynowa awarii `B-BENCH/03 IEEE case14 PF`
+
+Reprodukcja historyczna w IZOLOWANYM drzewie roboczym (`git worktree add --detach`
+na `2c4747a8`), bez dotykania drzewa bieżącego. Ten sam bliźniak, ten sam tor
+kanoniczny, ta sama maszyna:
+
+| wielkość | `2c4747a8` (stan odniesienia) | `2804c80e` (dziś) |
+|---|---|---|
+| `converged` | **false** | true |
+| `iterations_count` | **30** | 5 |
+| `pv_to_pq_switches` | 1 wpis: `iter 4`, `q_calc −158,8619 Mvar`, `limit −150,0`, `under` | `[]` |
+| max \|U\| | **557,5474 p.u.** (B12) | 1,090 p.u. |
+
+Łańcuch przyczynowy, ogniwo po ogniwie, z wartościami:
+
+1. **WEJŚCIE** — `catalog/mv_benchmark_catalog.py:238-252` (`_IEEE14_LINES`): `br7` =
+   (r 0,09498 · x 0,1989) p.u. na bazie MOCY 100 MVA i napięciu POZIOMU linii.
+2. **STEMPEL KATALOGU** — baza wybierana przez `_POZIOM_LINII_KV`
+   (`mv_benchmark_catalog.py:404-406`, `{"ieee14bus": {f"br{i}": 0.208 for i in range(7, 15)}}`):
+   poprawnie `z_base = 0,208²/100 = 4,3264·10⁻⁴ Ω` → `r = 4,1092·10⁻⁵ Ω/km`;
+   historycznie (bez tej tabeli) `z_base = 135²/100 = 182,25 Ω` → `r = 17,3101 Ω/km`,
+   czyli **421 251 razy za dużo** ((135/0,208)² = 421 250,92).
+3. **ASEMBLER** — `enm/mapping.py:429` (`z_base_ohm = builder.get_zbase_ohm(from_id)`)
+   i `:375` (`z_pu = z_ohm / z_base_ohm`) przelicza z powrotem bazą WŁASNEJ szyny
+   (0,208 kV): poprawnie odzyskuje 0,09498 + j0,1989 p.u.; z defektem daje
+   **40 010 + j83 787 p.u.** — odcinek linii o rezystancji 4·10⁴ p.u.
+4. **SOLVER** — NR ze startu płaskiego na sieci z ośmioma takimi gałęziami NIE ZBIEGA
+   (pomiar wyżej: 30 iteracji, |U| do 557 p.u.).
+5. **DECYZJA GRANICY Q → PRZEJŚCIE PV→PQ** — na trajektorii rozbieżnej Q węzłów
+   regulujących wychodzi poza każde okno; lista przełączeń jest zapisem TEJ trajektorii.
+6. **PARYTET** — `porownaj_wpis` porównuje najpierw szkielet, więc zgłosił
+   `$.pv_to_pq_switches[1]`/`[2]` i ZAKOŃCZYŁ — liczb kontraktu nie porównał.
+
+**Dlaczego akurat `[1]` i `[2]`.** Lista jest uporządkowana wystąpieniami wzdłuż toru
+iteracyjnego. Wpis `[0]` (pierwsze przełączenie) wypadł zgodnie na obu maszynach;
+wpisy `[1]` i `[2]` to przełączenia GŁĘBOKO w torze rozbieżnym (`iter: 26` na CI),
+gdzie iterata jest zdominowana przez wzmocniony błąd zaokrągleń — więc to, CZY w ogóle
+zachodzą i w której iteracji, jest funkcją BLAS, nie wejścia. Długość listy była inna
+(3 na CI run 4920, 1 tutaj), a różnica długości ujawnia się jako różnica szkieletu
+na pierwszym rozjeżdżającym się indeksie, czyli `[1]`.
+
+**Klasyfikacja przyczyny** (z listy §3 promptu): **dane wejściowe — baza jednostek
+względnych impedancji linii bliźniaka**. NIE: logika PV→PQ, NIE: kod granic Q, NIE:
+kolejność/indeksowanie szyn, NIE: tolerancja, NIE: traktowanie szyny bilansującej,
+NIE: serializacja asemblera, NIE: fizyka solvera, NIE: błąd wartości w goldenie.
+
+**Atrybucja rozdzielona eksperymentem.** Mutacja M9 (Z5.4) cofa WYŁĄCZNIE bazę linii,
+zostawiając `Source.u_set_pu` na poprawnych 1,06 p.u. — bliźniak i tak NIE ZBIEGA
+(`assert wynik.get("converged") is True` → `False`). Baza linii jest więc przyczyną
+WYSTARCZAJĄCĄ; brak `u_set_pu` był drugim, niezależnym defektem danych (zły wynik
+zbieżny), nie przyczyną rozbieżności.
+
+### Z5.2 BRAMKA A — wyrocznia NIEZALEŻNA (nie implementacja produktu)
+
+pandapower 3.5.4, `pn.case14()`, w osobnym środowisku (`/root/.cache/pp-venv`), bez
+udziału kodu MV-DESIGN-PRO:
+
+* `net.bus.vn_kv` = 135 kV (B0–B4), **0,208 kV** (B5), 14 kV (B6), 12 kV (B7),
+  **0,208 kV** (B8–B13) — poziom 0,208 kV jest DANĄ ŹRÓDŁOWĄ, nie pomyłką bliźniaka;
+* `vm_pu` pandapower vs bliźniak na `2804c80e`: zgodność na 14 szynach, największa
+  różnica **1·10⁻⁸ p.u.** (B9: 1,05098463 vs 1,05098462);
+* **czy przełączenia [1]/[2] POWINNY wystąpić — rozstrzygnięte niezależnie:**
+  Q generatorów w rozwiązaniu = 43,5571 · 25,0753 · 12,7309 · 17,6235 Mvar wobec
+  granic MATPOWER (−40/50, 0/40, −6/24, −6/24) → **każdy w granicach**;
+  `pp.runpp(net, enforce_q_lims=True)` przełącza **zero** szyn i daje profil napięć
+  identyczny co do 8 cyfr z biegiem bez egzekwowania (`max_roznica = 0,0`).
+  **Poprawna liczba przełączeń PV→PQ dla IEEE case14 wynosi ZERO** — ani `[1]`, ani `[2]`
+  nie powinno było wystąpić.
+* Uczciwie: `ext_grid` ma w danych granice 0…10 Mvar przy Q = −16,55 Mvar w rozwiązaniu.
+  Ani pandapower, ani nasz tor nie egzekwują granic Q na szynie bilansującej — to cecha
+  danych benchmarku, nie rozbieżność między implementacjami.
+* Job CI `pandapower` uruchomiony lokalnie tym samym poleceniem
+  (`pytest -q -m pandapower tests`): **30 passed**, RC=0.
+
+### Z5.3 BRAMKA A — forensyka goldenu: CZY BYŁ REGENEROWANY
+
+**TAK, dwa razy — i te dwa razy mają przeciwny znak.**
+
+1. `fc24fc76` (2026-09-09, „pv_to_pq_switches jako poddrzewo sladu"): dopisanie klucza
+   do maski `KLUCZE_SLADU_LICZBOWEGO` + regeneracja `zlote_hashe.json` (`2 +/-`).
+   To było **PRANIE CZERWIENI**: uzasadnienie („szum BLAS przy zerowej rozbieżności
+   liczb") było wnioskiem, nie pomiarem, bo `porownaj_wpis` kończył na szkielecie i liczb
+   nie porównał. CI run 4923 na `fc24fc76` pokazał 187 rozbieżności liczb kontraktu w tej
+   samej sieci — maska ukryła objaw, defekt został.
+2. `3483284f` (ten sam dzień): naprawa DANYCH (`_POZIOM_LINII_KV` + `Source.u_set_pu`
+   + zaczepy case39), **cofnięcie maski** i regeneracja goldenu na wyniku zbieżnym.
+
+Stan na `2804c80e`, zmierzony w tej rundzie:
+`KLUCZE_SLADU_LICZBOWEGO == {"branch_contributions", "branch_flow_trace", "white_box_trace"}`
+— `pv_to_pq_switches` NIE jest maskowany; wpis goldenu
+`B-BENCH/03:IEEE case14 (MATPOWER, via pandapower 3.4.0)/PF` ma
+`szkielet_skroty["$.pv_to_pq_switches"] = "4f53cda18c2baa0c"`, a wywołanie
+`skroty_szkieletu({"pv_to_pq_switches": []})` zwraca DOKŁADNIE `4f53cda18c2baa0c`.
+Golden przypina więc **zero przełączeń** — czyli odpowiedź, którą wyrocznia zewnętrzna
+(Z5.2) wskazuje jako fizycznie poprawną.
+
+**Werdykt forensyki:** łańcuch „test czerwony → regeneracja goldenu → test zielony"
+ISTNIEJE w historii (`fc24fc76`) i został w repozytorium nazwany po imieniu; łańcuch
+zamykający jest inny — „defekt danych → naprawa → cofnięcie maski → golden przypina
+wynik zgodny z wyrocznią zewnętrzną". Stan odbierany jest drugim, nie pierwszym.
+
+### Z5.4 BRAMKA A — mutacja M9 (historyczny defekt case14 wstrzyknięty ponownie)
+
+Iniekcja: `_POZIOM_LINII_KV = {}` (linie 0,208 kV wracają na bazę systemu 135 kV).
+
+| faza | wynik |
+|---|---|
+| drzewo poprawne | **34 passed** (`test_blizniaki_pf_zbieznosc` + `test_mv_benchmark_catalog_poziomy` + `test_blizniaki_matpower_napiecia` + `tests/golden/parytet_assemblera`) |
+| z mutacją | **5 failed** w 4 plikach — `test_blizniak_zbiega_bez_przelaczen_pv_pq[B-BENCH/03…]` (`converged False`), `test_baza_impedancji_linii_rowna_napieciu_szyn[B-BENCH/03…]`, `test_ieee14bus_odcinki_0208_kv_maja_baze_0208_kv` (`135.0 == 0.208 ± 2.1e-07`), `test_blizniak_matpower_napiecia_jak_pandapower[case14]`, parytet asemblera ze ścieżkami `$.pv_to_pq_switches[0..3]` |
+| po przywróceniu | **34 passed**, drzewo czyste |
+
+Parytet asemblera pod M9 wskazuje `$.pv_to_pq_switches[0]…[3]` — to dowód, że
+**zdjęcie maski przywróciło detektor**: gdyby maska z `fc24fc76` została, te ścieżki
+byłyby poza porównaniem i ta sama klasa defektu znów przeszłaby przez szkielet.
+
+### Z5.5 BRAMKA B — matematyka W6-A zweryfikowana DRUGĄ DROGĄ (§8)
+
+Układ SMIB odchylony od równowagi (kąt +0,15 rad, prędkość +0,004 p.u.), żeby
+`xdot ≠ 0`; algebra rozwiązana torem produkcyjnym, pochodna porównana z CENTRALNĄ
+różnicą skończoną rozwiązania algebraicznego wzdłuż prawdziwej trajektorii:
+
+| krok `h` | maks. błąd \|V̇_FD − V̇_rdzeń\| | względny |
+|---|---|---|
+| 10⁻³ | 2,0470·10⁻⁷ | 2,632·10⁻⁷ |
+| 10⁻⁴ | 2,0468·10⁻⁹ | 2,632·10⁻⁹ |
+| 10⁻⁵ | 2,4195·10⁻¹¹ | 3,111·10⁻¹¹ |
+
+Stosunek 2,047·10⁻⁷ / 2,047·10⁻⁹ = 100 = 10² — **zbieżność DRUGIEGO rzędu**, czyli
+podpis poprawnej pochodnej (błędna zostawiłaby resztę niezależną od `h`).
+Tożsamość częstotliwości, ten sam bieg:
+
+| węzeł | `Im(V̇ conj V)/\|V\|²` vs `Im(V̇/V)` | vs różnica skończona kąta | `f` rdzenia vs `f` z FD |
+|---|---|---|---|
+| GEN | 1,11·10⁻¹⁶ | 1,83·10⁻¹² | 2,91·10⁻¹³ Hz |
+| SYS | 1,39·10⁻¹⁷ | 2,48·10⁻¹² | 3,98·10⁻¹³ Hz |
+
+### Z5.6 BRAMKA B — próba FALSYFIKACJI nierówności propagacji (§9)
+
+**Pierwsza sonda była bezwartościowa i jest tu opisana, nie schowana.** Mierzyła
+`ρ_f = |Δf|/u_f` przez odejmowanie dwóch liczb rzędu 50 Hz. Przy |Δf| ~ 7,5·10⁻¹³ Hz
+kasacja daje ~1 ulp(50 Hz) = 7,105·10⁻¹⁵ Hz szumu, czyli ~1 % — i to, a nie nierówność,
+wyprodukowało 13 „naruszeń" na 800 000 prób przy maks. ρ_f = 1,0062. Druga wada: w
+punkcie pracy `u_V ≈ 3·10⁻¹⁷ < ulp(|V|)`, więc `V + dV == V` bitowo i sonda nie ruszyła
+`f` ANI RAZU (max ρ = 0,0 przy zero naruszeń — zero bez rozdzielczości nie jest dowodem).
+
+Sonda poprawiona: pomiar w dziedzinie `θ̇` (bez kasacji względem 50 Hz), zadeklarowane
+`u_V`, `u_V̇` przemiatane po rzędach wielkości (`u_V` do 0,999·|V|, czyli w pobliże
+osobliwości mianownika), kierunek najgorszego przypadku (`dV` antyrównoległe do `V`)
+wymuszany obok losowego:
+
+* **800 000 prób, NARUSZEŃ: 0**;
+* rozkład: ρ ≤ 0,5 — 461 007; 0,5–0,9 — 246 709; 0,9–1,0 — **92 284**; > 1,0 — **0**;
+* **max ρ = 0,9999999996** przy `u_V/|V| = 0,00288`, kierunek antyrównoległy.
+
+Nierówność jest więc CIASNA (osiągana z dokładnością 4·10⁻¹⁰ względnie) i nieprzekroczona.
+Nazewnictwo bez zmian: `u_V` pozostaje ESTYMATĄ PIERWSZEGO RZĘDU (`|J⁻¹r|`), nie
+certyfikowaną granicą — propagacja jest ścisła POD ZAŁOŻENIEM `|dV| ≤ u_V`.
+
+### Z5.7 BRAMKA B — ponowny test granicy P1-DELTA-40 (§10)
+
+**Druga sonda własna też była wadliwa**: przemiatała 81 ULP-ów PRZEZ próg, więc „obie
+etykiety w zbiorze" było jej POPRAWNYM wynikiem, nie defektem. Poprawione dwie rzeczy:
+
+**Stabilność etykiety** (Q-4) — 81 przesunięć wejścia o 1 ULP w pięciu punktach Z DALA
+od progu: `u_f = 10⁻³` przy `d/u = 0,5` → wyłącznie NIEROZRÓŻNIALNA; przy `d/u = 2,0` →
+wyłącznie ROZRÓŻNIALNA; `u_f = 0`, `d = 0` → wyłącznie NIEROZRÓŻNIALNA; `u_f = 10⁻⁶`
+przy `d/u = 0,1` i `10,0` → po jednej etykiecie. **Zero migotania.**
+
+**Równość `d_f = u_f`** — równość BITOWA jest w tej arytmetyce GENERYCZNIE NIEOSIĄGALNA:
+`d_f` powstaje jako `|fl(f_n + θ̇/2π) − f_n|`, więc leży na siatce o skoku ulp(f_n),
+a `u_f` jest pełnowartościowym doublem (szukanie po ±4000 ULP nie znalazło trafienia dla
+żadnego z `u_f` ∈ {10⁻¹, 10⁻³, 10⁻⁶, 10⁻⁹}). Kontrakt ma więc sens tylko w postaci
+„każdy OSIĄGALNY punkt siatki w odległości ≤ rozdzielczości od `u_f` dostaje
+NIEROZRÓŻNIALNA" — i to jest zmierzone:
+
+| `u_f` [Hz] | punktów w promieniu `r` | wszystkie NIEROZRÓŻNIALNE | pierwsza ROZRÓŻNIALNA `d−u` | szerokość strefy |
+|---|---|---|---|---|
+| 10⁻¹ | 2 | tak | 8,521·10⁻¹⁵ > r | **1,0 r** |
+| 10⁻³ | 2 | tak | 1,188·10⁻¹⁴ > r | **1,0 r** |
+| 10⁻⁶ | 2 | tak | 1,169·10⁻¹⁴ > r | **1,0 r** |
+| 10⁻⁹ | 2 | tak | 1,074·10⁻¹⁴ > r | **1,0 r** |
+
+`r = rozdzielczosc_porownania_hz = 7,105427357601002·10⁻¹⁵ Hz = ulp(50 Hz)` w każdym
+przypadku. Strefa przełączenia ma dokładnie JEDNĄ jednostkę rozdzielczości — minimum
+możliwe dla ostrego predykatu. To jest dowód, że rozdzielczość jest WYPROWADZONA z
+arytmetyki, a nie dobrana: odtwarza ulp(f_n) w każdej skali.
+
+### Z5.8 BRAMKA B — zachowanie energii magazynu, w tym PRÓBA rozładowania pustego (§11)
+
+Pomiar niezależną wyrocznią (całka `P_dc` z zapisanego `p_pu@BESS1`, sprawności z
+kontraktu, `dSOC/dt = −P_dc[kW]/(E_n[kWh]·3600)`), próg przypięty 10⁻⁸:
+
+| przypadek | ΔSOC zmierzone | ΔSOC z wyroczni | ε_E |
+|---|---|---|---|
+| rozładowanie P = +0,20 p.u., 2 s | −5,973716·10⁻⁴ | −5,973716·10⁻⁴ | **1,04·10⁻¹⁴** |
+| ładowanie P = −0,20 p.u., 2 s | +5,277778·10⁻⁴ | +5,277778·10⁻⁴ | **3,68·10⁻¹⁴** |
+| P = 0 | **dokładnie 0,0** | −3,2·10⁻²⁰ | 3,2·10⁻²⁰ |
+
+Granice zakresu — próba rozładowania PUSTEGO i ładowania PEŁNEGO magazynu:
+
+| scenariusz | wynik | t [s] | SOC w chwili odmowy | przekroczenie |
+|---|---|---|---|---|
+| SOC₀ = 0,102, P = +0,25 | **ODMOWA** `dynamika.zakres_waznosci_przekroczony` | 5,358 | 0,09999955 | 4,48·10⁻⁷ |
+| SOC₀ = 0,898, P = −0,25 | **ODMOWA** ta sama | 6,064 | 0,90000028 | 2,78·10⁻⁷ |
+| SOC₀ = 0,100 (dokładnie), P = +0,25 | **ODMOWA** w PIERWSZYM kroku | 0,002 | 0,09999925 | 7,47·10⁻⁷ |
+| SOC₀ = 0,900 (dokładnie), P = −0,25 | **ODMOWA** w PIERWSZYM kroku | 0,002 | 0,90000066 | 6,60·10⁻⁷ |
+| SOC₀ = 0,100, P = −0,25 (ładowanie) | bieg dokończony, SOC 0,100 → 0,10165 | — | — | — |
+| SOC₀ = 0,900, P = +0,25 (rozładowanie) | bieg dokończony, SOC 0,900 → 0,89813 | — | — | — |
+
+**Nie ma kreacji ani ubytku energii z przycięcia SOC, bo nie ma przycięcia** — koniec
+zakresu ważności kończy bieg NAZWANĄ odmową z adresem stanu, a kierunek odbudowujący
+nie jest niczym blokowany (predykaty wejścia i wyjścia z jednego źródła: `zakresy_waznosci`).
+
+Chwile odmowy potwierdzone NIEZALEŻNYM rachunkiem z kontraktu, co rozstrzyga zarazem
+kierunek sprawności (pytanie §6 poprzedniej rundy — „nie zgaduj, sprawdź"):
+rozładowanie `P_dc = 25 MW/0,93 = 26 881,7 kW` → `dSOC/dt = 3,7336·10⁻⁴ 1/s` →
+`t = 0,002/3,7336·10⁻⁴ = 5,357 s` wobec zmierzonych **5,358 s**;
+ładowanie `P_dc = 25 MW·0,95 = 23 750 kW` → `dSOC/dt = 3,2986·10⁻⁴ 1/s` →
+`t = 6,063 s` wobec zmierzonych **6,064 s** (różnica = jeden krok `dt = 2 ms`).
+Zamiana sprawności miejscami dałaby 6,19 s i 5,47 s — pomiar rozróżnia te hipotezy.
+
+### Z5.9 BRAMKA B — determinizm SO-1A MIĘDZY PROCESAMI (§15) i domknięta luka dowodu
+
+Scenariusz kanoniczny uruchomiony DWA RAZY w osobnych interpreterach
+(`PYTHONHASHSEED` = 1 i 987654321). Ładunek `resultset_dynamic_v1` o długości
+492 214 znaków różnił się w DOKŁADNIE jednym miejscu:
+
+```
+40842c40842
+<   "czas_obliczen_s": 17.1071886,
+>   "czas_obliczen_s": 16.0551271,
+```
+
+Po usunięciu tego pola (pomiar zegara `time.perf_counter()`, `silnik.py:273`; wyłączenie
+jest tą samą, już przypiętą decyzją co w `test_wynik.py:170`, `test_adapter_dynamiki.py:515`
+i `test_dynamika_rms_run.py:728`) oba ładunki są **bajt w bajt identyczne**:
+`sha256 = d985ed8b28ebbdd6a7d1fee0aef5f5f85f473eda67f3e8d39ece18b7347c1953`, 492 185 znaków.
+Własności biegu identyczne co do cyfry: 79 kanałów, 501 próbek, 4 zdarzenia,
+1137 kroków, 16 odrzuconych, `max_residuum_f = 9,776487939299016·10⁻¹¹`,
+`max_residuum_g = 4,62943376·10⁻¹⁰`.
+
+**Luka dowodu wykryta i domknięta w tej rundzie.** `test_powtorzony_bieg_daje_identyczny_wynik`
+powtarza bieg w TYM SAMYM procesie, więc nie może spaść pod defektem klasy „kolejność
+iteracji po zbiorze/słowniku wycieka do wyniku" — a reguła rdzenia 7 CLAUDE.md deklaruje
+stabilność odcisków bez zastrzeżenia do procesu. Dopisany
+`test_bieg_w_OSOBNYM_PROCESIE_daje_identyczny_ladunek` (ten sam plik e2e) uruchamia bieg
+w podprocesie z `PYTHONHASHSEED=0` i porównuje cały ładunek.
+
+### Z5.10 Macierz mutacyjna M1–M9 WYKONANA PONOWNIE na tym drzewie
+
+Iniekcje nakładane na drzewo robocze, testy uruchamiane, pliki przywracane; przy każdej
+mierzony kod wyjścia PRZED, Z MUTACJĄ i PO PRZYWRÓCENIU.
+
+| # | iniekcja | cel | przed | z mutacją | po | werdykt |
+|---|---|---|---|---|---|---|
+| M1 | równość `d_f = u_f` znów ROZRÓŻNIALNA | `test_f1_stan_ustalony…` | 1 passed | 1 failed | 1 passed | ZABITA |
+| M2 | znak `P_e` w równaniu ruchu | `test_cct_z_bisekcji…` | 1 passed (35,3 s) | 1 failed (1,0 s) | 1 passed | ZABITA |
+| M3 | `S = V·I` zamiast `V·conj(I)` | `test_obserwable -k galaz` | 3 passed | 2 failed | 3 passed | ZABITA |
+| M4 | przekładnia po złej stronie w Ybus | `test_siec -k przekladnia` | 2 passed | 1 failed | 2 passed | ZABITA |
+| M5 | znak mocy magazynu w prawie energii | `test_biblioteka_przebiegi -k magazyn` | 10 passed | 7 failed | 10 passed | ZABITA |
+| M6a | baza OKNA mocy: przekształtnik zamiast układu | `-k bazy_magazynu` | 1 passed | 1 failed | 1 passed | ZABITA |
+| M6b | baza TEMPA SOC w silniku: przekształtnik zamiast układu | `-k magazyn_bilans_energii` | 5 passed | 5 failed | 5 passed | ZABITA |
+| M7 | strażnik skończoności zdjęty ze ścieżki pochodnych | `-k NaN_w_pochodnej` | 1 passed | 1 failed | 1 passed | ZABITA |
+| M8 | kolejność kanoniczna zdarzeń zdjęta | `-k kolejnosc_kanoniczna` | 1 passed | 1 failed | 1 passed | ZABITA |
+| M9 | historyczny defekt bazy linii case14 | 4 pliki klasy (Z5.4) | 34 passed | 5 failed | 34 passed | ZABITA |
+
+**ZABITYCH: 10 / 10 iniekcji.**
+
+Dwa pierwsze przebiegi M2 i M6 wypadły „przeżyła" i obie przyczyny są własnym błędem
+sondy, nie luką dowodu: M2 celował w zły PLIK (`test_biblioteka_przebiegi -k cct`
+deselekcjonował wszystkie 36 testów — „36 deselected" to nie jest zielony test), a M6
+w wariancie „tempo SOC" celował w test, który woła `Zasobnik.pochodna_naladowania`
+BEZPOŚREDNIO, więc iniekcja w miejscu wywołania w `Magazyn.pochodne` była dla niego
+nieosiągalna. Po wskazaniu osiągalnych celów obie padają. Wniosek metodyczny: mutacja
+„przeżyła" wymaga sprawdzenia, czy test w ogóle wykonał kod, w który wstrzyknięto defekt.

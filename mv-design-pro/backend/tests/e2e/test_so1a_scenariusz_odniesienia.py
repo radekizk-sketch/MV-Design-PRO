@@ -28,6 +28,11 @@ to nie jest to samo, co zwalidowany fizycznie.
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
+import os
+import subprocess
+import sys
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -48,7 +53,10 @@ from network_model.solvers.dynamika.obserwable import (
     JAKOSC_ROZROZNIALNA,
 )
 from network_model.solvers.dynamika.silnik import SilnikDynamiki
-from network_model.solvers.dynamika.wynik import WynikDynamiki
+from network_model.solvers.dynamika.wynik import (
+    WynikDynamiki,
+    ladunek_resultset_dynamic_v1,
+)
 
 from tests.golden.enm_builders.so1a_pv_magazyn import build_so1a_pv_magazyn_enm
 
@@ -395,3 +403,62 @@ def test_powtorzony_bieg_daje_identyczny_wynik(
     assert powtorzony.wlasnosci.kroki_odrzucone == bieg_so1a.wlasnosci.kroki_odrzucone
     assert powtorzony.wlasnosci.max_residuum_f == bieg_so1a.wlasnosci.max_residuum_f
     assert powtorzony.wlasnosci.max_residuum_g == bieg_so1a.wlasnosci.max_residuum_g
+
+
+def test_bieg_w_OSOBNYM_PROCESIE_daje_identyczny_ladunek(
+    migawka_so1a: dict[str, Any], bieg_so1a: WynikDynamiki
+) -> None:
+    """Determinizm MIĘDZY PROCESAMI — luka dowodu domknięta 2026-09-19.
+
+    `test_powtorzony_bieg_daje_identyczny_wynik` powtarza bieg w TYM SAMYM procesie, więc
+    obie powtórki dzielą jedno ziarno haszowania napisów, jedno rozmieszczenie obiektów w
+    pamięci i jedne `id()`. Nie może więc spaść pod defektem klasy „kolejność iteracji po
+    zbiorze/słowniku wycieka do wyniku" — a CLAUDE.md (reguła rdzenia 7) deklaruje
+    „same input = same output" i stabilność odcisków SHA-256 bez zastrzeżenia do procesu.
+    Deklaracja bez testu, który może pod nią spaść, jest fałszywą pewnością.
+
+    Ten test uruchamia TEN SAM bieg w osobnym interpreterze z `PYTHONHASHSEED=0`
+    (losowanie haszy WYŁĄCZONE — nigdy nie zrówna się z losowym ziarnem procesu pytest)
+    i porównuje CAŁY ładunek `resultset_dynamic_v1`.
+
+    POZA POROWNANIEM jest DOKŁADNIE jedno pole: `czas_obliczen_s`. To pomiar zegara
+    (`silnik.py`: `time.perf_counter() - zegar`), nie wielkość fizyczna; wyłączenie jest
+    tą samą, już przypiętą decyzją co w `test_wynik.py`, `test_adapter_dynamiki.py` i
+    `test_dynamika_rms_run.py`. POMIAR 2026-09-19: przy dwóch procesach różniło się
+    WYŁĄCZNIE to pole (17,1071886 s vs 16,0551271 s), a odcisk reszty ładunku był
+    identyczny: `sha256 = d985ed8b28ebbdd6a7d1fee0aef5f5f85f473eda67f3e8d39ece18b7347c1953`
+    nad 492 185 znakami kanonicznego JSON-a.
+    """
+    kod = (
+        "import json, sys\n"
+        "import tests.e2e.test_so1a_scenariusz_odniesienia as m\n"
+        "from network_model.solvers.dynamika import ladunek_resultset_dynamic_v1\n"
+        "wynik = m._wykonaj(m._migawka())\n"
+        "ladunek = ladunek_resultset_dynamic_v1(wynik, run_id='so1a-miedzy-procesami')\n"
+        "ladunek['_losowanie_haszy'] = sys.flags.hash_randomization\n"
+        "json.dump(ladunek, sys.stdout, ensure_ascii=False)\n"
+    )
+    proces = subprocess.run(
+        [sys.executable, "-c", kod],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONHASHSEED": "0", "PYTHONPATH": os.pathsep.join(sys.path)},
+    )
+    assert proces.returncode == 0, proces.stderr[-3000:]
+    obcy = json.loads(proces.stdout)
+    assert obcy.pop("_losowanie_haszy") == 0, "podproces nie dostał PYTHONHASHSEED=0"
+
+    wlasny = ladunek_resultset_dynamic_v1(bieg_so1a, run_id="so1a-miedzy-procesami")
+    zegar_obcy = obcy["wlasnosci_biegu"].pop("czas_obliczen_s")
+    zegar_wlasny = wlasny["wlasnosci_biegu"].pop("czas_obliczen_s")
+    assert zegar_obcy >= 0.0 and zegar_wlasny >= 0.0
+
+    rozbiezne = [klucz for klucz in wlasny if obcy.get(klucz) != wlasny[klucz]]
+    assert not rozbiezne, f"pola różne między procesami: {rozbiezne}"
+    assert set(obcy) == set(wlasny)
+
+    def odcisk(ladunek: dict[str, Any]) -> str:
+        tekst = json.dumps(ladunek, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        return hashlib.sha256(tekst.encode("utf-8")).hexdigest()
+
+    assert odcisk(obcy) == odcisk(wlasny)
