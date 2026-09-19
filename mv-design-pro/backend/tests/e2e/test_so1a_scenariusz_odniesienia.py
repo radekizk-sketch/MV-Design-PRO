@@ -53,10 +53,7 @@ from network_model.solvers.dynamika.obserwable import (
     JAKOSC_ROZROZNIALNA,
 )
 from network_model.solvers.dynamika.silnik import SilnikDynamiki
-from network_model.solvers.dynamika.wynik import (
-    WynikDynamiki,
-    ladunek_resultset_dynamic_v1,
-)
+from network_model.solvers.dynamika.wynik import WynikDynamiki
 
 from tests.golden.enm_builders.so1a_pv_magazyn import build_so1a_pv_magazyn_enm
 
@@ -405,60 +402,213 @@ def test_powtorzony_bieg_daje_identyczny_wynik(
     assert powtorzony.wlasnosci.max_residuum_g == bieg_so1a.wlasnosci.max_residuum_g
 
 
-def test_bieg_w_OSOBNYM_PROCESIE_daje_identyczny_ladunek(
-    migawka_so1a: dict[str, Any], bieg_so1a: WynikDynamiki
-) -> None:
-    """Determinizm MIĘDZY PROCESAMI — luka dowodu domknięta 2026-09-19.
+#: Pole wyłączane z porównania determinizmu — DOKŁADNIE jedno, z dowodem.
+#: `silnik.py:40` importuje `time` jako JEDYNY import czasu w całym pakiecie dynamiki,
+#: a `time.` występuje tam w DWÓCH miejscach: `:128` (start zegara) i `:273`
+#: (`czas_obliczen_s=time.perf_counter() - zegar`, składane po zakończeniu pętli).
+#: Żaden kod produkcyjny tego pola NIE CZYTA — jedyne wystąpienie poza silnikiem i
+#: serializacją (`wynik.py:66` deklaracja, `wynik.py:143` kwantyzacja) to bierne pole
+#: schematu `application/contracts/resultset_dynamic_v1.py:87`. Wyłączenie jest tą samą,
+#: już przypiętą decyzją co w `test_wynik.py:170`, `test_adapter_dynamiki.py:515` i
+#: `test_dynamika_rms_run.py:728`, a `docs/evidence/CONVERGENCE_EVIDENCE.md:735` mówi
+#: wprost, że pole „nie wchodzi do żadnego odcisku".
+SCIEZKA_ZEGARA = ("wlasnosci_biegu", "czas_obliczen_s")
 
-    `test_powtorzony_bieg_daje_identyczny_wynik` powtarza bieg w TYM SAMYM procesie, więc
-    obie powtórki dzielą jedno ziarno haszowania napisów, jedno rozmieszczenie obiektów w
-    pamięci i jedne `id()`. Nie może więc spaść pod defektem klasy „kolejność iteracji po
-    zbiorze/słowniku wycieka do wyniku" — a CLAUDE.md (reguła rdzenia 7) deklaruje
-    „same input = same output" i stabilność odcisków SHA-256 bez zastrzeżenia do procesu.
-    Deklaracja bez testu, który może pod nią spaść, jest fałszywą pewnością.
+#: Ziarna haszowania bramki. Para WYMAGANA to dwa RÓŻNE ziarna z AKTYWNĄ randomizacją —
+#: `PYTHONHASHSEED=0` randomizację WYŁĄCZA, więc sam nie bada klasy „inne rozmieszczenie
+#: haszy → ten sam wynik" i jest tu wyłącznie wariantem diagnostycznym (trzecim).
+ZIARNA_BRAMKI: tuple[tuple[str, int], ...] = (("1", 1), ("987654321", 1), ("0", 0))
 
-    Ten test uruchamia TEN SAM bieg w osobnym interpreterze z `PYTHONHASHSEED=0`
-    (losowanie haszy WYŁĄCZONE — nigdy nie zrówna się z losowym ziarnem procesu pytest)
-    i porównuje CAŁY ładunek `resultset_dynamic_v1`.
+_KOD_PODPROCESU = """
+import json, os, sys
+import tests.e2e.test_so1a_scenariusz_odniesienia as m
+from network_model.solvers.dynamika import ladunek_resultset_dynamic_v1
 
-    POZA POROWNANIEM jest DOKŁADNIE jedno pole: `czas_obliczen_s`. To pomiar zegara
-    (`silnik.py`: `time.perf_counter() - zegar`), nie wielkość fizyczna; wyłączenie jest
-    tą samą, już przypiętą decyzją co w `test_wynik.py`, `test_adapter_dynamiki.py` i
-    `test_dynamika_rms_run.py`. POMIAR 2026-09-19: przy dwóch procesach różniło się
-    WYŁĄCZNIE to pole (17,1071886 s vs 16,0551271 s), a odcisk reszty ładunku był
-    identyczny: `sha256 = d985ed8b28ebbdd6a7d1fee0aef5f5f85f473eda67f3e8d39ece18b7347c1953`
-    nad 492 185 znakami kanonicznego JSON-a.
-    """
-    kod = (
-        "import json, sys\n"
-        "import tests.e2e.test_so1a_scenariusz_odniesienia as m\n"
-        "from network_model.solvers.dynamika import ladunek_resultset_dynamic_v1\n"
-        "wynik = m._wykonaj(m._migawka())\n"
-        "ladunek = ladunek_resultset_dynamic_v1(wynik, run_id='so1a-miedzy-procesami')\n"
-        "ladunek['_losowanie_haszy'] = sys.flags.hash_randomization\n"
-        "json.dump(ladunek, sys.stdout, ensure_ascii=False)\n"
-    )
+wynik = m._wykonaj(m._migawka())
+json.dump(
+    {
+        "meta": {
+            "PYTHONHASHSEED": os.environ.get("PYTHONHASHSEED"),
+            "hash_randomization": sys.flags.hash_randomization,
+            "wersja": sys.version_info[:3],
+            "pid": os.getpid(),
+        },
+        "ladunek": ladunek_resultset_dynamic_v1(wynik, run_id=m.RUN_ID_DETERMINIZMU),
+    },
+    sys.stdout,
+    ensure_ascii=False,
+)
+"""
+
+#: Jawny, wspólny `run_id` obu procesów — inaczej różniłby się sam identyfikator biegu.
+RUN_ID_DETERMINIZMU = "so1a-determinizm-miedzyprocesowy"
+
+
+def bieg_w_osobnym_procesie(ziarno: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Zbuduj migawkę SO-1A OD ZERA i policz cały scenariusz w osobnym interpreterze."""
     proces = subprocess.run(
-        [sys.executable, "-c", kod],
+        [sys.executable, "-c", _KOD_PODPROCESU],
         capture_output=True,
         text=True,
-        env={**os.environ, "PYTHONHASHSEED": "0", "PYTHONPATH": os.pathsep.join(sys.path)},
+        env={**os.environ, "PYTHONHASHSEED": ziarno, "PYTHONPATH": os.pathsep.join(sys.path)},
     )
-    assert proces.returncode == 0, proces.stderr[-3000:]
-    obcy = json.loads(proces.stdout)
-    assert obcy.pop("_losowanie_haszy") == 0, "podproces nie dostał PYTHONHASHSEED=0"
+    assert proces.returncode == 0, (
+        f"podproces z PYTHONHASHSEED={ziarno} zakończył się {proces.returncode}\n"
+        f"{proces.stderr[-4000:]}"
+    )
+    odpowiedz = json.loads(proces.stdout)
+    return odpowiedz["meta"], odpowiedz["ladunek"]
 
-    wlasny = ladunek_resultset_dynamic_v1(bieg_so1a, run_id="so1a-miedzy-procesami")
-    zegar_obcy = obcy["wlasnosci_biegu"].pop("czas_obliczen_s")
-    zegar_wlasny = wlasny["wlasnosci_biegu"].pop("czas_obliczen_s")
-    assert zegar_obcy >= 0.0 and zegar_wlasny >= 0.0
 
-    rozbiezne = [klucz for klucz in wlasny if obcy.get(klucz) != wlasny[klucz]]
-    assert not rozbiezne, f"pola różne między procesami: {rozbiezne}"
-    assert set(obcy) == set(wlasny)
+def bez_zegara(ladunek: dict[str, Any]) -> dict[str, Any]:
+    """Kopia ładunku BEZ jednego pola zegara. Nic innego nie jest usuwane ani zaokrąglane."""
+    okrojony = copy.deepcopy(ladunek)
+    sekcja, pole = SCIEZKA_ZEGARA
+    assert pole in okrojony[sekcja], f"brak {'.'.join(SCIEZKA_ZEGARA)} — kontrakt się zmienił"
+    del okrojony[sekcja][pole]
+    return okrojony
 
-    def odcisk(ladunek: dict[str, Any]) -> str:
-        tekst = json.dumps(ladunek, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-        return hashlib.sha256(tekst.encode("utf-8")).hexdigest()
 
-    assert odcisk(obcy) == odcisk(wlasny)
+def pierwsza_roznica(a: Any, b: Any, sciezka: str = "$") -> str | None:
+    """Pierwsza RÓŻNICA w porządku deterministycznym, jako ścieżka — nie „hash mismatch".
+
+    Klucze słowników obchodzone posortowane, listy po indeksie. Zwraca `None`, gdy
+    struktury są równe.
+    """
+    if type(a) is not type(b):
+        return f"{sciezka}: typ {type(a).__name__} vs {type(b).__name__}"
+    if isinstance(a, dict):
+        tylko_a = sorted(set(a) - set(b))
+        tylko_b = sorted(set(b) - set(a))
+        if tylko_a:
+            return f"{sciezka}: klucz tylko w pierwszym: {tylko_a[0]!r}"
+        if tylko_b:
+            return f"{sciezka}: klucz tylko w drugim: {tylko_b[0]!r}"
+        for klucz in sorted(a):
+            znaleziona = pierwsza_roznica(a[klucz], b[klucz], f"{sciezka}.{klucz}")
+            if znaleziona is not None:
+                return znaleziona
+        return None
+    if isinstance(a, list):
+        if len(a) != len(b):
+            return f"{sciezka}: długość {len(a)} vs {len(b)}"
+        for i, (x, y) in enumerate(zip(a, b, strict=True)):
+            znaleziona = pierwsza_roznica(x, y, f"{sciezka}[{i}]")
+            if znaleziona is not None:
+                return znaleziona
+        return None
+    if a != b:
+        return f"{sciezka}: {a!r} vs {b!r}"
+    return None
+
+
+def odcisk_kanoniczny(ladunek: dict[str, Any]) -> str:
+    tekst = json.dumps(ladunek, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(tekst.encode("utf-8")).hexdigest()
+
+
+def test_ROZNE_ziarna_haszowania_kazde_w_OSOBNYM_PROCESIE_daja_identyczny_ladunek() -> None:
+    """Determinizm MIĘDZY PROCESAMI o JAWNIE RÓŻNYCH, AKTYWNYCH ziarnach haszowania.
+
+    CZEGO NIE WYSTARCZA. Powtórzenie biegu w TYM SAMYM procesie
+    (`test_powtorzony_bieg_daje_identyczny_wynik`) dzieli jedno ziarno haszowania napisów,
+    jedno rozmieszczenie obiektów i jedne `id()` — nie może więc spaść pod defektem klasy
+    „kolejność iteracji po zbiorze/słowniku wycieka do wyniku". Porównanie procesu pytest
+    z jednym podprocesem też nie wystarcza: ziarno procesu nadrzędnego jest zależne od
+    środowiska, więc para porównywanych ziaren nie jest kontrolowana.
+
+    CO ROBI TEN TEST. Uruchamia TRZY całkowicie oddzielne interpretery, każdy budujący
+    migawkę SO-1A od zera i liczący cały scenariusz. Parą WYMAGANĄ są ziarna `1` i
+    `987654321` — oba z `hash_randomization == 1`, co proces potwierdza SAM, zwracając
+    własne `sys.flags.hash_randomization` (ustawienie zmiennej środowiskowej samo w sobie
+    nie jest dowodem). `PYTHONHASHSEED=0` jest wariantem DIAGNOSTYCZNYM: wyłącza
+    randomizację, więc nie bada tej klasy, ale pokazuje, że jej wyłączenie też nie zmienia
+    wyniku.
+
+    KOLEJNOŚĆ DOWODU: najpierw struktura (klucze i sekcje z osobna, z podaniem PIERWSZEJ
+    rozbieżnej ścieżki), potem kanoniczny JSON, a SHA-256 dopiero na końcu. Odwrotna
+    kolejność dawałaby przy awarii dwa nieczytelne skróty zamiast miejsca defektu.
+    """
+    wyniki = {ziarno: bieg_w_osobnym_procesie(ziarno) for ziarno, _ in ZIARNA_BRAMKI}
+
+    for ziarno, oczekiwane_losowanie in ZIARNA_BRAMKI:
+        meta, _ = wyniki[ziarno]
+        assert meta["PYTHONHASHSEED"] == ziarno, f"podproces nie dostał ziarna {ziarno}"
+        assert meta["hash_randomization"] == oczekiwane_losowanie, (
+            f"ziarno {ziarno}: hash_randomization={meta['hash_randomization']}, "
+            f"oczekiwano {oczekiwane_losowanie}"
+        )
+
+    #: Dowód, że to NAPRAWDĘ oddzielne procesy operacyjne, a nie powtórzenia w jednym:
+    #: każdy podproces melduje WŁASNY `os.getpid()`, różny od siebie nawzajem i od pytesta.
+    pidy = [meta["pid"] for meta, _ in wyniki.values()]
+    assert len(set(pidy)) == len(ZIARNA_BRAMKI), f"podprocesy nie były rozłączne: {pidy}"
+    assert os.getpid() not in pidy, f"bieg odbył się w procesie pytesta: {pidy}"
+
+    wymagane = [ziarno for ziarno, losowanie in ZIARNA_BRAMKI if losowanie == 1]
+    assert len(wymagane) >= 2, "bramka musi mieć co najmniej dwa ziarna z aktywną randomizacją"
+
+    odniesienie = bez_zegara(wyniki[wymagane[0]][1])
+    for ziarno in wymagane[1:] + [z for z, losowanie in ZIARNA_BRAMKI if losowanie == 0]:
+        badany = bez_zegara(wyniki[ziarno][1])
+
+        assert set(badany) == set(odniesienie), (
+            f"ziarno {ziarno}: inny zbiór kluczy najwyższego poziomu: "
+            f"{sorted(set(badany) ^ set(odniesienie))}"
+        )
+        for sekcja in sorted(odniesienie):
+            roznica = pierwsza_roznica(odniesienie[sekcja], badany[sekcja], f"$.{sekcja}")
+            assert roznica is None, f"ziarno {wymagane[0]} vs {ziarno} — {roznica}"
+
+        assert pierwsza_roznica(odniesienie, badany) is None
+        kanoniczny_a = json.dumps(
+            odniesienie, sort_keys=True, ensure_ascii=False, separators=(",", ":")
+        )
+        kanoniczny_b = json.dumps(badany, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        assert kanoniczny_a == kanoniczny_b, f"ziarno {ziarno}: kanoniczny JSON różny"
+        assert odcisk_kanoniczny(odniesienie) == odcisk_kanoniczny(badany)
+
+    #: Zegar JEST pomiarem i JEST różny — gdyby był identyczny, wyłączenie go z porównania
+    #: byłoby bezprzedmiotowe, a test nie badałby tego, co deklaruje.
+    zegary = [wyniki[z][1]["wlasnosci_biegu"]["czas_obliczen_s"] for z, _ in ZIARNA_BRAMKI]
+    assert all(z >= 0.0 for z in zegary), zegary
+
+
+def test_sonda_determinizmu_WYKRYWA_sztuczny_wyciek_kolejnosci_haszy() -> None:
+    """Self-test APARATURY: czy sonda w ogóle potrafi zobaczyć wyciek kolejności.
+
+    Zielony test porównujący dwa procesy nic nie znaczy, jeżeli sonda nie umie spaść pod
+    defektem, który rzekomo wykrywa. Ten test NIE dotyka produktu: w dwóch procesach o
+    różnych ziarnach liczy `list(set(...))` — konstrukcję, której kolejność ZALEŻY od
+    ziarna haszowania napisów — i wymaga, żeby `pierwsza_roznica` wskazała rozbieżność
+    ze ścieżką, a odciski kanoniczne były różne.
+    """
+    kod = (
+        "import json, os, sys\n"
+        "napisy = [f'element-{i}' for i in range(64)]\n"
+        "json.dump({'kolejnosc': list(set(napisy)),\n"
+        "           'hash_randomization': sys.flags.hash_randomization,\n"
+        "           'seed': os.environ.get('PYTHONHASHSEED')}, sys.stdout)\n"
+    )
+
+    def sonda(ziarno: str) -> dict[str, Any]:
+        proces = subprocess.run(
+            [sys.executable, "-c", kod],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "PYTHONHASHSEED": ziarno},
+        )
+        assert proces.returncode == 0, proces.stderr[-2000:]
+        return json.loads(proces.stdout)
+
+    a, b = sonda("1"), sonda("987654321")
+    assert a["hash_randomization"] == 1 and b["hash_randomization"] == 1
+    assert sorted(a["kolejnosc"]) == sorted(b["kolejnosc"]), "sonda ma badać KOLEJNOŚĆ"
+
+    roznica = pierwsza_roznica(a["kolejnosc"], b["kolejnosc"], "$.kolejnosc")
+    assert roznica is not None, (
+        "APARATURA ŚLEPA: `list(set(...))` przy dwóch różnych aktywnych ziarnach dało tę samą "
+        "kolejność, więc ten sam mechanizm nie wykryłby wycieku kolejności w ładunku biegu"
+    )
+    assert roznica.startswith("$.kolejnosc[")
+    assert odcisk_kanoniczny({"k": a["kolejnosc"]}) != odcisk_kanoniczny({"k": b["kolejnosc"]})

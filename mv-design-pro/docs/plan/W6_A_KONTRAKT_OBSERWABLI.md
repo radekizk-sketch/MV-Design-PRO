@@ -1393,3 +1393,241 @@ w wariancie „tempo SOC" celował w test, który woła `Zasobnik.pochodna_nalad
 BEZPOŚREDNIO, więc iniekcja w miejscu wywołania w `Magazyn.pochodne` była dla niego
 nieosiągalna. Po wskazaniu osiągalnych celów obie padają. Wniosek metodyczny: mutacja
 „przeżyła" wymaga sprawdzenia, czy test w ogóle wykonał kod, w który wstrzyknięto defekt.
+
+## Załącznik Z6 — RUNDA 7: determinizm MIĘDZY PROCESAMI, dowód wzmocniony (2026-09-19)
+
+Runda wąska. Nie rusza solvera, równań, tolerancji, modeli maszyn, całkowania, goldenów
+ani kontraktów FROZEN. Jedyna zmiana kodu to zapadka testowa w
+`backend/tests/e2e/test_so1a_scenariusz_odniesienia.py`. Powód: dowód z rundy 6 (Z5.9)
+porównywał proces pytesta z JEDNYM podprocesem o `PYTHONHASHSEED=0`, a to jest
+najsłabsza z możliwych par — `0` randomizację WYŁĄCZA, a ziarno procesu nadrzędnego
+zależy od środowiska, więc porównywana para ziaren nie była kontrolowana.
+
+### Z6.1 Co zastąpiło dowód z Z5.9
+
+`test_ROZNE_ziarna_haszowania_kazde_w_OSOBNYM_PROCESIE_daja_identyczny_ladunek`
+uruchamia TRZY całkowicie oddzielne interpretery (`sys.executable -c …`), każdy budujący
+migawkę SO-1A od zera i liczący cały scenariusz do `resultset_dynamic_v1` pod tym samym
+jawnym `run_id = "so1a-determinizm-miedzyprocesowy"`.
+
+| Ziarno | Rola | `sys.flags.hash_randomization` zwrócone PRZEZ PROCES |
+|--------|------|------------------------------------------------------|
+| `1` | para wymagana | 1 |
+| `987654321` | para wymagana | 1 |
+| `0` | wariant diagnostyczny | 0 |
+
+Bramką jest para `1` ↔ `987654321`; `0` dokłada obserwację, że wyłączenie randomizacji
+też nie zmienia wyniku, ale SAM tej klasy nie bada. Test nie wierzy zmiennej
+środowiskowej: każdy proces melduje własne `sys.flags.hash_randomization` ORAZ własne
+`os.getpid()`, a test wymaga trzech rozłącznych PID-ów, żadnego równego PID-owi pytesta.
+Bez tego „osobny proces" byłoby deklaracją, nie pomiarem.
+
+**Kolejność dowodu (§5): struktura → kanoniczny JSON → SHA.** Najpierw `set(kluczy)`
+najwyższego poziomu, potem każda sekcja osobno przez `pierwsza_roznica`
+(słowniki po kluczach posortowanych, listy po indeksie), potem całość, potem
+`json.dumps(sort_keys=True, ensure_ascii=False, separators=(",", ":"))` porównany jako
+tekst, a SHA-256 dopiero na końcu. Przy awarii dostaje się ŚCIEŻKĘ
+(np. `$.kanaly[34].element_ref: 'b-sn-stacja' vs 'b-110'`), a nie dwa nieczytelne skróty.
+
+### Z6.2 Wyłączenie zegara — dowód, nie wygoda (§6)
+
+Z porównania wyłączone jest DOKŁADNIE jedno pole: `$.wlasnosci_biegu.czas_obliczen_s`.
+Żadnej innej normalizacji, zaokrąglania ani `pytest.approx` — poza tym polem porównanie
+jest JSON-EXACT.
+
+| Pytanie | Pomiar na tym drzewie |
+|---------|----------------------|
+| Skąd pochodzi | `silnik.py:40` — JEDYNY import `time` w całym pakiecie dynamiki; `time.` występuje w dwóch miejscach: `:128` start zegara, `:273` `czas_obliczen_s=time.perf_counter() - zegar` |
+| Czy to wielkość fizyczna | nie — `perf_counter()` mierzy czas ścienny wykonania, nie stan układu |
+| Czy wpływa na wynik solvera | nie — składane PO zakończeniu pętli, nie wchodzi do żadnego równania |
+| Kto to czyta w produkcji | NIKT; `grep -rn czas_obliczen_s src/` daje tylko `silnik.py:273` (zapis), `wynik.py:66` (deklaracja), `wynik.py:143` (kwantyzacja) i bierne pole schematu `application/contracts/resultset_dynamic_v1.py:87` |
+| Czy decyzja jest nowa | nie — ta sama, już przypięta w `test_wynik.py:170`, `test_adapter_dynamiki.py:515`, `test_dynamika_rms_run.py:728` |
+| Czy guard to potwierdza | tak — `scripts/dynamika_granica_importow.py:50` dopuszcza `time` w rdzeniu WYŁĄCZNIE z adnotacją „pomiar czasu trwania biegu (`czas_obliczen_s`)" |
+
+Test dodatkowo sprawdza, że zegar RZECZYWIŚCIE jest pomiarem (wartości ≥ 0 i różne
+między procesami). Gdyby był identyczny, wyłączanie go byłoby bezprzedmiotowe, a test
+nie badałby tego, co deklaruje.
+
+### Z6.3 Falsyfikacja wieloziarnowa (§7)
+
+Poza bramką uruchomiono ten sam scenariusz pod SZEŚCIOMA ziarnami z aktywną
+randomizacją. Gdyby w wyniku siedział wyciek kolejności haszy, sześć niezależnych
+rozmieszczeń tablic haszujących byłoby na to znacznie czulsze niż dwa.
+
+| Ziarno | `hash_randomization` | kanały | próbki | zdarzenia | kroki | odrzucone | `max_residuum_f` | `max_residuum_g` | sha256 (bez zegara) |
+|--------|---------------------|--------|--------|-----------|-------|-----------|------------------|------------------|----------------------|
+| 1 | 1 | 79 | 501 | 4 | 1137 | 16 | 9,77648794·10⁻¹¹ | 4,62943376·10⁻¹⁰ | `c8f3ad02…5aeb62` |
+| 2 | 1 | 79 | 501 | 4 | 1137 | 16 | 9,77648794·10⁻¹¹ | 4,62943376·10⁻¹⁰ | `c8f3ad02…5aeb62` |
+| 17 | 1 | 79 | 501 | 4 | 1137 | 16 | 9,77648794·10⁻¹¹ | 4,62943376·10⁻¹⁰ | `c8f3ad02…5aeb62` |
+| 123456 | 1 | 79 | 501 | 4 | 1137 | 16 | 9,77648794·10⁻¹¹ | 4,62943376·10⁻¹⁰ | `c8f3ad02…5aeb62` |
+| 987654321 | 1 | 79 | 501 | 4 | 1137 | 16 | 9,77648794·10⁻¹¹ | 4,62943376·10⁻¹⁰ | `c8f3ad02…5aeb62` |
+| 2147483647 | 1 | 79 | 501 | 4 | 1137 | 16 | 9,77648794·10⁻¹¹ | 4,62943376·10⁻¹⁰ | `c8f3ad02…5aeb62` |
+
+**UNIKALNYCH SHA: 1.** Pełny odcisk:
+`c8f3ad023447f796e2e9c4afcbc540346ad594646e0a5ef59bfce874835aeb62`.
+Jedyną wielkością, która się zmieniała, był `czas_obliczen_s` (20,91 s … 22,20 s) —
+czyli dokładnie to pole, które jest wyłączone z porównania.
+
+### Z6.4 Mutacja: wyciek kolejności haszy WSTRZYKNIĘTY do wyniku (§8)
+
+Zielona bramka nic nie znaczy, jeśli nie umie spaść pod klasą defektu, którą rzekomo
+wykrywa. Miejsce iniekcji dobrane tak, żeby NIE było martwe i żeby wynik naprawdę przez
+nie przechodził.
+
+**Dowód wykonania przed mutacją.** `sys.settrace` na realnym biegu SO-1A:
+linia `silnik.py:636` (`for ident in model.identy_wezlow:` w `_kanaly_obserwabli`)
+wykonana **6 razy**. To jedyny producent kanałów `f_hz@` — `grep -rn 'f_hz@' src/`
+wskazuje wyłącznie `silnik.py:639`, `:740`, `:752`.
+
+**Iniekcja:** `for ident in model.identy_wezlow:` → `for ident in set(model.identy_wezlow):`
+(kotwica jednoznaczna: nagłówek pętli + `klucz=f"f_hz@{ident}"`; sam nagłówek występuje
+też w `_kanaly` na `silnik.py:576`, więc pierwsza próba z krótszym wzorcem została
+ODRZUCONA przez asercję jednoznaczności, zanim cokolwiek zapisała).
+
+Polecenie bramki:
+`python -m pytest -q --no-header -p no:cacheprovider tests/e2e/test_so1a_scenariusz_odniesienia.py -k OSOBNYM_PROCESIE`
+
+| Faza | RC | Wynik pytest | sha256 ziarno 1 | sha256 ziarno 987654321 |
+|------|----|--------------|-----------------|--------------------------|
+| PRZED mutacją | 0 | 1 passed, 11 deselected (68,6 s) | `c8f3ad02…5aeb62` | `c8f3ad02…5aeb62` |
+| Z MUTACJĄ | 1 | 1 failed, 11 deselected (69,0 s) | `84956f3f…9a3ecf17` | `2c6c6377…0eaaed65` |
+| PO COFNIĘCIU | 0 | 1 passed, 11 deselected (68,2 s) | `c8f3ad02…5aeb62` | `c8f3ad02…5aeb62` |
+
+Pierwsza różna ścieżka zgłoszona przez bramkę:
+`ziarno 1 vs 987654321 — $.kanaly[34].element_ref: 'b-sn-stacja' vs 'b-110'`.
+
+**MUTACJA ZABITA.** Liczba kanałów pozostała 79 w obu procesach — defekt był CZYSTĄ
+zmianą kolejności, czyli dokładnie tą klasą, której `json.dumps(sort_keys=True)` NIE
+neutralizuje (sortowanie porządkuje klucze słowników, nie elementy list). Mutacja nie
+została w drzewie: `git diff --exit-code backend/src/network_model/solvers/dynamika/silnik.py`
+kończy się kodem 0.
+
+### Z6.5 Self-test samej sondy (§9)
+
+`test_sonda_determinizmu_WYKRYWA_sztuczny_wyciek_kolejnosci_haszy` nie dotyka produktu:
+w dwóch procesach o ziarnach `1` i `987654321` liczy `list(set(napisy))` dla 64 napisów
+— konstrukcję, której kolejność z definicji zależy od ziarna haszowania — i wymaga, żeby
+(a) oba procesy miały `hash_randomization == 1`, (b) zbiory elementów były równe,
+(c) `pierwsza_roznica` wskazała ścieżkę zaczynającą się od `$.kolejnosc[`, (d) odciski
+kanoniczne były RÓŻNE. Gdyby aparatura była ślepa, ten test padłby niezależnie od stanu
+produktu.
+
+### Z6.6 Forensyka CI (§10, §11)
+
+| Pomiar | Wartość |
+|--------|---------|
+| Testów w pliku PRZED (`a8d5451e`) | 11 |
+| Testów w pliku PO | 12 (usunięty 1 z rundy 6, dodane 2) |
+| Kolekcja pliku | 12 collected, 0 skipped, 0 error |
+| `pytest -q … -k OSOBNYM_PROCESIE -vv` | `12 items / 11 deselected / 1 selected` → **PASSED**, RC=0, 69,15 s |
+| Czy naprawdę osobne procesy | tak — trzy rozłączne PID-y, żaden równy PID-owi pytesta (asercja w teście) |
+
+**Korekta rzetelnościowa.** Przy pierwszym uruchomieniu dosłownego polecenia z §10 wyszło
+`12 deselected / 0 selected`, RC=5 — bo w §3 przepisałem test i nazwa przestała zawierać
+ciąg `OSOBNYM_PROCESIE`. Nazwę przywrócono do postaci, którą to polecenie wybiera
+(`test_ROZNE_ziarna_haszowania_kazde_w_OSOBNYM_PROCESIE_daja_identyczny_ladunek`), a cała
+sekwencja mutacyjna Z6.4 została po tej zmianie POWTÓRZONA od zera, żeby zapisane
+polecenia odtwarzały się na drzewie końcowym.
+
+**§11 — workflowy ≠ joby.** 9 plików workflow daje **13 jobów**:
+
+| Workflow | Joby |
+|----------|------|
+| `python-tests.yml` | 4 — `pytest`, `pandapower-cross-validation`, `andes-cross-validation`, `postgres-dialect` |
+| `sld-determinism.yml` | 2 — `sld-guards`, `sld-contract-tests` |
+| `arch-guard.yml`, `docs-guard.yml`, `frontend-checks.yml`, `frontend-e2e-full.yml`, `frontend-e2e-smoke.yml`, `p0-extended-guards.yml`, `physics-label-guard.yml` | po 1 |
+
+### Z6.7 P2-CI-GOVERNANCE — zieleń 9/9 jest OBSERWACJĄ, nie bramką (§12)
+
+Audyt bez zmiany ustawień repozytorium (jawny zakaz §12).
+
+| Sprawdzenie | Wynik |
+|-------------|-------|
+| `main` | `protected: false` (sha `7e84753a`) |
+| `claude/mv-design-pro-twin-audit-u4lhy0` | `protected: false` |
+| Wymagane checki na gałęzi roboczej | brak — gałąź nieobjęta ochroną |
+| PR 474 | otwarty, `mergeable_state: "clean"`, baza `main` |
+| Rulesety | NIEZWERYFIKOWANE — powierzchnia narzędziowa tej sesji nie wystawia endpointu rulesetów; ruleset wymuszający checki na gałęzi podniósłby jednak `protected` w API gałęzi, a tam jest `false` |
+
+**Wniosek:** „CI 9/9 zielone" w meldunkach tej i poprzednich rund jest OBSERWACJĄ stanu
+po pushu, a nie formalnie wymuszoną bramką — nic nie blokuje pushu ani scalenia przy
+czerwieni. Zapisane jako **P2-CI-GOVERNANCE**, do decyzji właściciela; ustawień nie
+zmieniano.
+
+### Z6.8 Granica ANDES bez zmian (§13)
+
+| Pomiar | Wartość |
+|--------|---------|
+| Testów pod `-m andes` | **3**, wszystkie w `tests/network_model/dynamika/test_wyrocznia_andes.py` |
+| Układ | SMIB — JEDEN układ, jedna maszyna |
+| Wielkość porównywana | kąt wirnika (warunki początkowe + trajektoria odcinkami) |
+| Zmierzone różnice | 6,58·10⁻⁹ rad (warunki początkowe), 1,35·10⁻⁴ rad i 1,42·10⁻⁴ rad (trajektoria) przy progach 1·10⁻⁶ / 5·10⁻⁴ / 5·10⁻⁴ |
+| Podłoga błędu | 1,419·10⁻⁴ rad, NIE MALEJE przy zagęszczaniu kroku (0,5 / 0,25 / 0,125 ms) — przyczyna NIEUSTALONA |
+
+**W6-F NIEZAMKNIĘTE. ZWALIDOWANE FIZYCZNIE = NIE.** Zgodność z jednym narzędziem na
+jednym układzie, przy nierozpoznanej podłodze błędu, nie jest walidacją fizyczną.
+
+### Z6.9 Regresja pełna na drzewie końcowym (§14)
+
+| Bieg | Polecenie | Wynik | RC |
+|------|-----------|-------|----|
+| Backend | `pytest -q -m "not pandapower and not andes"` | **16 412 passed, 33 deselected, 0 skipped** (24:42) | 0 |
+| pandapower | `pytest -q -m pandapower tests` (izolowany venv) | 30 passed, 16 415 deselected (1:44) | 0 |
+| ANDES | `pytest -q -m andes tests/network_model/dynamika` (izolowany venv) | 3 passed, 429 deselected (1:02) | 0 |
+| Guardy CI | `python ../scripts/guardy_z_ci.py` | **KOMPLET ZIELONY** — 106 wywołań zielonych, 0 czerwonych, + 1058 testów własnych guardów | 0 |
+| Frontend typy | `npm run type-check` | bez błędów | 0 |
+| Frontend lint | `npm run lint` | bez uwag | 0 |
+| Frontend testy | `npm run test:ci` | 894 pliki, 12 548 passed, 14 todo (23:34) | 0 |
+
+Kolekcja całego zestawu backendu: 16 445 pozycji (16 412 + 30 pandapower + 3 ANDES).
+Przed tą rundą było 16 444 — zapadka dodaje netto JEDEN test (usunięty jeden z rundy 6,
+dodane dwa).
+
+### Z6.10 ZNALEZISKO UBOCZNE — P1-CICHA-DESELEKCJA (NIE naprawione w tej rundzie)
+
+Przy przygotowaniu izolowanego biegu ANDES wyszło, że `pytest -q -m andes tests` zbiera
+**354 pozycje zamiast 16 445** i kończy się RC=5 („no tests collected") **bez jednego
+ostrzeżenia**. Przyczyna — `backend/tests/conftest.py:78-89`:
+
+```python
+_MISSING_DEPS = {
+    name for name in ("sqlalchemy", "numpy", "networkx") if importlib.util.find_spec(name) is None
+}
+
+def pytest_ignore_collect(collection_path, config):
+    if not _MISSING_DEPS:
+        return False
+    path_str = str(collection_path)
+    if "tests/proof_engine" in path_str:
+        return False
+    return True
+```
+
+Brak KTÓREGOKOLWIEK z trzech pakietów powoduje CICHE porzucenie całego drzewa testów poza
+`tests/proof_engine`. Nie ma skipa, nie ma błędu, nie ma komunikatu — jest „354 passed"
+i kod wyjścia 0. Pomiar: w środowisku bez `sqlalchemy` widoczne 354/16 445 pozycji
+(2,2 %); po doinstalowaniu `sqlalchemy` w tym samym środowisku ujawniło się 70 realnych
+błędów kolekcji, wcześniej NIEWIDOCZNYCH.
+
+To jest dokładnie klasa „wykluczenie ≠ naprawa" z Zero-Debt: mechanizm, który w
+środowisku z brakującą zależnością pokazuje zieleń nad 2 % zestawu. Na CI `_MISSING_DEPS`
+jest puste (job instaluje komplet przez Poetry), więc hak jest tam bez skutku i bieg
+`andes-cross-validation` działa poprawnie — defekt jest UŚPIONY, nie czynny.
+
+**Zgodnie z §2 promptu rundy 7 NIE został naprawiony w tej rundzie** — runda ma zakaz
+rozszerzania zakresu, a to nie jest defekt determinizmu. Zgłoszone jako
+**P1-CICHA-DESELEKCJA** do decyzji właściciela. Naprawa klasowa (nie instancji): brak
+zależności ma kończyć bieg błędem albo wypisywać jawny, policzalny komunikat o liczbie
+porzuconych pozycji — nigdy milczeć.
+
+### Z6.11 Werdykt rundy 7
+
+**R7-DETERMINISM = ACCEPTED DONE** dla klasy „determinizm SO-1A między procesami".
+Dowód: bramka dwu-/trójprocesowa z różnymi AKTYWNYMI ziarnami (§3–§5), jawnie
+udowodnione wyłączenie jednego pola zegara (§6), sześcioziarnowa próba falsyfikacji
+(§7), zabita mutacja wycieku kolejności w wykonywanym miejscu (§8), self-test aparatury
+(§9), pełna regresja i komplet guardów (§14).
+
+**NIE ZMIENIA SIĘ:** W6-F otwarte, **ZWALIDOWANE FIZYCZNIE = NIE**, OD-11 i OD-12
+nierozstrzygnięte. Determinizm to powtarzalność, nie poprawność fizyczna — te dwie rzeczy
+nie zastępują się nawzajem.
