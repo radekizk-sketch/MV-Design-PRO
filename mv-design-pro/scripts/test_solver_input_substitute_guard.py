@@ -1459,7 +1459,23 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # podstawic: Q nieznane jest POMINIETE tak samo jak w `enm/mapping.py`, a niespojnosc
     # konczy sie odmowa `dynamika.podzial_mocy_wezla_niespojny`, nie liczba zastepcza.
     # PASS bramki niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 3840." in wyjscie, wyjscie
+    # Walidacja fizyczna dynamiki / naprawa F-8 (2026-09-20): 3840 -> 3841 (+1 pole,
+    # zero skasowanych, zero nowych plikow). POMIAR: zbior `contract_fields()` zrzucony
+    # NA DRZEWIE i na drzewie bazowym rundy (`5770464c`), roznica policzona `comm` na
+    # posortowanych zbiorach, nie arytmetyka karty — jedyna nowa nazwa to
+    # `ModelSieci.przydzial_wysp` (`network_model/solvers/dynamika/siec.py`): indeks
+    # spojnej skladowej grafu AKTYWNYCH galezi dla kazdego wezla, liczony RAZ w
+    # `zloz_model_sieci`. To wielkosc WYPROWADZONA z topologii, nie dana wejsciowa:
+    # nie istnieje dla niej stan „brak danej", ktory mozna by podstawic liczba (przy
+    # pustym zbiorze galezi kazdy wezel jest wlasna wyspa i to jest odpowiedz
+    # poprawna, nie zastepcza), a jej konsument `sprawdz_zasilanie_wysp` melduje
+    # `dynamika.wyspa_bez_zrodla` PRZED Newtonem zamiast cokolwiek podstawiac.
+    # W tej samej zmianie SKASOWANA zostala wlasciwosc `ModelSieci.liczba_wysp`, na
+    # ktorej bramka zapalila sie na CI (run 35536141250): zwracala `0` dla modelu bez
+    # wezlow — liczbe podstawiona za brak danych. Nie miala zadnego konsumenta, wiec
+    # poszla jako martwy kod, a nie jako wyciszenie. PASS bramki niezmieniony
+    # (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 3841." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1543,7 +1559,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # porownania jest WYPROWADZONY z nastaw solvera i ziarnistosci float64
         # (`ceil(horyzont_s/dt_min_s) * ulp(granica)`), nie dobrana stala.
         # Zero plikow skasowanych.
-        "Przeskanowano 536 plikow w zakresie: network_model, solver_input, enm, "
+        # Walidacja fizyczna dynamiki / naprawa F-8 (2026-09-20): 536 -> 537 (+1 plik
+        # `network_model/solvers/dynamika/wyspy.py` — przydzial wysp z grafu AKTYWNYCH
+        # galezi i sprawdzenie zasilania kazdej wyspy PRZED Newtonem; wyspa z odbiorem,
+        # ale bez urzadzenia wnoszacego wklad do algebry, konczy sie odmowa
+        # `dynamika.wyspa_bez_zrodla`, a nie zbieznoscia na napieciu uciekajacym do
+        # 1,37e11 p.u. POMIAR: `git diff --name-status 5770464c HEAD -- backend/src/`
+        # daje DOKLADNIE jeden wpis `A`, reszta to `M`. Zapadka dlugu (56/255) i
+        # wykluczenia (13/31) BEZ ZMIANY: predykat wkladu jest MIERZONY z rownan
+        # urzadzenia (`prad_pu` oraz `jakobian_prad_napiecie`), a nie z listy rodzin,
+        # wiec modul nie podstawia zadnej liczby za brak danej. Zero plikow skasowanych.
+        "Przeskanowano 537 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1601,7 +1627,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # modelu). Dlug 14/77 i wykluczenia 3/6 BEZ ZMIANY: modul nie podstawia
         # zadnej liczby, a jego margines porownania jest wyprowadzony z nastaw
         # solvera i ziarnistosci float64, nie z dobranej stalej.
-        "  network_model: pliki_skanowane=177, dlug=14 plikow/suma 77, "
+        # Walidacja fizyczna dynamiki / naprawa F-8 (2026-09-20): network_model 177 -> 178
+        # (+1 `network_model/solvers/dynamika/wyspy.py`). Dlug 14/77 i wykluczenia 3/6
+        # BEZ ZMIANY — modul czyta wylacznie topologie i rownania urzadzen, nie
+        # podstawia zadnej liczby za nieobecna dana wejsciowa.
+        "  network_model: pliki_skanowane=178, dlug=14 plikow/suma 77, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).
