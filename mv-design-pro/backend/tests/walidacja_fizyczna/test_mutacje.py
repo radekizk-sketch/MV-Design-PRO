@@ -22,7 +22,7 @@ import pytest
 
 from . import mutacje
 
-SZYBKIE = ("M19", "M14", "M15")
+SZYBKIE = ("M19", "M14", "M15", "M18")
 
 
 def test_samokontrola_mutacja_bez_skutku_jest_niewazna() -> None:
@@ -69,9 +69,12 @@ def test_kazda_mutacja_wskazuje_bramke_albo_jest_kontrolna() -> None:
     """Zero mutacji „zabitych przez cokolwiek": detektor musi byc nazwany z gory."""
     for mutacja in mutacje.MUTACJE:
         if mutacja.ident == "M21":
-            assert mutacja.bramki == (), "mutacja kontrolna nie moze miec detektora"
+            assert mutacja.bramki == (), "mutacja kontrolna nie moze miec bramki"
+            assert mutacja.testy == (), "mutacja kontrolna nie moze miec testu"
             continue
-        assert mutacja.bramki, f"{mutacja.ident}: brak deklarowanej bramki"
+        assert (
+            mutacja.bramki or mutacja.testy
+        ), f"{mutacja.ident}: brak deklarowanego detektora (ani bramki, ani testu)"
         assert mutacja.oczekiwany_detektor, f"{mutacja.ident}: brak opisu detektora"
 
 

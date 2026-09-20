@@ -10,18 +10,14 @@ from __future__ import annotations
 
 import pytest
 
-from .. import srodowisko
+from . import eksperyment_eps_tau as eksperyment
 
+#: Marker, NIE `importorskip`. Bieg bez ANDES DESELEKCJONUJE te testy (jawnie, z
+#: liczba w meldunku), zamiast je POMIJAC (cicho, z „1 skipped"). Ta sama konwencja,
+#: co w `tests/network_model/dynamika/test_wyrocznia_andes.py`. Modul importuje sie
+#: bez ANDES, bo `eksperyment_eps_tau` wola `import andes` dopiero w ciele funkcji —
+#: dokladnie tak, jak robi to wyrocznia w `wyrocznia_andes.zbuduj_system`.
 pytestmark = pytest.mark.andes
-
-if not srodowisko.wyrocznia_zewnetrzna_dostepna():  # pragma: no cover
-    pytest.skip(
-        "ANDES nie jest zainstalowany w tym srodowisku — eksperyment biegnie w "
-        "srodowisku wyroczni zewnetrznej (patrz README pakietu)",
-        allow_module_level=True,
-    )
-
-from . import eksperyment_eps_tau as eksperyment  # noqa: E402
 
 
 @pytest.fixture(scope="module")

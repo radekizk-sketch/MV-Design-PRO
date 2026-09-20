@@ -51,6 +51,7 @@ class Mutacja:
     po: str
     oczekiwany_detektor: str
     bramki: tuple[str, ...] = ()
+    testy: tuple[str, ...] = ()
 
 
 #: Zamkniety zestaw mutacji rdzenia dynamiki. Kazda psuje INNE rownanie albo INNY
@@ -82,7 +83,7 @@ MUTACJE: tuple[Mutacja, ...] = (
         "network_model/solvers/dynamika/urzadzenia/maszyna_klasyczna.py",
         "                / (2.0 * self.h_s),",
         "                / (1.0 * self.h_s),",
-        "G2 (czestotliwosc modu), G3 (ROCOF), G10 (czas krytyczny)",
+        "G2 (czestotliwosc modu) i G4 (tlumienie) — oba zmierzone",
         bramki=("g2_g4_mod_elektromechaniczny", "g3_rocof_w_chwili_zwarcia"),
     ),
     Mutacja(
@@ -91,7 +92,7 @@ MUTACJE: tuple[Mutacja, ...] = (
         "network_model/solvers/dynamika/urzadzenia/maszyna_klasyczna.py",
         "                self.omega_bazowa_rad_s * odchylka_predkosci,",
         "                odchylka_predkosci,",
-        "G2 (czestotliwosc modu), G10 (czas krytyczny)",
+        "G2 (czestotliwosc modu) i G4 (tlumienie) — oba zmierzone",
         bramki=("g2_g4_mod_elektromechaniczny",),
     ),
     Mutacja(
@@ -138,8 +139,16 @@ MUTACJE: tuple[Mutacja, ...] = (
         "network_model/solvers/dynamika/obserwable.py",
         "    if not math.isfinite(niepewnosc_napiecia_pu) or modul <= niepewnosc_napiecia_pu:",
         "    if False:",
-        "test jednostkowy obserwabli (granica |V| <= u_V nieosiagalna z poziomu biegu)",
-        bramki=("g8_granica_odmowy",),
+        "test jednostkowy obserwabli — granica |V| <= u_V jest NIEOSIAGALNA z poziomu "
+        "biegu (rdzen odmawia wczesniej przy zapadzie), wiec ZADNA bramka fizyczna jej "
+        "nie zlapie; jedyna obrona tego kontraktu jest test jednostkowy",
+        bramki=(),
+        testy=(
+            "tests/walidacja_fizyczna/test_czestotliwosc_wezlowa.py"
+            "::test_granica_dostepnosci_jest_fail_closed",
+            "tests/walidacja_fizyczna/test_czestotliwosc_wezlowa.py"
+            "::test_tuz_nad_granica_wartosc_jest_publikowana_ale_nieufna",
+        ),
     ),
     Mutacja(
         "M19",
@@ -175,9 +184,24 @@ MUTACJE: tuple[Mutacja, ...] = (
 
 
 def _lustro_zrodel(katalog: Path) -> Path:
-    """Katalog `src` zlozony z dowiazan symbolicznych — tani i nieniszczacy."""
+    """Lustro CALEGO backendu (`src` + `tests` + `pyproject.toml`) z dowiazan.
+
+    DLACZEGO CALY BACKEND, A NIE SAM `src`. `tests/conftest.py` wstawia SWOJ katalog
+    `src` na POCZATEK `sys.path` (`sys.path.insert(0, Path(__file__).parents[1]/"src")`).
+    Gdyby lustro obejmowalo sam `src`, a pytest biegl w prawdziwym drzewie, prawdziwe
+    zrodla PRZESLONILYBY zmutowane i mutacja nie mialaby zadnego skutku — harness
+    meldowalby „PRZEZYLA" dla defektu, ktorego w ogole nie wstrzyknal. Zmierzone na
+    mutacji M18: detektor testowy byl zielony, dopoki lustro nie objelo `tests`.
+
+    Dowiazania symboliczne (`cp -as`) sa tanie i nieniszczace; podmieniany jest
+    wylacznie ten jeden plik, ktory mutacja psuje.
+    """
     lustro = katalog / "src"
     subprocess.run(["cp", "-as", str(KATALOG_ZRODEL), str(lustro)], check=True)
+    subprocess.run(
+        ["cp", "-as", str(KORZEN_BACKENDU / "tests"), str(katalog / "tests")], check=True
+    )
+    (katalog / "pyproject.toml").symlink_to(KORZEN_BACKENDU / "pyproject.toml")
     return lustro
 
 
@@ -207,16 +231,17 @@ def kwalifikuj(przed: str, po: str) -> str:
 
 def uruchom_bramki(lustro: Path, limit_s: float = 3600.0, wybrane: tuple[str, ...] = ()) -> dict:
     """Bramki w OSOBNYM procesie na zmutowanym lustrze zrodel."""
+    korzen_lustra = lustro.parent
     srodowisko = dict(os.environ)
     if wybrane:
         srodowisko["WALIDACJA_BRAMKI"] = ",".join(wybrane)
     else:
         srodowisko.pop("WALIDACJA_BRAMKI", None)
-    srodowisko["PYTHONPATH"] = f"{lustro}{os.pathsep}{KORZEN_BACKENDU}"
+    srodowisko["PYTHONPATH"] = f"{lustro}{os.pathsep}{korzen_lustra}"
     srodowisko["PYTHONDONTWRITEBYTECODE"] = "1"
     proces = subprocess.run(
         [sys.executable, "-m", "tests.walidacja_fizyczna.bramki"],
-        cwd=str(KORZEN_BACKENDU),
+        cwd=str(korzen_lustra),
         env=srodowisko,
         capture_output=True,
         text=True,
@@ -230,6 +255,35 @@ def uruchom_bramki(lustro: Path, limit_s: float = 3600.0, wybrane: tuple[str, ..
             "WYJATEK": f"bieg bramek nie zwrocil JSON (kod {proces.returncode}): "
             + (proces.stderr or proces.stdout)[-400:],
         }
+
+
+def uruchom_testy(lustro: Path, wezly: tuple[str, ...], limit_s: float = 900.0) -> list[str]:
+    """Wskazane testy na zmutowanym lustrze. Zwraca liste CZERWONYCH wezlow.
+
+    Nie kazda mutacja da sie zlapac bramka fizyczna. Pomiar rundy 9: stan
+    `|V| <= u_V` jest NIEOSIAGALNY z poziomu biegu, bo rdzen odmawia wczesniej
+    przy zapadzie — jedyna obrona kontraktu fail-closed czestotliwosci jest test
+    jednostkowy. Harness, ktory umie uruchomic wylacznie bramki, zameldowalby wtedy
+    „PRZEZYLA" dla mutacji, ktora tak naprawde JEST pilnowana. Dlatego mutacja moze
+    deklarowac detektor testowy — i harness go wykonuje.
+    """
+    srodowisko = dict(os.environ)
+    korzen_lustra = lustro.parent
+    srodowisko["PYTHONPATH"] = f"{lustro}{os.pathsep}{korzen_lustra}"
+    srodowisko["PYTHONDONTWRITEBYTECODE"] = "1"
+    czerwone: list[str] = []
+    for wezel in wezly:
+        proces = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", "-p", "no:randomly", wezel],
+            cwd=str(korzen_lustra),
+            env=srodowisko,
+            capture_output=True,
+            text=True,
+            timeout=limit_s,
+        )
+        if proces.returncode != 0:
+            czerwone.append(wezel)
+    return czerwone
 
 
 def wykonaj(mutacja: Mutacja, limit_s: float = 3600.0) -> dict:
@@ -249,19 +303,24 @@ def wykonaj(mutacja: Mutacja, limit_s: float = 3600.0) -> dict:
                 "faktyczny_detektor": None,
                 "WERDYKT": kwalifikacja,
             }
-        pomiary = uruchom_bramki(lustro, limit_s=limit_s, wybrane=mutacja.bramki)
-        werdykt = pomiary.get("WERDYKT", {})
-        czerwone = sorted(k for k, v in werdykt.items() if v == "FAIL")
-        wyjatek = pomiary.get("WYJATEK")
-        zabita = bool(czerwone) or bool(wyjatek)
+        czerwone: list[str] = []
+        wyjatek = None
+        if mutacja.bramki:
+            pomiary = uruchom_bramki(lustro, limit_s=limit_s, wybrane=mutacja.bramki)
+            werdykt = pomiary.get("WERDYKT", {})
+            czerwone = sorted(k for k, v in werdykt.items() if v == "FAIL")
+            wyjatek = pomiary.get("WYJATEK")
+        czerwone_testy = uruchom_testy(lustro, mutacja.testy) if mutacja.testy else []
+        zabita = bool(czerwone) or bool(wyjatek) or bool(czerwone_testy)
         return {
             "mutacja": mutacja.ident,
             "defekt_fizyczny": mutacja.defekt_fizyczny,
             "plik": mutacja.plik,
             "kwalifikacja": kwalifikacja,
             "oczekiwany_detektor": mutacja.oczekiwany_detektor,
-            "faktyczny_detektor": czerwone
-            or (["WYJATEK: " + str(wyjatek)[:200]] if wyjatek else []),
+            "faktyczny_detektor": (
+                czerwone + czerwone_testy + (["WYJATEK: " + str(wyjatek)[:200]] if wyjatek else [])
+            ),
             "WERDYKT": "ZABITA" if zabita else "PRZEZYLA",
         }
     finally:
@@ -270,9 +329,16 @@ def wykonaj(mutacja: Mutacja, limit_s: float = 3600.0) -> dict:
 
 if __name__ == "__main__":  # pragma: no cover — wejscie harnessu
     wybrane = sys.argv[1:] or [m.ident for m in MUTACJE]
-    wyniki = [wykonaj(m) for m in MUTACJE if m.ident in wybrane]
-    for wiersz in wyniki:
-        print(json.dumps(wiersz, ensure_ascii=False), flush=True)
+    # Meldunek po KAZDEJ mutacji, nie na koncu. Bieg kompletu trwa kilkanascie minut;
+    # zbiorczy wydruk na koncu oznaczalby, ze przerwanie limitem czasu nie zostawia
+    # ZADNEJ informacji o tym, ktore mutacje zdazyly i z jakim skutkiem.
+    wyniki: list[dict] = []
+    for mutacja in MUTACJE:
+        if mutacja.ident not in wybrane:
+            continue
+        wynik = wykonaj(mutacja)
+        wyniki.append(wynik)
+        print(json.dumps(wynik, ensure_ascii=False), flush=True)
     print("=== PODSUMOWANIE ===")
     print(
         json.dumps(

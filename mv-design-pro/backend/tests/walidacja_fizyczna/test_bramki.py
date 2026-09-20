@@ -7,8 +7,6 @@ mutacji, ktory potrzebuje kompletu w jednym procesie.
 
 from __future__ import annotations
 
-import pytest
-
 from . import bramki
 
 
@@ -58,7 +56,6 @@ def test_g9_residuum_po_zdarzeniu() -> None:
     _sprawdz(bramki.g9_residuum_po_zdarzeniu(), ("G9_residuum_algebry_po_zdarzeniu",))
 
 
-@pytest.mark.slow
 def test_g10_czas_krytyczny() -> None:
     pomiary = bramki.g10_czas_krytyczny()
     _sprawdz(pomiary, ("G10_blad_czasu_krytycznego_s",))

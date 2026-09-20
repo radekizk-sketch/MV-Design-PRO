@@ -81,11 +81,12 @@ def test_ukrycie_zaleznosci_zatrzymuje_bieg(ukrywany: str, tmp_path: Path) -> No
 
 
             sys.meta_path = [_Filtr(f) for f in sys.meta_path]
-            for nazwa in [
-                n for n in list(sys.modules)
-                if n == UKRYWANY or n.startswith(UKRYWANY + ".")
-            ]:
-                del sys.modules[nazwa]
+            # ZERO ingerencji w `sys.modules`. `sitecustomize` laduje sie przy starcie
+            # interpretera, czyli ZANIM cokolwiek zaimportuje ukrywany pakiet — nie ma
+            # wiec czego zdejmowac. Wczesniejsza wersja miala tu petle kasujaca; byla
+            # martwa, a przy okazji lamala regule KD-10 („kto zdejmuje modul z
+            # `sys.modules`, ten musi go oddac") i zaczerwienila bramke
+            # `tests/ci/test_jedna_tozsamosc_modulow.py` w pelnej regresji.
             """
         ).strip()
         + "\n"
