@@ -84,6 +84,7 @@ from ..konwencje import (
     CWIERC_OBROTU_RAD,
     pulsacja_bazowa_rad_s,
     siec_na_dq,
+    sprawdz_stala_bezwladnosci,
     zmiana_bazy_impedancji,
     zmiana_bazy_mocy_wzglednej,
     zmiana_bazy_stalej_bezwladnosci,
@@ -680,7 +681,11 @@ def zbuduj_maszyne_synchroniczna(
     return MaszynaSynchroniczna(
         ident=ident,
         wezel=wezel,
-        h_s=zmiana_bazy_stalej_bezwladnosci(h_s, s_n_mva, s_bazowa_mva),
+        h_s=zmiana_bazy_stalej_bezwladnosci(
+            sprawdz_stala_bezwladnosci(h_s, urzadzenie=ident, rodzina="maszyna synchroniczna"),
+            s_n_mva,
+            s_bazowa_mva,
+        ),
         d_pu=zmiana_bazy_stalej_bezwladnosci(d_pu, s_n_mva, s_bazowa_mva),
         xd_pu=zmiana_bazy_impedancji(xd_pu, s_n_mva, s_bazowa_mva),
         xq_pu=zmiana_bazy_impedancji(xq_pu, s_n_mva, s_bazowa_mva),

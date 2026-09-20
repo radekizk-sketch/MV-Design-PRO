@@ -76,18 +76,56 @@ def _install_httpx_testclient_compat() -> None:
 
 _install_httpx_testclient_compat()
 
-_MISSING_DEPS = {
-    name for name in ("sqlalchemy", "numpy", "networkx") if importlib.util.find_spec(name) is None
-}
+#: Zaleznosci, BEZ KTORYCH suita nie jest bramka (R10 par. 7, defekt F-5).
+#: Wszystkie sa zaleznosciami GLOWNYMI w `pyproject.toml` — nie „opcjonalnymi
+#: bibliotekami srodowiska". Produkt bez ktorejkolwiek z nich nie dziala wcale,
+#: wiec bieg testow bez niej nie ma czego potwierdzac.
+ZALEZNOSCI_OBOWIAZKOWE: tuple[str, ...] = (
+    "fastapi",
+    "networkx",
+    "numpy",
+    "openpyxl",
+    "pandas",
+    "pydantic",
+    "scipy",
+    "sqlalchemy",
+)
 
 
-def pytest_ignore_collect(collection_path, config):
-    if not _MISSING_DEPS:
-        return False
-    path_str = str(collection_path)
-    if "tests/proof_engine" in path_str:
-        return False
-    return True
+def brakujace_zaleznosci(nazwy: tuple[str, ...] = ZALEZNOSCI_OBOWIAZKOWE) -> tuple[str, ...]:
+    """Nazwy zaleznosci obowiazkowych, ktorych nie ma w srodowisku (posortowane).
+
+    Wydzielone z hooka, zeby dalo sie to SPRAWDZIC testem bez uruchamiania
+    drugiego pytesta — patrz `tests/walidacja_fizyczna/test_bramka_zaleznosci.py`.
+    """
+    return tuple(sorted(nazwa for nazwa in nazwy if importlib.util.find_spec(nazwa) is None))
+
+
+def pytest_configure(config):
+    """Brak zaleznosci obowiazkowej ZATRZYMUJE bieg — nie odznacza cicho testow.
+
+    DEFEKT, KTORY TO USUWA (zmierzony R10 par. 7). Do tej pory ten sam warunek
+    obslugiwal `pytest_ignore_collect`, ktory przy braku `numpy`, `networkx` albo
+    `sqlalchemy` POMIJAL cale drzewo testow poza `tests/proof_engine` i konczyl
+    bieg kodem 0. Pomiar na HEAD: usuniecie jednej zaleznosci dawalo
+    „681 deselected, 0 failed" i ZIELONA bramke, chociaz nie wykonal sie ani
+    jeden test fizyki. Gorzej: `tests/test_environment.py`, ktorego jedynym
+    zadaniem jest wykrycie brakujacej zaleznosci, byl odznaczany przez ten sam
+    warunek — straznik znikal razem z tym, czego mial pilnowac.
+
+    `UsageError` konczy bieg kodem 4 z nazwanym powodem. To NIE jest
+    „wykluczenie zamienione na inne wykluczenie": bieg nie melduje sukcesu,
+    tylko wprost mowi, czego brakuje i ze nic nie zostalo zweryfikowane.
+    """
+    brakujace = brakujace_zaleznosci()
+    if brakujace:
+        raise pytest.UsageError(
+            "WALIDACJA NIEWYKONANA / BRAK ZALEZNOSCI OBOWIAZKOWEJ: "
+            + ", ".join(brakujace)
+            + ". Zadna czesc suity nie zostala wykonana. Zainstaluj srodowisko "
+            "(`poetry install --with dev`) i powtorz bieg — brak zaleznosci NIE JEST "
+            "powodem do odznaczenia testow."
+        )
 
 
 @pytest.fixture(autouse=True)

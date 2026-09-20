@@ -22,7 +22,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..kontrakty import KOD_WARTOSC_NIESKONCZONA, OdmowaDynamiki
+from ..kontrakty import (
+    KOD_PARAMETRY_SPRZECZNE,
+    KOD_WARTOSC_NIESKONCZONA,
+    OdmowaDynamiki,
+)
 from .pochodne_kierunkowe import Dual, Zespolona, kwadrat, pierwiastek
 
 
@@ -42,9 +46,14 @@ def admitancja_wewnetrzna(ra_pu: float, x_prim_pu: float) -> complex:
     """`y = 1/(Ra + jX')` — admitancja wewnetrzna zrodla napieciowego."""
     impedancja = complex(ra_pu, x_prim_pu)
     if impedancja == 0:
-        raise ValueError(
+        raise OdmowaDynamiki(
+            KOD_PARAMETRY_SPRZECZNE,
             "Zrodlo napieciowe o zerowej impedancji wewnetrznej nie ma skonczonej "
-            "admitancji — Ra i X' nie moga byc jednoczesnie zerowe."
+            "admitancji — Ra i X' nie moga byc jednoczesnie zerowe. Wezel bylby wtedy "
+            "sztywno zwiazany z SEM, co jest innym modelem, a nie granicznym przypadkiem "
+            "tego.",
+            ra_pu=ra_pu,
+            x_prim_pu=x_prim_pu,
         )
     return 1.0 / impedancja
 

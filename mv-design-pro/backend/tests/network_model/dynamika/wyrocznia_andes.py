@@ -189,6 +189,85 @@ def przebieg(
     return PrzebiegWzorcowy(czas_s=czas, delta_wzgledny_rad=delta - odniesienie)
 
 
+@dataclass(frozen=True)
+class PorownanieTrajektorii:
+    """Blad kata RAZEM z pomiarem POKRYCIA — jedno bez drugiego nie jest wynikiem."""
+
+    blad_rad: float
+    od_wymagane_s: float
+    do_wymagane_s: float
+    od_wzorca_s: float
+    do_wzorca_s: float
+    pokrycie_udzial: float
+    probek_porownanych: int
+    probek_odrzuconych: int
+
+
+def pokrycie_wzorca(
+    wzorzec: PrzebiegWzorcowy, *, od_s: float, do_s: float
+) -> tuple[float, float, float]:
+    """Jaka CZESC zadanego odcinka wzorzec faktycznie obejmuje (od, do, udzial)."""
+    od_wzorca = float(wzorzec.czas_s[0])
+    do_wzorca = float(wzorzec.czas_s[-1])
+    zadany = do_s - od_s
+    if zadany <= 0.0:
+        return od_wzorca, do_wzorca, 0.0
+    wspolny = min(do_s, do_wzorca) - max(od_s, od_wzorca)
+    return od_wzorca, do_wzorca, max(0.0, wspolny) / zadany
+
+
+def porownaj_trajektorie(
+    czas_nasz: np.ndarray,
+    delta_nasz: np.ndarray,
+    wzorzec: PrzebiegWzorcowy,
+    *,
+    od_s: float,
+    do_s: float,
+) -> PorownanieTrajektorii:
+    """Maksymalny blad kata na odcinku `[od_s, do_s]` WRAZ z pomiarem pokrycia.
+
+    Wzorzec jest interpolowany LINIOWO na nasza siatke probek — obie siatki
+    powstaja z innych krokow calkowania, wiec bez interpolacji porownywaloby sie
+    rozne chwile. Blad interpolacji jest rzedu `dt^2` wzorca i przy kroku 0,5 ms
+    lezy o rzedy wielkosci ponizej mierzonych roznic.
+
+    POKRYCIE JEST WARUNKIEM, NIE OZDOBA (R10 par. 16). `numpy.interp` poza
+    zakresem wzorca NIE ekstrapoluje i nie zglasza bledu — PRZYTRZYMUJE skrajna
+    wartosc. Wersja tej funkcji sprzed R10 wymagala wylacznie, zeby maska miala
+    „co najmniej jedna probke", wiec wzorzec urwany na 80% odcinka byl
+    porownywany ze STALA na pozostalych 20% i — na spokojnym ogonie przebiegu —
+    przechodzil. To jest dokladnie ten ksztalt defektu, ktory unicestwia
+    wartosc wyroczni: im mniej wzorca, tym latwiej „zgodnosc".
+
+    Dlatego niepelne pokrycie konczy sie `AssertionError` z POMIAREM (ile
+    zadano, ile wzorzec obejmuje, ile probek odrzucono), a nie cichym wynikiem.
+    """
+    maska = (czas_nasz >= od_s) & (czas_nasz <= do_s)
+    if not maska.any():
+        raise AssertionError(f"Odcinek [{od_s}, {do_s}] nie zawiera ani jednej probki")
+    od_wzorca, do_wzorca, udzial = pokrycie_wzorca(wzorzec, od_s=od_s, do_s=do_s)
+    poza = int(np.count_nonzero((czas_nasz[maska] < od_wzorca) | (czas_nasz[maska] > do_wzorca)))
+    if poza or udzial < 1.0:
+        raise AssertionError(
+            "WZORZEC NIE POKRYWA ZADANEGO ODCINKA — porownanie odrzucone. "
+            f"Zadano [{od_s}, {do_s}] s, wzorzec obejmuje [{od_wzorca}, {do_wzorca}] s "
+            f"(pokrycie {udzial:.6f}); probek poza zakresem wzorca: {poza} "
+            f"z {int(np.count_nonzero(maska))}. Interpolacja przytrzymalaby skrajna "
+            "wartosc wzorca i porownywala nasz przebieg ze STALA."
+        )
+    wzorzec_na_siatce = np.interp(czas_nasz[maska], wzorzec.czas_s, wzorzec.delta_wzgledny_rad)
+    return PorownanieTrajektorii(
+        blad_rad=float(np.max(np.abs(delta_nasz[maska] - wzorzec_na_siatce))),
+        od_wymagane_s=od_s,
+        do_wymagane_s=do_s,
+        od_wzorca_s=od_wzorca,
+        do_wzorca_s=do_wzorca,
+        pokrycie_udzial=udzial,
+        probek_porownanych=int(np.count_nonzero(maska)),
+        probek_odrzuconych=poza,
+    )
+
+
 def blad_trajektorii(
     czas_nasz: np.ndarray,
     delta_nasz: np.ndarray,
@@ -197,18 +276,17 @@ def blad_trajektorii(
     od_s: float,
     do_s: float,
 ) -> float:
-    """Maksymalny blad kata na odcinku `[od_s, do_s]`, po interpolacji wzorca.
-
-    Wzorzec jest interpolowany LINIOWO na nasza siatke probek — obie siatki
-    powstaja z innych krokow calkowania, wiec bez interpolacji porownywaloby sie
-    rozne chwile. Blad interpolacji jest rzedu `dt^2` wzorca i przy kroku 0,5 ms
-    lezy o rzedy wielkosci ponizej mierzonych roznic.
-    """
-    maska = (czas_nasz >= od_s) & (czas_nasz <= do_s)
-    if not maska.any():
-        raise AssertionError(f"Odcinek [{od_s}, {do_s}] nie zawiera ani jednej probki")
-    wzorzec_na_siatce = np.interp(czas_nasz[maska], wzorzec.czas_s, wzorzec.delta_wzgledny_rad)
-    return float(np.max(np.abs(delta_nasz[maska] - wzorzec_na_siatce)))
+    """Sam blad kata — cienka nakladka na `porownaj_trajektorie` (jedno zrodlo prawdy)."""
+    return porownaj_trajektorie(czas_nasz, delta_nasz, wzorzec, od_s=od_s, do_s=do_s).blad_rad
 
 
-__all__ = ["PrzebiegWzorcowy", "blad_trajektorii", "przebieg", "sem_szyny", "zbuduj_system"]
+__all__ = [
+    "PorownanieTrajektorii",
+    "PrzebiegWzorcowy",
+    "blad_trajektorii",
+    "pokrycie_wzorca",
+    "porownaj_trajektorie",
+    "przebieg",
+    "sem_szyny",
+    "zbuduj_system",
+]

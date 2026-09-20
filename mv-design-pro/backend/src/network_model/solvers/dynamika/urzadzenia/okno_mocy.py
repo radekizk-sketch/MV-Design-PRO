@@ -100,7 +100,11 @@ def okno_tylko_oddawanie(moc_znamionowa_pu: float) -> OknoMocy:
 def moc_znamionowa_pu(s_n_mva: float, s_bazowa_mva: float) -> float:
     """Moc znamionowa urzadzenia w pu bazy UKLADU — jedno miejsce przeliczenia."""
     if s_bazowa_mva <= 0.0:
-        raise ValueError(f"Baza mocy musi byc dodatnia (otrzymano {s_bazowa_mva})")
+        raise OdmowaDynamiki(
+            KOD_PARAMETRY_SPRZECZNE,
+            f"Baza mocy musi byc dodatnia (otrzymano {s_bazowa_mva})",
+            s_bazowa_mva=s_bazowa_mva,
+        )
     return s_n_mva / s_bazowa_mva
 
 

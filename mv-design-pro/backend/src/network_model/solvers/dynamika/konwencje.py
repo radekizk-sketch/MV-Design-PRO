@@ -29,6 +29,8 @@ import math
 
 from network_model.pochodne import impedancja_z_napiecia_i_mocy_ohm
 
+from .kontrakty import KOD_PARAMETRY_SPRZECZNE, OdmowaDynamiki
+
 #: Cwierc obrotu — przesuniecie osi q wzgledem osi odniesienia fazora sieciowego.
 CWIERC_OBROTU_RAD = math.pi / 2.0
 
@@ -62,9 +64,12 @@ def zmiana_bazy_impedancji(
     tedy przy budowie, a nie „gdzies pozniej".
     """
     if s_bazowa_urzadzenia_mva <= 0.0 or s_bazowa_ukladu_mva <= 0.0:
-        raise ValueError(
+        raise OdmowaDynamiki(
+            KOD_PARAMETRY_SPRZECZNE,
             "Bazy mocy musza byc dodatnie "
-            f"(urzadzenie={s_bazowa_urzadzenia_mva}, uklad={s_bazowa_ukladu_mva})"
+            f"(urzadzenie={s_bazowa_urzadzenia_mva}, uklad={s_bazowa_ukladu_mva})",
+            s_bazowa_urzadzenia_mva=s_bazowa_urzadzenia_mva,
+            s_bazowa_ukladu_mva=s_bazowa_ukladu_mva,
         )
     return wartosc_pu * (s_bazowa_ukladu_mva / s_bazowa_urzadzenia_mva)
 
@@ -80,11 +85,51 @@ def zmiana_bazy_stalej_bezwladnosci(
     Predykat pary „w gore / w dol" ma jedno zrodlo prawdy w tym module.
     """
     if s_bazowa_urzadzenia_mva <= 0.0 or s_bazowa_ukladu_mva <= 0.0:
-        raise ValueError(
+        raise OdmowaDynamiki(
+            KOD_PARAMETRY_SPRZECZNE,
             "Bazy mocy musza byc dodatnie "
-            f"(urzadzenie={s_bazowa_urzadzenia_mva}, uklad={s_bazowa_ukladu_mva})"
+            f"(urzadzenie={s_bazowa_urzadzenia_mva}, uklad={s_bazowa_ukladu_mva})",
+            s_bazowa_urzadzenia_mva=s_bazowa_urzadzenia_mva,
+            s_bazowa_ukladu_mva=s_bazowa_ukladu_mva,
         )
     return h_s * (s_bazowa_urzadzenia_mva / s_bazowa_ukladu_mva)
+
+
+def sprawdz_stala_bezwladnosci(h_s: float, *, urzadzenie: str, rodzina: str) -> float:
+    """Stala bezwladnosci MUSI byc dodatnia i skonczona — inaczej rownania nie ma.
+
+    TO NIE JEST PROG WIARYGODNOSCI, TYLKO WARUNEK ISTNIENIA (R10 par. 11, defekt F-7).
+    Rownanie wahan ma postac `dOmega/dt = (P_m - P_e - D dOmega) / (2H)`:
+
+    * `H = 0`  -> dzielenie przez zero; predkosc nie jest funkcja czasu, tylko
+      rownaniem algebraicznym `P_m = P_e + D dOmega` innego typu, ktorego ten model
+      nie zawiera;
+    * `H < 0`  -> odwrocona przyczynowosc: nadwyzka mocy mechanicznej HAMUJE wirnik.
+      Taki uklad jest rozbiezny z definicji, a jego bieg nie jest symulacja niczego;
+    * `H` nieskonczone albo NaN -> parametr nie jest liczba.
+
+    ZADNEGO MINIMUM NIE WPROWADZAMY. `H = 0,05 s` jest dla maszyny synchronicznej
+    nieprawdopodobne fizycznie, ale MATEMATYCZNIE poprawne — uklad jest wtedy tylko
+    sztywniejszy, a o zbieznosc kroku dba wlasna maszyneria Newtona, ktora melduje
+    `dynamika.krok_niezbiezny`, gdy nie daje rady. Wiarygodnosc parametru jest
+    pytaniem katalogowym, nie warunkiem rozwiazywalnosci, i wymyslona granica
+    („H >= 0,5 s") zaczelaby decydowac o fizyce zamiast o danych.
+
+    Zwraca `h_s` bez zmiany, zeby wolajacy mogl uzyc jej w wyrazeniu i nie mial
+    drugiej drogi obok sprawdzenia.
+    """
+    if not math.isfinite(h_s) or h_s <= 0.0:
+        raise OdmowaDynamiki(
+            KOD_PARAMETRY_SPRZECZNE,
+            f"Stala bezwladnosci urzadzenia {urzadzenie!r} (rodzina {rodzina}) wynosi {h_s} — "
+            "rownanie wahan wymaga H > 0 i skonczonego. Dla H = 0 rownanie ruchu nie "
+            "istnieje (dzielenie przez zero), dla H < 0 nadwyzka mocy mechanicznej "
+            "hamowalaby wirnik. To warunek istnienia rownania, nie prog wiarygodnosci.",
+            urzadzenie=urzadzenie,
+            rodzina=rodzina,
+            h_s=h_s,
+        )
+    return h_s
 
 
 def zmiana_bazy_mocy_wzglednej(
@@ -105,7 +150,11 @@ def zmiana_bazy_mocy_wzglednej(
 def moc_pu(moc_mva: float, s_bazowa_mva: float) -> float:
     """Moc [MVA/MW/Mvar] na jednostki wzgledne bazy ukladu."""
     if s_bazowa_mva <= 0.0:
-        raise ValueError(f"Baza mocy musi byc dodatnia (otrzymano {s_bazowa_mva})")
+        raise OdmowaDynamiki(
+            KOD_PARAMETRY_SPRZECZNE,
+            f"Baza mocy musi byc dodatnia (otrzymano {s_bazowa_mva})",
+            s_bazowa_mva=s_bazowa_mva,
+        )
     return moc_mva / s_bazowa_mva
 
 
@@ -149,5 +198,6 @@ __all__ = [
     "siec_na_dq",
     "zmiana_bazy_impedancji",
     "zmiana_bazy_mocy_wzglednej",
+    "sprawdz_stala_bezwladnosci",
     "zmiana_bazy_stalej_bezwladnosci",
 ]

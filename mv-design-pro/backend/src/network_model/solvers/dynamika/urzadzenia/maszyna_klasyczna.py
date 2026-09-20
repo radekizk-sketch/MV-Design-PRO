@@ -43,6 +43,7 @@ import numpy as np
 
 from ..konwencje import (
     pulsacja_bazowa_rad_s,
+    sprawdz_stala_bezwladnosci,
     zmiana_bazy_impedancji,
     zmiana_bazy_stalej_bezwladnosci,
 )
@@ -241,7 +242,11 @@ def zbuduj_maszyne_klasyczna(
     return MaszynaKlasyczna(
         ident=ident,
         wezel=wezel,
-        h_s=zmiana_bazy_stalej_bezwladnosci(h_s, s_n_mva, s_bazowa_mva),
+        h_s=zmiana_bazy_stalej_bezwladnosci(
+            sprawdz_stala_bezwladnosci(h_s, urzadzenie=ident, rodzina="maszyna klasyczna"),
+            s_n_mva,
+            s_bazowa_mva,
+        ),
         d_pu=zmiana_bazy_stalej_bezwladnosci(d_pu, s_n_mva, s_bazowa_mva),
         x_prim_pu=zmiana_bazy_impedancji(x_prim_pu, s_n_mva, s_bazowa_mva),
         ra_pu=zmiana_bazy_impedancji(ra_pu, s_n_mva, s_bazowa_mva),

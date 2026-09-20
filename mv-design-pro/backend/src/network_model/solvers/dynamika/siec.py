@@ -41,6 +41,7 @@ from .kontrakty import (
     WezelDynamiki,
 )
 from .skonczonosc import sprawdz_napiecia
+from .wyspy import przydzial_wysp, sprawdz_zasilanie_wysp
 
 #: Wspolczynnik warunku Armijo — wymagany spadek normy residuum na krok o dlugosci
 #: `alfa`. Wartosc klasyczna dla nawrotu z poloweniem kroku; nie jest strojona per
@@ -65,10 +66,16 @@ class ModelSieci:
     odsprzegi: tuple[OdsprzegDynamiki, ...]
     galezie_aktywne: frozenset[str]
     admitancje_zwarc: tuple[tuple[str, complex], ...]
+    przydzial_wysp: tuple[int, ...]
 
     @property
     def liczba_wezlow(self) -> int:
         return len(self.identy_wezlow)
+
+    @property
+    def liczba_wysp(self) -> int:
+        """Liczba spojnych skladowych grafu AKTYWNYCH galezi (>= 1 dla sieci niepustej)."""
+        return (max(self.przydzial_wysp) + 1) if self.przydzial_wysp else 0
 
 
 def _indeksacja(wezly: tuple[WezelDynamiki, ...]) -> tuple[tuple[str, ...], dict[str, int]]:
@@ -186,6 +193,7 @@ def zloz_model_sieci(
         shape=(liczba, liczba),
     ).tocsc()
     ybus.sum_duplicates()
+    aktywne_zamrozone = frozenset(aktywne)
     return ModelSieci(
         identy_wezlow=identy,
         indeks_wezla=indeks,
@@ -193,8 +201,9 @@ def zloz_model_sieci(
         wezly=wezly,
         galezie=galezie,
         odsprzegi=odsprzegi,
-        galezie_aktywne=frozenset(aktywne),
+        galezie_aktywne=aktywne_zamrozone,
         admitancje_zwarc=tuple(sorted(admitancje_zwarc, key=lambda pozycja: pozycja[0])),
+        przydzial_wysp=przydzial_wysp(identy, indeks, galezie, aktywne_zamrozone),
     )
 
 
@@ -364,9 +373,28 @@ def rozwiaz_algebre(
     `max_nawrotow` poloweniach zadna dlugosc kroku tego nie osiaga, rdzen ODMAWIA
     z pomiarem (residuum, liczba iteracji, liczba nawrotow) — nie melduje
     „rozjazdu" i nie zwraca ostatniego przyblizenia jako wyniku.
+
+    WARUNEK ISTNIENIA IDZIE PRZED NEWTONEM. Zanim jakikolwiek krok zostanie
+    policzony, sprawdzany jest warunek strukturalny: czy kazda wyspa niosaca
+    odbior ma cokolwiek, co moze go zasilic (`wyspy.sprawdz_zasilanie_wysp`).
+    Powod jest pomiarowy: dla wyspy bez zrodla residuum wynosi `|S|/|V|`, wiec
+    Newton osiaga DOWOLNA tolerancje przez samo odjechanie napiecia — i melduje
+    „zbieznosc" przy `|V| ~ 1e11 pu`. Sprawdzenie zbieznosci nie jest w stanie
+    tego wylapac z zasady (residuum naprawde jest male), wiec warunek istnienia
+    musi byc sprawdzony OSOBNO i WCZESNIEJ.
     """
     napiecia = np.array(napiecia_startowe, dtype=complex)
     sprawdz_napiecia(napiecia, model.identy_wezlow, t_s)
+    sprawdz_zasilanie_wysp(
+        model.identy_wezlow,
+        model.indeks_wezla,
+        model.przydzial_wysp,
+        odbiory,
+        urzadzenia,
+        stany,
+        napiecia,
+        t_s,
+    )
     residuum = residuum_algebry(model, odbiory, urzadzenia, stany, napiecia)
     norma = float(np.linalg.norm(residuum))
     nawroty_lacznie = 0

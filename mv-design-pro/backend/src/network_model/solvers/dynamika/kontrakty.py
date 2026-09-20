@@ -88,6 +88,15 @@ KOD_PUNKT_PRACY_POZA_OGRANICZENIEM = "dynamika.punkt_pracy_poza_ograniczeniem"
 #: modelu — kazda dalsza probka byla by trajektoria nieosiagalna energetycznie.
 KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY = "dynamika.zakres_waznosci_przekroczony"
 
+#: Wyspa sieci niesie odbior, a zadne przylaczone do niej urzadzenie nie wnosi
+#: ani pradu, ani pochodnej pradu po napieciu — punkt pracy NIE ISTNIEJE. Odmowa
+#: pada PRZED Newtonem, bo dla takiej wyspy residuum `|S|/|V|` schodzi ponizej
+#: dowolnej tolerancji przez samo odjechanie napiecia do nieskonczonosci: bez tego
+#: sprawdzenia rdzen meldowal „zbieznosc" przy `|V| ~ 1e11 pu` albo przewracal sie
+#: surowym `OverflowError` (R10 par. 8/9, defekt F-8). Predykat i wyprowadzenie:
+#: `wyspy.py`.
+KOD_WYSPA_BEZ_ZRODLA = "dynamika.wyspa_bez_zrodla"
+
 #: Zamkniety rejestr kodow odmow tego rdzenia. Nowy kod DOPISUJESZ tutaj —
 #: `OdmowaDynamiki` odrzuca kod spoza rejestru (deklaracja z przypietym testem,
 #: nie obietnica w docstringu).
@@ -103,6 +112,7 @@ KODY_ODMOW: tuple[str, ...] = (
     KOD_SIEC_NIESPOJNA,
     KOD_WARIANT_BEZ_PARAMETROW,
     KOD_WARTOSC_NIESKONCZONA,
+    KOD_WYSPA_BEZ_ZRODLA,
     KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY,
     KOD_ZDARZENIE_BEZ_ELEMENTU,
     KOD_ZWARCIE_METALICZNE,

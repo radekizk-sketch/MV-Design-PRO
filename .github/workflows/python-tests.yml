@@ -303,7 +303,10 @@ jobs:
   andes-cross-validation:
     name: Wyrocznia dynamiki ANDES (izolowany venv)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 45 min, nie 20: od R10 ten job wykonuje takze eksperyment przyczynowy eps -> tau
+    # (`tests/walidacja_fizyczna/andes/test_eps_tau.py`) — dwa zamiatania po piec biegow
+    # wyroczni kazde, plus kryminalistyka zdarzenia. Zmierzony czas kompletu: ~20 min.
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -338,6 +341,64 @@ jobs:
       - name: Wyrocznia dynamiki (marker `andes`, caly katalog tests)
         working-directory: mv-design-pro/backend
         run: poetry run pytest -q -m andes tests
+
+  mutacje-dynamiki:
+    name: Walidacja fizyczna dynamiki — pelny zestaw mutacji
+    runs-on: ubuntu-latest
+    # Kazda mutacja uruchamia bramki w OSOBNYM procesie na lustrze zrodel; zestaw
+    # jest zawezony do bramek, ktore deklaruje dana mutacja, wiec komplet miesci sie
+    # w kilkunastu minutach. Job jest ODDZIELNY od `pytest`, zeby nie wydluzac bramki
+    # obowiazkowej kazdego PR — ale jest bramka, a nie „przebiegiem na zyczenie":
+    # samokontrola harnessu i trzy szybkie zabicia biegna RAZEM z reszta suity
+    # (`tests/walidacja_fizyczna/test_mutacje.py`), wiec regresja harnessu jest
+    # widoczna natychmiast, a ten job domyka komplet.
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.x'
+          cache: pip
+          cache-dependency-path: mv-design-pro/backend/poetry.lock
+      - name: Install Poetry
+        run: pipx install poetry
+      - name: Cache Poetry and virtualenv
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+            ~/.cache/pypoetry/virtualenvs
+          key: poetry-${{ runner.os }}-${{ hashFiles('mv-design-pro/backend/poetry.lock') }}
+          restore-keys: |
+            poetry-${{ runner.os }}-
+      - name: Install dependencies
+        working-directory: mv-design-pro/backend
+        run: poetry install --no-interaction --with dev
+      - name: Pelny zestaw mutacji (kazda musi byc ZABITA albo NIEWAZNA)
+        working-directory: mv-design-pro/backend
+        run: |
+          set -o pipefail
+          poetry run python -m tests.walidacja_fizyczna.mutacje | tee /tmp/mutacje.json
+          poetry run python - <<'PY'
+          import json, sys
+          tresc = open("/tmp/mutacje.json").read()
+          podsumowanie = json.loads(tresc.split("=== PODSUMOWANIE ===", 1)[1])
+          print(json.dumps(podsumowanie, indent=1))
+          if podsumowanie["przezyly"] or podsumowanie["bez_zmiany_tekstu"]:
+              print(
+                  "MUTACJE PRZEZYLY ALBO NIE ZOSTALY NANIESIONE — zestaw bramek ma luke",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+          PY
+      - name: Aparat dowodowy z jednego wejscia (jak z czystego klonu)
+        working-directory: mv-design-pro/backend
+        run: poetry run python -m tests.walidacja_fizyczna.uruchom
 
   # ZNALEZISKO BRAMKI ADWERSARIALNEJ (2026-09-08, Z-3): dialekt PRODUKCYJNY nie mial
   # zadnego pokrycia w CI. `tests/conftest.py` wymusza SQLite dla kazdego testu, a
