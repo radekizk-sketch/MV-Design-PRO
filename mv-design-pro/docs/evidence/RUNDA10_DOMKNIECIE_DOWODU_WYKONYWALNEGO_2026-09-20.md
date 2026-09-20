@@ -745,7 +745,7 @@ został w tej rundzie zmieniony.
 
 | Zestaw | Polecenie | Wynik |
 |---|---|---|
-| **Regresja istniejąca (backend)** | `pytest -q -m "not pandapower and not andes"` | **16 682 passed · 37 deselected** (1870 s); w pierwszym biegu **1 failed** — patrz niżej |
+| **Regresja istniejąca (backend)** | `pytest -q -m "not pandapower and not andes"` | **16 684 passed · 37 deselected · 0 failed** (1703,42 s) — bieg rozstrzygający, na drzewie końcowym; pierwszy bieg (przed naprawą harnessu) dał 16 682 passed + **1 failed**, patrz niżej |
 | **Pakiet dynamiki (po naprawie F-8)** | `pytest tests/network_model/dynamika …` | **429 passed · 3 deselected** — identycznie z linią bazową rundy 9 |
 | **Pakiet dynamiki + aparat (po F-5)** | `pytest … tests/test_environment.py` | **461 passed · 3 deselected** |
 | **Nowa walidacja R10 — bramki** | `pytest tests/walidacja_fizyczna/test_bramki.py` | **12 passed** (331,88 s) |
@@ -760,7 +760,7 @@ został w tej rundzie zmieniony.
 
 ### V.1 Jedyna porażka pełnej regresji — i co z niej wynika
 
-Pierwszy pełny bieg dał **1 failed**:
+Pierwszy pełny bieg (16 682 passed) dał **1 failed**:
 `tests/ci/test_jedna_tozsamosc_modulow.py::test_test_zdejmujacy_moduly_z_sys_modules_musi_je_oddac`.
 
 Przyczyna: **mój** nowy `test_bramka_zaleznosci.py` zawierał w treści generowanego
@@ -774,6 +774,12 @@ jako martwy kod, a nie ukryta przed skanem. Obie bramki po naprawie zielone.
 
 To jest ilustracja reguły, którą ta runda stosuje do siebie samej: **pełna regresja
 znalazła defekt w aparacie dowodowym, nie w produkcie** — i tak jest zaraportowana.
+
+Różnica liczności między biegami (16 683 wybranych wobec 16 684) też nie jest szumem i
+ma nazwane źródło: krotka `SZYBKIE` w `test_mutacje.py` urosła z trzech pozycji do
+czterech (dopisane **M18**, po naprawie jego detektora), a test szybkiego zabicia jest
+po niej parametryzowany. Żadnej funkcji testowej między biegami nie dopisano ani nie
+usunięto — sprawdzone różnicą `ff613b16..e9a0fabe` po `backend/tests/**`.
 
 ---
 
@@ -867,11 +873,16 @@ Trzy niezależne drogi: kwadratura równych pól (po kącie), bisekcja po trajek
 się do **1,43·10⁻¹⁰ s**; produkt odbiega o **2,04·10⁻⁶ s**, poniżej rozdzielczości
 własnej bisekcji. Niedomknięcie pól: −1,11·10⁻¹⁶.
 
-Stabilność klasyfikacji (dodatkowe pytanie recenzenta): `t_CCT` zmierzony przy
-**trzech** horyzontach (3 / 6 / 12 s) i **dwóch** definicjach utraty synchronizmu
-(przekroczenie `δ_u` przy `ω > 1` oraz rozbieganie kąta o `2π`) — wszystkie sześć
-kombinacji dają tę samą wartość w granicach rozdzielczości bisekcji (1,5·10⁻⁹ s).
-Czas krytyczny **nie jest artefaktem progu klasyfikacji**.
+Stabilność klasyfikacji (dodatkowe pytanie recenzenta) — pomiar na **tym samym**
+scenariuszu, którego używa bramka G10 (zwarcie `X_f = 0,05 pu`): `t_CCT` policzony dla
+**dwóch metod** (DOP853, Radau) × **trzech horyzontów** (3 / 6 / 12 s) × **dwóch
+definicji utraty synchronizmu** (przekroczenie `δ_u` przy `ω > 1` oraz rozbieganie kąta
+o `2π`) = **12 kombinacji**. Odchylenie od kwadratury równych pól
+(0,3182261114510691 s) mieści się w przedziale **od −1,433·10⁻¹⁰ s do +6,017·10⁻¹⁰ s**;
+całkowity rozrzut **7,45·10⁻¹⁰ s**, czyli poniżej rozdzielczości bisekcji (10⁻⁹ s) i
+około 2700 razy poniżej progu bramki (2·10⁻³ s).
+
+Czas krytyczny **nie jest artefaktem progu klasyfikacji ani horyzontu obserwacji**.
 
 ### GATE D — ANDES CAUSAL CLAIM
 

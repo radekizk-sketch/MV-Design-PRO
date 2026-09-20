@@ -72,11 +72,6 @@ class ModelSieci:
     def liczba_wezlow(self) -> int:
         return len(self.identy_wezlow)
 
-    @property
-    def liczba_wysp(self) -> int:
-        """Liczba spojnych skladowych grafu AKTYWNYCH galezi (>= 1 dla sieci niepustej)."""
-        return (max(self.przydzial_wysp) + 1) if self.przydzial_wysp else 0
-
 
 def _indeksacja(wezly: tuple[WezelDynamiki, ...]) -> tuple[tuple[str, ...], dict[str, int]]:
     """Kolejnosc wezlow = KOLEJNOSC ZAPISU wejscia (nie sortowanie alfabetyczne).
