@@ -694,6 +694,15 @@ To jest dowód, którego żądał §34: **kluczowy wynik odtwarza się z czysteg
 udokumentowanym procesem**. Środowisko pochodzi z `poetry.lock`, który klon niesie;
 zależności nie były w tej rundzie zmieniane.
 
+**Potwierdzenie mocniejsze od tego, na maszynie, której nie dotykam** (§W.2): ten sam
+proces wykonał **runner CI** na SHA końcowym `f9128b7b`, jako krok „Aparat dowodowy z
+jednego wejscia (jak z czystego klonu)" joba `mutacje-dynamiki` — 333 s, `WALIDACJA
+WYKONANA`, `kroki_nieudane: []`, przy Pythonie 3.11.16 i tych samych wersjach `numpy`
+/ `scipy`. Runner nie ma ani katalogu sesji, ani niczego spoza repozytorium, więc
+odtwarzalność nie zależy od mojego stanowiska. Tam suma wynosi 264 testy zamiast 263 —
+różnica pochodzi z dopisania **M18** do krotki `SZYBKIE` (patrz §W.2), a nie z innego
+zakresu aparatu.
+
 ---
 
 ## M. BRAMKA CI (§33)
@@ -785,26 +794,124 @@ usunięto — sprawdzone różnicą `ff613b16..e9a0fabe` po `backend/tests/**`.
 
 ## W. CI NA DOKŁADNYM SHA (§41)
 
-Kod tej rundy został wypchnięty na gałąź `claude/mv-design-pro-twin-audit-u4lhy0`
-(fast-forward z `5770464c`). Wymagane workflow'y na dokładnym SHA końcowym:
+### W.1 Werdykt na SHA końcowym `f9128b7b`
+
+**Dziewięć workflow'ów na dziewięć — zielone.** Osiemnaście przebiegów (każdy workflow
+odpalony dwukrotnie: ze zdarzenia `push` i `pull_request`), wszystkie `success`. Żaden
+werdykt tej rundy nie opiera się na zielonym CI commita rodzica — mandat zakazuje tego
+wprost, a §W.3 pokazuje, dlaczego zakaz jest słuszny.
+
+Pomiar jobów workflowu **Python tests** (run `35538518032`):
+
+| Job | Krok | Wynik | Czas |
+|---|---|---|---|
+| `pytest` | `Run pytest` | **przeszedł** | 2316 s |
+| `pytest` | `Testy guardow` (poza `testpaths` backendu) | **przeszedł** | 274 s |
+| `pytest` | 28 kroków guardów + `Mypy Ratchet` + `black --check`/`ruff` | **przeszły** | 23 s / 35 s |
+| `mutacje-dynamiki` | `Pelny zestaw mutacji` | **przeszedł** | 264 s |
+| `mutacje-dynamiki` | `Aparat dowodowy z jednego wejscia (jak z czystego klonu)` | **przeszedł** | 333 s |
+| `andes-cross-validation` | `pytest -q -m andes tests` | **7 passed, 16 714 deselected** | 632,48 s |
+| `pandapower-cross-validation` | marker `pandapower` | **przeszedł** | 126 s |
+| `postgres-dialect` | dialekt produkcyjny | **przeszedł** | 11 s |
+
+### W.2 Co CI wykonał z aparatu dowodowego — liczby, nie deklaracje
+
+**Zestaw mutacji na runnerze GitHuba** (nie u mnie): **11 ZABITYCH** (M10–M20),
+**0 PRZEŻYŁO**, **1 NIEWAŻNA** (M21 — kontrolna, zmiana samego komentarza),
+**0 BEZ ZMIANY TEKSTU**. Każda z nazwanym detektorem faktycznym, m.in.:
+
+* M11 → odmowa `dynamika.inicjalizacja_niezbiezna` z `‖f‖ = 0.22857142857142856`;
+* M18 → `test_czestotliwosc_wezlowa.py::test_granica_dostepnosci_jest_fail_closed`
+  (detektor **testowy**, bo `|V| ≤ u_V` jest nieosiągalne z poziomu biegu);
+* M19 → `G13_wyspa_bez_zrodla_nieodmowiona` — bramka naprawy **F-8**.
+
+**Aparat z jednego wejścia** (`python -m tests.walidacja_fizyczna.uruchom`) na tym samym
+runnerze, w środowisku bez katalogu sesji i bez czegokolwiek spoza repozytorium:
+
+```
+blokada srodowiska: python 3.11.16, numpy 1.26.4, scipy 1.17.0,
+                    brakujace: [], wyrocznia_zewnetrzna_dostepna: false
+manifest dowodow        42 passed            (0,53 s)
+bramki fizyczne G1-G13  12 passed            (240,74 s)
+obserwable/zdarzenia/
+odpornosc/mutacje      210 passed, 4 desel.  (90,11 s)
+WERDYKT: WALIDACJA WYKONANA        kroki_nieudane: []
+```
+
+Razem **264** testy wobec **263** w lokalnym teście czystego klonu z §L. Różnica jest
+jedna i ma nazwane źródło: krotka `SZYBKIE` w `test_mutacje.py` urosła o **M18** po
+naprawie jego detektora, a test szybkiego zabicia jest po niej parametryzowany. To jest
+**mocniejsza postać §34 niż §L**: czysty klon wykonał runner CI, nie ja.
+
+### W.3 Co CI znalazł przede mną — dwie czerwienie, jeden korzeń
+
+Pierwszy szczyt tej rundy (`e9a0fabe`) poszedł na gałąź **bez uruchomienia pełnego
+zestawu bramek** (`scripts/guardy_z_ci.py`). CI zapalił **dwa** workflow'y, oba z tego
+samego korzenia — naprawa F-8 dołożyła pole `ModelSieci.przydzial_wysp` i plik
+`network_model/solvers/dynamika/wyspy.py`:
+
+| Workflow (`e9a0fabe`) | Krok | Komunikat |
+|---|---|---|
+| **P0 Extended Guards** (run 35536141250) | `solver_input_substitute_guard` | `siec.py:78: podstawienie liczby za nieobecna dana wejsciowa ('B:ifexp:self.przydzial_wysp')` |
+| **Python tests** (run 35536141190, job `pytest`) | `Testy guardow` | `1 failed, 1057 passed` — `test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen` |
+
+**Naprawa pierwszej — kasacja, nie przepisanie wyrażenia** (`76a92dc9`). Właściwość
+`ModelSieci.liczba_wysp` zwracała `0` dla modelu bez węzłów, czyli liczbę podstawioną za
+brak danych. Nie miała **żadnego konsumenta** — ani w produkcie, ani w testach, ani w
+aparacie dowodowym — więc poszła jako martwy kod. Wyciszenie bramki albo przepisanie
+wyrażenia na takie, którego skaner nie widzi, byłoby maskowaniem.
+
+**Naprawa drugiej — przeliczenie pinów z POMIARU** (`f9128b7b`). Ten test przypina
+zmierzony stan bramki, żeby jej zakres nie mógł cicho urosnąć ani się skurczyć:
+
+| Pin | Przed | Po | Skąd liczba |
+|---|---|---|---|
+| Pól kontraktów wejściowych | 3840 | **3841** | `contract_fields()` zrzucone NA DRZEWIE i na `5770464c` (osobne drzewo robocze), różnica `comm` na posortowanych zbiorach: **jedyna** nowa nazwa to `przydzial_wysp`, zero skasowanych |
+| Przeskanowanych plików | 536 | **537** | `git diff --name-status 5770464c HEAD -- backend/src/`: **dokładnie jeden** wpis `A` (`wyspy.py`), reszta `M` |
+| `network_model` plików | 177 | **178** | jw. |
+| Zapadka długu | 56/255 | **bez zmiany** | `wyspy.py` nie podstawia żadnej liczby |
+| Wykluczenia skanera | 13/31 | **bez zmiany** | jw. |
+
+Przydział wysp jest **wyprowadzony** z topologii (spójne składowe grafu aktywnych
+gałęzi), a predykat wkładu urządzenia do algebry jest **mierzony** z jego równań
+(`prad_pu`, `jakobian_prad_napiecie`), nie brany z listy rodzin. Każda z tych zmian ma
+własny wpis w dzienniku testu z uzasadnieniem merytorycznym — pin podniesiony bez wpisu
+byłby dokładnie tą fikcją, której ten test ma zapobiegać.
+
+**Wniosek procesowy, zapisany bez łagodzenia.** To nie CI zawiódł, tylko ja: pchnąłem
+gałąź przed uruchomieniem zestawu, który dokładnie te dwa naruszenia wyłapuje. Runda,
+której tematem jest „dowód wykonywalny zamiast raportu", ominęła własną bramkę. Zapisane
+tutaj, a nie w podsumowaniu ustnym, bo w następnej sesji podsumowania nie będzie.
+
+### W.4 Dlaczego pierwszy lokalny zestaw bramek meldował czerwień fałszywie
+
+Pierwszy lokalny bieg `guardy_z_ci.py` poszedł **systemowym** interpreterem i dał
+jedenaście czerwonych guardów plus `No module named pytest`. **Ani jeden z nich nie był
+prawdziwy**: część guardów importuje `networkx`/`pandas`, których systemowy Python nie
+ma. Po powtórzeniu interpreterem z venv backendu (i dowiązaniu `frontend/node_modules`
+z głównego drzewa, jak podpowiada docstring narzędzia):
+
+| Część zestawu | Wynik |
+|---|---|
+| Guardy z workflowów | **98 / 98 zielonych** |
+| Lint jak CI (`black`/`ruff`: `src tests`, `../scripts`, `scripts`) | **6 / 6 zielonych** |
+| Kroki npm jak CI (`type-check`, `lint`) | **2 / 2 zielone** |
+| Testy własne guardów (`pytest ../scripts`) | 1 failed / 1057 passed → po naprawie pinów **1058 passed** |
+
+To jest dokładnie ta choroba, którą opisuje docstring narzędzia: przyrząd
+nieodtwarzający warunku produkcyjnego produkuje wynik **niezależny od stanu kodu** — raz
+fałszywie zielony, raz fałszywie czerwony. Obie postacie są bezużyteczne i obie trzeba
+umieć rozpoznać, zamiast ufać kolorowi.
+
+### W.5 Workflow'y wymagane dla tej rundy
 
 | Workflow | Rola dla tej rundy |
 |---|---|
-| **Python tests** (job `pytest`) | wykonuje **cały aparat dowodowy** — bramki G1–G13, obserwable, zdarzenia, odporność numeryczna, samokontrola mutacji, cztery szybkie zabicia |
-| **Python tests** (job `mutacje-dynamiki`, nowy) | pełny zestaw M10–M21; pada przy `PRZEŻYŁA` lub `BEZ ZMIANY TEKSTU`; dodatkowo uruchamia aparat z jednego wejścia |
+| **Python tests** (job `pytest`) | wykonuje **cały aparat dowodowy** — bramki G1–G13, obserwable, zdarzenia, odporność numeryczna, samokontrola mutacji, cztery szybkie zabicia; w tym samym jobie krok `Testy guardow` |
+| **Python tests** (job `mutacje-dynamiki`, nowy) | pełny zestaw M10–M21; pada przy `PRZEŻYŁA` lub `BEZ ZMIANY TEKSTU`; drugim krokiem uruchamia aparat z jednego wejścia |
 | **Python tests** (job `andes-cross-validation`) | eksperyment ε → τ jako bramka (marker `andes`) |
-| **Python tests** (job `pandapower-cross-validation`) | nietknięty |
-| **Python tests** (job `postgres-dialect`) | nietknięty |
-| Frontend checks · SLD Determinism · Docs Guard · Architecture & Repo Hygiene · P0 Extended Guards · Physics Label Guard · Frontend E2E smoke · Frontend E2E full | bez zmian (ta runda nie dotyka frontendu) |
-
-**Stan na chwilę zamknięcia raportu:** przebieg CI na SHA końcowym jest uruchomiony i
-**jeszcze się nie zakończył**. Werdykty §P są wystawione na podstawie pomiarów
-lokalnych (w tym testu czystego klonu), a **nie** na podstawie zielonego CI z commita
-rodzica — tego mandat zakazuje wprost. Zgodność CI z pomiarem lokalnym musi być
-sprawdzona na tym samym SHA przed odbiorem; jeśli którykolwiek job wypadnie czerwono,
-werdykt §P wymaga korekty, a nie obrony.
-
----
+| **Python tests** (joby `pandapower-cross-validation`, `postgres-dialect`) | nietknięte |
+| Frontend checks · SLD Determinism · Docs Guard · Architecture & Repo Hygiene · P0 Extended Guards · Physics Label Guard · Frontend E2E smoke · Frontend E2E full | bez zmian (ta runda nie dotyka frontendu) — wszystkie zielone na `f9128b7b` |
 
 ## N. ZAMKNIĘCIE F-1 … F-8 (§43)
 
@@ -997,13 +1104,22 @@ Uczciwa lista — bez niej raport byłby niepełny.
    „węzeł bez napięcia" dla obserwabli i dla odbioru o stałej mocy), czyli rozszerzenia
    zakresu — zakazanego w tej rundzie.
 
+6. **Nie uruchomiłem pełnego zestawu bramek przed pierwszym pushem** — i to nie jest
+   „drobiazg procesowy", tylko dokładnie ten rodzaj skrótu, który ta runda ma tępić.
+   Skutkiem były **dwie czerwienie CI** na `e9a0fabe` (§W.3), obie wyłapywalne lokalnie
+   jednym poleceniem, obie naprawione u źródła w `76a92dc9` i `f9128b7b`. Zapisuję to
+   jako brak w mojej dyscyplinie, nie w narzędziu: `guardy_z_ci.py` działał i działał
+   poprawnie — po prostu go nie wywołałem. Dodatkowa lekcja o samym narzędziu (§W.4):
+   uruchomiony **złym interpreterem** melduje czerwień, która nie ma nic wspólnego ze
+   stanem kodu; kolor bez sprawdzenia środowiska nie jest dowodem w żadną stronę.
+
 ---
 
 ## Z. TRZYNAŚCIE WARUNKÓW ACCEPTED DONE (§46)
 
 | # | Warunek | Stan | Dowód |
 |---|---|---|---|
-| 1 | Kluczowe twierdzenia odtwarzalne z czystego klonu | **SPEŁNIONY** | §L — `WALIDACJA WYKONANA`, 263 testy |
+| 1 | Kluczowe twierdzenia odtwarzalne z czystego klonu | **SPEŁNIONY** | §L — `WALIDACJA WYKONANA`, 263 testy lokalnie; §W.2 — **264 testy na runnerze CI**, na SHA końcowym |
 | 2 | Aparat dowodowy wersjonowany | **SPEŁNIONY** | 19 nowych plików w `tests/walidacja_fizyczna/` |
 | 3 | Brak zależności = porażka walidacji, nie odznaczenie | **SPEŁNIONY** | §D — mutacja środowiska ×3, kod ≠ 0, zero „deselected" |
 | 4 | F-8 naprawiony fizycznie, nie wyjątkiem | **SPEŁNIONY** | §C — `wyspy.py`, predykat z równań, odmowa przed Newtonem |
@@ -1014,8 +1130,8 @@ Uczciwa lista — bez niej raport byłby niepełny.
 | 9 | Niezależna wyrocznia CCT (nie implementacja produktu) | **SPEŁNIONY** | §I.2 — dwie drogi, zgodność 1,43·10⁻¹⁰ s |
 | 10 | Harness mutacji z samokontrolą | **SPEŁNIONY** | §J — M21 kwalifikowana jako NIEWAŻNA przez porównanie AST |
 | 11 | Manifest dowodów per twierdzenie | **SPEŁNIONY** | §K — 10 twierdzeń, 42 testy egzekwujące |
-| 12 | Bramka CI wykonująca dowód z repo | **SPEŁNIONY** | §M — job obowiązkowy + `mutacje-dynamiki` |
-| 13 | Nic potrzebnego do odbioru poza repo; `git status` pusty | **SPEŁNIONY** | §R + §AA |
+| 12 | Bramka CI wykonująca dowód z repo | **SPEŁNIONY** | §M + §W.1/W.2 — 9/9 workflow'ów zielonych na `f9128b7b`; `mutacje-dynamiki` wykonał 11 zabić i aparat z jednego wejścia **na CI** |
+| 13 | Nic potrzebnego do odbioru poza repo; `git status` pusty | **SPEŁNIONY** | §R + §AA; dowód niezależny od stanowiska — §W.2 (runner CI bez katalogu sesji) |
 
 ---
 
@@ -1035,7 +1151,10 @@ Podstawą tego werdyktu **nie jest** to, że liczby wyszły ładnie. Podstawą j
 * rozbieżność wobec wyroczni zewnętrznej ma **wyjaśnienie przyczynowe udowodnione
   skalowaniem**, a nie dopasowaną stałą (§G);
 * aparat dowodowy **obalił hipotezę poprzedniej rundy** i **wykrył błąd we własnej
-  wyroczni** (§I.2) — czyli działa w obie strony, a nie tylko potwierdza.
+  wyroczni** (§I.2) — czyli działa w obie strony, a nie tylko potwierdza;
+* CI na **dokładnym SHA końcowym** `f9128b7b` jest zielone w **9 workflow'ach na 9**, a
+  nie na commicie rodzica (§W.1); zestaw mutacji i aparat z jednego wejścia wykonał
+  **runner**, nie ja (§W.2).
 
 Zakres ważności jest częścią werdyktu, nie przypisem: maszyna 2. rzędu bez regulatorów,
 sieć bezstratna w torach analitycznych, zwarcia symetryczne, fazor składowej zgodnej.
