@@ -66,7 +66,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from analysis.sanity_bounds.short_circuit_bounds import INCOMPLETE, OUT_OF_RANGE
 from application.analyses.energy_validation.service import build_energy_validation_view
@@ -78,10 +78,14 @@ from application.analyses.warunki_przylaczenia import (
     KRYTERIUM_MOC,
     build_warunki_przylaczenia_view,
 )
-from application.analyses.wytrzymalosc_cieplna_przewodow import build_wytrzymalosc_cieplna_view
+from application.analyses.wytrzymalosc_cieplna_przewodow import (
+    build_wytrzymalosc_cieplna_view,
+)
 from enm.canonical_analysis import CanonicalRun, list_runs_for_case
 from enm.hash import compute_enm_hash
 from enm.store import get_enm
+from solver_input.provenance import FieldQuality
+from solver_input.status_modelu import StatusParametrow, StatusRownan
 
 # --- Stany kryterium ---------------------------------------------------------
 
@@ -102,6 +106,39 @@ POWOD_BRAK_DANYCH = "verdict.input_data_missing"
 ZRODLO_PF = "PF"
 ZRODLO_SC = "short_circuit_sn"
 ZRODLO_MODEL = "model"
+#: Karta AB-1a D2: pozycje z adaptera testow NC RfG/PTPiREE
+#: (``application/ncrfg_compliance/wynik_inzynierski.py``) — deklaracje modulu
+#: porownane z wymaganiem, NIE bieg fizyki (brak domeny fizycznej).
+ZRODLO_NCRFG = "ncrfg_ptpiree"
+
+#: Zrodla, ktore NIE sa biegiem analizy (`analysis_type`) — nie maja domeny
+#: fizycznej: model (dobory z tabliczek) i deklaracje modulu NC RfG.
+_ZRODLA_BEZ_BIEGU: frozenset[str] = frozenset({ZRODLO_MODEL, ZRODLO_NCRFG})
+
+# SZEW INTEGRACYJNY AB-1a: zastąpić importem domena_fizyczna_biegu (wykonawca 1)
+# z `application.solvers.solver_capability_registry` (jeden rejestr domen, R-1).
+# Do integracji: mala tabela lokalna WYLACZNIE dla rodzajow biegow, ktore ten
+# modul i jego konsumenci dzis nazywaja; wartosci = nazwy czlonow `PhysicsDomain`
+# z karty (D1). Nieznany rodzaj -> wyjatek nazwany (fail-closed, jak w D1).
+_DOMENA_FIZYCZNA_BIEGU_LOKALNIE: dict[str, str] = {
+    "PF": "POWER_FLOW",
+    "short_circuit_sn": "SHORT_CIRCUIT",
+    "dynamika_rms": "RMS_DYNAMICS",
+    "dynamic_stability": "RMS_DYNAMICS",
+    # Ocena zabezpieczen czyta prady zwarciowe IEC 60909 — domena zwarciowa.
+    "protection_sn": "SHORT_CIRCUIT",
+}
+
+
+def _domena_fizyczna_biegu(analysis_type: str) -> str:
+    """Domena fizyczna rodzaju biegu (SZEW INTEGRACYJNY AB-1a — patrz tabela wyzej)."""
+    try:
+        return _DOMENA_FIZYCZNA_BIEGU_LOKALNIE[analysis_type]
+    except KeyError as blad:
+        raise ValueError(
+            f"Nieznany rodzaj biegu {analysis_type!r} — brak domeny fizycznej w rejestrze."
+        ) from blad
+
 
 # Semantyka elementu wiodacego (DOMENA, nie typ UI — mapowanie na typ elementu
 # interfejsu nalezy do warstwy prezentacji).
@@ -432,6 +469,145 @@ ZAKRES_POZA_AUTOMATEM: tuple[dict[str, str], ...] = (
 )
 
 
+# --- Wynik inzynierski: pola wyjasnialnosci (karta AB-1a D2, plan A/B §6.11) ---
+# ROZSZERZENIE istniejacego ksztaltu (R-2): zero trzeciego kontraktu. Kazde pole
+# ponizej jest addytywne, `None` = „brak" (kreska na ekranie), nigdy wartosc
+# zastepcza. Wypelnia je WYLACZNIE dostawca, ktory ma dana.
+
+# SZEW INTEGRACYJNY AB-1a: zastąpić importem StatusZrodla (wykonawca 1, D5) z
+# `solver_input.provenance` — wartosci identyczne z kartą: UNVERIFIED_SOURCE /
+# VERIFIED_SOURCE (bez wartosci domyslnej).
+ZrodloStatus = Literal["UNVERIFIED_SOURCE", "VERIFIED_SOURCE"]
+ZRODLO_NIEZWERYFIKOWANE: ZrodloStatus = "UNVERIFIED_SOURCE"
+ZRODLO_ZWERYFIKOWANE: ZrodloStatus = "VERIFIED_SOURCE"
+
+#: Rodzaj przyczyny ograniczenia (karta AB-1a D2): co FIZYCZNIE ogranicza wynik.
+RodzajPrzyczyny = Literal[
+    "element", "regulator", "ogranicznik", "zrodlo_emisji", "rezonans"
+]
+
+
+@dataclass(frozen=True)
+class PodstawaNormatywna:
+    """Podstawa wymagania: dokument, wersja, klauzula i status zrodla.
+
+    ``zrodlo_status`` jest OBOWIAZKOWE (bez domyslnej) — podstawa bez
+    rozstrzygniecia, czy zrodlo potwierdzono, bylaby ta sama niejawnoscia, ktora
+    ta klasa zamyka. Gdy dokument/wersja/klauzula nie sa potwierdzone, pola sa
+    ``None`` (nie tekst zastepczy), a ``uwaga_pl`` mowi, czego brakuje.
+    ``render_pl()`` jest JEDYNYM zrodlem tekstowego ``norma_pl`` pozycji, ktora
+    niesie podstawe (pin w ``PozycjaWerdyktu.__post_init__``).
+    """
+
+    dokument: str | None
+    wersja: str | None
+    klauzula: str | None
+    zrodlo_status: ZrodloStatus
+    uwaga_pl: str | None = None
+
+    def render_pl(self) -> str:
+        czesci = [
+            czesc
+            for czesc in (
+                self.dokument,
+                f"wersja {self.wersja}" if self.wersja else None,
+                self.klauzula,
+            )
+            if czesc
+        ]
+        return (
+            ", ".join(czesci)
+            if czesci
+            else "Brak wskazanego dokumentu podstawy wymagania"
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "dokument": self.dokument,
+            "wersja": self.wersja,
+            "klauzula": self.klauzula,
+            "zrodlo_status": self.zrodlo_status,
+            "uwaga_pl": self.uwaga_pl,
+        }
+
+
+@dataclass(frozen=True)
+class PunktKrytyczny:
+    """Gdzie wynik jest najblizej granicy: element i (opcjonalnie) wspolrzedna
+    czasu albo czestotliwosci. ``wspolrzedna`` = ``None``, gdy kryterium jest
+    statyczne (jedna wartosc na element)."""
+
+    element_ref: str | None
+    wspolrzedna: dict[Literal["t_s", "f_hz"], float] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "element_ref": self.element_ref,
+            "wspolrzedna": (
+                dict(self.wspolrzedna) if self.wspolrzedna is not None else None
+            ),
+        }
+
+
+@dataclass(frozen=True)
+class PrzyczynaOgraniczenia:
+    """Strukturalna przyczyna wyniku (obok tekstowego ``uzasadnienie_pl``)."""
+
+    rodzaj: RodzajPrzyczyny
+    ref: str | None
+    opis_pl: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"rodzaj": self.rodzaj, "ref": self.ref, "opis_pl": self.opis_pl}
+
+
+@dataclass(frozen=True)
+class StatusModelu:
+    """Dwie osie statusu modelu urzadzenia (``solver_input/status_modelu.py``)."""
+
+    rownania: StatusRownan
+    parametry: StatusParametrow
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "rownania": self.rownania.value,
+            "rownania_pl": self.rownania.label_pl,
+            "parametry": self.parametry.value,
+            "parametry_pl": self.parametry.label_pl,
+        }
+
+
+@dataclass(frozen=True)
+class Niepewnosc:
+    """Niepewnosc wyniku z metoda jej wyznaczenia (bez metody = brak niepewnosci)."""
+
+    wartosc: float
+    jednostka: str
+    metoda_pl: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "wartosc": self.wartosc,
+            "jednostka": self.jednostka,
+            "metoda_pl": self.metoda_pl,
+        }
+
+
+@dataclass(frozen=True)
+class ZakresWaznosci:
+    """Zakres, w ktorym model/metoda wyniku jest wazna (np. pasmo czestotliwosci)."""
+
+    opis_pl: str
+    granice: dict[str, float]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"opis_pl": self.opis_pl, "granice": dict(sorted(self.granice.items()))}
+
+
+def _opcjonalny(obiekt: Any) -> Any:
+    return obiekt.to_dict() if obiekt is not None else None
+
+
 @dataclass(frozen=True)
 class OcenaElementu:
     """Ocena JEDNEGO elementu wobec kryterium (karta B-02 / W3-E).
@@ -468,8 +644,17 @@ class OcenaElementu:
     uzasadnienie_pl: str | None = None
     #: Wniosek projektowy — 1–2 zdania w jezyku formalnym.
     wniosek_pl: str = ""
-    #: Odwolanie do dowodu obliczeniowego: bieg + element (``None`` = brak biegu).
-    dowod: dict[str, str] | None = None
+    #: Odwolanie do dowodu (karta AB-1a D2 — JEDEN ksztalt):
+    #: ``{run_id, element_id, trace_ref}``; ``trace_ref`` = ``None``, gdy dostawca
+    #: nie wskazuje kroku sladu. ``None`` calosci = brak biegu i brak sladu.
+    dowod: dict[str, str | None] | None = None
+    #: Karta AB-1a D2 — pola wyjasnialnosci (addytywne, ``None`` = brak danej).
+    punkt_krytyczny: PunktKrytyczny | None = None
+    przyczyna: PrzyczynaOgraniczenia | None = None
+    status_modelu: StatusModelu | None = None
+    status_wejscia: FieldQuality | None = None
+    niepewnosc: Niepewnosc | None = None
+    zakres_waznosci: ZakresWaznosci | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -488,7 +673,15 @@ class OcenaElementu:
             "uwaga_pl": self.uwaga_pl,
             "uzasadnienie_pl": self.uzasadnienie_pl,
             "wniosek_pl": self.wniosek_pl,
-            "dowod": self.dowod,
+            "dowod": dict(self.dowod) if self.dowod is not None else None,
+            "punkt_krytyczny": _opcjonalny(self.punkt_krytyczny),
+            "przyczyna": _opcjonalny(self.przyczyna),
+            "status_modelu": _opcjonalny(self.status_modelu),
+            "status_wejscia": (
+                self.status_wejscia.value if self.status_wejscia is not None else None
+            ),
+            "niepewnosc": _opcjonalny(self.niepewnosc),
+            "zakres_waznosci": _opcjonalny(self.zakres_waznosci),
         }
 
 
@@ -509,6 +702,29 @@ class PozycjaWerdyktu:
     run_id: str | None = None
     #: Karta B-02 / W3-E: oceny per element (puste, gdy brak podstawy calego kryterium).
     elementy: tuple[OcenaElementu, ...] = ()
+    #: Karta AB-1a D2: podstawa strukturalna obok tekstowego ``norma_pl`` definicji.
+    #: Gdy jest, ``definicja.norma_pl`` MUSI byc jej renderingiem (jedno zrodlo).
+    podstawa: PodstawaNormatywna | None = None
+
+    def __post_init__(self) -> None:
+        if (
+            self.podstawa is not None
+            and self.definicja.norma_pl != self.podstawa.render_pl()
+        ):
+            raise ValueError(
+                f"Kryterium {self.definicja.kryterium_id}: norma_pl "
+                f"{self.definicja.norma_pl!r} nie jest renderingiem podstawy "
+                f"{self.podstawa.render_pl()!r} — dwa zrodla tej samej podstawy."
+            )
+
+    @property
+    def physics_domain(self) -> str | None:
+        """Domena fizyczna biegu kryterium (karta AB-1a D2) — z rodzaju biegu przez
+        rejestr domen; ``None`` WYLACZNIE dla zrodel, ktore nie sa biegiem
+        (model, deklaracje NC RfG). Nieznany rodzaj biegu -> wyjatek nazwany."""
+        if self.definicja.zrodlo in _ZRODLA_BEZ_BIEGU:
+            return None
+        return _domena_fizyczna_biegu(self.definicja.zrodlo)
 
     def to_dict(self) -> dict[str, Any]:
         payload = self.definicja.to_dict()
@@ -525,6 +741,8 @@ class PozycjaWerdyktu:
                 "powod_pl": self.powod_pl,
                 "run_id": self.run_id,
                 "elementy": [element.to_dict() for element in self.elementy],
+                "physics_domain": self.physics_domain,
+                "podstawa": _opcjonalny(self.podstawa),
             }
         )
         return payload
@@ -569,7 +787,9 @@ class WerdyktProjektowy:
         return {
             "spelnione": sum(1 for p in self.pozycje if p.stan == STAN_SPELNIONE),
             "naruszone": sum(1 for p in self.pozycje if p.stan == STAN_NARUSZONE),
-            "niesprawdzone": sum(1 for p in self.pozycje if p.stan == STAN_NIESPRAWDZONE),
+            "niesprawdzone": sum(
+                1 for p in self.pozycje if p.stan == STAN_NIESPRAWDZONE
+            ),
             "nie_dotyczy": sum(1 for p in self.pozycje if p.stan == STAN_NIE_DOTYCZY),
             "razem": len(self.pozycje),
         }
@@ -608,7 +828,9 @@ class WerdyktProjektowy:
                 "zrodla": [zrodlo.to_dict() for zrodlo in self.zrodla],
                 "podsumowanie": self.podsumowanie,
                 "ocena": self.ocena,
-                "grupy": [{"kod": kod, "nazwa_pl": nazwa} for kod, nazwa in GRUPY_KRYTERIOW],
+                "grupy": [
+                    {"kod": kod, "nazwa_pl": nazwa} for kod, nazwa in GRUPY_KRYTERIOW
+                ],
                 "zakres_poza_automatem": [dict(wpis) for wpis in ZAKRES_POZA_AUTOMATEM],
             }
         )
@@ -735,7 +957,10 @@ def _wniosek(
     """Wniosek projektowy: 1–2 zdania w jezyku formalnym, WYLACZNIE z liczb dostawcy."""
     wielkosc = wielkosc_pl[:1].lower() + wielkosc_pl[1:] if wielkosc_pl else "wielkość"
     if wynik == WYNIK_BRAK_PODSTAW:
-        powod = uzasadnienie_pl or "dostawca nie zwrócił wartości ani granicy dla tego elementu"
+        powod = (
+            uzasadnienie_pl
+            or "dostawca nie zwrócił wartości ani granicy dla tego elementu"
+        )
         return f"Brak podstaw do oceny spełnienia wymagania: {powod.rstrip('.')}."
     if (
         warunek == WARUNEK_ZGODNOSC
@@ -746,7 +971,9 @@ def _wniosek(
         if wynik == WYNIK_SPELNIA:
             return f"Wymaganie spełnione: {powod}." if powod else "Wymaganie spełnione."
         return (
-            f"Wymaganie nie jest spełnione: {powod}." if powod else "Wymaganie nie jest spełnione."
+            f"Wymaganie nie jest spełnione: {powod}."
+            if powod
+            else "Wymaganie nie jest spełnione."
         )
     w = _tekst_liczby(wartosc, jednostka)
     if warunek == WARUNEK_PASMO:
@@ -827,8 +1054,10 @@ def _ocena_elementu(
         uwaga_pl=uwaga_pl,
         uzasadnienie_pl=uzasadnienie_pl,
     )
-    dowod = (
-        {"run_id": run_id, "element_id": element_id}
+    # Karta AB-1a D2: jeden ksztalt dowodu {run_id, element_id, trace_ref} — widoki
+    # dostawcow tego agregatu nie wskazuja kroku sladu, wiec `trace_ref` = None.
+    dowod: dict[str, str | None] | None = (
+        {"run_id": run_id, "element_id": element_id, "trace_ref": None}
         if run_id is not None and element_id is not None
         else None
     )
@@ -1017,7 +1246,12 @@ def _pozycje_walidacji_energetycznej(
     return pozycje
 
 
-_RANGA_STATUSU_WALIDACJI: dict[str, int] = {"FAIL": 0, "WARNING": 1, "PASS": 2, "NOT_COMPUTED": 3}
+_RANGA_STATUSU_WALIDACJI: dict[str, int] = {
+    "FAIL": 0,
+    "WARNING": 1,
+    "PASS": 2,
+    "NOT_COMPUTED": 3,
+}
 
 
 def _posortowane_wiersze_walidacji(
@@ -1039,14 +1273,24 @@ def _posortowane_wiersze_walidacji(
     ale bez podstawienia liczby, której dostawca nie policzył.
     """
     posortowane: list[Mapping[str, Any]] = []
-    rangi_obecne = sorted({_RANGA_STATUSU_WALIDACJI.get(str(w.get("status")), 4) for w in wiersze})
+    rangi_obecne = sorted(
+        {_RANGA_STATUSU_WALIDACJI.get(str(w.get("status")), 4) for w in wiersze}
+    )
     for ranga in rangi_obecne:
         w_randze = [
-            w for w in wiersze if _RANGA_STATUSU_WALIDACJI.get(str(w.get("status")), 4) == ranga
+            w
+            for w in wiersze
+            if _RANGA_STATUSU_WALIDACJI.get(str(w.get("status")), 4) == ranga
         ]
-        z_zapasem = [w for w in w_randze if isinstance(w.get("margin_pct"), int | float)]
-        bez_zapasu = [w for w in w_randze if not isinstance(w.get("margin_pct"), int | float)]
-        z_zapasem.sort(key=lambda w: (-float(w["margin_pct"]), str(w.get("target_id") or "")))
+        z_zapasem = [
+            w for w in w_randze if isinstance(w.get("margin_pct"), int | float)
+        ]
+        bez_zapasu = [
+            w for w in w_randze if not isinstance(w.get("margin_pct"), int | float)
+        ]
+        z_zapasem.sort(
+            key=lambda w: (-float(w["margin_pct"]), str(w.get("target_id") or ""))
+        )
         bez_zapasu.sort(key=lambda w: str(w.get("target_id") or ""))
         posortowane.extend(z_zapasem)
         posortowane.extend(bez_zapasu)
@@ -1068,12 +1312,20 @@ def _element_walidacji(
     # kryterium niesie bezwymiarowe „-" (na ekranie: bez jednostki).
     jednostka_dostawcy = str(wiersz.get("unit") or "")
     jednostka = (
-        definicja.jednostka if jednostka_dostawcy in ("", "cos(phi)") else jednostka_dostawcy
+        definicja.jednostka
+        if jednostka_dostawcy in ("", "cos(phi)")
+        else jednostka_dostawcy
     )
     return _ocena_elementu(
         definicja,
-        element_id=str(wiersz.get("target_id")) if wiersz.get("target_id") is not None else None,
-        element_nazwa=(str(wiersz.get("target_name")) if wiersz.get("target_name") else None),
+        element_id=(
+            str(wiersz.get("target_id"))
+            if wiersz.get("target_id") is not None
+            else None
+        ),
+        element_nazwa=(
+            str(wiersz.get("target_name")) if wiersz.get("target_name") else None
+        ),
         wynik=_WYNIK_Z_STATUSU.get(status, WYNIK_BRAK_PODSTAW),
         wartosc=wiersz.get("observed_value"),
         odniesienie=wiersz.get("limit_fail"),
@@ -1081,7 +1333,9 @@ def _element_walidacji(
         jednostka=jednostka,
         margines=(-margines if margines is not None else None),
         margines_jednostka=(
-            ("pkt proc." if jednostka == "%" else jednostka) if margines is not None else None
+            ("pkt proc." if jednostka == "%" else jednostka)
+            if margines is not None
+            else None
         ),
         uwaga_pl=_UWAGA_OSTRZEZENIE_PL if status == "WARNING" else None,
         uzasadnienie_pl=(str(wiersz.get("why_pl")) if wiersz.get("why_pl") else None),
@@ -1124,13 +1378,19 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
     elementy = tuple(
         _ocena_elementu(
             definicja,
-            element_id=str(wiersz.get("branch_id")) if wiersz.get("branch_id") else None,
-            element_nazwa=(str(wiersz.get("branch_name")) if wiersz.get("branch_name") else None),
+            element_id=(
+                str(wiersz.get("branch_id")) if wiersz.get("branch_id") else None
+            ),
+            element_nazwa=(
+                str(wiersz.get("branch_name")) if wiersz.get("branch_name") else None
+            ),
             wynik=_WYNIK_Z_STATUSU.get(str(wiersz.get("status")), WYNIK_BRAK_PODSTAW),
             wartosc=wiersz.get("i2t_a2s"),
             odniesienie=wiersz.get("i2t_dopuszczalne_a2s"),
             margines=wiersz.get("margines_procent"),
-            margines_jednostka="%" if _liczba(wiersz.get("margines_procent")) is not None else None,
+            margines_jednostka=(
+                "%" if _liczba(wiersz.get("margines_procent")) is not None else None
+            ),
             uzasadnienie_pl=_opis_galezi(wiersz),
             run_id=run_id,
         )
@@ -1144,7 +1404,9 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
     )
     return PozycjaWerdyktu(
         definicja=definicja,
-        stan=_stan_z_licznikow(naruszenia=len(naruszenia), niesprawdzone=len(niesprawdzone)),
+        stan=_stan_z_licznikow(
+            naruszenia=len(naruszenia), niesprawdzone=len(niesprawdzone)
+        ),
         liczba_ocenionych=len(wiersze) - len(niesprawdzone),
         liczba_naruszen=len(naruszenia),
         liczba_niesprawdzonych=len(niesprawdzone),
@@ -1162,7 +1424,9 @@ def _wiodaca_galaz(kandydaci: Sequence[Mapping[str, Any]]) -> Mapping[str, Any] 
 
     def klucz(wiersz: Mapping[str, Any]) -> tuple[float, str]:
         wykorzystanie = wiersz.get("utilization")
-        wartosc = float(wykorzystanie) if isinstance(wykorzystanie, int | float) else -1.0
+        wartosc = (
+            float(wykorzystanie) if isinstance(wykorzystanie, int | float) else -1.0
+        )
         return (-wartosc, str(wiersz.get("branch_id") or ""))
 
     return min(kandydaci, key=klucz)
@@ -1219,13 +1483,18 @@ def _pozycja_wiarygodnosci(widok: Mapping[str, Any], *, run_id: str) -> PozycjaW
             definicja,
             # Element = referencja ENM szyny (`element_id`), a `target_id` biegu
             # zostaje identyfikatorem zapasowym, gdy dostawca jej nie zna.
-            element_id=str(wiersz.get("element_id") or wiersz.get("target_id") or "") or None,
-            element_nazwa=(str(wiersz.get("target_name")) if wiersz.get("target_name") else None),
+            element_id=str(wiersz.get("element_id") or wiersz.get("target_id") or "")
+            or None,
+            element_nazwa=(
+                str(wiersz.get("target_name")) if wiersz.get("target_name") else None
+            ),
             wynik=wynik_ze_statusu.get(str(wiersz.get("status")), WYNIK_SPELNIA),
             wartosc=wiersz.get("ikss_ka"),
             odniesienie=wiersz.get("upper_ka"),
             odniesienie_dolne=wiersz.get("lower_ka"),
-            uzasadnienie_pl=(str(wiersz.get("why_pl")) if wiersz.get("why_pl") else None),
+            uzasadnienie_pl=(
+                str(wiersz.get("why_pl")) if wiersz.get("why_pl") else None
+            ),
             run_id=run_id,
         )
         for wiersz in sorted(
@@ -1274,7 +1543,9 @@ def _pozycja_der_sn(raport: Mapping[str, Any] | None) -> PozycjaWerdyktu:
             definicja,
             element_id=zrodlo_ref,
             element_nazwa=(
-                f"{zrodlo_nazwa or zrodlo_ref or ''} — {_nazwa_kontroli_der(pozycja)}".strip(" —")
+                f"{zrodlo_nazwa or zrodlo_ref or ''} — {_nazwa_kontroli_der(pozycja)}".strip(
+                    " —"
+                )
             ),
             wynik=_WYNIK_Z_STATUSU.get(str(pozycja.get("status")), WYNIK_BRAK_PODSTAW),
             uwaga_pl=(
@@ -1311,7 +1582,9 @@ def _nazwa_kontroli_der(pozycja: Mapping[str, Any]) -> str:
     if check_id in nazwy:
         return nazwy[check_id]
     if check_id.startswith("d2."):
-        return f"zgodność doboru „{pozycja.get('parametr') or check_id[3:]}” z propozycją"
+        return (
+            f"zgodność doboru „{pozycja.get('parametr') or check_id[3:]}” z propozycją"
+        )
     if "kaskada" in check_id:
         return "kaskada prądowa toru"
     return check_id.replace("_", " ")
@@ -1410,7 +1683,9 @@ def _ocen_zrodlo(
 
 def _kryteria_zrodla(rodzaj: str) -> tuple[str, ...]:
     return tuple(
-        definicja.kryterium_id for definicja in REJESTR_KRYTERIOW if definicja.zrodlo == rodzaj
+        definicja.kryterium_id
+        for definicja in REJESTR_KRYTERIOW
+        if definicja.zrodlo == rodzaj
     )
 
 
@@ -1489,9 +1764,14 @@ def zbuduj_werdykt_projektowy(
     zrodla.append(zrodlo_pf)
     if zrodlo_pf.dostepny and bieg_pf is not None:
         run_pf = str(bieg_pf.id)
-        widok_warunkow, blad_warunkow = _bezpiecznie(build_warunki_przylaczenia_view, bieg_pf)
+        widok_warunkow, blad_warunkow = _bezpiecznie(
+            build_warunki_przylaczenia_view, bieg_pf
+        )
         if widok_warunkow is not None:
-            _wpisz(pozycje_po_id, _pozycje_warunkow_przylaczenia(widok_warunkow, run_id=run_pf))
+            _wpisz(
+                pozycje_po_id,
+                _pozycje_warunkow_przylaczenia(widok_warunkow, run_id=run_pf),
+            )
         else:
             _wpisz(
                 pozycje_po_id,
@@ -1502,9 +1782,14 @@ def zbuduj_werdykt_projektowy(
                     run_id=run_pf,
                 ),
             )
-        widok_energii, blad_energii = _bezpiecznie(build_energy_validation_view, bieg_pf)
+        widok_energii, blad_energii = _bezpiecznie(
+            build_energy_validation_view, bieg_pf
+        )
         if widok_energii is not None:
-            _wpisz(pozycje_po_id, _pozycje_walidacji_energetycznej(widok_energii, run_id=run_pf))
+            _wpisz(
+                pozycje_po_id,
+                _pozycje_walidacji_energetycznej(widok_energii, run_id=run_pf),
+            )
         else:
             _wpisz(
                 pozycje_po_id,
