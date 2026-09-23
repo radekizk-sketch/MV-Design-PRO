@@ -105,16 +105,45 @@ python_version = "3.11"
 warn_unused_configs = true
 disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
-# K30-14 NO-GO #10 ETAP 8 (tech debt): third-party packages bez stubs
-# (networkx, scipy, reportlab, docx, etc.) reportowane jako import-untyped
-# (1020 błędów). Standard Python community practice — te libs nie publikują
-# py.typed marker.
-ignore_missing_imports = true
+# MYPY-PUSTA-BRAMKA (2026-09-23): ROZWIAZYWANIE MODULOW WLASNYCH. Kod importuje
+# pakiety z `src/` jako moduly najwyzszego poziomu (`from werdykt.kontrakt import
+# ...`), a `src/__init__.py` robi z `src` pakiet. Bez dwoch ponizszych kluczy
+# `mypy src` nadawal plikom nazwy `src.werdykt.kontrakt`, import `werdykt.kontrakt`
+# nie trafial w zaden plik, a globalne `ignore_missing_imports = true` zamienialo
+# go po cichu w `Any` — typy MIEDZY modulami nie byly sprawdzane wcale (sonda:
+# funkcja `-> int` zwracajaca model pydantic z innego modulu = „Success").
+#   * `mypy_path` = `src` (wzgledem TEGO pliku, nie katalogu biezacego),
+#   * `explicit_package_bases` = nazwa modulu liczona od `src`, wiec plik
+#     sprawdzany i plik importowany to TEN SAM modul (bez tego mypy przerywa:
+#     „Source file found twice under different module names").
+# Lista sprawdzanych plikow bez zmian (`mypy src` = wszystkie pliki `src/**/*.py`).
+# Pomiar i plan zejscia: `scripts/mypy_ratchet_pomiar_2026-09-23.md`.
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
+explicit_package_bases = true
 # warn_return_any wyłączone — Pydantic .model_dump() / canonicalize_json /
 # FastAPI handlers zwracają Any-typed dynamic JSON. Wymuszenie cast() przy
 # każdym takim wywołaniu = noise without value (340 błędów w API layer).
 # Logika domeny ma w pełni typed signatures (disallow_untyped_defs ON).
 warn_return_any = false
+
+# Biblioteki ZEWNETRZNE bez stubow i bez znacznika py.typed (K30-14 NO-GO #10:
+# dawniej wyciszane GLOBALNYM `ignore_missing_imports = true`). Wyciszenie jest
+# teraz IMIENNE: globalne chowalo tez nierozwiazany import WLASNEGO modulu, czyli
+# dokladnie mechanizm pustej bramki. Nowa biblioteka bez stubow zapala zapadke
+# (`import-untyped` / `import-not-found`) — decyzja: doinstaluj stuby `types-*`
+# albo dopisz ja tutaj. Lista = zmierzony zbior importow bez typow (2026-09-23);
+# `boto3` i `google.cloud` sa opcjonalne (import leniwy w `cloud_backup.py`).
+[[tool.mypy.overrides]]
+module = [
+    "boto3.*",
+    "celery.*",
+    "google.cloud.*",
+    "networkx.*",
+    "openpyxl.*",
+    "reportlab.*",
+    "scipy.*",
+]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

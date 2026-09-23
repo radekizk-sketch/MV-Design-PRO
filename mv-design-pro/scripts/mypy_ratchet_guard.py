@@ -2,7 +2,9 @@
 """Zapadka (ratchet) długu typów: mypy JEST uruchamiany i dług NIE MOŻE rosnąć.
 
 DLACZEGO TA ZAPADKA ISTNIEJE (V12K-240, pomiar w V12K-239). `pyproject.toml` konfiguruje
-mypy w trybie strict z wtyczką pydantic, `CLAUDE.md` wymienia `poetry run mypy src` wśród
+mypy z wtyczką pydantic i `disallow_untyped_defs` (SPROSTOWANIE 2026-09-23: to NIE jest
+tryb `strict` — w `[tool.mypy]` nie ma `strict = true`; wcześniejsze zdanie „w trybie
+strict" było deklaracją bez pokrycia), `CLAUDE.md` wymienia `poetry run mypy src` wśród
 poleceń deweloperskich — a **żaden workflow CI go nie uruchamiał**. Klasyczna „zdolność
 bez wywołania": narzędzie skonfigurowane, nigdy nie wywołane, więc przez lata narastał
 dług, którego nikt nie widział. POMIAR w chwili założenia zapadki: **273 błędy w 67
@@ -17,6 +19,41 @@ dołoży błąd typów, zapali się od razu — i to jest cała różnica wobec 
 
 ZAPADKA DZIAŁA W OBIE STRONY. Gdy błędów UBĘDZIE, guard też jest czerwony i żąda
 obniżenia progu. Bez tego poprawa nie zostaje utrwalona i dług może wrócić po cichu.
+
+PUSTA BRAMKA (karta MYPY-PUSTA-BRAMKA, 2026-09-23). Zapadka wołała `mypy src`, ale kod
+importuje pakiety z `src/` jako moduły najwyższego poziomu (`from werdykt.kontrakt
+import ...`), a `src/__init__.py` robi z `src` pakiet. mypy nadawał więc sprawdzanym
+plikom nazwy `src.werdykt.kontrakt`, import `werdykt.kontrakt` nie trafiał w żaden
+plik, a GLOBALNE `ignore_missing_imports = true` zamieniało go po cichu w `Any`.
+Skutek: typy MIĘDZY modułami nie były sprawdzane wcale — sonda (funkcja `-> int`
+zwracająca model pydantic z innego modułu) dawała „Success", a „0 błędów" znaczyło
+„0 błędów wewnątrz pojedynczych modułów". Wywołanie `mypy src` jest to samo od
+V12K-240 (wg historii w tym pliku), więc progi z historii poniżej (273 → 0) najpewniej
+mierzyły wyłącznie błędy wewnątrzmodułowe (historii `src/__init__.py` w gicie nie
+weryfikowano — karta bez komend git).
+NAPRAWA U ŹRÓDŁA (w `pyproject.toml`, więc działa też dla `poetry run mypy src`
+z CLAUDE.md, nie tylko dla tego guarda):
+  * `mypy_path = "$MYPY_CONFIG_FILE_DIR/src"` + `explicit_package_bases = true` —
+    plik sprawdzany i plik importowany to ten sam moduł (`werdykt.kontrakt`);
+    lista sprawdzanych plików bez zmian (wszystkie `src/**/*.py`);
+  * wyciszenie brakujących importów tylko IMIENNIE dla bibliotek zewnętrznych bez
+    stubów (`[[tool.mypy.overrides]]`) — globalne chowało też import własny;
+  * ten guard traktuje każdy `[import-not-found]` / `[import-untyped]` jako
+    TWARDY błąd pomiaru (niezależnie od progu): nierozwiązany import to typy `Any`,
+    czyli pomiar na pustej bramce — dokładnie ta klasa defektu.
+POMIAR 2026-09-23 i plan zejścia: `scripts/mypy_ratchet_pomiar_2026-09-23.md`.
+Sonda z błędem między modułami na plikach tymczasowych przypięta w
+`scripts/test_mypy_ratchet_guard.py` (kopiuje sekcje mypy z PRAWDZIWEGO
+`pyproject.toml`, więc cofnięcie konfiguracji zapala samotest).
+
+INWENTARZ KLASY „własny moduł widziany jako `Any`" (stan 2026-09-23):
+  1. rozjazd bazy modułów + globalne `ignore_missing_imports` — NAPRAWIONE (wyżej);
+  2. nierozwiązany import własny/zewnętrzny — twardy błąd guarda (wyżej);
+  3. `# type: ignore` na linii importu własnego modułu — 0 wystąpień w `src/`
+     (grep 2026-09-23), NIE przypięte guardem;
+  4. per-modułowe `follow_imports = "skip"` / `ignore_errors` w `[tool.mypy]` —
+     brak w konfiguracji; zmiana konfiguracji jest widoczna w przeglądzie, NIE
+     przypięta guardem.
 """
 
 from __future__ import annotations
@@ -83,11 +120,52 @@ BACKEND = ROOT / "backend"
 # 2026-09-01 (przejecie po B-02, galaz LV-domain): pomiar na kompletnym venv daje
 # 0 bledow w 0 plikach — guard sam zazadal utrwalenia (zapadka dwustronna).
 # Zmierzone: `mypy src` = Success, 793 pliki, mypy 1.19.1.
-BASELINE_ERRORS = 0
-BASELINE_FILES = 0
+# MYPY-PUSTA-BRAMKA (2026-09-23): pin PODNIESIONY 0/0 -> 277/51 — NIE nowy
+# dlug, tylko PIERWSZY pomiar typow miedzy modulami. Przyczyna: pusta bramka od
+# V12K-240 (patrz docstring: `src.*` vs `*` + globalne `ignore_missing_imports`).
+# Pomiar (mypy 1.19.1, 730 plikow sprawdzonych, zimny cache): 06:02 UTC 279/53,
+# 06:05 UTC 286/54 (werdykt/decyzja.py edytowany przez innego wykonawce W TRAKCIE
+# biegu), 06:14 UTC 277/51 (inny wykonawca usunal 2 bledy `ZrodloWartosci` w
+# ncrfg_ptpiree). Pin = ostatni pomiar. Drzewo bylo w ruchu — przy scalaniu guard
+# sam poda liczbe biezaca (zapadka dwustronna). Tabela pakiet x kod bledu, top 20
+# plikow, czasy biegu: `mypy_ratchet_pomiar_2026-09-23.md`.
+# PLAN ZEJSCIA — osobne karty per pakiet, kategoriami (bez `# type: ignore`,
+# bez poszerzania do `Any`, bez wykluczen):
+#   * application (~106): arg-type (proof_engine: `float | None` do
+#     `ProofValue.create`, `float | complex | str` do `float()` w latex_renderer),
+#     assignment, operator;
+#   * network_model (~62): union-attr / attr-defined w solverach rozplywu
+#     (power_flow_oltc: `TapChanger | None` bez zwezenia; power_flow_newton_internal:
+#     KOLIZJA NAZW petli po specyfikacjach roznych typow — wzorzec z KD-12); UWAGA:
+#     20 bledow lezy w plikach chronionych hashem `solver_diff_guard` (rdzen FROZEN:
+#     power_flow_newton_internal 19, short_circuit_iec60909 1) — ich naprawa
+#     wymaga zgody wlasciciela (bramka B-01);
+#   * infrastructure (~30): arg-type / assignment w repozytoriach persystencji
+#     (analysis_run_repository: `str` do pol `Literal[...]`, `object` do kolumn ORM);
+#   * api (~29): union-attr (repozytoria `X | None` bez zwezenia), attr-defined;
+#   * PRIORYTET: `attr-defined` na klasach WLASNYCH to kandydaci na realne
+#     `AttributeError` w biegu — m.in. `api/archive_diff.py` wola nieistniejace
+#     `ProjectArchiveService.load_archive_from_bytes` / `.build_archive` (wyjatek
+#     lapany przez `except (ArchiveError, Exception)` -> zawsze HTTP 400); lista
+#     w pliku pomiaru;
+#   * analysis (~19), enm (~18), solver_input (~8), domain (~4), compliance (~1).
+# Kazda karta obniza pin o zmierzona liczbe (zapadka dwustronna sama tego zada).
+BASELINE_ERRORS = 275
+BASELINE_FILES = 49
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
-WZORZEC_SUKCESU = re.compile(r"Success: no issues found")
+#: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików
+#: (zły katalog) to nie pomiar, a przy niezerowym progu wyglądałby na spadek długu.
+WZORZEC_SUKCESU = re.compile(r"Success: no issues found in (\d+) source files?")
+#: Nierozwiązany import (własny albo biblioteki bez stubów spoza listy wyciszeń w
+#: `pyproject.toml`): typy z tego modułu są dla mypy `Any`, więc pomiar byłby na
+#: pustej bramce. Guard traktuje to jako twardy błąd — patrz docstring.
+WZORZEC_NIEROZWIAZANEGO_IMPORTU = re.compile(r": error: .*\[import-(?:not-found|untyped)\]")
+#: Błąd/ostrzeżenie wczytania konfiguracji (`pyproject.toml: Cannot overwrite a value`,
+#: `pyproject.toml: [mypy]: Unrecognized option: ...`). mypy NIE przerywa wtedy biegu —
+#: liczy dalej na ustawieniach domyślnych albo bez nierozpoznanego klucza (zmierzone
+#: 2026-09-23), więc wynik nie jest pomiarem na konfiguracji projektu.
+WZORZEC_BLEDU_KONFIGURACJI = re.compile(r"^pyproject\.toml: ", re.MULTILINE)
 #: Podsumowanie PRAWDZIWEJ analizy niesie liczbę sprawdzonych plików źródłowych.
 #: Podsumowanie przerwanego biegu niesie zamiast niej „errors prevented further
 #: checking" — patrz `uruchom_mypy`.
@@ -100,8 +178,13 @@ WZORZEC_SPRAWDZONYCH = re.compile(r"\(checked (\d+) source files?\)")
 MIN_SPRAWDZONYCH_PLIKOW = 100
 
 
-def uruchom_mypy() -> tuple[int, int, str]:
-    """Uruchom mypy na `backend/src`; zwróć (liczba błędów, liczba plików, wyjście).
+def uruchom_mypy(
+    backend: Path = BACKEND, min_sprawdzonych: int = MIN_SPRAWDZONYCH_PLIKOW
+) -> tuple[int, int, str]:
+    """Uruchom mypy na `<backend>/src`; zwróć (liczba błędów, liczba plików, wyjście).
+
+    Parametry istnieją dla samotestu (sonda na drzewie tymczasowym z kopią sekcji
+    mypy z prawdziwego `pyproject.toml`); guard woła funkcję z wartościami domyślnymi.
 
     ZAPADKA MUSI ODRÓŻNIĆ „zmierzono dług" od „nie udało się zmierzyć". Sam fakt,
     że w wyjściu jest wiersz `Found N errors in M files`, tego NIE gwarantuje:
@@ -121,14 +204,30 @@ def uruchom_mypy() -> tuple[int, int, str]:
     # analize" mimo zielonego `mypy src` — falszywa czerwien srodowiska, nie pomiar.
     wynik = subprocess.run(
         [sys.executable, "-m", "mypy", "src"],
-        cwd=BACKEND,
+        cwd=backend,
         capture_output=True,
         text=True,
         check=False,
     )
     wyjscie = wynik.stdout + wynik.stderr
 
-    if WZORZEC_SUKCESU.search(wyjscie):
+    if WZORZEC_BLEDU_KONFIGURACJI.search(wyjscie):
+        raise SystemExit(
+            "mypy_ratchet_guard: mypy zameldowal blad wczytania `[tool.mypy]` w "
+            "`pyproject.toml` i liczyl dalej na innej konfiguracji — to nie jest "
+            "pomiar dlugu projektu.\n"
+            f"Wyjscie:\n{wyjscie[-2000:]}"
+        )
+
+    sukces = WZORZEC_SUKCESU.search(wyjscie)
+    if sukces is not None:
+        if int(sukces.group(1)) < min_sprawdzonych:
+            raise SystemExit(
+                f"mypy_ratchet_guard: mypy sprawdzil tylko {sukces.group(1)} plikow "
+                f"zrodlowych (oczekiwano co najmniej {min_sprawdzonych}) — "
+                "pomiar dlugu jest niewiarygodny.\n"
+                f"Wyjscie:\n{wyjscie[-2000:]}"
+            )
         return 0, 0, wyjscie
 
     dopasowanie = WZORZEC_PODSUMOWANIA.search(wyjscie)
@@ -150,15 +249,22 @@ def uruchom_mypy() -> tuple[int, int, str]:
             "a guarda uruchamiaj interpreterem venv Poetry).\n"
             f"Wyjscie:\n{wyjscie[-2000:]}"
         )
-    if int(sprawdzone.group(1)) < MIN_SPRAWDZONYCH_PLIKOW:
+    if int(sprawdzone.group(1)) < min_sprawdzonych:
         raise SystemExit(
             f"mypy_ratchet_guard: mypy sprawdzil tylko {sprawdzone.group(1)} plikow "
-            f"zrodlowych (oczekiwano co najmniej {MIN_SPRAWDZONYCH_PLIKOW}) — "
+            f"zrodlowych (oczekiwano co najmniej {min_sprawdzonych}) — "
             "pomiar dlugu jest niewiarygodny.\n"
             f"Wyjscie:\n{wyjscie[-2000:]}"
         )
 
     return int(dopasowanie.group(1)), int(dopasowanie.group(2)), wyjscie
+
+
+def nierozwiazane_importy(wyjscie: str) -> list[str]:
+    """Zwróć wiersze błędów nierozwiązanego importu (`import-not-found`/`-untyped`)."""
+    return [
+        linia for linia in wyjscie.splitlines() if WZORZEC_NIEROZWIAZANEGO_IMPORTU.search(linia)
+    ]
 
 
 def main() -> int:
@@ -167,6 +273,20 @@ def main() -> int:
         f"mypy_ratchet_guard: {bledy} bledow w {pliki} plikach "
         f"(prog: {BASELINE_ERRORS} w {BASELINE_FILES})"
     )
+
+    importy = nierozwiazane_importy(wyjscie)
+    if importy:
+        print(
+            f"\nFAILED: mypy nie rozwiazal {len(importy)} importow — typy z tych modulow "
+            "bylyby `Any`, czyli pomiar na pustej bramce (karta MYPY-PUSTA-BRAMKA).\n"
+            "Modul WLASNY (`src/`): sprawdz `mypy_path` / `explicit_package_bases` w "
+            "`[tool.mypy]` backendu. Biblioteka ZEWNETRZNA bez stubow: doinstaluj stuby "
+            "`types-*` albo dopisz ja imiennie do `[[tool.mypy.overrides]]` "
+            "(`ignore_missing_imports`). Globalne wyciszenie jest zakazane.\n"
+        )
+        for linia in importy:
+            print("  " + linia)
+        return 1
 
     if bledy > BASELINE_ERRORS:
         nowe = bledy - BASELINE_ERRORS

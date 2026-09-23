@@ -61,6 +61,20 @@ jobs:
       # zbiorze. Jeden z tych testow zdazyl w tym czasie zgnic (rejestr decyzji
       # w atrapie nie nadazyl za kanonem V12D-036) — nikt tego nie widzial,
       # bo test sie nie wykonywal. Czas biegu: ~2 s.
+      # Karta AB-1a Pakiet E1: samotest `werdykt_wyjasnialny_guard` (w kroku ponizej) parsuje
+      # AST TypeScript pakietem `typescript` z `frontend/node_modules`. Bez `npm ci` ten test
+      # padalby na braku parsera (blad srodowiska), a pominiecie go warunkowo byloby
+      # maskowaniem (Zero-Debt pkt 1) — dlatego parser jest instalowany TU, jak w
+      # `frontend-checks.yml`.
+      - name: Setup Node.js (parser TypeScript dla samotestow guardow)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: mv-design-pro/frontend/package-lock.json
+      - name: Install frontend dependencies (parser TypeScript dla samotestow guardow)
+        working-directory: mv-design-pro/frontend
+        run: npm ci
       - name: Testy guardow (mv-design-pro/scripts, poza testpaths backendu)
         working-directory: mv-design-pro/backend
         run: poetry run python -m pytest -q ../scripts
