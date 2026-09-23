@@ -11,6 +11,7 @@ from uuid import UUID
 from api.domain_ops_policy import validate_and_materialize_catalog_binding
 from api.klucz_twin_dep import KluczTwin
 from application.analyses.protection.catalog.catalog_store import list_devices
+from application.analyses.werdykt_projektowy import StatusModelu
 from application.field_read_model import build_field_read_model
 from compliance.nc_rfg_modul import modul_nc_rfg
 from domain.canonical_operations import resolve_operation_name
@@ -41,6 +42,7 @@ from network_model.catalog.audit2_catalogs import get_block_transformer
 from network_model.pochodne import kv_na_v, kva_na_mva, mw_na_kw, v_na_kv
 from network_model.solvers.equipment_checks.ct_burden_saturation import CtDeviceBurden
 from pydantic import BaseModel, Field, field_validator
+from solver_input.status_modelu import status_parametrow, wpis_statusu_rownan
 
 logger = logging.getLogger(__name__)
 
@@ -913,6 +915,60 @@ def get_der_protection_functions(
             "nazwa": nazwa_urzadzenia if protection_ref else None,
             **ocena.to_dict(),
         },
+    }
+
+
+@router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/status-modelu")
+def get_der_status_modelu(
+    project_id: str,
+    case_id: str,
+    klucz: KluczTwin,
+    generator_ref: str,
+    request: Request,
+) -> dict[str, Any]:
+    """Dwie osie statusu modelu dynamicznego wytworcy (karta AB-1a D3).
+
+    Os ROWNAN — z rejestru rodzin (`solver_input/status_modelu.py`, fail-closed
+    `UNKNOWN`); os PARAMETROW — z `ProweniencjaParametrow.status_walidacji` bloku
+    `Generator.dynamika` (brak pola = `UNKNOWN`). Wytworca bez parametrow
+    dynamicznych -> `status_modelu = None` (nie ma czego oceniac), nie wartosc
+    zastepcza. Konsument: sekcja „Model dynamiczny" inspektora urzadzenia.
+    """
+
+    _validate_project_case_context(request, project_id, case_id)
+    enm = _get_enm(klucz)
+    generator = next((g for g in enm.generators if g.ref_id == generator_ref), None)
+    if generator is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "generator.not_found",
+                "message_pl": f"Wytwórca {generator_ref} nie istnieje w modelu.",
+            },
+        )
+    dynamika = generator.dynamika
+    if dynamika is None:
+        return {
+            "generator_ref": generator_ref,
+            "rodzina": None,
+            "proweniencja": None,
+            "status_modelu": None,
+            "status_rownan_uzasadnienie_pl": None,
+            "status_rownan_audit_ref": None,
+        }
+    wpis = wpis_statusu_rownan(dynamika.rodzina)
+    prow = dynamika.proweniencja
+    return {
+        "generator_ref": generator_ref,
+        "rodzina": dynamika.rodzina,
+        "proweniencja": {
+            "zrodlo": prow.zrodlo,
+            "odniesienie": prow.odniesienie,
+            "data": prow.data,
+        },
+        "status_modelu": StatusModelu(wpis.status, status_parametrow(prow)).to_dict(),
+        "status_rownan_uzasadnienie_pl": wpis.uzasadnienie_pl,
+        "status_rownan_audit_ref": wpis.audit_ref,
     }
 
 
