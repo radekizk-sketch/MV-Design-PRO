@@ -673,6 +673,13 @@ _KLUCZE_OCENY_ELEMENTU = {
     "dowod",
     # Karta V12.7 §0.1/§0.8: wzór LaTeX marginesu (addytywne).
     "margines_wzor_latex",
+    # Karta AB-1a D2: pola wyjaśnialności (addytywne, None = brak danej u dostawcy).
+    "punkt_krytyczny",
+    "przyczyna",
+    "status_modelu",
+    "status_wejscia",
+    "niepewnosc",
+    "zakres_waznosci",
 }
 
 
