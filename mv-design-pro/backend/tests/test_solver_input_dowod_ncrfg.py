@@ -157,19 +157,26 @@ def test_registered_dynamic_capabilities_posortowane_i_zawiera_znane_id() -> Non
 
 # --------------------------------------------------------------------------- #
 # CapabilityEvidence.regulatory_evidence_eligible — iloczyn cech (4 tiery x
-# 2 claim_kind = 8 kombinacji), pin PRAWDY, nie przykladu z karty.
+# 3 claim_kind = 12 kombinacji), pin PRAWDY, nie przykladu z karty.
+# `PHYSICAL_QUANTITY` (odbior AB-1a wykonawcy 1): wielkosc fizyczna solvera
+# jest dowodem WYLACZNIE przy symulacji zwalidowanej — deklaracja jej nie
+# zastepuje, tak samo jak przy zachowaniu dynamicznym.
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize(
     ("tier", "claim_kind", "oczekiwane"),
     [
         (EvidenceTier.VALIDATED_SIMULATION, ClaimKind.DYNAMIC_PERFORMANCE, True),
         (EvidenceTier.VALIDATED_SIMULATION, ClaimKind.DECLARED_CONFIGURATION, True),
+        (EvidenceTier.VALIDATED_SIMULATION, ClaimKind.PHYSICAL_QUANTITY, True),
         (EvidenceTier.DECLARATION, ClaimKind.DYNAMIC_PERFORMANCE, False),
         (EvidenceTier.DECLARATION, ClaimKind.DECLARED_CONFIGURATION, True),
+        (EvidenceTier.DECLARATION, ClaimKind.PHYSICAL_QUANTITY, False),
         (EvidenceTier.UNVALIDATED_MODEL, ClaimKind.DYNAMIC_PERFORMANCE, False),
         (EvidenceTier.UNVALIDATED_MODEL, ClaimKind.DECLARED_CONFIGURATION, False),
+        (EvidenceTier.UNVALIDATED_MODEL, ClaimKind.PHYSICAL_QUANTITY, False),
         (EvidenceTier.NOT_SIMULATED, ClaimKind.DYNAMIC_PERFORMANCE, False),
         (EvidenceTier.NOT_SIMULATED, ClaimKind.DECLARED_CONFIGURATION, False),
+        (EvidenceTier.NOT_SIMULATED, ClaimKind.PHYSICAL_QUANTITY, False),
     ],
 )
 def test_capability_evidence_regulatory_evidence_eligible_iloczyn_cech(

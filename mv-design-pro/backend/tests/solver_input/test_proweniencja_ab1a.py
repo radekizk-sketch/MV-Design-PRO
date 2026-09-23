@@ -174,3 +174,19 @@ def test_zwalidowana_zdolnosc_wskazuje_istniejaca_wyrocznie(capability_id: str) 
             assert re.search(
                 rf"^\s*(?:def|class) {funkcja}\b", tekst, re.MULTILINE
             ), f"{capability_id}: brak {funkcja} w {sciezka}"
+
+
+def test_wpisy_rejestru_solverow_maja_rodzaj_twierdzenia_wielkosc_fizyczna() -> None:
+    """Odbior AB-1a (wykonawca 1 nazwal dlug): wynik solvera stanu ustalonego/zwarc
+    jest WIELKOSCIA FIZYCZNA, nie zachowaniem modulu w czasie — bez tego pinu
+    zwarcia nosilyby etykiete „zachowanie_dynamiczne" przez domyslke ClaimKind."""
+    from solver_input.provenance import (
+        ClaimKind,
+        classify_capability,
+        registered_solver_capabilities,
+    )
+
+    for capability_id in registered_solver_capabilities():
+        ewidencja = classify_capability(capability_id)
+        assert ewidencja.claim_kind is ClaimKind.PHYSICAL_QUANTITY, capability_id
+        assert ewidencja.claim_kind.label_pl == "wielkosc_fizyczna"

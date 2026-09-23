@@ -150,6 +150,12 @@ class ClaimKind(StrEnum):
       katalogowy FAKT o module (tryb regulacji, telemechanika, THD z rekordu
       katalogowego) porownany z wymaganiem. Deklaracja jest wlasciwa
       podstawa takiego twierdzenia.
+    - ``PHYSICAL_QUANTITY``: narzedzie orzeka WIELKOSC FIZYCZNA stanu
+      ustalonego albo zwarcia (prad zwarciowy, napiecie, przeplyw, czas
+      zadzialania z krzywej) policzona solverem — nie zachowanie modulu w
+      czasie i nie deklaracje. Dowodem jest wylacznie symulacja zwalidowana
+      wobec niezaleznej wyroczni (karta AB-1a D1, odbior wykonawcy 1: bez tego
+      rodzaju zwarcia i rozplywy nosily myla etykiete „zachowanie_dynamiczne").
 
     Domyslnie ``DYNAMIC_PERFORMANCE`` — SUROWSZE odczytanie, zeby zdolnosc
     zarejestrowana bez przemyslenia nie stala sie dopuszczalna przez pominiecie.
@@ -157,6 +163,7 @@ class ClaimKind(StrEnum):
 
     DYNAMIC_PERFORMANCE = "DYNAMIC_PERFORMANCE"
     DECLARED_CONFIGURATION = "DECLARED_CONFIGURATION"
+    PHYSICAL_QUANTITY = "PHYSICAL_QUANTITY"
 
     @property
     def label_pl(self) -> str:
@@ -166,6 +173,7 @@ class ClaimKind(StrEnum):
 _CLAIM_KIND_LABEL_PL: dict[ClaimKind, str] = {
     ClaimKind.DYNAMIC_PERFORMANCE: "zachowanie_dynamiczne",
     ClaimKind.DECLARED_CONFIGURATION: "konfiguracja_zadeklarowana",
+    ClaimKind.PHYSICAL_QUANTITY: "wielkosc_fizyczna",
 }
 
 
@@ -457,9 +465,10 @@ def registered_dynamic_capabilities() -> tuple[str, ...]:
 # albo „wynik ma klucz X" NIE jest wyrocznia. Brak wyroczni = `UNVALIDATED_MODEL`
 # z nazwanym brakiem w `rationale_pl` — nigdy cichy awans.
 #
-# `claim_kind` tych wpisow zostaje domyslny (odczyt surowszy): dla
-# `VALIDATED_SIMULATION` i `UNVALIDATED_MODEL` rodzaj twierdzenia nie zmienia
-# dopuszczalnosci (`CapabilityEvidence.regulatory_evidence_eligible`).
+# `claim_kind` tych wpisow = `PHYSICAL_QUANTITY` (odbior wykonawcy 1 karty AB-1a):
+# wynik solvera stanu ustalonego/zwarc jest wielkoscia fizyczna, nie twierdzeniem
+# o zachowaniu modulu w czasie; dopuszczalnosc bez zmian — wylacznie
+# `VALIDATED_SIMULATION` (`CapabilityEvidence.regulatory_evidence_eligible`).
 #
 # Rozlacznosc kluczy z rejestrem dynamicznym powyzej przypina test
 # (`tests/solver_input/test_proweniencja_ab1a.py`).
@@ -486,6 +495,7 @@ def _v126(kod: str, brak_pl: str) -> CapabilityEvidence:
     return CapabilityEvidence(
         capability_id=f"v126_academic.{kod}",
         tier=EvidenceTier.UNVALIDATED_MODEL,
+        claim_kind=ClaimKind.PHYSICAL_QUANTITY,
         rationale_pl=f"{_V126_BEZ_WYROCZNI_PL} {brak_pl}",
         audit_ref=f"{_AUDIT_AB1A}; tests/test_v126_*.py (pomiar 2026-09-23)",
     )
@@ -497,6 +507,7 @@ _SOLVER_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
         CapabilityEvidence(
             capability_id="short_circuit_iec60909.sc_3f",
             tier=EvidenceTier.VALIDATED_SIMULATION,
+            claim_kind=ClaimKind.PHYSICAL_QUANTITY,
             rationale_pl=(
                 "Zwarcie trojfazowe toru kanonicznego (assembler -> FROZEN "
                 "ShortCircuitIEC60909Solver) zgodne z wyrocznia reczna IEC 60909-0:2016 "
@@ -515,6 +526,7 @@ _SOLVER_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
         CapabilityEvidence(
             capability_id="short_circuit_iec60909.sc_2f",
             tier=EvidenceTier.VALIDATED_SIMULATION,
+            claim_kind=ClaimKind.PHYSICAL_QUANTITY,
             rationale_pl=(
                 "Zwarcie dwufazowe toru kanonicznego zgodne z wyrocznia reczna IEC "
                 "60909-0:2016 (Z_k = Z_1 + Z_2, wiersz 2F sieci przykladowej, rtol 1e-4)."
@@ -527,6 +539,7 @@ _SOLVER_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
         CapabilityEvidence(
             capability_id="short_circuit_iec60909.sc_1f",
             tier=EvidenceTier.VALIDATED_SIMULATION,
+            claim_kind=ClaimKind.PHYSICAL_QUANTITY,
             rationale_pl=(
                 "Zwarcie jednofazowe: impedancja zerowa na szynie nN liczona recznie "
                 "(Z_T0 transformatora Dyn) i prad I_k1 = sqrt(3)*c*U_n/|Z_1+Z_2+Z_0| "
@@ -541,6 +554,7 @@ _SOLVER_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
         CapabilityEvidence(
             capability_id="short_circuit_iec60909.sc_2f_g",
             tier=EvidenceTier.VALIDATED_SIMULATION,
+            claim_kind=ClaimKind.PHYSICAL_QUANTITY,
             rationale_pl=(
                 "Zwarcie dwufazowe z ziemia: Z_k = Z_1 + Z_2*Z_0/(Z_2+Z_0) (IEC 60909) "
                 "z impedancja zerowa liczona recznie zgodne z wynikiem solvera."
@@ -553,6 +567,7 @@ _SOLVER_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
         CapabilityEvidence(
             capability_id="load_flow.newton_raphson",
             tier=EvidenceTier.VALIDATED_SIMULATION,
+            claim_kind=ClaimKind.PHYSICAL_QUANTITY,
             rationale_pl=(
                 "Rozplyw Newtona-Raphsona toru kanonicznego zgodny z wartosciami "
                 "oczekiwanymi IEEE 4/9/14/39, CIGRE MV/LV i sieci pandapower "
@@ -568,6 +583,7 @@ _SOLVER_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
         CapabilityEvidence(
             capability_id="load_flow.gauss_seidel",
             tier=EvidenceTier.VALIDATED_SIMULATION,
+            claim_kind=ClaimKind.PHYSICAL_QUANTITY,
             rationale_pl=(
                 "Tryb Gaussa-Seidla daje napiecia, katy i straty zgodne z Newtonem-"
                 "Raphsonem (ten sam model Y-bus), ktorego zgodnosc z wyrocznia "
@@ -581,6 +597,7 @@ _SOLVER_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
         CapabilityEvidence(
             capability_id="load_flow.fast_decoupled",
             tier=EvidenceTier.VALIDATED_SIMULATION,
+            claim_kind=ClaimKind.PHYSICAL_QUANTITY,
             rationale_pl=(
                 "Tryb fast-decoupled daje napiecia zgodne z Newtonem-Raphsonem "
                 "(ten sam model Y-bus) przy spelnionych warunkach stosowalnosci — "
@@ -591,6 +608,7 @@ _SOLVER_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
         CapabilityEvidence(
             capability_id="load_flow_unbalanced.bfs",
             tier=EvidenceTier.VALIDATED_SIMULATION,
+            claim_kind=ClaimKind.PHYSICAL_QUANTITY,
             rationale_pl=(
                 "Rozplyw niesymetryczny (BFS per faza) toru kanonicznego zgodny z "
                 "wartosciami oczekiwanymi sieci IEEE 34-bus (wyrocznia zewnetrzna)."
@@ -603,6 +621,7 @@ _SOLVER_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
         CapabilityEvidence(
             capability_id="phase_state_sn.radial",
             tier=EvidenceTier.VALIDATED_SIMULATION,
+            claim_kind=ClaimKind.PHYSICAL_QUANTITY,
             rationale_pl=(
                 "Stan fazowy SN (model promieniowy z rezystancja galezi per faza) "
                 "zgodny z przypadkami obliczonymi recznie: uklad symetryczny "
@@ -618,6 +637,7 @@ _SOLVER_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
         CapabilityEvidence(
             capability_id="protection_sn.iec60255",
             tier=EvidenceTier.VALIDATED_SIMULATION,
+            claim_kind=ClaimKind.PHYSICAL_QUANTITY,
             rationale_pl=(
                 "Ocena zabezpieczen nadpradowych liczy czasy zadzialania "
                 "charakterystyk IEC 60255-151 (NI/VI/EI/RI/DT) zgodne z wartosciami "
