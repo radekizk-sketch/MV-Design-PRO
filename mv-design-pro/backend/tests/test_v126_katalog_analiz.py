@@ -37,9 +37,6 @@ from application.analyses.v126_katalog import (
     MARGINES_BIL_MIN_PROCENT,
     MARGINES_TRV_MIN_PROCENT,
     PRAD_RESZTKOWY_MAX_UDZIAL_IC,
-    TDD_IEEE519_PROCENT,
-    THD_U_IEEE519_PROCENT,
-    THD_U_PNEN50160_PROCENT,
     UDZIAL_2H_BLOKADA_87T_PROCENT,
     WSKAZNIK_CIEPLNY_ROZRUCHU_MAX,
     ZAPAD_ROZRUCHU_MAX_PROCENT,
@@ -86,7 +83,8 @@ def test_katalog_pokrywa_dokladnie_kontrakt_bez_duplikatow() -> None:
 
 def test_karty_prezentowane_niosa_pytanie_zakres_i_wielkosci() -> None:
     prezentowane = [k for k in KATALOG_ANALIZ_V126 if k.prezentowany]
-    assert len(prezentowane) == 10
+    # Karta AB-1d_min krok 3: 10 -> 8 (wycofane `power_quality_harmonics`, `ssci_impedance`).
+    assert len(prezentowane) == 8
     for karta in prezentowane:
         assert karta.pytanie_pl.strip(), karta.kod
         assert karta.zakres_pl.strip(), karta.kod
@@ -135,7 +133,27 @@ def test_karty_wycofane_pokrywaja_dokladnie_rejestr_frontu() -> None:
         f"Rozjazd katalog↔front: tylko w katalogu {wycofane_katalogu - wycofane_frontu}, "
         f"tylko we froncie {wycofane_frontu - wycofane_katalogu}"
     )
-    assert len(wycofane_katalogu) == 4
+    # Karta AB-1d_min krok 3: 4 -> 6 (+ `power_quality_harmonics`, `ssci_impedance`).
+    assert len(wycofane_katalogu) == 6
+
+
+def test_nastepca_tylko_na_kartach_wycofanych_ab1d_min() -> None:
+    """Karta AB-1d_min krok 3: następca (ekran pokazuje go zamiast uruchamialnej karty)
+    niosą DOKŁADNIE dwa rodzaje wycofane tą kartą — i tylko karty wycofane."""
+    z_nastepca = {k.kod for k in KATALOG_ANALIZ_V126 if k.nastepca_pl}
+    assert z_nastepca == {
+        V126AnalysisType.POWER_QUALITY_HARMONICS.value,
+        V126AnalysisType.SSCI_IMPEDANCE.value,
+    }
+    for karta in KATALOG_ANALIZ_V126:
+        if karta.nastepca_pl:
+            assert karta.prezentowany is False, karta.kod
+            assert karta.powod_wycofania_pl, karta.kod
+            # Karta wycofana nie publikuje podstawy oceny ani wielkości (liczby, które
+            # nie opisują fizyki sieci — audyt F1–F9, przegląd §6.4).
+            assert karta.podstawa_oceny == (), karta.kod
+            assert karta.wielkosci_glowne == (), karta.kod
+            assert karta.katalog_odniesienia is None, karta.kod
 
 
 def test_karty_wycofane_maja_niepusty_powod_i_prezentowany_false() -> None:
@@ -192,19 +210,19 @@ def test_grupy_do_dict_zawiera_wylacznie_grupy_z_karta_prezentowana_raz() -> Non
 
 #: (nazwa stałej katalogu, oczekiwana wartość, fragment tekstu solvera FROZEN).
 #: Fragmenty ustalone RĘCZNIE odczytem `network_model/solvers/v126_academic.py`
-#: (karta B02-BE-TESTY §2) — solver zapisuje 5 z tych 10 progów jako BARE INT
+#: (karta B02-BE-TESTY §2) — solver zapisuje 5 z tych 7 progów jako BARE INT
 #: (bez „.0": `margin >= 20`, `du <= 15`, `thermal_ratio <= 1`, `min_margin >= 10`,
 #: `second_harmonic_percent >= 10`), więc test NIE porównuje `str(wartość)` z
 #: tekstem solvera wprost — to dałoby FAŁSZYWY rozjazd (wartość ta sama, zapis
-#: inny). Pozostałe 5 progów solver zapisuje jako float identyczny z katalogiem.
-#: ŻADEN z 10 literałów nie okazał się nieobecny w solverze (zweryfikowano
+#: inny). Pozostałe 2 progi solver zapisuje jako float identyczny z katalogiem.
+#: ŻADEN z 7 literałów nie okazał się nieobecny w solverze (zweryfikowano
 #: ręcznym odczytem źródła przy pisaniu tej karty) — gdyby był, ten test by to
 #: wykrył i raport karty B02-BE-TESTY opisałby rozjazd (NIE wolno zmieniać
 #: solvera z tej karty — poprawiałby się katalog).
+#: Karta AB-1d_min krok 3: trzy progi THD_U/TDD (8 %, 5 %, 5 %) zeszły z tabeli razem
+#: z podstawą oceny wycofanej karty „Jakość energii i harmoniczne" — katalog nie
+#: publikuje ich już jako podstawy, więc nie ma czego parować z solverem.
 _PROGI_LITERALOW_SOLVERA: tuple[tuple[str, float, str], ...] = (
-    ("THD_U_PNEN50160_PROCENT", THD_U_PNEN50160_PROCENT, "thd > 8.0"),
-    ("THD_U_IEEE519_PROCENT", THD_U_IEEE519_PROCENT, "thd > 5.0"),
-    ("TDD_IEEE519_PROCENT", TDD_IEEE519_PROCENT, "tdd > 5.0"),
     ("MARGINES_BIL_MIN_PROCENT", MARGINES_BIL_MIN_PROCENT, "margin >= 20"),
     ("ZAPAD_ROZRUCHU_MAX_PROCENT", ZAPAD_ROZRUCHU_MAX_PROCENT, "du <= 15"),
     ("WSKAZNIK_CIEPLNY_ROZRUCHU_MAX", WSKAZNIK_CIEPLNY_ROZRUCHU_MAX, "thermal_ratio <= 1"),
@@ -251,6 +269,8 @@ _KLUCZE_KARTY: frozenset[str] = frozenset(
         "dane",
         "prezentowany",
         "powod_wycofania_pl",
+        # Karta AB-1d_min krok 3: następca rodzaju wycofanego (addytywnie).
+        "nastepca_pl",
         "katalog_odniesienia",
         "uwagi_metody_pl",
         # Karta V12.7 §0.7: zakres, jaki wolno nazwać werdyktowi tego rodzaju.
@@ -345,7 +365,9 @@ def test_nazwa_parametru_pl_nieznany_klucz_podnosi_key_error() -> None:
 
 def test_katalog_odniesienia_wskazuje_realna_przestrzen_nazw() -> None:
     z_odniesieniem = [k for k in KATALOG_ANALIZ_V126 if k.katalog_odniesienia]
-    assert len(z_odniesieniem) >= 3, "Test kontrolny: oczekiwano kilku kart z odniesieniem"
+    # Karta AB-1d_min krok 3: `harmonic-limits` (PQH) i `converter-modes` (SSCI) zeszły
+    # z kart wycofanych — zostają `reliability-defaults` i `insulation-levels`.
+    assert len(z_odniesieniem) >= 2, "Test kontrolny: oczekiwano kart z odniesieniem"
     from api.main import app
 
     with TestClient(app) as client:

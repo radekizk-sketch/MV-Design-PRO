@@ -31,17 +31,41 @@ from uuid import uuid4
 
 import pytest
 from api.main import app
+from api.v126_academic import _ANALIZY_WYCOFANE
+from application.solvers.solver_capability_registry import (
+    BIEGI_V126,
+    get_solver_capability,
+)
 from enm.canonical_analysis import create_run, execute_run
 from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
 from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
 
-_RODZAJE_WYCOFANE = (V126AnalysisType.HOSTING_CAPACITY, V126AnalysisType.OPF_LOSS_LCC)
+#: Karta AB-1d_min krok 3: zbior rodzajow wycofanych WYPROWADZONY z rejestru zdolnosci
+#: (`availability="withdrawn"` — jeden mechanizm), nie przepisany do testu: W3-E dal
+#: `hosting_capacity`/`opf_loss_lcc`, AB-1d_min — `power_quality_harmonics`/`ssci_impedance`.
+_RODZAJE_WYCOFANE = tuple(
+    rodzaj
+    for rodzaj in V126AnalysisType
+    if get_solver_capability(BIEGI_V126[f"v126:{rodzaj.value}"]).availability == "withdrawn"
+)
 
-_ZAMIENNIK_TRAS = {
+#: Trasa zamiennika per rodzaj; `None` = rodzaj badawczy BEZ zamiennika (SSCI — pusta
+#: lista w ciele 410, powod nazywa warunek powrotu).
+_ZAMIENNIK_TRAS: dict[V126AnalysisType, str | None] = {
     V126AnalysisType.HOSTING_CAPACITY: "GET /api/oze-analysis/hosting-capacity",
     V126AnalysisType.OPF_LOSS_LCC: "POST /api/solver/transformer-losses",
+    V126AnalysisType.POWER_QUALITY_HARMONICS: (
+        "POST /api/execution/study-cases/{case_id}/runs "
+        "(analysis_type=HARMONICZNE, solver_input.os_czestotliwosci)"
+    ),
+    V126AnalysisType.SSCI_IMPEDANCE: None,
 }
+
+
+def test_zbior_wycofanych_z_rejestru_to_cztery_nazwane_rodzaje() -> None:
+    assert set(_RODZAJE_WYCOFANE) == set(_ZAMIENNIK_TRAS)
+    assert set(_RODZAJE_WYCOFANE) == set(_ANALIZY_WYCOFANE)
 
 
 def _model_minimalny() -> V126AcademicInput:
@@ -130,9 +154,13 @@ def test_post_rodzaju_wycofanego_zwraca_410_z_zamiennikiem(rodzaj: V126AnalysisT
     assert body["code"] == "v126.analysis_withdrawn"
     assert body["analysis_type"] == rodzaj.value
     assert body["powod_pl"], f"{rodzaj.value}: powód wycofania pusty"
-    assert body["zamiennik"], f"{rodzaj.value}: brak zamiennika"
-    trasy_zamiennika = [pozycja["trasa"] for pozycja in body["zamiennik"]]
-    assert _ZAMIENNIK_TRAS[rodzaj] in trasy_zamiennika
+    assert body["message_pl"], f"{rodzaj.value}: komunikat pusty"
+    oczekiwana_trasa = _ZAMIENNIK_TRAS[rodzaj]
+    if oczekiwana_trasa is None:
+        assert body["zamiennik"] == [], f"{rodzaj.value}: rodzaj badawczy bez zamiennika"
+    else:
+        trasy_zamiennika = [pozycja["trasa"] for pozycja in body["zamiennik"]]
+        assert oczekiwana_trasa in trasy_zamiennika
 
 
 def test_post_rodzaju_wycofanego_nie_wymaga_committed_enm() -> None:

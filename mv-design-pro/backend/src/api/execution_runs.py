@@ -11,12 +11,12 @@ from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
+from application.solvers.solver_capability_registry import (
+    rodzaj_biegu_z_typu_wykonawczego,
+)
 from domain.execution import ExecutionAnalysisType
 from enm.badanie_zgodnosci import OpcjeBadaniaError
-from enm.canonical_analysis import (
-    ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY,
-    build_execution_result_set,
-)
+from enm.canonical_analysis import build_execution_result_set
 from enm.canonical_analysis import (
     create_run as create_canonical_run,
 )
@@ -30,6 +30,7 @@ from enm.canonical_analysis import (
     list_runs_for_case as list_canonical_runs_for_case,
 )
 from fastapi import APIRouter, HTTPException, Request, status
+from network_model.solvers.harmoniczne import KontraktCzestotliwosciError
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["execution-runs"])
@@ -38,10 +39,9 @@ router = APIRouter(tags=["execution-runs"])
 class CreateRunRequest(BaseModel):
     analysis_type: str = Field(
         ...,
-        description=(
-            "Typ analizy: SC_3F, SC_1F, SC_2F, SC_2F_G, LOAD_FLOW, PF_UNBALANCED, "
-            "PHASE_STATE_SN, DYNAMIC_STABILITY"
-        ),
+        # Karta AB-1d_min krok 1: opis WYPROWADZONY z `ExecutionAnalysisType` (dotad
+        # recznie przepisana lista, ktora nie znala DYNAMIKA_RMS — szosta kopia rodzajow).
+        description="Typ analizy: " + ", ".join(typ.value for typ in ExecutionAnalysisType),
     )
     solver_input: dict[str, Any] = Field(default_factory=dict, description="Opcje solvera")
     readiness: dict[str, Any] | None = Field(None, description="Legacy - ignorowane")
@@ -108,23 +108,13 @@ def _parse_analysis_type(value: str) -> ExecutionAnalysisType:
 
 
 def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
-    if value == ExecutionAnalysisType.LOAD_FLOW:
-        return "PF"
-    if value == ExecutionAnalysisType.PF_UNBALANCED:
-        return ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY
-    if value in {
-        ExecutionAnalysisType.SC_3F,
-        ExecutionAnalysisType.SC_1F,
-        ExecutionAnalysisType.SC_2F,
-        ExecutionAnalysisType.SC_2F_G,
-    }:
-        return "short_circuit_sn"
-    if value == ExecutionAnalysisType.PHASE_STATE_SN:
-        return "phase_state_sn"
-    if value == ExecutionAnalysisType.DYNAMIC_STABILITY:
-        return "dynamic_stability"
-    if value == ExecutionAnalysisType.DYNAMIKA_RMS:
-        return "dynamika_rms"
+    """`analysis_type` biegu dla typu wykonawczego — WYPROWADZONY z jednej listy rodzajow.
+
+    Karta AB-1d_min krok 1: mapowanie zyje w `RODZAJE_BIEGOW`
+    (`application/solvers/solver_capability_registry.py`), nie w lancuchu `if`-ow
+    tej trasy (dotad siodmy rodzaj wymagal dopisania w piatym miejscu); parytet
+    `ExecutionAnalysisType` <-> tabela przypina test.
+    """
     # V12K-025: PROTECTION ma osobny endpoint (architektoniczna separacja
     # bo wymaga sc_run_id + protection_case_id). Realny silnik za
     # POST /protection-runs to application.protection_analysis.engine (tor
@@ -143,10 +133,13 @@ def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
                 "z study_case.protection_config). Patrz V12K-025 w REJESTR_KONFLIKTOW.md."
             ),
         )
-    raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"Nieobslugiwany typ analizy: {value.value}",
-    )
+    try:
+        return rodzaj_biegu_z_typu_wykonawczego(value.value).analysis_type
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Nieobslugiwany typ analizy: {value.value}",
+        ) from exc
 
 
 def _normalize_solver_input(
@@ -201,6 +194,13 @@ def create_run(
         # Karta AB-1a D4: blad TRESCI zadania biegu dynamiki (dwa rodzaje badania
         # naraz, rodzaj nieznany, badanie zgodnosci spoza kontraktu) — 422 z kodem,
         # nie 409 (to nie jest konflikt stanu modelu).
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"kod": exc.kod, "komunikat": exc.komunikat},
+        ) from exc
+    except KontraktCzestotliwosciError as exc:
+        # Karta AB-1d_min krok 2: opcje biegu dziedziny czestotliwosci (os `f` w Hz,
+        # pasmo supraharmoniczne) niezgodne z kontraktem — 422 z kodem, nie 409.
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"kod": exc.kod, "komunikat": exc.komunikat},

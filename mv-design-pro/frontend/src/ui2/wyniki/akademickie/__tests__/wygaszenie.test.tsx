@@ -140,8 +140,36 @@ describe('katalog kart — wejście projektanta', () => {
     for (const kod of WYCOFANE) expect(karty, `${kod} wciąż w katalogu kart`).not.toContain(kod);
     // Kontrola dodatnia: pozostałe rodzaje NIE zniknęły przy okazji, kolejność kontraktu.
     expect(karty).toEqual(KATALOG_BACKENDU.filter((kod) => !WYCOFANE.includes(kod)));
-    expect(karty).toContain('power_quality_harmonics');
+    expect(karty).toContain('earthing_safety');
     expect(karty).toContain('neutral_earthing_design');
+  });
+
+  /*
+   * Rejestr domen i biegów (2026-09-23): rodzaj wycofany Z NASTĘPCĄ (backend:
+   * `nastepca_pl`) ma kartę WYCOFANIA z powodem i następcą — nie kartę uruchamialną;
+   * rodzaj wycofany BEZ następcy (W3-E, V126-WYGASZENIE) znika bez śladu.
+   * Iloczyn cech: {z następcą · bez następcy} × {karta uruchamialna · karta wycofania}.
+   */
+  it('wycofane z następcą → karta wycofania (powód + następca), bez przycisku uruchomienia', async () => {
+    ustawFetchV126();
+    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
+    await screen.findByTestId('mvd-akad-katalog-wycofane');
+    const zNastepca = KATALOG.filter((karta) => !karta.prezentowany && karta.nastepca_pl);
+    expect(zNastepca.map((karta) => karta.kod).sort()).toEqual([
+      'power_quality_harmonics',
+      'ssci_impedance',
+    ]);
+    for (const karta of zNastepca) {
+      const element = screen.getByTestId(`mvd-akad-karta-wycofana-${karta.kod}`);
+      expect(element.textContent).toContain(karta.powod_wycofania_pl ?? '');
+      expect(element.textContent).toContain(karta.nastepca_pl ?? '');
+      expect(element.querySelector('button')).toBeNull();
+      expect(screen.queryByTestId(`mvd-akad-karta-otworz-${karta.kod}`)).toBeNull();
+    }
+    for (const karta of KATALOG.filter((k) => !k.prezentowany && !k.nastepca_pl)) {
+      expect(screen.queryByTestId(`mvd-akad-karta-wycofana-${karta.kod}`)).toBeNull();
+      expect(screen.queryByTestId(`mvd-akad-karta-otworz-${karta.kod}`)).toBeNull();
+    }
   });
 
   it('rodzaj nowy w katalogu backendu dostaje kartę bez zmiany kodu okna', async () => {
@@ -262,19 +290,28 @@ describe('hosting_capacity / opf_loss_lcc — duplikat kanonu schodzi z powierzc
   /*
    * PIN LICZBY — zmierzony, nie przepisany z prozy karty. Katalog kontraktu ma 14
    * rodzajów (fixtury 1:1 z `V126AnalysisType`). V126-WYGASZENIE zdjęła 2, W3-E kolejne
-   * 2 → katalog kart pokazuje 10. Test wyżej dowodzi SETU; ten dowodzi LICZBY, żeby
+   * 2, rejestr domen i biegów (2026-09-23) kolejne 2 (harmoniczne, SSCI) → katalog kart
+   * pokazuje 8 uruchamialnych. Test wyżej dowodzi SETU; ten dowodzi LICZBY, żeby
    * regresja o poprawnym składzie, ale złej liczności miała osobny pin.
    */
-  it('katalog kart ma dokładnie 10 pozycji (14 kontraktu − 4 wycofane: 2 z V126-WYGASZENIE + 2 z W3-E)', async () => {
+  it('katalog kart ma dokładnie 8 pozycji (14 kontraktu − 6 wycofanych)', async () => {
     expect(KATALOG_BACKENDU).toHaveLength(14);
     expect(Object.keys(ODPOWIEDZI).sort()).toEqual([...KATALOG_BACKENDU].sort());
     expect(WYCOFANE).toEqual(
-      expect.arrayContaining(['benchmark_validation', 'voltage_stability', 'hosting_capacity', 'opf_loss_lcc']),
+      expect.arrayContaining([
+        'benchmark_validation',
+        'voltage_stability',
+        'hosting_capacity',
+        'opf_loss_lcc',
+        'power_quality_harmonics',
+        'ssci_impedance',
+      ]),
     );
-    expect(WYCOFANE).toHaveLength(4);
+    expect(WYCOFANE).toHaveLength(6);
     ustawFetchV126();
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await screen.findByTestId('mvd-akad-katalog-kart');
-    expect(document.querySelectorAll('[data-testid^="mvd-akad-karta-otworz-"]')).toHaveLength(10);
+    expect(document.querySelectorAll('[data-testid^="mvd-akad-karta-otworz-"]')).toHaveLength(8);
+    expect(document.querySelectorAll('[data-testid^="mvd-akad-karta-wycofana-"]')).toHaveLength(2);
   });
 });

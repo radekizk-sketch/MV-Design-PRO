@@ -354,6 +354,10 @@
   border-radius: 8px;
   background: var(--mvd-panel-2);
 }
+/* Karta wycofania (powód + następca) — obramowanie przerywane: nie jest kartą do uruchomienia. */
+.mvd-akad-karta--wycofana {
+  border-style: dashed;
+}
 .mvd-akad-karta-tytul {
   margin: 0;
   font-size: 14px;

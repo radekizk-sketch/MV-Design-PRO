@@ -44,7 +44,8 @@ describe('akcjaNaprawcza — rejestr akcji per rodzaj przekroczenia', () => {
 
 describe('rejestr akcji — F-K4 (nowe rodzaje wskazań)', () => {
   it('nowe rodzaje przekroczeń mają akcję naprawczą („Popraw w modelu")', () => {
-    for (const rodzaj of ['asymetria-fazowa', 'stabilnosc-ssci', 'zle-dane-pomiarowe'] as const) {
+    // 'stabilnosc-ssci' zdjęte razem z oknem SSCI (analiza badawcza wycofana, 2026-09-23).
+    for (const rodzaj of ['asymetria-fazowa', 'zle-dane-pomiarowe'] as const) {
       expect(akcjaNaprawcza(rodzaj).etykieta).toBe(WZORZEC_STRINGS.poprawWModelu);
       expect(akcjaNaprawcza(rodzaj).cel).toEqual({ rodzaj: 'schemat' });
     }

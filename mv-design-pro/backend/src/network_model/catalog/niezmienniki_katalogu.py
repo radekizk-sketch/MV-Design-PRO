@@ -372,13 +372,18 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     ),
     RegulaKatalogu(
         kod="KAT-T-015",
-        nazwa="Rzad harmonicznej calkowity w przedziale 2..50",
+        nazwa=(
+            "Rzad harmonicznej calkowity w przedziale 2..50 "
+            "(widmo rodzaju CURRENT_SPECTRUM_INTEGER_ORDER)"
+        ),
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa="IEC 61000-4-7 — zakres oceny harmonicznych do rzedu 50",
         uzasadnienie=(
-            "Produkt deklaruje ocene emisji harmonicznych w zakresie normowanym przez "
-            "IEC 61000-4-7 (rzedy 2..50). Rzad 0/1 nie jest harmoniczna, a powyzej 50 "
-            "produkt nie deklaruje wyniku — to granica ZAKRESU, nie fizyki."
+            "Widmo pradu w rzedach calkowitych (deklaracja producenta) obejmuje rzedy "
+            "2..50 normowane przez IEC 61000-4-7; rzad 0/1 nie jest harmoniczna. "
+            "Niezmiennik dotyczy WYLACZNIE tego rodzaju widma, nie produktu: "
+            "interharmoniczne i supraharmoniczne leza na osi czestotliwosci w Hz "
+            "(audyt harmonicznych #28) i wejda jako osobne rodzaje widma."
         ),
     ),
     RegulaKatalogu(

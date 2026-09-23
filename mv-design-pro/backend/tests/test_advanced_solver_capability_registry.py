@@ -70,7 +70,14 @@ def test_advanced_solver_capability_registry_is_complete_and_real() -> None:
     # liczony gdzie indziej (impedancja Thevenina lokalna / β zaszyte) i nie
     # uruchamiają już NOWYCH biegów (410) — `availability` "withdrawn" dla tych
     # dwóch jest UCZCIWE.
-    wycofane = {"HOSTING_CAPACITY", "OPF_LOSS_LCC"}
+    # Karta AB-1d_min krok 3 (2026-09-23): POWER_QUALITY_HARMONICS (audyt F1-F9, nastepca
+    # `harmoniczne`) i SSCI_IMPEDANCE (badawcza, bez werdyktu) — ten sam mechanizm.
+    wycofane = {
+        "HOSTING_CAPACITY",
+        "OPF_LOSS_LCC",
+        "POWER_QUALITY_HARMONICS",
+        "SSCI_IMPEDANCE",
+    }
     assert set(SOLVER_CAPABILITY_REGISTRY) == expected
     for capability in SOLVER_CAPABILITY_REGISTRY.values():
         oczekiwana_dostepnosc = "withdrawn" if capability.capability in wycofane else "available"
@@ -107,7 +114,13 @@ def test_advanced_solver_capability_contract_reports_full_support() -> None:
         for item in contract["capabilities"]
         if item["availability"] != "available"
     )
-    assert niedostepne == ["HOSTING_CAPACITY", "OPF_LOSS_LCC"]
+    # AB-1d_min krok 3: + POWER_QUALITY_HARMONICS, SSCI_IMPEDANCE (withdrawn, 410).
+    assert niedostepne == [
+        "HOSTING_CAPACITY",
+        "OPF_LOSS_LCC",
+        "POWER_QUALITY_HARMONICS",
+        "SSCI_IMPEDANCE",
+    ]
     for item in contract["capabilities"]:
         if not item["reportable"]:
             ocena = item["ocena_dowodowa"]

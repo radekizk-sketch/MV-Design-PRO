@@ -76,7 +76,6 @@ from api.v126_academic import (  # noqa: E402
     get_v126_proof,
     get_v126_report,
     get_v126_result,
-    get_v126_ssci_stability,
     get_v126_trace,
 )
 from application.analyses.arc_flash_view import build_arc_flash_view  # noqa: E402
@@ -563,11 +562,9 @@ def gotowosc_v126_scena_akademickie() -> dict[str, Any]:
 #: Wartości są danymi PROJEKTANTA (uziom 40×30 m w gruncie 100/300 Ω·m, silnik
 #: 400 kW na szynie B, obwód TRV 12 kHz) — nie pochodzą z modelu i nie są
 #: „domyślnymi" solvera; gotowość policzona TĄ SAMĄ funkcją co bramka 422.
+#: `power_quality_harmonics`/`ssci_impedance` bez wpisu — rodzaje wycofane (AB-1d_min,
+#: 2026-09-23): gotowość melduje WYCOFANA bez sprawdzeń, parametry byłyby martwe.
 PARAMETRY_SCENY_AKADEMICKIE: dict[str, dict[str, Any]] = {
-    "power_quality_harmonics": {
-        "harmonic_spectra": {"gen_pv": {"5": 4.5, "7": 2.1, "11": 1.2}},
-    },
-    "ssci_impedance": {"ssci_converter_ref": "gen_pv"},
     "earthing_safety": {
         "earthing": {
             "gpz_ref": "bus_hv",
@@ -2937,12 +2934,11 @@ def _biegi_sceny_akademickiej() -> dict[str, Any]:
     (`_wycofanie_v126`) NIE dostają biegu — scena pokazuje dla nich uczciwą
     odmowę gotowości (fixtura `gotowosc_v126_scena_akademickie`), a nie wynik
     policzony „na oko". Zmierzone bezpośrednio po materializacji karty
-    przekształtnika: 11 rodzajów liczy się, 1 odmawia
+    przekształtnika: 9 rodzajów liczy się, 1 odmawia
     (`insulation_coordination` — sieć nie niesie danych koordynacji izolacji),
-    2 są wycofane (`hosting_capacity`, `opf_loss_lcc`).
-
-    Rodzaj `ssci_impedance` dostaje DODATKOWO werdykt stabilności
-    (`get_v126_ssci_stability` — osobna końcówka, którą czyta ekran SSCI).
+    4 są wycofane (`hosting_capacity`, `opf_loss_lcc` — W3-E; `power_quality_harmonics`,
+    `ssci_impedance` — rejestr domen i biegów AB-1d_min, 2026-09-23; ekran SSCI i jego
+    werdykt zeszły z powierzchni, więc scena nie liczy już werdyktu stabilności).
 
     Każdy bieg dostaje własny, deterministyczny `run_id` (`uuid5` z rodzaju) —
     tożsamość, nie fizyka."""
@@ -2985,13 +2981,9 @@ def _biegi_sceny_akademickiej() -> dict[str, Any]:
                 )
             wynik = bieg.raw_result["result"]
             mapa = {str(bieg.id): stabilny}
-            dodatkowe: dict[str, Any] = {}
-            if rodzaj is V126AnalysisType.SSCI_IMPEDANCE:
-                dodatkowe["stabilnosc"] = get_v126_ssci_stability(bieg.id)
             komplet[rodzaj.value] = _ustabilizuj_identyfikatory(
                 canonicalize_json(
                     {
-                        **dodatkowe,
                         "koperta": {
                             "run_id": str(bieg.id),
                             "case_id": CASE_ID_HARNESSU,

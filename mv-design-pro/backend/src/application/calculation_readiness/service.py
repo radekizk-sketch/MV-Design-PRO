@@ -20,8 +20,12 @@ Każdy item zwraca: status + brakujące pola + obiekty blokujące + zalecaną ak
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
+from application.solvers.solver_capability_registry import (
+    RODZAJE_BIEGOW,
+    RODZAJE_BIEGOW_BEZ_SOLVERA,
+)
 from domain.canonical_operations import READINESS_CODES
 from enm.adapter_dynamiki import KOD_PUNKT_PRACY_BRAK, braki_modelu_dynamiki
 from enm.assembler import (
@@ -56,7 +60,22 @@ CalculationType = Literal[
     #: i punkt pracy z rozpływu dostępny"; scenariusz czasowy i nastawy numeryczne
     #: są daną PER BIEG (opcje), więc bramka modelowa ich nie widzi.
     "dynamika_rms",
+    #: Karta AB-1d_min krok 2: rodzaje biegow dziedziny czestotliwosci zarejestrowane
+    #: BEZ solvera. Gotowosc NIGDY nie jest `ready` (A-7) — `evaluate_single` zwraca
+    #: `blocked` z nazwanym brakiem i kamieniem. NIE wchodza do `evaluate()` (pelnej
+    #: listy): ta zasila ostrzezenia widoczne projektantowi
+    #: (`validation_problem/service.py`) i status globalny — rodzaj bez solvera
+    #: bylby tam zaslepka w UI (ZASADA NR 1) i trwalym `blocked` calego projektu.
+    "harmoniczne",
+    "skan_czestotliwosciowy",
+    "supraharmoniczne",
 ]
+
+#: Typy gotowosci bedace rodzajami biegow BEZ solvera — WYPROWADZONE z tabeli rodzajow
+#: (rownosc zbiorow z `RODZAJE_BIEGOW_BEZ_SOLVERA` przypieta testem).
+TYPY_GOTOWOSCI_BEZ_SOLVERA: tuple[str, ...] = tuple(
+    typ for typ in get_args(CalculationType) if typ in RODZAJE_BIEGOW_BEZ_SOLVERA
+)
 
 ReadinessStatus = Literal[
     "ready",  # gotowe — można uruchomić
@@ -77,7 +96,12 @@ CALCULATION_LABEL_PL: dict[CalculationType, str] = {
     "ncrfg_compliance": "Zgodność przyłączeniowa",
     "report_osd": "Raport OSD",
     "report_technical": "Raport techniczny",
-    "dynamika_rms": "Dynamika czasowa (DAE)",
+    # Karta AB-1d_min krok 1: typy gotowosci bedace rodzajami biegow maja etykiete
+    # z JEDNEJ listy rodzajow (`RODZAJE_BIEGOW`), nie wlasna kopie.
+    "dynamika_rms": RODZAJE_BIEGOW["dynamika_rms"].etykieta_pl,
+    "harmoniczne": RODZAJE_BIEGOW["harmoniczne"].etykieta_pl,
+    "skan_czestotliwosciowy": RODZAJE_BIEGOW["skan_czestotliwosciowy"].etykieta_pl,
+    "supraharmoniczne": RODZAJE_BIEGOW["supraharmoniczne"].etykieta_pl,
 }
 
 
@@ -815,6 +839,28 @@ def _check_report_osd(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     )
 
 
+def _check_solver_nieobecny(calc_type: CalculationType) -> ReadinessTypeReport:
+    """Gotowosc rodzaju biegu BEZ solvera (karta AB-1d_min) — zawsze `blocked`, nigdy `ready`.
+
+    Brak nie jest brakiem danych modelu: model moze byc kompletny, a bieg i tak
+    skonczy sie odmowa `domena.solver_nieobecny`. Gotowosc mowi to samo, co bieg —
+    ten sam wpis tabeli rodzajow (predykaty parami).
+    """
+    nieobecny = RODZAJE_BIEGOW[calc_type].solver_nieobecny
+    if nieobecny is None:
+        raise AssertionError(f"Rodzaj {calc_type!r} ma solver — gotowosc z wlasnej reguly")
+    return ReadinessTypeReport(
+        calculation_type=calc_type,
+        label_pl=CALCULATION_LABEL_PL[calc_type],
+        status="blocked",
+        missing_fields_pl=[nieobecny.brak_pl],
+        recommended_action_pl=(
+            f"Rodzaj biegu bez solvera — solver dostarcza kamień {nieobecny.kamien} "
+            "programu A/B; do tego czasu bieg kończy się odmową „domena.solver_nieobecny”."
+        ),
+    )
+
+
 def _check_report_technical(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     """Raport techniczny wymaga kompletności wszystkich 9 typów obliczeń."""
     checks = [
@@ -892,6 +938,8 @@ class CalculationReadinessService:
         """Ocena pojedynczego typu obliczeń."""
         if calc_type == "dynamika_rms":
             return _check_dynamika_rms(enm, punkt_pracy_rozplywu=punkt_pracy_rozplywu)
+        if calc_type in TYPY_GOTOWOSCI_BEZ_SOLVERA:
+            return _check_solver_nieobecny(calc_type)
         check_map = {
             "power_flow": _check_power_flow,
             "voltage_profile": _check_voltage_profile,

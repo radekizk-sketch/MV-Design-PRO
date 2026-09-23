@@ -14,6 +14,10 @@ from application.analyses.v126_gotowosc import (
 from application.analyses.v126_katalog import katalog_do_dict
 from application.analyses.v126_wzory import wzbogac_kroki_latex
 from application.analyses.wynik_inzynierski_v126 import wynik_inzynierski_v126
+from application.solvers.solver_capability_registry import (
+    BIEGI_V126,
+    get_solver_capability,
+)
 from enm.canonical_analysis import create_run as _create_canonical_run
 from enm.canonical_analysis import execute_run as _execute_canonical_run
 from enm.canonical_analysis import get_run as _get_canonical_run
@@ -111,22 +115,70 @@ _ANALIZY_WYCOFANE: dict[V126AnalysisType, dict[str, Any]] = {
             "LCC bez kanonu — decyzja właściciela OD-16"
         ),
     },
+    # Karta AB-1d_min krok 3 — TEN SAM mechanizm (rejestr `availability="withdrawn"`
+    # + 410 + nazwany następca), inny powód: nie duplikat kanonu, tylko wynik, który
+    # nie jest fizyką sieci (audyt harmonicznych F1–F9). Następca = rodzaj biegu
+    # `harmoniczne` (`RODZAJE_BIEGOW`), który do czasu rdzenia harmonicznego kończy się
+    # odmową nazwaną — produkt nie pokazuje dziś ŻADNEJ liczby harmonicznej.
+    V126AnalysisType.POWER_QUALITY_HARMONICS: {
+        "message_pl": (
+            "Analiza „Jakość energii i harmoniczne” zeszła z powierzchni V12.6 — "
+            "jej liczby nie opisują fizyki sieci."
+        ),
+        "zamiennik": [
+            {
+                "trasa": (
+                    "POST /api/execution/study-cases/{case_id}/runs "
+                    "(analysis_type=HARMONICZNE, solver_input.os_czestotliwosci)"
+                ),
+                "ekran": (
+                    "brak ekranu — bieg kończy się odmową „domena.solver_nieobecny” "
+                    "do czasu rdzenia rozpływu harmonicznych"
+                ),
+            }
+        ],
+        "powod_pl": (
+            "admitancja sieci Y(f) bez modeli elementów zależnych od częstotliwości, "
+            "ciche pseudoodwrócenie macierzy, impedancja źródła przyjęta z założenia, "
+            "limity THD/TDD zaszyte w solverze bez dokumentu źródłowego"
+        ),
+    },
+    V126AnalysisType.SSCI_IMPEDANCE: {
+        "message_pl": (
+            "Analiza „Stabilność podsynchroniczna (SSCI)” jest badawcza i zeszła z "
+            "powierzchni V12.6 — bez werdyktu stabilności."
+        ),
+        "zamiennik": [],
+        "powod_pl": (
+            "werdykt kryterium Nyquista z zapasem fazy 30° zaszytym w kodzie, a impedancja "
+            "sieci Z_grid(f) z impedancji źródła przyjętej z założenia — wynik nie jest "
+            "dowodem stabilności; powrót po poprawnej impedancji sieci w funkcji częstotliwości"
+        ),
+    },
 }
 
 
 def _wycofanie_v126(analysis_type: V126AnalysisType) -> dict[str, Any] | None:
     """Ciało wycofania rodzaju V12.6 — JEDNO źródło prawdy dla 410 na POST i
     dla pola addytywnego `wycofany` na czterech końcówkach GET (karta W3-E).
+
+    Karta AB-1d_min: O TYM, CZY rodzaj jest wycofany, rozstrzyga WYŁĄCZNIE rejestr
+    zdolności (`availability="withdrawn"`, jeden mechanizm); słownik
+    `_ANALIZY_WYCOFANE` niesie tylko treść odmowy (następca, powód). Wpis rejestru
+    `withdrawn` bez treści tutaj = `KeyError` (defekt, nie cichy bieg) — parytet
+    przypina `tests/application/test_rodzaje_biegow_jedna_lista.py`.
     """
-    dane = _ANALIZY_WYCOFANE.get(analysis_type)
-    if dane is None:
+    zdolnosc = get_solver_capability(BIEGI_V126[f"v126:{analysis_type.value}"])
+    if zdolnosc.availability != "withdrawn":
         return None
+    dane = _ANALIZY_WYCOFANE[analysis_type]
     return {
         "code": "v126.analysis_withdrawn",
         "analysis_type": analysis_type.value,
-        "message_pl": (
+        "message_pl": dane.get(
+            "message_pl",
             f"Rodzaj analizy „{analysis_type.value}” zszedł z powierzchni V12.6 "
-            "— duplikuje kanon liczony gdzie indziej."
+            "— duplikuje kanon liczony gdzie indziej.",
         ),
         "zamiennik": dane["zamiennik"],
         "powod_pl": dane["powod_pl"],
@@ -199,8 +251,8 @@ def _with_parameter_payloads(
         410: {
             "model": V126AnalizaWycofanaResponse,
             "description": (
-                "Rodzaj analizy zszedł z powierzchni V12.6 (duplikuje kanon liczony "
-                "gdzie indziej) — karta W3-E."
+                "Rodzaj analizy zszedł z powierzchni V12.6 (rejestr zdolności: "
+                "availability=withdrawn) — ciało nazywa powód i następcę."
             ),
         }
     },
@@ -363,21 +415,39 @@ def get_v126_trace(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, A
     return payload
 
 
-@router.get("/analysis-runs/{run_id}/results/v126/ssci_impedance/stability")
-def get_v126_ssci_stability(run_id: UUID) -> dict[str, Any]:
+@router.get(
+    "/analysis-runs/{run_id}/results/v126/ssci_impedance/stability",
+    response_model=None,
+    responses={
+        410: {
+            "model": V126AnalizaWycofanaResponse,
+            "description": (
+                "Werdykt SSCI wycofany (analiza badawcza, rejestr zdolności: "
+                "availability=withdrawn) — ciało nazywa powód."
+            ),
+        }
+    },
+)
+def get_v126_ssci_stability(run_id: UUID) -> dict[str, Any] | JSONResponse:
     """Werdykt stabilności SSCI (kryterium impedancyjne Nyquista) dla gotowego
     przebiegu ``ssci_impedance``.
 
-    Warstwa analizy (Sun 2011 / Wen 2016) odczytuje tablice Z_grid(f)/Z_conv(f)/L(f)
-    z przebiegu i wydaje werdykt (stabilny / ryzyko SSCI / niestabilny / brak danych)
-    z metrykami (max|L|, margines różnicy faz, częstotliwość winna, bliskość −1,
-    okrążenia) i wywodem White Box. ZERO fizyki w API — analiza tylko interpretuje
-    gotowy wynik solvera. Uczciwy stan zerowy: brak przekształtnika/DER lub braki
-    karty falownika → werdykt „brak danych" (bez fabrykacji).
+    Rodzaj `ssci_impedance` jest WYCOFANY (analiza badawcza) — werdykt z zapasem
+    fazy 30° zaszytym i Z_grid(f) z impedancji źródła przyjętej z założenia nie
+    trafia na żaden ekran. Trasa
+    odpowiada 410 z ciałem wycofania, także dla biegów historycznych (werdykt to
+    interpretacja liczona NA ŻĄDANIE, nie część zapisanego biegu — wynik, ślad i
+    pakiet dowodowy biegu historycznego zostają odtwarzalne z polem `wycofany`).
 
-    404 gdy przebieg nie istnieje; 409 gdy rodzaj przebiegu to nie ``ssci_impedance``;
-    422 gdy przebieg nie niesie payloadu solvera SSCI.
+    Gdy rejestr przywróci rodzaj: 404 gdy przebieg nie istnieje; 409 gdy rodzaj
+    przebiegu to nie ``ssci_impedance``; 422 gdy przebieg nie niesie payloadu SSCI.
     """
+    # Karta AB-1d_min krok 3 (przegląd adwersarialny §6.4): 410 z rejestru zdolności
+    # przed jakimkolwiek odczytem biegu — werdykt nie powstaje ani dla nowego, ani dla
+    # historycznego przebiegu.
+    wycofanie = _wycofanie_v126(V126AnalysisType.SSCI_IMPEDANCE)
+    if wycofanie is not None:
+        return JSONResponse(status_code=status.HTTP_410_GONE, content=wycofanie)
     run = _require_run(run_id, V126AnalysisType.SSCI_IMPEDANCE)
     try:
         return build_ssci_stability_view(run)
@@ -427,12 +497,11 @@ def get_v126_catalog(namespace: str) -> dict[str, Any]:
         # pytanie, zakres, wielkości, podstawa oceny, dane wejściowe) —
         # jedno źródło prawdy dla ekranu „Analizy specjalistyczne".
         "analysis-catalog": katalog_do_dict(),
-        "harmonic-limits": {
-            "thdu_pnen50160_percent": 8.0,
-            "thdu_ieee519_percent": 5.0,
-            "tdd_ieee519_default_percent": 5.0,
-            "individual_percent": {"5": 6.0, "7": 5.0, "11": 3.5, "13": 3.0},
-        },
+        # Karta AB-1d_min krok 3 (audyt #17, REJECT): przestrzeń `harmonic-limits`
+        # USUNIĘTA — publikowała 8 %/5 %/5 % i limity indywidualne bez wersji
+        # normy, poziomu napięcia i sposobu agregacji, a żaden kod ich nie oceniał.
+        # Limity harmonicznych czekają na dokument źródłowy (OD-38) w profilu
+        # regulacyjnym — do tego czasu produkt nie publikuje żadnej liczby.
         # Tabela IEC 60071-1 zduplikowana z solverem FROZEN (`_insulation`,
         # `network_model/solvers/v126_academic.py:1653-1658` — B-01, solver
         # nie eksportuje jej, więc nie ma jak wskazać tu jednego źródła).
@@ -449,12 +518,22 @@ def get_v126_catalog(namespace: str) -> dict[str, Any]:
             {"u_m_kv": 36.0, "bil_kv": 170.0, "short_duration_50hz_kv": 70.0},
         ],
         "reliability-defaults": [
-            {"element": "linia_napowietrzna_sn", "lambda_per_km_year": 0.08, "mttr_h": 3.5},
+            {
+                "element": "linia_napowietrzna_sn",
+                "lambda_per_km_year": 0.08,
+                "mttr_h": 3.5,
+            },
             {"element": "kabel_sn", "lambda_per_km_year": 0.015, "mttr_h": 12.0},
-            {"element": "transformator_sn_nn", "lambda_per_year": 0.008, "mttr_h": 48.0},
+            {
+                "element": "transformator_sn_nn",
+                "lambda_per_year": 0.008,
+                "mttr_h": 48.0,
+            },
             {"element": "pole_sn", "lambda_per_year": 0.015, "mttr_h": 4.0},
         ],
-        "converter-modes": ["GFL", "GFM_droop", "VSM", "Grid_Supporting"],
+        # Karta AB-1d_min krok 3: przestrzeń `converter-modes` USUNIĘTA razem z
+        # odniesieniem wycofanej karty SSCI (jedyny konsument) — bez konsumenta byłaby
+        # martwą listą w publicznym API.
     }
     if namespace not in catalogs:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nieznany katalog V12.6.")

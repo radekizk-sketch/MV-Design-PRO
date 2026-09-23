@@ -2869,7 +2869,9 @@ function PowierzchniaAnalizAkademickich({ rodzaj }: { rodzaj?: RodzajPrezentowan
  * mocy decyzji właściciela 2026-08-07.
  */
 const RODZAJ_EKRANU_V126: Partial<Record<string, RodzajPrezentowany>> = {
-  'E-40': 'power_quality_harmonics',
+  // 'E-40' (jakość energii i harmoniczne) ZDJĘTE z mapy — rodzaj wycofany
+  // (rejestr domen i biegów, 2026-09-23): liczby nie opisywały fizyki sieci, backend
+  // odmawia uruchomienia nowego biegu (410). To samo rozstrzygnięcie, co dla E-41/E-47.
   // 'E-41' (stabilność napięciowa) ZDJĘTE z mapy — rodzaj wycofany kartą
   // QU-FABRYKACJA. Wpis zostawiony wskazywałby rodzaj nieobecny na liście wyboru
   // okna, więc ekran po cichu pokazałby PIERWSZĄ pozycję katalogu, czyli inną

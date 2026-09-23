@@ -2811,7 +2811,7 @@
    "CreateRunRequest": {
     "properties": {
      "analysis_type": {
-      "description": "Typ analizy: SC_3F, SC_1F, SC_2F, SC_2F_G, LOAD_FLOW, PF_UNBALANCED, PHASE_STATE_SN, DYNAMIC_STABILITY",
+      "description": "Typ analizy: SC_3F, SC_1F, SC_2F, SC_2F_G, LOAD_FLOW, PF_UNBALANCED, PHASE_STATE_SN, DYNAMIC_STABILITY, PROTECTION, DYNAMIKA_RMS, HARMONICZNE, SKAN_CZESTOTLIWOSCIOWY, SUPRAHARMONICZNE",
       "title": "Analysis Type",
       "type": "string"
      },
@@ -14960,7 +14960,7 @@
   },
   "/api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability": {
    "get": {
-    "description": "Werdykt stabilności SSCI (kryterium impedancyjne Nyquista) dla gotowego\nprzebiegu ``ssci_impedance``.\n\nWarstwa analizy (Sun 2011 / Wen 2016) odczytuje tablice Z_grid(f)/Z_conv(f)/L(f)\nz przebiegu i wydaje werdykt (stabilny / ryzyko SSCI / niestabilny / brak danych)\nz metrykami (max|L|, margines różnicy faz, częstotliwość winna, bliskość −1,\nokrążenia) i wywodem White Box. ZERO fizyki w API — analiza tylko interpretuje\ngotowy wynik solvera. Uczciwy stan zerowy: brak przekształtnika/DER lub braki\nkarty falownika → werdykt „brak danych\" (bez fabrykacji).\n\n404 gdy przebieg nie istnieje; 409 gdy rodzaj przebiegu to nie ``ssci_impedance``;\n422 gdy przebieg nie niesie payloadu solvera SSCI.",
+    "description": "Werdykt stabilności SSCI (kryterium impedancyjne Nyquista) dla gotowego\nprzebiegu ``ssci_impedance``.\n\nRodzaj `ssci_impedance` jest WYCOFANY (analiza badawcza) — werdykt z zapasem\nfazy 30° zaszytym i Z_grid(f) z impedancji źródła przyjętej z założenia nie\ntrafia na żaden ekran. Trasa\nodpowiada 410 z ciałem wycofania, także dla biegów historycznych (werdykt to\ninterpretacja liczona NA ŻĄDANIE, nie część zapisanego biegu — wynik, ślad i\npakiet dowodowy biegu historycznego zostają odtwarzalne z polem `wycofany`).\n\nGdy rejestr przywróci rodzaj: 404 gdy przebieg nie istnieje; 409 gdy rodzaj\nprzebiegu to nie ``ssci_impedance``; 422 gdy przebieg nie niesie payloadu SSCI.",
     "operationId": "get_v126_ssci_stability_api_analysis_runs__run_id__results_v126_ssci_impedance_stability_get",
     "parameters": [
      {
@@ -14978,14 +14978,20 @@
      "200": {
       "content": {
        "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get V126 Ssci Stability Api Analysis Runs  Run Id  Results V126 Ssci Impedance Stability Get",
-         "type": "object"
-        }
+        "schema": {}
        }
       },
       "description": "Successful Response"
+     },
+     "410": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/V126AnalizaWycofanaResponse"
+        }
+       }
+      },
+      "description": "Werdykt SSCI wycofany (analiza badawcza, rejestr zdolności: availability=withdrawn) — ciało nazywa powód."
      },
      "422": {
       "content": {
@@ -17019,7 +17025,7 @@
         }
        }
       },
-      "description": "Rodzaj analizy zszedł z powierzchni V12.6 (duplikuje kanon liczony gdzie indziej) — karta W3-E."
+      "description": "Rodzaj analizy zszedł z powierzchni V12.6 (rejestr zdolności: availability=withdrawn) — ciało nazywa powód i następcę."
      },
      "422": {
       "content": {

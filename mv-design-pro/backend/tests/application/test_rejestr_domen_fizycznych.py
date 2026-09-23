@@ -67,6 +67,13 @@ def _rodzaje_z_galezi(nazwa_funkcji: str) -> set[str]:
     for wezel in ast.walk(funkcja):
         if isinstance(wezel, ast.Compare) and _jest_analysis_type(wezel.left):
             for operator, prawy in zip(wezel.ops, wezel.comparators, strict=True):
+                # Karta AB-1d_min: `run.analysis_type in <zbior modulu>` (rodzaje bez
+                # solvera z `RODZAJE_BIEGOW_BEZ_SOLVERA`) rozwija sie na caly zbior.
+                if isinstance(operator, ast.In) and isinstance(prawy, ast.Name):
+                    zbior = getattr(canonical_analysis, prawy.id)
+                    assert isinstance(zbior, frozenset | set), prawy.id
+                    rodzaje |= {str(rodzaj) for rodzaj in zbior}
+                    continue
                 if not isinstance(operator, ast.Eq):
                     continue
                 if isinstance(prawy, ast.Constant) and isinstance(prawy.value, str):
@@ -91,8 +98,16 @@ def _rodzaje_z_galezi(nazwa_funkcji: str) -> set[str]:
 RODZAJE_DYSPOZYTORA = _rodzaje_z_galezi("_wykonaj_analize_biegu")
 
 
-def test_dwie_listy_dyspozytora_sa_tym_samym_zbiorem() -> None:
-    assert _rodzaje_z_galezi("_execution_analysis_type_for_run") == RODZAJE_DYSPOZYTORA
+def test_typ_wykonawczy_wyprowadzony_dla_kazdego_rodzaju_dyspozytora() -> None:
+    """Karta AB-1d_min krok 1: `_execution_analysis_type_for_run` nie jest juz drugą
+    lista galezi — wyprowadza typ z `RODZAJE_BIEGOW`. Intencja dawnego testu „dwie
+    listy dyspozytora sa tym samym zbiorem" zostaje: KAZDY rodzaj dyspozytora ma typ
+    wykonawczy (brak = wyjatek), a zbior rodzajow dyspozytora = jedna lista zrodlowa.
+    """
+    for analysis_type in RODZAJE_DYSPOZYTORA:
+        typ = canonical_analysis._execution_analysis_type_for_run(_bieg(analysis_type))
+        assert typ, analysis_type
+    assert RODZAJE_DYSPOZYTORA == rejestr.rodzaje_biegow()
 
 
 @pytest.mark.parametrize("analysis_type", sorted(RODZAJE_DYSPOZYTORA))
@@ -178,12 +193,13 @@ def test_rozplyw_niesymetryczny_rozstrzygniecie_wykonawcy() -> None:
     assert domena_fizyczna_biegu("phase_state_sn") is PhysicsDomain.SEQUENCE_DOMAIN
 
 
-def test_harmoniczne_i_ssci_w_domenie_harmonicznej_bez_zmiany_dostepnosci() -> None:
-    """Karta D1: domena przypisana, `availability` bez zmian (wycofanie to AB-1d_min)."""
+def test_harmoniczne_i_ssci_w_domenie_harmonicznej_i_wycofane() -> None:
+    """Karta D1: domena przypisana; karta AB-1d_min krok 3: oba rodzaje `withdrawn`
+    (ten sam mechanizm co W3-E) — tor progowy stabilnosci zostaje do AB-2R."""
     for klucz in ("POWER_QUALITY_HARMONICS", "SSCI_IMPEDANCE"):
         zdolnosc = SOLVER_CAPABILITY_REGISTRY[klucz]
         assert zdolnosc.physics_domain is PhysicsDomain.HARMONIC_FREQUENCY_DOMAIN
-        assert zdolnosc.availability == "available"
+        assert zdolnosc.availability == "withdrawn"
         assert zdolnosc.reportable is False
     assert SOLVER_CAPABILITY_REGISTRY["DYNAMIC_STABILITY"].availability == "available"
 

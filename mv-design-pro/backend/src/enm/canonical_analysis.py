@@ -21,6 +21,10 @@ from application.proof_engine.packs.phase_state_sn import (
     PhaseStateSNProofPack,
     PhaseStateSNProofPackInput,
 )
+from application.solvers.solver_capability_registry import (
+    RODZAJE_BIEGOW,
+    RODZAJE_BIEGOW_BEZ_SOLVERA,
+)
 from application.stability.dynamic_stability import (
     DynamicStabilityThresholds,
     FaultClearScenario,
@@ -63,6 +67,10 @@ from enm.assembler import (
     zloz_wejscie_zwarcia,
 )
 from enm.badanie_zgodnosci import waliduj_opcje_badania
+from enm.biegi_czestotliwosciowe import (
+    odmow_bieg_bez_solvera,
+    waliduj_opcje_biegu_czestotliwosciowego,
+)
 from enm.element_kind import rodzaj_elementu, zbuduj_indeks_rodzajow
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
@@ -476,20 +484,17 @@ ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY = "rozplyw_niesymetryczny"
 
 
 def _execution_analysis_type_for_run(run: CanonicalRun) -> str:
-    if run.analysis_type == "PF":
-        return "LOAD_FLOW"
-    if run.analysis_type == ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY:
-        return "PF_UNBALANCED"
+    """Typ wykonawczy biegu — WYPROWADZONY z `RODZAJE_BIEGOW` (karta AB-1d_min krok 1).
+
+    Jedyny rodzaj z kilkoma typami wykonawczymi (`short_circuit_sn`: 3F/1F/2F/2F+Z)
+    rozstrzyga rodzaj zwarcia z opcji biegu; pozostale maja dokladnie jeden typ.
+    """
     if run.analysis_type == "short_circuit_sn":
         return _execution_analysis_type_for_fault(_short_circuit_type_from_options(run.options))
-    if run.analysis_type == "phase_state_sn":
-        return "PHASE_STATE_SN"
-    if run.analysis_type == "dynamic_stability":
-        return "DYNAMIC_STABILITY"
-    if run.analysis_type == "dynamika_rms":
-        return "DYNAMIKA_RMS"
-    if run.analysis_type == "protection_sn":
-        return "PROTECTION"
+    rodzaj = RODZAJE_BIEGOW.get(run.analysis_type)
+    if rodzaj is not None:
+        (typ_wykonawczy,) = rodzaj.typy_wykonawcze
+        return typ_wykonawczy
     if run.analysis_type.startswith("v126:"):
         # CV-4.3-A4 (K5.2): biegi V12.6 dzielą odtąd rejestr R1 z resztą
         # analiz (dawniej: słownik `_runs` osobny, poza tym mapowaniem w
@@ -949,6 +954,10 @@ def create_run(
         # badania spoza kontraktu to blad nazwany (`OpcjeBadaniaError`, API: 422).
         # ODCZYT, bez zapisu: `normalized_options` (a wiec `input_hash`) bez zmian.
         waliduj_opcje_badania(normalized_options)
+    if analysis_type in RODZAJE_BIEGOW_BEZ_SOLVERA:
+        # Karta AB-1d_min krok 2: kontrakty osi czestotliwosci / pasma supraharmonicznego
+        # walidowane przy UTWORZENIU (API: 422 z kodem). ODCZYT — `input_hash` bez zmian.
+        waliduj_opcje_biegu_czestotliwosciowego(analysis_type, normalized_options)
     input_hash = _compute_input_hash(
         case_id=case_id,
         analysis_type=analysis_type,
@@ -1041,6 +1050,10 @@ def _wykonaj_analize_biegu(
         _execute_protection(run, uow_factory)
     elif run.analysis_type.startswith("v126:"):
         _execute_v126(run)
+    elif run.analysis_type in RODZAJE_BIEGOW_BEZ_SOLVERA:
+        # Karta AB-1d_min krok 2: rodzaj zarejestrowany bez solvera — odmowa
+        # `domena.solver_nieobecny` (czego brakuje + kamien), nigdy wynik zastepczy.
+        odmow_bieg_bez_solvera(run.analysis_type, run.options or {})
     else:
         raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
 

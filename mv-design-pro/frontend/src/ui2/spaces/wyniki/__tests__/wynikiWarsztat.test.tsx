@@ -717,8 +717,9 @@ describe('WynikiWarsztat — KLASA: każdy obszar i każda zakładka ma dostawc�
       }
     }
     // Sanity: nawigacja nie skurczyła się cicho (32 zakładki w chwili przypięcia;
-    // celowe usunięcie zakładki obniża próg razem z tą liczbą).
-    expect(policzone).toBeGreaterThanOrEqual(32);
+    // celowe usunięcie zakładki obniża próg razem z tą liczbą). 2026-09-23: 32 → 31 —
+    // zakładka „Stabilność SSCI" usunięta (analiza badawcza wycofana z powierzchni).
+    expect(policzone).toBeGreaterThanOrEqual(31);
     expect(policzone).toBe(ZAKLADKI.length);
   });
 });

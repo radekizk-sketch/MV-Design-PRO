@@ -70,7 +70,6 @@ const ETYKIETY_PARAMETROW: Record<KluczNumeryczny, string> = {
   qMax: 'Qmax/Pn [p.u.]',
   reactiveCurrentGain: 'Wzmocnienie prądu biernego',
   pRecoveryTimeS: 'Odbudowa mocy [s]',
-  thduPercent: 'THD napięcia [%]',
 };
 
 const KOLEJNOSC_PARAMETROW: readonly KluczNumeryczny[] = [
@@ -83,7 +82,6 @@ const KOLEJNOSC_PARAMETROW: readonly KluczNumeryczny[] = [
   'qMax',
   'reactiveCurrentGain',
   'pRecoveryTimeS',
-  'thduPercent',
 ];
 
 function ZnacznikPochodzenia({ pochodzenie }: { pochodzenie: PochodzenieDanej }): JSX.Element {

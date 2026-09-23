@@ -996,7 +996,13 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     requiresSelection: false,
     requiresStudyCase: true,
     requiresOperatingVariant: true,
-    visibleInNavigation: true,
+    // Rejestr domen i biegów (program A/B, 2026-09-23): rodzaj `power_quality_harmonics`
+    // WYCOFANY — liczby nie opisywały fizyki sieci (audyt harmonicznych F1–F9), backend
+    // odmawia uruchomienia nowego biegu (410, następca: rodzaj biegu `harmoniczne`).
+    // Ekran zostaje w kanonie (ciągłość numeracji, biegi historyczne z polem
+    // `wycofany`; przepięcie na nową analizę = audyt #50), ale nie ma go w nawigacji:
+    // pozycja „Harmoniczne" obiecywałaby analizę, której okno nie oferuje.
+    visibleInNavigation: false,
     surfaceKind: 'analityczny',
     subjectKind: 'analysis_case',
     sizeClass: 'C',

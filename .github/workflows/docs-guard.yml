@@ -23,3 +23,8 @@ jobs:
       # warstwie `ui2/`), wiec tekst dostaje straznika zamiast kolejnej korekty.
       - name: Run CLAUDE.md structure guard
         run: python mv-design-pro/scripts/claude_md_struktura_guard.py
+      # Program A/B (karta AB-1d_min): kazdy otwarty wiersz zamrozenia dynamiki ma
+      # DOKLADNIE jeden kamien w kolumnie „Domyka" planu; zapadka zmierzona 2026-09-23
+      # (lista znanych naruszen maleje razem z poprawkami planu).
+      - name: Run program A/B freeze rows guard
+        run: python mv-design-pro/scripts/program_ab_freeze_rows_guard.py

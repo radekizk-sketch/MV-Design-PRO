@@ -1,15 +1,16 @@
-"""Testy końcówki API werdyktu stabilności SSCI (faza 1 — ekspozycja backendowa).
+"""Werdykt stabilności SSCI — analiza BADAWCZA wycofana z powierzchni (karta AB-1d_min).
 
-Domyka OSTATNIĄ lukę inwentarza: analiza ``ssci_stability`` (kryterium
-impedancyjne Nyquista, Sun 2011 / Wen 2016) istniała bez punktu wejścia. Końcówka
-``GET /api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability`` wystawia
-werdykt na bazie GOTOWEGO przebiegu V12.6 ``ssci_impedance``.
+Kanon od 2026-09-23 (przegląd adwersarialny §6.4, audyt harmonicznych #10/#21/#22/#49
+KEEP_RESEARCH_ONLY): werdykt Nyquista z zapasem fazy 30° zaszytym w kodzie i Z_grid(f)
+z impedancji źródła przyjętej z założenia NIE trafia na żaden ekran. Końcówka
+``GET /api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability`` odpowiada
+410 z ciałem wycofania dla KAŻDEGO przebiegu (iloczyn cech: sieć słaba / sztywna /
+bez przekształtnika / bieg nieznany / inny rodzaj), bez tokenu werdyktu w ciele.
 
-Kontrakt: gotowy przebieg → widok werdyktu (metryki + flagi + White Box);
-determinizm (dwa wywołania identyczne); 404 (brak przebiegu); 409 (rodzaj przebiegu
-V12.6 inny niż ``ssci_impedance``); uczciwy stan zerowy (brak przekształtnika/DER
-→ werdykt „brak danych", bez fabrykacji). Payloady liczy REALNY solver D-03 (karta
-referencyjna Huawei), a ścieżka HTTP GET jest wykonywana natywnie.
+Intencja dawnych testów „werdykt na realnym przebiegu" (metryki, flagi, White Box,
+uczciwy stan zerowy) zostaje na warstwie, która werdykt liczy
+(`application/analyses/ssci_stability`) — kod badawczy pod testem do AB-5H.
+Payloady liczy REALNY solver (karta referencyjna Huawei); ścieżka HTTP natywna.
 """
 
 from __future__ import annotations
@@ -120,77 +121,97 @@ def _seed_run(
 
 
 # ---------------------------------------------------------------------------
-# Werdykt na realnym przebiegu
+# Werdykt ANALIZY BADAWCZEJ na realnym przebiegu (warstwa aplikacji, bez HTTP)
 # ---------------------------------------------------------------------------
+#
+# Karta AB-1d_min krok 3: końcówka HTTP werdyktu odpowiada 410 (analiza badawcza
+# wycofana z powierzchni, przegląd adwersarialny §6.4 — niżej). Intencja dawnych
+# testów „werdykt na realnym przebiegu" zostaje na warstwie, która werdykt liczy
+# (`build_ssci_stability_view`, KEEP_RESEARCH_ONLY do AB-5H): ta sama funkcja, ten
+# sam rekord biegu z rejestru kanonicznego, bez ekspozycji na ekranie.
 
 
-def test_stability_weak_grid_flags_ssci_risk(app_client) -> None:
+def _widok_badawczy(run_id: UUID) -> dict:
+    from application.analyses.ssci_stability import build_ssci_stability_view
+    from enm.canonical_analysis import get_run
+
+    bieg = get_run(run_id)
+    assert bieg is not None and bieg.raw_result is not None
+    return build_ssci_stability_view(bieg.raw_result)
+
+
+def test_badawczy_werdykt_slabej_sieci_sygnalizuje_ryzyko() -> None:
     card = _reference_card()
-    run_id = _seed_run(_model(card, scr=1.5))
-    resp = app_client.get(STABILITY.format(run_id=run_id))
-    assert resp.status_code == 200, resp.text
-    body = resp.json()
-    verdict = body["verdict"]
+    verdict = _widok_badawczy(_seed_run(_model(card, scr=1.5)))["verdict"]
     assert verdict["verdict"] in (VERDICT_RISK, VERDICT_UNSTABLE), verdict["verdict"]
     assert verdict["is_risk"] is True
     assert verdict["has_magnitude_crossover"] is True
     assert verdict["offending_frequency_hz"] is not None
-    # White Box audytowalny (Wzór→Dane→Podstawienie→Wynik→Jednostka).
-    assert verdict["white_box"]
     for step in verdict["white_box"]:
         assert step["formula_latex"] and step["result_pl"] and step["unit_check_pl"]
-    # Proweniencja z odtworzonej karty falownika (jakość pól ESTIMATED/DATASHEET).
     assert verdict["provenance"] is not None
-    assert body["analysis_id"]
 
 
-def test_stability_strong_grid_is_stable(app_client) -> None:
+def test_badawczy_werdykt_sztywnej_sieci_stabilny() -> None:
     card = _reference_card()
-    run_id = _seed_run(_model(card, scr=50.0))
-    resp = app_client.get(STABILITY.format(run_id=run_id))
-    assert resp.status_code == 200, resp.text
-    verdict = resp.json()["verdict"]
+    verdict = _widok_badawczy(_seed_run(_model(card, scr=50.0)))["verdict"]
     assert verdict["verdict"] == VERDICT_STABLE, verdict["verdict"]
     assert verdict["is_risk"] is False
-    assert verdict["has_magnitude_crossover"] is False
     assert verdict["offending_frequency_hz"] is None
 
 
-def test_stability_endpoint_is_deterministic(app_client) -> None:
+def test_badawczy_werdykt_bez_przeksztaltnika_to_brak_danych() -> None:
     card = _reference_card()
-    run_id = _seed_run(_model(card, scr=1.5))
-    first = app_client.get(STABILITY.format(run_id=run_id)).json()
-    second = app_client.get(STABILITY.format(run_id=run_id)).json()
-    assert first == second
-
-
-def test_stability_no_converter_is_honest_no_data(app_client) -> None:
-    """Brak przekształtnika/DER → solver „dane niekompletne" → werdykt „brak danych"
-    z jawnym ``missing_data`` (ZERO fabrykacji), zwrócony 200."""
-    card = _reference_card()
-    run_id = _seed_run(_model(card, scr=1.5, with_converter=False))
-    resp = app_client.get(STABILITY.format(run_id=run_id))
-    assert resp.status_code == 200, resp.text
-    verdict = resp.json()["verdict"]
+    verdict = _widok_badawczy(_seed_run(_model(card, scr=1.5, with_converter=False)))["verdict"]
     assert verdict["verdict"] == VERDICT_NO_DATA
-    assert verdict["is_risk"] is False
     assert verdict["missing_data"]
     assert verdict["max_minor_loop_gain"] is None
 
 
 # ---------------------------------------------------------------------------
-# Błędy: 404 / 409
+# Końcówka HTTP: 410 dla KAŻDEGO przebiegu (iloczyn cech) — bez tokenu werdyktu
 # ---------------------------------------------------------------------------
 
 
-def test_stability_unknown_run_returns_404(app_client) -> None:
-    resp = app_client.get(STABILITY.format(run_id=uuid4()))
-    assert resp.status_code == 404, resp.text
+def _przypadki_biegu() -> list[tuple[str, object]]:
+    return [
+        ("siec_slaba", lambda: _seed_run(_model(_reference_card(), scr=1.5))),
+        ("siec_sztywna", lambda: _seed_run(_model(_reference_card(), scr=50.0))),
+        (
+            "bez_przeksztaltnika",
+            lambda: _seed_run(_model(_reference_card(), scr=1.5, with_converter=False)),
+        ),
+        ("bieg_nieznany", lambda: uuid4()),
+        (
+            "inny_rodzaj_v126",
+            lambda: _seed_run(
+                _model(_reference_card(), scr=1.5),
+                analysis_type=V126AnalysisType.INSULATION_COORDINATION,
+            ),
+        ),
+    ]
 
 
-def test_stability_wrong_v126_analysis_type_returns_409(app_client) -> None:
-    """Przebieg V12.6 innego rodzaju (voltage_stability) → 409 (spójne z rodziną v126)."""
-    card = _reference_card()
-    run_id = _seed_run(_model(card, scr=1.5), analysis_type=V126AnalysisType.VOLTAGE_STABILITY)
+@pytest.mark.parametrize("przypadek", [nazwa for nazwa, _ in _przypadki_biegu()])
+def test_koncowka_werdyktu_odpowiada_410_bez_werdyktu(app_client, przypadek: str) -> None:
+    """Przegląd adwersarialny §6.4: werdykt SSCI nie trafia na ŻADEN ekran — 410 zapada
+    przed odczytem biegu, dla biegu historycznego, nieznanego i innego rodzaju."""
+    tworca = dict(_przypadki_biegu())[przypadek]
+    run_id = tworca()  # type: ignore[operator]
     resp = app_client.get(STABILITY.format(run_id=run_id))
-    assert resp.status_code == 409, resp.text
+    assert resp.status_code == 410, resp.text
+    body = resp.json()
+    assert body["code"] == "v126.analysis_withdrawn"
+    assert body["analysis_type"] == "ssci_impedance"
+    assert body["zamiennik"] == []
+    assert body["powod_pl"]
+    assert "verdict" not in body
+    tekst = resp.text.lower()
+    for token in (
+        "stabilny",
+        "niestabilny",
+        "ryzyko ssci",
+        VERDICT_STABLE,
+        VERDICT_UNSTABLE,
+    ):
+        assert f'"{token}"' not in tekst

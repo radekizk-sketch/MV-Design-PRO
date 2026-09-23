@@ -8,7 +8,6 @@
  *  - sila-sieci        — SCR/WSCR z otwartym wywodem white_box (węzeł + WSCR),
  *  - odbior-zgodnosc   — pomiary w edytorze → raport → wiersz → ślad slad_pl,
  *  - estymacja         — 6 pomiarów → estymacja WLS → ślad iteracji white_box,
- *  - ssci              — jawny bieg → werdykt Nyquista → ślad white_box,
  *  - migotanie         — wiersz węzła → ślad Pst/Plt/d (wzory KaTeX),
  *  - arcflash          — parametry → przelicz → wiersz szyny → ślad IEEE 1584.
  * Wyjście: docs/audit/visual/dowody/dowod_<scena>_<motyw>.png (oba motywy).
@@ -31,7 +30,7 @@ const SCENY = [
   'sila-sieci',
   'odbior-zgodnosc',
   'estymacja',
-  'ssci',
+  // 'ssci' zdjęte (2026-09-23): okno SSCI wycofane — werdykt Nyquista nie trafia na ekran.
   'migotanie',
   'arcflash',
 ] as const;
@@ -113,21 +112,6 @@ const POMIARY_ESTYMACJI = ESTYMACJA_SCENA_WYNIK.measurements.map((pomiar) => ({
 /** Format ekranu estymacji: cztery cyfry znaczące, przecinek PL (`fmtDokladny`). */
 const liczbaDokladnaPl = (wartosc: number): string =>
   String(Number.parseFloat(wartosc.toPrecision(4))).replace('.', ',');
-
-/**
- * Werdykt SSCI — z REALNEGO biegu backendu (`akademickie_scena_biegi.json`,
- * karta HARNESS-RESZTA). NAPRAWA HARNESS-RESZTA-2: spec cytował max|L| = „1,42"
- * z atrapy sprzed konwersji; realna sieć złota z kartą przekształtnika daje
- * max|L| = 126,4445 i ten sam werdykt „niestabilny".
- */
-const SSCI_WERDYKT = (
-  JSON.parse(
-    fs.readFileSync(
-      path.resolve(_dirname, '../src/harness-fixtures/generated/akademickie_scena_biegi.json'),
-      'utf-8',
-    ),
-  ) as { biegi: { ssci_impedance: { stabilnosc: { verdict: { max_minor_loop_gain: number } } } } }
-).biegi.ssci_impedance.stabilnosc.verdict;
 
 /** Prowadzi scenę do stanu „wywód OTWARTY" — realne kliki, zero syntetyki. */
 async function prowadzScene(page: Page, scena: Scena): Promise<void> {
@@ -234,19 +218,6 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     await expect(page.getByTestId('mvd-est-slad')).toBeVisible();
     await expect(page.getByTestId('mvd-est-slad')).toContainText(
       liczbaDokladnaPl(ESTYMACJA_SCENA_WYNIK.white_box[0].objective_j),
-    );
-  } else if (scena === 'ssci') {
-    // Jawny bieg SSCI (utworzenie przebiegu + werdykt) → otwarty ślad.
-    await page.getByTestId('mvd-ssci-uruchom').click();
-    await expect(page.getByTestId('mvd-ssci-wynik')).toBeVisible();
-    await expect(page.getByTestId('mvd-ssci-chip-werdykt')).toContainText('niestabiln');
-    await expect(page.getByTestId('mvd-ssci-metryki')).toBeVisible();
-    await page.getByTestId('mvd-ssci-slad-otworz').click();
-    await expect(page.getByTestId('mvd-ssci-slad')).toContainText('max|L|');
-    // Wzmocnienie pętli mniejszej CYTOWANE z werdyktu backendu (format śladu:
-    // liczba z kropką dziesiętną, jak w podstawieniu solvera).
-    await expect(page.getByTestId('mvd-ssci-slad')).toContainText(
-      String(SSCI_WERDYKT.max_minor_loop_gain),
     );
   } else if (scena === 'migotanie') {
     // Wiersz węzła (moduły OZE) → otwarty ślad Pst/Plt/d z wzorami

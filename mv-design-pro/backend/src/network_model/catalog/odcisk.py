@@ -8,7 +8,8 @@ repo KODEM (`network_model/catalog/*_catalog.py`, skladana przez
 wszystkich typow (posortowane identyfikatory, posortowane klucze, bez spacji,
 enumy po wartosci). Zmiana jednego pola jednego typu zmienia odcisk; ten sam kod
 w dwoch procesach daje ten sam odcisk (test miedzyprocesowy w
-`tests/network_model/test_odcisk_katalogu.py`).
+`tests/enm/test_koperta_rewizji_i_swiezosc.py`; dawny wskaznik na
+`tests/network_model/test_odcisk_katalogu.py` wskazywal plik, ktorego nie ma).
 
 Czego odcisk NIE obejmuje (uczciwie): rodzin rozdzielnic (`catalog/switchgear`),
 szablonow stacji (`station_templates.py`, `bay_templates.py`) i biblioteki
@@ -44,6 +45,31 @@ def _kanon(wartosc: Any) -> Any:
     return str(wartosc)
 
 
+#: Pola ADDYTYWNE typow katalogu, ktore wchodza do zrzutu WYLACZNIE z wartoscia
+#: (`None` = pole pominiete, jak `exclude_none` kontraktow). Dzieki temu dopisanie
+#: pola opcjonalnego nie zmienia odcisku zadnego istniejacego rekordu, a rekord,
+#: ktory pole WYPELNI, zmienia odcisk (zmiana danych = zmiana katalogu). Lista
+#: ZAMKNIETA — kazde pole z uzasadnieniem; pin odcisku w
+#: `tests/network_model/catalog/test_rodzaj_widma_harmonicznych.py`.
+POLA_ADDYTYWNE_POMIJANE_GDY_BRAK: frozenset[str] = frozenset(
+    {
+        # Karta AB-1d_min (audyt harmonicznych #28): rodzaj widma harmonicznych
+        # przeksztaltnika; brak = rodzaj pola `harmonic_spectrum_percent`.
+        "harmonic_spectrum_kind",
+    }
+)
+
+
+def _slownik_typu(typ: Any) -> Any:
+    if not (dataclasses.is_dataclass(typ) and not isinstance(typ, type)):
+        return typ
+    slownik = dataclasses.asdict(typ)
+    for nazwa in POLA_ADDYTYWNE_POMIJANE_GDY_BRAK:
+        if nazwa in slownik and slownik[nazwa] is None:
+            del slownik[nazwa]
+    return slownik
+
+
 def zrzut_kanoniczny(katalog: CatalogRepository) -> dict[str, Any]:
     """Wszystkie przestrzenie typow repozytorium jako slownik `{przestrzen: {id: typ}}`."""
     zrzut: dict[str, Any] = {}
@@ -52,11 +78,7 @@ def zrzut_kanoniczny(katalog: CatalogRepository) -> dict[str, Any]:
         if not isinstance(wartosc, dict):
             continue
         zrzut[pole.name] = {
-            str(identyfikator): (
-                dataclasses.asdict(typ)
-                if dataclasses.is_dataclass(typ) and not isinstance(typ, type)
-                else typ
-            )
+            str(identyfikator): _slownik_typu(typ)
             for identyfikator, typ in sorted(wartosc.items(), key=lambda para: str(para[0]))
         }
     return zrzut

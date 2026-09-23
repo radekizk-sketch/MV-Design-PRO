@@ -351,25 +351,20 @@ export const AKADEMICKIE_STRINGS = {
   odniesieniaLadowanie: 'Wczytywanie danych odniesienia…',
   odniesieniaBlad: 'Nie udało się wczytać danych odniesienia',
 
-  // Źródła harmoniczne / przekształtnika — karta W2-C (zero fabrykacji wejścia)
-  zrodlaWidmaTytul: 'Widmo harmoniczne — źródła uwzględnione',
+  // Karty wycofane z następcą (rejestr domen i biegów, 2026-09-23): katalog pokazuje
+  // powód i następcę z backendu zamiast uruchamialnej karty.
+  katalogWycofaneTytul: 'Analizy wycofane',
+  katalogWycofaneOpis:
+    'Te analizy nie są uruchamiane — ich wynik nie jest dowodem inżynierskim. '
+    + 'Poniżej powód i to, co je zastąpi.',
+  kartaWycofanaStan: 'Wycofana — nie uruchamia się',
+  kartaWycofanaPowod: 'Dlaczego wycofana',
+  kartaWycofanaNastepca: 'Co ją zastąpi',
   // Karta AB-1a D7 — wynik inżynierski werdyktu analizy (adapter backendu)
   wynikInzynierskiTytul: 'Wynik inżynierski werdyktu',
   wynikInzynierskiOpis:
     'Werdykt analizy z wartością, wymaganiem, zapasem, podstawą i dowodem — złożony w '
     + 'backendzie z liczb wyniku solvera.',
-  zrodlaWidmaProweniencjaEtykieta: 'Skąd widmo',
-  zrodlaPominieteTytul: 'Źródła pominięte (brak widma w karcie)',
-  zrodlaPominieteOpis:
-    'Przekształtniki PV/BESS/wiatrowe bez kompletnej karty katalogowej — ich wkład nie '
-    + 'wszedł do wejścia solvera. Uzupełnij kartę katalogową albo podaj widmo ręcznie '
-    + 'w danych od użytkownika powyżej.',
-  zrodlaPominietePowod: 'powód',
-
-  // Odesłanie do okna SSCI
-  odeslanieSsci:
-    'Ocenę stabilności podsynchronicznej (kryterium Nyquista) prezentuje osobne okno '
-    + '„Stabilność SSCI" — ma własny kontrakt odpowiedzi i własny model prezentacji.',
 
   // Ranking N-1 nieprezentowany (karta W3-E) — stan zamiast tabeli
   rankingN1Tytul: 'Ranking dotkliwości kontyngencji',
@@ -415,20 +410,6 @@ export function etykietaStanuPrzebiegu(kod: string): string {
 export function etykietaRodzaju(kod: string): string {
   const znany = (ETYKIETY_RODZAJOW as Record<string, string | undefined>)[kod];
   return znany ?? kod;
-}
-
-/**
- * Proweniencja widma harmonicznego (`V126HarmonicSourceInput.spectrum_provenance`)
- * → polska etykieta. Karta W2-C. Wartość spoza kontraktu wraca bez zmian (uczciwy
- * kod produkcyjny zamiast fabrykowanej nazwy) — ten sam wzorzec co `etykietaRodzaju`.
- */
-export const PROWENIENCJE_WIDMA: Readonly<Record<string, string>> = {
-  KATALOG: 'z karty katalogowej',
-  RECZNE: 'wpisane ręcznie',
-};
-
-export function etykietaProweniencjiWidma(kod: string): string {
-  return PROWENIENCJE_WIDMA[kod] ?? kod;
 }
 
 /** Etykieta stanu gotowości analizy (chip sekcji D i stan danych karty). */

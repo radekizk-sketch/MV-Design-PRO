@@ -65,6 +65,13 @@ class ExecutionAnalysisType(StrEnum):
     #: W6-3 urządzenia i adapter). Wykonanie kończy się WYNIKIEM
     #: (`resultset_dynamic_v1`) albo NAZWANĄ odmową — nigdy fasadą.
     DYNAMIKA_RMS = "DYNAMIKA_RMS"
+    #: Karta AB-1d_min (program A/B): rodzaje dziedziny czestotliwosci zarejestrowane
+    #: PRZED solverem — bieg konczy sie odmowa nazwana `domena.solver_nieobecny`.
+    #: Czlony ADDYTYWNE; zrodlem rodzajow jest `application/solvers/
+    #: solver_capability_registry.py::RODZAJE_BIEGOW` (parytet przypiety testem).
+    HARMONICZNE = "HARMONICZNE"
+    SKAN_CZESTOTLIWOSCIOWY = "SKAN_CZESTOTLIWOSCIOWY"
+    SUPRAHARMONICZNE = "SUPRAHARMONICZNE"
 
 
 # ---------------------------------------------------------------------------

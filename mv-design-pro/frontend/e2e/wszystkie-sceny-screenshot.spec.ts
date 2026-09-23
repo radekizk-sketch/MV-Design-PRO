@@ -55,7 +55,7 @@ const SCENY = [
   'kompensacja-wynik', 'lom', 'macierz', 'migotanie', 'ocena', 'ocena-przekroczenia',
   'odbior-zgodnosc', 'odgalezienie',
   'oltc', 'pole-nn', 'pomiar', 'porownanie', 'przekaznik', 'przypisanie-katalogu', 'pulpit',
-  'rozplyw', 'sila-sieci', 'slup-odgalezny', 'ssci', 'swiezosc', 'uwaga', 'walidacja',
+  'rozplyw', 'sila-sieci', 'slup-odgalezny', 'swiezosc', 'uwaga', 'walidacja',
   'wyniki-skladowe', 'wyniki-stabilnosc', 'wyniki-stan-fazowy', 'wyniki-zbieznosc', 'zksn',
   'zrodlo', 'zrodlo-dyspozycyjne', 'zwarcia', 'zwarcia-rozplyw',
 ].filter((s) => !JUZ_KADROWANE.has(s));

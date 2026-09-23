@@ -58,7 +58,6 @@ import { EkranWrazliwosci } from '../../wyniki/wrazliwosc';
 import { EkranKoordynacji } from '../../wyniki/koordynacja';
 import { EkranEstymacji } from '../../wyniki/estymacja';
 import { EkranSkladowych } from '../../wyniki/skladowe';
-import { EkranSsci } from '../../wyniki/ssci';
 import { EkranAnalizAkademickich } from '../../wyniki/akademickie';
 import { EkranStabilnosci } from '../../wyniki/stabilnosc';
 import { EkranStanuFazowego } from '../../wyniki/stan-fazowy';
@@ -380,7 +379,6 @@ export function WynikiWarsztat({
         {zakladka === 'estymacja' && (
           <EkranEstymacji trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
-        {zakladka === 'ssci' && <EkranSsci trybZaawansowania={trybZaawansowania} />}
         {/* B-02: „Analizy specjalistyczne" — katalog kart z backendu i widok analizy
             (przedmiot → dane → gotowość → kryteria → uruchomienie).
             V126-JEZYK: treść renderuje się WYŁĄCZNIE za bramą trybu — ten sam

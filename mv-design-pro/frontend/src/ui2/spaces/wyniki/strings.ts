@@ -40,7 +40,6 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaPorownanie: 'Porównanie A/B',
   zakladkaOdbior: 'Zgodność powykonawcza',
   zakladkaEstymacja: 'Estymacja stanu',
-  zakladkaSsci: 'Stabilność SSCI',
   zakladkaAkademickie: 'Analizy specjalistyczne',
   porownanieBezProjektu: 'Otwórz projekt, aby porównywać przebiegi obliczeń.',
   zakladkaPozostale: 'Widoki klasyczne',

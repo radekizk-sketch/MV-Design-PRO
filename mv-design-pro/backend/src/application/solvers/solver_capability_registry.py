@@ -423,14 +423,24 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
     "POWER_QUALITY_HARMONICS": SolverCapability(
         capability="POWER_QUALITY_HARMONICS",
         analysis_type="power_quality_harmonics",
-        availability="available",
+        # Karta AB-1d_min krok 3 (audyt F1-F9, `docs/evidence/OPUS_AUDYT_HARMONICZNE_
+        # SUPRAHARMONICZNE_2026-09-23.md` §0.1): model Y(f) bez zaleznosci elementow od
+        # czestotliwosci, cichy `pinv`, impedancja zrodla 0,15/0,99 z powietrza, limity
+        # 8/5/5 % zaszyte — wynik nie jest fizyka sieci. Ten sam mechanizm co W3-E:
+        # `withdrawn` + 410 na POST (`api/v126_academic.py`), nastepca = rodzaj biegu
+        # `harmoniczne` (`RODZAJE_BIEGOW`). Zdolnosc solvera FROZEN zostaje (OD-15(d)).
+        availability="withdrawn",
         implementation_status="implemented",
         solver_version="v126-academic-whitebox-1.0",
         required_inputs=("committed_enm", "harmonic_sources", "branch_admittance"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
         reference_test="test_v126_academic_solver.py::test_power_quality_trace_and_hash_are_deterministic",
-        applicability="Harmonic power flow, THDU/TDD, skan Z(f), rezonans i kompatybilnosc jakosci energii.",
+        applicability=(
+            "Wycofana z powierzchni nowych biegów (audyt harmonicznych F1–F9): Y(f) bez "
+            "modeli elementów zależnych od częstotliwości, ciche pseudoodwrócenie, impedancja "
+            "źródła z założenia, limity THD/TDD zaszyte. Następca: rodzaj biegu `harmoniczne`."
+        ),
         # Domena: Rozplyw harmonicznych i skan Z(f) — fazory w czestotliwosciach harmonicznych.
         physics_domain=PhysicsDomain.HARMONIC_FREQUENCY_DOMAIN,
         reprezentacja="zgodna",
@@ -439,7 +449,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
     "SSCI_IMPEDANCE": SolverCapability(
         capability="SSCI_IMPEDANCE",
         analysis_type="ssci_impedance",
-        availability="available",
+        # Karta AB-1d_min krok 3 (przeglad adwersarialny §6.4, audyt #10/#21/#22/#49 —
+        # KEEP_RESEARCH_ONLY): werdykt Nyquista z zaszytym zapasem fazy 30° i Z_grid(f)
+        # z odrzuconej impedancji zrodla 0,15/0,99 nie jest dowodem — `withdrawn` + 410,
+        # bez tokenu werdyktu na zadnym ekranie. Etykieta badawcza; powrot po poprawnym
+        # Z_grid(f) z rdzenia harmonicznego.
+        availability="withdrawn",
         implementation_status="implemented",
         solver_version="v126-academic-whitebox-1.0",
         required_inputs=("committed_enm", "converter_card", "fault_level"),
@@ -447,8 +462,9 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reference_test="test_v126_ssci_impedance.py::test_ssci_envelope_shape_and_arrays",
         applicability=(
-            "Stabilnosc impedancyjna SSCI (Sun 2011/Wen 2016): Z_grid(f)/Z_conv(f), "
-            "wzmocnienie petli mniejszej L(f) i werdykt Nyquista."
+            "Analiza badawcza, wycofana z powierzchni nowych biegów: werdykt Nyquista "
+            "(Sun 2011/Wen 2016) z zapasem fazy 30° zaszytym i impedancją sieci Z_grid(f) "
+            "z impedancji źródła przyjętej z założenia — bez werdyktu na ekranie."
         ),
         # Domena: Impedancje Z_grid(f)/Z_conv(f) i petla L(f) w funkcji czestotliwosci — domena czestotliwosci harmonicznych.
         physics_domain=PhysicsDomain.HARMONIC_FREQUENCY_DOMAIN,
@@ -735,6 +751,246 @@ BIEGI_V126: dict[str, AnalysisCapability] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# JEDNA lista zrodlowa rodzajow biegow (karta AB-1d_min krok 1, przeglad
+# adwersarialny §5.3)
+# ---------------------------------------------------------------------------
+
+#: Kod odmowy biegu rodzaju zarejestrowanego BEZ solvera (AB-1d_min krok 2).
+KOD_SOLVER_NIEOBECNY = "domena.solver_nieobecny"
+
+
+@dataclass(frozen=True)
+class SolverNieobecny:
+    """Rodzaj biegu zarejestrowany, zanim istnieje jego solver — odmowa NAZWANA.
+
+    ZASADA NR 1: rodzaj bez solvera nie jest zaslepka w UI (nie jest nigdzie
+    oferowany — pin `tests/application/test_rodzaje_biegow_jedna_lista.py`), a jego
+    bieg konczy sie odmowa `domena.solver_nieobecny`, ktora mowi CZEGO brakuje
+    (`brak_pl`) i KTORY kamien programu A/B to dostarcza (`kamien`). Domena
+    fizyczna rodzaju jest tu (jedyne zrodlo domeny rodzaju bez wpisu zdolnosci —
+    wpis zdolnosci opisuje solver, ktorego nie ma).
+    """
+
+    physics_domain: PhysicsDomain
+    brak_pl: str
+    kamien: str
+
+
+@dataclass(frozen=True)
+class RodzajBiegu:
+    """Rodzaj biegu dyspozytora `enm/canonical_analysis.py` — JEDNO zrodlo prawdy.
+
+    Z tego wpisu WYPROWADZANE sa: mapowanie typu wykonawczego API
+    (`ExecutionAnalysisType` <-> `analysis_type`, `api/execution_runs.py`,
+    `enm/canonical_analysis.py::_execution_analysis_type_for_run`), trzy pola
+    odtwarzalnosci koperty (`api/v125_contracts.py::build_analysis_case_reproducibility`)
+    i etykieta gotowosci rodzajow bedacych biegami
+    (`application/calculation_readiness/service.py`). Listy, ktorych nie da sie
+    wyprowadzic (FROZEN `ExecutionAnalysisType`, galezie dyspozytora, legacy
+    `domain/analysis_run.py::AnalysisType`), sa PRZYPIETE do tej tabeli testem
+    parytetu.
+
+    ``solver_family``/``formula_set_version``/``standard_basis_ref`` = ``None``
+    znaczy „koperta odtwarzalnosci podaje wartosc ogolna" (sam rodzaj /
+    ``canonical_run_v1`` / ``CANONICAL_ANALYSIS``) — dokladnie zachowanie trzech
+    slownikow sprzed karty (pin bitowy w tescie parytetu).
+    """
+
+    analysis_type: str
+    etykieta_pl: str
+    #: Czlony `ExecutionAnalysisType` (FROZEN, `domain/execution.py`) tego rodzaju.
+    typy_wykonawcze: tuple[str, ...]
+    solver_family: str | None
+    formula_set_version: str | None
+    standard_basis_ref: str | None
+    #: Klucze opcji biegu walidowane kontraktem przy UTWORZENIU biegu
+    #: (`enm/biegi_czestotliwosciowe.py`); brak klucza = odmowa nazwana (422).
+    wymagane_opcje: tuple[str, ...]
+    solver_nieobecny: SolverNieobecny | None
+
+
+#: Klucze opcji biegow dziedziny czestotliwosci (kontrakty `network_model/solvers/harmoniczne/`).
+OPCJA_OS_CZESTOTLIWOSCI = "os_czestotliwosci"
+OPCJA_PASMO_SUPRAHARMONICZNE = "pasmo_supraharmoniczne"
+
+RODZAJE_BIEGOW: dict[str, RodzajBiegu] = {
+    "PF": RodzajBiegu(
+        analysis_type="PF",
+        etykieta_pl="Rozpływ mocy",
+        typy_wykonawcze=("LOAD_FLOW",),
+        solver_family="power_flow_newton",
+        formula_set_version="pf_result_v1",
+        standard_basis_ref="NR_POWER_FLOW",
+        wymagane_opcje=(),
+        solver_nieobecny=None,
+    ),
+    "rozplyw_niesymetryczny": RodzajBiegu(
+        analysis_type="rozplyw_niesymetryczny",
+        etykieta_pl="Rozpływ niesymetryczny",
+        typy_wykonawcze=("PF_UNBALANCED",),
+        solver_family="power_flow_unbalanced_bfs",
+        formula_set_version="power_flow_unbalanced_v1",
+        standard_basis_ref="PF_UNBALANCED_BFS_V1",
+        wymagane_opcje=(),
+        solver_nieobecny=None,
+    ),
+    "short_circuit_sn": RodzajBiegu(
+        analysis_type="short_circuit_sn",
+        etykieta_pl="Zwarcia (IEC 60909)",
+        typy_wykonawcze=("SC_3F", "SC_1F", "SC_2F", "SC_2F_G"),
+        solver_family="iec60909_short_circuit",
+        formula_set_version="iec60909_v1",
+        standard_basis_ref="IEC_60909",
+        wymagane_opcje=(),
+        solver_nieobecny=None,
+    ),
+    "phase_state_sn": RodzajBiegu(
+        analysis_type="phase_state_sn",
+        etykieta_pl="Stan fazowy SN",
+        typy_wykonawcze=("PHASE_STATE_SN",),
+        solver_family="phase_state_sn_radial",
+        formula_set_version="phase_state_sn_v1",
+        standard_basis_ref="PHASE_STATE_SN_RADIAL_V1",
+        wymagane_opcje=(),
+        solver_nieobecny=None,
+    ),
+    "dynamic_stability": RodzajBiegu(
+        analysis_type="dynamic_stability",
+        etykieta_pl="Stabilność dynamiczna (tor progowy)",
+        typy_wykonawcze=("DYNAMIC_STABILITY",),
+        solver_family="dynamic_stability_fault_clear",
+        formula_set_version="dynamic_stability_fault_clear_v1",
+        standard_basis_ref="DYNAMIC_STABILITY_FAULT_CLEAR_V1",
+        wymagane_opcje=(),
+        solver_nieobecny=None,
+    ),
+    "dynamika_rms": RodzajBiegu(
+        analysis_type="dynamika_rms",
+        etykieta_pl="Dynamika czasowa (DAE)",
+        typy_wykonawcze=("DYNAMIKA_RMS",),
+        solver_family="dynamika_rms_dae",
+        formula_set_version="resultset_dynamic_v1",
+        standard_basis_ref="DYNAMIKA_RMS_DAE_V1",
+        wymagane_opcje=(),
+        solver_nieobecny=None,
+    ),
+    # Bieg zabezpieczen ma osobna trase utworzenia (V12K-025, `POST .../protection-runs`);
+    # trzy pola koperty odtwarzalnosci nigdy nie mialy dla niego wpisu (wartosci ogolne).
+    "protection_sn": RodzajBiegu(
+        analysis_type="protection_sn",
+        etykieta_pl="Zabezpieczenia nadprądowe",
+        typy_wykonawcze=("PROTECTION",),
+        solver_family=None,
+        formula_set_version=None,
+        standard_basis_ref=None,
+        wymagane_opcje=(),
+        solver_nieobecny=None,
+    ),
+    # --- Karta AB-1d_min krok 2: rodzaje dziedziny czestotliwosci BEZ solvera ---
+    # Kontrakty wejscia istnieja (`network_model/solvers/harmoniczne/`), fizyki nie ma:
+    # bieg konczy sie odmowa `domena.solver_nieobecny`. `supraharmoniczne` odmawia do
+    # AB-4H (nie AB-2H): ogolny Y(f) z AB-2H dalby wynik 2-150 kHz na modelach
+    # elementow waznych przy 50 Hz (program §6.10).
+    "harmoniczne": RodzajBiegu(
+        analysis_type="harmoniczne",
+        etykieta_pl="Rozpływ harmonicznych",
+        typy_wykonawcze=("HARMONICZNE",),
+        solver_family=None,
+        formula_set_version=None,
+        standard_basis_ref=None,
+        wymagane_opcje=(OPCJA_OS_CZESTOTLIWOSCI,),
+        solver_nieobecny=SolverNieobecny(
+            physics_domain=PhysicsDomain.HARMONIC_FREQUENCY_DOMAIN,
+            brak_pl=(
+                "brak rdzenia rozpływu harmonicznych — admitancji sieci Y(f) z modeli "
+                "elementów zależnych od częstotliwości, rozwiązania Y(f)·V(f) = I(f), "
+                "modeli źródeł harmonicznych i tła sieci"
+            ),
+            kamien="AB-2H",
+        ),
+    ),
+    "skan_czestotliwosciowy": RodzajBiegu(
+        analysis_type="skan_czestotliwosciowy",
+        etykieta_pl="Skan impedancji w funkcji częstotliwości",
+        typy_wykonawcze=("SKAN_CZESTOTLIWOSCIOWY",),
+        solver_family=None,
+        formula_set_version=None,
+        standard_basis_ref=None,
+        wymagane_opcje=(OPCJA_OS_CZESTOTLIWOSCI,),
+        solver_nieobecny=SolverNieobecny(
+            physics_domain=PhysicsDomain.HARMONIC_FREQUENCY_DOMAIN,
+            brak_pl=(
+                "brak rdzenia skanu impedancji — Z_ii(f) i Z_ij(f) z admitancji sieci Y(f) "
+                "oraz wyznaczenia rezonansów i antyrezonansów"
+            ),
+            kamien="AB-2H",
+        ),
+    ),
+    "supraharmoniczne": RodzajBiegu(
+        analysis_type="supraharmoniczne",
+        etykieta_pl="Supraharmoniczne (propagacja w paśmie)",
+        typy_wykonawcze=("SUPRAHARMONICZNE",),
+        solver_family=None,
+        formula_set_version=None,
+        standard_basis_ref=None,
+        wymagane_opcje=(OPCJA_PASMO_SUPRAHARMONICZNE,),
+        solver_nieobecny=SolverNieobecny(
+            physics_domain=PhysicsDomain.SUPRAHARMONIC_FREQUENCY_DOMAIN,
+            brak_pl=(
+                "brak modeli emisji przekształtników E(f) z impedancją Z_conv(f), modeli "
+                "elementów ważnych w paśmie kHz i propagacji I_s(f) → Y(f) → V(f)"
+            ),
+            kamien="AB-4H",
+        ),
+    ),
+}
+
+#: Rodzaje biegow zarejestrowane bez solvera — WYPROWADZONE z `RODZAJE_BIEGOW`.
+RODZAJE_BIEGOW_BEZ_SOLVERA: frozenset[str] = frozenset(
+    klucz for klucz, rodzaj in RODZAJE_BIEGOW.items() if rodzaj.solver_nieobecny is not None
+)
+
+
+def rodzaje_biegow() -> frozenset[str]:
+    """Komplet `analysis_type` biegow dyspozytora: `RODZAJE_BIEGOW` + biegi V12.6."""
+    return frozenset(RODZAJE_BIEGOW) | frozenset(BIEGI_V126)
+
+
+def rodzaj_biegu_z_typu_wykonawczego(typ_wykonawczy: str) -> RodzajBiegu:
+    """Rodzaj biegu dla czlonu `ExecutionAnalysisType` (KeyError = typ spoza tabeli)."""
+    for rodzaj in RODZAJE_BIEGOW.values():
+        if typ_wykonawczy in rodzaj.typy_wykonawcze:
+            return rodzaj
+    raise KeyError(f"Typ wykonawczy {typ_wykonawczy!r} nie ma rodzaju biegu w RODZAJE_BIEGOW")
+
+
+class SolverNieobecnyError(ValueError):
+    """Bieg rodzaju zarejestrowanego bez solvera — odmowa `domena.solver_nieobecny`.
+
+    Komunikat niesie: rodzaj biegu, CZEGO brakuje, jakie wejscie przyjeto
+    (os/pasmo z kontraktu) i KTORY kamien dostarcza solver. `execute_run` zapisuje
+    go jako status FAILED z tym komunikatem — bez wyniku, bez liczb zastepczych.
+    """
+
+    kod = KOD_SOLVER_NIEOBECNY
+
+    def __init__(self, analysis_type: str, *, wejscie_pl: str) -> None:
+        rodzaj = RODZAJE_BIEGOW[analysis_type]
+        nieobecny = rodzaj.solver_nieobecny
+        if nieobecny is None:
+            raise AssertionError(f"Rodzaj {analysis_type!r} ma solver — to nie jest odmowa")
+        self.analysis_type = analysis_type
+        self.kamien = nieobecny.kamien
+        self.brak_pl = nieobecny.brak_pl
+        super().__init__(
+            f"[{KOD_SOLVER_NIEOBECNY}] Rodzaj biegu {analysis_type!r} "
+            f"({rodzaj.etykieta_pl}) nie ma solvera: {nieobecny.brak_pl}. "
+            f"Wejście przyjęte: {wejscie_pl}. Solver dostarcza kamień {nieobecny.kamien} "
+            "programu A/B — do tego czasu bieg kończy się tą odmową, bez wyniku."
+        )
+
+
 class NieznanyRodzajBieguError(ValueError):
     """`analysis_type` biegu bez wpisu w rejestrze zdolnosci — odmowa nazwana.
 
@@ -780,6 +1036,11 @@ def domena_fizyczna_biegu(analysis_type: str) -> PhysicsDomain:
     `AssertionError` (defekt rejestru, nie przypadek wejscia). Nieznany rodzaj —
     `NieznanyRodzajBieguError` (fail-closed).
     """
+    rodzaj = RODZAJE_BIEGOW.get(analysis_type)
+    if rodzaj is not None and rodzaj.solver_nieobecny is not None:
+        # Rodzaj bez solvera (AB-1d_min): domena z wpisu rodzaju — wpisu zdolnosci
+        # nie ma, bo nie ma solvera (para pilnowana testem: odmowa <=> brak zdolnosci).
+        return rodzaj.solver_nieobecny.physics_domain
     zdolnosci = zdolnosci_biegu(analysis_type)
     if not zdolnosci:
         raise NieznanyRodzajBieguError(analysis_type)

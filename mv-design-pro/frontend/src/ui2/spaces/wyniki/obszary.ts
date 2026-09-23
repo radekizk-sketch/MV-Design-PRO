@@ -33,7 +33,8 @@ export const ZAKLADKI = [
   { id: 'skladowe', etykieta: T.zakladkaSkladowe },
   { id: 'koordynacja', etykieta: T.zakladkaKoordynacja },
   { id: 'stabilnosc', etykieta: T.zakladkaStabilnosc },
-  { id: 'ssci', etykieta: T.zakladkaSsci },
+  // Zakładka „Stabilność SSCI" USUNIĘTA (rejestr domen i biegów, 2026-09-23): analiza
+  // badawcza wycofana z powierzchni (410), werdykt Nyquista nie trafia na żaden ekran.
   { id: 'akademickie', etykieta: T.zakladkaAkademickie },
   { id: 'ncrfg', etykieta: T.zakladkaNcRfg },
   { id: 'pulpit-oze', etykieta: T.zakladkaPulpitOze },
@@ -93,7 +94,7 @@ export const OBSZARY: readonly ObszarWynikow[] = [
     ],
   },
   { id: 'zwarcia', etykieta: T.obszarZwarcia, zakladki: ['zwarcia', 'skladowe', 'koordynacja'] },
-  { id: 'stabilnosc', etykieta: T.obszarStabilnosc, zakladki: ['stabilnosc', 'ssci'] },
+  { id: 'stabilnosc', etykieta: T.obszarStabilnosc, zakladki: ['stabilnosc'] },
   { id: 'specjalistyczne', etykieta: T.obszarSpecjalistyczne, zakladki: ['akademickie'] },
   {
     id: 'oze',

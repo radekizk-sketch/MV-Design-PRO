@@ -80,6 +80,11 @@ KONTROLA_JAKOSCI_WYCOFANYCH: dict[str, Path] = {
     # solvera), nie dwa niezależne testy.
     "hosting_capacity": PROJECT_ROOT / "backend" / "tests" / "test_v126_sanity_bounds.py",
     "opf_loss_lcc": PROJECT_ROOT / "backend" / "tests" / "test_v126_sanity_bounds.py",
+    # Karta AB-1d_min krok 3 (2026-09-23): oba rodzaje wycofane z powierzchni (410),
+    # solver FROZEN zostaje (kasacja = OD-15(d)) i jest uruchamiany wprost przez
+    # publiczne `.run()` — determinizm śladu PQH i obwiednia SSCI.
+    "power_quality_harmonics": PROJECT_ROOT / "backend" / "tests" / "test_v126_academic_solver.py",
+    "ssci_impedance": PROJECT_ROOT / "backend" / "tests" / "test_v126_ssci_impedance.py",
 }
 
 #: Klucze `parameters`, które NIE są polem formularza, bo docierają do solvera inną,

@@ -59,8 +59,6 @@ export type RodzajPrzekroczenia =
   | 'bilans-biernej'
   /** Asymetria fazowa poza dopuszczalnym pasmem (stan fazowy SN, F-K4). */
   | 'asymetria-fazowa'
-  /** Ryzyko lub brak stabilności podsynchronicznej przekształtnika (SSCI, F-K4). */
-  | 'stabilnosc-ssci'
   /** Pomiar odrzucony przez detekcję złych danych estymacji stanu (F-K4). */
   | 'zle-dane-pomiarowe'
   /** Wskazanie elementu BEZ werdyktu naruszenia — inspekcja, nie naprawa (F-K4). */
@@ -129,7 +127,6 @@ const REJESTR: Record<RodzajPrzekroczenia, AkcjaNaprawcza> = {
   migotanie: AKCJA_GENERYCZNA,
   'bilans-biernej': AKCJA_DOBOR_KOMPENSACJI,
   'asymetria-fazowa': AKCJA_GENERYCZNA,
-  'stabilnosc-ssci': AKCJA_GENERYCZNA,
   'zle-dane-pomiarowe': AKCJA_GENERYCZNA,
   'inspekcja-elementu': AKCJA_INSPEKCJA,
 };

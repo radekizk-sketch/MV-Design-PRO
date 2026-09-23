@@ -91,8 +91,11 @@ type NumericField =
   | 'qMin'
   | 'qMax'
   | 'reactiveCurrentGain'
-  | 'pRecoveryTimeS'
-  | 'thduPercent';
+  | 'pRecoveryTimeS';
+// Kontrolka „THD_U [%]" USUNIĘTA (audyt harmonicznych #24, 2026-09-23): THD napięcia
+// jest własnością napięcia SIECI, nie emisji modułu wytwórczego — pole prosiło
+// projektanta o wielkość bez sensu dla urządzenia (fantom semantyczny). Pole
+// kontraktu FROZEN `harmonic_thdu_percent` zostaje, ekran go nie wysyła.
 
 const DEFAULT_NUMERIC: Record<NumericField, string> = {
   pMinKw: '',
@@ -104,7 +107,6 @@ const DEFAULT_NUMERIC: Record<NumericField, string> = {
   qMax: '0.33',
   reactiveCurrentGain: '2',
   pRecoveryTimeS: '1',
-  thduPercent: '',
 };
 
 const VERDICT_LABELS: Record<NcRfgVerdict, string> = {
@@ -189,7 +191,6 @@ function buildModuleInput(args: {
     q_range_pct_pn_max: parseOptionalNumber(args.numeric.qMax),
     reactive_current_gain: parseOptionalNumber(args.numeric.reactiveCurrentGain),
     p_recovery_time_s: parseOptionalNumber(args.numeric.pRecoveryTimeS),
-    harmonic_thdu_percent: parseOptionalNumber(args.numeric.thduPercent),
   };
 }
 
@@ -581,7 +582,6 @@ export function NcRfgTestsTab(): JSX.Element {
                       qMax: 'Qmax/Pn [p.u.]',
                       reactiveCurrentGain: 'K_FRT [-]',
                       pRecoveryTimeS: 'Odbudowa P [s]',
-                      thduPercent: 'THD_U [%]',
                     }[field]}
                     value={numeric[field]}
                     onChange={(value) => setNumeric((current) => ({ ...current, [field]: value }))}

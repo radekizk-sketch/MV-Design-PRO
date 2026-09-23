@@ -2,189 +2,6 @@
   "namespace": "analysis-catalog",
   "items": [
     {
-      "kod": "power_quality_harmonics",
-      "nazwa_pl": "Jakość energii i harmoniczne",
-      "grupa": {
-        "kod": "jakosc_energii_i_stabilnosc",
-        "nazwa_pl": "Jakość energii i stabilność przekształtników"
-      },
-      "pytanie_pl": "Czy odkształcenie napięcia i prądu w węzłach sieci mieści się w granicach kompatybilności elektromagnetycznej?",
-      "zakres_pl": "Wszystkie szyny modelu; źródła odkształcające = przekształtniki z widmem harmonicznym (karta katalogowa albo widmo podane ręcznie); harmoniczne rzędów 2–49; skan impedancji węzłów w paśmie 50–2500 Hz z wykrywaniem rezonansów.",
-      "wielkosci_glowne": [
-        {
-          "symbol": "THD_U",
-          "nazwa_pl": "Współczynnik odkształcenia napięcia",
-          "jednostka": "%",
-          "symbol_latex": "\\mathrm{THD}_U"
-        },
-        {
-          "symbol": "TDD",
-          "nazwa_pl": "Odkształcenie prądu odbiorcy",
-          "jednostka": "%",
-          "symbol_latex": "\\mathrm{TDD}"
-        },
-        {
-          "symbol": "K",
-          "nazwa_pl": "Współczynnik K obciążenia transformatora",
-          "jednostka": "-",
-          "symbol_latex": "K"
-        },
-        {
-          "symbol": "Z(f)",
-          "nazwa_pl": "Impedancja węzła w funkcji częstotliwości",
-          "jednostka": "Ω",
-          "symbol_latex": "Z(f)"
-        }
-      ],
-      "podstawa_oceny": [
-        {
-          "wielkosc_pl": "Odkształcenie napięcia",
-          "symbol": "THD_U",
-          "jednostka": "%",
-          "warunek_pl": "w każdym węźle modelu, dla sieci SN i nN",
-          "wartosc_graniczna": 8.0,
-          "zrodlo_pl": "PN-EN 50160",
-          "symbol_latex": "\\mathrm{THD}_U",
-          "warunek_latex": "\\mathrm{THD}_U \\leq 8\\%",
-          "wzor_latex": "",
-          "wzor_opis_pl": ""
-        },
-        {
-          "wielkosc_pl": "Odkształcenie napięcia",
-          "symbol": "THD_U",
-          "jednostka": "%",
-          "warunek_pl": "w każdym węźle modelu (granica ostrzejsza)",
-          "wartosc_graniczna": 5.0,
-          "zrodlo_pl": "IEEE 519",
-          "symbol_latex": "\\mathrm{THD}_U",
-          "warunek_latex": "\\mathrm{THD}_U \\leq 5\\%",
-          "wzor_latex": "",
-          "wzor_opis_pl": ""
-        },
-        {
-          "wielkosc_pl": "Odkształcenie prądu odbiorcy",
-          "symbol": "TDD",
-          "jednostka": "%",
-          "warunek_pl": "odniesione do prądu obciążenia szyny wyznaczonego z mocy czynnej szyny",
-          "wartosc_graniczna": 5.0,
-          "zrodlo_pl": "IEEE 519",
-          "symbol_latex": "\\mathrm{TDD}",
-          "warunek_latex": "\\mathrm{TDD} \\leq 5\\%",
-          "wzor_latex": "",
-          "wzor_opis_pl": ""
-        }
-      ],
-      "bez_podstawy_pl": null,
-      "dane": {
-        "z_modelu": [
-          {
-            "nazwa_pl": "Napięcie znamionowe i obciążenie szyn",
-            "elementy_pl": "szyny, odbiory"
-          },
-          {
-            "nazwa_pl": "Impedancje i susceptancje gałęzi",
-            "elementy_pl": "linie, kable, aparaty łączeniowe"
-          },
-          {
-            "nazwa_pl": "Parametry transformatorów",
-            "elementy_pl": "transformatory (S_n, u_k)"
-          },
-          {
-            "nazwa_pl": "Moc zwarciowa źródła zasilania",
-            "elementy_pl": "źródło sieci nadrzędnej"
-          },
-          {
-            "nazwa_pl": "Widmo harmoniczne i moc znamionowa przekształtników",
-            "elementy_pl": "karty katalogowe przekształtników PV/BESS/wiatrowych"
-          }
-        ],
-        "od_uzytkownika": [
-          {
-            "klucz": "harmonic_spectra",
-            "nazwa_pl": "Widmo harmoniczne przekształtnika (wejście ręczne)",
-            "jednostka": "% I_n per rząd",
-            "wymagane": false,
-            "opis_pl": "Nadpisuje widmo karty katalogowej wskazanego przekształtnika."
-          }
-        ],
-        "domyslne_solvera": []
-      },
-      "prezentowany": true,
-      "powod_wycofania_pl": null,
-      "katalog_odniesienia": "harmonic-limits",
-      "uwagi_metody_pl": [],
-      "zakres_oceny": "kryterium"
-    },
-    {
-      "kod": "ssci_impedance",
-      "nazwa_pl": "Stabilność podsynchroniczna (SSCI)",
-      "grupa": {
-        "kod": "jakosc_energii_i_stabilnosc",
-        "nazwa_pl": "Jakość energii i stabilność przekształtników"
-      },
-      "pytanie_pl": "Czy przekształtnik przyłączony do sieci o danej sztywności nie wejdzie w interakcję podsynchroniczną (rezonans regulacyjny)?",
-      "zakres_pl": "Jeden przekształtnik — wskazany parametrem albo pierwszy przekształtnik modelu; impedancja sieci widziana z jego szyny i impedancja wyjściowa przekształtnika w paśmie podsynchronicznym; werdykt kryterium Nyquista wystawia okno „Stabilność SSCI”.",
-      "wielkosci_glowne": [
-        {
-          "symbol": "Z_grid(f)",
-          "nazwa_pl": "Impedancja sieci z szyny przekształtnika",
-          "jednostka": "Ω",
-          "symbol_latex": "Z_{\\mathrm{grid}}(f)"
-        },
-        {
-          "symbol": "Z_conv(f)",
-          "nazwa_pl": "Impedancja wyjściowa przekształtnika",
-          "jednostka": "Ω",
-          "symbol_latex": "Z_{\\mathrm{conv}}(f)"
-        },
-        {
-          "symbol": "L(f)",
-          "nazwa_pl": "Wzmocnienie pętli mniejszej Z_grid/Z_conv",
-          "jednostka": "-",
-          "symbol_latex": "L(f) = Z_{\\mathrm{grid}}(f)/Z_{\\mathrm{conv}}(f)"
-        },
-        {
-          "symbol": "Re Z_conv,min",
-          "nazwa_pl": "Najmniejsza rezystancja wyjściowa przekształtnika",
-          "jednostka": "Ω",
-          "symbol_latex": "\\min\\ \\mathrm{Re}\\,Z_{\\mathrm{conv}}"
-        }
-      ],
-      "podstawa_oceny": [],
-      "bez_podstawy_pl": "Ta analiza dostarcza tablice impedancji; werdykt stabilności (kryterium impedancyjne Nyquista wg Sun 2011 / Wen 2016) wystawia osobne okno „Stabilność SSCI” z własnym kontraktem.",
-      "dane": {
-        "z_modelu": [
-          {
-            "nazwa_pl": "Karta przekształtnika: napięcie i moc znamionowa, pasma pętli prądowej, napięciowej i PLL, opóźnienie regulacji, indukcyjność i rezystancja filtra, tryb pracy, punkt pracy P/Q",
-            "elementy_pl": "przekształtnik PV/BESS/wiatrowy z kartą katalogową"
-          },
-          {
-            "nazwa_pl": "Impedancje i susceptancje gałęzi",
-            "elementy_pl": "linie, kable, aparaty łączeniowe"
-          },
-          {
-            "nazwa_pl": "Moc zwarciowa źródła zasilania",
-            "elementy_pl": "źródło sieci nadrzędnej"
-          }
-        ],
-        "od_uzytkownika": [
-          {
-            "klucz": "ssci_converter_ref",
-            "nazwa_pl": "Oznaczenie przekształtnika do badania",
-            "jednostka": "-",
-            "wymagane": false,
-            "opis_pl": "Puste = pierwszy przekształtnik modelu."
-          }
-        ],
-        "domyslne_solvera": []
-      },
-      "prezentowany": true,
-      "powod_wycofania_pl": null,
-      "katalog_odniesienia": "converter-modes",
-      "uwagi_metody_pl": [],
-      "zakres_oceny": "kryterium"
-    },
-    {
       "kod": "earthing_safety",
       "nazwa_pl": "Bezpieczeństwo uziomu stacji",
       "grupa": {
@@ -370,6 +187,7 @@
       },
       "prezentowany": true,
       "powod_wycofania_pl": null,
+      "nastepca_pl": null,
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [
         "Model sieci nie niesie geometrii uziomu ani danych gruntu — bez danych projektanta analiza nie jest uruchamiana (zakaz podstawiania uziomu domyślnego)."
@@ -472,6 +290,7 @@
       },
       "prezentowany": true,
       "powod_wycofania_pl": null,
+      "nastepca_pl": null,
       "katalog_odniesienia": "insulation-levels",
       "uwagi_metody_pl": [],
       "zakres_oceny": "kryterium"
@@ -528,6 +347,7 @@
       },
       "prezentowany": true,
       "powod_wycofania_pl": null,
+      "nastepca_pl": null,
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [],
       "zakres_oceny": "kryterium"
@@ -684,6 +504,7 @@
       },
       "prezentowany": true,
       "powod_wycofania_pl": null,
+      "nastepca_pl": null,
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [
         "Solver przyjmuje jako napięcie sieci najwyższe napięcie znamionowe szyny modelu — w modelu z szyną WN (np. 110 kV) dobór odnosi się do tego poziomu, nie do SN."
@@ -802,6 +623,7 @@
       },
       "prezentowany": true,
       "powod_wycofania_pl": null,
+      "nastepca_pl": null,
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [],
       "zakres_oceny": "kryterium"
@@ -970,6 +792,7 @@
       },
       "prezentowany": true,
       "powod_wycofania_pl": null,
+      "nastepca_pl": null,
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [],
       "zakres_oceny": "kryterium"
@@ -1054,6 +877,7 @@
       },
       "prezentowany": true,
       "powod_wycofania_pl": null,
+      "nastepca_pl": null,
       "katalog_odniesienia": "reliability-defaults",
       "uwagi_metody_pl": [
         "Ranking dotkliwości kontyngencji N-1 nie jest prezentowany z tej analizy — kanon liczy go pełnym rozpływem na ekranie „Kontyngencje N-1”."
@@ -1120,6 +944,55 @@
       },
       "prezentowany": true,
       "powod_wycofania_pl": null,
+      "nastepca_pl": null,
+      "katalog_odniesienia": null,
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "power_quality_harmonics",
+      "nazwa_pl": "Jakość energii i harmoniczne",
+      "grupa": {
+        "kod": "wycofane_z_powierzchni",
+        "nazwa_pl": "Rodzaje wycofane z powierzchni"
+      },
+      "pytanie_pl": "Czy odkształcenie napięcia i prądu w węzłach sieci mieści się w granicach kompatybilności elektromagnetycznej?",
+      "zakres_pl": "Rodzaj wycofany z powierzchni — uruchomienie nowego biegu jest odmawiane.",
+      "wielkosci_glowne": [],
+      "podstawa_oceny": [],
+      "bez_podstawy_pl": "Liczby tej analizy nie opisują fizyki sieci: admitancja sieci w funkcji częstotliwości bez modeli elementów zależnych od częstotliwości, ciche pseudoodwrócenie macierzy, impedancja źródła przyjęta z założenia i limity THD/TDD zaszyte bez dokumentu źródłowego. Uruchomienie nowego biegu jest odmawiane.",
+      "dane": {
+        "z_modelu": [],
+        "od_uzytkownika": [],
+        "domyslne_solvera": []
+      },
+      "prezentowany": false,
+      "powod_wycofania_pl": "Liczby tej analizy nie opisują fizyki sieci: admitancja sieci w funkcji częstotliwości bez modeli elementów zależnych od częstotliwości, ciche pseudoodwrócenie macierzy, impedancja źródła przyjęta z założenia i limity THD/TDD zaszyte bez dokumentu źródłowego. Uruchomienie nowego biegu jest odmawiane.",
+      "nastepca_pl": "Rozpływ harmonicznych na osi częstotliwości w hercach (także interharmoniczne) z modelami elementów zależnymi od częstotliwości — do czasu jego rdzenia produkt nie pokazuje żadnej liczby harmonicznej. Limity harmonicznych czekają na dokument źródłowy właściwego operatora.",
+      "katalog_odniesienia": null,
+      "uwagi_metody_pl": [],
+      "zakres_oceny": "kryterium"
+    },
+    {
+      "kod": "ssci_impedance",
+      "nazwa_pl": "Stabilność podsynchroniczna (SSCI)",
+      "grupa": {
+        "kod": "wycofane_z_powierzchni",
+        "nazwa_pl": "Rodzaje wycofane z powierzchni"
+      },
+      "pytanie_pl": "Czy przekształtnik przyłączony do sieci o danej sztywności nie wejdzie w interakcję podsynchroniczną (rezonans regulacyjny)?",
+      "zakres_pl": "Analiza badawcza wycofana z powierzchni — bez werdyktu stabilności.",
+      "wielkosci_glowne": [],
+      "podstawa_oceny": [],
+      "bez_podstawy_pl": "Analiza badawcza: werdykt kryterium Nyquista stał na zapasie fazy 30° zaszytym w kodzie i na impedancji sieci wyznaczonej z impedancji źródła przyjętej z założenia — nie jest dowodem stabilności. Uruchomienie nowego biegu jest odmawiane, werdykt nie jest wyświetlany.",
+      "dane": {
+        "z_modelu": [],
+        "od_uzytkownika": [],
+        "domyslne_solvera": []
+      },
+      "prezentowany": false,
+      "powod_wycofania_pl": "Analiza badawcza: werdykt kryterium Nyquista stał na zapasie fazy 30° zaszytym w kodzie i na impedancji sieci wyznaczonej z impedancji źródła przyjętej z założenia — nie jest dowodem stabilności. Uruchomienie nowego biegu jest odmawiane, werdykt nie jest wyświetlany.",
+      "nastepca_pl": "Powrót jako analiza badawcza po wyznaczeniu impedancji sieci w funkcji częstotliwości przez rdzeń harmoniczny — z zapasem stabilności pochodzącym z dokumentu, nie z kodu.",
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [],
       "zakres_oceny": "kryterium"
@@ -1143,6 +1016,7 @@
       },
       "prezentowany": false,
       "powod_wycofania_pl": "Solver nie wyznacza już wielkości tej analizy: wskaźniki stały na współczynnikach bez pokrycia w danych i normie oraz na mocy zwarciowej węzłów podstawianej z napięcia znamionowego. Powrót wymaga policzenia wielkości rozpływem, nie przywrócenia tabel.",
+      "nastepca_pl": null,
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [],
       "zakres_oceny": "kryterium"
@@ -1166,6 +1040,7 @@
       },
       "prezentowany": false,
       "powod_wycofania_pl": "Lokalna impedancja Thevenina per szyna, metodą Monte Carlo, bez sprzężenia sieci — kanon liczy zdolność przyłączeniową pełnym rozpływem przez wariant sieci (ekran „OZE › Zdolność przyłączeniowa”). Uruchomienie nowego biegu jest odmawiane.",
+      "nastepca_pl": null,
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [],
       "zakres_oceny": "kryterium"
@@ -1189,6 +1064,7 @@
       },
       "prezentowany": false,
       "powod_wycofania_pl": "Straty ze współczynnikiem obciążenia 0,45 zaszytym w solverze i zaczepem zawsze zerowym — kanon czyta straty z karty katalogowej transformatora (ekran „Kryteria › Wyposażenie”) i optymalizuje zaczep w badaniach OLTC. Uruchomienie nowego biegu jest odmawiane.",
+      "nastepca_pl": null,
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [],
       "zakres_oceny": "kryterium"
@@ -1212,6 +1088,7 @@
       },
       "prezentowany": false,
       "powod_wycofania_pl": "Bada, czy solver odtwarza sieci odniesienia — sprawdza narzędzie, nie projekt; miejsce tego sprawdzenia to kontrola jakości, nie ekran projektanta.",
+      "nastepca_pl": null,
       "katalog_odniesienia": null,
       "uwagi_metody_pl": [],
       "zakres_oceny": "kryterium"

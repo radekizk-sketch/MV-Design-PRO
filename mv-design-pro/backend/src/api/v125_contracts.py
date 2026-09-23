@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
+from application.solvers.solver_capability_registry import RODZAJE_BIEGOW
 from enm.canonical_analysis import CanonicalRun
 
 CanonicalCompletenessStatus = Literal["complete", "partial", "failed", "not_applicable"]
@@ -317,40 +318,26 @@ def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
     snapshot_header = _snapshot_header(run)
     snapshot_ref = _snapshot_ref(run)
     catalog_materialization_entries, catalog_materialization_hash = _materialization_for_run(run)
-    solver_family = {
-        "PF": "power_flow_newton",
-        "rozplyw_niesymetryczny": "power_flow_unbalanced_bfs",
-        "short_circuit_sn": "iec60909_short_circuit",
-        "phase_state_sn": "phase_state_sn_radial",
-        "dynamic_stability": "dynamic_stability_fault_clear",
-        # Karta W6-3B: `dynamika_rms` konczy sie WYNIKIEM — rdzen DAE (W6-2,
-        # `network_model/solvers/dynamika/`) jest wpiety adapterem
-        # (`enm/adapter_dynamiki.py`), a punkt pracy pochodzi ze wskazanego
-        # biegu rozplywu tej samej migawki (`options.pf_run_id`).
-        "dynamika_rms": "dynamika_rms_dae",
-    }.get(run.analysis_type, run.analysis_type)
+    # Karta AB-1d_min krok 1: trzy slowniki tej funkcji (rodzina solvera, wersja
+    # zestawu wzorow, podstawa normatywna) byly trzema kopiami listy rodzajow biegow —
+    # odtad WYPROWADZANE z `RODZAJE_BIEGOW`. Wartosc `None` w tabeli (albo rodzaj
+    # spoza niej: biegi V12.6) = wartosc ogolna, dokladnie jak dotychczasowe `.get()`.
+    rodzaj_biegu = RODZAJE_BIEGOW.get(run.analysis_type)
+    solver_family = (
+        rodzaj_biegu.solver_family if rodzaj_biegu is not None else None
+    ) or run.analysis_type
     # CV-2 (H2): wersja solvera WYLACZNIE ze sladu solvera albo z opcji biegu;
     # brak = `None` (dotad stala "1.0.0" udawala odczyt).
     solver_version = ((run.power_flow_trace or {}).get("solver_version")) or run.options.get(
         "solver_version"
     )
     koperta = run.koperta
-    formula_set_version = {
-        "PF": "pf_result_v1",
-        "rozplyw_niesymetryczny": "power_flow_unbalanced_v1",
-        "short_circuit_sn": "iec60909_v1",
-        "phase_state_sn": "phase_state_sn_v1",
-        "dynamic_stability": "dynamic_stability_fault_clear_v1",
-        "dynamika_rms": "resultset_dynamic_v1",
-    }.get(run.analysis_type, "canonical_run_v1")
-    standard_basis_ref = {
-        "PF": "NR_POWER_FLOW",
-        "rozplyw_niesymetryczny": "PF_UNBALANCED_BFS_V1",
-        "short_circuit_sn": "IEC_60909",
-        "phase_state_sn": "PHASE_STATE_SN_RADIAL_V1",
-        "dynamic_stability": "DYNAMIC_STABILITY_FAULT_CLEAR_V1",
-        "dynamika_rms": "DYNAMIKA_RMS_DAE_V1",
-    }.get(run.analysis_type, "CANONICAL_ANALYSIS")
+    formula_set_version = (
+        rodzaj_biegu.formula_set_version if rodzaj_biegu is not None else None
+    ) or "canonical_run_v1"
+    standard_basis_ref = (
+        rodzaj_biegu.standard_basis_ref if rodzaj_biegu is not None else None
+    ) or "CANONICAL_ANALYSIS"
     variant_ref = _option_or_header(run, "variant_ref")
     switching_snapshot_ref = _option_or_header(run, "switching_snapshot_ref") or _option_or_header(
         run, "switching_state_ref"

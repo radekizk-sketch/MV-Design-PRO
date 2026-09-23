@@ -463,6 +463,14 @@ def _pq_curve_from_raw(
     return tuple(tuple(float(v) for v in point) for point in raw)  # type: ignore[misc]
 
 
+#: Karta AB-1d_min (audyt #28): rodzaje widma harmonicznych karty przeksztaltnika.
+#: Zbior ZAMKNIETY; dzis jeden rodzaj — prad w rzedach calkowitych (deklaracja
+#: producenta, % pradu znamionowego). Widma na osi f w Hz (interharmoniczne,
+#: supraharmoniczne) wejda jako OSOBNE rodzaje z wlasnymi niezmiennikami.
+WIDMO_PRADU_RZEDY_CALKOWITE = "CURRENT_SPECTRUM_INTEGER_ORDER"
+RODZAJE_WIDMA_HARMONICZNYCH: tuple[str, ...] = (WIDMO_PRADU_RZEDY_CALKOWITE,)
+
+
 def _harmonic_spectrum_from_raw(raw: Any) -> dict[int, float] | None:
     """Parse a converter harmonic-spectrum dict (round-trips the ``to_dict``
     stringified-key form: JSON object keys are always strings). Order/range
@@ -1401,6 +1409,15 @@ class ConverterType:
     # `power_quality_harmonics` (`V126HarmonicSourceInput.spectrum_percent`,
     # via `solver_input/v126_contracts.py::build_v126_input_from_enm`).
     harmonic_spectrum_percent: dict[int, float] | None = None
+    # Karta AB-1d_min (audyt harmonicznych #28): RODZAJ widma — pole ADDYTYWNE.
+    # Niezmiennik „rzad calkowity 2..50" (KAT-T-015) jest cecha widma rodzaju
+    # `CURRENT_SPECTRUM_INTEGER_ORDER` (prad w rzedach calkowitych — jedyne, co
+    # pole `harmonic_spectrum_percent` kiedykolwiek znaczylo), a NIE cecha
+    # produktu: interharmoniczne i supraharmoniczne zyja na osi f w Hz
+    # (`network_model/solvers/harmoniczne/os_czestotliwosci.py`). `None` przy
+    # zadeklarowanym widmie = rodzaj pola (rekordy sprzed karty), emitowane w
+    # `to_dict` WYLACZNIE gdy zapisane jawnie — odcisk katalogu bez zmian.
+    harmonic_spectrum_kind: str | None = None
     # statyzm regulacji mocy czynnej wzgledem czestotliwosci przeksztaltnika
     # grid-forming (VSM/droop control), w %: df/f * (1/statyzm) = dP/Pn. Karta
     # katalogowa producenta (typowe zakresy IEEE 2800-2022: 2-10 %). Nie mylic
@@ -1460,25 +1477,57 @@ class ConverterType:
                 "Statyzm Q/U przeksztaltnika grid-forming (droop_q_u_percent) musi byc > 0, "
                 f"otrzymano {self.droop_q_u_percent}.",
             )
+        if self.harmonic_spectrum_kind is not None:
+            if self.harmonic_spectrum_kind not in RODZAJE_WIDMA_HARMONICZNYCH:
+                odmowa_twarda(
+                    "KAT-T-009",
+                    f"Nieznany rodzaj widma harmonicznych {self.harmonic_spectrum_kind!r}; "
+                    f"dozwolone: {', '.join(RODZAJE_WIDMA_HARMONICZNYCH)}.",
+                )
+            if self.harmonic_spectrum_percent is None:
+                odmowa_twarda(
+                    "KAT-T-009",
+                    "Rodzaj widma harmonicznych (harmonic_spectrum_kind) bez widma "
+                    "(harmonic_spectrum_percent) — para pol jest niespojna.",
+                )
         if self.harmonic_spectrum_percent is not None:
             if not self.harmonic_spectrum_percent:
                 odmowa_twarda(
                     "KAT-T-014",
                     "Widmo harmonicznych (harmonic_spectrum_percent) nie moze byc puste.",
                 )
-            for rzad, procent in self.harmonic_spectrum_percent.items():
-                if not isinstance(rzad, int) or isinstance(rzad, bool) or rzad < 2 or rzad > 50:
-                    odmowa_twarda(
-                        "KAT-T-015",
-                        "Rzad harmonicznej w widmie musi byc liczba calkowita 2..50, "
-                        f"otrzymano {rzad!r}.",
-                    )
-                if not (0.0 <= float(procent) <= 100.0):
-                    odmowa_twarda(
-                        "KAT-T-016",
-                        f"Udzial {rzad}. harmonicznej musi byc w zakresie 0..100 % pradu "
-                        f"znamionowego, otrzymano {procent}.",
-                    )
+            # KAT-T-015/KAT-T-016 — niezmienniki RODZAJU `CURRENT_SPECTRUM_INTEGER_ORDER`
+            # (audyt #28: rzad calkowity 2..50 i udzial w % pradu znamionowego sa
+            # cecha widma pradu w rzedach calkowitych, nie cecha produktu). Dzis to
+            # jedyny rodzaj (`RODZAJE_WIDMA_HARMONICZNYCH`), wiec warunek jest zawsze
+            # prawdziwy; rodzaj dopisany do zbioru wnosi WLASNE niezmienniki.
+            if self.rodzaj_widma_harmonicznych == WIDMO_PRADU_RZEDY_CALKOWITE:
+                for rzad, procent in self.harmonic_spectrum_percent.items():
+                    if not isinstance(rzad, int) or isinstance(rzad, bool) or rzad < 2 or rzad > 50:
+                        odmowa_twarda(
+                            "KAT-T-015",
+                            "Rzad harmonicznej w widmie rodzaju "
+                            f"{WIDMO_PRADU_RZEDY_CALKOWITE} musi byc liczba calkowita 2..50, "
+                            f"otrzymano {rzad!r}.",
+                        )
+                    if not (0.0 <= float(procent) <= 100.0):
+                        odmowa_twarda(
+                            "KAT-T-016",
+                            f"Udzial {rzad}. harmonicznej musi byc w zakresie 0..100 % pradu "
+                            f"znamionowego, otrzymano {procent}.",
+                        )
+
+    @property
+    def rodzaj_widma_harmonicznych(self) -> str | None:
+        """Rodzaj widma (audyt #28): jawny, a przy widmie bez rodzaju — rodzaj POLA.
+
+        `harmonic_spectrum_percent` od poczatku znaczy „prad w rzedach calkowitych
+        wg deklaracji producenta", wiec rekord sprzed pola rodzaju ma dokladnie ten
+        rodzaj — to odczyt definicji pola, nie domyslka danych. Brak widma = `None`.
+        """
+        if self.harmonic_spectrum_percent is None:
+            return None
+        return self.harmonic_spectrum_kind or WIDMO_PRADU_RZEDY_CALKOWITE
 
     def validate_power_hierarchy(self) -> None:
         """Assert Pzainst >= Pn,AC >= Pprzylacz >= Posiagl for the fields present.
@@ -1544,6 +1593,13 @@ class ConverterType:
                     }
                 }
                 if self.harmonic_spectrum_percent is not None
+                else {}
+            ),
+            # Karta AB-1d_min: rodzaj widma emitowany WYLACZNIE gdy zapisany jawnie —
+            # rekordy bez pola zostaja bajtowo identyczne (odcisk katalogu bez zmian).
+            **(
+                {"harmonic_spectrum_kind": self.harmonic_spectrum_kind}
+                if self.harmonic_spectrum_kind is not None
                 else {}
             ),
             **(
@@ -1614,6 +1670,7 @@ class ConverterType:
             harmonic_spectrum_percent=_harmonic_spectrum_from_raw(
                 data.get("harmonic_spectrum_percent")
             ),
+            harmonic_spectrum_kind=data.get("harmonic_spectrum_kind"),
             droop_p_f_percent=_opcjonalny_float(data, "droop_p_f_percent"),
             droop_q_u_percent=_opcjonalny_float(data, "droop_q_u_percent"),
             ptpiree_status=data.get("ptpiree_status"),

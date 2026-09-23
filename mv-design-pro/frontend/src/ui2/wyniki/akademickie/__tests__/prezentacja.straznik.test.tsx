@@ -261,8 +261,10 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
   });
 
   it('obiekty nazwane jak na schemacie — surowa referencja nie dociera do tabeli', async () => {
-    await uruchomRodzaj('power_quality_harmonics');
-    const tabela = screen.getByTestId('mvd-akad-obiekty-nodes');
+    // 2026-09-23: tabela węzłów „Jakości energii i harmonicznych" zeszła z ekranu razem
+    // z wycofaną analizą — te same referencje obiektów niesie ranking wrażliwości.
+    await uruchomRodzaj('uncertainty_sensitivity');
+    const tabela = screen.getByTestId('mvd-akad-obiekty-sensitivity_ranking');
     expect(tabela).toHaveTextContent('GPZ Zachód');
     expect(tabela).toHaveTextContent('Stacja SN/nN Ogrodowa');
     expect(tabela.textContent ?? '').not.toContain('860003b4514aa388b39561d5005ce584');
@@ -306,8 +308,8 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
 
   it('obiekt spoza migawki dostaje uczciwą etykietę zapasową, nie zmyśloną nazwę', async () => {
     useSnapshotStore.getState().reset();
-    await uruchomRodzaj('power_quality_harmonics');
-    const tabela = screen.getByTestId('mvd-akad-obiekty-nodes');
+    await uruchomRodzaj('uncertainty_sensitivity');
+    const tabela = screen.getByTestId('mvd-akad-obiekty-sensitivity_ranking');
     expect(tabela).toHaveTextContent('GPZ · sekcja 001 · szyna SN');
     expect(tabela.textContent ?? '').not.toContain('860003b4514aa388b39561d5005ce584');
   });

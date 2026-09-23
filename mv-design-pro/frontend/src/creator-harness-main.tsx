@@ -8,7 +8,7 @@
  * Sceny dowodowe OZE (karta V-A): `?creator=lom|frt|oltc|macierz` — ekrany z pełnym
  * wywodem akademickim (WHITE BOX/KaTeX) na realnych komponentach.
  * Sceny rundy dowodowej V-B (pełne wywody na żywych ekranach wyników):
- * `kompensacja-wynik|sila-sieci|odbior-zgodnosc|estymacja|ssci|migotanie`
+ * `kompensacja-wynik|sila-sieci|odbior-zgodnosc|estymacja|migotanie`
  * (scena „odbior-zgodnosc" = ekran „Zgodność powykonawcza"; nazwa `odbior`
  * pozostaje zajęta przez kreator odbioru nN — kolizja nazw scen).
  * Używany wyłącznie przez: e2e/creator-screenshot.spec.ts (nie część bundla aplikacji).
@@ -59,7 +59,6 @@ import {
 } from './ui2/wyniki/jakosc/EkranJakosci';
 import { EkranOdbioru } from './ui2/wyniki/odbior';
 import { EkranEstymacji } from './ui2/wyniki/estymacja';
-import { EkranSsci } from './ui2/wyniki/ssci';
 import { EkranAnalizAkademickich } from './ui2/wyniki/akademickie';
 // V126-JEZYK: scena "wyniki-warsztat" sluzy POMIAROWI UKLADU paska zakladek
 // (defekt ze zrzutu 3/3 wlasciciela: pasek wyjezdzal poza kadr) przy realnych
@@ -932,7 +931,7 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // backendu (`get_v126_catalog("analysis-types")`).
     return jsonOK(akademickieScenyBiegi.typy);
   }
-  if (url.includes('/v126/') && !url.includes('ssci_impedance')) {
+  if (url.includes('/v126/')) {
     // Scena "akademickie": koperta biegu, wynik, slad WHITE BOX, pakiet
     // dowodowy i raport z REALNYCH biegow V12.6 na sieci zlotej
     // (`eksport_fixtur_harnessu.py::akademickie_scena_biegi` — DOKLADNIE te
@@ -965,19 +964,8 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.includes('/results/v126/')) return jsonOK(bieg.wynik);
     return jsonOK(bieg.koperta);
   }
-  if (url.includes('/runs/v126/ssci_impedance')) {
-    // Scena "ssci": utworzenie przebiegu SSCI (koperta V126RunResponse) —
-    // HARNESS-RESZTA-2: koperta REALNEGO biegu backendu.
-    return jsonOK(akademickieScenyBiegi.biegi.ssci_impedance.koperta);
-  }
-  if (url.includes('/results/v126/ssci_impedance/stability')) {
-    // Scena "ssci": werdykt stabilnosci SSCI (kryterium impedancyjne Nyquista)
-    // — HARNESS-RESZTA-2: REALNY widok backendu (`get_v126_ssci_stability`, TA
-    // SAMA funkcja co koncowka) na REALNYM biegu `ssci_impedance` sieci zlotej
-    // z ZMATERIALIZOWANA karta przeksztaltnika. Wczesniej caly werdykt wraz z
-    // wywodem White Box byl wpisany recznie.
-    return jsonOK(akademickieScenyBiegi.biegi.ssci_impedance.stabilnosc);
-  }
+  // Scena "ssci" USUNIĘTA (rejestr domen i biegów, 2026-09-23): okno SSCI zeszło z
+  // ekranu razem z wycofaniem analizy badawczej (backend: 410 na POST i na werdykcie).
   // Karta FAB-L (§0 L6): USUNIĘTA kompozycja `/api/catalog/complete-bay-templates`
   // budowana w harnessie (refy szablonów niezgodne z konwencją backendu —
   // `ZPUE__ROTOBLOK__*` zamiast realnego `ZPUE_WLOSZCZOWA__ROTOBLOK__*`).
@@ -1431,9 +1419,8 @@ if (creator === 'arcflash') {
     rewizjaBiezacegoModelu: REWIZJA_SIECI_ZLOTEJ,
     snapshot: migawkaSieciZlotej(),
   } as never);
-} else if (creator === 'ssci' || creator === 'migotanie') {
-  // Runda dowodowa V-B: ssci — aktywny przypadek 'case-demo' zasiany globalnie;
-  // migotanie — przebieg zwarciowy podawany propem sekcji. Pusta galaz chroni
+} else if (creator === 'migotanie') {
+  // Runda dowodowa V-B: migotanie — przebieg zwarciowy podawany propem sekcji. Pusta galaz chroni
   // przed otwarciem formularza operacji kreatora w galezi domyslnej.
 } else if (creator === 'porownanie') {
   // Porownanie przebiegow A/B (R3-C/V12K-111): lista przebiegow i wynik
@@ -1853,7 +1840,6 @@ function Harness() {
     node = <EkranOdbioru trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'estymacja')
     node = <EkranEstymacji trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
-  else if (creator === 'ssci') node = <EkranSsci trybZaawansowania="expert" />;
   else if (creator === 'wyniki-warsztat')
     node = (
       <WynikiWarsztat
@@ -1943,7 +1929,7 @@ function Harness() {
         // Sceny rundy dowodowej V-B mają szerokie tabele (kolumny decyzyjne +
         // informacyjne + werdykt) — szerszy kadr eliminuje przycięcie z prawej.
         width: [
-          'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie', 'cieplna',
+          'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'migotanie', 'cieplna',
           'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-stabilnosc', 'akademickie',
           'ocena', 'ocena-przekroczenia',
         ].includes(creator)

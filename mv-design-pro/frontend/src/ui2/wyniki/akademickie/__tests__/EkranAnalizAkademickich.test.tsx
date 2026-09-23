@@ -289,11 +289,13 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
       expect(tabela).toHaveTextContent(podstawa.zrodlo_pl);
     }
     fireEvent.click(screen.getByTestId('mvd-akad-powrot'));
-    await otworzAnalize('ssci_impedance');
-    expect(karta('ssci_impedance').podstawa_oceny).toHaveLength(0);
+    // 2026-09-23: rodzaj bez podstawy oceny = `uncertainty_sensitivity` (dawny przykład
+    // `ssci_impedance` wycofany z ekranu razem z analizą badawczą SSCI).
+    await otworzAnalize('uncertainty_sensitivity');
+    expect(karta('uncertainty_sensitivity').podstawa_oceny).toHaveLength(0);
     const brak = screen.getByTestId('mvd-akad-kryteria-brak');
     expect(brak).toHaveTextContent(S.kryteriaBrakTytul);
-    expect(brak).toHaveTextContent((karta('ssci_impedance').bez_podstawy_pl ?? '').slice(0, 30));
+    expect(brak).toHaveTextContent((karta('uncertainty_sensitivity').bez_podstawy_pl ?? '').slice(0, 30));
     expect(screen.queryByTestId('mvd-akad-kryteria-tabela')).toBeNull();
   });
 });
@@ -522,18 +524,19 @@ describe('EkranAnalizAkademickich — parametry projektowe (formularz w sekcji �
     expect(zadaniaPost(mock)[0].body).toEqual({ parameters: {} });
   });
 
-  it('analiza licząca wprost z modelu nie ma formularza; jakość energii ma tabelę wierszy widma', async () => {
+  it('analiza licząca wprost z modelu nie ma formularza; rozruch silników ma tabelę wierszy', async () => {
+    // 2026-09-23: przykład listy wierszy = silniki (`motors`); lista widma harmonicznego
+    // należała do wycofanej analizy „Jakość energii i harmoniczne".
     ustawFetchV126();
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
     await otworzAnalize('insulation_coordination');
     expect(screen.queryByTestId('mvd-akad-parametry')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-akad-powrot'));
-    await otworzAnalize('power_quality_harmonics');
+    await otworzAnalize('motor_starting');
     expect(screen.getByTestId('mvd-akad-lista')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-akad-dodaj-wiersz'));
-    expect(screen.getByTestId('mvd-akad-pole-generator_ref')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-akad-pole-rzad')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-akad-pole-procent')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-akad-pole-rated_kw')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-akad-pole-bus_ref')).toBeInTheDocument();
   });
 
   it('formularz bez duplikacji kontraktu (karta V12.7 §0.4): plakietki WYMAGANE/OPCJONALNE, podsumowanie n/m z gotowości backendu (nie z DOM), pełna tabela zwinięta domyślnie', async () => {
@@ -587,56 +590,24 @@ describe('EkranAnalizAkademickich — stan danych karty, odmiana liczebnika PL (
   });
 });
 
-describe('EkranAnalizAkademickich — źródła harmoniczne pominięte / proweniencja (karta W2-C)', () => {
-  it('wynik bez pominiętych i bez proweniencji nie renderuje sekcji', async () => {
-    ustawFetchV126({ potwierdzone: ['power_quality_harmonics'] });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await otworzAnalize('power_quality_harmonics');
-    await uruchom();
-    expect(screen.queryByTestId('mvd-akad-zrodla-harmoniczne')).not.toBeInTheDocument();
-  });
+// 2026-09-23: blok „źródła harmoniczne pominięte / proweniencja (karta W2-C)" USUNIĘTY
+// razem z panelem — dotyczył wyłącznie rodzajów `power_quality_harmonics`/`ssci_impedance`,
+// wycofanych z ekranu (rejestr domen i biegów). Wycofanie przypina `wygaszenie.test.tsx`.
 
-  it('źródła pominięte i proweniencja widma renderują się z treścią z odpowiedzi API', async () => {
-    ustawFetchV126({
-      potwierdzone: ['power_quality_harmonics'],
-      pominieteZrodla: [{ ref: 'PV-BRAK', kod: 'generator.harmonic_spectrum_missing', powod: 'Karta katalogowa przekształtnika nie niesie widma prądu harmonicznych.' }],
-      zrodlaWidma: [{ ref: 'PV-OK', proweniencja: 'KATALOG' }],
-    });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await otworzAnalize('power_quality_harmonics');
-    await uruchom();
-    expect(screen.getByTestId('mvd-akad-zrodla-harmoniczne')).toBeInTheDocument();
-    const zrodlaWidma = screen.getByTestId('mvd-akad-zrodla-widma');
-    expect(zrodlaWidma.textContent).toContain('PV-OK');
-    expect(zrodlaWidma.textContent).toContain('z karty katalogowej');
-    const pominieteLista = screen.getByTestId('mvd-akad-zrodla-pominiete-lista');
-    expect(pominieteLista.textContent).toContain('PV-BRAK');
-    expect(pominieteLista.textContent).toContain('nie niesie widma prądu harmonicznych');
-  });
-
-  it('sekcja nie renderuje się dla rodzaju spoza harmonic_sources/converters', async () => {
-    ustawFetchV126({
-      potwierdzone: ['earthing_safety'],
-      pominieteZrodla: [{ ref: 'PV-1', kod: 'generator.converter_card_missing', powod: 'brak karty' }],
-    });
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await otworzAnalize('earthing_safety');
-    await uruchom();
-    expect(screen.queryByTestId('mvd-akad-zrodla-harmoniczne')).not.toBeInTheDocument();
-  });
-});
-
-describe('EkranAnalizAkademickich — dane odniesienia i odesłanie do SSCI', () => {
+describe('EkranAnalizAkademickich — dane odniesienia', () => {
   it('analiza z katalogiem odniesienia pobiera go dopiero po rozwinięciu (sekcja F)', async () => {
+    // 2026-09-23: przestrzeń `harmonic-limits` usunięta z backendu (limity bez dokumentu
+    // źródłowego) — przykład = poziomy izolacji koordynacji izolacji.
     const mock = ustawFetchV126();
     render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await otworzAnalize('power_quality_harmonics');
-    expect(karta('power_quality_harmonics').katalog_odniesienia).toBeTruthy();
-    expect(mock.mock.calls.filter((w) => String(w[0]).includes('/api/catalog/v126/harmonic-limits'))).toHaveLength(0);
+    await otworzAnalize('insulation_coordination');
+    expect(karta('insulation_coordination').katalog_odniesienia).toBe('insulation-levels');
+    expect(mock.mock.calls.filter((w) => String(w[0]).includes('/api/catalog/v126/insulation-levels'))).toHaveLength(0);
     fireEvent.click(screen.getByTestId('mvd-akad-katalog-przelacz'));
     await waitFor(() => {
-      expect(mock.mock.calls.filter((w) => String(w[0]).includes('/api/catalog/v126/harmonic-limits'))).toHaveLength(1);
+      expect(mock.mock.calls.filter((w) => String(w[0]).includes('/api/catalog/v126/insulation-levels'))).toHaveLength(1);
     });
+    expect(mock.mock.calls.filter((w) => String(w[0]).includes('harmonic-limits'))).toHaveLength(0);
   });
 
   it('analiza bez katalogu odniesienia nie pokazuje sekcji danych odniesienia', async () => {
@@ -646,13 +617,6 @@ describe('EkranAnalizAkademickich — dane odniesienia i odesłanie do SSCI', ()
     expect(screen.queryByTestId('mvd-akad-katalog')).not.toBeInTheDocument();
   });
 
-  it('analiza SSCI kieruje do okna stabilności SSCI zamiast duplikować werdykt', async () => {
-    ustawFetchV126();
-    render(<EkranAnalizAkademickich trybZaawansowania="expert" />);
-    await otworzAnalize('ssci_impedance');
-    fireEvent.click(screen.getByTestId('mvd-akad-przejdz-ssci'));
-    expect(useShellStore.getState().wynikiTab).toBe('ssci');
-  });
 });
 
 describe('EkranAnalizAkademickich — świeżość, tryb ekspercki, wejście trasowe', () => {

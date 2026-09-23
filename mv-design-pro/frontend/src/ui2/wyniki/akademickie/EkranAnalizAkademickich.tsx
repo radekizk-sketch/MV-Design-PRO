@@ -94,7 +94,6 @@ import { PodstawaStrukturalna, SzczegolyWyniku } from '../ocena/WynikWyjasniony'
 import {
   AKADEMICKIE_STRINGS as S,
   etykietaGotowosci,
-  etykietaProweniencjiWidma,
   etykietaRodzaju,
   etykietaStanuPrzebiegu,
   fmtPoziomyNapiec,
@@ -261,6 +260,36 @@ export function grupujKarty(karty: readonly KartaKatalogu[]): GrupaKart[] {
     const grupa = mapa.get(kod)!;
     return { kod, nazwa: grupa.nazwa, karty: grupa.karty };
   });
+}
+
+/**
+ * Karty WYCOFANE z następcą (backend: `prezentowany === false` i `nastepca_pl`) —
+ * rejestr domen i biegów, 2026-09-23. Ekran pokazuje je jako karty wycofania
+ * (powód + następca), NIGDY jako kartę uruchamialną; rodzaje wycofane bez
+ * następcy (W3-E, V126-WYGASZENIE) nadal znikają bez śladu.
+ */
+export function kartyWycofaneZNastepca(karty: readonly KartaKatalogu[]): readonly KartaKatalogu[] {
+  return karty.filter((karta) => !karta.prezentowany && Boolean(karta.nastepca_pl));
+}
+
+function KartaWycofana({ karta }: { karta: KartaKatalogu }) {
+  return (
+    <article
+      className="mvd-akad-karta mvd-akad-karta--wycofana"
+      data-testid={`mvd-akad-karta-wycofana-${karta.kod}`}
+    >
+      <h4 className="mvd-akad-karta-tytul">{karta.nazwa_pl}</h4>
+      <span className="mvd-akad-stan-danych">{S.kartaWycofanaStan}</span>
+      <div className="mvd-akad-karta-pole">
+        <span className="mvd-akad-karta-etyk">{S.kartaWycofanaPowod}</span>
+        <p className="mvd-akad-karta-tresc">{karta.powod_wycofania_pl}</p>
+      </div>
+      <div className="mvd-akad-karta-pole">
+        <span className="mvd-akad-karta-etyk">{S.kartaWycofanaNastepca}</span>
+        <p className="mvd-akad-karta-tresc">{karta.nastepca_pl}</p>
+      </div>
+    </article>
+  );
 }
 
 type StanKatalogu =
@@ -1267,46 +1296,6 @@ function PanelWynikuInzynierskiego({
   );
 }
 
-/** Źródła przekształtnikowe wejścia (karta W2-C): proweniencja widma i źródła pominięte. */
-function PanelZrodelHarmonicznych({ wynik }: { wynik: OdpowiedzWyniku }) {
-  const nazwaObiektu = useNazwaObiektu();
-  const zrodlaWidma = wynik.zrodla_widma ?? [];
-  const pominieteZrodla = wynik.pominiete_zrodla ?? [];
-  if (zrodlaWidma.length === 0 && pominieteZrodla.length === 0) return null;
-  return (
-    <section className="mvd-akad-sekcja" data-testid="mvd-akad-zrodla-harmoniczne">
-      {zrodlaWidma.length > 0 && (
-        <div data-testid="mvd-akad-zrodla-widma">
-          <h3 className="mvd-akad-sekcja-tytul">{S.zrodlaWidmaTytul}</h3>
-          <div className="mvd-akad-wiersze">
-            {zrodlaWidma.map((zrodlo) => (
-              <div className="mvd-akad-wiersz" key={zrodlo.ref}>
-                <span className="mvd-akad-wiersz-etyk">{nazwaObiektu(zrodlo.ref)}</span>
-                <span className="mvd-akad-wiersz-wartosc">
-                  {S.zrodlaWidmaProweniencjaEtykieta}: {etykietaProweniencjiWidma(zrodlo.proweniencja)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {pominieteZrodla.length > 0 && (
-        <div data-testid="mvd-akad-zrodla-pominiete">
-          <h3 className="mvd-akad-sekcja-tytul">{S.zrodlaPominieteTytul}</h3>
-          <p className="mvd-akad-opis">{S.zrodlaPominieteOpis}</p>
-          <ul className="mvd-akad-naruszenia" data-testid="mvd-akad-zrodla-pominiete-lista">
-            {pominieteZrodla.map((zrodlo) => (
-              <li key={zrodlo.ref} title={zrodlo.kod}>
-                {nazwaObiektu(zrodlo.ref)} — {S.zrodlaPominietePowod}: {zrodlo.powod}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </section>
-  );
-}
-
 /** Zapis techniczny odpowiedzi solvera — ZWINIĘTY materiał audytowy. */
 function PanelZapisuTechnicznego({ wynik }: { wynik: OdpowiedzWyniku }) {
   const wiersze = useMemo(() => splaszczWynik(wynik.result.result), [wynik]);
@@ -1850,6 +1839,17 @@ export function EkranAnalizAkademickich({
                 </div>
               </div>
             ))}
+          {katalog.rodzaj === 'gotowe' && kartyWycofaneZNastepca(katalog.karty).length > 0 && (
+            <div className="mvd-akad-katalog-grupa" data-testid="mvd-akad-katalog-wycofane">
+              <h4 className="mvd-akad-katalog-grupa-tytul">{S.katalogWycofaneTytul}</h4>
+              <p className="mvd-akad-opis">{S.katalogWycofaneOpis}</p>
+              <div className="mvd-akad-karty">
+                {kartyWycofaneZNastepca(katalog.karty).map((pozycja) => (
+                  <KartaWycofana key={pozycja.kod} karta={pozycja} />
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       </div>
     );
@@ -1887,19 +1887,6 @@ export function EkranAnalizAkademickich({
             trybEkspercki={trybEkspercki}
           />
           <SekcjaPytanie karta={karta} />
-          {wybrany === 'ssci_impedance' && (
-            <div className="mvd-akad-odeslanie" data-testid="mvd-akad-odeslanie-ssci">
-              <p className="mvd-akad-opis">{S.odeslanieSsci}</p>
-              <button
-                type="button"
-                className="mvd-akad-btn-wtorny"
-                data-testid="mvd-akad-przejdz-ssci"
-                onClick={() => setWynikiTab('ssci')}
-              >
-                {etykietaRodzaju('ssci_impedance')}
-              </button>
-            </div>
-          )}
           <SekcjaDane
             karta={karta}
             gotowosc={gotowoscWybranej}
@@ -2012,9 +1999,6 @@ export function EkranAnalizAkademickich({
 
               <PanelWerdyktu rodzaj={wybrany} payload={stan.dane.wynik.result.result} karta={karta} />
               <PanelWynikuInzynierskiego wynik={stan.dane.wynik} trybEkspercki={trybEkspercki} />
-              {(wybrany === 'power_quality_harmonics' || wybrany === 'ssci_impedance') && (
-                <PanelZrodelHarmonicznych wynik={stan.dane.wynik} />
-              )}
               <PanelWielkosci rodzaj={wybrany} payload={stan.dane.wynik.result.result} />
               {(PREZENTACJA[wybrany as RodzajPrezentowany]?.tabele ?? []).map((tabela) => (
                 <PanelObiektow

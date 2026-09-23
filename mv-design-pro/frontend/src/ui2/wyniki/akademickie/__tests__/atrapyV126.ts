@@ -56,9 +56,6 @@ export interface OpcjeAtrapy {
   readonly sekcjiRaportu?: number;
   /** Treść `detail` odmowy 422 uruchomienia. */
   readonly bladBiegu?: string;
-  /** Karta W2-C: pola addytywne odpowiedzi wyniku — źródła pominięte/proweniencja widma. */
-  readonly pominieteZrodla?: readonly { ref: string; kod: string; powod: string }[];
-  readonly zrodlaWidma?: readonly { ref: string; proweniencja: string }[];
   /** Karta AB-1a D7: pole addytywne `wynik_inzynierski` odpowiedzi wyniku (kształt
    *  `PozycjaWerdyktu.to_dict` z adaptera `wynik_inzynierski_v126.py`). */
   readonly wynikInzynierski?: unknown;
@@ -100,9 +97,12 @@ export function ustawFetchV126(opcje: OpcjeAtrapy = {}): Mock {
       return odpowiedz({ namespace: 'analysis-types', items: KATALOG.map((karta) => karta.kod) });
     }
     if (adres.includes('/api/catalog/v126/')) {
+      // Przestrzeń danych odniesienia z adresu (2026-09-23: `harmonic-limits` usunięta
+      // z backendu — atrapa odsyła przestrzeń, o którą pytano, nie zaszyte limity THD).
+      const przestrzen = adres.split('/api/catalog/v126/')[1] ?? '';
       return odpowiedz({
-        namespace: 'harmonic-limits',
-        items: { thdu_pnen50160_percent: 8, thdu_ieee519_percent: 5 },
+        namespace: przestrzen,
+        items: [{ u_m_kv: 12.0, bil_kv: 75.0, short_duration_50hz_kv: 28.0 }],
       });
     }
     if (adres.includes('/v126/gotowosc')) {
@@ -214,8 +214,6 @@ export function ustawFetchV126(opcje: OpcjeAtrapy = {}): Mock {
         },
         proof_ref: 'proof:v126:test:abc',
         report_ref: 'report:v126:test:abc',
-        ...(opcje.pominieteZrodla ? { pominiete_zrodla: opcje.pominieteZrodla } : {}),
-        ...(opcje.zrodlaWidma ? { zrodla_widma: opcje.zrodlaWidma } : {}),
         ...(opcje.wynikInzynierski ? { wynik_inzynierski: opcje.wynikInzynierski } : {}),
       });
     }

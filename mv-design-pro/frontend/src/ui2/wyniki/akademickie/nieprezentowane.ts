@@ -40,7 +40,9 @@ export type RodzajNieprezentowany =
   | 'benchmark_validation'
   | 'voltage_stability'
   | 'hosting_capacity'
-  | 'opf_loss_lcc';
+  | 'opf_loss_lcc'
+  | 'power_quality_harmonics'
+  | 'ssci_impedance';
 
 /** Rodzaje analiz obecne na ekranie projektanta — dopełnienie rejestru wycofań. */
 export type RodzajPrezentowany = Exclude<RodzajAnalizy, RodzajNieprezentowany>;
@@ -49,6 +51,9 @@ export type RodzajPrezentowany = Exclude<RodzajAnalizy, RodzajNieprezentowany>;
  * Powód wycofania każdego rodzaju — jedno zdanie merytoryczne, do rejestru
  * konfliktów i do meldunku. Tekst NIE trafia na ekran: wycofany rodzaj ma
  * zniknąć bez śladu, a nie zostawić po sobie notkę (ekran ma być KRÓTSZY).
+ * Wyjątek (rejestr domen i biegów, 2026-09-23): rodzaj, któremu BACKEND nadał
+ * następcę (`KartaKatalogu.nastepca_pl`), ma na ekranie kartę wycofania z powodem
+ * i następcą z katalogu backendu — nie ten tekst i nie uruchamialną kartę.
  */
 export const POWODY_NIEPREZENTOWANIA: Record<RodzajNieprezentowany, string> = {
   benchmark_validation:
@@ -90,6 +95,19 @@ export const POWODY_NIEPREZENTOWANIA: Record<RodzajNieprezentowany, string> = {
     + 'zawsze 0 (kanon optymalizuje zaczep), prąd gałęzi z obciążenia jednej szyny '
     + '(nie z rozpływu). Kanon strat: ekran „Kryteria › Wyposażenie" '
     + '(POST /api/solver/transformer-losses); kanon zaczepu: ekran „Wyniki › OLTC".',
+  // Program A/B, rejestr domen i biegów (2026-09-23): rejestr zdolności backendu
+  // `availability="withdrawn"`, 410 na POST. W odróżnieniu od wpisów wyżej karta
+  // katalogu NIE znika: ekran „Analizy specjalistyczne" pokazuje powód i następcę
+  // (`KartaKatalogu.nastepca_pl`) zamiast uruchamialnej karty — projektant szukający
+  // harmonicznych dowiaduje się, dlaczego ich nie ma.
+  power_quality_harmonics:
+    'Liczby tej analizy nie opisują fizyki sieci: admitancja bez modeli elementów '
+    + 'zależnych od częstotliwości, ciche pseudoodwrócenie macierzy, impedancja źródła '
+    + 'z założenia i limity THD/TDD zaszyte bez dokumentu źródłowego.',
+  ssci_impedance:
+    'Analiza badawcza: werdykt Nyquista stał na zapasie fazy 30° zaszytym w kodzie '
+    + 'i na impedancji sieci z impedancji źródła przyjętej z założenia — nie jest '
+    + 'dowodem stabilności, więc nie trafia na ekran.',
 };
 
 /** Zbiór kodów wycofanych — pochodna rejestru, nie druga lista do utrzymania. */

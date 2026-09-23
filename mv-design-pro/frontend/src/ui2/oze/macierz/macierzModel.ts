@@ -76,7 +76,10 @@ export interface NumeryczneModulu {
   readonly qMax: string;
   readonly reactiveCurrentGain: string;
   readonly pRecoveryTimeS: string;
-  readonly thduPercent: string;
+  // `thduPercent` USUNIĘTE (audyt harmonicznych #24, 2026-09-23): THD napięcia jest
+  // własnością napięcia sieci, nie emisji modułu — kontrolka była fantomem
+  // semantycznym. Pole kontraktu FROZEN `harmonic_thdu_percent` zostaje, macierz go
+  // nie wysyła (ten sam stan co most modelu `application/ncrfg_compliance`).
 }
 
 export type KluczNumeryczny = keyof NumeryczneModulu;
@@ -200,7 +203,6 @@ const DOMYSLNE_NUMERYCZNE: NumeryczneModulu = {
   qMax: '0.33',
   reactiveCurrentGain: '2',
   pRecoveryTimeS: '1',
-  thduPercent: '',
 };
 
 /** Zdolności wstępne + pochodzenie z realnego DER (read-only, bez mutacji). */
@@ -350,7 +352,6 @@ export function zbudujWejscieModulu(
     q_range_pct_pn_max: parsujOpcjonalna(n.qMax),
     reactive_current_gain: parsujOpcjonalna(n.reactiveCurrentGain),
     p_recovery_time_s: parsujOpcjonalna(n.pRecoveryTimeS),
-    harmonic_thdu_percent: parsujOpcjonalna(n.thduPercent),
   };
 }
 

@@ -58,7 +58,9 @@ export interface NcRfgModuleInput {
   readonly q_range_pct_pn_max?: number | null;
   readonly reactive_current_gain?: number | null;
   readonly p_recovery_time_s?: number | null;
-  readonly harmonic_thdu_percent?: number | null;
+  // `harmonic_thdu_percent` (pole kontraktu FROZEN) celowo NIEOBECNE w typie żądania
+  // frontu: THD napięcia to własność sieci, nie modułu (audyt harmonicznych #24) —
+  // żaden ekran nie może go wysłać.
 }
 
 export interface NcRfgRunRequest {

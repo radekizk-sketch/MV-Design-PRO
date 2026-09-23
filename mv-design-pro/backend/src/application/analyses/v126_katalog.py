@@ -18,7 +18,7 @@ wyłącznie prezentuje. Ten moduł opisuje każdy rodzaj kontraktu
   * PODSTAWA OCENY — WYŁĄCZNIE tam, gdzie solver FROZEN
     (`network_model/solvers/v126_academic.py`) realnie stosuje próg:
     wielkość, warunek, wartość graniczna, źródło. Liczby graniczne są
-    LITERAŁAMI solvera (8 %/5 %/5 % THD/TDD, margines BIL 20 %, zapad 15 %,
+    LITERAŁAMI solvera (margines BIL 20 %, zapad 15 %,
     margines TRV 10 %, I_res ≤ 10 % I_C…) — parytet z solverem pilnuje
     `tests/test_v126_katalog_analiz.py`, bo solver ich nie eksportuje (B-01,
     nie edytujemy go). Rodzaj bez progu w solverze mówi to WPROST
@@ -201,6 +201,12 @@ class KartaAnalizy:
     domyslne_solvera: tuple[DomyslnaSolvera, ...] = ()
     prezentowany: bool = True
     powod_wycofania_pl: str | None = None
+    #: Karta AB-1d_min krok 3 — następca rodzaju WYCOFANEGO, który ekran „Analizy
+    #: specjalistyczne" pokazuje razem z powodem zamiast uruchamialnej karty (rodzaj
+    #: wycofany Z następcą nie znika bez śladu: projektant, który go szuka, dowiaduje
+    #: się, dlaczego go nie ma i co go zastąpi). `None` = rodzaj wycofany bez
+    #: następcy na ekranie (W3-E: kanon ma własny ekran; V126-WYGASZENIE).
+    nastepca_pl: str | None = None
     #: Przestrzeń nazw `GET /api/catalog/v126/{namespace}` z danymi odniesienia.
     katalog_odniesienia: str | None = None
     #: Uwagi o metodzie solvera istotne dla interpretacji (jawne, nie ukryte).
@@ -233,6 +239,7 @@ class KartaAnalizy:
             },
             "prezentowany": self.prezentowany,
             "powod_wycofania_pl": self.powod_wycofania_pl,
+            "nastepca_pl": self.nastepca_pl,
             "katalog_odniesienia": self.katalog_odniesienia,
             "uwagi_metody_pl": list(self.uwagi_metody_pl),
             "zakres_oceny": self.zakres_oceny,
@@ -241,9 +248,9 @@ class KartaAnalizy:
 
 # --- Literały progów solvera FROZEN (parytet pilnowany testem) ---------------
 
-THD_U_PNEN50160_PROCENT = 8.0
-THD_U_IEEE519_PROCENT = 5.0
-TDD_IEEE519_PROCENT = 5.0
+# Karta AB-1d_min krok 3: literały THD_U 8 % / 5 % i TDD 5 % USUNIĘTE z katalogu —
+# karta „Jakość energii i harmoniczne” jest wycofana i nie publikuje podstawy oceny
+# (limity harmonicznych czekają na dokument źródłowy, OD-38).
 MARGINES_BIL_MIN_PROCENT = 20.0
 ZAPAD_ROZRUCHU_MAX_PROCENT = 15.0
 WSKAZNIK_CIEPLNY_ROZRUCHU_MAX = 1.0
@@ -333,145 +340,66 @@ _WYCOFANIE_STABILNOSC = (
     "pokrycia w danych i normie oraz na mocy zwarciowej węzłów podstawianej z napięcia "
     "znamionowego. Powrót wymaga policzenia wielkości rozpływem, nie przywrócenia tabel."
 )
+# Karta AB-1d_min krok 3 — karty ekranu tych samych dwóch rodzajów, dla których
+# `api/v126_academic.py::_ANALIZY_WYCOFANE` niesie treść 410; parę „rejestr withdrawn ⇔
+# treść 410 ⇔ karta nieprezentowana z powodem" przypina
+# `tests/application/test_rodzaje_biegow_jedna_lista.py`.
+_WYCOFANIE_HARMONICZNE = (
+    "Liczby tej analizy nie opisują fizyki sieci: admitancja sieci w funkcji częstotliwości "
+    "bez modeli elementów zależnych od częstotliwości, ciche pseudoodwrócenie macierzy, "
+    "impedancja źródła przyjęta z założenia i limity THD/TDD zaszyte bez dokumentu "
+    "źródłowego. Uruchomienie nowego biegu jest odmawiane."
+)
+_NASTEPCA_HARMONICZNE = (
+    "Rozpływ harmonicznych na osi częstotliwości w hercach (także interharmoniczne) "
+    "z modelami elementów zależnymi od częstotliwości — do czasu jego rdzenia produkt "
+    "nie pokazuje żadnej liczby harmonicznej. Limity harmonicznych czekają na dokument "
+    "źródłowy właściwego operatora."
+)
+_WYCOFANIE_SSCI = (
+    "Analiza badawcza: werdykt kryterium Nyquista stał na zapasie fazy 30° zaszytym w kodzie "
+    "i na impedancji sieci wyznaczonej z impedancji źródła przyjętej z założenia — nie jest "
+    "dowodem stabilności. Uruchomienie nowego biegu jest odmawiane, werdykt nie jest "
+    "wyświetlany."
+)
+_NASTEPCA_SSCI = (
+    "Powrót jako analiza badawcza po wyznaczeniu impedancji sieci w funkcji częstotliwości "
+    "przez rdzeń harmoniczny — z zapasem stabilności pochodzącym z dokumentu, nie z kodu."
+)
 
 KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
+    # Karta AB-1d_min krok 3: oba rodzaje WYCOFANE z powierzchni (rejestr zdolności
+    # `availability="withdrawn"`, 410 na POST) — karta niesie wyłącznie powód i
+    # następcę. Dawna treść (podstawa oceny THD_U ≤ 8 %/5 %, TDD ≤ 5 %, skan Z(f)
+    # 50–2500 Hz, werdykt Nyquista) USUNIĘTA: publikowała liczby, które nie opisują
+    # fizyki sieci (audyt harmonicznych F1–F9, przegląd adwersarialny §6.4).
     KartaAnalizy(
         kod=V126AnalysisType.POWER_QUALITY_HARMONICS.value,
         nazwa_pl="Jakość energii i harmoniczne",
-        grupa=GRUPA_JAKOSC,
+        grupa=GRUPA_WYCOFANE,
         pytanie_pl=(
             "Czy odkształcenie napięcia i prądu w węzłach sieci mieści się w granicach "
             "kompatybilności elektromagnetycznej?"
         ),
-        zakres_pl=(
-            "Wszystkie szyny modelu; źródła odkształcające = przekształtniki z widmem "
-            "harmonicznym (karta katalogowa albo widmo podane ręcznie); harmoniczne rzędów "
-            "2–49; skan impedancji węzłów w paśmie 50–2500 Hz z wykrywaniem rezonansów."
-        ),
-        wielkosci_glowne=(
-            WielkoscGlowna("THD_U", "Współczynnik odkształcenia napięcia", "%", r"\mathrm{THD}_U"),
-            WielkoscGlowna("TDD", "Odkształcenie prądu odbiorcy", "%", r"\mathrm{TDD}"),
-            WielkoscGlowna("K", "Współczynnik K obciążenia transformatora", "-", "K"),
-            WielkoscGlowna("Z(f)", "Impedancja węzła w funkcji częstotliwości", "Ω", r"Z(f)"),
-        ),
-        podstawa_oceny=(
-            PodstawaOceny(
-                "Odkształcenie napięcia",
-                "THD_U",
-                "%",
-                "w każdym węźle modelu, dla sieci SN i nN",
-                THD_U_PNEN50160_PROCENT,
-                "PN-EN 50160",
-                symbol_latex=r"\mathrm{THD}_U",
-                warunek_latex=r"\mathrm{THD}_U \leq 8\%",
-            ),
-            PodstawaOceny(
-                "Odkształcenie napięcia",
-                "THD_U",
-                "%",
-                "w każdym węźle modelu (granica ostrzejsza)",
-                THD_U_IEEE519_PROCENT,
-                "IEEE 519",
-                symbol_latex=r"\mathrm{THD}_U",
-                warunek_latex=r"\mathrm{THD}_U \leq 5\%",
-            ),
-            PodstawaOceny(
-                "Odkształcenie prądu odbiorcy",
-                "TDD",
-                "%",
-                "odniesione do prądu obciążenia szyny wyznaczonego z mocy czynnej szyny",
-                TDD_IEEE519_PROCENT,
-                "IEEE 519",
-                symbol_latex=r"\mathrm{TDD}",
-                warunek_latex=r"\mathrm{TDD} \leq 5\%",
-            ),
-        ),
-        dane_z_modelu=(
-            DanaZModelu("Napięcie znamionowe i obciążenie szyn", "szyny, odbiory"),
-            DanaZModelu("Impedancje i susceptancje gałęzi", "linie, kable, aparaty łączeniowe"),
-            DanaZModelu("Parametry transformatorów", "transformatory (S_n, u_k)"),
-            DanaZModelu("Moc zwarciowa źródła zasilania", "źródło sieci nadrzędnej"),
-            DanaZModelu(
-                "Widmo harmoniczne i moc znamionowa przekształtników",
-                "karty katalogowe przekształtników PV/BESS/wiatrowych",
-            ),
-        ),
-        od_uzytkownika=(
-            ParametrUzytkownika(
-                "harmonic_spectra",
-                "Widmo harmoniczne przekształtnika (wejście ręczne)",
-                "% I_n per rząd",
-                False,
-                "Nadpisuje widmo karty katalogowej wskazanego przekształtnika.",
-            ),
-        ),
-        katalog_odniesienia="harmonic-limits",
+        zakres_pl="Rodzaj wycofany z powierzchni — uruchomienie nowego biegu jest odmawiane.",
+        bez_podstawy_pl=_WYCOFANIE_HARMONICZNE,
+        prezentowany=False,
+        powod_wycofania_pl=_WYCOFANIE_HARMONICZNE,
+        nastepca_pl=_NASTEPCA_HARMONICZNE,
     ),
     KartaAnalizy(
         kod=V126AnalysisType.SSCI_IMPEDANCE.value,
         nazwa_pl="Stabilność podsynchroniczna (SSCI)",
-        grupa=GRUPA_JAKOSC,
+        grupa=GRUPA_WYCOFANE,
         pytanie_pl=(
             "Czy przekształtnik przyłączony do sieci o danej sztywności nie wejdzie "
             "w interakcję podsynchroniczną (rezonans regulacyjny)?"
         ),
-        zakres_pl=(
-            "Jeden przekształtnik — wskazany parametrem albo pierwszy przekształtnik modelu; "
-            "impedancja sieci widziana z jego szyny i impedancja wyjściowa przekształtnika "
-            "w paśmie podsynchronicznym; werdykt kryterium Nyquista wystawia okno "
-            "„Stabilność SSCI”."
-        ),
-        wielkosci_glowne=(
-            WielkoscGlowna(
-                "Z_grid(f)",
-                "Impedancja sieci z szyny przekształtnika",
-                "Ω",
-                r"Z_{\mathrm{grid}}(f)",
-            ),
-            WielkoscGlowna(
-                "Z_conv(f)",
-                "Impedancja wyjściowa przekształtnika",
-                "Ω",
-                r"Z_{\mathrm{conv}}(f)",
-            ),
-            WielkoscGlowna(
-                "L(f)",
-                "Wzmocnienie pętli mniejszej Z_grid/Z_conv",
-                "-",
-                r"L(f) = Z_{\mathrm{grid}}(f)/Z_{\mathrm{conv}}(f)",
-            ),
-            WielkoscGlowna(
-                "Re Z_conv,min",
-                "Najmniejsza rezystancja wyjściowa przekształtnika",
-                "Ω",
-                r"\min\ \mathrm{Re}\,Z_{\mathrm{conv}}",
-            ),
-        ),
-        bez_podstawy_pl=(
-            "Ta analiza dostarcza tablice impedancji; werdykt stabilności (kryterium "
-            "impedancyjne Nyquista wg Sun 2011 / Wen 2016) wystawia osobne okno "
-            "„Stabilność SSCI” z własnym kontraktem."
-        ),
-        dane_z_modelu=(
-            DanaZModelu(
-                "Karta przekształtnika: napięcie i moc znamionowa, pasma pętli prądowej, "
-                "napięciowej i PLL, opóźnienie regulacji, indukcyjność i rezystancja filtra, "
-                "tryb pracy, punkt pracy P/Q",
-                "przekształtnik PV/BESS/wiatrowy z kartą katalogową",
-            ),
-            DanaZModelu("Impedancje i susceptancje gałęzi", "linie, kable, aparaty łączeniowe"),
-            DanaZModelu("Moc zwarciowa źródła zasilania", "źródło sieci nadrzędnej"),
-        ),
-        od_uzytkownika=(
-            ParametrUzytkownika(
-                "ssci_converter_ref",
-                "Oznaczenie przekształtnika do badania",
-                "-",
-                False,
-                "Puste = pierwszy przekształtnik modelu.",
-            ),
-        ),
-        katalog_odniesienia="converter-modes",
+        zakres_pl="Analiza badawcza wycofana z powierzchni — bez werdyktu stabilności.",
+        bez_podstawy_pl=_WYCOFANIE_SSCI,
+        prezentowany=False,
+        powod_wycofania_pl=_WYCOFANIE_SSCI,
+        nastepca_pl=_NASTEPCA_SSCI,
     ),
     KartaAnalizy(
         kod=V126AnalysisType.VOLTAGE_STABILITY.value,

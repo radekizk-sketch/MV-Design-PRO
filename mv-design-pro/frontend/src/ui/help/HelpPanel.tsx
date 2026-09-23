@@ -45,7 +45,13 @@ const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
   {
     term: 'PCC',
     definition: 'Point of Common Coupling - punkt przyłączenia odbiorcy/źródła do sieci OSD.',
-    normative: 'IEEE 519, IEC 61000-2-4',
+    // Program A/B (audyt harmonicznych, 2026-09-23): IEC 61000-2-4 opisuje poziomy
+    // kompatybilności w sieciach PRZEMYSŁOWYCH, nie w publicznej sieci dystrybucyjnej;
+    // IEEE 519 nie jest dokumentem przyłączeniowym w PL. Dokument źródłowy limitów
+    // harmonicznych czeka na decyzję właściciela (OD-38) — do tego czasu bez liczb.
+    normative:
+      'Limity harmonicznych w miejscu przyłączenia: dokument źródłowy nierozstrzygnięty — '
+      + 'produkt nie podaje dziś żadnej wartości granicznej',
   },
   {
     term: 'NC RfG',
@@ -59,7 +65,9 @@ const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
   },
   {
     term: 'ROCOF / dRoCoF',
-    definition: 'Rate of Change of Frequency - szybkość zmiany częstotliwości (Hz/s). Wymagana wartość dla DER w PL: ±2 Hz/s.',
+    // Ta sama klasa co limit harmonicznych wyżej (KLASA §5, jeden plik): „±2 Hz/s"
+    // bez dokumentu i okna pomiaru — wymaganie pochodzi z profilu operatora (OD-21).
+    definition: 'Rate of Change of Frequency - szybkość zmiany częstotliwości (Hz/s). Wymaganą wartość i okno pomiaru określa dokument właściwego operatora.',
     normative: 'NC RfG Art. 13, PTPIREE WiPWC',
   },
   {
@@ -104,7 +112,8 @@ const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
   },
   {
     term: 'OSD',
-    definition: 'Operator Systemu Dystrybucyjnego - PSE (przesył), Energa/Tauron/Enea/PGE (dystrybucja).',
+    // PSE jest operatorem systemu PRZESYŁOWEGO (OSP), nie OSD — definicja poprawiona.
+    definition: 'Operator Systemu Dystrybucyjnego - np. Energa, Tauron, Enea, PGE, Stoen Operator (PSE jest operatorem systemu przesyłowego, OSP).',
     normative: 'IRiESD per operator',
   },
   {
@@ -114,7 +123,8 @@ const GLOSSARY_ENTRIES: readonly GlossaryEntry[] = [
   },
   {
     term: 'Anti-islanding',
-    definition: 'Zabezpieczenie wyspowe DER - wykrywa pracę na "wyspie" (odcięcie od sieci) i wyłącza źródło w max 2s.',
+    // Czas „max 2 s" bez dokumentu źródłowego USUNIĘTY (ta sama klasa co wyżej).
+    definition: 'Zabezpieczenie wyspowe DER - wykrywa pracę na "wyspie" (odcięcie od sieci) i wyłącza źródło w czasie określonym przez dokument właściwego operatora.',
     normative: 'IEEE 1547, PN-EN 50438, NC RfG',
   },
 ];

@@ -235,53 +235,19 @@ export const MAPA_WIARYGODNOSCI: MapaWerdyktu = {
  */
 export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
   // -------------------------------------------------------------------------
-  power_quality_harmonics: {
-    werdykt: {
-      rodzaj: 'zbiorczy',
-      sciezkaTablicy: 'nodes',
-      kluczStatusu: 'compatibility_status',
-      mapa: ZGODNY,
-      wartoscSpelniona: 'zgodny',
-      obiektyDopelniacz: 'węzłów',
-    },
-    wielkosciGlowne: [],
-    tabele: [
-      {
-        sciezka: 'nodes',
-        tytul: 'Odkształcenie w węzłach sieci',
-        kluczRef: 'bus_ref',
-        etykietaRef: 'Szyna',
-        kolumny: [
-          { klucz: 'thd_u_percent', etykieta: 'Odkształcenie napięcia THD_U', jednostka: '%' },
-          { klucz: 'tdd_percent', etykieta: 'Odkształcenie prądu TDD', jednostka: '%' },
-          { klucz: 'k_factor', etykieta: 'Współczynnik K (obciążenie transformatora)' },
-          {
-            klucz: 'compatibility_status',
-            etykieta: 'Kryterium kompatybilności',
-            mapaStatusu: ZGODNY,
-          },
-        ],
-      },
-    ],
-    nastepnyKrok:
-      'Przy przekroczeniu limitu: sprawdź rezonanse w skanie impedancji węzła, '
-      + 'a następnie dobierz filtr harmonicznych albo zmień punkt przyłączenia źródła '
-      + 'odkształcającego w modelu sieci.',
-  },
-
-  // -------------------------------------------------------------------------
-  ssci_impedance: {
-    werdykt: {
-      rodzaj: 'pojedynczy',
-      sciezki: ['sanity.status'],
-      mapa: MAPA_WIARYGODNOSCI,
-    },
-    wielkosciGlowne: [],
-    tabele: [],
-    nastepnyKrok:
-      'Przejdź do okna „Stabilność SSCI" po werdykt Nyquista dla wybranego '
-      + 'przekształtnika i węzła przyłączenia.',
-  },
+  /*
+   * JAKOŚĆ ENERGII I HARMONICZNE oraz STABILNOŚĆ SSCI — RODZAJE WYCOFANE Z EKRANU
+   * (program A/B, kamień rejestru domen i biegów, 2026-09-23). Projekty ekranu
+   * USUNIĘTE, wpisy przeniesione do `nieprezentowane.ts` z powodem.
+   *
+   * Tabela THD_U/TDD/K z „kryterium kompatybilności" pokazywała liczby, które nie
+   * opisują fizyki sieci (audyt harmonicznych F1–F9: admitancja bez modeli
+   * zależnych od częstotliwości, ciche pseudoodwrócenie, impedancja źródła
+   * z założenia, limity zaszyte), a „następny krok" odsyłał do filtra, którego
+   * model sieci nie zna. Werdykt SSCI stał na zapasie fazy 30° zaszytym w kodzie.
+   * Backend odmawia uruchomienia nowych biegów (410); katalog pokazuje powód
+   * i następcę zamiast uruchamialnej karty.
+   */
 
   // -------------------------------------------------------------------------
   /*
