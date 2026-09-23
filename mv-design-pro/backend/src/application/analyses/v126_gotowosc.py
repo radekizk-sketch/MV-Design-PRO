@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from application.analyses.v126_katalog import karta_analizy, nazwa_parametru_pl
+from application.solvers.solver_capability_registry import BIEGI_V126, get_solver_capability
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
@@ -43,7 +44,6 @@ from solver_input.v126_contracts import (
     generatory_przeksztaltnikowe_v126,
     odbiorcy_z_parametrow,
     ograniczniki_bez_uziemienia_sieci,
-    pominiete_zrodla_v126,
 )
 
 GOTOWOSC_POTWIERDZONA = "POTWIERDZONA"
@@ -57,8 +57,6 @@ BRAK_WEZLOW_PL = (
 )
 
 _KOD_Q = "generator.q_missing"
-_KOD_KARTA = "generator.converter_card_missing"
-_KOD_WIDMO = "generator.harmonic_spectrum_missing"
 
 #: Kody uziemienia punktu neutralnego modelu (`GroundingConfig.type`) → wartości
 #: parametrów solvera. Dławik w modelu proponujemy jako DOSTROJONY (solver rozróżnia
@@ -387,168 +385,6 @@ def _warunki_q_generatorow(enm: EnergyNetworkModel) -> Warunek:
         spelniony=not bez_q,
         elementy=bez_q,
     )
-
-
-def _warunki_harmoniczne(
-    enm: EnergyNetworkModel, model: V126AcademicInput, parametry: dict[str, Any]
-) -> list[Warunek]:
-    kandydaci = generatory_przeksztaltnikowe_v126(enm)
-    pominiete = pominiete_zrodla_v126(enm, parameters=parametry)
-    warunki: list[Warunek] = []
-    if kandydaci and not model.harmonic_sources:
-        # Karta B-02 (2026-09-10): brak nazwany PO PRZYCZYNIE z JEDNEJ oceny karty
-        # (`pominiete_zrodla_v126` — ta sama ocena, którą most buduje wejście;
-        # predykaty parami). Przed tą naprawą KAŻDY kandydat bez wejścia dostawał
-        # kod „brak widma" z kluczem `harmonic_spectra` — także generator BEZ KARTY
-        # (bez mocy znamionowej), którego widmo ręczne NIE odblokuje: prąd bazowy
-        # wstrzyknięcia liczy się z S_n karty. Ekran wskazywał wtedy formularz
-        # widma jako remedium, a bieg po jego wypełnieniu dalej odmawiał 422 —
-        # fabrykacja remedium. Gdy `model.harmonic_sources` jest puste, każdy
-        # kandydat jest w `pominiete` dokładnie z jednym z dwóch kodów (pinuje
-        # `tests/application/analyses/test_v126_gotowosc.py`).
-        bez_karty = tuple(p["ref"] for p in pominiete if p["kod"] == _KOD_KARTA)
-        bez_widma = tuple(p["ref"] for p in pominiete if p["kod"] == _KOD_WIDMO)
-        if bez_karty:
-            warunki.append(
-                Warunek(
-                    kod=_KOD_KARTA,
-                    opis_pl=(
-                        "Przekształtniki bez karty katalogowej z mocą znamionową (z niej liczony "
-                        "jest prąd bazowy wstrzyknięcia; widmo ręczne jej nie zastępuje) — "
-                        "generatory bez karty przekształtnika"
-                    ),
-                    spelniony=False,
-                    elementy=bez_karty,
-                )
-            )
-        if bez_widma:
-            warunki.append(
-                Warunek(
-                    kod=_KOD_WIDMO,
-                    opis_pl=(
-                        "Przekształtniki z kartą katalogową bez widma harmonicznego (karta "
-                        "katalogowa albo wejście ręczne) — generatory bez widma harmonicznego"
-                    ),
-                    spelniony=False,
-                    elementy=bez_widma,
-                    klucz_parametru="harmonic_spectra",
-                )
-            )
-    else:
-        warunki.append(
-            Warunek(
-                kod="zrodla.odksztalcajace",
-                opis_pl=(
-                    f"Źródła odkształcające z widmem harmonicznym: {len(model.harmonic_sources)}"
-                    if model.harmonic_sources
-                    else "Model nie zawiera przekształtników z widmem harmonicznym — brak źródeł "
-                    "odkształcających do wstrzyknięcia (analiza dałaby zerowe odkształcenie z braku "
-                    "danych, nie z pomiaru)"
-                ),
-                spelniony=bool(model.harmonic_sources),
-                elementy=tuple(z.source_ref for z in model.harmonic_sources),
-                klucz_parametru=None if model.harmonic_sources else "harmonic_spectra",
-            )
-        )
-    if pominiete and model.harmonic_sources:
-        warunki.append(
-            Warunek(
-                kod="zrodla.pominiete",
-                opis_pl=(
-                    "Część przekształtników pominięta w wejściu (brak karty albo widma): "
-                    + ", ".join(f"{p['ref']} ({p['kod']})" for p in pominiete)
-                ),
-                spelniony=False,
-                elementy=tuple(p["ref"] for p in pominiete),
-                blokujacy=False,
-            )
-        )
-    return warunki
-
-
-def _warunki_ssci(
-    enm: EnergyNetworkModel, model: V126AcademicInput, parametry: dict[str, Any]
-) -> list[Warunek]:
-    kandydaci = generatory_przeksztaltnikowe_v126(enm)
-    warunki: list[Warunek] = []
-    if kandydaci and not model.converters:
-        warunki.append(
-            Warunek(
-                kod=_KOD_KARTA,
-                opis_pl=(
-                    "Żaden przekształtnik nie ma karty katalogowej z mocą znamionową — "
-                    "generatory bez karty przekształtnika"
-                ),
-                spelniony=False,
-                elementy=tuple(kandydaci),
-            )
-        )
-        return warunki
-    warunki.append(
-        Warunek(
-            kod="przeksztaltnik.obecny",
-            opis_pl=(
-                f"Przekształtniki z kartą katalogową w modelu: {len(model.converters)}"
-                if model.converters
-                else "Model nie zawiera przekształtnika (falownika) z kartą katalogową"
-            ),
-            spelniony=bool(model.converters),
-            elementy=tuple(c.ref for c in model.converters),
-        )
-    )
-    if not model.converters:
-        return warunki
-    ref = parametry.get("ssci_converter_ref")
-    wybrany = (
-        next((c for c in model.converters if c.ref == ref), None)
-        if _obecna(ref)
-        else model.converters[0]
-    )
-    if wybrany is None:
-        warunki.append(
-            Warunek(
-                kod="parametr.ssci_converter_ref",
-                opis_pl=f"Wskazany przekształtnik „{ref}” nie występuje w modelu",
-                spelniony=False,
-                klucz_parametru="ssci_converter_ref",
-            )
-        )
-        return warunki
-    warunki.append(
-        Warunek(
-            kod=_KOD_Q,
-            opis_pl=(
-                f"Moc bierna przekształtnika {wybrany.ref} jest znana"
-                if wybrany.q_mvar is not None
-                else f"Przekształtnik analizy SSCI bez mocy biernej: {wybrany.ref}"
-            ),
-            spelniony=wybrany.q_mvar is not None,
-            elementy=(wybrany.ref,),
-        )
-    )
-    brakujace_pola = [
-        nazwa
-        for nazwa, wartosc in (
-            ("current_loop_bandwidth_hz", wybrany.current_loop_bandwidth_hz),
-            ("pll_bandwidth_hz", wybrany.pll_bandwidth_hz),
-            ("filter_l_pu", wybrany.filter_l_pu),
-        )
-        if wartosc is None
-    ]
-    warunki.append(
-        Warunek(
-            kod="przeksztaltnik.karta_ssci",
-            opis_pl=(
-                f"Karta przekształtnika {wybrany.ref} niesie pasmo pętli prądowej, pasmo PLL "
-                "i indukcyjność filtra"
-                if not brakujace_pola
-                else f"Karta przekształtnika {wybrany.ref} bez pól: " + ", ".join(brakujace_pola)
-            ),
-            spelniony=not brakujace_pola,
-            elementy=(wybrany.ref,),
-        )
-    )
-    return warunki
 
 
 def _warunki_niezawodnosci(
@@ -937,22 +773,6 @@ def _dane_z_modelu(
         # docstring `czestotliwosc_modelu`).
         DanaZModeluWartosc("Częstotliwość sieci", wartosc_czestotliwosci),
     ]
-    if rodzaj in (V126AnalysisType.POWER_QUALITY_HARMONICS, V126AnalysisType.SSCI_IMPEDANCE):
-        dane.append(
-            DanaZModeluWartosc(
-                "Przekształtniki z kartą katalogową",
-                f"{len(model.converters)}",
-                tuple(c.ref for c in model.converters),
-            )
-        )
-    if rodzaj == V126AnalysisType.POWER_QUALITY_HARMONICS:
-        dane.append(
-            DanaZModeluWartosc(
-                "Źródła harmoniczne z widmem",
-                f"{len(model.harmonic_sources)}",
-                tuple(z.source_ref for z in model.harmonic_sources),
-            )
-        )
     if rodzaj == V126AnalysisType.INSULATION_COORDINATION:
         dane.append(
             DanaZModeluWartosc(
@@ -983,20 +803,21 @@ def ocen_gotowosc_v126(
     obecność danych każdego rodzaju. Wynik zasila ekran i odmowę 422 (predykaty
     parami). Rodzaj wycofany z powierzchni dostaje `WYCOFANA` bez sprawdzeń.
     """
-    karta = karta_analizy(rodzaj.value)
-    if (
-        not karta.prezentowany
-        and karta.powod_wycofania_pl
-        and rodzaj
-        in (
-            V126AnalysisType.HOSTING_CAPACITY,
-            V126AnalysisType.OPF_LOSS_LCC,
-        )
-    ):
+    # Karta AB-1d_min: O WYCOFANIU rozstrzyga WYŁĄCZNIE rejestr zdolności
+    # (`availability="withdrawn"`) — TO SAMO źródło, którym POST odmawia 410
+    # (`api/v126_academic.py::_wycofanie_v126`), predykaty parami (KLASA §3).
+    # Dawna zaszyta krotka (hosting, OPF) była szóstą listą rodzajów wycofanych,
+    # która po wycofaniu harmonicznych i SSCI rozjechała się z rejestrem.
+    if get_solver_capability(BIEGI_V126[f"v126:{rodzaj.value}"]).availability == "withdrawn":
+        powod = karta_analizy(rodzaj.value).powod_wycofania_pl
+        if not powod:
+            raise ValueError(
+                f"Rodzaj V12.6 {rodzaj.value!r} wycofany w rejestrze bez powodu w katalogu."
+            )
         return GotowoscAnalizy(
             kod=rodzaj.value,
             gotowosc=GOTOWOSC_WYCOFANA,
-            powod_wycofania_pl=karta.powod_wycofania_pl,
+            powod_wycofania_pl=powod,
         )
     parametry = dict(parametry or {})
     warunki = _warunki_wspolne(enm)
@@ -1007,11 +828,7 @@ def ocen_gotowosc_v126(
     model = build_v126_input_from_enm(enm, parameters=parametry)
     proponowane = _propozycje_z_modelu(enm, rodzaj)
 
-    if rodzaj == V126AnalysisType.POWER_QUALITY_HARMONICS:
-        warunki += _warunki_harmoniczne(enm, model, parametry)
-    elif rodzaj == V126AnalysisType.SSCI_IMPEDANCE:
-        warunki += _warunki_ssci(enm, model, parametry)
-    elif rodzaj == V126AnalysisType.RELIABILITY_CONTINGENCY:
+    if rodzaj == V126AnalysisType.RELIABILITY_CONTINGENCY:
         warunki += _warunki_niezawodnosci(enm, model, parametry)
     elif rodzaj == V126AnalysisType.EARTHING_SAFETY:
         warunki += _warunki_uziomu(parametry)

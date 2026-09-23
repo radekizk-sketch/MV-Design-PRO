@@ -11,12 +11,11 @@ zero drugiego źródła prawdy o budowie wejścia), zbiera zmierzony zbiór
 jest czerwonym testem (karta §0.1: „Brak wpisu = czerwony test, nie cichy
 fallback"), nie cichym pominięciem formuły.
 
-Dwa rodzaje sceny (`power_quality_harmonics`, `ssci_impedance`) NIE osiągają
-gotowości POTWIERDZONEJ na złotej sieci (`gen_pv` bez karty przekształtnika —
-karta B-02 §0 poz. 13); solver wywołany BEZPOŚREDNIO (ten test pomija bramkę
-422, żeby zmierzyć ślad, nie odmowę) i tak emituje krok — gałąź „dane
-niekompletne”/„brak przekształtnika”, nie wyjątek — więc jego klucz WCHODZI do
-zmierzonego zbioru i musi mieć wpis w rejestrze na równi z pozostałymi.
+Karta AB-1d_min: `power_quality_harmonics` i `ssci_impedance` zeszły z
+powierzchni (rejestr `availability="withdrawn"`, 410) i nie są już prezentowane,
+więc nie wchodzą do pomiaru. Ich wpisy w `REJESTR_WZOROW_V126` zostają — tak jak
+wpisy `hosting_capacity`/`opf_loss_lcc` po karcie W3-E — bo GET śladu biegu
+HISTORYCZNEGO wycofanego rodzaju nadal wzbogaca kroki formułami (odtwarzalność).
 """
 
 from __future__ import annotations
@@ -92,12 +91,14 @@ def test_komplet_kluczy_sladu_ma_wpis_w_rejestrze_latex() -> None:
     assert (
         brak_wpisu == []
     ), f"step.key bez wpisu w REJESTR_WZOROW_V126 (zmierzone na scenie akademickie): {brak_wpisu}"
-    # Pin z pomiaru (2026-09-16, złota sieć `tests/cgmes/golden_enm.py`,
-    # 10 rodzajów prezentowanych × parametry `PARAMETRY_SCENY_AKADEMICKIE`).
+    # Pin z pomiaru (2026-09-23, karta AB-1d_min, złota sieć
+    # `tests/cgmes/golden_enm.py`, 8 rodzajów prezentowanych × parametry
+    # `PARAMETRY_SCENY_AKADEMICKIE`; było 12 przy 10 rodzajach — ubyły klucze
+    # `harmonic_power_flow` i gałęzi SSCI wraz z wycofaniem obu rodzajów).
     # Zapadka tylko w dół: spadek liczby kluczy jest dozwolony (np. rodzaj
     # przestał emitować gałąź), wzrost bez podniesienia pinu jest czerwony —
     # nowy klucz musi dostać wpis w rejestrze W TEJ SAMEJ karcie.
-    assert len(zmierzone_klucze) == 12, sorted(zmierzone_klucze)
+    assert len(zmierzone_klucze) == 10, sorted(zmierzone_klucze)
 
 
 def test_wzbogac_kroki_latex_nie_mutuje_oryginalu_i_dokladakada_formule() -> None:

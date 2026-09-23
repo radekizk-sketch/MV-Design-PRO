@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pathlib
-
 import numpy as np
 import pytest
 from network_model.solvers.dynamika import (
@@ -139,14 +137,18 @@ def test_wersja_solvera_zgadza_sie_z_rejestrem_rodzajow_biegu() -> None:
     `dynamika_rms` jako podstawe normatywna.
 
     Rdzen nie moze importowac warstwy API (granica pakietu), wiec zgodnosc jest
-    sprawdzana po ZRODLE rejestru — inaczej wynik i rejestr moglyby opisywac dwa
-    rozne solvery i nikt by tego nie zobaczyl.
-    """
-    import api.v125_contracts as rejestr  # noqa: PLC0415
+    sprawdzana w TESCIE, nie w rdzeniu — inaczej wynik i rejestr moglyby opisywac
+    dwa rozne solvery i nikt by tego nie zobaczyl.
 
-    zrodlo = pathlib.Path(rejestr.__file__).read_text(encoding="utf-8")
+    Karta AB-1d_min krok 1: slownik `standard_basis_ref` z `api/v125_contracts.py`
+    jest odtad WYPROWADZANY z jednej listy rodzajow biegow (`RODZAJE_BIEGOW`), wiec
+    test czyta zrodlo prawdy wprost (dawny odczyt tekstu pliku API tracil przedmiot)
+    i dodatkowo koperte odtwarzalnosci, ktora API naprawde wystawia.
+    """
+    from application.solvers.solver_capability_registry import RODZAJE_BIEGOW  # noqa: PLC0415
+
     assert WERSJA_SOLVERA == "DYNAMIKA_RMS_DAE_V1"
-    assert f'"dynamika_rms": "{WERSJA_SOLVERA}"' in zrodlo
+    assert RODZAJE_BIEGOW["dynamika_rms"].standard_basis_ref == WERSJA_SOLVERA
 
 
 def test_piatka_odciskow_jest_kompletna() -> None:

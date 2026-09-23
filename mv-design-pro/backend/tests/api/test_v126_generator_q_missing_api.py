@@ -41,6 +41,14 @@ zasilanych z szyn, a wskaźniki niezawodności są nią ważone, więc bieg
 niezawodności wymaga jawnego parametru `customer_counts` — testy bramki Q
 podają go (`_ODBIORCY`), żeby izolować WYŁĄCZNIE brak Q; brak samego
 parametru ma własny test (`parametr.customer_counts`).
+
+KARTA AB-1d_min (2026-09): `ssci_impedance` wycofany z powierzchni nowych biegów
+(rejestr `availability="withdrawn"`, 410 — `tests/api/test_v126_ssci_stability_api.py`).
+Dwa testy bramki Q przekształtnika SSCI (`_z_conv_components` z `q_mvar or 0.0`)
+zdjęte wg precedensu W3-E powyżej: 410 zapada PRZED gotowością, więc testowałyby
+kod nieosiągalny; bramka istniała wyłącznie po to, żeby chronić uruchomienie
+analizy, która teraz w ogóle się nie uruchamia. Bramka Q dla rodzajów wciąż
+uruchamialnych (niezawodność) zostaje przypięta testami 1–5.
 """
 
 from __future__ import annotations
@@ -180,59 +188,3 @@ def test_reliability_contingency_z_q_set_pointem_karty_liczy_normalnie() -> None
             json={"parameters": _ODBIORCY},
         )
     assert resp.status_code == 200, resp.text
-
-
-_PRZEKSZTALTNIK_BEZ_Q = {
-    "ref_id": "PV-1",
-    "name": "Falownik PV",
-    "bus_ref": _SZYNA_A,
-    "p_mw": 1.0,
-    "gen_type": "pv_inverter",
-    "materialized_params": {
-        "current_loop_bandwidth_hz": 300.0,
-        "pll_bandwidth_hz": 20.0,
-        "filter_l_pu": 0.1,
-        "filter_r_pu": 0.01,
-        "un_kv": 15.0,
-        # Karta W2-C: moc znamionowa MUSI być na karcie, inaczej ten przekształtnik
-        # jest pominięty CAŁKOWICIE (kod `generator.converter_card_missing`) zanim
-        # test zdąży dotrzeć do bramki Q — ta fikstura izoluje WYŁĄCZNIE brak Q.
-        "sn_mva": 1.1,
-    },
-}
-
-
-def test_ssci_impedance_bez_q_przeksztaltnika_zwraca_422_nie_liczy_po_cichu() -> None:
-    """Domkniecie FAB-H (B-01): `_z_conv_components` solvera FROZEN liczy punkt pracy
-    z `q_mvar or 0.0` — brak Q wybranego przeksztaltnika blokuje analize SSCI w API,
-    zanim payload trafi do solvera (ta sama regula wyboru przeksztaltnika co solver)."""
-    with TestClient(app) as client:
-        case_id = _seed_case(client, _model(generator=_PRZEKSZTALTNIK_BEZ_Q))
-        resp = client.post(
-            f"/api/cases/{case_id}/runs/v126/ssci_impedance",
-            json={"parameters": {}},
-        )
-    assert resp.status_code == 422, resp.text
-    assert "generator.q_missing" in resp.text
-    assert "PV-1" in resp.text
-
-
-def test_ssci_impedance_z_q_set_pointem_karty_nie_jest_blokowana() -> None:
-    """Q wyprowadzalne z karty (`qmin == qmax`) trafia do `V126ConverterInput.q_mvar`
-    tym samym zrodlem prawdy co agregat szyny — brama nie blokuje."""
-    przeksztaltnik = {
-        **_PRZEKSZTALTNIK_BEZ_Q,
-        "materialized_params": {
-            **_PRZEKSZTALTNIK_BEZ_Q["materialized_params"],
-            "qmin_mvar": 0.2,
-            "qmax_mvar": 0.2,
-        },
-    }
-    with TestClient(app) as client:
-        case_id = _seed_case(client, _model(generator=przeksztaltnik))
-        resp = client.post(
-            f"/api/cases/{case_id}/runs/v126/ssci_impedance",
-            json={"parameters": {}},
-        )
-    assert resp.status_code == 200, resp.text
-    assert "generator.q_missing" not in resp.text

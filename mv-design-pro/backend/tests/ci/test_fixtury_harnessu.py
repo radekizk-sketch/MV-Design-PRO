@@ -644,12 +644,13 @@ def _wartosci_run_id(dane: dict) -> list[str]:
     return re.findall(r'"run_id":\s*"([^"]+)"', json.dumps(dane, ensure_ascii=False))
 
 
-def test_katalog_analiz_v126_ma_14_pozycji_i_4_wycofane() -> None:
+def test_katalog_analiz_v126_ma_14_pozycji_i_6_nieprezentowanych() -> None:
+    # Karta AB-1d_min: 4 -> 6 (harmoniczne i SSCI zeszły z powierzchni).
     katalog = eksport.katalog_analiz_v126()
     assert katalog["namespace"] == "analysis-catalog"
     assert len(katalog["items"]) == 14
     wycofane = [item for item in katalog["items"] if not item["prezentowany"]]
-    assert len(wycofane) == 4
+    assert len(wycofane) == 6
 
 
 def test_gotowosc_v126_scena_akademickie_ma_14_analiz_i_rozklad_stanow() -> None:
@@ -661,17 +662,15 @@ def test_gotowosc_v126_scena_akademickie_ma_14_analiz_i_rozklad_stanow() -> None
     stany = [a["gotowosc"] for a in analizy]
     assert stany.count("POTWIERDZONA") >= 1
     assert stany.count("NIEPOTWIERDZONA") >= 1
-    assert stany.count("WYCOFANA") == 2
+    # Karta AB-1d_min: 2 -> 4 (rejestr `withdrawn`: hosting, OPF, harmoniczne, SSCI).
+    assert stany.count("WYCOFANA") == 4
 
 
 #: Stan gotowości KAŻDEGO rodzaju z parametrami sceny — zmierzony REALNYM
-#: wywołaniem na złotej sieci, nie założony. Harmoniczne i SSCI zostają
-#: NIEPOTWIERDZONE, bo `gen_pv` złotej sieci nie ma karty przekształtnika (mocy
-#: znamionowej) — żaden parametr formularza tego nie zastąpi; fixtura pokazuje
-#: tę przyczynę po nazwie zamiast udawać komplet danych.
+#: wywołaniem na złotej sieci, nie założony. Karta AB-1d_min: harmoniczne i
+#: SSCI (dawniej NIEPOTWIERDZONE z braku karty `gen_pv`) zeszły z powierzchni
+#: i nie mają już parametrów sceny.
 _OCZEKIWANE_STANY_Z_PARAMETRAMI: dict[str, tuple[str, str | None]] = {
-    "power_quality_harmonics": ("NIEPOTWIERDZONA", "generator.converter_card_missing"),
-    "ssci_impedance": ("NIEPOTWIERDZONA", "generator.converter_card_missing"),
     "earthing_safety": ("POTWIERDZONA", None),
     "earth_fault_detection": ("POTWIERDZONA", None),
     "neutral_earthing_design": ("POTWIERDZONA", None),

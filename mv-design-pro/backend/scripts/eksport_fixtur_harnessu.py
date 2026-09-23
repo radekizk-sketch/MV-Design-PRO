@@ -2968,10 +2968,7 @@ def _biegi_sceny_akademickiej() -> dict[str, Any]:
                         case_id=CASE_ID_HARNESSU,
                         klucz_twin=CASE_ID_HARNESSU,
                         analysis_type=f"v126:{rodzaj.value}",
-                        options={
-                            "model": model.model_dump(mode="json"),
-                            "pominiete_zrodla": [],
-                        },
+                        options={"model": model.model_dump(mode="json")},
                     ).id
                 )
             if bieg.status != "FINISHED" or bieg.raw_result is None:

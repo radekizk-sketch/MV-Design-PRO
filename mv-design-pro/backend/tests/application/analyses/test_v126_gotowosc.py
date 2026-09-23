@@ -27,6 +27,7 @@ from application.analyses.v126_gotowosc import (
     uzupelnij_parametry_z_modelu,
 )
 from application.analyses.v126_katalog import KATALOG_ANALIZ_V126, nazwa_parametru_pl
+from application.solvers.solver_capability_registry import BIEGI_V126, get_solver_capability
 from enm.models import EnergyNetworkModel, ENMHeader, GroundingConfig
 from solver_input.v126_contracts import V126AnalysisType, build_v126_input_from_enm
 
@@ -78,8 +79,8 @@ def _model_bez_galezi_trafo_mocy_zwarciowej() -> EnergyNetworkModel:
 #: Stan gotowości każdego z 14 rodzajów na ZŁOTEJ SIECI z `parametry={}` —
 #: zmierzone REALNYM wywołaniem (karta B02-BE-TESTY §3), nie założone.
 _OCZEKIWANE_STANY_ZLOTA_SIEC: dict[V126AnalysisType, str] = {
-    V126AnalysisType.POWER_QUALITY_HARMONICS: GOTOWOSC_NIEPOTWIERDZONA,
-    V126AnalysisType.SSCI_IMPEDANCE: GOTOWOSC_NIEPOTWIERDZONA,
+    V126AnalysisType.POWER_QUALITY_HARMONICS: GOTOWOSC_WYCOFANA,
+    V126AnalysisType.SSCI_IMPEDANCE: GOTOWOSC_WYCOFANA,
     V126AnalysisType.VOLTAGE_STABILITY: GOTOWOSC_POTWIERDZONA,
     V126AnalysisType.RELIABILITY_CONTINGENCY: GOTOWOSC_NIEPOTWIERDZONA,
     V126AnalysisType.EARTHING_SAFETY: GOTOWOSC_NIEPOTWIERDZONA,
@@ -93,6 +94,14 @@ _OCZEKIWANE_STANY_ZLOTA_SIEC: dict[V126AnalysisType, str] = {
     V126AnalysisType.UNCERTAINTY_SENSITIVITY: GOTOWOSC_POTWIERDZONA,
     V126AnalysisType.NEUTRAL_EARTHING_DESIGN: GOTOWOSC_NIEPOTWIERDZONA,
 }
+
+
+#: Rodzaje wycofane wg rejestru zdolności — jedno źródło prawdy (karta AB-1d_min).
+_WYCOFANE_W_REJESTRZE: frozenset[V126AnalysisType] = frozenset(
+    rodzaj
+    for rodzaj in V126AnalysisType
+    if get_solver_capability(BIEGI_V126[f"v126:{rodzaj.value}"]).availability == "withdrawn"
+)
 
 
 def test_komplet_14_rodzajow_jest_pokryty_przez_tabele_oczekiwan() -> None:
@@ -112,8 +121,9 @@ def test_gotowosc_na_zlotej_sieci_bez_parametrow(rodzaj: V126AnalysisType) -> No
         f"{rodzaj.value}: oczekiwano {_OCZEKIWANE_STANY_ZLOTA_SIEC[rodzaj]}, "
         f"jest {wynik.gotowosc}; braki={[w.kod for w in wynik.braki]}"
     )
-    if rodzaj in (V126AnalysisType.HOSTING_CAPACITY, V126AnalysisType.OPF_LOSS_LCC):
+    if rodzaj in _WYCOFANE_W_REJESTRZE:
         assert wynik.powod_wycofania_pl is not None and wynik.powod_wycofania_pl.strip()
+        assert wynik.warunki == ()
     else:
         assert wynik.powod_wycofania_pl is None
     if wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA:
@@ -126,22 +136,58 @@ def test_gotowosc_na_zlotej_sieci_bez_parametrow(rodzaj: V126AnalysisType) -> No
             assert brak.blokujacy is True
 
 
-def test_zaden_rodzaj_wycofany_poza_hosting_i_opf_nie_jest_wycofany() -> None:
-    """`voltage_stability`/`benchmark_validation` są NIEPREZENTOWANE we froncie,
-    ale kontraktowo URUCHAMIALNE (dla odtwarzalności) — WYCOFANA jest dokładnie
-    dla `hosting_capacity`/`opf_loss_lcc` (410 na POST), nie dla wszystkich
-    czterech rodzajów zdjętych z ekranu (karta W3-E)."""
+def test_wycofana_dokladnie_dla_rodzajow_wycofanych_w_rejestrze() -> None:
+    """Predykaty parami (KLASA §3, karta AB-1d_min): WYCOFANA w gotowości jest
+    DOKŁADNIE dla rodzajów, które rejestr zdolności oznacza `withdrawn` — tym samym
+    źródłem, którym POST odmawia 410. `voltage_stability`/`benchmark_validation` są
+    NIEPREZENTOWANE we froncie, ale kontraktowo URUCHAMIALNE (odtwarzalność), więc
+    nie są wycofane. Zbiór oczekiwany jest ZAPISANY WPROST (4 rodzaje), żeby cicha
+    zmiana rejestru też była widoczna."""
     enm = build_golden_enm()
     wycofane = {
         rodzaj
         for rodzaj in V126AnalysisType
         if ocen_gotowosc_v126(enm, rodzaj, {}).gotowosc == GOTOWOSC_WYCOFANA
     }
-    assert wycofane == {V126AnalysisType.HOSTING_CAPACITY, V126AnalysisType.OPF_LOSS_LCC}
+    assert wycofane == _WYCOFANE_W_REJESTRZE
+    assert wycofane == {
+        V126AnalysisType.HOSTING_CAPACITY,
+        V126AnalysisType.OPF_LOSS_LCC,
+        V126AnalysisType.POWER_QUALITY_HARMONICS,
+        V126AnalysisType.SSCI_IMPEDANCE,
+    }
+
+
+@pytest.mark.parametrize(
+    "rodzaj",
+    [V126AnalysisType.POWER_QUALITY_HARMONICS, V126AnalysisType.SSCI_IMPEDANCE],
+    ids=lambda r: r.value,
+)
+@pytest.mark.parametrize(
+    "widmo",
+    [None, {5: 4.5, 7: 2.1}],
+    ids=["karta_bez_widma", "karta_z_widmem"],
+)
+@pytest.mark.parametrize("parametry", [{}, {"harmonic_spectra": {"gen_pv": {"5": 4.0}}}])
+def test_harmoniczne_i_ssci_sa_wycofane_niezaleznie_od_danych_przeksztaltnika(
+    rodzaj: V126AnalysisType, widmo: dict[int, float] | None, parametry: dict
+) -> None:
+    """Karta AB-1d_min krok 3: iloczyn cech rodzaj × karta przekształtnika (bez
+    widma / z widmem) × widmo ręczne. Dawne bramki gotowości harmonicznych i SSCI
+    (`generator.converter_card_missing`, `generator.harmonic_spectrum_missing`,
+    `zrodla.odksztalcajace`, `przeksztaltnik.karta_ssci`) zniknęły razem z rodzajem
+    (precedens W3-E) — ŻADNE dane modelu ani parametr nie przywracają gotowości
+    POTWIERDZONA rodzaju wycofanego, a odpowiedź nie niesie żadnego warunku."""
+    enm = _zlota_siec_z_karta_pv(widmo)
+    wynik = ocen_gotowosc_v126(enm, rodzaj, parametry)
+    assert wynik.gotowosc == GOTOWOSC_WYCOFANA
+    assert wynik.warunki == ()
+    assert wynik.dane_z_modelu == ()
+    assert not wynik.potwierdzona
 
 
 # ---------------------------------------------------------------------------
-# 2. Jakość energii / harmoniczne (PQ)
+# 2. Wariant sieci z kartą przekształtnika (iloczyn cech dla rodzajów wycofanych)
 # ---------------------------------------------------------------------------
 
 
@@ -158,146 +204,6 @@ def _zlota_siec_z_karta_pv(widmo: dict[int, float] | None) -> EnergyNetworkModel
         if gen.ref_id == "gen_pv":
             gen.materialized_params = karta
     return enm
-
-
-def _zlota_siec_z_drugim_pv_bez_widma() -> EnergyNetworkModel:
-    """Złota sieć (`gen_pv` BEZ karty) + drugi przekształtnik `gen_pv2` Z kartą, ale
-    bez widma — iloczyn cech „brak karty × karta bez widma" w JEDNYM modelu."""
-    enm = build_golden_enm().model_copy(deep=True)
-    wzor = next(gen for gen in enm.generators if gen.ref_id == "gen_pv")
-    enm.generators.append(
-        wzor.model_copy(
-            update={
-                "ref_id": "gen_pv2",
-                "name": "Farma PV 2",
-                "bus_ref": "bus_sn_c",
-                "materialized_params": {"un_kv": 15.0, "sn_mva": 1.5, "control_mode": "Q_OF_U"},
-            }
-        )
-    )
-    return enm
-
-
-def test_pq_gen_pv_bez_karty_jest_brakiem_karty_nie_widma() -> None:
-    """ZWERYFIKOWANE REALNYM WYWOŁANIEM: `gen_pv` w złotej sieci nie ma ŻADNEJ
-    karty katalogowej przekształtnika (`materialized_params is None`), więc
-    `_oceb_karte_przeksztaltnika` zwraca `converter_card_missing` ZANIM spojrzy
-    na widmo. Gotowość NAZYWA tę przyczynę (karta B-02, 2026-09-10) — przed
-    naprawą meldowała „brak widma" z kluczem `harmonic_spectra`, a widmo ręczne
-    NIE odblokowuje biegu bez mocy znamionowej (prąd bazowy wstrzyknięcia).
-    Brak karty NIE ma klucza parametru: formularz go nie usunie."""
-    enm = build_golden_enm()
-    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, {})
-    kody = {w.kod for w in wynik.warunki}
-    assert "generator.converter_card_missing" in kody
-    assert "generator.harmonic_spectrum_missing" not in kody
-    assert "zrodla.odksztalcajace" not in kody
-    brak = next(w for w in wynik.warunki if w.kod == "generator.converter_card_missing")
-    assert brak.spelniony is False
-    assert brak.elementy == ("gen_pv",)
-    assert brak.klucz_parametru is None
-    assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
-
-
-def test_pq_widmo_reczne_nie_odblokowuje_gen_pv_bez_karty() -> None:
-    """Widmo ręczne dla generatora BEZ karty: most nadal pomija go CAŁKOWICIE
-    (`model.harmonic_sources == []`), a gotowość dalej nazywa brak karty — nie
-    udaje, że parametr cokolwiek naprawił (predykaty parami z bramką 422)."""
-    enm = build_golden_enm()
-    parametry = {"harmonic_spectra": {"gen_pv": {"5": 4.0}}}
-    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, parametry)
-    model = build_v126_input_from_enm(enm, parameters=parametry)
-    assert model.harmonic_sources == []
-    assert model.converters == []
-    kody = {w.kod for w in wynik.warunki}
-    assert "generator.converter_card_missing" in kody
-    assert "generator.harmonic_spectrum_missing" not in kody
-    assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
-
-
-def test_pq_karta_bez_widma_jest_brakiem_widma_z_kluczem_parametru() -> None:
-    """Klasa „karta bez widma": jedyny przypadek, w którym `harmonic_spectra`
-    NAPRAWDĘ usuwa brak — dlatego tylko ten warunek niesie klucz parametru."""
-    enm = _zlota_siec_z_karta_pv(widmo=None)
-    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, {})
-    kody = {w.kod for w in wynik.warunki}
-    assert "generator.harmonic_spectrum_missing" in kody
-    assert "generator.converter_card_missing" not in kody
-    brak = next(w for w in wynik.warunki if w.kod == "generator.harmonic_spectrum_missing")
-    assert brak.elementy == ("gen_pv",)
-    assert brak.klucz_parametru == "harmonic_spectra"
-    assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
-
-
-def test_pq_karta_bez_widma_z_widmem_recznym_jest_potwierdzona() -> None:
-    """Domknięcie pary predykatów: parametr wskazany kluczem FAKTYCZNIE usuwa
-    brak — po podaniu widma ręcznego most buduje źródło harmoniczne, a gotowość
-    jest POTWIERDZONA z warunkiem `zrodla.odksztalcajace` spełnionym."""
-    enm = _zlota_siec_z_karta_pv(widmo=None)
-    parametry = {"harmonic_spectra": {"gen_pv": {"5": 4.5, "7": 2.1}}}
-    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, parametry)
-    model = build_v126_input_from_enm(enm, parameters=parametry)
-    assert [z.source_ref for z in model.harmonic_sources] == ["gen_pv"]
-    zrodla = next(w for w in wynik.warunki if w.kod == "zrodla.odksztalcajace")
-    assert zrodla.spelniony is True
-    assert zrodla.elementy == ("gen_pv",)
-    assert wynik.gotowosc == GOTOWOSC_POTWIERDZONA
-
-
-def test_pq_karta_z_widmem_katalogowym_jest_potwierdzona_bez_parametrow() -> None:
-    enm = _zlota_siec_z_karta_pv(widmo={5: 4.5, 7: 2.1})
-    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, {})
-    assert wynik.gotowosc == GOTOWOSC_POTWIERDZONA
-    assert {w.kod for w in wynik.braki} == set()
-
-
-def test_pq_brak_karty_i_karta_bez_widma_w_jednym_modelu_sa_dwoma_warunkami() -> None:
-    """Iloczyn cech w JEDNYM modelu: `gen_pv` bez karty + `gen_pv2` z kartą bez
-    widma → DWA osobne braki, każdy z właściwymi elementami; wyłącznie brak widma
-    niesie klucz parametru. Pin deklaracji z kodu: przy pustym
-    `model.harmonic_sources` KAŻDY kandydat trafia dokładnie do jednego z dwóch
-    warunków (suma elementów = komplet kandydatów, bez powtórzeń)."""
-    enm = _zlota_siec_z_drugim_pv_bez_widma()
-    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, {})
-    po_kodzie = {w.kod: w for w in wynik.warunki}
-    assert po_kodzie["generator.converter_card_missing"].elementy == ("gen_pv",)
-    assert po_kodzie["generator.converter_card_missing"].klucz_parametru is None
-    assert po_kodzie["generator.harmonic_spectrum_missing"].elementy == ("gen_pv2",)
-    assert po_kodzie["generator.harmonic_spectrum_missing"].klucz_parametru == "harmonic_spectra"
-    elementy = (
-        po_kodzie["generator.converter_card_missing"].elementy
-        + po_kodzie["generator.harmonic_spectrum_missing"].elementy
-    )
-    assert sorted(elementy) == ["gen_pv", "gen_pv2"]
-    assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
-
-
-def test_pq_widmo_reczne_dla_gen_pv2_zostawia_gen_pv_bez_karty_jako_uwage() -> None:
-    """Po uzupełnieniu widma dla `gen_pv2` bieg ma źródło harmoniczne, a `gen_pv`
-    (bez karty) jest POMINIĘTY jako uwaga niebłokująca (`zrodla.pominiete`) —
-    bieg przechodzi z nazwanym pominięciem, nie z cichym zerem."""
-    enm = _zlota_siec_z_drugim_pv_bez_widma()
-    parametry = {"harmonic_spectra": {"gen_pv2": {"5": 3.0}}}
-    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, parametry)
-    po_kodzie = {w.kod: w for w in wynik.warunki}
-    assert po_kodzie["zrodla.odksztalcajace"].spelniony is True
-    assert po_kodzie["zrodla.pominiete"].blokujacy is False
-    assert po_kodzie["zrodla.pominiete"].elementy == ("gen_pv",)
-    assert wynik.gotowosc == GOTOWOSC_POTWIERDZONA
-    assert [w.kod for w in wynik.uwagi] == ["zrodla.pominiete"]
-
-
-# ---------------------------------------------------------------------------
-# 3. SSCI
-# ---------------------------------------------------------------------------
-
-
-def test_ssci_brak_karty_przeksztaltnika_na_gen_pv() -> None:
-    enm = build_golden_enm()
-    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.SSCI_IMPEDANCE, {})
-    brak = next(w for w in wynik.warunki if w.kod == "generator.converter_card_missing")
-    assert brak.elementy == ("gen_pv",)
-    assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
 
 
 # ---------------------------------------------------------------------------
@@ -708,7 +614,7 @@ def test_niepewnosc_siec_bez_galezi_trafo_mocy_zwarciowej_jest_niepotwierdzona()
 
 def test_model_bez_szyn_daje_niepotwierdzone_z_dosłownym_komunikatem() -> None:
     enm = _model_bez_szyn()
-    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, {})
+    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.RELIABILITY_CONTINGENCY, {})
     assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
     warunek = next(w for w in wynik.warunki if w.kod == "model.wezly")
     assert warunek.opis_pl == BRAK_WEZLOW_PL
@@ -720,8 +626,12 @@ def test_model_bez_szyn_daje_niepotwierdzone_z_dosłownym_komunikatem() -> None:
 
 
 def test_komunikat_odmowy_zawiera_kazdy_kod_braku_i_elementy() -> None:
+    # Karta AB-1d_min: dawniej harmoniczne (brak karty `gen_pv` z elementem);
+    # rodzaj wycofany nie ma warunków, więc przykład bierze niezawodność
+    # (brak liczby odbiorców na złotej sieci — brak blokujący).
     enm = build_golden_enm()
-    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, {})
+    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.RELIABILITY_CONTINGENCY, {})
+    assert wynik.braki
     komunikat = wynik.komunikat_odmowy()
     for brak in wynik.braki:
         assert brak.kod in komunikat

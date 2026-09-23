@@ -35,7 +35,6 @@ from solver_input.v126_contracts import (
     V126MotorInput,
     V126RunRequest,
     build_v126_input_from_enm,
-    pominiete_zrodla_v126,
 )
 
 router = APIRouter(prefix="/api", tags=["v12.6-academic"])
@@ -296,15 +295,6 @@ def run_v126_analysis(
     model = _with_parameter_payloads(
         build_v126_input_from_enm(enm, parameters=parametry), parametry
     )
-    # Karta W2-C: lista generatorów pominiętych CZĘŚCIOWO (część kandydatów ma
-    # dane, część nie) — pole addytywne `pominiete_zrodla` w payloadzie biegu,
-    # wyliczone TĄ SAMĄ oceną karty co budowa wejścia (`pominiete_zrodla_v126`,
-    # reguła KLASA §3). Puste dla rodzajów, które `harmonic_sources`/`converters`
-    # nie czytają (i tam, gdzie wszystkie/żadne kandydaty mają dane — gotowość
-    # powyżej już to rozstrzygnęła).
-    pominiete_zrodla: list[dict[str, str]] = []
-    if analysis_type in (V126AnalysisType.POWER_QUALITY_HARMONICS, V126AnalysisType.SSCI_IMPEDANCE):
-        pominiete_zrodla = pominiete_zrodla_v126(enm, parameters=parametry)
     # CV-4.3-A4 (K5.2, 2026-09-06): bieg V12.6 trafia do rejestru kanonicznego
     # R1 (`CanonicalRun`) zamiast słownika `_runs` w pamięci procesu — przeżywa
     # odtąd restart procesu i jest widoczny każdemu workerowi (`tests/test_v126_
@@ -317,7 +307,7 @@ def run_v126_analysis(
         case_id=str(case_id),
         klucz_twin=klucz,
         analysis_type=f"v126:{analysis_type.value}",
-        options={"model": model.model_dump(mode="json"), "pominiete_zrodla": pominiete_zrodla},
+        options={"model": model.model_dump(mode="json")},
     )
     run = _execute_canonical_run(run.id)
     if run.status == "FAILED" or run.raw_result is None:
@@ -352,24 +342,6 @@ def get_v126_result(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, 
         "proof_ref": run["proof"]["proof_id"],
         "report_ref": run["report"]["report_id"],
     }
-    # Karta W2-C: pola ADDYTYWNE (kontrakt odpowiedzi FROZEN — tylko dołożone
-    # klucze, kształt istniejących 8 pól bez zmian). `pominiete_zrodla` —
-    # generatory pominięte w wejściu wyliczone przy tworzeniu biegu (stashowane
-    # w `run.options`, przeniesione tu przez wykonawcę `_execute_v126`).
-    # `zrodla_widma` — proweniencja widma (KATALOG/RECZNE) dla źródeł, które
-    # DO wejścia trafiły; wyprowadzona wprost z `run["input"]` (już istniejący,
-    # pełny zapis wejścia solvera — zero nowego wyliczenia, zero ryzyka rozjazdu
-    # z tym, co solver naprawdę policzył).
-    pominiete = run.get("pominiete_zrodla")
-    if pominiete:
-        payload["pominiete_zrodla"] = pominiete
-    zrodla_widma = [
-        {"ref": zrodlo["source_ref"], "proweniencja": zrodlo.get("spectrum_provenance", "KATALOG")}
-        for zrodlo in run.get("input", {}).get("harmonic_sources", [])
-        if isinstance(zrodlo, dict) and isinstance(zrodlo.get("source_ref"), str)
-    ]
-    if zrodla_widma:
-        payload["zrodla_widma"] = zrodla_widma
     # Karta W3-E: pole ADDYTYWNE `wycofany` na biegu HISTORYCZNYM rodzaju zdjętego
     # z powierzchni — kontrakt odpowiedzi FROZEN nietknięty (dołożony klucz),
     # odtwarzalność biegu zostaje, ale front pokazuje stan „analiza wycofana",

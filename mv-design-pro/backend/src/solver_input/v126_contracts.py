@@ -456,7 +456,8 @@ def _impedancja_skupiona_aparatu_ohm(branch: Any) -> tuple[float, float]:
 #: `CatalogNamespace.CONVERTER`) — jedyne, dla których V12.6 buduje wejście
 #: przekształtnika/źródła harmonicznego. Wyodrębnione ze stałej w treści pętli
 #: (było powtórzone dosłownie), żeby `build_v126_input_from_enm` i
-#: `pominiete_zrodla_v126` używały DOKŁADNIE tego samego zbioru (reguła KLASA §3).
+#: `generatory_przeksztaltnikowe_v126` używały DOKŁADNIE tego samego zbioru
+#: (reguła KLASA §3).
 _RODZAJE_PRZEKSZTALTNIKOWE: frozenset[str] = frozenset(
     {"pv_inverter", "bess", "fw_pmsg", "fw_dfig", "fw_scig"}
 )
@@ -464,9 +465,9 @@ _RODZAJE_PRZEKSZTALTNIKOWE: frozenset[str] = frozenset(
 
 def generatory_przeksztaltnikowe_v126(enm: EnergyNetworkModel) -> list[str]:
     """Referencje generatorów PV/BESS/wiatrowych (kandydatów przekształtnika/
-    źródła harmonicznego V12.6) modelu — używane przez `api/v126_academic.py`
-    do listy generatorów w komunikacie 422, kiedy ŻADEN z nich nie ma danych
-    (ten sam zbiór `_RODZAJE_PRZEKSZTALTNIKOWE`, co budowa wejścia)."""
+    źródła harmonicznego V12.6) modelu — liczność w opisie przedmiotu analiz
+    (`application/analyses/v126_gotowosc.py::przedmiot_modelu`; ten sam zbiór
+    `_RODZAJE_PRZEKSZTALTNIKOWE`, co budowa wejścia)."""
     return [g.ref_id for g in enm.generators if g.gen_type in _RODZAJE_PRZEKSZTALTNIKOWE]
 
 
@@ -527,12 +528,10 @@ def _widma_jawne_z_parametrow(parameters: dict[str, Any] | None) -> dict[str, di
 class OcenaKartyPrzeksztaltnika:
     """Ocena karty katalogowej JEDNEGO generatora przekształtnikowego (PV/BESS/
     wiatrowego) dla wejścia V12.6 — JEDNO źródło prawdy dla decyzji WŁĄCZ/POMIŃ,
-    używane RÓWNOCZEŚNIE przez `build_v126_input_from_enm` (buduje wejście
-    solvera) i `pominiete_zrodla_v126`/`api/v126_academic.py` (tłumaczą
-    pominięcia w odpowiedzi 422/`pominiete_zrodla`) — reguła KLASA §3
-    (predykaty parami z JEDNEGO źródła prawdy), żeby obie strony nigdy się nie
-    rozjechały (to dokładnie ta klasa błędu, którą przegląd 2026-08-01 znalazł
-    cztery razy)."""
+    używane przez `build_v126_input_from_enm` (buduje wejście solvera). Karta
+    AB-1d_min: drugi konsument (`pominiete_zrodla_v126` — bramki gotowości
+    harmonicznych/SSCI i pole `pominiete_zrodla` biegu) zniknął razem z
+    wycofaniem obu rodzajów (rejestr `availability="withdrawn"`, 410)."""
 
     generator_ref: str
     card: dict[str, Any]
@@ -698,42 +697,6 @@ def odbiorcy_z_parametrow(parameters: dict[str, Any] | None) -> OdbiorcyZParamet
     return OdbiorcyZParametrow(liczby, tuple(bledne))
 
 
-def pominiete_zrodla_v126(
-    enm: EnergyNetworkModel, *, parameters: dict[str, Any] | None = None
-) -> list[dict[str, str]]:
-    """Generatory PV/BESS/wiatrowe pominięte (całkowicie albo tylko co do widma
-    harmonicznych) w wejściu V12.6 — TA SAMA ocena karty co
-    `build_v126_input_from_enm` (`_oceb_karte_przeksztaltnika`, JEDNO źródło
-    prawdy, reguła KLASA §3), więc odpowiedź API nigdy nie rozjedzie się z tym,
-    co faktycznie trafiło do modelu solvera. Używane przez `api/v126_academic.py`
-    do bramki 422 (żadne źródło nie ma danych) i pola `pominiete_zrodla`
-    (część ma dane). Zwraca listę `{ref, kod, powod}` — pusta, gdy wszystkie
-    kandydujące generatory mają kompletne dane."""
-    jawne_widma = _widma_jawne_z_parametrow(parameters)
-    wynik: list[dict[str, str]] = []
-    for generator in enm.generators:
-        if generator.gen_type not in _RODZAJE_PRZEKSZTALTNIKOWE:
-            continue
-        ocena = _oceb_karte_przeksztaltnika(generator, jawne_widma)
-        if ocena.converter_kod is not None:
-            wynik.append(
-                {
-                    "ref": ocena.generator_ref,
-                    "kod": ocena.converter_kod,
-                    "powod": ocena.converter_powod or "",
-                }
-            )
-        elif ocena.spectrum_kod is not None:
-            wynik.append(
-                {
-                    "ref": ocena.generator_ref,
-                    "kod": ocena.spectrum_kod,
-                    "powod": ocena.spectrum_powod or "",
-                }
-            )
-    return wynik
-
-
 def build_v126_input_from_enm(
     enm: EnergyNetworkModel,
     *,
@@ -781,8 +744,8 @@ def build_v126_input_from_enm(
             # Karta W2-C (zero fabrykacji wejścia V12.6): moc znamionowa, tryb
             # (GFL/GFM), statyzmy droop i widmo harmoniczne pochodzą WYŁĄCZNIE
             # z karty katalogowej przekształtnika (`_oceb_karte_przeksztaltnika`
-            # — JEDNO źródło prawdy dzielone z `pominiete_zrodla_v126`, reguła
-            # KLASA §3). Brak karty w ogóle ALBO brak mocy znamionowej w karcie
+            # — JEDNO źródło prawdy oceny karty). Brak karty w ogóle ALBO brak
+            # mocy znamionowej w karcie
             # => przekształtnik POMINIĘTY z wejścia V12.6 w całości (kod
             # `generator.converter_card_missing`, bramkowane przed solverem w
             # `api/v126_academic.py`) — nie `max(P, 0,1 MVA)`.

@@ -1,29 +1,24 @@
-"""Bramki `generator.harmonic_spectrum_missing` / `generator.converter_card_missing`
-dla V12.6 (karta W2-C, zero fabrykacji wejścia — parametry przekształtnika).
+"""Harmoniczne i SSCI V12.6 po wycofaniu — 410 niezależnie od danych przekształtnika
+(karta AB-1d_min krok 3).
 
-Przed tą kartą `build_v126_input_from_enm` wstrzykiwał JEDNO zaszyte widmo
-harmoniczne ({5:3%, 7:2%, 11:1,2%, 13:1%}) każdemu przekształtnikowi PV/BESS/
-wiatrowemu, niezależnie od karty katalogowej — fabrykacja usunięta w
-`tests/solver_input/test_most_v126_bez_podstawien.py` (kratki mostu ENM->V12.6).
-Ten plik pokrywa DRUGĄ POŁOWĘ tej samej klasy: warstwę API, wzorzec identyczny z
-bramką `generator.q_missing` (`tests/api/test_v126_generator_q_missing_api.py`) —
+HISTORIA. Karta W2-C dodała tu bramki 422 `generator.harmonic_spectrum_missing` /
+`generator.converter_card_missing` (zero fabrykacji widma i karty przekształtnika)
+oraz pola addytywne `pominiete_zrodla`/`zrodla_widma` biegu. Karta AB-1d_min
+wycofała OBA rodzaje, które te pola czytały (`power_quality_harmonics`,
+`ssci_impedance`): rejestr `availability="withdrawn"` + 410 przed jakąkolwiek
+logiką trasy. Bramki, pola i ich testy zniknęły razem z rodzajem (precedens W3-E:
+bramka istniała wyłącznie po to, żeby chronić uruchomienie analizy, która teraz
+w ogóle się nie uruchamia).
 
-* ŻADNE źródło nie ma danych => 422 z kodem gotowości i listą generatorów
-  (`power_quality_harmonics` czyta `harmonic_sources`, `ssci_impedance` czyta
-  `converters` — jedyne dwa rodzaje V12.6, które te pola w ogóle czytają);
-* BRAK kandydatów (sieć bez PV/BESS/wiatru) NIE jest blokowany bramką widma —
-  od karty B-02 (2026-09-10) gotowość analizy odmawia go JAWNYM warunkiem
-  `zrodla.odksztalcajace` („brak źródeł odkształcających do wstrzyknięcia" —
-  bieg dałby zerowe odkształcenie z braku danych, nie z pomiaru), a NIE kodem
-  `generator.harmonic_spectrum_missing`; test pilnuje, że oba kody się nie mylą;
-* CZĘŚĆ źródeł ma dane => bieg przechodzi, `pominiete_zrodla` w odpowiedzi
-  nazywa pominięte źródła, `zrodla_widma` niesie proweniencję (KATALOG/RECZNE)
-  źródeł, które DO wejścia trafiły;
-* inna analiza V12.6 (nieczytająca tych pól) nie jest blokowana w ogóle.
+INTENCJA, KTÓRA ZOSTAJE. Stan danych przekształtnika NIE może zmienić odpowiedzi
+rodzaju wycofanego — ani brak karty, ani karta bez widma, ani karta z widmem, ani
+widmo ręczne nie przywracają biegu (iloczyn cech: rodzaj × stan danych). Rodzaj
+wciąż uruchamialny, który tych pól nie czyta, nie jest blokowany niczym z tej klasy.
 """
 
 from __future__ import annotations
 
+import pytest
 from api.main import app
 from enm.klucz_twin import klucz_twin_projektu
 from enm.models import EnergyNetworkModel, ENMHeader
@@ -100,135 +95,60 @@ def _uruchom(client: TestClient, case_id: str, rodzaj: str, parametry: dict | No
     )
 
 
-# ---------------------------------------------------------------------------
-# ŻADNE źródło nie ma danych => 422
-# ---------------------------------------------------------------------------
+#: Stany danych przekształtnika, które PRZED wycofaniem dawały różne odpowiedzi
+#: (422 brak karty / 422 brak widma / 422 brak źródeł / 200 z pominięciami / 200).
+_STANY_DANYCH: dict[str, tuple[list[dict], dict]] = {
+    "brak_karty": ([_generator("PV-1")], {}),
+    "karta_bez_widma": ([_generator("PV-1", materialized_params=_KARTA_BEZ_WIDMA)], {}),
+    "karta_z_widmem": ([_generator("PV-1", materialized_params=_KARTA_Z_WIDMEM)], {}),
+    "czesc_zrodel_z_widmem": (
+        [
+            _generator("PV-OK", materialized_params=_KARTA_Z_WIDMEM),
+            _generator("PV-BRAK", bus_ref=_SZYNA_B, materialized_params=_KARTA_BEZ_WIDMA),
+        ],
+        {},
+    ),
+    "widmo_reczne": (
+        [_generator("PV-1", materialized_params=_KARTA_BEZ_WIDMA)],
+        {"harmonic_spectra": {"PV-1": {"5": 6.0}}},
+    ),
+    "bez_przeksztaltnikow": ([], {}),
+}
 
 
-def test_power_quality_harmonics_zadne_zrodlo_nie_ma_widma_zwraca_422() -> None:
-    """PIN NA DEFEKT: przed naprawą oba źródła dostałyby zaszyte widmo i bieg
-    przeszedłby cicho ze zmyślonym THD/TDD."""
+@pytest.mark.parametrize("rodzaj", ["power_quality_harmonics", "ssci_impedance"])
+@pytest.mark.parametrize("stan", sorted(_STANY_DANYCH))
+def test_rodzaj_wycofany_odpowiada_410_niezaleznie_od_danych_przeksztaltnika(
+    rodzaj: str, stan: str
+) -> None:
+    generatory, parametry = _STANY_DANYCH[stan]
     with TestClient(app) as client:
-        case_id = _seed_case(
-            client,
-            _model(
-                generators=[
-                    _generator("PV-1", materialized_params=_KARTA_BEZ_WIDMA),
-                    _generator("PV-2", bus_ref=_SZYNA_B, materialized_params=_KARTA_BEZ_WIDMA),
-                ]
-            ),
-        )
-        resp = _uruchom(client, case_id, "power_quality_harmonics")
-    assert resp.status_code == 422, resp.text
-    assert "generator.harmonic_spectrum_missing" in resp.text
-    assert "PV-1" in resp.text
-    assert "PV-2" in resp.text
-
-
-def test_ssci_impedance_zadne_zrodlo_nie_ma_karty_zwraca_422() -> None:
-    """Analogiczna bramka dla SSCI: generator BEZ ŻADNEJ karty katalogowej."""
-    with TestClient(app) as client:
-        case_id = _seed_case(client, _model(generators=[_generator("PV-1")]))
-        resp = _uruchom(client, case_id, "ssci_impedance")
-    assert resp.status_code == 422, resp.text
-    assert "generator.converter_card_missing" in resp.text
-    assert "PV-1" in resp.text
-
-
-# ---------------------------------------------------------------------------
-# BRAK kandydatów => NIE blokowane (uczciwy stan zerowy solvera, nie odmowa)
-# ---------------------------------------------------------------------------
-
-
-def test_power_quality_harmonics_bez_zadnych_przeksztaltnikow_odmawia_brakiem_zrodel() -> None:
-    """Sieć bez PV/BESS/wiatru: bramka widma NIE strzela (nie ma kandydatów bez
-    widma) — odmawia gotowość, warunkiem nazwanym po tym, czego brakuje
-    (`zrodla.odksztalcajace`), zamiast biegu z zerowym THD z braku danych."""
-    with TestClient(app) as client:
-        case_id = _seed_case(client, _model(generators=[]))
-        resp = _uruchom(client, case_id, "power_quality_harmonics")
-    assert resp.status_code == 422, resp.text
-    assert "zrodla.odksztalcajace" in resp.text
-    assert "generator.harmonic_spectrum_missing" not in resp.text
-
-
-# ---------------------------------------------------------------------------
-# CZĘŚĆ źródeł ma dane => bieg przechodzi, pominięcia i proweniencja nazwane
-# ---------------------------------------------------------------------------
-
-
-def test_power_quality_harmonics_czesciowe_dane_przechodzi_z_pominietymi_zrodlami() -> None:
-    with TestClient(app) as client:
-        case_id = _seed_case(
-            client,
-            _model(
-                generators=[
-                    _generator("PV-OK", materialized_params=_KARTA_Z_WIDMEM),
-                    _generator("PV-BRAK", bus_ref=_SZYNA_B, materialized_params=_KARTA_BEZ_WIDMA),
-                ]
-            ),
-        )
-        resp = _uruchom(client, case_id, "power_quality_harmonics")
-        assert resp.status_code == 200, resp.text
-        wynik = client.get(resp.json()["result_url"])
-    assert wynik.status_code == 200
-    payload = wynik.json()
-    pominiete = {p["ref"]: p for p in payload["pominiete_zrodla"]}
-    assert set(pominiete) == {"PV-BRAK"}
-    assert pominiete["PV-BRAK"]["kod"] == "generator.harmonic_spectrum_missing"
-    zrodla_widma = {z["ref"]: z for z in payload["zrodla_widma"]}
-    assert zrodla_widma == {"PV-OK": {"ref": "PV-OK", "proweniencja": "KATALOG"}}
-
-
-def test_power_quality_harmonics_wszystkie_zrodla_maja_widmo_brak_pominietych_w_odpowiedzi() -> (
-    None
-):
-    """Kontrola dwustronna: gdy WSZYSCY kandydaci mają widmo, `pominiete_zrodla`
-    nie pojawia się w odpowiedzi w ogóle (pole addytywne, nie pusta lista)."""
-    with TestClient(app) as client:
-        case_id = _seed_case(
-            client, _model(generators=[_generator("PV-OK", materialized_params=_KARTA_Z_WIDMEM)])
-        )
-        resp = _uruchom(client, case_id, "power_quality_harmonics")
-        assert resp.status_code == 200, resp.text
-        wynik = client.get(resp.json()["result_url"])
-    payload = wynik.json()
-    assert "pominiete_zrodla" not in payload
-    assert payload["zrodla_widma"] == [{"ref": "PV-OK", "proweniencja": "KATALOG"}]
-
-
-def test_widmo_reczne_w_zadaniu_daje_proweniencje_reczne_w_odpowiedzi() -> None:
-    """Jawne wejście projektanta (`parameters.harmonic_spectra`) nadpisuje brak
-    karty — źródło wchodzi z proweniencją RECZNE, nie ma go w pominiętych."""
-    with TestClient(app) as client:
-        case_id = _seed_case(
-            client, _model(generators=[_generator("PV-1", materialized_params=_KARTA_BEZ_WIDMA)])
-        )
-        resp = _uruchom(
-            client,
-            case_id,
-            "power_quality_harmonics",
-            {"harmonic_spectra": {"PV-1": {"5": 6.0}}},
-        )
-        assert resp.status_code == 200, resp.text
-        wynik = client.get(resp.json()["result_url"])
-    payload = wynik.json()
-    assert "pominiete_zrodla" not in payload
-    assert payload["zrodla_widma"] == [{"ref": "PV-1", "proweniencja": "RECZNE"}]
-
-
-# ---------------------------------------------------------------------------
-# Bramka jest WĄSKA — inna analiza V12.6 nie czyta harmonic_sources/converters
-# ---------------------------------------------------------------------------
+        case_id = _seed_case(client, _model(generators=generatory))
+        resp = _uruchom(client, case_id, rodzaj, parametry)
+    assert resp.status_code == 410, resp.text
+    cialo = resp.json()
+    assert cialo["code"] == "v126.analysis_withdrawn"
+    assert cialo["analysis_type"] == rodzaj
+    for kod_dawnej_bramki in (
+        "generator.harmonic_spectrum_missing",
+        "generator.converter_card_missing",
+        "zrodla.odksztalcajace",
+    ):
+        assert kod_dawnej_bramki not in resp.text
 
 
 def test_inna_analiza_v126_nie_jest_blokowana_brakiem_widma() -> None:
     """`uncertainty_sensitivity` nie czyta `harmonic_sources` ani `converters`
     (świadomie NIE `earthing_safety`: od karty B-02 ten rodzaj odmawia biegu bez
-    danych uziomu projektanta, `parametr.earthing`, niezależnie od widma)."""
+    danych uziomu projektanta, `parametr.earthing`, niezależnie od widma). Wynik
+    biegu nie niesie usuniętych pól W2-C."""
     with TestClient(app) as client:
         case_id = _seed_case(
             client, _model(generators=[_generator("PV-1", materialized_params=_KARTA_BEZ_WIDMA)])
         )
         resp = _uruchom(client, case_id, "uncertainty_sensitivity")
-    assert resp.status_code == 200, resp.text
+        assert resp.status_code == 200, resp.text
+        wynik = client.get(resp.json()["result_url"])
+    assert wynik.status_code == 200
+    assert "pominiete_zrodla" not in wynik.json()
+    assert "zrodla_widma" not in wynik.json()

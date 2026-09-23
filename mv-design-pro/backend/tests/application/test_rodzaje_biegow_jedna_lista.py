@@ -489,8 +489,23 @@ def _wycofane_v126() -> set[str]:
 
 
 def test_wycofanie_jednym_mechanizmem_rejestr_api_katalog() -> None:
-    """Para: rejestr `withdrawn` ⇔ tresc 410 w API ⇔ karta katalogu nieprezentowana z powodem."""
+    """Para: rejestr `withdrawn` ⇔ tresc 410 w API ⇔ karta katalogu nieprezentowana z powodem
+    ⇔ gotowosc WYCOFANA (dawna zaszyta krotka hosting/OPF w `v126_gotowosc.py` byla
+    osma lista rodzajow wycofanych, rozjechana z rejestrem po wycofaniu harmonicznych)."""
+    from application.analyses.v126_gotowosc import (  # noqa: PLC0415
+        GOTOWOSC_WYCOFANA,
+        ocen_gotowosc_v126,
+    )
+    from enm.models import EnergyNetworkModel, ENMHeader  # noqa: PLC0415
+
     wycofane = _wycofane_v126()
+    pusty_model = EnergyNetworkModel(header=ENMHeader(name="parytet wycofania"))
+    wycofane_w_gotowosci = {
+        rodzaj.value
+        for rodzaj in V126AnalysisType
+        if ocen_gotowosc_v126(pusty_model, rodzaj, {}).gotowosc == GOTOWOSC_WYCOFANA
+    }
+    assert wycofane_w_gotowosci == wycofane
     assert wycofane == {
         "hosting_capacity",
         "opf_loss_lcc",
