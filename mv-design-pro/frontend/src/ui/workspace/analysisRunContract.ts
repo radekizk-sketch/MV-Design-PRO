@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 
+import { czyDomenaFizyczna, type DomenaFizyczna } from '../../types/domenaFizyczna';
+
 import type {
   AnalysisCaseContextReproducibility,
   ExportArtifact,
@@ -52,6 +54,14 @@ export interface AnalysisRunTraceSummary {
 export interface AnalysisRunContract {
   id: string;
   analysisType: string | null;
+  /**
+   * Domena fizyczna biegu (karta AB-1a D1) — WYPROWADZONA przez backend z rejestru
+   * zdolności (`physics_domain`), nigdy wyliczana we froncie. `null` = odpowiedź bez
+   * domeny albo z wartością spoza kontraktu (brak zostaje brakiem).
+   */
+  physicsDomain: DomenaFizyczna | null;
+  /** Etykieta PL domeny z backendu (`physics_domain_pl`) — jedno źródło nazwy. */
+  physicsDomainPl: string | null;
   status: string | null;
   resultStatus: string | null;
   resultsValid: boolean | null;
@@ -465,6 +475,10 @@ function normalizeAnalysisRunContract(payload: unknown): AnalysisRunContract {
   return {
     id: normalizeString(raw.id) ?? '',
     analysisType: normalizeString(raw.analysis_type),
+    physicsDomain: czyDomenaFizyczna(raw.physics_domain) ? raw.physics_domain : null,
+    physicsDomainPl: czyDomenaFizyczna(raw.physics_domain)
+      ? normalizeString(raw.physics_domain_pl)
+      : null,
     status: normalizeString(raw.status),
     resultStatus: normalizeString(raw.result_status),
     resultsValid: typeof raw.results_valid === 'boolean' ? raw.results_valid : null,

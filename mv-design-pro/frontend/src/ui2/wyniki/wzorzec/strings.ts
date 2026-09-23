@@ -11,6 +11,10 @@ import type { KierunekSortowania } from './wzorzecModel';
 export const WZORZEC_STRINGS = {
   // Nagłówek
   identyfikatorPrzebiegu: 'Identyfikator przebiegu',
+  // Karta AB-1a D1: domena fizyczna biegu (wartość = etykieta PL z backendu).
+  domenaFizyczna: 'Domena obliczeń',
+  domenaFizycznaOpis:
+    'Z jakiej reprezentacji fizyki pochodzą liczby tego wyniku — wyniki różnych domen nie są porównywalne wprost.',
   eksport: 'Eksportuj wynik',
 
   // Sekcja ZAŁOŻENIA

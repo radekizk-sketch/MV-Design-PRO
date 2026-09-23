@@ -9,6 +9,7 @@
  * Znacznik świeżości = współdzielony `FreshnessBadge` z `ui2/inspector` (JEDYNY —
  * SPEC_POWIAZANIA §6.2): renderowany, gdy nagłówek niesie obie rewizje.
  * Identyfikator przebiegu — wyłącznie w trybie eksperckim, jako wyrażenie `{...}`.
+ * Domena fizyczna biegu (karta AB-1a D1) — w każdym trybie, obok nazwy analizy.
  */
 
 import './wzorzec.css';
@@ -41,7 +42,8 @@ export function EkranAnalizy({
   wierszDecyzyjny,
   rodzajWiersza,
 }: EkranAnalizyProps) {
-  const { analizaPL, runId, rewizjaModelu, rewizjaDanych, caseId } = naglowek;
+  const { analizaPL, runId, rewizjaModelu, rewizjaDanych, caseId, domenaFizyczna, domenaFizycznaPL } =
+    naglowek;
   const maSwiezosc = rewizjaModelu !== undefined && rewizjaDanych !== undefined;
   // V12K-264: przyczyny unieważnienia pokazujemy TYLKO wtedy, gdy wynik faktycznie
   // jest nieaktualny i wiadomo, o który wariant pracy zapytać. Panel przy aktualnym
@@ -55,6 +57,19 @@ export function EkranAnalizy({
     <div className="mvd-wyn" data-testid="mvd-wyn-ekran">
       <header className="mvd-wyn-head" data-testid="mvd-wyn-naglowek">
         <h2 className="mvd-wyn-title">{analizaPL}</h2>
+        {/* Karta AB-1a D1: domena fizyczna biegu — tożsamość wyniku, nie metadana
+            audytowa, więc widoczna w każdym trybie. Wartość = etykieta PL z backendu
+            (rejestr zdolności); brak pary domena+etykieta = brak znacznika. */}
+        {domenaFizyczna && domenaFizycznaPL && (
+          <span
+            className="mvd-wyn-domena"
+            data-testid="mvd-wyn-domena"
+            data-domena={domenaFizyczna}
+            title={WZORZEC_STRINGS.domenaFizycznaOpis}
+          >
+            {WZORZEC_STRINGS.domenaFizyczna}: {domenaFizycznaPL}
+          </span>
+        )}
         {maSwiezosc && (
           <FreshnessBadge
             rewizjaDanej={rewizjaDanych}

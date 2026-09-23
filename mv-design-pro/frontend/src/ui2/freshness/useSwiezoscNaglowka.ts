@@ -38,6 +38,7 @@
 
 import { useAppStateStore } from '../../ui/app-state/store';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
+import type { DomenaFizyczna } from '../../types/domenaFizyczna';
 import { useAnalysisRunContract } from '../../ui/workspace/analysisRunContract';
 
 export interface SwiezoscNaglowka {
@@ -47,6 +48,14 @@ export interface SwiezoscNaglowka {
   readonly rewizjaDanych?: number;
   /** Aktywny wariant pracy — źródło dziennika zmian. */
   readonly caseId?: string;
+  /**
+   * Domena fizyczna biegu (karta AB-1a D1) z TEGO SAMEGO kontraktu przebiegu, z którego
+   * pochodzi rewizja danych — tożsamość biegu obok jego świeżości. Undefined = kontrakt
+   * jej nie niesie (nagłówek pomija znacznik, nie zgaduje domeny z rodzaju analizy).
+   */
+  readonly domenaFizyczna?: DomenaFizyczna;
+  /** Etykieta PL domeny z backendu (`physics_domain_pl`). */
+  readonly domenaFizycznaPL?: string;
 }
 
 /**
@@ -61,10 +70,15 @@ export function useSwiezoscNaglowka(runId: string | null | undefined): SwiezoscN
   const { data } = useAnalysisRunContract(runId ?? null);
 
   const rewizjaDanych = data?.analysisCaseContext?.rewizjaModelu ?? undefined;
+  // Domena i jej etykieta idą PARĄ: bez etykiety z backendu znacznik się nie pokazuje
+  // (front nie trzyma własnej mapy nazw domen — druga kopia rozjechałaby się).
+  const maDomene = Boolean(data?.physicsDomain && data.physicsDomainPl);
 
   return {
     rewizjaModelu: typeof rewizjaModelu === 'number' ? rewizjaModelu : undefined,
     rewizjaDanych: typeof rewizjaDanych === 'number' ? rewizjaDanych : undefined,
     caseId: caseId ?? undefined,
+    domenaFizyczna: maDomene ? data?.physicsDomain ?? undefined : undefined,
+    domenaFizycznaPL: maDomene ? data?.physicsDomainPl ?? undefined : undefined,
   };
 }

@@ -12,6 +12,7 @@
  */
 
 import type { ReactNode } from 'react';
+import type { DomenaFizyczna } from '../../../types/domenaFizyczna';
 import type { ElementType } from '../../../ui/types';
 
 /** Nagłówek ekranu analizy. */
@@ -30,6 +31,14 @@ export interface NaglowekAnalizy {
    * i pokazuje listę przyczyn zamiast samej pary rewizji.
    */
   caseId?: string;
+  /**
+   * Domena fizyczna biegu (karta AB-1a D1) — z kontraktu przebiegu przez
+   * `useSwiezoscNaglowka`, nigdy wyliczana na ekranie. Pokazywana razem z etykietą
+   * PL z backendu; brak którejkolwiek = brak znacznika.
+   */
+  domenaFizyczna?: DomenaFizyczna;
+  /** Etykieta PL domeny z backendu (`physics_domain_pl`). */
+  domenaFizycznaPL?: string;
 }
 
 /**

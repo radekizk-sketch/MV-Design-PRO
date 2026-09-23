@@ -46,6 +46,15 @@
   font-size: 11px;
   white-space: nowrap;
 }
+/* Karta AB-1a D1: znacznik domeny fizycznej biegu (tożsamość wyniku). */
+.mvd-wyn-domena {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
 .mvd-wyn-akcje {
   display: flex;
   gap: 8px;
