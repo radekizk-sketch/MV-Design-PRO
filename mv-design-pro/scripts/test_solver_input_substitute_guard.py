@@ -1475,7 +1475,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # wezlow — liczbe podstawiona za brak danych. Nie miala zadnego konsumenta, wiec
     # poszla jako martwy kod, a nie jako wyciszenie. PASS bramki niezmieniony
     # (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 3841." in wyjscie, wyjscie
+    # Karta AB-1a wykonawca 2 (2026-09-23): 3841 -> 3861 (+20 nazw pol, zero skasowanych).
+    # POMIAR: `contract_fields()` na drzewie i na `git archive 529837d2` (baza rundy),
+    # roznica zbiorow: dokument, wersja, klauzula, zrodlo_status (PodstawaNormatywna),
+    # wspolrzedna (PunktKrytyczny), metoda_pl (Niepewnosc), granice (ZakresWaznosci),
+    # rownania, parametry (StatusModelu), punkt_krytyczny, przyczyna, status_modelu,
+    # status_wejscia, niepewnosc, zakres_waznosci (OcenaElementu), wynik_inzynierski
+    # (odpowiedz biegu NC RfG), status_walidacji (ProweniencjaParametrow), funkcja_ansi,
+    # funkcja_pl, odniesienie_gorne (OcenaNastawyLom). To pola WYNIKU wyjasnialnego i
+    # metadanych proweniencji — brak danej = None, nie liczba zastepcza. PASS bramki
+    # niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 3861." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1569,7 +1579,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # wykluczenia (13/31) BEZ ZMIANY: predykat wkladu jest MIERZONY z rownan
         # urzadzenia (`prad_pu` oraz `jakobian_prad_napiecie`), a nie z listy rodzin,
         # wiec modul nie podstawia zadnej liczby za brak danej. Zero plikow skasowanych.
-        "Przeskanowano 537 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta AB-1a wykonawca 2 (2026-09-23): 537 -> 540 (+3 pliki `A` wg `git diff
+        # --name-status 529837d2`: `solver_input/status_modelu.py`,
+        # `application/ncrfg_compliance/wynik_inzynierski.py`,
+        # `application/analyses/wynik_inzynierski_v126.py`); zapadka i wykluczenia bez zmian.
+        "Przeskanowano 540 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1637,7 +1651,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).
         # Karta W5-A (2026-09-16): solver_input 11 -> 12 (+1 `solver_input/uklad_sieci_nn.py` —
         # jedna funkcja mapujaca literal modelu -> enum solvera FROZEN; zero dlugu/wykluczen).
-        "  solver_input: pliki_skanowane=12, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
+        # Karta AB-1a (2026-09-23): solver_input 12 -> 13 (+1 `solver_input/status_modelu.py` —
+        # rejestr statusu rownan rodzin i predykat awansu; zero dlugu/wykluczen).
+        "  solver_input: pliki_skanowane=13, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         # Karta W5-D (2026-09-16): enm 41 -> 43 (+2 `fazy_odbioru.py`, `rozplyw_niesymetryczny_wynik.py`).
         # Karta W5-A (2026-09-16): enm +3 `enm/{grupa_polaczen,uziemienie,uklad_sieci_nn}.py`,
         # dlug 8/76 -> 7/73 (wpis `enm/zero_sequence_transformer.py` usuniety z zapadki, patrz wyzej);
@@ -1670,7 +1686,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # uniewazniacz wynikow; dlug/wykluczenia bez zmian — ten plik nie mial
         # ani jednego wpisu w zapadce ani w wykluczeniach, wiec ubyl tylko z
         # licznika skanu).
-        "  application: pliki_skanowane=237, dlug=30 plikow/suma 91, "
+        # Karta AB-1a (2026-09-23): application 237 -> 239 (+2 adaptery wyniku inzynierskiego
+        # nosnikow FROZEN: `ncrfg_compliance/wynik_inzynierski.py`,
+        # `analyses/wynik_inzynierski_v126.py`; dlug/wykluczenia bez zmian).
+        "  application: pliki_skanowane=239, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=62, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]

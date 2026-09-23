@@ -187,7 +187,7 @@ describe('EkranOceny — wynik wyjaśnialny w łańcuchu podstawa → wynik → 
     const bezBiegu = JSON.parse(JSON.stringify(dane)) as { pozycje: PozycjaOceny[] } & OdpowiedzOceny;
     const idx = bezBiegu.pozycje.findIndex((p) => p.kryterium_id === pozycja.kryterium_id);
     const el0 = bezBiegu.pozycje[idx].elementy[0];
-    (bezBiegu.pozycje[idx] as { elementy: OcenaElementu[] }).elementy[0] = {
+    (bezBiegu.pozycje[idx] as unknown as { elementy: OcenaElementu[] }).elementy[0] = {
       ...el0,
       dowod: { run_id: null, element_id: el0.element_id, trace_ref: 'krok-7' },
     };

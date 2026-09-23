@@ -148,8 +148,8 @@ export interface OcenaElementu {
   readonly uzasadnienie_pl: string | null;
   /** Wniosek projektowy — 1–2 zdania w języku formalnym. */
   readonly wniosek_pl: string;
-  /** Odwołanie do dowodu (karta AB-1a D2 — jeden kształt `{run_id, element_id, trace_ref}`);
-   *  `null` = brak biegu i brak śladu. */
+  /** Odwołanie do dowodu (karta AB-1a D2 — jeden kształt `DowodWyniku`: bieg, element,
+   *  krok śladu); `null` = brak biegu i brak śladu. */
   readonly dowod: DowodWyniku | null;
   /** Karta AB-1a D2 — pola wyjaśnialności (`null` = brak danej u dostawcy, kreska). */
   readonly punkt_krytyczny: PunktKrytycznyOdpowiedz | null;

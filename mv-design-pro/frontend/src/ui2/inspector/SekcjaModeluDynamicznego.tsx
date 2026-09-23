@@ -63,9 +63,10 @@ export function SekcjaModeluDynamicznego({ generatorRef }: { generatorRef: strin
     if (!activeProjectId || !activeCaseId || !generatorRef) return;
     let anulowane = false;
     setStan({ rodzaj: 'ladowanie' });
-    const url =
-      `/api/projects/${encodeURIComponent(activeProjectId)}/cases/${encodeURIComponent(activeCaseId)}`
-      + `/generators/${encodeURIComponent(generatorRef)}/status-modelu`;
+    const projekt = encodeURIComponent(activeProjectId);
+    const przypadek = encodeURIComponent(activeCaseId);
+    const wytworca = encodeURIComponent(generatorRef);
+    const url = `/api/projects/${projekt}/cases/${przypadek}/generators/${wytworca}/status-modelu`;
     fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error(`Zapytanie ${url} nie powiodło się: ${r.status}`);

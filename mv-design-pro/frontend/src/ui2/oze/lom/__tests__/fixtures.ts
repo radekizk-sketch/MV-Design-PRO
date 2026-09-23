@@ -15,7 +15,8 @@
  * RfG, pole FW z 81U w oknie (OK) + SPZ (INFO → status pola INFO)).
  */
 
-import type { OcenaNastawyLom, PodstawaNormatywnaOdpowiedz, WidokOchronyLom } from '../../api';
+import type { PodstawaNormatywnaOdpowiedz } from '../../../wyniki/ocena/api';
+import type { OcenaNastawyLom, WidokOchronyLom } from '../../api';
 
 const UWAGA_DOKUMENTU =
   'Dokument źródłowy nastaw wymaganych (IRiESD operatora, PN-EN 50549-1/-2), jego wydanie i '

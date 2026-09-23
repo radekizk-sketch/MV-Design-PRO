@@ -351,7 +351,12 @@ POMIJANE_KATALOGI = {
 #: `bay_role_categories`) — trzy bledy TS2740 poza bramka. Uzupelnione do pelnego kontraktu
 #: (fikstura testu ma odpowiadac odpowiedzi backendu, inaczej test cwiczy inny ksztalt niz
 #: produkt). Pomiar PO naprawie: 105. Budzet obnizony 106 -> 105.
-BUDZET_BLEDOW_POZA_BRAMKA = 105
+#: Karta AB-1a wykonawca 2 (2026-09-23, pomiar guardem): nowe pola kontraktu wyniku
+#: wyjasnialnego (PozycjaOceny/OcenaElementu/DowodWyniku, werdykt zbiorczy certyfikatu)
+#: uzupelnione w fiksturach testow ocena/co-wymaga-uwagi/macierz/lom do pelnego
+#: ksztaltu backendu; przy okazji fikstura `ocena/__tests__/model.test.ts` (brakujace
+#: pola V12.7 `PozycjaOceny`) przestala byc bledem. Pomiar PO: 104. Budzet 105 -> 104.
+BUDZET_BLEDOW_POZA_BRAMKA = 104
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

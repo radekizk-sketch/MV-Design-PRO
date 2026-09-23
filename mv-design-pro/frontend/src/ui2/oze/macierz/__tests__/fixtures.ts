@@ -297,6 +297,18 @@ export function certyfikatFixture(): WidokCertyfikatu {
       liczba_modulow: 2,
       modulow_zgodnych: 1,
       modulow_niezgodnych: 1,
+      // Karta AB-1a D7 — towarzysze werdyktu zbiorczego (kształt `build_certyfikat_view`).
+      wartosc: 1,
+      odniesienie: 2,
+      margines: null,
+      podstawa: {
+        dokument: 'PTPiREE Procedura testowania v3.0',
+        wersja: null,
+        klauzula: null,
+        zrodlo_status: 'UNVERIFIED_SOURCE',
+        uwaga_pl: null,
+      },
+      dowod: { run_id: null, element_id: null, trace_ref: 'det-9f8e7d6c' },
     },
     moduly: [
       {

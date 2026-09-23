@@ -48,7 +48,7 @@ na sasiednim polu tej samej klasy):
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from network_model.pochodne import mva_na_kva
 from pydantic import (
@@ -97,8 +97,12 @@ class ProweniencjaParametrow(BaseModel):
     @model_serializer(mode="wrap")
     def _bez_pustego_statusu(
         self, handler: SerializerFunctionWrapHandler, info: SerializationInfo
-    ) -> Any:
-        """``exclude_none`` wylacznie dla pola addytywnego ``status_walidacji``."""
+    ) -> object:
+        """``exclude_none`` wylacznie dla pola addytywnego ``status_walidacji``.
+
+        Typ zwracany ``object`` (nie ``Any``): handler oddaje postac zserializowana
+        dowolnego trybu, a warstwa ``enm`` nie uzywa golego ``Any`` (niezmiennik
+        ``test_no_any_in_domain_types``)."""
         dane = handler(self)
         if isinstance(dane, dict) and dane.get("status_walidacji") is None:
             dane.pop("status_walidacji", None)
