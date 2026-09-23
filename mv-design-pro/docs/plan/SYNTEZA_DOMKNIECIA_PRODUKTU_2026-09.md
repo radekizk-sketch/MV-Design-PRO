@@ -221,6 +221,12 @@ Podział wymagań wg rodzaju twierdzenia (A-2, rejestr `ClaimKind`):
   tryby Q/U/cosφ i zdolność bierna (z zastrzeżeniem: zdolność Q(P) da się WYKAZAĆ rozpływem — W6-5 promuje T09 do
   wyniku obliczonego), T10/T11 P_MAX/P_MIN, T12/T13 zaprzestanie/zmniejszenie generacji, T19 telemechanika/SCADA/
   rejestrator, T20 THD_U (z pomiaru/karty; W6-7 daje wynik obliczony z widma).
+  **Korekta 2026-09-23 (Program A/B §6.6, przegląd adwersarialny `../evidence/OPUS_AUDYT_WARSTWY_REGULACYJNEJ_2026-09-23.md`):**
+  T05 (regulacja P) oraz T12/T13 (zaprzestanie w ≤ 5 s / zmniejszenie z gradientem) są twierdzeniami o ZACHOWANIU
+  W CZASIE, nie faktami konfiguracyjnymi — do czasu jawnej akceptacji deklaracji przez profil (OD-21) klasyfikowane
+  `DYNAMIC_PERFORMANCE`; T20: THD_U jest własnością napięcia sieci, nie emisją modułu — limit 8 % zaszyty w solverze
+  (`engine.py:860`) przenosi charakterystykę napięcia zasilającego (PN-EN 50160) na emisję urządzenia (zakaz);
+  T20 = `REQUIREMENT_UNVERIFIED` do OD-38, a „wynik obliczony z widma" nie może zastąpić tej oceny (kompatybilność ≠ emisja).
 **Pomiar dokumentu źródłowego (2026-09-16, Procedura testowania PTPiREE wer. 3.0, 15 stron, tekst wyekstrahowany z PDF):**
 Tabela 1 procedury NIE numeruje testów (brak `T01…T20`) — wymienia ZDOLNOŚCI per typ A/B/C/D i rodzinę (SyPGM / PPM /
 morskie PPM): sprawdzenia podstawowe = LFSM-O, LFSM-U, FSM, regulacja odbudowy częstotliwości, zdolność do pracy na
@@ -503,7 +509,7 @@ i dokumentach, readiness per rodzina, nakładka czasu na SLD, wszystkie wzory w 
 | **W6-4** | scenariusze zdarzeń z modelu SN (zwarcie w węźle z Z_f, wyłączenie, wyspa), wielozdarzeniowość, PPC | W6-3 | niezmienniczość permutacji ZMIERZONA na klasie; re-init z Δy raportowanym prawdziwie |
 | **W6-5** | ewaluator WOS jako konsument (T01–T04, T14–T18), certyfikat/wniosek/studium z „Podstawą", profile wersjonowane, **OD-20** kasacja `stability_rms`/`frt_hvrt` i przepięcie ewaluatora (B-01) | W6-4 + OD-20 + OD-21 | test T14 może wypaść negatywnie; zgodność z profilem i wersją; pakiet dowodowy dynamiki |
 | **W6-6** | QSTS + BESS dyspozycja (9 trybów → reguły P(t)/SOC(t)), straty roczne, obciążalność TR 60076-7, hosting z magazynem | W6-3 (BESS) | bilans energii, parytet z rozpływem pojedynczym, profil w kopercie |
-| **W6-7** | jakość: flicker do solvera bez zmiany liczb, VUF, harmoniczne pod „Jakość", EN 50160 raport, profil napięcia w ekranie (B6) | W3-J | parytet liczb, raport z proweniencją |
+| **W6-7** | jakość: flicker do solvera bez zmiany liczb, VUF, harmoniczne pod „Jakość", raport charakterystyk napięcia (B6) — **korekta 2026-09-23:** „EN 50160 raport" nie może być werdyktem z jednego punktu pracy symulacji (norma definiuje 95 % 10-minutówek w tygodniu na zaciskach zasilania; przegląd adwersarialny `../evidence/OPUS_AUDYT_WARSTWY_REGULACYJNEJ_2026-09-23.md` ZADANIE 4); harmoniczne = nowy pakiet `solvers/harmoniczne/` (Program A/B AB-2H), nie przeniesienie V12.6 | W3-J | parytet liczb, raport z proweniencją |
 | **W6-8** | koordynacja izolacji + pakiet dowodowy (H3/H9), udar (G4 po OD-15(d)) pod kanonem | OD-15(d) | parytet z V12.6, kasacja duplikatu tabeli BIL |
 
 ---

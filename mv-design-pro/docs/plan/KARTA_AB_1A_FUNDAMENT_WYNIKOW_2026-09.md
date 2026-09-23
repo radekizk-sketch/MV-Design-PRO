@@ -18,10 +18,10 @@ powstałby jako druga wyspa, a tor R dalej produkowałby werdykty bez towarzyszy
 |---|---|---|
 | R-1 | `PhysicsDomain` jest **wyprowadzana z `analysis_type` przez JEDEN rejestr** (`application/solvers/solver_capability_registry.py`), nie dopisywana do kontraktów wyników FROZEN (`resultset_v1`, `resultset_dynamic_v1`). Koperta API biegu dostaje pole addytywne `physics_domain` (`exclude_none` nie dotyczy — pole zawsze obecne dla biegu zarejestrowanego). Nieznany `analysis_type` → wyjątek nazwany, nie `None`. | audyt regulacyjny §3.1; plan §6.10 |
 | R-2 | `WynikInzynierski` = **rozszerzenie** `OcenaElementu` + `PozycjaWerdyktu` (`application/analyses/werdykt_projektowy.py`, front `ui2/wyniki/ocena/api.ts`). Zero trzeciego kontraktu. Nowe pola addytywne, `None` = „brak" (kreska na ekranie), nigdy wartość zastępcza. | audyt §3.2 |
-| R-3 | Dwie osie statusu modelu urządzenia: `StatusRownan` (klasa urządzenia wobec wyroczni; rejestr per rodzina w `solver_input/provenance.py`, fail-closed `UNKNOWN`) i `StatusParametrow` (egzemplarz/typ wobec pomiaru/certyfikatu; pole OPCJONALNE `status_walidacji` w `ProweniencjaParametrow`, brak = `UNKNOWN` przy odczycie, żadnej domyślki zapisywanej). Trzecia oś (dowód zaakceptowany) NIE istnieje na modelu — należy do łańcucha zgodności (AB-1c). Nazwy różne od `EvidenceTier`. | audyt §6.8; wzorzec A-8 |
+| R-3 | Dwie osie statusu modelu urządzenia: `StatusRownan` (klasa urządzenia wobec wyroczni; rejestr per rodzina w `solver_input/provenance.py`, fail-closed `UNKNOWN`) i `StatusParametrow` (egzemplarz/typ wobec POMIARU; pole OPCJONALNE `status_walidacji` w `ProweniencjaParametrow`, brak = `UNKNOWN` przy odczycie, żadnej domyślki zapisywanej). **Certyfikat badania typu (rejestr WiPWC) NIE jest walidacją parametrów modelu RMS** — status `CERTIFIED_TYPE_TEST` należy do sekcji `certification` katalogu i otwiera wyłącznie metodę dowodu `CERTIFICATE` (AB-1b), nigdy `VALIDATED_SIMULATION` (przegląd adwersarialny §6.5). Trzecia oś (dowód zaakceptowany) NIE istnieje na modelu — należy do łańcucha zgodności (AB-1c). `OUTSIDE_DOMAIN` nie jest wartością żadnej osi modelu (to kod W-99 wyniku). Nazwy różne od `EvidenceTier`. | audyt §6.8; wzorzec A-8; przegląd adwersarialny §5.13, §6.5 |
 | R-4 | `BadanieZgodnosci` = **osobny kontrakt** obok `ScenariuszDynamiczny` (`enm/scenariusze.py`), warianty `rodzaj_badania` biegu `dynamika_rms`. NIE nowy rodzaj w unii `ZdarzenieDynamiczne`. `ScenariuszDynamiczny.tresc()`/`hash()` istniejących scenariuszy — bit w bit bez zmian (pin). Rdzeń nie obsługuje bodźca → adapter kończy nazwaną odmową `bodziec.rdzen_nieobslugiwany` (kod dopisany do zamkniętego rejestru `KODY_ODMOW` z testem). | audyt §6.9 |
 | R-5 | Guard werdyktu działa na **obiekcie wyniku**, nie na literale (reguła audytu §3.3 p. 1–8, przeniesiona do docstringu guardu w całości). Zamknięta lista wyjątków FROZEN z przypiętym adapterem per pozycja. `ochrona_lom.Verdict` NIE jest FROZEN → przebudowa w tej karcie. | audyt §3.3 |
-| R-6 | Poprawki rejestru dowodowego bez dotykania solvera FROZEN: T10 → zdolność `ncrfg_ptpiree.test_bez_tresci` (tier `NOT_SIMULATED`, claim `DYNAMIC_PERFORMANCE` → nie `reportable`); T20 → `ncrfg_ptpiree.power_quality_declared` z **poprawionym opisem** (limit 8 % zaszyty w `engine.py:860`, THD_U jest własnością napięcia sieci, nie emisji urządzenia) i `claim_kind=DYNAMIC_PERFORMANCE` (nie fakt konfiguracyjny) → nie `reportable`; moduł z zerem wymaganych testów → `not_reportable` z ograniczeniem `brak_wymaganych_testow` (reinterpretacja w `dowod_ncrfg.py`, solver nietknięty). | audyt §2.2, §6.6 |
+| R-6 | Poprawki rejestru dowodowego bez dotykania solvera FROZEN: T10 → zdolność `ncrfg_ptpiree.test_bez_tresci` (tier `NOT_SIMULATED`, claim `DYNAMIC_PERFORMANCE` → nie `reportable`); T20 → `ncrfg_ptpiree.power_quality_declared` z **poprawionym opisem** (limit 8 % zaszyty w `engine.py:860`, THD_U jest własnością napięcia sieci, nie emisji urządzenia) i `claim_kind=DYNAMIC_PERFORMANCE` (nie fakt konfiguracyjny) → nie `reportable`; **T05 (regulacja P), T12/T13 (zaprzestanie w ≤ 5 s / zmniejszenie z gradientem) → `ClaimKind.DYNAMIC_PERFORMANCE`** (twierdzenia o zachowaniu w czasie; przegląd adwersarialny §6.2) — nowa zdolność `ncrfg_ptpiree.zachowanie_zadeklarowane` z tier `DECLARATION`, nie `reportable` do czasu akceptacji deklaracji przez profil (AB-1b/AB-1c), z testem parowym; moduł z zerem wymaganych testów → `not_reportable` z ograniczeniem `brak_wymaganych_testow` (reinterpretacja w `dowod_ncrfg.py`, solver nietknięty). **Skutek widoczny dla użytkownika (zamierzony, uczciwy):** macierz NC RfG przestaje meldować `reportable` dla T05/T10/T12/T13/T20 — pin testowy „PPM typu A z samą deklaracją T12 nie jest `reportable`". | audyt §2.2, §6.6; przegląd adwersarialny §6.1, §6.2 |
 | R-7 | Liczby normatywne (progi LoM 2,0 Hz/s, 47,5 Hz, 51,5 Hz; limity 8/5/5 %) **nie zmieniają się** w tej karcie (OD-38, OD-40); zmienia się wyłącznie ich OPIS: pole `zrodlo_status = UNVERIFIED_SOURCE` tam, gdzie dokument/wersja/klauzula nie są potwierdzone. | plan §12.2 |
 | R-8 | Zakaz: edycji `network_model/solvers/**` poza `dynamika/zdarzenia.py::KODY_ODMOW` (dopisanie kodu odmowy — pod bramkami R10), `v126_academic.py`, `ncrfg_ptpiree/**`, `power_flow_*`, `short_circuit_*`; zakaz zmiany liczb w `catalog/profiles/nc_rfg/*.yaml`; zakaz nowych literałów fizyki w UI (`ui_no_physics_guard`). | B-01, R-07 planu |
 | R-9 | Terminologia: „miejsce przyłączenia" (nie „PCC"), etykiety UI po polsku bez kodów projektowych; identyfikatory wewnętrzne (E2E-*, G*, M*) nie trafiają do UI. | `pcc_zero_guard`, `no_codenames_guard` |
@@ -78,6 +78,18 @@ pozostałe listy zostają (ich kasacja to osobna klasa — AB-1d_min), ale test 
   uzasadnienia w komentarzu.
 - Funkcja `domena_fizyczna_biegu(analysis_type: str) -> PhysicsDomain` (fail-closed: nieznany typ → `ValueError`
   z nazwą; prefiks `v126:` mapowany przez tabelę jawną, nie regex-zgadywanie).
+- **`dynamika_rms` dopisany do rejestru** (dziś go nie ma — przegląd adwersarialny §5.2) z `physics_domain =
+  RMS_DYNAMICS`, `output_contract = "resultset_dynamic_v1"`, `reference_test` = SO-1A.
+- **`reportable` przestaje być polem ZAPISYWANYM**: wyprowadzany z `solver_input/provenance.py` (jedyne źródło
+  stopnia dowodowego) przez funkcję `czy_raportowalna(capability) -> bool` = `regulatory_evidence_eligible` wpisu
+  proweniencji dla `capability_id` zdolności (mapowanie zdolność rejestru → `capability_id` proweniencji jawne,
+  fail-closed `UNVALIDATED_MODEL` → `False`); wykonawca usuwa pole `reportable: bool` z `SolverCapability` albo
+  zostawia je jako `@property` — bez zapisu w literałach rejestru; test parowy „`reportable ⇔
+  regulatory_evidence_eligible`" iterujący po WSZYSTKICH wpisach rejestru. Pomiar przed zmianą: dziś każdy wpis ma
+  `reportable=True`, w tym `DYNAMIC_STABILITY` (proweniencja: `UNVALIDATED_MODEL`) i `SSCI_IMPEDANCE` — wykonawca
+  raportuje w meldunku listę wpisów, które po zmianie przestają być raportowalne, i dostosowuje konsumentów
+  (`api/`, gotowość, UI) tak, żeby brak raportowalności był nazwany, nie cichy. **Nie w tej karcie:**
+  `availability="withdrawn"` dla `POWER_QUALITY_HARMONICS`/`SSCI_IMPEDANCE` (AB-1d_min) i `DYNAMIC_STABILITY` (AB-2R).
 - `api/canonical_run_views.py`: pole `physics_domain` (wartość + `physics_domain_pl`) w widoku biegu; OpenAPI
   snapshot przeliczony (`backend/schemas/openapi_snapshot.json`) z komentarzem w commicie, co się zmieniło.
 - Frontend: typ w `types/` (pin do OpenAPI), prezentacja w JEDNYM komponencie nagłówka biegu w `ui2/wyniki/**`
@@ -154,18 +166,19 @@ pozostałe listy zostają (ich kasacja to osobna klasa — AB-1d_min), ale test 
   niezweryfikowany), test „nigdy wartość zastępcza" (brak danych → `None`).
 
 **D3 — dwie osie statusu modelu**
-- `solver_input/provenance.py`: `StatusRownan(StrEnum)` = `{VALIDATED, UNVALIDATED, UNKNOWN, OUTSIDE_DOMAIN}`,
-  `StatusParametrow(StrEnum)` = `{MEASURED, CERTIFIED, DATASHEET, ESTIMATED, UNKNOWN}` (rozłączne z `FieldQuality`
-  nazwami wartości tam, gdzie znaczenie inne — `DATASHEET`/`ESTIMATED` mogą się pokrywać, wtedy jedna definicja:
-  `StatusParametrow` importuje etykiety z `FieldQuality`, nie dubluje), rejestr `_STATUS_ROWNAN_RODZIN: dict[str,
-  StatusRownan]` dla rodzin `ROdzinaDynamiki` (`synchroniczna` klasyczna 2. rzędu → `VALIDATED` z `audit_ref` R10;
+- `solver_input/provenance.py`: `StatusRownan(StrEnum)` = `{VALIDATED, UNVALIDATED, UNKNOWN}` (bez
+  `OUTSIDE_DOMAIN` — to kod wyniku W-99), `StatusParametrow(StrEnum)` = `{MODEL_ZWALIDOWANY_POMIAREM,
+  KARTA_KATALOGOWA, OSZACOWANE, UNKNOWN}` (etykiety `KARTA_KATALOGOWA`/`OSZACOWANE` współdzielone z `FieldQuality`
+  przez import, nie duplikat; **żadnej wartości `CERTIFIED`** — certyfikat badania typu żyje w sekcji
+  `certification` jako `CERTIFIED_TYPE_TEST` i nie jest osią modelu), rejestr `_STATUS_ROWNAN_RODZIN: dict[str,
+  StatusRownan]` dla rodzin `RodzinaDynamiki` (`synchroniczna` klasyczna 2. rzędu → `VALIDATED` z `audit_ref` R10;
   wszystkie pozostałe → `UNVALIDATED` z odsyłaczem do przeglądu dynamiki §3), funkcja `status_rownan_rodziny(rodzina)`
-  fail-closed `UNKNOWN`.
+  fail-closed `UNKNOWN`; jedna tabela mapowania statusów sekcji katalogu W-68 → dwie osie z testem wyczerpującym.
 - `enm/dynamika_modele.py::ProweniencjaParametrow.status_walidacji: StatusParametrow | None = None` (opcjonalne,
   `exclude_none`; **żaden istniejący hash ENM nie zmienia się** — pin na fikstury golden), reader
   `status_parametrow(prow) -> StatusParametrow` (`None → UNKNOWN`).
 - Predykat parami: `czy_awans_dopuszczalny(tier_docelowy, status_rownan, status_parametrow) -> bool`: `VALIDATED_SIMULATION`
-  wymaga `rownania=VALIDATED` i `parametry ∈ {MEASURED, CERTIFIED}`; test iloczynu cech (4 × 5 kombinacji) + test,
+  wymaga `rownania=VALIDATED` **i** `parametry=MODEL_ZWALIDOWANY_POMIAREM`; test iloczynu cech (3 × 4 kombinacji) + test,
   że rejestr `_DYNAMIC_CAPABILITY_EVIDENCE` nie zawiera wpisu `VALIDATED_SIMULATION` łamiącego predykat.
 - Konsument UI: inspektor urządzenia dynamicznego (istniejąca sekcja proweniencji w `ui2/inspector` albo
   `ui2/oze/pulpit` — wykonawca wskazuje jedną) pokazuje dwie odznaki; D2 wypełnia `status_modelu` dla pozycji
