@@ -32,6 +32,7 @@ from application.ncrfg_compliance.model_bridge import (
     NcRfgDerPominiety,
     build_ncrfg_module_inputs_from_enm,
 )
+from application.ncrfg_compliance.wynik_inzynierski import wyniki_inzynierskie_biegu
 from enm.models import EnergyNetworkModel
 from network_model.solvers.ncrfg_ptpiree import (
     NcRfgPtpireeRunRequest,
@@ -66,6 +67,10 @@ class NcRfgPtpireeRunResponse(NcRfgPtpireeRunResult):
     evidence_note_pl: str = ""
     evidence_per_module: dict[str, dict[str, Any]] = {}
     evidence_by_test: dict[str, dict[str, dict[str, Any]]] = {}
+    #: Karta AB-1a D2: wynik inzynierski KAZDEGO testu (``der_ref → test_id →
+    #: PozycjaWerdyktu.to_dict``) — adapter FROZEN ``wynik_inzynierski.z_testu_ncrfg``:
+    #: wartosc, wymaganie, zapas, podstawa (zrodlo niezweryfikowane), dowod.
+    wynik_inzynierski: dict[str, dict[str, dict[str, Any]]] = {}
 
 
 class NcRfgCaseComplianceResponse(BaseModel):
@@ -106,6 +111,7 @@ def odpowiedz_biegu_ncrfg(
             der_ref: modul_ocena.to_dict() for der_ref, modul_ocena in ocena.per_module.items()
         },
         evidence_by_test=ocena.evidence_by_test,
+        wynik_inzynierski=wyniki_inzynierskie_biegu(result),
     )
 
 

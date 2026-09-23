@@ -1,0 +1,790 @@
+#!/usr/bin/env python3
+"""Guard werdyktu wyjasnialnego: werdykt jest OBIEKTEM z pieciu towarzyszami, nie literalem.
+
+PO CO (karta AB-1a D7, audyt warstwy regulacyjnej 2026-09-23 §3.3, plan A/B §6.11).
+Werdykt wydany jako goly literal (`{"status": "zgodny"}`, `Verdict(severity, message)`,
+pole `verdict: Literal["pass", "fail"]` bez wartosci i wymagania) jest dla odbiorcy
+nie do sprawdzenia: nie wiadomo, CO porownano, Z CZYM, z jakim ZAPASEM, na jakiej
+PODSTAWIE i gdzie jest DOWOD. Zakaz samych literalow bylby niewykonalny i bledny
+(slowniki `pass/fail/no_data/not_required`, `SPELNIA/NIE_SPELNIA/BRAK_PODSTAW` sa
+legalnymi czlonkami typow), wiec regula dotyczy OBIEKTU wyniku, nie literalu.
+
+REGULA (audyt §3.3 p. 1-8, przeniesiona w calosci):
+
+1. `TOKENY_WERDYKTU` = {pass, fail, PASS, FAIL, SPELNIA, NIE_SPELNIA, SPEŁNIA,
+   NIE SPEŁNIA, zgodny, niezgodny, SPELNIONE, NARUSZONE} — dokladne dopasowanie
+   wielkosci liter.
+2. NOSNIK WERDYKTU =
+   (a) klasa (`BaseModel` / `@dataclass` / `TypedDict` — kazda klasa z polami
+       adnotowanymi) z polem, ktorego adnotacja zawiera `Literal[...]` z >= 1 tokenem
+       albo ALIAS takiego `Literal` (alias zdefiniowany w dowolnym module
+       `backend/src`, bo nosnik importuje go po nazwie);
+   (b) literal slownika z kluczem z `KLUCZE_WERDYKTU` = {verdict, werdykt, wynik,
+       status, overall_status, compatibility_status} i wartoscia bedaca stala z
+       `TOKENY_WERDYKTU` (literal napisu, nazwa stalej modulowej o wartosci-tokenie
+       albo wyrazenie warunkowe, ktorego obie galezie sa tokenami).
+3. GRUPY TOWARZYSZY (kazda grupa: dowolna z nazw), szukane w nosniku ALBO w klasie
+   nadrzednej, ktora zawiera go jako pole (zagniezdzenie jak `PozycjaWerdyktu →
+   OcenaElementu`), a dla slownika — w kluczach tego slownika albo slownika, ktory
+   go zawiera; pola klas bazowych naleza do klasy:
+   wartosc {measured, wartosc, value, wartosc_pomiar}; wymaganie {required,
+   odniesienie, limit, tolerancja_pct}; margines {margin, margines, odchylka_pct};
+   podstawa {basis, podstawa, norma_pl, clause_ref, zrodlo_tolerancji}; dowod
+   {evidence, dowod, trace, trace_refs, slad_pl, run_id}.
+4. Guard ZGLASZA nosnik, ktoremu brakuje >= 1 grupy, chyba ze jest to
+   `WynikInzynierski` albo pole w nim.
+5. Guard NIE ZGLASZA: samej definicji typu (`X = Literal[...]`, `class X(StrEnum)`),
+   map etykiet (slownik o kluczach bedacych czlonkami typu werdyktu — klucz nie
+   nalezy do `KLUCZE_WERDYKTU`, wiec nie jest nosnikiem z definicji), porownan
+   (`== "pass"` — to nie slownik ani pole), plikow `tests/**`, `docs/**` (poza
+   zakresem skanu).
+6. LISTA WYJATKOW `scripts/explainable_verdict_allowlist.txt` — ZAMKNIETA, wylacznie
+   nosniki FROZEN (solver B-01 nie moze dostac pol): kazda pozycja z nazwa adaptera,
+   ktory opakowuje nosnik w ksztalt wyniku wyjasnialnego (`modul.py::funkcja`) albo
+   z adnotacja `WYCOFYWANA_AB-1d_min[ZDOLNOSC]` (zdolnosc wycofywana — adapter nie
+   powstaje). Test przypina, ze adapter istnieje i jest wolany przez trase API
+   (AST, domkniecie wywolan), a adnotacja trzyma sie wpisu rejestru zdolnosci.
+   Pliki FROZEN z nosnikami sa skanowane ZAWSZE (`SKAN_FROZEN`), zeby usuniecie
+   pozycji z listy wyjatkow dawalo zgloszenie, a nie cisze.
+7. FRONTEND (`--frontend`): ta sama regula na interfejsach
+   `frontend/src/ui2/**/api.ts` — propercja typu unii literalow z tokenem (wprost
+   albo przez alias `type X = 'a' | 'b'`) bez pieciu grup w tym samym interfejsie,
+   w interfejsie rozszerzanym (`extends`) albo w interfejsie nadrzednym, ktory go
+   zawiera jako propercje. Lista wyjatkow frontu:
+   `scripts/explainable_verdict_frontend_allowlist.txt` (pozycja = `plik::Interfejs.propercja`
+   z powodem). Czesc „regula renderu" p. 7 audytu (etykieta werdyktu z `strings.ts`
+   w jednym komponencie prezentacji) nalezy do guardu grafu importow — nie do tego
+   pliku.
+8. Testy mutacyjne: `scripts/test_explainable_verdict_guard.py`.
+
+Uruchomienie: `python scripts/explainable_verdict_guard.py` (backend) oraz
+`python scripts/explainable_verdict_guard.py --frontend`. Czysty AST / tekst, bez
+zaleznosci. Kod wyjscia 0 = zero zgloszen poza lista wyjatkow, 1 = zgloszenia albo
+niespojna lista wyjatkow.
+"""
+
+from __future__ import annotations
+
+import ast
+import functools
+import re
+import sys
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
+FRONTEND_UI2 = PROJECT_ROOT / "frontend" / "src" / "ui2"
+ALLOWLIST = Path(__file__).resolve().parent / "explainable_verdict_allowlist.txt"
+ALLOWLIST_FRONTEND = Path(__file__).resolve().parent / "explainable_verdict_frontend_allowlist.txt"
+
+#: Korzenie skanu wzgledem BACKEND_SRC (audyt §3.3: warstwy, ktore WYDAJA wynik).
+SKAN_ROOTS: tuple[str, ...] = ("api", "application", "analysis", "solver_input")
+
+#: Pliki FROZEN (B-01) zawierajace nosniki z listy wyjatkow — skanowane zawsze
+#: (p. 6 reguly: usuniecie pozycji z listy wyjatkow = zgloszenie, nie cisza).
+SKAN_FROZEN: tuple[str, ...] = (
+    "network_model/solvers/ncrfg_ptpiree/contracts.py",
+    "network_model/solvers/v126_academic.py",
+)
+
+TOKENY_WERDYKTU: frozenset[str] = frozenset(
+    {
+        "pass",
+        "fail",
+        "PASS",
+        "FAIL",
+        "SPELNIA",
+        "NIE_SPELNIA",
+        "SPEŁNIA",
+        "NIE SPEŁNIA",
+        "zgodny",
+        "niezgodny",
+        "SPELNIONE",
+        "NARUSZONE",
+    }
+)
+
+KLUCZE_WERDYKTU: frozenset[str] = frozenset(
+    {"verdict", "werdykt", "wynik", "status", "overall_status", "compatibility_status"}
+)
+
+GRUPY_TOWARZYSZY: dict[str, frozenset[str]] = {
+    "wartosc": frozenset({"measured", "wartosc", "value", "wartosc_pomiar"}),
+    "wymaganie": frozenset({"required", "odniesienie", "limit", "tolerancja_pct"}),
+    "margines": frozenset({"margin", "margines", "odchylka_pct"}),
+    "podstawa": frozenset({"basis", "podstawa", "norma_pl", "clause_ref", "zrodlo_tolerancji"}),
+    "dowod": frozenset({"evidence", "dowod", "trace", "trace_refs", "slad_pl", "run_id"}),
+}
+
+#: Nazwa kontraktu wyniku wyjasnialnego (p. 4 reguly) — nosnik o tej nazwie i jego
+#: pola sa z definicji zgodne.
+WYNIK_INZYNIERSKI = "WynikInzynierski"
+
+ADNOTACJA_WYCOFYWANA = re.compile(r"^WYCOFYWANA_AB-1d_min\[([A-Z_]+)\]$")
+
+
+@dataclass(frozen=True)
+class Zgloszenie:
+    """Jedno zgloszenie guardu: stabilny identyfikator nosnika + opis braku."""
+
+    ident: str
+    plik: str
+    linia: int
+    brakujace: tuple[str, ...]
+
+    def opis(self) -> str:
+        return (
+            f"{self.plik}:{self.linia}: nosnik werdyktu {self.ident} bez towarzyszy: "
+            + ", ".join(self.brakujace)
+        )
+
+
+# ---------------------------------------------------------------------------
+# Wspolne
+# ---------------------------------------------------------------------------
+
+
+def brakujace_grupy(nazwy: Iterable[str]) -> tuple[str, ...]:
+    """Grupy towarzyszy, ktorych ZADNA nazwa nie wystepuje w `nazwy`."""
+    zbior = set(nazwy)
+    return tuple(grupa for grupa, czlony in GRUPY_TOWARZYSZY.items() if not (zbior & czlony))
+
+
+# ---------------------------------------------------------------------------
+# Backend (AST)
+# ---------------------------------------------------------------------------
+
+
+def _tokeny_literalu(wezel: ast.AST) -> set[str]:
+    """Tokeny werdyktu wewnatrz KAZDEGO `Literal[...]` w wyrazeniu adnotacji."""
+    znalezione: set[str] = set()
+    for pod in ast.walk(wezel):
+        if not isinstance(pod, ast.Subscript):
+            continue
+        nazwa = pod.value
+        if isinstance(nazwa, ast.Attribute):
+            nazwa_txt = nazwa.attr
+        elif isinstance(nazwa, ast.Name):
+            nazwa_txt = nazwa.id
+        else:
+            continue
+        if nazwa_txt != "Literal":
+            continue
+        for stala in ast.walk(pod.slice):
+            if isinstance(stala, ast.Constant) and isinstance(stala.value, str):
+                if stala.value in TOKENY_WERDYKTU:
+                    znalezione.add(stala.value)
+    return znalezione
+
+
+def _nazwy_w_adnotacji(wezel: ast.AST) -> set[str]:
+    nazwy: set[str] = set()
+    for pod in ast.walk(wezel):
+        if isinstance(pod, ast.Name):
+            nazwy.add(pod.id)
+        elif isinstance(pod, ast.Attribute):
+            nazwy.add(pod.attr)
+        elif isinstance(pod, ast.Constant) and isinstance(pod.value, str):
+            # adnotacje w cudzyslowie (forward reference): "OcenaElementu"
+            try:
+                wyr = ast.parse(pod.value, mode="eval")
+            except SyntaxError:
+                continue
+            nazwy |= _nazwy_w_adnotacji(wyr)
+    return nazwy
+
+
+def aliasy_werdyktu(drzewo: ast.Module) -> set[str]:
+    """Nazwy aliasow `X = Literal[...]` (i `X: TypeAlias = ...`, `type X = ...`) z tokenem."""
+    aliasy: set[str] = set()
+    for wezel in drzewo.body:
+        if isinstance(wezel, ast.Assign) and len(wezel.targets) == 1:
+            cel = wezel.targets[0]
+            if isinstance(cel, ast.Name) and _tokeny_literalu(wezel.value):
+                aliasy.add(cel.id)
+        elif isinstance(wezel, ast.AnnAssign) and isinstance(wezel.target, ast.Name):
+            if wezel.value is not None and _tokeny_literalu(wezel.value):
+                aliasy.add(wezel.target.id)
+        elif type(wezel).__name__ == "TypeAlias":  # `type X = Literal[...]` (3.12+)
+            nazwa = getattr(wezel, "name", None)
+            wartosc = getattr(wezel, "value", None)
+            if isinstance(nazwa, ast.Name) and wartosc is not None and _tokeny_literalu(wartosc):
+                aliasy.add(nazwa.id)
+    return aliasy
+
+
+def stale_tokenow(drzewo: ast.Module) -> set[str]:
+    """Nazwy stalych modulowych, ktorych wartoscia jest token werdyktu (`WYNIK = "SPELNIA"`)."""
+    stale: set[str] = set()
+    for wezel in drzewo.body:
+        cel: ast.expr | None = None
+        wartosc: ast.expr | None = None
+        if isinstance(wezel, ast.Assign) and len(wezel.targets) == 1:
+            cel, wartosc = wezel.targets[0], wezel.value
+        elif isinstance(wezel, ast.AnnAssign):
+            cel, wartosc = wezel.target, wezel.value
+        if (
+            isinstance(cel, ast.Name)
+            and isinstance(wartosc, ast.Constant)
+            and isinstance(wartosc.value, str)
+            and wartosc.value in TOKENY_WERDYKTU
+        ):
+            stale.add(cel.id)
+    return stale
+
+
+@dataclass
+class _Klasa:
+    nazwa: str
+    plik: str
+    linia: int
+    bazy: tuple[str, ...]
+    pola: dict[str, ast.expr]  # nazwa pola -> adnotacja
+
+
+def _klasy(drzewo: ast.Module, plik: str) -> list[_Klasa]:
+    wynik: list[_Klasa] = []
+    for wezel in ast.walk(drzewo):
+        if not isinstance(wezel, ast.ClassDef):
+            continue
+        pola: dict[str, ast.expr] = {}
+        for instr in wezel.body:
+            if isinstance(instr, ast.AnnAssign) and isinstance(instr.target, ast.Name):
+                pola[instr.target.id] = instr.annotation
+        bazy = tuple(
+            (b.id if isinstance(b, ast.Name) else b.attr if isinstance(b, ast.Attribute) else "")
+            for b in wezel.bases
+        )
+        wynik.append(_Klasa(wezel.name, plik, wezel.lineno, bazy, pola))
+    return wynik
+
+
+def _pola_z_bazami(
+    klasa: _Klasa, po_nazwie: dict[str, _Klasa], _byly: frozenset[str] = frozenset()
+) -> set[str]:
+    nazwy = set(klasa.pola)
+    for baza in klasa.bazy:
+        if baza in po_nazwie and baza not in _byly:
+            nazwy |= _pola_z_bazami(po_nazwie[baza], po_nazwie, _byly | {klasa.nazwa})
+    return nazwy
+
+
+def _jest_tokenem(wartosc: ast.expr, stale: set[str]) -> bool:
+    if isinstance(wartosc, ast.Constant) and isinstance(wartosc.value, str):
+        return wartosc.value in TOKENY_WERDYKTU
+    if isinstance(wartosc, ast.Name):
+        return wartosc.id in stale
+    if isinstance(wartosc, ast.IfExp):
+        return _jest_tokenem(wartosc.body, stale) and _jest_tokenem(wartosc.orelse, stale)
+    return False
+
+
+def _klucze_slownika(slownik: ast.Dict) -> set[str]:
+    return {
+        k.value for k in slownik.keys if isinstance(k, ast.Constant) and isinstance(k.value, str)
+    }
+
+
+def _rodzice(drzewo: ast.AST) -> dict[ast.AST, ast.AST]:
+    rodzic: dict[ast.AST, ast.AST] = {}
+    for wezel in ast.walk(drzewo):
+        for dziecko in ast.iter_child_nodes(wezel):
+            rodzic[dziecko] = wezel
+    return rodzic
+
+
+def _funkcja_otaczajaca(wezel: ast.AST, rodzic: dict[ast.AST, ast.AST]) -> str:
+    nazwy: list[str] = []
+    biezacy: ast.AST | None = wezel
+    while biezacy is not None:
+        if isinstance(biezacy, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            nazwy.append(biezacy.name)
+        biezacy = rodzic.get(biezacy)
+    return ".".join(reversed(nazwy)) or "<modul>"
+
+
+def zbierz_zgloszenia_backend(
+    pliki: dict[str, ast.Module],
+) -> list[Zgloszenie]:
+    """Wszystkie nosniki werdyktu bez kompletu towarzyszy w podanych drzewach.
+
+    `pliki`: sciezka wzgledna (klucz identyfikatora) -> sparsowany modul. Aliasy
+    `Literal` i klasy sa zbierane ze WSZYSTKICH podanych plikow (nosnik importuje
+    alias po nazwie), dlatego wolajacy podaje tez pliki kontekstu.
+    """
+    aliasy: set[str] = set()
+    klasy: list[_Klasa] = []
+    for plik, drzewo in pliki.items():
+        aliasy |= aliasy_werdyktu(drzewo)
+        klasy.extend(_klasy(drzewo, plik))
+    po_nazwie: dict[str, _Klasa] = {}
+    for klasa in klasy:
+        po_nazwie.setdefault(klasa.nazwa, klasa)
+
+    zgloszenia: list[Zgloszenie] = []
+
+    # (a) klasy z polem Literal/aliasem z tokenem
+    for klasa in klasy:
+        if klasa.nazwa == WYNIK_INZYNIERSKI:
+            continue
+        pola_werdyktu = [
+            nazwa
+            for nazwa, adnotacja in klasa.pola.items()
+            if _tokeny_literalu(adnotacja) or (_nazwy_w_adnotacji(adnotacja) & aliasy)
+        ]
+        if not pola_werdyktu:
+            continue
+        nazwy = _pola_z_bazami(klasa, po_nazwie)
+        # klasy nadrzedne zawierajace nosnik jako pole (zagniezdzenie)
+        for rodzic_kl in klasy:
+            if rodzic_kl is klasa:
+                continue
+            if any(klasa.nazwa in _nazwy_w_adnotacji(adn) for adn in rodzic_kl.pola.values()):
+                if rodzic_kl.nazwa == WYNIK_INZYNIERSKI:
+                    nazwy |= set().union(*GRUPY_TOWARZYSZY.values())
+                nazwy |= _pola_z_bazami(rodzic_kl, po_nazwie)
+        brak = brakujace_grupy(nazwy)
+        if brak:
+            zgloszenia.append(
+                Zgloszenie(
+                    ident=f"{klasa.plik}::{klasa.nazwa}",
+                    plik=klasa.plik,
+                    linia=klasa.linia,
+                    brakujace=brak,
+                )
+            )
+
+    # (b) literaly slownikow z kluczem werdyktu i wartoscia-tokenem
+    for plik, drzewo in pliki.items():
+        stale = stale_tokenow(drzewo)
+        rodzic = _rodzice(drzewo)
+        # Kilka nosnikow w jednej funkcji dostaje kolejne numery (`#2`, `#3`) w
+        # kolejnosci zrodla — kazdy jest osobnym nosnikiem (zadnego nie ukrywamy
+        # za pierwszym zgloszeniem tej samej funkcji).
+        licznik: dict[str, int] = {}
+        slowniki = sorted(
+            (w for w in ast.walk(drzewo) if isinstance(w, ast.Dict)),
+            key=lambda w: (w.lineno, w.col_offset),
+        )
+        for wezel in slowniki:
+            klucze_werdyktu = [
+                k.value
+                for k, v in zip(wezel.keys, wezel.values, strict=True)
+                if isinstance(k, ast.Constant)
+                and isinstance(k.value, str)
+                and k.value in KLUCZE_WERDYKTU
+                and _jest_tokenem(v, stale)
+            ]
+            if not klucze_werdyktu:
+                continue
+            nazwy = _klucze_slownika(wezel)
+            biezacy: ast.AST | None = rodzic.get(wezel)
+            while biezacy is not None and not isinstance(biezacy, ast.stmt):
+                if isinstance(biezacy, ast.Dict):
+                    nazwy |= _klucze_slownika(biezacy)
+                biezacy = rodzic.get(biezacy)
+            brak = brakujace_grupy(nazwy)
+            if not brak:
+                continue
+            baza = f"{plik}::{_funkcja_otaczajaca(wezel, rodzic)}[{klucze_werdyktu[0]}]"
+            licznik[baza] = licznik.get(baza, 0) + 1
+            ident = baza if licznik[baza] == 1 else f"{baza}#{licznik[baza]}"
+            zgloszenia.append(
+                Zgloszenie(ident=ident, plik=plik, linia=wezel.lineno, brakujace=brak)
+            )
+    return sorted(zgloszenia, key=lambda z: (z.plik, z.linia, z.ident))
+
+
+def _pliki_backendu(src: Path) -> dict[str, ast.Module]:
+    pliki: dict[str, ast.Module] = {}
+    for korzen in SKAN_ROOTS:
+        for sciezka in sorted((src / korzen).rglob("*.py")):
+            pliki[sciezka.relative_to(src).as_posix()] = ast.parse(
+                sciezka.read_text(encoding="utf-8"), filename=str(sciezka)
+            )
+    for wzgledna in SKAN_FROZEN:
+        sciezka = src / wzgledna
+        pliki[wzgledna] = ast.parse(sciezka.read_text(encoding="utf-8"), filename=str(sciezka))
+    return pliki
+
+
+# ---------------------------------------------------------------------------
+# Lista wyjatkow (backend)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PozycjaWyjatku:
+    ident: str
+    adapter: str
+    powod: str
+
+
+def wczytaj_liste_wyjatkow(tekst: str) -> list[PozycjaWyjatku]:
+    """Format linii: `ident -> adapter | powod` (komentarze `#`, puste linie pomijane)."""
+    pozycje: list[PozycjaWyjatku] = []
+    for numer, linia in enumerate(tekst.splitlines(), start=1):
+        linia = linia.strip()
+        if not linia or linia.startswith("#"):
+            continue
+        if " -> " not in linia or " | " not in linia:
+            raise ValueError(
+                f"lista wyjatkow, linia {numer}: oczekiwano `ident -> adapter | powod`"
+            )
+        ident, reszta = linia.split(" -> ", 1)
+        adapter, powod = reszta.split(" | ", 1)
+        if not powod.strip():
+            raise ValueError(f"lista wyjatkow, linia {numer}: brak powodu")
+        pozycje.append(PozycjaWyjatku(ident.strip(), adapter.strip(), powod.strip()))
+    return pozycje
+
+
+def _funkcje_modulu(
+    drzewo: ast.Module,
+) -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
+    return {w.name: w for w in drzewo.body if isinstance(w, ast.FunctionDef | ast.AsyncFunctionDef)}
+
+
+def _wolane_nazwy(funkcja: ast.AST) -> set[str]:
+    nazwy: set[str] = set()
+    for wezel in ast.walk(funkcja):
+        if isinstance(wezel, ast.Call):
+            if isinstance(wezel.func, ast.Name):
+                nazwy.add(wezel.func.id)
+            elif isinstance(wezel.func, ast.Attribute):
+                nazwy.add(wezel.func.attr)
+    return nazwy
+
+
+def _jest_trasa(funkcja: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    for dekorator in funkcja.decorator_list:
+        cel = dekorator.func if isinstance(dekorator, ast.Call) else dekorator
+        if isinstance(cel, ast.Attribute) and cel.attr in {
+            "get",
+            "post",
+            "put",
+            "patch",
+            "delete",
+            "api_route",
+        }:
+            return True
+    return False
+
+
+def adapter_wolany_z_trasy_api(src: Path, adapter: str) -> tuple[bool, str]:
+    """Czy funkcja `plik.py::nazwa` istnieje i jest osiagalna z trasy API (domkniecie wywolan).
+
+    Rozwiazanie po NAZWIE funkcji w obrebie `backend/src` (AST) — wystarcza, bo
+    pytanie brzmi „czy sciezka uzytkownika dochodzi do adaptera", a nie „ktora
+    konkretna definicja". Zwraca (wynik, opis).
+    """
+    if "::" not in adapter:
+        return False, f"adapter {adapter!r} nie ma postaci `plik.py::funkcja`"
+    plik, nazwa = adapter.split("::", 1)
+    sciezka = src / plik
+    if not sciezka.is_file():
+        return False, f"plik adaptera {plik} nie istnieje"
+    drzewo_adaptera = ast.parse(sciezka.read_text(encoding="utf-8"))
+    if nazwa not in _funkcje_modulu(drzewo_adaptera):
+        return False, f"funkcja {nazwa} nie istnieje w {plik}"
+    if nazwa in _osiagalne_z_tras(src):
+        return True, f"{nazwa} osiagalny z trasy API"
+    return False, f"{nazwa} nie jest osiagalny z zadnej trasy API"
+
+
+@functools.lru_cache(maxsize=8)
+def _osiagalne_z_tras(src: Path) -> frozenset[str]:
+    """Nazwy funkcji osiagalnych z tras API (domkniecie wywolan po nazwie, AST).
+
+    Pamiec podreczna per katalog zrodel w obrebie jednego procesu — graf jest ten
+    sam dla kazdej pozycji listy wyjatkow (jeden bieg guardu = jeden odczyt drzewa).
+    """
+    wolajacy: dict[str, set[str]] = {}  # nazwa funkcji -> nazwy wolane
+    trasy: list[str] = []
+    for sciezka_py in sorted(src.rglob("*.py")):
+        try:
+            drzewo = ast.parse(sciezka_py.read_text(encoding="utf-8"))
+        except SyntaxError:
+            continue
+        je_api = sciezka_py.relative_to(src).parts[0] == "api"
+        for wezel in ast.walk(drzewo):
+            if isinstance(wezel, ast.FunctionDef | ast.AsyncFunctionDef):
+                wolajacy.setdefault(wezel.name, set()).update(_wolane_nazwy(wezel))
+                if je_api and _jest_trasa(wezel):
+                    trasy.append(wezel.name)
+    osiagalne: set[str] = set()
+    do_odwiedzenia = list(trasy)
+    while do_odwiedzenia:
+        biezaca = do_odwiedzenia.pop()
+        if biezaca in osiagalne:
+            continue
+        osiagalne.add(biezaca)
+        do_odwiedzenia.extend(wolajacy.get(biezaca, set()) - osiagalne)
+    return frozenset(osiagalne)
+
+
+def _dostepnosc_zdolnosci(src: Path, zdolnosc: str) -> str | None:
+    """`availability` wpisu rejestru zdolnosci (AST, bez importu) albo None, gdy brak wpisu."""
+    sciezka = src / "application" / "solvers" / "solver_capability_registry.py"
+    drzewo = ast.parse(sciezka.read_text(encoding="utf-8"))
+    for wezel in ast.walk(drzewo):
+        if not isinstance(wezel, ast.Call):
+            continue
+        kw = {k.arg: k.value for k in wezel.keywords if k.arg}
+        cap = kw.get("capability")
+        if isinstance(cap, ast.Constant) and cap.value == zdolnosc:
+            av = kw.get("availability")
+            if isinstance(av, ast.Constant) and isinstance(av.value, str):
+                return av.value
+    return None
+
+
+def sprawdz_liste_wyjatkow(
+    zgloszenia: list[Zgloszenie], pozycje: list[PozycjaWyjatku], src: Path
+) -> tuple[list[Zgloszenie], list[str]]:
+    """Zwroc (zgloszenia poza lista, bledy listy). Pozycja bez odpowiadajacego
+    zgloszenia to martwy wpis (lista ZAMKNIETA — bledem jest tez nadmiar)."""
+    bledy: list[str] = []
+    po_ident = {p.ident: p for p in pozycje}
+    for pozycja in pozycje:
+        if not pozycja.ident.startswith(tuple(SKAN_FROZEN)):
+            bledy.append(
+                f"lista wyjatkow: {pozycja.ident} nie lezy w pliku FROZEN (SKAN_FROZEN) — "
+                "nosnik spoza rdzenia zamrozonego ma byc przebudowany, nie wyjety"
+            )
+        dopasowanie = ADNOTACJA_WYCOFYWANA.match(pozycja.adapter)
+        if dopasowanie:
+            dost = _dostepnosc_zdolnosci(src, dopasowanie.group(1))
+            if dost is None or dost == "withdrawn":
+                bledy.append(
+                    f"lista wyjatkow: {pozycja.ident} ma adnotacje {pozycja.adapter}, a wpis "
+                    f"rejestru zdolnosci {dopasowanie.group(1)} jest {dost or 'nieobecny'} — "
+                    "adnotacja znika razem z wpisem rejestru"
+                )
+            continue
+        ok, opis = adapter_wolany_z_trasy_api(src, pozycja.adapter)
+        if not ok:
+            bledy.append(f"lista wyjatkow: {pozycja.ident}: {opis}")
+    idents = {z.ident for z in zgloszenia}
+    for pozycja in pozycje:
+        if pozycja.ident not in idents:
+            bledy.append(f"lista wyjatkow: martwy wpis {pozycja.ident} (brak takiego nosnika)")
+    poza = [z for z in zgloszenia if z.ident not in po_ident]
+    return poza, bledy
+
+
+# ---------------------------------------------------------------------------
+# Frontend (tekst TS)
+# ---------------------------------------------------------------------------
+
+_INTERFEJS = re.compile(
+    r"export\s+interface\s+(\w+)(?:<[^>{]*>)?(?:\s+extends\s+([\w\s,<>.]+?))?\s*\{",
+    re.M,
+)
+_ALIAS = re.compile(r"export\s+type\s+(\w+)\s*=\s*([^;]+);", re.M)
+_TOKEN_TS = re.compile(r"'([^'\n]*)'|\"([^\"\n]*)\"")
+_PROPERCJA = re.compile(r"^\s*(?:readonly\s+)?(\w+)\??\s*:\s*(.+?);?\s*$")
+
+
+@dataclass
+class _Interfejs:
+    nazwa: str
+    plik: str
+    linia: int
+    rozszerza: tuple[str, ...]
+    propercje: dict[str, tuple[str, int]]  # nazwa -> (typ, linia)
+
+
+def _blok(tekst: str, start: int) -> tuple[str, int]:
+    """Tresc bloku `{...}` od klamry otwierajacej (indeks `start`), z zagniezdzeniem."""
+    glebokosc = 0
+    for i in range(start, len(tekst)):
+        znak = tekst[i]
+        if znak == "{":
+            glebokosc += 1
+        elif znak == "}":
+            glebokosc -= 1
+            if glebokosc == 0:
+                return tekst[start + 1 : i], i
+    return tekst[start + 1 :], len(tekst)
+
+
+def _bez_komentarzy(tekst: str) -> str:
+    tekst = re.sub(r"/\*.*?\*/", lambda m: "\n" * m.group(0).count("\n"), tekst, flags=re.S)
+    return re.sub(r"//[^\n]*", "", tekst)
+
+
+def interfejsy_ts(tekst: str, plik: str) -> tuple[list[_Interfejs], dict[str, str]]:
+    """Interfejsy (propercje najwyzszego poziomu) i aliasy typow pliku TS."""
+    czysty = _bez_komentarzy(tekst)
+    aliasy = {m.group(1): m.group(2) for m in _ALIAS.finditer(czysty)}
+    interfejsy: list[_Interfejs] = []
+    for m in _INTERFEJS.finditer(czysty):
+        start = m.end() - 1
+        tresc, _koniec = _blok(czysty, start)
+        linia0 = czysty.count("\n", 0, start) + 1
+        propercje: dict[str, tuple[str, int]] = {}
+        glebokosc = 0
+        biezaca = ""
+        biezaca_linia = linia0
+        for przesuniecie, wiersz in enumerate(tresc.split("\n")):
+            if glebokosc == 0:
+                biezaca = wiersz
+                biezaca_linia = linia0 + przesuniecie
+            else:
+                biezaca += " " + wiersz.strip()
+            glebokosc += (
+                wiersz.count("{") + wiersz.count("(") - wiersz.count("}") - wiersz.count(")")
+            )
+            if glebokosc <= 0:
+                glebokosc = 0
+                dop = _PROPERCJA.match(biezaca)
+                if dop:
+                    propercje[dop.group(1)] = (dop.group(2), biezaca_linia)
+                biezaca = ""
+        rozszerza = tuple(
+            r.strip().split("<")[0] for r in (m.group(2) or "").split(",") if r.strip()
+        )
+        interfejsy.append(_Interfejs(m.group(1), plik, linia0, rozszerza, propercje))
+    return interfejsy, aliasy
+
+
+def _tokeny_typu_ts(
+    typ: str, aliasy: dict[str, str], _byly: frozenset[str] = frozenset()
+) -> set[str]:
+    znalezione = {(a or b) for a, b in _TOKEN_TS.findall(typ) if (a or b) in TOKENY_WERDYKTU}
+    for nazwa in re.findall(r"\b([A-Z]\w*)\b", typ):
+        if nazwa in aliasy and nazwa not in _byly:
+            znalezione |= _tokeny_typu_ts(aliasy[nazwa], aliasy, _byly | {nazwa})
+    return znalezione
+
+
+def zbierz_zgloszenia_frontend(pliki: dict[str, str]) -> list[Zgloszenie]:
+    """Propercje-werdykty interfejsow `ui2/**/api.ts` bez kompletu towarzyszy."""
+    interfejsy: list[_Interfejs] = []
+    aliasy: dict[str, str] = {}
+    for plik, tekst in pliki.items():
+        i, a = interfejsy_ts(tekst, plik)
+        interfejsy.extend(i)
+        aliasy.update(a)
+    po_nazwie = {i.nazwa: i for i in interfejsy}
+
+    def nazwy_z_rozszerzeniami(
+        interfejs: _Interfejs, byly: frozenset[str] = frozenset()
+    ) -> set[str]:
+        nazwy = set(interfejs.propercje)
+        for baza in interfejs.rozszerza:
+            if baza in po_nazwie and baza not in byly:
+                nazwy |= nazwy_z_rozszerzeniami(po_nazwie[baza], byly | {interfejs.nazwa})
+        return nazwy
+
+    zgloszenia: list[Zgloszenie] = []
+    for interfejs in interfejsy:
+        for prop, (typ, linia) in sorted(interfejs.propercje.items()):
+            if not _tokeny_typu_ts(typ, aliasy):
+                continue
+            nazwy = nazwy_z_rozszerzeniami(interfejs)
+            for rodzic in interfejsy:
+                if rodzic is interfejs:
+                    continue
+                if any(
+                    re.search(rf"\b{re.escape(interfejs.nazwa)}\b", t)
+                    for t, _l in rodzic.propercje.values()
+                ):
+                    nazwy |= nazwy_z_rozszerzeniami(rodzic)
+            brak = brakujace_grupy(nazwy)
+            if brak:
+                zgloszenia.append(
+                    Zgloszenie(
+                        ident=f"{interfejs.plik}::{interfejs.nazwa}.{prop}",
+                        plik=interfejs.plik,
+                        linia=linia,
+                        brakujace=brak,
+                    )
+                )
+    return sorted(zgloszenia, key=lambda z: (z.plik, z.linia, z.ident))
+
+
+def wczytaj_liste_wyjatkow_frontu(tekst: str) -> dict[str, str]:
+    """Format linii: `ident | powod`."""
+    wynik: dict[str, str] = {}
+    for numer, linia in enumerate(tekst.splitlines(), start=1):
+        linia = linia.strip()
+        if not linia or linia.startswith("#"):
+            continue
+        if " | " not in linia:
+            raise ValueError(f"lista wyjatkow frontu, linia {numer}: oczekiwano `ident | powod`")
+        ident, powod = linia.split(" | ", 1)
+        if not powod.strip():
+            raise ValueError(f"lista wyjatkow frontu, linia {numer}: brak powodu")
+        wynik[ident.strip()] = powod.strip()
+    return wynik
+
+
+def _pliki_frontu(ui2: Path) -> dict[str, str]:
+    korzen = ui2.parent.parent  # frontend/
+    return {
+        sciezka.relative_to(korzen).as_posix(): sciezka.read_text(encoding="utf-8")
+        for sciezka in sorted(ui2.rglob("api.ts"))
+        if "__tests__" not in sciezka.parts
+    }
+
+
+# ---------------------------------------------------------------------------
+# Wejscie
+# ---------------------------------------------------------------------------
+
+
+def _iter_linie(zgloszenia: Iterable[Zgloszenie]) -> Iterator[str]:
+    for z in zgloszenia:
+        yield "  " + z.opis()
+
+
+def main_backend() -> int:
+    zgloszenia = zbierz_zgloszenia_backend(_pliki_backendu(BACKEND_SRC))
+    pozycje = wczytaj_liste_wyjatkow(ALLOWLIST.read_text(encoding="utf-8"))
+    poza, bledy = sprawdz_liste_wyjatkow(zgloszenia, pozycje, BACKEND_SRC)
+    if poza or bledy:
+        print("explainable_verdict_guard: NARUSZENIA (werdykt bez pieciu towarzyszy)")
+        for linia in _iter_linie(poza):
+            print(linia)
+        for blad in bledy:
+            print("  " + blad)
+        return 1
+    print(
+        f"explainable_verdict_guard: OK — {len(zgloszenia)} nosnik(i) FROZEN na liscie "
+        f"wyjatkow z adapterem, zero werdyktow bez towarzyszy w {', '.join(SKAN_ROOTS)}."
+    )
+    return 0
+
+
+def main_frontend() -> int:
+    zgloszenia = zbierz_zgloszenia_frontend(_pliki_frontu(FRONTEND_UI2))
+    wyjatki = wczytaj_liste_wyjatkow_frontu(ALLOWLIST_FRONTEND.read_text(encoding="utf-8"))
+    idents = {z.ident for z in zgloszenia}
+    poza = [z for z in zgloszenia if z.ident not in wyjatki]
+    martwe = sorted(set(wyjatki) - idents)
+    if poza or martwe:
+        print("explainable_verdict_guard --frontend: NARUSZENIA")
+        for linia in _iter_linie(poza):
+            print(linia)
+        for ident in martwe:
+            print(f"  lista wyjatkow frontu: martwy wpis {ident}")
+        return 1
+    print(
+        f"explainable_verdict_guard --frontend: OK — {len(zgloszenia)} pozycji na liscie "
+        "wyjatkow z powodem, zero nowych werdyktow bez towarzyszy w ui2/**/api.ts."
+    )
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    if "--frontend" in argv:
+        return main_frontend()
+    return main_backend()
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

@@ -66,7 +66,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from analysis.sanity_bounds.short_circuit_bounds import INCOMPLETE, OUT_OF_RANGE
 from application.analyses.energy_validation.service import build_energy_validation_view
@@ -78,10 +78,14 @@ from application.analyses.warunki_przylaczenia import (
     KRYTERIUM_MOC,
     build_warunki_przylaczenia_view,
 )
-from application.analyses.wytrzymalosc_cieplna_przewodow import build_wytrzymalosc_cieplna_view
+from application.analyses.wytrzymalosc_cieplna_przewodow import (
+    build_wytrzymalosc_cieplna_view,
+)
 from enm.canonical_analysis import CanonicalRun, list_runs_for_case
 from enm.hash import compute_enm_hash
 from enm.store import get_enm
+from solver_input.provenance import FieldQuality, StatusZrodla
+from solver_input.status_modelu import StatusParametrow, StatusRownan
 
 # --- Stany kryterium ---------------------------------------------------------
 
@@ -102,6 +106,39 @@ POWOD_BRAK_DANYCH = "verdict.input_data_missing"
 ZRODLO_PF = "PF"
 ZRODLO_SC = "short_circuit_sn"
 ZRODLO_MODEL = "model"
+#: Karta AB-1a D2: pozycje z adaptera testow NC RfG/PTPiREE
+#: (``application/ncrfg_compliance/wynik_inzynierski.py``) — deklaracje modulu
+#: porownane z wymaganiem, NIE bieg fizyki (brak domeny fizycznej).
+ZRODLO_NCRFG = "ncrfg_ptpiree"
+#: Karta AB-1a D7: pozycje z adaptera wynikow FROZEN analiz V12.6
+#: (``application/analyses/wynik_inzynierski_v126.py``).
+ZRODLO_V126_NER = "v126:neutral_earthing_design"
+#: Walidacja porownawcza V12.6 porownuje wartosci „obliczone" i referencyjne PODANE
+#: w danych wejsciowych biegu — sama nie liczy fizyki, wiec nie ma domeny fizycznej.
+ZRODLO_V126_BENCHMARK = "v126:benchmark_validation"
+
+#: Zrodla, ktore NIE sa biegiem fizyki jednej domeny — nie maja domeny fizycznej:
+#: model (dobory z tabliczek), deklaracje modulu NC RfG, walidacja porownawcza.
+_ZRODLA_BEZ_BIEGU: frozenset[str] = frozenset({ZRODLO_MODEL, ZRODLO_NCRFG, ZRODLO_V126_BENCHMARK})
+
+# Domena fizyczna rodzaju biegu — z JEDNEGO rejestru zdolnosci (karta AB-1a D1,
+# R-1): zadnej lokalnej tabeli; nieznany rodzaj konczy sie wyjatkiem nazwanym
+# rejestru (fail-closed). Rodzaje `v126:*` rejestr mapuje jawna tabela.
+
+
+def _domena_fizyczna_biegu(analysis_type: str) -> str:
+    """Domena fizyczna rodzaju biegu — wartosc czlonu `PhysicsDomain` z rejestru zdolnosci."""
+    from application.solvers.solver_capability_registry import domena_fizyczna_biegu
+
+    return domena_fizyczna_biegu(analysis_type).value
+
+
+def _domena_fizyczna_biegu_pl(analysis_type: str) -> str:
+    """Etykieta PL domeny z tego samego rejestru — front NIE trzyma drugiej listy etykiet."""
+    from application.solvers.solver_capability_registry import domena_fizyczna_biegu
+
+    return domena_fizyczna_biegu(analysis_type).label_pl
+
 
 # Semantyka elementu wiodacego (DOMENA, nie typ UI — mapowanie na typ elementu
 # interfejsu nalezy do warstwy prezentacji).
@@ -432,6 +469,137 @@ ZAKRES_POZA_AUTOMATEM: tuple[dict[str, str], ...] = (
 )
 
 
+# --- Wynik inzynierski: pola wyjasnialnosci (karta AB-1a D2, plan A/B §6.11) ---
+# ROZSZERZENIE istniejacego ksztaltu (R-2): zero trzeciego kontraktu. Kazde pole
+# ponizej jest addytywne, `None` = „brak" (kreska na ekranie), nigdy wartosc
+# zastepcza. Wypelnia je WYLACZNIE dostawca, ktory ma dana.
+
+# Status zrodla normatywnego = JEDEN typ z `solver_input.provenance` (karta AB-1a D5,
+# wykonawca 1); aliasy ponizej zostaja dla konsumentow (certyfikat, LoM, V12.6,
+# pakiet dowodowy), zeby nie powielac literalow.
+ZrodloStatus = StatusZrodla
+ZRODLO_NIEZWERYFIKOWANE: ZrodloStatus = StatusZrodla.UNVERIFIED_SOURCE
+ZRODLO_ZWERYFIKOWANE: ZrodloStatus = StatusZrodla.VERIFIED_SOURCE
+
+#: Rodzaj przyczyny ograniczenia (karta AB-1a D2): co FIZYCZNIE ogranicza wynik.
+RodzajPrzyczyny = Literal["element", "regulator", "ogranicznik", "zrodlo_emisji", "rezonans"]
+
+
+@dataclass(frozen=True)
+class PodstawaNormatywna:
+    """Podstawa wymagania: dokument, wersja, klauzula i status zrodla.
+
+    ``zrodlo_status`` jest OBOWIAZKOWE (bez domyslnej) — podstawa bez
+    rozstrzygniecia, czy zrodlo potwierdzono, bylaby ta sama niejawnoscia, ktora
+    ta klasa zamyka. Gdy dokument/wersja/klauzula nie sa potwierdzone, pola sa
+    ``None`` (nie tekst zastepczy), a ``uwaga_pl`` mowi, czego brakuje.
+    ``render_pl()`` jest JEDYNYM zrodlem tekstowego ``norma_pl`` pozycji, ktora
+    niesie podstawe (pin w ``PozycjaWerdyktu.__post_init__``).
+    """
+
+    dokument: str | None
+    wersja: str | None
+    klauzula: str | None
+    zrodlo_status: ZrodloStatus
+    uwaga_pl: str | None = None
+
+    def render_pl(self) -> str:
+        czesci = [
+            czesc
+            for czesc in (
+                self.dokument,
+                f"wersja {self.wersja}" if self.wersja else None,
+                self.klauzula,
+            )
+            if czesc
+        ]
+        return ", ".join(czesci) if czesci else "Brak wskazanego dokumentu podstawy wymagania"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "dokument": self.dokument,
+            "wersja": self.wersja,
+            "klauzula": self.klauzula,
+            "zrodlo_status": self.zrodlo_status,
+            "uwaga_pl": self.uwaga_pl,
+        }
+
+
+@dataclass(frozen=True)
+class PunktKrytyczny:
+    """Gdzie wynik jest najblizej granicy: element i (opcjonalnie) wspolrzedna
+    czasu albo czestotliwosci. ``wspolrzedna`` = ``None``, gdy kryterium jest
+    statyczne (jedna wartosc na element)."""
+
+    element_ref: str | None
+    wspolrzedna: dict[Literal["t_s", "f_hz"], float] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "element_ref": self.element_ref,
+            "wspolrzedna": (dict(self.wspolrzedna) if self.wspolrzedna is not None else None),
+        }
+
+
+@dataclass(frozen=True)
+class PrzyczynaOgraniczenia:
+    """Strukturalna przyczyna wyniku (obok tekstowego ``uzasadnienie_pl``)."""
+
+    rodzaj: RodzajPrzyczyny
+    ref: str | None
+    opis_pl: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"rodzaj": self.rodzaj, "ref": self.ref, "opis_pl": self.opis_pl}
+
+
+@dataclass(frozen=True)
+class StatusModelu:
+    """Dwie osie statusu modelu urzadzenia (``solver_input/status_modelu.py``)."""
+
+    rownania: StatusRownan
+    parametry: StatusParametrow
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "rownania": self.rownania.value,
+            "rownania_pl": self.rownania.label_pl,
+            "parametry": self.parametry.value,
+            "parametry_pl": self.parametry.label_pl,
+        }
+
+
+@dataclass(frozen=True)
+class Niepewnosc:
+    """Niepewnosc wyniku z metoda jej wyznaczenia (bez metody = brak niepewnosci)."""
+
+    wartosc: float
+    jednostka: str
+    metoda_pl: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "wartosc": self.wartosc,
+            "jednostka": self.jednostka,
+            "metoda_pl": self.metoda_pl,
+        }
+
+
+@dataclass(frozen=True)
+class ZakresWaznosci:
+    """Zakres, w ktorym model/metoda wyniku jest wazna (np. pasmo czestotliwosci)."""
+
+    opis_pl: str
+    granice: dict[str, float]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"opis_pl": self.opis_pl, "granice": dict(sorted(self.granice.items()))}
+
+
+def _opcjonalny(obiekt: Any) -> Any:
+    return obiekt.to_dict() if obiekt is not None else None
+
+
 @dataclass(frozen=True)
 class OcenaElementu:
     """Ocena JEDNEGO elementu wobec kryterium (karta B-02 / W3-E).
@@ -468,8 +636,17 @@ class OcenaElementu:
     uzasadnienie_pl: str | None = None
     #: Wniosek projektowy — 1–2 zdania w jezyku formalnym.
     wniosek_pl: str = ""
-    #: Odwolanie do dowodu obliczeniowego: bieg + element (``None`` = brak biegu).
-    dowod: dict[str, str] | None = None
+    #: Odwolanie do dowodu (karta AB-1a D2 — JEDEN ksztalt):
+    #: ``{run_id, element_id, trace_ref}``; ``trace_ref`` = ``None``, gdy dostawca
+    #: nie wskazuje kroku sladu. ``None`` calosci = brak biegu i brak sladu.
+    dowod: dict[str, str | None] | None = None
+    #: Karta AB-1a D2 — pola wyjasnialnosci (addytywne, ``None`` = brak danej).
+    punkt_krytyczny: PunktKrytyczny | None = None
+    przyczyna: PrzyczynaOgraniczenia | None = None
+    status_modelu: StatusModelu | None = None
+    status_wejscia: FieldQuality | None = None
+    niepewnosc: Niepewnosc | None = None
+    zakres_waznosci: ZakresWaznosci | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -488,7 +665,15 @@ class OcenaElementu:
             "uwaga_pl": self.uwaga_pl,
             "uzasadnienie_pl": self.uzasadnienie_pl,
             "wniosek_pl": self.wniosek_pl,
-            "dowod": self.dowod,
+            "dowod": dict(self.dowod) if self.dowod is not None else None,
+            "punkt_krytyczny": _opcjonalny(self.punkt_krytyczny),
+            "przyczyna": _opcjonalny(self.przyczyna),
+            "status_modelu": _opcjonalny(self.status_modelu),
+            "status_wejscia": (
+                self.status_wejscia.value if self.status_wejscia is not None else None
+            ),
+            "niepewnosc": _opcjonalny(self.niepewnosc),
+            "zakres_waznosci": _opcjonalny(self.zakres_waznosci),
         }
 
 
@@ -509,6 +694,34 @@ class PozycjaWerdyktu:
     run_id: str | None = None
     #: Karta B-02 / W3-E: oceny per element (puste, gdy brak podstawy calego kryterium).
     elementy: tuple[OcenaElementu, ...] = ()
+    #: Karta AB-1a D2: podstawa strukturalna obok tekstowego ``norma_pl`` definicji.
+    #: Gdy jest, ``definicja.norma_pl`` MUSI byc jej renderingiem (jedno zrodlo).
+    podstawa: PodstawaNormatywna | None = None
+
+    def __post_init__(self) -> None:
+        if self.podstawa is not None and self.definicja.norma_pl != self.podstawa.render_pl():
+            raise ValueError(
+                f"Kryterium {self.definicja.kryterium_id}: norma_pl "
+                f"{self.definicja.norma_pl!r} nie jest renderingiem podstawy "
+                f"{self.podstawa.render_pl()!r} — dwa zrodla tej samej podstawy."
+            )
+
+    @property
+    def physics_domain(self) -> str | None:
+        """Domena fizyczna biegu kryterium (karta AB-1a D2) — z rodzaju biegu przez
+        rejestr domen; ``None`` WYLACZNIE dla zrodel, ktore nie sa biegiem
+        (model, deklaracje NC RfG). Nieznany rodzaj biegu -> wyjatek nazwany."""
+        if self.definicja.zrodlo in _ZRODLA_BEZ_BIEGU:
+            return None
+        return _domena_fizyczna_biegu(self.definicja.zrodlo)
+
+    @property
+    def physics_domain_pl(self) -> str | None:
+        """Etykieta PL domeny z rejestru zdolnosci — jedyne zrodlo nazwy (front nie
+        trzyma drugiej listy etykiet; integracja AB-1a, szew wykonawcy 2 zamkniety)."""
+        if self.definicja.zrodlo in _ZRODLA_BEZ_BIEGU:
+            return None
+        return _domena_fizyczna_biegu_pl(self.definicja.zrodlo)
 
     def to_dict(self) -> dict[str, Any]:
         payload = self.definicja.to_dict()
@@ -525,6 +738,9 @@ class PozycjaWerdyktu:
                 "powod_pl": self.powod_pl,
                 "run_id": self.run_id,
                 "elementy": [element.to_dict() for element in self.elementy],
+                "physics_domain": self.physics_domain,
+                "physics_domain_pl": self.physics_domain_pl,
+                "podstawa": _opcjonalny(self.podstawa),
             }
         )
         return payload
@@ -827,8 +1043,10 @@ def _ocena_elementu(
         uwaga_pl=uwaga_pl,
         uzasadnienie_pl=uzasadnienie_pl,
     )
-    dowod = (
-        {"run_id": run_id, "element_id": element_id}
+    # Karta AB-1a D2: jeden ksztalt dowodu {run_id, element_id, trace_ref} — widoki
+    # dostawcow tego agregatu nie wskazuja kroku sladu, wiec `trace_ref` = None.
+    dowod: dict[str, str | None] | None = (
+        {"run_id": run_id, "element_id": element_id, "trace_ref": None}
         if run_id is not None and element_id is not None
         else None
     )
@@ -1017,7 +1235,12 @@ def _pozycje_walidacji_energetycznej(
     return pozycje
 
 
-_RANGA_STATUSU_WALIDACJI: dict[str, int] = {"FAIL": 0, "WARNING": 1, "PASS": 2, "NOT_COMPUTED": 3}
+_RANGA_STATUSU_WALIDACJI: dict[str, int] = {
+    "FAIL": 0,
+    "WARNING": 1,
+    "PASS": 2,
+    "NOT_COMPUTED": 3,
+}
 
 
 def _posortowane_wiersze_walidacji(
@@ -1072,7 +1295,7 @@ def _element_walidacji(
     )
     return _ocena_elementu(
         definicja,
-        element_id=str(wiersz.get("target_id")) if wiersz.get("target_id") is not None else None,
+        element_id=(str(wiersz.get("target_id")) if wiersz.get("target_id") is not None else None),
         element_nazwa=(str(wiersz.get("target_name")) if wiersz.get("target_name") else None),
         wynik=_WYNIK_Z_STATUSU.get(status, WYNIK_BRAK_PODSTAW),
         wartosc=wiersz.get("observed_value"),
@@ -1124,13 +1347,15 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
     elementy = tuple(
         _ocena_elementu(
             definicja,
-            element_id=str(wiersz.get("branch_id")) if wiersz.get("branch_id") else None,
+            element_id=(str(wiersz.get("branch_id")) if wiersz.get("branch_id") else None),
             element_nazwa=(str(wiersz.get("branch_name")) if wiersz.get("branch_name") else None),
             wynik=_WYNIK_Z_STATUSU.get(str(wiersz.get("status")), WYNIK_BRAK_PODSTAW),
             wartosc=wiersz.get("i2t_a2s"),
             odniesienie=wiersz.get("i2t_dopuszczalne_a2s"),
             margines=wiersz.get("margines_procent"),
-            margines_jednostka="%" if _liczba(wiersz.get("margines_procent")) is not None else None,
+            margines_jednostka=(
+                "%" if _liczba(wiersz.get("margines_procent")) is not None else None
+            ),
             uzasadnienie_pl=_opis_galezi(wiersz),
             run_id=run_id,
         )
@@ -1277,6 +1502,17 @@ def _pozycja_der_sn(raport: Mapping[str, Any] | None) -> PozycjaWerdyktu:
                 f"{zrodlo_nazwa or zrodlo_ref or ''} — {_nazwa_kontroli_der(pozycja)}".strip(" —")
             ),
             wynik=_WYNIK_Z_STATUSU.get(str(pozycja.get("status")), WYNIK_BRAK_PODSTAW),
+            # Karta AB-1a D7: walidacje D1 niosa liczby porownania (wartosc/wymaganie
+            # z tabliczek, zapas mocy TR) — przepisane 1:1; pozycje bez liczb -> None.
+            wartosc=pozycja.get("wartosc"),
+            odniesienie=pozycja.get("odniesienie"),
+            jednostka=(str(pozycja["jednostka"]) if pozycja.get("jednostka") else None),
+            margines=pozycja.get("margines"),
+            margines_jednostka=(
+                str(pozycja["jednostka"])
+                if pozycja.get("jednostka") and _liczba(pozycja.get("margines")) is not None
+                else None
+            ),
             uwaga_pl=(
                 "Pozycja z uwagą (odstępstwo lub ostrzeżenie kaskady prądowej)"
                 if str(pozycja.get("status")) == "WARN"
@@ -1491,7 +1727,10 @@ def zbuduj_werdykt_projektowy(
         run_pf = str(bieg_pf.id)
         widok_warunkow, blad_warunkow = _bezpiecznie(build_warunki_przylaczenia_view, bieg_pf)
         if widok_warunkow is not None:
-            _wpisz(pozycje_po_id, _pozycje_warunkow_przylaczenia(widok_warunkow, run_id=run_pf))
+            _wpisz(
+                pozycje_po_id,
+                _pozycje_warunkow_przylaczenia(widok_warunkow, run_id=run_pf),
+            )
         else:
             _wpisz(
                 pozycje_po_id,
@@ -1504,7 +1743,10 @@ def zbuduj_werdykt_projektowy(
             )
         widok_energii, blad_energii = _bezpiecznie(build_energy_validation_view, bieg_pf)
         if widok_energii is not None:
-            _wpisz(pozycje_po_id, _pozycje_walidacji_energetycznej(widok_energii, run_id=run_pf))
+            _wpisz(
+                pozycje_po_id,
+                _pozycje_walidacji_energetycznej(widok_energii, run_id=run_pf),
+            )
         else:
             _wpisz(
                 pozycje_po_id,

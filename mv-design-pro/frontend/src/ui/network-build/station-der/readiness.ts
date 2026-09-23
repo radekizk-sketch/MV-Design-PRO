@@ -535,7 +535,8 @@ function buildBlockersForAxis(
           code: 'der.anti_islanding.required',
           message_pl:
             `DER ${der.der_kind} przyłączony ${punktPrzylaczeniaOpisPl(der)} wymaga zabezpieczeń `
-            + `anti-islanding (27/59/81U/81O — IEEE 1547 / NC RfG Art. 14). `
+            + `anti-islanding (27/59/81U/81O — zabezpieczenie interfejsowe wg IRiESD `
+            + `operatora i PN-EN 50549-1/-2; wydanie i wartości niepotwierdzone). `
             + `Brak zabezpieczeń uniemożliwia ochronę przed pracą wyspową.`,
           object_ref: der.id,
           target_screen: derKindToScreen(der.der_kind),

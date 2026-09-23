@@ -240,6 +240,27 @@ solvera stanu ustalonego/zwarć; dopuszczalny jako dowód wyłącznie przy `VALI
 Fable po zielonych bramkach integracyjnych. Napięcie FAB-K (certyfikat powstaje dla modułu z certyfikatem
 PTPiREE i zerem testów wymaganych mimo `not_reportable`) → AB-1b (blokada przy `UNVERIFIED_SOURCE`).
 
+## §3b Odbiór wykonawcy 2 (Fable, 2026-09-23)
+
+Gałąź wykonawcy scalona (merge) z wyłączeniem jego duplikatu R-6 (konflikty w `provenance.py`,
+`dowod_ncrfg.py` i czterech testach rozstrzygnięte na korzyść wersji już scalonej); meldunek:
+`docs/evidence/MELDUNEK_AB_1A_WYKONAWCA_2_2026-09.md`. Szwy integracyjne zamknięte przez Fable: lokalna
+tabela domen i lokalny `ZrodloStatus` w `werdykt_projektowy.py` → `domena_fizyczna_biegu` rejestru i
+`StatusZrodla` z proweniencji; zdublowana mapa etykiet domen we froncie (`ocena/strings.ts`) skasowana —
+`PozycjaWerdyktu.to_dict` niesie `physics_domain_pl` z rejestru, front wyłącznie pokazuje. Piny guardu
+podstawień przeliczone z pomiaru drzewa scalonego (3886 pól / 541 plików), snapshot OpenAPI i fikstury
+harnessu przeliczone generatorami. Rozstrzygnięcia wykonawcy przyjęte: rodzina ENM `synchroniczna` =
+równania niezwalidowane (zwalidowana tylko `maszyna_klasyczna`); NER → `SEQUENCE_DOMAIN`; walidacja
+porównawcza V12.6 bez domeny; „spełnia" bez dopuszczalnego dowodu = „brak podstaw" z nazwanym stanem.
+Znalezisko klasy: solver FROZEN zwraca `pass/fail` także dla testów niewymaganych (T19 bez SCADA = `fail`)
+— adapter liczy naruszenia z jednego predykatu „wymagany". Dług nazwany przez wykonawcę, **do domknięcia
+w tej kolejce (Zero-Debt):** reguła guardu §3.3 widzi tylko `Literal` — 7 klas w `analysis/**` z
+werdyktem typu `Enum`/`StrEnum` (m.in. `EnergyValidationItem`, `VoltageProfileRow`) i 6 luster w
+`ui2/wyniki/jakosc/api.ts` na liście wyjątków frontu → rozszerzenie reguły o pola typu `Enum` z tokenami
+werdyktu + przebudowa tych 7 dostawców z pięcioma towarzyszami (karta **AB-1a-bis**, wykonawca Opus 5.5,
+wpisana do §7 planu jako warunek zamknięcia AB-1a). Mapowanie W-68 niewykonalne (katalog nie ma statusów
+sekcji) → AB-2H/AB-4H dodają sekcje ze statusem, wtedy tabela mapowania.
+
 ## §4 Bramki odbioru (Fable, po cherry-pick na gałąź programu)
 
 1. `cd backend && poetry run pytest tests/ -q -m "not pandapower and not andes"` — 0 failed, 0 skipped.

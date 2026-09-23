@@ -60,7 +60,14 @@ function element(over: Partial<OcenaElementu> = {}): OcenaElementu {
     uwaga_pl: null,
     uzasadnienie_pl: null,
     wniosek_pl: 'Gałąź obciążona w granicy obciążalności długotrwałej.',
-    dowod: { run_id: 'run-pf-1', element_id: 'L-07' },
+    dowod: { run_id: 'run-pf-1', element_id: 'L-07', trace_ref: null },
+    // Karta AB-1a D2 — pola wyjaśnialności (null = brak danej u dostawcy).
+    punkt_krytyczny: null,
+    przyczyna: null,
+    status_modelu: null,
+    status_wejscia: null,
+    niepewnosc: null,
+    zakres_waznosci: null,
     ...over,
   };
 }
@@ -94,6 +101,9 @@ function pozycja(over: Partial<PozycjaOceny> = {}): PozycjaOceny {
     jednostka: '%',
     warunek: 'nie_wiecej_niz',
     elementy: [element()],
+    physics_domain: 'POWER_FLOW',
+    physics_domain_pl: 'stan ustalony 50 Hz (rozpływ mocy)',
+    podstawa: null,
     ...over,
   };
 }

@@ -1,0 +1,54 @@
+/* Wynik wyjaśnialny (karta AB-1a D2) — odznaki i szczegóły; kolory wyłącznie tokenami. */
+.mvd-wynik-odznaka {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.mvd-wynik-odznaka--uwaga {
+  color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-wynik-odznaka--ok {
+  color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+.mvd-wynik-podstawa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+}
+.mvd-wynik-podstawa-dokument {
+  font-weight: 600;
+}
+.mvd-wynik-podstawa-uwaga {
+  flex-basis: 100%;
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+.mvd-wynik-status-modelu {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.mvd-wynik-szczegoly {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 2px 8px;
+  margin: 6px 0 0;
+  font-size: 11.5px;
+}
+.mvd-wynik-szczegoly-para {
+  display: contents;
+}
+.mvd-wynik-szczegoly-para dt {
+  color: var(--mvd-muted);
+}
+.mvd-wynik-szczegoly-para dd {
+  margin: 0;
+}

@@ -6680,6 +6680,18 @@
       },
       "title": "White Box Trace",
       "type": "array"
+     },
+     "wynik_inzynierski": {
+      "additionalProperties": {
+       "additionalProperties": {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       "type": "object"
+      },
+      "default": {},
+      "title": "Wynik Inzynierski",
+      "type": "object"
      }
     },
     "required": [
@@ -23664,6 +23676,69 @@
      }
     },
     "summary": "Get Der Readiness",
+    "tags": [
+     "generators"
+    ]
+   }
+  },
+  "/api/projects/{project_id}/cases/{case_id}/generators/{generator_ref}/status-modelu": {
+   "get": {
+    "description": "Dwie osie statusu modelu dynamicznego wytworcy (karta AB-1a D3).\n\nOs ROWNAN — z rejestru rodzin (`solver_input/status_modelu.py`, fail-closed\n`UNKNOWN`); os PARAMETROW — z `ProweniencjaParametrow.status_walidacji` bloku\n`Generator.dynamika` (brak pola = `UNKNOWN`). Wytworca bez parametrow\ndynamicznych -> `status_modelu = None` (nie ma czego oceniac), nie wartosc\nzastepcza. Konsument: sekcja „Model dynamiczny\" inspektora urzadzenia.",
+    "operationId": "get_der_status_modelu_api_projects__project_id__cases__case_id__generators__generator_ref__status_modelu_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "generator_ref",
+      "required": true,
+      "schema": {
+       "title": "Generator Ref",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Der Status Modelu Api Projects  Project Id  Cases  Case Id  Generators  Generator Ref  Status Modelu Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Der Status Modelu",
     "tags": [
      "generators"
     ]

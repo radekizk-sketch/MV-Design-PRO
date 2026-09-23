@@ -28,6 +28,7 @@ import { fetchOcenaTechniczna, type OcenaElementu, type OdpowiedzOceny, type Poz
 import {
   czasWykonaniaPL,
   czyBrakWynikow,
+  domenaFizycznaPL,
   elementNaSchemacie,
   fmtMargines,
   fmtOdniesienie,
@@ -46,6 +47,7 @@ import {
   zrodloPL,
 } from './model';
 import { OCENA_STRINGS as T } from './strings';
+import { PodstawaStrukturalna, SzczegolyWyniku } from './WynikWyjasniony';
 import {
   InformacjeAudytowe,
   PrzyciskAkcjiStanu,
@@ -215,7 +217,23 @@ function WierszElementu({
         )}
       </td>
       <td className="mvd-ocena-podstawa-kryterium">
-        {pozycja.warunek_latex !== '' ? (
+        {/* Karta AB-1a D2: podstawa strukturalna (dokument/wersja/klauzula + odznaka
+            statusu źródła) — gdy pozycja ją niesie, `norma_pl` jest jej zapisem. */}
+        {pozycja.podstawa !== null && (
+          <PodstawaStrukturalna
+            podstawa={pozycja.podstawa}
+            testid={`mvd-ocena-podstawa-${pozycja.kryterium_id}-${element.element_id ?? 'agregat'}`}
+          />
+        )}
+        {pozycja.podstawa !== null ? (
+          pozycja.warunek_latex !== '' ? (
+            <span className="mvd-num">
+              <MathInline latex={pozycja.warunek_latex} />
+            </span>
+          ) : (
+            <TekstZWzorami tekst={pozycja.warunek_pl} />
+          )
+        ) : pozycja.warunek_latex !== '' ? (
           <>
             {pozycja.norma_pl && <p className="mvd-ocena-podstawa-norma">{pozycja.norma_pl}</p>}
             <span className="mvd-num">
@@ -235,6 +253,11 @@ function WierszElementu({
         {element.wynik === 'BRAK_PODSTAW' && element.uzasadnienie_pl && (
           <span className="mvd-ocena-uwaga">{element.uzasadnienie_pl}</span>
         )}
+        <SzczegolyWyniku
+          element={element}
+          trybEkspercki={trybEkspercki}
+          testid={`mvd-ocena-szczegoly-${pozycja.kryterium_id}-${element.element_id ?? 'agregat'}`}
+        />
       </td>
       <td className="mvd-ocena-dzialania">
         {naSchemacie && typ !== null && element.element_id !== null && (
@@ -255,13 +278,16 @@ function WierszElementu({
             {akcjaSchematu.etykieta}
           </button>
         )}
-        {element.dowod !== null && onOtworzDowod !== undefined && (
+        {element.dowod !== null
+          && element.dowod.run_id !== null
+          && element.dowod.element_id !== null
+          && onOtworzDowod !== undefined && (
           <button
             type="button"
             className="mvd-ocena-akcja"
             data-testid="mvd-ocena-dowod"
             title={T.dowodObliczenOpis}
-            onClick={() => onOtworzDowod(element.dowod!.element_id, element.dowod!.run_id)}
+            onClick={() => onOtworzDowod(element.dowod!.element_id!, element.dowod!.run_id!)}
           >
             {T.dowodObliczen}
           </button>
@@ -288,6 +314,15 @@ function TabelaPozycji({
         {pozycja.zakres_oceny === 'uklad' && (
           <span className="mvd-ocena-znacznik-uklad" data-testid={`mvd-ocena-zakres-uklad-${pozycja.kryterium_id}`}>
             {T.zakresUklad}
+          </span>
+        )}
+        {pozycja.physics_domain !== null && (
+          <span
+            className="mvd-ocena-domena"
+            data-testid={`mvd-ocena-domena-${pozycja.kryterium_id}`}
+            title={T.domenaFizyczna}
+          >
+            {domenaFizycznaPL(pozycja.physics_domain_pl)}
           </span>
         )}
         <span className="mvd-ocena-pozycja-licznik mvd-num">{T.liczbaElementow(pozycja.elementy.length)}</span>

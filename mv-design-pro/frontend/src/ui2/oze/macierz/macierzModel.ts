@@ -26,6 +26,7 @@ import type {
   NcRfgVerdict,
   OcenaDowodowaTestuNcRfg,
 } from '../../../ui/ncrfg-tests/api';
+import type { PozycjaOceny } from '../../wyniki/ocena/api';
 import type {
   DerKindUnified,
   StationDerConnection,
@@ -113,6 +114,11 @@ export interface KomorkaMacierzy {
    * `null` gdy stan !== 'wynik' (brak biegu / moduł zablokowany).
    */
   readonly ocenaDowodowa: OcenaDowodowaTestuNcRfg | null;
+  /**
+   * Karta AB-1a D2 — wynik inżynierski testu (adapter backendu `z_testu_ncrfg`):
+   * wartość, wymaganie, zapas, podstawa, dowód. `null` gdy stan !== 'wynik'.
+   */
+  readonly wynikInzynierski: PozycjaOceny | null;
 }
 
 /** Wiersz macierzy = jeden wymóg/test × wszystkie moduły. */
@@ -382,6 +388,7 @@ export function mapujMacierz(
           wynik: null,
           powodModulu: modul.powodBlokady,
           ocenaDowodowa: null,
+          wynikInzynierski: null,
         };
       }
       const wynikModulu = znajdzWynikModulu(wynik, modul.derRef);
@@ -395,6 +402,7 @@ export function mapujMacierz(
           wynik: null,
           powodModulu: null,
           ocenaDowodowa: null,
+          wynikInzynierski: null,
         };
       }
       return {
@@ -405,6 +413,7 @@ export function mapujMacierz(
         wynik: wynikTestu,
         powodModulu: null,
         ocenaDowodowa: wynik?.evidence_by_test[modul.derRef]?.[test.test_id] ?? null,
+        wynikInzynierski: wynik?.wynik_inzynierski?.[modul.derRef]?.[test.test_id] ?? null,
       };
     });
     return { test, komorki };

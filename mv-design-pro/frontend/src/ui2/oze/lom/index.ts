@@ -20,6 +20,7 @@ export {
   statusLomPL,
   istotnoscLom,
   fmtNastawaLom,
-  fmtOknoLom,
+  fmtWymaganieLom,
+  fmtZapasLom,
 } from './strings';
 export type { IstotnoscTaguLom } from './strings';

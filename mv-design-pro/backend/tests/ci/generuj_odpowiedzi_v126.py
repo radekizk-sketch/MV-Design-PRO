@@ -75,6 +75,22 @@ wejściowego (odtwarzalność wymaga, by ten sam ładunek dawał ten sam wynik),
 KAŻDA zmiana ładunku — nawet pola, którego ta analiza fizycznie nie czyta —
 przesuwa ziarno i wynik losowania w paśmie niepewności Monte Carlo. To nie jest
 zmiana merytoryczna zdolności przyłączeniowej, tylko przesunięcie próbki losowej.
+
+2026-09-23, karta AB-1a D7 (wykonawca 2), rodzaj `hosting_capacity`. Ponowne
+uruchomienie generatora (dopisanie fixtury wyników inżynierskich) ujawniło
+ROZJAZD ZASTANY: zapisana fixtura niosła `hosting_capacity_mw` 7,8 MW dla szyny
+stacji, bieżący solver daje 7,5 MW (deterministycznie, 3 biegi w jednym procesie
+identyczne). Parytet tego pliku porównuje wyłącznie ŚCIEŻKI kluczy, więc rozjazd
+wartości przeszedł niezauważony. Mechanizm jak wyżej (ziarno ze skrótu ładunku
+wejściowego); commity zmieniające wejście/solver V12.6 od ostatniego przeliczenia
+(eefab9a0): 4ee77f56, d58b949e, 54cb5356, 9fb3142d, daf303a3, ffaf6ad0, 7b2de6dc,
+b89c13b3, c23e56e4, 59385515 — żadnego z nich nie wskazano jako jedynej przyczyny.
+Rodzaj `hosting_capacity` jest zdjęty z powierzchni (410, ffaf6ad0), więc liczba
+nie trafia na ekran projektanta.
+
+  wielkość                                   PRZED   PO
+  ------------------------------------------ ------- -----
+  hosting_capacity[station/…/bus_sn].hosting_capacity_mw  7,8   7,5
 """
 
 from __future__ import annotations
@@ -112,6 +128,12 @@ SCIEZKA_FIXTURY = (
     / "__tests__"
     / "odpowiedziSolvera.json"
 )
+
+# Karta AB-1a D7: wynik inżynierski (adapter `wynik_inzynierski_v126.py`) złożony z
+# TYCH SAMYCH ładunków — fixtura testu panelu „Wynik inżynierski" okna analiz
+# specjalistycznych. `RUN_ID_FIXTURY` = `RUN_ID` atrapy frontu (`atrapyV126.ts`).
+SCIEZKA_WYNIKOW_INZYNIERSKICH = SCIEZKA_FIXTURY.with_name("wynikiInzynierskieV126.json")
+RUN_ID_FIXTURY = "run-akad-abc"
 
 # Referencje w postaci produkcyjnej — takie widział właściciel na zrzucie.
 REF_GPZ_SZYNA = "gpz/860003b4514aa388b39561d5005ce584/section/001/bus_sn"
@@ -222,6 +244,18 @@ def zbuduj_odpowiedzi() -> dict[str, Any]:
     }
 
 
+def zbuduj_wyniki_inzynierskie(odpowiedzi: dict[str, Any]) -> dict[str, Any]:
+    """Wynik inżynierski KAŻDEGO rodzaju z werdyktem — z ładunków fixtury, nie z nowego biegu."""
+    from application.analyses.wynik_inzynierski_v126 import wynik_inzynierski_v126
+
+    wyniki: dict[str, Any] = {}
+    for rodzaj in sorted(odpowiedzi):
+        pozycja = wynik_inzynierski_v126(rodzaj, RUN_ID_FIXTURY, odpowiedzi[rodzaj])
+        if pozycja is not None:
+            wyniki[rodzaj] = pozycja
+    return wyniki
+
+
 def main() -> None:
     odpowiedzi = zbuduj_odpowiedzi()
     SCIEZKA_FIXTURY.write_text(
@@ -229,6 +263,12 @@ def main() -> None:
         encoding="utf-8",
     )
     print(f"zapisano {len(odpowiedzi)} rodzajów → {SCIEZKA_FIXTURY}")
+    wyniki = zbuduj_wyniki_inzynierskie(odpowiedzi)
+    SCIEZKA_WYNIKOW_INZYNIERSKICH.write_text(
+        json.dumps(wyniki, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    print(f"zapisano {len(wyniki)} wyników inżynierskich → {SCIEZKA_WYNIKOW_INZYNIERSKICH}")
 
 
 if __name__ == "__main__":

@@ -142,6 +142,9 @@ function pozycjaWerdyktu(over: Partial<PozycjaOceny> = {}): PozycjaOceny {
     jednostka: '%',
     warunek: 'nie_wiecej_niz',
     elementy: [],
+    physics_domain: 'POWER_FLOW',
+    physics_domain_pl: 'stan ustalony 50 Hz (rozpływ mocy)',
+    podstawa: null,
     ...over,
   };
 }

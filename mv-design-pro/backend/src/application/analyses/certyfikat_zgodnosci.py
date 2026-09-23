@@ -55,6 +55,10 @@ from application.analyses.dowod_certyfikatu import (
     sekcja_dowodu,
     wiersze_dowodu_pl,
 )
+from application.analyses.werdykt_projektowy import (
+    ZRODLO_NIEZWERYFIKOWANE,
+    PodstawaNormatywna,
+)
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from network_model.solvers.ncrfg_ptpiree import (
@@ -327,6 +331,29 @@ def build_certyfikat_view(
             "liczba_modulow": modulow,
             "modulow_zgodnych": modulow_zgodnych,
             "modulow_niezgodnych": modulow_niezgodnych,
+            # Karta AB-1a D7 — pieciu towarzyszy werdyktu zbiorczego (addytywnie):
+            # wartosc = moduly zgodne, wymaganie = wszystkie moduly, zapas — brak
+            # (werdykt zliczeniowy nie ma skalarnego zapasu: None, nie liczba
+            # zastepcza), podstawa = procedura biegu (zrodlo niezweryfikowane),
+            # dowod = odcisk deterministyczny biegu macierzy (slad white box).
+            "wartosc": modulow_zgodnych,
+            "odniesienie": modulow,
+            "margines": None,
+            "podstawa": PodstawaNormatywna(
+                dokument=run_result.procedure_version,
+                wersja=None,
+                klauzula=None,
+                zrodlo_status=ZRODLO_NIEZWERYFIKOWANE,
+                uwaga_pl=(
+                    "Wymagania z profili operatorów; dokument źródłowy, wersja i "
+                    "klauzula profili nie są potwierdzone."
+                ),
+            ).to_dict(),
+            "dowod": {
+                "run_id": None,
+                "element_id": None,
+                "trace_ref": run_result.deterministic_hash,
+            },
         },
         "moduly": moduly_view,
         "zalozenia_i_zrodla": [

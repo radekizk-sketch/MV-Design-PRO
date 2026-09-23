@@ -204,7 +204,8 @@ class TestAntiIslanding:
         assert "der.anti_islanding.required" in kody(osie_gotowosci_der(wejscie), "protection")
 
     def test_dla_magazynu_energii_regula_anti_islanding_nie_dotyczy(self) -> None:
-        # Granica przepisana z reguly: warunek dotyczy PV i FW (IEEE 1547 / NC RfG Art. 14).
+        # Granica przepisana z reguly: warunek dotyczy PV i FW (magazyn poza zakresem
+        # rozporzadzenia 2016/631 — wylaczenie nazwane w doborze funkcji, karta AB-1a).
         wejscie = we(der_kind="BESS", connection_side="nN", protection_catalog_ref=None)
         assert "der.anti_islanding.required" not in kody(osie_gotowosci_der(wejscie), "protection")
 

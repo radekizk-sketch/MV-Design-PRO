@@ -557,6 +557,7 @@ export function mapowanieObiektuInspektora(
   const sekcjaKatalogowa = sekcjaWlasciwosciKatalogowych(typ, element);
   return {
     id: element.id,
+    refId: element.ref_id,
     typ,
     typEtykieta,
     nazwa: element.name || element.ref_id,

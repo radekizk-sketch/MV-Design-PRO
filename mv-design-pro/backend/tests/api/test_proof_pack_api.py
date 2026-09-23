@@ -469,11 +469,25 @@ def test_sc3f_contributions_walidacja_iec_deterministyczna(tmp_path):
     assert walidacja[1]["wartosc_pl"].startswith("c = 1.10")
     # Siec z sama maszyna synchroniczna: silniki asynchroniczne nieobecne (INFO),
     # regula 5% SPELNIONA (PASS) z liczbami z white_box.
-    assert walidacja[3] == {
+    # INTENCJA bez zmian (karta AB-1a D7): pozycja niesie dotychczasowe trzy pola
+    # ORAZ pieciu towarzyszy werdyktu — liczba maszyn jako wartosc, brak wymagania
+    # i zapasu (regula informacyjna), podstawa metody i dowod (punkt zwarcia).
+    assert {k: walidacja[3][k] for k in ("pozycja_pl", "wartosc_pl", "status")} == {
         "pozycja_pl": "Maszyny asynchroniczne",
         "wartosc_pl": "nieobecne w modelu",
         "status": "INFO",
     }
+    assert walidacja[3]["wartosc"] == 0.0
+    assert walidacja[3]["odniesienie"] is None and walidacja[3]["margines"] is None
+    for pozycja in walidacja:
+        assert pozycja["podstawa"]["dokument"] == "IEC 60909-0"
+        assert pozycja["podstawa"]["zrodlo_status"] == "UNVERIFIED_SOURCE"
+        assert pozycja["dowod"]["element_id"] == walidacja[0]["dowod"]["element_id"]
+    # Regula 5 %: wartosc (suma I''k,M) i wymaganie (prog) z white_box, zapas = prog - suma.
+    regula = walidacja[4]
+    assert regula["jednostka"] == "kA"
+    assert regula["wartosc"] is not None and regula["odniesienie"] is not None
+    assert regula["margines"] == round(regula["odniesienie"] - regula["wartosc"], 6)
     assert walidacja[4]["status"] == "PASS"
     assert walidacja[4]["wartosc_pl"].startswith("SPELNIONA — silniki pomijalne w Ib")
     assert "prog =" in walidacja[4]["wartosc_pl"]

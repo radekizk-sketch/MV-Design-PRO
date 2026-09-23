@@ -13,6 +13,7 @@ from application.analyses.v126_gotowosc import (
 )
 from application.analyses.v126_katalog import katalog_do_dict
 from application.analyses.v126_wzory import wzbogac_kroki_latex
+from application.analyses.wynik_inzynierski_v126 import wynik_inzynierski_v126
 from enm.canonical_analysis import create_run as _create_canonical_run
 from enm.canonical_analysis import execute_run as _execute_canonical_run
 from enm.canonical_analysis import get_run as _get_canonical_run
@@ -324,6 +325,15 @@ def get_v126_result(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, 
     wycofanie = _wycofanie_v126(analysis_type)
     if wycofanie is not None:
         payload["wycofany"] = wycofanie
+    # Karta AB-1a D7: pole ADDYTYWNE `wynik_inzynierski` — werdykt-literal wyniku
+    # FROZEN (NER: `thermal_check.status`; walidacja porownawcza: `status`) opakowany
+    # w obiekt z wartoscia, wymaganiem, zapasem, podstawa i dowodem. Rodzaje bez
+    # werdyktu nie dostaja klucza.
+    wynik_inzynierski = wynik_inzynierski_v126(
+        str(analysis_type), str(run["run_id"]), run["result"].get("result") or {}
+    )
+    if wynik_inzynierski is not None:
+        payload["wynik_inzynierski"] = wynik_inzynierski
     return payload
 
 

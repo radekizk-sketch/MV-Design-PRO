@@ -464,10 +464,22 @@ export type ZrodloProweniencjiDynamiki =
   | 'deklaracja_uzytkownika';
 
 /** Pochodzenie bloku parametrow dynamicznych (SS0 p.2) — WYMAGANA na kazdym bloku rodziny. */
+/**
+ * Oś PARAMETRÓW statusu modelu (karta AB-1a D3, `solver_input/status_modelu.py::
+ * StatusParametrow`): czy parametry potwierdzono pomiarem, czy pochodzą z karty,
+ * czy są oszacowaniem. Brak pola = status nieznany przy odczycie (bez domyślki).
+ */
+export type StatusWalidacjiParametrow =
+  | 'MODEL_ZWALIDOWANY_POMIAREM'
+  | 'KARTA_KATALOGOWA'
+  | 'OSZACOWANE'
+  | 'UNKNOWN';
+
 export interface ProweniencjaParametrow {
   zrodlo: ZrodloProweniencjiDynamiki;
   odniesienie: string;
   data?: string | null;
+  status_walidacji?: StatusWalidacjiParametrow | null;
 }
 
 /** AVR (SEXS / IEEE ST1A / IEEE AC1A) — IEEE 421.5. */

@@ -169,32 +169,128 @@
       {
         "pozycja_pl": "Norma bazowa metody",
         "wartosc_pl": "IEC 60909-0:2016",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Współczynnik napięciowy c",
         "wartosc_pl": "c = 1.10 (z tego przebiegu)",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": 1.1,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Metoda obliczenia wkładów",
         "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Maszyny asynchroniczne",
         "wartosc_pl": "nieobecne w modelu",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": 0.0,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
         "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 0.448 kA)",
-        "status": "PASS"
+        "status": "PASS",
+        "wartosc": 0.0,
+        "odniesienie": 0.44765308670344905,
+        "jednostka": "kA",
+        "margines": 0.447653,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
         "wartosc_pl": "obecny: 3fcc1859ae51...",
-        "status": "PASS"
+        "status": "PASS",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "trace_ref": null
+        }
       }
     ],
     "input_hash": "3fcc1859ae51ec40e2cf3f84874b0f6d1fd4ca725ebbf9a5f53e84c7321433d2"
@@ -369,32 +465,128 @@
       {
         "pozycja_pl": "Norma bazowa metody",
         "wartosc_pl": "IEC 60909-0:2016",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Współczynnik napięciowy c",
         "wartosc_pl": "c = 1.10 (z tego przebiegu)",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": 1.1,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Metoda obliczenia wkładów",
         "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Maszyny asynchroniczne",
         "wartosc_pl": "nieobecne w modelu",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": 0.0,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
         "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 0.699 kA)",
-        "status": "PASS"
+        "status": "PASS",
+        "wartosc": 0.0,
+        "odniesienie": 0.6992232635280335,
+        "jednostka": "kA",
+        "margines": 0.699223,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
         "wartosc_pl": "obecny: 60168aff769b...",
-        "status": "PASS"
+        "status": "PASS",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "trace_ref": null
+        }
       }
     ],
     "input_hash": "60168aff769b294e488b3ecf9f3c32dd6406d84f3a32e9716028121d8dfe1035"
@@ -569,32 +761,128 @@
       {
         "pozycja_pl": "Norma bazowa metody",
         "wartosc_pl": "IEC 60909-0:2016",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Współczynnik napięciowy c",
         "wartosc_pl": "c = 1.10 (z tego przebiegu)",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": 1.1,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Metoda obliczenia wkładów",
         "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Maszyny asynchroniczne",
         "wartosc_pl": "nieobecne w modelu",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": 0.0,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
         "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 1.072 kA)",
-        "status": "PASS"
+        "status": "PASS",
+        "wartosc": 0.0,
+        "odniesienie": 1.0715839889154517,
+        "jednostka": "kA",
+        "margines": 1.071584,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
         "wartosc_pl": "obecny: 2425e22fffaf...",
-        "status": "PASS"
+        "status": "PASS",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "trace_ref": null
+        }
       }
     ],
     "input_hash": "2425e22fffaf974ce69636ee785a82cc60eaa680342024078115b91ba40887ff"
@@ -769,32 +1057,128 @@
       {
         "pozycja_pl": "Norma bazowa metody",
         "wartosc_pl": "IEC 60909-0:2016",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Współczynnik napięciowy c",
         "wartosc_pl": "c = 1.10 (z tego przebiegu)",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": 1.1,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Metoda obliczenia wkładów",
         "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Maszyny asynchroniczne",
         "wartosc_pl": "nieobecne w modelu",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": 0.0,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
         "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 0.448 kA)",
-        "status": "PASS"
+        "status": "PASS",
+        "wartosc": 0.0,
+        "odniesienie": 0.44765308670344905,
+        "jednostka": "kA",
+        "margines": 0.447653,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
         "wartosc_pl": "obecny: 207adc9ba02d...",
-        "status": "PASS"
+        "status": "PASS",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "trace_ref": null
+        }
       }
     ],
     "input_hash": "207adc9ba02d65dc70306cbf25899c1614728d76c7ca3135acba02ae20894424"
@@ -969,32 +1353,128 @@
       {
         "pozycja_pl": "Norma bazowa metody",
         "wartosc_pl": "IEC 60909-0:2016",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Współczynnik napięciowy c",
         "wartosc_pl": "c = 1.10 (z tego przebiegu)",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": 1.1,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Metoda obliczenia wkładów",
         "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Maszyny asynchroniczne",
         "wartosc_pl": "nieobecne w modelu",
-        "status": "INFO"
+        "status": "INFO",
+        "wartosc": 0.0,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
         "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 0.230 kA)",
-        "status": "PASS"
+        "status": "PASS",
+        "wartosc": 0.0,
+        "odniesienie": 0.23017359665964846,
+        "jednostka": "kA",
+        "margines": 0.230174,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "trace_ref": null
+        }
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
         "wartosc_pl": "obecny: f53345f5e5a5...",
-        "status": "PASS"
+        "status": "PASS",
+        "wartosc": null,
+        "odniesienie": null,
+        "jednostka": null,
+        "margines": null,
+        "podstawa": {
+          "dokument": "IEC 60909-0",
+          "wersja": "2016",
+          "klauzula": null,
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona."
+        },
+        "dowod": {
+          "run_id": null,
+          "element_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "trace_ref": null
+        }
       }
     ],
     "input_hash": "f53345f5e5a582a0614dbadc5bb96b7fa1dee546adcd78dd809acc62c5c9d0f0"

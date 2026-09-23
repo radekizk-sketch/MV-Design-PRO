@@ -71,6 +71,10 @@ export const MACIERZ_STRINGS = {
   uzasadnienie: 'Uzasadnienie',
   // Stopień dowodowy testu (karta S-1, W6-0) — na czym opiera się werdykt.
   podstawaWerdyktu: 'Podstawa werdyktu',
+  // Karta AB-1a D2 — wynik inżynierski testu (adapter backendu, kształt oceny technicznej)
+  wynikInzynierski: 'Wynik inżynierski',
+  stanDowodowy: 'Stan dowodowy',
+  nieDotyczy: 'Test nie dotyczy tego modułu',
   // Baner biegu, gdy `reporting_status === 'not_reportable'` (karta S-1 §0.9).
   banerBrakDowoduTytul:
     'Pakiet ma charakter diagnostyczno-inżynierski — BRAK WYSTARCZAJĄCEGO DOWODU '

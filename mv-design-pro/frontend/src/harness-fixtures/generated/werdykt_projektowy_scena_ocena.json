@@ -48,10 +48,20 @@
           "wniosek_pl": "Brak podstaw do oceny spełnienia wymagania: Nie mozna ocenic mocy w punkcie przylaczenia — brak danych wejsciowych.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
-            "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57"
-          }
+            "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         }
-      ]
+      ],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "pwp.wspolczynnik_mocy",
@@ -98,10 +108,20 @@
           "wniosek_pl": "Brak podstaw do oceny spełnienia wymagania: Nie mozna ocenic cosφ w punkcie przylaczenia — brak danych wejsciowych.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
-            "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57"
-          }
+            "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         }
-      ]
+      ],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "napiecie.odchylenie",
@@ -148,8 +168,15 @@
           "wniosek_pl": "Odchylenie napięcia od znamionowego 1,087 % mieści się w granicy 10 %; zapas 8,913 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
-            "element_id": "d70aff7b-d056-5804-acce-c9bc5707612b"
-          }
+            "element_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         },
         {
           "element_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
@@ -169,8 +196,15 @@
           "wniosek_pl": "Odchylenie napięcia od znamionowego 0,479 % mieści się w granicy 10 %; zapas 9,521 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
-            "element_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989"
-          }
+            "element_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         },
         {
           "element_id": "d93618a6-23da-5d59-ae10-a7242961b790",
@@ -190,8 +224,15 @@
           "wniosek_pl": "Odchylenie napięcia od znamionowego 0,05 % mieści się w granicy 10 %; zapas 9,95 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
-            "element_id": "d93618a6-23da-5d59-ae10-a7242961b790"
-          }
+            "element_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         },
         {
           "element_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
@@ -211,8 +252,15 @@
           "wniosek_pl": "Odchylenie napięcia od znamionowego 0,05 % mieści się w granicy 10 %; zapas 9,95 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
-            "element_id": "63203cbc-ac91-5100-a0ee-a275d24514ff"
-          }
+            "element_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         },
         {
           "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
@@ -232,10 +280,20 @@
           "wniosek_pl": "Odchylenie napięcia od znamionowego 0 % mieści się w granicy 10 %; zapas 10 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
-            "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57"
-          }
+            "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         }
-      ]
+      ],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "galaz.obciazenie_dlugotrwale",
@@ -282,8 +340,15 @@
           "wniosek_pl": "Obciążenie gałęzi względem obciążalności długotrwałej 15,051 % mieści się w granicy 100 %; zapas 84,949 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
-            "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85"
-          }
+            "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         },
         {
           "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
@@ -303,10 +368,20 @@
           "wniosek_pl": "Obciążenie gałęzi względem obciążalności długotrwałej 0,2 % mieści się w granicy 100 %; zapas 99,8 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
-            "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c"
-          }
+            "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         }
-      ]
+      ],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "transformator.obciazenie",
@@ -353,8 +428,15 @@
           "wniosek_pl": "Obciążenie transformatora względem mocy znamionowej 25,386 % mieści się w granicy 100 %; zapas 74,614 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
-            "element_id": "158eec95-939b-5b35-97ad-9433334b5506"
-          }
+            "element_id": "158eec95-939b-5b35-97ad-9433334b5506",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         },
         {
           "element_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
@@ -374,10 +456,20 @@
           "wniosek_pl": "Obciążenie transformatora względem mocy znamionowej 3,003 % mieści się w granicy 100 %; zapas 96,997 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
-            "element_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a"
-          }
+            "element_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         }
-      ]
+      ],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "straty.budzet",
@@ -424,10 +516,20 @@
           "wniosek_pl": "Straty mocy czynnej względem mocy przesyłanej 0,451 % mieści się w granicy 10 %; zapas 9,549 pkt proc.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
-            "element_id": "network"
-          }
+            "element_id": "network",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         }
-      ]
+      ],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "moc_bierna.bilans",
@@ -474,10 +576,20 @@
           "wniosek_pl": "Współczynnik mocy w węźle bilansującym 0,995 osiąga wartość wymaganą 0,8; zapas 24,396 %.",
           "dowod": {
             "run_id": "run-pf-scena-ocena",
-            "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57"
-          }
+            "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         }
-      ]
+      ],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "przewod.wytrzymalosc_zwarciowa",
@@ -524,8 +636,15 @@
           "wniosek_pl": "Brak podstaw do oceny spełnienia wymagania: Brak danych do oceny cieplnej: conductor.thermal_data_missing.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
-            "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85"
-          }
+            "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         },
         {
           "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
@@ -545,10 +664,20 @@
           "wniosek_pl": "Wymaganie spełnione: Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; kryterium cieplne spełnione trywialnie.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
-            "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c"
-          }
+            "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         }
-      ]
+      ],
+      "physics_domain": "SHORT_CIRCUIT",
+      "physics_domain_pl": "zwarcia (IEC 60909)",
+      "podstawa": null
     },
     {
       "kryterium_id": "wynik.wiarygodnosc_zwarciowa",
@@ -595,8 +724,15 @@
           "wniosek_pl": "Prąd zwarciowy początkowy 8,97 kA mieści się w paśmie wiarygodności [0,1; 50] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
-            "element_id": "bus_sn_main"
-          }
+            "element_id": "bus_sn_main",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         },
         {
           "element_id": "bus_hv",
@@ -616,8 +752,15 @@
           "wniosek_pl": "Prąd zwarciowy początkowy 13,987 kA mieści się w paśmie wiarygodności [0,5; 63] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
-            "element_id": "bus_hv"
-          }
+            "element_id": "bus_hv",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         },
         {
           "element_id": "bus_nn",
@@ -637,8 +780,15 @@
           "wniosek_pl": "Prąd zwarciowy początkowy 21,093 kA mieści się w paśmie wiarygodności [0,05; 150] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
-            "element_id": "bus_nn"
-          }
+            "element_id": "bus_nn",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         },
         {
           "element_id": "bus_sn_b",
@@ -658,8 +808,15 @@
           "wniosek_pl": "Prąd zwarciowy początkowy 8,97 kA mieści się w paśmie wiarygodności [0,1; 50] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
-            "element_id": "bus_sn_b"
-          }
+            "element_id": "bus_sn_b",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         },
         {
           "element_id": "bus_sn_c",
@@ -679,10 +836,20 @@
           "wniosek_pl": "Prąd zwarciowy początkowy 4,612 kA mieści się w paśmie wiarygodności [0,1; 50] kA; wynik nadaje się do dalszej oceny.",
           "dowod": {
             "run_id": "run-sc-scena-ocena",
-            "element_id": "bus_sn_c"
-          }
+            "element_id": "bus_sn_c",
+            "trace_ref": null
+          },
+          "punkt_krytyczny": null,
+          "przyczyna": null,
+          "status_modelu": null,
+          "status_wejscia": null,
+          "niepewnosc": null,
+          "zakres_waznosci": null
         }
-      ]
+      ],
+      "physics_domain": "SHORT_CIRCUIT",
+      "physics_domain_pl": "zwarcia (IEC 60909)",
+      "podstawa": null
     },
     {
       "kryterium_id": "dobor.tor_der_sn",
@@ -710,7 +877,10 @@
       "powod_kod": null,
       "powod_pl": "Projekt nie zawiera toru przylaczenia zrodla wytworczego (DER-SN).",
       "run_id": null,
-      "elementy": []
+      "elementy": [],
+      "physics_domain": null,
+      "physics_domain_pl": null,
+      "podstawa": null
     }
   ],
   "zrodla": [

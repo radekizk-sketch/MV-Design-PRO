@@ -1,3 +1,5 @@
+import type { PozycjaOceny } from '../../ui2/wyniki/ocena/api';
+
 export type NcRfgCertificateStatus = 'ptpiree_verified' | 'none' | 'expired' | 'unknown';
 export type NcRfgVerdict = 'pass' | 'fail' | 'no_data' | 'not_required';
 
@@ -157,6 +159,13 @@ export interface NcRfgRunResult {
   readonly evidence_note_pl: string;
   readonly evidence_per_module: Readonly<Record<string, OcenaDowodowaModuluNcRfg>>;
   readonly evidence_by_test: Readonly<Record<string, Readonly<Record<string, OcenaDowodowaTestuNcRfg>>>>;
+  /**
+   * Karta AB-1a D2 — wynik inżynierski KAŻDEGO testu (`der_ref → test_id →
+   * PozycjaWerdyktu.to_dict`, adapter `wynik_inzynierski.z_testu_ncrfg`): wartość,
+   * wymaganie, zapas, podstawa (źródło niezweryfikowane) i dowód — ten sam kształt co
+   * pozycja ekranu „Ocena techniczna wyników".
+   */
+  readonly wynik_inzynierski: Readonly<Record<string, Readonly<Record<string, PozycjaOceny>>>>;
   readonly test_catalog: readonly NcRfgTestDefinition[];
   readonly white_box_trace: readonly {
     readonly step: number;

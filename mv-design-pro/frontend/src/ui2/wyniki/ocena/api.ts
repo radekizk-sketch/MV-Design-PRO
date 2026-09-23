@@ -19,8 +19,100 @@
 /** Stan kryterium (agregat pozycji). Czwarty stan NIE_DOTYCZY nie zastępuje żadnego z trzech. */
 export type StanKryterium = 'SPELNIONE' | 'NARUSZONE' | 'NIESPRAWDZONE' | 'NIE_DOTYCZY';
 
-/** Rodzaj źródła danych kryterium (biegi albo model). */
-export type ZrodloKryterium = 'PF' | 'short_circuit_sn' | 'model';
+/**
+ * Rodzaj źródła danych kryterium (biegi albo model). Karta AB-1a D2/D7: pozycje
+ * adapterów wyników FROZEN — testy NC RfG (`ncrfg_ptpiree`) i analizy V12.6
+ * (`v126:*`) — mają ten sam kształt co pozycje oceny technicznej.
+ */
+export type ZrodloKryterium =
+  | 'PF'
+  | 'short_circuit_sn'
+  | 'model'
+  | 'ncrfg_ptpiree'
+  | 'v126:neutral_earthing_design'
+  | 'v126:benchmark_validation';
+
+/**
+ * Karta AB-1a D2 — domena fizyczna biegu kryterium (`PozycjaWerdyktu.physics_domain`),
+ * `null` dla źródeł, które nie są biegiem jednej domeny (model, deklaracje NC RfG).
+ * Wartości = nazwy członów `PhysicsDomain` rejestru zdolności backendu.
+ */
+export type DomenaFizyczna =
+  | 'POWER_FLOW'
+  | 'SHORT_CIRCUIT'
+  | 'RMS_DYNAMICS'
+  | 'SEQUENCE_DOMAIN'
+  | 'HARMONIC_FREQUENCY_DOMAIN'
+  | 'SUPRAHARMONIC_FREQUENCY_DOMAIN';
+
+/** Status źródła podstawy wymagania (bez wartości domyślnej w backendzie). */
+export type ZrodloStatusPodstawy = 'UNVERIFIED_SOURCE' | 'VERIFIED_SOURCE';
+
+/** Podstawa strukturalna wymagania (`PodstawaNormatywna.to_dict`). */
+export interface PodstawaNormatywnaOdpowiedz {
+  readonly dokument: string | null;
+  readonly wersja: string | null;
+  readonly klauzula: string | null;
+  readonly zrodlo_status: ZrodloStatusPodstawy;
+  /** Czego brakuje do potwierdzenia podstawy (dokument, wersja, klauzula, okno). */
+  readonly uwaga_pl: string | null;
+}
+
+/** Jeden kształt odwołania do dowodu: bieg, element, krok śladu (`null` = brak). */
+export interface DowodWyniku {
+  readonly run_id: string | null;
+  readonly element_id: string | null;
+  readonly trace_ref: string | null;
+}
+
+/** Punkt krytyczny wyniku: element i opcjonalna współrzędna czasu albo częstotliwości. */
+export interface PunktKrytycznyOdpowiedz {
+  readonly element_ref: string | null;
+  readonly wspolrzedna: { readonly t_s?: number; readonly f_hz?: number } | null;
+}
+
+/** Rodzaj przyczyny ograniczenia wyniku (`RodzajPrzyczyny` backendu). */
+export type RodzajPrzyczyny = 'element' | 'regulator' | 'ogranicznik' | 'zrodlo_emisji' | 'rezonans';
+
+/** Strukturalna przyczyna wyniku. */
+export interface PrzyczynaOgraniczeniaOdpowiedz {
+  readonly rodzaj: RodzajPrzyczyny;
+  readonly ref: string | null;
+  readonly opis_pl: string;
+}
+
+/** Oś równań statusu modelu (`StatusRownan` — `solver_input/status_modelu.py`). */
+export type StatusRownanKod = 'VALIDATED' | 'UNVALIDATED' | 'UNKNOWN';
+/** Oś parametrów statusu modelu (`StatusParametrow`). */
+export type StatusParametrowKod =
+  | 'MODEL_ZWALIDOWANY_POMIAREM'
+  | 'KARTA_KATALOGOWA'
+  | 'OSZACOWANE'
+  | 'UNKNOWN';
+
+/** Dwie osie statusu modelu urządzenia (`StatusModelu.to_dict`). */
+export interface StatusModeluOdpowiedz {
+  readonly rownania: StatusRownanKod;
+  readonly rownania_pl: string;
+  readonly parametry: StatusParametrowKod;
+  readonly parametry_pl: string;
+}
+
+/** Jakość danych wejściowych wyniku (`FieldQuality`). */
+export type StatusWejsciaKod = 'DATASHEET' | 'ESTIMATED' | 'SYSTEM_DEFAULT';
+
+/** Niepewność wyniku z metodą jej wyznaczenia. */
+export interface NiepewnoscOdpowiedz {
+  readonly wartosc: number;
+  readonly jednostka: string;
+  readonly metoda_pl: string;
+}
+
+/** Zakres ważności modelu/metody wyniku. */
+export interface ZakresWaznosciOdpowiedz {
+  readonly opis_pl: string;
+  readonly granice: Readonly<Record<string, number>>;
+}
 
 /** Wynik oceny JEDNEGO elementu — trzy stany, nigdy dwa (`WYNIK_*` backendu). */
 export type WynikOceny = 'SPELNIA' | 'NIE_SPELNIA' | 'BRAK_PODSTAW';
@@ -56,8 +148,16 @@ export interface OcenaElementu {
   readonly uzasadnienie_pl: string | null;
   /** Wniosek projektowy — 1–2 zdania w języku formalnym. */
   readonly wniosek_pl: string;
-  /** Odwołanie do dowodu obliczeniowego: bieg + element (`null` = brak biegu). */
-  readonly dowod: { readonly run_id: string; readonly element_id: string } | null;
+  /** Odwołanie do dowodu (karta AB-1a D2 — jeden kształt `DowodWyniku`: bieg, element,
+   *  krok śladu); `null` = brak biegu i brak śladu. */
+  readonly dowod: DowodWyniku | null;
+  /** Karta AB-1a D2 — pola wyjaśnialności (`null` = brak danej u dostawcy, kreska). */
+  readonly punkt_krytyczny: PunktKrytycznyOdpowiedz | null;
+  readonly przyczyna: PrzyczynaOgraniczeniaOdpowiedz | null;
+  readonly status_modelu: StatusModeluOdpowiedz | null;
+  readonly status_wejscia: StatusWejsciaKod | null;
+  readonly niepewnosc: NiepewnoscOdpowiedz | null;
+  readonly zakres_waznosci: ZakresWaznosciOdpowiedz | null;
 }
 
 /** Jedna pozycja rejestru kryteriów projektu (`PozycjaWerdyktu.to_dict`). */
@@ -100,6 +200,12 @@ export interface PozycjaOceny {
   readonly zakres_oceny: 'kryterium' | 'uklad';
   /** Oceny per element — pozycja bez elementów = brak podstawy do oceny (patrz `powod_pl`). */
   readonly elementy: readonly OcenaElementu[];
+  /** Karta AB-1a D2 — domena fizyczna biegu kryterium (`null` = źródło bez biegu). */
+  readonly physics_domain: DomenaFizyczna | null;
+  /** Etykieta PL domeny z backendu (`physics_domain_pl`, rejestr zdolności) — jedyne źródło nazwy. */
+  readonly physics_domain_pl: string | null;
+  /** Karta AB-1a D2 — podstawa strukturalna; gdy jest, `norma_pl` = jej zapis (jedno źródło). */
+  readonly podstawa: PodstawaNormatywnaOdpowiedz | null;
 }
 
 /** Metadane biegu/modelu, z którego pochodzą kryteria danego rodzaju. */

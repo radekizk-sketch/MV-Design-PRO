@@ -29,7 +29,10 @@
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
       "run_id": null,
-      "elementy": []
+      "elementy": [],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "pwp.wspolczynnik_mocy",
@@ -57,7 +60,10 @@
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
       "run_id": null,
-      "elementy": []
+      "elementy": [],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "napiecie.odchylenie",
@@ -85,7 +91,10 @@
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
       "run_id": null,
-      "elementy": []
+      "elementy": [],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "galaz.obciazenie_dlugotrwale",
@@ -113,7 +122,10 @@
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
       "run_id": null,
-      "elementy": []
+      "elementy": [],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "transformator.obciazenie",
@@ -141,7 +153,10 @@
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
       "run_id": null,
-      "elementy": []
+      "elementy": [],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "straty.budzet",
@@ -169,7 +184,10 @@
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
       "run_id": null,
-      "elementy": []
+      "elementy": [],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "moc_bierna.bilans",
@@ -197,7 +215,10 @@
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu rozplywu mocy — uruchom obliczenia, zeby ocenic kryterium.",
       "run_id": null,
-      "elementy": []
+      "elementy": [],
+      "physics_domain": "POWER_FLOW",
+      "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
+      "podstawa": null
     },
     {
       "kryterium_id": "przewod.wytrzymalosc_zwarciowa",
@@ -225,7 +246,10 @@
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu zwarciowego — uruchom obliczenia, zeby ocenic kryterium.",
       "run_id": null,
-      "elementy": []
+      "elementy": [],
+      "physics_domain": "SHORT_CIRCUIT",
+      "physics_domain_pl": "zwarcia (IEC 60909)",
+      "podstawa": null
     },
     {
       "kryterium_id": "wynik.wiarygodnosc_zwarciowa",
@@ -253,7 +277,10 @@
       "powod_kod": "verdict.run_missing",
       "powod_pl": "Brak zakonczonego biegu zwarciowego — uruchom obliczenia, zeby ocenic kryterium.",
       "run_id": null,
-      "elementy": []
+      "elementy": [],
+      "physics_domain": "SHORT_CIRCUIT",
+      "physics_domain_pl": "zwarcia (IEC 60909)",
+      "podstawa": null
     },
     {
       "kryterium_id": "dobor.tor_der_sn",
@@ -281,7 +308,10 @@
       "powod_kod": null,
       "powod_pl": "Projekt nie zawiera toru przylaczenia zrodla wytworczego (DER-SN).",
       "run_id": null,
-      "elementy": []
+      "elementy": [],
+      "physics_domain": null,
+      "physics_domain_pl": null,
+      "podstawa": null
     }
   ],
   "zrodla": [

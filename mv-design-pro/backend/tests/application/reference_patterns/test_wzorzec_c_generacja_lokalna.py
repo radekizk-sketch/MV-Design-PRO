@@ -493,6 +493,45 @@ class TestWhiteBoxTrace:
         assert "sprawdzenie_selektywnosci" in step_names
         assert "wyznaczenie_werdyktu" in step_names
 
+    @pytest.mark.parametrize(
+        "wejscie", ["zgodny_input", "graniczny_input", "niezgodny_input", "bez_progu"]
+    )
+    def test_krok_blokady_szyn_niesie_pieciu_towarzyszy_werdyktu(
+        self,
+        pattern: WzorzecCGeneracjaLokalna,
+        request: pytest.FixtureRequest,
+        wejscie: str,
+    ):
+        """Karta AB-1a D7: wynik kroku „sprawdzenie B" w obu gałęziach (z progiem i bez
+        progu) ma wartość, wymaganie, zapas, podstawę i dowód; bez progu wymaganie i
+        zapas są None (nie liczba zastępcza)."""
+        import dataclasses
+
+        if wejscie == "bez_progu":
+            baza = request.getfixturevalue("zgodny_input")
+            dane = dataclasses.replace(
+                baza, nastawy=dataclasses.replace(baza.nastawy, prog_blokady_szyn_a=None)
+            )
+        else:
+            dane = request.getfixturevalue(wejscie)
+        krok = next(
+            s
+            for s in pattern.validate(input_data=dane).trace
+            if s["step"] == "sprawdzenie_blokady_szyn"
+        )
+        wyjscie = krok["outputs"]
+        for klucz in ("wartosc", "odniesienie", "margines", "podstawa", "dowod"):
+            assert klucz in wyjscie, klucz
+        assert wyjscie["wartosc"] == dane.dane_generacja_max.wklad_generacji_a
+        assert wyjscie["podstawa"]["zrodlo_status"] == "UNVERIFIED_SOURCE"
+        assert wyjscie["dowod"] == {"trace_ref": "sprawdzenie_blokady_szyn"}
+        prog = dane.nastawy.prog_blokady_szyn_a
+        if prog is None:
+            assert wyjscie["odniesienie"] is None and wyjscie["margines"] is None
+        else:
+            assert wyjscie["odniesienie"] == prog * 0.8
+            assert wyjscie["margines"] == prog * 0.8 - wyjscie["wartosc"]
+
     def test_trace_has_required_keys(
         self,
         pattern: WzorzecCGeneracjaLokalna,

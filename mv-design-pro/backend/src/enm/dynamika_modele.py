@@ -51,7 +51,15 @@ from __future__ import annotations
 from typing import Annotated, Literal
 
 from network_model.pochodne import mva_na_kva
-from pydantic import BaseModel, Field, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    SerializationInfo,
+    SerializerFunctionWrapHandler,
+    model_serializer,
+    model_validator,
+)
+from solver_input.status_modelu import StatusParametrow
 
 # ---------------------------------------------------------------------------
 # Proweniencja bloku (SS0 p. 2)
@@ -77,6 +85,28 @@ class ProweniencjaParametrow(BaseModel):
     zrodlo: ZrodloProweniencjiDynamiki
     odniesienie: str = Field(min_length=1, description="Numer dokumentu/normy/karty.")
     data: str | None = None
+    #: Karta AB-1a D3 — os PARAMETROW statusu modelu (``solver_input/status_modelu.py``):
+    #: czy parametry potwierdzono pomiarem, czy pochodza z karty, czy sa oszacowaniem.
+    #: OPCJONALNE bez domyslki zapisywanej: brak pola = status nieznany przy odczycie
+    #: (``status_parametrow`` → ``UNKNOWN``). Pole nieobecne NIE trafia do postaci
+    #: zserializowanej (``_bez_pustego_statusu``), wiec odcisk kazdego istniejacego
+    #: modelu ENM i kazdego scenariusza zostaje bit w bit (pin:
+    #: ``tests/enm/test_status_walidacji_parametrow.py``).
+    status_walidacji: StatusParametrow | None = None
+
+    @model_serializer(mode="wrap")
+    def _bez_pustego_statusu(
+        self, handler: SerializerFunctionWrapHandler, info: SerializationInfo
+    ) -> object:
+        """``exclude_none`` wylacznie dla pola addytywnego ``status_walidacji``.
+
+        Typ zwracany ``object`` (nie ``Any``): handler oddaje postac zserializowana
+        dowolnego trybu, a warstwa ``enm`` nie uzywa golego ``Any`` (niezmiennik
+        ``test_no_any_in_domain_types``)."""
+        dane = handler(self)
+        if isinstance(dane, dict) and dane.get("status_walidacji") is None:
+            dane.pop("status_walidacji", None)
+        return dane
 
 
 # ---------------------------------------------------------------------------

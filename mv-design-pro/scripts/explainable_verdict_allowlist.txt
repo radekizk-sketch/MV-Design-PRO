@@ -1,0 +1,23 @@
+# Lista wyjatkow guardu werdyktu wyjasnialnego (scripts/explainable_verdict_guard.py).
+#
+# LISTA ZAMKNIETA (karta AB-1a R-5, audyt warstwy regulacyjnej 2026-09-23 §3.3 p. 6):
+# WYLACZNIE nosniki werdyktu w plikach FROZEN (B-01) — solver zamrozony nie moze
+# dostac pol, wiec werdykt-literal opakowuje ADAPTER w warstwie aplikacji, wolany
+# przez trase API (test przypina istnienie adaptera i jego osiagalnosc z trasy).
+# Pozycja z adnotacja WYCOFYWANA_AB-1d_min[ZDOLNOSC] nie ma adaptera: zdolnosc jest
+# wycofywana w kamieniu AB-1d_min — adnotacja jest legalna tylko, dopoki wpis rejestru
+# zdolnosci istnieje i nie jest wycofany (znika razem z nim).
+# Nosnik spoza plikow FROZEN NIE moze trafic na te liste — przebudowuje sie go.
+#
+# Format: identyfikator nosnika -> adapter (plik.py::funkcja) | powod
+#
+# Pomiar na HEAD 529837d2 (przed karta): 6 nosnikow FROZEN (NC RfG: 2, V12.6: 4 —
+# w tym 2 wiersze walidacji porownawczej w jednej funkcji). Audyt wymienil 3; pomiar
+# guardu wykryl dodatkowo NER i walidacje porownawcza V12.6 — dostaly adapter.
+
+network_model/solvers/ncrfg_ptpiree/contracts.py::NcRfgPtpireeTestResult -> application/ncrfg_compliance/wynik_inzynierski.py::z_testu_ncrfg | FROZEN solver NC RfG/PTPiREE; werdykt testu opakowany w PozycjaWerdyktu (pole wynik_inzynierski odpowiedzi biegu macierzy)
+network_model/solvers/ncrfg_ptpiree/contracts.py::NcRfgPtpireeModuleResult -> application/ncrfg_compliance/wynik_inzynierski.py::z_testu_ncrfg | FROZEN solver NC RfG/PTPiREE; status zbiorczy modulu rozlozony na wyniki inzynierskie testow (ten sam adapter)
+network_model/solvers/v126_academic.py::V126AcademicSolver._power_quality[compatibility_status] -> WYCOFYWANA_AB-1d_min[POWER_QUALITY_HARMONICS] | FROZEN V12.6; zdolnosc harmonicznych wycofywana w AB-1d_min (audyt harmoniczny: REJECT) — adapter nie powstaje
+network_model/solvers/v126_academic.py::V126AcademicSolver._ner_design[status] -> application/analyses/wynik_inzynierski_v126.py::z_proby_cieplnej_ner | FROZEN V12.6; sprawdzenie cieplne rezystora NER opakowane w PozycjaWerdyktu (pole wynik_inzynierski wyniku biegu v126)
+network_model/solvers/v126_academic.py::V126AcademicSolver._benchmark_validation[status] -> application/analyses/wynik_inzynierski_v126.py::z_walidacji_benchmarkow | FROZEN V12.6; wiersz walidacji porownawczej opakowany w OcenaElementu
+network_model/solvers/v126_academic.py::V126AcademicSolver._benchmark_validation[status]#2 -> application/analyses/wynik_inzynierski_v126.py::z_walidacji_benchmarkow | FROZEN V12.6; status zbiorczy walidacji porownawczej opakowany w PozycjaWerdyktu

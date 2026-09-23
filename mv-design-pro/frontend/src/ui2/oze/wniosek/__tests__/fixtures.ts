@@ -79,6 +79,7 @@ export function wynikNcRfgFixture(): NcRfgRunResult {
     evidence_note_pl: '',
     evidence_per_module: {},
     evidence_by_test: {},
+    wynik_inzynierski: {},
     test_catalog: [],
     white_box_trace: [],
     report_pl: '',

@@ -68,6 +68,8 @@ def test_known_case_returns_view() -> None:
     view = get_lom_protection(case_id="case-lom-1", klucz="case-lom-1")
     assert view["analysis"] == "ochrona_lom"
     assert view["summary"]["fields_total"] == 1
-    rocof = [c for field in view["fields"] for c in field["checks"] if c["function_ansi"] == "81R"]
-    assert rocof and rocof[0]["severity"] == "OK"
+    # INTENCJA bez zmian — kształt OcenaNastawyLom (karta AB-1a D7): `funkcja_ansi`/`wynik`.
+    rocof = [c for field in view["fields"] for c in field["checks"] if c["funkcja_ansi"] == "81R"]
+    assert rocof and rocof[0]["wynik"] == "OK"
+    assert rocof[0]["podstawa"]["zrodlo_status"] == "UNVERIFIED_SOURCE"
     assert view["input_hash"]
