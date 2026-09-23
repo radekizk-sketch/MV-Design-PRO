@@ -140,6 +140,24 @@ def test_certyfikat_pozytywny_werdykt_zgodny() -> None:
     assert view["odcisk_wejscia_sha256"]
 
 
+def test_werdykt_zbiorczy_niesie_pieciu_towarzyszy() -> None:
+    """Karta AB-1a D7: werdykt zbiorczy certyfikatu obok statusu niesie wartość (moduły
+    zgodne), wymaganie (wszystkie moduły), zapas None (werdykt zliczeniowy nie ma
+    skalarnego zapasu), podstawę (procedura, źródło niezweryfikowane) i dowód (odcisk
+    biegu). Dotychczasowe klucze na początku, bez zmiany kolejności."""
+    view = build_certyfikat_view(_run_result(_module()), nazwa_projektu="Projekt A")
+    zbiorczy = view["werdykt_zbiorczy"]
+    klucze = tuple(zbiorczy)
+    assert klucze[-5:] == ("wartosc", "odniesienie", "margines", "podstawa", "dowod")
+    assert klucze[0] == "status"
+    assert zbiorczy["wartosc"] == zbiorczy["modulow_zgodnych"]
+    assert zbiorczy["odniesienie"] == zbiorczy["liczba_modulow"]
+    assert zbiorczy["margines"] is None
+    assert zbiorczy["podstawa"]["zrodlo_status"] == "UNVERIFIED_SOURCE"
+    assert zbiorczy["podstawa"]["dokument"]
+    assert zbiorczy["dowod"]["trace_ref"]
+
+
 def _t12_zaakceptowany_przez_profil(monkeypatch: pytest.MonkeyPatch) -> None:
     """Symulacja stanu PO kamieniu AB-1c: profil operatora jawnie akceptuje
     deklarację dla T12 (dziś brak takiego profilu — OD-21).

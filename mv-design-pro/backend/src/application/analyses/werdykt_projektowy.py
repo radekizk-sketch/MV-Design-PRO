@@ -110,10 +110,16 @@ ZRODLO_MODEL = "model"
 #: (``application/ncrfg_compliance/wynik_inzynierski.py``) — deklaracje modulu
 #: porownane z wymaganiem, NIE bieg fizyki (brak domeny fizycznej).
 ZRODLO_NCRFG = "ncrfg_ptpiree"
+#: Karta AB-1a D7: pozycje z adaptera wynikow FROZEN analiz V12.6
+#: (``application/analyses/wynik_inzynierski_v126.py``).
+ZRODLO_V126_NER = "v126:neutral_earthing_design"
+#: Walidacja porownawcza V12.6 porownuje wartosci „obliczone" i referencyjne PODANE
+#: w danych wejsciowych biegu — sama nie liczy fizyki, wiec nie ma domeny fizycznej.
+ZRODLO_V126_BENCHMARK = "v126:benchmark_validation"
 
-#: Zrodla, ktore NIE sa biegiem analizy (`analysis_type`) — nie maja domeny
-#: fizycznej: model (dobory z tabliczek) i deklaracje modulu NC RfG.
-_ZRODLA_BEZ_BIEGU: frozenset[str] = frozenset({ZRODLO_MODEL, ZRODLO_NCRFG})
+#: Zrodla, ktore NIE sa biegiem fizyki jednej domeny — nie maja domeny fizycznej:
+#: model (dobory z tabliczek), deklaracje modulu NC RfG, walidacja porownawcza.
+_ZRODLA_BEZ_BIEGU: frozenset[str] = frozenset({ZRODLO_MODEL, ZRODLO_NCRFG, ZRODLO_V126_BENCHMARK})
 
 # SZEW INTEGRACYJNY AB-1a: zastąpić importem domena_fizyczna_biegu (wykonawca 1)
 # z `application.solvers.solver_capability_registry` (jeden rejestr domen, R-1).
@@ -127,6 +133,10 @@ _DOMENA_FIZYCZNA_BIEGU_LOKALNIE: dict[str, str] = {
     "dynamic_stability": "RMS_DYNAMICS",
     # Ocena zabezpieczen czyta prady zwarciowe IEC 60909 — domena zwarciowa.
     "protection_sn": "SHORT_CIRCUIT",
+    # Dobor uziemienia punktu neutralnego: prad pojemnosciowy doziemienia ze skladowej
+    # zerowej (C0) — dziedzina skladowych symetrycznych. Do uzgodnienia z tabela v126:*
+    # rejestru D1 przy integracji.
+    ZRODLO_V126_NER: "SEQUENCE_DOMAIN",
 }
 
 
@@ -482,9 +492,7 @@ ZRODLO_NIEZWERYFIKOWANE: ZrodloStatus = "UNVERIFIED_SOURCE"
 ZRODLO_ZWERYFIKOWANE: ZrodloStatus = "VERIFIED_SOURCE"
 
 #: Rodzaj przyczyny ograniczenia (karta AB-1a D2): co FIZYCZNIE ogranicza wynik.
-RodzajPrzyczyny = Literal[
-    "element", "regulator", "ogranicznik", "zrodlo_emisji", "rezonans"
-]
+RodzajPrzyczyny = Literal["element", "regulator", "ogranicznik", "zrodlo_emisji", "rezonans"]
 
 
 @dataclass(frozen=True)
@@ -515,11 +523,7 @@ class PodstawaNormatywna:
             )
             if czesc
         ]
-        return (
-            ", ".join(czesci)
-            if czesci
-            else "Brak wskazanego dokumentu podstawy wymagania"
-        )
+        return ", ".join(czesci) if czesci else "Brak wskazanego dokumentu podstawy wymagania"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -543,9 +547,7 @@ class PunktKrytyczny:
     def to_dict(self) -> dict[str, Any]:
         return {
             "element_ref": self.element_ref,
-            "wspolrzedna": (
-                dict(self.wspolrzedna) if self.wspolrzedna is not None else None
-            ),
+            "wspolrzedna": (dict(self.wspolrzedna) if self.wspolrzedna is not None else None),
         }
 
 
@@ -707,10 +709,7 @@ class PozycjaWerdyktu:
     podstawa: PodstawaNormatywna | None = None
 
     def __post_init__(self) -> None:
-        if (
-            self.podstawa is not None
-            and self.definicja.norma_pl != self.podstawa.render_pl()
-        ):
+        if self.podstawa is not None and self.definicja.norma_pl != self.podstawa.render_pl():
             raise ValueError(
                 f"Kryterium {self.definicja.kryterium_id}: norma_pl "
                 f"{self.definicja.norma_pl!r} nie jest renderingiem podstawy "
@@ -787,9 +786,7 @@ class WerdyktProjektowy:
         return {
             "spelnione": sum(1 for p in self.pozycje if p.stan == STAN_SPELNIONE),
             "naruszone": sum(1 for p in self.pozycje if p.stan == STAN_NARUSZONE),
-            "niesprawdzone": sum(
-                1 for p in self.pozycje if p.stan == STAN_NIESPRAWDZONE
-            ),
+            "niesprawdzone": sum(1 for p in self.pozycje if p.stan == STAN_NIESPRAWDZONE),
             "nie_dotyczy": sum(1 for p in self.pozycje if p.stan == STAN_NIE_DOTYCZY),
             "razem": len(self.pozycje),
         }
@@ -828,9 +825,7 @@ class WerdyktProjektowy:
                 "zrodla": [zrodlo.to_dict() for zrodlo in self.zrodla],
                 "podsumowanie": self.podsumowanie,
                 "ocena": self.ocena,
-                "grupy": [
-                    {"kod": kod, "nazwa_pl": nazwa} for kod, nazwa in GRUPY_KRYTERIOW
-                ],
+                "grupy": [{"kod": kod, "nazwa_pl": nazwa} for kod, nazwa in GRUPY_KRYTERIOW],
                 "zakres_poza_automatem": [dict(wpis) for wpis in ZAKRES_POZA_AUTOMATEM],
             }
         )
@@ -957,10 +952,7 @@ def _wniosek(
     """Wniosek projektowy: 1–2 zdania w jezyku formalnym, WYLACZNIE z liczb dostawcy."""
     wielkosc = wielkosc_pl[:1].lower() + wielkosc_pl[1:] if wielkosc_pl else "wielkość"
     if wynik == WYNIK_BRAK_PODSTAW:
-        powod = (
-            uzasadnienie_pl
-            or "dostawca nie zwrócił wartości ani granicy dla tego elementu"
-        )
+        powod = uzasadnienie_pl or "dostawca nie zwrócił wartości ani granicy dla tego elementu"
         return f"Brak podstaw do oceny spełnienia wymagania: {powod.rstrip('.')}."
     if (
         warunek == WARUNEK_ZGODNOSC
@@ -971,9 +963,7 @@ def _wniosek(
         if wynik == WYNIK_SPELNIA:
             return f"Wymaganie spełnione: {powod}." if powod else "Wymaganie spełnione."
         return (
-            f"Wymaganie nie jest spełnione: {powod}."
-            if powod
-            else "Wymaganie nie jest spełnione."
+            f"Wymaganie nie jest spełnione: {powod}." if powod else "Wymaganie nie jest spełnione."
         )
     w = _tekst_liczby(wartosc, jednostka)
     if warunek == WARUNEK_PASMO:
@@ -1273,24 +1263,14 @@ def _posortowane_wiersze_walidacji(
     ale bez podstawienia liczby, której dostawca nie policzył.
     """
     posortowane: list[Mapping[str, Any]] = []
-    rangi_obecne = sorted(
-        {_RANGA_STATUSU_WALIDACJI.get(str(w.get("status")), 4) for w in wiersze}
-    )
+    rangi_obecne = sorted({_RANGA_STATUSU_WALIDACJI.get(str(w.get("status")), 4) for w in wiersze})
     for ranga in rangi_obecne:
         w_randze = [
-            w
-            for w in wiersze
-            if _RANGA_STATUSU_WALIDACJI.get(str(w.get("status")), 4) == ranga
+            w for w in wiersze if _RANGA_STATUSU_WALIDACJI.get(str(w.get("status")), 4) == ranga
         ]
-        z_zapasem = [
-            w for w in w_randze if isinstance(w.get("margin_pct"), int | float)
-        ]
-        bez_zapasu = [
-            w for w in w_randze if not isinstance(w.get("margin_pct"), int | float)
-        ]
-        z_zapasem.sort(
-            key=lambda w: (-float(w["margin_pct"]), str(w.get("target_id") or ""))
-        )
+        z_zapasem = [w for w in w_randze if isinstance(w.get("margin_pct"), int | float)]
+        bez_zapasu = [w for w in w_randze if not isinstance(w.get("margin_pct"), int | float)]
+        z_zapasem.sort(key=lambda w: (-float(w["margin_pct"]), str(w.get("target_id") or "")))
         bez_zapasu.sort(key=lambda w: str(w.get("target_id") or ""))
         posortowane.extend(z_zapasem)
         posortowane.extend(bez_zapasu)
@@ -1312,20 +1292,12 @@ def _element_walidacji(
     # kryterium niesie bezwymiarowe „-" (na ekranie: bez jednostki).
     jednostka_dostawcy = str(wiersz.get("unit") or "")
     jednostka = (
-        definicja.jednostka
-        if jednostka_dostawcy in ("", "cos(phi)")
-        else jednostka_dostawcy
+        definicja.jednostka if jednostka_dostawcy in ("", "cos(phi)") else jednostka_dostawcy
     )
     return _ocena_elementu(
         definicja,
-        element_id=(
-            str(wiersz.get("target_id"))
-            if wiersz.get("target_id") is not None
-            else None
-        ),
-        element_nazwa=(
-            str(wiersz.get("target_name")) if wiersz.get("target_name") else None
-        ),
+        element_id=(str(wiersz.get("target_id")) if wiersz.get("target_id") is not None else None),
+        element_nazwa=(str(wiersz.get("target_name")) if wiersz.get("target_name") else None),
         wynik=_WYNIK_Z_STATUSU.get(status, WYNIK_BRAK_PODSTAW),
         wartosc=wiersz.get("observed_value"),
         odniesienie=wiersz.get("limit_fail"),
@@ -1333,9 +1305,7 @@ def _element_walidacji(
         jednostka=jednostka,
         margines=(-margines if margines is not None else None),
         margines_jednostka=(
-            ("pkt proc." if jednostka == "%" else jednostka)
-            if margines is not None
-            else None
+            ("pkt proc." if jednostka == "%" else jednostka) if margines is not None else None
         ),
         uwaga_pl=_UWAGA_OSTRZEZENIE_PL if status == "WARNING" else None,
         uzasadnienie_pl=(str(wiersz.get("why_pl")) if wiersz.get("why_pl") else None),
@@ -1378,12 +1348,8 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
     elementy = tuple(
         _ocena_elementu(
             definicja,
-            element_id=(
-                str(wiersz.get("branch_id")) if wiersz.get("branch_id") else None
-            ),
-            element_nazwa=(
-                str(wiersz.get("branch_name")) if wiersz.get("branch_name") else None
-            ),
+            element_id=(str(wiersz.get("branch_id")) if wiersz.get("branch_id") else None),
+            element_nazwa=(str(wiersz.get("branch_name")) if wiersz.get("branch_name") else None),
             wynik=_WYNIK_Z_STATUSU.get(str(wiersz.get("status")), WYNIK_BRAK_PODSTAW),
             wartosc=wiersz.get("i2t_a2s"),
             odniesienie=wiersz.get("i2t_dopuszczalne_a2s"),
@@ -1404,9 +1370,7 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
     )
     return PozycjaWerdyktu(
         definicja=definicja,
-        stan=_stan_z_licznikow(
-            naruszenia=len(naruszenia), niesprawdzone=len(niesprawdzone)
-        ),
+        stan=_stan_z_licznikow(naruszenia=len(naruszenia), niesprawdzone=len(niesprawdzone)),
         liczba_ocenionych=len(wiersze) - len(niesprawdzone),
         liczba_naruszen=len(naruszenia),
         liczba_niesprawdzonych=len(niesprawdzone),
@@ -1424,9 +1388,7 @@ def _wiodaca_galaz(kandydaci: Sequence[Mapping[str, Any]]) -> Mapping[str, Any] 
 
     def klucz(wiersz: Mapping[str, Any]) -> tuple[float, str]:
         wykorzystanie = wiersz.get("utilization")
-        wartosc = (
-            float(wykorzystanie) if isinstance(wykorzystanie, int | float) else -1.0
-        )
+        wartosc = float(wykorzystanie) if isinstance(wykorzystanie, int | float) else -1.0
         return (-wartosc, str(wiersz.get("branch_id") or ""))
 
     return min(kandydaci, key=klucz)
@@ -1483,18 +1445,13 @@ def _pozycja_wiarygodnosci(widok: Mapping[str, Any], *, run_id: str) -> PozycjaW
             definicja,
             # Element = referencja ENM szyny (`element_id`), a `target_id` biegu
             # zostaje identyfikatorem zapasowym, gdy dostawca jej nie zna.
-            element_id=str(wiersz.get("element_id") or wiersz.get("target_id") or "")
-            or None,
-            element_nazwa=(
-                str(wiersz.get("target_name")) if wiersz.get("target_name") else None
-            ),
+            element_id=str(wiersz.get("element_id") or wiersz.get("target_id") or "") or None,
+            element_nazwa=(str(wiersz.get("target_name")) if wiersz.get("target_name") else None),
             wynik=wynik_ze_statusu.get(str(wiersz.get("status")), WYNIK_SPELNIA),
             wartosc=wiersz.get("ikss_ka"),
             odniesienie=wiersz.get("upper_ka"),
             odniesienie_dolne=wiersz.get("lower_ka"),
-            uzasadnienie_pl=(
-                str(wiersz.get("why_pl")) if wiersz.get("why_pl") else None
-            ),
+            uzasadnienie_pl=(str(wiersz.get("why_pl")) if wiersz.get("why_pl") else None),
             run_id=run_id,
         )
         for wiersz in sorted(
@@ -1543,11 +1500,20 @@ def _pozycja_der_sn(raport: Mapping[str, Any] | None) -> PozycjaWerdyktu:
             definicja,
             element_id=zrodlo_ref,
             element_nazwa=(
-                f"{zrodlo_nazwa or zrodlo_ref or ''} — {_nazwa_kontroli_der(pozycja)}".strip(
-                    " —"
-                )
+                f"{zrodlo_nazwa or zrodlo_ref or ''} — {_nazwa_kontroli_der(pozycja)}".strip(" —")
             ),
             wynik=_WYNIK_Z_STATUSU.get(str(pozycja.get("status")), WYNIK_BRAK_PODSTAW),
+            # Karta AB-1a D7: walidacje D1 niosa liczby porownania (wartosc/wymaganie
+            # z tabliczek, zapas mocy TR) — przepisane 1:1; pozycje bez liczb -> None.
+            wartosc=pozycja.get("wartosc"),
+            odniesienie=pozycja.get("odniesienie"),
+            jednostka=(str(pozycja["jednostka"]) if pozycja.get("jednostka") else None),
+            margines=pozycja.get("margines"),
+            margines_jednostka=(
+                str(pozycja["jednostka"])
+                if pozycja.get("jednostka") and _liczba(pozycja.get("margines")) is not None
+                else None
+            ),
             uwaga_pl=(
                 "Pozycja z uwagą (odstępstwo lub ostrzeżenie kaskady prądowej)"
                 if str(pozycja.get("status")) == "WARN"
@@ -1582,9 +1548,7 @@ def _nazwa_kontroli_der(pozycja: Mapping[str, Any]) -> str:
     if check_id in nazwy:
         return nazwy[check_id]
     if check_id.startswith("d2."):
-        return (
-            f"zgodność doboru „{pozycja.get('parametr') or check_id[3:]}” z propozycją"
-        )
+        return f"zgodność doboru „{pozycja.get('parametr') or check_id[3:]}” z propozycją"
     if "kaskada" in check_id:
         return "kaskada prądowa toru"
     return check_id.replace("_", " ")
@@ -1683,9 +1647,7 @@ def _ocen_zrodlo(
 
 def _kryteria_zrodla(rodzaj: str) -> tuple[str, ...]:
     return tuple(
-        definicja.kryterium_id
-        for definicja in REJESTR_KRYTERIOW
-        if definicja.zrodlo == rodzaj
+        definicja.kryterium_id for definicja in REJESTR_KRYTERIOW if definicja.zrodlo == rodzaj
     )
 
 
@@ -1764,9 +1726,7 @@ def zbuduj_werdykt_projektowy(
     zrodla.append(zrodlo_pf)
     if zrodlo_pf.dostepny and bieg_pf is not None:
         run_pf = str(bieg_pf.id)
-        widok_warunkow, blad_warunkow = _bezpiecznie(
-            build_warunki_przylaczenia_view, bieg_pf
-        )
+        widok_warunkow, blad_warunkow = _bezpiecznie(build_warunki_przylaczenia_view, bieg_pf)
         if widok_warunkow is not None:
             _wpisz(
                 pozycje_po_id,
@@ -1782,9 +1742,7 @@ def zbuduj_werdykt_projektowy(
                     run_id=run_pf,
                 ),
             )
-        widok_energii, blad_energii = _bezpiecznie(
-            build_energy_validation_view, bieg_pf
-        )
+        widok_energii, blad_energii = _bezpiecznie(build_energy_validation_view, bieg_pf)
         if widok_energii is not None:
             _wpisz(
                 pozycje_po_id,

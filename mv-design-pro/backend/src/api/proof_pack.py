@@ -8,6 +8,10 @@ from typing import Any
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
+from application.analyses.werdykt_projektowy import (
+    ZRODLO_NIEZWERYFIKOWANE,
+    PodstawaNormatywna,
+)
 from application.proof_engine.packs.sc_asymmetrical import (
     SCAsymmetricalPackInput,
     SCAsymmetricalProofPack,
@@ -262,12 +266,58 @@ def _wywod_wkladow(result: Any, sekcje: list[dict[str, Any]]) -> list[dict[str, 
     return kroki
 
 
-def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
+#: Podstawa metody wkladow (karta AB-1a D7): dokument metody znany, klauzule
+#: poszczegolnych regul (np. regula malych silnikow) nie sa w repo potwierdzone —
+#: zrodlo niezweryfikowane, bez wymyslonego numeru punktu.
+_PODSTAWA_IEC_60909 = PodstawaNormatywna(
+    dokument="IEC 60909-0",
+    wersja="2016",
+    klauzula=None,
+    zrodlo_status=ZRODLO_NIEZWERYFIKOWANE,
+    uwaga_pl="Klauzula reguly w dokumencie metody nie jest w repozytorium potwierdzona.",
+)
+
+
+def _pozycja_walidacji(
+    pozycja_pl: str,
+    wartosc_pl: str,
+    status: str,
+    *,
+    element_id: str,
+    wartosc: float | None = None,
+    odniesienie: float | None = None,
+    jednostka: str | None = None,
+) -> dict[str, Any]:
+    """Pozycja checklisty metody jako wynik wyjasnialny (karta AB-1a D7).
+
+    Obok dotychczasowych `pozycja_pl`/`wartosc_pl`/`status` (bez zmian) niesie
+    pieciu towarzyszy: wartosc liczbowa i wymaganie (gdy regula je ma — inaczej
+    `None`), zapas z DWOCH liczb solvera (arytmetyka prezentacji; `None` bez obu),
+    podstawe (dokument metody) i dowod (punkt zwarcia biegu wkladow).
+    """
+    margines = (
+        round(odniesienie - wartosc, 6) if wartosc is not None and odniesienie is not None else None
+    )
+    return {
+        "pozycja_pl": pozycja_pl,
+        "wartosc_pl": wartosc_pl,
+        "status": status,
+        "wartosc": wartosc,
+        "odniesienie": odniesienie,
+        "jednostka": jednostka,
+        "margines": margines,
+        "podstawa": _PODSTAWA_IEC_60909.to_dict(),
+        "dowod": {"run_id": None, "element_id": element_id, "trace_ref": None},
+    }
+
+
+def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, Any]]:
     """Panel walidacji metody IEC 60909 (ZWARCIA-PRO F3 pkt 10) — checklista.
 
     Pozycje budowane WYLACZNIE z realnych wlasnosci biegu (zero fabrykacji):
     stale metody (norma, Z-bus) = INFO; realne sprawdzenia (maszyny, regula 5%,
     input_hash) = PASS/FAIL wprost z wyniku solvera. Kolejnosc stala (determinizm).
+    Karta AB-1a D7: kazda pozycja jest wynikiem wyjasnialnym (`_pozycja_walidacji`).
     """
     wb = result.white_box
     n_async = int(wb.get("n_asynchronous", 0))
@@ -283,39 +333,44 @@ def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
         regula_wartosc += (
             f" (suma I''k,M = {a_na_ka(async_a):.3f} kA, prog = {a_na_ka(limit_a):.3f} kA)"
         )
+    punkt = str(result.fault_node_id)
     return [
-        {
-            "pozycja_pl": "Norma bazowa metody",
-            "wartosc_pl": "IEC 60909-0:2016",
-            "status": "INFO",
-        },
-        {
-            "pozycja_pl": "Współczynnik napięciowy c",
-            "wartosc_pl": f"c = {result.c_factor:.2f} (z tego przebiegu)",
-            "status": "INFO",
-        },
-        {
-            "pozycja_pl": "Metoda obliczenia wkładów",
-            "wartosc_pl": "superpozycja Z-bus (prądy częściowe maszyn)",
-            "status": "INFO",
-        },
-        {
-            "pozycja_pl": "Maszyny asynchroniczne",
-            "wartosc_pl": (
-                f"uwzględnione: {n_async} szt." if n_async > 0 else "nieobecne w modelu"
-            ),
-            "status": "PASS" if n_async > 0 else "INFO",
-        },
-        {
-            "pozycja_pl": "Reguła małych silników (5%)",
-            "wartosc_pl": regula_wartosc,
-            "status": regula_status,
-        },
-        {
-            "pozycja_pl": "Determinizm kontraktu (input_hash)",
-            "wartosc_pl": f"obecny: {input_hash[:12]}...",
-            "status": "PASS",
-        },
+        _pozycja_walidacji("Norma bazowa metody", "IEC 60909-0:2016", "INFO", element_id=punkt),
+        _pozycja_walidacji(
+            "Współczynnik napięciowy c",
+            f"c = {result.c_factor:.2f} (z tego przebiegu)",
+            "INFO",
+            element_id=punkt,
+            wartosc=float(result.c_factor),
+        ),
+        _pozycja_walidacji(
+            "Metoda obliczenia wkładów",
+            "superpozycja Z-bus (prądy częściowe maszyn)",
+            "INFO",
+            element_id=punkt,
+        ),
+        _pozycja_walidacji(
+            "Maszyny asynchroniczne",
+            f"uwzględnione: {n_async} szt." if n_async > 0 else "nieobecne w modelu",
+            "PASS" if n_async > 0 else "INFO",
+            element_id=punkt,
+            wartosc=float(n_async),
+        ),
+        _pozycja_walidacji(
+            "Reguła małych silników (5%)",
+            regula_wartosc,
+            regula_status,
+            element_id=punkt,
+            wartosc=a_na_ka(async_a) if async_a is not None else None,
+            odniesienie=a_na_ka(limit_a) if limit_a is not None else None,
+            jednostka="kA",
+        ),
+        _pozycja_walidacji(
+            "Determinizm kontraktu (input_hash)",
+            f"obecny: {input_hash[:12]}...",
+            "PASS",
+            element_id=punkt,
+        ),
     ]
 
 

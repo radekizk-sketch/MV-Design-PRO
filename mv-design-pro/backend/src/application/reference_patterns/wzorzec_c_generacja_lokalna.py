@@ -71,6 +71,19 @@ PROG_REZERWY_SELEKTYWNOSCI_PCT = 20.0  # utrata >20% rezerwy → GRANICZNE
 # Podkatalog fixtures
 PATTERN_C_FIXTURES_SUBDIR = "wzorzec_c_generacja_lokalna"
 
+#: Podstawa kryterium B wzorca C (karta AB-1a D7): prog 80 % nastawy blokady jest
+#: kryterium PROJEKTOWYM wzorca referencyjnego, nie klauzula dokumentu normowego.
+_PODSTAWA_KRYTERIUM_B: dict[str, str | None] = {
+    "dokument": None,
+    "wersja": None,
+    "klauzula": None,
+    "zrodlo_status": "UNVERIFIED_SOURCE",
+    "uwaga_pl": (
+        "Kryterium wzorca referencyjnego: ryzyko blokady, gdy wkład generacji osiąga "
+        "80 % progu blokady zabezpieczenia szyn — próg 80 % bez dokumentu źródłowego."
+    ),
+}
+
 
 # =============================================================================
 # TYPY DANYCH WEJŚCIOWYCH
@@ -463,7 +476,18 @@ class WzorzecCGeneracjaLokalna:
                 step="sprawdzenie_blokady_szyn",
                 description_pl="Sprawdzenie B: brak progu blokady — sprawdzenie pominięte",
                 inputs={"prog_blokady_szyn_a": None},
-                outputs={"wynik": "PASS", "status": "INFO"},
+                # Karta AB-1a D7: wynik kroku z pieciu towarzyszami — wklad generacji
+                # (wartosc), brak progu (wymaganie None, stad brak zapasu), podstawa
+                # kryterium wzorca i odwolanie do kroku sladu (dowod).
+                outputs={
+                    "wynik": "PASS",
+                    "status": "INFO",
+                    "wartosc": wklad_generacji,
+                    "odniesienie": None,
+                    "margines": None,
+                    "podstawa": _PODSTAWA_KRYTERIUM_B,
+                    "dowod": {"trace_ref": "sprawdzenie_blokady_szyn"},
+                },
             )
             return check, trace, "PASS"
 
@@ -515,9 +539,17 @@ class WzorzecCGeneracjaLokalna:
                 "prog_80pct_a": prog_blokady * 0.8,
                 "ryzyko_blokady": ryzyko_blokady,
             },
+            # Karta AB-1a D7 (uczciwosc w obrebie pliku): ta sama postac wyniku kroku
+            # co galaz bez progu — wymaganie = 80 % progu blokady, zapas = wymaganie −
+            # wklad (te same dwie liczby, ktore porownuje kryterium).
             outputs={
                 "wynik": wynik,
                 "status": status,
+                "wartosc": wklad_generacji,
+                "odniesienie": prog_blokady * 0.8,
+                "margines": prog_blokady * 0.8 - wklad_generacji,
+                "podstawa": _PODSTAWA_KRYTERIUM_B,
+                "dowod": {"trace_ref": "sprawdzenie_blokady_szyn"},
             },
         )
 

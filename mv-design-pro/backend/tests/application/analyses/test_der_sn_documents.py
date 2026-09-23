@@ -304,3 +304,78 @@ def test_compliance_report_deterministic() -> None:
     a = build_compliance_report(snap, run_status="DONE")
     b = build_compliance_report(snap, run_status="DONE")
     assert a == b
+
+
+# ---------------------------------------------------------------------------
+# Karta AB-1a D7 — pięciu towarzyszy werdyktu w KAŻDEJ kategorii pozycji raportu
+# ---------------------------------------------------------------------------
+
+_TOWARZYSZE = ("wartosc", "odniesienie", "jednostka", "margines", "podstawa", "dowod")
+
+
+def _raport_wszystkich_kategorii(sn_mva: float | None = None) -> dict[str, Any]:
+    from application.analyses.raport_zgodnosci import build_compliance_report_from_track
+
+    track = extract_der_sn_track(_materialized_snapshot())
+    assert track is not None
+    if sn_mva is not None:
+        track.block_transformer["sn_mva"] = sn_mva
+    return build_compliance_report_from_track(
+        track,
+        run_status="DONE",
+        readiness_codes=["READY"],
+        d2_deviations=[
+            {
+                "parametr": "przekroj_kabla_mm2",
+                "zastosowano": 240.0,
+                "propozycja": 50.0,
+                "odstepstwo": True,
+            },
+            {
+                "parametr": "grupa_polaczen",
+                "zastosowano": "Dyn11",
+                "propozycja": "Dyn11",
+                "odstepstwo": False,
+            },
+        ],
+    )
+
+
+def test_kazda_kategoria_pozycji_niesie_towarzyszy_po_dotychczasowych_kluczach() -> None:
+    # Iloczyn cech: kategoria (D1 | kaskada | D2 | bieg) × status (PASS | WARN | FAIL).
+    raport = _raport_wszystkich_kategorii()
+    kategorie = {p["kategoria"] for p in raport["pozycje"]}
+    assert {"walidacja_D1", "zgodnosc_D2", "bieg_analiz"} <= kategorie
+    for pozycja in raport["pozycje"]:
+        klucze = tuple(pozycja)
+        # Towarzysze dopisani NA KOŃCU — kolejność dotychczasowych kluczy bez zmian.
+        assert klucze[-len(_TOWARZYSZE) :] == _TOWARZYSZE, pozycja["check_id"]
+        assert klucze[:5] == ("check_id", "kategoria", "status", "code", "message_pl")
+    d2 = {p["check_id"]: p for p in raport["pozycje"] if p["kategoria"] == "zgodnosc_D2"}
+    kabel = d2["d2.przekroj_kabla_mm2"]
+    assert tuple(kabel)[5:8] == ("parametr", "zastosowano", "propozycja")
+    assert (kabel["wartosc"], kabel["odniesienie"]) == (240.0, 50.0)
+    # Tekst (układ połączeń) nie jest liczbą — None, nie wartość zastępcza.
+    assert d2["d2.grupa_polaczen"]["wartosc"] is None
+    assert d2["d2.grupa_polaczen"]["zastosowano"] == "Dyn11"
+    bieg = next(p for p in raport["pozycje"] if p["kategoria"] == "bieg_analiz")
+    assert bieg["podstawa"] is None and bieg["wartosc"] is None
+    assert tuple(bieg)[5] == "readiness_codes"
+
+
+def test_d1_moc_transformatora_liczby_z_reguly_i_zapas_ze_znakiem() -> None:
+    zgodny = _raport_wszystkich_kategorii()
+    moc = next(p for p in zgodny["pozycje"] if p["check_id"] == "moc_transformatora")
+    assert moc["status"] == "PASS"
+    assert moc["jednostka"] == "MVA"
+    assert moc["odniesienie"] is not None and moc["wartosc"] is not None
+    assert moc["margines"] == round(moc["odniesienie"] - moc["wartosc"], 6)
+    assert moc["margines"] >= 0
+    assert moc["podstawa"]["zrodlo_status"] == "UNVERIFIED_SOURCE"
+    assert moc["dowod"]["element_id"] == zgodny["source_ref"]
+
+    niezgodny = _raport_wszystkich_kategorii(sn_mva=0.1)
+    moc = next(p for p in niezgodny["pozycje"] if p["check_id"] == "moc_transformatora")
+    assert moc["status"] == "FAIL"
+    assert moc["odniesienie"] == 0.1
+    assert moc["margines"] < 0
