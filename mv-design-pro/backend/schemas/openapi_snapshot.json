@@ -6916,6 +6916,66 @@
     "title": "ObciazenieAparatu",
     "type": "object"
    },
+   "OcenaDowodowaZdolnosciV1": {
+    "additionalProperties": false,
+    "description": "Stopien dowodowy zdolnosci z rejestru `solver_input/provenance.py` (karta AB-1a D1).\n\nNiesie POWOD raportowalnosci albo jej braku — konsument nie dostaje samego\n`reportable: false`, tylko stopien, jego etykiete, uzasadnienie i odniesienie\ndo dowodu.",
+    "properties": {
+     "audit_ref": {
+      "title": "Audit Ref",
+      "type": "string"
+     },
+     "capability_id": {
+      "title": "Capability Id",
+      "type": "string"
+     },
+     "claim_kind": {
+      "enum": [
+       "DYNAMIC_PERFORMANCE",
+       "DECLARED_CONFIGURATION"
+      ],
+      "title": "Claim Kind",
+      "type": "string"
+     },
+     "claim_kind_pl": {
+      "title": "Claim Kind Pl",
+      "type": "string"
+     },
+     "rationale_pl": {
+      "title": "Rationale Pl",
+      "type": "string"
+     },
+     "regulatory_evidence_eligible": {
+      "title": "Regulatory Evidence Eligible",
+      "type": "boolean"
+     },
+     "tier": {
+      "enum": [
+       "VALIDATED_SIMULATION",
+       "DECLARATION",
+       "UNVALIDATED_MODEL",
+       "NOT_SIMULATED"
+      ],
+      "title": "Tier",
+      "type": "string"
+     },
+     "tier_pl": {
+      "title": "Tier Pl",
+      "type": "string"
+     }
+    },
+    "required": [
+     "capability_id",
+     "tier",
+     "tier_pl",
+     "claim_kind",
+     "claim_kind_pl",
+     "regulatory_evidence_eligible",
+     "rationale_pl",
+     "audit_ref"
+    ],
+    "title": "OcenaDowodowaZdolnosciV1",
+    "type": "object"
+   },
    "OdstepstwoWiarygodnosciOdpowiedz": {
     "description": "Jedna pozycja katalogu do przegladu — sygnal, nie odmowa.",
     "properties": {
@@ -7431,6 +7491,20 @@
     ],
     "title": "PatternRunResponse",
     "type": "object"
+   },
+   "PhysicsDomain": {
+    "description": "Domena fizyczna wyniku (W-07) — z JAKIEJ reprezentacji fizyki pochodzi liczba.\n\nPo co: fazor RMS 50 Hz, fazor harmonicznej, widmo i przebieg chwilowy to\nrozne obiekty fizyczne; wynik bez domeny pozwala porownac je ze soba albo\nocenic wymaganiem z innej domeny. Czlony (W-07 minimum):\n\n- ``POWER_FLOW`` — ustalony stan pracy 50 Hz (fazory RMS), w tym rozplyw\n  niesymetryczny w reprezentacji fazowej abc (patrz nota ponizej).\n- ``SHORT_CIRCUIT`` — wielkosci zwarciowe metody IEC 60909 (prad\n  poczatkowy, udarowy, cieplny) i ich bezposredni konsumenci.\n- ``RMS_DYNAMICS`` — przebiegi czasowe fazorow RMS (uklad DAE, stabilnosc).\n- ``SEQUENCE_DOMAIN`` — skladowe symetryczne (zgodna, przeciwna, zerowa)\n  jako WLASNA reprezentacja wyniku: stan fazowy SN, kompensacja i detekcja\n  zwarc doziemnych, przepiecia dorywcze od zwarc doziemnych.\n- ``HARMONIC_FREQUENCY_DOMAIN`` — fazory w czestotliwosciach harmonicznych\n  i skan impedancji w funkcji czestotliwosci.\n- ``SUPRAHARMONIC_FREQUENCY_DOMAIN`` — pasmo 2-150 kHz (metryki pasmowe).\n- ``ELECTROMAGNETIC_TRANSIENTS`` — przebiegi chwilowe w skali mikro- i\n  milisekund (napiecie powrotne, prad zalaczania). W-07 wymienia zakaz\n  mieszania EMT z pozostalymi domenami, a lista W-07 jest MINIMUM — rodzaj\n  `transient_trv` nie pasuje do zadnej z szesciu domen bez zafalszowania,\n  wiec domena EMT jest jawnym, siodmym czlonem.\n\nROZSTRZYGNIECIE WYKONAWCY (karta AB-1a D1, jedyne rozstrzygane samodzielnie):\nrozplyw niesymetryczny (`rozplyw_niesymetryczny`, BFS per faza) ma domene\n``POWER_FLOW`` z reprezentacja ``abc``, NIE ``SEQUENCE_DOMAIN``. Uzasadnienie:\nsolver rozwiazuje rownania wezlowe ustalonego stanu 50 Hz dla KAZDEJ FAZY\nosobno (napiecia i prady faz a, b, c; odbiory faza-N) — to jest ta sama\nfizyka co rozplyw symetryczny, w pelniejszej reprezentacji. Skladowe\nsymetryczne (i wskaznik VUF) sa tam WIELKOSCIA POCHODNA liczona z wyniku\nfazowego, nie przestrzenia, w ktorej zadanie jest rozwiazywane.\n``SEQUENCE_DOMAIN`` zostaje zarezerwowana dla zadan formulowanych w\nskladowych symetrycznych (stan fazowy SN, doziemienia, kompensacja).\nReprezentacje niesie pole ``SolverCapability.reprezentacja``.",
+    "enum": [
+     "POWER_FLOW",
+     "SHORT_CIRCUIT",
+     "RMS_DYNAMICS",
+     "SEQUENCE_DOMAIN",
+     "HARMONIC_FREQUENCY_DOMAIN",
+     "SUPRAHARMONIC_FREQUENCY_DOMAIN",
+     "ELECTROMAGNETIC_TRANSIENTS"
+    ],
+    "title": "PhysicsDomain",
+    "type": "string"
    },
    "PodgladArkuszaResponse": {
     "description": "Odpowiedź podglądu — model zbudowany w pamięci, BEZ zapisu.",
@@ -9665,6 +9739,58 @@
      "reason_pl"
     ],
     "title": "RejectedCandidateResponse",
+    "type": "object"
+   },
+   "RejestrZdolnosciSolverowV1": {
+    "additionalProperties": false,
+    "description": "Kontrakt `SolverCapabilityRegistryV1` — komplet rejestru z agregatami.",
+    "properties": {
+     "all_available": {
+      "title": "All Available",
+      "type": "boolean"
+     },
+     "all_implemented": {
+      "title": "All Implemented",
+      "type": "boolean"
+     },
+     "all_proof_supported": {
+      "title": "All Proof Supported",
+      "type": "boolean"
+     },
+     "all_reportable": {
+      "title": "All Reportable",
+      "type": "boolean"
+     },
+     "capabilities": {
+      "items": {
+       "$ref": "#/components/schemas/ZdolnoscSolveraV1"
+      },
+      "title": "Capabilities",
+      "type": "array"
+     },
+     "contract": {
+      "const": "SolverCapabilityRegistryV1",
+      "title": "Contract",
+      "type": "string"
+     },
+     "not_reportable": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Not Reportable",
+      "type": "array"
+     }
+    },
+    "required": [
+     "contract",
+     "capabilities",
+     "all_available",
+     "all_implemented",
+     "all_proof_supported",
+     "all_reportable",
+     "not_reportable"
+    ],
+    "title": "RejestrZdolnosciSolverowV1",
     "type": "object"
    },
    "ResultSetResponse": {
@@ -12502,6 +12628,125 @@
      "station_ref"
     ],
     "title": "WytrzymaloscAparaturyRequestModel",
+    "type": "object"
+   },
+   "ZdolnoscSolveraV1": {
+    "additionalProperties": false,
+    "description": "Jeden wpis rejestru zdolnosci solverow (`SolverCapability.to_dict`).",
+    "properties": {
+     "analysis_type": {
+      "title": "Analysis Type",
+      "type": "string"
+     },
+     "applicability": {
+      "title": "Applicability",
+      "type": "string"
+     },
+     "availability": {
+      "enum": [
+       "available",
+       "withdrawn"
+      ],
+      "title": "Availability",
+      "type": "string"
+     },
+     "capability": {
+      "title": "Capability",
+      "type": "string"
+     },
+     "implementation_status": {
+      "const": "implemented",
+      "title": "Implementation Status",
+      "type": "string"
+     },
+     "ocena_dowodowa": {
+      "$ref": "#/components/schemas/OcenaDowodowaZdolnosciV1"
+     },
+     "output_contract": {
+      "title": "Output Contract",
+      "type": "string"
+     },
+     "physics_domain": {
+      "$ref": "#/components/schemas/PhysicsDomain"
+     },
+     "physics_domain_pl": {
+      "title": "Physics Domain Pl",
+      "type": "string"
+     },
+     "proof_support": {
+      "title": "Proof Support",
+      "type": "boolean"
+     },
+     "reference_test": {
+      "title": "Reference Test",
+      "type": "string"
+     },
+     "reportable": {
+      "title": "Reportable",
+      "type": "boolean"
+     },
+     "reprezentacja": {
+      "enum": [
+       "abc",
+       "zgodna",
+       "skladowe"
+      ],
+      "title": "Reprezentacja",
+      "type": "string"
+     },
+     "required_inputs": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Required Inputs",
+      "type": "array"
+     },
+     "solver_version": {
+      "title": "Solver Version",
+      "type": "string"
+     }
+    },
+    "required": [
+     "capability",
+     "analysis_type",
+     "availability",
+     "implementation_status",
+     "solver_version",
+     "required_inputs",
+     "output_contract",
+     "proof_support",
+     "reportable",
+     "ocena_dowodowa",
+     "reference_test",
+     "applicability",
+     "physics_domain",
+     "physics_domain_pl",
+     "reprezentacja"
+    ],
+    "title": "ZdolnoscSolveraV1",
+    "type": "object"
+   },
+   "ZdolnosciRodzajuAnalizyV1": {
+    "additionalProperties": false,
+    "description": "Zdolnosci jednego `analysis_type` (pole rejestru, bez prefiksu biegu).",
+    "properties": {
+     "analysis_type": {
+      "title": "Analysis Type",
+      "type": "string"
+     },
+     "capabilities": {
+      "items": {
+       "$ref": "#/components/schemas/ZdolnoscSolveraV1"
+      },
+      "title": "Capabilities",
+      "type": "array"
+     }
+    },
+    "required": [
+     "analysis_type",
+     "capabilities"
+    ],
+    "title": "ZdolnosciRodzajuAnalizyV1",
     "type": "object"
    },
    "ZgodnoscZadanie": {
@@ -25906,9 +26151,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response List Capabilities Api Solver Capabilities Get",
-         "type": "object"
+         "$ref": "#/components/schemas/RejestrZdolnosciSolverowV1"
         }
        }
       },
@@ -25940,9 +26183,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Capabilities For Analysis Type Api Solver Capabilities Analysis Type  Analysis Type  Get",
-         "type": "object"
+         "$ref": "#/components/schemas/ZdolnosciRodzajuAnalizyV1"
         }
        }
       },
@@ -25984,9 +26225,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Capability Api Solver Capabilities  Capability  Get",
-         "type": "object"
+         "$ref": "#/components/schemas/ZdolnoscSolveraV1"
         }
        }
       },

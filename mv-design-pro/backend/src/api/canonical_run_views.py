@@ -30,6 +30,7 @@ from application.solvers.power_flow_binding import (
     max_mismatch_ze_sladu_lub_brak,
     skalary_wyniku_rozplywu,
 )
+from application.solvers.solver_capability_registry import domena_fizyczna_biegu_dict
 from enm.canonical_analysis import (
     CanonicalRun,
     build_automation_trace_results,
@@ -83,6 +84,10 @@ def build_analysis_run_summary(run: CanonicalRun) -> dict[str, Any]:
         "id": str(run.id),
         "deterministic_id": run.input_hash,
         "analysis_type": run.analysis_type,
+        # Karta AB-1a D1 (§0 R-1): domena fizyczna WYPROWADZONA z rejestru zdolnosci
+        # po `analysis_type` — pole addytywne koperty, zawsze obecne dla biegu
+        # zarejestrowanego; rodzaj nieznany rejestrowi = wyjatek nazwany.
+        **domena_fizyczna_biegu_dict(run.analysis_type),
         "status": run.status,
         "result_status": run.result_status,
         "results_valid": run.result_status == "VALID",
@@ -293,6 +298,7 @@ def build_power_flow_run_header(run: CanonicalRun) -> dict[str, Any]:
         "project_id": run.project_id,
         "study_case_id": run.case_id,
         "analysis_type": run.analysis_type,
+        **domena_fizyczna_biegu_dict(run.analysis_type),
         "status": run.status,
         "result_status": run.result_status,
         "created_at": run.created_at.isoformat(),

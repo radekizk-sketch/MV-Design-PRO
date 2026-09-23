@@ -1,7 +1,88 @@
+"""Rejestr zdolnosci solverow — JEDNO zrodlo prawdy o rodzajach biegow i ich domenach.
+
+Karta AB-1a D1 (`docs/plan/KARTA_AB_1A_FUNDAMENT_WYNIKOW_2026-09.md` §0 R-1):
+
+* `PhysicsDomain` jest WYPROWADZANA z `analysis_type` biegu przez ten rejestr
+  (`domena_fizyczna_biegu`), a nie dopisywana do kontraktow wynikow FROZEN.
+  Nieznany `analysis_type` konczy sie wyjatkiem nazwanym, nie `None`.
+* `reportable` NIE jest polem zapisywanym: kazdy wpis wskazuje jawnie swoj
+  identyfikator w rejestrze dowodowym (`evidence_capability_id`), a
+  raportowalnosc jest `regulatory_evidence_eligible` tej klasyfikacji
+  (`solver_input.provenance.classify_capability`, fail-closed). Dwie prawdy o
+  jednej zdolnosci (dotad: tu `reportable=True`, w proweniencji
+  `UNVALIDATED_MODEL`) sa niemozliwe z konstrukcji.
+"""
+
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
-from typing import Literal
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Any, Literal
+
+from solver_input.provenance import CapabilityEvidence, classify_capability
+
+
+class PhysicsDomain(StrEnum):
+    """Domena fizyczna wyniku (W-07) — z JAKIEJ reprezentacji fizyki pochodzi liczba.
+
+    Po co: fazor RMS 50 Hz, fazor harmonicznej, widmo i przebieg chwilowy to
+    rozne obiekty fizyczne; wynik bez domeny pozwala porownac je ze soba albo
+    ocenic wymaganiem z innej domeny. Czlony (W-07 minimum):
+
+    - ``POWER_FLOW`` — ustalony stan pracy 50 Hz (fazory RMS), w tym rozplyw
+      niesymetryczny w reprezentacji fazowej abc (patrz nota ponizej).
+    - ``SHORT_CIRCUIT`` — wielkosci zwarciowe metody IEC 60909 (prad
+      poczatkowy, udarowy, cieplny) i ich bezposredni konsumenci.
+    - ``RMS_DYNAMICS`` — przebiegi czasowe fazorow RMS (uklad DAE, stabilnosc).
+    - ``SEQUENCE_DOMAIN`` — skladowe symetryczne (zgodna, przeciwna, zerowa)
+      jako WLASNA reprezentacja wyniku: stan fazowy SN, kompensacja i detekcja
+      zwarc doziemnych, przepiecia dorywcze od zwarc doziemnych.
+    - ``HARMONIC_FREQUENCY_DOMAIN`` — fazory w czestotliwosciach harmonicznych
+      i skan impedancji w funkcji czestotliwosci.
+    - ``SUPRAHARMONIC_FREQUENCY_DOMAIN`` — pasmo 2-150 kHz (metryki pasmowe).
+    - ``ELECTROMAGNETIC_TRANSIENTS`` — przebiegi chwilowe w skali mikro- i
+      milisekund (napiecie powrotne, prad zalaczania). W-07 wymienia zakaz
+      mieszania EMT z pozostalymi domenami, a lista W-07 jest MINIMUM — rodzaj
+      `transient_trv` nie pasuje do zadnej z szesciu domen bez zafalszowania,
+      wiec domena EMT jest jawnym, siodmym czlonem.
+
+    ROZSTRZYGNIECIE WYKONAWCY (karta AB-1a D1, jedyne rozstrzygane samodzielnie):
+    rozplyw niesymetryczny (`rozplyw_niesymetryczny`, BFS per faza) ma domene
+    ``POWER_FLOW`` z reprezentacja ``abc``, NIE ``SEQUENCE_DOMAIN``. Uzasadnienie:
+    solver rozwiazuje rownania wezlowe ustalonego stanu 50 Hz dla KAZDEJ FAZY
+    osobno (napiecia i prady faz a, b, c; odbiory faza-N) — to jest ta sama
+    fizyka co rozplyw symetryczny, w pelniejszej reprezentacji. Skladowe
+    symetryczne (i wskaznik VUF) sa tam WIELKOSCIA POCHODNA liczona z wyniku
+    fazowego, nie przestrzenia, w ktorej zadanie jest rozwiazywane.
+    ``SEQUENCE_DOMAIN`` zostaje zarezerwowana dla zadan formulowanych w
+    skladowych symetrycznych (stan fazowy SN, doziemienia, kompensacja).
+    Reprezentacje niesie pole ``SolverCapability.reprezentacja``.
+    """
+
+    POWER_FLOW = "POWER_FLOW"
+    SHORT_CIRCUIT = "SHORT_CIRCUIT"
+    RMS_DYNAMICS = "RMS_DYNAMICS"
+    SEQUENCE_DOMAIN = "SEQUENCE_DOMAIN"
+    HARMONIC_FREQUENCY_DOMAIN = "HARMONIC_FREQUENCY_DOMAIN"
+    SUPRAHARMONIC_FREQUENCY_DOMAIN = "SUPRAHARMONIC_FREQUENCY_DOMAIN"
+    ELECTROMAGNETIC_TRANSIENTS = "ELECTROMAGNETIC_TRANSIENTS"
+
+    @property
+    def label_pl(self) -> str:
+        """Etykieta PL domeny (bez kodow projektowych)."""
+        return _PHYSICS_DOMAIN_LABEL_PL[self]
+
+
+_PHYSICS_DOMAIN_LABEL_PL: dict[PhysicsDomain, str] = {
+    PhysicsDomain.POWER_FLOW: "stan ustalony 50 Hz (rozpływ mocy)",
+    PhysicsDomain.SHORT_CIRCUIT: "zwarcia (IEC 60909)",
+    PhysicsDomain.RMS_DYNAMICS: "dynamika RMS (przebiegi czasowe)",
+    PhysicsDomain.SEQUENCE_DOMAIN: "składowe symetryczne",
+    PhysicsDomain.HARMONIC_FREQUENCY_DOMAIN: "harmoniczne (dziedzina częstotliwości)",
+    PhysicsDomain.SUPRAHARMONIC_FREQUENCY_DOMAIN: "supraharmoniczne (2–150 kHz)",
+    PhysicsDomain.ELECTROMAGNETIC_TRANSIENTS: "stany przejściowe elektromagnetyczne",
+}
+
 
 AnalysisCapability = Literal[
     "SC_3F",
@@ -13,7 +94,9 @@ AnalysisCapability = Literal[
     "LOAD_FLOW_FD_PERFORMANCE",
     "LOAD_FLOW_UNBALANCED_BFS",
     "PHASE_STATE_SN",
+    "PROTECTION_SN",
     "DYNAMIC_STABILITY",
+    "DYNAMIKA_RMS",
     "POWER_QUALITY_HARMONICS",
     "SSCI_IMPEDANCE",
     "VOLTAGE_STABILITY",
@@ -47,12 +130,49 @@ class SolverCapability:
     required_inputs: tuple[str, ...]
     output_contract: str
     proof_support: bool
-    reportable: bool
     reference_test: str
     applicability: str
+    #: Domena fizyczna wyniku (W-07) — BEZ wartosci domyslnej: kazdy wpis
+    #: deklaruje ja jawnie, z jednym zdaniem uzasadnienia w komentarzu wpisu.
+    physics_domain: PhysicsDomain
+    #: Reprezentacja w obrebie domeny: "abc" (fazy), "zgodna" (tylko skladowa
+    #: zgodna), "skladowe" (zgodna/przeciwna/zerowa). Bez wartosci domyslnej.
+    reprezentacja: Literal["abc", "zgodna", "skladowe"]
+    #: Identyfikator zdolnosci w rejestrze dowodowym `solver_input/provenance.py`
+    #: — JAWNE mapowanie, zrodlo `reportable`. Bez wartosci domyslnej.
+    evidence_capability_id: str
 
-    def to_dict(self) -> dict[str, object]:
-        return asdict(self)
+    @property
+    def ocena_dowodowa(self) -> CapabilityEvidence:
+        """Klasyfikacja dowodowa z JEDYNEGO zrodla (fail-closed: nieznany id = UNVALIDATED_MODEL)."""
+        return classify_capability(self.evidence_capability_id)
+
+    @property
+    def reportable(self) -> bool:
+        """Czy wynik tej zdolnosci wolno raportowac jako dowod — WYPROWADZONE, nie zapisane."""
+        return self.ocena_dowodowa.regulatory_evidence_eligible
+
+    def to_dict(self) -> dict[str, Any]:
+        ocena = self.ocena_dowodowa
+        return {
+            "capability": self.capability,
+            "analysis_type": self.analysis_type,
+            "availability": self.availability,
+            "implementation_status": self.implementation_status,
+            "solver_version": self.solver_version,
+            "required_inputs": list(self.required_inputs),
+            "output_contract": self.output_contract,
+            "proof_support": self.proof_support,
+            "reportable": ocena.regulatory_evidence_eligible,
+            # Brak raportowalnosci jest NAZWANY: konsument dostaje stopien, jego
+            # etykiete, uzasadnienie i odniesienie do dowodu, nie sam `false`.
+            "ocena_dowodowa": ocena.to_dict(),
+            "reference_test": self.reference_test,
+            "applicability": self.applicability,
+            "physics_domain": self.physics_domain.value,
+            "physics_domain_pl": self.physics_domain.label_pl,
+            "reprezentacja": self.reprezentacja,
+        }
 
 
 SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
@@ -65,9 +185,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("snapshot", "fault_node_id", "voltage_level_kv"),
         output_contract="ShortCircuitResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="short-circuit-all-fault-types.test.py::test_short_circuit_three_phase_reportable",
         applicability="Zwarcie trojfazowe na wezle SN zgodnie z IEC 60909.",
+        # Domena: Prad zwarciowy IEC 60909 w sieci skladowej zgodnej — domena zwarc.
+        physics_domain=PhysicsDomain.SHORT_CIRCUIT,
+        reprezentacja="zgodna",
+        evidence_capability_id="short_circuit_iec60909.sc_3f",
     ),
     "SC_1F": SolverCapability(
         capability="SC_1F",
@@ -78,9 +201,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("snapshot", "fault_node_id", "zero_sequence_network", "grounding_model"),
         output_contract="ShortCircuitResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="short-circuit-all-fault-types.test.py::test_short_circuit_single_phase_reportable",
         applicability="Zwarcie jednofazowe doziemne z siecia zerowa, pojemnosciami doziemnymi i uziemieniem.",
+        # Domena: Prad zwarcia doziemnego IEC 60909 ze skladowych symetrycznych — wynik jest wielkoscia zwarciowa, wiec domena zwarc (skladowe to reprezentacja).
+        physics_domain=PhysicsDomain.SHORT_CIRCUIT,
+        reprezentacja="skladowe",
+        evidence_capability_id="short_circuit_iec60909.sc_1f",
     ),
     "SC_2F": SolverCapability(
         capability="SC_2F",
@@ -96,9 +222,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         ),
         output_contract="ShortCircuitResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="short-circuit-all-fault-types.test.py::test_short_circuit_two_phase_reportable",
         applicability="Zwarcie dwufazowe bez udzialu ziemi.",
+        # Domena: Prad zwarcia dwufazowego IEC 60909 ze skladowej zgodnej i przeciwnej — domena zwarc.
+        physics_domain=PhysicsDomain.SHORT_CIRCUIT,
+        reprezentacja="skladowe",
+        evidence_capability_id="short_circuit_iec60909.sc_2f",
     ),
     "SC_2F_G": SolverCapability(
         capability="SC_2F_G",
@@ -109,9 +238,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("snapshot", "fault_node_id", "zero_sequence_network", "grounding_model"),
         output_contract="ShortCircuitResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="short-circuit-all-fault-types.test.py::test_short_circuit_two_phase_ground_reportable",
         applicability="Zwarcie dwufazowe z ziemia z uwzglednieniem toru zerowego.",
+        # Domena: Prad zwarcia dwufazowego z ziemia IEC 60909 ze skladowych symetrycznych — domena zwarc.
+        physics_domain=PhysicsDomain.SHORT_CIRCUIT,
+        reprezentacja="skladowe",
+        evidence_capability_id="short_circuit_iec60909.sc_2f_g",
     ),
     "LOAD_FLOW_NR": SolverCapability(
         capability="LOAD_FLOW_NR",
@@ -122,9 +254,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("snapshot", "slack_node", "pq_nodes", "branch_admittance"),
         output_contract="PowerFlowResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="load-flow-nr-reference.test.py::test_newton_result_contract",
         applicability="Kanoniczny rozpływ mocy Newtona-Raphsona.",
+        # Domena: Ustalony stan pracy 50 Hz sieci symetrycznej — rozplyw mocy.
+        physics_domain=PhysicsDomain.POWER_FLOW,
+        reprezentacja="zgodna",
+        evidence_capability_id="load_flow.newton_raphson",
     ),
     "LOAD_FLOW_GS_DIAGNOSTIC": SolverCapability(
         capability="LOAD_FLOW_GS_DIAGNOSTIC",
@@ -135,9 +270,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("snapshot", "slack_node", "pq_nodes", "branch_admittance"),
         output_contract="PowerFlowResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="load-flow-gs-diagnostic.test.py::test_gauss_seidel_trace_and_report_status",
         applicability="Tryb diagnostyczny Gaussa-Seidla dla przypadkow zbieznosciowo kontrolowanych.",
+        # Domena: Ten sam ustalony stan 50 Hz, inna metoda iteracyjna — rozplyw mocy.
+        physics_domain=PhysicsDomain.POWER_FLOW,
+        reprezentacja="zgodna",
+        evidence_capability_id="load_flow.gauss_seidel",
     ),
     "LOAD_FLOW_FD_PERFORMANCE": SolverCapability(
         capability="LOAD_FLOW_FD_PERFORMANCE",
@@ -154,9 +292,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         ),
         output_contract="PowerFlowResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="load-flow-fast-decoupled.test.py::test_fast_decoupled_trace_and_applicability",
         applicability="Tryb wydajnosciowy fast-decoupled przy spelnionych warunkach stosowalnosci.",
+        # Domena: Ten sam ustalony stan 50 Hz, metoda rozprzezona — rozplyw mocy.
+        physics_domain=PhysicsDomain.POWER_FLOW,
+        reprezentacja="zgodna",
+        evidence_capability_id="load_flow.fast_decoupled",
     ),
     # Karta W5-D (F-1): rozpływ niesymetryczny jako bieg produktu — solver FROZEN
     # `power_flow_unbalanced.py` (BFS) przez assembler `zloz_wejscie_rozplywu_niesymetrycznego`.
@@ -175,12 +316,15 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         ),
         output_contract="ResultSetPowerFlowUnbalancedV1",
         proof_support=True,
-        reportable=True,
         reference_test="tests/enm/test_rozplyw_niesymetryczny_bieg.py::test_bieg_deterministyczny",
         applicability=(
             "Rozplyw niesymetryczny sieci promieniowej z odbiorami per faza "
             "(faza-N) — napiecia/prady per faza, VUF wg IEC 61000-4-30."
         ),
+        # Domena: Ustalony stan 50 Hz rozwiazywany per faza abc; skladowe symetryczne i VUF sa pochodna wyniku (rozstrzygniecie w docstringu PhysicsDomain).
+        physics_domain=PhysicsDomain.POWER_FLOW,
+        reprezentacja="abc",
+        evidence_capability_id="load_flow_unbalanced.bfs",
     ),
     "PHASE_STATE_SN": SolverCapability(
         capability="PHASE_STATE_SN",
@@ -191,9 +335,35 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("snapshot", "phase_loads", "open_phase_flags"),
         output_contract="PhaseStateSNResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="phase-state-sn-reference.test.py::test_phase_state_has_proof",
         applicability="Analiza stanu fazowego SN dla asymetrii, przerw fazowych i niezrownowazenia.",
+        # Domena: Stan fazowy SN ocenia asymetrie napiec i pradow faz wskaznikami skladowych symetrycznych — domena skladowych.
+        physics_domain=PhysicsDomain.SEQUENCE_DOMAIN,
+        reprezentacja="skladowe",
+        evidence_capability_id="phase_state_sn.radial",
+    ),
+    # Karta AB-1a D1: bieg `protection_sn` (ocena zabezpieczen nadpradowych IEC 60255
+    # na wyniku biegu zwarciowego) jest obslugiwany przez dyspozytor
+    # `enm/canonical_analysis.py`, a nie mial wpisu w rejestrze — test parytetu
+    # dyspozytor <-> rejestr (fail-closed w obie strony) go wymaga.
+    "PROTECTION_SN": SolverCapability(
+        capability="PROTECTION_SN",
+        analysis_type="protection_sn",
+        availability="available",
+        implementation_status="implemented",
+        solver_version="protection-iec60255-v1",
+        required_inputs=("sc_run_id", "study_case_protection_config", "protection_template"),
+        output_contract="ProtectionResult",
+        proof_support=True,
+        reference_test="tests/test_protection_iec60255.py",
+        applicability=(
+            "Czasy zadzialania i selektywnosc zabezpieczen nadpradowych (charakterystyki "
+            "IEC 60255-151) na pradach zwarciowych biegu IEC 60909."
+        ),
+        # Domena: czasy zadzialania sa funkcja pradow zwarciowych IEC 60909 — domena zwarc.
+        physics_domain=PhysicsDomain.SHORT_CIRCUIT,
+        reprezentacja="zgodna",
+        evidence_capability_id="protection_sn.iec60255",
     ),
     # USUNIETE (karta W3-D, 2026-09-09): "SOURCE_FRT_LVRT_HVRT" i "SOURCE_COMPLIANCE"
     # (obie analysis_type="source_compliance", `application/compliance/source_compliance.py`,
@@ -212,9 +382,43 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("source_state", "fault_clear_scenario", "critical_clear_time"),
         output_contract="DynamicStabilityResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="dynamic-stability-reference.test.py::test_fault_clear_stability_reportable",
         applicability="Ocena stabilnosci w zdefiniowanym zakresie zaklocen i czasu wylaczenia.",
+        # Domena: Stabilnosc przejsciowa po wylaczeniu zwarcia to zjawisko dynamiki RMS (tor progowy, bez calkowania — stopien dowodowy w proweniencji).
+        physics_domain=PhysicsDomain.RMS_DYNAMICS,
+        reprezentacja="zgodna",
+        evidence_capability_id="dynamic_stability.fault_clear",
+    ),
+    # Karta AB-1a D1 (przeglad adwersarialny §5.2): bieg `dynamika_rms` (rdzen DAE
+    # `network_model/solvers/dynamika/**`, adapter `enm/adapter_dynamiki.py`) byl
+    # obslugiwany przez dyspozytor, ale NIE mial wpisu w rejestrze zdolnosci.
+    "DYNAMIKA_RMS": SolverCapability(
+        capability="DYNAMIKA_RMS",
+        analysis_type="dynamika_rms",
+        availability="available",
+        implementation_status="implemented",
+        solver_version="DYNAMIKA_RMS_DAE_V1",
+        required_inputs=(
+            "snapshot",
+            "pf_run_id",
+            "dynamika",
+            "nastawy_solvera",
+            "generator_dynamika",
+        ),
+        output_contract="resultset_dynamic_v1",
+        proof_support=True,
+        reference_test=(
+            "tests/e2e/test_so1a_scenariusz_odniesienia.py::"
+            "test_powtorzony_bieg_daje_identyczny_wynik"
+        ),
+        applicability=(
+            "Przebiegi czasowe fazorow RMS ukladu DAE (skladowa zgodna) od punktu pracy "
+            "z rozplywu: zwarcia 3F, przelaczenia galezi, odlaczenia zrodel, skoki obciazen."
+        ),
+        # Domena: calkowanie rownan ruchu ukladu DAE w czasie na fazorach RMS 50 Hz.
+        physics_domain=PhysicsDomain.RMS_DYNAMICS,
+        reprezentacja="zgodna",
+        evidence_capability_id="dynamika_rms.przebieg_czasowy",
     ),
     "POWER_QUALITY_HARMONICS": SolverCapability(
         capability="POWER_QUALITY_HARMONICS",
@@ -225,9 +429,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("committed_enm", "harmonic_sources", "branch_admittance"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="test_v126_academic_solver.py::test_power_quality_trace_and_hash_are_deterministic",
         applicability="Harmonic power flow, THDU/TDD, skan Z(f), rezonans i kompatybilnosc jakosci energii.",
+        # Domena: Rozplyw harmonicznych i skan Z(f) — fazory w czestotliwosciach harmonicznych.
+        physics_domain=PhysicsDomain.HARMONIC_FREQUENCY_DOMAIN,
+        reprezentacja="zgodna",
+        evidence_capability_id="v126_academic.power_quality_harmonics",
     ),
     "SSCI_IMPEDANCE": SolverCapability(
         capability="SSCI_IMPEDANCE",
@@ -238,12 +445,15 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("committed_enm", "converter_card", "fault_level"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="test_v126_ssci_impedance.py::test_ssci_envelope_shape_and_arrays",
         applicability=(
             "Stabilnosc impedancyjna SSCI (Sun 2011/Wen 2016): Z_grid(f)/Z_conv(f), "
             "wzmocnienie petli mniejszej L(f) i werdykt Nyquista."
         ),
+        # Domena: Impedancje Z_grid(f)/Z_conv(f) i petla L(f) w funkcji czestotliwosci — domena czestotliwosci harmonicznych.
+        physics_domain=PhysicsDomain.HARMONIC_FREQUENCY_DOMAIN,
+        reprezentacja="zgodna",
+        evidence_capability_id="v126_academic.ssci_impedance",
     ),
     "VOLTAGE_STABILITY": SolverCapability(
         capability="VOLTAGE_STABILITY",
@@ -254,9 +464,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("committed_enm", "load_generation_balance", "fault_level"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="test_v126_academic_solver.py::test_voltage_stability_returns_modal_contract",
         applicability="P-V, Q-V, modalny wskaznik krytyczny i L-Index dla wezlow SN.",
+        # Domena: Krzywe P-V/Q-V i wskaznik modalny to ciag ustalonych stanow 50 Hz — rozplyw mocy.
+        physics_domain=PhysicsDomain.POWER_FLOW,
+        reprezentacja="zgodna",
+        evidence_capability_id="v126_academic.voltage_stability",
     ),
     "RELIABILITY_CONTINGENCY": SolverCapability(
         capability="RELIABILITY_CONTINGENCY",
@@ -267,9 +480,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("committed_enm", "failure_rates", "mttr", "customer_counts"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="test_v126_academic_solver.py::test_reliability_indices_are_reportable",
         applicability="Ranking N-1/N-2 oraz SAIDI/SAIFI/CAIDI/MAIFI.",
+        # Domena: Ocena N-1 i wskaznikow niezawodnosci opiera sie na ustalonym stanie obciazen 50 Hz — rozplyw mocy.
+        physics_domain=PhysicsDomain.POWER_FLOW,
+        reprezentacja="zgodna",
+        evidence_capability_id="v126_academic.reliability_contingency",
     ),
     "EARTHING_SAFETY": SolverCapability(
         capability="EARTHING_SAFETY",
@@ -280,9 +496,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("committed_enm", "soil_model", "grid_geometry", "fault_current"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="test_v126_academic_solver.py::test_earthing_uses_ieee80_contract",
         applicability="IEEE 80 / PN-EN 50522: Rg, GPR, napiecie dotykowe i krokowe.",
+        # Domena: Napiecia dotykowe i krokowe wynikaja z pradu zwarcia doziemnego wplywajacego do uziomu — domena zwarc.
+        physics_domain=PhysicsDomain.SHORT_CIRCUIT,
+        reprezentacja="zgodna",
+        evidence_capability_id="v126_academic.earthing_safety",
     ),
     "NEUTRAL_EARTHING_DESIGN": SolverCapability(
         capability="NEUTRAL_EARTHING_DESIGN",
@@ -293,7 +512,6 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("committed_enm", "line_to_earth_capacitance_b0", "neutral_earthing_type"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test=(
             "test_v126_neutral_earthing_design.py::"
             "TestPetersenResonanceTuning::test_coil_inductance_matches_resonance_formula"
@@ -302,6 +520,10 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
             "Projekt uziemienia punktu neutralnego: dlawik Petersena (kompensacja "
             "rezonansowa Ic) albo rezystor NER (dobor R i sprawdzenie cieplne)."
         ),
+        # Domena: Dobor dlawika/rezystora punktu neutralnego opiera sie na pojemnosci skladowej zerowej sieci — domena skladowych.
+        physics_domain=PhysicsDomain.SEQUENCE_DOMAIN,
+        reprezentacja="skladowe",
+        evidence_capability_id="v126_academic.neutral_earthing_design",
     ),
     "INSULATION_COORDINATION": SolverCapability(
         capability="INSULATION_COORDINATION",
@@ -312,9 +534,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("committed_enm", "u_m", "arrester", "tov"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="test_v126_academic_solver.py::test_insulation_margin_is_computed",
         applicability="IEC 60071/60099: BIL, MCOV, TOV i margines ogranicznika.",
+        # Domena: Przepiecia dorywcze od zwarcia doziemnego wynikaja ze wspolczynnika zwarcia doziemnego (stosunek impedancji skladowych) — domena skladowych.
+        physics_domain=PhysicsDomain.SEQUENCE_DOMAIN,
+        reprezentacja="skladowe",
+        evidence_capability_id="v126_academic.insulation_coordination",
     ),
     "EARTH_FAULT_DETECTION": SolverCapability(
         capability="EARTH_FAULT_DETECTION",
@@ -325,9 +550,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("neutral_grounding", "relay_methods"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="test_v126_academic_solver.py::test_earth_fault_method_decision_table",
         applicability="Dobor watometrycznej, admitancyjnej, transient directional albo 5 harmonicznej.",
+        # Domena: Metody detekcji doziemien dzialaja na wielkosciach skladowej zerowej (U0, I0) — domena skladowych.
+        physics_domain=PhysicsDomain.SEQUENCE_DOMAIN,
+        reprezentacja="skladowe",
+        evidence_capability_id="v126_academic.earth_fault_detection",
     ),
     "TRANSIENT_TRV": SolverCapability(
         capability="TRANSIENT_TRV",
@@ -338,9 +566,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("committed_enm", "breaker_rated_voltage", "trv_envelope"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="test_v126_academic_solver.py::test_transient_trv_contract",
         applicability="TRV, inrush transformatora i alert ferrorezonansu.",
+        # Domena: Napiecie powrotne i prad zalaczania to przebiegi chwilowe w skali mikrosekund — domena stanow przejsciowych elektromagnetycznych.
+        physics_domain=PhysicsDomain.ELECTROMAGNETIC_TRANSIENTS,
+        reprezentacja="abc",
+        evidence_capability_id="v126_academic.transient_trv",
     ),
     "MOTOR_STARTING": SolverCapability(
         capability="MOTOR_STARTING",
@@ -351,9 +582,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("committed_enm", "motor_cards", "source_impedance"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="test_v126_academic_solver.py::test_motor_starting_voltage_dip",
         applicability="Zapad napiecia rozruchowego, moment-poslizg i termika I2t.",
+        # Domena: Zapad napiecia przy rozruchu liczony jako quasi-ustalony stan 50 Hz — rozplyw mocy.
+        physics_domain=PhysicsDomain.POWER_FLOW,
+        reprezentacja="zgodna",
+        evidence_capability_id="v126_academic.motor_starting",
     ),
     "HOSTING_CAPACITY": SolverCapability(
         capability="HOSTING_CAPACITY",
@@ -364,7 +598,6 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("committed_enm", "stochastic_profiles", "limits"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="test_v126_academic_solver.py::test_hosting_capacity_is_seeded",
         applicability=(
             "Stochastyczna hosting capacity OZE z deterministycznym Monte Carlo — "
@@ -372,6 +605,10 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
             "impedancja Thevenina bez sprzężenia sieci, duplikuje kanon "
             "`GET /api/oze-analysis/hosting-capacity` (pełny rozpływ)."
         ),
+        # Domena: Zdolnosc przylaczeniowa ograniczana wzrostem napiecia i obciazalnoscia w stanie ustalonym — rozplyw mocy.
+        physics_domain=PhysicsDomain.POWER_FLOW,
+        reprezentacja="zgodna",
+        evidence_capability_id="v126_academic.hosting_capacity",
     ),
     "OPF_LOSS_LCC": SolverCapability(
         capability="OPF_LOSS_LCC",
@@ -382,7 +619,6 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("committed_enm", "branch_limits", "cost_profile"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="test_v126_academic_solver.py::test_opf_losses_lcc_contract",
         applicability=(
             "Minimalizacja strat, energia strat, LCC i emisja CO2 — wycofana z "
@@ -390,6 +626,10 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
             "zaczep 0, prąd gałęzi z jednej szyny; duplikuje kanon "
             "`POST /api/solver/transformer-losses` + badania OLTC."
         ),
+        # Domena: Straty i koszt cyklu zycia z ustalonego stanu pracy 50 Hz — rozplyw mocy.
+        physics_domain=PhysicsDomain.POWER_FLOW,
+        reprezentacja="zgodna",
+        evidence_capability_id="v126_academic.opf_loss_lcc",
     ),
     "BENCHMARK_VALIDATION": SolverCapability(
         capability="BENCHMARK_VALIDATION",
@@ -400,9 +640,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("benchmark_references",),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="test_v126_academic_solver.py::test_benchmark_validation_passes_reference_contract",
         applicability="Regresja IEEE 9/14/39 oraz CIGRE MV.",
+        # Domena: Porownanie rozplywu produkcyjnego z wartosciami odniesienia IEEE/CIGRE — rozplyw mocy.
+        physics_domain=PhysicsDomain.POWER_FLOW,
+        reprezentacja="zgodna",
+        evidence_capability_id="v126_academic.benchmark_validation",
     ),
     "UNCERTAINTY_SENSITIVITY": SolverCapability(
         capability="UNCERTAINTY_SENSITIVITY",
@@ -413,9 +656,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         required_inputs=("committed_enm", "catalog_tolerances"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
         reference_test="test_v126_academic_solver.py::test_uncertainty_contract",
         applicability="Niepewnosc k=2 i ranking wrazliwosci parametrow.",
+        # Domena: Wrazliwosc liczona dla parametrow wyznaczajacych moc zwarciowa (u_k, |Z|, S_k) — domena zwarc.
+        physics_domain=PhysicsDomain.SHORT_CIRCUIT,
+        reprezentacja="zgodna",
+        evidence_capability_id="v126_academic.uncertainty_sensitivity",
     ),
 }
 
@@ -439,7 +685,7 @@ def solver_capabilities_by_analysis_type(analysis_type: str) -> list[SolverCapab
     ]
 
 
-def solver_capabilities_contract() -> dict[str, object]:
+def solver_capabilities_contract() -> dict[str, Any]:
     capabilities = [capability.to_dict() for capability in list_solver_capabilities()]
     return {
         "contract": "SolverCapabilityRegistryV1",
@@ -450,4 +696,103 @@ def solver_capabilities_contract() -> dict[str, object]:
         ),
         "all_proof_supported": all(bool(item["proof_support"]) for item in capabilities),
         "all_reportable": all(bool(item["reportable"]) for item in capabilities),
+        # Karta AB-1a D1: brak raportowalnosci NAZWANY na poziomie rejestru —
+        # lista zdolnosci, ktorych wynik nie jest dowodem, zamiast samego
+        # `all_reportable: false`.
+        "not_reportable": sorted(
+            item["capability"] for item in capabilities if not item["reportable"]
+        ),
     }
+
+
+# ---------------------------------------------------------------------------
+# Domena fizyczna BIEGU (karta AB-1a D1, §0 R-1)
+# ---------------------------------------------------------------------------
+
+#: Prefiks biegow V12.6 w dyspozytorze (`enm/canonical_analysis.py`).
+PREFIKS_BIEGU_V126 = "v126:"
+
+#: JAWNA tabela: `analysis_type` biegu V12.6 w dyspozytorze -> zdolnosc rejestru.
+#: Dyspozytor przyjmuje `"v126:<rodzaj>"`, a rejestr trzyma rodzaj bez prefiksu —
+#: mapowanie jest wypisane, nie zgadywane regula tekstowa (karta D1: „tabela
+#: jawna, nie regex-zgadywanie"). Kompletnosc wobec `V126AnalysisType` pinuje
+#: `tests/application/test_rejestr_domen_fizycznych.py`.
+BIEGI_V126: dict[str, AnalysisCapability] = {
+    "v126:power_quality_harmonics": "POWER_QUALITY_HARMONICS",
+    "v126:ssci_impedance": "SSCI_IMPEDANCE",
+    "v126:voltage_stability": "VOLTAGE_STABILITY",
+    "v126:reliability_contingency": "RELIABILITY_CONTINGENCY",
+    "v126:earthing_safety": "EARTHING_SAFETY",
+    "v126:insulation_coordination": "INSULATION_COORDINATION",
+    "v126:earth_fault_detection": "EARTH_FAULT_DETECTION",
+    "v126:transient_trv": "TRANSIENT_TRV",
+    "v126:motor_starting": "MOTOR_STARTING",
+    "v126:hosting_capacity": "HOSTING_CAPACITY",
+    "v126:opf_loss_lcc": "OPF_LOSS_LCC",
+    "v126:benchmark_validation": "BENCHMARK_VALIDATION",
+    "v126:uncertainty_sensitivity": "UNCERTAINTY_SENSITIVITY",
+    "v126:neutral_earthing_design": "NEUTRAL_EARTHING_DESIGN",
+}
+
+
+class NieznanyRodzajBieguError(ValueError):
+    """`analysis_type` biegu bez wpisu w rejestrze zdolnosci — odmowa nazwana.
+
+    Fail-closed (karta AB-1a §0 R-1): rodzaj biegu, ktorego rejestr nie zna, NIE
+    dostaje domeny `None` ani domeny „najblizszej" — wolajacy dostaje wyjatek z
+    nazwa rodzaju, bo wynik bez domeny moglby zostac porownany z wynikiem innej
+    fizyki.
+    """
+
+    def __init__(self, analysis_type: str) -> None:
+        super().__init__(
+            f"Rodzaj biegu {analysis_type!r} nie ma wpisu w rejestrze zdolnosci solverow "
+            "(application/solvers/solver_capability_registry.py) — domena fizyczna "
+            "nieznana, wynik nie moze zostac opisany."
+        )
+        self.analysis_type = analysis_type
+
+
+def zdolnosci_biegu(analysis_type: str) -> list[SolverCapability]:
+    """Zdolnosci rejestru, ktore obsluguje bieg o danym `analysis_type` dyspozytora.
+
+    Bieg V12.6 (`"v126:<rodzaj>"`) — przez jawna tabele `BIEGI_V126`; pozostale —
+    po polu `SolverCapability.analysis_type`. Pusta lista = rodzaj nieznany.
+    """
+    if analysis_type.startswith(PREFIKS_BIEGU_V126):
+        klucz = BIEGI_V126.get(analysis_type)
+        return [SOLVER_CAPABILITY_REGISTRY[klucz]] if klucz is not None else []
+    # Rodzaj V12.6 BEZ prefiksu (np. "power_quality_harmonics") jest polem rejestru,
+    # nie rodzajem biegu — dyspozytor go nie zna, wiec nie dostaje domeny.
+    zdolnosci_v126 = set(BIEGI_V126.values())
+    return [
+        zdolnosc
+        for zdolnosc in solver_capabilities_by_analysis_type(analysis_type)
+        if zdolnosc.capability not in zdolnosci_v126
+    ]
+
+
+def domena_fizyczna_biegu(analysis_type: str) -> PhysicsDomain:
+    """Domena fizyczna biegu wyprowadzona z rejestru (JEDYNE miejsce tego wiazania).
+
+    Rodzaj obslugiwany przez kilka zdolnosci (np. `short_circuit_sn`: 3F/1F/2F/2F+Z,
+    `PF`: NR/GS/FD) musi miec JEDNA domene we wszystkich — rozjazd konczy sie
+    `AssertionError` (defekt rejestru, nie przypadek wejscia). Nieznany rodzaj —
+    `NieznanyRodzajBieguError` (fail-closed).
+    """
+    zdolnosci = zdolnosci_biegu(analysis_type)
+    if not zdolnosci:
+        raise NieznanyRodzajBieguError(analysis_type)
+    domeny = {zdolnosc.physics_domain for zdolnosc in zdolnosci}
+    if len(domeny) != 1:
+        raise AssertionError(
+            f"Rodzaj biegu {analysis_type!r} ma w rejestrze rozne domeny: "
+            f"{sorted(domena.value for domena in domeny)}"
+        )
+    return domeny.pop()
+
+
+def domena_fizyczna_biegu_dict(analysis_type: str) -> dict[str, str]:
+    """Pola koperty API biegu: `physics_domain` + `physics_domain_pl` (fail-closed)."""
+    domena = domena_fizyczna_biegu(analysis_type)
+    return {"physics_domain": domena.value, "physics_domain_pl": domena.label_pl}
