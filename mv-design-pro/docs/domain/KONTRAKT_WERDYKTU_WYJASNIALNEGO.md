@@ -246,6 +246,12 @@ klient przysyłający `ptpiree_verified` nie może wytworzyć `PELNY`.
 | poniżej L4 / poza domeną manifestu | `UNVALIDATED_MODEL` albo `NOT_SIMULATED` | — |
 | bez obliczenia (deklaracja) | `DECLARATION` | `NIE_DOTYCZY` |
 
+Zakres reguły „dwie niezależne drogi" (O-7, O-48): dotyczy twierdzeń manifestu o WIERNOŚCI modelu rodziny
+urządzeń (np. GFL w zapadzie — D-11.3…D-11.7); własności implementacji (konwencja osi i baz, niezmiennik
+ogranicznika na każdym kroku, metryki z niepewnością z połowienia kroku, ciągłość stanów przez zdarzenie)
+osiągają L5 z jedną wyrocznią analityczną, tak jak D-01…D-07 rdzenia (R10). Manifest niesie pole
+`drogi_niezalezne` i test tej reguły.
+
 `EvidenceTier.UNVALIDATED_MODEL` (zdolność narzędzia) i `StatusModelu.UNVALIDATED_MODEL` (model
 konkretnego urządzenia) są DWOMA osiami o wspólnej nazwie wartości — każdy rekord niesie obie,
 generator zastrzeżeń nazywa oś. Predykat `nalezy_do_domeny(bieg, manifest)` (SCR, X/R, głębokość
@@ -373,8 +379,10 @@ marginesem wielkości sterującej: zapas czasu/napięcia do zadziałania zabezpi
   jest zachowawcze WYŁĄCZNIE dla wartości z biegu drobniejszego (dla `metryka(h)` byłoby to
   ≈ 4/3·Δ, więc raportowanie wartości z grubszego kroku jest zabronione — przegląd #10).
 - Bieg kontrolny przy kroku adaptacyjnym: `h_max/2`, tolerancje kroku/2, tolerancja lokalizacji
-  zdarzeń warunkowych/2 (zdarzenia warunkowe są lokalizowane przez wyszukiwanie pierwiastka, więc
-  ich czas NIE jest dokładny — tylko zdarzenia planowane mają czas dokładny).
+  zdarzeń warunkowych/2 (zdarzenia warunkowe są lokalizowane przez wyszukiwanie pierwiastka:
+  WYKONANIE zdarzenia jest dokładne — lądowanie kroku w `t*`, próbki obustronne, jedna reinicjalizacja —
+  ale LOKALIZACJA `t*` ma zadeklarowaną tolerancję `tolerancja_lokalizacji_zdarzen_s` względem trajektorii
+  dyskretnej; tylko zdarzenia planowane mają czas dokładny z konstrukcji — O-47).
 - `u` obejmuje WYŁĄCZNIE błąd dyskretyzacji. Metoda `SYMULACJA` bez oszacowanej `u` →
   `NIE_OCENIONO` (walidator; brak niepewności nie może dać `SPELNIA`).
 - Porównanie wartości zadeklarowanych ma niepewność „nie dotyczy" z jawnym powodem; pomiar (AB-7)
