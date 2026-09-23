@@ -45,6 +45,16 @@ export const INSPECTOR_STRINGS = {
 
   // Tryb ekspercki
   szczegolyTechniczne: 'Szczegóły techniczne',
+
+  // Model dynamiczny wytwórcy (karta AB-1a D3) — dwie osie statusu modelu
+  modelDynTytul: 'Model dynamiczny',
+  modelDynLadowanie: 'Wczytywanie statusu modelu dynamicznego…',
+  modelDynBlad: 'Nie udało się pobrać statusu modelu dynamicznego',
+  modelDynBrak: 'Brak parametrów dynamicznych w modelu — status modelu nie dotyczy.',
+  modelDynRodzina: 'Rodzina urządzeń',
+  modelDynZrodlo: 'Źródło parametrów',
+  modelDynOdniesienie: 'Odniesienie',
+  modelDynStatus: 'Status modelu',
 } as const;
 
 /** „nieaktualne (rew. {a} → {b})" — rozjazd rewizji danej pochodnej względem modelu. */

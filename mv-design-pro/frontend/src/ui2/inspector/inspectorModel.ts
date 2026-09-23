@@ -97,6 +97,8 @@ export interface SzczegolTechniczny {
 export interface ObiektInspektora {
   /** Identyfikator techniczny — pokazywany tylko w „Szczegóły techniczne". */
   id: string;
+  /** Odnośnik elementu w modelu (`ref_id`) — klucz końcówek per element (np. status modelu). */
+  refId?: string;
   /** Klucz typu obiektu (pamięć akordeonów per typ). */
   typ: string;
   /** Etykieta PL typu obiektu (pierwszy plan). */

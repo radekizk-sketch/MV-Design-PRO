@@ -33,6 +33,7 @@ import { PropertySection } from './PropertySection';
 import { LinksTab } from './LinksTab';
 import { FreshnessBadge } from './FreshnessBadge';
 import { SekcjaPetlaZwarcia } from './SekcjaPetlaZwarcia';
+import { SekcjaModeluDynamicznego } from './SekcjaModeluDynamicznego';
 
 export function InspectorPanel({
   obiekt,
@@ -261,6 +262,9 @@ function TabWlasciwosci({
           onPrzelicz={onPrzelicz}
         />
       ))}
+      {obiekt.typ === 'generator' && obiekt.refId !== undefined && (
+        <SekcjaModeluDynamicznego generatorRef={obiekt.refId} />
+      )}
       {ekspercki && <SzczegolyTechniczne obiekt={obiekt} />}
     </>
   );
