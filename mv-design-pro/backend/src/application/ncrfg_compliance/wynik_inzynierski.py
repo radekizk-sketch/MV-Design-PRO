@@ -198,7 +198,9 @@ _STAN_DEKLARACJI_PL = (
     "Deklaracja wnioskodawcy — porównanie zadeklarowanej wartości z wymaganiem nie "
     "dowodzi zachowania modułu w czasie."
 )
-_STAN_BRAK_KLASYFIKACJI_PL = "Brak klasyfikacji dowodowej testu w rejestrze — wynik nie jest dowodem (fail-closed)."
+_STAN_BRAK_KLASYFIKACJI_PL = (
+    "Brak klasyfikacji dowodowej testu w rejestrze — wynik nie jest dowodem (fail-closed)."
+)
 
 _WYNIK_Z_WERDYKTU: dict[str, str] = {
     "pass": WYNIK_SPELNIA,
@@ -235,9 +237,7 @@ def _krok_sladu(
     return None
 
 
-def _z_kroku(
-    krok: NcRfgTraceStep | None, adres: tuple[str, str] | None
-) -> float | None:
+def _z_kroku(krok: NcRfgTraceStep | None, adres: tuple[str, str] | None) -> float | None:
     if krok is None or adres is None:
         return None
     zrodlo, klucz = adres
@@ -290,11 +290,7 @@ def z_testu_ncrfg(
         kryterium_id=f"ncrfg.{test.test_id}",
         etap="E7",
         nazwa_pl=f"{test.test_id} — {test.ability_pl}",
-        warunek_pl=(
-            krok.formula
-            if krok is not None
-            else "Kryterium procedury (brak kroku śladu)"
-        ),
+        warunek_pl=(krok.formula if krok is not None else "Kryterium procedury (brak kroku śladu)"),
         norma_pl=podstawa.render_pl(),
         zrodlo=ZRODLO_NCRFG,
         element_rodzaj=ELEMENT_ZRODLO,
@@ -310,11 +306,19 @@ def z_testu_ncrfg(
         symbol_latex=wielkosc.symbol_latex if wielkosc is not None else "",
         warunek_latex=wielkosc.warunek_latex if wielkosc is not None else "",
     )
-    if test.verdict == "not_required":
+    if test.verdict == "not_required" or not test.required:
+        # Predykat „wymagany" z JEDNEGO źródła co agregat solvera: moduł liczy
+        # naruszenia i braki danych WYŁĄCZNIE dla testów `required` — solver potrafi
+        # zwrócić `fail`/`pass` dla testu niewymaganego (np. T19 bez SCADA), ale ten
+        # werdykt nie wchodzi do statusu modułu. Wynik inżynierski nie może więc
+        # nazwać go naruszeniem: NIE DOTYCZY z powodem i jawnym werdyktem solvera.
+        powod = test.required_reason_pl
+        if test.verdict != "not_required":
+            powod = f"{powod} Wynik solvera poza wymaganiem: {test.summary_pl}"
         return PozycjaWerdyktu(
             definicja=definicja,
             stan=STAN_NIE_DOTYCZY,
-            powod_pl=test.required_reason_pl,
+            powod_pl=powod,
             podstawa=podstawa,
         )
 
@@ -337,8 +341,7 @@ def z_testu_ncrfg(
     odniesienie = _z_kroku(krok, wielkosc.odniesienie if wielkosc is not None else None)
     margines = _z_kroku(krok, wielkosc.margines if wielkosc is not None else None)
     ewidencja_ride = (
-        ewidencja is not None
-        and ewidencja.capability_id == "ncrfg_ptpiree.ride_through"
+        ewidencja is not None and ewidencja.capability_id == "ncrfg_ptpiree.ride_through"
     )
     if ewidencja_ride:
         # Wielkość „symulowana" T14/T15 nie jest policzona — nie ma wartości ani zapasu.

@@ -141,9 +141,7 @@ def test_to_dict_oceny_addytywny_stare_klucze_w_tej_samej_kolejnosci() -> None:
 
 
 def test_to_dict_pozycji_addytywny() -> None:
-    pozycja = PozycjaWerdyktu(
-        definicja=_definicja(KRYTERIUM_NAPIECIE), stan=STAN_NIESPRAWDZONE
-    )
+    pozycja = PozycjaWerdyktu(definicja=_definicja(KRYTERIUM_NAPIECIE), stan=STAN_NIESPRAWDZONE)
     klucze = tuple(pozycja.to_dict())
     assert klucze[: len(KLUCZE_POZYCJI_SPRZED_KARTY)] == KLUCZE_POZYCJI_SPRZED_KARTY
     assert klucze[len(KLUCZE_POZYCJI_SPRZED_KARTY) :] == KLUCZE_POZYCJI_NOWE
@@ -161,9 +159,7 @@ def test_nowe_pola_serializuja_sie_gdy_dostawca_je_ma() -> None:
         przyczyna=PrzyczynaOgraniczenia(
             rodzaj="ogranicznik", ref="g1", opis_pl="Ogranicznik prądu"
         ),
-        status_modelu=StatusModelu(
-            StatusRownan.UNVALIDATED, StatusParametrow.KARTA_KATALOGOWA
-        ),
+        status_modelu=StatusModelu(StatusRownan.UNVALIDATED, StatusParametrow.KARTA_KATALOGOWA),
         status_wejscia=FieldQuality.ESTIMATED,
         niepewnosc=Niepewnosc(wartosc=0.5, jednostka="%", metoda_pl="propagacja"),
         zakres_waznosci=ZakresWaznosci(
@@ -215,9 +211,7 @@ def test_podstawa_wymaga_normy_rownej_renderingowi() -> None:
         klauzula="4.9",
         zrodlo_status=ZRODLO_NIEZWERYFIKOWANE,
     )
-    zgodna = dataclasses.replace(
-        _definicja(KRYTERIUM_NAPIECIE), norma_pl=podstawa.render_pl()
-    )
+    zgodna = dataclasses.replace(_definicja(KRYTERIUM_NAPIECIE), norma_pl=podstawa.render_pl())
     assert PozycjaWerdyktu(definicja=zgodna, stan=STAN_NIESPRAWDZONE, podstawa=podstawa)
     assert podstawa.render_pl() == "PN-EN 50549-2, wersja 2019, 4.9"
     with pytest.raises(ValueError, match="nie jest renderingiem podstawy"):
@@ -248,9 +242,7 @@ def test_podstawa_bez_dokumentu_nie_udaje_dokumentu() -> None:
         ("ncrfg_ptpiree", None),
     ],
 )
-def test_domena_fizyczna_pozycji_z_rodzaju_biegu(
-    zrodlo: str, domena: str | None
-) -> None:
+def test_domena_fizyczna_pozycji_z_rodzaju_biegu(zrodlo: str, domena: str | None) -> None:
     definicja = dataclasses.replace(_definicja(KRYTERIUM_DOBOR_DER_SN), zrodlo=zrodlo)
     pozycja = PozycjaWerdyktu(definicja=definicja, stan=STAN_NIESPRAWDZONE)
     assert pozycja.physics_domain == domena
@@ -258,9 +250,7 @@ def test_domena_fizyczna_pozycji_z_rodzaju_biegu(
 
 
 def test_nieznany_rodzaj_biegu_jest_bledem_nazwanym() -> None:
-    definicja = dataclasses.replace(
-        _definicja(KRYTERIUM_NAPIECIE), zrodlo="nieznany_bieg"
-    )
+    definicja = dataclasses.replace(_definicja(KRYTERIUM_NAPIECIE), zrodlo="nieznany_bieg")
     with pytest.raises(ValueError, match="nieznany_bieg"):
         PozycjaWerdyktu(definicja=definicja, stan=STAN_NIESPRAWDZONE).to_dict()
 
@@ -330,26 +320,20 @@ def test_adapter_cztery_testy_cztery_nazwane_stany() -> None:
     stany = {}
     for test_id in ("T01", "T10", "T14", "T20"):
         test = next(t for t in wynik.modules[0].tests if t.test_id == test_id)
-        assert (
-            test.verdict == "pass"
-        ), test_id  # solver mowi „pass" — adapter nie ufa slepo
+        assert test.verdict == "pass", test_id  # solver mowi „pass" — adapter nie ufa slepo
         pozycja = _pozycja(wynik, test_id)
         element = pozycja.elementy[0]
         assert element.wynik == WYNIK_BRAK_PODSTAW, test_id
         assert pozycja.stan == STAN_NIESPRAWDZONE
         stany[test_id] = (pozycja.powod_kod, pozycja.powod_pl)
     assert stany["T01"][0] == "ncrfg_ptpiree.frequency_response"
-    assert stany["T01"][1] is not None and stany["T01"][1].startswith(
-        "Deklaracja wnioskodawcy"
-    )
+    assert stany["T01"][1] is not None and stany["T01"][1].startswith("Deklaracja wnioskodawcy")
     assert stany["T10"][0] == "ncrfg_ptpiree.test_bez_tresci"
     assert stany["T10"][1] is not None and stany["T10"][1].startswith("Test bez treści")
     assert stany["T14"][0] == "ncrfg_ptpiree.ride_through"
     assert stany["T14"][1] is not None and stany["T14"][1].startswith("Brak symulacji")
     assert stany["T20"][0] == "ncrfg_ptpiree.power_quality_declared"
-    assert stany["T20"][1] is not None and stany["T20"][1].startswith(
-        "Limit niezweryfikowany"
-    )
+    assert stany["T20"][1] is not None and stany["T20"][1].startswith("Limit niezweryfikowany")
     assert len({powod for _kod, powod in stany.values()}) == 4
 
 
@@ -364,19 +348,13 @@ def test_adapter_liczby_wylacznie_ze_sladu_solvera() -> None:
     # ale punkt krytyczny obwiedni (czas) jest znany.
     t14 = _pozycja(wynik, "T14").elementy[0]
     assert t14.wartosc is None and t14.margines is None
-    assert t14.punkt_krytyczny is not None and t14.punkt_krytyczny.wspolrzedna == {
-        "t_s": 0.0
-    }
+    assert t14.punkt_krytyczny is not None and t14.punkt_krytyczny.wspolrzedna == {"t_s": 0.0}
     # T05: granica wyprowadzana w kodzie solvera (nie podana) -> brak odniesienia.
     t05 = _pozycja(wynik, "T05").elementy[0]
     assert t05.wartosc is not None and t05.odniesienie is None and t05.margines is None
     for test_id in ("T20", "T16", "T14", "T05"):
         dowod = _pozycja(wynik, test_id).elementy[0].dowod
-        assert (
-            dowod is not None
-            and dowod["run_id"] is None
-            and dowod["element_id"] == "pv-b"
-        )
+        assert dowod is not None and dowod["run_id"] is None and dowod["element_id"] == "pv-b"
         assert str(dowod["trace_ref"]).startswith(f"proof:ncrfg-ptpiree:{test_id}:")
 
 
@@ -404,9 +382,39 @@ def test_adapter_brak_danych_i_nie_dotyczy() -> None:
     assert t20.stan == "NIE_DOTYCZY" and t20.elementy == ()
 
 
-def test_adapter_podstawa_niezweryfikowana_i_jedno_zrodlo_normy_dla_wszystkich_testow() -> (
-    None
-):
+@pytest.mark.parametrize(
+    "modul",
+    [
+        _MODUL_B,
+        dict(_MODUL_B, has_scada_communication=False, has_disturbance_recorder=False),
+        dict(_MODUL_B, harmonic_thdu_percent=12.0, p_recovery_time_s=None),
+    ],
+)
+def test_adapter_wymagany_z_jednego_zrodla_z_agregatem_solvera(modul: dict) -> None:
+    # Iloczyn cech: required × verdict (pass | fail | no_data | not_required).
+    # Solver liczy naruszenia modułu WYŁĄCZNIE dla testów wymaganych; test
+    # niewymagany z werdyktem „fail" (T19 bez SCADA) nie może stać się naruszeniem
+    # w wyniku inżynierskim — predykat wejścia i agregatu z jednego źródła.
+    wynik = _bieg(modul)
+    niewymagane_z_werdyktem = 0
+    for test in wynik.modules[0].tests:
+        pozycja = _pozycja(wynik, test.test_id)
+        if not test.required:
+            assert pozycja.stan == "NIE_DOTYCZY" and pozycja.elementy == (), test.test_id
+            if test.verdict != "not_required":
+                niewymagane_z_werdyktem += 1
+                assert "poza wymaganiem" in (pozycja.powod_pl or ""), test.test_id
+        else:
+            assert pozycja.stan != "NIE_DOTYCZY", test.test_id
+    naruszenia = sum(
+        1 for test in wynik.modules[0].tests if _pozycja(wynik, test.test_id).stan == "NARUSZONE"
+    )
+    assert naruszenia == wynik.modules[0].fail_count
+    if modul is not _MODUL_B:
+        assert niewymagane_z_werdyktem > 0 or wynik.modules[0].fail_count > 0
+
+
+def test_adapter_podstawa_niezweryfikowana_i_jedno_zrodlo_normy_dla_wszystkich_testow() -> None:
     wynik = _bieg(_MODUL_B, wymuszone=["T01", "T18"])
     for test in wynik.modules[0].tests:
         pozycja = _pozycja(wynik, test.test_id)
@@ -415,9 +423,7 @@ def test_adapter_podstawa_niezweryfikowana_i_jedno_zrodlo_normy_dla_wszystkich_t
         assert pozycja.definicja.norma_pl == pozycja.podstawa.render_pl()
         assert pozycja.physics_domain is None
     t20 = _pozycja(wynik, "T20")
-    assert t20.podstawa is not None and "stałej silnika" in (
-        t20.podstawa.uwaga_pl or ""
-    )
+    assert t20.podstawa is not None and "stałej silnika" in (t20.podstawa.uwaga_pl or "")
 
 
 def test_koperta_biegu_niesie_wynik_inzynierski_kazdego_testu() -> None:
@@ -437,6 +443,5 @@ def test_ocena_elementu_nie_jest_trzecim_kontraktem() -> None:
     assert type(pozycja) is PozycjaWerdyktu
     assert all(type(e) is OcenaElementu for e in pozycja.elementy)
     assert (
-        tuple(pozycja.to_dict())[: len(KLUCZE_POZYCJI_SPRZED_KARTY)]
-        == KLUCZE_POZYCJI_SPRZED_KARTY
+        tuple(pozycja.to_dict())[: len(KLUCZE_POZYCJI_SPRZED_KARTY)] == KLUCZE_POZYCJI_SPRZED_KARTY
     )
