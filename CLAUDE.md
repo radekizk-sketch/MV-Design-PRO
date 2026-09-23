@@ -20,6 +20,8 @@ Pełny kanon: `PROMPT_MV_DESIGN_PRO_PRZEBUDOWA.md` (UWAGA: pliku NIE MA w repo �
 
 **UCZCIWOŚĆ.** Raportuj stan zgodnie z prawdą — co domknięte z dowodem, co częściowe, czego nie zrobiono i dlaczego. Korekta w obie strony. Nigdy nie zawyżaj. „Renderuje się / testy zielone / wygląda gotowo" ≠ dowód ukończenia.
 
+**WERDYKT WYJAŚNIALNY (dyrektywa właściciela 2026-09-22, zasada stała).** Werdykt typu „SPEŁNIA / NIE SPEŁNIA / PASS / FAIL / OK / ZGODNY" nie jest samodzielnym komunikatem dla użytkownika, wynikiem raportowym ani dowodem — w żadnej domenie (zgodność NC RfG, dynamika/FRT, zabezpieczenia, zwarcia, dobór aparatury, SWZ, selektywność, CCT, spadki napięć, obciążalność, bilans, harmoniczne, jakość modelu). Status maszynowy (`SPELNIA` / `NIE_SPELNIA` / `NIEJEDNOZNACZNY` / `NIE_OCENIONO` / `BRAK_PODSTAWY` / `BRAK_DOWODU` / `NIE_DOTYCZY`) służy wyłącznie agregacji, filtrom i API i ZAWSZE jest związany z wyjaśnieniem: co oceniono, względem jakiego kryterium, jaki wynik liczbowy (z jednostką), jaki limit (z podstawą i stanem źródła), jaki margines, jaka przyczyna, jaki dowód (metoda, status modelu, status danych), jaki zakres ważności. Rekord wyniku bez wyjaśnienia = błąd kontraktu; brak danych ≠ spełnia; brak symulacji ≠ spełnia; brak certyfikatu ≠ spełnia; `UNVALIDATED_MODEL` ≠ pełny dowód. Agregat nigdy nie zastępuje kryteriów składowych. Kontrakt wiążący: `mv-design-pro/docs/domain/KONTRAKT_WERDYKTU_WYJASNIALNEGO.md`.
+
 ---
 
 ## 🤖 INSTRUKCJA MODELU — Claude Fable 5.1 (`claude-fable-5-1`)

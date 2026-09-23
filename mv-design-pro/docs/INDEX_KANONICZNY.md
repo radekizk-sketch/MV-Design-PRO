@@ -56,6 +56,8 @@ Data aktualizacji: **2026-04-24**
 - [architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md](./architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md) (kod usunięty CV-3.2, dokument historyczny)
 - [analysis/URUCHAMIANIE_ANALIZ_I_GOTOWOSC.md](./analysis/URUCHAMIANIE_ANALIZ_I_GOTOWOSC.md)
 - [analysis/NC_RFG_PTPiREE_TESTY_KANON.md](./analysis/NC_RFG_PTPiREE_TESTY_KANON.md)
+- [domain/KONTRAKT_WERDYKTU_WYJASNIALNEGO.md](./domain/KONTRAKT_WERDYKTU_WYJASNIALNEGO.md) - kontrakt werdyktu wyjaśnialnego (przekrojowy; dyrektywa właściciela 2026-09-22)
+- [plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md](./plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md) - program A/B: dynamika RMS, harmoniczne, supraharmoniczne i zgodność modułów typu A/B (plan operacyjny, powierzchnia pamięci)
 
 ## 5. Fundament jakości i audytu
 

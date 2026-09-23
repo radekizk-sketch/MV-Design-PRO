@@ -135,6 +135,15 @@ dopuszczalna, energia rezystora i wartość znamionowa) — margines NIE jest
 liczony na froncie, gdy backend go nie zwraca (zero fizyki w UI, zero
 fabrykacji trzeciej liczby).
 
+## 6a. Werdykt wyjaśnialny (rozszerzenie 2026-09-22)
+
+Trójka wartość–granica–margines (§6), zakres werdyktu (§5) i osie wiarygodności (§7) są
+podzbiorem kontraktu przekrojowego `docs/domain/KONTRAKT_WERDYKTU_WYJASNIALNEGO.md`: każdy
+werdykt pokazany człowiekowi niesie przedmiot, kryterium (`MathInline`), wynik z jednostką, limit
+z podstawą i stanem źródła, margines, przyczynę, wyjaśnienie, dowód (metoda, status modelu, status
+danych), zakres ważności i ślad; status maszynowy nie jest samodzielnym wynikiem. Jedno miejsce
+mapowania statusu na etykietę/kolor: karta werdyktu w `ui2/wyniki/wzorzec`.
+
 ## 7. Wiarygodność ≠ spełnienie
 
 Dwie NIEZALEŻNE osie: blok `sanity`/wiarygodność (czy liczbom można ufać —
