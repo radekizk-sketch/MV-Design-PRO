@@ -77,7 +77,10 @@ Typy pomocnicze (wspólne dla obu poziomów):
 `jednostka_redakcyjna`, `status` (`ZWERYFIKOWANE` / `WSKAZANE` / `NIEUSTALONE`), `uwagi_pl`.
 **Walidator:** stan `WSKAZANE` albo `ZWERYFIKOWANE` wymaga niepustych `dokument`, `wydanie`
 i `jednostka_redakcyjna` (artykuł / ustęp / punkt / rozdział — nie opis słowny parametru);
-inaczej stan jest `NIEUSTALONE`. Przeetykietowanie nie podnosi stanu (przegląd 2026-09-23 #3).
+inaczej stan jest `NIEUSTALONE`. `dokument` jest niepusty ZAWSZE (także przy `NIEUSTALONE` —
+nazywa, skąd wartość pochodzi, np. „profil operatorów, rewizja pliku 2024-Q4"); rodzaj
+`NIEUSTALONA` nie może mieć stanu mocniejszego niż `NIEUSTALONE`. Przeetykietowanie nie podnosi
+stanu (przegląd 2026-09-23 #3).
 
 Jednostki: liczba bez jednostki jest błędem (T3). Wielkości bezwymiarowe zapisuje się jako `"1"`,
 `"%"` albo `"p.u. (<baza>)"` z nazwaną bazą — np. `"p.u. (I_n modułu)"`, `"p.u. (U_n)"`,
@@ -113,17 +116,22 @@ rekord, którego status różni się od wyniku reguły (predykaty parami).
    `OBLICZENIE` / `OCENA_OPERATORA`) → `NIE_OCENIONO`; wartość zadeklarowana, jeśli podana, jest
    pokazywana informacyjnie, a `czego_brakuje` nazywa metodę właściwą (porównanie deklaracji
    nigdy nie daje `SPELNIA` dla zachowania dynamicznego — przegląd #11);
-3. brak wielkości zmierzonej/obliczonej (brak biegu, bieg nieaktualny/nieudany, brak danych,
-   metoda `SYMULACJA` bez oszacowanej niepewności) → `NIE_OCENIONO`;
+3. brak wielkości zmierzonej/obliczonej (brak biegu, bieg nieaktualny/nieudany, brak danych) →
+   `NIE_OCENIONO`; producent, który nie potrafi oszacować niepewności symulacji, NIE podaje
+   wyniku (i trafia tutaj) — wynik symulacyjny bez `niepewnosc.wartosc` jest błędem kontraktu
+   przy konstrukcji (T14), nie stanem;
 4. podstawa o stanie `NIEUSTALONE` — dla relacji liczbowych brak limitu albo
-   `limit.podstawa.status == NIEUSTALONE`, dla kryteriów logicznych `podstawa.status`
+   `limit.podstawa.status == NIEUSTALONE`; dla kryteriów logicznych (bez limitu) `podstawa.status`
    kryterium — → `BRAK_PODSTAWY` (wynik i margines wobec przyjętej wartości liczone i
-   pokazywane informacyjnie);
+   pokazywane informacyjnie). Dla relacji liczbowych `podstawa` KRYTERIUM (wymaganie) o stanie
+   `NIEUSTALONE` nie zmienia statusu — wpływa na kompletność dowodu (§3) i zastrzeżenia;
 5. margines `m`, niepewność `u`: `|m| ≤ u` → `NIEJEDNOZNACZNY`;
 6. `m ≥ 0` → `SPELNIA`; `m < 0` → `NIE_SPELNIA`. Kryteria logiczne (np. „moduł pozostał
-   przyłączony") nie mają marginesu skalarnego — margines jest jawnie „niedefiniowalny" z powodem,
-   a o ile to możliwe towarzyszy mu margines wielkości sterującej (np. zapas czasu zadziałania
-   zabezpieczenia podnapięciowego modułu); o statusie decyduje wartość logiczna wyniku.
+   przyłączony") nie mają marginesu skalarnego — margines jest jawnie „niedefiniowalny" z powodem;
+   margines wielkości sterującej (np. zapas czasu zadziałania zabezpieczenia podnapięciowego
+   modułu) jest OSOBNYM kryterium liczbowym tego samego wymagania (np.
+   `frt.zapas_zabezpieczenia_u_min`), nie polem kryterium logicznego; o statusie kryterium
+   logicznego decyduje wartość logiczna wyniku.
 
 Kolejność 3 → 4 (brak biegu przed brakiem podstawy) jest świadoma: brak biegu da się usunąć
 biegiem, brak podstawy — tylko dokumentem; oba braki są nazwane w `czego_brakuje`. Dlatego moduł
@@ -147,9 +155,11 @@ która go pokazuje.
 5. którakolwiek `NIEJEDNOZNACZNY` → `NIEJEDNOZNACZNY`;
 6. którakolwiek `NIE_OCENIONO` → `NIE_OCENIONO`;
 7. którakolwiek `BRAK_PODSTAWY` → `BRAK_PODSTAWY`;
-8. `pokrycie_programu` ≠ `PELNE` (§3a: wymaganie wykazywane biegami wymaga pokrycia zbioru
+8. `pokrycie_programu == CZESCIOWE` (wymaganie wykazywane biegami wymaga pokrycia zbioru
    scenariuszy programu badań z profilu — głębokości i czasy zapadu × poziomy P × Q × punkt pracy
    sprzed zakłócenia × S_k,min; jeden scenariusz nie wykazuje wymagania) → `BRAK_DOWODU`;
+   `NIE_DOTYCZY` dla wymagań wykazywanych deklaracją / certyfikatem (walidator: symulacja w
+   dowodzie ⇒ `PELNE` albo `CZESCIOWE`);
 9. kompletność dowodu ≠ `PELNY` (§3) → `BRAK_DOWODU` (wyjaśnienie podaje wynik obliczeniowy i
    powód niepełności);
 10. w przeciwnym razie `SPELNIA`; `kryterium_najblizej_granicy` = składnik o najmniejszym
@@ -176,14 +186,23 @@ wykazano na modelu bez walidacji i wymaga działania projektowego albo walidacji
 `kompletnosc_dowodu ∈ {PELNY, NIEPELNY, NIE_DOTYCZY}` — PEŁNY wyłącznie, gdy spełnione są
 WSZYSTKIE warunki:
 
-1. **metoda dowodu właściwa dla rodzaju twierdzenia** (`ClaimKind`): twierdzenie o zachowaniu
-   dynamicznym — symulacja na silniku o poziomie `VALIDATED_SIMULATION` w zadeklarowanej domenie
-   ORAZ model urządzenia `VALIDATED_AGAINST_TEST` albo `CERTIFIED_MODEL`, albo raport z testu,
-   albo certyfikat pokrywający wymaganie; twierdzenie o konfiguracji zadeklarowanej — deklaracja
-   (`DECLARATION`) jest właściwą podstawą;
-2. **dane wejściowe zwalidowane** — żadna wartość wpływająca na wynik nie ma jakości `ESTIMATED`
-   ani `SYSTEM_DEFAULT` (`FieldQuality`), żadna nie jest przyjęta bez źródła (np. założona moc
-   zwarciowa sieci — decyzja O-8 planu AB);
+1. **metoda dowodu właściwa dla rodzaju twierdzenia** (`ClaimKind` — TRZY rodzaje): twierdzenie
+   o zachowaniu dynamicznym (`DYNAMIC_PERFORMANCE`) — symulacja na silniku o poziomie
+   `VALIDATED_SIMULATION` w zadeklarowanej domenie (`w_domenie_walidacji = True`) ORAZ model
+   urządzenia `VALIDATED_AGAINST_TEST` albo `CERTIFIED_MODEL`, albo raport z testu, albo pomiar,
+   albo certyfikat pokrywający wymaganie; twierdzenie o konfiguracji zadeklarowanej
+   (`DECLARED_CONFIGURATION`) — deklaracja albo ocena operatora jest właściwą podstawą;
+   **twierdzenie z obliczenia statycznego** (`STATIC_CALCULATION` — zwarcia IEC 60909,
+   obciążalność i wytrzymałość przewodów, spadki napięć, rozpływ; przegląd 2026-09-23 wykazał,
+   że bez tego rodzaju żadne sprawdzenie statyczne produktu nie mogłoby być `PELNY`) —
+   `OBLICZENIE` na zdolności o poziomie `VALIDATED_SIMULATION` (solver zwalidowany, np. golden
+   IEC 60909) jest właściwą podstawą, tak samo pomiar, raport z testu i certyfikat;
+   `DOWOD_LACZONY` jest przydatny wyłącznie na poziomie W, gdy KAŻDA ocena składowa ma metodę
+   przydatną;
+2. **dane wejściowe zwalidowane** — żadna wartość wpływająca na wynik nie ma jakości
+   `ESTIMATED` ani `SYSTEM_DEFAULT` (`FieldQuality`; każda taka wartość MUSI stać w
+   `dane_przyjete` — jeden predykat, dwa miejsca to błąd), żadna nie jest przyjęta bez źródła
+   (np. założona moc zwarciowa sieci — decyzja O-8 planu AB);
 3. **podstawa limitów** o stanie `ZWERYFIKOWANE` albo `WSKAZANE` (dokument i jednostka redakcyjna
    wskazane; stan `WSKAZANE` jest wypisywany przy wyniku — treść dokumentu nie jest dołączona do
    repozytorium).
@@ -233,18 +252,18 @@ metody `SYMULACJA` — bieg poza domeną = `NIEPELNY` z nazwanym parametrem poza
 |------|-------|-------------|
 | `kryterium_id` | stabilny identyfikator (np. `frt.pozostanie_w_pracy`, `lfsm_o.odpowiedz_p`, `przewod.wytrzymalosc_cieplna`) | zawsze |
 | `przedmiot` | CO oceniono: element/moduł (`element_ref`, nazwa) + zdanie („Pozostanie modułu parku energii typu B w pracy podczas zadanego profilu zapadu napięcia") | zawsze |
-| `kryterium` | `opis_pl` + `warunek_latex` (render `MathRenderer`) + relacja (`NIE_WIECEJ` / `NIE_MNIEJ` / `PASMO` / `OBWIEDNIA_DOLNA` / `OBWIEDNIA_GORNA` / `LOGICZNE`) + `warunek_wstepny_pl` (gdy kryterium ma warunek uruchomienia, np. U_PCC(t) ≥ obwiednia) | zawsze; `warunek_latex` dla relacji liczbowych |
+| `kryterium` | `opis_pl` + `warunek_latex` (render `MathRenderer`) + relacja (`NIE_WIECEJ` / `NIE_MNIEJ` / `PASMO` / `OBWIEDNIA_DOLNA` / `OBWIEDNIA_GORNA` / `LOGICZNE`) + `warunek_wstepny_pl` (gdy kryterium ma warunek uruchomienia, np. U_PCC(t) ≥ obwiednia) + `warunek_wstepny_podstawa: PodstawaWymagania` (obowiązkowa razem z warunkiem — podstawa obwiedni; stan `NIEUSTALONE` → zastrzeżenie w wyjaśnieniu) | zawsze; `warunek_latex` dla relacji liczbowych; relacja `LOGICZNE` bez limitu (podstawa w `podstawa` kryterium) |
 | `podstawa` | `PodstawaWymagania` KRYTERIUM (wymaganie, z którego kryterium wynika) — może różnić się od `limit.podstawa` (wartość z warstwy krajowej / operatora) | zawsze |
 | `stosowalnosc` | `Stosowalnosc` (typ, technologia, `dotyczy`, `powod_pl`, `podstawa` reguły stosowalności) | zawsze |
-| `wynik` | wielkość (`wielkosc_pl`, `symbol_latex`), wartość, **jednostka**, punkt krytyczny (chwila `t` / element / przedział), `metoda: MetodaDowodu` (≠ `BRAK_METODY`); dla trajektorii — ekstremum i moment krytyczny; dla kryterium logicznego wartość 1/0 z opisem stanu | gdy status ≠ `NIE_DOTYCZY`, `NIE_OCENIONO` (dla `BRAK_PODSTAWY` i metody niedopuszczalnej — informacyjnie, jeśli policzony) |
+| `wynik` | wielkość (`wielkosc_pl`, `symbol_latex`), wartość, **jednostka**, punkt krytyczny (chwila `t` / element / przedział), `metoda` ∈ {`SYMULACJA`, `OBLICZENIE`, `DEKLARACJA`, `POMIAR`, `CERTYFIKAT`} (podzbiór słownika `MetodaDowodu` egzekwowany walidatorem — wartość z raportu z badania jest `POMIAR`, raport jest dowodem, nie metodą wyniku); dla trajektorii — ekstremum i moment krytyczny; dla kryterium logicznego wartość 1/0 w jednostce `"1"` z opisem stanu | gdy status ≠ `NIE_DOTYCZY`, `NIE_OCENIONO` (dla `BRAK_PODSTAWY` i metody niedopuszczalnej — informacyjnie, jeśli policzony) |
 | `limit` | wartość / pasmo / obwiednia (punkty), **jednostka**, `podstawa: PodstawaWymagania`, zakres stosowalności, wersja profilu | gdy relacja liczbowa; brak = `BRAK_PODSTAWY` z nazwanym parametrem |
-| `margines` | wartość, **jednostka**, `definicja_latex`, punkt, `skala` + `skala_rodzaj` (§2.4), margines względny; albo `niedefiniowalny` z powodem | gdy wynik i limit istnieją |
+| `margines` | wartość, **jednostka** (= jednostka wyniku; dla wyniku w `%` margines jest w punktach procentowych `"pp"`), `definicja_latex`, punkt, `skala` + `skala_rodzaj` (§2.4), margines względny; albo `niedefiniowalny` z powodem | gdy wynik i limit istnieją |
 | `niepewnosc` | wartość, jednostka, metoda (§6); albo jawny powód braku („porównanie wartości zadeklarowanych — niepewność numeryczna nie dotyczy") — dla metody `SYMULACJA` wartość jest OBOWIĄZKOWA | zawsze (wartość albo powód) |
 | `status_maszynowy` | §2 | zawsze |
 | `kompletnosc_dowodu`, `powody_niepelnosci` | §3 (liczone, nie wpisywane) | zawsze |
 | `etykieta` | `Etykieta` (§9, liczona w backendzie) | zawsze |
 | `wyjasnienie` | `WyjasnienieWerdyktu` (§5) | zawsze |
-| `dowod` | `StatusDowodu` | zawsze |
+| `dowod` | `StatusDowodu` (metoda, poziom, rodzaj twierdzenia, status modelu, status danych, odniesienie, `w_domenie_walidacji: bool \| None` + `domena_pl` — wynik predykatu `nalezy_do_domeny(bieg, manifest)` §3b; `None` = nie dotyczy (bez biegu); `False` → kompletność `NIEPELNY` z nazwanym parametrem poza domeną) | zawsze |
 | `zakres_waznosci` | `ZakresWaznosci` (§7) | zawsze dla wyników dynamicznych; dla sprawdzeń statycznych — rodzaj analizy i założenia |
 | `slad` | odnośniki kroków WHITE BOX (§8) | zawsze, gdy istnieje obliczenie |
 
@@ -255,7 +274,7 @@ metody `SYMULACJA` — bieg poza domeną = `NIEPELNY` z nazwanym parametrem poza
 | `wymaganie_id`, `nazwa_pl` | identyfikator z katalogu wymagań profilu i nazwa |
 | `podstawa` | `PodstawaWymagania` wymagania (dokument, wydanie, jednostka redakcyjna, warstwa, stan źródła) |
 | `stosowalnosc` | `Stosowalnosc`: typ, technologia, nowy/istniejący moduł (art. 4), `dotyczy`, `powod_pl` (zawsze niepusty), `podstawa` |
-| `sposob_wykazania` | `MetodaDowodu` (§1); `BRAK_METODY` = narzędzie nie ma ani certyfikatu pokrywającego, ani testu/symulacji |
+| `sposob_wykazania` | `MetodaDowodu` (§1) bez `POMIAR` (pomiar jest metodą WYNIKU; wykazanie wymagania pomiarem to `RAPORT_Z_TESTU`); `BRAK_METODY` = narzędzie nie ma ani certyfikatu pokrywającego, ani testu/symulacji; walidator: `dowod.metoda == sposob_wykazania` |
 | `oceny_skladowe` | lista `OcenaKryterium` (≥ 1; pusta WYŁĄCZNIE przy `NIE_DOTYCZY` albo `BRAK_METODY`) |
 | `pokrycie_programu`, `pokrycie_programu_pl` | `PELNE` / `CZESCIOWE` / `NIE_DOTYCZY` + zdanie, jaki zbiór scenariuszy programu badań pokryto (§2.3 pkt 8) |
 | `status_maszynowy`, `kompletnosc_dowodu`, `powody_niepelnosci` | §2.3, §3 |
@@ -385,6 +404,11 @@ interfejs nie definiuje żadnej mapy „status → etykieta" (przegląd #40). Mi
 Dowód (metoda, poziom, status modelu, status danych)**; zakres ważności i ślad — rozwijane, zawsze
 osiągalne jednym kliknięciem. Zdanie wyjaśnienia jest widoczne bez rozwijania (nie w dymku).
 
+Etykieta zależy od POZIOMU rekordu: na poziomie K „Kryterium …", na poziomie W „Wymaganie …"
+(`etykieta(status, kompletnosc, poziom)`); tabela podaje brzmienie dla K, dla W słowo „Kryterium"
+zastępuje „Wymaganie" (para `SPELNIA` + `NIEPELNY` na poziomie W nie występuje — reguła W daje
+wtedy `BRAK_DOWODU`).
+
 | Status + kompletność | Etykieta | Semantyka koloru |
 |----------------------|----------|------------------|
 | `SPELNIA` + `PELNY` | Kryterium spełnione | pozytywna |
@@ -414,7 +438,7 @@ ważności. Dokument twierdzący zgodność wymaga §3 (PEŁNY) dla każdego wym
 |------|-----------|
 | T1 | rekord K/W bez `wyjasnienie` albo z pustym `zdanie_pl` → błąd walidacji przy konstrukcji |
 | T2 | status `SPELNIA` / `NIE_SPELNIA` / `NIEJEDNOZNACZNY` bez `kryterium` (opis + `warunek_latex` dla relacji liczbowej) → błąd |
-| T3 | liczba w `wynik` / `limit` / `margines` / `niepewnosc` bez jednostki → błąd (bezwymiarowe jawnie: „—" z nazwą, np. „p.u." albo „1") |
+| T3 | liczba w `wynik` / `limit` / `margines` / `niepewnosc` bez jednostki → błąd (bezwymiarowe jawnie `"1"`, `"%"` albo `"p.u. (<baza>)"`; myślnik i gołe „p.u." odrzucane) |
 | T4 | limit bez `podstawa` → błąd; limit o stanie `NIEUSTALONE` → status nie może być `SPELNIA` ani `NIE_SPELNIA` (wymuszony `BRAK_PODSTAWY`) |
 | T5 | brak biegu / brak danych / metoda `BRAK` → status nie może być `SPELNIA`; poziom W `SPELNIA` wymaga `PELNY` |
 | T6 | `UNVALIDATED_MODEL` → kompletność `NIEPELNY`, zastrzeżenie w wyjaśnieniu i w tekście dokumentu formalnego (test na treści DOCX/PDF) |
