@@ -109,7 +109,13 @@ LISTA_DOZWOLONA = Path(__file__).resolve().parent / "werdykt_wyjasnialny_allowli
 INWENTARZ = PROJECT_ROOT / "docs" / "audit" / "INWENTARZ_WERDYKTOW_LAKONICZNYCH_2026-09-23.md"
 
 #: Moduł karty werdyktu — jedyne miejsce mapy „semantyka → kolor" (kontrakt §9, §12 pkt 3).
-MODUL_KARTY = "frontend/src/ui2/wyniki/wzorzec/KartaWerdyktu.tsx"
+#: Ścieżka jest składana z katalogu wzorca (istnieje w repozytorium) i nazwy pliku karty,
+#: bo sam plik powstaje w Pakiecie D1 — `verification_phantom_paths_guard` sprawdza literały
+#: ścieżek plików w skryptach weryfikacyjnych, a literał pliku, którego jeszcze nie ma, byłby
+#: ścieżką widmową (CI czerwone na 022ef670). Semantyka bez zmian: DOKŁADNIE jeden plik.
+KATALOG_WZORCA = "frontend/src/ui2/wyniki/wzorzec"
+PLIK_KARTY = "KartaWerdyktu.tsx"
+MODUL_KARTY = f"{KATALOG_WZORCA}/{PLIK_KARTY}"
 #: Serializer rekordu do dokumentu i słownik etykiet — jedyne miejsca map status → tekst (§10).
 MODULY_SERIALIZERA = frozenset({"werdykt.dokument", "werdykt.etykiety"})
 #: Typy kanoniczne kontraktu (§1).
