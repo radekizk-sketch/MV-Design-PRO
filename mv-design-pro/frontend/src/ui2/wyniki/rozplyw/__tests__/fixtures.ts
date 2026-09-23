@@ -135,9 +135,23 @@ export function walidacjaItemFixture(over: Partial<WalidacjaItem> = {}): Walidac
     unit: '%',
     limit_warn: 80.0,
     limit_fail: 100.0,
-    margin_pct: 8.0,
+    // Konwencja dostawcy: `margin_pct` = wartość − próg przekroczenia (ujemny = w
+    // granicy); zapas wyniku wyjaśnialnego (AB-1a-bis) = `margines` (dodatni = w granicy).
+    margin_pct: -8.0,
     status: 'WARNING',
     why_pl: 'Obciążenie gałęzi 92% — powyżej progu ostrzeżenia 80%.',
+    wartosc: 92.0,
+    odniesienie: 100.0,
+    margines: 8.0,
+    podstawa: {
+      dokument: null,
+      wersja: null,
+      klauzula: null,
+      zrodlo_status: 'UNVERIFIED_SOURCE',
+      uwaga_pl:
+        'Próg obciążenia gałęzi z konfiguracji walidacji energetycznej (obciążalność długotrwała I_n z danych gałęzi — katalog); dokument normowy progu nie jest wskazany w kodzie.',
+    },
+    dowod: { run_id: null, element_id: 'L-1', trace_ref: 'white_box' },
     // Ksztalt 1:1 z buildera (R3-D): { tekst, latex } — patrz `jakosc/__tests__/fixtures.ts`.
     white_box: [
       { tekst: 'Wzor: obciazenie = S / S_dop * 100%', latex: '\\text{obciazenie} = \\frac{S}{S_{dop}} \\cdot 100\\%' },
@@ -164,7 +178,10 @@ export function walidacjaResponseFixture(
       target_id: 'L-2',
       target_name: 'Linia L-2',
       observed_value: 65.0,
-      margin_pct: 35.0,
+      margin_pct: -35.0,
+      wartosc: 65.0,
+      margines: 35.0,
+      dowod: { run_id: null, element_id: 'L-2', trace_ref: 'white_box' },
       status: 'PASS',
       why_pl: 'Obciążenie gałęzi 65% — poniżej progu ostrzeżenia 80%.',
       white_box: [

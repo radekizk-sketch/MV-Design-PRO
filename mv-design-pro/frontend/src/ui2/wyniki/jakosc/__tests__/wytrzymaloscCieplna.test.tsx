@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SekcjaWytrzymaloscCieplna } from '../EkranJakosci';
 import { JAKOSC_STRINGS } from '../strings';
-import { przebiegTestowy } from './fixtures';
+import { PODSTAWA_CIEPLNA, przebiegTestowy } from './fixtures';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import type {
   DowodCieplnyResponse,
@@ -45,6 +45,7 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
         granica: 13160,
         jednostka: 'A',
         status: 'FAIL',
+        margines: -1840,
       },
       {
         kod: 'energia_cieplna',
@@ -54,6 +55,7 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
         granica: 64_000_000,
         jednostka: 'A²·s',
         status: 'FAIL',
+        margines: 7_750_000,
       },
     ],
     powod_decyzji_pl: 'Przekrój 70 mm² jest mniejszy od wymaganego 79,8 mm² z warunku cieplnego.',
@@ -95,6 +97,13 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
       braki_pl: [],
       kompletne: true,
     },
+    // Towarzysze werdyktu (karta AB-1a-bis) — 1:1 z `ConductorThermalWithstandItem`.
+    wartosc: 56_250_000,
+    odniesienie: 64_000_000,
+    margines: 6.25,
+    margines_jednostka: '%',
+    podstawa: PODSTAWA_CIEPLNA,
+    dowod: { run_id: 'sc-1', element_id: 'cable_A', trace_ref: null },
     ...over,
   };
 }
@@ -253,6 +262,11 @@ describe('SekcjaWytrzymaloscCieplna — werdykt i stany', () => {
             i2t_dopuszczalne_a2s: null,
             margines_procent: null,
             uzasadnienie_k: null,
+            wartosc: null,
+            odniesienie: null,
+            margines: null,
+            margines_jednostka: null,
+            dowod: { run_id: 'sc-1', element_id: 'cable_B', trace_ref: null },
           }),
         ]),
       ),
@@ -346,6 +360,11 @@ describe('SekcjaWytrzymaloscCieplna — dowód kryterium (karta F-K1 faza 5)', (
     branch_id: 'cable_A',
     branch_name: 'Magistrala L-01',
     status: 'FAIL',
+    wartosc: 56_250_000,
+    odniesienie: 64_000_000,
+    margines: 6.25,
+    margines_jednostka: '%',
+    podstawa: PODSTAWA_CIEPLNA,
     kroki: [
       {
         step: 1,
@@ -453,6 +472,11 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
     branch_id: 'cable_A',
     branch_name: 'Magistrala L-01',
     status: 'FAIL',
+    wartosc: 56_250_000,
+    odniesienie: 64_000_000,
+    margines: 6.25,
+    margines_jednostka: '%',
+    podstawa: PODSTAWA_CIEPLNA,
     kroki: [
       {
         step: 1,
@@ -551,6 +575,9 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
                     temp_poczatkowa_c: 70,
                     temp_koncowa_c: 200,
                     zrodlo_pl: 'PN-E-05115 / IEC 61936-1; k wg IEC 60949 § 3',
+                    zrodlo_k: 'KATALOG',
+                    zrodlo_k_pl: 'wartość katalogowa producenta',
+                    wyprowadzenie_k: null,
                     braki_pl: [],
                     kompletne: true,
                   },

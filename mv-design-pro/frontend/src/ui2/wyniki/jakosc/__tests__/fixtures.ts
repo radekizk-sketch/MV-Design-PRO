@@ -14,6 +14,46 @@ import type { MigotanieResponse, WalidacjaResponse, WiarygodnoscResponse,
   WarunkiPrzylaczeniaResponse,
   WytrzymaloscCieplnaResponse,
 } from '../api';
+import type { PodstawaNormatywnaOdpowiedz } from '../../ocena/api';
+
+/*
+ * Podstawy werdyktów (karta AB-1a-bis) — 1:1 z dostawców backendu
+ * (`analysis/energy_validation/models.py::_PODSTAWA_KONTROLI`,
+ * `analysis/normative/kryteria_napiecia.py::podstawa_progu_napiecia`,
+ * `application/analyses/warunki_przylaczenia.py::PODSTAWA_WARUNKOW_OSD`,
+ * `application/analyses/wytrzymalosc_cieplna_przewodow.py::PODSTAWA_KRYTERIUM_CIEPLNEGO`).
+ * Każda `UNVERIFIED_SOURCE` — wydanie dokumentu nie jest przypięte w kodzie.
+ */
+export const PODSTAWA_OBCIAZENIA_GALEZI: PodstawaNormatywnaOdpowiedz = {
+  dokument: null,
+  wersja: null,
+  klauzula: null,
+  zrodlo_status: 'UNVERIFIED_SOURCE',
+  uwaga_pl:
+    'Próg obciążenia gałęzi z konfiguracji walidacji energetycznej (obciążalność długotrwała I_n z danych gałęzi — katalog); dokument normowy progu nie jest wskazany w kodzie.',
+};
+export const PODSTAWA_NAPIECIA: PodstawaNormatywnaOdpowiedz = {
+  dokument: 'PN-EN 50160',
+  wersja: null,
+  klauzula: null,
+  zrodlo_status: 'UNVERIFIED_SOURCE',
+  uwaga_pl: 'PN-EN 50160 — Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie.',
+};
+export const PODSTAWA_WARUNKOW_OSD: PodstawaNormatywnaOdpowiedz = {
+  dokument: null,
+  wersja: null,
+  klauzula: null,
+  zrodlo_status: 'UNVERIFIED_SOURCE',
+  uwaga_pl:
+    'Warunki przyłączenia wydane przez OSD, wpisane przez projektanta w nagłówku modelu (moc przyłączeniowa, wymagany cos φ); numer i data dokumentu OSD nie są zapisane w modelu.',
+};
+export const PODSTAWA_CIEPLNA: PodstawaNormatywnaOdpowiedz = {
+  dokument: 'PN-HD 60364-4-43',
+  wersja: null,
+  klauzula: '§ 434.5.2',
+  zrodlo_status: 'UNVERIFIED_SOURCE',
+  uwaga_pl: 'Warunek adiabatyczny doboru przekroju. Wydanie dokumentów nie jest przypięte w kodzie.',
+};
 
 export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
   analysis_id: '11111111-1111-1111-1111-111111111111',
@@ -104,9 +144,16 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
       unit: '%',
       limit_warn: 80.0,
       limit_fail: 100.0,
-      margin_pct: 35.0,
+      // Konwencja dostawcy: `margin_pct` = wartość − próg przekroczenia (ujemny =
+      // w granicy); zapas wyniku wyjaśnialnego = `margines` (dodatni = w granicy).
+      margin_pct: -35.0,
       status: 'PASS',
       why_pl: 'Obciążenie gałęzi 65% — poniżej progu ostrzeżenia 80%.',
+      wartosc: 65.0,
+      odniesienie: 100.0,
+      margines: 35.0,
+      podstawa: PODSTAWA_OBCIAZENIA_GALEZI,
+      dowod: { run_id: '33333333-3333-3333-3333-333333333333', element_id: 'line-1', trace_ref: null },
     },
     {
       check_type: 'TRANSFORMER_LOADING',
@@ -116,9 +163,18 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
       unit: '%',
       limit_warn: 80.0,
       limit_fail: 100.0,
-      margin_pct: 8.0,
+      margin_pct: -8.0,
       status: 'WARNING',
       why_pl: 'Obciążenie transformatora 92% — powyżej progu ostrzeżenia 80%.',
+      wartosc: 92.0,
+      odniesienie: 100.0,
+      margines: 8.0,
+      podstawa: {
+        ...PODSTAWA_OBCIAZENIA_GALEZI,
+        uwaga_pl:
+          'Próg obciążenia transformatora z konfiguracji walidacji energetycznej (moc znamionowa S_n z typu katalogowego); dokument normowy progu nie jest wskazany w kodzie.',
+      },
+      dowod: { run_id: '33333333-3333-3333-3333-333333333333', element_id: 'tr-1', trace_ref: null },
     },
     {
       check_type: 'VOLTAGE_DEVIATION',
@@ -128,9 +184,18 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
       unit: '%',
       limit_warn: 5.0,
       limit_fail: 10.0,
-      margin_pct: -2.0,
+      margin_pct: 2.0,
       status: 'FAIL',
       why_pl: 'Odchylenie napięcia 12% — powyżej progu przekroczenia 10%.',
+      wartosc: 12.0,
+      odniesienie: 10.0,
+      margines: -2.0,
+      podstawa: PODSTAWA_NAPIECIA,
+      dowod: {
+        run_id: '33333333-3333-3333-3333-333333333333',
+        element_id: 'bus-B',
+        trace_ref: 'white_box',
+      },
       // Ślad WHITE BOX per pozycja (R2-A; struktura R3-D) — kształt 1:1 z buildera.
       white_box: [
         {
@@ -155,9 +220,18 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
       unit: '%',
       limit_warn: 5.0,
       limit_fail: 10.0,
-      margin_pct: 36.0,
+      margin_pct: -6.8,
       status: 'PASS',
       why_pl: 'Budżet strat 3.2% — poniżej progu ostrzeżenia 5%.',
+      wartosc: 3.2,
+      odniesienie: 10.0,
+      margines: 6.8,
+      podstawa: {
+        ...PODSTAWA_OBCIAZENIA_GALEZI,
+        uwaga_pl:
+          'Założenie projektowe: budżet strat mocy z konfiguracji walidacji energetycznej — nie wymaganie dokumentu normowego.',
+      },
+      dowod: { run_id: '33333333-3333-3333-3333-333333333333', element_id: 'siec', trace_ref: null },
     },
     {
       check_type: 'REACTIVE_BALANCE',
@@ -170,6 +244,15 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
       margin_pct: null,
       status: 'NOT_COMPUTED',
       why_pl: 'Bilans mocy biernej nie został policzony — brak danych wejściowych.',
+      wartosc: null,
+      odniesienie: null,
+      margines: null,
+      podstawa: {
+        ...PODSTAWA_OBCIAZENIA_GALEZI,
+        uwaga_pl:
+          'Progi współczynnika mocy w węźle bilansującym zapisane w kodzie walidacji energetycznej bez wskazanego dokumentu normowego.',
+      },
+      dowod: { run_id: '33333333-3333-3333-3333-333333333333', element_id: 'slack', trace_ref: null },
     },
   ],
   summary: {
@@ -178,7 +261,7 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
     fail_count: 1,
     not_computed_count: 1,
     worst_item_target_id: 'bus-B',
-    worst_item_margin_pct: -2.0,
+    worst_item_margin_pct: 2.0,
   },
 };
 
@@ -475,6 +558,10 @@ export const WARUNKI_FIXTURE: WarunkiPrzylaczeniaResponse = {
         jednostka: 'MW',
         opis_pl: 'Moc oddawana do sieci 4.500 MW wobec limitu 5.000 MW (dotrzymany).',
         readiness_codes: [],
+        odniesienie: 5,
+        margines: 0.5,
+        podstawa: PODSTAWA_WARUNKOW_OSD,
+        dowod: { run_id: 'pf-1', element_id: 'BUS-GPZ-SN', trace_ref: null },
       },
       {
         kryterium: 'cos_phi_w_punkcie_przylaczenia',
@@ -484,11 +571,20 @@ export const WARUNKI_FIXTURE: WarunkiPrzylaczeniaResponse = {
         jednostka: '-',
         opis_pl: 'cosfi w punkcie 0.9900 wobec wymaganego 0.9500 (dotrzymany).',
         readiness_codes: [],
+        odniesienie: 0.95,
+        margines: 0.040047,
+        podstawa: PODSTAWA_WARUNKOW_OSD,
+        dowod: { run_id: 'pf-1', element_id: 'BUS-GPZ-SN', trace_ref: null },
       },
     ],
     readiness_codes: [],
     formula_ref: 'cosφ = |P| / √(P² + Q²);  kryterium mocy: |P| ≤ P_limit',
     zalozenia: [],
+    wartosc: 2,
+    odniesienie: 2,
+    margines: null,
+    podstawa: PODSTAWA_WARUNKOW_OSD,
+    dowod: { run_id: 'pf-1', element_id: 'BUS-GPZ-SN', trace_ref: null },
   },
 };
 
@@ -564,6 +660,7 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
             granica: 127238400,
             jednostka: 'A²·s',
             status: 'PASS',
+            margines: 70988400,
           },
           {
             kod: 'przekroj_minimalny',
@@ -573,12 +670,19 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
             granica: 79.8,
             jednostka: 'mm²',
             status: 'PASS',
+            margines: 40.2,
           },
         ],
         powod_decyzji_pl: 'I²·t = 56,25·10⁶ A²·s ≤ k²·S² = 127,24·10⁶ A²·s — zapas 55,8 %.',
         zalecenia: [],
         wrazliwosc: [],
         uzasadnienie_k: null,
+        wartosc: 56250000,
+        odniesienie: 127238400,
+        margines: 55.8,
+        margines_jednostka: '%',
+        podstawa: PODSTAWA_CIEPLNA,
+        dowod: { run_id: 'sc-1', element_id: 'cable_A', trace_ref: null },
       },
     ],
     summary: { pass_count: 1, fail_count: 0, unavailable_count: 0 },

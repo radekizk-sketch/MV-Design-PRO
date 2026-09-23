@@ -224,6 +224,11 @@ describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () =
           observed_value: 0.82,
           limit_fail: 0.95,
           status: 'FAIL',
+          // Karta AB-1a-bis: tabela czyta towarzyszy werdyktu (backend wyprowadza
+          // `wartosc` = observed_value, `odniesienie` = limit_fail) — wariant
+          // fixtury musi nieść oba kształty jak realna odpowiedź.
+          wartosc: 0.82,
+          odniesienie: 0.95,
         },
       ],
     };

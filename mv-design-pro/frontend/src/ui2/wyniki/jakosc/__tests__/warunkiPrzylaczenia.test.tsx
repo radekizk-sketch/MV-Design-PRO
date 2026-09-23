@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { SekcjaWarunkowPrzylaczenia } from '../EkranJakosci';
 import { JAKOSC_STRINGS } from '../strings';
-import { przebiegTestowy } from './fixtures';
+import { PODSTAWA_WARUNKOW_OSD, przebiegTestowy } from './fixtures';
 import type { OcenaWarunkow, WarunkiPrzylaczeniaResponse } from '../api';
 
 const fetchMock = vi.fn();
@@ -33,6 +33,11 @@ function odpowiedz(ocena: Partial<OcenaWarunkow>): WarunkiPrzylaczeniaResponse {
       readiness_codes: [],
       formula_ref: 'cosφ = |P| / √(P² + Q²);  kryterium mocy: |P| ≤ P_limit',
       zalozenia: [],
+      wartosc: null,
+      odniesienie: null,
+      margines: null,
+      podstawa: PODSTAWA_WARUNKOW_OSD,
+      dowod: { run_id: 'pf-1', element_id: 'BUS-GPZ-SN', trace_ref: null },
       ...ocena,
     } as OcenaWarunkow,
   };
@@ -74,6 +79,10 @@ describe('SekcjaWarunkowPrzylaczenia — realna ścieżka do końcówki', () => 
               jednostka: 'MW',
               opis_pl: 'Moc oddawana do sieci 6.200 MW wobec limitu 5.000 MW (PRZEKROCZONY).',
               readiness_codes: [],
+              odniesienie: 5.0,
+              margines: -1.2,
+              podstawa: PODSTAWA_WARUNKOW_OSD,
+              dowod: { run_id: 'pf-1', element_id: 'BUS-GPZ-SN', trace_ref: null },
             },
           ],
         }),
@@ -127,6 +136,10 @@ describe('SekcjaWarunkowPrzylaczenia — werdykt', () => {
               jednostka: 'MW',
               opis_pl: 'Moc oddawana do sieci 6.200 MW wobec limitu 5.000 MW (PRZEKROCZONY).',
               readiness_codes: [],
+              odniesienie: 5.0,
+              margines: -1.2,
+              podstawa: PODSTAWA_WARUNKOW_OSD,
+              dowod: { run_id: 'pf-1', element_id: 'BUS-GPZ-SN', trace_ref: null },
             },
             {
               kryterium: 'cos_phi_w_punkcie_przylaczenia',
@@ -136,6 +149,10 @@ describe('SekcjaWarunkowPrzylaczenia — werdykt', () => {
               jednostka: '-',
               opis_pl: 'cosfi w punkcie 0.9900 wobec wymaganego 0.9500 (dotrzymany).',
               readiness_codes: [],
+              odniesienie: 0.95,
+              margines: 0.04,
+              podstawa: PODSTAWA_WARUNKOW_OSD,
+              dowod: { run_id: 'pf-1', element_id: 'BUS-GPZ-SN', trace_ref: null },
             },
           ],
         }),
@@ -152,6 +169,17 @@ describe('SekcjaWarunkowPrzylaczenia — werdykt', () => {
     expect(screen.getByText(JAKOSC_STRINGS.ocenaSpelnione)).toBeTruthy();
     // Punkt przyłączenia w założeniach — projektant musi wiedzieć, GDZIE zmierzono.
     expect(screen.getByText('BUS-GPZ-SN')).toBeTruthy();
+    // Karta AB-1a-bis: zapas z backendu (ujemny = naruszone) i podstawa werdyktu
+    // z odznaką statusu źródła — towarzysze werdyktu, nie liczone w UI.
+    expect(screen.getByText('-1,20')).toBeTruthy();
+    expect(screen.getByText('0,04')).toBeTruthy();
+    expect(screen.getByTestId('mvd-jakosc-warunki-podstawa')).toBeTruthy();
+    expect(screen.getByTestId('mvd-jakosc-warunki-podstawa-zrodlo').textContent).toBe(
+      'źródło niezweryfikowane',
+    );
+    expect(screen.getByTestId('mvd-jakosc-warunki-podstawa-uwaga').textContent).toContain(
+      'numer i data dokumentu OSD nie są zapisane w modelu',
+    );
   });
 
   it('stan trzeci: brak warunków OSD nie jest spełnieniem ani błędem', async () => {
@@ -176,6 +204,10 @@ describe('SekcjaWarunkowPrzylaczenia — werdykt', () => {
               jednostka: 'MW',
               opis_pl: 'Nie mozna ocenic mocy w punkcie przylaczenia — brak danych.',
               readiness_codes: ['connection.power_limit_missing'],
+              odniesienie: null,
+              margines: null,
+              podstawa: PODSTAWA_WARUNKOW_OSD,
+              dowod: { run_id: 'pf-1', element_id: 'BUS-GPZ-SN', trace_ref: null },
             },
             {
               kryterium: 'cos_phi_w_punkcie_przylaczenia',
@@ -185,6 +217,10 @@ describe('SekcjaWarunkowPrzylaczenia — werdykt', () => {
               jednostka: '-',
               opis_pl: 'Nie mozna ocenic cosfi w punkcie przylaczenia — brak danych.',
               readiness_codes: ['connection.cos_phi_required_missing'],
+              odniesienie: null,
+              margines: null,
+              podstawa: PODSTAWA_WARUNKOW_OSD,
+              dowod: { run_id: 'pf-1', element_id: 'BUS-GPZ-SN', trace_ref: null },
             },
           ],
         }),
@@ -213,6 +249,10 @@ describe('SekcjaWarunkowPrzylaczenia — werdykt', () => {
               jednostka: 'MW',
               opis_pl: 'Moc oddawana do sieci 4.500 MW wobec limitu 5.000 MW (dotrzymany).',
               readiness_codes: [],
+              odniesienie: 5.0,
+              margines: 0.5,
+              podstawa: PODSTAWA_WARUNKOW_OSD,
+              dowod: { run_id: 'pf-1', element_id: 'BUS-GPZ-SN', trace_ref: null },
             },
             {
               kryterium: 'cos_phi_w_punkcie_przylaczenia',
@@ -222,6 +262,10 @@ describe('SekcjaWarunkowPrzylaczenia — werdykt', () => {
               jednostka: '-',
               opis_pl: 'Brak wymaganego cosfi w warunkach OSD.',
               readiness_codes: ['connection.cos_phi_required_missing'],
+              odniesienie: null,
+              margines: null,
+              podstawa: PODSTAWA_WARUNKOW_OSD,
+              dowod: { run_id: 'pf-1', element_id: 'BUS-GPZ-SN', trace_ref: null },
             },
           ],
         }),

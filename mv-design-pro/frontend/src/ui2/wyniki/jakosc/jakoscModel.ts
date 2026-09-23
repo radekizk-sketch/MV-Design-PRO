@@ -276,13 +276,15 @@ export function mapujWierszWalidacji(item: WalidacjaItem, index: number): Wiersz
   return {
     rodzaj: { wartosc: rodzajKontroliPL(item.check_type) },
     obiekt: { wartosc: item.target_name ?? item.target_id },
-    wartosc: komorkaLiczba(item.observed_value, fmtWartosc, {
+    // Towarzysze werdyktu (karta AB-1a-bis): wartość, próg przekroczenia i zapas
+    // z backendu; zapas dodatni = w granicy (`margin_pct` dostawcy ma znak odwrotny).
+    wartosc: komorkaLiczba(item.wartosc, fmtWartosc, {
       jednostka: item.unit,
       ostrzezenie: przekroczony,
     }),
     progOstrz: komorkaLiczba(item.limit_warn, fmtWartosc, { jednostka: item.unit }),
-    progPrzekr: komorkaLiczba(item.limit_fail, fmtWartosc, { jednostka: item.unit }),
-    margines: komorkaLiczba(item.margin_pct, fmtProcent),
+    progPrzekr: komorkaLiczba(item.odniesienie, fmtWartosc, { jednostka: item.unit }),
+    margines: komorkaLiczba(item.margines, fmtProcent),
     status: { wartosc: statusWalidacjiPL(item.status) },
     [KLUCZ_WALIDACJI_OBIEKT]: { wartosc: item.target_id },
     [KLUCZ_WIERSZA_WALIDACJI]: { wartosc: kluczWalidacji(item, index) },
@@ -416,11 +418,12 @@ export function naWierszeArcFlash(wyniki: readonly WynikArcFlash[]): WierszTabel
 // backendu (`/api/quality/connection-conditions`). UI nie liczy ani nie ocenia —
 // tłumaczy tylko kryteria i statusy na język polski i formatuje liczby.
 
-/** Kolumny werdyktu warunków przyłączenia: kryterium, zmierzona, wymagana, ocena. */
+/** Kolumny werdyktu warunków przyłączenia: kryterium, zmierzona, wymagana, zapas, ocena. */
 export const KOLUMNY_WARUNKOW: DefinicjaKolumny[] = [
   { klucz: 'kryterium', etykieta: JAKOSC_STRINGS.kolKryterium, wyrownanie: 'lewo' },
   { klucz: 'zmierzona', etykieta: JAKOSC_STRINGS.kolWartoscZmierzona, mono: true },
   { klucz: 'wymagana', etykieta: JAKOSC_STRINGS.kolWartoscWymagana, mono: true },
+  { klucz: 'zapas', etykieta: JAKOSC_STRINGS.kolZapas, mono: true },
   { klucz: 'ocena', etykieta: JAKOSC_STRINGS.kolOcena, wyrownanie: 'lewo' },
 ];
 
@@ -446,8 +449,14 @@ export function naWierszeWarunkow(pozycje: readonly PozycjaWarunku[]): WierszTab
       jednostka: pozycja.jednostka === '-' ? undefined : pozycja.jednostka,
       ostrzezenie: pozycja.status === 'FAIL',
     }),
-    wymagana: komorkaLiczba(pozycja.wymagana, fmtWartosc, {
+    // Wymaganie = towarzysz `odniesienie` (AB-1a-bis; ta sama liczba co `wymagana`).
+    wymagana: komorkaLiczba(pozycja.odniesienie, fmtWartosc, {
       jednostka: pozycja.jednostka === '-' ? undefined : pozycja.jednostka,
+    }),
+    // Zapas z backendu (dodatni = dotrzymane) — UI nie odejmuje liczb.
+    zapas: komorkaLiczba(pozycja.margines, fmtWartosc, {
+      jednostka: pozycja.jednostka === '-' ? undefined : pozycja.jednostka,
+      ostrzezenie: pozycja.margines !== null && pozycja.margines < 0,
     }),
     ocena: { wartosc: ocenaWarunkuPL(pozycja.status) },
   }));

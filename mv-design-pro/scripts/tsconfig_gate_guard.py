@@ -356,7 +356,12 @@ POMIJANE_KATALOGI = {
 #: uzupelnione w fiksturach testow ocena/co-wymaga-uwagi/macierz/lom do pelnego
 #: ksztaltu backendu; przy okazji fikstura `ocena/__tests__/model.test.ts` (brakujace
 #: pola V12.7 `PozycjaOceny`) przestala byc bledem. Pomiar PO: 104. Budzet 105 -> 104.
-BUDZET_BLEDOW_POZA_BRAMKA = 104
+#: Karta AB-1a-bis (2026-09-23): fikstury testow modulu `ui2/wyniki/jakosc` i
+#: `ui2/wyniki/rozplyw` dostaly towarzyszy werdyktu; przy okazji w tym samym
+#: module usuniete 2 zastane bledy (`arcFlash.test.tsx` nieuzywany import,
+#: `wytrzymaloscCieplna.test.tsx` brak pol `zrodlo_k*` w `UzasadnienieK`).
+#: Pomiar PO: 102. Budzet 104 -> 102.
+BUDZET_BLEDOW_POZA_BRAMKA = 102
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

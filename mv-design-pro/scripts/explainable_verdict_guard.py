@@ -21,8 +21,18 @@ REGULA (audyt §3.3 p. 1-8, przeniesiona w calosci):
        `backend/src`, bo nosnik importuje go po nazwie);
    (b) literal slownika z kluczem z `KLUCZE_WERDYKTU` = {verdict, werdykt, wynik,
        status, overall_status, compatibility_status} i wartoscia bedaca stala z
-       `TOKENY_WERDYKTU` (literal napisu, nazwa stalej modulowej o wartosci-tokenie
-       albo wyrazenie warunkowe, ktorego obie galezie sa tokenami).
+       `TOKENY_WERDYKTU` (literal napisu, nazwa stalej modulowej o wartosci-tokenie,
+       wyrazenie warunkowe, ktorego obie galezie sa tokenami, albo — AB-1a-bis —
+       czlonek enum o wartosci-tokenie: `Status.PASS` / `Status.PASS.value`);
+   (c) KARTA AB-1a-bis (domkniecie luki zmierzonej przez wykonawce 2: 7 klas
+       `analysis/**` z werdyktem typu `StrEnum` przechodzilo bez zgloszenia):
+       klasa jak w (a), ktorej pole ma adnotacje wskazujaca klase wyliczeniowa
+       (`Enum`/`StrEnum`/`str, Enum`/enum dziedziczacy po enum) z >= 1 czlonkiem
+       o wartosci-tokenie (literal albo `auto()` w `StrEnum`), albo ALIAS takiej
+       klasy (`X = Status`, `X = Status | None`, `X: TypeAlias = Optional[Status]`,
+       alias aliasu — do punktu stalego). Definicje typow (aliasy `Literal`, enumy
+       i ich aliasy) sa zbierane z CALEGO `backend/src` (enum bywa w `domain/**`),
+       nosniki — wylacznie z zakresu skanu.
 3. GRUPY TOWARZYSZY (kazda grupa: dowolna z nazw), szukane w nosniku ALBO w klasie
    nadrzednej, ktora zawiera go jako pole (zagniezdzenie jak `PozycjaWerdyktu →
    OcenaElementu`), a dla slownika — w kluczach tego slownika albo slownika, ktory
@@ -48,7 +58,9 @@ REGULA (audyt §3.3 p. 1-8, przeniesiona w calosci):
    pozycji z listy wyjatkow dawalo zgloszenie, a nie cisze.
 7. FRONTEND (`--frontend`): ta sama regula na interfejsach
    `frontend/src/ui2/**/api.ts` — propercja typu unii literalow z tokenem (wprost
-   albo przez alias `type X = 'a' | 'b'`) bez pieciu grup w tym samym interfejsie,
+   albo przez alias `type X = 'a' | 'b'`, albo — AB-1a-bis — enum TS z czlonkiem
+   o wartosci-tokenie; aliasy i enumy zbierane z calego `frontend/src/**`, bo
+   lustro moze importowac typ z `model.ts` czy `types/**`) bez pieciu grup w tym samym interfejsie,
    w interfejsie rozszerzanym (`extends`) albo w interfejsie nadrzednym, ktory go
    zawiera jako propercje. Lista wyjatkow frontu:
    `scripts/explainable_verdict_frontend_allowlist.txt` (pozycja = `plik::Interfejs.propercja`

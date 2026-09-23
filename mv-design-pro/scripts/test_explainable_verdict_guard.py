@@ -28,8 +28,6 @@ from explainable_verdict_guard import (  # noqa: E402
     FRONTEND_UI2,
     SKAN_FROZEN,
     PozycjaWyjatku,
-    _pliki_backendu,
-    _pliki_frontu,
     adapter_wolany_z_trasy_api,
     main_backend,
     main_frontend,
@@ -38,6 +36,8 @@ from explainable_verdict_guard import (  # noqa: E402
     wczytaj_liste_wyjatkow_frontu,
     zbierz_zgloszenia_backend,
     zbierz_zgloszenia_frontend,
+    zgloszenia_drzewa,
+    zgloszenia_frontu,
 )
 
 KOMPLET_POL = """
@@ -209,12 +209,130 @@ def test_m6_klasa_wynik_inzynierski_i_jej_pola_sa_zgodne_z_definicji() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Karta AB-1a-bis — werdykt jako pole typu Enum/StrEnum (iloczyn cech:
+# postac enum x miejsce definicji x alias x towarzysze x slownik z czlonkiem)
+# ---------------------------------------------------------------------------
+
+ENUM_WERDYKTU = """
+from enum import Enum, StrEnum, auto
+class StatusWerdyktu(StrEnum):
+    PASS = "PASS"
+    WARNING = "WARNING"
+    FAIL = "FAIL"
+"""
+
+
+@pytest.mark.parametrize(
+    "definicja",
+    [
+        'class S(StrEnum):\n    PASS = "PASS"\n    INNE = "X"\n',
+        'class S(str, Enum):\n    OK = "zgodny"\n',
+        "class S(StrEnum):\n    PASS = auto()\n",  # auto() w StrEnum = "pass"
+        'class Baza(StrEnum):\n    pass\nclass S(Baza):\n    FAIL = "FAIL"\n',
+        'import enum\nclass S(enum.Enum):\n    NIE = "NIE_SPELNIA"\n',
+    ],
+)
+def test_bis_werdykt_jako_strenum_bez_towarzyszy_zgloszony(definicja: str) -> None:
+    kod = (
+        "from enum import Enum, StrEnum, auto\n"
+        + definicja
+        + "@dataclass\nclass Pozycja:\n    status: S\n    opis: str\n"
+    )
+    assert _zgloszenia(kod) == ["application/x.py::Pozycja"]
+
+
+def test_bis_ten_sam_strenum_z_piecioma_grupami_nie_zgloszony() -> None:
+    kod = ENUM_WERDYKTU + "@dataclass\nclass Pozycja:\n    status: StatusWerdyktu\n" + KOMPLET_POL
+    assert _zgloszenia(kod) == []
+
+
+@pytest.mark.parametrize("brakujace", ["wartosc", "odniesienie", "margines", "podstawa", "dowod"])
+def test_bis_strenum_brak_jednej_grupy_wystarcza(brakujace: str) -> None:
+    pola = "\n".join(
+        linia for linia in KOMPLET_POL.splitlines() if not linia.strip().startswith(brakujace)
+    )
+    kod = ENUM_WERDYKTU + "class Pozycja(BaseModel):\n    status: StatusWerdyktu\n" + pola + "\n"
+    assert _zgloszenia(kod) == ["application/x.py::Pozycja"]
+
+
+@pytest.mark.parametrize(
+    "alias",
+    [
+        "Status = StatusWerdyktu\n",
+        "Status = StatusWerdyktu | None\n",
+        "from typing import Optional, TypeAlias\nStatus: TypeAlias = Optional[StatusWerdyktu]\n",
+        "Posredni = StatusWerdyktu\nStatus = Posredni\n",  # alias aliasu (punkt staly)
+    ],
+)
+def test_bis_alias_enum_zgloszony(alias: str) -> None:
+    kod = ENUM_WERDYKTU + alias + "class Pozycja(BaseModel):\n    status: Status\n"
+    assert _zgloszenia(kod) == ["application/x.py::Pozycja"]
+
+
+def test_bis_enum_z_modulu_spoza_zakresu_skanu_zgloszony() -> None:
+    """Enum w `domain/**` (kontekst), nosnik w `analysis/**` — typy z calego src."""
+    typy = ast.parse(textwrap.dedent(ENUM_WERDYKTU))
+    nosnik = ast.parse("class Pozycja(BaseModel):\n    status: StatusWerdyktu | None\n")
+    zgl = zbierz_zgloszenia_backend({"analysis/p.py": nosnik}, kontekst=[typy])
+    assert [z.ident for z in zgl] == ["analysis/p.py::Pozycja"]
+    # Bez kontekstu (enum niewidoczny) tego samego nosnika nie ma — dlatego guard
+    # na prawdziwym drzewie zawsze podaje kontekst (`zgloszenia_drzewa`).
+    assert zbierz_zgloszenia_backend({"analysis/p.py": nosnik}) == []
+
+
+@pytest.mark.parametrize(
+    "kod",
+    [
+        # enum bez tokenu werdyktu nie jest typem werdyktu
+        'class Rola(StrEnum):\n    PRIMARY = "PRIMARY"\nclass X(BaseModel):\n    rola: Rola\n',
+        # sama definicja enum z tokenem nie jest nosnikiem
+        ENUM_WERDYKTU,
+        # stala-czlonek i mapa etykiet nie sa aliasem typu ani nosnikiem
+        ENUM_WERDYKTU
+        + "DOMYSLNY = StatusWerdyktu.PASS\nORDER = {StatusWerdyktu.PASS: 0}\n"
+        + "class X(BaseModel):\n    kolejnosc: ORDER\n",
+        # porownanie z czlonkiem
+        ENUM_WERDYKTU + "def f(p):\n    return p.status == StatusWerdyktu.FAIL\n",
+    ],
+)
+def test_bis_nie_nosniki_enum_nie_zgloszone(kod: str) -> None:
+    assert _zgloszenia("from enum import StrEnum\n" + kod) == []
+
+
+@pytest.mark.parametrize("wartosc", ["StatusWerdyktu.PASS", "StatusWerdyktu.FAIL.value"])
+def test_bis_slownik_z_czlonkiem_enum_zgloszony(wartosc: str) -> None:
+    kod = ENUM_WERDYKTU + f"def f():\n    return {{'status': {wartosc}}}\n"
+    assert _zgloszenia(kod) == ["application/x.py::f[status]"]
+
+
+def test_bis_slownik_z_czlonkiem_bez_tokenu_nie_zgloszony() -> None:
+    kod = ENUM_WERDYKTU + "def f():\n    return {'status': StatusWerdyktu.WARNING}\n"
+    assert _zgloszenia(kod) == []
+
+
+def test_bis_zmierzone_siedem_klas_analysis_maja_towarzyszy() -> None:
+    """Pomiar karty na bazie (7 nosnikow `analysis/**`) — po przebudowie zaden
+    nie jest zgloszony, a kazdy nadal JEST nosnikiem (pole typu enum z tokenem)."""
+    zgl = {z.ident for z in zgloszenia_drzewa(BACKEND_SRC)}
+    for ident in (
+        "analysis/energy_validation/models.py::EnergyValidationItem",
+        "analysis/normative/models.py::NormativeItem",
+        "analysis/protection_curves_it/models.py::ProtectionCurvesITView",
+        "analysis/recommendations/models.py::RecommendationEntry",
+        "analysis/sensitivity/models.py::SensitivityPerturbation",
+        "analysis/sensitivity/models.py::SensitivityEntry",
+        "analysis/voltage_profile/models.py::VoltageProfileRow",
+    ):
+        assert ident not in zgl
+
+
+# ---------------------------------------------------------------------------
 # Mutacja 7 — usunięcie pozycji z listy wyjątków daje zgłoszenie (prawdziwe drzewo)
 # ---------------------------------------------------------------------------
 
 
 def _prawdziwe() -> tuple[list, list[PozycjaWyjatku]]:
-    zgl = zbierz_zgloszenia_backend(_pliki_backendu(BACKEND_SRC))
+    zgl = zgloszenia_drzewa(BACKEND_SRC)
     return zgl, wczytaj_liste_wyjatkow(ALLOWLIST.read_text(encoding="utf-8"))
 
 
@@ -365,6 +483,37 @@ def test_front_komplet_towarzyszy_w_interfejsie_rodzicu_albo_bazie_nie_zgloszony
         assert _zgl_ts(tekst) == [], tekst
 
 
+def test_bis_front_enum_ts_z_tokenem_zgloszony() -> None:
+    tekst = (
+        "export enum StatusWerdyktu {\n  Spelnia = 'PASS',\n  Nie = 'FAIL',\n}\n"
+        "export interface Wiersz {\n  readonly status: StatusWerdyktu;\n}\n"
+    )
+    assert _zgl_ts(tekst) == ["src/ui2/x/api.ts::Wiersz.status"]
+
+
+def test_bis_front_enum_ts_bez_tokenu_nie_zgloszony() -> None:
+    tekst = (
+        "export const enum Rola {\n  A = 'PRIMARY',\n}\n"
+        "export interface Wiersz {\n  readonly rola: Rola;\n}\n"
+    )
+    assert _zgl_ts(tekst) == []
+
+
+def test_bis_front_alias_z_pliku_kontekstu_zgloszony() -> None:
+    """Lustro w `api.ts` typuje status aliasem z `model.ts` — typ z kontekstu."""
+    model = "export type StatusWiersza = 'PASS' | 'FAIL' | 'UNAVAILABLE';\n"
+    api = "export interface Wiersz {\n  readonly status: StatusWiersza | null;\n}\n"
+    zgl = zbierz_zgloszenia_frontend({"src/ui2/x/api.ts": api}, kontekst=[model])
+    assert [z.ident for z in zgl] == ["src/ui2/x/api.ts::Wiersz.status"]
+    assert zbierz_zgloszenia_frontend({"src/ui2/x/api.ts": api}) == []
+
+
+def test_bis_front_lista_wyjatkow_bez_luster_jakosci() -> None:
+    """Karta AB-1a-bis: 6 luster `jakosc/api.ts` zdjete z listy wyjatkow frontu."""
+    wyjatki = wczytaj_liste_wyjatkow_frontu(ALLOWLIST_FRONTEND.read_text(encoding="utf-8"))
+    assert not [w for w in wyjatki if w.startswith("src/ui2/wyniki/jakosc/")]
+
+
 def test_front_komentarz_i_mapa_etykiet_nie_sa_nosnikiem() -> None:
     tekst = (
         "// export interface Stary { status: 'PASS' }\n"
@@ -375,7 +524,7 @@ def test_front_komentarz_i_mapa_etykiet_nie_sa_nosnikiem() -> None:
 
 
 def test_front_usuniecie_pozycji_listy_daje_zgloszenie_i_martwy_wpis_jest_bledem() -> None:
-    zgl = {z.ident for z in zbierz_zgloszenia_frontend(_pliki_frontu(FRONTEND_UI2))}
+    zgl = {z.ident for z in zgloszenia_frontu(FRONTEND_UI2)}
     wyjatki = wczytaj_liste_wyjatkow_frontu(ALLOWLIST_FRONTEND.read_text(encoding="utf-8"))
     assert wyjatki and set(wyjatki) == zgl  # lista = dokladnie zmierzone nosniki
     with pytest.raises(ValueError):

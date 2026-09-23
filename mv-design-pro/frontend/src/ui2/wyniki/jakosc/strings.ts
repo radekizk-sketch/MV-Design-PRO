@@ -47,6 +47,12 @@ export const JAKOSC_STRINGS = {
   kolProgOstrzezenia: 'Próg ostrzeżenia',
   kolProgPrzekroczenia: 'Próg przekroczenia',
   kolMargines: 'Margines',
+  // Towarzysze werdyktu (karta AB-1a-bis) — zapas dodatni = w granicy, podstawa.
+  kolZapas: 'Zapas',
+  kolPodstawa: 'Podstawa',
+  sekcjaPodstawaWerdyktu: 'Podstawa werdyktu',
+  jednPktProc: 'pkt proc.',
+  marginesOpis: 'Zapas do progu przekroczenia: wartość dodatnia = w granicy.',
   // Warunki przyłączenia OSD (karta F-K2, znalezisko Z2 audytu FLOW)
   sekcjaWarunki: 'Warunki przyłączenia OSD',
   kolKryterium: 'Kryterium',

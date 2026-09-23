@@ -2,26 +2,15 @@
 #
 # Format: `plik::Interfejs.propercja | powod` (powod merytoryczny, jedno zdanie+).
 # Lista ZAMKNIETA: guard zglasza pozycje martwe (brak takiego nosnika) i kazdy nowy
-# nosnik spoza listy. Pomiar na HEAD 529837d2 + zmiany karty: 8 pozycji ponizej.
-#
-# Dwie klasy pozycji:
+# nosnik spoza listy. Pomiar na HEAD 529837d2 + zmiany karty AB-1a: 8 pozycji;
+# karta AB-1a-bis zdjela 6 luster dostawcow jakosci (`ui2/wyniki/jakosc/api.ts`:
+# WalidacjaItem, PozycjaWarunku, OcenaWarunkow, PozycjaCieplna, KryteriumCieplne,
+# DowodCieplnyResponse) — dostawcy przebudowani z piecioma towarzyszami
+# (MELDUNEK_AB_1A_BIS_2026-09.md). Zostaje 1 klasa pozycji:
 # (A) kontrakt wyniku wyjasnialnego (PozycjaOceny = PozycjaWerdyktu.to_dict) i jego
 #     koperta — p. 4 reguly („WynikInzynierski albo pole w nim"): towarzysze leza
-#     w elementach pozycji (`elementy[]`), a guard szuka tylko w nosniku i rodzicach;
-# (B) lustra odpowiedzi dostawcow jakosci, ktorych towarzysze istnieja pod nazwami
-#     dostawcy spoza grup audytu §3.3 albo sa niekompletne (brak podstawy); backend
-#     tych dostawcow trzyma status w StrEnum/aliasie niepodlegajacym p. 2(a) reguly
-#     backendu — przebudowa wymaga zmiany dostawcy i jest zgloszona w meldunku
-#     wykonawcy 2 (MELDUNEK_AB_1A_WYKONAWCA_2_2026-09.md, sekcja 5) do decyzji.
+#     w elementach pozycji (`elementy[]`), a guard szuka tylko w nosniku i rodzicach.
 
 # (A) kontrakt wyniku wyjasnialnego
 src/ui2/wyniki/ocena/api.ts::PozycjaOceny.stan | Kontrakt wyniku wyjasnialnego (PozycjaWerdyktu.to_dict, karta AB-1a D2): stan pozycji jest agregatem ocen elementow, a wartosc, odniesienie i margines niesie kazdy element w `elementy[]` (OcenaElementu), podstawa i dowod sa w pozycji i elemencie.
 src/ui2/wyniki/ocena/api.ts::OdpowiedzOceny.werdykt | Koperta kontraktu wyniku wyjasnialnego: werdykt zbiorczy agregatu kryteriow, kazda pozycja `pozycje[]` niesie komplet towarzyszy; werdykt koperty nie ma wlasnej wielkosci ani wymagania.
-
-# (B) lustra dostawcow jakosci (towarzysze pod nazwami dostawcy / niekompletne)
-src/ui2/wyniki/jakosc/api.ts::WalidacjaItem.status | Lustro EnergyValidationItem (analysis/energy_validation, status w StrEnum): wartosc = observed_value, wymaganie = limit_warn/limit_fail, margines = margin_pct, dowod = white_box — nazwy dostawcy spoza grup audytu; brak podstawy normatywnej progow (progi z WalidacjaConfig) — zgloszone w meldunku.
-src/ui2/wyniki/jakosc/api.ts::PozycjaWarunku.status | Lustro pozycji warunkow przylaczenia OSD (application/analyses/warunki_przylaczenia.py): wartosc jest, wymaganie = `wymagana` (nazwa dostawcy), brak marginesu, podstawy (dokument OSD w naglowku modelu, nie w pozycji) i dowodu per pozycja — zgloszone w meldunku.
-src/ui2/wyniki/jakosc/api.ts::OcenaWarunkow.status_ogolny | Status ogolny warunkow przylaczenia = agregat pozycji `pozycje[]`; dowod = formula_ref, brak wlasnej wielkosci i wymagania (agregat), brak podstawy — zgloszone w meldunku razem z PozycjaWarunku.
-src/ui2/wyniki/jakosc/api.ts::PozycjaCieplna.status | Lustro oceny cieplnej galezi (application/analyses/wytrzymalosc_cieplna_przewodow.py): wartosc = i_fault_a/i2t_a2s, wymaganie = i_permissible_a/i2t_dopuszczalne_a2s, margines = margines_procent, dowod = osobna trasa /proof — nazwy dostawcy spoza grup audytu; podstawa (IEC 60949) tylko w opisie modulu — zgloszone w meldunku.
-src/ui2/wyniki/jakosc/api.ts::KryteriumCieplne.status | Kryterium czastkowe oceny cieplnej: wartosc jest, wymaganie = `granica` (nazwa dostawcy), brak marginesu, podstawy i dowodu per kryterium (dowod na poziomie galezi) — zgloszone w meldunku.
-src/ui2/wyniki/jakosc/api.ts::DowodCieplnyResponse.status | Odpowiedz trasy dowodu cieplnego: dowod = `kroki` (TraceStep), run_id jest; wartosc, wymaganie i margines leza w krokach sladu, nie w polach odpowiedzi; brak podstawy — zgloszone w meldunku razem z PozycjaCieplna.

@@ -15,6 +15,7 @@
 
 import type { AdvancementMode } from '../../shell/modeModel';
 import { PrzegladDowodu } from '../dowod';
+import { PodstawaStrukturalna } from '../ocena/WynikWyjasniony';
 import type {
   DowodCieplnyResponse,
   NormaCieplna,
@@ -110,13 +111,21 @@ export function PanelDowoduCieplnego({
         </div>
         <div>
           <dt>Margines bezpieczeństwa</dt>
-          <dd className="mvd-num">
-            {pozycja.margines_procent === null
+          {/* Karta AB-1a-bis: zapas = towarzysz werdyktu `margines` (dodatni =
+              w granicy), jednostka z backendu — ta sama liczba co w ocenie. */}
+          <dd className="mvd-num" data-testid="mvd-jakosc-cieplna-margines">
+            {pozycja.margines === null
               ? JAKOSC_STRINGS.kreska
-              : `${fmtWartosc(pozycja.margines_procent)} %`}
+              : `${fmtWartosc(pozycja.margines)} ${pozycja.margines_jednostka ?? ''}`.trim()}
           </dd>
         </div>
       </dl>
+
+      {/* --- Podstawa werdyktu (karta AB-1a-bis): dokument · punkt + status źródła --- */}
+      <div className="mvd-cieplny-sekcja">
+        <h4>{JAKOSC_STRINGS.sekcjaPodstawaWerdyktu}</h4>
+        <PodstawaStrukturalna podstawa={pozycja.podstawa} testid="mvd-jakosc-cieplna-podstawa" />
+      </div>
 
       {/* --- Kryteria cząstkowe (uwaga 1) --- */}
       {pozycja.kryteria.length > 0 && (
@@ -130,6 +139,7 @@ export function PanelDowoduCieplnego({
                 <th>Warunek</th>
                 <th>Wartość</th>
                 <th>Granica</th>
+                <th>{JAKOSC_STRINGS.kolZapas}</th>
                 <th>Werdykt</th>
               </tr>
             </thead>
@@ -147,6 +157,11 @@ export function PanelDowoduCieplnego({
                     {kryterium.granica === null
                       ? JAKOSC_STRINGS.kreska
                       : `${fmtWartosc(kryterium.granica)} ${kryterium.jednostka}`}
+                  </td>
+                  <td className="mvd-num" data-testid={`mvd-jakosc-cieplna-zapas-${kryterium.kod}`}>
+                    {kryterium.margines === null
+                      ? JAKOSC_STRINGS.kreska
+                      : `${fmtWartosc(kryterium.margines)} ${kryterium.jednostka}`}
                   </td>
                   <td>
                     <Werdykt status={kryterium.status} />

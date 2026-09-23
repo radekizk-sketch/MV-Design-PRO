@@ -543,3 +543,17 @@
   font-size: 12px;
   color: var(--mvd-warn, var(--mvd-err));
 }
+
+/* Karta AB-1a-bis: podstawa werdyktu sekcji (warunki OSD) pod tabela. */
+.mvd-jakosc-podstawa {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-jakosc-podstawa-etykieta {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}

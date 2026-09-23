@@ -11,7 +11,6 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 
 import { SekcjaArcFlash } from '../EkranJakosci';
 import type { ArcFlashResponse } from '../api';
-import { JAKOSC_STRINGS } from '../strings';
 import { przebiegTestowy } from './fixtures';
 
 vi.mock('../api', () => ({

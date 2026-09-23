@@ -25,6 +25,7 @@ import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { EkranAnalizy, useAkcjaUruchomObliczenie, usePoprawWModelu } from '../wzorzec';
 import { PrzyciskAkcjiStanu } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
+import { PodstawaStrukturalna } from '../ocena/WynikWyjasniony';
 import { PanelDowoduCieplnego } from './PanelDowoduCieplnego';
 import { SekcjaPasmRozplywu } from './SekcjaPasmRozplywu';
 import { SekcjaPorownaniaMetod } from './SekcjaPorownaniaMetod';
@@ -521,7 +522,7 @@ function SzczegolWalidacji({
         </div>
         <div className="mvd-jakosc-szczegol-para">
           <dt>{JAKOSC_STRINGS.kolWartosc}</dt>
-          <dd className="mvd-num">{wartoscZJedn(item.observed_value)}</dd>
+          <dd className="mvd-num">{wartoscZJedn(item.wartosc)}</dd>
         </div>
         <div className="mvd-jakosc-szczegol-para">
           <dt>{JAKOSC_STRINGS.kolProgOstrzezenia}</dt>
@@ -529,14 +530,27 @@ function SzczegolWalidacji({
         </div>
         <div className="mvd-jakosc-szczegol-para">
           <dt>{JAKOSC_STRINGS.kolProgPrzekroczenia}</dt>
-          <dd className="mvd-num">{wartoscZJedn(item.limit_fail)}</dd>
+          <dd className="mvd-num">{wartoscZJedn(item.odniesienie)}</dd>
         </div>
         <div className="mvd-jakosc-szczegol-para">
-          <dt>{JAKOSC_STRINGS.kolMargines}</dt>
-          <dd className="mvd-num">
-            {item.margin_pct !== null
-              ? `${fmtProcent(item.margin_pct)} ${JAKOSC_STRINGS.jednProcent}`
+          <dt title={JAKOSC_STRINGS.marginesOpis}>{JAKOSC_STRINGS.kolMargines}</dt>
+          {/* Karta AB-1a-bis: zapas z backendu (dodatni = w granicy); dla wielkości
+              w % to punkty procentowe, inaczej jednostka wielkości. */}
+          <dd className="mvd-num" data-testid="mvd-jakosc-walidacja-margines">
+            {item.margines !== null
+              ? `${fmtProcent(item.margines)} ${
+                  item.unit === '%' ? JAKOSC_STRINGS.jednPktProc : item.unit
+                }`
               : JAKOSC_STRINGS.kreska}
+          </dd>
+        </div>
+        <div className="mvd-jakosc-szczegol-para">
+          <dt>{JAKOSC_STRINGS.kolPodstawa}</dt>
+          <dd>
+            <PodstawaStrukturalna
+              podstawa={item.podstawa}
+              testid="mvd-jakosc-walidacja-podstawa"
+            />
           </dd>
         </div>
       </dl>
@@ -1346,6 +1360,11 @@ export function SekcjaWarunkowPrzylaczenia({
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
       />
+      {/* Karta AB-1a-bis: podstawa werdyktu (warunki OSD) ze statusem źródła. */}
+      <div className="mvd-jakosc-podstawa">
+        <span className="mvd-jakosc-podstawa-etykieta">{JAKOSC_STRINGS.sekcjaPodstawaWerdyktu}</span>
+        <PodstawaStrukturalna podstawa={ocena.podstawa} testid="mvd-jakosc-warunki-podstawa" />
+      </div>
     </section>
   );
 }

@@ -34,6 +34,23 @@
  */
 
 import type { TraceStep } from '../../../ui/results-inspector/types';
+import type { DowodWyniku, PodstawaNormatywnaOdpowiedz } from '../ocena/api';
+
+/**
+ * Pięciu towarzyszy werdyktu (karta AB-1a-bis, guard werdyktu wyjaśnialnego):
+ * JEDEN kształt wyniku wyjaśnialnego (`OcenaElementu`, `ui2/wyniki/ocena/api.ts`)
+ * — wartość oceniana, wymaganie (odniesienie), zapas do wymagania (dodatni =
+ * w granicy), podstawa strukturalna (`PodstawaNormatywna.to_dict`) i odwołanie
+ * do dowodu `{run_id, element_id, trace_ref}`. `null` = brak danej (kreska),
+ * nigdy wartość zastępcza. Liczby przychodzą z backendu — UI ich nie liczy.
+ */
+export interface TowarzyszeWerdyktu {
+  readonly wartosc: number | null;
+  readonly odniesienie: number | null;
+  readonly margines: number | null;
+  readonly podstawa: PodstawaNormatywnaOdpowiedz;
+  readonly dowod: DowodWyniku | null;
+}
 
 // ---------------------------------------------------------------------------
 // Wiarygodność zwarciowa (sanity-bounds)
@@ -185,8 +202,13 @@ export interface KrokSladuWalidacji {
   readonly latex: string | null;
 }
 
-/** Pozycja kontroli energetycznej. */
-export interface WalidacjaItem {
+/**
+ * Pozycja kontroli energetycznej. Towarzysze (AB-1a-bis): `wartosc` =
+ * `observed_value`, `odniesienie` = `limit_fail`, `margines` = zapas do progu
+ * przekroczenia (dodatni = w granicy; `margin_pct` dostawcy ma znak odwrotny:
+ * `wartość − próg`), podstawa progu i dowód (bieg PF, element, ślad `white_box`).
+ */
+export interface WalidacjaItem extends TowarzyszeWerdyktu {
   readonly check_type: RodzajKontroli;
   readonly target_id: string;
   readonly target_name: string | null;
@@ -494,8 +516,12 @@ export async function pobierzRaportArcFlash(
 /** Status pozycji werdyktu. `UNAVAILABLE` = NIESPRAWDZONE (brak danych), nie „spełnione". */
 export type StatusWarunku = 'PASS' | 'FAIL' | 'UNAVAILABLE';
 
-/** Jedna pozycja werdyktu warunków przyłączenia (kryterium + wartość + wymagana). */
-export interface PozycjaWarunku {
+/**
+ * Jedna pozycja werdyktu warunków przyłączenia (kryterium + wartość + wymagana).
+ * Towarzysze (AB-1a-bis): `odniesienie` = `wymagana`, `margines` w jednostce
+ * kryterium (dodatni = dotrzymane), podstawa = warunki OSD z nagłówka modelu.
+ */
+export interface PozycjaWarunku extends TowarzyszeWerdyktu {
   readonly kryterium: string;
   readonly status: StatusWarunku;
   readonly wartosc: number | null;
@@ -518,6 +544,13 @@ export interface OcenaWarunkow {
   readonly readiness_codes: readonly string[];
   readonly formula_ref: string;
   readonly zalozenia: readonly string[];
+  /** Werdykt ZLICZENIOWY (AB-1a-bis): kryteria dotrzymane / rozstrzygnięte; zapas
+   * skalarny nie istnieje (`null`) — niesie go każda pozycja. */
+  readonly wartosc: number | null;
+  readonly odniesienie: number | null;
+  readonly margines: null;
+  readonly podstawa: PodstawaNormatywnaOdpowiedz;
+  readonly dowod: DowodWyniku;
 }
 
 /** Pełna odpowiedź `GET /api/quality/connection-conditions`. */
@@ -545,8 +578,14 @@ export function fetchWarunkiPrzylaczenia(runId: string): Promise<WarunkiPrzylacz
 // przez czas wyłączenia zabezpieczenia. Prąd gałęzi z rozbicia wkładów źródeł
 // (solver zwarciowy), wytrzymałość żyły z katalogu. ZERO fizyki w UI.
 
-/** Pozycja oceny cieplnej jednej gałęzi (linia/kabel). */
-export interface PozycjaCieplna {
+/**
+ * Pozycja oceny cieplnej jednej gałęzi (linia/kabel). Towarzysze (AB-1a-bis):
+ * `wartosc` = I²t, `odniesienie` = k²S², `margines` = `margines_procent`
+ * (jednostka w `margines_jednostka`), podstawa z punktem normy, dowód = bieg SC
+ * i gałąź (pełne kroki — trasa dowodu cieplnego).
+ */
+export interface PozycjaCieplna extends TowarzyszeWerdyktu {
+  readonly margines_jednostka: string | null;
   readonly branch_id: string;
   readonly branch_name: string;
   readonly status: StatusWarunku;
@@ -592,6 +631,9 @@ export interface KryteriumCieplne {
   readonly granica: number | null;
   readonly jednostka: string;
   readonly status: StatusWarunku;
+  /** Zapas kryterium w jego jednostce (dodatni = spełnione; AB-1a-bis); wymaganie =
+   * `granica`, podstawa i dowód — w pozycji gałęzi, która kryterium zawiera. */
+  readonly margines: number | null;
 }
 
 /** Działanie naprawcze z wartością docelową — rekomendacja bez liczby jest bezużyteczna. */
@@ -739,6 +781,12 @@ export interface DowodCieplnyResponse {
   readonly status: StatusWarunku;
   /** Kroki w kanonie Wzór → Dane → Podstawienie → Wynik → Uwagi (`TraceStep`). */
   readonly kroki: readonly TraceStep[];
+  /** Towarzysze werdyktu (AB-1a-bis) — te same, co pozycja gałęzi w ocenie. */
+  readonly wartosc: number | null;
+  readonly odniesienie: number | null;
+  readonly margines: number | null;
+  readonly margines_jednostka: string | null;
+  readonly podstawa: PodstawaNormatywnaOdpowiedz;
 }
 
 /**
