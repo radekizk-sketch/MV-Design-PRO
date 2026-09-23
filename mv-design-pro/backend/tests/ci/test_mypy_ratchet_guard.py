@@ -61,8 +61,14 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # solver_input/audit2_solver_adjuster.py (jedna zmienna, dwa typy) ⇒ 13/9.
     # 2026-09-01 (przejecie po B-02): pomiar na kompletnym venv 0/0 — guard
     # zazadal utrwalenia; para prog<->metatest zmieniona RAZEM.
-    assert modul.BASELINE_ERRORS == 0
-    assert modul.BASELINE_FILES == 0
+    # 2026-09-23 (bramka mypy po naprawie: `mypy_path` + `explicit_package_bases` w
+    # pyproject, twardy `import-not-found` w guardzie): pomiar 0/0 z 2026-09-01 był
+    # fałszywy — mypy nie widział pakietów `src/` i połykał błędy importu jako ciszę.
+    # Pomiar na czystym drzewie HEAD (`scripts/mypy_ratchet_pomiar_2026-09-23.md`):
+    # 275/49, po naprawie archiwum projektu (`f9ac289c`) 271/48. Zapadka tylko w dół;
+    # para próg<->metatest zmieniana RAZEM (ten wiersz + `BASELINE_*` w guardzie).
+    assert modul.BASELINE_ERRORS == 271
+    assert modul.BASELINE_FILES == 48
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:
