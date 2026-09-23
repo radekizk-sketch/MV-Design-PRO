@@ -130,7 +130,7 @@ Klucz łączący z tablicą B: kolumna **ZDOLNOŚĆ**.
 | **A4** Wykonanie symulacji RMS/DAE | odpowiedź „co się stanie" zamiast domysłu | CURRENT | CURRENT | `WlasnosciBieguV1`, zbieżność, kroki, residua | — | — |
 | **A5** Powtarzalność i tożsamość biegu | ten sam wynik u projektanta i u weryfikatora | CURRENT | CURRENT | 5 odcisków + wersja solvera | — | — |
 | **B1** `U_i(t)`, `θ_i(t)` na szynach | podstawowy obraz zachowania napięciowego | CURRENT | CURRENT | `u_pu@`, `kat_deg@` | — | — |
-| **B2** `f_i(t)` częstotliwość węzła | stabilność częstotliwościowa w ogóle możliwa do oceny | GAP | CURRENT | — | **cała** | **W6-A** |
+| **B2** `f_i(t)` częstotliwość węzła | stabilność częstotliwościowa w ogóle możliwa do oceny | CURRENT | CURRENT | `f_hz@`, `u_f_est_hz@`, `jakosc_f@` z domeną ważności (W6-A 2026-09-18, OD-30; przegląd Opus 2026-09-23 T-1 potwierdza dostawę tego wiersza i BRAK wiersza ROCOF) | — | W6-A (wykonane) |
 | **B3** `ROCOF_i(t)` | ocena szybkości zmian, kryteria LOM i NC RfG | GAP | CURRENT | — | **cała** | **W6-A** |
 | **B4** `P_ij(t)`, `Q_ij(t)`, `I_ij(t)` gałęzi | przepływy dynamiczne, wejście dla zabezpieczeń w pętli | GAP | CURRENT | `p_pu@`/`q_pu@` urządzenia (to NIE są przepływy gałęzi) | **cała** | **W6-A** |
 | **C1** Maszyna: `δ`, `ω`, `E'`, `E''`, `E_fd`, `P_m`, AVR/GOV/PSS | stabilność kątowa i praca regulatorów | CURRENT | CURRENT | komplet stanów rodziny | — | — |

@@ -46,25 +46,11 @@ ID_W_KOLUMNIE = re.compile(
 #: Rozdzial komorek tabeli Markdown (pionowa kreska niepoprzedzona `\`).
 KRESKA = re.compile(r"(?<!\\)\|")
 
-#: Zmierzony stan planu na HEAD karty AB-1d_min (2026-09-23) — {id: opis naruszenia}.
-#: Lista MALEJE razem z poprawkami planu (guard wymusza jej skrocenie).
-ZNANE_NARUSZENIA: dict[str, str] = {
-    "B2": "otwarty (GAP -> CURRENT), brak kamienia w kolumnie Domyka",
-    "D11": (
-        "otwarty (GAP -> CURRENT), 2 kamienie: AB-2 R Zakłócenia i FRT; "
-        "AB-5 R Zabezpieczenia, automatyka, wyspy, stabilność"
-    ),
-    "E2": "otwarty (GAP -> CURRENT), brak kamienia w kolumnie Domyka",
-    "E7": "otwarty (PARTIAL -> CURRENT), 2 kamienie: AB-3 R Regulatory; AB-4 R BESS",
-    "H1": "otwarty (PARTIAL -> CURRENT), brak kamienia w kolumnie Domyka",
-    "H2": "otwarty (GAP -> CURRENT), brak kamienia w kolumnie Domyka",
-    "H4": (
-        "otwarty (PARTIAL -> CURRENT), 6 kamienie: AB-2 R Zakłócenia i FRT; "
-        "AB-3 R Regulatory; AB-4 R BESS; AB-5 R Zabezpieczenia, automatyka, wyspy, "
-        "stabilność; AB-7a Importer pomiarów, metadane, metryki (równolegle od AB-2); "
-        "AB-7b Benchmarki pomiarowe pełne + time-frequency"
-    ),
-}
+#: Zmierzony stan planu — {id: opis naruszenia}. Po odbiorze AB-1d_min (2026-09-23)
+#: plan skorygowany: siedem naruszen z pomiaru wykonawcy usunietych (B2 = CURRENT po
+#: W6-A; E2/H1/H2 -> AB-2R; D11 -> AB-5R; E7 -> AB-4R; H4 -> AB-7b). Lista MALEJE
+#: razem z poprawkami planu (guard wymusza jej skrocenie) i dzis jest PUSTA.
+ZNANE_NARUSZENIA: dict[str, str] = {}
 
 
 def _komorki(linia: str) -> list[str]:
