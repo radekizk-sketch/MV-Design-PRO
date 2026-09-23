@@ -215,6 +215,122 @@ def aliasy_werdyktu(drzewo: ast.Module) -> set[str]:
     return aliasy
 
 
+#: Bazy klas wyliczeniowych (AB-1a-bis). `class X(str, Enum)` ma baze `Enum`.
+BAZY_ENUM: frozenset[str] = frozenset({"Enum", "StrEnum", "IntEnum", "Flag", "IntFlag"})
+
+
+def _nazwa_bazy(baza: ast.expr) -> str:
+    if isinstance(baza, ast.Name):
+        return baza.id
+    if isinstance(baza, ast.Attribute):
+        return baza.attr
+    return ""
+
+
+def _wartosc_czlonka(wartosc: ast.expr, nazwa: str, strenum: bool) -> str | None:
+    """Wartosc napisowa czlonka enum: literal albo `auto()` w `StrEnum` (= nazwa malymi)."""
+    if isinstance(wartosc, ast.Constant) and isinstance(wartosc.value, str):
+        return wartosc.value
+    if (
+        strenum
+        and isinstance(wartosc, ast.Call)
+        and _nazwa_bazy(wartosc.func) == "auto"
+        and not wartosc.args
+    ):
+        return nazwa.lower()
+    return None
+
+
+def enumy_werdyktu(pliki: Iterable[ast.Module]) -> dict[str, set[str]]:
+    """Klasy `Enum`/`StrEnum` (takze dziedziczace po innym enum) -> czlonkowie-tokeny.
+
+    AB-1a-bis: nosnikiem jest tez pole typowane klasa wyliczeniowa, ktorej >= 1
+    czlonek ma wartosc bedaca tokenem werdyktu. Zwraca TYLKO enumy z tokenem.
+    Dwa przebiegi: enum dziedziczacy po enum (bez czlonkow — Python zabrania
+    rozszerzania enum z czlonkami, wiec to zawsze pusta baza) rozpoznawany po bazie.
+    """
+    klasy: list[ast.ClassDef] = [
+        w for drzewo in pliki for w in ast.walk(drzewo) if isinstance(w, ast.ClassDef)
+    ]
+    nazwy_enum: set[str] = set()
+    zmiana = True
+    while zmiana:
+        zmiana = False
+        for klasa in klasy:
+            if klasa.name in nazwy_enum:
+                continue
+            bazy = {_nazwa_bazy(b) for b in klasa.bases}
+            if bazy & (BAZY_ENUM | nazwy_enum):
+                nazwy_enum.add(klasa.name)
+                zmiana = True
+    wynik: dict[str, set[str]] = {}
+    for klasa in klasy:
+        if klasa.name not in nazwy_enum:
+            continue
+        bazy = {_nazwa_bazy(b) for b in klasa.bases}
+        strenum = "StrEnum" in bazy
+        tokeny: set[str] = set()
+        for instr in klasa.body:
+            if isinstance(instr, ast.Assign) and len(instr.targets) == 1:
+                cel = instr.targets[0]
+                if isinstance(cel, ast.Name):
+                    wart = _wartosc_czlonka(instr.value, cel.id, strenum)
+                    if wart in TOKENY_WERDYKTU:
+                        tokeny.add(cel.id)
+        if tokeny:
+            wynik.setdefault(klasa.name, set()).update(tokeny)
+    return wynik
+
+
+def aliasy_nazw(drzewo: ast.Module, cele: set[str]) -> set[str]:
+    """Nazwy aliasow wskazujacych na ktorakolwiek z `cele` (`X = Enum`, `X: TypeAlias = ...`,
+    `type X = ...`, unie `X = A | None`)."""
+    aliasy: set[str] = set()
+    for wezel in drzewo.body:
+        nazwa: str | None = None
+        wartosc: ast.AST | None = None
+        if isinstance(wezel, ast.Assign) and len(wezel.targets) == 1:
+            if isinstance(wezel.targets[0], ast.Name):
+                nazwa, wartosc = wezel.targets[0].id, wezel.value
+        elif isinstance(wezel, ast.AnnAssign) and isinstance(wezel.target, ast.Name):
+            nazwa, wartosc = wezel.target.id, wezel.value
+        elif type(wezel).__name__ == "TypeAlias":
+            cel = getattr(wezel, "name", None)
+            if isinstance(cel, ast.Name):
+                nazwa, wartosc = cel.id, getattr(wezel, "value", None)
+        if nazwa is None or wartosc is None or nazwa in cele:
+            continue
+        if _jest_wyrazeniem_typu(wartosc, cele) and _nazwy_w_adnotacji(wartosc) & cele:
+            aliasy.add(nazwa)
+    return aliasy
+
+
+def _jest_wyrazeniem_typu(wezel: ast.AST, cele: set[str]) -> bool:
+    """Czy wyrazenie jest wyrazeniem TYPU (alias), a nie wartoscia.
+
+    Typ: nazwa, `modul.Nazwa`, unia `A | B`, subskrypcja `Optional[A]`/`Annotated[A, ...]`.
+    Nie-typ: slownik/lista/krotka stalych (`STATUS_ORDER = {Status.PASS: 0}`,
+    `__all__ = ["Status"]`), wywolanie, czlonek enum (`DOMYSLNY = Status.PASS`).
+    """
+    if isinstance(wezel, ast.Name):
+        return True
+    if isinstance(wezel, ast.Attribute):
+        return not (isinstance(wezel.value, ast.Name) and wezel.value.id in cele)
+    if isinstance(wezel, ast.BinOp) and isinstance(wezel.op, ast.BitOr):
+        return _jest_wyrazeniem_typu(wezel.left, cele) and _jest_wyrazeniem_typu(wezel.right, cele)
+    if isinstance(wezel, ast.Constant):
+        return wezel.value is None
+    if isinstance(wezel, ast.Subscript):
+        if not isinstance(wezel.value, ast.Name | ast.Attribute):
+            return False
+        czlony = wezel.slice.elts if isinstance(wezel.slice, ast.Tuple) else [wezel.slice]
+        # Annotated[A, meta]: metadane nie musza byc typem — wystarczy pierwszy argument.
+        if _nazwa_bazy(wezel.value) == "Annotated":
+            czlony = czlony[:1]
+        return all(_jest_wyrazeniem_typu(c, cele) for c in czlony)
+    return False
+
+
 def stale_tokenow(drzewo: ast.Module) -> set[str]:
     """Nazwy stalych modulowych, ktorych wartoscia jest token werdyktu (`WYNIK = "SPELNIA"`)."""
     stale: set[str] = set()
@@ -271,13 +387,24 @@ def _pola_z_bazami(
     return nazwy
 
 
-def _jest_tokenem(wartosc: ast.expr, stale: set[str]) -> bool:
+def _jest_tokenem(
+    wartosc: ast.expr, stale: set[str], enumy: dict[str, set[str]] | None = None
+) -> bool:
     if isinstance(wartosc, ast.Constant) and isinstance(wartosc.value, str):
         return wartosc.value in TOKENY_WERDYKTU
     if isinstance(wartosc, ast.Name):
         return wartosc.id in stale
     if isinstance(wartosc, ast.IfExp):
-        return _jest_tokenem(wartosc.body, stale) and _jest_tokenem(wartosc.orelse, stale)
+        return _jest_tokenem(wartosc.body, stale, enumy) and _jest_tokenem(
+            wartosc.orelse, stale, enumy
+        )
+    if enumy and isinstance(wartosc, ast.Attribute):
+        # `Status.PASS.value` albo `Status.PASS` — czlonek enum o wartosci-tokenie.
+        wezel: ast.expr = wartosc
+        if wezel.attr == "value" and isinstance(wezel.value, ast.Attribute):
+            wezel = wezel.value
+        if isinstance(wezel, ast.Attribute) and isinstance(wezel.value, ast.Name):
+            return wezel.attr in enumy.get(wezel.value.id, set())
     return False
 
 
@@ -305,20 +432,42 @@ def _funkcja_otaczajaca(wezel: ast.AST, rodzic: dict[ast.AST, ast.AST]) -> str:
     return ".".join(reversed(nazwy)) or "<modul>"
 
 
+def typy_werdyktu(drzewa: Iterable[ast.Module]) -> tuple[set[str], dict[str, set[str]]]:
+    """(nazwy typow-werdyktow do dopasowania w adnotacjach, enumy -> czlonkowie-tokeny).
+
+    Nazwy typow = aliasy `Literal` z tokenem + klasy enum z czlonkiem-tokenem +
+    aliasy tych nazw (przechodnio, do punktu stalego: `A = Status`, `B = A | None`).
+    """
+    drzewa = list(drzewa)
+    enumy = enumy_werdyktu(drzewa)
+    nazwy: set[str] = set(enumy)
+    for drzewo in drzewa:
+        nazwy |= aliasy_werdyktu(drzewo)
+    while True:
+        nowe: set[str] = set()
+        for drzewo in drzewa:
+            nowe |= aliasy_nazw(drzewo, nazwy)
+        if nowe <= nazwy:
+            return nazwy, enumy
+        nazwy |= nowe
+
+
 def zbierz_zgloszenia_backend(
     pliki: dict[str, ast.Module],
+    kontekst: Iterable[ast.Module] = (),
 ) -> list[Zgloszenie]:
     """Wszystkie nosniki werdyktu bez kompletu towarzyszy w podanych drzewach.
 
-    `pliki`: sciezka wzgledna (klucz identyfikatora) -> sparsowany modul. Aliasy
-    `Literal` i klasy sa zbierane ze WSZYSTKICH podanych plikow (nosnik importuje
-    alias po nazwie), dlatego wolajacy podaje tez pliki kontekstu.
+    `pliki`: sciezka wzgledna (klucz identyfikatora) -> sparsowany modul (skanowane
+    nosniki). `kontekst`: dodatkowe moduly, z ktorych biora sie WYLACZNIE definicje
+    typow-werdyktow (aliasy `Literal`, enumy z czlonkiem-tokenem i ich aliasy) —
+    nosnik w `analysis/**` importuje `StrEnum` np. z `domain/**`, wiec definicje
+    zbiera sie z calego `backend/src`, a nosniki tylko z zakresu skanu.
     """
-    aliasy: set[str] = set()
     klasy: list[_Klasa] = []
     for plik, drzewo in pliki.items():
-        aliasy |= aliasy_werdyktu(drzewo)
         klasy.extend(_klasy(drzewo, plik))
+    aliasy, enumy = typy_werdyktu([*pliki.values(), *kontekst])
     po_nazwie: dict[str, _Klasa] = {}
     for klasa in klasy:
         po_nazwie.setdefault(klasa.nazwa, klasa)
@@ -375,7 +524,7 @@ def zbierz_zgloszenia_backend(
                 if isinstance(k, ast.Constant)
                 and isinstance(k.value, str)
                 and k.value in KLUCZE_WERDYKTU
-                and _jest_tokenem(v, stale)
+                and _jest_tokenem(v, stale, enumy)
             ]
             if not klucze_werdyktu:
                 continue
@@ -408,6 +557,22 @@ def _pliki_backendu(src: Path) -> dict[str, ast.Module]:
         sciezka = src / wzgledna
         pliki[wzgledna] = ast.parse(sciezka.read_text(encoding="utf-8"), filename=str(sciezka))
     return pliki
+
+
+def _kontekst_backendu(src: Path, skanowane: Iterable[str]) -> list[ast.Module]:
+    """Pozostale moduly `backend/src` — zrodlo definicji typow-werdyktow (nie nosnikow)."""
+    pominiete = set(skanowane)
+    return [
+        ast.parse(sciezka.read_text(encoding="utf-8"), filename=str(sciezka))
+        for sciezka in sorted(src.rglob("*.py"))
+        if sciezka.relative_to(src).as_posix() not in pominiete
+    ]
+
+
+def zgloszenia_drzewa(src: Path) -> list[Zgloszenie]:
+    """Zgloszenia na prawdziwym drzewie: nosniki z zakresu skanu, typy z calego `src`."""
+    pliki = _pliki_backendu(src)
+    return zbierz_zgloszenia_backend(pliki, _kontekst_backendu(src, pliki))
 
 
 # ---------------------------------------------------------------------------
@@ -583,7 +748,8 @@ _INTERFEJS = re.compile(
     r"export\s+interface\s+(\w+)(?:<[^>{]*>)?(?:\s+extends\s+([\w\s,<>.]+?))?\s*\{",
     re.M,
 )
-_ALIAS = re.compile(r"export\s+type\s+(\w+)\s*=\s*([^;]+);", re.M)
+_ALIAS = re.compile(r"(?:export\s+)?\btype\s+(\w+)\s*=\s*([^;]+);", re.M)
+_ENUM_TS = re.compile(r"(?:export\s+)?(?:declare\s+)?(?:const\s+)?enum\s+(\w+)\s*\{", re.M)
 _TOKEN_TS = re.compile(r"'([^'\n]*)'|\"([^\"\n]*)\"")
 _PROPERCJA = re.compile(r"^\s*(?:readonly\s+)?(\w+)\??\s*:\s*(.+?);?\s*$")
 
@@ -616,10 +782,26 @@ def _bez_komentarzy(tekst: str) -> str:
     return re.sub(r"//[^\n]*", "", tekst)
 
 
+def aliasy_ts(tekst: str) -> dict[str, str]:
+    """Aliasy typow (`type X = ...`) i enumy TS (`enum X { A = 'PASS' }` -> `'PASS'`).
+
+    AB-1a-bis: enum TS z czlonkiem-tokenem jest typem werdyktu tak samo jak unia
+    literalow — jego tresc zapisujemy jako unie wartosci czlonkow. Aliasy
+    nieeksportowane tez sie licza (propercja moze uzywac typu lokalnego pliku).
+    """
+    czysty = _bez_komentarzy(tekst)
+    aliasy = {m.group(1): m.group(2) for m in _ALIAS.finditer(czysty)}
+    for m in _ENUM_TS.finditer(czysty):
+        tresc, _koniec = _blok(czysty, m.end() - 1)
+        wartosci = [a or b for a, b in _TOKEN_TS.findall(tresc)]
+        aliasy[m.group(1)] = " | ".join(f"'{w}'" for w in wartosci) or "never"
+    return aliasy
+
+
 def interfejsy_ts(tekst: str, plik: str) -> tuple[list[_Interfejs], dict[str, str]]:
     """Interfejsy (propercje najwyzszego poziomu) i aliasy typow pliku TS."""
     czysty = _bez_komentarzy(tekst)
-    aliasy = {m.group(1): m.group(2) for m in _ALIAS.finditer(czysty)}
+    aliasy = aliasy_ts(tekst)
     interfejsy: list[_Interfejs] = []
     for m in _INTERFEJS.finditer(czysty):
         start = m.end() - 1
@@ -661,14 +843,32 @@ def _tokeny_typu_ts(
     return znalezione
 
 
-def zbierz_zgloszenia_frontend(pliki: dict[str, str]) -> list[Zgloszenie]:
-    """Propercje-werdykty interfejsow `ui2/**/api.ts` bez kompletu towarzyszy."""
+def _dolacz_aliasy(cel: dict[str, str], nowe: dict[str, str]) -> None:
+    """Ta sama nazwa typu w dwoch plikach -> suma tresci (ostroznie: typ-werdykt w
+    KTORYMKOLWIEK z plikow wystarcza, zeby propercja tej nazwy byla sprawdzana)."""
+    for nazwa, tresc in nowe.items():
+        if nazwa in cel and cel[nazwa] != tresc:
+            cel[nazwa] = f"{cel[nazwa]} | {tresc}"
+        else:
+            cel[nazwa] = tresc
+
+
+def zbierz_zgloszenia_frontend(
+    pliki: dict[str, str], kontekst: Iterable[str] = ()
+) -> list[Zgloszenie]:
+    """Propercje-werdykty interfejsow `ui2/**/api.ts` bez kompletu towarzyszy.
+
+    `kontekst`: teksty pozostalych plikow TS frontu — zrodlo WYLACZNIE aliasow i
+    enumow (AB-1a-bis: lustro w `api.ts` moze typowac status aliasem albo enumem
+    zaimportowanym z `types/**` czy `model.ts`)."""
     interfejsy: list[_Interfejs] = []
     aliasy: dict[str, str] = {}
+    for tekst in kontekst:
+        _dolacz_aliasy(aliasy, aliasy_ts(tekst))
     for plik, tekst in pliki.items():
         i, a = interfejsy_ts(tekst, plik)
         interfejsy.extend(i)
-        aliasy.update(a)
+        _dolacz_aliasy(aliasy, a)
     po_nazwie = {i.nazwa: i for i in interfejsy}
 
     def nazwy_z_rozszerzeniami(
@@ -723,6 +923,25 @@ def wczytaj_liste_wyjatkow_frontu(tekst: str) -> dict[str, str]:
     return wynik
 
 
+def _kontekst_frontu(ui2: Path, skanowane: Iterable[str]) -> list[str]:
+    """Pozostale pliki `frontend/src/**/*.ts(x)` (bez testow) — zrodlo typow."""
+    korzen = ui2.parent.parent  # frontend/
+    pominiete = set(skanowane)
+    return [
+        sciezka.read_text(encoding="utf-8")
+        for wzor in ("*.ts", "*.tsx")
+        for sciezka in sorted(ui2.parent.rglob(wzor))
+        if "__tests__" not in sciezka.parts
+        and sciezka.relative_to(korzen).as_posix() not in pominiete
+    ]
+
+
+def zgloszenia_frontu(ui2: Path) -> list[Zgloszenie]:
+    """Zgloszenia na prawdziwym drzewie frontu: nosniki z `ui2/**/api.ts`, typy z `src/**`."""
+    pliki = _pliki_frontu(ui2)
+    return zbierz_zgloszenia_frontend(pliki, _kontekst_frontu(ui2, pliki))
+
+
 def _pliki_frontu(ui2: Path) -> dict[str, str]:
     korzen = ui2.parent.parent  # frontend/
     return {
@@ -743,7 +962,7 @@ def _iter_linie(zgloszenia: Iterable[Zgloszenie]) -> Iterator[str]:
 
 
 def main_backend() -> int:
-    zgloszenia = zbierz_zgloszenia_backend(_pliki_backendu(BACKEND_SRC))
+    zgloszenia = zgloszenia_drzewa(BACKEND_SRC)
     pozycje = wczytaj_liste_wyjatkow(ALLOWLIST.read_text(encoding="utf-8"))
     poza, bledy = sprawdz_liste_wyjatkow(zgloszenia, pozycje, BACKEND_SRC)
     if poza or bledy:
@@ -761,7 +980,7 @@ def main_backend() -> int:
 
 
 def main_frontend() -> int:
-    zgloszenia = zbierz_zgloszenia_frontend(_pliki_frontu(FRONTEND_UI2))
+    zgloszenia = zgloszenia_frontu(FRONTEND_UI2)
     wyjatki = wczytaj_liste_wyjatkow_frontu(ALLOWLIST_FRONTEND.read_text(encoding="utf-8"))
     idents = {z.ident for z in zgloszenia}
     poza = [z for z in zgloszenia if z.ident not in wyjatki]
