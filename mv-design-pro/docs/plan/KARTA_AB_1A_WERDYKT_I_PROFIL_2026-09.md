@@ -48,10 +48,13 @@ delegacji O-5 (parytet w testach klasy).
    - solver PTPiREE `engine.py:296-312` — kasacja `overall_status`, `pass_count`, `fail_count`
      (O-13) i konsumentów: `certyfikat_zgodnosci.py:232, :260-265`, `wniosek_osd.py:222-224`,
      `ui2/oze/macierz/SekcjaZgodnosciPrzekrojowej.tsx:212-215`, `macierzModel.ts:488`,
-     `ui/workspace/surfaces/NcRfgTestsTab.tsx:636-651` (licznik PASS/FAIL) — w Pakiecie 0 zastąpione
-     `NIE_OCENIONO` per moduł z powodem „ocena per wymaganie od Pakietu C", w Pakiecie C rekordami.
-   Bramka Pakietu 0: testy nowe zielone, pełna regresja backend + frontend zielona, zrzuty ekranów
-   E-40/FRT/T1/SSCI z etykietą „Ocena niewykonana" (B-02).
+     `ui/workspace/surfaces/NcRfgTestsTab.tsx:636-651` (licznik PASS/FAIL) — wykonywane w
+     **Pakiecie C** (konsumenci są tam przepisywani na rekordy `WynikWymagania`; podwójna
+     przeróbka w Pakiecie 0 byłaby churnem), nie w Pakiecie 0.
+   Pakiet 0 biegnie równolegle z Pakietem A (rozłączne zbiory plików). Bramka Pakietu 0: testy nowe
+   zielone, pełna regresja backend + frontend bez nowych czerwieni wobec bazy zmierzonej
+   (`scratchpad/baza_czerwona_ab1a.log` — czerwienie pakietów B/C w toku), zrzuty ekranów
+   E-40/FRT/T1/SSCI/LoM z etykietą „Ocena niewykonana" (B-02).
 1. **Jeden typ podstawy** `PodstawaWymagania` (leaf `backend/src/werdykt/kontrakt.py`) zastępuje
    `catalog.profiles.nc_rfg.ZrodloWartosci` (alias skasowany): pola `rodzaj`
    (`ROZPORZADZENIE_UE` / `NORMA` / `WOS` / `PROCEDURA_PTPIREE` / `WIPWC` / `OSD` /
