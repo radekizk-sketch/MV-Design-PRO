@@ -267,7 +267,7 @@ decyzje podejmuje czlowiek.
 | `bess-battery` | 2 | 0 | 0 | — | 2 | brak | brak |
 | `bess-inverter` | 64 | 0 | 15 | 26,9 | 64 | `k_sc`, `ptpiree_certificate_condition`, `ptpiree_certificate_ref`, `ptpiree_document_acceptance_date`, `ptpiree_document_number`, `ptpiree_ppm_scope`, `ptpiree_publication_date`, `ptpiree_source_url`, `ptpiree_wipwc_version`, `ptpiree_wos_version` | brak |
 | `cable` | 63 | 62 | 18 | 45,7 | 63 | `b0_siemens_per_km`, `ith_1s_a`, `z0_reference_bonding` | brak |
-| `converter` | 176 | 0 | 51 | 20,6 | 176 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `harmonic_spectrum_percent`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
+| `converter` | 176 | 0 | 52 | 20,2 | 176 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `harmonic_spectrum_kind`, `harmonic_spectrum_percent`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
 | `ct` | 12 | 0 | 7 | 60,7 | 12 | `idyn_ka_peak`, `rct_ohm` | brak |
 | `line` | 153 | 25 | 14 | 10,7 | 153 | `b0_siemens_per_km`, `base_type_id`, `ith_1s_a`, `manufacturer`, `trade_name` | brak |
 | `load` | 3 | 0 | 4 | 58,3 | 3 | `profile_id` | brak |

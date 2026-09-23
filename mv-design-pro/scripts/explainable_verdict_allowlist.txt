@@ -6,7 +6,9 @@
 # przez trase API (test przypina istnienie adaptera i jego osiagalnosc z trasy).
 # Pozycja z adnotacja WYCOFYWANA_AB-1d_min[ZDOLNOSC] nie ma adaptera: zdolnosc jest
 # wycofywana w kamieniu AB-1d_min — adnotacja jest legalna tylko, dopoki wpis rejestru
-# zdolnosci istnieje i nie jest wycofany (znika razem z nim).
+# zdolnosci istnieje i nie jest wycofany (znika razem z nim). Po wycofaniu (AB-1d_min,
+# 2026-09-23) pozycja nosi adnotacje WYCOFANA[ZDOLNOSC] — legalna WYLACZNIE przy wpisie
+# rejestru `withdrawn` (przywrocenie zdolnosci na powierzchnie = adapter albo blad).
 # Nosnik spoza plikow FROZEN NIE moze trafic na te liste — przebudowuje sie go.
 #
 # Format: identyfikator nosnika -> adapter (plik.py::funkcja) | powod
@@ -17,7 +19,7 @@
 
 network_model/solvers/ncrfg_ptpiree/contracts.py::NcRfgPtpireeTestResult -> application/ncrfg_compliance/wynik_inzynierski.py::z_testu_ncrfg | FROZEN solver NC RfG/PTPiREE; werdykt testu opakowany w PozycjaWerdyktu (pole wynik_inzynierski odpowiedzi biegu macierzy)
 network_model/solvers/ncrfg_ptpiree/contracts.py::NcRfgPtpireeModuleResult -> application/ncrfg_compliance/wynik_inzynierski.py::z_testu_ncrfg | FROZEN solver NC RfG/PTPiREE; status zbiorczy modulu rozlozony na wyniki inzynierskie testow (ten sam adapter)
-network_model/solvers/v126_academic.py::V126AcademicSolver._power_quality[compatibility_status] -> WYCOFYWANA_AB-1d_min[POWER_QUALITY_HARMONICS] | FROZEN V12.6; zdolnosc harmonicznych wycofywana w AB-1d_min (audyt harmoniczny: REJECT) — adapter nie powstaje
+network_model/solvers/v126_academic.py::V126AcademicSolver._power_quality[compatibility_status] -> WYCOFANA[POWER_QUALITY_HARMONICS] | FROZEN V12.6; zdolnosc harmonicznych WYCOFANA w AB-1d_min (rejestr withdrawn, 410 na POST, ekran nie prezentuje wyniku) — adapter nie powstaje, kasacja kodu = OD-15(d)
 network_model/solvers/v126_academic.py::V126AcademicSolver._ner_design[status] -> application/analyses/wynik_inzynierski_v126.py::z_proby_cieplnej_ner | FROZEN V12.6; sprawdzenie cieplne rezystora NER opakowane w PozycjaWerdyktu (pole wynik_inzynierski wyniku biegu v126)
 network_model/solvers/v126_academic.py::V126AcademicSolver._benchmark_validation[status] -> application/analyses/wynik_inzynierski_v126.py::z_walidacji_benchmarkow | FROZEN V12.6; wiersz walidacji porownawczej opakowany w OcenaElementu
 network_model/solvers/v126_academic.py::V126AcademicSolver._benchmark_validation[status]#2 -> application/analyses/wynik_inzynierski_v126.py::z_walidacji_benchmarkow | FROZEN V12.6; status zbiorczy walidacji porownawczej opakowany w PozycjaWerdyktu

@@ -1499,7 +1499,22 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `StatusModelu`, `Niepewnosc`, `ZakresWaznosci` w `werdykt_projektowy.py`, `OcenaNastawyLom`
     # w `ochrona_lom.py`, `StatusRownan`/`StatusParametrow` w `status_modelu.py`; zero
     # skasowanych — pomiar guardem na drzewie scalonym, nie z pamieci).
-    assert "Pol kontraktow wejsciowych: 3886." in wyjscie, wyjscie
+    # Karta AB-1d_min (2026-09-23): 3886 -> 3901 (+15 pol, zero skasowanych). POMIAR:
+    # `contract_fields()` na drzewie karty i na `git archive a13ad4f2` (ten sam skaner
+    # z podmienionym `BACKEND_SRC`), roznica zbiorow. Nowe nazwy i nosniki:
+    # `network_model/solvers/harmoniczne/kontrakty.py::SupraharmonicBand`:
+    # `aggregation_bandwidth_hz`, `frequency_resolution_hz`, `measurement_method`,
+    # `source_document`; `harmoniczne/os_czestotliwosci.py::OsCzestotliwosci`: `f1_hz`;
+    # `application/solvers/solver_capability_registry.py` (`RodzajBiegu`, `SolverNieobecny`):
+    # `formula_set_version`, `solver_family`, `standard_basis_ref`, `typy_wykonawcze`,
+    # `wymagane_opcje`, `solver_nieobecny`, `brak_pl`, `kamien`;
+    # `application/analyses/v126_katalog.py::KartaAnalizy`: `nastepca_pl`;
+    # `network_model/catalog/types.py::ConverterType`: `harmonic_spectrum_kind`.
+    # Kontrakty dziedziny czestotliwosci NIE maja zadnej wartosci domyslnej (brak =
+    # `KontraktCzestotliwosciError`); pola rejestru rodzajow sa metadanymi, `None` =
+    # „wartosc ogolna koperty", nie liczba. PASS bramki bez zmian (zapadka 56/255,
+    # wykluczenia 13/31).
+    assert "Pol kontraktow wejsciowych: 3901." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1601,7 +1616,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Integracja AB-1a wykonawcy 2 (2026-09-23): 538 -> 541 (+3 pliki:
         # `solver_input/status_modelu.py`, `application/ncrfg_compliance/wynik_inzynierski.py`,
         # `application/analyses/wynik_inzynierski_v126.py` — `git diff --name-status`, same `A`).
-        "Przeskanowano 541 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta AB-1d_min (2026-09-23): 541 -> 545 (+4 pliki: `enm/biegi_czestotliwosciowe.py`,
+        # `network_model/solvers/harmoniczne/{__init__,kontrakty,os_czestotliwosci}.py` —
+        # `git diff --name-status a13ad4f2`, same `A` w `backend/src`, zero skasowanych).
+        "Przeskanowano 545 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1663,7 +1681,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (+1 `network_model/solvers/dynamika/wyspy.py`). Dlug 14/77 i wykluczenia 3/6
         # BEZ ZMIANY — modul czyta wylacznie topologie i rownania urzadzen, nie
         # podstawia zadnej liczby za nieobecna dana wejsciowa.
-        "  network_model: pliki_skanowane=178, dlug=14 plikow/suma 77, "
+        # Karta AB-1d_min (2026-09-23): network_model 178 -> 181 (+3 pakietu
+        # `network_model/solvers/harmoniczne/` — `__init__`, `kontrakty`,
+        # `os_czestotliwosci`; kontrakty bez fizyki i bez domyslnych, dlug/wykluczenia bez zmian).
+        "  network_model: pliki_skanowane=181, dlug=14 plikow/suma 77, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).
@@ -1681,7 +1702,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # nazwana odmowa, nie liczba podstawiona za brak).
         # Karta AB-1a D4 (2026-09-23): enm 48 -> 49 (+1 `enm/badanie_zgodnosci.py`; zero
         # dlugu/wykluczen — kontrakt pydantic bez wartosci domyslnych danych fizycznych).
-        "  enm: pliki_skanowane=49, dlug=7 plikow/suma 73, wykluczenia=0 plikow/suma 0",
+        # Karta AB-1d_min (2026-09-23): enm 49 -> 50 (+1 `enm/biegi_czestotliwosciowe.py`;
+        # zero dlugu/wykluczen — walidacja opcji i odmowa nazwana, zero liczb).
+        "  enm: pliki_skanowane=50, dlug=7 plikow/suma 73, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

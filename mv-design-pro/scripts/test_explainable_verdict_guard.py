@@ -403,22 +403,37 @@ def test_adapter_nieosiagalny_albo_nieistniejacy_to_blad(
 
 
 def test_adnotacja_wycofywana_trzyma_sie_rejestru_zdolnosci() -> None:
+    """Karta AB-1d_min krok 3: `POWER_QUALITY_HARMONICS` jest juz `withdrawn`, wiec
+    pozycja nosi `WYCOFANA[...]`. Iloczyn cech {WYCOFYWANA, WYCOFANA} × {wpis available,
+    wpis withdrawn, wpis nieobecny}: legalne sa WYLACZNIE pary (WYCOFYWANA, available)
+    i (WYCOFANA, withdrawn)."""
     zgl, pozycje = _prawdziwe()
-    wycofywane = [p for p in pozycje if p.adapter.startswith("WYCOFYWANA_AB-1d_min[")]
-    assert wycofywane, "brak pozycji WYCOFYWANA — test nic by nie sprawdzal"
-    # Prawdziwa adnotacja: wpis rejestru istnieje i nie jest wycofany -> bez bledu.
+    wycofane = [p for p in pozycje if p.adapter.startswith("WYCOFANA[")]
+    assert wycofane, "brak pozycji WYCOFANA — test nic by nie sprawdzal"
+    # Prawdziwa adnotacja: wpis rejestru jest withdrawn -> bez bledu.
     assert sprawdz_liste_wyjatkow(zgl, pozycje, BACKEND_SRC)[1] == []
-    # Adnotacja wskazujaca zdolnosc spoza rejestru -> blad.
-    zmieniona = [
-        (
-            PozycjaWyjatku(p.ident, "WYCOFYWANA_AB-1d_min[NIE_MA_TAKIEJ_ZDOLNOSCI]", p.powod)
-            if p in wycofywane
-            else p
-        )
-        for p in pozycje
-    ]
-    bledy = sprawdz_liste_wyjatkow(zgl, zmieniona, BACKEND_SRC)[1]
-    assert any("NIE_MA_TAKIEJ_ZDOLNOSCI" in b for b in bledy)
+
+    def _z_adnotacja(adnotacja: str) -> list[str]:
+        zmieniona = [
+            PozycjaWyjatku(p.ident, adnotacja, p.powod) if p in wycofane else p for p in pozycje
+        ]
+        return sprawdz_liste_wyjatkow(zgl, zmieniona, BACKEND_SRC)[1]
+
+    # WYCOFYWANA przy wpisie juz withdrawn -> blad (adnotacja przejsciowa wygasla).
+    assert any(
+        "adnotacja znika" in b
+        for b in _z_adnotacja("WYCOFYWANA_AB-1d_min[POWER_QUALITY_HARMONICS]")
+    )
+    # WYCOFANA przy wpisie available -> blad (zdolnosc na powierzchni wymaga adaptera).
+    assert any("wymaga wpisu `withdrawn`" in b for b in _z_adnotacja("WYCOFANA[SC_3F]"))
+    # Obie adnotacje wskazujace zdolnosc spoza rejestru -> blad.
+    for adnotacja in (
+        "WYCOFYWANA_AB-1d_min[NIE_MA_TAKIEJ_ZDOLNOSCI]",
+        "WYCOFANA[NIE_MA_TAKIEJ_ZDOLNOSCI]",
+    ):
+        assert any("NIE_MA_TAKIEJ_ZDOLNOSCI" in b for b in _z_adnotacja(adnotacja))
+    # WYCOFYWANA przy wpisie available -> legalna.
+    assert _z_adnotacja("WYCOFYWANA_AB-1d_min[SC_3F]") == []
 
 
 def test_pozycja_spoza_frozen_i_martwa_pozycja_sa_bledami() -> None:

@@ -236,9 +236,12 @@ def test_skanuj_py_docstring_nie_maskuje_zwyklego_literalu_pod_nim(tmp_path: Pat
 # ---------------------------------------------------------------------------
 
 
-def test_wyjatki_znane_jedyny_wpis_nie_jest_osierocony() -> None:
-    # Wpis realny (v126_katalog.py:444) musi ISTNIEC i nadal PRODUKOWAC
-    # trafienie w tej linii — inaczej jest martwy i nalezy go usunac.
+def test_wyjatki_znane_zaden_wpis_nie_jest_osierocony() -> None:
+    # Kazdy wpis realny musi ISTNIEC i nadal PRODUKOWAC trafienie w swojej linii —
+    # inaczej jest martwy i nalezy go usunac. 2026-09-23: jedyny wpis
+    # (v126_katalog.py:444, symbol karty SSCI) zniknal z wycofana karta — zbior pusty
+    # jest stanem zmierzonym, nie cichym wylaczeniem testu.
+    assert guard.WYJATKI_ZNANE == frozenset()
     assert guard.wyjatki_osierocone(guard.ROOT) == []
 
 

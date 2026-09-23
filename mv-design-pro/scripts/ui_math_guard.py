@@ -66,21 +66,21 @@ BACKEND_PLIKI = (
 #: wszystkich wystapien w zakresie karty: 2x zbedne echo ASCII wzoru w
 #: `warunek_pl` ekranu akademickiego (uziemienie, U_dot/U_kr — wzor jest juz
 #: nad tym tekstem jako czysty KaTeX, echo usuniete), 3x `symbol_latex=I^2 t`
-#: → `I^{2} t` (jawne klamry, kanoniczny zapis). 9 rezydualnych wystapien to:
-#:   (a) 6x ekrany SPOZA zakresu karty V12.7 (kreatory/**, oze/obszar,
-#:       oze/osd, spaces/projekt/arkusz, wyniki/estymacja, wyniki/ssci —
-#:       odrebne okno z wlasnym modelem danych, patrz naglowek
-#:       `ui2/wyniki/akademickie/api.ts` — , wyniki/zwarcia/aparatura) —
-#:       naprawa wymagalaby redesignu ekranow, ktore karta V12.7 jawnie
-#:       wylacza z zakresu („NIE: redesign, NIE: zmiany nawigacji");
+#: → `I^{2} t` (jawne klamry, kanoniczny zapis). 9 rezydualnych wystapien to
+#: (2026-09-23: 9 -> 8 — okno `wyniki/ssci` usuniete z wycofaniem analizy SSCI):
+#:   (a) 5x ekrany SPOZA zakresu karty V12.7 (kreatory/**, oze/obszar,
+#:       oze/osd, spaces/projekt/arkusz, wyniki/estymacja,
+#:       wyniki/zwarcia/aparatura; szosty — okno `wyniki/ssci` — zniknal
+#:       2026-09-23) — naprawa wymagalaby redesignu ekranow, ktore karta V12.7
+#:       jawnie wylacza z zakresu („NIE: redesign, NIE: zmiany nawigacji");
 #:   (b) 3x `v126_katalog.py` pola NIGDY nie renderowane jako surowy tekst:
 #:       `wartosc_graniczna` (str) uzywane wylacznie gdy `typeof === 'number'`
 #:       jest false, a wtedy UI renderuje `wzor_latex`+`wzor_opis_pl`, NIE tę
-#:       wartosc (linie 581, 601); `DanaZModelu.nazwa_pl` to lista wymaganych
-#:       pol karty katalogowej (prosty tekst opisowy, nie wzor — linia 690).
+#:       wartosc (karty uziemienia i rozruchu); `DanaZModelu.nazwa_pl` to lista
+#:       wymaganych pol karty katalogowej (prosty tekst opisowy, nie wzor).
 #: Nie podnosic bez pomiaru; obnizyc przy kazdej naprawie rezydualnego
 #: wystapienia (nawet spoza karty V12.7 — kolejna karta obejmujaca dany ekran).
-PIN = 9
+PIN = 8
 
 #: Pliki/katalogi wylaczone ze skanu ui2/** (testy same niosa fixture'y ASCII
 #: nie renderowane na ekranie — to samo wylaczenie co forbidden_ui_terms_guard).
@@ -224,17 +224,10 @@ def skanuj_py(plik: Path) -> list[tuple[int, str, str]]:
 #: wystapienia z uzasadnieniem. KAZDY wpis to jedna kontrolowana pozycja, nie
 #: maskowanie klasy — nowe wystapienie SPOZA tej listy zuzywa PIN normalnie.
 #: Nie liczy sie do PIN (wypisywany osobno, dla jawnosci).
-WYJATKI_ZNANE: frozenset[tuple[str, int]] = frozenset(
-    {
-        # `WielkoscGlowna.symbol` (pierwszy pozycyjny argument) jest
-        # identyfikatorem WEWNETRZNYM uzywanym wylacznie jako React `key`
-        # (zweryfikowane grepem `\.symbol\b` w EkranAnalizAkademickich.tsx —
-        # trzy uzycia, wszystkie w `key={...}`), nigdy nie renderowany jako
-        # tekst. Widoczny zapis symbolu idzie WYLACZNIE przez `symbol_latex`
-        # (pole obok, patrz `WielkoscGlowna.to_dict`).
-        ("backend/src/application/analyses/v126_katalog.py", 444),
-    }
-)
+#: 2026-09-23 (karta AB-1d_min): jedyny wpis (`v126_katalog.py:444`, symbol
+#: „Re Z_conv,min" karty SSCI) ZNIKNAL razem z wycofana karta SSCI — zbior pusty;
+#: mechanizm zostaje (testy swiezosci na zbiorach syntetycznych).
+WYJATKI_ZNANE: frozenset[tuple[str, int]] = frozenset()
 
 
 def wyjatki_osierocone(root: Path) -> list[str]:

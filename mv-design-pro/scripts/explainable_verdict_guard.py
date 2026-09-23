@@ -52,8 +52,10 @@ REGULA (audyt §3.3 p. 1-8, przeniesiona w calosci):
    nosniki FROZEN (solver B-01 nie moze dostac pol): kazda pozycja z nazwa adaptera,
    ktory opakowuje nosnik w ksztalt wyniku wyjasnialnego (`modul.py::funkcja`) albo
    z adnotacja `WYCOFYWANA_AB-1d_min[ZDOLNOSC]` (zdolnosc wycofywana — adapter nie
-   powstaje). Test przypina, ze adapter istnieje i jest wolany przez trase API
-   (AST, domkniecie wywolan), a adnotacja trzyma sie wpisu rejestru zdolnosci.
+   powstaje; legalna, dopoki wpis rejestru NIE jest `withdrawn`) albo
+   `WYCOFANA[ZDOLNOSC]` (zdolnosc juz wycofana — legalna WYLACZNIE przy wpisie
+   `withdrawn`). Test przypina, ze adapter istnieje i jest wolany przez trase API
+   (AST, domkniecie wywolan), a obie adnotacje trzymaja sie wpisu rejestru zdolnosci.
    Pliki FROZEN z nosnikami sa skanowane ZAWSZE (`SKAN_FROZEN`), zeby usuniecie
    pozycji z listy wyjatkow dawalo zgloszenie, a nie cisze.
 7. FRONTEND (`--frontend`): ta sama regula na interfejsach
@@ -134,7 +136,12 @@ GRUPY_TOWARZYSZY: dict[str, frozenset[str]] = {
 #: pola sa z definicji zgodne.
 WYNIK_INZYNIERSKI = "WynikInzynierski"
 
-ADNOTACJA_WYCOFYWANA = re.compile(r"^WYCOFYWANA_AB-1d_min\[([A-Z_]+)\]$")
+ADNOTACJA_WYCOFYWANA = re.compile(r"^WYCOFYWANA_AB-1d_min\[([A-Z0-9_]+)\]$")
+#: Karta AB-1d_min krok 3: zdolnosc JUZ wycofana z powierzchni (`availability="withdrawn"`
+#: rejestru, 410 na POST, brak prezentacji na ekranie) — nosnik FROZEN zostaje w solverze
+#: do kasacji kodu (OD-15(d)), adapter nie powstaje. Para z rejestrem: adnotacja legalna
+#: WYLACZNIE, gdy wpis jest `withdrawn` (przywrocenie zdolnosci = adapter albo blad).
+ADNOTACJA_WYCOFANA = re.compile(r"^WYCOFANA\[([A-Z0-9_]+)\]$")
 
 
 @dataclass(frozen=True)
@@ -739,6 +746,17 @@ def sprawdz_liste_wyjatkow(
                     f"lista wyjatkow: {pozycja.ident} ma adnotacje {pozycja.adapter}, a wpis "
                     f"rejestru zdolnosci {dopasowanie.group(1)} jest {dost or 'nieobecny'} — "
                     "adnotacja znika razem z wpisem rejestru"
+                )
+            continue
+        wycofana = ADNOTACJA_WYCOFANA.match(pozycja.adapter)
+        if wycofana:
+            dost = _dostepnosc_zdolnosci(src, wycofana.group(1))
+            if dost != "withdrawn":
+                bledy.append(
+                    f"lista wyjatkow: {pozycja.ident} ma adnotacje {pozycja.adapter}, a wpis "
+                    f"rejestru zdolnosci {wycofana.group(1)} jest {dost or 'nieobecny'} — "
+                    "adnotacja WYCOFANA wymaga wpisu `withdrawn` (zdolnosc na powierzchni "
+                    "dostaje adapter)"
                 )
             continue
         ok, opis = adapter_wolany_z_trasy_api(src, pozycja.adapter)
