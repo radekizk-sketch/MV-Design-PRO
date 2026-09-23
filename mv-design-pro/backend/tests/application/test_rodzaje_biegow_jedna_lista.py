@@ -438,6 +438,25 @@ def _pliki_frontu() -> list[Path]:
     ]
 
 
+def test_typ_wykonawczy_frontu_jest_podzbiorem_tabeli_bez_rodzajow_bez_solvera() -> None:
+    """Lista 7 (odkryta przy inwentarzu): `frontend/src/ui/study-cases/types.ts::
+    ExecutionAnalysisType` — reczne lustro typow, ktore UI oferuje w pickerach
+    (`ui2/spaces/obliczenia/UruchomObliczenie.tsx`). PRZYPIETA: kazdy czlon frontu jest
+    typem wykonawczym tabeli, a zaden nie nalezy do rodzaju bez solvera."""
+    import re
+
+    tekst = (FRONTEND_SRC / "ui" / "study-cases" / "types.ts").read_text(encoding="utf-8")
+    blok = tekst.split("export type ExecutionAnalysisType =", 1)[1].split(";", 1)[0]
+    typy_frontu = set(re.findall(r"'([A-Z0-9_]+)'", blok))
+    assert typy_frontu, "parser unii frontu do poprawy — zobaczyl pustke"
+    wszystkie = {typ for rodzaj in RODZAJE_BIEGOW.values() for typ in rodzaj.typy_wykonawcze}
+    bez_solvera = {
+        typ for nazwa in RODZAJE_BIEGOW_BEZ_SOLVERA for typ in RODZAJE_BIEGOW[nazwa].typy_wykonawcze
+    }
+    assert typy_frontu <= wszystkie
+    assert typy_frontu & bez_solvera == set()
+
+
 def test_rodzaje_bez_solvera_niewidoczne_w_ui() -> None:
     """ZASADA NR 1: rodzaj bez solvera nie jest oferowany w zadnym pickerze ui2/ui —
     ani kod `analysis_type`, ani typ wykonawczy nie wystepuja w zrodle frontu."""
