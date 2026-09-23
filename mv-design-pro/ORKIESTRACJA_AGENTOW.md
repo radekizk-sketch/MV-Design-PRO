@@ -60,6 +60,33 @@ Definiuj jako `.claude/agents/*.md` (frontmatter: `description`, `prompt`, `tool
 
 **Zasada modelu:** read-only → Haiku (koszt), implementacja/recenzja → Opus (jakość), testy → Sonnet. `CLAUDE_CODE_SUBAGENT_MODEL` może wymusić pułap kosztów.
 
+### 3a. Dobór modelu i wysiłku do złożoności zadania (dyrektywa właściciela 2026-09-23)
+
+Zarządca dobiera model i `effort` do zadania, nie „na wszelki wypadek" (wytyczne Anthropic dla
+Fable 5.1/Opus 5.5 w CLAUDE.md, sekcja „Multi-agent i subagenty" i „Prompting"):
+
+| Klasa zadania | Model | `effort` | Przykłady z programu A/B |
+|---|---|---|---|
+| Odczyt i streszczenie (transkrypty, logi CI, inwentarz faktów `plik:linia`, skan grepem) | Sonnet (Haiku przy czystym skanie) | `low` | stan sześciu wykonawców z transkryptów; inwentarz frontendu pod D2 |
+| Krok mechaniczny bez decyzji (kopiowanie zmierzonych fixtur, jeden guard, porównanie hunków dwóch drzew) | Sonnet | `low` | weryfikacja, że `odbior-*` zawiera wyłącznie hunki jednego pakietu |
+| Implementacja, integracja na czystym drzewie, testy klasy, migracje kontraktów | Opus 5.5 | `high` | Pakiety C, D1/D2, L, AB-H0, rdzeń dynamiki |
+| Solver, rdzeń FROZEN, bramka bezpieczeństwa, recenzja adwersarzowa, architektura | Opus 5.5 (Fable osobiście, gdy „opcja max") | `xhigh`/`max` | AB-1b.1a, wyrocznie, decyzje O-… |
+
+Reguły oszczędności tokenów (te same, które obniżają koszt bez utraty jakości):
+1. **Wznawiaj, nie twórz.** Wykonawca z kontekstem (cache) dostaje kolejną kartę przez `SendMessage`;
+   nowy agent tylko wtedy, gdy kontekst jest nieprzydatny albo przepełniony.
+2. **Karta = cel + powód + granice + kryterium ukończenia**, bez listy kroków; wykonawca meldunkiem
+   §103 (co domknięte z dowodem / częściowe / niezrobione i dlaczego), bez narracji.
+3. **Zero odpytywania.** Biegi w tle z sentinelem i powiadomieniem; żadnych pętli „czy już?",
+   żadnych agentów do czekania. Jeden ciężki proces naraz na wykonawcę (4 CPU / 16 GB).
+4. **Zarządca czyta wnioski, nie surowce.** Duży plik → agent Sonnet z pytaniem i formatem
+   wyjścia; zarządca czyta streszczenie i decyduje. Wyjątek: odbiór kodu/decyzji, gdzie
+   zarządca musi zobaczyć diff.
+5. **Stabilny prefiks.** Karty i dokumenty odniesienia w plikach o stałej ścieżce (scratchpad),
+   nie wklejane do promptu przy każdym wznowieniu.
+6. **Meldunki zarządcy do właściciela:** wynik, decyzje, co dalej — jedno zdanie na wątek;
+   stan „bez zmian" jednym zdaniem.
+
 ---
 
 ## 4. WZORCE WORKFLOW DLA BIEŻĄCYCH ZADAŃ
