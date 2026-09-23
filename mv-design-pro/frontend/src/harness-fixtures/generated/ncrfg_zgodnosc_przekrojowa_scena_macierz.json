@@ -877,36 +877,46 @@
     "reporting_status": "not_reportable",
     "proof_status": "incomplete",
     "evidence_limitations": [
+      "T05:DECLARATION",
+      "T10:NOT_SIMULATED",
+      "T12:DECLARATION",
+      "T13:DECLARATION",
       "T14:NOT_SIMULATED",
       "T15:NOT_SIMULATED",
       "T16:DECLARATION",
       "T17:DECLARATION"
     ],
-    "evidence_note_pl": "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA dla testow: T14:NOT_SIMULATED, T15:NOT_SIMULATED, T16:DECLARATION, T17:DECLARATION.",
+    "evidence_note_pl": "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA dla testow: T05:DECLARATION, T10:NOT_SIMULATED, T12:DECLARATION, T13:DECLARATION, T14:NOT_SIMULATED, T15:NOT_SIMULATED, T16:DECLARATION, T17:DECLARATION.",
     "evidence_per_module": {
       "bess/5bd678b5dbce96516c72492e40298e5f/converter": {
         "der_ref": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
         "reporting_status": "not_reportable",
         "proof_status": "incomplete",
         "evidence_limitations": [
+          "T05:DECLARATION",
+          "T10:NOT_SIMULATED",
+          "T12:DECLARATION",
+          "T13:DECLARATION",
           "T14:NOT_SIMULATED",
           "T15:NOT_SIMULATED",
           "T16:DECLARATION",
           "T17:DECLARATION"
         ],
-        "evidence_note_pl": "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA dla testow: T14:NOT_SIMULATED, T15:NOT_SIMULATED, T16:DECLARATION, T17:DECLARATION."
+        "evidence_note_pl": "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA dla testow: T05:DECLARATION, T10:NOT_SIMULATED, T12:DECLARATION, T13:DECLARATION, T14:NOT_SIMULATED, T15:NOT_SIMULATED, T16:DECLARATION, T17:DECLARATION."
       },
       "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter": {
         "der_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter",
         "reporting_status": "not_reportable",
         "proof_status": "incomplete",
         "evidence_limitations": [
+          "T05:DECLARATION",
+          "T10:NOT_SIMULATED",
           "T14:NOT_SIMULATED",
           "T15:NOT_SIMULATED",
           "T16:DECLARATION",
           "T17:DECLARATION"
         ],
-        "evidence_note_pl": "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA dla testow: T14:NOT_SIMULATED, T15:NOT_SIMULATED, T16:DECLARATION, T17:DECLARATION."
+        "evidence_note_pl": "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA dla testow: T05:DECLARATION, T10:NOT_SIMULATED, T14:NOT_SIMULATED, T15:NOT_SIMULATED, T16:DECLARATION, T17:DECLARATION."
       }
     },
     "evidence_by_test": {
@@ -952,14 +962,14 @@
           "audit_ref": "karta_s1_s4_dowod.md §0.2 (T01-T04)"
         },
         "T05": {
-          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "capability_id": "ncrfg_ptpiree.zachowanie_zadeklarowane",
           "tier": "DECLARATION",
           "tier_pl": "deklaracja_wnioskodawcy",
-          "claim_kind": "DECLARED_CONFIGURATION",
-          "claim_kind_pl": "konfiguracja_zadeklarowana",
-          "regulatory_evidence_eligible": true,
-          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Regulacja mocy czynnej (T05), zaprzestanie generacji w czasie nie dluzszym niz 5 s (T12) i zmniejszenie generacji z zadanym gradientem (T13) sa twierdzeniami o ZACHOWANIU modulu w czasie, nie faktami konfiguracyjnymi — solver porownuje wylacznie wartosci zadeklarowane w programie szczegolowym. Deklaracja nie dowodzi zachowania dynamicznego, dopoki profil regulacyjny jawnie nie zaakceptuje metody DECLARATION/CERTIFICATE dla tego wymagania (kamienie AB-1b/AB-1c).",
+          "audit_ref": "KARTA_AB_1A §0 R-6; OPUS_AUDYT_WARSTWY_REGULACYJNEJ §6.6 p. 6"
         },
         "T06": {
           "capability_id": "ncrfg_ptpiree.reactive_voltage_mode",
@@ -1002,14 +1012,14 @@
           "audit_ref": "karta_s1_s4_dowod.md §0.2 (T06-T09)"
         },
         "T10": {
-          "capability_id": "ncrfg_ptpiree.declared_configuration",
-          "tier": "DECLARATION",
-          "tier_pl": "deklaracja_wnioskodawcy",
-          "claim_kind": "DECLARED_CONFIGURATION",
-          "claim_kind_pl": "konfiguracja_zadeklarowana",
-          "regulatory_evidence_eligible": true,
-          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+          "capability_id": "ncrfg_ptpiree.test_bez_tresci",
+          "tier": "NOT_SIMULATED",
+          "tier_pl": "brak_symulacji",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Potwierdzenie PMAX (T10) sprawdza wylacznie `p_max_kw > 0`, a kontrakt wejscia modulu wymaga `p_max_kw > 0` juz przy budowie — test przechodzi zawsze, niezaleznie od danych modulu (tautologia, solvers/ncrfg_ptpiree/engine.py `_pmax_pmin_test`, kontrakt `NcRfgPtpireeModuleInput.p_max_kw: Field(gt=0)`). Zadna wielkosc nie jest tu wykazana, wiec wynik nie jest dowodem.",
+          "audit_ref": "KARTA_AB_1A §0 R-6; OPUS_AUDYT_WARSTWY_REGULACYJNEJ §6.6"
         },
         "T11": {
           "capability_id": "ncrfg_ptpiree.declared_configuration",
@@ -1018,28 +1028,28 @@
           "claim_kind": "DECLARED_CONFIGURATION",
           "claim_kind_pl": "konfiguracja_zadeklarowana",
           "regulatory_evidence_eligible": true,
-          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+          "rationale_pl": "Potwierdzenie PMIN (T11) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa. Karta AB-1a (R-6): T05, T12, T13 przeniesione do `ncrfg_ptpiree.zachowanie_zadeklarowane` (twierdzenia o zachowaniu w czasie), T10 do `ncrfg_ptpiree.test_bez_tresci` (tautologia).",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T11, T19); KARTA_AB_1A §0 R-6"
         },
         "T12": {
-          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "capability_id": "ncrfg_ptpiree.zachowanie_zadeklarowane",
           "tier": "DECLARATION",
           "tier_pl": "deklaracja_wnioskodawcy",
-          "claim_kind": "DECLARED_CONFIGURATION",
-          "claim_kind_pl": "konfiguracja_zadeklarowana",
-          "regulatory_evidence_eligible": true,
-          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Regulacja mocy czynnej (T05), zaprzestanie generacji w czasie nie dluzszym niz 5 s (T12) i zmniejszenie generacji z zadanym gradientem (T13) sa twierdzeniami o ZACHOWANIU modulu w czasie, nie faktami konfiguracyjnymi — solver porownuje wylacznie wartosci zadeklarowane w programie szczegolowym. Deklaracja nie dowodzi zachowania dynamicznego, dopoki profil regulacyjny jawnie nie zaakceptuje metody DECLARATION/CERTIFICATE dla tego wymagania (kamienie AB-1b/AB-1c).",
+          "audit_ref": "KARTA_AB_1A §0 R-6; OPUS_AUDYT_WARSTWY_REGULACYJNEJ §6.6 p. 6"
         },
         "T13": {
-          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "capability_id": "ncrfg_ptpiree.zachowanie_zadeklarowane",
           "tier": "DECLARATION",
           "tier_pl": "deklaracja_wnioskodawcy",
-          "claim_kind": "DECLARED_CONFIGURATION",
-          "claim_kind_pl": "konfiguracja_zadeklarowana",
-          "regulatory_evidence_eligible": true,
-          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Regulacja mocy czynnej (T05), zaprzestanie generacji w czasie nie dluzszym niz 5 s (T12) i zmniejszenie generacji z zadanym gradientem (T13) sa twierdzeniami o ZACHOWANIU modulu w czasie, nie faktami konfiguracyjnymi — solver porownuje wylacznie wartosci zadeklarowane w programie szczegolowym. Deklaracja nie dowodzi zachowania dynamicznego, dopoki profil regulacyjny jawnie nie zaakceptuje metody DECLARATION/CERTIFICATE dla tego wymagania (kamienie AB-1b/AB-1c).",
+          "audit_ref": "KARTA_AB_1A §0 R-6; OPUS_AUDYT_WARSTWY_REGULACYJNEJ §6.6 p. 6"
         },
         "T14": {
           "capability_id": "ncrfg_ptpiree.ride_through",
@@ -1098,18 +1108,18 @@
           "claim_kind": "DECLARED_CONFIGURATION",
           "claim_kind_pl": "konfiguracja_zadeklarowana",
           "regulatory_evidence_eligible": true,
-          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+          "rationale_pl": "Potwierdzenie PMIN (T11) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa. Karta AB-1a (R-6): T05, T12, T13 przeniesione do `ncrfg_ptpiree.zachowanie_zadeklarowane` (twierdzenia o zachowaniu w czasie), T10 do `ncrfg_ptpiree.test_bez_tresci` (tautologia).",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T11, T19); KARTA_AB_1A §0 R-6"
         },
         "T20": {
           "capability_id": "ncrfg_ptpiree.power_quality_declared",
           "tier": "DECLARATION",
           "tier_pl": "deklaracja_wnioskodawcy",
-          "claim_kind": "DECLARED_CONFIGURATION",
-          "claim_kind_pl": "konfiguracja_zadeklarowana",
-          "regulatory_evidence_eligible": true,
-          "rationale_pl": "THD_U (T20) pochodzi z rekordu katalogowego zrodla i jest porownywane z limitem profilu — fakt katalogowy, nie wynik symulacji widma.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T20)"
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "T20 porownuje wartosc THD_U z rekordu katalogowego zrodla z limitem 8 % ZASZYTYM w solverze (solvers/ncrfg_ptpiree/engine.py `_harmonics_test`), nie odczytanym z profilu operatora. THD_U jest wlasnoscia napiecia sieci w miejscu przylaczenia, a nie emisji urzadzenia — porownanie nie wykazuje spelnienia zadnego wymagania emisyjnego (to nie jest fakt konfiguracyjny). Wymaganie emisyjne instalacji ocenia sie wkladem instalacji wobec przydzialu emisji z dokumentu wskazanego decyzja wlasciciela (OD-38).",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T20); KARTA_AB_1A §0 R-6; OPUS_AUDYT_WARSTWY_REGULACYJNEJ §2.2"
         }
       },
       "pv/a14bb0e6a533796dc251500f1b5fe5fa/converter": {
@@ -1154,14 +1164,14 @@
           "audit_ref": "karta_s1_s4_dowod.md §0.2 (T01-T04)"
         },
         "T05": {
-          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "capability_id": "ncrfg_ptpiree.zachowanie_zadeklarowane",
           "tier": "DECLARATION",
           "tier_pl": "deklaracja_wnioskodawcy",
-          "claim_kind": "DECLARED_CONFIGURATION",
-          "claim_kind_pl": "konfiguracja_zadeklarowana",
-          "regulatory_evidence_eligible": true,
-          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Regulacja mocy czynnej (T05), zaprzestanie generacji w czasie nie dluzszym niz 5 s (T12) i zmniejszenie generacji z zadanym gradientem (T13) sa twierdzeniami o ZACHOWANIU modulu w czasie, nie faktami konfiguracyjnymi — solver porownuje wylacznie wartosci zadeklarowane w programie szczegolowym. Deklaracja nie dowodzi zachowania dynamicznego, dopoki profil regulacyjny jawnie nie zaakceptuje metody DECLARATION/CERTIFICATE dla tego wymagania (kamienie AB-1b/AB-1c).",
+          "audit_ref": "KARTA_AB_1A §0 R-6; OPUS_AUDYT_WARSTWY_REGULACYJNEJ §6.6 p. 6"
         },
         "T06": {
           "capability_id": "ncrfg_ptpiree.reactive_voltage_mode",
@@ -1204,14 +1214,14 @@
           "audit_ref": "karta_s1_s4_dowod.md §0.2 (T06-T09)"
         },
         "T10": {
-          "capability_id": "ncrfg_ptpiree.declared_configuration",
-          "tier": "DECLARATION",
-          "tier_pl": "deklaracja_wnioskodawcy",
-          "claim_kind": "DECLARED_CONFIGURATION",
-          "claim_kind_pl": "konfiguracja_zadeklarowana",
-          "regulatory_evidence_eligible": true,
-          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+          "capability_id": "ncrfg_ptpiree.test_bez_tresci",
+          "tier": "NOT_SIMULATED",
+          "tier_pl": "brak_symulacji",
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Potwierdzenie PMAX (T10) sprawdza wylacznie `p_max_kw > 0`, a kontrakt wejscia modulu wymaga `p_max_kw > 0` juz przy budowie — test przechodzi zawsze, niezaleznie od danych modulu (tautologia, solvers/ncrfg_ptpiree/engine.py `_pmax_pmin_test`, kontrakt `NcRfgPtpireeModuleInput.p_max_kw: Field(gt=0)`). Zadna wielkosc nie jest tu wykazana, wiec wynik nie jest dowodem.",
+          "audit_ref": "KARTA_AB_1A §0 R-6; OPUS_AUDYT_WARSTWY_REGULACYJNEJ §6.6"
         },
         "T11": {
           "capability_id": "ncrfg_ptpiree.declared_configuration",
@@ -1220,28 +1230,28 @@
           "claim_kind": "DECLARED_CONFIGURATION",
           "claim_kind_pl": "konfiguracja_zadeklarowana",
           "regulatory_evidence_eligible": true,
-          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+          "rationale_pl": "Potwierdzenie PMIN (T11) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa. Karta AB-1a (R-6): T05, T12, T13 przeniesione do `ncrfg_ptpiree.zachowanie_zadeklarowane` (twierdzenia o zachowaniu w czasie), T10 do `ncrfg_ptpiree.test_bez_tresci` (tautologia).",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T11, T19); KARTA_AB_1A §0 R-6"
         },
         "T12": {
-          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "capability_id": "ncrfg_ptpiree.zachowanie_zadeklarowane",
           "tier": "DECLARATION",
           "tier_pl": "deklaracja_wnioskodawcy",
-          "claim_kind": "DECLARED_CONFIGURATION",
-          "claim_kind_pl": "konfiguracja_zadeklarowana",
-          "regulatory_evidence_eligible": true,
-          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Regulacja mocy czynnej (T05), zaprzestanie generacji w czasie nie dluzszym niz 5 s (T12) i zmniejszenie generacji z zadanym gradientem (T13) sa twierdzeniami o ZACHOWANIU modulu w czasie, nie faktami konfiguracyjnymi — solver porownuje wylacznie wartosci zadeklarowane w programie szczegolowym. Deklaracja nie dowodzi zachowania dynamicznego, dopoki profil regulacyjny jawnie nie zaakceptuje metody DECLARATION/CERTIFICATE dla tego wymagania (kamienie AB-1b/AB-1c).",
+          "audit_ref": "KARTA_AB_1A §0 R-6; OPUS_AUDYT_WARSTWY_REGULACYJNEJ §6.6 p. 6"
         },
         "T13": {
-          "capability_id": "ncrfg_ptpiree.declared_configuration",
+          "capability_id": "ncrfg_ptpiree.zachowanie_zadeklarowane",
           "tier": "DECLARATION",
           "tier_pl": "deklaracja_wnioskodawcy",
-          "claim_kind": "DECLARED_CONFIGURATION",
-          "claim_kind_pl": "konfiguracja_zadeklarowana",
-          "regulatory_evidence_eligible": true,
-          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "Regulacja mocy czynnej (T05), zaprzestanie generacji w czasie nie dluzszym niz 5 s (T12) i zmniejszenie generacji z zadanym gradientem (T13) sa twierdzeniami o ZACHOWANIU modulu w czasie, nie faktami konfiguracyjnymi — solver porownuje wylacznie wartosci zadeklarowane w programie szczegolowym. Deklaracja nie dowodzi zachowania dynamicznego, dopoki profil regulacyjny jawnie nie zaakceptuje metody DECLARATION/CERTIFICATE dla tego wymagania (kamienie AB-1b/AB-1c).",
+          "audit_ref": "KARTA_AB_1A §0 R-6; OPUS_AUDYT_WARSTWY_REGULACYJNEJ §6.6 p. 6"
         },
         "T14": {
           "capability_id": "ncrfg_ptpiree.ride_through",
@@ -1300,18 +1310,18 @@
           "claim_kind": "DECLARED_CONFIGURATION",
           "claim_kind_pl": "konfiguracja_zadeklarowana",
           "regulatory_evidence_eligible": true,
-          "rationale_pl": "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T05, T10-T13, T19)"
+          "rationale_pl": "Potwierdzenie PMIN (T11) i telemechanika/SCADA/rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — deklaracja jest tu wlasciwa podstawa dowodowa. Karta AB-1a (R-6): T05, T12, T13 przeniesione do `ncrfg_ptpiree.zachowanie_zadeklarowane` (twierdzenia o zachowaniu w czasie), T10 do `ncrfg_ptpiree.test_bez_tresci` (tautologia).",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T11, T19); KARTA_AB_1A §0 R-6"
         },
         "T20": {
           "capability_id": "ncrfg_ptpiree.power_quality_declared",
           "tier": "DECLARATION",
           "tier_pl": "deklaracja_wnioskodawcy",
-          "claim_kind": "DECLARED_CONFIGURATION",
-          "claim_kind_pl": "konfiguracja_zadeklarowana",
-          "regulatory_evidence_eligible": true,
-          "rationale_pl": "THD_U (T20) pochodzi z rekordu katalogowego zrodla i jest porownywane z limitem profilu — fakt katalogowy, nie wynik symulacji widma.",
-          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T20)"
+          "claim_kind": "DYNAMIC_PERFORMANCE",
+          "claim_kind_pl": "zachowanie_dynamiczne",
+          "regulatory_evidence_eligible": false,
+          "rationale_pl": "T20 porownuje wartosc THD_U z rekordu katalogowego zrodla z limitem 8 % ZASZYTYM w solverze (solvers/ncrfg_ptpiree/engine.py `_harmonics_test`), nie odczytanym z profilu operatora. THD_U jest wlasnoscia napiecia sieci w miejscu przylaczenia, a nie emisji urzadzenia — porownanie nie wykazuje spelnienia zadnego wymagania emisyjnego (to nie jest fakt konfiguracyjny). Wymaganie emisyjne instalacji ocenia sie wkladem instalacji wobec przydzialu emisji z dokumentu wskazanego decyzja wlasciciela (OD-38).",
+          "audit_ref": "karta_s1_s4_dowod.md §0.2 (T20); KARTA_AB_1A §0 R-6; OPUS_AUDYT_WARSTWY_REGULACYJNEJ §2.2"
         }
       }
     }

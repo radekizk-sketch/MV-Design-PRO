@@ -4,6 +4,8 @@
   "project_id": null,
   "study_case_id": "case-demo",
   "analysis_type": "PF",
+  "physics_domain": "POWER_FLOW",
+  "physics_domain_pl": "stan ustalony 50 Hz (rozpływ mocy)",
   "status": "FINISHED",
   "result_status": "VALID",
   "created_at": "2026-09-16T09:00:00+00:00",

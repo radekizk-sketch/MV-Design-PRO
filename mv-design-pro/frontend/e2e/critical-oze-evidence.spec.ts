@@ -25,8 +25,11 @@
  *      DOKUMENTU i wersję WiPWC z wykazu, a urządzenie niepowiązane — uczciwy
  *      stan zerowy „brak dowodu",
  *   5. certyfikat zgodności: żądanie idzie z `case_id` aktywnego przypadku
- *      (bez niego backend nie ma skąd wziąć tabliczek i sekcja dowodu znika),
- *      a podgląd i plik DOCX niosą numer dokumentu tego samego urządzenia.
+ *      (bez niego backend nie ma skąd wziąć tabliczek i sekcja dowodu znika);
+ *      przy urządzeniu SPOZA wykazu certyfikat NIE powstaje — lista braków
+ *      nazywa T12 (deklaracja zachowania nie jest dowodem, karta AB-1a §0 R-6);
+ *      po usunięciu tego urządzenia podgląd i plik DOCX niosą numer dokumentu
+ *      urządzenia powiązanego.
  *
  * Asercje idą po TREŚCI (numer dokumentu, wersja WiPWC), nie po samym istnieniu
  * elementów — element bez danej przechodziłby test tak samo jak element z daną.
@@ -418,9 +421,13 @@ test('krytyczny łańcuch dowodu PTPiREE: kreator OZE → tabliczka w modelu →
   await expect(page.getByTestId(`mvd-oze-dowod-${refNiepowiazany}`)).toHaveCount(0);
 
   // ------------------------------------------------------------------
-  // Krok 9: CERTYFIKAT ZGODNOŚCI — żądanie z aktywnym przypadkiem i dowód
-  // w podglądzie. Bez `case_id` backend nie ma skąd wziąć tabliczek modelu
-  // i dokument wraca bez sekcji dowodu.
+  // Krok 9a: CERTYFIKAT przy urządzeniu SPOZA wykazu — uczciwa lista braków.
+  // Karta AB-1a §0 R-6: moduł klasy A bez certyfikatu PTPiREE ma wymagany T12
+  // („zaprzestanie generacji w ≤ 5 s"), a DEKLARACJA tej zdolności nie dowodzi
+  // zachowania w czasie — certyfikat NIE powstaje, a brak jest NAZWANY (test T12,
+  // zdanie o braku dowodu). Dawniej ten krok oczekiwał certyfikatu wydanego na
+  // samej deklaracji T12 — to był fałszywy „zgodny" na ścieżce użytkownika.
+  // Żądanie nadal idzie z `case_id` aktywnego przypadku.
   // ------------------------------------------------------------------
   const zadanieCertyfikatu = page.waitForRequest(
     (żądanie) =>
@@ -437,15 +444,46 @@ test('krytyczny łańcuch dowodu PTPiREE: kreator OZE → tabliczka w modelu →
   ).toContain(`case_id=${seed.caseId}`);
 
   await expect(page.getByTestId('mvd-oze-certyfikat')).toBeVisible({ timeout: 60000 });
+  const brakiCertyfikatu = page.getByTestId('mvd-oze-cert-braki');
+  await expect(brakiCertyfikatu).toBeVisible({ timeout: 60000 });
+  await expect(brakiCertyfikatu).toContainText('test T12');
+  await expect(brakiCertyfikatu).toContainText('BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA');
+  await expect(page.getByTestId('mvd-oze-cert-widok')).toHaveCount(0);
+  await page.getByTestId('mvd-oze-cert-zamknij').click();
+
+  // ------------------------------------------------------------------
+  // Krok 9b: po usunięciu urządzenia spoza wykazu (operacja domenowa — ta sama
+  // droga, którą urządzenie kontrolne dodano w kroku 6; mierzoną ścieżką
+  // natywną jest urządzenie POWIĄZANE) bieg NC RfG klikany natywnie i certyfikat
+  // powstaje z dowodem wykazu przy urządzeniu powiązanym.
+  // ------------------------------------------------------------------
+  await executeDomainOp(request, seed.caseId, 'delete_element', {
+    element_ref: refNiepowiazany,
+  });
+  await przeladujPowloke(page);
+  await otworzMacierzZgodnosci(page);
+  await expect(page.getByTestId('mvd-oze-macierz-tabela')).toBeVisible({ timeout: 30000 });
+  await page.getByTestId('mvd-oze-przeprowadz').click();
+  await expect(page.getByTestId('mvd-oze-komorka-wynik').first()).toBeVisible({ timeout: 60000 });
+
+  const zadanieCertyfikatuPowiazanego = page.waitForRequest(
+    (żądanie) =>
+      żądanie.url().includes('/api/oze-analysis/compliance-certificate')
+      && !żądanie.url().includes('.docx')
+      && żądanie.method() === 'POST',
+    { timeout: 60000 },
+  );
+  await page.getByTestId('mvd-oze-certyfikat-przycisk').click();
+  expect((await zadanieCertyfikatuPowiazanego).url()).toContain(`case_id=${seed.caseId}`);
+
+  await expect(page.getByTestId('mvd-oze-certyfikat')).toBeVisible({ timeout: 60000 });
   await expect(page.getByTestId('mvd-oze-cert-braki')).toHaveCount(0);
   await expect(page.getByTestId('mvd-oze-cert-widok')).toBeVisible({ timeout: 60000 });
 
   const dowodCertyfikatu = page.getByTestId(`mvd-oze-cert-dowod-${refPowiazany}`);
   await expect(dowodCertyfikatu).toContainText(NUMER_DOKUMENTU);
   await expect(dowodCertyfikatu).toContainText(`WiPWC ${WERSJA_WIPWC}`);
-  await expect(page.getByTestId(`mvd-oze-cert-dowod-brak-${refNiepowiazany}`)).toContainText(
-    'Brak danych tabliczki urządzenia w modelu.',
-  );
+  await expect(page.getByTestId(`mvd-oze-cert-dowod-brak-${refNiepowiazany}`)).toHaveCount(0);
 
   // ------------------------------------------------------------------
   // Krok 10: plik DOCX certyfikatu idzie tą samą drogą (ten sam przypadek).

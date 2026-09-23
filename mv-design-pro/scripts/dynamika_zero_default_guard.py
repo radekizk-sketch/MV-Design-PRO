@@ -7,7 +7,8 @@ pola wymaganego (Pydantic `ValidationError`), nigdy cichą domyślką (zero
 fabrykacji, ZASADA NR 1 CLAUDE.md; dopełnienie precedensu k_sc DEFAULT_FORBIDDEN
 — S-2, karta W6-0).
 
-SCAN FILES (KLASA, nie jeden plik — ten sam kontrakt żyje w trzech miejscach):
+SCAN FILES (KLASA, nie jeden plik — ten sam kontrakt żyje w czterech miejscach;
+czwarte, `enm/badanie_zgodnosci.py`, dopisane kartą AB-1a D4):
   backend/src/enm/dynamika_modele.py                          (ParametryDynamiczne)
   backend/src/network_model/catalog/der_dynamic/models.py     (profile DER — mapują
                                                                  się 1:1 na powyższe)
@@ -49,6 +50,10 @@ SCAN_FILES: tuple[str, ...] = (
     # Ten sam zakaz domyślek liczbowych: brak nastawy albo brak parametru sieci
     # to brak pola wymaganego, nigdy cicha wartość zastępcza.
     "backend/src/network_model/solvers/dynamika/kontrakty.py",
+    # Karta AB-1a D4: CZWARTE miejsce — kontrakt badania zgodnosci na zaciskach
+    # (`BadanieZgodnosci`: bodziec, impedancja zastepcza sieci, pasmo waznosci
+    # modelu). Ten sam zakaz: W-98 zabrania domyslnej impedancji sieci.
+    "backend/src/enm/badanie_zgodnosci.py",
 )
 
 #: Pola dozwolone z domyślką TEKSTOWĄ (dyskryminator wariantu, nie wielkość

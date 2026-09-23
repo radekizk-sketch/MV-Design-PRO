@@ -76,7 +76,12 @@ _MODULE_FULL: dict = {
     "q_range_pct_pn_max": 0.33,
     "reactive_current_gain": 2,
     "p_recovery_time_s": 0.8,
-    "harmonic_thdu_percent": 3,
+    # Karta AB-1a §0 R-6 (2026-09-23): `harmonic_thdu_percent` USUNIETE. Podany THD_U
+    # czyni T20 WYMAGANYM (`engine.py::_is_required`), a T20 przestal byc dowodem
+    # (limit 8 % zaszyty w solverze, THD_U to wlasnosc napiecia sieci, nie emisji).
+    # Intencja fikstury bez zmian: klasa A z certyfikatem PTPiREE (precedens FAB-K)
+    # przechodzi bramke certyfikatu; T20 z podanym THD jest przypiety osobno w
+    # `tests/api/test_certyfikat_zgodnosci.py::test_t20_z_podanym_thd_blokuje_certyfikat_nazwanym_brakiem`.
 }
 
 

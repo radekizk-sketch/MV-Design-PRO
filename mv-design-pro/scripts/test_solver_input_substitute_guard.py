@@ -1475,7 +1475,26 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # wezlow — liczbe podstawiona za brak danych. Nie miala zadnego konsumenta, wiec
     # poszla jako martwy kod, a nie jako wyciszenie. PASS bramki niezmieniony
     # (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 3841." in wyjscie, wyjscie
+    # Karta AB-1a D1/D4/D5/D6 (2026-09-23): 3841 -> 3866 (+25 pol, zero skasowanych).
+    # POMIAR (nie arytmetyka karty): `contract_fields()` zrzucone NA DRZEWIE karty i na
+    # drzewie bazowym `529837d2` (`git archive` do katalogu roboczego, ten sam skaner z
+    # podmienionym `BACKEND_SRC`), roznica zbiorow. Nowe nazwy i ich nosniki:
+    # `enm/badanie_zgodnosci.py` (kontrakt badania zgodnosci na zaciskach): `bodziec`,
+    # `df_dt_hz_s`, `f_do_hz`, `f_poczatkowa_hz`, `f_przed_hz`,
+    # `impedancja_zastepcza_sieci`, `pasmo_waznosci_modelu_hz`, `r`, `t_koniec_s`,
+    # `t_start_s`, `u_bazowe_kv`, `x`; `application/solvers/solver_capability_registry.py`
+    # (`SolverCapability`): `evidence_capability_id`, `physics_domain`, `reprezentacja`;
+    # `api/solver_capabilities.py` (typowane odpowiedzi rejestru): `all_available`,
+    # `all_implemented`, `all_proof_supported`, `all_reportable`, `capabilities`,
+    # `not_reportable`, `ocena_dowodowa`, `physics_domain_pl`;
+    # `solver_input/provenance.py` (`WartoscZProweniencja`): `domain`;
+    # `solver_input/dowod_ncrfg.py` (`OcenaDowodowaModulu`): `kod_fail_closed`.
+    # Kazde z tych pol jest WYMAGANE (bez wartosci domyslnej) albo jawnym `None`
+    # „brak kodu"; zadne nie ma galezi zapasowej liczbowej — zbior pol ROSNIE, wiec
+    # skaner jest CZULSZY (np. `r`/`x` odtad lapia `obiekt.r or <liczba>`), a PASS
+    # bramki pozostaje bez zmian (zero podstawien, zapadka 56/255 i wykluczenia 13/31
+    # bez zmian).
+    assert "Pol kontraktow wejsciowych: 3866." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1569,7 +1588,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # wykluczenia (13/31) BEZ ZMIANY: predykat wkladu jest MIERZONY z rownan
         # urzadzenia (`prad_pu` oraz `jakobian_prad_napiecie`), a nie z listy rodzin,
         # wiec modul nie podstawia zadnej liczby za brak danej. Zero plikow skasowanych.
-        "Przeskanowano 537 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta AB-1a D4 (2026-09-23): 537 -> 538 (+1 plik `enm/badanie_zgodnosci.py` —
+        # kontrakt badania zgodnosci na zaciskach). POMIAR: `git diff --name-status
+        # 529837d2 HEAD -- backend/src/` daje DOKLADNIE jeden wpis `A`, reszta `M`.
+        # Zapadka dlugu (56/255) i wykluczenia (13/31) BEZ ZMIANY: kontrakt nie ma
+        # zadnej wartosci domyslnej danej fizycznej, brak danej = `ValidationError`.
+        "Przeskanowano 538 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1647,7 +1671,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta W6-3B (2026-09-18): enm 47 -> 48 (+1 `enm/adapter_dynamiki.py`; zero
         # dlugu/wykluczen — adapter SKLADA i MAPUJE, kazdy brak danej konczy sie
         # nazwana odmowa, nie liczba podstawiona za brak).
-        "  enm: pliki_skanowane=48, dlug=7 plikow/suma 73, wykluczenia=0 plikow/suma 0",
+        # Karta AB-1a D4 (2026-09-23): enm 48 -> 49 (+1 `enm/badanie_zgodnosci.py`; zero
+        # dlugu/wykluczen — kontrakt pydantic bez wartosci domyslnych danych fizycznych).
+        "  enm: pliki_skanowane=49, dlug=7 plikow/suma 73, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
