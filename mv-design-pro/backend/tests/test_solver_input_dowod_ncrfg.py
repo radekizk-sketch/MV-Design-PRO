@@ -205,11 +205,94 @@ def test_ocena_dowodowa_testu_znany_test_id() -> None:
 
 
 def test_ocena_dowodowa_testu_deklaracja_konfiguracji_jest_dowodowa() -> None:
-    ewidencja = ocena_dowodowa_testu("T12")
+    # INTENCJA (bez zmian): fakt konfiguracyjny potwierdzony deklaracja JEST
+    # dopuszczalny dowodowo. Karta AB-1a R-6 przeniosla T12 (zaprzestanie
+    # generacji w czasie — twierdzenie o ZACHOWANIU) do DYNAMIC_PERFORMANCE,
+    # wiec przyklad faktu konfiguracyjnego to dzis T11 (potwierdzenie PMIN).
+    ewidencja = ocena_dowodowa_testu("T11")
     assert ewidencja is not None
     assert ewidencja.claim_kind is ClaimKind.DECLARED_CONFIGURATION
     assert ewidencja.tier is EvidenceTier.DECLARATION
     assert ewidencja.regulatory_evidence_eligible is True
+
+
+# --------------------------------------------------------------------------- #
+# Karta AB-1a R-6 — poprawki rejestru dowodowego (solver FROZEN nietkniety).
+# --------------------------------------------------------------------------- #
+def test_claim_kind_testu_rowny_rejestrowi() -> None:
+    """Test parowy: `claim_kind` tabeli TEST_ZDOLNOSC == `claim_kind` wpisu rejestru.
+
+    `ocena_dowodowa_testu` podmienia `claim_kind` przez `replace`, gdy dwie
+    deklaracje sie rozjada — ten test pinuje, ze do rozjazdu NIE dochodzi (jedna
+    prawda o rodzaju twierdzenia per zdolnosc, bez cichego wygladzania)."""
+    for test_id, (capability_id, claim_kind) in sorted(TEST_ZDOLNOSC.items()):
+        assert (
+            classify_dynamic_capability(capability_id).claim_kind is claim_kind
+        ), test_id
+
+
+@pytest.mark.parametrize("test_id", ["T05", "T12", "T13"])
+def test_zachowanie_w_czasie_z_deklaracji_nie_jest_dowodowe(test_id: str) -> None:
+    ewidencja = ocena_dowodowa_testu(test_id)
+    assert ewidencja is not None
+    assert ewidencja.capability_id == "ncrfg_ptpiree.zachowanie_zadeklarowane"
+    assert ewidencja.tier is EvidenceTier.DECLARATION
+    assert ewidencja.claim_kind is ClaimKind.DYNAMIC_PERFORMANCE
+    assert ewidencja.regulatory_evidence_eligible is False
+    assert _etykieta_ograniczenia(test_id) == f"{test_id}:DECLARATION"
+
+
+def test_t10_tautologia_jest_testem_bez_tresci() -> None:
+    ewidencja = ocena_dowodowa_testu("T10")
+    assert ewidencja is not None
+    assert ewidencja.capability_id == "ncrfg_ptpiree.test_bez_tresci"
+    assert ewidencja.tier is EvidenceTier.NOT_SIMULATED
+    assert ewidencja.claim_kind is ClaimKind.DYNAMIC_PERFORMANCE
+    assert ewidencja.regulatory_evidence_eligible is False
+    assert "Field(gt=0)" in ewidencja.rationale_pl
+
+
+def test_t20_uzasadnienie_mowi_prawde_o_limicie() -> None:
+    ewidencja = ocena_dowodowa_testu("T20")
+    assert ewidencja is not None
+    assert ewidencja.claim_kind is ClaimKind.DYNAMIC_PERFORMANCE
+    assert ewidencja.regulatory_evidence_eligible is False
+    # Limit jest zaszyty w solverze, nie w profilu; THD_U to wlasnosc napiecia sieci.
+    assert "engine.py:860" in ewidencja.rationale_pl
+    assert "limitem profilu" not in ewidencja.rationale_pl
+    assert "SIECI" in ewidencja.rationale_pl
+
+
+def test_ppm_typu_a_z_sama_deklaracja_t12_nie_jest_reportable() -> None:
+    """Pin z karty AB-1a (R-6, przeglad adwersarialny §6.1): PPM typu A bez
+    certyfikatu ma jedyny test wymagany T12 — sama deklaracja zaprzestania
+    generacji NIE czyni modulu raportowalnym."""
+    wynik = _bieg(
+        dict(_MODUL_KLASY_A, certificate_status="unknown", stop_generation_enabled=True)
+    )
+    modul = wynik.modules[0]
+    wymagane = [t.test_id for t in modul.tests if t.required]
+    assert wymagane == ["T12"]
+    ocena = _ocena_modulu(modul)
+    assert ocena.reporting_status == "not_reportable"
+    assert ocena.evidence_limitations == ("T12:DECLARATION",)
+
+
+@pytest.mark.parametrize(
+    ("dodatek", "ograniczenie"),
+    [
+        ({"harmonic_thdu_percent": 3.0}, "T20:DECLARATION"),
+    ],
+)
+def test_modul_klasy_a_z_testem_warunkowym_nazywa_ograniczenie(
+    dodatek: dict, ograniczenie: str
+) -> None:
+    """T20 jest wymagany, gdy podano THD — i od karty AB-1a blokuje raportowalnosc
+    modulu z NAZWANYM ograniczeniem (konsumenci: macierz, certyfikat, wniosek)."""
+    wynik = _bieg(dict(_MODUL_KLASY_A, **dodatek))
+    ocena = _ocena_modulu(wynik.modules[0])
+    assert ocena.reporting_status == "not_reportable"
+    assert ograniczenie in ocena.evidence_limitations
 
 
 def test_ocena_dowodowa_testu_nieznany_test_id_zwraca_none() -> None:
@@ -247,7 +330,9 @@ def test_modul_klasy_a_jest_reportable_complete_zero_wymaganych() -> None:
     )
 
 
-def test_modul_klasy_b_jest_not_reportable_incomplete_testy_dynamiczne_wymagane() -> None:
+def test_modul_klasy_b_jest_not_reportable_incomplete_testy_dynamiczne_wymagane() -> (
+    None
+):
     wynik = _bieg(_MODUL_KLASY_B)
     ocena = _ocena_modulu(wynik.modules[0])
     assert ocena.reporting_status == "not_reportable"
@@ -286,7 +371,9 @@ def test_bieg_wielomodulowy_jest_fail_closed_jeden_modul_wystarczy() -> None:
 
 def test_bieg_dwoch_modulow_klasy_a_jest_reportable() -> None:
     """Kontrapunkt do testu powyzej: DWA reportable moduly -> bieg reportable."""
-    wynik = _bieg(dict(_MODUL_KLASY_A, der_ref="pv-a1"), dict(_MODUL_KLASY_A, der_ref="pv-a2"))
+    wynik = _bieg(
+        dict(_MODUL_KLASY_A, der_ref="pv-a1"), dict(_MODUL_KLASY_A, der_ref="pv-a2")
+    )
     ocena_biegu = ocena_dowodowa_biegu(wynik)
     assert ocena_biegu.reporting_status == "reportable"
     assert ocena_biegu.proof_status == "complete"

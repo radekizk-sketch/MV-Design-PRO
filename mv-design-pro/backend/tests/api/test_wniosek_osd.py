@@ -76,7 +76,12 @@ _MODULE_FULL: dict = {
     "q_range_pct_pn_max": 0.33,
     "reactive_current_gain": 2,
     "p_recovery_time_s": 0.8,
-    "harmonic_thdu_percent": 3,
+    # Karta AB-1a R-6: T20 (THD_U) jest WYMAGANY, gdy podano THD, a od tej karty
+    # jest niedopuszczalny dowodowo (limit 8 % zaszyty w solverze, THD_U to
+    # wlasnosc napiecia sieci) — z podanym THD certyfikat/wniosek NIE powstaje
+    # (pin: `test_thd_modulu_blokuje_dokument_z_nazwanym_t20`). Intencja fikstury
+    # (sciezka pozytywna z bogatym zestawem pol) wymaga wiec braku THD.
+    "harmonic_thdu_percent": None,
 }
 
 
@@ -103,13 +108,17 @@ def _augmented_enm():
 
 def _pf_run() -> CanonicalRun:
     set_enm("c-pf", _augmented_enm())
-    return execute_run(create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id)
+    return execute_run(
+        create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id
+    )
 
 
 def _sc_run() -> CanonicalRun:
     set_enm("c-sc", _augmented_enm())
     return execute_run(
-        create_run(case_id="c-sc", klucz_twin="c-sc", analysis_type="short_circuit_sn").id
+        create_run(
+            case_id="c-sc", klucz_twin="c-sc", analysis_type="short_circuit_sn"
+        ).id
     )
 
 
@@ -255,12 +264,16 @@ def test_braki_bez_pf_zly_rodzaj() -> None:
 
 
 def test_braki_pf_niezakonczony() -> None:
-    braki = zbierz_braki_wniosku(_fake_run("PF", "RUNNING"), _sc_run(), "bus_nn", _ncrfg())
+    braki = zbierz_braki_wniosku(
+        _fake_run("PF", "RUNNING"), _sc_run(), "bus_nn", _ncrfg()
+    )
     assert any("nie jest zakończony" in b for b in braki)
 
 
 def test_braki_bez_sc_zly_rodzaj() -> None:
-    braki = zbierz_braki_wniosku(_pf_run(), _fake_run("PF", "FINISHED"), "bus_nn", _ncrfg())
+    braki = zbierz_braki_wniosku(
+        _pf_run(), _fake_run("PF", "FINISHED"), "bus_nn", _ncrfg()
+    )
     assert any("nie jest zwarciowy" in b for b in braki)
 
 
@@ -357,7 +370,9 @@ def test_dokument_bez_kodow_projektowych() -> None:
 # --------------------------------------------------------------------------- #
 def test_endpoint_json_200_komplet(app_client) -> None:
     pf, sc = _pf_run(), _sc_run()
-    resp = app_client.post(OSD_JSON, json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id)))
+    resp = app_client.post(
+        OSD_JSON, json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id))
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["identyfikacja"]["projekt"] == "Farma PV Wschód"
@@ -368,7 +383,9 @@ def test_endpoint_json_braki_422(app_client) -> None:
     pf, sc = _pf_run(), _sc_run()
     resp = app_client.post(
         OSD_JSON,
-        json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id), bus_ref="bus_nieznany"),
+        json=_payload(
+            pf_run_id=str(pf.id), sc_run_id=str(sc.id), bus_ref="bus_nieznany"
+        ),
     )
     assert resp.status_code == 422
     detail = resp.json()["detail"]
@@ -378,7 +395,9 @@ def test_endpoint_json_braki_422(app_client) -> None:
 
 def test_endpoint_nieznany_przebieg_404(app_client) -> None:
     sc = _sc_run()
-    resp = app_client.post(OSD_JSON, json=_payload(pf_run_id=str(uuid4()), sc_run_id=str(sc.id)))
+    resp = app_client.post(
+        OSD_JSON, json=_payload(pf_run_id=str(uuid4()), sc_run_id=str(sc.id))
+    )
     assert resp.status_code == 404
     assert "nie istnieje" in resp.json()["detail"]
 
@@ -390,7 +409,9 @@ def test_endpoint_nieznany_operator_404(app_client) -> None:
     resp = app_client.post(
         OSD_JSON,
         json=_payload(
-            pf_run_id=str(pf.id), sc_run_id=str(sc.id), run_request={"modules": [module]}
+            pf_run_id=str(pf.id),
+            sc_run_id=str(sc.id),
+            run_request={"modules": [module]},
         ),
     )
     assert resp.status_code == 404
@@ -398,7 +419,9 @@ def test_endpoint_nieznany_operator_404(app_client) -> None:
 
 def test_endpoint_docx_content_type(app_client) -> None:
     pf, sc = _pf_run(), _sc_run()
-    resp = app_client.post(OSD_DOCX, json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id)))
+    resp = app_client.post(
+        OSD_DOCX, json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id))
+    )
     assert resp.status_code == 200
     assert resp.headers["content-type"] == (
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -455,7 +478,9 @@ def test_pdf_dokument_bez_kodow_projektowych() -> None:
 
 def test_endpoint_pdf_content_type(app_client) -> None:
     pf, sc = _pf_run(), _sc_run()
-    resp = app_client.post(OSD_PDF, json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id)))
+    resp = app_client.post(
+        OSD_PDF, json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id))
+    )
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "application/pdf"
     assert "attachment" in resp.headers["content-disposition"]
@@ -475,7 +500,9 @@ def test_endpoint_pdf_braki_422(app_client) -> None:
     pf, sc = _pf_run(), _sc_run()
     resp = app_client.post(
         OSD_PDF,
-        json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id), bus_ref="bus_nieznany"),
+        json=_payload(
+            pf_run_id=str(pf.id), sc_run_id=str(sc.id), bus_ref="bus_nieznany"
+        ),
     )
     assert resp.status_code == 422
     detail = resp.json()["detail"]
@@ -484,5 +511,7 @@ def test_endpoint_pdf_braki_422(app_client) -> None:
 
 def test_endpoint_pdf_nieznany_przebieg_404(app_client) -> None:
     sc = _sc_run()
-    resp = app_client.post(OSD_PDF, json=_payload(pf_run_id=str(uuid4()), sc_run_id=str(sc.id)))
+    resp = app_client.post(
+        OSD_PDF, json=_payload(pf_run_id=str(uuid4()), sc_run_id=str(sc.id))
+    )
     assert resp.status_code == 404

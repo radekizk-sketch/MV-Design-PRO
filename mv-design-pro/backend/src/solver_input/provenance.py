@@ -295,13 +295,50 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             tier=EvidenceTier.DECLARATION,
             claim_kind=ClaimKind.DECLARED_CONFIGURATION,
             rationale_pl=(
-                "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), "
-                "zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/"
-                "SCADA/rejestrator (T19) sa faktami konfiguracyjnymi "
-                "porownanymi z wymaganiem profilu — deklaracja jest tu "
-                "wlasciwa podstawa dowodowa."
+                "Potwierdzenie mocy minimalnej (T11) i telemechanika/SCADA/"
+                "rejestrator (T19) sa faktami konfiguracyjnymi porownanymi z "
+                "wymaganiem profilu — deklaracja jest tu wlasciwa podstawa "
+                "dowodowa. Regulacja P (T05) i zaprzestanie/zmniejszenie "
+                "generacji (T12/T13) NIE sa faktami konfiguracyjnymi (zdolnosc "
+                "ncrfg_ptpiree.zachowanie_zadeklarowane), a potwierdzenie PMAX "
+                "(T10) nie ma tresci (zdolnosc ncrfg_ptpiree.test_bez_tresci)."
             ),
-            audit_ref=f"{_AUDIT_CARD} §0.2 (T05, T10-T13, T19)",
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T11, T19); karta AB-1a R-6",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.zachowanie_zadeklarowane",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DYNAMIC_PERFORMANCE,
+            rationale_pl=(
+                "Regulacja mocy czynnej do nastawy (T05) oraz zaprzestanie "
+                "generacji w zadanym czasie i zmniejszenie jej z gradientem "
+                "(T12/T13) sa twierdzeniami o ZACHOWANIU modulu w czasie. Solver "
+                "porownuje flage i zadeklarowana rampe z celem zaszytym w "
+                "silniku — zaden przebieg P(t) nie jest liczony, wiec deklaracja "
+                "nie dowodzi zachowania. Niedopuszczalne jako dowod, dopoki "
+                "profil operatora jawnie nie zaakceptuje deklaracji albo "
+                "certyfikatu dla tego wymagania (kamienie AB-1b/AB-1c)."
+            ),
+            audit_ref=(
+                "docs/evidence/OPUS_PRZEGLAD_ADWERSARIALNY_2026-09-23.md §6.2; "
+                "karta AB-1a R-6 (T05, T12, T13)"
+            ),
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.test_bez_tresci",
+            tier=EvidenceTier.NOT_SIMULATED,
+            claim_kind=ClaimKind.DYNAMIC_PERFORMANCE,
+            rationale_pl=(
+                "Potwierdzenie mocy maksymalnej (T10) sprawdza p_max_kw > 0, a "
+                "kontrakt wejscia modulu wymusza juz p_max_kw > 0 (Field(gt=0), "
+                "network_model/solvers/ncrfg_ptpiree/contracts.py:27) — wynik "
+                "'spelnia' jest tautologia, niezalezna od danych modulu. Test bez "
+                "tresci nie jest dowodem niczego."
+            ),
+            audit_ref=(
+                "docs/evidence/OPUS_AUDYT_WARSTWY_REGULACYJNEJ_2026-09-23.md §2.2 (T10); "
+                "karta AB-1a R-6"
+            ),
         ),
         CapabilityEvidence(
             capability_id="ncrfg_ptpiree.reactive_voltage_mode",
@@ -317,13 +354,21 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
         CapabilityEvidence(
             capability_id="ncrfg_ptpiree.power_quality_declared",
             tier=EvidenceTier.DECLARATION,
-            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            claim_kind=ClaimKind.DYNAMIC_PERFORMANCE,
             rationale_pl=(
-                "THD_U (T20) pochodzi z rekordu katalogowego zrodla i jest "
-                "porownywane z limitem profilu — fakt katalogowy, nie wynik "
-                "symulacji widma."
+                "T20 porownuje zadeklarowane THD_U z limitem 8 % ZASZYTYM w "
+                "silniku (network_model/solvers/ncrfg_ptpiree/engine.py:860), "
+                "nie z profilu operatora. THD_U jest wlasnoscia napiecia SIECI w "
+                "miejscu przylaczenia (tlo i inne instalacje), nie emisja "
+                "urzadzenia — liczbowo odpowiada charakterystyce napiecia "
+                "zasilajacego, wiec porownanie przenosi kompatybilnosc na emisje. "
+                "To nie jest fakt konfiguracyjny: niedopuszczalne jako dowod do "
+                "czasu rozstrzygniecia dokumentu wymagan jakosci energii (OD-38)."
             ),
-            audit_ref=f"{_AUDIT_CARD} §0.2 (T20)",
+            audit_ref=(
+                "docs/evidence/OPUS_AUDYT_WARSTWY_REGULACYJNEJ_2026-09-23.md §2.2 (T20); "
+                "karta AB-1a R-6"
+            ),
         ),
         CapabilityEvidence(
             capability_id="dynamic_stability.fault_clear",
@@ -689,7 +734,9 @@ class CardFieldAcceptance:
     note: str | None = None
 
     @classmethod
-    def of(cls, fields: set[str] | frozenset[str] | None, **kwargs: Any) -> CardFieldAcceptance:
+    def of(
+        cls, fields: set[str] | frozenset[str] | None, **kwargs: Any
+    ) -> CardFieldAcceptance:
         """Build from a plain set (``None`` => nothing accepted)."""
         return cls(accepted_fields=frozenset(fields or ()), **kwargs)
 

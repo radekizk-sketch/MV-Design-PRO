@@ -65,7 +65,12 @@ _MODULE_FULL: dict = {
     "q_range_pct_pn_max": 0.33,
     "reactive_current_gain": 2,
     "p_recovery_time_s": 0.8,
-    "harmonic_thdu_percent": 3,
+    # Karta AB-1a R-6: T20 (THD_U) jest WYMAGANY, gdy podano THD, a od tej karty
+    # jest niedopuszczalny dowodowo (limit 8 % zaszyty w solverze, THD_U to
+    # wlasnosc napiecia sieci) — z podanym THD certyfikat/wniosek NIE powstaje
+    # (pin: `test_thd_modulu_blokuje_dokument_z_nazwanym_t20`). Intencja fikstury
+    # (sciezka pozytywna z bogatym zestawem pol) wymaga wiec braku THD.
+    "harmonic_thdu_percent": None,
 }
 
 
@@ -77,7 +82,9 @@ def _module(**overrides: object) -> dict:
 
 def _run_result(module: dict):
     solver = NcRfgPtpireeSolver()
-    return solver.run(NcRfgPtpireeRunRequest(modules=[NcRfgPtpireeModuleInput(**module)]))
+    return solver.run(
+        NcRfgPtpireeRunRequest(modules=[NcRfgPtpireeModuleInput(**module)])
+    )
 
 
 def _docx_text(data: bytes) -> str:
@@ -133,14 +140,38 @@ def test_certyfikat_pozytywny_werdykt_zgodny() -> None:
     assert view["odcisk_wejscia_sha256"]
 
 
-def test_certyfikat_negatywny_powstaje_z_werdyktem_niezgodnym() -> None:
-    # Klasa A BEZ certyfikatu PTPiREE: T12 (zaprzestanie generacji, zdolność
-    # konfiguracyjna zadeklarowana — evidence-eligible, karta S-1) staje się
-    # WYMAGANY (`_is_required`); rampa dużo wolniejsza niż referencyjna
-    # (`ramp_rate_pct_per_min=0.1`) daje werdykt `fail` — bramka dowodowa
-    # przepuszcza (DECLARED_CONFIGURATION+DECLARATION jest evidence-eligible),
-    # bramka kompletności też (dane są, tylko niekorzystne) → certyfikat
-    # powstaje z werdyktem negatywnym (dokument stwierdza stan, nie blokuje).
+def _t12_zaakceptowany_przez_profil(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Symulacja stanu PO kamieniu AB-1c: profil operatora jawnie akceptuje
+    deklarację dla T12 (dziś brak takiego profilu — OD-21).
+
+    DLACZEGO PODMIANA REJESTRU, A NIE REALNA ŚCIEŻKA. Od karty AB-1a (R-6) T12 jest
+    twierdzeniem o zachowaniu w czasie (DYNAMIC_PERFORMANCE) i jest niedopuszczalny
+    dowodowo; dla klasy A bez certyfikatu to jedyny test wymagany, a żadna inna
+    realna konfiguracja modułu nie ma wymaganego testu dopuszczalnego z werdyktem
+    ``fail``. Własność „werdykt negatywny NIE blokuje dokumentu, gdy dowód jest
+    dopuszczalny" jest cechą bramki certyfikatu — testujemy ją na bramce z jawnie
+    nazwaną podmianą jednej pozycji rejestru, a realną ścieżkę (T12 blokuje z
+    nazwą) pinuje `test_t12_z_samej_deklaracji_blokuje_certyfikat_z_nazwa`.
+    """
+    from solver_input import dowod_ncrfg
+    from solver_input.provenance import ClaimKind
+
+    tabela = dict(dowod_ncrfg.TEST_ZDOLNOSC)
+    tabela["T12"] = (
+        "ncrfg_ptpiree.declared_configuration",
+        ClaimKind.DECLARED_CONFIGURATION,
+    )
+    monkeypatch.setattr(dowod_ncrfg, "TEST_ZDOLNOSC", tabela)
+
+
+def test_certyfikat_negatywny_powstaje_z_werdyktem_niezgodnym(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # INTENCJA (bez zmian): werdykt negatywny przy dopuszczalnym dowodzie NIE
+    # blokuje — dokument stwierdza stan. Klasa A BEZ certyfikatu PTPiREE: T12
+    # staje się WYMAGANY; rampa dużo wolniejsza niż referencyjna daje `fail`.
+    # Dopuszczalność dowodu T12 — patrz `_t12_zaakceptowany_przez_profil`.
+    _t12_zaakceptowany_przez_profil(monkeypatch)
     view = build_certyfikat_view(
         _run_result(
             _module(
@@ -154,7 +185,38 @@ def test_certyfikat_negatywny_powstaje_z_werdyktem_niezgodnym() -> None:
     assert view["werdykt_zbiorczy"]["status"] == "niezgodny"
     assert view["werdykt_zbiorczy"]["modulow_niezgodnych"] == 1
     assert view["moduly"][0]["status_pl"] == "Niezgodny"
-    assert any(t["test_id"] == "T12" and t["werdykt"] == "fail" for t in view["moduly"][0]["testy"])
+    assert any(
+        t["test_id"] == "T12" and t["werdykt"] == "fail"
+        for t in view["moduly"][0]["testy"]
+    )
+
+
+def test_t12_z_samej_deklaracji_blokuje_certyfikat_z_nazwa() -> None:
+    """Karta AB-1a R-6 (pin „PPM typu A z samą deklaracją T12 nie jest
+    raportowalny"): realna ścieżka — certyfikat NIE powstaje, a brak NAZYWA test
+    T12 i stan dowodowy (deklaracja), niezależnie od werdyktu testu."""
+    for rampa in (0.1, 10.0):
+        run_result = _run_result(
+            _module(
+                certificate_status="unknown",
+                stop_generation_enabled=True,
+                ramp_rate_pct_per_min=rampa,
+            )
+        )
+        braki = zbierz_braki(run_result)
+        assert any(
+            "T12" in b and "zdolność: T12:DECLARATION" in b for b in braki
+        ), braki
+
+
+def test_thd_modulu_blokuje_dokument_z_nazwanym_t20() -> None:
+    """Karta AB-1a R-6: podane THD czyni T20 wymaganym, a T20 jest od tej karty
+    niedopuszczalny dowodowo — brak nazywa T20 i jego stan (deklaracja)."""
+    run_result = _run_result(_module(harmonic_thdu_percent=3))
+    braki = zbierz_braki(run_result)
+    assert any("T20" in b and "zdolność: T20:DECLARATION" in b for b in braki), braki
+    with pytest.raises(CertyfikatBrakiError):
+        build_certyfikat_view(run_result, nazwa_projektu="Projekt A")
 
 
 def test_braki_blokuja_generacje_lista_pl() -> None:
@@ -194,7 +256,9 @@ _MODULU_KLASY_A: dict = {
 }
 
 
-def test_klasa_a_z_certyfikatem_ptpiree_ma_zero_wymaganych_ale_to_NIE_jest_brak() -> None:
+def test_klasa_a_z_certyfikatem_ptpiree_ma_zero_wymaganych_ale_to_NIE_jest_brak() -> (
+    None
+):
     """Moduł klasy A bez ŻADNEGO testu z klasyfikacji, ALE ze zweryfikowanym
     certyfikatem PTPiREE — certyfikat producenta jest samodzielną podstawą,
     zero testów NC RfG jest tu WNIOSKIEM klasyfikacji, nie luką dowodową."""
@@ -211,7 +275,9 @@ def test_klasa_a_z_certyfikatem_ptpiree_ma_zero_wymaganych_ale_to_NIE_jest_brak(
     assert view["moduly"][0]["klasa"] == "A"
 
 
-def test_klasa_a_bez_certyfikatu_wymaga_t12_i_zostaje_brakiem_gdy_niekompletny() -> None:
+def test_klasa_a_bez_certyfikatu_wymaga_t12_i_zostaje_brakiem_gdy_niekompletny() -> (
+    None
+):
     """PREDYKAT PAROWY z testem wyżej — TA SAMA klasa A, ALE BEZ certyfikatu:
     `required_count` NIE jest tu 0 (T12 „zaprzestanie generacji" staje się
     WYMAGANY właśnie DLATEGO, że certyfikatu brak — `_is_required` w
@@ -306,14 +372,20 @@ def test_dokument_bez_kodow_projektowych() -> None:
 # Końcówki API
 # --------------------------------------------------------------------------- #
 def test_endpoint_json_200_zgodny(client: TestClient) -> None:
-    response = client.post("/api/oze-analysis/compliance-certificate", json=_payload(_module()))
+    response = client.post(
+        "/api/oze-analysis/compliance-certificate", json=_payload(_module())
+    )
     assert response.status_code == 200
     payload = response.json()
     assert payload["werdykt_zbiorczy"]["status"] == "zgodny"
     assert payload["identyfikacja"]["projekt"] == "Farma PV Wschód"
 
 
-def test_endpoint_json_negatywny_200(client: TestClient) -> None:
+def test_endpoint_json_negatywny_200(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Dopuszczalność dowodu T12 po AB-1c — patrz `_t12_zaakceptowany_przez_profil`.
+    _t12_zaakceptowany_przez_profil(monkeypatch)
     response = client.post(
         "/api/oze-analysis/compliance-certificate",
         json=_payload(
@@ -369,8 +441,12 @@ def test_endpoint_docx_content_type(client: TestClient) -> None:
 
 
 def test_endpoint_docx_determinizm(client: TestClient) -> None:
-    first = client.post("/api/oze-analysis/compliance-certificate.docx", json=_payload(_module()))
-    second = client.post("/api/oze-analysis/compliance-certificate.docx", json=_payload(_module()))
+    first = client.post(
+        "/api/oze-analysis/compliance-certificate.docx", json=_payload(_module())
+    )
+    second = client.post(
+        "/api/oze-analysis/compliance-certificate.docx", json=_payload(_module())
+    )
     assert first.status_code == 200
     assert first.content == second.content
 
@@ -420,7 +496,9 @@ def test_pdf_dokument_bez_kodow_projektowych() -> None:
 
 
 def test_endpoint_pdf_content_type(client: TestClient) -> None:
-    response = client.post("/api/oze-analysis/compliance-certificate.pdf", json=_payload(_module()))
+    response = client.post(
+        "/api/oze-analysis/compliance-certificate.pdf", json=_payload(_module())
+    )
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
     assert "attachment" in response.headers["content-disposition"]
@@ -428,8 +506,12 @@ def test_endpoint_pdf_content_type(client: TestClient) -> None:
 
 
 def test_endpoint_pdf_determinizm(client: TestClient) -> None:
-    first = client.post("/api/oze-analysis/compliance-certificate.pdf", json=_payload(_module()))
-    second = client.post("/api/oze-analysis/compliance-certificate.pdf", json=_payload(_module()))
+    first = client.post(
+        "/api/oze-analysis/compliance-certificate.pdf", json=_payload(_module())
+    )
+    second = client.post(
+        "/api/oze-analysis/compliance-certificate.pdf", json=_payload(_module())
+    )
     assert first.status_code == 200
     assert first.content == second.content
 

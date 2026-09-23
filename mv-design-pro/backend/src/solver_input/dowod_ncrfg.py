@@ -43,27 +43,36 @@ ProofStatus = Literal["complete", "incomplete"]
 #: ncrfg_ptpiree/engine.py::TEST_CATALOG`) na zdolnosc dowodowa. Zyje POZA
 #: solverem (karta S-1 §0.2, rozstrzygniecie A-2): solver FROZEN nie niesie
 #: `capability_id` — mapowanie jest wylacznie w tej warstwie.
+#:
+#: Karta AB-1a R-6 (2026-09-23): T05/T12/T13 (regulacja P, zaprzestanie i
+#: zmniejszenie generacji) to twierdzenia o ZACHOWANIU w czasie →
+#: `zachowanie_zadeklarowane` (DECLARATION + DYNAMIC_PERFORMANCE, niedopuszczalne);
+#: T10 (tautologia `p_max_kw > 0`) → `test_bez_tresci` (NOT_SIMULATED); T20 (THD_U
+#: sieci z limitem zaszytym w solverze) → DYNAMIC_PERFORMANCE. `claim_kind` tej
+#: tabeli jest RÓWNY `claim_kind` wpisu rejestru — test parowy
+#: `test_claim_kind_testu_rowny_rejestrowi` (bez rozjazdu, ktory `replace` nizej
+#: po cichu by wygladzil).
 TEST_ZDOLNOSC: dict[str, tuple[str, ClaimKind]] = {
     "T01": ("ncrfg_ptpiree.frequency_response", ClaimKind.DYNAMIC_PERFORMANCE),
     "T02": ("ncrfg_ptpiree.frequency_response", ClaimKind.DYNAMIC_PERFORMANCE),
     "T03": ("ncrfg_ptpiree.frequency_response", ClaimKind.DYNAMIC_PERFORMANCE),
     "T04": ("ncrfg_ptpiree.frequency_response", ClaimKind.DYNAMIC_PERFORMANCE),
-    "T05": ("ncrfg_ptpiree.declared_configuration", ClaimKind.DECLARED_CONFIGURATION),
+    "T05": ("ncrfg_ptpiree.zachowanie_zadeklarowane", ClaimKind.DYNAMIC_PERFORMANCE),
     "T06": ("ncrfg_ptpiree.reactive_voltage_mode", ClaimKind.DECLARED_CONFIGURATION),
     "T07": ("ncrfg_ptpiree.reactive_voltage_mode", ClaimKind.DECLARED_CONFIGURATION),
     "T08": ("ncrfg_ptpiree.reactive_voltage_mode", ClaimKind.DECLARED_CONFIGURATION),
     "T09": ("ncrfg_ptpiree.reactive_voltage_mode", ClaimKind.DECLARED_CONFIGURATION),
-    "T10": ("ncrfg_ptpiree.declared_configuration", ClaimKind.DECLARED_CONFIGURATION),
+    "T10": ("ncrfg_ptpiree.test_bez_tresci", ClaimKind.DYNAMIC_PERFORMANCE),
     "T11": ("ncrfg_ptpiree.declared_configuration", ClaimKind.DECLARED_CONFIGURATION),
-    "T12": ("ncrfg_ptpiree.declared_configuration", ClaimKind.DECLARED_CONFIGURATION),
-    "T13": ("ncrfg_ptpiree.declared_configuration", ClaimKind.DECLARED_CONFIGURATION),
+    "T12": ("ncrfg_ptpiree.zachowanie_zadeklarowane", ClaimKind.DYNAMIC_PERFORMANCE),
+    "T13": ("ncrfg_ptpiree.zachowanie_zadeklarowane", ClaimKind.DYNAMIC_PERFORMANCE),
     "T14": ("ncrfg_ptpiree.ride_through", ClaimKind.DYNAMIC_PERFORMANCE),
     "T15": ("ncrfg_ptpiree.ride_through", ClaimKind.DYNAMIC_PERFORMANCE),
     "T16": ("ncrfg_ptpiree.p_recovery", ClaimKind.DYNAMIC_PERFORMANCE),
     "T17": ("ncrfg_ptpiree.reactive_current_frt", ClaimKind.DYNAMIC_PERFORMANCE),
     "T18": ("ncrfg_ptpiree.extended_dynamic_capability", ClaimKind.DYNAMIC_PERFORMANCE),
     "T19": ("ncrfg_ptpiree.declared_configuration", ClaimKind.DECLARED_CONFIGURATION),
-    "T20": ("ncrfg_ptpiree.power_quality_declared", ClaimKind.DECLARED_CONFIGURATION),
+    "T20": ("ncrfg_ptpiree.power_quality_declared", ClaimKind.DYNAMIC_PERFORMANCE),
 }
 
 #: Etykieta BRAK_KLASYFIKACJI (test_id bez wpisu w TEST_ZDOLNOSC) — jawny brak,
@@ -80,7 +89,9 @@ def testy_bez_klasyfikacji() -> tuple[str, ...]:
     """
     from network_model.solvers.ncrfg_ptpiree.engine import TEST_CATALOG
 
-    return tuple(sorted(d.test_id for d in TEST_CATALOG if d.test_id not in TEST_ZDOLNOSC))
+    return tuple(
+        sorted(d.test_id for d in TEST_CATALOG if d.test_id not in TEST_ZDOLNOSC)
+    )
 
 
 def ocena_dowodowa_testu(test_id: str) -> CapabilityEvidence | None:
@@ -138,7 +149,8 @@ def _etykieta_ograniczenia(test_id: str) -> str:
 def _nota_pl(ograniczenia: tuple[str, ...]) -> str:
     if not ograniczenia:
         return (
-            "Wszystkie wymagane testy oparte sa o stopien dowodowy dopuszczalny " "do zgloszenia."
+            "Wszystkie wymagane testy oparte sa o stopien dowodowy dopuszczalny "
+            "do zgloszenia."
         )
     return f"{BRAK_DOWODU_PL} dla testow: " + ", ".join(ograniczenia) + "."
 
@@ -190,7 +202,8 @@ class OcenaDowodowaBiegu:
             "evidence_limitations": list(self.evidence_limitations),
             "evidence_note_pl": self.evidence_note_pl,
             "per_module": {
-                der_ref: ocena.to_dict() for der_ref, ocena in sorted(self.per_module.items())
+                der_ref: ocena.to_dict()
+                for der_ref, ocena in sorted(self.per_module.items())
             },
             "evidence_by_test": {
                 der_ref: dict(sorted(testy.items()))
@@ -245,9 +258,13 @@ def ocena_dowodowa_biegu(result: NcRfgPtpireeRunResult) -> OcenaDowodowaBiegu:
         }
 
     wszystkie_ograniczenia = tuple(
-        sorted({og for ocena in per_module.values() for og in ocena.evidence_limitations})
+        sorted(
+            {og for ocena in per_module.values() for og in ocena.evidence_limitations}
+        )
     )
-    reportable = all(ocena.reporting_status == "reportable" for ocena in per_module.values())
+    reportable = all(
+        ocena.reporting_status == "reportable" for ocena in per_module.values()
+    )
     complete = all(ocena.proof_status == "complete" for ocena in per_module.values())
 
     return OcenaDowodowaBiegu(
