@@ -29,6 +29,7 @@ from network_model.solvers.ncrfg_ptpiree.contracts import (
 )
 from solver_input.dowod_ncrfg import (
     BRAK_KLASYFIKACJI,
+    OGRANICZENIE_BRAK_WYMAGANYCH_TESTOW,
     TEST_ZDOLNOSC,
     _etykieta_ograniczenia,
     _ocena_modulu,
@@ -42,6 +43,7 @@ from solver_input.provenance import (
     CapabilityEvidence,
     ClaimKind,
     EvidenceTier,
+    KodFailClosed,
     classify_dynamic_capability,
     registered_dynamic_capabilities,
 )
@@ -88,11 +90,21 @@ _MODUL_KLASY_B: dict = {
 }
 
 
-def _bieg(*modules: dict):
+def _bieg(*modules: dict, wymuszone: tuple[str, ...] = ()):
     solver = NcRfgPtpireeSolver()
     return solver.run(
-        NcRfgPtpireeRunRequest(modules=[NcRfgPtpireeModuleInput(**m) for m in modules])
+        NcRfgPtpireeRunRequest(
+            modules=[NcRfgPtpireeModuleInput(**m) for m in modules],
+            requested_test_ids=list(wymuszone),
+        )
     )
+
+
+#: Karta AB-1a D6: modul klasy A NIE ma zadnego testu wymaganego z klasyfikacji,
+#: wiec sam w sobie jest `REQUIREMENT_UNVERIFIED`. Sciezka „modul raportowalny"
+#: wymaga co najmniej jednego testu wymaganego opartego o dowod — T11 (PMIN,
+#: fakt konfiguracyjny) wymuszony programem szczegolowym.
+_WYMUSZONY_DOWODOWY = ("T11",)
 
 
 # --------------------------------------------------------------------------- #
@@ -205,11 +217,43 @@ def test_ocena_dowodowa_testu_znany_test_id() -> None:
 
 
 def test_ocena_dowodowa_testu_deklaracja_konfiguracji_jest_dowodowa() -> None:
-    ewidencja = ocena_dowodowa_testu("T12")
+    # Karta AB-1a §0 R-6: nosnikiem „faktu konfiguracyjnego" jest T11 (PMIN), nie
+    # T12 — T12 (zaprzestanie generacji w czasie) jest odtad twierdzeniem o
+    # zachowaniu i ma wlasny test ponizej.
+    ewidencja = ocena_dowodowa_testu("T11")
     assert ewidencja is not None
     assert ewidencja.claim_kind is ClaimKind.DECLARED_CONFIGURATION
     assert ewidencja.tier is EvidenceTier.DECLARATION
     assert ewidencja.regulatory_evidence_eligible is True
+
+
+@pytest.mark.parametrize(
+    ("test_id", "capability_id", "tier"),
+    [
+        ("T05", "ncrfg_ptpiree.zachowanie_zadeklarowane", EvidenceTier.DECLARATION),
+        ("T12", "ncrfg_ptpiree.zachowanie_zadeklarowane", EvidenceTier.DECLARATION),
+        ("T13", "ncrfg_ptpiree.zachowanie_zadeklarowane", EvidenceTier.DECLARATION),
+        ("T10", "ncrfg_ptpiree.test_bez_tresci", EvidenceTier.NOT_SIMULATED),
+        ("T20", "ncrfg_ptpiree.power_quality_declared", EvidenceTier.DECLARATION),
+    ],
+)
+def test_r6_t05_t10_t12_t13_t20_nie_sa_dowodem(
+    test_id: str, capability_id: str, tier: EvidenceTier
+) -> None:
+    """Pin karty AB-1a §0 R-6: piec testow przestaje byc `reportable`.
+
+    Test PAROWY (TEST_ZDOLNOSC <-> rejestr): claim_kind deklarowany per test i
+    claim_kind wpisu rejestru sa ten sam (DYNAMIC_PERFORMANCE), wiec zadna z dwoch
+    deklaracji nie moze po cichu przywrocic dopuszczalnosci.
+    """
+    ewidencja = ocena_dowodowa_testu(test_id)
+    assert ewidencja is not None
+    assert ewidencja.capability_id == capability_id
+    assert ewidencja.tier is tier
+    assert ewidencja.claim_kind is ClaimKind.DYNAMIC_PERFORMANCE
+    assert TEST_ZDOLNOSC[test_id] == (capability_id, ClaimKind.DYNAMIC_PERFORMANCE)
+    assert classify_dynamic_capability(capability_id).claim_kind is ClaimKind.DYNAMIC_PERFORMANCE
+    assert ewidencja.regulatory_evidence_eligible is False
 
 
 def test_ocena_dowodowa_testu_nieznany_test_id_zwraca_none() -> None:
@@ -236,15 +280,47 @@ def test_etykieta_ograniczenia_znany_test_id() -> None:
 # klasa A (0 wymaganych dynamicznych) x klasa B (T01-T04/T14-T18 wymagane) x
 # pojedynczy modul x bieg wielomodulowy.
 # --------------------------------------------------------------------------- #
-def test_modul_klasy_a_jest_reportable_complete_zero_wymaganych() -> None:
+def test_modul_klasy_a_zero_wymaganych_jest_requirement_unverified() -> None:
+    """Karta AB-1a D6: modul bez ANI JEDNEGO testu wymaganego nie jest „zgodny".
+
+    Solver FROZEN orzeka `overall_status="zgodny"` z pustej koniunkcji — warstwa
+    dowodowa nazywa ten stan kodem `REQUIREMENT_UNVERIFIED` i ograniczeniem
+    `brak_wymaganych_testow` (dawniej: `reportable`, bez jednej wykazanej rzeczy).
+    """
     wynik = _bieg(_MODUL_KLASY_A)
+    modul = wynik.modules[0]
+    assert modul.required_count == 0
+    assert modul.overall_status == "zgodny"  # solver FROZEN: pusta koniunkcja
+    ocena = _ocena_modulu(modul)
+    assert ocena.reporting_status == "not_reportable"
+    assert ocena.proof_status == "incomplete"
+    assert ocena.evidence_limitations == (OGRANICZENIE_BRAK_WYMAGANYCH_TESTOW,)
+    assert ocena.kod_fail_closed is KodFailClosed.REQUIREMENT_UNVERIFIED
+    assert KodFailClosed.REQUIREMENT_UNVERIFIED.value in ocena.evidence_note_pl
+    assert ocena.to_dict()["kod_fail_closed"] == KodFailClosed.REQUIREMENT_UNVERIFIED.to_dict()
+
+
+def test_modul_klasy_a_z_wymaganym_testem_dowodowym_jest_reportable_complete() -> None:
+    wynik = _bieg(_MODUL_KLASY_A, wymuszone=_WYMUSZONY_DOWODOWY)
     ocena = _ocena_modulu(wynik.modules[0])
     assert ocena.reporting_status == "reportable"
     assert ocena.proof_status == "complete"
     assert ocena.evidence_limitations == ()
+    assert ocena.kod_fail_closed is None
+    assert "kod_fail_closed" not in ocena.to_dict()
     assert ocena.evidence_note_pl == (
         "Wszystkie wymagane testy oparte sa o stopien dowodowy dopuszczalny do zgloszenia."
     )
+
+
+def test_ocena_biegu_bez_modulow_jest_fail_closed() -> None:
+    """Ta sama klasa co modul bez testow: pusta koniunkcja biegu nie jest dowodem."""
+    wynik = _bieg(_MODUL_KLASY_A, wymuszone=_WYMUSZONY_DOWODOWY)
+    pusty = wynik.model_copy(update={"modules": []})
+    ocena = ocena_dowodowa_biegu(pusty)
+    assert ocena.reporting_status == "not_reportable"
+    assert ocena.proof_status == "incomplete"
+    assert ocena.evidence_limitations == (OGRANICZENIE_BRAK_WYMAGANYCH_TESTOW,)
 
 
 def test_modul_klasy_b_jest_not_reportable_incomplete_testy_dynamiczne_wymagane() -> None:
@@ -266,7 +342,7 @@ def test_bieg_wielomodulowy_jest_fail_closed_jeden_modul_wystarczy() -> None:
     `OcenaDowodowaBiegu` obiecuje `all(...)`, nie `any(...)`. Bez tego testu
     zamiana `all` na `any` w przyszlej zmianie przeszlaby CI bez ostrzezenia
     (CLAUDE.md KLASA NIE INSTANCJA pkt 4: deklaracja bez testu)."""
-    wynik = _bieg(_MODUL_KLASY_A, _MODUL_KLASY_B)
+    wynik = _bieg(_MODUL_KLASY_A, _MODUL_KLASY_B, wymuszone=_WYMUSZONY_DOWODOWY)
     ocena_biegu = ocena_dowodowa_biegu(wynik)
     assert ocena_biegu.reporting_status == "not_reportable"
     assert ocena_biegu.proof_status == "incomplete"
@@ -286,7 +362,11 @@ def test_bieg_wielomodulowy_jest_fail_closed_jeden_modul_wystarczy() -> None:
 
 def test_bieg_dwoch_modulow_klasy_a_jest_reportable() -> None:
     """Kontrapunkt do testu powyzej: DWA reportable moduly -> bieg reportable."""
-    wynik = _bieg(dict(_MODUL_KLASY_A, der_ref="pv-a1"), dict(_MODUL_KLASY_A, der_ref="pv-a2"))
+    wynik = _bieg(
+        dict(_MODUL_KLASY_A, der_ref="pv-a1"),
+        dict(_MODUL_KLASY_A, der_ref="pv-a2"),
+        wymuszone=_WYMUSZONY_DOWODOWY,
+    )
     ocena_biegu = ocena_dowodowa_biegu(wynik)
     assert ocena_biegu.reporting_status == "reportable"
     assert ocena_biegu.proof_status == "complete"
@@ -365,5 +445,8 @@ def test_ocena_modulu_test_bez_klasyfikacji_pomijany_gdy_niewymagany() -> None:
         tests=[_test_result("T99", required=False)],
     )
     ocena = _ocena_modulu(modul)
-    assert ocena.reporting_status == "reportable"
-    assert ocena.evidence_limitations == ()
+    # Intencja bez zmian: test NIEWYMAGANY spoza TEST_ZDOLNOSC nie doklada
+    # ograniczenia `T99:BRAK_KLASYFIKACJI`. Karta AB-1a D6: modul bez zadnego
+    # testu wymaganego jest jednak `REQUIREMENT_UNVERIFIED` (pusta koniunkcja).
+    assert ocena.reporting_status == "not_reportable"
+    assert ocena.evidence_limitations == (OGRANICZENIE_BRAK_WYMAGANYCH_TESTOW,)

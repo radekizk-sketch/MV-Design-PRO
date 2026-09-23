@@ -13,7 +13,12 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from enum import Enum, StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any, Generic, TypeVar
+
+if TYPE_CHECKING:
+    from application.solvers.solver_capability_registry import PhysicsDomain
+
+T = TypeVar("T")
 
 
 class SourceKind(Enum):
@@ -295,13 +300,44 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             tier=EvidenceTier.DECLARATION,
             claim_kind=ClaimKind.DECLARED_CONFIGURATION,
             rationale_pl=(
-                "Regulacja P (T05), potwierdzenie PMAX/PMIN (T10/T11), "
-                "zaprzestanie/zmniejszenie generacji (T12/T13) i telemechanika/"
-                "SCADA/rejestrator (T19) sa faktami konfiguracyjnymi "
-                "porownanymi z wymaganiem profilu — deklaracja jest tu "
-                "wlasciwa podstawa dowodowa."
+                "Potwierdzenie PMIN (T11) i telemechanika/SCADA/rejestrator (T19) "
+                "sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — "
+                "deklaracja jest tu wlasciwa podstawa dowodowa. Karta AB-1a (R-6): "
+                "T05, T12, T13 przeniesione do `ncrfg_ptpiree.zachowanie_zadeklarowane` "
+                "(twierdzenia o zachowaniu w czasie), T10 do "
+                "`ncrfg_ptpiree.test_bez_tresci` (tautologia)."
             ),
-            audit_ref=f"{_AUDIT_CARD} §0.2 (T05, T10-T13, T19)",
+            audit_ref=f"{_AUDIT_CARD} §0.2 (T11, T19); KARTA_AB_1A §0 R-6",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.zachowanie_zadeklarowane",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DYNAMIC_PERFORMANCE,
+            rationale_pl=(
+                "Regulacja mocy czynnej (T05), zaprzestanie generacji w czasie "
+                "nie dluzszym niz 5 s (T12) i zmniejszenie generacji z zadanym "
+                "gradientem (T13) sa twierdzeniami o ZACHOWANIU modulu w czasie, "
+                "nie faktami konfiguracyjnymi — solver porownuje wylacznie "
+                "wartosci zadeklarowane w programie szczegolowym. Deklaracja nie "
+                "dowodzi zachowania dynamicznego, dopoki profil regulacyjny jawnie "
+                "nie zaakceptuje metody DECLARATION/CERTIFICATE dla tego wymagania "
+                "(kamienie AB-1b/AB-1c)."
+            ),
+            audit_ref="KARTA_AB_1A §0 R-6; OPUS_AUDYT_WARSTWY_REGULACYJNEJ §6.6 p. 6",
+        ),
+        CapabilityEvidence(
+            capability_id="ncrfg_ptpiree.test_bez_tresci",
+            tier=EvidenceTier.NOT_SIMULATED,
+            claim_kind=ClaimKind.DYNAMIC_PERFORMANCE,
+            rationale_pl=(
+                "Potwierdzenie PMAX (T10) sprawdza wylacznie `p_max_kw > 0`, a "
+                "kontrakt wejscia modulu wymaga `p_max_kw > 0` juz przy budowie — "
+                "test przechodzi zawsze, niezaleznie od danych modulu (tautologia, "
+                "solvers/ncrfg_ptpiree/engine.py `_pmax_pmin_test`, kontrakt "
+                "`NcRfgPtpireeModuleInput.p_max_kw: Field(gt=0)`). Zadna "
+                "wielkosc nie jest tu wykazana, wiec wynik nie jest dowodem."
+            ),
+            audit_ref="KARTA_AB_1A §0 R-6; OPUS_AUDYT_WARSTWY_REGULACYJNEJ §6.6",
         ),
         CapabilityEvidence(
             capability_id="ncrfg_ptpiree.reactive_voltage_mode",
@@ -317,13 +353,21 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
         CapabilityEvidence(
             capability_id="ncrfg_ptpiree.power_quality_declared",
             tier=EvidenceTier.DECLARATION,
-            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            claim_kind=ClaimKind.DYNAMIC_PERFORMANCE,
             rationale_pl=(
-                "THD_U (T20) pochodzi z rekordu katalogowego zrodla i jest "
-                "porownywane z limitem profilu — fakt katalogowy, nie wynik "
-                "symulacji widma."
+                "T20 porownuje wartosc THD_U z rekordu katalogowego zrodla z "
+                "limitem 8 % ZASZYTYM w solverze (solvers/ncrfg_ptpiree/engine.py "
+                "`_harmonics_test`), nie odczytanym z profilu operatora. THD_U jest "
+                "wlasnoscia napiecia sieci w miejscu przylaczenia, a nie emisji "
+                "urzadzenia — porownanie nie wykazuje spelnienia zadnego wymagania "
+                "emisyjnego (to nie jest fakt konfiguracyjny). Wymaganie emisyjne "
+                "instalacji ocenia sie wkladem instalacji wobec przydzialu emisji "
+                "z dokumentu wskazanego decyzja wlasciciela (OD-38)."
             ),
-            audit_ref=f"{_AUDIT_CARD} §0.2 (T20)",
+            audit_ref=(
+                f"{_AUDIT_CARD} §0.2 (T20); KARTA_AB_1A §0 R-6; "
+                "OPUS_AUDYT_WARSTWY_REGULACYJNEJ §2.2"
+            ),
         ),
         CapabilityEvidence(
             capability_id="dynamic_stability.fault_clear",
@@ -392,6 +436,452 @@ def classify_dynamic_capability(capability_id: str) -> CapabilityEvidence:
 def registered_dynamic_capabilities() -> tuple[str, ...]:
     """Identyfikatory zdolnosci w rejestrze dowodowym, posortowane deterministycznie."""
     return tuple(sorted(_DYNAMIC_CAPABILITY_EVIDENCE))
+
+
+# ---------------------------------------------------------------------------
+# Stopien dowodowy zdolnosci REJESTRU SOLVEROW (karta AB-1a D1).
+#
+# PO CO. Rejestr zdolnosci solverow (`application/solvers/solver_capability_
+# registry.py`) do tej karty ZAPISYWAL `reportable=True` w kazdym wpisie, podczas
+# gdy ten modul — jedyne zrodlo stopnia dowodowego — mowil o tej samej zdolnosci
+# co innego (np. `dynamic_stability.fault_clear = UNVALIDATED_MODEL`). Dwie prawdy
+# o jednym fakcie. Od karty AB-1a `reportable` rejestru jest WYPROWADZANY stad:
+# kazdy wpis rejestru wskazuje JAWNIE swoj `capability_id` (pole
+# `SolverCapability.evidence_capability_id`), a `classify_capability` zwraca jego
+# klasyfikacje (fail-closed: identyfikator nieznany = UNVALIDATED_MODEL).
+#
+# REGULA AWANSU (ta sama co wyzej): `VALIDATED_SIMULATION` WYLACZNIE, gdy w repo
+# istnieje test porownujacy wynik TORU KANONICZNEGO z niezalezna wyrocznia
+# (narzedzie zewnetrzne, wyrocznia reczna normy, rozwiazanie analityczne w
+# postaci zamknietej) — `audit_ref` nazywa ten test. Test kontraktu, determinizmu
+# albo „wynik ma klucz X" NIE jest wyrocznia. Brak wyroczni = `UNVALIDATED_MODEL`
+# z nazwanym brakiem w `rationale_pl` — nigdy cichy awans.
+#
+# `claim_kind` tych wpisow zostaje domyslny (odczyt surowszy): dla
+# `VALIDATED_SIMULATION` i `UNVALIDATED_MODEL` rodzaj twierdzenia nie zmienia
+# dopuszczalnosci (`CapabilityEvidence.regulatory_evidence_eligible`).
+#
+# Rozlacznosc kluczy z rejestrem dynamicznym powyzej przypina test
+# (`tests/solver_input/test_proweniencja_ab1a.py`).
+# ---------------------------------------------------------------------------
+
+_AUDIT_AB1A = "KARTA_AB_1A_FUNDAMENT_WYNIKOW_2026-09.md D1"
+
+#: Brak wyroczni dla solvera akademickiego V12.6 (FROZEN) — jedno zdanie
+#: wspolne dla czternastu rodzajow, zeby uzasadnienie nie rozjechalo sie
+#: miedzy kopiami. Stan zmierzony 2026-09-23: testy `reference_test` rejestru
+#: dla tych rodzajow (`tests/test_v126_*.py`) sprawdzaja kontrakt, determinizm,
+#: ksztalt tablic i wzor samego solvera — zaden nie porownuje wyniku z
+#: niezalezna wyrocznia.
+_V126_BEZ_WYROCZNI_PL = (
+    "Solver akademicki V12.6 (network_model/solvers/v126_academic.py, FROZEN) "
+    "liczy te zdolnosc, ale w repozytorium nie ma testu porownujacego jej wynik "
+    "z niezalezna wyrocznia (siec referencyjna, narzedzie zewnetrzne, "
+    "rozwiazanie analityczne) — test rejestru sprawdza kontrakt i determinizm, "
+    "nie poprawnosc fizyczna."
+)
+
+
+def _v126(kod: str, brak_pl: str) -> CapabilityEvidence:
+    return CapabilityEvidence(
+        capability_id=f"v126_academic.{kod}",
+        tier=EvidenceTier.UNVALIDATED_MODEL,
+        rationale_pl=f"{_V126_BEZ_WYROCZNI_PL} {brak_pl}",
+        audit_ref=f"{_AUDIT_AB1A}; tests/test_v126_*.py (pomiar 2026-09-23)",
+    )
+
+
+_SOLVER_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
+    entry.capability_id: entry
+    for entry in (
+        CapabilityEvidence(
+            capability_id="short_circuit_iec60909.sc_3f",
+            tier=EvidenceTier.VALIDATED_SIMULATION,
+            rationale_pl=(
+                "Zwarcie trojfazowe toru kanonicznego (assembler -> FROZEN "
+                "ShortCircuitIEC60909Solver) zgodne z wyrocznia reczna IEC 60909-0:2016 "
+                "(rtol 1e-4) i z pandapower na sieciach Thevenina oraz w scenariuszach "
+                "max/min."
+            ),
+            audit_ref=(
+                "tests/golden/parytet_benchmarkow/test_wyrocznia_a_expected_json.py::"
+                "test_iec60909_example_sc, ::test_pandapower_iec60909_radial_sc; "
+                "tests/golden/wyrocznie/test_pandapower_wyspy.py::"
+                "test_zwarcie_3f_sieci_thevenina_zgodne_z_pandapower; "
+                "tests/golden/wyrocznie/test_pandapower_k7_sk_min.py::"
+                "test_zwarcie_3f_min_i_max_zgodne_z_pandapower"
+            ),
+        ),
+        CapabilityEvidence(
+            capability_id="short_circuit_iec60909.sc_2f",
+            tier=EvidenceTier.VALIDATED_SIMULATION,
+            rationale_pl=(
+                "Zwarcie dwufazowe toru kanonicznego zgodne z wyrocznia reczna IEC "
+                "60909-0:2016 (Z_k = Z_1 + Z_2, wiersz 2F sieci przykladowej, rtol 1e-4)."
+            ),
+            audit_ref=(
+                "tests/golden/parytet_benchmarkow/test_wyrocznia_a_expected_json.py::"
+                "test_iec60909_example_sc (expected/iec60909_example.json, wiersz 2F)"
+            ),
+        ),
+        CapabilityEvidence(
+            capability_id="short_circuit_iec60909.sc_1f",
+            tier=EvidenceTier.VALIDATED_SIMULATION,
+            rationale_pl=(
+                "Zwarcie jednofazowe: impedancja zerowa na szynie nN liczona recznie "
+                "(Z_T0 transformatora Dyn) i prad I_k1 = sqrt(3)*c*U_n/|Z_1+Z_2+Z_0| "
+                "(IEC 60909, skladowe symetryczne) zgodne z wynikiem solvera, wartosc "
+                "przypieta z obliczenia recznego."
+            ),
+            audit_ref=(
+                "tests/enm/test_zero_sequence_transformer.py::TestHandCalc1F::"
+                "test_ik1_matches_iec_formula, ::test_z0_at_lv_equals_transformer_leakage"
+            ),
+        ),
+        CapabilityEvidence(
+            capability_id="short_circuit_iec60909.sc_2f_g",
+            tier=EvidenceTier.VALIDATED_SIMULATION,
+            rationale_pl=(
+                "Zwarcie dwufazowe z ziemia: Z_k = Z_1 + Z_2*Z_0/(Z_2+Z_0) (IEC 60909) "
+                "z impedancja zerowa liczona recznie zgodne z wynikiem solvera."
+            ),
+            audit_ref=(
+                "tests/enm/test_zero_sequence_transformer.py::TestHandCalc2FZ::"
+                "test_2fz_uses_parallel_z2_z0"
+            ),
+        ),
+        CapabilityEvidence(
+            capability_id="load_flow.newton_raphson",
+            tier=EvidenceTier.VALIDATED_SIMULATION,
+            rationale_pl=(
+                "Rozplyw Newtona-Raphsona toru kanonicznego zgodny z wartosciami "
+                "oczekiwanymi IEEE 4/9/14/39, CIGRE MV/LV i sieci pandapower "
+                "(wyrocznia zewnetrzna, tolerancja per wiersz)."
+            ),
+            audit_ref=(
+                "tests/golden/parytet_benchmarkow/test_wyrocznia_a_expected_json.py "
+                "(test_ieee_*_pf, test_cigre_*_pf, test_pp_simple_four_bus_pf); "
+                "tests/golden/wyrocznie/test_pandapower_wyspy.py::"
+                "test_rozplyw_zgodny_z_pandapower"
+            ),
+        ),
+        CapabilityEvidence(
+            capability_id="load_flow.gauss_seidel",
+            tier=EvidenceTier.VALIDATED_SIMULATION,
+            rationale_pl=(
+                "Tryb Gaussa-Seidla daje napiecia, katy i straty zgodne z Newtonem-"
+                "Raphsonem (ten sam model Y-bus), ktorego zgodnosc z wyrocznia "
+                "zewnetrzna jest wykazana — walidacja przechodnia przez parytet."
+            ),
+            audit_ref=(
+                "tests/test_power_flow_gauss_seidel.py (test_*_matches_newton, "
+                "test_losses_match_newton)"
+            ),
+        ),
+        CapabilityEvidence(
+            capability_id="load_flow.fast_decoupled",
+            tier=EvidenceTier.VALIDATED_SIMULATION,
+            rationale_pl=(
+                "Tryb fast-decoupled daje napiecia zgodne z Newtonem-Raphsonem "
+                "(ten sam model Y-bus) przy spelnionych warunkach stosowalnosci — "
+                "walidacja przechodnia przez parytet."
+            ),
+            audit_ref=("tests/test_power_flow_fast_decoupled.py::TestFastDecoupledVsNewtonRaphson"),
+        ),
+        CapabilityEvidence(
+            capability_id="load_flow_unbalanced.bfs",
+            tier=EvidenceTier.VALIDATED_SIMULATION,
+            rationale_pl=(
+                "Rozplyw niesymetryczny (BFS per faza) toru kanonicznego zgodny z "
+                "wartosciami oczekiwanymi sieci IEEE 34-bus (wyrocznia zewnetrzna)."
+            ),
+            audit_ref=(
+                "tests/golden/parytet_benchmarkow/test_wyrocznia_a_expected_json.py::"
+                "test_ieee_34bus_pf_niesymetryczny_zgodny_z_wyrocznia_a"
+            ),
+        ),
+        CapabilityEvidence(
+            capability_id="phase_state_sn.radial",
+            tier=EvidenceTier.VALIDATED_SIMULATION,
+            rationale_pl=(
+                "Stan fazowy SN (model promieniowy z rezystancja galezi per faza) "
+                "zgodny z przypadkami obliczonymi recznie: uklad symetryczny "
+                "(U_f = U_n/sqrt(3), wskazniki asymetrii 0 %) oraz zwarcie i przerwa "
+                "fazy (spadek I*R, zerowe napiecie fazy przerwanej)."
+            ),
+            audit_ref=(
+                "tests/test_phase_state_sn_solver.py::"
+                "test_phase_state_sn_solver_balanced_reference_case, "
+                "::test_phase_state_sn_solver_fault_and_open_phase_are_reflected_in_outputs"
+            ),
+        ),
+        CapabilityEvidence(
+            capability_id="protection_sn.iec60255",
+            tier=EvidenceTier.VALIDATED_SIMULATION,
+            rationale_pl=(
+                "Ocena zabezpieczen nadpradowych liczy czasy zadzialania "
+                "charakterystyk IEC 60255-151 (NI/VI/EI/RI/DT) zgodne z wartosciami "
+                "odniesienia normy, na pradach zwarciowych biegu IEC 60909, ktorego "
+                "zgodnosc z wyrocznia jest wykazana wyzej."
+            ),
+            audit_ref=(
+                "tests/test_protection_iec60255.py (wartosci odniesienia IEC 60255-151); "
+                "short_circuit_iec60909.sc_3f"
+            ),
+        ),
+        _v126(
+            "power_quality_harmonics",
+            "Model galezi R = const, X*h bez kwalifikacji domeny i wstrzykiwanie "
+            "pradow wszystkich zrodel z faza 0 (audyt harmonicznych, program A/B §8).",
+        ),
+        _v126(
+            "ssci_impedance",
+            "Werdykt Nyquista z zaszytym marginesem 30 stopni i Z_grid z impedancji "
+            "zrodla odrzuconej audytem (program A/B §6 poz. 10).",
+        ),
+        _v126("voltage_stability", "Krzywe P-V/Q-V i wskaznik modalny bez wyroczni."),
+        _v126(
+            "reliability_contingency",
+            "Wskazniki SAIDI/SAIFI z danych awaryjnosci bez wyroczni; ranking N-1 "
+            "zdjety z powierzchni (karta W3-E).",
+        ),
+        _v126("earthing_safety", "Napiecia dotykowe i krokowe IEEE 80 bez wyroczni."),
+        _v126(
+            "neutral_earthing_design",
+            "Test rejestru porownuje indukcyjnosc dlawika z tym samym wzorem, "
+            "ktory solver implementuje (L = 1/(3*omega^2*C_0)) — to nie jest "
+            "wyrocznia niezalezna.",
+        ),
+        _v126(
+            "insulation_coordination",
+            "Tablica BIL i wspolczynniki TOV zaszyte w solverze, bez wyroczni.",
+        ),
+        _v126(
+            "earth_fault_detection",
+            "Wybor metody jest tablica decyzyjna, nie obliczeniem fizycznym.",
+        ),
+        _v126(
+            "transient_trv",
+            "Przebieg TRV jest funkcja zadana (czestotliwosc wlasna i stala czasowa "
+            "z parametrow), nie rozwiazaniem obwodu przejsciowego.",
+        ),
+        _v126("motor_starting", "Zapad napiecia rozruchowego bez wyroczni."),
+        _v126(
+            "hosting_capacity",
+            "Lokalna impedancja Thevenina bez sprzezenia sieci; zdolnosc wycofana "
+            "z nowych biegow (karta W3-E).",
+        ),
+        _v126(
+            "opf_loss_lcc",
+            "Wspolczynnik 0,45 zaszyty, prad galezi z jednej szyny; zdolnosc "
+            "wycofana z nowych biegow (karta W3-E).",
+        ),
+        _v126(
+            "benchmark_validation",
+            "Zdolnosc porownawcza: jej wynik opisuje zgodnosc INNEGO solvera z "
+            "wartosciami odniesienia i nie orzeka o spelnieniu zadnego wymagania "
+            "projektowego.",
+        ),
+        _v126(
+            "uncertainty_sensitivity",
+            "Udzialy wariancji to zaszyte ulamki parametrow (10 % u_k, 5 % |Z|, "
+            "10 % S_k), nie propagacja niepewnosci przez model sieci.",
+        ),
+    )
+}
+
+
+def classify_capability(capability_id: str) -> CapabilityEvidence:
+    """Klasyfikacja dowodowa DOWOLNEJ zdolnosci (rejestr dynamiczny + rejestr solverow).
+
+    Jedno wejscie dla konsumenta, ktory nie wie z gory, do ktorej grupy nalezy
+    zdolnosc (rejestr zdolnosci solverow). Fail-closed jak
+    :func:`classify_dynamic_capability`: identyfikator nieobecny w OBU
+    rejestrach = ``UNVALIDATED_MODEL`` (niedopuszczalny jako dowod).
+    """
+    known = _SOLVER_CAPABILITY_EVIDENCE.get(capability_id)
+    if known is not None:
+        return known
+    return classify_dynamic_capability(capability_id)
+
+
+def registered_capabilities() -> tuple[str, ...]:
+    """Wszystkie identyfikatory obu rejestrow dowodowych, posortowane deterministycznie."""
+    return tuple(sorted({*_SOLVER_CAPABILITY_EVIDENCE, *_DYNAMIC_CAPABILITY_EVIDENCE}))
+
+
+def registered_solver_capabilities() -> tuple[str, ...]:
+    """Identyfikatory rejestru zdolnosci solverow (bez rejestru dynamicznego)."""
+    return tuple(sorted(_SOLVER_CAPABILITY_EVIDENCE))
+
+
+# ---------------------------------------------------------------------------
+# Kody fail-closed wyniku (W-99, karta AB-1a D6).
+# ---------------------------------------------------------------------------
+
+
+class KodFailClosed(StrEnum):
+    """Nazwany powod, dla ktorego wynik NIE niesie wartosci ani werdyktu (W-99).
+
+    Po co: „brak danych" bywal dotad cichym zerem, pustym wierszem albo
+    werdyktem „zgodny" z pustej koniunkcji. Kazde miejsce, ktore nie moze
+    uczciwie policzyc albo ocenic, konczy sie JEDNYM z tych kodow z opisem, co
+    uzytkownik ma zrobic — nigdy liczba zastepcza.
+
+    Slownik jest ZAMKNIETY (pin w `tests/solver_input/test_proweniencja_ab1a.py`):
+    nowy kod wymaga etykiety i opisu, inaczej test jest czerwony.
+
+    - ``UNVALIDATED_INPUT``: dana wejsciowa jest, ale jej zrodlo nie jest
+      potwierdzone (oszacowanie, wartosc systemowa).
+    - ``MODEL_MISSING``: brak modelu elementu w domenie, o ktora pyta bieg (np.
+      brak widma, brak impedancji w funkcji czestotliwosci).
+    - ``OUTSIDE_DOMAIN``: zapytanie wychodzi poza zakres waznosci modelu
+      (czestotliwosc, napiecie, czas) — stan zapytania, nie cecha modelu.
+    - ``REQUIREMENT_UNVERIFIED``: wymaganie, wobec ktorego mialby powstac
+      werdykt, nie jest potwierdzone (brak dokumentu, wersji albo klauzuli) albo
+      nie ma zadnego wymaganego sprawdzenia.
+    """
+
+    UNVALIDATED_INPUT = "UNVALIDATED_INPUT"
+    MODEL_MISSING = "MODEL_MISSING"
+    OUTSIDE_DOMAIN = "OUTSIDE_DOMAIN"
+    REQUIREMENT_UNVERIFIED = "REQUIREMENT_UNVERIFIED"
+
+    @property
+    def label_pl(self) -> str:
+        """Krotka etykieta PL (bez kodow projektowych)."""
+        return _KOD_FAIL_CLOSED_LABEL_PL[self]
+
+    @property
+    def opis_pl(self) -> str:
+        """Co uzytkownik ma zrobic, zeby wynik powstal."""
+        return _KOD_FAIL_CLOSED_OPIS_PL[self]
+
+    def to_dict(self) -> dict[str, str]:
+        return {"kod": self.value, "label_pl": self.label_pl, "opis_pl": self.opis_pl}
+
+
+_KOD_FAIL_CLOSED_LABEL_PL: dict[KodFailClosed, str] = {
+    KodFailClosed.UNVALIDATED_INPUT: "dane wejściowe niepotwierdzone",
+    KodFailClosed.MODEL_MISSING: "brak modelu elementu",
+    KodFailClosed.OUTSIDE_DOMAIN: "poza zakresem ważności modelu",
+    KodFailClosed.REQUIREMENT_UNVERIFIED: "wymaganie niepotwierdzone",
+}
+
+_KOD_FAIL_CLOSED_OPIS_PL: dict[KodFailClosed, str] = {
+    KodFailClosed.UNVALIDATED_INPUT: (
+        "Wskaż źródło danej (karta katalogowa, protokół pomiaru, dokument producenta) "
+        "albo świadomie zaakceptuj oszacowanie — do tego czasu wynik nie jest dowodem."
+    ),
+    KodFailClosed.MODEL_MISSING: (
+        "Uzupełnij model elementu w domenie, której dotyczy obliczenie (typ katalogowy "
+        "z odpowiednią sekcją parametrów) — bez modelu wynik nie zostanie policzony."
+    ),
+    KodFailClosed.OUTSIDE_DOMAIN: (
+        "Zawęź zapytanie do zakresu ważności modelu albo wskaż model ważny w żądanym "
+        "zakresie — ekstrapolacja poza zakres nie jest wykonywana."
+    ),
+    KodFailClosed.REQUIREMENT_UNVERIFIED: (
+        "Wskaż dokument, wersję i klauzulę wymagania albo zakres wymaganych sprawdzeń "
+        "— bez potwierdzonego wymagania werdykt nie jest wydawany."
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
+# Parametr z proweniencja (W-98, karta AB-1a D5).
+# ---------------------------------------------------------------------------
+
+
+class StatusZrodla(StrEnum):
+    """Czy dokument zrodlowy wartosci (norma, profil, karta) jest potwierdzony.
+
+    Os ROZLACZNA z :class:`FieldQuality` (jakosc wartosci karty) — tu chodzi o
+    zrodlo NORMATYWNE/regulacyjne: dokument, wersje i klauzule. Wartosc bez
+    potwierdzonego dokumentu jest ``UNVERIFIED_SOURCE`` (np. prog, ktorego
+    dokumentu nie wskazano) — liczba zostaje, zmienia sie jej opis (karta AB-1a
+    §0 R-7).
+    """
+
+    UNVERIFIED_SOURCE = "UNVERIFIED_SOURCE"
+    VERIFIED_SOURCE = "VERIFIED_SOURCE"
+
+    @property
+    def label_pl(self) -> str:
+        return _STATUS_ZRODLA_LABEL_PL[self]
+
+
+_STATUS_ZRODLA_LABEL_PL: dict[StatusZrodla, str] = {
+    StatusZrodla.UNVERIFIED_SOURCE: "źródło niezweryfikowane",
+    StatusZrodla.VERIFIED_SOURCE: "źródło zweryfikowane",
+}
+
+
+@dataclass(frozen=True)
+class WartoscZProweniencja(Generic[T]):
+    """Wartosc parametru RAZEM z jej pochodzeniem (W-98: VALUE, UNIT, SOURCE,
+    VERSION, STATUS, DOMAIN).
+
+    Po co: liczba bez zrodla, wersji i statusu nie daje sie ocenic — ten sam
+    prog 2,0 Hz/s jest dowodem, gdy stoi za nim wskazana klauzula, i domyslem,
+    gdy nie stoi nic. Kontrakt wymusza, zeby kazdy konsument (podstawa werdyktu,
+    wynik inzynierski) dostawal oba naraz.
+
+    ZADNEGO pola z wartoscia domyslna: brak statusu, zrodla albo jednostki to
+    blad budowy (`TypeError` konstruktora), nie cichy status „nieznany".
+    `version=None` i `domain=None` sa JAWNYM brakiem (wolajacy musi je podac),
+    nie domyslka.
+
+    Attributes:
+        value: Wartosc parametru (liczba, tekst, struktura JSON).
+        unit: Jednostka (np. ``"Hz/s"``, ``"%"``, ``"-"`` dla bezwymiarowych).
+        source: Os potoku — skad wartosc przyszla (:class:`SourceKind`).
+        version: Wersja dokumentu/katalogu zrodla; ``None`` = wersja nieznana.
+        status: Jakosc wartosci karty (:class:`FieldQuality`) albo status
+            dokumentu normatywnego (:class:`StatusZrodla`).
+        domain: Domena fizyczna, w ktorej wartosc jest wazna
+            (``application.solvers.solver_capability_registry.PhysicsDomain``);
+            ``None`` = parametr nie jest zwiazany z domena (np. identyfikator).
+    """
+
+    value: T
+    unit: str
+    source: SourceKind
+    version: str | None
+    status: FieldQuality | StatusZrodla
+    domain: PhysicsDomain | None
+
+    def __post_init__(self) -> None:
+        # Leniwy import: rejestr zdolnosci importuje ten modul na poziomie
+        # modulu (wyprowadzenie `reportable`), wiec odwrotny import musi byc
+        # wykonany dopiero w chwili budowy wartosci.
+        from application.solvers.solver_capability_registry import PhysicsDomain
+
+        if not isinstance(self.source, SourceKind):
+            raise TypeError(f"WartoscZProweniencja.source musi byc SourceKind: {self.source!r}")
+        if not isinstance(self.status, FieldQuality | StatusZrodla):
+            raise TypeError(
+                "WartoscZProweniencja.status musi byc FieldQuality albo StatusZrodla: "
+                f"{self.status!r}"
+            )
+        if self.domain is not None and not isinstance(self.domain, PhysicsDomain):
+            raise TypeError(
+                f"WartoscZProweniencja.domain musi byc PhysicsDomain albo None: {self.domain!r}"
+            )
+        if not self.unit:
+            raise ValueError("WartoscZProweniencja.unit nie moze byc pusty (bezwymiarowe: '-').")
+
+    def to_dict(self) -> dict[str, Any]:
+        """Postac JSON — klucze stale, kolejnosc stala (determinizm odciskow)."""
+        return {
+            "value": self.value,
+            "unit": self.unit,
+            "source": self.source.value,
+            "version": self.version,
+            "status": self.status.value,
+            "status_pl": self.status.label_pl,
+            "domain": self.domain.value if self.domain is not None else None,
+        }
 
 
 @dataclass(frozen=True)

@@ -28,6 +28,7 @@ from network_model.solvers.ncrfg_ptpiree import (
     NcRfgPtpireeRunRequest,
     NcRfgPtpireeSolver,
 )
+from solver_input.dowod_ncrfg import ocena_dowodowa_biegu
 
 #: Karta S-1 (dowod dynamiczny): klasa B/C/D ma T14/T15/T16/T17 STRUKTURALNIE
 #: WYMAGANE (`default_for_modules=["B","C","D"]`), a te zdolnosci sa dzis
@@ -65,8 +66,22 @@ _MODULE_FULL: dict = {
     "q_range_pct_pn_max": 0.33,
     "reactive_current_gain": 2,
     "p_recovery_time_s": 0.8,
-    "harmonic_thdu_percent": 3,
+    # Karta AB-1a §0 R-6 (2026-09-23): `harmonic_thdu_percent` USUNIETE z fikstury
+    # pelnej. Podany THD_U czyni T20 WYMAGANYM (`engine.py::_is_required`), a T20
+    # przestal byc dowodem (limit 8 % zaszyty w solverze, THD_U jest wlasnoscia
+    # napiecia sieci, nie emisji — `ncrfg_ptpiree.power_quality_declared`
+    # DYNAMIC_PERFORMANCE). Z nim sciezka pozytywna certyfikatu bylaby
+    # zablokowana bramka dowodowa — to jest osobny, przypiety przypadek
+    # (`test_t20_z_podanym_thd_blokuje_certyfikat_nazwanym_brakiem`).
 }
+
+#: Karta AB-1a §0 R-6: T05/T10/T12/T13/T20 nie sa juz dowodem (deklaracja
+#: zachowania w czasie, tautologia, limit zaszyty). Sciezka pozytywna certyfikatu
+#: opiera sie odtad na testach, ktore SA faktem konfiguracyjnym porownanym z
+#: wymaganiem (DECLARED_CONFIGURATION + DECLARATION = dowod): tryby mocy biernej
+#: T06-T09, PMIN T11, telemechanika T19 — wymuszone programem szczegolowym
+#: (`requested_test_ids`), bo klasa A nie ma zadnego testu wymaganego z klasyfikacji.
+_TESTY_KONFIGURACYJNE: tuple[str, ...] = ("T06", "T07", "T08", "T09", "T11", "T19")
 
 
 def _module(**overrides: object) -> dict:
@@ -75,9 +90,13 @@ def _module(**overrides: object) -> dict:
     return data
 
 
-def _run_result(module: dict):
+def _run_result(module: dict, requested: tuple[str, ...] = _TESTY_KONFIGURACYJNE):
     solver = NcRfgPtpireeSolver()
-    return solver.run(NcRfgPtpireeRunRequest(modules=[NcRfgPtpireeModuleInput(**module)]))
+    return solver.run(
+        NcRfgPtpireeRunRequest(
+            modules=[NcRfgPtpireeModuleInput(**module)], requested_test_ids=list(requested)
+        )
+    )
 
 
 def _docx_text(data: bytes) -> str:
@@ -113,7 +132,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
 def _payload(module: dict, **extra: object) -> dict:
     body = {
-        "run_request": {"modules": [module]},
+        "run_request": {"modules": [module], "requested_test_ids": list(_TESTY_KONFIGURACYJNE)},
         "nazwa_projektu": "Farma PV Wschód",
         "nazwa_przypadku": "Wariant bazowy",
     }
@@ -134,27 +153,55 @@ def test_certyfikat_pozytywny_werdykt_zgodny() -> None:
 
 
 def test_certyfikat_negatywny_powstaje_z_werdyktem_niezgodnym() -> None:
-    # Klasa A BEZ certyfikatu PTPiREE: T12 (zaprzestanie generacji, zdolność
-    # konfiguracyjna zadeklarowana — evidence-eligible, karta S-1) staje się
-    # WYMAGANY (`_is_required`); rampa dużo wolniejsza niż referencyjna
-    # (`ramp_rate_pct_per_min=0.1`) daje werdykt `fail` — bramka dowodowa
-    # przepuszcza (DECLARED_CONFIGURATION+DECLARATION jest evidence-eligible),
-    # bramka kompletności też (dane są, tylko niekorzystne) → certyfikat
-    # powstaje z werdyktem negatywnym (dokument stwierdza stan, nie blokuje).
+    # INTENCJA (bez zmian): certyfikat z werdyktem NEGATYWNYM powstaje, gdy dane
+    # sa kompletne i dowodowe, tylko niekorzystne — dokument stwierdza stan.
+    # Karta AB-1a §0 R-6: dawniej niosl to T12 klasy A bez certyfikatu, ale T12
+    # (zaprzestanie generacji w czasie) jest odtad twierdzeniem o ZACHOWANIU i nie
+    # jest dowodem — patrz `test_ppm_typu_a_z_sama_deklaracja_t12_nie_jest_raportowalny`.
+    # Nosnikiem jest wiec T08 (tryb cos phi, fakt konfiguracyjny): cos phi_min 0,99
+    # nie pokrywa wymaganego zakresu -> `fail`, bramka dowodowa przepuszcza.
     view = build_certyfikat_view(
-        _run_result(
-            _module(
-                certificate_status="unknown",
-                stop_generation_enabled=True,
-                ramp_rate_pct_per_min=0.1,
-            )
-        ),
+        _run_result(_module(cos_phi_min=0.99)),
         nazwa_projektu="Projekt A",
     )
     assert view["werdykt_zbiorczy"]["status"] == "niezgodny"
     assert view["werdykt_zbiorczy"]["modulow_niezgodnych"] == 1
     assert view["moduly"][0]["status_pl"] == "Niezgodny"
-    assert any(t["test_id"] == "T12" and t["werdykt"] == "fail" for t in view["moduly"][0]["testy"])
+    assert any(t["test_id"] == "T08" and t["werdykt"] == "fail" for t in view["moduly"][0]["testy"])
+
+
+def test_ppm_typu_a_z_sama_deklaracja_t12_nie_jest_raportowalny() -> None:
+    """Pin karty AB-1a §0 R-6 („PPM typu A z sama deklaracja T12 nie jest reportable").
+
+    Klasa A bez certyfikatu PTPiREE: T12 staje sie wymagany. Deklaracja
+    zaprzestania generacji NIE dowodzi zachowania w czasie, wiec ocena dowodowa
+    modulu jest `not_reportable` z ograniczeniem `T12:DECLARATION`, a certyfikat
+    nie powstaje — brak jest NAZWANY (test, zdolnosc, zdanie o braku dowodu).
+    """
+    run_result = _run_result(
+        _module(
+            certificate_status="unknown",
+            stop_generation_enabled=True,
+            ramp_rate_pct_per_min=10,
+        ),
+        requested=(),
+    )
+    ocena = ocena_dowodowa_biegu(run_result)
+    assert ocena.reporting_status == "not_reportable"
+    assert "T12:DECLARATION" in ocena.per_module["pv-1"].evidence_limitations
+    braki = zbierz_braki(run_result)
+    assert any("test T12" in b and "(zdolność: T12:DECLARATION)" in b for b in braki), braki
+    with pytest.raises(CertyfikatBrakiError):
+        build_certyfikat_view(run_result, nazwa_projektu="Projekt A")
+
+
+def test_t20_z_podanym_thd_blokuje_certyfikat_nazwanym_brakiem() -> None:
+    """Karta AB-1a §0 R-6: podany THD_U czyni T20 wymaganym, a T20 nie jest dowodem."""
+    run_result = _run_result(_module(harmonic_thdu_percent=3))
+    braki = zbierz_braki(run_result)
+    assert any("test T20" in b and "(zdolność: T20:DECLARATION)" in b for b in braki), braki
+    with pytest.raises(CertyfikatBrakiError):
+        build_certyfikat_view(run_result, nazwa_projektu="Projekt A")
 
 
 def test_braki_blokuja_generacje_lista_pl() -> None:
@@ -198,7 +245,7 @@ def test_klasa_a_z_certyfikatem_ptpiree_ma_zero_wymaganych_ale_to_NIE_jest_brak(
     """Moduł klasy A bez ŻADNEGO testu z klasyfikacji, ALE ze zweryfikowanym
     certyfikatem PTPiREE — certyfikat producenta jest samodzielną podstawą,
     zero testów NC RfG jest tu WNIOSKIEM klasyfikacji, nie luką dowodową."""
-    run_result = _run_result(dict(_MODULU_KLASY_A))
+    run_result = _run_result(dict(_MODULU_KLASY_A), requested=())
     modul = run_result.modules[0]
     assert modul.module_type == "A"
     assert modul.required_count == 0
@@ -224,7 +271,7 @@ def test_klasa_a_bez_certyfikatu_wymaga_t12_i_zostaje_brakiem_gdy_niekompletny()
     WYPEŁNIA lukę. Zostaje więc niekompletny (brak danych numerycznych, których
     fikstura celowo nie podaje) — bramka braków nadal blokuje, innym powodem."""
     for status in ("unknown", "none", "expired"):
-        run_result = _run_result(dict(_MODULU_KLASY_A, certificate_status=status))
+        run_result = _run_result(dict(_MODULU_KLASY_A, certificate_status=status), requested=())
         modul = run_result.modules[0]
         assert modul.module_type == "A"
         assert modul.required_count >= 1, (
@@ -314,15 +361,12 @@ def test_endpoint_json_200_zgodny(client: TestClient) -> None:
 
 
 def test_endpoint_json_negatywny_200(client: TestClient) -> None:
+    # Karta AB-1a §0 R-6: nosnik werdyktu negatywnego = T08 (fakt konfiguracyjny),
+    # nie T12 (deklaracja zachowania w czasie — nie jest dowodem; patrz
+    # `test_ppm_typu_a_z_sama_deklaracja_t12_nie_jest_raportowalny`).
     response = client.post(
         "/api/oze-analysis/compliance-certificate",
-        json=_payload(
-            _module(
-                certificate_status="unknown",
-                stop_generation_enabled=True,
-                ramp_rate_pct_per_min=0.1,
-            )
-        ),
+        json=_payload(_module(cos_phi_min=0.99)),
     )
     assert response.status_code == 200
     assert response.json()["werdykt_zbiorczy"]["status"] == "niezgodny"

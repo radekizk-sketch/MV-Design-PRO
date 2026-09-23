@@ -27,6 +27,7 @@ from solver_input.provenance import (
     BRAK_DOWODU_PL,
     CapabilityEvidence,
     ClaimKind,
+    KodFailClosed,
     classify_dynamic_capability,
 )
 
@@ -48,22 +49,27 @@ TEST_ZDOLNOSC: dict[str, tuple[str, ClaimKind]] = {
     "T02": ("ncrfg_ptpiree.frequency_response", ClaimKind.DYNAMIC_PERFORMANCE),
     "T03": ("ncrfg_ptpiree.frequency_response", ClaimKind.DYNAMIC_PERFORMANCE),
     "T04": ("ncrfg_ptpiree.frequency_response", ClaimKind.DYNAMIC_PERFORMANCE),
-    "T05": ("ncrfg_ptpiree.declared_configuration", ClaimKind.DECLARED_CONFIGURATION),
+    # Karta AB-1a §0 R-6: T05/T12/T13 to twierdzenia o ZACHOWANIU w czasie
+    # (regulacja P, zaprzestanie w <= 5 s, zmniejszenie z gradientem), T10 to
+    # tautologia (`p_max_kw > 0` przy kontrakcie `gt=0`), T20 porownuje THD_U
+    # z limitem zaszytym w solverze — zaden z nich nie jest faktem
+    # konfiguracyjnym dowiedzionym deklaracja.
+    "T05": ("ncrfg_ptpiree.zachowanie_zadeklarowane", ClaimKind.DYNAMIC_PERFORMANCE),
     "T06": ("ncrfg_ptpiree.reactive_voltage_mode", ClaimKind.DECLARED_CONFIGURATION),
     "T07": ("ncrfg_ptpiree.reactive_voltage_mode", ClaimKind.DECLARED_CONFIGURATION),
     "T08": ("ncrfg_ptpiree.reactive_voltage_mode", ClaimKind.DECLARED_CONFIGURATION),
     "T09": ("ncrfg_ptpiree.reactive_voltage_mode", ClaimKind.DECLARED_CONFIGURATION),
-    "T10": ("ncrfg_ptpiree.declared_configuration", ClaimKind.DECLARED_CONFIGURATION),
+    "T10": ("ncrfg_ptpiree.test_bez_tresci", ClaimKind.DYNAMIC_PERFORMANCE),
     "T11": ("ncrfg_ptpiree.declared_configuration", ClaimKind.DECLARED_CONFIGURATION),
-    "T12": ("ncrfg_ptpiree.declared_configuration", ClaimKind.DECLARED_CONFIGURATION),
-    "T13": ("ncrfg_ptpiree.declared_configuration", ClaimKind.DECLARED_CONFIGURATION),
+    "T12": ("ncrfg_ptpiree.zachowanie_zadeklarowane", ClaimKind.DYNAMIC_PERFORMANCE),
+    "T13": ("ncrfg_ptpiree.zachowanie_zadeklarowane", ClaimKind.DYNAMIC_PERFORMANCE),
     "T14": ("ncrfg_ptpiree.ride_through", ClaimKind.DYNAMIC_PERFORMANCE),
     "T15": ("ncrfg_ptpiree.ride_through", ClaimKind.DYNAMIC_PERFORMANCE),
     "T16": ("ncrfg_ptpiree.p_recovery", ClaimKind.DYNAMIC_PERFORMANCE),
     "T17": ("ncrfg_ptpiree.reactive_current_frt", ClaimKind.DYNAMIC_PERFORMANCE),
     "T18": ("ncrfg_ptpiree.extended_dynamic_capability", ClaimKind.DYNAMIC_PERFORMANCE),
     "T19": ("ncrfg_ptpiree.declared_configuration", ClaimKind.DECLARED_CONFIGURATION),
-    "T20": ("ncrfg_ptpiree.power_quality_declared", ClaimKind.DECLARED_CONFIGURATION),
+    "T20": ("ncrfg_ptpiree.power_quality_declared", ClaimKind.DYNAMIC_PERFORMANCE),
 }
 
 #: Etykieta BRAK_KLASYFIKACJI (test_id bez wpisu w TEST_ZDOLNOSC) — jawny brak,
@@ -135,7 +141,26 @@ def _etykieta_ograniczenia(test_id: str) -> str:
     return f"{test_id}:{ewidencja.tier.value}"
 
 
+#: Ograniczenie modulu, ktory nie ma ANI JEDNEGO testu wymaganego (karta AB-1a
+#: D6, §0 R-6). Solver FROZEN orzeka wtedy `overall_status="zgodny"` z PUSTEJ
+#: koniunkcji (`engine.py`: zgodny = zaden wymagany test nie zawiodl) — to nie
+#: jest wykazanie zgodnosci, tylko brak czegokolwiek do wykazania. Warstwa
+#: dowodowa nazywa ten stan kodem `KodFailClosed.REQUIREMENT_UNVERIFIED`
+#: zamiast przepuszczac „zgodny" jako raportowalny.
+OGRANICZENIE_BRAK_WYMAGANYCH_TESTOW = "brak_wymaganych_testow"
+
+
 def _nota_pl(ograniczenia: tuple[str, ...]) -> str:
+    if OGRANICZENIE_BRAK_WYMAGANYCH_TESTOW in ograniczenia:
+        kod = KodFailClosed.REQUIREMENT_UNVERIFIED
+        reszta = tuple(og for og in ograniczenia if og != OGRANICZENIE_BRAK_WYMAGANYCH_TESTOW)
+        nota = (
+            f"{kod.label_pl.capitalize()} ({kod.value}): moduł nie ma żadnego testu "
+            f"wymaganego, więc wynik „zgodny” nie jest niczym wykazany. {kod.opis_pl}"
+        )
+        if reszta:
+            nota += f" {BRAK_DOWODU_PL} dla testow: " + ", ".join(reszta) + "."
+        return nota
     if not ograniczenia:
         return (
             "Wszystkie wymagane testy oparte sa o stopien dowodowy dopuszczalny " "do zgloszenia."
@@ -157,15 +182,22 @@ class OcenaDowodowaModulu:
     proof_status: ProofStatus
     evidence_limitations: tuple[str, ...] = field(default_factory=tuple)
     evidence_note_pl: str = ""
+    #: Kod fail-closed (W-99), gdy modul nie ma czego wykazac — dzis wylacznie
+    #: `REQUIREMENT_UNVERIFIED` dla zera testow wymaganych. `None` = brak kodu
+    #: (klucz pomijany w `to_dict`, ksztalt dotychczasowych odpowiedzi bez zmian).
+    kod_fail_closed: KodFailClosed | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        wynik: dict[str, Any] = {
             "der_ref": self.der_ref,
             "reporting_status": self.reporting_status,
             "proof_status": self.proof_status,
             "evidence_limitations": list(self.evidence_limitations),
             "evidence_note_pl": self.evidence_note_pl,
         }
+        if self.kod_fail_closed is not None:
+            wynik["kod_fail_closed"] = self.kod_fail_closed.to_dict()
+        return wynik
 
 
 @dataclass(frozen=True)
@@ -201,12 +233,16 @@ class OcenaDowodowaBiegu:
 
 def _ocena_modulu(module: NcRfgPtpireeModuleResult) -> OcenaDowodowaModulu:
     ograniczenia: list[str] = []
-    for test in module.tests:
-        if not test.required:
-            continue
+    wymagane = [test for test in module.tests if test.required]
+    for test in wymagane:
         ewidencja = ocena_dowodowa_testu(test.test_id)
         if ewidencja is None or not ewidencja.regulatory_evidence_eligible:
             ograniczenia.append(_etykieta_ograniczenia(test.test_id))
+    # Zbior wymaganych liczony z TYCH SAMYCH testow co petla wyzej (predykat
+    # parami — jedno zrodlo prawdy „wymagany"), nie z licznika
+    # `module.required_count`, ktory solver liczy osobno.
+    if not wymagane:
+        ograniczenia.append(OGRANICZENIE_BRAK_WYMAGANYCH_TESTOW)
     ograniczenia_posortowane = tuple(sorted(set(ograniczenia)))
     if ograniczenia_posortowane:
         return OcenaDowodowaModulu(
@@ -215,6 +251,7 @@ def _ocena_modulu(module: NcRfgPtpireeModuleResult) -> OcenaDowodowaModulu:
             proof_status="incomplete",
             evidence_limitations=ograniczenia_posortowane,
             evidence_note_pl=_nota_pl(ograniczenia_posortowane),
+            kod_fail_closed=(KodFailClosed.REQUIREMENT_UNVERIFIED if not wymagane else None),
         )
     return OcenaDowodowaModulu(
         der_ref=module.der_ref,
@@ -247,8 +284,16 @@ def ocena_dowodowa_biegu(result: NcRfgPtpireeRunResult) -> OcenaDowodowaBiegu:
     wszystkie_ograniczenia = tuple(
         sorted({og for ocena in per_module.values() for og in ocena.evidence_limitations})
     )
-    reportable = all(ocena.reporting_status == "reportable" for ocena in per_module.values())
-    complete = all(ocena.proof_status == "complete" for ocena in per_module.values())
+    # Pusta koniunkcja nie jest dowodem (karta AB-1a D6, ta sama klasa co modul
+    # bez testow wymaganych): bieg bez ani jednego modulu nie jest raportowalny.
+    if not per_module:
+        wszystkie_ograniczenia = (OGRANICZENIE_BRAK_WYMAGANYCH_TESTOW,)
+    reportable = bool(per_module) and all(
+        ocena.reporting_status == "reportable" for ocena in per_module.values()
+    )
+    complete = bool(per_module) and all(
+        ocena.proof_status == "complete" for ocena in per_module.values()
+    )
 
     return OcenaDowodowaBiegu(
         reporting_status="reportable" if reportable else "not_reportable",
