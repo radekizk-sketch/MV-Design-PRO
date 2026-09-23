@@ -1,8 +1,16 @@
 """Testy serwisu weryfikacji ochrony przed pracą wyspową (LoM, D10).
 
-Zakres: obecność funkcji LoM przy module wytwórczym, okna normatywne (81R/81U/81O),
+Zakres: obecność funkcji LoM przy module wytwórczym, okna nastaw (81R/81U/81O),
 uczciwy INFO dla 78 (brak okna), koordynacja z SPZ (werdykty deterministyczne),
 determinizm hash, walidacja wstecz ENM oraz regresja sanity 81R.
+
+KARTA AB-1a D7 (2026-09-23): werdykt porównania to obiekt `OcenaNastawyLom`
+(pięciu towarzyszy: wartość, wymaganie, zapas, podstawa, dowód) zamiast pary
+`Verdict(severity, message_pl)`. Testy przepisane do nowego kształtu Z ZACHOWANIEM
+INTENCJI (komentarz „INTENCJA" w każdym przepisanym teście): klucze `severity` →
+`wynik`, `message_pl` → `komunikat_pl`, `value` → `wartosc`, `kind` → `rodzaj`,
+`function_ansi` → `funkcja_ansi`, `window` → `odniesienie_dolne/gorne`,
+`source_pl` → `podstawa` (źródło niezweryfikowane). Liczby okien bez zmian.
 """
 
 from __future__ import annotations
@@ -10,7 +18,14 @@ from __future__ import annotations
 import json
 
 import pytest
-from application.analyses.ochrona_lom import _spz_verdict, build_ochrona_lom_view
+from application.analyses.ochrona_lom import (
+    FREQ_OVER_MIN_HZ,
+    FREQ_UNDER_MAX_HZ,
+    KOD_POZA_ZAKRESEM_RFG,
+    ROCOF_MIN_DF_DT_HZ_S,
+    _ocena_spz,
+    build_ochrona_lom_view,
+)
 from enm.models import (
     Bay,
     Bus,
@@ -21,6 +36,10 @@ from enm.models import (
     ProtectionSetting,
     Substation,
 )
+
+#: `input_hash` modelu z `test_odcisk_wejscia_niezalezny_od_nowego_ksztaltu`, policzony
+#: kodem SPRZED karty AB-1a D7 (`git archive` HEAD 529837d2).
+ODCISK_ROCOF_2_5_SPRZED_KARTY = "b62e0f1c1cac2bdd4bd1fb1d43896d4e7363776f526674960c4cc7f5fc094347"
 
 
 def _enm(
@@ -90,6 +109,7 @@ def _checks(view: dict, bay_ref: str = "bay_oze") -> list[dict]:
 
 
 def test_module_without_lom_is_error() -> None:
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
     enm = _enm(
         bays=[_bay()],
         generators=[_generator()],
@@ -97,11 +117,12 @@ def test_module_without_lom_is_error() -> None:
     )
     view = build_ochrona_lom_view(enm)
     assert _field_status(view) == "ERROR"
-    presence = [c for c in _checks(view) if c["kind"] == "obecnosc"]
-    assert presence and presence[0]["severity"] == "ERROR"
+    presence = [c for c in _checks(view) if c["rodzaj"] == "obecnosc"]
+    assert presence and presence[0]["wynik"] == "ERROR"
 
 
 def test_declared_code_without_settings_is_info() -> None:
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
     bay = _bay(protection_ref="prot_lom", protection_codes=["81R"])
     enm = _enm(
         bays=[bay],
@@ -109,9 +130,9 @@ def test_declared_code_without_settings_is_info() -> None:
         protection_assignments=[_assignment([])],
     )
     view = build_ochrona_lom_view(enm)
-    info = [c for c in _checks(view) if c["function_ansi"] == "81R" and c["kind"] == "obecnosc"]
-    assert info and info[0]["severity"] == "INFO"
-    assert "bez nastaw" in info[0]["message_pl"]
+    info = [c for c in _checks(view) if c["funkcja_ansi"] == "81R" and c["rodzaj"] == "obecnosc"]
+    assert info and info[0]["wynik"] == "INFO"
+    assert "bez nastaw" in info[0]["komunikat_pl"]
 
 
 # ---------------------------------------------------------------------------
@@ -127,12 +148,20 @@ def test_rocof_within_window_is_ok() -> None:
         protection_assignments=[_assignment([setting])],
     )
     view = build_ochrona_lom_view(enm)
-    rocof = [c for c in _checks(view) if c["function_ansi"] == "81R"][0]
-    assert rocof["severity"] == "OK"
-    assert rocof["source_pl"] and "NC RfG" in rocof["source_pl"]
+    rocof = [c for c in _checks(view) if c["funkcja_ansi"] == "81R"][0]
+    # INTENCJA: nastawa w oknie = OK, a porównanie niesie podstawę. Od karty AB-1a
+    # podstawa jest obiektem z uczciwym statusem źródła (dawny cytat „NC RfG ...
+    # wartość krajowa PTPiREE 2 Hz/s" podawał 2 Hz/s jako wymaganie rozporządzenia).
+    assert rocof["wynik"] == "OK"
+    assert rocof["podstawa"]["zrodlo_status"] == "UNVERIFIED_SOURCE"
+    assert rocof["podstawa"]["dokument"] is None
+    assert "2016/631" in rocof["podstawa"]["uwaga_pl"]
+    assert rocof["odniesienie_dolne"] == ROCOF_MIN_DF_DT_HZ_S
+    assert rocof["margines"] == pytest.approx(0.5)
 
 
 def test_rocof_below_window_is_warn_false_island() -> None:
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
     setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=1.0)
     enm = _enm(
         bays=[_bay()],
@@ -140,12 +169,13 @@ def test_rocof_below_window_is_warn_false_island() -> None:
         protection_assignments=[_assignment([setting])],
     )
     view = build_ochrona_lom_view(enm)
-    rocof = [c for c in _checks(view) if c["function_ansi"] == "81R"][0]
-    assert rocof["severity"] == "WARN"
-    assert "fałszywe wykrycie wyspy" in rocof["message_pl"]
+    rocof = [c for c in _checks(view) if c["funkcja_ansi"] == "81R"][0]
+    assert rocof["wynik"] == "WARN"
+    assert "fałszywe wykrycie wyspy" in rocof["komunikat_pl"]
 
 
 def test_underfrequency_above_window_is_warn() -> None:
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
     setting = ProtectionSetting(function_type="underfrequency_81U", threshold_hz=48.0)
     enm = _enm(
         bays=[_bay()],
@@ -153,11 +183,12 @@ def test_underfrequency_above_window_is_warn() -> None:
         protection_assignments=[_assignment([setting])],
     )
     view = build_ochrona_lom_view(enm)
-    u = [c for c in _checks(view) if c["function_ansi"] == "81U"][0]
-    assert u["severity"] == "WARN"
+    u = [c for c in _checks(view) if c["funkcja_ansi"] == "81U"][0]
+    assert u["wynik"] == "WARN"
 
 
 def test_underfrequency_within_window_is_ok() -> None:
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
     setting = ProtectionSetting(function_type="underfrequency_81U", threshold_hz=47.5)
     enm = _enm(
         bays=[_bay()],
@@ -165,11 +196,12 @@ def test_underfrequency_within_window_is_ok() -> None:
         protection_assignments=[_assignment([setting])],
     )
     view = build_ochrona_lom_view(enm)
-    u = [c for c in _checks(view) if c["function_ansi"] == "81U"][0]
-    assert u["severity"] == "OK"
+    u = [c for c in _checks(view) if c["funkcja_ansi"] == "81U"][0]
+    assert u["wynik"] == "OK"
 
 
 def test_overfrequency_below_window_is_warn() -> None:
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
     setting = ProtectionSetting(function_type="overfrequency_81O", threshold_hz=51.0)
     enm = _enm(
         bays=[_bay()],
@@ -177,8 +209,8 @@ def test_overfrequency_below_window_is_warn() -> None:
         protection_assignments=[_assignment([setting])],
     )
     view = build_ochrona_lom_view(enm)
-    o = [c for c in _checks(view) if c["function_ansi"] == "81O"][0]
-    assert o["severity"] == "WARN"
+    o = [c for c in _checks(view) if c["funkcja_ansi"] == "81O"][0]
+    assert o["wynik"] == "WARN"
 
 
 def test_vector_shift_has_no_window_and_is_info() -> None:
@@ -189,10 +221,12 @@ def test_vector_shift_has_no_window_and_is_info() -> None:
         protection_assignments=[_assignment([setting])],
     )
     view = build_ochrona_lom_view(enm)
-    vs = [c for c in _checks(view) if c["function_ansi"] == "78"][0]
-    assert vs["severity"] == "INFO"
-    assert vs["window"] is None
-    assert vs["source_pl"] is None
+    vs = [c for c in _checks(view) if c["funkcja_ansi"] == "78"][0]
+    # INTENCJA: 78 nie ma okna — brak krawędzi i zapasu (nie zmyślona liczba), INFO.
+    assert vs["wynik"] == "INFO"
+    assert vs["odniesienie_dolne"] is None and vs["odniesienie_gorne"] is None
+    assert vs["margines"] is None
+    assert vs["podstawa"]["zrodlo_status"] == "UNVERIFIED_SOURCE"
     assert view["normative_sources"]["vector_shift_78"]["window_pl"] is None
 
 
@@ -202,28 +236,33 @@ def test_vector_shift_has_no_window_and_is_info() -> None:
 
 
 def test_spz_verdict_lom_slower_than_spz_is_error() -> None:
-    v = _spz_verdict(0.5, 0.3, None)
-    assert v.severity == "ERROR"
-    assert "ryzyko załączenia na wyspę" in v.message_pl
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
+    v = _ocena_spz(0.5, 0.3, None)
+    assert v.wynik == "ERROR"
+    assert "ryzyko załączenia na wyspę" in v.komunikat_pl
 
 
 def test_spz_verdict_lom_faster_than_spz_is_ok() -> None:
-    v = _spz_verdict(0.1, 0.3, 0.5)
-    assert v.severity == "OK"
-    assert "przed ponownym załączeniem SPZ" in v.message_pl
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
+    v = _ocena_spz(0.1, 0.3, 0.5)
+    assert v.wynik == "OK"
+    assert "przed ponownym załączeniem SPZ" in v.komunikat_pl
 
 
 def test_spz_verdict_no_spz_state_is_info() -> None:
-    v = _spz_verdict(0.5, None, None)
-    assert v.severity == "INFO"
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
+    v = _ocena_spz(0.5, None, None)
+    assert v.wynik == "INFO"
 
 
 def test_spz_verdict_no_lom_time_is_info() -> None:
-    v = _spz_verdict(None, 0.3, 0.5)
-    assert v.severity == "INFO"
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
+    v = _ocena_spz(None, 0.3, 0.5)
+    assert v.wynik == "INFO"
 
 
 def test_spz_coordination_in_full_view_is_info() -> None:
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
     setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=2.5, time_delay_s=0.2)
     enm = _enm(
         bays=[_bay()],
@@ -231,9 +270,9 @@ def test_spz_coordination_in_full_view_is_info() -> None:
         protection_assignments=[_assignment([setting])],
     )
     view = build_ochrona_lom_view(enm)
-    spz = [c for c in _checks(view) if c["kind"] == "koordynacja_spz"][0]
-    assert spz["severity"] == "INFO"
-    assert spz["value"] == 0.2
+    spz = [c for c in _checks(view) if c["rodzaj"] == "koordynacja_spz"][0]
+    assert spz["wynik"] == "INFO"
+    assert spz["wartosc"] == 0.2
 
 
 # ---------------------------------------------------------------------------
@@ -348,6 +387,7 @@ def test_sanity_rocof_rule_unchanged() -> None:
 
 
 def test_rocof_wywod_has_formula_substitution_and_verdict() -> None:
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
     setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=2.5, time_delay_s=0.1)
     enm = _enm(
         bays=[_bay()],
@@ -355,7 +395,7 @@ def test_rocof_wywod_has_formula_substitution_and_verdict() -> None:
         protection_assignments=[_assignment([setting])],
     )
     view = build_ochrona_lom_view(enm)
-    rocof = [c for c in _checks(view) if c["function_ansi"] == "81R"][0]
+    rocof = [c for c in _checks(view) if c["funkcja_ansi"] == "81R"][0]
     kroki = rocof["wywod"]
     # Struktura dyplomowa: wzor -> dane -> podstawienie -> werdykt.
     assert len(kroki) == 4
@@ -372,6 +412,7 @@ def test_rocof_wywod_has_formula_substitution_and_verdict() -> None:
 
 
 def test_rocof_below_window_wywod_uses_opposite_sign() -> None:
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
     setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=1.0)
     enm = _enm(
         bays=[_bay()],
@@ -379,7 +420,7 @@ def test_rocof_below_window_wywod_uses_opposite_sign() -> None:
         protection_assignments=[_assignment([setting])],
     )
     view = build_ochrona_lom_view(enm)
-    rocof = [c for c in _checks(view) if c["function_ansi"] == "81R"][0]
+    rocof = [c for c in _checks(view) if c["funkcja_ansi"] == "81R"][0]
     kroki = rocof["wywod"]
     assert "1.0000 < 2.0" in kroki[2]["latex"]
     assert "NIESPELNIONE" in kroki[2]["tekst"]
@@ -387,6 +428,7 @@ def test_rocof_below_window_wywod_uses_opposite_sign() -> None:
 
 
 def test_wywod_empty_when_no_real_comparison() -> None:
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
     # Pole bez funkcji (obecnosc), funkcja zadeklarowana bez nastaw, 78 bez okna,
     # SPZ bez danych — wszystkie bez wywodu (uczciwy brak, ZERO fabrykacji).
     setting = ProtectionSetting(function_type="vector_shift_78", threshold_deg=10.0)
@@ -397,9 +439,9 @@ def test_wywod_empty_when_no_real_comparison() -> None:
     )
     view = build_ochrona_lom_view(enm)
     for check in _checks(view):
-        if check["kind"] == "okno_normatywne" and check["function_ansi"] == "78":
+        if check["rodzaj"] == "okno_normatywne" and check["funkcja_ansi"] == "78":
             assert check["wywod"] == []
-        if check["kind"] in ("obecnosc", "koordynacja_spz"):
+        if check["rodzaj"] in ("obecnosc", "koordynacja_spz"):
             assert check["wywod"] == []
 
 
@@ -482,6 +524,7 @@ def test_pole_w_kanonicznej_postaci_modelu_jest_oceniane(klucz: str) -> None:
     specyfikacji (`field_specs` SN i `nn_field_specs` nN), bo defekt siedział w
     źródle danych, nie w konkretnym polu.
     """
+    # INTENCJA bez zmian — przepisane do kształtu OcenaNastawyLom (karta AB-1a D7).
     setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=1.0, time_delay_s=0.2)
     enm = _enm_z_polem_kanonicznym(
         [_specyfikacja_pola()],
@@ -491,8 +534,8 @@ def test_pole_w_kanonicznej_postaci_modelu_jest_oceniane(klucz: str) -> None:
     view = build_ochrona_lom_view(enm)
     assert view["modules_without_field"] == []
     assert [pole["bay_ref"] for pole in view["fields"]] == ["stn/1/sn_field/001"]
-    rocof = [c for c in _checks(view, "stn/1/sn_field/001") if c["function_ansi"] == "81R"]
-    assert rocof and rocof[0]["severity"] == "WARN"
+    rocof = [c for c in _checks(view, "stn/1/sn_field/001") if c["funkcja_ansi"] == "81R"]
+    assert rocof and rocof[0]["wynik"] == "WARN"
 
 
 def test_pole_jawne_i_kanoniczne_o_tej_samej_referencji_liczy_sie_raz() -> None:
@@ -528,3 +571,113 @@ def test_specyfikacja_bez_tozsamosci_pola_jest_pomijana_bez_zgadywania() -> None
     view = build_ochrona_lom_view(enm)
     assert view["fields"] == []
     assert view["modules_without_field"] == ["gen_pv"]
+
+
+# ---------------------------------------------------------------------------
+# Karta AB-1a D7 — wynik wyjaśnialny, podstawa niezweryfikowana, liczby bez zmian
+# ---------------------------------------------------------------------------
+
+_TOWARZYSZE = ("wartosc", "odniesienie_dolne", "odniesienie_gorne", "margines", "podstawa", "dowod")
+
+
+def _widok_z_wszystkimi_rodzajami(gen_type: str = "pv_inverter") -> dict:
+    settings = [
+        ProtectionSetting(function_type="rocof_81R", threshold_hz_s=1.0, time_delay_s=0.2),
+        ProtectionSetting(function_type="vector_shift_78", threshold_deg=8.0),
+        ProtectionSetting(function_type="underfrequency_81U", threshold_hz=47.0),
+        ProtectionSetting(function_type="overfrequency_81O", threshold_hz=52.0),
+    ]
+    enm = _enm(
+        bays=[_bay(), _bay(ref="bay_bez", protection_ref=None)],
+        generators=[
+            Generator(ref_id="gen_x", name="X", bus_ref="bus_oze", p_mw=2.0, gen_type=gen_type)
+        ],
+        protection_assignments=[_assignment(settings)],
+    )
+    return build_ochrona_lom_view(enm)
+
+
+def test_kazde_porownanie_niesie_pieciu_towarzyszy() -> None:
+    widok = _widok_z_wszystkimi_rodzajami()
+    rodzaje = set()
+    for pole in widok["fields"]:
+        for check in pole["checks"]:
+            rodzaje.add(check["rodzaj"])
+            for klucz in _TOWARZYSZE:
+                assert klucz in check, (check["rodzaj"], klucz)
+            assert check["podstawa"]["zrodlo_status"] == "UNVERIFIED_SOURCE"
+            assert check["dowod"] == {
+                "run_id": None,
+                "element_id": pole["bay_ref"],
+                "trace_ref": None,
+            }
+    assert rodzaje == {"obecnosc", "okno_normatywne", "koordynacja_spz"}
+
+
+def test_liczby_okien_bez_zmian() -> None:
+    # Karta AB-1a R-7: zmienia się OPIS podstawy, nie liczba.
+    assert (ROCOF_MIN_DF_DT_HZ_S, FREQ_UNDER_MAX_HZ, FREQ_OVER_MIN_HZ) == (2.0, 47.5, 51.5)
+
+
+@pytest.mark.parametrize(
+    ("funkcja", "wartosc", "dolna", "gorna", "zapas"),
+    [
+        ("81R", 1.0, 2.0, None, -1.0),
+        ("81U", 47.0, None, 47.5, 0.5),
+        ("81O", 52.0, 51.5, None, 0.5),
+    ],
+)
+def test_zapas_i_krawedzie_okna(
+    funkcja: str, wartosc: float, dolna: float | None, gorna: float | None, zapas: float
+) -> None:
+    widok = _widok_z_wszystkimi_rodzajami()
+    check = [c for c in _checks(widok) if c["funkcja_ansi"] == funkcja][0]
+    assert check["wartosc"] == wartosc
+    assert (check["odniesienie_dolne"], check["odniesienie_gorne"]) == (dolna, gorna)
+    assert check["margines"] == pytest.approx(zapas)
+    assert check["margines_jednostka"] == check["jednostka"]
+
+
+def test_bledna_podstawa_ieee_1547_usunieta() -> None:
+    widok = json.dumps(_widok_z_wszystkimi_rodzajami(), ensure_ascii=False)
+    assert "IEEE 1547" not in widok
+    assert "Art. 14" not in widok
+    assert "PTPiREE 2 Hz/s" not in widok
+
+
+@pytest.mark.parametrize("gen_type", ["bess", "pv_inverter"])
+def test_magazyn_energii_nazwany_poza_zakresem_rfg_bez_zmiany_liczb(gen_type: str) -> None:
+    widok = _widok_z_wszystkimi_rodzajami(gen_type)
+    odniesienie = _widok_z_wszystkimi_rodzajami("pv_inverter")
+    # Istotności i liczby identyczne jak dla modułu PV (ocena bez zmian).
+    assert [c["wynik"] for c in _checks(widok)] == [c["wynik"] for c in _checks(odniesienie)]
+    assert widok["input_hash"] == odniesienie["input_hash"]
+    pole = [f for f in widok["fields"] if f["bay_ref"] == "bay_oze"][0]
+    if gen_type == "bess":
+        assert pole["poza_zakresem_rfg"]["kod"] == KOD_POZA_ZAKRESEM_RFG
+        assert pole["poza_zakresem_rfg"]["moduly"] == ["gen_x"]
+        assert "2016/631" in pole["poza_zakresem_rfg"]["opis_pl"]
+    else:
+        assert pole["poza_zakresem_rfg"] is None
+
+
+def test_spz_zapas_i_wymaganie() -> None:
+    ocena = _ocena_spz(0.1, 0.3, 0.5, "bay_x")
+    assert ocena.wynik == "OK"
+    assert ocena.odniesienie_gorne == 0.3
+    assert ocena.margines == pytest.approx(0.2)
+    assert ocena.dowod["element_id"] == "bay_x"
+    bez_danych = _ocena_spz(0.1, None, None, "bay_x")
+    assert bez_danych.margines is None and bez_danych.odniesienie_gorne is None
+
+
+def test_odcisk_wejscia_niezalezny_od_nowego_ksztaltu() -> None:
+    """Odcisk wejścia (`input_hash`) liczy te same wartości co przed kartą D7 —
+    literał policzony kodem SPRZED karty (HEAD 529837d2) dla tego samego modelu."""
+    setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=2.5, time_delay_s=0.1)
+    enm = _enm(
+        bays=[_bay()],
+        generators=[_generator()],
+        protection_assignments=[_assignment([setting])],
+    )
+    assert build_ochrona_lom_view(enm)["input_hash"] == ODCISK_ROCOF_2_5_SPRZED_KARTY

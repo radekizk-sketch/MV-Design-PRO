@@ -969,7 +969,7 @@ def test_protection_functions_wyprowadzone_z_faktow_pola(app_client) -> None:
     kody = [f["kod"] for f in dane["dobor"]["wymagane"]]
     # Podstawa pola: zwarcia miedzyfazowe niezaleznie od sposobu uziemienia.
     assert "50" in kody and "51" in kody
-    # Wytworca PV po stronie nN → zestaw anty-wyspowy (IEEE 1547 / NC RfG Art. 14).
+    # Wytworca PV po stronie nN → zestaw anty-wyspowy (zabezpieczenie interfejsowe).
     assert {"27", "59", "81U", "81O"}.issubset(set(kody))
     # Kazda funkcja z UZASADNIENIEM — sam kod nie jest projektem zabezpieczen.
     for funkcja in dane["dobor"]["wymagane"]:

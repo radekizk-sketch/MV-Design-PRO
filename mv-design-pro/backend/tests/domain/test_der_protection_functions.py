@@ -114,6 +114,20 @@ class TestAntiIslanding:
         kody = dobierz_funkcje(fakty(der_kind="BESS", connection_side="nN")).kody()
         assert "81U" not in kody
 
+    @pytest.mark.parametrize("strona", ["nN", "at_zksn", "at_branch_pole", "at_cable_joint"])
+    def test_wylaczenie_magazynu_jest_nazwane_nie_ciche(self, strona: str) -> None:
+        # Karta AB-1a: magazyn poza zakresem rozporzadzenia 2016/631 — nazwany powod.
+        wynik = dobierz_funkcje(fakty(der_kind="BESS", connection_side=strona))
+        assert "poza_zakresem_rfg_do_OD-40" in kody_otwartych(wynik)
+        wynik_pv = dobierz_funkcje(fakty(der_kind="PV", connection_side=strona))
+        assert "poza_zakresem_rfg_do_OD-40" not in kody_otwartych(wynik_pv)
+
+    def test_podstawa_zestawu_nie_cytuje_blednego_zrodla(self) -> None:
+        wynik = dobierz_funkcje(fakty(connection_side="nN"))
+        for funkcja in wynik.wymagane:
+            assert "IEEE 1547" not in funkcja.podstawa_pl
+            assert "Art. 14" not in funkcja.podstawa_pl
+
     def test_wytworca_po_stronie_sn_nie_dostaje_zestawu_anty_wyspowego(self) -> None:
         assert "27" not in dobierz_funkcje(fakty(connection_side="SN")).kody()
 

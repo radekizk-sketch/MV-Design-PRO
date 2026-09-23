@@ -394,7 +394,8 @@ def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[Bl
             dodaj(
                 "der.anti_islanding.required",
                 f"DER {we.der_kind} po stronie {we.connection_side} wymaga zabezpieczeń "
-                "anti-islanding (27/59/81U/81O — IEEE 1547 / NC RfG Art. 14). "
+                "anti-islanding (27/59/81U/81O — zabezpieczenie interfejsowe wg IRiESD "
+                "operatora i PN-EN 50549-1/-2; wydanie i wartości niepotwierdzone). "
                 "Brak zabezpieczeń uniemożliwia ochronę przed pracą wyspową.",
                 "topology",
             )

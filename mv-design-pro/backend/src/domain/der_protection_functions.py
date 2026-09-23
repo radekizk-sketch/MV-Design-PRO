@@ -62,8 +62,11 @@ PROG_87T_KW = 1600.0
 #: doziemnego jest pojemnosciowy i porownywalny z pradami zdrowych odplywow.
 __all_uziemienia_maloparadowe__ = UZIEMIENIA_MALOPRADOWE
 
-#: Strony przylaczenia, przy ktorych wymagane sa funkcje anty-wyspowe
-#: (IEEE 1547 / NC RfG Art. 14) — ta sama granica, ktora stosuje regula gotowosci.
+#: Strony przylaczenia, przy ktorych wymagane sa funkcje anty-wyspowe (zabezpieczenie
+#: interfejsowe; klasa dokumentow: IRiESD operatora, PN-EN 50549-1/-2 — wydanie i
+#: wartosci niepotwierdzone) — ta sama granica, ktora stosuje regula gotowosci.
+#: Karta AB-1a: dawny cytat „IEEE 1547 / NC RfG Art. 14" byl bledny (norma USA; art. 14
+#: rozporzadzenia 2016/631 nie wymaga zabezpieczenia od pracy wyspowej).
 STRONY_ANTI_ISLANDING: frozenset[str] = frozenset(
     {"nN", "at_zksn", "at_branch_pole", "at_cable_joint"}
 )
@@ -323,12 +326,34 @@ def dobierz_funkcje(fakty: FaktyPolaWytworcy) -> WynikDoboru:
                     kod=kod,
                     nazwa_pl=nazwa,
                     podstawa_pl=(
-                        f"Ochrona przed pracą wyspową — {opis} " "(IEEE 1547 / NC RfG Art. 14)."
+                        f"Ochrona przed pracą wyspową — {opis} (zabezpieczenie interfejsowe "
+                        "wg IRiESD operatora i PN-EN 50549-1/-2; wydanie i wartości nastaw "
+                        "niepotwierdzone)."
                     ),
                     chroniony_obiekt_pl=obiekt,
                     zrodlo_pomiaru_pl="przekładnik napięciowy pola",
                 )
             )
+
+    elif fakty.connection_side in STRONY_ANTI_ISLANDING and fakty.der_kind == "BESS":
+        # Karta AB-1a: magazyn energii poza zakresem rozporzadzenia 2016/631 — zestaw
+        # anty-wyspowy dla modulow wytwarzania NIE jest mu przypisywany (jak dotad), ale
+        # wylaczenie jest NAZWANE, nie ciche.
+        otwarte.append(
+            KwestiaOtwarta(
+                kod="poza_zakresem_rfg_do_OD-40",
+                opis_pl=(
+                    "Magazyn energii nie jest objęty rozporządzeniem (UE) 2016/631 — zestaw "
+                    "zabezpieczeń od pracy wyspowej wymagany dla modułów wytwarzania nie "
+                    "jest mu przypisany."
+                ),
+                skutek_pl=(
+                    "Wymagania krajowe dla magazynów energii czekają na rozstrzygnięcie; do "
+                    "tego czasu dobór zabezpieczeń interfejsowych magazynu uzgodnij z "
+                    "operatorem."
+                ),
+            )
+        )
 
     # --- Zabezpieczenie roznicowe transformatora blokowego --------------------------
     if (
