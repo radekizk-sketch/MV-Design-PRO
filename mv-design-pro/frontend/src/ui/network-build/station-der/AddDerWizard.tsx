@@ -46,9 +46,9 @@ import {
   selectConnectionLevelsForKind,
 } from './catalogs';
 import {
-  PTPIREE_CERTIFIED_INVERTERS,
-  loadPtpireeCertifiedInverters,
-  type PtpireeCertifiedInverterItem,
+  usePtpireeManifest,
+  type PtpireeManifest,
+  type StanRejestruPtpiree,
 } from './ptpireeCertifiedInverters';
 import { useStationDerStore } from './store';
 import { snPointKindForBus } from './zModelu';
@@ -572,38 +572,35 @@ function deviceGridFormingCapable(device: DerDeviceCatalogItem | null): boolean 
   return device?.grid_forming_capable ?? device?.control_mode === 'GRID_FORMING';
 }
 
-function resolvePtpireeDocument(
-  device: DerDeviceCatalogItem | null,
-  fallback: PtpireeCertifiedInverterItem | null,
-): string {
+/**
+ * Dokument certyfikatu PTPiREE urządzenia — WYŁĄCZNIE z adnotacji backendu na rekordzie
+ * katalogu (`annotate_with_ptpiree_status`: relacja równości producent × model na kluczach
+ * znormalizowanych). Karta AB-1a Pakiet D1 usunęła frontowe „dopasowanie" etykiety urządzenia
+ * do wykazu zawieraniem podciągu (`findPtpireeCertificateForDevice`): dawało certyfikat
+ * urządzeniu, które backend oznacza NIEPOWIAZANY (klasa „fałszywe POWIĄZANY", przed którą
+ * ostrzega `mv_ptpiree_catalog.py`), a liczniki i filtr „PTPiREE" tego samego kroku używały
+ * już wyłącznie adnotacji — dwa predykaty tej samej relacji.
+ */
+function resolvePtpireeDocument(device: DerDeviceCatalogItem | null): string {
   return device?.ptpiree_document_number
     ?? device?.ptpiree_certificate_ref
-    ?? fallback?.documentNumber
     ?? '-';
+}
+
+/**
+ * Opis wykazu PTPiREE w kroku „Urządzenie" — wersje, data publikacji i liczność Z MANIFESTU
+ * backendu. Stan ładowania i błędu jest jawny: brak odpowiedzi to „rejestr niedostępny",
+ * nigdy liczba udająca stan wykazu.
+ */
+function opisWykazuPtpiree(stan: StanRejestruPtpiree<PtpireeManifest>): string {
+  if (stan.stan === 'ladowanie') return '(wczytywanie manifestu wykazu z backendu…)';
+  if (stan.stan === 'blad') return `(rejestr PTPiREE niedostępny — ${stan.komunikat})`;
+  const wersje = stan.dane.sources.map((zrodlo) => `WiPWC ${zrodlo.wipwc_version}`).join(' i ');
+  return `(${wersje}, publikacja ${stan.dane.publication_date}: ${stan.dane.record_count} pozycji)`;
 }
 
 function requiredTransformerKvaForDerPowerKw(powerKw: number): number {
   return powerKw / 0.9;
-}
-
-function compactCatalogText(value: string | null | undefined): string {
-  return (value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-}
-
-function findPtpireeCertificateForDevice(
-  device: DerDeviceCatalogItem,
-  registry: readonly PtpireeCertifiedInverterItem[],
-): PtpireeCertifiedInverterItem | null {
-  const label = compactCatalogText(device.label_pl);
-  if (!label) return null;
-  return registry.find((item) => {
-    const manufacturer = compactCatalogText(item.manufacturer);
-    const model = compactCatalogText(item.model);
-    return (
-      (manufacturer.length > 2 && label.includes(manufacturer)) ||
-      (model.length > 2 && label.includes(model))
-    );
-  }) ?? null;
 }
 
 function getDeviceNominalVoltageKv(device: unknown): number | null {
@@ -683,7 +680,9 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const [isCreating, setIsCreating] = useState(false);
   const [selectedTransformerUpgradeRef, setSelectedTransformerUpgradeRef] = useState('');
   const [isUpdatingTransformer, setIsUpdatingTransformer] = useState(false);
-  const [ptpireeRegistry, setPtpireeRegistry] = useState(PTPIREE_CERTIFIED_INVERTERS);
+  // Wykaz PTPiREE: WYŁĄCZNIE manifest z backendu (liczność i wersja w opisie kroku) — status
+  // certyfikatu urządzeń niesie adnotacja backendu na rekordach katalogu, nie ten wykaz.
+  const ptpireeManifest = usePtpireeManifest();
   const [backendDeviceCatalog, setBackendDeviceCatalog] =
     useState<DerDeviceCatalogItem[] | null>(null);
   const [deviceCatalogStatus, setDeviceCatalogStatus] =
@@ -709,20 +708,6 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   // (decyzja #4). Backend nie miał żadnego katalogu baterii przed tą kartą.
   const bessBatteryTypesQuery = useBessBatteryTypes();
   const bessBatteries = bessBatteryTypesQuery.data ?? [];
-
-  useEffect(() => {
-    let active = true;
-    void loadPtpireeCertifiedInverters()
-      .then((registry) => {
-        if (active) setPtpireeRegistry(registry);
-      })
-      .catch(() => {
-        if (active) setPtpireeRegistry(PTPIREE_CERTIFIED_INVERTERS);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -878,7 +863,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       ) {
         return false;
       }
-      if (deviceModeFilter === 'ptpiree' && resolvePtpireeDocument(device, null) === '-') {
+      if (deviceModeFilter === 'ptpiree' && resolvePtpireeDocument(device) === '-') {
         return false;
       }
       if (deviceModeFilter === 'gfm' && !deviceGridFormingCapable(device)) {
@@ -899,7 +884,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const deviceCatalogCounters = useMemo(() => ({
     total: deviceCatalog.length,
     filtered: filteredDeviceCatalog.length,
-    ptpiree: deviceCatalog.filter((device) => resolvePtpireeDocument(device, null) !== '-').length,
+    ptpiree: deviceCatalog.filter((device) => resolvePtpireeDocument(device) !== '-').length,
     gfm: deviceCatalog.filter(deviceGridFormingCapable).length,
     backend: deviceCatalog.filter((device) => device.catalog_source === 'backend').length,
   }), [deviceCatalog, filteredDeviceCatalog.length]);
@@ -916,12 +901,8 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         selections.connectionSide,
         stationTransformerCapacityKw,
       );
-      const ptpireeCertificate = derKind === 'PV'
-        ? findPtpireeCertificateForDevice(device, ptpireeRegistry)
-        : null;
-      const ptpireeSuffix = ptpireeCertificate
-        ? ` · PTPiREE ${ptpireeCertificate.documentNumber}`
-        : '';
+      const ptpireeDocument = resolvePtpireeDocument(device);
+      const ptpireeSuffix = ptpireeDocument !== '-' ? ` · PTPiREE ${ptpireeDocument}` : '';
       if (voltageOk && transformerOk) {
         return { id: device.id, label: `${device.label_pl}${ptpireeSuffix}` };
       }
@@ -931,9 +912,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       return { id: device.id, label: `${device.label_pl}${ptpireeSuffix} — ${reason}` };
     }),
     [
-      derKind,
       filteredDeviceCatalog,
-      ptpireeRegistry,
       selections.connectionSide,
       stationNnBus,
       stationTransformerCapacityKw,
@@ -943,11 +922,6 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const selectedDevice = useMemo(
     () => deviceCatalog.find((d) => d.id === selections.deviceCatalogRef) ?? null,
     [deviceCatalog, selections.deviceCatalogRef],
-  );
-
-  const selectedDevicePtpireeCertificate = useMemo(
-    () => selectedDevice ? findPtpireeCertificateForDevice(selectedDevice, ptpireeRegistry) : null,
-    [ptpireeRegistry, selectedDevice],
   );
 
   const availableBessModes = useMemo(
@@ -1685,8 +1659,11 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 className="rounded border border-scada-border bg-scada-bg p-2 text-[11px] text-scada-muted"
               >
                 Lista urządzeń łączy katalog techniczny falowników z wykazem PTPiREE/NC RfG
-                ({ptpireeRegistry.length} pozycji). Wybór falownika steruje napięciem układu
-                i doborem transformatora.
+                {' '}
+                <span data-testid="add-der-ptpiree-wykaz" data-stan={ptpireeManifest.stan}>
+                  {opisWykazuPtpiree(ptpireeManifest)}
+                </span>
+                . Wybór falownika steruje napięciem układu i doborem transformatora.
               </div>
               {selections.connectionSide === 'dedicated_transformer'
                 && selectedDevice
@@ -1940,10 +1917,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 </div>
                 {filteredDeviceCatalog.slice(0, 80).map((device) => {
                   const isSelected = selections.deviceCatalogRef === device.id;
-                  const ptpireeDocument = resolvePtpireeDocument(
-                    device,
-                    derKind === 'PV' ? findPtpireeCertificateForDevice(device, ptpireeRegistry) : null,
-                  );
+                  const ptpireeDocument = resolvePtpireeDocument(device);
                   const voltageOk = fitsSelectedLvVoltage(
                     device,
                     selections.connectionSide,
@@ -2041,7 +2015,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                     <CatalogMetric label="NC RfG" value={selectedDevice.grid_code ?? '-'} />
                     <CatalogMetric
                       label="PTPiREE"
-                      value={resolvePtpireeDocument(selectedDevice, selectedDevicePtpireeCertificate)}
+                      value={resolvePtpireeDocument(selectedDevice)}
                     />
                     <CatalogMetric label="Model EMT/RMS" value={selectedDevice.dynamic_profile_id ?? '-'} />
                     <CatalogMetric label="WOS/WiPWC" value={[selectedDevice.ptpiree_wos_version, selectedDevice.ptpiree_wipwc_version].filter(Boolean).join(' / ') || '-'} />

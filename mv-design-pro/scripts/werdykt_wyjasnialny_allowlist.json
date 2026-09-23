@@ -1557,20 +1557,6 @@
   },
   {
    "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/network-build/station-der/antiIslandingValidator.ts:validateAntiIslanding",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E51 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E51"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/network-build/station-der/readiness.ts:validateHostingCapacity",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E50 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E50"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
    "tozsamosc": "frontend/src/ui/protection-coordination/TccInterpretationPanel.tsx:TccInterpretationPanel.overallStatus",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz E10 (MIGRACJA): migracja (plan §8).",

@@ -90,8 +90,57 @@ const BLOCK_TRANSFORMER_FIXTURES = [
 ];
 
 /**
+ * Karta AB-1a Pakiet D1: wykaz PTPiREE WYŁĄCZNIE z backendu — manifest
+ * (`GET /api/catalog/ptpiree/manifest`) i rekordy
+ * (`GET /api/catalog/ptpiree/generator-certificates`), kształt 1:1 z
+ * `mv_ptpiree_catalog.get_ptpiree_catalog_manifest()` i
+ * `PtpireeGeneratorCertificate.to_dict()` (odczyt 2026-09-23). Front nie ma już
+ * własnej kopii wykazu, więc test podaje odpowiedź backendu fiksturą.
+ */
+const PTPIREE_MANIFEST_FIXTURE = {
+  source: 'PTPiREE Wykaz certyfikowanych urzadzen',
+  source_page_url: 'https://ptpiree.pl/kodeksy-sieci/wykaz-certyfikatow/',
+  current_wipwc_version: '1.3',
+  publication_date: '2026-05-08',
+  accepted_from: '2024-11-01',
+  record_count: 6887,
+  sources: [
+    { source_id: 'ptpiree-wipwc-1-2-2026-05-06', wipwc_version: '1.2', source_url: 'https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-06-Wykaz-urzadzen_1.2.pdf', publication_date: '2026-05-06', record_count: 6356 },
+    { source_id: 'ptpiree-wipwc-1-3-2026-05-08', wipwc_version: '1.3', source_url: 'https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-08-Wykaz-urzadzen_1.3.pdf', publication_date: '2026-05-08', record_count: 531 },
+  ],
+  update_policy: 'PTPiREE publikuje aktualizacje wykazu nie rzadziej niz raz w miesiacu.',
+  integration_policy: 'MV-DESIGN-PRO przechowuje znormalizowany snapshot wykazu.',
+};
+function ptpireeCertificateFixture(
+  id: string, manufacturer: string, model: string, documentNumber: string, wipwc: '1.2' | '1.3',
+): Record<string, unknown> {
+  const published = wipwc === '1.2' ? '2026-05-06' : '2026-05-08';
+  return {
+    id, name: `${manufacturer} ${model}`, manufacturer, model, device_type: 'Falownik fotowoltaiczny',
+    document_number: documentNumber, document_acceptance_date: '31.12.2026',
+    wos_version: wipwc === '1.3' ? 'WOS 2025' : '', wipwc_version: wipwc, ppm_scope: 'A,B',
+    firmware_version: 'V1.00',
+    source_url: `https://ptpiree.pl/wp-content/uploads/2026/05/${published}-Wykaz-urzadzen_${wipwc}.pdf`,
+    publication_date: published, accepted_from: '2024-11-01',
+    manufacturer_key: manufacturer.toUpperCase(), model_key: model.toUpperCase(),
+    verification_status: 'ZWERYFIKOWANY', source_reference: `PTPiREE Wykaz urzadzen ${wipwc}, publikacja ${published}`,
+    catalog_status: 'PRODUKCYJNY_V1', contract_version: '2.0',
+  };
+}
+const PTPIREE_CERTIFICATE_FIXTURES = [
+  ptpireeCertificateFixture(
+    'ptpiree-wipwc-1-3-row-660-solax-power-network-technology-zhejiang-co-ltd-x3-aelio-50k',
+    'SolaX Power Network Technology (Zhejiang) Co., Ltd', 'X3-AELIO-50K', 'A3 50720988 0001', '1.3',
+  ),
+  ptpireeCertificateFixture(
+    'ptpiree-wipwc-1-2-row-8348-zucchetti-centro-sistemi-spa-azzurro-3ph-100ktl-v4',
+    'Zucchetti Centro Sistemi SpA', 'AZZURRO 3PH 100KTL-V4', 'U24-0355', '1.2',
+  ),
+];
+
+/**
  * Podstawia `fetch` katalogów DER (converter-types, ncrfg-tests/catalog,
- * snapshot audytu 2) fiksturami powyżej.
+ * snapshot audytu 2, wykaz PTPiREE) fiksturami powyżej.
  */
 function stubCatalogFetch(): void {
   vi.stubGlobal(
@@ -131,6 +180,12 @@ function stubCatalogFetch(): void {
             },
           ],
         } as unknown as Response;
+      }
+      if (href.includes('/api/catalog/ptpiree/manifest')) {
+        return { ok: true, json: async () => PTPIREE_MANIFEST_FIXTURE } as unknown as Response;
+      }
+      if (href.includes('/api/catalog/ptpiree/generator-certificates')) {
+        return { ok: true, json: async () => PTPIREE_CERTIFICATE_FIXTURES } as unknown as Response;
       }
       return { ok: true, json: async () => [] } as unknown as Response;
     }),
@@ -247,7 +302,11 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
 
     fireEvent.click(screen.getByTestId('der-card-tab-inverters'));
     expect(screen.getByText('Certyfikowane falowniki PTPiREE')).toBeInTheDocument();
-    expect(screen.getByText(/9077 pozycji źródłowych PTPiREE/)).toBeInTheDocument();
+    // Karta AB-1a Pakiet D1: zakres bazy Z MANIFESTU backendu (liczność artefaktu),
+    // nie z sumy liczb wpisanych z ręki we froncie („9077 pozycji źródłowych").
+    expect(
+      await screen.findByText('6887 pozycji wykazu PTPiREE (WiPWC 1.2 i WiPWC 1.3, publikacja 2026-05-08)'),
+    ).toBeInTheDocument();
     expect(screen.getAllByText(/SolaX Power Network/).length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText('Szukaj w certyfikatach PTPiREE'), {
       target: { value: 'U24-0355' },
@@ -529,7 +588,9 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     // nie fabrykowana nazwa producenta/modelu, której w stacji nie ma.
     expect(screen.getAllByText('Blok PV legacy').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/legacy_unknown_catalog_ref/).length).toBeGreaterThan(0);
-    expect(screen.getByText('certyfikat PTPiREE z pakietu katalogowego')).toBeInTheDocument();
+    // Karta AB-1a Pakiet D1: brak powiązania z wykazem nazwany wprost — dawny tekst
+    // „certyfikat PTPiREE z pakietu katalogowego" sugerował certyfikat, którego model nie niesie.
+    expect(screen.getByText('brak powiązania z wykazem PTPiREE')).toBeInTheDocument();
     // Zero fabrykacji: ani stary domyślny tekst „wybierz wariant katalogowy" (mylący,
     // bo referencja JEST przypisana — tylko lokalnie nierozpoznana), ani JAKAKOLWIEK
     // nazwa/producent z lokalnego katalogu statycznego (PV/BESS/FW) nie mogą się

@@ -81,76 +81,10 @@ export const READINESS_AXIS_LABELS_PL: Record<keyof DerReadinessMatrix, string> 
   report_technical: 'Raport techniczny',
 };
 
-// =============================================================================
-// Naprawa B.3 + B.4 — walidacje hosting capacity + min Sk w PCC
-// =============================================================================
-
-export interface HostingCapacityValidationResult {
-  readonly station_id: string;
-  readonly busbar_kind: 'mv_section' | 'lv_busbar';
-  readonly busbar_ref: string;
-  readonly p_total_der_kw: number;
-  readonly capacity_limit_kw: number;
-  readonly utilization_percent: number;
-  readonly status: 'ok' | 'warning' | 'exceeded';
-  readonly message_pl: string;
-}
-
-/**
- * Naprawa B.3: walidacja hosting capacity szyny.
- * Reguła operatora: Σ P_DER ≤ 1.0 × Sn_transformer (transformator zasilający
- * szynę nN) lub Σ P_DER ≤ 0.5 × Sk_busbar (dla szyny SN).
- *
- * Zwraca status:
- *   - ok: utilizacja ≤ 80%
- *   - warning: utilizacja 80-100%
- *   - exceeded: utilizacja > 100%
- */
-export function validateHostingCapacity(args: {
-  readonly station_id: string;
-  readonly busbar_kind: 'mv_section' | 'lv_busbar';
-  readonly busbar_ref: string;
-  readonly ders: readonly StationDerConnection[];
-  readonly capacity_limit_kw: number;
-}): HostingCapacityValidationResult {
-  const dersOnBusbar = args.ders.filter((d) => {
-    if (args.busbar_kind === 'lv_busbar') return d.lv_busbar_ref === args.busbar_ref;
-    return d.bay_ref === args.busbar_ref || d.sn_connection_bus_ref === args.busbar_ref;
-  });
-  const p_total = dersOnBusbar.reduce((sum, d) => sum + (d.nominal_power_kw ?? 0), 0);
-  const utilization = args.capacity_limit_kw > 0 ? (p_total / args.capacity_limit_kw) * 100 : 0;
-
-  let status: 'ok' | 'warning' | 'exceeded';
-  let message_pl: string;
-  if (utilization > 100) {
-    status = 'exceeded';
-    message_pl =
-      `Przekroczona zdolność szyny: ${p_total.toFixed(0)} kW DER vs limit `
-      + `${args.capacity_limit_kw.toFixed(0)} kW (${utilization.toFixed(0)}%). `
-      + `Wymagane: dodatkowy transformator albo redukcja mocy DER.`;
-  } else if (utilization > 80) {
-    status = 'warning';
-    message_pl =
-      `Wysoka utylizacja szyny: ${p_total.toFixed(0)} / ${args.capacity_limit_kw.toFixed(0)} kW `
-      + `(${utilization.toFixed(0)}%). Sprawdź margines pracy szczytowej.`;
-  } else {
-    status = 'ok';
-    message_pl =
-      `OK: ${p_total.toFixed(0)} / ${args.capacity_limit_kw.toFixed(0)} kW `
-      + `(${utilization.toFixed(0)}% utylizacja).`;
-  }
-
-  return {
-    station_id: args.station_id,
-    busbar_kind: args.busbar_kind,
-    busbar_ref: args.busbar_ref,
-    p_total_der_kw: p_total,
-    capacity_limit_kw: args.capacity_limit_kw,
-    utilization_percent: utilization,
-    status,
-    message_pl,
-  };
-}
+// `validateHostingCapacity` (Naprawa B.3, „OK: …" z progami 80/100 % liczonymi w UI) USUNIĘTE
+// kartą AB-1a Pakiet D1 (inwentarz werdyktów lakonicznych, wiersz 50: LEGACY_USUNAC) — zero
+// konsumenta produkcyjnego, tylko własny test. Zdolność przyłączeniowa szyny jest oceną sieci
+// (rozpływ/zwarcia w backendzie), nie sumą mocy z tabliczek porównaną z progiem w przeglądarce.
 
 /**
  * Wylicza macierz readiness dla DER na podstawie obecności catalog_refs

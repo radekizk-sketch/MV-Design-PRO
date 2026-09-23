@@ -17,7 +17,8 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 
 import { useAppStateStore } from '../../../app-state/store';
@@ -38,7 +39,31 @@ interface ConverterFixture {
   readonly qmin_mvar?: number;
   readonly qmax_mvar?: number;
   readonly k_sc?: number | null;
+  // Adnotacja backendu `annotate_with_ptpiree_status` na rekordzie katalogu (karta AB-1a D1:
+  // JEDYNE źródło certyfikatu urządzenia w kreatorze — bez dopasowania etykiety do wykazu).
+  readonly ptpiree_status?: 'POWIAZANY' | 'NIEPOWIAZANY';
+  readonly ptpiree_certificate_ref?: string;
+  readonly ptpiree_document_number?: string;
 }
+
+/**
+ * Manifest wykazu PTPiREE — kształt 1:1 `GET /api/catalog/ptpiree/manifest`
+ * (`mv_ptpiree_catalog.get_ptpiree_catalog_manifest`, odczyt 2026-09-23).
+ */
+const PTPIREE_MANIFEST_FIXTURE = {
+  source: 'PTPiREE Wykaz certyfikowanych urzadzen',
+  source_page_url: 'https://ptpiree.pl/kodeksy-sieci/wykaz-certyfikatow/',
+  current_wipwc_version: '1.3',
+  publication_date: '2026-05-08',
+  accepted_from: '2024-11-01',
+  record_count: 6887,
+  sources: [
+    { source_id: 'ptpiree-wipwc-1-2-2026-05-06', wipwc_version: '1.2', source_url: 'https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-06-Wykaz-urzadzen_1.2.pdf', publication_date: '2026-05-06', record_count: 6356 },
+    { source_id: 'ptpiree-wipwc-1-3-2026-05-08', wipwc_version: '1.3', source_url: 'https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-08-Wykaz-urzadzen_1.3.pdf', publication_date: '2026-05-08', record_count: 531 },
+  ],
+  update_policy: 'PTPiREE publikuje aktualizacje wykazu nie rzadziej niz raz w miesiacu.',
+  integration_policy: 'MV-DESIGN-PRO przechowuje znormalizowany snapshot wykazu.',
+};
 
 // Karta FAB-J: krzywe P(f) fikstury reprezentują ich REALNY zapis (audit2
 // snapshot) — kreator je czyta stamtąd, nie z lokalnego katalogu (usuniętego).
@@ -208,6 +233,12 @@ function mockDerWizardFetch(
   // rozwiazuje sie do `Mock<any[], unknown>` i nie przyjmuje mocka o konkretnej sygnaturze.
   const mock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
+    if (url.includes('/api/catalog/ptpiree/manifest')) {
+      return new Response(JSON.stringify(PTPIREE_MANIFEST_FIXTURE), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
     if (url.includes('/api/ncrfg-tests/modul')) {
       const params = new URL(url, 'http://localhost').searchParams;
       const modul = klasyfikujModulNcRfgDlaTestu(
@@ -1105,5 +1136,114 @@ describe('Katalog urządzeń DER — wyłącznie z backendu, zero listy zastępc
     const options = Array.from(select.options).map((o) => o.value).filter(Boolean);
     expect(options).toEqual(expect.arrayContaining(['bess_pcs_abb_500', 'bess_pcs_sma_2200']));
     expect(options).not.toContain('pv_inv_sma_2500');
+  });
+});
+
+describe('Wykaz PTPiREE w kroku „Urządzenie” — manifest z backendu, certyfikat WYŁĄCZNIE z adnotacji (karta AB-1a D1)', () => {
+  beforeEach(() => {
+    useStationDerStore.getState().reset();
+    useAppStateStore.getState().reset();
+    useSnapshotStore.getState().reset();
+    useAppStateStore.getState().setActiveProject('proj_test', 'Projekt testowy');
+    useAppStateStore.getState().setActiveCase('case_test', 'Zakres testowy', 'ShortCircuitCase', 'NONE');
+    useSnapshotStore.setState({ caseId: 'case_test', snapshot: defaultBaseSnapshot() } as never);
+  });
+
+  /** Krok 1 (nN) → Krok 2 → Krok 3 natywnym klikiem (Zero-Debt pkt 5: ścieżka użytkownika). */
+  async function przejdzDoKrokuUrzadzenia(uzytkownik: ReturnType<typeof userEvent.setup>) {
+    await uzytkownik.click(screen.getByTestId('variant-nN'));
+    await uzytkownik.click(screen.getByTestId('add-der-next'));
+    await uzytkownik.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
+  }
+
+  it('opis wykazu z MANIFESTU backendu (wersje, publikacja, liczność) — kreator nie pobiera rekordów wykazu', async () => {
+    const uzytkownik = userEvent.setup();
+    render(<AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />);
+    await przejdzDoKrokuUrzadzenia(uzytkownik);
+    await waitFor(() =>
+      expect(screen.getByTestId('add-der-ptpiree-wykaz')).toHaveAttribute('data-stan', 'gotowy'));
+    expect(screen.getByTestId('add-der-ptpiree-wykaz')).toHaveTextContent(
+      '(WiPWC 1.2 i WiPWC 1.3, publikacja 2026-05-08: 6887 pozycji)',
+    );
+    const adresy = (global.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.map(([adres]) =>
+      String(adres));
+    expect(adresy.some((adres) => adres.includes('/api/catalog/ptpiree/manifest'))).toBe(true);
+    // Status certyfikatu urządzeń niesie adnotacja katalogu — ~3 MB wykazu nie jest potrzebne.
+    expect(adresy.some((adres) => adres.includes('/api/catalog/ptpiree/generator-certificates'))).toBe(false);
+  });
+
+  it('manifest niedostępny (HTTP 503): jawny komunikat „rejestr PTPiREE niedostępny”, nigdy liczba udająca stan wykazu', async () => {
+    const uzytkownik = userEvent.setup();
+    const bazowy = mockDerWizardFetch();
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).includes('/api/catalog/ptpiree/manifest')) {
+        return new Response(JSON.stringify({ detail: 'konserwacja' }), {
+          status: 503,
+          statusText: 'Service Unavailable',
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return bazowy(input);
+    }) as unknown as typeof fetch;
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    rtlRender(
+      <QueryClientProvider client={qc}>
+        <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    await przejdzDoKrokuUrzadzenia(uzytkownik);
+    await waitFor(() =>
+      expect(screen.getByTestId('add-der-ptpiree-wykaz')).toHaveAttribute('data-stan', 'blad'));
+    expect(screen.getByTestId('add-der-ptpiree-wykaz')).toHaveTextContent(
+      'rejestr PTPiREE niedostępny — Rejestr PTPiREE niedostępny: /api/catalog/ptpiree/manifest → HTTP 503 Service Unavailable',
+    );
+    expect(screen.getByTestId('add-der-ptpiree-wykaz')).not.toHaveTextContent(/\d+ pozycji/);
+  });
+
+  it('certyfikat urządzenia WYŁĄCZNIE z adnotacji backendu: POWIAZANY → plakietka i sufiks; NIEPOWIAZANY → brak, mimo nazwy modelu obecnej w wykazie', async () => {
+    const uzytkownik = userEvent.setup();
+    const konwertery: readonly ConverterFixture[] = [
+      {
+        id: 'conv-pv-z-certyfikatem', name: 'HUAWEI SUN2000-215KTL-H3', kind: 'PV', un_kv: 0.4,
+        pmax_mw: 0.2, sn_mva: 0.2, manufacturer: 'HUAWEI', ptpiree_status: 'POWIAZANY',
+        ptpiree_certificate_ref: 'ptpiree-wipwc-1-2-row-3254-huawei-technologies-co-ltd-pv-sun2000-215ktl-h3',
+        ptpiree_document_number: 'TC-GCC-DNVGL-SE-0124-07526-1',
+      },
+      {
+        // Model OBECNY w wykazie (X3-AELIO-50K), ale backend NIE powiązał rekordu katalogu —
+        // dawne dopasowanie etykiety do wykazu podciągiem dopisywało tu certyfikat.
+        id: 'conv-pv-bez-powiazania', name: 'SolaX X3-AELIO-50K', kind: 'PV', un_kv: 0.4,
+        pmax_mw: 0.05, sn_mva: 0.05, manufacturer: 'SolaX', ptpiree_status: 'NIEPOWIAZANY',
+      },
+    ];
+    render(
+      <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
+      { PV: konwertery, BESS: [], WIND: [] },
+    );
+    await przejdzDoKrokuUrzadzenia(uzytkownik);
+
+    const zCertyfikatem = screen.getByTestId('add-der-device-card-conv-pv-z-certyfikatem');
+    expect(zCertyfikatem).toHaveTextContent('PTPiREE TC-GCC-DNVGL-SE-0124-07526-1');
+    const bezPowiazania = screen.getByTestId('add-der-device-card-conv-pv-bez-powiazania');
+    expect(bezPowiazania).not.toHaveTextContent('PTPiREE');
+
+    const opcje = Array.from((screen.getByTestId('add-der-device') as HTMLSelectElement).options)
+      .filter((opcja) => opcja.value)
+      .map((opcja) => [opcja.value, opcja.textContent]);
+    expect(opcje).toEqual([
+      ['conv-pv-z-certyfikatem', 'HUAWEI SUN2000-215KTL-H3 · PTPiREE TC-GCC-DNVGL-SE-0124-07526-1'],
+      ['conv-pv-bez-powiazania', 'SolaX X3-AELIO-50K'],
+    ]);
+
+    // Licznik i filtr „PTPiREE" czytają TEN SAM predykat co plakietka (jedno źródło).
+    expect(within(screen.getByTestId('add-der-device-catalog-summary')).getByText('PTPiREE').nextSibling)
+      .toHaveTextContent('1');
+    await uzytkownik.selectOptions(screen.getByTestId('add-der-device-mode-filter'), 'ptpiree');
+    expect(screen.getByTestId('add-der-device-card-conv-pv-z-certyfikatem')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-der-device-card-conv-pv-bez-powiazania')).toBeNull();
+
+    await uzytkownik.selectOptions(screen.getByTestId('add-der-device'), 'conv-pv-z-certyfikatem');
+    expect(screen.getByTestId('add-der-device-details')).toHaveTextContent('TC-GCC-DNVGL-SE-0124-07526-1');
   });
 });

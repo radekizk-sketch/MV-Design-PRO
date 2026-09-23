@@ -79,34 +79,6 @@ ALLOWLIST: dict[tuple[str, str], str] = {
         "{ p_pu: 1.0, cos_phi: 0.95 },",
     ): "domyslny punkt krzywej cosφ(P) falownika (parametr sterowania DER), nie kryterium oceny wyniku sieci",
     (
-        "frontend/src/ui/network-build/station-der/frtEnvelopeValidator.ts",
-        "{ timeS: 60.0, voltagePu: 0.95 },",
-    ): "punkt krzywej obwiedni FRT (parametr sterowania/katalogowy DER), nie kryterium oceny wyniku sieci",
-    (
-        "frontend/src/ui/network-build/station-der/frtEnvelopeValidator.ts",
-        "{ timeS: 60.0, voltagePu: 1.10 },",
-    ): "jw. — drugi punkt krzywej obwiedni FRT",
-    (
-        "frontend/src/ui/network-build/station-der/antiIslandingValidator.ts",
-        "overVoltagePu: 1.10,",
-    ): "domyslna nastawa przekaznika anti-islanding (parametr sterowania DER), nie kryterium oceny wyniku sieci",
-    (
-        "frontend/src/ui/network-build/station-der/antiIslandingValidator.ts",
-        "if (settings.underVoltagePu < 0.5 || settings.underVoltagePu > 0.95) {",
-    ): "sanity zalecanego zakresu nastawy przekaznika anti-islanding (wejscie urzadzenia), nie ocena wyniku solvera",
-    (
-        "frontend/src/ui/network-build/station-der/antiIslandingValidator.ts",
-        "`Ustawienie 27 (under-voltage) ${settings.underVoltagePu} p.u. poza zalecanym zakresem 0.5-0.95.`,",
-    ): "tekst komunikatu o jw. zalecanym zakresie nastawy",
-    (
-        "frontend/src/ui/network-build/station-der/antiIslandingValidator.ts",
-        "if (settings.overVoltagePu < 1.05 || settings.overVoltagePu > 1.20) {",
-    ): "sanity zalecanego zakresu nastawy przekaznika anti-islanding (jw., prog gorny)",
-    (
-        "frontend/src/ui/network-build/station-der/antiIslandingValidator.ts",
-        "`Ustawienie 59 (over-voltage) ${settings.overVoltagePu} p.u. poza zalecanym zakresem 1.05-1.20.`,",
-    ): "tekst komunikatu o jw. zalecanym zakresie nastawy (prog gorny)",
-    (
         "frontend/src/ui/network-build/forms/inverterModeHelper.ts",
         "if (sorted[0].uPu > 0.9) {",
     ): "walidacja ksztaltu krzywej sterowania Q(U) falownika (parametr DER), nie kryterium oceny wyniku sieci",

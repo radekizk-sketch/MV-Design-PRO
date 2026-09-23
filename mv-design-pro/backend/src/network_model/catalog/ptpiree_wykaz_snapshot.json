@@ -1,5 +1,5 @@
 {
-  "derived_from": "frontend/src/ui/network-build/station-der/ptpireeCertifiedInverters.generated.ts",
+  "derived_from": "oficjalne PDF-y wykazu PTPiREE (sources[].source_url)",
   "generated_by": "scripts/generate_ptpiree_inverter_catalog.py",
   "record_count": 6887,
   "schema": "ptpiree_wykaz_snapshot/v1",

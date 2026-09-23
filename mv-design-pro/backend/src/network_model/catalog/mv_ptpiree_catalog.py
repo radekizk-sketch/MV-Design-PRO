@@ -8,12 +8,14 @@ falowniku jest defektem, a nie kosmetyka.
 ZRODLO DANYCH
 -------------
 Rekordy pochodza WYLACZNIE ze znormalizowanego snapshotu wykazu
-(`ptpiree_wykaz_snapshot.json`), ktory jest druga projekcja tego samego
-przebiegu `scripts/generate_ptpiree_inverter_catalog.py`, co artefakt
-frontendowy `ptpireeCertifiedInverters.generated.ts`. Do 2026-08 modul mial
-WLASNY, recznie przepisany mini-snapshot 6 rekordow — kazde urzadzenie spoza
-tej szostki dostawalo NIEPOWIAZANY mimo obecnosci w wykazie. Recznych rekordow
-w tym module juz NIE MA; parytet obu artefaktow pilnuje
+(`ptpiree_wykaz_snapshot.json`) — JEDYNEJ projekcji wierszy oficjalnych PDF-ow
+PTPiREE emitowanej przez `scripts/generate_ptpiree_inverter_catalog.py`.
+Interfejs czyta wykaz z API tego modulu (manifest i rekordy), nie z wlasnej
+kopii: dawna kopia we froncie zostala skasowana (karta AB-1a D1, 2026-09-23).
+Do 2026-08 modul mial WLASNY, recznie przepisany mini-snapshot 6 rekordow —
+kazde urzadzenie spoza tej szostki dostawalo NIEPOWIAZANY mimo obecnosci w
+wykazie. Recznych rekordow w tym module juz NIE MA; to, ze snapshot jest
+jedynym artefaktem wykazu i ma postac kanoniczna emitera, pilnuje
 `tests/network_model/catalog/test_ptpiree_wykaz_snapshot.py`.
 
 DOPASOWANIE JAKO KLASA, NIE LISTA PRZYPADKOW

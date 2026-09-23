@@ -458,13 +458,24 @@ class TestExcludedRelativeFilesFreshness:
     def test_zielony_na_repo(self) -> None:
         assert guard_module.check_excluded_relative_files_freshness(guard_module.REPO_ROOT) == []
 
-    def test_wpis_ma_realne_trafienie_bez_wykluczenia(self) -> None:
-        """Potwierdzenie POMIARU: jedyny dzisiejszy wpis (trade name z 'P3' w
-        nazwie modelu falownika) faktycznie produkuje raw hit."""
-        for rel_path in guard_module.EXCLUDED_RELATIVE_FILES:
+    def test_kazdy_wpis_ma_realne_trafienie_bez_wykluczenia(self) -> None:
+        """KLASA, nie instancja: KAZDY wpis EXCLUDED_RELATIVE_FILES musi wskazywac
+        istniejacy plik, ktory bez wykluczenia produkuje >=1 trafienie scan_file()
+        (pomiar niezalezny od zapadki `check_excluded_relative_files_freshness`).
+
+        Pusty zbior przechodzi Z JAWNYM POWODEM: guard nie wyklucza zadnego pliku,
+        wiec nie istnieje wpis, ktory moglby byc sierota — to stan docelowy, nie
+        luka. Kazdy dopisany wpis wpada w te sama petle bez zmiany testu.
+        """
+        sieroty: list[str] = []
+        for rel_path in sorted(guard_module.EXCLUDED_RELATIVE_FILES):
             full_path = guard_module.REPO_ROOT / rel_path
-            assert full_path.is_file(), f"brak pliku {rel_path!r}"
-            assert scan_file(full_path), f"EXCLUDED_RELATIVE_FILES[{rel_path!r}] to sierota"
+            if not full_path.is_file():
+                sieroty.append(f"{rel_path!r}: brak pliku")
+            elif not scan_file(full_path):
+                sieroty.append(f"{rel_path!r}: plik nie produkuje zadnego trafienia")
+
+        assert sieroty == [], "EXCLUDED_RELATIVE_FILES ma sieroty:\n" + "\n".join(sieroty)
 
     def test_lapie_brakujacy_plik(self, monkeypatch) -> None:
         monkeypatch.setattr(

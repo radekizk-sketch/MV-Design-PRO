@@ -19,6 +19,7 @@ export type {
 export { WZORZEC_STRINGS } from './strings';
 export { InformacjeAudytowe } from './InformacjeAudytowe';
 export type { WierszInformacjiAudytowych, InformacjeAudytoweProps } from './InformacjeAudytowe';
+export { KartaWerdyktu, type KartaWerdyktuProps } from './KartaWerdyktu';
 export { usePoprawWModelu } from './usePoprawWModelu';
 export { akcjaNaprawcza, AKCJA_GENERYCZNA } from './akcjeNaprawcze';
 export type { RodzajPrzekroczenia, AkcjaNaprawcza, CelAkcjiNaprawczej } from './akcjeNaprawcze';

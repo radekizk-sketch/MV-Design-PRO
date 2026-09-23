@@ -17,8 +17,8 @@ import {
   SN_CONNECTION_POINT_KIND_CATALOG,
   // Naprawa C
   isCtClassValidForProtection,
-  // Naprawa D
-  validateHostingCapacity,
+  // Naprawa D (`validateHostingCapacity` z Naprawy B.3 USUNIĘTE kartą AB-1a Pakiet D1 — werdykt
+  // „OK: …" z progami 80/100 % liczony w UI, bez konsumenta produkcyjnego; inwentarz wiersz 50)
   computeDerReadinessMatrix,
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
@@ -275,7 +275,7 @@ describe('Naprawa C.6 — klasy CT (reguly normowe, bez katalogu syntetycznego)'
 // testem, bez migracji.
 
 // =============================================================================
-// Naprawa D — readiness aware grounding + hosting capacity
+// Naprawa D — readiness aware grounding
 // =============================================================================
 
 describe('Naprawa D — readiness z grounding-aware (uwzględnia A.5)', () => {
@@ -328,49 +328,5 @@ describe('Naprawa D — readiness z grounding-aware (uwzględnia A.5)', () => {
     );
     expect(matrix.frt).toBe('ready');
     expect(matrix.hvrt).toBe('ready');
-  });
-});
-
-describe('Naprawa D — validateHostingCapacity (B.3)', () => {
-  it('utilization ≤ 80% → ok', () => {
-    const result = validateHostingCapacity({
-      station_id: 's',
-      busbar_kind: 'lv_busbar',
-      busbar_ref: 'bb_main',
-      ders: [
-        makeDer({ id: 'der_a', lv_busbar_ref: 'bb_main', nominal_power_kw: 200 }),
-        makeDer({ id: 'der_b', lv_busbar_ref: 'bb_main', nominal_power_kw: 150 }),
-      ],
-      capacity_limit_kw: 630, // 630 kVA transformator
-    });
-    expect(result.status).toBe('ok');
-    expect(result.utilization_percent).toBeCloseTo((350 / 630) * 100, 1);
-  });
-
-  it('utilization 80-100% → warning', () => {
-    const result = validateHostingCapacity({
-      station_id: 's',
-      busbar_kind: 'lv_busbar',
-      busbar_ref: 'bb_main',
-      ders: [makeDer({ id: 'der_a', lv_busbar_ref: 'bb_main', nominal_power_kw: 550 })],
-      capacity_limit_kw: 630,
-    });
-    expect(result.status).toBe('warning');
-  });
-
-  it('utilization > 100% → exceeded z polskim message', () => {
-    const result = validateHostingCapacity({
-      station_id: 's',
-      busbar_kind: 'lv_busbar',
-      busbar_ref: 'bb_main',
-      ders: [
-        makeDer({ id: 'a', lv_busbar_ref: 'bb_main', nominal_power_kw: 800 }),
-        makeDer({ id: 'b', lv_busbar_ref: 'bb_main', nominal_power_kw: 800 }),
-      ],
-      capacity_limit_kw: 1000,
-    });
-    expect(result.status).toBe('exceeded');
-    expect(result.message_pl).toContain('Przekroczona zdolność');
-    expect(result.message_pl).toContain('redukcja mocy DER');
   });
 });

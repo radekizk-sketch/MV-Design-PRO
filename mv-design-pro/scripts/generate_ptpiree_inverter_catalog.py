@@ -4,26 +4,20 @@ The PDFs are source-of-truth certificate lists, not equipment datasheets. The
 generated data therefore stores certificate identity and source location only.
 Electrical parameters must still come from catalog cards.
 
-JEDNO ZRODLO, DWIE PROJEKCJE
-----------------------------
-Jeden przebieg emituje DWA artefakty z tego samego zbioru wierszy:
+JEDNO ZRODLO, JEDNA PROJEKCJA
+-----------------------------
+Przebieg emituje JEDEN artefakt: `backend/src/network_model/catalog/
+ptpiree_wykaz_snapshot.json` — znormalizowany snapshot wykazu, z ktorego
+`mv_ptpiree_catalog` stempluje `ptpiree_status` na rekordach katalogu i ktory
+API (`/api/catalog/ptpiree/manifest`, `/api/catalog/ptpiree/generator-certificates`)
+wystawia interfejsowi. Dawna druga projekcja (kopia wykazu we froncie) zostala
+skasowana w karcie AB-1a D1 (2026-09-23): front czyta wykaz z API, a nie z
+wlasnej kopii, wiec nie ma juz dwoch artefaktow do utrzymywania w parytecie.
 
-1. frontend TS  — `frontend/src/ui/network-build/station-der/
-   ptpireeCertifiedInverters.generated.ts` (picker urzadzen kreatora DER),
-2. backend JSON — `backend/src/network_model/catalog/
-   ptpiree_wykaz_snapshot.json` (znormalizowany snapshot wykazu, z ktorego
-   `mv_ptpiree_catalog` stempluje `ptpiree_status` na rekordach katalogu).
-
-Wczesniej backend mial WLASNY, recznie przepisany mini-snapshot (6 rekordow),
-wiec kazde urzadzenie spoza tej szostki dostawalo status NIEPOWIAZANY mimo
-obecnosci w wykazie. Oba artefakty musza pochodzic z tego samego przebiegu —
-parytet pilnuje `backend/tests/network_model/catalog/
-test_ptpiree_wykaz_snapshot.py`.
-
-PDF-ow NIE MA w repozytorium, wiec dopoki nie zostana pobrane ponownie,
-backendowy snapshot wyprowadza sie deterministycznie z juz zatwierdzonego
-artefaktu TS (tryb `--from-generated-ts`); JSON wykazu siedzi w nim wprost
-w `String.raw`.
+PDF-ow NIE MA w repozytorium. Regeneracja snapshotu wymaga pobrania obu
+wykazow spod `sources[].source_url` i podania ich w `--wipwc-1-3-pdf` /
+`--wipwc-1-2-pdf`; zatwierdzony snapshot jest do tego czasu jedynym zrodlem
+wierszy wykazu w repozytorium.
 """
 
 from __future__ import annotations
@@ -336,24 +330,18 @@ def generate_items(pdf_paths: dict[str, Path]) -> list[dict[str, object]]:
     return items
 
 
-TS_PAYLOAD_RE = re.compile(
-    r"const GENERATED_PTPIREE_INVERTER_JSON = String\.raw`\n(?P<payload>.*?)\n`;",
-    re.DOTALL,
-)
-
 SNAPSHOT_SCHEMA = "ptpiree_wykaz_snapshot/v1"
 BACKEND_SNAPSHOT_DEFAULT = Path("backend/src/network_model/catalog/ptpiree_wykaz_snapshot.json")
-FRONTEND_ARTIFACT_PATH = (
-    "frontend/src/ui/network-build/station-der/ptpireeCertifiedInverters.generated.ts"
-)
-BACKEND_ARTIFACT_PATH = "backend/src/network_model/catalog/ptpiree_wykaz_snapshot.json"
+#: Pochodzenie wierszy snapshotu: oficjalne PDF-y wykazu, wskazane w kazdym
+#: wpisie `sources[]` adresem `source_url` (zadna posrednia kopia).
+DERIVED_FROM = "oficjalne PDF-y wykazu PTPiREE (sources[].source_url)"
 
 PUBLICATION_DATE_RE = re.compile(r"/(\d{4}-\d{2}-\d{2})-")
 
-# Mapping frontend camelCase -> backend snake_case. The backend snapshot stores
-# the RAW row fields only; every matching key (folded manufacturer/model, split
-# certificate condition) is derived at load time in `mv_ptpiree_catalog`, so the
-# normalization rule has exactly one home.
+# Mapping parsed-row camelCase (`parse_row`) -> snapshot snake_case. The snapshot
+# stores the RAW row fields only; every matching key (folded manufacturer/model,
+# split certificate condition) is derived at load time in `mv_ptpiree_catalog`,
+# so the normalization rule has exactly one home.
 SNAPSHOT_FIELDS: tuple[tuple[str, str], ...] = (
     ("id", "id"),
     ("source_id", "sourceId"),
@@ -387,30 +375,12 @@ def publication_date_from_source_url(source_url: str) -> str:
     return match.group(1)
 
 
-def items_from_generated_ts(text: str) -> list[dict[str, Any]]:
-    """Read back the row set embedded in the generated frontend artifact.
-
-    The artifact stores the rows verbatim in a `String.raw` template, so the
-    backend snapshot can be derived from it deterministically while the source
-    PDFs are unavailable.
-    """
-
-    match = TS_PAYLOAD_RE.search(text)
-    if not match:
-        raise ValueError("generated TS artifact does not contain the PTPiREE payload")
-    payload = match.group("payload").replace("\\`", "`").replace("\\${", "${")
-    items = json.loads(payload)
-    if not isinstance(items, list):
-        raise ValueError("PTPiREE payload is not a list of rows")
-    return items
-
-
 def build_snapshot(items: Iterable[dict[str, Any]]) -> dict[str, Any]:
-    """Backend projection of the same rows that feed the frontend artifact."""
+    """Snapshot wykazu — jedyna projekcja wierszy sparsowanych z PDF-ow."""
 
     rows = list(items)
     records = [
-        {backend_key: row.get(frontend_key) for backend_key, frontend_key in SNAPSHOT_FIELDS}
+        {snapshot_key: row.get(row_key) for snapshot_key, row_key in SNAPSHOT_FIELDS}
         for row in rows
     ]
     records.sort(key=lambda record: str(record["id"]))
@@ -433,7 +403,7 @@ def build_snapshot(items: Iterable[dict[str, Any]]) -> dict[str, Any]:
     return {
         "schema": SNAPSHOT_SCHEMA,
         "generated_by": "scripts/generate_ptpiree_inverter_catalog.py",
-        "derived_from": FRONTEND_ARTIFACT_PATH,
+        "derived_from": DERIVED_FROM,
         "source_page_url": SOURCE_PAGE_URL,
         "record_count": len(records),
         "sources": sorted(sources.values(), key=lambda source: str(source["source_id"])),
@@ -463,61 +433,12 @@ def render_backend_snapshot(items: Iterable[dict[str, Any]]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_ts(items: Iterable[dict[str, object]]) -> str:
-    json_text = json.dumps(list(items), ensure_ascii=False, indent=2)
-    escaped_json_text = json_text.replace("`", "\\`").replace("${", "\\${")
-    return "\n".join(
-        [
-            "/*",
-            " * Generated by scripts/generate_ptpiree_inverter_catalog.py from official PTPiREE PDFs.",
-            " * Do not edit rows manually; update the source PDFs and regenerate this file.",
-            " *",
-            " * DRUGA PROJEKCJA TYCH SAMYCH WIERSZY: " + BACKEND_ARTIFACT_PATH,
-            " * (backendowy snapshot wykazu). Oba artefakty powstaja w jednym",
-            " * przebiegu generatora i sa porownywane testem parytetu.",
-            " */",
-            "",
-            "import type { PtpireeCertifiedInverterItem } from './ptpireeCertifiedInverters';",
-            "",
-            "const GENERATED_PTPIREE_INVERTER_JSON = String.raw`",
-            escaped_json_text,
-            "`;",
-            "",
-            "export const PTPIREE_GENERATED_CERTIFIED_INVERTERS: readonly PtpireeCertifiedInverterItem[] = Object.freeze(",
-            "  JSON.parse(GENERATED_PTPIREE_INVERTER_JSON) as PtpireeCertifiedInverterItem[],",
-            ");",
-            "",
-        ]
-    )
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--wipwc-1-3-pdf", type=Path)
-    parser.add_argument("--wipwc-1-2-pdf", type=Path)
-    parser.add_argument(
-        "--from-generated-ts",
-        type=Path,
-        help=(
-            "Wyprowadz wiersze z zatwierdzonego artefaktu TS zamiast z PDF-ow "
-            "(uzywane dopoki zrodlowych PDF-ow nie ma w repozytorium)."
-        ),
-    )
-    parser.add_argument("--output", default=Path(FRONTEND_ARTIFACT_PATH), type=Path)
+    parser.add_argument("--wipwc-1-3-pdf", type=Path, required=True)
+    parser.add_argument("--wipwc-1-2-pdf", type=Path, required=True)
     parser.add_argument("--backend-output", default=BACKEND_SNAPSHOT_DEFAULT, type=Path)
-    parser.add_argument(
-        "--skip-frontend",
-        action="store_true",
-        help="Nie przepisuj artefaktu TS (tryb wyprowadzenia samego snapshotu backendu).",
-    )
-    args = parser.parse_args()
-    if args.from_generated_ts is None and (
-        args.wipwc_1_3_pdf is None or args.wipwc_1_2_pdf is None
-    ):
-        parser.error(
-            "podaj --from-generated-ts albo oba pliki PDF (--wipwc-1-3-pdf, --wipwc-1-2-pdf)"
-        )
-    return args
+    return parser.parse_args()
 
 
 def _write(path: Path, text: str) -> None:
@@ -527,24 +448,14 @@ def _write(path: Path, text: str) -> None:
 
 def main() -> None:
     args = parse_args()
-    if args.from_generated_ts is not None:
-        items = items_from_generated_ts(args.from_generated_ts.read_text(encoding="utf-8"))
-        origin = str(args.from_generated_ts)
-    else:
-        items = generate_items(
-            {
-                "wipwc_1_3": args.wipwc_1_3_pdf,
-                "wipwc_1_2": args.wipwc_1_2_pdf,
-            }
-        )
-        origin = "PTPiREE PDFs"
-
-    if not args.skip_frontend:
-        _write(args.output, render_ts(items))
-        print(f"Generated {len(items)} PTPiREE records into {args.output}")
-
+    items = generate_items(
+        {
+            "wipwc_1_3": args.wipwc_1_3_pdf,
+            "wipwc_1_2": args.wipwc_1_2_pdf,
+        }
+    )
     _write(args.backend_output, render_backend_snapshot(items))
-    print(f"Generated {len(items)} PTPiREE records into {args.backend_output} (from {origin})")
+    print(f"Generated {len(items)} PTPiREE records into {args.backend_output}")
 
 
 if __name__ == "__main__":

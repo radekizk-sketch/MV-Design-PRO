@@ -101,13 +101,12 @@ BACKEND_FILE_EXTENSIONS = {".py"}
 #: jako argumenty nazwane, jak i jako klucze słownika odpowiedzi (`{"message_pl": …}`),
 #: a klasa bez tej drugiej postaci miałaby dziurę wielkości całej warstwy API.
 BACKEND_USER_TEXT_MARKER = re.compile(r"\b\w*_pl\b[\"']?\s*[=:]")
-EXCLUDED_FILE_SUFFIXES = (
-    ".generated.ts",
-    ".generated.tsx",
-)
-EXCLUDED_RELATIVE_FILES = {
-    "frontend/src/ui/network-build/station-der/ptpireeCertifiedInverters.ts",
-}
+#: Wyjątki plikowe. PUSTE od karty AB-1a D1 (2026-09-23): jedynym wykluczonym plikiem
+#: był moduł wykazu PTPiREE we froncie (nazwy modeli falowników z „P3"), a wraz z nim
+#: sufiksowy wyjątek dla artefaktów generowanych — frontowa kopia wykazu została
+#: skasowana (wykaz czyta się z API backendu), więc oba wyjątki nie miały już celu.
+#: Nowy wpis podlega zapadce świeżości `check_excluded_relative_files_freshness`.
+EXCLUDED_RELATIVE_FILES: set[str] = set()
 
 # Regex for codenames: P1, P7, P11, P20, p14, etc.
 # Excludes P0 (technical parameter for transformer no-load losses)
@@ -397,8 +396,6 @@ def iter_files(root: Path) -> list[Path]:
         for ext in FILE_EXTENSIONS:
             for file_path in dir_path.rglob(f"*{ext}"):
                 relative_path = format_violation_path(file_path)
-                if file_path.name.endswith(EXCLUDED_FILE_SUFFIXES):
-                    continue
                 if relative_path in EXCLUDED_RELATIVE_FILES:
                     continue
                 files.append(file_path)

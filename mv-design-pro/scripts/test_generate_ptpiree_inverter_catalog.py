@@ -1,8 +1,10 @@
-"""Generator wykazu PTPiREE: jeden przebieg emituje DWIE projekcje.
+"""Generator wykazu PTPiREE: jeden przebieg emituje JEDNA projekcje — snapshot JSON.
 
-Zrodlowych PDF-ow nie ma w repozytorium, wiec testowana jest warstwa emisji i
-wyprowadzenia (te same funkcje, ktorych uzyje nastepna regeneracja z PDF-ow) —
-bez zaleznosci od pypdf.
+Zrodlowych PDF-ow nie ma w repozytorium, wiec testowana jest warstwa emisji
+(te same funkcje, ktorych uzyje nastepna regeneracja z PDF-ow) — bez zaleznosci
+od pypdf; parser PDF-ow jest w tescie przebiegu podmieniony na gotowe wiersze.
+Dawna druga projekcja (kopia TS wykazu we froncie) i tryb wyprowadzania snapshotu
+z niej zostaly skasowane w karcie AB-1a D1 (2026-09-23).
 """
 
 from __future__ import annotations
@@ -52,25 +54,21 @@ WIERSZE = [
 ]
 
 
-def test_wiersze_wracaja_z_artefaktu_ts_bez_zmian() -> None:
-    """Artefakt TS jest wejsciem wyprowadzenia — musi dac sie odczytac 1:1."""
+def test_generator_nie_ma_projekcji_ts() -> None:
+    """KLASA: zadna funkcja, stala ani opcja generatora nie emituje ani nie czyta kopii TS."""
 
-    odczytane = generator.items_from_generated_ts(generator.render_ts(WIERSZE))
-
-    assert odczytane == WIERSZE
-
-
-def test_artefakt_ts_wskazuje_druga_projekcje() -> None:
-    naglowek = generator.render_ts(WIERSZE).split("*/", 1)[0]
-
-    assert generator.BACKEND_ARTIFACT_PATH in naglowek
+    nazwy = {nazwa.lower() for nazwa in vars(generator)}
+    assert not {n for n in nazwy if "_ts" in n or n.endswith("ts_path") or "frontend" in n}
+    zrodlo = Path(generator.__file__).read_text(encoding="utf-8")
+    for slad in ("String.raw", "--from-generated-ts", "--skip-frontend", "render_ts"):
+        assert slad not in zrodlo, slad
 
 
 def test_snapshot_backendu_niesie_te_same_wiersze() -> None:
     snapshot = json.loads(generator.render_backend_snapshot(WIERSZE))
 
     assert snapshot["schema"] == generator.SNAPSHOT_SCHEMA
-    assert snapshot["derived_from"] == generator.FRONTEND_ARTIFACT_PATH
+    assert snapshot["derived_from"] == generator.DERIVED_FROM
     assert snapshot["record_count"] == len(WIERSZE) == len(snapshot["records"])
     assert {r["id"] for r in snapshot["records"]} == {w["id"] for w in WIERSZE}
 
@@ -115,37 +113,54 @@ def test_data_publikacji_bez_zgadywania() -> None:
     )
 
 
-def test_brak_ladunku_w_artefakcie_jest_bledem() -> None:
-    with pytest.raises(ValueError):
-        generator.items_from_generated_ts("const COS_INNEGO = 1;")
+def test_przebieg_z_pdf_emituje_wylacznie_snapshot(tmp_path: Path, monkeypatch) -> None:
+    """Przebieg `main()` z obu PDF-ow zapisuje JEDEN plik: snapshot JSON w postaci emitera."""
 
+    pdf_1_3 = tmp_path / "wykaz_1_3.pdf"
+    pdf_1_2 = tmp_path / "wykaz_1_2.pdf"
+    json_out = tmp_path / "wyjscie" / "snapshot.json"
+    przekazane: list[dict[str, Path]] = []
 
-def test_jeden_przebieg_emituje_oba_artefakty(tmp_path: Path, monkeypatch) -> None:
-    zrodlo = tmp_path / "ptpireeCertifiedInverters.generated.ts"
-    zrodlo.write_text(generator.render_ts(WIERSZE), encoding="utf-8")
-    ts_out = tmp_path / "out.generated.ts"
-    json_out = tmp_path / "out.snapshot.json"
+    def parser_pdf(sciezki: dict[str, Path]) -> list[dict[str, object]]:
+        przekazane.append(dict(sciezki))
+        return WIERSZE
 
+    monkeypatch.setattr(generator, "generate_items", parser_pdf)
     monkeypatch.setattr(
         "sys.argv",
         [
             "generate_ptpiree_inverter_catalog.py",
-            "--from-generated-ts",
-            str(zrodlo),
-            "--output",
-            str(ts_out),
+            "--wipwc-1-3-pdf",
+            str(pdf_1_3),
+            "--wipwc-1-2-pdf",
+            str(pdf_1_2),
             "--backend-output",
             str(json_out),
         ],
     )
     generator.main()
 
-    assert generator.items_from_generated_ts(ts_out.read_text(encoding="utf-8")) == WIERSZE
-    assert json.loads(json_out.read_text(encoding="utf-8"))["record_count"] == len(WIERSZE)
+    assert przekazane == [{"wipwc_1_3": pdf_1_3, "wipwc_1_2": pdf_1_2}]
+    assert sorted(p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*")) == [
+        "wyjscie",
+        "wyjscie/snapshot.json",
+    ]
+    assert json_out.read_text(encoding="utf-8") == generator.render_backend_snapshot(WIERSZE)
 
 
-def test_bez_zrodel_generator_odmawia(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["generate_ptpiree_inverter_catalog.py"])
+@pytest.mark.parametrize(
+    "argumenty",
+    [
+        [],
+        ["--wipwc-1-3-pdf", "a.pdf"],
+        ["--wipwc-1-2-pdf", "b.pdf"],
+    ],
+    ids=["bez-pdf", "tylko-1-3", "tylko-1-2"],
+)
+def test_bez_obu_pdf_generator_odmawia(monkeypatch, argumenty: list[str]) -> None:
+    """Jedynym zrodlem wierszy sa oba PDF-y — brak ktoregokolwiek to odmowa, nie domysl."""
+
+    monkeypatch.setattr("sys.argv", ["generate_ptpiree_inverter_catalog.py", *argumenty])
 
     with pytest.raises(SystemExit):
         generator.parse_args()

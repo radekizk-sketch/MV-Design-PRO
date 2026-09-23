@@ -1,17 +1,23 @@
-"""Wykaz PTPiREE: JEDNA PRAWDA — backend i frontend czytaja ten sam zbior wierszy.
+"""Wykaz PTPiREE: JEDNA PRAWDA — jeden artefakt, z ktorego czyta backend i (przez API) front.
 
 Do 2026-08 backend dopasowywal urzadzenia do RECZNIE przepisanego mini-snapshotu
 6 rekordow, podczas gdy frontend mial pelny rejestr z PDF-ow. Kazdy falownik
 spoza tej szostki dostawal „NIEPOWIAZANY", co odcinalo pola dowodowe certyfikatu
 od wniosku przylaczeniowego do OSD.
 
-PDF-ow zrodlowych nie ma w repozytorium, wiec parytet weryfikujemy ARTEFAKT
-kontra ARTEFAKT (frontendowy TS kontra backendowy JSON) — to wykonalne w CI.
+Do 2026-09 wykaz mial DWIE projekcje (snapshot JSON backendu i kopia TS we
+froncie), pilnowane testami parytetu artefakt kontra artefakt. Karta AB-1a D1
+skasowala kopie frontowa (front czyta wykaz z API), wiec parytet dwoch kopii
+zastapila KLASA: snapshot JSON jest JEDYNYM artefaktem wykazu (zadna sciezka
+zrodel nie wskazuje artefaktu generowanego) i ma dokladnie postac kanoniczna
+jedynego emitera `scripts/generate_ptpiree_inverter_catalog.py`. PDF-ow
+zrodlowych nie ma w repozytorium, wiec to jest weryfikacja wykonalna w CI.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -30,10 +36,6 @@ from network_model.catalog.mv_ptpiree_catalog import (
 )
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
-FRONTEND_ARTIFACT = (
-    PROJECT_ROOT
-    / "frontend/src/ui/network-build/station-der/ptpireeCertifiedInverters.generated.ts"
-)
 
 #: Pola dowodowe certyfikatu przenoszone na rekord katalogu. Lista ZAMKNIETA —
 #: to one plyna do parametrow DER i do wniosku OSD.
@@ -51,8 +53,8 @@ EVIDENCE_FIELDS = (
 def _generator_module() -> Any:
     """Laduje generator PO SCIEZCE PLIKU, bez dotykania `sys.path`.
 
-    Parsowanie artefaktu TS musi pochodzic z generatora (jedno zrodlo prawdy
-    o formacie), ale katalog `scripts/` NIE MOZE trafic na sciezke importu —
+    Postac kanoniczna snapshotu musi pochodzic z emitera generatora (jedno zrodlo
+    prawdy o formacie), ale katalog `scripts/` NIE MOZE trafic na sciezke importu —
     pilnuje tego `tests/ci/test_testy_nie_cieniuja_pakietow_zrodlowych.py`.
     """
 
@@ -76,22 +78,9 @@ def _generator_module() -> Any:
     return modul
 
 
-def _frontend_rows() -> list[dict[str, Any]]:
-    """Wiersze czytane TA SAMA funkcja, ktorej uzywa generator."""
-
-    return _generator_module().items_from_generated_ts(
-        FRONTEND_ARTIFACT.read_text(encoding="utf-8")
-    )
-
-
 def _backend_snapshot() -> dict[str, Any]:
     with SNAPSHOT_PATH.open(encoding="utf-8") as handle:
         return json.load(handle)
-
-
-@pytest.fixture(scope="module")
-def frontend_rows() -> list[dict[str, Any]]:
-    return _frontend_rows()
 
 
 @pytest.fixture(scope="module")
@@ -100,46 +89,95 @@ def backend_snapshot() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# BRAMKA (a) — parytet artefakt kontra artefakt
+# BRAMKA (a) — snapshot JSON jest JEDYNYM artefaktem wykazu
 # ---------------------------------------------------------------------------
 
+#: Zakres skanu klasy „artefakt generowany": zrodla, testy i skrypty, w ktorych
+#: mogla przetrwac druga projekcja wykazu albo jej konsument.
+KATALOGI_SKANU = ("scripts", "backend/src", "backend/tests", "frontend/src")
+ROZSZERZENIA_SKANU = frozenset({".py", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".json"})
+#: Nazwa artefaktu generowanego we froncie (`<nazwa>.generated.ts[x]`). Wzorzec
+#: wymaga kropki PRZED „generated", wiec nie lapie nazw w rodzaju `test_generated.ts`.
+WZORZEC_ARTEFAKTU_GENEROWANEGO = re.compile(r"\.generated\.tsx?\b")
 
-def test_parytet_licznosci_obu_artefaktow(frontend_rows, backend_snapshot) -> None:
-    assert backend_snapshot["record_count"] == len(backend_snapshot["records"])
-    assert len(backend_snapshot["records"]) == len(frontend_rows)
+
+def _pliki_skanu() -> list[Path]:
+    pliki: list[Path] = []
+    for katalog in KATALOGI_SKANU:
+        for sciezka in sorted((PROJECT_ROOT / katalog).rglob("*")):
+            czesci = sciezka.relative_to(PROJECT_ROOT).parts
+            if any(c.startswith(".") or c in ("__pycache__", "node_modules") for c in czesci):
+                continue
+            if sciezka.is_file() and sciezka.suffix in ROZSZERZENIA_SKANU:
+                pliki.append(sciezka)
+    return pliki
+
+
+def test_snapshot_jest_jedynym_artefaktem_wykazu() -> None:
+    """KLASA, nie instancja: nie istnieje zaden plik `*.generated.ts[x]` i zadne zrodlo
+    (generator, jego testy, backend, front) nie wskazuje artefaktu generowanego — druga
+    projekcja wykazu nie moze wrocic ani jako plik, ani jako sciezka konsumenta."""
+
+    pliki = _pliki_skanu()
+    # Pusty skan przeszedlby kazda asercje „zero trafien".
+    assert len(pliki) > 1000
+    assert (PROJECT_ROOT / "scripts" / "generate_ptpiree_inverter_catalog.py") in pliki
+    # Jedyny plik, ktory MUSI nazywac wzorzec, to ten test (definiuje skan) — wylaczony jawnie.
+    ten_plik = Path(__file__).resolve()
+    assert ten_plik in pliki
+
+    artefakty = [
+        str(p.relative_to(PROJECT_ROOT))
+        for p in pliki
+        if p.name.endswith((".generated.ts", ".generated.tsx"))
+    ]
+    wskazania = [
+        f"{p.relative_to(PROJECT_ROOT)}:{nr}"
+        for p in pliki
+        if p != ten_plik
+        for nr, linia in enumerate(p.read_text(encoding="utf-8", errors="replace").splitlines(), 1)
+        if WZORZEC_ARTEFAKTU_GENEROWANEGO.search(linia)
+    ]
+
+    assert artefakty == [], f"artefakty generowane: {artefakty}"
+    assert wskazania == [], "wskazania artefaktu generowanego:\n" + "\n".join(wskazania)
+
+
+def test_snapshot_ma_postac_kanoniczna_jedynego_emitera(backend_snapshot) -> None:
+    """Zatwierdzony plik == emisja generatora z jego wlasnych wierszy (bajt w bajt).
+
+    To zastepuje dawny parytet dwoch artefaktow: recznie poprawiony rekord, pole
+    naglowka albo kolejnosc rozjechana z emiterem wychodza tu, zanim trafia do API.
+    """
+
+    generator = _generator_module()
+    tekst = SNAPSHOT_PATH.read_text(encoding="utf-8")
+    wiersze = [
+        {row_key: record[snapshot_key] for snapshot_key, row_key in generator.SNAPSHOT_FIELDS}
+        for record in backend_snapshot["records"]
+    ]
+
+    assert generator.render_backend_snapshot(wiersze) == tekst
+    assert backend_snapshot["derived_from"] == generator.DERIVED_FROM
+    assert backend_snapshot["schema"] == generator.SNAPSHOT_SCHEMA
+
+
+def test_licznosc_zrodla_i_unikalnosc_identyfikatorow(backend_snapshot) -> None:
+    records = backend_snapshot["records"]
     # Pusty zbior przeszedlby kazda asercje "wszystkie sie zgadzaja".
-    assert len(frontend_rows) > 0
+    assert len(records) > 0
+    assert backend_snapshot["record_count"] == len(records)
+    identyfikatory = {str(record["id"]) for record in records}
+    assert len(identyfikatory) == len(records), "identyfikatory nie sa unikalne"
 
-
-def test_parytet_zbioru_identyfikatorow(frontend_rows, backend_snapshot) -> None:
-    frontend_ids = {str(row["id"]) for row in frontend_rows}
-    backend_ids = {str(record["id"]) for record in backend_snapshot["records"]}
-    assert frontend_ids == backend_ids
-    assert len(backend_ids) == len(backend_snapshot["records"]), "identyfikatory nie sa unikalne"
-
-
-def test_parytet_numerow_dokumentow_i_wersji_zrodel(frontend_rows, backend_snapshot) -> None:
-    """Numer dokumentu i wersja wykazu to dowod certyfikatu — musza byc identyczne."""
-
-    frontend_by_id = {str(row["id"]): row for row in frontend_rows}
-    rozjazdy: list[str] = []
-    for record in backend_snapshot["records"]:
-        row = frontend_by_id[str(record["id"])]
-        for backend_key, frontend_key in (
-            ("document_number", "documentNumber"),
-            ("acceptance_date", "acceptanceDate"),
-            ("source_version", "sourceVersion"),
-            ("source_url", "sourceUrl"),
-            ("manufacturer", "manufacturer"),
-            ("model", "model"),
-            ("wos_version", "wosVersion"),
-        ):
-            expected = row.get(frontend_key)
-            if record.get(backend_key) != expected:
-                rozjazdy.append(
-                    f"{record['id']}.{backend_key}: {record.get(backend_key)!r} != {expected!r}"
-                )
-    assert not rozjazdy, "rozjazd artefaktow PTPiREE:\n" + "\n".join(rozjazdy[:20])
+    zrodla = {str(source["source_id"]): source for source in backend_snapshot["sources"]}
+    assert sum(int(source["record_count"]) for source in zrodla.values()) == len(records)
+    for source_id, source in zrodla.items():
+        rekordy_zrodla = [r for r in records if r["source_id"] == source_id]
+        assert len(rekordy_zrodla) == int(source["record_count"]), source_id
+        # Wersja wykazu i adres PDF-u to dowod certyfikatu — rekord niesie te zrodla.
+        assert {r["source_version"] for r in rekordy_zrodla} == {source["source_version"]}
+        assert {r["source_url"] for r in rekordy_zrodla} == {source["source_url"]}
 
 
 def test_manifest_liczy_rekordy_z_artefaktu_a_nie_z_literalu(backend_snapshot) -> None:

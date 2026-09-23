@@ -65,14 +65,12 @@ import {
   type OgniwoToru,
 } from '../../network-build/station-der/tozsamoscWytworcy';
 import {
-  PTPIREE_CERTIFIED_DEVICE_SOURCES,
-  PTPIREE_CERTIFIED_INVERTERS,
   filterPtpireeCertifiedInverters,
   formatPtpireeCertificateLabel,
   getPtpireeCertifiedInverter,
-  getPtpireeSource,
-  getPtpireeSourceRecordCount,
-  loadPtpireeCertifiedInverters,
+  usePtpireeCertifiedInverters,
+  type RejestrPtpiree,
+  type StanRejestruPtpiree,
 } from '../../network-build/station-der/ptpireeCertifiedInverters';
 import type {
   ConnectionSide,
@@ -662,8 +660,51 @@ function assignedLabel(value: string | null | undefined, label: string): string 
   return value ? label : 'do konfiguracji w wariancie katalogowym';
 }
 
-function ptpireeSourceSummary(): string {
-  return `${getPtpireeSourceRecordCount()} pozycji źródłowych PTPiREE`;
+/**
+ * Wykaz PTPiREE (karta AB-1a Pakiet D1): WYŁĄCZNIE z backendu przez `usePtpireeCertifiedInverters`
+ * — manifest (wersje WiPWC, publikacja, liczności) i rekordy. Stan ładowania i błędu jest jawny:
+ * brak odpowiedzi to „rejestr niedostępny", nigdy pusta lista udająca brak certyfikatów.
+ */
+function ptpireeSourceSummary(stan: StanRejestruPtpiree<RejestrPtpiree>): string {
+  if (stan.stan === 'ladowanie') return 'wczytywanie wykazu PTPiREE z backendu…';
+  if (stan.stan === 'blad') return `rejestr PTPiREE niedostępny — ${stan.komunikat}`;
+  const { manifest } = stan.dane;
+  const wersje = manifest.sources.map((zrodlo) => `WiPWC ${zrodlo.wipwc_version}`).join(' i ');
+  return `${manifest.record_count} pozycji wykazu PTPiREE (${wersje}, publikacja ${manifest.publication_date})`;
+}
+
+/** Opis certyfikatu `ptpiree_certificate_ref` z modelu — pozycja wykazu albo jawny brak. */
+function ptpireeCertificateDescription(
+  stan: StanRejestruPtpiree<RejestrPtpiree>,
+  certificateRef: string,
+): string {
+  if (stan.stan === 'ladowanie') return 'wczytywanie wykazu PTPiREE z backendu…';
+  if (stan.stan === 'blad') return `rejestr PTPiREE niedostępny — ${stan.komunikat}`;
+  const pozycja = getPtpireeCertifiedInverter(certificateRef, stan.dane.rejestr);
+  return pozycja
+    ? formatPtpireeCertificateLabel(pozycja)
+    : `pozycja ${certificateRef} nieobecna w bieżącym wykazie PTPiREE`;
+}
+
+/**
+ * Wiersz „Certyfikat PTPiREE" karty podstawowej. Bez powiązania w modelu nie pobiera wykazu
+ * (nie ma czego odczytać); z powiązaniem — odczyt pozycji z wykazu backendu.
+ */
+function PtpireeCertificateRow({ certificateRef }: { readonly certificateRef: string | null }) {
+  if (!certificateRef) {
+    return <FieldRow label="Certyfikat PTPiREE" value={formatPtpireeCertificateLabel(null)} />;
+  }
+  return <PtpireeCertificateRowFromRegistry certificateRef={certificateRef} />;
+}
+
+function PtpireeCertificateRowFromRegistry({ certificateRef }: { readonly certificateRef: string }) {
+  const rejestr = usePtpireeCertifiedInverters();
+  return (
+    <FieldRow
+      label="Certyfikat PTPiREE"
+      value={ptpireeCertificateDescription(rejestr, certificateRef)}
+    />
+  );
 }
 
 /**
@@ -741,7 +782,6 @@ function buildDerCards(
   } = katalogi;
   const ncRfg = getNcRfgOperator(ncRfgOperators, der.profiles.nc_rfg_profile_ref);
   const inverter = findConverter(der, converters);
-  const ptpireeCertificate = getPtpireeCertifiedInverter(der.catalogs.ptpiree_certificate_ref);
   // Graniczny prąd zwarciowy falownika (karta K-Q): katalog mirrorowy NIE niesie
   // już tej liczby, bo podaje ją wyłącznie karta katalogowa konkretnego wyrobu,
   // a wcześniejsza wartość była wpisana z ręki. Udział źródła w prądzie zwarcia
@@ -770,7 +810,7 @@ function buildDerCards(
             <FieldRow label="Transformator blokowy" value={blockTransformerLabel(der, blockTransformers)} />
           )}
           <FieldRow label="Urządzenie katalogowe" value={findDeviceLabel(der, converters)} />
-          <FieldRow label="Certyfikat PTPiREE" value={formatPtpireeCertificateLabel(ptpireeCertificate)} />
+          <PtpireeCertificateRow certificateRef={der.catalogs.ptpiree_certificate_ref} />
           <FieldRow label="Moduł NC RfG" value={moduleTypeLabel(moduleType)} />
         </dl>
         <EngineeringNote>
@@ -900,23 +940,15 @@ function PvInverterCatalogPanel({
   readonly faultCurrent: string;
 }): JSX.Element {
   const [query, setQuery] = useState('');
-  const [certificateRegistry, setCertificateRegistry] = useState(PTPIREE_CERTIFIED_INVERTERS);
-  useEffect(() => {
-    let mounted = true;
-    loadPtpireeCertifiedInverters().then((items) => {
-      if (mounted) setCertificateRegistry(items);
-    });
-    return () => {
-      mounted = false;
-    };
-  }, []);
-  const selectedCertificate = getPtpireeCertifiedInverter(
-    der.catalogs.ptpiree_certificate_ref,
-    certificateRegistry,
-  );
+  // Wykaz PTPiREE WYŁĄCZNIE z backendu (karta AB-1a Pakiet D1): pełny wykaz jest potrzebny do
+  // odczytu pozycji `ptpiree_certificate_ref` z modelu, a wyszukiwarka działa na tym samym,
+  // już pobranym wykazie (bez zapytania na każde naciśnięcie klawisza).
+  const rejestr = usePtpireeCertifiedInverters();
+  const wykaz = rejestr.stan === 'gotowy' ? rejestr.dane : null;
+  const certificateRef = der.catalogs.ptpiree_certificate_ref;
   const matchingCertificates = useMemo(
-    () => filterPtpireeCertifiedInverters(query, certificateRegistry),
-    [certificateRegistry, query],
+    () => (wykaz ? filterPtpireeCertifiedInverters(query, wykaz.rejestr) : []),
+    [wykaz, query],
   );
   const filteredCertificates = matchingCertificates.slice(0, 24);
   // Karta CERTYFIKAT-Z-KATALOGU (2026-09-16, zero fabrykacji): dawny
@@ -948,8 +980,15 @@ function PvInverterCatalogPanel({
             label="Status w wykazie PTPiREE"
             value={certyfikatStatus === 'ptpiree_verified' ? 'PTPiREE zweryfikowany (z katalogu)' : 'nieustalony — brak dopasowania w katalogu'}
           />
-          <FieldRow label="Certyfikat PTPiREE" value={formatPtpireeCertificateLabel(selectedCertificate)} />
-          <FieldRow label="Zakres bazy źródłowej" value={ptpireeSourceSummary()} />
+          <FieldRow
+            label="Certyfikat PTPiREE"
+            value={
+              certificateRef
+                ? ptpireeCertificateDescription(rejestr, certificateRef)
+                : formatPtpireeCertificateLabel(null)
+            }
+          />
+          <FieldRow label="Zakres bazy źródłowej" value={ptpireeSourceSummary(rejestr)} />
         </dl>
         <EngineeringNote>
           Certyfikat PTPiREE potwierdza wpis urządzenia w wykazie NC RfG/WOS. Parametry Un, Sn, Ik, FRT i model dynamiczny nadal muszą pochodzić z karty katalogowej lub typu katalogowego.
@@ -957,102 +996,123 @@ function PvInverterCatalogPanel({
       </div>
 
       <div className="rounded border border-scada-border bg-scada-surface/60 p-3">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-scada-text">Certyfikowane falowniki PTPiREE</h3>
-            <p className="mt-1 text-[11px] text-scada-muted">
-              Pełny indeks lokalny obejmuje {certificateRegistry.length} pozycji falownikowych i konwerterowych z oficjalnych wykazów PTPiREE.
-            </p>
+        <h3 className="text-sm font-semibold text-scada-text">Certyfikowane falowniki PTPiREE</h3>
+        {rejestr.stan === 'ladowanie' && (
+          <p className="mt-2 text-[11px] text-scada-muted" data-testid="ptpiree-rejestr-ladowanie">
+            Wczytywanie wykazu PTPiREE z backendu…
+          </p>
+        )}
+        {rejestr.stan === 'blad' && (
+          <div
+            role="alert"
+            data-testid="ptpiree-rejestr-blad"
+            className="mt-2 rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-2 text-[11px] text-sygnal-blokada-tusz"
+          >
+            <div className="font-semibold">
+              Rejestr PTPiREE niedostępny — lista certyfikowanych urządzeń nie jest pokazywana, bo
+              brak odpowiedzi backendu nie oznacza braku certyfikatów.
+            </div>
+            <div>{rejestr.komunikat}</div>
           </div>
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Szukaj producenta, modelu, dokumentu..."
-            className="min-h-9 w-full rounded border border-scada-border bg-scada-panel px-3 py-1 text-xs text-scada-text outline-none focus:border-cyan-400 md:w-80"
-            aria-label="Szukaj w certyfikatach PTPiREE"
-          />
-        </div>
+        )}
+        {wykaz && (
+          <>
+            <div className="mt-1 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <p className="text-[11px] text-scada-muted" data-testid="ptpiree-rejestr-opis">
+                Wykaz z backendu obejmuje {wykaz.rejestr.length} pozycji falownikowych i konwerterowych z oficjalnych wykazów PTPiREE, akceptowanych przez OSD od {wykaz.manifest.accepted_from}. Pozycja wykazu nie niesie parametrów elektrycznych urządzenia.
+              </p>
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Szukaj producenta, modelu, dokumentu..."
+                className="min-h-9 w-full rounded border border-scada-border bg-scada-panel px-3 py-1 text-xs text-scada-text outline-none focus:border-cyan-400 md:w-80"
+                aria-label="Szukaj w certyfikatach PTPiREE"
+              />
+            </div>
 
-        <div className="mt-3 text-[11px] text-scada-muted">
-          {matchingCertificates.length} wyników; tabela pokazuje pierwsze 24. Użyj wyszukiwarki po producencie, modelu albo numerze dokumentu.
-        </div>
+            <div className="mt-3 text-[11px] text-scada-muted">
+              {matchingCertificates.length} wyników; tabela pokazuje pierwsze 24. Użyj wyszukiwarki po producencie, modelu albo numerze dokumentu.
+            </div>
 
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
-          {PTPIREE_CERTIFIED_DEVICE_SOURCES.map((source) => (
-            <a
-              key={source.id}
-              href={source.sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded border border-scada-border bg-scada-panel p-2 text-xs text-scada-text hover:border-cyan-400"
-            >
-              <span className="block font-semibold">{source.version} · {source.publishedAt}</span>
-              <span className="mt-1 block text-scada-muted">{source.titlePl}</span>
-              <span className="mt-1 block text-cyan-200">{source.sourceRecordCount} pozycji w wykazie</span>
-            </a>
-          ))}
-        </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {wykaz.manifest.sources.map((source) => (
+                <a
+                  key={source.source_id}
+                  href={source.source_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded border border-scada-border bg-scada-panel p-2 text-xs text-scada-text hover:border-cyan-400"
+                >
+                  <span className="block font-semibold">WiPWC {source.wipwc_version} · publikacja {source.publication_date}</span>
+                  <span className="mt-1 block text-cyan-200">{source.record_count} pozycji w wykazie</span>
+                </a>
+              ))}
+            </div>
 
-        <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full text-left text-[11px]">
-            <thead className="text-scada-muted">
-              <tr className="border-b border-scada-border">
-                <th className="py-2 pr-3 font-semibold">Producent / model</th>
-                <th className="py-2 pr-3 font-semibold">Dokument</th>
-                <th className="py-2 pr-3 font-semibold">WOS / PPM</th>
-                <th className="py-2 pr-3 font-semibold">Źródło</th>
-                <th className="py-2 text-right font-semibold">Zgodność z modelem</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCertificates.map((item) => {
-                const source = getPtpireeSource(item.sourceId);
-                const selected = item.id === der.catalogs.ptpiree_certificate_ref;
-                return (
-                  <tr key={item.id} className="border-b border-scada-border/60 align-top">
-                    <td className="py-2 pr-3">
-                      <div className="font-semibold text-scada-text">{item.manufacturer}</div>
-                      <div className="text-scada-muted">{item.model}</div>
-                      <div className="text-scada-muted/80">{item.deviceKind}</div>
-                      <div className="mt-1 text-amber-200">{item.electricalDataStatus === 'requires_datasheet' ? 'wymaga karty katalogowej do parametrów elektrycznych' : ''}</div>
-                    </td>
-                    <td className="py-2 pr-3">
-                      <div className="font-medium text-scada-text">{item.documentNumber}</div>
-                      <div className="text-scada-muted">akceptacja: {item.acceptanceDate}</div>
-                    </td>
-                    <td className="py-2 pr-3">
-                      <div>{item.wosVersion ?? item.sourceVersion}</div>
-                      <div className="text-scada-muted">moduł {item.moduleTypes.length ? item.moduleTypes.join('/') : MISSING_DASH}</div>
-                    </td>
-                    <td className="py-2 pr-3">
-                      <a
-                        href={`${item.sourceUrl}#page=${item.sourcePage}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-cyan-200 hover:text-cyan-100"
-                      >
-                        {source?.version ?? item.sourceVersion}, poz. {item.sourceRow}
-                      </a>
-                    </td>
-                    <td className="py-2 text-right">
-                      {/* Karta CERTYFIKAT-Z-KATALOGU: WYŁĄCZNIE odczyt — status pochodzi
-                          z backendu (der.catalogs.ptpiree_certificate_ref), nie z kliku
-                          na tej liście referencyjnej. */}
-                      {selected ? (
-                        <span className="rounded border border-emerald-400/50 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-700">
-                          zgodne z modelem
-                        </span>
-                      ) : (
-                        <span className="text-scada-muted">—</span>
-                      )}
-                    </td>
+            <div className="mt-3 overflow-x-auto">
+              <table className="min-w-full text-left text-[11px]">
+                <thead className="text-scada-muted">
+                  <tr className="border-b border-scada-border">
+                    <th className="py-2 pr-3 font-semibold">Producent / model</th>
+                    <th className="py-2 pr-3 font-semibold">Dokument</th>
+                    <th className="py-2 pr-3 font-semibold">WOS / PPM</th>
+                    <th className="py-2 pr-3 font-semibold">Źródło</th>
+                    <th className="py-2 text-right font-semibold">Zgodność z modelem</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {filteredCertificates.map((item) => {
+                    const selected = item.id === certificateRef;
+                    const modulyPpm = item.ppm_scope.split(',').filter(Boolean).join('/');
+                    return (
+                      <tr key={item.id} className="border-b border-scada-border/60 align-top">
+                        <td className="py-2 pr-3">
+                          <div className="font-semibold text-scada-text">{item.manufacturer}</div>
+                          <div className="text-scada-muted">{item.model}</div>
+                          <div className="text-scada-muted/80">{item.device_type}</div>
+                          {item.verification_note && (
+                            <div className="mt-1 text-amber-200">warunek ważności certyfikatu: {item.verification_note}</div>
+                          )}
+                        </td>
+                        <td className="py-2 pr-3">
+                          <div className="font-medium text-scada-text">{item.document_number}</div>
+                          <div className="text-scada-muted">akceptacja: {item.document_acceptance_date}</div>
+                        </td>
+                        <td className="py-2 pr-3">
+                          <div>{item.wos_version || `WiPWC ${item.wipwc_version}`}</div>
+                          <div className="text-scada-muted">moduł {modulyPpm || MISSING_DASH}</div>
+                        </td>
+                        <td className="py-2 pr-3">
+                          <a
+                            href={item.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-cyan-200 hover:text-cyan-100"
+                          >
+                            WiPWC {item.wipwc_version}, publikacja {item.publication_date ?? MISSING_DASH}
+                          </a>
+                        </td>
+                        <td className="py-2 text-right">
+                          {/* Karta CERTYFIKAT-Z-KATALOGU: WYŁĄCZNIE odczyt — status pochodzi
+                              z backendu (der.catalogs.ptpiree_certificate_ref), nie z kliku
+                              na tej liście referencyjnej. */}
+                          {selected ? (
+                            <span className="rounded border border-emerald-400/50 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                              zgodne z modelem
+                            </span>
+                          ) : (
+                            <span className="text-scada-muted">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );
