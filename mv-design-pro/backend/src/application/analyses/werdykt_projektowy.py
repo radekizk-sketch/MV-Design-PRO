@@ -66,7 +66,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, TypeAlias
 
 from analysis.sanity_bounds.short_circuit_bounds import INCOMPLETE, OUT_OF_RANGE
 from application.analyses.energy_validation.service import build_energy_validation_view
@@ -477,7 +477,7 @@ ZAKRES_POZA_AUTOMATEM: tuple[dict[str, str], ...] = (
 # Status zrodla normatywnego = JEDEN typ z `solver_input.provenance` (karta AB-1a D5,
 # wykonawca 1); aliasy ponizej zostaja dla konsumentow (certyfikat, LoM, V12.6,
 # pakiet dowodowy), zeby nie powielac literalow.
-ZrodloStatus = StatusZrodla
+ZrodloStatus: TypeAlias = StatusZrodla
 ZRODLO_NIEZWERYFIKOWANE: ZrodloStatus = StatusZrodla.UNVERIFIED_SOURCE
 ZRODLO_ZWERYFIKOWANE: ZrodloStatus = StatusZrodla.VERIFIED_SOURCE
 
