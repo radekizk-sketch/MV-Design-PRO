@@ -19,7 +19,7 @@ harmoniczne + supraharmoniczne, uszczegółowienie W6) · **Poprzednia wersja re
 
 ---
 
-## 1. ZDROWIE SYSTEMU (pomiar łańcuchem f11 na `54150172`, 2026-09-18)
+## 1. ZDROWIE SYSTEMU (pomiar łańcuchem f11 na `54150172`, 2026-09-18; **aktualizacja 2026-09-23 po AB-1a na `1ee2c135`:** backend `pytest -m "not pandapower and not andes"` **17 057 passed, 0 skipped, 0 failed** (2114 s); `tests.walidacja_fizyczna.uruchom` WALIDACJA WYKONANA (42 + 12 + 210); `guardy_z_ci` 99 guardów + 1105 testów własnych zielone; frontend tsc 0 / eslint 0 / vitest **900 plików, 12 586 passed, 14 todo**; e2e realny backend 2/2 u wykonawcy 1)
 
 | Sprawdzenie | Wynik |
 |---|---|
