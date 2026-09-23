@@ -174,9 +174,7 @@ _STATUS_ROWNAN_RODZIN: dict[str, WpisStatusuRownan] = {
         "Turbina wiatrowa typu 2 — rdzeń kończy się nazwaną odmową (brak modelu elektrycznego)."
     ),
     "wiatr_typ_3": _niezwalidowana("Turbina wiatrowa typu 3 (DFIG, crowbar, pitch)."),
-    "wiatr_typ_4": _niezwalidowana(
-        "Turbina wiatrowa typu 4 (pełny przekształtnik, pitch)."
-    ),
+    "wiatr_typ_4": _niezwalidowana("Turbina wiatrowa typu 4 (pełny przekształtnik, pitch)."),
 }
 
 
@@ -265,12 +263,10 @@ def status_modelu_rodzin_do_dict() -> dict[str, object]:
     """Kontrakt odczytu rejestru dla API (odznaki w inspektorze urządzenia)."""
     return {
         "rodziny": {
-            rodzina: _STATUS_ROWNAN_RODZIN[rodzina].to_dict()
-            for rodzina in rodziny_w_rejestrze()
+            rodzina: _STATUS_ROWNAN_RODZIN[rodzina].to_dict() for rodzina in rodziny_w_rejestrze()
         },
         "statusy_parametrow": [
-            {"kod": status.value, "etykieta": status.label_pl}
-            for status in StatusParametrow
+            {"kod": status.value, "etykieta": status.label_pl} for status in StatusParametrow
         ],
     }
 

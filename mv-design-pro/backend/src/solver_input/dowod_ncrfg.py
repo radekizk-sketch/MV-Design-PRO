@@ -89,9 +89,7 @@ def testy_bez_klasyfikacji() -> tuple[str, ...]:
     """
     from network_model.solvers.ncrfg_ptpiree.engine import TEST_CATALOG
 
-    return tuple(
-        sorted(d.test_id for d in TEST_CATALOG if d.test_id not in TEST_ZDOLNOSC)
-    )
+    return tuple(sorted(d.test_id for d in TEST_CATALOG if d.test_id not in TEST_ZDOLNOSC))
 
 
 def ocena_dowodowa_testu(test_id: str) -> CapabilityEvidence | None:
@@ -149,8 +147,7 @@ def _etykieta_ograniczenia(test_id: str) -> str:
 def _nota_pl(ograniczenia: tuple[str, ...]) -> str:
     if not ograniczenia:
         return (
-            "Wszystkie wymagane testy oparte sa o stopien dowodowy dopuszczalny "
-            "do zgloszenia."
+            "Wszystkie wymagane testy oparte sa o stopien dowodowy dopuszczalny " "do zgloszenia."
         )
     return f"{BRAK_DOWODU_PL} dla testow: " + ", ".join(ograniczenia) + "."
 
@@ -202,8 +199,7 @@ class OcenaDowodowaBiegu:
             "evidence_limitations": list(self.evidence_limitations),
             "evidence_note_pl": self.evidence_note_pl,
             "per_module": {
-                der_ref: ocena.to_dict()
-                for der_ref, ocena in sorted(self.per_module.items())
+                der_ref: ocena.to_dict() for der_ref, ocena in sorted(self.per_module.items())
             },
             "evidence_by_test": {
                 der_ref: dict(sorted(testy.items()))
@@ -258,13 +254,9 @@ def ocena_dowodowa_biegu(result: NcRfgPtpireeRunResult) -> OcenaDowodowaBiegu:
         }
 
     wszystkie_ograniczenia = tuple(
-        sorted(
-            {og for ocena in per_module.values() for og in ocena.evidence_limitations}
-        )
+        sorted({og for ocena in per_module.values() for og in ocena.evidence_limitations})
     )
-    reportable = all(
-        ocena.reporting_status == "reportable" for ocena in per_module.values()
-    )
+    reportable = all(ocena.reporting_status == "reportable" for ocena in per_module.values())
     complete = all(ocena.proof_status == "complete" for ocena in per_module.values())
 
     return OcenaDowodowaBiegu(

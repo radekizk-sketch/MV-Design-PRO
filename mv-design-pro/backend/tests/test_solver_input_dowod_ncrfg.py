@@ -226,9 +226,7 @@ def test_claim_kind_testu_rowny_rejestrowi() -> None:
     deklaracje sie rozjada — ten test pinuje, ze do rozjazdu NIE dochodzi (jedna
     prawda o rodzaju twierdzenia per zdolnosc, bez cichego wygladzania)."""
     for test_id, (capability_id, claim_kind) in sorted(TEST_ZDOLNOSC.items()):
-        assert (
-            classify_dynamic_capability(capability_id).claim_kind is claim_kind
-        ), test_id
+        assert classify_dynamic_capability(capability_id).claim_kind is claim_kind, test_id
 
 
 @pytest.mark.parametrize("test_id", ["T05", "T12", "T13"])
@@ -267,9 +265,7 @@ def test_ppm_typu_a_z_sama_deklaracja_t12_nie_jest_reportable() -> None:
     """Pin z karty AB-1a (R-6, przeglad adwersarialny §6.1): PPM typu A bez
     certyfikatu ma jedyny test wymagany T12 — sama deklaracja zaprzestania
     generacji NIE czyni modulu raportowalnym."""
-    wynik = _bieg(
-        dict(_MODUL_KLASY_A, certificate_status="unknown", stop_generation_enabled=True)
-    )
+    wynik = _bieg(dict(_MODUL_KLASY_A, certificate_status="unknown", stop_generation_enabled=True))
     modul = wynik.modules[0]
     wymagane = [t.test_id for t in modul.tests if t.required]
     assert wymagane == ["T12"]
@@ -330,9 +326,7 @@ def test_modul_klasy_a_jest_reportable_complete_zero_wymaganych() -> None:
     )
 
 
-def test_modul_klasy_b_jest_not_reportable_incomplete_testy_dynamiczne_wymagane() -> (
-    None
-):
+def test_modul_klasy_b_jest_not_reportable_incomplete_testy_dynamiczne_wymagane() -> None:
     wynik = _bieg(_MODUL_KLASY_B)
     ocena = _ocena_modulu(wynik.modules[0])
     assert ocena.reporting_status == "not_reportable"
@@ -371,9 +365,7 @@ def test_bieg_wielomodulowy_jest_fail_closed_jeden_modul_wystarczy() -> None:
 
 def test_bieg_dwoch_modulow_klasy_a_jest_reportable() -> None:
     """Kontrapunkt do testu powyzej: DWA reportable moduly -> bieg reportable."""
-    wynik = _bieg(
-        dict(_MODUL_KLASY_A, der_ref="pv-a1"), dict(_MODUL_KLASY_A, der_ref="pv-a2")
-    )
+    wynik = _bieg(dict(_MODUL_KLASY_A, der_ref="pv-a1"), dict(_MODUL_KLASY_A, der_ref="pv-a2"))
     ocena_biegu = ocena_dowodowa_biegu(wynik)
     assert ocena_biegu.reporting_status == "reportable"
     assert ocena_biegu.proof_status == "complete"

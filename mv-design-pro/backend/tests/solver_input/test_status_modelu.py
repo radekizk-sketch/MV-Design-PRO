@@ -48,9 +48,7 @@ def test_symulacja_zwalidowana_dokladnie_jedna_kombinacja_z_dwunastu() -> None:
         if czy_awans_dopuszczalny(EvidenceTier.VALIDATED_SIMULATION, r, p)
     ]
     assert len(list(itertools.product(StatusRownan, StatusParametrow))) == 12
-    assert dopuszczalne == [
-        (StatusRownan.VALIDATED, StatusParametrow.MODEL_ZWALIDOWANY_POMIAREM)
-    ]
+    assert dopuszczalne == [(StatusRownan.VALIDATED, StatusParametrow.MODEL_ZWALIDOWANY_POMIAREM)]
 
 
 def test_os_parametrow_nie_ma_statusu_certyfikatu() -> None:
@@ -75,9 +73,7 @@ def test_rejestr_rodzin_wyczerpujacy_wobec_kontraktu_enm_w_obie_strony() -> None
 
 def test_tylko_maszyna_klasyczna_ma_rownania_zwalidowane() -> None:
     zwalidowane = [
-        r
-        for r in rodziny_w_rejestrze()
-        if status_rownan_rodziny(r) is StatusRownan.VALIDATED
+        r for r in rodziny_w_rejestrze() if status_rownan_rodziny(r) is StatusRownan.VALIDATED
     ]
     assert zwalidowane == ["maszyna_klasyczna"]
     assert "R10" in wpis_statusu_rownan("maszyna_klasyczna").audit_ref
@@ -89,9 +85,7 @@ def test_tylko_maszyna_klasyczna_ma_rownania_zwalidowane() -> None:
         assert "OPUS_PRZEGLAD_LUK_DYNAMIKI_2026-09-23.md §3" in wpis.audit_ref
 
 
-@pytest.mark.parametrize(
-    "rodzina", ["", "synchroniczna_6", "SYNCHRONICZNA", "nowa_rodzina"]
-)
+@pytest.mark.parametrize("rodzina", ["", "synchroniczna_6", "SYNCHRONICZNA", "nowa_rodzina"])
 def test_rodzina_nieznana_fail_closed(rodzina: str) -> None:
     assert status_rownan_rodziny(rodzina) is StatusRownan.UNKNOWN
 

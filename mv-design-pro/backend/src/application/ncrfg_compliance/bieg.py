@@ -108,8 +108,7 @@ def odpowiedz_biegu_ncrfg(
         evidence_limitations=list(ocena.evidence_limitations),
         evidence_note_pl=ocena.evidence_note_pl,
         evidence_per_module={
-            der_ref: modul_ocena.to_dict()
-            for der_ref, modul_ocena in ocena.per_module.items()
+            der_ref: modul_ocena.to_dict() for der_ref, modul_ocena in ocena.per_module.items()
         },
         evidence_by_test=ocena.evidence_by_test,
         wynik_inzynierski=wyniki_inzynierskie_biegu(result),
@@ -135,9 +134,7 @@ def zgodnosc_ncrfg_przypadku(
         result = _solver.run(NcRfgPtpireeRunRequest(modules=wejscia.modules))
         bieg = odpowiedz_biegu_ncrfg(
             result,
-            dowody_certyfikatu_z_enm(
-                enm, [module.der_ref for module in result.modules]
-            ),
+            dowody_certyfikatu_z_enm(enm, [module.der_ref for module in result.modules]),
         )
     return NcRfgCaseComplianceResponse(
         case_id=case_id,

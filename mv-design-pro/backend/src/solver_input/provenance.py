@@ -734,9 +734,7 @@ class CardFieldAcceptance:
     note: str | None = None
 
     @classmethod
-    def of(
-        cls, fields: set[str] | frozenset[str] | None, **kwargs: Any
-    ) -> CardFieldAcceptance:
+    def of(cls, fields: set[str] | frozenset[str] | None, **kwargs: Any) -> CardFieldAcceptance:
         """Build from a plain set (``None`` => nothing accepted)."""
         return cls(accepted_fields=frozenset(fields or ()), **kwargs)
 

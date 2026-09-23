@@ -20,12 +20,8 @@ from solver_input.status_modelu import StatusParametrow
 from tests.enm.test_dynamika_modele import _gfl_komplet, _sm_komplet
 
 #: Odciski policzone kodem sprzed karty AB-1a (patrz docstring modułu).
-ODCISK_ENM_SPRZED_KARTY = (
-    "a21b084eb903d8bff17ad687f1b3cbb9edb7bb7fadc6ba0ad808ca82e2ddba45"
-)
-ODCISK_WEJSCIA_SPRZED_KARTY = (
-    "451869500c3bcc0f0784854730564843654792f1d341e2de026d1dfe30af8321"
-)
+ODCISK_ENM_SPRZED_KARTY = "a21b084eb903d8bff17ad687f1b3cbb9edb7bb7fadc6ba0ad808ca82e2ddba45"
+ODCISK_WEJSCIA_SPRZED_KARTY = "451869500c3bcc0f0784854730564843654792f1d341e2de026d1dfe30af8321"
 
 
 def _model(status: StatusParametrow | None = None) -> EnergyNetworkModel:

@@ -153,9 +153,7 @@ def _reset() -> None:
     reset_enm_store()
 
 
-def _model_z_urzadzeniem(
-    tabliczka: dict | None, *, ref_id: str = _DER_REF
-) -> EnergyNetworkModel:
+def _model_z_urzadzeniem(tabliczka: dict | None, *, ref_id: str = _DER_REF) -> EnergyNetworkModel:
     return EnergyNetworkModel(
         header=ENMHeader(name="Dowod certyfikatu w dokumentach"),
         buses=[Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15.0)],
@@ -193,9 +191,7 @@ def _nowy_przypadek(client) -> str:
     (inwariant I-2) — końcówki ``/api/oze-analysis/...`` tłumaczą ``case_id``
     na klucz projektu (``api/oze_analysis_runs.py::_klucz_opcjonalny``).
     """
-    project_resp = client.post(
-        "/api/projects", json={"name": "Dowod certyfikatu — test"}
-    )
+    project_resp = client.post("/api/projects", json={"name": "Dowod certyfikatu — test"})
     assert project_resp.status_code == 201, project_resp.text
     project_id = project_resp.json()["id"]
     case_resp = client.post(
@@ -212,9 +208,7 @@ def _klucz(client, case_id: str) -> str:
     return klucz_twin_dla_przypadku(case_id, client.app.state.uow_factory)
 
 
-def _przypadek_z_urzadzeniem_http(
-    client, tabliczka: dict | None, *, ref_id: str = _DER_REF
-) -> str:
+def _przypadek_z_urzadzeniem_http(client, tabliczka: dict | None, *, ref_id: str = _DER_REF) -> str:
     """Jak ``_przypadek_z_urzadzeniem``, ale dla testów REALNEJ ścieżki HTTP:
     tworzy prawdziwy projekt+przypadek i zasiewa model pod kluczem
     PRZETŁUMACZONYM (nie surowym ``case_id``, którego żaden odczyt API już nie
@@ -232,17 +226,13 @@ def _ncrfg():
 
 def _pf_run() -> CanonicalRun:
     set_enm("c-pf", build_golden_enm())
-    return execute_run(
-        create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id
-    )
+    return execute_run(create_run(case_id="c-pf", klucz_twin="c-pf", analysis_type="PF").id)
 
 
 def _sc_run() -> CanonicalRun:
     set_enm("c-sc", build_golden_enm())
     return execute_run(
-        create_run(
-            case_id="c-sc", klucz_twin="c-sc", analysis_type="short_circuit_sn"
-        ).id
+        create_run(case_id="c-sc", klucz_twin="c-sc", analysis_type="short_circuit_sn").id
     )
 
 
@@ -263,9 +253,7 @@ def _widok_studium(case_id: str | None, run: CanonicalRun | None = None) -> dict
         operator_id=_OPERATOR_STUDIUM,
         warianty=["bus_sn_c"],
         identyfikacja=_identyfikacja_studium(),
-        dowody=(
-            None if case_id is None else dowody_certyfikatu_typu(case_id, _CATALOG_ITEM)
-        ),
+        dowody=(None if case_id is None else dowody_certyfikatu_typu(case_id, _CATALOG_ITEM)),
     )
 
 
@@ -347,9 +335,7 @@ def test_dowod_referencji_spoza_modelu_jest_pusty_a_nie_cudzy() -> None:
     dowod = dowody_certyfikatu(case_id, ["gen-innego-projektu"])[0]
 
     assert dowod.der_ref == "gen-innego-projektu"
-    assert (
-        dowod.document_number is None
-    ), "dowod przykleil sie do niewlasciwego urzadzenia"
+    assert dowod.document_number is None, "dowod przykleil sie do niewlasciwego urzadzenia"
 
 
 # --------------------------------------------------------------------------- #
@@ -448,9 +434,7 @@ def test_wniosek_bez_tabliczki_ma_jawny_stan_zerowy() -> None:
         dowody=dowody_certyfikatu(case_id, [_DER_REF]),
     )
 
-    assert (
-        view["zgodnosc_nc_rfg"]["dowody_certyfikatu"][0]["stan_pl"] == BRAK_TABLICZKI_PL
-    )
+    assert view["zgodnosc_nc_rfg"]["dowody_certyfikatu"][0]["stan_pl"] == BRAK_TABLICZKI_PL
 
 
 def test_wniosek_bez_przypadku_ma_kontrakt_sprzed_dowodu() -> None:
@@ -461,9 +445,7 @@ def test_wniosek_bez_przypadku_ma_kontrakt_sprzed_dowodu() -> None:
     bez_dowodu_jawnie = build_wniosek_osd_view(pf, sc, ncrfg, **wspolne, dowody=None)
 
     assert "dowody_certyfikatu" not in bez_dowodu["zgodnosc_nc_rfg"]
-    assert json.dumps(bez_dowodu, sort_keys=True) == json.dumps(
-        bez_dowodu_jawnie, sort_keys=True
-    )
+    assert json.dumps(bez_dowodu, sort_keys=True) == json.dumps(bez_dowodu_jawnie, sort_keys=True)
 
 
 def test_wniosek_dowod_zmienia_wylacznie_odcisk_swojej_sekcji() -> None:
@@ -480,10 +462,7 @@ def test_wniosek_dowod_zmienia_wylacznie_odcisk_swojej_sekcji() -> None:
     odciski_z = z_dowodem["odciski_sekcji_sha256"]
     assert odciski_z["zgodnosc_nc_rfg"] != odciski_bez["zgodnosc_nc_rfg"]
     assert odciski_z["bilans_mocy"] == odciski_bez["bilans_mocy"]
-    assert (
-        odciski_z["zwarcia_punkt_przylaczenia"]
-        == odciski_bez["zwarcia_punkt_przylaczenia"]
-    )
+    assert odciski_z["zwarcia_punkt_przylaczenia"] == odciski_bez["zwarcia_punkt_przylaczenia"]
     assert z_dowodem["input_hash"] == bez["input_hash"]
 
 
@@ -529,12 +508,10 @@ def test_studium_dowod_zmienia_wylacznie_odcisk_zalozen() -> None:
     z_dowodem = _widok_studium(case_id, run)
 
     assert (
-        z_dowodem["odciski_sekcji_sha256"]["zalozenia"]
-        != bez["odciski_sekcji_sha256"]["zalozenia"]
+        z_dowodem["odciski_sekcji_sha256"]["zalozenia"] != bez["odciski_sekcji_sha256"]["zalozenia"]
     )
     assert (
-        z_dowodem["odciski_sekcji_sha256"]["bus_sn_c"]
-        == bez["odciski_sekcji_sha256"]["bus_sn_c"]
+        z_dowodem["odciski_sekcji_sha256"]["bus_sn_c"] == bez["odciski_sekcji_sha256"]["bus_sn_c"]
     )
     assert z_dowodem["input_hash"] == bez["input_hash"]
 
@@ -593,13 +570,9 @@ def test_docx_studium_zawiera_numer_dokumentu() -> None:
 def test_docx_dokumentow_bez_przypadku_nie_pokazuje_sekcji_dowodu() -> None:
     """Brak przypadku = brak sekcji, a nie pusta sekcja z myślnikami."""
     assert TYTUL_DOWODU not in _docx_text(
-        render_certyfikat_docx(
-            build_certyfikat_view(_ncrfg(), nazwa_projektu="Farma PV Wschód")
-        )
+        render_certyfikat_docx(build_certyfikat_view(_ncrfg(), nazwa_projektu="Farma PV Wschód"))
     )
-    assert TYTUL_DOWODU not in _docx_text(
-        render_dokument_studium_docx(_widok_studium(None))
-    )
+    assert TYTUL_DOWODU not in _docx_text(render_dokument_studium_docx(_widok_studium(None)))
 
 
 # --------------------------------------------------------------------------- #
@@ -607,9 +580,7 @@ def test_docx_dokumentow_bez_przypadku_nie_pokazuje_sekcji_dowodu() -> None:
 # --------------------------------------------------------------------------- #
 def test_endpoint_certyfikatu_z_przypadkiem_niesie_dowod(app_client) -> None:
     case_id = _przypadek_z_urzadzeniem_http(app_client, TABLICZKA_PELNA)
-    resp = app_client.post(
-        f"{CERT_JSON}?case_id={case_id}", json=_payload_certyfikatu()
-    )
+    resp = app_client.post(f"{CERT_JSON}?case_id={case_id}", json=_payload_certyfikatu())
 
     assert resp.status_code == 200, resp.text
     dowod = resp.json()["moduly"][0]["dowod_certyfikatu"]
@@ -643,13 +614,9 @@ def test_endpoint_wniosku_bez_przypadku_zachowuje_kontrakt(app_client) -> None:
 
 
 def test_endpoint_studium_z_przypadkiem_niesie_dowod(app_client) -> None:
-    case_id = _przypadek_z_urzadzeniem_http(
-        app_client, TABLICZKA_PELNA, ref_id="pv-w-modelu"
-    )
+    case_id = _przypadek_z_urzadzeniem_http(app_client, TABLICZKA_PELNA, ref_id="pv-w-modelu")
     run = _pf_run()
-    resp = app_client.post(
-        f"{STUDY_JSON}?case_id={case_id}", json=_payload_studium(run)
-    )
+    resp = app_client.post(f"{STUDY_JSON}?case_id={case_id}", json=_payload_studium(run))
 
     assert resp.status_code == 200, resp.text
     blok = resp.json()["zalozenia"]["dowod_certyfikatu"]
@@ -691,11 +658,7 @@ def test_endpointy_plikow_przyjmuja_przypadek_i_niosa_dowod(
     resp = app_client.post(f"{sciezka}?case_id={case_id}", json=payload)
     assert resp.status_code == 200, resp.text
 
-    text = (
-        _docx_text(resp.content)
-        if sciezka.endswith(".docx")
-        else _pdf_text(resp.content)
-    )
+    text = _docx_text(resp.content) if sciezka.endswith(".docx") else _pdf_text(resp.content)
     assert "WOS/2024/PV-900" in text
 
 
@@ -705,9 +668,7 @@ def test_endpointy_plikow_bez_przypadku_pozostaja_deterministyczne(
 ) -> None:
     """Brak case_id → bajtowo ten sam plik przy dwóch wywołaniach (kontrakt)."""
     payload = (
-        _payload_certyfikatu()
-        if sciezka.startswith(CERT_JSON)
-        else _payload_studium(_pf_run())
+        _payload_certyfikatu() if sciezka.startswith(CERT_JSON) else _payload_studium(_pf_run())
     )
     pierwszy = app_client.post(sciezka, json=payload)
     drugi = app_client.post(sciezka, json=payload)
