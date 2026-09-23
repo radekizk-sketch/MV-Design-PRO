@@ -1475,7 +1475,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # wezlow — liczbe podstawiona za brak danych. Nie miala zadnego konsumenta, wiec
     # poszla jako martwy kod, a nie jako wyciszenie. PASS bramki niezmieniony
     # (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 3841." in wyjscie, wyjscie
+    # Archiwum projektu (2026-09-23, `f9ac289c`): 3841 -> 3843 (+2 pola, zero skasowanych,
+    # zero nowych plikow). POMIAR: zbior `contract_fields()` zrzucony na drzewie bazowym
+    # (`5770464c`, 3840 + `przydzial_wysp` z F-8) i na HEAD (`cadc584b`), roznica policzona
+    # `comm` na posortowanych zbiorach — jedyne nowe nazwy to `surowy` i `archiwum` z
+    # `application/project_archive/service.py::_OdczytaneArchiwum` (jeden dekoder ZIP:
+    # `project.json` przed `dict_to_archive` i po nim; `manifest` to nazwa juz obecna w
+    # repo, dedup po nazwie). To struktura ODCZYTU archiwum, nie dana wejsciowa solvera;
+    # brak sekcji konczy sie `ArchiveStructureError`, nie wartoscia zastepcza. Zapadka
+    # zapalila sie na CI (run 35857877892) bo naprawa archiwum zmienila liczbe bez tego
+    # wiersza. PASS bramki niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 3843." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
