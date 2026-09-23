@@ -72,8 +72,10 @@ Typy pomocnicze (wspólne dla obu poziomów):
 
 `PodstawaWymagania` jest uogólnieniem `ZrodloWartosci` z profilu regulacyjnego NC RfG
 (`catalog/profiles/nc_rfg`, plan AB §6) — JEDEN typ w produkcie, nie dwa. Pola: `rodzaj`
-(`ROZPORZADZENIE_UE` / `NORMA` / `WOS` / `PROCEDURA_PTPIREE` / `WIPWC` / `OSD` /
-`KATALOG_PRODUCENTA` / `ZALOZENIE_PROJEKTOWE` / `NIEUSTALONA`), `dokument`, `wydanie`,
+(`ROZPORZADZENIE_UE` / `NORMA` / `PRAWO_KRAJOWE` / `WOS` / `PROCEDURA_PTPIREE` / `WIPWC` / `OSD` /
+`KATALOG_PRODUCENTA` / `ZALOZENIE_PROJEKTOWE` / `NIEUSTALONA`; `PRAWO_KRAJOWE` = ustawa i
+rozporządzenie krajowe, np. rozporządzenie systemowe — rejestr jakości energii AB-H0; raport
+techniczny IEC/TR jest `NORMA` z uwagą „raport techniczny"), `dokument`, `wydanie`,
 `jednostka_redakcyjna`, `status` (`ZWERYFIKOWANE` / `WSKAZANE` / `NIEUSTALONE`), `uwagi_pl`.
 **Walidator:** stan `WSKAZANE` albo `ZWERYFIKOWANE` wymaga niepustych `dokument`, `wydanie`
 i `jednostka_redakcyjna` (artykuł / ustęp / punkt / rozdział — nie opis słowny parametru);
