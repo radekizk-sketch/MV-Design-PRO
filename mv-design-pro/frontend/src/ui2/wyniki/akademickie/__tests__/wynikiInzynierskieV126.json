@@ -42,6 +42,7 @@
     "nazwa_pl": "Odchyłka wyniku od wartości referencyjnej sieci odniesienia",
     "norma_pl": "Brak wskazanego dokumentu podstawy wymagania",
     "physics_domain": null,
+    "physics_domain_pl": null,
     "podstawa": {
       "dokument": null,
       "klauzula": null,
@@ -78,6 +79,7 @@
     "nazwa_pl": "Wytrzymałość cieplna rezystora uziemiającego punkt neutralny",
     "norma_pl": "Brak wskazanego dokumentu podstawy wymagania",
     "physics_domain": "SEQUENCE_DOMAIN",
+    "physics_domain_pl": "składowe symetryczne",
     "podstawa": {
       "dokument": null,
       "klauzula": null,
