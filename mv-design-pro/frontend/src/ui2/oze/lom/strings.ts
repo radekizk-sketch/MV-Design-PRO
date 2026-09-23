@@ -7,7 +7,7 @@
  * Nazwy sufiksowane `Lom`, bo barrel OZE robi `export *` (kolizje nazw TS2308).
  */
 
-import type { IstotnoscLom, OknoNormatywneLom } from '../api';
+import type { IstotnoscLom, OcenaNastawyLom } from '../api';
 
 /** Poziom istotności do doboru koloru tagu/statusu (wyłącznie prezentacja). */
 export type IstotnoscTaguLom = 'ok' | 'warn' | 'err' | 'neutral';
@@ -58,8 +58,11 @@ export const LOM_STRINGS = {
   szczegolModuly: 'Moduły wytwórcze na szynie',
   szczegolBrakModulow: 'Brak przypisanych modułów wytwórczych na szynie pola.',
   checkNastawa: 'Nastawa',
-  checkOkno: 'Okno normatywne',
-  checkZrodlo: 'Źródło normatywne',
+  checkOkno: 'Wymaganie (krawędź okna)',
+  checkZapas: 'Zapas do krawędzi okna',
+  checkZrodlo: 'Podstawa',
+  // Karta AB-1a D7 — magazyn energii poza zakresem rozporządzenia 2016/631
+  pozaZakresemRfgTytul: 'Magazyn energii poza zakresem wymagań dla modułów wytwarzania',
 
   // Moduły bez pola przyłączeniowego
   bezPolaTytul: 'Moduły wytwórcze bez pola przyłączeniowego',
@@ -69,17 +72,14 @@ export const LOM_STRINGS = {
 
   // Założenia i źródła
   zalozeniaTytul: 'Założenia',
-  zrodlaTytul: 'Źródła normatywne funkcji LoM',
-  zrodlaBrakOkna: 'brak okna normatywnego w katalogu',
+  zrodlaTytul: 'Podstawy okien funkcji LoM',
+  zrodlaBrakOkna: 'brak okna w katalogu',
 
   // Tryb ekspercki
   ekspHash: 'Odcisk wejścia (SHA-256)',
   ekspEnmHash: 'Odcisk dokumentu sieci (ENM)',
 
   // Jednostki / wartości puste
-  jednS: 's',
-  spzSzybkie: 'SPZ szybkie',
-  spzWolne: 'SPZ wolne',
   kreska: '—',
 } as const;
 
@@ -127,19 +127,26 @@ export function fmtNastawaLom(value: number | null, unit: string | null): string
 }
 
 /**
- * Prezentacja okna normatywnego porównania. Dla większości funkcji to łańcuch PL
- * lub brak (kreska); dla koordynacji SPZ backend zwraca obiekt z czasami przerwy —
- * składamy czytelny opis (przecinek PL), brak obu czasów → kreska.
+ * Wymaganie porównania (krawędź okna z backendu): dolna krawędź „≥", górna „≤";
+ * koordynacja SPZ — czas LoM musi być krótszy od przerwy SPZ („<"). Brak
+ * krawędzi → kreska (np. 78 bez okna, brak danych SPZ).
  */
-export function fmtOknoLom(okno: OknoNormatywneLom): string {
-  if (okno === null) return LOM_STRINGS.kreska;
-  if (typeof okno === 'string') return okno;
-  const czesci: string[] = [];
-  if (okno.spz_fast_time_s !== null) {
-    czesci.push(`${LOM_STRINGS.spzSzybkie}: ${fmtLiczbaLom(okno.spz_fast_time_s, 3)} ${LOM_STRINGS.jednS}`);
+export function fmtWymaganieLom(ocena: OcenaNastawyLom): string {
+  const jednostka = ocena.jednostka ? ` ${ocena.jednostka}` : '';
+  if (ocena.rodzaj === 'koordynacja_spz') {
+    return ocena.odniesienie_gorne === null
+      ? LOM_STRINGS.kreska
+      : `< ${fmtLiczbaLom(ocena.odniesienie_gorne, 3)}${jednostka}`;
   }
-  if (okno.spz_slow_time_s !== null) {
-    czesci.push(`${LOM_STRINGS.spzWolne}: ${fmtLiczbaLom(okno.spz_slow_time_s, 3)} ${LOM_STRINGS.jednS}`);
-  }
-  return czesci.length > 0 ? czesci.join(' / ') : LOM_STRINGS.kreska;
+  if (ocena.odniesienie_dolne !== null) return `≥ ${fmtLiczbaLom(ocena.odniesienie_dolne, 3)}${jednostka}`;
+  if (ocena.odniesienie_gorne !== null) return `≤ ${fmtLiczbaLom(ocena.odniesienie_gorne, 3)}${jednostka}`;
+  return LOM_STRINGS.kreska;
+}
+
+/** Zapas do krawędzi okna ze znakiem (dodatni = w oknie); `null` → kreska. */
+export function fmtZapasLom(ocena: OcenaNastawyLom): string {
+  if (ocena.margines === null) return LOM_STRINGS.kreska;
+  const znak = ocena.margines > 0 ? '+' : ocena.margines < 0 ? '−' : '';
+  const jednostka = ocena.margines_jednostka ? ` ${ocena.margines_jednostka}` : '';
+  return `${znak}${fmtLiczbaLom(Math.abs(ocena.margines), 3)}${jednostka}`;
 }

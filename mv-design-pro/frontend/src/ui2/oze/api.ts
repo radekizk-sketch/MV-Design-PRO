@@ -13,6 +13,7 @@
  */
 
 import type { NcRfgRunRequest } from '../../ui/ncrfg-tests/api';
+import type { DowodWyniku, PodstawaNormatywnaOdpowiedz } from '../wyniki/ocena/api';
 
 // =============================================================================
 // Dowód certyfikacji PTPiREE — application/analyses/dowod_certyfikatu.py
@@ -1063,40 +1064,47 @@ export function pobierzSekwencjeFrt(zapytanie: ZapytanieSekwencjiFrt): Promise<W
 // (api/oze_analysis_runs.py:74)
 // =============================================================================
 
-/** Poziom istotności porównania/pola LoM (1:1 z `severity` backendu). */
+/** Poziom istotności porównania/pola LoM (1:1 z `wynik` oceny backendu). */
 export type IstotnoscLom = 'OK' | 'INFO' | 'WARN' | 'ERROR';
 
-/**
- * Okno normatywne funkcji LoM z porównania. Dla większości funkcji to łańcuch PL
- * (np. „df/dt ≥ 2.0 Hz/s") lub `null`; dla koordynacji SPZ backend zwraca obiekt
- * z czasami przerwy SPZ. Typ celowo szeroki (kontrakt API — patrz `_evaluate_field`).
- */
-export type OknoNormatywneLom =
-  | string
-  | null
-  | { readonly spz_fast_time_s: number | null; readonly spz_slow_time_s: number | null };
+/** Rodzaj porównania oceny LoM (`OcenaNastawyLom.rodzaj`). */
+export type RodzajOcenyLom = 'obecnosc' | 'okno_normatywne' | 'koordynacja_spz';
 
 /**
- * Pojedyncze porównanie (check) pola: obecność funkcji, okno normatywne albo
- * koordynacja SPZ. `value`/`unit` opisują nastawę; `message_pl` niesie gotowy
- * werdykt PL z backendu (ZERO oceny w UI).
+ * Pojedyncze porównanie pola jako WYNIK WYJAŚNIALNY (karta AB-1a D7,
+ * `application/analyses/ochrona_lom.py::OcenaNastawyLom.to_dict`): nastawa
+ * (`wartosc`), wymaganie (krawędzie okna), zapas, podstawa (źródło
+ * niezweryfikowane) i dowód — zamiast pary istotność/komunikat. Werdykt PL
+ * (`komunikat_pl`) i istotność (`wynik`) z backendu (ZERO oceny w UI).
  */
-export interface PorownanieLom {
-  readonly kind: string;
-  readonly function_ansi: string | null;
-  readonly function_label_pl: string | null;
-  readonly severity: IstotnoscLom;
-  readonly message_pl: string;
-  readonly value: number | null;
-  readonly unit: string | null;
-  readonly window: OknoNormatywneLom;
-  readonly source_pl: string | null;
+export interface OcenaNastawyLom {
+  readonly rodzaj: RodzajOcenyLom;
+  readonly funkcja: string | null;
+  readonly funkcja_ansi: string | null;
+  readonly funkcja_pl: string | null;
+  readonly wynik: IstotnoscLom;
+  readonly komunikat_pl: string;
+  readonly wartosc: number | null;
+  readonly jednostka: string | null;
+  readonly odniesienie_dolne: number | null;
+  readonly odniesienie_gorne: number | null;
+  readonly margines: number | null;
+  readonly margines_jednostka: string | null;
+  readonly podstawa: PodstawaNormatywnaOdpowiedz;
+  readonly dowod: DowodWyniku;
   /**
    * Wywód dyplomowy {tekst, latex} porównania (zasada KaTeX 2026-07-22):
    * warunek okna → dane → podstawienie z realnej nastawy → werdykt.
-   * Pusta lista/brak = porównanie nie zaszło (uczciwy brak przycisku śladu).
+   * Pusta lista = porównanie nie zaszło (uczciwy brak przycisku śladu).
    */
-  readonly wywod?: readonly KrokWywoduKanoniczny[];
+  readonly wywod: readonly KrokWywoduKanoniczny[];
+}
+
+/** Nazwane wyłączenie magazynów energii z zakresu rozporządzenia 2016/631. */
+export interface PozaZakresemRfgLom {
+  readonly kod: string;
+  readonly moduly: readonly string[];
+  readonly opis_pl: string;
 }
 
 /** Pole przyłączeniowe modułu wytwórczego z oceną ochrony LoM. */
@@ -1107,13 +1115,15 @@ export interface PoleLom {
   readonly bus_ref: string;
   readonly generating_module_refs: readonly string[];
   readonly status: IstotnoscLom;
-  readonly checks: readonly PorownanieLom[];
+  readonly checks: readonly OcenaNastawyLom[];
+  /** Magazyn energii na polu — wyłączenie z zakresu RfG NAZWANE (`null` = brak magazynu). */
+  readonly poza_zakresem_rfg: PozaZakresemRfgLom | null;
 }
 
-/** Źródło normatywne funkcji LoM (okno + cytat) — słownik po function_type. */
+/** Okno funkcji LoM (tekst) + podstawa strukturalna — słownik po function_type. */
 export interface ZrodloNormatywneLom {
   readonly window_pl: string | null;
-  readonly source_pl: string | null;
+  readonly podstawa: PodstawaNormatywnaOdpowiedz;
 }
 
 /** Podsumowanie liczbowe oceny LoM. */
@@ -1172,6 +1182,14 @@ export interface WerdyktZbiorczyCertyfikatu {
   readonly liczba_modulow: number;
   readonly modulow_zgodnych: number;
   readonly modulow_niezgodnych: number;
+  /** Karta AB-1a D7 — pięciu towarzyszy werdyktu zbiorczego (1:1 z backendu):
+   *  wartość = moduły zgodne, wymaganie = wszystkie moduły, zapas — brak (`null`,
+   *  werdykt zliczeniowy), podstawa (źródło niezweryfikowane), dowód (odcisk biegu). */
+  readonly wartosc: number;
+  readonly odniesienie: number;
+  readonly margines: null;
+  readonly podstawa: PodstawaNormatywnaOdpowiedz;
+  readonly dowod: DowodWyniku;
 }
 
 /** Wiersz testu w certyfikacie (pozycja `moduly[].testy[]`). */

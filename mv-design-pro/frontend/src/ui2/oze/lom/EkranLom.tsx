@@ -20,10 +20,12 @@ import { useActiveCase } from '../../../ui/study-cases/store';
 import { EkranAnalizy, SladWywodu } from '../../wyniki/wzorzec';
 import { pobierzOchronaLom, type PoleLom, type WidokOchronyLom } from '../api';
 import { KLUCZ_WIERSZA_LOM, KOLUMNY_LOM, naWierszeLom, naZalozeniaLom } from './lomModel';
+import { PodstawaStrukturalna } from '../../wyniki/ocena/WynikWyjasniony';
 import {
   LOM_STRINGS,
   fmtNastawaLom,
-  fmtOknoLom,
+  fmtWymaganieLom,
+  fmtZapasLom,
   istotnoscLom,
   statusLomPL,
   type IstotnoscTaguLom,
@@ -114,37 +116,56 @@ function SzczegolPola({ pole }: { pole: PoleLom | null }) {
       <p className="mvd-lom-szczegol-sekcja-tytul">{LOM_STRINGS.szczegolPorownania}</p>
       <ul className="mvd-lom-checks" data-testid="mvd-lom-checks">
         {pole.checks.map((check, i) => (
-          <li key={`${check.kind}-${check.function_ansi ?? 'brak'}-${i}`} className="mvd-lom-check">
+          <li key={`${check.rodzaj}-${check.funkcja_ansi ?? 'brak'}-${i}`} className="mvd-lom-check">
             <div className="mvd-lom-check-head">
               <span className="mvd-lom-check-tytul">
-                {check.function_label_pl ?? LOM_STRINGS.kreska}
+                {check.funkcja_pl ?? LOM_STRINGS.kreska}
               </span>
               <TagStatusu
-                tekst={statusLomPL(check.severity)}
-                istotnosc={istotnoscLom(check.severity)}
+                tekst={statusLomPL(check.wynik)}
+                istotnosc={istotnoscLom(check.wynik)}
               />
             </div>
+            {/* Karta AB-1a D7: wynik wyjaśnialny — nastawa, wymaganie, zapas, podstawa
+                (z odznaką statusu źródła), komunikat i ślad — wszystko z backendu. */}
             <dl className="mvd-lom-check-dane">
               <div className="mvd-lom-check-para">
                 <dt>{LOM_STRINGS.checkNastawa}</dt>
-                <dd className="mvd-num">{fmtNastawaLom(check.value, check.unit)}</dd>
+                <dd className="mvd-num">{fmtNastawaLom(check.wartosc, check.jednostka)}</dd>
               </div>
               <div className="mvd-lom-check-para">
                 <dt>{LOM_STRINGS.checkOkno}</dt>
-                <dd>{fmtOknoLom(check.window)}</dd>
+                <dd className="mvd-num" data-testid={`mvd-lom-check-wymaganie-${i}`}>
+                  {fmtWymaganieLom(check)}
+                </dd>
+              </div>
+              <div className="mvd-lom-check-para">
+                <dt>{LOM_STRINGS.checkZapas}</dt>
+                <dd className="mvd-num" data-testid={`mvd-lom-check-zapas-${i}`}>
+                  {fmtZapasLom(check)}
+                </dd>
               </div>
               <div className="mvd-lom-check-para">
                 <dt>{LOM_STRINGS.checkZrodlo}</dt>
-                <dd>{check.source_pl ?? LOM_STRINGS.kreska}</dd>
+                <dd>
+                  <PodstawaStrukturalna podstawa={check.podstawa} testid={`mvd-lom-check-podstawa-${i}`} />
+                </dd>
               </div>
             </dl>
-            <p className="mvd-lom-check-msg">{check.message_pl}</p>
+            <p className="mvd-lom-check-msg">{check.komunikat_pl}</p>
             {/* Ślad obliczeń na żądanie — wywód {tekst, latex} z backendu (zasada
                 KaTeX 2026-07-22); pusta lista = uczciwy brak przycisku. */}
             <SladWywodu kroki={check.wywod ?? []} testIdPrefix={`mvd-lom-check-slad-${i}`} />
           </li>
         ))}
       </ul>
+
+      {pole.poza_zakresem_rfg !== null && (
+        <div className="mvd-lom-poza-zakresem" data-testid="mvd-lom-poza-zakresem-rfg">
+          <p className="mvd-lom-szczegol-sekcja-tytul">{LOM_STRINGS.pozaZakresemRfgTytul}</p>
+          <p className="mvd-lom-szczegol-brak">{pole.poza_zakresem_rfg.opis_pl}</p>
+        </div>
+      )}
 
       <p className="mvd-lom-szczegol-sekcja-tytul">{LOM_STRINGS.szczegolModuly}</p>
       {pole.generating_module_refs.length === 0 ? (
@@ -240,7 +261,9 @@ function WynikLom({
           {Object.entries(dane.normative_sources).map(([klucz, zrodlo]) => (
             <div key={klucz} className="mvd-lom-zrodlo">
               <dt className="mvd-lom-zrodlo-okno">{zrodlo.window_pl ?? LOM_STRINGS.zrodlaBrakOkna}</dt>
-              <dd className="mvd-lom-zrodlo-cytat">{zrodlo.source_pl ?? LOM_STRINGS.kreska}</dd>
+              <dd className="mvd-lom-zrodlo-cytat">
+                <PodstawaStrukturalna podstawa={zrodlo.podstawa} testid={`mvd-lom-zrodlo-${klucz}`} />
+              </dd>
             </div>
           ))}
         </dl>

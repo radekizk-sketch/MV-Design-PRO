@@ -13,7 +13,7 @@ import {
   naWierszeLom,
   naZalozeniaLom,
 } from '../lomModel';
-import { fmtNastawaLom, fmtOknoLom, istotnoscLom, statusLomPL } from '../strings';
+import { fmtNastawaLom, fmtWymaganieLom, fmtZapasLom, istotnoscLom, statusLomPL } from '../strings';
 import { widokOchronyLomFixture } from './fixtures';
 
 describe('mapujWierszLom / naWierszeLom', () => {
@@ -60,10 +60,25 @@ describe('formatery PL', () => {
     expect(fmtNastawaLom(null, 'Hz/s')).toBe('—');
   });
 
-  it('fmtOknoLom: string wprost, obiekt SPZ z oboma null → kreska', () => {
-    expect(fmtOknoLom('df/dt ≥ 2.0 Hz/s')).toBe('df/dt ≥ 2.0 Hz/s');
-    expect(fmtOknoLom(null)).toBe('—');
-    expect(fmtOknoLom({ spz_fast_time_s: null, spz_slow_time_s: null })).toBe('—');
-    expect(fmtOknoLom({ spz_fast_time_s: 0.3, spz_slow_time_s: null })).toContain('SPZ szybkie');
+  it('fmtWymaganieLom: krawędź okna z backendu (≥ / ≤ / < SPZ), brak krawędzi → kreska', () => {
+    // INTENCJA dawnego testu fmtOknoLom (okno jako tekst albo kreska) zachowana na
+    // kształcie OcenaNastawyLom (karta AB-1a D7): krawędź przychodzi liczbą z backendu.
+    const pola = widokOchronyLomFixture().fields;
+    const rocof = pola[1].checks[0];
+    const u81 = pola[2].checks[0];
+    const spz = pola[1].checks[1];
+    expect(fmtWymaganieLom(rocof)).toBe('≥ 2,000 Hz/s');
+    expect(fmtWymaganieLom(u81)).toBe('≤ 47,500 Hz');
+    expect(fmtWymaganieLom(spz)).toBe('—');
+    expect(fmtWymaganieLom({ ...spz, odniesienie_gorne: 0.3 })).toBe('< 0,300 s');
+    expect(fmtWymaganieLom(pola[0].checks[0])).toBe('—');
+  });
+
+  it('fmtZapasLom: znak i jednostka zapasu, brak zapasu → kreska', () => {
+    const pola = widokOchronyLomFixture().fields;
+    expect(fmtZapasLom(pola[1].checks[0])).toBe('−1,000 Hz/s');
+    expect(fmtZapasLom(pola[2].checks[0])).toBe('0,000 Hz');
+    expect(fmtZapasLom({ ...pola[2].checks[0], margines: 0.25 })).toBe('+0,250 Hz');
+    expect(fmtZapasLom(pola[1].checks[1])).toBe('—');
   });
 });
