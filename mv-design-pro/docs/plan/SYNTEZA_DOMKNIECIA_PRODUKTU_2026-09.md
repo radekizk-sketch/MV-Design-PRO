@@ -473,7 +473,10 @@ nie powstaje w ogóle: adaptacja idzie prosto do pakietu produkcyjnego z testami
 `dynamika/` (rdzeń DAE + urządzenia + zdarzenia), ewaluator WOS jako analiza (konsument), `flicker_iec61000_3_7.py`
 (przeniesienie bez zmiany liczb z `application/analyses/migotanie.py`), VUF (OD-15(c) w rdzeniu lub nowy solver
 składowych w `dynamika/`/`jakosc/`), harmoniczne/impedancja harmoniczna z widmami z proweniencją (W2-C dała
-wejście), QSTS (pętla rozpływów przez assembler + dyspozycja BESS), obciążalność TR IEC 60076-7, koordynacja
+wejście — **korekta 2026-09-23:** W2-C dała wyłącznie regułę rozstrzygania proweniencji; 0 rekordów katalogu
+przekształtników niesie widmo, kontrakt wejścia nie ma fazy/punktu pracy/wersji, a impedancja sieci zasilającej nie
+wchodzi do ścieżki harmonicznej V12.6 wcale — audyt `../evidence/OPUS_AUDYT_HARMONICZNE_SUPRAHARMONICZNE_2026-09-23.md`
+§10 p. 2; solver harmoniczny powstaje od nowa jako `solvers/harmoniczne/` wg Programu A/B AB-2H), QSTS (pętla rozpływów przez assembler + dyspozycja BESS), obciążalność TR IEC 60076-7, koordynacja
 izolacji pod kanonicznym solverem (przeniesienie z V12.6 z parytetem), udar z modelu nasycenia (po OD-15(d)).
 
 ### 2.9 Potrzebne dane (i skąd)
