@@ -31,6 +31,17 @@ def row_to_dict(row: VoltageProfileRow) -> dict[str, Any]:
         "q_mvar": float(row.q_mvar) if row.q_mvar is not None else None,
         "case_name": row.case_name,
         "run_timestamp": row.run_timestamp.isoformat() if row.run_timestamp else None,
+        # Towarzysze werdyktu (karta AB-1a-bis) — addytywnie, na koncu wiersza.
+        "wartosc": float(row.wartosc) if row.wartosc is not None else None,
+        "odniesienie": float(row.odniesienie) if row.odniesienie is not None else None,
+        "odniesienie_ostrzegawcze": (
+            float(row.odniesienie_ostrzegawcze)
+            if row.odniesienie_ostrzegawcze is not None
+            else None
+        ),
+        "margines": float(row.margines) if row.margines is not None else None,
+        "podstawa": row.podstawa.to_dict(),
+        "dowod": dict(row.dowod) if row.dowod is not None else None,
     }
 
 

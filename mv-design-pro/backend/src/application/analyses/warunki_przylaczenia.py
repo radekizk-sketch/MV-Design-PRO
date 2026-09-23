@@ -45,9 +45,14 @@ prowadzacego.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
+from analysis.podstawa_normatywna import (
+    PodstawaNormatywna,
+    dowod_pozycji,
+    podstawa_niezweryfikowana,
+)
 from enm.canonical_analysis import CanonicalRun
 
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
@@ -68,6 +73,24 @@ KIERUNEK_ODDAWANIE = "oddawanie"
 # Tolerancja porownan doborowych — spojna z pozostalymi analizami (der_sn_validation).
 _EPS = 1e-9
 
+#: Podstawa kryteriow (karta AB-1a-bis): wymagania pochodza z warunkow przylaczenia
+#: wydanych przez OSD i wpisanych przez projektanta w naglowek modelu; model nie
+#: niesie identyfikatora dokumentu OSD (numer, data), wiec dokument = ``None``.
+PODSTAWA_WARUNKOW_OSD: PodstawaNormatywna = podstawa_niezweryfikowana(
+    "Warunki przyłączenia wydane przez OSD, wpisane przez projektanta w nagłówku "
+    "modelu (moc przyłączeniowa, wymagany cos φ); numer i data dokumentu OSD nie są "
+    "zapisane w modelu."
+)
+
+#: Kierunek wymagania per kryterium — JEDNO zrodlo dla werdyktu i zapasu (predykat
+#: parami): moc = ograniczenie GORNE modulu |P|, cos φ = ograniczenie DOLNE.
+_KIERUNEK_GORNY = "nie_wiecej"
+_KIERUNEK_DOLNY = "nie_mniej"
+_KIERUNEK_KRYTERIUM: dict[str, str] = {
+    "moc_w_punkcie_przylaczenia": _KIERUNEK_GORNY,
+    "cos_phi_w_punkcie_przylaczenia": _KIERUNEK_DOLNY,
+}
+
 
 @dataclass(frozen=True)
 class PozycjaOceny:
@@ -84,6 +107,28 @@ class PozycjaOceny:
     jednostka: str
     opis_pl: str
     readiness_codes: tuple[str, ...] = ()
+    #: Odwolanie do dowodu `{run_id, element_id, trace_ref}` — bieg rozplywu i
+    #: punkt przylaczenia, z ktorego odczytano wielkosci (karta AB-1a-bis).
+    dowod: dict[str, str | None] | None = None
+
+    @property
+    def odniesienie(self) -> float | None:
+        """Wymaganie (towarzysz werdyktu, karta AB-1a-bis) = ``wymagana`` (jedno zrodlo)."""
+        return self.wymagana
+
+    @property
+    def margines(self) -> float | None:
+        """Zapas do wymagania w jednostce kryterium, dodatni = dotrzymane; kierunek z
+        tej samej mapy, ktora rozstrzyga werdykt. ``None`` bez wartosci/wymagania."""
+        if self.wartosc is None or self.wymagana is None:
+            return None
+        if _KIERUNEK_KRYTERIUM[self.kryterium] == _KIERUNEK_GORNY:
+            return _round6(self.wymagana - self.wartosc)
+        return _round6(self.wartosc - self.wymagana)
+
+    @property
+    def podstawa(self) -> PodstawaNormatywna:
+        return PODSTAWA_WARUNKOW_OSD
 
     @property
     def is_conclusive(self) -> bool:
@@ -98,6 +143,11 @@ class PozycjaOceny:
             "jednostka": self.jednostka,
             "opis_pl": self.opis_pl,
             "readiness_codes": list(self.readiness_codes),
+            # Towarzysze werdyktu (karta AB-1a-bis) — addytywnie, na koncu pozycji.
+            "odniesienie": self.odniesienie,
+            "margines": self.margines,
+            "podstawa": self.podstawa.to_dict(),
+            "dowod": dict(self.dowod) if self.dowod is not None else None,
         }
 
 
@@ -112,6 +162,8 @@ class OcenaWarunkowPrzylaczenia:
     cos_phi: float | None
     kierunek: str | None
     pozycje: tuple[PozycjaOceny, ...]
+    #: Bieg rozplywu, z ktorego odczytano wielkosci (dowod werdyktu zbiorczego).
+    run_id: str | None = None
     # Matematyka wyłącznie LaTeX w delimiterach $...$ (konwencja Proof Engine).
     formula_ref: str = (
         r"$\cos\varphi = \dfrac{|P|}{\sqrt{P^{2} + Q^{2}}}$;  "
@@ -137,6 +189,21 @@ class OcenaWarunkowPrzylaczenia:
         return STATUS_UNAVAILABLE
 
     @property
+    def liczba_dotrzymanych(self) -> int | None:
+        """Towarzysz `wartosc` werdyktu ZLICZENIOWEGO (karta AB-1a-bis): kryteria
+        dotrzymane; ``None``, gdy zadne kryterium nie ma podstawy oceny."""
+        rozstrzygniete = [p for p in self.pozycje if p.is_conclusive]
+        if not rozstrzygniete:
+            return None
+        return sum(1 for p in rozstrzygniete if p.status == STATUS_PASS)
+
+    @property
+    def liczba_rozstrzygnietych(self) -> int | None:
+        """Towarzysz `odniesienie`: kryteria z podstawa oceny (PASS albo FAIL)."""
+        rozstrzygniete = [p for p in self.pozycje if p.is_conclusive]
+        return len(rozstrzygniete) if rozstrzygniete else None
+
+    @property
     def readiness_codes(self) -> tuple[str, ...]:
         kody: list[str] = []
         for pozycja in self.pozycje:
@@ -156,6 +223,17 @@ class OcenaWarunkowPrzylaczenia:
             "readiness_codes": list(self.readiness_codes),
             "formula_ref": self.formula_ref,
             "zalozenia": list(self.zalozenia),
+            # Towarzysze werdyktu zbiorczego (karta AB-1a-bis): werdykt jest
+            # ZLICZENIOWY — wartosc = kryteria dotrzymane, odniesienie = kryteria
+            # rozstrzygniete; zapas skalarny nie istnieje (kryteria w roznych
+            # jednostkach), wiec ``None`` — zapas niesie kazda pozycja.
+            "wartosc": self.liczba_dotrzymanych,
+            "odniesienie": self.liczba_rozstrzygnietych,
+            "margines": None,
+            "podstawa": PODSTAWA_WARUNKOW_OSD.to_dict(),
+            "dowod": dowod_pozycji(
+                run_id=self.run_id, element_id=self.punkt_przylaczenia, trace_ref=None
+            ),
         }
 
 
@@ -219,6 +297,7 @@ def ocen_warunki_przylaczenia(
     connection_conditions: dict[str, Any] | None,
     result_v1: dict[str, Any] | None,
     punkt_przylaczenia: str | None = None,
+    run_id: str | None = None,
 ) -> OcenaWarunkowPrzylaczenia:
     """Porownaj wynik rozplywu w punkcie przylaczenia z warunkami OSD.
 
@@ -315,6 +394,8 @@ def ocen_warunki_przylaczenia(
             )
         )
 
+    # Dowod (karta AB-1a-bis): jedno miejsce dla WSZYSTKICH pozycji oceny.
+    dowod = dowod_pozycji(run_id=run_id, element_id=punkt, trace_ref=None)
     return OcenaWarunkowPrzylaczenia(
         punkt_przylaczenia=punkt,
         p_mw=_round6(p_mw),
@@ -322,7 +403,8 @@ def ocen_warunki_przylaczenia(
         s_mva=_round6(s_mva),
         cos_phi=_round6(cos_phi),
         kierunek=kierunek,
-        pozycje=tuple(pozycje),
+        pozycje=tuple(replace(pozycja, dowod=dict(dowod)) for pozycja in pozycje),
+        run_id=run_id,
     )
 
 
@@ -354,6 +436,7 @@ def build_warunki_przylaczenia_view(run: CanonicalRun) -> dict[str, Any]:
     ocena = ocen_warunki_przylaczenia(
         connection_conditions=header.get("connection_conditions"),
         result_v1=result_v1,
+        run_id=str(run.id),
     )
     return {
         "run_id": str(run.id),

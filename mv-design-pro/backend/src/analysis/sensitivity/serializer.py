@@ -40,6 +40,12 @@ def entry_to_dict(entry: SensitivityEntry) -> dict[str, Any]:
         "base_decision": entry.base_decision.value,
         "minus": perturbation_to_dict(entry.minus),
         "plus": perturbation_to_dict(entry.plus),
+        # Towarzysze werdyktu (karta AB-1a-bis) — addytywnie, na koncu wpisu.
+        "wartosc": float(entry.wartosc) if entry.wartosc is not None else None,
+        "odniesienie": float(entry.odniesienie),
+        "margines": float(entry.margines) if entry.margines is not None else None,
+        "podstawa": entry.podstawa.to_dict() if entry.podstawa is not None else None,
+        "dowod": dict(entry.dowod) if entry.dowod is not None else None,
     }
 
 

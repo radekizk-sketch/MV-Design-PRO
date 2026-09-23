@@ -48,7 +48,22 @@
           "tekst": "Werdykt: PRZEKROCZENIE",
           "latex": null
         }
-      ]
+      ],
+      "wartosc": 702.1164546964296,
+      "odniesienie": 100.0,
+      "margines": -602.1164546964296,
+      "podstawa": {
+        "dokument": null,
+        "wersja": null,
+        "klauzula": null,
+        "zrodlo_status": "UNVERIFIED_SOURCE",
+        "uwaga_pl": "Próg obciążenia transformatora z konfiguracji walidacji energetycznej (moc znamionowa S_n z typu katalogowego); dokument normowy progu nie jest wskazany w kodzie."
+      },
+      "dowod": {
+        "run_id": "run-lf-scena-rozplyw",
+        "element_id": "158eec95-939b-5b35-97ad-9433334b5506",
+        "trace_ref": "white_box"
+      }
     },
     {
       "check_type": "BRANCH_LOADING",
@@ -82,7 +97,22 @@
           "tekst": "Werdykt: PRZEKROCZENIE",
           "latex": null
         }
-      ]
+      ],
+      "wartosc": 159.99158905812325,
+      "odniesienie": 100.0,
+      "margines": -59.99158905812325,
+      "podstawa": {
+        "dokument": null,
+        "wersja": null,
+        "klauzula": null,
+        "zrodlo_status": "UNVERIFIED_SOURCE",
+        "uwaga_pl": "Próg obciążenia gałęzi z konfiguracji walidacji energetycznej (obciążalność długotrwała I_n z danych gałęzi — katalog); dokument normowy progu nie jest wskazany w kodzie."
+      },
+      "dowod": {
+        "run_id": "run-lf-scena-rozplyw",
+        "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+        "trace_ref": "white_box"
+      }
     },
     {
       "check_type": "VOLTAGE_DEVIATION",
@@ -116,7 +146,22 @@
           "tekst": "Werdykt: PRZEKROCZENIE",
           "latex": null
         }
-      ]
+      ],
+      "wartosc": 25.16700320630986,
+      "odniesienie": 10.0,
+      "margines": -15.167003206309861,
+      "podstawa": {
+        "dokument": "PN-EN 50160",
+        "wersja": null,
+        "klauzula": null,
+        "zrodlo_status": "UNVERIFIED_SOURCE",
+        "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy."
+      },
+      "dowod": {
+        "run_id": "run-lf-scena-rozplyw",
+        "element_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+        "trace_ref": "white_box"
+      }
     },
     {
       "check_type": "REACTIVE_BALANCE",
@@ -150,7 +195,22 @@
           "tekst": "Werdykt: OSTRZEZENIE",
           "latex": null
         }
-      ]
+      ],
+      "wartosc": 0.873445737511107,
+      "odniesienie": 0.8,
+      "margines": null,
+      "podstawa": {
+        "dokument": null,
+        "wersja": null,
+        "klauzula": null,
+        "zrodlo_status": "UNVERIFIED_SOURCE",
+        "uwaga_pl": "Progi współczynnika mocy w węźle bilansującym zapisane w kodzie walidacji energetycznej bez wskazanego dokumentu normowego."
+      },
+      "dowod": {
+        "run_id": "run-lf-scena-rozplyw",
+        "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+        "trace_ref": "white_box"
+      }
     },
     {
       "check_type": "VOLTAGE_DEVIATION",
@@ -184,7 +244,22 @@
           "tekst": "Werdykt: OSTRZEZENIE",
           "latex": null
         }
-      ]
+      ],
+      "wartosc": 7.987734885748926,
+      "odniesienie": 10.0,
+      "margines": 2.0122651142510737,
+      "podstawa": {
+        "dokument": "PN-EN 50160",
+        "wersja": null,
+        "klauzula": null,
+        "zrodlo_status": "UNVERIFIED_SOURCE",
+        "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy."
+      },
+      "dowod": {
+        "run_id": "run-lf-scena-rozplyw",
+        "element_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+        "trace_ref": "white_box"
+      }
     },
     {
       "check_type": "LOSS_BUDGET",
@@ -218,7 +293,22 @@
           "tekst": "Werdykt: OSTRZEZENIE",
           "latex": null
         }
-      ]
+      ],
+      "wartosc": 6.055138541703279,
+      "odniesienie": 10.0,
+      "margines": 3.944861458296721,
+      "podstawa": {
+        "dokument": null,
+        "wersja": null,
+        "klauzula": null,
+        "zrodlo_status": "UNVERIFIED_SOURCE",
+        "uwaga_pl": "Założenie projektowe: budżet strat mocy z konfiguracji walidacji energetycznej — nie wymaganie dokumentu normowego."
+      },
+      "dowod": {
+        "run_id": "run-lf-scena-rozplyw",
+        "element_id": "network",
+        "trace_ref": "white_box"
+      }
     },
     {
       "check_type": "VOLTAGE_DEVIATION",
@@ -252,7 +342,22 @@
           "tekst": "Werdykt: ZGODNY",
           "latex": null
         }
-      ]
+      ],
+      "wartosc": 3.145140202841716,
+      "odniesienie": 10.0,
+      "margines": 6.854859797158284,
+      "podstawa": {
+        "dokument": "PN-EN 50160",
+        "wersja": null,
+        "klauzula": null,
+        "zrodlo_status": "UNVERIFIED_SOURCE",
+        "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy."
+      },
+      "dowod": {
+        "run_id": "run-lf-scena-rozplyw",
+        "element_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+        "trace_ref": "white_box"
+      }
     },
     {
       "check_type": "VOLTAGE_DEVIATION",
@@ -286,7 +391,22 @@
           "tekst": "Werdykt: ZGODNY",
           "latex": null
         }
-      ]
+      ],
+      "wartosc": 3.144357833908877,
+      "odniesienie": 10.0,
+      "margines": 6.855642166091123,
+      "podstawa": {
+        "dokument": "PN-EN 50160",
+        "wersja": null,
+        "klauzula": null,
+        "zrodlo_status": "UNVERIFIED_SOURCE",
+        "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy."
+      },
+      "dowod": {
+        "run_id": "run-lf-scena-rozplyw",
+        "element_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+        "trace_ref": "white_box"
+      }
     },
     {
       "check_type": "VOLTAGE_DEVIATION",
@@ -320,7 +440,22 @@
           "tekst": "Werdykt: ZGODNY",
           "latex": null
         }
-      ]
+      ],
+      "wartosc": 0.0,
+      "odniesienie": 10.0,
+      "margines": 10.0,
+      "podstawa": {
+        "dokument": "PN-EN 50160",
+        "wersja": null,
+        "klauzula": null,
+        "zrodlo_status": "UNVERIFIED_SOURCE",
+        "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy."
+      },
+      "dowod": {
+        "run_id": "run-lf-scena-rozplyw",
+        "element_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+        "trace_ref": "white_box"
+      }
     },
     {
       "check_type": "TRANSFORMER_LOADING",
@@ -354,7 +489,22 @@
           "tekst": "Werdykt: ZGODNY",
           "latex": null
         }
-      ]
+      ],
+      "wartosc": 52.647515832710326,
+      "odniesienie": 100.0,
+      "margines": 47.352484167289674,
+      "podstawa": {
+        "dokument": null,
+        "wersja": null,
+        "klauzula": null,
+        "zrodlo_status": "UNVERIFIED_SOURCE",
+        "uwaga_pl": "Próg obciążenia transformatora z konfiguracji walidacji energetycznej (moc znamionowa S_n z typu katalogowego); dokument normowy progu nie jest wskazany w kodzie."
+      },
+      "dowod": {
+        "run_id": "run-lf-scena-rozplyw",
+        "element_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
+        "trace_ref": "white_box"
+      }
     },
     {
       "check_type": "BRANCH_LOADING",
@@ -388,7 +538,22 @@
           "tekst": "Werdykt: ZGODNY",
           "latex": null
         }
-      ]
+      ],
+      "wartosc": 0.18843286145941207,
+      "odniesienie": 100.0,
+      "margines": 99.81156713854058,
+      "podstawa": {
+        "dokument": null,
+        "wersja": null,
+        "klauzula": null,
+        "zrodlo_status": "UNVERIFIED_SOURCE",
+        "uwaga_pl": "Próg obciążenia gałęzi z konfiguracji walidacji energetycznej (obciążalność długotrwała I_n z danych gałęzi — katalog); dokument normowy progu nie jest wskazany w kodzie."
+      },
+      "dowod": {
+        "run_id": "run-lf-scena-rozplyw",
+        "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
+        "trace_ref": "white_box"
+      }
     }
   ],
   "summary": {

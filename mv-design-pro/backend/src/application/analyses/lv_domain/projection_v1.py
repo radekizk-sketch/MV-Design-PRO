@@ -185,7 +185,18 @@ def _result_snapshot(
             ref = ref_by_solver_bus.get(solver_bus_id, solver_bus_id)
             if ref not in domain_refs:
                 continue
-            rows.append({**row, "bus_id": ref, "solver_bus_id": solver_bus_id})
+            # Karta AB-1a-bis: odwolanie do dowodu wiersza (`dowod.element_id`)
+            # przekluczowane TA SAMA mapa co `bus_id` — inaczej dowod wskazywalby
+            # druga przestrzen identyfikatorow niz wiersz, ktory go niesie.
+            dowod = row.get("dowod")
+            rows.append(
+                {
+                    **row,
+                    "bus_id": ref,
+                    "solver_bus_id": solver_bus_id,
+                    "dowod": ({**dowod, "element_id": ref} if dowod is not None else None),
+                }
+            )
         summary = dict(complete_profile.get("summary") or {})
         worst = summary.get("worst_bus_id")
         if worst is not None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from analysis.normative.models import NormativeConfig
+from analysis.podstawa_normatywna import dowod_pozycji
 from analysis.power_flow.result import PowerFlowResult
 from analysis.voltage_profile.models import (
     VoltageProfileContext,
@@ -83,6 +84,13 @@ class VoltageProfileBuilder:
             q_mvar=None,
             case_name=self._context.case_name if self._context else None,
             run_timestamp=self._context.run_timestamp if self._context else None,
+            odniesienie=config.voltage_fail_pct,
+            odniesienie_ostrzegawcze=config.voltage_warn_pct,
+            dowod=dowod_pozycji(
+                run_id=self._context.run_id if self._context else None,
+                element_id=node_id,
+                trace_ref=self._context.trace_id if self._context else None,
+            ),
         )
 
 

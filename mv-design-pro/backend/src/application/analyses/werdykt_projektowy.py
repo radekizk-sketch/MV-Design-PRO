@@ -68,6 +68,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, TypeAlias
 
+from analysis.podstawa_normatywna import PodstawaNormatywna
 from analysis.sanity_bounds.short_circuit_bounds import INCOMPLETE, OUT_OF_RANGE
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
@@ -483,46 +484,6 @@ ZRODLO_ZWERYFIKOWANE: ZrodloStatus = StatusZrodla.VERIFIED_SOURCE
 
 #: Rodzaj przyczyny ograniczenia (karta AB-1a D2): co FIZYCZNIE ogranicza wynik.
 RodzajPrzyczyny = Literal["element", "regulator", "ogranicznik", "zrodlo_emisji", "rezonans"]
-
-
-@dataclass(frozen=True)
-class PodstawaNormatywna:
-    """Podstawa wymagania: dokument, wersja, klauzula i status zrodla.
-
-    ``zrodlo_status`` jest OBOWIAZKOWE (bez domyslnej) — podstawa bez
-    rozstrzygniecia, czy zrodlo potwierdzono, bylaby ta sama niejawnoscia, ktora
-    ta klasa zamyka. Gdy dokument/wersja/klauzula nie sa potwierdzone, pola sa
-    ``None`` (nie tekst zastepczy), a ``uwaga_pl`` mowi, czego brakuje.
-    ``render_pl()`` jest JEDYNYM zrodlem tekstowego ``norma_pl`` pozycji, ktora
-    niesie podstawe (pin w ``PozycjaWerdyktu.__post_init__``).
-    """
-
-    dokument: str | None
-    wersja: str | None
-    klauzula: str | None
-    zrodlo_status: ZrodloStatus
-    uwaga_pl: str | None = None
-
-    def render_pl(self) -> str:
-        czesci = [
-            czesc
-            for czesc in (
-                self.dokument,
-                f"wersja {self.wersja}" if self.wersja else None,
-                self.klauzula,
-            )
-            if czesc
-        ]
-        return ", ".join(czesci) if czesci else "Brak wskazanego dokumentu podstawy wymagania"
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "dokument": self.dokument,
-            "wersja": self.wersja,
-            "klauzula": self.klauzula,
-            "zrodlo_status": self.zrodlo_status,
-            "uwaga_pl": self.uwaga_pl,
-        }
 
 
 @dataclass(frozen=True)

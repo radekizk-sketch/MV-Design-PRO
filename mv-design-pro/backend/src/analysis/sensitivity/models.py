@@ -3,12 +3,13 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
 from analysis.odcisk_kontekstu import odcisk_kontekstu
+from analysis.podstawa_normatywna import PodstawaNormatywna
 
 
 class SensitivityDecision(StrEnum):
@@ -40,8 +41,21 @@ class SensitivityContext:
         }
 
 
+#: Kryterium werdyktu wrazliwosci (karta AB-1a-bis): decyzja PASS/FAIL to znak
+#: zapasu — `zapas >= 0` (`_decision_from_margin`). Zero jest DEFINICJA kryterium
+#: (granica zapasu), nie liczba normatywna.
+ZAPAS_GRANICZNY: float = 0.0
+
+
 @dataclass(frozen=True)
 class SensitivityPerturbation:
+    """Perturbacja ±delta% (karta AB-1a-bis): werdykt `decision` to znak `margin`.
+
+    Towarzysze wspolne z wpisem (wymaganie `zapas >= 0`, podstawa, dowod) niesie
+    wpis nadrzedny `SensitivityEntry` (reguła zagniezdzenia guardu §3.3 p. 3);
+    wartoscia oceniana perturbacji jest jej `margin`.
+    """
+
     delta_pct: float
     margin: float | None
     delta_margin: float | None
@@ -59,6 +73,24 @@ class SensitivityEntry:
     base_decision: SensitivityDecision
     minus: SensitivityPerturbation
     plus: SensitivityPerturbation
+    #: Podstawa kryterium ZRODLOWEGO (karta AB-1a-bis) — przepisana z nosnika,
+    #: z ktorego policzono zapas (pozycja raportu normatywnego, wiersz profilu
+    #: napiec, krzywe I–t) albo stala dostawcy (zapasy aparatu); ``None`` =
+    #: wpis zbudowany bez buildera.
+    podstawa: PodstawaNormatywna | None = None
+    #: Odwolanie do dowodu `{run_id, element_id, trace_ref}` (builder).
+    dowod: dict[str, str | None] | None = None
+    # --- Towarzysze wyprowadzane (jedno zrodlo: `base_margin`) ----------------
+    #: Werdykt `base_decision` = znak zapasu: wielkosc oceniana = zapas bazowy,
+    #: wymaganie = `ZAPAS_GRANICZNY`, margines = zapas (jednostka `margin_unit`).
+    wartosc: float | None = field(init=False)
+    odniesienie: float = field(init=False)
+    margines: float | None = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "wartosc", self.base_margin)
+        object.__setattr__(self, "odniesienie", ZAPAS_GRANICZNY)
+        object.__setattr__(self, "margines", self.base_margin)
 
 
 @dataclass(frozen=True)

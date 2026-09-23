@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
+from dataclasses import replace
 from typing import overload
 
 from analysis.koperta_kontekstu import pola_koperty
+from analysis.normative.kryteria_napiecia import podstawa_progu_napiecia
 from analysis.normative.models import NormativeReport, NormativeStatus
+from analysis.podstawa_normatywna import (
+    PodstawaNormatywna,
+    dowod_pozycji,
+    podstawa_niezweryfikowana,
+)
 from analysis.protection_curves_it.models import ProtectionCurvesITView
 from analysis.protection_insight.models import ProtectionInsightItem, ProtectionInsightView
 from analysis.sensitivity.models import (
@@ -26,6 +33,15 @@ from application.proof_engine.types import ProofDocument
 
 DEFAULT_DELTA_PCT = 5.0
 DEFAULT_TOP_N = 5
+
+#: Podstawa zapasow aparatu (karta AB-1a-bis): zapas = najmniejszy z (Icu, Idyn,
+#: Ith) wobec Ik'', ip, Ith z analizy zabezpieczen — dane znamionowe aparatu,
+#: dokument normowy warunkow nie jest przypiety w kodzie.
+PODSTAWA_ZAPASOW_APARATU: PodstawaNormatywna = podstawa_niezweryfikowana(
+    "Zapas aparatu: najmniejszy z warunków I_k'' ≤ I_cu, i_p ≤ I_dyn, I_th ≤ I_th,dop "
+    "(dane znamionowe aparatu wobec wyników zwarciowych); dokument normowy warunków "
+    "nie jest przypięty w kodzie."
+)
 
 
 class SensitivityBuilder:
@@ -53,9 +69,6 @@ class SensitivityBuilder:
         if protection_curves_it is not None:
             entries.extend(_entries_from_protection_curves(protection_curves_it, self._delta_pct))
 
-        entries_sorted = tuple(sorted(entries, key=_entry_sort_key))
-        summary = _build_summary(entries_sorted)
-        top_drivers = _rank_drivers(entries_sorted, self._top_n)
         context = _resolve_context(
             proofs_list,
             normative_report,
@@ -63,6 +76,21 @@ class SensitivityBuilder:
             protection_insight,
             protection_curves_it,
         )
+        # Dowod (karta AB-1a-bis): jedno miejsce dla WSZYSTKICH zrodel wpisow.
+        entries = [
+            replace(
+                entry,
+                dowod=dowod_pozycji(
+                    run_id=context.run_id if context is not None else None,
+                    element_id=entry.target_id,
+                    trace_ref=context.trace_id if context is not None else None,
+                ),
+            )
+            for entry in entries
+        ]
+        entries_sorted = tuple(sorted(entries, key=_entry_sort_key))
+        summary = _build_summary(entries_sorted)
+        top_drivers = _rank_drivers(entries_sorted, self._top_n)
         analysis_id = compute_sensitivity_id(context, self._delta_pct, entries_sorted)
 
         return SensitivityView(
@@ -129,6 +157,7 @@ def _entries_from_normative(
                 status=item.status,
                 delta_pct=delta_pct,
                 safe_margin_fn=lambda limit, observed: limit - observed,
+                podstawa=item.podstawa,
             )
         )
     return entries
@@ -142,6 +171,7 @@ def _entries_from_voltage(
     thresholds = view.thresholds
     warn = float(thresholds.get("voltage_warn_pct", 0.0))
     fail = float(thresholds.get("voltage_fail_pct", 0.0))
+    podstawa = podstawa_progu_napiecia(fail)
     for row in view.rows:
         entries.append(
             _entry_from_voltage_row(
@@ -149,6 +179,7 @@ def _entries_from_voltage(
                 warn=warn,
                 fail=fail,
                 delta_pct=delta_pct,
+                podstawa=podstawa,
             )
         )
     return entries
@@ -188,6 +219,7 @@ def _entries_from_protection_curves(
             minus_margin=minus_margin,
             plus_margin=plus_margin,
             delta_pct=delta_pct,
+            podstawa=view.podstawa,
         )
     ]
 
@@ -204,6 +236,7 @@ def _entry_from_observed_limit(
     status: NormativeStatus,
     delta_pct: float,
     safe_margin_fn: Callable[[float, float], float],
+    podstawa: PodstawaNormatywna | None,
 ) -> SensitivityEntry:
     if status in (NormativeStatus.NOT_COMPUTED, NormativeStatus.NOT_EVALUATED):
         return _build_entry(
@@ -217,6 +250,7 @@ def _entry_from_observed_limit(
             minus_margin=None,
             plus_margin=None,
             delta_pct=delta_pct,
+            podstawa=podstawa,
         )
 
     if not isinstance(observed, int | float) or limit is None:
@@ -231,6 +265,7 @@ def _entry_from_observed_limit(
             minus_margin=None,
             plus_margin=None,
             delta_pct=delta_pct,
+            podstawa=podstawa,
         )
 
     observed_value = float(observed)
@@ -254,6 +289,7 @@ def _entry_from_observed_limit(
         minus_margin=minus_margin,
         plus_margin=plus_margin,
         delta_pct=delta_pct,
+        podstawa=podstawa,
     )
 
 
@@ -263,6 +299,7 @@ def _entry_from_voltage_row(
     warn: float,
     fail: float,
     delta_pct: float,
+    podstawa: PodstawaNormatywna,
 ) -> SensitivityEntry:
     if row.status == VoltageProfileStatus.NOT_COMPUTED or row.delta_pct is None:
         return _build_entry(
@@ -276,6 +313,7 @@ def _entry_from_voltage_row(
             minus_margin=None,
             plus_margin=None,
             delta_pct=delta_pct,
+            podstawa=podstawa,
         )
 
     abs_delta = abs(float(row.delta_pct))
@@ -300,6 +338,7 @@ def _entry_from_voltage_row(
         minus_margin=minus_margin,
         plus_margin=plus_margin,
         delta_pct=delta_pct,
+        podstawa=podstawa,
     )
 
 
@@ -344,6 +383,7 @@ def _entry_from_short_circuit(
         minus_margin=minus_margin,
         plus_margin=plus_margin,
         delta_pct=delta_pct,
+        podstawa=PODSTAWA_ZAPASOW_APARATU,
     )
 
 
@@ -388,6 +428,7 @@ def _entry_from_protection_settings(
         minus_margin=minus_margin,
         plus_margin=plus_margin,
         delta_pct=delta_pct,
+        podstawa=PODSTAWA_ZAPASOW_APARATU,
     )
 
 
@@ -429,6 +470,7 @@ def _build_entry(
     minus_margin: float | None,
     plus_margin: float | None,
     delta_pct: float,
+    podstawa: PodstawaNormatywna | None,
 ) -> SensitivityEntry:
     minus = _build_perturbation(-delta_pct, base_margin, minus_margin)
     plus = _build_perturbation(delta_pct, base_margin, plus_margin)
@@ -443,6 +485,7 @@ def _build_entry(
         base_decision=base_decision,
         minus=minus,
         plus=plus,
+        podstawa=podstawa,
     )
 
 

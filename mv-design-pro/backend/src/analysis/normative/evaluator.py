@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
+from dataclasses import replace
 
 from analysis.normative.models import (
     NormativeConfig,
@@ -14,6 +15,7 @@ from analysis.normative.models import (
 )
 from analysis.normative.rule_registry import RULES, NormativeRule
 from analysis.normative.serializer import sort_items
+from analysis.podstawa_normatywna import dowod_pozycji
 from application.proof_engine.types import ProofDocument, ProofValue
 
 
@@ -37,7 +39,19 @@ class NormativeEvaluator:
                 items.append(_missing_proof_item(rule))
                 continue
             for proof in _sorted_proofs(matching):
-                items.append(_evaluate_rule(rule, proof, config))
+                # Dowod (karta AB-1a-bis): jedno miejsce dla WSZYSTKICH regul —
+                # element = cel dowodu, slad = ProofDocument, z ktorego regula czyta.
+                pozycja = _evaluate_rule(rule, proof, config)
+                items.append(
+                    replace(
+                        pozycja,
+                        dowod=dowod_pozycji(
+                            run_id=context.run_id,
+                            element_id=pozycja.target_id,
+                            trace_ref=str(proof.document_id),
+                        ),
+                    )
+                )
 
         sorted_items = tuple(sort_items(items))
         report_id = compute_report_id(

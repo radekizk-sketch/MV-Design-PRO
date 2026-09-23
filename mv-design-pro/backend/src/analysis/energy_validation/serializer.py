@@ -33,6 +33,12 @@ def item_to_dict(item: EnergyValidationItem) -> dict[str, Any]:
         "status": item.status.value,
         "why_pl": item.why_pl,
         "white_box": list(item.white_box),
+        # Towarzysze werdyktu (karta AB-1a-bis) — addytywnie, na koncu pozycji.
+        "wartosc": (float(item.wartosc) if item.wartosc is not None else None),
+        "odniesienie": (float(item.odniesienie) if item.odniesienie is not None else None),
+        "margines": (float(item.margines) if item.margines is not None else None),
+        "podstawa": item.podstawa.to_dict(),
+        "dowod": dict(item.dowod) if item.dowod is not None else None,
     }
 
 

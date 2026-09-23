@@ -46,4 +46,10 @@ def item_to_dict(item: NormativeItem) -> dict[str, object]:
         "margin": item.margin,
         "why_pl": item.why_pl,
         "requires": list(item.requires),
+        # Towarzysze werdyktu (karta AB-1a-bis) — addytywnie, na koncu pozycji.
+        "wartosc": item.wartosc,
+        "odniesienie": item.odniesienie,
+        "margines": item.margines,
+        "podstawa": item.podstawa.to_dict() if item.podstawa is not None else None,
+        "dowod": dict(item.dowod) if item.dowod is not None else None,
     }

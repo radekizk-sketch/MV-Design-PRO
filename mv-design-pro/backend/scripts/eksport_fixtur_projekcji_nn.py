@@ -110,6 +110,11 @@ def normalizuj_projekcje(projekcja: dict[str, Any], slug: str) -> dict[str, Any]
                 wiersz["run_id"] = f"przebieg-{slug}"
             if wiersz.get("run_timestamp"):
                 wiersz["run_timestamp"] = ZNACZNIK_CZASU_FIXTURY
+            # Karta AB-1a-bis: odwolanie do dowodu wiersza niesie ten sam
+            # identyfikator przebiegu — ta sama podmiana.
+            dowod = wiersz.get("dowod")
+            if isinstance(dowod, dict) and dowod.get("run_id"):
+                dowod["run_id"] = f"przebieg-{slug}"
     wynik.pop("projection_hash", None)
     wynik["projection_hash"] = _canonical_hash(wynik)
     return wynik

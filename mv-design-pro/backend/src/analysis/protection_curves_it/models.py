@@ -1,11 +1,21 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
 from analysis.normative.models import NormativeStatus
+from analysis.podstawa_normatywna import PodstawaNormatywna, podstawa_niezweryfikowana
+
+#: Podstawa statusu krzywych I–t (karta AB-1a-bis): status jest AGREGATEM regul
+#: P18 raportu normatywnego (wylaczalnosc, warunek dynamiczny, cieplny,
+#: selektywnosc) — ich podstawy niesie kazda pozycja raportu; tu nazwa agregatu.
+PODSTAWA_KRZYWYCH_IT: PodstawaNormatywna = podstawa_niezweryfikowana(
+    "Agregat reguł raportu normatywnego dla pary zabezpieczeń (wyłączalność, warunek "
+    "dynamiczny, warunek cieplny, selektywność); podstawa każdej reguły w jej pozycji "
+    "raportu — dokument normowy nie jest przypięty w kodzie."
+)
 
 
 class ITCurveRole(StrEnum):
@@ -91,6 +101,27 @@ class ProtectionCurvesITView:
     margins_pct: dict[str, float]
     why_pl: str
     missing_data: tuple[str, ...]
+    # --- Towarzysze werdyktu (karta AB-1a-bis) --------------------------------
+    #: Werdykt jest ZLICZENIOWY (agregat regul): `wartosc` = liczba regul P18
+    #: pary spelnionych (PASS), `odniesienie` = liczba regul ocenianych dla pary;
+    #: ``None`` = brak raportu albo brak regul pary (status NOT_EVALUATED).
+    wartosc: int | None = None
+    odniesienie: int | None = None
+    #: Odwolanie do dowodu `{run_id, element_id, trace_ref}` (element = aparat
+    #: glowny, slad = artefakt dowodowy kontekstu).
+    dowod: dict[str, str | None] | None = None
+    #: Zapas [%] = NAJMNIEJSZY z marginesow `margins_pct` (dodatni = w granicy —
+    #: konwencja dostawcy wglebnego `protection_insight`); ``None`` bez marginesow.
+    margines: float | None = field(init=False)
+    podstawa: PodstawaNormatywna = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "margines",
+            min(self.margins_pct.values()) if self.margins_pct else None,
+        )
+        object.__setattr__(self, "podstawa", PODSTAWA_KRZYWYCH_IT)
 
     def to_dict(self) -> dict[str, Any]:
         from analysis.protection_curves_it.serializer import view_to_dict

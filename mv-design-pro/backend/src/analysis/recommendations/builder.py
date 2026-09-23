@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any
 
 from analysis.koperta_kontekstu import pola_koperty
-from analysis.normative.models import NormativeReport, NormativeStatus
+from analysis.normative.models import NormativeItem, NormativeReport, NormativeStatus
 from analysis.protection_curves_it.models import ProtectionCurvesITView
 from analysis.protection_insight.models import ProtectionInsightView
 from analysis.recommendations.models import (
@@ -141,6 +142,7 @@ def _entries_from_sensitivity(view: SensitivityView) -> list[RecommendationEntry
                     delta_unit="%",
                     expected_effect=RecommendationEffect.NOT_COMPUTED,
                     confidence_note="NOT COMPUTED: brak danych wejściowych P25.",
+                    **_towarzysze_wpisu(entry),
                 )
             )
             continue
@@ -165,9 +167,32 @@ def _entries_from_sensitivity(view: SensitivityView) -> list[RecommendationEntry
                 delta_unit="%",
                 expected_effect=expected,
                 confidence_note=note,
+                **_towarzysze_wpisu(entry),
             )
         )
     return entries
+
+
+def _towarzysze_wpisu(entry: SensitivityEntry) -> dict[str, Any]:
+    """Towarzysze kryterium zrodlowego z wpisu wrazliwosci (przepisane 1:1)."""
+    return {
+        "wartosc": entry.wartosc,
+        "odniesienie": entry.odniesienie,
+        "margines": entry.margines,
+        "podstawa": entry.podstawa,
+        "dowod": entry.dowod,
+    }
+
+
+def _towarzysze_pozycji(item: NormativeItem) -> dict[str, Any]:
+    """Towarzysze kryterium zrodlowego z pozycji raportu normatywnego (1:1)."""
+    return {
+        "wartosc": item.wartosc,
+        "odniesienie": item.odniesienie,
+        "margines": item.margines,
+        "podstawa": item.podstawa,
+        "dowod": item.dowod,
+    }
 
 
 def _entries_from_normative(report: NormativeReport) -> list[RecommendationEntry]:
@@ -194,6 +219,7 @@ def _entries_from_normative(report: NormativeReport) -> list[RecommendationEntry
                 delta_unit="%",
                 expected_effect=expected,
                 confidence_note=note,
+                **_towarzysze_pozycji(item),
             )
         )
     return entries

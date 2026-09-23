@@ -64,9 +64,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
+from analysis.podstawa_normatywna import PodstawaNormatywna, dowod_pozycji
 from application.analyses.prad_zwarciowy_galezi import (
     prad_zwarciowy_galezi as _branch_fault_current_a,
 )
@@ -97,8 +98,55 @@ from network_model.solvers.conductor_thermal_withstand import (
 from network_model.solvers.short_circuit_contributions import ShortCircuitBranchContribution
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
+from solver_input.provenance import StatusZrodla
 
 logger = logging.getLogger(__name__)
+
+#: Podstawa werdyktu cieplnego (karta AB-1a-bis) — z JEDNEGO zrodla: pierwszy
+#: wpis ``STANDARD_REFS`` solvera kryterium (dokument i punkt warunku
+#: adiabatycznego sa w kodzie), pozostale wpisy w uwadze. Wydanie dokumentow NIE
+#: jest przypiete w kodzie z cytowanym zrodlem -> ``UNVERIFIED_SOURCE``.
+PODSTAWA_KRYTERIUM_CIEPLNEGO: PodstawaNormatywna = PodstawaNormatywna(
+    dokument=STANDARD_REFS[0]["norma"],
+    wersja=None,
+    klauzula=STANDARD_REFS[0]["punkt"],
+    zrodlo_status=StatusZrodla.UNVERIFIED_SOURCE,
+    uwaga_pl=(
+        STANDARD_REFS[0]["tresc_pl"]
+        + " Pozostałe podstawy: "
+        + "; ".join(f"{ref['norma']} {ref['punkt']}" for ref in STANDARD_REFS[1:])
+        + ". Wydanie dokumentów nie jest przypięte w kodzie."
+    ),
+)
+
+#: Kierunek nierownosci kryterium czastkowego solvera (kod -> kierunek) — zapas
+#: liczony z TEJ samej nierownosci, ktora rozstrzyga status (predykat parami).
+_KRYTERIUM_GORNE = frozenset({"prad_dopuszczalny", "energia_cieplna"})
+_KRYTERIUM_DOLNE = frozenset({"przekroj_minimalny"})
+
+
+def _zapas_kryterium(kryterium: Mapping[str, Any]) -> float | None:
+    """Zapas kryterium czastkowego w jego jednostce, dodatni = spelnione.
+
+    ``None``, gdy brak wartosci albo granicy (kryterium niesprawdzalne) albo kod
+    spoza znanej listy — nigdy liczba zastepcza.
+    """
+    wartosc = kryterium.get("wartosc")
+    granica = kryterium.get("granica")
+    if not isinstance(wartosc, int | float) or not isinstance(granica, int | float):
+        return None
+    kod = kryterium.get("kod")
+    if kod in _KRYTERIUM_GORNE:
+        return round(float(granica) - float(wartosc), 6)
+    if kod in _KRYTERIUM_DOLNE:
+        return round(float(wartosc) - float(granica), 6)
+    return None
+
+
+def _kryterium_z_zapasem(kryterium: Mapping[str, Any]) -> dict[str, Any]:
+    """Kryterium czastkowe solvera + zapas (karta AB-1a-bis). Wymaganie = `granica`,
+    podstawa i dowod — w pozycji galezi, ktora kryterium zawiera."""
+    return {**kryterium, "margines": _zapas_kryterium(kryterium)}
 
 
 @dataclass(frozen=True)
@@ -139,6 +187,23 @@ class ConductorThermalWithstandItem:
     wrazliwosc: tuple[dict[str, Any], ...] = ()
     # Uzasadnienie wspolczynnika k (material, izolacja, temperatury, zrodlo).
     uzasadnienie_k: dict[str, Any] | None = None
+    #: Odwolanie do dowodu `{run_id, element_id, trace_ref}` (karta AB-1a-bis):
+    #: bieg zwarciowy i galaz; pelne kroki — trasa dowodu cieplnego tej galezi.
+    dowod: dict[str, str | None] | None = None
+    # --- Towarzysze werdyktu (karta AB-1a-bis) — WYPROWADZANE, jedno zrodlo ----
+    #: Ta sama para, ktora pokazuje ekran oceny (`werdykt_projektowy`): energia
+    #: cieplna I²t [A²·s] wobec k²S² [A²·s]; zapas = `margines_procent` [%]
+    #: (dopelnienie wykorzystania, dodatni = w granicy). ``None`` bez rachunku.
+    wartosc: float | None = field(init=False)
+    odniesienie: float | None = field(init=False)
+    margines: float | None = field(init=False)
+    podstawa: PodstawaNormatywna = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "wartosc", self.i2t_a2s)
+        object.__setattr__(self, "odniesienie", self.i2t_dopuszczalne_a2s)
+        object.__setattr__(self, "margines", self.margines_procent)
+        object.__setattr__(self, "podstawa", PODSTAWA_KRYTERIUM_CIEPLNEGO)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -156,11 +221,18 @@ class ConductorThermalWithstandItem:
             "i2t_a2s": self.i2t_a2s,
             "i2t_dopuszczalne_a2s": self.i2t_dopuszczalne_a2s,
             "margines_procent": self.margines_procent,
-            "kryteria": [dict(k) for k in self.kryteria],
+            "kryteria": [_kryterium_z_zapasem(k) for k in self.kryteria],
             "powod_decyzji_pl": self.powod_decyzji_pl,
             "zalecenia": [dict(z) for z in self.zalecenia],
             "wrazliwosc": [dict(w) for w in self.wrazliwosc],
             "uzasadnienie_k": self.uzasadnienie_k,
+            # Towarzysze werdyktu (karta AB-1a-bis) — addytywnie, na koncu pozycji.
+            "wartosc": self.wartosc,
+            "odniesienie": self.odniesienie,
+            "margines": self.margines,
+            "margines_jednostka": "%" if self.margines is not None else None,
+            "podstawa": self.podstawa.to_dict(),
+            "dowod": dict(self.dowod) if self.dowod is not None else None,
         }
 
 
@@ -253,6 +325,7 @@ def build_conductor_thermal_withstand_view(
     catalog: CatalogRepository | None,
     tk_s_by_branch: Mapping[str, float | None] | None = None,
     slad_czasu_by_branch: Mapping[str, Mapping[str, Any]] | None = None,
+    run_id: str | None = None,
 ) -> ConductorThermalWithstandView:
     """Zbuduj widok wytrzymalosci cieplnej przewodow (linie/kable) dla calego modelu.
 
@@ -330,6 +403,7 @@ def build_conductor_thermal_withstand_view(
                         "kryterium cieplne spełnione trywialnie."
                     ),
                     czas_wylaczenia=slad_czasu,
+                    dowod=dowod_pozycji(run_id=run_id, element_id=branch_id, trace_ref=None),
                 )
             )
             continue
@@ -366,6 +440,7 @@ def build_conductor_thermal_withstand_view(
                 zalecenia=result.recommendations,
                 wrazliwosc=result.sensitivity,
                 uzasadnienie_k=result.k_justification,
+                dowod=dowod_pozycji(run_id=run_id, element_id=branch_id, trace_ref=None),
             )
         )
 
@@ -578,6 +653,7 @@ def _ocena_dla_przebiegu(
         None,
         tk_s_by_branch=mapa_tk_s_z_nastaw(czasy),
         slad_czasu_by_branch=slad,
+        run_id=str(run.id),
     )
     return sc_result, widok, slad
 
@@ -677,6 +753,13 @@ def zbuduj_dowod_cieplny(
         "branch_name": pozycja.branch_name,
         "status": pozycja.status,
         "kroki": kroki,
+        # Towarzysze werdyktu (karta AB-1a-bis): te same, co pozycja galezi w
+        # widoku oceny (jedno zrodlo — obiekt pozycji), dowodem sa `kroki`.
+        "wartosc": pozycja.wartosc,
+        "odniesienie": pozycja.odniesienie,
+        "margines": pozycja.margines,
+        "margines_jednostka": "%" if pozycja.margines is not None else None,
+        "podstawa": pozycja.podstawa.to_dict(),
     }
 
 

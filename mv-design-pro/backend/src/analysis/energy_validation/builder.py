@@ -8,6 +8,7 @@ This is ANALYSIS, not SOLVER - no physics calculations, only interpretation.
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 
 from analysis.energy_validation.models import (
     EnergyCheckType,
@@ -19,6 +20,7 @@ from analysis.energy_validation.models import (
     EnergyValidationView,
 )
 from analysis.energy_validation.serializer import STATUS_ORDER
+from analysis.podstawa_normatywna import dowod_pozycji
 from analysis.power_flow.result import PowerFlowResult
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
@@ -77,6 +79,20 @@ class EnergyValidationBuilder:
         items.extend(self._check_loss_budget(power_flow_result, graph, config))
         items.extend(self._check_reactive_balance(power_flow_result, graph))
 
+        # Dowod (karta AB-1a-bis): bieg z kontekstu, element = cel kontroli, slad =
+        # wlasny `white_box` pozycji. Jedno miejsce dla WSZYSTKICH kontroli.
+        run_id = self._context.run_id if self._context is not None else None
+        items = [
+            replace(
+                item,
+                dowod=dowod_pozycji(
+                    run_id=run_id,
+                    element_id=item.target_id,
+                    trace_ref="white_box" if item.white_box else None,
+                ),
+            )
+            for item in items
+        ]
         items_sorted = sorted(items, key=_item_sort_key)
         summary = _build_summary(items_sorted)
 

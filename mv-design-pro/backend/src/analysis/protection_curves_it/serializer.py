@@ -58,4 +58,10 @@ def view_to_dict(view: ProtectionCurvesITView) -> dict[str, Any]:
         "margins_pct": {key: float(value) for key, value in sorted(view.margins_pct.items())},
         "why_pl": view.why_pl,
         "missing_data": list(view.missing_data),
+        # Towarzysze werdyktu (karta AB-1a-bis) — addytywnie, na koncu widoku.
+        "wartosc": view.wartosc,
+        "odniesienie": view.odniesienie,
+        "margines": float(view.margines) if view.margines is not None else None,
+        "podstawa": view.podstawa.to_dict(),
+        "dowod": dict(view.dowod) if view.dowod is not None else None,
     }

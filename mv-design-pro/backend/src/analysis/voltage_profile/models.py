@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
+
+from analysis.normative.kryteria_napiecia import podstawa_progu_napiecia
+from analysis.podstawa_normatywna import PodstawaNormatywna
 
 
 class VoltageProfileStatus(StrEnum):
@@ -26,6 +29,33 @@ class VoltageProfileRow:
     q_mvar: float | None
     case_name: str | None
     run_timestamp: datetime | None
+    #: Granice werdyktu wiersza [%] (karta AB-1a-bis): prog przekroczenia (FAIL)
+    #: i ostrzezenia (WARNING) — te same liczby, ktorymi builder wyznaczyl
+    #: `status` (konfiguracja normatywna). ``None`` = wiersz zbudowany bez progow.
+    odniesienie: float | None = None
+    odniesienie_ostrzegawcze: float | None = None
+    #: Odwolanie do dowodu (jeden ksztalt `{run_id, element_id, trace_ref}`).
+    dowod: dict[str, str | None] | None = None
+    # --- Towarzysze wyprowadzane (jedno zrodlo liczby) ------------------------
+    #: Wielkosc oceniana: |ΔU| [%] (status porownuje modul odchylenia).
+    wartosc: float | None = field(init=False)
+    #: Zapas do granicy przekroczenia [pkt proc.], dodatni = w granicy.
+    margines: float | None = field(init=False)
+    podstawa: PodstawaNormatywna = field(init=False)
+
+    def __post_init__(self) -> None:
+        wartosc = abs(self.delta_pct) if self.delta_pct is not None else None
+        object.__setattr__(self, "wartosc", wartosc)
+        object.__setattr__(
+            self,
+            "margines",
+            (
+                self.odniesienie - wartosc
+                if wartosc is not None and self.odniesienie is not None
+                else None
+            ),
+        )
+        object.__setattr__(self, "podstawa", podstawa_progu_napiecia(self.odniesienie))
 
 
 @dataclass(frozen=True)

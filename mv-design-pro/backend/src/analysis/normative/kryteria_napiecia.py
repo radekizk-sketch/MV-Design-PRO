@@ -51,6 +51,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from analysis.podstawa_normatywna import PodstawaNormatywna, podstawa_niezweryfikowana
+
 #: Cytat normy PN-EN 50160 (jedno miejsce zrodlowe tresci normy w tym module —
 #: cytowane przez DWA rozne kryteria o tej samej liczbie 10 %, patrz docstring
 #: modulu).
@@ -157,4 +159,31 @@ def zbuduj_kryteria_napiecia() -> KryteriaNapieciowe:
         podstawa_ostrzezenie_pl=KRYTERIUM_OSTRZEZENIE_PODSTAWA_PL,
         podstawa_przekroczenie_pl=KRYTERIUM_PRZEKROCZENIE_PODSTAWA_PL,
         pasmo_wiarygodnosci_pct=PASMO_WIARYGODNOSCI_PROCENT,
+    )
+
+
+def podstawa_progu_napiecia(prog_przekroczenia_pct: float | None) -> PodstawaNormatywna:
+    """Podstawa werdyktu odchylenia napiecia — JEDNO zrodlo dla walidacji
+    energetycznej, profilu napiec i ich konsumentow (karta AB-1a-bis).
+
+    Prog przekroczenia rowny ``KRYTERIUM_PRZEKROCZENIE_PROCENT`` = PN-EN 50160
+    (dokument nazwany w kodzie); wydanie i punkt normy NIE sa przypiete w kodzie
+    z cytowanym zrodlem, wiec ``UNVERIFIED_SOURCE``. Inny prog (konfiguracja
+    uzytkownika) nie ma dokumentu — mowi to ``uwaga_pl``, liczba zostaje.
+    """
+    if prog_przekroczenia_pct == KRYTERIUM_PRZEKROCZENIE_PROCENT:
+        return podstawa_niezweryfikowana(
+            KRYTERIUM_PRZEKROCZENIE_PODSTAWA_PL
+            + " Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: "
+            + KRYTERIUM_OSTRZEZENIE_PODSTAWA_PL,
+            dokument="PN-EN 50160",
+        )
+    if prog_przekroczenia_pct is None:
+        return podstawa_niezweryfikowana(
+            "Próg odchylenia napięcia nie został podany przy budowie pozycji — brak "
+            "granicy i dokumentu podstawy."
+        )
+    return podstawa_niezweryfikowana(
+        "Próg odchylenia napięcia nadany w konfiguracji analizy (inny niż kryterium "
+        "PN-EN 50160 ± 10 % Un) — bez wskazanego dokumentu normowego."
     )

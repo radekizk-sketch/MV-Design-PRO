@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from analysis.normative.models import NormativeReport, NormativeStatus
+from analysis.normative.models import NormativeItem, NormativeReport, NormativeStatus
+from analysis.podstawa_normatywna import dowod_pozycji
 from analysis.protection_curves_it.models import (
     ITCurveSeries,
     ITMarker,
@@ -60,7 +61,7 @@ class ProtectionCurvesITBuilder:
 
         margins_pct = _margins_from_insight(primary_item, missing_data)
 
-        normative_status = _resolve_normative_status(
+        normative_status, relevant = _resolve_normative_status(
             normative_report_p20,
             primary_device_id,
             backup_device_id,
@@ -91,6 +92,17 @@ class ProtectionCurvesITBuilder:
             margins_pct=margins_pct,
             why_pl=why_pl,
             missing_data=tuple(missing_data),
+            wartosc=(
+                sum(1 for item in relevant if item.status == NormativeStatus.PASS)
+                if relevant
+                else None
+            ),
+            odniesienie=len(relevant) if relevant else None,
+            dowod=dowod_pozycji(
+                run_id=context.run_id if context is not None else None,
+                element_id=primary_device_id,
+                trace_ref=context.trace_id if context is not None else None,
+            ),
         )
 
 
@@ -178,10 +190,12 @@ def _resolve_normative_status(
     primary_device_id: str,
     backup_device_id: str | None,
     missing_data: list[str],
-) -> NormativeStatus:
+) -> tuple[NormativeStatus, list[NormativeItem]]:
+    """Status agregatu i pozycje raportu, z ktorych powstal (jedno zrodlo dla
+    statusu i jego towarzyszy zliczeniowych — predykat parami)."""
     if report is None:
         missing_data.append("normative_report")
-        return NormativeStatus.NOT_EVALUATED
+        return NormativeStatus.NOT_EVALUATED, []
 
     target_ids = {primary_device_id}
     if backup_device_id:
@@ -194,19 +208,19 @@ def _resolve_normative_status(
     ]
     if not relevant:
         missing_data.append("normative_rules")
-        return NormativeStatus.NOT_EVALUATED
+        return NormativeStatus.NOT_EVALUATED, []
 
     statuses = [item.status for item in relevant]
     if any(status == NormativeStatus.FAIL for status in statuses):
-        return NormativeStatus.FAIL
+        return NormativeStatus.FAIL, relevant
     if any(status == NormativeStatus.WARNING for status in statuses):
-        return NormativeStatus.WARNING
+        return NormativeStatus.WARNING, relevant
     if any(
         status in (NormativeStatus.NOT_EVALUATED, NormativeStatus.NOT_COMPUTED)
         for status in statuses
     ):
-        return NormativeStatus.NOT_EVALUATED
-    return NormativeStatus.PASS
+        return NormativeStatus.NOT_EVALUATED, relevant
+    return NormativeStatus.PASS, relevant
 
 
 def _build_why(

@@ -966,7 +966,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "1440ed156349a443dd6e51fc3ed251318f9d21bc973cd44d74380ce8552e1dd1",
+  "projection_hash": "8b925d5214ae5dd77b74f40dde121b3279374a958de19b267cb354680923439a",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {
@@ -1717,140 +1717,300 @@
           "bus_name": "PV1 · punkt przyłączenia",
           "case_name": null,
           "delta_pct": 1.34919794,
+          "dowod": {
+            "element_id": "QF-03_pcc",
+            "run_id": "przebieg-16_stale_result",
+            "trace_ref": null
+          },
+          "margines": 8.65080206,
+          "odniesienie": 10.0,
+          "odniesienie_ostrzegawcze": 5.0,
           "p_mw": null,
+          "podstawa": {
+            "dokument": "PN-EN 50160",
+            "klauzula": null,
+            "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wersja": null,
+            "zrodlo_status": "UNVERIFIED_SOURCE"
+          },
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "bbe4a646-d98e-51e4-a3d7-93b69de70588",
           "status": "PASS",
           "u_kv": 0.405396792,
           "u_nom_kv": 0.4,
-          "u_pu": 1.01349198
+          "u_pu": 1.01349198,
+          "wartosc": 1.34919794
         },
         {
           "bus_id": "FU-21_koniec",
           "bus_name": "Zacisk Odbiór RGN-2",
           "case_name": null,
           "delta_pct": -0.422402167,
+          "dowod": {
+            "element_id": "FU-21_koniec",
+            "run_id": "przebieg-16_stale_result",
+            "trace_ref": null
+          },
+          "margines": 9.57759783,
+          "odniesienie": 10.0,
+          "odniesienie_ostrzegawcze": 5.0,
           "p_mw": null,
+          "podstawa": {
+            "dokument": "PN-EN 50160",
+            "klauzula": null,
+            "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wersja": null,
+            "zrodlo_status": "UNVERIFIED_SOURCE"
+          },
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "1269ff2f-7988-5fe7-942f-fa287f72d3ad",
           "status": "PASS",
           "u_kv": 0.398310391,
           "u_nom_kv": 0.4,
-          "u_pu": 0.995775978
+          "u_pu": 0.995775978,
+          "wartosc": 0.422402167
         },
         {
           "bus_id": "QF-01_koniec",
           "bus_name": "Zacisk Odbiór 1",
           "case_name": null,
           "delta_pct": -0.379196995,
+          "dowod": {
+            "element_id": "QF-01_koniec",
+            "run_id": "przebieg-16_stale_result",
+            "trace_ref": null
+          },
+          "margines": 9.62080301,
+          "odniesienie": 10.0,
+          "odniesienie_ostrzegawcze": 5.0,
           "p_mw": null,
+          "podstawa": {
+            "dokument": "PN-EN 50160",
+            "klauzula": null,
+            "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wersja": null,
+            "zrodlo_status": "UNVERIFIED_SOURCE"
+          },
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "ed38533a-00d5-5316-b004-e20ff7023da9",
           "status": "PASS",
           "u_kv": 0.398483212,
           "u_nom_kv": 0.4,
-          "u_pu": 0.99620803
+          "u_pu": 0.99620803,
+          "wartosc": 0.379196995
         },
         {
           "bus_id": "QF-03_zacisk",
           "bus_name": "QF-03 zacisk wyjściowy",
           "case_name": null,
           "delta_pct": 0.0843853642,
+          "dowod": {
+            "element_id": "QF-03_zacisk",
+            "run_id": "przebieg-16_stale_result",
+            "trace_ref": null
+          },
+          "margines": 9.91561464,
+          "odniesienie": 10.0,
+          "odniesienie_ostrzegawcze": 5.0,
           "p_mw": null,
+          "podstawa": {
+            "dokument": "PN-EN 50160",
+            "klauzula": null,
+            "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wersja": null,
+            "zrodlo_status": "UNVERIFIED_SOURCE"
+          },
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "3747b718-1225-5ddf-97b3-144f9ec46ea6",
           "status": "PASS",
           "u_kv": 0.400337541,
           "u_nom_kv": 0.4,
-          "u_pu": 1.00084385
+          "u_pu": 1.00084385,
+          "wartosc": 0.0843853642
         },
         {
           "bus_id": "RGnN-1",
           "bus_name": "RGnN-1",
           "case_name": null,
           "delta_pct": 0.0794598206,
+          "dowod": {
+            "element_id": "RGnN-1",
+            "run_id": "przebieg-16_stale_result",
+            "trace_ref": null
+          },
+          "margines": 9.92054018,
+          "odniesienie": 10.0,
+          "odniesienie_ostrzegawcze": 5.0,
           "p_mw": null,
+          "podstawa": {
+            "dokument": "PN-EN 50160",
+            "klauzula": null,
+            "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wersja": null,
+            "zrodlo_status": "UNVERIFIED_SOURCE"
+          },
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "c8cbea4b-8412-51a7-be92-56b1b8184ef2",
           "status": "PASS",
           "u_kv": 0.400317839,
           "u_nom_kv": 0.4,
-          "u_pu": 1.0007946
+          "u_pu": 1.0007946,
+          "wartosc": 0.0794598206
         },
         {
           "bus_id": "QF-02_zacisk",
           "bus_name": "QF-02 zacisk wyjściowy",
           "case_name": null,
           "delta_pct": 0.0790080895,
+          "dowod": {
+            "element_id": "QF-02_zacisk",
+            "run_id": "przebieg-16_stale_result",
+            "trace_ref": null
+          },
+          "margines": 9.92099191,
+          "odniesienie": 10.0,
+          "odniesienie_ostrzegawcze": 5.0,
           "p_mw": null,
+          "podstawa": {
+            "dokument": "PN-EN 50160",
+            "klauzula": null,
+            "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wersja": null,
+            "zrodlo_status": "UNVERIFIED_SOURCE"
+          },
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "529fa4ef-5aac-5377-a0d8-c0449633b6ce",
           "status": "PASS",
           "u_kv": 0.400316032,
           "u_nom_kv": 0.4,
-          "u_pu": 1.00079008
+          "u_pu": 1.00079008,
+          "wartosc": 0.0790080895
         },
         {
           "bus_id": "QF-01_zacisk",
           "bus_name": "QF-01 zacisk wyjściowy",
           "case_name": null,
           "delta_pct": 0.0785567558,
+          "dowod": {
+            "element_id": "QF-01_zacisk",
+            "run_id": "przebieg-16_stale_result",
+            "trace_ref": null
+          },
+          "margines": 9.92144324,
+          "odniesienie": 10.0,
+          "odniesienie_ostrzegawcze": 5.0,
           "p_mw": null,
+          "podstawa": {
+            "dokument": "PN-EN 50160",
+            "klauzula": null,
+            "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wersja": null,
+            "zrodlo_status": "UNVERIFIED_SOURCE"
+          },
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "95a12785-5406-5c81-8168-0b598ee26787",
           "status": "PASS",
           "u_kv": 0.400314227,
           "u_nom_kv": 0.4,
-          "u_pu": 1.00078557
+          "u_pu": 1.00078557,
+          "wartosc": 0.0785567558
         },
         {
           "bus_id": "T1_zacisk",
           "bus_name": "T1 zacisk nN",
           "case_name": null,
           "delta_pct": 0.0758892785,
+          "dowod": {
+            "element_id": "T1_zacisk",
+            "run_id": "przebieg-16_stale_result",
+            "trace_ref": null
+          },
+          "margines": 9.92411072,
+          "odniesienie": 10.0,
+          "odniesienie_ostrzegawcze": 5.0,
           "p_mw": null,
+          "podstawa": {
+            "dokument": "PN-EN 50160",
+            "klauzula": null,
+            "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wersja": null,
+            "zrodlo_status": "UNVERIFIED_SOURCE"
+          },
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "52d24f01-220e-51b6-8ea6-df847f5ce215",
           "status": "PASS",
           "u_kv": 0.400303557,
           "u_nom_kv": 0.4,
-          "u_pu": 1.00075889
+          "u_pu": 1.00075889,
+          "wartosc": 0.0758892785
         },
         {
           "bus_id": "FU-21_zacisk",
           "bus_name": "FU-21 zacisk wyjściowy",
           "case_name": null,
           "delta_pct": -0.0597292059,
+          "dowod": {
+            "element_id": "FU-21_zacisk",
+            "run_id": "przebieg-16_stale_result",
+            "trace_ref": null
+          },
+          "margines": 9.94027079,
+          "odniesienie": 10.0,
+          "odniesienie_ostrzegawcze": 5.0,
           "p_mw": null,
+          "podstawa": {
+            "dokument": "PN-EN 50160",
+            "klauzula": null,
+            "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wersja": null,
+            "zrodlo_status": "UNVERIFIED_SOURCE"
+          },
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "ccfbea28-0407-5498-a677-b880efc15f82",
           "status": "PASS",
           "u_kv": 0.399761083,
           "u_nom_kv": 0.4,
-          "u_pu": 0.999402708
+          "u_pu": 0.999402708,
+          "wartosc": 0.0597292059
         },
         {
           "bus_id": "RGN-2_szyna",
           "bus_name": "RGN-2",
           "case_name": null,
           "delta_pct": -0.0592774682,
+          "dowod": {
+            "element_id": "RGN-2_szyna",
+            "run_id": "przebieg-16_stale_result",
+            "trace_ref": null
+          },
+          "margines": 9.94072253,
+          "odniesienie": 10.0,
+          "odniesienie_ostrzegawcze": 5.0,
           "p_mw": null,
+          "podstawa": {
+            "dokument": "PN-EN 50160",
+            "klauzula": null,
+            "uwaga_pl": "PN-EN 50160 (Parametry napięcia zasilającego w publicznych sieciach elektroenergetycznych) — zmiany napięcia zasilającego w warunkach normalnej pracy: Un ± 10 %. Wydanie i punkt normy nie są przypięte w kodzie; ostrzeżenie: Praktyka projektowa sieci SN / IRiESD: zapas na spadek napięcia w sieci nN, aby napięcie na zaciskach odbiorcy końcowego mieściło się w paśmie PN-EN 50160 ± 10 % Un. To NIE jest zapis PN-EN 50160 wprost — jest to kryterium projektowe planowania sieci SN, nazwane osobno od normy.",
+            "wersja": null,
+            "zrodlo_status": "UNVERIFIED_SOURCE"
+          },
           "q_mvar": null,
           "run_timestamp": "2026-09-02T00:00:00+00:00",
           "solver_bus_id": "343a61e5-480a-54f3-82d2-86076aa1ba80",
           "status": "PASS",
           "u_kv": 0.39976289,
           "u_nom_kv": 0.4,
-          "u_pu": 0.999407225
+          "u_pu": 0.999407225,
+          "wartosc": 0.0592774682
         }
       ],
       "summary": {

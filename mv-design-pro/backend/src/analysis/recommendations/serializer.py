@@ -30,6 +30,12 @@ def entry_to_dict(entry: RecommendationEntry) -> dict[str, Any]:
         "delta_unit": entry.delta_unit,
         "expected_effect": entry.expected_effect.value,
         "confidence_note": entry.confidence_note,
+        # Towarzysze werdyktu (karta AB-1a-bis) — addytywnie, na koncu wpisu.
+        "wartosc": entry.wartosc,
+        "odniesienie": entry.odniesienie,
+        "margines": entry.margines,
+        "podstawa": entry.podstawa.to_dict() if entry.podstawa is not None else None,
+        "dowod": dict(entry.dowod) if entry.dowod is not None else None,
     }
 
 

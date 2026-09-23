@@ -14,7 +14,7 @@ Uses existing PowerFlowResult data only.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
@@ -22,7 +22,9 @@ from typing import Any
 from analysis.normative.kryteria_napiecia import (
     KRYTERIUM_OSTRZEZENIE_PROCENT,
     KRYTERIUM_PRZEKROCZENIE_PROCENT,
+    podstawa_progu_napiecia,
 )
+from analysis.podstawa_normatywna import PodstawaNormatywna, podstawa_niezweryfikowana
 
 
 class EnergyCheckType(StrEnum):
@@ -58,6 +60,62 @@ class EnergyValidationItem:
     # `tekst` zawsze (raporty/eksport ASCII). Addytywnie, domyslnie pusty
     # (pozycje NOT_COMPUTED bez wywodu - powod niesie why_pl).
     white_box: tuple[dict, ...] = ()
+    #: Odwolanie do dowodu (karta AB-1a D2 — JEDEN ksztalt `{run_id, element_id,
+    #: trace_ref}`); wypelnia builder z kontekstu biegu (`trace_ref = "white_box"`,
+    #: gdy pozycja niesie wlasny slad). ``None`` = pozycja zbudowana bez buildera.
+    dowod: dict[str, str | None] | None = None
+    # --- Towarzysze werdyktu (karta AB-1a-bis, guard werdyktu §3.3) -----------
+    # WYPROWADZANE w `__post_init__` z pol dostawcy powyzej — jedno zrodlo liczby
+    # (zero drugiej prawdy): `wartosc` = `observed_value`, `odniesienie` =
+    # `limit_fail` (granica werdyktu FAIL), `margines` = zapas do granicy w
+    # konwencji wyniku wyjasnialnego (`OcenaElementu`: dodatni = w granicy), czyli
+    # `-margin_pct` (dostawca liczy `wartosc - prog`); `None`, gdy dostawca zapasu
+    # nie policzyl (NOT_COMPUTED, bilans Q). `podstawa` z rodzaju kontroli.
+    wartosc: float | None = field(init=False)
+    odniesienie: float | None = field(init=False)
+    margines: float | None = field(init=False)
+    podstawa: PodstawaNormatywna = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "wartosc", self.observed_value)
+        object.__setattr__(self, "odniesienie", self.limit_fail)
+        object.__setattr__(
+            self, "margines", -self.margin_pct if self.margin_pct is not None else None
+        )
+        object.__setattr__(self, "podstawa", podstawa_kontroli(self.check_type, self.limit_fail))
+
+
+#: Podstawy progow walidacji energetycznej (karta AB-1a-bis). Zaden prog tego
+#: modulu nie ma w kodzie cytowanego dokumentu z wydaniem i punktem — wszystkie
+#: `UNVERIFIED_SOURCE`; liczby bez zmian (karta AB-1a §0 R-7).
+_PODSTAWA_KONTROLI: dict[EnergyCheckType, PodstawaNormatywna] = {
+    EnergyCheckType.BRANCH_LOADING: podstawa_niezweryfikowana(
+        "Próg obciążenia gałęzi z konfiguracji walidacji energetycznej "
+        "(obciążalność długotrwała I_n z danych gałęzi — katalog); dokument normowy "
+        "progu nie jest wskazany w kodzie."
+    ),
+    EnergyCheckType.TRANSFORMER_LOADING: podstawa_niezweryfikowana(
+        "Próg obciążenia transformatora z konfiguracji walidacji energetycznej "
+        "(moc znamionowa S_n z typu katalogowego); dokument normowy progu nie jest "
+        "wskazany w kodzie."
+    ),
+    EnergyCheckType.LOSS_BUDGET: podstawa_niezweryfikowana(
+        "Założenie projektowe: budżet strat mocy z konfiguracji walidacji "
+        "energetycznej — nie wymaganie dokumentu normowego."
+    ),
+    EnergyCheckType.REACTIVE_BALANCE: podstawa_niezweryfikowana(
+        "Progi współczynnika mocy w węźle bilansującym zapisane w kodzie walidacji "
+        "energetycznej bez wskazanego dokumentu normowego."
+    ),
+}
+
+
+def podstawa_kontroli(check_type: EnergyCheckType, limit_fail: float | None) -> PodstawaNormatywna:
+    """Podstawa werdyktu pozycji walidacji — z rodzaju kontroli; odchylenie napiecia
+    z jednego zrodla kryteriow napieciowych (`kryteria_napiecia`)."""
+    if check_type == EnergyCheckType.VOLTAGE_DEVIATION:
+        return podstawa_progu_napiecia(limit_fail)
+    return _PODSTAWA_KONTROLI[check_type]
 
 
 @dataclass(frozen=True)

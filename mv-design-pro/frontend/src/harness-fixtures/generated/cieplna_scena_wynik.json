@@ -67,7 +67,23 @@
         "powod_decyzji_pl": null,
         "zalecenia": [],
         "wrazliwosc": [],
-        "uzasadnienie_k": null
+        "uzasadnienie_k": null,
+        "wartosc": null,
+        "odniesienie": null,
+        "margines": null,
+        "margines_jednostka": null,
+        "podstawa": {
+          "dokument": "PN-HD 60364-4-43",
+          "wersja": null,
+          "klauzula": "§ 434.5.2",
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Warunek adiabatyczny doboru przekroju ze wzgledu na zwarcie: S ≥ √(I²·t) / k. Pozostałe podstawy: IEC 60949 § 3, § 4; IEC 60909-0 § 12. Wydanie dokumentów nie jest przypięte w kodzie."
+        },
+        "dowod": {
+          "run_id": "run-sc-scena-zwarcia",
+          "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c",
+          "trace_ref": null
+        }
       },
       {
         "branch_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
@@ -104,7 +120,23 @@
         "powod_decyzji_pl": null,
         "zalecenia": [],
         "wrazliwosc": [],
-        "uzasadnienie_k": null
+        "uzasadnienie_k": null,
+        "wartosc": null,
+        "odniesienie": null,
+        "margines": null,
+        "margines_jednostka": null,
+        "podstawa": {
+          "dokument": "PN-HD 60364-4-43",
+          "wersja": null,
+          "klauzula": "§ 434.5.2",
+          "zrodlo_status": "UNVERIFIED_SOURCE",
+          "uwaga_pl": "Warunek adiabatyczny doboru przekroju ze wzgledu na zwarcie: S ≥ √(I²·t) / k. Pozostałe podstawy: IEC 60949 § 3, § 4; IEC 60909-0 § 12. Wydanie dokumentów nie jest przypięte w kodzie."
+        },
+        "dowod": {
+          "run_id": "run-sc-scena-zwarcia",
+          "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
+          "trace_ref": null
+        }
       }
     ],
     "summary": {

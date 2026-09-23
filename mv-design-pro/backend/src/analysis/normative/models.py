@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
@@ -11,7 +11,9 @@ from analysis.normative.kryteria_napiecia import (
     KRYTERIUM_OSTRZEZENIE_PROCENT,
     KRYTERIUM_PRZEKROCZENIE_PROCENT,
 )
+from analysis.normative.rule_registry import RULES
 from analysis.odcisk_kontekstu import odcisk_kontekstu
+from analysis.podstawa_normatywna import PodstawaNormatywna
 
 
 class NormativeStatus(StrEnum):
@@ -20,6 +22,12 @@ class NormativeStatus(StrEnum):
     WARNING = "WARNING"
     NOT_COMPUTED = "NOT_COMPUTED"
     NOT_EVALUATED = "NOT_EVALUATED"
+
+
+#: Podstawa per regula — wyprowadzona z rejestru regul (jedno zrodlo).
+_PODSTAWA_REGULY: dict[str, PodstawaNormatywna] = {
+    regula.rule_id: regula.podstawa for regula in RULES
+}
 
 
 class NormativeSeverity(StrEnum):
@@ -94,6 +102,26 @@ class NormativeItem:
     margin: float | None
     why_pl: str
     requires: tuple[str, ...]
+    #: Odwolanie do dowodu (karta AB-1a D2 — `{run_id, element_id, trace_ref}`;
+    #: `trace_ref` = identyfikator ProofDocument, z ktorego regula czytala).
+    #: ``None`` = pozycja bez dowodu (brak pakietu dowodowego — NOT_COMPUTED).
+    dowod: dict[str, str | None] | None = None
+    # --- Towarzysze werdyktu (karta AB-1a-bis) — WYPROWADZANE, jedno zrodlo ----
+    #: `wartosc` = `observed_value`; `odniesienie` = `limit_value` (granica, wobec
+    #: ktorej regula wydala status); `margines` = zapas w konwencji wyniku
+    #: wyjasnialnego (dodatni = w granicy) = `-margin` (`margin` dostawcy to
+    #: nadwyzka `wartosc - limit`); `podstawa` z rejestru regul (`None` dla
+    #: identyfikatora spoza rejestru).
+    wartosc: float | str | None = field(init=False)
+    odniesienie: float | None = field(init=False)
+    margines: float | None = field(init=False)
+    podstawa: PodstawaNormatywna | None = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "wartosc", self.observed_value)
+        object.__setattr__(self, "odniesienie", self.limit_value)
+        object.__setattr__(self, "margines", -self.margin if self.margin is not None else None)
+        object.__setattr__(self, "podstawa", _PODSTAWA_REGULY.get(self.rule_id))
 
 
 @dataclass(frozen=True)

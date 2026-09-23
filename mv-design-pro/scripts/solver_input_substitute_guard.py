@@ -457,6 +457,14 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # typu wbudowanego, wiec nie kwalifikuje sie do MODEL_ROOTS_POZA_MAPA.
     "analysis/normative/kryteria_napiecia.py",
     "analysis/normative/models.py",
+    # Karta AB-1a-bis (2026-09-23): typ podstawy normatywnej przeniesiony z
+    # `application/analyses/werdykt_projektowy.py` (import w druga strone zamykal
+    # cykl z dostawcami `analysis/**`) — dataclass WYNIKU/KONTRAKTU (dokument,
+    # wersja, klauzula, status zrodla, uwaga), importowana przez warstwe objeta
+    # skanem; zaden z 5 pol nie jest atrybutem typu wbudowanego, wiec nie
+    # kwalifikuje sie do MODEL_ROOTS_POZA_MAPA. Pola byly juz w mapie przez
+    # `werdykt_projektowy.py` (korzen `application`), wiec delta pol = 0.
+    "analysis/podstawa_normatywna.py",
     "analysis/power_flow/result.py",
     "analysis/reactive_adequacy/models.py",
     "analysis/reporting/arc_flash_report.py",

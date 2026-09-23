@@ -9,6 +9,7 @@ from enum import StrEnum
 from typing import Any
 
 from analysis.odcisk_kontekstu import odcisk_kontekstu
+from analysis.podstawa_normatywna import PodstawaNormatywna
 
 
 class RecommendationEffect(StrEnum):
@@ -52,6 +53,18 @@ class RecommendationEntry:
     delta_unit: str | None
     expected_effect: RecommendationEffect
     confidence_note: str
+    # --- Towarzysze werdyktu (karta AB-1a-bis) --------------------------------
+    #: `expected_effect` ocenia KRYTERIUM ZRODLOWE po zmianie o `required_delta`,
+    #: wiec towarzysze sa PRZEPISANE z nosnika zrodlowego (wpis wrazliwosci albo
+    #: pozycja raportu normatywnego) — jedno zrodlo, zero drugiego rachunku:
+    #: `wartosc` / `odniesienie` / `margines` (dodatni = w granicy) / `podstawa` /
+    #: `dowod` stanu OBECNEGO kryterium. ``None`` = brak danej (wpis zastepczy
+    #: „brak danych wejsciowych" nie ma zrodla — wszystkie ``None``).
+    wartosc: float | str | None = None
+    odniesienie: float | None = None
+    margines: float | None = None
+    podstawa: PodstawaNormatywna | None = None
+    dowod: dict[str, str | None] | None = None
 
 
 @dataclass(frozen=True)
