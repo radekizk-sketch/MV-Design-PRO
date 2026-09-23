@@ -22,9 +22,10 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
-from solver_input.provenance import ClaimKind
 from werdykt import etykiety, wyjasnienie
 from werdykt.kontrakt import (
+    METODY_DOPUSZCZALNE_DLA_TWIERDZENIA,
+    METODY_TYLKO_WYMAGANIA,
     RELACJE_LICZBOWE,
     Etykieta,
     KompletnoscDowodu,
@@ -50,27 +51,11 @@ from werdykt.kontrakt import (
     WynikWymagania,
     ZakresWaznosci,
 )
+from werdykt.proweniencja import ClaimKind
 
 # ---------------------------------------------------------------------------
 # Metody dopuszczalne dla rodzaju twierdzenia (§2.2 krok 2)
 # ---------------------------------------------------------------------------
-
-_METODY_DOPUSZCZALNE: dict[ClaimKind, frozenset[MetodaDowodu]] = {
-    ClaimKind.DYNAMIC_PERFORMANCE: frozenset(
-        ("SYMULACJA", "RAPORT_Z_TESTU", "POMIAR", "CERTYFIKAT", "DOWOD_LACZONY")
-    ),
-    ClaimKind.DECLARED_CONFIGURATION: frozenset(
-        (
-            "DEKLARACJA",
-            "OBLICZENIE",
-            "CERTYFIKAT",
-            "RAPORT_Z_TESTU",
-            "POMIAR",
-            "OCENA_OPERATORA",
-            "DOWOD_LACZONY",
-        )
-    ),
-}
 
 
 def metody_dopuszczalne(rodzaj_twierdzenia: ClaimKind) -> frozenset[MetodaDowodu]:
@@ -78,13 +63,46 @@ def metody_dopuszczalne(rodzaj_twierdzenia: ClaimKind) -> frozenset[MetodaDowodu
 
     Porównanie deklaracji nigdy nie ocenia zachowania dynamicznego: metoda spoza zbioru daje
     ``NIE_OCENIONO`` (wynik pokazywany informacyjnie), niezależnie od wartości wyniku.
+    Twierdzenie z obliczenia statycznego ocenia się obliczeniem, pomiarem, raportem z testu,
+    certyfikatem albo dowodem łączonym. Tabela: ``kontrakt.METODY_DOPUSZCZALNE_DLA_TWIERDZENIA``.
     """
-    return _METODY_DOPUSZCZALNE[rodzaj_twierdzenia]
+    return METODY_DOPUSZCZALNE_DLA_TWIERDZENIA[rodzaj_twierdzenia]
+
+
+def przydatnosc_dowodu_wymagania(
+    dowod: StatusDowodu,
+    oceny: Sequence[OcenaKryterium],
+) -> bool:
+    """Przydatność dowodowa dowodu WYMAGANIA (§3 pkt 1) — jeden predykat dla reguły i tekstu.
+
+    Dowód łączony (``DOWOD_LACZONY``) jest przydatny wtedy i tylko wtedy, gdy istnieje co
+    najmniej jedna stosowalna ocena składowa (status ≠ ``NIE_DOTYCZY``) i KAŻDA stosowalna ocena
+    składowa ma ``dowod.przydatnosc_dowodowa``; składowa ``NIE_DOTYCZY`` nie wykazuje niczego,
+    więc nie uczestniczy w łączeniu. Każda inna metoda — ``StatusDowodu.przydatnosc_dowodowa``.
+    """
+    if dowod.metoda in METODY_TYLKO_WYMAGANIA:
+        stosowalne = [o for o in oceny if o.status_maszynowy != "NIE_DOTYCZY"]
+        return bool(stosowalne) and all(o.dowod.przydatnosc_dowodowa for o in stosowalne)
+    return dowod.przydatnosc_dowodowa
 
 
 # ---------------------------------------------------------------------------
 # Margines (§2.4)
 # ---------------------------------------------------------------------------
+
+#: Jednostka marginesu różna od jednostki wyniku: różnica dwóch wielkości w procentach jest
+#: w punktach procentowych (§4.1 „margines").
+_JEDNOSTKA_MARGINESU: dict[str, str] = {"%": "pp"}
+
+
+def jednostka_marginesu(jednostka_wyniku: str) -> str:
+    """Jednostka marginesu, skali, tolerancji i niepewności dla wyniku w danej jednostce.
+
+    Wynik w ``%`` → ``"pp"`` (punkty procentowe: 89,8 % wobec 90 % to margines −0,2 pp); każda
+    inna jednostka — ta sama co jednostka wyniku.
+    """
+    return _JEDNOSTKA_MARGINESU.get(jednostka_wyniku, jednostka_wyniku)
+
 
 _DEFINICJE_MARGINESU: dict[Relacja, str] = {
     "NIE_WIECEJ": r"m = x_{\lim} - x",
@@ -116,9 +134,11 @@ def margines(
 
     Skala marginesu względnego (§2.4), w kolejności pierwszeństwa: tolerancja z profilu, gdy
     podana (``TOLERANCJA``); |granica|, gdy granica ≠ 0 (``LIMIT``); niepewność wyniku ``u``,
-    gdy dodatnia (``NIEPEWNOSC``); inaczej brak skali i margines względny ``None``. Jednostka
-    marginesu i skali = jednostka wyniku; jednostki wyniku, limitu, tolerancji i niepewności
-    muszą być identyczne — różne jednostki to ``ValueError``, nigdy cicha konwersja.
+    gdy dodatnia (``NIEPEWNOSC``); inaczej brak skali i margines względny ``None``. Jednostki
+    wyniku i limitu muszą być identyczne; jednostka marginesu i skali to
+    ``jednostka_marginesu(jednostka wyniku)`` (dla wyniku w ``%`` — ``"pp"``), a tolerancja
+    i niepewność są podawane w jednostce marginesu — różne jednostki to ``ValueError``, nigdy
+    cicha konwersja.
     """
     if relacja == "LOGICZNE":
         if limit is not None or tolerancja is not None:
@@ -159,9 +179,10 @@ def margines(
             )
         granica = limit.wartosc_obwiedni(chwila_s)
         m = x - granica if relacja == "OBWIEDNIA_DOLNA" else granica - x
-    skala, rodzaj = _skala(granica, tolerancja, niepewnosc, wynik.jednostka)
+    jednostka = jednostka_marginesu(wynik.jednostka)
+    skala, rodzaj = _skala(granica, tolerancja, niepewnosc, jednostka)
     return Margines(
-        wartosc=Wielkosc(wartosc=m, jednostka=wynik.jednostka),
+        wartosc=Wielkosc(wartosc=m, jednostka=jednostka),
         definicja_latex=_DEFINICJE_MARGINESU[relacja],
         punkt_pl=punkt_pl,
         skala=skala,
@@ -179,7 +200,7 @@ def _skala(
     for nazwa, wielkosc in (("tolerancji", tolerancja), ("niepewności", niepewnosc)):
         if wielkosc is not None and wielkosc.jednostka != jednostka:
             raise ValueError(
-                f"Jednostka {nazwa} „{wielkosc.jednostka}” różni się od jednostki wyniku "
+                f"Jednostka {nazwa} „{wielkosc.jednostka}” różni się od jednostki marginesu "
                 f"„{jednostka}” — konwersja jednostek jest niedozwolona."
             )
     if tolerancja is not None:
@@ -380,16 +401,15 @@ def status_kryterium(
 def _powody_niepelnosci(
     dowod: StatusDowodu,
     podstawy: Sequence[PodstawaWymagania],
-    *,
-    sprawdz_metode: bool,
+    powod_metody: str | None,
 ) -> list[str]:
-    powody: list[str] = []
-    if sprawdz_metode and not dowod.przydatnosc_dowodowa:
-        powod_metody = wyjasnienie.powod_metody(dowod)
-        if powod_metody is not None:
-            powody.append(powod_metody)
+    """Powody niepełności wspólne dla K i W; powód metody wyznacza wołający z predykatu
+    przydatności właściwego dla poziomu rekordu."""
+    powody: list[str] = [] if powod_metody is None else [powod_metody]
     if dowod.status_modelu == "UNVALIDATED_MODEL":
         powody.append(wyjasnienie.powod_modelu_niezwalidowanego())
+    if dowod.w_domenie_walidacji is False:
+        powody.append(wyjasnienie.powod_poza_domena(dowod))
     if dowod.status_danych.stan != "ZWALIDOWANE":
         powody.extend(
             wyjasnienie.powod_danej_przyjetej(dana) for dana in dowod.status_danych.dane_przyjete
@@ -406,30 +426,51 @@ def kompletnosc_dowodu(
     dowod: StatusDowodu,
     podstawy: Sequence[PodstawaWymagania],
 ) -> tuple[KompletnoscDowodu, list[str]]:
-    """Kompletność dowodu wg §3 i konkretne powody niepełności.
+    """Kompletność dowodu kryterium wg §3 i konkretne powody niepełności.
 
     ``PELNY`` wyłącznie, gdy: (1) metoda jest właściwa dla rodzaju twierdzenia
-    (``StatusDowodu.przydatnosc_dowodowa``); (2) dane wejściowe zwalidowane — stan
-    ``ZWALIDOWANE``, żadna dana przyjęta (także o jakości ``ESTIMATED`` / ``SYSTEM_DEFAULT``);
-    (3) każda podstawa o stanie ``ZWERYFIKOWANE`` albo ``WSKAZANE``; ponadto model urządzenia
-    ``UNVALIDATED_MODEL`` zawsze daje ``NIEPELNY`` (T6). Każdy powód nazywa warunek i wartość.
+    (``StatusDowodu.przydatnosc_dowodowa`` — w tym bieg nie leży poza zadeklarowaną domeną
+    walidacji); (2) dane wejściowe zwalidowane — stan ``ZWALIDOWANE``, żadna dana przyjęta
+    (także o jakości ``ESTIMATED`` / ``SYSTEM_DEFAULT``); (3) każda podstawa o stanie
+    ``ZWERYFIKOWANE`` albo ``WSKAZANE``; ponadto model urządzenia ``UNVALIDATED_MODEL`` (T6)
+    i bieg poza domeną walidacji (§3b) zawsze dają ``NIEPELNY``. Każdy powód nazywa warunek
+    i wartość.
     """
-    powody = _powody_niepelnosci(dowod, podstawy, sprawdz_metode=True)
+    powod_metody = None if dowod.przydatnosc_dowodowa else wyjasnienie.powod_metody(dowod, "K")
+    powody = _powody_niepelnosci(dowod, podstawy, powod_metody)
     return ("NIEPELNY", powody) if powody else ("PELNY", [])
+
+
+def _podstawy_kryterium(
+    kryterium: Kryterium,
+    podstawa: PodstawaWymagania,
+    limit: LimitKryterium | None,
+) -> list[PodstawaWymagania]:
+    """Podstawy, na których opiera się ocena kryterium: podstawa kryterium, podstawa limitu
+    (relacje liczbowe) i podstawa warunku wstępnego (gdy kryterium go ma) — w tej kolejności.
+    Zastrzeżenia (``wyjasnienie.zastrzezenia_kryterium``) nazywają każdą z nich o stanie
+    ≠ ``ZWERYFIKOWANE`` — podstawę warunku wstępnego zdaniem o warunku wstępnym."""
+    podstawy = [podstawa]
+    if limit is not None:
+        podstawy.append(limit.podstawa)
+    if kryterium.warunek_wstepny_podstawa is not None:
+        podstawy.append(kryterium.warunek_wstepny_podstawa)
+    return podstawy
 
 
 def kompletnosc_kryterium(
     *,
     dotyczy: bool,
+    kryterium: Kryterium,
     dowod: StatusDowodu,
     podstawa: PodstawaWymagania,
     limit: LimitKryterium | None,
 ) -> tuple[KompletnoscDowodu, list[str]]:
-    """Kompletność dowodu kryterium: z własnego dowodu, podstawy kryterium i podstawy limitu."""
+    """Kompletność dowodu kryterium: z własnego dowodu, podstawy kryterium, podstawy limitu
+    i podstawy warunku wstępnego."""
     if not dotyczy:
         return "NIE_DOTYCZY", []
-    podstawy = [podstawa] if limit is None else [podstawa, limit.podstawa]
-    return kompletnosc_dowodu(dowod, podstawy)
+    return kompletnosc_dowodu(dowod, _podstawy_kryterium(kryterium, podstawa, limit))
 
 
 def kompletnosc_wymagania(
@@ -441,19 +482,27 @@ def kompletnosc_wymagania(
 ) -> tuple[KompletnoscDowodu, list[str]]:
     """Kompletność dowodu wymagania: dowód i podstawa wymagania + agregat składowych.
 
-    Każdy powód niepełności stosowalnej oceny składowej przechodzi do wymagania (z nazwą
-    składnika): wartość przyjęta bez źródła albo model niezwalidowany w którymkolwiek składniku
-    wpływa na wynik wymagania, więc wymaganie nie może mieć dowodu pełnego (§3 pkt 2, T6).
-    Dla dowodu łączonego (``DOWOD_LACZONY``) właściwość metody ocenia się na składnikach —
-    każdy składnik niesie własną metodę, a łączenie metod przydatnych jest dowodem przydatnym.
+    Właściwość metody rozstrzyga ``przydatnosc_dowodu_wymagania`` (ten sam predykat, który
+    wystawia API): dla dowodu łączonego (``DOWOD_LACZONY``) — każda stosowalna ocena składowa
+    ma metodę przydatną, a powód niepełności nazywa składniki bez metody przydatnej. Każdy
+    powód niepełności stosowalnej oceny składowej przechodzi do wymagania (z nazwą składnika):
+    wartość przyjęta bez źródła albo model niezwalidowany w którymkolwiek składniku wpływa na
+    wynik wymagania, więc wymaganie nie może mieć dowodu pełnego (§3 pkt 2, T6).
     """
     if not dotyczy:
         return "NIE_DOTYCZY", []
-    laczony = dowod.metoda == "DOWOD_LACZONY"
-    powody = _powody_niepelnosci(dowod, [podstawa], sprawdz_metode=not laczony)
     stosowalne = [ocena for ocena in oceny if ocena.status_maszynowy != "NIE_DOTYCZY"]
-    if laczony and not stosowalne:
-        powody.append(wyjasnienie.powod_dowodu_laczonego_bez_skladowych())
+    powod_metody: str | None = None
+    if not przydatnosc_dowodu_wymagania(dowod, oceny):
+        if dowod.metoda not in METODY_TYLKO_WYMAGANIA:
+            powod_metody = wyjasnienie.powod_metody(dowod, "W")
+        elif not stosowalne:
+            powod_metody = wyjasnienie.powod_dowodu_laczonego_bez_skladowych()
+        else:
+            powod_metody = wyjasnienie.powod_dowodu_laczonego(
+                [ocena for ocena in stosowalne if not ocena.dowod.przydatnosc_dowodowa]
+            )
+    powody = _powody_niepelnosci(dowod, [podstawa], powod_metody)
     for ocena in stosowalne:
         powody.extend(
             wyjasnienie.z_nazwa_skladowej(ocena, powod) for powod in ocena.powody_niepelnosci
@@ -699,7 +748,11 @@ def wyprowadz_pola_kryterium(
         )
     )
     kompletnosc, powody = kompletnosc_kryterium(
-        dotyczy=stosowalnosc.dotyczy, dowod=dowod, podstawa=podstawa, limit=limit
+        dotyczy=stosowalnosc.dotyczy,
+        kryterium=kryterium,
+        dowod=dowod,
+        podstawa=podstawa,
+        limit=limit,
     )
     return PochodneKryterium(
         margines=margines_kryterium,
@@ -708,8 +761,9 @@ def wyprowadz_pola_kryterium(
         braki=braki,
         kompletnosc=kompletnosc,
         powody=tuple(powody),
-        etykieta=etykiety.etykieta(status, kompletnosc),
+        etykieta=etykiety.etykieta(status, kompletnosc, "K"),
         zastrzezenia=wyjasnienie.zastrzezenia_kryterium(
+            kryterium=kryterium,
             podstawa=podstawa,
             stosowalnosc=stosowalnosc,
             limit=limit,
@@ -753,7 +807,7 @@ def wyprowadz_pola_wymagania(
         braki=_bez_powtorzen([*braki, *powody]),
         kompletnosc=kompletnosc,
         powody=tuple(powody),
-        etykieta=etykiety.etykieta(status, kompletnosc),
+        etykieta=etykiety.etykieta(status, kompletnosc, "W"),
         zastrzezenia=wyjasnienie.zastrzezenia_wymagania(
             podstawa=podstawa,
             stosowalnosc=stosowalnosc,

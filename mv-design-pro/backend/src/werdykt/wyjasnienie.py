@@ -18,13 +18,16 @@ import math
 from collections.abc import Iterable, Sequence
 from decimal import ROUND_HALF_UP, Decimal
 
-from solver_input.provenance import ClaimKind
 from werdykt.kontrakt import (
     JEDNOSTKA_LOGICZNA,
     KOLEJNOSC_METOD,
+    METODY_DOPUSZCZALNE_DLA_TWIERDZENIA,
     METODY_OBLICZENIOWE,
+    METODY_PRZYDATNE_DLA_TWIERDZENIA,
     METODY_PRZYDATNE_ZAWSZE,
+    METODY_TYLKO_WYMAGANIA,
     POZIOMY_BEZ_WALIDACJI,
+    TWIERDZENIA_Z_OBLICZENIEM,
     DanaPrzyjeta,
     KrokRegulyK,
     KrokRegulyW,
@@ -35,6 +38,7 @@ from werdykt.kontrakt import (
     Niepewnosc,
     OcenaKryterium,
     PodstawaWymagania,
+    PoziomRekordu,
     Przedmiot,
     Relacja,
     RodzajPodstawy,
@@ -47,6 +51,7 @@ from werdykt.kontrakt import (
     WynikKryterium,
     ZakresWaznosci,
 )
+from werdykt.proweniencja import ClaimKind
 
 #: Nazwy metod dowodu w tekście.
 NAZWA_METODY_PL: dict[MetodaDowodu, str] = {
@@ -64,16 +69,19 @@ NAZWA_METODY_PL: dict[MetodaDowodu, str] = {
 NAZWA_TWIERDZENIA_PL: dict[ClaimKind, str] = {
     ClaimKind.DYNAMIC_PERFORMANCE: "twierdzenia o zachowaniu dynamicznym",
     ClaimKind.DECLARED_CONFIGURATION: "twierdzenia o konfiguracji zadeklarowanej",
+    ClaimKind.STATIC_CALCULATION: "twierdzenia z obliczenia statycznego",
 }
 #: Nazwy rodzajów twierdzenia w dopełniaczu przedmiotu („nie wykazuje …").
 NAZWA_TWIERDZENIA_DOPELNIACZ_PL: dict[ClaimKind, str] = {
     ClaimKind.DYNAMIC_PERFORMANCE: "zachowania dynamicznego",
     ClaimKind.DECLARED_CONFIGURATION: "konfiguracji zadeklarowanej",
+    ClaimKind.STATIC_CALCULATION: "wielkości z obliczenia statycznego",
 }
 #: Nazwy rodzajów podstawy.
 NAZWA_RODZAJU_PODSTAWY_PL: dict[RodzajPodstawy, str] = {
     "ROZPORZADZENIE_UE": "rozporządzenie UE",
     "NORMA": "norma",
+    "PRAWO_KRAJOWE": "prawo krajowe",
     "WOS": "wymogi ogólnego stosowania (WOS)",
     "PROCEDURA_PTPIREE": "procedura PTPiREE",
     "WIPWC": "WiPWC",
@@ -153,6 +161,11 @@ def _lista_metod(metody: Iterable[MetodaDowodu]) -> str:
     return _albo([NAZWA_METODY_PL[m] for m in KOLEJNOSC_METOD if m in zbior])
 
 
+def _lista_metod_kryterium(metody: Iterable[MetodaDowodu]) -> str:
+    """Lista metod dla rekordu K — bez metod wyłącznie poziomu W (dowód łączony)."""
+    return _lista_metod(m for m in metody if m not in METODY_TYLKO_WYMAGANIA)
+
+
 def _bez_powtorzen(teksty: Iterable[str]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(teksty))
 
@@ -179,16 +192,34 @@ def odnosnik_podstawy(podstawa: PodstawaWymagania) -> str:
     return f"{podstawa.jednostka_redakcyjna} „{podstawa.dokument}”"
 
 
-def metody_przydatne_pl(rodzaj_twierdzenia: ClaimKind) -> str:
-    """Metody dowodu właściwe dla rodzaju twierdzenia — te same warunki co
-    ``StatusDowodu.przydatnosc_dowodowa`` (stałe z ``werdykt.kontrakt``)."""
-    czesci = [NAZWA_METODY_PL[m] for m in KOLEJNOSC_METOD if m in METODY_PRZYDATNE_ZAWSZE]
-    if rodzaj_twierdzenia is ClaimKind.DECLARED_CONFIGURATION:
-        czesci.append(NAZWA_METODY_PL["DEKLARACJA"])
-    czesci.append(
-        "symulacja na silniku o poziomie VALIDATED_SIMULATION z modelem urządzenia "
-        "VALIDATED_AGAINST_TEST albo CERTIFIED_MODEL"
-    )
+def metody_przydatne_pl(rodzaj_twierdzenia: ClaimKind, poziom: PoziomRekordu) -> str:
+    """Metody dowodu właściwe dla rodzaju twierdzenia na danym poziomie rekordu — te same
+    warunki co ``StatusDowodu.przydatnosc_dowodowa`` (K) i
+    ``decyzja.przydatnosc_dowodu_wymagania`` (W), z tych samych stałych ``werdykt.kontrakt``:
+    wyłącznie metody dopuszczalne dla rodzaju twierdzenia, w kolejności ``KOLEJNOSC_METOD``;
+    dowód łączony wyłącznie na poziomie W."""
+    dla_twierdzenia = METODY_PRZYDATNE_DLA_TWIERDZENIA[rodzaj_twierdzenia]
+    czesci: list[str] = []
+    for metoda in KOLEJNOSC_METOD:
+        if metoda not in METODY_DOPUSZCZALNE_DLA_TWIERDZENIA[rodzaj_twierdzenia]:
+            continue
+        if metoda in METODY_PRZYDATNE_ZAWSZE or metoda in dla_twierdzenia:
+            czesci.append(NAZWA_METODY_PL[metoda])
+        elif metoda == "SYMULACJA":
+            czesci.append(
+                "symulacja na silniku o poziomie VALIDATED_SIMULATION (bieg w zadeklarowanej "
+                "domenie walidacji) z modelem urządzenia o statusie VALIDATED_AGAINST_TEST lub "
+                "CERTIFIED_MODEL"
+            )
+        elif metoda == "OBLICZENIE" and rodzaj_twierdzenia in TWIERDZENIA_Z_OBLICZENIEM:
+            czesci.append(
+                "obliczenie na zdolności o poziomie VALIDATED_SIMULATION (solver zwalidowany, bieg "
+                "w zadeklarowanej domenie walidacji)"
+            )
+        elif metoda in METODY_TYLKO_WYMAGANIA and poziom == "W":
+            czesci.append(
+                "dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną"
+            )
     return _albo(czesci)
 
 
@@ -286,7 +317,7 @@ def _opis_skladowej_z_wynikiem(ocena: OcenaKryterium) -> str:
 def brak_metody_dopuszczalnej(dowod: StatusDowodu, dopuszczalne: Iterable[MetodaDowodu]) -> str:
     return (
         f"Metoda dowodu właściwa dla {NAZWA_TWIERDZENIA_PL[dowod.rodzaj_twierdzenia]}: "
-        f"{_lista_metod(dopuszczalne)} — metoda „{NAZWA_METODY_PL[dowod.metoda]}” jest "
+        f"{_lista_metod_kryterium(dopuszczalne)} — metoda „{NAZWA_METODY_PL[dowod.metoda]}” jest "
         "niedopuszczalna (wynik pokazywany wyłącznie informacyjnie)."
     )
 
@@ -360,14 +391,25 @@ def powod_marginesu_logicznego() -> str:
 # ---------------------------------------------------------------------------
 
 
-def powod_metody(dowod: StatusDowodu) -> str | None:
-    """Powód niewłaściwości metody. ``None``, gdy jedyną przeszkodą jest model urządzenia
-    ``UNVALIDATED_MODEL`` — ten powód nazywa osobno ``powod_modelu_niezwalidowanego``."""
-    twierdzenie = NAZWA_TWIERDZENIA_PL[dowod.rodzaj_twierdzenia]
-    wlasciwe = metody_przydatne_pl(dowod.rodzaj_twierdzenia)
+def powod_metody(dowod: StatusDowodu, poziom: PoziomRekordu) -> str | None:
+    """Powód niewłaściwości metody (dowód nieprzydatny) na danym poziomie rekordu. ``None``,
+    gdy jedyną przeszkodą jest model urządzenia ``UNVALIDATED_MODEL`` albo bieg poza domeną
+    walidacji — te powody nazywają osobno ``powod_modelu_niezwalidowanego`` i
+    ``powod_poza_domena``."""
+    rodzaj = dowod.rodzaj_twierdzenia
+    twierdzenie = NAZWA_TWIERDZENIA_PL[rodzaj]
+    wlasciwe = metody_przydatne_pl(rodzaj, poziom)
+    dopuszczalna = dowod.metoda in METODY_DOPUSZCZALNE_DLA_TWIERDZENIA[rodzaj]
     if dowod.metoda == "BRAK_METODY":
         return f"Brak metody dowodu — właściwa metoda dla {twierdzenie}: {wlasciwe}."
-    if dowod.metoda == "SYMULACJA":
+    if dopuszczalna and dowod.metoda == "OBLICZENIE" and rodzaj in TWIERDZENIA_Z_OBLICZENIEM:
+        if dowod.poziom.regulatory_evidence_eligible:
+            return None
+        return (
+            f"Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym "
+            f"{dowod.poziom.value} (wymagany VALIDATED_SIMULATION — solver zwalidowany)."
+        )
+    if dopuszczalna and dowod.metoda == "SYMULACJA":
         czesci = []
         if not dowod.poziom.regulatory_evidence_eligible:
             czesci.append(
@@ -418,8 +460,35 @@ def powod_podstawy_nieustalonej(podstawa: PodstawaWymagania) -> str:
     )
 
 
+def _nazwa_domeny(dowod: StatusDowodu) -> str:
+    if dowod.domena_pl is None:
+        raise ValueError(
+            "Rozstrzygnięta przynależność biegu do domeny walidacji wymaga nazwy domeny."
+        )
+    return _bez_kropki(dowod.domena_pl)
+
+
+def powod_poza_domena(dowod: StatusDowodu) -> str:
+    return (
+        f"Bieg poza zadeklarowaną domeną walidacji: {_nazwa_domeny(dowod)} — wymagany bieg "
+        "w domenie walidacji silnika."
+    )
+
+
 def powod_dowodu_laczonego_bez_skladowych() -> str:
     return "Dowód łączony bez stosowalnych ocen składowych — żaden składnik nie wykazuje wymagania."
+
+
+def powod_dowodu_laczonego(nieprzydatne: Sequence[OcenaKryterium]) -> str:
+    """Dowód łączony nieprzydatny: nazwa i metoda każdego składnika bez metody przydatnej."""
+    skladniki = "; ".join(
+        f"{nazwa_skladowej(ocena)}, metoda „{NAZWA_METODY_PL[ocena.dowod.metoda]}”"
+        for ocena in nieprzydatne
+    )
+    return (
+        "Dowód łączony nie jest dowodem właściwym — składniki bez metody przydatnej: "
+        f"{skladniki}."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -472,6 +541,11 @@ def _zastrzezenia_dowodu(dowod: StatusDowodu) -> list[str]:
             f"Poziom dowodowy zdolności narzędzia: {dowod.poziom.value} — obliczenie bez "
             "ustalonej poprawności fizycznej nie jest dowodem regulacyjnym."
         )
+    if dowod.w_domenie_walidacji is False:
+        zastrzezenia.append(
+            f"Bieg poza zadeklarowaną domeną walidacji: {_nazwa_domeny(dowod)} — wynik spoza "
+            "domeny walidacji silnika nie stanowi pełnego dowodu."
+        )
     for dana in dowod.status_danych.dane_przyjete:
         zastrzezenia.append(
             f"Dana przyjęta bez walidacji (UNVALIDATED_INPUT): {opis_danej(dana)} — "
@@ -489,14 +563,33 @@ def _zastrzezenie_zakresu(zakres: ZakresWaznosci) -> str | None:
     )
 
 
+def _zastrzezenie_warunku_wstepnego(kryterium: Kryterium) -> str | None:
+    """Podstawa warunku wstępnego o stanie ≠ ``ZWERYFIKOWANE`` — rozstrzygnięcie, czy obowiązek
+    został uruchomiony, opiera się na tej podstawie (np. obwiednia z profilu)."""
+    podstawa = kryterium.warunek_wstepny_podstawa
+    warunek = kryterium.warunek_wstepny_pl
+    if podstawa is None or warunek is None or podstawa.status == "ZWERYFIKOWANE":
+        return None
+    tekst = (
+        f"Warunek wstępny („{_bez_kropki(warunek)}”) oparty na podstawie o stanie "
+        f"{podstawa.status}: {opis_podstawy(podstawa)}"
+    )
+    if podstawa.uwagi_pl is not None:
+        tekst += f" (uwagi: {_bez_kropki(podstawa.uwagi_pl)})"
+    return tekst + "."
+
+
 def _zastrzezenia_pol(
     *,
     podstawy: Sequence[PodstawaWymagania],
+    kryterium: Kryterium | None,
     stosowalnosc: Stosowalnosc,
     dowod: StatusDowodu,
     zakres_waznosci: ZakresWaznosci,
 ) -> list[str]:
     kandydaci: list[str | None] = [_zastrzezenie_podstawy(p) for p in podstawy]
+    if kryterium is not None:
+        kandydaci.append(_zastrzezenie_warunku_wstepnego(kryterium))
     kandydaci.extend(_zastrzezenia_stosowalnosci(stosowalnosc))
     kandydaci.extend(_zastrzezenia_dowodu(dowod))
     kandydaci.append(_zastrzezenie_zakresu(zakres_waznosci))
@@ -505,6 +598,7 @@ def _zastrzezenia_pol(
 
 def zastrzezenia_kryterium(
     *,
+    kryterium: Kryterium,
     podstawa: PodstawaWymagania,
     stosowalnosc: Stosowalnosc,
     limit: LimitKryterium | None,
@@ -512,12 +606,14 @@ def zastrzezenia_kryterium(
     zakres_waznosci: ZakresWaznosci,
 ) -> tuple[str, ...]:
     """Zastrzeżenia rekordu K: stan źródła ≠ ZWERYFIKOWANE (podstawa kryterium, podstawa
-    limitu, podstawa stosowalności), UNVALIDATED_MODEL, poziom zdolności bez walidacji,
-    UNVALIDATED_INPUT (każda dana z wartością) i wykluczenia zakresu ważności."""
+    limitu, podstawa warunku wstępnego, podstawa stosowalności), UNVALIDATED_MODEL, poziom
+    zdolności bez walidacji, bieg poza domeną walidacji, UNVALIDATED_INPUT (każda dana
+    z wartością) i wykluczenia zakresu ważności."""
     podstawy = [podstawa] if limit is None else [podstawa, limit.podstawa]
     return _bez_powtorzen(
         _zastrzezenia_pol(
             podstawy=podstawy,
+            kryterium=kryterium,
             stosowalnosc=stosowalnosc,
             dowod=dowod,
             zakres_waznosci=zakres_waznosci,
@@ -538,6 +634,7 @@ def zastrzezenia_wymagania(
     skladowe = [z for ocena in oceny for z in ocena.wyjasnienie.zastrzezenia]
     wlasne = _zastrzezenia_pol(
         podstawy=[podstawa],
+        kryterium=None,
         stosowalnosc=stosowalnosc,
         dowod=dowod,
         zakres_waznosci=zakres_waznosci,
@@ -615,7 +712,7 @@ def wyjasnienie_kryterium(
                 else f"wartość wyznaczona metodą „{NAZWA_METODY_PL[wynik.metoda]}”"
             )
             zdanie += f"; {rodzaj_wartosci} pokazana informacyjnie: {informacja}"
-        zdania = [f"{zdanie}; właściwa metoda: {_lista_metod(metody_dopuszczalne)}."]
+        zdania = [f"{zdanie}; właściwa metoda: {_lista_metod_kryterium(metody_dopuszczalne)}."]
         przyczyna = fraza
     elif krok == "WYNIK":
         dopisek = (
@@ -823,7 +920,7 @@ def wyjasnienie_wymagania(
         zdania = [
             f"{naglowek} — brak wystarczającego dowodu: kryteria dające się ocenić są spełnione, "
             "ale dowód jest niepełny.",
-            f"Właściwa metoda: {metody_przydatne_pl(dowod.rodzaj_twierdzenia)}.",
+            f"Właściwa metoda: {metody_przydatne_pl(dowod.rodzaj_twierdzenia, 'W')}.",
         ]
         wyniki = _wyniki_obliczeniowe(oceny)
         if wyniki is not None:

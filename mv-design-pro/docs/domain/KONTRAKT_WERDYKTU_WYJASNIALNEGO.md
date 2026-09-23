@@ -112,10 +112,14 @@ rekord, którego status różni się od wyniku reguły (predykaty parami).
 
 1. przedmiot poza zakresem stosowalności (typ, technologia, warunek wstępny kryterium
    niespełniony w scenariuszu — §5.1 FRT) → `NIE_DOTYCZY` z powodem;
-2. metoda dowodu niedopuszczalna dla rodzaju twierdzenia (`metody_dopuszczalne(ClaimKind)`:
-   twierdzenie o zachowaniu dynamicznym — `SYMULACJA` / `RAPORT_Z_TESTU` / `POMIAR` / `CERTYFIKAT`
-   / `DOWOD_LACZONY`; twierdzenie o konfiguracji zadeklarowanej — dodatkowo `DEKLARACJA` /
-   `OBLICZENIE` / `OCENA_OPERATORA`) → `NIE_OCENIONO`; wartość zadeklarowana, jeśli podana, jest
+2. metoda dowodu niedopuszczalna dla rodzaju twierdzenia (`metody_dopuszczalne(ClaimKind)` —
+   JEDNA tabela `METODY_DOPUSZCZALNE_DLA_TWIERDZENIA`, trzy rozłączne zbiory: twierdzenie o
+   zachowaniu dynamicznym — `SYMULACJA` / `RAPORT_Z_TESTU` / `POMIAR` / `CERTYFIKAT` /
+   `DOWOD_LACZONY`; twierdzenie o konfiguracji zadeklarowanej — `DEKLARACJA` / `OBLICZENIE` /
+   `OCENA_OPERATORA` / `RAPORT_Z_TESTU` / `POMIAR` / `CERTYFIKAT` / `DOWOD_LACZONY`, BEZ
+   `SYMULACJA` (symulacja nie wykazuje faktu zadeklarowanego); twierdzenie z obliczenia
+   statycznego — `OBLICZENIE` / `POMIAR` / `RAPORT_Z_TESTU` / `CERTYFIKAT` / `DOWOD_LACZONY`;
+   metoda przydatna jest zawsze metodą dopuszczalną — przypięte testem) → `NIE_OCENIONO`; wartość zadeklarowana, jeśli podana, jest
    pokazywana informacyjnie, a `czego_brakuje` nazywa metodę właściwą (porównanie deklaracji
    nigdy nie daje `SPELNIA` dla zachowania dynamicznego — przegląd #11);
 3. brak wielkości zmierzonej/obliczonej (brak biegu, bieg nieaktualny/nieudany, brak danych) →
@@ -190,7 +194,9 @@ WSZYSTKIE warunki:
 
 1. **metoda dowodu właściwa dla rodzaju twierdzenia** (`ClaimKind` — TRZY rodzaje): twierdzenie
    o zachowaniu dynamicznym (`DYNAMIC_PERFORMANCE`) — symulacja na silniku o poziomie
-   `VALIDATED_SIMULATION` w zadeklarowanej domenie (`w_domenie_walidacji = True`) ORAZ model
+   `VALIDATED_SIMULATION` nierozstrzygnięta jako leżąca POZA zadeklarowaną domeną
+   (`w_domenie_walidacji is not False`; rekord K z wynikiem symulacji MUSI nieść rozstrzygnięcie
+   `True`/`False` — `None` dopuszczalne wyłącznie bez wyniku i w dowodzie poziomu W) ORAZ model
    urządzenia `VALIDATED_AGAINST_TEST` albo `CERTIFIED_MODEL`, albo raport z testu, albo pomiar,
    albo certyfikat pokrywający wymaganie; twierdzenie o konfiguracji zadeklarowanej
    (`DECLARED_CONFIGURATION`) — deklaracja albo ocena operatora jest właściwą podstawą;
@@ -407,9 +413,9 @@ Dowód (metoda, poziom, status modelu, status danych)**; zakres ważności i śl
 osiągalne jednym kliknięciem. Zdanie wyjaśnienia jest widoczne bez rozwijania (nie w dymku).
 
 Etykieta zależy od POZIOMU rekordu: na poziomie K „Kryterium …", na poziomie W „Wymaganie …"
-(`etykieta(status, kompletnosc, poziom)`); tabela podaje brzmienie dla K, dla W słowo „Kryterium"
-zastępuje „Wymaganie" (para `SPELNIA` + `NIEPELNY` na poziomie W nie występuje — reguła W daje
-wtedy `BRAK_DOWODU`).
+(`etykieta(status, kompletnosc, poziom)`); tabela podaje brzmienie dla K, a na poziomie W słowo
+„Kryterium" jest ZASTĘPOWANE słowem „Wymaganie" (np. „Wymaganie spełnione", „Wymaganie naruszone";
+para `SPELNIA` + `NIEPELNY` na poziomie W nie występuje — reguła W daje wtedy `BRAK_DOWODU`).
 
 | Status + kompletność | Etykieta | Semantyka koloru |
 |----------------------|----------|------------------|

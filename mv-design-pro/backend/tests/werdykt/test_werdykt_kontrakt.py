@@ -13,9 +13,12 @@ from __future__ import annotations
 
 import ast
 import dataclasses
+import enum
 import inspect
 import math
+import os
 import re
+import subprocess
 import sys
 import typing
 from collections.abc import Callable
@@ -25,7 +28,6 @@ from typing import Any, get_args
 import pytest
 import werdykt
 from pydantic import BaseModel, ValidationError
-from solver_input.provenance import ClaimKind, EvidenceTier, FieldQuality
 from werdykt import (
     DanaPrzyjeta,
     KompletnoscDowodu,
@@ -37,6 +39,7 @@ from werdykt import (
     OcenaKryterium,
     PodstawaWymagania,
     PokrycieProgramu,
+    PoziomRekordu,
     PunktObwiedni,
     Relacja,
     StatusDanych,
@@ -49,6 +52,7 @@ from werdykt import (
     etykieta,
 )
 from werdykt.kontrakt import METODY_WYKAZANIA, METODY_WYNIKU
+from werdykt.proweniencja import ClaimKind, EvidenceTier, FieldQuality
 
 from tests.werdykt import fabryki as f
 
@@ -629,6 +633,107 @@ def test_t14_symulacja_bez_biegu_nie_wymaga_niepewnosci(relacja: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Domena walidacji biegu (karta A2 pkt 4)
+# ---------------------------------------------------------------------------
+
+METODY_BIEGU: tuple[MetodaDowodu, ...] = ("SYMULACJA", "OBLICZENIE")
+
+
+@pytest.mark.parametrize("domena", [None, "D-11"])
+@pytest.mark.parametrize("w_domenie", [None, True, False])
+@pytest.mark.parametrize("metoda", get_args(MetodaDowodu))
+def test_domena_walidacji_tylko_dla_biegu_i_zawsze_z_nazwa(
+    metoda: MetodaDowodu, w_domenie: bool | None, domena: str | None
+) -> None:
+    """Metoda × predykat domeny × nazwa domeny: domena istnieje wyłącznie dla symulacji
+    i obliczenia, a predykat i nazwa domeny występują razem albo wcale (także dla False)."""
+    poprawna = (w_domenie is None) == (domena is None) and (
+        metoda in METODY_BIEGU or w_domenie is None
+    )
+    if poprawna:
+        dowod = f.dowod(metoda=metoda, w_domenie=w_domenie, domena=domena)
+        assert (dowod.w_domenie_walidacji, dowod.domena_pl) == (w_domenie, domena)
+    else:
+        with pytest.raises(ValidationError, match="domen"):
+            f.dowod(metoda=metoda, w_domenie=w_domenie, domena=domena)
+
+
+@pytest.mark.parametrize("domena", ["", "   "])
+@pytest.mark.parametrize("w_domenie", [True, False])
+def test_nazwa_domeny_niepusta(w_domenie: bool, domena: str) -> None:
+    with pytest.raises(ValidationError, match="domena_pl"):
+        f.dowod(metoda="SYMULACJA", w_domenie=w_domenie, domena=domena)
+
+
+@pytest.mark.parametrize("jest_wynik", [True, False])
+@pytest.mark.parametrize("relacja", f.RELACJE)
+def test_wynik_symulacji_wymaga_rozstrzygniecia_domeny(relacja: Relacja, jest_wynik: bool) -> None:
+    """Relacja × obecność wyniku: wynik symulacji bez predykatu domeny jest odrzucany; bez
+    wyniku (brak biegu) predykat nie jest wymagany."""
+    dowod_oceny = f.dowod_symulacji(w_domenie=None)
+    if jest_wynik:
+        with pytest.raises(ValidationError, match="w_domenie_walidacji"):
+            f.ocena(
+                relacja,
+                dowod_oceny=dowod_oceny,
+                metoda_wyniku="SYMULACJA",
+                u=f.NIEPEWNOSC_ROZSTRZYGALNA[relacja],
+            )
+    else:
+        rekord = f.ocena(relacja, dowod_oceny=dowod_oceny, jest_wynik=False)
+        assert rekord.status_maszynowy == "NIE_OCENIONO"
+
+
+def test_wynik_obliczenia_nie_wymaga_rozstrzygniecia_domeny() -> None:
+    rekord = f.ocena(
+        dowod_oceny=f.dowod_obliczenia(),
+        metoda_wyniku="OBLICZENIE",
+        zakres_oceny=f.zakres(rodzaj="POWER_FLOW"),
+    )
+    assert rekord.dowod.w_domenie_walidacji is None
+    assert rekord.kompletnosc_dowodu == "PELNY"
+
+
+# ---------------------------------------------------------------------------
+# Dowód łączony wyłącznie na poziomie W (karta A2 pkt 1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("twierdzenie", list(ClaimKind))
+@pytest.mark.parametrize("relacja", f.RELACJE)
+def test_dowod_laczony_niedozwolony_w_rekordzie_k(relacja: Relacja, twierdzenie: ClaimKind) -> None:
+    with pytest.raises(ValidationError, match="dowód łączony"):
+        f.ocena(relacja, dowod_oceny=f.dowod(metoda="DOWOD_LACZONY", twierdzenie=twierdzenie))
+
+
+# ---------------------------------------------------------------------------
+# Warunek wstępny z podstawą (karta A2 pkt 3)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("ma_podstawe", [True, False])
+@pytest.mark.parametrize("ma_warunek", [True, False])
+def test_warunek_wstepny_i_jego_podstawa_razem_albo_wcale(
+    ma_warunek: bool, ma_podstawe: bool
+) -> None:
+    dane: dict[str, Any] = {
+        "opis_pl": "Pozostanie w pracy podczas zapadu",
+        "warunek_latex": "",
+        "relacja": "LOGICZNE",
+        "warunek_wstepny_pl": "U_PCC(t) ≥ obwiednia" if ma_warunek else None,
+        "warunek_wstepny_podstawa": (
+            f.podstawa_warunku().model_dump(mode="json") if ma_podstawe else None
+        ),
+    }
+    if ma_warunek == ma_podstawe:
+        kryterium = Kryterium.model_validate(dane)
+        assert (kryterium.warunek_wstepny_pl is None) == (not ma_warunek)
+    else:
+        with pytest.raises(ValidationError, match="warunek wstępny i jego podstawa"):
+            Kryterium.model_validate(dane)
+
+
+# ---------------------------------------------------------------------------
 # Struktura rekordu K
 # ---------------------------------------------------------------------------
 
@@ -845,9 +950,18 @@ def test_zakres_nie_szerszy_niz_z_agregat_nie_zmienia_dziedziny() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _etykieta_dla(status: StatusWerdyktu, kompletnosc: str) -> dict[str, Any]:
-    kompletnosc_etykiety: KompletnoscDowodu = "NIEPELNY" if kompletnosc == "NIEPELNY" else "PELNY"
-    return etykieta(status, kompletnosc_etykiety).model_dump(mode="json")
+def _etykieta_dla(
+    status: StatusWerdyktu, kompletnosc: str, poziom: PoziomRekordu
+) -> dict[str, Any]:
+    """Etykieta słownika dopasowana do podmienionego statusu (para SPELNIA + NIEPELNY nie ma
+    etykiety na poziomie W — wtedy etykieta dowodu pełnego)."""
+    niepelna = kompletnosc == "NIEPELNY" and poziom == "K"
+    kompletnosc_etykiety: KompletnoscDowodu = "NIEPELNY" if niepelna else "PELNY"
+    return etykieta(status, kompletnosc_etykiety, poziom).model_dump(mode="json")
+
+
+def _poziom(rekord: OcenaKryterium | WynikWymagania) -> PoziomRekordu:
+    return "K" if isinstance(rekord, OcenaKryterium) else "W"
 
 
 @pytest.mark.parametrize(
@@ -869,7 +983,7 @@ def test_podmieniony_status_jest_odrzucany(
     NIE_SPELNIA), T5 (brak biegu ≠ SPELNIA; W: SPELNIA tylko z dowodem PEŁNYM) i T11."""
     dane = _zrzut(rekord)
     dane["status_maszynowy"] = status
-    dane["etykieta"] = _etykieta_dla(status, dane["kompletnosc_dowodu"])
+    dane["etykieta"] = _etykieta_dla(status, dane["kompletnosc_dowodu"], _poziom(rekord))
     with pytest.raises(ValidationError, match="status"):
         _odtworz(_typ(rekord), dane)
 
@@ -906,7 +1020,7 @@ def test_unvalidated_model_skladowej_nie_daje_pelnego_dowodu_wymagania() -> None
         kompletnosc_dowodu="PELNY",
         powody_niepelnosci=[],
         status_maszynowy="SPELNIA",
-        etykieta=_etykieta_dla("SPELNIA", "PELNY"),
+        etykieta=_etykieta_dla("SPELNIA", "PELNY", "W"),
     )
     with pytest.raises(ValidationError):
         WynikWymagania.model_validate(dane)
@@ -1050,7 +1164,16 @@ def test_rekord_jest_zamrozony_i_bez_pol_dodatkowych() -> None:
 # Granice pakietu: liść, zero zakazanych tokenów, zero Any w sygnaturach publicznych
 # ---------------------------------------------------------------------------
 
-_ZAKAZANE_KORZENIE = {"analysis", "application", "network_model", "api", "catalog", "enm"}
+_ZAKAZANE_KORZENIE = {
+    "analysis",
+    "application",
+    "network_model",
+    "api",
+    "catalog",
+    "enm",
+    "solver_input",
+    "domain",
+}
 
 
 def _moduly_importowane(sciezka: Path) -> list[str]:
@@ -1066,18 +1189,34 @@ def _moduly_importowane(sciezka: Path) -> list[str]:
 
 @pytest.mark.parametrize("plik", sorted(KATALOG_PAKIETU.glob("*.py")), ids=lambda p: p.name)
 def test_pakiet_jest_lisciem(plik: Path) -> None:
-    """Importy bezpośrednie (także wewnątrz funkcji): stdlib, pydantic,
-    ``solver_input.provenance`` i własne moduły pakietu — nic z warstw aplikacji i solverów."""
+    """Importy bezpośrednie (także wewnątrz funkcji): wyłącznie stdlib, pydantic i własne moduły
+    pakietu (osie proweniencji z ``werdykt.proweniencja``) — nic z warstw aplikacji, domeny,
+    wejścia solverów ani solverów (karta A2 pkt 2)."""
     for modul in _moduly_importowane(plik):
         korzen = modul.split(".")[0]
-        dozwolony = (
-            korzen in sys.stdlib_module_names
-            or korzen == "pydantic"
-            or modul == "solver_input.provenance"
-            or korzen == "werdykt"
-        )
+        dozwolony = korzen in sys.stdlib_module_names or korzen == "pydantic" or korzen == "werdykt"
         assert dozwolony, f"{plik.name}: import {modul} spoza granic pakietu-liścia"
         assert korzen not in _ZAKAZANE_KORZENIE
+
+
+def test_pakiet_jest_lisciem_przechodnio() -> None:
+    """Import pakietu w świeżym interpreterze nie ładuje ŻADNEGO modułu warstw produktu —
+    także pośrednio (``solver_input/__init__.py`` ładuje budowniczego wejścia solverów razem
+    z ``domain`` i ``network_model``, więc sam import ``solver_input.provenance`` złamałby
+    liść)."""
+    korzenie = tuple(sorted(_ZAKAZANE_KORZENIE))
+    skrypt = (
+        "import sys, werdykt; "
+        f"print(sorted(m for m in sys.modules if m.split('.')[0] in {korzenie!r}))"
+    )
+    wynik = subprocess.run(
+        [sys.executable, "-c", skrypt],
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, "PYTHONPATH": str(KATALOG_PAKIETU.parent)},
+    )
+    assert wynik.stdout.strip() == "[]", wynik.stdout
 
 
 _ZAKAZANE_TOKENY = (
@@ -1120,12 +1259,48 @@ def test_publiczne_sygnatury_bez_any(nazwa: str) -> None:
             assert not _zawiera_any(adnotacja), f"{nazwa}({parametr})"
     elif isinstance(obiekt, tuple):
         assert all(isinstance(element, BaseModel) for element in obiekt), nazwa
+    elif isinstance(obiekt, type) and issubclass(obiekt, enum.Enum):
+        assert all(isinstance(czlon.value, str) for czlon in obiekt), nazwa
+    elif isinstance(obiekt, str):
+        assert obiekt.strip(), nazwa
     else:
         assert typing.get_origin(obiekt) is typing.Literal, nazwa
 
 
-def test_poziomy_dowodu_i_twierdzenia_z_provenance() -> None:
-    """Osie dowodowe są typami ``solver_input.provenance`` — jeden słownik w produkcie."""
+def test_poziomy_dowodu_i_twierdzenia_z_proweniencji() -> None:
+    """Osie dowodowe mają JEDNĄ definicję (``werdykt.proweniencja``), a
+    ``solver_input.provenance`` re-eksportuje TE SAME obiekty klas — tożsamość typów jest
+    zachowana dla wszystkich konsumentów."""
+    from solver_input import provenance
+
     pola = werdykt.StatusDowodu.model_fields
     assert pola["poziom"].annotation is EvidenceTier
     assert pola["rodzaj_twierdzenia"].annotation is ClaimKind
+    assert provenance.ClaimKind is ClaimKind is werdykt.ClaimKind
+    assert provenance.EvidenceTier is EvidenceTier is werdykt.EvidenceTier
+    assert provenance.FieldQuality is FieldQuality is werdykt.FieldQuality
+    assert provenance.BRAK_DOWODU_PL is werdykt.BRAK_DOWODU_PL
+    assert ClaimKind.__module__ == EvidenceTier.__module__ == FieldQuality.__module__
+    assert ClaimKind.__module__ == "werdykt.proweniencja"
+
+
+def test_osie_proweniencji_zachowuja_wartosci_i_etykiety() -> None:
+    """Przeniesienie definicji nie zmienia wartości ani etykiet PL; nowy członek
+    ``STATIC_CALCULATION`` ma etykietę „obliczenie_statyczne"."""
+    assert {c.value: c.label_pl for c in FieldQuality} == {
+        "DATASHEET": "karta_techniczna",
+        "ESTIMATED": "oszacowane",
+        "SYSTEM_DEFAULT": "domyslne_techniczne",
+    }
+    assert {c.value: (c.label_pl, c.regulatory_evidence_eligible) for c in EvidenceTier} == {
+        "VALIDATED_SIMULATION": ("symulacja_zwalidowana", True),
+        "DECLARATION": ("deklaracja_wnioskodawcy", False),
+        "UNVALIDATED_MODEL": ("model_niezwalidowany", False),
+        "NOT_SIMULATED": ("brak_symulacji", False),
+    }
+    assert {c.value: c.label_pl for c in ClaimKind} == {
+        "DYNAMIC_PERFORMANCE": "zachowanie_dynamiczne",
+        "DECLARED_CONFIGURATION": "konfiguracja_zadeklarowana",
+        "STATIC_CALCULATION": "obliczenie_statyczne",
+    }
+    assert werdykt.BRAK_DOWODU_PL == "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA"

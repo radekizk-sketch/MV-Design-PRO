@@ -15,11 +15,14 @@ import math
 import re
 
 import pytest
-from solver_input.provenance import ClaimKind, EvidenceTier, FieldQuality
+from pydantic import ValidationError
 from werdykt import (
     MetodaDowodu,
     OcenaKryterium,
+    PodstawaWymagania,
+    PoziomRekordu,
     Relacja,
+    RodzajPodstawy,
     StanDanych,
     StanZrodla,
     StatusDanych,
@@ -29,7 +32,14 @@ from werdykt import (
     format_wielkosc,
 )
 from werdykt.kontrakt import KOLEJNOSC_METOD, STATUSY_Z_BRAKAMI
-from werdykt.wyjasnienie import NAZWA_METODY_PL, metody_przydatne_pl, nazwa_skladowej
+from werdykt.proweniencja import ClaimKind, EvidenceTier, FieldQuality
+from werdykt.wyjasnienie import (
+    NAZWA_METODY_PL,
+    NAZWA_RODZAJU_PODSTAWY_PL,
+    metody_przydatne_pl,
+    nazwa_skladowej,
+    opis_podstawy,
+)
 
 from tests.werdykt import fabryki as f
 
@@ -196,23 +206,37 @@ def test_brak_podstawy_zaczyna_od_werdyktu_niewydanego_i_pokazuje_wynik_informac
     assert "informacyjn" in zdanie
 
 
+#: Metody dopuszczalne na poziomie K (bez dowodu łączonego — metody wyłącznie poziomu W) dla
+#: twierdzeń, których deklaracja nie wykazuje, i przedmiot zdania „nie wykazuje …".
+METODY_K_I_PRZEDMIOT: dict[ClaimKind, tuple[tuple[str, ...], str]] = {
+    ClaimKind.DYNAMIC_PERFORMANCE: (
+        ("SYMULACJA", "RAPORT_Z_TESTU", "POMIAR", "CERTYFIKAT"),
+        "zachowania dynamicznego",
+    ),
+    ClaimKind.STATIC_CALCULATION: (
+        ("OBLICZENIE", "POMIAR", "RAPORT_Z_TESTU", "CERTYFIKAT"),
+        "wielkości z obliczenia statycznego",
+    ),
+}
+
+
+@pytest.mark.parametrize("twierdzenie", list(METODY_K_I_PRZEDMIOT))
 @pytest.mark.parametrize("relacja", f.RELACJE)
 def test_metoda_niedopuszczalna_nazywa_metode_wlasciwa_w_stalej_kolejnosci(
-    relacja: Relacja,
+    relacja: Relacja, twierdzenie: ClaimKind
 ) -> None:
-    """„ocena niewykonana: metoda … nie wykazuje zachowania dynamicznego; wartość zadeklarowana
+    """„ocena niewykonana: metoda … nie wykazuje <przedmiotu twierdzenia>; wartość zadeklarowana
     … pokazana informacyjnie; właściwa metoda: …" — lista metod w kolejności słownika, nie
-    w kolejności iteracji zbioru."""
-    rekord = f.ocena(relacja, dowod_oceny=f.dowod(twierdzenie=ClaimKind.DYNAMIC_PERFORMANCE))
+    w kolejności iteracji zbioru, bez dowodu łączonego (niedozwolony na poziomie K)."""
+    metody, przedmiot = METODY_K_I_PRZEDMIOT[twierdzenie]
+    rekord = f.ocena(relacja, dowod_oceny=f.dowod(twierdzenie=twierdzenie))
     zdanie = rekord.wyjasnienie.zdanie_pl
-    assert "ocena niewykonana: metoda „deklaracja” nie wykazuje zachowania dynamicznego" in zdanie
+    assert f"ocena niewykonana: metoda „deklaracja” nie wykazuje {przedmiot}" in zdanie
     assert "wartość zadeklarowana pokazana informacyjnie" in zdanie
-    nazwy = [
-        NAZWA_METODY_PL[m]
-        for m in KOLEJNOSC_METOD
-        if m in ("SYMULACJA", "RAPORT_Z_TESTU", "POMIAR", "CERTYFIKAT", "DOWOD_LACZONY")
-    ]
+    nazwy = [NAZWA_METODY_PL[m] for m in KOLEJNOSC_METOD if m in metody]
     assert f"właściwa metoda: {', '.join(nazwy[:-1])} albo {nazwy[-1]}." in zdanie
+    assert "dowód łączony" not in zdanie
+    assert "dowód łączony" not in rekord.wyjasnienie.czego_brakuje[0]
 
 
 def test_brak_wyniku_nazywa_brak_i_akcje_naprawcza() -> None:
@@ -362,11 +386,14 @@ METODY_OSI: tuple[MetodaDowodu, ...] = ("SYMULACJA", "OBLICZENIE", "DEKLARACJA")
 @pytest.mark.parametrize("poziom", list(EvidenceTier))
 def test_zastrzezenie_osi_zdolnosci_narzedzia(metoda: MetodaDowodu, poziom: EvidenceTier) -> None:
     """Oś zdolności narzędzia (EvidenceTier) jest nazwana osobno od osi modelu urządzenia."""
+    bieg = metoda in ("SYMULACJA", "OBLICZENIE")
     dowod_oceny = f.dowod(
         metoda=metoda,
         poziom=poziom,
         twierdzenie=ClaimKind.DECLARED_CONFIGURATION,
         status_modelu="VALIDATED_AGAINST_TEST",
+        w_domenie=True if bieg else None,
+        domena=f.DOMENA_WALIDACJI if bieg else None,
     )
     rekord = f.ocena(
         dowod_oceny=dowod_oceny,
@@ -481,21 +508,137 @@ def test_wymaganie_cytuje_przyczyne_skladowej(nazwa: str) -> None:
         assert f"{nazwa_skladowej(skladowa)}: {brak}" in rekord.wyjasnienie.czego_brakuje
 
 
-@pytest.mark.parametrize("twierdzenie", list(ClaimKind))
-def test_metody_przydatne_zgodne_z_formula_przydatnosci(twierdzenie: ClaimKind) -> None:
-    """Tekst „właściwa metoda" nazywa każdą metodę, którą formuła przydatności przyjmuje dla
-    danego rodzaju twierdzenia, i żadnej innej (symulacja — z warunkami poziomu i modelu)."""
-    tekst = metody_przydatne_pl(twierdzenie)
-    for metoda, poziom, model in itertools.product(KOLEJNOSC_METOD, EvidenceTier, f.STATUSY_MODELU):
-        przydatna = f.dowod(
-            metoda=metoda, poziom=poziom, twierdzenie=twierdzenie, status_modelu=model
+def _przydatna_w_jakiejs_konfiguracji(
+    metoda: MetodaDowodu, twierdzenie: ClaimKind, poziom_rekordu: PoziomRekordu
+) -> bool:
+    """Czy formuła przydatności przyjmuje metodę dla rodzaju twierdzenia przy JAKIEJKOLWIEK
+    konfiguracji poziomu zdolności, modelu urządzenia i domeny walidacji (dla dowodu łączonego
+    na poziomie W — przy składnikach przydatnych; na poziomie K dowód łączony jest zakazany)."""
+    if metoda == "DOWOD_LACZONY":
+        return poziom_rekordu == "W"
+    domeny: tuple[bool | None, ...] = (
+        (None, True, False) if metoda in ("SYMULACJA", "OBLICZENIE") else (None,)
+    )
+    return any(
+        f.dowod(
+            metoda=metoda,
+            poziom=poziom,
+            twierdzenie=twierdzenie,
+            status_modelu=model,
+            w_domenie=w_domenie,
+            domena=None if w_domenie is None else f.DOMENA_WALIDACJI,
         ).przydatnosc_dowodowa
+        for poziom, model, w_domenie in itertools.product(EvidenceTier, f.STATUSY_MODELU, domeny)
+    )
+
+
+@pytest.mark.parametrize("poziom_rekordu", ["K", "W"])
+@pytest.mark.parametrize("twierdzenie", list(ClaimKind))
+def test_metody_przydatne_zgodne_z_formula_przydatnosci(
+    twierdzenie: ClaimKind, poziom_rekordu: PoziomRekordu
+) -> None:
+    """Rodzaj twierdzenia × poziom rekordu: tekst „właściwa metoda" nazywa każdą metodę, którą
+    formuła przydatności przyjmuje, i żadnej innej; symulacja i obliczenie — z warunkami
+    poziomu zdolności, modelu i domeny walidacji."""
+    tekst = metody_przydatne_pl(twierdzenie, poziom_rekordu)
+    for metoda in KOLEJNOSC_METOD:
         nazwa = NAZWA_METODY_PL[metoda]
-        if przydatna:
-            assert nazwa in tekst, metoda
-        elif metoda not in ("SYMULACJA",):
-            assert nazwa not in tekst, metoda
-    assert "VALIDATED_SIMULATION" in tekst and "VALIDATED_AGAINST_TEST" in tekst
+        assert (nazwa in tekst) == _przydatna_w_jakiejs_konfiguracji(
+            metoda, twierdzenie, poziom_rekordu
+        ), metoda
+    if twierdzenie is ClaimKind.DYNAMIC_PERFORMANCE:
+        assert "VALIDATED_SIMULATION" in tekst and "VALIDATED_AGAINST_TEST" in tekst
+        assert "domenie walidacji" in tekst
+    if twierdzenie is ClaimKind.STATIC_CALCULATION:
+        assert "obliczenie na zdolności o poziomie VALIDATED_SIMULATION" in tekst
+
+
+# ---------------------------------------------------------------------------
+# Warunek wstępny z podstawą (karta A2 pkt 3)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("stosowalny", [True, False])
+@pytest.mark.parametrize("stan_warunku", f.STANY_ZRODLA)
+@pytest.mark.parametrize("relacja", ["LOGICZNE", "OBWIEDNIA_DOLNA"])
+def test_zastrzezenie_podstawy_warunku_wstepnego(
+    relacja: Relacja, stan_warunku: StanZrodla, stosowalny: bool
+) -> None:
+    """Relacja × stan podstawy warunku wstępnego × kryterium stosowalne / nieuruchomione:
+    zastrzeżenie istnieje dokładnie dla stanu ≠ ZWERYFIKOWANE i cytuje warunek, stan
+    i dokument — także przy NIE_DOTYCZY z nieuruchomionego warunku (rozstrzygnięcie, że
+    obowiązek nie został uruchomiony, opiera się na tej podstawie)."""
+    warunek = "U_PCC(t) ≥ obwiednia w całym przedziale"
+    rekord = f.ocena(
+        relacja,
+        warunek_wstepny=warunek,
+        stan_warunku=stan_warunku,
+        stosowalnosc_oceny=(
+            f.stosowalnosc()
+            if stosowalny
+            else f.stosowalnosc(False, warunek_wstepny_nieuruchomiony=True)
+        ),
+    )
+    zastrzezenia = [z for z in rekord.wyjasnienie.zastrzezenia if z.startswith("Warunek wstępny")]
+    if stan_warunku == "ZWERYFIKOWANE":
+        assert zastrzezenia == []
+        return
+    assert len(zastrzezenia) == 1
+    podstawa = rekord.kryterium.warunek_wstepny_podstawa
+    assert podstawa is not None
+    assert zastrzezenia[0].startswith(
+        f"Warunek wstępny („{warunek}”) oparty na podstawie o stanie {stan_warunku}: "
+    )
+    assert podstawa.dokument in zastrzezenia[0]
+
+
+def test_brak_warunku_wstepnego_nie_daje_zastrzezenia_warunku() -> None:
+    rekord = f.ocena("LOGICZNE", stan_kryterium="WSKAZANE")
+    assert not any(z.startswith("Warunek wstępny") for z in rekord.wyjasnienie.zastrzezenia)
+
+
+# ---------------------------------------------------------------------------
+# Rodzaj podstawy × stan źródła (w tym prawo krajowe — uzupełnienie karty A2 pkt 9)
+# ---------------------------------------------------------------------------
+
+
+RODZAJE_PODSTAWY: tuple[RodzajPodstawy, ...] = tuple(NAZWA_RODZAJU_PODSTAWY_PL)
+
+
+def test_rodzaje_podstawy_z_prawem_krajowym_w_ustalonej_kolejnosci() -> None:
+    assert RODZAJE_PODSTAWY[:4] == ("ROZPORZADZENIE_UE", "NORMA", "PRAWO_KRAJOWE", "WOS")
+    assert NAZWA_RODZAJU_PODSTAWY_PL["PRAWO_KRAJOWE"] == "prawo krajowe"
+
+
+@pytest.mark.parametrize("stan", f.STANY_ZRODLA)
+@pytest.mark.parametrize("rodzaj", RODZAJE_PODSTAWY)
+def test_rodzaj_podstawy_na_iloczynie_ze_stanem_zrodla(
+    rodzaj: RodzajPodstawy, stan: StanZrodla
+) -> None:
+    """Każdy rodzaj podstawy × każdy stan źródła: rodzaj bez ustalonego pochodzenia ze stanem
+    mocniejszym niż NIEUSTALONE jest odrzucany; każda inna para buduje podstawę, której opis
+    nazywa rodzaj po polsku, a zastrzeżenie (stan ≠ ZWERYFIKOWANE) i powód niepełności
+    (NIEUSTALONE) cytują ją w rekordzie kryterium logicznego."""
+    pelna = stan != "NIEUSTALONE"
+    dane = {
+        "rodzaj": rodzaj,
+        "dokument": "Rozporządzenie w sprawie szczegółowych warunków funkcjonowania systemu",
+        "wydanie": "2007" if pelna else None,
+        "jednostka_redakcyjna": "§ 38" if pelna else None,
+        "status": stan,
+    }
+    if rodzaj == "NIEUSTALONA" and pelna:
+        with pytest.raises(ValidationError, match="NIEUSTALONA"):
+            PodstawaWymagania.model_validate(dane)
+        return
+    podstawa = PodstawaWymagania.model_validate(dane)
+    opis = opis_podstawy(podstawa)
+    assert f"({NAZWA_RODZAJU_PODSTAWY_PL[rodzaj]})" in opis
+    rekord = f.ocena("LOGICZNE", podstawa_kryterium=podstawa)
+    assert rekord.status_maszynowy == ("SPELNIA" if pelna else "BRAK_PODSTAWY")
+    zastrzezenia = [z for z in rekord.wyjasnienie.zastrzezenia if opis in z]
+    assert len(zastrzezenia) == (0 if stan == "ZWERYFIKOWANE" else 1)
+    assert any(opis in p for p in rekord.powody_niepelnosci) == (not pelna)
 
 
 def test_rodzaj_danych_zwalidowanych_nie_daje_zastrzezen_danych() -> None:

@@ -17,9 +17,10 @@ i zastrzeżenia TYMI SAMYMI funkcjami, których używa konstruktor wysokiego poz
 różni się od wyniku reguły — reguła ma JEDNO ciało. Import ``werdykt.decyzja`` następuje
 wewnątrz walidatora, bo ``decyzja`` importuje typy z tego modułu (cykl kontrakt ↔ decyzja).
 
-IMPORTY BEZPOŚREDNIE: stdlib, pydantic, ``solver_input.provenance`` (osie ``EvidenceTier``,
-``FieldQuality``, ``ClaimKind``). Zero importów z ``analysis``, ``application``,
-``network_model``, ``api``, ``catalog``, ``enm``.
+IMPORTY: stdlib, pydantic i własne moduły pakietu (osie ``EvidenceTier``, ``FieldQuality``,
+``ClaimKind`` z ``werdykt.proweniencja``) — pakiet jest liściem także przechodnio: jego import
+nie ładuje ``solver_input``, ``domain``, ``network_model``, ``application``, ``analysis``,
+``api``, ``catalog`` ani ``enm``.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ from bisect import bisect_right
 from typing import Annotated, Literal, Self, get_args
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, FiniteFloat, model_validator
-from solver_input.provenance import ClaimKind, EvidenceTier, FieldQuality
+from werdykt.proweniencja import ClaimKind, EvidenceTier, FieldQuality
 
 # ---------------------------------------------------------------------------
 # Słowniki zamknięte (wartości dokładnie jak w kontrakcie §1, §2.1, §4)
@@ -53,6 +54,7 @@ KompletnoscDowodu = Literal["PELNY", "NIEPELNY", "NIE_DOTYCZY"]
 RodzajPodstawy = Literal[
     "ROZPORZADZENIE_UE",
     "NORMA",
+    "PRAWO_KRAJOWE",
     "WOS",
     "PROCEDURA_PTPIREE",
     "WIPWC",
@@ -107,6 +109,8 @@ SemantykaKoloru = Literal["pozytywna", "negatywna", "ostrzegawcza", "neutralna"]
 RodzajSkali = Literal["TOLERANCJA", "LIMIT", "NIEPEWNOSC"]
 #: Pokrycie zbioru scenariuszy programu badań przez biegi wykazujące wymaganie (§2.3 pkt 8).
 PokrycieProgramu = Literal["PELNE", "CZESCIOWE", "NIE_DOTYCZY"]
+#: Poziom rekordu: K — ocena kryterium, W — wynik wymagania (etykieta zależy od poziomu, §9).
+PoziomRekordu = Literal["K", "W"]
 #: Krok reguły K (§2.2), który rozstrzygnął status — generator tekstu dobiera nim treść.
 KrokRegulyK = Literal[
     "STOSOWALNOSC",
@@ -152,10 +156,43 @@ METODY_WYKAZANIA: frozenset[MetodaDowodu] = frozenset(
         "BRAK_METODY",
     )
 )
+#: Metody dowodu dopuszczalne dla rodzaju twierdzenia (§2.2 krok 2) — metoda spoza zbioru daje na
+#: poziomie K ``NIE_OCENIONO``; przydatność dowodowa (§3 pkt 1) jest podzbiorem dopuszczalności.
+METODY_DOPUSZCZALNE_DLA_TWIERDZENIA: dict[ClaimKind, frozenset[MetodaDowodu]] = {
+    ClaimKind.DYNAMIC_PERFORMANCE: frozenset(
+        ("SYMULACJA", "RAPORT_Z_TESTU", "POMIAR", "CERTYFIKAT", "DOWOD_LACZONY")
+    ),
+    ClaimKind.DECLARED_CONFIGURATION: frozenset(
+        (
+            "DEKLARACJA",
+            "OBLICZENIE",
+            "CERTYFIKAT",
+            "RAPORT_Z_TESTU",
+            "POMIAR",
+            "OCENA_OPERATORA",
+            "DOWOD_LACZONY",
+        )
+    ),
+    ClaimKind.STATIC_CALCULATION: frozenset(
+        ("OBLICZENIE", "POMIAR", "RAPORT_Z_TESTU", "CERTYFIKAT", "DOWOD_LACZONY")
+    ),
+}
+#: Metody dowodu wyłącznie poziomu W: dowód łączony łączy metody składników, więc nie jest
+#: dowodem jednego kryterium (walidator ``OcenaKryterium`` odrzuca go w ``dowod`` rekordu K).
+METODY_TYLKO_WYMAGANIA: frozenset[MetodaDowodu] = frozenset(("DOWOD_LACZONY",))
 #: Metody przydatne dowodowo niezależnie od rodzaju twierdzenia (§3 pkt 1).
 METODY_PRZYDATNE_ZAWSZE: frozenset[MetodaDowodu] = frozenset(
     ("CERTYFIKAT", "RAPORT_Z_TESTU", "POMIAR")
 )
+#: Metody przydatne bezwarunkowo wyłącznie dla wskazanego rodzaju twierdzenia (§3 pkt 1):
+#: deklaracja i ocena operatora są właściwą podstawą faktu zadeklarowanego.
+METODY_PRZYDATNE_DLA_TWIERDZENIA: dict[ClaimKind, frozenset[MetodaDowodu]] = {
+    ClaimKind.DYNAMIC_PERFORMANCE: frozenset(),
+    ClaimKind.DECLARED_CONFIGURATION: frozenset(("DEKLARACJA", "OCENA_OPERATORA")),
+    ClaimKind.STATIC_CALCULATION: frozenset(),
+}
+#: Rodzaje twierdzenia, dla których obliczenie zwalidowanym solverem jest dowodem właściwym.
+TWIERDZENIA_Z_OBLICZENIEM: frozenset[ClaimKind] = frozenset((ClaimKind.STATIC_CALCULATION,))
 #: Statusy modelu urządzenia, przy których symulacja jest dowodem właściwym (§3 pkt 1).
 STATUSY_MODELU_ZWALIDOWANEGO: frozenset[StatusModelu] = frozenset(
     ("VALIDATED_AGAINST_TEST", "CERTIFIED_MODEL")
@@ -335,7 +372,14 @@ class StatusDanych(_Zamrozony):
 
 class StatusDowodu(_Zamrozony):
     """Dowód stojący za wynikiem: metoda, poziom zdolności narzędzia, rodzaj twierdzenia,
-    status modelu urządzenia, status danych i odniesienie do dowodu (bieg, certyfikat, raport).
+    status modelu urządzenia, status danych, odniesienie do dowodu (bieg, certyfikat, raport)
+    i przynależność biegu do zadeklarowanej domeny walidacji silnika.
+
+    ``w_domenie_walidacji`` — wynik predykatu „bieg należy do domeny walidacji" (§3b);
+    ``None`` dla metod bez biegu (wszystko poza symulacją i obliczeniem) i dla dowodu, który
+    domeny nie deklaruje; ``domena_pl`` nazywa domenę (manifest walidacji, zakresy parametrów) i
+    towarzyszy każdej rozstrzygniętej wartości predykatu. Obowiązek podania predykatu dla
+    wyniku symulacji egzekwuje walidator ``OcenaKryterium``.
     """
 
     metoda: MetodaDowodu
@@ -344,27 +388,60 @@ class StatusDowodu(_Zamrozony):
     status_modelu: StatusModelu
     status_danych: StatusDanych
     odniesienie: Tekst | None = None
+    w_domenie_walidacji: bool | None = None
+    domena_pl: Tekst | None = None
+
+    @model_validator(mode="after")
+    def _domena_walidacji(self) -> Self:
+        if self.metoda not in METODY_OBLICZENIOWE and (
+            self.w_domenie_walidacji is not None or self.domena_pl is not None
+        ):
+            raise ValueError(
+                f"Domena walidacji dotyczy wyłącznie biegu (symulacja, obliczenie) — metoda "
+                f"{self.metoda} nie ma domeny walidacji."
+            )
+        if (self.w_domenie_walidacji is None) != (self.domena_pl is None):
+            raise ValueError(
+                "Przynależność biegu do domeny walidacji i nazwa domeny (domena_pl) występują "
+                "razem albo wcale."
+            )
+        return self
 
     @property
     def przydatnosc_dowodowa(self) -> bool:
         """Czy metoda jest właściwa dla rodzaju twierdzenia (§3 pkt 1) — fail-closed.
 
-        Prawda wyłącznie gdy: metoda to certyfikat, raport z testu albo pomiar; albo symulacja
-        na silniku o poziomie ``VALIDATED_SIMULATION`` z modelem urządzenia
-        ``VALIDATED_AGAINST_TEST`` / ``CERTIFIED_MODEL``; albo deklaracja dla twierdzenia
-        o konfiguracji zadeklarowanej. Każda inna kombinacja — fałsz.
+        Metoda przydatna jest zawsze metodą dopuszczalną dla rodzaju twierdzenia
+        (``METODY_DOPUSZCZALNE_DLA_TWIERDZENIA``, §2.2 krok 2). W tym zbiorze prawda wyłącznie
+        gdy: metoda to certyfikat, raport z testu albo pomiar; albo deklaracja lub ocena
+        operatora dla twierdzenia o konfiguracji zadeklarowanej; albo symulacja na silniku
+        o poziomie ``VALIDATED_SIMULATION`` z modelem urządzenia ``VALIDATED_AGAINST_TEST`` /
+        ``CERTIFIED_MODEL``; albo obliczenie na zdolności o poziomie ``VALIDATED_SIMULATION``
+        dla twierdzenia z obliczenia statycznego. Bieg (symulacja, obliczenie) rozstrzygnięty
+        jako leżący POZA zadeklarowaną domeną walidacji (``w_domenie_walidacji is False``) nigdy
+        nie jest przydatny (§3 pkt 1, §3b). Dowód łączony nie jest przydatny sam w sobie — na
+        poziomie wymagania jego przydatność wynika ze składowych
+        (``werdykt.decyzja.przydatnosc_dowodu_wymagania``); brak metody nigdy.
         """
+        if self.metoda not in METODY_DOPUSZCZALNE_DLA_TWIERDZENIA[self.rodzaj_twierdzenia]:
+            return False
         if self.metoda in METODY_PRZYDATNE_ZAWSZE:
             return True
+        if self.metoda in METODY_PRZYDATNE_DLA_TWIERDZENIA[self.rodzaj_twierdzenia]:
+            return True
+        if self.w_domenie_walidacji is False:
+            return False
         if self.metoda == "SYMULACJA":
             return (
                 self.poziom.regulatory_evidence_eligible
                 and self.status_modelu in STATUSY_MODELU_ZWALIDOWANEGO
             )
-        return (
-            self.rodzaj_twierdzenia is ClaimKind.DECLARED_CONFIGURATION
-            and self.metoda == "DEKLARACJA"
-        )
+        if self.metoda == "OBLICZENIE":
+            return (
+                self.rodzaj_twierdzenia in TWIERDZENIA_Z_OBLICZENIEM
+                and self.poziom.regulatory_evidence_eligible
+            )
+        return False
 
 
 class Niepewnosc(_Zamrozony):
@@ -410,19 +487,27 @@ class Niepewnosc(_Zamrozony):
 
 class Kryterium(_Zamrozony):
     """Kryterium: opis, warunek w LaTeX (obowiązkowy dla relacji liczbowej — T2), relacja
-    i opcjonalny warunek wstępny uruchomienia (np. przebieg napięcia nad obwiednią FRT).
+    i opcjonalny warunek wstępny uruchomienia (np. przebieg napięcia nad obwiednią FRT) razem
+    z podstawą tego warunku (np. obwiednia z profilu — jej stan źródła wchodzi do kompletności
+    dowodu i do zastrzeżeń).
     """
 
     opis_pl: Tekst
     warunek_latex: str
     relacja: Relacja
     warunek_wstepny_pl: Tekst | None = None
+    warunek_wstepny_podstawa: PodstawaWymagania | None = None
 
     @model_validator(mode="after")
     def _warunek_dla_relacji_liczbowej(self) -> Self:
         if self.relacja in RELACJE_LICZBOWE and not self.warunek_latex.strip():
             raise ValueError(
                 f"Kryterium „{self.opis_pl}” o relacji {self.relacja} wymaga warunku w LaTeX."
+            )
+        if (self.warunek_wstepny_pl is None) != (self.warunek_wstepny_podstawa is None):
+            raise ValueError(
+                f"Kryterium „{self.opis_pl}”: warunek wstępny i jego podstawa występują razem "
+                "albo wcale."
             )
         return self
 
@@ -860,6 +945,11 @@ class OcenaKryterium(_RekordWerdyktu):
 
     def _sprawdz_strukture(self) -> None:
         relacja = self.kryterium.relacja
+        if self.dowod.metoda in METODY_TYLKO_WYMAGANIA:
+            raise ValueError(
+                f"Kryterium {self.kryterium_id}: dowód łączony nie jest dowodem jednego kryterium "
+                "— łączy się metody składników na poziomie wymagania."
+            )
         if (
             self.stosowalnosc.warunek_wstepny_nieuruchomiony
             and self.kryterium.warunek_wstepny_pl is None
@@ -909,6 +999,11 @@ class OcenaKryterium(_RekordWerdyktu):
                 raise ValueError(
                     f"Kryterium {self.kryterium_id}: wynik wobec obwiedni wymaga chwili punktu "
                     "krytycznego (chwila_s)."
+                )
+            if self.dowod.metoda == "SYMULACJA" and self.dowod.w_domenie_walidacji is None:
+                raise ValueError(
+                    f"Kryterium {self.kryterium_id}: wynik symulacji wymaga rozstrzygnięcia, czy "
+                    "bieg należy do zadeklarowanej domeny walidacji silnika (w_domenie_walidacji)."
                 )
             symulacja = wynik.metoda == "SYMULACJA" or self.dowod.metoda == "SYMULACJA"
             if symulacja and self.niepewnosc.wartosc is None:

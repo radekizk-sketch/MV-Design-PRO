@@ -8,7 +8,8 @@ NIE pochodzą z profilu regulacyjnego — to dane testowe, nie wartości kryteri
 Każda relacja ma jedną „wielkość wzorcową" (limit, jednostka, wynik o zadanym marginesie):
 
 * ``NIE_WIECEJ`` — czas aktywacji prądu biernego, limit 40 ms;
-* ``NIE_MNIEJ`` — moc czynna po zakłóceniu, limit 90 %;
+* ``NIE_MNIEJ`` — moc czynna po zakłóceniu, limit 90 % (margines, tolerancja i niepewność
+  w punktach procentowych ``pp``);
 * ``PASMO`` — częstotliwość pracy, pasmo 48–52 Hz;
 * ``OBWIEDNIA_DOLNA`` — napięcie w punkcie przyłączenia nad obwiednią (0,25 → 0,75 p.u.);
 * ``OBWIEDNIA_GORNA`` — napięcie pod obwiednią (1,25 → 1,125 p.u.);
@@ -20,7 +21,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Literal
 
-from solver_input.provenance import ClaimKind, EvidenceTier, FieldQuality
 from werdykt import (
     DanaPrzyjeta,
     Kryterium,
@@ -47,6 +47,7 @@ from werdykt import (
     ocen_kryterium,
     zagreguj_wymaganie,
 )
+from werdykt.proweniencja import ClaimKind, EvidenceTier, FieldQuality
 
 RELACJE: tuple[Relacja, ...] = (
     "NIE_WIECEJ",
@@ -74,6 +75,13 @@ JEDNOSTKA: dict[Relacja, str] = {
     "OBWIEDNIA_GORNA": "p.u. (U_n)",
     "LOGICZNE": "1",
 }
+#: Jednostka marginesu, skali, tolerancji i niepewności (wynik w ``%`` → ``pp``).
+JEDNOSTKA_MARGINESU: dict[Relacja, str] = {
+    **JEDNOSTKA,
+    "NIE_MNIEJ": "pp",
+}
+#: Domena walidacji silnika w fabrykach dowodu symulacji (nazwa manifestu i zakresy).
+DOMENA_WALIDACJI = "D-11: SCR 3–20, X/R 2–15, zapad 0,05–0,9 p.u. (U_n)"
 #: Krok marginesu (dodatni) dla każdej relacji — dwójkowo dokładny.
 KROK_MARGINESU: dict[Relacja, float] = {
     "NIE_WIECEJ": 2.0,
@@ -171,6 +179,8 @@ def dowod(
     stan_danych: StanDanych = "ZWALIDOWANE",
     dane: StatusDanych | None = None,
     odniesienie: str | None = "bieg-001",
+    w_domenie: bool | None = None,
+    domena: str | None = None,
 ) -> StatusDowodu:
     return StatusDowodu(
         metoda=metoda,
@@ -179,6 +189,8 @@ def dowod(
         status_modelu=status_modelu,
         status_danych=dane if dane is not None else status_danych(stan_danych),
         odniesienie=odniesienie,
+        w_domenie_walidacji=w_domenie,
+        domena_pl=domena,
     )
 
 
@@ -187,22 +199,58 @@ def dowod_symulacji(
     status_modelu: StatusModelu = "VALIDATED_AGAINST_TEST",
     poziom: EvidenceTier = EvidenceTier.VALIDATED_SIMULATION,
     stan_danych: StanDanych = "ZWALIDOWANE",
+    w_domenie: bool | None = True,
 ) -> StatusDowodu:
+    """Dowód symulacji (domyślnie: bieg w zadeklarowanej domenie walidacji silnika)."""
     return dowod(
         metoda="SYMULACJA",
         poziom=poziom,
         twierdzenie=ClaimKind.DYNAMIC_PERFORMANCE,
         status_modelu=status_modelu,
         stan_danych=stan_danych,
+        w_domenie=w_domenie,
+        domena=None if w_domenie is None else DOMENA_WALIDACJI,
     )
 
 
-def kryterium(relacja: Relacja, *, warunek_wstepny: str | None = None) -> Kryterium:
+def dowod_obliczenia(
+    *,
+    poziom: EvidenceTier = EvidenceTier.VALIDATED_SIMULATION,
+    twierdzenie: ClaimKind = ClaimKind.STATIC_CALCULATION,
+    stan_danych: StanDanych = "ZWALIDOWANE",
+    w_domenie: bool | None = None,
+) -> StatusDowodu:
+    """Dowód obliczenia statycznego (domyślnie: solver zwalidowany, domena niezadeklarowana)."""
+    return dowod(
+        metoda="OBLICZENIE",
+        poziom=poziom,
+        twierdzenie=twierdzenie,
+        stan_danych=stan_danych,
+        w_domenie=w_domenie,
+        domena=None if w_domenie is None else DOMENA_WALIDACJI,
+    )
+
+
+def podstawa_warunku(stan: StanZrodla = "ZWERYFIKOWANE") -> PodstawaWymagania:
+    """Podstawa warunku wstępnego (obwiednia z profilu) w danym stanie."""
+    return podstawa(stan, dokument="Profil wymagań OSD — obwiednia zapadu", jednostka="tab. 4")
+
+
+def kryterium(
+    relacja: Relacja,
+    *,
+    warunek_wstepny: str | None = None,
+    stan_warunku: StanZrodla = "ZWERYFIKOWANE",
+) -> Kryterium:
+    """Kryterium wzorcowe; warunek wstępny zawsze z podstawą (obowiązkowa para)."""
     return Kryterium(
         opis_pl=OPIS_KRYTERIUM[relacja],
         warunek_latex=WARUNEK_LATEX[relacja],
         relacja=relacja,
         warunek_wstepny_pl=warunek_wstepny,
+        warunek_wstepny_podstawa=(
+            None if warunek_wstepny is None else podstawa_warunku(stan_warunku)
+        ),
     )
 
 
@@ -382,14 +430,16 @@ def ocena(
     braki_dodatkowe: Sequence[str] = (),
     nazwa_przedmiotu: str = "Moduł PV 2 MW",
     warunek_wstepny: str | None = None,
+    stan_warunku: StanZrodla = "ZWERYFIKOWANE",
+    podstawa_kryterium: PodstawaWymagania | None = None,
 ) -> OcenaKryterium:
     """Rekord K przez konstruktor ``ocen_kryterium`` (domyślnie: deklaracja konfiguracji)."""
     margines_zadany = KROK_MARGINESU.get(relacja, 0.0) if m is None else m
     return ocen_kryterium(
         kryterium_id=kryterium_id or f"test.{relacja.lower()}",
         przedmiot=przedmiot(nazwa_przedmiotu),
-        kryterium=kryterium(relacja, warunek_wstepny=warunek_wstepny),
-        podstawa=podstawa(stan_kryterium),
+        kryterium=kryterium(relacja, warunek_wstepny=warunek_wstepny, stan_warunku=stan_warunku),
+        podstawa=podstawa_kryterium or podstawa(stan_kryterium),
         stosowalnosc=stosowalnosc_oceny or stosowalnosc(dotyczy),
         wynik=(
             wynik(relacja, margines_zadany, metoda=metoda_wyniku, stan_logiczny=stan_logiczny)
@@ -397,7 +447,7 @@ def ocena(
             else None
         ),
         limit=limit(relacja, stan_limitu) if jest_limit else None,
-        niepewnosc=niepewnosc(u, JEDNOSTKA[relacja]),
+        niepewnosc=niepewnosc(u, JEDNOSTKA_MARGINESU[relacja]),
         dowod=dowod_oceny or dowod(),
         zakres_waznosci=zakres_oceny or zakres(),
         slad=slad(),
@@ -421,18 +471,19 @@ def wymaganie(
     if pokrycie is None:
         pokrycie = "PELNE" if sposob == "SYMULACJA" else "NIE_DOTYCZY"
     if dowod_wymagania is None:
-        dowod_wymagania = (
-            dowod_symulacji()
-            if sposob == "SYMULACJA"
-            else dowod(
+        if sposob == "SYMULACJA":
+            dowod_wymagania = dowod_symulacji(w_domenie=None)
+        elif sposob == "OBLICZENIE":
+            dowod_wymagania = dowod_obliczenia()
+        else:
+            dowod_wymagania = dowod(
                 metoda=sposob,
                 twierdzenie=(
                     ClaimKind.DECLARED_CONFIGURATION
-                    if sposob in ("DEKLARACJA", "OBLICZENIE", "OCENA_OPERATORA")
+                    if sposob in ("DEKLARACJA", "OCENA_OPERATORA")
                     else ClaimKind.DYNAMIC_PERFORMANCE
                 ),
             )
-        )
     wykluczenia = list(
         dict.fromkeys(
             [w for o in oceny for w in o.zakres_waznosci.wykluczenia] + list(wykluczenia_wlasne)
@@ -526,6 +577,38 @@ def rekordy_k() -> list[tuple[str, OcenaKryterium]]:
                 ),
             )
         )
+        rekordy.append(
+            (
+                f"{relacja}-symulacja_poza_domena",
+                ocena(
+                    relacja,
+                    dowod_oceny=dowod_symulacji(w_domenie=False),
+                    metoda_wyniku="SYMULACJA",
+                    u=u_symulacji,
+                ),
+            )
+        )
+        rekordy.append(
+            (
+                f"{relacja}-obliczenie_statyczne",
+                ocena(
+                    relacja,
+                    dowod_oceny=dowod_obliczenia(),
+                    metoda_wyniku="OBLICZENIE",
+                    zakres_oceny=zakres(rodzaj="POWER_FLOW"),
+                ),
+            )
+        )
+        rekordy.append(
+            (
+                f"{relacja}-warunek_wstepny_nieustalony",
+                ocena(
+                    relacja,
+                    warunek_wstepny="U_PCC(t) ≥ obwiednia zapadu w całym przedziale",
+                    stan_warunku="NIEUSTALONE",
+                ),
+            )
+        )
     return rekordy
 
 
@@ -536,6 +619,18 @@ def rekordy_w() -> list[tuple[str, WynikWymagania]]:
         kryterium_id="certyfikat.pokrycie",
         metoda_wyniku="CERTYFIKAT",
         dowod_oceny=dowod(metoda="CERTYFIKAT", twierdzenie=ClaimKind.DYNAMIC_PERFORMANCE),
+    )
+    symulacja_poza_domena = ocena(
+        kryterium_id="symulacja.poza_domena",
+        dowod_oceny=dowod_symulacji(w_domenie=False),
+        metoda_wyniku="SYMULACJA",
+        u=0.5,
+    )
+    obliczenie = ocena(
+        kryterium_id="obliczenie.statyczne",
+        dowod_oceny=dowod_obliczenia(),
+        metoda_wyniku="OBLICZENIE",
+        zakres_oceny=zakres(rodzaj="POWER_FLOW"),
     )
     return [
         ("nie_dotyczy", wymaganie([], dotyczy=False)),
@@ -561,4 +656,13 @@ def rekordy_w() -> list[tuple[str, WynikWymagania]]:
             "stan_koncowy",
             wymaganie([ocena(kryterium_id="odbudowa.stan_koncowy"), ocena("PASMO")]),
         ),
+        ("dowod_laczony_pelny", wymaganie([certyfikat, ocena()], sposob="DOWOD_LACZONY")),
+        (
+            "dowod_laczony_niepelny",
+            wymaganie(
+                [certyfikat, symulacja_poza_domena], sposob="DOWOD_LACZONY", pokrycie="PELNE"
+            ),
+        ),
+        ("symulacja_poza_domena", wymaganie([symulacja_poza_domena], sposob="SYMULACJA")),
+        ("obliczenie_statyczne", wymaganie([obliczenie], sposob="OBLICZENIE")),
     ]

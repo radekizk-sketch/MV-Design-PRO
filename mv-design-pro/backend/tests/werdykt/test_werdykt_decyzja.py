@@ -1,8 +1,8 @@
 """Reguły werdyktu: K (§2.2), W (§2.3), kompletność dowodu (§3), margines i skala (§2.4).
 
 Intencja: reguły są sprawdzane NIEZALEŻNĄ wyrocznią napisaną wprost z tekstu kontraktu na
-iloczynie cech (stosowalność × metoda dopuszczalna × wynik × stan źródła × znak marginesu ×
-niepewność × relacja; dla W: stosowalność × sposób wykazania × zestaw statusów składowych ×
+iloczynie cech (stosowalność × rodzaj twierdzenia (dopuszczalność metody) × wynik × stan źródła
+× znak marginesu × niepewność × relacja; dla W: stosowalność × sposób wykazania × zestaw statusów składowych ×
 kompletność × pokrycie programu), a nie na przykładach z karty. Testy mutacyjne (T19) podmieniają
 kolejność PRAWDZIWYCH kroków reguły (krotki ``_KROKI_REGULY_K`` / ``_KROKI_REGULY_W``)
 i wymagają, żeby ten sam iloczyn cech wykrył każdą zmianę kolejności, która zmienia znaczenie
@@ -19,9 +19,9 @@ from dataclasses import dataclass
 from typing import get_args
 
 import pytest
-from solver_input.provenance import ClaimKind, EvidenceTier
 from werdykt import (
     KompletnoscDowodu,
+    LimitKryterium,
     MetodaDowodu,
     OcenaKryterium,
     PokrycieProgramu,
@@ -30,19 +30,53 @@ from werdykt import (
     StanZrodla,
     StatusModelu,
     StatusWerdyktu,
+    WynikKryterium,
     decyzja,
+    jednostka_marginesu,
     kompletnosc_dowodu,
     margines,
     metody_dopuszczalne,
+    przydatnosc_dowodu_wymagania,
     status_kryterium,
     status_wymagania,
 )
+from werdykt.proweniencja import ClaimKind, EvidenceTier
 from werdykt.wyjasnienie import format_wielkosc, nazwa_skladowej
 
 from tests.werdykt import fabryki as f
 
 METODY: tuple[MetodaDowodu, ...] = get_args(MetodaDowodu)
 STATUSY_MODELU: tuple[StatusModelu, ...] = get_args(StatusModelu)
+#: Przynależność biegu do domeny walidacji w iloczynie (``None`` — nie rozstrzygnięto).
+DOMENY: tuple[bool | None, ...] = (None, True, False)
+
+#: Metody dopuszczalne dla rodzaju twierdzenia — NIEZALEŻNIE przepisane z §2.2 pkt 2 kontraktu
+#: i karty A2 pkt 1 (nie z kodu produkcyjnego).
+DOPUSZCZALNE_WG_KONTRAKTU: dict[ClaimKind, frozenset[str]] = {
+    ClaimKind.DYNAMIC_PERFORMANCE: frozenset(
+        {"SYMULACJA", "RAPORT_Z_TESTU", "POMIAR", "CERTYFIKAT", "DOWOD_LACZONY"}
+    ),
+    ClaimKind.DECLARED_CONFIGURATION: frozenset(
+        {
+            "DEKLARACJA",
+            "OBLICZENIE",
+            "CERTYFIKAT",
+            "RAPORT_Z_TESTU",
+            "POMIAR",
+            "OCENA_OPERATORA",
+            "DOWOD_LACZONY",
+        }
+    ),
+    ClaimKind.STATIC_CALCULATION: frozenset(
+        {"OBLICZENIE", "POMIAR", "RAPORT_Z_TESTU", "CERTYFIKAT", "DOWOD_LACZONY"}
+    ),
+}
+
+
+def domeny_metody(metoda: MetodaDowodu) -> tuple[bool | None, ...]:
+    """Domena walidacji istnieje wyłącznie dla biegu (symulacja, obliczenie)."""
+    return DOMENY if metoda in ("SYMULACJA", "OBLICZENIE") else (None,)
+
 
 # ---------------------------------------------------------------------------
 # Reguła K — wyrocznia i iloczyn cech
@@ -72,12 +106,17 @@ PREFIKS_BRAKU = {
 class PrzypadekK:
     relacja: Relacja
     dotyczy: bool
-    dopuszczalna: bool
+    twierdzenie: ClaimKind
     jest_wynik: bool
     podstawa: str
     m: float
     stan_logiczny: bool
     niepewnosc: str
+
+    @property
+    def dopuszczalna(self) -> bool:
+        """Dowód deklaracją — dopuszczalny wyłącznie dla twierdzenia, które go dopuszcza."""
+        return "DEKLARACJA" in DOPUSZCZALNE_WG_KONTRAKTU[self.twierdzenie]
 
     def u(self) -> float | None:
         if self.niepewnosc == "brak":
@@ -142,11 +181,11 @@ def przypadki_k(relacje: Sequence[Relacja] = f.RELACJE) -> Iterator[PrzypadekK]:
         marginesy = (0.0,) if logiczne else (krok, 0.0, -krok)
         stany = (True, False) if logiczne else (True,)
         niepewnosci = ("brak",) if logiczne else NIEPEWNOSCI
-        for dotyczy, dopuszczalna, jest_wynik, podstawa, m, stan, niepewnosc in itertools.product(
-            (True, False), (True, False), (True, False), podstawy, marginesy, stany, niepewnosci
+        for dotyczy, twierdzenie, jest_wynik, podstawa, m, stan, niepewnosc in itertools.product(
+            (True, False), ClaimKind, (True, False), podstawy, marginesy, stany, niepewnosci
         ):
             yield PrzypadekK(
-                relacja, dotyczy, dopuszczalna, jest_wynik, podstawa, m, stan, niepewnosc
+                relacja, dotyczy, twierdzenie, jest_wynik, podstawa, m, stan, niepewnosc
             )
 
 
@@ -169,17 +208,11 @@ def status_i_braki(p: PrzypadekK) -> tuple[StatusWerdyktu, list[str]]:
         dotyczy=p.dotyczy,
         relacja=p.relacja,
         podstawa=f.podstawa(stan_kryterium),
-        dowod=f.dowod(
-            twierdzenie=(
-                ClaimKind.DECLARED_CONFIGURATION
-                if p.dopuszczalna
-                else ClaimKind.DYNAMIC_PERFORMANCE
-            )
-        ),
+        dowod=f.dowod(twierdzenie=p.twierdzenie),
         limit=limit,
         wynik=wynik,
         margines=m,
-        niepewnosc=f.niepewnosc(p.u(), f.JEDNOSTKA[p.relacja]),
+        niepewnosc=f.niepewnosc(p.u(), f.JEDNOSTKA_MARGINESU[p.relacja]),
     )
 
 
@@ -200,8 +233,9 @@ def rozbieznosci_k(relacje: Sequence[Relacja] = f.RELACJE) -> list[str]:
 
 @pytest.mark.parametrize("relacja", f.RELACJE)
 def test_regula_k_zgodna_z_wyrocznia_na_iloczynie_cech(relacja: Relacja) -> None:
-    """Stosowalność × metoda dopuszczalna × wynik × stan podstawy × znak marginesu ×
-    niepewność (dla relacji logicznej: × stan logiczny) — status i braki zgodne z §2.2."""
+    """Stosowalność × rodzaj twierdzenia (trzy — deklaracja dopuszczalna wyłącznie dla
+    konfiguracji zadeklarowanej) × wynik × stan podstawy × znak marginesu × niepewność (dla
+    relacji logicznej: × stan logiczny) — status i braki zgodne z §2.2."""
     assert rozbieznosci_k([relacja]) == []
 
 
@@ -272,23 +306,19 @@ def test_t11_margines_zerowy_przy_zerowej_niepewnosci_jest_niejednoznaczny(
 # ---------------------------------------------------------------------------
 
 
-def test_metody_dopuszczalne_dokladnie_wg_korekty() -> None:
-    assert metody_dopuszczalne(ClaimKind.DYNAMIC_PERFORMANCE) == frozenset(
-        {"SYMULACJA", "RAPORT_Z_TESTU", "POMIAR", "CERTYFIKAT", "DOWOD_LACZONY"}
-    )
-    assert metody_dopuszczalne(ClaimKind.DECLARED_CONFIGURATION) == frozenset(
-        {
-            "DEKLARACJA",
-            "OBLICZENIE",
-            "CERTYFIKAT",
-            "RAPORT_Z_TESTU",
-            "POMIAR",
-            "OCENA_OPERATORA",
-            "DOWOD_LACZONY",
-        }
-    )
-    for twierdzenie in ClaimKind:
-        assert "BRAK_METODY" not in metody_dopuszczalne(twierdzenie)
+@pytest.mark.parametrize("twierdzenie", list(ClaimKind))
+def test_metody_dopuszczalne_dokladnie_wg_korekty(twierdzenie: ClaimKind) -> None:
+    """Każdy z trzech rodzajów twierdzenia (w tym obliczenie statyczne, karta A2 pkt 1)."""
+    assert metody_dopuszczalne(twierdzenie) == DOPUSZCZALNE_WG_KONTRAKTU[twierdzenie]
+    assert "BRAK_METODY" not in metody_dopuszczalne(twierdzenie)
+
+
+def test_rodzaje_twierdzenia_sa_dokladnie_trzy() -> None:
+    assert [t.value for t in ClaimKind] == [
+        "DYNAMIC_PERFORMANCE",
+        "DECLARED_CONFIGURATION",
+        "STATIC_CALCULATION",
+    ]
 
 
 @pytest.mark.parametrize("stan_limitu", f.STANY_ZRODLA)
@@ -327,7 +357,7 @@ def test_t14_kazda_metoda_spoza_dopuszczalnych_daje_nie_ocenione(
         margines=margines("LOGICZNE", f.wielkosc(1.0, "1"), None),
         niepewnosc=f.niepewnosc(None),
     )
-    if metoda in metody_dopuszczalne(twierdzenie):
+    if metoda in DOPUSZCZALNE_WG_KONTRAKTU[twierdzenie]:
         assert status == "SPELNIA" and braki == []
     else:
         assert status == "NIE_OCENIONO"
@@ -383,7 +413,7 @@ def test_margines_wg_definicji_relacji(relacja: Relacja, m: float) -> None:
     )
     assert wynik_marginesu.wartosc is not None
     assert wynik_marginesu.wartosc.wartosc == m
-    assert wynik_marginesu.wartosc.jednostka == f.JEDNOSTKA[relacja]
+    assert wynik_marginesu.wartosc.jednostka == f.JEDNOSTKA_MARGINESU[relacja]
     assert wynik_marginesu.definicja_latex and wynik_marginesu.punkt_pl == "P"
     assert wynik_marginesu.skala_rodzaj == "LIMIT"
 
@@ -509,31 +539,151 @@ def test_margines_logiczny_jest_niedefiniowalny_z_powodem() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Jednostka marginesu: wynik w % → punkty procentowe (karta A2 pkt 5)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "jednostka_wyniku, oczekiwana",
+    [("%", "pp"), ("ms", "ms"), ("Hz", "Hz"), ("p.u. (U_n)", "p.u. (U_n)"), ("1", "1")],
+)
+def test_jednostka_marginesu(jednostka_wyniku: str, oczekiwana: str) -> None:
+    assert jednostka_marginesu(jednostka_wyniku) == oczekiwana
+
+
+@pytest.mark.parametrize("relacja", ["NIE_WIECEJ", "NIE_MNIEJ", "PASMO"])
+@pytest.mark.parametrize("skala", ["TOLERANCJA", "LIMIT", "NIEPEWNOSC"])
+def test_margines_wyniku_procentowego_w_punktach_procentowych(relacja: Relacja, skala: str) -> None:
+    """Wynik w % (każda relacja z limitem wartości/pasma) × każdy rodzaj skali: margines i skala
+    w "pp", tolerancja i niepewność przyjmowane wyłącznie w "pp"."""
+    if relacja == "PASMO":
+        limit = LimitKryterium(
+            pasmo=(f.wielkosc(10.0, "%"), f.wielkosc(20.0, "%")), podstawa=f.podstawa()
+        )
+        x = 12.0
+    else:
+        granica = 0.0 if skala == "NIEPEWNOSC" else 90.0
+        limit = LimitKryterium(wartosc=f.wielkosc(granica, "%"), podstawa=f.podstawa())
+        x = granica + (-2.0 if relacja == "NIE_WIECEJ" else 2.0)
+    wynik_marginesu = margines(
+        relacja,
+        f.wielkosc(x, "%"),
+        limit,
+        tolerancja=f.wielkosc(1.0, "pp") if skala == "TOLERANCJA" else None,
+        niepewnosc=f.wielkosc(0.5, "pp") if skala == "NIEPEWNOSC" else None,
+    )
+    assert wynik_marginesu.wartosc is not None and wynik_marginesu.wartosc.jednostka == "pp"
+    assert wynik_marginesu.skala is not None and wynik_marginesu.skala.jednostka == "pp"
+    oczekiwany_rodzaj = "LIMIT" if relacja == "PASMO" and skala == "NIEPEWNOSC" else skala
+    assert wynik_marginesu.skala_rodzaj == oczekiwany_rodzaj
+    with pytest.raises(ValueError, match="tolerancji"):
+        margines(relacja, f.wielkosc(x, "%"), limit, tolerancja=f.wielkosc(1.0, "%"))
+    with pytest.raises(ValueError, match="niepewności"):
+        margines(relacja, f.wielkosc(x, "%"), limit, niepewnosc=f.wielkosc(0.5, "%"))
+
+
+def test_przyklad_niejednoznacznosci_w_punktach_procentowych() -> None:
+    """Przykład §5.1: 89,8 % wobec wymaganych 90 % → margines −0,2 pp; niepewność ±0,4 pp →
+    NIEJEDNOZNACZNY; tekst podaje oba w pp ze spacją przed jednostką."""
+    limit = f.limit("NIE_MNIEJ")
+    assert limit is not None
+    rekord = decyzja.ocen_kryterium(
+        kryterium_id="odbudowa.p",
+        przedmiot=f.przedmiot(),
+        kryterium=f.kryterium("NIE_MNIEJ"),
+        podstawa=f.podstawa(),
+        stosowalnosc=f.stosowalnosc(),
+        wynik=WynikKryterium(
+            wielkosc_pl="moc czynna po 1 s",
+            symbol_latex="P(t_1)",
+            wartosc=f.wielkosc(89.8, "%"),
+            metoda="SYMULACJA",
+        ),
+        limit=limit,
+        niepewnosc=f.niepewnosc(0.4, "pp"),
+        dowod=f.dowod_symulacji(),
+        zakres_waznosci=f.zakres(),
+        slad=f.slad(),
+    )
+    assert rekord.status_maszynowy == "NIEJEDNOZNACZNY"
+    assert rekord.margines is not None and rekord.margines.wartosc is not None
+    assert rekord.margines.wartosc.jednostka == "pp"
+    assert "margines −0,2 pp" in rekord.wyjasnienie.zdanie_pl
+    assert "±0,4 pp" in rekord.wyjasnienie.zdanie_pl
+    assert "|m| = 0,2 pp" in str(rekord.wyjasnienie.przyczyna_pl)
+
+
+# ---------------------------------------------------------------------------
 # Kompletność dowodu (§3, T6, T7)
 # ---------------------------------------------------------------------------
 
 
 def przydatnosc_wg_kontraktu(
-    metoda: MetodaDowodu, poziom: EvidenceTier, twierdzenie: ClaimKind, model: StatusModelu
+    metoda: MetodaDowodu,
+    poziom: EvidenceTier,
+    twierdzenie: ClaimKind,
+    model: StatusModelu,
+    w_domenie: bool | None = None,
 ) -> bool:
+    """§3 pkt 1 wprost z tekstu kontraktu i karty A2 pkt 1 (niezależnie od kodu)."""
+    if metoda not in DOPUSZCZALNE_WG_KONTRAKTU[twierdzenie]:
+        return False
     if metoda in ("CERTYFIKAT", "RAPORT_Z_TESTU", "POMIAR"):
         return True
+    if metoda in ("DEKLARACJA", "OCENA_OPERATORA"):
+        return twierdzenie is ClaimKind.DECLARED_CONFIGURATION
     if metoda == "SYMULACJA":
-        return poziom is EvidenceTier.VALIDATED_SIMULATION and model in (
-            "VALIDATED_AGAINST_TEST",
-            "CERTIFIED_MODEL",
+        return (
+            w_domenie is not False
+            and poziom is EvidenceTier.VALIDATED_SIMULATION
+            and model in ("VALIDATED_AGAINST_TEST", "CERTIFIED_MODEL")
         )
-    return twierdzenie is ClaimKind.DECLARED_CONFIGURATION and metoda == "DEKLARACJA"
+    if metoda == "OBLICZENIE":
+        return (
+            w_domenie is not False
+            and twierdzenie is ClaimKind.STATIC_CALCULATION
+            and poziom is EvidenceTier.VALIDATED_SIMULATION
+        )
+    return False
 
 
 @pytest.mark.parametrize("metoda", METODY)
 def test_przydatnosc_dowodowa_na_iloczynie_cech(metoda: MetodaDowodu) -> None:
-    """Metoda × poziom zdolności × rodzaj twierdzenia × status modelu (9 × 4 × 2 × 4)."""
-    for poziom, twierdzenie, model in itertools.product(EvidenceTier, ClaimKind, STATUSY_MODELU):
-        dowod = f.dowod(metoda=metoda, poziom=poziom, twierdzenie=twierdzenie, status_modelu=model)
+    """Metoda × poziom zdolności × rodzaj twierdzenia × status modelu × domena walidacji
+    (9 × 4 × 3 × 4 × 3 dla biegu)."""
+    for poziom, twierdzenie, model, w_domenie in itertools.product(
+        EvidenceTier, ClaimKind, STATUSY_MODELU, domeny_metody(metoda)
+    ):
+        dowod = f.dowod(
+            metoda=metoda,
+            poziom=poziom,
+            twierdzenie=twierdzenie,
+            status_modelu=model,
+            w_domenie=w_domenie,
+            domena=None if w_domenie is None else f.DOMENA_WALIDACJI,
+        )
         assert dowod.przydatnosc_dowodowa == przydatnosc_wg_kontraktu(
-            metoda, poziom, twierdzenie, model
-        ), (poziom, twierdzenie, model)
+            metoda, poziom, twierdzenie, model, w_domenie
+        ), (poziom, twierdzenie, model, w_domenie)
+
+
+@pytest.mark.parametrize("metoda", METODY)
+def test_przydatnosc_jest_podzbiorem_dopuszczalnosci(metoda: MetodaDowodu) -> None:
+    """Predykaty parami: metoda przydatna (§3 pkt 1) jest zawsze metodą dopuszczalną (§2.2
+    pkt 2) — kryterium ocenione dowodem przydatnym nigdy nie spada do NIE_OCENIONO z metody."""
+    for poziom, twierdzenie, model, w_domenie in itertools.product(
+        EvidenceTier, ClaimKind, STATUSY_MODELU, domeny_metody(metoda)
+    ):
+        dowod = f.dowod(
+            metoda=metoda,
+            poziom=poziom,
+            twierdzenie=twierdzenie,
+            status_modelu=model,
+            w_domenie=w_domenie,
+            domena=None if w_domenie is None else f.DOMENA_WALIDACJI,
+        )
+        if dowod.przydatnosc_dowodowa:
+            assert metoda in metody_dopuszczalne(twierdzenie), (poziom, twierdzenie, model)
 
 
 @pytest.mark.parametrize("stan_podstawy", f.STANY_ZRODLA)
@@ -541,11 +691,12 @@ def test_przydatnosc_dowodowa_na_iloczynie_cech(metoda: MetodaDowodu) -> None:
 def test_kompletnosc_dowodu_na_iloczynie_cech(
     metoda: MetodaDowodu, stan_podstawy: StanZrodla
 ) -> None:
-    """Metoda × poziom × twierdzenie × status modelu × stan danych × stan podstawy: PEŁNY
-    wyłącznie przy komplecie warunków §3; każdy NIEPEŁNY niesie konkretne powody (T6, T7)."""
+    """Metoda × poziom × twierdzenie × status modelu × domena walidacji × stan danych × stan
+    podstawy: PEŁNY wyłącznie przy komplecie warunków §3; każdy NIEPEŁNY niesie konkretne
+    powody (T6, T7, bieg poza domeną §3b)."""
     podstawa = f.podstawa(stan_podstawy)
-    for poziom, twierdzenie, model, stan_danych in itertools.product(
-        EvidenceTier, ClaimKind, STATUSY_MODELU, f.STANY_DANYCH
+    for poziom, twierdzenie, model, w_domenie, stan_danych in itertools.product(
+        EvidenceTier, ClaimKind, STATUSY_MODELU, domeny_metody(metoda), f.STANY_DANYCH
     ):
         dowod = f.dowod(
             metoda=metoda,
@@ -553,36 +704,64 @@ def test_kompletnosc_dowodu_na_iloczynie_cech(
             twierdzenie=twierdzenie,
             status_modelu=model,
             stan_danych=stan_danych,
+            w_domenie=w_domenie,
+            domena=None if w_domenie is None else f.DOMENA_WALIDACJI,
         )
         kompletnosc, powody = kompletnosc_dowodu(dowod, [podstawa])
         pelny = (
-            przydatnosc_wg_kontraktu(metoda, poziom, twierdzenie, model)
+            przydatnosc_wg_kontraktu(metoda, poziom, twierdzenie, model, w_domenie)
             and model != "UNVALIDATED_MODEL"
             and stan_danych == "ZWALIDOWANE"
             and stan_podstawy != "NIEUSTALONE"
         )
-        opis = (poziom, twierdzenie, model, stan_danych)
+        opis = (poziom, twierdzenie, model, w_domenie, stan_danych)
         assert kompletnosc == ("PELNY" if pelny else "NIEPELNY"), opis
         assert bool(powody) == (not pelny), opis
         if model == "UNVALIDATED_MODEL":
             assert any("UNVALIDATED_MODEL" in p for p in powody), opis
+        if w_domenie is False:
+            assert any(
+                p.startswith("Bieg poza zadeklarowaną domeną walidacji: D-11") for p in powody
+            ), opis
+        else:
+            assert not any("poza zadeklarowaną domeną" in p for p in powody), opis
         if stan_danych == "UNVALIDATED_INPUT":
             assert any("moc zwarciowa sieci" in p and "120 MVA" in p for p in powody), opis
         if stan_podstawy == "NIEUSTALONE":
             assert any(podstawa.dokument in p for p in powody), opis
-        if metoda == "SYMULACJA" and not poziom.regulatory_evidence_eligible:
+        wymaga_poziomu = metoda == "SYMULACJA" or (
+            metoda == "OBLICZENIE" and twierdzenie is ClaimKind.STATIC_CALCULATION
+        )
+        if (
+            wymaga_poziomu
+            and metoda in DOPUSZCZALNE_WG_KONTRAKTU[twierdzenie]
+            and not poziom.regulatory_evidence_eligible
+        ):
             assert any(poziom.value in p for p in powody), opis
+        if metoda not in DOPUSZCZALNE_WG_KONTRAKTU[twierdzenie] and metoda != "BRAK_METODY":
+            assert any("nie jest właściwa dla" in p for p in powody), opis
         assert len(set(powody)) == len(powody), opis
 
 
+@pytest.mark.parametrize("stan_warunku", [None, *f.STANY_ZRODLA])
 @pytest.mark.parametrize("stan_kryterium", f.STANY_ZRODLA)
 @pytest.mark.parametrize("stan_limitu", f.STANY_ZRODLA)
-def test_kompletnosc_kryterium_obejmuje_podstawe_kryterium_i_limitu(
-    stan_kryterium: StanZrodla, stan_limitu: StanZrodla
+def test_kompletnosc_kryterium_obejmuje_podstawe_kryterium_limitu_i_warunku_wstepnego(
+    stan_kryterium: StanZrodla, stan_limitu: StanZrodla, stan_warunku: StanZrodla | None
 ) -> None:
-    rekord = f.ocena(stan_kryterium=stan_kryterium, stan_limitu=stan_limitu)
-    pelny = "NIEUSTALONE" not in (stan_kryterium, stan_limitu)
+    """Stan podstawy kryterium × podstawy limitu × podstawy warunku wstępnego (albo jego
+    brak): każda podstawa NIEUSTALONE daje dowód niepełny z powodem nazywającym dokument."""
+    rekord = f.ocena(
+        stan_kryterium=stan_kryterium,
+        stan_limitu=stan_limitu,
+        warunek_wstepny=None if stan_warunku is None else "U(t) ≥ obwiednia zapadu",
+        stan_warunku=stan_warunku or "ZWERYFIKOWANE",
+    )
+    pelny = "NIEUSTALONE" not in (stan_kryterium, stan_limitu, stan_warunku)
     assert rekord.kompletnosc_dowodu == ("PELNY" if pelny else "NIEPELNY")
+    powody_nieustalone = [p for p in rekord.powody_niepelnosci if "NIEUSTALONE" in p]
+    # Podstawy NIEUSTALONE w fabrykach to ten sam dokument zastany — powód jest jeden.
+    assert len(powody_nieustalone) == (0 if pelny else 1)
 
 
 def test_kompletnosc_kryterium_niestosowalnego_nie_dotyczy() -> None:
@@ -613,6 +792,64 @@ def test_t6_t7_wymaganie_dziedziczy_niepelnosc_skladowych(
         assert f"{nazwa_skladowej(skladowa)}: {powod}" in rekord.powody_niepelnosci
 
 
+def _skladowa_laczona(przydatna: bool, stosowalna: bool, indeks: int) -> OcenaKryterium:
+    """Składnik dowodu łączonego: przydatny (certyfikat) albo nieprzydatny (symulacja poza
+    domeną walidacji — metoda dopuszczalna, wynik rozstrzygnięty); stosowalny albo nie."""
+    if przydatna:
+        return f.ocena(
+            "LOGICZNE",
+            kryterium_id=f"k{indeks}.certyfikat",
+            metoda_wyniku="CERTYFIKAT",
+            dotyczy=stosowalna,
+            dowod_oceny=f.dowod(metoda="CERTYFIKAT", twierdzenie=ClaimKind.DYNAMIC_PERFORMANCE),
+            nazwa_przedmiotu=f"Moduł {indeks}",
+        )
+    return f.ocena(
+        kryterium_id=f"k{indeks}.symulacja",
+        metoda_wyniku="SYMULACJA",
+        u=0.5,
+        dotyczy=stosowalna,
+        dowod_oceny=f.dowod_symulacji(w_domenie=False),
+        nazwa_przedmiotu=f"Moduł {indeks}",
+    )
+
+
+def test_dowod_laczony_przydatny_wtedy_i_tylko_wtedy_gdy_kazda_stosowalna_skladowa() -> None:
+    """Iloczyn cech 0–3 składników × przydatność × stosowalność: dowód łączony jest przydatny
+    ⇔ istnieje składnik stosowalny i KAŻDY stosowalny ma dowód przydatny; powód niepełności
+    nazywa dokładnie składniki stosowalne bez metody przydatnej."""
+    dowod_laczony = f.dowod(metoda="DOWOD_LACZONY", twierdzenie=ClaimKind.DYNAMIC_PERFORMANCE)
+    cechy = list(itertools.product((True, False), (True, False)))
+    for rozmiar in (0, 1, 2, 3):
+        for zestaw in itertools.product(cechy, repeat=rozmiar):
+            oceny = [_skladowa_laczona(p, st, i) for i, (p, st) in enumerate(zestaw)]
+            stosowalne = [o for o in oceny if o.status_maszynowy != "NIE_DOTYCZY"]
+            oczekiwana = bool(stosowalne) and all(o.dowod.przydatnosc_dowodowa for o in stosowalne)
+            assert przydatnosc_dowodu_wymagania(dowod_laczony, oceny) == oczekiwana, zestaw
+            kompletnosc, powody = decyzja.kompletnosc_wymagania(
+                dotyczy=True, dowod=dowod_laczony, podstawa=f.podstawa(), oceny=oceny
+            )
+            powod_laczony = [p for p in powody if p.startswith("Dowód łączony")]
+            assert bool(powod_laczony) == (not oczekiwana), zestaw
+            for ocena in oceny:
+                nazwa = nazwa_skladowej(ocena)
+                wymieniony = any(nazwa in p for p in powod_laczony)
+                assert wymieniony == (
+                    ocena in stosowalne and not ocena.dowod.przydatnosc_dowodowa
+                ), (zestaw, nazwa)
+            if not oczekiwana:
+                assert kompletnosc == "NIEPELNY", zestaw
+
+
+@pytest.mark.parametrize("metoda", ["CERTYFIKAT", "RAPORT_Z_TESTU", "SYMULACJA", "DEKLARACJA"])
+def test_przydatnosc_dowodu_wymagania_bez_laczenia_to_przydatnosc_dowodu(
+    metoda: MetodaDowodu,
+) -> None:
+    for twierdzenie, poziom in itertools.product(ClaimKind, EvidenceTier):
+        dowod = f.dowod(metoda=metoda, poziom=poziom, twierdzenie=twierdzenie)
+        assert przydatnosc_dowodu_wymagania(dowod, [f.ocena()]) == dowod.przydatnosc_dowodowa
+
+
 def test_dowod_laczony_wymaga_przydatnych_skladowych() -> None:
     """Dowód łączony jest pełny, gdy każdy stosowalny składnik ma dowód przydatny; składnik
     z deklaracją zachowania dynamicznego czyni go niepełnym; bez składników — niepełny."""
@@ -630,6 +867,11 @@ def test_dowod_laczony_wymaga_przydatnych_skladowych() -> None:
     niepelny = f.wymaganie([certyfikat, deklaracja_dynamiki], sposob="DOWOD_LACZONY")
     assert niepelny.kompletnosc_dowodu == "NIEPELNY"
     assert niepelny.status_maszynowy == "NIE_OCENIONO"
+    assert any(
+        p.startswith("Dowód łączony nie jest dowodem właściwym")
+        and nazwa_skladowej(deklaracja_dynamiki) in p
+        for p in niepelny.powody_niepelnosci
+    )
     bez_skladowych = decyzja.kompletnosc_wymagania(
         dotyczy=True,
         dowod=f.dowod(metoda="DOWOD_LACZONY", twierdzenie=ClaimKind.DYNAMIC_PERFORMANCE),
@@ -955,20 +1197,113 @@ def test_t18_pokrycie_pelne_nie_blokuje_spelnienia(
 
 @pytest.mark.parametrize("twierdzenie", list(ClaimKind))
 @pytest.mark.parametrize("poziom", list(EvidenceTier))
-def test_obliczenie_nie_jest_dowodem_przydatnym_wg_formuly_paragrafu_3(
+def test_obliczenie_przydatne_wylacznie_dla_obliczenia_statycznego_na_zwalidowanym_solverze(
     twierdzenie: ClaimKind, poziom: EvidenceTier
 ) -> None:
-    """Formuła przydatności §3 (karta pakietu A) nie obejmuje metody OBLICZENIE przy żadnym
-    poziomie zdolności i rodzaju twierdzenia: wymaganie wykazywane obliczeniem ma dowód
-    niepełny z nazwaną metodą (stan przypięty do czasu rozstrzygnięcia w kontrakcie)."""
-    rekord = f.wymaganie(
-        [f.ocena()],
-        sposob="OBLICZENIE",
-        pokrycie="PELNE",
-        dowod_wymagania=f.dowod(metoda="OBLICZENIE", poziom=poziom, twierdzenie=twierdzenie),
+    """Odwrócenie testu pakietu A (dawniej: „obliczenie nie jest dowodem przydatnym wg formuły
+    §3") zgodnie z kartą A2 pkt 1: obliczenie JEST dowodem
+    przydatnym wyłącznie dla twierdzenia z obliczenia statycznego na zdolności o poziomie
+    VALIDATED_SIMULATION (solver zwalidowany). Poziom W: sposób wykazania OBLICZENIE × poziom
+    × rodzaj twierdzenia; poziom K: to samo obliczenie jako dowód kryterium — dla zachowania
+    dynamicznego metoda niedopuszczalna daje NIE_OCENIONO regułą K pkt 2."""
+    przydatne = (
+        twierdzenie is ClaimKind.STATIC_CALCULATION and poziom is EvidenceTier.VALIDATED_SIMULATION
     )
-    assert (rekord.status_maszynowy, rekord.kompletnosc_dowodu) == ("BRAK_DOWODU", "NIEPELNY")
-    assert any("„obliczenie”" in p for p in rekord.powody_niepelnosci)
+    dowod_obliczenia = f.dowod_obliczenia(poziom=poziom, twierdzenie=twierdzenie)
+    assert dowod_obliczenia.przydatnosc_dowodowa == przydatne
+    rekord_w = f.wymaganie(
+        [f.ocena()], sposob="OBLICZENIE", pokrycie="PELNE", dowod_wymagania=dowod_obliczenia
+    )
+    if przydatne:
+        assert (rekord_w.status_maszynowy, rekord_w.kompletnosc_dowodu) == ("SPELNIA", "PELNY")
+    else:
+        assert (rekord_w.status_maszynowy, rekord_w.kompletnosc_dowodu) == (
+            "BRAK_DOWODU",
+            "NIEPELNY",
+        )
+        assert any(
+            "„obliczenie”" in p or "Obliczenie nie jest dowodem właściwym" in p
+            for p in rekord_w.powody_niepelnosci
+        )
+    rekord_k = f.ocena(
+        dowod_oceny=dowod_obliczenia,
+        metoda_wyniku="OBLICZENIE",
+        zakres_oceny=f.zakres(rodzaj="POWER_FLOW"),
+    )
+    if twierdzenie is ClaimKind.DYNAMIC_PERFORMANCE:
+        assert rekord_k.status_maszynowy == "NIE_OCENIONO"
+        assert rekord_k.wyjasnienie.czego_brakuje[0].startswith(PREFIKS_BRAKU["metoda"])
+    else:
+        assert rekord_k.status_maszynowy == "SPELNIA"
+    assert rekord_k.kompletnosc_dowodu == ("PELNY" if przydatne else "NIEPELNY")
+    etykieta_k = rekord_k.etykieta.etykieta_pl
+    if twierdzenie is not ClaimKind.DYNAMIC_PERFORMANCE:
+        assert etykieta_k == (
+            "Kryterium spełnione" if przydatne else "Kryterium spełnione — dowód niepełny"
+        )
+
+
+@pytest.mark.parametrize("metoda", [m for m in METODY if m != "DOWOD_LACZONY"])
+def test_twierdzenie_z_obliczenia_statycznego_na_rekordzie_k(metoda: MetodaDowodu) -> None:
+    """Każda metoda poziomu K (dowód łączony jest niedozwolony na poziomie K — kontrakt) ×
+    twierdzenie z obliczenia statycznego: metoda spoza {OBLICZENIE, POMIAR, RAPORT_Z_TESTU,
+    CERTYFIKAT} daje NIE_OCENIONO z tekstem o wielkości z obliczenia statycznego."""
+    bieg = metoda == "SYMULACJA"
+    dowod = f.dowod(
+        metoda=metoda,
+        poziom=EvidenceTier.VALIDATED_SIMULATION,
+        twierdzenie=ClaimKind.STATIC_CALCULATION,
+        w_domenie=True if bieg else None,
+        domena=f.DOMENA_WALIDACJI if bieg else None,
+    )
+    rekord = f.ocena(
+        dowod_oceny=dowod, zakres_oceny=f.zakres(rodzaj="POWER_FLOW"), u=0.5 if bieg else None
+    )
+    dopuszczalna = metoda in DOPUSZCZALNE_WG_KONTRAKTU[ClaimKind.STATIC_CALCULATION]
+    assert rekord.status_maszynowy == ("SPELNIA" if dopuszczalna else "NIE_OCENIONO")
+    assert rekord.kompletnosc_dowodu == ("PELNY" if dowod.przydatnosc_dowodowa else "NIEPELNY")
+    if not dopuszczalna:
+        assert "wielkości z obliczenia statycznego" in rekord.wyjasnienie.zdanie_pl
+
+
+# ---------------------------------------------------------------------------
+# Domena walidacji biegu (karta A2 pkt 4, §3b)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("w_domenie", [True, False])
+@pytest.mark.parametrize("relacja", f.RELACJE)
+def test_bieg_poza_domena_walidacji_daje_dowod_niepelny_z_powodem_i_zastrzezeniem(
+    relacja: Relacja, w_domenie: bool
+) -> None:
+    """Każda relacja × bieg w domenie / poza domeną: status z marginesu bez zmian, kompletność
+    NIEPELNY z powodem nazywającym domenę i zastrzeżeniem; wymaganie — BRAK_DOWODU."""
+    rekord = f.ocena(
+        relacja,
+        dowod_oceny=f.dowod_symulacji(w_domenie=w_domenie),
+        metoda_wyniku="SYMULACJA",
+        u=f.NIEPEWNOSC_ROZSTRZYGALNA[relacja],
+    )
+    assert rekord.status_maszynowy == "SPELNIA"
+    assert rekord.kompletnosc_dowodu == ("PELNY" if w_domenie else "NIEPELNY")
+    powod = f"Bieg poza zadeklarowaną domeną walidacji: {f.DOMENA_WALIDACJI}"
+    assert any(p.startswith(powod) for p in rekord.powody_niepelnosci) == (not w_domenie)
+    assert any(z.startswith(powod) for z in rekord.wyjasnienie.zastrzezenia) == (not w_domenie)
+    assert rekord.etykieta.etykieta_pl == (
+        "Kryterium spełnione" if w_domenie else "Kryterium spełnione — dowód niepełny"
+    )
+    wymaganie = f.wymaganie([rekord], sposob="SYMULACJA")
+    assert wymaganie.status_maszynowy == ("SPELNIA" if w_domenie else "BRAK_DOWODU")
+
+
+@pytest.mark.parametrize("w_domenie", [None, True, False])
+def test_obliczenie_poza_domena_walidacji_daje_dowod_niepelny(w_domenie: bool | None) -> None:
+    rekord = f.ocena(
+        dowod_oceny=f.dowod_obliczenia(w_domenie=w_domenie),
+        metoda_wyniku="OBLICZENIE",
+        zakres_oceny=f.zakres(rodzaj="POWER_FLOW"),
+    )
+    assert rekord.kompletnosc_dowodu == ("NIEPELNY" if w_domenie is False else "PELNY")
 
 
 def test_t5_spelnia_na_poziomie_wymagania_zawsze_z_dowodem_pelnym() -> None:

@@ -5,7 +5,10 @@ Blok jest listą pozycji (etykieta pozycji, treść) w kolejności §10. Pozycja
 etykietę Z REKORDU (wyliczoną przez ``werdykt.etykiety``) — ten moduł nie ma własnego
 mapowania statusu na etykietę. Pozycja „Wyjaśnienie" niesie DOSŁOWNIE ``wyjasnienie.zdanie_pl``,
 a pozycje „Zastrzeżenia" — dosłownie zastrzeżenia rekordu (T13: interfejs i dokument pokazują to
-samo zdanie i te same zastrzeżenia). Pozycje listowe (czego brakuje, zastrzeżenia, powody
+samo zdanie i te same zastrzeżenia). Pozycja „Dowód" podaje przydatność dowodową właściwą dla
+poziomu rekordu (K — ``StatusDowodu.przydatnosc_dowodowa``; W —
+``decyzja.przydatnosc_dowodu_wymagania``, dla dowodu łączonego liczona ze składowych) i domenę
+walidacji biegu. Pozycje listowe (czego brakuje, zastrzeżenia, powody
 niepełności, dane przyjęte, ślad) rozwijają się w jedną pozycję na element, w kolejności rekordu;
 pozycje bez treści (np. brak przyczyny dla kryterium spełnionego) są pomijane. Blok wymagania
 zawiera po swoich pozycjach bloki ocen składowych, każdy poprzedzony nagłówkiem
@@ -15,8 +18,11 @@ zawiera po swoich pozycjach bloki ocen składowych, każdy poprzedzony nagłówk
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict
+from werdykt.decyzja import przydatnosc_dowodu_wymagania
 from werdykt.kontrakt import (
+    METODY_OBLICZENIOWE,
     SUFIKS_STANU_KONCOWEGO,
+    Kryterium,
     LimitKryterium,
     Margines,
     Niepewnosc,
@@ -185,16 +191,36 @@ def _niepewnosc(niepewnosc: Niepewnosc) -> str:
     return f"nie dotyczy — {niepewnosc.powod_pl}"
 
 
-def _dowod(dowod: StatusDowodu) -> str:
-    return "; ".join(
-        (
-            f"metoda: {NAZWA_METODY_PL[dowod.metoda]}",
-            f"poziom: {dowod.poziom.label_pl}",
-            f"rodzaj twierdzenia: {dowod.rodzaj_twierdzenia.label_pl}",
-            f"przydatność dowodowa: {'tak' if dowod.przydatnosc_dowodowa else 'nie'}",
-            f"odniesienie: {dowod.odniesienie if dowod.odniesienie is not None else 'brak'}",
-        )
-    )
+def _domena(dowod: StatusDowodu) -> str | None:
+    if dowod.metoda not in METODY_OBLICZENIOWE:
+        return None
+    if dowod.w_domenie_walidacji is None or dowod.domena_pl is None:
+        return "domena walidacji: nie zadeklarowano"
+    polozenie = "bieg w domenie" if dowod.w_domenie_walidacji else "bieg poza domeną"
+    return f"domena walidacji: {dowod.domena_pl} ({polozenie})"
+
+
+def _dowod(dowod: StatusDowodu, przydatnosc: bool) -> str:
+    czesci = [
+        f"metoda: {NAZWA_METODY_PL[dowod.metoda]}",
+        f"poziom: {dowod.poziom.label_pl}",
+        f"rodzaj twierdzenia: {dowod.rodzaj_twierdzenia.label_pl}",
+        f"przydatność dowodowa: {'tak' if przydatnosc else 'nie'}",
+    ]
+    domena = _domena(dowod)
+    if domena is not None:
+        czesci.append(domena)
+    czesci.append(f"odniesienie: {dowod.odniesienie if dowod.odniesienie is not None else 'brak'}")
+    return "; ".join(czesci)
+
+
+def _warunek_wstepny(kryterium: Kryterium) -> str | None:
+    if kryterium.warunek_wstepny_pl is None:
+        return None
+    tresc = kryterium.warunek_wstepny_pl
+    if kryterium.warunek_wstepny_podstawa is not None:
+        tresc += f"; podstawa — {_podstawa(kryterium.warunek_wstepny_podstawa)}"
+    return tresc
 
 
 def _zakres(zakres: ZakresWaznosci) -> str:
@@ -245,11 +271,12 @@ def _pozycje_wspolne(
 
 def _pozycje_dowodu(
     dowod: StatusDowodu,
+    przydatnosc: bool,
     kompletnosc: str,
     powody: tuple[str, ...],
 ) -> list[PozycjaBloku]:
     pozycje = [
-        _pozycja(POZYCJA_DOWOD, _dowod(dowod)),
+        _pozycja(POZYCJA_DOWOD, _dowod(dowod, przydatnosc)),
         _pozycja(POZYCJA_KOMPLETNOSC, kompletnosc),
     ]
     pozycje.extend(_pozycja(POZYCJA_POWOD_NIEPELNOSCI, powod) for powod in powody)
@@ -280,8 +307,9 @@ def blok_kryterium(rekord: OcenaKryterium) -> list[PozycjaBloku]:
     ]
     if rekord.kryterium.warunek_latex.strip():
         pozycje.append(_pozycja(POZYCJA_WARUNEK_LATEX, rekord.kryterium.warunek_latex))
-    if rekord.kryterium.warunek_wstepny_pl is not None:
-        pozycje.append(_pozycja(POZYCJA_WARUNEK_WSTEPNY, rekord.kryterium.warunek_wstepny_pl))
+    warunek_wstepny = _warunek_wstepny(rekord.kryterium)
+    if warunek_wstepny is not None:
+        pozycje.append(_pozycja(POZYCJA_WARUNEK_WSTEPNY, warunek_wstepny))
     pozycje.extend(
         (
             _pozycja(POZYCJA_WYNIK, _wynik(rekord.wynik, relacja)),
@@ -303,7 +331,12 @@ def blok_kryterium(rekord: OcenaKryterium) -> list[PozycjaBloku]:
     )
     pozycje.append(_pozycja(POZYCJA_PODSTAWA, _podstawa(rekord.podstawa)))
     pozycje.extend(
-        _pozycje_dowodu(rekord.dowod, rekord.kompletnosc_dowodu, rekord.powody_niepelnosci)
+        _pozycje_dowodu(
+            rekord.dowod,
+            rekord.dowod.przydatnosc_dowodowa,
+            rekord.kompletnosc_dowodu,
+            rekord.powody_niepelnosci,
+        )
     )
     pozycje.append(_pozycja(POZYCJA_ZAKRES, _zakres(rekord.zakres_waznosci)))
     pozycje.extend(_pozycja(POZYCJA_SLAD, _slad(odnosnik)) for odnosnik in rekord.slad)
@@ -342,7 +375,12 @@ def blok_wymagania(rekord: WynikWymagania) -> list[PozycjaBloku]:
     )
     pozycje.append(_pozycja(POZYCJA_PODSTAWA, _podstawa(rekord.podstawa)))
     pozycje.extend(
-        _pozycje_dowodu(rekord.dowod, rekord.kompletnosc_dowodu, rekord.powody_niepelnosci)
+        _pozycje_dowodu(
+            rekord.dowod,
+            przydatnosc_dowodu_wymagania(rekord.dowod, rekord.oceny_skladowe),
+            rekord.kompletnosc_dowodu,
+            rekord.powody_niepelnosci,
+        )
     )
     pozycje.append(_pozycja(POZYCJA_ZAKRES, _zakres(rekord.zakres_waznosci)))
     pozycje.extend(_pozycja(POZYCJA_SLAD, _slad(odnosnik)) for odnosnik in rekord.slad)

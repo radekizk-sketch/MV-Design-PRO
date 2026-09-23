@@ -226,6 +226,49 @@ def test_pozycja_dowodu_ma_metode_poziom_i_odniesienie() -> None:
     assert "przydatność dowodowa: tak" in dowod
 
 
+@pytest.mark.parametrize("w_domenie", [None, True, False])
+def test_pozycja_dowodu_nazywa_domene_walidacji_biegu(w_domenie: bool | None) -> None:
+    """Domena walidacji biegu jest w pozycji „Dowód" (z położeniem biegu), a przydatność
+    dowodowa biegu poza domeną — „nie"."""
+    rekord = f.ocena(
+        dowod_oceny=f.dowod_obliczenia(w_domenie=w_domenie),
+        metoda_wyniku="OBLICZENIE",
+        zakres_oceny=f.zakres(rodzaj="POWER_FLOW"),
+    )
+    (dowod,) = _wartosci(blok_kryterium(rekord), "Dowód")
+    if w_domenie is None:
+        assert "domena walidacji: nie zadeklarowano" in dowod
+    else:
+        polozenie = "bieg w domenie" if w_domenie else "bieg poza domeną"
+        assert f"domena walidacji: {f.DOMENA_WALIDACJI} ({polozenie})" in dowod
+    assert ("przydatność dowodowa: tak" in dowod) == (w_domenie is not False)
+
+
+def test_pozycja_dowodu_bez_biegu_nie_ma_domeny() -> None:
+    (dowod,) = _wartosci(blok_kryterium(f.ocena()), "Dowód")
+    assert "domena walidacji" not in dowod
+
+
+@pytest.mark.parametrize("nazwa", ["dowod_laczony_pelny", "dowod_laczony_niepelny"])
+def test_przydatnosc_dowodu_laczonego_w_dokumencie_liczona_ze_skladowych(nazwa: str) -> None:
+    rekord = dict(REKORDY_W)[nazwa]
+    (dowod,) = _wartosci(_wlasne_pozycje_w(blok_wymagania(rekord)), "Dowód")
+    przydatny = nazwa == "dowod_laczony_pelny"
+    assert "metoda: dowód łączony" in dowod
+    assert ("przydatność dowodowa: tak" in dowod) == przydatny
+
+
+@pytest.mark.parametrize("stan_warunku", f.STANY_ZRODLA)
+def test_pozycja_warunku_wstepnego_niesie_podstawe_ze_stanem(stan_warunku: StanZrodla) -> None:
+    rekord = f.ocena("LOGICZNE", warunek_wstepny="U_PCC(t) ≥ obwiednia", stan_warunku=stan_warunku)
+    (warunek,) = _wartosci(blok_kryterium(rekord), "Warunek wstępny")
+    podstawa = rekord.kryterium.warunek_wstepny_podstawa
+    assert podstawa is not None
+    assert warunek.startswith("U_PCC(t) ≥ obwiednia; podstawa — ")
+    assert f"dokument: „{podstawa.dokument}”" in warunek
+    assert f"stan źródła: {stan_warunku}" in warunek
+
+
 def test_pozycje_latex_osobno_od_tekstu() -> None:
     rekord = f.ocena("OBWIEDNIA_DOLNA")
     blok = blok_kryterium(rekord)
@@ -273,6 +316,21 @@ def test_dokument_czyta_etykiete_z_rekordu() -> None:
             == etykieta(
                 rekord.status_maszynowy,
                 None if rekord.kompletnosc_dowodu == "NIE_DOTYCZY" else rekord.kompletnosc_dowodu,
+                "K",
+            ).etykieta_pl
+        )
+    for _, rekord_w in REKORDY_W:
+        ocena_w = _wartosci(blok_wymagania(rekord_w), "Ocena")[0]
+        assert (
+            ocena_w
+            == etykieta(
+                rekord_w.status_maszynowy,
+                (
+                    None
+                    if rekord_w.kompletnosc_dowodu == "NIE_DOTYCZY"
+                    else rekord_w.kompletnosc_dowodu
+                ),
+                "W",
             ).etykieta_pl
         )
     assert "etykieta" not in {n for n in dir(modul_dokumentu) if not n.startswith("_")}
