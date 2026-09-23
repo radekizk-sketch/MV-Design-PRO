@@ -9,8 +9,10 @@
 > pracy. Zakaz „follow-on" / „osobny przebieg" / „bounded increment" / jawnego błędu zamiast funkcji / okrajania
 > zakresu / wyłączania kategorii spod zakresu. Rozmiar → orkiestracja teraz, nie odroczenie.
 
-**Ostatnia aktualizacja:** 2026-09-16 · **Gałąź:** `claude/mv-design-pro-twin-audit-u4lhy0` (HEAD `c307e95f`;
-`main` = `7e84753a`) · **Poprzednia wersja rejestru (2026-05-29):** `docs/audit/archive/STAN_REPO_2026-05-29.md`
+**Ostatnia aktualizacja:** 2026-09-23 · **Gałąź:** `claude/relaxed-sagan-ww188q` (fast-forward z
+`claude/mv-design-pro-twin-audit-u4lhy0` @ `ef9f6228` = R10 W6-F ACCEPTED DONE; `main` = `7e84753a` jest przodkiem
+obu) · **Program bieżący:** `docs/plan/PROGRAM_AB_DYNAMIKA_I_JAKOSC_ENERGII_2026-09.md` (Program A/B — dynamika +
+harmoniczne + supraharmoniczne, uszczegółowienie W6) · **Poprzednia wersja rejestru (2026-05-29):** `docs/audit/archive/STAN_REPO_2026-05-29.md`
 (zarchiwizowana; zawierała deklaracje sprzeczne z kodem).
 **Cykl życia:** aktualizowany przy każdym odbiorze wycinka; szczegółowe pomiary żyją w
 `docs/evidence/CONVERGENCE_EVIDENCE.md` (§A CI, §E karty, §F dowody, §G ustalenia adwersaryjne, §I decyzje właściciela).
@@ -74,9 +76,15 @@ Pełna klasyfikacja per zdolność i domenę: `docs/plan/MAPA_DOMKNIECIA_PRODUKT
 
 ## 4. ZADANIE BIEŻĄCE
 
-Odbiór fali 3 W3 (`c307e95f`: łańcuch przedpushowy → sygnatury → push → CI 9/9 → wpisy mapa/karta/evidence) ·
-odbiór V12.7 i W3-J (agenci) · **W6-0**: karty S-1+S-4, S-2 (agenci, worktree na bazie po pushu), S-3 (po S-1),
-S-5 (ten dokument i supersesje — wykonane w tej kolejce) · projekt W6-1 (kontrakty czasu) — architekt.
+**Program A/B (mandat właściciela 2026-09-23)** — `docs/plan/PROGRAM_AB_DYNAMIKA_I_JAKOSC_ENERGII_2026-09.md`:
+plan odtworzony (poprzednia sesja nie zdążyła go wypchnąć — śledztwo na 419 gałęziach + 475 głowach PR), trzy audyty
+Opus 5.5 zintegrowane (`docs/evidence/OPUS_*_2026-09-23.md`): dynamika (ROCOF nie istnieje, H4 otwarte, 15 zdolności
+dopisanych do AB-2R…AB-5R), harmoniczne (ścieżka V12.6 fizycznie błędna → REWRITE `solvers/harmoniczne/`, 52 elementy
+sklasyfikowane), warstwa regulacyjna (T10/T14/T15 tautologie, T20 limit zaszyty, most z `PPM` na sztywno; korekty
+§6). Decyzje właściciela nowe: OD-38 (dokumenty jakości energii), OD-39 (dane pomiarowe), OD-40 („Bank Nastaw"),
+OD-41 (progi klas modułów). Następny kamień: **AB-1a** (PhysicsDomain w rejestrze, `WynikInzynierski` jako
+rozszerzenie `OcenaElementu`, dwie osie statusu modelu, `BadanieZgodnosci`, guard werdyktu, poprawki rejestru
+dowodowego). Historia W6-0…W6-F: mapa §8, synteza §2.11, evidence R10.
 
 ## 5. KOLEJNOŚĆ DALSZEJ PRACY
 
