@@ -499,7 +499,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "domain/protection_vendors.py",
     "domain/readiness.py",
     "domain/result_contract_v1.py",
-    "domain/result_set.py",
     "domain/results.py",
     "domain/switchgear_config.py",
     "domain/validation.py",
@@ -1282,9 +1281,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:summary_a.total_losses_p_mw": 2,
         "F:dictget:summary_b.slack_p_mw": 1,
         "F:dictget:summary_b.total_losses_p_mw": 2,
-    },
-    "network_model/proof/power_flow_proof_builder.py": {
-        "F:dictget:deltas.delta_v_pu": 1,
     },
     # GRUPA 2 — PLATFORMA ZWARCIOWA/ZABEZPIECZENIOWA. Rodzina powtorzonego
     # mostu „wynik zwarcia (ikss_a/ip_a/ith_a/sk_mva/rx_ratio/kappa) -> wejscie

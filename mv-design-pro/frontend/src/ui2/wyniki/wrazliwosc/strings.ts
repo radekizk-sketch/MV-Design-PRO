@@ -76,15 +76,6 @@ export const DECYZJE_PL: Readonly<Record<string, string>> = {
   NOT_COMPUTED: 'nieobliczone',
 };
 
-export type IstotnoscWrazliwosci = 'ok' | 'warn' | 'err' | 'neutral';
-
-/** Istotność wizualna decyzji (tokeny stylu, zero fizyki). */
-export function istotnoscDecyzji(decyzja: string): IstotnoscWrazliwosci {
-  if (decyzja === 'PASS') return 'ok';
-  if (decyzja === 'FAIL') return 'err';
-  return 'neutral';
-}
-
 /** Etykieta kryterium: mapa PL, a dla nieznanego kodu surowy kod (uczciwość). */
 export function etykietaKryterium(parameterId: string): string {
   return KRYTERIA_PL[parameterId] ?? parameterId;

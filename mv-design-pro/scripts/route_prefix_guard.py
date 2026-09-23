@@ -258,14 +258,9 @@ FRONTEND_DEAD_CLIENT_DEBT: dict[str, tuple[tuple[str, ...], str]] = {
         "historia biegow: backend wystawia ja jako /api/projects/{id}/analysis-runs. Modul nie "
         "ma importerow; trzecia funkcja (compareRuns -> /api/comparison/runs) jest poprawna.",
     ),
-    "frontend/src/ui/proof/traceExportApi.ts": (
-        (
-            "/api/projects/{p}/analysis-runs/{p}/trace/export/{p}",
-            "/api/analysis-runs/{p}/trace/export/{p}",
-        ),
-        "backend wystawia slad jako /api/analysis-runs/{id}/trace oraz /trace/summary, bez "
-        "eksportu do pliku. Modul nie ma importerow.",
-    ),
+    # WPIS ZDJETY 2026-09-23 (karta AB-1a Pakiet L): `frontend/src/ui/proof/traceExportApi.ts`
+    # (eksport sladu do pliku na trase, ktorej backend nie wystawia) skasowany razem z
+    # nieosiagalna przegladarka sladu `ui/proof/TraceViewer.tsx` i jej zaleznosciami.
     "frontend/src/ui/topology/api.ts": (
         (
             "/api/cases/{p}/enm/ops",

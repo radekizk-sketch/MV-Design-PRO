@@ -437,21 +437,3 @@ export interface PowerFlowInterpretation {
   summary: InterpretationSummary;
   trace: InterpretationTrace;
 }
-
-/**
- * Severity labels (Polish).
- */
-export const SEVERITY_LABELS: Record<FindingSeverity, string> = {
-  INFO: 'Informacja',
-  WARN: 'Ostrzeżenie',
-  HIGH: 'Istotny problem',
-};
-
-/**
- * Severity colors for UI.
- */
-export const SEVERITY_COLORS: Record<FindingSeverity, string> = {
-  INFO: 'text-slate-600 bg-slate-100',
-  WARN: 'text-amber-700 bg-amber-100',
-  HIGH: 'text-rose-700 bg-rose-100',
-};

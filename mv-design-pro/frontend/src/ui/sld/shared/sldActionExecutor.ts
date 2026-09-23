@@ -177,9 +177,9 @@ export function routeSurfaceLabelPl(screenCode: string): string {
  * `change-family-to-cable` → `ACTION_TO_SCREEN['E-12']` (pole "Rodzina" na
  * karcie domyślnej konfiguratora odcinka); `show-measurements` → branch 1c
  * niżej w `useSldActionExecutor`, deep-link do panelu inspektora
- * `field_measurements` — TA SAMA zdolność "Pomiary pola", którą
- * `network-build/cards/BayCard.tsx` już otwiera przyciskiem
- * (`commonInspectorActions`). ZERO pozycji `SLD_MENU_REGISTRY` usunięto w tej
+ * `field_measurements` — zdolność "Pomiary pola" (`openInspectorPanel`; martwa
+ * karta `network-build/cards/BayCard.tsx`, jedyny wcześniejszy wołający, skasowana
+ * w karcie AB-1a Pakiet L). ZERO pozycji `SLD_MENU_REGISTRY` usunięto w tej
  * karcie — wszystkie 24 klucze miały realnego dostawcę w kodzie, tylko
  * nienazwanego (dlatego `dead_click_guard.py` zaakceptował tabelę hintów jako
  * "pokrycie" — karta zamyka tę furtkę: usuwa całą kategorię pokrycia
@@ -643,8 +643,7 @@ export function useSldActionExecutor(
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
   // Karta W2-B: 'show-measurements' (menu pola) otwiera WPROST panel
-  // inspektora "Pomiary pola" — ta sama zdolność, którą `BayCard.tsx` już
-  // udostępnia przyciskiem (`openInspectorPanel('field_measurements', ...)`).
+  // inspektora "Pomiary pola" (`openInspectorPanel('field_measurements', ...)`).
   const openInspectorPanel = useNetworkBuildStore((state) => state.openInspectorPanel);
   const selectElement = useSelectionStore((state) => state.selectElement);
   const setWynikiTab = useShellStore((state) => state.setWynikiTab);
@@ -800,9 +799,7 @@ export function useSldActionExecutor(
 
       // 1c) Karta W2-B (klasa ACTION_ROADMAP_HINT_PL): 'show-measurements' z
       //     menu pola → panel inspektora 'field_measurements' (E-11, "Pomiary
-      //     pola") — TA SAMA zdolność, którą `BayCard.tsx` już otwiera
-      //     przyciskiem `commonInspectorActions`
-      //     (`network-build/networkBuildStore.ts::openInspectorPanel`).
+      //     pola") — `network-build/networkBuildStore.ts::openInspectorPanel`.
       //     Deep-link zamiast dwóch kliknięć (otwórz pole → "Pomiary pola").
       if (actionId === 'show-measurements' && kind === 'bay' && elementId) {
         openInspectorPanel('field_measurements', elementId, 'BaySN');

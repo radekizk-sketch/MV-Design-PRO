@@ -1036,14 +1036,14 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     cleanup();
   });
 
-  it('cable_run kind → 3 tabs (Trasa/Parametry/Spadek)', () => {
+  it('cable_run kind → 2 tabs (Trasa/Parametry; „Spadek napięcia" skasowany — Pakiet L E70)', () => {
     const data: SldDetailDrawerData = { kind: 'cable_run', elementId: 'run-1', label: 'Ciąg-1' };
-    const { container, getByText } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    const { container, getByText, queryByText } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     const tabsWrapper = container.querySelector('[data-testid="sld-v2-detail-drawer-tabs"]');
-    expect(tabsWrapper?.querySelectorAll('button')).toHaveLength(3);
+    expect(tabsWrapper?.querySelectorAll('button')).toHaveLength(2);
     expect(getByText('Trasa')).toBeInTheDocument();
     expect(getByText('Parametry')).toBeInTheDocument();
-    expect(getByText('Spadek napięcia')).toBeInTheDocument();
+    expect(queryByText('Spadek napięcia')).toBeNull();
     expect(container.querySelector('[data-testid="drawer-cable-trasa"]')).toBeTruthy();
     cleanup();
   });
@@ -1202,7 +1202,11 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     cleanup();
   });
 
-  it('cable_run Spadek tab renders real loading + vdrop z lfDerived', () => {
+  it('cable_run: brak zakładki „Spadek napięcia" (karta AB-1a Pakiet L, LEGACY_USUNAC E70)', () => {
+    // Zakładka pokazywała progi 95/75 % i 8/5 % liczone w UI oraz zaszyty napis
+    // „Klasa zgodności: PN-EN 50160 (±10%)", a jej wartości na ścieżce produkcyjnej
+    // były ZAWSZE null (`detailDrawerData.ts`). Skasowana — spadki napięć niesie
+    // wynik rozpływu z backendu, nie szuflada SLD.
     const data: SldDetailDrawerData = {
       kind: 'cable_run', elementId: 'run-1', label: 'Ciąg-1',
       cableRunSpec: {
@@ -1211,14 +1215,13 @@ describe('SldDetailDrawer — right-side detail panel', () => {
         stationCount: 8,
         lengthKm: 12.0,
         segmentKind: 'cable_sn',
-        maxLoadingPct: 82.5,
-        maxVoltageDropPct: 6.3,
       },
     };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
-    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-spadek"]') as Element);
-    expect(container.querySelector('[data-testid="drawer-cable-vdrop-total"]')?.textContent).toBe('6.30 %');
-    expect(container.querySelector('[data-testid="drawer-cable-loading"]')?.textContent).toBe('82.5 %');
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-trasa"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-parametry"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-spadek"]')).toBeNull();
+    expect(container.textContent).not.toContain('Klasa zgodności');
     cleanup();
   });
 
@@ -1329,26 +1332,6 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     const tabpanel = container.querySelector(`#${controlsId}`) as HTMLElement;
     expect(tabpanel?.getAttribute('role')).toBe('tabpanel');
     expect(tabpanel?.getAttribute('aria-labelledby')).toBe(firstTab.id);
-    cleanup();
-  });
-
-  it('cable_run Spadek tab "—" gdy brak metrics', () => {
-    const data: SldDetailDrawerData = {
-      kind: 'cable_run', elementId: 'run-1', label: 'Ciąg-1',
-      cableRunSpec: {
-        runKind: 'main_trunk',
-        segmentCount: 1,
-        stationCount: 1,
-        lengthKm: 1,
-        segmentKind: 'cable_sn',
-        maxLoadingPct: null,
-        maxVoltageDropPct: null,
-      },
-    };
-    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
-    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-spadek"]') as Element);
-    expect(container.querySelector('[data-testid="drawer-cable-vdrop-total"]')?.textContent).toBe('—');
-    expect(container.querySelector('[data-testid="drawer-cable-loading"]')?.textContent).toBe('—');
     cleanup();
   });
 

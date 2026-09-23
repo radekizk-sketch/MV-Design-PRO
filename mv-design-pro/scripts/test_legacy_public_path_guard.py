@@ -2160,3 +2160,320 @@ def test_guard_accepts_current_repo_state_uniewazniacz() -> None:
     """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo (bez monkeypatch)
     musi byc czysta PO kasacji karty KASACJA-UNIEWAZNIACZA."""
     assert guard.check_uniewazniacz_resurrection() == []
+
+
+# ---------------------------------------------------------------------------
+# Karta AB-1a Pakiet L (2026-09-23) — bramka wskrzeszenia pozycji LEGACY_USUNAC
+# ---------------------------------------------------------------------------
+
+#: Wiersze inwentarza werdyktow skasowane w Pakiecie L (w calosci albo w czesci —
+#: E73 bez `GpzOperatorHeader.tsx`, B7 bez modelu). Pominiete z powodem w meldunku:
+#: A14, B2, B18, C47, E50, E51, E74. Pin: kazdy skasowany wiersz MA wpis w bramce.
+PAKIET_L_WIERSZE_SKASOWANE = {
+    "A1",
+    "A2",
+    "A35",
+    "A39",
+    "B7",
+    "B8",
+    "B14",
+    "B24",
+    "C38",
+    "C41",
+    "C46",
+    "C51",
+    "C55",
+    "D50",
+    "D58",
+    "E2",
+    "E14",
+    "E15",
+    "E16",
+    "E18",
+    "E21",
+    "E22",
+    "E23",
+    "E24",
+    "E25",
+    "E27",
+    "E29",
+    "E30",
+    "E40",
+    "E44",
+    "E47",
+    "E52",
+    "E53",
+    "E59",
+    "E64",
+    "E66",
+    "E67",
+    "E68",
+    "E70",
+    "E73",
+    "E78",
+}
+PAKIET_L_WIERSZE_POMINIETE = {"A14", "B2", "B18", "C47", "E50", "E51", "E74"}
+#: Pozycje POZA inwentarzem, wykryte przy kasacji (integracja Pakietu L): X1 — nieosiagalna
+#: przegladarka sladu `ui/proof/TraceViewer.tsx` z zaleznosciami (jedyny importer
+#: `TraceMetadataPanel.tsx`, E24); X2 — sieroty `domain/protection_device.py`.
+PAKIET_L_POZA_INWENTARZEM = {"X1", "X2"}
+
+
+def _patch_pakiet_l_tree(monkeypatch, tmp_path: Path) -> tuple[Path, Path]:
+    src = tmp_path / "backend" / "src"
+    fe = tmp_path / "frontend" / "src"
+    src.mkdir(parents=True)
+    fe.mkdir(parents=True)
+    monkeypatch.setattr(guard, "ROOT", tmp_path)
+    monkeypatch.setattr(guard, "BACKEND_SRC_DIR", src)
+    monkeypatch.setattr(guard, "FRONTEND_SRC_DIR", fe)
+    return src, fe
+
+
+def _zapisz(path: Path, tekst: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(tekst, encoding="utf-8")
+
+
+def _py_definicja(symbol: str) -> str:
+    """Najprostsza DEFINICJA symbolu w Pythonie w ksztalcie, w jakim zyl przed kasacja."""
+    if "." in symbol:
+        klasa, pole = symbol.split(".", 1)
+        return f"class {klasa}:\n    {pole}: object = None\n"
+    if symbol.isupper() or symbol.lstrip("_")[:1].isdigit():
+        return f"{symbol} = 1\n"
+    if symbol[:1].isupper():
+        return f"class {symbol}:\n    pass\n"
+    return f"def {symbol}():\n    return None\n"
+
+
+def _wpisy(warstwa: str, rodzaj: str, zasieg: str | None = None) -> list:
+    return [
+        w
+        for w in guard.PAKIET_L_WPISY
+        if w.warstwa == warstwa and w.rodzaj == rodzaj and (zasieg is None or w.zasieg == zasieg)
+    ]
+
+
+def _id(w) -> str:
+    return f"{w.wiersz}:{w.sciezka}:{w.symbol}"
+
+
+def test_pakiet_l_every_deleted_row_has_a_gate_entry() -> None:
+    """Deklaracja bez testu = falszywa pewnosc: meldunek Pakietu L wymienia
+    skasowane wiersze inwentarza — kazdy MUSI miec wpis bramki, a pominiety
+    NIE moze go miec (bramka pilnuje faktow, nie planow)."""
+    wiersze = {w.wiersz.split(" ")[0] for w in guard.PAKIET_L_WPISY}
+    assert wiersze == PAKIET_L_WIERSZE_SKASOWANE | PAKIET_L_POZA_INWENTARZEM
+    assert not (wiersze & PAKIET_L_WIERSZE_POMINIETE)
+    assert len(PAKIET_L_WIERSZE_SKASOWANE | PAKIET_L_WIERSZE_POMINIETE) == 48
+
+
+def test_pakiet_l_entries_are_well_formed() -> None:
+    for w in guard.PAKIET_L_WPISY:
+        assert w.warstwa in {"backend", "frontend"}, w
+        assert w.rodzaj in {"sciezka", "definicja", "wzorzec"}, w
+        assert w.zasieg in {"plik", "globalnie"}, w
+        assert (w.symbol is None) == (w.rodzaj == "sciezka"), w
+        assert not w.sciezka.startswith("/"), w
+        if w.rodzaj == "wzorzec":
+            assert w.warstwa == "frontend" and w.zasieg == "plik", w
+        if w.symbol is not None and "." in w.symbol:
+            assert w.zasieg == "plik", w
+
+
+@pytest.mark.parametrize(
+    "wpis", _wpisy("backend", "sciezka") + _wpisy("frontend", "sciezka"), ids=_id
+)
+def test_guard_rejects_resurrected_pakiet_l_path(tmp_path, monkeypatch, wpis) -> None:
+    src, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    korzen = src if wpis.warstwa == "backend" else fe
+    cel = korzen / wpis.sciezka
+    if cel.suffix in {".py", ".ts", ".tsx"}:
+        _zapisz(cel, "// wskrzeszony\n" if wpis.warstwa == "frontend" else "# wskrzeszony\n")
+    else:
+        rozszerzenie = ".py" if wpis.warstwa == "backend" else ".tsx"
+        _zapisz(cel / "podmodul" / f"wskrzeszony{rozszerzenie}", "")
+
+    violations = guard.check_pakiet_l_resurrection()
+
+    assert any(
+        "[resurrected-module]" in v
+        and f"{wpis.warstwa}/src/{wpis.sciezka}:" in v
+        and wpis.wiersz in v
+        for v in violations
+    ), violations
+
+
+@pytest.mark.parametrize("wpis", _wpisy("backend", "definicja", "globalnie"), ids=_id)
+def test_guard_rejects_pakiet_l_backend_definition_under_other_path(
+    tmp_path, monkeypatch, wpis
+) -> None:
+    """Definicja `globalnie` wraca pod INNA sciezka (inny modul, inna warstwa) —
+    musi byc czerwona niezaleznie od miejsca."""
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(src / "inna_warstwa" / "przeniesiony_modul.py", _py_definicja(wpis.symbol))
+
+    violations = guard.check_pakiet_l_resurrection()
+
+    assert any(
+        "[resurrected-definition]" in v and "przeniesiony_modul.py" in v and wpis.symbol in v
+        for v in violations
+    ), violations
+
+
+@pytest.mark.parametrize(
+    "wpis",
+    [w for w in _wpisy("backend", "definicja", "globalnie") if not w.symbol[:1].isupper()],
+    ids=_id,
+)
+def test_guard_rejects_pakiet_l_backend_definition_as_method(tmp_path, monkeypatch, wpis) -> None:
+    """Ta sama zdolnosc w innym ksztalcie skladni: funkcja wraca jako metoda
+    (`async def`) klasy — `ast.walk` musi ja zlapac tak samo jak definicje modulowa.
+    Klasy i stale modulowe maja ksztalt metody bezprzedmiotowy (wylaczone z iloczynu)."""
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(
+        src / "serwis" / "nowy_serwis.py",
+        f"class NowySerwis:\n    async def {wpis.symbol}(self):\n        return None\n",
+    )
+
+    violations = guard.check_pakiet_l_resurrection()
+
+    assert any("nowy_serwis.py" in v and wpis.symbol in v for v in violations), violations
+
+
+@pytest.mark.parametrize("wpis", _wpisy("backend", "definicja", "plik"), ids=_id)
+def test_guard_pakiet_l_backend_file_scoped_definition(tmp_path, monkeypatch, wpis) -> None:
+    """Zasieg `plik`: nazwa ogolna albo kolidujaca z ZYWA definicja gdzie indziej —
+    czerwona TYLKO we wskazanym pliku, zielona w kazdym innym."""
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(src / wpis.sciezka, _py_definicja(wpis.symbol))
+    _zapisz(src / "zywy_modul" / "inny.py", _py_definicja(wpis.symbol))
+
+    violations = guard.check_pakiet_l_resurrection()
+
+    trafienia = [v for v in violations if wpis.symbol in v]
+    assert any(wpis.sciezka in v for v in trafienia), violations
+    assert not any("zywy_modul/inny.py" in v for v in trafienia), trafienia
+
+
+@pytest.mark.parametrize("wpis", _wpisy("frontend", "definicja", "globalnie"), ids=_id)
+@pytest.mark.parametrize(
+    "ksztalt",
+    [
+        "export const {n} = 1;\n",
+        "export function {n}() {{ return null; }}\n",
+        "export default function {n}() {{ return null; }}\n",
+        "  export interface {n} {{ a: number }}\n",
+        "export type {n} = string;\n",
+    ],
+)
+def test_guard_rejects_pakiet_l_frontend_export_under_other_path(
+    tmp_path, monkeypatch, wpis, ksztalt: str
+) -> None:
+    _, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(fe / "ui2" / "nowy" / "Przeniesiony.tsx", ksztalt.format(n=wpis.symbol))
+
+    violations = guard.check_pakiet_l_resurrection()
+
+    assert any(
+        "[resurrected-definition]" in v and "Przeniesiony.tsx" in v and wpis.symbol in v
+        for v in violations
+    ), violations
+
+
+@pytest.mark.parametrize("wpis", _wpisy("frontend", "definicja", "plik"), ids=_id)
+def test_guard_pakiet_l_frontend_file_scoped_definition(tmp_path, monkeypatch, wpis) -> None:
+    _, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(fe / wpis.sciezka, f"export const {wpis.symbol} = {{}};\n")
+    _zapisz(fe / "ui2" / "zywy" / "inny.ts", f"export const {wpis.symbol} = {{}};\n")
+
+    violations = guard.check_pakiet_l_resurrection()
+
+    trafienia = [v for v in violations if wpis.symbol in v]
+    assert any(wpis.sciezka in v for v in trafienia), violations
+    assert not any("ui2/zywy/inny.ts" in v for v in trafienia), trafienia
+
+
+@pytest.mark.parametrize("wpis", _wpisy("frontend", "wzorzec"), ids=_id)
+def test_guard_rejects_pakiet_l_pattern_in_live_file(tmp_path, monkeypatch, wpis) -> None:
+    """Pozycja skasowana WEWNATRZ zywego pliku (martwy prop, martwa zakladka,
+    zaszyty napis zgodnosci) nie wraca do TEGO pliku; ten sam napis w innym
+    pliku nie jest naruszeniem tej bramki."""
+    _, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(fe / wpis.sciezka, f"const x = {{ '{wpis.symbol}': 1 }};\n")
+    _zapisz(fe / "ui2" / "inne" / "Plik.tsx", f"const x = '{wpis.symbol}';\n")
+
+    violations = guard.check_pakiet_l_resurrection()
+
+    assert any(
+        "[resurrected-pattern]" in v and wpis.sciezka in v and wpis.wiersz in v for v in violations
+    ), violations
+    assert not any("ui2/inne/Plik.tsx" in v for v in violations)
+
+
+def test_guard_does_not_fire_on_pakiet_l_names_in_comments_or_docstrings(
+    tmp_path, monkeypatch
+) -> None:
+    """Komentarz/dokstring OPISUJACY kasacje nie jest naruszeniem — inaczej bramka
+    karalaby historie (naglowki `curve_calculator.py`, `protection_curves_it/__init__.py`,
+    `readinessVisualState.ts`, `overlayTypes.ts` nazywaja skasowane symbole)."""
+    src, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    nazwy_be = " ".join(w.symbol for w in _wpisy("backend", "definicja"))
+    _zapisz(
+        src / "protection" / "curves" / "curve_calculator.py",
+        f'"""Skasowane w Pakiecie L: {nazwy_be}."""\n# {nazwy_be}\nPOWOD = "{nazwy_be}"\n',
+    )
+    zakazane = [w.sciezka for w in _wpisy("frontend", "sciezka")]
+    for w in _wpisy("frontend", "definicja") + _wpisy("frontend", "wzorzec"):
+        if any(w.sciezka == z or w.sciezka.startswith(z + "/") for z in zakazane):
+            continue  # plik skasowany — sama jego obecnosc jest naruszeniem (inny test)
+        _zapisz(fe / w.sciezka, f"// {w.symbol} skasowany\n/* export const {w.symbol} = 1; */\n")
+
+    assert guard.check_pakiet_l_resurrection() == []
+
+
+def test_guard_ignores_orphaned_pycache_only_directory_pakiet_l(tmp_path, monkeypatch) -> None:
+    """Osierocony bytecode sprzed kasacji (`network_model/proof/__pycache__`) nie
+    jest wskrzeszonym zrodlem."""
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    pycache = src / "network_model" / "proof" / "__pycache__"
+    pycache.mkdir(parents=True)
+    (pycache / "power_flow_proof_builder.cpython-311.pyc").write_bytes(b"\x00")
+
+    assert guard.check_pakiet_l_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_pakiet_l_resurrection(tmp_path, monkeypatch) -> None:
+    """Zywe sasiedztwo skasowanych pozycji (silnik IDMT w `protection_iec60255.py`,
+    typ widoku krzywych, `FaultMarker` analizatora koordynacji, `CoordinationResult`
+    ekranu koordynacji, `InspectorPanel` warstwy ui2) zostaje zielone."""
+    src, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(
+        src / "network_model" / "solvers" / "protection_iec60255.py",
+        "def compute_curve_trip_time():\n    return 0.0\n",
+    )
+    _zapisz(
+        src / "analysis" / "protection_curves_it" / "models.py",
+        "class ProtectionCurvesITView:\n    curves: tuple = ()\n",
+    )
+    _zapisz(
+        src / "application" / "analyses" / "protection" / "coordination" / "models.py",
+        "class FaultMarker:\n    pass\n",
+    )
+    _zapisz(
+        fe / "ui" / "protection-coordination" / "types.ts",
+        "export interface CoordinationResult {}\n",
+    )
+    _zapisz(
+        fe / "ui2" / "inspector" / "InspectorPanel.tsx", "export function InspectorPanel() {}\n"
+    )
+    _zapisz(fe / "ui" / "sld" / "v3" / "canvas" / "overlay.ts", "export const overlay = 1;\n")
+
+    assert guard.check_pakiet_l_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_pakiet_l() -> None:
+    """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo (bez monkeypatch)
+    musi byc czysta PO kasacji karty AB-1a Pakiet L."""
+    assert guard.check_pakiet_l_resurrection() == []

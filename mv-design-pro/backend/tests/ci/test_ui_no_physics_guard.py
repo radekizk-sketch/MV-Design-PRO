@@ -77,7 +77,11 @@ def test_ui_allowlist_matches_measured_baseline():
     N-D3 kasacja (2026-08-13, row N-D3-POMIAR-U2 in
     docs/v12xx/REJESTR_KONFLIKTOW.md) re-measured 13 after deleting the whole
     station-wizard-v2 contracts library (3 raw hits / 2 allowlist entries;
-    zero consumers measured on both branches). All
+    zero consumers measured on both branches); AB-1a Pakiet L (2026-09-23,
+    LEGACY_USUNAC E73 of docs/audit/INWENTARZ_WERDYKTOW_LAKONICZNYCH_2026-09-23.md)
+    re-measured 7 after deleting `ui/sld/v2/renderer/EquipmentProofBadge.tsx`
+    (6 raw hits / 3 allowlist entries; zero production importers measured by
+    symbol reachability from `main.tsx` and every harness entry). All
     re-measurements lowered the baseline BY MEASUREMENT, never by widening
     tolerance.
     """
@@ -89,7 +93,7 @@ def test_ui_allowlist_matches_measured_baseline():
         if ui_no_physics_guard._should_exclude_file(path):
             continue
         raw += len(ui_no_physics_guard.scan_file(path))
-    assert raw == 13
+    assert raw == 7
 
 
 def test_ui_allowlist_entries_are_not_stale():

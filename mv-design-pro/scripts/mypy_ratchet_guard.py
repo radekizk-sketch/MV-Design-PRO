@@ -151,8 +151,14 @@ BACKEND = ROOT / "backend"
 #     `tests/api/test_archive_diff_koncowki.py`);
 #   * analysis (~19), enm (~18), solver_input (~8), domain (~4), compliance (~1).
 # Kazda karta obniza pin o zmierzona liczbe (zapadka dwustronna sama tego zada).
-BASELINE_ERRORS = 271
-BASELINE_FILES = 48
+# 2026-09-23 (karta AB-1a Pakiet L, drzewo `d0d02f0f` + Pakiet L): kasacja martwego
+# dowodu P18 (`proof_inspector/inspector.py::_build_protection_comparisons` — 4 bledy
+# arg-type `margin`) i rendererow krzywych I-t (`protection_curves_it/renderer_svg.py`
+# — 1 blad var-annotated). Pomiar `mypy src` (mypy 1.19.1): czysty HEAD `d0d02f0f`
+# 271/48 (729 plikow), `d0d02f0f` + Pakiet L 266/46 (716 plikow); roznica zbiorow
+# bledow = dokladnie te 5 bledow, zero nowych => 266/46.
+BASELINE_ERRORS = 266
+BASELINE_FILES = 46
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

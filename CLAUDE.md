@@ -307,7 +307,7 @@ MV-Design-PRO/
 │   │   │   │   └── sld-layout/   # SLD auto-layout engine (7-phase pipeline)
 │   │   │   ├── types/            # Shared TypeScript type definitions
 │   │   │   ├── test/             # Test infrastructure (setup.ts)
-│   │   │   ├── ui/               # React components — 52 moduly (stan zmierzony, pin: scripts/claude_md_struktura_guard.py)
+│   │   │   ├── ui/               # React components — 50 moduly (stan zmierzony, pin: scripts/claude_md_struktura_guard.py)
 │   │   │   │   ├── analysis-eligibility/  # Wynik pre-kontroli analizy
 │   │   │   │   ├── app-state/             # Globalny store Zustand
 │   │   │   │   ├── audit/                 # Narzedzia audytowe
@@ -326,7 +326,6 @@ MV-Design-PRO/
 │   │   │   │   ├── history/               # Cofnij/ponow
 │   │   │   │   ├── icons/                 # Definicje ikon
 │   │   │   │   ├── inspector/             # Inspektor ogolny
-│   │   │   │   ├── issue-panel/           # Panel bledow walidacji
 │   │   │   │   ├── mode-gate/             # Bramkowanie trybu eksperckiego
 │   │   │   │   ├── navigation/            # Nawigacja aplikacji
 │   │   │   │   ├── ncrfg-tests/           # Testy zgodnosci NC RfG
@@ -343,7 +342,6 @@ MV-Design-PRO/
 │   │   │   │   ├── protection-comparison/ # Porownanie A/B zabezpieczen
 │   │   │   │   ├── protection-coordination/ # Wykresy TCC, koordynacja
 │   │   │   │   ├── protection-curves/     # Rysowanie krzywych zabezpieczen
-│   │   │   │   ├── reference-patterns/    # Wzorce sieci referencyjnych
 │   │   │   │   ├── reports/               # Raporty
 │   │   │   │   ├── results/               # Modul wynikow
 │   │   │   │   ├── results-inspector/     # Inspektor szczegolow wyniku

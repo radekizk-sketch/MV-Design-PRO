@@ -163,10 +163,6 @@ export interface SldDetailDrawerData {
     readonly stationCount: number | null;
     readonly lengthKm: number | null;
     readonly segmentKind: 'cable_sn' | 'overhead_line_sn' | null;
-    /** K30-93: max loading % across segments (z lfDerivedMetrics). */
-    readonly maxLoadingPct?: number | null;
-    /** K30-93: max voltage drop ΔU % (deviation pomiędzy stacjami końcowymi). */
-    readonly maxVoltageDropPct?: number | null;
     /** FAB-C: dane katalogowe odcinka (Cable/OverheadLine) z ENM — brak pola
      *  w modelu = null, NIGDY wartość zastępcza (usunięta fabrykacja K30-89). */
     readonly catalogRef?: string | null;
@@ -266,7 +262,6 @@ const DER_TABS = [
 const CABLE_RUN_TABS = [
   { id: 'trasa', label: 'Trasa' },
   { id: 'parametry', label: 'Parametry' },
-  { id: 'spadek', label: 'Spadek napięcia' },
 ] as const;
 
 const NODE_TABS = [
@@ -1764,8 +1759,6 @@ function PlaceholderTabBody({
     readonly stationCount: number | null;
     readonly lengthKm: number | null;
     readonly segmentKind: 'cable_sn' | 'overhead_line_sn' | null;
-    readonly maxLoadingPct?: number | null;
-    readonly maxVoltageDropPct?: number | null;
     /** FAB-C: dane katalogowe odcinka (Cable/OverheadLine) z ENM — brak pola
      *  w modelu = null, NIGDY wartość zastępcza (usunięta fabrykacja K30-89). */
     readonly catalogRef?: string | null;
@@ -2128,43 +2121,6 @@ function PlaceholderTabBody({
             {ratingText}
           </dd>
         </dl>
-      </div>
-    );
-  }
-  if (kind === 'cable_run' && tab === 'spadek') {
-    const loading = cableRunSpec?.maxLoadingPct;
-    const vdrop = cableRunSpec?.maxVoltageDropPct;
-    const loadingColor = loading == null
-      ? 'rgb(var(--scada-muted))'
-      : loading >= 95 ? 'rgb(var(--scada-status-err))'
-      : loading >= 75 ? 'rgb(var(--scada-status-warn-ink))'
-      : 'rgb(var(--scada-status-ok))';
-    const vdropColor = vdrop == null
-      ? 'rgb(var(--scada-muted))'
-      : Math.abs(vdrop) >= 8 ? 'rgb(var(--scada-status-err))'
-      : Math.abs(vdrop) >= 5 ? 'rgb(var(--scada-status-warn-ink))'
-      : 'rgb(var(--scada-status-ok))';
-    return (
-      <div data-testid="drawer-cable-spadek">
-        <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
-          <dt style={{ color: 'rgb(var(--scada-muted))' }}>ΔU max [%]</dt>
-          <dd data-testid="drawer-cable-vdrop-total" style={{ color: vdropColor, fontFamily: 'monospace', fontWeight: 700 }}>
-            {vdrop != null ? `${vdrop.toFixed(2)} %` : '—'}
-          </dd>
-          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Loading max [%]</dt>
-          <dd data-testid="drawer-cable-loading" style={{ color: loadingColor, fontFamily: 'monospace', fontWeight: 700 }}>
-            {loading != null ? `${loading.toFixed(1)} %` : '—'}
-          </dd>
-          <dt style={{ color: 'rgb(var(--scada-muted))' }}>Klasa zgodności</dt>
-          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 10 }}>
-            PN-EN 50160 (±10%)
-          </dd>
-        </dl>
-        {(loading == null && vdrop == null) && (
-          <div style={{ marginTop: 8, fontSize: 9, color: 'rgb(var(--scada-muted))', fontStyle: 'italic' }}>
-            Wartości z LF overlay payload (load_flow analysis). Uruchom analizę Power Flow.
-          </div>
-        )}
       </div>
     );
   }

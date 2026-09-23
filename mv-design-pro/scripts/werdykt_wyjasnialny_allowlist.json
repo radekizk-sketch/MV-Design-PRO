@@ -3,13 +3,6 @@
  "wpisy": [
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "analysis.arc_flash.models:osd_arc_flash_gate()",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B14 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "B14"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "analysis.comparison_diffs.diffs:RunProvenance.status",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
@@ -56,13 +49,6 @@
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz B1: 1. `analysis/normative/models.py:17,25,84` — `NormativeStatus` {PASS, FAIL, WARNING, NOT_COMPUTED, NOT_EVALUATED} + `NormativeSeverity` in `NormativeItem`. Present: SUBJ, MEAS (observed_value+unit), LIM (limit_value+limit_unit, threshold rules only), MARG (observed−limit), WHY. CRIT only as title text. Missing: SRC, BASIS, EVID, DOM, LaTeX. Reach: only `pokrycie_analiz.py:60` (NOT_COMPUTED count → `/api/insights/analysis-coverage`); `NormativeReport.to_dict` never called in production; production feeds only LOAD_FLOW_VOLTAGE proof which no rule matches → every production item NOT_COMPUTED. Class: ENUM_WEWNETRZNY (must migrate if exposed).",
    "wiersz_inwentarza": "B1"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "analysis.protection_curves_it.models:ProtectionCurvesITView.normative_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B8 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "B8"
   },
   {
    "sprawdzenie": "1_backend",
@@ -493,13 +479,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "application.proof_engine.packs.qu_regulation:QURegulationProofResult.unit_check_passed",
-   "klasa": "ENUM_WEWNETRZNY",
-   "uzasadnienie_pl": "Inwentarz C44: **44.** `proof_engine/types.py:284-320` · `UnitCheckResult.passed`, `ProofSummary.unit_check_passed`, `all_passed`; `passed=True` hard-coded at `proof_generator.py:1572, 2996, 5113, 5160, 5209, 5268`; `packs/protection_settings.py:177, 226, 276, 321, 363`; `packs/p14_power_flow.py:411, 483, 558, 627`; `packs/qu_regulation.py:162, 216`; equipment proof. Printed \"Weryfikacja jednostek: PASS/FAIL\" (`latex_renderer.py:232-237`), \"OK/BŁĄD\" (`proof_inspector/exporters.py:290`). **ENUM_WEWNETRZNY** (internal QA flag; stop printing; replace hard-coded True with a real check).",
-   "wiersz_inwentarza": "C44"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "application.proof_engine.packs.sc_asymmetrical:SCAsymmetricalPackResult.all_passed",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
@@ -511,13 +490,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
    "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "application.proof_engine.proof_inspector.types:ProtectionComparisonRow.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C41 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "C41"
   },
   {
    "sprawdzenie": "1_backend",
@@ -647,42 +619,7 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "domain.protection_device:InstantaneousSelectivityCheck.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C37 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C37"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "domain.protection_device:InstantaneousSensitivityCheck.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C37 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C37"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "domain.protection_device:InstantaneousThermalCheck.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C37 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C37"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "domain.protection_device:OverloadCheck.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C37 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C37"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "domain.protection_device:ProtectionCoordinationResult.overall_verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C37 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C37"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "domain.protection_device:SPZFromInstantaneousCheck.verdict",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C37 (MIGRACJA): migracja (plan §8).",
    "wiersz_inwentarza": "C37"
@@ -700,13 +637,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz C37 (MIGRACJA): migracja (plan §8).",
    "wiersz_inwentarza": "C37"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "domain.result_set:OverlayElement.visual_state",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C55 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "C55"
   },
   {
    "sprawdzenie": "1_backend",
@@ -836,27 +766,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.proof.power_flow_proof_document:ProofSummary.unit_check_passed",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A35 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "A35"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.proof.power_flow_proof_document:UnitCheckResult.passed",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A35 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "A35"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.proof.power_flow_proof_document:VerificationSection.all_checks_passed",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A35 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "A35"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "network_model.solvers.conductor_thermal_withstand:ConductorThermalResult.status",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A5 (MIGRACJA): migracja (plan §8).",
@@ -962,20 +871,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.solvers.protection_iec60255:ProtectionCoordinationResult.overall_verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A2 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "A2"
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.solvers.protection_iec60255:SelectivityPairResult.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A2 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "A2"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "network_model.solvers.stability_rms.contracts:StabilityResult.status",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A14 (LEGACY_USUNAC): kasacja (fala WW-0).",
@@ -983,24 +878,10 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "protection.curves.curve_calculator:CoordinationResult.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A1 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "A1"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "reference_engine.models:ComplianceCheck.status",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
    "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "1_backend",
-   "tozsamosc": "solver_input.provenance:osd_card_gate()",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz B24 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "B24"
   },
   {
    "sprawdzenie": "1_backend",
@@ -1046,34 +927,6 @@
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/analysis-eligibility/AnalysisEligibilityPanel.tsx:STATUS_BADGE",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E27 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E27"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/analysis-eligibility/AnalysisEligibilityPanel.tsx:STATUS_BORDER",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E27 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E27"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/engineering-readiness/EngineeringReadinessPanel.tsx:STATUS_COLORS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E25 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E25"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/engineering-readiness/EngineeringReadinessPanel.tsx:STATUS_LABELS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E25 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E25"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
    "tozsamosc": "frontend/src/ui/enm-inspector/types.ts:STATUS_LABELS_PL",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz E62 (MIGRACJA): migracja (plan §8).",
@@ -1088,41 +941,6 @@
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/protection-curves/types.ts:COORDINATION_STATUS_COLORS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E68 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E68"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/protection-curves/types.ts:PROTECTION_CURVES_LABELS.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E68 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E68"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/reference-patterns/types.ts:CHECK_STATUS_COLORS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E66 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E66"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/reference-patterns/types.ts:CHECK_STATUS_DOT_COLORS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E66 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E66"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/reference-patterns/types.ts:CHECK_STATUS_LABELS_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E66 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E66"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
    "tozsamosc": "frontend/src/ui/shared/formatPolishValue.ts:POLISH_STATUS_LABEL",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
@@ -1134,69 +952,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
    "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/normativeLabels.ts:BRANCH_LOADING_VERDICT_LABELS.criteria",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E2 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E2"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/normativeLabels.ts:BRANCH_LOADING_VERDICT_LABELS.recommendations",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E2 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E2"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/normativeLabels.ts:COMMON_UI_LABELS.traceLabels",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E2 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E2"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/normativeLabels.ts:NETWORK_VERDICT_LABELS.overallDescriptions",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E2 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E2"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/normativeLabels.ts:NETWORK_VERDICT_LABELS.statsLabels",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E2 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E2"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/normativeLabels.ts:SHORT_CIRCUIT_VERDICT_LABELS.criteria",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E2 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E2"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/normativeLabels.ts:SHORT_CIRCUIT_VERDICT_LABELS.statusDescriptions",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E2 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E2"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/normativeLabels.ts:VOLTAGE_VERDICT_LABELS.recommendations",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E2 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E2"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/shared/normativeLabels.ts:VOLTAGE_VERDICT_LABELS.statusDescriptions",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E2 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E2"
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
@@ -1249,13 +1004,6 @@
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/sld-overlay/OverlayLegend.tsx:LegendRow.indicatorStyle.tokenToState",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E23 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E23"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
    "tozsamosc": "frontend/src/ui/sld-overlay/RawToTypedOverlayAdapter.ts:VISUAL_STATE_TO_COLOR_TOKEN",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz E19: 19. `ui/sld-overlay/RawToTypedOverlayAdapter.ts:21-37` severity → visual_state; INFO → 'OK', unknown severity → 'OK' (fail-open); typed payload not drawn on v3 canvas (`SldCanvasV3.tsx:1135-1138`). **ENUM_WEWNETRZNY.**",
@@ -1270,48 +1018,6 @@
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/sld-overlay/overlayTypes.ts:COLOR_TOKEN_MAP",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E22 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "E22 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/sld-overlay/overlayTypes.ts:VISUAL_STATE_STYLE",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E22 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E22"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/sld/v2/proof/DerComplianceBadge.tsx:COMPLIANCE_COLOR",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E73 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E73"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/sld/v2/proof/DerComplianceBadge.tsx:COMPLIANCE_ICON",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E73 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E73"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/sld/v2/proof/DerComplianceBadge.tsx:COMPLIANCE_LABEL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E73 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E73"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/sld/v2/renderer/EquipmentProofBadge.tsx:STATUS_INFO",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E73 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E73"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
    "tozsamosc": "frontend/src/ui/sld/v2/renderer/GpzOperatorHeader.tsx:TRANSMISSION_COLORS",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz E73 opisuje ten plik, nie ten symbol.",
@@ -1323,13 +1029,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz E73 opisuje ten plik, nie ten symbol.",
    "wiersz_inwentarza": "E73 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/sld/v2/renderer/equipmentProofValidator.ts:describeProofVerdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E73 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E73"
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
@@ -1501,20 +1200,6 @@
   },
   {
    "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/comparison/comparisonDeltaVisualization.ts:summarizeDeltaVisualization.avgSeverity",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E59 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "E59 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/inspector/InspectorPanel.tsx:buildBranchLimitsSections.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E64 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E64"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
    "tozsamosc": "frontend/src/ui/network-build/GuidedBuildActionPanel.tsx:GuidedBuildActionPanel.ok",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
@@ -1533,13 +1218,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
    "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/network-build/cards/BayCard.tsx:BayCard.sections.fields.severity",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E47 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "E47 (dopasowanie po pliku)"
   },
   {
    "sprawdzenie": "3b_frontend_prog",
@@ -1578,31 +1256,10 @@
   },
   {
    "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/canvas/SldPowerBalancePanel.tsx:SldPowerBalancePanel.balanceOk",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E73 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "E73 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/renderer/EquipmentProofBadge.tsx:computeEquipmentProofStatus",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E73 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E73"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
    "tozsamosc": "frontend/src/ui/sld/v2/renderer/StationOnRunRenderer.tsx:classifyVoltageDeviationText",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
    "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/sld/v2/renderer/equipmentProofValidator.ts:validateEquipmentProof",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E73 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E73"
   },
   {
    "sprawdzenie": "3b_frontend_prog",
@@ -1673,13 +1330,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
    "wiersz_inwentarza": null
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui/workspace/WorkspaceOperationalBar.tsx:WorkspaceOperationalBar.tone",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E40 (LEGACY_USUNAC): kasacja (fala WW-0).",
-   "wiersz_inwentarza": "E40"
   },
   {
    "sprawdzenie": "3b_frontend_prog",

@@ -37,19 +37,6 @@ const STATUS_CLASS: Record<ReadinessStatus, string> = {
   'nie-dotyczy': 'text-scada-muted',
 };
 
-export const DEFAULT_READINESS_ITEMS: readonly Omit<ReadinessItem, 'status'>[] = [
-  { id: 'power-flow', labelPl: 'Rozpływ mocy' },
-  { id: 'voltage-profile', labelPl: 'Spadki/wzrosty napięcia' },
-  { id: 'short-circuit', labelPl: 'Zwarcia' },
-  { id: 'asymmetry', labelPl: 'Asymetria' },
-  { id: 'loadability', labelPl: 'Obciążalność' },
-  { id: 'stability', labelPl: 'Stabilność' },
-  { id: 'frt-hvrt', labelPl: 'FRT / LVRT / HVRT' },
-  { id: 'ncrfg', labelPl: 'Zgodność przyłączeniowa' },
-  { id: 'report-osd', labelPl: 'Raport OSD' },
-  { id: 'report-technical', labelPl: 'Raport techniczny' },
-];
-
 export function ReadinessSection(props: ReadinessSectionProps): JSX.Element {
   const { items } = props;
 

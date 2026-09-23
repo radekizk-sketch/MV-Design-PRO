@@ -203,7 +203,7 @@ describe('sldActionExecutor — klasa ACTION_ROADMAP_HINT_PL usunięta (Karta W2
   });
 
   describe('show-measurements (menu pola) → panel inspektora field_measurements (E-11)', () => {
-    it('otwiera panel field_measurements z refem pola — ta sama zdolność co przycisk "Pomiary pola" w BayCard.tsx', async () => {
+    it('otwiera panel field_measurements z refem pola — ta sama zdolność "Pomiary pola" (openInspectorPanel)', async () => {
       const user = userEvent.setup();
       render(<Harness actionId="show-measurements" kind="bay" elementId="bay/B-3" />);
 

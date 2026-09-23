@@ -43,7 +43,6 @@ from .result_join import (
     SldOverlayTokenV1,
     join_results,
 )
-from .result_set import OverlayElement, OverlayLegendEntry, OverlayPayloadV1
 from .sources import Source
 from .station_field_validation import (
     DeviceBindingV1 as StationDeviceBindingV1,
@@ -95,9 +94,6 @@ __all__ = [
     "AnalysisRun",
     "InspectorFactV1",
     "Limits",
-    "OverlayElement",
-    "OverlayLegendEntry",
-    "OverlayPayloadV1",
     "Network",
     "OperatingCase",
     "Project",

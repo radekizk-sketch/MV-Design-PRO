@@ -1485,7 +1485,35 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # brak sekcji konczy sie `ArchiveStructureError`, nie wartoscia zastepcza. Zapadka
     # zapalila sie na CI (run 35857877892) bo naprawa archiwum zmienila liczbe bez tego
     # wiersza. PASS bramki niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 3843." in wyjscie, wyjscie
+    # Karta AB-1a Pakiet L (2026-09-23): 3843 -> 3750 (-93 pola, zero nowych). POMIAR: zbior
+    # `contract_fields()` zrzucony guardem na drzewie `d0d02f0f` (czysty HEAD; 3843 — HEAD po
+    # wyrownaniu tego pinu przez zarzadce) i na drzewie `d0d02f0f` + Pakiet L, roznica
+    # policzona `comm` na posortowanych zbiorach. Pola zniknely RAZEM z kasowanymi kontraktami
+    # bez konsumenta produkcyjnego (LEGACY_USUNAC A2, A35, A39, B8, B14, B24, C38, C41, C46,
+    # C51, C55 i sieroty X2 w `domain/protection_device.py`): `PR_EQUATIONS`, `PR_STEP_ORDER`,
+    # `accepted_by`, `accepted_fields`, `all_checks_passed`, `animation_token`, `author`,
+    # `blocking_reason_pl`, `bound_version`, `bus_names`, `changed_solver_fields`,
+    # `changed_ui_fields`, `color_token`, `convergence_check`, `convergence_criterion`,
+    # `current_version`, `delta_step`, `downstream_curve_id`, `downstream_max_s`,
+    # `downstream_relay_id`, `downstream_trace`, `downstream_trip_time_s`, `drifts`,
+    # `element_label`, `energy_balance`, `execution_date`, `final_max_mismatch`,
+    # `final_state`, `generation_levels`, `grading_margin_s`, `has_breaking_drifts`,
+    # `i2t_ka2s`, `i2t_results`, `i_fault_start_a`, `i_max_allowed_a`, `i_min_required_a`,
+    # `i_threshold_a`, `icu_ka`, `ik_max_next_a`, `ik_min_busbars_a`, `initial_state`,
+    # `iteration_number`, `ith_device_ka`, `ith_limit_ka2s`, `ithdop_a`, `ithn_a`,
+    # `jacobian_step`, `json_representation`, `kb_used`, `kbth_used`, `kc_used`,
+    # `latex_representation`, `left`, `materialized_values`, `min_required_margin_s`,
+    # `mismatch_step`, `network_definition`, `no_contradictions`, `norm_step`,
+    # `nr_method_description`, `numeric_badges`, `oze_id`, `oze_name`, `p_nominal_mw`,
+    # `power_flow_equations`, `proof_version`, `protection_comparisons`, `q_slope_pu_per_pu`,
+    # `qu_characteristic`, `qu_compliance`, `recommendation_pl`, `relay_pairs`, `report_hash`,
+    # `right`, `selectivity`, `selectivity_results`, `state_update_step`, `stroke_token`,
+    # `tk_single_s`, `total_bindings_checked`, `u_deadband_high_pu`, `u_deadband_low_pu`,
+    # `unit_consistency`, `upstream_curve_id`, `upstream_min_s`, `upstream_relay_id`,
+    # `upstream_trace`, `upstream_trip_time_s`, `visual_state`, `voltages_at_buses_pu`,
+    # `voltages_at_oze_pu`, `voltages_within_limits`, `ybus_description`. PASS bramki
+    # niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 3750." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1579,7 +1607,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # wykluczenia (13/31) BEZ ZMIANY: predykat wkladu jest MIERZONY z rownan
         # urzadzenia (`prad_pu` oraz `jakobian_prad_napiecie`), a nie z listy rodzin,
         # wiec modul nie podstawia zadnej liczby za brak danej. Zero plikow skasowanych.
-        "Przeskanowano 537 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta AB-1a Pakiet L (2026-09-23): 537 -> 529 (-8 plikow skasowanych bez
+        # konsumenta produkcyjnego: `network_model/proof/{__init__,power_flow_equations,
+        # power_flow_proof_builder,power_flow_proof_document,power_flow_proof_export}.py`
+        # (A35), `network_model/catalog/drift_detection.py` (A39),
+        # `application/proof_engine/packs/qu_regulation.py` (C46),
+        # `application/reference_patterns/reporting.py` (C51)); zero nowych plikow.
+        # POMIAR guardem na drzewach `d0d02f0f` i `d0d02f0f` + Pakiet L.
+        "Przeskanowano 529 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1603,7 +1638,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # dzielenia przez S_rT) USUNIETY z zapadki: skladowe licza predykaty parami z
     # `enm/uziemienie.py` + `network_model/pochodne/skladowe_zerowe.py`, a S_rT <= 0 odrzuca
     # walidacja modelu. Dlug ZMALAL, zapadka obnizona (pomiar guardem na drzewie karty).
-    assert "Zapadka dlugu (fizyczne): 56 plikow, suma 255." in wyjscie, wyjscie
+    # Karta AB-1a Pakiet L (2026-09-23): 56/255 -> 55/254 — wpis ZASTANE
+    # `network_model/proof/power_flow_proof_builder.py` ("F:dictget:deltas.delta_v_pu": 1)
+    # zdjety RAZEM z plikiem (A35: martwy dowod rozplywu, 0 importerow poza testem);
+    # z `CONTRACT_SOURCES` zdjety `domain/result_set.py` (C55). Pomiar guardem.
+    assert "Zapadka dlugu (fizyczne): 55 plikow, suma 254." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 13 plikow, suma 31." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -1641,7 +1680,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # (+1 `network_model/solvers/dynamika/wyspy.py`). Dlug 14/77 i wykluczenia 3/6
         # BEZ ZMIANY — modul czyta wylacznie topologie i rownania urzadzen, nie
         # podstawia zadnej liczby za nieobecna dana wejsciowa.
-        "  network_model: pliki_skanowane=178, dlug=14 plikow/suma 77, "
+        # Karta AB-1a Pakiet L (2026-09-23): network_model 178 -> 172 (-5 plikow
+        # `network_model/proof/**`, -1 `network_model/catalog/drift_detection.py`),
+        # dlug 14/77 -> 13/76 (wpis ZASTANE `power_flow_proof_builder.py` zdjety z plikiem).
+        "  network_model: pliki_skanowane=172, dlug=13 plikow/suma 76, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).
@@ -1680,7 +1722,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # uniewazniacz wynikow; dlug/wykluczenia bez zmian — ten plik nie mial
         # ani jednego wpisu w zapadce ani w wykluczeniach, wiec ubyl tylko z
         # licznika skanu).
-        "  application: pliki_skanowane=237, dlug=30 plikow/suma 91, "
+        # Karta AB-1a Pakiet L (2026-09-23): application 237 -> 235 (-1
+        # `application/proof_engine/packs/qu_regulation.py`, -1
+        # `application/reference_patterns/reporting.py`; zaden nie mial wpisu w
+        # zapadce ani w wykluczeniach).
+        "  application: pliki_skanowane=235, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=62, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]

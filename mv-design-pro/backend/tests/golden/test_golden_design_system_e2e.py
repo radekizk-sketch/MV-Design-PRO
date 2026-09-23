@@ -5,10 +5,12 @@ Validates:
 1. All catalog types from the golden fixture are valid and round-trip
 2. All catalog bindings have valid namespaces and item IDs
 3. MaterializationContract covers all golden namespaces
-4. Drift detection produces clean report for fresh bindings
-5. Variant comparison is deterministic
-6. All 11 steps produce valid catalog binding references
-7. Golden network integrates with short circuit solver (if available)
+4. Variant comparison is deterministic
+5. All 11 steps produce valid catalog binding references
+6. Golden network integrates with short circuit solver (if available)
+
+Karta AB-1a Pakiet L (2026-09-23): krok „drift detection" zszedl razem z
+`network_model/catalog/drift_detection.py` (LEGACY_USUNAC A39 — tylko testy).
 
 INVARIANTS:
 - Deterministic: 100 runs must produce identical output
@@ -22,10 +24,6 @@ from domain.variant_comparison import (
     build_variant_comparison,
     compute_config_deltas,
     compute_result_delta,
-)
-from network_model.catalog.drift_detection import (
-    ElementBinding,
-    detect_drift,
 )
 from network_model.catalog.types import (
     MATERIALIZATION_CONTRACTS,
@@ -237,58 +235,6 @@ class TestMaterializationContractCoverage:
         for ns, contract in MATERIALIZATION_CONTRACTS.items():
             for field_name, label_pl, _unit in contract.ui_fields:
                 assert label_pl, f"Contract '{ns}', field '{field_name}': " f"empty Polish label"
-
-
-class TestGoldenDriftDetection:
-    """Drift detection against golden catalog data."""
-
-    def test_no_drift_on_fresh_bindings(self):
-        """Fresh bindings that match the catalog should produce clean report."""
-        bindings = [
-            ElementBinding(
-                element_id=f"elem_{step_name}",
-                element_label=step_name,
-                namespace=binding.catalog_namespace,
-                catalog_item_id=binding.catalog_item_id,
-                catalog_item_version=binding.catalog_item_version,
-                materialized_values={},
-            )
-            for step_name, binding in get_all_golden_bindings()
-        ]
-
-        # Build catalog items dict with matching versions
-        catalog_items = {}
-        for _step_name, binding in get_all_golden_bindings():
-            key = f"{binding.catalog_namespace}:{binding.catalog_item_id}"
-            catalog_items[key] = {"version": binding.catalog_item_version}
-
-        report = detect_drift(bindings, catalog_items, {}, {})
-        assert report.is_clean, f"Expected clean drift report, got {len(report.drifts)} drifts"
-
-    def test_drift_detected_on_version_bump(self):
-        """Version bump on one item should produce exactly one drift entry."""
-        bindings = [
-            ElementBinding(
-                element_id="elem_trunk",
-                element_label="Trunk cable",
-                namespace=CatalogNamespace.KABEL_SN.value,
-                catalog_item_id="kab_sn_240_al_15kv",
-                catalog_item_version="2026.01",  # old version
-                materialized_values={"r_ohm_per_km": 0.125},
-            ),
-        ]
-        catalog_items = {
-            "KABEL_SN:kab_sn_240_al_15kv": {
-                "version": "2026.03",  # new version
-                "r_ohm_per_km": 0.130,  # changed!
-            },
-        }
-        solver_fields = {"KABEL_SN": ("r_ohm_per_km", "x_ohm_per_km")}
-
-        report = detect_drift(bindings, catalog_items, solver_fields, {})
-        assert not report.is_clean
-        assert report.has_breaking_drifts
-        assert report.drifts[0].element_id == "elem_trunk"
 
 
 class TestGoldenVariantComparison:

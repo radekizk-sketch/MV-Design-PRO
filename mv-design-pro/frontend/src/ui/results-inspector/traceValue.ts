@@ -13,11 +13,11 @@
  * Trzy niezależne miejsca frontu duck-typingowały ten sam rozjazd kształtu
  * OSOBNO (KLASA NIE INSTANCJA — karta WB-2):
  * - `ui/proof/ElementCalculationProofPanel.tsx` (`unwrapTraceValue`)
- * - `ui/proof/TraceStepView.tsx` (`formatValue`)
- * - `ui/proof/export/exportTracePdf.ts` (`formatValue` — kopia poprzedniego)
  * - `ui2/wyniki/dowod/dowodModel.ts` (`rozpakujWartosc`)
  * - `ui2/wyniki/skladowe/model.ts` (`naZespolona`)
- * Ta funkcja jest JEDYNYM miejscem tego rozpakowania — wszystkie pięć miejsc
+ * (dwa dalsze — `ui/proof/TraceStepView.tsx` i `ui/proof/export/exportTracePdf.ts` —
+ * skasowane w karcie AB-1a Pakiet L razem z nieosiągalną przeglądarką śladu).
+ * Ta funkcja jest JEDYNYM miejscem tego rozpakowania — wszystkie trzy miejsca
  * ją wołają. Formatowanie do napisu prezentacyjnego (przecinek dziesiętny PL,
  * LaTeX, domyślna jednostka, zapis „R znak jIm") zostaje PER EKRAN — ta
  * funkcja wyłącznie odróżnia kształt i zwraca dane już odpakowane.

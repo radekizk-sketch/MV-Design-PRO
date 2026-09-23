@@ -54,7 +54,6 @@ def view_to_dict(view: ProtectionCurvesITView) -> dict[str, Any]:
         "backup_device_id": view.backup_device_id,
         "series": [curve_series_to_dict(series) for series in view.series],
         "markers": [marker_to_dict(marker) for marker in view.markers],
-        "normative_status": view.normative_status.value,
         "margins_pct": {key: float(value) for key, value in sorted(view.margins_pct.items())},
         "why_pl": view.why_pl,
         "missing_data": list(view.missing_data),

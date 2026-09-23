@@ -177,18 +177,6 @@ ALLOWLIST: dict[tuple[str, str], str] = {
         ": '(brak ip/Ith)'}",
     ): "b: literał tekstowy stanu pustego ('(brak ip/Ith)') — nazywa brak danej, niczego nie liczy",
     (
-        "frontend/src/ui/sld/v2/renderer/EquipmentProofBadge.tsx",
-        "warning: { color: '#ffd166', label: 'Aparat na granicy wytrzymałości (>80% Ith/Idyn)', icon: '⚠' },",
-    ): "b: etykieta legendy odznaki ('>80% Ith/Idyn') — napis w słowniku kolorów",
-    (
-        "frontend/src/ui/sld/v2/renderer/EquipmentProofBadge.tsx",
-        "worstUtil = Math.max(worstUtil, calculated_Ith_kA / rated_Ith_kA);",
-    ): "b: wykorzystanie = iloraz DWÓCH wielkości policzonych przez backend (Ith obliczone / Ith znamionowe z pakietu dowodowego aparatu) — procent, nie wzór; brak stałej normowej i brak trzeciej wielkości",
-    (
-        "frontend/src/ui/sld/v2/renderer/EquipmentProofBadge.tsx",
-        "worstUtil = Math.max(worstUtil, calculated_Idyn_kA / rated_Idyn_kA);",
-    ): "b: jw. dla kryterium dynamicznego (Idyn obliczone / Idyn znamionowe)",
-    (
         "frontend/src/ui/sld/v2/station-rozdzielnia/StationRozdzielniaSN.tsx",
         "derivation DATA is preserved in the companions (model.shortCircuit /",
     ): "b: kontynuacja wielolinijkowego komentarza JSX ({/* ... */}) — poza zasięgiem reguł pomijania, które widzą pojedynczą linię",

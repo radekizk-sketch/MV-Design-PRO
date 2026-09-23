@@ -319,7 +319,6 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               typePl: 'SIEMENS 7SJ85',
               functionsPl: ['50/51', '67N'],
               settingsCount: 4,
-              selectivityStatus: 'kompletna',
               vtCatalogRef: 'vt_20kv_100v_05_arteche', // realny typ katalogu, F_v 1,2
             },
           ]}
@@ -371,7 +370,6 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               typePl: 'SIEMENS 7SJ85',
               functionsPl: ['67N'],
               settingsCount: 4,
-              selectivityStatus: 'kompletna',
               vtCatalogRef: 'vt_20kv_fz_100_3_05_3p_siemens', // realny typ, F_v 1,9
             },
           ]}

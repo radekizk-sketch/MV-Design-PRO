@@ -26,19 +26,22 @@
  * kropka stanu elementu). Stan „ustalona bez uwag" jest w tabeli po to, żeby
  * naprawa nie zgasiła stanu DOBREGO — inaczej „nic nie świeci" przechodziłoby
  * jako poprawka.
+ *
+ * KARTA AB-1a Pakiet L (2026-09-23): konsumenci 1/4 (pasek operacyjny warsztatu,
+ * `ui/workspace/WorkspaceOperationalBar.tsx`) i 2/4 (panel braków danych,
+ * `ui/engineering-readiness/DataGapPanel.tsx`) SKASOWANI — pozycje LEGACY_USUNAC
+ * E40/E25 inwentarza werdyktów (brak konsumenta produkcyjnego: tylko eksport z
+ * barrela). Ich przypadki zeszły razem z nimi; numeracja pozostałych zostaje.
  */
 
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 
-import { WorkspaceOperationalBar } from '../../workspace/WorkspaceOperationalBar';
-import { DataGapPanel } from '../../engineering-readiness/DataGapPanel';
 import { useNetworkBuildDerived, useNetworkBuildStore } from '../networkBuildStore';
 import { useElementStatusDot } from '../liveReadiness';
 import { useLegacyOrchestrator } from '../../../ui2/legacy/useLegacyOrchestrator';
 import { useShellStore } from '../../../ui2/shell/useShellStore';
 import { GOTOWOSC_STRINGS } from '../../../ui2/spaces/gotowosc/strings';
-import { SHELL_STRINGS } from '../../../ui2/shell/strings';
 import { useAppStateStore } from '../../app-state';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
@@ -156,7 +159,7 @@ function stubFetch(stan: StanGotowosci): void {
   );
 }
 
-/** Sonda kropki stanu elementu — produkcyjny hook, ten sam, którego używa `BayCard`. */
+/** Sonda kropki stanu elementu — produkcyjny hook `useElementStatusDot`. */
 function KropkaElementu() {
   const dot = useElementStatusDot(ELEMENT_REF);
   return <span data-testid="sonda-kropka">{dot}</span>;
@@ -179,8 +182,6 @@ function Probe() {
   useLegacyOrchestrator();
   return (
     <>
-      <WorkspaceOperationalBar />
-      <DataGapPanel />
       <SondaBudowy />
       <KropkaElementu />
       {/* V12K-319 (karta X3): trzej pozostali konsumenci tej samej klasy. */}
@@ -245,96 +246,6 @@ async function uruchom(stan: StanGotowosci): Promise<void> {
 }
 
 describe('gotowość NIEUSTALONA u czterech konsumentów (V12K-317 poz. 4)', () => {
-  // -------------------------------------------------------------------------
-  // Konsument 1/4 — pasek operacyjny warsztatu
-  // -------------------------------------------------------------------------
-  describe('1/4 pasek operacyjny warsztatu', () => {
-    it('NIEUSTALONA → cztery segmenty pokazują brak danej, żaden nie deklaruje sukcesu', async () => {
-      await uruchom('nieustalona');
-
-      for (const segment of [
-        'workspace-operational-computation',
-        'workspace-operational-protection',
-        'workspace-operational-errors',
-        'workspace-operational-blockers',
-      ]) {
-        await waitFor(() => {
-          expect(screen.getByTestId(segment)).toHaveTextContent(SHELL_STRINGS.emptyValue);
-        });
-      }
-
-      // Żaden werdykt pozytywny nie może paść przy „nie wiadomo".
-      expect(screen.queryByText('Układ ochrony skonfigurowany')).toBeNull();
-      expect(screen.queryByText('bez błędów krytycznych')).toBeNull();
-      expect(screen.queryByText('układ do analizy')).toBeNull();
-    });
-
-    it('USTALONA z blokadami → pasek nazywa blokadę, nie brak danej', async () => {
-      await uruchom('ustalona-z-blokadami');
-
-      await waitFor(() => {
-        expect(screen.getByTestId('workspace-operational-computation')).toHaveTextContent(
-          '1 do konfiguracji',
-        );
-      });
-      expect(screen.getByTestId('workspace-operational-errors')).toHaveTextContent(
-        '1 błędów technicznych',
-      );
-      expect(screen.queryByText('układ do analizy')).toBeNull();
-    });
-
-    it('USTALONA bez uwag → stan DOBRY nadal jest deklarowany (naprawa go nie gasi)', async () => {
-      await uruchom('ustalona-bez-uwag');
-
-      await waitFor(() => {
-        expect(screen.getByTestId('workspace-operational-blockers')).toHaveTextContent(
-          'układ do analizy',
-        );
-      });
-      expect(screen.getByTestId('workspace-operational-protection')).toHaveTextContent(
-        'Układ ochrony skonfigurowany',
-      );
-      expect(screen.getByTestId('workspace-operational-errors')).toHaveTextContent(
-        'bez błędów krytycznych',
-      );
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // Konsument 2/4 — panel braków danych
-  // -------------------------------------------------------------------------
-  describe('2/4 panel braków danych', () => {
-    it('NIEUSTALONA → uczciwy stan zerowy zamiast zielonej bramki', async () => {
-      await uruchom('nieustalona');
-
-      const panelNieustalony = await screen.findByTestId('data-gap-panel-nieustalona');
-      // Zakres asercji ZAWEZONY do panelu: od karty X3 ten sam napis nosza takze
-      // pasek kontekstu i przeglad masowy, wiec wyszukiwanie globalne trafialoby
-      // w trzy wezly naraz (i przestaloby mowic, KTORY konsument jest uczciwy).
-      expect(within(panelNieustalony).getByText(GOTOWOSC_STRINGS.nieustalonaTytul)).toBeInTheDocument();
-      expect(screen.queryByTestId('data-gap-panel-ready')).toBeNull();
-      expect(screen.queryByText('Układ przygotowany do obliczeń')).toBeNull();
-    });
-
-    it('USTALONA z blokadami → lista problemów, nie stan zerowy', async () => {
-      await uruchom('ustalona-z-blokadami');
-
-      await waitFor(() => {
-        expect(screen.getByText(E005.message_pl)).toBeInTheDocument();
-      });
-      expect(screen.queryByTestId('data-gap-panel-nieustalona')).toBeNull();
-      expect(screen.queryByTestId('data-gap-panel-ready')).toBeNull();
-    });
-
-    it('USTALONA bez uwag → zielona bramka nadal działa', async () => {
-      await uruchom('ustalona-bez-uwag');
-
-      expect(await screen.findByTestId('data-gap-panel-ready')).toBeInTheDocument();
-      expect(screen.getByText('Układ przygotowany do obliczeń')).toBeInTheDocument();
-      expect(screen.queryByTestId('data-gap-panel-nieustalona')).toBeNull();
-    });
-  });
-
   // -------------------------------------------------------------------------
   // Konsument 3/4 — wyliczenia budowy sieci
   // -------------------------------------------------------------------------

@@ -54,9 +54,11 @@ pełnego parytetu §10):
 - `frontend/scripts/sld_v3_acceptance.mjs` (`npm run accept:sld-v3` — render-odbiór wyroczni §11/§9/§12-§15/§16 na `sldSubstrate52s`, AKTYWNY w `.github/workflows/sld-determinism.yml`; F9.7: domknięcie audytu kompletności §12-§15 — port_probe/symbol_wire_probe/vertical_length_probe/lod_path_probe/source_symbol_probe dopięte, patrz `docs/sld/SLD_V3_ACCEPTANCE.md`)
 - `scripts/sld_determinism_guards.py` (GUARD 6 — testy v3 obecne)
 
-Frontend White Box i eksport sladu:
-- `frontend/src/ui/proof/__tests__/TraceViewer.test.tsx`
-- `frontend/src/ui/proof/__tests__/traceCatalogContextExport.spec.tsx`
+Frontend White Box i eksport sladu (karta AB-1a Pakiet L, 2026-09-23: nieosiagalna przegladarka
+sladu `ui/proof/TraceViewer.tsx` z eksportem JSONL/PDF po stronie klienta skasowana razem z testami;
+dowod obliczen prezentuja zywe panele nizej, pakiet LaTeX pochodzi z backendu):
+- `frontend/src/ui/proof/__tests__/ElementCalculationProofPanel.test.tsx`
+- `frontend/src/ui/proof/__tests__/ProofLatexPanel.test.tsx`
 
 CI i guardy katalog-first:
 - `.github/workflows/docs-guard.yml`

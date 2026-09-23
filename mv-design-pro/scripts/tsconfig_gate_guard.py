@@ -351,7 +351,13 @@ POMIJANE_KATALOGI = {
 #: `bay_role_categories`) — trzy bledy TS2740 poza bramka. Uzupelnione do pelnego kontraktu
 #: (fikstura testu ma odpowiadac odpowiedzi backendu, inaczej test cwiczy inny ksztalt niz
 #: produkt). Pomiar PO naprawie: 105. Budzet obnizony 106 -> 105.
-BUDZET_BLEDOW_POZA_BRAMKA = 105
+#: Karta AB-1a Pakiet L (2026-09-23, pomiar guardem): drzewo `d0d02f0f` 105, drzewo
+#: `d0d02f0f` + Pakiet L 100. Piec bledow zeszlo RAZEM z testami kasowanych modulow
+#: bez konsumenta produkcyjnego: `ui/proof/__tests__/TraceViewer.test.tsx` (2x TS6133),
+#: `ui/proof/__tests__/diffTrace.spec.ts` (TS2741), `ui/network-build/forms/__tests__/
+#: voltageDropValidator.test.ts` (TS2322), `ui/sld-overlay/__tests__/
+#: LoadFlowOverlayAdapter.test.ts` (TS6133); zero nowych bledow. Budzet 105 -> 100.
+BUDZET_BLEDOW_POZA_BRAMKA = 100
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

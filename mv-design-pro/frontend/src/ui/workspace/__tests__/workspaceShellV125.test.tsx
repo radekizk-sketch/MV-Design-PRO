@@ -3,10 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../app-state/store';
-import {
-  ustawGotowoscMigawki,
-  wyczyscGotowoscMigawki,
-} from '../../../test/gotowoscTestUtils';
+import { wyczyscGotowoscMigawki } from '../../../test/gotowoscTestUtils';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
@@ -17,7 +14,6 @@ import { renderWithQueryClient } from '../../../test/queryClientTestUtils';
 // Wszystkie testy wymagaja QueryClientProvider.
 const render = renderWithQueryClient;
 void rtlRender; // keep import for type compat
-import { WorkspaceOperationalBar } from '../WorkspaceOperationalBar';
 import { WorkspaceSurfaceRouter } from '../WorkspaceSurfaceRouter';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
@@ -153,11 +149,10 @@ vi.mock('../../study-cases/RunHistoryPanel', () => ({
 // `data-testid` results-inspector-page / protection-results-page nie wystepuje w
 // ani jednym `expect` w tym pliku. Atrapa modulu, ktorego nikt nie importuje,
 // jest zerowa operacja udajaca pokrycie: wlacza czujnosc tam, gdzie nic nie ma.
-// Zostaje `power-flow-results` — bariera i eksport ISTNIEJA (inna klasa; brak
-// importera bariery jest zdolnoscia bez konsumenta, nie fikcja w tescie).
-vi.mock('../../power-flow-results', () => ({
-  PowerFlowResultsInspectorPage: () => <div data-testid="power-flow-results-page">PF</div>,
-}));
+// Atrapa `vi.mock('../../power-flow-results')` (eksport
+// `PowerFlowResultsInspectorPage`) ZDJETA w karcie AB-1a Pakiet L (2026-09-23):
+// sam ekran skasowany (LEGACY_USUNAC E14 — brak konsumenta produkcyjnego), a
+// router nie importuje tej bariery — atrapa bylaby ta sama zerowa operacja.
 
 vi.mock('../../comparison/ResultsComparisonPage', () => ({
   ResultsComparisonPage: () => <div data-testid="results-comparison-page">CMP</div>,
@@ -638,77 +633,5 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
     expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe(
       REPORT_SURFACE_SCREEN_CODE,
     );
-  });
-});
-
-describe('WorkspaceOperationalBar', () => {
-  beforeEach(() => {
-    fetchMock.mockReset();
-    fetchMock.mockImplementation(() => mockJsonResponse(mockAnalysisRunDetail));
-    useNetworkBuildStore.getState().reset();
-    useAppStateStore.getState().reset();
-    useExecutionRunsStore.getState().reset();
-    useSnapshotStore.getState().reset();
-    wyczyscGotowoscMigawki();
-  });
-
-  it('otwiera surface E-09 po kliknieciu segmentu aktywnej migawki', async () => {
-    const user = userEvent.setup();
-    useAppStateStore.getState().setActiveCase('case-1', 'Wariant A', 'PowerFlowCase', 'OUTDATED');
-    useAppStateStore.getState().setActiveSnapshot('snapshot-001');
-    useExecutionRunsStore.setState({
-      runs: [
-        {
-          id: 'run-1',
-          study_case_id: 'case-1',
-          analysis_type: 'LOAD_FLOW',
-          solver_input_hash: 'hash-1',
-          status: 'DONE',
-          started_at: '2026-04-19T10:00:00Z',
-          finished_at: '2026-04-19T10:01:00Z',
-          error_message: null,
-        },
-      ],
-    });
-    useAppStateStore.getState().setActiveRun('run-1');
-    ustawGotowoscMigawki({ ready: true });
-
-    render(<WorkspaceOperationalBar validationStatus="valid" />);
-
-    await user.click(screen.getByTestId('workspace-operational-snapshot'));
-
-    const activeSurface = useNetworkBuildStore.getState().activeSurface;
-    expect(activeSurface?.screenCode).toBe('E-09');
-    expect(activeSurface?.titlePl).toBe('Historia i audyt');
-  });
-
-  it('nie pokazuje technicznego jezyka runtime w pasku operacyjnym', () => {
-    useNetworkBuildStore.getState().openRouteSurface('E-09', {
-      titlePl: 'Historia i audyt',
-      sizeClass: 'B',
-      subjectKind: 'analysis_run',
-      subjectRef: 'case-1',
-    });
-
-    render(<WorkspaceOperationalBar validationStatus="valid" />);
-
-    expect(screen.getByText(/Aktywny widok:/)).toBeInTheDocument();
-    expect(screen.queryByText(/Aktywny surface:/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/surface/i)).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/Rama aplikacji pozostaje wspolna dla edycji, analityki i raportu/i),
-    ).toBeInTheDocument();
-  });
-
-  it('ukrywa techniczny sufiks wariantu w pasku operacyjnym', () => {
-    useAppStateStore
-      .getState()
-      .setActiveCase('case-1', 'Przypadek 50 szablonow mp9g6fu5', 'ShortCircuitCase', 'OUTDATED');
-
-    render(<WorkspaceOperationalBar validationStatus="valid" />);
-
-    const text = screen.getByTestId('workspace-operational-variant').textContent ?? '';
-    expect(text).toContain('Zakres 50 szablonow');
-    expect(text).not.toMatch(/mp9g6fu5|Przypadek/);
   });
 });

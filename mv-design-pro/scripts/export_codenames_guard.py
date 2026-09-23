@@ -58,13 +58,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCAN_TARGETS = [
     "backend/src/analysis/reporting",
     "backend/src/network_model/reporting",
-    "backend/src/network_model/proof",
-    "backend/src/analysis/protection_curves_it/renderer_pdf.py",
-    "backend/src/analysis/protection_curves_it/renderer_svg.py",
     "backend/src/application/analyses/dokument_studium.py",
     "backend/src/application/analyses/wniosek_osd.py",
     "backend/src/application/analyses/certyfikat_zgodnosci.py",
-    "backend/src/application/reference_patterns/reporting.py",
     "backend/src/api/analysis_run_exports.py",
     "backend/src/api/power_flow_runs.py",
     "backend/src/api/power_flow_comparisons.py",

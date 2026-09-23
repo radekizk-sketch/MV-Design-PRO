@@ -259,6 +259,17 @@ KODY_KANONU_ZAREZERWOWANE: dict[str, str] = {
         "Brak emitera po usunieciu martwego `readiness_checker` (V12K-305 pkt 4). "
         "Dlugosc segmentu pilnuje operacja domenowa kodem `trunk.dlugosc_missing`."
     ),
+    # Karta AB-1a Pakiet L (2026-09-23): jedynym „emiterem" byla bramka
+    # `solver_input/provenance.py::osd_card_gate` — bez ani jednego wolajacego w
+    # `backend/src` (wylacznie testy; LEGACY_USUNAC B24 inwentarza werdyktow
+    # `docs/audit/INWENTARZ_WERDYKTOW_LAKONICZNYCH_2026-09-23.md`), skasowana.
+    "oze.card_field_not_accepted": (
+        "Brak emitera po kasacji martwej bramki `osd_card_gate` (AB-1a Pakiet L, "
+        "LEGACY_USUNAC B24) — zaden tor produkcyjny jej nie wolal, wiec kod nie mial "
+        "drogi do projektanta. Jakosc pol karty falownika (DATASHEET / ESTIMATED / "
+        "SYSTEM_DEFAULT) pozostaje jawna w proweniencji karty "
+        "(`resolve_card_field_quality_map`)."
+    ),
     # Kody starsze, ktore rejestr niesie bez emitera w kodzie produkcyjnym.
     "analysis.blocked_by_readiness": (
         "Stan zbiorczy wyliczany przez bramke analiz z pozostalych kodow — nie jest "

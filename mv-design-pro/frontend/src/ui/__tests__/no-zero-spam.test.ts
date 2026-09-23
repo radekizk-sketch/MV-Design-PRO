@@ -37,7 +37,6 @@ const SLD_GLOB = [
   'ui/protection-coordination',
   'ui/protection-curves',
   'ui/protection-diagnostics',
-  'ui/reference-patterns',
   'ui/proof',
 ];
 

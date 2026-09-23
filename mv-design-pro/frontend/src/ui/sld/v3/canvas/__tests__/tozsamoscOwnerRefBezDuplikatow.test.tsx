@@ -37,6 +37,13 @@
  * ta jedna, którą ujawnił `.find()` w `swzBadge.test.tsx` (empirycznie:
  * kolizje znalezione zarówno na polu GPZ, jak i na polu SN stacji).
  *
+ * KARTA AB-1a Pakiet L (2026-09-23): odznaka SWZ na kanwie głównej
+ * (`computeSwzBadgePlacements`, warstwa `sld-v3-swz-overlay`) SKASOWANA —
+ * LEGACY_USUNAC E78 inwentarza werdyktów: pole `SldV3Overlay.swzByOwnerRef`
+ * nie miało ŻADNEGO producenta w kodzie produkcyjnym (werdykt SWZ żyje w
+ * widoku domeny nN, `v3/lv-domain/LvDomainView.tsx`). Przypadek SWZ zszedł
+ * razem z nią; dedup OLTC poniżej przypina tę samą regułę tożsamości.
+ *
  * WERYFIKACJA CZERWIENIENIA (wymóg karty): plik przechodzi po naprawie;
  * cofnięcie dedupu (`umieszczoneOwnerRefy`) w `computeSwzBadgePlacements`/
  * `computeOltcBadgePlacements` (`SldCanvasV3.tsx`) przywraca zarówno
@@ -52,7 +59,7 @@ import { cleanup, render } from '@testing-library/react';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { SldCanvasV3 } from '../SldCanvasV3';
-import { buildSwzOverlayFromResponses, type SldV3Overlay, type SwzApiResponse, type TransformerOltcOverlay } from '../overlay';
+import { type SldV3Overlay, type TransformerOltcOverlay } from '../overlay';
 
 afterEach(() => cleanup());
 
@@ -86,61 +93,6 @@ function distinctOwnerRefs(
 
 describe('SldCanvasV3 — tożsamość ownerRef bez duplikatów (regresja S9-4/S9-10 rozszerzona na scenę)', () => {
   for (const lod of [1, 2] as const) {
-    it(`L${lod}: sieć referencyjna (52 stacje + GPZ) + nakładka SWZ na KAŻDYM aparacie ⇒ zero ostrzeżeń "same key", jedna odznaka na ref`, () => {
-      const scene = buildSceneV3(enm, lod);
-      const apparatusRefs = distinctOwnerRefs(scene, 'apparatus');
-      // Zapadka na fixturę: sieć referencyjna GPZ ma pola wielo-aparatowe
-      // (linowe: odłącznik + wyłącznik) — jeśli kiedyś przestała je mieć,
-      // ten test przestałby cokolwiek dowodzić, więc mierzymy realny rozmiar
-      // sceny, nie zgadujemy.
-      expect(apparatusRefs.length).toBeGreaterThan(0);
-
-      const swzByOwnerRef = buildSwzOverlayFromResponses(
-        apparatusRefs.map(
-          (breakerRef): SwzApiResponse => ({
-            status: 'OK',
-            breaker_ref: breakerRef,
-            swz: {
-              status: 'spełnia',
-              przyczyna_pl: 'Ik1_min ≥ Ia wymagane',
-              ik1_min_a: 250,
-              ia_wymagane_a: 160,
-              t_wymagany_s: 0.4,
-              margines: 1.5625,
-            },
-          }),
-        ),
-      );
-      const overlay: SldV3Overlay = { energizedByTestId: {}, swzByOwnerRef };
-
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      try {
-        const { container } = render(
-          <SldCanvasV3
-            snapshot={enm}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
-            lodOverride={lod}
-            overlay={overlay}
-          />,
-        );
-
-        const sameKeyWarnings = errorSpy.mock.calls.filter((args) =>
-          args.some((arg) => typeof arg === 'string' && arg.includes('same key')),
-        );
-        expect(sameKeyWarnings).toEqual([]);
-
-        // Jedna odznaka PER dystynktywny ref — duplikat tożsamości sceny
-        // wyprodukowałby WIĘCEJ odznak niż refów (dwie instancje = dwie
-        // odznaki na JEDEN wpis nakładki), więc ta liczba jest dowodem
-        // niezależnym od tego, czy React akurat wypisał ostrzeżenie.
-        const badges = container.querySelectorAll('[data-testid^="sld-v3-swz-badge-"]');
-        expect(badges.length).toBe(apparatusRefs.length);
-      } finally {
-        errorSpy.mockRestore();
-      }
-    });
-
     it(`L${lod}: sieć referencyjna + nakładka OLTC na KAŻDYM transformatorze ⇒ zero ostrzeżeń "same key", jedna odznaka na ref`, () => {
       const scene = buildSceneV3(enm, lod);
       const transformerRefs = distinctOwnerRefs(scene, 'transformer');

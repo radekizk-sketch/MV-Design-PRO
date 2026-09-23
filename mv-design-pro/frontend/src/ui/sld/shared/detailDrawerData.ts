@@ -68,7 +68,6 @@ import { formatStationSwitchgearDescriptionPl } from '../../shared/stationTypeLa
 import { publicTechnicalLabel, segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { selectStationDistributionTransformers } from '../../network-build/stationTransformerSelection';
 import { getMetric, formatMetric, type RawOverlayPayload } from '../../sld-overlay/rawResultOverlayStore';
-import { computeLfDerivedMetrics } from '../v2/canvas/lfDerivedMetrics';
 import type { SldDataPayload } from '../v2/canvas/enmToSldAdapter';
 import type { SldDetailDrawerData } from '../v2/canvas/SldDetailDrawer';
 import type { SldElementKindForMenu } from '../v2/command/SldCommandService';
@@ -590,8 +589,6 @@ export function buildCableRunDetailDrawerData(
       stationCount: null,
       lengthKm,
       segmentKind: kind === 'overhead_line_sn' ? 'overhead_line_sn' : 'cable_sn',
-      maxLoadingPct: null,
-      maxVoltageDropPct: null,
       // FAB-C: dane katalogowe reprezentatywnego segmentu — TEGO SAMEGO
       // `branch`, z którego wyżej wyliczono elementRef/elementName (kliknięty
       // segment, a dla całego ciągu — pierwszy segment; patrz komentarz przy
@@ -842,7 +839,6 @@ export function buildStationBranchDetailDrawerData(
     }
   }
   // K30-89: cable run spec (gdy drawer kind='cable_run')
-  // K30-93: + maxLoadingPct + maxVoltageDropPct z lfDerivedMetrics
   let cableRunSpec: SldDetailDrawerData['cableRunSpec'] = null;
   if (drawerKind === 'cable_run') {
     const run = sldData.cableRuns.find((r) => r.id === id);
@@ -862,26 +858,6 @@ export function buildStationBranchDetailDrawerData(
         }
         if (countWithLength > 0) lengthKm = total;
       }
-      // K30-93: pull cable loading from LF derived metrics
-      let maxLoadingPct: number | null = null;
-      let maxVoltageDropPct: number | null = null;
-      if (overlayPayload) {
-        const lfMeta = computeLfDerivedMetrics(
-          overlayPayload,
-          sldData.stations.map((s) => ({ id: s.id, busVoltageKv: s.busVoltageKv })),
-          sldData.cableRuns.map((r) => ({
-            id: r.id,
-            segmentRefs: r.segmentRefs,
-          })),
-        );
-        const loading = lfMeta.cableLoadingPctByRunId.get(run.id);
-        if (typeof loading === 'number') maxLoadingPct = loading;
-        // Voltage drop = max |station deviation| on stations along this run
-        const devs = Array.from(lfMeta.voltageDeviationPctByStationId.values());
-        if (devs.length > 0) {
-          maxVoltageDropPct = Math.max(...devs.map((d) => Math.abs(d)));
-        }
-      }
       // FAB-C: reprezentatywny segment (pierwszy ref ciągu) dla danych
       // katalogowych — ta sama konwencja co `buildCableRunDetailDrawerData`
       // (patrz `extractCableCatalogSpec`). Gałąź jest dziś martwa (patrz
@@ -899,8 +875,6 @@ export function buildStationBranchDetailDrawerData(
         stationCount: null,
         lengthKm,
         segmentKind: run.segmentKind ?? null,
-        maxLoadingPct,
-        maxVoltageDropPct,
         ...extractCableCatalogSpec(representativeSegment),
       };
     }

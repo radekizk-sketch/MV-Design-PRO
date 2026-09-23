@@ -838,63 +838,6 @@ def compute_arc_flash_id(
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
-# Kod gotowości (jedno źródło prawdy) blokujący pakiet OSD, gdy wynik Arc Flash
-# nie nadaje się do użycia CERTYFIKOWANEGO bez świadomej akceptacji. Obejmuje
-# wynik open-source (audit-pending), pustą tablicę i ścieżkę Lee. Mirroruje
-# wzorzec OSD_CARD_FIELD_BLOCKER_CODE — bez równoległego systemu.
-OSD_ARC_FLASH_BLOCKER_CODE = "arc_flash.not_computed_ieee_1584"
-
-
-def osd_arc_flash_gate(
-    view: ArcFlashView,
-    accepted: bool = False,
-) -> tuple[bool, list[Any]]:
-    """Bramka akceptacji OSD dla wyniku Arc Flash. Blokuje TYLKO pakiet OSD.
-
-    Wynik Arc Flash może wejść do pakietu OSD/przyłączeniowego bez blokady TYLKO
-    gdy KAŻDY punkt został policzony ścieżką IEEE 1584-2018 na tablicy
-    ZWERYFIKOWANEJ z licencjonowaną normą (``COMPUTED_IEEE_1584``). Wynik
-    policzony na współczynnikach OPEN-SOURCE (``COMPUTED_IEEE_1584_OPEN_SOURCE``)
-    jest realny, ale audit-pending — wymaga ŚWIADOMEJ akceptacji proweniencji
-    open-source. Tak samo ``INCOMPLETE_TABLE``, ``INCOMPLETE_INPUT`` i
-    ``COMPUTED_RALPH_LEE``.
-
-    Emituje :class:`~enm.domain_ops_models.ReadinessBlocker` (istniejący model
-    gotowości — bez drugiej prawdy) z polskim komunikatem.
-
-    Args:
-        view: widok analizy Arc Flash.
-        accepted: czy inżynier świadomie zaakceptował wynik (w tym proweniencję
-            open-source) do pakietu OSD.
-
-    Returns:
-        ``(ready, blockers)``.
-    """
-    from enm.domain_ops_models import ReadinessBlocker  # lazy: granica warstw
-
-    all_verified = bool(view.results) and all(
-        r.status is ArcFlashStatus.COMPUTED_IEEE_1584 for r in view.results
-    )
-    if all_verified or accepted:
-        return (True, [])
-
-    return (
-        False,
-        [
-            ReadinessBlocker(
-                code=OSD_ARC_FLASH_BLOCKER_CODE,
-                message_pl=(
-                    "Wynik Arc Flash nie jest policzony ścieżką IEEE 1584-2018 na "
-                    f"tablicy ZWERYFIKOWANEJ z licencjonowaną normą ({view.status.label_pl}); "
-                    "wymaga świadomej akceptacji inżyniera (w tym proweniencji open-source) "
-                    "przed pakietem OSD/przyłączeniowym"
-                ),
-                element_ref=None,
-            )
-        ],
-    )
-
-
 __all__ = [
     "ARC_FLASH_COEFF_MISSING_MARKER",
     "ARC_FLASH_INPUT_INCOMPLETE_STATUS",
@@ -908,7 +851,6 @@ __all__ = [
     "INCIDENT_ENERGY_TIME_FACTOR",
     "JOULE_PER_CAL_CM2",
     "MM_PER_INCH",
-    "OSD_ARC_FLASH_BLOCKER_CODE",
     "PPE_CATEGORY_INCOMPLETE",
     "PRODUCTION_NFPA_70E_PPE_TABLE",
     "VALIDITY_IBF_MAX_KA_HV",
@@ -937,5 +879,4 @@ __all__ = [
     "compute_arc_flash_id",
     "empty_ieee_1584_table",
     "empty_nfpa_70e_ppe_table",
-    "osd_arc_flash_gate",
 ]

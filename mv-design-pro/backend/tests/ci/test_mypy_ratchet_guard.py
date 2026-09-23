@@ -67,8 +67,11 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # Pomiar na czystym drzewie HEAD (`scripts/mypy_ratchet_pomiar_2026-09-23.md`):
     # 275/49, po naprawie archiwum projektu (`f9ac289c`) 271/48. Zapadka tylko w dół;
     # para próg<->metatest zmieniana RAZEM (ten wiersz + `BASELINE_*` w guardzie).
-    assert modul.BASELINE_ERRORS == 271
-    assert modul.BASELINE_FILES == 48
+    # 2026-09-23 (Pakiet L): kasacja martwego dowodu P18 (4 bledy arg-type w
+    # `proof_inspector/inspector.py`) i rendererow krzywych I-t (1 blad w
+    # `protection_curves_it/renderer_svg.py`) ⇒ 271/48 → 266/46.
+    assert modul.BASELINE_ERRORS == 266
+    assert modul.BASELINE_FILES == 46
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

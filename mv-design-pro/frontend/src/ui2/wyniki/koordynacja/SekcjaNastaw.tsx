@@ -62,12 +62,10 @@ function WierszWarunku({
   etykieta,
   wartosc,
   jednostka,
-  spelniony,
 }: {
   etykieta: string;
   wartosc: number;
   jednostka: string;
-  spelniony?: boolean;
 }) {
   return (
     <tr>
@@ -75,11 +73,7 @@ function WierszWarunku({
       <td>
         {wartosc.toFixed(1)} {jednostka}
       </td>
-      <td>
-        {spelniony === undefined ? '—' : (
-          <span data-tone={spelniony ? 'ok' : 'warn'}>{spelniony ? 'Spełniony' : 'NIE spełniony'}</span>
-        )}
-      </td>
+      <td>—</td>
     </tr>
   );
 }

@@ -1598,6 +1598,574 @@ def check_uniewazniacz_resurrection() -> list[str]:
     return violations
 
 
+# Karta AB-1a Pakiet L (2026-09-23) — bramka wskrzeszenia pozycji LEGACY_USUNAC z
+# inwentarza `docs/audit/INWENTARZ_WERDYKTOW_LAKONICZNYCH_2026-09-23.md` (fala WW-0
+# planu `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` §8): powierzchnie werdyktu BEZ
+# konsumenta produkcyjnego (pomiar: grep importerow w `backend/src`; frontend —
+# osiagalnosc SYMBOLOWA od `src/main.tsx` i wejsc `*-harness-main.tsx`, barrel to
+# przelot, nie osiagalnosc), ktore mimo to niosly lakoniczne albo falszywe werdykty
+# („PASS" bez kryterium, „Skoordynowane", „Obliczenia zgodne z norma", progi
+# 80/100 % liczone w UI). Skasowane RAZEM z testami i eksportami barreli.
+#
+# Jedna tabela tozsamosci (`PAKIET_L_WPISY`), trzy rodzaje wpisu:
+#   * `sciezka`   — plik/katalog nie moze istniec (ZRODLO, nie osierocony `__pycache__`),
+#   * `definicja` — symbol nie wraca jako DEFINICJA: backend AST (klasa, funkcja,
+#     przypisanie modulowe, pole klasy zapisane `Klasa.pole`), frontend eksportowana
+#     deklaracja TS (`export function|const|class|interface|type|enum`);
+#     `zasieg="globalnie"` = gdziekolwiek w `backend/src`/`frontend/src`,
+#     `zasieg="plik"` = tylko we wskazanym pliku (nazwa ogolna albo kolidujaca z
+#     ZYWA definicja w innym miejscu: `FaultMarker` analizatora koordynacji,
+#     `CoordinationResult` ekranu koordynacji, `SEVERITY_COLORS` inspektora ENM,
+#     `ProtectionComparisonRow` domeny porownan),
+#   * `wzorzec`   — napis (bez komentarzy) nie wraca do WSKAZANEGO, ZYWEGO pliku
+#     frontendu — dla pozycji skasowanych wewnatrz zywego modulu (martwy prop,
+#     martwa zakladka, martwa sciezka danych, zaszyty napis zgodnosci).
+# Komentarz/dokstring nazywajacy kasacje NIE jest naruszeniem (AST dla Pythona,
+# `_bez_komentarzy_ts` dla TS).
+#
+# POZA ta bramka (NIEskasowane w karcie — z powodem w meldunku Pakietu L): A14
+# `stability_rms` i C47 `application/stability/voltage_trajectory.py` (kasacja
+# AB-1c, O-5/O-25; C47 dodatkowo w wykluczeniu Pakietu 0), B2 reguly
+# `analysis/normative/evaluator.py` (zywy konsument `application/analyses/
+# pokrycie_analiz.py`), B18 `violations` w `PowerFlowResult` (FROZEN, B-01),
+# E50/E51 `ui/network-build/station-der/**` (wykluczenie Pakietu D1), E74
+# `ui/sld/v2/station-rozdzielnia/**` + `canon/sldCanonKit.tsx` (konsument: wejscie
+# harnessu galerii), czesc E73 `GpzOperatorHeader.tsx` (importowany przez
+# `GpzCanonicalRenderer.tsx`, ktorego typy czyta zywy `ui/sld/v3/scene/buildScene.ts`).
+#
+# POZYCJE POZA INWENTARZEM, wykryte przy kasacji (wiersz `X1`, `X2`):
+#   X1 — przegladarka sladu `ui/proof/TraceViewer.tsx` z calym zbiorem zaleznosci
+#        (`TraceToc`, `TraceStepView`, `traceUrlState`, `traceExportApi`, `compare/**`,
+#        `export/**`, `search/**`): jedyny importer `TraceMetadataPanel.tsx` (E24),
+#        sama symbolowo nieosiagalna od `main.tsx` i wszystkich wejsc harnessu;
+#   X2 — sieroty `domain/protection_device.py` (`IECCurveVariant`,
+#        `DEVICE_TYPE_LABELS_PL`, `CURVE_VARIANT_LABELS_PL`, `new_protection_device`):
+#        0 uzyc w `backend/src`, `backend/tests`, `scripts`, `frontend`.
+# Bramka pilnuje FAKTOW, nie planow.
+
+
+class WpisPakietuL:
+    """Jedna skasowana tozsamosc Pakietu L (patrz komentarz nad `PAKIET_L_WPISY`)."""
+
+    __slots__ = ("warstwa", "rodzaj", "sciezka", "symbol", "zasieg", "wiersz")
+
+    def __init__(
+        self,
+        warstwa: str,
+        rodzaj: str,
+        sciezka: str,
+        symbol: str | None,
+        zasieg: str,
+        wiersz: str,
+    ) -> None:
+        self.warstwa = warstwa
+        self.rodzaj = rodzaj
+        self.sciezka = sciezka
+        self.symbol = symbol
+        self.zasieg = zasieg
+        self.wiersz = wiersz
+
+    def __repr__(self) -> str:
+        return (
+            f"WpisPakietuL({self.warstwa}:{self.rodzaj}:{self.sciezka}"
+            f":{self.symbol}:{self.zasieg}:{self.wiersz})"
+        )
+
+
+def _be_sciezka(sciezka: str, wiersz: str) -> WpisPakietuL:
+    return WpisPakietuL("backend", "sciezka", sciezka, None, "plik", wiersz)
+
+
+def _be_def(
+    sciezka: str, symbole: str, wiersz: str, zasieg: str = "globalnie"
+) -> list[WpisPakietuL]:
+    return [
+        WpisPakietuL("backend", "definicja", sciezka, s, zasieg, wiersz) for s in symbole.split()
+    ]
+
+
+def _fe_sciezka(sciezka: str, wiersz: str) -> WpisPakietuL:
+    return WpisPakietuL("frontend", "sciezka", sciezka, None, "plik", wiersz)
+
+
+def _fe_def(
+    sciezka: str, symbole: str, wiersz: str, zasieg: str = "globalnie"
+) -> list[WpisPakietuL]:
+    return [
+        WpisPakietuL("frontend", "definicja", sciezka, s, zasieg, wiersz) for s in symbole.split()
+    ]
+
+
+def _fe_wzorzec(sciezka: str, napisy: tuple[str, ...], wiersz: str) -> list[WpisPakietuL]:
+    return [WpisPakietuL("frontend", "wzorzec", sciezka, n, "plik", wiersz) for n in napisy]
+
+
+_PE = "application/proof_engine"
+
+PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
+    # --- Obszar A: network_model / protection ------------------------------
+    *_be_def(
+        "protection/curves/curve_calculator.py",
+        "check_coordination analyze_curve_set calculate_grading_margin "
+        "COORDINATION_STATUS_LABELS_PL",
+        "A1",
+    ),
+    *_be_def(
+        "protection/curves/curve_calculator.py",
+        "CoordinationStatus CoordinationResult FaultMarker",
+        "A1",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "network_model/solvers/protection_iec60255.py",
+        "SelectivityVerdict SelectivityPairResult check_selectivity_pair "
+        "run_protection_coordination compute_i2t_thermal_energy I2tThermalResult",
+        "A2",
+    ),
+    *_be_def(
+        "network_model/solvers/protection_iec60255.py",
+        "RelaySettings DEFAULT_REQUIRED_MARGIN_S MARGINAL_THRESHOLD_S "
+        "PROTECTION_IEC60255_SOLVER_VERSION",
+        "A2",
+        zasieg="plik",
+    ),
+    _be_sciezka("network_model/proof", "A35"),
+    *_be_def(
+        "network_model/proof/power_flow_proof_builder.py",
+        "PowerFlowProofBuilder build_power_flow_proof",
+        "A35",
+    ),
+    *_be_def(
+        "network_model/proof/power_flow_proof_document.py",
+        "PowerFlowProofDocument POWER_FLOW_PROOF_VERSION",
+        "A35",
+    ),
+    *_be_def(
+        "network_model/proof/power_flow_equations.py",
+        "POWER_FLOW_EQUATION_REGISTRY POWER_FLOW_PROOF_STEP_ORDER",
+        "A35",
+    ),
+    *_be_def("network_model/proof/power_flow_proof_export.py", "export_proof_to_pdf_simple", "A35"),
+    _be_sciezka("network_model/catalog/drift_detection.py", "A39"),
+    *_be_def(
+        "network_model/catalog/drift_detection.py",
+        "DriftSeverity CatalogDriftEntry DriftReport detect_drift extract_bindings_from_snapshot",
+        "A39",
+    ),
+    # --- Obszar B: analysis / solver_input ---------------------------------
+    _be_sciezka("analysis/protection_insight/builder.py", "B7"),
+    *_be_def("analysis/protection_insight/builder.py", "ProtectionInsightBuilder", "B7"),
+    _be_sciezka("analysis/protection_curves_it/builder.py", "B8"),
+    _be_sciezka("analysis/protection_curves_it/renderer_svg.py", "B8"),
+    _be_sciezka("analysis/protection_curves_it/renderer_pdf.py", "B8"),
+    *_be_def("analysis/protection_curves_it/builder.py", "ProtectionCurvesITBuilder", "B8"),
+    *_be_def("analysis/protection_curves_it/renderer_svg.py", "render_protection_curves_svg", "B8"),
+    *_be_def("analysis/protection_curves_it/renderer_pdf.py", "render_protection_curves_pdf", "B8"),
+    *_be_def(
+        "analysis/protection_curves_it/models.py",
+        "ProtectionCurvesITView.normative_status",
+        "B8",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "analysis/arc_flash/models.py", "osd_arc_flash_gate OSD_ARC_FLASH_BLOCKER_CODE", "B14"
+    ),
+    *_be_def(
+        "solver_input/provenance.py",
+        "osd_card_gate CardFieldAcceptance OSD_CARD_FIELD_BLOCKER_CODE",
+        "B24",
+    ),
+    # --- Obszar C: application / domain ------------------------------------
+    *_be_def(
+        "domain/protection_device.py",
+        "ProtectionCoordinationResult InstantaneousSelectivityCheck "
+        "InstantaneousSensitivityCheck InstantaneousThermalCheck SPZFromInstantaneousCheck",
+        "C38 (i A2)",
+    ),
+    *_be_def(
+        f"{_PE}/proof_generator.py",
+        "generate_protection_proof _build_protection_steps _create_pr_step_breaking "
+        "_create_pr_step_dynamic _create_pr_step_thermal _create_pr_step_selectivity "
+        "_protection_substitution _compare_selectivity",
+        "C41",
+    ),
+    *_be_def(
+        f"{_PE}/proof_generator.py",
+        "_resolve_fault_i2t _resolve_device_i2t _compare_limit",
+        "C41",
+        zasieg="plik",
+    ),
+    *_be_def(
+        f"{_PE}/equation_registry.py",
+        "EQ_PR_001 EQ_PR_002 EQ_PR_003 EQ_PR_004 PR_EQUATIONS PR_STEP_ORDER "
+        "get_pr_equations get_pr_step_order",
+        "C41",
+    ),
+    *_be_def(
+        f"{_PE}/equation_registry.py",
+        "EquationRegistry.PR_EQUATIONS EquationRegistry.PR_STEP_ORDER",
+        "C41",
+        zasieg="plik",
+    ),
+    *_be_def(f"{_PE}/types.py", "ProtectionProofInput ProtectionSelectivityInput", "C41"),
+    *_be_def(f"{_PE}/proof_inspector/types.py", "ProtectionComparisonView", "C41"),
+    *_be_def(
+        f"{_PE}/proof_inspector/types.py",
+        "ProtectionComparisonRow SummaryView.protection_comparisons",
+        "C41",
+        zasieg="plik",
+    ),
+    *_be_def(f"{_PE}/proof_inspector/inspector.py", "_build_protection_comparisons", "C41"),
+    _be_sciezka(f"{_PE}/packs/qu_regulation.py", "C46"),
+    *_be_def(
+        f"{_PE}/packs/qu_regulation.py",
+        "QURegulationProofPack QURegulationProofInput QURegulationProofResult "
+        "QUCharacteristicPoint",
+        "C46",
+    ),
+    _be_sciezka("application/reference_patterns/reporting.py", "C51"),
+    *_be_def(
+        "application/reference_patterns/reporting.py",
+        "export_reference_pattern_to_docx export_reference_pattern_to_pdf",
+        "C51",
+    ),
+    _be_sciezka("domain/result_set.py", "C55"),
+    *_be_def(
+        "domain/result_set.py", "OverlayElement OverlayLegendEntry build_overlay_payload", "C55"
+    ),
+    # --- Obszar D: frontend/src/ui2 ----------------------------------------
+    *_fe_wzorzec("ui2/wyniki/koordynacja/SekcjaNastaw.tsx", ("spelniony",), "D50"),
+    *_fe_def("ui2/wyniki/wrazliwosc/strings.ts", "istotnoscDecyzji IstotnoscWrazliwosci", "D58"),
+    # --- Obszar E: frontend/src/ui -----------------------------------------
+    _fe_sciezka("ui/shared/normativeLabels.ts", "E2"),
+    *_fe_def(
+        "ui/shared/normativeLabels.ts",
+        "NormativeLabels NORMATIVE_TERMS NETWORK_VERDICT_LABELS VOLTAGE_VERDICT_LABELS "
+        "BRANCH_LOADING_VERDICT_LABELS SHORT_CIRCUIT_VERDICT_LABELS SELECTIVITY_LABELS",
+        "E2",
+    ),
+    _fe_sciezka("ui/power-flow-results/PowerFlowResultsInspectorPage.tsx", "E14"),
+    *_fe_def(
+        "ui/power-flow-results/PowerFlowResultsInspectorPage.tsx",
+        "PowerFlowResultsInspectorPage getVoltageVerdict",
+        "E14",
+    ),
+    *_fe_def(
+        "ui/power-flow-results/types.ts", "SEVERITY_LABELS SEVERITY_COLORS", "E14", zasieg="plik"
+    ),
+    *_fe_def(
+        "ui/shared/analysisCaseContext.ts",
+        "ANALYSIS_COMPLETENESS_BADGE_CLASS QUALITY_GATE_LABELS QUALITY_GATE_BADGE_CLASS",
+        "E14",
+    ),
+    _fe_sciezka("ui/power-flow-results/PowerFlowSldOverlay.tsx", "E15"),
+    *_fe_def("ui/power-flow-results/PowerFlowSldOverlay.tsx", "PowerFlowSldOverlay", "E15"),
+    _fe_sciezka("ui/results-inspector/shortCircuitVerdict.ts", "E16"),
+    *_fe_def(
+        "ui/results-inspector/shortCircuitVerdict.ts",
+        "calculateShortCircuitVerdict ShortCircuitVerdictResult",
+        "E16",
+    ),
+    _fe_sciezka("ui/results/ResultStatusBar.tsx", "E18"),
+    *_fe_def("ui/results/ResultStatusBar.tsx", "ResultStatusBar", "E18"),
+    _fe_sciezka("ui/sld-overlay/cableLoadingOverlay.ts", "E21"),
+    *_fe_def(
+        "ui/sld-overlay/cableLoadingOverlay.ts",
+        "classifyCableLoading CableLoadingVerdict buildCableLoadingOverlay summarizeCableLoading",
+        "E21",
+    ),
+    *_fe_def(
+        "ui/sld-overlay/overlayTypes.ts",
+        "VISUAL_STATE_STYLE ProtectionCoverageOverlayBadges",
+        "E22",
+    ),
+    *_fe_wzorzec("ui/sld-overlay/overlayTypes.ts", ("coordination_verdict",), "E22"),
+    _fe_sciezka("ui/sld-overlay/OverlayLegend.tsx", "E23"),
+    _fe_sciezka("ui/sld-overlay/OverlayEngine.ts", "E23"),
+    _fe_sciezka("ui/sld-overlay/LoadFlowOverlayAdapter.ts", "E23"),
+    _fe_sciezka("ui/sld-overlay/ZeroSequenceOverlayAdapter.ts", "E23"),
+    _fe_sciezka("ui/sld-overlay/OltcOverlayAdapter.ts", "E23"),
+    _fe_sciezka("ui/sld-overlay/useOverlayRuntime.ts", "E23"),
+    *_fe_def("ui/sld-overlay/OverlayLegend.tsx", "OverlayLegend", "E23"),
+    *_fe_def(
+        "ui/sld-overlay/OverlayEngine.ts",
+        "resolveElementStyle applyOverlayToSymbols getElementOverlayStyle",
+        "E23",
+    ),
+    *_fe_def("ui/sld-overlay/LoadFlowOverlayAdapter.ts", "buildLoadFlowOverlay", "E23"),
+    *_fe_def("ui/sld-overlay/ZeroSequenceOverlayAdapter.ts", "adaptZeroSequenceToOverlay", "E23"),
+    *_fe_def("ui/sld-overlay/OltcOverlayAdapter.ts", "adaptOltcControlToOverlay", "E23"),
+    *_fe_def("ui/sld-overlay/useOverlayRuntime.ts", "useOverlayRuntime", "E23"),
+    # E24: zaszyty napis zgodnosci usuniety, a nastepnie caly panel razem z
+    # nieosiagalna przegladarka sladu (X1) — plik nie wraca w zadnej postaci.
+    _fe_sciezka("ui/proof/TraceMetadataPanel.tsx", "E24"),
+    *_fe_def(
+        "ui/proof/TraceMetadataPanel.tsx", "TraceMetadataPanel TraceMetadataPanelEmpty", "E24"
+    ),
+    _fe_sciezka("ui/engineering-readiness/DataGapPanel.tsx", "E25"),
+    _fe_sciezka("ui/engineering-readiness/EngineeringReadinessPanel.tsx", "E25"),
+    _fe_sciezka("ui/engineering-readiness/ReadinessLivePanel.tsx", "E25"),
+    *_fe_def(
+        "ui/engineering-readiness/DataGapPanel.tsx", "DataGapPanel classifyDataGapGroup", "E25"
+    ),
+    *_fe_def(
+        "ui/engineering-readiness/EngineeringReadinessPanel.tsx", "EngineeringReadinessPanel", "E25"
+    ),
+    *_fe_def(
+        "ui/engineering-readiness/ReadinessLivePanel.tsx",
+        "ReadinessLivePanel classifyIssueGroup",
+        "E25",
+    ),
+    _fe_sciezka("ui/analysis-eligibility/AnalysisEligibilityPanel.tsx", "E27"),
+    *_fe_def(
+        "ui/analysis-eligibility/AnalysisEligibilityPanel.tsx", "AnalysisEligibilityPanel", "E27"
+    ),
+    _fe_sciezka("ui/issue-panel", "E29"),
+    *_fe_def("ui/issue-panel/IssuePanel.tsx", "IssuePanel", "E29"),
+    *_fe_def("ui/issue-panel/IssuePanelContainer.tsx", "IssuePanelContainer", "E29"),
+    _fe_sciezka("ui/schema-completeness/SchemaCompletenessPanel.tsx", "E30"),
+    _fe_sciezka("ui/schema-completeness/index.ts", "E30"),
+    *_fe_def(
+        "ui/schema-completeness/SchemaCompletenessPanel.tsx", "SchemaCompletenessPanel", "E30"
+    ),
+    _fe_sciezka("ui/workspace/WorkspaceOperationalBar.tsx", "E40"),
+    *_fe_def("ui/workspace/WorkspaceOperationalBar.tsx", "WorkspaceOperationalBar", "E40"),
+    *_fe_wzorzec(
+        "ui/network-build/station-configurator/cards/StationConfigProtectionCard.tsx",
+        ("selectivityStatus", "SELECTIVITY_LABEL"),
+        "E44",
+    ),
+    _fe_sciezka("ui/network-build/cards/BayCard.tsx", "E47"),
+    *_fe_def("ui/network-build/cards/BayCard.tsx", "BayCard", "E47"),
+    _fe_sciezka("ui/network-build/forms/voltageDropValidator.ts", "E52"),
+    *_fe_def("ui/network-build/forms/voltageDropValidator.ts", "calculateVoltageDrop", "E52"),
+    _fe_sciezka("ui/network-build/der-configurator-v2", "E53"),
+    *_fe_def(
+        "ui/network-build/der-configurator-v2/DerConfiguratorSidebar.tsx",
+        "DerConfiguratorSidebar",
+        "E53",
+    ),
+    *_fe_def(
+        "ui/network-build/der-configurator-v2/derConfiguratorContract.ts",
+        "DER_READINESS_AXES DER_READINESS_CATEGORIES DER_CONFIGURATOR_SECTIONS",
+        "E53",
+    ),
+    *_fe_wzorzec(
+        "ui/network-build/build-sidebar/ReadinessSection.tsx", ("DEFAULT_READINESS_ITEMS",), "E53"
+    ),
+    _fe_sciezka("ui/comparison/comparisonDeltaVisualization.ts", "E59"),
+    *_fe_def(
+        "ui/comparison/comparisonDeltaVisualization.ts",
+        "buildDeltaVisualization summarizeDeltaVisualization",
+        "E59",
+    ),
+    _fe_sciezka("ui/inspector/InspectorPanel.tsx", "E64"),
+    _fe_sciezka("ui/inspector/ReadOnlyPropertyGrid.tsx", "E64"),
+    _fe_sciezka("ui/inspector/ValueProvenancePopover.tsx", "E64"),
+    *_fe_def("ui/inspector/InspectorPanel.tsx", "InspectorPanelConnected", "E64"),
+    *_fe_def("ui/inspector/ReadOnlyPropertyGrid.tsx", "ReadOnlyPropertyGrid", "E64"),
+    *_fe_def("ui/inspector/ValueProvenancePopover.tsx", "ValueProvenanceIcon", "E64"),
+    _fe_sciezka("ui/reference-patterns", "E66"),
+    *_fe_def("ui/reference-patterns/ReferencePatternsPage.tsx", "ReferencePatternsPage", "E66"),
+    *_fe_def("ui/reference-patterns/store.ts", "useReferencePatternsStore", "E66"),
+    _fe_sciezka("ui/study-cases/ProtectionCaseConfigPanel.tsx", "E67"),
+    *_fe_def("ui/study-cases/ProtectionCaseConfigPanel.tsx", "ProtectionCaseConfigPanel", "E67"),
+    *_fe_def("ui/protection-curves/types.ts", "COORDINATION_STATUS_COLORS", "E68"),
+    *_fe_def(
+        "ui/protection-curves/types.ts",
+        "CoordinationStatus CoordinationResult",
+        "E68",
+        zasieg="plik",
+    ),
+    *_fe_wzorzec(
+        "ui/protection-curves/types.ts", ("NOT_COORDINATED", "coordinationResults"), "E68"
+    ),
+    *_fe_wzorzec(
+        "ui/sld/v2/canvas/SldDetailDrawer.tsx",
+        ("drawer-cable-spadek", "Klasa zgodności", "maxVoltageDropPct", "maxLoadingPct"),
+        "E70",
+    ),
+    *_fe_wzorzec(
+        "ui/sld/shared/detailDrawerData.ts",
+        ("maxVoltageDropPct", "maxLoadingPct", "computeLfDerivedMetrics"),
+        "E70",
+    ),
+    _fe_sciezka("ui/sld/v2/canvas/lfDerivedMetrics.ts", "E70"),
+    *_fe_def("ui/sld/v2/canvas/lfDerivedMetrics.ts", "computeLfDerivedMetrics", "E70"),
+    _fe_sciezka("ui/sld/v2/proof/DerComplianceBadge.tsx", "E73"),
+    _fe_sciezka("ui/sld/v2/proof/ProofPackFreshnessBadge.tsx", "E73"),
+    _fe_sciezka("ui/sld/v2/renderer/EquipmentProofBadge.tsx", "E73"),
+    _fe_sciezka("ui/sld/v2/renderer/equipmentProofValidator.ts", "E73"),
+    _fe_sciezka("ui/sld/v2/canvas/SldPowerBalancePanel.tsx", "E73"),
+    *_fe_def("ui/sld/v2/proof/DerComplianceBadge.tsx", "DerComplianceBadge", "E73"),
+    *_fe_def("ui/sld/v2/proof/ProofPackFreshnessBadge.tsx", "ProofPackFreshnessBadge", "E73"),
+    *_fe_def(
+        "ui/sld/v2/renderer/EquipmentProofBadge.tsx",
+        "EquipmentProofBadge computeEquipmentProofStatus",
+        "E73",
+    ),
+    *_fe_def(
+        "ui/sld/v2/renderer/equipmentProofValidator.ts",
+        "validateEquipmentProof describeProofVerdict",
+        "E73",
+    ),
+    *_fe_def("ui/sld/v2/canvas/SldPowerBalancePanel.tsx", "SldPowerBalancePanel", "E73"),
+    *_fe_wzorzec(
+        "ui/sld/v3/canvas/SldCanvasV3.tsx",
+        ("swzByOwnerRef", "sld-v3-swz-badge", "computeSwzBadgePlacements"),
+        "E78",
+    ),
+    *_fe_wzorzec("ui/sld/v3/canvas/overlay.ts", ("swzByOwnerRef",), "E78"),
+    # Kaskada E78: jedyny produkcyjny wolajacy tonu SWZ byl skasowany glif kanwy
+    # (zywa plakietka nN `LvDomainView.SwzBadge` klasyfikuje status sama).
+    *_fe_def("ui/sld/v3/canvas/overlay.ts", "swzPresentationTone SwzPresentationTone", "E78"),
+    # --- Poza inwentarzem, wykryte przy kasacji ------------------------------
+    _fe_sciezka("ui/proof/TraceViewer.tsx", "X1"),
+    _fe_sciezka("ui/proof/TraceToc.tsx", "X1"),
+    _fe_sciezka("ui/proof/TraceStepView.tsx", "X1"),
+    _fe_sciezka("ui/proof/traceUrlState.ts", "X1"),
+    _fe_sciezka("ui/proof/traceExportApi.ts", "X1"),
+    _fe_sciezka("ui/proof/compare", "X1"),
+    _fe_sciezka("ui/proof/export", "X1"),
+    _fe_sciezka("ui/proof/search", "X1"),
+    *_fe_def("ui/proof/TraceViewer.tsx", "TraceViewer TraceViewerContainer", "X1"),
+    *_fe_def("ui/proof/TraceToc.tsx", "TraceToc", "X1"),
+    *_fe_def("ui/proof/TraceStepView.tsx", "TraceStepView TraceStepViewEmpty", "X1"),
+    *_fe_def("ui/proof/traceUrlState.ts", "readTraceStateFromUrl generateTraceDeepLink", "X1"),
+    *_fe_def("ui/proof/compare/TraceCompareView.tsx", "TraceCompareView TraceComparePage", "X1"),
+    *_fe_def("ui/proof/compare/TraceDiffList.tsx", "TraceDiffList", "X1"),
+    *_fe_def("ui/proof/compare/diffTrace.ts", "diffTraces", "X1"),
+    *_fe_def("ui/proof/export/exportTracePdf.ts", "exportTracePdf generateTracePdfHtml", "X1"),
+    *_fe_def("ui/proof/export/exportTraceJsonl.ts", "generateTraceJsonl downloadTraceJsonl", "X1"),
+    *_fe_def("ui/proof/search/TraceSearchBar.tsx", "TraceSearchBar", "X1"),
+    *_be_def(
+        "domain/protection_device.py",
+        "IECCurveVariant DEVICE_TYPE_LABELS_PL CURVE_VARIANT_LABELS_PL new_protection_device",
+        "X2",
+        zasieg="plik",
+    ),
+)
+
+_PY_DEF_TYPES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+
+
+def _definicje_py(tree: ast.Module) -> list[tuple[str, int]]:
+    """Nazwy DEFINIOWANE w module: klasy/funkcje (dowolnie gleboko), przypisania
+    modulowe oraz pola klas zapisane jako `Klasa.pole` (przypisanie w ciele klasy)."""
+    wynik: list[tuple[str, int]] = []
+
+    def _cele(stmt: ast.stmt) -> list[str]:
+        if isinstance(stmt, ast.Assign):
+            return [t.id for t in stmt.targets if isinstance(t, ast.Name)]
+        if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+            return [stmt.target.id]
+        return []
+
+    for stmt in tree.body:
+        for nazwa in _cele(stmt):
+            wynik.append((nazwa, stmt.lineno))
+    for node in ast.walk(tree):
+        if isinstance(node, _PY_DEF_TYPES):
+            wynik.append((node.name, node.lineno))
+        if isinstance(node, ast.ClassDef):
+            for stmt in node.body:
+                for pole in _cele(stmt):
+                    wynik.append((f"{node.name}.{pole}", stmt.lineno))
+    return wynik
+
+
+def _ts_definicja(nazwa: str) -> re.Pattern[str]:
+    return re.compile(
+        r"^[ \t]*export\s+(?:default\s+)?(?:async\s+)?(?:function|const|class|interface|type|enum)"
+        r"\s+" + re.escape(nazwa) + r"\b",
+        re.MULTILINE,
+    )
+
+
+def check_pakiet_l_resurrection() -> list[str]:
+    """Karta AB-1a Pakiet L (2026-09-23): skasowane pozycje LEGACY_USUNAC nie moga
+    wrocic — patrz komentarz nad `PAKIET_L_WPISY` (trzy rodzaje wpisu, zasieg
+    definicji, lista pozycji swiadomie pominietych)."""
+    violations: list[str] = []
+    korzenie = {"backend": BACKEND_SRC_DIR, "frontend": FRONTEND_SRC_DIR}
+
+    for wpis in PAKIET_L_WPISY:
+        if wpis.rodzaj != "sciezka":
+            continue
+        wzorce = ("*.ts", "*.tsx") if wpis.warstwa == "frontend" else ("*.py",)
+        if zrodlo_istnieje(korzenie[wpis.warstwa] / wpis.sciezka, wzorce):
+            violations.append(
+                f"[resurrected-module] {wpis.warstwa}/src/{wpis.sciezka}: pozycja "
+                f"LEGACY_USUNAC {wpis.wiersz} (usunieta w karcie AB-1a Pakiet L, "
+                "2026-09-23) — nie odtwarzaj"
+            )
+
+    def_be = [w for w in PAKIET_L_WPISY if w.warstwa == "backend" and w.rodzaj == "definicja"]
+    if BACKEND_SRC_DIR.exists():
+        globalne = {w.symbol: w for w in def_be if w.zasieg == "globalnie"}
+        plikowe: dict[str, dict[str | None, WpisPakietuL]] = {}
+        for w in def_be:
+            if w.zasieg == "plik":
+                plikowe.setdefault(w.sciezka, {})[w.symbol] = w
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            rel_src = py_file.relative_to(BACKEND_SRC_DIR).as_posix()
+            rel_path = (
+                py_file.relative_to(ROOT).as_posix()
+                if py_file.is_relative_to(ROOT)
+                else str(py_file)
+            )
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            lokalne = plikowe.get(rel_src, {})
+            for nazwa, lineno in _definicje_py(tree):
+                trafiony = globalne.get(nazwa) or lokalne.get(nazwa)
+                if trafiony is not None:
+                    violations.append(
+                        f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} (pozycja "
+                        f"LEGACY_USUNAC {trafiony.wiersz}, usunieta w karcie AB-1a Pakiet L) "
+                        "nie moze wrocic"
+                    )
+
+    fe_wpisy = [w for w in PAKIET_L_WPISY if w.warstwa == "frontend" and w.rodzaj != "sciezka"]
+    if FRONTEND_SRC_DIR.exists():
+        globalne_fe = [
+            (w, _ts_definicja(w.symbol))
+            for w in fe_wpisy
+            if w.rodzaj == "definicja" and w.zasieg == "globalnie" and w.symbol is not None
+        ]
+        plikowe_fe: dict[str, list[WpisPakietuL]] = {}
+        for w in fe_wpisy:
+            if w.rodzaj == "wzorzec" or w.zasieg == "plik":
+                plikowe_fe.setdefault(w.sciezka, []).append(w)
+        for suffix in FORBIDDEN_DATA_MANAGER_TS_EXTENSIONS:
+            for ts_file in sorted(FRONTEND_SRC_DIR.rglob(f"*{suffix}")):
+                tekst = _bez_komentarzy_ts(read_text(ts_file))
+                rel_src = ts_file.relative_to(FRONTEND_SRC_DIR).as_posix()
+                rel_path = ts_file.relative_to(ROOT).as_posix()
+                for wpis, wzorzec in globalne_fe:
+                    if wzorzec.search(tekst):
+                        violations.append(
+                            f"[resurrected-definition] {rel_path}: export {wpis.symbol} "
+                            f"(pozycja LEGACY_USUNAC {wpis.wiersz}, usunieta w karcie AB-1a "
+                            "Pakiet L) nie moze wrocic"
+                        )
+                for wpis in plikowe_fe.get(rel_src, []):
+                    if wpis.symbol is None:
+                        continue
+                    if wpis.rodzaj == "wzorzec":
+                        trafienie = wpis.symbol in tekst
+                        znacznik = "[resurrected-pattern]"
+                    else:
+                        trafienie = _ts_definicja(wpis.symbol).search(tekst) is not None
+                        znacznik = "[resurrected-definition]"
+                    if trafienie:
+                        violations.append(
+                            f"{znacznik} {rel_path}: {wpis.symbol!r} (pozycja LEGACY_USUNAC "
+                            f"{wpis.wiersz}, usunieta z tego pliku w karcie AB-1a Pakiet L) "
+                            "nie moze wrocic"
+                        )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -1618,6 +2186,7 @@ def main() -> int:
         + check_w3j_voltage_criteria_resurrection()
         + check_s3_ncrfg_second_engine_resurrection()
         + check_uniewazniacz_resurrection()
+        + check_pakiet_l_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")
