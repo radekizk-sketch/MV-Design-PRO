@@ -25,6 +25,11 @@ Pokrycie:
 - diff_summary
 - Format field change labels
 - §0.1/§0.5: sekcje skasowane NIE są diffowane (kontrakt przypięty testem)
+- Rozbicie każdej sekcji z producentem (karta porównania archiwów 2026-09-23):
+  model sieci `enm` element po elemencie (model projektu, archiwum z modelami
+  per przypadek, wpis-sentinel, brak modelu, tożsamość `ref_id`/`id`, obiekty
+  zagnieżdżone), `project_meta` i `cases.settings` pole po polu,
+  `runs.analysis_runs_index` po `run_id`
 """
 
 from __future__ import annotations
@@ -50,6 +55,7 @@ from domain.project_archive import (
     ARCHIVE_FORMAT_ID,
     ARCHIVE_SCHEMA_VERSION,
     CasesSection,
+    EnmSection,
     InterpretationsSection,
     IssuesSection,
     ProjectArchive,
@@ -70,6 +76,9 @@ def _make_archive(
     study_cases: list[dict] | None = None,
     operating_cases: list[dict] | None = None,
     canonical_runs: list[dict] | None = None,
+    analysis_runs_index: list[dict] | None = None,
+    settings: dict | None = None,
+    enm_models: list[dict] | None = None,
 ) -> ProjectArchive:
     """Utworz archiwum testowe z podanymi danymi."""
     if study_cases is None:
@@ -94,15 +103,19 @@ def _make_archive(
     cases_dict = {
         "study_cases": study_cases,
         "operating_cases": operating_cases,
-        "settings": None,
+        "settings": settings,
     }
     # CV-3.3-B: jedyny rejestr biegow w archiwum to `canonical_runs` (R1);
     # `results` jest pustym kontenerem (wynik biegu siedzi w samym biegu jako
     # `raw_result`), klucz zostaje w strukturze i odcisku.
-    runs_dict = {"canonical_runs": canonical_runs, "analysis_runs_index": []}
+    runs_dict = {
+        "canonical_runs": canonical_runs,
+        "analysis_runs_index": analysis_runs_index or [],
+    }
     results_dict: dict = {}
     interpretations_dict = {"cached": []}
     issues_dict = {"snapshot": []}
+    enm_dict = {"models": enm_models or []}
 
     fp = compute_archive_fingerprints(
         project_meta=pm_dict,
@@ -111,6 +124,7 @@ def _make_archive(
         results=results_dict,
         interpretations=interpretations_dict,
         issues=issues_dict,
+        enm=enm_dict,
     )
 
     return ProjectArchive(
@@ -122,6 +136,7 @@ def _make_archive(
         results=ResultsSection(),
         interpretations=InterpretationsSection(**interpretations_dict),
         issues=IssuesSection(**issues_dict),
+        enm=EnmSection(**enm_dict),
         fingerprints=fp,
     )
 
@@ -142,6 +157,10 @@ class TestFormat300Contract:
     def test_deleted_sections_are_not_in_hash_map(self):
         deleted = {"network_model", "sld_diagrams", "proofs"}
         assert deleted.isdisjoint(SECTION_HASH_MAP)
+        # Intencja: porównywane są DOKŁADNIE sekcje formatu 3.0.0 — łącznie z
+        # modelem sieci `enm` (jedyny nośnik sieci od W1-B-ARCH). Przed kartą
+        # porównania archiwów (2026-09-23) `enm` tu brakowało: archiwa różniące
+        # się wyłącznie siecią dawały „zmienione" przy sześciu sekcjach identycznych.
         assert set(SECTION_HASH_MAP) == {
             "project_meta",
             "cases",
@@ -149,7 +168,9 @@ class TestFormat300Contract:
             "results",
             "interpretations",
             "issues",
+            "enm",
         }
+        assert set(SECTION_LABELS_PL) == set(SECTION_HASH_MAP)
 
     def test_deleted_sections_are_not_in_labels(self):
         deleted = {"network_model", "sld_diagrams", "proofs"}
@@ -612,3 +633,282 @@ class TestEdgeCases:
         ed = ElementDiff("e1", "nodes", DiffStatus.ADDED, ())
         with pytest.raises(AttributeError):
             ed.element_id = "e2"  # type: ignore[misc]
+
+
+# ============================================================================
+# ROZBICIE SEKCJI: model sieci, obiekty pojedyncze, indeks biegow
+# ============================================================================
+
+
+def _model(
+    *,
+    buses: list[dict] | None = None,
+    line_runs: list[dict] | None = None,
+    header: dict | None = None,
+    katalog_projektu: dict | None = None,
+) -> dict:
+    """Zrzut modelu sieci w ksztalcie `EnergyNetworkModel.model_dump(mode="json")`."""
+    return {
+        "header": header or {"name": "Siec", "revision": 1, "defaults": {"frequency_hz": 50.0}},
+        "buses": buses or [],
+        "branches": [],
+        "line_runs": line_runs or [],
+        "katalog_projektu": katalog_projektu,
+    }
+
+
+def _szyna(ref_id: str, voltage_kv: float, **pola: object) -> dict:
+    return {
+        "id": f"uuid-{ref_id}",
+        "ref_id": ref_id,
+        "name": ref_id,
+        "voltage_kv": voltage_kv,
+        **pola,
+    }
+
+
+def _enm(section_diffs: tuple[SectionDiff, ...]) -> SectionDiff:
+    return next(sd for sd in section_diffs if sd.section_name == "enm")
+
+
+def _klucze(sd: SectionDiff) -> set[tuple[str, str, DiffStatus]]:
+    return {(ed.element_type, ed.element_id, ed.status) for ed in sd.element_diffs}
+
+
+class TestModelSieci:
+    """Sekcja `enm` — iloczyn cech: {jeden model projektu, modele per przypadek,
+    sentinel bez przypadku, brak modelu} x {zmiana elementu, element dodany/usuniety,
+    obiekt zagniezdzony, tozsamosc `ref_id` / `id`}."""
+
+    def test_zmiana_tylko_sieci_daje_jedna_zmieniona_sekcje(self):
+        model_a = _model(buses=[_szyna("SN-1", 15.0)])
+        model_b = _model(buses=[_szyna("SN-1", 20.0), _szyna("NN-2", 0.4)])
+        a = _make_archive(enm_models=[{"case_id": "sc-1", "snapshot": model_a}])
+        b = _make_archive(enm_models=[{"case_id": "sc-1", "snapshot": model_b}])
+
+        wynik = compare_archives(a, b)
+
+        zmienione = [
+            sd.section_name for sd in wynik.section_diffs if sd.status == DiffStatus.MODIFIED
+        ]
+        assert zmienione == ["enm"]
+        assert wynik.summary["sections_modified"] == 1
+        assert _klucze(_enm(wynik.section_diffs)) == {
+            ("buses", "SN-1", DiffStatus.MODIFIED),
+            ("buses", "NN-2", DiffStatus.ADDED),
+        }
+        raport = format_diff_report_pl(wynik)
+        assert "--- Model sieci ---" in raport
+        assert "Napiecie znamionowe [kV]: 15.0 -> 20.0" in raport
+
+    def test_ten_sam_model_pod_innymi_przypadkami_to_brak_zmiany_sieci(self):
+        """Dwa projekty z ta sama siecia: wpisy pod roznymi przypadkami, hash sekcji
+        rozny, siec identyczna — sekcja sieci IDENTYCZNA (przypadki w `cases`)."""
+        model = _model(buses=[_szyna("SN-1", 15.0)])
+        a = _make_archive(enm_models=[{"case_id": "sc-1", "snapshot": model}])
+        b = _make_archive(
+            study_cases=[{"id": "sc-9", "name": "Inny"}],
+            enm_models=[
+                {"case_id": "sc-9", "snapshot": model},
+                {"case_id": "sc-10", "snapshot": model},
+            ],
+        )
+
+        wynik = compare_archives(a, b)
+
+        siec = _enm(wynik.section_diffs)
+        assert siec.hash_a != siec.hash_b
+        assert siec.status == DiffStatus.IDENTICAL
+        assert siec.element_diffs == ()
+
+    def test_sentinel_bez_przypadku_porownywany_jak_model_projektu(self):
+        a = _make_archive(enm_models=[{"case_id": None, "snapshot": _model()}])
+        b = _make_archive(
+            enm_models=[{"case_id": "sc-1", "snapshot": _model(buses=[_szyna("SN-1", 15.0)])}]
+        )
+
+        assert _klucze(_enm(compare_archives(a, b).section_diffs)) == {
+            ("buses", "SN-1", DiffStatus.ADDED)
+        }
+
+    @pytest.mark.parametrize("kierunek", ["dodany", "usuniety"])
+    def test_brak_modelu_po_jednej_stronie(self, kierunek):
+        z_modelem = _make_archive(
+            enm_models=[{"case_id": "sc-1", "snapshot": _model(buses=[_szyna("SN-1", 15.0)])}]
+        )
+        bez_modelu = _make_archive()
+        a, b = (bez_modelu, z_modelem) if kierunek == "dodany" else (z_modelem, bez_modelu)
+        status = DiffStatus.ADDED if kierunek == "dodany" else DiffStatus.REMOVED
+
+        assert _klucze(_enm(compare_archives(a, b).section_diffs)) == {("model", "model", status)}
+
+    def test_modele_per_przypadek_porownywane_przypadek_po_przypadku(self):
+        """Archiwum sprzed jednego modelu projektu: rozne modele pod przypadkami —
+        bez wyboru „ktory wazniejszy", porownanie po przypadkach."""
+        a = _make_archive(
+            enm_models=[
+                {"case_id": "sc-1", "snapshot": _model(buses=[_szyna("SN-1", 15.0)])},
+                {"case_id": "sc-2", "snapshot": _model(buses=[_szyna("SN-1", 20.0)])},
+            ]
+        )
+        b = _make_archive(
+            enm_models=[
+                {"case_id": "sc-1", "snapshot": _model(buses=[_szyna("SN-1", 15.0)])},
+                {"case_id": "sc-2", "snapshot": _model(buses=[_szyna("SN-1", 30.0)])},
+                {"case_id": "sc-3", "snapshot": _model()},
+            ]
+        )
+
+        assert _klucze(_enm(compare_archives(a, b).section_diffs)) == {
+            ("przypadek:sc-2.buses", "SN-1", DiffStatus.MODIFIED),
+            ("przypadek:sc-3", "przypadek:sc-3", DiffStatus.ADDED),
+        }
+
+    def test_tozsamosc_id_dla_kolekcji_bez_ref_id(self):
+        """`LineRun`/`ConnectionNode` nie maja `ref_id` — tozsamosc po `id`."""
+        run_a = {"id": "RUN-1", "name": "Magistrala", "run_kind": "main_trunk", "segments": []}
+        run_b = {**run_a, "run_kind": "ring"}
+        a = _make_archive(enm_models=[{"case_id": "sc-1", "snapshot": _model(line_runs=[run_a])}])
+        b = _make_archive(enm_models=[{"case_id": "sc-1", "snapshot": _model(line_runs=[run_b])}])
+
+        siec = _enm(compare_archives(a, b).section_diffs)
+
+        assert _klucze(siec) == {("line_runs", "RUN-1", DiffStatus.MODIFIED)}
+        assert [fc.field_name for fc in siec.element_diffs[0].field_changes] == ["run_kind"]
+
+    def test_obiekty_zagniezdzone_pole_po_polu(self):
+        naglowek_a = {"name": "Siec", "revision": 1, "defaults": {"frequency_hz": 50.0}}
+        naglowek_b = {"name": "Siec", "revision": 2, "defaults": {"frequency_hz": 60.0}}
+        katalog = {"line_types": [{"id": "AFL-70", "r_ohm_per_km": 0.4}], "cable_types": []}
+        a = _make_archive(enm_models=[{"case_id": "sc-1", "snapshot": _model(header=naglowek_a)}])
+        b = _make_archive(
+            enm_models=[
+                {
+                    "case_id": "sc-1",
+                    "snapshot": _model(header=naglowek_b, katalog_projektu=katalog),
+                }
+            ]
+        )
+
+        siec = _enm(compare_archives(a, b).section_diffs)
+
+        assert _klucze(siec) == {
+            ("header", "header", DiffStatus.MODIFIED),
+            ("header.defaults", "header.defaults", DiffStatus.MODIFIED),
+            ("katalog_projektu", "katalog_projektu", DiffStatus.ADDED),
+        }
+        naglowek = next(ed for ed in siec.element_diffs if ed.element_id == "header")
+        assert [fc.field_name for fc in naglowek.field_changes] == ["revision"]
+
+    def test_sygnatura_obejmuje_siec(self):
+        a = _make_archive(enm_models=[{"case_id": "sc-1", "snapshot": _model()}])
+        b1 = _make_archive(
+            enm_models=[{"case_id": "sc-1", "snapshot": _model(buses=[_szyna("SN-1", 15.0)])}]
+        )
+        b2 = _make_archive(
+            enm_models=[{"case_id": "sc-1", "snapshot": _model(buses=[_szyna("SN-2", 15.0)])}]
+        )
+        sygnatura_1 = compare_archives(a, b1).deterministic_signature
+        assert compare_archives(a, b1).deterministic_signature == sygnatura_1
+        assert compare_archives(a, b2).deterministic_signature != sygnatura_1
+
+
+class TestObiektyPojedyncze:
+    """`project_meta` i `cases.settings` — zmiana wskazuje pola, nie sama sekcje."""
+
+    def test_metadane_projektu_pole_po_polu(self):
+        wynik = compare_archives(
+            _make_archive(project_name="Projekt A"), _make_archive(project_name="Projekt B")
+        )
+
+        metadane = next(sd for sd in wynik.section_diffs if sd.section_name == "project_meta")
+        assert _klucze(metadane) == {("project_meta", "project_meta", DiffStatus.MODIFIED)}
+        zmiana = metadane.element_diffs[0].field_changes
+        assert [(fc.field_name, fc.old_value, fc.new_value, fc.label_pl) for fc in zmiana] == [
+            ("name", "Projekt A", "Projekt B", "Nazwa")
+        ]
+
+    def test_ustawienia_przypadkow_pole_po_polu(self):
+        a = _make_archive(settings={"active_case_id": "sc-1", "limits_jsonb": {"u_min": 0.9}})
+        b = _make_archive(settings={"active_case_id": "sc-2", "limits_jsonb": {"u_min": 0.95}})
+
+        przypadki = next(
+            sd for sd in compare_archives(a, b).section_diffs if sd.section_name == "cases"
+        )
+
+        assert _klucze(przypadki) == {
+            ("settings", "settings", DiffStatus.MODIFIED),
+            ("settings.limits_jsonb", "settings.limits_jsonb", DiffStatus.MODIFIED),
+        }
+
+    @pytest.mark.parametrize("kierunek", ["dodane", "usuniete"])
+    def test_ustawienia_obecne_po_jednej_stronie(self, kierunek):
+        z_ustawieniami = _make_archive(settings={"active_case_id": "sc-1"})
+        bez = _make_archive()
+        a, b = (bez, z_ustawieniami) if kierunek == "dodane" else (z_ustawieniami, bez)
+        status = DiffStatus.ADDED if kierunek == "dodane" else DiffStatus.REMOVED
+
+        przypadki = next(
+            sd for sd in compare_archives(a, b).section_diffs if sd.section_name == "cases"
+        )
+        assert _klucze(przypadki) == {("settings", "settings", status)}
+
+
+class TestIndeksBiegow:
+    def test_indeks_biegow_po_run_id(self):
+        wpis = {"run_id": "R-1", "analysis_type": "protection", "status": "FINISHED"}
+        a = _make_archive(analysis_runs_index=[wpis])
+        b = _make_archive(
+            analysis_runs_index=[{**wpis, "status": "FAILED"}, {**wpis, "run_id": "R-2"}]
+        )
+
+        biegi = next(sd for sd in compare_archives(a, b).section_diffs if sd.section_name == "runs")
+
+        assert _klucze(biegi) == {
+            ("analysis_runs_index", "R-1", DiffStatus.MODIFIED),
+            ("analysis_runs_index", "R-2", DiffStatus.ADDED),
+        }
+
+
+class TestKazdaZmienionaSekcjaMaRozbicie:
+    """Deklaracja z `domain/archive_diff.py` („sekcja zmieniona MUSI mowic, co sie
+    zmienilo") przypieta: dla KAZDEJ sekcji z producentem zmiana jednego pola daje
+    niepusta liste elementow."""
+
+    @pytest.mark.parametrize(
+        ("sekcja", "a", "b"),
+        [
+            ("project_meta", {"project_name": "A"}, {"project_name": "B"}),
+            (
+                "cases",
+                {"study_cases": [{"id": "s", "name": "A"}]},
+                {"study_cases": [{"id": "s", "name": "B"}]},
+            ),
+            (
+                "cases",
+                {"operating_cases": [{"id": "o", "name": "A"}]},
+                {"operating_cases": [{"id": "o", "name": "B"}]},
+            ),
+            ("cases", {"settings": {"x": 1}}, {"settings": {"x": 2}}),
+            (
+                "runs",
+                {"canonical_runs": [{"id": "r", "status": "A"}]},
+                {"canonical_runs": [{"id": "r", "status": "B"}]},
+            ),
+            (
+                "runs",
+                {"analysis_runs_index": [{"run_id": "r", "status": "A"}]},
+                {"analysis_runs_index": [{"run_id": "r", "status": "B"}]},
+            ),
+            (
+                "enm",
+                {"enm_models": [{"case_id": "s", "snapshot": _model(buses=[_szyna("B", 1.0)])}]},
+                {"enm_models": [{"case_id": "s", "snapshot": _model(buses=[_szyna("B", 2.0)])}]},
+            ),
+        ],
+    )
+    def test_zmieniona_sekcja_ma_elementy(self, sekcja, a, b):
+        wynik = compare_archives(_make_archive(**a), _make_archive(**b))
+        sd = next(s for s in wynik.section_diffs if s.section_name == sekcja)
+        assert sd.status == DiffStatus.MODIFIED
+        assert sd.element_diffs, f"sekcja {sekcja} zmieniona bez wskazania elementu"

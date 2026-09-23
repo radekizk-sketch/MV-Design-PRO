@@ -8,6 +8,14 @@ KANON:
 - NOT-A-SOLVER — zero obliczen fizycznych
 - Read-only — brak mutacji
 - Deterministyczny — ten sam input = ten sam output
+
+BLEDY: jedyny 400 (pliki) / 404 (projekty) to nazwany `ArchiveError` z serwisu —
+archiwum nieczytelne, niezgodne ze schematem, z naruszona integralnoscia, albo
+projekt nieistniejacy. Kazdy inny wyjatek WYBUCHA (500), bo oznacza blad programu,
+nie zle wejscie: dawne `except (ArchiveError, Exception)` przez wiele kart
+zamienialo `AttributeError` (wolanie nieistniejacej metody serwisu) na 400
+„Blad odczytu archiwum A" — kazde porownanie plikow konczylo sie odmowa, a nikt
+nie widzial dlaczego.
 """
 
 from __future__ import annotations
@@ -165,7 +173,6 @@ def _to_response(result: ArchiveDiffResult) -> ArchiveDiffResponse:
 async def compare_archive_files(
     file_a: UploadFile = File(description="Archiwum A (ZIP) — bazowe"),
     file_b: UploadFile = File(description="Archiwum B (ZIP) — porownywane"),
-    uow_factory: Any = Depends(get_uow_factory),
 ) -> ArchiveDiffResponse:
     """
     Porownaj dwa archiwa projektu przeslane jako pliki ZIP.
@@ -197,26 +204,25 @@ async def compare_archive_files(
     # WSPÓŁBIEŻNOŚĆ: końcówka zostaje `async def`, bo czyta DWA przesłane pliki
     # (`await file_*.read()`). Rozpakowanie obu archiwów i ich porównanie jest
     # blokujące — na pętli zdarzeń wstrzymywało obsługę wszystkich pozostałych
-    # żądań na czas porównania.
+    # żądań na czas porównania. Odczyt archiwum nie dotyka bazy
+    # (`ProjectArchiveService.load_archive` jest metodą statyczną — ten sam
+    # dekoder ZIP co import i podgląd), więc nie otwiera jednostki pracy.
     def _porownaj() -> ArchiveDiffResponse:
-        with uow_factory() as uow:
-            service = ProjectArchiveService(uow.session)
+        try:
+            archive_a = ProjectArchiveService.load_archive(bytes_a)
+        except ArchiveError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Blad odczytu archiwum A: {e}",
+            ) from e
 
-            try:
-                archive_a = service.load_archive_from_bytes(bytes_a)
-            except (ArchiveError, Exception) as e:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Blad odczytu archiwum A: {e}",
-                )
-
-            try:
-                archive_b = service.load_archive_from_bytes(bytes_b)
-            except (ArchiveError, Exception) as e:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Blad odczytu archiwum B: {e}",
-                )
+        try:
+            archive_b = ProjectArchiveService.load_archive(bytes_b)
+        except ArchiveError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Blad odczytu archiwum B: {e}",
+            ) from e
 
         result = compare_archives(archive_a, archive_b)
         return _to_response(result)
@@ -255,7 +261,7 @@ def compare_project_archives(
             raise HTTPException(
                 status_code=404,
                 detail=f"Blad budowania archiwum projektu A: {e}",
-            )
+            ) from e
 
         try:
             archive_b = service.build_archive(project_id_b)
@@ -263,7 +269,7 @@ def compare_project_archives(
             raise HTTPException(
                 status_code=404,
                 detail=f"Blad budowania archiwum projektu B: {e}",
-            )
+            ) from e
 
     result = compare_archives(archive_a, archive_b)
     return _to_response(result)

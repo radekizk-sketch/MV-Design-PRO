@@ -144,14 +144,15 @@ BACKEND = ROOT / "backend"
 #     (analysis_run_repository: `str` do pol `Literal[...]`, `object` do kolumn ORM);
 #   * api (~29): union-attr (repozytoria `X | None` bez zwezenia), attr-defined;
 #   * PRIORYTET: `attr-defined` na klasach WLASNYCH to kandydaci na realne
-#     `AttributeError` w biegu — m.in. `api/archive_diff.py` wola nieistniejace
-#     `ProjectArchiveService.load_archive_from_bytes` / `.build_archive` (wyjatek
-#     lapany przez `except (ArchiveError, Exception)` -> zawsze HTTP 400); lista
-#     w pliku pomiaru;
+#     `AttributeError` w biegu — lista w pliku pomiaru. Pierwszy z nich
+#     (`api/archive_diff.py` wolal nieistniejace metody serwisu archiwum, wyjatek
+#     polykany przez `except (ArchiveError, Exception)` -> zawsze HTTP 400) jest
+#     NAPRAWIONY 2026-09-23 (`build_archive`/`load_archive` na serwisie, testy
+#     `tests/api/test_archive_diff_koncowki.py`);
 #   * analysis (~19), enm (~18), solver_input (~8), domain (~4), compliance (~1).
 # Kazda karta obniza pin o zmierzona liczbe (zapadka dwustronna sama tego zada).
-BASELINE_ERRORS = 275
-BASELINE_FILES = 49
+BASELINE_ERRORS = 271
+BASELINE_FILES = 48
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

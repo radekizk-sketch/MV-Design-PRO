@@ -15,6 +15,8 @@ from __future__ import annotations
 import io
 import json
 import zipfile
+import zlib
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
@@ -92,6 +94,22 @@ class ProjectArchiveService:
     # EXPORT
     # ========================================================================
 
+    def build_archive(self, project_id: UUID) -> ProjectArchive:
+        """Zbuduj archiwum projektu z bazy — DOKŁADNIE to, co niesie eksport ZIP.
+
+        Jedyna droga od projektu w bazie do `ProjectArchive`: `export_project`
+        serializuje wynik tej metody, porównanie archiwów po `project_id`
+        (`api/archive_diff.py`) porównuje go wprost. Dzięki temu porównanie
+        projektów i porównanie ich plików ZIP opisują TO SAMO archiwum.
+
+        Raises:
+            ArchiveError: gdy projekt nie istnieje
+        """
+        project = self._session.get(ProjectORM, project_id)
+        if project is None:
+            raise ArchiveError(f"Projekt o ID {project_id} nie istnieje")
+        return self._collect_project_data(project)
+
     def export_project(self, project_id: UUID) -> bytes:
         """
         Eksportuj projekt do archiwum ZIP.
@@ -105,13 +123,7 @@ class ProjectArchiveService:
         Raises:
             ArchiveError: gdy projekt nie istnieje lub eksport się nie powiódł
         """
-        # Pobierz projekt
-        project = self._session.get(ProjectORM, project_id)
-        if project is None:
-            raise ArchiveError(f"Projekt o ID {project_id} nie istnieje")
-
-        # Zbierz wszystkie dane
-        archive = self._collect_project_data(project)
+        archive = self.build_archive(project_id)
 
         # Konwertuj do JSON
         archive_dict = archive_to_dict(archive)
@@ -127,7 +139,7 @@ class ProjectArchiveService:
             manifest = {
                 "format_id": ARCHIVE_FORMAT_ID,
                 "schema_version": ARCHIVE_SCHEMA_VERSION,
-                "project_name": project.name,
+                "project_name": archive.project_meta.name,
                 "exported_at": datetime.now(UTC).isoformat(),
                 "archive_hash": archive.fingerprints.archive_hash,
             }
@@ -462,25 +474,15 @@ class ProjectArchiveService:
         warnings: list[str] = []
 
         try:
-            # Rozpakuj ZIP
-            zip_buffer = io.BytesIO(archive_bytes)
-            with zipfile.ZipFile(zip_buffer, "r") as zf:
-                if "project.json" not in zf.namelist():
-                    return ArchiveImportResult(
-                        status=ArchiveImportStatus.FAILED,
-                        project_id=None,
-                        errors=["Archiwum nie zawiera pliku project.json"],
-                    )
-
-                project_json = zf.read("project.json").decode("utf-8")
-
-            # Parsuj JSON — `archive_dict` to SUROWY słownik (obie wersje formatu);
+            # Rozpakuj ZIP — JEDYNY dekoder archiwum (`_odczytaj_archiwum_zip`).
+            # `archive_dict` to SUROWY słownik (obie wersje formatu);
             # `dict_to_archive` z niego ignoruje sekcje, których 3.0.0 nie ma
             # (`network_model`/`sld_diagrams`/`proofs`) — ale `_restore_project`
             # sięga po `archive_dict` wprost, gdy trzeba skompilować model z
             # danych legacy (archiwum 2.x bez `enm.models`, W1-B-ARCH §0.2).
-            archive_dict = json.loads(project_json)
-            archive = dict_to_archive(archive_dict)
+            odczyt = _odczytaj_archiwum_zip(archive_bytes)
+            archive_dict = odczyt.surowy
+            archive = odczyt.archiwum
 
             # Weryfikacja integralności — NA SUROWYM słowniku (§0.3), dokładna
             # dla obu wersji formatu (3.0.0 i 2.x), nie tylko dla sekcji, które
@@ -539,22 +541,12 @@ class ProjectArchiveService:
             )
 
         except ArchiveError as e:
+            # Błędy dekodowania ZIP/JSON przychodzą tu już jako nazwany
+            # `ArchiveError` z komunikatem PL (`_odczytaj_archiwum_zip`).
             return ArchiveImportResult(
                 status=ArchiveImportStatus.FAILED,
                 project_id=None,
                 errors=[str(e)],
-            )
-        except json.JSONDecodeError as e:
-            return ArchiveImportResult(
-                status=ArchiveImportStatus.FAILED,
-                project_id=None,
-                errors=[f"Błąd parsowania JSON: {e}"],
-            )
-        except zipfile.BadZipFile:
-            return ArchiveImportResult(
-                status=ArchiveImportStatus.FAILED,
-                project_id=None,
-                errors=["Nieprawidłowy format archiwum ZIP"],
             )
 
     def _restore_project(
@@ -877,28 +869,10 @@ class ProjectArchiveService:
             Słownik z podsumowaniem zawartości archiwum
         """
         try:
-            zip_buffer = io.BytesIO(archive_bytes)
-            with zipfile.ZipFile(zip_buffer, "r") as zf:
-                if "manifest.json" in zf.namelist():
-                    json.loads(zf.read("manifest.json").decode("utf-8"))
-                else:
-                    pass
-
-                if "project.json" not in zf.namelist():
-                    return {
-                        "valid": False,
-                        "error": "Archiwum nie zawiera pliku project.json",
-                    }
-
-                project_json = zf.read("project.json").decode("utf-8")
-                archive_dict = json.loads(project_json)
-                archive = dict_to_archive(archive_dict)
-
-                # Get exported_at from manifest (not in project.json for determinism)
-                exported_at = None
-                if "manifest.json" in zf.namelist():
-                    manifest_data = json.loads(zf.read("manifest.json").decode("utf-8"))
-                    exported_at = manifest_data.get("exported_at")
+            odczyt = _odczytaj_archiwum_zip(archive_bytes)
+            archive = odczyt.archiwum
+            # Data eksportu siedzi w manifest.json (nie w project.json — determinizm).
+            exported_at = _data_eksportu_z_manifestu(odczyt.manifest)
 
             # Zbuduj podsumowanie. W1-B-ARCH: model sieci żyje wyłącznie w ENM
             # (sekcja `enm`) — `network_model`/`sld_diagrams`/`proofs` nie mają
@@ -922,10 +896,112 @@ class ProjectArchiveService:
 
         except ArchiveError as e:
             return {"valid": False, "error": str(e)}
-        except json.JSONDecodeError as e:
-            return {"valid": False, "error": f"Błąd parsowania JSON: {e}"}
-        except zipfile.BadZipFile:
-            return {"valid": False, "error": "Nieprawidłowy format archiwum ZIP"}
+
+    # ========================================================================
+    # ODCZYT ARCHIWUM (porównanie archiwów)
+    # ========================================================================
+
+    @staticmethod
+    def load_archive(archive_bytes: bytes) -> ProjectArchive:
+        """Wczytaj archiwum ZIP jako `ProjectArchive` gotowe do porównania.
+
+        Ten sam dekoder co import i podgląd (`_odczytaj_archiwum_zip`) — plus
+        OBOWIĄZKOWA weryfikacja integralności: porównanie archiwów
+        (`domain/archive_diff.compare_archives`) rozstrzyga „identyczne /
+        zmienione" po odciskach sekcji zapisanych W archiwum, więc archiwum,
+        którego treść nie zgadza się z własnymi odciskami, dałoby wynik
+        „bez zmian" dla sekcji, która się zmieniła. Metoda nie czyta bazy.
+
+        Raises:
+            ArchiveError: archiwum nieczytelne, niezgodne ze schematem albo
+                naruszające własne odciski (komunikat PL)
+        """
+        odczyt = _odczytaj_archiwum_zip(archive_bytes)
+        bledy_integralnosci = verify_archive_integrity(odczyt.surowy)
+        if bledy_integralnosci:
+            raise ArchiveError(
+                "Archiwum nie przeszło weryfikacji integralności: " + "; ".join(bledy_integralnosci)
+            )
+        return odczyt.archiwum
+
+
+@dataclass(frozen=True)
+class _OdczytaneArchiwum:
+    """Wynik dekodowania pliku ZIP archiwum (`_odczytaj_archiwum_zip`)."""
+
+    surowy: dict[str, Any]  # project.json przed `dict_to_archive` (sekcje 2.x)
+    archiwum: ProjectArchive
+    manifest: bytes | None  # surowy manifest.json — metadane podglądu, nie archiwum
+
+
+def _odczytaj_archiwum_zip(archive_bytes: bytes) -> _OdczytaneArchiwum:
+    """JEDYNY dekoder pliku ZIP archiwum projektu — import, podgląd i porównanie.
+
+    Każde uszkodzenie pliku zamienia na nazwany `ArchiveError` z komunikatem PL
+    (wołający odpowiada nazwanym błędem, nigdy połkniętym wyjątkiem ogólnym).
+    Inwentarz uszkodzeń, na które odczyt niezaufanych bajtów ZIP naprawdę
+    trafia (każde przypięte testem w `tests/api/test_archive_diff_koncowki.py`):
+      * bajty nie są archiwum ZIP / uszkodzony katalog albo CRC — `BadZipFile`;
+      * uszkodzony strumień skompresowany — `zlib.error`, `EOFError` (urwany);
+      * wpis zaszyfrowany (`RuntimeError`) albo nieobsługiwana metoda kompresji
+        (`NotImplementedError`) — zgłaszane przez `ZipFile.read` dla wpisu;
+      * brak `project.json`; `project.json` nie w UTF-8; niepoprawny JSON;
+        JSON, który nie jest obiektem;
+      * obiekt bez wymaganej sekcji / w złej wersji — `dict_to_archive` sam
+        zgłasza `ArchiveStructureError` / `ArchiveVersionError`;
+      * sekcja bez wymaganego POLA albo złego typu — `dict_to_archive` czyta
+        pola wprost (`pm["id"]`, `cases.get(...)`), więc zgłasza `KeyError` /
+        `TypeError` / `AttributeError`. Tłumaczenie obejmuje WYŁĄCZNIE wywołanie
+        tego czystego odwzorowania słownika na dataclassy (zero innej logiki
+        pod spodem), więc te trzy typy znaczą tu zawsze „archiwum niezgodne ze
+        schematem", nie błąd programu.
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(archive_bytes), "r") as zf:
+            nazwy = zf.namelist()
+            if "project.json" not in nazwy:
+                raise ArchiveError("Archiwum nie zawiera pliku project.json")
+            project_json_bytes = zf.read("project.json")
+            manifest = zf.read("manifest.json") if "manifest.json" in nazwy else None
+    except zipfile.BadZipFile as e:
+        raise ArchiveError("Nieprawidłowy format archiwum ZIP") from e
+    except (zlib.error, EOFError) as e:
+        raise ArchiveError(f"Uszkodzone dane skompresowane w archiwum ZIP: {e}") from e
+    except (RuntimeError, NotImplementedError) as e:
+        raise ArchiveError(f"Nie można odczytać wpisu archiwum ZIP: {e}") from e
+
+    try:
+        project_json = project_json_bytes.decode("utf-8")
+    except UnicodeDecodeError as e:
+        raise ArchiveError("Plik project.json nie jest poprawnym tekstem UTF-8") from e
+    try:
+        surowy = json.loads(project_json)
+    except json.JSONDecodeError as e:
+        raise ArchiveError(f"Błąd parsowania JSON: {e}") from e
+    if not isinstance(surowy, dict):
+        raise ArchiveError("Plik project.json nie zawiera obiektu archiwum")
+
+    try:
+        archiwum = dict_to_archive(surowy)
+    except (KeyError, TypeError, AttributeError) as e:
+        raise ArchiveError(f"Archiwum niezgodne ze schematem — brak albo zły typ pola: {e}") from e
+    return _OdczytaneArchiwum(surowy=surowy, archiwum=archiwum, manifest=manifest)
+
+
+def _data_eksportu_z_manifestu(manifest: bytes | None) -> str | None:
+    """`exported_at` z manifest.json (podgląd); uszkodzony manifest = nazwany błąd."""
+    if manifest is None:
+        return None
+    try:
+        dane = json.loads(manifest.decode("utf-8"))
+    except UnicodeDecodeError as e:
+        raise ArchiveError("Plik manifest.json nie jest poprawnym tekstem UTF-8") from e
+    except json.JSONDecodeError as e:
+        raise ArchiveError(f"Błąd parsowania JSON: {e}") from e
+    if not isinstance(dane, dict):
+        raise ArchiveError("Plik manifest.json nie zawiera obiektu")
+    wartosc = dane.get("exported_at")
+    return wartosc if isinstance(wartosc, str) else None
 
 
 def _find_elements_without_catalog(model: EnergyNetworkModel | None) -> list[str]:

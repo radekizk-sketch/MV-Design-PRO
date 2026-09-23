@@ -39,11 +39,23 @@ from domain.project_archive import (
 # format, jaki ten moduł porównuje: `compare_archives` bierze dwa już
 # ZAIMPORTOWANE `ProjectArchive`, więc oba są zawsze 3.0.0, niezależnie od
 # wersji pliku ZIP, z którego powstały — `dict_to_archive` te sekcje ignoruje)
-# już ich nie niesie. Diffowanie sekcji `enm` (model per przypadek) NIE jest tu
-# dodane — kształt `{case_id, snapshot}` nie jest listą elementów z polem "id"
-# jak pozostałe sekcje; potrzebuje osobnej strategii porównania modelu ENM,
-# która jest POZA zakresem karty W1-B-ARCH (nazwane w meldunku karty jako dług
-# nienaprawialny w tej sesji, nie cichy brak).
+# już ich nie niesie.
+#
+# ROZBICIE KAŻDEJ SEKCJI Z PRODUCENTEM (karta porównania archiwów, 2026-09-23).
+# Sekcja oznaczona jako zmieniona MUSI mówić, CO się zmieniło — inaczej wynik
+# „archiwum zmienione" nie daje projektantowi nic do sprawdzenia. Inwentarz klasy
+# „sekcja zmieniona bez rozbicia" przed kartą i jego stan po niej:
+#   * `enm` (model sieci — JEDYNY nośnik sieci) — w ogóle nie był porównywany:
+#     archiwa różniące się wyłącznie siecią dawały „zmienione" przy SZEŚCIU
+#     sekcjach identycznych. Teraz: `_roznice_sekcji_enm` (element po elemencie);
+#   * `project_meta` (jeden obiekt) i `cases.settings` (obiekt w sekcji) —
+#     zmiana bez wskazania pól. Teraz: pole po polu (`_roznice_obiektu`);
+#   * `runs.analysis_runs_index` (wpisy z polem `run_id`, nie `id`) — pomijany.
+#     Teraz: lista elementów po `run_id`;
+#   * `results` / `interpretations` / `issues` — ŚWIADOMIE bez rozbicia: eksport
+#     zapisuje je jako stałe puste kontenery (`ResultsSection` bez pól,
+#     `cached: []`, `snapshot: []` w `_collect_project_data`), nie ma producenta,
+#     więc nie ma zdefiniowanej tożsamości elementu; porównanie hashem całości.
 SECTION_LIST_KEYS: dict[str, dict[str, str]] = {
     "cases": {
         "study_cases": "id",
@@ -53,8 +65,16 @@ SECTION_LIST_KEYS: dict[str, dict[str, str]] = {
         # CV-3.3-B: `analysis_runs`/`study_runs` (R2/R3) usunięte razem z
         # torem, który je pisał — jeden rejestr biegów to `canonical_runs` (R1).
         "canonical_runs": "id",
+        # Indeks historyczny (`AnalysisRunIndexORM`) — tożsamość wpisu to `run_id`.
+        "analysis_runs_index": "run_id",
     },
     "results": {},
+}
+
+# Pola sekcji, które są POJEDYNCZYM obiektem (nie listą elementów) — porównanie
+# pole po polu jako jeden element o identyfikatorze równym nazwie pola.
+_SECTION_OBJECT_KEYS: dict[str, tuple[str, ...]] = {
+    "cases": ("settings",),
 }
 
 # Mapowanie nazw sekcji na atrybuty fingerprints
@@ -65,6 +85,7 @@ _SECTION_HASH_MAP: dict[str, str] = {
     "results": "results_hash",
     "interpretations": "interpretations_hash",
     "issues": "issues_hash",
+    "enm": "enm_hash",
 }
 
 # Mapowanie nazw sekcji na etykiety PL
@@ -75,7 +96,16 @@ _SECTION_LABELS_PL: dict[str, str] = {
     "results": "Wyniki",
     "interpretations": "Interpretacje",
     "issues": "Problemy",
+    "enm": "Model sieci",
 }
+
+# Pola, po których element listy modelu sieci ma tożsamość: elementy techniczne
+# (`ENMElement`) — `ref_id`; ciągi linii i węzły przyłączeniowe (`LineRun`,
+# `ConnectionNode`) oraz rekordy katalogu projektu — `id`.
+_POLA_TOZSAMOSCI_MODELU: tuple[str, ...] = ("ref_id", "id")
+
+# Identyfikator elementu opisującego pola proste samego modelu (poza kolekcjami).
+_ELEMENT_MODELU = "model"
 
 
 # ============================================================================
@@ -210,6 +240,13 @@ def _field_label_pl(field_name: str) -> str:
         "created_at": "Data utworzenia",
         "updated_at": "Data aktualizacji",
         "schema_version": "Wersja schematu",
+        "voltage_kv": "Napiecie znamionowe [kV]",
+        "revision": "Rewizja",
+        "hash_sha256": "Odcisk SHA-256",
+        "ref_id": "Identyfikator elementu",
+        "catalog_ref": "Referencja katalogowa",
+        "from_bus_ref": "Szyna poczatkowa",
+        "to_bus_ref": "Szyna koncowa",
     }
     return labels.get(field_name, field_name)
 
@@ -350,6 +387,171 @@ def _compare_fields(
     return changes
 
 
+def _pole_tozsamosci(elementy: list[Any]) -> str | None:
+    """Pole tożsamości kolekcji: lista słowników, z których KAŻDY niesie to pole."""
+    if not elementy or not all(isinstance(el, dict) for el in elementy):
+        return None
+    for pole in _POLA_TOZSAMOSCI_MODELU:
+        if all(pole in el for el in elementy):
+            return pole
+    return None
+
+
+def _roznice_obiektu(
+    obiekt_a: object,
+    obiekt_b: object,
+    sciezka: str,
+) -> list[ElementDiff]:
+    """Porownaj dwa obiekty (slowniki) — pola proste, kolekcje i obiekty zagniezdzone.
+
+    * pola proste (wartosci, listy wartosci, listy bez tozsamosci) — JEDEN
+      element `sciezka` z lista zmienionych pol;
+    * kolekcje (lista slownikow z tozsamoscia `ref_id`/`id`) — element po
+      elemencie (`compare_element_lists`), typ elementu = sciezka kolekcji;
+    * obiekty zagniezdzone — rekurencyjnie, sciezka `obiekt.pole`.
+
+    Brak obiektu (`None`) po jednej stronie = element DODANY/USUNIETY w calosci
+    (jak element listy w `compare_element_lists`). Sciezka pusta oznacza korzen
+    modelu sieci: jego pola proste opisuje element `model`, a kolekcje nosza
+    nazwy wprost (`buses`, `branches`, ...).
+    """
+    a = obiekt_a if isinstance(obiekt_a, dict) else None
+    b = obiekt_b if isinstance(obiekt_b, dict) else None
+    identyfikator = sciezka or _ELEMENT_MODELU
+    if a is None and b is None:
+        return []
+    if a is None or b is None:
+        return [
+            ElementDiff(
+                element_id=identyfikator,
+                element_type=identyfikator,
+                status=DiffStatus.ADDED if a is None else DiffStatus.REMOVED,
+                field_changes=(),
+            )
+        ]
+
+    podrzedne: list[ElementDiff] = []
+    proste_a: dict[str, Any] = {}
+    proste_b: dict[str, Any] = {}
+    for klucz in sorted(set(a) | set(b)):
+        wartosc_a = a.get(klucz)
+        wartosc_b = b.get(klucz)
+        podsciezka = f"{sciezka}.{klucz}" if sciezka else klucz
+        lista_a = wartosc_a if isinstance(wartosc_a, list) else []
+        lista_b = wartosc_b if isinstance(wartosc_b, list) else []
+        pole_id = _pole_tozsamosci(lista_a + lista_b)
+        if pole_id is not None and all(
+            isinstance(w, list) or w is None for w in (wartosc_a, wartosc_b)
+        ):
+            podrzedne.extend(
+                compare_element_lists(lista_a, lista_b, id_field=pole_id, element_type=podsciezka)
+            )
+        elif isinstance(wartosc_a, dict) or isinstance(wartosc_b, dict):
+            podrzedne.extend(_roznice_obiektu(wartosc_a, wartosc_b, podsciezka))
+        else:
+            if klucz in a:
+                proste_a[klucz] = wartosc_a
+            if klucz in b:
+                proste_b[klucz] = wartosc_b
+
+    wynik: list[ElementDiff] = []
+    zmiany_prostych = _compare_fields(proste_a, proste_b)
+    if zmiany_prostych:
+        wynik.append(
+            ElementDiff(
+                element_id=identyfikator,
+                element_type=identyfikator,
+                status=DiffStatus.MODIFIED,
+                field_changes=tuple(zmiany_prostych),
+            )
+        )
+    wynik.extend(podrzedne)
+    return wynik
+
+
+def _modele_sekcji_enm(sekcja: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Wpisy sekcji `enm`: identyfikator przypadku -> zrzut modelu.
+
+    Ta sama normalizacja wpisu co import archiwum (`application/project_archive/
+    service.py::_restore_project`): wpis-sentinel `case_id: None` (projekt bez
+    przypadkow) ma klucz pusty, wpis bez zrzutu-slownika jest pomijany.
+    """
+    modele: dict[str, dict[str, Any]] = {}
+    for wpis in sekcja.get("models", []) or []:
+        if not isinstance(wpis, dict):
+            continue
+        zrzut = wpis.get("snapshot")
+        if isinstance(zrzut, dict):
+            modele[str(wpis.get("case_id") or "")] = zrzut
+    return modele
+
+
+def _jedyny_model(modele: dict[str, dict[str, Any]]) -> tuple[bool, dict[str, Any] | None]:
+    """(czy archiwum niesie co najwyzej JEDEN rozny model, ten model albo None)."""
+    rozne = {compute_hash(zrzut): zrzut for zrzut in modele.values()}
+    if len(rozne) > 1:
+        return False, None
+    return True, next(iter(rozne.values()), None)
+
+
+def _roznice_sekcji_enm(
+    sekcja_a: dict[str, Any],
+    sekcja_b: dict[str, Any],
+) -> list[ElementDiff]:
+    """Porownaj model sieci dwoch archiwow element po elemencie.
+
+    CV-1-W: projekt ma JEDEN model sieci, a eksport (`_collect_enm`) zapisuje go
+    pod KAZDYM przypadkiem (wpisy bajtowo rowne). Porownanie idzie wiec po
+    MODELU PROJEKTU, nie po przypadkach — dwa rozne projekty maja rozne
+    identyfikatory przypadkow, a ta sama siec pod innymi przypadkami nie jest
+    zmiana sieci (zmiana listy przypadkow jest widoczna w sekcji `cases`).
+
+    Archiwum sprzed CV-1-W moze niesc ROZNE modele pod roznymi przypadkami (kazdy
+    przypadek mial wtedy wlasny model). Wtedy „model projektu" archiwum nie
+    istnieje i porownanie idzie PRZYPADEK PO PRZYPADKU — typ elementu dostaje
+    przedrostek `przypadek:<id>.`, a przypadek obecny tylko po jednej stronie
+    daje model DODANY/USUNIETY w calosci. Zero wyboru „ktory model wazniejszy".
+    """
+    modele_a = _modele_sekcji_enm(sekcja_a)
+    modele_b = _modele_sekcji_enm(sekcja_b)
+    jeden_a, model_a = _jedyny_model(modele_a)
+    jeden_b, model_b = _jedyny_model(modele_b)
+    if jeden_a and jeden_b:
+        return _roznice_obiektu(model_a, model_b, "")
+
+    roznice: list[ElementDiff] = []
+    for case_id in sorted(set(modele_a) | set(modele_b)):
+        roznice.extend(
+            _roznice_obiektu(modele_a.get(case_id), modele_b.get(case_id), f"przypadek:{case_id}")
+        )
+    return roznice
+
+
+def _roznice_elementow_sekcji(
+    section_name: str,
+    section_a_data: dict[str, Any],
+    section_b_data: dict[str, Any],
+) -> list[ElementDiff]:
+    """Rozbicie zmienionej sekcji na elementy (inwentarz: `SECTION_LIST_KEYS`)."""
+    if section_name == "project_meta":
+        return _roznice_obiektu(section_a_data, section_b_data, "project_meta")
+    if section_name == "enm":
+        return _roznice_sekcji_enm(section_a_data, section_b_data)
+
+    roznice: list[ElementDiff] = []
+    for list_key, id_field in sorted(SECTION_LIST_KEYS.get(section_name, {}).items()):
+        la = section_a_data.get(list_key, [])
+        lb = section_b_data.get(list_key, [])
+        roznice.extend(compare_element_lists(la, lb, id_field=id_field, element_type=list_key))
+    for object_key in _SECTION_OBJECT_KEYS.get(section_name, ()):
+        roznice.extend(
+            _roznice_obiektu(
+                section_a_data.get(object_key), section_b_data.get(object_key), object_key
+            )
+        )
+    return roznice
+
+
 # ============================================================================
 # POROWNANIE SEKCJI
 # ============================================================================
@@ -398,23 +600,27 @@ def compare_sections(
             element_diffs=(),
         )
 
-    # Gleboka analiza — porownaj listy elementow
-    list_keys = SECTION_LIST_KEYS.get(section_name, {})
-    all_element_diffs: list[ElementDiff] = []
-
-    for list_key, id_field in sorted(list_keys.items()):
-        la = section_a_data.get(list_key, [])
-        lb = section_b_data.get(list_key, [])
-        element_diffs = compare_element_lists(la, lb, id_field=id_field, element_type=list_key)
-        all_element_diffs.extend(element_diffs)
+    # Gleboka analiza — rozbicie sekcji na elementy
+    all_element_diffs = _roznice_elementow_sekcji(section_name, section_a_data, section_b_data)
 
     elements_added = sum(1 for d in all_element_diffs if d.status == DiffStatus.ADDED)
     elements_removed = sum(1 for d in all_element_diffs if d.status == DiffStatus.REMOVED)
     elements_modified = sum(1 for d in all_element_diffs if d.status == DiffStatus.MODIFIED)
 
+    # Sekcja `enm` niesie model projektu powielony pod kazdym przypadkiem
+    # (`_roznice_sekcji_enm`): rozny hash przy ZEROWEJ roznicy modelu znaczy
+    # wylacznie inna liste przypadkow (widoczna w sekcji `cases`) — sieci nic
+    # sie nie zmienilo, wiec sekcja sieci jest IDENTYCZNA, nie „zmieniona bez
+    # zmian". Pozostale sekcje: rozny hash = zmiana (jak dotad).
+    status = (
+        DiffStatus.IDENTICAL
+        if section_name == "enm" and not all_element_diffs
+        else DiffStatus.MODIFIED
+    )
+
     return SectionDiff(
         section_name=section_name,
-        status=DiffStatus.MODIFIED,
+        status=status,
         hash_a=hash_a,
         hash_b=hash_b,
         elements_added=elements_added,
