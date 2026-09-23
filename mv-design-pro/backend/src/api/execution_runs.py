@@ -12,6 +12,7 @@ from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
 from domain.execution import ExecutionAnalysisType
+from enm.badanie_zgodnosci import OpcjeBadaniaError
 from enm.canonical_analysis import (
     ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY,
     build_execution_result_set,
@@ -196,6 +197,14 @@ def create_run(
             options=_normalize_solver_input(analysis_type, request.solver_input),
         )
         return run.to_execution_dict()
+    except OpcjeBadaniaError as exc:
+        # Karta AB-1a D4: blad TRESCI zadania biegu dynamiki (dwa rodzaje badania
+        # naraz, rodzaj nieznany, badanie zgodnosci spoza kontraktu) — 422 z kodem,
+        # nie 409 (to nie jest konflikt stanu modelu).
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"kod": exc.kod, "komunikat": exc.komunikat},
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

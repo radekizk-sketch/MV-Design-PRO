@@ -64,6 +64,12 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from enm.badanie_zgodnosci import (
+    RODZAJ_BADANIE_ZGODNOSCI,
+    RodzajBadania,
+    badanie_zgodnosci_z_opcji,
+    rodzaj_badania_z_opcji,
+)
 from enm.dynamika_modele import ParametryDynamiczne
 from enm.mapping import ref_to_graph_id
 from enm.models import (
@@ -165,11 +171,21 @@ KOD_ZRODLO_BEZ_IMPEDANCJI = "dynamika.zrodlo_bez_impedancji"
 KOD_GALAZ_NIEOBSLUGIWANA = "dynamika.galaz_nieobslugiwana"
 #: Wytwórca, źródło albo odbiór wskazuje szynę, której model nie ma.
 KOD_ELEMENT_BEZ_SZYNY = "dynamika.element_bez_szyny"
+#: Bieg niesie BADANIE ZGODNOŚCI na zaciskach (`enm/badanie_zgodnosci.py`), a rdzeń
+#: DAE nie ma warunku brzegowego „szyna o zadanym przebiegu U(t)/f(t)" — szyna
+#: sztywna trzyma częstotliwość znamionową. Karta AB-1a D4 (§0 R-4): nazwana
+#: odmowa do czasu karty AB-3R, nigdy bieg policzony jak scenariusz sieciowy.
+#: Kod ma prefiks `bodziec.` (nazwa z karty), bo opisuje brak zdolności wobec
+#: BODŹCA badania, nie brak danej modelu sieci. Rejestr jest rejestrem ADAPTERA,
+#: nie rdzenia: to adapter rozpoznaje rodzaj badania (pojęcie ENM, którego rdzeń
+#: z założenia nie zna — patrz nota nad rejestrem).
+KOD_BODZIEC_RDZEN_NIEOBSLUGIWANY = "bodziec.rdzen_nieobslugiwany"
 
 #: Zamknięty rejestr kodów odmów adaptera. Nowy kod DOPISUJESZ tutaj —
 #: `OdmowaWejsciaDynamiki` odrzuca kod spoza rejestru (deklaracja z przypiętym
 #: testem, nie obietnica w docstringu).
 KODY_ODMOW_ADAPTERA: tuple[str, ...] = (
+    KOD_BODZIEC_RDZEN_NIEOBSLUGIWANY,
     KOD_ELEMENT_BEZ_SZYNY,
     KOD_GALAZ_NIEOBSLUGIWANA,
     KOD_NASTAWY_BRAK,
@@ -574,6 +590,43 @@ def nastawy_z_opcji(options: dict[str, Any], scenariusz: ScenariuszDynamiczny) -
         horyzont_s=float(scenariusz.horyzont_s),
         krok_wyjscia_s=float(scenariusz.krok_wyjscia_s),
         integrator=str(surowe["integrator"]),  # type: ignore[arg-type]
+    )
+
+
+#: Co trzeba dostarczyć, żeby badanie zgodności się wykonało — część komunikatu
+#: odmowy (karta AB-1a D4: „pełny kontekst").
+_WYMAGANIE_RDZENIA_BADANIA_PL = (
+    "rdzeń dynamiki potrzebuje szyny o zadanym przebiegu napięcia i częstotliwości "
+    "(źródło badawcze za impedancją zastępczą sieci) — zakres karty AB-3R"
+)
+
+_RODZAJ_BODZCA_PL: dict[str, str] = {
+    "profil_napiecia_zaciskow": "zadany przebieg napięcia na zaciskach",
+    "rampa_czestotliwosci": "rampa częstotliwości",
+    "skok_czestotliwosci": "skok częstotliwości",
+}
+
+
+def rodzaj_badania_biegu(options: dict[str, Any]) -> RodzajBadania:
+    """Rodzaj badania biegu `dynamika_rms`; `badanie_zgodnosci` kończy się odmową nazwaną.
+
+    JEDEN predykat dla wykonawcy biegu i dla złożenia wejścia: rodzaj czytany
+    `rodzaj_badania_z_opcji` (odczyt bez zapisu domyślki; sprzeczność = błąd
+    nazwany), a badanie zgodności jest walidowane kontraktem (`BadanieZgodnosci`)
+    i ODMAWIANE z kontekstem: urządzenie, rodzaj bodźca, czego brakuje rdzeniowi.
+    """
+    rodzaj = rodzaj_badania_z_opcji(options)
+    if rodzaj != RODZAJ_BADANIE_ZGODNOSCI:
+        return rodzaj
+    badanie = badanie_zgodnosci_z_opcji(options)
+    rodzaj_bodzca = badanie.bodziec.rodzaj
+    raise OdmowaWejsciaDynamiki(
+        KOD_BODZIEC_RDZEN_NIEOBSLUGIWANY,
+        f"Badanie zgodności urządzenia {badanie.urzadzenie_ref} "
+        f"({_RODZAJ_BODZCA_PL[rodzaj_bodzca]}, horyzont {badanie.horyzont_s} s) nie "
+        f"zostało wykonane: {_WYMAGANIE_RDZENIA_BADANIA_PL}. Wynik nie powstaje — "
+        "bodziec na zaciskach nie jest zastępowany zdarzeniem sieciowym",
+        elementy=(badanie.urzadzenie_ref, rodzaj_bodzca),
     )
 
 
@@ -1116,6 +1169,9 @@ def zloz_wejscie_dynamiki(
     admitancje gałęzi czyta się z niego, a nie z drugiego przebiegu mapowania.
     """
     odmow_gdy_braki_modelu(EnergyNetworkModel.model_validate(snapshot))
+    # Karta AB-1a D4: badanie zgodności na zaciskach nie jest scenariuszem
+    # sieciowym — odmowa nazwana, zanim ktokolwiek zacznie składać sieć.
+    rodzaj_badania_biegu(options)
 
     base_mva = punkt.base_mva
     scenariusz = scenariusz_z_opcji(options)
@@ -1187,6 +1243,7 @@ __all__ = [
     "KLUCZ_NASTAW",
     "KLUCZ_SCENARIUSZA",
     "KODY_ODMOW_ADAPTERA",
+    "KOD_BODZIEC_RDZEN_NIEOBSLUGIWANY",
     "KOD_ELEMENT_BEZ_SZYNY",
     "KOD_GALAZ_NIEOBSLUGIWANA",
     "KOD_NASTAWY_BRAK",
@@ -1213,6 +1270,7 @@ __all__ = [
     "harmonogram_z_scenariusza",
     "nastawy_z_opcji",
     "punkt_pracy_z_biegu_rozplywu",
+    "rodzaj_badania_biegu",
     "scenariusz_z_opcji",
     "zalozenia_wejscia",
     "zloz_urzadzenia",

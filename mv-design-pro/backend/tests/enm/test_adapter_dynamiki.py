@@ -189,7 +189,16 @@ def test_kody_odmow_zamkniete() -> None:
     obietnicą bez pokrycia (CLAUDE.md „KLASA, NIE INSTANCJA" p. 4).
     """
     assert len(set(KODY_ODMOW_ADAPTERA)) == len(KODY_ODMOW_ADAPTERA)
-    assert all(kod.startswith("dynamika.") for kod in KODY_ODMOW_ADAPTERA)
+    # Karta AB-1a D4 (2026-09-23): rejestr urosl o JEDEN kod — `bodziec.rdzen_nieobslugiwany`
+    # (badanie zgodnosci na zaciskach, ktorego rdzen DAE nie umie wykonac do karty AB-3R).
+    # Prefiks `bodziec.` jest nazwa z karty (§0 R-4): odmowa dotyczy BODZCA badania, nie
+    # braku danej modelu sieci. Kod trafil do rejestru ADAPTERA, nie rdzenia
+    # (`kontrakty.py::KODY_ODMOW`), bo to adapter rozpoznaje rodzaj badania — pojecie ENM,
+    # ktorego rdzen z zalozenia nie zna. Kazdy inny prefiks nadal jest bledem.
+    assert all(kod.startswith(("dynamika.", "bodziec.")) for kod in KODY_ODMOW_ADAPTERA)
+    assert [kod for kod in KODY_ODMOW_ADAPTERA if kod.startswith("bodziec.")] == [
+        "bodziec.rdzen_nieobslugiwany"
+    ]
     for kod in KODY_ODMOW_ADAPTERA:
         odmowa = OdmowaWejsciaDynamiki(kod, "komunikat")
         assert odmowa.kod == kod

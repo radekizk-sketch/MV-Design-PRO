@@ -44,6 +44,7 @@ from enm.adapter_dynamiki import (
     PunktPracyRozplywu,
     odmow_gdy_braki_modelu,
     punkt_pracy_z_biegu_rozplywu,
+    rodzaj_badania_biegu,
     zalozenia_wejscia,
     zloz_wejscie_dynamiki,
 )
@@ -61,6 +62,7 @@ from enm.assembler import (
     zloz_wejscie_rozplywu_niesymetrycznego,
     zloz_wejscie_zwarcia,
 )
+from enm.badanie_zgodnosci import waliduj_opcje_badania
 from enm.element_kind import rodzaj_elementu, zbuduj_indeks_rodzajow
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
@@ -941,6 +943,12 @@ def create_run(
             normalized_options=normalized_options,
             project_id_koperty=project_id_koperty,
         )
+    if analysis_type == "dynamika_rms":
+        # Karta AB-1a D4: rodzaj badania (scenariusz sieciowy / badanie zgodnosci)
+        # jest walidowany przy UTWORZENIU biegu — dwa rodzaje naraz albo tresc
+        # badania spoza kontraktu to blad nazwany (`OpcjeBadaniaError`, API: 422).
+        # ODCZYT, bez zapisu: `normalized_options` (a wiec `input_hash`) bez zmian.
+        waliduj_opcje_badania(normalized_options)
     input_hash = _compute_input_hash(
         case_id=case_id,
         analysis_type=analysis_type,
@@ -1796,6 +1804,10 @@ def _execute_dynamika_rms(run: CanonicalRun) -> None:
     i kodem. Bieg, który nie ma punktu pracy albo nie zbiega, NIE oddaje wyniku
     pustego ani „rozgrzewkowego".
     """
+    # Karta AB-1a D4: rodzaj badania czytany PRZED punktem pracy — badanie
+    # zgodnosci na zaciskach konczy sie odmowa nazwana `bodziec.rdzen_nieobslugiwany`
+    # z kontekstem, zamiast odmowa o brakujacym rozplywie, ktory nie jest jego przyczyna.
+    rodzaj_badania = rodzaj_badania_biegu(run.options or {})
     punkt = _bieg_rozplywu_punktu_pracy(run)
     snapshot = run.snapshot or {}
     # Bramka warunków MODELOWYCH przed budową grafu IR: mapowanie ENM→graf ma
@@ -1825,6 +1837,10 @@ def _execute_dynamika_rms(run: CanonicalRun) -> None:
         # Tożsamość punktu pracy jest częścią WYNIKU, nie ciekawostką śladu:
         # bez niej nie da się powiedzieć, OD JAKIEGO stanu ruszył przebieg.
         "pf_run_id": punkt.run_id,
+        # Karta AB-1a D4: koperta wyniku mówi, KTÓRYM badaniem był bieg
+        # (scenariusz sieciowy albo badanie zgodności na zaciskach). Pole spoza
+        # ładunku `resultset_dynamic_v1` — odciski kontraktu wyniku bez zmian.
+        "rodzaj_badania": rodzaj_badania,
     }
     run.white_box_trace = [
         {

@@ -835,3 +835,117 @@ class TestSciezkaUzytkownika:
         )
         assert bieg["status"] == "FAILED"
         assert "dynamika.rodzaj_zdarzenia_nieobslugiwany" in bieg["error_message"]
+
+
+# ---------------------------------------------------------------------------
+# Karta AB-1a D4: rodzaj badania biegu i badanie zgodnosci na zaciskach — sciezka HTTP
+# ---------------------------------------------------------------------------
+
+#: Badanie zgodnosci (skok czestotliwosci) — tresc zgodna z kontraktem
+#: `enm/badanie_zgodnosci.py::BadanieZgodnosci`; liczby sa danymi TESTU.
+BADANIE_ZGODNOSCI = {
+    "urzadzenie_ref": "gen-pv",
+    "bodziec": {
+        "rodzaj": "skok_czestotliwosci",
+        "t_s": 0.2,
+        "f_przed_hz": 50.0,
+        "f_do_hz": 49.0,
+        "pasmo_waznosci_modelu_hz": {
+            "f_min_hz": 47.0,
+            "f_max_hz": 52.0,
+            "proweniencja": {"zrodlo": "karta_producenta", "odniesienie": "karta-testowa-1"},
+        },
+    },
+    "impedancja_zastepcza_sieci": {
+        "jednostka": "ohm",
+        "r": 0.05,
+        "x": 0.5,
+        "u_bazowe_kv": 15.0,
+        "s_bazowa_mva": None,
+        "proweniencja": {"zrodlo": "karta_producenta", "odniesienie": "karta-testowa-1"},
+    },
+    "horyzont_s": 1.0,
+    "krok_wyjscia_s": 0.02,
+}
+
+
+class TestRodzajBadania:
+    def test_oba_rodzaje_naraz_to_422_nazwany(self, client: TestClient) -> None:
+        case_id = _nowy_przypadek(client)
+        _seed_siec_wzorcowa(client, case_id)
+        odpowiedz = client.post(
+            f"/api/execution/study-cases/{case_id}/runs",
+            json={
+                "analysis_type": "DYNAMIKA_RMS",
+                "solver_input": {
+                    "dynamika": SCENARIUSZ_CZASOWY,
+                    "badanie_zgodnosci": BADANIE_ZGODNOSCI,
+                    "nastawy_solvera": NASTAWY_SOLVERA,
+                },
+            },
+        )
+        assert odpowiedz.status_code == 422, odpowiedz.text
+        szczegol = odpowiedz.json()["detail"]
+        assert szczegol["kod"] == "dynamika.rodzaj_badania_sprzeczny"
+        assert "jednoczesnie" in szczegol["komunikat"]
+
+    def test_badanie_spoza_kontraktu_to_422_nazwany(self, client: TestClient) -> None:
+        case_id = _nowy_przypadek(client)
+        _seed_siec_wzorcowa(client, case_id)
+        zle = json.loads(json.dumps(BADANIE_ZGODNOSCI))
+        del zle["impedancja_zastepcza_sieci"]
+        odpowiedz = client.post(
+            f"/api/execution/study-cases/{case_id}/runs",
+            json={
+                "analysis_type": "DYNAMIKA_RMS",
+                "solver_input": {"rodzaj_badania": "badanie_zgodnosci", "badanie_zgodnosci": zle},
+            },
+        )
+        assert odpowiedz.status_code == 422, odpowiedz.text
+        assert odpowiedz.json()["detail"]["kod"] == "dynamika.badanie_zgodnosci_niepoprawne"
+        assert "impedancja_zastepcza_sieci" in odpowiedz.json()["detail"]["komunikat"]
+
+    def test_badanie_zgodnosci_konczy_sie_odmowa_bodziec_rdzen_nieobslugiwany(
+        self, client: TestClient
+    ) -> None:
+        """Bieg z badaniem zgodnosci jest TWORZONY (kontrakt poprawny), ale wykonanie
+        konczy sie odmowa nazwana — nigdy wynikiem policzonym jak scenariusz sieciowy."""
+        case_id = _nowy_przypadek(client)
+        _seed_siec_wzorcowa(client, case_id)
+        pf_run_id = _uruchom_rozplyw(client, case_id)
+        bieg = _uruchom_dynamike(
+            client,
+            case_id,
+            {
+                "pf_run_id": pf_run_id,
+                "rodzaj_badania": "badanie_zgodnosci",
+                "badanie_zgodnosci": BADANIE_ZGODNOSCI,
+                "nastawy_solvera": NASTAWY_SOLVERA,
+            },
+        )
+        assert bieg["status"] == "FAILED"
+        assert "bodziec.rdzen_nieobslugiwany" in bieg["error_message"]
+        assert "gen-pv" in bieg["error_message"]
+        wynik = client.get(f"/api/analysis-runs/{bieg['run_id']}/results/dynamika")
+        assert wynik.status_code == 404, wynik.text
+
+    def test_scenariusz_sieciowy_niesie_rodzaj_badania_i_domene_w_kopercie(
+        self, client: TestClient
+    ) -> None:
+        case_id = _nowy_przypadek(client)
+        _seed_siec_wzorcowa(client, case_id)
+        pf_run_id = _uruchom_rozplyw(client, case_id)
+        solver_input = {
+            "pf_run_id": pf_run_id,
+            "dynamika": SCENARIUSZ_CZASOWY,
+            "nastawy_solvera": NASTAWY_SOLVERA,
+        }
+        bieg = _uruchom_dynamike(client, case_id, solver_input)
+        assert bieg["status"] == "DONE", bieg["error_message"]
+        ladunek = client.get(f"/api/analysis-runs/{bieg['run_id']}/results/dynamika").json()
+        # Brak pola w opcjach = scenariusz sieciowy (odczyt, nie zapis domyslki).
+        assert ladunek["rodzaj_badania"] == "scenariusz_sieciowy"
+        szczegol = client.get(f"/api/analysis-runs/{bieg['run_id']}").json()
+        assert "rodzaj_badania" not in szczegol["input_metadata"]["options"]
+        assert szczegol["physics_domain"] == "RMS_DYNAMICS"
+        assert szczegol["physics_domain_pl"] == "dynamika RMS (przebiegi czasowe)"
