@@ -16,7 +16,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from tests.ci.generuj_odpowiedzi_v126 import SCIEZKA_FIXTURY, zbuduj_odpowiedzi
+from tests.ci.generuj_odpowiedzi_v126 import (
+    SCIEZKA_FIXTURY,
+    SCIEZKA_WYNIKOW_INZYNIERSKICH,
+    zbuduj_odpowiedzi,
+    zbuduj_wyniki_inzynierskie,
+)
 
 
 def _sciezki(payload: Any, prefiks: str = "") -> set[str]:
@@ -50,6 +55,23 @@ def test_fixtura_odpowiedzi_zgodna_z_solverem() -> None:
             "prezentacji — uruchom `python tests/ci/generuj_odpowiedzi_v126.py` "
             "i uzupełnij prezentację nowych pól w `ui2/wyniki/akademickie/prezentacja.ts`"
         )
+
+
+def test_fixtura_wynikow_inzynierskich_zgodna_z_adapterem() -> None:
+    """Fixtura panelu „Wynik inżynierski" = adapter na ZAPISANYCH ładunkach (karta AB-1a D7).
+
+    Parytet WARTOŚCI (nie tylko kluczy): wejściem jest zapisana fixtura solvera, więc
+    zmiana numeryki solvera nie rusza tego testu — rusza go wyłącznie zmiana adaptera,
+    a wtedy test frontu musi zobaczyć nowy kształt.
+    """
+    zapisana = json.loads(SCIEZKA_FIXTURY.read_text(encoding="utf-8"))
+    zapisane_wyniki = json.loads(SCIEZKA_WYNIKOW_INZYNIERSKICH.read_text(encoding="utf-8"))
+    assert zapisane_wyniki == json.loads(json.dumps(zbuduj_wyniki_inzynierskie(zapisana))), (
+        "Fixtura wyników inżynierskich rozjechana z adapterem — uruchom "
+        "`python tests/ci/generuj_odpowiedzi_v126.py`"
+    )
+    # Kontrola dodatnia: fixtura niesie co najmniej jedną pozycję Z elementami.
+    assert any(pozycja["elementy"] for pozycja in zapisane_wyniki.values())
 
 
 def test_kazdy_krok_sladu_ma_polska_postac_wyniku() -> None:
