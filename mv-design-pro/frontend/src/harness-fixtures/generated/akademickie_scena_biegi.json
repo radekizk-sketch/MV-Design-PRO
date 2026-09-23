@@ -9557,7 +9557,43 @@
           ]
         },
         "run_id": "run-v126-scena-akademickie-benchmark_validation",
-        "status": "FINISHED"
+        "status": "FINISHED",
+        "wynik_inzynierski": {
+          "element_rodzaj": null,
+          "elementy": [],
+          "etap": "E4",
+          "grupa": "wytrzymalosc_toru",
+          "jednostka": "%",
+          "kryterium_id": "v126.benchmark.odchylka",
+          "liczba_naruszen": 0,
+          "liczba_niesprawdzonych": 0,
+          "liczba_ocenionych": 0,
+          "liczba_ostrzezen": 0,
+          "nazwa_pl": "Odchyłka wyniku od wartości referencyjnej sieci odniesienia",
+          "norma_pl": "Brak wskazanego dokumentu podstawy wymagania",
+          "physics_domain": null,
+          "podstawa": {
+            "dokument": null,
+            "klauzula": null,
+            "uwaga_pl": "Tolerancja i wartość referencyjna pochodzą z danych wejściowych biegu (sieć odniesienia wskazana przez użytkownika); solver nie weryfikuje ich źródła.",
+            "wersja": null,
+            "zrodlo_status": "UNVERIFIED_SOURCE"
+          },
+          "powod_kod": null,
+          "powod_pl": "Walidacja benchmarkowa wymaga referencji (IEEE 9/14/39-bus, CIGRE MV) z wartościami policzonymi przez solver. Bez nich werdyktu PASS/FAIL nie wystawia się (zakaz cichego fałszu K-09).",
+          "run_id": "run-v126-scena-akademickie-benchmark_validation",
+          "stan": "NIESPRAWDZONE",
+          "symbol": "δ",
+          "symbol_latex": "\\delta",
+          "warunek": "nie_wiecej_niz",
+          "warunek_latex": "\\delta = \\dfrac{|x - x_{\\mathrm{ref}}|}{|x_{\\mathrm{ref}}|} \\leq \\delta_{\\mathrm{tol}}",
+          "warunek_pl": "Odchyłka względna nie większa od tolerancji",
+          "wielkosc_pl": "Odchyłka względna od wartości referencyjnej",
+          "wiodacy_element_id": null,
+          "wiodacy_opis_pl": null,
+          "zakres_oceny": "kryterium",
+          "zrodlo": "v126:benchmark_validation"
+        }
       }
     },
     "uncertainty_sensitivity": {
@@ -10231,7 +10267,43 @@
           ]
         },
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
-        "status": "FINISHED"
+        "status": "FINISHED",
+        "wynik_inzynierski": {
+          "element_rodzaj": null,
+          "elementy": [],
+          "etap": "E4",
+          "grupa": "wytrzymalosc_toru",
+          "jednostka": "J",
+          "kryterium_id": "v126.ner.wytrzymalosc_cieplna",
+          "liczba_naruszen": 0,
+          "liczba_niesprawdzonych": 0,
+          "liczba_ocenionych": 0,
+          "liczba_ostrzezen": 0,
+          "nazwa_pl": "Wytrzymałość cieplna rezystora uziemiającego punkt neutralny",
+          "norma_pl": "Brak wskazanego dokumentu podstawy wymagania",
+          "physics_domain": "SEQUENCE_DOMAIN",
+          "podstawa": {
+            "dokument": null,
+            "klauzula": null,
+            "uwaga_pl": "Warunek cieplny rezystora uziemiającego (energia wydzielona w czasie wyłączenia nie większa od energii znamionowej z danych producenta) — solver nie wskazuje dokumentu normowego tego warunku; energia znamionowa pochodzi z parametru biegu.",
+            "wersja": null,
+            "zrodlo_status": "UNVERIFIED_SOURCE"
+          },
+          "powod_kod": null,
+          "powod_pl": "Brak sprawdzenia cieplnego w wyniku.",
+          "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
+          "stan": "NIESPRAWDZONE",
+          "symbol": "E",
+          "symbol_latex": "E",
+          "warunek": "nie_wiecej_niz",
+          "warunek_latex": "E = I_{ef}^{2} R\\, t_{w} \\leq E_{\\mathrm{zn}}",
+          "warunek_pl": "Energia wydzielona w rezystorze nie większa od energii znamionowej",
+          "wielkosc_pl": "Energia wydzielona w rezystorze w czasie wyłączenia doziemienia",
+          "wiodacy_element_id": null,
+          "wiodacy_opis_pl": null,
+          "zakres_oceny": "kryterium",
+          "zrodlo": "v126:neutral_earthing_design"
+        }
       }
     }
   }
