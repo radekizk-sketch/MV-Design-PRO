@@ -23,7 +23,7 @@ powstałby jako druga wyspa, a tor R dalej produkowałby werdykty bez towarzyszy
 | R-5 | Guard werdyktu działa na **obiekcie wyniku**, nie na literale (reguła audytu §3.3 p. 1–8, przeniesiona do docstringu guardu w całości). Zamknięta lista wyjątków FROZEN z przypiętym adapterem per pozycja. `ochrona_lom.Verdict` NIE jest FROZEN → przebudowa w tej karcie. | audyt §3.3 |
 | R-6 | Poprawki rejestru dowodowego bez dotykania solvera FROZEN: T10 → zdolność `ncrfg_ptpiree.test_bez_tresci` (tier `NOT_SIMULATED`, claim `DYNAMIC_PERFORMANCE` → nie `reportable`); T20 → `ncrfg_ptpiree.power_quality_declared` z **poprawionym opisem** (limit 8 % zaszyty w `engine.py:860`, THD_U jest własnością napięcia sieci, nie emisji urządzenia) i `claim_kind=DYNAMIC_PERFORMANCE` (nie fakt konfiguracyjny) → nie `reportable`; **T05 (regulacja P), T12/T13 (zaprzestanie w ≤ 5 s / zmniejszenie z gradientem) → `ClaimKind.DYNAMIC_PERFORMANCE`** (twierdzenia o zachowaniu w czasie; przegląd adwersarialny §6.2) — nowa zdolność `ncrfg_ptpiree.zachowanie_zadeklarowane` z tier `DECLARATION`, nie `reportable` do czasu akceptacji deklaracji przez profil (AB-1b/AB-1c), z testem parowym; moduł z zerem wymaganych testów → `not_reportable` z ograniczeniem `brak_wymaganych_testow` (reinterpretacja w `dowod_ncrfg.py`, solver nietknięty). **Skutek widoczny dla użytkownika (zamierzony, uczciwy):** macierz NC RfG przestaje meldować `reportable` dla T05/T10/T12/T13/T20 — pin testowy „PPM typu A z samą deklaracją T12 nie jest `reportable`". | audyt §2.2, §6.6; przegląd adwersarialny §6.1, §6.2 |
 | R-7 | Liczby normatywne (progi LoM 2,0 Hz/s, 47,5 Hz, 51,5 Hz; limity 8/5/5 %) **nie zmieniają się** w tej karcie (OD-38, OD-40); zmienia się wyłącznie ich OPIS: pole `zrodlo_status = UNVERIFIED_SOURCE` tam, gdzie dokument/wersja/klauzula nie są potwierdzone. | plan §12.2 |
-| R-8 | Zakaz: edycji `network_model/solvers/**` poza `dynamika/zdarzenia.py::KODY_ODMOW` (dopisanie kodu odmowy — pod bramkami R10), `v126_academic.py`, `ncrfg_ptpiree/**`, `power_flow_*`, `short_circuit_*`; zakaz zmiany liczb w `catalog/profiles/nc_rfg/*.yaml`; zakaz nowych literałów fizyki w UI (`ui_no_physics_guard`). | B-01, R-07 planu |
+| R-8 | Zakaz: edycji `network_model/solvers/**` poza `dynamika/kontrakty.py::KODY_ODMOW` (karta błędnie wskazywała `zdarzenia.py` — pomiar wykonawcy 1; **wykonawca 1 nie dotknął rdzenia wcale**: kod `bodziec.rdzen_nieobslugiwany` trafił do zamkniętego rejestru adaptera `enm/adapter_dynamiki.py::KODY_ODMOW_ADAPTERA` — odchylenie od litery R-4 z zachowaną intencją, przyjęte przez architekta), `v126_academic.py`, `ncrfg_ptpiree/**`, `power_flow_*`, `short_circuit_*`; zakaz zmiany liczb w `catalog/profiles/nc_rfg/*.yaml`; zakaz nowych literałów fizyki w UI (`ui_no_physics_guard`). | B-01, R-07 planu |
 | R-9 | Terminologia: „miejsce przyłączenia" (nie „PCC"), etykiety UI po polsku bez kodów projektowych; identyfikatory wewnętrzne (E2E-*, G*, M*) nie trafiają do UI. | `pcc_zero_guard`, `no_codenames_guard` |
 
 ---
@@ -224,6 +224,21 @@ pozostałe listy zostają (ich kasacja to osobna klasa — AB-1d_min), ale test 
   pełnej regresji warstwy z kodami wyjścia łapanymi BEZPOŚREDNIO, (4) piny przeliczone z uzasadnieniem, (5) czego
   NIE zrobiono i dlaczego (jeśli cokolwiek), (6) rozstrzygnięcia własne (D1 rozpływ niesymetryczny; wybór
   komponentu nagłówka; miejsce ekranu LoM).
+
+## §3a Odbiór wykonawcy 1 (Fable, 2026-09-23)
+
+Commity `c4efe7e9…ea5372c0` cherry-pickowane na gałąź programu jako `fb21d6e3…52224d2f`; meldunek:
+`docs/evidence/MELDUNEK_AB_1A_WYKONAWCA_1_2026-09.md`. Rozstrzygnięcia wykonawcy przyjęte: (1) rozpływ
+niesymetryczny = `POWER_FLOW`/`abc`; (2) siódma domena `ELECTROMAGNETIC_TRANSIENTS` dla `transient_trv`;
+(3) kod odmowy w rejestrze adaptera, rdzeń nietknięty; (4) nagłówek = `ui2/wyniki/wzorzec/EkranAnalizy.tsx`
+przez `useSwiezoscNaglowka`; (5) pasmo ważności bodźca częstotliwościowego = dana wejściowa z proweniencją.
+Wykonawca 1 wykonał też R-6 (rejestr dowodowy) — nakładka z zakresem wykonawcy 2 rozstrzygana przy
+integracji na korzyść wersji już scalonej. Dług nazwany przez wykonawcę do domknięcia w tej samej kolejce:
+`claim_kind` nowych wpisów rejestru zdolności zostało domyślne (`DYNAMIC_PERFORMANCE`), więc np. zwarcia
+niosą etykietę „zachowanie_dynamiczne" — mylące → trzeci rodzaj twierdzenia `WIELKOSC_FIZYCZNA` (wynik
+solvera stanu ustalonego/zwarć; dopuszczalny jako dowód wyłącznie przy `VALIDATED_SIMULATION`) dopisany przez
+Fable po zielonych bramkach integracyjnych. Napięcie FAB-K (certyfikat powstaje dla modułu z certyfikatem
+PTPiREE i zerem testów wymaganych mimo `not_reportable`) → AB-1b (blokada przy `UNVERIFIED_SOURCE`).
 
 ## §4 Bramki odbioru (Fable, po cherry-pick na gałąź programu)
 
