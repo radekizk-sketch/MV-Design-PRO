@@ -60,7 +60,7 @@ jobs:
       # `api_lifecycle_guard.py`, ktorego test kontraktu jest wlasnie w tym
       # zbiorze. Jeden z tych testow zdazyl w tym czasie zgnic (rejestr decyzji
       # w atrapie nie nadazyl za kanonem V12D-036) — nikt tego nie widzial,
-      # bo test sie nie wykonywal. Czas biegu: ~2 s.
+      # bo test sie nie wykonywal. Czas biegu zmierzony 2026-09-23: ~7 min (1128 samotestów; samotesty strażnika werdyktu i bramki mypy uruchamiają prawdziwy parser TS i prawdziwe mypy).
       # Karta AB-1a Pakiet E1: samotest `werdykt_wyjasnialny_guard` (w kroku ponizej) parsuje
       # AST TypeScript pakietem `typescript` z `frontend/node_modules`. Bez `npm ci` ten test
       # padalby na braku parsera (blad srodowiska), a pominiecie go warunkowo byloby
