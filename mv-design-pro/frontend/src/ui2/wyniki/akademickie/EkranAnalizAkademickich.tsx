@@ -83,6 +83,15 @@ import { maParametry, zbudujParametry, type StanPol, type WierszListy } from './
 import { FormularzParametrow } from './FormularzParametrow';
 import { useNazwaObiektu } from './useNazwaObiektu';
 import {
+  fmtMargines,
+  fmtOdniesienie,
+  fmtWartoscZJednostka,
+  nazwaPrzedmiotu,
+  wynikPL,
+} from '../ocena/model';
+import { OCENA_STRINGS } from '../ocena/strings';
+import { PodstawaStrukturalna, SzczegolyWyniku } from '../ocena/WynikWyjasniony';
+import {
   AKADEMICKIE_STRINGS as S,
   etykietaGotowosci,
   etykietaProweniencjiWidma,
@@ -1203,6 +1212,61 @@ function PanelRankinguNieprezentowanego({
   );
 }
 
+/**
+ * Wynik inżynierski werdyktu analizy (karta AB-1a D7): werdykt-literał wyniku FROZEN
+ * opakowany w backendzie w obiekt z wartością, wymaganiem, zapasem, podstawą i
+ * dowodem — ten sam kształt i te same elementy prezentacji co ekran „Ocena
+ * techniczna wyników". Brak pola = rodzaj bez werdyktu (panel się nie pojawia).
+ */
+function PanelWynikuInzynierskiego({
+  wynik,
+  trybEkspercki,
+}: {
+  wynik: OdpowiedzWyniku;
+  trybEkspercki: boolean;
+}) {
+  const pozycja = wynik.wynik_inzynierski;
+  if (!pozycja) return null;
+  return (
+    <section className="mvd-akad-sekcja" data-testid="mvd-akad-wynik-inzynierski">
+      <h3 className="mvd-akad-sekcja-tytul">{S.wynikInzynierskiTytul}</h3>
+      <p className="mvd-akad-opis">{S.wynikInzynierskiOpis}</p>
+      {pozycja.podstawa !== null && (
+        <PodstawaStrukturalna podstawa={pozycja.podstawa} testid="mvd-akad-wi-podstawa" />
+      )}
+      {pozycja.elementy.length === 0 ? (
+        <p className="mvd-akad-opis" data-testid="mvd-akad-wi-bez-elementow">
+          {pozycja.powod_pl ?? OCENA_STRINGS.wynikBrakPodstaw}
+        </p>
+      ) : (
+        <div className="mvd-akad-wiersze">
+          {pozycja.elementy.map((element, indeks) => (
+            <div
+              className="mvd-akad-wiersz"
+              key={`${element.element_id ?? 'agregat'}:${indeks}`}
+              data-testid={`mvd-akad-wi-element-${indeks}`}
+            >
+              <span className="mvd-akad-wiersz-etyk">{nazwaPrzedmiotu(element)}</span>
+              <span className="mvd-akad-wiersz-wartosc">
+                {wynikPL(element.wynik)} · {OCENA_STRINGS.kolWartosc}:{' '}
+                {fmtWartoscZJednostka(element.wartosc, element.jednostka || pozycja.jednostka)} ·{' '}
+                {OCENA_STRINGS.kolOdniesienie}: {fmtOdniesienie(element, pozycja)} ·{' '}
+                {OCENA_STRINGS.kolMargines}: {fmtMargines(element)}
+              </span>
+              <span className="mvd-akad-opis">{element.wniosek_pl}</span>
+              <SzczegolyWyniku
+                element={element}
+                trybEkspercki={trybEkspercki}
+                testid={`mvd-akad-wi-szczegoly-${indeks}`}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 /** Źródła przekształtnikowe wejścia (karta W2-C): proweniencja widma i źródła pominięte. */
 function PanelZrodelHarmonicznych({ wynik }: { wynik: OdpowiedzWyniku }) {
   const nazwaObiektu = useNazwaObiektu();
@@ -1947,6 +2011,7 @@ export function EkranAnalizAkademickich({
               </section>
 
               <PanelWerdyktu rodzaj={wybrany} payload={stan.dane.wynik.result.result} karta={karta} />
+              <PanelWynikuInzynierskiego wynik={stan.dane.wynik} trybEkspercki={trybEkspercki} />
               {(wybrany === 'power_quality_harmonics' || wybrany === 'ssci_impedance') && (
                 <PanelZrodelHarmonicznych wynik={stan.dane.wynik} />
               )}

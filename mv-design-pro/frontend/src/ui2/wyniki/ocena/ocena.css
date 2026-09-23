@@ -374,3 +374,10 @@
   margin: 0;
   color: var(--mvd-err);
 }
+
+/* Karta AB-1a D2 — domena fizyczna pozycji (znacznik obok tytułu). */
+.mvd-ocena-domena {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}

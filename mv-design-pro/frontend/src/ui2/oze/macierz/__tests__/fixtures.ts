@@ -257,6 +257,7 @@ export function wynikFixture(): NcRfgRunResult {
       },
     },
     evidence_by_test: {},
+    wynik_inzynierski: {},
     test_catalog: katalogFixture().tests,
     white_box_trace: [
       {

@@ -59,6 +59,9 @@ export interface OpcjeAtrapy {
   /** Karta W2-C: pola addytywne odpowiedzi wyniku — źródła pominięte/proweniencja widma. */
   readonly pominieteZrodla?: readonly { ref: string; kod: string; powod: string }[];
   readonly zrodlaWidma?: readonly { ref: string; proweniencja: string }[];
+  /** Karta AB-1a D7: pole addytywne `wynik_inzynierski` odpowiedzi wyniku (kształt
+   *  `PozycjaWerdyktu.to_dict` z adaptera `wynik_inzynierski_v126.py`). */
+  readonly wynikInzynierski?: unknown;
 }
 
 export function odpowiedz(dane: unknown, status = 200): Response {
@@ -213,6 +216,7 @@ export function ustawFetchV126(opcje: OpcjeAtrapy = {}): Mock {
         report_ref: 'report:v126:test:abc',
         ...(opcje.pominieteZrodla ? { pominiete_zrodla: opcje.pominieteZrodla } : {}),
         ...(opcje.zrodlaWidma ? { zrodla_widma: opcje.zrodlaWidma } : {}),
+        ...(opcje.wynikInzynierski ? { wynik_inzynierski: opcje.wynikInzynierski } : {}),
       });
     }
     throw new Error(`Nieoczekiwane wywołanie fetch: ${metoda} ${adres}`);

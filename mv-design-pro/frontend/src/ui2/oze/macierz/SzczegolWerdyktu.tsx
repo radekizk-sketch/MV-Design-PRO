@@ -9,6 +9,15 @@
 import { useState } from 'react';
 
 import type { NcRfgRunResult } from '../../../ui/ncrfg-tests/api';
+import type { PozycjaOceny } from '../../wyniki/ocena/api';
+import {
+  fmtMargines,
+  fmtOdniesienie,
+  fmtWartoscZJednostka,
+  wynikPL,
+} from '../../wyniki/ocena/model';
+import { OCENA_STRINGS } from '../../wyniki/ocena/strings';
+import { PodstawaStrukturalna, SzczegolyWyniku } from '../../wyniki/ocena/WynikWyjasniony';
 import type { KomorkaMacierzy } from './macierzModel';
 import { SladTestu } from './SladTestu';
 import {
@@ -24,6 +33,65 @@ export interface SzczegolWerdyktuProps {
   readonly nazwaModulu: string | null;
   /** Pełny ślad WHITE BOX biegu — kroki testu filtrowane po `test_id`. */
   readonly slad: NcRfgRunResult['white_box_trace'];
+}
+
+/**
+ * Wynik inżynierski testu (karta AB-1a D2): łańcuch podstawa → wynik → odniesienie →
+ * ocena → wniosek z adaptera backendu. Werdykt „spełnia" bez dopuszczalnego dowodu
+ * przychodzi tu jako „brak podstaw" z NAZWANYM stanem dowodowym (deklaracja / test
+ * bez treści / brak symulacji / limit niezweryfikowany) — UI niczego nie ocenia.
+ */
+function WynikInzynierskiTestu({ pozycja }: { pozycja: PozycjaOceny }) {
+  const element = pozycja.elementy[0] ?? null;
+  return (
+    <div className="mvd-oze-panel-blok" data-testid="mvd-oze-szczegol-wynik-inzynierski">
+      <span className="mvd-oze-panel-etyk">{MACIERZ_STRINGS.wynikInzynierski}</span>
+      {pozycja.podstawa !== null && (
+        <PodstawaStrukturalna podstawa={pozycja.podstawa} testid="mvd-oze-szczegol-wi-podstawa" />
+      )}
+      {element === null ? (
+        <p style={{ margin: '4px 0 0' }} data-testid="mvd-oze-szczegol-wi-nie-dotyczy">
+          {MACIERZ_STRINGS.nieDotyczy}
+          {pozycja.powod_pl ? ` — ${pozycja.powod_pl}` : ''}
+        </p>
+      ) : (
+        <div style={{ marginTop: 4 }}>
+          <div className="mvd-oze-metryka" data-testid="mvd-oze-szczegol-wi-wynik">
+            <span>{OCENA_STRINGS.kolWynik}</span>
+            <span>{wynikPL(element.wynik)}</span>
+          </div>
+          {pozycja.powod_pl !== null && element.wynik === 'BRAK_PODSTAW' && (
+            <div className="mvd-oze-metryka" data-testid="mvd-oze-szczegol-wi-stan">
+              <span>{MACIERZ_STRINGS.stanDowodowy}</span>
+              <span>{pozycja.powod_pl}</span>
+            </div>
+          )}
+          <div className="mvd-oze-metryka" data-testid="mvd-oze-szczegol-wi-wartosc">
+            <span>{OCENA_STRINGS.kolWartosc}</span>
+            <span className="mvd-oze-num">
+              {fmtWartoscZJednostka(element.wartosc, element.jednostka || pozycja.jednostka)}
+            </span>
+          </div>
+          <div className="mvd-oze-metryka" data-testid="mvd-oze-szczegol-wi-odniesienie">
+            <span>{OCENA_STRINGS.kolOdniesienie}</span>
+            <span className="mvd-oze-num">{fmtOdniesienie(element, pozycja)}</span>
+          </div>
+          <div className="mvd-oze-metryka" data-testid="mvd-oze-szczegol-wi-margines">
+            <span>{OCENA_STRINGS.kolMargines}</span>
+            <span className="mvd-oze-num">{fmtMargines(element)}</span>
+          </div>
+          <p style={{ margin: '4px 0 0' }} data-testid="mvd-oze-szczegol-wi-wniosek">
+            {element.wniosek_pl}
+          </p>
+          <SzczegolyWyniku
+            element={element}
+            trybEkspercki={false}
+            testid="mvd-oze-szczegol-wi-szczegoly"
+          />
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function SzczegolWerdyktu({
@@ -81,6 +149,8 @@ export function SzczegolWerdyktu({
               )}
             </div>
           )}
+
+          {komorka.wynikInzynierski && <WynikInzynierskiTestu pozycja={komorka.wynikInzynierski} />}
 
           <div className="mvd-oze-panel-blok">
             <span className="mvd-oze-panel-etyk">{MACIERZ_STRINGS.wymaganie}</span>

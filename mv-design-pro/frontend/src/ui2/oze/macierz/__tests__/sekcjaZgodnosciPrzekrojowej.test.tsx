@@ -62,6 +62,7 @@ function bieg(modules: NcRfgModuleResult[], over: Partial<NcRfgRunResult> = {}):
     evidence_note_pl: 'Wszystkie wymagane testy oparte sa o stopien dowodowy dopuszczalny do zgloszenia.',
     evidence_per_module: {},
     evidence_by_test: {},
+    wynik_inzynierski: {},
     test_catalog: [],
     white_box_trace: [],
     report_pl: '',

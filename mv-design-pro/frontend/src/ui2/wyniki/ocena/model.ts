@@ -12,15 +12,27 @@
 import type { ElementType } from '../../../ui/types';
 import type { RodzajPrzekroczenia } from '../wzorzec';
 import type {
+  NiepewnoscOdpowiedz,
   OcenaElementu,
   OdpowiedzOceny,
+  PodstawaNormatywnaOdpowiedz,
   PozycjaOceny,
+  PrzyczynaOgraniczeniaOdpowiedz,
+  PunktKrytycznyOdpowiedz,
   RodzajElementuOceny,
   WynikOceny,
+  ZakresWaznosciOdpowiedz,
   ZrodloKryterium,
   ZrodloOceny,
 } from './api';
-import { OCENA_STRINGS as T } from './strings';
+import {
+  DOMENA_FIZYCZNA_PL,
+  OCENA_STRINGS as T,
+  PRZYCZYNA_PL,
+  STATUS_PARAMETROW_PL,
+  STATUS_ROWNAN_PL,
+  STATUS_WEJSCIA_PL,
+} from './strings';
 
 /** Grupa znaczeniowa z pozycjami, które MAJĄ oceny elementów. */
 export interface GrupaOceny {
@@ -222,6 +234,8 @@ export function rodzajPrzekroczeniaKryterium(
 export function zrodloPL(rodzaj: ZrodloKryterium): string {
   if (rodzaj === 'PF') return T.zrodloRozplyw;
   if (rodzaj === 'short_circuit_sn') return T.zrodloZwarcie;
+  if (rodzaj === 'ncrfg_ptpiree') return T.zrodloNcRfg;
+  if (rodzaj.startsWith('v126:')) return T.zrodloV126;
   return T.zrodloModel;
 }
 
@@ -248,4 +262,91 @@ export function pakietWynikowPL(zrodla: readonly ZrodloOceny[]): string {
     .filter((zrodlo) => zrodlo.rodzaj !== 'model' && zrodlo.dostepny && zrodlo.aktualny)
     .map((zrodlo) => (zrodlo.rodzaj === 'PF' ? T.pakietRozplyw : T.pakietZwarcia));
   return nazwy.length === 0 ? T.podstawaPakietBrak : nazwy.join(', ');
+}
+
+
+// ---------------------------------------------------------------------------
+// Wynik wyjaśnialny (karta AB-1a D2) — formatery pól wyjaśnialności. Czysta
+// prezentacja: każda wartość przychodzi z backendu, `null` = kreska/brak sekcji.
+// ---------------------------------------------------------------------------
+
+/** Etykieta PL domeny fizycznej (nieznany kod → dosłownie, jako dane). */
+export function domenaFizycznaPL(kod: string | null): string {
+  if (kod === null) return T.marginesBrak;
+  return DOMENA_FIZYCZNA_PL[kod] ?? kod;
+}
+
+/** Części podstawy strukturalnej (dokument, wersja, klauzula) — bez pustych. */
+export function czesciPodstawy(podstawa: PodstawaNormatywnaOdpowiedz): string[] {
+  const czesci: string[] = [];
+  if (podstawa.dokument) czesci.push(podstawa.dokument);
+  if (podstawa.wersja) czesci.push(`${T.podstawaWersja} ${podstawa.wersja}`);
+  if (podstawa.klauzula) czesci.push(`${T.podstawaKlauzula} ${podstawa.klauzula}`);
+  return czesci;
+}
+
+/** Zapis podstawy strukturalnej jednym zdaniem (brak dokumentu → nazwany brak). */
+export function podstawaStrukturalnaPL(podstawa: PodstawaNormatywnaOdpowiedz): string {
+  const czesci = czesciPodstawy(podstawa);
+  return czesci.length > 0 ? czesci.join(', ') : T.podstawaBrakDokumentu;
+}
+
+/** Czy podstawa niesie źródło NIEPOTWIERDZONE (odznaka na ekranie). */
+export function czyZrodloNiezweryfikowane(podstawa: PodstawaNormatywnaOdpowiedz | null): boolean {
+  return podstawa !== null && podstawa.zrodlo_status === 'UNVERIFIED_SOURCE';
+}
+
+/** Punkt krytyczny: element + współrzędna („t = 0,15 s", „f = 250 Hz"). */
+export function fmtPunktKrytyczny(punkt: PunktKrytycznyOdpowiedz): string {
+  const czesci: string[] = [];
+  if (punkt.element_ref) czesci.push(punkt.element_ref);
+  const w = punkt.wspolrzedna;
+  if (w !== null && w.t_s !== undefined) czesci.push(`t = ${fmtWartoscZJednostka(w.t_s, 's')}`);
+  if (w !== null && w.f_hz !== undefined) czesci.push(`f = ${fmtWartoscZJednostka(w.f_hz, 'Hz')}`);
+  return czesci.length > 0 ? czesci.join(' · ') : T.marginesBrak;
+}
+
+/** Przyczyna: rodzaj (PL) + opis. */
+export function fmtPrzyczyna(przyczyna: PrzyczynaOgraniczeniaOdpowiedz): string {
+  const rodzaj = PRZYCZYNA_PL[przyczyna.rodzaj] ?? przyczyna.rodzaj;
+  return `${rodzaj}: ${przyczyna.opis_pl}`;
+}
+
+/** Etykiety PL dwóch osi statusu modelu. */
+export function statusRownanPL(kod: string): string {
+  return STATUS_ROWNAN_PL[kod] ?? kod;
+}
+export function statusParametrowPL(kod: string): string {
+  return STATUS_PARAMETROW_PL[kod] ?? kod;
+}
+
+/** Jakość danych wejściowych (PL). */
+export function statusWejsciaPL(kod: string | null): string {
+  if (kod === null) return T.marginesBrak;
+  return STATUS_WEJSCIA_PL[kod] ?? kod;
+}
+
+/** Niepewność: „± 0,5 % (metoda)". */
+export function fmtNiepewnosc(niepewnosc: NiepewnoscOdpowiedz): string {
+  return `± ${fmtWartoscZJednostka(niepewnosc.wartosc, niepewnosc.jednostka)} (${niepewnosc.metoda_pl})`;
+}
+
+/** Zakres ważności: opis + granice w kolejności kluczy backendu (posortowane). */
+export function fmtZakresWaznosci(zakres: ZakresWaznosciOdpowiedz): string {
+  const granice = Object.entries(zakres.granice)
+    .map(([klucz, wartosc]) => `${klucz} = ${fmtLiczba(wartosc)}`)
+    .join(', ');
+  return granice ? `${zakres.opis_pl} (${granice})` : zakres.opis_pl;
+}
+
+/** Czy element niesie którekolwiek pole wyjaśnialności (sekcja „Szczegóły wyniku"). */
+export function maSzczegolyWyniku(element: OcenaElementu): boolean {
+  return (
+    element.punkt_krytyczny !== null
+    || element.przyczyna !== null
+    || element.status_modelu !== null
+    || element.status_wejscia !== null
+    || element.niepewnosc !== null
+    || element.zakres_waznosci !== null
+  );
 }

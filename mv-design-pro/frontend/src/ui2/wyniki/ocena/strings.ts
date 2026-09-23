@@ -102,4 +102,71 @@ export const OCENA_STRINGS = {
   bladDomyslny: 'Nie udało się pobrać oceny technicznej wyników.',
 
   ariaPozycje: 'Pozycje oceny technicznej',
+
+  // Źródła adapterów wyników FROZEN (karta AB-1a D2/D7)
+  zrodloNcRfg: 'Deklaracje modułu (NC RfG)',
+  zrodloV126: 'Analiza specjalistyczna',
+
+  // Wynik wyjaśnialny (karta AB-1a D2) — podstawa strukturalna i pola wyjaśnialności
+  podstawaDokument: 'dokument',
+  podstawaWersja: 'wersja',
+  podstawaKlauzula: 'klauzula',
+  podstawaBrakDokumentu: 'brak wskazanego dokumentu podstawy wymagania',
+  zrodloNiezweryfikowane: 'źródło niezweryfikowane',
+  zrodloNiezweryfikowaneOpis:
+    'Dokument, wersja albo klauzula podstawy nie są potwierdzone — wartość wymagania nie '
+    + 'jest wymaganiem z potwierdzonego dokumentu.',
+  zrodloZweryfikowane: 'źródło potwierdzone',
+  szczegolyWyniku: 'Szczegóły wyniku',
+  domenaFizyczna: 'Domena fizyczna',
+  punktKrytyczny: 'Punkt krytyczny',
+  przyczyna: 'Przyczyna',
+  statusModelu: 'Status modelu',
+  statusWejscia: 'Jakość danych wejściowych',
+  niepewnosc: 'Niepewność',
+  zakresWaznosci: 'Zakres ważności',
+  krokSladu: 'krok śladu',
+  osRownan: 'Równania',
+  osParametrow: 'Parametry',
 } as const;
+
+/** Etykiety PL domen fizycznych (kody `PhysicsDomain` backendu). */
+export const DOMENA_FIZYCZNA_PL: Record<string, string> = {
+  POWER_FLOW: 'rozpływ mocy (50 Hz)',
+  SHORT_CIRCUIT: 'zwarcia (IEC 60909)',
+  RMS_DYNAMICS: 'dynamika RMS',
+  SEQUENCE_DOMAIN: 'składowe symetryczne',
+  HARMONIC_FREQUENCY_DOMAIN: 'harmoniczne (dziedzina częstotliwości)',
+  SUPRAHARMONIC_FREQUENCY_DOMAIN: 'supraharmoniczne (2–150 kHz)',
+};
+
+/** Etykiety PL rodzaju przyczyny ograniczenia. */
+export const PRZYCZYNA_PL: Record<string, string> = {
+  element: 'element sieci',
+  regulator: 'regulator',
+  ogranicznik: 'ogranicznik',
+  zrodlo_emisji: 'źródło emisji',
+  rezonans: 'rezonans',
+};
+
+/** Etykiety PL osi równań statusu modelu. */
+export const STATUS_ROWNAN_PL: Record<string, string> = {
+  VALIDATED: 'równania zwalidowane',
+  UNVALIDATED: 'równania niezwalidowane',
+  UNKNOWN: 'status równań nieznany',
+};
+
+/** Etykiety PL osi parametrów statusu modelu. */
+export const STATUS_PARAMETROW_PL: Record<string, string> = {
+  MODEL_ZWALIDOWANY_POMIAREM: 'parametry zwalidowane pomiarem',
+  KARTA_KATALOGOWA: 'parametry z karty katalogowej',
+  OSZACOWANE: 'parametry oszacowane',
+  UNKNOWN: 'status parametrów nieznany',
+};
+
+/** Etykiety PL jakości danych wejściowych (`FieldQuality`). */
+export const STATUS_WEJSCIA_PL: Record<string, string> = {
+  DATASHEET: 'karta techniczna',
+  ESTIMATED: 'oszacowanie',
+  SYSTEM_DEFAULT: 'wartość domyślna systemu',
+};

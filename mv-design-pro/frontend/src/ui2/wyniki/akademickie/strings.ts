@@ -353,6 +353,11 @@ export const AKADEMICKIE_STRINGS = {
 
   // Źródła harmoniczne / przekształtnika — karta W2-C (zero fabrykacji wejścia)
   zrodlaWidmaTytul: 'Widmo harmoniczne — źródła uwzględnione',
+  // Karta AB-1a D7 — wynik inżynierski werdyktu analizy (adapter backendu)
+  wynikInzynierskiTytul: 'Wynik inżynierski werdyktu',
+  wynikInzynierskiOpis:
+    'Werdykt analizy z wartością, wymaganiem, zapasem, podstawą i dowodem — złożony w '
+    + 'backendzie z liczb wyniku solvera.',
   zrodlaWidmaProweniencjaEtykieta: 'Skąd widmo',
   zrodlaPominieteTytul: 'Źródła pominięte (brak widma w karcie)',
   zrodlaPominieteOpis:

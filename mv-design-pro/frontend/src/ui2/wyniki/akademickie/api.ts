@@ -27,6 +27,8 @@
  * Klient błędów: wariant z odczytem pola `detail` (wzór `ui2/wyniki/ssci/api.ts`).
  */
 
+import type { PozycjaOceny } from '../ocena/api';
+
 // ---------------------------------------------------------------------------
 // Rodzaj analizy — kody kontraktu backendu (`V126AnalysisType`)
 // ---------------------------------------------------------------------------
@@ -113,6 +115,13 @@ export interface OdpowiedzWyniku {
   readonly pominiete_zrodla?: readonly ZrodloPominiete[];
   /** Proweniencja widma (KATALOG/RECZNE) źródeł, które DO wejścia trafiły. */
   readonly zrodla_widma?: readonly ProweniencjaZrodlaWidma[];
+  /**
+   * Karta AB-1a D7 — werdykt-literał wyniku FROZEN (NER: sprawdzenie cieplne;
+   * walidacja porównawcza) jako pozycja wyniku wyjaśnialnego
+   * (`application/analyses/wynik_inzynierski_v126.py`). Pole ADDYTYWNE, obecne
+   * tylko dla rodzajów z werdyktem.
+   */
+  readonly wynik_inzynierski?: PozycjaOceny;
 }
 
 /** Krok śladu WHITE BOX (`TraceBuilder.add`). */
