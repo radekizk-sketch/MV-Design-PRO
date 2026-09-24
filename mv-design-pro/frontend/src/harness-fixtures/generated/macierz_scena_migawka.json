@@ -930,7 +930,7 @@
               "source_field_kind": "BESS",
               "terminal_bus_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_terminal"
             },
-            "name": "Pole źródłowe SN BESS",
+            "name": "Pole źródłowe BESS",
             "primary_devices": [
               {
                 "designation": "Q1",
@@ -1046,7 +1046,7 @@
               "source_field_kind": "PV",
               "terminal_bus_ref": "sn/a14bb0e6a533796dc251500f1b5fe5fa/der/field_terminal"
             },
-            "name": "Pole źródłowe SN PV",
+            "name": "Pole źródłowe PV",
             "primary_devices": [
               {
                 "designation": "Q1",

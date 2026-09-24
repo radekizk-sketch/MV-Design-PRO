@@ -82,11 +82,11 @@ ROZDZIELNIA_SIECIOWA_TEMPLATES = (
         "tpl_rs_2pola_sprzeglo",
         "Rozdzielnia sieciowa RS 2 pola liniowe + sprzęgło",
         "Węzeł przełączeniowy magistrali SN: dwie sekcje szyn, dwa pola liniowe "
-        "(IN/OUT) i sprzęgło sekcyjne — bez transformatora SN/nN.",
+        "(wejściowe i wyjściowe) i sprzęgło sekcyjne — bez transformatora SN/nN.",
         feeder_roles=(
-            BayRoleSpec(role="IN", label_pl="Pole liniowe IN (sekcja A)"),
-            BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT (sekcja B)"),
-            BayRoleSpec(role="COUPLER", label_pl="Pole sprzęgła sekcyjnego"),
+            BayRoleSpec(role="IN", okreslenie_pl="(sekcja A)"),
+            BayRoleSpec(role="OUT", okreslenie_pl="(sekcja B)"),
+            BayRoleSpec(role="COUPLER", okreslenie_pl="sekcyjnego"),
         ),
         bays=3,
         use_case="Węzeł magistrali SN dzielący sieć na sekcje bez lokalnego odbioru — "
@@ -96,12 +96,12 @@ ROZDZIELNIA_SIECIOWA_TEMPLATES = (
         "tpl_rsm_4pola_2wyjscia",
         "Rozdzielnia sieciowa RSM 4 pola, 2 wyjścia magistralne",
         "Rozdzielnia sieciowa mała (RSM): dwie sekcje szyn ze sprzęgłem i po "
-        "jednym dodatkowym polu odpływowym na sekcję (rozgałęzienie magistrali).",
+        "jednym dodatkowym polu odgałęźnym na sekcję (rozgałęzienie magistrali).",
         feeder_roles=(
-            BayRoleSpec(role="IN", label_pl="Pole liniowe IN (sekcja A)"),
-            BayRoleSpec(role="FEEDER", label_pl="Pole odpływowe (sekcja A)"),
-            BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT (sekcja B)"),
-            BayRoleSpec(role="COUPLER", label_pl="Pole sprzęgła sekcyjnego"),
+            BayRoleSpec(role="IN", okreslenie_pl="(sekcja A)"),
+            BayRoleSpec(role="FEEDER", okreslenie_pl="(sekcja A)"),
+            BayRoleSpec(role="OUT", okreslenie_pl="(sekcja B)"),
+            BayRoleSpec(role="COUPLER", okreslenie_pl="sekcyjnego"),
         ),
         bays=4,
         use_case="Punkt rozgałęzienia magistrali SN z manewrem sekcyjnym — węzeł "
@@ -111,15 +111,15 @@ ROZDZIELNIA_SIECIOWA_TEMPLATES = (
         "tpl_rs_6pola_wezel_petlowy",
         "Rozdzielnia sieciowa RS 6 pól — węzeł pętlowy N-1",
         "Rozdzielnia sieciowa większa: dwie sekcje szyn, sprzęgło, trzy pola "
-        "odpływowe na sekcji A i pole liniowe OUT prowadzące do sekcji B — "
+        "odgałęźne na sekcji A i pole liniowe wyjściowe prowadzące do sekcji B — "
         "węzeł pętli SN z rezerwą N-1.",
         feeder_roles=(
-            BayRoleSpec(role="IN", label_pl="Pole liniowe IN (sekcja A)"),
-            BayRoleSpec(role="FEEDER", label_pl="Pole odpływowe 1 (sekcja A)"),
-            BayRoleSpec(role="FEEDER", label_pl="Pole odpływowe 2 (sekcja A)"),
-            BayRoleSpec(role="FEEDER", label_pl="Pole odpływowe 3 (sekcja A)"),
-            BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT (sekcja B)"),
-            BayRoleSpec(role="COUPLER", label_pl="Pole sprzęgła sekcyjnego"),
+            BayRoleSpec(role="IN", okreslenie_pl="(sekcja A)"),
+            BayRoleSpec(role="FEEDER", okreslenie_pl="1 (sekcja A)"),
+            BayRoleSpec(role="FEEDER", okreslenie_pl="2 (sekcja A)"),
+            BayRoleSpec(role="FEEDER", okreslenie_pl="3 (sekcja A)"),
+            BayRoleSpec(role="OUT", okreslenie_pl="(sekcja B)"),
+            BayRoleSpec(role="COUPLER", okreslenie_pl="sekcyjnego"),
         ),
         bays=6,
         use_case="Węzeł pętli SN z wieloma odgałęzieniami dystrybucyjnymi i "

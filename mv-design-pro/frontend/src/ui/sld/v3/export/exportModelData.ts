@@ -20,6 +20,7 @@
  * Nazwy własne biorą `designation`/`name` z modelu, identyfikatory — `ref_id`.
  */
 import type { Bay, Branch, EnergyNetworkModel, Substation } from '../../../../types/enm';
+import { fieldRoleLabelPl } from '../../v2/station-rozdzielnia/contract';
 import type { Iec61850Bay, Iec61850Equipment, Iec61850ExportInput, Iec61850VoltageLevel } from '../../v2/export/exportIec61850';
 import type {
   CimAcLineSegment,
@@ -31,17 +32,6 @@ import type {
   CimVoltageLevel,
 } from '../../v2/export/exportCim';
 
-/** Rola pola po polsku — opis (`desc`) obiektu SCD/CIM. Tabela ZAMKNIĘTA
- *  (unia `Bay['bay_role']`), więc nowa rola nie przejdzie po cichu. */
-const BAY_ROLE_PL: Readonly<Record<Bay['bay_role'], string>> = {
-  IN: 'Pole zasilające',
-  OUT: 'Pole odpływowe',
-  TR: 'Pole transformatorowe',
-  COUPLER: 'Pole sprzęgła',
-  FEEDER: 'Pole liniowe',
-  MEASUREMENT: 'Pole pomiarowe',
-  OZE: 'Pole przyłączenia źródła',
-};
 
 /** Typ aparatu ENM → klasa urządzenia SCL (IEC 61850-6, tabela ConductingEquipment).
  *  `null` = element nie jest aparatem łączeniowym pola (nie trafia do SCD). */
@@ -112,7 +102,8 @@ export function buildIec61850Input(snapshot: EnergyNetworkModel, projectId?: str
               if (transformer) equipment.push({ name: transformer.ref_id, type: 'PTR', desc: transformer.name });
             }
           }
-          return { name: bayName(bay), desc: BAY_ROLE_PL[bay.bay_role], equipment };
+          // Opis (`desc`) obiektu SCD/CIM = nazwa roli z kanonu słownictwa ról pól (karta #141).
+          return { name: bayName(bay), desc: fieldRoleLabelPl(bay.bay_role), equipment };
         });
       return { name: `${kv} kV`, voltage_kv: kv, bays };
     });

@@ -390,11 +390,11 @@ export function miniRmuMarkerSpacingGaps(): readonly string[] {
   if (poleTr.circle2Y + poleTr.circleR > enclosure.y + enclosure.height - minGap.outline)
     g.push('pole TR wychodzi poza enklozurę');
   if (poleDer.markerCY - poleDer.markerHalf < enclosure.y + minGap.outline)
-    g.push('pole DER wychodzi poza enklozurę');
+    g.push('pole źródłowe wychodzi poza enklozurę');
   if (Math.abs(poleTr.x - sprzeglo.x) < sprzeglo.size / 2 + minGap.marker)
     g.push('pole TR koliduje ze sprzęgłem');
   if (Math.abs(poleDer.x - sprzeglo.x) < sprzeglo.size / 2 + minGap.marker)
-    g.push('pole DER koliduje ze sprzęgłem');
+    g.push('pole źródłowe koliduje ze sprzęgłem');
   // GS-4: strefa DER za TR (nN) — POZA enklozurą (strona nN na zewnątrz
   // rozdzielnicy SN), wewnątrz bboxa, gałąź ciągła od uzwojeń do markera.
   const nn = poleTr.derNn;

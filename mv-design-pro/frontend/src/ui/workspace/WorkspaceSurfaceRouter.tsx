@@ -1292,7 +1292,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       label: 'Etap 2 GPZ i źródło',
       status: snapshotCounts.sources > 0 && snapshotCounts.bays > 0 ? 'gotowe' : 'brak_danych',
       dataSummary: `${snapshotCounts.sources} źródeł, ${snapshotCounts.bays} pól SN, ${snapshotCounts.transformers} transformatorów`,
-      missingFields: snapshotCounts.sources > 0 && snapshotCounts.bays > 0 ? [] : ['źródło GPZ', 'pola odpływowe', 'dane zwarciowe'],
+      missingFields: snapshotCounts.sources > 0 && snapshotCounts.bays > 0 ? [] : ['źródło GPZ', 'pola liniowe GPZ', 'dane zwarciowe'],
       sourceRef: 'ENM / katalog GPZ',
       fixAction: { label: 'Otwórz GPZ', onClick: openConfigurationOverview },
     },

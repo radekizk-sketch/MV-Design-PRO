@@ -7,7 +7,7 @@ export const ZRODLO_STRINGS = {
   eyebrow: 'MODEL SIECI · ŹRÓDŁO ZASILANIA',
   celTworzenie:
     'Dodaj Główny Punkt Zasilający (GPZ) — źródło systemowe SN dla obliczeń. '
-    + 'Dane zwarciowe i normowe czyta backend (IEC 60909); zapis tworzy szyny, sekcje i pola odpływowe.',
+    + 'Dane zwarciowe i normowe czyta backend (IEC 60909); zapis tworzy szyny, sekcje i pola liniowe.',
   odznakaNowy: 'Nowy GPZ',
   odznakaEdycja: 'Edycja GPZ',
 
@@ -16,7 +16,7 @@ export const ZRODLO_STRINGS = {
   zakresZrodloSn: 'Źródło SN',
   zakresWnSn: 'GPZ WN/SN',
   zakresInfo:
-    'Wariant „Źródło SN": parametry zwarciowe, uziemienie i pola odpływowe pochodzą z pakietu '
+    'Wariant „Źródło SN": parametry zwarciowe, uziemienie i pola liniowe pochodzą z pakietu '
     + 'katalogowego GPZ. Pełny układ WN/SN (sekcje 110 kV, transformatory, składowa zerowa) '
     + 'konfigurujesz w wariancie „GPZ WN/SN".',
 
@@ -133,7 +133,7 @@ export const ZRODLO_STRINGS = {
 
   // Następny krok.
   nastepnyOpis:
-    'Po zapisie GPZ dodaj pola odpływowe, stacje SN/nN i źródła OZE, a następnie uruchom obliczenia zwarciowe i rozpływowe.',
+    'Po zapisie GPZ dodaj pola liniowe, stacje SN/nN i źródła OZE, a następnie uruchom obliczenia zwarciowe i rozpływowe.',
 
   // Kroki (tor pracy).
   krokIdentyfikacja: 'Identyfikacja',
@@ -226,7 +226,7 @@ export const ZRODLO_STRINGS = {
 
   // Sekcje i pola (per sekcja).
   sekcjeOpis:
-    'Konfiguracja per sekcja: nazwa sekcji i liczba pól liniowych odpływowych. Każde pole '
+    'Konfiguracja per sekcja: nazwa sekcji i liczba pól liniowych. Każde pole '
     + 'dostaje ten sam typ aparatu dobrany poniżej.',
   sekcjaNazwaPol: 'Nazwa sekcji',
   sekcjaLiczbaPol: 'Pola liniowe',
@@ -242,12 +242,12 @@ export const ZRODLO_STRINGS = {
   rodzinaBlad: 'Nie udało się pobrać rodzin rozdzielnic.',
   sekcjaSzablon: 'Szablon pola (producent)',
   sekcjaSzablonPlaceholder: '— szablon domyślny —',
-  sekcjaSzablonPomoc: 'Szablon pola odpływowego z wybranej rodziny — determinuje skład aparatury pola.',
+  sekcjaSzablonPomoc: 'Szablon pola liniowego z wybranej rodziny — determinuje skład aparatury pola.',
 
   // Zabezpieczenie polowe (powiązanie globalne).
   zabezpieczenieTytul: 'Zabezpieczenie polowe',
   zabezpieczenieOpis:
-    'Pola odpływowe wymagają zabezpieczenia (przekaźnik + nastawy). Po utworzeniu GPZ '
+    'Pola liniowe wymagają zabezpieczenia (przekaźnik + nastawy). Po utworzeniu GPZ '
     + 'nastawy i automatykę (SPZ/SZR) konfigurujesz w ekranie „Zabezpieczenia i automatyka”, '
     + 'a selektywność w „Koordynacji zabezpieczeń”.',
 
@@ -255,7 +255,7 @@ export const ZRODLO_STRINGS = {
   przegladTytul: 'Sprawdź konfigurację',
   przegladOpis:
     'Sprawdź podsumowanie obliczone (kolumna z prawej) i kontrolę gotowości. '
-    + 'Zapis tworzy szyny SN, sekcje, sprzęgło i pola odpływowe.',
+    + 'Zapis tworzy szyny SN, sekcje, sprzęgło i pola liniowe.',
 
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: GPZ jako źródło systemowe i moc zwarciowa',

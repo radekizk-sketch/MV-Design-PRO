@@ -52,7 +52,7 @@ export const POLE_STRINGS = {
   typPomoc: 'Aparat wnosi napięcie i prąd znamionowy oraz zdolność łączeniową — z katalogu.',
 
   nazwa: 'Nazwa pola',
-  nazwaPlaceholder: 'np. Pole odpływowe L-12',
+  nazwaPlaceholder: 'np. Pole liniowe wyjściowe L-12',
 
   paramNapiecie: 'Napięcie znamionowe',
   paramPrad: 'Prąd znamionowy',

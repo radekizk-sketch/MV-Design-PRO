@@ -8,6 +8,7 @@
 
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import { ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA, type RolaUziemnika } from '../../../types/uziemienie';
+import { fieldRoleLabelPl } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 
 export type RolaPola = 'IN' | 'OUT' | 'FEEDER' | 'TR' | 'COUPLER' | 'MEASUREMENT' | 'OZE';
 export type RodzajAparatu = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'MEASUREMENT';
@@ -102,21 +103,20 @@ export const DANE_DOMYSLNE: PolaSnFormData = {
   earthing_role: '',
 };
 
+/** Kolejność ról w wyborze kreatora (najczęstsza rola dokładanego pola na początku). */
+const ROLE_KOLEJNOSC: readonly RolaPola[] = ['OUT', 'IN', 'FEEDER', 'TR', 'COUPLER', 'MEASUREMENT', 'OZE'];
+
 /**
  * Opcje roli/aparatu = KONTRAKT DANYCH (warstwa modelu): `value` to kanoniczny kod
  * operacji domenowej `add_sn_bay` (backend), `label` to polskie nazewnictwo UI.
- * Kody backendu (np. odpływowe/dopływowe/transformatorowe) NIE są terminologią UI —
- * do prezentacji służy wyłącznie `label`. (V12K-057 popr.: zakaz surowych kodów w UI.)
+ * Kody backendu (IN/OUT/FEEDER/TR…) NIE są terminologią UI — do prezentacji służy wyłącznie
+ * `label`. (V12K-057 popr.: zakaz surowych kodów w UI.) Nazwa roli pochodzi z kanonu
+ * słownictwa ról pól (`FIELD_ROLE_LABEL_PL`, karta #141) — ta sama co na schemacie, w szufladzie
+ * i w nazwie pola nadanej przez backend (`enm.rola_pola_sn`), nie z drugiej listy.
  */
-export const ROLE_OPCJE: ReadonlyArray<{ value: RolaPola; label: string }> = [
-  { value: 'OUT', label: 'Pole liniowe odpływowe' },
-  { value: 'IN', label: 'Pole liniowe dopływowe' },
-  { value: 'FEEDER', label: 'Pole liniowe / odgałęźne' },
-  { value: 'TR', label: 'Pole transformatorowe' },
-  { value: 'COUPLER', label: 'Pole sprzęgła sekcji' },
-  { value: 'MEASUREMENT', label: 'Pole pomiarowe' },
-  { value: 'OZE', label: 'Pole źródłowe (OZE/DER)' },
-];
+export const ROLE_OPCJE: ReadonlyArray<{ value: RolaPola; label: string }> = ROLE_KOLEJNOSC.map(
+  (value) => ({ value, label: fieldRoleLabelPl(value) }),
+);
 
 export const APARAT_OPCJE: ReadonlyArray<{ value: RodzajAparatu; label: string }> = [
   { value: 'BREAKER', label: 'Wyłącznik mocy' },

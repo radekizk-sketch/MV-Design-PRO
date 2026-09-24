@@ -91,9 +91,9 @@ def _gpz(
                 label_pl="Liczba pól liniowych na sekcję",
             ),
             sn_bay_roles=(
-                BayRoleSpec(role="FEEDER", label_pl="Pole liniowe odpływowe (sekcja A)"),
-                BayRoleSpec(role="FEEDER", label_pl="Pole liniowe odpływowe (sekcja B)"),
-                BayRoleSpec(role="COUPLER", label_pl="Pole sprzęgła sekcyjnego (mostek H5)"),
+                BayRoleSpec(role="FEEDER", okreslenie_pl="(sekcja A)"),
+                BayRoleSpec(role="FEEDER", okreslenie_pl="(sekcja B)"),
+                BayRoleSpec(role="COUPLER", okreslenie_pl="sekcyjnego (mostek H5)"),
             ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,
@@ -130,7 +130,7 @@ GPZ_110_SN_TEMPLATES = (
         "GPZ 110/15 kV, 2×25 MVA, układ H5 z mostkiem",
         "Duży Główny Punkt Zasilania 110/15 kV: dwie sekcje szyn SN, dwa "
         "transformatory 25 MVA i sprzęgło międzysekcyjne — rozbudowany "
-        "układ H5 z większą liczbą pól liniowych odpływowych na sekcję.",
+        "układ H5 z większą liczbą pól liniowych na sekcję.",
         tr_options=TR_OPTIONS_WN_SN_110_15,
         source_options=GPZ_SOURCE_OPTIONS_15,
         transformer_count=2,

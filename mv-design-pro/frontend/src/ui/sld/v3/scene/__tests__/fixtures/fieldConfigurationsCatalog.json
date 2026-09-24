@@ -53,7 +53,7 @@
       "field_role": "SPRZEGLO",
       "group": "sprzeglowe",
       "main_path": true,
-      "name": "Pole sprzęgłowe",
+      "name": "Pole sprzęgła",
       "primary_devices": [
         {
           "designation": "Q1",
@@ -1459,7 +1459,7 @@
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
       "main_path": true,
-      "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka IF (Pole dopływowe/odpływowe z wyłącznikiem wysuwnym)",
+      "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka IF (Pole liniowe wejściowe/wyjściowe z wyłącznikiem wysuwnym)",
       "pack_id": "abb_unigear",
       "primary_devices": [
         {
@@ -1548,7 +1548,7 @@
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
       "main_path": true,
-      "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka IFD (Pole dopływowe/odpływowe bezpośrednie (bez wyłącznika))",
+      "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka IFD (Pole liniowe wejściowe/wyjściowe bezpośrednie (bez wyłącznika))",
       "pack_id": "abb_unigear",
       "primary_devices": [
         {
@@ -1661,7 +1661,7 @@
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
       "main_path": true,
-      "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka OFM (Pole odpływowe z pomiarem na szynach)",
+      "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka OFM (Pole liniowe wyjściowe z pomiarem na szynach)",
       "pack_id": "abb_unigear",
       "primary_devices": [
         {
@@ -1940,7 +1940,7 @@
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
       "main_path": true,
-      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka GAM (Przyłącze kablowe dopływowe z uziemnikiem)",
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka GAM (Przyłącze kablowe wejściowe z uziemnikiem)",
       "pack_id": "schneider_sm6",
       "primary_devices": [
         {
@@ -1984,7 +1984,7 @@
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
       "main_path": true,
-      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka GAM2 (Przyłącze kablowe dopływowe (bez aparatu))",
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka GAM2 (Przyłącze kablowe wejściowe (bez aparatu))",
       "pack_id": "schneider_sm6",
       "primary_devices": [
         {

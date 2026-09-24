@@ -9,6 +9,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { useAppStateStore } from '../../../ui/app-state';
+import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 import { subskrybuj } from '../../events';
 import { InspectorPanel, INSPECTOR_STRINGS, type ObiektInspektora } from '../../inspector';
 import { useShellStore } from '../../shell/useShellStore';
@@ -234,7 +235,11 @@ describe('inspectorAdapter — mapowanie właściwości katalogowych (iloczyn ce
     );
     expect(katalogowe?.wiersze).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ etykieta: 'Rola pola', wartosc: expect.objectContaining({ wartosc: 'Odejście' }) }),
+        // Karta #141: rola pola nazwana słowem kanonu (FEEDER → pole odgałęźne), jak na schemacie.
+        expect.objectContaining({
+          etykieta: 'Rola pola',
+          wartosc: expect.objectContaining({ wartosc: FIELD_ROLE_LABEL_PL.LINIA_ODG }),
+        }),
         expect.objectContaining({ etykieta: 'Nazwa odpływu', wartosc: expect.objectContaining({ wartosc: 'SADY' }) }),
       ]),
     );

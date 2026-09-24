@@ -9,9 +9,10 @@
  * Wszystkie funkcje pure (bez side-effects, deterministyczne).
  */
 
-import type {
-  BayKind,
-  CompleteMvBayTemplateSummary,
+import {
+  bayKindLabelPl,
+  type BayKind,
+  type CompleteMvBayTemplateSummary,
 } from '../../catalog/BayTemplatePicker';
 import type { Manufacturer } from '../../catalog/manufacturer';
 import type { SwitchgearFamily } from '../../catalog/SwitchgearFamilyPicker';
@@ -28,14 +29,6 @@ export const SWITCHGEAR_MANUFACTURER_ORDER = [
   'SIEMENS',
   'ABB',
 ];
-
-/**
- * Etykiety ról pól SN — JEDNA mapa: `FIELD_ROLE_LABEL_PL` kontraktu rozdzielnicy (lustro nazw
- * pól nadawanych przez backend, `enm.domain_operations.NAZWA_ROLI_POLA_SN_PL`; parytet przypięty
- * testem backendu). Dawna kopia tutaj rozjechała się z kontraktem („Pole sprzęgłowe" wobec
- * „Pole sprzęgła") i nie znała pola pomiarowego — kreator stacji pokazywał wtedy kod roli.
- */
-export const FIELD_ROLE_LABELS: Readonly<Record<string, string>> = FIELD_ROLE_LABEL_PL;
 
 export const SOURCE_STATUS_LABEL_PL: Readonly<Record<CompleteMvBayTemplateSummary['source_status'], string>> = {
   official_catalog: 'pakiet katalogowy',
@@ -94,33 +87,13 @@ export function compareBayTemplateOptions(
     || left.template_ref.localeCompare(right.template_ref, 'pl-PL');
 }
 
-export function bayKindLabel(kind: BayKind): string {
-  switch (kind) {
-    case 'liniowe_doplywowe':
-      return 'Pole liniowe wejściowe';
-    case 'liniowe_odplywowe':
-      return 'Pole liniowe wyjściowe';
-    case 'transformatorowe':
-      return 'Pole transformatorowe';
-    case 'sprzeglowe_poprzeczne':
-    case 'sprzeglowe_podluzne':
-      return 'Pole sprzęgłowe';
-    case 'pomiarowe':
-      return 'Pole pomiarowe';
-    case 'pv':
-      return 'Pole przyłączeniowe PV';
-    case 'bess':
-      return 'Pole przyłączeniowe BESS';
-    case 'fw':
-      return 'Pole przyłączeniowe FW';
-    default:
-      return 'Pole SN';
-  }
-}
-
+/**
+ * Opcja szablonu pola w kreatorze: nazwa roli pola z kanonu słownictwa ról (`FIELD_ROLE_LABEL_PL`,
+ * karta #141), a bez roli — nazwa rodzaju pola katalogu (też z kanonu) + status źródła danych.
+ */
 export function templateOptionLabel(template: CompleteMvBayTemplateSummary, role?: SnFieldRole): string {
-  const roleLabel = role ? FIELD_ROLE_LABELS[role] : null;
-  return `${roleLabel ?? bayKindLabel(template.bay_kind)} · ${SOURCE_STATUS_LABEL_PL[template.source_status]}`;
+  const roleLabel = role ? FIELD_ROLE_LABEL_PL[role] : bayKindLabelPl(template.bay_kind);
+  return `${roleLabel} · ${SOURCE_STATUS_LABEL_PL[template.source_status]}`;
 }
 
 // Pure helpers - manufacturers

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from enm.rola_pola_sn import nazwa_roli_pola_sn
 from pydantic import BaseModel, Field
 
 
@@ -139,12 +140,14 @@ STATION_TEMPLATE_PV = StationTemplate(
     template_id="station_template_pv",
     name="Stacja z PV",
     topological_type="końcowa",
-    description="Stacja przyłączeniowa farmy PV — pole DER PV + transformator blokowy.",
+    description="Stacja przyłączeniowa farmy PV — pole źródłowe PV + transformator blokowy.",
     bays=[
         StationTemplateBay(
             bay_template_id="bay_template_line_in", designation="Pole 1 (przyłączeniowe)", order=0
         ),
-        StationTemplateBay(bay_template_id="bay_template_der_pv", designation="Pole PV", order=1),
+        StationTemplateBay(
+            bay_template_id="bay_template_der_pv", designation=nazwa_roli_pola_sn("PV_SN"), order=1
+        ),
         StationTemplateBay(
             bay_template_id="bay_template_transformer", designation="Pole TR-blok", order=2
         ),
@@ -158,13 +161,15 @@ STATION_TEMPLATE_BESS = StationTemplate(
     template_id="station_template_bess",
     name="Stacja z BESS",
     topological_type="końcowa",
-    description="Stacja przyłączeniowa magazynu BESS — pole DER BESS + transformator blokowy.",
+    description="Stacja przyłączeniowa magazynu BESS — pole źródłowe BESS + transformator blokowy.",
     bays=[
         StationTemplateBay(
             bay_template_id="bay_template_line_in", designation="Pole 1 (przyłączeniowe)", order=0
         ),
         StationTemplateBay(
-            bay_template_id="bay_template_der_bess", designation="Pole BESS", order=1
+            bay_template_id="bay_template_der_bess",
+            designation=nazwa_roli_pola_sn("BESS_SN"),
+            order=1,
         ),
         StationTemplateBay(
             bay_template_id="bay_template_transformer", designation="Pole TR-blok", order=2
@@ -179,17 +184,21 @@ STATION_TEMPLATE_FW = StationTemplate(
     template_id="station_template_fw",
     name="Stacja z FW (farma wiatrowa)",
     topological_type="końcowa",
-    description="Stacja przyłączeniowa farmy wiatrowej — pole DER FW + transformator główny + sieć kolektorowa.",
+    description="Stacja przyłączeniowa farmy wiatrowej — pole źródłowe FW + transformator główny + sieć kolektorowa.",
     bays=[
         StationTemplateBay(
             bay_template_id="bay_template_line_in", designation="Pole 1 (przyłączeniowe)", order=0
         ),
-        StationTemplateBay(bay_template_id="bay_template_der_fw", designation="Pole FW", order=1),
+        StationTemplateBay(
+            bay_template_id="bay_template_der_fw", designation=nazwa_roli_pola_sn("FW_SN"), order=1
+        ),
         StationTemplateBay(
             bay_template_id="bay_template_transformer", designation="Pole TR-głowny", order=2
         ),
         StationTemplateBay(
-            bay_template_id="bay_template_measurement", designation="Pole pomiarowe", order=3
+            bay_template_id="bay_template_measurement",
+            designation=nazwa_roli_pola_sn("POMIAROWE"),
+            order=3,
         ),
     ],
     transformers=[StationTemplateTransformer(designation="TR-glowny-FW", lv_voltage_kv=0.69)],

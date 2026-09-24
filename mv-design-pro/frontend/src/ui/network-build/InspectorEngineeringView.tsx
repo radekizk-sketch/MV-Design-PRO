@@ -20,7 +20,6 @@ import { clsx } from 'clsx';
 import { BayWindowSchematic } from '../field/BayWindowSchematic';
 import {
   availabilityLabel,
-  canonicalRoleLabel,
   commandExecutionStateLabel,
   communicationStatusLabel,
   BRAK_TELEMETRII,
@@ -31,6 +30,7 @@ import {
   switchStateLabel,
 } from '../field/fieldLabels';
 import { useFieldReadModel, type FieldReadModelItem } from '../field/useFieldReadModel';
+import { fieldRoleLabelOrNullPl, fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useSelectionStore } from '../selection';
 import { sanitizeDisplayValue } from '../shell/displayHelpers';
@@ -176,7 +176,7 @@ function buildBaySections(
           { key: 'bay_id', label: 'Identyfikator pola', value: item.bay_id },
           { key: 'bay_ref', label: 'Oznaczenie pola', value: item.bay_ref },
           { key: 'name', label: 'Nazwa', value: item.bay_name },
-          { key: 'role', label: 'Rola kanoniczna', value: canonicalRoleLabel(baseModel.bay_role) },
+          { key: 'role', label: 'Rola kanoniczna', value: fieldRoleLabelPl(baseModel.bay_role) },
           {
             key: 'integrity',
             label: 'Integralność modelu',
@@ -960,16 +960,6 @@ function parseApparatusSelectionId(id: string): { bayRef: string; apparatusKind:
   return { bayRef: id.slice(0, marker), apparatusKind: id.slice(marker + 1) };
 }
 
-const INTERNAL_STATION_BAY_ROLE_LABELS_PL: Readonly<Record<string, string>> = {
-  in: 'Pole wejściowe SN',
-  out: 'Pole wyjściowe SN',
-  feeder: 'Pole odgałęźne SN',
-  tr: 'Pole transformatorowe SN',
-  coupler: 'Pole sprzęgłowe SN',
-  measurement: 'Pole pomiarowe SN',
-  oze: 'Pole przyłączeniowe OZE',
-};
-
 const INTERNAL_STATION_DEVICE_LABELS_PL: Readonly<Record<string, string>> = {
   'switch-disconnector': 'Rozłącznik',
   fuse: 'Bezpiecznik',
@@ -1018,7 +1008,9 @@ function buildInternalStationElementSections(
     : '';
   const [bayKey, deviceKey] = bayPath.split('/');
   const roleKey = bayKey?.split('-')[0] ?? '';
-  const bayLabel = INTERNAL_STATION_BAY_ROLE_LABELS_PL[roleKey] ?? 'Układ stacyjny';
+  // Rola pola z identyfikatora wewnętrznego (`in`/`tr`/`coupler`/`oze`…) — etykieta z kanonu
+  // słownictwa ról pól (karta #141), nie z drugiej listy.
+  const bayLabel = fieldRoleLabelOrNullPl(roleKey) ?? 'Układ stacyjny';
   const deviceLabel = deviceKey
     ? INTERNAL_STATION_DEVICE_LABELS_PL[deviceKey] ?? selectedElement.name
     : selectedElement.name;

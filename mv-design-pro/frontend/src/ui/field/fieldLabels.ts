@@ -1,28 +1,3 @@
-export function canonicalRoleLabel(role: string | null | undefined): string {
-  switch (role) {
-    case 'LINIA_IN':
-      return 'Pole liniowe wejściowe';
-    case 'LINIA_OUT':
-      return 'Pole liniowe wyjściowe';
-    case 'TRANSFORMATOROWE':
-      return 'Pole transformatorowe';
-    case 'LINIA_ODG':
-      return 'Pole odgałęźne';
-    case 'SPRZEGLO':
-      return 'Pole sprzęgła';
-    case 'POMIAROWE':
-      return 'Pole pomiarowe';
-    case 'PV_SN':
-      return 'Pole źródłowe PV';
-    case 'BESS_SN':
-      return 'Pole źródłowe BESS';
-    case 'FW_SN':
-      return 'Pole źródłowe FW';
-    default:
-      return 'Rola pola do wyboru';
-  }
-}
-
 export function integrityStatusLabel(status: string | null | undefined): string {
   switch (status) {
     case 'kompletny':

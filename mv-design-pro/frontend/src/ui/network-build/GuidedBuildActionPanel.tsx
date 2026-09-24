@@ -51,7 +51,7 @@ function buildNextAction(
   if (sourceCount === 0) {
     return {
       title: 'Utwórz źródło zasilania GPZ',
-      detail: 'Najpierw definiujesz szyny GPZ, liczbę sekcji i pola odpływowe SN.',
+      detail: 'Najpierw definiujesz szyny GPZ, liczbę sekcji i pola liniowe SN.',
       buttonLabel: 'Dodaj GPZ',
       enabled: true,
     };
@@ -60,7 +60,7 @@ function buildNextAction(
   if (configuredGpzSnFieldCount === 0) {
     return {
       title: 'Skonfiguruj pole SN GPZ',
-      detail: 'Najpierw dobierasz pole odpływowe SN i aparaturę. Magistrala musi wyjść z zacisku pola, nie bezpośrednio z GPZ.',
+      detail: 'Najpierw dobierasz pole liniowe SN i aparaturę. Magistrala musi wyjść z zacisku pola, nie bezpośrednio z GPZ.',
       buttonLabel: 'Skonfiguruj pole SN',
       enabled: true,
     };
@@ -69,7 +69,7 @@ function buildNextAction(
   if (trunkSegmentCount === 0 || phase === 'HAS_SOURCE') {
     return {
       title: 'Połącz zacisk pola SN',
-      detail: 'Pole odpływowe SN jest przygotowane. Teraz łączysz jego zacisk wyjściowy z zaciskiem wejściowym pierwszego obiektu sieciowego.',
+      detail: 'Pole liniowe SN jest przygotowane. Teraz łączysz jego zacisk wyjściowy z zaciskiem wejściowym pierwszego obiektu sieciowego.',
       buttonLabel: hasTrunkStart ? 'Połącz zacisk pola SN' : 'Przygotuj zacisk pola SN',
       enabled: hasTrunkStart,
       blockedReason: hasTrunkStart ? undefined : 'Pole SN nie udostępnia wolnego zacisku wyjściowego.',
@@ -267,7 +267,7 @@ export function GuidedBuildActionPanel() {
               <div>
                 <p className="font-semibold text-white">Pole SN GPZ</p>
                 <p className="text-scada-text">
-                  {configuredGpzSnFieldCount > 0 ? `${configuredGpzSnFieldCount} pole odpływowe` : 'Wymagane przed magistralą'}
+                  {configuredGpzSnFieldCount > 0 ? `${configuredGpzSnFieldCount} pole liniowe` : 'Wymagane przed magistralą'}
                 </p>
               </div>
             </div>

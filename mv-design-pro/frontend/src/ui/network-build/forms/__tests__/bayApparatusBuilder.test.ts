@@ -45,7 +45,8 @@ describe('validateApparatusSequence', () => {
   it('OZE bez CT → issue', () => {
     const r = validateApparatusSequence('OZE', ['DS', 'CB', 'ES']);
     expect(r.isValid).toBe(false);
-    expect(r.issues.some((i) => i.includes('OZE'))).toBe(true);
+    // Karta #141: pole o roli źródłowej nazwane słowem kanonu („Pole źródłowe”), nie „Pole OZE”.
+    expect(r.issues.some((i) => i.startsWith('Pole źródłowe wymaga CT'))).toBe(true);
   });
 
   it('COUPLER z DS+CB → valid', () => {

@@ -21,9 +21,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from enm.domain_operations import (
+from enm.domain_operations import execute_domain_operation
+from enm.rola_pola_sn import (
+    NAZWA_POLA_SN_OGOLNA_PL,
+    NAZWA_POLA_ZRODLOWEGO_SN_PL,
     NAZWA_ROLI_POLA_SN_PL,
-    execute_domain_operation,
+    ROLA_POLA_SN_Z_ALIASU,
+    nazwa_pola_zrodlowego_sn,
     nazwa_roli_pola_sn,
 )
 
@@ -39,6 +43,9 @@ _KOD = re.compile(r"\b[A-Z][A-Z0-9]{2,}(?:_[A-Z0-9]+)+\b")
 _IDENTYFIKATOR = re.compile(r"[0-9a-f]{8,}|[a-z]+/[0-9a-f]+")
 
 _ROLE_KANONICZNE = sorted(NAZWA_ROLI_POLA_SN_PL)
+#: Role pól rozdzielnicy stacji (operacje stacyjne) — bez ról źródłowych PV/BESS/FW, które
+#: powstają torem źródła (pole źródłowe SN), nie wpisem `sn_fields` stacji.
+_ROLE_STACJI = [r for r in _ROLE_KANONICZNE if not r.endswith("_SN")]
 _ALIASY_MODELU = {
     "IN": "LINIA_IN",
     "OUT": "LINIA_OUT",
@@ -82,15 +89,78 @@ def test_pole_zrodlowe_i_rola_spoza_kanonu(rola: str, nazwa: str) -> None:
     assert nazwa_roli_pola_sn(rola) == nazwa
 
 
-def test_mapa_nazw_rol_rowna_etykietom_schematu() -> None:
-    """Parytet z `FIELD_ROLE_LABEL_PL` schematu: ta sama rola ma jedną nazwę w modelu i na SLD."""
-    kontrakt = (
+def _kontrakt_schematu() -> str:
+    return (
         Path(__file__).resolve().parents[3]
         / "frontend/src/ui/sld/v2/station-rozdzielnia/contract.ts"
     ).read_text(encoding="utf-8")
-    blok = kontrakt.split("export const FIELD_ROLE_LABEL_PL", 1)[1].split("};", 1)[0]
-    etykiety = dict(re.findall(r"(\w+): '([^']+)'", blok))
-    assert etykiety == NAZWA_ROLI_POLA_SN_PL
+
+
+def _mapa_z_kontraktu(nazwa: str) -> dict[str, str]:
+    blok = _kontrakt_schematu().split(f"export const {nazwa}", 1)[1].split("};", 1)[0]
+    return dict(re.findall(r"(\w+): '([^']+)'", blok))
+
+
+def _stala_z_kontraktu(nazwa: str) -> str:
+    dopasowanie = re.search(rf"export const {nazwa} = '([^']+)';", _kontrakt_schematu())
+    assert dopasowanie, nazwa
+    return dopasowanie.group(1)
+
+
+def test_mapa_nazw_rol_rowna_etykietom_schematu() -> None:
+    """Parytet z `FIELD_ROLE_LABEL_PL` schematu: ta sama rola ma jedną nazwę w modelu i na SLD
+    (sześć ról rozdzielnicy stacji + trzy role źródłowe PV/BESS/FW, karta #141)."""
+    assert _mapa_z_kontraktu("FIELD_ROLE_LABEL_PL") == NAZWA_ROLI_POLA_SN_PL
+    assert {"PV_SN", "BESS_SN", "FW_SN"} <= set(NAZWA_ROLI_POLA_SN_PL)
+
+
+def test_nazwy_ogolne_rowne_nazwom_schematu() -> None:
+    """Pole źródłowe bez technologii i pole bez roli — ta sama nazwa ogólna po obu stronach."""
+    assert _stala_z_kontraktu("FIELD_SOURCE_LABEL_PL") == NAZWA_POLA_ZRODLOWEGO_SN_PL
+    assert _stala_z_kontraktu("FIELD_GENERIC_LABEL_PL") == NAZWA_POLA_SN_OGOLNA_PL
+
+
+def test_aliasy_roli_modelu_rowne_aliasom_schematu() -> None:
+    """Rola modelu → rola kanoniczna: ta sama tablica we froncie i w backendzie (predykaty
+    parami — rolę i jej nazwę wyznacza jedno odwzorowanie)."""
+    aliasy_backendu = {
+        alias: rola for alias, rola in ROLA_POLA_SN_Z_ALIASU.items() if alias != rola
+    }
+    assert _mapa_z_kontraktu("MODEL_BAY_ROLE_TO_CANONICAL") == aliasy_backendu
+    assert aliasy_backendu == _ALIASY_MODELU
+    # Identyczności kanoniczne są w słowniku (rola kanoniczna podana wprost przechodzi bez zmian).
+    for rola in _ROLE_STACJI:
+        assert ROLA_POLA_SN_Z_ALIASU[rola] == rola
+
+
+@pytest.mark.parametrize(("alias", "rola"), sorted(_ALIASY_MODELU.items()))
+def test_rola_read_modelu_i_rola_operacji_z_tej_samej_tablicy_co_nazwa(
+    alias: str, rola: str
+) -> None:
+    """Predykaty parami (karta #141): rola pola w read-modelu (`field_role`, z której schemat
+    i szuflada biorą etykietę), rola modelu zapisywana przez operacje stacyjne i nazwa pola
+    nadawana przez backend wychodzą z JEDNEJ tablicy aliasów kanonu — w obie strony."""
+    from application.field_read_model import CANONICAL_BAY_ROLE_MAP
+    from enm.domain_operations import _SN_FIELD_ROLE_TO_BAY_ROLE
+
+    assert CANONICAL_BAY_ROLE_MAP[alias] == rola
+    assert _SN_FIELD_ROLE_TO_BAY_ROLE[rola] == alias
+    assert NAZWA_ROLI_POLA_SN_PL[CANONICAL_BAY_ROLE_MAP[alias]] == nazwa_roli_pola_sn(alias)
+    assert set(CANONICAL_BAY_ROLE_MAP) == set(_ALIASY_MODELU)
+    assert set(_SN_FIELD_ROLE_TO_BAY_ROLE) == set(_ALIASY_MODELU.values())
+
+
+@pytest.mark.parametrize(
+    ("technologia", "rola"), [("PV", "PV_SN"), ("BESS", "BESS_SN"), ("FW", "FW_SN")]
+)
+def test_nazwa_pola_zrodlowego_z_technologii_z_kanonu(technologia: str, rola: str) -> None:
+    assert nazwa_pola_zrodlowego_sn(technologia) == NAZWA_ROLI_POLA_SN_PL[rola]
+    assert nazwa_pola_zrodlowego_sn(technologia.lower()) == NAZWA_ROLI_POLA_SN_PL[rola]
+
+
+@pytest.mark.parametrize("technologia", ["", "UPS", None, "AGREGAT"])
+def test_nazwa_pola_zrodlowego_bez_znanej_technologii_nie_zgaduje(technologia: object) -> None:
+    assert nazwa_pola_zrodlowego_sn(technologia) == NAZWA_POLA_ZRODLOWEGO_SN_PL
 
 
 def _pola_stacji(migawka: dict[str, Any], przed: dict[str, Any]) -> list[dict[str, Any]]:
@@ -147,7 +217,7 @@ def test_stacja_dolaczana_na_koncu_nazywa_pola_po_polsku() -> None:
         assert nazwa.startswith(nazwa_roli_pola_sn(pole.get("bay_role"))), (nazwa, pole)
 
 
-@pytest.mark.parametrize("rola", [r for r in _ROLE_KANONICZNE if r != "POMIAROWE"])
+@pytest.mark.parametrize("rola", [r for r in _ROLE_STACJI if r != "POMIAROWE"])
 def test_komunikat_braku_aparatu_nazywa_role_po_polsku(rola: str) -> None:
     """Każda rola dopuszczalna w stacji wciętej w magistralę (pole pomiarowe w torze tranzytu
     odrzuca wcześniejsza reguła pomiaru rozliczeniowego)."""

@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { buildHierarchy, type EnmInputForHierarchy } from '../HierarchyTree';
 import { NetworkHierarchyTree } from '../NetworkHierarchyTree';
+import { FIELD_ROLE_LABEL_PL } from '../../station-rozdzielnia/contract';
 
 function emptyEnm(): EnmInputForHierarchy {
   return {
@@ -83,9 +84,16 @@ describe('NetworkHierarchyTree — GPZ → Sekcja → Pole', () => {
     render(<NetworkHierarchyTree hierarchy={buildHierarchy(simpleGpzEnm())} />);
     expect(screen.getByText('Pole Q01')).toBeInTheDocument();
     expect(screen.getByText('Pole Q02')).toBeInTheDocument();
-    // bay role badge present
-    expect(screen.getAllByText('OUT').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('IN').length).toBeGreaterThan(0);
+    // Znacznik roli pola: dyspozytorski z kanonu (WE/WY), pełna nazwa roli z kanonu
+    // w podpowiedzi — nigdy kod roli modelu (IN/OUT), karta #141.
+    const wy = screen.getAllByText('WY');
+    const we = screen.getAllByText('WE');
+    expect(wy.length).toBeGreaterThan(0);
+    expect(we.length).toBeGreaterThan(0);
+    expect(wy[0]).toHaveAttribute('title', FIELD_ROLE_LABEL_PL.LINIA_OUT);
+    expect(we[0]).toHaveAttribute('title', FIELD_ROLE_LABEL_PL.LINIA_IN);
+    expect(screen.queryByText('OUT')).toBeNull();
+    expect(screen.queryByText('IN')).toBeNull();
   });
 
   it('uses data-testid per node for navigation', () => {

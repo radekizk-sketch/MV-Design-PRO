@@ -68,7 +68,6 @@ from .domain_operations import (
     _apply_materialized_transformer_fields,
     _apply_screen_bonding,
     _build_field_spec,
-    _canonical_sn_field_role,
     _compute_seed,
     _copy_split_segment_fields,
     _error_legacy_field_write_disabled,
@@ -84,7 +83,6 @@ from .domain_operations import (
     _rodzaj_aparatu_sn_z_katalogu,
     _station_has_transformer,
     blad_pomiaru_w_torze_tranzytu,
-    nazwa_roli_pola_sn,
     rozstrzygnij_pomiar_pola,
     szyna_prowadzi_tranzyt_sn,
     wybor_bloku_fabrycznego,
@@ -110,6 +108,11 @@ from .pole_katalogowe import (
     czy_wybor_katalogowy,
     rozwiaz_aparaty_pola,
     rozwiaz_plan_pola,
+)
+from .rola_pola_sn import (
+    kanoniczna_rola_pola_sn,
+    nazwa_pola_zrodlowego_sn,
+    nazwa_roli_pola_sn,
 )
 from .topology_ops import (
     attach_protection,
@@ -1891,8 +1894,8 @@ def _normalize_sn_bay_role(payload: dict[str, Any]) -> str:
 
 
 def _default_sn_bay_name(role: str) -> str:
-    """Nazwa domyślna pola SN — JEDNA mapa nazw ról (`nazwa_roli_pola_sn`, karta #140); dawna
-    kopia tutaj miała inne słownictwo niż wcięcie stacji i schemat (dopływowe/odpływowe)."""
+    """Nazwa domyślna pola SN — JEDNA mapa nazw ról (`enm.rola_pola_sn`, karty #140/#141); dawna
+    kopia tutaj miała inne słownictwo niż wcięcie stacji i schemat."""
     return nazwa_roli_pola_sn(role)
 
 
@@ -1977,7 +1980,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     funkcja_pomiaru, rodzaj_pomiaru, blad_pomiaru = rozstrzygnij_pomiar_pola(
         payload.get("funkcja_pomiaru"),
         payload.get("rodzaj_pomiaru"),
-        rola_kanoniczna=_canonical_sn_field_role(bay_role),
+        rola_kanoniczna=kanoniczna_rola_pola_sn(bay_role),
         domyslna_funkcja=FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
     )
     if blad_pomiaru is not None:
@@ -5615,7 +5618,7 @@ def _add_converter_source_der_sn(
         if bool(mv_field_cfg.get("protection_relay", True))
         else []
     )
-    field_name = str(mv_field_cfg.get("field_name") or f"Pole źródłowe SN {technology}")
+    field_name = str(mv_field_cfg.get("field_name") or nazwa_pola_zrodlowego_sn(technology))
     field_spec = _build_field_spec(
         field_ref=field_ref,
         name=field_name,

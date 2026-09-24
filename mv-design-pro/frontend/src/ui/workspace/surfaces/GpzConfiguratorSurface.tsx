@@ -327,7 +327,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
           <div data-testid="gpz-card-content-bays-balance" className="space-y-3">
             <p className="text-sm text-scada-muted">
               Bilans pól SN per sekcja: pola liniowe, transformatorowe, pomiarowe,
-              sprzęgłowe, sekcyjne, OZE i rezerwowe.
+              sprzęgła, sekcyjne, źródłowe i rezerwowe.
             </p>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {data.baysPerSectionCount.map((count, idx) => (

@@ -1,3 +1,5 @@
+import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL } from '../sld/v2/station-rozdzielnia/contract';
+
 export type SolutionKind =
   | 'GPZ'
   | 'MV_LINE_SEGMENT'
@@ -190,7 +192,7 @@ export const REFERENCE_SOLUTION_PACKAGES: readonly SolutionPackage[] = [
       { kind: 'transformer', role: 'hv_mv_transformer', labelPl: 'Transformator 110/15 kV' },
       { kind: 'bus', role: 'mv_busbar_section', labelPl: 'Sekcja szyn SN' },
       { kind: 'bay', role: 'line_bay', labelPl: 'Pole liniowe SN' },
-      { kind: 'bay', role: 'coupler_bay', labelPl: 'Pole sprzęgłowe SN' },
+      { kind: 'bay', role: 'coupler_bay', labelPl: FIELD_ROLE_LABEL_PL.SPRZEGLO },
       { kind: 'measurement', role: 'ct_vt_metering', labelPl: 'Pomiar rozliczeniowy SN' },
       { kind: 'protection', role: 'feeder_protection', labelPl: 'Zabezpieczenie pola liniowego' },
       { kind: 'corridor', role: 'outgoing_corridor', labelPl: 'Wyprowadzenie magistrali SN' },
@@ -249,9 +251,9 @@ export const REFERENCE_SOLUTION_PACKAGES: readonly SolutionPackage[] = [
     ],
     materialized_elements: [
       { kind: 'bus', role: 'mv_station_bus', labelPl: 'Szyna SN stacji' },
-      { kind: 'bay', role: 'incoming_bay', labelPl: 'Pole wejściowe SN' },
-      { kind: 'bay', role: 'outgoing_bay', labelPl: 'Pole wyjściowe SN' },
-      { kind: 'bay', role: 'transformer_bay', labelPl: 'Pole transformatorowe SN' },
+      { kind: 'bay', role: 'incoming_bay', labelPl: FIELD_ROLE_LABEL_PL.LINIA_IN },
+      { kind: 'bay', role: 'outgoing_bay', labelPl: FIELD_ROLE_LABEL_PL.LINIA_OUT },
+      { kind: 'bay', role: 'transformer_bay', labelPl: FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE },
       { kind: 'transformer', role: 'mv_lv_transformer', labelPl: 'Transformator SN/nN' },
       { kind: 'bus', role: 'lv_busbar', labelPl: 'Rozdzielnia nN' },
       { kind: 'load', role: 'lv_load', labelPl: 'Odbiór nN' },
@@ -287,7 +289,7 @@ export const REFERENCE_SOLUTION_PACKAGES: readonly SolutionPackage[] = [
     ],
     materialized_elements: [
       { kind: 'bus', role: 'pcc_bus', labelPl: 'Punkt przyłączenia PCC' },
-      { kind: 'bay', role: 'der_connection_bay', labelPl: 'Pole przyłączeniowe OZE' },
+      { kind: 'bay', role: 'der_connection_bay', labelPl: FIELD_SOURCE_LABEL_PL },
       { kind: 'transformer', role: 'block_transformer', labelPl: 'Transformator blokowy OZE' },
       { kind: 'generator', role: 'pv_generator', labelPl: 'Źródło PV' },
       { kind: 'generator', role: 'bess_converter', labelPl: 'Magazyn energii BESS' },

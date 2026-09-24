@@ -40,10 +40,10 @@ from application.station_templates.schema import (
 #: PRZED transformatorem, przed pomiarem WYŁĄCZNIE pole dopływowe (zero pary
 #: tranzytowej w rozdzielnicy klienta).
 _ROLE_ABONENCKA = (
-    BayRoleSpec(role="IN", label_pl="Pole liniowe dopływowe"),
-    BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe rozliczeniowe (CT/VT)"),
-    BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
-    BayRoleSpec(role="OUT", label_pl="Pole odpływowe rezerwowe"),
+    BayRoleSpec(role="IN"),
+    BayRoleSpec(role="MEASUREMENT", okreslenie_pl="rozliczeniowe (CT/VT)"),
+    BayRoleSpec(role="TR"),
+    BayRoleSpec(role="OUT", okreslenie_pl="rezerwowe"),
 )
 
 

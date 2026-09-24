@@ -1,3 +1,5 @@
+import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
+
 /** Teksty PL kreatora „Dodaj stację SN/nN" (Audyt D, faza D2). Język inżynierski. */
 
 export const STACJA_STRINGS = {
@@ -233,7 +235,7 @@ export const STACJA_STRINGS = {
     { id: 'sectional', etykieta: 'Sekcyjna (ze sprzęgłem)' },
   ],
   typStacjiPomoc:
-    'Końcowa zamyka ciąg jednym polem zasilającym (bez pól wyjściowych/odgałęźnych); '
+    'Końcowa zamyka ciąg jednym polem liniowym wejściowym (bez pól liniowych wyjściowych/odgałęźnych); '
     + 'odgałęźna oddaje odczep w bok (wejście + wyjście + odgałęzienie); przelotowa wcina się '
     + 'w ciąg (wejście + wyjście); sekcyjna dzieli szynę sprzęgłem. '
     + 'Rodzaj decyduje o polach rozdzielnicy SN.',
@@ -399,7 +401,8 @@ export const STACJA_STRINGS = {
     + 'a projekt nie przejdzie do dokumentacji wykonawczej. Praca koncepcyjna i obliczenia '
     + 'działają bez zmian — to legalny stan roboczy.',
   polaPrzywrocTr: 'Dodaj pole transformatorowe',
-  wierszPoleTr: 'Pole transformatorowe',
+  // Nazwa roli z kanonu słownictwa ról pól (karta #141).
+  wierszPoleTr: FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE,
   wierszPoleTrJest: 'W rozdzielnicy',
   wierszPoleTrBrak: 'Brak — konfiguracja niekompletna',
   podgladTytul: 'Podgląd pól rozdzielnicy SN',
@@ -523,7 +526,7 @@ export const STACJA_STRINGS = {
   teoriaRodzajOpis:
     'Stacja transformatorowa SN/nN transformuje napięcie średnie na niskie i zasila odbiory. Jej rodzaj '
     + 'odzwierciedla miejsce w topologii: stacja odbiorcza (odgałęźna) kończy odgałęzienie, przelotowa '
-    + 'wcina się w ciąg magistrali (pole wejściowe i wyjściowe), a sekcyjna dzieli szynę SN sprzęgłem '
+    + 'wcina się w ciąg magistrali (pole liniowe wejściowe i wyjściowe), a sekcyjna dzieli szynę SN sprzęgłem '
     + '(umożliwia rezerwowanie i sekcjonowanie). Sposób osadzenia — zakończenie wolnego końca ciągu albo '
     + 'świadomy podział istniejącego odcinka — jest operacją topologiczną: stacja zawsze powstaje na '
     + 'węźle, a nie „w powietrzu". Podział odcinka rozdziela go na dwie części o zachowanej długości.',
@@ -548,7 +551,7 @@ export const STACJA_STRINGS = {
     'Rozdzielnica SN grupuje pola przyłączone do wspólnej szyny. Pole liniowe wejściowe (WE) doprowadza '
     + 'zasilanie z magistrali, pole liniowe wyjściowe (WY) prowadzi je dalej wzdłuż ciągu, pole odgałęźne '
     + '(ODG) zasila odgałęzienie, a pole transformatorowe (TR) łączy szynę SN z transformatorem stacji. '
-    + 'W stacji sekcyjnej pole sprzęgłowe (sprzęgło) łączy sekcje szyny, umożliwiając rezerwowanie i '
+    + 'W stacji sekcyjnej pole sprzęgła łączy sekcje szyny, umożliwiając rezerwowanie i '
     + 'sekcjonowanie. Zestaw pól wynika z rodzaju stacji, a każde pole nosi kompletny szablon katalogowy '
     + '(rozłącznik/wyłącznik, przekładniki, zabezpieczenia) — parametry pochodzą z katalogu producenta.',
   teoriaRozdzielnicaWymog:

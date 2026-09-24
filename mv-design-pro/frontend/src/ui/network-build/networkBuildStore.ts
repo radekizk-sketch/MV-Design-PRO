@@ -7,6 +7,7 @@ import {
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
 import { isOperationalBus, isTerrainSnSegment } from '../shared/enmVisibility';
 import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
+import { fieldRoleLabelPl } from '../sld/v2/station-rozdzielnia/contract';
 import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import type { ElementType } from '../types';
@@ -1179,8 +1180,9 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+/** Nazwa pola bez własnej nazwy w modelu — nazwa roli z kanonu słownictwa ról pól (karta #141). */
 function defaultConfiguredFieldName(role: 'OUT' | 'FEEDER'): string {
-  return role === 'OUT' ? 'Pole odpływowe SN' : 'Pole liniowe SN';
+  return fieldRoleLabelPl(role);
 }
 
 function listCanonicalFieldSpecs(station: EnergyNetworkModel['substations'][number]): FieldSpecRecord[] {

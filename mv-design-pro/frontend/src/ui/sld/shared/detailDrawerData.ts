@@ -45,8 +45,8 @@
  * `mapKindToDrawerKind`/`mapKindToMenuKind`/`findBusVoltage`/`findBayByRef`/
  * `stationRefFromInternalElement`/`stationDisplayNameForRef`/
  * `stationRefForTransformerSelection`/`describeStationInternalElement` (+
- * stałe `INTERNAL_STATION_BAY_ROLE_LABELS_PL`/
- * `INTERNAL_STATION_DEVICE_LABELS_PL`) PRZENIESIONE razem z budowniczymi,
+ * stała `INTERNAL_STATION_DEVICE_LABELS_PL`; nazwy ról pól bierze z kanonu
+ * `FIELD_ROLE_LABEL_PL`, karta #141) PRZENIESIONE razem z budowniczymi,
  * bo są wołane TAKŻE przez kod, który ZOSTAJE w v2 (selekcja typu elementu,
  * `openDetailFullView`/`openDetailConfiguration`, `detailDrawerActions`) —
  * v2 importuje je z powrotem stąd (wzorzec identyczny jak
@@ -81,6 +81,7 @@ import { getMetric, formatMetric, type RawOverlayPayload } from '../../sld-overl
 import type { SldDataPayload } from '../v2/canvas/enmToSldAdapter';
 import { projectBayPrimaryDevices, readStationFieldSpecs } from '../v2/canvas/enmToSldAdapter';
 import { apparatusIdentifiers, symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
+import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import type { SldDetailDrawerData } from '../v2/canvas/SldDetailDrawer';
 import type { SldElementKindForMenu } from '../v2/command/SldCommandService';
 
@@ -349,16 +350,6 @@ function polozenieAparatu(state: BayDeviceState): 'closed' | 'open' | 'unknown' 
   }
 }
 
-const INTERNAL_STATION_BAY_ROLE_LABELS_PL: Readonly<Record<string, string>> = {
-  in: 'Pole wejściowe SN',
-  out: 'Pole wyjściowe SN',
-  feeder: 'Pole odgałęźne SN',
-  tr: 'Pole transformatorowe SN',
-  coupler: 'Pole sprzęgłowe SN',
-  measurement: 'Pole pomiarowe SN',
-  oze: 'Pole przyłączeniowe OZE',
-};
-
 const INTERNAL_STATION_DEVICE_LABELS_PL: Readonly<Record<string, string>> = {
   'switch-disconnector': 'Rozłącznik',
   fuse: 'Bezpiecznik',
@@ -420,7 +411,8 @@ export function describeStationInternalElement(
     const bayPath = id.slice(id.indexOf('/internal-bay/') + '/internal-bay/'.length);
     const [bayKey, deviceKey] = bayPath.split('/');
     const roleKey = bayKey?.split('-')[0] ?? '';
-    const bayLabel = INTERNAL_STATION_BAY_ROLE_LABELS_PL[roleKey] ?? 'Pole SN';
+    // Etykieta roli z kanonu słownictwa ról pól (karta #141); rola spoza kanonu — „Pole SN”.
+    const bayLabel = fieldRoleLabelPl(roleKey);
     const deviceLabel = deviceKey ? INTERNAL_STATION_DEVICE_LABELS_PL[deviceKey] ?? 'Aparat pola SN' : null;
     return {
       id,

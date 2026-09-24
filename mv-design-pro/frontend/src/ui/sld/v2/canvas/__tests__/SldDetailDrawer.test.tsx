@@ -17,6 +17,7 @@ import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { render, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
 import { SldDetailDrawer, type SldDetailDrawerData } from '../SldDetailDrawer';
+import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL } from '../../station-rozdzielnia/contract';
 import { useAppStateStore } from '../../../../app-state/store';
 import { odpowiedzKlasyfikacji } from '../../../../../ui2/oze/ncrfg/__tests__/atrapaKlasyfikacji';
 import { EMPTY_PROTECTION_VIEW, type ProtectionViewResponse } from '../../../../protection';
@@ -463,13 +464,31 @@ describe('SldDetailDrawer — right-side detail panel', () => {
         { id: 'bay-q01', name: 'Q01', bayRole: 'IN', bayNumber: '1', feederShortName: 'Dopływ' },
         { id: 'bay-q02', name: 'Q02', bayRole: 'OUT', bayNumber: '2', feederShortName: 'Odpływ' },
         { id: 'bay-q03', name: 'Q03', bayRole: 'TR', bayNumber: '3', feederShortName: null },
+        { id: 'bay-q04', name: 'Q04', bayRole: 'COUPLER', bayNumber: '4', feederShortName: null },
+        { id: 'bay-q05', name: 'Q05', bayRole: 'OZE', bayNumber: '5', feederShortName: null },
       ],
     };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     expect(container.querySelector('[data-testid="drawer-rozdzielnica-bays"]')).toBeTruthy();
-    expect(container.querySelectorAll('[data-testid^="drawer-rozdzielnica-bay-"]')).toHaveLength(3);
-    expect(container.querySelector('[data-testid="drawer-rozdzielnica-bay-bay-q01"]')?.textContent).toContain('Q1');
-    expect(container.querySelector('[data-testid="drawer-rozdzielnica-bay-bay-q02"]')?.textContent).toContain('Pole odpływowe');
+    expect(container.querySelectorAll('[data-testid^="drawer-rozdzielnica-bay-"]')).toHaveLength(5);
+    const tekst = (id: string) =>
+      container.querySelector(`[data-testid="drawer-rozdzielnica-bay-${id}"]`)?.textContent ?? '';
+    expect(tekst('bay-q01')).toContain('Q1');
+    // Karta #141: nazwa roli z kanonu (ta sama co na schemacie i w kreatorze), znacznik
+    // dyspozytorski z kanonu zamiast kodu roli modelu (OUT/COUPLER/OZE).
+    expect(tekst('bay-q01')).toContain(`${FIELD_ROLE_LABEL_PL.LINIA_IN} · Dopływ`);
+    expect(tekst('bay-q02')).toContain(`${FIELD_ROLE_LABEL_PL.LINIA_OUT} · Odpływ`);
+    expect(tekst('bay-q02')).toMatch(/WY$/);
+    expect(tekst('bay-q03')).toContain(FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE);
+    expect(tekst('bay-q04')).toContain(FIELD_ROLE_LABEL_PL.SPRZEGLO);
+    expect(tekst('bay-q04')).toMatch(/SPR$/);
+    expect(tekst('bay-q05')).toContain(FIELD_SOURCE_LABEL_PL);
+    expect(tekst('bay-q05')).toMatch(/—$/);
+    // „TR” jest też znacznikiem dyspozytorskim kanonu (pole transformatorowe) — pozostałe kody
+    // ról modelu nie mogą się pojawić.
+    for (const id of ['bay-q01', 'bay-q02', 'bay-q03', 'bay-q04', 'bay-q05']) {
+      expect(tekst(id)).not.toMatch(/\b(?:IN|OUT|COUPLER|OZE|FEEDER|MEASUREMENT)\b/);
+    }
     cleanup();
   });
 

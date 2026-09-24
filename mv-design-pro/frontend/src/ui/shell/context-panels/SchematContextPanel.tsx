@@ -11,6 +11,7 @@ import { navigateToAnalysis } from '../../navigation/routes';
 import { przejdzDoPrzestrzeni } from '../../../ui2/shell/przejsciaPrzestrzeni';
 import { useShellStore } from '../../../ui2/shell/useShellStore';
 import type { ElementType } from '../../types';
+import { fieldLabelInSentencePl, fieldRoleLabelPl } from '../../sld/v2/station-rozdzielnia/contract';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
   type EntityTypeCode,
@@ -777,35 +778,12 @@ function asText(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
+/** Rola pola w opisie wiersza — nazwa z kanonu słownictwa ról pól (karta #141) w środku zdania.
+ *  Rola modelu (`Bay.bay_role`: IN/OUT/FEEDER/TR/COUPLER/MEASUREMENT/OZE) przechodzi na rolę
+ *  kanonu; rola spoza kanonu daje nazwę ogólną, a brak roli — brak opisu. */
 function formatBayRole(item: SnapshotRecord): string | undefined {
-  const role = asText(item.bay_role).toUpperCase();
-  switch (role) {
-    case 'IN':
-    case 'INCOMING':
-    case 'DOPLYW':
-    case 'DOPŁYW':
-      return 'pole dopływowe';
-    case 'OUT':
-    case 'OUTGOING':
-    case 'ODPLYW':
-    case 'ODPŁYW':
-      return 'pole odpływowe';
-    case 'TR':
-    case 'TRANSFORMER':
-      return 'pole transformatorowe';
-    case 'COUPLER':
-    case 'SECTION':
-    case 'SEKCJA':
-      return 'sprzęgło / pole sekcyjne';
-    case 'METERING':
-    case 'POMIAR':
-      return 'pole pomiarowe';
-    case 'SOURCE':
-    case 'OZE':
-      return 'pole przyłączeniowe';
-    default:
-      return role ? 'pole SN' : undefined;
-  }
+  const role = asText(item.bay_role);
+  return role.trim() ? fieldLabelInSentencePl(fieldRoleLabelPl(role)) : undefined;
 }
 
 function formatBranchMeta(item: SnapshotRecord): string | undefined {

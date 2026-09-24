@@ -58,6 +58,7 @@ import type {
 } from '../../../types/enm';
 import { buildOperationContext } from '../../network-build/operationContext';
 import { BAY_ROLE_TO_PORT_KIND, type PortKind } from '../../sld/v2/core/ports';
+import { canonicalFieldRole } from '../../sld/v2/station-rozdzielnia/contract';
 
 interface StationConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
@@ -337,26 +338,6 @@ function stationTopologicalType(
   }
 }
 
-function bayTypePlFromRole(role: string | null | undefined): StationConfigBayRow['bayTypePl'] {
-  switch ((role ?? '').toUpperCase()) {
-    case 'IN':
-      return 'liniowe wejściowe';
-    case 'OUT':
-    case 'FEEDER':
-      return 'liniowe wyjściowe';
-    case 'TR':
-      return 'transformatorowe';
-    case 'COUPLER':
-      return 'sprzęgłowe';
-    case 'MEASUREMENT':
-      return 'pomiarowe';
-    case 'OZE':
-      return 'PV/FV';
-    default:
-      return 'rezerwowe';
-  }
-}
-
 function bayDesignation(bay: Bay, index: number): string {
   return bay.bay_number ?? bay.feeder_short_name ?? bay.name ?? `Pole ${index + 1}`;
 }
@@ -534,7 +515,7 @@ function deriveStationBayRows(
     return snapshotBays.map((bay, index) => ({
       bayId: bay.ref_id ?? bay.id ?? `bay-${index}`,
       designation: bayDesignation(bay, index),
-      bayTypePl: bayTypePlFromRole(bay.bay_role),
+      bayRole: bay.bay_role ?? null,
       attachedObjectPl: bay.outgoing_destination_ref ?? undefined,
       hasEquipment: (bay.equipment_refs ?? []).length > 0,
       hasProtection: Boolean(bay.protection_ref),
@@ -547,7 +528,7 @@ function deriveStationBayRows(
   return stationSnFieldSpecs(station).map((field, index) => ({
     bayId: String(field.ref_id ?? field.field_ref ?? field.id ?? `field-${index}`),
     designation: String(field.name ?? `Pole ${index + 1}`),
-    bayTypePl: bayTypePlFromRole(String(field.bay_role ?? '')),
+    bayRole: typeof field.bay_role === 'string' ? field.bay_role : null,
     hasEquipment: true,
     hasProtection: true,
     hasMeasurements: true,
@@ -892,7 +873,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     }
     if (!continuationContext) {
       notify(
-        'Nie znaleziono wolnego portu wyjściowego SN dla tej stacji. Wybierz stację wpiętą w ciąg albo pole wyjściowe SN.',
+        'Nie znaleziono wolnego portu wyjściowego SN dla tej stacji. Wybierz stację wpiętą w ciąg albo pole liniowe wyjściowe SN.',
         'warning',
       );
       return;
@@ -1093,6 +1074,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
 
   const configuratorProps = useMemo(() => {
     const base = buildBaseStationProps(stationName, localConfig);
+    const stationHasCoupler = stationBays.some((bay) => canonicalFieldRole(bay.bayRole) === 'SPRZEGLO');
     // Phase 8: projektuj per-transformer / per-bay refs z audit2Config do propsow.
     const transformerTapChangers = audit2Config.data?.transformer_tap_changers ?? {};
     const bayFuses = audit2Config.data?.bay_hv_fuses ?? {};
@@ -1127,11 +1109,12 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       snSwitchgear: {
         ...base.snSwitchgear,
         nominalVoltageKv: stationSnVoltageKv,
-        layout: stationBays.some((bay) => bay.bayTypePl === 'sprzęgłowe')
+        // Sprzęgło rozpoznane po ROLI pola (kanon ról pól, karta #141) — nie po napisie etykiety.
+        layout: stationHasCoupler
           ? 'sectioned_busbar' as const
           : 'single_busbar' as const,
-        sectionsCount: stationBays.some((bay) => bay.bayTypePl === 'sprzęgłowe') ? 2 : 1,
-        hasCoupler: stationBays.some((bay) => bay.bayTypePl === 'sprzęgłowe'),
+        sectionsCount: stationHasCoupler ? 2 : 1,
+        hasCoupler: stationHasCoupler,
         baysCount: stationBays.length,
         readinessLabelPl: stationBays.length > 0 ? 'wariant katalogowy' : 'do konfiguracji',
       },

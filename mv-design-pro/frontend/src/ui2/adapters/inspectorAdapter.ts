@@ -54,6 +54,7 @@ import { useAppStateStore } from '../../ui/app-state';
 import { usePowerFlowResultsStore } from '../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../ui/results-inspector/store';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
+import { fieldRoleLabelPl } from '../../ui/sld/v2/station-rozdzielnia/contract';
 import { emituj } from '../events';
 import type { ObiektInspektora } from '../inspector';
 import type {
@@ -349,19 +350,10 @@ function wlasciwosciStacji(el: Substation): WierszWlasciwosci[] {
   ]);
 }
 
-const ETYKIETA_ROLI_POLA: Readonly<Record<string, string>> = {
-  IN: 'Zasilające',
-  OUT: 'Odpływowe',
-  TR: 'Transformatorowe',
-  COUPLER: 'Sprzęgłowe',
-  FEEDER: 'Odejście',
-  MEASUREMENT: 'Pomiarowe',
-  OZE: 'Źródło OZE',
-};
-
 function wlasciwosciPola(el: Bay): WierszWlasciwosci[] {
   return bezNulli([
-    wr('Rola pola', ETYKIETA_ROLI_POLA[el.bay_role] ?? el.bay_role),
+    // Nazwa roli z kanonu słownictwa ról pól (karta #141), nigdy surowy kod roli.
+    wr('Rola pola', fieldRoleLabelPl(el.bay_role)),
     wr('Szyna', el.bus_ref),
     w('Numer pola', el.bay_number ?? null),
     w('Nazwa odpływu', el.feeder_short_name ?? null),

@@ -372,6 +372,11 @@ POMIJANE_KATALOGI = {
 #: 95 -> 94 — main usunal nieuzywany import `vi` w `ui/topology/__tests__/
 #: topology-store.test.ts` (TS6133); zdublowany import vitest z auto-scalenia w
 #: `cadSymbolRegistry.test.tsx` naprawiony w `01eae4df`; zero nowych bledow.
+#: Karta #141 (jedna terminologia rol pol SN, 2026-09-24, pomiar guardem na drzewie `int/141`
+#: z bazy `3243077b`): 95 -> 94. Zszedl martwy import `isUsableSwitchgearFamily` (TS6133)
+#: w przepisanym `ui/network-build/forms/__tests__/InsertStationFormHelpers.test.ts`; piec
+#: bledow TS2353 (`bayTypePl` w wierszu pola konfiguratora stacji, zastapiony przez `bayRole`)
+#: naprawione u zrodla w tych samych testach; zero nowych bledow.
 BUDZET_BLEDOW_POZA_BRAMKA = 94
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”

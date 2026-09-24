@@ -429,7 +429,7 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
         element_ref: 'zksn-1',
         element_type: 'ZKSN',
         source_type_label: 'ZKSN',
-        source_port_label: 'pole wyjściowe ciągu głównego',
+        source_port_label: 'pole liniowe wyjściowe ciągu głównego',
         segment_kind: 'KABEL_SN',
         segment: expect.objectContaining({
           rodzaj: 'cable',

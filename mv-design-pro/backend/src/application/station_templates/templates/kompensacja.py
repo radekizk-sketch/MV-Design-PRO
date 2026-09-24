@@ -61,9 +61,9 @@ def _kompensacja(
                 default=3, min_value=3, max_value=4, label_pl="Liczba pól SN"
             ),
             sn_bay_roles=(
-                BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),
-                BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT"),
-                BayRoleSpec(role="FEEDER", label_pl="Pole baterii kondensatorów"),
+                BayRoleSpec(role="IN"),
+                BayRoleSpec(role="OUT"),
+                BayRoleSpec(role="FEEDER", okreslenie_pl="(bateria kondensatorów)"),
             ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,
@@ -85,7 +85,7 @@ KOMPENSACJA_TEMPLATES = (
         "tpl_kompensacja_0v6mvar_15kv",
         "Kompensacja mocy biernej 0,6 Mvar (15 kV)",
         "Węzeł przelotowy magistrali SN 15 kV z baterią kondensatorów 0,6 Mvar "
-        "na polu odpływowym — kompensacja lokalna mocy biernej.",
+        "na polu odgałęźnym — kompensacja lokalna mocy biernej.",
         shunt_options=(KOMPENSATOR_OPTIONS_15[0],),  # 0,6 Mvar
         use_case="Kompensacja mocy biernej w odległym punkcie magistrali wiejskiej "
         "z niskim współczynnikiem mocy.",
@@ -94,7 +94,7 @@ KOMPENSACJA_TEMPLATES = (
         "tpl_kompensacja_1v2mvar_15kv",
         "Kompensacja mocy biernej 1,2 Mvar (15 kV)",
         "Węzeł przelotowy magistrali SN 15 kV z baterią kondensatorów 1,2 Mvar "
-        "na polu odpływowym — kompensacja środkowej wielkości.",
+        "na polu odgałęźnym — kompensacja środkowej wielkości.",
         shunt_options=KOMPENSATOR_OPTIONS_15,
         use_case="Standardowa kompensacja mocy biernej węzła dystrybucyjnego 15 kV.",
     ),
@@ -102,7 +102,7 @@ KOMPENSACJA_TEMPLATES = (
         "tpl_kompensacja_1v8mvar_20kv",
         "Kompensacja mocy biernej 1,8 Mvar (20 kV)",
         "Węzeł przelotowy magistrali SN 20 kV z baterią kondensatorów 1,8 Mvar "
-        "na polu odpływowym — kompensacja lokalna mocy biernej.",
+        "na polu odgałęźnym — kompensacja lokalna mocy biernej.",
         shunt_options=KOMPENSATOR_OPTIONS_20,
         use_case="Kompensacja mocy biernej węzła dystrybucyjnego w sieci 20 kV.",
     ),

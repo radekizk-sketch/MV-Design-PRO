@@ -50,6 +50,11 @@ import {
   type StationConfigReadinessCardProps,
 } from './cards/StationConfigReadinessCard';
 import type { StationConfigMeasurementsCardProps } from './cards/StationConfigMeasurementsCard';
+import {
+  canonicalFieldRole,
+  fieldRoleLabelPl,
+  isSourceFieldRole,
+} from '../../sld/v2/station-rozdzielnia/contract';
 
 export type StationConfigVisibleCardId =
   | 'basic'
@@ -398,7 +403,7 @@ function StationConnectionPanel({
       <TechnicalPanel title="Identyfikacja i wariant stacji" subtitle="Dane ruchowe i wariant katalogowy stacji SN/nN.">
         <StationConfigBasicCard {...basic} />
       </TechnicalPanel>
-      <TechnicalPanel title="Wpięcie w ciąg SN" subtitle="Porty, pola wejściowe i wyjściowe oraz ciągłość terminali.">
+      <TechnicalPanel title="Wpięcie w ciąg SN" subtitle="Porty, pola liniowe wejściowe i wyjściowe oraz ciągłość terminali.">
         <StationConfigTopologyCard {...topology} />
       </TechnicalPanel>
     </TwoColumn>
@@ -417,8 +422,8 @@ function StationBayTechnicalPanel({ bays }: { readonly bays: StationConfigBaysCa
           </div>
         ) : (
           <GuidanceBox>
-            Wybierz wariant rozdzielni SN z katalogu stacji. Pakiet powinien zawierać pola wejściowe,
-            wyjściowe, transformatorowe i pomiarowe zgodnie z typem stacji.
+            Wybierz wariant rozdzielni SN z katalogu stacji. Pakiet powinien zawierać pola liniowe
+            wejściowe i wyjściowe, transformatorowe i pomiarowe zgodnie z typem stacji.
           </GuidanceBox>
         )}
       </TechnicalPanel>
@@ -430,9 +435,10 @@ function StationBayTechnicalPanel({ bays }: { readonly bays: StationConfigBaysCa
 }
 
 function BayMiniSld({ bay }: { readonly bay: StationConfigBaysCardProps['bays'][number] }): JSX.Element {
-  const tone = bay.bayTypePl.includes('transformator')
+  // Barwa pola z ROLI (kanon ról pól, karta #141), nie z tekstu etykiety.
+  const tone = canonicalFieldRole(bay.bayRole) === 'TRANSFORMATOROWE'
     ? 'border-emerald-400 text-emerald-200'
-    : bay.bayTypePl.includes('PV') || bay.bayTypePl.includes('BESS') || bay.bayTypePl.includes('FW')
+    : isSourceFieldRole(bay.bayRole)
       ? 'border-amber-400 text-amber-200'
       : 'border-scada-sn text-scada-sn';
   return (
@@ -442,7 +448,7 @@ function BayMiniSld({ bay }: { readonly bay: StationConfigBaysCardProps['bays'][
       <div className="mx-auto h-4 w-4 rotate-45 border border-current bg-scada-bg" />
       <div className="mx-auto h-8 w-px bg-current" />
       <div className="border-t border-current pt-1 text-center text-[10px] leading-tight text-scada-text">
-        {bay.bayTypePl}
+        {fieldRoleLabelPl(bay.bayRole)}
       </div>
       <div className="mt-1 truncate text-center text-[9px] text-scada-muted">
         {bay.attachedObjectPl ?? 'rezerwa katalogowa'}

@@ -137,7 +137,7 @@ export const DANE_DOMYSLNE: GridSourceFormData = {
   notes: '',
   catalog_ref: null,
   gpz_section_name: 'Sekcja',
-  gpz_line_field_name: 'Pole odpływowe',
+  gpz_line_field_name: 'Pole liniowe GPZ',
   gpz_line_field_apparatus_kind: 'BREAKER',
   gpz_line_field_apparatus_catalog_ref: null,
   sections_count: 2,

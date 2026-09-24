@@ -10,6 +10,7 @@ import { BayConfiguratorSurface } from '../BayConfiguratorSurface';
 import { StationConfiguratorSurface } from '../StationConfiguratorSurface';
 import { renderWithQueryClient as render } from '../../../../test/queryClientTestUtils';
 import type { WorkspaceSurfaceDescriptor } from '../../types';
+import { FIELD_ROLE_LABEL_PL, FIELD_SOURCE_LABEL_PL } from '../../../sld/v2/station-rozdzielnia/contract';
 
 // Kompletny `WorkspaceSurfaceDescriptor` (nie `as never`) — `never` przechodzi
 // bezposrednie przypisanie do propa `surface`, ale `{ ...minimalSurface, ... }`
@@ -291,6 +292,88 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
           terminal_port_id: 'station_out',
         }),
       );
+    });
+
+    // Karta #141: układ szyn (sprzęgło → dwie sekcje) i nazwy pól wynikają z ROLI pola, nigdy
+    // z tekstu etykiety. Iloczyn cech: {sprzęgło jest, nie ma} × {źródło pól: specyfikacje pól
+    // w meta stacji, elementy `bays` migawki}.
+    it.each([
+      { sprzeglo: true, zrodlo: 'field_specs' },
+      { sprzeglo: false, zrodlo: 'field_specs' },
+      { sprzeglo: true, zrodlo: 'bays' },
+      { sprzeglo: false, zrodlo: 'bays' },
+    ] as const)('układ szyn i nazwy pól z roli pola: sprzęgło=$sprzeglo, źródło=$zrodlo', ({ sprzeglo, zrodlo }) => {
+      const role = sprzeglo ? ['IN', 'COUPLER', 'TR', 'OZE'] : ['IN', 'OUT', 'TR', 'OZE'];
+      // Nazwy własne pól celowo NIE zawierają słów roli — rola musi przyjść z `bay_role`.
+      const specyfikacje = role.map((rola, i) => ({ field_ref: `f-${i}`, name: `Q${i + 1}`, bay_role: rola }));
+      const bays = role.map((rola, i) => ({
+        id: `bay-${i}`,
+        ref_id: `bay-${i}`,
+        name: `Q${i + 1}`,
+        tags: [],
+        meta: {},
+        bay_role: rola,
+        substation_ref: 'stn/s1/station',
+        bus_ref: 'stn/s1/sn_bus',
+        equipment_refs: [],
+      }));
+      useSnapshotStore.setState({
+        snapshot: {
+          header: {
+            enm_version: '1.0',
+            name: 'Siec testowa',
+            created_at: '2026-05-28T00:00:00Z',
+            updated_at: '2026-05-28T00:00:00Z',
+            revision: 1,
+            hash_sha256: `snapshot-role-${sprzeglo}-${zrodlo}`,
+            defaults: { frequency_hz: 50, unit_system: 'SI' },
+          },
+          buses: [
+            { id: 'sn-bus', ref_id: 'stn/s1/sn_bus', name: 'Szyna SN', voltage_kv: 15, tags: [], meta: {} },
+          ],
+          branches: [],
+          transformers: [],
+          sources: [],
+          loads: [],
+          substations: [
+            {
+              id: 's1',
+              ref_id: 'stn/s1/station',
+              name: 'Stacja S1',
+              tags: [],
+              meta: zrodlo === 'field_specs' ? { field_specs: specyfikacje } : {},
+              station_type: 'mv_lv',
+              bus_refs: ['stn/s1/sn_bus'],
+              transformer_refs: [],
+            },
+          ],
+          generators: [],
+          bays: zrodlo === 'bays' ? bays : [],
+          junctions: [],
+          corridors: [],
+          measurements: [],
+          protection_assignments: [],
+          branch_points: [],
+          line_runs: [],
+          connection_nodes: [],
+        } as never,
+        logicalViews: { trunks: [], branches: [], terminals: [] } as never,
+      });
+
+      render(<StationConfiguratorSurface surface={{ ...minimalSurface, entityRef: 'stn/s1/station' }} />);
+
+      fireEvent.click(screen.getByTestId('station-config-tab-sn-switchgear'));
+      expect((screen.getByTestId('sn-switchgear-layout') as HTMLSelectElement).value).toBe(
+        sprzeglo ? 'sectioned_busbar' : 'single_busbar',
+      );
+
+      fireEvent.click(screen.getByTestId('station-config-tab-bays'));
+      const tabela = screen.getByTestId('station-config-bays').textContent ?? '';
+      expect(tabela).toContain(FIELD_ROLE_LABEL_PL.LINIA_IN);
+      expect(tabela).toContain(FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE);
+      expect(tabela).toContain(FIELD_SOURCE_LABEL_PL);
+      expect(tabela).toContain(sprzeglo ? FIELD_ROLE_LABEL_PL.SPRZEGLO : FIELD_ROLE_LABEL_PL.LINIA_OUT);
+      expect(tabela).not.toMatch(/\b(?:IN|OUT|COUPLER|OZE)\b/);
     });
 
     it('karta Transformator otwiera formularz dodania TR SN/nN z katalogu dla stacji bez transformatora', () => {

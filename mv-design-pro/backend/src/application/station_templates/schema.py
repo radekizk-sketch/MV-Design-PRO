@@ -22,6 +22,7 @@ from enum import StrEnum
 from typing import Any
 
 from domain.generator_validation import moc_czynna_jednostki_mw, moc_pozorna_wymagana_mva
+from enm.rola_pola_sn import nazwa_roli_pola_sn_z_okresleniem
 from network_model.pochodne import mva_na_kva
 
 
@@ -111,11 +112,21 @@ class CatalogChoice:
 
 @dataclass(frozen=True)
 class BayRoleSpec:
-    """Bay role definition (IN/OUT/TR/MEASUREMENT/COUPLER)."""
+    """Rola pola SN w szablonie stacji (IN/OUT/FEEDER/TR/MEASUREMENT/COUPLER).
 
-    role: str  # 'IN' | 'OUT' | 'TR' | 'MEASUREMENT' | 'COUPLER'
-    label_pl: str
+    Etykieta pola NIE jest wolnym tekstem szablonu: to nazwa roli z kanonu słownictwa ról pól
+    (`enm.rola_pola_sn`, karta #141) + określenie, które odróżnia pole w tym szablonie
+    („(sekcja A)", „sekcyjnego (mostek H5)", „rezerwowe"). Rola i jej nazwa pochodzą z jednego
+    źródła, więc szablon nie może nazwać pola innym słowem niż reszta produktu.
+    """
+
+    role: str  # 'IN' | 'OUT' | 'FEEDER' | 'TR' | 'MEASUREMENT' | 'COUPLER'
+    okreslenie_pl: str = ""
     apparatus_options: tuple[CatalogChoice, ...] = ()  # CB/DS/LS choices
+
+    @property
+    def label_pl(self) -> str:
+        return nazwa_roli_pola_sn_z_okresleniem(self.role, self.okreslenie_pl)
 
 
 @dataclass(frozen=True)

@@ -79,9 +79,9 @@ REZERWA_ZASILANIA_TEMPLATES = (
         "rezerwowy) i sprzęgłem sekcyjnym — gotowy punkt pod automatykę SZR, "
         "bez transformatora.",
         bay_roles=(
-            BayRoleSpec(role="IN", label_pl="Pole liniowe IN — zasilanie podstawowe"),
-            BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT — zasilanie rezerwowe"),
-            BayRoleSpec(role="COUPLER", label_pl="Pole sprzęgła (SZR)"),
+            BayRoleSpec(role="IN", okreslenie_pl="— zasilanie podstawowe"),
+            BayRoleSpec(role="OUT", okreslenie_pl="— zasilanie rezerwowe"),
+            BayRoleSpec(role="COUPLER", okreslenie_pl="(SZR)"),
         ),
         bays=3,
         use_case="Punkt sieci wymagający ciągłości zasilania (szpital, oczyszczalnia, "
@@ -91,12 +91,12 @@ REZERWA_ZASILANIA_TEMPLATES = (
         "tpl_rezerwa_2kierunki_1odplyw",
         "Rezerwa zasilania — dwa kierunki + 1 odpływ",
         "Węzeł SN z dwoma kierunkami zasilania, sprzęgłem sekcyjnym i jednym "
-        "dodatkowym polem odpływowym dla odbiorcy krytycznego.",
+        "dodatkowym polem odgałęźnym dla odbiorcy krytycznego.",
         bay_roles=(
-            BayRoleSpec(role="IN", label_pl="Pole liniowe IN — zasilanie podstawowe"),
-            BayRoleSpec(role="FEEDER", label_pl="Pole odpływowe (odbiorca krytyczny)"),
-            BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT — zasilanie rezerwowe"),
-            BayRoleSpec(role="COUPLER", label_pl="Pole sprzęgła (SZR)"),
+            BayRoleSpec(role="IN", okreslenie_pl="— zasilanie podstawowe"),
+            BayRoleSpec(role="FEEDER", okreslenie_pl="(odbiorca krytyczny)"),
+            BayRoleSpec(role="OUT", okreslenie_pl="— zasilanie rezerwowe"),
+            BayRoleSpec(role="COUPLER", okreslenie_pl="(SZR)"),
         ),
         bays=4,
         use_case="Zasilanie dwustronne obiektu krytycznego z odgałęzieniem odbioru "
@@ -106,14 +106,14 @@ REZERWA_ZASILANIA_TEMPLATES = (
         "tpl_rezerwa_2kierunki_2odplywy",
         "Rezerwa zasilania — dwa kierunki + 2 odpływy",
         "Rozbudowany węzeł SN z dwoma kierunkami zasilania, sprzęgłem "
-        "sekcyjnym i dwoma dodatkowymi polami odpływowymi na sekcji "
+        "sekcyjnym i dwoma dodatkowymi polami odgałęźnymi na sekcji "
         "podstawowej (sekcja A).",
         bay_roles=(
-            BayRoleSpec(role="IN", label_pl="Pole liniowe IN — zasilanie podstawowe"),
-            BayRoleSpec(role="FEEDER", label_pl="Pole odpływowe 1 (sekcja A)"),
-            BayRoleSpec(role="FEEDER", label_pl="Pole odpływowe 2 (sekcja A)"),
-            BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT — zasilanie rezerwowe"),
-            BayRoleSpec(role="COUPLER", label_pl="Pole sprzęgła (SZR)"),
+            BayRoleSpec(role="IN", okreslenie_pl="— zasilanie podstawowe"),
+            BayRoleSpec(role="FEEDER", okreslenie_pl="1 (sekcja A)"),
+            BayRoleSpec(role="FEEDER", okreslenie_pl="2 (sekcja A)"),
+            BayRoleSpec(role="OUT", okreslenie_pl="— zasilanie rezerwowe"),
+            BayRoleSpec(role="COUPLER", okreslenie_pl="(SZR)"),
         ),
         bays=5,
         use_case="Węzeł zasilania rezerwowego obsługujący kilku odbiorców "

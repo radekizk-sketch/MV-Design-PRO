@@ -62,6 +62,7 @@ from .pole_katalogowe import (
     rozwiaz_aparaty_pola,
 )
 from .pole_transformatorowe import pasmo_napieciowe
+from .rola_pola_sn import ROLA_POLA_SN_Z_ALIASU, kanoniczna_rola_pola_sn, nazwa_roli_pola_sn
 from .topology_ops import (
     create_branch,
     create_device,
@@ -3769,7 +3770,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 (
                     "Sekcja GPZ "
                     f"{index + 1} musi mieć od 1 do {MAX_GPZ_LINE_FIELDS_PER_SECTION} "
-                    "pól liniowych odpływowych."
+                    "pól liniowych."
                 ),
                 "source.invalid_line_fields_count",
             )
@@ -5890,7 +5891,8 @@ def _materialize_nn_source(
 
 
 #: JEDNA prawda słownika ról pól SN dla operacji budujących stację
-#: (`insert_station_on_segment_sn`, `append_station_on_endpoint`).
+#: (`insert_station_on_segment_sn`, `append_station_on_endpoint`) — słownik aliasów
+#: `enm.rola_pola_sn.ROLA_POLA_SN_Z_ALIASU` (ten sam, z którego biorą się nazwy ról pól).
 #:
 #: Do 2026-08-06 każda z tych operacji miała WŁASNY słownik i żaden nie znał roli
 #: POMIAROWEJ: wstawienie w odcinek zapisywało pole pomiarowe jako `bay_role`
@@ -5902,72 +5904,13 @@ def _materialize_nn_source(
 #: Aliasy: kanoniczna rola pola to `field_role` z read-modelu
 #: (`application/field_read_model.CANONICAL_BAY_ROLE_MAP`); przyjmujemy też skróty
 #: `bay_role` (IN/OUT/TR/…) — tak wołają kreatory i szablony.
-_SN_FIELD_ROLE_ALIASES: dict[str, str] = {
-    "IN": "LINIA_IN",
-    "OUT": "LINIA_OUT",
-    "FEEDER": "LINIA_ODG",
-    "TR": "TRANSFORMATOROWE",
-    "COUPLER": "SPRZEGLO",
-    "MEASUREMENT": "POMIAROWE",
-    "LINIA_IN": "LINIA_IN",
-    "LINIA_OUT": "LINIA_OUT",
-    "LINIA_ODG": "LINIA_ODG",
-    "TRANSFORMATOROWE": "TRANSFORMATOROWE",
-    "SPRZEGLO": "SPRZEGLO",
-    "POMIAROWE": "POMIAROWE",
-}
 
-#: Kanoniczna rola pola (`field_role`) → rola pola w modelu (`Bay.bay_role`).
-#: Lustro `application.field_read_model.CANONICAL_BAY_ROLE_MAP`.
+#: Kanoniczna rola pola (`field_role`) → rola pola w modelu (`Bay.bay_role`): dokładna odwrotność
+#: aliasów modelu z kanonu (`ROLA_POLA_SN_Z_ALIASU`), z którego read-model wyprowadza
+#: `application.field_read_model.CANONICAL_BAY_ROLE_MAP` — jedna tablica w obie strony.
 _SN_FIELD_ROLE_TO_BAY_ROLE: dict[str, str] = {
-    "LINIA_IN": "IN",
-    "LINIA_OUT": "OUT",
-    "LINIA_ODG": "FEEDER",
-    "TRANSFORMATOROWE": "TR",
-    "SPRZEGLO": "COUPLER",
-    "POMIAROWE": "MEASUREMENT",
+    rola: alias for alias, rola in ROLA_POLA_SN_Z_ALIASU.items() if alias != rola
 }
-
-
-def _canonical_sn_field_role(raw: object) -> str:
-    """Kanoniczna rola pola SN z dowolnego przyjmowanego aliasu.
-
-    Rola nierozpoznana przechodzi bez zmiany (wołający decyduje, co z nią zrobić)
-    — funkcja NIE zgaduje roli i nie podstawia domyślnej.
-    """
-    if not isinstance(raw, str):
-        return ""
-    normalized = raw.strip().upper()
-    return _SN_FIELD_ROLE_ALIASES.get(normalized, normalized)
-
-
-#: Polska nazwa pola SN wg kanonicznej roli — JEDNA prawda nazw domyślnych pól i komunikatów
-#: operacji stacji (lustro `FIELD_ROLE_LABEL_PL` w
-#: `frontend/src/ui/sld/v2/station-rozdzielnia/contract.ts`, parytet przypięty testem). Kod roli
-#: (`LINIA_IN`, `TR`) jest wartością pola `field_role`/`bay_role`, nigdy częścią nazwy, którą
-#: projektant widzi na schemacie, w drzewie i w zdaniach wyników.
-NAZWA_ROLI_POLA_SN_PL: dict[str, str] = {
-    "LINIA_IN": "Pole liniowe wejściowe",
-    "LINIA_OUT": "Pole liniowe wyjściowe",
-    "LINIA_ODG": "Pole odgałęźne",
-    "TRANSFORMATOROWE": "Pole transformatorowe",
-    "SPRZEGLO": "Pole sprzęgła",
-    "POMIAROWE": "Pole pomiarowe",
-}
-
-#: Rola pola źródłowego (`Bay.bay_role == "OZE"`) nie ma kanonicznej roli pola SN.
-_NAZWA_POLA_ZRODLOWEGO_PL = "Pole źródłowe SN"
-#: Pole bez roli albo z rolą spoza kanonu — nazwa ogólna, bez zgadywania roli.
-_NAZWA_POLA_SN_OGOLNA_PL = "Pole SN"
-
-
-def nazwa_roli_pola_sn(rola: object) -> str:
-    """Polska nazwa pola SN dla roli podanej kanonicznie (`LINIA_IN`) albo aliasem modelu (`IN`).
-
-    Rola pusta albo spoza kanonu daje nazwę ogólną „Pole SN" (funkcja nie zgaduje roli)."""
-    if isinstance(rola, str) and rola.strip().upper() == "OZE":
-        return _NAZWA_POLA_ZRODLOWEGO_PL
-    return NAZWA_ROLI_POLA_SN_PL.get(_canonical_sn_field_role(rola), _NAZWA_POLA_SN_OGOLNA_PL)
 
 
 def _nazwa_pola_w_modelu(enm: dict[str, Any], field_ref: str, field_role: str) -> str:
@@ -6016,9 +5959,9 @@ def klasa_przylaczenia_sn(role_pol: Iterable[object]) -> str:
     energii (`FUNKCJA_POMIARU_DOMYSLNA_BUDOWY_STACJI`).
 
     Wołający podaje role w dowolnym przyjmowanym aliasie (`bay_role` albo
-    `field_role`) — normalizuje `_canonical_sn_field_role`.
+    `field_role`) — normalizuje `kanoniczna_rola_pola_sn`.
     """
-    kanoniczne = [_canonical_sn_field_role(rola) for rola in role_pol]
+    kanoniczne = [kanoniczna_rola_pola_sn(rola) for rola in role_pol]
     if "POMIAROWE" not in kanoniczne:
         return "A"
     przed_pomiarem = kanoniczne[: kanoniczne.index("POMIAROWE")]
@@ -6204,7 +6147,7 @@ def rozstrzygnij_pomiary_pol(
     for field_spec in sn_fields:
         if not isinstance(field_spec, dict):
             continue
-        rola = _canonical_sn_field_role(field_spec.get("field_role"))
+        rola = kanoniczna_rola_pola_sn(field_spec.get("field_role"))
         funkcja, rodzaj, blad = rozstrzygnij_pomiar_pola(
             field_spec.get("funkcja_pomiaru"),
             field_spec.get("rodzaj_pomiaru"),
@@ -6243,7 +6186,7 @@ def szyna_prowadzi_tranzyt_sn(role_pol: Iterable[object]) -> bool:
     liczy się jak odpływ: role pól są jedyną deklaracją projektową, jaką ta
     droga ma do dyspozycji.
     """
-    kanoniczne = {_canonical_sn_field_role(rola) for rola in role_pol}
+    kanoniczne = {kanoniczna_rola_pola_sn(rola) for rola in role_pol}
     return "LINIA_IN" in kanoniczne and "LINIA_OUT" in kanoniczne
 
 
@@ -6285,7 +6228,7 @@ def blad_pomiaru_w_torze_tranzytu(
     if not szyna_prowadzi_tranzyt:
         return None
     kanoniczne: list[tuple[str, str | None]] = [
-        (_canonical_sn_field_role(rola), funkcja_pomiaru_sn(funkcja)) for rola, funkcja in pola
+        (kanoniczna_rola_pola_sn(rola), funkcja_pomiaru_sn(funkcja)) for rola, funkcja in pola
     ]
     petla_osd = {"LINIA_IN", "LINIA_OUT"}
     for indeks, (rola, funkcja) in enumerate(kanoniczne):
@@ -6303,7 +6246,7 @@ def blad_pomiaru_w_torze_tranzytu(
                 "i wyłącznie pobór odbiorcy. Stację abonencką przyłącz "
                 "ODGAŁĘZIENIEM (punkt odgałęzienia na odcinku → odcinek gałęzi → "
                 "stacja końcowa). Jeśli budujesz złącze kablowe z pętlą OSD, para "
-                "pól liniowych (dopływowe i odpływowe) musi stać PRZED pomiarem "
+                "pól liniowych (wejściowe i wyjściowe) musi stać PRZED pomiarem "
                 "i przed nim nie może stać żadne inne pole. Pole pomiaru napięcia "
                 "szyn rozdzielni (przekładniki napięciowe sekcji) nie jest układem "
                 "pomiarowym energii — zadeklaruj funkcję pomiaru NAPIECIA_SZYN, "
@@ -6360,17 +6303,17 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         enm = kopia_graniczna_enm(enm)
 
     # Normalize sn_fields: accept list of strings or list of dicts.
-    # Rola pola przechodzi przez WSPÓLNY słownik `_SN_FIELD_ROLE_ALIASES` —
+    # Rola pola przechodzi przez WSPÓLNY słownik `ROLA_POLA_SN_Z_ALIASU` —
     # także dla wpisów słownikowych: szablon klasy pomiarowej wysyła
     # `field_role="MEASUREMENT"`, a bez normalizacji ta rola nie trafiała do
     # mapy ról i pole lądowało w modelu jako odgałęzienie (FEEDER).
     sn_fields: list[dict[str, Any]] = []
     for item in sn_fields_raw:
         if isinstance(item, str):
-            sn_fields.append({"field_role": _canonical_sn_field_role(item)})
+            sn_fields.append({"field_role": kanoniczna_rola_pola_sn(item)})
         elif isinstance(item, dict):
             sn_fields.append(
-                {**item, "field_role": _canonical_sn_field_role(item.get("field_role"))}
+                {**item, "field_role": kanoniczna_rola_pola_sn(item.get("field_role"))}
             )
         else:
             sn_fields.append(item)
@@ -10016,11 +9959,11 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     # B-3: wyposażenie pól z payloadu — zakładane w TEJ SAMEJ migawce co stacja.
     wyposazenie_pol: list[tuple[str, str, dict[str, Any]]] = []
     for index, field in enumerate(sn_fields, start=1):
-        # Rola pola przez WSPÓLNY słownik (`_SN_FIELD_ROLE_ALIASES`) — własny,
+        # Rola pola przez WSPÓLNY słownik (`ROLA_POLA_SN_Z_ALIASU`) — własny,
         # niepełny słownik tej operacji MILCZĄCO POMIJAŁ pole POMIAROWE
         # (`continue` niżej), więc stacja abonencka na końcu gałęzi powstawała
         # bez układu pomiarowego, choć szablon go deklarował.
-        field_role = _canonical_sn_field_role(field.get("field_role"))
+        field_role = kanoniczna_rola_pola_sn(field.get("field_role"))
         bay_role = _SN_FIELD_ROLE_TO_BAY_ROLE.get(field_role)
         if not bay_role:
             continue

@@ -1774,7 +1774,7 @@ class ENMValidator:
                         code="E021",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Stacja przelotowa '{sub.ref_id}': pola IN/OUT "
+                            f"Stacja przelotowa '{sub.ref_id}': pola liniowe wejściowe i wyjściowe "
                             f"({', '.join(sorted(offending_bays))}) nie są "
                             f"podpięte do szyny SN. Ciągłość SN nie może "
                             f"przechodzić przez stronę nN ani transformator."
@@ -1782,7 +1782,8 @@ class ENMValidator:
                         element_refs=[sub.ref_id, *offending_bays],
                         wizard_step_hint="K3",
                         suggested_fix=(
-                            "Przypisz pola IN i OUT do magistrali SN stacji " "(wspólna szyna SN)."
+                            "Przypisz pola liniowe wejściowe i wyjściowe do magistrali SN stacji "
+                            "(wspólna szyna SN)."
                         ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
@@ -1800,7 +1801,7 @@ class ENMValidator:
                         code="E021",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Stacja przelotowa '{sub.ref_id}': pola IN i OUT "
+                            f"Stacja przelotowa '{sub.ref_id}': pola liniowe wejściowe i wyjściowe "
                             f"podpięte do różnych szyn SN "
                             f"({', '.join(sorted(mv_buses_used))}). "
                             f"Ciągłość SN przez stację przelotową wymaga "
@@ -1808,7 +1809,9 @@ class ENMValidator:
                         ),
                         element_refs=[sub.ref_id, *sorted(mv_buses_used)],
                         wizard_step_hint="K3",
-                        suggested_fix=("Podłącz pola IN i OUT do tej samej szyny SN stacji."),
+                        suggested_fix=(
+                            "Podłącz pola liniowe wejściowe i wyjściowe do tej samej szyny SN stacji."
+                        ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
                             element_ref=sub.ref_id,

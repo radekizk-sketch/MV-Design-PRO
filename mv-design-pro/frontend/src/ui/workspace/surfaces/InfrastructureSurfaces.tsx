@@ -215,7 +215,7 @@ export function ZksnSurface({ surface }: SurfaceProps): JSX.Element {
       element_type: 'ZKSN',
       source_type_label: 'ZKSN',
       source_name: branchPoint.name ?? 'ZK SN',
-      source_port_label: 'pole wyjściowe ciągu głównego',
+      source_port_label: 'pole liniowe wyjściowe ciągu głównego',
       segment_kind: 'KABEL_SN',
       length_m: 500,
       segment: mainRouteSegment ? routeSegmentOperationContext(mainRouteSegment, 'cable') : undefined,

@@ -3,7 +3,7 @@
 export const MAGISTRALA_STRINGS = {
   eyebrow: 'MODEL SIECI · MAGISTRALA SN',
   cel:
-    'Wyprowadź ciąg SN z pola odpływowego GPZ — pierwszy odcinek kabla lub linii. '
+    'Wyprowadź ciąg SN z pola liniowego GPZ — pierwszy odcinek kabla lub linii. '
     + 'Parametry bierzesz z katalogu; spadek napięcia i prąd liczy backend. '
     + 'Na końcu odcinka zawiesisz stację, odbiory albo kolejny odcinek.',
   odznaka: 'Nowy odcinek SN',
@@ -125,7 +125,7 @@ export const MAGISTRALA_STRINGS = {
     'Wybrana stacja nie ma wolnego portu wyjściowego SN. Wskaż stację na końcu ciągu '
     + 'albo głowicę odpływową pola SN na schemacie.',
   brakStartuOgolny:
-    'Zaznacz na schemacie głowicę pola odpływowego SN albo wolny koniec istniejącego ciągu, '
+    'Zaznacz na schemacie głowicę pola liniowego SN albo wolny koniec istniejącego ciągu, '
     + 'z którego chcesz wyprowadzić magistralę.',
 
   wstecz: '← Wstecz',

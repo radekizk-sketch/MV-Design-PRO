@@ -281,7 +281,7 @@ export function getMenuActions(
         ...a,
         disabled: true,
         disabledReasonPl:
-          'Brak wolnego pola liniowego SN w tej rozdzielni. Dodaj pole odpływowe albo kontynuuj ciąg z istniejącego odcinka.',
+          'Brak wolnego pola liniowego SN w tej rozdzielni. Dodaj pole liniowe wyjściowe albo kontynuuj ciąg z istniejącego odcinka.',
       };
     }
     /* S9-10 (klasa S9-5, predykaty PARAMI): pozycja „Rozpocznij odgałęzienie"
@@ -297,7 +297,7 @@ export function getMenuActions(
         ...a,
         disabled: true,
         disabledReasonPl:
-          'Brak wolnego pola odgałęźnego SN (pole roli FEEDER z wolnym zaciskiem). Najpierw dodaj pole odgałęzienia w rozdzielni.',
+          'Brak wolnego pola odgałęźnego SN z wolnym zaciskiem. Najpierw dodaj pole odgałęźne w rozdzielni.',
       };
     }
     if (a.id === 'show-results' && ctx.hasResults === false) {

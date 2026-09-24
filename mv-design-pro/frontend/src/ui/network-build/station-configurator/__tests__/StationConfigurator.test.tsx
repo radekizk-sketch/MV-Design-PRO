@@ -12,6 +12,7 @@ import { StationConfigSnSwitchgearCard } from '../cards/StationConfigSnSwitchgea
 import { StationConfigTopologyCard } from '../cards/StationConfigTopologyCard';
 import { StationConfigTransformerCard } from '../cards/StationConfigTransformerCard';
 import { StationConfigurator } from '../StationConfigurator';
+import { FIELD_ROLE_LABEL_PL } from '../../../sld/v2/station-rozdzielnia/contract';
 
 const minimalProps = {
   basic: {
@@ -208,7 +209,7 @@ describe('StationConfigBaysCard', () => {
           {
             bayId: 'b1',
             designation: 'Pole F-01',
-            bayTypePl: 'liniowe wejściowe',
+            bayRole: 'IN',
             attachedObjectPl: 'Kabel SN F-01',
             hasEquipment: true,
             hasProtection: true,
@@ -222,6 +223,10 @@ describe('StationConfigBaysCard', () => {
       />,
     );
     expect(screen.getByTestId('station-config-bay-row-b1')).toBeInTheDocument();
+    // Karta #141: rodzaj pola to nazwa ROLI z kanonu słownictwa ról pól (nie osobny tekst).
+    expect(screen.getByTestId('station-config-bay-row-b1').textContent).toContain(
+      FIELD_ROLE_LABEL_PL.LINIA_IN,
+    );
     fireEvent.click(screen.getByTestId('bay-open-b1'));
     expect(onOpen).toHaveBeenCalledWith('b1');
     fireEvent.click(screen.getByTestId('bay-show-sld-b1'));

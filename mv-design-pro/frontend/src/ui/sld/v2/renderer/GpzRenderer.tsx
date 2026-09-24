@@ -484,7 +484,7 @@ function PowerTowerColumn(props: PowerTowerColumnProps): JSX.Element {
           fontFamily={FONT_SANS}
           fontSize={FONT_SIZES.technicalPanel}
         >
-          {`${outgoingBayCount}× pole odpływowe SN`}
+          {`${outgoingBayCount}× pole liniowe SN`}
         </text>
       )}
     </g>

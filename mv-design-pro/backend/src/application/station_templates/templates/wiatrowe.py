@@ -46,8 +46,8 @@ def _wiatr(
                 default=2, min_value=1, max_value=8, label_pl="Liczba pól SN"
             ),
             sn_bay_roles=(
-                BayRoleSpec(role="IN", label_pl="Pole IN (kolektor SN)"),
-                BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe"),
+                BayRoleSpec(role="IN", okreslenie_pl="(kolektor SN)"),
+                BayRoleSpec(role="MEASUREMENT"),
             ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,

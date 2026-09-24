@@ -14,6 +14,7 @@ import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
+import { FIELD_SOURCE_LABEL_PL, fieldLabelPluralPl } from '../../sld/v2/station-rozdzielnia/contract';
 
 // =============================================================================
 // Helpers
@@ -151,7 +152,8 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
               },
               {
                 key: 'oze_bays_count',
-                label: 'Pola OZE',
+                // Pola rozdzielnicy SN o roli źródłowej — nazwa z kanonu ról pól (karta #141).
+                label: fieldLabelPluralPl(FIELD_SOURCE_LABEL_PL),
                 value: ozeBays.length,
                 unit: 'szt.',
               },

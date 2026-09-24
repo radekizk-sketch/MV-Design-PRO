@@ -47,8 +47,8 @@ def _bess(
                 default=2, min_value=1, max_value=4, label_pl="Liczba pól SN"
             ),
             sn_bay_roles=(
-                BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),
-                BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe + analizator"),
+                BayRoleSpec(role="IN"),
+                BayRoleSpec(role="MEASUREMENT", okreslenie_pl="+ analizator"),
             ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,

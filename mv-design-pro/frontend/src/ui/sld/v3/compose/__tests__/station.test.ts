@@ -1478,7 +1478,7 @@ describe('V3 compose/station — F10.3 §18.4: etykieta szyny SN (busbar-voltage
       busVoltageKv: null,
     });
     // PROPORCJE (2026-08-07): sidecar pola niesie teraz oznacznik („FS1 ·
-    // sprzęgłowe"), więc gałąź „blok pól" jest szersza niż przed kartą — żeby
+    // sprzęgła", słowo z kanonu ról pól), więc gałąź „blok pól" jest szersza niż przed kartą — żeby
     // dowód pozostał DOWODEM (a nie tautologią), etykieta szyny musi ją
     // realnie przewyższyć. Intencja testu bez zmian: rezerwacja kolumny
     // ROŚNIE, gdy najszerszym kandydatem jest etykieta szyny.

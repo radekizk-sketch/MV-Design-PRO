@@ -169,20 +169,6 @@ DEVICE_TYPE_TO_APARAT: dict[DeviceTypeV1, AparatTypeV1] = {
 # ---------------------------------------------------------------------------
 
 
-POLE_TYPE_LABELS_PL: dict[PoleTypeV1, str] = {
-    PoleTypeV1.POLE_LINIOWE_SN: "Pole liniowe SN",
-    PoleTypeV1.POLE_TRANSFORMATOROWE_SN_NN: "Pole transformatorowe SN/nN",
-    PoleTypeV1.POLE_POMIAROWE_SN: "Pole pomiarowe SN",
-    PoleTypeV1.POLE_SPRZEGLOWE_SN: "Pole sprzęgła sekcyjnego SN",
-    PoleTypeV1.POLE_ZRODLA_PV_SN: "Pole źródła PV (SN)",
-    PoleTypeV1.POLE_ZRODLA_BESS_SN: "Pole źródła BESS (SN)",
-    PoleTypeV1.POLE_LACZNIKA_SZYN_SN: "Pole łącznika szyn SN",
-    PoleTypeV1.POLE_GLOWNE_NN: "Pole główne nN (ACB)",
-    PoleTypeV1.POLE_ODPLYWOWE_NN: "Pole odpływowe nN",
-    PoleTypeV1.POLE_ZRODLA_PV_NN: "Pole źródła PV (nN)",
-    PoleTypeV1.POLE_ZRODLA_BESS_NN: "Pole źródła BESS (nN)",
-}
-
 APARAT_TYPE_LABELS_PL: dict[AparatTypeV1, str] = {
     AparatTypeV1.WYLACZNIK: "Wyłącznik",
     AparatTypeV1.ODLACZNIK: "Odłącznik",

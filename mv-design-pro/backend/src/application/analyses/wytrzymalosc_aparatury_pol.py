@@ -36,6 +36,7 @@ from typing import Any
 from application.analyses.aparaty_pol import aparaty_pol_stacji, znajdz_stacje
 from application.field_read_model import collect_bays
 from enm.models import Bay, EnergyNetworkModel
+from enm.rola_pola_sn import nazwa_roli_pola_sn
 from network_model.catalog import get_default_mv_catalog
 from network_model.catalog.audit2_catalogs import (
     get_device_withstand,
@@ -56,17 +57,6 @@ READINESS_CZAS_NIEUSTALONY = "aparatura.czas_wylaczenia_nieustalony"
 #: Źródło aparatu w wierszu werdyktu.
 ZRODLO_MODEL = "model"
 ZRODLO_KONFIGURACJA = "konfiguracja"
-
-#: Rola pola → nazwa po polsku (strefa pierwszoplanowa mówi po polsku, nie kodem).
-_ROLA_PL: dict[str, str] = {
-    "IN": "liniowe dopływowe",
-    "OUT": "liniowe odpływowe",
-    "FEEDER": "odpływowe",
-    "TR": "transformatorowe",
-    "COUPLER": "sprzęgłowe",
-    "MEASUREMENT": "pomiarowe",
-    "OZE": "źródłowe OZE",
-}
 
 
 def _oznaczenia_pola(bay: Bay) -> list[str]:
@@ -164,7 +154,9 @@ def _wiersz(
         "pole": oznaczenie,
         "pole_ref": pole_ref,
         "rola": rola,
-        "rola_pl": _ROLA_PL.get(str(rola)) if rola else None,
+        # Nazwa roli z kanonu słownictwa ról pól (karta #141) — strefa pierwszoplanowa mówi
+        # tym samym słowem co schemat, kreator i szuflada, nie kodem roli.
+        "rola_pl": nazwa_roli_pola_sn(rola) if rola else None,
         "zrodlo": zrodlo,
         "aparat_ref": aparat_ref,
         "aparat_nazwa": aparat_nazwa,

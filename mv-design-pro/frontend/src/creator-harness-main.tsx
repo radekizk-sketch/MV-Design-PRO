@@ -264,6 +264,7 @@ import { useExecutionRunsStore } from './ui/study-cases/runStore';
 import { useStudyCasesStore } from './ui/study-cases/store';
 import { usePowerFlowResultsStore } from './ui/power-flow-results/store';
 import type { ExecutionRun } from './ui/study-cases/types';
+import { FIELD_ROLE_LABEL_PL } from './ui/sld/v2/station-rozdzielnia/contract';
 
 // --- Motyw ---------------------------------------------------------------
 /**
@@ -1933,7 +1934,7 @@ if (creator === 'arcflash') {
       // `useFieldReadModel` w trybie syntezy z migawki; referencje stacji i
       // szyny pochodza z modelu, nie z literalu.
       bays: [{
-        id: 'bay-odplyw-1', ref_id: 'bay-odplyw-1', name: 'Pole odpływowe L-1',
+        id: 'bay-odplyw-1', ref_id: 'bay-odplyw-1', name: `${FIELD_ROLE_LABEL_PL.LINIA_OUT} L-1`,
         tags: [], meta: {}, bay_role: 'OUT', substation_ref: STACJA_DEMO,
         bus_ref: SZYNA_SN_STACJI_DEMO,
         gpz_section_id: null, equipment_refs: [], protection_ref: null,

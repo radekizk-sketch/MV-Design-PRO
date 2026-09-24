@@ -39,6 +39,7 @@ import {
   interlockBlockedLabel,
 } from '../../../field/fieldLabels';
 import type { BayControlMode } from '../../../../types/enm';
+import { fieldRoleLabelPl, fieldRoleShortTagPl } from '../station-rozdzielnia/contract';
 
 export type SldDetailKind =
   | 'station'
@@ -2385,15 +2386,6 @@ function PlaceholderTabBody({
         </div>
       );
     }
-    const roleLabel: Record<string, string> = {
-      IN: 'Pole dopływowe',
-      OUT: 'Pole odpływowe',
-      TR: 'Pole transformatorowe',
-      COUPLER: 'Łącznik sekcyjny',
-      FEEDER: 'Pole zasilające',
-      MEASUREMENT: 'Pole pomiarowe',
-      OZE: 'Pole OZE',
-    };
     return (
       <div data-testid="drawer-rozdzielnica-bays">
         <div style={{ fontSize: 10, color: 'rgb(var(--scada-muted))', marginBottom: 6, fontWeight: 700 }}>
@@ -2419,11 +2411,13 @@ function PlaceholderTabBody({
                   {bay.bayNumber ? `Q${bay.bayNumber}` : (bay.feederShortName ?? bay.name ?? bay.id)}
                 </div>
                 <div style={{ color: 'rgb(var(--scada-text))', fontSize: 9 }}>
-                  {bay.bayRole ? (roleLabel[bay.bayRole] ?? bay.bayRole) : 'Pole'}
+                  {/* Nazwa roli z kanonu słownictwa ról pól (karta #141). */}
+                  {fieldRoleLabelPl(bay.bayRole)}
                   {bay.feederShortName && bay.bayNumber ? ` · ${bay.feederShortName}` : ''}
                 </div>
               </div>
-              <div style={{ fontSize: 9, color: 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>{bay.bayRole ?? '—'}</div>
+              {/* Znacznik dyspozytorski roli z kanonu (WE/WY/TR…), nigdy kod roli modelu. */}
+              <div style={{ fontSize: 9, color: 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>{fieldRoleShortTagPl(bay.bayRole) ?? '—'}</div>
             </li>
           ))}
         </ul>

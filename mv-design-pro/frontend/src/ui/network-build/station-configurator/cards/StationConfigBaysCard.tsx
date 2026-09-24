@@ -12,24 +12,17 @@
  */
 
 import type { HvFuseItem } from '../../station-der/audit2-api';
-
-export type BayTypePl =
-  | 'liniowe wejściowe'
-  | 'liniowe wyjściowe'
-  | 'transformatorowe'
-  | 'pomiarowe'
-  | 'sprzęgłowe'
-  | 'sekcyjne'
-  | 'PV/FV'
-  | 'BESS'
-  | 'FW'
-  | 'rezerwowe'
-  | 'potrzeb własnych';
+import { fieldRoleLabelPl } from '../../../sld/v2/station-rozdzielnia/contract';
 
 export interface StationConfigBayRow {
   readonly bayId: string;
   readonly designation: string;
-  readonly bayTypePl: BayTypePl;
+  /**
+   * Rola pola w modelu (`Bay.bay_role` albo `field_specs[].bay_role`: IN/OUT/FEEDER/TR/
+   * COUPLER/MEASUREMENT/OZE). Nazwę roli wyświetla kanon słownictwa ról pól (karta #141),
+   * a logika (sprzęgło, pole transformatorowe, pole źródłowe) czyta rolę — nigdy tekst etykiety.
+   */
+  readonly bayRole: string | null;
   readonly attachedObjectPl?: string;
   readonly hasEquipment: boolean;
   readonly hasProtection: boolean;
@@ -99,7 +92,7 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
                 className="border-b border-scada-border/40"
               >
                 <td className="font-mono">{b.designation}</td>
-                <td>{b.bayTypePl}</td>
+                <td>{fieldRoleLabelPl(b.bayRole)}</td>
                 <td>{b.attachedObjectPl ?? <span className="italic text-scada-muted">—</span>}</td>
                 <td className="text-center font-mono text-[10px]">
                   <span className={b.hasEquipment ? 'text-status-ok' : 'text-scada-muted'}>A</span>

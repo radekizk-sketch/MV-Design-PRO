@@ -29,6 +29,7 @@ from application.station_templates.schema import (
 )
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
+from enm.rola_pola_sn import kanoniczna_rola_pola_sn
 from enm.store import blokada_twin
 from network_model.pochodne import mva_na_kva
 
@@ -1252,19 +1253,6 @@ def _template_der_required_kva(
     return int(round(mva_na_kva(total_mva)))
 
 
-#: Kody ról pól SN szablonu → kanoniczne role pola operacji domenowych
-#: (`_SN_FIELD_ROLE_ALIASES` w `enm.domain_operations`; role spoza mapy
-#: przechodzą bez zmiany — operacja traktuje je jak pole odpływowe).
-_TEMPLATE_ROLE_TO_FIELD_ROLE = {
-    "IN": "LINIA_IN",
-    "OUT": "LINIA_OUT",
-    "FEEDER": "LINIA_ODG",
-    "TR": "TRANSFORMATOROWE",
-    "COUPLER": "SPRZEGLO",
-    "MEASUREMENT": "POMIAROWE",
-}
-
-
 def _resolve_sn_field_specs(
     template: StationTemplate,
     *,
@@ -1304,7 +1292,10 @@ def _resolve_sn_field_specs(
                 ),
             )
         spec: dict[str, Any] = {
-            "field_role": _TEMPLATE_ROLE_TO_FIELD_ROLE.get(role, role),
+            # Kod roli szablonu → rola kanoniczna operacji: ten sam słownik aliasów, z którego
+            # pole dostaje nazwę (`enm.rola_pola_sn`, karta #141); rola spoza słownika przechodzi
+            # bez zmiany (operacja decyduje, co z nią zrobić).
+            "field_role": kanoniczna_rola_pola_sn(role),
             "apparatus_catalog_ref": apparatus_ref,
         }
         # Pomiar JAWNIE (kontrakt POMIAR_ROZLICZENIOWY_SN_V1 §5, V12K-335

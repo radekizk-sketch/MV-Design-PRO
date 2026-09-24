@@ -4,6 +4,7 @@ import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 import { readinessZListy } from '../../../test/gotowoscTestUtils';
+import { FIELD_ROLE_LABEL_PL } from '../../sld/v2/station-rozdzielnia/contract';
 
 /** Karta FAB-J: patrz komentarz w `InspectorEngineeringView.test.tsx`. */
 function render(ui: ReactElement) {
@@ -171,7 +172,8 @@ describe('InspectorEngineeringView - aparaty pola SN', () => {
     expect(screen.getAllByText('Bezpiecznik - Pole transformatorowe SN, S01 · Stacja przelotowa').length).toBeGreaterThan(0);
     expect(screen.getByText('Miejsce w układzie')).toBeInTheDocument();
     expect(screen.getByText('Rozdzielnia SN')).toBeInTheDocument();
-    expect(screen.getByText('Pole transformatorowe SN')).toBeInTheDocument();
+    // Karta #141: pole wewnętrznego układu stacji nazwane rolą z kanonu słownictwa ról pól.
+    expect(screen.getByText(FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE)).toBeInTheDocument();
     expect(screen.queryByText(/internal-bay/)).not.toBeInTheDocument();
   });
 });

@@ -39,15 +39,14 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
 from network_model.core.uziemienie import TypPunktuNeutralnego
 
+#: Rola pola w modelu (`Bay.bay_role`) → rola kanoniczna read-modelu (`field_role`). Wyprowadzona
+#: z kanonu `enm.rola_pola_sn.ROLA_POLA_SN_Z_ALIASU` — tej samej tablicy, z której backend nazywa
+#: pola (karta #141): rola w read-modelu i nazwa pola nie mogą się rozjechać.
 CANONICAL_BAY_ROLE_MAP: dict[str, str] = {
-    "IN": "LINIA_IN",
-    "OUT": "LINIA_OUT",
-    "TR": "TRANSFORMATOROWE",
-    "COUPLER": "SPRZEGLO",
-    "FEEDER": "LINIA_ODG",
-    "MEASUREMENT": "POMIAROWE",
+    alias: rola for alias, rola in ROLA_POLA_SN_Z_ALIASU.items() if alias != rola
 }
 
 BRANCH_KIND_MAP: dict[str, tuple[str, str, bool]] = {

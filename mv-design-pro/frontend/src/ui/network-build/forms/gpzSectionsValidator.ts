@@ -72,7 +72,7 @@ export function validateGpzSections(config: GpzSectionsConfig): GpzSectionsValid
     // Każda sekcja powinna mieć min 1 dopływ (IN lub TR od strony WN)
     const inflowBays = section.bays.filter((b) => b.role === 'IN' || b.role === 'TR');
     if (inflowBays.length === 0) {
-      sectionIssues.push(`Sekcja ${section.label}: brak pola dopływowego (IN/TR).`);
+      sectionIssues.push(`Sekcja ${section.label}: brak pola liniowego wejściowego ani transformatorowego.`);
     }
     if (section.ratedVoltageKv !== config.voltageKv) {
       sectionIssues.push(

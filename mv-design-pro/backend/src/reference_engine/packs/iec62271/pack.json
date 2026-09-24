@@ -78,7 +78,7 @@
     },
     {
       "profile_id": "coupler",
-      "name_pl": "Pole sprzęgłowe (sprzęgło sekcyjne)",
+      "name_pl": "Pole sprzęgła (sprzęgło sekcyjne)",
       "required": ["DS", "CB"],
       "one_of_groups": [],
       "optional": ["CT", "ES"],
@@ -89,7 +89,7 @@
     },
     {
       "profile_id": "der_source",
-      "name_pl": "Pole źródłowe OZE (PV / BESS / FW)",
+      "name_pl": "Pole źródłowe SN (PV / BESS / FW)",
       "required": ["DS", "CB", "CABLE_HEAD"],
       "one_of_groups": [],
       "optional": ["CT", "VT", "ES", "SURGE_ARRESTER", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],

@@ -134,7 +134,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
             {
               bayId: 'b1',
               designation: 'POLE-01',
-              bayTypePl: 'transformatorowe',
+              bayRole: 'TR',
               hasEquipment: true,
               hasProtection: true,
               hasMeasurements: true,
@@ -161,7 +161,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
             {
               bayId: 'b1',
               designation: 'POLE-01',
-              bayTypePl: 'transformatorowe',
+              bayRole: 'TR',
               hasEquipment: true,
               hasProtection: true,
               hasMeasurements: true,
@@ -186,7 +186,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
             {
               bayId: 'b9',
               designation: 'POLE-09',
-              bayTypePl: 'liniowe wejściowe',
+              bayRole: 'IN',
               hasEquipment: true,
               hasProtection: true,
               hasMeasurements: true,
@@ -207,7 +207,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
             {
               bayId: 'b2',
               designation: 'POLE-02',
-              bayTypePl: 'liniowe wejściowe',
+              bayRole: 'IN',
               hasEquipment: true,
               hasProtection: true,
               hasMeasurements: true,
