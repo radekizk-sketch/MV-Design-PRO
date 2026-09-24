@@ -61,9 +61,13 @@ jobs:
       # 2026-07-17: warn-only ZDJĘTE — wszystkie guardy tego workflowu zielone
       # na czystym HEAD (weryfikacja lokalna przy przenosinach z martwego
       # katalogu mv-design-pro/.github/workflows); trace_determinism wymaga
-      # wyłącznie pydantic (import modeli domeny, bez cięższych zależności).
-      - name: Zależności trace guard (pydantic)
-        run: pip install pydantic
+      # wyłącznie pydantic (import modeli domeny). Guard bezpiecznika (nizej)
+      # importuje analizator zabezpieczen -> network_model.core, ktory ciagnie
+      # networkx (graf) i numpy (Y-bus) — bez nich padal ModuleNotFoundError
+      # na czystym runnerze (sprawdzone w swiezym venv: pydantic+networkx+numpy
+      # wystarczaja dla wszystkich guardow tego workflowu).
+      - name: Zależności guardów importujących domenę (pydantic, networkx, numpy)
+        run: pip install pydantic networkx numpy
 
       # Karta N-D5-FUSE: bezpiecznik topikowy nie moze byc liczony wzorem IDMT
       # przekaznika (IEC 60255) — jego pasmo (IEC 60282-1) pochodzi z karty

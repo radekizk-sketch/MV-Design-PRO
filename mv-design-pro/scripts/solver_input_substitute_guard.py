@@ -539,6 +539,9 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # element bez podanej liczby jest jedna sztuka. Powod merytoryczny.
         "A:or:gen.n_parallel": 1,
         "A:or:trafo.n_parallel": 1,
+        # Ta sama klasa dla kabla: `Cable.n_parallel` to liczba identycznych torow
+        # na trasie, a kontrakt w `enm/models.py` definiuje None/1 = jeden tor.
+        "A:or:branch.n_parallel": 1,
         # Moc bierna wytworcy -> 0 Mvar. Ta sama pozycja, co w moscie V12.6 wyzej
         # (jeden defekt, dwa mosty) — DLUG NAZWANY, do rozstrzygniecia razem.
         "A:or:gen.q_mvar": 1,
@@ -625,7 +628,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:p.load_scale": 1,
         "F:dictget:row.event_seq": 1,
         "F:dictget:run.base_mva": 1,
-        "F:dictget:run.c_factor": 1,
         "F:dictget:run.clearing_time_ms": 1,
         "F:dictget:run.during_fault_angle_deg": 1,
         "F:dictget:run.max_iter": 1,

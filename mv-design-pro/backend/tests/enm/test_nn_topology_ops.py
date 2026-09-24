@@ -936,3 +936,101 @@ def test_add_nn_cable_segment_podbija_rewizje_i_input_hash() -> None:
 
     assert compute_input_hash(model_po) != compute_input_hash(model_przed)
     assert model_po.header.revision >= rewizja_przed
+
+
+# ---------------------------------------------------------------------------
+# Brak danej wejściowej = jawny błąd, nie podstawiona liczba
+# (solver_input_substitute_guard: 0 Ω/km, 0 km ani kolejność 0 za brak danej).
+# Iloczyn cech: operacja (split / merge) × brakujące pole (długość / R / X).
+# ---------------------------------------------------------------------------
+
+
+def _odcinek_nn(snap: dict[str, Any], name: str = "Odcinek") -> tuple[dict[str, Any], str]:
+    bus1 = _stacja(snap)["bus_refs"][0]
+    snap = _wykonaj(
+        snap,
+        "add_nn_cable_segment",
+        {"from_bus_ref": bus1, "length_m": 100.0, "catalog_ref": REF_KABEL_NN, "name": name},
+    )["snapshot"]
+    return snap, snap["branches"][-1]["ref_id"]
+
+
+def _usun_pole(snap: dict[str, Any], ref_id: str, pole: str) -> None:
+    galaz = next(b for b in snap["branches"] if b["ref_id"] == ref_id)
+    galaz.pop(pole, None)
+
+
+@pytest.mark.parametrize("pole", ["length_km", "r_ohm_per_km", "x_ohm_per_km"])
+def test_split_nn_segment_melduje_brak_danej_odcinka(pole: str) -> None:
+    snap, segment_ref = _odcinek_nn(_board())
+    _usun_pole(snap, segment_ref, pole)
+    wynik = _blad(snap, "split_nn_segment", {"segment_ref": segment_ref, "split_at_m": 40.0})
+    assert wynik["error_code"] == "nn.split_segment_data_missing"
+
+
+@pytest.mark.parametrize(
+    ("ktory", "pole"),
+    [
+        ("A", "length_km"),
+        ("B", "length_km"),
+        ("A", "r_ohm_per_km"),
+        ("A", "x_ohm_per_km"),
+    ],
+)
+def test_merge_nn_segments_melduje_brak_danej_odcinka(ktory: str, pole: str) -> None:
+    snap, segment_ref = _odcinek_nn(_board())
+    snap = _wykonaj(snap, "split_nn_segment", {"segment_ref": segment_ref, "split_at_m": 40.0})[
+        "snapshot"
+    ]
+    lewy = _branch_by_name(snap, "Odcinek (A)")
+    prawy = _branch_by_name(snap, "Odcinek (B)")
+    _usun_pole(snap, (lewy if ktory == "A" else prawy)["ref_id"], pole)
+    wynik = _blad(
+        snap,
+        "merge_nn_segments",
+        {"segment_a_ref": lewy["ref_id"], "segment_b_ref": prawy["ref_id"]},
+    )
+    assert wynik["error_code"] == "nn.merge_segment_data_missing"
+
+
+def test_split_nn_segment_przenosi_impedancje_jednostkowa_odcinka() -> None:
+    snap, segment_ref = _odcinek_nn(_board())
+    oryginal = next(b for b in snap["branches"] if b["ref_id"] == segment_ref)
+    snap = _wykonaj(snap, "split_nn_segment", {"segment_ref": segment_ref, "split_at_m": 40.0})[
+        "snapshot"
+    ]
+    for nazwa in ("Odcinek (A)", "Odcinek (B)"):
+        czesc = _branch_by_name(snap, nazwa)
+        assert czesc["r_ohm_per_km"] == pytest.approx(oryginal["r_ohm_per_km"])
+        assert czesc["x_ohm_per_km"] == pytest.approx(oryginal["x_ohm_per_km"])
+        assert czesc["r_ohm_per_km"] > 0.0
+
+
+def test_add_nn_section_coupler_melduje_sekcje_bez_kolejnosci() -> None:
+    snap = _board()
+    station_ref = _stacja(snap)["ref_id"]
+    snap = _wykonaj(
+        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+    )["snapshot"]
+    _stacja(snap)["nn_sections"][-1].pop("order")
+    wynik = _blad(
+        snap, "add_nn_section_coupler", {"station_ref": station_ref, "catalog_ref": REF_APARAT_NN}
+    )
+    assert wynik["error_code"] == "nn.coupler_section_order_missing"
+
+
+def test_add_nn_cable_segment_bez_n_parallel_nie_zapisuje_liczby() -> None:
+    snap, segment_ref = _odcinek_nn(_board())
+    kabel = next(b for b in snap["branches"] if b["ref_id"] == segment_ref)
+    assert kabel.get("n_parallel") is None
+
+
+@pytest.mark.parametrize("length_m", [None, "abc", 0.0, -1.0])
+def test_add_nn_cable_segment_melduje_brak_lub_zla_dlugosc(length_m: Any) -> None:
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+    payload: dict[str, Any] = {"from_bus_ref": bus1, "catalog_ref": REF_KABEL_NN}
+    if length_m is not None:
+        payload["length_m"] = length_m
+    wynik = _blad(snap, "add_nn_cable_segment", payload)
+    assert wynik["error_code"] == "nn.cable_length_invalid"
