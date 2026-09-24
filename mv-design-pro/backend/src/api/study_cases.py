@@ -23,6 +23,7 @@ from typing import Any
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
+from application.result_freshness import FreshnessReason, ResultFreshness
 from application.study_case import (
     StudyCaseNotFoundError,
     StudyCaseService,
@@ -90,9 +91,9 @@ class ZmianaOdBieguResponse(BaseModel):
 class StatusWynikowResponse(BaseModel):
     """Status wynikow przypadku — WYPROWADZANY, nigdy zapisywany (CV-2-W)."""
 
-    result_status: str  # NONE / FRESH / OUTDATED (slownik kontraktu bez zmian)
+    result_status: ResultFreshness  # NONE / FRESH / OUTDATED (slownik kontraktu bez zmian)
     results_valid: bool  # PR-4: explicit validity flag — prawda wylacznie dla FRESH
-    result_status_reason: str  # kod maszynowy przyczyny (stabilny, bez diakrytykow)
+    result_status_reason: FreshnessReason  # kod maszynowy przyczyny (stabilny, bez diakrytykow)
     result_status_reason_pl: str  # zdanie dla projektanta — jedyne zrodlo tekstu w UI
     rewizja_biegu: int | None  # rewizja modelu, na ktorej policzono wynik
     rewizja_biezaca: int | None  # rewizja modelu teraz
@@ -131,8 +132,8 @@ class StudyCaseComparisonResponse(BaseModel):
     case_a_name: str
     case_b_name: str
     config_differences: list[dict[str, Any]]
-    status_a: str
-    status_b: str
+    status_a: ResultFreshness
+    status_b: ResultFreshness
 
 
 class ErrorResponse(BaseModel):

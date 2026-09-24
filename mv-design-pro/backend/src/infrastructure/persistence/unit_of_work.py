@@ -5,9 +5,6 @@ from contextlib import AbstractContextManager
 from types import TracebackType
 from typing import Literal
 
-from infrastructure.persistence.repositories.analysis_run_index_repository import (
-    AnalysisRunIndexRepository,
-)
 from infrastructure.persistence.repositories.analysis_run_repository import AnalysisRunRepository
 from infrastructure.persistence.repositories.case_repository import CaseRepository
 from infrastructure.persistence.repositories.project_repository import ProjectRepository
@@ -50,7 +47,11 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
     run_device_mapping_v0`; dobór aparatu jest odtąd CZYSTĄ funkcją,
     `catalog/pipeline.py::dopasuj_do_aparatu`, bez tego indeksu), więc tabela
     zostaje jako READ-ONLY odbiorca historycznych wpisów (odtwarzalność
-    starych archiwów), bez nowego pisarza.
+    starych archiwów), bez nowego pisarza. Czytelnikiem tej tabeli jest WYŁĄCZNIE eksport
+    archiwum projektu (`application/project_archive/service.py`, ORM wprost); repozytorium
+    domenowe `AnalysisRunIndexRepository` i rekord `AnalysisRunIndexEntry` nie miały ani
+    jednego wołającego (atrybut `analysis_runs_index` jednostki pracy nieużywany) — skasowane
+    kartą AB-1a Pakiet E2 regułą „0 wołań = kasacja” (plan AB §8 F10).
     """
 
     def __init__(self, session_factory: sessionmaker[Session]) -> None:
@@ -59,7 +60,6 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
         self.projects: ProjectRepository | None = None
         self.cases: CaseRepository | None = None
         self.analysis_runs: AnalysisRunRepository | None = None
-        self.analysis_runs_index: AnalysisRunIndexRepository | None = None
         self.protection_catalog: ProtectionCatalogRepository | None = None
         self.audit2_station_configs: StationAudit2ConfigRepository | None = None
 
@@ -68,7 +68,6 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
         self.projects = ProjectRepository(self.session)
         self.cases = CaseRepository(self.session)
         self.analysis_runs = AnalysisRunRepository(self.session)
-        self.analysis_runs_index = AnalysisRunIndexRepository(self.session)
         self.protection_catalog = ProtectionCatalogRepository(self.session)
         self.audit2_station_configs = StationAudit2ConfigRepository(self.session)
         return self

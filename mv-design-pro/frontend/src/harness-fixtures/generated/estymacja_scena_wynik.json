@@ -264,7 +264,7 @@
   "slack_bus_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
   "slack_index": 1,
   "solver_version": "wls-se-whitebox-1.0",
-  "status": "OK",
+  "status": "ZBIEZNY",
   "status_pl": "zbieżny",
   "validation_status": "SYNTETYCZNY benchmark — test numeryczny estymatora, NIE walidacja wobec rzeczywistych pomiarów SCADA/PMU",
   "white_box": [

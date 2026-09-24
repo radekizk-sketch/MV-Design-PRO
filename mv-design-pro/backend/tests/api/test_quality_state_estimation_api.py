@@ -140,7 +140,7 @@ def test_state_estimation_returns_view(app_client) -> None:
     data = resp.json()
     assert data["analysis_id"] == str(run_id)
     assert data["converged"] is True
-    assert data["status"] == "OK"
+    assert data["status"] == "ZBIEZNY"
     # Estymowany stan per węzeł: |V|/kąt. RE-BASELINE 6 → 5 (V12K-184): sieć
     # wzorcowa ma 5 szyn, a szósty węzeł był WIRTUALNĄ ZIEMIĄ źródła, tworzoną
     # przez mapowanie ENM→graf. Zasilanie systemowe jest teraz bocznikiem

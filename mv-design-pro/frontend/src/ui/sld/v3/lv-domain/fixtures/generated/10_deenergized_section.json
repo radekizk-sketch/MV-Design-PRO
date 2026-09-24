@@ -2,7 +2,7 @@
   "case_id": "fixture-10_deenergized_section",
   "completeness": "COMPLETE",
   "contract": "LvDomainProjectionV1",
-  "contract_version": "3.0.0",
+  "contract_version": "4.0.0",
   "graph": {
     "boundary_links": [],
     "branches": [
@@ -646,7 +646,7 @@
         "island_ref": "island-2",
         "neutral_reference": {
           "source_ref": "TA",
-          "status": "OK",
+          "status": "ustalone",
           "status_pl": "Układ TN-C-S; punkt neutralny: TA.",
           "swz_evaluable": true,
           "system": "TN-C-S"
@@ -1231,7 +1231,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "4e045ef9bb9a6df385d11976d9abbce578d27675f8c829d856deee413fc48cbb",
+  "projection_hash": "3ca3102134923f7eb8dd74e529992690554074f18d09f1c0ee9323b2670b1923",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,

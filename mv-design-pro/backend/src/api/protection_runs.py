@@ -28,6 +28,7 @@ from uuid import UUID
 from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import klucz_twin_z_uow
 from application.result_freshness import StanBiezacyModelu, swiezosc_biegu_kanonicznego
+from domain.execution import StanBiegu
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as create_canonical_run
 from enm.canonical_analysis import execute_run as execute_canonical_run
@@ -60,7 +61,7 @@ class ProtectionRunResponse(BaseModel):
     project_id: str
     sc_run_id: str
     protection_case_id: str
-    status: str
+    status: StanBiegu
     input_hash: str
     created_at: str
     started_at: str | None = None
@@ -81,7 +82,7 @@ class ProtectionRunListItemResponse(BaseModel):
     project_id: str | None
     study_case_id: str
     analysis_type: str
-    status: str
+    status: StanBiegu
     created_at: str
     finished_at: str | None
     input_hash: str
@@ -178,7 +179,7 @@ def _run_to_response(run: CanonicalRun) -> dict[str, Any]:
 )
 def list_protection_runs(
     project_id: UUID,
-    run_status: str | None = Query(
+    run_status: StanBiegu | None = Query(
         default=None,
         alias="status",
         description="Filtruj po statusie (CREATED, RUNNING, FINISHED, FAILED)",

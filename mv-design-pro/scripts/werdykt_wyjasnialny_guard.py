@@ -8,7 +8,7 @@ czego, wynik, limit, margines, przyczyna, podstawa, dowód). Kontrakt
 (typy, schematy, mapy), a nie tekst — nie poluje na słowo „spełnia", tylko na KSZTAŁT, w którym
 lakoniczny werdykt może powstać albo dotrzeć do człowieka.
 
-PIĘĆ SPRAWDZEŃ (każde zwraca naruszenia z TOŻSAMOŚCIĄ, nie z numerem linii):
+SZEŚĆ SPRAWDZEŃ (każde zwraca naruszenia z TOŻSAMOŚCIĄ, nie z numerem linii):
 
   1_backend — AST `backend/src/**`. Klasa modelu (pydantic `BaseModel`, `@dataclass`,
       `TypedDict`, `NamedTuple` — także przez dziedziczenie po klasie z drzewa) z polem werdyktu:
@@ -67,12 +67,53 @@ PIĘĆ SPRAWDZEŃ (każde zwraca naruszenia z TOŻSAMOŚCIĄ, nie z numerem lini
          `moduł:łańcuch.symboli:KOD`.
       Kod wyliczenia i identyfikator zostają w POLACH rekordu (`status_maszynowy`,
       `dowod.poziom`, `podstawa.status`, `wymaganie_id`…); zdanie niesie nazwę polską.
+  6_werdykt_poza_rekordem — werdykt niesiony POZA typowanym rekordem (karta AB-1a Pakiet E2),
+      w obu językach (AST Python `backend/src/**` i ten sam bieg AST TypeScript co 3), z
+      pominięciem pakietu kontraktu `werdykt/` (generator tekstu, słownik etykiet, serializer
+      — jedyne miejsca, w których status wolno zamieniać na tekst). Wartość obok pola
+      `wyjasnienie` (rekordy K i W, kontrakt §4; `wyjasnienie: None` się nie liczy) jest
+      dozwolona; wartość spoza słownika werdyktów — też:
+      6a_ladunek_werdyktu — literał słownika (`{...}`, `dict(k=v)`, literał obiektu TS) z
+          kluczem statusu/werdyktu (`klucz_werdyktu`: nazwa pola ze sprawdzenia 1 albo
+          segment `status`/`werdykt`/`verdict`/`wynik`/`result`/`ocena`) i wartością znaną
+          statycznie ze słownika werdyktów: literał, gałęzie `a if c else b` / `?:`, człony
+          `or`/`and`/`??`, stała modułu (także importowana) i człon wyliczenia (`Werdykt.PASS`,
+          `.value`; w TS nazwa WIELKIMI LITERAMI). Klucz będący sam wartością słownika
+          (`{"SPELNIA": "pass"}`) to klucz MAPY (6c/3a/4). Tożsamość `moduł:łańcuch.klucz`.
+      6b_tekst_werdyktu — tekst SKŁADANY (f-napis, konkatenacja `+`, `%`, `"…".format`,
+          szablon TS, wstawka `{...}` w treści elementu JSX) z kodem werdyktu: w stałych
+          częściach — słowo albo n-gram do trzech słów zapisany WERSALIKAMI
+          (`kody_werdyktu_wersalikami`: `PASS`, `OK`, `SPEŁNIA`, `NIE SPEŁNIA`, `OUT OF RANGE`),
+          we wstawce znanej statycznie — cały literał ze słownika (`'spełnia' if ok else …`).
+          Proza pisana zwykłą czcionką („moduł spełnia wymaganie”) nie jest kodem — strażnik nie
+          poluje na słowa. Komunikat dziennika (`logger.*`, `console.*`) nie jest wynikiem dla
+          projektanta. Tożsamość `moduł:łańcuch:KOD`.
+      6c_mapa_statusu — mapa „status → tekst” zapisana PRZEPŁYWEM STEROWANIA: `switch`/`match`,
+          łańcuch `if`/`elif`/`else if` i ciąg kolejnych `if` o tym samym podmiocie porównania
+          (`x == "PASS"`, `x === 'PASS'`, `x in (...)`, `||` porównań), łańcuch `?:` /
+          `a if x == "P" else …`; w backendzie także literał słownika poza rendererami (te bada
+          sprawdzenie 4). Wartość gałęzi = pierwszy bezpośredni `return X`, bez niego pierwsze
+          przypisanie. Te same kryteria co mapa 3a/4 (tekst; w TS także odwołania przy dwóch
+          kluczach słownika albo kluczach-kodach); nie jest mapą etykiet mapa, której wartości
+          to rekordy z `wyjasnienie`, a w backendzie także tłumaczenie słownika na słownik
+          (`SPELNIA` → `pass`: kod jednej wielkości liter ze słownika — jak mapa status → kod w
+          sprawdzeniu 4; w interfejsie `'ok'` jest klasą tonu, więc tam się liczy). Mapa po semantyce koloru wolno istnieć WYŁĄCZNIE w module karty
+          werdyktu (jak 3a); mapa po STATUSIE — nigdzie, także w katalogu wzorca
+          `ui2/wyniki/wzorzec` (kontrakt §9: interfejs nie definiuje żadnej mapy „status →
+          etykieta”; karta E2 §0 pkt 1 wyłączała katalog — pomiar pokazał w nim mapę statusu
+          `SladSekcyjny.opisStatusu`, rodzina WW-1, więc wyłączenie ukryłoby żywe naruszenie).
+          Tożsamość `moduł:łańcuch` węzła otwierającego mapę.
 
 SŁOWNIK WERDYKTÓW. Wartości z karty (porównanie po normalizacji: małe litery, bez diakrytyków,
 camelCase i spacje → `_`) domknięte na odmianę przymiotnikową (`zgodne`, `spelnione`,
 `niespelniony` …) — wartości kanonu V12 i wzorców referencyjnych (`ZGODNE`/`NIEZGODNE`) mają
 właśnie tę formę. `failed` jest werdyktem tylko w parze z `passed`: samo `FAILED` obok
-`PENDING`/`RUNNING`/`DONE` to stan procesu (bieg się nie udał), nie wynik oceny.
+`PENDING`/`RUNNING`/`DONE` to stan procesu (bieg się nie udał), nie wynik oceny. JEDNO ŹRÓDŁO:
+wszystkie sprawdzenia (także program TypeScript i sprawdzenie 6) czytają ten sam zbiór
+(`SLOWNIK_WERDYKTOW`, predykat `wartosci_werdyktowe`); rozstrzygające statusy kontraktu
+(`werdykt.kontrakt.StatusWerdyktu` o semantyce pozytywnej/negatywnej w `werdykt.etykiety` —
+`SPELNIA`, `NIE_SPELNIA`) należą do niego, co przypina samotest
+`test_slownik_obejmuje_rozstrzygajace_statusy_kontraktu`.
 
 LISTA DOZWOLONA I ZAPADKA (`werdykt_wyjasnialny_allowlist.json`, klucz = sprawdzenie +
 tożsamość): naruszenie spoza listy = czerwony; wpis `MIGRACJA`, którego naruszenie ZNIKNĘŁO
@@ -89,13 +130,18 @@ obecnych na liście.
 CZEGO NIE WYKRYWA (nazwane, żeby zieleń nie znaczyła więcej, niż znaczy — reguła KLASA pkt 4).
 Strażnik bada KSZTAŁTY kontraktu z §12, nie każdą powierzchnię inwentarza: pomiar 2026-09-23 —
 173 z 282 wierszy inwentarza nie ma żadnej tożsamości w swoich plikach. Poza zasięgiem:
-nietypowane ładunki `dict` z werdyktem (`{"verification_status": "zgodny"}`, m.in. V12.6 —
-41 wpisów w 16 modułach), miejsca RENDERUJĄCE mapę zdefiniowaną gdzie indziej (tożsamością
-jest mapa, nie jej konsumenci), składanie tekstu werdyktu (`f"Status: {status}"`), porównania
-dwóch wartości nie-stałych w UI (`pst > pst_limit`), mapy `status → liczba` (rangi), mapowanie
-w `switch`/łańcuchu `?:`, pola modeli poza czterema rodzajami klas modelu (np. ORM), aliasy
-typów spoza najwyższego poziomu modułu, `TypedDict`/`NamedTuple` w składni funkcyjnej, kod
-Python poza `backend/src` i schematy OpenAPI poza `components`.
+miejsca RENDERUJĄCE mapę zdefiniowaną gdzie indziej (tożsamością jest mapa, nie jej
+konsumenci), wstawka o wartości NIEZNANEJ statycznie w tekście składanym
+(`f"Status: {wynik.status}"` — wartość przychodzi z biegu; kod w odpowiedzi policzonej łapie
+korpus A sprawdzenia 5 tylko dla kodów z podkreśleniem i kodów osi stanu), wartość ładunku
+z wywołania funkcji (`{"status": _status(x)}`), literał etykiety NIESKŁADANY (statyczny tekst
+elementu JSX `<span>OK</span>`, atrybut JSX z `?:`) i słowo werdyktu pisane zwykłą czcionką
+w prozie, porównania dwóch wartości nie-stałych w UI (`pst > pst_limit`), mapy
+`status → liczba` (rangi — sortowanie jest dozwolonym użyciem statusu maszynowego, kontrakt §0),
+mapa warunkowa z gałęzią głębszą niż bezpośredni `return`/przypisanie, pola modeli poza
+czterema rodzajami klas modelu (np. ORM), aliasy typów spoza najwyższego poziomu modułu,
+`TypedDict`/`NamedTuple` w składni funkcyjnej, kod Python poza `backend/src` i schematy
+OpenAPI poza `components`.
 
 KODY WYJŚCIA: 0 — zielony; 1 — naruszenia (nowe tożsamości albo wpisy do usunięcia);
 2 — błąd środowiska (brak `node`, brak `typescript`, brak migawki, uszkodzona lista).
@@ -112,7 +158,7 @@ import subprocess
 import sys
 import time
 import unicodedata
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -145,7 +191,32 @@ SPRAWDZENIA = (
     "3b_frontend_prog",
     "4_dokumenty",
     "5_kod_w_tekscie",
+    "6a_ladunek_werdyktu",
+    "6b_tekst_werdyktu",
+    "6c_mapa_statusu",
 )
+#: Pakiet implementacji kontraktu (generator tekstu `werdykt.wyjasnienie`, słownik etykiet
+#: `werdykt.etykiety`, serializer `werdykt.dokument`) — JEDYNE miejsce, w którym status
+#: werdyktu wolno zamieniać na tekst i składać w rekord (kontrakt §5, §9, §10); sprawdzenie 6
+#: go pomija.
+PAKIET_KONTRAKTU = "werdykt"
+#: Klucz ładunku niosący status albo werdykt (6a): segment nazwy (po normalizacji) — obok
+#: nazw pól werdyktu ze sprawdzenia 1 (`WZORZEC_POLA_WERDYKTU`).
+WZORZEC_KLUCZA_WERDYKTU = re.compile(r"(^|_)(status|werdykt|verdict|wynik|result|ocena)(_|$)")
+#: Pole rekordu wyjaśnienia obok werdyktu (`wyjasnienie` rekordów K i W, kontrakt §4).
+WZORZEC_KLUCZA_WYJASNIENIA = re.compile(r"^wyjasnienie(_|$)")
+#: Słowo tekstu (litery, cyfry, podkreślenia — `NIE_SPELNIA` to jedno słowo, `NIE SPEŁNIA`
+#: dwa) i odstęp między słowami wielowyrazowego kodu werdyktu (`NIE SPEŁNIA`, `NON-COMPLIANT`).
+_SLOWO = re.compile(r"\w+")
+_ODSTEP_KODU = re.compile(r"[\s-]+")
+#: Najdłuższy kod werdyktu w słowniku ma trzy słowa (`out_of_range`).
+_MAKS_SLOW_KODU = 3
+#: Komunikat dziennika (`logger.info(f"… OK")`) jest dla operatora, nie wynikiem dla
+#: projektanta — tekst składany wprost jako argument metody dziennika nie jest naruszeniem 6b.
+_METODY_LOGU = frozenset("debug info warning warn error exception critical log".split())
+_NAZWA_LOGGERA = re.compile(r"(^|_)log(ger|ging)?$")
+#: Postać kodu maszynowego: identyfikator jednej wielkości liter (`pass`, `no_data`, `SPELNIA`).
+_POSTAC_KODU = re.compile(r"[a-z][a-z0-9_]*|[A-Z][A-Z0-9_]*")
 #: Korpus sprawdzenia 5: odpowiedzi policzone backendem (fixtury harnessu).
 KATALOG_FIXTUR = FRONTEND_SRC / "harness-fixtures" / "generated"
 #: Kod wyliczenia / identyfikator maszynowy w tekście: WIELKIE LITERY z podkreśleniami
@@ -1021,6 +1092,11 @@ const LOGICZNE = new Set([ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.B
   ts.SyntaxKind.QuestionQuestionToken]);
 const STALA = /^[A-Z][A-Z0-9_]*[A-Z0-9]$/;
 const KOD = /^[A-Z][A-Z0-9_]*$/;
+// Sprawdzenie 6: wzorce przekazane z Pythona (JEDNO źródło — te same stałe co w module).
+const WZ_KLUCZA = new RegExp(we.wzorzec_klucza || '(?!)');
+const WZ_POLA = new RegExp(we.wzorzec_pola || '(?!)');
+const WZ_WYJASNIENIA = new RegExp(we.wzorzec_wyjasnienia || '(?!)');
+const MAKS_SLOW = we.maks_slow_kodu || 1;
 
 function normalizuj(t) {
   return t.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/ł/g, 'l').replace(/Ł/g, 'L')
@@ -1029,6 +1105,10 @@ function normalizuj(t) {
 }
 if (we.tylko_normalizacja) {
   process.stdout.write(JSON.stringify(we.teksty.map(normalizuj)));
+  process.exit(0);
+}
+if (we.tylko_kody) {
+  process.stdout.write(JSON.stringify(we.teksty.map(kodyWersalikami)));
   process.exit(0);
 }
 function werdyktowe(klucze) {
@@ -1245,6 +1325,223 @@ function ujscie(porownanie) {
   }
   return null;
 }
+// ---- Sprawdzenie 6: werdykt poza rekordem (ładunek, tekst składany, mapa warunkowa) ----
+function wersalikami(s) {
+  return s !== s.toLowerCase() && s === s.toUpperCase();
+}
+function kodyWersalikami(tekst) {
+  // Ta sama funkcja co `kody_werdyktu_wersalikami` w Pythonie (test zgodności obu postaci).
+  const slowa = [...tekst.matchAll(/[\p{L}\p{N}_]+/gu)];
+  const kody = [];
+  let i = 0;
+  while (i < slowa.length) {
+    let dlugosc = 0;
+    for (let n = Math.min(MAKS_SLOW, slowa.length - i); n > 0; n--) {
+      const grupa = slowa.slice(i, i + n);
+      if (!grupa.every((s) => wersalikami(s[0]))) continue;
+      let ciagly = true;
+      for (let j = 1; j < grupa.length; j++) {
+        const odstep = tekst.slice(grupa[j - 1].index + grupa[j - 1][0].length, grupa[j].index);
+        if (!/^[\s-]+$/.test(odstep)) { ciagly = false; break; }
+      }
+      if (!ciagly) continue;
+      const kandydat = grupa.map((s) => s[0]).join('_');
+      if (SLOWNIK.has(normalizuj(kandydat))) { kody.push(kandydat); dlugosc = n; break; }
+    }
+    i += dlugosc || 1;
+  }
+  return kody;
+}
+function kluczWerdyktu(k) {
+  const n = normalizuj(k);
+  return WZ_KLUCZA.test(n) || WZ_POLA.test(n);
+}
+function jestPusty(e) {
+  e = rozpakuj(e);
+  return e.kind === ts.SyntaxKind.NullKeyword || (ts.isIdentifier(e) && e.text === 'undefined');
+}
+function maWyjasnienie(obiekt) {
+  return obiekt.properties.some((p) => {
+    if (ts.isShorthandPropertyAssignment(p)) return WZ_WYJASNIENIA.test(normalizuj(p.name.text));
+    if (!ts.isPropertyAssignment(p)) return false;
+    const k = tekstKlucza(p.name);
+    return k !== null && WZ_WYJASNIENIA.test(normalizuj(k)) && !jestPusty(p.initializer);
+  });
+}
+function atrybutWyjasnienia(a) {
+  return ts.isJsxAttribute(a) && WZ_WYJASNIENIA.test(normalizuj(a.name.getText()));
+}
+function etykietyPorownania(warunek) {
+  // Warunek gałęzi mapy warunkowej: `x === 'PASS'`, `'PASS' == x`, `x === Werdykt.PASS`,
+  // alternatywa `||` takich porównań o tym samym podmiocie.
+  const e = rozpakuj(warunek);
+  if (!e || !ts.isBinaryExpression(e)) return null;
+  const op = e.operatorToken.kind;
+  if (op === ts.SyntaxKind.EqualsEqualsEqualsToken || op === ts.SyntaxKind.EqualsEqualsToken) {
+    for (const [podmiot, stala] of [[e.left, e.right], [e.right, e.left]]) {
+      const s = rozpakuj(stala);
+      if (ts.isStringLiteral(s) || ts.isNoSubstitutionTemplateLiteral(s)) {
+        return { podmiot: rozpakuj(podmiot).getText(), etykiety: [s.text] };
+      }
+      if (ts.isPropertyAccessExpression(s) && KOD.test(s.name.text)) {
+        return { podmiot: rozpakuj(podmiot).getText(), etykiety: [s.name.text] };
+      }
+    }
+    return null;
+  }
+  if (op === ts.SyntaxKind.BarBarToken) {
+    const l = etykietyPorownania(e.left);
+    const r = etykietyPorownania(e.right);
+    if (l && r && l.podmiot === r.podmiot) return { podmiot: l.podmiot, etykiety: l.etykiety.concat(r.etykiety) };
+  }
+  return null;
+}
+function wartosciStatyczne(e, gl) {
+  // Wartości tekstowe znane statycznie (literał, obie gałęzie `?:`, człony `&&`/`||`/`??`,
+  // człon wyliczenia `Werdykt.PASS`) — odpowiednik `_wartosci_statyczne`.
+  e = rozpakuj(e);
+  if (!e || gl > 8) return [];
+  if (ts.isStringLiteral(e) || ts.isNoSubstitutionTemplateLiteral(e)) return [e.text];
+  if (ts.isConditionalExpression(e)) {
+    return wartosciStatyczne(e.whenTrue, gl + 1).concat(wartosciStatyczne(e.whenFalse, gl + 1));
+  }
+  if (ts.isBinaryExpression(e) && LOGICZNE.has(e.operatorToken.kind)) {
+    return wartosciStatyczne(e.left, gl + 1).concat(wartosciStatyczne(e.right, gl + 1));
+  }
+  if (ts.isPropertyAccessExpression(e) && KOD.test(e.name.text)) return [e.name.text];
+  if (ts.isIdentifier(e)) {
+    // Stała lokalna (`const ton = ok ? 'OK' : 'BŁĄD'`) albo parametr z wartością domyślną —
+    // odpowiednik zmiennej lokalnej `_wartosci_statyczne` (`deklaracja` zna tylko `const`).
+    const d = deklaracja(e, e.text);
+    return d && d.initializer ? wartosciStatyczne(d.initializer, gl + 1) : [];
+  }
+  return [];
+}
+function czesciTekstu(w) {
+  // (stałe części, wstawki) wyrażenia SKŁADAJĄCEGO tekst: szablon `...${}...`, konkatenacja
+  // `+` z członem tekstowym, wstawka `{...}` w treści elementu JSX.
+  if (ts.isTemplateExpression(w)) {
+    return { stale: [w.head.text].concat(w.templateSpans.map((s) => s.literal.text)),
+      wstawki: w.templateSpans.map((s) => s.expression) };
+  }
+  if (ts.isBinaryExpression(w) && w.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+    const czlony = [];
+    const splaszcz = (e) => {
+      if (ts.isBinaryExpression(e) && e.operatorToken.kind === ts.SyntaxKind.PlusToken) { splaszcz(e.left); splaszcz(e.right); }
+      else czlony.push(e);
+    };
+    splaszcz(w);
+    const teksty = czlony.filter((c) => ts.isStringLiteral(c) || ts.isNoSubstitutionTemplateLiteral(c));
+    if (teksty.length === 0 && !czlony.some((c) => ts.isTemplateExpression(c))) return null;
+    return { stale: teksty.map((c) => c.text),
+      wstawki: czlony.filter((c) => !teksty.includes(c) && !ts.isTemplateExpression(c)) };
+  }
+  if (ts.isJsxExpression(w) && w.expression && w.parent && (ts.isJsxElement(w.parent) || ts.isJsxFragment(w.parent))) {
+    return { stale: [], wstawki: [w.expression] };
+  }
+  return null;
+}
+function otoczenieTekstu(w) {
+  // Prawda, gdy tekst leży w rekordzie z `wyjasnienie` (obiekt, atrybuty JSX) albo jest
+  // argumentem `console.*` (komunikat dla dewelopera, nie wynik dla projektanta).
+  for (let n = w, krok = 0; n.parent && krok < 60; n = n.parent, krok++) {
+    const p = n.parent;
+    if (ts.isObjectLiteralExpression(p)) return maWyjasnienie(p);
+    if (ts.isJsxElement(p)) return p.openingElement.attributes.properties.some(atrybutWyjasnienia);
+    if (ts.isJsxSelfClosingElement(p) || ts.isJsxOpeningElement(p)) return p.attributes.properties.some(atrybutWyjasnienia);
+    if (ts.isCallExpression(p) && n !== p.expression) {
+      const f = p.expression;
+      return ts.isPropertyAccessExpression(f) && ts.isIdentifier(f.expression) && f.expression.text === 'console';
+    }
+    if (ts.isBlock(p) || ts.isSourceFile(p) || ts.isFunctionLike(p)) return false;
+  }
+  return false;
+}
+function instrukcjeGalezi(s) {
+  return ts.isBlock(s) ? s.statements : [s];
+}
+function wartoscGalezi(instrukcje) {
+  // Pierwszy bezpośredni `return X`, a bez niego pierwsze bezpośrednie przypisanie `y = X`.
+  for (const s of instrukcje) if (ts.isReturnStatement(s)) return s.expression || null;
+  for (const s of instrukcje) {
+    if (!ts.isExpressionStatement(s)) continue;
+    const e = rozpakuj(s.expression);
+    if (ts.isBinaryExpression(e) && e.operatorToken.kind === ts.SyntaxKind.EqualsToken) return e.right;
+  }
+  return null;
+}
+function wpisySwitch(sw) {
+  const wpisy = [];
+  let czekajace = [];
+  for (const kl of sw.caseBlock.clauses) {
+    if (ts.isCaseClause(kl)) {
+      const k = rozpakuj(kl.expression);
+      if (ts.isStringLiteral(k) || ts.isNoSubstitutionTemplateLiteral(k)) czekajace.push(k.text);
+      else if (ts.isPropertyAccessExpression(k) && KOD.test(k.name.text)) czekajace.push(k.name.text);
+    }
+    if (kl.statements.length === 0) continue;
+    const lista = kl.statements.length === 1 && ts.isBlock(kl.statements[0]) ? kl.statements[0].statements : kl.statements;
+    const wartosc = wartoscGalezi(lista);
+    if (wartosc) for (const e of czekajace) wpisy.push([e, wartosc]);
+    czekajace = [];
+  }
+  return wpisy;
+}
+function wpisyLancuchaIf(pierwszy, stan) {
+  const wpisy = [];
+  let zgodny = false;
+  for (let n = pierwszy; n && ts.isIfStatement(n); n = n.elseStatement) {
+    const p = etykietyPorownania(n.expression);
+    if (!p || (stan.podmiot !== null && p.podmiot !== stan.podmiot)) break;
+    stan.podmiot = p.podmiot;
+    zgodny = true;
+    const wartosc = wartoscGalezi(instrukcjeGalezi(n.thenStatement));
+    if (wartosc) for (const e of p.etykiety) wpisy.push([e, wartosc]);
+  }
+  return zgodny ? wpisy : null;
+}
+function mapyIfow(instrukcje) {
+  // Ciągi kolejnych `if` (z łańcuchami `else if`) o tym samym podmiocie porównania.
+  const mapy = [];
+  let i = 0;
+  while (i < instrukcje.length) {
+    if (!ts.isIfStatement(instrukcje[i])) { i++; continue; }
+    const stan = { podmiot: null };
+    let wpisy = [];
+    let j = i;
+    while (j < instrukcje.length && ts.isIfStatement(instrukcje[j])) {
+      const w = wpisyLancuchaIf(instrukcje[j], stan);
+      if (w === null) break;
+      wpisy = wpisy.concat(w);
+      j++;
+    }
+    if (wpisy.length) mapy.push([instrukcje[i], wpisy]);
+    i = Math.max(j, i + 1);
+  }
+  return mapy;
+}
+function wpisyTernary(w) {
+  const wpisy = [];
+  let podmiot = null;
+  for (let n = w; n && ts.isConditionalExpression(n); n = rozpakuj(n.whenFalse)) {
+    const p = etykietyPorownania(n.condition);
+    if (!p || (podmiot !== null && p.podmiot !== podmiot)) break;
+    podmiot = p.podmiot;
+    for (const e of p.etykiety) wpisy.push([e, n.whenTrue]);
+  }
+  return wpisy;
+}
+function ocenMapeWarunkowa(wpisy) {
+  // Te same kryteria co mapa literału (3a) — każdy literał tekstu, także kod małymi literami
+  // (`'ok'` to w interfejsie klasa tonu, nie kod słownika), poza rekordem z `wyjasnienie`.
+  // Backend (`_ocen_mape_py`) dodatkowo zwalnia tłumaczenie słownika na słownik (`SPELNIA` →
+  // `pass`), tak jak sprawdzenie 4 zwalnia mapę status → kod.
+  const trafione = werdyktowe(wpisy.map(([k]) => k));
+  if (trafione.size === 0) return null;
+  const wartosci = wpisy.filter(([k]) => trafione.has(normalizuj(k))).map(([, v]) => v);
+  if (wartosci.every((v) => { const r = rozpakuj(v); return ts.isObjectLiteralExpression(r) && maWyjasnienie(r); })) return null;
+  return ocenMape(wpisy);
+}
 const wyniki = [];
 for (const [sciezka, wzgledna] of we.pliki) {
   let tekst;
@@ -1258,8 +1555,16 @@ for (const [sciezka, wzgledna] of we.pliki) {
   const sf = ts.createSourceFile(sciezka, tekst, ts.ScriptTarget.Latest, true,
     sciezka.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const karta = wzgledna === we.modul_karty;
-  const dodaj = (rodzaj, w, opis) => wyniki.push({ rodzaj, plik: wzgledna, symbol: lancuch(w),
-    linia: sf.getLineAndCharacterOfPosition(w.getStart(sf)).line + 1, opis });
+  const dodaj = (rodzaj, w, opis, kod) => wyniki.push({ rodzaj, plik: wzgledna, symbol: lancuch(w),
+    linia: sf.getLineAndCharacterOfPosition(w.getStart(sf)).line + 1, opis, kod: kod || null });
+  const ocenMapeSterowania = (w, wpisy) => {
+    const klucze = ocenMapeWarunkowa(wpisy);
+    if (klucze) dodaj('mapa_warunkowa', w, 'mapa po statusie maszynowym w przepływie sterowania (klucze: ' + klucze.join(', ') + ')');
+    const sem = new Set(wpisy.map(([k]) => normalizuj(k)).filter((k) => SEMANTYKI.has(k)));
+    if (!karta && sem.size >= 2) {
+      dodaj('mapa_warunkowa', w, 'mapa po semantyce koloru w przepływie sterowania poza modułem karty werdyktu (klucze: ' + [...sem].sort().join(', ') + ')');
+    }
+  };
   const odwiedz = (w) => {
     const wpisy = ts.isObjectLiteralExpression(w) ? wpisyObiektu(w) : ts.isNewExpression(w) ? wpisyMap(w) : null;
     if (wpisy) {
@@ -1274,6 +1579,49 @@ for (const [sciezka, wzgledna] of we.pliki) {
         jestStala(w.left, 0) !== jestStala(w.right, 0)) {
       const powod = ujscie(w);
       if (powod) dodaj('prog', w, 'porównanie z progiem `' + w.getText(sf).replace(/\s+/g, ' ').slice(0, 80) + '` → ' + powod);
+    }
+    // 6a — ładunek: właściwość o kluczu statusu z wartością ze słownika werdyktów.
+    if (ts.isObjectLiteralExpression(w) && !maWyjasnienie(w)) {
+      for (const p of w.properties) {
+        if (!ts.isPropertyAssignment(p)) continue;
+        const k = tekstKlucza(p.name);
+        if (k === null || !kluczWerdyktu(k) || werdyktowe([k]).size > 0) continue;
+        const trafione = werdyktowe(wartosciStatyczne(p.initializer, 0));
+        if (trafione.size > 0) {
+          dodaj('ladunek', p.initializer, 'ładunek słownikowy `' + k + '` z wartością ze słownika werdyktów (' +
+            [...trafione].sort().join(', ') + ') bez rekordu `wyjasnienie` obok');
+        }
+      }
+    }
+    // 6b — tekst SKŁADANY z kodem werdyktu (wersalikami) albo z wstawką-werdyktem.
+    const czesci = czesciTekstu(w);
+    if (czesci) {
+      let kandydaci = [];
+      for (const t of czesci.stale) kandydaci = kandydaci.concat(kodyWersalikami(t));
+      for (const wst of czesci.wstawki) {
+        for (const v of wartosciStatyczne(wst, 0)) kandydaci = kandydaci.concat([v], kodyWersalikami(v));
+      }
+      const trafione = werdyktowe(kandydaci);
+      if (trafione.size > 0 && !otoczenieTekstu(w)) {
+        for (const kod of [...trafione].sort()) {
+          dodaj('tekst', w, 'tekst składany z kodem werdyktu `' + kod.toUpperCase() + '` bez rekordu `wyjasnienie` obok', kod.toUpperCase());
+        }
+      }
+    }
+    // 6c — mapa „status → etykieta” zapisana przepływem sterowania.
+    if (ts.isSwitchStatement(w)) ocenMapeSterowania(w, wpisySwitch(w));
+    if (ts.isSourceFile(w) || ts.isBlock(w) || ts.isModuleBlock(w) || ts.isCaseClause(w) || ts.isDefaultClause(w)) {
+      for (const [pierwszy, wpisyIf] of mapyIfow(w.statements)) ocenMapeSterowania(pierwszy, wpisyIf);
+    }
+    if (ts.isConditionalExpression(w)) {
+      let rodzic = w.parent;
+      while (rodzic && ts.isParenthesizedExpression(rodzic)) rodzic = rodzic.parent;
+      const kontynuacja = rodzic && ts.isConditionalExpression(rodzic) && rozpakuj(rodzic.whenFalse) === w &&
+        etykietyPorownania(rodzic.condition);
+      if (!kontynuacja) {
+        const wpisyT = wpisyTernary(w);
+        if (wpisyT.length) ocenMapeSterowania(w, wpisyT);
+      }
     }
     ts.forEachChild(w, odwiedz);
   };
@@ -1319,6 +1667,32 @@ def normalizuj_w_typescript(teksty: list[str], modul_typescript: Path = MODUL_TY
     return wynik
 
 
+def _parametry_sprawdzenia_6() -> dict[str, object]:
+    """Wzorce sprawdzenia 6 przekazywane programowi TypeScript z TYCH SAMYCH stałych modułu."""
+    return {
+        "wzorzec_klucza": WZORZEC_KLUCZA_WERDYKTU.pattern,
+        "wzorzec_pola": WZORZEC_POLA_WERDYKTU.pattern,
+        "wzorzec_wyjasnienia": WZORZEC_KLUCZA_WYJASNIENIA.pattern,
+        "maks_slow_kodu": _MAKS_SLOW_KODU,
+    }
+
+
+def kody_w_typescript(teksty: list[str], modul_typescript: Path = MODUL_TYPESCRIPT) -> list:
+    """Kody werdyktu wersalikami wyznaczone przez program TypeScript (test zgodności)."""
+    wynik = _uruchom_program_ts(
+        {
+            "tylko_kody": True,
+            "teksty": teksty,
+            "slownik": sorted(SLOWNIK_WERDYKTOW),
+            "semantyki": [],
+            **_parametry_sprawdzenia_6(),
+        },
+        modul_typescript,
+    )
+    assert isinstance(wynik, list)
+    return wynik
+
+
 def pliki_frontendu(korzen: Path) -> list[Path]:
     """Pliki `*.ts(x)` produktu: bez testów, `src/test/`, `harness-fixtures` i `.d.ts`."""
     pliki: list[Path] = []
@@ -1350,24 +1724,32 @@ def sprawdz_frontend(
         "literaly_etykiet": sorted(LITERALY_ETYKIET),
         "nazwy_ujsc": sorted(NAZWY_UJSC),
         "modul_karty": MODUL_KARTY,
+        **_parametry_sprawdzenia_6(),
     }
     trafienia = _uruchom_program_ts(wejscie, modul_typescript)
     assert isinstance(trafienia, list)
-    naruszenia = {
-        (
-            "3a_frontend_mapa" if t["rodzaj"] == "mapa" else "3b_frontend_prog",
-            f"{t['plik']}:{t['symbol']}",
-        ): Naruszenie(
-            "3a_frontend_mapa" if t["rodzaj"] == "mapa" else "3b_frontend_prog",
-            f"{t['plik']}:{t['symbol']}",
-            t["plik"],
-            int(t["linia"]),
-            t["opis"],
-            tuple(t["symbol"].split(".")),
+    naruszenia: dict[tuple[str, str], Naruszenie] = {}
+    for t in reversed(trafienia):
+        sprawdzenie = _SPRAWDZENIE_TS[t["rodzaj"]]
+        symbole = tuple(t["symbol"].split("."))
+        tozsamosc = f"{t['plik']}:{t['symbol']}"
+        if t.get("kod"):
+            tozsamosc = f"{tozsamosc}:{t['kod']}"
+            symbole = (*symbole, t["kod"])
+        naruszenia[(sprawdzenie, tozsamosc)] = Naruszenie(
+            sprawdzenie, tozsamosc, t["plik"], int(t["linia"]), t["opis"], symbole
         )
-        for t in reversed(trafienia)
-    }
     return sorted(naruszenia.values())
+
+
+#: Rodzaj trafienia programu TypeScript → sprawdzenie.
+_SPRAWDZENIE_TS = {
+    "mapa": "3a_frontend_mapa",
+    "prog": "3b_frontend_prog",
+    "ladunek": "6a_ladunek_werdyktu",
+    "tekst": "6b_tekst_werdyktu",
+    "mapa_warunkowa": "6c_mapa_statusu",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -1542,6 +1924,600 @@ def sprawdz_kody_w_tekscie(
     ]
 
 
+# ---------------------------------------------------------------------------
+# Sprawdzenie 6 — werdykt poza rekordem: ładunek słownikowy, tekst składany, mapa warunkowa
+# ---------------------------------------------------------------------------
+
+
+def _w_pakiecie_kontraktu(modul: str) -> bool:
+    return modul == PAKIET_KONTRAKTU or modul.startswith(PAKIET_KONTRAKTU + ".")
+
+
+def klucz_werdyktu(klucz: str) -> bool:
+    """Klucz ładunku niosący status albo werdykt (6a): nazwa pola werdyktu ze sprawdzenia 1
+    albo segment `status`/`werdykt`/`verdict`/`wynik`/`result`/`ocena` w dowolnym miejscu."""
+    nazwa = normalizuj(klucz)
+    return bool(WZORZEC_KLUCZA_WERDYKTU.search(nazwa) or WZORZEC_POLA_WERDYKTU.search(nazwa))
+
+
+def kody_werdyktu_wersalikami(tekst: str) -> list[str]:
+    """Kody werdyktu zapisane WERSALIKAMI w tekście (`PASS`, `OK`, `SPEŁNIA`, `NIE SPEŁNIA`,
+    `NIE_SPELNIA`, `OUT OF RANGE`): n-gramy do `_MAKS_SLOW_KODU` słów rozdzielonych wyłącznie
+    odstępem albo dywizem, których postać znormalizowana należy do słownika werdyktów.
+    Słowo pisane zwykłą czcionką („spełnia” w zdaniu) nie jest kodem — strażnik nie poluje na
+    słowa prozy (kontrakt §12). Ta sama funkcja istnieje w programie TypeScript
+    (`kodyWersalikami`) — obie postaci pilnuje test zgodności."""
+    slowa = list(_SLOWO.finditer(tekst))
+    kody: list[str] = []
+    i = 0
+    while i < len(slowa):
+        dlugosc = 0
+        for n in range(min(_MAKS_SLOW_KODU, len(slowa) - i), 0, -1):
+            grupa = slowa[i : i + n]
+            if not all(slowo.group().isupper() for slowo in grupa):
+                continue
+            if any(
+                not _ODSTEP_KODU.fullmatch(tekst[a.end() : b.start()])
+                for a, b in zip(grupa, grupa[1:], strict=False)
+            ):
+                continue
+            kandydat = "_".join(slowo.group() for slowo in grupa)
+            if normalizuj(kandydat) in SLOWNIK_WERDYKTOW:
+                kody.append(kandydat)
+                dlugosc = n
+                break
+        i += dlugosc or 1
+    return kody
+
+
+def _stala_modulu(
+    indeks: IndeksBackendu, info: _Modul, nazwa: str, glebokosc: int = 0
+) -> str | None:
+    """Stała tekstowa modułu — własna albo importowana z modułu drzewa."""
+    if nazwa in info.stale:
+        return info.stale[nazwa]
+    cel = info.importy.get(nazwa)
+    if cel is None or glebokosc > 5:
+        return None
+    modul_celu, _, symbol = cel.rpartition(".")
+    docelowy = indeks.moduly.get(modul_celu)
+    if docelowy is None:
+        return None
+    return _stala_modulu(indeks, docelowy, symbol, glebokosc + 1)
+
+
+def _wartosci_czlonu_enum(klasa: ast.ClassDef, nazwa: str) -> list[str]:
+    for instrukcja in klasa.body:
+        if isinstance(instrukcja, ast.Assign) and any(
+            isinstance(cel, ast.Name) and cel.id == nazwa for cel in instrukcja.targets
+        ):
+            if isinstance(instrukcja.value, ast.Constant) and isinstance(
+                instrukcja.value.value, str
+            ):
+                return [nazwa, instrukcja.value.value]
+            return [nazwa]
+    return []
+
+
+def _warunek_porownania(
+    indeks: IndeksBackendu, info: _Modul, test: ast.expr
+) -> tuple[str, list[str]] | None:
+    """(podmiot, etykiety) warunku `x == "PASS"`, `"PASS" == x`, `x is Werdykt.PASS`,
+    `x in ("PASS", "OK")` — gałąź mapy warunkowej (6c). Inne warunki: None."""
+    if not (isinstance(test, ast.Compare) and len(test.ops) == 1):
+        return None
+    lewa, prawa, operator = test.left, test.comparators[0], test.ops[0]
+    if isinstance(operator, ast.Eq | ast.Is):
+        for podmiot, stala in ((lewa, prawa), (prawa, lewa)):
+            etykiety = _wartosci_etykiety(indeks, info, stala)
+            if etykiety:
+                return ast.dump(podmiot), etykiety
+    if isinstance(operator, ast.In) and isinstance(prawa, ast.Tuple | ast.List | ast.Set):
+        etykiety = [e for element in prawa.elts for e in _wartosci_etykiety(indeks, info, element)]
+        if prawa.elts and all(_wartosci_etykiety(indeks, info, e) for e in prawa.elts):
+            return ast.dump(lewa), etykiety
+    return None
+
+
+def _wartosci_etykiety(indeks: IndeksBackendu, info: _Modul, wyrazenie: ast.expr) -> list[str]:
+    """Etykieta gałęzi: literał, stała modułu albo człon wyliczenia z drzewa."""
+    if isinstance(wyrazenie, ast.Constant):
+        return [wyrazenie.value] if isinstance(wyrazenie.value, str) else []
+    if isinstance(wyrazenie, ast.Name | ast.Attribute):
+        return _wartosci_statyczne(indeks, info, wyrazenie)
+    return []
+
+
+#: Proste przypisania nazw w ciele funkcji: nazwa → wyrażenia przypisane (wszystkie).
+Lokalne = dict[str, list[ast.expr]]
+
+
+def _przypisania_lokalne(funkcja: ast.FunctionDef | ast.AsyncFunctionDef) -> Lokalne:
+    """`x = wyrażenie` i `x: T = wyrażenie` w ciele funkcji (bez funkcji, klas i lambd
+    zagnieżdżonych) — źródło wartości wstawki `f"{x}"` / ładunku `{"status": x}`
+    (`uc_status = "OK" if ok else "BŁĄD"` tuż przed złożeniem tekstu)."""
+    lokalne: Lokalne = {}
+    stos: list[ast.AST] = list(funkcja.body)
+    while stos:
+        wezel = stos.pop()
+        if isinstance(wezel, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef | ast.Lambda):
+            continue
+        if isinstance(wezel, ast.Assign):
+            for cel in wezel.targets:
+                if isinstance(cel, ast.Name):
+                    lokalne.setdefault(cel.id, []).append(wezel.value)
+        elif (
+            isinstance(wezel, ast.AnnAssign)
+            and isinstance(wezel.target, ast.Name)
+            and wezel.value is not None
+        ):
+            lokalne.setdefault(wezel.target.id, []).append(wezel.value)
+        stos.extend(ast.iter_child_nodes(wezel))
+    return lokalne
+
+
+class _LokalneLeniwe:
+    """Przypisania lokalne funkcji liczone przy PIERWSZYM odczycie — większość funkcji nigdy
+    ich nie potrzebuje (pomiar: dwukrotny koszt przejścia przy liczeniu z góry)."""
+
+    def __init__(self, funkcja: ast.FunctionDef | ast.AsyncFunctionDef | None) -> None:
+        self.funkcja = funkcja
+        self._dane: Lokalne | None = None
+
+    def get(self, nazwa: str, domyslne: list[ast.expr]) -> list[ast.expr]:
+        if self.funkcja is None:
+            return domyslne
+        if self._dane is None:
+            self._dane = _przypisania_lokalne(self.funkcja)
+        return self._dane.get(nazwa, domyslne)
+
+
+def _wezly_z_zasiegiem(drzewo: ast.Module) -> Iterator[tuple[ast.AST, _LokalneLeniwe]]:
+    """Każdy węzeł modułu (raz) razem z leniwymi przypisaniami lokalnymi funkcji, w której
+    leży (poza funkcją — puste)."""
+    stos: list[tuple[ast.AST, _LokalneLeniwe]] = [(drzewo, _LokalneLeniwe(None))]
+    while stos:
+        wezel, lokalne = stos.pop()
+        yield wezel, lokalne
+        for dziecko in ast.iter_child_nodes(wezel):
+            if isinstance(dziecko, ast.FunctionDef | ast.AsyncFunctionDef):
+                stos.append((dziecko, _LokalneLeniwe(dziecko)))
+            else:
+                stos.append((dziecko, lokalne))
+
+
+def _wartosci_statyczne(
+    indeks: IndeksBackendu,
+    info: _Modul,
+    wyrazenie: ast.expr | None,
+    glebokosc: int = 0,
+    lokalne: _LokalneLeniwe | None = None,
+) -> list[str]:
+    """Wartości tekstowe znane statycznie: literał, obie gałęzie `a if c else b` (także gdy
+    warunek porównuje status — ładunek i tekst niosą werdykt niezależnie od tego, jak go
+    wybrano; mapę samą w sobie ocenia 6c), człony `or`/`and`, stała modułu (także
+    importowana), zmienna lokalna funkcji (wartości WSZYSTKICH jej prostych przypisań) i człon
+    wyliczenia z drzewa (`Werdykt.PASS`, `Werdykt.PASS.value`)."""
+    if wyrazenie is None or glebokosc > 8:
+        return []
+    if isinstance(wyrazenie, ast.Constant):
+        return [wyrazenie.value] if isinstance(wyrazenie.value, str) else []
+    if isinstance(wyrazenie, ast.IfExp):
+        return _wartosci_statyczne(indeks, info, wyrazenie.body, glebokosc + 1, lokalne) + (
+            _wartosci_statyczne(indeks, info, wyrazenie.orelse, glebokosc + 1, lokalne)
+        )
+    if isinstance(wyrazenie, ast.BoolOp):
+        return [
+            wartosc
+            for czlon in wyrazenie.values
+            for wartosc in _wartosci_statyczne(indeks, info, czlon, glebokosc + 1, lokalne)
+        ]
+    if isinstance(wyrazenie, ast.Name):
+        stala = _stala_modulu(indeks, info, wyrazenie.id)
+        if stala is not None:
+            return [stala]
+        if lokalne is None:
+            return []
+        return [
+            wartosc
+            for przypisanie in lokalne.get(wyrazenie.id, [])
+            for wartosc in _wartosci_statyczne(indeks, info, przypisanie, glebokosc + 1, lokalne)
+        ]
+    if isinstance(wyrazenie, ast.Attribute):
+        czlon = wyrazenie
+        if czlon.attr == "value" and isinstance(czlon.value, ast.Attribute):
+            czlon = czlon.value
+        cel = indeks._rozwiaz_typ(info.nazwa, czlon.value)
+        if cel is not None and cel[2] == "enum":
+            return _wartosci_czlonu_enum(indeks.moduly[cel[0]].klasy[cel[1]], czlon.attr)
+    return []
+
+
+def _wpisy_ladunku(wezel: ast.AST) -> list[tuple[str, ast.expr]]:
+    """Pary (klucz, wartość) literału `{...}` z kluczami tekstowymi albo wywołania `dict(k=v)`."""
+    if isinstance(wezel, ast.Dict):
+        return [
+            (klucz.value, wartosc)
+            for klucz, wartosc in zip(wezel.keys, wezel.values, strict=True)
+            if isinstance(klucz, ast.Constant) and isinstance(klucz.value, str)
+        ]
+    if isinstance(wezel, ast.Call) and isinstance(wezel.func, ast.Name) and wezel.func.id == "dict":
+        return [(argument.arg, argument.value) for argument in wezel.keywords if argument.arg]
+    return []
+
+
+def _ma_wyjasnienie(wpisy: Iterable[tuple[str, ast.expr]]) -> bool:
+    """Rekord niesie `wyjasnienie` (pole rekordów K i W, §4) o wartości innej niż `None`."""
+    return any(
+        WZORZEC_KLUCZA_WYJASNIENIA.match(normalizuj(klucz))
+        and not (isinstance(wartosc, ast.Constant) and wartosc.value is None)
+        for klucz, wartosc in wpisy
+    )
+
+
+def _wpisy_rekordu(wezel: ast.AST) -> list[tuple[str, ast.expr]]:
+    """Pola rekordu: literał słownika, `dict(...)` albo argumenty nazwane konstruktora."""
+    if isinstance(wezel, ast.Call) and not (
+        isinstance(wezel.func, ast.Name) and wezel.func.id == "dict"
+    ):
+        return [(argument.arg, argument.value) for argument in wezel.keywords if argument.arg]
+    return _wpisy_ladunku(wezel)
+
+
+def _jest_logiem(wywolanie: ast.Call) -> bool:
+    funkcja = wywolanie.func
+    if not (isinstance(funkcja, ast.Attribute) and funkcja.attr in _METODY_LOGU):
+        return False
+    baza = funkcja.value
+    nazwa = (
+        baza.id
+        if isinstance(baza, ast.Name)
+        else baza.attr if isinstance(baza, ast.Attribute) else ""
+    )
+    return bool(_NAZWA_LOGGERA.search(nazwa.lower()))
+
+
+def _otoczenie_tekstu(wezel: ast.AST, rodzice: dict[int, ast.AST]) -> str | None:
+    """Pierwszy rekord albo wywołanie obejmujące tekst: `wyjasnienie` (rekord z polem
+    `wyjasnienie` — tekst leży obok wyjaśnienia), `log` (komunikat dziennika dla operatora,
+    nie wynik dla projektanta) albo None."""
+    dziecko: ast.AST = wezel
+    rodzic = rodzice.get(id(wezel))
+    while rodzic is not None and not isinstance(rodzic, ast.stmt):
+        if isinstance(rodzic, ast.Dict):
+            return "wyjasnienie" if _ma_wyjasnienie(_wpisy_ladunku(rodzic)) else None
+        if isinstance(rodzic, ast.Call) and dziecko is not rodzic.func:
+            if _jest_logiem(rodzic):
+                return "log"
+            return "wyjasnienie" if _ma_wyjasnienie(_wpisy_rekordu(rodzic)) else None
+        dziecko = rodzic
+        rodzic = rodzice.get(id(rodzic))
+    return None
+
+
+def _czesci_tekstu(wezel: ast.AST) -> tuple[list[str], list[ast.expr]] | None:
+    """(stałe części, wstawki) wyrażenia SKŁADAJĄCEGO tekst: f-napis, konkatenacja `+`
+    z członem tekstowym, formatowanie `%` i `"...".format(...)`; inne węzły — None."""
+    if isinstance(wezel, ast.JoinedStr):
+        return (
+            [
+                c.value
+                for c in wezel.values
+                if isinstance(c, ast.Constant) and isinstance(c.value, str)
+            ],
+            [c.value for c in wezel.values if isinstance(c, ast.FormattedValue)],
+        )
+    if isinstance(wezel, ast.BinOp) and isinstance(wezel.op, ast.Add):
+        czlony: list[ast.expr] = []
+
+        def splaszcz(wyrazenie: ast.expr) -> None:
+            if isinstance(wyrazenie, ast.BinOp) and isinstance(wyrazenie.op, ast.Add):
+                splaszcz(wyrazenie.left)
+                splaszcz(wyrazenie.right)
+            else:
+                czlony.append(wyrazenie)
+
+        splaszcz(wezel)
+        teksty = [c for c in czlony if isinstance(c, ast.Constant) and isinstance(c.value, str)]
+        if not teksty and not any(isinstance(c, ast.JoinedStr) for c in czlony):
+            return None
+        return (
+            [c.value for c in teksty if isinstance(c.value, str)],
+            [c for c in czlony if c not in teksty and not isinstance(c, ast.JoinedStr)],
+        )
+    if (
+        isinstance(wezel, ast.BinOp)
+        and isinstance(wezel.op, ast.Mod)
+        and isinstance(wezel.left, ast.Constant)
+        and isinstance(wezel.left.value, str)
+    ):
+        prawa = wezel.right
+        return [wezel.left.value], list(prawa.elts) if isinstance(prawa, ast.Tuple) else [prawa]
+    if (
+        isinstance(wezel, ast.Call)
+        and isinstance(wezel.func, ast.Attribute)
+        and wezel.func.attr == "format"
+        and isinstance(wezel.func.value, ast.Constant)
+        and isinstance(wezel.func.value.value, str)
+    ):
+        return [wezel.func.value.value], [*wezel.args, *(a.value for a in wezel.keywords)]
+    return None
+
+
+def _wartosc_galezi_py(instrukcje: list[ast.stmt]) -> ast.expr | None:
+    """Wartość gałęzi mapy warunkowej: pierwszy bezpośredni `return X`, a bez niego pierwsze
+    bezpośrednie przypisanie `y = X` (głębsze instrukcje to logika, nie mapa)."""
+    for instrukcja in instrukcje:
+        if isinstance(instrukcja, ast.Return):
+            return instrukcja.value
+    for instrukcja in instrukcje:
+        if isinstance(instrukcja, ast.Assign | ast.AnnAssign) and instrukcja.value is not None:
+            return instrukcja.value
+    return None
+
+
+#: Węzły z listami instrukcji (`body`/`orelse`/`finalbody`), w których mogą stać ciągi `if`.
+_KONTENERY_INSTRUKCJI = (
+    ast.Module,
+    ast.FunctionDef,
+    ast.AsyncFunctionDef,
+    ast.ClassDef,
+    ast.If,
+    ast.For,
+    ast.AsyncFor,
+    ast.While,
+    ast.With,
+    ast.AsyncWith,
+    ast.Try,
+    ast.TryStar,
+    ast.ExceptHandler,
+    ast.match_case,
+)
+#: Węzły, które mogą otwierać mapę warunkową (reszta nie tworzy generatora — pomiar czasu).
+_OTWIERAJACE_MAPE = (ast.Match, ast.IfExp, *_KONTENERY_INSTRUKCJI)
+
+
+def _mapy_warunkowe_wezla(
+    indeks: IndeksBackendu, info: _Modul, wezel: ast.AST
+) -> Iterator[tuple[ast.AST, list[tuple[str, ast.expr]]]]:
+    """Mapy „status → wartość” zapisane przepływem sterowania, OTWIERANE tym węzłem: `match`
+    z wzorcami-literałami, łańcuch `if`/`elif` i ciąg kolejnych `if` o tym samym podmiocie
+    (w listach instrukcji węzła), łańcuch `a if x == "P" else …`."""
+    if isinstance(wezel, ast.Match):
+        wpisy: list[tuple[str, ast.expr]] = []
+        for przypadek in wezel.cases:
+            wzorce = (
+                przypadek.pattern.patterns
+                if isinstance(przypadek.pattern, ast.MatchOr)
+                else [przypadek.pattern]
+            )
+            etykiety = [
+                e
+                for wzorzec in wzorce
+                if isinstance(wzorzec, ast.MatchValue)
+                for e in _wartosci_etykiety(indeks, info, wzorzec.value)
+            ]
+            wartosc = _wartosc_galezi_py(przypadek.body)
+            if wartosc is not None:
+                wpisy.extend((e, wartosc) for e in etykiety)
+        yield wezel, wpisy
+    elif isinstance(wezel, ast.IfExp):
+        wpisy = []
+        podmiot: str | None = None
+        biezacy: ast.expr = wezel
+        while isinstance(biezacy, ast.IfExp):
+            warunek = _warunek_porownania(indeks, info, biezacy.test)
+            if warunek is None or (podmiot is not None and warunek[0] != podmiot):
+                break
+            podmiot = warunek[0]
+            wpisy.extend((e, biezacy.body) for e in warunek[1])
+            biezacy = biezacy.orelse
+        if wpisy:
+            yield wezel, wpisy
+    if not isinstance(wezel, _KONTENERY_INSTRUKCJI):
+        return
+    for pole in ("body", "orelse", "finalbody"):
+        instrukcje = getattr(wezel, pole, None)
+        if not isinstance(instrukcje, list):
+            continue
+        if isinstance(wezel, ast.If) and pole == "orelse" and len(instrukcje) == 1:
+            continue  # `elif` — należy do łańcucha otwartego wyżej
+        yield from _mapy_ifow_py(indeks, info, instrukcje)
+
+
+def _mapy_ifow_py(
+    indeks: IndeksBackendu, info: _Modul, instrukcje: list[ast.stmt]
+) -> Iterator[tuple[ast.AST, list[tuple[str, ast.expr]]]]:
+    """Ciągi kolejnych `if` (z ich łańcuchami `elif`) o tym samym podmiocie porównania."""
+    i = 0
+    while i < len(instrukcje):
+        instrukcja = instrukcje[i]
+        if not isinstance(instrukcja, ast.If):
+            i += 1
+            continue
+        wpisy: list[tuple[str, ast.expr]] = []
+        podmiot: str | None = None
+        j = i
+        while j < len(instrukcje) and isinstance(instrukcje[j], ast.If):
+            biezacy: ast.stmt | None = instrukcje[j]
+            zgodny = False
+            while isinstance(biezacy, ast.If):
+                warunek = _warunek_porownania(indeks, info, biezacy.test)
+                if warunek is None or (podmiot is not None and warunek[0] != podmiot):
+                    break
+                podmiot, zgodny = warunek[0], True
+                wartosc = _wartosc_galezi_py(biezacy.body)
+                if wartosc is not None:
+                    wpisy.extend((e, wartosc) for e in warunek[1])
+                biezacy = biezacy.orelse[0] if len(biezacy.orelse) == 1 else None
+            if not zgodny:
+                break
+            j += 1
+        if wpisy:
+            yield instrukcja, wpisy
+        i = max(j, i + 1)
+
+
+def _jest_kodem_werdyktu(wartosc: ast.expr) -> bool:
+    """Literał w postaci KODU (`pass`, `no_data`, `SPELNIA` — identyfikator jednej wielkości
+    liter) należący do słownika werdyktów: mapa na takie wartości tłumaczy słownik statusów na
+    inny słownik statusów (enum testu, kod solvera), a nie nadaje etykiety dla człowieka."""
+    return (
+        isinstance(wartosc, ast.Constant)
+        and isinstance(wartosc.value, str)
+        and bool(_POSTAC_KODU.fullmatch(wartosc.value))
+        and bool(wartosci_werdyktowe([wartosc.value]))
+    )
+
+
+def _ma_wyjasnienie_wartosc(wartosc: ast.expr) -> bool:
+    return _ma_wyjasnienie(_wpisy_rekordu(wartosc))
+
+
+class _LancuchyModulu:
+    """Łańcuch symboli węzła modułu z mapą rodziców liczoną leniwie — raz na moduł i tylko
+    wtedy, gdy moduł ma trafienie (większość modułów nie ma żadnego)."""
+
+    def __init__(self, info: _Modul) -> None:
+        self.info = info
+        self._rodzice: dict[int, ast.AST] | None = None
+
+    @property
+    def rodzice(self) -> dict[int, ast.AST]:
+        if self._rodzice is None:
+            self._rodzice = _rodzice(self.info.drzewo)
+        return self._rodzice
+
+    def __call__(self, wezel: ast.AST) -> str:
+        return _lancuch_py(wezel, self.rodzice, self.info)
+
+
+def sprawdz_werdykt_poza_rekordem(indeks: IndeksBackendu) -> list[Naruszenie]:
+    """Sprawdzenie 6 (backend): 6a ładunek słownikowy, 6b tekst składany, 6c mapa warunkowa
+    „status → etykieta” (oraz literał słownika poza rendererami — renderery bada sprawdzenie
+    4) — poza pakietem kontraktu `werdykt/`. Wartość obok pola `wyjasnienie` jest dozwolona."""
+    naruszenia: list[Naruszenie] = []
+    for modul, info in sorted(indeks.moduly.items()):
+        if _w_pakiecie_kontraktu(modul):
+            continue
+        plik = _plik_backendu(info, indeks.korzen)
+        lancuch_wezla = _LancuchyModulu(info)
+        renderer = _jest_rendererem(info, indeks.korzen)
+        for wezel, lokalne in _wezly_z_zasiegiem(info.drzewo):
+            # 6a — ładunek słownikowy z kluczem statusu i wartością ze słownika werdyktów.
+            wpisy = _wpisy_ladunku(wezel)
+            if wpisy and not _ma_wyjasnienie(wpisy):
+                for klucz, wartosc in wpisy:
+                    # Klucz będący sam wartością słownika (`{"SPELNIA": "pass"}`) to klucz MAPY
+                    # (sprawdzenie 6c / 4), nie pole statusu ładunku.
+                    if not klucz_werdyktu(klucz) or wartosci_werdyktowe([klucz]):
+                        continue
+                    trafione = wartosci_werdyktowe(
+                        _wartosci_statyczne(indeks, info, wartosc, lokalne=lokalne)
+                    )
+                    if trafione:
+                        lancuch = lancuch_wezla(wartosc)
+                        naruszenia.append(
+                            Naruszenie(
+                                "6a_ladunek_werdyktu",
+                                f"{modul}:{lancuch}",
+                                plik,
+                                wartosc.lineno,
+                                f"ładunek słownikowy `{klucz}` z wartością ze słownika werdyktów ("
+                                + ", ".join(sorted(trafione))
+                                + ") bez rekordu `wyjasnienie` obok",
+                                tuple(lancuch.split(".")),
+                            )
+                        )
+            # 6b — tekst SKŁADANY z kodem werdyktu (wersalikami) albo z wstawką-werdyktem.
+            czesci = _czesci_tekstu(wezel)
+            if czesci is not None:
+                stale, wstawki = czesci
+                kandydaci = [kod for tekst in stale for kod in kody_werdyktu_wersalikami(tekst)]
+                for wstawka in wstawki:
+                    for wartosc_wstawki in _wartosci_statyczne(
+                        indeks, info, wstawka, lokalne=lokalne
+                    ):
+                        kandydaci.append(wartosc_wstawki)
+                        kandydaci.extend(kody_werdyktu_wersalikami(wartosc_wstawki))
+                trafione = wartosci_werdyktowe(kandydaci)
+                if trafione and _otoczenie_tekstu(wezel, lancuch_wezla.rodzice) is None:
+                    lancuch = lancuch_wezla(wezel)
+                    for kod in sorted(trafione):
+                        naruszenia.append(
+                            Naruszenie(
+                                "6b_tekst_werdyktu",
+                                f"{modul}:{lancuch}:{kod.upper()}",
+                                plik,
+                                getattr(wezel, "lineno", 0),
+                                f"tekst składany z kodem werdyktu `{kod.upper()}` bez rekordu "
+                                "`wyjasnienie` obok — tekst werdyktu składa wyłącznie "
+                                "generator `werdykt.wyjasnienie`",
+                                (*lancuch.split("."), kod.upper()),
+                            )
+                        )
+            # 6c — mapa warunkowa (przepływ sterowania) otwierana tym węzłem.
+            mapy = (
+                _mapy_warunkowe_wezla(indeks, info, wezel)
+                if isinstance(wezel, _OTWIERAJACE_MAPE)
+                else ()
+            )
+            for mapa, wpisy_mapy in mapy:
+                naruszenie = _ocen_mape_py(
+                    info, modul, plik, mapa, wpisy_mapy, lancuch_wezla, "przepływ sterowania"
+                )
+                if naruszenie is not None:
+                    naruszenia.append(naruszenie)
+            # 6c — literał mapy status → tekst poza rendererami (renderery: sprawdzenie 4).
+            if isinstance(wezel, ast.Dict) and not renderer:
+                wpisy_mapy = [
+                    (tekst, wartosc)
+                    for klucz, wartosc in zip(wezel.keys, wezel.values, strict=True)
+                    if (tekst := _tekst_klucza_py(info, klucz)) is not None
+                ]
+                naruszenie = _ocen_mape_py(
+                    info, modul, plik, wezel, wpisy_mapy, lancuch_wezla, "literał słownika"
+                )
+                if naruszenie is not None:
+                    naruszenia.append(naruszenie)
+    return naruszenia
+
+
+def _ocen_mape_py(
+    info: _Modul,
+    modul: str,
+    plik: str,
+    wezel: ast.AST,
+    wpisy: list[tuple[str, ast.expr]],
+    lancuch_wezla: Callable[[ast.AST], str],
+    postac: str,
+) -> Naruszenie | None:
+    """Mapa jest mapą etykiet, gdy jej klucze ze słownika werdyktów prowadzą WYŁĄCZNIE do
+    tekstu (ta sama definicja tekstu co w sprawdzeniu 4: literał niebędący kodem, f-napis,
+    stała z tekstem, rekord z tekstem) — i żaden z tych rekordów nie niesie `wyjasnienie`."""
+    trafione = wartosci_werdyktowe(etykieta for etykieta, _ in wpisy)
+    if not trafione:
+        return None
+    wartosci = [w for etykieta, w in wpisy if normalizuj(etykieta) in trafione]
+    if not wartosci or not all(_ma_tekst(info, w) for w in wartosci):
+        return None
+    if all(_ma_wyjasnienie_wartosc(w) for w in wartosci):
+        return None
+    if all(_jest_kodem_werdyktu(w) for w in wartosci):
+        return None  # tłumaczenie słownika na słownik (`SPELNIA` → `pass`), nie etykieta
+    lancuch = lancuch_wezla(wezel)
+    return Naruszenie(
+        "6c_mapa_statusu",
+        f"{modul}:{lancuch}",
+        plik,
+        getattr(wezel, "lineno", 0),
+        f"mapa status → tekst ({postac}; klucze: "
+        + ", ".join(sorted(trafione))
+        + ") poza słownikiem etykiet `werdykt.etykiety`",
+        tuple(lancuch.split(".")),
+    )
+
+
 def zmierz(
     backend_src: Path = BACKEND_SRC,
     frontend_src: Path = FRONTEND_SRC,
@@ -1550,7 +2526,7 @@ def zmierz(
     indeks: IndeksBackendu | None = None,
     katalog_fixtur: Path | None = None,
 ) -> list[Naruszenie]:
-    """Wszystkie naruszenia drzewa (pięć sprawdzeń), jedno na tożsamość, posortowane.
+    """Wszystkie naruszenia drzewa (sześć sprawdzeń), jedno na tożsamość, posortowane.
     Korpus sprawdzenia 5: `katalog_fixtur`; domyślnie `harness-fixtures/generated` pod
     `frontend_src`."""
     if not backend_src.is_dir():
@@ -1562,6 +2538,7 @@ def zmierz(
         *sprawdz_http(migawka),
         *sprawdz_frontend(frontend_src, modul_typescript),
         *sprawdz_dokumenty(indeks),
+        *sprawdz_werdykt_poza_rekordem(indeks),
         *sprawdz_kody_w_tekscie(
             indeks,
             (
@@ -1921,7 +2898,7 @@ def zaproponuj_klase(
     if naruszenie.sprawdzenie == "2_http":
         plik = (pliki_klas or {}).get(naruszenie.symbole[0], "") if naruszenie.symbole else ""
         linia = 0
-    backend = naruszenie.sprawdzenie in ("1_backend", "2_http", "4_dokumenty")
+    backend = naruszenie.sprawdzenie == "2_http" or naruszenie.plik.startswith("backend/")
     najlepszy: tuple[int, bool, WierszInwentarza] | None = None
     for wiersz in wiersze:
         if wiersz.backend != backend or not plik:

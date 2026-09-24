@@ -478,8 +478,11 @@ FORBIDDEN_W3A_FUNCTION_NAMES = {
 # ekosystem (`run_envelope.py`, `run_registry.py`, cztery `envelope_adapter.py`,
 # `run_index.py::index_run`) zszedł razem, tą samą regułą „0 wołań = kasacja".
 # `AnalysisRunIndexEntry` (dataclass, konsument: `infrastructure/persistence
-# /repositories/analysis_run_index_repository.py`) ZOSTAJE — realny, NIEZWIĄZANY
-# konsument. Dobór aparatu jest odtąd CZYSTĄ funkcją (`catalog/pipeline.py::
+# /repositories/analysis_run_index_repository.py`) ZOSTAŁ wtedy jako „realny,
+# NIEZWIĄZANY konsument" — ale samo repozytorium nie miało wołającego (atrybut
+# jednostki pracy nieużywany), więc oba zeszły kartą AB-1a Pakiet E2 tą samą regułą
+# „0 wołań = kasacja"; tabela `analysis_runs_index` zostaje (czyta ją ORM-em eksport
+# archiwum projektu). Dobór aparatu jest odtąd CZYSTĄ funkcją (`catalog/pipeline.py::
 # dopasuj_do_aparatu`) na wymaganiu z Hoppela (`catalog/mapper.py::
 # wymaganie_z_nastaw`), bez koperty/indeksu/persystencji.
 W3C1_OVERCURRENT_RELATIVE_PATHS: dict[str, str] = {

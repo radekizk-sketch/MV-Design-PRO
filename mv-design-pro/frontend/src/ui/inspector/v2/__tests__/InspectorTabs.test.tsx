@@ -128,7 +128,7 @@ describe('InspectorStickyHeader', () => {
         elementTypeLabelPl="stacja"
         completeness="partial"
         energization="energized"
-        calculationStatus="ok"
+        calculationStatus="pelny"
       />,
     );
     expect(getByTestId('status-energization')).toHaveTextContent('pod napięciem');

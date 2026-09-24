@@ -1,11 +1,17 @@
+from typing import get_args
+
+import pytest
 from network_model.core import (
     ActionEnvelope,
+    ActionResult,
+    BatchActionResult,
     NetworkGraph,
     Node,
     NodeType,
     create_network_snapshot,
     validate_action_envelope,
 )
+from network_model.core.action_envelope import StanAkcji, stan_akcji
 from network_model.core.branch import Branch
 from network_model.core.inverter import InverterSource
 
@@ -273,3 +279,55 @@ def test_validator_is_deterministic() -> None:
     first_errors = [issue.to_dict() for issue in result_first.errors]
     second_errors = [issue.to_dict() for issue in result_second.errors]
     assert first_errors == second_errors
+
+
+# ---------------------------------------------------------------------------
+# Stan akcji jako typ zamknięty (karta AB-1a Pakiet E2, plan AB §8 F14): walidator
+# wydaje wyłącznie „accepted"/„rejected", a odczyt z danych nie przepuszcza innej wartości.
+# ---------------------------------------------------------------------------
+
+
+def test_stan_akcji_to_dokladnie_dwa_stany_walidatora() -> None:
+    assert get_args(StanAkcji) == ("accepted", "rejected")
+
+
+@pytest.mark.parametrize("stan", get_args(StanAkcji))
+def test_stan_akcji_przyjmuje_stan_slownika(stan: str) -> None:
+    assert stan_akcji(stan) == stan
+
+
+@pytest.mark.parametrize("wartosc", ["applied", "ACCEPTED", "", None, 1])
+def test_stan_akcji_odrzuca_wartosc_spoza_slownika(wartosc: object) -> None:
+    with pytest.raises(ValueError, match="Nieznany stan akcji"):
+        stan_akcji(wartosc)
+
+
+def test_wynik_akcji_z_danych_zachowuje_stan_i_odrzuca_obcy() -> None:
+    graph, snapshot_id = _build_snapshot()
+    snapshot = create_network_snapshot(
+        graph, snapshot_id=snapshot_id, created_at="2024-01-01T00:00:00+00:00"
+    )
+    wynik = validate_action_envelope(_base_envelope(action_type="unknown_action"), snapshot)
+    assert ActionResult.from_dict(wynik.to_dict()) == wynik
+    with pytest.raises(ValueError, match="Nieznany stan akcji"):
+        ActionResult.from_dict({**wynik.to_dict(), "status": "applied"})
+
+
+def test_wynik_wsadu_z_danych_odrzuca_obcy_stan() -> None:
+    dane = {
+        "status": "accepted",
+        "parent_snapshot_id": "snap-1",
+        "new_snapshot_id": "snap-2",
+        "action_results": [],
+        "errors": [],
+    }
+    assert BatchActionResult.from_dict(dane).status == "accepted"
+    with pytest.raises(ValueError, match="Nieznany stan akcji"):
+        BatchActionResult.from_dict({**dane, "status": "partial"})
+
+
+def test_koperta_akcji_bez_stanu_i_ze_stanem() -> None:
+    assert _base_envelope().status is None
+    assert _base_envelope(status="accepted").status == "accepted"
+    with pytest.raises(ValueError, match="Nieznany stan akcji"):
+        _base_envelope(status="pending")

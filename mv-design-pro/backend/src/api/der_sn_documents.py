@@ -26,6 +26,7 @@ from api.klucz_twin_dep import KluczTwin
 from application.analyses.der_sn_track import extract_der_sn_track, sum_apparent_power_mva
 from application.analyses.lista_materialowa import build_bom_view
 from application.analyses.raport_zgodnosci import build_compliance_report_from_track
+from domain.execution import RunStatus
 from enm.store import get_enm, has_enm
 from fastapi import APIRouter, HTTPException, Query, status
 from network_model.pochodne import kv_na_v
@@ -232,7 +233,7 @@ def get_der_sn_compliance_report(
     case_id: str,
     klucz: KluczTwin,
     generator_ref: str | None = Query(default=None),
-    run_status: str | None = Query(default=None),
+    run_status: RunStatus | None = Query(default=None),
     readiness_codes: list[str] | None = Query(default=None),
     project_id: str | None = Query(default=None),
     zapisz_do_magazynu: bool = Query(default=False),

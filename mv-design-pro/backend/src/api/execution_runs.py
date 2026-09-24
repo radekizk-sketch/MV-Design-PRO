@@ -11,7 +11,7 @@ from typing import Any
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
-from domain.execution import ExecutionAnalysisType
+from domain.execution import ExecutionAnalysisType, RunStatus
 from enm.canonical_analysis import (
     ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY,
     build_execution_result_set,
@@ -52,7 +52,7 @@ class RunResponse(BaseModel):
     study_case_id: str
     analysis_type: str
     solver_input_hash: str
-    status: str
+    status: RunStatus
     started_at: str | None = None
     finished_at: str | None = None
     error_message: str | None = None

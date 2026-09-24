@@ -1,4 +1,4 @@
-# PROJEKCJA SN / nN I PORTAL DOMENY nN — KANON V1 (2026-09-01, rewizja 3.0.0 z 2026-09-02; warstwa symboli CAD R2 z 2026-09-02)
+# PROJEKCJA SN / nN I PORTAL DOMENY nN — KANON V1 (2026-09-01, rewizja 3.0.0 z 2026-09-02; warstwa symboli CAD R2 z 2026-09-02; rewizja 4.0.0 z 2026-09-24)
 
 **Status:** kanon BINDING warstwy prezentacji SLD (podporządkowany kanonowi
 V12.xx i `docs/system/SPEC_*.md`). Zastępuje w całości
@@ -13,6 +13,13 @@ PowerFactory"): kontrakt projekcji nN **3.0.0** — stany zacisków i odcinków,
 role urządzeń, sekcje, wyspy z zdolnością źródeł, odniesieniem N/PE i
 bilansem, tożsamość systemu SN, tory zasilania, audyt topologii; rejestr
 symboli, gramatyka wizualna i 18 scenariuszy jako jedno źródło prawdy.
+
+Rewizja 2026-09-24 (karta AB-1a Pakiet E2, plan AB §8 F16): kontrakt **4.0.0** —
+jedyna zmiana to wartość `islands[].neutral_reference.status`: dawne „OK” brzmi
+`ustalone` (układ sieci nN i element wnoszący odniesienie N/PE znane). „OK” należy
+do słownika werdyktów kontraktu werdyktu wyjaśnialnego, a to jest stan danych, nie
+ocena; zmiana wartości słownika jest niezgodna wstecz dla klienta, który ją porównuje,
+więc wersja rośnie MAJOR (reguła `projection_v1.py`).
 
 ## 1. Jedna sieć obliczeniowa, dwie projekcje prezentacyjne
 
@@ -84,12 +91,12 @@ Piny (testy): `compose/__tests__/station.lvPortal.test.ts`,
 `electrical/__tests__/sceneConformance.test.ts`, e2e
 `frontend/e2e/lv-portal-screenshot.spec.ts`.
 
-## 3. Projekcja nN — jeden kontrakt 3.0.0, atomowy odczyt
+## 3. Projekcja nN — jeden kontrakt 4.0.0, atomowy odczyt
 
 Jedynym źródłem danych projekcji nN jest
 `GET /api/cases/{case_id}/enm/lv-domain/{station_ref}/projection/v1`
 (`backend/src/application/analyses/lv_domain/projection_v1.py`), kontrakt
-`LvDomainProjectionV1`, `contract_version = 3.0.0`. Jedna odpowiedź niesie
+`LvDomainProjectionV1`, `contract_version = 4.0.0`. Jedna odpowiedź niesie
 ATOMOWO, z JEDNEGO obiektu ENM pobranego raz:
 
 | Składowa | Pole | Treść |
@@ -100,7 +107,7 @@ ATOMOWO, z JEDNEGO obiektu ENM pobranego raz:
 | urządzenia | `graph.devices[]` | typ ENM, `device_kind` (klasa funkcjonalna wyrobu z katalogu: WYLACZNIK / ROZLACZNIK / ROZLACZNIK_BEZPIECZNIKOWY / ODLACZNIK…, `null` = katalog nie klasyfikuje — pole addytywne R2), `catalog_namespace` (przestrzeń katalogu wyrobu, lustro `branches[]`: `APARAT_NN_MCB` = wyłącznik instalacyjny, `APARAT_NN` = wyłącznik mocy — pole addytywne R2.1), `designation_class` (QF/QS/FU/QBC/W), `device_role` (incomer/feeder/coupler/boundary/internal), `feeder_kind`, `device_state`, oba zaciski (`terminal_a/b`), `board_bus_ref`, `parent/child_bus_ref`, `transformer_ref` |
 | odcinki | `graph.segments[]` | `connectivity_state` (CLOSED/OPEN), stan KAŻDEGO zacisku (`from_terminal`, `to_terminal`), `energization_state` odcinka (przewód za otwartym łącznikiem = DEENERGIZED), `source_ids`, `island_ref`, `voltage_level_id` |
 | sekcje | `graph.sections[]` | `tier` (main/sub), `order`, `coupler_refs`, `incomer_refs`, `transformer_refs` |
-| wyspy §14–§16 | `graph.islands[]` | `is_islanded`, `energization_state`, `energizing_source_ids`, `grid_source_refs`, `has_grid_forming_source`, `frequency_reference_source_id`, `neutral_reference {system, source_ref, status, status_pl, swz_evaluable}`, `power_balance {p_generation_mw, p_load_mw, state, basis_pl}`, `island_operation_allowed` (`null` = nieoceniona), `upstream_system_ids`, `validation_messages[]` |
+| wyspy §14–§16 | `graph.islands[]` | `is_islanded`, `energization_state`, `energizing_source_ids`, `grid_source_refs`, `has_grid_forming_source`, `frequency_reference_source_id`, `neutral_reference {system, source_ref, status (ustalone / brak_ukladu / brak_zrodla), status_pl, swz_evaluable}`, `power_balance {p_generation_mw, p_load_mw, state, basis_pl}`, `island_operation_allowed` (`null` = nieoceniona), `upstream_system_ids`, `validation_messages[]` |
 | źródła rozproszone | `graph.generators[]` | `island_capability` (GRID_FOLLOWING / GRID_FORMING / DUAL_MODE / UNKNOWN), `capability_source_pl`, `island_operation_capable` |
 | tory zasilania | `graph.supply_paths[]` | `bus_ref → source_ref → branch_refs[]` (podświetlenie pełnego toru w UI, zero BFS po stronie klienta) |
 | pomiary i zabezpieczenia | `graph.measurements[]`, `graph.protection_assignments[]` | CT/VT na zacisku (`ratio_primary/secondary` + tabliczka addytywna R2: `accuracy_class`, `burden_va`, `ct_cores`, `ct_arrangement` — `null`, gdy model nie niesie), przekaźnik przypisany do aparatu z `function_codes[]` i `ct_ref` |

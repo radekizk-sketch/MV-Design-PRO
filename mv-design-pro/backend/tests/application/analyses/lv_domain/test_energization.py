@@ -429,7 +429,7 @@ class TestOdniesienieNPe:
     def test_uklad_it_nie_pozwala_oceniac_swz(self) -> None:
         graph = build_lv_domain_view(zbuduj_stacje_nn(uklad_uziemienia="IT"), "stn")
         neutral = graph["islands"][0]["neutral_reference"]
-        assert neutral["status"] == "OK"
+        assert neutral["status"] == "ustalone"
         assert neutral["system"] == "IT"
         assert neutral["swz_evaluable"] is False
 
@@ -439,7 +439,7 @@ class TestOdniesienieNPe:
         assert neutral == {
             "system": "TN-C-S",
             "source_ref": "tr1",
-            "status": "OK",
+            "status": "ustalone",
             "status_pl": "Układ TN-C-S; punkt neutralny: tr1.",
             "swz_evaluable": True,
         }

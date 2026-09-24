@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Final, Literal
 from uuid import UUID
 
 from application.twin_key import migruj_projekt_z_legacy_z_repozytorium
@@ -55,8 +55,10 @@ from sqlalchemy.orm import Session
 
 from .importer import BladArkusza, SiecZArkusza, XlsxNetworkImporter
 
-STATUS_ZAIMPORTOWANO = "ZAIMPORTOWANO"
-STATUS_ODRZUCONO = "ODRZUCONO"
+#: Wynik importu arkusza — stan operacji zapisu modelu, nie werdykt (plan AB §8 F12).
+StatusImportu = Literal["ZAIMPORTOWANO", "ODRZUCONO"]
+STATUS_ZAIMPORTOWANO: Final = "ZAIMPORTOWANO"
+STATUS_ODRZUCONO: Final = "ODRZUCONO"
 
 #: Nazwa pierwszego przypadku obliczeniowego — ta sama, którą nadaje ekran otwarcia
 #: projektu (`frontend/src/ui2/spaces/projekt/otworz/OtworzProjektKontener.tsx`,
@@ -117,7 +119,7 @@ class WynikPodgladu:
 class WynikImportu:
     """Wynik importu — z ADRESEM tego, co powstało (projekt, przypadek, odcisk modelu)."""
 
-    status: str
+    status: StatusImportu
     project_id: str | None = None
     case_id: str | None = None
     enm_hash: str | None = None

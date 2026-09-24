@@ -4,6 +4,8 @@ Karta AB-1a Pakiet E1, pkt A.6: dla każdego z pięciu sprawdzeń przypadek pozy
 i negatywny na plikach tymczasowych; typ kanoniczny i klasa z polem `WyjasnienieWerdyktu` nie
 są naruszeniem; zapadka w dół; mapa po semantyce dozwolona w module karty, mapa po statusie
 nigdzie; parser TypeScript na porównaniu z progiem; bieżące drzewo zielone z bieżącą listą.
+Karta AB-1a Pakiet E2: szóste sprawdzenie (6a ładunek słownikowy, 6b tekst składany, 6c mapa
+warunkowa) jako iloczyn cech w obu językach; słownictwo z jednego źródła (pakiet `werdykt/`).
 
 POKRYCIE — ILOCZYN CECH (reguła KLASA, NIE INSTANCJA pkt 2), nie tylko przykłady z karty:
   backend: {Literal wprost · alias typu z innego modułu · Enum z innego modułu · kontener
@@ -26,7 +28,11 @@ POKRYCIE — ILOCZYN CECH (reguła KLASA, NIE INSTANCJA pkt 2), nie tylko przyk�
     `zastrzezenia` · pole rekordu} × {kod z podkreśleniem · z cyframi · jednowyrazowy kod osi
     stanu · identyfikator małymi literami · emfaza wersalikami · skrót prozy · nazwa polska};
     korpus B {argument nazwany · klucz słownika · przypisanie atrybutu · f-napis} × {pole
-    tekstu · argument `code=` · docstring}; korpus {brak · pusty · uszkodzony}.
+    tekstu · argument `code=` · docstring}; korpus {brak · pusty · uszkodzony};
+  werdykt poza rekordem (pakiet E2): {ładunek słownikowy · tekst składany · mapa warunkowa}
+    × {werdykt z `wyjasnienie` obok · bez wyjaśnienia · status spoza słownika werdyktów}
+    × {Python · TypeScript} — 18 komórek, cechy brzegowe wypisane przy sekcji
+    „Sprawdzenie 6” niżej; n-gramy kodu wersalikami zgodne w obu parserach.
 KOMBINACJE ŚWIADOMIE NIEPOKRYTE: porównanie dwóch wartości nie-stałych (`pst > pst_limit`) —
 strażnik go NIE wykrywa (karta: „między identyfikatorem a literałem liczbowym lub stałą"),
 a test `test_frontend_porownanie_bez_stalej_nie_jest_naruszeniem` PRZYPINA tę granicę.
@@ -780,6 +786,567 @@ def test_korpus_odpowiedzi_brak_pusty_uszkodzony_to_blad_srodowiska(
         (katalog / "zla.json").write_text("{nie json", encoding="utf-8")
     with pytest.raises(guard.BladSrodowiska):
         guard.sprawdz_kody_w_tekscie(_indeks_osi(tmp_path), katalog)
+
+
+# ---------------------------------------------------------------------------
+# Sprawdzenie 6 — werdykt poza rekordem (karta AB-1a Pakiet E2)
+#
+# ILOCZYN CECH: {ładunek słownikowy (6a) · tekst składany (6b) · mapa warunkowa (6c)}
+#   × {werdykt z `wyjasnienie` obok — dozwolony · bez wyjaśnienia — naruszenie · status spoza
+#   słownika werdyktów — dozwolony} × {Python · TypeScript}. Każda z 18 komórek ma przypadek
+#   w atrapach niżej (nazwy funkcji: `bez_wyjasnienia`/`z_wyjasnieniem`/`spoza_slownika` i ich
+#   odpowiedniki TS), plus cechy brzegowe: `wyjasnienie: None`, klucz-mapy, samo `FAILED`,
+#   stała importowana, człon wyliczenia, `dict(...)`, konstruktor z `wyjasnienie=`, dziennik,
+#   proza zwykłą czcionką, `match`/`elif`/kolejne `if`/`?:`/`switch` z przejściem, tłumaczenie
+#   słownika, rangi, rekord z wyjaśnieniem, renderer (sprawdzenie 4), pakiet `werdykt/`,
+#   katalog wzorca i moduł karty.
+# ---------------------------------------------------------------------------
+
+STALE_ATRAPA = """
+STAN_OK = "OK"
+"""
+
+LADUNKI_PY = """
+from enum import Enum
+from app.stale import STAN_OK
+
+
+class Werdykt(str, Enum):
+    PASS = "pass"
+    FAIL = "fail"
+
+
+def bez_wyjasnienia(x):
+    return {"status": "OK", "wartosc": x}
+
+
+def z_wyjasnieniem(x, w):
+    return {"status": "PASS", "wartosc": x, "wyjasnienie": w}
+
+
+def wyjasnienie_puste(x):
+    return {"status": "PASS", "wyjasnienie": None}
+
+
+def spoza_slownika(x):
+    return {"status": "brak danych", "stan": "PENDING", "opis": "zgodny"}
+
+
+def stala_i_enum(x):
+    return {"verification_status": STAN_OK, "wynik": Werdykt.FAIL, "result": Werdykt.PASS.value}
+
+
+def warunkowy(ok):
+    return dict(status="PASS" if ok else "FAIL")
+
+
+def klucz_mapy():
+    return {"SPELNIA": "pass", "NIE_SPELNIA": "fail"}
+
+
+def sam_failed():
+    return {"status": "FAILED"}
+
+
+def para_passed_failed(ok):
+    return {"status": "PASSED" if ok else "FAILED"}
+
+
+def mapa_w_galezi(s):
+    return {"status": "OK" if s == "PASS" else "BLAD"}
+
+
+def ladunek_lokalny(ok):
+    wynik = "PASS" if ok else "FAIL"
+    return {"status": wynik}
+
+
+def lokalny_spoza_slownika(gotowy):
+    stan = "GOTOWE" if gotowy else "W_TOKU"
+    return {"status": stan}
+"""
+
+TEKSTY_PY = """
+import logging
+
+logger = logging.getLogger(__name__)
+WERDYKT = "PASS"
+
+
+def bez_wyjasnienia(n):
+    return f"Wynik: {n} PASS"
+
+
+def konkatenacja(n):
+    return "Stan: " + str(n) + " — NIE SPEŁNIA"
+
+
+def wstawka(ok, n):
+    return f"Kryterium {n}: {'spełnia' if ok else 'nie spełnia'}"
+
+
+def format_i_procent(n):
+    a = "Werdykt: {} OK".format(n)
+    b = "Werdykt %s: FAIL" % n
+    return a, b
+
+
+def proza(n):
+    return f"Moduł {n} spełnia wymaganie art. 13 (PASSWORD, OKNO)."
+
+
+def z_wyjasnieniem(n, w):
+    return {"opis": f"Wynik: {n} PASS", "wyjasnienie": w}
+
+
+def konstruktor(n, w, Rekord):
+    return Rekord(opis=f"Wynik: {n} PASS", wyjasnienie=w)
+
+
+def dziennik(n):
+    logger.info(f"Walidacja {n}: OK")
+
+
+def spoza_slownika(n):
+    return f"Bieg {n}: FAILED, stan GOTOWE"
+
+
+def stala_modulu(n):
+    return f"Wynik {n}: {WERDYKT}"
+
+
+def zmienna_lokalna(jednostki_zgodne, n):
+    stan = "OK" if jednostki_zgodne else "BŁĄD"
+    return f"Weryfikacja jednostek {n}: {stan}"
+
+
+def zmienna_lokalna_w_dzienniku(ok, n):
+    stan = "OK" if ok else "BŁĄD"
+    logger.warning(f"Krok {n}: {stan}")
+"""
+
+MAPY_PY = """
+from enum import Enum
+
+
+class Stan(str, Enum):
+    PASS = "PASS"
+    FAIL = "FAIL"
+
+
+ETYKIETY = {"PASS": "Spełnione", "FAIL": "Niespełnione"}
+TLUMACZENIE = {"SPELNIA": "pass", "NIE_SPELNIA": "fail", "NIE_DOTYCZY": "not_required"}
+RANGI = {"PASS": 0, "FAIL": 1}
+STANY = {"PENDING": "W toku", "DONE": "Zakończony"}
+Z_WYJASNIENIEM = {"PASS": {"etykieta": "Spełnione", "wyjasnienie": "zdanie"}}
+
+
+def przez_match(s):
+    match s:
+        case "PASS":
+            return "Spełnione"
+        case "FAIL" | "ERROR":
+            return "Niespełnione"
+    return "—"
+
+
+def przez_elif(s):
+    if s == "OK":
+        return "Warunek spełniony."
+    elif s == "NOT_OK":
+        return "Warunek niespełniony."
+    return "Brak danych."
+
+
+def kolejne_ify(s):
+    if s == Stan.PASS:
+        return "zielony"
+    if s == Stan.FAIL:
+        return "czerwony"
+    return "szary"
+
+
+def trojargumentowy(s):
+    return "Spełnia" if s == "zgodny" else ("Nie spełnia" if s == "niezgodny" else "—")
+
+
+def spoza_slownika(s):
+    if s == "PENDING":
+        return "W toku"
+    return "Zakończony"
+
+
+def z_wyjasnieniem(s, w):
+    if s == "PASS":
+        return {"etykieta": "Spełnione", "wyjasnienie": w}
+    return {"etykieta": "—", "wyjasnienie": w}
+
+
+def uklad(s, n):
+    if s == "PASS":
+        n += 1
+    return n
+"""
+
+
+@pytest.fixture(scope="module")
+def szesc_backend(tmp_path_factory: pytest.TempPathFactory) -> dict[str, set[str]]:
+    korzen = tmp_path_factory.mktemp("s6") / "backend" / "src"
+    _zapisz(
+        korzen,
+        {
+            "werdykt/__init__.py": "",
+            "werdykt/kontrakt.py": KONTRAKT_ATRAPA,
+            "werdykt/wyjasnienie.py": 'def zdanie(n):\n    return f"Kryterium {n}: SPEŁNIA"\n',
+            "app/__init__.py": "",
+            "app/stale.py": STALE_ATRAPA,
+            "app/ladunki.py": LADUNKI_PY,
+            "app/teksty.py": TEKSTY_PY,
+            "app/mapy.py": MAPY_PY,
+            "app/raport_docx.py": "from docx import Document\n\nE = {'PASS': 'Spełnione'}\n",
+        },
+    )
+    wynik: dict[str, set[str]] = {}
+    for naruszenie in guard.sprawdz_werdykt_poza_rekordem(guard.IndeksBackendu(korzen)):
+        wynik.setdefault(naruszenie.sprawdzenie, set()).add(naruszenie.tozsamosc)
+    return wynik
+
+
+def test_szesc_py_ladunek_iloczyn(szesc_backend: dict[str, set[str]]) -> None:
+    """6a × Python: bez wyjaśnienia (także `wyjasnienie: None`, stała importowana, człon
+    wyliczenia i `.value`, `dict(...)`, gałęzie `?:`, para PASSED/FAILED) — naruszenie; z
+    wyjaśnieniem, spoza słownika, klucz mapy, samo FAILED — nie."""
+    assert szesc_backend["6a_ladunek_werdyktu"] == {
+        "app.ladunki:bez_wyjasnienia.status",
+        "app.ladunki:wyjasnienie_puste.status",
+        "app.ladunki:stala_i_enum.verification_status",
+        "app.ladunki:stala_i_enum.wynik",
+        "app.ladunki:stala_i_enum.result",
+        "app.ladunki:warunkowy.status",
+        "app.ladunki:para_passed_failed.status",
+        # Status wybrany mapą warunkową (`"OK" if s == "PASS" else …`) to nadal ładunek z
+        # werdyktem — 6c go nie zgłasza (wartość-kod), więc zwolnienie byłoby luką.
+        "app.ladunki:mapa_w_galezi.status",
+        # Zmienna lokalna funkcji (`wynik = "PASS" if ok else "FAIL"`) — wartości wszystkich
+        # jej przypisań; zmienna o wartościach spoza słownika — nie.
+        "app.ladunki:ladunek_lokalny.status",
+    }
+
+
+def test_szesc_py_tekst_iloczyn(szesc_backend: dict[str, set[str]]) -> None:
+    """6b × Python: kod wersalikami w f-napisie, konkatenacji, `.format`, `%`, wstawka-literał
+    i stała modułu — naruszenie; proza zwykłą czcionką (i słowa zawierające kod: PASSWORD,
+    OKNO), rekord i konstruktor z `wyjasnienie`, dziennik, samo FAILED, pakiet `werdykt/` —
+    nie."""
+    assert szesc_backend["6b_tekst_werdyktu"] == {
+        "app.teksty:bez_wyjasnienia:PASS",
+        "app.teksty:konkatenacja:NIE_SPELNIA",
+        "app.teksty:wstawka:SPELNIA",
+        "app.teksty:wstawka:NIE_SPELNIA",
+        "app.teksty:format_i_procent.a:OK",
+        "app.teksty:format_i_procent.b:FAIL",
+        "app.teksty:stala_modulu:PASS",
+        "app.teksty:zmienna_lokalna:OK",
+    }
+
+
+def test_szesc_py_mapa_iloczyn(szesc_backend: dict[str, set[str]]) -> None:
+    """6c × Python: literał słownika poza rendererem, `match` z alternatywą, `elif`, kolejne
+    `if` na członach wyliczenia, łańcuch `a if x == … else …` — naruszenie; tłumaczenie
+    słownika na słownik (`SPELNIA` → `pass`), gałąź-kod w ładunku (`"OK" if s == "PASS"`),
+    rangi, stany spoza słownika, rekordy z `wyjasnienie`, gałąź bez `return`/przypisania,
+    renderer (sprawdzenie 4) — nie."""
+    assert szesc_backend["6c_mapa_statusu"] == {
+        "app.mapy:ETYKIETY",
+        "app.mapy:przez_match",
+        "app.mapy:przez_elif",
+        "app.mapy:kolejne_ify",
+        "app.mapy:trojargumentowy",
+    }
+
+
+LADUNKI_TS = """
+export const bezWyjasnienia = (x: number) => ({ status: 'OK', wartosc: x });
+export const zWyjasnieniem = (x: number, wyjasnienie: string) => ({ status: 'PASS', wartosc: x, wyjasnienie });
+export const wyjasnieniePuste = () => ({ status: 'PASS', wyjasnienie: null });
+export const spozaSlownika = () => ({ status: 'PENDING', stan: 'brak danych', opis: 'zgodny' });
+export const warunkowy = (ok: boolean) => ({ verificationStatus: ok ? 'pass' : 'fail' });
+export const zEnumem = () => ({ wynik: Werdykt.PASS });
+export const kluczMapy = { SPELNIA: 'Spełnia', NIE_SPELNIA: 'Nie spełnia' };
+export const samFailed = () => ({ status: 'FAILED' });
+"""
+
+TEKSTY_TS = """
+export const bezWyjasnienia = (n: number) => `Wynik: ${n} PASS`;
+export const konkatenacja = (n: number) => 'Stan: ' + n + ' — NIE SPEŁNIA';
+export const wstawka = (ok: boolean, n: number) => `Kryterium ${n}: ${ok ? 'spełnia' : 'nie spełnia'}`;
+export const proza = (n: number) => `Moduł ${n} spełnia wymaganie art. 13 (PASSWORD, OKNO).`;
+export const zWyjasnieniem = (n: number, w: string) => ({ opis: `Wynik: ${n} PASS`, wyjasnienie: w });
+export function Plakietka({ ok }: { ok: boolean }) {
+  return <span>{ok ? 'SPEŁNIA' : 'NIE SPEŁNIA'}</span>;
+}
+export function PlakietkaZWyjasnieniem({ ok, w }: { ok: boolean; w: string }) {
+  return <Karta wyjasnienie={w}>{ok ? 'OK' : 'BŁĄD'}</Karta>;
+}
+export const dziennik = (n: number) => console.info(`Walidacja ${n}: OK`);
+export const spozaSlownika = (n: number) => `Bieg ${n}: FAILED, stan GOTOWE`;
+export function stalaLokalna(ok: boolean, n: number) {
+  const stan = ok ? 'OK' : 'BŁĄD';
+  return `Weryfikacja ${n}: ${stan}`;
+}
+export function stalaLokalnaSpozaSlownika(gotowy: boolean, n: number) {
+  const stan = gotowy ? 'GOTOWE' : 'W TOKU';
+  return `Bieg ${n}: ${stan}`;
+}
+"""
+
+MAPY_TS = """
+export function przezSwitch(s: string): string {
+  switch (s) {
+    case 'PASS':
+      return 'Spełnione';
+    case 'FAIL':
+    case 'ERROR':
+      return 'Niespełnione';
+    default:
+      return '—';
+  }
+}
+export function przezIf(s: string): string {
+  if (s === 'OK') return 'Warunek spełniony.';
+  if (s === 'NOT_OK') return 'Warunek niespełniony.';
+  return 'Brak danych.';
+}
+export function przezElse(s: string) {
+  if (s === 'zgodny') {
+    return T.zgodny;
+  } else if (s === 'niezgodny') {
+    return T.niezgodny;
+  }
+  return T.brak;
+}
+export const trojargumentowy = (s: string) => (s === 'PASS' ? 'Spełnia' : s === 'FAIL' ? 'Nie spełnia' : '—');
+export function tlumaczenie(s: string) {
+  switch (s) {
+    case 'SPELNIA':
+      return 'pass';
+    case 'NIE_SPELNIA':
+      return 'fail';
+    default:
+      return 'no_data';
+  }
+}
+export function spozaSlownika(s: string) {
+  switch (s) {
+    case 'PENDING':
+      return 'W toku';
+    case 'DONE':
+      return 'Zakończony';
+  }
+  return '';
+}
+export function zWyjasnieniem(s: string, w: string) {
+  switch (s) {
+    case 'PASS':
+      return { etykieta: 'Spełnione', wyjasnienie: w };
+    default:
+      return { etykieta: '—', wyjasnienie: w };
+  }
+}
+export function semantyka(s: string) {
+  switch (s) {
+    case 'pozytywna':
+      return 'green';
+    case 'negatywna':
+      return 'red';
+    default:
+      return 'gray';
+  }
+}
+"""
+
+KARTA_TS = """
+export function kolorSemantyki(s: string) {
+  switch (s) {
+    case 'pozytywna':
+      return 'var(--ok)';
+    case 'negatywna':
+      return 'var(--blad)';
+    default:
+      return 'var(--neutralny)';
+  }
+}
+export function etykietaStatusu(s: string) {
+  switch (s) {
+    case 'SPELNIA':
+      return 'Kryterium spełnione';
+    case 'NIE_SPELNIA':
+      return 'Kryterium naruszone';
+  }
+  return '—';
+}
+"""
+
+SLAD_TS = """
+export function opisStatusu(status: string) {
+  if (status === 'PASS') return 'Spełnione';
+  if (status === 'FAIL') return 'Niespełnione';
+  return 'Ostrzeżenie';
+}
+"""
+
+
+@pytest.fixture(scope="module")
+def szesc_frontend(tmp_path_factory: pytest.TempPathFactory) -> dict[str, set[str]]:
+    korzen = tmp_path_factory.mktemp("s6fe") / "frontend" / "src"
+    _zapisz(
+        korzen,
+        {
+            "ui2/x/ladunki.ts": LADUNKI_TS,
+            "ui2/x/teksty.tsx": TEKSTY_TS,
+            "ui2/x/mapy.ts": MAPY_TS,
+            "ui2/wyniki/wzorzec/KartaWerdyktu.tsx": KARTA_TS,
+            "ui2/wyniki/wzorzec/SladSekcyjny.tsx": SLAD_TS,
+            "ui2/x/__tests__/mapy.test.ts": MAPY_TS,
+        },
+    )
+    wynik: dict[str, set[str]] = {}
+    for naruszenie in guard.sprawdz_frontend(korzen):
+        wynik.setdefault(naruszenie.sprawdzenie, set()).add(naruszenie.tozsamosc)
+    return wynik
+
+
+def test_szesc_ts_ladunek_iloczyn(szesc_frontend: dict[str, set[str]]) -> None:
+    """6a × TypeScript: ta sama reguła klucza co w Pythonie (camelCase `verificationStatus`),
+    wartość z `?:` i człon wyliczenia WIELKIMI LITERAMI — naruszenie; skrót `wyjasnienie`,
+    spoza słownika, klucz mapy, samo FAILED — nie."""
+    plik = "frontend/src/ui2/x/ladunki.ts"
+    assert szesc_frontend["6a_ladunek_werdyktu"] == {
+        f"{plik}:bezWyjasnienia.status",
+        f"{plik}:wyjasnieniePuste.status",
+        f"{plik}:warunkowy.verificationStatus",
+        f"{plik}:zEnumem.wynik",
+    }
+
+
+def test_szesc_ts_tekst_iloczyn(szesc_frontend: dict[str, set[str]]) -> None:
+    """6b × TypeScript: szablon, konkatenacja, wstawka-literał, plakietka `?:` w treści JSX —
+    naruszenie; proza, obiekt i element JSX z `wyjasnienie`, `console.*`, samo FAILED — nie."""
+    plik = "frontend/src/ui2/x/teksty.tsx"
+    assert szesc_frontend["6b_tekst_werdyktu"] == {
+        f"{plik}:bezWyjasnienia:PASS",
+        f"{plik}:konkatenacja:NIE_SPELNIA",
+        f"{plik}:wstawka:SPELNIA",
+        f"{plik}:wstawka:NIE_SPELNIA",
+        f"{plik}:Plakietka:SPELNIA",
+        f"{plik}:Plakietka:NIE_SPELNIA",
+        f"{plik}:stalaLokalna:OK",
+    }
+
+
+def test_szesc_ts_mapa_iloczyn(szesc_frontend: dict[str, set[str]]) -> None:
+    """6c × TypeScript: `switch` z przejściem, kolejne `if`, `else if` na odwołaniach (dwa
+    klucze słownika), łańcuch `?:`, semantyka poza kartą, mapa statusu w module karty i w
+    katalogu wzorca, a w interfejsie także „tłumaczenie” na kody (`'pass'` — jak w 3a każdy
+    literał tekstu) — naruszenie; stany spoza słownika, rekordy z `wyjasnienie`, semantyka
+    w module karty, testy — nie."""
+    mapy = "frontend/src/ui2/x/mapy.ts"
+    wzorzec = "frontend/src/ui2/wyniki/wzorzec"
+    assert szesc_frontend["6c_mapa_statusu"] == {
+        f"{mapy}:przezSwitch",
+        f"{mapy}:przezIf",
+        f"{mapy}:przezElse",
+        f"{mapy}:trojargumentowy",
+        f"{mapy}:semantyka",
+        f"{mapy}:tlumaczenie",
+        f"{wzorzec}/KartaWerdyktu.tsx:etykietaStatusu",
+        f"{wzorzec}/SladSekcyjny.tsx:opisStatusu",
+    }
+
+
+def test_szesc_tozsamosc_nie_zalezy_od_linii(tmp_path: Path) -> None:
+    tresc = "def f(n):\n    return {'status': 'OK', 'opis': f'Wynik {n}: PASS'}\n"
+    przed = guard.sprawdz_werdykt_poza_rekordem(_backend(tmp_path / "a", {"app/m.py": tresc}))
+    po = guard.sprawdz_werdykt_poza_rekordem(
+        _backend(tmp_path / "b", {"app/m.py": "\n\n\n" + tresc})
+    )
+    assert _tozsamosci(przed) == _tozsamosci(po) == {"app.m:f.status", "app.m:f.opis:PASS"}
+    assert [n.linia for n in przed] != [n.linia for n in po]
+
+
+@pytest.mark.parametrize(
+    ("tekst", "kody"),
+    [
+        ("Wynik PASS.", ["PASS"]),
+        ("stan: NIE SPEŁNIA", ["NIE_SPEŁNIA"]),
+        ("NIE_SPELNIA", ["NIE_SPELNIA"]),
+        ("OUT OF RANGE, NON-COMPLIANT", ["OUT_OF_RANGE", "NON_COMPLIANT"]),
+        ("out of range", []),
+        ("[OK] OKNO PASSWORD Ok", ["OK"]),
+        ("POZA OBWIEDNIĄ", ["POZA_OBWIEDNIĄ"]),
+        ("Stan: NIESPEŁNIONA", ["NIESPEŁNIONA"]),
+        ("NIE SPEŁNIA", ["NIE_SPEŁNIA"]),
+        ("NIE: SPEŁNIA", ["SPEŁNIA"]),
+        ("FAILED", ["FAILED"]),
+    ],
+)
+def test_kody_wersalikami_n_gramy(tekst: str, kody: list[str]) -> None:
+    """N-gram WERSALIKAMI rozdzielony wyłącznie odstępem/dywizem; `FAILED` jest kandydatem,
+    werdyktem staje się dopiero w parze z `PASSED` (`wartosci_werdyktowe`)."""
+    assert guard.kody_werdyktu_wersalikami(tekst) == kody
+
+
+def test_kody_wersalikami_python_i_typescript_zgodne() -> None:
+    """Predykaty parami: kody w tekście backendu wyznacza Python, frontendu — `node`."""
+    teksty = [
+        "Wynik PASS.",
+        "stan: NIE SPEŁNIA",
+        "OUT OF RANGE, NON-COMPLIANT",
+        "[OK] OKNO PASSWORD Ok",
+        "POZA OBWIEDNIĄ i W OBWIEDNI",
+        "NIE SPEŁNIA",
+        "NIE: SPEŁNIA",
+        "ZGODNE_Z_UWAGAMI, ZGODNE",
+        "moduł spełnia wymaganie",
+    ]
+    assert guard.kody_w_typescript(teksty) == [guard.kody_werdyktu_wersalikami(t) for t in teksty]
+
+
+def test_slownik_obejmuje_rozstrzygajace_statusy_kontraktu() -> None:
+    """JEDNO ŹRÓDŁO słownika: statusy kontraktu o semantyce pozytywnej/negatywnej (słownik
+    etykiet `werdykt.etykiety`, jedyne mapowanie §9) należą do słownika strażnika — zmiana
+    nazwy statusu rozstrzygającego w kontrakcie zapala ten test, zamiast rozjechać strażnik."""
+    sys.path.insert(0, str(guard.BACKEND_SRC))
+    from werdykt.etykiety import SLOWNIK_ETYKIET  # noqa: PLC0415
+
+    rozstrzygajace = {
+        guard.normalizuj(pozycja.status)
+        for pozycja in SLOWNIK_ETYKIET
+        if pozycja.semantyka in ("pozytywna", "negatywna")
+    }
+    assert rozstrzygajace == {"spelnia", "nie_spelnia"}
+    assert rozstrzygajace <= guard.SLOWNIK_WERDYKTOW
+
+
+@pytest.mark.parametrize(
+    ("klucz", "oczekiwany"),
+    [
+        ("status", True),
+        ("verification_status", True),
+        ("trvStatus", True),
+        ("werdyktPass", True),
+        ("wynik", True),
+        ("result", True),
+        ("ocena_ok", True),
+        ("is_ok", True),
+        ("stan", False),
+        ("opis", False),
+        ("statusy_liczba", False),
+        ("tone", False),
+    ],
+)
+def test_klucz_werdyktu(klucz: str, oczekiwany: bool) -> None:
+    assert guard.klucz_werdyktu(klucz) is oczekiwany
 
 
 # ---------------------------------------------------------------------------

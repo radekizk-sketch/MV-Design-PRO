@@ -13,6 +13,7 @@ from application.analyses.v126_gotowosc import (
 )
 from application.analyses.v126_katalog import katalog_do_dict
 from application.analyses.v126_wzory import wzbogac_kroki_latex
+from domain.execution import StanBiegu
 from enm.canonical_analysis import create_run as _create_canonical_run
 from enm.canonical_analysis import execute_run as _execute_canonical_run
 from enm.canonical_analysis import get_run as _get_canonical_run
@@ -38,7 +39,7 @@ class V126RunResponse(BaseModel):
     run_id: str
     case_id: str
     analysis_type: V126AnalysisType
-    status: str
+    status: StanBiegu
     result_url: str
     trace_url: str
     proof_url: str

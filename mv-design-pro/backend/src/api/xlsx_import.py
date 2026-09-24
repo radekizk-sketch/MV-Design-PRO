@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from api.dependencies import get_uow_factory
-from application.xlsx_import import XlsxImportService
+from application.xlsx_import import StatusImportu, XlsxImportService
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
@@ -59,7 +59,7 @@ class PodgladArkuszaResponse(BaseModel):
 class ImportArkuszaResponse(BaseModel):
     """Odpowiedź importu — adres tego, co powstało w modelu."""
 
-    status: str  # ZAIMPORTOWANO | ODRZUCONO
+    status: StatusImportu
     project_id: str | None = None
     case_id: str | None = None
     enm_hash: str | None = None

@@ -48,7 +48,7 @@ export function widokEstymacjiFixture(): WidokEstymacji {
   return {
     analysis_id: 'run-lf-1',
     context: wymaganiaFixture().context,
-    status: 'OK',
+    status: 'ZBIEZNY',
     status_pl: 'zbieżny',
     missing_data: [{ code: 'wezly_bez_pomiaru', bus_refs: ['BUS-3'] }],
     solver_version: 'state_estimation_wls@1.0.0',

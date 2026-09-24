@@ -9,6 +9,7 @@ from .importer import (
 )
 from .service import (
     PodsumowanieArkusza,
+    StatusImportu,
     WynikImportu,
     WynikPodgladu,
     XlsxImportService,
@@ -18,6 +19,7 @@ __all__ = [
     "BladArkusza",
     "PodsumowanieArkusza",
     "SiecZArkusza",
+    "StatusImportu",
     "WynikImportu",
     "WynikPodgladu",
     "XlsxImportResult",

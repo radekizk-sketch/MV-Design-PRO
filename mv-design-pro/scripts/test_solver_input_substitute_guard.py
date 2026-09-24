@@ -1633,7 +1633,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `max_clearing_time_ms`, `min_frequency_recovery_pu`, `min_voltage_recovery_pu`,
     # `stability_index`, `stable`, `topology_effect`, `violated_checks`). `werdykt/kontrakt.py`
     # byl juz w mapie (B+C), wiec jego pola nie wchodza do roznicy.
-    assert "Pol kontraktow wejsciowych: 4033." in wyjscie, wyjscie
+    # Karta AB-1a Pakiet E2 (2026-09-24): 4033 -> 4032 — POMIAR `contract_fields()` na drzewie
+    # `7b05931e` i na drzewie karty, roznica zbiorow: -1 (`deterministic_id`, jedyne wystapienie
+    # w martwym modelu `api/power_flow_runs.py::PowerFlowRunResponse` — 0 uzyc, skasowany razem
+    # z `PowerFlowExecuteResponse`), +0. PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4032." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1759,7 +1763,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # — cienka fabryka rekordu oceny niewykonanej na regule K kontraktu werdyktu; zero
         # wpisow w zapadce i wykluczeniach). POMIAR guardem na drzewie `bbcc8555` + Pakiet 0.
         # Pakiet 0 (zlozenie na `1b422cdd`): +1 plik `application/ocena_niewykonana.py`.
-        "Przeskanowano 541 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta AB-1a Pakiet E2 (2026-09-24): 541 -> 540 (-1 `application/analyses/
+        # run_index.py` — `AnalysisRunIndexEntry` bez wolajacego, skasowany razem z
+        # repozytorium `infrastructure/persistence/...`, ktore lezy poza zakresem skanu;
+        # zero nowych plikow). POMIAR guardem na drzewie karty.
+        "Przeskanowano 540 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1922,7 +1930,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # wykluczenia 4/10 BEZ ZMIANY.
         # Karta AB-1a Pakiet 0 (2026-09-23): application 235 -> 236 (+1
         # `application/ocena_niewykonana.py`; zero wpisow w zapadce i wykluczeniach).
-        "  application: pliki_skanowane=240, dlug=30 plikow/suma 91, "
+        # Karta AB-1a Pakiet E2 (2026-09-24): application 240 -> 239 (-1 skasowany
+        # `application/analyses/run_index.py`; plik nie mial wpisu w zapadce ani w
+        # wykluczeniach, wiec ubyl tylko z licznika skanu).
+        "  application: pliki_skanowane=239, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=63, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]

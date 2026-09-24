@@ -755,7 +755,7 @@ class ProjectArchiveService:
         # PROJEKTU pod jego kluczem twin bez bumpu rewizji (round-trip
         # zachowuje hashe); pozostałe wpisy idą przez `store.migruj_klucz_
         # przypadku_do_projektu` do `legacy_przypadki/` z wierszem manifestu
-        # (ZGODNY dla duplikatu treści, ROZBIEZNY dla realnej rozbieżności).
+        # (IDENTYCZNY dla duplikatu treści, ROZBIEZNY dla realnej rozbieżności).
         entries_by_old_case: dict[str, dict[str, Any]] = {
             str(entry.get("case_id") or ""): entry["snapshot"]
             for entry in archive.enm.models

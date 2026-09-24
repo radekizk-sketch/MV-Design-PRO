@@ -2,7 +2,7 @@
   "case_id": "fixture-06_conflict_parallel_sources",
   "completeness": "COMPLETE",
   "contract": "LvDomainProjectionV1",
-  "contract_version": "3.0.0",
+  "contract_version": "4.0.0",
   "graph": {
     "boundary_links": [],
     "branches": [
@@ -640,7 +640,7 @@
         "island_ref": "island-1",
         "neutral_reference": {
           "source_ref": "TA",
-          "status": "OK",
+          "status": "ustalone",
           "status_pl": "Układ TN-C-S; punkt neutralny: TA.",
           "swz_evaluable": true,
           "system": "TN-C-S"
@@ -1489,7 +1489,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "107682c031f6eae6bc6439e0f9a797dea471daf03248715929aa6dd67bebc18b",
+  "projection_hash": "5062b004b7f534942971860fec05580bd48164a6f4b3e5a9cce3243e5bec6867",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,

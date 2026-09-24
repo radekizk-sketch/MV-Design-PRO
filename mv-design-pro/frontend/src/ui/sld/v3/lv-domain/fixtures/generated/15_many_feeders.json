@@ -2,7 +2,7 @@
   "case_id": "fixture-15_many_feeders",
   "completeness": "COMPLETE",
   "contract": "LvDomainProjectionV1",
-  "contract_version": "3.0.0",
+  "contract_version": "4.0.0",
   "graph": {
     "boundary_links": [],
     "branches": [
@@ -1125,7 +1125,7 @@
         "island_ref": "island-1",
         "neutral_reference": {
           "source_ref": "T1",
-          "status": "OK",
+          "status": "ustalone",
           "status_pl": "Układ TN-C-S; punkt neutralny: T1.",
           "swz_evaluable": true,
           "system": "TN-C-S"
@@ -2282,7 +2282,7 @@
     "scenario_id": "MAX",
     "station_ref": "stWIELE"
   },
-  "projection_hash": "afda8a74de376ceb37c511fca1f7ea73737210699212bde815b34feb1b72d138",
+  "projection_hash": "3d813be434c7e87ae13bec3809f762b7f0910620cfd1740401936f2a5a572cda",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,

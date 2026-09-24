@@ -29,7 +29,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal, get_args
 from uuid import UUID, uuid4
 
 # ---------------------------------------------------------------------------
@@ -44,6 +44,29 @@ class RunStatus(StrEnum):
     RUNNING = "RUNNING"
     DONE = "DONE"
     FAILED = "FAILED"
+
+
+#: Stan DOMENOWY biegu kanonicznego R1 (`enm.canonical_analysis.CanonicalRun.status`, klucze
+#: `STATUS_WYKONAWCZY`): CREATED → RUNNING → FINISHED | FAILED. Kontrakt HTTP wykonania
+#: renderuje go jako `RunStatus` (CREATED → PENDING, FINISHED → DONE). JEDEN słownik cyklu
+#: życia biegu dla pozycji serii (`domain.run_batch`), proweniencji porównań i list biegów
+#: w API (karta AB-1a Pakiet E2, plan AB §8 F10) — stan wykonania, nie werdykt. Zgodność ze
+#: `STATUS_WYKONAWCZY` przypina `tests/domain/test_stan_biegu.py` (predykaty parami).
+StanBiegu = Literal["CREATED", "RUNNING", "FINISHED", "FAILED"]
+
+
+def stan_biegu(wartosc: str) -> StanBiegu:
+    """Stan biegu z wartości zapisanej (baza, archiwum, `CanonicalRun.status`).
+
+    Wartość spoza słownika jest błędem danych — zgłoszonym tu, a nie przepuszczonym jako
+    dowolny tekst do kontraktu HTTP.
+    """
+    for stan in get_args(StanBiegu):
+        if wartosc == stan:
+            return stan
+    raise ValueError(
+        f"Nieznany stan biegu {wartosc!r} — dozwolone: {', '.join(get_args(StanBiegu))}."
+    )
 
 
 class ExecutionAnalysisType(StrEnum):

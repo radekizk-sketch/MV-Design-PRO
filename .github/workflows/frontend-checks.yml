@@ -94,11 +94,13 @@ jobs:
       - name: Katalog — parytet pol backend/front
         working-directory: mv-design-pro
         run: python scripts/katalog_parytet_pol_guard.py
-      # Kontrakt werdyktu wyjasnialnego §12 (plan AB O-36, karta AB-1a Pakiet E1): cztery
-      # sprawdzenia KONTRAKTU (pola werdyktu w modelach backendu, migawka OpenAPI, mapy
-      # status -> etykieta i progi w UI, renderery dokumentow) z lista dozwolona na
-      # TOZSAMOSCIACH i zapadka w dol. Miejsce: TA bramka — sprawdzenie frontendu parsuje
-      # AST pakietem `typescript` z `frontend/node_modules`, wiec krok MUSI stac po `npm ci`.
+      # Kontrakt werdyktu wyjasnialnego §12 (plan AB O-36, karta AB-1a Pakiety E1, D2, E2):
+      # szesc sprawdzen KONTRAKTU (pola werdyktu w modelach backendu, migawka OpenAPI, mapy
+      # status -> etykieta i progi w UI, renderery dokumentow, kod w tekscie, werdykt poza
+      # rekordem: ladunek slownikowy / tekst skladany / mapa warunkowa w Pythonie i TS) z
+      # lista dozwolona na TOZSAMOSCIACH i zapadka w dol. Miejsce: TA bramka — sprawdzenie
+      # frontendu parsuje AST pakietem `typescript` z `frontend/node_modules`, wiec krok MUSI
+      # stac po `npm ci`.
       - name: Werdykt Wyjasnialny Guard
         working-directory: mv-design-pro
         run: python scripts/werdykt_wyjasnialny_guard.py

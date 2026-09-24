@@ -2,7 +2,7 @@
   "case_id": "fixture-05_independent_upstream",
   "completeness": "COMPLETE",
   "contract": "LvDomainProjectionV1",
-  "contract_version": "3.0.0",
+  "contract_version": "4.0.0",
   "graph": {
     "boundary_links": [],
     "branches": [
@@ -614,7 +614,7 @@
         "island_ref": "island-1",
         "neutral_reference": {
           "source_ref": "TB",
-          "status": "OK",
+          "status": "ustalone",
           "status_pl": "Układ TN-C-S; punkt neutralny: TB.",
           "swz_evaluable": true,
           "system": "TN-C-S"
@@ -663,7 +663,7 @@
         "island_ref": "island-2",
         "neutral_reference": {
           "source_ref": "TA",
-          "status": "OK",
+          "status": "ustalone",
           "status_pl": "Układ TN-C-S; punkt neutralny: TA.",
           "swz_evaluable": true,
           "system": "TN-C-S"
@@ -1316,7 +1316,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "5f74f73aa8bfb3f611a3b00c3c182ac991f9a089c2154771579a3d688f4335cd",
+  "projection_hash": "2d98aaa9e9f378c8d79f593862bf4f3c83fa683481164468170f2bf63f6ae0ad",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,

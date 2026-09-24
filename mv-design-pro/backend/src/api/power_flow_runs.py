@@ -25,6 +25,7 @@ from api.canonical_run_views import (
 from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import klucz_twin_z_uow
 from application.analysis_run.read_model import canonicalize_json
+from domain.execution import StanBiegu
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import create_run as create_canonical_run
 from enm.canonical_analysis import execute_run as execute_canonical_run
@@ -49,30 +50,6 @@ class PowerFlowRunCreateRequest(BaseModel):
         default=None,
         description="Opcje solvera (tolerance, max_iter, trace_level, etc.)",
     )
-
-
-class PowerFlowRunResponse(BaseModel):
-    id: str
-    deterministic_id: str
-    project_id: str
-    study_case_id: str
-    analysis_type: str
-    status: str
-    result_status: str
-    created_at: str
-    started_at: str | None
-    finished_at: str | None
-    input_hash: str
-    converged: bool | None = None
-    iterations: int | None = None
-
-
-class PowerFlowExecuteResponse(BaseModel):
-    id: str
-    status: str
-    converged: bool | None = None
-    iterations: int | None = None
-    error_message: str | None = None
 
 
 def _require_canonical_run(run_id: UUID) -> CanonicalRun:
@@ -341,7 +318,7 @@ def _build_power_flow_xlsx(bundle: dict[str, Any]) -> bytes:
 @router.get("/projects/{project_id}/power-flow-runs")
 def list_power_flow_runs(
     project_id: UUID,
-    status: str | None = Query(
+    status: StanBiegu | None = Query(
         default=None,
         description="Filtruj po statusie (CREATED, RUNNING, FINISHED, FAILED)",
     ),

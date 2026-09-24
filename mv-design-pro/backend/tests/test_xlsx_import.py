@@ -13,10 +13,11 @@ Zgodnie z CLAUDE.md §5 testy budują prawdziwy skoroszyt i przechodzą drogą u
 
 from __future__ import annotations
 
+from typing import get_args
 from uuid import UUID
 
 import pytest
-from application.xlsx_import import XlsxImportService, XlsxNetworkImporter
+from application.xlsx_import import StatusImportu, XlsxImportService, XlsxNetworkImporter
 from application.xlsx_import.service import (
     ARKUSZ_MODELU,
     NAZWA_PIERWSZEGO_PRZYPADKU,
@@ -1025,3 +1026,9 @@ class TestKolumnaUPu:
         assert wynik.status == STATUS_ZAIMPORTOWANO, wynik.bledy
         [zrodlo] = _model_projektu(wynik.project_id or "").sources
         assert zrodlo.u_set_pu == pytest.approx(1.04)
+
+
+def test_status_importu_to_dokladnie_stale_uslugi() -> None:
+    """Typ kontraktu HTTP i stałe usługi to jeden słownik (predykaty parami, plan AB §8 F12)."""
+    assert set(get_args(StatusImportu)) == {STATUS_ZAIMPORTOWANO, STATUS_ODRZUCONO}
+    assert len(get_args(StatusImportu)) == 2

@@ -201,7 +201,7 @@ class TestLvDomainProjectionV1Endpoint:
         # zasilania SN i komunikaty walidacji (mandat „profesjonalizacja SLD
         # nN"); 2.0.0 wprowadziło `swz_snapshot.transformers[]`. Każda zmiana
         # niezgodna wstecz = MAJOR (karta B-02 §0.2).
-        assert body["contract_version"] == "3.0.0"
+        assert body["contract_version"] == "4.0.0"
         assert isinstance(body["validation_messages"], list)
         assert body["status"] == "OK"
         assert body["graph"]["station_ref"] == "stn"

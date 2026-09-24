@@ -23,6 +23,7 @@ from typing import Any
 
 from api.dependencies import get_uow_factory
 from application.protection_comparison import ProtectionComparisonService
+from domain.execution import StanBiegu
 from domain.protection_comparison import (
     ProtectionComparisonError,
     ProtectionComparisonNotFoundError,
@@ -113,7 +114,7 @@ class RunProvenanceResponse(BaseModel):
 
     run_id: str
     analysis_type: str
-    status: str
+    status: StanBiegu
     snapshot_hash: str
     input_hash: str
     finished_at: str | None

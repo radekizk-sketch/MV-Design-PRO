@@ -349,7 +349,9 @@ def _serialize_result(
     view: dict[str, Any] = {
         "analysis_id": str(run.id),
         "context": _context(run),
-        "status": "OK" if result.converged else "BRAK_ZBIEZNOSCI",
+        # Stan ZBIEŻNOŚCI estymacji (proces obliczeniowy), nie werdykt — dawne „OK” należało
+        # do słownika werdyktów (karta AB-1a Pakiet E2, strażnik werdyktu reguła 6a).
+        "status": "ZBIEZNY" if result.converged else "BRAK_ZBIEZNOSCI",
         "status_pl": "zbieżny" if result.converged else "brak zbieżności",
         "missing_data": missing_data,
         "solver_version": result.solver_version,

@@ -40,6 +40,7 @@ from application.fault_scenario_service import (
     FaultScenarioService,
     solver_input_for_scenario,
 )
+from domain.eligibility_models import EligibilityStatus
 from domain.fault_scenario import (
     FaultMode,
     FaultScenarioValidationError,
@@ -195,7 +196,7 @@ class ScenarioEligibilityResponse(BaseModel):
     """Scenario eligibility check response."""
 
     analysis_type: str
-    status: str
+    status: EligibilityStatus
     blockers: list[dict[str, Any]]
     warnings: list[dict[str, Any]]
     content_hash: str

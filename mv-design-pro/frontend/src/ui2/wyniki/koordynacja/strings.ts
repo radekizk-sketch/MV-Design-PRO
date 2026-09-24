@@ -8,9 +8,11 @@
 export const KOORDYNACJA_STRINGS = {
   eyebrow: 'KOORDYNACJA ZABEZPIECZEŃ',
   // Cel jednym zdaniem (cytat z karty F-E5b §0.2).
-  cel: 'Dobór nastaw i selektywność zabezpieczeń nadprądowych: werdykty par '
-    + 'PASS/MARGINAL/FAIL, marginesy CTI i krzywe czasowo-prądowe — z przebiegu '
-    + 'zwarciowego i biblioteki zabezpieczeń.',
+  // Nazwy polskie ocen par, nie kody (PASS/MARGINAL/FAIL) — tekst dla człowieka nie niesie
+  // kodów werdyktu (kontrakt werdyktu §12, strażnik reguła 6b).
+  cel: 'Dobór nastaw i selektywność zabezpieczeń nadprądowych: ocena każdej pary '
+    + '(selektywna, na granicy marginesu, nieselektywna), marginesy CTI i krzywe '
+    + 'czasowo-prądowe — z przebiegu zwarciowego i biblioteki zabezpieczeń.',
 
   // Stan zerowy — brak aktywnego projektu.
   brakProjektuTytul: 'Brak aktywnego projektu',

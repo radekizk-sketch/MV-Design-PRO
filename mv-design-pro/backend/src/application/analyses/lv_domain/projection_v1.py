@@ -70,8 +70,10 @@ LV_DOMAIN_PROJECTION_CONTRACT = "LvDomainProjectionV1"
 #: pułapką dla każdego klienta, który go sprawdza (frontend
 #: `projectionApi.ts::isLvDomainProjectionV1` przypina wersję wprost). Nazwa
 #: kontraktu i ścieżka końcówki (`/projection/v1`) bez zmian — to identyfikator
-#: ZASOBU, wersja opisuje ładunek.
-LV_DOMAIN_PROJECTION_VERSION = "3.0.0"
+#: ZASOBU, wersja opisuje ładunek. 4.0.0 (karta AB-1a Pakiet E2, plan AB §8 F16): wartość
+#: `islands[].neutral_reference.status` „OK” → „ustalone” — stan danych odniesienia N/PE, nie
+#: werdykt; klient porównujący wartość dostałby cichą zmianę znaczenia, więc MAJOR.
+LV_DOMAIN_PROJECTION_VERSION = "4.0.0"
 
 
 class LvDomainProjectionRunMismatch(ValueError):

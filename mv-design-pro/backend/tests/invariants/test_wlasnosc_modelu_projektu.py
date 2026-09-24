@@ -111,7 +111,7 @@ def test_migracja_aktywny_przypadek_staje_sie_modelem_projektu_a_reszta_trafia_d
     assert statusy == {
         str(case_ids[1]): "PRZENIESIONY",
         str(case_ids[0]): "ROZBIEZNY",
-        str(case_ids[2]): "ZGODNY",
+        str(case_ids[2]): "IDENTYCZNY",
     }
     # Pliki per przypadek zniknęły z katalogu głównego, ale NIE z dysku (legacy_przypadki/).
     for c in case_ids:

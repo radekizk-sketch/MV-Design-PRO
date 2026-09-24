@@ -87,7 +87,7 @@ class TestKazdyScenariusz:
     def test_projekcja_ok_i_kontrakt_3(self, projekcje, slug) -> None:
         p = projekcje[slug]
         assert p["status"] == "OK", slug
-        assert p["contract_version"] == "3.0.0"
+        assert p["contract_version"] == "4.0.0"
         assert p["graph"]["buses"] and p["graph"]["islands"]
         for bus in p["graph"]["buses"]:
             assert bus["energization_state"] in {

@@ -5,7 +5,7 @@ Action envelope types and deterministic validation for snapshot-based edits.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal, get_args
 
 from .graph import NetworkGraph
 from .node import NodeType
@@ -14,6 +14,20 @@ from .snapshot import NetworkSnapshot
 ActionId = str
 ParentSnapshotId = str
 EntityId = str
+#: Stan operacji na migawce: przyjęta albo odrzucona (przyczyny w `errors`) — stan operacji
+#: domenowej, nie werdykt (plan AB §8 F14).
+StanAkcji = Literal["accepted", "rejected"]
+
+
+def stan_akcji(wartosc: object) -> StanAkcji:
+    """Stan akcji z danych zapisanych; wartość spoza słownika to błąd danych, nie tekst."""
+    for stan in get_args(StanAkcji):
+        if wartosc == stan:
+            return stan
+    raise ValueError(
+        f"Nieznany stan akcji {wartosc!r} — dozwolone: {', '.join(get_args(StanAkcji))}."
+    )
+
 
 ACTION_TYPES = (
     "create_node",
@@ -41,7 +55,7 @@ class ActionEnvelope:
     action_type: str
     payload: dict[str, Any]
     created_at: str
-    status: str | None = None
+    status: StanAkcji | None = None
     actor: str | None = None
     schema_version: str | int | None = None
 
@@ -65,7 +79,7 @@ class ActionEnvelope:
             action_type=str(data["action_type"]),
             payload=dict(data.get("payload", {})),
             created_at=str(data["created_at"]),
-            status=data.get("status"),
+            status=stan_akcji(data["status"]) if data.get("status") is not None else None,
             actor=data.get("actor"),
             schema_version=data.get("schema_version"),
         )
@@ -95,7 +109,7 @@ class ActionIssue:
 
 @dataclass(frozen=True)
 class ActionResult:
-    status: str
+    status: StanAkcji
     action_id: ActionId
     parent_snapshot_id: ParentSnapshotId
     errors: list[ActionIssue] = field(default_factory=list)
@@ -113,7 +127,7 @@ class ActionResult:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ActionResult:
         return cls(
-            status=str(data["status"]),
+            status=stan_akcji(data["status"]),
             action_id=str(data["action_id"]),
             parent_snapshot_id=str(data["parent_snapshot_id"]),
             errors=[ActionIssue.from_dict(err) for err in data.get("errors", [])],
@@ -123,7 +137,7 @@ class ActionResult:
 
 @dataclass(frozen=True)
 class BatchActionResult:
-    status: str
+    status: StanAkcji
     parent_snapshot_id: ParentSnapshotId
     action_results: list[ActionResult]
     new_snapshot_id: str | None = None
@@ -141,7 +155,7 @@ class BatchActionResult:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BatchActionResult:
         return cls(
-            status=str(data["status"]),
+            status=stan_akcji(data["status"]),
             parent_snapshot_id=str(data["parent_snapshot_id"]),
             new_snapshot_id=data.get("new_snapshot_id"),
             action_results=[
@@ -172,7 +186,7 @@ def validate_action_envelope(envelope: ActionEnvelope, snapshot: NetworkSnapshot
         _validate_payload_values(envelope.action_type, envelope.payload, errors)
         _validate_referential_integrity(envelope.action_type, envelope.payload, snapshot, errors)
 
-    status = "accepted" if not errors else "rejected"
+    status: StanAkcji = "accepted" if not errors else "rejected"
     return ActionResult(
         status=status,
         action_id=envelope.action_id,

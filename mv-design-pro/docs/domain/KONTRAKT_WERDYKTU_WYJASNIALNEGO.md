@@ -559,12 +559,29 @@ Bada KONTRAKT, nie tekst (nie poluje na słowo „spełnia"):
    `werdykt.kontrakt` i wyliczeń `werdykt.proweniencja`). Dwa korpusy: odpowiedzi policzone
    backendem (fixtury harnessu, te same funkcje co trasy API) i literały źródła `backend/src/**`
    zasilające pole tekstu. Kod zostaje w polach rekordu; zdanie niesie nazwę polską.
+6. **Werdykt poza rekordem (karta AB-1a Pakiet E2):** trzy kształty, w których werdykt omija
+   typowany rekord — w backendzie (AST Python) i we frontendzie (AST TypeScript), poza pakietem
+   kontraktu `werdykt/` (generator tekstu, słownik etykiet i serializer są jedynymi miejscami
+   zamiany statusu na tekst): (6a) **ładunek słownikowy** — literał słownika/obiektu z kluczem
+   statusu/werdyktu (`status`, `*_status`, `werdykt`, `verdict`, `wynik`, `result`, `ocena`
+   i nazwy pól ze sprawdzenia 1) i wartością znaną statycznie ze słownika werdyktów;
+   (6b) **tekst składany** — f-napis, konkatenacja, formatowanie, szablon TS, wstawka w treści
+   elementu JSX — z kodem werdyktu zapisanym wersalikami (`PASS`, `OK`, `SPEŁNIA`,
+   `NIE SPEŁNIA`) albo z wstawką-literałem werdyktu (`'spełnia' if ok else …`); proza pisana
+   zwykłą czcionką nie jest kodem; (6c) **mapa warunkowa** „status → etykieta” zapisana
+   przepływem sterowania (`switch`/`match`, łańcuch `if`/`elif`, łańcuch `?:`), a w backendzie
+   także literał słownika poza rendererami (renderery bada pkt 4). Wartość stojąca obok pola
+   `wyjasnienie` (rekordy K i W) jest dozwolona; mapa po semantyce koloru — wyłącznie w module
+   karty werdyktu, mapa po statusie — nigdzie (także w katalogu wzorca `ui2/wyniki/wzorzec`).
+   Słownik werdyktów jest JEDEN dla wszystkich sprawdzeń (rozstrzygające statusy
+   `StatusWerdyktu` należą do niego — przypięte samotestem).
 
 Zapadka: stan zastany z inwentarza (plan AB §8) jest przypięty LISTĄ TOŻSAMOŚCI
 (`moduł:symbol kwalifikowany`, nie `plik:linia` — linie dryfują, a licznik pozwalałby zastąpić
 naprawione naruszenie nowym; przegląd #18); lista może tylko maleć, nowa tożsamość łamiąca
-kontrakt = czerwony guard. Self-test z przypadkiem pozytywnym i negatywnym dla każdego z pięciu
-sprawdzeń. Wpięcie: `scripts/guardy_z_ci.py` + właściwe workflow CI.
+kontrakt = czerwony guard. Self-test z przypadkiem pozytywnym i negatywnym dla każdego z sześciu
+sprawdzeń (sprawdzenie 6 — iloczyn {ładunek, tekst, mapa} × {z wyjaśnieniem, bez, spoza słownika}
+× {Python, TypeScript}). Wpięcie: `scripts/guardy_z_ci.py` + właściwe workflow CI.
 
 ## 13. Zakres przedmiotowy i migracja
 

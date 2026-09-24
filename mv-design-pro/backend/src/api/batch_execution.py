@@ -46,7 +46,8 @@ from application.result_freshness import (
     StanBiezacyModelu,
     swiezosc_biegu_kanonicznego,
 )
-from domain.run_batch import RunBatch
+from domain.execution import StanBiegu
+from domain.run_batch import RunBatch, RunBatchStatus
 from enm.canonical_analysis import get_run as get_canonical_run
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
@@ -96,13 +97,13 @@ class BatchItemResponse(BaseModel):
     analysis_type: str
     options_hash: str
     canonical_run_id: str | None
-    status: str
+    status: StanBiegu
     error_message: str | None
     #: Świeżość WYNIKU pozycji względem modelu bieżącego — TA SAMA funkcja co
     #: nakładka pojedynczego biegu (`application/result_freshness.py`), zero
     #: pola "zielone na zawsze" (karta §0 C3).
-    result_freshness: str
-    result_freshness_reason: str
+    result_freshness: ResultFreshness
+    result_freshness_reason: FreshnessReason
     result_freshness_reason_pl: str
 
 
@@ -115,7 +116,7 @@ class BatchResponse(BaseModel):
     scenario_ids: list[str]
     created_at: str
     finished_at: str | None
-    status: str
+    status: RunBatchStatus
     batch_input_hash: str
     run_ids: list[str]
     result_set_ids: list[str]

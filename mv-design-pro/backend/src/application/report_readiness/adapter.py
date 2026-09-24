@@ -18,12 +18,18 @@ from pydantic import BaseModel, Field
 ReportType = Literal["osd", "technical"]
 
 
+#: Stan gotowości raportu po polsku — z bramki gotowości obliczeń (`ready`/`partial`/`blocked`/
+#: `n_a`); przyczynę niosą `missing_data_pl` i `blocking_objects` — stan danych, nie werdykt
+#: (plan AB §8 F15).
+StanGotowosciRaportuPl = Literal["gotowe", "wynik częściowy", "zablokowany", "nie dotyczy"]
+
+
 class ReportReadinessStatus(BaseModel):
     """Status gotowości raportu."""
 
     report_type: ReportType
     can_generate: bool
-    status_pl: str  # "gotowe" / "wynik częściowy" / "zablokowany" / "nie dotyczy"
+    status_pl: StanGotowosciRaportuPl
     missing_data_pl: list[str] = Field(default_factory=list)
     blocking_objects: list[str] = Field(default_factory=list)
     rationale_pl: str | None = None
@@ -51,7 +57,7 @@ class ReportReadinessAdapter:
     def _to_status(
         self, report_type: ReportType, report: ReadinessTypeReport
     ) -> ReportReadinessStatus:
-        status_map = {
+        status_map: dict[str, StanGotowosciRaportuPl] = {
             "ready": "gotowe",
             "partial": "wynik częściowy",
             "blocked": "zablokowany",

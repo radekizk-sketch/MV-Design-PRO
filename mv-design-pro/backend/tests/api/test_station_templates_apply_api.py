@@ -155,7 +155,10 @@ def test_apply_station_template_reuses_existing_case_enm_snapshot(
 
     template = get_template(template_id)
     assert template is not None
-    assert not any(op.get("status") == "FAIL" for op in payload["operations_log"])
+    # Dziennik operacji wymienia WYŁĄCZNIE operacje wykonane (błąd przerywa zastosowanie
+    # szablonu wyjątkiem) — wpis nie niesie stałego pola „status” (dawniej zawsze „OK”,
+    # słowo ze słownika werdyktów bez informacji; karta AB-1a Pakiet E2).
+    assert all("status" not in op for op in payload["operations_log"])
     station = next(
         station
         for station in snapshot["substations"]
@@ -171,11 +174,7 @@ def test_apply_station_template_reuses_existing_case_enm_snapshot(
     assert len(feeder_refs) == expected_feeders
 
     expected_load_kw = template.schema.nn_load_default_kw.default
-    load_ops = [
-        op
-        for op in payload["operations_log"]
-        if op.get("op") == "add_nn_load" and op.get("status") == "OK"
-    ]
+    load_ops = [op for op in payload["operations_log"] if op.get("op") == "add_nn_load"]
     if expected_feeders > 0 and expected_load_kw > 0:
         feeder_ref_set = set(feeder_refs)
         station_loads = [
@@ -191,11 +190,7 @@ def test_apply_station_template_reuses_existing_case_enm_snapshot(
         assert load_ops == []
 
     expected_der_count = template.schema.der_total_count.default
-    der_ops = [
-        op
-        for op in payload["operations_log"]
-        if op.get("op") == "add_converter_source" and op.get("status") == "OK"
-    ]
+    der_ops = [op for op in payload["operations_log"] if op.get("op") == "add_converter_source"]
     assert len(der_ops) == expected_der_count
     if expected_der_count > 0:
         station_generators = [

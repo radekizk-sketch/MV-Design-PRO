@@ -282,13 +282,17 @@ class InspectorExporter:
                 result_label.bold = True
                 result_para.add_run(f"{step.result.value} {step.result.unit}")
 
-                # Unit check
+                # Unit check — derywacja jednostek (ta sama treść co krok w LaTeX-u,
+                # `latex_renderer._render_step`), nie plakietka „OK/BŁĄD” (inwentarz
+                # werdyktów C44, plan AB §8 F2: flaga bywa zaszyta na `True`).
                 if step.unit_check:
                     uc_para = docx_obj.add_paragraph()
                     uc_label = uc_para.add_run("Weryfikacja jednostek: ")
                     uc_label.bold = True
-                    uc_status = "OK" if step.unit_check.passed else "BŁĄD"
-                    uc_para.add_run(f"{uc_status} ({step.unit_check.expected_unit})")
+                    uc_para.add_run(
+                        f"{step.unit_check.derivation} "
+                        f"(jednostka wyniku: {step.unit_check.expected_unit})"
+                    )
 
             # Summary
             docx_obj.add_paragraph()

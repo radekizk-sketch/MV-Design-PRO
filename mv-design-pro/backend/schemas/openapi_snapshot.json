@@ -489,12 +489,10 @@
       "type": "integer"
      },
      "result_freshness": {
-      "title": "Result Freshness",
-      "type": "string"
+      "$ref": "#/components/schemas/ResultFreshness"
      },
      "result_freshness_reason": {
-      "title": "Result Freshness Reason",
-      "type": "string"
+      "$ref": "#/components/schemas/FreshnessReason"
      },
      "result_freshness_reason_pl": {
       "title": "Result Freshness Reason Pl",
@@ -505,6 +503,12 @@
       "type": "string"
      },
      "status": {
+      "enum": [
+       "CREATED",
+       "RUNNING",
+       "FINISHED",
+       "FAILED"
+      ],
       "title": "Status",
       "type": "string"
      }
@@ -635,8 +639,7 @@
       "type": "array"
      },
      "status": {
-      "title": "Status",
-      "type": "string"
+      "$ref": "#/components/schemas/RunBatchStatus"
      },
      "study_case_id": {
       "title": "Study Case Id",
@@ -1607,6 +1610,11 @@
       "title": "Roznica Temperatur C"
      },
      "status": {
+      "enum": [
+       "PASS",
+       "FAIL",
+       "UNAVAILABLE"
+      ],
       "title": "Status",
       "type": "string"
      },
@@ -3279,14 +3287,29 @@
       "title": "Rezystancja Przewodow Ohm"
      },
      "status": {
+      "enum": [
+       "PASS",
+       "FAIL",
+       "UNAVAILABLE"
+      ],
       "title": "Status",
       "type": "string"
      },
      "status_nasycenia": {
+      "enum": [
+       "PASS",
+       "FAIL",
+       "UNAVAILABLE"
+      ],
       "title": "Status Nasycenia",
       "type": "string"
      },
      "status_obciazenia": {
+      "enum": [
+       "PASS",
+       "FAIL",
+       "UNAVAILABLE"
+      ],
       "title": "Status Obciazenia",
       "type": "string"
      },
@@ -4951,6 +4974,15 @@
     "title": "EligibilityMapResponse",
     "type": "object"
    },
+   "EligibilityStatus": {
+    "description": "Status eligibility dla danego typu analizy.",
+    "enum": [
+     "ELIGIBLE",
+     "INELIGIBLE"
+    ],
+    "title": "EligibilityStatus",
+    "type": "string"
+   },
    "EquipmentProofRequest": {
     "additionalProperties": false,
     "properties": {
@@ -5781,6 +5813,23 @@
     "title": "FixtureMetadata",
     "type": "object"
    },
+   "FreshnessReason": {
+    "description": "Kod przyczyny statusu — stabilny, maszynowy (bez diakrytykow).",
+    "enum": [
+     "brak-wyniku",
+     "brak-modelu-biezacego",
+     "brak-odcisku-modelu-w-biegu",
+     "model-zmieniony",
+     "model-niezmieniony",
+     "katalog-zmieniony",
+     "koperta-rewizji-niespojna",
+     "scenariusz-zmieniony",
+     "scenariusz-usuniety",
+     "zrodlo-biegu-nieaktualne"
+    ],
+    "title": "FreshnessReason",
+    "type": "string"
+   },
    "GenerateAudit2ProofPackRequest": {
     "properties": {
      "bess_modes_specs": {
@@ -6311,6 +6360,10 @@
       "title": "Project Id"
      },
      "status": {
+      "enum": [
+       "ZAIMPORTOWANO",
+       "ODRZUCONO"
+      ],
       "title": "Status",
       "type": "string"
      }
@@ -11423,6 +11476,12 @@
       "type": "string"
      },
      "status": {
+      "enum": [
+       "CREATED",
+       "RUNNING",
+       "FINISHED",
+       "FAILED"
+      ],
       "title": "Status",
       "type": "string"
      },
@@ -11530,6 +11589,12 @@
       "title": "Started At"
      },
      "status": {
+      "enum": [
+       "CREATED",
+       "RUNNING",
+       "FINISHED",
+       "FAILED"
+      ],
       "title": "Status",
       "type": "string"
      }
@@ -12552,6 +12617,16 @@
     "title": "RejestrKartWidmowych",
     "type": "object"
    },
+   "ResultFreshness": {
+    "description": "Slownik statusu wyniku nakladki (kontrakt: NONE / FRESH / OUTDATED).",
+    "enum": [
+     "NONE",
+     "FRESH",
+     "OUTDATED"
+    ],
+    "title": "ResultFreshness",
+    "type": "string"
+   },
    "ResultSetResponse": {
     "properties": {
      "analysis_type": {
@@ -12680,6 +12755,18 @@
     ],
     "title": "RodzinaPrzegladuOdpowiedz",
     "type": "object"
+   },
+   "RunBatchStatus": {
+    "description": "Cykl zycia serii — slownik `CanonicalRun.status` + PARTIAL (karta §0 C1).",
+    "enum": [
+     "CREATED",
+     "RUNNING",
+     "FINISHED",
+     "FAILED",
+     "PARTIAL"
+    ],
+    "title": "RunBatchStatus",
+    "type": "string"
    },
    "RunComparisonResponse": {
     "description": "Full run comparison response.\n\nP10b/P15c: Top-level comparison result combining all analysis types.",
@@ -12893,6 +12980,12 @@
       "type": "string"
      },
      "status": {
+      "enum": [
+       "CREATED",
+       "RUNNING",
+       "FINISHED",
+       "FAILED"
+      ],
       "title": "Status",
       "type": "string"
      }
@@ -12990,8 +13083,7 @@
       "title": "Started At"
      },
      "status": {
-      "title": "Status",
-      "type": "string"
+      "$ref": "#/components/schemas/RunStatus"
      },
      "study_case_id": {
       "title": "Study Case Id",
@@ -13007,6 +13099,17 @@
     ],
     "title": "RunResponse",
     "type": "object"
+   },
+   "RunStatus": {
+    "description": "Run lifecycle status.",
+    "enum": [
+     "PENDING",
+     "RUNNING",
+     "DONE",
+     "FAILED"
+    ],
+    "title": "RunStatus",
+    "type": "string"
    },
    "SC3FPackRequest": {
     "properties": {
@@ -13287,8 +13390,7 @@
       "type": "string"
      },
      "status": {
-      "title": "Status",
-      "type": "string"
+      "$ref": "#/components/schemas/EligibilityStatus"
      },
      "warnings": {
       "items": {
@@ -14321,12 +14423,10 @@
       "type": "array"
      },
      "status_a": {
-      "title": "Status A",
-      "type": "string"
+      "$ref": "#/components/schemas/ResultFreshness"
      },
      "status_b": {
-      "title": "Status B",
-      "type": "string"
+      "$ref": "#/components/schemas/ResultFreshness"
      }
     },
     "required": [
@@ -14361,12 +14461,10 @@
       "type": "string"
      },
      "result_status": {
-      "title": "Result Status",
-      "type": "string"
+      "$ref": "#/components/schemas/ResultFreshness"
      },
      "result_status_reason": {
-      "title": "Result Status Reason",
-      "type": "string"
+      "$ref": "#/components/schemas/FreshnessReason"
      },
      "result_status_reason_pl": {
       "title": "Result Status Reason Pl",
@@ -14460,12 +14558,10 @@
       "type": "string"
      },
      "result_status": {
-      "title": "Result Status",
-      "type": "string"
+      "$ref": "#/components/schemas/ResultFreshness"
      },
      "result_status_reason": {
-      "title": "Result Status Reason",
-      "type": "string"
+      "$ref": "#/components/schemas/FreshnessReason"
      },
      "result_status_reason_pl": {
       "title": "Result Status Reason Pl",
@@ -14779,6 +14875,11 @@
       "type": "array"
      },
      "status": {
+      "enum": [
+       "PASS",
+       "FAIL",
+       "UNAVAILABLE"
+      ],
       "title": "Status",
       "type": "string"
      },
@@ -15154,6 +15255,12 @@
       "type": "string"
      },
      "status": {
+      "enum": [
+       "CREATED",
+       "RUNNING",
+       "FINISHED",
+       "FAILED"
+      ],
       "title": "Status",
       "type": "string"
      },
@@ -15569,14 +15676,29 @@
       "title": "Rezystancja Przewodow Ohm"
      },
      "status": {
+      "enum": [
+       "PASS",
+       "FAIL",
+       "UNAVAILABLE"
+      ],
       "title": "Status",
       "type": "string"
      },
      "status_obciazenia": {
+      "enum": [
+       "PASS",
+       "FAIL",
+       "UNAVAILABLE"
+      ],
       "title": "Status Obciazenia",
       "type": "string"
      },
      "status_spadku": {
+      "enum": [
+       "PASS",
+       "FAIL",
+       "UNAVAILABLE"
+      ],
       "title": "Status Spadku",
       "type": "string"
      },
@@ -22931,7 +23053,7 @@
       "schema": {
        "anyOf": [
         {
-         "type": "string"
+         "$ref": "#/components/schemas/RunStatus"
         },
         {
          "type": "null"
@@ -27773,6 +27895,12 @@
       "schema": {
        "anyOf": [
         {
+         "enum": [
+          "CREATED",
+          "RUNNING",
+          "FINISHED",
+          "FAILED"
+         ],
          "type": "string"
         },
         {
@@ -27890,6 +28018,12 @@
       "schema": {
        "anyOf": [
         {
+         "enum": [
+          "CREATED",
+          "RUNNING",
+          "FINISHED",
+          "FAILED"
+         ],
          "type": "string"
         },
         {

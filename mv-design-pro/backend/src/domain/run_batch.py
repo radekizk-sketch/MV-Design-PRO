@@ -34,17 +34,18 @@ import json
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Final
 from uuid import UUID, uuid4
 
-from domain.execution import ExecutionAnalysisType
+from domain.execution import ExecutionAnalysisType, StanBiegu, stan_biegu
 
 #: Statusy POZYCJI serii — DOKLADNIE slownik `CanonicalRun.status`
-#: (`enm/canonical_analysis.py`), zero nowego rownoleglego slownika.
-ITEM_STATUS_CREATED = "CREATED"
-ITEM_STATUS_RUNNING = "RUNNING"
-ITEM_STATUS_FINISHED = "FINISHED"
-ITEM_STATUS_FAILED = "FAILED"
+#: (`enm/canonical_analysis.py`, typ `domain.execution.StanBiegu`), zero nowego
+#: rownoleglego slownika.
+ITEM_STATUS_CREATED: Final = "CREATED"
+ITEM_STATUS_RUNNING: Final = "RUNNING"
+ITEM_STATUS_FINISHED: Final = "FINISHED"
+ITEM_STATUS_FAILED: Final = "FAILED"
 #: Stany KONCOWE pozycji — po ktorych `finalize_batch_status` moze rozstrzygnac.
 ITEM_STATUSES_TERMINALNE = frozenset({ITEM_STATUS_FINISHED, ITEM_STATUS_FAILED})
 
@@ -77,7 +78,7 @@ class RunBatchItem:
     #: zastepuje dawny osobny slownik `_pinned_hashes`; predykaty parami).
     options_hash: str
     canonical_run_id: UUID | None = None
-    status: str = ITEM_STATUS_CREATED
+    status: StanBiegu = ITEM_STATUS_CREATED
     error_message: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -102,7 +103,7 @@ class RunBatchItem:
             analysis_type=str(data["analysis_type"]),
             options_hash=str(data["options_hash"]),
             canonical_run_id=UUID(str(surowy_run_id)) if surowy_run_id else None,
-            status=str(data.get("status", ITEM_STATUS_CREATED)),
+            status=stan_biegu(str(data.get("status", ITEM_STATUS_CREATED))),
             error_message=data.get("error_message"),
         )
 

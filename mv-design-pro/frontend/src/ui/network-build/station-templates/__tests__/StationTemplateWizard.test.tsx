@@ -309,7 +309,7 @@ describe('StationTemplateWizard', () => {
       template_name_pl: 'Stacja SN/nN 630 kVA',
       station_ref: 'stn/abc/station',
       created_element_refs: ['stn/abc/station', 'stn/abc/sn_bus', 'tr/abc/transformer'],
-      operations_log: [{ op: 'insert_station_on_segment_sn', status: 'OK' }],
+      operations_log: [{ op: 'insert_station_on_segment_sn' }],
       catalog_profile_applied: 'ZPUE_WLOSZCZOWA',
       snapshot_hash: 'abc123',
     };

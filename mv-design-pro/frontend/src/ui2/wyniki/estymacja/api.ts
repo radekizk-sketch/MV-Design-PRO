@@ -178,7 +178,8 @@ export interface KrokSladu {
 export interface WidokEstymacji {
   readonly analysis_id: string;
   readonly context: KontekstEstymacji | null;
-  readonly status: string;
+  /** Stan zbieżności estymacji (proces obliczeniowy, nie werdykt). */
+  readonly status: 'ZBIEZNY' | 'BRAK_ZBIEZNOSCI';
   readonly status_pl: string;
   readonly missing_data: readonly BrakDanych[];
   readonly solver_version: string;

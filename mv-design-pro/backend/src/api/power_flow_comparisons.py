@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Any
 
 from api.dependencies import get_uow_factory
 from application.power_flow_comparison import PowerFlowComparisonService
+from domain.execution import StanBiegu
 from domain.power_flow_comparison import (
     PowerFlowComparisonError,
     PowerFlowComparisonNotFoundError,
@@ -176,7 +177,7 @@ class RunProvenanceResponse(BaseModel):
 
     run_id: str
     analysis_type: str
-    status: str
+    status: StanBiegu
     snapshot_hash: str
     input_hash: str
     finished_at: str | None

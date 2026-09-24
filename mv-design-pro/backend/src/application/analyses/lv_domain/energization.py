@@ -94,7 +94,10 @@ EnergizationState = Literal["ENERGIZED", "DEENERGIZED", "UNKNOWN", "CONFLICT", "
 ConnectivityState = Literal["CLOSED", "OPEN"]
 DerIslandCapability = Literal["GRID_FOLLOWING", "GRID_FORMING", "DUAL_MODE", "UNKNOWN"]
 PowerBalanceState = Literal["z_sieci", "nadwyzka", "deficyt", "zrownowazony", "brak_danych"]
-NeutralReferenceStatus = Literal["OK", "brak_ukladu", "brak_zrodla"]
+#: Stan danych odniesienia N/PE wyspy: `ustalone` (układ i element wnoszący znane; dawniej
+#: „OK” — słowo ze słownika werdyktów, a to stan danych, nie ocena; plan AB §8 F16),
+#: `brak_ukladu`, `brak_zrodla`. Kontrakt projekcji nN 4.0.0.
+NeutralReferenceStatus = Literal["ustalone", "brak_ukladu", "brak_zrodla"]
 
 #: Stany, w których szyna JEST pod napięciem (``is_energized`` = True).
 ENERGIZED_STATES: frozenset[str] = frozenset({"ENERGIZED", "MULTISOURCE", "CONFLICT"})
@@ -746,14 +749,14 @@ def build_energization_view(
             neutral = NeutralReference(
                 system=earthing_system,
                 source_ref=neutral_source,
-                status="OK",
+                status="ustalone",
                 status_pl=f"Układ {earthing_system}; punkt neutralny: {neutral_source}.",
                 swz_evaluable=earthing_system != "IT",
             )
         # Komunikat N/PE wyłącznie dla wyspy POD NAPIĘCIEM: wyspa niezasilona nie
         # ma czego odnosić, a wyspa o stanie NIEZNANYM ma już komunikat o
         # nieznanej zdolności źródła — drugi komunikat o skutku byłby szumem.
-        if neutral.status != "OK" and island_state in ENERGIZED_STATES:
+        if neutral.status != "ustalone" and island_state in ENERGIZED_STATES:
             messages.append(
                 ValidationMessage(
                     code="NN-AUD-08",
@@ -799,7 +802,7 @@ def build_energization_view(
         else:
             island_operation_allowed = (
                 island_state in ENERGIZED_STATES
-                and neutral.status == "OK"
+                and neutral.status == "ustalone"
                 and balance_state != "deficyt"
             )
 

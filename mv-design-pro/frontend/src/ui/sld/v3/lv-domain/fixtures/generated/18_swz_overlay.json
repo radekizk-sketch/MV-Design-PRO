@@ -2,7 +2,7 @@
   "case_id": "fixture-18_swz_overlay",
   "completeness": "COMPLETE",
   "contract": "LvDomainProjectionV1",
-  "contract_version": "3.0.0",
+  "contract_version": "4.0.0",
   "graph": {
     "boundary_links": [],
     "branches": [
@@ -351,7 +351,7 @@
         "island_ref": "island-1",
         "neutral_reference": {
           "source_ref": "T1",
-          "status": "OK",
+          "status": "ustalone",
           "status_pl": "Układ TN-C-S; punkt neutralny: T1.",
           "swz_evaluable": true,
           "system": "TN-C-S"
@@ -734,7 +734,7 @@
     "scenario_id": "MAX",
     "station_ref": "stSWZ"
   },
-  "projection_hash": "f81a676f27284ef422f126b80d1cc98460da19b3d42937923818b6b0b8fea397",
+  "projection_hash": "feed525e00a2b4684c37b472028e093deef1b1e18b6fde993da2013d6036a165",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,

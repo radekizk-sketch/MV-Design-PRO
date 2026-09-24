@@ -237,7 +237,7 @@ def _zastosuj_gpz_pod_blokada(
     enm_dict = result.get("snapshot") or enm_dict
     created_refs = (result.get("changes") or {}).get("created_element_ids") or []
     station_ref = _ref_wyboru(result)
-    operations_log = [{"op": "add_grid_source_sn", "status": "OK", "created": created_refs}]
+    operations_log = [{"op": "add_grid_source_sn", "created": created_refs}]
 
     try:
         new_enm = EnergyNetworkModel.model_validate(enm_dict)
@@ -403,9 +403,7 @@ def _zastosuj_szablon_pod_blokada(
         enm_dict = insert_result.get("snapshot") or enm_dict
         changes = insert_result.get("changes") or {}
         new_ids = changes.get("created_element_ids") or []
-        operations_log.append(
-            {"op": "insert_station_on_segment_sn", "status": "OK", "created": new_ids}
-        )
+        operations_log.append({"op": "insert_station_on_segment_sn", "created": new_ids})
         station_ref = _ref_wyboru(insert_result)
         nn_bus_ref = _szyna_nn_stacji(enm_dict, station_ref, nn_voltage_kv)
 
@@ -440,7 +438,6 @@ def _zastosuj_szablon_pod_blokada(
             operations_log.append(
                 {
                     "op": "add_nn_outgoing_field",
-                    "status": "OK",
                     "created": new_feeder_ids,
                 }
             )
@@ -483,7 +480,6 @@ def _zastosuj_szablon_pod_blokada(
             operations_log.append(
                 {
                     "op": "add_nn_load",
-                    "status": "OK",
                     "created": new_load_ids,
                     "feeder_ref": feeder_ref,
                     "catalog_ref": load_catalog_ref,
@@ -545,7 +541,6 @@ def _zastosuj_szablon_pod_blokada(
                 {
                     "op": "add_converter_source",
                     "kind": der_spec.kind,
-                    "status": "OK",
                     "created": new_der_ids,
                 }
             )
@@ -594,7 +589,7 @@ def _zastosuj_szablon_pod_blokada(
             enm_dict = ct_result.get("snapshot") or enm_dict
             new_ct_ids = (ct_result.get("changes") or {}).get("created_element_ids") or []
             created_refs.extend(new_ct_ids)
-            operations_log.append({"op": "add_ct", "status": "OK", "created": new_ct_ids})
+            operations_log.append({"op": "add_ct", "created": new_ct_ids})
         if vt_catalog_ref:
             vt_ratio = _vt_ratio_from_catalog(vt_catalog_ref)
             if vt_ratio is None:
@@ -625,7 +620,7 @@ def _zastosuj_szablon_pod_blokada(
             enm_dict = vt_result.get("snapshot") or enm_dict
             new_vt_ids = (vt_result.get("changes") or {}).get("created_element_ids") or []
             created_refs.extend(new_vt_ids)
-            operations_log.append({"op": "add_vt", "status": "OK", "created": new_vt_ids})
+            operations_log.append({"op": "add_vt", "created": new_vt_ids})
 
     # Step 6: kompensacja mocy biernej (rola E, V12T-016) — bateria
     # kondensatorów SN na szynie SN stacji, gdy szablon ją niesie.
@@ -653,9 +648,7 @@ def _zastosuj_szablon_pod_blokada(
             enm_dict = shunt_result.get("snapshot") or enm_dict
             new_shunt_ids = (shunt_result.get("changes") or {}).get("created_element_ids") or []
             created_refs.extend(new_shunt_ids)
-            operations_log.append(
-                {"op": "add_shunt_compensator_sn", "status": "OK", "created": new_shunt_ids}
-            )
+            operations_log.append({"op": "add_shunt_compensator_sn", "created": new_shunt_ids})
 
     # Persist final snapshot
     try:
@@ -856,7 +849,7 @@ def _zabuduj_stacje_w_odgalezieniu(
     enm_dict = wynik_punktu.get("snapshot") or enm_dict
     ids_punktu = (wynik_punktu.get("changes") or {}).get("created_element_ids") or []
     created.extend(ids_punktu)
-    operations_log.append({"op": op_punktu, "status": "OK", "created": ids_punktu})
+    operations_log.append({"op": op_punktu, "created": ids_punktu})
 
     punkt_ref = _ref_wyboru(wynik_punktu)
     if not punkt_ref:
@@ -909,7 +902,7 @@ def _zabuduj_stacje_w_odgalezieniu(
     enm_dict = wynik_galezi.get("snapshot") or enm_dict
     ids_galezi = (wynik_galezi.get("changes") or {}).get("created_element_ids") or []
     created.extend(ids_galezi)
-    operations_log.append({"op": "start_branch_segment_sn", "status": "OK", "created": ids_galezi})
+    operations_log.append({"op": "start_branch_segment_sn", "created": ids_galezi})
 
     odcinek_ref = _ref_wyboru(wynik_galezi)
     koniec_galezi = next(
@@ -944,9 +937,7 @@ def _zabuduj_stacje_w_odgalezieniu(
     enm_dict = wynik_stacji.get("snapshot") or enm_dict
     ids_stacji = (wynik_stacji.get("changes") or {}).get("created_element_ids") or []
     created.extend(ids_stacji)
-    operations_log.append(
-        {"op": "append_station_on_endpoint", "status": "OK", "created": ids_stacji}
-    )
+    operations_log.append({"op": "append_station_on_endpoint", "created": ids_stacji})
 
     station_ref = _ref_wyboru(wynik_stacji)
     nn_bus_ref = _szyna_nn_stacji(

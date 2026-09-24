@@ -2,7 +2,7 @@
   "case_id": "fixture-04_shared_upstream_boundary",
   "completeness": "COMPLETE",
   "contract": "LvDomainProjectionV1",
-  "contract_version": "3.0.0",
+  "contract_version": "4.0.0",
   "graph": {
     "boundary_links": [
       {
@@ -633,7 +633,7 @@
         "island_ref": "island-1",
         "neutral_reference": {
           "source_ref": "TA",
-          "status": "OK",
+          "status": "ustalone",
           "status_pl": "Układ TN-C-S; punkt neutralny: TA.",
           "swz_evaluable": true,
           "system": "TN-C-S"
@@ -1299,7 +1299,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "bed8f97e447da493876d025b8e67db142b51fefed9628b22fd89446e8632757e",
+  "projection_hash": "a276c96e90f651b3067c60db90f9e64f7e311900ba5afac2ec95242f02978f18",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,

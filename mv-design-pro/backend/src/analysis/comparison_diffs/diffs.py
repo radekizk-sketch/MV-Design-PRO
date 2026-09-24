@@ -19,6 +19,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, TypeVar
 
+from domain.execution import StanBiegu, stan_biegu
 from domain.power_flow_comparison import procent_roznicy
 from domain.results import ComplexDelta, NumericDelta
 
@@ -43,7 +44,7 @@ class RunProvenance:
 
     run_id: str
     analysis_type: str
-    status: str
+    status: StanBiegu
     snapshot_hash: str
     input_hash: str
     finished_at: str | None
@@ -54,7 +55,7 @@ class RunProvenance:
         return cls(
             run_id=str(run.id),
             analysis_type=run.analysis_type,
-            status=run.status,
+            status=stan_biegu(run.status),
             snapshot_hash=run.snapshot_hash,
             input_hash=run.input_hash,
             finished_at=run.finished_at.isoformat() if run.finished_at else None,
@@ -77,7 +78,7 @@ class RunProvenance:
         return cls(
             run_id=str(data["run_id"]),
             analysis_type=str(data["analysis_type"]),
-            status=str(data["status"]),
+            status=stan_biegu(str(data["status"])),
             snapshot_hash=str(data["snapshot_hash"]),
             input_hash=str(data["input_hash"]),
             finished_at=data.get("finished_at"),

@@ -1,7 +1,7 @@
 /**
  * SCENARIUSZE §47 — jedno źródło prawdy energizacji (mandat „profesjonalizacja
  * SLD nN" §1/§46): każdy JSON w `fixtures/generated/` jest odpowiedzią
- * backendu (kontrakt 3.0.0), a frontend NIE dopisuje do niego żadnego stanu.
+ * backendu (kontrakt 4.0.0), a frontend NIE dopisuje do niego żadnego stanu.
  * Pin klasy: KAŻDY scenariusz × KAŻDA szyna × KAŻDY odcinek — nie wybrany
  * przykład.
  */
@@ -13,9 +13,9 @@ import { LV_DOMAIN_PROJECTION_CONTRACT_VERSION } from '../types';
 
 const STANY = ['ENERGIZED', 'DEENERGIZED', 'UNKNOWN', 'CONFLICT', 'MULTISOURCE'] as const;
 
-describe('Scenariusze 01–18 — kształt kontraktu 3.0.0 z backendu', () => {
-  it('kontrakt frontendu = 3.0.0; lista slugów jest kompletna i uporządkowana', () => {
-    expect(LV_DOMAIN_PROJECTION_CONTRACT_VERSION).toBe('3.0.0');
+describe('Scenariusze 01–18 — kształt kontraktu 4.0.0 z backendu', () => {
+  it('kontrakt frontendu = 4.0.0; lista slugów jest kompletna i uporządkowana', () => {
+    expect(LV_DOMAIN_PROJECTION_CONTRACT_VERSION).toBe('4.0.0');
     expect(SLUGI_SCENARIUSZY).toHaveLength(18);
     expect([...SLUGI_SCENARIUSZY]).toEqual([...SLUGI_SCENARIUSZY].sort());
     for (const slug of SLUGI_SCENARIUSZY) {
@@ -29,7 +29,7 @@ describe('Scenariusze 01–18 — kształt kontraktu 3.0.0 z backendu', () => {
     const p = SCENARIUSZE_NN[slug];
     it(`[${slug}] przechodzi walidację kształtu isLvDomainProjectionV1 i ma status OK`, () => {
       expect(isLvDomainProjectionV1(p)).toBe(true);
-      expect(p.contract_version).toBe('3.0.0');
+      expect(p.contract_version).toBe('4.0.0');
       expect(p.status).toBe('OK');
       expect(p.graph.status).toBe('OK');
       expect(Array.isArray(p.validation_messages)).toBe(true);

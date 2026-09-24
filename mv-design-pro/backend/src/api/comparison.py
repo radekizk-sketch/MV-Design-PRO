@@ -18,6 +18,7 @@ from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from application.comparison import ComparisonService
+from domain.execution import StanBiegu
 from domain.results import (
     AnalysisTypeMismatchError,
     ProjectMismatchError,
@@ -160,7 +161,7 @@ class RunProvenanceResponse(BaseModel):
 
     run_id: str
     analysis_type: str
-    status: str
+    status: StanBiegu
     snapshot_hash: str
     input_hash: str
     finished_at: str | None

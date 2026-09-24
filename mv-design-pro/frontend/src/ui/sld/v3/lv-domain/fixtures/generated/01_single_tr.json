@@ -2,7 +2,7 @@
   "case_id": "fixture-01_single_tr",
   "completeness": "COMPLETE",
   "contract": "LvDomainProjectionV1",
-  "contract_version": "3.0.0",
+  "contract_version": "4.0.0",
   "graph": {
     "boundary_links": [],
     "branches": [
@@ -452,7 +452,7 @@
         "island_ref": "island-1",
         "neutral_reference": {
           "source_ref": "T1",
-          "status": "OK",
+          "status": "ustalone",
           "status_pl": "Układ TN-C-S; punkt neutralny: T1.",
           "swz_evaluable": true,
           "system": "TN-C-S"
@@ -959,7 +959,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "48b45ac42e7112b21c7954c5f4cfe9bbcaf03cb6eed8a8d7193857d32b6ae34e",
+  "projection_hash": "1dd92bee3cc45a2a8845abe68a308d5c1126977ca9a99cbec3ae977f99be5daa",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,

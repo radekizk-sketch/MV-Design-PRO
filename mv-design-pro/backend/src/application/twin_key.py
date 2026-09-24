@@ -10,7 +10,7 @@ stranglerowej), ale magazyn ENM czyta i pisze WYŁĄCZNIE pod kluczem projektu
 Migracja zastanych plików per przypadek odbywa się tu, przy PIERWSZYM
 tłumaczeniu dla projektu (`migruj_projekt_z_legacy`): model przypadku aktywnego
 staje się modelem projektu, pozostałe przypadki lądują w
-`legacy_przypadki/` z manifestem (ZGODNY / ROZBIEZNY). Wynik migracji jest
+`legacy_przypadki/` z manifestem (IDENTYCZNY / ROZBIEZNY). Wynik migracji jest
 zwracany wołającemu i zapisany w manifeście — nic nie ginie po cichu.
 """
 

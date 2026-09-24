@@ -11,7 +11,7 @@ w warstwie API/aplikacji pilnuje tego guard `scripts/enm_store_key_guard.py`.
 Migracja zastanych plików per przypadek (`sha256(case_id).json`) do klucza
 projektu: `migruj_klucz_przypadku_do_projektu` (niżej) — nic nie jest tracone:
 model przypadku aktywnego staje się modelem projektu, pozostałe trafiają do
-`legacy_przypadki/` z manifestem (status ZGODNY/ROZBIEZNY).
+`legacy_przypadki/` z manifestem (status IDENTYCZNY/ROZBIEZNY).
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from enm.catalog_completion import complete_catalog_defaults
 from enm.dziennik_zmian import (
@@ -651,13 +651,19 @@ def reset_enm_store(*, remove_persisted: bool = True) -> None:
 # ---------------------------------------------------------------------------
 
 
+#: Skutek migracji klucza magazynu — stan operacji na plikach modelu, nie werdykt (plan AB
+#: §8 F12). `IDENTYCZNY` (dawniej `ZGODNY`, karta AB-1a Pakiet E2): ta sama treść modelu —
+#: słowo „zgodny” należy do słownika werdyktów i czytane w manifeście brzmiało jak ocena.
+StatusMigracjiKlucza = Literal["BRAK_LEGACY", "PRZENIESIONY", "IDENTYCZNY", "ROZBIEZNY"]
+
+
 @dataclass(frozen=True)
 class WynikMigracjiKlucza:
     """Skutek przeniesienia modelu zastanego pod kluczem przypadku pod klucz projektu.
 
     `status`: `BRAK_LEGACY` (nie było modelu pod kluczem przypadku), `PRZENIESIONY`
     (projekt nie miał modelu — model przypadku stał się modelem projektu, bez podbicia
-    rewizji, jak `restore_enm`), `ZGODNY` (projekt miał model o tym samym hashu),
+    rewizji, jak `restore_enm`), `IDENTYCZNY` (projekt miał model o tym samym hashu),
     `ROZBIEZNY` (projekt miał model o INNYM hashu — plik odłożony do
     `legacy_przypadki/` i oznaczony w manifeście; wymaga decyzji projektanta:
     wariant sieci). Żaden status nie kasuje danych.
@@ -675,7 +681,7 @@ class WynikMigracjiKlucza:
 
     case_id: str
     klucz_projektu: str
-    status: str
+    status: StatusMigracjiKlucza
     hash_legacy: str | None
     hash_projektu: str | None
     rewizja_legacy: int | None
@@ -771,7 +777,7 @@ def migruj_klucz_przypadku_do_projektu(
     `przyjmij_jako_model_projektu=True` dla przypadku AKTYWNEGO projektu (wybór
     należy do wołającego, który zna bazę przypadków — magazyn jej nie zna). Gdy
     projekt ma już model, model przypadku jest porównywany hashem: identyczny →
-    `ZGODNY`, inny → `ROZBIEZNY`; w obu przypadkach plik przypadku wędruje do
+    `IDENTYCZNY`, inny → `ROZBIEZNY`; w obu przypadkach plik przypadku wędruje do
     `legacy_przypadki/` z wierszem manifestu. Nigdy nie nadpisuje istniejącego
     modelu projektu i nigdy nie kasuje treści.
     """
@@ -838,7 +844,9 @@ def migruj_klucz_przypadku_do_projektu(
             )
         else:
             hash_projektu = hash_tresci_modelu(projekt) if projekt is not None else None
-            status = "ZGODNY" if hash_projektu == hash_legacy else "ROZBIEZNY"
+            status: StatusMigracjiKlucza = (
+                "IDENTYCZNY" if hash_projektu == hash_legacy else "ROZBIEZNY"
+            )
             wynik = WynikMigracjiKlucza(
                 case_id, klucz_projektu, status, hash_legacy, hash_projektu, legacy.header.revision
             )

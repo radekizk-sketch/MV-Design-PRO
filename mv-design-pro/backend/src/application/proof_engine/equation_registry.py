@@ -2678,6 +2678,16 @@ EQ_SC1_012 = EquationDefinition(
 # =============================================================================
 
 
+def _opis_audytu_c(zachowany: bool, rownanie_c: str) -> str:
+    """Zdanie o niezmienniku audytu: współczynnik c występuje DOKŁADNIE RAZ, w `rownanie_c`."""
+    if zachowany:
+        return f"współczynnik c występuje dokładnie raz ({rownanie_c}) — brak podwójnego liczenia."
+    return (
+        f"współczynnik c NIE występuje dokładnie raz w {rownanie_c} — podwójne liczenie albo "
+        "brak c w równaniu prądu zwarciowego."
+    )
+
+
 class AntiDoubleCountingAudit:
     """
     Anti-Double-Counting Audit dla współczynnika napięciowego c.
@@ -2792,10 +2802,10 @@ class AntiDoubleCountingAudit:
             lines.append(f"  {eq_id}: c {status}")
 
         lines.append("")
-        sc3f_pass = cls.verify()
-        sc1_pass = cls.verify_sc1()
-        lines.append(f"Status SC3F: {'PASS' if sc3f_pass else 'FAIL'}")
-        lines.append(f"Status SC1: {'PASS' if sc1_pass else 'FAIL'}")
+        # Wynik audytu jako ZDANIE o sprawdzanym niezmienniku, nie plakietka PASS/FAIL
+        # (karta AB-1a Pakiet E2, strażnik werdyktu reguła 6b).
+        lines.append("Audyt SC3F: " + _opis_audytu_c(cls.verify(), cls.C_FACTOR_EQUATION))
+        lines.append("Audyt SC1: " + _opis_audytu_c(cls.verify_sc1(), cls.SC1_C_FACTOR_EQUATION))
 
         return "\n".join(lines)
 

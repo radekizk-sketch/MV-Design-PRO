@@ -2,7 +2,7 @@
   "case_id": "fixture-08_island_grid_forming",
   "completeness": "COMPLETE",
   "contract": "LvDomainProjectionV1",
-  "contract_version": "3.0.0",
+  "contract_version": "4.0.0",
   "graph": {
     "boundary_links": [],
     "branches": [
@@ -716,7 +716,7 @@
         "island_ref": "island-1",
         "neutral_reference": {
           "source_ref": "T1",
-          "status": "OK",
+          "status": "ustalone",
           "status_pl": "Układ TN-C-S; punkt neutralny: T1.",
           "swz_evaluable": true,
           "system": "TN-C-S"
@@ -1535,7 +1535,7 @@
     "scenario_id": "MAX",
     "station_ref": "stW"
   },
-  "projection_hash": "ae29d5f3fdfa1317cf54e0b68327d1682920363ab67cbe1e2833b480ab2ff907",
+  "projection_hash": "6382c626c475ea575e2d857db41c51bc95aba49978d2a1df820e69829afc8ef8",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
