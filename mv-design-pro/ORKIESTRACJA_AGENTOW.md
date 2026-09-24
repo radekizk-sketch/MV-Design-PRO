@@ -45,7 +45,7 @@ Trzy prymitywy Claude Code różnią się tym, **kto trzyma plan**:
 
 ---
 
-## 3. SKŁAD SWARM — wykonawcy z `.claude/agents/`
+## 3. SKŁAD SWARM — wykonawcy z `docs/prompts/agenci/`
 
 Drzewo agentów (`CLAUDE.md`, sekcja „Model i pisanie promptów"): sesja główna Opus 5.5 na `high`
 planuje, deleguje, recenzuje i weryfikuje; wykonawcy Opus 5.5 na `medium` (effort podnosisz tylko,

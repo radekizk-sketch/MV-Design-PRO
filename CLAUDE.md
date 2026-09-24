@@ -27,7 +27,7 @@ Kanon: hierarchia dokumentów z sekcji „Document Hierarchy" poniżej. Stan i d
 **Drzewo agentów Claude Code** (planuj na `high`, deleguj na `medium`, podnoś, gdy trzeba):
 - Sesja główna: Claude Opus 5.5 (`claude-opus-5-5`), effort `high` — planuje, deleguje,
   a po powrocie wykonawców sama recenzuje i weryfikuje (bramki uruchamia niezależnie).
-- Wykonawcy (`.claude/agents/`, Opus 5.5, effort `medium` domyślnie): `explorer` — czytanie
+- Wykonawcy (`mv-design-pro/docs/prompts/agenci/`, Opus 5.5, effort `medium` domyślnie): `explorer` — czytanie
   kodu (bez edycji); `worker` — edycje + testy (commit bez push); `researcher` — dokumentacja
   i normy. Effort wykonawcy podnosisz tylko, gdy zadanie tego wymaga.
 - Dwa nieudane podejścia do tego samego problemu → STOP i meldunek do właściciela; przejście
