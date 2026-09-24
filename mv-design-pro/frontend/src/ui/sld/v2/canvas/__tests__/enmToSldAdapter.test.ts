@@ -4253,3 +4253,111 @@ describe('F9.2 — projekcja źródeł SldDataPayload.sources (SLD_CAD_SPEC_V3 �
     expect(withPrimaryDevices).toHaveLength(0);
   });
 });
+
+// =============================================================================
+// Karta #135 — stan ruchowy pola bez fabrykacji (telemetria łącznika)
+// =============================================================================
+
+describe('stan ruchowy pola bez fabrykacji — adapter v2 (karta #135)', () => {
+  function snapshotZAparatemPola(switchState: Record<string, unknown> | undefined): EnergyNetworkModel {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'bus-sn', ref_id: 'bus-sn', name: 'Szyna SN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {}, substation_ref: 'ST-T' } as never,
+    ];
+    snap.branches = [
+      { id: 'sw-in', ref_id: 'sw-in', name: 'Aparat WE', type: 'breaker', from_bus_ref: 'bus-sn', to_bus_ref: 't-in', status: 'closed', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 'st',
+        ref_id: 'ST-T',
+        name: 'Stacja telemetrii',
+        tags: [],
+        meta: {
+          field_specs: [
+            {
+              field_ref: 'field-in',
+              name: 'Pole WE',
+              bay_role: 'IN',
+              bus_ref: 'bus-sn',
+              equipment_refs: ['sw-in'],
+              meta: { field_role: 'LINIA_IN' },
+              primary_devices: [
+                {
+                  device_ref: 'q0',
+                  symbol_ref: 'symbol:cb',
+                  kind: 'CB',
+                  placement: 'MIDSTREAM',
+                  is_controllable: true,
+                  ...(switchState === undefined ? {} : { switch_state: switchState }),
+                },
+              ],
+            },
+          ],
+        },
+        station_type: 'inline',
+        bus_refs: ['bus-sn'],
+        transformer_refs: [],
+      } as never,
+    ];
+    attachMainRun(snap, ['ST-T'], 'run-telemetria');
+    return snap;
+  }
+
+  function stanAparatu(snap: EnergyNetworkModel): string | undefined {
+    const station = buildSldDataFromSnapshot(snap, null).stations[0];
+    if (!station.snBays) throw new Error('stacja z field_specs powinna nieść snBays');
+    return station.snBays[0].primaryDevices?.[0]?.switchState;
+  }
+
+  it('rekord z samym stanem łącznika (bez telemetrii) zachowuje stan — telemetria nie jest warunkiem', () => {
+    expect(stanAparatu(snapshotZAparatemPola({ actual_state: 'otwarty' }))).toBe('open');
+  });
+
+  it('rekord z telemetrią (null i wartości) — ten sam stan łącznika', () => {
+    expect(
+      stanAparatu(snapshotZAparatemPola({
+        actual_state: 'otwarty',
+        control_mode: null,
+        communication_ok: null,
+        interlock_blocked: null,
+      })),
+    ).toBe('open');
+    expect(
+      stanAparatu(snapshotZAparatemPola({
+        actual_state: 'zamkniety',
+        control_mode: 'zdalne',
+        communication_ok: true,
+        interlock_blocked: false,
+      })),
+    ).toBe('closed');
+  });
+
+  it('brak rekordu stanu — brak stanu (zero domysłu)', () => {
+    expect(stanAparatu(snapshotZAparatemPola(undefined))).toBeUndefined();
+  });
+
+  const BLOKADY: ReadonlyArray<boolean | null> = [true, false, null];
+  for (const blokada of BLOKADY) {
+    for (const polecenie of [true, false]) {
+      it(`manipulacja: blokada=${String(blokada)} polecenie=${String(polecenie)} — tylko z rekordu źródła`, () => {
+        const rt = makeRuntime(
+          { apparatus_cb_q0: makeSwitchState({ actual_state: 'zamkniety', control_mode: null, communication_ok: null, interlock_blocked: blokada }) },
+          polecenie
+            ? {
+                pending_command: {
+                  command_ref: 'cmd-1',
+                  target_device_ref: 'apparatus_cb_q0',
+                  command: 'otworz',
+                  state: 'oczekuje',
+                  created_at: '2026-09-24T08:00:00Z',
+                },
+              }
+            : {},
+        );
+        const oczekiwane = polecenie || blokada === true ? true : undefined;
+        expect(projectBayTelemetry(rt).inManipulation).toBe(oczekiwane);
+      });
+    }
+  }
+});

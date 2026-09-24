@@ -23,6 +23,7 @@ import {
   canonicalRoleLabel,
   commandExecutionStateLabel,
   communicationStatusLabel,
+  BRAK_TELEMETRII,
   deviceKindLabel,
   integrityStatusLabel,
   resultStateLabel,
@@ -186,61 +187,79 @@ function buildBaySections(
       {
         id: 'runtime',
         label: 'Stan ruchowy pola',
+        // Karta #135: stan ruchowy pola WYŁĄCZNIE ze źródła runtime (`runtime_state` modelu
+        // odczytu = rekord źródła albo `null`). Bez źródła każdy wiersz: „brak telemetrii".
         fields: [
           {
             key: 'comm',
             label: 'Łączność urządzenia wtórnego',
-            value: communicationStatusLabel(runtimeState?.secondary_communication_status),
+            value: runtimeState
+              ? communicationStatusLabel(runtimeState.secondary_communication_status)
+              : BRAK_TELEMETRII,
           },
           {
             key: 'last_good_update',
             label: 'Ostatnia poprawna aktualizacja',
-            value: runtimeState?.last_good_update_at ?? null,
+            value: runtimeState ? runtimeState.last_good_update_at ?? null : BRAK_TELEMETRII,
           },
           {
             key: 'control_availability',
             label: 'Dostępność sterowania',
-            value: availabilityLabel(runtimeState?.control_availability),
+            value: runtimeState
+              ? availabilityLabel(runtimeState.control_availability)
+              : BRAK_TELEMETRII,
           },
           {
             key: 'measurement_availability',
             label: 'Dostępność pomiarów',
-            value: availabilityLabel(runtimeState?.measurement_availability),
+            value: runtimeState
+              ? availabilityLabel(runtimeState.measurement_availability)
+              : BRAK_TELEMETRII,
           },
           {
             key: 'command_state',
             label: 'Stan ostatniego polecenia',
-            value: commandExecutionStateLabel(runtimeState?.pending_command?.state),
+            value: runtimeState
+              ? commandExecutionStateLabel(runtimeState.pending_command?.state)
+              : BRAK_TELEMETRII,
           },
           {
             key: 'safe_to_work',
             label: 'Bezpieczne do pracy',
-            value: runtimeState?.energization_and_safety.safe_to_work ?? null,
+            value: runtimeState ? runtimeState.energization_and_safety.safe_to_work : BRAK_TELEMETRII,
           },
           {
             key: 'unsafe_reason',
             label: 'Przyczyna braku bezpieczeństwa',
-            value: runtimeState?.energization_and_safety.unsafe_reason_pl ?? null,
+            value: runtimeState
+              ? runtimeState.energization_and_safety.unsafe_reason_pl ?? null
+              : BRAK_TELEMETRII,
           },
           {
             key: 'energized_bus',
             label: 'Zasilanie od strony szyn',
-            value: runtimeState?.energization_and_safety.energized_from_bus_side ?? null,
+            value: runtimeState
+              ? runtimeState.energization_and_safety.energized_from_bus_side
+              : BRAK_TELEMETRII,
           },
           {
             key: 'energized_feeder',
             label: 'Zasilanie od strony odpływu',
-            value: runtimeState?.energization_and_safety.energized_from_feeder_side ?? null,
+            value: runtimeState
+              ? runtimeState.energization_and_safety.energized_from_feeder_side
+              : BRAK_TELEMETRII,
           },
           {
             key: 'grounded',
             label: 'Pole uziemione',
-            value: runtimeState?.energization_and_safety.grounded ?? null,
+            value: runtimeState ? runtimeState.energization_and_safety.grounded : BRAK_TELEMETRII,
           },
           {
             key: 'visible_gap',
             label: 'Widoczna przerwa',
-            value: runtimeState?.energization_and_safety.visible_isolation_gap ?? null,
+            value: runtimeState
+              ? runtimeState.energization_and_safety.visible_isolation_gap
+              : BRAK_TELEMETRII,
           },
         ],
       },

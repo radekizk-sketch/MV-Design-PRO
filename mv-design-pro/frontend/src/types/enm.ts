@@ -1144,11 +1144,17 @@ export type BayControlMode =
 export interface BaySwitchState {
   actual_state: BayDeviceState;
   commanded_state?: 'zamknij' | 'otworz' | null;
-  control_mode: BayControlMode;
+  /**
+   * Stan ruchowy aparatu (karta #135): tryb sterowania, uzbrojenie napędu i komunikacja są
+   * TELEMETRIĄ — wartość wyłącznie ze źródła runtime; `null` = brak telemetrii (nigdy
+   * wartość domyślna po stronie klienta).
+   */
+  control_mode?: BayControlMode | null;
   armed_for_close?: boolean | null;
   armed_for_open?: boolean | null;
-  communication_ok: boolean;
-  interlock_blocked: boolean;
+  communication_ok?: boolean | null;
+  /** Blokada zamknięcia z reguły modelu (uziemnik ↔ tor główny); `null` = reguła nie rozstrzyga. */
+  interlock_blocked?: boolean | null;
   cause_code?: string | null;
   last_state_change_at?: string | null;
   last_command_at?: string | null;

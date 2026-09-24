@@ -1200,11 +1200,16 @@ class BaySwitchState(BaseModel):
         "awaria",
     ]
     commanded_state: Literal["zamknij", "otworz"] | None = None
-    control_mode: Literal["miejscowe", "zdalne", "lokalne_zablokowane", "odstawione"]
+    # Stan ruchowy aparatu (karta #135): tryb sterowania, uzbrojenie napędu i komunikacja są
+    # TELEMETRIĄ — wartość wyłącznie ze źródła runtime (`BayRuntimeState.primary_device_states`
+    # albo rekord aparatu na migawce); `None` = brak telemetrii, nigdy wartość domyślna.
+    control_mode: Literal["miejscowe", "zdalne", "lokalne_zablokowane", "odstawione"] | None = None
     armed_for_close: bool | None = None
     armed_for_open: bool | None = None
-    communication_ok: bool = False
-    interlock_blocked: bool = False
+    communication_ok: bool | None = None
+    # Blokada zamknięcia z reguły modelu (`enm.interlock_rules.blokady_zamkniecia`), nie z
+    # telemetrii; `None` = reguła nie rozstrzyga (stan aparatu przeciwnego nieznany).
+    interlock_blocked: bool | None = None
     cause_code: str | None = None
     last_state_change_at: datetime | None = None
     last_command_at: datetime | None = None

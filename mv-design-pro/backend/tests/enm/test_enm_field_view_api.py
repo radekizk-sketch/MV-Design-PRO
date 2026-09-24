@@ -338,8 +338,17 @@ def test_get_field_view_returns_canonical_bay_contract(uow_factory):
     assert canonical["base_model"]["bay_role"] == "LINIA_IN"
     assert canonical["base_model"]["measurement_chain"]["ct_refs"] == ["ct_in_1"]
     assert canonical["base_model"]["protection_config"]["functions"][0]["code"] in {"50", "51"}
-    assert canonical["runtime_state"]["measurement_availability"] == "czesciowe"
-    assert canonical["runtime_state"]["control_availability"] == "czesciowo_dostepne"
+    # Zmiana kanonu (karta #135, fabrykacja stanu ruchowego pola): dostępność pomiarów
+    # i sterowania ("czesciowe" / "czesciowo_dostepne") była wymyślana z samej obecności
+    # przekładnika i zabezpieczenia w modelu. Model bez źródła runtime nie ma telemetrii —
+    # rekord runtime jest pusty, a stan łącznika pochodzi z modelu. Intencja zachowana:
+    # kontrakt pola niesie stan runtime wyłącznie ze źródła, a aparat — stan z modelu.
+    assert canonical["runtime_state"] is None
+    wylacznik = next(
+        d for d in canonical["base_model"]["primary_devices"] if d["device_ref"] == "cb_in_1"
+    )
+    assert wylacznik["switch_state"]["actual_state"] == "zamkniety"
+    assert wylacznik["switch_state"]["communication_ok"] is None
 
     results = item["project_results"]
     assert results["run_ref"]

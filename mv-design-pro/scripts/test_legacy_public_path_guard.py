@@ -2282,8 +2282,9 @@ def test_pakiet_l_liczba_wpisow_z_pomiaru() -> None:
         liczby[klucz] = liczby.get(klucz, 0) + 1
     # Integracja B+C+D2 na HEAD z AB-H0 i AB-1b.1a (2026-09-24): +9 wpisow AB-1b.1a (sciezka
     # `resultset_dynamic_v1.py` + 8 definicji) i +1 AB-H0 (`validate_transformer_power`).
-    assert liczby == {"L": 244, "BC": 50, "D2": 85, "1B1A": 9, "H0": 1}
-    assert len(guard.PAKIET_L_WPISY) == 244 + 50 + 85 + 9 + 1
+    # Karta #135 (2026-09-24): +4 wpisy (2 definicje backendu w pliku, 2 wzorce klienta).
+    assert liczby == {"L": 244, "BC": 50, "D2": 85, "1B1A": 9, "H0": 1, "135": 4}
+    assert len(guard.PAKIET_L_WPISY) == 244 + 50 + 85 + 9 + 1 + 4
 
 
 def test_pakiet_l_entries_are_well_formed() -> None:

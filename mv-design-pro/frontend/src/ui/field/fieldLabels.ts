@@ -90,6 +90,14 @@ export function switchStateLabel(state: string | null | undefined): string {
   }
 }
 
+/**
+ * Jedyna etykieta braku źródła runtime stanu ruchowego pola i aparatu (karta #135).
+ * Narzędzie projektowe nie ma telemetrii: bez rekordu źródła (`Bay.runtime_state`, rekord
+ * `switch_state` aparatu) interfejs pokazuje TĘ etykietę — nigdy wartości domyślnej
+ * („Komunikacja: OK", „tryb zdalny", „nieaktywne").
+ */
+export const BRAK_TELEMETRII = 'brak telemetrii';
+
 export function communicationStatusLabel(status: string | null | undefined): string {
   switch (status) {
     case 'ok':
@@ -99,8 +107,41 @@ export function communicationStatusLabel(status: string | null | undefined): str
     case 'offline':
       return 'Brak łączności';
     default:
-      return 'Łączność do sprawdzenia';
+      return BRAK_TELEMETRII;
   }
+}
+
+/** Tryb sterowania aparatu (`BaySwitchState.control_mode`) — `null` = brak telemetrii. */
+export function controlModeLabel(mode: string | null | undefined): string {
+  switch (mode) {
+    case 'miejscowe':
+      return 'miejscowe';
+    case 'zdalne':
+      return 'zdalne';
+    case 'lokalne_zablokowane':
+      return 'lokalne, zablokowane';
+    case 'odstawione':
+      return 'odstawione';
+    default:
+      return BRAK_TELEMETRII;
+  }
+}
+
+/** Komunikacja z aparatem (`BaySwitchState.communication_ok`) — `null` = brak telemetrii. */
+export function communicationOkLabel(ok: boolean | null | undefined): string {
+  if (ok === true) return 'OK';
+  if (ok === false) return 'BŁĄD';
+  return BRAK_TELEMETRII;
+}
+
+/**
+ * Blokada zamknięcia z reguły modelu (`BaySwitchState.interlock_blocked`) — `null` = reguła
+ * nie rozstrzyga (stan aparatu przeciwnego nieznany); to nie jest telemetria.
+ */
+export function interlockBlockedLabel(blocked: boolean | null | undefined): string {
+  if (blocked === true) return 'aktywne';
+  if (blocked === false) return 'nieaktywne';
+  return 'nieustalone';
 }
 
 export function availabilityLabel(status: string | null | undefined): string {
@@ -114,7 +155,7 @@ export function availabilityLabel(status: string | null | undefined): string {
     case 'niedostepne':
       return 'Niedostępne';
     default:
-      return 'Dostępność do sprawdzenia';
+      return BRAK_TELEMETRII;
   }
 }
 

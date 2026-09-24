@@ -32,6 +32,13 @@ import { formatProtectionFunction } from '../../../inspector/formatProtection';
 import { fetchDerConverterTypes } from '../../../catalog/api';
 import type { ConverterType } from '../../../catalog/types';
 import { klasyfikujModulNcRfg } from '../../../../ui2/oze/ncrfg/api';
+import {
+  BRAK_TELEMETRII,
+  communicationOkLabel,
+  controlModeLabel,
+  interlockBlockedLabel,
+} from '../../../field/fieldLabels';
+import type { BayControlMode } from '../../../../types/enm';
 
 export type SldDetailKind =
   | 'station'
@@ -147,11 +154,11 @@ export interface SldDetailDrawerData {
   readonly globalId?: string | null;
   /** K30-98: breadcrumb context — parent bay label dla apparatus kind. */
   readonly parentBayLabel?: string | null;
-  /** K30-97: real apparatus state z snapshot.equipmentStates (gdy
-   *  drawer kind='apparatus'). */
+  /** K30-97: stan aparatu z rekordu ŹRÓDŁA runtime modelu (gdy drawer kind='apparatus');
+   *  karta #135: `null` / pola `null` = brak telemetrii (nigdy wartość domyślna). */
   readonly apparatusState?: {
     readonly actualState: 'closed' | 'open' | 'unknown' | null;
-    readonly controlMode: 'LOKALNY' | 'ZDALNY' | 'AUTO' | 'BLOKADA' | null;
+    readonly controlMode: BayControlMode | null;
     readonly communicationOk: boolean | null;
     readonly interlockBlocked: boolean | null;
     readonly lastChangeAt: string | null;
@@ -1784,7 +1791,7 @@ function PlaceholderTabBody({
   nodeSpec?: NonNullable<SldDetailDrawerData['nodeSpec']> | null;
   apparatusState?: {
     readonly actualState: 'closed' | 'open' | 'unknown' | null;
-    readonly controlMode: 'LOKALNY' | 'ZDALNY' | 'AUTO' | 'BLOKADA' | null;
+    readonly controlMode: BayControlMode | null;
     readonly communicationOk: boolean | null;
     readonly interlockBlocked: boolean | null;
     readonly lastChangeAt: string | null;
@@ -2144,28 +2151,39 @@ function PlaceholderTabBody({
     );
   }
   if (kind === 'apparatus' && tab === 'state') {
+    // Karta #135: stan ruchowy WYŁĄCZNIE z rekordu źródła runtime; brak rekordu albo pole
+    // `null` = „brak telemetrii" (etykiety z `ui/field/fieldLabels`) — żadnego „OK",
+    // trybu ani stanu łącznika wymyślonego po stronie interfejsu.
     const aps = apparatusState;
     const stateLabel = aps?.actualState === 'closed' ? 'zamknięty'
       : aps?.actualState === 'open' ? 'otwarty'
       : aps?.actualState === 'unknown' ? 'nieznany'
-      : 'zamknięty';
-    const stateColor = aps?.actualState === 'open' ? 'rgb(var(--scada-status-warn-ink))'
-      : aps?.actualState === 'unknown' ? 'rgb(var(--scada-muted))'
-      : 'rgb(var(--scada-status-ok))';
+      : BRAK_TELEMETRII;
+    const stateColor = aps?.actualState === 'closed' ? 'rgb(var(--scada-status-ok))'
+      : aps?.actualState === 'open' ? 'rgb(var(--scada-status-warn-ink))'
+      : 'rgb(var(--scada-muted))';
+    const communicationOk = aps?.communicationOk ?? null;
+    const communicationColor = communicationOk === true ? 'rgb(var(--scada-status-ok))'
+      : communicationOk === false ? 'rgb(var(--scada-status-err))'
+      : 'rgb(var(--scada-muted))';
+    const interlockBlocked = aps?.interlockBlocked ?? null;
+    const controlMode = aps?.controlMode ?? null;
     return (
       <div data-testid="drawer-apparatus-state">
         <dl style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px' }}>
           <dt style={{ color: 'rgb(var(--scada-muted))' }}>Stan aktualny</dt>
           <dd data-testid="drawer-apparatus-actual-state" style={{ color: stateColor, fontFamily: 'monospace', fontWeight: 700 }}>{stateLabel}</dd>
           <dt style={{ color: 'rgb(var(--scada-muted))' }}>Tryb sterowania</dt>
-          <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>{aps?.controlMode ?? 'LOKALNY'}</dd>
+          <dd data-testid="drawer-apparatus-control-mode" style={{ color: controlMode === null ? 'rgb(var(--scada-muted))' : 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>
+            {controlModeLabel(controlMode)}
+          </dd>
           <dt style={{ color: 'rgb(var(--scada-muted))' }}>Komunikacja</dt>
-          <dd style={{ color: aps?.communicationOk === false ? 'rgb(var(--scada-status-err))' : 'rgb(var(--scada-status-ok))', fontFamily: 'monospace' }}>
-            {aps?.communicationOk === false ? 'BŁĄD' : 'OK'}
+          <dd data-testid="drawer-apparatus-communication" style={{ color: communicationColor, fontFamily: 'monospace' }}>
+            {communicationOkLabel(communicationOk)}
           </dd>
           <dt style={{ color: 'rgb(var(--scada-muted))' }}>Uzależnienie operacyjne</dt>
-          <dd style={{ color: aps?.interlockBlocked ? 'rgb(var(--scada-status-err))' : 'rgb(var(--scada-text))', fontFamily: 'monospace' }}>
-            {aps?.interlockBlocked ? 'aktywne' : 'nieaktywne'}
+          <dd data-testid="drawer-apparatus-interlock" style={{ color: interlockBlocked === true ? 'rgb(var(--scada-status-err))' : interlockBlocked === false ? 'rgb(var(--scada-text))' : 'rgb(var(--scada-muted))', fontFamily: 'monospace' }}>
+            {interlockBlockedLabel(interlockBlocked)}
           </dd>
           <dt style={{ color: 'rgb(var(--scada-muted))' }}>Ostatnia zmiana</dt>
           <dd style={{ color: 'rgb(var(--scada-text))', fontFamily: 'monospace', fontSize: 10 }}>
@@ -2185,15 +2203,18 @@ function PlaceholderTabBody({
     );
   }
   if (kind === 'bay' && tab === 'apparatus') {
+    // Karta #135: aparat bez rekordu źródła runtime (`state === null`) — „brak telemetrii".
     const stateLabel: Record<string, string> = {
       closed: 'zamknięty',
       open: 'otwarty',
       unknown: 'nieznany',
+      brak: BRAK_TELEMETRII,
     };
     const stateColor: Record<string, string> = {
       closed: 'rgb(var(--scada-status-ok))',
       open: 'rgb(var(--scada-status-err))',
       unknown: 'rgb(var(--scada-muted))',
+      brak: 'rgb(var(--scada-muted))',
     };
     if (!apparatusSpec || apparatusSpec.length === 0) {
       return (
@@ -2209,7 +2230,7 @@ function PlaceholderTabBody({
         </div>
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {apparatusSpec.map((app) => {
-            const stateKey = app.state ?? 'unknown';
+            const stateKey = app.state ?? 'brak';
             return (
               <li
                 key={app.id}

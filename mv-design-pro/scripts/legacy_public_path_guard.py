@@ -2208,6 +2208,18 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
     ),
     # --- AB-H0 / O-53 (2026-09-24): druga regula mocy transformatora toru DER-SN --------------
     *_be_def("enm/der_sn_validation.py", "validate_transformer_power", "H0"),
+    # --- karta #135 (2026-09-24): fabrykacja stanu ruchowego pola i model-cien pola w kliencie ---
+    *_be_def(
+        "application/field_read_model.py",
+        "_build_switch_state_from_branch _build_energization_state",
+        "135",
+        zasieg="plik",
+    ),
+    *_fe_wzorzec(
+        "ui/field/useFieldReadModel.ts",
+        ("buildSnapshotFieldReadModel", "fieldReadModelRichness"),
+        "135",
+    ),
 )
 
 _PY_DEF_TYPES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
@@ -2252,6 +2264,7 @@ KARTY_WPISOW_SPOZA_INWENTARZA: dict[str, str] = {
     "D2": "AB-1a Pakiet D2",
     "1B1A": "AB-1b.1a",
     "H0": "AB-H0 (O-53)",
+    "135": "karta #135",
 }
 
 

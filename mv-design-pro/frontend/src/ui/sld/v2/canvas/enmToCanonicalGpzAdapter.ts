@@ -800,8 +800,16 @@ export function extractBayMeasurements(
   return { pMw, qMvar, i1A };
 }
 
+/**
+ * Pole „w manipulacji" wyłącznie ze ŹRÓDŁA runtime (karta #135): polecenie w toku albo
+ * blokada `=== true` w rekordzie źródła. Brak źródła i blokada nieustalona (`null`) NIE są
+ * blokadą — adapter nie wymyśla stanu ruchowego.
+ */
 function extractInManipulation(
-  runtime: { pending_command?: unknown; primary_device_states?: Record<string, { interlock_blocked?: boolean }> } | null,
+  runtime: {
+    pending_command?: unknown;
+    primary_device_states?: Record<string, { interlock_blocked?: boolean | null }>;
+  } | null,
 ): boolean {
   if (!runtime) return false;
   if (runtime.pending_command) return true;

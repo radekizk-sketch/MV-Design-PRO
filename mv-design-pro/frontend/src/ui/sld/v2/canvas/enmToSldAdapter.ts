@@ -20,6 +20,7 @@
  */
 
 import type {
+  BayControlMode,
   BayDeviceState,
   BayPrimaryDevice,
   BayPrimaryPlacement,
@@ -4129,7 +4130,7 @@ function sanitizeRefToken(ref: string): string {
   return ref.replace(/[^a-zA-Z0-9_.-]+/g, '_');
 }
 
-interface StationFieldSpec {
+export interface StationFieldSpec {
   readonly field_ref?: string;
   readonly name?: string;
   readonly bay_role?: string;
@@ -4201,7 +4202,9 @@ function buildStationMiniBaysFromFieldSpecs(
     });
 }
 
-function readStationFieldSpecs(station: Substation): StationFieldSpec[] {
+/** Specyfikacje pól stacji (`meta.field_specs`) w kolejności z danych — JEDEN parser dla
+ *  rysunku i szuflady (pola stacji wstawionej operacją nie mają elementu `bays`). */
+export function readStationFieldSpecs(station: Substation): StationFieldSpec[] {
   const rawSpecs = station.meta?.field_specs;
   if (!Array.isArray(rawSpecs)) return [];
   return rawSpecs
@@ -4226,6 +4229,21 @@ const PRIMARY_DEVICE_KINDS: ReadonlySet<string> = new Set<string>([
   'CB', 'LOAD_SWITCH', 'DS', 'ES', 'CT', 'VT', 'CABLE_HEAD', 'TRANSFORMER_DEVICE',
   'FUSE', 'GENERATOR_PV', 'GENERATOR_BESS', 'GENERATOR_FW', 'PCS', 'BATTERY', 'SURGE_ARRESTER',
 ]);
+
+/** Dozwolone stany aparatu (lustro `BayDeviceState`, ENM). */
+const BAY_DEVICE_STATES: ReadonlySet<string> = new Set<string>([
+  'zamkniety', 'otwarty', 'zamkniety_naped_rozbrojony', 'otwarty_naped_rozbrojony', 'nieznany', 'awaria',
+]);
+
+/** Dozwolone tryby sterowania aparatu (lustro `BayControlMode`, ENM). */
+const BAY_CONTROL_MODES: ReadonlySet<string> = new Set<string>([
+  'miejscowe', 'zdalne', 'lokalne_zablokowane', 'odstawione',
+]);
+
+/** Wartość trójstanowa telemetrii: `true`/`false` ze źródła, wszystko inne = `null`. */
+function trojstan(value: unknown): boolean | null {
+  return typeof value === 'boolean' ? value : null;
+}
 
 /** Dozwolone położenia aparatu (lustro `BayPrimaryPlacement`, ENM). */
 const PRIMARY_DEVICE_PLACEMENTS: ReadonlySet<string> = new Set<string>([
@@ -4281,14 +4299,19 @@ function parseStationFieldPrimaryDevices(value: unknown): readonly BayPrimaryDev
       device.earthing_role = earthingRole;
     }
     if (isPlainRecord(raw.switch_state)) {
+      // Karta #135: stan łącznika (`actual_state`) NIE zależy od telemetrii — rekord bez
+      // trybu sterowania dawniej ginął w całości, a brak komunikacji/blokady stawał się
+      // `false` („komunikacja zła", „brak blokady"). Telemetria trójstanowa: wartość albo
+      // `null` (brak telemetrii); przepisana bez zmian.
       const actualState = getString(raw.switch_state.actual_state);
-      const controlMode = getString(raw.switch_state.control_mode);
-      if (actualState && controlMode) {
+      if (actualState && BAY_DEVICE_STATES.has(actualState)) {
+        const controlMode = getString(raw.switch_state.control_mode);
         device.switch_state = {
-          actual_state: actualState as NonNullable<BayPrimaryDevice['switch_state']>['actual_state'],
-          control_mode: controlMode as NonNullable<BayPrimaryDevice['switch_state']>['control_mode'],
-          communication_ok: raw.switch_state.communication_ok === true,
-          interlock_blocked: raw.switch_state.interlock_blocked === true,
+          actual_state: actualState as BayDeviceState,
+          control_mode:
+            controlMode && BAY_CONTROL_MODES.has(controlMode) ? (controlMode as BayControlMode) : null,
+          communication_ok: trojstan(raw.switch_state.communication_ok),
+          interlock_blocked: trojstan(raw.switch_state.interlock_blocked),
         };
       }
     }

@@ -688,11 +688,17 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     cleanup();
   });
 
-  it('apparatus "state" tab renders actual state + control mode', () => {
+  // Zmiana kanonu (karta #135, fabrykacja stanu ruchowego): bez rekordu źródła runtime
+  // zakładka pokazywała „zamknięty / LOKALNY / Komunikacja: OK / nieaktywne" — stan wymyślony.
+  // Intencja zachowana: zakładka stanu renderuje się dla aparatu i nazywa każdą wielkość,
+  // a przy braku źródła mówi wprost „brak telemetrii".
+  it('apparatus "state" tab bez rekordu źródła — brak telemetrii zamiast stanu domyślnego', () => {
     const data: SldDetailDrawerData = { kind: 'apparatus', elementId: 'cb-1', label: 'CB-1' };
     const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
     expect(container.querySelector('[data-testid="drawer-apparatus-state"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="drawer-apparatus-actual-state"]')?.textContent).toBe('zamknięty');
+    expect(container.querySelector('[data-testid="drawer-apparatus-actual-state"]')?.textContent).toBe('brak telemetrii');
+    expect(container.querySelector('[data-testid="drawer-apparatus-communication"]')?.textContent).toBe('brak telemetrii');
+    expect(container.querySelector('[data-testid="drawer-apparatus-control-mode"]')?.textContent).toBe('brak telemetrii');
     cleanup();
   });
 
@@ -1272,7 +1278,7 @@ describe('SldDetailDrawer — right-side detail panel', () => {
       kind: 'apparatus', elementId: 'cb-1', label: 'CB-1',
       apparatusState: {
         actualState: 'open',
-        controlMode: 'ZDALNY',
+        controlMode: 'zdalne',
         communicationOk: true,
         interlockBlocked: false,
         lastChangeAt: '2026-05-16T08:30:00Z',
@@ -1307,7 +1313,7 @@ describe('SldDetailDrawer — right-side detail panel', () => {
       kind: 'apparatus', elementId: 'cb-1', label: 'CB-1',
       apparatusState: {
         actualState: 'closed',
-        controlMode: 'LOKALNY',
+        controlMode: 'miejscowe',
         communicationOk: false,
         interlockBlocked: true,
         lastChangeAt: null,
