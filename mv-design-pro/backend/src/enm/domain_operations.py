@@ -32,6 +32,7 @@ from network_model.catalog.types import CatalogBinding
 
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
+from .migrations.nn_field_specs_promocja import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
 from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
@@ -2138,7 +2139,13 @@ def _build_readiness(
                     }
                 )
 
-        # Domain-level check: switches/breakers without catalog_ref
+        # Domain-level check: switches/breakers without catalog_ref.
+        # Aparat pola nN z automigracji (`META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA`)
+        # ocenia walidator ENM jako W061 (ostrzezenie — dane katalogowe pola
+        # zrodlowego nie istnialy przy migracji). Ten sam fakt nie moze byc tu
+        # BLOKADA: dwa zrodla gotowosci (`engineering-readiness` i odpowiedz
+        # operacji domenowej) musza orzekac jednakowo — inaczej chrom powloki
+        # mowi „Model: w budowie" przy `ready: true` z serwera.
         for b in enm.get("branches", []):
             b_type = b.get("type", "")
             b_meta = b.get("meta") if isinstance(b.get("meta"), dict) else {}
@@ -2146,6 +2153,7 @@ def _build_readiness(
                 b_type in ("switch", "breaker")
                 and not b.get("catalog_ref")
                 and b_meta.get("requires_catalog_binding") is not False
+                and not b_meta.get(META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA)
             ):
                 b_ref = b.get("ref_id", "")
                 blockers.append(
