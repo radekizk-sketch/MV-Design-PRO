@@ -820,7 +820,14 @@ def test_remis_pelnej_dotkliwosci_rozstrzyga_element_ref_rosnaco() -> None:
 #: (obciążalności) gałęzi w modelu."); dotkliwość, ranking, napięcia, przepływy,
 #: iteracje NR, liczniki i kolejność BEZ ZMIAN.
 ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
-    "gn01_promieniowa": "949454acb89aea1ba066c18265eb93460a84cb19d6ef0cf48f56d3889256d083",
+    # 2026-09-24 (karta #140): 949454ac… → f2826159…. Różnica ustalona porównaniem
+    # pełnych widoków przed i po karcie pole po polu: zmieniły się WYŁĄCZNIE
+    # `context.snapshot_hash` i `input_hash` — sieć gn01 buduje stacje operacjami
+    # domenowymi, a #140 zmienił domyślne nazwy pól SN (np. „Pole LINIA_IN 1” →
+    # „Pole liniowe wejściowe 1”), które wchodzą do odcisku modelu wejściowego.
+    # Wynik kontyngencji (enumeracja, dotkliwości, odbiory bez zasilania) identyczny.
+    # Sieć gn03 bez zmiany odcisku (jej stacje nie biorą nazw domyślnych pól).
+    "gn01_promieniowa": "f2826159455c190fd1a71e5fc61c91691e32cb1f1ad8c129df6a3d1d1583328f",
     "gn03_pierscien": "9bd7b9a8119daa5c171da5b221a35dd0820a138ea65d4e2dcb85e2105648970b",
 }
 
