@@ -45,6 +45,49 @@ const PULPIT_LIMIT_OSD_MW = PULPIT_SCENA_MIGAWKA.header.connection_conditions.mo
 const PULPIT_GENERACJA_MW = PULPIT_SCENA_MIGAWKA.generators.reduce((suma, g) => suma + g.p_mw, 0);
 
 /**
+ * Scena „rozplyw" — kolumna „Obciążenie [%]" podzakładki Gałęzie pokazuje obciążenie z
+ * kontroli energy-validation (`walidacja_scena_wynik.json`, TRANSFORMER_LOADING FAIL), więc
+ * oczekiwana liczba pochodzi z TEJ fikstury, nie z przepisanej ręcznie stałej: dawne
+ * „702,1" przeżyło zmianę definicji obciążenia gałęzi (maksimum stosunków I/I_r obu
+ * zacisków, AB-1b.1a) i zapaliło CI na poprawnym ekranie pokazującym 724,9 %.
+ */
+const WALIDACJA_SCENA_WYNIK = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/walidacja_scena_wynik.json'),
+    'utf-8',
+  ),
+) as { items: { check_type: string; status: string; observed_value: number | null }[] };
+const ROZPLYW_OBCIAZENIE_TR_PCT = WALIDACJA_SCENA_WYNIK.items.find(
+  (pozycja) => pozycja.check_type === 'TRANSFORMER_LOADING' && pozycja.status === 'FAIL',
+)!.observed_value!;
+/**
+ * Wartości wkładów i bilansu zwarciowego z fikstur biegu backendu, którymi karmi się
+ * scena „zwarcia” — nie przepisane ręcznie (klasa defektu z CI 2026-09-24).
+ */
+const ZWARCIA_WYNIKI = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/zwarcia_wyniki_scena_zwarcia.json'),
+    'utf-8',
+  ),
+) as { rows: { target_id: string; zk_ohm: number; kappa: number }[] };
+const ZWARCIA_WKLADY = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/zwarcia_wklady_scena_zwarcia.json'),
+    'utf-8',
+  ),
+) as Record<string, { contributions: { source_name: string; mu: number | null }[] }>;
+const ZWARCIA_PUNKT_DOMYSLNY = ZWARCIA_WYNIKI.rows[0];
+const MU_GENERATORA_SYNCHRONICZNEGO = ZWARCIA_WKLADY[
+  ZWARCIA_PUNKT_DOMYSLNY.target_id
+].contributions.find((wklad) => wklad.source_name === 'Generator synchroniczny')!.mu!;
+const liczbaZwarciowaPl = (wartosc: number, miejsca: number): string =>
+  wartosc.toLocaleString('pl-PL', { minimumFractionDigits: miejsca, maximumFractionDigits: miejsca });
+
+/** Format kolumny obciążenia: liczba PL z jednym miejscem po przecinku. */
+const procentPl = (wartosc: number): string =>
+  wartosc.toLocaleString('pl-PL', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+/**
  * Scena „porownanie" (tryb rozpływu) — lista przebiegów i wynik porównania A/B
  * pochodzą z REALNYCH biegów backendu (karta HARNESS-RESZTA: `porownanie_scena_
  * biegi_pf.json` / `porownanie_scena_wynik_pf.json`). NAPRAWA HARNESS-RESZTA-2:
@@ -166,8 +209,8 @@ test.describe('flow-ekspert:screenshot', () => {
           // oceny" z CI run 444 był właściwy dla WCZEŚNIEJSZEGO, ręcznie pisanego
           // zasiewu bez tego pola). Rejestr przekroczeń pokazuje realną listę z
           // energy-validation buildera (m.in. odchylenie napięcia „Szyna nN"
-          // FAIL 25,17 % i obciążenie transformatora FAIL 702,1 % — ta sama sieć
-          // co scena „rozplyw").
+          // FAIL 25,17 % i przeciążony transformator 15/0,4 — ta sama sieć co scena
+          // „rozplyw").
           await expect(page.getByTestId('mvd-cwu-podsumowanie')).toBeVisible();
           await expect(page.getByTestId('mvd-cwu-lista')).toBeVisible();
           expect(await page.getByTestId('mvd-cwu-pozycja').count()).toBeGreaterThan(0);
@@ -190,12 +233,15 @@ test.describe('flow-ekspert:screenshot', () => {
           // R3-A: podzakladka Galezie -> kolumna "Obciazenie [%]" z werdyktem
           // backendu (HARNESS-RESZTA-kontynuacja: scena "rozplyw" karmiona
           // realnym biegiem PF na sieci zlotej z obciazeniem ×8 —
-          // `walidacja_scena_wynik.json`, TRANSFORMER_LOADING 702,1 % FAIL na
-          // galezi 158eec95…; dawny recznie wpisany werdykt "TR-1 FAIL 104 %,
-          // L-14 WARNING 90 %" nie odpowiadal zadnej realnej galezi).
+          // `walidacja_scena_wynik.json`, TRANSFORMER_LOADING FAIL na transformatorze
+          // 15/0,4; dawny recznie wpisany werdykt "TR-1 FAIL 104 %, L-14 WARNING
+          // 90 %" nie odpowiadal zadnej realnej galezi). Liczba z fikstury — patrz
+          // `ROZPLYW_OBCIAZENIE_TR_PCT`.
           await page.getByTestId('mvd-rozplyw-podzakladka-galezie').click();
           await expect(page.getByTestId('mvd-wyn-th-obciazenie')).toBeVisible();
-          await expect(page.getByTestId('mvd-wyn-tabela')).toContainText('702,1');
+          await expect(page.getByTestId('mvd-wyn-tabela')).toContainText(
+            procentPl(ROZPLYW_OBCIAZENIE_TR_PCT),
+          );
           await expect(page.getByTestId('mvd-wyn-tabela')).toContainText('Poza zakresem');
         } else if (scena === 'zwarcia') {
           // R3-B: sekcja wkladow dla domyslnego punktu z realnego dostawcy
@@ -206,8 +252,12 @@ test.describe('flow-ekspert:screenshot', () => {
           // harness-fixtures/generated/zwarcia_wyniki_scena_zwarcia.json, parytet w CI).
           await expect(page.getByTestId('mvd-zwarcia-wklady')).toContainText('Generator synchroniczny');
           // ZWARCIA-PRO F1: panel „Bilans IEC 60909" + kolumny impedancyjne (ekspert).
-          await expect(page.getByTestId('mvd-zwarcia-bilans')).toContainText('1,0640 Ω');
-          await expect(page.getByTestId('mvd-zwarcia-bilans')).toContainText('1,861');
+          await expect(page.getByTestId('mvd-zwarcia-bilans')).toContainText(
+            `${liczbaZwarciowaPl(ZWARCIA_PUNKT_DOMYSLNY.zk_ohm, 4)} Ω`,
+          );
+          await expect(page.getByTestId('mvd-zwarcia-bilans')).toContainText(
+            liczbaZwarciowaPl(ZWARCIA_PUNKT_DOMYSLNY.kappa, 3),
+          );
           await expect(page.getByTestId('mvd-wyn-th-kappa')).toBeVisible();
           // F2: rozwiniecie wkladu maszyny (klik wiersza tabeli wkladow -> mu/q/Ib).
           await page
@@ -215,7 +265,9 @@ test.describe('flow-ekspert:screenshot', () => {
             .getByTestId('mvd-wyn-tabela')
             .getByText('Generator synchroniczny')
             .click();
-          await expect(page.getByTestId('mvd-zwarcia-wklad-szczegol')).toContainText('0,705');
+          await expect(page.getByTestId('mvd-zwarcia-wklad-szczegol')).toContainText(
+            liczbaZwarciowaPl(MU_GENERATORA_SYNCHRONICZNEGO, 3),
+          );
           // F3: wywod SEKCYJNY na zadanie — akordeon z norma; klik sekcji wkladu
           // -> kroki KaTeX; checklista walidacji IEC.
           await page.getByTestId('mvd-zwarcia-wklady-slad-btn').click();

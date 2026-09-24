@@ -47,6 +47,18 @@ from network_model.pochodne import ka_na_a, prad_z_mocy_pozornej_ka, prad_znamio
 
 Zacisk = Literal["od", "do"]
 
+#: Względna tolerancja równości stosunków I/I_r obu zacisków (wynik bezwymiarowy).
+#: Transformator modelowany gałęzią szeregową z przekładnią ma na obu zaciskach TEN SAM
+#: prąd względny, więc oba stosunki są równe z definicji; obliczone dwiema drogami
+#: (prąd strony `od` z rdzenia rozpływu, prąd strony `do` z mocy i napięcia węzła) różnią
+#: się o ostatni bit (pomiar na scenie walidacji: 2,45·10⁻¹⁶ względnie), a kierunek tej
+#: różnicy zależy od platformy i biblioteki numerycznej. Bez tolerancji reguła „przy
+#: równości decyduje zacisk `od`” nie działała i zacisk decydujący zmieniał się między
+#: maszynami CI. 10⁻⁹ leży o siedem rzędów nad szumem arytmetyki podwójnej precyzji i
+#: o cztery rzędy pod najmniejszą różnicą fizyczną spotykaną w sieciach SN (prąd
+#: ładowania kabla: ok. 10⁻⁵ względnie), więc nie zmienia rozstrzygnięć fizycznych.
+TOLERANCJA_WZGLEDNA_ROWNOSCI_STOSUNKOW = 1e-9
+
 POWOD_BRAK_GALEZI_PL = "Gałęzi nie ma w modelu biegu — brak danych znamionowych."
 POWOD_BRAK_PRADU_ZNAMIONOWEGO_PL = "Brak prądu znamionowego (obciążalności) gałęzi w modelu."
 POWOD_BRAK_MOCY_ZNAMIONOWEJ_PL = "Brak mocy znamionowej S_n transformatora w modelu."
@@ -177,7 +189,8 @@ def obciazenie_z_pradow_zaciskow(
 
     `znamionowe` to prądy znamionowe zacisków (z modelu albo z jawnego limitu wejścia
     rozpływu) albo nazwany powód ich braku. Decyduje zacisk o większym stosunku I / I_r;
-    przy równości — zacisk `od` (wynik deterministyczny). Brak którejkolwiek danej daje
+    przy równości w granicach `TOLERANCJA_WZGLEDNA_ROWNOSCI_STOSUNKOW` — zacisk `od`
+    (wynik deterministyczny niezależnie od platformy). Brak którejkolwiek danej daje
     `obciazenie_pct = None` z powodem: najpierw brak danych znamionowych, potem brak
     prądu zacisku w wyniku.
     """
@@ -207,7 +220,10 @@ def obciazenie_z_pradow_zaciskow(
     assert prad_od_a is not None and prad_do_a is not None  # zawężenie dla mypy
     stosunek_od = abs(prad_od_a) / ir_od
     stosunek_do = abs(prad_do_a) / ir_do
-    zacisk: Zacisk = "do" if stosunek_do > stosunek_od else "od"
+    rowne = math.isclose(
+        stosunek_do, stosunek_od, rel_tol=TOLERANCJA_WZGLEDNA_ROWNOSCI_STOSUNKOW, abs_tol=0.0
+    )
+    zacisk: Zacisk = "do" if stosunek_do > stosunek_od and not rowne else "od"
     return ObciazenieGalezi(
         prad_od_a=prad_od_a,
         prad_do_a=prad_do_a,

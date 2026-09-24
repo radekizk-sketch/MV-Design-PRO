@@ -18,6 +18,7 @@ from analysis.obciazenie_galezi import (
     POWOD_BRAK_PRADU_DO_PL,
     POWOD_BRAK_PRADU_OD_PL,
     POWOD_BRAK_PRADU_ZNAMIONOWEGO_PL,
+    TOLERANCJA_WZGLEDNA_ROWNOSCI_STOSUNKOW,
     PradyZnamionoweZaciskow,
     obciazenie_galezi,
     obciazenie_z_pradow_zaciskow,
@@ -74,6 +75,53 @@ def test_rownosc_ilorazow_rozstrzyga_zacisk_od() -> None:
     )
     assert wynik.zacisk_decydujacy == "od"
     assert wynik.obciazenie_pct == 50.0
+
+
+@pytest.mark.parametrize(
+    ("przesuniecie_do", "decyduje"),
+    [
+        # Szum arytmetyki (1 ulp w obie strony, 10⁻¹² względnie) — to NIE jest różnica
+        # fizyczna, więc rozstrzyga reguła równości: zacisk `od`, niezależnie od znaku.
+        (math.ulp(1.0), "od"),
+        (-math.ulp(1.0), "od"),
+        (1e-12, "od"),
+        (-1e-12, "od"),
+        # Różnica fizyczna (prąd ładowania kabla ~10⁻⁵ względnie) — decyduje większy.
+        (1e-6, "do"),
+        (-1e-6, "od"),
+        (1e-5, "do"),
+    ],
+)
+def test_rownosc_w_granicy_szumu_rozstrzyga_zacisk_od_na_kazdej_platformie(
+    przesuniecie_do: float, decyduje: str
+) -> None:
+    """Remis w arytmetyce zmiennoprzecinkowej nie jest dokładny — reguła musi to znieść.
+
+    Defekt zmierzony w CI (2026-09-24): transformator sceny walidacji ma stosunki
+    I/I_r równe z definicji (gałąź szeregowa z przekładnią), obliczone różniły się o
+    2,45·10⁻¹⁶ względnie, a znak tej różnicy zależał od maszyny — fikstura raz niosła
+    „decyduje zacisk od”, raz „do”. Iloczyn cech: {szum, różnica fizyczna} × {znak}.
+    """
+    wynik = obciazenie_z_pradow_zaciskow(
+        PradyZnamionoweZaciskow(od_a=24.248711305964285, do_a=909.3266739736606),
+        prad_od_a=175.78280789129798,
+        prad_do_a=909.3266739736606
+        * (175.78280789129798 / 24.248711305964285)
+        * (1.0 + przesuniecie_do),
+    )
+    assert wynik.zacisk_decydujacy == decyduje
+    assert wynik.obciazenie_pct == pytest.approx(724.9160818210654, rel=1e-4)
+
+
+def test_zmierzony_przypadek_transformatora_sceny_walidacji_decyduje_od() -> None:
+    """Liczby wprost z biegu sceny walidacji (transformator 15/0,4 kV przeciążony ×7,25)."""
+    wynik = obciazenie_z_pradow_zaciskow(
+        PradyZnamionoweZaciskow(od_a=24.248711305964285, do_a=909.3266739736606),
+        prad_od_a=175.78280789129798,
+        prad_do_a=6591.855295923676,
+    )
+    assert wynik.zacisk_decydujacy == "od"
+    assert TOLERANCJA_WZGLEDNA_ROWNOSCI_STOSUNKOW == 1e-9
 
 
 @pytest.mark.parametrize(

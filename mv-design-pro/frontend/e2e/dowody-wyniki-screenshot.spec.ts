@@ -93,16 +93,49 @@ const SILA_SIECI_SCENA_WYNIK = JSON.parse(
     path.resolve(_dirname, '../src/harness-fixtures/generated/sila_sieci_scena_wynik.json'),
     'utf-8',
   ),
-) as { entries: { bus_ref: string }[] };
+) as {
+  entries: { bus_ref: string; white_box: { substitution_pl: string }[] }[];
+  summary: { wscr: number; wscr_white_box: { substitution_pl: string }[] };
+};
 const WEZEL_SILY_SIECI = SILA_SIECI_SCENA_WYNIK.entries[0].bus_ref;
 const MIGOTANIE_SCENA_WYNIK = JSON.parse(
   fs.readFileSync(
     path.resolve(_dirname, '../src/harness-fixtures/generated/migotanie_scena_wynik.json'),
     'utf-8',
   ),
-) as { buses: { bus_ref: string; modules: { gen_ref: string }[] }[] };
+) as {
+  buses: {
+    bus_ref: string;
+    modules: { gen_ref: string }[];
+    white_box: { substitution_pl: string }[];
+  }[];
+};
 const WEZEL_MIGOTANIA = MIGOTANIE_SCENA_WYNIK.buses[0].bus_ref;
 const MODUL_MIGOTANIA = MIGOTANIE_SCENA_WYNIK.buses[0].modules[0].gen_ref;
+
+/**
+ * Liczby i podstawienia śladów, które ekran MA pokazać, pochodzą z tych samych fikstur
+ * biegów backendu, którymi harness karmi sceny — nie z przepisanych ręcznie stałych
+ * (klasa defektu z CI 2026-09-24: ręczne „702,1” przeżyło zmianę definicji obciążenia).
+ */
+const SILA_SIECI_WSCR_PL = SILA_SIECI_SCENA_WYNIK.summary.wscr.toLocaleString('pl-PL', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+const SILA_SIECI_LICZNIK_WSCR =
+  SILA_SIECI_SCENA_WYNIK.summary.wscr_white_box[0].substitution_pl.split(';')[0];
+const SILA_SIECI_PODSTAWIENIE_SCR = SILA_SIECI_SCENA_WYNIK.entries[0].white_box[0].substitution_pl;
+const MIGOTANIE_PODSTAWIENIE_PST = MIGOTANIE_SCENA_WYNIK.buses[0].white_box[0].substitution_pl;
+const ARCFLASH_SCENA_WYNIK = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/arcflash_scena_wynik.json'),
+    'utf-8',
+  ),
+) as { results: { bus_ref: string; white_box: { result_pl: string }[] }[] };
+const ARCFLASH_WYNIK_SZYNY = ARCFLASH_SCENA_WYNIK.results[0];
+/** Wynik kroku śladu IEEE 1584 bez dopisku o pochodzeniu współczynników w nawiasie. */
+const wynikKrokuArcFlash = (indeks: number): string =>
+  ARCFLASH_WYNIK_SZYNY.white_box[indeks].result_pl.split(' (')[0].split(', I_arc_min')[0];
 
 /**
  * Pomiary telemetryczne estymacji WLS — Z FIXTURY REALNEGO biegu
@@ -212,11 +245,11 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     // wywody, na realnych liczbach).
     const sekcja = page.getByTestId('mvd-oze-pulpit-sila');
     await expect(page.getByTestId('mvd-oze-sila-wynik')).toBeVisible();
-    await expect(page.getByTestId('mvd-oze-sila-wscr')).toContainText('176,61');
+    await expect(page.getByTestId('mvd-oze-sila-wscr')).toContainText(SILA_SIECI_WSCR_PL);
     await page.getByTestId('mvd-oze-sila-wscr-slad-otworz').click();
-    await expect(sekcja).toContainText('licznik Σ(S_sc·S_n) = 8.1638 MVA²');
+    await expect(sekcja).toContainText(SILA_SIECI_LICZNIK_WSCR);
     await page.getByTestId(`mvd-oze-sila-slad-otworz-${WEZEL_SILY_SIECI}`).click();
-    await expect(sekcja).toContainText('SCR = 37.9713 MVA / 0.215 MVA');
+    await expect(sekcja).toContainText(SILA_SIECI_PODSTAWIENIE_SCR);
     await expect(page.getByTestId(`mvd-oze-sila-werdykt-${WEZEL_SILY_SIECI}`)).toContainText(
       'mocna',
     );
@@ -335,7 +368,7 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     const wzor = slad.locator('[data-testid="math-rendered"]').first();
     await expect(wzor).toBeVisible();
     expect(await wzor.getAttribute('data-latex')).toContain('P_{st');
-    await expect(slad).toContainText('P_st = (0.001699^3)^(1/3)');
+    await expect(slad).toContainText(MIGOTANIE_PODSTAWIENIE_PST);
   } else {
     // arcflash: parametry projektowe → „Przelicz" (POST) → wiersz szyny →
     // otwarty ślad IEEE 1584-2018 (I_arc, CF, E, AFB, ŚOI) w KaTeX.
@@ -353,7 +386,7 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     // sceny_zwarcia`).
     await page
       .getByTestId('mvd-wyn-tabela')
-      .getByText('63203cbc-ac91-5100-a0ee-a275d24514ff')
+      .getByText(ARCFLASH_WYNIK_SZYNY.bus_ref)
       .click();
     await expect(page.getByTestId('mvd-jakosc-af-szczegol')).toBeVisible();
     await page.getByTestId('mvd-jakosc-af-slad-otworz').click();
@@ -361,9 +394,9 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     const wzor = slad.locator('[data-testid="math-rendered"]').first();
     await expect(wzor).toBeVisible();
     expect(await wzor.getAttribute('data-latex')).toContain('I_{arc');
-    await expect(slad).toContainText('I_arc = 8.5156 kA');
-    await expect(slad).toContainText('E = 32.1686 J/cm² = 7.6885 cal/cm²');
-    await expect(slad).toContainText('AFB = 1487.7103 mm');
+    await expect(slad).toContainText(wynikKrokuArcFlash(0));
+    await expect(slad).toContainText(wynikKrokuArcFlash(2));
+    await expect(slad).toContainText(wynikKrokuArcFlash(3));
   }
 }
 

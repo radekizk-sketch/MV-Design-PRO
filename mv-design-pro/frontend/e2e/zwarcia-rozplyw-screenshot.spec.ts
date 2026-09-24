@@ -37,6 +37,26 @@ import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Prądy gałęzi toru zwarciowego z fikstury biegu backendu, którą karmi się scena —
+ * nie przepisane ręcznie (klasa defektu z CI 2026-09-24).
+ */
+const ZWARCIA_ROZPLYW = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/zwarcia_rozplyw_scena_zwarcia.json'),
+    'utf-8',
+  ),
+) as { branch_contributions: { branch_name: string; i_ka: number }[] };
+/** Największy prąd gałęzi o danej nazwie [kA] (tor dominujący przez tę gałąź). */
+const pradToru = (nazwa: string): number =>
+  Math.max(
+    ...ZWARCIA_ROZPLYW.branch_contributions
+      .filter((wklad) => wklad.branch_name === nazwa)
+      .map((wklad) => wklad.i_ka),
+  );
+const kaPl = (wartosc: number): string =>
+  wartosc.toLocaleString('pl-PL', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 const CREATOR_HARNESS_URL = adresHarnessu('creator-harness.html');
 const SCREENSHOT_HARNESS_URL = adresHarnessu('screenshot-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
@@ -76,9 +96,9 @@ test.describe('zwarcia-rozplyw:screenshot', () => {
       // — `zrodloRozplywuPL` pokazuje surowy `source_id`, gdy nie jest THEVENIN_GRID).
       await expect(tabela).toContainText('gen_pv');
       // Prąd sieci nadrzędnej [kA] w torze dominującym (gałąź TR 110/15) — format PL.
-      await expect(tabela).toContainText('8,312');
+      await expect(tabela).toContainText(kaPl(pradToru('TR 110/15')));
       // Prąd falownika [kA] w torze TR 15/0.4.
-      await expect(tabela).toContainText('0,017');
+      await expect(tabela).toContainText(kaPl(pradToru('TR 15/0.4')));
       // Nazwy gałęzi realne (tor sieci nadrzędnej i tor falownika idą RÓŻNYMI
       // gałęziami w tej sieci — inaczej niż w dawnej fixturze TH-1 z jedną linią).
       await expect(tabela).toContainText('TR 110/15');

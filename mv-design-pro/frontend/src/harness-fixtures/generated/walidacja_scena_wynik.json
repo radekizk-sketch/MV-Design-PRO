@@ -33,7 +33,7 @@
           "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: |I_od| = 0.1758 kA, |I_do| = 6.5919 kA (wynik PF), I_r,od = 0.0242 kA, I_r,do = 0.9093 kA (S_n i U_n strony transformatora); decyduje zacisk do",
+          "tekst": "Dane: |I_od| = 0.1758 kA, |I_do| = 6.5919 kA (wynik PF), I_r,od = 0.0242 kA, I_r,do = 0.9093 kA (S_n i U_n strony transformatora); decyduje zacisk od",
           "latex": null
         },
         {
@@ -339,7 +339,7 @@
           "latex": "\\varepsilon = \\max\\left(\\frac{|I_{od}|}{I_{r,od}}, \\frac{|I_{do}|}{I_{r,do}}\\right) \\cdot 100\\%"
         },
         {
-          "tekst": "Dane: |I_od| = 0.0691 kA, |I_do| = 0.5066 kA (wynik PF), I_r,od = 0.1312 kA, I_r,do = 0.9623 kA (S_n i U_n strony transformatora); decyduje zacisk do",
+          "tekst": "Dane: |I_od| = 0.0691 kA, |I_do| = 0.5066 kA (wynik PF), I_r,od = 0.1312 kA, I_r,do = 0.9623 kA (S_n i U_n strony transformatora); decyduje zacisk od",
           "latex": null
         },
         {

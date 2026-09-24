@@ -26,6 +26,29 @@ import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Wartości wkładów i bilansu zwarciowego z fikstur biegu backendu, którymi karmi się
+ * scena „zwarcia” — nie przepisane ręcznie (klasa defektu z CI 2026-09-24).
+ */
+const ZWARCIA_WYNIKI = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/zwarcia_wyniki_scena_zwarcia.json'),
+    'utf-8',
+  ),
+) as { rows: { target_id: string; zk_ohm: number; kappa: number }[] };
+const ZWARCIA_WKLADY = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/zwarcia_wklady_scena_zwarcia.json'),
+    'utf-8',
+  ),
+) as Record<string, { contributions: { source_name: string; mu: number | null }[] }>;
+const ZWARCIA_PUNKT_DOMYSLNY = ZWARCIA_WYNIKI.rows[0];
+const MU_GENERATORA_SYNCHRONICZNEGO = ZWARCIA_WKLADY[
+  ZWARCIA_PUNKT_DOMYSLNY.target_id
+].contributions.find((wklad) => wklad.source_name === 'Generator synchroniczny')!.mu!;
+const liczbaZwarciowaPl = (wartosc: number, miejsca: number): string =>
+  wartosc.toLocaleString('pl-PL', { minimumFractionDigits: miejsca, maximumFractionDigits: miejsca });
 const HARNESS_URL = adresHarnessu('creator-harness.html');
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
 const THEMES = ['light', 'dark'] as const;
@@ -50,7 +73,7 @@ test.describe('zwarcia-f2:screenshot', () => {
       // 1) Szczegół maszyny + wywód dyplomowy tej maszyny (otwarty).
       await wklady.getByTestId('mvd-wyn-tabela').getByText('Generator synchroniczny').click();
       const szczegol = page.getByTestId('mvd-zwarcia-wklad-szczegol');
-      await expect(szczegol).toContainText('0,705'); // μ
+      await expect(szczegol).toContainText(liczbaZwarciowaPl(MU_GENERATORA_SYNCHRONICZNEGO, 3)); // μ
       await szczegol.getByTestId('mvd-zwarcia-wklad-szczegol-slad-btn').click();
       await expect(
         szczegol.locator('[data-testid="math-rendered"]').first(),

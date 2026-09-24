@@ -190,13 +190,24 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     // (prądowa PRZEKROCZENIE); werdykty renderowane domyślnie.
     const tabela = page.getByTestId('mvd-fazowy-tabela-faz');
     await expect(tabela).toBeVisible();
-    // Liczby z REALNEGO biegu backendu (phase_state_sn, scena stan-fazowy,
-    // karta HARNESS-RESZTA) — ua_kv=8,646754…, ib_a=78,0 (prąd fazy B z opcji
-    // scenariusza), current_unbalance_percent=29,39 (alert solvera).
-    await expect(tabela).toContainText('8,647');
-    await expect(tabela).toContainText('78,0');
+    // Liczby z REALNEGO biegu backendu (phase_state_sn, scena stan-fazowy, karta
+    // HARNESS-RESZTA) czytane z TEJ fikstury, którą karmi się ekran — napięcie fazy A,
+    // prąd fazy B (z opcji scenariusza) i asymetria prądowa (alert solvera); ręcznie
+    // przepisane liczby przeżywały zmiany definicji (klasa defektu z CI 2026-09-24).
+    const wierszFaz = fixtura('stan_fazowy_scena_wyniki').rows[0] as {
+      ua_kv: number;
+      ib_a: number;
+      current_unbalance_percent: number;
+    };
+    const pl = (wartosc: number, miejsca: number): string =>
+      wartosc.toLocaleString('pl-PL', {
+        minimumFractionDigits: miejsca,
+        maximumFractionDigits: miejsca,
+      });
+    await expect(tabela).toContainText(pl(wierszFaz.ua_kv, 3));
+    await expect(tabela).toContainText(pl(wierszFaz.ib_a, 1));
     const asymetrie = page.getByTestId('mvd-fazowy-asymetrie');
-    await expect(asymetrie).toContainText('29,39');
+    await expect(asymetrie).toContainText(pl(wierszFaz.current_unbalance_percent, 2));
     await expect(asymetrie).toContainText('PRZEKROCZENIE');
   } else {
     // wyniki-stabilnosc (zmiana kanonu 2026-09-23): rekord oceny NIE_OCENIONO z
