@@ -252,7 +252,7 @@ def _q_kompensacji_znamionowa_mvar(snapshot: dict[str, Any], bus_ref: str) -> fl
             # Pomijamy TEN wpis (nie liczymy jako 0 Mvar), zeby nie zanizyc
             # sumy dostepnej kompensacji.
             logger.warning(
-                "Pomijam baterie kondensatorow bez pola rated_mvar "
+                "Pomijam baterie kondensatorów bez pola rated_mvar "
                 "(bus_ref=%r) — uszkodzony wpis, nie 0 Mvar.",
                 bus_ref,
             )

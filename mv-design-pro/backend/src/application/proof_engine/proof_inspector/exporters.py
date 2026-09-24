@@ -172,7 +172,7 @@ class InspectorExporter:
                     format="pdf",
                     content=b"",
                     success=False,
-                    error_message="LaTeX export nie zwrocil tekstu (nieoczekiwany typ).",
+                    error_message="LaTeX export nie zwrócił tekstu (nieoczekiwany typ).",
                 )
             pdf_content = self._compile_to_pdf(tex_content)
             return ExportResult(
@@ -469,7 +469,7 @@ def export_to_pdf(document: ProofDocument) -> bytes:
     # export_pdf() (success=True) zawsze ustawia content na bytes skompilowanego
     # PDF — ExportResult.content jest unia str | bytes dzielona z eksportem tex
     # (str), tu narrowing do bytes.
-    assert isinstance(content, bytes), "PDF export musi zwracac bytes"
+    assert isinstance(content, bytes), "PDF export musi zwracać bytes"
     return bytes(content)
 
 
@@ -496,7 +496,7 @@ def export_to_docx(document: ProofDocument) -> bytes:
     # export_docx() (success=True) zawsze ustawia content na bytes dokumentu
     # DOCX — ExportResult.content jest unia str | bytes dzielona z eksportem tex
     # (str), tu narrowing do bytes.
-    assert isinstance(content, bytes), "DOCX export musi zwracac bytes"
+    assert isinstance(content, bytes), "DOCX export musi zwracać bytes"
     return bytes(content)
 
 

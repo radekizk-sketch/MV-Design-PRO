@@ -2895,7 +2895,7 @@
       "type": "string"
      },
      "power_flow_run_id_b": {
-      "description": "UUID drugiego PowerFlowRun (porownanie)",
+      "description": "UUID drugiego PowerFlowRun (porównanie)",
       "title": "Power Flow Run Id B",
       "type": "string"
      }
@@ -3063,7 +3063,7 @@
       "type": "string"
      },
      "run_id_b": {
-      "description": "UUID przebiegu zwarciowego B (porownywany)",
+      "description": "UUID przebiegu zwarciowego B (porównywany)",
       "title": "Run Id B",
       "type": "string"
      }
@@ -12417,7 +12417,7 @@
     "description": "Request to save geometry overrides.",
     "properties": {
      "items": {
-      "description": "Lista nadpisan",
+      "description": "Lista nadpisań",
       "items": {
        "$ref": "#/components/schemas/OverrideItemRequest"
       },
@@ -13237,7 +13237,7 @@
     "properties": {
      "configuration": {
       "additionalProperties": true,
-      "description": "Stan formularza kreatora — przechowywany BEZ ZMIAN; backend go NIE interpretuje (odtworzeniem zajmuje sie wylacznie kreator)",
+      "description": "Stan formularza kreatora — przechowywany BEZ ZMIAN; backend go NIE interpretuje (odtworzeniem zajmuje się wyłącznie kreator)",
       "title": "Configuration",
       "type": "object"
      },
@@ -13250,11 +13250,11 @@
         "type": "null"
        }
       ],
-      "description": "Opis do czego szablon sluzy",
+      "description": "Opis do czego szablon służy",
       "title": "Description Pl"
      },
      "name_pl": {
-      "description": "Nazwa szablonu (widoczna na liscie)",
+      "description": "Nazwa szablonu (widoczna na liście)",
       "minLength": 1,
       "title": "Name Pl",
       "type": "string"
@@ -15198,7 +15198,7 @@
     "description": "Request to validate overrides without saving.",
     "properties": {
      "items": {
-      "description": "Lista nadpisan",
+      "description": "Lista nadpisań",
       "items": {
        "$ref": "#/components/schemas/OverrideItemRequest"
       },
@@ -15206,7 +15206,7 @@
       "type": "array"
      },
      "known_block_ids": {
-      "description": "Znane ID blokow",
+      "description": "Znane ID bloków",
       "items": {
        "type": "string"
       },
@@ -15214,7 +15214,7 @@
       "type": "array"
      },
      "known_node_ids": {
-      "description": "Znane ID wezlow",
+      "description": "Znane ID węzłów",
       "items": {
        "type": "string"
       },
@@ -26001,7 +26001,7 @@
   },
   "/api/power-flow-comparisons": {
    "post": {
-    "description": "P20c: Porownuje dwa PowerFlowRun i generuje deterministyczny ranking problemow.\n\n**Walidacje:**\n- Oba runy musza istniec\n- Oba runy musza miec status FINISHED\n- Oba runy musza nalezec do tego samego projektu\n\n**Zwraca:**\n- PowerFlowComparisonResult z:\n  - bus_diffs: porownanie per szyna (posortowane po bus_id)\n  - branch_diffs: porownanie per galaz (posortowane po branch_id)\n  - ranking: lista problemow posortowana wg severity (5->1)\n  - summary: statystyki porownania\n\n**Cache:**\n- Ta sama para (A, B) -> ten sam comparison_id\n- A->B != B->A (kierunkowe)",
+    "description": "P20c: Porównuje dwa PowerFlowRun i generuje deterministyczny ranking problemów.\n\n**Walidacje:**\n- Oba runy muszą istnieć\n- Oba runy muszą mieć status FINISHED\n- Oba runy muszą należeć do tego samego projektu\n\n**Zwraca:**\n- PowerFlowComparisonResult z:\n  - bus_diffs: porównanie per szyna (posortowane po bus_id)\n  - branch_diffs: porównanie per gałąź (posortowane po branch_id)\n  - ranking: lista problemów posortowana wg severity (5->1)\n  - summary: statystyki porównania\n\n**Cache:**\n- Ta sama para (A, B) -> ten sam comparison_id\n- A->B != B->A (kierunkowe)",
     "operationId": "create_power_flow_comparison_api_power_flow_comparisons_post",
     "requestBody": {
      "content": {
@@ -26035,7 +26035,7 @@
       "description": "Validation Error"
      }
     },
-    "summary": "Utworz porownanie dwoch analiz rozplywu mocy",
+    "summary": "Utwórz porównanie dwóch analiz rozpływu mocy",
     "tags": [
      "power-flow-comparison"
     ]
@@ -26078,7 +26078,7 @@
       "description": "Validation Error"
      }
     },
-    "summary": "Pobierz metadane porownania",
+    "summary": "Pobierz metadane porównania",
     "tags": [
      "power-flow-comparison"
     ]
@@ -26119,7 +26119,7 @@
       "description": "Validation Error"
      }
     },
-    "summary": "Eksportuj porownanie do DOCX",
+    "summary": "Eksportuj porównanie do DOCX",
     "tags": [
      "power-flow-comparison"
     ]
@@ -26160,7 +26160,7 @@
       "description": "Validation Error"
      }
     },
-    "summary": "Eksportuj porownanie do JSON",
+    "summary": "Eksportuj porównanie do JSON",
     "tags": [
      "power-flow-comparison"
     ]
@@ -26201,7 +26201,7 @@
       "description": "Validation Error"
      }
     },
-    "summary": "Eksportuj porownanie do PDF",
+    "summary": "Eksportuj porównanie do PDF",
     "tags": [
      "power-flow-comparison"
     ]
@@ -26244,7 +26244,7 @@
       "description": "Validation Error"
      }
     },
-    "summary": "Pobierz pelne wyniki porownania",
+    "summary": "Pobierz pełne wyniki porównania",
     "tags": [
      "power-flow-comparison"
     ]
@@ -26287,7 +26287,7 @@
       "description": "Validation Error"
      }
     },
-    "summary": "Pobierz slad porownania (audyt)",
+    "summary": "Pobierz ślad porównania (audyt)",
     "tags": [
      "power-flow-comparison"
     ]
@@ -28682,7 +28682,7 @@
       "description": "Validation Error"
      }
     },
-    "summary": "Eksportuj wynik koordynacji zabezpieczen do DOCX",
+    "summary": "Eksportuj wynik koordynacji zabezpieczeń do DOCX",
     "tags": [
      "protection-coordination"
     ]
@@ -28723,7 +28723,7 @@
       "description": "Validation Error"
      }
     },
-    "summary": "Eksportuj wynik koordynacji zabezpieczen do PDF",
+    "summary": "Eksportuj wynik koordynacji zabezpieczeń do PDF",
     "tags": [
      "protection-coordination"
     ]

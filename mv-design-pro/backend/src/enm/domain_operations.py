@@ -3568,7 +3568,7 @@ def _resolve_manual_source_equivalent(
     # Warunek na samej wartosci zweza typ do `float` w calej reszcie funkcji.
     if voltage_kv is None:
         return _error_response(
-            "Reczna umowa rownowazna GPZ WN/SN wymaga dodatniego napiecia strony WN.",
+            "Ręczna umowa równoważna GPZ WN/SN wymaga dodatniego napięcia strony WN.",
             "source.manual_equivalent_incomplete",
         )
 
@@ -3646,8 +3646,8 @@ def _resolve_manual_source_equivalent(
         if sk3_mva is None and ik3_ka is None:
             if input_side == "HV_110":
                 return _error_response(
-                    "Reczna umowa rownowazna GPZ WN/SN wymaga dodatniej mocy zwarciowej Sk3 "
-                    "albo pradu Ik3 na szynie 110 kV.",
+                    "Ręczna umowa równoważna GPZ WN/SN wymaga dodatniej mocy zwarciowej Sk3 "
+                    "albo prądu Ik3 na szynie 110 kV.",
                     "source.manual_equivalent_incomplete",
                 )
             return _error_response(
@@ -4628,12 +4628,12 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
 
     if field_ref and not _is_line_continuation_field(enm, field_ref):
         return _error_response(
-            "Odcinek SN moze wychodzic wylacznie z pola liniowego stacji albo GPZ.",
+            "Odcinek SN może wychodzić wyłącznie z pola liniowego stacji albo GPZ.",
             "trunk.source_field_not_line_bay",
         )
     if not field_ref and _is_station_main_bus_ref(enm, from_terminal_id):
         return _error_response(
-            "Odcinek SN nie moze wychodzic bezposrednio z szyny stacyjnej. "
+            "Odcinek SN nie może wychodzić bezpośrednio z szyny stacyjnej. "
             "Wybierz wolne pole liniowe albo port ZK SN.",
             "trunk.source_requires_line_bay",
         )
@@ -4708,7 +4708,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     voltage_kv = from_bus.get("voltage_kv")
     if not voltage_kv or voltage_kv <= 0:
         return _error_response(
-            f"Szyna zrodlowa '{from_terminal_id}' nie ma napiecia znamionowego.",
+            f"Szyna źródłowa '{from_terminal_id}' nie ma napięcia znamionowego.",
             "trunk.from_bus_voltage_missing",
         )
 
@@ -9791,7 +9791,7 @@ def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     if bays_using_section:
         return _error_response(
             f"Nie można usunąć sekcji '{section_id}': używana przez pola {bays_using_section}. "
-            "Najpierw przepi??/usun?? pola.",
+            "Najpierw przepi??/usuń?? pola.",
             "gpz_section.delete.in_use",
         )
 

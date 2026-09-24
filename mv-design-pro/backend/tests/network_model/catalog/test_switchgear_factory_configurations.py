@@ -413,7 +413,7 @@ def test_jednostka_spoza_slownika_rodziny_to_twardy_blad() -> None:
             ),
         ],
     )
-    with pytest.raises(NiezgodnoscKonfiguracjiError, match="spoza slownika rodziny"):
+    with pytest.raises(NiezgodnoscKonfiguracjiError, match="spoza słownika rodziny"):
         family_supports_factory_configuration(blok)
 
 
@@ -438,7 +438,7 @@ def test_jednostka_o_funkcji_spoza_katalogu_rodziny_to_twardy_blad() -> None:
             ),
         ],
     )
-    with pytest.raises(NiezgodnoscKonfiguracjiError, match="ktorej"):
+    with pytest.raises(NiezgodnoscKonfiguracjiError, match="której"):
         family_supports_factory_configuration(blok)
 
 

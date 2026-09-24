@@ -103,8 +103,8 @@ def _dolacz_kolumny_addytywne(engine: Engine) -> None:
                 continue
             if not kolumna.nullable and kolumna.server_default is None:
                 raise RuntimeError(
-                    f"Kolumna {tabela.name}.{kolumna.name} jest NOT NULL bez wartosci "
-                    "domyslnej — nie da sie jej dolozyc do istniejacej tabeli bez zmiany "
+                    f"Kolumna {tabela.name}.{kolumna.name} jest NOT NULL bez wartości "
+                    "domyślnej — nie da się jej dołożyć do istniejącej tabeli bez zmiany "
                     "schematu; to nie jest kolumna addytywna."
                 )
             typ = kolumna.type.compile(dialect=engine.dialect)

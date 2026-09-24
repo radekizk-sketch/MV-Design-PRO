@@ -51,7 +51,7 @@ from domain.canonical_operations import CANONICAL_OPERATIONS
 
 _OPIS_BEZ_OPERACJI = (
     "Zapis modelu bez zarejestrowanej operacji domenowej "
-    "(np. uzupelnienie danych katalogowych albo migracja formatu)."
+    "(np. uzupełnienie danych katalogowych albo migracja formatu)."
 )
 
 #: Opis wpisu ODTWORZONEGO przy wczytaniu modelu z nosnika, gdy rewizja biezaca
@@ -63,7 +63,7 @@ OPIS_WPISU_ODTWORZONEGO = (
 )
 
 #: Opis wpisu dla modelu przywroconego 1:1 z archiwum projektu (`restore_enm`).
-OPIS_PRZYWROCENIA_Z_ARCHIWUM = "Model przywrocony 1:1 z archiwum projektu (import)."
+OPIS_PRZYWROCENIA_Z_ARCHIWUM = "Model przywrócony 1:1 z archiwum projektu (import)."
 
 #: Opis wpisu dla modelu przeniesionego spod klucza przypadku pod klucz projektu
 #: (migracja CV-1) — rewizja i hash bez zmian, zmienia sie wylacznie klucz.
@@ -281,7 +281,7 @@ def opis_operacji(operacja: str | None) -> str:
         return _OPIS_BEZ_OPERACJI
     spec = CANONICAL_OPERATIONS.get(operacja)
     if spec is None:
-        return f"Operacja '{operacja}' nie wystepuje w kanonie operacji."
+        return f"Operacja '{operacja}' nie występuje w kanonie operacji."
     return spec.description_pl
 
 
@@ -316,7 +316,7 @@ def przygotuj_dopisanie(
     opis zawsze pochodzi z kanonu (`opis_operacji`), nigdy z parametru.
     """
     if opis_pl is not None and operacja is not None:
-        raise ValueError("opis_pl wolno podac tylko dla zapisu bez operacji domenowej")
+        raise ValueError("opis_pl wolno podać tylko dla zapisu bez operacji domenowej")
     dziennik = _wczytaj(case_id)
     for istniejacy in dziennik.wpisy:
         if istniejacy.rewizja == rewizja:

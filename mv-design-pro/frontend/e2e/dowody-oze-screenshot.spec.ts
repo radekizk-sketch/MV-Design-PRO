@@ -184,7 +184,7 @@ test.describe('dowody-oze:screenshot', () => {
       await expect(slad).toContainText(
         `Dane: nastawa = ${LOM_NASTAWA_81R.value!.toFixed(4)}`,
       );
-      await expect(slad).toContainText('Wynik porownania:');
+      await expect(slad).toContainText('Wynik porównania:');
       await expect(slad).not.toContainText('Werdykt');
 
       await page.waitForTimeout(300);

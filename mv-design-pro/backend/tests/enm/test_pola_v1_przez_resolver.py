@@ -281,7 +281,7 @@ def test_rodzina_blokowa_jest_odrzucona_z_wskazaniem_kanalu_blokow(tor: str) -> 
     assert odpowiedz.get("error"), f"tor {tor}: rodzina blokowa przeszla bez bledu"
     assert odpowiedz.get("error_code") == KOD_BLEDU_POLA_KATALOGOWEGO
     komunikat = str(odpowiedz["error"])
-    assert "BLOKOW fabrycznych" in komunikat
+    assert "BLOKÓW fabrycznych" in komunikat
     assert "add_sn_bay_from_catalog" in komunikat
     assert "factory_configuration_ref" in komunikat
     # Operacja meldująca błąd nie zostawia skutku: brak migawki i brak elementów.

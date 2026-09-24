@@ -41,10 +41,10 @@ def _serialize_analytical_protection_device_for_export(device: Any) -> dict[str,
         notes.append(str(source_ref))
     if meta.get("unverified"):
         notes.append(
-            "Rekord analityczny: dane urzadzenia nie sa jeszcze zweryfikowane produkcyjnie."
+            "Rekord analityczny: dane urządzenia nie są jeszcze zweryfikowane produkcyjnie."
         )
     if meta.get("unverified_ranges"):
-        notes.append("Zakresy nastaw pochodza z katalogu analitycznego i wymagaja weryfikacji.")
+        notes.append("Zakresy nastaw pochodzą z katalogu analitycznego i wymagają weryfikacji.")
     verification_status = "NIEWERYFIKOWANY" if meta.get("unverified") else "CZESCIOWO_ZWERYFIKOWANY"
 
     return {

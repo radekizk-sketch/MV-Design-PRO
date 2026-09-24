@@ -156,7 +156,7 @@ def _krok_reguly_malych_silnikow(result: Any) -> dict[str, Any]:
     Czysty formatter: liczby z white_box solvera (`ikss_async_machines_a`,
     `small_motor_limit_a`, `ikss_total_a`); jedyna operacja = skala A -> kA.
     """
-    werdykt = "SPELNIONA" if result.motors_negligible else "NIESPELNIONA"
+    werdykt = "SPEŁNIONA" if result.motors_negligible else "NIESPEŁNIONA"
     wplyw = "silniki pomijalne w Ib" if result.motors_negligible else "silniki niepomijalne w Ib"
     ikss_total_a = result.white_box.get("ikss_total_a")
     async_a = result.white_box.get("ikss_async_machines_a")
@@ -165,7 +165,7 @@ def _krok_reguly_malych_silnikow(result: Any) -> dict[str, Any]:
         # Wynik bez maszyn (white_box bez liczb) — uczciwy krok bez podstawien.
         return {
             "tekst": (
-                "Regula malych silnikow (par. 6.6): pomijalne gdy suma I''k,M <= 0.05 * I''k — "
+                "Reguła małych silników (par. 6.6): pomijalne gdy suma I''k,M <= 0.05 * I''k — "
                 f"{werdykt} ({wplyw})"
             ),
             "latex": None,
@@ -174,9 +174,9 @@ def _krok_reguly_malych_silnikow(result: Any) -> dict[str, Any]:
     rel_latex = r"\le" if result.motors_negligible else ">"
     return {
         "tekst": (
-            "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; "
-            f"wartosc graniczna 0.05 * I''k = {a_na_ka(limit_a):.3f} kA; "
-            f"wartosc obliczona suma I''k,M = {a_na_ka(async_a):.3f} kA "
+            "Reguła małych silników (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; "
+            f"wartość graniczna 0.05 * I''k = {a_na_ka(limit_a):.3f} kA; "
+            f"wartość obliczona suma I''k,M = {a_na_ka(async_a):.3f} kA "
             f"({a_na_ka(async_a):.3f} {rel_tekst} {a_na_ka(limit_a):.3f}) -> "
             f"{werdykt} ({wplyw})"
         ),
@@ -199,7 +199,7 @@ def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
     """
     naglowek: list[dict[str, Any]] = [
         {
-            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prądy częściowe maszyn + zanik (mu, q)",
             "latex": None,
         },
     ]
@@ -208,7 +208,7 @@ def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
         naglowek.append(
             {
                 "tekst": (
-                    f"Punkt zwarcia: I''k (calkowity, z Z-bus) = "
+                    f"Punkt zwarcia: I''k (całkowity, z Z-bus) = "
                     f"{a_na_ka(ikss_total_a):.3f} kA, c = {result.c_factor:.2f}, "
                     f"t_min = {result.t_min_s:.2f} s"
                 ),
@@ -234,7 +234,7 @@ def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
             "kroki": [
                 {
                     "tekst": (
-                        f"Suma wkladow maszyn: I''k,M = {a_na_ka(result.ikss_machines_a):.3f} kA, "
+                        f"Suma wkładów maszyn: I''k,M = {a_na_ka(result.ikss_machines_a):.3f} kA, "
                         f"I_b,M = {a_na_ka(result.ib_machines_a):.3f} kA"
                     ),
                     "latex": r"I''_{k,M} = \sum_m I''_{k,m}, \qquad I_{b,M} = \sum_m I_{b,m}",
@@ -275,13 +275,13 @@ def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
     limit_a = wb.get("small_motor_limit_a")
     if result.motors_negligible:
         regula_status = "PASS"
-        regula_wartosc = "SPELNIONA — silniki pomijalne w Ib"
+        regula_wartosc = "SPEŁNIONA — silniki pomijalne w Ib"
     else:
         regula_status = "FAIL"
-        regula_wartosc = "NIESPELNIONA — silniki niepomijalne, wklady uwzglednione w Ib"
+        regula_wartosc = "NIESPEŁNIONA — silniki niepomijalne, wkłady uwzględnione w Ib"
     if async_a is not None and limit_a is not None:
         regula_wartosc += (
-            f" (suma I''k,M = {a_na_ka(async_a):.3f} kA, prog = {a_na_ka(limit_a):.3f} kA)"
+            f" (suma I''k,M = {a_na_ka(async_a):.3f} kA, próg = {a_na_ka(limit_a):.3f} kA)"
         )
     return [
         {
@@ -363,7 +363,7 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
     except (KeyError, ValueError) as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Nie udalo sie wyznaczyc wkladow zwarciowych: {exc}",
+            detail=f"Nie udało się wyznaczyć wkładów zwarciowych: {exc}",
         ) from exc
     # Addytywnie: wywod prezentacyjny {tekst, latex} (zasada KaTeX) obok
     # surowego sladu WHITE BOX solvera — bez zmiany istniejacych pol.

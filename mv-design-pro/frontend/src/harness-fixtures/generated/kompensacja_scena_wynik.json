@@ -2,7 +2,7 @@
   "analysis": "compensation_sizing",
   "context": {
     "run_id": "run-lf-scena-kompensacja",
-    "snapshot_hash": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849",
+    "snapshot_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
     "case_id": "case-demo"
   },
   "parameters": {
@@ -12,7 +12,7 @@
     "cos_phi_min": 0.95,
     "uwzglednij_noc": false
   },
-  "input_hash": "194fad551a5e23ad728c9366b709f67cde10eee05f19426634dcda573c91c56a",
+  "input_hash": "9bbad02ad760a8ea31a478dbfffa0796b994288903c570b7df494910e4ce85c6",
   "baseline": {
     "cosfi_przekroju_dzien": 0.996592,
     "cosfi_przekroju_noc": null,
@@ -22,7 +22,7 @@
   "candidates": [
     {
       "catalog_ref": "KOMP_SN_0V6_15KV",
-      "name": "Bateria kondensatorow SN 0,6 Mvar 15 kV",
+      "name": "Bateria kondensatorów SN 0,6 Mvar 15 kV",
       "rated_mvar": 0.6,
       "rated_kv": 15.0,
       "cosfi_przekroju_dzien": 0.996598,
@@ -43,7 +43,7 @@
     },
     {
       "catalog_ref": "KOMP_SN_1V2_15KV",
-      "name": "Bateria kondensatorow SN 1,2 Mvar 15 kV",
+      "name": "Bateria kondensatorów SN 1,2 Mvar 15 kV",
       "rated_mvar": 1.2,
       "rated_kv": 15.0,
       "cosfi_przekroju_dzien": 0.996604,
@@ -64,7 +64,7 @@
     },
     {
       "catalog_ref": "KOMP_SN_2V4_15KV",
-      "name": "Bateria kondensatorow SN 2,4 Mvar 15 kV",
+      "name": "Bateria kondensatorów SN 2,4 Mvar 15 kV",
       "rated_mvar": 2.4,
       "rated_kv": 15.0,
       "cosfi_przekroju_dzien": 0.996616,
@@ -86,7 +86,7 @@
   ],
   "dobor": {
     "catalog_ref": "KOMP_SN_0V6_15KV",
-    "name": "Bateria kondensatorow SN 0,6 Mvar 15 kV",
+    "name": "Bateria kondensatorów SN 0,6 Mvar 15 kV",
     "rated_mvar": 0.6,
     "rated_kv": 15.0,
     "cosfi_punktu_dzien": 0.996598,

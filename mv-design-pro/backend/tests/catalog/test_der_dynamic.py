@@ -267,7 +267,7 @@ class TestMapowanieNaParametryDynamiczneKanoniczne:
         assert blok.przeksztaltnik is None
 
     def test_wind_type3_wymaga_argumentow_przeksztaltnika(self) -> None:
-        with pytest.raises(ValueError, match="brak argumentow przeksztaltnika"):
+        with pytest.raises(ValueError, match="brak argumentów przekształtnika"):
             DEFAULT_WIND_TYPE_3.to_parametry_dynamiczne()
 
     def test_wind_type3_z_argumentami_mapuje_sie_z_przeksztaltnikiem(self) -> None:

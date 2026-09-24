@@ -144,8 +144,8 @@ def rodzaj_enm_aparatu(apparatus_kind: str) -> str:
     if rodzaj is None:
         raise NiezgodnoscKonfiguracjiError(
             f"Aparat {apparatus_kind!r} katalogowego pola nie ma odpowiednika "
-            "wsrod aparatow pierwotnych pola w modelu sieci — pole nie moze "
-            "powstac z pominieciem aparatu, ktory katalog przewiduje."
+            "wśród aparatów pierwotnych pola w modelu sieci — pole nie może "
+            "powstać z pominięciem aparatu, który katalog przewiduje."
         )
     return rodzaj
 
@@ -289,9 +289,9 @@ def _sloty_pola(szablon: CompleteMvBayTemplate) -> list[_SlotPola]:
     instancje = szablon.device_instances
     if len(urzadzenia) != len(instancje):
         raise NiezgodnoscKonfiguracjiError(
-            f"Katalogowe pole {szablon.template_ref} ma {len(urzadzenia)} aparatow "
-            f"w torze i {len(instancje)} pozycji wyposazenia — obie listy musza "
-            "opisywac to samo pole."
+            f"Katalogowe pole {szablon.template_ref} ma {len(urzadzenia)} aparatów "
+            f"w torze i {len(instancje)} pozycji wyposażenia — obie listy muszą "
+            "opisywać to samo pole."
         )
     return [
         _SlotPola(
@@ -319,9 +319,9 @@ def _indeks_lacznika_glownego(szablon: CompleteMvBayTemplate, sloty: list[_SlotP
     if len(indeksy) > 1:
         etykiety = ", ".join(sloty[indeks].oznaczenie for indeks in indeksy)
         raise NiezgodnoscKonfiguracjiError(
-            f"Katalogowe pole {szablon.template_ref} ma wiecej niz jeden lacznik "
-            f"glowny ({etykiety}) — nie da sie rozstrzygnac, ktory aparat opisuje "
-            "tor glowny pola."
+            f"Katalogowe pole {szablon.template_ref} ma więcej niż jeden łącznik "
+            f"główny ({etykiety}) — nie da się rozstrzygnąć, który aparat opisuje "
+            "tor główny pola."
         )
     return indeksy[0] if indeksy else None
 
@@ -349,8 +349,8 @@ def _aparaty_z_pola_katalogowego(
     indeks_lacznika = _indeks_lacznika_glownego(szablon, sloty)
     if podmiana_toru_glownego is not None and indeks_lacznika is None:
         raise NiezgodnoscKonfiguracjiError(
-            f"Katalogowe pole {szablon.template_ref} nie ma slotu lacznika "
-            "glownego, wiec nie da sie w nim osadzic aparatury jednostki bloku "
+            f"Katalogowe pole {szablon.template_ref} nie ma slotu łącznika "
+            "głównego, więc nie da się w nim osadzić aparatury jednostki bloku "
             "fabrycznego."
         )
 
@@ -372,7 +372,7 @@ def _aparaty_z_pola_katalogowego(
                         raise NiezgodnoscKonfiguracjiError(
                             f"Aparat {apparatus_kind!r} jednostki bloku nie ma "
                             "jednoznacznego oznaczenia w kanonie pola — nie "
-                            "wolno go oznaczyc z domyslu."
+                            "wolno go oznaczyć z domysłu."
                         )
                     oznaczenie = oznaczenie_kanoniczne
                 if rodzaj_enm in _RODZAJE_LACZNIKA_GLOWNEGO:
@@ -424,7 +424,7 @@ def _jednostka_bloku(
     if not isinstance(indeks, int) or isinstance(indeks, bool):
         raise NiezgodnoscKonfiguracjiError(
             f"Blok fabryczny {konfiguracja.code} wymaga numeru jednostki "
-            f"(1..{liczba}) — bez niego nie wiadomo, ktore pole bloku powstaje."
+            f"(1..{liczba}) — bez niego nie wiadomo, które pole bloku powstaje."
         )
     if indeks < 1 or indeks > liczba:
         raise NiezgodnoscKonfiguracjiError(
@@ -461,7 +461,7 @@ def _pole_rodziny_dla_funkcji(switchgear_family_ref: str, bay_kind: str) -> Comp
     if not kandydaci:
         raise NiezgodnoscKonfiguracjiError(
             f"Katalog rodziny {switchgear_family_ref} nie zawiera pola o funkcji "
-            f"{bay_kind!r} — jednostki bloku nie da sie zmaterializowac."
+            f"{bay_kind!r} — jednostki bloku nie da się zmaterializować."
         )
     return sorted(kandydaci, key=lambda szablon: szablon.template_ref)[0]
 
@@ -485,14 +485,14 @@ def rozwiaz_plan_pola(payload: dict[str, Any], *, field_ref: str | None) -> Plan
     ref_bloku = _tekst(payload.get("factory_configuration_ref"))
     if ref_pola_jawny and ref_bloku:
         raise NiezgodnoscKonfiguracjiError(
-            "Wskazano jednoczesnie katalogowe pole i blok fabryczny — pole "
-            "powstaje albo z pojedynczej celki rodziny modulowej, albo z "
+            "Wskazano jednocześnie katalogowe pole i blok fabryczny — pole "
+            "powstaje albo z pojedynczej celki rodziny modułowej, albo z "
             "jednostki bloku RMU."
         )
     ref_pola = ref_pola_jawny or (None if ref_bloku else ref_slotu)
     if not ref_pola and not ref_bloku:
         raise NiezgodnoscKonfiguracjiError(
-            "Brak wyboru katalogowego: wskaz katalogowe pole rodziny "
+            "Brak wyboru katalogowego: wskaż katalogowe pole rodziny "
             "(complete_bay_template_ref) albo blok fabryczny RMU "
             "(factory_configuration_ref) wraz z numerem jednostki."
         )
@@ -509,7 +509,7 @@ def rozwiaz_plan_pola(payload: dict[str, Any], *, field_ref: str | None) -> Plan
             raise NiezgodnoscKonfiguracjiError(
                 f"Jednostka {numer} bloku {konfiguracja.code} materializuje pole "
                 f"{szablon.template_ref}, a wskazano pole {ref_slotu} — blok "
-                "rozstrzyga, ktore pole rodziny powstaje."
+                "rozstrzyga, które pole rodziny powstaje."
             )
         aparaty, rodzaj_glownego = _aparaty_z_pola_katalogowego(
             szablon,
@@ -538,19 +538,19 @@ def rozwiaz_plan_pola(payload: dict[str, Any], *, field_ref: str | None) -> Plan
     if szablon is None:
         raise NiezgodnoscKonfiguracjiError(
             f"Katalog rodzin rozdzielnic nie zna pola {ref_pola!r} — pola stacji "
-            "nie da sie zmaterializowac z pozycji spoza katalogu."
+            "nie da się zmaterializować z pozycji spoza katalogu."
         )
     if szablon.switchgear_family_ref is None:
         raise NiezgodnoscKonfiguracjiError(
             f"Katalogowe pole {szablon.template_ref} nie deklaruje rodziny "
-            "rozdzielnicy — bez rodziny nie ma czego walidowac."
+            "rozdzielnicy — bez rodziny nie ma czego walidować."
         )
     rodzina = wymagaj_rodziny_oferowanej(szablon.switchgear_family_ref)
     zadeklarowana_rodzina = _tekst(payload.get("switchgear_family_ref"))
     if zadeklarowana_rodzina and zadeklarowana_rodzina != rodzina.switchgear_family_ref:
         raise NiezgodnoscKonfiguracjiError(
-            f"Pole {szablon.template_ref} nalezy do rodziny "
-            f"{rodzina.switchgear_family_ref}, a wskazano rodzine "
+            f"Pole {szablon.template_ref} należy do rodziny "
+            f"{rodzina.switchgear_family_ref}, a wskazano rodzinę "
             f"{zadeklarowana_rodzina} — katalog nie przewiduje takiej kombinacji."
         )
     # Walidator rodziny (§4): pole należy do TEJ rodziny i jest polem, które
@@ -558,9 +558,9 @@ def rozwiaz_plan_pola(payload: dict[str, Any], *, field_ref: str | None) -> Plan
     family_supports_bay_template(rodzina.switchgear_family_ref, szablon)
     if rodzina.tor_konfiguracji == "BLOK_RMU":
         raise NiezgodnoscKonfiguracjiError(
-            f"Rodzina {rodzina.family_name} jest rozdzielnica pierscieniowa "
-            "skladana z BLOKOW fabrycznych — pole powstaje przez wskazanie bloku "
-            "i jednostki, a nie pojedynczej celki. Uzyj operacji "
+            f"Rodzina {rodzina.family_name} jest rozdzielnica pierścieniowa "
+            "składana z BLOKÓW fabrycznych — pole powstaje przez wskazanie bloku "
+            "i jednostki, a nie pojedynczej celki. Użyj operacji "
             "add_sn_bay_from_catalog z factory_configuration_ref i "
             "factory_unit_index."
         )
@@ -586,7 +586,7 @@ def _konfiguracja_bloku(configuration_ref: str) -> FactoryConfiguration:
     except KeyError as exc:
         raise NiezgodnoscKonfiguracjiError(
             f"Katalog nie zna bloku fabrycznego {configuration_ref!r} — pola "
-            "jednostki nie da sie zmaterializowac."
+            "jednostki nie da się zmaterializować."
         ) from exc
 
 

@@ -29,10 +29,10 @@
       "application": "protection",
       "accuracy_limit_factor": 10.0,
       "verification_status": "REFERENCYJNY",
-      "source_reference": "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzen, ALF, Idyn=2,5·Ith, Fs) / IEC 62271-200 (szereg wytrzymalosci rozdzielnicy SN)",
+      "source_reference": "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzeń, ALF, Idyn=2,5·Ith, Fs) / IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN)",
       "catalog_status": "REFERENCYJNY_V1",
       "contract_version": "2.0",
-      "verification_note": "Rekord referencyjny do doboru CT. Ith podano jako WYMAGANA wytrzymalosc cieplna przekladnika w rozdzielnicy SN wg znormalizowanego szeregu IEC 62271-200 (16 kA/1 s dla torow <= 150 A, 20 kA/1 s dla 200-1000 A, 25 kA/1 s dla >= 1200 A); Idyn wyprowadzany normowo (2,5·Ith), Fs wg znormalizowanej wartosci 10 dla rdzeni pomiarowych. Wartosci wlasciwe dla konkretnego wyrobu potwierdza karta producenta."
+      "verification_note": "Rekord referencyjny do doboru CT. Ith podano jako WYMAGANĄ wytrzymałość cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, 25 kA/1 s dla >= 1200 A); Idyn wyprowadzany normowo (2,5·Ith), Fs wg znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla konkretnego wyrobu potwierdza karta producenta."
     },
     "wynik": {
       "kryteria": [

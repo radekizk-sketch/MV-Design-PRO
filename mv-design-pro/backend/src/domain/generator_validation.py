@@ -101,12 +101,12 @@ def validate_generator_connections(
                     area=ReadinessAreaV1.GENERATORS,
                     priority=ReadinessPriority.BLOCKER,
                     message_pl=(
-                        f"Generator OZE '{name}' ({ref_id}): brak wariantu przylaczenia "
+                        f"Generator OZE '{name}' ({ref_id}): brak wariantu przyłączenia "
                         f"(nn_side lub block_transformer)"
                     ),
                     element_id=ref_id,
                     element_type="GENERATOR",
-                    fix_hint_pl="Wybierz wariant przylaczenia w kreatorze",
+                    fix_hint_pl="Wybierz wariant przyłączenia w kreatorze",
                     wizard_step="K6",
                 )
             )
@@ -142,7 +142,7 @@ def validate_generator_connections(
                         ),
                         element_id=ref_id,
                         element_type="GENERATOR",
-                        fix_hint_pl="Popraw referencje do stacji w kreatorze",
+                        fix_hint_pl="Popraw referencję do stacji w kreatorze",
                         wizard_step="K6",
                     )
                 )
@@ -189,12 +189,12 @@ def validate_generator_connections(
                     area=ReadinessAreaV1.GENERATORS,
                     priority=ReadinessPriority.BLOCKER,
                     message_pl=(
-                        f"Generator OZE '{name}' ({ref_id}): nieznany wariant przylaczenia "
+                        f"Generator OZE '{name}' ({ref_id}): nieznany wariant przyłączenia "
                         f"'{connection_variant}' (dozwolone: nn_side, block_transformer)"
                     ),
                     element_id=ref_id,
                     element_type="GENERATOR",
-                    fix_hint_pl="Popraw wariant przylaczenia w kreatorze",
+                    fix_hint_pl="Popraw wariant przyłączenia w kreatorze",
                     wizard_step="K6",
                 )
             )

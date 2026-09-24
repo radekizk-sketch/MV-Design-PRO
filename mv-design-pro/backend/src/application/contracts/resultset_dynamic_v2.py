@@ -59,7 +59,7 @@ RESULTSET_DYNAMIC_CONTRACT: Final[Literal["resultset_dynamic_v2"]] = "resultset_
 RODZAJ_ANALIZY_DYNAMIKI: Final = "DYNAMIKA_RMS"
 
 StronaProbki = Literal["C", "L", "P"]
-"""Strona probki: `C` — probka siatki; `L` — stan PRZED naniesieniem zdarzen chwili;
+"""Strona próbki: `C` — próbka siatki; `L` — stan PRZED naniesieniem zdarzeń chwili;
 `P` — stan PO zdarzeniach i jednej re-inicjalizacji (karta AB-1b.1 par. 0 pkt 6)."""
 
 
@@ -80,20 +80,20 @@ def dziedzina_fizyki_dynamiki() -> tuple[DziedzinaFizyki, ...]:
 
 
 PrzestrzenKanalu = Literal["siec", "urzadzenie", "regulator", "magazyn", "obserwabla"]
-"""Przestrzen kanalu (W6-A): `siec` i `urzadzenie` to zmienne algebraiczne i stany,
-`obserwabla` to wielkosc WYPROWADZONA z obu jawnym wzorem (czestotliwosc wezla,
-wielkosci zaciskow galezi). Rozdzial jest semantyczny — serializacja jest wspolna,
-ale znaczenie kanalu nie moze sie zgubic w jednym slowniku."""
+"""Przestrzeń kanału (W6-A): `siec` i `urzadzenie` to zmienne algebraiczne i stany,
+`obserwabla` to wielkość WYPROWADZONA z obu jawnym wzorem (częstotliwość węzła,
+wielkości zacisków gałęzi). Rozdział jest semantyczny — serializacja jest wspólna,
+ale znaczenie kanału nie może się zgubić w jednym słowniku."""
 
 
 class KanalDynamicznyV2(BaseModel):
     """Opis jednego kanalu szeregu czasowego (bez probek — te w API na zadanie)."""
 
-    klucz: str = Field(min_length=1, description="Klucz kanalu (np. 'u_pu@b12', 'omega_pu@g1').")
+    klucz: str = Field(min_length=1, description="Klucz kanału (np. 'u_pu@b12', 'omega_pu@g1').")
     przestrzen: PrzestrzenKanalu
     jednostka: str = Field(min_length=1, description="Jednostka fizyczna (pu, Hz, s, MW, Mvar...).")
     element_ref: str | None = Field(default=None, description="Ref_id elementu ENM, gdy dotyczy.")
-    opis_pl: str = Field(min_length=1, description="Opis po polsku (bez kodow projektowych).")
+    opis_pl: str = Field(min_length=1, description="Opis po polsku (bez kodów projektowych).")
 
     model_config = {"frozen": True, "extra": "forbid"}
 
@@ -102,8 +102,8 @@ class OdbiorOdcietyV2(BaseModel):
     """Odbior, ktory w chwili zdarzenia stracil obwod (obszar beznapieciowy)."""
 
     ref: str = Field(min_length=1)
-    p_pu: float = Field(description="Moc czynna zadana sprzed odciecia (pu, konwencja poboru).")
-    q_pu: float = Field(description="Moc bierna zadana sprzed odciecia (pu, konwencja poboru).")
+    p_pu: float = Field(description="Moc czynna zadana sprzed odcięcia (pu, konwencja poboru).")
+    q_pu: float = Field(description="Moc bierna zadana sprzed odcięcia (pu, konwencja poboru).")
 
     model_config = {"frozen": True, "extra": "forbid"}
 
@@ -120,19 +120,19 @@ class ZdarzenieWykonaneV2(BaseModel):
     t_wykonany_s: float
     rodzaj: str = Field(min_length=1)
     ref: str | None = None
-    delta_x_max: float = Field(description="Maks. skok stanu rozniczkowego przy re-inicjalizacji.")
+    delta_x_max: float = Field(description="Maks. skok stanu różniczkowego przy re-inicjalizacji.")
     delta_y_max: float = Field(description="Maks. skok stanu algebraicznego przy re-inicjalizacji.")
     residuum_kcl_max: float = Field(
-        description="Maks. residuum bilansu pradowego po re-inicjalizacji."
+        description="Maks. residuum bilansu prądowego po re-inicjalizacji."
     )
     obszary_odciete: tuple[str, ...] = Field(
-        description="Wezly, ktore w tej chwili staly sie beznapieciowe."
+        description="Węzły, które w tej chwili stały się beznapięciowe."
     )
     odbiory_odciete: tuple[OdbiorOdcietyV2, ...] = Field(
-        description="Odbiory, ktore w tej chwili stracily obwod."
+        description="Odbiory, które w tej chwili straciły obwód."
     )
     obszary_zasilone_ponownie: tuple[str, ...] = Field(
-        description="Wezly, ktore w tej chwili przestaly byc beznapieciowe."
+        description="Węzły, które w tej chwili przestały być beznapięciowe."
     )
 
     model_config = {"frozen": True, "extra": "forbid"}
@@ -144,8 +144,8 @@ class WlasnosciBieguV2(BaseModel):
     zbiegl: bool
     kroki: int = Field(ge=0)
     kroki_odrzucone: int = Field(ge=0)
-    max_residuum_f: float = Field(ge=0.0, description="Maks. residuum rownan rozniczkowych ||f||.")
-    max_residuum_g: float = Field(ge=0.0, description="Maks. residuum rownan algebraicznych ||g||.")
+    max_residuum_f: float = Field(ge=0.0, description="Maks. residuum równań różniczkowych ||f||.")
+    max_residuum_g: float = Field(ge=0.0, description="Maks. residuum równań algebraicznych ||g||.")
     czas_obliczen_s: float = Field(ge=0.0)
     integrator: str = Field(min_length=1)
     dt_s: float = Field(gt=0.0)
@@ -174,7 +174,7 @@ class MetrykaDynamicznaV2(BaseModel):
     wartosc: float
     jednostka: str = Field(min_length=1)
     wzor_ref: str | None = Field(
-        default=None, description="Odniesienie do wzoru/rownania (WHITE BOX)."
+        default=None, description="Odniesienie do wzoru/równania (WHITE BOX)."
     )
     element_ref: str | None = None
 
@@ -242,14 +242,14 @@ class ResultSetDynamicV2(BaseModel):
         if len(self.strona_probki) != len(self.os_czasu_s):
             raise ValueError(
                 f"strona_probki ({len(self.strona_probki)}) i os_czasu_s "
-                f"({len(self.os_czasu_s)}) musza miec te sama dlugosc"
+                f"({len(self.os_czasu_s)}) muszą mieć tę samą długość"
             )
         rozne = sorted(k for k, v in self.probki.items() if len(v) != len(self.os_czasu_s))
         if rozne:
-            raise ValueError(f"Szeregi o dlugosci innej niz os czasu: {rozne[:5]}")
+            raise ValueError(f"Szeregi o długości innej niż oś czasu: {rozne[:5]}")
         if self.dziedzina_fizyki != dziedzina_fizyki_dynamiki():
             raise ValueError(
-                f"dziedzina_fizyki {self.dziedzina_fizyki} rozna od mapy dziedzin produktu "
+                f"dziedzina_fizyki {self.dziedzina_fizyki} różna od mapy dziedzin produktu "
                 f"{dziedzina_fizyki_dynamiki()}"
             )
         return self

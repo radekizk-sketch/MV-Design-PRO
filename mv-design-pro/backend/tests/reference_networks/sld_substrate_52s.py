@@ -626,11 +626,11 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
         # Front of feeder: 0.9 MW; tail: 0.4 MW — monotone so the reversal point
         # sits where cumulative downstream generation overtakes downstream load.
         p_kw = 900.0 if i < 6 else 400.0
-        attach_load(stn_ref, p_kw, p_kw * 0.33, f"Odbior miejski T{i + 1}")
+        attach_load(stn_ref, p_kw, p_kw * 0.33, f"Odbiór miejski T{i + 1}")
 
     # A few lateral-tip loads so laterals also carry real demand.
     for i, stn_ref in enumerate(lateral_station_refs[:8]):
-        attach_load(stn_ref, 250.0, 80.0, f"Odbior wiejski L{i + 1}")
+        attach_load(stn_ref, 250.0, 80.0, f"Odbiór wiejski L{i + 1}")
 
     # -----------------------------------------------------------------------
     # 5c. Normally-open point (NOP) — realistic reserve tie left open
@@ -659,7 +659,7 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                 "insert_at": {"mode": "RATIO", "value": 0.5},
                 "switch_type": "ROZLACZNIK",
                 "normal_state": "open",
-                "switch_name": "Lacznik sekcyjny NO (rezerwa)",
+                "switch_name": "Łącznik sekcyjny NO (rezerwa)",
                 "catalog_ref": _NOP_SWITCH_REF,
                 "catalog_binding": {
                     "catalog_namespace": _NOP_SWITCH_NAMESPACE,
@@ -714,7 +714,7 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                     "dlugosc_m": 200,
                     "catalog_ref": _CABLE_REF,
                 },
-                "ring_name": "Rezerwa pierscieniowa (odcinek NOP)",
+                "ring_name": "Rezerwa pierścieniowa (odcinek NOP)",
             },
         )
 
@@ -737,7 +737,7 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
     return {
         "name": "SLD_SUBSTRATE_52S",
         "description": (
-            "Deterministyczna siec SN >=52 stacji dla weryfikacji wizualnej SLD (M-05, V-09, V-10)"
+            "Deterministyczna sieć SN >=52 stacji dla weryfikacji wizualnej SLD (M-05, V-09, V-10)"
         ),
         "enm": enm,
         "station_count": station_count,

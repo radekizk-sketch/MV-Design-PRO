@@ -138,9 +138,9 @@ class PodstawaKrzywej:
     def __post_init__(self) -> None:
         if (self.standard is None) != (self.nastawy is None):
             raise ValueError(
-                "PodstawaKrzywej: norma i nastawy krzywej musza byc ustawione "
-                "razem albo wcale — inaczej miejsce uzycia dostaje norme bez "
-                "danych, z ktorych ma liczyc."
+                "PodstawaKrzywej: norma i nastawy krzywej muszą być ustawione "
+                "razem albo wcale — inaczej miejsce użycia dostaje normę bez "
+                "danych, z których ma liczyć."
             )
 
 

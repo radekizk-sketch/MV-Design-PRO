@@ -911,8 +911,8 @@ def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
             "loading_percent": loading_pct,
             "white_box": [
                 _wb(
-                    "Moc galezi S (zespolona)",
-                    r"\underline{S} = \underline{U} \cdot \underline{I}^{*}\ \text{(rozwiazanie NR)}",
+                    "Moc gałęzi S (zespolona)",
+                    r"\underline{S} = \underline{U} \cdot \underline{I}^{*}\ \text{(rozwiązanie NR)}",
                     {"solver": "newton-raphson"},
                     rf"P = {p_mw}\ \text{{MW}},\ Q = {q_mvar}\ \text{{Mvar}}",
                     {"p_mw": p_mw, "q_mvar": q_mvar},
@@ -929,7 +929,7 @@ def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
                     "interpretacja",
                 ),
                 _wb(
-                    "Prad galezi I",
+                    "Prąd gałęzi I",
                     r"I = \frac{S \cdot 10^3}{\sqrt{3} \cdot U_n}",
                     {"s_mva": s_mva, "u_n_kv": from_un_kv},
                     rf"I = \frac{{{s_mva} \cdot 10^3}}{{\sqrt{{3}} \cdot {from_un_kv}}}",
@@ -938,7 +938,7 @@ def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
                     "interpretacja",
                 ),
                 _wb(
-                    "Obciazenie pola",
+                    "Obciążenie pola",
                     r"obc. = \max\left(\frac{I_{od}}{I_{zn,od}}, \frac{I_{do}}{I_{zn,do}}\right)"
                     r" \cdot 100\%",
                     {

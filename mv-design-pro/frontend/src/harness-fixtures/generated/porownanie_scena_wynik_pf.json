@@ -202,35 +202,35 @@
   "provenance_a": {
     "analysis_type": "PF",
     "envelope": {
-      "catalog_fingerprint": "b64a1bd963c0fa67c10552c6139338fcaec350fefba9de8b04d2054e30af1af0",
+      "catalog_fingerprint": "cea426cf988f650cf00a87e531d693e93a693f4fa529acf1f74e5e77b8b46977",
       "model_revision": 1,
-      "options_hash": "1acf59d386e9c32b13e6af54a7c21706bea1159df0141e3639c9a18e43f11fc6",
+      "options_hash": "8b9b5c176c362aa39e2fd24ef163bb24891a310ba59594ef6345e17f8ab91776",
       "project_id": "projekt-scena-porownanie",
-      "semantic_fingerprint": "4f89e0a03507493698b9be727bba9e46b9fba7a8162029796f4f83700ac2fefb",
-      "snapshot_hash": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849",
+      "semantic_fingerprint": "bb86af9ec3b9bd3f0de728f22b3a56fd1f5f13b44cf4e4d86f45d321448e5f9e",
+      "snapshot_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
       "wersja": 1
     },
     "finished_at": "2026-09-10T08:00:00+00:00",
-    "input_hash": "1acf59d386e9c32b13e6af54a7c21706bea1159df0141e3639c9a18e43f11fc6",
+    "input_hash": "8b9b5c176c362aa39e2fd24ef163bb24891a310ba59594ef6345e17f8ab91776",
     "run_id": "run-lf-scena-porownanie-a",
-    "snapshot_hash": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849",
+    "snapshot_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
     "status": "FINISHED"
   },
   "provenance_b": {
     "analysis_type": "PF",
     "envelope": {
-      "catalog_fingerprint": "b64a1bd963c0fa67c10552c6139338fcaec350fefba9de8b04d2054e30af1af0",
+      "catalog_fingerprint": "cea426cf988f650cf00a87e531d693e93a693f4fa529acf1f74e5e77b8b46977",
       "model_revision": 2,
-      "options_hash": "921a64bd5475513871c04aa7365d87f69920f7b3588693b250fe96355cf96b5f",
+      "options_hash": "7bd091ef9e47b994709d33f9d1a45dfcbf72f099d3485a4a1aa0d4ffe37016a7",
       "project_id": "projekt-scena-porownanie",
-      "semantic_fingerprint": "ad5a53365a29315b76d05affee7bd459ba54ad19440cd21dba5e41aee2971442",
-      "snapshot_hash": "66e29b8f40d1f95093f422d058077eafd2916c84f6569e85a2755bab6b7606e2",
+      "semantic_fingerprint": "dcad10a8f7c05fccb2700aa1eb27246d06d99438396b4ccff717af1b0d6a2676",
+      "snapshot_hash": "c5594e9965433b0635cb16fd5100028b336f7caa1c44a13cbf1edce596273aac",
       "wersja": 1
     },
     "finished_at": "2026-09-10T08:00:00+00:00",
-    "input_hash": "921a64bd5475513871c04aa7365d87f69920f7b3588693b250fe96355cf96b5f",
+    "input_hash": "7bd091ef9e47b994709d33f9d1a45dfcbf72f099d3485a4a1aa0d4ffe37016a7",
     "run_id": "run-lf-scena-porownanie-b",
-    "snapshot_hash": "66e29b8f40d1f95093f422d058077eafd2916c84f6569e85a2755bab6b7606e2",
+    "snapshot_hash": "c5594e9965433b0635cb16fd5100028b336f7caa1c44a13cbf1edce596273aac",
     "status": "FINISHED"
   },
   "ranking": [

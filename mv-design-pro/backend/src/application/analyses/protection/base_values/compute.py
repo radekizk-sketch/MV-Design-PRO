@@ -105,7 +105,7 @@ def _compute_abs(setpoint: ProtectionSetpoint) -> ProtectionComputedValue | None
     return ProtectionComputedValue(
         value=setpoint.abs_value,
         unit=computed_unit,
-        computed_from="wartosc bezwzgledna",
+        computed_from="wartość bezwzględna",
     )
 
 

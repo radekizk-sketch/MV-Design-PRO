@@ -144,7 +144,7 @@ def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
         )
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
-        detail=f"Nieobslugiwany typ analizy: {value.value}",
+        detail=f"Nieobsługiwany typ analizy: {value.value}",
     )
 
 

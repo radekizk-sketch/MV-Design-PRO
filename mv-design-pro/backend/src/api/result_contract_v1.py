@@ -24,7 +24,7 @@ def _parse_uuid(value: str, field_name: str = "id") -> UUID:
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{field_name} musi byc poprawnym UUID",
+            detail=f"{field_name} musi być poprawnym UUID",
         ) from exc
 
 
@@ -40,7 +40,7 @@ def get_resultset_v1(run_id: str) -> dict[str, Any]:
     if run.status != "FINISHED":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Wyniki niedostepne - status przebiegu: {run.status}",
+            detail=f"Wyniki niedostępne - status przebiegu: {run.status}",
         )
 
     result_v1 = build_resultset_v1_from_canonical_run(run)

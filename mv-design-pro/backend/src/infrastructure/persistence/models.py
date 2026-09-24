@@ -112,7 +112,7 @@ def _kanoniczna_wartosc_spoza_json(value: Any) -> Any:
             return value.item()
     except ImportError:
         pass
-    raise TypeError(f"Typ nieobslugiwany w kolumnie JSON: {type(value)!r}")
+    raise TypeError(f"Typ nieobsługiwany w kolumnie JSON: {type(value)!r}")
 
 
 class DeterministicJSON(TypeDecorator[Any]):

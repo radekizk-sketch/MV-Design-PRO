@@ -293,7 +293,7 @@ def validate_generator_field_connection(
                 fix_code="generator.block_transformer_missing",
                 fix_message_pl=(
                     f"Generator {generator_id} ({connection_variant}): "
-                    f"brak referencji do transformatora przylaczeniowego"
+                    f"brak referencji do transformatora przyłączeniowego"
                 ),
             )
 

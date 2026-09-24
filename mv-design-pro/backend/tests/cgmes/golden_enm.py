@@ -32,7 +32,7 @@ def build_golden_enm() -> EnergyNetworkModel:
     return EnergyNetworkModel(
         header=ENMHeader(name="CGMES Golden Net"),
         buses=[
-            Bus(ref_id="bus_hv", name="GPZ 110kV", voltage_kv=110.0),
+            Bus(ref_id="bus_hv", name="GPZ 110 kV", voltage_kv=110.0),
             Bus(ref_id="bus_sn_main", name="Szyna SN", voltage_kv=15.0),
             Bus(ref_id="bus_sn_b", name="Stacja B SN", voltage_kv=15.0),
             Bus(ref_id="bus_sn_c", name="Stacja C SN", voltage_kv=15.0),
@@ -43,7 +43,7 @@ def build_golden_enm() -> EnergyNetworkModel:
         sources=[
             Source(
                 ref_id="src_gpz",
-                name="System 110kV",
+                name="System 110 kV",
                 bus_ref="bus_hv",
                 model="short_circuit_power",
                 sk3_mva=2500.0,
@@ -143,7 +143,7 @@ def build_golden_enm() -> EnergyNetworkModel:
             ),
             SwitchBranch(
                 ref_id="sw_coupler",
-                name="Sprzeglo Q1",
+                name="Sprzęgło Q1",
                 from_bus_ref="bus_sn_main",
                 to_bus_ref="bus_sn_b",
                 type="breaker",
@@ -160,8 +160,8 @@ def build_golden_enm() -> EnergyNetworkModel:
             ),
         ],
         loads=[
-            Load(ref_id="load_nn", name="Odbior nN", bus_ref="bus_nn", p_mw=0.45, q_mvar=0.15),
-            Load(ref_id="load_c", name="Odbior C", bus_ref="bus_sn_c", p_mw=1.2, q_mvar=0.4),
+            Load(ref_id="load_nn", name="Odbiór nN", bus_ref="bus_nn", p_mw=0.45, q_mvar=0.15),
+            Load(ref_id="load_c", name="Odbiór C", bus_ref="bus_sn_c", p_mw=1.2, q_mvar=0.4),
         ],
         generators=[
             Generator(

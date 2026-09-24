@@ -314,7 +314,7 @@ def _require_power_flow_bundle(run: CanonicalRun) -> dict[str, Any]:
 
 def _build_short_circuit_export_bundle(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
-        raise ValueError("Przebieg nie jest analiza zwarciowa")
+        raise ValueError("Przebieg nie jest analizą zwarciową")
     analysis_case_context = build_analysis_case_context(run)
     trace_payload = canonicalize_json(build_extended_trace_response(run))
     return {
@@ -623,14 +623,14 @@ def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | N
                 or raw_result.get("short_circuit_type"),
                 "I_dyn": {
                     "symbol": "I_dyn",
-                    "label_pl": "Prad dynamiczny do sprawdzenia aparatury",
+                    "label_pl": "Prąd dynamiczny do sprawdzenia aparatury",
                     "value_ka": _amps_to_ka(item.get("ip_a")),
                     "source_field": "ip_a",
                     "source_standard": "IEC 60909",
                 },
                 "I_th": {
                     "symbol": "I_th",
-                    "label_pl": "Prad cieplny zastepczy do sprawdzenia aparatury",
+                    "label_pl": "Prąd cieplny zastępczy do sprawdzenia aparatury",
                     "value_ka": _amps_to_ka(item.get("ith_a")),
                     "source_field": "ith_a",
                     "source_standard": "IEC 60909",
@@ -645,8 +645,8 @@ def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | N
         "standard_basis": "IEC 60909",
         "scope": "SC3F",
         "symbols": {
-            "I_dyn": "Prad dynamiczny porownywany z wytrzymaloscia dynamiczna aparatury.",
-            "I_th": "Prad cieplny zastepczy porownywany z wytrzymaloscia cieplna aparatury.",
+            "I_dyn": "Prąd dynamiczny porównywany z wytrzymałością dynamiczną aparatury.",
+            "I_th": "Prąd cieplny zastępczy porównywany z wytrzymałością cieplną aparatury.",
         },
         "rows": rows,
     }
@@ -1037,7 +1037,7 @@ def export_run_pdf_response(
         text = (
             f"{str(bus.get('bus_id', '—'))[:12]}: "
             f"V={format_wynik(bus.get('v_pu'), '.4g')} pu, "
-            f"kat={format_wynik(bus.get('angle_deg'), '.2f')} deg"
+            f"kąt={format_wynik(bus.get('angle_deg'), '.2f')} deg"
         )
         canvas_obj.drawString(left_margin, y, text)
         y -= line_height

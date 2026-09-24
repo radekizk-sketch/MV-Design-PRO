@@ -230,14 +230,14 @@ def _wywod_scenariusza(scenario: FrtScenario | None) -> list[dict[str, Any]]:
         kroki.append(
             _krok(
                 f"Scenariusz {scenario.scenario_id} ({scenario.test_kind.upper()}): "
-                f"napiecie zaklocenia {scenario.voltage_dip_depth_pu:.4f} p.u. "
-                f"przez {scenario.fault_duration_s:.4f} s (echo wejscia solvera prob FRT/HVRT)."
+                f"napięcie zakłócenia {scenario.voltage_dip_depth_pu:.4f} p.u. "
+                f"przez {scenario.fault_duration_s:.4f} s (echo wejścia solvera prób FRT/HVRT)."
             )
         )
     kroki.append(
         _krok(
-            "Trajektoria: napiecie zadane profilem wejsciowym scenariusza (nie rozwiazanie "
-            "sieci); prad bierny i moc czynna z odpowiedzi inercyjnej uproszczonego modelu."
+            "Trajektoria: napięcie zadane profilem wejściowym scenariusza (nie rozwiązanie "
+            "sieci); prąd bierny i moc czynna z odpowiedzi inercyjnej uproszczonego modelu."
         )
     )
     kroki.append(_krok(f"Ocena niewykonana: {POWOD_BRAKU_OCENY_FRT_PL}."))

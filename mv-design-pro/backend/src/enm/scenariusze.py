@@ -150,7 +150,7 @@ class Nastawa(BaseModel):
     @model_validator(mode="after")
     def _co_najmniej_jedno(self) -> Nastawa:
         if self.p_mw is None and self.q_mvar is None:
-            raise ValueError("Nastawa bez zadnej wartosci (p_mw/q_mvar) nie jest nadpisaniem")
+            raise ValueError("Nastawa bez żadnej wartości (p_mw/q_mvar) nie jest nadpisaniem")
         return self
 
 
@@ -200,27 +200,27 @@ class Zwarcie(BaseModel):
     def _usuniecie_po_zwarciu(self) -> Zwarcie:
         if (self.bus_ref is None) == (self.element_ref is None):
             raise ValueError(
-                "Zwarcie: podaj dokladnie jedno miejsce — `bus_ref` (zwarcie w wezle) albo "
+                "Zwarcie: podaj dokładnie jedno miejsce — `bus_ref` (zwarcie w węźle) albo "
                 "`element_ref` z `polozenie_wzgledne` (zwarcie w linii/kablu w x*L); "
                 f"podano bus_ref={self.bus_ref!r}, element_ref={self.element_ref!r}."
             )
         if (self.element_ref is None) != (self.polozenie_wzgledne is None):
             raise ValueError(
-                "Zwarcie: `polozenie_wzgledne` podaje sie razem z `element_ref` i tylko z nim "
+                "Zwarcie: `polozenie_wzgledne` podaje się razem z `element_ref` i tylko z nim "
                 f"(element_ref={self.element_ref!r}, "
                 f"polozenie_wzgledne={self.polozenie_wzgledne!r})."
             )
         if self.t_usuniecia_s is not None and self.t_usuniecia_s <= self.t_s:
             raise ValueError(
-                f"Zwarcie: t_usuniecia_s ({self.t_usuniecia_s}) musi byc pozniej niz "
-                f"t_s ({self.t_s}) — zwarcie nie moze byc usuniete przed wystapieniem."
+                f"Zwarcie: t_usuniecia_s ({self.t_usuniecia_s}) musi być później niż "
+                f"t_s ({self.t_s}) — zwarcie nie może być usunięte przed wystąpieniem."
             )
         if (self.t_usuniecia_s is None) != (self.sposob_usuniecia is None):
             raise ValueError(
                 f"Zwarcie: t_usuniecia_s ({self.t_usuniecia_s}) i sposob_usuniecia "
-                f"({self.sposob_usuniecia}) podaje sie razem albo wcale — usuniecie bez "
-                "jawnego sposobu nie mowi, czy luk zgasl po odcieciu (izolacja), czy pod "
-                "napieciem (samoczynne)."
+                f"({self.sposob_usuniecia}) podaje się razem albo wcale — usunięcie bez "
+                "jawnego sposobu nie mówi, czy łuk zgasł po odcięciu (izolacja), czy pod "
+                "napięciem (samoczynne)."
             )
         return self
 
@@ -355,8 +355,8 @@ class ScenariuszDynamiczny(BaseModel):
     def _spojnosc_harmonogramu(self) -> ScenariuszDynamiczny:
         if self.krok_wyjscia_s > self.horyzont_s:
             raise ValueError(
-                f"ScenariuszDynamiczny: krok_wyjscia_s ({self.krok_wyjscia_s}) nie moze "
-                f"byc wiekszy niz horyzont_s ({self.horyzont_s})."
+                f"ScenariuszDynamiczny: krok_wyjscia_s ({self.krok_wyjscia_s}) nie może "
+                f"być większy niż horyzont_s ({self.horyzont_s})."
             )
         for zdarzenie in self.zdarzenia:
             if zdarzenie.t_s > self.horyzont_s:
@@ -524,26 +524,26 @@ class OperatingScenario(BaseModel):
     fault_spec: FaultScenario | None = None
     dynamika: ScenariuszDynamiczny | None = None
     """
-    Harmonogram zdarzen czasowych (karta W6-1 SS0 p.5). `None` = brak scenariusza
-    dynamicznego (domyslne — addytywne). `apply_scenario` NIE stosuje tych
-    zdarzen do migawki — scenariusz statyczny (`out_of_service`/`setpoints`)
-    pozostaje jedynym stanem POCZATKOWYM migawki efektywnej, a harmonogram jest
-    DANA WEJSCIOWA biegu czasowego: `opcje_biegu_ze_scenariusza` rzutuje go na
-    `options["dynamika"]`, skad czyta go adapter (karta W6-3B).
+    Harmonogram zdarzeń czasowych (karta W6-1 SS0 p.5). `None` = brak scenariusza
+    dynamicznego (domyślne — addytywne). `apply_scenario` NIE stosuje tych
+    zdarzeń do migawki — scenariusz statyczny (`out_of_service`/`setpoints`)
+    pozostaje jedynym stanem POCZĄTKOWYM migawki efektywnej, a harmonogram jest
+    DANĄ WEJŚCIOWĄ biegu czasowego: `opcje_biegu_ze_scenariusza` rzutuje go na
+    `options["dynamika"]`, skąd czyta go adapter (karta W6-3B).
     """
 
     @model_validator(mode="after")
     def _bez_duplikatow(self) -> OperatingScenario:
         if len(set(self.out_of_service)) != len(self.out_of_service):
-            raise ValueError("out_of_service zawiera powtorzony ref_id")
+            raise ValueError("out_of_service zawiera powtórzony ref_id")
         refy = [w.ref_id for w in self.injections] + [s.ref_id for s in self.probe_shunts]
         if len(set(refy)) != len(refy):
-            raise ValueError("injections/probe_shunts zawieraja powtorzony ref_id sondy")
+            raise ValueError("injections/probe_shunts zawierają powtórzony ref_id sondy")
         for ref, mnoznik in self.gen_scaling.items():
             if not ref:
                 raise ValueError("gen_scaling: pusty ref_id")
             if mnoznik < 0.0:
-                raise ValueError(f"gen_scaling[{ref!r}]: mnoznik ujemny ({mnoznik})")
+                raise ValueError(f"gen_scaling[{ref!r}]: mnożnik ujemny ({mnoznik})")
         return self
 
     @property
@@ -721,14 +721,14 @@ def _waliduj_zdarzenia_dynamiczne(snapshot: dict[str, Any], scenariusz: Operatin
                     scenariusz.scenario_id,
                     ref,
                     f"zdarzenie '{zdarzenie.rodzaj}' (t_s={zdarzenie.t_s}): "
-                    "brak elementu w zadnej kolekcji",
+                    "brak elementu w żadnej kolekcji",
                 )
             if kolekcja not in dozwolone:
                 raise ScenariuszNieprzystajeError(
                     scenariusz.scenario_id,
                     ref,
-                    f"zdarzenie '{zdarzenie.rodzaj}' (t_s={zdarzenie.t_s}): element nalezy do "
-                    f"kolekcji '{kolekcja}', a ten rodzaj zdarzenia dziala wylacznie na "
+                    f"zdarzenie '{zdarzenie.rodzaj}' (t_s={zdarzenie.t_s}): element należy do "
+                    f"kolekcji '{kolekcja}', a ten rodzaj zdarzenia działa wyłącznie na "
                     f"{', '.join(dozwolone)}",
                 )
 
@@ -756,7 +756,7 @@ def apply_scenario(
         kolekcja = _znajdz_kolekcje(snapshot, ref_id)
         if kolekcja is None:
             raise ScenariuszNieprzystajeError(
-                scenariusz.scenario_id, ref_id, "brak elementu do wylaczenia w zadnej kolekcji"
+                scenariusz.scenario_id, ref_id, "brak elementu do wyłączenia w żadnej kolekcji"
             )
         snapshot[kolekcja] = [
             element
@@ -805,7 +805,7 @@ def apply_scenario(
             _wymagaj_szyny(snapshot, scenariusz, wstrzyk.bus_ref)
             if wstrzyk.ref_id in generatory:
                 raise ScenariuszNieprzystajeError(
-                    scenariusz.scenario_id, wstrzyk.ref_id, "generator o tym ref_id juz istnieje"
+                    scenariusz.scenario_id, wstrzyk.ref_id, "generator o tym ref_id już istnieje"
                 )
             lista.append(_generator_sondy(wstrzyk))
             nadpisania.append(
@@ -826,7 +826,7 @@ def apply_scenario(
             _wymagaj_szyny(snapshot, scenariusz, sonda.bus_ref)
             if sonda.ref_id in baterie:
                 raise ScenariuszNieprzystajeError(
-                    scenariusz.scenario_id, sonda.ref_id, "bateria o tym ref_id juz istnieje"
+                    scenariusz.scenario_id, sonda.ref_id, "bateria o tym ref_id już istnieje"
                 )
             lista.append(_bateria_sondy(sonda))
             nadpisania.append(
@@ -978,7 +978,7 @@ def _scenariusz_z_wpisu(klucz: str, wpis: dict[str, Any]) -> OperatingScenario:
     try:
         return OperatingScenario.model_validate(wpis["scenariusz"])
     except (KeyError, ValidationError) as exc:
-        raise ScenariuszUszkodzonyError(f"{klucz}: nieprawidlowy wpis rewizji: {exc}") from exc
+        raise ScenariuszUszkodzonyError(f"{klucz}: nieprawidłowy wpis rewizji: {exc}") from exc
 
 
 def zapisz_scenariusz(klucz: str, scenariusz: OperatingScenario) -> OperatingScenario:
@@ -992,7 +992,7 @@ def zapisz_scenariusz(klucz: str, scenariusz: OperatingScenario) -> OperatingSce
     """
     if scenariusz.przejsciowy:
         raise ScenariuszPrzejsciowyError(
-            f"Scenariusz przejsciowy {scenariusz.scenario_id!r} nie jest zapisywany w magazynie"
+            f"Scenariusz przejściowy {scenariusz.scenario_id!r} nie jest zapisywany w magazynie"
         )
     rejestr = _wczytaj_rejestr(klucz, scenariusz.scenario_id)
     if rejestr is None:

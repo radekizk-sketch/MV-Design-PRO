@@ -27,7 +27,7 @@
         "szyna_ref": "bus_sn_main"
       },
       "od": {
-        "etykieta_pl": "Zacisk początkowy — szyna GPZ 110kV",
+        "etykieta_pl": "Zacisk początkowy — szyna GPZ 110 kV",
         "szyna_ref": "bus_hv"
       }
     },

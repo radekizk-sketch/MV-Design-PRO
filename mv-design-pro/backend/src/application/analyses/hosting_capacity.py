@@ -207,7 +207,7 @@ def _existing_generation_mw(snapshot: dict[str, Any], bus_ref: str) -> float:
             # zeby nie zanizyc mocy istniejacej generacji (a przez to zawyzyc
             # zdolnosc przylaczeniowa ponad rzeczywista).
             logger.warning(
-                "Pomijam generator bez pola p_mw przy liczeniu mocy istniejacej "
+                "Pomijam generator bez pola p_mw przy liczeniu mocy istniejącej "
                 "(bus_ref=%r) — uszkodzony wpis, nie 0 MW.",
                 bus_ref,
             )

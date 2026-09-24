@@ -327,7 +327,7 @@ class WindTurbineDynamicProfile(BaseModel):
             if brakujace:
                 raise ValueError(
                     f"WindTurbineDynamicProfile.to_parametry_dynamiczne({self.iec_type}): "
-                    f"brak argumentow przeksztaltnika: {', '.join(brakujace)}."
+                    f"brak argumentów przekształtnika: {', '.join(brakujace)}."
                 )
             przeksztaltnik = PrzeksztaltnikGFL(
                 proweniencja=self.proweniencja,

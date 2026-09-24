@@ -117,7 +117,7 @@
         "id": "3ae9d8b4-be06-5a45-97b6-509356fc0360",
         "materialized_params": null,
         "meta": {},
-        "name": "Sprzeglo Q1",
+        "name": "Sprzęgło Q1",
         "overrides": [],
         "parameter_source": null,
         "r_ohm": null,
@@ -135,7 +135,7 @@
         "frequency_hz": null,
         "id": "9fa6db10-1a3b-5d98-a46d-426ddc8b12c5",
         "meta": {},
-        "name": "GPZ 110kV",
+        "name": "GPZ 110 kV",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "bus_hv",
@@ -264,7 +264,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849",
+      "hash_sha256": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
       "name": "CGMES Golden Net",
       "revision": 1,
       "updated_at": "2026-09-16T09:00:00Z"
@@ -281,7 +281,7 @@
         "materialized_params": null,
         "meta": {},
         "model": "pq",
-        "name": "Odbior nN",
+        "name": "Odbiór nN",
         "overrides": [],
         "p_mw": 0.45,
         "parameter_source": null,
@@ -300,7 +300,7 @@
         "materialized_params": null,
         "meta": {},
         "model": "pq",
-        "name": "Odbior C",
+        "name": "Odbiór C",
         "overrides": [],
         "p_mw": 1.2,
         "parameter_source": null,
@@ -329,7 +329,7 @@
         "materialized_params": null,
         "meta": {},
         "model": "short_circuit_power",
-        "name": "System 110kV",
+        "name": "System 110 kV",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "CATALOG",
@@ -472,5 +472,5 @@
       }
     ]
   },
-  "snapshot_id": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849"
+  "snapshot_id": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0"
 }

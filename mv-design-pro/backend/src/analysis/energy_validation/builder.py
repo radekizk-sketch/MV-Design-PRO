@@ -175,7 +175,7 @@ class EnergyValidationBuilder:
         zrodlo_znamionowych = (
             "S_n i U_n strony transformatora"
             if isinstance(branch, TransformerBranch)
-            else "obciazalnosc galezi"
+            else "obciążalność gałęzi"
         )
         return EnergyValidationItem(
             check_type=check_type,
@@ -189,7 +189,7 @@ class EnergyValidationBuilder:
             status=status,
             why_pl=why,
             white_box=_white_box_progowe(
-                "obciazenie = max(|I_od| / I_r,od; |I_do| / I_r,do) * 100%",
+                "obciążenie = max(|I_od| / I_r,od; |I_do| / I_r,do) * 100%",
                 r"\varepsilon = \max\left(\frac{|I_{od}|}{I_{r,od}}, "
                 r"\frac{|I_{do}|}{I_{r,do}}\right) \cdot 100\%",
                 f"|I_od| = {i_od_ka:.4f} kA, |I_do| = {i_do_ka:.4f} kA (wynik PF), "
@@ -198,7 +198,7 @@ class EnergyValidationBuilder:
                 rf"\varepsilon = \max\left(\frac{{{i_od_ka:.4f}}}{{{ir_od_ka:.4f}}}, "
                 rf"\frac{{{i_do_ka:.4f}}}{{{ir_do_ka:.4f}}}\right) \cdot 100\% "
                 rf"= {loading_pct:.2f}\%",
-                f"obciazenie = {loading_pct:.2f} %",
+                f"obciążenie = {loading_pct:.2f} %",
                 config.loading_warn_pct,
                 config.loading_fail_pct,
                 "%",
@@ -230,7 +230,7 @@ class EnergyValidationBuilder:
                         limit_fail=config.voltage_fail_pct,
                         margin_pct=None,
                         status=EnergyValidationStatus.NOT_COMPUTED,
-                        why_pl="Brak danych napieciowych.",
+                        why_pl="Brak danych napięciowych.",
                     )
                 )
                 continue
@@ -240,7 +240,7 @@ class EnergyValidationBuilder:
                 delta_pct,
                 config.voltage_warn_pct,
                 config.voltage_fail_pct,
-                "Odchylenie napieciowe",
+                "Odchylenie napięciowe",
                 "%",
             )
             margin = delta_pct - config.voltage_fail_pct
@@ -296,7 +296,7 @@ class EnergyValidationBuilder:
                     margin_pct=None,
                     status=EnergyValidationStatus.NOT_COMPUTED,
                     why_pl=(
-                        "Bilans strat nieoznaczony w wyniku PF (wartosc NaN)."
+                        "Bilans strat nieoznaczony w wyniku PF (wartość NaN)."
                         if (straty_pu is None or moc_slack_pu is None)
                         else "Brak mocy bilansowej slack (P_slack ~ 0)."
                     ),
@@ -361,7 +361,7 @@ class EnergyValidationBuilder:
                     margin_pct=None,
                     status=EnergyValidationStatus.NOT_COMPUTED,
                     why_pl=(
-                        "Moc bilansowa slack nieoznaczona w wyniku PF (wartosc NaN)."
+                        "Moc bilansowa slack nieoznaczona w wyniku PF (wartość NaN)."
                         if moc_slack_pu is None
                         else "Brak mocy bilansowej slack."
                     ),
@@ -373,13 +373,13 @@ class EnergyValidationBuilder:
 
         if cos_phi >= 0.9:
             status = EnergyValidationStatus.PASS
-            why = f"cos(phi) = {cos_phi:.3f} >= 0.9 — bilans mocy biernej prawidlowy."
+            why = f"cos(phi) = {cos_phi:.3f} >= 0.9 — bilans mocy biernej prawidłowy."
         elif cos_phi >= 0.8:
             status = EnergyValidationStatus.WARNING
-            why = f"cos(phi) = {cos_phi:.3f} — bilans mocy biernej " "na granicy akceptowalnosci."
+            why = f"cos(phi) = {cos_phi:.3f} — bilans mocy biernej " "na granicy akceptowalności."
         else:
             status = EnergyValidationStatus.FAIL
-            why = f"cos(phi) = {cos_phi:.3f} < 0.8 — " "nadmierny pobor mocy biernej z sieci."
+            why = f"cos(phi) = {cos_phi:.3f} < 0.8 — " "nadmierny pobór mocy biernej z sieci."
 
         return [
             EnergyValidationItem(
@@ -395,7 +395,7 @@ class EnergyValidationBuilder:
                 why_pl=why,
                 white_box=(
                     _krok(
-                        "Wzor: tan(phi) = |Q_slack / P_slack|; cos(phi) = cos(arctan(tan(phi)))",
+                        "Wzór: tan(phi) = |Q_slack / P_slack|; cos(phi) = cos(arctan(tan(phi)))",
                         r"\cos\varphi = \cos\!\left(\arctan\left|\frac{Q_{\text{slack}}}{P_{\text{slack}}}\right|\right)",
                     ),
                     _krok(
@@ -405,7 +405,7 @@ class EnergyValidationBuilder:
                         f"Wynik: tan(phi) = {tan_phi:.4f}, cos(phi) = {cos_phi:.3f}",
                         rf"\tan\varphi = {tan_phi:.4f} \Rightarrow \cos\varphi = {cos_phi:.3f}",
                     ),
-                    _krok("Progi: ostrzezenie cos(phi) < 0.9, przekroczenie cos(phi) < 0.8"),
+                    _krok("Progi: ostrzeżenie cos(phi) < 0.9, przekroczenie cos(phi) < 0.8"),
                     _krok(f"Werdykt: {_WERDYKT_PL[status]}"),
                 ),
             )
@@ -441,10 +441,10 @@ def _white_box_progowe(
     progi -> werdykt. Ciagi deterministyczne (stale formaty); tekst ASCII-PL
     jak why_pl, matematyka w LaTeX (kanon Proof Engine)."""
     return (
-        _krok(f"Wzor: {wzor}", wzor_latex),
+        _krok(f"Wzór: {wzor}", wzor_latex),
         _krok(f"Dane: {dane}"),
         _krok(f"Wynik: {wynik}", podstawienie_latex),
-        _krok(f"Progi: ostrzezenie {warn:.1f} {unit}, przekroczenie {fail:.1f} {unit}"),
+        _krok(f"Progi: ostrzeżenie {warn:.1f} {unit}, przekroczenie {fail:.1f} {unit}"),
         _krok(f"Werdykt: {_WERDYKT_PL[status]}"),
     )
 
@@ -464,11 +464,11 @@ def _threshold_check(
     if value >= warn:
         return (
             EnergyValidationStatus.WARNING,
-            f"{label} {value:.2f} {unit} zbliza sie do limitu {fail:.1f} {unit}.",
+            f"{label} {value:.2f} {unit} zbliża się do limitu {fail:.1f} {unit}.",
         )
     return (
         EnergyValidationStatus.PASS,
-        f"{label} {value:.2f} {unit} ponizej limitu {warn:.1f} {unit}.",
+        f"{label} {value:.2f} {unit} poniżej limitu {warn:.1f} {unit}.",
     )
 
 

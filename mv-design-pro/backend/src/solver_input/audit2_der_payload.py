@@ -90,8 +90,8 @@ def build_der_audit2_payload(
     if bess_operation_mode_refs:
         if der_kind != "BESS":
             issues.append(
-                f"DER {der_kind} nie obsluguje trybow BESS — pole bess_operation_mode_refs "
-                "zostalo zignorowane."
+                f"DER {der_kind} nie obsługuje trybów BESS — pole bess_operation_mode_refs "
+                "zostało zignorowane."
             )
         else:
             # Deterministyczne sortowanie po id.

@@ -87,11 +87,11 @@ def generate_bess_modes_proof(
         # PCS capability check.
         if mode.requires_four_quadrant and not pcs_four_quadrant:
             issues.append(
-                f"Tryb '{mode.label_pl}' wymaga PCS 4-quadrant (PCS DER {der_id} nie obsluguje)."
+                f"Tryb '{mode.label_pl}' wymaga PCS 4-quadrant (PCS DER {der_id} nie obsługuje)."
             )
         if mode.requires_grid_forming and not pcs_grid_forming:
             issues.append(
-                f"Tryb '{mode.label_pl}' wymaga PCS grid-forming (PCS DER {der_id} nie obsluguje)."
+                f"Tryb '{mode.label_pl}' wymaga PCS grid-forming (PCS DER {der_id} nie obsługuje)."
             )
         selected_modes.append(mode.to_dict())
 
@@ -107,9 +107,9 @@ def generate_bess_modes_proof(
 
     pass_status = len(issues) == 0
     summary = (
-        f"OK: DER {der_id} ma {len(selected_modes)} trybow zgodnych ze zdolnosciami PCS."
+        f"OK: DER {der_id} ma {len(selected_modes)} trybów zgodnych ze zdolnościami PCS."
         if pass_status
-        else f"BLOKER: DER {der_id} — {len(issues)} problemow z trybami BESS."
+        else f"BLOKER: DER {der_id} — {len(issues)} problemów z trybami BESS."
     )
 
     return Audit2ProofResult(
@@ -169,14 +169,14 @@ def generate_tap_changer_plan_proof(
         if requires_avr and not tc.supports_avr:
             issues.append(
                 f"Wymagany AVR (Automatic Voltage Regulation), tap-changer '{tc.label_pl}' "
-                "nie obsluguje (typ DETC off-load)."
+                "nie obsługuje (typ DETC off-load)."
             )
 
     pass_status = len(issues) == 0
     summary = (
         f"OK: Tap-changer dla transformatora {transformer_id} jest zgodny z wymaganiami."
         if pass_status
-        else f"BLOKER: {len(issues)} problemow z planem zaczepow dla {transformer_id}."
+        else f"BLOKER: {len(issues)} problemów z planem zaczepów dla {transformer_id}."
     )
 
     return Audit2ProofResult(
@@ -296,16 +296,16 @@ def generate_vt_grounding_validation_proof(
             proof_type="AUDIT2_VT_GROUNDING_VALIDATION",
             pass_status=False,
             summary_pl=(
-                "Wspolczynnik napieciowy przekladnika jest nieznany (typ spoza katalogu "
-                "albo karta bez tej danej) — zgodnosci ze sposobem uziemienia nie da sie "
-                "wykazac."
+                "Współczynnik napięciowy przekładnika jest nieznany (typ spoza katalogu "
+                "albo karta bez tej danej) — zgodności ze sposobem uziemienia nie da się "
+                "wykazać."
             ),
             details={
                 "bay_designation": bay_designation,
                 "vt_voltage_factor": None,
                 "grounding_type": grounding_type,
                 "ok": False,
-                "message_pl": "brak wspolczynnika napieciowego",
+                "message_pl": "brak współczynnika napięciowego",
             },
             formulas_latex=[],
             generated_at=generated_at_iso,

@@ -771,10 +771,10 @@ class AddGridSourceSNPayload(_FrozenBase):
     """Pozycja elementu na schemacie jednokreskowym (SLD)."""
 
     catalog_binding: dict[str, Any] | None = None
-    """Kanoniczne powiazanie katalogowe z typem zrodla systemowego."""
+    """Kanoniczne powiązanie katalogowe z typem źródła systemowego."""
 
     manual_equivalent: dict[str, Any] | None = None
-    """Reczna umowa rownowazna dla zrodla GPZ, gdy katalog nie jest uzywany."""
+    """Ręczna umowa równoważna dla źródła GPZ, gdy katalog nie jest używany."""
 
 
 class SegmentSpec(_FrozenBase):

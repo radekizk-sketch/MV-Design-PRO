@@ -364,4 +364,4 @@ def test_dwa_regulowane_zrodla_na_jednej_szynie_sa_odrzucane() -> None:
         ).id
     )
     assert run.status == "FAILED"
-    assert "wiecej niz jedno zrodlo z aktywna regulacja" in (run.error_message or "")
+    assert "więcej niż jedno źródło z aktywną regulacją" in (run.error_message or "")

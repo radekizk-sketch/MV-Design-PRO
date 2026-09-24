@@ -263,11 +263,11 @@
             "wywod": [
               {
                 "latex": "f_{81U} \\le 47.5\\ \\text{Hz}",
-                "tekst": "Wzor: warunek okna normatywnego funkcji 81U (nastawa nie wyzsza niz krawedz okna)"
+                "tekst": "Wzór: warunek okna normatywnego funkcji 81U (nastawa nie wyższa niż krawędź okna)"
               },
               {
                 "latex": null,
-                "tekst": "Dane: nastawa = 47.5000 (przekaznik pola), krawedz okna = 47.5 — gorna krawedz okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)."
+                "tekst": "Dane: nastawa = 47.5000 (przekaźnik pola), krawędź okna = 47.5 — górna krawędź okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)."
               },
               {
                 "latex": "47.5000 \\le 47.5\\ \\text{Hz}",
@@ -275,7 +275,7 @@
               },
               {
                 "latex": null,
-                "tekst": "Wynik porownania: w oknie — Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz)."
+                "tekst": "Wynik porównania: w oknie — Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz)."
               }
             ]
           },
@@ -1564,11 +1564,11 @@
             "wywod": [
               {
                 "latex": "\\left(\\tfrac{df}{dt}\\right)_{nast} \\ge 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}",
-                "tekst": "Wzor: warunek okna normatywnego funkcji 81R (nastawa nie nizsza niz krawedz okna)"
+                "tekst": "Wzór: warunek okna normatywnego funkcji 81R (nastawa nie niższa niż krawędź okna)"
               },
               {
                 "latex": null,
-                "tekst": "Dane: nastawa = 1.0000 (przekaznik pola), krawedz okna = 2.0 — dolna krawedz okna (NC RfG Art. 13(1)(b), PTPiREE 2 Hz/s)."
+                "tekst": "Dane: nastawa = 1.0000 (przekaźnik pola), krawędź okna = 2.0 — dolna krawędź okna (NC RfG Art. 13(1)(b), PTPiREE 2 Hz/s)."
               },
               {
                 "latex": "1.0000 < 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}",
@@ -1576,7 +1576,7 @@
               },
               {
                 "latex": null,
-                "tekst": "Wynik porownania: poza oknem — Nastawa df/dt (1.0 Hz/s) poniżej dolnego okna (2.0 Hz/s) — ryzyko zbędnych wyłączeń (fałszywe wykrycie wyspy)."
+                "tekst": "Wynik porównania: poza oknem — Nastawa df/dt (1.0 Hz/s) poniżej dolnego okna (2.0 Hz/s) — ryzyko zbędnych wyłączeń (fałszywe wykrycie wyspy)."
               }
             ]
           },
@@ -2188,11 +2188,11 @@
             "wywod": [
               {
                 "latex": "f_{81U} \\le 47.5\\ \\text{Hz}",
-                "tekst": "Wzor: warunek okna normatywnego funkcji 81U (nastawa nie wyzsza niz krawedz okna)"
+                "tekst": "Wzór: warunek okna normatywnego funkcji 81U (nastawa nie wyższa niż krawędź okna)"
               },
               {
                 "latex": null,
-                "tekst": "Dane: nastawa = 47.5000 (przekaznik pola), krawedz okna = 47.5 — gorna krawedz okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)."
+                "tekst": "Dane: nastawa = 47.5000 (przekaźnik pola), krawędź okna = 47.5 — górna krawędź okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)."
               },
               {
                 "latex": "47.5000 \\le 47.5\\ \\text{Hz}",
@@ -2200,7 +2200,7 @@
               },
               {
                 "latex": null,
-                "tekst": "Wynik porownania: w oknie — Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz)."
+                "tekst": "Wynik porównania: w oknie — Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz)."
               }
             ]
           },

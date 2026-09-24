@@ -160,12 +160,12 @@ def test_przeglad_wymaga_KOMPLETU_rodzin() -> None:
 def test_przeglad_odrzuca_rodzine_spoza_rejestru() -> None:
     nadmiar = {nazwa: [] for nazwa in RODZINY_PRZEGLADU}
     nadmiar["wymyslona-rodzina"] = []
-    with pytest.raises(BladRejestruNiezmiennikow, match="spoza przegladu"):
+    with pytest.raises(BladRejestruNiezmiennikow, match="spoza przeglądu"):
         przeglad_wiarygodnosci(nadmiar)
 
 
 def test_rodzina_spoza_rejestru_w_przegladzie_pojedynczym() -> None:
-    with pytest.raises(BladRejestruNiezmiennikow, match="nie jest objeta"):
+    with pytest.raises(BladRejestruNiezmiennikow, match="nie jest objęta"):
         przeglad_rodziny("wymyslona-rodzina", [])
 
 
@@ -214,17 +214,17 @@ def test_regula_za_mocna_wymaga_klasy_docelowej() -> None:
     with pytest.raises(BladRejestruNiezmiennikow, match="klasa_docelowa"):
         RegulaKatalogu(
             kod="KAT-W-900",
-            nazwa="Regula zdegradowana bez celu",
+            nazwa="Reguła zdegradowana bez celu",
             klasa=KlasaNiezmiennika.REGULA_ZA_MOCNA,
-            podstawa="ustalenie przegladu",
+            podstawa="ustalenie przeglądu",
             uzasadnienie="brak klasy docelowej",
         )
     dobra = RegulaKatalogu(
         kod="KAT-W-900",
-        nazwa="Regula zdegradowana",
+        nazwa="Reguła zdegradowana",
         klasa=KlasaNiezmiennika.REGULA_ZA_MOCNA,
-        podstawa="ustalenie przegladu",
-        uzasadnienie="zdegradowana do wiarygodnosci",
+        podstawa="ustalenie przeglądu",
+        uzasadnienie="zdegradowana do wiarygodności",
         klasa_docelowa=KlasaNiezmiennika.WIARYGODNOSC,
     )
     assert not dobra.twarda
@@ -232,10 +232,10 @@ def test_regula_za_mocna_wymaga_klasy_docelowej() -> None:
 
 
 def test_klasa_docelowa_ma_sens_wylacznie_dla_reguly_za_mocnej() -> None:
-    with pytest.raises(BladRejestruNiezmiennikow, match="wylacznie dla REGULA_ZA_MOCNA"):
+    with pytest.raises(BladRejestruNiezmiennikow, match="wyłącznie dla REGULA_ZA_MOCNA"):
         RegulaKatalogu(
             kod="KAT-T-900",
-            nazwa="Regula fizyczna",
+            nazwa="Reguła fizyczna",
             klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
             podstawa="definicja",
             uzasadnienie="uzasadnienie",
@@ -248,9 +248,9 @@ def test_regula_normowa_musi_nazwac_norme() -> None:
     with pytest.raises(BladRejestruNiezmiennikow, match="WYMOG_NORMOWY"):
         RegulaKatalogu(
             kod="KAT-T-901",
-            nazwa="Regula bez normy",
+            nazwa="Reguła bez normy",
             klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
-            podstawa="tak sie przyjelo",
+            podstawa="tak się przyjęło",
             uzasadnienie="uzasadnienie",
         )
 
@@ -267,7 +267,7 @@ def test_kod_musi_pasowac_do_mocy_reguly() -> None:
     with pytest.raises(BladRejestruNiezmiennikow, match="KAT-W-"):
         RegulaKatalogu(
             kod="KAT-T-902",
-            nazwa="Miekka z kodem twardym",
+            nazwa="Miękka z kodem twardym",
             klasa=KlasaNiezmiennika.WIARYGODNOSC,
             podstawa="typowa relacja",
             uzasadnienie="uzasadnienie",
@@ -281,7 +281,7 @@ def test_regula_nieklasyfikowana_jest_TWARDA_ale_nie_twierdzi_o_fizyce() -> None
         nazwa="Nowa bramka bez decyzji",
         klasa=KlasaNiezmiennika.NIESKLASYFIKOWANA,
         podstawa="brak decyzji o podstawie",
-        uzasadnienie="regula egzekwowana twardo, ale jeszcze nie nazwana",
+        uzasadnienie="reguła egzekwowana twardo, ale jeszcze nie nazwana",
     )
     assert regula.twarda
     assert regula.klasa is not KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA

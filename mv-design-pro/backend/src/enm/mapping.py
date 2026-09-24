@@ -104,8 +104,8 @@ def _odmowa_elementu_bez_szyny(rodzaj: str, ref_id: str, bus_ref: str) -> str:
     miejscem, ktore moze powiedziec prawde.
     """
     return (
-        f"{rodzaj} '{ref_id}' wskazuje nieistniejaca szyne '{bus_ref}' — "
-        "assembler nie pomija elementow po cichu, bo bieg liczylby siec inna niz zapisana."
+        f"{rodzaj} '{ref_id}' wskazuje nieistniejącą szynę '{bus_ref}' — "
+        "assembler nie pomija elementów po cichu, bo bieg liczyłby sieć inną niż zapisana."
     )
 
 
@@ -514,7 +514,7 @@ def _assemble_zero_sequence_y0(
                     "pominięto wkład do macierzy Y0."
                 ),
                 result={},
-                notes="OSTRZEZENIE: brak napiecia szyny zrodla w sieci skladowej zerowej.",
+                notes="OSTRZEŻENIE: brak napięcia szyny źródła w sieci składowej zerowej.",
             )
             continue
         bus_voltage_kv = bus_voltage[source.bus_ref]

@@ -722,9 +722,9 @@ def _save_run(run: CanonicalRun) -> None:
 
 
 POWOD_OSIEROCENIA = (
-    "Bieg przerwany przed zakonczeniem (restart procesu API). "
-    "Wykonanie zyje w procesie API, wiec po jego starcie zaden bieg nie jest w toku. "
-    "Uruchom analize ponownie."
+    "Bieg przerwany przed zakończeniem (restart procesu API). "
+    "Wykonanie żyje w procesie API, więc po jego starcie żaden bieg nie jest w toku. "
+    "Uruchom analizę ponownie."
 )
 
 
@@ -827,8 +827,8 @@ def _validate_protection_sc_reference(
     sc_run_id_raw = normalized_options.get("sc_run_id")
     if not sc_run_id_raw:
         raise ValueError(
-            "Analiza zabezpieczen wymaga options.sc_run_id (identyfikator "
-            "zakonczonego biegu zwarciowego, ktorego prad Ik'' interpretuje ocena)"
+            "Analiza zabezpieczeń wymaga options.sc_run_id (identyfikator "
+            "zakończonego biegu zwarciowego, którego prąd Ik'' interpretuje ocena)"
         )
     try:
         sc_run_uuid = UUID(str(sc_run_id_raw))
@@ -843,7 +843,7 @@ def _validate_protection_sc_reference(
         )
     if sc_run.status != "FINISHED":
         raise ValueError(
-            f"Bieg zwarciowy '{sc_run_id_raw}' nie jest zakonczony (status: {sc_run.status})"
+            f"Bieg zwarciowy '{sc_run_id_raw}' nie jest zakończony (status: {sc_run.status})"
         )
     if (
         project_id_koperty is not None
@@ -851,8 +851,8 @@ def _validate_protection_sc_reference(
         and sc_run.project_id != project_id_koperty
     ):
         raise ValueError(
-            f"Bieg zwarciowy '{sc_run_id_raw}' nalezy do innego projektu — analiza "
-            "zabezpieczen nie moze interpretowac wyniku spoza wlasnego projektu"
+            f"Bieg zwarciowy '{sc_run_id_raw}' należy do innego projektu — analiza "
+            "zabezpieczeń nie może interpretować wyniku spoza własnego projektu"
         )
 
 
@@ -902,18 +902,18 @@ def create_run(
     # nazwany, i dotyczy WYLACZNIE `analysis_type` z prefiksem "v126:".
     if validation.status == "FAIL" and not analysis_type.startswith("v126:"):
         messages = [issue.message_pl for issue in validation.issues if issue.severity == "BLOCKER"]
-        raise ValueError("; ".join(messages) or "Model sieci nie przeszedl walidacji")
+        raise ValueError("; ".join(messages) or "Model sieci nie przeszedł walidacji")
 
     availability = validation.analysis_available
     if analysis_type == "PF" and not availability.load_flow:
-        raise ValueError("Analiza rozpływu mocy nie jest dostepna dla biezacego snapshotu ENM")
+        raise ValueError("Analiza rozpływu mocy nie jest dostępna dla bieżącego snapshotu ENM")
     # W5-D: rozpływ niesymetryczny ma TĘ SAMĄ bramkę dostępności co rozpływ NR (model
     # z odbiorem/generacją); zdolności solvera BFS (radialność, Z0, fazy) sprawdza
     # assembler odmową nazwaną w biegu (`enm/assembler.py::diagnoza_niesymetrii`).
     if analysis_type == ANALYSIS_TYPE_ROZPLYW_NIESYMETRYCZNY and not availability.load_flow:
         raise ValueError(
-            "Rozplyw niesymetryczny nie jest dostepny dla biezacego snapshotu ENM "
-            "(model bez odbioru/generacji albo z blokada walidacji)"
+            "Rozpływ niesymetryczny nie jest dostępny dla bieżącego snapshotu ENM "
+            "(model bez odbioru/generacji albo z blokadą walidacji)"
         )
     snapshot = efektywna.snapshot
     enm_hash = efektywna.snapshot_hash
@@ -926,7 +926,7 @@ def create_run(
     if analysis_type == "short_circuit_sn":
         fault_type = _short_circuit_type_from_options(normalized_options)
         if not availability.short_circuit_3f:
-            raise ValueError("Analiza zwarciowa nie jest dostepna dla biezacego snapshotu ENM")
+            raise ValueError("Analiza zwarciowa nie jest dostępna dla bieżącego snapshotu ENM")
         if (
             fault_type
             in {
@@ -935,11 +935,11 @@ def create_run(
             }
             and not availability.short_circuit_1f
         ):
-            raise ValueError("Zwarcie 1F/2F+Z wymaga kompletnej skladowej zerowej Z0 w ENM")
+            raise ValueError("Zwarcie 1F/2F+Z wymaga kompletnej składowej zerowej Z0 w ENM")
     if analysis_type == "phase_state_sn" and not enm_liczony.buses:
         raise ValueError("Stan fazowy SN wymaga co najmniej jednej szyny w ENM")
     if analysis_type == "dynamic_stability" and not (enm_liczony.sources or enm_liczony.generators):
-        raise ValueError("Stabilnosc dynamiczna wymaga co najmniej jednego zrodla w ENM")
+        raise ValueError("Stabilność dynamiczna wymaga co najmniej jednego źródła w ENM")
     if analysis_type == "protection_sn":
         _validate_protection_sc_reference(
             normalized_options=normalized_options,
@@ -1018,7 +1018,7 @@ def _wykonaj_analize_biegu(
     """
     if graf is not None and run.analysis_type != "PF":
         raise ValueError(
-            "Gotowy graf sieci przyjmuje wylacznie rozplyw mocy (analysis_type='PF'); "
+            "Gotowy graf sieci przyjmuje wyłącznie rozpływ mocy (analysis_type='PF'); "
             f"dla {run.analysis_type!r} graf buduje wykonawca z migawki biegu."
         )
     if run.analysis_type == "PF":
@@ -1108,9 +1108,9 @@ def bieg_wariantu(
             # (koperta niesie JEDNA referencje scenariusza). Odmowa z nazwa,
             # nie koperta udajaca, ze baza byla stanem normalnym.
             raise ValueError(
-                "Bieg bazowy wariantu zostal policzony na scenariuszu z nadpisaniami "
-                f"modelu ({koperta_bazy.scenario_ref}); skladanie scenariuszy nie jest "
-                "modelowane — wariant buduje sie na biegu stanu normalnego."
+                "Bieg bazowy wariantu został policzony na scenariuszu z nadpisaniami "
+                f"modelu ({koperta_bazy.scenario_ref}); składanie scenariuszy nie jest "
+                "modelowane — wariant buduje się na biegu stanu normalnego."
             )
         scenario_ref, scenario_hash = referencja_koperty(migawka)
         envelope = zbuduj_koperte(
@@ -1492,7 +1492,7 @@ def _execute_phase_state_sn(run: CanonicalRun) -> None:
         {
             "step": 1,
             "key": "PHASE_STATE_INPUT",
-            "title": f"Stan fazowy SN: wejscie {target_bus_ref}",
+            "title": f"Stan fazowy SN: wejście {target_bus_ref}",
             "target_id": target_bus_id,
             "element_id": target_bus_ref,
             "phase_state_target_ref": target_bus_ref,
@@ -1861,7 +1861,7 @@ def build_dynamika_results(run: CanonicalRun) -> dict[str, Any]:
     pustym wynikiem) → `KeyError` (API tłumaczy na 404 nazwany, ten sam wzorzec
     co `build_short_circuit_rozplyw`)."""
     if run.analysis_type != "dynamika_rms":
-        raise KeyError(f"Przebieg nie jest bieg dynamiki czasowej: {run.id}")
+        raise KeyError(f"Przebieg nie jest biegiem dynamiki czasowej: {run.id}")
     if not run.raw_result:
         raise KeyError(f"Brak wyniku dynamiki czasowej dla biegu {run.id}")
     return {"run_id": str(run.id), **run.raw_result}
@@ -1880,7 +1880,7 @@ def build_dynamika_time_series(
     biegu tego typu, brak zapisanych szeregów, albo ŻADEN z żądanych kluczy nie
     istnieje → `KeyError` (API: 404 nazwany, zero cichej pustej odpowiedzi)."""
     if run.analysis_type != "dynamika_rms":
-        raise KeyError(f"Przebieg nie jest bieg dynamiki czasowej: {run.id}")
+        raise KeyError(f"Przebieg nie jest biegiem dynamiki czasowej: {run.id}")
     from infrastructure.persistence.repositories.canonical_run_repository import (
         canonical_run_repository_scope,
     )
@@ -2006,15 +2006,15 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
     sc_run = get_run(sc_run_id)
     if sc_run is None or sc_run.status != "FINISHED":
         raise ValueError(
-            f"Bieg zwarciowy zrodlowy '{sc_run_id}' nie jest juz dostepny albo "
-            "przestal byc zakonczony"
+            f"Bieg zwarciowy źródłowy '{sc_run_id}' nie jest już dostępny albo "
+            "przestał być zakończony"
         )
 
     if uow_factory is None:
         raise ValueError(
-            "Bieg zabezpieczen czyta konfiguracje zabezpieczen przypadku z bazy, a "
-            "wykonawca nie dostal fabryki UnitOfWork wolajacego — bieg nie buduje "
-            "wlasnego polaczenia z baza (CV-4.2b)"
+            "Bieg zabezpieczeń czyta konfiguracje zabezpieczeń przypadku z bazy, a "
+            "wykonawca nie dostał fabryki UnitOfWork wołającego — bieg nie buduje "
+            "własnego połączenia z bazą (CV-4.2b)"
         )
 
     case_uuid = UUID(run.case_id)
@@ -2024,7 +2024,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
             raise ValueError(f"Przypadek '{run.case_id}' nie istnieje")
         protection_config = case.protection_config
         if protection_config.template_ref is None:
-            raise ValueError("Konfiguracja zabezpieczen przypadku nie ma template_ref")
+            raise ValueError("Konfiguracja zabezpieczeń przypadku nie ma template_ref")
         template = get_protection_template(uow, protection_config.template_ref)
         if template is None:
             raise ValueError(
@@ -2058,8 +2058,8 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
     )
     if fault_row is None:
         raise ValueError(
-            f"Bieg zwarciowy '{sc_run_id}' nie ma zadnego wyniku z pradem zwarciowym "
-            "Ik'' — nie ma na czym oprzec oceny zabezpieczenia"
+            f"Bieg zwarciowy '{sc_run_id}' nie ma żadnego wyniku z prądem zwarciowym "
+            "Ik'' — nie ma na czym oprzeć oceny zabezpieczenia"
         )
     fault_node_id = str(fault_row.get("fault_node_id"))
     ikss_a = float(fault_row.get("ikss_a"))
@@ -2133,7 +2133,7 @@ def rozszerzenia_audit2_dla_opcji(
         return None
     if not project_id_str or not station_id:
         raise ValueError(
-            "Opcje biegu wskazuja konfiguracje audytu 2 polowa pary: potrzebne sa OBA "
+            "Opcje biegu wskazują konfigurację audytu 2 połową pary: potrzebne są OBA "
             "`audit2_project_id` i `audit2_station_id`"
         )
     try:
@@ -2144,9 +2144,9 @@ def rozszerzenia_audit2_dla_opcji(
         ) from exc
     if uow_factory is None:
         raise ValueError(
-            "Opcje biegu wskazuja konfiguracje audytu 2 stacji "
-            f"({project_id_str}/{station_id}), a wykonawca nie dostal fabryki UnitOfWork "
-            "wolajacego — bieg nie buduje wlasnego polaczenia z baza (CV-4.2b)"
+            "Opcje biegu wskazują konfigurację audytu 2 stacji "
+            f"({project_id_str}/{station_id}), a wykonawca nie dostał fabryki UnitOfWork "
+            "wołającego — bieg nie buduje własnego połączenia z bazą (CV-4.2b)"
         )
     from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
 
@@ -2411,7 +2411,7 @@ def _execute_short_circuit(run: CanonicalRun, uow_factory: Callable[[], Any] | N
         rows.append(_oznacz_wiersz_zwarcia_niefizyczny(payload))
 
     if not rows:
-        raise ValueError("Nie udalo sie obliczyc wynikow zwarciowych dla zadnego wezla")
+        raise ValueError("Nie udało się obliczyć wyników zwarciowych dla żadnego węzła")
 
     # Ślad White Box biegu dzieli słowniki kroków z wierszami (kopie płytkie) —
     # ta sama podmiana wartości niefinitowych, ten sam wykaz ścieżek. Węzły bez
@@ -3071,7 +3071,7 @@ def _build_power_flow_trace_steps(
         steps.append(
             {
                 "step": 1,
-                "title": "Stan poczatkowy",
+                "title": "Stan początkowy",
                 "phase": "init",
                 "result": solution.init_state,
             }
@@ -3109,7 +3109,7 @@ def _build_power_flow_trace_steps(
     steps.append(
         {
             "step": len(steps) + 1,
-            "title": "Wynik koncowy",
+            "title": "Wynik końcowy",
             "phase": "final",
             "result": {
                 "converged": {"value": solution.converged},
@@ -3134,7 +3134,7 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                     "row_count": len(result_v1.get("bus_results", [])),
                     "columns": [
                         {"key": "name", "label_pl": "Nazwa"},
-                        {"key": "bus_id", "label_pl": "ID wezla"},
+                        {"key": "bus_id", "label_pl": "ID węzła"},
                         {"key": "un_kv", "label_pl": "Un", "unit": "kV"},
                         {"key": "u_kv", "label_pl": "U", "unit": "kV"},
                         {"key": "u_pu", "label_pl": "U", "unit": "pu"},
@@ -3151,12 +3151,12 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                         {"key": "to_bus", "label_pl": "Do"},
                         {
                             "key": "i_a",
-                            "label_pl": "I (zacisk poczatkowy)",
+                            "label_pl": "I (zacisk początkowy)",
                             "unit": "A",
                         },
                         {
                             "key": "i_do_a",
-                            "label_pl": "I (zacisk koncowy)",
+                            "label_pl": "I (zacisk końcowy)",
                             "unit": "A",
                         },
                         {"key": "p_mw", "label_pl": "P", "unit": "MW"},
@@ -3177,7 +3177,7 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                     "row_count": len(result_v1.get("bus_results", [])),
                     "columns": [
                         {"key": "name", "label_pl": "Nazwa"},
-                        {"key": "bus_id", "label_pl": "ID wezla"},
+                        {"key": "bus_id", "label_pl": "ID węzła"},
                         {"key": "un_kv", "label_pl": "Un", "unit": "kV"},
                         {"key": "ua_kv", "label_pl": "UA", "unit": "kV"},
                         {"key": "ub_kv", "label_pl": "UB", "unit": "kV"},
@@ -3190,7 +3190,7 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                 },
                 {
                     "table_id": "branches_unbalanced",
-                    "label_pl": "Galezie (per faza)",
+                    "label_pl": "Gałęzie (per faza)",
                     "row_count": len(result_v1.get("branch_results", [])),
                     "columns": [
                         {"key": "name", "label_pl": "Nazwa"},
@@ -3262,38 +3262,38 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
             [
                 {
                     "table_id": "dynamic_stability",
-                    "label_pl": "Stabilnosc dynamiczna",
+                    "label_pl": "Stabilność dynamiczna",
                     "row_count": 1 if raw_result.get("result") else 0,
                     # Echo scenariusza wpisanego przez użytkownika + status oceny
                     # (NIE_OCENIONO) — bez marginesu, wychylenia i wskaźnika, które
                     # były składowymi werdyktu progowego (uczciwość natychmiastowa).
                     "columns": [
                         {"key": "source_id", "label_pl": "Zrodlo"},
-                        {"key": "faulted_element_id", "label_pl": "Element zaklocenia"},
+                        {"key": "faulted_element_id", "label_pl": "Element zakłócenia"},
                         {"key": "status", "label_pl": "Status oceny"},
-                        {"key": "clearing_time_ms", "label_pl": "Czas wylaczenia", "unit": "ms"},
-                        {"key": "pre_fault_angle_deg", "label_pl": "Kat przed", "unit": "deg"},
+                        {"key": "clearing_time_ms", "label_pl": "Czas wyłączenia", "unit": "ms"},
+                        {"key": "pre_fault_angle_deg", "label_pl": "Kąt przed", "unit": "deg"},
                         {
                             "key": "during_fault_angle_deg",
-                            "label_pl": "Kat w czasie",
+                            "label_pl": "Kąt w czasie",
                             "unit": "deg",
                         },
-                        {"key": "post_fault_angle_deg", "label_pl": "Kat po", "unit": "deg"},
+                        {"key": "post_fault_angle_deg", "label_pl": "Kąt po", "unit": "deg"},
                         {
                             "key": "post_fault_voltage_pu",
-                            "label_pl": "Napiecie po zakloceniu",
+                            "label_pl": "Napięcie po zakłóceniu",
                             "unit": "pu",
                         },
                         {
                             "key": "post_fault_frequency_pu",
-                            "label_pl": "Czestotliwosc po zakloceniu",
+                            "label_pl": "Częstotliwość po zakłóceniu",
                             "unit": "pu",
                         },
                     ],
                 },
                 {
                     "table_id": "automation_trace",
-                    "label_pl": "Slad automatyki (brak zdarzen — zabezpieczenia niesymulowane)",
+                    "label_pl": "Ślad automatyki (brak zdarzeń — zabezpieczenia niesymulowane)",
                     "row_count": len(
                         (raw_result.get("automation_trace") or {}).get("events") or []
                     ),
@@ -3309,7 +3309,7 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
     tables.append(
         {
             "table_id": "trace",
-            "label_pl": "Slad obliczen",
+            "label_pl": "Ślad obliczeń",
             "row_count": len(run.white_box_trace),
             "columns": [{"key": "title", "label_pl": "Opis"}],
         }
@@ -3732,7 +3732,7 @@ def build_short_circuit_rozplyw(
     osobna tabela) — kontrakt odpowiedzi bez zmian.
     """
     if run.analysis_type != "short_circuit_sn":
-        raise KeyError(f"Przebieg nie jest analiza zwarciowa: {run.id}")
+        raise KeyError(f"Przebieg nie jest analizą zwarciową: {run.id}")
     raw_result = run.raw_result or {}
     graph_nodes = (raw_result.get("graph") or {}).get("nodes", {})
     graph_branches = (raw_result.get("graph") or {}).get("branches", {})
@@ -4401,7 +4401,7 @@ def build_extended_trace(run: CanonicalRun) -> dict[str, Any]:
 
 def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
     if run.status != "FINISHED":
-        raise ValueError("Wyniki sa dostepne tylko dla zakonczonego przebiegu")
+        raise ValueError("Wyniki są dostępne tylko dla zakończonego przebiegu")
     element_results: list[dict[str, Any]] = []
     global_results: dict[str, Any] = {}
     if run.analysis_type == "short_circuit_sn":

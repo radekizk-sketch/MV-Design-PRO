@@ -192,8 +192,8 @@ def test_wywod_echo_character_and_reason_without_margin_or_verdict() -> None:
     assert kroki and all(set(k) == {"tekst", "latex"} for k in kroki)
     assert all(k["latex"] is None for k in kroki)
     # K10: asercja na semantykę kroku (echo wejścia solvera), nie na nazwę kontraktu.
-    assert "echo wejscia solvera" in kroki[0]["tekst"]
-    assert any("zadane profilem wejsciowym" in k["tekst"] for k in kroki)
+    assert "echo wejścia solvera" in kroki[0]["tekst"]
+    assert any("zadane profilem wejściowym" in k["tekst"] for k in kroki)
     assert kroki[-1]["tekst"] == f"Ocena niewykonana: {POWOD_BRAKU_OCENY_FRT_PL}."
     assert not any(k["tekst"].startswith("Werdykt:") for k in kroki)
     assert not any("m_{U}" in (k["latex"] or "") for k in kroki)

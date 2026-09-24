@@ -139,11 +139,11 @@ class ProtectionSanityCheckResult:
     def __post_init__(self) -> None:
         """Validate invariants."""
         if not self.message_pl or self.message_pl.strip() == "":
-            raise ValueError("message_pl nie moze byc puste")
+            raise ValueError("message_pl nie może być puste")
         if not self.element_id or self.element_id.strip() == "":
-            raise ValueError("element_id nie moze byc puste")
+            raise ValueError("element_id nie może być puste")
         if not self.element_type or self.element_type.strip() == "":
-            raise ValueError("element_type nie moze byc puste")
+            raise ValueError("element_type nie może być puste")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -166,28 +166,28 @@ class ProtectionSanityCheckResult:
 
 SANITY_CHECK_CODE_LABELS_PL: dict[SanityCheckCode, str] = {
     # Napieciowe
-    SanityCheckCode.VOLT_MISSING_UN: "Brak wartosci Un dla nastawy napieciowej",
-    SanityCheckCode.VOLT_OVERLAP: "Nakladalnie sie prog U< i U> (U< >= U>)",
-    SanityCheckCode.VOLT_U_LT_TOO_LOW: "Prog U< zbyt niski (< 0,5×Un)",
-    SanityCheckCode.VOLT_U_GT_TOO_HIGH: "Prog U> zbyt wysoki (> 1,2×Un)",
+    SanityCheckCode.VOLT_MISSING_UN: "Brak wartości Un dla nastawy napięciowej",
+    SanityCheckCode.VOLT_OVERLAP: "Nakładanie się progów U< i U> (U< >= U>)",
+    SanityCheckCode.VOLT_U_LT_TOO_LOW: "Próg U< zbyt niski (< 0,5×Un)",
+    SanityCheckCode.VOLT_U_GT_TOO_HIGH: "Próg U> zbyt wysoki (> 1,2×Un)",
     # Czestotliwosciowe
-    SanityCheckCode.FREQ_OVERLAP: "Nakladanie sie progow f< i f> (f< >= f>)",
-    SanityCheckCode.FREQ_F_LT_TOO_LOW: "Prog f< zbyt niski (< 45 Hz)",
-    SanityCheckCode.FREQ_F_GT_TOO_HIGH: "Prog f> zbyt wysoki (> 55 Hz)",
+    SanityCheckCode.FREQ_OVERLAP: "Nakładanie się progów f< i f> (f< >= f>)",
+    SanityCheckCode.FREQ_F_LT_TOO_LOW: "Próg f< zbyt niski (< 45 Hz)",
+    SanityCheckCode.FREQ_F_GT_TOO_HIGH: "Próg f> zbyt wysoki (> 55 Hz)",
     # ROCOF
     SanityCheckCode.ROCOF_NON_POSITIVE: "df/dt nieadodatnie (<= 0)",
     SanityCheckCode.ROCOF_TOO_HIGH: "df/dt zbyt wysokie (> 10 Hz/s)",
     # Nadpradowe
-    SanityCheckCode.OC_MISSING_IN: "Brak wartosci In dla nastawy pradowej",
-    SanityCheckCode.OC_OVERLAP: "Nakladanie sie progow I> i I>> (I> >= I>>)",
-    SanityCheckCode.OC_I_GT_TOO_LOW: "Prog I> zbyt niski (< 1,0×In)",
-    SanityCheckCode.OC_I_INST_TOO_LOW: "Prog I>> zbyt niski (< 1,5×In)",
+    SanityCheckCode.OC_MISSING_IN: "Brak wartości In dla nastawy prądowej",
+    SanityCheckCode.OC_OVERLAP: "Nakładanie się progów I> i I>> (I> >= I>>)",
+    SanityCheckCode.OC_I_GT_TOO_LOW: "Próg I> zbyt niski (< 1,0×In)",
+    SanityCheckCode.OC_I_INST_TOO_LOW: "Próg I>> zbyt niski (< 1,5×In)",
     # SPZ
-    SanityCheckCode.SPZ_NO_TRIP_FUNCTION: "SPZ aktywne bez funkcji wyzwalajacej",
+    SanityCheckCode.SPZ_NO_TRIP_FUNCTION: "SPZ aktywne bez funkcji wyzwalającej",
     SanityCheckCode.SPZ_MISSING_CYCLE_DATA: "Brak danych cyklu SPZ",
     # Ogolne
     SanityCheckCode.GEN_NEGATIVE_SETPOINT: "Nastawa niefizyczna (ujemna)",
-    SanityCheckCode.GEN_PARTIAL_ANALYSIS: "Brak danych bazowych — analiza czesciowa",
+    SanityCheckCode.GEN_PARTIAL_ANALYSIS: "Brak danych bazowych — analiza częściowa",
 }
 
 

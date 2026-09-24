@@ -1,11 +1,11 @@
 {
   "solver_version": "load-flow-newton-raphson-v1",
   "solver_method": "newton-raphson",
-  "proof_ref": "proof:power-flow:e6e6ac0b92da849d553d9641144ad02355c7880ac49fa998ba82bd739c3d5e76",
+  "proof_ref": "proof:power-flow:7a0300ba27d72e36aa838859dafa57ec61fbec61c6230f0561cd7fb63fd080be",
   "proof_status": "complete",
   "reporting_status": "reportable",
-  "input_hash": "c07013f5550afab623412ecb0a03bd9b36bd81b2e49e3e9f3009956eab396552",
-  "snapshot_id": "ce6de8c1f2ebcf3faf86233128c0d9f7e4442a57a573072aa2ecd030067d151e",
+  "input_hash": "3f98e8b326505dae04c97dd6cc8051bf613000473b99f9733337afc2396583f9",
+  "snapshot_id": "eab2c9e78bc24c383c108288382abfb4625ac3cef22ac5b74b66b5ba5b4fc5b7",
   "case_id": "case-demo",
   "run_id": "run-lf-scena-zbieznosc",
   "init_state": {
@@ -234,7 +234,7 @@
     {
       "element_id": "src_gpz",
       "element_type": "ZRODLO_SN",
-      "name": "System 110kV",
+      "name": "System 110 kV",
       "catalog_binding": {
         "catalog_namespace": "ZRODLO_SN",
         "catalog_item_id": "src-gpz-110kv-2500mva",
@@ -460,7 +460,7 @@
     "src_gpz": {
       "element_id": "src_gpz",
       "element_type": "ZRODLO_SN",
-      "name": "System 110kV",
+      "name": "System 110 kV",
       "catalog_binding": {
         "catalog_namespace": "ZRODLO_SN",
         "catalog_item_id": "src-gpz-110kv-2500mva",

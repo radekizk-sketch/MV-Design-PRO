@@ -123,12 +123,12 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             tier=EvidenceTier.DECLARATION,
             claim_kind=ClaimKind.DECLARED_CONFIGURATION,
             rationale_pl=(
-                "Testy odpowiedzi czestotliwosciowej (LFSM-O, LFSM-U, FSM, odbudowa "
-                "czestotliwosci — T01-T04) porownuja NASTAWY zadeklarowane modulu (statyzm, "
-                "strefa martwa, tempo zmiany mocy) z wartosciami wymaganymi i tolerancjami "
-                "profilu regulacyjnego; to fakt konfiguracyjny, dla ktorego deklaracja jest "
-                "wlasciwa podstawa. Odpowiedz Delta P w punkcie czestotliwosci testu jest "
-                "podstawieniem informacyjnym w sladzie, nie przebiegiem f(t)/P(t) — "
+                "Testy odpowiedzi częstotliwościowej (LFSM-O, LFSM-U, FSM, odbudowa "
+                "częstotliwości — T01-T04) porównują NASTAWY zadeklarowane modułu (statyzm, "
+                "strefa martwa, tempo zmiany mocy) z wartościami wymaganymi i tolerancjami "
+                "profilu regulacyjnego; to fakt konfiguracyjny, dla którego deklaracja jest "
+                "właściwą podstawą. Odpowiedź Delta P w punkcie częstotliwości testu jest "
+                "podstawieniem informacyjnym w śladzie, nie przebiegiem f(t)/P(t) — "
                 "solvers/ncrfg_ptpiree/engine.py (kontrakt V2)."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.2 (T01-T04); karta AB-1a Pakiet C pkt 5",
@@ -137,11 +137,11 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             capability_id="ncrfg_ptpiree.ride_through",
             tier=EvidenceTier.NOT_SIMULATED,
             rationale_pl=(
-                "Pozostanie w pracy przy zapadzie i wzroscie napiecia (T14/T15) jest "
-                "twierdzeniem o zachowaniu dynamicznym; pakiet testow nie wykonuje biegu "
-                "dynamiki modulu — bez biegu dynamiki porownanie deklaracji nie wykazuje "
-                "zachowania dynamicznego (ocena niewykonana do biegu dynamiki RMS modulu). "
-                "Obwiednia profilu jest warunkiem wstepnym kryterium, nie jego wynikiem."
+                "Pozostanie w pracy przy zapadzie i wzroście napięcia (T14/T15) jest "
+                "twierdzeniem o zachowaniu dynamicznym; pakiet testów nie wykonuje biegu "
+                "dynamiki modułu — bez biegu dynamiki porównanie deklaracji nie wykazuje "
+                "zachowania dynamicznego (ocena niewykonana do biegu dynamiki RMS modułu). "
+                "Obwiednia profilu jest warunkiem wstępnym kryterium, nie jego wynikiem."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.2 (T14/T15); karta AB-1a Pakiet C pkt 5",
         ),
@@ -149,10 +149,10 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             capability_id="ncrfg_ptpiree.p_recovery",
             tier=EvidenceTier.NOT_SIMULATED,
             rationale_pl=(
-                "Odbudowa mocy czynnej po zakloceniu (T16) jest twierdzeniem o zachowaniu "
-                "dynamicznym; bez biegu dynamiki porownanie deklaracji nie wykazuje "
-                "zachowania dynamicznego — czas zadeklarowany jest pokazywany wylacznie "
-                "informacyjnie, przebiegu P(t) narzedzie nie liczy."
+                "Odbudowa mocy czynnej po zakłóceniu (T16) jest twierdzeniem o zachowaniu "
+                "dynamicznym; bez biegu dynamiki porównanie deklaracji nie wykazuje "
+                "zachowania dynamicznego — czas zadeklarowany jest pokazywany wyłącznie "
+                "informacyjnie, przebiegu P(t) narzędzie nie liczy."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.2 (T16); karta AB-1a Pakiet C pkt 5",
         ),
@@ -160,10 +160,10 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             capability_id="ncrfg_ptpiree.reactive_current_frt",
             tier=EvidenceTier.NOT_SIMULATED,
             rationale_pl=(
-                "Szybki prad bierny podczas zwarcia (T17) jest twierdzeniem o zachowaniu "
-                "dynamicznym; bez biegu dynamiki porownanie deklaracji nie wykazuje "
+                "Szybki prąd bierny podczas zwarcia (T17) jest twierdzeniem o zachowaniu "
+                "dynamicznym; bez biegu dynamiki porównanie deklaracji nie wykazuje "
                 "zachowania dynamicznego — wzmocnienie zadeklarowane jest pokazywane "
-                "wylacznie informacyjnie, przebiegu Iq(t) narzedzie nie liczy."
+                "wyłącznie informacyjnie, przebiegu Iq(t) narzędzie nie liczy."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.2 (T17); karta AB-1a Pakiet C pkt 5",
         ),
@@ -171,10 +171,10 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             capability_id="ncrfg_ptpiree.extended_dynamic_capability",
             tier=EvidenceTier.NOT_SIMULATED,
             rationale_pl=(
-                "Praca wyspowa, rozruch autonomiczny i tlumienie oscylacji (T18) sa "
-                "twierdzeniami o zachowaniu dynamicznym; bez biegu dynamiki porownanie "
-                "deklaracji nie wykazuje zachowania dynamicznego — deklaracje zdolnosci sa "
-                "pokazywane wylacznie informacyjnie."
+                "Praca wyspowa, rozruch autonomiczny i tłumienie oscylacji (T18) są "
+                "twierdzeniami o zachowaniu dynamicznym; bez biegu dynamiki porównanie "
+                "deklaracji nie wykazuje zachowania dynamicznego — deklaracje zdolności są "
+                "pokazywane wyłącznie informacyjnie."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.2 (T18); karta AB-1a Pakiet C pkt 5",
         ),
@@ -184,9 +184,9 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             claim_kind=ClaimKind.DECLARED_CONFIGURATION,
             rationale_pl=(
                 "Regulacja P (T05), deklaracje PMAX/PMIN (T10/T11), zaprzestanie i "
-                "zmniejszenie generacji (T12/T13) oraz komunikacja i rejestrator zaklocen "
-                "(T19) sa faktami konfiguracyjnymi porownanymi z wymaganiem profilu — "
-                "deklaracja jest tu wlasciwa podstawa dowodowa."
+                "zmniejszenie generacji (T12/T13) oraz komunikacja i rejestrator zakłóceń "
+                "(T19) są faktami konfiguracyjnymi porównanymi z wymaganiem profilu — "
+                "deklaracja jest tu właściwą podstawą dowodową."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.2 (T05, T10-T13, T19); karta AB-1a Pakiet C pkt 5",
         ),
@@ -195,8 +195,8 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             tier=EvidenceTier.DECLARATION,
             claim_kind=ClaimKind.DECLARED_CONFIGURATION,
             rationale_pl=(
-                "Tryby regulacji U/Q/cosfi i zakres mocy biernej (T06-T09) pochodza z "
-                "deklaracji modulu porownanej z profilem operatora — fakty konfiguracyjne."
+                "Tryby regulacji U/Q/cosfi i zakres mocy biernej (T06-T09) pochodzą z "
+                "deklaracji modułu porównanej z profilem operatora — fakty konfiguracyjne."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.2 (T06-T09); karta AB-1a Pakiet C pkt 5",
         ),
@@ -205,8 +205,8 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             tier=EvidenceTier.DECLARATION,
             claim_kind=ClaimKind.DECLARED_CONFIGURATION,
             rationale_pl=(
-                "Wspolczynnik THDu zrodla (test T20) pochodzi z rekordu katalogowego zrodla "
-                "i jest porownywany z limitem profilu — fakt katalogowy, nie wynik symulacji "
+                "Współczynnik THDu źródła (test T20) pochodzi z rekordu katalogowego źródła "
+                "i jest porównywany z limitem profilu — fakt katalogowy, nie wynik symulacji "
                 "widma."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.2 (T20); karta AB-1a Pakiet C pkt 5",
@@ -217,8 +217,8 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             claim_kind=ClaimKind.DECLARED_CONFIGURATION,
             rationale_pl=(
                 "Kryteria koordynacji statycznej (plan AB O-32): nastawa U< i jej czas "
-                "wobec obwiedni LVRT profilu oraz nastawa RoCoF/LoM wobec wytrzymalosci "
-                "RoCoF — porownanie nastaw zabezpieczen zapisanych w modelu z wartosciami "
+                "wobec obwiedni LVRT profilu oraz nastawa RoCoF/LoM wobec wytrzymałości "
+                "RoCoF — porównanie nastaw zabezpieczeń zapisanych w modelu z wartościami "
                 "profilu; fakt konfiguracyjny, bez symulacji."
             ),
             audit_ref="karta AB-1a Pakiet C pkt 7 (O-32)",
@@ -227,17 +227,17 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             capability_id="ncrfg_ptpiree.certyfikat_urzadzenia",
             tier=EvidenceTier.TYPE_TEST_CERTIFICATE,
             rationale_pl=(
-                "Wykazanie wymagania certyfikatem urzadzenia z wykazu PTPiREE: dowodem jest "
-                "badanie typu wykonane u producenta albo w jednostce certyfikujacej, "
-                "poswiadczone rekordem wykazu dopasowanym po stronie serwera do tabliczki "
-                "urzadzenia — narzedzie niczego nie liczy i nie symuluje. Poziom dopuszcza "
-                "certyfikat jako dowod zachowania dynamicznego i konfiguracji zadeklarowanej; "
-                "kompletnosc dowodu (regula pokrycia wymagania certyfikatem z warstwy WiPWC "
-                "profilu i warunek waznosci rekordu wykazu) rozstrzyga rekord wymagania, "
+                "Wykazanie wymagania certyfikatem urządzenia z wykazu PTPiREE: dowodem jest "
+                "badanie typu wykonane u producenta albo w jednostce certyfikującej, "
+                "poświadczone rekordem wykazu dopasowanym po stronie serwera do tabliczki "
+                "urządzenia — narzędzie niczego nie liczy i nie symuluje. Poziom dopuszcza "
+                "certyfikat jako dowód zachowania dynamicznego i konfiguracji zadeklarowanej; "
+                "kompletność dowodu (reguła pokrycia wymagania certyfikatem z warstwy WiPWC "
+                "profilu i warunek ważności rekordu wykazu) rozstrzyga rekord wymagania, "
                 "nie poziom."
             ),
             audit_ref=(
-                "karta AB-1a Pakiet C pkt 3 i 8 (O-17, O-27); odbior Pakietu C " "(plan AB O-50)"
+                "karta AB-1a Pakiet C pkt 3 i 8 (O-17, O-27); odbiór Pakietu C " "(plan AB O-50)"
             ),
         ),
         CapabilityEvidence(
@@ -245,22 +245,22 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             tier=EvidenceTier.DECLARATION,
             claim_kind=ClaimKind.DECLARED_CONFIGURATION,
             rationale_pl=(
-                "Pokrycie wymaganego zakresu mocy biernej profilu operatora: krzywa zdolnosci "
-                "P-Q producenta z karty katalogowej typu przeksztaltnika porownana z "
-                "prostokatnym wymaganiem profilu w punktach krzywej — fakt katalogowy "
-                "porownany z wymaganiem, bez symulacji "
+                "Pokrycie wymaganego zakresu mocy biernej profilu operatora: krzywa zdolności "
+                "P-Q producenta z karty katalogowej typu przekształtnika porównana z "
+                "prostokątnym wymaganiem profilu w punktach krzywej — fakt katalogowy "
+                "porównany z wymaganiem, bez symulacji "
                 "(application/analyses/pq_coverage.py)."
             ),
-            audit_ref="odbior Pakietu C §0 pkt 4 (plan AB O-50)",
+            audit_ref="odbiór Pakietu C §0 pkt 4 (plan AB O-50)",
         ),
         CapabilityEvidence(
             capability_id="dynamic_stability.fault_clear",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             rationale_pl=(
-                "Katy mocy, napiecie i czestotliwosc po zwarciu oraz czas wylaczenia "
-                "wpisuje uzytkownik w opcjach biegu; bieg nie rozwiazuje sieci i nie "
-                "calkuje rownan ruchu ukladu, wiec zwraca wylacznie echo scenariusza "
-                "bez oceny stabilnosci (uczciwosc natychmiastowa 2026-09-23)."
+                "Kąty mocy, napięcie i częstotliwość po zwarciu oraz czas wyłączenia "
+                "wpisuje użytkownik w opcjach biegu; bieg nie rozwiązuje sieci i nie "
+                "całkuje równań ruchu układu, więc zwraca wyłącznie echo scenariusza "
+                "bez oceny stabilności (uczciwość natychmiastowa 2026-09-23)."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.5",
         ),
@@ -268,22 +268,22 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             capability_id="dynamika_rms.przebieg_czasowy",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             rationale_pl=(
-                "Bieg RMS calkuje rownania ruchu ukladu na widoku sieci rozpływu "
-                "(rdzen DAE, network_model/solvers/dynamika/), wiec wynik JEST "
-                "policzony — ale poprawnosc modelu nie jest WYKAZANA: rdzen ma "
-                "wyrocznie analityczne dla ukladu maszyna-szyna sztywna, nie ma "
-                "walidacji przebiegow dla pelnej biblioteki urzadzen na sieci "
-                "rzeczywistej. Mechanizmy zdarzen rdzenia (obszar beznapieciowy i "
-                "ponowne zasilenie, predykat izolacji usuniecia zwarcia, zwarcie w "
-                "linii x*L, elementy nieaktywne w t = 0, probki obustronne L/P w "
-                "chwili zdarzenia, fazory pradow obu zaciskow galezi) maja wyrocznie "
-                "niezalezne (w tym parytet z solverem IEC 60909) "
-                "w manifescie walidacji fizycznej rdzenia — to dowod "
-                "algebry zdarzen, nie walidacja przebiegow urzadzen, wiec poziom "
-                "dowodowy sie nie zmienia. Parametry z profilu typowego normy sa "
-                "deklaracja projektanta (enm/dynamika_modele.py::ProweniencjaParametrow), "
-                "wiec awans do poziomu „symulacja zwalidowana” wymaga dowodu walidacji tej "
-                "zdolnosci, nie samego faktu, ze bieg sie wykonal."
+                "Bieg RMS całkuje równania ruchu układu na widoku sieci rozpływu "
+                "(rdzeń DAE, network_model/solvers/dynamika/), więc wynik JEST "
+                "policzony — ale poprawność modelu nie jest WYKAZANA: rdzeń ma "
+                "wyrocznie analityczne dla układu maszyna-szyna sztywna, nie ma "
+                "walidacji przebiegów dla pełnej biblioteki urządzeń na sieci "
+                "rzeczywistej. Mechanizmy zdarzeń rdzenia (obszar beznapięciowy i "
+                "ponowne zasilenie, predykat izolacji usunięcia zwarcia, zwarcie w "
+                "linii x*L, elementy nieaktywne w t = 0, próbki obustronne L/P w "
+                "chwili zdarzenia, fazory prądów obu zacisków gałęzi) mają wyrocznie "
+                "niezależne (w tym parytet z solverem IEC 60909) "
+                "w manifeście walidacji fizycznej rdzenia — to dowód "
+                "algebry zdarzeń, nie walidacja przebiegów urządzeń, więc poziom "
+                "dowodowy się nie zmienia. Parametry z profilu typowego normy są "
+                "deklaracją projektanta (enm/dynamika_modele.py::ProweniencjaParametrow), "
+                "więc awans do poziomu „symulacja zwalidowana” wymaga dowodu walidacji tej "
+                "zdolności, nie samego faktu, że bieg się wykonał."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.5 (W6-3B: adapter biegu czasowego)",
         ),
@@ -291,9 +291,9 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             capability_id="frt_hvrt.trajectory",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             rationale_pl=(
-                "Trajektoria napiecia MVP jest funkcja zadana parametryzowana "
-                "wejsciem scenariusza, nie rozwiazaniem sieci sprzezonym z "
-                "reszta modulu — network_model/solvers/frt_hvrt/engine.py."
+                "Trajektoria napięcia MVP jest funkcją zadaną parametryzowaną "
+                "wejściem scenariusza, nie rozwiązaniem sieci sprzężonym z "
+                "resztą modułu — network_model/solvers/frt_hvrt/engine.py."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.9",
         ),
@@ -316,8 +316,8 @@ def classify_dynamic_capability(capability_id: str) -> CapabilityEvidence:
         capability_id=capability_id,
         tier=EvidenceTier.UNVALIDATED_MODEL,
         rationale_pl=(
-            "Zdolnosc dynamiczna nie jest sklasyfikowana w rejestrze "
-            "dowodowym; domyslnie nieprzydatna jako dowod regulacyjny "
+            "Zdolność dynamiczna nie jest sklasyfikowana w rejestrze "
+            "dowodowym; domyślnie nieprzydatna jako dowód regulacyjny "
             "(fail-closed)."
         ),
         audit_ref=f"{_AUDIT_CARD} §0.1 (fail-closed)",
@@ -564,7 +564,7 @@ def card_field_quality_map(converter: Any) -> dict[str, CardFieldStatus]:
         result[name] = CardFieldStatus(
             field_name=name,
             quality=FieldQuality.ESTIMATED if present else FieldQuality.SYSTEM_DEFAULT,
-            note="oszacowanie pasma/filtra regulatora; wymaga zrodla z karty technicznej",
+            note="oszacowanie pasma/filtra regulatora; wymaga źródła z karty technicznej",
         )
 
     return result

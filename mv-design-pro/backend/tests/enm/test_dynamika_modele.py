@@ -359,11 +359,11 @@ class TestNiespojnoscKrzyzowa:
             MaszynaSynchroniczna(**_sm_komplet(xq_bis_pu=0.40, xq_prim_pu=0.30, xq_pu=1.7))
 
     def test_sm_td0_bis_wiekszy_niz_td0_prim(self):
-        with pytest.raises(ValidationError, match="td0_bis_s musi byc"):
+        with pytest.raises(ValidationError, match="td0_bis_s musi być"):
             MaszynaSynchroniczna(**_sm_komplet(td0_prim_s=0.10, td0_bis_s=0.15))
 
     def test_sm_tq0_bis_wiekszy_niz_tq0_prim(self):
-        with pytest.raises(ValidationError, match="tq0_bis_s musi byc"):
+        with pytest.raises(ValidationError, match="tq0_bis_s musi być"):
             MaszynaSynchroniczna(**_sm_komplet(tq0_prim_s=0.10, tq0_bis_s=0.20))
 
     def test_sm_regulator_napiecia_limity_odwrocone(self):
@@ -387,11 +387,11 @@ class TestNiespojnoscKrzyzowa:
     def test_gfl_napiecie_ciagle_rowne_odrzucone(self):
         """Zakresy pol sa rozlaczne (u_min<=1.0, u_max>=1.0) — jedyny sposob na
         naruszenie porzadku BEZ lamania Field(ge=/le=) to rownosc na granicy."""
-        with pytest.raises(ValidationError, match="u_min_ciagle_pu musi byc mniejsze"):
+        with pytest.raises(ValidationError, match="u_min_ciagle_pu musi być mniejsze"):
             PrzeksztaltnikGFL(**_gfl_komplet(u_min_ciagle_pu=1.0, u_max_ciagle_pu=1.0))
 
     def test_magazyn_soc_min_wiekszy_niz_soc_max(self):
-        with pytest.raises(ValidationError, match="soc_min .* musi byc mniejsze niz soc_max"):
+        with pytest.raises(ValidationError, match="soc_min .* musi być mniejsze niż soc_max"):
             Magazyn(**_magazyn_komplet(soc_min=0.9, soc_max=0.1))
 
     def test_magazyn_soc_poczatkowy_poza_przedzialem(self):
@@ -417,7 +417,7 @@ class TestNiespojnoscKrzyzowa:
             TurbinaWiatrowa(**_wiatr_komplet("wiatr_typ_1", pitch_min_deg=20.0, pitch_max_deg=10.0))
 
     def test_turbina_typ1_z_crowbar_zabroniony(self):
-        with pytest.raises(ValidationError, match="crowbar dotyczy wylacznie typ_3"):
+        with pytest.raises(ValidationError, match="crowbar dotyczy wyłącznie typ_3"):
             TurbinaWiatrowa(
                 **_wiatr_komplet(
                     "wiatr_typ_1",
@@ -426,7 +426,7 @@ class TestNiespojnoscKrzyzowa:
             )
 
     def test_turbina_typ2_z_przeksztaltnikiem_zabroniony(self):
-        with pytest.raises(ValidationError, match="przeksztaltnik dotyczy wylacznie typ_3"):
+        with pytest.raises(ValidationError, match="przekształtnik dotyczy wyłącznie typ_3"):
             TurbinaWiatrowa(
                 **_wiatr_komplet("wiatr_typ_2", przeksztaltnik=PrzeksztaltnikGFL(**_gfl_komplet()))
             )
@@ -434,7 +434,7 @@ class TestNiespojnoscKrzyzowa:
     def test_turbina_typ4_bez_przeksztaltnika_zabroniony(self):
         dane = _wiatr_komplet("wiatr_typ_4")
         del dane["przeksztaltnik"]
-        with pytest.raises(ValidationError, match="wymaga bloku przeksztaltnik"):
+        with pytest.raises(ValidationError, match="wymaga bloku przekształtnik"):
             TurbinaWiatrowa(**dane)
 
 

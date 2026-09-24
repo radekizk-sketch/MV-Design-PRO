@@ -411,7 +411,7 @@ def test_wylaczenie_galezi_pierscienia_daje_przeciazenie_objazdu() -> None:
     }
     assert pozycja["wartosc"] > pozycja["granica_pct"]
     # WHITE BOX kryterium pochodzi z buildera D2 (wzór → dane → wynik → próg).
-    assert [krok["tekst"] for krok in pozycja["slad_kryterium"]][0].startswith("Wzor:")
+    assert [krok["tekst"] for krok in pozycja["slad_kryterium"]][0].startswith("Wzór:")
 
     # Ta sama sieć, inna kontyngencja: rozcięcie pierścienia bez przeciążenia.
     bez_skutku = _po_ref(widok, "ka_a_b")
@@ -827,8 +827,13 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # „Pole liniowe wejściowe 1”), które wchodzą do odcisku modelu wejściowego.
     # Wynik kontyngencji (enumeracja, dotkliwości, odbiory bez zasilania) identyczny.
     # Sieć gn03 bez zmiany odcisku (jej stacje nie biorą nazw domyślnych pól).
-    "gn01_promieniowa": "f2826159455c190fd1a71e5fc61c91691e32cb1f1ad8c129df6a3d1d1583328f",
-    "gn03_pierscien": "9bd7b9a8119daa5c171da5b221a35dd0820a138ea65d4e2dcb85e2105648970b",
+    # 2026-09-24 (karta PL-ZNAKI): f2826159… → b627c5f2… (gn01), 9bd7b9a8… → 0b3792fb…
+    # (gn03). Porównanie pełnych widoków HEAD vs drzewo liść po liściu: IDENTYCZNY zbiór
+    # kluczy, różnią się WYŁĄCZNIE teksty `kryteria_pominiete[*].powod_pl`
+    # („Brak danych napieciowych." → „Brak danych napięciowych.": 24 pozycje gn01,
+    # 10 gn03). Identyfikatory, dotkliwości, ranking, liczby i kolejność bez zmian.
+    "gn01_promieniowa": "b627c5f24cc248cda2055602b7b883131aa20222e6638734b8c9d465f10256aa",
+    "gn03_pierscien": "0b3792fb96de36bf14a76b032a7839a7b8957392f25c2c78a199d7b6b300ee61",
 }
 
 

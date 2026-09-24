@@ -243,7 +243,7 @@ def _zastosuj_gpz_pod_blokada(
         saved = _set_enm(klucz, new_enm)
         enm_dict = saved.model_dump(mode="json")
     except Exception as exc:
-        logger.exception("Zapis modelu po zastosowaniu szablonu '%s' nie powiodl sie", template.id)
+        logger.exception("Zapis modelu po zastosowaniu szablonu '%s' nie powiódł się", template.id)
         raise TemplateApplyError(
             code="template.persist_failed",
             message_pl=(
@@ -667,7 +667,7 @@ def _zastosuj_szablon_pod_blokada(
         # wypychalo na ekran bezwzgledna sciezke systemu plikow backendu.
         # Komunikat mowi to, co dla projektanta jest istotne: model pozostal
         # nietkniety, wiec operacje mozna powtorzyc bez sprzatania po niej.
-        logger.exception("Zapis modelu po zastosowaniu szablonu '%s' nie powiodl sie", template.id)
+        logger.exception("Zapis modelu po zastosowaniu szablonu '%s' nie powiódł się", template.id)
         raise TemplateApplyError(
             code="template.persist_failed",
             message_pl=(

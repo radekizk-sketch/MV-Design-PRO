@@ -269,7 +269,7 @@
         "profiles": {
           "nc_rfg_profile_ref": "enea"
         },
-        "ptpiree_note": "Brak dopasowania w wykazie PTPiREE (snapshot: 6887 rekordow, WiPWC 1.2/1.3, publikacja 2026-05-08).",
+        "ptpiree_note": "Brak dopasowania w wykazie PTPiREE (snapshot: 6887 rekordów, WiPWC 1.2/1.3, publikacja 2026-05-08).",
         "ptpiree_status": "NIEPOWIAZANY",
         "sn_mva": 0.55,
         "un_kv": 0.4,

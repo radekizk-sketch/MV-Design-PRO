@@ -47,7 +47,7 @@ def test_rejestr_nie_ukrywa_luk(app_client) -> None:
     assert "frontu" in zarezerwowany["reserved_reason"]
 
     assert dane["validator_mapping"]["E001"] == "source.grid_supply_missing"
-    assert "napiecia SZYNY" in dane["validator_without_canonical"]["E004"]
+    assert "napięcia SZYNY" in dane["validator_without_canonical"]["E004"]
     assert dane["summary"]["reserved_total"] > 0
     assert dane["summary"]["validator_without_canonical_total"] > 0
 

@@ -504,20 +504,20 @@ def _waliduj_pola_karty_przeksztaltnika(obiekt: Any, *, kontekst: str) -> None:
     if obiekt.flicker_c is not None and obiekt.flicker_c <= 0:
         odmowa_twarda(
             "KAT-T-011",
-            "Wspolczynnik emisji migotania flicker_c musi byc > 0, "
+            "Współczynnik emisji migotania flicker_c musi być > 0, "
             f"otrzymano flicker_c={obiekt.flicker_c} ({kontekst}).",
         )
     _validate_katalogowy_k_sc(obiekt.k_sc, kontekst=kontekst)
     if obiekt.droop_p_f_percent is not None and obiekt.droop_p_f_percent <= 0:
         odmowa_twarda(
             "KAT-T-012",
-            "Statyzm P/f przeksztaltnika grid-forming (droop_p_f_percent) musi byc > 0, "
+            "Statyzm P/f przekształtnika grid-forming (droop_p_f_percent) musi być > 0, "
             f"otrzymano {obiekt.droop_p_f_percent} ({kontekst}).",
         )
     if obiekt.droop_q_u_percent is not None and obiekt.droop_q_u_percent <= 0:
         odmowa_twarda(
             "KAT-T-013",
-            "Statyzm Q/U przeksztaltnika grid-forming (droop_q_u_percent) musi byc > 0, "
+            "Statyzm Q/U przekształtnika grid-forming (droop_q_u_percent) musi być > 0, "
             f"otrzymano {obiekt.droop_q_u_percent} ({kontekst}).",
         )
 
@@ -551,7 +551,7 @@ def _validate_katalogowy_k_sc(k_sc: float | None, *, kontekst: str) -> None:
     if not math.isfinite(k_sc) or k_sc <= 0:
         odmowa_twarda(
             "KAT-T-003",
-            "Wspolczynnik udzialu zwarciowego k_sc musi byc liczba skonczona > 0, "
+            "Współczynnik udziału zwarciowego k_sc musi być liczbą skończoną > 0, "
             f"otrzymano k_sc={k_sc!r} ({kontekst}).",
         )
 
@@ -563,20 +563,20 @@ def _validate_pq_curve(pq_curve: tuple[tuple[float, float, float], ...]) -> None
     p_mw >= 0 and q_min_mvar <= q_max_mvar; points strictly ascending by p_mw.
     """
     if not pq_curve:
-        odmowa_twarda("KAT-T-004", "Krzywa P-Q falownika nie moze byc pusta.")
+        odmowa_twarda("KAT-T-004", "Krzywa P-Q falownika nie może być pusta.")
     prev_p: float | None = None
     for point in pq_curve:
         if len(point) != 3:
             odmowa_twarda(
                 "KAT-T-005",
-                "Punkt krzywej P-Q musi miec 3 wartosci (p_mw, q_min_mvar, q_max_mvar), "
+                "Punkt krzywej P-Q musi mieć 3 wartości (p_mw, q_min_mvar, q_max_mvar), "
                 f"otrzymano: {point!r}.",
             )
         p_mw, q_min_mvar, q_max_mvar = point
         if p_mw < 0:
             odmowa_twarda(
                 "KAT-T-006",
-                f"Moc czynna punktu krzywej P-Q musi byc >= 0, otrzymano p_mw={p_mw}.",
+                f"Moc czynna punktu krzywej P-Q musi być >= 0, otrzymano p_mw={p_mw}.",
             )
         if q_min_mvar > q_max_mvar:
             odmowa_twarda(
@@ -587,7 +587,7 @@ def _validate_pq_curve(pq_curve: tuple[tuple[float, float, float], ...]) -> None
         if prev_p is not None and p_mw <= prev_p:
             odmowa_twarda(
                 "KAT-T-008",
-                "Punkty krzywej P-Q musza byc uporzadkowane rosnaco po p_mw, "
+                "Punkty krzywej P-Q muszą być uporządkowane rosnąco po p_mw, "
                 f"otrzymano p_mw={p_mw} po p_mw={prev_p}.",
             )
         prev_p = p_mw
@@ -646,7 +646,7 @@ def _validate_float_range(field_name: str, value: tuple[float, float] | None) ->
     if lo > hi:
         odmowa_twarda(
             "KAT-T-010",
-            f"Zakres nastawialnosci {field_name} wymaga min <= max, "
+            f"Zakres nastawialności {field_name} wymaga min <= max, "
             f"otrzymano min={lo} > max={hi}.",
         )
 
@@ -1249,7 +1249,7 @@ class TransformerType:
     tap_max: int = 5
     tap_step_percent: float = 2.5
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
-    source_reference: str = "Katalog transformatorow MV-DESIGN-PRO"
+    source_reference: str = "Katalog transformatorów MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
@@ -1306,7 +1306,7 @@ class TransformerType:
             tap_step_percent=wymagany_float(data, "tap_step_percent", context="TransformerType"),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="Katalog transformatorow MV-DESIGN-PRO / PN-EN 60076",
+                default_source_reference="Katalog transformatorów MV-DESIGN-PRO / PN-EN 60076",
                 default_verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY,
                 default_catalog_status=CatalogStatus.PRODUKCYJNY_V1,
             ),
@@ -1401,7 +1401,7 @@ class SwitchEquipmentType:
             i_cu_ka=(float(data["i_cu_ka"]) if data.get("i_cu_ka") is not None else None),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="Katalog aparatury MV-DESIGN-PRO / karty katalogowe producentow",
+                default_source_reference="Katalog aparatury MV-DESIGN-PRO / karty katalogowe producentów",
                 default_verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY,
                 default_catalog_status=CatalogStatus.PRODUKCYJNY_V1,
             ),
@@ -1563,7 +1563,7 @@ class ConverterType:
     ptpiree_note: str | None = None
     ptpiree_certificate_condition: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
-    source_reference: str = "Katalog przeksztaltnikow MV-DESIGN-PRO"
+    source_reference: str = "Katalog przekształtników MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
@@ -1708,7 +1708,7 @@ class ConverterType:
             ptpiree_certificate_condition=data.get("ptpiree_certificate_condition"),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="Katalog przeksztaltnikow MV-DESIGN-PRO / profile typowe OZE i BESS",
+                default_source_reference="Katalog przekształtników MV-DESIGN-PRO / profile typowe OZE i BESS",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -1747,7 +1747,7 @@ class BESSBatteryType:
     nominal_voltage_dc_v: float
     c_rate: float
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
-    source_reference: str = "Katalog przeksztaltnikow MV-DESIGN-PRO / profil przemyslowy V1"
+    source_reference: str = "Katalog przekształtników MV-DESIGN-PRO / profil przemysłowy V1"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
@@ -1803,7 +1803,7 @@ class BESSBatteryType:
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference=(
-                    "Katalog przeksztaltnikow MV-DESIGN-PRO / profil przemyslowy V1"
+                    "Katalog przekształtników MV-DESIGN-PRO / profil przemysłowy V1"
                 ),
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
@@ -1831,7 +1831,7 @@ class SurgeArresterType:
     model: str | None = None
     standard: str = "PN-EN 60099-4"
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
-    source_reference: str = "Katalog ogranicznikow przepiec MV-DESIGN-PRO"
+    source_reference: str = "Katalog ograniczników przepięć MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
@@ -1903,7 +1903,7 @@ class SurgeArresterType:
             standard=str(data.get("standard") or "PN-EN 60099-4"),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="PN-EN 60099-4 / katalog ogranicznikow MV-DESIGN-PRO",
+                default_source_reference="PN-EN 60099-4 / katalog ograniczników MV-DESIGN-PRO",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -1971,7 +1971,7 @@ class PtpireeGeneratorCertificate:
     publication_date: str | None = None
     accepted_from: str | None = None
     verification_status: str = CatalogVerificationStatus.ZWERYFIKOWANY.value
-    source_reference: str = "PTPiREE Wykaz certyfikowanych urzadzen"
+    source_reference: str = "PTPiREE Wykaz certyfikowanych urządzeń"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
@@ -2047,7 +2047,7 @@ class PtpireeGeneratorCertificate:
             ),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="PTPiREE Wykaz certyfikowanych urzadzen",
+                default_source_reference="PTPiREE Wykaz certyfikowanych urządzeń",
                 default_verification_status=CatalogVerificationStatus.ZWERYFIKOWANY,
                 default_catalog_status=CatalogStatus.PRODUKCYJNY_V1,
             ),
@@ -2494,7 +2494,7 @@ class LoadType:
     k_qf: float = 0.0
     f0_hz: float = 50.0
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
-    source_reference: str = "Katalog obciazen MV-DESIGN-PRO"
+    source_reference: str = "Katalog obciążeń MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
@@ -2556,7 +2556,7 @@ class LoadType:
             f0_hz=float(data.get("f0_hz", 50.0)),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="Katalog obciazen MV-DESIGN-PRO / profile referencyjne",
+                default_source_reference="Katalog obciążeń MV-DESIGN-PRO / profile referencyjne",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -2593,7 +2593,7 @@ class ShuntCapacitorType:
     loss_kw: float | None = None
     manufacturer: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
-    source_reference: str = "Katalog kompensatorow MV-DESIGN-PRO"
+    source_reference: str = "Katalog kompensatorów MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
@@ -2626,7 +2626,7 @@ class ShuntCapacitorType:
             manufacturer=data.get("manufacturer"),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="Katalog kompensatorow MV-DESIGN-PRO",
+                default_source_reference="Katalog kompensatorów MV-DESIGN-PRO",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -2662,7 +2662,7 @@ class SynchronousGeneratorType:
     q_max_mvar: float = 0.0
     manufacturer: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
-    source_reference: str = "Katalog generatorow synchronicznych MV-DESIGN-PRO"
+    source_reference: str = "Katalog generatorów synchronicznych MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
@@ -2697,7 +2697,7 @@ class SynchronousGeneratorType:
             manufacturer=data.get("manufacturer"),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="Katalog generatorow synchronicznych MV-DESIGN-PRO",
+                default_source_reference="Katalog generatorów synchronicznych MV-DESIGN-PRO",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -2878,7 +2878,7 @@ class MVApparatusType:
             ),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="Katalog aparatury SN MV-DESIGN-PRO / karty katalogowe producentow",
+                default_source_reference="Katalog aparatury SN MV-DESIGN-PRO / karty katalogowe producentów",
                 default_verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY,
                 default_catalog_status=CatalogStatus.PRODUKCYJNY_V1,
             ),
@@ -3083,7 +3083,7 @@ class LVBreakerMcbType:
     u_n_kv: float = 0.4
     manufacturer: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
-    source_reference: str = "IEC 60898-1 (wartosci znamionowe normatywne)"
+    source_reference: str = "IEC 60898-1 (wartości znamionowe normatywne)"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
@@ -3120,7 +3120,7 @@ class LVBreakerMcbType:
             manufacturer=data.get("manufacturer"),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="IEC 60898-1 (wartosci znamionowe normatywne)",
+                default_source_reference="IEC 60898-1 (wartości znamionowe normatywne)",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -3179,7 +3179,7 @@ class LVFuseLinkType:
     u_n_kv: float = 0.4
     manufacturer: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
-    source_reference: str = "IEC 60269-1 (wartosci znamionowe normatywne)"
+    source_reference: str = "IEC 60269-1 (wartości znamionowe normatywne)"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
@@ -3239,7 +3239,7 @@ class LVFuseLinkType:
             manufacturer=data.get("manufacturer"),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="IEC 60269-1 (wartosci znamionowe normatywne)",
+                default_source_reference="IEC 60269-1 (wartości znamionowe normatywne)",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -3624,7 +3624,7 @@ class SourceSystemType:
     catalog_number: str | None = None
     data_source: str | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
-    source_reference: str = "Warunki przylaczenia / standard OSD"
+    source_reference: str = "Warunki przyłączenia / standard OSD"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
@@ -3681,7 +3681,7 @@ class SourceSystemType:
             data_source=data.get("data_source"),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="Warunki przylaczenia / standard OSD",
+                default_source_reference="Warunki przyłączenia / standard OSD",
                 default_verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY,
                 default_catalog_status=CatalogStatus.PRODUKCYJNY_V1,
             ),
@@ -3778,7 +3778,7 @@ class PVInverterType:
     BLOCKER `der.dynamic_profile_missing`.
     """
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
-    source_reference: str = "Katalog falownikow PV MV-DESIGN-PRO"
+    source_reference: str = "Katalog falowników PV MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
@@ -3858,7 +3858,7 @@ class PVInverterType:
             **_pola_karty_projekcji_kwargs(data),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="Katalog falownikow PV MV-DESIGN-PRO / dane referencyjne",
+                default_source_reference="Katalog falowników PV MV-DESIGN-PRO / dane referencyjne",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -3951,7 +3951,7 @@ class BESSInverterType:
     BLOCKER `der.dynamic_profile_missing`.
     """
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
-    source_reference: str = "Katalog przeksztaltnikow BESS MV-DESIGN-PRO"
+    source_reference: str = "Katalog przekształtników BESS MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
@@ -4025,7 +4025,7 @@ class BESSInverterType:
             **_pola_karty_projekcji_kwargs(data),
             **_catalog_metadata_kwargs(
                 data,
-                default_source_reference="Katalog przeksztaltnikow BESS MV-DESIGN-PRO / dane referencyjne",
+                default_source_reference="Katalog przekształtników BESS MV-DESIGN-PRO / dane referencyjne",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -4493,7 +4493,7 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
         ui_fields=(
             ("manufacturer", "Producent", ""),
             ("model", "Typ model", ""),
-            ("device_type", "Rodzaj urzadzenia", ""),
+            ("device_type", "Rodzaj urządzenia", ""),
             ("document_number", "Nr dokumentu", ""),
             ("document_acceptance_date", "Data akceptacji dokumentu", ""),
             ("ppm_scope", "Zakres PPM", ""),

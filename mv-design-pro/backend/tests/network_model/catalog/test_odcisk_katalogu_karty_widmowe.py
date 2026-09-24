@@ -25,7 +25,13 @@ from network_model.catalog.types import POLA_KARTY_PROJEKCJI
 
 from tests.dziedziny import fabryki as f
 
-ODCISK_SPRZED_KARTY = "0115ee1a3faf1c42a814ef7cf160e7277ae2f926b1fdb48aced9919e0d6b2d95"
+#: Karta PL-ZNAKI (2026-09-24): odcisk przeliczony po poprawie zapisu tekstów katalogu
+#: (polskie znaki w nazwach, notach, źródłach). Dowód liść po liściu: zrzut kanoniczny
+#: sprzed i po karcie ma IDENTYCZNY zbiór kluczy, a różnią się wyłącznie liście tekstowe
+#: (source_reference 7533, verification_note 578, ptpiree_note 304, note 42, source_ref 42,
+#: name 36, data_source 22, name_pl 12, notes_pl 10) — żadna liczba ani identyfikator.
+#: Poprzednia wartość: 0115ee1a3faf1c42a814ef7cf160e7277ae2f926b1fdb48aced9919e0d6b2d95.
+ODCISK_SPRZED_KARTY = "ab3da79f495b3c17fec0d89f964a7c0b063b5d776e6e0e7e5ec6e609d2f0d455"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 

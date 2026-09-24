@@ -48,7 +48,7 @@ def test_brak_odwzorowania_nie_podstawia_cudzej_tresci() -> None:
     """
     assert kod_kanoniczny("E004") is None
     assert opis_kanoniczny("E004") is None
-    assert "napiecia SZYNY" in KODY_WALIDATORA_BEZ_KANONU["E004"]
+    assert "napięcia SZYNY" in KODY_WALIDATORA_BEZ_KANONU["E004"]
 
 
 def test_kazdy_kod_walidatora_jest_rozstrzygniety() -> None:

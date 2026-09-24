@@ -184,14 +184,16 @@ def test_coverage_is_deterministic(app_client) -> None:
 
 def test_boundary_identifies_external_grid_node(app_client) -> None:
     case_id = _nowy_przypadek(app_client)
-    set_enm(_klucz(app_client, case_id), build_golden_enm())
+    enm = build_golden_enm()
+    set_enm(_klucz(app_client, case_id), enm)
     resp = app_client.get(BOUNDARY, params={"case_id": case_id})
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert data["znaleziono"] is True
+    # Nazwa szyny z modelu, nie przepisana ręcznie (karta PL-ZNAKI).
     assert data["wezel_przylaczenia"] == {
         "ref_id": "bus_hv",
-        "name": "GPZ 110kV",
+        "name": next(b.name for b in enm.buses if b.ref_id == "bus_hv"),
         "voltage_kv": 110.0,
     }
     assert data["metoda"] == "external_grid"

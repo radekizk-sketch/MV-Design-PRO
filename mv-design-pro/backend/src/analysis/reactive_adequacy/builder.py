@@ -64,9 +64,9 @@ class ReactiveAdequacyBuilder:
         default_u_max_pu: float = DEFAULT_U_MAX_PU,
     ) -> None:
         if saturation_tol_mvar < 0.0:
-            raise ValueError("saturation_tol_mvar nie moze byc ujemny")
+            raise ValueError("saturation_tol_mvar nie może być ujemny")
         if default_u_min_pu >= default_u_max_pu:
-            raise ValueError("default_u_min_pu musi byc mniejszy niz default_u_max_pu")
+            raise ValueError("default_u_min_pu musi być mniejszy niż default_u_max_pu")
         self.saturation_tol_mvar = float(saturation_tol_mvar)
         self.default_u_min_pu = float(default_u_min_pu)
         self.default_u_max_pu = float(default_u_max_pu)
@@ -196,7 +196,7 @@ class ReactiveAdequacyBuilder:
                 "Dane niekompletne — brak: "
                 + ", ".join(missing)
                 + ". Ocena rezerwy biernej wymaga aktualnego Q (z wyniku "
-                "power-flow) oraz granic regulatora Q_min/Q_max zrodla."
+                "power-flow) oraz granic regulatora Q_min/Q_max źródła."
             )
             return SourceReactiveEntry(
                 ref=item.ref,
@@ -218,8 +218,8 @@ class ReactiveAdequacyBuilder:
         q_max = float(item.q_max_mvar)  # type: ignore[arg-type]
         if q_min > q_max:
             why = (
-                f"Dane niespojne — Q_min = {_round(q_min)} Mvar > "
-                f"Q_max = {_round(q_max)} Mvar. Granice regulatora musza spelniac "
+                f"Dane niespójne — Q_min = {_round(q_min)} Mvar > "
+                f"Q_max = {_round(q_max)} Mvar. Granice regulatora muszą spełniać "
                 "Q_min <= Q_max."
             )
             return SourceReactiveEntry(
@@ -248,23 +248,23 @@ class ReactiveAdequacyBuilder:
 
         if is_saturated and at_limit == "Q_max":
             why = (
-                f"Zrodlo nasycone przy Q_max = {_round(q_max)} Mvar "
-                f"(Q_actual = {_round(q)} Mvar; rezerwa w gore = {headroom_up} Mvar "
+                f"Źródło nasycone przy Q_max = {_round(q_max)} Mvar "
+                f"(Q_actual = {_round(q)} Mvar; rezerwa w górę = {headroom_up} Mvar "
                 f"<= tol {self.saturation_tol_mvar}). Brak dalszej rezerwy do "
-                "wstrzykiwania mocy biernej (podtrzymania napiecia w gore)."
+                "wstrzykiwania mocy biernej (podtrzymania napięcia w górę)."
             )
         elif is_saturated and at_limit == "Q_min":
             why = (
-                f"Zrodlo nasycone przy Q_min = {_round(q_min)} Mvar "
-                f"(Q_actual = {_round(q)} Mvar; rezerwa w dol = {headroom_down} Mvar "
+                f"Źródło nasycone przy Q_min = {_round(q_min)} Mvar "
+                f"(Q_actual = {_round(q)} Mvar; rezerwa w dół = {headroom_down} Mvar "
                 f"<= tol {self.saturation_tol_mvar}). Brak dalszej rezerwy do "
-                "absorpcji mocy biernej (obnizenia napiecia)."
+                "absorpcji mocy biernej (obniżenia napięcia)."
             )
         else:
             why = (
-                f"Zrodlo w obszarze regulacji: Q_actual = {_round(q)} Mvar w zakresie "
-                f"[{_round(q_min)}; {_round(q_max)}] Mvar. Rezerwa w gore = "
-                f"{headroom_up} Mvar, w dol = {headroom_down} Mvar."
+                f"Źródło w obszarze regulacji: Q_actual = {_round(q)} Mvar w zakresie "
+                f"[{_round(q_min)}; {_round(q_max)}] Mvar. Rezerwa w górę = "
+                f"{headroom_up} Mvar, w dół = {headroom_down} Mvar."
             )
 
         white_box = (
@@ -293,11 +293,11 @@ class ReactiveAdequacyBuilder:
                     f"ΔQ↑ = {headroom_up}, ΔQ↓ = {headroom_down}"
                 ),
                 result_pl=(
-                    f"zrodlo nasycone przy {at_limit}"
+                    f"źródło nasycone przy {at_limit}"
                     if is_saturated
-                    else "zrodlo w obszarze regulacji (nienasycone)"
+                    else "źródło w obszarze regulacji (nienasycone)"
                 ),
-                unit_check_pl="porownanie rezerwy [Mvar] z tolerancja [Mvar].",
+                unit_check_pl="porównanie rezerwy [Mvar] z tolerancją [Mvar].",
             ),
         )
         return SourceReactiveEntry(
@@ -329,17 +329,17 @@ class ReactiveAdequacyBuilder:
                 dev = _round(v - u_max)
                 kind = "przekroczenie U_max"
                 why = (
-                    f"|V| = {_round(v)} p.u. > U_max = {_round(u_max)} p.u. w wezle "
+                    f"|V| = {_round(v)} p.u. > U_max = {_round(u_max)} p.u. w węźle "
                     f"{b.bus_ref}; przekroczenie o {dev} p.u. Wskazuje na nadmiar "
-                    "mocy biernej / potrzebe absorpcji Q."
+                    "mocy biernej / potrzebę absorpcji Q."
                 )
             elif v < u_min:
                 dev = _round(v - u_min)  # ujemne
-                kind = "ponizej U_min"
+                kind = "poniżej U_min"
                 why = (
-                    f"|V| = {_round(v)} p.u. < U_min = {_round(u_min)} p.u. w wezle "
-                    f"{b.bus_ref}; niedobor {dev} p.u. Wskazuje na niedobor mocy "
-                    "biernej / potrzebe wstrzykiwania Q (podtrzymania napiecia)."
+                    f"|V| = {_round(v)} p.u. < U_min = {_round(u_min)} p.u. w węźle "
+                    f"{b.bus_ref}; niedobór {dev} p.u. Wskazuje na niedobór mocy "
+                    "biernej / potrzebę wstrzykiwania Q (podtrzymania napięcia)."
                 )
             else:
                 continue
@@ -351,7 +351,7 @@ class ReactiveAdequacyBuilder:
                         f"|V| = {_round(v)} p.u.; pasmo [{_round(u_min)}; " f"{_round(u_max)}] p.u."
                     ),
                     result_pl=f"ΔU = {dev} p.u. ({kind})",
-                    unit_check_pl="p.u. − p.u. = p.u.; znak + powyzej U_max, − ponizej U_min.",
+                    unit_check_pl="p.u. − p.u. = p.u.; znak + powyżej U_max, − poniżej U_min.",
                 ),
             )
             out.append(
@@ -399,7 +399,7 @@ class ReactiveAdequacyBuilder:
         white_box = (
             WhiteBoxStep(
                 symbol="ΣQ_zrodla",
-                formula_latex=r"\sum Q_{zrodla} = \sum_i Q_{akt,i}",
+                formula_latex=r"\sum Q_{źródła} = \sum_i Q_{akt,i}",
                 substitution_pl=(
                     f"Q_gen(+) = {q_gen} Mvar; Q_abs(−) = {q_abs} Mvar; "
                     f"netto = {net_source} Mvar"
@@ -410,9 +410,9 @@ class ReactiveAdequacyBuilder:
             WhiteBoxStep(
                 symbol="ΣQ_odbiory",
                 formula_latex=r"\sum Q_{odbiory} = \sum_j Q_{odb,j}",
-                substitution_pl=f"liczba odbiorow z Q = {len(q_loads)}",
+                substitution_pl=f"liczba odbiorów z Q = {len(q_loads)}",
                 result_pl=f"ΣQ_odbiory = {q_load} Mvar",
-                unit_check_pl="suma Mvar = Mvar; (+) pobor Q indukcyjny.",
+                unit_check_pl="suma Mvar = Mvar; (+) pobór Q indukcyjny.",
             ),
         )
         return ReactiveBalance(
@@ -454,9 +454,9 @@ class ReactiveAdequacyBuilder:
             return None
         is_estimated = worst is FieldQuality.ESTIMATED
         if is_estimated:
-            tag_pl = "werdykt oparty na oszacowanych granicach mocy biernej zrodla"
+            tag_pl = "werdykt oparty na oszacowanych granicach mocy biernej źródła"
         elif worst is FieldQuality.SYSTEM_DEFAULT:
-            tag_pl = "werdykt oparty na domyslnych granicach mocy biernej zrodla"
+            tag_pl = "werdykt oparty na domyślnych granicach mocy biernej źródła"
         else:  # DATASHEET
             tag_pl = "werdykt oparty na granicach mocy biernej z karty technicznej"
         return ProvenanceTag(
@@ -480,21 +480,21 @@ class ReactiveAdequacyBuilder:
     ) -> tuple[str, bool, str]:
         if top_missing:
             why = (
-                "Werdykt niemozliwy — dane niekompletne: "
+                "Werdykt niemożliwy — dane niekompletne: "
                 + ", ".join(top_missing)
-                + ". Ocena adekwatnosci mocy biernej wymaga zbieznego wyniku "
-                "power-flow (napiecia |V|) oraz co najmniej jednego regulowalnego "
-                "zrodla z granicami Q."
+                + ". Ocena adekwatności mocy biernej wymaga zbieżnego wyniku "
+                "power-flow (napięcia |V|) oraz co najmniej jednego regulowalnego "
+                "źródła z granicami Q."
             )
             return VERDICT_NO_DATA, False, why
 
         if saturated or violations:
             parts: list[str] = []
             if saturated:
-                parts.append("zrodla nasycone: " + ", ".join(saturated))
+                parts.append("źródła nasycone: " + ", ".join(saturated))
             if violations:
                 parts.append(
-                    "wezly z naruszeniem napiecia: " + ", ".join(v.bus_ref for v in violations)
+                    "węzły z naruszeniem napięcia: " + ", ".join(v.bus_ref for v in violations)
                 )
             why = (
                 "Rezerwa Q wyczerpana — "
@@ -506,8 +506,8 @@ class ReactiveAdequacyBuilder:
             return VERDICT_EXHAUSTED, False, why
 
         why = (
-            "Wystarczajaca rezerwa Q — zaden regulowalny zrodlo nie jest nasycone "
-            "i zaden wezel nie narusza pasma napieciowego. "
+            "Wystarczająca rezerwa Q — żadne regulowalne źródło nie jest nasycone "
+            "i żaden węzeł nie narusza pasma napięciowego. "
             + self._headroom_phrase(net_up, net_down)
         )
         why = self._append_provenance(why, provenance)
@@ -515,11 +515,11 @@ class ReactiveAdequacyBuilder:
 
     @staticmethod
     def _headroom_phrase(net_up: float | None, net_down: float | None) -> str:
-        up = f"{net_up} Mvar" if net_up is not None else "brak (wszystkie zrodla nasycone w gore)"
+        up = f"{net_up} Mvar" if net_up is not None else "brak (wszystkie źródła nasycone w górę)"
         down = (
-            f"{net_down} Mvar" if net_down is not None else "brak (wszystkie zrodla nasycone w dol)"
+            f"{net_down} Mvar" if net_down is not None else "brak (wszystkie źródła nasycone w dół)"
         )
-        return f"Rezerwa systemowa z nienasyconych zrodel: w gore = {up}, w dol = {down}."
+        return f"Rezerwa systemowa z nienasyconych źródeł: w górę = {up}, w dół = {down}."
 
     @staticmethod
     def _append_provenance(why: str, provenance: ProvenanceTag | None) -> str:

@@ -297,22 +297,22 @@ def _infer_unit(key: str) -> str | None:
 
 
 _LABEL_PL_MAP = {
-    "v_pu": "Napiecie [p.u.]",
-    "u_kv": "Napiecie [kV]",
-    "angle_deg": "Kat fazowy [°]",
+    "v_pu": "Napięcie [p.u.]",
+    "u_kv": "Napięcie [kV]",
+    "angle_deg": "Kąt fazowy [°]",
     "p_mw": "Moc czynna [MW]",
     "q_mvar": "Moc bierna [Mvar]",
     "s_mva": "Moc pozorna [MVA]",
-    "i_a": "Prad [A]",
-    "ikss_ka": "Prad zwarciowy Ik'' [kA]",
-    "ip_ka": "Prad udarowy ip [kA]",
-    "ith_ka": "Prad cieplny Ith [kA]",
+    "i_a": "Prąd [A]",
+    "ikss_ka": "Prąd zwarciowy Ik'' [kA]",
+    "ip_ka": "Prąd udarowy ip [kA]",
+    "ith_ka": "Prąd cieplny Ith [kA]",
     "sk_mva": "Moc zwarciowa Sk'' [MVA]",
-    "loading_pct": "Obciazenie [%]",
+    "loading_pct": "Obciążenie [%]",
     "losses_p_mw": "Straty czynne [MW]",
     "losses_q_mvar": "Straty bierne [Mvar]",
-    "p_injected_mw": "Moc czynna wstrzyknieta [MW]",
-    "q_injected_mvar": "Moc bierna wstrzyknieta [Mvar]",
+    "p_injected_mw": "Moc czynna wstrzyknięta [MW]",
+    "q_injected_mvar": "Moc bierna wstrzyknięta [Mvar]",
 }
 
 

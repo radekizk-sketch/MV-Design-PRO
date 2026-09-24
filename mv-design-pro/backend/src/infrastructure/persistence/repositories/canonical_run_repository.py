@@ -351,7 +351,7 @@ class CanonicalRunRepository:
         if len(strona_probki) != len(os_czasu_s):
             raise ValueError(
                 f"strona_probki ({len(strona_probki)}) i os_czasu_s ({len(os_czasu_s)}) "
-                "musza miec te sama dlugosc"
+                "muszą mieć tę samą długość"
             )
         if self._session.get(CanonicalRunORM, run_id) is None:
             return

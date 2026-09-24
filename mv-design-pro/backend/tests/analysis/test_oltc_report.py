@@ -46,7 +46,7 @@ class TestReportSection:
         assert "Regulacja napięcia (OLTC)" in text
         assert "TR1" in text
         latex = render_oltc_report_latex(section)
-        assert "\\section{Regulacja napiecia (OLTC)}" in latex
+        assert "\\section{Regulacja napięcia (OLTC)}" in latex
         assert "tabular" in latex
 
     def test_to_dict_shape(self):

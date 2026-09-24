@@ -106,7 +106,7 @@ def _short_circuit_type_from_options(options: dict[str, Any]) -> ShortCircuitTyp
     }
     if raw in mapping:
         return mapping[raw]
-    raise ValueError(f"Nieobslugiwany typ zwarcia: {raw}")
+    raise ValueError(f"Nieobsługiwany typ zwarcia: {raw}")
 
 
 def _short_circuit_requires_z0(short_circuit_type: ShortCircuitType) -> bool:
@@ -245,18 +245,18 @@ def _build_shunt_specs_from_snapshot(snapshot: dict[str, Any], base_mva: float) 
         bus_ref = str(raw.get("bus_ref") or "")
         if not bus_ref:
             raise ValueError(
-                f"Bateria kondensatorow '{ref_id}' nie ma przypisanej szyny (bus_ref)."
+                f"Bateria kondensatorów '{ref_id}' nie ma przypisanej szyny (bus_ref)."
             )
         rated_mvar = raw.get("rated_mvar")
         rated_kv = raw.get("rated_kv")
         if rated_mvar is None or float(rated_mvar) <= 0.0:
             raise ValueError(
-                f"Bateria kondensatorow '{ref_id}' nie ma dodatniej mocy "
+                f"Bateria kondensatorów '{ref_id}' nie ma dodatniej mocy "
                 f"znamionowej (rated_mvar)."
             )
         if rated_kv is None or float(rated_kv) <= 0.0:
             raise ValueError(
-                f"Bateria kondensatorow '{ref_id}' nie ma dodatniego napiecia "
+                f"Bateria kondensatorów '{ref_id}' nie ma dodatniego napięcia "
                 f"znamionowego (rated_kv)."
             )
         # b_pu = Q_rated / S_base (positive susceptance for a capacitor).
@@ -374,8 +374,8 @@ def _build_converter_control_by_node(
         node_id = _graph_id_from_ref(bus_ref.strip())
         if node_id in out:
             raise ValueError(
-                f"Szyna {bus_ref.strip()} ma wiecej niz jedno zrodlo z aktywna regulacja "
-                "falownika; kontrakt rozplywu dopuszcza jedna charakterystyke na wezel"
+                f"Szyna {bus_ref.strip()} ma więcej niż jedno źródło z aktywną regulacją "
+                "falownika; kontrakt rozpływu dopuszcza jedną charakterystykę na węzeł"
             )
         # Karta FAB-H (H2, KLASA NIE INSTANCJA): Q rozstrzygane przez JEDNO wspólne
         # źródło prawdy (moc_bierna_wytworcy), tak samo jak w enm/mapping.py i
@@ -672,7 +672,7 @@ def zloz_wejscie_rozplywu(
     # (``OdmowaWejsciaRozplywu``, kod ``source.multiple_grid_sources_in_island``).
     wyspy_zasilone = _wyspy_zasilone(snapshot, graph)
     if not wyspy_zasilone:
-        raise ValueError("Brak wezla bilansujacego SLACK w kanonicznym snapshotcie ENM")
+        raise ValueError("Brak węzła bilansującego SLACK w kanonicznym snapshotcie ENM")
     slack_node_id = wyspy_zasilone[0][2]
     nastawa_u_zrodla = _nastawy_u_zrodel(snapshot)
 
@@ -1695,7 +1695,7 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
 
     wyspy_zasilone = _wyspy_zasilone(snapshot, graph)
     if not wyspy_zasilone:
-        raise ValueError("Brak wezla bilansujacego SLACK w kanonicznym snapshotcie ENM")
+        raise ValueError("Brak węzła bilansującego SLACK w kanonicznym snapshotcie ENM")
     nastawa_u_zrodla = _nastawy_u_zrodel(snapshot)
     base_mva, tolerance, max_iterations = _opcje_rozplywu_niesymetrycznego(options)
 

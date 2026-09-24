@@ -2837,7 +2837,7 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
         // Energized incoming cable (source side).
         { id: 'c1', ref_id: 'seg/c1/segment', name: 'C1', type: 'cable', from_bus_ref: 'b_a', to_bus_ref: 'b_mid', status: 'closed', length_km: 1, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
         // Open section switch (NMO) carrying a real model name.
-        { id: 'sw1', ref_id: 'sw/op1/switch', name: 'Lacznik sekcyjny NO (rezerwa)', type: 'switch', from_bus_ref: 'b_mid', to_bus_ref: 'b_end', status: 'open' } as never,
+        { id: 'sw1', ref_id: 'sw/op1/switch', name: 'Łącznik sekcyjny NO (rezerwa)', type: 'switch', from_bus_ref: 'b_mid', to_bus_ref: 'b_end', status: 'open' } as never,
         // De-energized reserve cable (beyond the open point).
         { id: 'c2', ref_id: 'seg/c2/segment', name: 'C2', type: 'cable', from_bus_ref: 'b_end', to_bus_ref: 'b_far', status: 'closed', length_km: 1, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
       ];
@@ -2846,7 +2846,7 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
       expect(markers).toHaveLength(1);
       // REAL identifier from the model — no fabricated "P-xx" number.
       expect(markers[0].id).toBe('sw/op1/switch');
-      expect(markers[0].label).toBe('Lacznik sekcyjny NO (…');
+      expect(markers[0].label).toBe('Łącznik sekcyjny NO (…');
       expect(markers[0].label).not.toMatch(/P-\d/);
       // The run carrying the marker is flagged as containing an open point.
       expect(r.cableRuns.some((run) => run.containsOpenPoint && (run.openPointMarkers?.length ?? 0) > 0)).toBe(true);

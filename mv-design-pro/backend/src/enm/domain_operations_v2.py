@@ -2493,7 +2493,7 @@ def add_sn_bay_from_catalog(enm: dict[str, Any], payload: dict[str, Any]) -> dic
 
     if not czy_wybor_katalogowy(payload):
         return _werdykt_niezgodnosci(
-            "Operacja materializuje pole z katalogu rozdzielnic: wskaz katalogowe "
+            "Operacja materializuje pole z katalogu rozdzielnic: wskaż katalogowe "
             "pole rodziny (complete_bay_template_ref) albo blok fabryczny RMU "
             "(factory_configuration_ref) z numerem jednostki.",
             dry_run=dry_run,
@@ -2537,7 +2537,7 @@ def add_sn_bay_from_catalog(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         if zadeklarowana_rola.strip().upper() != plan.bay_role:
             return _werdykt_niezgodnosci(
                 f"Katalogowe pole {plan.bay_template_ref} jest polem o roli "
-                f"{plan.bay_role}, a operacja dostala role "
+                f"{plan.bay_role}, a operacja dostała rolę "
                 f"{zadeklarowana_rola.strip().upper()} — rola pola wynika "
                 "z katalogu rodziny.",
                 dry_run=dry_run,
@@ -5934,7 +5934,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
                         blocking_transformer_ref = station_transformers[0].get("ref_id")
                     elif len(station_transformers) > 1:
                         return _error_response(
-                            "Stacja zawiera wiele transformatorow — wymagany jawny blocking_transformer_ref.",
+                            "Stacja zawiera wiele transformatorów — wymagany jawny blocking_transformer_ref.",
                             "generator.block_transformer_ambiguous",
                         )
             if (
@@ -5942,7 +5942,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
                 or not blocking_transformer_ref.strip()
             ):
                 return _error_response(
-                    "Wariant block_transformer wymaga blocking_transformer_ref albo station_ref z dokladnie 1 transformatorem.",
+                    "Wariant block_transformer wymaga blocking_transformer_ref albo station_ref z dokładnie 1 transformatorem.",
                     "generator.block_transformer_missing",
                 )
         transformer = next(
@@ -7089,7 +7089,7 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
     )
     if nieznane:
         return _error_response(
-            "Referencje katalogowe nie istnieja w katalogu: " + ", ".join(nieznane) + ".",
+            "Referencje katalogowe nie istnieją w katalogu: " + ", ".join(nieznane) + ".",
             "der_bindings.catalog_ref_unknown",
         )
 
@@ -7330,7 +7330,7 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         "catalog_binding",
         "APARAT_SN",
         True,
-        "materializacja pola z katalogu rodzin — aparat glowny wskazywany tak samo",
+        "materializacja pola z katalogu rodzin — aparat główny wskazywany tak samo",
     ),
     PozycjaBramyKatalogowejV2("add_nn_load", "catalog_binding", "OBCIAZENIE", True),
     # CV-4.3 K1: `add_load_sn` reużywa DOKŁADNIE ten sam wzorzec co `add_nn_load`

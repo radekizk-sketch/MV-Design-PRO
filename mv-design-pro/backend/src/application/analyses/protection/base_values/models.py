@@ -298,12 +298,12 @@ class ProtectionSetpoint:
         """Validate setpoint invariants."""
         if self.basis in (ProtectionSetpointBasis.UN, ProtectionSetpointBasis.IN):
             if self.unit != "pu":
-                raise ValueError(f"Dla bazy {self.basis.value} jednostka musi byc 'pu'")
+                raise ValueError(f"Dla bazy {self.basis.value} jednostka musi być 'pu'")
             if self.multiplier is None:
                 raise ValueError(f"Dla bazy {self.basis.value} wymagany jest multiplier")
         if self.basis == ProtectionSetpointBasis.ABS:
             if self.abs_value is None:
-                raise ValueError("Dla bazy ABS wymagana jest wartosc abs_value")
+                raise ValueError("Dla bazy ABS wymagana jest wartość abs_value")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -347,7 +347,7 @@ class ProtectionComputedValue:
     def __post_init__(self) -> None:
         """Validate computed value invariants."""
         if not self.computed_from or self.computed_from.strip() == "":
-            raise ValueError("Wartosc computed musi miec wypelnione pole computed_from")
+            raise ValueError("Wartość computed musi mieć wypełnione pole computed_from")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -364,31 +364,31 @@ class ProtectionComputedValue:
 
 
 SOURCE_UN_LABELS_PL: dict[BaseValueSourceUn, str] = {
-    BaseValueSourceUn.BUS: "Napiecie szyny",
-    BaseValueSourceUn.VT_PRIMARY: "Przekladnik napieciowy (strona pierwotna)",
-    BaseValueSourceUn.BoundaryNode: "BoundaryNode – punkt wspolnego przylaczenia",
+    BaseValueSourceUn.BUS: "Napięcie szyny",
+    BaseValueSourceUn.VT_PRIMARY: "Przekładnik napięciowy (strona pierwotna)",
+    BaseValueSourceUn.BoundaryNode: "BoundaryNode – punkt wspólnego przyłączenia",
     BaseValueSourceUn.UNKNOWN: "Nieznane",
 }
 
 SOURCE_IN_LABELS_PL: dict[BaseValueSourceIn, str] = {
-    BaseValueSourceIn.LINE: "Prad znamionowy linii/kabla",
-    BaseValueSourceIn.TRANSFORMER_SIDE: "Prad znamionowy transformatora (strona)",
-    BaseValueSourceIn.BREAKER: "Prad znamionowy wylacznika",
-    BaseValueSourceIn.BoundaryNode: "BoundaryNode – punkt wspolnego przylaczenia",
+    BaseValueSourceIn.LINE: "Prąd znamionowy linii/kabla",
+    BaseValueSourceIn.TRANSFORMER_SIDE: "Prąd znamionowy transformatora (strona)",
+    BaseValueSourceIn.BREAKER: "Prąd znamionowy wyłącznika",
+    BaseValueSourceIn.BoundaryNode: "BoundaryNode – punkt wspólnego przyłączenia",
     BaseValueSourceIn.UNKNOWN: "Nieznany",
 }
 
 SETPOINT_BASIS_LABELS_PL: dict[ProtectionSetpointBasis, str] = {
-    ProtectionSetpointBasis.UN: "Napiecie znamionowe (Un)",
-    ProtectionSetpointBasis.IN: "Prad znamionowy (In)",
-    ProtectionSetpointBasis.HZ: "Czestotliwosc bazowa (fn)",
-    ProtectionSetpointBasis.ABS: "Wartosc bezwzgledna",
+    ProtectionSetpointBasis.UN: "Napięcie znamionowe (Un)",
+    ProtectionSetpointBasis.IN: "Prąd znamionowy (In)",
+    ProtectionSetpointBasis.HZ: "Częstotliwość bazowa (fn)",
+    ProtectionSetpointBasis.ABS: "Wartość bezwzględna",
 }
 
 SETPOINT_OPERATOR_LABELS_PL: dict[ProtectionSetpointOperator, str] = {
-    ProtectionSetpointOperator.LT: "mniejszy niz (<)",
-    ProtectionSetpointOperator.GT: "wiekszy niz (>)",
-    ProtectionSetpointOperator.GE: "wiekszy lub rowny (>=)",
-    ProtectionSetpointOperator.LE: "mniejszy lub rowny (<=)",
-    ProtectionSetpointOperator.EQ: "rowny (=)",
+    ProtectionSetpointOperator.LT: "mniejszy niż (<)",
+    ProtectionSetpointOperator.GT: "większy niż (>)",
+    ProtectionSetpointOperator.GE: "większy lub równy (>=)",
+    ProtectionSetpointOperator.LE: "mniejszy lub równy (<=)",
+    ProtectionSetpointOperator.EQ: "równy (=)",
 }

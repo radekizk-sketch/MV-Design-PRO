@@ -761,7 +761,7 @@ class ProtectionSettingsEngine:
         trace.append(
             {
                 "step": "Rozkład wkładów prądu zwarciowego (system / E-L)",
-                "formula": "I_{system} = I_{k3,max,poczatek} - I_{E-L}",
+                "formula": "I_{system} = I_{k3,max,początek} - I_{E-L}",
                 "inputs": {
                     "ik3_max_beginning_a": round(prad_lacznie, 1),
                     "wklad_el_a": round(wklad_el, 1),
@@ -818,7 +818,7 @@ class ProtectionSettingsEngine:
             trace.append(
                 {
                     "step": "Sprawdzenie ryzyka blokady ZSZ",
-                    "formula": "ryzyko = (I_{E-L} / I_{lacznie}) \\geq prog_{ZSZ}",
+                    "formula": "ryzyko = (I_{E-L} / I_{łącznie}) \\geq prog_{ZSZ}",
                     "inputs": {"udzial_el": udzial_el, "prog_udzialu_zsz": prog_wejsciowy},
                     "result": {"ryzyko_blokady_zsz": ryzyko},
                 }

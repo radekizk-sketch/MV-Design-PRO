@@ -92,7 +92,7 @@ def test_text_report_renders_polish_summary():
 def test_text_report_for_empty_proofs():
     ctx = _make_ctx([])
     text = render_audit2_report_text(ctx)
-    assert "brak dowodow" in text.lower()
+    assert "brak dowodów" in text.lower()
 
 
 def test_latex_report_includes_formulas():

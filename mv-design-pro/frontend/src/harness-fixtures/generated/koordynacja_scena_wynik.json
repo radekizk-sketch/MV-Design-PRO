@@ -10,7 +10,7 @@
       "location_element_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
       "manufacturer": null,
       "model": null,
-      "name": "Przekaznik 50/51 (typowy)",
+      "name": "Przekaźnik 50/51 (typowy)",
       "rated_current_a": null,
       "settings": {
         "stage_50": {
@@ -48,7 +48,7 @@
       "location_element_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
       "manufacturer": null,
       "model": null,
-      "name": "Przekaznik 50/51 (typowy)",
+      "name": "Przekaźnik 50/51 (typowy)",
       "rated_current_a": null,
       "settings": {
         "stage_50": {
@@ -196,7 +196,7 @@
       "color": "#2563eb",
       "curve_type": "IEC_SI",
       "device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
-      "device_name": "Przekaznik 50/51 (typowy)",
+      "device_name": "Przekaźnik 50/51 (typowy)",
       "pickup_current_a": 400.0,
       "podstawa_kod": "KRZYWA_PRZEKAZNIKOWA",
       "points": [
@@ -708,7 +708,7 @@
       "color": "#dc2626",
       "curve_type": "IEC_SI",
       "device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
-      "device_name": "Przekaznik 50/51 (typowy)",
+      "device_name": "Przekaźnik 50/51 (typowy)",
       "pickup_current_a": 400.0,
       "podstawa_kod": "KRZYWA_PRZEKAZNIKOWA",
       "points": [
@@ -1236,7 +1236,7 @@
       "step": "check_sensitivity_start"
     },
     {
-      "description_pl": "Sprawdzenie czułości: Przekaznik 50/51 (typowy)",
+      "description_pl": "Sprawdzenie czułości: Przekaźnik 50/51 (typowy)",
       "inputs": {
         "i_fault_min_a": 8746.781124267436,
         "i_pickup_a": 400.0
@@ -1249,7 +1249,7 @@
       "step": "sensitivity_a135c343"
     },
     {
-      "description_pl": "Sprawdzenie czułości: Przekaznik 50/51 (typowy)",
+      "description_pl": "Sprawdzenie czułości: Przekaźnik 50/51 (typowy)",
       "inputs": {
         "i_fault_min_a": 8034.309745271616,
         "i_pickup_a": 400.0
@@ -1270,7 +1270,7 @@
       "step": "check_overload_start"
     },
     {
-      "description_pl": "Sprawdzenie przeciążalności: Przekaznik 50/51 (typowy)",
+      "description_pl": "Sprawdzenie przeciążalności: Przekaźnik 50/51 (typowy)",
       "inputs": {
         "i_operating_a": 22.768781749828918,
         "i_pickup_a": 400.0
@@ -1283,7 +1283,7 @@
       "step": "overload_a135c343"
     },
     {
-      "description_pl": "Sprawdzenie przeciążalności: Przekaznik 50/51 (typowy)",
+      "description_pl": "Sprawdzenie przeciążalności: Przekaźnik 50/51 (typowy)",
       "inputs": {
         "i_operating_a": 11.384885698880636,
         "i_pickup_a": 400.0
@@ -1304,7 +1304,7 @@
       "step": "check_selectivity_start"
     },
     {
-      "description_pl": "Selektywność: Przekaznik 50/51 (typowy) → Przekaznik 50/51 (typowy)",
+      "description_pl": "Selektywność: Przekaźnik 50/51 (typowy) → Przekaźnik 50/51 (typowy)",
       "inputs": {
         "analysis_current_a": 9621.459235920445,
         "min_cti_s": 0.2

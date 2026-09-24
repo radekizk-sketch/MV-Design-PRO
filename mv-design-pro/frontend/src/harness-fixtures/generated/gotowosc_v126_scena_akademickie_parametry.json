@@ -1,6 +1,6 @@
 {
   "case_id": "case-demo",
-  "model_hash": "6567168519d7a0ab51de693250ff673053aa907307bc5bd1faf2a403fb084d22",
+  "model_hash": "959f542670f7d06a6c7c7551cb2558e7901e05b54d5e5cd5dd209c7a98889de2",
   "przedmiot": {
     "liczba_szyn": 8,
     "liczba_galezi": 6,
@@ -16,7 +16,7 @@
     "czestotliwosc_hz": null,
     "punkt_przylaczenia": {
       "ref": "bus_hv",
-      "nazwa": "GPZ 110kV",
+      "nazwa": "GPZ 110 kV",
       "zrodlo": "src_gpz"
     },
     "nazwa_modelu": "CGMES Golden Net",

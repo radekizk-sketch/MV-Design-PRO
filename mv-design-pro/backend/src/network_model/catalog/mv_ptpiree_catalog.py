@@ -65,7 +65,7 @@ PTPIREE_ACCEPTED_FROM = "2024-11-01"
 SNAPSHOT_PATH = Path(__file__).with_name("ptpiree_wykaz_snapshot.json")
 SNAPSHOT_SCHEMA = "ptpiree_wykaz_snapshot/v1"
 
-_SOURCE_REFERENCE_TEMPLATE = "PTPiREE Wykaz urzadzen {version}, publikacja {published}"
+_SOURCE_REFERENCE_TEMPLATE = "PTPiREE Wykaz urządzeń {version}, publikacja {published}"
 
 # --------------------------------------------------------------------------
 # NORMALIZACJA — jedno zrodlo prawdy dla obu stron porownania
@@ -238,7 +238,7 @@ def _load_snapshot() -> dict[str, Any]:
         snapshot: dict[str, Any] = json.load(handle)
     schema = snapshot.get("schema")
     if schema != SNAPSHOT_SCHEMA:
-        raise ValueError(f"nieobslugiwany schemat snapshotu PTPiREE: {schema!r}")
+        raise ValueError(f"nieobsługiwany schemat snapshotu PTPiREE: {schema!r}")
     return snapshot
 
 
@@ -339,7 +339,7 @@ def get_ptpiree_catalog_manifest() -> dict[str, Any]:
     )
     newest = sources[-1] if sources else {}
     return {
-        "source": "PTPiREE Wykaz certyfikowanych urzadzen",
+        "source": "PTPiREE Wykaz certyfikowanych urządzeń",
         "source_page_url": PTPIREE_SOURCE_PAGE_URL,
         "current_wipwc_version": _wipwc_version(newest.get("source_version")),
         "publication_date": str(newest.get("publication_date") or ""),
@@ -355,11 +355,11 @@ def get_ptpiree_catalog_manifest() -> dict[str, Any]:
             }
             for source in sources
         ],
-        "update_policy": "PTPiREE publikuje aktualizacje wykazu nie rzadziej niz raz w miesiacu.",
+        "update_policy": "PTPiREE publikuje aktualizacje wykazu nie rzadziej niż raz w miesiącu.",
         "integration_policy": (
             "MV-DESIGN-PRO przechowuje znormalizowany snapshot wykazu i zapisuje "
-            "source_url/publication_date przy kazdym rekordzie. Ostateczna akceptacja "
-            "przylaczeniowa pozostaje po stronie wlasciwego OSD."
+            "source_url/publication_date przy każdym rekordzie. Ostateczna akceptacja "
+            "przyłączeniowa pozostaje po stronie właściwego OSD."
         ),
     }
 
@@ -418,7 +418,7 @@ def _no_match_note() -> str:
     versions = "/".join(source["wipwc_version"] for source in manifest["sources"])
     return (
         f"Brak dopasowania w wykazie PTPiREE (snapshot: {manifest['record_count']} "
-        f"rekordow, WiPWC {versions}, publikacja {manifest['publication_date']})."
+        f"rekordów, WiPWC {versions}, publikacja {manifest['publication_date']})."
     )
 
 
@@ -430,7 +430,7 @@ def _match_note(match_params: dict[str, Any]) -> str:
     if condition:
         # Warunek waznosci certyfikatu NIE moze zniknac — projektant musi go
         # zobaczyc, bo bez spelnienia warunku certyfikat nie obowiazuje.
-        return f"{base} Warunek waznosci certyfikatu: {condition}"
+        return f"{base} Warunek ważności certyfikatu: {condition}"
     return base
 
 

@@ -23,7 +23,7 @@
           "label": "Czas trwania zwarcia"
         }
       },
-      "notes": "Aparat Sprzeglo Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s."
+      "notes": "Aparat Sprzęgło Q1 nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s."
     },
     {
       "step": 2,

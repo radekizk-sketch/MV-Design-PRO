@@ -451,10 +451,10 @@ class HvFusePasmoTcc:
 
     def __post_init__(self) -> None:
         if not self.zrodlo_url.startswith(("http://", "https://")):
-            odmowa_twarda("KAT-T-023", "Pasmo wkladki wymaga adresu http(s) tabeli producenta.")
+            odmowa_twarda("KAT-T-023", "Pasmo wkładki wymaga adresu http(s) tabeli producenta.")
         if not self.punkty:
             odmowa_twarda(
-                "KAT-T-024", "Pasmo bez punktow nie jest pasmem — uzyj `pasmo_tcc = None`."
+                "KAT-T-024", "Pasmo bez punktów nie jest pasmem — użyj `pasmo_tcc = None`."
             )
 
     def to_dict(self) -> dict:
@@ -777,21 +777,21 @@ class PfCurveItem:
         if not statyzm_min <= self.droop_percent <= statyzm_max:
             odmowa_twarda(
                 "KAT-T-027",
-                f"{self.id}: statyzm {self.droop_percent} % jest poza przedzialem "
+                f"{self.id}: statyzm {self.droop_percent} % jest poza przedziałem "
                 f"nastawialnym {statyzm_min}-{statyzm_max} % (NC RfG art. 13 ust. 2).",
             )
         strefa_min, strefa_max = NC_RFG_STREFA_NIECZULOSCI_ZAKRES_HZ
         if not strefa_min <= self.deadband_hz <= strefa_max:
             odmowa_twarda(
                 "KAT-T-028",
-                f"{self.id}: strefa nieczulosci {self.deadband_hz} Hz jest poza "
-                f"przedzialem {strefa_min}-{strefa_max} Hz (NC RfG art. 13 ust. 2).",
+                f"{self.id}: strefa nieczułości {self.deadband_hz} Hz jest poza "
+                f"przedziałem {strefa_min}-{strefa_max} Hz (NC RfG art. 13 ust. 2).",
             )
         if (self.f_min_hz, self.f_max_hz) != NC_RFG_ZAKRES_PRACY_HZ:
             odmowa_twarda(
                 "KAT-T-029",
                 f"{self.id}: zakres pracy {self.f_min_hz}-{self.f_max_hz} Hz nie jest "
-                f"zakresem z zalacznika II tab. 2 {NC_RFG_ZAKRES_PRACY_HZ}.",
+                f"zakresem z załącznika II tab. 2 {NC_RFG_ZAKRES_PRACY_HZ}.",
             )
 
     def to_dict(self) -> dict:
@@ -806,8 +806,8 @@ class PfCurveItem:
             "f_max_hz": self.f_max_hz,
             "deadband_hz": self.deadband_hz,
             "zrodlo_pl": (
-                "Rozporzadzenie (UE) 2016/631 (NC RfG): art. 13 ust. 2 (statyzm "
-                "nastawialny 2-12 %, prog 50,2-50,5 Hz) oraz zalacznik II tab. 2 "
+                "Rozporządzenie (UE) 2016/631 (NC RfG): art. 13 ust. 2 (statyzm "
+                "nastawialny 2-12 %, próg 50,2-50,5 Hz) oraz załącznik II tab. 2 "
                 f"(zakres pracy 47,5-51,5 Hz); {NC_RFG_URL}"
             ),
         }
@@ -933,7 +933,7 @@ class BlockTransformerItem:
                 return record
         raise KeyError(
             f"{self.id}: typ '{self.transformer_type_ref}' nie istnieje w katalogu "
-            "transformatorow — pozycja transformatora dedykowanego bez pokrycia."
+            "transformatorów — pozycja transformatora dedykowanego bez pokrycia."
         )
 
     @property
@@ -1302,10 +1302,10 @@ def is_vt_voltage_factor_valid_for_grounding(
             "isolated": "izolowana",
             "petersen_coil": "skompensowana (Petersena)",
             "resistor_grounded": "uziemiona przez rezystor",
-            "directly_grounded": "bezposrednio uziemiona",
+            "directly_grounded": "bezpośrednio uziemiona",
         }[grounding_type]
         return False, (
-            f"Siec {etykieta} wymaga VT (faza-ziemia) z U_th >= {wymagany} wg IEC 61869-3. "
+            f"Sieć {etykieta} wymaga VT (faza-ziemia) z U_th >= {wymagany} wg IEC 61869-3. "
             f"Wybrany VT ma U_th = {voltage_factor}."
         )
     return True, ""
@@ -1511,7 +1511,7 @@ def validate_hosting_capacity_export(
     if net < 0 or ratio < 0.8:
         status = "no_export"
         message = (
-            f"Lokalna autokonsumpcja: {p_export_kw:.0f} kW DER vs {p_import_kw:.0f} kW odbiorow. "
+            f"Lokalna autokonsumpcja: {p_export_kw:.0f} kW DER vs {p_import_kw:.0f} kW odbiorów. "
             "Brak eksportu netto do OSD."
         )
     elif ratio <= 1.5:
@@ -1524,7 +1524,7 @@ def validate_hosting_capacity_export(
         status = "high_export_warning"
         message = (
             f"Wysoki eksport: {net:.0f} kW (stosunek {ratio:.2f}x). "
-            "Zalecane curtailment 70% w godzinach poludniowych."
+            "Zalecane curtailment 70% w godzinach południowych."
         )
     else:
         status = "requires_ramp_down"

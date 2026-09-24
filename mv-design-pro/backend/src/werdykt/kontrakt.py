@@ -1008,7 +1008,7 @@ class OcenaKryterium(_RekordWerdyktu):
                 ):
                     raise ValueError(
                         f"Kryterium logiczne {self.kryterium_id}: wynik zapisuje się jako "
-                        f'Wielkosc(1.0 albo 0.0, "{JEDNOSTKA_LOGICZNA}").'
+                        f'Wielkość(1.0 albo 0.0, "{JEDNOSTKA_LOGICZNA}").'
                     )
                 if wynik.punkt_krytyczny_pl is None:
                     raise ValueError(

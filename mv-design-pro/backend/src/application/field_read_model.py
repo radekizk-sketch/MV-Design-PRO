@@ -1162,10 +1162,10 @@ def _resolve_project_result_state(
     latest_pf_run_id: str | None,
 ) -> tuple[str, str | None]:
     if latest_sc_run_id and latest_pf_run_id:
-        return "pelny", "Dostepne sa wyniki zwarciowe i rozplywowe pola."
+        return "pelny", "Dostępne są wyniki zwarciowe i rozpływowe pola."
     if latest_sc_run_id or latest_pf_run_id:
-        return "czesciowy", "Dostepny jest czesciowy zestaw wynikow pola."
-    return "bledny", "Brak poprawnych wynikow projektowych pola."
+        return "czesciowy", "Dostępny jest częściowy zestaw wyników pola."
+    return "bledny", "Brak poprawnych wyników projektowych pola."
 
 
 def _build_short_circuit_contributions(

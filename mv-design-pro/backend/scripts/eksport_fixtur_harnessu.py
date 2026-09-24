@@ -2278,7 +2278,7 @@ _APARAT_DOPASOWANIA_KOORD = "ABB_REF601"
 
 #: Nazwa szablonu zabezpieczenia — 1:1 z `DEVICE_TEMPLATES[relay-50-51].name`
 #: (to tę nazwę klika spec zrzutów w oknie szablonów).
-NAZWA_SZABLONU_ZABEZPIECZENIA_KOORD = "Przekaznik 50/51 (typowy)"
+NAZWA_SZABLONU_ZABEZPIECZENIA_KOORD = "Przekaźnik 50/51 (typowy)"
 
 #: Identyfikator projektu w WYNIKU koordynacji: końcówka wymaga UUID, ale w
 #: harnessie nie ma rejestru projektów, więc w fixturze zostaje stabilna

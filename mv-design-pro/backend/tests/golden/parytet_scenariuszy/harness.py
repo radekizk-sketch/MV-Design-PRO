@@ -300,7 +300,7 @@ def _pierscien() -> EnergyNetworkModel:
     sieci złotej — kryterium przeciążenia OBJAZDU, nie tylko brak zasilania).
     """
     return EnergyNetworkModel(
-        header=ENMHeader(name="Pierscien N-1"),
+        header=ENMHeader(name="Pierścień N-1"),
         buses=[
             Bus(ref_id="b_src", name="GPZ SN", voltage_kv=15.0),
             Bus(ref_id="b_a", name="Stacja A", voltage_kv=15.0),
@@ -308,8 +308,8 @@ def _pierscien() -> EnergyNetworkModel:
         ],
         sources=[_zrodlo_sn()],
         loads=[
-            Load(ref_id="ld_a", name="Odbior A", bus_ref="b_a", p_mw=1.0, q_mvar=0.3),
-            Load(ref_id="ld_b", name="Odbior B", bus_ref="b_b", p_mw=1.0, q_mvar=0.3),
+            Load(ref_id="ld_a", name="Odbiór A", bus_ref="b_a", p_mw=1.0, q_mvar=0.3),
+            Load(ref_id="ld_b", name="Odbiór B", bus_ref="b_b", p_mw=1.0, q_mvar=0.3),
         ],
         branches=[
             OverheadLine(
@@ -338,7 +338,7 @@ def _pierscien() -> EnergyNetworkModel:
             ),
             Cable(
                 ref_id="ka_a_b",
-                name="Kabel A-B (zamkniecie pierscienia)",
+                name="Kabel A-B (zamknięcie pierścienia)",
                 from_bus_ref="b_a",
                 to_bus_ref="b_b",
                 endpoint_a_port=PortRef(port_id="b_a:sn"),
@@ -361,10 +361,10 @@ def _napiecie_graniczne() -> EnergyNetworkModel:
     kryterium NAPIĘCIOWE (sieć złota daje kryterium OBCIĄŻENIOWE).
     """
     return EnergyNetworkModel(
-        header=ENMHeader(name="Napiecie graniczne"),
+        header=ENMHeader(name="Napięcie graniczne"),
         buses=[
             Bus(ref_id="b_slack", name="Slack", voltage_kv=15.0),
-            Bus(ref_id="b_rem", name="Wezel zdalny", voltage_kv=15.0),
+            Bus(ref_id="b_rem", name="Węzeł zdalny", voltage_kv=15.0),
         ],
         sources=[
             Source(
@@ -377,11 +377,11 @@ def _napiecie_graniczne() -> EnergyNetworkModel:
                 x_ohm=1.0,
             ),
         ],
-        loads=[Load(ref_id="ld", name="Odbior", bus_ref="b_rem", p_mw=0.1, q_mvar=0.03)],
+        loads=[Load(ref_id="ld", name="Odbiór", bus_ref="b_rem", p_mw=0.1, q_mvar=0.03)],
         branches=[
             OverheadLine(
                 ref_id="ln",
-                name="Linia dluga",
+                name="Linia długa",
                 from_bus_ref="b_slack",
                 to_bus_ref="b_rem",
                 endpoint_a_port=PortRef(port_id="b_slack:sn"),
@@ -418,14 +418,14 @@ def _kompensacja(*, load_q_mvar: float, gen_p_mw: float | None) -> EnergyNetwork
     return EnergyNetworkModel(
         header=ENMHeader(name="Kompensacja net"),
         buses=[
-            Bus(ref_id="bus_hv", name="GPZ 110kV", voltage_kv=110.0),
+            Bus(ref_id="bus_hv", name="GPZ 110 kV", voltage_kv=110.0),
             Bus(ref_id="bus_a", name="Szyna SN", voltage_kv=15.0),
             Bus(ref_id="bus_pcc", name="Punkt przyłączenia", voltage_kv=15.0),
         ],
         sources=[
             Source(
                 ref_id="src",
-                name="System 110kV",
+                name="System 110 kV",
                 bus_ref="bus_hv",
                 model="short_circuit_power",
                 sk3_mva=2500.0,
@@ -516,14 +516,14 @@ def _siec_promieniowa() -> EnergyNetworkModel:
     ``b_src --ln1--> b_a --ln2--> b_b``, odbiór na ``b_b``.
     """
     return EnergyNetworkModel(
-        header=ENMHeader(name="Siec nastaw — promien"),
+        header=ENMHeader(name="Sieć nastaw — promień"),
         buses=[
             Bus(ref_id="b_src", name="GPZ SN", voltage_kv=15.0),
             Bus(ref_id="b_a", name="Stacja A", voltage_kv=15.0),
             Bus(ref_id="b_b", name="Stacja B", voltage_kv=15.0),
         ],
         sources=[_zrodlo_sn()],
-        loads=[Load(ref_id="ld_b", name="Odbior B", bus_ref="b_b", p_mw=1.0, q_mvar=0.3)],
+        loads=[Load(ref_id="ld_b", name="Odbiór B", bus_ref="b_b", p_mw=1.0, q_mvar=0.3)],
         branches=[
             _linia_nastaw("ln1", od="b_src", do="b_a"),
             _linia_nastaw("ln2", od="b_a", do="b_b"),
@@ -570,7 +570,7 @@ def _siec_rozgalezienie() -> EnergyNetworkModel:
             "buses": [*enm.buses, Bus(ref_id="b_c", name="Stacja C", voltage_kv=15.0)],
             "loads": [
                 *enm.loads,
-                Load(ref_id="ld_c", name="Odbior C", bus_ref="b_c", p_mw=0.5, q_mvar=0.1),
+                Load(ref_id="ld_c", name="Odbiór C", bus_ref="b_c", p_mw=0.5, q_mvar=0.1),
             ],
             "branches": [*enm.branches, ln3],
         }

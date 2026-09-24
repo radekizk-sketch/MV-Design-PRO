@@ -24,13 +24,13 @@
           "type": "string"
         },
         "klucz": {
-          "description": "Klucz kanalu (np. 'u_pu@b12', 'omega_pu@g1').",
+          "description": "Klucz kanału (np. 'u_pu@b12', 'omega_pu@g1').",
           "minLength": 1,
           "title": "Klucz",
           "type": "string"
         },
         "opis_pl": {
-          "description": "Opis po polsku (bez kodow projektowych).",
+          "description": "Opis po polsku (bez kodów projektowych).",
           "minLength": 1,
           "title": "Opis Pl",
           "type": "string"
@@ -96,7 +96,7 @@
             }
           ],
           "default": null,
-          "description": "Odniesienie do wzoru/rownania (WHITE BOX).",
+          "description": "Odniesienie do wzoru/równania (WHITE BOX).",
           "title": "Wzor Ref"
         }
       },
@@ -113,12 +113,12 @@
       "description": "Odbior, ktory w chwili zdarzenia stracil obwod (obszar beznapieciowy).",
       "properties": {
         "p_pu": {
-          "description": "Moc czynna zadana sprzed odciecia (pu, konwencja poboru).",
+          "description": "Moc czynna zadana sprzed odcięcia (pu, konwencja poboru).",
           "title": "P Pu",
           "type": "number"
         },
         "q_pu": {
-          "description": "Moc bierna zadana sprzed odciecia (pu, konwencja poboru).",
+          "description": "Moc bierna zadana sprzed odcięcia (pu, konwencja poboru).",
           "title": "Q Pu",
           "type": "number"
         },
@@ -269,13 +269,13 @@
           "type": "integer"
         },
         "max_residuum_f": {
-          "description": "Maks. residuum rownan rozniczkowych ||f||.",
+          "description": "Maks. residuum równań różniczkowych ||f||.",
           "minimum": 0.0,
           "title": "Max Residuum F",
           "type": "number"
         },
         "max_residuum_g": {
-          "description": "Maks. residuum rownan algebraicznych ||g||.",
+          "description": "Maks. residuum równań algebraicznych ||g||.",
           "minimum": 0.0,
           "title": "Max Residuum G",
           "type": "number"
@@ -309,7 +309,7 @@
       "description": "Zdarzenie harmonogramu FAKTYCZNIE wykonane przez solver (nie zaplanowane).\n\nSkutki topologiczne CHWILI (wspolne dla zdarzen rownoczesnych, jak pomiar\nre-inicjalizacji): wezly, ktore w tej chwili staly sie beznapieciowe, odbiory,\nktore stracily obwod, i wezly zasilone ponownie.",
       "properties": {
         "delta_x_max": {
-          "description": "Maks. skok stanu rozniczkowego przy re-inicjalizacji.",
+          "description": "Maks. skok stanu różniczkowego przy re-inicjalizacji.",
           "title": "Delta X Max",
           "type": "number"
         },
@@ -319,7 +319,7 @@
           "type": "number"
         },
         "obszary_odciete": {
-          "description": "Wezly, ktore w tej chwili staly sie beznapieciowe.",
+          "description": "Węzły, które w tej chwili stały się beznapięciowe.",
           "items": {
             "type": "string"
           },
@@ -327,7 +327,7 @@
           "type": "array"
         },
         "obszary_zasilone_ponownie": {
-          "description": "Wezly, ktore w tej chwili przestaly byc beznapieciowe.",
+          "description": "Węzły, które w tej chwili przestały być beznapięciowe.",
           "items": {
             "type": "string"
           },
@@ -335,7 +335,7 @@
           "type": "array"
         },
         "odbiory_odciete": {
-          "description": "Odbiory, ktore w tej chwili stracily obwod.",
+          "description": "Odbiory, które w tej chwili straciły obwód.",
           "items": {
             "$ref": "#/$defs/OdbiorOdcietyV2"
           },
@@ -355,7 +355,7 @@
           "title": "Ref"
         },
         "residuum_kcl_max": {
-          "description": "Maks. residuum bilansu pradowego po re-inicjalizacji.",
+          "description": "Maks. residuum bilansu prądowego po re-inicjalizacji.",
           "title": "Residuum Kcl Max",
           "type": "number"
         },

@@ -181,7 +181,7 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
     await waitFor(() => expect(przedmiot).toHaveTextContent(GOTOWOSC.przedmiot.nazwa_modelu));
     expect(przedmiot).toHaveTextContent(`szyn: ${GOTOWOSC.przedmiot.liczba_szyn}`);
     expect(przedmiot).toHaveTextContent('110');
-    expect(przedmiot).toHaveTextContent('GPZ 110kV');
+    expect(przedmiot).toHaveTextContent(nazwaZMigawki('bus_hv'));
     expect(przedmiot).toHaveTextContent(S.przedmiotWariantOpis);
     // Powrót: katalog kart, stan analizy wyzerowany.
     fireEvent.click(screen.getByTestId('mvd-akad-powrot'));
@@ -199,7 +199,7 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
     await waitFor(() => expect(zModelu).toHaveTextContent(g.dane_z_modelu[0].nazwa_pl));
     expect(zModelu).toHaveTextContent(g.dane_z_modelu[0].wartosc_pl);
     // Elementy modelu nazwane jak na schemacie (most referencja → nazwa), nie referencjami.
-    expect(zModelu).toHaveTextContent('GPZ 110kV');
+    expect(zModelu).toHaveTextContent(nazwaZMigawki('bus_hv'));
     expect(zModelu.textContent ?? '').not.toContain('bus_hv');
     const odUzytkownika = screen.getByTestId('mvd-akad-dane-od-uzytkownika');
     for (const parametr of k.dane.od_uzytkownika) {

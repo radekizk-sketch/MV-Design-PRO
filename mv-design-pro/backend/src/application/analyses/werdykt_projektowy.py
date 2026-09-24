@@ -271,9 +271,9 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_PWP_MOC,
         etap="E1/E5",
-        nazwa_pl="Moc w punkcie przylaczenia",
-        warunek_pl=r"$|P| \le P_{\text{przyl}}$ (moc przylaczeniowa z warunkow OSD)",
-        norma_pl="Warunki przylaczenia OSD (dokument projektu)",
+        nazwa_pl="Moc w punkcie przyłączenia",
+        warunek_pl=r"$|P| \le P_{\text{przyl}}$ (moc przyłączeniowa z warunków OSD)",
+        norma_pl="Warunki przyłączenia OSD (dokument projektu)",
         zrodlo=ZRODLO_PF,
         element_rodzaj=ELEMENT_SZYNA,
         grupa=GRUPA_PRZYLACZENIE,
@@ -287,9 +287,9 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_PWP_COS_PHI,
         etap="E1/E5",
-        nazwa_pl="Wspolczynnik mocy w punkcie przylaczenia",
-        warunek_pl=r"$\cos\varphi \ge \cos\varphi_{\text{wym}}$ (wymaganie warunkow OSD)",
-        norma_pl="Warunki przylaczenia OSD (dokument projektu)",
+        nazwa_pl="Współczynnik mocy w punkcie przyłączenia",
+        warunek_pl=r"$\cos\varphi \ge \cos\varphi_{\text{wym}}$ (wymaganie warunków OSD)",
+        norma_pl="Warunki przyłączenia OSD (dokument projektu)",
         zrodlo=ZRODLO_PF,
         element_rodzaj=ELEMENT_SZYNA,
         grupa=GRUPA_PRZYLACZENIE,
@@ -303,9 +303,9 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_NAPIECIE,
         etap="E5",
-        nazwa_pl="Odchylenia napiec w wezlach",
-        warunek_pl=r"$|\Delta U| \le \Delta U_{\text{dop}}$ (dopuszczalne odchylenie napiecia)",
-        norma_pl="Kryterium jakosci napiecia (progi z konfiguracji walidacji energetycznej)",
+        nazwa_pl="Odchylenia napięć w węzłach",
+        warunek_pl=r"$|\Delta U| \le \Delta U_{\text{dop}}$ (dopuszczalne odchylenie napięcia)",
+        norma_pl="Kryterium jakości napięcia (progi z konfiguracji walidacji energetycznej)",
         zrodlo=ZRODLO_PF,
         element_rodzaj=ELEMENT_SZYNA,
         grupa=GRUPA_NAPIECIA,
@@ -319,9 +319,9 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_OBCIAZENIE_GALEZI,
         etap="E5",
-        nazwa_pl="Obciazenie dlugotrwale galezi",
-        warunek_pl=r"$I_{\text{rob}} \le I_{z}$ (obciazalnosc dlugotrwala przewodu)",
-        norma_pl="Obciazalnosc katalogowa przewodu (warunki odniesienia)",
+        nazwa_pl="Obciążenie długotrwałe gałęzi",
+        warunek_pl=r"$I_{\text{rob}} \le I_{z}$ (obciążalność długotrwała przewodu)",
+        norma_pl="Obciążalność katalogowa przewodu (warunki odniesienia)",
         zrodlo=ZRODLO_PF,
         element_rodzaj=ELEMENT_GALAZ_LINIOWA,
         grupa=GRUPA_OBCIAZALNOSC,
@@ -335,7 +335,7 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_OBCIAZENIE_TRAFO,
         etap="E5",
-        nazwa_pl="Obciazenie transformatorow",
+        nazwa_pl="Obciążenie transformatorów",
         warunek_pl=r"$S_{\text{rob}} \le S_{n}$ (moc znamionowa transformatora)",
         norma_pl="Moc znamionowa z typu katalogowego",
         zrodlo=ZRODLO_PF,
@@ -351,9 +351,9 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_STRATY,
         etap="E5",
-        nazwa_pl="Budzet strat mocy",
-        warunek_pl=r"$\Delta P \le \Delta P_{\text{budzet}}$ (zalozony budzet strat)",
-        norma_pl="Zalozenie projektowe (progi z konfiguracji walidacji energetycznej)",
+        nazwa_pl="Budżet strat mocy",
+        warunek_pl=r"$\Delta P \le \Delta P_{\text{budżet}}$ (założony budżet strat)",
+        norma_pl="Założenie projektowe (progi z konfiguracji walidacji energetycznej)",
         zrodlo=ZRODLO_PF,
         grupa=GRUPA_BILANS,
         wielkosc_pl="Straty mocy czynnej względem mocy przesyłanej",
@@ -367,8 +367,8 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
         kryterium_id=KRYTERIUM_BILANS_Q,
         etap="E5",
         nazwa_pl="Bilans mocy biernej",
-        warunek_pl="bilans Q w zalozonym pasmie",
-        norma_pl="Zalozenie projektowe (progi z konfiguracji walidacji energetycznej)",
+        warunek_pl="bilans Q w założonym paśmie",
+        norma_pl="Założenie projektowe (progi z konfiguracji walidacji energetycznej)",
         zrodlo=ZRODLO_PF,
         grupa=GRUPA_BILANS,
         wielkosc_pl="Współczynnik mocy w węźle bilansującym",
@@ -381,7 +381,7 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_PRZEWOD_CIEPLNY,
         etap="E3/E4",
-        nazwa_pl="Wytrzymalosc zwarciowa przewodu",
+        nazwa_pl="Wytrzymałość zwarciowa przewodu",
         warunek_pl=r"$I_{\text{th}} \le I_{\text{th(1s)}} / \sqrt{t}$",
         norma_pl="IEC 60949 / PN-HD 60364-5-54",
         zrodlo=ZRODLO_SC,
@@ -397,9 +397,9 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_WIARYGODNOSC_SC,
         etap="E4",
-        nazwa_pl="Wiarygodnosc pradu zwarciowego",
-        warunek_pl=r"$I_{k}''$ w pasmie wiarygodnosci dla poziomu napiecia",
-        norma_pl="Kontrola wiarygodnosci wyniku (brama pakietu OSD)",
+        nazwa_pl="Wiarygodność prądu zwarciowego",
+        warunek_pl=r"$I_{k}''$ w paśmie wiarygodności dla poziomu napięcia",
+        norma_pl="Kontrola wiarygodności wyniku (brama pakietu OSD)",
         zrodlo=ZRODLO_SC,
         element_rodzaj=ELEMENT_SZYNA,
         grupa=GRUPA_ZWARCIA,
@@ -416,8 +416,8 @@ REJESTR_KRYTERIOW: tuple[DefinicjaKryterium, ...] = (
     DefinicjaKryterium(
         kryterium_id=KRYTERIUM_DOBOR_DER_SN,
         etap="E3",
-        nazwa_pl="Dobory toru przylaczenia zrodla (DER-SN)",
-        warunek_pl="zgodnosc napiec, mocy TR blokowego i kaskady pradowej",
+        nazwa_pl="Dobory toru przyłączenia źródła (DER-SN)",
+        warunek_pl="zgodność napięć, mocy TR blokowego i kaskady prądowej",
         norma_pl="Walidacje doborowe toru DER-SN (dane z tabliczek)",
         zrodlo=ZRODLO_MODEL,
         element_rodzaj=ELEMENT_ZRODLO,
@@ -437,42 +437,42 @@ _DEFINICJE_PO_ID: dict[str, DefinicjaKryterium] = {
 # Kryteria BEZ automatycznego dostawcy — jawny zakres weryfikacji (patrz naglowek).
 ZAKRES_POZA_AUTOMATEM: tuple[dict[str, str], ...] = (
     {
-        "kryterium_pl": "Selektywnosc i czulosc zabezpieczen (stopniowanie czasowo-pradowe)",
+        "kryterium_pl": "Selektywność i czułość zabezpieczeń (stopniowanie czasowo-prądowe)",
         "etap": "E6",
         "powod_pl": (
             "Analiza koordynacji liczy charakterystyki i czasy, ale nie wystawia werdyktu "
-            "selektywnosci na poziomie calego modelu — ocena nalezy do projektanta na "
+            "selektywności na poziomie całego modelu — ocena należy do projektanta na "
             "ekranie koordynacji."
         ),
     },
     {
-        "kryterium_pl": "Wytrzymalosc aparatury (Icu, Idyn, Ith) na calym modelu",
+        "kryterium_pl": "Wytrzymałość aparatury (Icu, Idyn, Ith) na całym modelu",
         "etap": "E4",
         "powod_pl": (
-            "Dowod wytrzymalosci aparatu istnieje jako pakiet dowodowy dla WSKAZANEGO "
-            "aparatu; nie ma przebiegu, ktory sprawdza wszystkie aparaty modelu naraz."
+            "Dowód wytrzymałości aparatu istnieje jako pakiet dowodowy dla WSKAZANEGO "
+            "aparatu; nie ma przebiegu, który sprawdza wszystkie aparaty modelu naraz."
         ),
     },
     {
         # V12K-207 (karta F-K7): korekta JEST juz czescia toru doboru kabla DER — ale nie
         # calego modelu. Wpis zostaje z ZAWEZONYM powodem, bo skreslenie go sugerowaloby,
         # ze kazdy przewod modelu jest sprawdzony z warunkami trasy, a to nieprawda.
-        "kryterium_pl": "Obciazalnosc przewodu z korekta warunkow ulozenia na calym modelu",
+        "kryterium_pl": "Obciążalność przewodu z korektą warunków ułożenia na całym modelu",
         "etap": "E3",
         "powod_pl": (
-            "Korekta warunkow ulozenia dziala w torze doboru kabla DER (zestawy warunkow z "
-            "udokumentowana podstawa albo wspolczynniki projektanta) i jest zapisana przy "
-            "kablu w modelu. Nie ma przebiegu, ktory sprawdza obciazalnosc WSZYSTKICH "
-            "przewodow modelu wobec warunkow ich trasy — magistrala SN dobierana jest inna "
-            "sciezka, a katalog nie dokumentuje warunkow odniesienia przy typach."
+            "Korekta warunków ułożenia działa w torze doboru kabla DER (zestawy warunków z "
+            "udokumentowaną podstawą albo współczynniki projektanta) i jest zapisana przy "
+            "kablu w modelu. Nie ma przebiegu, który sprawdza obciążalność WSZYSTKICH "
+            "przewodów modelu wobec warunków ich trasy — magistrala SN dobierana jest inną "
+            "ścieżką, a katalog nie dokumentuje warunków odniesienia przy typach."
         ),
     },
     {
-        "kryterium_pl": "Ekonomiczna gestosc pradu przekroju",
+        "kryterium_pl": "Ekonomiczna gęstość prądu przekroju",
         "etap": "E3",
         "powod_pl": (
-            "Kryterium niewiazace (optymalizacja kosztowa); brak danych ekonomicznych w "
-            "modelu, wiec ocena byłaby zgadywaniem."
+            "Kryterium niewiążące (optymalizacja kosztowa); brak danych ekonomicznych w "
+            "modelu, więc ocena byłaby zgadywaniem."
         ),
     },
 )
@@ -1004,9 +1004,9 @@ def _pozycje_warunkow_przylaczenia(
                     kryterium_id,
                     powod_kod=POWOD_BRAK_DANYCH,
                     powod_pl=(
-                        "Ocena warunkow przylaczenia nie zawiera tego kryterium — "
-                        "brak warunkow OSD w naglowku modelu albo brak wyniku w punkcie "
-                        "przylaczenia."
+                        "Ocena warunków przyłączenia nie zawiera tego kryterium — "
+                        "brak warunków OSD w nagłówku modelu albo brak wyniku w punkcie "
+                        "przyłączenia."
                     ),
                     run_id=run_id,
                     liczba_niesprawdzonych=1,
@@ -1087,8 +1087,8 @@ def _pozycje_walidacji_energetycznej(
                     kryterium_id,
                     powod_kod=POWOD_BRAK_DANYCH,
                     powod_pl=(
-                        "Walidacja energetyczna nie zwrocila zadnej pozycji tej kontroli "
-                        "dla biezacego biegu rozplywu."
+                        "Walidacja energetyczna nie zwróciła żadnej pozycji tej kontroli "
+                        "dla bieżącego biegu rozpływu."
                     ),
                     run_id=run_id,
                 )
@@ -1227,7 +1227,7 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
         return _niesprawdzona(
             KRYTERIUM_PRZEWOD_CIEPLNY,
             powod_kod=POWOD_BRAK_DANYCH,
-            powod_pl="Bieg zwarciowy nie zwrocil zadnej galezi do oceny cieplnej.",
+            powod_pl="Bieg zwarciowy nie zwrócił żadnej gałęzi do oceny cieplnej.",
             run_id=run_id,
         )
     # Jedno źródło prawdy dla elementu i pozycji: wynik wiersza z mapy dostawcy.
@@ -1299,7 +1299,7 @@ def _opis_galezi(wiersz: Mapping[str, Any] | None) -> str | None:
     zastosowany = wiersz.get("applied_cross_section_mm2")
     if wymagany is not None and zastosowany is not None:
         return (
-            f"Galaz {wiersz.get('branch_name') or wiersz.get('branch_id')}: wymagany przekroj "
+            f"Gałąź {wiersz.get('branch_name') or wiersz.get('branch_id')}: wymagany przekrój "
             f"{float(wymagany):.1f} mm2 wobec zastosowanego {float(zastosowany):.1f} mm2."
         )
     kody = [str(kod) for kod in (wiersz.get("missing_codes") or [])]
@@ -1317,7 +1317,7 @@ def _pozycja_wiarygodnosci(widok: Mapping[str, Any], *, run_id: str) -> PozycjaW
         return _niesprawdzona(
             KRYTERIUM_WIARYGODNOSC_SC,
             powod_kod=POWOD_BRAK_DANYCH,
-            powod_pl="Bieg zwarciowy nie zwrocil zadnego wezla do oceny wiarygodnosci.",
+            powod_pl="Bieg zwarciowy nie zwrócił żadnego węzła do oceny wiarygodności.",
             run_id=run_id,
         )
     # Jedno źródło prawdy dla elementu i pozycji: wynik wiersza z mapy dostawcy. Dawniej
@@ -1385,7 +1385,7 @@ def _pozycja_der_sn(raport: Mapping[str, Any] | None) -> PozycjaWerdyktu:
         return PozycjaWerdyktu(
             definicja=definicja,
             stan=STAN_NIE_DOTYCZY,
-            powod_pl="Projekt nie zawiera toru przylaczenia zrodla wytworczego (DER-SN).",
+            powod_pl="Projekt nie zawiera toru przyłączenia źródła wytwórczego (DER-SN).",
         )
     pozycje = [p for p in (raport.get("pozycje") or []) if isinstance(p, Mapping)]
     liczba_warn = sum(1 for p in pozycje if str(p.get("status")) == "WARN")
@@ -1480,7 +1480,7 @@ def _ocen_zrodlo(
     model_hash: str,
 ) -> tuple[ZrodloWerdyktu, str | None, str | None]:
     """Zwroc metadane zrodla oraz (kod, opis) powodu braku oceny — ``None`` gdy OK."""
-    etykieta = "rozplywu mocy" if rodzaj == ZRODLO_PF else "zwarciowego"
+    etykieta = "rozpływu mocy" if rodzaj == ZRODLO_PF else "zwarciowego"
     if bieg is None:
         return (
             ZrodloWerdyktu(
@@ -1490,10 +1490,10 @@ def _ocen_zrodlo(
                 snapshot_hash=None,
                 aktualny=False,
                 dostepny=False,
-                powod_pl=f"Brak zakonczonego biegu {etykieta} dla tego przypadku.",
+                powod_pl=f"Brak zakończonego biegu {etykieta} dla tego przypadku.",
             ),
             POWOD_BRAK_BIEGU,
-            f"Brak zakonczonego biegu {etykieta} — uruchom obliczenia, zeby ocenic kryterium.",
+            f"Brak zakończonego biegu {etykieta} — uruchom obliczenia, żeby ocenić kryterium.",
         )
     wykonano = bieg.created_at.isoformat() if bieg.created_at else None
     aktualny = bieg.snapshot_hash == model_hash
@@ -1504,7 +1504,7 @@ def _ocen_zrodlo(
         opis = (
             f"Bieg {etykieta} jest w toku (status: {bieg.status}) — wynik jeszcze nie istnieje."
             if w_toku
-            else f"Bieg {etykieta} nie zakonczyl sie poprawnie (status: {bieg.status})."
+            else f"Bieg {etykieta} nie zakończył się poprawnie (status: {bieg.status})."
         )
         return (
             ZrodloWerdyktu(
@@ -1529,12 +1529,12 @@ def _ocen_zrodlo(
                 aktualny=False,
                 dostepny=False,
                 powod_pl=(
-                    f"Model zmienil sie po biegu {etykieta} — wynik nie opisuje biezacego modelu."
+                    f"Model zmienił się po biegu {etykieta} — wynik nie opisuje bieżącego modelu."
                 ),
             ),
             POWOD_BIEG_NIEAKTUALNY,
             (
-                f"Model zmienil sie po biegu {etykieta}; wynik nie jest dowodem dla biezacego "
+                f"Model zmienił się po biegu {etykieta}; wynik nie jest dowodem dla bieżącego "
                 "modelu — uruchom obliczenia ponownie."
             ),
         )
@@ -1731,7 +1731,7 @@ def zbuduj_werdykt_projektowy(
             snapshot_hash=model_hash,
             aktualny=True,
             dostepny=bool(snapshot),
-            powod_pl=None if snapshot else "Brak modelu do oceny doborow.",
+            powod_pl=None if snapshot else "Brak modelu do oceny doborów.",
         )
     )
 

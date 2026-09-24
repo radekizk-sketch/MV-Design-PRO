@@ -69,11 +69,11 @@
     },
     "wywod": [
       {
-        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prądy częściowe maszyn + zanik (mu, q)",
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 8.953 kA, c = 1.10, t_min = 0.10 s",
+        "tekst": "Punkt zwarcia: I''k (całkowity, z Z-bus) = 8.953 kA, c = 1.10, t_min = 0.10 s",
         "latex": null
       },
       {
@@ -101,12 +101,12 @@
         "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Suma wkladow maszyn: I''k,M = 0.644 kA, I_b,M = 0.454 kA",
+        "tekst": "Suma wkładów maszyn: I''k,M = 0.644 kA, I_b,M = 0.454 kA",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.448 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.448) -> SPELNIONA (silniki pomijalne w Ib)",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+        "tekst": "Reguła małych silników (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartość graniczna 0.05 * I''k = 0.448 kA; wartość obliczona suma I''k,M = 0.000 kA (0.000 <= 0.448) -> SPEŁNIONA (silniki pomijalne w Ib)",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPEŁNIONA}"
       }
     ],
     "wywod_sekcje": [
@@ -114,11 +114,11 @@
         "tytul": "Dane wejściowe i model",
         "kroki": [
           {
-            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prądy częściowe maszyn + zanik (mu, q)",
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 8.953 kA, c = 1.10, t_min = 0.10 s",
+            "tekst": "Punkt zwarcia: I''k (całkowity, z Z-bus) = 8.953 kA, c = 1.10, t_min = 0.10 s",
             "latex": null
           }
         ],
@@ -154,12 +154,12 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkladow maszyn: I''k,M = 0.644 kA, I_b,M = 0.454 kA",
+            "tekst": "Suma wkładów maszyn: I''k,M = 0.644 kA, I_b,M = 0.454 kA",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.448 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.448) -> SPELNIONA (silniki pomijalne w Ib)",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+            "tekst": "Reguła małych silników (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartość graniczna 0.05 * I''k = 0.448 kA; wartość obliczona suma I''k,M = 0.000 kA (0.000 <= 0.448) -> SPEŁNIONA (silniki pomijalne w Ib)",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPEŁNIONA}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -188,16 +188,16 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 0.448 kA)",
+        "wartosc_pl": "SPEŁNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, próg = 0.448 kA)",
         "status": "PASS"
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: 44d02d6a88f7...",
+        "wartosc_pl": "obecny: e4fec4a0ed67...",
         "status": "PASS"
       }
     ],
-    "input_hash": "44d02d6a88f7958ca5f2c62a723a66c984c35b046ad41c15e5f4eea3e540c6b9"
+    "input_hash": "e4fec4a0ed675b948eb2c80d5ae552d16ed0573b8dbcae05ec07435d53bca192"
   },
   "80c21edb-e0ec-5378-acd6-e90f5ec0bc57": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -269,11 +269,11 @@
     },
     "wywod": [
       {
-        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prądy częściowe maszyn + zanik (mu, q)",
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 13.984 kA, c = 1.10, t_min = 0.10 s",
+        "tekst": "Punkt zwarcia: I''k (całkowity, z Z-bus) = 13.984 kA, c = 1.10, t_min = 0.10 s",
         "latex": null
       },
       {
@@ -301,12 +301,12 @@
         "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 0.082\\;\\mathrm{kA} = 0.082\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Suma wkladow maszyn: I''k,M = 0.082 kA, I_b,M = 0.082 kA",
+        "tekst": "Suma wkładów maszyn: I''k,M = 0.082 kA, I_b,M = 0.082 kA",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.699 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.699) -> SPELNIONA (silniki pomijalne w Ib)",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 13.984\\;\\mathrm{kA} = 0.699\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+        "tekst": "Reguła małych silników (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartość graniczna 0.05 * I''k = 0.699 kA; wartość obliczona suma I''k,M = 0.000 kA (0.000 <= 0.699) -> SPEŁNIONA (silniki pomijalne w Ib)",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 13.984\\;\\mathrm{kA} = 0.699\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPEŁNIONA}"
       }
     ],
     "wywod_sekcje": [
@@ -314,11 +314,11 @@
         "tytul": "Dane wejściowe i model",
         "kroki": [
           {
-            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prądy częściowe maszyn + zanik (mu, q)",
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 13.984 kA, c = 1.10, t_min = 0.10 s",
+            "tekst": "Punkt zwarcia: I''k (całkowity, z Z-bus) = 13.984 kA, c = 1.10, t_min = 0.10 s",
             "latex": null
           }
         ],
@@ -354,12 +354,12 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkladow maszyn: I''k,M = 0.082 kA, I_b,M = 0.082 kA",
+            "tekst": "Suma wkładów maszyn: I''k,M = 0.082 kA, I_b,M = 0.082 kA",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.699 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.699) -> SPELNIONA (silniki pomijalne w Ib)",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 13.984\\;\\mathrm{kA} = 0.699\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+            "tekst": "Reguła małych silników (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartość graniczna 0.05 * I''k = 0.699 kA; wartość obliczona suma I''k,M = 0.000 kA (0.000 <= 0.699) -> SPEŁNIONA (silniki pomijalne w Ib)",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 13.984\\;\\mathrm{kA} = 0.699\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPEŁNIONA}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -388,16 +388,16 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 0.699 kA)",
+        "wartosc_pl": "SPEŁNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, próg = 0.699 kA)",
         "status": "PASS"
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: e8e44e0b2a74...",
+        "wartosc_pl": "obecny: 9cdcfc54b8cf...",
         "status": "PASS"
       }
     ],
-    "input_hash": "e8e44e0b2a7408a503b0c64dd5fe833e2a86d704d6f883988ce76bb96522b02b"
+    "input_hash": "9cdcfc54b8cffe1b6ef45959a7ccbee97657399954b3a44e169457d9fb48bd53"
   },
   "d70aff7b-d056-5804-acce-c9bc5707612b": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -469,11 +469,11 @@
     },
     "wywod": [
       {
-        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prądy częściowe maszyn + zanik (mu, q)",
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 21.432 kA, c = 1.10, t_min = 0.10 s",
+        "tekst": "Punkt zwarcia: I''k (całkowity, z Z-bus) = 21.432 kA, c = 1.10, t_min = 0.10 s",
         "latex": null
       },
       {
@@ -501,12 +501,12 @@
         "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.624 \\cdot 1.000 \\cdot 1.541\\;\\mathrm{kA} = 0.962\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Suma wkladow maszyn: I''k,M = 1.541 kA, I_b,M = 0.962 kA",
+        "tekst": "Suma wkładów maszyn: I''k,M = 1.541 kA, I_b,M = 0.962 kA",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 1.072 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 1.072) -> SPELNIONA (silniki pomijalne w Ib)",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 21.432\\;\\mathrm{kA} = 1.072\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+        "tekst": "Reguła małych silników (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartość graniczna 0.05 * I''k = 1.072 kA; wartość obliczona suma I''k,M = 0.000 kA (0.000 <= 1.072) -> SPEŁNIONA (silniki pomijalne w Ib)",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 21.432\\;\\mathrm{kA} = 1.072\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPEŁNIONA}"
       }
     ],
     "wywod_sekcje": [
@@ -514,11 +514,11 @@
         "tytul": "Dane wejściowe i model",
         "kroki": [
           {
-            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prądy częściowe maszyn + zanik (mu, q)",
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 21.432 kA, c = 1.10, t_min = 0.10 s",
+            "tekst": "Punkt zwarcia: I''k (całkowity, z Z-bus) = 21.432 kA, c = 1.10, t_min = 0.10 s",
             "latex": null
           }
         ],
@@ -554,12 +554,12 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkladow maszyn: I''k,M = 1.541 kA, I_b,M = 0.962 kA",
+            "tekst": "Suma wkładów maszyn: I''k,M = 1.541 kA, I_b,M = 0.962 kA",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 1.072 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 1.072) -> SPELNIONA (silniki pomijalne w Ib)",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 21.432\\;\\mathrm{kA} = 1.072\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+            "tekst": "Reguła małych silników (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartość graniczna 0.05 * I''k = 1.072 kA; wartość obliczona suma I''k,M = 0.000 kA (0.000 <= 1.072) -> SPEŁNIONA (silniki pomijalne w Ib)",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 21.432\\;\\mathrm{kA} = 1.072\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPEŁNIONA}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -588,16 +588,16 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 1.072 kA)",
+        "wartosc_pl": "SPEŁNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, próg = 1.072 kA)",
         "status": "PASS"
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: 2d05d5099a06...",
+        "wartosc_pl": "obecny: 2a751f8b070c...",
         "status": "PASS"
       }
     ],
-    "input_hash": "2d05d5099a0692955c79e66507e0e527754d3acf44c44fb0691f0cc9428d4dfd"
+    "input_hash": "2a751f8b070c3439fa8f380f007e07fdb8cd5764c35afb965c584769daeb4153"
   },
   "d93618a6-23da-5d59-ae10-a7242961b790": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -669,11 +669,11 @@
     },
     "wywod": [
       {
-        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prądy częściowe maszyn + zanik (mu, q)",
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 8.953 kA, c = 1.10, t_min = 0.10 s",
+        "tekst": "Punkt zwarcia: I''k (całkowity, z Z-bus) = 8.953 kA, c = 1.10, t_min = 0.10 s",
         "latex": null
       },
       {
@@ -701,12 +701,12 @@
         "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.705 \\cdot 1.000 \\cdot 0.644\\;\\mathrm{kA} = 0.454\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Suma wkladow maszyn: I''k,M = 0.644 kA, I_b,M = 0.454 kA",
+        "tekst": "Suma wkładów maszyn: I''k,M = 0.644 kA, I_b,M = 0.454 kA",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.448 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.448) -> SPELNIONA (silniki pomijalne w Ib)",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+        "tekst": "Reguła małych silników (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartość graniczna 0.05 * I''k = 0.448 kA; wartość obliczona suma I''k,M = 0.000 kA (0.000 <= 0.448) -> SPEŁNIONA (silniki pomijalne w Ib)",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPEŁNIONA}"
       }
     ],
     "wywod_sekcje": [
@@ -714,11 +714,11 @@
         "tytul": "Dane wejściowe i model",
         "kroki": [
           {
-            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prądy częściowe maszyn + zanik (mu, q)",
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 8.953 kA, c = 1.10, t_min = 0.10 s",
+            "tekst": "Punkt zwarcia: I''k (całkowity, z Z-bus) = 8.953 kA, c = 1.10, t_min = 0.10 s",
             "latex": null
           }
         ],
@@ -754,12 +754,12 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkladow maszyn: I''k,M = 0.644 kA, I_b,M = 0.454 kA",
+            "tekst": "Suma wkładów maszyn: I''k,M = 0.644 kA, I_b,M = 0.454 kA",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.448 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.448) -> SPELNIONA (silniki pomijalne w Ib)",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+            "tekst": "Reguła małych silników (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartość graniczna 0.05 * I''k = 0.448 kA; wartość obliczona suma I''k,M = 0.000 kA (0.000 <= 0.448) -> SPEŁNIONA (silniki pomijalne w Ib)",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 8.953\\;\\mathrm{kA} = 0.448\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPEŁNIONA}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -788,16 +788,16 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 0.448 kA)",
+        "wartosc_pl": "SPEŁNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, próg = 0.448 kA)",
         "status": "PASS"
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: 35974761a27c...",
+        "wartosc_pl": "obecny: f1537aa3e405...",
         "status": "PASS"
       }
     ],
-    "input_hash": "35974761a27cb26c1a777ba6c528ac4811eebd8dab31e6908ad7726b50a4035f"
+    "input_hash": "f1537aa3e4052bb7616cec18fe9a3dbc90c6985c314f212638e18f6ae2adb549"
   },
   "e22c09ea-bf55-54b7-8c57-88efc2eb8989": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -869,11 +869,11 @@
     },
     "wywod": [
       {
-        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+        "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prądy częściowe maszyn + zanik (mu, q)",
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 4.603 kA, c = 1.10, t_min = 0.10 s",
+        "tekst": "Punkt zwarcia: I''k (całkowity, z Z-bus) = 4.603 kA, c = 1.10, t_min = 0.10 s",
         "latex": null
       },
       {
@@ -901,12 +901,12 @@
         "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.691 \\cdot 1.000 \\cdot 0.698\\;\\mathrm{kA} = 0.482\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Suma wkladow maszyn: I''k,M = 0.698 kA, I_b,M = 0.482 kA",
+        "tekst": "Suma wkładów maszyn: I''k,M = 0.698 kA, I_b,M = 0.482 kA",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.230 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.230) -> SPELNIONA (silniki pomijalne w Ib)",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.603\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+        "tekst": "Reguła małych silników (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartość graniczna 0.05 * I''k = 0.230 kA; wartość obliczona suma I''k,M = 0.000 kA (0.000 <= 0.230) -> SPEŁNIONA (silniki pomijalne w Ib)",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.603\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPEŁNIONA}"
       }
     ],
     "wywod_sekcje": [
@@ -914,11 +914,11 @@
         "tytul": "Dane wejściowe i model",
         "kroki": [
           {
-            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prądy częściowe maszyn + zanik (mu, q)",
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: I''k (calkowity, z Z-bus) = 4.603 kA, c = 1.10, t_min = 0.10 s",
+            "tekst": "Punkt zwarcia: I''k (całkowity, z Z-bus) = 4.603 kA, c = 1.10, t_min = 0.10 s",
             "latex": null
           }
         ],
@@ -954,12 +954,12 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkladow maszyn: I''k,M = 0.698 kA, I_b,M = 0.482 kA",
+            "tekst": "Suma wkładów maszyn: I''k,M = 0.698 kA, I_b,M = 0.482 kA",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartosc graniczna 0.05 * I''k = 0.230 kA; wartosc obliczona suma I''k,M = 0.000 kA (0.000 <= 0.230) -> SPELNIONA (silniki pomijalne w Ib)",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.603\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPELNIONA}"
+            "tekst": "Reguła małych silników (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; wartość graniczna 0.05 * I''k = 0.230 kA; wartość obliczona suma I''k,M = 0.000 kA (0.000 <= 0.230) -> SPEŁNIONA (silniki pomijalne w Ib)",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.603\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{SPEŁNIONA}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -988,15 +988,15 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "SPELNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, prog = 0.230 kA)",
+        "wartosc_pl": "SPEŁNIONA — silniki pomijalne w Ib (suma I''k,M = 0.000 kA, próg = 0.230 kA)",
         "status": "PASS"
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: 441087cdb3a1...",
+        "wartosc_pl": "obecny: 53a29b19e2e8...",
         "status": "PASS"
       }
     ],
-    "input_hash": "441087cdb3a19de93f41ff7937c15ea8822183213a912f3e750febcc27f2b415"
+    "input_hash": "53a29b19e2e8060c9bb673ef58e235c730565e85eb325e4f4b6ac6820d66d0b6"
   }
 }

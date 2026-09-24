@@ -47,14 +47,14 @@ def wymagaj_rodziny_oferowanej(switchgear_family_ref: str) -> SwitchgearFamily:
     if family.switchgear_family_ref not in oferowane:
         raise NiezgodnoscKonfiguracjiError(
             f"Rodzina {family.family_name} ({family.manufacturer_ref}) nie ma "
-            "potwierdzonych parametrow karta katalogowa (status "
-            f"{family.status!r}) — nie mozna na niej budowac konfiguracji."
+            "potwierdzonych parametrów kartą katalogową (status "
+            f"{family.status!r}) — nie można na niej budować konfiguracji."
         )
     if family.tor_konfiguracji is None:
         raise NiezgodnoscKonfiguracjiError(
-            f"Rodzina {family.family_name} nie deklaruje konstrukcji, wiec nie "
-            "da sie ustalic toru konfiguracji (modularny albo blok RMU) — "
-            "uzupelnij karte katalogowa."
+            f"Rodzina {family.family_name} nie deklaruje konstrukcji, więc nie "
+            "da się ustalić toru konfiguracji (modularny albo blok RMU) — "
+            "uzupełnij kartę katalogową."
         )
     return family
 
@@ -75,7 +75,7 @@ def family_supports_apparatus(switchgear_family_ref: str, apparatus_kind: str) -
     if apparatus_kind not in family.allowed_apparatus_kinds:
         raise NiezgodnoscKonfiguracjiError(
             f"Rodzina {family.family_name} nie dopuszcza aparatu "
-            f"{apparatus_kind!r} (slownik rodziny: "
+            f"{apparatus_kind!r} (słownik rodziny: "
             f"{sorted(family.allowed_apparatus_kinds)})."
         )
 
@@ -137,11 +137,11 @@ def opis_napiec_rodziny_pl(family: SwitchgearFamily) -> str:
     """
     if family.network_voltages_kv:
         wartosci = ", ".join(f"{napiecie:g}" for napiecie in family.network_voltages_kv)
-        return f"karta deklaruje napiecia sieci: {wartosci} kV"
+        return f"karta deklaruje napięcia sieci: {wartosci} kV"
     if family.um_classes_kv:
         wartosci = ", ".join(f"{klasa:g}" for klasa in family.um_classes_kv)
-        return f"karta deklaruje klasy napieciowe urzadzenia (Um): {wartosci} kV"
-    return "karta nie deklaruje ani napiec sieci, ani klas napieciowych urzadzenia"
+        return f"karta deklaruje klasy napięciowe urządzenia (Um): {wartosci} kV"
+    return "karta nie deklaruje ani napięć sieci, ani klas napięciowych urządzenia"
 
 
 def family_supports_voltage(switchgear_family_ref: str, voltage_kv: float) -> None:
@@ -154,7 +154,7 @@ def family_supports_voltage(switchgear_family_ref: str, voltage_kv: float) -> No
     family = wymagaj_rodziny_oferowanej(switchgear_family_ref)
     if not czy_rodzina_obsluguje_napiecie(family, voltage_kv):
         raise NiezgodnoscKonfiguracjiError(
-            f"Rodzina {family.family_name} nie obsluguje napiecia {voltage_kv:g} kV "
+            f"Rodzina {family.family_name} nie obsługuje napięcia {voltage_kv:g} kV "
             f"({opis_napiec_rodziny_pl(family)})."
         )
 
@@ -164,7 +164,7 @@ def family_supports_current(switchgear_family_ref: str, current_a: int) -> None:
     family = wymagaj_rodziny_oferowanej(switchgear_family_ref)
     if current_a > max(family.rated_current_options):
         raise NiezgodnoscKonfiguracjiError(
-            f"Rodzina {family.family_name} nie obsluguje pradu szyn {current_a} A "
+            f"Rodzina {family.family_name} nie obsługuje prądu szyn {current_a} A "
             f"(maksimum katalogowe: {max(family.rated_current_options)} A)."
         )
 
@@ -174,8 +174,8 @@ def family_supports_short_circuit(switchgear_family_ref: str, ik_ka: float) -> N
     family = wymagaj_rodziny_oferowanej(switchgear_family_ref)
     if ik_ka > max(family.short_time_current_options):
         raise NiezgodnoscKonfiguracjiError(
-            f"Rodzina {family.family_name} nie obsluguje pradu zwarciowego "
-            f"{ik_ka} kA (wytrzymalosc katalogowa: "
+            f"Rodzina {family.family_name} nie obsługuje prądu zwarciowego "
+            f"{ik_ka} kA (wytrzymałość katalogowa: "
             f"{max(family.short_time_current_options)} kA)."
         )
 
@@ -192,7 +192,7 @@ def family_supports_bay_template(
     if template.switchgear_family_ref != family.switchgear_family_ref:
         rodzima = template.switchgear_family_ref or "brak rodziny (szablon kanoniczny)"
         raise NiezgodnoscKonfiguracjiError(
-            f"Pole {template.template_ref} nalezy do rodziny {rodzima}, nie do "
+            f"Pole {template.template_ref} należy do rodziny {rodzima}, nie do "
             f"{family.family_name} — katalog producenta nie przewiduje takiej "
             "kombinacji."
         )
@@ -228,15 +228,15 @@ def family_supports_factory_configuration(configuration: FactoryConfiguration) -
     if family.tor_konfiguracji != "BLOK_RMU":
         raise NiezgodnoscKonfiguracjiError(
             f"Konfiguracja fabryczna {configuration.code} przypisana do rodziny "
-            f"{family.family_name}, ktora jest skladana z pojedynczych pol "
-            f"(tor {family.tor_konfiguracji}) — bloki fabryczne maja tylko "
+            f"{family.family_name}, która jest składana z pojedynczych pól "
+            f"(tor {family.tor_konfiguracji}) — bloki fabryczne mają tylko "
             "rodziny RMU."
         )
     for unit in configuration.units:
         if unit.bay_kind not in family.allowed_bay_kinds:
             raise NiezgodnoscKonfiguracjiError(
                 f"Jednostka {unit.unit_code} ({unit.unit_name_pl}) bloku "
-                f"{configuration.code} ma funkcje {unit.bay_kind!r}, ktorej "
+                f"{configuration.code} ma funkcję {unit.bay_kind!r}, której "
                 f"rodzina {family.family_name} nie przewiduje "
                 f"(typy katalogowe: {sorted(family.allowed_bay_kinds)})."
             )
@@ -245,6 +245,6 @@ def family_supports_factory_configuration(configuration: FactoryConfiguration) -
                 raise NiezgodnoscKonfiguracjiError(
                     f"Jednostka {unit.unit_code} ({unit.unit_name_pl}) bloku "
                     f"{configuration.code} wymaga aparatu {apparatus_kind!r} "
-                    f"spoza slownika rodziny {family.family_name} "
+                    f"spoza słownika rodziny {family.family_name} "
                     f"({sorted(family.allowed_apparatus_kinds)})."
                 )

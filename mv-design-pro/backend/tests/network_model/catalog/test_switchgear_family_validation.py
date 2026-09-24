@@ -130,19 +130,19 @@ def test_family_supports_apparatus_para() -> None:
 
 def test_family_supports_voltage_para() -> None:
     fv.family_supports_voltage("ZPUE_WLOSZCZOWA__ROTOBLOK", 20.0)
-    with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie obsluguje napiecia"):
+    with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie obsługuje napięcia"):
         fv.family_supports_voltage("ZPUE_WLOSZCZOWA__TPM_AIR", 36.0)
 
 
 def test_family_supports_current_para() -> None:
     fv.family_supports_current("ZPUE_WLOSZCZOWA__RELF", 2500)
-    with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie obsluguje pradu szyn"):
+    with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie obsługuje prądu szyn"):
         fv.family_supports_current("ZPUE_WLOSZCZOWA__TPM_AIR", 1250)
 
 
 def test_family_supports_short_circuit_para() -> None:
     fv.family_supports_short_circuit("ZPUE_WLOSZCZOWA__RXD", 25.0)
-    with pytest.raises(NiezgodnoscKonfiguracjiError, match="pradu zwarciowego"):
+    with pytest.raises(NiezgodnoscKonfiguracjiError, match="prądu zwarciowego"):
         fv.family_supports_short_circuit("ZPUE_WLOSZCZOWA__ROTOBLOK_AIR", 25.0)
 
 

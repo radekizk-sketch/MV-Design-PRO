@@ -340,8 +340,8 @@ def test_sc3f_contributions_returns_machine_breakdown(tmp_path):
     assert rf"= {wklad['ib_a'] / 1000.0:.3f}\;\mathrm{{kA}}" in latexy
     # Kroki wywodu takze w samym wkladzie (WHITE BOX solvera, per maszyna).
     assert len(wklad["wywod"]) >= 4
-    assert any(k["tekst"].startswith("Suma wkladow maszyn") for k in wywod)
-    assert any("Regula malych silnikow" in k["tekst"] for k in wywod)
+    assert any(k["tekst"].startswith("Suma wkładów maszyn") for k in wywod)
+    assert any("Reguła małych silników" in k["tekst"] for k in wywod)
 
     # Determinizm: to samo wejscie -> identyczna odpowiedz.
     response2 = client.post("/api/proof/sc3f/contributions", json=payload)
@@ -420,8 +420,8 @@ def test_sc3f_contributions_wywod_sekcje_pogrupowane_1do1(tmp_path):
     assert dane["wywod"][0]["tekst"].startswith("Model: IEC 60909")
     assert dane["wywod"][1]["tekst"].startswith("Punkt zwarcia: I''k")
     assert dane["wywod"][2]["tekst"] == "— Agregat (SYNCHRONOUS) —"
-    assert dane["wywod"][-2]["tekst"].startswith("Suma wkladow maszyn")
-    assert "Regula malych silnikow" in dane["wywod"][-1]["tekst"]
+    assert dane["wywod"][-2]["tekst"].startswith("Suma wkładów maszyn")
+    assert "Reguła małych silników" in dane["wywod"][-1]["tekst"]
 
 
 def test_sc3f_contributions_regula_5_procent_pelna(tmp_path):
@@ -438,16 +438,16 @@ def test_sc3f_contributions_regula_5_procent_pelna(tmp_path):
     assert limit_ka == pytest.approx(0.05 * ikss_ka)
     # Tekst: wymaganie + wartosc graniczna + wartosc obliczona + werdykt + wplyw.
     assert "wymaganie suma I''k,M <= 0.05 * I''k" in krok["tekst"]
-    assert f"wartosc graniczna 0.05 * I''k = {limit_ka:.3f} kA" in krok["tekst"]
-    assert f"wartosc obliczona suma I''k,M = {async_ka:.3f} kA" in krok["tekst"]
-    assert "SPELNIONA (silniki pomijalne w Ib)" in krok["tekst"]
+    assert f"wartość graniczna 0.05 * I''k = {limit_ka:.3f} kA" in krok["tekst"]
+    assert f"wartość obliczona suma I''k,M = {async_ka:.3f} kA" in krok["tekst"]
+    assert "SPEŁNIONA (silniki pomijalne w Ib)" in krok["tekst"]
     # LaTeX podstawienia obowiazkowy (zasada KaTeX 2026-07-22).
     assert krok["latex"] is not None
     assert rf"\sum_m I''_{{k,M}} = {async_ka:.3f}\;\mathrm{{kA}}" in krok["latex"]
     assert (
         rf"0.05 \cdot {ikss_ka:.3f}\;\mathrm{{kA}} = {limit_ka:.3f}\;\mathrm{{kA}}" in krok["latex"]
     )
-    assert r"\text{SPELNIONA}" in krok["latex"]
+    assert r"\text{SPEŁNIONA}" in krok["latex"]
     # Ten sam krok w sekcji „Suma wkładów i reguły" (1:1).
     assert dane["wywod_sekcje"][-1]["kroki"][-1] == krok
 
@@ -475,8 +475,8 @@ def test_sc3f_contributions_walidacja_iec_deterministyczna(tmp_path):
         "status": "INFO",
     }
     assert walidacja[4]["status"] == "PASS"
-    assert walidacja[4]["wartosc_pl"].startswith("SPELNIONA — silniki pomijalne w Ib")
-    assert "prog =" in walidacja[4]["wartosc_pl"]
+    assert walidacja[4]["wartosc_pl"].startswith("SPEŁNIONA — silniki pomijalne w Ib")
+    assert "próg =" in walidacja[4]["wartosc_pl"]
     # Determinizm kontraktu: input_hash obecny (SHA-256) i stabilny miedzy biegami.
     assert walidacja[5]["status"] == "PASS"
     assert len(dane["input_hash"]) == 64
@@ -505,10 +505,10 @@ def test_sc3f_contributions_bez_maszyn_sekcje_i_walidacja_uczciwe(tmp_path):
     assert tytuly == ["Dane wejściowe i model", "Suma wkładów i reguły"]
     regula = dane["wywod_sekcje"][-1]["kroki"][-1]
     assert regula["latex"] is None  # brak liczb w white_box -> bez podstawien
-    assert "SPELNIONA (silniki pomijalne w Ib)" in regula["tekst"]
+    assert "SPEŁNIONA (silniki pomijalne w Ib)" in regula["tekst"]
     walidacja = dane["walidacja_iec"]
     assert walidacja[3]["wartosc_pl"] == "nieobecne w modelu"
-    assert walidacja[4]["wartosc_pl"] == "SPELNIONA — silniki pomijalne w Ib"
+    assert walidacja[4]["wartosc_pl"] == "SPEŁNIONA — silniki pomijalne w Ib"
 
 
 def _payload_sc3f_pack(data, snapshot: dict) -> dict:

@@ -50,7 +50,7 @@ sys.path.insert(0, str(_BACKEND))
 
 from tests.reference_networks.sld_substrate_52s import build_sld_substrate_52s  # noqa: E402
 from enm.models import EnergyNetworkModel  # noqa: E402
-from application.reference_networks.sld_substrate_power_flow import (  # noqa: E402
+from tests.golden.sld_substrate_power_flow import (  # noqa: E402
     compute_substrate_power_flow,
     compute_substrate_power_flow_maintenance,
 )
@@ -64,7 +64,7 @@ _CASE_LABEL = "Stan normalny (radialny, NO otwarte)"
 # out of service. Shown on the SLD canvas when the harness/spec asks for it
 # (`?case=maintenance`).
 _CASE_REF_MAINT = "case/sld-substrate-maintenance-isolated-station"
-_CASE_LABEL_MAINT = "Wylaczenie stacji do konserwacji (rezerwa pierscieniowa)"
+_CASE_LABEL_MAINT = "Wyłączenie stacji do konserwacji (rezerwa pierścieniowa)"
 
 _FIXTURE_DIRS = (
     _FRONTEND / "public" / "test-fixtures",

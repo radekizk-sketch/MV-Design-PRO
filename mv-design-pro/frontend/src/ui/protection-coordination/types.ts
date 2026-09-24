@@ -622,8 +622,8 @@ export const DEFAULT_STAGE_50: StageSettings = {
 export const DEVICE_TEMPLATES: DeviceTemplate[] = [
   {
     id: 'relay-50-51',
-    name: 'Przekaznik 50/51 (typowy)',
-    description_pl: 'Standardowy przekaznik nadpradowy z funkcja 50 i 51',
+    name: 'Przekaźnik 50/51 (typowy)',
+    description_pl: 'Standardowy przekaźnik nadprądowy z funkcją 50 i 51',
     device_type: 'RELAY',
     settings: {
       stage_51: {
@@ -647,8 +647,8 @@ export const DEVICE_TEMPLATES: DeviceTemplate[] = [
   },
   {
     id: 'relay-50-51-51n',
-    name: 'Przekaznik 50/51/51N',
-    description_pl: 'Przekaznik z zabezpieczeniem ziemnozwarciowym',
+    name: 'Przekaźnik 50/51/51N',
+    description_pl: 'Przekaźnik z zabezpieczeniem ziemnozwarciowym',
     device_type: 'RELAY',
     settings: {
       stage_51: {
@@ -692,7 +692,7 @@ export const DEVICE_TEMPLATES: DeviceTemplate[] = [
     // 60282-1) pochodzi wylacznie z karty katalogowej producenta, a nie ze wzoru.
     id: 'fuse-mv',
     name: 'Bezpiecznik SN',
-    description_pl: 'Bezpiecznik sredniego napiecia (pasmo topikowe z karty katalogowej)',
+    description_pl: 'Bezpiecznik średniego napięcia (pasmo topikowe z karty katalogowej)',
     device_type: 'FUSE',
     settings: {
       stage_51: {
@@ -704,8 +704,8 @@ export const DEVICE_TEMPLATES: DeviceTemplate[] = [
   },
   {
     id: 'recloser',
-    name: 'Wylacznik samoczynny',
-    description_pl: 'Reklozer z charakterystyka szybka i wolna',
+    name: 'Wyłącznik samoczynny',
+    description_pl: 'Reklozer z charakterystyką szybką i wolną',
     device_type: 'RECLOSER',
     settings: {
       stage_51: {
@@ -729,8 +729,8 @@ export const DEVICE_TEMPLATES: DeviceTemplate[] = [
   },
   {
     id: 'circuit-breaker',
-    name: 'Wylacznik z wyzwalaczem',
-    description_pl: 'Wylacznik mocy z wyzwalaczem nadpradowym',
+    name: 'Wyłącznik z wyzwalaczem',
+    description_pl: 'Wyłącznik mocy z wyzwalaczem nadprądowym',
     device_type: 'CIRCUIT_BREAKER',
     settings: {
       stage_51: {

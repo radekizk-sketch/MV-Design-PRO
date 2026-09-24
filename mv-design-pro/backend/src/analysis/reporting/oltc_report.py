@@ -173,8 +173,8 @@ def render_oltc_report_latex(section: OltcReportSection) -> str:
     """LaTeX section for inclusion in a PF report (deterministic)."""
     if not section.present:
         return (
-            "\\section{Regulacja zaczepow (OLTC)}\n"
-            "Brak automatycznej regulacji zaczepow w tym rozplywie.\n"
+            "\\section{Regulacja zaczepów (OLTC)}\n"
+            "Brak automatycznej regulacji zaczepów w tym rozpływie.\n"
         )
     rows = []
     for r in section.regulators:
@@ -184,12 +184,12 @@ def render_oltc_report_latex(section: OltcReportSection) -> str:
         )
     body = "\n".join(rows)
     return (
-        "\\section{Regulacja napiecia (OLTC)}\n"
-        f"Zbieznosc petli: {'tak' if section.converged else 'nie'}, "
+        "\\section{Regulacja napięcia (OLTC)}\n"
+        f"Zbieżność pętli: {'tak' if section.converged else 'nie'}, "
         f"iteracje: {section.iterations_count}, "
-        f"laczne przelaczenia: {section.total_switch_count}.\n"
+        f"łączne przełączenia: {section.total_switch_count}.\n"
         "\\begin{tabular}{lllll}\n"
-        "Transformator & Uzwojenie & Pozycja pocz. & Pozycja konc. & Przelaczenia \\\\\n"
+        "Transformator & Uzwojenie & Pozycja pocz. & Pozycja końc. & Przełączenia \\\\\n"
         "\\hline\n"
         f"{body}\n"
         "\\end{tabular}\n"

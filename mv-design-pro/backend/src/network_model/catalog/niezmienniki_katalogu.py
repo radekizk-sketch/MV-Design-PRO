@@ -47,32 +47,32 @@ class KlasaNiezmiennika(StrEnum):
     """Moc reguly — rozstrzyga, czy zlamanie jest odmowa, czy ostrzezeniem."""
 
     KONIECZNOSC_FIZYCZNA = "KONIECZNOSC_FIZYCZNA"
-    """Zlamanie opisuje wielkosc, ktora nie moze istniec (moc ujemna, zbior pusty)."""
+    """Złamanie opisuje wielkość, która nie może istnieć (moc ujemna, zbiór pusty)."""
 
     WYMOG_NORMOWY = "WYMOG_NORMOWY"
-    """Relacja ZDEFINIOWANA w normie — `podstawa` nazywa norme i jej miejsce."""
+    """Relacja ZDEFINIOWANA w normie — `podstawa` nazywa normę i jej miejsce."""
 
     OGRANICZENIE_ZAKRESU_PRODUKTU = "OGRANICZENIE_ZAKRESU_PRODUKTU"
-    """Granica dziedziny MV-DESIGN-PRO — poza nia produkt nie deklaruje wyniku."""
+    """Granica dziedziny MV-DESIGN-PRO — poza nią produkt nie deklaruje wyniku."""
 
     WIARYGODNOSC = "WIARYGODNOSC"
-    """Straznik prawdopodobienstwa danej: sygnal „do przegladu”, nigdy odmowa."""
+    """Strażnik prawdopodobieństwa danej: sygnał „do przeglądu”, nigdy odmowa."""
 
     REGULA_ZA_MOCNA = "REGULA_ZA_MOCNA"
-    """Regula egzekwowana MOCNIEJ, niz ma podstawe — klasa HISTORYCZNA.
+    """Reguła egzekwowana MOCNIEJ, niż ma podstawę — klasa HISTORYCZNA.
 
-    Opisuje ustalenie przegladu, nie biezaca moc reguly, wiec kazdy wpis z ta
-    klasa MUSI niesc `klasa_docelowa` (moc, ktora regula ma OD TERAZ). Bez tego
-    regula nie mialaby zadnej mocy, a to nie jest to samo co „ma mniejsza moc".
+    Opisuje ustalenie przeglądu, nie bieżącą moc reguły, więc każdy wpis z tą
+    klasą MUSI nieść `klasa_docelowa` (moc, którą reguła ma OD TERAZ). Bez tego
+    reguła nie miałaby żadnej mocy, a to nie jest to samo co „ma mniejszą moc".
     """
 
     NIESKLASYFIKOWANA = "NIESKLASYFIKOWANA"
-    """Regula BEZ decyzji o podstawie — egzekwowana twardo, ale NIE NAZWANA.
+    """Reguła BEZ decyzji o podstawie — egzekwowana twardo, ale NIE NAZWANA.
 
-    Rozdziela MOC od TWIERDZENIA. Twarde egzekwowanie jest bezpiecznym domyslnym
-    wyborem dla nowej bramki; nazwanie jej „konieczoscia fizyczna" jest zdaniem o
-    swiecie, ktorego domyslnie postawic nie wolno. Regula, ktora ma byc nazwana
-    koniecznoscia fizyczna, trafia do rejestru z uzasadnieniem.
+    Rozdziela MOC od TWIERDZENIA. Twarde egzekwowanie jest bezpiecznym domyślnym
+    wyborem dla nowej bramki; nazwanie jej „koniecznością fizyczną" jest zdaniem o
+    świecie, którego domyślnie postawić nie wolno. Reguła, która ma być nazwana
+    koniecznością fizyczną, trafia do rejestru z uzasadnieniem.
     """
 
 
@@ -146,39 +146,39 @@ class RegulaKatalogu:
 
     def __post_init__(self) -> None:
         if not self.nazwa.strip():
-            raise BladRejestruNiezmiennikow(f"{self.kod}: regula bez nazwy.")
+            raise BladRejestruNiezmiennikow(f"{self.kod}: reguła bez nazwy.")
         if not self.podstawa.strip():
-            raise BladRejestruNiezmiennikow(f"{self.kod}: regula bez podstawy.")
+            raise BladRejestruNiezmiennikow(f"{self.kod}: reguła bez podstawy.")
         if not self.uzasadnienie.strip():
-            raise BladRejestruNiezmiennikow(f"{self.kod}: regula bez uzasadnienia.")
+            raise BladRejestruNiezmiennikow(f"{self.kod}: reguła bez uzasadnienia.")
         if self.klasa in KLASY_TWARDE and not self.kod.startswith(PRZEDROSTEK_TWARDY):
             raise BladRejestruNiezmiennikow(
-                f"{self.kod}: regula klasy twardej wymaga kodu {PRZEDROSTEK_TWARDY}nnn."
+                f"{self.kod}: reguła klasy twardej wymaga kodu {PRZEDROSTEK_TWARDY}nnn."
             )
         if self.klasa in KLASY_MIEKKIE and not self.kod.startswith(PRZEDROSTEK_WIARYGODNOSCI):
             raise BladRejestruNiezmiennikow(
-                f"{self.kod}: regula miekka wymaga kodu {PRZEDROSTEK_WIARYGODNOSCI}nnn."
+                f"{self.kod}: reguła miękka wymaga kodu {PRZEDROSTEK_WIARYGODNOSCI}nnn."
             )
         if self.klasa is KlasaNiezmiennika.WYMOG_NORMOWY and not any(
             oznaczenie in self.podstawa for oznaczenie in OZNACZENIA_NORM
         ):
             raise BladRejestruNiezmiennikow(
-                f"{self.kod}: regula klasy WYMOG_NORMOWY musi nazwac norme w `podstawa` "
+                f"{self.kod}: reguła klasy WYMOG_NORMOWY musi nazwać normę w `podstawa` "
                 f"(oczekiwane jedno z {OZNACZENIA_NORM}), jest {self.podstawa!r}."
             )
         if self.klasa is KlasaNiezmiennika.REGULA_ZA_MOCNA:
             if self.klasa_docelowa is None:
                 raise BladRejestruNiezmiennikow(
-                    f"{self.kod}: klasa REGULA_ZA_MOCNA opisuje HISTORIE i wymaga "
-                    "`klasa_docelowa` — regula bez mocy docelowej nie jest regula."
+                    f"{self.kod}: klasa REGULA_ZA_MOCNA opisuje HISTORIĘ i wymaga "
+                    "`klasa_docelowa` — reguła bez mocy docelowej nie jest regułą."
                 )
             if self.klasa_docelowa is KlasaNiezmiennika.REGULA_ZA_MOCNA:
                 raise BladRejestruNiezmiennikow(
-                    f"{self.kod}: `klasa_docelowa` nie moze byc znowu REGULA_ZA_MOCNA."
+                    f"{self.kod}: `klasa_docelowa` nie może być znowu REGULA_ZA_MOCNA."
                 )
         elif self.klasa_docelowa is not None:
             raise BladRejestruNiezmiennikow(
-                f"{self.kod}: `klasa_docelowa` ma sens wylacznie dla REGULA_ZA_MOCNA."
+                f"{self.kod}: `klasa_docelowa` ma sens wyłącznie dla REGULA_ZA_MOCNA."
             )
 
     @property
@@ -206,7 +206,7 @@ def _rejestr(*reguly: RegulaKatalogu) -> dict[str, RegulaKatalogu]:
     wynik: dict[str, RegulaKatalogu] = {}
     for regula in reguly:
         if regula.kod in wynik:
-            raise BladRejestruNiezmiennikow(f"Duplikat kodu reguly katalogu: {regula.kod}.")
+            raise BladRejestruNiezmiennikow(f"Duplikat kodu reguły katalogu: {regula.kod}.")
         wynik[regula.kod] = regula
     return dict(sorted(wynik.items()))
 
@@ -219,24 +219,24 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     # -----------------------------------------------------------------------
     RegulaKatalogu(
         kod="KAT-T-001",
-        nazwa="Status weryfikacji katalogu z zamknietego slownika",
+        nazwa="Status weryfikacji katalogu z zamkniętego słownika",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa="Kontrakt katalogu MV-DESIGN-PRO v2.0 — `CatalogVerificationStatus`",
         uzasadnienie=(
-            "Brak pola legalnie dostaje wartosc domyslna (nikt jeszcze nie ocenil), "
-            "ale NIEPUSTY lancuch spoza slownika to rekord uszkodzony: cicha promocja "
-            "literowki na status domyslny ukrylaby blad danych."
+            "Brak pola legalnie dostaje wartość domyślną (nikt jeszcze nie ocenił), "
+            "ale NIEPUSTY łańcuch spoza słownika to rekord uszkodzony: cicha promocja "
+            "literówki na status domyślny ukryłaby błąd danych."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-002",
-        nazwa="Status katalogu z zamknietego slownika",
+        nazwa="Status katalogu z zamkniętego słownika",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa="Kontrakt katalogu MV-DESIGN-PRO v2.0 — `CatalogStatus`",
         uzasadnienie=(
             "Jak KAT-T-001: status produkcyjny/referencyjny/analityczny/testowy/projektowy "
-            "rozstrzyga o dopuszczeniu pozycji do doboru, wiec nierozpoznana wartosc nie "
-            "moze po cichu stac sie statusem domyslnym."
+            "rozstrzyga o dopuszczeniu pozycji do doboru, więc nierozpoznana wartość nie "
+            "może po cichu stać się statusem domyślnym."
         ),
     ),
     # -----------------------------------------------------------------------
@@ -244,44 +244,44 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     # -----------------------------------------------------------------------
     RegulaKatalogu(
         kod="KAT-T-003",
-        nazwa="Wspolczynnik udzialu zwarciowego k_sc skonczony i dodatni",
+        nazwa="Współczynnik udziału zwarciowego k_sc skończony i dodatni",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja k_sc = I_k'' / I_n przeksztaltnika (wielkosc dodatnia)",
+        podstawa="Definicja k_sc = I_k'' / I_n przekształtnika (wielkość dodatnia)",
         uzasadnienie=(
-            "k_sc = 0 znaczy „zrodlo nie wnosi pradu zwarciowego”, wartosc ujemna nie "
-            "ma sensu, a NaN/±Inf nie sa liczbami — kazda z nich rozsadzilaby wynik "
+            "k_sc = 0 znaczy „źródło nie wnosi prądu zwarciowego”, wartość ujemna nie "
+            "ma sensu, a NaN/±Inf nie są liczbami — każda z nich rozsadziłaby wynik "
             "zwarciowy po cichu. Warunek `math.isfinite` domyka NaN i obie "
-            "nieskonczonosci jednym predykatem."
+            "nieskończoności jednym predykatem."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-004",
-        nazwa="Krzywa zdolnosci P-Q niepusta",
+        nazwa="Krzywa zdolności P-Q niepusta",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa="Kontrakt pola `pq_curve` — `None` znaczy „karta nie niesie krzywej”",
         uzasadnienie=(
-            "Pusta krotka nie jest krzywa: pole nieobecne ma byc `None` (brak danej), a "
-            "nie lista bez punktow, ktora konsument policzy jako „obwiednia pusta”."
+            "Pusta krotka nie jest krzywą: pole nieobecne ma być `None` (brak danej), a "
+            "nie lista bez punktów, która konsument policzy jako „obwiednia pusta”."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-005",
-        nazwa="Punkt krzywej P-Q ma trzy wspolrzedne",
+        nazwa="Punkt krzywej P-Q ma trzy współrzędne",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa="Kontrakt pola `pq_curve` — (p_mw, q_min_mvar, q_max_mvar)",
         uzasadnienie=(
-            "Ksztalt punktu jest czescia kontraktu katalogu; punkt o innej dlugosci to "
-            "uszkodzony import, a nie krzywa o innej rozdzielczosci."
+            "Kształt punktu jest częścią kontraktu katalogu; punkt o innej długości to "
+            "uszkodzony import, a nie krzywa o innej rozdzielczości."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-006",
         nazwa="Moc czynna punktu krzywej P-Q nieujemna",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Obwiednia P-Q opisuje generacje przeksztaltnika (P >= 0)",
+        podstawa="Obwiednia P-Q opisuje generację przekształtnika (P >= 0)",
         uzasadnienie=(
-            "Krzywa zdolnosci opisuje zakres pracy od zera do mocy znamionowej; punkt o "
-            "ujemnym P nie opisuje tego samego urzadzenia (pobor to inny tryb, ktory "
+            "Krzywa zdolności opisuje zakres pracy od zera do mocy znamionowej; punkt o "
+            "ujemnym P nie opisuje tego samego urządzenia (pobór to inny tryb, który "
             "katalog niesie osobnymi polami)."
         ),
     ),
@@ -289,140 +289,140 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         kod="KAT-T-007",
         nazwa="Punkt krzywej P-Q wymaga q_min <= q_max",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja przedzialu mocy biernej w punkcie obwiedni",
+        podstawa="Definicja przedziału mocy biernej w punkcie obwiedni",
         uzasadnienie=(
-            "Para (q_min, q_max) z q_min > q_max opisuje zbior PUSTY — punkt pracy o "
-            "takim przedziale nie istnieje, wiec nie jest to rekord nietypowy, tylko "
+            "Para (q_min, q_max) z q_min > q_max opisuje zbiór PUSTY — punkt pracy o "
+            "takim przedziale nie istnieje, więc nie jest to rekord nietypowy, tylko "
             "sprzeczny."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-008",
-        nazwa="Punkty krzywej P-Q rosnaco po p_mw",
+        nazwa="Punkty krzywej P-Q rosnąco po p_mw",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
-        podstawa="Kontrakt pola `pq_curve` — interpolacja po rosnacym p_mw",
+        podstawa="Kontrakt pola `pq_curve` — interpolacja po rosnącym p_mw",
         uzasadnienie=(
-            "Konsument interpoluje obwiednie po p_mw; nieposortowana albo powtarzajaca "
-            "sie odcieta dalaby wynik zalezny od kolejnosci wierszy, czyli zlamanie "
+            "Konsument interpoluje obwiednię po p_mw; nieposortowana albo powtarzająca "
+            "się odcięta dałaby wynik zależny od kolejności wierszy, czyli złamanie "
             "determinizmu."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-009",
-        nazwa="Ksztalt modelu widmowego karty (rodzaj ↔ zrodlo i czesc wewnetrzna)",
+        nazwa="Kształt modelu widmowego karty (rodzaj ↔ źródło i część wewnętrzna)",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa=(
             "Kontrakt karty widmowej `dziedziny.karta_widmowa.KartaWidmowa` (karta AB-H0 "
-            "§0.4.3; regula `widmo.ksztalt`) — przecelowana z dawnego pola "
+            "§0.4.3; reguła `widmo.ksztalt`) — przecelowana z dawnego pola "
             "`ConverterType.harmonic_spectrum_percent` (skasowanego, 0/176 pozycji z widmem)"
         ),
         uzasadnienie=(
-            "Rodzaj modelu okresla, co model niesie: widmo pradu/napiecia — tylko zrodlo, "
-            "rownowaznik Nortona/Thevenina — zrodlo i czesc wewnetrzna na tej samej siatce, "
-            "rownowaznik zalezny od czestotliwosci — wylacznie czesc wewnetrzna. Rekord "
-            "o innym ksztalcie to uszkodzony zapis, a nie inna reprezentacja tej samej danej."
+            "Rodzaj modelu określa, co model niesie: widmo prądu/napięcia — tylko źródło, "
+            "równoważnik Nortona/Thevenina — źródło i część wewnętrzna na tej samej siatce, "
+            "równoważnik zależny od częstotliwości — wyłącznie część wewnętrzna. Rekord "
+            "o innym kształcie to uszkodzony zapis, a nie inna reprezentacja tej samej danej."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-010",
-        nazwa="Zakres nastawialnosci wymaga min <= max",
+        nazwa="Zakres nastawialności wymaga min <= max",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja przedzialu nastaw aparatu (Ir/Isd/Ii/tr/tsd)",
+        podstawa="Definicja przedziału nastaw aparatu (Ir/Isd/Ii/tr/tsd)",
         uzasadnienie=(
-            "Para (min, max) z min > max opisuje zbior PUSTY nastaw — aparat o takim "
-            "zakresie nie istnieje. Cicha zamiana granic miejscami bylaby poprawianiem "
-            "danych producenta, czego katalog robic nie moze."
+            "Para (min, max) z min > max opisuje zbiór PUSTY nastaw — aparat o takim "
+            "zakresie nie istnieje. Cicha zamiana granic miejscami byłaby poprawianiem "
+            "danych producenta, czego katalog robić nie może."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-011",
-        nazwa="Wspolczynnik emisji migotania flicker_c dodatni",
+        nazwa="Współczynnik emisji migotania flicker_c dodatni",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja wspolczynnika c(psi_k, v_a) migotania (wielkosc dodatnia)",
+        podstawa="Definicja współczynnika c(psi_k, v_a) migotania (wielkość dodatnia)",
         uzasadnienie=(
-            "Wspolczynnik migotania mnozy moc znamionowa w ocenie emisji; zero albo "
-            "wartosc ujemna oznaczalaby zrodlo, ktore migotania nie wnosi wcale albo je "
-            "odejmuje — takiego urzadzenia nie ma."
+            "Współczynnik migotania mnoży moc znamionową w ocenie emisji; zero albo "
+            "wartość ujemna oznaczałaby źródło, które migotania nie wnosi wcale albo je "
+            "odejmuje — takiego urządzenia nie ma."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-012",
-        nazwa="Statyzm P/f przeksztaltnika grid-forming dodatni",
+        nazwa="Statyzm P/f przekształtnika grid-forming dodatni",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
         podstawa="Definicja statyzmu s = -(df/f_n)/(dP/P_n) regulatora pierwotnego",
         uzasadnienie=(
-            "Statyzm zerowy znaczy regulator o nieskonczonym wzmocnieniu, ujemny — "
-            "dodatnie sprzezenie zwrotne rozbiegajace czestotliwosc. Zaden z tych "
-            "przypadkow nie opisuje urzadzenia, ktore mozna wpiac do sieci."
+            "Statyzm zerowy znaczy regulator o nieskończonym wzmocnieniu, ujemny — "
+            "dodatnie sprzężenie zwrotne rozbiegające częstotliwość. Żaden z tych "
+            "przypadków nie opisuje urządzenia, które można wpiąć do sieci."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-013",
-        nazwa="Statyzm Q/U przeksztaltnika grid-forming dodatni",
+        nazwa="Statyzm Q/U przekształtnika grid-forming dodatni",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja statyzmu napieciowego regulatora mocy biernej",
+        podstawa="Definicja statyzmu napięciowego regulatora mocy biernej",
         uzasadnienie=(
-            "Jak KAT-T-012, dla toru Q/U: zero i wartosc ujemna opisuja regulator, "
-            "ktory nie stabilizuje napiecia, tylko je rozbiega."
+            "Jak KAT-T-012, dla toru Q/U: zero i wartość ujemna opisują regulator, "
+            "który nie stabilizuje napięcia, tylko je rozbiega."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-014",
-        nazwa="Model widmowy niepusty (karta ma model, model ze zrodlem ma skladowe)",
+        nazwa="Model widmowy niepusty (karta ma model, model ze źródłem ma składowe)",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa=(
-            "Kontrakt karty widmowej (karta AB-H0 §0.7.1; regula `widmo.niepuste`) — "
+            "Kontrakt karty widmowej (karta AB-H0 §0.7.1; reguła `widmo.niepuste`) — "
             "przecelowana z dawnego pola `harmonic_spectrum_percent`"
         ),
         uzasadnienie=(
             "Jak KAT-T-004: brak widma to brak karty, nie pusta karta ani pusty model, "
-            "ktory konsument policzylby jako „widmo zerowe”."
+            "który konsument policzyłby jako „widmo zerowe”."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-015",
         nazwa=(
-            "Czestotliwosc skladowej widma > 0 Hz, w zakresie czestotliwosci modelu, "
-            "bez duplikatow"
+            "Częstotliwość składowej widma > 0 Hz, w zakresie częstotliwości modelu, "
+            "bez duplikatów"
         ),
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa=(
-            "Kontrakt karty widmowej (karta AB-H0 §0.4.4; regula `widmo.czestotliwosc`) — "
-            "czestotliwosc f w Hz z liczb rzeczywistych dodatnich zastepuje dawny „rzad "
-            "calkowity 2..50”"
+            "Kontrakt karty widmowej (karta AB-H0 §0.4.4; reguła `widmo.czestotliwosc`) — "
+            "częstotliwość f w Hz z liczb rzeczywistych dodatnich zastępuje dawny „rząd "
+            "całkowity 2..50”"
         ),
         uzasadnienie=(
-            "Kontrakt przyjmuje f ∈ R+ (takze interharmoniczne i supraharmoniczne), wiec "
-            "calkowity rzad nie jest juz warunkiem. Czestotliwosc niedodatnia nie istnieje, "
-            "duplikat daje dwie wartosci jednej skladowej (wynik zalezny od kolejnosci "
-            "wierszy), a skladowa spoza zakresu dokumentu jest ekstrapolacja danych."
+            "Kontrakt przyjmuje f ∈ R+ (także interharmoniczne i supraharmoniczne), więc "
+            "całkowity rząd nie jest już warunkiem. Częstotliwość niedodatnia nie istnieje, "
+            "duplikat daje dwie wartości jednej składowej (wynik zależny od kolejności "
+            "wierszy), a składowa spoza zakresu dokumentu jest ekstrapolacją danych."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-016",
-        nazwa="Amplituda skladowej nieujemna, udzial procentowy <= 100 % z nazwana baza",
+        nazwa="Amplituda składowej nieujemna, udział procentowy <= 100 % z nazwaną bazą",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa=(
-            "Kontrakt karty widmowej (karta AB-H0 §0.4.5; regula `widmo.amplituda`) — "
-            "procent zawsze z nazwana baza (I_n urzadzenia, I_1 w punkcie pracy, U_1, U_n)"
+            "Kontrakt karty widmowej (karta AB-H0 §0.4.5; reguła `widmo.amplituda`) — "
+            "procent zawsze z nazwaną bazą (I_n urządzenia, I_1 w punkcie pracy, U_1, U_n)"
         ),
         uzasadnienie=(
-            "Amplituda ujemna nie istnieje; „% pradu znamionowego” i „% podstawowej” to "
-            "rozne wielkosci, wiec goly procent jest niejednoznaczny. Gorna granica 100 % "
-            "bazy jest granica zakresu produktu (widmo emisji, nie stan awaryjny) — klasa "
-            "slabsza z dwoch, nie twierdzimy wiecej, niz wiemy."
+            "Amplituda ujemna nie istnieje; „% prądu znamionowego” i „% podstawowej” to "
+            "różne wielkości, więc goły procent jest niejednoznaczny. Górna granica 100 % "
+            "bazy jest granicą zakresu produktu (widmo emisji, nie stan awaryjny) — klasa "
+            "słabsza z dwóch, nie twierdzimy więcej, niż wiemy."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-017",
-        nazwa="Hierarchia mocy karty przeksztaltnika",
+        nazwa="Hierarchia mocy karty przekształtnika",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa="Kontrakt karty mocy: Pzainst >= Pn,AC >= Pprzylacz >= Posiagl",
         uzasadnienie=(
-            "Cztery moce karty sa zdefiniowane jako coraz wezsze ograniczenia tego samego "
-            "zrodla, wiec kolejnosc wynika z definicji pol karty, a nie z prawa fizyki. "
-            "Sprawdzane sa wylacznie pary OBECNE — karta wypelniona czesciowo nigdy nie "
-            "odpada przez pole, ktorego nie ma."
+            "Cztery moce karty są zdefiniowane jako coraz węższe ograniczenia tego samego "
+            "źródła, więc kolejność wynika z definicji pól karty, a nie z prawa fizyki. "
+            "Sprawdzane są wyłącznie pary OBECNE — karta wypełniona częściowo nigdy nie "
+            "odpada przez pole, którego nie ma."
         ),
     ),
     # -----------------------------------------------------------------------
@@ -430,38 +430,38 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     # -----------------------------------------------------------------------
     RegulaKatalogu(
         kod="KAT-T-018",
-        nazwa="Pojemnosc pakietu baterii dodatnia",
+        nazwa="Pojemność pakietu baterii dodatnia",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja pojemnosci znamionowej pakietu [kWh]",
-        uzasadnienie="Pakiet o pojemnosci zerowej albo ujemnej nie jest magazynem energii.",
+        podstawa="Definicja pojemności znamionowej pakietu [kWh]",
+        uzasadnienie="Pakiet o pojemności zerowej albo ujemnej nie jest magazynem energii.",
     ),
     RegulaKatalogu(
         kod="KAT-T-019",
-        nazwa="Napiecie znamionowe szyny DC dodatnie",
+        nazwa="Napięcie znamionowe szyny DC dodatnie",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja napiecia znamionowego szyny DC [V]",
-        uzasadnienie="Szyna o napieciu zerowym albo ujemnym nie opisuje istniejacego pakietu.",
+        podstawa="Definicja napięcia znamionowego szyny DC [V]",
+        uzasadnienie="Szyna o napięciu zerowym albo ujemnym nie opisuje istniejącego pakietu.",
     ),
     RegulaKatalogu(
         kod="KAT-T-020",
-        nazwa="Szybkosc ladowania C-rate dodatnia",
+        nazwa="Szybkość ładowania C-rate dodatnia",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja C-rate jako wielokrotnosci pojemnosci na godzine [1/h]",
+        podstawa="Definicja C-rate jako wielokrotności pojemności na godzinę [1/h]",
         uzasadnienie=(
-            "C-rate zerowy opisuje pakiet, ktorego nie da sie naladowac ani rozladowac; "
+            "C-rate zerowy opisuje pakiet, którego nie da się naładować ani rozładować; "
             "ujemny nie ma interpretacji."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-021",
-        nazwa="Chemia ogniwa z zamknietego slownika",
+        nazwa="Chemia ogniwa z zamkniętego słownika",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa="Kontrakt katalogu — chemie LFP / NMC / LTO",
         uzasadnienie=(
-            "Produkt deklaruje wynik dla trzech chemii, dla ktorych niesie dane "
-            "eksploatacyjne. Chemia spoza slownika nie jest bledem fizyki, tylko "
-            "pozycja, dla ktorej produkt nie ma czym policzyc — i ma to powiedziec "
-            "wprost, a nie przyjac rekord i milczec."
+            "Produkt deklaruje wynik dla trzech chemii, dla których niesie dane "
+            "eksploatacyjne. Chemia spoza słownika nie jest błędem fizyki, tylko "
+            "pozycją, dla której produkt nie ma czym policzyć — i ma to powiedzieć "
+            "wprost, a nie przyjąć rekord i milczeć."
         ),
     ),
     # -----------------------------------------------------------------------
@@ -469,14 +469,14 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     # -----------------------------------------------------------------------
     RegulaKatalogu(
         kod="KAT-T-022",
-        nazwa="Wkladka topikowa ma znamionowa zdolnosc wylaczania",
+        nazwa="Wkładka topikowa ma znamionową zdolność wyłączania",
         klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
-        podstawa="IEC 60269-1 — znamionowa zdolnosc wylaczania jest wielkoscia znamionowa wkladki",
+        podstawa="IEC 60269-1 — znamionowa zdolność wyłączania jest wielkością znamionową wkładki",
         uzasadnienie=(
-            "Norma wymaga tej wielkosci dla kazdej wkladki, wiec `None`/0 w katalogu to "
-            "BRAK DANEJ, a nie stan „nie dotyczy”. Ciche `None` przenioslo by sie do "
-            "dowodu wytrzymalosci nN jako SN-owe NIE_DOTYCZY i pozycja bez zdolnosci "
-            "wylaczania przeszlaby dobor."
+            "Norma wymaga tej wielkości dla każdej wkładki, więc `None`/0 w katalogu to "
+            "BRAK DANEJ, a nie stan „nie dotyczy”. Ciche `None` przeniosłoby się do "
+            "dowodu wytrzymałości nN jako SN-owe NIE_DOTYCZY i pozycja bez zdolności "
+            "wyłączania przeszłaby dobór."
         ),
     ),
     # -----------------------------------------------------------------------
@@ -484,12 +484,12 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     # -----------------------------------------------------------------------
     RegulaKatalogu(
         kod="KAT-T-023",
-        nazwa="Pasmo TCC wkladki ma adres tabeli producenta",
+        nazwa="Pasmo TCC wkładki ma adres tabeli producenta",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa="Wzorzec proweniencji katalogu — pasmo przepisane z tabeli producenta",
         uzasadnienie=(
-            "Pasmo czasowo-pradowe bez adresu tabeli, z ktorej je przepisano, jest "
-            "nieweryfikowalne — a katalog niesie WYLACZNIE dane o ustalonym pochodzeniu."
+            "Pasmo czasowo-prądowe bez adresu tabeli, z której je przepisano, jest "
+            "nieweryfikowalne — a katalog niesie WYŁĄCZNIE dane o ustalonym pochodzeniu."
         ),
     ),
     RegulaKatalogu(
@@ -498,52 +498,52 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa="Kontrakt pola `pasmo_tcc` — `None` znaczy „pasma nie ma”",
         uzasadnienie=(
-            "Pasmo bez punktow nie jest pasmem; brak danych zapisujemy `None`, zeby "
-            "konsument nie policzyl pustej listy jako „brak ograniczenia czasowego”."
+            "Pasmo bez punktów nie jest pasmem; brak danych zapisujemy `None`, żeby "
+            "konsument nie policzył pustej listy jako „brak ograniczenia czasowego”."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-025",
-        nazwa="Prad krotkotrwaly aparatu SN z szeregu znormalizowanego",
+        nazwa="Prąd krótkotrwały aparatu SN z szeregu znormalizowanego",
         klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
-        podstawa="IEC 62271-1 — szereg znamionowych pradow krotkotrwalych wytrzymywanych",
+        podstawa="IEC 62271-1 — szereg znamionowych prądów krótkotrwałych wytrzymywanych",
         uzasadnienie=(
-            "Norma wymienia szereg wartosci znamionowych; aparat SN o I_th spoza szeregu "
-            "nie ma znamionowania, ktore produkt potrafi zestawic z wynikiem zwarciowym."
+            "Norma wymienia szereg wartości znamionowych; aparat SN o I_th spoza szeregu "
+            "nie ma znamionowania, które produkt potrafi zestawić z wynikiem zwarciowym."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-026",
         nazwa="Czas trwania zwarcia aparatu SN z szeregu znormalizowanego",
         klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
-        podstawa="IEC 62271-1 — szereg znamionowych czasow trwania zwarcia",
+        podstawa="IEC 62271-1 — szereg znamionowych czasów trwania zwarcia",
         uzasadnienie=(
-            "Prad krotkotrwaly jest znamionowany LACZNIE z czasem odniesienia; czas spoza "
-            "szeregu unieruchamialby przeliczenie I_th na inny czas (regula I^2t)."
+            "Prąd krótkotrwały jest znamionowany ŁĄCZNIE z czasem odniesienia; czas spoza "
+            "szeregu unieruchamialby przeliczenie I_th na inny czas (reguła I^2t)."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-027",
         nazwa="Statyzm LFSM w przedziale nastawialnym",
         klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
-        podstawa="NC RfG art. 13 ust. 2 — przedzial nastawialny statyzmu LFSM-O",
+        podstawa="NC RfG art. 13 ust. 2 — przedział nastawialny statyzmu LFSM-O",
         uzasadnienie=(
-            "Rozporzadzenie wyznacza przedzial nastawialny wprost; profil poza nim nie "
+            "Rozporządzenie wyznacza przedział nastawialny wprost; profil poza nim nie "
             "jest profilem NC RfG, tylko innym trybem regulacji."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-028",
-        nazwa="Strefa nieczulosci LFSM w przedziale nastawialnym",
+        nazwa="Strefa nieczułości LFSM w przedziale nastawialnym",
         klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
-        podstawa="NC RfG art. 13 ust. 2 — przedzial strefy nieczulosci LFSM-O",
-        uzasadnienie="Jak KAT-T-027, dla strefy nieczulosci progu czestotliwosciowego.",
+        podstawa="NC RfG art. 13 ust. 2 — przedział strefy nieczułości LFSM-O",
+        uzasadnienie="Jak KAT-T-027, dla strefy nieczułości progu częstotliwościowego.",
     ),
     RegulaKatalogu(
         kod="KAT-T-029",
-        nazwa="Zakres pracy czestotliwosciowej z zalacznika normowego",
+        nazwa="Zakres pracy częstotliwościowej z załącznika normowego",
         klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
-        podstawa="NC RfG zalacznik II tab. 2 — zakresy czestotliwosci obszaru synchronicznego",
+        podstawa="NC RfG załącznik II tab. 2 — zakresy częstotliwości obszaru synchronicznego",
         uzasadnienie=(
             "Zakres pracy jest ustalony dla obszaru synchronicznego, nie wybierany przez "
             "producenta; inny zakres oznacza profil spoza dziedziny oceny NC RfG."
@@ -554,22 +554,22 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     # -----------------------------------------------------------------------
     RegulaKatalogu(
         kod="KAT-T-030",
-        nazwa="Czas wylaczenia tablicy w przedziale (0; 5] s",
+        nazwa="Czas wyłączenia tablicy w przedziale (0; 5] s",
         klasa=KlasaNiezmiennika.WYMOG_NORMOWY,
-        podstawa="IEC 60364-4-41 tab. 41.1 — najdluzsze dopuszczalne czasy wylaczenia",
+        podstawa="IEC 60364-4-41 tab. 41.1 — najdłuższe dopuszczalne czasy wyłączenia",
         uzasadnienie=(
-            "Tablica normy nie wykracza poza 5 s (obwod rozdzielczy); wpis powyzej nie "
+            "Tablica normy nie wykracza poza 5 s (obwód rozdzielczy); wpis powyżej nie "
             "pochodzi z tej tablicy, a wpis niedodatni nie jest czasem."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-031",
-        nazwa="Wpis tablicy czasow wylaczenia ma proweniencje",
+        nazwa="Wpis tablicy czasów wyłączenia ma proweniencję",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
-        podstawa="Wzorzec proweniencji katalogu — kazdy wpis tablicy niesie podstawe",
+        podstawa="Wzorzec proweniencji katalogu — każdy wpis tablicy niesie podstawę",
         uzasadnienie=(
-            "Wartosc normowa bez wskazania miejsca w normie jest nierozroznialna od "
-            "liczby wpisanej z pamieci — a dowod ma cytowac podstawe, nie liczbe."
+            "Wartość normowa bez wskazania miejsca w normie jest nierozróżnialna od "
+            "liczby wpisanej z pamięci — a dowód ma cytować podstawę, nie liczbę."
         ),
     ),
     # -----------------------------------------------------------------------
@@ -577,21 +577,21 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     # -----------------------------------------------------------------------
     RegulaKatalogu(
         kod="KAT-T-032",
-        nazwa="Wspolczynnik tablicowy obciazalnosci w przedziale (0; 1,3]",
+        nazwa="Współczynnik tablicowy obciążalności w przedziale (0; 1,3]",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
-        podstawa="IEC 60364-5-52 — tablice wspolczynnikow poprawkowych obciazalnosci",
+        podstawa="IEC 60364-5-52 — tablice współczynników poprawkowych obciążalności",
         uzasadnienie=(
-            "Wspolczynniki tablic normy nie wychodza poza ten przedzial; wartosc spoza "
-            "niego oznacza pomylona kolumne przy przepisywaniu tablicy, a nie warunek "
-            "ulozenia, ktorego norma nie przewidziala."
+            "Współczynniki tablic normy nie wychodzą poza ten przedział; wartość spoza "
+            "niego oznacza pomyloną kolumnę przy przepisywaniu tablicy, a nie warunek "
+            "ułożenia, którego norma nie przewidziała."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-033",
-        nazwa="Wpis tablicy obciazalnosci ma proweniencje",
+        nazwa="Wpis tablicy obciążalności ma proweniencję",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
-        podstawa="Wzorzec proweniencji katalogu — kazdy wpis tablicy niesie podstawe",
-        uzasadnienie="Jak KAT-T-031, dla tablic obciazalnosci dlugotrwalej.",
+        podstawa="Wzorzec proweniencji katalogu — każdy wpis tablicy niesie podstawę",
+        uzasadnienie="Jak KAT-T-031, dla tablic obciążalności długotrwałej.",
     ),
     # -----------------------------------------------------------------------
     # dziedziny/karta_widmowa.py — karta widmowa urządzenia (karta AB-H0 §0.7)
@@ -601,98 +601,98 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         kod="KAT-T-034",
         nazwa="Identyfikatory modeli karty widmowej unikalne",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
-        podstawa="Kontrakt karty widmowej (regula `karta.modele_unikalne`)",
+        podstawa="Kontrakt karty widmowej (reguła `karta.modele_unikalne`)",
         uzasadnienie=(
             "Identyfikator modelu wskazuje model w wyborze (f, punkt pracy) i w "
-            "proweniencji elementu; dwa modele o jednym identyfikatorze czynia odnosnik "
+            "proweniencji elementu; dwa modele o jednym identyfikatorze czynią odnośnik "
             "niejednoznacznym."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-035",
-        nazwa="Dowod karty widmowej jest dowodem widma w dziedzinie czestotliwosci",
+        nazwa="Dowód karty widmowej jest dowodem widma w dziedzinie częstotliwości",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
-        podstawa="Kontrakt karty widmowej (reguly `karta.dowody`, `dowod.pokrywa`)",
+        podstawa="Kontrakt karty widmowej (reguły `karta.dowody`, `dowod.pokrywa`)",
         uzasadnienie=(
-            "Karta niesie raport badan, pomiar albo certyfikat modelu pokrywajacy dziedzine "
-            "harmoniczna lub supraharmoniczna; certyfikat zgodnosci NC RfG albo dowod "
-            "innej dziedziny w karcie widmowej podnioslby status sekcji, ktorej nie dotyczy."
+            "Karta niesie raport badań, pomiar albo certyfikat modelu pokrywający dziedzinę "
+            "harmoniczną lub supraharmoniczną; certyfikat zgodności NC RfG albo dowód "
+            "innej dziedziny w karcie widmowej podniósłby status sekcji, której nie dotyczy."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-036",
-        nazwa="Podstawa danych widma: karta producenta albo zalozenie projektowe",
+        nazwa="Podstawa danych widma: karta producenta albo założenie projektowe",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa=(
-            "Kontrakt karty widmowej (regula `widmo.podstawa`) i `werdykt.PodstawaWymagania`"
+            "Kontrakt karty widmowej (reguła `widmo.podstawa`) i `werdykt.PodstawaWymagania`"
         ),
         uzasadnienie=(
-            "Dane urzadzenia pochodza z dokumentu producenta albo od inzyniera projektu; "
-            "podstawa innego rodzaju (norma, OSD) albo podstawa o stanie mocniejszym niz "
-            "pozwalaja jej pola klamalaby o pochodzeniu widma."
+            "Dane urządzenia pochodzą z dokumentu producenta albo od inżyniera projektu; "
+            "podstawa innego rodzaju (norma, OSD) albo podstawa o stanie mocniejszym niż "
+            "pozwalają jej pola kłamałaby o pochodzeniu widma."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-037",
-        nazwa="Faza skladowej widma: nieznana to nie zero, interharmoniczna bez fazy",
+        nazwa="Faza składowej widma: nieznana to nie zero, interharmoniczna bez fazy",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja fazy wzglednej skladowej wobec podstawowej (karta AB-H0 §0.4.6)",
+        podstawa="Definicja fazy względnej składowej wobec podstawowej (karta AB-H0 §0.4.6)",
         uzasadnienie=(
-            "Faza skladowej o czestotliwosci niebedacej wielokrotnoscia podstawowej nie ma "
-            "stalego odniesienia — nie istnieje jako liczba. Faza nieznana zapisana jako 0 "
-            "czyni sume fazorowa falszywa (sonda P10: dwa zrodla 5 % = jedno 10 %)."
+            "Faza składowej o częstotliwości niebędącej wielokrotnością podstawowej nie ma "
+            "stałego odniesienia — nie istnieje jako liczba. Faza nieznana zapisana jako 0 "
+            "czyni sumę fazorową fałszywą (sonda P10: dwa źródła 5 % = jedno 10 %)."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-038",
-        nazwa="Komplet parametrow pomiaru widma zmierzonego (RBW dla supraharmonicznych)",
+        nazwa="Komplet parametrów pomiaru widma zmierzonego (RBW dla supraharmonicznych)",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa=(
-            "Kontrakt parametrow pomiaru `dziedziny.pomiar` (karta AB-H0 §0.5; regula "
+            "Kontrakt parametrów pomiaru `dziedziny.pomiar` (karta AB-H0 §0.5; reguła "
             "`widmo.pomiar`)"
         ),
         uzasadnienie=(
-            "Widmo zmierzone bez metody, rozdzielczosci, okna, agregacji i dokumentu nie ma "
-            "okreslonego zakresu waznosci; w pasmie supraharmonicznym wynik zalezy od pasma "
-            "rozdzielczosci analizatora."
+            "Widmo zmierzone bez metody, rozdzielczości, okna, agregacji i dokumentu nie ma "
+            "określonego zakresu ważności; w paśmie supraharmonicznym wynik zależy od pasma "
+            "rozdzielczości analizatora."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-039",
-        nazwa="Czestotliwosc przelaczania wylacznie w modelu dziedziny supraharmonicznej",
+        nazwa="Częstotliwość przełączania wyłącznie w modelu dziedziny supraharmonicznej",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa=(
-            "Niezmiennik produktu „czestotliwosc przelaczania nigdy w DAE” (karta AB-H0 "
-            "§0.14; regula `widmo.przelaczanie`)"
+            "Niezmiennik produktu „częstotliwość przełączania nigdy w DAE” (karta AB-H0 "
+            "§0.14; reguła `widmo.przelaczanie`)"
         ),
         uzasadnienie=(
-            "Czestotliwosc przelaczania opisuje emisje w pasmie 2–150 kHz; w modelu "
-            "harmonicznym nie ma konsumenta, a jej obecnosc zachecalaby do uzycia jej tam, "
+            "Częstotliwość przełączania opisuje emisję w paśmie 2–150 kHz; w modelu "
+            "harmonicznym nie ma konsumenta, a jej obecność zachęcałaby do użycia jej tam, "
             "gdzie produkt jej nie modeluje."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-040",
-        nazwa="Przedzialy punktu pracy widma z jawnym domknieciem i porzadkiem granic",
+        nazwa="Przedziały punktu pracy widma z jawnym domknięciem i porządkiem granic",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
-        podstawa="Definicja przedzialu liczbowego (regula `kanon.przedzial`)",
+        podstawa="Definicja przedziału liczbowego (reguła `kanon.przedzial`)",
         uzasadnienie=(
-            "Przedzial z granica dolna wieksza od gornej albo zdegenerowany i otwarty jest "
-            "zbiorem PUSTYM — model o takiej domenie nie obejmuje zadnego punktu pracy."
+            "Przedział z granicą dolną większą od górnej albo zdegenerowany i otwarty jest "
+            "zbiorem PUSTYM — model o takiej domenie nie obejmuje żadnego punktu pracy."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-041",
-        nazwa="Karta widmowa katalogu statycznego z wyciagiem dokumentu przypietym SHA-256",
+        nazwa="Karta widmowa katalogu statycznego z wyciągiem dokumentu przypiętym SHA-256",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa=(
             "Wzorzec karty z dokumentem (SPEC_KATALOGI — wzorzec ABB Emax 2; karta AB-H0 "
-            "§0.9.4): katalog statyczny przyjmuje widmo WYLACZNIE z dokumentem producenta"
+            "§0.9.4): katalog statyczny przyjmuje widmo WYŁĄCZNIE z dokumentem producenta"
         ),
         uzasadnienie=(
-            "Bez dokumentu karta w katalogu statycznym bylaby widmem „typowym” podanym jako "
-            "dana urzadzenia — dokladnie fabrykacja, ktorej katalog zabrania. Skrot SHA-256 "
-            "wiaze rekord z konkretnym wyciagiem, wiec podmiana dokumentu jest wykrywalna."
+            "Bez dokumentu karta w katalogu statycznym byłaby widmem „typowym” podanym jako "
+            "dana urządzenia — dokładnie fabrykacja, której katalog zabrania. Skrót SHA-256 "
+            "wiąże rekord z konkretnym wyciągiem, więc podmiana dokumentu jest wykrywalna."
         ),
     ),
     # -----------------------------------------------------------------------
@@ -702,12 +702,12 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         kod="KAT-W-001",
         nazwa="R0 >= R1 przewodu",
         klasa=KlasaNiezmiennika.WIARYGODNOSC,
-        podstawa="Typowa konstrukcja zyly powrotnej / ekranu z powrotem ziemnym",
+        podstawa="Typowa konstrukcja żyły powrotnej / ekranu z powrotem ziemnym",
         uzasadnienie=(
-            "Rezystancja skladowej zerowej zalezy od konstrukcji zyly powrotnej, ekranu i "
-            "drogi powrotu przez ziemie. Dla konstrukcji z powrotem ziemnym R0 jest "
-            "zwykle kilkukrotnie wieksze, ale nie jest to nierownosc uniwersalna dla "
-            "kazdej konstrukcji kabla i linii. Twarda bramka odrzucilaby poprawny rekord "
+            "Rezystancja składowej zerowej zależy od konstrukcji żyły powrotnej, ekranu i "
+            "drogi powrotu przez ziemię. Dla konstrukcji z powrotem ziemnym R0 jest "
+            "zwykle kilkukrotnie większe, ale nie jest to nierówność uniwersalna dla "
+            "każdej konstrukcji kabla i linii. Twarda bramka odrzuciłaby poprawny rekord "
             "spoza dotychczasowego zbioru."
         ),
     ),
@@ -715,24 +715,24 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         kod="KAT-W-002",
         nazwa="P0 < Pk transformatora",
         klasa=KlasaNiezmiennika.WIARYGODNOSC,
-        podstawa="Relacja typowa dla transformatorow rozdzielczych",
+        podstawa="Relacja typowa dla transformatorów rozdzielczych",
         uzasadnienie=(
-            "Straty jalowe sa zwykle ulamkiem strat obciazeniowych, ale nie jest to "
-            "koniecznosc matematyczna dla kazdej rodziny konstrukcyjnej. Odwrocenie pary "
-            "zwykle oznacza zamienione kolumny przy imporcie — i o tym ma powiedziec "
-            "ostrzezenie, a nie odmowa wczytania pozycji."
+            "Straty jałowe są zwykle ułamkiem strat obciążeniowych, ale nie jest to "
+            "konieczność matematyczna dla każdej rodziny konstrukcyjnej. Odwrócenie pary "
+            "zwykle oznacza zamienione kolumny przy imporcie — i o tym ma powiedzieć "
+            "ostrzeżenie, a nie odmowa wczytania pozycji."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-W-003",
         nazwa="Icw <= Icu aparatu SN",
         klasa=KlasaNiezmiennika.WIARYGODNOSC,
-        podstawa="IEC 62271-100 — Icw i Icu sa ODDZIELNYMI wielkosciami znamionowymi",
+        podstawa="IEC 62271-100 — Icw i Icu są ODDZIELNYMI wielkościami znamionowymi",
         uzasadnienie=(
-            "Prad krotkotrwaly wytrzymywany (przewodzenie bez uszkodzenia) i zdolnosc "
-            "wylaczania (przerwanie pradu) to rozne zdolnosci, znamionowane osobno. "
-            "Globalna nierownosc po calej rodzinie aparatow SN nie ma podstawy normowej "
-            "i moglaby odrzucic poprawny rekord aparatu, dla ktorego norma tej relacji "
+            "Prąd krótkotrwały wytrzymywany (przewodzenie bez uszkodzenia) i zdolność "
+            "wyłączania (przerwanie prądu) to różne zdolności, znamionowane osobno. "
+            "Globalna nierówność po całej rodzinie aparatów SN nie ma podstawy normowej "
+            "i mogłaby odrzucić poprawny rekord aparatu, dla którego norma tej relacji "
             "nie narzuca."
         ),
     ),
@@ -743,21 +743,21 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         podstawa="IEC 60947-2 § 4.3.5.4 (Icw) wobec § 4.3.5.2.2 (Ics jako % Icu)",
         uzasadnienie=(
             "Norma definiuje Ics JAWNIE jako procent Icu (§ 4.3.5.2.2) — tamta relacja "
-            "moglaby byc twarda. Dla Icw takiej definicji NIE MA: norma opisuje je osobno "
-            "(§ 4.3.5.4), jako wytrzymalosc krotkotrwala wylacznika kategorii B przez "
-            "zadany czas, a nie jako ulamek zdolnosci wylaczalnej. Porownywac je wolno "
-            "wylacznie dla tego samego wariantu, napiecia i czasu."
+            "mogłaby być twarda. Dla Icw takiej definicji NIE MA: norma opisuje je osobno "
+            "(§ 4.3.5.4), jako wytrzymałość krótkotrwała wyłącznika kategorii B przez "
+            "zadany czas, a nie jako ułamek zdolności wyłączalnej. Porównywać je wolno "
+            "wyłącznie dla tego samego wariantu, napięcia i czasu."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-W-005",
-        nazwa="0 < R/X < 1 umowy rownowaznej sieci",
+        nazwa="0 < R/X < 1 umowy równoważnej sieci",
         klasa=KlasaNiezmiennika.WIARYGODNOSC,
-        podstawa="Typowa charakterystyka rownowaznika sieci SN (silnie indukcyjna)",
+        podstawa="Typowa charakterystyka równoważnika sieci SN (silnie indukcyjna)",
         uzasadnienie=(
-            "Rownowaznik sieci SN jest zwykle silnie indukcyjny, ale rownowaznik "
-            "rezystancyjny albo specjalnie zdefiniowany moze miec R/X >= 1. Ograniczenie "
-            "nalezy do zakresu produktu, nie do fizyki — a dopoki zakres nie jest "
+            "Równoważnik sieci SN jest zwykle silnie indukcyjny, ale równoważnik "
+            "rezystancyjny albo specjalnie zdefiniowany może mieć R/X >= 1. Ograniczenie "
+            "należy do zakresu produktu, nie do fizyki — a dopóki zakres nie jest "
             "zadeklarowany, twarda bramka jest nieuzasadniona."
         ),
     ),
@@ -765,11 +765,11 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         kod="KAT-W-006",
         nazwa="0 < i0 % < 10 transformatora",
         klasa=KlasaNiezmiennika.WIARYGODNOSC,
-        podstawa="Zakres typowy dla transformatorow rozdzielczych",
+        podstawa="Zakres typowy dla transformatorów rozdzielczych",
         uzasadnienie=(
-            "Zakres rozsadny dla transformatorow rozdzielczych, ale nie uniwersalny dla "
-            "transformatorow specjalnych. Gorna granica 10 % byla kontrola jednostki "
-            "(procent kontra ulamek), a nie wielkoscia normowana."
+            "Zakres rozsądny dla transformatorów rozdzielczych, ale nie uniwersalny dla "
+            "transformatorów specjalnych. Górna granica 10 % była kontrolą jednostki "
+            "(procent kontra ułamek), a nie wielkością normowaną."
         ),
     ),
 )
@@ -791,7 +791,7 @@ def regula(kod: str) -> RegulaKatalogu:
         return REGULY_KATALOGU[kod]
     except KeyError:
         raise BladRejestruNiezmiennikow(
-            f"Kod reguly katalogu {kod!r} nie istnieje w rejestrze REGULY_KATALOGU."
+            f"Kod reguły katalogu {kod!r} nie istnieje w rejestrze REGULY_KATALOGU."
         ) from None
 
 
@@ -807,10 +807,10 @@ def odmowa_twarda(kod: str, komunikat: str) -> NoReturn:
     wpis = regula(kod)
     if not wpis.twarda:
         raise BladRejestruNiezmiennikow(
-            f"{kod}: regula klasy {wpis.klasa} jest MIEKKA — wiarygodnosc raportuje "
-            "odstepstwo przez `przeglad_wiarygodnosci`, nigdy nie odmawia rekordu."
+            f"{kod}: reguła klasy {wpis.klasa} jest MIĘKKA — wiarygodność raportuje "
+            "odstępstwo przez `przeglad_wiarygodnosci`, nigdy nie odmawia rekordu."
         )
-    raise OdmowaKatalogu(f"{komunikat} (kod reguly: {kod})", kod=kod)
+    raise OdmowaKatalogu(f"{komunikat} (kod reguły: {kod})", kod=kod)
 
 
 # ---------------------------------------------------------------------------
@@ -955,7 +955,7 @@ RODZINY_PRZEGLADU: dict[str, SpecyfikacjaRodziny] = {
     ),
     "zrodla-systemowe": SpecyfikacjaRodziny(
         rodzina="zrodla-systemowe",
-        etykieta_pl="Zrodla systemowe (GPZ)",
+        etykieta_pl="Źródła systemowe (GPZ)",
         kody=("KAT-W-005",),
     ),
 }
@@ -964,53 +964,53 @@ RODZINY_PRZEGLADU: dict[str, SpecyfikacjaRodziny] = {
 #: pominieta milczeniem bylaby nierozroznialna od przeoczonej.
 RODZINY_BEZ_REGUL: dict[str, str] = {
     "switch-equipment": (
-        "Aparat laczeniowy pola bez znamion zwarciowych w kontrakcie typu — relacje "
-        "Icw/Icu niesie rodzina aparatow SN."
+        "Aparat łączeniowy pola bez znamion zwarciowych w kontrakcie typu — relacje "
+        "Icw/Icu niesie rodzina aparatów SN."
     ),
     "lv-breaker-mcb": (
-        "Wylacznik nadpradowy MCB: kontrakt niesie pasmo wyzwalania z IEC 60898-1, bez "
-        "pary Icw/Icu, na ktorej dziala regula wiarygodnosci."
+        "Wyłącznik nadprądowy MCB: kontrakt niesie pasmo wyzwalania z IEC 60898-1, bez "
+        "pary Icw/Icu, na której działa reguła wiarygodności."
     ),
     "lv-fuse-link": (
-        "Wkladka topikowa nie ma pradu krotkotrwalego wytrzymywanego — jej zdolnosc "
-        "wylaczania jest bramka TWARDA (KAT-T-022), nie sygnalem do przegladu."
+        "Wkładka topikowa nie ma prądu krótkotrwałego wytrzymywanego — jej zdolność "
+        "wyłączania jest bramką TWARDĄ (KAT-T-022), nie sygnałem do przeglądu."
     ),
-    "load": "Typ odbioru nie niesie impedancji skladowych ani znamion zwarciowych.",
-    "ct": "Przekladnik pradowy: znamiona dokladnosci i przetezenia, bez par objetych regulami.",
-    "vt": "Przekladnik napieciowy: jak CT.",
+    "load": "Typ odbioru nie niesie impedancji składowych ani znamion zwarciowych.",
+    "ct": "Przekładnik prądowy: znamiona dokładności i przetężenia, bez par objętych regułami.",
+    "vt": "Przekładnik napięciowy: jak CT.",
     "surge-arrester": (
-        "Ogranicznik przepiec: znamiona napieciowo-energetyczne (Um, MCOV, Ures, BIL), "
-        "bez par objetych regulami."
+        "Ogranicznik przepięć: znamiona napięciowo-energetyczne (Um, MCOV, Ures, BIL), "
+        "bez par objętych regułami."
     ),
-    "shunt-capacitor": "Bateria kondensatorow: moc bierna i napiecie, bez par objetych regulami.",
+    "shunt-capacitor": "Bateria kondensatorów: moc bierna i napięcie, bez par objętych regułami.",
     "pv-inverter": (
-        "Przeksztaltnik PV: udzial zwarciowy k_sc jest bramka TWARDA (KAT-T-003); brak "
-        "k_sc jest BRAKIEM DANEJ raportowanym przez miernik gotowosci, nie odstepstwem."
+        "Przekształtnik PV: udział zwarciowy k_sc jest bramką TWARDĄ (KAT-T-003); brak "
+        "k_sc jest BRAKIEM DANEJ raportowanym przez miernik gotowości, nie odstępstwem."
     ),
-    "bess-inverter": "Przeksztaltnik magazynu: jak PV.",
+    "bess-inverter": "Przekształtnik magazynu: jak PV.",
     "bess-battery": (
-        "Pakiet baterii: pojemnosc / napiecie DC / C-rate sa bramkami TWARDYMI " "(KAT-T-018..020)."
+        "Pakiet baterii: pojemność / napięcie DC / C-rate są bramkami TWARDYMI " "(KAT-T-018..020)."
     ),
-    "converter": "Przeksztaltnik (PV/BESS/WIND) — jak PV.",
-    "wind-inverter": "Przeksztaltnik farmy wiatrowej — podzbior rodziny przeksztaltnikow.",
+    "converter": "Przekształtnik (PV/BESS/WIND) — jak PV.",
+    "wind-inverter": "Przekształtnik farmy wiatrowej — podzbiór rodziny przekształtników.",
     "der-dynamic": (
-        "Profil dynamiczny DER nie jest rekordem sprzetu — jego zakresy sa bramkami "
+        "Profil dynamiczny DER nie jest rekordem sprzętu — jego zakresy są bramkami "
         "TWARDYMI wyprowadzonymi z NC RfG (KAT-T-027..029)."
     ),
-    "branch-point": "Punkt odgalezny (slup/ZKSN): geometria i wyposazenie, bez wielkosci objetych regulami.",
-    "switchgear-families": "Rodzina rozdzielnicy to kontener konfiguracyjny, nie rekord sprzetu.",
+    "branch-point": "Punkt odgałęźny (słup/ZKSN): geometria i wyposażenie, bez wielkości objętych regułami.",
+    "switchgear-families": "Rodzina rozdzielnicy to kontener konfiguracyjny, nie rekord sprzętu.",
     "complete-bay-templates": "Szablon pola to zestawienie pozycji katalogu, nie pozycja katalogu.",
     "protection-device": (
-        "Zabezpieczenie: nastawy i krzywe czasowo-pradowe, bez par wielkosci znamionowych "
-        "objetych regulami wiarygodnosci."
+        "Zabezpieczenie: nastawy i krzywe czasowo-prądowe, bez par wielkości znamionowych "
+        "objętych regułami wiarygodności."
     ),
     "ptpiree-certificates": (
-        "Wykaz certyfikatow PTPiREE to rejestr dokumentow, nie rekordow sprzetu."
+        "Wykaz certyfikatów PTPiREE to rejestr dokumentów, nie rekordów sprzętu."
     ),
     "synchronous-generator": (
-        "Generator synchroniczny: reaktancje podprzejsciowe/przejsciowe i stale czasowe, "
-        "bez par objetych regulami (relacja x''<x'<x nie byla u nas nigdy bramka i nie ma "
-        "dzis konsumenta przegladu)."
+        "Generator synchroniczny: reaktancje podprzejściowe/przejściowe i stałe czasowe, "
+        "bez par objętych regułami (relacja x''<x'<x nie była u nas nigdy bramką i nie ma "
+        "dziś konsumenta przeglądu)."
     ),
 }
 
@@ -1158,18 +1158,18 @@ PREDYKATY_WIARYGODNOSCI: dict[str, Callable[[Any], _WynikReguly]] = {
 #: Powod pominiecia pozycji przez regule — nazwany, bo „pominieto 28 z 48" bez
 #: powodu jest tak samo nieme jak ciche zero.
 POWODY_POMINIECIA: dict[str, str] = {
-    "KAT-W-001": "pozycja nie niesie rezystancji skladowej zerowej (R0)",
-    "KAT-W-002": "pozycja nie niesie strat jalowych (P0) albo obciazeniowych (Pk)",
+    "KAT-W-001": "pozycja nie niesie rezystancji składowej zerowej (R0)",
+    "KAT-W-002": "pozycja nie niesie strat jałowych (P0) albo obciążeniowych (Pk)",
     "KAT-W-003": (
-        "aparat bez dodatniej zdolnosci wylaczania — odlacznik, rozlacznik albo uziemnik "
-        "z definicji nie przerywa pradu zwarciowego"
+        "aparat bez dodatniej zdolności wyłączania — odłącznik, rozłącznik albo uziemnik "
+        "z definicji nie przerywa prądu zwarciowego"
     ),
     "KAT-W-004": (
-        "aparat bez dodatniej zdolnosci wylaczania Icu albo bez pradu krotkotrwalego Icw "
+        "aparat bez dodatniej zdolności wyłączania Icu albo bez prądu krótkotrwałego Icw "
         "w karcie katalogowej"
     ),
-    "KAT-W-005": "zrodlo nie niesie stosunku R/X (ani wariantu maksymalnego, ani minimalnego)",
-    "KAT-W-006": "transformator nie niesie pradu biegu jalowego (i0 %)",
+    "KAT-W-005": "źródło nie niesie stosunku R/X (ani wariantu maksymalnego, ani minimalnego)",
+    "KAT-W-006": "transformator nie niesie prądu biegu jałowego (i0 %)",
 }
 
 
@@ -1182,8 +1182,8 @@ def przeglad_rodziny(rodzina: str, pozycje: Iterable[Any]) -> WynikPrzegladuWiar
     """
     if rodzina not in RODZINY_PRZEGLADU:
         raise BladRejestruNiezmiennikow(
-            f"Rodzina {rodzina!r} nie jest objeta przegladem wiarygodnosci. "
-            f"Dostepne: {', '.join(sorted(RODZINY_PRZEGLADU))}."
+            f"Rodzina {rodzina!r} nie jest objęta przeglądem wiarygodności. "
+            f"Dostępne: {', '.join(sorted(RODZINY_PRZEGLADU))}."
         )
     specyfikacja = RODZINY_PRZEGLADU[rodzina]
     lista = list(pozycje)
@@ -1193,12 +1193,12 @@ def przeglad_rodziny(rodzina: str, pozycje: Iterable[Any]) -> WynikPrzegladuWiar
     for kod in specyfikacja.kody:
         if kod not in PREDYKATY_WIARYGODNOSCI:
             raise BladRejestruNiezmiennikow(
-                f"Rodzina {rodzina!r} wskazuje kod {kod}, dla ktorego nie ma predykatu "
-                "przegladu — regula bez predykatu nie jest sprawdzana."
+                f"Rodzina {rodzina!r} wskazuje kod {kod}, dla którego nie ma predykatu "
+                "przeglądu — reguła bez predykatu nie jest sprawdzana."
             )
         if kod not in POWODY_POMINIECIA:
             raise BladRejestruNiezmiennikow(
-                f"Regula {kod} nie ma nazwanego powodu pominiecia — „pominieto N pozycji” "
+                f"Reguła {kod} nie ma nazwanego powodu pominięcia — „pominięto N pozycji” "
                 "bez powodu jest tak samo nieme jak ciche zero."
             )
     for pozycja in lista:
@@ -1240,9 +1240,9 @@ def przeglad_wiarygodnosci(
     brakujace = sorted(set(RODZINY_PRZEGLADU) - set(rodziny))
     if brakujace:
         raise BladRejestruNiezmiennikow(
-            f"Przeglad wiarygodnosci wymaga kompletu rodzin — brakuje: {', '.join(brakujace)}."
+            f"Przegląd wiarygodności wymaga kompletu rodzin — brakuje: {', '.join(brakujace)}."
         )
     nadmiarowe = sorted(set(rodziny) - set(RODZINY_PRZEGLADU))
     if nadmiarowe:
-        raise BladRejestruNiezmiennikow(f"Rodziny spoza przegladu: {', '.join(nadmiarowe)}.")
+        raise BladRejestruNiezmiennikow(f"Rodziny spoza przeglądu: {', '.join(nadmiarowe)}.")
     return tuple(przeglad_rodziny(nazwa, rodziny[nazwa]) for nazwa in sorted(rodziny))

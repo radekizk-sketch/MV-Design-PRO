@@ -63,7 +63,7 @@ class CreatePowerFlowComparisonRequest(BaseModel):
     )
     power_flow_run_id_b: str = Field(
         ...,
-        description="UUID drugiego PowerFlowRun (porownanie)",
+        description="UUID drugiego PowerFlowRun (porównanie)",
     )
 
 
@@ -263,21 +263,21 @@ def _build_service(uow_factory: Any) -> PowerFlowComparisonService:
     # L-13: brak różnicy względnej (A = 0) NIE trafia do odpowiedzi jako null —
     # konsument odróżnia „nie istnieje" od wartości liczbowej.
     response_model_exclude_none=True,
-    summary="Utworz porownanie dwoch analiz rozplywu mocy",
+    summary="Utwórz porównanie dwóch analiz rozpływu mocy",
     description="""
-P20c: Porownuje dwa PowerFlowRun i generuje deterministyczny ranking problemow.
+P20c: Porównuje dwa PowerFlowRun i generuje deterministyczny ranking problemów.
 
 **Walidacje:**
-- Oba runy musza istniec
-- Oba runy musza miec status FINISHED
-- Oba runy musza nalezec do tego samego projektu
+- Oba runy muszą istnieć
+- Oba runy muszą mieć status FINISHED
+- Oba runy muszą należeć do tego samego projektu
 
 **Zwraca:**
 - PowerFlowComparisonResult z:
-  - bus_diffs: porownanie per szyna (posortowane po bus_id)
-  - branch_diffs: porownanie per galaz (posortowane po branch_id)
-  - ranking: lista problemow posortowana wg severity (5->1)
-  - summary: statystyki porownania
+  - bus_diffs: porównanie per szyna (posortowane po bus_id)
+  - branch_diffs: porównanie per gałąź (posortowane po branch_id)
+  - ranking: lista problemów posortowana wg severity (5->1)
+  - summary: statystyki porównania
 
 **Cache:**
 - Ta sama para (A, B) -> ten sam comparison_id
@@ -316,17 +316,17 @@ def create_power_flow_comparison(
     except PowerFlowRunWrongTypeError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Bieg {e.run_id} nie jest biegiem rozplywu mocy (rodzaj: {e.analysis_type})",
+            detail=f"Bieg {e.run_id} nie jest biegiem rozpływu mocy (rodzaj: {e.analysis_type})",
         ) from e
     except PowerFlowRunNotFinishedError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Power flow run nie zakonczony (status: {e.status}): {e.run_id}",
+            detail=f"Power flow run nie zakończony (status: {e.status}): {e.run_id}",
         ) from e
     except PowerFlowProjectMismatchError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Runs naleza do roznych projektow: {e.run_a_project} vs {e.run_b_project}",
+            detail=f"Runs należą do różnych projektów: {e.run_a_project} vs {e.run_b_project}",
         ) from e
     except PowerFlowComparisonError as e:
         raise HTTPException(
@@ -339,7 +339,7 @@ def create_power_flow_comparison(
     "/{comparison_id}",
     response_model=PowerFlowComparisonMetadataResponse,
     response_model_exclude_none=True,
-    summary="Pobierz metadane porownania",
+    summary="Pobierz metadane porównania",
 )
 def get_power_flow_comparison(
     comparison_id: str,
@@ -376,7 +376,7 @@ def get_power_flow_comparison(
     "/{comparison_id}/results",
     response_model=PowerFlowComparisonResultResponse,
     response_model_exclude_none=True,
-    summary="Pobierz pelne wyniki porownania",
+    summary="Pobierz pełne wyniki porównania",
 )
 def get_power_flow_comparison_results(
     comparison_id: str,
@@ -403,7 +403,7 @@ def get_power_flow_comparison_results(
 @router.get(
     "/{comparison_id}/trace",
     response_model=PowerFlowComparisonTraceResponse,
-    summary="Pobierz slad porownania (audyt)",
+    summary="Pobierz ślad porównania (audyt)",
 )
 def get_power_flow_comparison_trace(
     comparison_id: str,
@@ -435,7 +435,7 @@ def get_power_flow_comparison_trace(
 
 @router.get(
     "/{comparison_id}/export/json",
-    summary="Eksportuj porownanie do JSON",
+    summary="Eksportuj porównanie do JSON",
 )
 def export_power_flow_comparison_json(
     comparison_id: str,
@@ -479,7 +479,7 @@ def export_power_flow_comparison_json(
 
 @router.get(
     "/{comparison_id}/export/docx",
-    summary="Eksportuj porownanie do DOCX",
+    summary="Eksportuj porównanie do DOCX",
 )
 def export_power_flow_comparison_docx(
     comparison_id: str,
@@ -526,7 +526,7 @@ def export_power_flow_comparison_docx(
     style.font.size = Pt(11)
 
     # Title
-    heading = doc.add_heading("Raport porownania rozplywu mocy", level=0)
+    heading = doc.add_heading("Raport porównania rozpływu mocy", level=0)
     heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     # Subtitle
@@ -559,21 +559,21 @@ def export_power_flow_comparison_docx(
         row[1].text = str(value) if value is not None else "—"
 
     add_row(summary_table, "Liczba szyn", summary.get("total_buses"))
-    add_row(summary_table, "Liczba galezi", summary.get("total_branches"))
-    add_row(summary_table, "Zbieznosc A", "Tak" if summary.get("converged_a") else "Nie")
-    add_row(summary_table, "Zbieznosc B", "Tak" if summary.get("converged_b") else "Nie")
+    add_row(summary_table, "Liczba gałęzi", summary.get("total_branches"))
+    add_row(summary_table, "Zbieżność A", "Tak" if summary.get("converged_a") else "Nie")
+    add_row(summary_table, "Zbieżność B", "Tak" if summary.get("converged_b") else "Nie")
     add_row(summary_table, "Delta strat P [MW]", f"{summary.get('delta_total_losses_p_mw', 0):.4g}")
     # FAB-E (E1): max_delta_v_pu bywa None (brak wspolnych szyn miedzy biegami)
     # — "brak danych" zamiast fikcyjnego 0.0 pu (wygladaloby jak brak zmian).
     add_row(summary_table, "Max delta V [pu]", format_wynik(summary.get("max_delta_v_pu"), ".4g"))
-    add_row(summary_table, "Liczba problemow", summary.get("total_issues"))
+    add_row(summary_table, "Liczba problemów", summary.get("total_issues"))
     add_row(summary_table, "Krytyczne", summary.get("critical_issues"))
     add_row(summary_table, "Powazne", summary.get("major_issues"))
 
     doc.add_paragraph()
 
     # Ranking section
-    doc.add_heading("Ranking problemow", level=1)
+    doc.add_heading("Ranking problemów", level=1)
     ranking = comparison.get("ranking", [])
     severity_labels = {5: "Krytyczny", 4: "Powazny", 3: "Sredni", 2: "Drobny", 1: "Info"}
 
@@ -598,8 +598,8 @@ def export_power_flow_comparison_docx(
                 # domyslu — cichy default 1 udawalby najmniejsza istotnosc
                 # zamiast sygnalizowac niekompletne dane porownania.
                 raise ValueError(
-                    f"Wpis rankingu problemow bez pola 'severity' "
-                    f"(issue_code={issue.get('issue_code')!r}) — uszkodzone dane porownania."
+                    f"Wpis rankingu problemów bez pola 'severity' "
+                    f"(issue_code={issue.get('issue_code')!r}) — uszkodzone dane porównania."
                 )
             row[0].text = severity_labels.get(severity_wpisu, "?")
             row[1].text = issue.get("issue_code", "—")
@@ -607,9 +607,9 @@ def export_power_flow_comparison_docx(
             row[3].text = issue.get("description_pl", "—")[:50]
 
         if len(ranking) > 30:
-            doc.add_paragraph(f"... oraz {len(ranking) - 30} dodatkowych problemow")
+            doc.add_paragraph(f"... oraz {len(ranking) - 30} dodatkowych problemów")
     else:
-        doc.add_paragraph("Brak wykrytych problemow.")
+        doc.add_paragraph("Brak wykrytych problemów.")
 
     # Save to BytesIO
     buffer = io.BytesIO()
@@ -627,7 +627,7 @@ def export_power_flow_comparison_docx(
 
 @router.get(
     "/{comparison_id}/export/pdf",
-    summary="Eksportuj porownanie do PDF",
+    summary="Eksportuj porównanie do PDF",
 )
 def export_power_flow_comparison_pdf(
     comparison_id: str,
@@ -672,7 +672,7 @@ def export_power_flow_comparison_pdf(
 
     # Title
     c.setFont("DejaVuSans-Bold", 16)
-    title = "Raport porownania rozplywu mocy"
+    title = "Raport porównania rozpływu mocy"
     c.drawString((page_width - c.stringWidth(title, "DejaVuSans-Bold", 16)) / 2, y, title)
     y -= 10 * mm
 
@@ -691,11 +691,11 @@ def export_power_flow_comparison_pdf(
     summary = comparison.get("summary", {})
     summary_lines = [
         f"Liczba szyn: {summary.get('total_buses', '—')}",
-        f"Liczba galezi: {summary.get('total_branches', '—')}",
-        f"Zbieznosc A: {'Tak' if summary.get('converged_a') else 'Nie'}",
-        f"Zbieznosc B: {'Tak' if summary.get('converged_b') else 'Nie'}",
+        f"Liczba gałęzi: {summary.get('total_branches', '—')}",
+        f"Zbieżność A: {'Tak' if summary.get('converged_a') else 'Nie'}",
+        f"Zbieżność B: {'Tak' if summary.get('converged_b') else 'Nie'}",
         f"Delta strat P: {summary.get('delta_total_losses_p_mw', 0):.4g} MW",
-        f"Liczba problemow: {summary.get('total_issues', 0)}",
+        f"Liczba problemów: {summary.get('total_issues', 0)}",
     ]
     for line in summary_lines:
         c.drawString(left_margin, y, line)
@@ -705,7 +705,7 @@ def export_power_flow_comparison_pdf(
 
     # Ranking
     c.setFont("DejaVuSans-Bold", 12)
-    c.drawString(left_margin, y, "Ranking problemow (top 15)")
+    c.drawString(left_margin, y, "Ranking problemów (top 15)")
     y -= 5 * mm
 
     ranking = comparison.get("ranking", [])
@@ -719,8 +719,8 @@ def export_power_flow_comparison_pdf(
             # domyslu — cichy default 1 udawalby najmniejsza istotnosc zamiast
             # sygnalizowac niekompletne dane porownania.
             raise ValueError(
-                f"Wpis rankingu problemow bez pola 'severity' "
-                f"(issue_code={issue.get('issue_code')!r}) — uszkodzone dane porownania."
+                f"Wpis rankingu problemów bez pola 'severity' "
+                f"(issue_code={issue.get('issue_code')!r}) — uszkodzone dane porównania."
             )
         severity = severity_labels.get(severity_wpisu, "?")
         text = (
@@ -733,7 +733,7 @@ def export_power_flow_comparison_pdf(
             y = top_margin
 
     if not ranking:
-        c.drawString(left_margin, y, "Brak wykrytych problemow.")
+        c.drawString(left_margin, y, "Brak wykrytych problemów.")
         y -= line_height
 
     c.save()

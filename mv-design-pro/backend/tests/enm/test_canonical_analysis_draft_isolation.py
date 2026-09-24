@@ -181,7 +181,7 @@ def reset_state():
 
 def test_execute_run_uses_frozen_snapshot_not_post_creation_enm_mutation():
     case_id = "draft-isolation-sc"
-    set_enm(case_id, EnergyNetworkModel.model_validate(_valid_enm_payload("Siec pierwotna")))
+    set_enm(case_id, EnergyNetworkModel.model_validate(_valid_enm_payload("Sieć pierwotna")))
 
     run = create_run(case_id=case_id, klucz_twin=case_id, analysis_type="short_circuit_sn")
     frozen_hash = run.snapshot_hash
@@ -197,7 +197,7 @@ def test_execute_run_uses_frozen_snapshot_not_post_creation_enm_mutation():
     assert result.status == "FINISHED", result.error_message
     assert result.snapshot_hash == frozen_hash
     assert result.snapshot["header"]["name"] == frozen_name
-    assert result.snapshot["header"]["name"] == "Siec pierwotna"
+    assert result.snapshot["header"]["name"] == "Sieć pierwotna"
     assert result.raw_result is not None
     assert result.raw_result["enm_hash"] == frozen_hash
 
@@ -325,7 +325,7 @@ def test_create_1f_run_blocks_without_committed_z0():
     case_id = "canonical-sc-1f-missing-z0"
     set_enm(case_id, EnergyNetworkModel.model_validate(_valid_enm_payload("Siec bez Z0")))
 
-    with pytest.raises(ValueError, match="skladowej zerowej Z0"):
+    with pytest.raises(ValueError, match="składowej zerowej Z0"):
         create_run(
             case_id=case_id,
             klucz_twin=case_id,

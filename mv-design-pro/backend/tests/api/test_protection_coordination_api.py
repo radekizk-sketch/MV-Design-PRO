@@ -462,7 +462,7 @@ def test_run_with_empty_devices_is_rejected_honestly(app_client: Any) -> None:
     payload["devices"] = []
     response = _run(app_client, payload)
     assert response.status_code == 400
-    assert "urzadzenia" in response.json()["detail"]
+    assert "urządzenia" in response.json()["detail"]
 
 
 def test_run_with_empty_fault_currents_is_rejected_honestly(app_client: Any) -> None:
@@ -486,7 +486,7 @@ def test_run_with_all_three_empty_reports_all_blockers(app_client: Any) -> None:
     response = _run(app_client, payload)
     assert response.status_code == 400
     detail = response.json()["detail"]
-    assert "urzadzenia" in detail
+    assert "urządzenia" in detail
     assert "zwarciowych" in detail
     assert "roboczych" in detail
 

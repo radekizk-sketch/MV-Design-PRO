@@ -202,6 +202,21 @@ const SSCI_WERDYKT = (
   }
 ).biegi.ssci_impedance.stabilnosc.verdict;
 
+/**
+ * Nazwa dobranej baterii z realnego katalogu MV (`KOMP_SN_0V6_15KV`,
+ * `network_model/catalog/mv_shunt_capacitor_catalog.py`), czytana z fikstury sceny
+ * wygenerowanej przez backend — nie przepisana ręcznie (karta PL-ZNAKI: ręczny
+ * literał „Bateria kondensatorow…" rozjechał się z katalogiem po poprawie zapisu).
+ */
+const NAZWA_DOBRANEJ_BATERII = (
+  JSON.parse(
+    fs.readFileSync(
+      path.resolve(_dirname, '../src/harness-fixtures/generated/kompensacja_scena_wynik.json'),
+      'utf-8',
+    ),
+  ) as { dobor: { name: string } }
+).dobor.name;
+
 /** Prowadzi scenę do stanu „wywód OTWARTY" — realne kliki, zero syntetyki. */
 async function prowadzScene(page: Page, scena: Scena): Promise<void> {
   if (scena === 'kompensacja-wynik') {
@@ -216,10 +231,8 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     await page.getByTestId('mvd-komp-oblicz').click();
     await expect(page.getByTestId('mvd-komp-wynik')).toBeVisible();
     const tabela = page.getByTestId('mvd-wyn-tabela');
-    // Nazwa z realnego katalogu MV (`KOMP_SN_0V6_15KV`,
-    // `network_model/catalog/mv_shunt_capacitor_catalog.py`) — nie ręcznie
-    // wymyślona etykieta.
-    await expect(tabela).toContainText('Bateria kondensatorow SN 0,6 Mvar 15 kV');
+    // Nazwa z realnego katalogu MV — z fikstury sceny, nie ręcznie wpisana etykieta.
+    await expect(tabela).toContainText(NAZWA_DOBRANEJ_BATERII);
     await expect(page.getByTestId('mvd-komp-dobor-nazwa')).toContainText('0,6 Mvar');
     await page.getByTestId('mvd-komp-slad-otworz').click();
     const slad = page.getByTestId('mvd-komp-slad');

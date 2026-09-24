@@ -333,8 +333,8 @@ def build_pq_coverage_view(converter: ConverterType, profile: NcRfgProfile) -> d
             "q_wymagane_min_mvar": _round(q_wym_min),
             "q_wymagane_max_mvar": _round(q_wym_max),
             "opis": (
-                "Prostokatne wymaganie zakresu Q operatora: "
-                "[udzial_min * Pn, udzial_max * Pn] w kazdym punkcie pracy."
+                "Prostokątne wymaganie zakresu Q operatora: "
+                "[udzial_min * Pn, udzial_max * Pn] w każdym punkcie pracy."
             ),
         },
         "punkty": punkty,

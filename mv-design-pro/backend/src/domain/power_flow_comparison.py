@@ -77,9 +77,9 @@ ISSUE_SEVERITY_MAP: dict[PowerFlowIssueCode, PowerFlowIssueSeverity] = {
 
 # Polish descriptions for issues (deterministic)
 ISSUE_DESCRIPTIONS_PL: dict[PowerFlowIssueCode, str] = {
-    PowerFlowIssueCode.NON_CONVERGENCE_CHANGE: "Zmiana zbieznosci rozpływu",
-    PowerFlowIssueCode.VOLTAGE_DELTA_HIGH: "Duza zmiana napiecia",
-    PowerFlowIssueCode.ANGLE_SHIFT_HIGH: "Duzy przesuniecie kata",
+    PowerFlowIssueCode.NON_CONVERGENCE_CHANGE: "Zmiana zbieżności rozpływu",
+    PowerFlowIssueCode.VOLTAGE_DELTA_HIGH: "Duża zmiana napięcia",
+    PowerFlowIssueCode.ANGLE_SHIFT_HIGH: "Duże przesunięcie kąta",
     PowerFlowIssueCode.LOSSES_INCREASED: "Wzrost strat mocy",
     PowerFlowIssueCode.LOSSES_DECREASED: "Spadek strat mocy",
     PowerFlowIssueCode.SLACK_POWER_CHANGED: "Zmiana mocy szyny bilansowej",
@@ -793,7 +793,7 @@ class PowerFlowRunNotFinishedError(PowerFlowComparisonError):
     def __init__(self, run_id: str, status: str):
         self.run_id = run_id
         self.status = status
-        super().__init__(f"Power flow run nie zakonczony (status: {status}): {run_id}")
+        super().__init__(f"Power flow run nie zakończony (status: {status}): {run_id}")
 
 
 class PowerFlowProjectMismatchError(PowerFlowComparisonError):
@@ -802,7 +802,7 @@ class PowerFlowProjectMismatchError(PowerFlowComparisonError):
     def __init__(self, run_a_project: str, run_b_project: str):
         self.run_a_project = run_a_project
         self.run_b_project = run_b_project
-        super().__init__(f"Runs naleza do roznych projektow: {run_a_project} vs {run_b_project}")
+        super().__init__(f"Runs należą do różnych projektów: {run_a_project} vs {run_b_project}")
 
 
 class PowerFlowComparisonNotFoundError(PowerFlowComparisonError):

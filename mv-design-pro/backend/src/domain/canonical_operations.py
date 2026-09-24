@@ -2723,7 +2723,7 @@ def validate_operation_payload(op_name: str, payload: dict[str, Any]) -> list[st
 
         if aliases:
             errors.append(
-                f"Brak wymaganego pola: {field_name} (alias kompatybilnosci: {', '.join(aliases)})"
+                f"Brak wymaganego pola: {field_name} (alias kompatybilności: {', '.join(aliases)})"
             )
         else:
             errors.append(f"Brak wymaganego pola: {field_name}")

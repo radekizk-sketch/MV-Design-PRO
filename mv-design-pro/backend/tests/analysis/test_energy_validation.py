@@ -853,7 +853,7 @@ class TestWhiteBoxTrace:
         assert len(item.white_box) == 5
         # R3-D: kroki strukturalne {tekst, latex} - wzor i podstawienie w LaTeX.
         # Kanon O-51: wzór z OBU zacisków (max ilorazów prąd / prąd znamionowy zacisku).
-        assert item.white_box[0]["tekst"].startswith("Wzor:")
+        assert item.white_box[0]["tekst"].startswith("Wzór:")
         assert r"\frac{|I_{od}|}{I_{r,od}}" in item.white_box[0]["latex"]
         assert r"\frac{|I_{do}|}{I_{r,do}}" in item.white_box[0]["latex"]
         assert "|I_od| = 0.4500 kA" in item.white_box[1]["tekst"]  # prąd zacisku od (PF)
@@ -863,7 +863,7 @@ class TestWhiteBoxTrace:
         assert item.white_box[1]["latex"] is None  # pochodzenie danych = tekst
         assert "90.00 %" in item.white_box[2]["tekst"]
         assert "= 90.00" in item.white_box[2]["latex"]  # podstawienie liczbowe
-        assert "ostrzezenie 80.0 %" in item.white_box[3]["tekst"]
+        assert "ostrzeżenie 80.0 %" in item.white_box[3]["tekst"]
         assert item.white_box[4]["tekst"] == "Werdykt: OSTRZEZENIE"
 
     def test_not_computed_item_has_empty_trace(self):
@@ -927,7 +927,7 @@ class TestZnacznikBrakuRozwiazania:
         pozycje = {i.target_id: i for i in self._pozycje(view, EnergyCheckType.VOLTAGE_DEVIATION)}
         assert pozycje["bus-a"].status == EnergyValidationStatus.NOT_COMPUTED
         assert pozycje["bus-a"].observed_value is None
-        assert pozycje["bus-a"].why_pl == "Brak danych napieciowych."
+        assert pozycje["bus-a"].why_pl == "Brak danych napięciowych."
         # Szyna Z rozwiazaniem nadal jest oceniana — predykat nie jest za szeroki.
         assert pozycje["slack"].status == EnergyValidationStatus.PASS
 

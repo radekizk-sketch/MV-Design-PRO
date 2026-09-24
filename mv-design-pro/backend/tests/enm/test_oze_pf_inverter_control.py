@@ -121,7 +121,7 @@ def test_two_regulated_sources_on_one_bus_are_refused() -> None:
     drugi = dict(snapshot["generators"][0])
     drugi["ref_id"] = "g2"
     snapshot["generators"] = [snapshot["generators"][0], drugi]
-    with pytest.raises(ValueError, match="wiecej niz jedno zrodlo z aktywna regulacja"):
+    with pytest.raises(ValueError, match="więcej niż jedno źródło z aktywną regulacją"):
         _build_converter_control_by_node(snapshot, base_mva=100.0)
 
 

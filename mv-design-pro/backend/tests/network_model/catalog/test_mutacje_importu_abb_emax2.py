@@ -175,7 +175,7 @@ def test_zastrzezenie_o_zakresie_kontroli_jest_w_rekordzie(wyciag: dict) -> None
         pozycja = katalog.get_lv_apparatus_type(pozycja_id)
         assert pozycja is not None
         uwaga = pozycja.verification_note or ""
-        assert "NIE jest weryfikacja wobec producenta" in uwaga, pozycja_id
+        assert "NIE jest weryfikacją wobec producenta" in uwaga, pozycja_id
         assert pozycja.verification_status == "CZESCIOWO_ZWERYFIKOWANY", pozycja_id
 
 

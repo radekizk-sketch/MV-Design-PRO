@@ -319,7 +319,7 @@ def build_terrain_network() -> NetworkGraph:
     g.add_switch(
         _mk_sw(
             "sw-coupler-s4",
-            "Sprzeglo sekcyjne S4",
+            "Sprzęgło sekcyjne S4",
             "bus-s4-sn-a",
             "bus-s4-sn-b",
             st=SwitchType.BREAKER,
@@ -370,7 +370,7 @@ def build_terrain_network() -> NetworkGraph:
             AFL120_I,
         )
     )
-    _add_station_trafo(g, "s6", "Stacja 6 (koncowa)", "bus-s6-sn", 0.250, 0.08, 0.02)
+    _add_station_trafo(g, "s6", "Stacja 6 (końcowa)", "bus-s6-sn", 0.250, 0.08, 0.02)
 
     # =========================================================================
     # RING: S6 ↔ S1 via NOP (normalnie otwarty)
@@ -434,7 +434,7 @@ def build_terrain_network() -> NetworkGraph:
             XR120_I,
         )
     )
-    _add_station_trafo(g, "b2", "Stacja B2 (koncowa)", "bus-b2-sn", 0.160, 0.05, 0.01)
+    _add_station_trafo(g, "b2", "Stacja B2 (końcowa)", "bus-b2-sn", 0.160, 0.05, 0.01)
 
     # =========================================================================
     # ODGALEZIENIE 2: S2 → B3 (kabel + PV 0.5 MW)
@@ -454,7 +454,7 @@ def build_terrain_network() -> NetworkGraph:
             XR120_I,
         )
     )
-    _add_station_trafo(g, "b3", "Stacja B3 (koncowa z PV)", "bus-b3-sn", 0.250, 0.10, 0.03)
+    _add_station_trafo(g, "b3", "Stacja B3 (końcowa z PV)", "bus-b3-sn", 0.250, 0.10, 0.03)
 
     # PV 0.5 MW na stronie nN stacji B3
     # In = P / (sqrt(3) * Un) = 500000 / (sqrt(3) * 400) = 721.7 A
@@ -506,7 +506,7 @@ def build_terrain_network() -> NetworkGraph:
             XR120_I,
         )
     )
-    _add_station_trafo(g, "b5", "Stacja B5 (koncowa)", "bus-b5-sn", 0.160, 0.06, 0.02)
+    _add_station_trafo(g, "b5", "Stacja B5 (końcowa)", "bus-b5-sn", 0.160, 0.06, 0.02)
 
     # =========================================================================
     # SUB-ODGALEZIENIE: B4 → B6 (kabel)
@@ -526,7 +526,7 @@ def build_terrain_network() -> NetworkGraph:
             XR120_I,
         )
     )
-    _add_station_trafo(g, "b6", "Stacja B6 (koncowa)", "bus-b6-sn", 0.160, 0.04, 0.01)
+    _add_station_trafo(g, "b6", "Stacja B6 (końcowa)", "bus-b6-sn", 0.160, 0.04, 0.01)
 
     return g
 

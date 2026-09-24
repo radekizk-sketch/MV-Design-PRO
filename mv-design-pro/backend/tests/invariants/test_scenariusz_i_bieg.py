@@ -424,7 +424,7 @@ def test_is5_wariant_na_biegu_scenariusza_z_nadpisaniami_to_odmowa() -> None:
         scenariusz=_scenariusz("__s1__", out_of_service=(galaz,)),
     )
     migawka = apply_scenario(EnergyNetworkModel.model_validate(baza.snapshot), SCENARIUSZ_NORMALNY)
-    with pytest.raises(ValueError, match="skladanie scenariuszy"):
+    with pytest.raises(ValueError, match="składanie scenariuszy"):
         bieg_wariantu(baza, migawka, analysis_type="PF")
 
 

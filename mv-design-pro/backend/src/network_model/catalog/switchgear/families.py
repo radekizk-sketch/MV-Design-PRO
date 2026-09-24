@@ -324,7 +324,7 @@ ABB__SAFERING = SwitchgearFamily(
     notes_pl=(
         "SafeRing — Ring Main Unit (RMU) ABB, izolacja SF6, sealed-for-life. "
         "Napięcia 12-24 kV, prąd znamionowy 630 A, krótkotrwały do 21 kA/1s "
-        "(modul C: 16 kA przy 24 kV). 18 konfiguracji modułowych. Standard "
+        "(moduł C: 16 kA przy 24 kV). 18 konfiguracji modułowych. Standard "
         "IEC 62271-200. Status repo_verified."
     ),
 )

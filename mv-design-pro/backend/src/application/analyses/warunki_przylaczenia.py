@@ -119,11 +119,11 @@ class OcenaWarunkowPrzylaczenia:
     )
     zalozenia: tuple[str, ...] = field(
         default_factory=lambda: (
-            "Wielkosci z wezla bilansujacego biegu rozplywu (punkt przylaczenia do sieci OSD).",
-            "P > 0 = pobor z sieci, P < 0 = oddawanie do sieci.",
-            "Limit mocy przylaczeniowej dotyczy MODULU mocy czynnej (oba kierunki).",
+            "Wielkości z węzła bilansującego biegu rozpływu (punkt przyłączenia do sieci OSD).",
+            "P > 0 = pobór z sieci, P < 0 = oddawanie do sieci.",
+            "Limit mocy przyłączeniowej dotyczy MODUŁU mocy czynnej (oba kierunki).",
             "cosφ liczone z mocy czynnej i biernej w punkcie, bez korekty kierunku.",
-            "Brak danej = NIESPRAWDZONE z kodem gotowosci, nigdy wartosc zastepcza.",
+            "Brak danej = NIESPRAWDZONE z kodem gotowości, nigdy wartość zastępcza.",
         )
     )
 
@@ -257,7 +257,7 @@ def ocen_warunki_przylaczenia(
             _pozycja_niedostepna(
                 KRYTERIUM_MOC,
                 "MW",
-                "Nie mozna ocenic mocy w punkcie przylaczenia — brak danych wejsciowych.",
+                "Nie można ocenić mocy w punkcie przyłączenia — brak danych wejściowych.",
                 braki_mocy,
             )
         )
@@ -292,7 +292,7 @@ def ocen_warunki_przylaczenia(
             _pozycja_niedostepna(
                 KRYTERIUM_COS_PHI,
                 "-",
-                "Nie mozna ocenic cosφ w punkcie przylaczenia — brak danych wejsciowych.",
+                "Nie można ocenić cosφ w punkcie przyłączenia — brak danych wejściowych.",
                 braki_cos,
             )
         )
@@ -338,13 +338,13 @@ def build_warunki_przylaczenia_view(run: CanonicalRun) -> dict[str, Any]:
     """
     if run.analysis_type != "PF":
         raise ValueError(
-            "Ocena warunkow przylaczenia wymaga przebiegu rozplywu mocy (PF); "
+            "Ocena warunków przyłączenia wymaga przebiegu rozpływu mocy (PF); "
             f"otrzymano rodzaj analizy: {run.analysis_type}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakonczony (status={run.status}); "
-            "wynik rozplywu nie jest dostepny."
+            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            "wynik rozpływu nie jest dostępny."
         )
 
     snapshot = run.snapshot or {}

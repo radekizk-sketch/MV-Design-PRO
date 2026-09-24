@@ -5,8 +5,8 @@
   "finished_at": "2026-09-16T09:00:00+00:00",
   "id": "run-lf-scena-oltc",
   "model_revision": 1,
-  "snapshot_hash": "ce6de8c1f2ebcf3faf86233128c0d9f7e4442a57a573072aa2ecd030067d151e",
-  "solver_input_hash": "e3d977f2e0d1a3410b51765548b3f6b7b235b3bda7c8009c91685ea1714237f4",
+  "snapshot_hash": "eab2c9e78bc24c383c108288382abfb4625ac3cef22ac5b74b66b5ba5b4fc5b7",
+  "solver_input_hash": "b9f27af897125f8424a9b696c93d8569733cc17e6672fc24a5fc9a4cee00ffb1",
   "started_at": "2026-09-16T09:00:00+00:00",
   "status": "DONE",
   "study_case_id": "case-demo"

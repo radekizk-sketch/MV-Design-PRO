@@ -62,7 +62,7 @@ def _zlota_siec_uziemiona_petersen() -> EnergyNetworkModel:
 
 
 def _model_bez_szyn() -> EnergyNetworkModel:
-    return EnergyNetworkModel(header=ENMHeader(name="model bez wezlow"))
+    return EnergyNetworkModel(header=ENMHeader(name="model bez węzłów"))
 
 
 def _model_bez_galezi_trafo_mocy_zwarciowej() -> EnergyNetworkModel:
@@ -779,9 +779,11 @@ def test_przedmiot_modelu_zlotej_sieci() -> None:
     przedmiot = przedmiot_modelu(enm)
     assert przedmiot["liczba_szyn"] == 5
     assert przedmiot["poziomy_napiec_kv"] == [0.4, 15.0, 110.0]
+    # Nazwa z modelu, nie przepisana ręcznie (karta PL-ZNAKI).
+    nazwa_szyny = next(b.name for b in enm.buses if b.ref_id == "bus_hv")
     assert przedmiot["punkt_przylaczenia"] == {
         "ref": "bus_hv",
-        "nazwa": "GPZ 110kV",
+        "nazwa": nazwa_szyny,
         "zrodlo": "src_gpz",
     }
 

@@ -451,7 +451,7 @@ def _uzgodnij_po_wczytaniu(klucz: str, persisted: EnergyNetworkModel) -> None:
     if raport.cokolwiek:
         logger.info(
             "uzgodnienie_migawek klucz=%s rewizja=%s osierocone=%s odtworzona=%s "
-            "zastapiona=%s robocze=%s",
+            "zastąpiona=%s robocze=%s",
             klucz,
             persisted.header.revision,
             raport.usuniete_osierocone,
@@ -595,8 +595,8 @@ def _wycofaj_nieudany_zapis(
                 migawka.porzuc()
         except OSError:
             logger.warning(
-                "wycofanie: nie udalo sie usunac migawki rewizji %s klucza %s — "
-                "sierota zostanie sprzatnieta przy wczytaniu",
+                "wycofanie: nie udało się usunąć migawki rewizji %s klucza %s — "
+                "sierota zostanie sprzątnięta przy wczytaniu",
                 migawka.rewizja,
                 klucz,
                 exc_info=True,

@@ -119,7 +119,7 @@ class ArchiveDiffResponse(BaseModel):
     deterministic_signature: str
     report_pl: str = Field(
         default="",
-        description="Czytelny raport roznic w jezyku polskim",
+        description="Czytelny raport różnic w języku polskim",
     )
 
 
@@ -200,7 +200,7 @@ def _to_response(result: ArchiveDiffResult) -> ArchiveDiffResponse:
 @router.post("/diff", response_model=ArchiveDiffResponse)
 async def compare_archive_files(
     file_a: UploadFile = File(description="Archiwum A (ZIP) — bazowe"),
-    file_b: UploadFile = File(description="Archiwum B (ZIP) — porownywane"),
+    file_b: UploadFile = File(description="Archiwum B (ZIP) — porównywane"),
 ) -> ArchiveDiffResponse:
     """
     Porownaj dwa archiwa projektu przeslane jako pliki ZIP.

@@ -48,7 +48,7 @@ _PROWENIENCJA_MASZYNY: dict[str, Any] = {
 }
 _PROWENIENCJA_FALOWNIKA: dict[str, Any] = {
     "zrodlo": "profil_typowy_normy",
-    "odniesienie": "IEEE 1547-2018 §5-8; Rozporzadzenie (UE) 2016/631 (NC RfG) art. 13-21",
+    "odniesienie": "IEEE 1547-2018 §5-8; Rozporządzenie (UE) 2016/631 (NC RfG) art. 13-21",
     "data": None,
 }
 

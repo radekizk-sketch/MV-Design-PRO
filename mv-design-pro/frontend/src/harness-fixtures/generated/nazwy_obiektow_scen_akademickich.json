@@ -2,7 +2,7 @@
   "buses": [
     {
       "ref_id": "bus_hv",
-      "name": "GPZ 110kV"
+      "name": "GPZ 110 kV"
     },
     {
       "ref_id": "bus_nn",
@@ -56,7 +56,7 @@
     },
     {
       "ref_id": "sw_coupler",
-      "name": "Sprzeglo Q1"
+      "name": "Sprzęgło Q1"
     }
   ],
   "transformers": [
@@ -76,7 +76,7 @@
   "sources": [
     {
       "ref_id": "src_gpz",
-      "name": "System 110kV"
+      "name": "System 110 kV"
     }
   ],
   "generators": [
@@ -96,11 +96,11 @@
   "loads": [
     {
       "ref_id": "load_c",
-      "name": "Odbior C"
+      "name": "Odbiór C"
     },
     {
       "ref_id": "load_nn",
-      "name": "Odbior nN"
+      "name": "Odbiór nN"
     }
   ],
   "substations": [

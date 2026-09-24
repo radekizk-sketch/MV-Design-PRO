@@ -37,7 +37,7 @@ const KOORDYNACJA_SCENA_WYNIK = JSON.parse(
     path.resolve(_dirname, '../src/harness-fixtures/generated/koordynacja_scena_wynik.json'),
     'utf-8',
   ),
-) as { devices: { location_element_id: string }[] };
+) as { devices: { location_element_id: string; name: string }[] };
 
 /**
  * Decyzja O-51 pkt 7: zabezpieczenia sceny stoją na odcinkach magistrali przy WSKAZANYM
@@ -222,7 +222,12 @@ test.describe('koordynacja:screenshot', () => {
         // Klik ZAWĘŻONY do okna szablonów: po dodaniu pierwszego zabezpieczenia ta sama
         // nazwa jest też na liście urządzeń POD nakładką, a `.first()` trafiał w nią
         // i modal przechwytywał zdarzenie.
-        await page.locator('div.fixed.inset-0').getByText('Przekaznik 50/51 (typowy)').click();
+        // Nazwa szablonu z fixtury biegu (backend zasiewa ją 1:1 z `DEVICE_TEMPLATES`),
+        // nie literał przepisany ręcznie (karta PL-ZNAKI).
+        await page
+          .locator('div.fixed.inset-0')
+          .getByText(KOORDYNACJA_SCENA_WYNIK.devices[0].name)
+          .click();
         await expect(page.getByTestId('protection-settings-editor')).toBeVisible();
         await page.getByTestId('device-location-select').selectOption(lokalizacja);
         // Zacisk gałęzi — etykieta z nazwą szyny z backendu, brak zacisku domyślnego.

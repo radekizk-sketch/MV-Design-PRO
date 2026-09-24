@@ -13,7 +13,7 @@ from network_model.pochodne import prad_z_mocy_pozornej_ka
 
 from .types import CATALOG_CONTRACT_VERSION, CatalogStatus, CatalogVerificationStatus
 
-_DEFAULT_SOURCE_REFERENCE = "Warunki przylaczenia / standard OSD / matryca katalogowa MV-DESIGN-PRO"
+_DEFAULT_SOURCE_REFERENCE = "Warunki przyłączenia / standard OSD / matryca katalogowa MV-DESIGN-PRO"
 _DEFAULT_VERIFICATION_STATUS = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
 _DEFAULT_CATALOG_STATUS = CatalogStatus.PRODUKCYJNY_V1.value
 
@@ -68,7 +68,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-200-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -88,7 +88,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-250-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -108,7 +108,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-300-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -128,7 +128,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-350-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -148,7 +148,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-400-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -168,7 +168,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-500-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -188,7 +188,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-15-500-012",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -208,7 +208,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-200-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -228,7 +228,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-250-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -248,7 +248,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-300-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -268,7 +268,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-350-012",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -288,7 +288,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-400-012",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -308,7 +308,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-500-010",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),
@@ -328,7 +328,7 @@ SOURCE_SYSTEM_TYPES: list[dict[str, Any]] = [
             "manufacturer": "OSD",
             "series": "Warunki zasilania GPZ",
             "catalog_number": "GPZ-20-500-012",
-            "data_source": "Warunki przylaczenia / standard OSD",
+            "data_source": "Warunki przyłączenia / standard OSD",
             **_source_quality(
                 "Profil referencyjny GPZ dla sieci SN; dane operacyjne oznaczone jawnie."
             ),

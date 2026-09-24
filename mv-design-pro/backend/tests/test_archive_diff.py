@@ -357,14 +357,14 @@ class TestPolishReport:
         result = compare_archives(archive, archive)
         report = format_diff_report_pl(result)
         assert "IDENTYCZNY" in report
-        assert "Brak roznic" in report
+        assert "Brak różnic" in report
 
     def test_modified_report_contains_section_info(self):
         archive_a = _make_archive(project_name="A")
         archive_b = _make_archive(project_name="B")
         result = compare_archives(archive_a, archive_b)
         report = format_diff_report_pl(result)
-        assert "RAPORT ROZNIC ARCHIWOW" in report
+        assert "RAPORT RÓŻNIC ARCHIWÓW" in report
         assert "ZMODYFIKOWANY" in report
         assert "Podsumowanie" in report
 

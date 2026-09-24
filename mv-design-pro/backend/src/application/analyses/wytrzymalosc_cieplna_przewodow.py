@@ -405,8 +405,8 @@ def _odtworz_wklady_galeziowe(
             # niebedacych mapa powyzej), nie fabrykujemy zerowego wkladu w
             # ocenie wytrzymalosci cieplnej.
             logger.warning(
-                "Pomijam wklad galeziowy zwarcia bez pola i_contrib_a "
-                "(branch_id=%r, source_id=%r) — uszkodzony wpis, nie prad 0 A.",
+                "Pomijam wkład gałęziowy zwarcia bez pola i_contrib_a "
+                "(branch_id=%r, source_id=%r) — uszkodzony wpis, nie prąd 0 A.",
                 wpis.get("branch_id"),
                 wpis.get("source_id"),
             )
@@ -451,7 +451,7 @@ def _aktualnosc_wobec_modelu(
         return {
             "aktualny": None,
             "powod_pl": (
-                "Nie ma z czym porownac: model przypadku nie jest zaladowany w tej sesji."
+                "Nie ma z czym porównać: model przypadku nie jest załadowany w tej sesji."
             ),
             "model_hash": None,
             "snapshot_hash": run.snapshot_hash,
@@ -461,10 +461,10 @@ def _aktualnosc_wobec_modelu(
     return {
         "aktualny": aktualny,
         "powod_pl": (
-            "Wynik policzony dla biezacej wersji modelu."
+            "Wynik policzony dla bieżącej wersji modelu."
             if aktualny
             else (
-                "Model zmienil sie po tym biegu — liczby dotycza WCZESNIEJSZEJ wersji "
+                "Model zmienił się po tym biegu — liczby dotyczą WCZEŚNIEJSZEJ wersji "
                 "projektu. Uruchom bieg zwarciowy ponownie przed odbiorem."
             )
         ),

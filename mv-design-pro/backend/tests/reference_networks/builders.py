@@ -593,7 +593,7 @@ def build_gn05_sn_nn_oze_ochrona() -> dict[str, Any]:
 
     return {
         "name": "GN_05_SN_NN_OZE_OCHRONA",
-        "description": "SN+nN+OZE+ochrona (pelna siec referencyjna)",
+        "description": "SN+nN+OZE+ochrona (pełna sieć referencyjna)",
         "enm": enm,
         "snapshot_hash": _snapshot_hash(enm),
         "operations_count": 8,

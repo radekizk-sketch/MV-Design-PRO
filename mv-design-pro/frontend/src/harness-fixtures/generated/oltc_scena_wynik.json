@@ -1,11 +1,11 @@
 {
   "analysis_type": "LOAD_FLOW",
-  "deterministic_signature": "819fa5f82d6037e0978ae6450ea26a6333ec3676212527928618d638667debcc",
+  "deterministic_signature": "972fe316d9813a86c99568be7a1b89542add6d9eb8b30eb3356bda8778cb1c0b",
   "element_results": [
     {
       "element_ref": "bus_hv",
       "element_type": "Bus",
-      "proof_ref": "proof:power-flow:88b9594e00c3cfe525cfc46cc07f2cca6725d5574300f5ce25d79c1c77501b8c",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
@@ -17,7 +17,7 @@
           "SLACK"
         ],
         "graph_role": null,
-        "name": "GPZ 110kV",
+        "name": "GPZ 110 kV",
         "synthetic": false,
         "u_kv": 110.0,
         "u_pu": 1.0,
@@ -27,7 +27,7 @@
     {
       "element_ref": "bus_sn_b",
       "element_type": "Bus",
-      "proof_ref": "proof:power-flow:88b9594e00c3cfe525cfc46cc07f2cca6725d5574300f5ce25d79c1c77501b8c",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
@@ -47,7 +47,7 @@
     {
       "element_ref": "bus_sn_c",
       "element_type": "Bus",
-      "proof_ref": "proof:power-flow:88b9594e00c3cfe525cfc46cc07f2cca6725d5574300f5ce25d79c1c77501b8c",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
@@ -67,7 +67,7 @@
     {
       "element_ref": "bus_sn_main",
       "element_type": "Bus",
-      "proof_ref": "proof:power-flow:88b9594e00c3cfe525cfc46cc07f2cca6725d5574300f5ce25d79c1c77501b8c",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
@@ -87,7 +87,7 @@
     {
       "element_ref": "bus_nn",
       "element_type": "Bus",
-      "proof_ref": "proof:power-flow:88b9594e00c3cfe525cfc46cc07f2cca6725d5574300f5ce25d79c1c77501b8c",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
@@ -107,7 +107,7 @@
     {
       "element_ref": "cab_main_b",
       "element_type": "Branch",
-      "proof_ref": "proof:power-flow:88b9594e00c3cfe525cfc46cc07f2cca6725d5574300f5ce25d79c1c77501b8c",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "39aa2231-26fb-59c4-87e3-39a81c06367c",
@@ -141,7 +141,7 @@
     {
       "element_ref": "line_b_c",
       "element_type": "Branch",
-      "proof_ref": "proof:power-flow:88b9594e00c3cfe525cfc46cc07f2cca6725d5574300f5ce25d79c1c77501b8c",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85",
@@ -175,7 +175,7 @@
     {
       "element_ref": "tr_hv_sn",
       "element_type": "Branch",
-      "proof_ref": "proof:power-flow:88b9594e00c3cfe525cfc46cc07f2cca6725d5574300f5ce25d79c1c77501b8c",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
@@ -211,7 +211,7 @@
     {
       "element_ref": "tr_sn_nn",
       "element_type": "Branch",
-      "proof_ref": "proof:power-flow:88b9594e00c3cfe525cfc46cc07f2cca6725d5574300f5ce25d79c1c77501b8c",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "158eec95-939b-5b35-97ad-9433334b5506",
@@ -245,7 +245,7 @@
     {
       "element_ref": "gen_pv",
       "element_type": "Source",
-      "proof_ref": "proof:power-flow:88b9594e00c3cfe525cfc46cc07f2cca6725d5574300f5ce25d79c1c77501b8c",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
@@ -260,7 +260,7 @@
     {
       "element_ref": "gen_sync",
       "element_type": "Source",
-      "proof_ref": "proof:power-flow:88b9594e00c3cfe525cfc46cc07f2cca6725d5574300f5ce25d79c1c77501b8c",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
@@ -275,7 +275,7 @@
     {
       "element_ref": "src_gpz",
       "element_type": "Source",
-      "proof_ref": "proof:power-flow:88b9594e00c3cfe525cfc46cc07f2cca6725d5574300f5ce25d79c1c77501b8c",
+      "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "solver_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
@@ -646,7 +646,7 @@
         }
       ]
     },
-    "proof_ref": "proof:power-flow:88b9594e00c3cfe525cfc46cc07f2cca6725d5574300f5ce25d79c1c77501b8c",
+    "proof_ref": "proof:power-flow:c4e9d41a9b460157e6079937ebe0b1caf402ac62d6d24b6923c0a77f87bc67bf",
     "proof_status": "complete",
     "quality_status": "accepted",
     "reporting_status": "reportable",

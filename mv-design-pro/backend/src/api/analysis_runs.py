@@ -223,7 +223,7 @@ def _proof_latex_response(run: CanonicalRun) -> Response:
     if proof_currents:
         lines.extend(
             [
-                r"\section*{Prady charakterystyczne SC3F}",
+                r"\section*{Prądy charakterystyczne SC3F}",
                 r"\begin{longtable}{llll}",
                 r"Obiekt & \verb|I_dyn| [kA] & \verb|I_th| [kA] & Norma \\",
                 r"\hline",

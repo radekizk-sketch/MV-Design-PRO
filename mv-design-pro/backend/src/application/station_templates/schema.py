@@ -568,8 +568,8 @@ def sn_voltage_kv(template: StationTemplate) -> float | None:
 
 
 KATEGORIE_KORZENIA_MODELU: frozenset[TemplateCategory] = frozenset({TemplateCategory.GPZ_110_SN})
-"""Kategorie szablonow, ktore SA korzeniem modelu (zrodlo zasilania sieci), a nie
-stacja wstawiana w istniejacy odcinek magistrali."""
+"""Kategorie szablonów, które SĄ korzeniem modelu (źródło zasilania sieci), a nie
+stacja wstawiana w istniejący odcinek magistrali."""
 
 
 def kategoria_wchodzi_w_segment(category: TemplateCategory) -> bool:

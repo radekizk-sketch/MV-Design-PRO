@@ -536,4 +536,4 @@ def test_audit2_half_pair_fails_run_with_explicit_reason(app_client):
 
     executed = _create_and_execute_run(app_client, case_id, "LOAD_FLOW", {"audit2_project_id": pid})
     assert executed["status"] == "FAILED", executed
-    assert "polowa pary" in (executed.get("error_message") or "")
+    assert "połową pary" in (executed.get("error_message") or "")

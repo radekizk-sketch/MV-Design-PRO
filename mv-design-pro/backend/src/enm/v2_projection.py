@@ -157,7 +157,7 @@ def project_enm_v1_to_v2(enm: EnergyNetworkModel) -> EnergyNetworkModelV2Project
         operating_variants=[
             V2OperatingVariant(
                 ref_id="variant.uklad_normalny",
-                name="Uklad normalny",
+                name="Układ normalny",
                 variant_type="uklad_normalny",
                 switching_snapshot_ref=switching_snapshot.ref_id,
             )
@@ -264,7 +264,7 @@ def _build_base_switching_snapshot(enm: EnergyNetworkModel) -> V2SwitchingStateS
         )
     return V2SwitchingStateSnapshot(
         ref_id="switching.uklad_normalny.base",
-        name="Migawka lacznikowa ukladu normalnego",
+        name="Migawka łącznikowa układu normalnego",
         variant_ref="variant.uklad_normalny",
         switch_states=switch_states,
     )
@@ -453,7 +453,7 @@ def _build_migration_warnings(enm: EnergyNetworkModel) -> list[V2MigrationWarnin
                     element_ref=generator.ref_id,
                     message_pl=(
                         "Generator wiatrowy ma typ legacy 'wind_inverter'. "
-                        "Migracja V12.xx wymaga rozroznienia PMSG, DFIG albo SCIG."
+                        "Migracja V12.xx wymaga rozróżnienia PMSG, DFIG albo SCIG."
                     ),
                 )
             )
@@ -466,7 +466,7 @@ def _build_migration_warnings(enm: EnergyNetworkModel) -> list[V2MigrationWarnin
                     code="V12-MIG-GEN-002",
                     severity="ostrzezenie",
                     element_ref=generator.ref_id,
-                    message_pl="Zrodlo przeksztaltnikowe nie ma referencji katalogowej.",
+                    message_pl="Źródło przekształtnikowe nie ma referencji katalogowej.",
                 )
             )
         source_type = _source_type_for_generator(generator)
@@ -481,7 +481,7 @@ def _build_migration_warnings(enm: EnergyNetworkModel) -> list[V2MigrationWarnin
                         severity="blokada_migracji",
                         element_ref=generator.ref_id,
                         message_pl=(
-                            "Zrodlo wiatrowe V12.xx wymaga zgodnego profilu "
+                            "Źródło wiatrowe V12.xx wymaga zgodnego profilu "
                             f"generatora {expected}."
                         ),
                     )
@@ -494,7 +494,7 @@ def _build_migration_warnings(enm: EnergyNetworkModel) -> list[V2MigrationWarnin
                     code="V12-MIG-LOAD-001",
                     severity="informacja",
                     element_ref=load.ref_id,
-                    message_pl="Odbior ZIP wymaga pelnego kontraktu profilu obciazenia w ENM v2.0.",
+                    message_pl="Odbiór ZIP wymaga pełnego kontraktu profilu obciążenia w ENM v2.0.",
                 )
             )
 

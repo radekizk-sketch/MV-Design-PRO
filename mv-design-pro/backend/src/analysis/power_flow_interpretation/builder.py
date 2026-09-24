@@ -248,19 +248,19 @@ class PowerFlowInterpretationBuilder:
 
         if severity == FindingSeverity.INFO:
             return (
-                f"Szyna {bus_short}: napiecie {v_pu:.4f} pu "
+                f"Szyna {bus_short}: napięcie {v_pu:.4f} pu "
                 f"(odchylenie {deviation_pct:.2f}% od 1.0 pu) - w normie"
             )
         elif severity == FindingSeverity.WARN:
             direction = "podwyzszone" if v_pu > 1.0 else "obnizone"
             return (
-                f"Szyna {bus_short}: napiecie {direction} {v_pu:.4f} pu "
+                f"Szyna {bus_short}: napięcie {direction} {v_pu:.4f} pu "
                 f"(odchylenie {deviation_pct:.2f}% od 1.0 pu) - wymaga uwagi"
             )
         else:  # HIGH
-            direction = "znacznie podwyzszone" if v_pu > 1.0 else "znacznie obnizone"
+            direction = "znacznie podwyższone" if v_pu > 1.0 else "znacznie obniżone"
             return (
-                f"Szyna {bus_short}: napiecie {direction} {v_pu:.4f} pu "
+                f"Szyna {bus_short}: napięcie {direction} {v_pu:.4f} pu "
                 f"(odchylenie {deviation_pct:.2f}% od 1.0 pu) - istotny problem"
             )
 
@@ -287,9 +287,9 @@ class PowerFlowInterpretationBuilder:
                 # galaz jest pomijana z jawnym powodem w logu (analogicznie do
                 # `analysis.boundary.identifier`), nie fikcyjnym wynikiem.
                 logger.warning(
-                    "PowerFlowInterpretationBuilder: galaz %s bez kompletu mocy "
-                    "pozornej (from=%s, to=%s obecne) — pominieta w obserwacjach "
-                    "obciazenia galezi (bieg %s).",
+                    "PowerFlowInterpretationBuilder: gałąź %s bez kompletu mocy "
+                    "pozornej (from=%s, to=%s obecne) — pominięta w obserwacjach "
+                    "obciążenia gałęzi (bieg %s).",
                     branch_id,
                     branch_id in branch_s_from,
                     branch_id in branch_s_to,
@@ -412,21 +412,21 @@ class PowerFlowInterpretationBuilder:
 
         loading_info = ""
         if loading_pct is not None:
-            loading_info = f", obciazenie {loading_pct:.1f}%"
+            loading_info = f", obciążenie {loading_pct:.1f}%"
 
         if severity == FindingSeverity.INFO:
             return (
-                f"Galaz {branch_short}: straty {losses_p_kw:.2f} kW / "
+                f"Gałąź {branch_short}: straty {losses_p_kw:.2f} kW / "
                 f"{losses_q_kvar:.2f} kvar{loading_info} - niskie"
             )
         elif severity == FindingSeverity.WARN:
             return (
-                f"Galaz {branch_short}: straty {losses_p_kw:.2f} kW / "
-                f"{losses_q_kvar:.2f} kvar{loading_info} - podwyzszone"
+                f"Gałąź {branch_short}: straty {losses_p_kw:.2f} kW / "
+                f"{losses_q_kvar:.2f} kvar{loading_info} - podwyższone"
             )
         else:  # HIGH
             return (
-                f"Galaz {branch_short}: straty {losses_p_kw:.2f} kW / "
+                f"Gałąź {branch_short}: straty {losses_p_kw:.2f} kW / "
                 f"{losses_q_kvar:.2f} kvar{loading_info} - wysokie"
             )
 

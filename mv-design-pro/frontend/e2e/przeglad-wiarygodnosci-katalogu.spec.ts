@@ -1,4 +1,22 @@
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+
+const _dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** Fikstura sceny wyliczona przez backend — źródło nazw rodzin (karta PL-ZNAKI:
+ * nazwa przepisana ręcznie rozjechała się z backendem po poprawie zapisu). */
+const PRZEGLAD = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/przeglad_wiarygodnosci_katalogu.json'),
+    'utf-8',
+  ),
+) as { rodziny_bez_regul: { rodzina: string; powod: string }[] };
+/** Nazwa rodziny CT = część powodu przed dwukropkiem („Przekładnik prądowy: …"). */
+const NAZWA_RODZINY_CT = PRZEGLAD.rodziny_bez_regul
+  .find((r) => r.rodzina === 'ct')!
+  .powod.split(':')[0];
 
 /**
  * Sekcja „Pozycje do przeglądu" biblioteki typów — scena harnessu karmiona
@@ -37,7 +55,7 @@ test.describe('Pozycje do przeglądu katalogu', () => {
     // Rodzina poza przeglądem MUSI być nazwana z powodem — milczenie o niej
     // byłoby nierozróżnialne od przeoczenia.
     await expect(page.getByTestId('pozycje-do-przegladu-bez-regul-ct')).toContainText(
-      'Przekladnik pradowy',
+      NAZWA_RODZINY_CT,
     );
   });
 });

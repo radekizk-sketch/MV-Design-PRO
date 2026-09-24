@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from .types import CATALOG_CONTRACT_VERSION, CatalogStatus, CatalogVerificationStatus
 
-_DEFAULT_SOURCE_REFERENCE = "Katalog przeksztaltnikow MV-DESIGN-PRO / profil przemyslowy V1"
+_DEFAULT_SOURCE_REFERENCE = "Katalog przekształtników MV-DESIGN-PRO / profil przemysłowy V1"
 _DEFAULT_VERIFICATION_STATUS = CatalogVerificationStatus.REFERENCYJNY.value
 _DEFAULT_CATALOG_STATUS = CatalogStatus.REFERENCYJNY_V1.value
 

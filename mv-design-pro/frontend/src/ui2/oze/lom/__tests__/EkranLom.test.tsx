@@ -107,7 +107,7 @@ describe('EkranLom — prezentacja wyniku', () => {
     expect(wzory[1].getAttribute('data-latex')).toContain('1.0000 < 2.0');
     // Kroki danych i wyniku porównania tekstowe (latex=null). Zmiana kanonu (2026-09-23):
     // ostatni krok śladu to wynik porównania, nie werdykt — ocenę niesie rekord porównania.
-    expect(slad).toHaveTextContent('Wynik porownania: poza oknem');
+    expect(slad).toHaveTextContent('Wynik porównania: poza oknem');
     expect(slad).not.toHaveTextContent('Werdykt');
     // Check SPZ (bez porównania) → uczciwy brak przycisku śladu.
     expect(szczegol).toBeInTheDocument();

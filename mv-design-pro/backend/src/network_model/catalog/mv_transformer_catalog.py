@@ -981,13 +981,13 @@ def _build_inverter_transformer_types(
                     "verification_status": "REFERENCYJNY",
                     "catalog_status": "REFERENCYJNY_V1",
                     "source_reference": (
-                        "Referencyjny typoszereg transformatorow blokowych "
-                        "dla falownikow PV/BESS/FW"
+                        "Referencyjny typoszereg transformatorów blokowych "
+                        "dla falowników PV/BESS/FW"
                     ),
                     "contract_version": "2.0",
                     "verification_note": (
                         "Profil referencyjny do doboru wariantowego; parametry strat "
-                        "i uk% wymagaja potwierdzenia karta producenta w projekcie wykonawczym."
+                        "i uk% wymagają potwierdzenia kartą producenta w projekcie wykonawczym."
                     ),
                 },
             }

@@ -553,7 +553,7 @@ def test_kotwica_z_para_audit2_bez_fabryki_odmawia_jawnie() -> None:
         "audit2_station_id": "stacja-nastaw",
     }
 
-    with pytest.raises(BrakDanychNastawError, match="nie dostal fabryki UnitOfWork"):
+    with pytest.raises(BrakDanychNastawError, match="nie dostał fabryki UnitOfWork"):
         zbuduj_wejscie_nastaw(
             kotwica,
             line_id="ln1",

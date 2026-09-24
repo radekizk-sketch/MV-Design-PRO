@@ -465,20 +465,20 @@ def _ostrzezenia_importu(
     ostrzezenia: list[str] = []
     if elements_no_catalog:
         ostrzezenia.append(
-            f"Import wymaga mapowania katalogowego: {len(elements_no_catalog)} element(ow)."
+            f"Import wymaga mapowania katalogowego: {len(elements_no_catalog)} element(ów)."
         )
     if odbiory_bez_stanu_ustalonego:
         nazwy = ", ".join(sorted(set(odbiory_bez_stanu_ustalonego))[:5])
         wiecej = (
-            f" (i {len(set(odbiory_bez_stanu_ustalonego)) - 5} wiecej)"
+            f" (i {len(set(odbiory_bez_stanu_ustalonego)) - 5} więcej)"
             if len(set(odbiory_bez_stanu_ustalonego)) > 5
             else ""
         )
         ostrzezenia.append(
             f"Brak mocy czynnej w profilu stanu ustalonego dla {len(odbiory_bez_stanu_ustalonego)} "
-            f"odbior(ow) — wniesione jako 0 MW: {nazwy}{wiecej}. "
-            "Rozplyw i spadki napiecia beda zanizone do czasu uzupelnienia profilu "
-            "SteadyStateHypothesis albo wlasnych wartosci mocy."
+            f"odbiór(ów) — wniesione jako 0 MW: {nazwy}{wiecej}. "
+            "Rozpływ i spadki napięcia będą zaniżone do czasu uzupełnienia profilu "
+            "SteadyStateHypothesis albo własnych wartości mocy."
         )
     return ostrzezenia
 

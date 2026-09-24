@@ -124,7 +124,7 @@ class ENMValidator:
         self._check_info(enm, issues)
         self._check_topology_entities(enm, issues)
         self._check_shunt_capacitors(enm, issues)
-        # V12S-007: pasmo napieciowe + ciaglosc przez stacje przelotowa
+        # V12S-007: pasmo napieciowe + ciaglosc przez stację przelotową
         self._check_voltage_band_consistency(enm, issues)
         self._check_frequency_consistency(enm, issues)
         self._check_through_station_continuity(enm, issues)
@@ -1700,11 +1700,11 @@ class ENMValidator:
                     code="E020",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Galaz '{branch.ref_id}' laczy pasma napieciowe "
+                        f"Gałąź '{branch.ref_id}' łączy pasma napięciowe "
                         f"{band_from} ({from_bus.voltage_kv} kV) i "
-                        f"{band_to} ({to_bus.voltage_kv} kV). Galaz nie moze "
-                        f"przechodzic miedzy pasmami - jedynym dozwolonym "
-                        f"przejsciem jest transformator."
+                        f"{band_to} ({to_bus.voltage_kv} kV). Gałąź nie może "
+                        f"przechodzić między pasmami - jedynym dozwolonym "
+                        f"przejściem jest transformator."
                     ),
                     element_refs=[
                         branch.ref_id,
@@ -1713,8 +1713,8 @@ class ENMValidator:
                     ],
                     wizard_step_hint="K4",
                     suggested_fix=(
-                        "Wstaw transformator miedzy szynami w roznych pasmach "
-                        "albo zmien przypisanie szyn galezi."
+                        "Wstaw transformator między szynami w różnych pasmach "
+                        "albo zmień przypisanie szyn gałęzi."
                     ),
                     fix_action=FixAction(
                         action_type="OPEN_MODAL",
@@ -1732,7 +1732,7 @@ class ENMValidator:
     def _check_through_station_continuity(
         self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
     ) -> None:
-        """E021: ciaglosc SN przez stacje przelotowa.
+        """E021: ciaglosc SN przez stację przelotową.
 
         Stacja przelotowa (substation z polem IN i polem OUT) musi miec oba
         pola podpiete do tej samej szyny SN. SN nie moze 'przejsc' przez
@@ -1775,14 +1775,14 @@ class ENMValidator:
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"Stacja przelotowa '{sub.ref_id}': pola IN/OUT "
-                            f"({', '.join(sorted(offending_bays))}) nie sa "
-                            f"podpiete do szyny SN. Ciaglosc SN nie moze "
-                            f"przechodzic przez strone nN ani transformator."
+                            f"({', '.join(sorted(offending_bays))}) nie są "
+                            f"podpięte do szyny SN. Ciągłość SN nie może "
+                            f"przechodzić przez stronę nN ani transformator."
                         ),
                         element_refs=[sub.ref_id, *offending_bays],
                         wizard_step_hint="K3",
                         suggested_fix=(
-                            "Przypisz pola IN i OUT do magistrali SN stacji " "(wspolna szyna SN)."
+                            "Przypisz pola IN i OUT do magistrali SN stacji " "(wspólna szyna SN)."
                         ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
@@ -1801,14 +1801,14 @@ class ENMValidator:
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"Stacja przelotowa '{sub.ref_id}': pola IN i OUT "
-                            f"podpiete do roznych szyn SN "
+                            f"podpięte do różnych szyn SN "
                             f"({', '.join(sorted(mv_buses_used))}). "
-                            f"Ciaglosc SN przez stacje przelotowa wymaga "
-                            f"wspolnej magistrali SN."
+                            f"Ciągłość SN przez stację przelotową wymaga "
+                            f"wspólnej magistrali SN."
                         ),
                         element_refs=[sub.ref_id, *sorted(mv_buses_used)],
                         wizard_step_hint="K3",
-                        suggested_fix=("Podlacz pola IN i OUT do tej samej szyny SN stacji."),
+                        suggested_fix=("Podłącz pola IN i OUT do tej samej szyny SN stacji."),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
                             element_ref=sub.ref_id,
@@ -1864,10 +1864,10 @@ class ENMValidator:
                     ValidationIssue(
                         code="E-W5-01",
                         severity=SEVERITY_BLOCKER,
-                        message_pl=f"Zrodlo '{source.ref_id}': {blad}.",
+                        message_pl=f"Źródło '{source.ref_id}': {blad}.",
                         element_refs=[source.ref_id],
                         wizard_step_hint="K1",
-                        suggested_fix="Uzupelnij impedancje punktu neutralnego zrodla.",
+                        suggested_fix="Uzupełnij impedancje punktu neutralnego źródła.",
                         fix_action=_fix(source.ref_id, "SourceModal", "neutral_grounding"),
                     )
                 )
@@ -1891,14 +1891,14 @@ class ENMValidator:
                         code="E-W5-01",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Zrodlo '{source.ref_id}': punkt neutralny opisany jako izolowany, "
-                            "a podano skonczona impedancje zerowa (r0/x0 albo z0/z1) — opis i "
-                            "liczby sa sprzeczne (siec izolowana nie ma bocznika zerowego)."
+                            f"Źródło '{source.ref_id}': punkt neutralny opisany jako izolowany, "
+                            "a podano skończoną impedancję zerową (r0/x0 albo z0/z1) — opis i "
+                            "liczby są sprzeczne (sieć izolowana nie ma bocznika zerowego)."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K1",
                         suggested_fix=(
-                            "Usun r0/x0 (z0/z1) zrodla albo zmien typ punktu neutralnego."
+                            "Usuń r0/x0 (z0/z1) źródła albo zmień typ punktu neutralnego."
                         ),
                         fix_action=_fix(source.ref_id, "SourceModal", "neutral_grounding"),
                     )
@@ -1909,14 +1909,14 @@ class ENMValidator:
                         code="E-W5-01",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Zrodlo '{source.ref_id}': punkt neutralny opisany jako uziemiony "
-                            f"({cfg.type}), a zrodlo nie ma impedancji zerowej (r0/x0 albo z0/z1) — "
-                            "zwarcie 1F liczyloby siec bez bocznika zerowego zrodla, wbrew opisowi."
+                            f"Źródło '{source.ref_id}': punkt neutralny opisany jako uziemiony "
+                            f"({cfg.type}), a źródło nie ma impedancji zerowej (r0/x0 albo z0/z1) — "
+                            "zwarcie 1F liczyłoby sieć bez bocznika zerowego źródła, wbrew opisowi."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K1",
                         suggested_fix=(
-                            "Podaj r0/x0 (z0/z1) zrodla albo zbuduj GPZ kreatorem z transformatorem "
+                            "Podaj r0/x0 (z0/z1) źródła albo zbuduj GPZ kreatorem z transformatorem "
                             "WN/SN — Z0 zostanie wyprowadzone z opisu punktu neutralnego."
                         ),
                         fix_action=_fix(source.ref_id, "SourceModal", "zero_sequence"),
@@ -1933,20 +1933,20 @@ class ENMValidator:
                             code="E-W5-02",
                             severity=SEVERITY_BLOCKER,
                             message_pl=(
-                                f"Transformator '{trafo.ref_id}': grupa polaczen "
-                                f"'{trafo.vector_group}' spoza slownika IEC 60076-1 "
+                                f"Transformator '{trafo.ref_id}': grupa połączeń "
+                                f"'{trafo.vector_group}' spoza słownika IEC 60076-1 "
                                 f"({len(GRUPY_POLACZEN_IEC60076)} grup)."
                             ),
                             element_refs=[trafo.ref_id],
                             wizard_step_hint="K6",
-                            suggested_fix="Wybierz grupe polaczen ze slownika IEC 60076-1.",
+                            suggested_fix="Wybierz grupę połączeń ze słownika IEC 60076-1.",
                             fix_action=_fix(trafo.ref_id, "TransformerModal", "vector_group"),
                         )
                     )
                 else:
                     grupa = parsuj_grupe_polaczen(trafo.vector_group)
             for strona, cfg, pole in (
-                ("gornego (SN/WN)", trafo.hv_neutral, "hv_neutral"),
+                ("górnego (SN/WN)", trafo.hv_neutral, "hv_neutral"),
                 ("dolnego (nN/SN)", trafo.lv_neutral, "lv_neutral"),
             ):
                 if cfg is None:
@@ -1963,7 +1963,7 @@ class ENMValidator:
                             ),
                             element_refs=[trafo.ref_id],
                             wizard_step_hint="K6",
-                            suggested_fix="Uzupelnij impedancje punktu neutralnego.",
+                            suggested_fix="Uzupełnij impedancje punktu neutralnego.",
                             fix_action=_fix(trafo.ref_id, "TransformerModal", pole),
                         )
                     )
@@ -1981,15 +1981,15 @@ class ENMValidator:
                             severity=SEVERITY_BLOCKER,
                             message_pl=(
                                 f"Transformator '{trafo.ref_id}': uziemienie ({cfg.type}) "
-                                f"uzwojenia {strona}, ktorego litera grupy '{litera}' "
+                                f"uzwojenia {strona}, którego litera grupy '{litera}' "
                                 f"({trafo.vector_group}) nie wyprowadza punktu neutralnego — "
                                 "brak zacisku N do uziemienia."
                             ),
                             element_refs=[trafo.ref_id],
                             wizard_step_hint="K6",
                             suggested_fix=(
-                                "Wybierz grupe z wyprowadzonym punktem neutralnym (YN/yn/ZN/zn) "
-                                "albo usun konfiguracje uziemienia tej strony."
+                                "Wybierz grupę z wyprowadzonym punktem neutralnym (YN/yn/ZN/zn) "
+                                "albo usuń konfigurację uziemienia tej strony."
                             ),
                             fix_action=_fix(trafo.ref_id, "TransformerModal", pole),
                         )
@@ -2010,21 +2010,21 @@ class ENMValidator:
                     code="W-W5-01",
                     severity=SEVERITY_IMPORTANT,
                     message_pl=(
-                        f"Kabel '{branch.ref_id}': zadeklarowany uklad uziemienia ekranu "
+                        f"Kabel '{branch.ref_id}': zadeklarowany układ uziemienia ekranu "
                         f"'{branch.screen_bonding}' "
                         + (
-                            f"rozni sie od ukladu odniesienia katalogowych r0/x0 '{odniesienie}'"
+                            f"różni się od układu odniesienia katalogowych r0/x0 '{odniesienie}'"
                             if odniesienie is not None
-                            else "bez ukladu odniesienia katalogowych r0/x0 (typ nie deklaruje "
+                            else "bez układu odniesienia katalogowych r0/x0 (typ nie deklaruje "
                             "z0_reference_bonding)"
                         )
-                        + " — skladowa zerowa kabla nie jest przeliczana; wynik 1F/2FG "
-                        "obowiazuje dla ukladu odniesienia."
+                        + " — składowa zerowa kabla nie jest przeliczana; wynik 1F/2FG "
+                        "obowiązuje dla układu odniesienia."
                     ),
                     element_refs=[branch.ref_id],
                     wizard_step_hint="K3",
                     suggested_fix=(
-                        "Dobierz typ kabla z r0/x0 dla tego ukladu ekranu albo zmien deklaracje."
+                        "Dobierz typ kabla z r0/x0 dla tego układu ekranu albo zmień deklarację."
                     ),
                     fix_action=_fix(branch.ref_id, "BranchModal", "screen_bonding"),
                 )
@@ -2099,15 +2099,15 @@ class ENMValidator:
                     code="E060",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Odbior nN '{load.ref_id}' na szynie '{load.bus_ref}' nie ma "
-                        f"ciaglej sciezki (przez zamkniete galezie/transformatory) "
-                        f"do zadnego zrodla zasilania."
+                        f"Odbiór nN '{load.ref_id}' na szynie '{load.bus_ref}' nie ma "
+                        f"ciągłej ścieżki (przez zamknięte gałęzie/transformatory) "
+                        f"do żadnego źródła zasilania."
                     ),
                     element_refs=[load.ref_id, load.bus_ref],
                     wizard_step_hint="K6",
                     suggested_fix=(
-                        "Zamknij lacznik na trasie do zrodla albo polacz odplyw z "
-                        "zasilana czescia sieci."
+                        "Zamknij łącznik na trasie do źródła albo połącz odpływ z "
+                        "zasilaną częścią sieci."
                     ),
                     fix_action=FixAction(
                         action_type="NAVIGATE_TO_ELEMENT",
@@ -2128,15 +2128,15 @@ class ENMValidator:
                     code="E060",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Zrodlo nN '{gen.ref_id}' na szynie '{gen.bus_ref}' nie ma "
-                        f"ciaglej sciezki (przez zamkniete galezie/transformatory) "
+                        f"Źródło nN '{gen.ref_id}' na szynie '{gen.bus_ref}' nie ma "
+                        f"ciągłej ścieżki (przez zamknięte gałęzie/transformatory) "
                         f"do reszty sieci zasilanej."
                     ),
                     element_refs=[gen.ref_id, gen.bus_ref],
                     wizard_step_hint="K6",
                     suggested_fix=(
-                        "Zamknij lacznik na trasie do reszty sieci albo sprawdz "
-                        "przylaczenie zrodla."
+                        "Zamknij łącznik na trasie do reszty sieci albo sprawdź "
+                        "przyłączenie źródła."
                     ),
                     fix_action=FixAction(
                         action_type="NAVIGATE_TO_ELEMENT",
@@ -2160,13 +2160,13 @@ class ENMValidator:
                         code="W061",
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
-                            f"Galaz nN '{branch.ref_id}' (z automigracji pol nN) nie ma "
-                            f"wiazania z katalogiem kabli nN albo aparatow nN — dane "
-                            f"katalogowe pola zrodlowego nie byly dostepne przy migracji."
+                            f"Gałąź nN '{branch.ref_id}' (z automigracji pól nN) nie ma "
+                            f"wiązania z katalogiem kabli nN albo aparatów nN — dane "
+                            f"katalogowe pola źródłowego nie były dostępne przy migracji."
                         ),
                         element_refs=[branch.ref_id],
                         wizard_step_hint="K6",
-                        suggested_fix="Przypisz element z katalogu kabli nN albo aparatow nN.",
+                        suggested_fix="Przypisz element z katalogu kabli nN albo aparatów nN.",
                         fix_action=FixAction(
                             action_type="SELECT_CATALOG",
                             element_ref=branch.ref_id,
@@ -2181,12 +2181,12 @@ class ENMValidator:
                     code="E061",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Galaz nN '{branch.ref_id}' nie ma wiazania z katalogiem kabli nN "
-                        f"albo aparatow nN."
+                        f"Gałąź nN '{branch.ref_id}' nie ma wiązania z katalogiem kabli nN "
+                        f"albo aparatów nN."
                     ),
                     element_refs=[branch.ref_id],
                     wizard_step_hint="K6",
-                    suggested_fix="Przypisz element z katalogu kabli nN albo aparatow nN.",
+                    suggested_fix="Przypisz element z katalogu kabli nN albo aparatów nN.",
                     fix_action=FixAction(
                         action_type="SELECT_CATALOG",
                         element_ref=branch.ref_id,
@@ -2216,15 +2216,15 @@ class ENMValidator:
                     code="E062",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Galaz '{branch.ref_id}' laczy dwie szyny nN o roznych "
-                        f"napieciach znamionowych ({from_bus.voltage_kv} kV i "
+                        f"Gałąź '{branch.ref_id}' łączy dwie szyny nN o różnych "
+                        f"napięciach znamionowych ({from_bus.voltage_kv} kV i "
                         f"{to_bus.voltage_kv} kV) bez transformatora."
                     ),
                     element_refs=[branch.ref_id, from_bus.ref_id, to_bus.ref_id],
                     wizard_step_hint="K6",
                     suggested_fix=(
-                        "Wstaw transformator miedzy poziomami nN albo popraw "
-                        "przypisanie szyn galezi."
+                        "Wstaw transformator między poziomami nN albo popraw "
+                        "przypisanie szyn gałęzi."
                     ),
                     fix_action=FixAction(
                         action_type="OPEN_MODAL",
@@ -2243,12 +2243,12 @@ class ENMValidator:
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
                         f"Transformator '{trafo.ref_id}' stacji '{sub.ref_id}' zasila "
-                        f"odbiory nN, ale nie deklaruje ukladu uziemienia sieci nN "
+                        f"odbiory nN, ale nie deklaruje układu uziemienia sieci nN "
                         f"(lv_earthing_system)."
                     ),
                     element_refs=[trafo.ref_id, sub.ref_id],
                     wizard_step_hint="K6",
-                    suggested_fix=("Wybierz uklad uziemienia sieci nN (TN-S/TN-C/TN-C-S/TT/IT)."),
+                    suggested_fix=("Wybierz układ uziemienia sieci nN (TN-S/TN-C/TN-C-S/TT/IT)."),
                     fix_action=FixAction(
                         action_type="OPEN_MODAL",
                         element_ref=trafo.ref_id,
@@ -2267,13 +2267,13 @@ class ENMValidator:
                         code="E064",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Zabezpieczenie '{pa.ref_id}' wskazuje nieistniejaca galaz "
+                            f"Zabezpieczenie '{pa.ref_id}' wskazuje nieistniejącą gałąź "
                             f"'{pa.breaker_ref}' (breaker_ref)."
                         ),
                         element_refs=[pa.ref_id, pa.breaker_ref],
                         wizard_step_hint="K7",
                         suggested_fix=(
-                            "Przypisz zabezpieczenie do istniejacej galezi lacznikowej."
+                            "Przypisz zabezpieczenie do istniejącej gałęzi łącznikowej."
                         ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
@@ -2298,13 +2298,13 @@ class ENMValidator:
                     code="W060",
                     severity=SEVERITY_IMPORTANT,
                     message_pl=(
-                        f"Kabel nN '{branch.ref_id}' nie ma zadeklarowanych warunkow "
-                        f"ulozenia — obciazalnosc liczona wg zalozenia katalogowego."
+                        f"Kabel nN '{branch.ref_id}' nie ma zadeklarowanych warunków "
+                        f"ułożenia — obciążalność liczona wg założenia katalogowego."
                     ),
                     element_refs=[branch.ref_id],
                     wizard_step_hint="K6",
                     suggested_fix=(
-                        "Zadeklaruj warunki ulozenia kabla (sposob, grunt, grupowanie)."
+                        "Zadeklaruj warunki ułożenia kabla (sposób, grunt, grupowanie)."
                     ),
                     fix_action=FixAction(
                         action_type="OPEN_MODAL",
@@ -2331,15 +2331,15 @@ class ENMValidator:
                     code="W062",
                     severity=SEVERITY_IMPORTANT,
                     message_pl=(
-                        f"Szyna nN '{bus_ref}' ma {len(refs)} zrodla/generatory "
-                        f"({', '.join(sorted(refs))}) bezposrednio na tej samej szynie "
-                        f"— brak sprzegla/logiki SZR rozdzielajacej rownolegla prace."
+                        f"Szyna nN '{bus_ref}' ma {len(refs)} źródła/generatory "
+                        f"({', '.join(sorted(refs))}) bezpośrednio na tej samej szynie "
+                        f"— brak sprzęgła/logiki SZR rozdzielającej równoległą pracę."
                     ),
                     element_refs=[bus_ref, *sorted(refs)],
                     wizard_step_hint="K6",
                     suggested_fix=(
-                        "Rozdziel zrodla na osobne sekcje szyn ze sprzeglem albo "
-                        "wprowadz logike SZR."
+                        "Rozdziel źródła na osobne sekcje szyn ze sprzęgłem albo "
+                        "wprowadź logikę SZR."
                     ),
                     fix_action=FixAction(
                         action_type="OPEN_MODAL",

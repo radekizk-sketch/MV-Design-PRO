@@ -517,7 +517,7 @@ def get_all_load_types() -> list[dict]:
     return [
         {
             "id": "load_mieszk_15kw",
-            "name": "Obciazenie mieszkaniowe 15 kW",
+            "name": "Obciążenie mieszkaniowe 15 kW",
             "params": {
                 "model": "PQ",
                 "p_kw": 15.0,
@@ -528,7 +528,7 @@ def get_all_load_types() -> list[dict]:
         },
         {
             "id": "load_uslugi_30kw",
-            "name": "Obciazenie uslugowe 30 kW",
+            "name": "Obciążenie usługowe 30 kW",
             "params": {
                 "model": "PQ",
                 "p_kw": 30.0,
@@ -539,7 +539,7 @@ def get_all_load_types() -> list[dict]:
         },
         {
             "id": "load_przem_75kw",
-            "name": "Obciazenie przemyslowe 75 kW",
+            "name": "Obciążenie przemysłowe 75 kW",
             "params": {
                 "model": "PQ",
                 "p_kw": 75.0,
@@ -582,14 +582,14 @@ _MCCB_II_RANGE_X_IN: tuple[float, float] = (1.5, 15.0)
 _MCCB_TR_RANGE_S: tuple[float, float] = (3.0, 144.0)  # @ 6xIr
 _MCCB_TSD_RANGE_S: tuple[float, float] = (0.05, 0.8)
 _MCCB_TRIP_SETTINGS_SOURCE_PL = (
-    "Nastawy wyzwalacza elektronicznego Ekip (wspolna platforma ABB SACE Emax2/Tmax XT, "
+    "Nastawy wyzwalacza elektronicznego Ekip (wspólna platforma ABB SACE Emax2/Tmax XT, "
     "ABB 1SPC801398B0201) — zakresy regulacji GENERYCZNE dla platformy, NIE zweryfikowane "
-    "osobno per rama (E1.2/E2.2/E4.2/E6.2 wzgl. XT1/XT3/XT5). Zweryfikowane podwojnie, "
-    "niezaleznie: (1) stoklink.com/blogs/technical/select-ekip-trip-unit-abb-emax-2-guide "
+    "osobno per rama (E1.2/E2.2/E4.2/E6.2 wzgl. XT1/XT3/XT5). Zweryfikowane podwójnie, "
+    "niezależnie: (1) stoklink.com/blogs/technical/select-ekip-trip-unit-abb-emax-2-guide "
     "+ stoklink.com/blogs/technical/abb-emax-2-ekip-hi-touch-protection-functions-settings "
-    "(Ir 0,4-1,0×In; Ii 1,5-15×In; tsd 0,05-0,8s; tr 3-144s@6×Ir — JEDNO zrodlo numeryczne "
-    "dla tr, NIE podwojnie potwierdzone); (2) VIOX viox.com/mccb-trip-unit-settings-ir-isd-ii-"
-    "explained (Ir 0,4-1,0×In; Isd 1,5-10×Ir — rozstrzyga jednostke Isd jako ×Ir; tsd "
+    "(Ir 0,4-1,0×In; Ii 1,5-15×In; tsd 0,05-0,8s; tr 3-144s@6×Ir — JEDNO źródło numeryczne "
+    "dla tr, NIE podwójnie potwierdzone); (2) VIOX viox.com/mccb-trip-unit-settings-ir-isd-ii-"
+    "explained (Ir 0,4-1,0×In; Isd 1,5-10×Ir — rozstrzyga jednostkę Isd jako ×Ir; tsd "
     "0,05-0,5s)."
 )
 
@@ -609,12 +609,12 @@ _MCCB_TRIP_SETTINGS_SOURCE_PL = (
 #: Dlatego status weryfikacji tych czterech pozycji to CZESCIOWO_ZWERYFIKOWANY, a
 #: nie ZWERYFIKOWANY.
 _EMAX2_WYCIAG_ZASTRZEZENIE_PL = (
-    "Dane znamionowe (Iu, Icu@440V, Icw 1s, kody zamowieniowe) z wyciagu katalogu "
-    "technicznego ABB SACE Emax 2 nr 1SDC200023D0205 (edycja 2017.01), wyciag "
-    "przypiety odciskiem SHA-256 dokumentu "
+    "Dane znamionowe (Iu, Icu@440V, Icw 1s, kody zamówieniowe) z wyciągu katalogu "
+    "technicznego ABB SACE Emax 2 nr 1SDC200023D0205 (edycja 2017.01), wyciąg "
+    "przypięty odciskiem SHA-256 dokumentu "
     "4502f57f72a92209798e1792b415709d4ba8f40993c1bfb054d824f689582612. Kontrola "
-    "krzyzowa importera zestawia tabele zamowieniowe z tabela zbiorcza str. 2/3 TEGO "
-    "SAMEGO dokumentu — wyklucza blad ekstrakcji ukladu tabeli, NIE jest weryfikacja "
+    "krzyżowa importera zestawia tabele zamówieniowe z tabelą zbiorczą str. 2/3 TEGO "
+    "SAMEGO dokumentu — wyklucza błąd ekstrakcji układu tabeli, NIE jest weryfikacją "
     "wobec producenta. "
 ) + _MCCB_TRIP_SETTINGS_SOURCE_PL
 
@@ -673,7 +673,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         # --- WYLACZNIK_GLOWNY: ABB SACE Emax2 ---
         {
             "id": "cb_nn_400a",
-            "name": "Wylacznik glowny nN 400 A",
+            "name": "Wyłącznik główny nN 400 A",
             "params": {
                 "device_kind": "WYLACZNIK_GLOWNY",
                 "u_n_kv": 0.4,
@@ -684,7 +684,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB Tmax XT5 karta techniczna 1SXU210259D0201 (rama XT5S 400A, Icu 480V=50kA; KOREKTA atrybucji zrodlowej: rama E1.2 Emax2 zaczyna sie od 630A, wiec 400A/50kA nie moze byc Emax2 — pasuje do Tmax XT5S)",
+                "source_reference": "ABB SACE Emax2 katalog 1SDA073513R1 / ABB Tmax XT5 karta techniczna 1SXU210259D0201 (rama XT5S 400A, Icu 480V=50kA; KOREKTA atrybucji źródłowej: rama E1.2 Emax2 zaczyna się od 630A, więc 400A/50kA nie może być Emax2 — pasuje do Tmax XT5S)",
                 "contract_version": "2.0",
                 "ir_range": _MCCB_IR_RANGE_X_IN,
                 "isd_range": _MCCB_ISD_RANGE_X_IR,
@@ -696,7 +696,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         },
         {
             "id": "cb_nn_630a",
-            "name": "Wylacznik glowny nN 630 A",
+            "name": "Wyłącznik główny nN 630 A",
             "params": {
                 "device_kind": "WYLACZNIK_GLOWNY",
                 "u_n_kv": 0.4,
@@ -719,7 +719,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         },
         {
             "id": "cb_nn_800a",
-            "name": "Wylacznik glowny nN 800 A",
+            "name": "Wyłącznik główny nN 800 A",
             "params": {
                 "device_kind": "WYLACZNIK_GLOWNY",
                 "u_n_kv": 0.4,
@@ -742,7 +742,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         },
         {
             "id": "cb_nn_1000a",
-            "name": "Wylacznik glowny nN 1000 A",
+            "name": "Wyłącznik główny nN 1000 A",
             "params": {
                 "device_kind": "WYLACZNIK_GLOWNY",
                 "u_n_kv": 0.4,
@@ -765,7 +765,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         },
         {
             "id": "cb_nn_1250a",
-            "name": "Wylacznik glowny nN 1250 A",
+            "name": "Wyłącznik główny nN 1250 A",
             "params": {
                 "device_kind": "WYLACZNIK_GLOWNY",
                 "u_n_kv": 0.4,
@@ -788,7 +788,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         },
         {
             "id": "cb_nn_1600a",
-            "name": "Wylacznik glowny nN 1600 A",
+            "name": "Wyłącznik główny nN 1600 A",
             "params": {
                 "device_kind": "WYLACZNIK_GLOWNY",
                 "u_n_kv": 0.4,
@@ -816,7 +816,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         # `_EMAX2_WYCIAG_ZASTRZEZENIE_PL` wyzej) — nie z pamieci.
         {
             "id": "cb_nn_2000a",
-            "name": "Wylacznik glowny nN 2000 A",
+            "name": "Wyłącznik główny nN 2000 A",
             "params": {
                 "device_kind": "WYLACZNIK_GLOWNY",
                 "u_n_kv": 0.4,
@@ -830,8 +830,8 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": (
                     "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
-                    "tabela zamowieniowa str. 252, 266 — rama E2.2N, Iu=2000 A, "
-                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamowieniowe 1SDA071031R1 / 1SDA072381R1"
+                    "tabela zamówieniowa str. 252, 266 — rama E2.2N, Iu=2000 A, "
+                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamówieniowe 1SDA071031R1 / 1SDA072381R1"
                 ),
                 "contract_version": "2.0",
                 "ir_range": _MCCB_IR_RANGE_X_IN,
@@ -844,7 +844,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         },
         {
             "id": "cb_nn_2500a",
-            "name": "Wylacznik glowny nN 2500 A",
+            "name": "Wyłącznik główny nN 2500 A",
             "params": {
                 "device_kind": "WYLACZNIK_GLOWNY",
                 "u_n_kv": 0.4,
@@ -858,8 +858,8 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": (
                     "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
-                    "tabela zamowieniowa str. 252, 266 — rama E2.2N, Iu=2500 A, "
-                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamowieniowe 1SDA071061R1 / 1SDA072411R1"
+                    "tabela zamówieniowa str. 252, 266 — rama E2.2N, Iu=2500 A, "
+                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamówieniowe 1SDA071061R1 / 1SDA072411R1"
                 ),
                 "contract_version": "2.0",
                 "ir_range": _MCCB_IR_RANGE_X_IN,
@@ -872,7 +872,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         },
         {
             "id": "cb_nn_3200a",
-            "name": "Wylacznik glowny nN 3200 A",
+            "name": "Wyłącznik główny nN 3200 A",
             "params": {
                 "device_kind": "WYLACZNIK_GLOWNY",
                 "u_n_kv": 0.4,
@@ -886,8 +886,8 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": (
                     "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
-                    "tabela zamowieniowa str. 256, 270 — rama E4.2N, Iu=3200 A, "
-                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamowieniowe 1SDA071141R1 / 1SDA072491R1"
+                    "tabela zamówieniowa str. 256, 270 — rama E4.2N, Iu=3200 A, "
+                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamówieniowe 1SDA071141R1 / 1SDA072491R1"
                 ),
                 "contract_version": "2.0",
                 "ir_range": _MCCB_IR_RANGE_X_IN,
@@ -900,7 +900,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         },
         {
             "id": "cb_nn_4000a",
-            "name": "Wylacznik glowny nN 4000 A",
+            "name": "Wyłącznik główny nN 4000 A",
             "params": {
                 "device_kind": "WYLACZNIK_GLOWNY",
                 "u_n_kv": 0.4,
@@ -914,8 +914,8 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "catalog_status": "PRODUKCYJNY_V1",
                 "source_reference": (
                     "ABB SACE Emax 2, katalog techniczny 1SDC200023D0205 (edycja 2017.01), "
-                    "tabela zamowieniowa str. 256, 270 — rama E4.2N, Iu=4000 A, "
-                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamowieniowe 1SDA071191R1 / 1SDA072541R1"
+                    "tabela zamówieniowa str. 256, 270 — rama E4.2N, Iu=4000 A, "
+                    "Icu@440V=66 kA, Icw(1s)=66 kA, kody zamówieniowe 1SDA071191R1 / 1SDA072541R1"
                 ),
                 "contract_version": "2.0",
                 "ir_range": _MCCB_IR_RANGE_X_IN,
@@ -929,7 +929,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         # --- WYLACZNIK_ODPLYWOWY: ABB SACE Tmax XT ---
         {
             "id": "cb_nn_100a",
-            "name": "Wylacznik odplywowy nN 100 A",
+            "name": "Wyłącznik odpływowy nN 100 A",
             "params": {
                 "device_kind": "WYLACZNIK_ODPLYWOWY",
                 "u_n_kv": 0.4,
@@ -952,7 +952,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         },
         {
             "id": "cb_nn_160a",
-            "name": "Wylacznik odplywowy nN 160 A",
+            "name": "Wyłącznik odpływowy nN 160 A",
             "params": {
                 "device_kind": "WYLACZNIK_ODPLYWOWY",
                 "u_n_kv": 0.4,
@@ -975,7 +975,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         },
         {
             "id": "cb_nn_250a",
-            "name": "Wylacznik odplywowy nN 250 A",
+            "name": "Wyłącznik odpływowy nN 250 A",
             "params": {
                 "device_kind": "WYLACZNIK_ODPLYWOWY",
                 "u_n_kv": 0.4,
@@ -998,7 +998,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         },
         {
             "id": "cb_nn_400a_odp",
-            "name": "Wylacznik odplywowy nN 400 A",
+            "name": "Wyłącznik odpływowy nN 400 A",
             "params": {
                 "device_kind": "WYLACZNIK_ODPLYWOWY",
                 "u_n_kv": 0.4,
@@ -1009,7 +1009,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB Tmax XT katalog 1SDA066835R1 (rama XT5N 400A, Icu 415V=36kA; zweryfikowano posrednio kartą techniczną XT5 1SXU210259D0201 — Icu 480V N=35kA, ten sam wariant N — pelna tabela IEC przekroczyla limit rozmiaru pobierania w tej sesji)",
+                "source_reference": "ABB Tmax XT katalog 1SDA066835R1 (rama XT5N 400A, Icu 415V=36kA; zweryfikowano pośrednio kartą techniczną XT5 1SXU210259D0201 — Icu 480V N=35kA, ten sam wariant N — pełna tabela IEC przekroczyła limit rozmiaru pobierania w tej sesji)",
                 "contract_version": "2.0",
                 "ir_range": _MCCB_IR_RANGE_X_IN,
                 "isd_range": _MCCB_ISD_RANGE_X_IR,
@@ -1021,7 +1021,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         },
         {
             "id": "cb_nn_630a_odp",
-            "name": "Wylacznik odplywowy nN 630 A",
+            "name": "Wyłącznik odpływowy nN 630 A",
             "params": {
                 "device_kind": "WYLACZNIK_ODPLYWOWY",
                 "u_n_kv": 0.4,
@@ -1032,7 +1032,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "manufacturer": "ABB",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "ABB Tmax XT katalog 1SDA066835R1 (rama XT5S 630A, Icu 415V=50kA; zgodnosc z karta techniczna XT5 1SXU210259D0201 — Icu 480V S=50kA, dokladne dopasowanie)",
+                "source_reference": "ABB Tmax XT katalog 1SDA066835R1 (rama XT5S 630A, Icu 415V=50kA; zgodność z karta techniczna XT5 1SXU210259D0201 — Icu 480V S=50kA, dokładne dopasowanie)",
                 "contract_version": "2.0",
                 "ir_range": _MCCB_IR_RANGE_X_IN,
                 "isd_range": _MCCB_ISD_RANGE_X_IR,
@@ -1045,7 +1045,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
         # --- ROZLACZNIK_BEZPIECZNIKOWY: Jean Muller NHR ---
         {
             "id": "rb_nn_100a",
-            "name": "Rozlacznik bezpiecznikowy nN 100 A",
+            "name": "Rozłącznik bezpiecznikowy nN 100 A",
             "params": {
                 "device_kind": "ROZLACZNIK_BEZPIECZNIKOWY",
                 "u_n_kv": 0.4,
@@ -1057,13 +1057,13 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "manufacturer": "Jean Muller",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "Jean Muller NHR katalog / KOREKTA: Jean Muller NH Fuse-Switch-Disconnectors katalog str. T-30 (typ LTL00, Ue=AC690V, warunkowy prad zwarciowy=50kA) — poprzednia wartosc 16kA byla zanizona / bledna",
+                "source_reference": "Jean Muller NHR katalog / KOREKTA: Jean Muller NH Fuse-Switch-Disconnectors katalog str. T-30 (typ LTL00, Ue=AC690V, warunkowy prąd zwarciowy=50kA) — poprzednia wartość 16kA była zaniżona / błędna",
                 "contract_version": "2.0",
             },
         },
         {
             "id": "rb_nn_160a",
-            "name": "Rozlacznik bezpiecznikowy nN 160 A",
+            "name": "Rozłącznik bezpiecznikowy nN 160 A",
             "params": {
                 "device_kind": "ROZLACZNIK_BEZPIECZNIKOWY",
                 "u_n_kv": 0.4,
@@ -1075,13 +1075,13 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "manufacturer": "Jean Muller",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "Jean Muller NHR katalog / KOREKTA: Jean Muller NH Fuse-Switch-Disconnectors katalog str. T-30 (typ LTL00, Ue=AC690V, warunkowy prad zwarciowy=50kA) — poprzednia wartosc 16kA byla zanizona / bledna",
+                "source_reference": "Jean Muller NHR katalog / KOREKTA: Jean Muller NH Fuse-Switch-Disconnectors katalog str. T-30 (typ LTL00, Ue=AC690V, warunkowy prąd zwarciowy=50kA) — poprzednia wartość 16kA była zaniżona / błędna",
                 "contract_version": "2.0",
             },
         },
         {
             "id": "rb_nn_250a",
-            "name": "Rozlacznik bezpiecznikowy nN 250 A",
+            "name": "Rozłącznik bezpiecznikowy nN 250 A",
             "params": {
                 "device_kind": "ROZLACZNIK_BEZPIECZNIKOWY",
                 "u_n_kv": 0.4,
@@ -1093,7 +1093,7 @@ def get_all_lv_apparatus_types() -> list[dict]:
                 "manufacturer": "Jean Muller",
                 "verification_status": "ZWERYFIKOWANY",
                 "catalog_status": "PRODUKCYJNY_V1",
-                "source_reference": "Jean Muller NHR katalog / KOREKTA: Jean Muller NH Fuse-Switch-Disconnectors katalog str. T-30 (typ LTL1, Ue=AC690V, warunkowy prad zwarciowy=50kA bez Q-wspomagania / 80kA z Q-wspomaganiem — przyjeto wariant podstawowy 50kA) — poprzednia wartosc 16kA byla zanizona / bledna",
+                "source_reference": "Jean Muller NHR katalog / KOREKTA: Jean Muller NH Fuse-Switch-Disconnectors katalog str. T-30 (typ LTL1, Ue=AC690V, warunkowy prąd zwarciowy=50kA bez Q-wspomagania / 80kA z Q-wspomaganiem — przyjęto wariant podstawowy 50kA) — poprzednia wartość 16kA była zaniżona / błędna",
                 "contract_version": "2.0",
             },
         },
@@ -1128,14 +1128,14 @@ _MCB_ICN_KA: float = 6.0
 # Icu>=Ik''max na obwodach o wyzszym poziomie zwarcia (ZNALEZISKO BRAMKI #4).
 _MCB_ICN_KA_10KA: float = 10.0
 _MCB_ICN_KA_10KA_SOURCE: str = (
-    "IEC 60898-1 §4.4 (Icn=10 kA jest znormalizowana wartoscia szeregu, obok "
-    "6/15/20/25 kA) — Icn=10 kA POTWIERDZONA PODWOJNIE, niezaleznie, w kartach "
-    "katalogowych realnych wyrobow przemyslowych: Hager (seria NCN2../NBN1../"
+    "IEC 60898-1 §4.4 (Icn=10 kA jest znormalizowana wartością szeregu, obok "
+    "6/15/20/25 kA) — Icn=10 kA POTWIERDZONA PODWÓJNIE, niezależnie, w kartach "
+    "katalogowych realnych wyrobów przemysłowych: Hager (seria NCN2../NBN1../"
     "NDN1.., karta techniczna np. NCN210 — Icn=10000 A, Un=230/400V) i "
     "Schneider Electric (Acti9 iC60H, katalog Acti9 System — Icn=10 kA dla "
-    "calej serii iC60H B/C/D, In 0,5-63 A). Rodzina pozostaje REFERENCYJNA "
-    "(brak wiazania z JEDNYM konkretnym numerem katalogowym producenta — "
-    "Icn=10 kA jest wspolna dla wielu wyrobow obu producentow), analogicznie "
+    "całej serii iC60H B/C/D, In 0,5-63 A). Rodzina pozostaje REFERENCYJNA "
+    "(brak wiązania z JEDNYM konkretnym numerem katalogowym producenta — "
+    "Icn=10 kA jest wspólna dla wielu wyrobów obu producentów), analogicznie "
     "do rodziny 6 kA."
 )
 
@@ -1180,7 +1180,7 @@ def get_all_lv_breaker_mcb_types() -> list[dict]:
                         "poles": None,
                         "verification_status": "REFERENCYJNY",
                         "catalog_status": "REFERENCYJNY_V1",
-                        "source_reference": "IEC 60898-1 (wartosci znamionowe normatywne)",
+                        "source_reference": "IEC 60898-1 (wartości znamionowe normatywne)",
                         "contract_version": "2.0",
                     },
                 }
@@ -1197,7 +1197,7 @@ def get_all_lv_breaker_mcb_types() -> list[dict]:
                         "poles": None,
                         "verification_status": "REFERENCYJNY",
                         "catalog_status": "REFERENCYJNY_V1",
-                        "source_reference": "IEC 60898-1 (wartosci znamionowe normatywne, Icn 10 kA)",
+                        "source_reference": "IEC 60898-1 (wartości znamionowe normatywne, Icn 10 kA)",
                         "contract_version": "2.0",
                         "verification_note": _MCB_ICN_KA_10KA_SOURCE,
                     },
@@ -1226,8 +1226,8 @@ _FUSE_IN_A: tuple[float, ...] = (
 
 _FUSE_GG_BREAKING_CAPACITY_KA: float = 120.0
 _FUSE_GG_BREAKING_CAPACITY_SOURCE: str = (
-    "IEC 60269-1 (wartosci znamionowe normatywne) — I_1=120 kA AC @ 500 V dla wkladek NH gG, "
-    "potwierdzone podwojnie w katalogach producenckich niezaleznych od siebie: "
+    "IEC 60269-1 (wartości znamionowe normatywne) — I_1=120 kA AC @ 500 V dla wkładek NH gG, "
+    "potwierdzone podwójnie w katalogach producenckich niezależnych od siebie: "
     "Socomec (emea.socomec.com/en/p/knife-edge-fuses-nh-gg-type), "
     "EFEN (katalog.efen.sk/en/c/nh-fuse-links/nh-fuse-links-ac-500-v-gg), "
     "ETI Group (etigroup.eu, seria NH gG 500V), Mersen (DS-NH-fuse-links-gG-500VAC), "
@@ -1298,7 +1298,7 @@ def get_all_lv_fuse_link_types() -> list[dict]:
                         "breaking_capacity_ka": _FUSE_GG_BREAKING_CAPACITY_KA,
                         "verification_status": "REFERENCYJNY",
                         "catalog_status": "REFERENCYJNY_V1",
-                        "source_reference": "IEC 60269-1 (wartosci znamionowe normatywne)",
+                        "source_reference": "IEC 60269-1 (wartości znamionowe normatywne)",
                         "contract_version": "2.0",
                         "verification_note": _FUSE_GG_BREAKING_CAPACITY_SOURCE,
                     },
@@ -1324,15 +1324,15 @@ def get_all_ct_types() -> list[dict]:
         }
 
     source_reference = (
-        "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzen, ALF, Idyn=2,5·Ith, Fs) "
-        "/ IEC 62271-200 (szereg wytrzymalosci rozdzielnicy SN)"
+        "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzeń, ALF, Idyn=2,5·Ith, Fs) "
+        "/ IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN)"
     )
     verification_note = (
-        "Rekord referencyjny do doboru CT. Ith podano jako WYMAGANA wytrzymalosc "
-        "cieplna przekladnika w rozdzielnicy SN wg znormalizowanego szeregu "
-        "IEC 62271-200 (16 kA/1 s dla torow <= 150 A, 20 kA/1 s dla 200-1000 A, "
+        "Rekord referencyjny do doboru CT. Ith podano jako WYMAGANĄ wytrzymałość "
+        "cieplną przekładnika w rozdzielnicy SN wg znormalizowanego szeregu "
+        "IEC 62271-200 (16 kA/1 s dla torów <= 150 A, 20 kA/1 s dla 200-1000 A, "
         "25 kA/1 s dla >= 1200 A); Idyn wyprowadzany normowo (2,5·Ith), Fs wg "
-        "znormalizowanej wartosci 10 dla rdzeni pomiarowych. Wartosci wlasciwe dla "
+        "znormalizowanej wartości 10 dla rdzeni pomiarowych. Wartości właściwe dla "
         "konkretnego wyrobu potwierdza karta producenta."
     )
     return [
@@ -1576,21 +1576,21 @@ def get_all_vt_types() -> list[dict]:
 
     source_reference = "Katalog VT MV-DESIGN-PRO / IEC 61869-3 / dane referencyjne"
     verification_note = (
-        "Rekord referencyjny do doboru VT. Wspolczynnik napieciowy 1,9 przez 8 h jest "
-        "WARTOSCIA DEKLAROWANA wg IEC 61869-3 tab. 2 dla sieci maloprądowej (izolowanej "
-        "albo kompensowanej) bez automatycznego wylaczania zwarcia doziemnego — takie sa "
+        "Rekord referencyjny do doboru VT. Współczynnik napięciowy 1,9 przez 8 h jest "
+        "WARTOŚCIĄ DEKLAROWANĄ wg IEC 61869-3 tab. 2 dla sieci małoprądowej (izolowanej "
+        "albo kompensowanej) bez automatycznego wyłączania zwarcia doziemnego — takie są "
         "polskie sieci SN. Moc znamionowa 30 VA pochodzi z szeregu znormalizowanego "
-        "IEC 61869-3. Oba parametry oraz obecnosc uzwojenia resztkowego nalezy potwierdzic "
-        "karta producenta przed uzyciem produkcyjnym (verification_status)."
+        "IEC 61869-3. Oba parametry oraz obecność uzwojenia resztkowego należy potwierdzić "
+        "kartą producenta przed użyciem produkcyjnym (verification_status)."
     )
     verification_note_fz = (
         "Rekord referencyjny rodziny FAZA-ZIEMIA z uzwojeniem RESZTKOWYM (trzecim), "
-        "ktora w sieci SN realizuje pomiar napiecia zerowego 3U0 dla kryteriow "
-        "ziemnozwarciowych kierunkowych (67N) i nadnapieciowych zerowych (59N). "
-        "Uzwojenie pierwotne pracuje miedzy faza a ziemia, dlatego przekladnia jest "
-        "U_n/√3, a wspolczynnik napieciowy musi wynosic 1,9 (IEC 61869-3 tab. 2): "
-        "przy zwarciu doziemnym napiecie faz zdrowych rosnie do napiecia miedzyfazowego. "
-        "Klasy, moc i obecnosc uzwojenia resztkowego potwierdzic karta producenta."
+        "która w sieci SN realizuje pomiar napięcia zerowego 3U0 dla kryteriów "
+        "ziemnozwarciowych kierunkowych (67N) i nadnapięciowych zerowych (59N). "
+        "Uzwojenie pierwotne pracuje między fazą a ziemią, dlatego przekładnia jest "
+        "U_n/√3, a współczynnik napięciowy musi wynosić 1,9 (IEC 61869-3 tab. 2): "
+        "przy zwarciu doziemnym napięcie faz zdrowych rośnie do napięcia międzyfazowego. "
+        "Klasy, moc i obecność uzwojenia resztkowego potwierdzić kartą producenta."
     )
 
     return [
@@ -1888,11 +1888,11 @@ def get_all_protection_device_types() -> list[dict]:
         "Profil referencyjny MV-DESIGN-PRO / IEC 60255 — nie dane producenta"
     )
     referencyjny_note = (
-        "Profil referencyjny (nie produkt producenta): parametry sa zalozeniem "
-        "projektowym wg IEC 60255, nie karta katalogowa producenta."
+        "Profil referencyjny (nie produkt producenta): parametry są założeniem "
+        "projektowym wg IEC 60255, nie kartą katalogową producenta."
     )
     etango_source_reference = "Elektrometal e2TANGO / dane referencyjne MV-DESIGN-PRO"
-    etango_note = "Rekord analityczny; zakresy i warianty wymagaja weryfikacji producenta przed uzyciem produkcyjnym."
+    etango_note = "Rekord analityczny; zakresy i warianty wymagają weryfikacji producenta przed użyciem produkcyjnym."
     return [
         {
             "id": "REF-OC-EF-500",
@@ -1936,7 +1936,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "series": None,
                 "revision": "v1",
                 "analytical_library_ref": "REF-OC-100",
-                "notes_pl": "Rekord referencyjny dla nizszych zakresow linii i transformatorow.",
+                "notes_pl": "Rekord referencyjny dla niższych zakresów linii i transformatorów.",
                 **_device_meta(
                     verification_status="REFERENCYJNY",
                     source_reference=referencyjny_source_reference,
@@ -1953,7 +1953,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "series": None,
                 "revision": "v1",
                 "analytical_library_ref": "REF-OC-EF-300",
-                "notes_pl": "Rekord referencyjny dla typowych pol SN.",
+                "notes_pl": "Rekord referencyjny dla typowych pól SN.",
                 **_device_meta(
                     verification_status="REFERENCYJNY",
                     source_reference=referencyjny_source_reference,
@@ -1970,7 +1970,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "series": None,
                 "revision": "v1",
                 "analytical_library_ref": "REF-OC-EF-700",
-                "notes_pl": "Rekord referencyjny dla rozbudowanych zastosowan SN.",
+                "notes_pl": "Rekord referencyjny dla rozbudowanych zastosowań SN.",
                 **_device_meta(
                     verification_status="REFERENCYJNY",
                     source_reference=referencyjny_source_reference,
@@ -1981,14 +1981,14 @@ def get_all_protection_device_types() -> list[dict]:
         },
         {
             "id": "EM_ETANGO_400_V0",
-            "name_pl": "Przekaznik Elektrometal e2TANGO-400",
+            "name_pl": "Przekaźnik Elektrometal e2TANGO-400",
             "params": {
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_400_V0",
                 "rated_current_a": 400.0,
-                "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
+                "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",
                     source_reference=etango_source_reference,
@@ -1999,14 +1999,14 @@ def get_all_protection_device_types() -> list[dict]:
         },
         {
             "id": "EM_ETANGO_600_V0",
-            "name_pl": "Przekaznik Elektrometal e2TANGO-600",
+            "name_pl": "Przekaźnik Elektrometal e2TANGO-600",
             "params": {
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_600_V0",
                 "rated_current_a": 600.0,
-                "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
+                "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",
                     source_reference=etango_source_reference,
@@ -2017,14 +2017,14 @@ def get_all_protection_device_types() -> list[dict]:
         },
         {
             "id": "EM_ETANGO_800_V0",
-            "name_pl": "Przekaznik Elektrometal e2TANGO-800",
+            "name_pl": "Przekaźnik Elektrometal e2TANGO-800",
             "params": {
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_800_V0",
                 "rated_current_a": 800.0,
-                "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
+                "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",
                     source_reference=etango_source_reference,
@@ -2035,14 +2035,14 @@ def get_all_protection_device_types() -> list[dict]:
         },
         {
             "id": "EM_ETANGO_1000_V0",
-            "name_pl": "Przekaznik Elektrometal e2TANGO-1000",
+            "name_pl": "Przekaźnik Elektrometal e2TANGO-1000",
             "params": {
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_1000_V0",
                 "rated_current_a": 1000.0,
-                "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
+                "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",
                     source_reference=etango_source_reference,
@@ -2053,14 +2053,14 @@ def get_all_protection_device_types() -> list[dict]:
         },
         {
             "id": "EM_ETANGO_1250_V0",
-            "name_pl": "Przekaznik Elektrometal e2TANGO-1250",
+            "name_pl": "Przekaźnik Elektrometal e2TANGO-1250",
             "params": {
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_1250_V0",
                 "rated_current_a": 1250.0,
-                "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
+                "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",
                     source_reference=etango_source_reference,
@@ -2071,14 +2071,14 @@ def get_all_protection_device_types() -> list[dict]:
         },
         {
             "id": "EM_ETANGO_1600_V0",
-            "name_pl": "Przekaznik Elektrometal e2TANGO-1600",
+            "name_pl": "Przekaźnik Elektrometal e2TANGO-1600",
             "params": {
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_1600_V0",
                 "rated_current_a": 1600.0,
-                "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
+                "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",
                     source_reference=etango_source_reference,
@@ -2089,14 +2089,14 @@ def get_all_protection_device_types() -> list[dict]:
         },
         {
             "id": "EM_ETANGO_2000_V0",
-            "name_pl": "Przekaznik Elektrometal e2TANGO-2000",
+            "name_pl": "Przekaźnik Elektrometal e2TANGO-2000",
             "params": {
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
                 "analytical_library_ref": "EM_ETANGO_2000_V0",
                 "rated_current_a": 2000.0,
-                "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
+                "notes_pl": "Rekord analityczny - dane wymagają weryfikacji produkcyjnej.",
                 **_device_meta(
                     verification_status="NIEWERYFIKOWANY",
                     source_reference=etango_source_reference,
@@ -2116,7 +2116,7 @@ def get_all_protection_curves() -> list[dict]:
             "catalog_status": "REFERENCYJNY_V1",
             "contract_version": "2.0",
             "verification_note": (
-                f"Rekord referencyjny krzywej {name}; parametry wymagaja potwierdzenia w karcie producenta lub normie."
+                f"Rekord referencyjny krzywej {name}; parametry wymagają potwierdzenia w karcie producenta lub normie."
             ),
         }
 
@@ -2212,14 +2212,14 @@ def get_all_protection_setting_templates() -> list[dict]:
             "catalog_status": "REFERENCYJNY_V1",
             "contract_version": "2.0",
             "verification_note": (
-                f"Szablon referencyjny {name}; przed uzyciem nalezy potwierdzic dobor na podstawie modelu sieci i karty producenta."
+                f"Szablon referencyjny {name}; przed użyciem należy potwierdzić dobór na podstawie modelu sieci i karty producenta."
             ),
         }
 
     return [
         {
             "id": "template_ref_oc_ef_500",
-            "name_pl": "Szablon profilu referencyjnego OC/EF 500 - nadpradowy",
+            "name_pl": "Szablon profilu referencyjnego OC/EF 500 - nadprądowy",
             "params": {
                 "device_type_ref": "REF-OC-EF-500",
                 "curve_ref": "curve_iec_normal_inverse",
@@ -2227,12 +2227,12 @@ def get_all_protection_setting_templates() -> list[dict]:
                     {"name": "I>", "unit": "A", "min": 0.1, "max": 10.0},
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 5.0},
                 ],
-                **_template_meta(name="profilu referencyjnego OC/EF 500 - nadpradowy"),
+                **_template_meta(name="profilu referencyjnego OC/EF 500 - nadprądowy"),
             },
         },
         {
             "id": "template_ref_oc_ef_300",
-            "name_pl": "Szablon profilu referencyjnego OC/EF 300 - nadpradowy",
+            "name_pl": "Szablon profilu referencyjnego OC/EF 300 - nadprądowy",
             "params": {
                 "device_type_ref": "REF-OC-EF-300",
                 "curve_ref": "curve_iec_very_inverse",
@@ -2241,12 +2241,12 @@ def get_all_protection_setting_templates() -> list[dict]:
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 6.0},
                     {"name": "I>>", "unit": "A", "min": 1.0, "max": 80.0},
                 ],
-                **_template_meta(name="profilu referencyjnego OC/EF 300 - nadpradowy"),
+                **_template_meta(name="profilu referencyjnego OC/EF 300 - nadprądowy"),
             },
         },
         {
             "id": "template_ref_oc_100",
-            "name_pl": "Szablon profilu referencyjnego OC 100 - nadpradowy",
+            "name_pl": "Szablon profilu referencyjnego OC 100 - nadprądowy",
             "params": {
                 "device_type_ref": "REF-OC-100",
                 "curve_ref": "curve_iec_normal_inverse",
@@ -2254,7 +2254,7 @@ def get_all_protection_setting_templates() -> list[dict]:
                     {"name": "I>", "unit": "A", "min": 0.1, "max": 8.0},
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 5.0},
                 ],
-                **_template_meta(name="profilu referencyjnego OC 100 - nadpradowy"),
+                **_template_meta(name="profilu referencyjnego OC 100 - nadprądowy"),
             },
         },
         {
@@ -2286,7 +2286,7 @@ def get_all_protection_setting_templates() -> list[dict]:
         },
         {
             "id": "template_etango_1250_oc",
-            "name_pl": "Szablon e2TANGO-1250 - nadpradowy",
+            "name_pl": "Szablon e2TANGO-1250 - nadprądowy",
             "params": {
                 "device_type_ref": "EM_ETANGO_1250_V0",
                 "curve_ref": "curve_iec_extremely_inverse",
@@ -2295,7 +2295,7 @@ def get_all_protection_setting_templates() -> list[dict]:
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 6.0},
                     {"name": "I>>", "unit": "A", "min": 1.0, "max": 120.0},
                 ],
-                **_template_meta(name="e2TANGO-1250 - nadpradowy"),
+                **_template_meta(name="e2TANGO-1250 - nadprądowy"),
             },
         },
         {
@@ -2314,7 +2314,7 @@ def get_all_protection_setting_templates() -> list[dict]:
         },
         {
             "id": "template_etango_2000_oc",
-            "name_pl": "Szablon e2TANGO-2000 - nadpradowy",
+            "name_pl": "Szablon e2TANGO-2000 - nadprądowy",
             "params": {
                 "device_type_ref": "EM_ETANGO_2000_V0",
                 "curve_ref": "curve_ansi_inverse",
@@ -2323,7 +2323,7 @@ def get_all_protection_setting_templates() -> list[dict]:
                     {"name": "t>", "unit": "s", "min": 0.0, "max": 8.0},
                     {"name": "I>>", "unit": "A", "min": 1.0, "max": 200.0},
                 ],
-                **_template_meta(name="e2TANGO-2000 - nadpradowy"),
+                **_template_meta(name="e2TANGO-2000 - nadprądowy"),
             },
         },
     ]

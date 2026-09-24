@@ -21,7 +21,7 @@ from network_model.pochodne import mwh_na_kwh
 from .mv_ptpiree_catalog import annotate_with_ptpiree_status
 from .types import CATALOG_CONTRACT_VERSION, CatalogStatus, CatalogVerificationStatus
 
-_DEFAULT_SOURCE_REFERENCE = "Katalog przeksztaltnikow MV-DESIGN-PRO / profil przemyslowy V1"
+_DEFAULT_SOURCE_REFERENCE = "Katalog przekształtników MV-DESIGN-PRO / profil przemysłowy V1"
 _DEFAULT_VERIFICATION_STATUS = CatalogVerificationStatus.REFERENCYJNY.value
 _DEFAULT_CATALOG_STATUS = CatalogStatus.REFERENCYJNY_V1.value
 
@@ -44,7 +44,7 @@ def _apply_quality_defaults(record: dict[str, Any]) -> None:
     params.setdefault("contract_version", CATALOG_CONTRACT_VERSION)
     params.setdefault(
         "verification_note",
-        "Referencyjny profil przemyslowy V1 z jawnym statusem i zrodlem.",
+        "Referencyjny profil przemysłowy V1 z jawnym statusem i źródłem.",
     )
 
 
@@ -66,7 +66,7 @@ def _converter_record(
     control_mode: str | None = None,
     grid_code: str | None = None,
     dynamic_profile_id: str | None = None,
-    note: str = "Referencyjny profil przemyslowy V1 z jawnym statusem i zrodlem.",
+    note: str = "Referencyjny profil przemysłowy V1 z jawnym statusem i źródłem.",
     # Inverter datasheet-card ("karta falownika") optional fields. All keyword,
     # all default to absent so existing records stay byte-identical.
     p_installed_mw: float | None = None,
@@ -141,7 +141,7 @@ def _converter_record(
 # cards carry TYPICAL-CLASS values explicitly tagged ESTIMATED (never DATASHEET)
 # with this citation, per the paramount "no fabrication" rule.
 _BANDWIDTH_LITERATURE_REF = (
-    "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, "
+    "Typowe pasma regulatorów IBG (oszacowanie): A. Yazdani, R. Iravani, "
     "'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; "
     "IEEE Std 1547-2018"
 )
@@ -151,8 +151,8 @@ _BANDWIDTH_LITERATURE_REF = (
 # typical-class ANALYTICAL value tagged ESTIMATED (never DATASHEET) with this
 # citation, to be confirmed against the device grid-compliance certificate.
 _FLICKER_LITERATURE_REF = (
-    "Wspolczynnik emisji migotania c(psi_k) — wartosc analityczna klasy "
-    "(konserwatywnie), do potwierdzenia karta zgodnosci sieciowej urzadzenia; "
+    "Współczynnik emisji migotania c(psi_k) — wartość analityczna klasy "
+    "(konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; "
     "metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008"
 )
 
@@ -186,14 +186,14 @@ def _reference_card_field_status(
             "field_name": name,
             "quality": "ESTIMATED",
             "source_ref": _BANDWIDTH_LITERATURE_REF,
-            "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej",
+            "note": "oszacowanie pasma regulatora; wartość typowa dla klasy, nie z karty technicznej",
         }
     for name in flicker_fields:
         status[name] = {
             "field_name": name,
             "quality": "ESTIMATED",
             "source_ref": _FLICKER_LITERATURE_REF,
-            "note": "wartosc analityczna klasy (konserwatywnie), do potwierdzenia karta zgodnosci",
+            "note": "wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności",
         }
     return status
 
@@ -282,7 +282,7 @@ def _build_nn_converter_family(
                 grid_code="NC_RfG",
                 note=(
                     "Referencyjny profil nN dla stacji SN/nN z transformatorem "
-                    "blokowym; parametry producenta nalezy potwierdzic przy doborze wykonawczym."
+                    "blokowym; parametry producenta należy potwierdzić przy doborze wykonawczym."
                 ),
             )
         )
@@ -801,7 +801,7 @@ CONVERTER_WIND: list[dict[str, Any]] = [
             "cosphi_max": 1.0,
             "manufacturer": "Vestas",
             "model": "V90-2.0",
-            **_quality("Referencyjny profil przemyslowy V1 dla technologii wiatrowej."),
+            **_quality("Referencyjny profil przemysłowy V1 dla technologii wiatrowej."),
         },
     },
     {
@@ -818,7 +818,7 @@ CONVERTER_WIND: list[dict[str, Any]] = [
             "cosphi_max": 1.0,
             "manufacturer": "Vestas",
             "model": "V112-3.0",
-            **_quality("Referencyjny profil przemyslowy V1 dla technologii wiatrowej."),
+            **_quality("Referencyjny profil przemysłowy V1 dla technologii wiatrowej."),
         },
     },
     {
@@ -835,7 +835,7 @@ CONVERTER_WIND: list[dict[str, Any]] = [
             "cosphi_max": 1.0,
             "manufacturer": "Siemens Gamesa",
             "model": "SG 4.5-145",
-            **_quality("Referencyjny profil przemyslowy V1 dla technologii wiatrowej."),
+            **_quality("Referencyjny profil przemysłowy V1 dla technologii wiatrowej."),
         },
     },
 ]
@@ -914,7 +914,7 @@ CONVERTER_BESS: list[dict[str, Any]] = [
             "e_kwh": 1000.0,
             "manufacturer": "SUNGROW",
             "model": "Sungrow utility BESS 0.5 MW / 1 MWh / 15 kV",
-            **_quality("Referencyjny profil przemyslowy V1 dla magazynow energii."),
+            **_quality("Referencyjny profil przemysłowy V1 dla magazynów energii."),
         },
     },
     {
@@ -932,7 +932,7 @@ CONVERTER_BESS: list[dict[str, Any]] = [
             "e_kwh": 2000.0,
             "manufacturer": "BYD",
             "model": "BYD utility BESS 1 MW / 2 MWh / 15 kV",
-            **_quality("Referencyjny profil przemyslowy V1 dla magazynow energii."),
+            **_quality("Referencyjny profil przemysłowy V1 dla magazynów energii."),
         },
     },
     {
@@ -950,7 +950,7 @@ CONVERTER_BESS: list[dict[str, Any]] = [
             "e_kwh": 4000.0,
             "manufacturer": "TESLA",
             "model": "Tesla utility BESS 2 MW / 4 MWh / 15 kV",
-            **_quality("Referencyjny profil przemyslowy V1 dla magazynow energii."),
+            **_quality("Referencyjny profil przemysłowy V1 dla magazynów energii."),
         },
     },
     {
@@ -968,7 +968,7 @@ CONVERTER_BESS: list[dict[str, Any]] = [
             "e_kwh": 10000.0,
             "manufacturer": "FLUENCE",
             "model": "Fluence utility BESS 5 MW / 10 MWh / 15 kV",
-            **_quality("Referencyjny profil przemyslowy V1 dla magazynow energii."),
+            **_quality("Referencyjny profil przemysłowy V1 dla magazynów energii."),
         },
     },
     _converter_record(
@@ -1150,7 +1150,7 @@ _REFERENCE_PV_STRING = _converter_record(
     model="SUN2000-215KTL-H3",
     control_mode="Q_OF_U",
     grid_code="NC_RfG_typ_B",
-    note="Karta techniczna Huawei SUN2000-215KTL-H3; pasma regulatorow oszacowane (typowe dla klasy).",
+    note="Karta techniczna Huawei SUN2000-215KTL-H3; pasma regulatorów oszacowane (typowe dla klasy).",
     p_installed_mw=0.3225,  # Pzainst DC ~ 1.5x Pn,AC (string 1500 V DC)
     pn_ac_mw=0.215,
     current_loop_bandwidth_hz=900.0,
@@ -1197,7 +1197,7 @@ _REFERENCE_PV_CENTRAL = _converter_record(
     model="SG3150U-MV",
     control_mode="Q_OF_U",
     grid_code="NC_RfG_typ_C",
-    note="Karta techniczna Sungrow SG3150U-MV; pasma regulatorow oszacowane (typowe dla klasy).",
+    note="Karta techniczna Sungrow SG3150U-MV; pasma regulatorów oszacowane (typowe dla klasy).",
     p_installed_mw=4.2,  # Pzainst DC ~ 1.33x Pn,AC (utility central 1500 V DC)
     pn_ac_mw=3.15,
     current_loop_bandwidth_hz=800.0,
@@ -1245,7 +1245,7 @@ _REFERENCE_BESS_PCS = _converter_record(
     e_kwh=4000.0,
     control_mode="Q_OF_U",
     grid_code="NC_RfG_typ_C",
-    note="Karta techniczna Sungrow SC2000UD-MV PCS; pasma regulatorow oszacowane (typowe dla klasy).",
+    note="Karta techniczna Sungrow SC2000UD-MV PCS; pasma regulatorów oszacowane (typowe dla klasy).",
     p_installed_mw=2.0,  # PCS Pzainst = Pn,AC (magazyn nie ma nadwymiarowania DC)
     pn_ac_mw=2.0,
     current_loop_bandwidth_hz=1000.0,

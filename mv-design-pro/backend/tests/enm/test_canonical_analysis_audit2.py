@@ -62,7 +62,7 @@ def test_brak_pary_audit2_nie_dotyka_bazy_i_daje_none() -> None:
     ],
 )
 def test_polowa_pary_audit2_to_jawny_blad(options: dict[str, Any]) -> None:
-    with pytest.raises(ValueError, match="polowa pary"):
+    with pytest.raises(ValueError, match="połową pary"):
         _rozszerzenia(options, _FabrykaNieDoWolania())
 
 
@@ -75,7 +75,7 @@ def test_zly_uuid_projektu_to_jawny_blad_a_nie_cichy_bieg_bez_korekt() -> None:
 
 
 def test_para_audit2_bez_fabryki_wolajacego_to_jawny_blad() -> None:
-    with pytest.raises(ValueError, match="nie dostal fabryki UnitOfWork"):
+    with pytest.raises(ValueError, match="nie dostał fabryki UnitOfWork"):
         _rozszerzenia({"audit2_project_id": str(uuid4()), "audit2_station_id": "st-1"}, None)
 
 

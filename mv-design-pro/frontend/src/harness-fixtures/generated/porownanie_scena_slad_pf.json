@@ -1,8 +1,8 @@
 {
   "comparison_id": "run-lf-scena-porownanie-a::run-lf-scena-porownanie-b",
   "created_at": "2026-09-10T08:00:00+00:00",
-  "input_hash_a": "1acf59d386e9c32b13e6af54a7c21706bea1159df0141e3639c9a18e43f11fc6",
-  "input_hash_b": "921a64bd5475513871c04aa7365d87f69920f7b3588693b250fe96355cf96b5f",
+  "input_hash_a": "8b9b5c176c362aa39e2fd24ef163bb24891a310ba59594ef6345e17f8ab91776",
+  "input_hash_b": "7bd091ef9e47b994709d33f9d1a45dfcbf72f099d3485a4a1aa0d4ffe37016a7",
   "ranking_thresholds": {
     "angle_delta_threshold_deg": 5.0,
     "losses_decrease_threshold_mw": 0.1,
@@ -13,8 +13,8 @@
   },
   "run_a_id": "run-lf-scena-porownanie-a",
   "run_b_id": "run-lf-scena-porownanie-b",
-  "snapshot_hash_a": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849",
-  "snapshot_hash_b": "66e29b8f40d1f95093f422d058077eafd2916c84f6569e85a2755bab6b7606e2",
+  "snapshot_hash_a": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+  "snapshot_hash_b": "c5594e9965433b0635cb16fd5100028b336f7caa1c44a13cbf1edce596273aac",
   "solver_version": "newton-raphson",
   "steps": [
     {
@@ -29,7 +29,7 @@
       "step": "MATCH_BUSES"
     },
     {
-      "description_pl": "Dopasowanie galezi po element_ref (ENM ref_id)",
+      "description_pl": "Dopasowanie gałęzi po element_ref (ENM ref_id)",
       "inputs": {
         "branches_a_count": 4,
         "branches_b_count": 4
@@ -40,7 +40,7 @@
       "step": "MATCH_BRANCHES"
     },
     {
-      "description_pl": "Generowanie rankingu problemow wg severity (5->1)",
+      "description_pl": "Generowanie rankingu problemów wg severity (5->1)",
       "inputs": {
         "branch_diffs_count": 4,
         "bus_diffs_count": 5,

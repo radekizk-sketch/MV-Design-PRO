@@ -33,7 +33,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "s_mva": 1.3333,
         "white_box": [
           {
-            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwiazanie NR)}",
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
             "inputs": {
               "solver": "newton-raphson"
             },
@@ -44,7 +44,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "MW / Mvar",
             "source": "solver",
             "substitution_latex": "P = 1.265\\ \\text{MW},\\ Q = 0.4212\\ \\text{Mvar}",
-            "title": "Moc galezi S (zespolona)"
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
           },
           {
             "formula_latex": "S = \\sqrt{P^2 + Q^2}",
@@ -72,7 +72,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "A",
             "source": "interpretacja",
             "substitution_latex": "I = \\frac{1.3333 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
-            "title": "Prad galezi I"
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
           },
           {
             "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
@@ -88,7 +88,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "%",
             "source": "interpretacja",
             "substitution_latex": "obc. = \\max\\left(\\frac{51.32}{630.0}, \\frac{51.32}{630.0}\\right) \\cdot 100\\%",
-            "title": "Obciazenie pola"
+            "title": "Obci\u0105\u017cenie pola"
           }
         ]
       },
@@ -102,7 +102,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "s_mva": 0.8596,
         "white_box": [
           {
-            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwiazanie NR)}",
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
             "inputs": {
               "solver": "newton-raphson"
             },
@@ -113,7 +113,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "MW / Mvar",
             "source": "solver",
             "substitution_latex": "P = 0.8215\\ \\text{MW},\\ Q = 0.253\\ \\text{Mvar}",
-            "title": "Moc galezi S (zespolona)"
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
           },
           {
             "formula_latex": "S = \\sqrt{P^2 + Q^2}",
@@ -141,7 +141,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "A",
             "source": "interpretacja",
             "substitution_latex": "I = \\frac{0.8596 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
-            "title": "Prad galezi I"
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
           },
           {
             "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
@@ -157,7 +157,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "%",
             "source": "interpretacja",
             "substitution_latex": "obc. = \\max\\left(\\frac{33.22}{630.0}, \\frac{33.22}{630.0}\\right) \\cdot 100\\%",
-            "title": "Obciazenie pola"
+            "title": "Obci\u0105\u017cenie pola"
           }
         ]
       },
@@ -171,7 +171,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "s_mva": 0.4686,
         "white_box": [
           {
-            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwiazanie NR)}",
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
             "inputs": {
               "solver": "newton-raphson"
             },
@@ -182,7 +182,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "MW / Mvar",
             "source": "solver",
             "substitution_latex": "P = 0.44\\ \\text{MW},\\ Q = 0.1611\\ \\text{Mvar}",
-            "title": "Moc galezi S (zespolona)"
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
           },
           {
             "formula_latex": "S = \\sqrt{P^2 + Q^2}",
@@ -210,7 +210,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "A",
             "source": "interpretacja",
             "substitution_latex": "I = \\frac{0.4686 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
-            "title": "Prad galezi I"
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
           },
           {
             "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
@@ -226,7 +226,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "%",
             "source": "interpretacja",
             "substitution_latex": "obc. = \\max\\left(\\frac{18.11}{24.25}, \\frac{679.17}{909.33}\\right) \\cdot 100\\%",
-            "title": "Obciazenie pola"
+            "title": "Obci\u0105\u017cenie pola"
           }
         ]
       }
@@ -358,7 +358,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "s_mva": 0.3829,
         "white_box": [
           {
-            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwiazanie NR)}",
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
             "inputs": {
               "solver": "newton-raphson"
             },
@@ -369,7 +369,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "MW / Mvar",
             "source": "solver",
             "substitution_latex": "P = 0.3503\\ \\text{MW},\\ Q = 0.1545\\ \\text{Mvar}",
-            "title": "Moc galezi S (zespolona)"
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
           },
           {
             "formula_latex": "S = \\sqrt{P^2 + Q^2}",
@@ -397,7 +397,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "A",
             "source": "interpretacja",
             "substitution_latex": "I = \\frac{0.3829 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
-            "title": "Prad galezi I"
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
           },
           {
             "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
@@ -413,7 +413,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "%",
             "source": "interpretacja",
             "substitution_latex": "obc. = \\max\\left(\\frac{14.74}{630.0}, \\frac{14.74}{630.0}\\right) \\cdot 100\\%",
-            "title": "Obciazenie pola"
+            "title": "Obci\u0105\u017cenie pola"
           }
         ]
       },
@@ -427,7 +427,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "s_mva": 0.3824,
         "white_box": [
           {
-            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwiazanie NR)}",
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
             "inputs": {
               "solver": "newton-raphson"
             },
@@ -438,7 +438,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "MW / Mvar",
             "source": "solver",
             "substitution_latex": "P = 0.35\\ \\text{MW},\\ Q = 0.154\\ \\text{Mvar}",
-            "title": "Moc galezi S (zespolona)"
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
           },
           {
             "formula_latex": "S = \\sqrt{P^2 + Q^2}",
@@ -466,7 +466,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "A",
             "source": "interpretacja",
             "substitution_latex": "I = \\frac{0.3824 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
-            "title": "Prad galezi I"
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
           },
           {
             "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
@@ -482,7 +482,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "%",
             "source": "interpretacja",
             "substitution_latex": "obc. = \\max\\left(\\frac{14.74}{24.25}, \\frac{552.63}{909.33}\\right) \\cdot 100\\%",
-            "title": "Obciazenie pola"
+            "title": "Obci\u0105\u017cenie pola"
           }
         ]
       }
@@ -614,7 +614,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "s_mva": 0.3356,
         "white_box": [
           {
-            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwiazanie NR)}",
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
             "inputs": {
               "solver": "newton-raphson"
             },
@@ -625,7 +625,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "MW / Mvar",
             "source": "solver",
             "substitution_latex": "P = 0.3202\\ \\text{MW},\\ Q = 0.1005\\ \\text{Mvar}",
-            "title": "Moc galezi S (zespolona)"
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
           },
           {
             "formula_latex": "S = \\sqrt{P^2 + Q^2}",
@@ -653,7 +653,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "A",
             "source": "interpretacja",
             "substitution_latex": "I = \\frac{0.3356 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
-            "title": "Prad galezi I"
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
           },
           {
             "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
@@ -669,7 +669,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "%",
             "source": "interpretacja",
             "substitution_latex": "obc. = \\max\\left(\\frac{12.95}{630.0}, \\frac{12.95}{630.0}\\right) \\cdot 100\\%",
-            "title": "Obciazenie pola"
+            "title": "Obci\u0105\u017cenie pola"
           }
         ]
       },
@@ -683,7 +683,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "s_mva": 0.8319,
         "white_box": [
           {
-            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwiazanie NR)}",
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
             "inputs": {
               "solver": "newton-raphson"
             },
@@ -694,7 +694,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "MW / Mvar",
             "source": "solver",
             "substitution_latex": "P = 0.7921\\ \\text{MW},\\ Q = 0.2542\\ \\text{Mvar}",
-            "title": "Moc galezi S (zespolona)"
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
           },
           {
             "formula_latex": "S = \\sqrt{P^2 + Q^2}",
@@ -722,7 +722,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "A",
             "source": "interpretacja",
             "substitution_latex": "I = \\frac{0.8319 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
-            "title": "Prad galezi I"
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
           },
           {
             "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
@@ -738,7 +738,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "%",
             "source": "interpretacja",
             "substitution_latex": "obc. = \\max\\left(\\frac{32.02}{630.0}, \\frac{32.02}{630.0}\\right) \\cdot 100\\%",
-            "title": "Obciazenie pola"
+            "title": "Obci\u0105\u017cenie pola"
           }
         ]
       },
@@ -752,7 +752,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "s_mva": 0.4941,
         "white_box": [
           {
-            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwiazanie NR)}",
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
             "inputs": {
               "solver": "newton-raphson"
             },
@@ -763,7 +763,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "MW / Mvar",
             "source": "solver",
             "substitution_latex": "P = 0.4705\\ \\text{MW},\\ Q = 0.151\\ \\text{Mvar}",
-            "title": "Moc galezi S (zespolona)"
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
           },
           {
             "formula_latex": "S = \\sqrt{P^2 + Q^2}",
@@ -791,7 +791,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "A",
             "source": "interpretacja",
             "substitution_latex": "I = \\frac{0.4941 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
-            "title": "Prad galezi I"
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
           },
           {
             "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
@@ -807,7 +807,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "%",
             "source": "interpretacja",
             "substitution_latex": "obc. = \\max\\left(\\frac{19.07}{630.0}, \\frac{19.07}{630.0}\\right) \\cdot 100\\%",
-            "title": "Obciazenie pola"
+            "title": "Obci\u0105\u017cenie pola"
           }
         ]
       }
@@ -887,7 +887,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "s_mva": 0.7053,
         "white_box": [
           {
-            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwiazanie NR)}",
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
             "inputs": {
               "solver": "newton-raphson"
             },
@@ -898,7 +898,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "MW / Mvar",
             "source": "solver",
             "substitution_latex": "P = 0.672\\ \\text{MW},\\ Q = 0.214\\ \\text{Mvar}",
-            "title": "Moc galezi S (zespolona)"
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
           },
           {
             "formula_latex": "S = \\sqrt{P^2 + Q^2}",
@@ -926,7 +926,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "A",
             "source": "interpretacja",
             "substitution_latex": "I = \\frac{0.7053 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
-            "title": "Prad galezi I"
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
           },
           {
             "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
@@ -942,7 +942,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "%",
             "source": "interpretacja",
             "substitution_latex": "obc. = \\max\\left(\\frac{27.14}{630.0}, \\frac{27.14}{630.0}\\right) \\cdot 100\\%",
-            "title": "Obciazenie pola"
+            "title": "Obci\u0105\u017cenie pola"
           }
         ]
       },
@@ -956,7 +956,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "s_mva": 0.6414,
         "white_box": [
           {
-            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwiazanie NR)}",
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
             "inputs": {
               "solver": "newton-raphson"
             },
@@ -967,7 +967,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "MW / Mvar",
             "source": "solver",
             "substitution_latex": "P = 0.6116\\ \\text{MW},\\ Q = 0.1933\\ \\text{Mvar}",
-            "title": "Moc galezi S (zespolona)"
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
           },
           {
             "formula_latex": "S = \\sqrt{P^2 + Q^2}",
@@ -995,7 +995,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "A",
             "source": "interpretacja",
             "substitution_latex": "I = \\frac{0.6414 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
-            "title": "Prad galezi I"
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
           },
           {
             "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
@@ -1011,7 +1011,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "%",
             "source": "interpretacja",
             "substitution_latex": "obc. = \\max\\left(\\frac{24.69}{630.0}, \\frac{24.69}{630.0}\\right) \\cdot 100\\%",
-            "title": "Obciazenie pola"
+            "title": "Obci\u0105\u017cenie pola"
           }
         ]
       },
@@ -1025,7 +1025,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "s_mva": 0.7037,
         "white_box": [
           {
-            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwiazanie NR)}",
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
             "inputs": {
               "solver": "newton-raphson"
             },
@@ -1036,7 +1036,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "MW / Mvar",
             "source": "solver",
             "substitution_latex": "P = 0.671\\ \\text{MW},\\ Q = 0.212\\ \\text{Mvar}",
-            "title": "Moc galezi S (zespolona)"
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
           },
           {
             "formula_latex": "S = \\sqrt{P^2 + Q^2}",
@@ -1064,7 +1064,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "A",
             "source": "interpretacja",
             "substitution_latex": "I = \\frac{0.7037 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
-            "title": "Prad galezi I"
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
           },
           {
             "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
@@ -1080,7 +1080,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "%",
             "source": "interpretacja",
             "substitution_latex": "obc. = \\max\\left(\\frac{27.14}{630.0}, \\frac{27.14}{630.0}\\right) \\cdot 100\\%",
-            "title": "Obciazenie pola"
+            "title": "Obci\u0105\u017cenie pola"
           }
         ]
       },
@@ -1094,7 +1094,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "s_mva": 0.6401,
         "white_box": [
           {
-            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwiazanie NR)}",
+            "formula_latex": "\\underline{S} = \\underline{U} \\cdot \\underline{I}^{*}\\ \\text{(rozwi\u0105zanie NR)}",
             "inputs": {
               "solver": "newton-raphson"
             },
@@ -1105,7 +1105,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "MW / Mvar",
             "source": "solver",
             "substitution_latex": "P = 0.6108\\ \\text{MW},\\ Q = 0.1916\\ \\text{Mvar}",
-            "title": "Moc galezi S (zespolona)"
+            "title": "Moc ga\u0142\u0119zi S (zespolona)"
           },
           {
             "formula_latex": "S = \\sqrt{P^2 + Q^2}",
@@ -1133,7 +1133,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "A",
             "source": "interpretacja",
             "substitution_latex": "I = \\frac{0.6401 \\cdot 10^3}{\\sqrt{3} \\cdot 15.0}",
-            "title": "Prad galezi I"
+            "title": "Pr\u0105d ga\u0142\u0119zi I"
           },
           {
             "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
@@ -1149,7 +1149,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "result_unit": "%",
             "source": "interpretacja",
             "substitution_latex": "obc. = \\max\\left(\\frac{24.69}{630.0}, \\frac{24.69}{630.0}\\right) \\cdot 100\\%",
-            "title": "Obciazenie pola"
+            "title": "Obci\u0105\u017cenie pola"
           }
         ]
       }

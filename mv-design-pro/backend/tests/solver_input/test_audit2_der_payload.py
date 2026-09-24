@@ -40,7 +40,7 @@ def test_build_der_payload_pv_with_bess_modes_emits_warning():
     )
     # PV + BESS modes -> warning, modes ignored.
     assert payload.bess_operation_modes == []
-    assert any("nie obsluguje" in i for i in payload.issues)
+    assert any("nie obsługuje" in i for i in payload.issues)
 
 
 def test_build_der_payload_bess_with_multiple_modes():

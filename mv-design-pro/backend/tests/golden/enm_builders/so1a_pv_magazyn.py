@@ -77,12 +77,12 @@ from tests.catalog_test_helpers import gpz_source_record
 #: (kontrakt wymaga proweniencji jawnie — brak pola jest brakiem danej, nie skrotem).
 _PROWENIENCJA_FALOWNIKA: dict[str, Any] = {
     "zrodlo": "profil_typowy_normy",
-    "odniesienie": "IEEE 1547-2018 §5-8; Rozporzadzenie (UE) 2016/631 (NC RfG) art. 13-21",
+    "odniesienie": "IEEE 1547-2018 §5-8; Rozporządzenie (UE) 2016/631 (NC RfG) art. 13-21",
     "data": None,
 }
 _PROWENIENCJA_MAGAZYNU: dict[str, Any] = {
     "zrodlo": "profil_typowy_normy",
-    "odniesienie": "IEC 62933-2-1:2017 §5; Rozporzadzenie (UE) 2016/631 (NC RfG) art. 13-15",
+    "odniesienie": "IEC 62933-2-1:2017 §5; Rozporządzenie (UE) 2016/631 (NC RfG) art. 13-15",
     "data": None,
 }
 
@@ -197,7 +197,7 @@ def build_so1a_pv_magazyn_enm() -> dict[str, Any]:
             {
                 "id": "7b2e0000-0000-4000-8000-000000000003",
                 "ref_id": "b-pole",
-                "name": "Pole magistralne za wylacznikiem",
+                "name": "Pole magistralne za wyłącznikiem",
                 "tags": [],
                 "meta": {},
                 "voltage_kv": 15.0,
@@ -215,7 +215,7 @@ def build_so1a_pv_magazyn_enm() -> dict[str, Any]:
             {
                 "id": "7b2e0000-0000-4000-8000-000000000005",
                 "ref_id": "b-przylacze",
-                "name": "Miejsce przylaczenia instalacji PV i magazynu",
+                "name": "Miejsce przyłączenia instalacji PV i magazynu",
                 "tags": [],
                 "meta": {},
                 "voltage_kv": 15.0,
@@ -226,7 +226,7 @@ def build_so1a_pv_magazyn_enm() -> dict[str, Any]:
             {
                 "id": "7b2e0000-0000-4000-8000-000000000011",
                 "ref_id": "wyl-pole",
-                "name": "Wylacznik pola magistralnego w GPZ",
+                "name": "Wyłącznik pola magistralnego w GPZ",
                 "tags": [],
                 "meta": {},
                 "type": "breaker",
@@ -239,7 +239,7 @@ def build_so1a_pv_magazyn_enm() -> dict[str, Any]:
             {
                 "id": "7b2e0000-0000-4000-8000-000000000012",
                 "ref_id": "kab-magistrala",
-                "name": "Kabel magistralny do stacji przylaczeniowej",
+                "name": "Kabel magistralny do stacji przyłączeniowej",
                 "tags": [],
                 "meta": {},
                 "type": "cable",
@@ -256,7 +256,7 @@ def build_so1a_pv_magazyn_enm() -> dict[str, Any]:
             {
                 "id": "7b2e0000-0000-4000-8000-000000000013",
                 "ref_id": "lin-przylacze",
-                "name": "Linia napowietrzna GPZ - miejsce przylaczenia",
+                "name": "Linia napowietrzna GPZ - miejsce przyłączenia",
                 "tags": [],
                 "meta": {},
                 "type": "line_overhead",
@@ -273,7 +273,7 @@ def build_so1a_pv_magazyn_enm() -> dict[str, Any]:
             {
                 "id": "7b2e0000-0000-4000-8000-000000000014",
                 "ref_id": "kab-domkniecie",
-                "name": "Kabel domykajacy pierscien: przylacze - stacja magistralna",
+                "name": "Kabel domykający pierścień: przyłącze - stacja magistralna",
                 "tags": [],
                 "meta": {},
                 "type": "cable",
@@ -318,7 +318,7 @@ def build_so1a_pv_magazyn_enm() -> dict[str, Any]:
                 "meta": {},
                 **gpz_source_record(
                     ref_id="zrodlo-110",
-                    name="Siec nadrzedna 110 kV",
+                    name="Sieć nadrzędna 110 kV",
                     bus_ref="b-110",
                     voltage_kv=110.0,
                     sk3_mva=2500.0,
@@ -330,7 +330,7 @@ def build_so1a_pv_magazyn_enm() -> dict[str, Any]:
             {
                 "id": "7b2e0000-0000-4000-8000-000000000041",
                 "ref_id": "odb-gpz",
-                "name": "Odbior pozostalych pol GPZ",
+                "name": "Odbiór pozostałych pól GPZ",
                 "tags": [],
                 "meta": {},
                 "bus_ref": "b-sn-gpz",
@@ -342,7 +342,7 @@ def build_so1a_pv_magazyn_enm() -> dict[str, Any]:
             {
                 "id": "7b2e0000-0000-4000-8000-000000000042",
                 "ref_id": "odb-stacja",
-                "name": "Odbior stacji przylaczeniowej",
+                "name": "Odbiór stacji przyłączeniowej",
                 "tags": [],
                 "meta": {},
                 "bus_ref": "b-sn-stacja",

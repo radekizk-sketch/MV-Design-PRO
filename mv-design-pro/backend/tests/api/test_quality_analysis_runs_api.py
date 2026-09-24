@@ -499,7 +499,7 @@ def test_connection_conditions_rejects_short_circuit_run(app_client) -> None:
     run_id = _sc_run_id()
     resp = app_client.get(CONNECTION_CONDITIONS, params={"run_id": str(run_id)})
     assert resp.status_code == 422
-    assert "rozplywu mocy" in resp.json()["detail"]
+    assert "rozpływu mocy" in resp.json()["detail"]
 
 
 def test_connection_conditions_unknown_run_returns_404(app_client) -> None:

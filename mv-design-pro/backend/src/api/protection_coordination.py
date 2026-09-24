@@ -337,20 +337,20 @@ def _check_run_eligibility(request: RunCoordinationRequest) -> list[str]:
     blockers: list[str] = []
     if not request.devices:
         blockers.append(
-            "Analiza koordynacji wymaga co najmniej jednego urzadzenia "
-            "zabezpieczajacego (lista 'devices' jest pusta)."
+            "Analiza koordynacji wymaga co najmniej jednego urządzenia "
+            "zabezpieczającego (lista 'devices' jest pusta)."
         )
     if not request.fault_currents:
         blockers.append(
-            "Analiza koordynacji wymaga danych o pradach zwarciowych "
-            "(lista 'fault_currents' jest pusta) — sprawdzenie czulosci "
-            "i selektywnosci wymaga wynikow zwarciowych IEC 60909."
+            "Analiza koordynacji wymaga danych o prądach zwarciowych "
+            "(lista 'fault_currents' jest pusta) — sprawdzenie czułości "
+            "i selektywności wymaga wyników zwarciowych IEC 60909."
         )
     if not request.operating_currents:
         blockers.append(
-            "Analiza koordynacji wymaga danych o pradach roboczych "
+            "Analiza koordynacji wymaga danych o prądach roboczych "
             "(lista 'operating_currents' jest pusta) — sprawdzenie "
-            "przeciazalnosci wymaga wynikow rozplywu mocy."
+            "przeciążalności wymaga wyników rozpływu mocy."
         )
     return blockers
 
@@ -686,7 +686,7 @@ def get_overload_checks(run_id: str) -> list[dict[str, Any]]:
 
 @router.get(
     "/{run_id}/export/pdf",
-    summary="Eksportuj wynik koordynacji zabezpieczen do PDF",
+    summary="Eksportuj wynik koordynacji zabezpieczeń do PDF",
 )
 def export_coordination_pdf(run_id: str) -> Response:
     """Eksport wyniku koordynacji zabezpieczen nadprądowych do PDF.
@@ -736,7 +736,7 @@ def export_coordination_pdf(run_id: str) -> Response:
 
 @router.get(
     "/{run_id}/export/docx",
-    summary="Eksportuj wynik koordynacji zabezpieczen do DOCX",
+    summary="Eksportuj wynik koordynacji zabezpieczeń do DOCX",
 )
 def export_coordination_docx(run_id: str) -> Response:
     """Eksport wyniku koordynacji zabezpieczen nadprądowych do DOCX.

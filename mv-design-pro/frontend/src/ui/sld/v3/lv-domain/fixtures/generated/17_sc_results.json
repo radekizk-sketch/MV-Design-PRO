@@ -959,7 +959,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "38f14ad51dbeb89eb30ee8819706e2b98dd3fea0c105dc8fe467230a39463a06",
+  "projection_hash": "3706f146ddb42ec7ea9913d76df749760ed91e60ef205903b87909696e0e56f5",
   "result_snapshot": {
     "analysis_type": "SC_3F",
     "overlay_payload": {
@@ -1390,25 +1390,25 @@
         {
           "code": "W060",
           "element_ref": null,
-          "message": "Kabel nN 'FU-21_kabel' nie ma zadeklarowanych warunkow ulozenia — obciazalnosc liczona wg zalozenia katalogowego.",
+          "message": "Kabel nN 'FU-21_kabel' nie ma zadeklarowanych warunków ułożenia — obciążalność liczona wg założenia katalogowego.",
           "severity": "IMPORTANT"
         },
         {
           "code": "W060",
           "element_ref": null,
-          "message": "Kabel nN 'QF-01_kabel' nie ma zadeklarowanych warunkow ulozenia — obciazalnosc liczona wg zalozenia katalogowego.",
+          "message": "Kabel nN 'QF-01_kabel' nie ma zadeklarowanych warunków ułożenia — obciążalność liczona wg założenia katalogowego.",
           "severity": "IMPORTANT"
         },
         {
           "code": "W060",
           "element_ref": null,
-          "message": "Kabel nN 'QF-02_kabel' nie ma zadeklarowanych warunkow ulozenia — obciazalnosc liczona wg zalozenia katalogowego.",
+          "message": "Kabel nN 'QF-02_kabel' nie ma zadeklarowanych warunków ułożenia — obciążalność liczona wg założenia katalogowego.",
           "severity": "IMPORTANT"
         },
         {
           "code": "W060",
           "element_ref": null,
-          "message": "Kabel nN 'QF-03_kabel' nie ma zadeklarowanych warunkow ulozenia — obciazalnosc liczona wg zalozenia katalogowego.",
+          "message": "Kabel nN 'QF-03_kabel' nie ma zadeklarowanych warunków ułożenia — obciążalność liczona wg założenia katalogowego.",
           "severity": "IMPORTANT"
         },
         {

@@ -265,7 +265,7 @@ def test_interpretacja_rozplywu_wypelnia_obciazenie(p: Przypadek) -> None:
     (obserwacja,) = interpretacja.branch_findings
     assert obserwacja.loading_pct == _obciazenie_referencyjne(p)
     assert obserwacja.loading_pct == pytest.approx(p.obciazenie_pct, rel=1e-9)
-    assert "obciazenie" in obserwacja.description_pl
+    assert "obciążenie" in obserwacja.description_pl
 
 
 def test_interpretacja_bez_modelu_zostawia_obciazenie_nieznane() -> None:

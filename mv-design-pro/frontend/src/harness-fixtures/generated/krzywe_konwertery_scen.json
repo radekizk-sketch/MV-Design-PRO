@@ -102,44 +102,44 @@
       "current_loop_bandwidth_hz": {
         "field_name": "current_loop_bandwidth_hz",
         "quality": "ESTIMATED",
-        "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
-        "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej"
+        "source_ref": "Typowe pasma regulatorów IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
+        "note": "oszacowanie pasma regulatora; wartość typowa dla klasy, nie z karty technicznej"
       },
       "voltage_loop_bandwidth_hz": {
         "field_name": "voltage_loop_bandwidth_hz",
         "quality": "ESTIMATED",
-        "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
-        "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej"
+        "source_ref": "Typowe pasma regulatorów IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
+        "note": "oszacowanie pasma regulatora; wartość typowa dla klasy, nie z karty technicznej"
       },
       "pll_bandwidth_hz": {
         "field_name": "pll_bandwidth_hz",
         "quality": "ESTIMATED",
-        "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
-        "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej"
+        "source_ref": "Typowe pasma regulatorów IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
+        "note": "oszacowanie pasma regulatora; wartość typowa dla klasy, nie z karty technicznej"
       },
       "control_delay_ms": {
         "field_name": "control_delay_ms",
         "quality": "ESTIMATED",
-        "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
-        "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej"
+        "source_ref": "Typowe pasma regulatorów IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
+        "note": "oszacowanie pasma regulatora; wartość typowa dla klasy, nie z karty technicznej"
       },
       "filter_l_pu": {
         "field_name": "filter_l_pu",
         "quality": "ESTIMATED",
-        "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
-        "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej"
+        "source_ref": "Typowe pasma regulatorów IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
+        "note": "oszacowanie pasma regulatora; wartość typowa dla klasy, nie z karty technicznej"
       },
       "filter_r_pu": {
         "field_name": "filter_r_pu",
         "quality": "ESTIMATED",
-        "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
-        "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej"
+        "source_ref": "Typowe pasma regulatorów IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
+        "note": "oszacowanie pasma regulatora; wartość typowa dla klasy, nie z karty technicznej"
       },
       "flicker_c": {
         "field_name": "flicker_c",
         "quality": "ESTIMATED",
-        "source_ref": "Wspolczynnik emisji migotania c(psi_k) — wartosc analityczna klasy (konserwatywnie), do potwierdzenia karta zgodnosci sieciowej urzadzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008",
-        "note": "wartosc analityczna klasy (konserwatywnie), do potwierdzenia karta zgodnosci"
+        "source_ref": "Współczynnik emisji migotania c(psi_k) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008",
+        "note": "wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności"
       }
     },
     "pq_curve": [
@@ -174,13 +174,13 @@
     "ptpiree_ppm_scope": null,
     "ptpiree_source_url": null,
     "ptpiree_publication_date": null,
-    "ptpiree_note": "Brak dopasowania w wykazie PTPiREE (snapshot: 6887 rekordow, WiPWC 1.2/1.3, publikacja 2026-05-08).",
+    "ptpiree_note": "Brak dopasowania w wykazie PTPiREE (snapshot: 6887 rekordów, WiPWC 1.2/1.3, publikacja 2026-05-08).",
     "ptpiree_certificate_condition": null,
     "verification_status": "REFERENCYJNY",
-    "source_reference": "Katalog przeksztaltnikow MV-DESIGN-PRO / profil przemyslowy V1",
+    "source_reference": "Katalog przekształtników MV-DESIGN-PRO / profil przemysłowy V1",
     "catalog_status": "REFERENCYJNY_V1",
     "contract_version": "2.0",
-    "verification_note": "Karta techniczna Sungrow SG3150U-MV; pasma regulatorow oszacowane (typowe dla klasy)."
+    "verification_note": "Karta techniczna Sungrow SG3150U-MV; pasma regulatorów oszacowane (typowe dla klasy)."
   },
   {
     "id": "conv-pv-0.5mw-15kv",
@@ -235,13 +235,13 @@
     "ptpiree_ppm_scope": null,
     "ptpiree_source_url": null,
     "ptpiree_publication_date": null,
-    "ptpiree_note": "Brak dopasowania w wykazie PTPiREE (snapshot: 6887 rekordow, WiPWC 1.2/1.3, publikacja 2026-05-08).",
+    "ptpiree_note": "Brak dopasowania w wykazie PTPiREE (snapshot: 6887 rekordów, WiPWC 1.2/1.3, publikacja 2026-05-08).",
     "ptpiree_certificate_condition": null,
     "verification_status": "REFERENCYJNY",
-    "source_reference": "Katalog przeksztaltnikow MV-DESIGN-PRO / profil przemyslowy V1",
+    "source_reference": "Katalog przekształtników MV-DESIGN-PRO / profil przemysłowy V1",
     "catalog_status": "REFERENCYJNY_V1",
     "contract_version": "2.0",
-    "verification_note": "Referencyjny profil przemyslowy V1 z jawnym statusem i zrodlem."
+    "verification_note": "Referencyjny profil przemysłowy V1 z jawnym statusem i źródłem."
   },
   {
     "id": "conv-bess-card-sungrow-sc2000ud-mv",
@@ -346,44 +346,44 @@
       "current_loop_bandwidth_hz": {
         "field_name": "current_loop_bandwidth_hz",
         "quality": "ESTIMATED",
-        "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
-        "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej"
+        "source_ref": "Typowe pasma regulatorów IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
+        "note": "oszacowanie pasma regulatora; wartość typowa dla klasy, nie z karty technicznej"
       },
       "voltage_loop_bandwidth_hz": {
         "field_name": "voltage_loop_bandwidth_hz",
         "quality": "ESTIMATED",
-        "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
-        "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej"
+        "source_ref": "Typowe pasma regulatorów IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
+        "note": "oszacowanie pasma regulatora; wartość typowa dla klasy, nie z karty technicznej"
       },
       "pll_bandwidth_hz": {
         "field_name": "pll_bandwidth_hz",
         "quality": "ESTIMATED",
-        "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
-        "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej"
+        "source_ref": "Typowe pasma regulatorów IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
+        "note": "oszacowanie pasma regulatora; wartość typowa dla klasy, nie z karty technicznej"
       },
       "control_delay_ms": {
         "field_name": "control_delay_ms",
         "quality": "ESTIMATED",
-        "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
-        "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej"
+        "source_ref": "Typowe pasma regulatorów IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
+        "note": "oszacowanie pasma regulatora; wartość typowa dla klasy, nie z karty technicznej"
       },
       "filter_l_pu": {
         "field_name": "filter_l_pu",
         "quality": "ESTIMATED",
-        "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
-        "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej"
+        "source_ref": "Typowe pasma regulatorów IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
+        "note": "oszacowanie pasma regulatora; wartość typowa dla klasy, nie z karty technicznej"
       },
       "filter_r_pu": {
         "field_name": "filter_r_pu",
         "quality": "ESTIMATED",
-        "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
-        "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej"
+        "source_ref": "Typowe pasma regulatorów IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018",
+        "note": "oszacowanie pasma regulatora; wartość typowa dla klasy, nie z karty technicznej"
       },
       "flicker_c": {
         "field_name": "flicker_c",
         "quality": "ESTIMATED",
-        "source_ref": "Wspolczynnik emisji migotania c(psi_k) — wartosc analityczna klasy (konserwatywnie), do potwierdzenia karta zgodnosci sieciowej urzadzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008",
-        "note": "wartosc analityczna klasy (konserwatywnie), do potwierdzenia karta zgodnosci"
+        "source_ref": "Współczynnik emisji migotania c(psi_k) — wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności sieciowej urządzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008",
+        "note": "wartość analityczna klasy (konserwatywnie), do potwierdzenia kartą zgodności"
       }
     },
     "pq_curve": [
@@ -418,12 +418,12 @@
     "ptpiree_ppm_scope": null,
     "ptpiree_source_url": null,
     "ptpiree_publication_date": null,
-    "ptpiree_note": "Brak dopasowania w wykazie PTPiREE (snapshot: 6887 rekordow, WiPWC 1.2/1.3, publikacja 2026-05-08).",
+    "ptpiree_note": "Brak dopasowania w wykazie PTPiREE (snapshot: 6887 rekordów, WiPWC 1.2/1.3, publikacja 2026-05-08).",
     "ptpiree_certificate_condition": null,
     "verification_status": "REFERENCYJNY",
-    "source_reference": "Katalog przeksztaltnikow MV-DESIGN-PRO / profil przemyslowy V1",
+    "source_reference": "Katalog przekształtników MV-DESIGN-PRO / profil przemysłowy V1",
     "catalog_status": "REFERENCYJNY_V1",
     "contract_version": "2.0",
-    "verification_note": "Karta techniczna Sungrow SC2000UD-MV PCS; pasma regulatorow oszacowane (typowe dla klasy)."
+    "verification_note": "Karta techniczna Sungrow SC2000UD-MV PCS; pasma regulatorów oszacowane (typowe dla klasy)."
   }
 ]

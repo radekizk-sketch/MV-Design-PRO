@@ -1159,16 +1159,16 @@ def format_diff_report_pl(diff_result: ArchiveDiffResult) -> str:
     """
     lines: list[str] = []
     lines.append("=" * 60)
-    lines.append("RAPORT ROZNIC ARCHIWOW")
+    lines.append("RAPORT RÓŻNIC ARCHIWÓW")
     lines.append("=" * 60)
     lines.append("")
     lines.append(f"Archiwum A: {diff_result.archive_hash_a[:16]}...")
     lines.append(f"Archiwum B: {diff_result.archive_hash_b[:16]}...")
-    lines.append(f"Status ogolny: {_status_pl(diff_result.overall_status)}")
+    lines.append(f"Status ogólny: {_status_pl(diff_result.overall_status)}")
     lines.append("")
 
     if diff_result.overall_status == DiffStatus.IDENTICAL:
-        lines.append("Archiwa sa identyczne. Brak roznic.")
+        lines.append("Archiwa są identyczne. Brak różnic.")
         lines.append("")
         return "\n".join(lines)
 
@@ -1182,7 +1182,7 @@ def format_diff_report_pl(diff_result: ArchiveDiffResult) -> str:
     )
     lines.append(
         f"Elementy: dodane={summary['total_elements_added']}, "
-        f"usuniete={summary['total_elements_removed']}, "
+        f"usunięte={summary['total_elements_removed']}, "
         f"zmodyfikowane={summary['total_elements_modified']}"
     )
     lines.append("")
@@ -1198,7 +1198,7 @@ def format_diff_report_pl(diff_result: ArchiveDiffResult) -> str:
         if sd.elements_added:
             lines.append(f"  Dodane: {sd.elements_added}")
         if sd.elements_removed:
-            lines.append(f"  Usuniete: {sd.elements_removed}")
+            lines.append(f"  Usunięte: {sd.elements_removed}")
         if sd.elements_modified:
             lines.append(f"  Zmodyfikowane: {sd.elements_modified}")
 

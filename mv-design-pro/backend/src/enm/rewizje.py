@@ -229,7 +229,7 @@ def wczytaj_rewizje(klucz: str, rewizja: int) -> EnergyNetworkModel:
     try:
         model = EnergyNetworkModel.model_validate(payload["snapshot"])
     except ValueError as exc:
-        raise RewizjaUszkodzonaError(f"Migawka {sciezka} nie waliduje sie jako ENM: {exc}") from exc
+        raise RewizjaUszkodzonaError(f"Migawka {sciezka} nie waliduje się jako ENM: {exc}") from exc
     if payload.get("rewizja") != rewizja or model.header.revision != rewizja:
         raise RewizjaUszkodzonaError(
             f"Migawka {sciezka} deklaruje rewizje {payload.get('rewizja')!r}/"
@@ -239,8 +239,8 @@ def wczytaj_rewizje(klucz: str, rewizja: int) -> EnergyNetworkModel:
     hash_przeliczony = compute_enm_hash(model)
     if hash_zapisany != hash_przeliczony:
         raise RewizjaUszkodzonaError(
-            f"Migawka {sciezka}: hash zapisany {hash_zapisany!r} nie zgadza sie "
-            f"z przeliczonym z tresci {hash_przeliczony!r}"
+            f"Migawka {sciezka}: hash zapisany {hash_zapisany!r} nie zgadza się "
+            f"z przeliczonym z treści {hash_przeliczony!r}"
         )
     return model
 
@@ -286,7 +286,7 @@ def uzgodnij_indeks(klucz: str, biezacy: EnergyNetworkModel) -> RaportUzgodnieni
                 usuniete.append(numer)
                 logger.warning(
                     "rewizja_osierocona klucz=%s rewizja=%s head=%s — migawka bez "
-                    "zatwierdzonej rewizji usunieta (nigdy nie promowana)",
+                    "zatwierdzonej rewizji usunięta (nigdy nie promowana)",
                     klucz,
                     numer,
                     rewizja_head,
@@ -299,7 +299,7 @@ def uzgodnij_indeks(klucz: str, biezacy: EnergyNetworkModel) -> RaportUzgodnieni
         przygotuj_rewizje(klucz, biezacy, hash_sha256=hash_head).zatwierdz()
         odtworzona = True
         logger.info(
-            "rewizja_odtworzona klucz=%s rewizja=%s — migawka biezacej rewizji zapisana z HEAD",
+            "rewizja_odtworzona klucz=%s rewizja=%s — migawka bieżącej rewizji zapisana z HEAD",
             klucz,
             rewizja_head,
         )
@@ -307,8 +307,8 @@ def uzgodnij_indeks(klucz: str, biezacy: EnergyNetworkModel) -> RaportUzgodnieni
         przygotuj_rewizje(klucz, biezacy, hash_sha256=hash_head).zatwierdz()
         zastapiona = True
         logger.warning(
-            "rewizja_zastapiona klucz=%s rewizja=%s — migawka o innym hashu niz HEAD "
-            "zastapiona trescia HEAD",
+            "rewizja_zastapiona klucz=%s rewizja=%s — migawka o innym hashu niż HEAD "
+            "zastąpiona treścią HEAD",
             klucz,
             rewizja_head,
         )

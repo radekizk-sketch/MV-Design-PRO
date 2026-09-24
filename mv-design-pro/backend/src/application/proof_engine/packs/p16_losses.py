@@ -208,7 +208,7 @@ class P16LossesProof:
     THEORY = r"""
     \section{Straty mocy czynnej}
 
-    Dla galezi $(i,j)$:
+    Dla gałęzi $(i,j)$:
     \begin{equation}
     P_{loss,ij} = P_{from,ij} + P_{to,ij}
     \end{equation}
@@ -529,7 +529,7 @@ class P16LossesProof:
             substitution = (
                 f"P_{{losses,total}} = \\sum_{{ij}} P_{{loss,ij}} = "
                 f"{computed_total:.4f} \\text{{ MW}} "
-                f"\\text{{ ({len(data.branches)} galezi)}}"
+                f"\\text{{ ({len(data.branches)} gałęzi)}}"
             )
         else:
             branch_sum = " + ".join(f"{b.p_loss_mw:.4f}" for b in data.branches)
@@ -591,7 +591,7 @@ class P16LossesProof:
         substitution = (
             f"Q_{{losses,total}} = \\sum_{{ij}} Q_{{loss,ij}} = "
             f"{computed_total:.4f} \\text{{ Mvar}} "
-            f"\\text{{ ({len(data.branches)} galezi)}}"
+            f"\\text{{ ({len(data.branches)} gałęzi)}}"
         )
 
         result = ProofValue.create(

@@ -434,21 +434,21 @@ _WYWOD_OKNA: dict[str, tuple[str, str, str, float, str]] = {
         r"\tfrac{\text{Hz}}{\text{s}}",
         r"\ge",
         ROCOF_MIN_DF_DT_HZ_S,
-        "dolna krawedz okna (NC RfG Art. 13(1)(b), PTPiREE 2 Hz/s)",
+        "dolna krawędź okna (NC RfG Art. 13(1)(b), PTPiREE 2 Hz/s)",
     ),
     "underfrequency_81U": (
         r"f_{81U}",
         r"\text{Hz}",
         r"\le",
         FREQ_UNDER_MAX_HZ,
-        "gorna krawedz okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)",
+        "górna krawędź okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)",
     ),
     "overfrequency_81O": (
         r"f_{81O}",
         r"\text{Hz}",
         r"\ge",
         FREQ_OVER_MIN_HZ,
-        "dolna krawedz okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)",
+        "dolna krawędź okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)",
     ),
 }
 
@@ -467,25 +467,25 @@ def _wywod_okna(function_type: str, value: float | None, verdict: Verdict) -> li
     spelnione = verdict.severity == "OK"
     znak_podstawienia = znak if spelnione else _ZNAK_PRZECIWNY[znak]
     dolna_krawedz = znak == r"\ge"
-    kierunek = "nastawa nie nizsza niz" if dolna_krawedz else "nastawa nie wyzsza niz"
+    kierunek = "nastawa nie niższa niż" if dolna_krawedz else "nastawa nie wyższa niż"
     znak_ascii = ">=" if dolna_krawedz else "<="
     wynik_ascii = "SPELNIONE" if spelnione else "NIESPELNIONE"
     meta = LOM_FUNCTION_TYPES[function_type]
     return [
         _krok(
-            f"Wzor: warunek okna normatywnego funkcji {meta['ansi']} " f"({kierunek} krawedz okna)",
+            f"Wzór: warunek okna normatywnego funkcji {meta['ansi']} " f"({kierunek} krawędź okna)",
             rf"{symbol} {znak} {okno:.1f}\ {jednostka}",
         ),
         _krok(
-            f"Dane: nastawa = {value:.4f} (przekaznik pola), "
-            f"krawedz okna = {okno:.1f} — {opis_okna}."
+            f"Dane: nastawa = {value:.4f} (przekaźnik pola), "
+            f"krawędź okna = {okno:.1f} — {opis_okna}."
         ),
         _krok(
             f"Podstawienie: {value:.4f} {znak_ascii} {okno:.1f} {wynik_ascii}",
             rf"{value:.4f} {znak_podstawienia} {okno:.1f}\ {jednostka}",
         ),
         _krok(
-            f"Wynik porownania: {'w oknie' if spelnione else 'poza oknem'} — "
+            f"Wynik porównania: {'w oknie' if spelnione else 'poza oknem'} — "
             f"{verdict.message_pl}"
         ),
     ]
@@ -510,19 +510,19 @@ def _wywod_spz(
     wynik_ascii = "SPELNIONE" if spelnione else "NIESPELNIONE"
     return [
         _krok(
-            "Wzor: warunek koordynacji czasowej — LoM wylacza przed ponownym " "zalaczeniem SPZ",
+            "Wzór: warunek koordynacji czasowej — LoM wyłącza przed ponownym " "załączeniem SPZ",
             r"t_{LoM} < t_{SPZ}",
         ),
         _krok(
-            f"Dane: czas LoM = {lom_time_s:.4f} s (najkrotsza zwloka funkcji LoM), "
-            f"przerwa SPZ = {spz_interval:.4f} s (najkrotszy dostepny czas SPZ)."
+            f"Dane: czas LoM = {lom_time_s:.4f} s (najkrótsza zwłoka funkcji LoM), "
+            f"przerwa SPZ = {spz_interval:.4f} s (najkrótszy dostępny czas SPZ)."
         ),
         _krok(
             f"Podstawienie: {lom_time_s:.4f} {znak_ascii} {spz_interval:.4f} s {wynik_ascii}",
             rf"{lom_time_s:.4f} {znak_latex} {spz_interval:.4f}\ \text{{s}}",
         ),
         _krok(
-            f"Wynik porownania: {'LoM przed SPZ' if spelnione else 'LoM nie przed SPZ'} — "
+            f"Wynik porównania: {'LoM przed SPZ' if spelnione else 'LoM nie przed SPZ'} — "
             f"{verdict.message_pl}"
         ),
     ]

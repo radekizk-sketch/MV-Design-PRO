@@ -300,7 +300,7 @@ _ZAWARTOSC_PL: tuple[str, ...] = (
 #: jest WYŁĄCZNIE wtedy, gdy bieg ma odcinek do udokumentowania — obietnica dowodu,
 #: którego w pliku nie będzie, jest gorsza od braku wiersza.
 _ZAWARTOSC_ROZPLYWU_PL: tuple[str, ...] = (
-    "Dowód rozpływu mocy: zbieżność, bilans P i Q, zakres napięć (rozplyw.zip)",
+    "Dowód rozpływu mocy: zbieżność, bilans P i Q, zakres napięć (rozpływ.zip)",
     "Dowód strat mocy: straty gałęziowe, sumy sieci, udział strat (straty.zip)",
 )
 _ZAWARTOSC_SPADKU_PL = (

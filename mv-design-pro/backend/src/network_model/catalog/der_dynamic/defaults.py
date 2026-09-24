@@ -36,7 +36,7 @@ from network_model.catalog.der_dynamic.models import (
 
 #: Odniesienie znormalizowane dla profili PV/BESS (falowniki) — SS0 p.2/p.3:
 #: IEEE 1547-2018 (limity/droop/FRT ogólne) + NC RfG 2016/631 (klasy B/C/D UE).
-_ODNIESIENIE_FALOWNIK = "IEEE 1547-2018 §5-8; Rozporzadzenie (UE) 2016/631 (NC RfG) art. 13-21"
+_ODNIESIENIE_FALOWNIK = "IEEE 1547-2018 §5-8; Rozporządzenie (UE) 2016/631 (NC RfG) art. 13-21"
 #: Odniesienie znormalizowane dla profili turbin wiatrowych — IEC 61400-27-1
 #: definiuje wprost generyczne modele parametryczne typ 1-4.
 _ODNIESIENIE_WIATR = "IEC 61400-27-1:2020 (generyczne modele dynamiczne typ 1-4)"
@@ -173,7 +173,7 @@ DEFAULT_WIND_TYPE_1 = WindTurbineDynamicProfile(
 
 DEFAULT_WIND_TYPE_2 = WindTurbineDynamicProfile(
     profile_id="default_wind_type_2",
-    profile_name_pl="Typowy WRIG z rezystancja w wirniku (IEC 61400-27 type 2)",
+    profile_name_pl="Typowy WRIG z rezystancją w wirniku (IEC 61400-27 type 2)",
     iec_type="type_2",
     proweniencja=_profil_typowy_normy(_ODNIESIENIE_WIATR),
     h_total_s=4.0,

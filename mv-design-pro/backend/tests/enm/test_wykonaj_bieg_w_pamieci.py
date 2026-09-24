@@ -110,7 +110,7 @@ def test_gotowy_graf_poza_rozplywem_to_jawny_blad_kontraktu() -> None:
         {"fault_type": "3F", "c_factor": 0.95, "thermal_time_seconds": 1.0},
     )
     graf = map_enm_to_network_graph(EnergyNetworkModel.model_validate(wariant.snapshot))
-    with pytest.raises(ValueError, match="wylacznie rozplyw mocy"):
+    with pytest.raises(ValueError, match="wyłącznie rozpływ mocy"):
         wykonaj_bieg_w_pamieci(wariant, graf=graf)
     assert wariant.raw_result is None, "odmowa nie zostawia polowicznego wyniku"
 
@@ -139,7 +139,7 @@ def test_wariant_z_para_audit2_bez_fabryki_to_jawny_blad(analysis_type: str) -> 
     }
     wariant = _wariant(kotwica, analysis_type, opcje if analysis_type != "PF" else _para_audit2())
 
-    with pytest.raises(ValueError, match="nie dostal fabryki UnitOfWork"):
+    with pytest.raises(ValueError, match="nie dostał fabryki UnitOfWork"):
         wykonaj_bieg_w_pamieci(wariant)
     assert wariant.raw_result is None, "bieg nie moze niesc wyniku po odmowie"
 

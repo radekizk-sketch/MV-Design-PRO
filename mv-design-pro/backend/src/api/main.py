@@ -87,7 +87,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # podwojnego wykonania) slusznie blokuje ponowne uruchomienie takiego biegu.
     osierocone = zamknij_osierocone_biegi()
     if osierocone:
-        logger.warning("Zamknieto %d bieg(ow) osieroconych w RUNNING po restarcie", osierocone)
+        logger.warning("Zamknięto %d bieg(ów) osieroconych w RUNNING po restarcie", osierocone)
     logger.info("MV-DESIGN PRO API started, DB initialized")
     yield
     logger.info("MV-DESIGN PRO API shutting down")

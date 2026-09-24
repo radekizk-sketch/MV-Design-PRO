@@ -49,7 +49,7 @@
       "bus_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "index": 1,
       "is_slack": true,
-      "name": "GPZ 110kV",
+      "name": "GPZ 110 kV",
       "v_angle_deg": 0.0,
       "v_angle_rad": 0.0,
       "v_magnitude_pu": 1.0027732499472577,
@@ -92,11 +92,11 @@
     "project_name": "CGMES Golden Net",
     "run_id": "run-lf-scena-pomiary",
     "run_timestamp": "2026-09-10T08:00:00+00:00",
-    "snapshot_hash": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849"
+    "snapshot_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0"
   },
   "converged": true,
   "degrees_of_freedom": 4,
-  "estimate_id": "5dd7c96ec8a107f41c258cd77c4dca3dda90ddfad5ae53d9247638c7452be7a3",
+  "estimate_id": "ead8ffd473521da762e88e30242ca1e709e1426a05442eb20c119ade4b753945",
   "iterations": 6,
   "m_measurements": 13,
   "measurements": [

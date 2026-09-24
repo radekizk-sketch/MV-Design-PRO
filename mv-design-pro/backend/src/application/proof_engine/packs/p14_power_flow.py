@@ -210,21 +210,21 @@ class P14PowerFlowProof:
     TITLE_PL = "Dowód poprawności rozpływu mocy"
 
     THEORY = r"""
-    \section{Rownania rozplywu mocy}
+    \section{Równania rozpływu mocy}
 
-    Dla wezla $i$ typu PQ:
+    Dla węzła $i$ typu PQ:
     \begin{align}
     P_i &= |V_i| \sum_{j=1}^{n} |V_j| (G_{ij} \cos\delta_{ij} + B_{ij} \sin\delta_{ij}) \\
     Q_i &= |V_i| \sum_{j=1}^{n} |V_j| (G_{ij} \sin\delta_{ij} - B_{ij} \cos\delta_{ij})
     \end{align}
 
-    \section{Kryterium zbieznosci}
+    \section{Kryterium zbieżności}
 
-    Solver osiaga zbieznosc gdy:
+    Solver osiąga zbieżność gdy:
     \begin{equation}
     \max(|\Delta P|, |\Delta Q|) < \epsilon
     \end{equation}
-    gdzie $\epsilon$ to tolerancja (domyslnie $10^{-8}$).
+    gdzie $\epsilon$ to tolerancja (domyślnie $10^{-8}$).
 
     \section{Weryfikacja bilansu}
 

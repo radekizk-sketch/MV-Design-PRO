@@ -350,7 +350,7 @@ class LineIDoublePrimeReferencePattern:
             build_trace_step(
                 step="check_selectivity",
                 description_pl="Sprawdzenie kryterium selektywności I>>",
-                formula=r"I_{min,sel} = k_b \times I''_{k,max}^{(nastepna~strefa)}",
+                formula=r"I_{min,sel} = k_b \times I''_{k,max}^{(następna~strefa)}",
                 inputs={
                     "k_b": instantaneous.k_b,
                     "i_min_selectivity_a": instantaneous.i_min_selectivity_a,
@@ -365,7 +365,7 @@ class LineIDoublePrimeReferencePattern:
             build_trace_step(
                 step="check_sensitivity",
                 description_pl="Sprawdzenie kryterium czułości I>>",
-                formula=r"I_{max,cz} = I''_{k3,min}^{(poczatek~linii)} / k_b",
+                formula=r"I_{max,cz} = I''_{k3,min}^{(początek~linii)} / k_b",
                 inputs={
                     "k_b": instantaneous.k_b,
                     "i_max_sensitivity_a": instantaneous.i_max_sensitivity_a,

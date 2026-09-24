@@ -379,7 +379,7 @@ def test_rocof_wywod_has_formula_substitution_and_verdict() -> None:
     assert "2.5000" in kroki[2]["latex"] and r"\ge 2.0" in kroki[2]["latex"]
     # Wynik porównania tekstowy (zmiana kanonu 2026-09-23: ocenę niesie rekord porównania,
     # ostatni krok śladu nie jest werdyktem — intencja zachowana: krok kończy wywód).
-    assert kroki[3]["latex"] is None and kroki[3]["tekst"].startswith("Wynik porownania: w oknie")
+    assert kroki[3]["latex"] is None and kroki[3]["tekst"].startswith("Wynik porównania: w oknie")
 
 
 def test_rocof_below_window_wywod_uses_opposite_sign() -> None:
@@ -394,7 +394,7 @@ def test_rocof_below_window_wywod_uses_opposite_sign() -> None:
     kroki = rocof["wywod"]
     assert "1.0000 < 2.0" in kroki[2]["latex"]
     assert "NIESPELNIONE" in kroki[2]["tekst"]
-    assert kroki[3]["tekst"].startswith("Wynik porownania: poza oknem")
+    assert kroki[3]["tekst"].startswith("Wynik porównania: poza oknem")
 
 
 def test_wywod_empty_when_no_real_comparison() -> None:

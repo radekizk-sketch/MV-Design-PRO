@@ -72,13 +72,13 @@ def render_audit2_report_text(ctx: Audit2ReportContext) -> str:
     proofs = ctx.proof_pack_dict.get("proofs", [])
     if not proofs:
         return (
-            f"Raport walidacji rozszerzen audytu 2 — brak dowodow do uwzglednienia.\n"
+            f"Raport walidacji rozszerzeń audytu 2 — brak dowodów do uwzględnienia.\n"
             f"Stacja: {ctx.station_id}\n"
             f"Projekt: {ctx.project_name}\n"
         )
 
     lines: list[str] = []
-    lines.append("RAPORT WALIDACJI ROZSZERZEN AUDYTU 2")
+    lines.append("RAPORT WALIDACJI ROZSZERZEŃ AUDYTU 2")
     lines.append("=" * 50)
     lines.append(f"Projekt: {ctx.project_name}")
     lines.append(f"Stacja: {ctx.station_id}")
@@ -89,12 +89,12 @@ def render_audit2_report_text(ctx: Audit2ReportContext) -> str:
 
     pass_count = sum(1 for p in proofs if p.get("pass_status"))
     fail_count = len(proofs) - pass_count
-    lines.append(f"PODSUMOWANIE: {len(proofs)} walidacji, {pass_count} OK, {fail_count} blokerow.")
+    lines.append(f"PODSUMOWANIE: {len(proofs)} walidacji, {pass_count} OK, {fail_count} blokerów.")
     lines.append("")
 
     grouped = _group_proofs_by_type(proofs)
     for proof_type, group in grouped.items():
-        lines.append(f"--- {proof_type} ({len(group)} dowodow) ---")
+        lines.append(f"--- {proof_type} ({len(group)} dowodów) ---")
         for p in group:
             status = "OK" if p.get("pass_status") else "BLOKER"
             lines.append(f"  [{status}] {p.get('summary_pl', '')}")
@@ -145,7 +145,7 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
     elements: list = []
 
     # Naglowek.
-    elements.append(Paragraph("Raport walidacji rozszerzen audytu 2", styles["Title"]))
+    elements.append(Paragraph("Raport walidacji rozszerzeń audytu 2", styles["Title"]))
     elements.append(Spacer(1, 0.5 * cm))
     elements.append(Paragraph(f"Projekt: {ctx.project_name}", styles["Normal"]))
     elements.append(Paragraph(f"Stacja: {ctx.station_id}", styles["Normal"]))
@@ -163,7 +163,7 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
         ["Total walidacji", str(len(proofs))],
         ["OK", str(pass_count)],
         ["Blokery", str(fail_count)],
-        ["Wynik calosciowy", "OK" if fail_count == 0 else "BLOKERY OBECNE"],
+        ["Wynik całościowy", "OK" if fail_count == 0 else "BLOKERY OBECNE"],
     ]
     summary_table = Table(summary_data, colWidths=[6 * cm, 4 * cm])
     summary_table.setStyle(
@@ -226,7 +226,7 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
 
     doc = Document()
     # Tytul.
-    title = doc.add_heading("Raport walidacji rozszerzen audytu 2", level=0)
+    title = doc.add_heading("Raport walidacji rozszerzeń audytu 2", level=0)
     title.alignment = 1  # center
 
     # Metadata.
@@ -247,7 +247,7 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
         ("Total walidacji", str(len(proofs))),
         ("OK", str(pass_count)),
         ("Blokery", str(fail_count)),
-        ("Wynik calosciowy", "OK" if fail_count == 0 else "BLOKERY OBECNE"),
+        ("Wynik całościowy", "OK" if fail_count == 0 else "BLOKERY OBECNE"),
     ]
     for i, (label, value) in enumerate(rows_data):
         summary_table.rows[i].cells[0].text = label

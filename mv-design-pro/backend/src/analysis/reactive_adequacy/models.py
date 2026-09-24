@@ -44,7 +44,7 @@ DEFAULT_SATURATION_TOL_MVAR = 1.0e-3
 # (karta W3-J; dawniej zaszyta niezaleznie jako "praktyka inzynierska SN 0,95-1,05").
 DEFAULT_U_MIN_PU, DEFAULT_U_MAX_PU = pasmo_pu(KRYTERIUM_OSTRZEZENIE_PROCENT)
 
-VERDICT_ADEQUATE = "wystarczajaca rezerwa Q"
+VERDICT_ADEQUATE = "wystarczająca rezerwa Q"
 VERDICT_EXHAUSTED = "rezerwa Q wyczerpana"
 VERDICT_NO_DATA = "dane niekompletne"
 

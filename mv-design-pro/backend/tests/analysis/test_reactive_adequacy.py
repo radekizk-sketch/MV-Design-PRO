@@ -185,7 +185,7 @@ class TestVoltageViolation:
         ]
         v = ReactiveAdequacyBuilder().build(buses, sources)
         viol = v.voltage_violations[0]
-        assert viol.kind_pl == "ponizej U_min"
+        assert viol.kind_pl == "poniżej U_min"
         assert viol.deviation_pu == pytest.approx(-0.05)
 
     def test_unsolved_bus_voltage_not_evaluated(self) -> None:

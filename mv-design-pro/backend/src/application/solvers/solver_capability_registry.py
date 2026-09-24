@@ -82,7 +82,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_short_circuit_iec60909.py::test_ikss_3ph_transformer_only_matches_formula",
-        applicability="Zwarcie trojfazowe na wezle SN zgodnie z IEC 60909.",
+        applicability="Zwarcie trójfazowe na węźle SN zgodnie z IEC 60909.",
     ),
     "SC_1F": SolverCapability(
         capability="SC_1F",
@@ -95,7 +95,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_short_circuit_iec60909.py::test_unbalanced_fault_currents_are_ordered",
-        applicability="Zwarcie jednofazowe doziemne z siecia zerowa, pojemnosciami doziemnymi i uziemieniem.",
+        applicability="Zwarcie jednofazowe doziemne z siecią zerową, pojemnościami doziemnymi i uziemieniem.",
     ),
     "SC_2F": SolverCapability(
         capability="SC_2F",
@@ -113,7 +113,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_short_circuit_iec60909.py::test_unbalanced_fault_currents_are_ordered",
-        applicability="Zwarcie dwufazowe bez udzialu ziemi.",
+        applicability="Zwarcie dwufazowe bez udziału ziemi.",
     ),
     "SC_2F_G": SolverCapability(
         capability="SC_2F_G",
@@ -126,7 +126,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_short_circuit_iec60909.py::test_2ph_ground_depends_on_z0_and_requires_it",
-        applicability="Zwarcie dwufazowe z ziemia z uwzglednieniem toru zerowego.",
+        applicability="Zwarcie dwufazowe z ziemią z uwzględnieniem toru zerowego.",
     ),
     "LOAD_FLOW_NR": SolverCapability(
         capability="LOAD_FLOW_NR",
@@ -152,7 +152,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_power_flow_gauss_seidel.py::TestGaussSeidelBasic::test_two_bus_converges",
-        applicability="Tryb diagnostyczny Gaussa-Seidla dla przypadkow zbieznosciowo kontrolowanych.",
+        applicability="Tryb diagnostyczny Gaussa-Seidla dla przypadków zbieżnościowo kontrolowanych.",
     ),
     "LOAD_FLOW_FD_PERFORMANCE": SolverCapability(
         capability="LOAD_FLOW_FD_PERFORMANCE",
@@ -171,7 +171,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_power_flow_fast_decoupled.py::TestFastDecoupledBasic::test_two_bus_converges",
-        applicability="Tryb wydajnosciowy fast-decoupled przy spelnionych warunkach stosowalnosci.",
+        applicability="Tryb wydajnościowy fast-decoupled przy spełnionych warunkach stosowalności.",
     ),
     # Karta W5-D (F-1): rozpływ niesymetryczny jako bieg produktu — solver FROZEN
     # `power_flow_unbalanced.py` (BFS) przez assembler `zloz_wejscie_rozplywu_niesymetrycznego`.
@@ -193,8 +193,8 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         reportable=True,
         reference_test="enm/test_rozplyw_niesymetryczny_bieg.py::test_dwa_biegi_tej_samej_migawki_sa_bit_w_bit",
         applicability=(
-            "Rozplyw niesymetryczny sieci promieniowej z odbiorami per faza "
-            "(faza-N) — napiecia/prady per faza, VUF wg IEC 61000-4-30."
+            "Rozpływ niesymetryczny sieci promieniowej z odbiorami per faza "
+            "(faza-N) — napięcia/prądy per faza, VUF wg IEC 61000-4-30."
         ),
     ),
     "PHASE_STATE_SN": SolverCapability(
@@ -230,9 +230,9 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         reportable=False,
         reference_test="uczciwosc/test_stabilnosc_katow_bez_werdyktu.py::test_wiersz_wyniku_nie_niesie_werdyktu_stabilnosci",
         applicability=(
-            "Echo scenariusza wylaczenia zwarcia wpisanego przez uzytkownika (katy, napiecie i "
-            "czestotliwosc po zwarciu, czas wylaczenia) — bez werdyktu stabilnosci: tor nie "
-            "rozwiazuje sieci; ocena niewykonana do czasu biegu dynamiki RMS z wyrocznia."
+            "Echo scenariusza wyłączenia zwarcia wpisanego przez użytkownika (kąty, napięcie i "
+            "częstotliwość po zwarciu, czas wyłączenia) — bez werdyktu stabilności: tor nie "
+            "rozwiązuje sieci; ocena niewykonana do czasu biegu dynamiki RMS z wyrocznią."
         ),
     ),
     "POWER_QUALITY_HARMONICS": SolverCapability(
@@ -247,9 +247,9 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         reportable=False,
         reference_test="uczciwosc/test_jakosc_energii_bez_werdyktu.py::test_wynik_e40_niesie_ocene_niewykonana_i_zero_liczb_poza_audytem",
         applicability=(
-            "Rozplyw harmoniczny solvera niezwalidowanego (bez przekladni transformatora, siec "
-            "nadrzedna jako admitancja 1e6 S, 18 zaszytych rzedow, bez wyroczni) — ocena "
-            "kompatybilnosci niewykonana, liczby THD/TDD/K/U_h/skan Z wylacznie w sekcji "
+            "Rozpływ harmoniczny solvera niezwalidowanego (bez przekładni transformatora, sieć "
+            "nadrzędna jako admitancja 1e6 S, 18 zaszytych rzędów, bez wyroczni) — ocena "
+            "kompatybilności niewykonana, liczby THD/TDD/K/U_h/skan Z wyłącznie w sekcji "
             "audytowej."
         ),
     ),
@@ -266,9 +266,9 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         reference_test="uczciwosc/test_ssci_bez_werdyktu.py::test_widok_ssci_na_realnym_biegu_nie_niesie_werdyktu_stabilnosci",
         applicability=(
             "Tablice impedancji SSCI (Sun 2011/Wen 2016): Z_grid(f)/Z_conv(f) i wzmocnienie "
-            "petli mniejszej L(f) — Z_grid(f) liczone bez przekladni transformatora, wiec "
-            "ocena kryterium Nyquista niewykonana; metryki L(f) wylacznie jako material "
-            "audytowy, wskaznik strefy ujemnej rezystancji przeksztaltnika jako informacja."
+            "pętli mniejszej L(f) — Z_grid(f) liczone bez przekładni transformatora, więc "
+            "ocena kryterium Nyquista niewykonana; metryki L(f) wyłącznie jako materiał "
+            "audytowy, wskaźnik strefy ujemnej rezystancji przekształtnika jako informacja."
         ),
     ),
     "VOLTAGE_STABILITY": SolverCapability(
@@ -282,7 +282,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_v126_academic_solver.py::test_voltage_stability_returns_modal_contract",
-        applicability="P-V, Q-V, modalny wskaznik krytyczny i L-Index dla wezlow SN.",
+        applicability="P-V, Q-V, modalny wskaźnik krytyczny i L-Index dla węzłów SN.",
     ),
     "RELIABILITY_CONTINGENCY": SolverCapability(
         capability="RELIABILITY_CONTINGENCY",
@@ -308,7 +308,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_v126_academic_solver.py::test_earthing_uses_ieee80_contract",
-        applicability="IEEE 80 / PN-EN 50522: Rg, GPR, napiecie dotykowe i krokowe.",
+        applicability="IEEE 80 / PN-EN 50522: Rg, GPR, napięcie dotykowe i krokowe.",
     ),
     "NEUTRAL_EARTHING_DESIGN": SolverCapability(
         capability="NEUTRAL_EARTHING_DESIGN",
@@ -322,8 +322,8 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         reportable=True,
         reference_test="test_v126_neutral_earthing_design.py::TestPetersenResonanceTuning::test_coil_inductance_matches_resonance_formula",
         applicability=(
-            "Projekt uziemienia punktu neutralnego: dlawik Petersena (kompensacja "
-            "rezonansowa Ic) albo rezystor NER (dobor R i sprawdzenie cieplne)."
+            "Projekt uziemienia punktu neutralnego: dławik Petersena (kompensacja "
+            "rezonansowa Ic) albo rezystor NER (dobór R i sprawdzenie cieplne)."
         ),
     ),
     "INSULATION_COORDINATION": SolverCapability(
@@ -350,7 +350,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_v126_academic_solver.py::test_each_v126_analysis_has_deterministic_proof_and_report_artifacts",
-        applicability="Dobor watometrycznej, admitancyjnej, transient directional albo 5 harmonicznej.",
+        applicability="Dobór watometrycznej, admitancyjnej, transient directional albo 5 harmonicznej.",
     ),
     "TRANSIENT_TRV": SolverCapability(
         capability="TRANSIENT_TRV",
@@ -376,7 +376,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_v126_academic_solver.py::test_each_v126_analysis_has_deterministic_proof_and_report_artifacts",
-        applicability="Zapad napiecia rozruchowego, moment-poslizg i termika I2t.",
+        applicability="Zapad napięcia rozruchowego, moment-poślizg i termika I2t.",
     ),
     "HOSTING_CAPACITY": SolverCapability(
         capability="HOSTING_CAPACITY",
@@ -438,7 +438,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         proof_support=True,
         reportable=True,
         reference_test="test_v126_academic_solver.py::test_each_v126_analysis_has_deterministic_proof_and_report_artifacts",
-        applicability="Niepewnosc k=2 i ranking wrazliwosci parametrow.",
+        applicability="Niepewność k=2 i ranking wrażliwości parametrów.",
     ),
 }
 

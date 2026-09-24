@@ -279,13 +279,13 @@ def apply_station_template(
 class SaveUserTemplateRequest(BaseModel):
     """B-8: zapis biezacej konfiguracji kreatora jako szablonu uzytkownika."""
 
-    name_pl: str = Field(..., min_length=1, description="Nazwa szablonu (widoczna na liscie)")
-    description_pl: str | None = Field(default=None, description="Opis do czego szablon sluzy")
+    name_pl: str = Field(..., min_length=1, description="Nazwa szablonu (widoczna na liście)")
+    description_pl: str | None = Field(default=None, description="Opis do czego szablon służy")
     configuration: dict[str, Any] = Field(
         ...,
         description=(
             "Stan formularza kreatora — przechowywany BEZ ZMIAN; backend go NIE "
-            "interpretuje (odtworzeniem zajmuje sie wylacznie kreator)"
+            "interpretuje (odtworzeniem zajmuje się wyłącznie kreator)"
         ),
     )
 

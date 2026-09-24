@@ -226,13 +226,13 @@ def import_cgmes(archive_bytes: bytes, *, prefer_side_car: bool = True) -> Cgmes
         return CgmesImportResult(
             status=CgmesImportStatus.FAILED,
             enm=None,
-            errors=["Nieprawidlowy format archiwum ZIP."],
+            errors=["Nieprawidłowy format archiwum ZIP."],
         )
     except json.JSONDecodeError as exc:
         return CgmesImportResult(
             status=CgmesImportStatus.FAILED,
             enm=None,
-            errors=[f"Blad parsowania JSON side-car/manifest: {exc}"],
+            errors=[f"Błąd parsowania JSON side-car/manifest: {exc}"],
         )
 
     if prefer_side_car and refmap is not None and refmap.enm:
@@ -258,13 +258,13 @@ def verify_cgmes_integrity(archive_bytes: bytes) -> list[str]:
             recomputed: dict[str, str] = {}
             for name, stored_hash in sorted(stored_files.items()):
                 if name not in names:
-                    errors.append(f"Brak pliku '{name}' wymienionego w manifescie.")
+                    errors.append(f"Brak pliku '{name}' wymienionego w manifeście.")
                     continue
                 actual = _sha256(zf.read(name))
                 recomputed[name] = actual
                 if actual != stored_hash:
                     errors.append(
-                        f"Blad integralnosci '{name}': oczekiwano {stored_hash}, "
+                        f"Błąd integralności '{name}': oczekiwano {stored_hash}, "
                         f"obliczono {actual}."
                     )
             stored_archive = manifest.get("archive_hash", "")
@@ -273,11 +273,11 @@ def verify_cgmes_integrity(archive_bytes: bytes) -> list[str]:
             )
             if recomputed == stored_files and computed_archive != stored_archive:
                 errors.append(
-                    f"Blad integralnosci archiwum: oczekiwano {stored_archive}, "
+                    f"Błąd integralności archiwum: oczekiwano {stored_archive}, "
                     f"obliczono {computed_archive}."
                 )
     except zipfile.BadZipFile:
-        return ["Nieprawidlowy format archiwum ZIP."]
+        return ["Nieprawidłowy format archiwum ZIP."]
     except json.JSONDecodeError as exc:
-        return [f"Blad parsowania manifest.json: {exc}"]
+        return [f"Błąd parsowania manifest.json: {exc}"]
     return errors

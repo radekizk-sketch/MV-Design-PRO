@@ -606,13 +606,13 @@ class Generator(ENMElement):
         | None
     ) = None
     """
-    Wariant przylaczenia PV/BESS:
+    Wariant przyłączenia PV/BESS:
     - 'nn_side': po stronie nN stacji (przez transformator stacji SN/nN)
     - 'block_transformer': przez transformator blokowy do SN
     - None: brak informacji → FixAction generator.connection_variant_missing
     Dotyczy TYLKO gen_type in ('pv_inverter', 'wind_inverter',
     'fw_pmsg', 'fw_dfig', 'fw_scig', 'bess').
-    Generatory synchroniczne nie wymagaja wariantu.
+    Generatory synchroniczne nie wymagają wariantu.
     """
 
     blocking_transformer_ref: str | None = None
@@ -625,58 +625,58 @@ class Generator(ENMElement):
     station_ref: str | None = None
     """
     Referencja do stacji (ref_id substacji).
-    Wymagana dla wariantu 'nn_side' (wskazuje stacje SN/nN).
+    Wymagana dla wariantu 'nn_side' (wskazuje stację SN/nN).
     """
 
     dynamika: ParametryDynamiczne | None = None
     """
-    Parametry dynamiczne zrodla (karta W6-1 SS0 p.1, `enm/dynamika_modele.py`).
-    `None` = brak danych wejsciowych DAE — NIGDY domyslka systemowa. Wymagany
-    blok jest unia dyskryminowana po `rodzina` (synchroniczna/GFL/GFM/magazyn/
-    wiatr_typ_1..4), kazdy z WYMAGANA proweniencja. Zero fizyki: pole niesie
-    wylacznie dane wejsciowe konsumowane przez solver W6-2
+    Parametry dynamiczne źródła (karta W6-1 SS0 p.1, `enm/dynamika_modele.py`).
+    `None` = brak danych wejściowych DAE — NIGDY domyślka systemowa. Wymagany
+    blok jest unią dyskryminowaną po `rodzina` (synchroniczna/GFL/GFM/magazyn/
+    wiatr_typ_1..4), każdy z WYMAGANĄ proweniencją. Zero fizyki: pole niesie
+    wyłącznie dane wejściowe konsumowane przez solver W6-2
     (`network_model/solvers/dynamika/`, jeszcze nie istnieje w tej karcie).
     """
 
     modele_widmowe: ModeleWidmoweElementu | None = None
     """
-    Modele widmowe zrodla (karta AB-H0 §0.7.6): ZMATERIALIZOWANA kopia modeli z kart
+    Modele widmowe źródła (karta AB-H0 §0.7.6): ZMATERIALIZOWANA kopia modeli z kart
     widmowych wskazanych kluczem `karty_widmowe_ref` operacji `set_der_catalog_bindings`,
-    z proweniencja kazdej karty (id, wersja, przestrzen STATYCZNA/PROJEKT, odcisk).
-    Konsumenci dziedziny czestotliwosci czytaja WYLACZNIE to pole (wzorzec O-44).
-    `None` = brak modelu widmowego urzadzenia (sekcja `harmonic` UNKNOWN z nazwanym
+    z proweniencją każdej karty (id, wersja, przestrzeń STATYCZNA/PROJEKT, odcisk).
+    Konsumenci dziedziny częstotliwości czytają WYŁĄCZNIE to pole (wzorzec O-44).
+    `None` = brak modelu widmowego urządzenia (sekcja `harmonic` UNKNOWN z nazwanym
     brakiem) — nigdy widmo typowe. Referencja karty NIE trafia do `materialized_params`.
     """
 
     modul_istniejacy: ModulIstniejacy | None = None
     """
-    Modul istniejacy w rozumieniu art. 4 ust. 1 rozporzadzenia 2016/631 (plan AB O-31).
-    `True` — wymagania rozporzadzenia nie maja zastosowania bez modernizacji; `False` —
-    modul nowy; `None` — status nieustalony (ocena wymagan traktuje modul jak nowy, a kazdy
-    rekord niesie zastrzezenie). Most zgodnosci NC RfG przenosi pole 1:1 do wejscia solvera.
+    Moduł istniejący w rozumieniu art. 4 ust. 1 rozporządzenia 2016/631 (plan AB O-31).
+    `True` — wymagania rozporządzenia nie mają zastosowania bez modernizacji; `False` —
+    moduł nowy; `None` — status nieustalony (ocena wymagań traktuje moduł jak nowy, a każdy
+    rekord niesie zastrzeżenie). Most zgodności NC RfG przenosi pole 1:1 do wejścia solvera.
     """
 
     data_umowy_przylaczeniowej: DataUmowy | None = None
     """
-    Data zawarcia umowy przylaczeniowej modulu (plan AB O-31) — resolver wersji warstw
+    Data zawarcia umowy przyłączeniowej modułu (plan AB O-31) — resolver wersji warstw
     profilu regulacyjnego (WOS, procedura PTPiREE, WiPWC, IRiESD) wybiera wydanie
-    obowiazujace w tym dniu. `None` — data nieustalona (wersja dobrana bez daty, z uwaga).
+    obowiązujące w tym dniu. `None` — data nieustalona (wersja dobrana bez daty, z uwagą).
     """
 
     nastawy_zabezpieczen: NastawyZabezpieczenModulu | None = None
     """
-    Nastawy zabezpieczen modulu (U<, U>, f<, f>, RoCoF, skok wektora) ze zrodlem
+    Nastawy zabezpieczeń modułu (U<, U>, f<, f>, RoCoF, skok wektora) ze źródłem
     (`enm/nastawy_modulu.py`, plan AB O-32). `None` — brak nastaw w modelu: kryteria
     koordynacji statycznej (`frt.koordynacja_nastaw_u_min`, `rocof.koordynacja_nastaw_lom`)
-    daja NIE_OCENIONO z nazwanym brakiem, nigdy wartosc typowa.
+    dają NIE_OCENIONO z nazwanym brakiem, nigdy wartość typowa.
     """
 
     deklaracje_modulu: DeklaracjeModulu | None = None
     """
-    Deklaracje modulu dla testow zgodnosci NC RfG / PTPiREE (T05, T10-T13, T16-T20) ze
-    zrodlem (`enm/deklaracje_modulu.py`, plan AB O-50): nazwy pol 1:1 z wejsciem solvera
+    Deklaracje modułu dla testów zgodności NC RfG / PTPiREE (T05, T10-T13, T16-T20) ze
+    źródłem (`enm/deklaracje_modulu.py`, plan AB O-50): nazwy pól 1:1 z wejściem solvera
     `NcRfgPtpireeModuleInput`. `None` albo pole puste — brak deklaracji: test daje
-    NIE_OCENIONO z nazwanym brakiem, nigdy wartosc typowa ani „niezadeklarowane".
+    NIE_OCENIONO z nazwanym brakiem, nigdy wartość typowa ani „niezadeklarowane".
     """
 
     @model_validator(mode="after")
@@ -714,19 +714,19 @@ class Generator(ENMElement):
             if self.station_ref is not None:
                 raise ValueError(
                     f"Generator '{self.ref_id}': connection_variant="
-                    f"'DEDICATED_MV_CONNECTION' nie moze miec station_ref "
-                    f"(generator ma dedykowane przylacze SN, nie idzie przez stacje)."
+                    f"'DEDICATED_MV_CONNECTION' nie może mieć station_ref "
+                    f"(generator ma dedykowane przyłącze SN, nie idzie przez stację)."
                 )
         elif variant == "nn_side":
             if self.station_ref is None:
                 raise ValueError(
                     f"Generator '{self.ref_id}': connection_variant='nn_side' "
-                    f"wymaga station_ref (wskazuje stacje SN/nN)."
+                    f"wymaga station_ref (wskazuje stację SN/nN)."
                 )
             if self.blocking_transformer_ref is not None:
                 raise ValueError(
                     f"Generator '{self.ref_id}': connection_variant='nn_side' "
-                    f"nie moze miec blocking_transformer_ref "
+                    f"nie może mieć blocking_transformer_ref "
                     f"(generator po stronie nN, transformator stacji wystarczy)."
                 )
         elif variant == "block_transformer":

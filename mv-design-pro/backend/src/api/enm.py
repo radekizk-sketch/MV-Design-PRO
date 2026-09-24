@@ -207,7 +207,7 @@ def get_rewizja_modelu(case_id: str, klucz: KluczTwin, rewizja: int) -> dict[str
             status_code=404,
             detail=(
                 f"Rewizja {rewizja} modelu tego przypadku nie ma zapisanej migawki — "
-                "powstala przed wprowadzeniem rejestru rewizji albo nigdy nie istniala."
+                "powstała przed wprowadzeniem rejestru rewizji albo nigdy nie istniała."
             ),
         ) from exc
     except RewizjaUszkodzonaError as exc:

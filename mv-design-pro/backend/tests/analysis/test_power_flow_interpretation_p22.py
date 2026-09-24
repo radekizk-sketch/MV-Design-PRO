@@ -274,10 +274,10 @@ def test_polish_descriptions(
 
     for finding in result.voltage_findings:
         assert "Szyna" in finding.description_pl
-        assert "napiecie" in finding.description_pl
+        assert "napięcie" in finding.description_pl
 
     for finding in result.branch_findings:
-        assert "Galaz" in finding.description_pl
+        assert "Gałąź" in finding.description_pl
         assert "straty" in finding.description_pl
 
 
@@ -440,7 +440,7 @@ def test_branch_missing_one_side_is_skipped_not_zero(caplog: pytest.LogCaptureFi
     branch_ids = {finding.branch_id for finding in interpretation.branch_findings}
     assert branch_ids == {"branch_1"}, "branch_2 bez kompletu danych nie moze dostac wyniku"
     assert any(
-        "branch_2" in record.message and "pominieta" in record.message for record in caplog.records
+        "branch_2" in record.message and "pominięta" in record.message for record in caplog.records
     ), "brak strony 'to' musi zostac zalogowany z jawnym powodem"
 
 

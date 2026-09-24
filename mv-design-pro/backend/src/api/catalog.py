@@ -114,10 +114,10 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
         notes.append(str(source_ref))
     if meta.get("unverified"):
         notes.append(
-            "Rekord analityczny: dane urzadzenia nie sa jeszcze zweryfikowane produkcyjnie."
+            "Rekord analityczny: dane urządzenia nie są jeszcze zweryfikowane produkcyjnie."
         )
     if meta.get("unverified_ranges"):
-        notes.append("Zakresy nastaw pochodza z katalogu analitycznego i wymagaja weryfikacji.")
+        notes.append("Zakresy nastaw pochodzą z katalogu analitycznego i wymagają weryfikacji.")
 
     # Karta FAB-A/D-33: `vendor is None` = profil REFERENCYJNY bez marki
     # (byl falszywie przypisany ABB). Etykieta MUSI jednoznacznie mowic, ze to
@@ -460,8 +460,8 @@ def przeglad_wiarygodnosci_rodziny(rodzina: str) -> RodzinaPrzegladuOdpowiedz:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(
-                f"Rodzina '{rodzina}' nie jest objeta przegladem wiarygodnosci. "
-                f"Dostepne: {', '.join(sorted(pozycje))}."
+                f"Rodzina '{rodzina}' nie jest objęta przeglądem wiarygodności. "
+                f"Dostępne: {', '.join(sorted(pozycje))}."
             ),
         )
     return _rodzina_odpowiedz(przeglad_rodziny(rodzina, pozycje[rodzina]))
@@ -522,12 +522,12 @@ def list_ptpiree_generator_certificates(
     if limit is not None and limit < 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Parametr limit musi byc >= 1.",
+            detail="Parametr limit musi być >= 1.",
         )
     if offset < 0:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Parametr offset musi byc >= 0.",
+            detail="Parametr offset musi być >= 0.",
         )
     records = [
         item.to_dict() for item in get_default_mv_catalog().list_ptpiree_generator_certificates()
@@ -1020,7 +1020,7 @@ def _liczba_z_katalogu(entry: dict[str, Any], pole: str) -> float | None:
     wartosc = params.get(pole)
     if isinstance(wartosc, bool) or not isinstance(wartosc, int | float):
         logger.warning(
-            "auto-populate: pozycja katalogu %s bez liczbowego pola %s — pominieta",
+            "auto-populate: pozycja katalogu %s bez liczbowego pola %s — pominięta",
             entry.get("id"),
             pole,
         )

@@ -169,7 +169,7 @@
     "capability_id": "frt_hvrt.trajectory",
     "claim_kind": "DYNAMIC_PERFORMANCE",
     "claim_kind_pl": "zachowanie dynamiczne",
-    "rationale_pl": "Trajektoria napiecia MVP jest funkcja zadana parametryzowana wejsciem scenariusza, nie rozwiazaniem sieci sprzezonym z reszta modulu — network_model/solvers/frt_hvrt/engine.py.",
+    "rationale_pl": "Trajektoria napięcia MVP jest funkcją zadaną parametryzowaną wejściem scenariusza, nie rozwiązaniem sieci sprzężonym z resztą modułu — network_model/solvers/frt_hvrt/engine.py.",
     "regulatory_evidence_eligible": false,
     "tier": "UNVALIDATED_MODEL",
     "tier_pl": "model niezwalidowany"

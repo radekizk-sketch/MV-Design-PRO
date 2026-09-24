@@ -24,10 +24,10 @@
         "analysis_type": "ssci_impedance",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "e76b62d9f5a800f37d343db14b7fce5189801f34305469a73ad2c3f4e59dec6b",
-        "proof_id": "proof:v126:ssci_impedance:acb0ba66dd1b7454",
+        "proof_hash": "57978bef2a4510fa53c26a504a0bcb6120f2921780e4136cd745017ed718a4dd",
+        "proof_id": "proof:v126:ssci_impedance:1f5e266f9d6ce43e",
         "run_id": "run-v126-scena-akademickie-ssci_impedance",
-        "source_result_hash": "acb0ba66dd1b7454eee1f9a026e0e009f3fe57694c9ce8b1049ec9807dfbce63",
+        "source_result_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c",
         "steps": [
           {
             "data": {
@@ -133,7 +133,7 @@
       "koperta": {
         "analysis_type": "ssci_impedance",
         "case_id": "case-demo",
-        "deterministic_hash": "acb0ba66dd1b7454eee1f9a026e0e009f3fe57694c9ce8b1049ec9807dfbce63",
+        "deterministic_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-ssci_impedance/results/v126/ssci_impedance",
@@ -146,8 +146,8 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV1",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "c3c3beaa0ffb0dc74a0ad0465be35443b7adba6d4e0e34ea088b6ddf38835f75",
-        "report_id": "report:v126:ssci_impedance:acb0ba66dd1b7454",
+        "report_hash": "812091b4e10909f70c86e6262627392f3a21d607c6092f642f02464bd75126cf",
+        "report_id": "report:v126:ssci_impedance:1f5e266f9d6ce43e",
         "run_id": "run-v126-scena-akademickie-ssci_impedance",
         "sections": [
           {
@@ -256,11 +256,11 @@
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:ssci_impedance:acb0ba66dd1b7454"
+                "value": "proof:v126:ssci_impedance:1f5e266f9d6ce43e"
               },
               {
                 "label": "proof_hash",
-                "value": "e76b62d9f5a800f37d343db14b7fce5189801f34305469a73ad2c3f4e59dec6b"
+                "value": "57978bef2a4510fa53c26a504a0bcb6120f2921780e4136cd745017ed718a4dd"
               },
               {
                 "label": "trace_step_count",
@@ -274,7 +274,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "acb0ba66dd1b7454eee1f9a026e0e009f3fe57694c9ce8b1049ec9807dfbce63"
+                "value": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c"
               },
               {
                 "label": "solver_version",
@@ -282,19 +282,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "6a10a6745553ce5411e008078d4bdd1b84608f1ad71ab161eb1fd718b3ff36e4"
+                "value": "82644d2168c14ea888279b94d70ee6d86a4407c5dea1e99b7159b9b7f668c049"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "e76b62d9f5a800f37d343db14b7fce5189801f34305469a73ad2c3f4e59dec6b",
-        "source_result_hash": "acb0ba66dd1b7454eee1f9a026e0e009f3fe57694c9ce8b1049ec9807dfbce63"
+        "source_proof_hash": "57978bef2a4510fa53c26a504a0bcb6120f2921780e4136cd745017ed718a4dd",
+        "source_result_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c"
       },
       "slad": {
         "analysis_type": "ssci_impedance",
-        "deterministic_hash": "acb0ba66dd1b7454eee1f9a026e0e009f3fe57694c9ce8b1049ec9807dfbce63",
+        "deterministic_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c",
         "run_id": "run-v126-scena-akademickie-ssci_impedance",
         "steps": [
           {
@@ -408,14 +408,14 @@
         "trace_version": "AcademicWhiteBoxTraceV1"
       },
       "stabilnosc": {
-        "analysis_id": "18c6e16a70b507c1b29d90e70015f6f11dcbc52b3ff15e203a2ee6efad7b81b7",
+        "analysis_id": "828617fdf32b21075f30a4cd7a1f2c0fdbcb25418784ccc896afc7fcf3eb9920",
         "context": {
           "case_id": "case-demo",
           "case_name": null,
           "project_name": null,
           "run_id": "run-v126-scena-akademickie-ssci_impedance",
           "run_timestamp": "2026-09-16T09:00:00+00:00",
-          "snapshot_hash": "acb0ba66dd1b7454eee1f9a026e0e009f3fe57694c9ce8b1049ec9807dfbce63"
+          "snapshot_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c"
         },
         "gain_crossover_mag": 1.0,
         "ocena": {
@@ -684,13 +684,13 @@
         "analysis_type": "ssci_impedance",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:ssci_impedance:acb0ba66dd1b7454",
-        "report_ref": "report:v126:ssci_impedance:acb0ba66dd1b7454",
+        "proof_ref": "proof:v126:ssci_impedance:1f5e266f9d6ce43e",
+        "report_ref": "report:v126:ssci_impedance:1f5e266f9d6ce43e",
         "result": {
           "analysis_type": "ssci_impedance",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "acb0ba66dd1b7454eee1f9a026e0e009f3fe57694c9ce8b1049ec9807dfbce63",
-          "input_hash": "6a10a6745553ce5411e008078d4bdd1b84608f1ad71ab161eb1fd718b3ff36e4",
+          "deterministic_hash": "1f5e266f9d6ce43eb09f99c36210e62c735182e51d911ce49f6ff3fee0e9ed6c",
+          "input_hash": "82644d2168c14ea888279b94d70ee6d86a4407c5dea1e99b7159b9b7f668c049",
           "result": {
             "base_frequency_hz": 50.0,
             "bus_ref": "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
@@ -2270,10 +2270,10 @@
         "analysis_type": "voltage_stability",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "354cb6f4a77131c121ef0207c4d786e8f1c61447347204e35fecd12841de770c",
-        "proof_id": "proof:v126:voltage_stability:022bef70ab31e293",
+        "proof_hash": "a5fc0ca1573a0a8b7d978f883f5ee3d3ee54cf41561b1c7d569a87001c841508",
+        "proof_id": "proof:v126:voltage_stability:1ff1f161482e6971",
         "run_id": "run-v126-scena-akademickie-voltage_stability",
-        "source_result_hash": "022bef70ab31e293412b305de9987a41f9ef79a079dc13f7b3e9cce95b942a8b",
+        "source_result_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342",
         "steps": [
           {
             "data": {
@@ -2301,7 +2301,7 @@
       "koperta": {
         "analysis_type": "voltage_stability",
         "case_id": "case-demo",
-        "deterministic_hash": "022bef70ab31e293412b305de9987a41f9ef79a079dc13f7b3e9cce95b942a8b",
+        "deterministic_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-voltage_stability/results/v126/voltage_stability/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-voltage_stability/results/v126/voltage_stability/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-voltage_stability/results/v126/voltage_stability",
@@ -2314,8 +2314,8 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV1",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "1ba225532bf9c0fd885e3b16528475328387cb41c81519cc68163696a6451570",
-        "report_id": "report:v126:voltage_stability:022bef70ab31e293",
+        "report_hash": "ab1bd7859c05e9d8a5070797f6420ef2096d04c18ed5f0edf401d18cf0eaf7c6",
+        "report_id": "report:v126:voltage_stability:1ff1f161482e6971",
         "run_id": "run-v126-scena-akademickie-voltage_stability",
         "sections": [
           {
@@ -2424,11 +2424,11 @@
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:voltage_stability:022bef70ab31e293"
+                "value": "proof:v126:voltage_stability:1ff1f161482e6971"
               },
               {
                 "label": "proof_hash",
-                "value": "354cb6f4a77131c121ef0207c4d786e8f1c61447347204e35fecd12841de770c"
+                "value": "a5fc0ca1573a0a8b7d978f883f5ee3d3ee54cf41561b1c7d569a87001c841508"
               },
               {
                 "label": "trace_step_count",
@@ -2442,7 +2442,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "022bef70ab31e293412b305de9987a41f9ef79a079dc13f7b3e9cce95b942a8b"
+                "value": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342"
               },
               {
                 "label": "solver_version",
@@ -2450,19 +2450,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "77bd9208127669f485a78d7e98a72a419196a43cd7bb7bcfb637c091ac83338a"
+                "value": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "354cb6f4a77131c121ef0207c4d786e8f1c61447347204e35fecd12841de770c",
-        "source_result_hash": "022bef70ab31e293412b305de9987a41f9ef79a079dc13f7b3e9cce95b942a8b"
+        "source_proof_hash": "a5fc0ca1573a0a8b7d978f883f5ee3d3ee54cf41561b1c7d569a87001c841508",
+        "source_result_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342"
       },
       "slad": {
         "analysis_type": "voltage_stability",
-        "deterministic_hash": "022bef70ab31e293412b305de9987a41f9ef79a079dc13f7b3e9cce95b942a8b",
+        "deterministic_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342",
         "run_id": "run-v126-scena-akademickie-voltage_stability",
         "steps": [
           {
@@ -2495,13 +2495,13 @@
         "analysis_type": "voltage_stability",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:voltage_stability:022bef70ab31e293",
-        "report_ref": "report:v126:voltage_stability:022bef70ab31e293",
+        "proof_ref": "proof:v126:voltage_stability:1ff1f161482e6971",
+        "report_ref": "report:v126:voltage_stability:1ff1f161482e6971",
         "result": {
           "analysis_type": "voltage_stability",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "022bef70ab31e293412b305de9987a41f9ef79a079dc13f7b3e9cce95b942a8b",
-          "input_hash": "77bd9208127669f485a78d7e98a72a419196a43cd7bb7bcfb637c091ac83338a",
+          "deterministic_hash": "1ff1f161482e69714f7feded39c532927c1f2dc34023d2b977af57e435ca4342",
+          "input_hash": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5",
           "result": {
             "brak_danych": "Margines obciążalności P–U nie jest wyznaczany: powstawał z przybliżenia ze sztywności węzła o zaszytych współczynnikach, a nie z krzywej P–U liczonej rozpływem. Wymaga rozpływu mocy na modelu przypadku.",
             "l_index_per_bus": [
@@ -2721,10 +2721,10 @@
         "analysis_type": "reliability_contingency",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "b8d406d170e86eef4791423440470d786dc531d92a3e05d6f06c8a787bbefa93",
-        "proof_id": "proof:v126:reliability_contingency:29c1a3ddd8d63fef",
+        "proof_hash": "52cf65864b445f44d7f992ed1ba96ab602bf1f8ce6b551a874ec4d5e8eef8d36",
+        "proof_id": "proof:v126:reliability_contingency:b27734df66f10ceb",
         "run_id": "run-v126-scena-akademickie-reliability_contingency",
-        "source_result_hash": "29c1a3ddd8d63fef9ccfa364998f41242aef55022dda117f65d68f40fe2c1aef",
+        "source_result_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8",
         "steps": [
           {
             "data": {
@@ -2749,7 +2749,7 @@
       "koperta": {
         "analysis_type": "reliability_contingency",
         "case_id": "case-demo",
-        "deterministic_hash": "29c1a3ddd8d63fef9ccfa364998f41242aef55022dda117f65d68f40fe2c1aef",
+        "deterministic_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-reliability_contingency/results/v126/reliability_contingency/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-reliability_contingency/results/v126/reliability_contingency/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-reliability_contingency/results/v126/reliability_contingency",
@@ -2762,8 +2762,8 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV1",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "92dafe9df78bcf49efae94a6476e95721206b704a6b3644317ae8c81f0c1d073",
-        "report_id": "report:v126:reliability_contingency:29c1a3ddd8d63fef",
+        "report_hash": "287d587d01020ec2376078917ac309403e62fea50368bdc2af562a7d498ffc01",
+        "report_id": "report:v126:reliability_contingency:b27734df66f10ceb",
         "run_id": "run-v126-scena-akademickie-reliability_contingency",
         "sections": [
           {
@@ -2824,11 +2824,11 @@
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:reliability_contingency:29c1a3ddd8d63fef"
+                "value": "proof:v126:reliability_contingency:b27734df66f10ceb"
               },
               {
                 "label": "proof_hash",
-                "value": "b8d406d170e86eef4791423440470d786dc531d92a3e05d6f06c8a787bbefa93"
+                "value": "52cf65864b445f44d7f992ed1ba96ab602bf1f8ce6b551a874ec4d5e8eef8d36"
               },
               {
                 "label": "trace_step_count",
@@ -2842,7 +2842,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "29c1a3ddd8d63fef9ccfa364998f41242aef55022dda117f65d68f40fe2c1aef"
+                "value": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8"
               },
               {
                 "label": "solver_version",
@@ -2850,19 +2850,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "3c1ef638dc15d74185a1f2326a33f731af350c3d99b54fb7bb468ac0251f16ad"
+                "value": "c50888922ae0c0a3b2516ba81fc23abfdd528e684b80b4388ff10a99f04fa215"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "b8d406d170e86eef4791423440470d786dc531d92a3e05d6f06c8a787bbefa93",
-        "source_result_hash": "29c1a3ddd8d63fef9ccfa364998f41242aef55022dda117f65d68f40fe2c1aef"
+        "source_proof_hash": "52cf65864b445f44d7f992ed1ba96ab602bf1f8ce6b551a874ec4d5e8eef8d36",
+        "source_result_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8"
       },
       "slad": {
         "analysis_type": "reliability_contingency",
-        "deterministic_hash": "29c1a3ddd8d63fef9ccfa364998f41242aef55022dda117f65d68f40fe2c1aef",
+        "deterministic_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8",
         "run_id": "run-v126-scena-akademickie-reliability_contingency",
         "steps": [
           {
@@ -2892,13 +2892,13 @@
         "analysis_type": "reliability_contingency",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:reliability_contingency:29c1a3ddd8d63fef",
-        "report_ref": "report:v126:reliability_contingency:29c1a3ddd8d63fef",
+        "proof_ref": "proof:v126:reliability_contingency:b27734df66f10ceb",
+        "report_ref": "report:v126:reliability_contingency:b27734df66f10ceb",
         "result": {
           "analysis_type": "reliability_contingency",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "29c1a3ddd8d63fef9ccfa364998f41242aef55022dda117f65d68f40fe2c1aef",
-          "input_hash": "3c1ef638dc15d74185a1f2326a33f731af350c3d99b54fb7bb468ac0251f16ad",
+          "deterministic_hash": "b27734df66f10cebd4c76e2f2b2fa4ce2993a912b08c24ebd783ce5b1de918f8",
+          "input_hash": "c50888922ae0c0a3b2516ba81fc23abfdd528e684b80b4388ff10a99f04fa215",
           "result": {
             "indices": {
               "caidi_min_per_interruption": 362.5135,
@@ -2951,10 +2951,10 @@
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "31bb6f5be129281553e469bbe825334241cb3f2c0b90a12e65170691067160cb",
-        "proof_id": "proof:v126:earthing_safety:f73c976aaf1ab8c6",
+        "proof_hash": "ccb2f7f59aa7f633b66048021e779ef985f1ddd34df6f5c07bd3d53b241389d8",
+        "proof_id": "proof:v126:earthing_safety:4651d15a7446d0cf",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
-        "source_result_hash": "f73c976aaf1ab8c6f2e9c3f84ab81a748c8fcf98486570d957eb6eb34f8d9e71",
+        "source_result_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc",
         "steps": [
           {
             "data": {
@@ -2980,7 +2980,7 @@
       "koperta": {
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
-        "deterministic_hash": "f73c976aaf1ab8c6f2e9c3f84ab81a748c8fcf98486570d957eb6eb34f8d9e71",
+        "deterministic_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-earthing_safety/results/v126/earthing_safety",
@@ -2993,8 +2993,8 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV1",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "788b1734b2be1a806fcb947ec466e04281106ce7440a4f3ab6b1e49a17e69c49",
-        "report_id": "report:v126:earthing_safety:f73c976aaf1ab8c6",
+        "report_hash": "86cd047b44c10b35ddcf6f7da101b7524726ed521750d3e5f3eedac7a02668e6",
+        "report_id": "report:v126:earthing_safety:4651d15a7446d0cf",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
         "sections": [
           {
@@ -3095,11 +3095,11 @@
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:earthing_safety:f73c976aaf1ab8c6"
+                "value": "proof:v126:earthing_safety:4651d15a7446d0cf"
               },
               {
                 "label": "proof_hash",
-                "value": "31bb6f5be129281553e469bbe825334241cb3f2c0b90a12e65170691067160cb"
+                "value": "ccb2f7f59aa7f633b66048021e779ef985f1ddd34df6f5c07bd3d53b241389d8"
               },
               {
                 "label": "trace_step_count",
@@ -3113,7 +3113,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "f73c976aaf1ab8c6f2e9c3f84ab81a748c8fcf98486570d957eb6eb34f8d9e71"
+                "value": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc"
               },
               {
                 "label": "solver_version",
@@ -3121,19 +3121,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "1456d1c715cf367143dc10dc46da03c916cb0708104dc3c9708f0f6a197203fc"
+                "value": "8fe4cf4f43d5d2eaa79184ece74dbb88fabd9c66bcad817754171a3dfca46e25"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "31bb6f5be129281553e469bbe825334241cb3f2c0b90a12e65170691067160cb",
-        "source_result_hash": "f73c976aaf1ab8c6f2e9c3f84ab81a748c8fcf98486570d957eb6eb34f8d9e71"
+        "source_proof_hash": "ccb2f7f59aa7f633b66048021e779ef985f1ddd34df6f5c07bd3d53b241389d8",
+        "source_result_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc"
       },
       "slad": {
         "analysis_type": "earthing_safety",
-        "deterministic_hash": "f73c976aaf1ab8c6f2e9c3f84ab81a748c8fcf98486570d957eb6eb34f8d9e71",
+        "deterministic_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc",
         "run_id": "run-v126-scena-akademickie-earthing_safety",
         "steps": [
           {
@@ -3165,13 +3165,13 @@
         "analysis_type": "earthing_safety",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:earthing_safety:f73c976aaf1ab8c6",
-        "report_ref": "report:v126:earthing_safety:f73c976aaf1ab8c6",
+        "proof_ref": "proof:v126:earthing_safety:4651d15a7446d0cf",
+        "report_ref": "report:v126:earthing_safety:4651d15a7446d0cf",
         "result": {
           "analysis_type": "earthing_safety",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "f73c976aaf1ab8c6f2e9c3f84ab81a748c8fcf98486570d957eb6eb34f8d9e71",
-          "input_hash": "1456d1c715cf367143dc10dc46da03c916cb0708104dc3c9708f0f6a197203fc",
+          "deterministic_hash": "4651d15a7446d0cf1b2d020fea5684d4f37e42c464904e7788845632b9a5cfcc",
+          "input_hash": "8fe4cf4f43d5d2eaa79184ece74dbb88fabd9c66bcad817754171a3dfca46e25",
           "result": {
             "fault_clearing_time_s": 0.5,
             "gpr_kv": 6.726865,
@@ -3235,10 +3235,10 @@
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "b416c5e548402d25e39909e729cc7135ae9cd9a1c27bf12260795dcee77ef17e",
-        "proof_id": "proof:v126:earth_fault_detection:42ff329f1fdd4ff6",
+        "proof_hash": "e663023637966865e6040da15c0606a31215ab464674790e6401b62037cfb1b1",
+        "proof_id": "proof:v126:earth_fault_detection:5d650527329a3346",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
-        "source_result_hash": "42ff329f1fdd4ff65149c4958ce835f7473f9fddac11a605d85d8067f2a22a90",
+        "source_result_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c",
         "steps": [
           {
             "data": {
@@ -3266,7 +3266,7 @@
       "koperta": {
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
-        "deterministic_hash": "42ff329f1fdd4ff65149c4958ce835f7473f9fddac11a605d85d8067f2a22a90",
+        "deterministic_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-earth_fault_detection/results/v126/earth_fault_detection",
@@ -3279,8 +3279,8 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV1",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "59a1d83b06ece8a0e67a7b4a80799cd63dd47c08a27a503edd609891a7315043",
-        "report_id": "report:v126:earth_fault_detection:42ff329f1fdd4ff6",
+        "report_hash": "037159360e0abcaf1e0114944d93a421a78af7f6ee3aee152e46c8024c3a30ed",
+        "report_id": "report:v126:earth_fault_detection:5d650527329a3346",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
         "sections": [
           {
@@ -3337,11 +3337,11 @@
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:earth_fault_detection:42ff329f1fdd4ff6"
+                "value": "proof:v126:earth_fault_detection:5d650527329a3346"
               },
               {
                 "label": "proof_hash",
-                "value": "b416c5e548402d25e39909e729cc7135ae9cd9a1c27bf12260795dcee77ef17e"
+                "value": "e663023637966865e6040da15c0606a31215ab464674790e6401b62037cfb1b1"
               },
               {
                 "label": "trace_step_count",
@@ -3355,7 +3355,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "42ff329f1fdd4ff65149c4958ce835f7473f9fddac11a605d85d8067f2a22a90"
+                "value": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c"
               },
               {
                 "label": "solver_version",
@@ -3363,19 +3363,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "172da043167053aaa5565c407b9deb8c491c380b9d4f409d990d096302bfb689"
+                "value": "b83330313c6f60ea5789d0a4a72935d8f4d0bccc32f59ad223d34dee6a8d0041"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "b416c5e548402d25e39909e729cc7135ae9cd9a1c27bf12260795dcee77ef17e",
-        "source_result_hash": "42ff329f1fdd4ff65149c4958ce835f7473f9fddac11a605d85d8067f2a22a90"
+        "source_proof_hash": "e663023637966865e6040da15c0606a31215ab464674790e6401b62037cfb1b1",
+        "source_result_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c"
       },
       "slad": {
         "analysis_type": "earth_fault_detection",
-        "deterministic_hash": "42ff329f1fdd4ff65149c4958ce835f7473f9fddac11a605d85d8067f2a22a90",
+        "deterministic_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c",
         "run_id": "run-v126-scena-akademickie-earth_fault_detection",
         "steps": [
           {
@@ -3408,13 +3408,13 @@
         "analysis_type": "earth_fault_detection",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:earth_fault_detection:42ff329f1fdd4ff6",
-        "report_ref": "report:v126:earth_fault_detection:42ff329f1fdd4ff6",
+        "proof_ref": "proof:v126:earth_fault_detection:5d650527329a3346",
+        "report_ref": "report:v126:earth_fault_detection:5d650527329a3346",
         "result": {
           "analysis_type": "earth_fault_detection",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "42ff329f1fdd4ff65149c4958ce835f7473f9fddac11a605d85d8067f2a22a90",
-          "input_hash": "172da043167053aaa5565c407b9deb8c491c380b9d4f409d990d096302bfb689",
+          "deterministic_hash": "5d650527329a3346540c9da0aeea37e840a0a4c39c858134d9fde96cbb24329c",
+          "input_hash": "b83330313c6f60ea5789d0a4a72935d8f4d0bccc32f59ad223d34dee6a8d0041",
           "result": {
             "alternative_method": "fifth_harmonic",
             "neutral_grounding": "petersen_tuned",
@@ -3467,10 +3467,10 @@
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "70425e8e29d3b27b67dd0993aadedf574a6b9291b4f231fc3b84fc958f99e0c4",
-        "proof_id": "proof:v126:transient_trv:02e227ba481c3599",
+        "proof_hash": "7e556ebfaeae87aded42fabd8c48bc3946b2893d756f7426c825581cecc04288",
+        "proof_id": "proof:v126:transient_trv:18595c77271bad2b",
         "run_id": "run-v126-scena-akademickie-transient_trv",
-        "source_result_hash": "02e227ba481c3599c8c0d85b0559ffc916a38995aad458cfbf53e607e29318f1",
+        "source_result_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c",
         "steps": [
           {
             "data": {
@@ -3496,7 +3496,7 @@
       "koperta": {
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
-        "deterministic_hash": "02e227ba481c3599c8c0d85b0559ffc916a38995aad458cfbf53e607e29318f1",
+        "deterministic_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-transient_trv/results/v126/transient_trv",
@@ -3509,8 +3509,8 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV1",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "753cf13b8d9b0ff7875a70e1ab56259e7f4a690137983f9fc92b020caa5b3da4",
-        "report_id": "report:v126:transient_trv:02e227ba481c3599",
+        "report_hash": "7bcbd1d54c08daa03608ebd283b404824eda32b2df8850f8a80d326006605173",
+        "report_id": "report:v126:transient_trv:18595c77271bad2b",
         "run_id": "run-v126-scena-akademickie-transient_trv",
         "sections": [
           {
@@ -3583,11 +3583,11 @@
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:transient_trv:02e227ba481c3599"
+                "value": "proof:v126:transient_trv:18595c77271bad2b"
               },
               {
                 "label": "proof_hash",
-                "value": "70425e8e29d3b27b67dd0993aadedf574a6b9291b4f231fc3b84fc958f99e0c4"
+                "value": "7e556ebfaeae87aded42fabd8c48bc3946b2893d756f7426c825581cecc04288"
               },
               {
                 "label": "trace_step_count",
@@ -3601,7 +3601,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "02e227ba481c3599c8c0d85b0559ffc916a38995aad458cfbf53e607e29318f1"
+                "value": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c"
               },
               {
                 "label": "solver_version",
@@ -3609,19 +3609,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "f63a71f3f864acdc9fbc9b32ffb0d93181fea80f95ddf18124db14026fee95ab"
+                "value": "0dd328a387ad806dd0b49ce585908b458f1f686646aa3dd520f9c3818e68f96b"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "70425e8e29d3b27b67dd0993aadedf574a6b9291b4f231fc3b84fc958f99e0c4",
-        "source_result_hash": "02e227ba481c3599c8c0d85b0559ffc916a38995aad458cfbf53e607e29318f1"
+        "source_proof_hash": "7e556ebfaeae87aded42fabd8c48bc3946b2893d756f7426c825581cecc04288",
+        "source_result_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c"
       },
       "slad": {
         "analysis_type": "transient_trv",
-        "deterministic_hash": "02e227ba481c3599c8c0d85b0559ffc916a38995aad458cfbf53e607e29318f1",
+        "deterministic_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c",
         "run_id": "run-v126-scena-akademickie-transient_trv",
         "steps": [
           {
@@ -3652,13 +3652,13 @@
         "analysis_type": "transient_trv",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:transient_trv:02e227ba481c3599",
-        "report_ref": "report:v126:transient_trv:02e227ba481c3599",
+        "proof_ref": "proof:v126:transient_trv:18595c77271bad2b",
+        "report_ref": "report:v126:transient_trv:18595c77271bad2b",
         "result": {
           "analysis_type": "transient_trv",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "02e227ba481c3599c8c0d85b0559ffc916a38995aad458cfbf53e607e29318f1",
-          "input_hash": "f63a71f3f864acdc9fbc9b32ffb0d93181fea80f95ddf18124db14026fee95ab",
+          "deterministic_hash": "18595c77271bad2bd526d7e6a82ea93edbd0c866be84104a3649030d5770432c",
+          "input_hash": "0dd328a387ad806dd0b49ce585908b458f1f686646aa3dd520f9c3818e68f96b",
           "result": {
             "ferroresonance": {
               "recommendation": "brak przesłanek do ferrorezonansu",
@@ -3963,10 +3963,10 @@
         "analysis_type": "motor_starting",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "30792dca7406365f9f9d3fee4d901bda8ed637af1673620e2a6c43200400f5d7",
-        "proof_id": "proof:v126:motor_starting:65add0d02fdc898a",
+        "proof_hash": "8bf704de162529b92e7e32711bb90ccf3971cc946a82dc9efc8cfe28242cb6e2",
+        "proof_id": "proof:v126:motor_starting:8cf74b9561d1aeae",
         "run_id": "run-v126-scena-akademickie-motor_starting",
-        "source_result_hash": "65add0d02fdc898a016540315e5bb805ea59c3e24648f60c608083b16cfc38b2",
+        "source_result_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc",
         "steps": [
           {
             "data": {
@@ -3989,7 +3989,7 @@
       "koperta": {
         "analysis_type": "motor_starting",
         "case_id": "case-demo",
-        "deterministic_hash": "65add0d02fdc898a016540315e5bb805ea59c3e24648f60c608083b16cfc38b2",
+        "deterministic_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-motor_starting/results/v126/motor_starting",
@@ -4002,8 +4002,8 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV1",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "5054252765a7158e5fb6d171dba3547a4591c11123ca6dbc4d30ee97bc88d52d",
-        "report_id": "report:v126:motor_starting:65add0d02fdc898a",
+        "report_hash": "2228edab866027713d802edc7b037de8c088263754abd5b3d4ad15d9083f6def",
+        "report_id": "report:v126:motor_starting:8cf74b9561d1aeae",
         "run_id": "run-v126-scena-akademickie-motor_starting",
         "sections": [
           {
@@ -4060,11 +4060,11 @@
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:motor_starting:65add0d02fdc898a"
+                "value": "proof:v126:motor_starting:8cf74b9561d1aeae"
               },
               {
                 "label": "proof_hash",
-                "value": "30792dca7406365f9f9d3fee4d901bda8ed637af1673620e2a6c43200400f5d7"
+                "value": "8bf704de162529b92e7e32711bb90ccf3971cc946a82dc9efc8cfe28242cb6e2"
               },
               {
                 "label": "trace_step_count",
@@ -4078,7 +4078,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "65add0d02fdc898a016540315e5bb805ea59c3e24648f60c608083b16cfc38b2"
+                "value": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc"
               },
               {
                 "label": "solver_version",
@@ -4086,19 +4086,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "ce0e22fd24f5a4eb75d3f32f0d8d57328aa0455b810c674f30203fc1860a2f88"
+                "value": "764b7c0f908b5d1193d9a848aea9c1ddd382769939b3d6adb7564c47f58de979"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "30792dca7406365f9f9d3fee4d901bda8ed637af1673620e2a6c43200400f5d7",
-        "source_result_hash": "65add0d02fdc898a016540315e5bb805ea59c3e24648f60c608083b16cfc38b2"
+        "source_proof_hash": "8bf704de162529b92e7e32711bb90ccf3971cc946a82dc9efc8cfe28242cb6e2",
+        "source_result_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc"
       },
       "slad": {
         "analysis_type": "motor_starting",
-        "deterministic_hash": "65add0d02fdc898a016540315e5bb805ea59c3e24648f60c608083b16cfc38b2",
+        "deterministic_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc",
         "run_id": "run-v126-scena-akademickie-motor_starting",
         "steps": [
           {
@@ -4126,13 +4126,13 @@
         "analysis_type": "motor_starting",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:motor_starting:65add0d02fdc898a",
-        "report_ref": "report:v126:motor_starting:65add0d02fdc898a",
+        "proof_ref": "proof:v126:motor_starting:8cf74b9561d1aeae",
+        "report_ref": "report:v126:motor_starting:8cf74b9561d1aeae",
         "result": {
           "analysis_type": "motor_starting",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "65add0d02fdc898a016540315e5bb805ea59c3e24648f60c608083b16cfc38b2",
-          "input_hash": "ce0e22fd24f5a4eb75d3f32f0d8d57328aa0455b810c674f30203fc1860a2f88",
+          "deterministic_hash": "8cf74b9561d1aeae95ce222ea20e99282a89bd3c977c7c2b1742cfa9c12bccbc",
+          "input_hash": "764b7c0f908b5d1193d9a848aea9c1ddd382769939b3d6adb7564c47f58de979",
           "result": {
             "motors": [
               {
@@ -4183,10 +4183,10 @@
         "analysis_type": "benchmark_validation",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "44a138c02b44336524fed055a67b02642a5620413596886b46c62e36f6ab9b03",
-        "proof_id": "proof:v126:benchmark_validation:710c00c07d8e5870",
+        "proof_hash": "01d26668a7192ce53dce5288ced8eeb5612b59a3c48fd7f7badf6ce0f2386df9",
+        "proof_id": "proof:v126:benchmark_validation:ecd352bcb031c442",
         "run_id": "run-v126-scena-akademickie-benchmark_validation",
-        "source_result_hash": "710c00c07d8e5870c4684306b8ef8c3df1fee4c2e141e3a3f14dde69fd4eb156",
+        "source_result_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb",
         "steps": [
           {
             "data": {
@@ -4210,7 +4210,7 @@
       "koperta": {
         "analysis_type": "benchmark_validation",
         "case_id": "case-demo",
-        "deterministic_hash": "710c00c07d8e5870c4684306b8ef8c3df1fee4c2e141e3a3f14dde69fd4eb156",
+        "deterministic_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-benchmark_validation/results/v126/benchmark_validation/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-benchmark_validation/results/v126/benchmark_validation/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-benchmark_validation/results/v126/benchmark_validation",
@@ -4223,8 +4223,8 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV1",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "e4427d110d316c9eb89d188c76f1e9d75e63201bf6e8ce9506810c2e1313cfd4",
-        "report_id": "report:v126:benchmark_validation:710c00c07d8e5870",
+        "report_hash": "e407f98c11ec41e52b81ebd31950b64ea9cf29958bec898c9b99a360577c528e",
+        "report_id": "report:v126:benchmark_validation:ecd352bcb031c442",
         "run_id": "run-v126-scena-akademickie-benchmark_validation",
         "sections": [
           {
@@ -4269,11 +4269,11 @@
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:benchmark_validation:710c00c07d8e5870"
+                "value": "proof:v126:benchmark_validation:ecd352bcb031c442"
               },
               {
                 "label": "proof_hash",
-                "value": "44a138c02b44336524fed055a67b02642a5620413596886b46c62e36f6ab9b03"
+                "value": "01d26668a7192ce53dce5288ced8eeb5612b59a3c48fd7f7badf6ce0f2386df9"
               },
               {
                 "label": "trace_step_count",
@@ -4287,7 +4287,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "710c00c07d8e5870c4684306b8ef8c3df1fee4c2e141e3a3f14dde69fd4eb156"
+                "value": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb"
               },
               {
                 "label": "solver_version",
@@ -4295,19 +4295,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "77bd9208127669f485a78d7e98a72a419196a43cd7bb7bcfb637c091ac83338a"
+                "value": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "44a138c02b44336524fed055a67b02642a5620413596886b46c62e36f6ab9b03",
-        "source_result_hash": "710c00c07d8e5870c4684306b8ef8c3df1fee4c2e141e3a3f14dde69fd4eb156"
+        "source_proof_hash": "01d26668a7192ce53dce5288ced8eeb5612b59a3c48fd7f7badf6ce0f2386df9",
+        "source_result_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb"
       },
       "slad": {
         "analysis_type": "benchmark_validation",
-        "deterministic_hash": "710c00c07d8e5870c4684306b8ef8c3df1fee4c2e141e3a3f14dde69fd4eb156",
+        "deterministic_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb",
         "run_id": "run-v126-scena-akademickie-benchmark_validation",
         "steps": [
           {
@@ -4336,13 +4336,13 @@
         "analysis_type": "benchmark_validation",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:benchmark_validation:710c00c07d8e5870",
-        "report_ref": "report:v126:benchmark_validation:710c00c07d8e5870",
+        "proof_ref": "proof:v126:benchmark_validation:ecd352bcb031c442",
+        "report_ref": "report:v126:benchmark_validation:ecd352bcb031c442",
         "result": {
           "analysis_type": "benchmark_validation",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "710c00c07d8e5870c4684306b8ef8c3df1fee4c2e141e3a3f14dde69fd4eb156",
-          "input_hash": "77bd9208127669f485a78d7e98a72a419196a43cd7bb7bcfb637c091ac83338a",
+          "deterministic_hash": "ecd352bcb031c442ce1b98fde06db4171731ace5dc36503c68ad366b91966beb",
+          "input_hash": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5",
           "result": {
             "message_pl": "Walidacja benchmarkowa wymaga referencji (IEEE 9/14/39-bus, CIGRE MV) z wartościami policzonymi przez solver. Bez nich werdyktu PASS/FAIL nie wystawia się (zakaz cichego fałszu K-09).",
             "references_provided": false,
@@ -4386,10 +4386,10 @@
         "analysis_type": "uncertainty_sensitivity",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "6d7911298427a5298d9559586d6f680370865e0817688c59a89354f8b9d04217",
-        "proof_id": "proof:v126:uncertainty_sensitivity:7506ab979c07c941",
+        "proof_hash": "64452c0798b796f07309906b9a4e4ce0545f09e4b8e9611640bd8666ee997b38",
+        "proof_id": "proof:v126:uncertainty_sensitivity:1500947651959ed4",
         "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
-        "source_result_hash": "7506ab979c07c941e5ead1dce32973665891dcc34537c9a4719e2f4c32662aa9",
+        "source_result_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1",
         "steps": [
           {
             "data": {
@@ -4412,7 +4412,7 @@
       "koperta": {
         "analysis_type": "uncertainty_sensitivity",
         "case_id": "case-demo",
-        "deterministic_hash": "7506ab979c07c941e5ead1dce32973665891dcc34537c9a4719e2f4c32662aa9",
+        "deterministic_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-uncertainty_sensitivity/results/v126/uncertainty_sensitivity/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-uncertainty_sensitivity/results/v126/uncertainty_sensitivity/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-uncertainty_sensitivity/results/v126/uncertainty_sensitivity",
@@ -4425,8 +4425,8 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV1",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "2cd5a1fc7996e16898da55370444f132788a5f6233073bfbd2246251fcca265f",
-        "report_id": "report:v126:uncertainty_sensitivity:7506ab979c07c941",
+        "report_hash": "cc4d77c03bed833ded5bf0666f69c0c50f98bace235e9cb7a771e2487e6d89a3",
+        "report_id": "report:v126:uncertainty_sensitivity:1500947651959ed4",
         "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
         "sections": [
           {
@@ -4479,11 +4479,11 @@
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:uncertainty_sensitivity:7506ab979c07c941"
+                "value": "proof:v126:uncertainty_sensitivity:1500947651959ed4"
               },
               {
                 "label": "proof_hash",
-                "value": "6d7911298427a5298d9559586d6f680370865e0817688c59a89354f8b9d04217"
+                "value": "64452c0798b796f07309906b9a4e4ce0545f09e4b8e9611640bd8666ee997b38"
               },
               {
                 "label": "trace_step_count",
@@ -4497,7 +4497,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "7506ab979c07c941e5ead1dce32973665891dcc34537c9a4719e2f4c32662aa9"
+                "value": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1"
               },
               {
                 "label": "solver_version",
@@ -4505,19 +4505,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "77bd9208127669f485a78d7e98a72a419196a43cd7bb7bcfb637c091ac83338a"
+                "value": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "6d7911298427a5298d9559586d6f680370865e0817688c59a89354f8b9d04217",
-        "source_result_hash": "7506ab979c07c941e5ead1dce32973665891dcc34537c9a4719e2f4c32662aa9"
+        "source_proof_hash": "64452c0798b796f07309906b9a4e4ce0545f09e4b8e9611640bd8666ee997b38",
+        "source_result_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1"
       },
       "slad": {
         "analysis_type": "uncertainty_sensitivity",
-        "deterministic_hash": "7506ab979c07c941e5ead1dce32973665891dcc34537c9a4719e2f4c32662aa9",
+        "deterministic_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1",
         "run_id": "run-v126-scena-akademickie-uncertainty_sensitivity",
         "steps": [
           {
@@ -4545,13 +4545,13 @@
         "analysis_type": "uncertainty_sensitivity",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:uncertainty_sensitivity:7506ab979c07c941",
-        "report_ref": "report:v126:uncertainty_sensitivity:7506ab979c07c941",
+        "proof_ref": "proof:v126:uncertainty_sensitivity:1500947651959ed4",
+        "report_ref": "report:v126:uncertainty_sensitivity:1500947651959ed4",
         "result": {
           "analysis_type": "uncertainty_sensitivity",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "7506ab979c07c941e5ead1dce32973665891dcc34537c9a4719e2f4c32662aa9",
-          "input_hash": "77bd9208127669f485a78d7e98a72a419196a43cd7bb7bcfb637c091ac83338a",
+          "deterministic_hash": "1500947651959ed411449c675d710bb725f1b3e21d7aeb290705d7554e1446d1",
+          "input_hash": "0c5adcb55f1bde54206c56cc36abbddd4ad8ce6d22b744a2dd2dc0ffc9fabee5",
           "result": {
             "display_contract": "wartość nominalna ± niepewność rozszerzona k=2",
             "expanded_uncertainty_percent_k2": 5.70896,
@@ -4639,10 +4639,10 @@
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "1ee23b73bf41153a28cc212001c583f113a97bc0f6960c1c5c73e1a0e341e7e9",
-        "proof_id": "proof:v126:neutral_earthing_design:9986af3f350b430b",
+        "proof_hash": "1f6c6a40309426d245d8b323a296e231a8174061097a49005aa694c771688f3c",
+        "proof_id": "proof:v126:neutral_earthing_design:59a348096c99235c",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
-        "source_result_hash": "9986af3f350b430bb8927cb3827c7cd287fa003e06b93a4e01ad544dd4e51a64",
+        "source_result_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303",
         "steps": [
           {
             "data": {
@@ -4712,7 +4712,7 @@
       "koperta": {
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
-        "deterministic_hash": "9986af3f350b430bb8927cb3827c7cd287fa003e06b93a4e01ad544dd4e51a64",
+        "deterministic_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-neutral_earthing_design/results/v126/neutral_earthing_design",
@@ -4725,8 +4725,8 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV1",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "523afacc75eeadf501cca35ca3d8d1745242b2bca0cda1abd97ab2a7d8e7995d",
-        "report_id": "report:v126:neutral_earthing_design:9986af3f350b430b",
+        "report_hash": "93e7ef01273174519e1c49c80fc7846865dc80ad2e02f1884f57716bc5caa484",
+        "report_id": "report:v126:neutral_earthing_design:59a348096c99235c",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
         "sections": [
           {
@@ -4835,11 +4835,11 @@
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:neutral_earthing_design:9986af3f350b430b"
+                "value": "proof:v126:neutral_earthing_design:59a348096c99235c"
               },
               {
                 "label": "proof_hash",
-                "value": "1ee23b73bf41153a28cc212001c583f113a97bc0f6960c1c5c73e1a0e341e7e9"
+                "value": "1f6c6a40309426d245d8b323a296e231a8174061097a49005aa694c771688f3c"
               },
               {
                 "label": "trace_step_count",
@@ -4853,7 +4853,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "9986af3f350b430bb8927cb3827c7cd287fa003e06b93a4e01ad544dd4e51a64"
+                "value": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303"
               },
               {
                 "label": "solver_version",
@@ -4861,19 +4861,19 @@
               },
               {
                 "label": "input_hash",
-                "value": "7e7d0d6f1bd430f5d026776e3c168c0e639f798ee4f6ac292ec7986430b4aada"
+                "value": "e5dff5c0e914fb7fd061ef26a68913fbadb401d0f99c1e3f8f5397058bf489dc"
               }
             ],
             "section_id": "audyt",
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "1ee23b73bf41153a28cc212001c583f113a97bc0f6960c1c5c73e1a0e341e7e9",
-        "source_result_hash": "9986af3f350b430bb8927cb3827c7cd287fa003e06b93a4e01ad544dd4e51a64"
+        "source_proof_hash": "1f6c6a40309426d245d8b323a296e231a8174061097a49005aa694c771688f3c",
+        "source_result_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303"
       },
       "slad": {
         "analysis_type": "neutral_earthing_design",
-        "deterministic_hash": "9986af3f350b430bb8927cb3827c7cd287fa003e06b93a4e01ad544dd4e51a64",
+        "deterministic_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303",
         "run_id": "run-v126-scena-akademickie-neutral_earthing_design",
         "steps": [
           {
@@ -4957,13 +4957,13 @@
         "analysis_type": "neutral_earthing_design",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:neutral_earthing_design:9986af3f350b430b",
-        "report_ref": "report:v126:neutral_earthing_design:9986af3f350b430b",
+        "proof_ref": "proof:v126:neutral_earthing_design:59a348096c99235c",
+        "report_ref": "report:v126:neutral_earthing_design:59a348096c99235c",
         "result": {
           "analysis_type": "neutral_earthing_design",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "9986af3f350b430bb8927cb3827c7cd287fa003e06b93a4e01ad544dd4e51a64",
-          "input_hash": "7e7d0d6f1bd430f5d026776e3c168c0e639f798ee4f6ac292ec7986430b4aada",
+          "deterministic_hash": "59a348096c99235cea240a73b7b44351fcf469d013a6172e333f0e5ed9133303",
+          "input_hash": "e5dff5c0e914fb7fd061ef26a68913fbadb401d0f99c1e3f8f5397058bf489dc",
           "result": {
             "branches_contributing": [
               {

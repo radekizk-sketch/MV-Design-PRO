@@ -16,7 +16,7 @@
     "pn_mw": 2.0,
     "q_wymagane_min_mvar": -0.66,
     "q_wymagane_max_mvar": 0.66,
-    "opis": "Prostokatne wymaganie zakresu Q operatora: [udzial_min * Pn, udzial_max * Pn] w kazdym punkcie pracy."
+    "opis": "Prostokątne wymaganie zakresu Q operatora: [udzial_min * Pn, udzial_max * Pn] w każdym punkcie pracy."
   },
   "punkty": [
     {

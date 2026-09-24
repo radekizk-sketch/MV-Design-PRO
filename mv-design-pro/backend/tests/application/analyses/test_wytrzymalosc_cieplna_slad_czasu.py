@@ -206,7 +206,7 @@ def test_raport_mowi_czy_liczby_dotycza_biezacej_wersji_modelu(uow_factory) -> N
 
     po_zmianie = build_wytrzymalosc_cieplna_view(run, uow_factory)
     assert po_zmianie["aktualnosc"]["aktualny"] is False
-    assert "WCZESNIEJSZEJ" in po_zmianie["aktualnosc"]["powod_pl"]
+    assert "WCZEŚNIEJSZEJ" in po_zmianie["aktualnosc"]["powod_pl"]
 
 
 def test_ocena_jest_deterministyczna() -> None:
