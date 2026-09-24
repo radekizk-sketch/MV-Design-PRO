@@ -199,3 +199,77 @@ def test_szyny_tworzone_z_transformatorem_bez_fragmentu_identyfikatora() -> None
     for szyna in nowe:
         _bez_kodow(str(szyna["name"]))
         assert "transformatora SN/nN" in str(szyna["name"]), szyna
+
+
+# Rodzaj transformatora w nazwie z RZECZYWISTYCH napięć obu stron (integracja #140,
+# 2026-09-24): `add_transformer_sn_nn` buduje też transformatory przesyłowe bliźniaków
+# IEEE 14/39-bus, którym stała nazwa „SN/nN” przypisywała fałszywą klasę (szyna 345 kV
+# „strona GN transformatora SN/nN”). Iloczyn cech: pasma stron {SN/nN, WN/SN, WN/WN} ×
+# nowa szyna {strona GN, strona DN} × nazwa {transformatora, nowej szyny}.
+_PRZYPADKI_RODZAJU = [
+    ("bench_ieee13bus_xfm1", 4.16, 0.48, "SN/nN"),
+    ("bench_ieee14bus_br15", 135.0, 14.0, "WN/SN"),
+    ("bench_ieee39bus_br36", 345.0, 345.0, "WN/WN"),
+]
+
+
+@pytest.mark.parametrize(("katalog", "napiecie_gn", "napiecie_dn", "rodzaj"), _PRZYPADKI_RODZAJU)
+@pytest.mark.parametrize("nowa_strona", ["GN", "DN"])
+def test_rodzaj_transformatora_w_nazwach_z_pasm_napiec_obu_stron(
+    katalog: str, napiecie_gn: float, napiecie_dn: float, rodzaj: str, nowa_strona: str
+) -> None:
+    from enm.kompilator_grafu import dodaj_transformator, dodaj_zrodlo_slack, pusty_enm
+    from enm.models import EnergyNetworkModel
+
+    napiecie_istniejacej = napiecie_gn if nowa_strona == "DN" else napiecie_dn
+    enm = pusty_enm(name="rodzaj-transformatora", sn_nominal_kv=napiecie_istniejacej)
+    enm, istniejaca = dodaj_zrodlo_slack(
+        enm,
+        voltage_kv=napiecie_istniejacej,
+        sk3_mva=50.0 * napiecie_istniejacej,
+        rx_ratio=0.1,
+        line_fields_count=1,
+        source_name="S",
+    )
+    if nowa_strona == "DN":
+        enm, nowa = dodaj_transformator(
+            enm, hv_bus_ref=istniejaca, lv_voltage_kv=napiecie_dn, catalog_ref=katalog
+        )
+    else:
+        enm, nowa = dodaj_transformator(
+            enm, hv_voltage_kv=napiecie_gn, lv_bus_ref=istniejaca, catalog_ref=katalog
+        )
+    model = EnergyNetworkModel.model_validate(enm)
+    (transformator,) = model.transformers
+    assert transformator.name == f"Transformator {rodzaj}"
+    szyna = next(b for b in model.buses if b.ref_id == nowa)
+    napiecie_nowej = napiecie_dn if nowa_strona == "DN" else napiecie_gn
+    assert szyna.name == (
+        f"Szyna {napiecie_nowej:g} kV — strona {nowa_strona} transformatora {rodzaj}"
+    )
+
+
+def test_nazwa_transformatora_gpz_z_napiecia_gornego_katalogu_nie_stalego_110() -> None:
+    """Nazwa `TR1 …/… kV` z napięcia górnego typu katalogowego, nie ze stałej 110 kV."""
+    from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+
+    for katalog, napiecie_sn, oczekiwana in (
+        ("bench_ieee14bus_br15", 14.0, "TR1 135/14 kV"),
+        ("tr-wn-sn-110-15-25mva-yd11", 15.0, "TR1 110/15 kV"),
+    ):
+        enm = EnergyNetworkModel(
+            header=ENMHeader(name="gpz", defaults=ENMDefaults(sn_nominal_kv=napiecie_sn))
+        ).model_dump(mode="json")
+        wynik = execute_domain_operation(
+            enm,
+            "add_grid_source_sn",
+            {
+                "voltage_kv": napiecie_sn,
+                "sk3_mva": 250.0,
+                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                "transformer_catalog_ref": katalog,
+            },
+        )
+        assert wynik.get("error") is None, wynik.get("error")
+        (transformator,) = wynik["snapshot"]["transformers"]
+        assert transformator["name"] == oczekiwana

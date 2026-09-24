@@ -61,6 +61,7 @@ from .pole_katalogowe import (
     aparaty_pola_z_referencji,
     rozwiaz_aparaty_pola,
 )
+from .pole_transformatorowe import pasmo_napieciowe
 from .topology_ops import (
     create_branch,
     create_device,
@@ -2967,6 +2968,19 @@ def _opt_float_any(value: object) -> float | None:
         return None
 
 
+def _rodzaj_transformatora(napiecie_gn_kv: float | None, napiecie_dn_kv: float | None) -> str:
+    """Rodzaj transformatora do nazwy: pasma napięciowe obu stron (``SN/nN``, ``WN/SN``…).
+
+    Pasma z jednego źródła (`pole_transformatorowe.pasmo_napieciowe`), nie z nazwy
+    operacji: `add_transformer_sn_nn` buduje też transformatory przesyłowe bliźniaków
+    IEEE 14/39-bus (345 kV), którym nazwa „SN/nN" przypisywała fałszywą klasę. Brak
+    napięcia którejkolwiek strony → pusty rodzaj (nazwa bez klasy), nigdy domysł.
+    """
+    if napiecie_gn_kv is None or napiecie_dn_kv is None:
+        return ""
+    return f"{pasmo_napieciowe(napiecie_gn_kv)}/{pasmo_napieciowe(napiecie_dn_kv)}"
+
+
 def _build_gpz_tap_changer(
     payload: dict[str, Any],
     *,
@@ -4113,7 +4127,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         )
         if not result.success:
             return _error_response(
-                f"Nie udało się utworzyć szyny 110 kV transformatora GPZ: {result.issues[0].message_pl if result.issues else '?'}",
+                f"Nie udało się utworzyć szyny {hv_bus_voltage_kv:g} kV transformatora GPZ: {result.issues[0].message_pl if result.issues else '?'}",
                 "source.transformer_hv_bus_failed",
             )
         new_enm = result.enm
@@ -4124,7 +4138,8 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
 
         transformer = {
             "ref_id": transformer_ref,
-            "name": payload.get(f"transformer_{order}_name") or f"TR{order} 110/{voltage_kv:g} kV",
+            "name": payload.get(f"transformer_{order}_name")
+            or f"TR{order} {hv_bus_voltage_kv:g}/{voltage_kv:g} kV",
             "tags": ["gpz_wn_sn_transformer"],
             "meta": {
                 "gpz_substation_ref": substation_ref,
@@ -8534,6 +8549,13 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     )
     tr_ref = f"tr/{seed}/transformer"
 
+    napiecia_szyn = {b.get("ref_id"): b.get("voltage_kv") for b in enm.get("buses", [])}
+    rodzaj = _rodzaj_transformatora(
+        auto_hv_voltage_kv if hv_bus_ref is None else _opt_float_any(napiecia_szyn.get(hv_bus_ref)),
+        auto_lv_voltage_kv if lv_bus_ref is None else _opt_float_any(napiecia_szyn.get(lv_bus_ref)),
+    )
+    klasa_transformatora = f"transformatora {rodzaj}".rstrip()
+
     new_enm = kopia_graniczna_enm(enm)
     created = []
     events = []
@@ -8546,7 +8568,7 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
             new_enm,
             {
                 "ref_id": new_hv_bus_ref,
-                "name": f"Szyna {auto_hv_voltage_kv:g} kV — strona GN transformatora SN/nN",
+                "name": f"Szyna {auto_hv_voltage_kv:g} kV — strona GN {klasa_transformatora}",
                 "voltage_kv": auto_hv_voltage_kv,
                 "tags": ["topology_terminal"],
                 "meta": {
@@ -8576,7 +8598,7 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
             new_enm,
             {
                 "ref_id": new_lv_bus_ref,
-                "name": f"Szyna {auto_lv_voltage_kv:g} kV — strona DN transformatora SN/nN",
+                "name": f"Szyna {auto_lv_voltage_kv:g} kV — strona DN {klasa_transformatora}",
                 "voltage_kv": auto_lv_voltage_kv,
                 "tags": ["topology_terminal"],
                 "meta": {
@@ -8619,7 +8641,7 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     tr_data: dict[str, Any] = {
         "device_type": "transformer",
         "ref_id": tr_ref,
-        "name": "Transformator SN/nN",
+        "name": f"Transformator {rodzaj}".rstrip(),
         "hv_bus_ref": hv_bus_ref,
         "lv_bus_ref": lv_bus_ref,
         "sn_mva": _opt_float_any(payload.get("sn_mva")),
