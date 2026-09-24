@@ -304,6 +304,12 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "network_model/solvers/state_estimation_wls.py",
     "network_model/whitebox/tracer.py",
     "reference_engine/validation.py",
+    # DWA KORZENIE MODULU nN (2026-09-24): korekta temperaturowa obciazalnosci
+    # kabli nN i pasma wyzwalania MCB wg IEC 60898 — importowane przez warstwe
+    # objeta skanem od wejscia modulu nN do `main`. Pomiar dolozenia: +0 trafien
+    # i zero kolizji nazw (bramka PASS po dolozeniu), wiec decyzja „do mapy".
+    "application/solvers/lv_temperature_correction.py",
+    "network_model/catalog/lv_mcb_bands_iec60898.py",
 )
 
 #: Korzenie modeli SWIADOMIE POZA mapa pol — z POWODEM MERYTORYCZNYM, nie „poza
