@@ -179,7 +179,7 @@ async function dolozOdbiorNn(
     station_ref: stacja?.ref_id,
     bus_nn_ref: szynaNn,
     field_name: 'Odpływ nN 1',
-    catalog_ref: 'cb_nn_630a',
+    catalog_binding: buildCatalogBinding('APARAT_NN', 'cb_nn_630a'),
   });
   const feederRef = pole.changes?.created_element_ids?.[0];
   expect(feederRef, 'pole odpływowe nN utworzone').toBeTruthy();
@@ -188,7 +188,7 @@ async function dolozOdbiorNn(
     active_power_kw: 150.0,
     cos_phi: 0.95,
     load_name: 'Odbiór nN 1',
-    catalog_ref: 'load_przem_75kw',
+    catalog_binding: buildCatalogBinding('OBCIAZENIE', 'load_przem_75kw'),
   });
 }
 
