@@ -259,9 +259,9 @@ def validate_generator_field_connection(
             is_valid=False,
             fix_code="generator.connection_variant_missing",
             fix_message_pl=(
-                f"Generator {generator_id}: brak wariantu przyłączenia "
-                f"(wymagane LV_BEHIND_STATION_TRANSFORMER, DEDICATED_MV_CONNECTION "
-                f"albo SOURCE_CONNECTION_STATION)"
+                f"Generator {generator_id}: brak wariantu przyłączenia (wymagany: po stronie "
+                "nN za transformatorem stacji SN/nN, dedykowane pole SN z transformatorem "
+                "przyłączeniowym albo osobna stacja przyłączeniowa źródła)"
             ),
         )
 

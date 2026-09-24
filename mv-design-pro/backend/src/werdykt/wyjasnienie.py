@@ -43,6 +43,7 @@ from werdykt.kontrakt import (
     Relacja,
     RodzajPodstawy,
     RodzajSkali,
+    StanZrodla,
     StatusDowodu,
     StatusWerdyktu,
     Stosowalnosc,
@@ -51,7 +52,30 @@ from werdykt.kontrakt import (
     WynikKryterium,
     ZakresWaznosci,
 )
-from werdykt.proweniencja import ClaimKind
+from werdykt.proweniencja import ClaimKind, EvidenceTier
+
+# Nazwy wartości osi dowodu W TEKŚCIE: poziom dowodowy, rodzaj twierdzenia i jakość danej mają
+# JEDNO źródło nazwy — ``label_pl`` wyliczeń ``werdykt.proweniencja`` (lustro karty werdyktu
+# ``frontend/src/ui2/wyniki/wzorzec/KartaWerdyktu.tsx``). Kod wyliczenia zostaje WYŁĄCZNIE
+# w polach rekordu (``dowod.poziom``, ``dowod.status_modelu``, ``dowod.status_danych.stan``,
+# ``dana.jakosc``, ``podstawa.status``) — zdania ``*_pl``, ``czego_brakuje`` i ``zastrzezenia``
+# niosą tylko nazwy (strażnik ``werdykt_wyjasnialny_guard``, sprawdzenie ``5_kod_w_tekscie``).
+
+#: Stan źródła podstawy W TEKŚCIE — lustro karty werdyktu (`NAZWA_STANU_ZRODLA_PL` w
+#: ``KartaWerdyktu.tsx``); kod zostaje w polu ``podstawa.status``. Blok dokumentu formalnego
+#: (``werdykt.dokument``) czyta tę samą mapę.
+NAZWA_STANU_ZRODLA_PL: dict[StanZrodla, str] = {
+    "ZWERYFIKOWANE": "zweryfikowane",
+    "WSKAZANE": "wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)",
+    "NIEUSTALONE": "nieustalone",
+}
+#: Stan źródła wymagany dla dowodu pełnego — w tekście powodów niepełności.
+_STAN_WYMAGANY_PL = "zweryfikowane albo wskazane"
+_SIMULACJA_ZWALIDOWANA = EvidenceTier.VALIDATED_SIMULATION.label_pl
+#: Status modelu urządzenia wymagany dla symulacji jako dowodu (``STATUSY_MODELU_ZWALIDOWANEGO``).
+_MODEL_ZWALIDOWANY_PL = (
+    "model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany"
+)
 
 #: Nazwy metod dowodu w tekście.
 NAZWA_METODY_PL: dict[MetodaDowodu, str] = {
@@ -207,20 +231,53 @@ def metody_przydatne_pl(rodzaj_twierdzenia: ClaimKind, poziom: PoziomRekordu) ->
             czesci.append(NAZWA_METODY_PL[metoda])
         elif metoda == "SYMULACJA":
             czesci.append(
-                "symulacja na silniku o poziomie VALIDATED_SIMULATION (bieg w zadeklarowanej "
-                "domenie walidacji) z modelem urządzenia o statusie VALIDATED_AGAINST_TEST lub "
-                "CERTIFIED_MODEL"
+                f"symulacja na silniku o poziomie dowodowym „{_SIMULACJA_ZWALIDOWANA}” (bieg w "
+                f"zadeklarowanej domenie walidacji) z modelem urządzenia: {_MODEL_ZWALIDOWANY_PL}"
             )
         elif metoda == "OBLICZENIE" and rodzaj_twierdzenia in TWIERDZENIA_Z_OBLICZENIEM:
             czesci.append(
-                "obliczenie na zdolności o poziomie VALIDATED_SIMULATION (solver zwalidowany, bieg "
-                "w zadeklarowanej domenie walidacji)"
+                "obliczenie solverem zwalidowanym (zdolność obliczeniowa o najwyższym poziomie "
+                "dowodowym, bieg w zadeklarowanej domenie walidacji)"
             )
         elif metoda in METODY_TYLKO_WYMAGANIA and poziom == "W":
             czesci.append(
                 "dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną"
             )
     return _albo(czesci)
+
+
+def nazwa_kompletnosci(kompletnosc: str) -> str:
+    """Kompletność dowodu w tekście (kod zostaje w polu ``kompletnosc_dowodu``)."""
+    if kompletnosc == "PELNY":
+        return "pełny"
+    if kompletnosc == "NIEPELNY":
+        return "niepełny"
+    return "nie dotyczy"
+
+
+def nazwa_statusu_modelu(status: str) -> str:
+    """Status walidacji modelu urządzenia w tekście (kod zostaje w ``dowod.status_modelu``)."""
+    if status == "UNVALIDATED_MODEL":
+        return "model urządzenia niezwalidowany"
+    if status == "VALIDATED_AGAINST_TEST":
+        return "model urządzenia zwalidowany wynikiem testu"
+    if status == "CERTIFIED_MODEL":
+        return "model urządzenia certyfikowany"
+    return "nie dotyczy (bez modelu urządzenia)"
+
+
+def nazwa_stanu_danych(stan: str) -> str:
+    """Stan danych wejściowych w tekście (kod zostaje w ``dowod.status_danych.stan``)."""
+    return "dane zwalidowane" if stan == "ZWALIDOWANE" else "dane przyjęte bez walidacji"
+
+
+def nazwa_pokrycia_programu(pokrycie: str) -> str:
+    """Pokrycie programu badań w tekście (kod zostaje w ``pokrycie_programu``)."""
+    if pokrycie == "PELNE":
+        return "pełne"
+    if pokrycie == "CZESCIOWE":
+        return "częściowe"
+    return "nie dotyczy"
 
 
 def nazwa_skladowej(ocena: OcenaKryterium) -> str:
@@ -340,7 +397,7 @@ def brak_limitu() -> str:
 def _brak_podstawy(nazwa: str, podstawa: PodstawaWymagania) -> str:
     tekst = (
         f"{nazwa} o ustalonym pochodzeniu: obecna podstawa {opis_podstawy(podstawa)} ma stan "
-        "źródła NIEUSTALONE — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną"
+        "źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną"
     )
     if podstawa.uwagi_pl is not None:
         tekst += f" (uwagi: {_bez_kropki(podstawa.uwagi_pl)})"
@@ -374,7 +431,7 @@ def brak_metody_wymagania() -> str:
 def brak_skladowych_stosowalnych() -> str:
     return (
         "Ocena co najmniej jednego kryterium składowego stosowalnego do przedmiotu — wymaganie "
-        "jest stosowalne, a każde kryterium składowe ma status NIE_DOTYCZY."
+        "jest stosowalne, a żadne kryterium składowe nie dotyczy przedmiotu."
     )
 
 
@@ -403,23 +460,22 @@ def powod_metody(dowod: StatusDowodu, poziom: PoziomRekordu) -> str | None:
     if dowod.metoda == "BRAK_METODY":
         return f"Brak metody dowodu — właściwa metoda dla {twierdzenie}: {wlasciwe}."
     if dopuszczalna and dowod.metoda == "OBLICZENIE" and rodzaj in TWIERDZENIA_Z_OBLICZENIEM:
-        if dowod.poziom.regulatory_evidence_eligible:
+        if dowod.poziom is EvidenceTier.VALIDATED_SIMULATION:
             return None
         return (
             f"Obliczenie nie jest dowodem właściwym: zdolność obliczeniowa o poziomie dowodowym "
-            f"{dowod.poziom.value} (wymagany VALIDATED_SIMULATION — solver zwalidowany)."
+            f"„{dowod.poziom.label_pl}” (wymagany solver zwalidowany — najwyższy poziom "
+            "dowodowy zdolności)."
         )
     if dopuszczalna and dowod.metoda == "SYMULACJA":
         czesci = []
-        if not dowod.poziom.regulatory_evidence_eligible:
+        if dowod.poziom is not EvidenceTier.VALIDATED_SIMULATION:
             czesci.append(
-                f"silnik o poziomie dowodowym {dowod.poziom.value} (wymagany VALIDATED_SIMULATION)"
+                f"silnik o poziomie dowodowym „{dowod.poziom.label_pl}” "
+                f"(wymagany „{_SIMULACJA_ZWALIDOWANA}”)"
             )
         if dowod.status_modelu == "NIE_DOTYCZY":
-            czesci.append(
-                "brak statusu modelu urządzenia (NIE_DOTYCZY; wymagany VALIDATED_AGAINST_TEST "
-                "albo CERTIFIED_MODEL)"
-            )
+            czesci.append(f"brak statusu modelu urządzenia (wymagany: {_MODEL_ZWALIDOWANY_PL})")
         if not czesci:
             return None
         return f"Symulacja nie jest dowodem właściwym: {'; '.join(czesci)}."
@@ -429,11 +485,25 @@ def powod_metody(dowod: StatusDowodu, poziom: PoziomRekordu) -> str | None:
     )
 
 
+def powod_reguly_sposobu_wykazania(metoda: MetodaDowodu, podstawa: PodstawaWymagania) -> str:
+    """Powód niepełności: reguła, która czyni sposób wykazania właściwym dla wymagania (np.
+    pokrycie wymagania certyfikatem urządzenia w warstwie WiPWC), ma stan źródła
+    ``NIEUSTALONE``."""
+    tekst = (
+        f"Reguła sposobu wykazania „{NAZWA_METODY_PL[metoda]}”: podstawa "
+        f"{opis_podstawy(podstawa)} ma stan źródła „nieustalone” — reguła bez wskazanej "
+        "jednostki redakcyjnej nie czyni tego sposobu wykazania dowodem pełnym (wymagany stan "
+        f"źródła {_STAN_WYMAGANY_PL}: dokument, wydanie i jednostka redakcyjna reguły)"
+    )
+    if podstawa.uwagi_pl is not None:
+        tekst += f" (uwagi: {_bez_kropki(podstawa.uwagi_pl)})"
+    return tekst + "."
+
+
 def powod_modelu_niezwalidowanego() -> str:
     return (
-        "Status modelu urządzenia UNVALIDATED_MODEL — model konkretnego urządzenia bez walidacji "
-        "nie stanowi pełnego dowodu zgodności (wymagany VALIDATED_AGAINST_TEST albo "
-        "CERTIFIED_MODEL)."
+        "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji nie "
+        f"stanowi pełnego dowodu zgodności (wymagany: {_MODEL_ZWALIDOWANY_PL})."
     )
 
 
@@ -445,7 +515,7 @@ def opis_danej(dana: DanaPrzyjeta) -> str:
     else:
         tekst += " (bez wartości liczbowej)"
     if dana.jakosc is not None:
-        tekst += f", jakość danej {dana.jakosc.value}"
+        tekst += f", jakość danej: {dana.jakosc.label_pl}"
     return tekst
 
 
@@ -455,8 +525,8 @@ def powod_danej_przyjetej(dana: DanaPrzyjeta) -> str:
 
 def powod_podstawy_nieustalonej(podstawa: PodstawaWymagania) -> str:
     return (
-        f"Podstawa {opis_podstawy(podstawa)} ma stan źródła NIEUSTALONE — wymagany stan "
-        "ZWERYFIKOWANE albo WSKAZANE (dokument, wydanie i jednostka redakcyjna)."
+        f"Podstawa {opis_podstawy(podstawa)} ma stan źródła „nieustalone” — wymagany stan "
+        f"źródła {_STAN_WYMAGANY_PL} (dokument, wydanie i jednostka redakcyjna)."
     )
 
 
@@ -501,11 +571,11 @@ def _zastrzezenie_podstawy(podstawa: PodstawaWymagania) -> str | None:
         return None
     if podstawa.status == "WSKAZANE":
         return (
-            f"Podstawa {opis_podstawy(podstawa)}: stan źródła WSKAZANE — dokument i jednostka "
+            f"Podstawa {opis_podstawy(podstawa)}: stan źródła „wskazane” — dokument i jednostka "
             "redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium."
         )
     tekst = (
-        f"Podstawa {opis_podstawy(podstawa)}: stan źródła NIEUSTALONE — pochodzenie wartości "
+        f"Podstawa {opis_podstawy(podstawa)}: stan źródła „nieustalone” — pochodzenie wartości "
         "nieustalone"
     )
     if podstawa.uwagi_pl is not None:
@@ -518,7 +588,8 @@ def _zastrzezenia_stosowalnosci(stosowalnosc: Stosowalnosc) -> list[str]:
     podstawa = stosowalnosc.podstawa
     if podstawa is not None and podstawa.status != "ZWERYFIKOWANE":
         zastrzezenia.append(
-            f"Stosowalność wyznaczona wg podstawy o stanie {podstawa.status}: "
+            f"Stosowalność wyznaczona wg podstawy o stanie źródła "
+            f"„{NAZWA_STANU_ZRODLA_PL[podstawa.status]}”: "
             f"{opis_podstawy(podstawa)}."
         )
     if stosowalnosc.typ_modulu is not None and stosowalnosc.modul_istniejacy is None:
@@ -533,13 +604,13 @@ def _zastrzezenia_dowodu(dowod: StatusDowodu) -> list[str]:
     zastrzezenia: list[str] = []
     if dowod.status_modelu == "UNVALIDATED_MODEL":
         zastrzezenia.append(
-            "Status modelu urządzenia: UNVALIDATED_MODEL — model konkretnego urządzenia bez "
-            "walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia."
+            "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; "
+            "wynik nie stanowi pełnego dowodu zgodności urządzenia."
         )
     if dowod.metoda in METODY_OBLICZENIOWE and dowod.poziom in POZIOMY_BEZ_WALIDACJI:
         zastrzezenia.append(
-            f"Poziom dowodowy zdolności narzędzia: {dowod.poziom.value} — obliczenie bez "
-            "ustalonej poprawności fizycznej nie jest dowodem regulacyjnym."
+            f"Poziom dowodowy zdolności narzędzia: „{dowod.poziom.label_pl}” — "
+            "obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym."
         )
     if dowod.w_domenie_walidacji is False:
         zastrzezenia.append(
@@ -548,8 +619,7 @@ def _zastrzezenia_dowodu(dowod: StatusDowodu) -> list[str]:
         )
     for dana in dowod.status_danych.dane_przyjete:
         zastrzezenia.append(
-            f"Dana przyjęta bez walidacji (UNVALIDATED_INPUT): {opis_danej(dana)} — "
-            f"{_bez_kropki(dana.powod_pl)}."
+            f"Dana przyjęta bez walidacji: {opis_danej(dana)} — " f"{_bez_kropki(dana.powod_pl)}."
         )
     return zastrzezenia
 
@@ -571,8 +641,8 @@ def _zastrzezenie_warunku_wstepnego(kryterium: Kryterium) -> str | None:
     if podstawa is None or warunek is None or podstawa.status == "ZWERYFIKOWANE":
         return None
     tekst = (
-        f"Warunek wstępny („{_bez_kropki(warunek)}”) oparty na podstawie o stanie "
-        f"{podstawa.status}: {opis_podstawy(podstawa)}"
+        f"Warunek wstępny („{_bez_kropki(warunek)}”) oparty na podstawie o stanie źródła "
+        f"„{NAZWA_STANU_ZRODLA_PL[podstawa.status]}”: {opis_podstawy(podstawa)}"
     )
     if podstawa.uwagi_pl is not None:
         tekst += f" (uwagi: {_bez_kropki(podstawa.uwagi_pl)})"
@@ -621,6 +691,22 @@ def zastrzezenia_kryterium(
     )
 
 
+def _zastrzezenie_reguly_sposobu(
+    metoda: MetodaDowodu, podstawa: PodstawaWymagania | None
+) -> str | None:
+    """Podstawa reguły sposobu wykazania o stanie ≠ ``ZWERYFIKOWANE`` — sposób wykazania
+    wymagania (np. certyfikat) opiera się na tej regule."""
+    if podstawa is None or podstawa.status == "ZWERYFIKOWANE":
+        return None
+    tekst = (
+        f"Reguła sposobu wykazania „{NAZWA_METODY_PL[metoda]}” oparta na podstawie o stanie "
+        f"źródła „{NAZWA_STANU_ZRODLA_PL[podstawa.status]}”: {opis_podstawy(podstawa)}"
+    )
+    if podstawa.uwagi_pl is not None:
+        tekst += f" (uwagi: {_bez_kropki(podstawa.uwagi_pl)})"
+    return tekst + "."
+
+
 def zastrzezenia_wymagania(
     *,
     podstawa: PodstawaWymagania,
@@ -628,9 +714,11 @@ def zastrzezenia_wymagania(
     oceny: Sequence[OcenaKryterium],
     dowod: StatusDowodu,
     zakres_waznosci: ZakresWaznosci,
+    podstawa_sposobu_wykazania: PodstawaWymagania | None = None,
 ) -> tuple[str, ...]:
     """Zastrzeżenia rekordu W: suma zastrzeżeń składników (kolejność składników, bez
-    powtórzeń) i zastrzeżenia z pól samego wymagania."""
+    powtórzeń), zastrzeżenia z pól samego wymagania i zastrzeżenie podstawy reguły sposobu
+    wykazania (stan ≠ ``ZWERYFIKOWANE``)."""
     skladowe = [z for ocena in oceny for z in ocena.wyjasnienie.zastrzezenia]
     wlasne = _zastrzezenia_pol(
         podstawy=[podstawa],
@@ -639,7 +727,8 @@ def zastrzezenia_wymagania(
         dowod=dowod,
         zakres_waznosci=zakres_waznosci,
     )
-    return _bez_powtorzen([*skladowe, *wlasne])
+    regula = _zastrzezenie_reguly_sposobu(dowod.metoda, podstawa_sposobu_wykazania)
+    return _bez_powtorzen([*skladowe, *wlasne, *([regula] if regula is not None else [])])
 
 
 # ---------------------------------------------------------------------------
@@ -651,7 +740,7 @@ def _uwaga_modelu_naruszenia(dowod: StatusDowodu) -> str | None:
     if dowod.status_modelu != "UNVALIDATED_MODEL":
         return None
     return (
-        "naruszenie wykazano na modelu bez walidacji (UNVALIDATED_MODEL) — wymaga działania "
+        "naruszenie wykazano na modelu urządzenia bez walidacji — wymaga działania "
         "projektowego albo walidacji modelu"
     )
 
@@ -728,7 +817,7 @@ def wyjasnienie_kryterium(
     elif krok == "PODSTAWA":
         poczatek = f"{naglowek} — werdykt zgodności niewydany: brak ustalonej podstawy parametru"
         if relacja == "LOGICZNE":
-            przyczyna = f"podstawa kryterium {opis_podstawy(podstawa)} ma stan źródła NIEUSTALONE"
+            przyczyna = f"podstawa kryterium {opis_podstawy(podstawa)} ma stan źródła „nieustalone”"
             zdania = [f"{poczatek} — {przyczyna}."]
             if wynik is not None:
                 zdania.append(f"Wynik informacyjny: {_opis_stanu(wynik)}.")
@@ -739,7 +828,7 @@ def wyjasnienie_kryterium(
                 zdania.append(f"Wynik obliczeniowy (informacyjnie): {_opis_wyniku(wynik)}.")
         else:
             przyczyna = (
-                f"podstawa limitu {opis_podstawy(limit.podstawa)} ma stan źródła NIEUSTALONE"
+                f"podstawa limitu {opis_podstawy(limit.podstawa)} ma stan źródła „nieustalone”"
             )
             zdania = [f"{poczatek} — {przyczyna}."]
             if porownanie is not None:
@@ -868,6 +957,11 @@ def wyjasnienie_wymagania(
             f"{naglowek} — brak wystarczającego dowodu: brak metody wykazania w narzędziu; "
             f"właściwa metoda: {_METODY_WYKAZANIA_BRAK_METODY}."
         ]
+        if stosowalne:
+            zdania.append(
+                "Kryteria składowe (informacyjnie — nie wykazują wymagania): "
+                f"{'; '.join(_opis_skrotowy(o) for o in stosowalne)}."
+            )
         przyczyna = (
             "sposób wykazania: brak metody w narzędziu (ani certyfikat pokrywający wymaganie, "
             "ani test lub symulacja narzędzia)"

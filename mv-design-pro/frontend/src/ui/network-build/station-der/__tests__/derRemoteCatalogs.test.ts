@@ -18,9 +18,11 @@ import {
   formatDerDynamicProfileLabelPl,
   formatProweniencjaZrodloLabelPl,
   getDerDynamicProfile,
+  opisKlasyfikacjiNcRfg,
   selectDerDynamicProfilesForKind,
   type DerDynamicProfileItem,
 } from '../derRemoteCatalogs';
+import { klasyfikacjaWgKatalogu } from '../../../../ui2/oze/ncrfg/__tests__/atrapaKlasyfikacji';
 
 const PV_GFL: DerDynamicProfileItem = {
   profile_id: 'default_pv_gfl',
@@ -186,5 +188,32 @@ describe('fetchDerDynamicProfiles', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(fetchDerDynamicProfiles()).rejects.toThrow(/500/);
+  });
+});
+
+describe('opisKlasyfikacjiNcRfg — opis pola „Moduł NC RfG" (karta AB-1a Pakiet D2)', () => {
+  // Rekordy klasyfikacji z progów katalogu policzonego backendem (ta sama atrapa co /modul).
+  it('typ modułu z rekordu backendu', () => {
+    const klasyfikacja = klasyfikacjaWgKatalogu(500, 15);
+    expect(klasyfikacja.modul).not.toBeNull();
+    expect(opisKlasyfikacjiNcRfg({ data: klasyfikacja, isError: false, isLoading: false })).toBe(
+      klasyfikacja.modul,
+    );
+  });
+
+  it('poniżej progu istotności → powód z rekordu backendu, nie domysł typu', () => {
+    const klasyfikacja = klasyfikacjaWgKatalogu(0.5, 0.4);
+    expect(klasyfikacja.modul).toBeNull();
+    expect(opisKlasyfikacjiNcRfg({ data: klasyfikacja, isError: false, isLoading: false })).toBe(
+      klasyfikacja.powod_pl,
+    );
+  });
+
+  it.each([
+    [{ data: undefined, isError: true, isLoading: false }, 'nie można wyznaczyć (błąd klasyfikacji w backendzie)'],
+    [{ data: undefined, isError: false, isLoading: true }, 'klasyfikacja w toku…'],
+    [{ data: undefined, isError: false, isLoading: false }, 'nie można wyznaczyć (brak mocy lub napięcia przyłączenia)'],
+  ] as const)('stan zapytania bez rekordu nazwany: %o', (zapytanie, opis) => {
+    expect(opisKlasyfikacjiNcRfg(zapytanie)).toBe(opis);
   });
 });

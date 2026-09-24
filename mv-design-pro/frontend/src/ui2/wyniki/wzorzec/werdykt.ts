@@ -112,6 +112,7 @@ export type PoziomRekordu = 'K' | 'W';
 /** Lustro `werdykt.proweniencja.EvidenceTier` — poziom dowodowy zdolności narzędzia. */
 export type EvidenceTier =
   | 'VALIDATED_SIMULATION'
+  | 'TYPE_TEST_CERTIFICATE'
   | 'DECLARATION'
   | 'UNVALIDATED_MODEL'
   | 'NOT_SIMULATED';

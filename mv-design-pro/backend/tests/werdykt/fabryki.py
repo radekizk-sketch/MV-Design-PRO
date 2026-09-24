@@ -170,10 +170,21 @@ def status_danych(stan: StanDanych = "ZWALIDOWANE") -> StatusDanych:
     return StatusDanych(stan="UNVALIDATED_INPUT", dane_przyjete=(dana_przyjeta(),))
 
 
+def poziomy_metody(metoda: MetodaDowodu) -> tuple[EvidenceTier, ...]:
+    """Poziomy dowodowe dopuszczalne z metodą wg §3 tabeli poziomów kontraktu (wprost z tekstu,
+    niezależnie od kodu): certyfikat — wyłącznie certyfikat badania typu; dowód łączony — każdy
+    (najsłabszy poziom składników); każda inna metoda — każdy poza certyfikatem badania typu."""
+    if metoda == "CERTYFIKAT":
+        return (EvidenceTier.TYPE_TEST_CERTIFICATE,)
+    if metoda == "DOWOD_LACZONY":
+        return tuple(EvidenceTier)
+    return tuple(p for p in EvidenceTier if p is not EvidenceTier.TYPE_TEST_CERTIFICATE)
+
+
 def dowod(
     *,
     metoda: MetodaDowodu = "DEKLARACJA",
-    poziom: EvidenceTier = EvidenceTier.DECLARATION,
+    poziom: EvidenceTier | None = None,
     twierdzenie: ClaimKind = ClaimKind.DECLARED_CONFIGURATION,
     status_modelu: StatusModelu = "NIE_DOTYCZY",
     stan_danych: StanDanych = "ZWALIDOWANE",
@@ -182,6 +193,14 @@ def dowod(
     w_domenie: bool | None = None,
     domena: str | None = None,
 ) -> StatusDowodu:
+    """Dowód rekordu; bez wskazanego poziomu — certyfikat badania typu dla metody CERTYFIKAT
+    (poziom obowiązkowy tej metody), deklaracja dla pozostałych."""
+    if poziom is None:
+        poziom = (
+            EvidenceTier.TYPE_TEST_CERTIFICATE
+            if metoda == "CERTYFIKAT"
+            else EvidenceTier.DECLARATION
+        )
     return StatusDowodu(
         metoda=metoda,
         poziom=poziom,
@@ -228,6 +247,25 @@ def dowod_obliczenia(
         stan_danych=stan_danych,
         w_domenie=w_domenie,
         domena=None if w_domenie is None else DOMENA_WALIDACJI,
+    )
+
+
+def podstawa_reguly_sposobu(stan: StanZrodla = "NIEUSTALONE") -> PodstawaWymagania:
+    """Podstawa reguły pokrycia wymagania certyfikatem (warstwa WiPWC) w danym stanie."""
+    if stan == "NIEUSTALONE":
+        return PodstawaWymagania(
+            rodzaj="WIPWC",
+            dokument="Warunki i Procedury Wykorzystania Certyfikatów (WiPWC)",
+            wydanie="1.3",
+            status="NIEUSTALONE",
+            uwagi_pl="pokrycie bez wskazania punktu WiPWC",
+        )
+    return PodstawaWymagania(
+        rodzaj="WIPWC",
+        dokument="Warunki i Procedury Wykorzystania Certyfikatów (WiPWC)",
+        wydanie="1.3",
+        jednostka_redakcyjna="pkt 4.2",
+        status=stan,
     )
 
 
@@ -466,8 +504,12 @@ def wymaganie(
     dowod_wymagania: StatusDowodu | None = None,
     wykluczenia_wlasne: Sequence[str] = (),
     stosowalnosc_wymagania: Stosowalnosc | None = None,
+    podstawa_sposobu: PodstawaWymagania | None = None,
 ) -> WynikWymagania:
-    """Rekord W przez ``zagreguj_wymaganie``; zakres agregatu = suma wykluczeń składników."""
+    """Rekord W przez ``zagreguj_wymaganie``; zakres agregatu = suma wykluczeń składników.
+
+    ``podstawa_sposobu`` — podstawa reguły, która czyni sposób wykazania właściwym (np.
+    reguła pokrycia wymagania certyfikatem z warstwy WiPWC)."""
     if pokrycie is None:
         pokrycie = "PELNE" if sposob == "SYMULACJA" else "NIE_DOTYCZY"
     if dowod_wymagania is None:
@@ -509,6 +551,7 @@ def wymaganie(
         dowod=dowod_wymagania,
         zakres_waznosci=zakres(rodzaj=None, wykluczenia=wykluczenia),
         slad=slad(),
+        podstawa_sposobu_wykazania=podstawa_sposobu,
     )
 
 

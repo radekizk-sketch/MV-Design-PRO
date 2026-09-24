@@ -4,34 +4,31 @@
  * build_frt_trajectories_view`: `modul_der` (ConverterType), `operator` (profil
  * NC RfG), `obwiednia_profilu` (NcRfgRideThroughPoint z profilu PSE), `scenariusze`
  * (FrtScenarioResult + werdykt PL z pól solvera). Katalog NC RfG (`operators[]`)
- * jak w `pobierzKatalogKlasNcRfg`. Deterministyczne, bez losowości.
+ * jak w `pobierzKatalogNcRfg` (klient V2 `ui2/oze/ncrfg/api`). Deterministyczne, bez losowości.
  *
  * Liczby odwzorowują moduł PV 1 MW / 15 kV (conv-pv-1mw-15kv) testowany profilem
  * PSE: LVRT zapad do 0,05 p.u. przez 0,15 s (fault_start 0,5 s), odzysk P po
  * zakłóceniu; trajektoria skrócona do reprezentatywnych punktów (pola 1:1 z solverem).
  */
 
-import type {
-  OdpowiedzKatalogNcRfg,
-  WidokSekwencjiFrt,
-  WidokTrajektoriiFrt,
-} from '../../api';
+import katalogNcRfg from '../../../../harness-fixtures/generated/ncrfg_katalog.json';
+import type { WidokSekwencjiFrt, WidokTrajektoriiFrt } from '../../api';
+import type { KatalogNcRfg } from '../../ncrfg/typy';
 
-/** Katalog NC RfG: dwóch operatorów (progi klas nieistotne dla okna FRT). */
-export function katalogNcRfgFixture(): OdpowiedzKatalogNcRfg {
+/**
+ * Katalog NC RfG policzony backendem (`GET /api/ncrfg-tests/catalog`, fikstura generowana
+ * `ncrfg_katalog.json`) zawężony do dwóch operatorów w stałej kolejności (PSE, PGE) — okno
+ * FRT czyta z niego wyłącznie listę operatorów, więc podzbiór jest 1:1 z kontraktem V2.
+ */
+export function katalogNcRfgFixture(): KatalogNcRfg {
+  const katalog = katalogNcRfg as unknown as KatalogNcRfg;
   return {
-    operators: [
-      {
-        operator_id: 'pse',
-        operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
-        module_types: [],
-      },
-      {
-        operator_id: 'pge',
-        operator_name_pl: 'PGE Dystrybucja',
-        module_types: [],
-      },
-    ],
+    ...katalog,
+    operators: ['pse', 'pge'].map((id) => {
+      const operator = katalog.operators.find((o) => o.operator_id === id);
+      if (!operator) throw new Error(`fikstura katalogu NC RfG: brak operatora ${id}`);
+      return operator;
+    }),
   };
 }
 

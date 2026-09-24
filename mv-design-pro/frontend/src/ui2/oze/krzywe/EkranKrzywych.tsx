@@ -1,23 +1,25 @@
 /*
  * EkranKrzywych — okno „Krzywe zdolności P–Q" (karta P41 / strumień OZE).
  * Dobór typu falownika z katalogu konwerterów (`GET /api/catalog/converter-types`;
- * typy bez krzywej producenta widoczne ze stanem „brak krzywej producenta" —
- * bieg zablokowany z uczciwym komunikatem) + operatora OSD z katalogu NC RfG
+ * typy bez krzywej producenta z adnotacją „brak krzywej producenta") + operatora OSD z katalogu NC RfG
  * (`GET /api/ncrfg-tests/catalog`) → JAWNY bieg `GET /api/oze-analysis/pq-coverage`
  * → prezentacja:
  *   1. wykres P–Q (pasmo producenta + nakładka wymagania operatora),
- *   2. tabela punktów na wzorcu `TabelaWynikow` (margines + tag statusu),
- *   3. werdykt całości PL + rozwijany ślad WHITE BOX (reużyty `SladAnalizy` z pulpitu).
+ *   2. tabela punktów na wzorcu `TabelaWynikow` (zapasy punktu — liczby z backendu),
+ *   3. ocena = rekord `OcenaKryterium` backendu w `KartaWerdyktu` (etykieta z rekordu) +
+ *      rozwijany ślad WHITE BOX (reużyty `SladAnalizy` z pulpitu).
  *
- * Zero fizyki, zero ocen lokalnych — pokrycie, marginesy i werdykt pochodzą
- * WYŁĄCZNIE z backendu. Identyfikatory (catalog_item_id, operator_id) wyłącznie
- * w trybie eksperckim; nazwy PL typów/operatorów na pierwszym planie.
+ * Zero fizyki, zero ocen lokalnych — zapasy i ocena pochodzą WYŁĄCZNIE z backendu; typ bez
+ * krzywej producenta daje rekord „nie oceniono" z nazwanym brakiem (bieg dozwolony).
+ * Identyfikatory (catalog_item_id, operator_id) wyłącznie w sekcji `InformacjeAudytowe`
+ * (tryb ekspercki); nazwy PL typów/operatorów na pierwszym planie.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import './krzywe.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { TabelaWynikow } from '../../wyniki/wzorzec';
+import { InformacjeAudytowe, TabelaWynikow } from '../../wyniki/wzorzec';
+import { EtykietaWerdyktu, KartaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { SladAnalizy } from '../pulpit';
 import { useAppStateStore } from '../../../ui/app-state';
 import { notify } from '../../../ui/notifications/store';
@@ -36,15 +38,14 @@ import {
   type DerCatalogBindingsRequest,
 } from '../../../ui/sld/v2/canvas/derPersistenceApi';
 import {
-  pobierzKatalogKlasNcRfg,
   pobierzKonwertery,
   pobierzPokryciePQ,
   type WidokPokryciaPQ,
   type ZapytaniePokryciaPQ,
 } from '../api';
+import { pobierzKatalogNcRfg } from '../ncrfg/api';
 import { WykresPQChart } from './WykresPQChart';
 import {
-  istotnoscWerdyktuPQ,
   kolumnyTabeliPQ,
   krokiSladuPQ,
   opcjeOperatorowPQ,
@@ -120,21 +121,22 @@ function WynikPokrycia({
   const kolumny = useMemo(() => kolumnyTabeliPQ(), []);
   const wiersze = useMemo(() => wierszeTabeliPQ(dane), [dane]);
   const kroki = useMemo(() => krokiSladuPQ(dane), [dane]);
-  const istotnosc = istotnoscWerdyktuPQ(dane);
 
   return (
     <div data-testid="mvd-krzywe-wynik">
-      <div
-        className={`mvd-krzywe-werdykt mvd-krzywe-werdykt--${istotnosc}`}
-        data-testid="mvd-krzywe-werdykt"
-      >
-        <span className="mvd-krzywe-werdykt-tytul">
-          {dane.werdykt.pokryty
-            ? KRZYWE_STRINGS.werdyktPokryte
-            : KRZYWE_STRINGS.werdyktNiepokryte}
-        </span>
-        <span className="mvd-krzywe-werdykt-opis">{dane.werdykt.opis_pl}</span>
-      </div>
+      {/* Ocena pokrycia = rekord `OcenaKryterium` backendu: plakietka i zdanie z rekordu,
+          pełna karta (podstawa, dowód, kompletność) pod spodem — zero mapy status→tekst. */}
+      <section className="mvd-krzywe-werdykt" data-testid="mvd-krzywe-werdykt">
+        <p className="mvd-krzywe-werdykt-tytul">
+          <EtykietaWerdyktu
+            etykieta={dane.ocena.etykieta}
+            status={dane.ocena.status_maszynowy}
+            testid="mvd-krzywe-werdykt-etykieta"
+          />
+        </p>
+        <p className="mvd-krzywe-werdykt-opis">{dane.ocena.wyjasnienie.zdanie_pl}</p>
+        <KartaWerdyktu rekord={dane.ocena} />
+      </section>
 
       <dl className="mvd-krzywe-zalozenia" data-testid="mvd-krzywe-zalozenia">
         <div className="mvd-krzywe-zal-para">
@@ -202,18 +204,14 @@ function WynikPokrycia({
         )}
       </div>
 
-      {trybEkspercki && (
-        <dl className="mvd-krzywe-eksp" data-testid="mvd-krzywe-eksp">
-          <div className="mvd-krzywe-eksp-para">
-            <dt>{KRZYWE_STRINGS.ekspTypId}</dt>
-            <dd className="mvd-num">{dane.typ_katalogowy.id}</dd>
-          </div>
-          <div className="mvd-krzywe-eksp-para">
-            <dt>{KRZYWE_STRINGS.ekspOperatorId}</dt>
-            <dd className="mvd-num">{dane.operator.id}</dd>
-          </div>
-        </dl>
-      )}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-krzywe-eksp"
+        wiersze={[
+          { etykieta: KRZYWE_STRINGS.ekspTypId, wartosc: dane.typ_katalogowy.id },
+          { etykieta: KRZYWE_STRINGS.ekspOperatorId, wartosc: dane.operator.id },
+        ]}
+      />
     </div>
   );
 }
@@ -438,7 +436,7 @@ export function EkranKrzywych({ trybZaawansowania, onOtworzDowod }: EkranKrzywyc
   useEffect(() => {
     let anulowane = false;
     setKatalog({ rodzaj: 'ladowanie' });
-    Promise.all([pobierzKonwertery(), pobierzKatalogKlasNcRfg()])
+    Promise.all([pobierzKonwertery(), pobierzKatalogNcRfg()])
       .then(([rekordy, katalogNcRfg]) => {
         if (anulowane) return;
         setKatalog({
@@ -495,9 +493,9 @@ export function EkranKrzywych({ trybZaawansowania, onOtworzDowod }: EkranKrzywyc
     setStan({ rodzaj: 'idle' });
   };
 
-  const typBezKrzywej = opcjaWybranegoTypu !== null && !opcjaWybranegoTypu.maKrzywa;
-  const mozliwyBieg =
-    wybranyTyp !== '' && wybranyOperator !== '' && opcjaWybranegoTypu?.maKrzywa === true;
+  // Typ bez krzywej producenta NIE blokuje biegu: backend zwraca rekord oceny „nie
+  // oceniono" z nazwanym brakiem krzywej — to jest odpowiedź, nie błąd.
+  const mozliwyBieg = wybranyTyp !== '' && wybranyOperator !== '' && opcjaWybranegoTypu !== null;
 
   const uruchom = () => {
     if (!mozliwyBieg) return;
@@ -576,14 +574,7 @@ export function EkranKrzywych({ trybZaawansowania, onOtworzDowod }: EkranKrzywyc
             </button>
           </section>
 
-          {typBezKrzywej ? (
-            <StanPanel
-              komunikat={KRZYWE_STRINGS.typBezKrzywej}
-              opis={KRZYWE_STRINGS.typBezKrzywejOpis}
-              wariant="blad"
-              testid="mvd-krzywe-typ-bez-krzywej"
-            />
-          ) : stan.rodzaj === 'idle' ? (
+          {stan.rodzaj === 'idle' ? (
             <StanPanel
               komunikat={KRZYWE_STRINGS.brakWyniku}
               opis={KRZYWE_STRINGS.brakWynikuOpis}

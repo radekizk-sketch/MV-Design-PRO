@@ -850,16 +850,9 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "network_model.solvers.ncrfg_ptpiree.contracts:NcRfgPtpireeModuleResult.overall_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A11 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "A11"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "network_model.solvers.ncrfg_ptpiree.contracts:NcRfgPtpireeTestResult.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Docelowo enum wewnętrzny wyprowadzany jedną funkcją z `ocena` (pakiet C karty AB-1a, O-13); dziś rekord nie ma jeszcze pola `ocena`, więc MIGRACJA — pakiet C przy odbiorze zmienia klasę na ENUM_WEWNETRZNY (rozstrzygnięcie Fable 2026-09-23).",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Enum wewnętrzny kontraktu V2 (karta AB-1a Pakiet C, O-13; odbiór Pakietu C 2026-09-23): wartość wyprowadzana WYŁĄCZNIE funkcją `werdykt_maszynowy(ocena)` z rekordu `OcenaKryterium` testu (pole `ocena` z `WyjasnienieWerdyktu`), a `summary_pl` = `ocena.wyjasnienie.zdanie_pl` — status maszynowy do filtrów i agregacji, nigdy samodzielny komunikat.",
    "wiersz_inwentarza": "A11"
   },
   {
@@ -913,16 +906,9 @@
   },
   {
    "sprawdzenie": "2_http",
-   "tozsamosc": "openapi:NcRfgPtpireeModuleResult.overall_status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz A11 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "A11"
-  },
-  {
-   "sprawdzenie": "2_http",
    "tozsamosc": "openapi:NcRfgPtpireeTestResult.verdict",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Ta sama wartość co `NcRfgPtpireeTestResult.verdict` solvera w kontrakcie HTTP: docelowo enum wewnętrzny wyprowadzany z `ocena` (pakiet C, O-13); dziś bez `ocena` i bez `WyjasnienieWerdyktu` w schemacie — MIGRACJA do odbioru pakietu C.",
+   "klasa": "ENUM_WEWNETRZNY",
+   "uzasadnienie_pl": "Ta sama wartość co `NcRfgPtpireeTestResult.verdict` solvera w kontrakcie HTTP V2: schemat niesie obok `ocena` (`OcenaKryterium` z `WyjasnienieWerdyktu`), a enum jest wyprowadzany jedną funkcją `werdykt_maszynowy(ocena)` (odbiór Pakietu C 2026-09-23).",
    "wiersz_inwentarza": "A11"
   },
   {
@@ -1046,20 +1032,6 @@
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/workspace/surfaces/NcRfgTestsTab.tsx:VERDICT_CLASS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "E31"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui/workspace/surfaces/NcRfgTestsTab.tsx:VERDICT_LABELS",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz E31 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "E31"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
    "tozsamosc": "frontend/src/ui2/kreatory/zrodlo-oze/PodsumowanieAutoBieg.tsx:IKONA_STATUSU",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D64 (MIGRACJA): migracja (plan §8).",
@@ -1071,62 +1043,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D19 (MIGRACJA): migracja (plan §8).",
    "wiersz_inwentarza": "D19"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/oze/macierz/SekcjaZgodnosciPrzekrojowej.tsx:ETYKIETA_STATUSU",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D6 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D6"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/oze/macierz/SekcjaZgodnosciPrzekrojowej.tsx:KLASA_STATUSU",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D6 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D6"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/oze/macierz/strings.ts:ETYKIETY_STATUSU_MODULU",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D1 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D1"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/oze/macierz/strings.ts:ETYKIETY_WERDYKTU",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D1 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D1"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/oze/macierz/strings.ts:KLASA_WERDYKTU",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D1 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D1"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/oze/pulpit/strings.ts:ETYKIETY_STATUSU_PULPITU",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D8 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D8"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/oze/pulpit/strings.ts:KLASA_STATUSU_PULPITU",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D8 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D8"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/oze/wniosek/strings.ts:STATUS_WALIDACJI_WNIOSEK_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D12 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D12"
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
@@ -1442,20 +1358,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D57 opisuje ten plik, nie ten symbol.",
    "wiersz_inwentarza": "D57 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "4_dokumenty",
-   "tozsamosc": "application.analyses.certyfikat_zgodnosci:_STATUS_MODULU_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C4 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C4"
-  },
-  {
-   "sprawdzenie": "4_dokumenty",
-   "tozsamosc": "application.analyses.certyfikat_zgodnosci:_WERDYKT_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C3 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C3"
   },
   {
    "sprawdzenie": "4_dokumenty",

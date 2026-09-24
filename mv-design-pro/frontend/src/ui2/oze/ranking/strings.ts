@@ -23,8 +23,6 @@ export const RANKING_STRINGS = {
   paramMaxKrokowOpis: 'Górny limit scenariuszy (zakres badanej mocy = krok × liczba kroków).',
   paramWezly: 'Węzły-kandydaci',
   paramWezlyDomyslne: 'Bez wyboru: węzły z istniejącymi źródłami (domyślni kandydaci backendu).',
-  paramOperator: 'Operator sieci (klasy NC RfG)',
-  paramOperatorOpis: 'Progi klas A/B/C/D odczytane z katalogu wybranego operatora.',
   przyciskOblicz: 'Zbuduj ranking przyłączeń',
   przyciskPrzelicz: 'Przelicz ranking',
 
@@ -48,14 +46,15 @@ export const RANKING_STRINGS = {
   kolKryterium: 'Kryterium wiążące',
   kolStraty: 'Przyrost strat przy mocy granicznej',
   kolNapiecia: 'Skrajne napięcia przy granicy',
-  kolKlasa: 'Klasa NC RfG',
+  kolKlasa: 'Typ modułu NC RfG',
 
   // Założenia biegu (część wyniku)
   zalKrok: 'Krok mocy',
   zalMaxKrokow: 'Maksymalna liczba kroków',
-  zalOperator: 'Operator sieci',
   zalLiczbaWezlow: 'Liczba węzłów w rankingu',
-  zalKlasaUwaga: 'Klasa NC RfG: mapowanie słownikowe z progów katalogu operatora (nie ocena).',
+  zalKlasaUwaga:
+    'Typ modułu NC RfG: klasyfikacja art. 5 backendu (progi warstwy WOS) z mocy przyłączalnej ' +
+    'i napięcia węzła — jedno zapytanie na unikalną parę (moc, napięcie).',
   zalStratyUwaga:
     'Przyrost strat: różnica strat scenariusza granicznego i bazowego (arytmetyka prezentacji).',
 
@@ -65,7 +64,9 @@ export const RANKING_STRINGS = {
   szczegolKryterium: 'Kryterium wiążące',
   szczegolStraty: 'Przyrost strat przy mocy granicznej',
   szczegolNapiecia: 'Skrajne napięcia przy granicy (min / maks)',
-  szczegolKlasa: 'Klasa modułu NC RfG',
+  szczegolKlasa: 'Typ modułu NC RfG (art. 5)',
+  klasaLadowanie: 'Klasyfikacja w toku…',
+  klasaBlad: 'Nie udało się pobrać klasyfikacji modułu',
   szczegolBrakWyboru: 'Wskaż wiersz w rankingu, aby zobaczyć ślad scenariuszy węzła.',
 
   // Ślad scenariuszy (reużycie etykiet statusu z okna „Zdolność przyłączeniowa")

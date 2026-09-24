@@ -11,9 +11,6 @@ export * from './readiness';
 // Wytwórcy DER Z MODELU — jedno odwzorowanie migawki ENM na rekordy warsztatu.
 export * from './zModelu';
 export * from './synchronizacjaZModelu';
-// Status certyfikatu PTPiREE — jedyne źródło prawdy warstwy prezentacji (karta
-// CERTYFIKAT-Z-KATALOGU), ten sam predykat co backendowe `certificate_status_z_tabliczki`.
-export * from './certyfikatPtpiree';
 // V12K-233: rozwiazanie klasy przekladnika z prawdziwego katalogu (dana dla reguly).
 export * from './ctZKatalogu';
 // `selectivity-grading` USUNIETE (K7-B, 2026-07-31): frontowa kopia charakterystyk

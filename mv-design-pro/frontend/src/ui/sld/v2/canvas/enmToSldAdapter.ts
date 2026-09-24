@@ -6561,7 +6561,10 @@ function buildDers(
       hasBlockTransformer: isBlockTransformerConnection,
       blockTransformerLabel: formatDerBlockTransformerLabel(blockTransformer),
       connectionVariant: gen.connection_variant ?? undefined,
-      ncRfgModule: gen.nc_rfg_module ?? deriveNcRfgModule(gen.p_mw),
+      // Moduł NC RfG WYŁĄCZNIE z modelu (klasyfikacja backendu zapisana przy wytwórcy);
+      // brak = brak oznaczenia. Dawny zastępczy podział wg mocy (progi 1/50/75 MW, sprzeczne
+      // z art. 5 rozporządzenia 2016/631) był domysłem klienta — usunięty (Pakiet D2).
+      ncRfgModule: gen.nc_rfg_module ?? null,
       operatingPMw: gen.p_mw ?? null,
       operatingQMvar: gen.q_mvar ?? null,
       lod: 'compact',
@@ -6841,15 +6844,3 @@ function buildDerSnChain(snapshot: EnergyNetworkModel, gen: Generator): SldDerSn
   };
 }
 
-/**
- * Wyprowadza NC RFG Module z mocy nominalnej wg progów ENEA profile (enea.yaml).
- * Fallback gdy backend nie ustawił nc_rfg_module.
- * A: Mikro (<1 MW), B: Małe (1–50 MW), C: Duże (50–75 MW), D: B. duże (>75 MW).
- */
-function deriveNcRfgModule(pMw: number | null | undefined): 'A' | 'B' | 'C' | 'D' | null {
-  if (pMw === null || pMw === undefined || pMw <= 0) return null;
-  if (pMw < 1) return 'A';
-  if (pMw < 50) return 'B';
-  if (pMw < 75) return 'C';
-  return 'D';
-}

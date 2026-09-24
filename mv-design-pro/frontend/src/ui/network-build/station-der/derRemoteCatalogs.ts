@@ -13,7 +13,11 @@
  *  - `BESS_BATTERY_CATALOG` → `GET /api/catalog/bess-battery-types`.
  *  - klasyfikacja modułu NC RfG (dawne `deriveModuleTypesForPowerKw`,
  *    UI-owe i bez kryterium napięcia) → `GET /api/ncrfg-tests/modul`
- *    (`compliance/nc_rfg_modul.py` — JEDYNE źródło progów, zero duplikacji).
+ *    (`catalog/profiles/nc_rfg::klasyfikacja_modulu` — JEDYNE źródło progów).
+ *
+ * Karta AB-1a Pakiet D2: katalog NC RfG i klasyfikacja modułu mają JEDEN klient V2
+ * (`ui2/oze/ncrfg/api.ts`); ten plik wyłącznie do niego deleguje (hooki React Query),
+ * a typy operatora są typami kontraktu V2 (zero drugiej definicji).
  *
  * `PF_CURVE_CATALOG` / `BLOCK_TRANSFORMER_CATALOG` NIE są tutaj — te dwa
  * czyta się ze snapshotu audytu 2 już pobieranego przez kreator
@@ -30,6 +34,12 @@
 
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
+import { klasyfikujModulNcRfg, pobierzKatalogNcRfg } from '../../../ui2/oze/ncrfg/api';
+import type {
+  KlasyfikacjaModulu,
+  ProfilOperatoraNcRfg,
+  PunktObwiedniFrtProfilu,
+} from '../../../ui2/oze/ncrfg/typy';
 import { fetchDerConverterTypes } from '../../catalog/api';
 
 async function getJson<T>(url: string): Promise<T> {
@@ -42,39 +52,20 @@ async function getJson<T>(url: string): Promise<T> {
 
 // =============================================================================
 // NC RfG: operatorzy + krzywe ride-through
-// Kontrakt: `api/ncrfg_ptpiree_tests.py::get_ncrfg_test_catalog`.
+// Kontrakt: `api/ncrfg_ptpiree_tests.py::get_ncrfg_test_catalog` (klient V2 `ncrfg/api`).
 // =============================================================================
 
-export interface RideThroughCurvePoint {
-  readonly time_s: number;
-  readonly voltage_pu: number;
-}
+/** Punkt obwiedni FRT profilu operatora — typ kontraktu V2 (`NcRfgRideThroughPoint`). */
+export type RideThroughCurvePoint = PunktObwiedniFrtProfilu;
 
-export interface NcRfgOperatorItem {
-  readonly operator_id: string;
-  readonly operator_name_pl: string;
-  readonly last_revision: string;
-  readonly reactive_power: {
-    readonly q_range_pct_pn_min: number;
-    readonly q_range_pct_pn_max: number;
-    readonly cos_phi_min: number;
-    readonly voltage_control_modes: readonly string[];
-  };
-  readonly ride_through: {
-    readonly lvrt: readonly RideThroughCurvePoint[];
-    readonly hvrt: readonly RideThroughCurvePoint[];
-  };
-}
-
-interface NcRfgCatalogResponse {
-  readonly operators: readonly NcRfgOperatorItem[];
-}
+/** Profil operatora NC RfG — typ kontraktu V2 (`operators[i]` katalogu). */
+export type NcRfgOperatorItem = ProfilOperatoraNcRfg;
 
 export async function fetchNcRfgOperators(): Promise<readonly NcRfgOperatorItem[]> {
-  const payload = await getJson<NcRfgCatalogResponse>('/api/ncrfg-tests/catalog');
+  const katalog = await pobierzKatalogNcRfg();
   // Uczciwy stan pusty zamiast `undefined` — React Query traktuje wynik
   // zapytania `undefined` jako błąd konfiguracji hooka, nie „brak danych".
-  return Array.isArray(payload?.operators) ? payload.operators : [];
+  return Array.isArray(katalog?.operators) ? katalog.operators : [];
 }
 
 /** Pobiera profil operatora po `operator_id` — odpowiednik dawnego `getNcRfgProfile`. */
@@ -96,40 +87,41 @@ export function useNcRfgOperatorCatalog(): UseQueryResult<readonly NcRfgOperator
 }
 
 // =============================================================================
-// Klasyfikacja modułu NC RfG — jedyne źródło progów: `compliance/nc_rfg_modul.py`.
+// Klasyfikacja modułu NC RfG — jedyne źródło progów: `GET /api/ncrfg-tests/modul`
+// (klient V2 `ui2/oze/ncrfg/api.ts::klasyfikujModulNcRfg`).
 // =============================================================================
 
-export type NcRfgModuleLetter = 'A' | 'B' | 'C' | 'D';
-
-export async function fetchNcRfgModuleClassification(args: {
-  readonly pMaxMw: number;
-  readonly napiecieKv: number;
-}): Promise<NcRfgModuleLetter> {
-  const params = new URLSearchParams({
-    p_max_mw: String(args.pMaxMw),
-    napiecie_kv: String(args.napiecieKv),
+/**
+ * Hook: klasyfikacja modułu NC RfG dla (moc [kW], napięcie przyłączenia [kV]) — odpowiedź
+ * 1:1 `KlasyfikacjaModulu` (typ modułu albo `null` poniżej progu istotności, z `powod_pl`,
+ * progami i podstawą). Cache kluczowany parą, żeby zmiana mocy/napięcia w formularzu
+ * przeliczała klasyfikację na żywo.
+ */
+export function useNcRfgModuleClassification(
+  pMaxKw: number | null,
+  napiecieKv: number | null,
+): UseQueryResult<KlasyfikacjaModulu, Error> {
+  return useQuery({
+    queryKey: ['ncrfg', 'modul', pMaxKw, napiecieKv],
+    queryFn: () =>
+      klasyfikujModulNcRfg({ pMaxKw: pMaxKw as number, napiecieKv: napiecieKv as number }),
+    enabled: typeof pMaxKw === 'number' && pMaxKw > 0 && typeof napiecieKv === 'number' && napiecieKv > 0,
+    staleTime: Infinity,
   });
-  const payload = await getJson<{ readonly modul: NcRfgModuleLetter }>(
-    `/api/ncrfg-tests/modul?${params.toString()}`,
-  );
-  return payload.modul;
 }
 
 /**
- * Hook: moduł NC RfG oczekiwany dla (moc, napięcie) — cache kluczowany parą,
- * żeby zmiana mocy/napięcia w formularzu przeliczała klasyfikację na żywo.
+ * Opis klasyfikacji do pola formularza/karty: typ modułu z rekordu backendu, powód backendu
+ * (poniżej progu istotności) albo nazwany stan zapytania — nigdy domysł typu modułu. Jedno
+ * źródło opisu dla kreatora DER i karty źródła (ta sama klasyfikacja, ten sam tekst).
  */
-export function useNcRfgModuleClassification(
-  pMaxMw: number | null,
-  napiecieKv: number | null,
-): UseQueryResult<NcRfgModuleLetter, Error> {
-  return useQuery({
-    queryKey: ['ncrfg', 'modul', pMaxMw, napiecieKv],
-    queryFn: () =>
-      fetchNcRfgModuleClassification({ pMaxMw: pMaxMw as number, napiecieKv: napiecieKv as number }),
-    enabled: typeof pMaxMw === 'number' && pMaxMw > 0 && typeof napiecieKv === 'number' && napiecieKv > 0,
-    staleTime: Infinity,
-  });
+export function opisKlasyfikacjiNcRfg(
+  zapytanie: Pick<UseQueryResult<KlasyfikacjaModulu, Error>, 'data' | 'isError' | 'isLoading'>,
+): string {
+  if (zapytanie.data) return zapytanie.data.modul ?? zapytanie.data.powod_pl;
+  if (zapytanie.isError) return 'nie można wyznaczyć (błąd klasyfikacji w backendzie)';
+  if (zapytanie.isLoading) return 'klasyfikacja w toku…';
+  return 'nie można wyznaczyć (brak mocy lub napięcia przyłączenia)';
 }
 
 // =============================================================================

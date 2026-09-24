@@ -86,7 +86,11 @@ MAPA_SERII: tuple[Seria, ...] = (
         "sceny analiz OZE (stacja 15/0,8 kV, falownik PV z karty 0,8 kV) zamiast szyny "
         "0,4 kV sieci złotej, której karta 0,8 kV nie może już zasilać — S_k″ 14,61 → "
         "37,97 MVA, SCR 67,97 → 176,61, P_st 0,0044 → 0,0017: zmieniła się sieć sceny, "
-        "nie fizyka.",
+        "nie fizyka. Zgodność NC RfG na kontrakcie "
+        "werdyktu (pakiet D2): macierz z formularzem z modelu, certyfikat i jego braki, wniosek "
+        "do OSD i jego braki, formularz źródła PV, dane modułu w kreatorze, pulpit OZE — opis "
+        'kadrów i uwaga o plakietce typu modułu na schemacie w sekcji <a href="#pakiet-d2">'
+        "Pakiet D2</a>.",
     ),
     Seria(
         "fk7",
@@ -320,7 +324,7 @@ def zbuduj_strone(
             f'<a href="#{_kotwica(seria.klucz)}">{seria.tytul.split(" — ")[0]}</a>'
             for seria, _pliki in serie
         )
-        + ' <a href="#narracja">Narracja serii</a>'
+        + ' <a href="#pakiet-d2">Pakiet D2</a> <a href="#narracja">Narracja serii</a>'
     )
     wiersze = []
     sekcje = []
@@ -496,6 +500,43 @@ w kolejności programów (najnowsze pierwsze), wewnątrz serii alfabetycznie.</p
 <tbody>TABELA_SERII</tbody></table></div>
 
 SEKCJE_GALERII
+
+<section id="pakiet-d2">
+<h2>Zgodność NC RfG na kontrakcie werdyktu — pakiet D2 (do oceny, bramka B-02)</h2>
+<p class="cichy">Osiem scen, każda w obu motywach, w serii <code>dowody</code> (pliki
+<code>dowody_macierz_*</code> i <code>dowody_ncrfg_*</code>). Werdykt wizualny należy do Ciebie —
+niżej wyłącznie to, co każdy kadr ma pokazywać, żeby uwagę dało się przypisać do rzeczy.</p>
+<ul>
+<li><strong>Macierz</strong> (<code>dowody_macierz</code>) — bieg „co-jeśli" z formularzem
+wstępnym złożonym z zatwierdzonego modelu: statyzm, martwa strefa, zakres mocy biernej
+i zdolności Q(U)/FRT oznaczone „z modelu", pola bez danej puste; komórka T16 z kartą oceny
+i otwartym śladem obliczenia.</li>
+<li><strong>Certyfikat — czego brakuje</strong> (<code>dowody_ncrfg_certyfikat_braki</code>) —
+odpowiedź 422 pokazana jako treść: rekordy wymagań bez spełnienia, przypisane do modułów,
+z kartą rekordu.</li>
+<li><strong>Certyfikat</strong> (<code>dowody_ncrfg_certyfikat</code>) — widok certyfikatu modelu
+magazynu energii (wymagania „nie dotyczy" z podstawą: art. 3 ust. 2 lit. d rozporządzenia
+2016/631).</li>
+<li><strong>Wniosek do OSD</strong> i <strong>wniosek — czego brakuje</strong>
+(<code>dowody_ncrfg_wniosek</code>, <code>dowody_ncrfg_wniosek_braki</code>) — sekcje bilansu,
+zwarć i zgodności z tego samego modelu co certyfikat.</li>
+<li><strong>Formularz źródła PV</strong> (<code>dowody_ncrfg_formularz_zrodla</code>) — typ
+modułu z klasyfikacji backendu (progi art. 5 wg wymogów ogólnego stosowania).</li>
+<li><strong>Dane modułu w modelu</strong> (<code>dowody_ncrfg_dane_modulu</code>) — kreator
+źródła OZE: art. 4, data umowy przyłączeniowej, nastawy zabezpieczeń, deklaracje modułu.</li>
+<li><strong>Pulpit OZE</strong> (<code>dowody_ncrfg_pulpit</code>) — ocena zatwierdzonego modelu
+z dowodem certyfikatu z wykazu PTPiREE przy module powiązanym.</li>
+</ul>
+<p><strong>Uwaga do oceny schematu — plakietka typu modułu przy wytwórcy.</strong> Schemat
+jednoliniowy pokazywał dotąd typ modułu NC RfG (A–D) przy każdym wytwórcy, także wtedy, gdy
+model go nie zawierał: klient wyliczał go sam z mocy, na progach 1/50/75 MW, sprzecznych
+z art. 5 rozporządzenia 2016/631 (wymogi ogólnego stosowania: 0,8 kW, 200 kW, 10 MW, 75 MW
+albo przyłączenie od 110 kV). Ten domysł usunięto. Plakietka pojawia się wyłącznie przy
+wytwórcy z klasyfikacją zapisaną w modelu (<code>nc_rfg_module</code>, nadawaną w formularzu
+źródła klasyfikacją backendu). Wytwórca bez niej — dodany przed tą zmianą albo bez zapisanej
+klasyfikacji — traci plakietkę na schemacie: to brak danej w modelu, nie błąd rysunku. Typ
+modułu takiego źródła pokazują macierz i pulpit OZE z oceny serwera.</p>
+</section>
 
 <section id="narracja">
 <h2>Narracja serii V12K-216…243 — zapis oględzin z 2026-07-27</h2>

@@ -377,8 +377,9 @@ class ENMValidator:
                         message_pl=(
                             f"DER '{gen.ref_id}' (typ {gen_type}) nie ma "
                             f"`connection_variant`. Każdy falownik wymaga jawnego "
-                            f"określenia toru przyłączenia "
-                            f"(nn_side / block_transformer / SOURCE_CONNECTION_STATION)."
+                            f"określenia toru przyłączenia (po stronie nN za "
+                            f"transformatorem stacji, dedykowane pole SN z transformatorem "
+                            f"przyłączeniowym albo osobna stacja przyłączeniowa źródła)."
                         ),
                         element_refs=[gen.ref_id],
                         wizard_step_hint="K6",
@@ -497,7 +498,7 @@ class ENMValidator:
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
                         f"Generator '{gen.ref_id}' w trybie regulacji napięcia "
-                        f"(REGULACJA_NAPIECIA) nie ma: {'; '.join(braki)}."
+                        f"nie ma: {'; '.join(braki)}."
                     ),
                     element_refs=[gen.ref_id],
                     wizard_step_hint="K6",
@@ -642,7 +643,7 @@ class ENMValidator:
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"Generator '{gen.ref_id}' w trybie regulacji napięcia "
-                            "(REGULACJA_NAPIECIA) nie ma profilu NC RfG operatora — tryb "
+                            "nie ma profilu NC RfG operatora — tryb "
                             "wymaga profilu dopuszczającego regulację napięcia "
                             "(voltage_control)."
                         ),
@@ -2160,12 +2161,12 @@ class ENMValidator:
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
                             f"Galaz nN '{branch.ref_id}' (z automigracji pol nN) nie ma "
-                            f"wiazania katalogowego KABEL_NN/APARAT_NN — dane katalogowe "
-                            f"pola zrodlowego nie byly dostepne przy migracji."
+                            f"wiazania z katalogiem kabli nN albo aparatow nN — dane "
+                            f"katalogowe pola zrodlowego nie byly dostepne przy migracji."
                         ),
                         element_refs=[branch.ref_id],
                         wizard_step_hint="K6",
-                        suggested_fix="Przypisz element z katalogu KABEL_NN/APARAT_NN.",
+                        suggested_fix="Przypisz element z katalogu kabli nN albo aparatow nN.",
                         fix_action=FixAction(
                             action_type="SELECT_CATALOG",
                             element_ref=branch.ref_id,
@@ -2180,12 +2181,12 @@ class ENMValidator:
                     code="E061",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Galaz nN '{branch.ref_id}' nie ma wiazania katalogowego "
-                        f"KABEL_NN/APARAT_NN (catalog_ref)."
+                        f"Galaz nN '{branch.ref_id}' nie ma wiazania z katalogiem kabli nN "
+                        f"albo aparatow nN."
                     ),
                     element_refs=[branch.ref_id],
                     wizard_step_hint="K6",
-                    suggested_fix="Przypisz element z katalogu KABEL_NN/APARAT_NN.",
+                    suggested_fix="Przypisz element z katalogu kabli nN albo aparatow nN.",
                     fix_action=FixAction(
                         action_type="SELECT_CATALOG",
                         element_ref=branch.ref_id,

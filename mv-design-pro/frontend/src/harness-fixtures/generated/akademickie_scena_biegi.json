@@ -24,10 +24,10 @@
         "analysis_type": "power_quality_harmonics",
         "case_id": "case-demo",
         "contract": "AcademicProofPackV1",
-        "proof_hash": "72f2a41d6bc879e30b589d0bf853a041c58f9077e7f7b30e92ede3e31629fe87",
-        "proof_id": "proof:v126:power_quality_harmonics:41a74db488fa2a45",
+        "proof_hash": "b04df2b4c5ec14c6377971eccaab7eeefad5b077df14f53c0f3c0ac286f9f487",
+        "proof_id": "proof:v126:power_quality_harmonics:a948f24097b7a263",
         "run_id": "run-v126-scena-akademickie-power_quality_harmonics",
-        "source_result_hash": "41a74db488fa2a4594709e9093a9283636e369cc409c630af96b10073957cb3b",
+        "source_result_hash": "a948f24097b7a26375f1a721ab99ceee9bbb45c44e3a4d8d6f99fe12d2b4de73",
         "steps": [
           {
             "data": {
@@ -70,7 +70,7 @@
       "koperta": {
         "analysis_type": "power_quality_harmonics",
         "case_id": "case-demo",
-        "deterministic_hash": "41a74db488fa2a4594709e9093a9283636e369cc409c630af96b10073957cb3b",
+        "deterministic_hash": "a948f24097b7a26375f1a721ab99ceee9bbb45c44e3a4d8d6f99fe12d2b4de73",
         "proof_url": "/api/analysis-runs/run-v126-scena-akademickie-power_quality_harmonics/results/v126/power_quality_harmonics/proof",
         "report_url": "/api/analysis-runs/run-v126-scena-akademickie-power_quality_harmonics/results/v126/power_quality_harmonics/report",
         "result_url": "/api/analysis-runs/run-v126-scena-akademickie-power_quality_harmonics/results/v126/power_quality_harmonics",
@@ -83,8 +83,8 @@
         "case_id": "case-demo",
         "contract": "AcademicReportV1",
         "export_policy": "frozen_result_and_proof_only",
-        "report_hash": "d60a8cd8dd93e5168ccf72724bdec4dded425830a5d0331e252d7033e41e2b7b",
-        "report_id": "report:v126:power_quality_harmonics:41a74db488fa2a45",
+        "report_hash": "e605e850bb18794c52f1fa88ffe300d82ac0af061cb1c3f75c33ed9382a49de0",
+        "report_id": "report:v126:power_quality_harmonics:a948f24097b7a263",
         "run_id": "run-v126-scena-akademickie-power_quality_harmonics",
         "sections": [
           {
@@ -139,7 +139,7 @@
               },
               {
                 "label": "sanity.violations[0].detail_pl",
-                "value": "THD_U > 100% (niefizyczne)"
+                "value": "THDu > 100% (niefizyczne)"
               }
             ],
             "section_id": "wynik",
@@ -149,11 +149,11 @@
             "metrics": [
               {
                 "label": "proof_id",
-                "value": "proof:v126:power_quality_harmonics:41a74db488fa2a45"
+                "value": "proof:v126:power_quality_harmonics:a948f24097b7a263"
               },
               {
                 "label": "proof_hash",
-                "value": "72f2a41d6bc879e30b589d0bf853a041c58f9077e7f7b30e92ede3e31629fe87"
+                "value": "b04df2b4c5ec14c6377971eccaab7eeefad5b077df14f53c0f3c0ac286f9f487"
               },
               {
                 "label": "trace_step_count",
@@ -167,7 +167,7 @@
             "metrics": [
               {
                 "label": "result_hash",
-                "value": "41a74db488fa2a4594709e9093a9283636e369cc409c630af96b10073957cb3b"
+                "value": "a948f24097b7a26375f1a721ab99ceee9bbb45c44e3a4d8d6f99fe12d2b4de73"
               },
               {
                 "label": "solver_version",
@@ -182,12 +182,12 @@
             "title": "Audyt deterministyczny"
           }
         ],
-        "source_proof_hash": "72f2a41d6bc879e30b589d0bf853a041c58f9077e7f7b30e92ede3e31629fe87",
-        "source_result_hash": "41a74db488fa2a4594709e9093a9283636e369cc409c630af96b10073957cb3b"
+        "source_proof_hash": "b04df2b4c5ec14c6377971eccaab7eeefad5b077df14f53c0f3c0ac286f9f487",
+        "source_result_hash": "a948f24097b7a26375f1a721ab99ceee9bbb45c44e3a4d8d6f99fe12d2b4de73"
       },
       "slad": {
         "analysis_type": "power_quality_harmonics",
-        "deterministic_hash": "41a74db488fa2a4594709e9093a9283636e369cc409c630af96b10073957cb3b",
+        "deterministic_hash": "a948f24097b7a26375f1a721ab99ceee9bbb45c44e3a4d8d6f99fe12d2b4de73",
         "run_id": "run-v126-scena-akademickie-power_quality_harmonics",
         "steps": [
           {
@@ -235,12 +235,12 @@
         "analysis_type": "power_quality_harmonics",
         "case_id": "case-demo",
         "created_at": "2026-09-16T09:00:00+00:00",
-        "proof_ref": "proof:v126:power_quality_harmonics:41a74db488fa2a45",
-        "report_ref": "report:v126:power_quality_harmonics:41a74db488fa2a45",
+        "proof_ref": "proof:v126:power_quality_harmonics:a948f24097b7a263",
+        "report_ref": "report:v126:power_quality_harmonics:a948f24097b7a263",
         "result": {
           "analysis_type": "power_quality_harmonics",
           "contract": "AcademicAnalysisResultV1",
-          "deterministic_hash": "41a74db488fa2a4594709e9093a9283636e369cc409c630af96b10073957cb3b",
+          "deterministic_hash": "a948f24097b7a26375f1a721ab99ceee9bbb45c44e3a4d8d6f99fe12d2b4de73",
           "input_hash": "c6272ef5e1b5013d6c3830cb3c846a307216946845988ad9469b696dca8bfddf",
           "result": {
             "nodes": [
@@ -1307,17 +1307,17 @@
                   {
                     "f_hz": 2130,
                     "severity": "ALERT",
-                    "z_peak_ohm": 161658.869673
+                    "z_peak_ohm": 161658.869672
                   },
                   {
                     "f_hz": 2140,
                     "severity": "ALERT",
-                    "z_peak_ohm": 410791.490105
+                    "z_peak_ohm": 410791.490104
                   },
                   {
                     "f_hz": 2150,
                     "severity": "ALERT",
-                    "z_peak_ohm": 757411.421731
+                    "z_peak_ohm": 757411.421737
                   },
                   {
                     "f_hz": 2160,
@@ -1703,7 +1703,7 @@
                   {
                     "f_hz": 2150,
                     "phase_deg": -88.319,
-                    "z_ohm": 757411.421731
+                    "z_ohm": 757411.421737
                   },
                   {
                     "f_hz": 2250,
@@ -2563,12 +2563,12 @@
                   {
                     "f_hz": 2140,
                     "severity": "ALERT",
-                    "z_peak_ohm": 410103.717367
+                    "z_peak_ohm": 410103.717366
                   },
                   {
                     "f_hz": 2150,
                     "severity": "ALERT",
-                    "z_peak_ohm": 758102.19565
+                    "z_peak_ohm": 758102.195656
                   },
                   {
                     "f_hz": 2160,
@@ -2954,7 +2954,7 @@
                   {
                     "f_hz": 2150,
                     "phase_deg": -88.321,
-                    "z_ohm": 758102.19565
+                    "z_ohm": 758102.195656
                   },
                   {
                     "f_hz": 2250,
@@ -3809,7 +3809,7 @@
                   {
                     "f_hz": 2130,
                     "severity": "ALERT",
-                    "z_peak_ohm": 163921.716522
+                    "z_peak_ohm": 163921.716521
                   },
                   {
                     "f_hz": 2140,
@@ -3819,12 +3819,12 @@
                   {
                     "f_hz": 2150,
                     "severity": "ALERT",
-                    "z_peak_ohm": 771985.579159
+                    "z_peak_ohm": 771985.579165
                   },
                   {
                     "f_hz": 2160,
                     "severity": "ALERT",
-                    "z_peak_ohm": 201319.263239
+                    "z_peak_ohm": 201319.263238
                   },
                   {
                     "f_hz": 2170,
@@ -4205,7 +4205,7 @@
                   {
                     "f_hz": 2150,
                     "phase_deg": -88.343,
-                    "z_ohm": 771985.579159
+                    "z_ohm": 771985.579165
                   },
                   {
                     "f_hz": 2250,
@@ -5065,12 +5065,12 @@
                   {
                     "f_hz": 2140,
                     "severity": "ALERT",
-                    "z_peak_ohm": 410103.717367
+                    "z_peak_ohm": 410103.717366
                   },
                   {
                     "f_hz": 2150,
                     "severity": "ALERT",
-                    "z_peak_ohm": 758102.19565
+                    "z_peak_ohm": 758102.195656
                   },
                   {
                     "f_hz": 2160,
@@ -5456,7 +5456,7 @@
                   {
                     "f_hz": 2150,
                     "phase_deg": -88.321,
-                    "z_ohm": 758102.19565
+                    "z_ohm": 758102.195656
                   },
                   {
                     "f_hz": 2250,
@@ -5483,7 +5483,7 @@
               "violations": [
                 {
                   "check": "thd_max",
-                  "detail_pl": "THD_U > 100% (niefizyczne)"
+                  "detail_pl": "THDu > 100% (niefizyczne)"
                 }
               ]
             }

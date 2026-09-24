@@ -318,7 +318,9 @@ class TestProtectionEvaluationEngine:
 
         assert len(result.evaluations) == 1
         assert result.evaluations[0].trip_state == TripState.INVALID
-        assert "NOT_SUPPORTED_YET" in result.evaluations[0].notes_pl
+        # Tekst dla człowieka nazywa typ krzywej; kod maszynowy w notatce nie występuje
+        # (strażnik werdyktu, sprawdzenie `5_kod_w_tekscie`).
+        assert result.evaluations[0].notes_pl == "Nieobsługiwany typ krzywej: unknown_curve_type"
 
 
 # =============================================================================

@@ -22,13 +22,13 @@ class FieldQuality(StrEnum):
     Orthogonal to ``solver_input.provenance.SourceKind`` (which records *where* a value came
     from in the pipeline). ``FieldQuality`` records *how trustworthy* the value is:
 
-    - ``DATASHEET`` (karta_techniczna): value taken from a manufacturer datasheet
+    - ``DATASHEET`` (karta techniczna): value taken from a manufacturer datasheet
       / type-test report — fully trustworthy for the OSD package.
     - ``ESTIMATED`` (oszacowane): value is an engineering estimate without a real
       source (e.g. a controller bandwidth assumed from technology defaults). It
       MUST be tagged ``ESTIMATED`` — never ``DATASHEET`` — until a real source is
       attached.
-    - ``SYSTEM_DEFAULT`` (domyslne_techniczne): value is a system/technical
+    - ``SYSTEM_DEFAULT`` (domyślne techniczne): value is a system/technical
       default carried by the schema (the field is present but no real value has
       been provided).
 
@@ -43,14 +43,15 @@ class FieldQuality(StrEnum):
 
     @property
     def label_pl(self) -> str:
-        """Polish UI label (no codenames)."""
+        """Nazwa polska W TEKŚCIE dla człowieka (zdanie, blok dokumentu, ekran) — kod zostaje
+        w polu rekordu (strażnik werdyktu, sprawdzenie ``5_kod_w_tekscie``)."""
         return _FIELD_QUALITY_LABEL_PL[self]
 
 
 _FIELD_QUALITY_LABEL_PL: dict[FieldQuality, str] = {
-    FieldQuality.DATASHEET: "karta_techniczna",
+    FieldQuality.DATASHEET: "karta techniczna",
     FieldQuality.ESTIMATED: "oszacowane",
-    FieldQuality.SYSTEM_DEFAULT: "domyslne_techniczne",
+    FieldQuality.SYSTEM_DEFAULT: "domyślne techniczne",
 }
 
 
@@ -73,7 +74,17 @@ class EvidenceTier(StrEnum):
 
     - ``VALIDATED_SIMULATION``: obliczenie fizyczne o ustalonej poprawnosci
       modelu i zachowania numerycznego (istnieje dowod walidacji). JEDYNY
-      poziom dopuszczalny jako dowod regulacyjny.
+      poziom obliczenia dopuszczalny jako dowod regulacyjny.
+    - ``TYPE_TEST_CERTIFICATE``: narzedzie niczego nie liczy — dowodem jest
+      certyfikat badania typu urzadzenia (badanie u producenta albo w jednostce
+      certyfikujacej), poswiadczony rekordem wykazu PTPiREE dopasowanym po
+      stronie serwera. Dopuszczalny jako dowod regulacyjny twierdzenia o
+      zachowaniu dynamicznym i o konfiguracji zadeklarowanej
+      (:data:`POZIOMY_DOPUSZCZALNE_DLA_TWIERDZENIA`); kompletnosc dowodu
+      (regula pokrycia wymagania certyfikatem, warunek waznosci rekordu)
+      rozstrzyga rekord wymagania, nie poziom. Towarzyszy WYLACZNIE metodzie
+      dowodu ``CERTYFIKAT`` (albo dowodowi laczonemu ze skladowa certyfikatu) —
+      walidatory ``werdykt.kontrakt``.
     - ``DECLARATION``: wartosc zadeklarowana przez wnioskodawce (albo
       odczytana z profilu) i porownana z wymaganiem. Uprawniona kontrola
       wymagania — ale obliczenie niczego nie wykazalo.
@@ -91,18 +102,23 @@ class EvidenceTier(StrEnum):
     """
 
     VALIDATED_SIMULATION = "VALIDATED_SIMULATION"
+    TYPE_TEST_CERTIFICATE = "TYPE_TEST_CERTIFICATE"
     DECLARATION = "DECLARATION"
     UNVALIDATED_MODEL = "UNVALIDATED_MODEL"
     NOT_SIMULATED = "NOT_SIMULATED"
 
     @property
     def regulatory_evidence_eligible(self) -> bool:
-        """True wylacznie dla poziomu dopuszczalnego jako dowod regulacyjny (fail-closed)."""
-        return self is EvidenceTier.VALIDATED_SIMULATION
+        """True wylacznie dla poziomu dopuszczalnego jako dowod regulacyjny co najmniej jednego
+        rodzaju twierdzenia bez deklaracji (fail-closed): symulacja zwalidowana albo certyfikat
+        badania typu. Dopuszczalnosc dla KONKRETNEGO rodzaju twierdzenia —
+        :data:`POZIOMY_DOPUSZCZALNE_DLA_TWIERDZENIA`."""
+        return self in _POZIOMY_DOWODU_REGULACYJNEGO
 
     @property
     def label_pl(self) -> str:
-        """Etykieta PL (bez kodow projektowych)."""
+        """Nazwa polska W TEKŚCIE dla człowieka (zdanie, blok dokumentu, ekran) — kod zostaje
+        w polu rekordu (strażnik werdyktu, sprawdzenie ``5_kod_w_tekscie``)."""
         return _EVIDENCE_TIER_LABEL_PL[self]
 
 
@@ -114,10 +130,11 @@ class EvidenceTier(StrEnum):
 BRAK_DOWODU_PL = "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA"
 
 _EVIDENCE_TIER_LABEL_PL: dict[EvidenceTier, str] = {
-    EvidenceTier.VALIDATED_SIMULATION: "symulacja_zwalidowana",
-    EvidenceTier.DECLARATION: "deklaracja_wnioskodawcy",
-    EvidenceTier.UNVALIDATED_MODEL: "model_niezwalidowany",
-    EvidenceTier.NOT_SIMULATED: "brak_symulacji",
+    EvidenceTier.VALIDATED_SIMULATION: "symulacja zwalidowana",
+    EvidenceTier.TYPE_TEST_CERTIFICATE: "certyfikat badania typu (wykaz PTPiREE)",
+    EvidenceTier.DECLARATION: "deklaracja wnioskodawcy",
+    EvidenceTier.UNVALIDATED_MODEL: "model niezwalidowany",
+    EvidenceTier.NOT_SIMULATED: "brak symulacji",
 }
 
 
@@ -148,11 +165,43 @@ class ClaimKind(StrEnum):
 
     @property
     def label_pl(self) -> str:
+        """Nazwa polska W TEKŚCIE dla człowieka — kod zostaje w polu rekordu."""
         return _CLAIM_KIND_LABEL_PL[self]
 
 
 _CLAIM_KIND_LABEL_PL: dict[ClaimKind, str] = {
-    ClaimKind.DYNAMIC_PERFORMANCE: "zachowanie_dynamiczne",
-    ClaimKind.DECLARED_CONFIGURATION: "konfiguracja_zadeklarowana",
-    ClaimKind.STATIC_CALCULATION: "obliczenie_statyczne",
+    ClaimKind.DYNAMIC_PERFORMANCE: "zachowanie dynamiczne",
+    ClaimKind.DECLARED_CONFIGURATION: "konfiguracja zadeklarowana",
+    ClaimKind.STATIC_CALCULATION: "obliczenie statyczne",
 }
+
+#: Poziomy dowodowe zdolnosci narzedzia dopuszczalne jako dowod regulacyjny danego rodzaju
+#: twierdzenia (fail-closed; JEDNO zrodlo prawdy dla ``CapabilityEvidence`` w
+#: ``solver_input.provenance``):
+#:
+#: - zachowanie dynamiczne — symulacja zwalidowana albo certyfikat badania typu;
+#: - konfiguracja zadeklarowana — dodatkowo deklaracja (deklaracja JEST wlasciwa podstawa faktu
+#:   zadeklarowanego);
+#: - obliczenie statyczne — wylacznie zwalidowany solver.
+#:
+#: ``UNVALIDATED_MODEL`` i ``NOT_SIMULATED`` nie sa dopuszczalne dla zadnego rodzaju.
+POZIOMY_DOPUSZCZALNE_DLA_TWIERDZENIA: dict[ClaimKind, frozenset[EvidenceTier]] = {
+    ClaimKind.DYNAMIC_PERFORMANCE: frozenset(
+        (EvidenceTier.VALIDATED_SIMULATION, EvidenceTier.TYPE_TEST_CERTIFICATE)
+    ),
+    ClaimKind.DECLARED_CONFIGURATION: frozenset(
+        (
+            EvidenceTier.VALIDATED_SIMULATION,
+            EvidenceTier.TYPE_TEST_CERTIFICATE,
+            EvidenceTier.DECLARATION,
+        )
+    ),
+    ClaimKind.STATIC_CALCULATION: frozenset((EvidenceTier.VALIDATED_SIMULATION,)),
+}
+
+#: Poziomy dopuszczalne jako dowod regulacyjny bez udzialu deklaracji (``regulatory_evidence_
+#: eligible`` poziomu) — wyprowadzone z tabeli powyzej, nie wpisane osobno.
+_POZIOMY_DOWODU_REGULACYJNEGO: frozenset[EvidenceTier] = (
+    POZIOMY_DOPUSZCZALNE_DLA_TWIERDZENIA[ClaimKind.DYNAMIC_PERFORMANCE]
+    | POZIOMY_DOPUSZCZALNE_DLA_TWIERDZENIA[ClaimKind.STATIC_CALCULATION]
+)

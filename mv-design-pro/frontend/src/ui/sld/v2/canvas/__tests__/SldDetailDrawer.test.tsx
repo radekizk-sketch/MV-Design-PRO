@@ -18,36 +18,18 @@ import { render, fireEvent, cleanup, waitFor } from '@testing-library/react';
 
 import { SldDetailDrawer, type SldDetailDrawerData } from '../SldDetailDrawer';
 import { useAppStateStore } from '../../../../app-state/store';
+import { odpowiedzKlasyfikacji } from '../../../../../ui2/oze/ncrfg/__tests__/atrapaKlasyfikacji';
 import { EMPTY_PROTECTION_VIEW, type ProtectionViewResponse } from '../../../../protection';
 
 /**
- * Karta FAB-J: mirror TESTOWY wyłącznie na potrzeby mocka granicy `fetch` —
- * jedyne ŹRÓDŁO progów zostaje `compliance/nc_rfg_modul.py`
- * (`GET /api/ncrfg-tests/modul`), ten mirror tylko UDAJE backend w teście,
- * dokładnie jak `mockConverterCatalogFetch` udaje katalog przekształtników.
- * Każda zmiana progów w backendzie wymaga zmiany też tutaj (test by inaczej
- * cicho fałszował klasyfikację, którą sam sprawdza).
+ * Karta AB-1a Pakiet D2: atrapa `GET /api/ncrfg-tests/modul` ze WSPÓLNEGO helpera
+ * (`ui2/oze/ncrfg/__tests__/atrapaKlasyfikacji.ts`): parametry zapytania sprawdzane z migawką
+ * OpenAPI (`p_max_kw`, `napiecie_kv`; dawny klucz mocy w MW → 422), progi z katalogu policzonego
+ * backendem, odpowiedź w pełnym kształcie `KlasyfikacjaModulu` — zamiast ręcznej kopii progów.
+ * `null`, gdy adres nie dotyczy tej końcówki.
  */
-function klasyfikujModulNcRfgDlaTestu(pMaxMw: number, napiecieKv: number): 'A' | 'B' | 'C' | 'D' {
-  if (napiecieKv >= 110) return 'D';
-  const pMaxKw = pMaxMw * 1000;
-  if (pMaxKw >= 75_000) return 'D';
-  if (pMaxKw >= 10_000) return 'C';
-  if (pMaxKw >= 200) return 'B';
-  return 'A';
-}
-
-/** Odpowiada na `GET /api/ncrfg-tests/modul?…`, jeśli URL do niego pasuje — `null` gdy nie. */
 function respondNcRfgModulIfMatches(url: string): Response | null {
-  if (!url.includes('/api/ncrfg-tests/modul')) return null;
-  const params = new URL(url, 'http://localhost').searchParams;
-  const pMaxMw = Number(params.get('p_max_mw'));
-  const napiecieKv = Number(params.get('napiecie_kv'));
-  const modul = klasyfikujModulNcRfgDlaTestu(pMaxMw, napiecieKv);
-  return new Response(JSON.stringify({ modul }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return odpowiedzKlasyfikacji(url);
 }
 
 /**
@@ -288,6 +270,44 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     const select = container.querySelector('[data-testid="drawer-der-type-select"]') as HTMLSelectElement | null;
     expect(select?.value).toBe('PV');
     cleanup();
+  });
+
+  it('DER rfg: do rozstrzygnięcia backendu moduł NIE ma wartości zastępczej („—", nie „Typ A")', async () => {
+    // Karta AB-1a Pakiet D2 §0-bis pkt 16: dawny placeholder 'A' był domysłem — pokazywał
+    // i mógł wysłać moduł, którego backend nie wyznaczył. Klasyfikacja wisi (atrapa bez
+    // odpowiedzi) → pole puste, bez „Typ A".
+    const pierwotny = global.fetch;
+    global.fetch = vi.fn(() => new Promise<Response>(() => {})) as unknown as typeof fetch;
+    const data: SldDetailDrawerData = { kind: 'der', elementId: 'pv-1', label: 'PV-15' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-rfg"]') as Element);
+    expect(container.querySelector('[data-testid="drawer-der-rfg-selected"]')?.textContent).toBe('—');
+    expect(container.querySelector('[data-testid="drawer-der-rfg"]')?.textContent).not.toContain('Typ A');
+    cleanup();
+    global.fetch = pierwotny;
+  });
+
+  it('DER rfg: backend bez typu modułu (`modul: null`) → „—" z powodem backendu', async () => {
+    const pierwotny = global.fetch;
+    const powod = 'moc poniżej progu istotności modułu wytwarzania energii';
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const odpowiedz = respondNcRfgModulIfMatches(String(input));
+      if (!odpowiedz) throw new Error(`nieoczekiwane zapytanie ${String(input)}`);
+      const tresc = (await odpowiedz.json()) as Record<string, unknown>;
+      return new Response(JSON.stringify({ ...tresc, modul: null, powod_pl: powod }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as unknown as typeof fetch;
+    const data: SldDetailDrawerData = { kind: 'der', elementId: 'pv-1', label: 'PV-15' };
+    const { container } = render(<SldDetailDrawer open data={data} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-rfg"]') as Element);
+    await waitFor(() => {
+      expect(container.querySelector('[data-testid="drawer-der-rfg-powod"]')?.textContent).toBe(powod);
+    });
+    expect(container.querySelector('[data-testid="drawer-der-rfg-selected"]')?.textContent).toBe('—');
+    cleanup();
+    global.fetch = pierwotny;
   });
 
   it('DER rfg tab pokazuje moduł wyznaczony przez backend (moc 0,5 MW / 0,4 kV → typ B)', async () => {
@@ -920,8 +940,7 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     // Karta FAB-J: moduł NC RfG dla (1,2 MW, 0,4 kV) klasyfikuje się jako typ B
     // (0,8 kW ≤ P < 200 kW → A; 200 kW ≤ P < 10 MW → B) — zaglądamy do zakładki
     // „NC RfG", żeby dowieść, że klasyfikacja backendu się ustaliła PRZED
-    // drugim zapisem (bez tego test łapałby wyścig z prowizoryczną wartością
-    // startową 'A').
+    // drugim zapisem (bez tego test łapałby wyścig z wartością startową `null`).
     fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-rfg"]') as Element);
     await waitFor(() => {
       expect(container.querySelector('[data-testid="drawer-der-rfg-selected"]')?.textContent).toBe('Typ B');

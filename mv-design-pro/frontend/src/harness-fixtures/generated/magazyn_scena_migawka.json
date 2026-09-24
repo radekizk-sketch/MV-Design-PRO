@@ -1,0 +1,713 @@
+{
+  "bays": [],
+  "branch_points": [],
+  "branches": [
+    {
+      "catalog_namespace": "APARAT_SN",
+      "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "from_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "id": "9c9de57b-784e-50d3-b139-f349068caa56",
+      "materialized_params": null,
+      "meta": {
+        "apparatus_kind": "BREAKER",
+        "bay_role": "OZE",
+        "catalog_binding": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "catalog_namespace": "APARAT_SN",
+          "materialize": true,
+          "snapshot_mapping_version": "1.0"
+        },
+        "field_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field",
+        "render_on_sld": false,
+        "requires_catalog_binding": false,
+        "show_in_project_tree": false,
+        "station_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+        "terminal_bus_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_terminal"
+      },
+      "name": "Aparat pola źródłowego SN Magazyn energii 1,5 MW",
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": 0.0,
+      "ref_id": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_device",
+      "source_mode": "KATALOG",
+      "status": "closed",
+      "tags": [
+        "gpz_field_device",
+        "der_source_field_device"
+      ],
+      "to_bus_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_terminal",
+      "type": "breaker",
+      "x_ohm": 0.0
+    },
+    {
+      "b0_siemens_per_km": null,
+      "b_siemens_per_km": 0.00012252211349000195,
+      "cable_joints": [],
+      "catalog_namespace": "KABEL_SN",
+      "catalog_ref": "cable-tfk-yakxs-3x120",
+      "conductor_material": "AL",
+      "cross_section_mm2": 120.0,
+      "endpoint_a_port": null,
+      "endpoint_b_port": null,
+      "from_bus_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/block_hv_bus",
+      "id": "c7910492-1c88-591b-9b2d-9ef859eb65ea",
+      "insulation": "XLPE",
+      "ith_1s_a": null,
+      "jth_1s_a_per_mm2": 94.0,
+      "length_km": 0.05,
+      "materialized_params": {
+        "b0_siemens_per_km": null,
+        "c_nf_per_km": 390.0,
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "2024.1",
+        "conductor_material": "AL",
+        "cross_section_mm2": 120.0,
+        "frequency_hz": 50.0,
+        "insulation_type": "XLPE",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 94.0,
+        "max_temperature_c": 90.0,
+        "number_of_cores": 3,
+        "r0_ohm_per_km": 1.330562,
+        "r_ohm_per_km": 0.253,
+        "rated_current_a": 230.0,
+        "return_conductor_cross_section_mm2": 16.0,
+        "return_conductor_ith_1s_a": 2288.0,
+        "return_conductor_jth_1s_a_per_mm2": 143.0,
+        "return_conductor_material": "CU",
+        "return_conductor_r_ohm_per_km_20c": 1.077562,
+        "short_circuit_temperature_c": 250.0,
+        "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+        "trade_name": "YAKXS 3x120/16",
+        "voltage_rating_kv": 20.0,
+        "x0_ohm_per_km": 0.3,
+        "x_ohm_per_km": 0.1
+      },
+      "meta": {
+        "catalog_item_version": "2024.1",
+        "der_role": "mv_connection_cable",
+        "visual_role": "DER_MV_CABLE"
+      },
+      "n_parallel": null,
+      "name": "Kabel SN przyłączeniowy Magazyn energii 1,5 MW",
+      "number_of_cores": 3,
+      "operating_temperature_c": 90.0,
+      "overrides": [],
+      "parameter_source": "CATALOG",
+      "r0_ohm_per_km": 1.330562,
+      "r_ohm_per_km": 0.253,
+      "rating": {
+        "idyn_ka": null,
+        "in_a": 230.0,
+        "ith_ka": null
+      },
+      "ref_id": "bess/5bd678b5dbce96516c72492e40298e5f/der/mv_cable",
+      "return_conductor_cross_section_mm2": 16.0,
+      "return_conductor_ith_1s_a": 2288.0,
+      "return_conductor_jth_1s_a_per_mm2": 143.0,
+      "return_conductor_material": "CU",
+      "return_conductor_r_ohm_per_km_20c": 1.077562,
+      "return_conductor_x_ohm_per_km": null,
+      "screen_bonding": null,
+      "short_circuit_temperature_c": 250.0,
+      "source_mode": "KATALOG",
+      "status": "closed",
+      "tags": [
+        "der_mv_cable"
+      ],
+      "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+      "to_bus_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_terminal",
+      "type": "cable",
+      "x0_ohm_per_km": 0.3,
+      "x_ohm_per_km": 0.1
+    }
+  ],
+  "buses": [
+    {
+      "frequency_hz": null,
+      "id": "66c6d9c6-5cba-5d86-a74e-923d47db68c6",
+      "meta": {
+        "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
+        "gpz_section_order": 0,
+        "gpz_substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation"
+      },
+      "name": "Szyna GPZ S1 15.0 kV",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "tags": [],
+      "voltage_kv": 15.0,
+      "zone": "GPZ"
+    },
+    {
+      "frequency_hz": null,
+      "id": "1092ce59-dd9a-5d92-adcd-88607c3143f5",
+      "meta": {
+        "gpz_substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+        "gpz_transformer_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/wn_sn",
+        "render_on_sld": true,
+        "show_in_project_tree": false,
+        "visual_role": "GPZ_HV_BUS"
+      },
+      "name": "Szyna 110 kV TR1",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110",
+      "tags": [
+        "gpz_hv_bus",
+        "helper_bus"
+      ],
+      "voltage_kv": 110.0,
+      "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "60dd34d0-62ff-558a-afd6-928ad1e3a0ea",
+      "meta": {
+        "der_role": "producer_lv_bus",
+        "has_manufacturer_lv_switchgear": true,
+        "lv_switchgear_variant": "multi-feeder",
+        "station_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+        "visual_role": "DER_PRODUCER_LV_BUS"
+      },
+      "name": "Szyna nN producenta Magazyn energii 1,5 MW",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "bess/5bd678b5dbce96516c72492e40298e5f/der/producer_nn_bus",
+      "tags": [
+        "nn",
+        "der_producer_lv"
+      ],
+      "voltage_kv": 0.4,
+      "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "a845eeb9-54a5-51ad-9bda-d691b5208682",
+      "meta": {
+        "der_role": "block_hv_bus",
+        "station_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+        "visual_role": "DER_BLOCK_HV_BUS"
+      },
+      "name": "Szyna SN TR blokowego Magazyn energii 1,5 MW",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "bess/5bd678b5dbce96516c72492e40298e5f/der/block_hv_bus",
+      "tags": [
+        "sn",
+        "der_block_hv"
+      ],
+      "voltage_kv": 15.0,
+      "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "1360b514-81ac-57b7-8dda-d4b3354e6ed0",
+      "meta": {
+        "field_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field",
+        "port_kind": "der_source_in",
+        "render_on_sld": false,
+        "show_in_project_tree": false,
+        "station_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+        "visual_role": "FIELD_TERMINAL"
+      },
+      "name": "Zacisk pola źródłowego SN Magazyn energii 1,5 MW",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_terminal",
+      "tags": [
+        "helper_bus",
+        "field_terminal"
+      ],
+      "voltage_kv": 15.0,
+      "zone": null
+    }
+  ],
+  "connection_nodes": [],
+  "corridors": [
+    {
+      "corridor_type": "radial",
+      "id": "48e7285a-4c31-5b01-9d87-dd323c2a08f9",
+      "meta": {},
+      "name": "Magistrala 01",
+      "no_point_ref": null,
+      "ordered_segment_refs": [],
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/corridor_01",
+      "tags": []
+    }
+  ],
+  "generators": [
+    {
+      "blocking_transformer_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/block_transformer",
+      "bus_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/producer_nn_bus",
+      "catalog_namespace": "ZRODLO_NN_BESS",
+      "catalog_ref": "bess_pcs_abb_500",
+      "connection_variant": "block_transformer",
+      "data_umowy_przylaczeniowej": null,
+      "deklaracje_modulu": null,
+      "dynamika": null,
+      "gen_type": "bess",
+      "id": "39d633f7-ca94-5c33-9307-6944364a36de",
+      "limits": null,
+      "materialized_params": {
+        "battery": {
+          "c_rate": 0.5,
+          "capacity_kwh": 2880.0,
+          "chemistry": "LFP",
+          "nominal_voltage_dc_v": 1230.0
+        },
+        "battery_catalog_ref": "bess_bat_lfp_2880kwh_1230vdc",
+        "catalog_item_id": "bess_pcs_abb_500",
+        "catalog_item_version": "2024.1",
+        "charge_power_kw": 500.0,
+        "discharge_power_kw": 500.0,
+        "e_kwh": 1000.0,
+        "k_sc": null,
+        "operation_mode": null,
+        "pmax_mw": 0.5,
+        "profiles": {
+          "nc_rfg_profile_ref": "enea"
+        },
+        "ptpiree_note": "Brak dopasowania w wykazie PTPiREE (snapshot: 6887 rekordow, WiPWC 1.2/1.3, publikacja 2026-05-08).",
+        "ptpiree_status": "NIEPOWIAZANY",
+        "sn_mva": 0.55,
+        "un_kv": 0.4,
+        "usable_capacity_kwh": 1000.0
+      },
+      "meta": {
+        "bess_mode": null,
+        "block_transformer_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/block_transformer",
+        "control_mode": null,
+        "cos_phi": null,
+        "der_block_hv_bus_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/block_hv_bus",
+        "der_mv_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+        "der_mv_cable_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/mv_cable",
+        "der_mv_field_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field",
+        "der_producer_bus_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/producer_nn_bus",
+        "der_topology": {
+          "connection_level": "sn",
+          "has_block_transformer": true,
+          "has_dedicated_mv_field": true,
+          "has_manufacturer_lv_switchgear": true,
+          "inverter_output_voltage_kv": 0.4,
+          "lv_switchgear_variant": "multi-feeder"
+        },
+        "field_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field",
+        "frequency_droop_percent": null,
+        "has_hvrt_curve": null,
+        "has_lvrt_curve": null,
+        "kontrola_mocy_zrodla": {
+          "cos_phi": null,
+          "przeciazalnosc_transformatora_pu": null,
+          "przyjete_pl": [
+            "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
+            "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
+            "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+          ],
+          "wspolczynnik_jednoczesnosci": null
+        },
+        "lfsm_allow_increase": true,
+        "lfsm_deadband_hz": null,
+        "q_max_mvar": null,
+        "q_min_mvar": null,
+        "qu_deadband_high_pu": null,
+        "qu_deadband_low_pu": null,
+        "qu_slope_pu_per_pu": null,
+        "quantity": 3,
+        "soc_max_percent": null,
+        "soc_min_percent": null,
+        "source_sequence_index": 0,
+        "u_set_pu": null,
+        "usable_capacity_kwh": 1000.0
+      },
+      "modele_widmowe": null,
+      "modul_istniejacy": null,
+      "n_parallel": 3,
+      "name": "Magazyn energii 1,5 MW",
+      "nastawy_zabezpieczen": null,
+      "overrides": [],
+      "p_mw": 1.5,
+      "parameter_source": null,
+      "q_mvar": null,
+      "quantity": 3,
+      "ref_id": "bess/5bd678b5dbce96516c72492e40298e5f/converter",
+      "source_mode": "KATALOG",
+      "station_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+      "tags": []
+    }
+  ],
+  "header": {
+    "connection_conditions": null,
+    "created_at": "2026-09-16T08:00:00Z",
+    "defaults": {
+      "frequency_hz": 50.0,
+      "sn_nominal_kv": null,
+      "unit_system": "SI"
+    },
+    "description": null,
+    "enm_version": "1.0",
+    "hash_sha256": "",
+    "name": "Przyłączenie farmy PV 8 MW",
+    "revision": 1,
+    "updated_at": "2026-09-16T08:00:00Z"
+  },
+  "junctions": [],
+  "katalog_projektu": null,
+  "line_runs": [
+    {
+      "branch_origin_station_ref": null,
+      "id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/corridor_01",
+      "name": "Magistrala 01",
+      "nop_station_ref": null,
+      "parent_run_ref": null,
+      "run_kind": "main_trunk",
+      "segments": [],
+      "starting_bay_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
+      "starting_port_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
+      "stations": []
+    }
+  ],
+  "loads": [],
+  "measurements": [],
+  "protection_assignments": [],
+  "shunt_capacitors": [],
+  "sources": [
+    {
+      "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "c_max": null,
+      "c_min": null,
+      "catalog_namespace": "ZRODLO_SN",
+      "catalog_ref": "src-gpz-15kv-250mva-rx010",
+      "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
+      "id": "f3767143-9c5c-598d-9460-2cb312400f75",
+      "ik3_ka": 9.62,
+      "ik3_min_ka": null,
+      "materialized_params": {
+        "catalog_item_id": "src-gpz-15kv-250mva-rx010",
+        "catalog_item_version": "legacy",
+        "ik3_ka": 9.62,
+        "rx_ratio": 0.1,
+        "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+        "short_circuit_model": "short_circuit_power",
+        "sk3_mva": 250.0,
+        "voltage_rating_kv": 15.0
+      },
+      "meta": {
+        "catalog_item_version": "legacy",
+        "catalog_role": "GPZ_110_SN",
+        "solution_ref": null,
+        "source_id": "GPZ 110/15"
+      },
+      "model": "short_circuit_power",
+      "name": "GPZ 110/15",
+      "neutral_grounding": null,
+      "overrides": [],
+      "parameter_source": "CATALOG",
+      "r0_ohm": null,
+      "r_ohm": null,
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/source/main",
+      "rx_ratio": 0.1,
+      "rx_ratio_min": null,
+      "sk3_hv_mva": null,
+      "sk3_min_mva": null,
+      "sk3_mva": 250.0,
+      "sn_voltage_kv": null,
+      "source_mode": "KATALOG",
+      "source_side": "SN",
+      "substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+      "tags": [],
+      "u_set_pu": null,
+      "voltage_hv_kv": null,
+      "x0_ohm": null,
+      "x_ohm": null,
+      "z0_z1_ratio": null
+    }
+  ],
+  "substations": [
+    {
+      "bus_refs": [
+        "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+        "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110"
+      ],
+      "construction_type": null,
+      "designation": null,
+      "entry_point_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "external_ports": [],
+      "gpz_hv_sections": [],
+      "gpz_sections": [
+        {
+          "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+          "incoming_source_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/source/main",
+          "left_coupler_ref": null,
+          "line_field_name": "Pole liniowe GPZ",
+          "name": "Sekcja 1",
+          "order": 0,
+          "right_coupler_ref": null,
+          "section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001"
+        }
+      ],
+      "id": "4365ab68-27ea-535f-881d-39d635c13e7e",
+      "meta": {
+        "field_specs": [
+          {
+            "bay_role": "FEEDER",
+            "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+            "equipment_refs": [],
+            "field_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",
+            "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
+            "meta": {
+              "field_status": "READY_FOR_TRUNK",
+              "gpz_line_field_index": 0,
+              "gpz_line_fields_count": 1,
+              "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
+              "gpz_section_order": 0,
+              "source_field_kind": "FEEDER"
+            },
+            "name": "Pole liniowe GPZ",
+            "protection_ref": null,
+            "tags": [
+              "gpz_line_field"
+            ]
+          },
+          {
+            "bay_role": "OZE",
+            "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+            "equipment_refs": [
+              "sn/5bd678b5dbce96516c72492e40298e5f/der/field_device"
+            ],
+            "field_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field",
+            "meta": {
+              "apparatus_kind": "BREAKER",
+              "catalog_binding": {
+                "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+                "catalog_item_version": "2024.1",
+                "catalog_namespace": "APARAT_SN",
+                "materialize": true,
+                "snapshot_mapping_version": "1.0"
+              },
+              "default_device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_device",
+              "der_feeder_bus_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/block_hv_bus",
+              "der_role": "mv_source_field",
+              "field_status": "CONFIGURED_FOR_TRUNK",
+              "source_field_kind": "BESS",
+              "terminal_bus_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_terminal"
+            },
+            "name": "Pole źródłowe SN BESS",
+            "primary_devices": [
+              {
+                "designation": "Q1",
+                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::0",
+                "is_controllable": true,
+                "kind": "DS",
+                "placement": "UPSTREAM",
+                "render_variant": "kanoniczny",
+                "symbol_ref": "symbol:ds"
+              },
+              {
+                "designation": "Q0",
+                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::1",
+                "is_controllable": true,
+                "kind": "CB",
+                "placement": "MIDSTREAM",
+                "render_variant": "kanoniczny",
+                "symbol_ref": "symbol:cb"
+              },
+              {
+                "designation": "T1",
+                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::2",
+                "is_controllable": false,
+                "kind": "CT",
+                "placement": "MIDSTREAM",
+                "render_variant": "kanoniczny",
+                "symbol_ref": "symbol:ct"
+              },
+              {
+                "designation": "T2",
+                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::3",
+                "is_controllable": false,
+                "kind": "VT",
+                "placement": "OFF_PATH",
+                "render_variant": "kanoniczny",
+                "symbol_ref": "symbol:vt"
+              },
+              {
+                "designation": "Q2",
+                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::4",
+                "is_controllable": true,
+                "kind": "DS",
+                "placement": "DOWNSTREAM",
+                "render_variant": "kanoniczny",
+                "symbol_ref": "symbol:ds"
+              },
+              {
+                "designation": "Q9",
+                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::5",
+                "earthing_role": "field_earth",
+                "is_controllable": false,
+                "kind": "ES",
+                "placement": "GROUND_BRANCH",
+                "render_variant": "kanoniczny",
+                "symbol_ref": "symbol:es"
+              },
+              {
+                "designation": "Z1",
+                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::6",
+                "earthing_role": "surge_ground",
+                "is_controllable": false,
+                "kind": "SURGE_ARRESTER",
+                "placement": "GROUND_BRANCH",
+                "render_variant": "kanoniczny",
+                "symbol_ref": "symbol:surge_arrester"
+              },
+              {
+                "designation": "GK",
+                "device_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field::dev::7",
+                "is_controllable": false,
+                "kind": "CABLE_HEAD",
+                "placement": "DOWNSTREAM",
+                "render_variant": "kanoniczny",
+                "symbol_ref": "symbol:cable_head"
+              }
+            ],
+            "protection_codes": [
+              "67",
+              "67N",
+              "27",
+              "59",
+              "81U",
+              "81O",
+              "df/dt",
+              "anti-islanding"
+            ],
+            "protection_ref": null,
+            "tags": [
+              "der_source_field",
+              "nn_source_field"
+            ]
+          }
+        ],
+        "gpz_hv_bus_refs": [
+          "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110"
+        ],
+        "gpz_section_count": 1,
+        "short_circuit_input_side": "SN",
+        "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+        "wn_sn_transformer_count": 1
+      },
+      "name": "GPZ 110/15",
+      "nn_sections": [],
+      "nn_voltage_levels": [],
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+      "station_type": "gpz",
+      "tags": [],
+      "transformer_refs": [
+        "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/wn_sn"
+      ]
+    }
+  ],
+  "transformers": [
+    {
+      "catalog_namespace": "TRAFO_SN_NN",
+      "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
+      "hv_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110",
+      "hv_neutral": null,
+      "i0_percent": 0.35,
+      "id": "ea4515dd-c9ea-55f8-a92a-0b7d02da7b94",
+      "lv_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "lv_earthing_system": null,
+      "lv_neutral": null,
+      "materialized_params": {
+        "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
+        "catalog_item_version": "legacy",
+        "i0_percent": 0.35,
+        "p0_kw": 25.0,
+        "pk_kw": 120.0,
+        "rated_power_mva": 25.0,
+        "uk_percent": 11.0,
+        "vector_group": "Yd11",
+        "voltage_hv_kv": 110.0,
+        "voltage_lv_kv": 15.0
+      },
+      "meta": {
+        "catalog_item_version": "legacy",
+        "catalog_role": "TRANSFORMATOR_WN_SN",
+        "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
+        "gpz_section_order": 0,
+        "gpz_substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+        "visual_role": "GPZ_WN_SN_TRANSFORMER"
+      },
+      "n_parallel": null,
+      "name": "TR1 110/15 kV",
+      "overrides": [],
+      "p0_kw": 25.0,
+      "parameter_source": "CATALOG",
+      "pk_kw": 120.0,
+      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/wn_sn",
+      "sn_mva": 25.0,
+      "source_mode": "KATALOG",
+      "tags": [
+        "gpz_wn_sn_transformer"
+      ],
+      "tap_changer": null,
+      "tap_max": null,
+      "tap_min": null,
+      "tap_position": null,
+      "tap_step_percent": null,
+      "uhv_kv": 110.0,
+      "uk_percent": 11.0,
+      "ulv_kv": 15.0,
+      "vector_group": "Yd11"
+    },
+    {
+      "catalog_namespace": "TRAFO_SN_NN",
+      "catalog_ref": "tr-sn-nn-15-04-2000kva-dyn11",
+      "hv_bus_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/block_hv_bus",
+      "hv_neutral": null,
+      "i0_percent": 0.8,
+      "id": "c87bd946-adc0-5f4e-b087-31ed7842fdd4",
+      "lv_bus_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/producer_nn_bus",
+      "lv_earthing_system": null,
+      "lv_neutral": null,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-2000kva-dyn11",
+        "catalog_item_version": "2024.1",
+        "i0_percent": 0.8,
+        "p0_kw": 3.0,
+        "pk_kw": 21.0,
+        "rated_power_mva": 2.0,
+        "uk_percent": 6.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "meta": {
+        "catalog_item_version": "2024.1",
+        "catalog_role": "TRANSFORMATOR_BLOKOWY_DER",
+        "der_role": "block_transformer",
+        "visual_role": "DER_BLOCK_TRANSFORMER"
+      },
+      "n_parallel": 1,
+      "name": "Transformator blokowy Magazyn energii 1,5 MW",
+      "overrides": [],
+      "p0_kw": 3.0,
+      "parameter_source": "CATALOG",
+      "pk_kw": 21.0,
+      "ref_id": "bess/5bd678b5dbce96516c72492e40298e5f/der/block_transformer",
+      "sn_mva": 2.0,
+      "source_mode": "KATALOG",
+      "tags": [
+        "der_block_transformer"
+      ],
+      "tap_changer": null,
+      "tap_max": null,
+      "tap_min": null,
+      "tap_position": null,
+      "tap_step_percent": null,
+      "uhv_kv": 15.0,
+      "uk_percent": 6.0,
+      "ulv_kv": 0.4,
+      "vector_group": "Dyn11"
+    }
+  ]
+}

@@ -9,6 +9,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
@@ -23,18 +24,45 @@ import {
   widokZdolnosciFixture,
 } from './fixtures';
 
+
+/**
+ * Jawny wybór operatora (krok 2) — operator studium NIE ma wartości domyślnej, więc realna
+ * ścieżka użytkownika przechodzi przez wybór profilu wymagań natywnym `selectOptions`.
+ */
+async function wybierzOperatoraJawnie(operatorId = 'pse') {
+  await userEvent.click(screen.getByTestId('mvd-studium-krok-2'));
+  const operator = await screen.findByTestId('mvd-studium-operator');
+  await waitFor(() =>
+    expect(within(operator).queryByRole('option', { name: /PSE/ })).not.toBeNull(),
+  );
+  await userEvent.selectOptions(operator, operatorId);
+}
+
 const pobierzKonwertery = vi.fn();
 const pobierzKatalog = vi.fn();
 const pobierzZdolnosc = vi.fn();
 const pobierzObszar = vi.fn();
 const pobierzPokrycie = vi.fn();
+import { odpowiedzKlasyfikacji } from '../../ncrfg/__tests__/atrapaKlasyfikacji';
+
 vi.mock('../../api', () => ({
   pobierzKonwertery: () => pobierzKonwertery(),
-  pobierzKatalogKlasNcRfg: () => pobierzKatalog(),
   pobierzZdolnoscPrzylaczeniowa: (z: unknown) => pobierzZdolnosc(z),
   pobierzObszarPQ: (z: unknown) => pobierzObszar(z),
   pobierzPokryciePQ: (z: unknown) => pobierzPokrycie(z),
 }));
+
+// Katalog NC RfG (operatorzy) i klasyfikacja modułu idą PRODUKCYJNYM klientem `ncrfg/api.ts`
+// — atrapa wyłącznie na granicy `fetch` (klasyfikacja: klucze z OpenAPI, progi z katalogu
+// policzonego backendem).
+function atrapaNcRfg(url: string): Response {
+  const klasyfikacja = odpowiedzKlasyfikacji(url);
+  if (klasyfikacja) return klasyfikacja;
+  if (new URL(url, 'http://localhost').pathname === '/api/ncrfg-tests/catalog') {
+    return new Response(JSON.stringify(pobierzKatalog()), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+  throw new Error(`atrapa studium: nieoczekiwane zapytanie ${url}`);
+}
 
 function ustawGotowyRozplyw() {
   useExecutionRunsStore.setState({
@@ -48,7 +76,8 @@ beforeEach(() => {
   useExecutionRunsStore.getState().reset();
   useSnapshotStore.getState().reset();
   pobierzKonwertery.mockResolvedValue(rekordyStudiumFixture());
-  pobierzKatalog.mockResolvedValue(katalogStudiumFixture());
+  pobierzKatalog.mockReturnValue(katalogStudiumFixture());
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => atrapaNcRfg(url)));
   pobierzZdolnosc.mockResolvedValue(widokZdolnosciFixture());
   pobierzObszar.mockResolvedValue(widokObszaruFixture());
   pobierzPokrycie.mockResolvedValue(widokPokryciaFixture());
@@ -57,6 +86,7 @@ afterEach(() => {
   useExecutionRunsStore.getState().reset();
   useSnapshotStore.getState().reset();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 // ---------------------------------------------------------------------------
@@ -67,7 +97,7 @@ describe('KreatorStudium — krok 1 (warianty)', () => {
   it('pokazuje hint inżynierski i listę węzłów; „Dalej" zablokowane bez wyboru', async () => {
     ustawGotowyRozplyw();
     render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
-    // Montaż kreatora pobiera katalogi (konwertery + klasy NC RfG) — realny
+    // Montaż kreatora pobiera katalogi (konwertery + operatorzy NC RfG) — realny
     // efekt mikrotaskowy, którego skutek (prefill kroku 2) nie ma reprezentacji
     // w UI kroku 1, więc nie ma na co czekać przez findBy*/waitFor. Puste
     // act(async) domyka te mikrotaski w act — bez niego React zgłasza
@@ -103,8 +133,22 @@ describe('KreatorStudium — krok 2 (parametry źródła)', () => {
     const typ = (await screen.findByTestId('mvd-studium-typ')) as HTMLSelectElement;
     expect(typ.value).toBe('conv-pv-2mw'); // pierwszy PV
     expect(screen.getByTestId('mvd-studium-typ-dane')).toHaveTextContent('2,000');
+    // Operator bez wartości domyślnej (ani pierwszy z listy, ani z modelu) — jawny wybór.
     const operator = screen.getByTestId('mvd-studium-operator') as HTMLSelectElement;
-    expect(operator.value).toBe('pse'); // pierwszy operator
+    expect(operator.value).toBe('');
+  });
+
+  it('bez jawnego wyboru operatora bieg jest zablokowany; wybór natywny go odblokowuje', async () => {
+    ustawGotowyRozplyw();
+    render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    await userEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
+    await userEvent.click(screen.getByTestId('mvd-studium-krok-3'));
+    const uruchom = await screen.findByTestId('mvd-studium-uruchom');
+    await act(async () => {});
+    expect(uruchom).toBeDisabled();
+    await wybierzOperatoraJawnie();
+    await userEvent.click(screen.getByTestId('mvd-studium-krok-3'));
+    await waitFor(() => expect(screen.getByTestId('mvd-studium-uruchom')).toBeEnabled());
   });
 
   it('zmiana rodzaju na FW przełącza katalog typów na WIND i moc typu', async () => {
@@ -139,6 +183,7 @@ describe('KreatorStudium — krok 3 (analizy)', () => {
     ustawGotowyRozplyw();
     render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
+    await wybierzOperatoraJawnie();
     fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
 
     // Przycisk biegu odblokowuje się dopiero po prefillu typu z katalogu
@@ -164,6 +209,7 @@ describe('KreatorStudium — krok 3 (analizy)', () => {
     render(<KreatorStudium trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
     fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
     fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-b'));
+    await wybierzOperatoraJawnie();
     fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
     // Jak wyżej: klik w AKTYWNY przycisk (po prefillu typu z katalogu).
     const uruchom = await screen.findByTestId('mvd-studium-uruchom');
@@ -186,6 +232,7 @@ async function przeprowadzIWejdzDoPrzegladu(tryb: 'basic' | 'expert') {
   ustawGotowyRozplyw();
   render(<KreatorStudium trybZaawansowania={tryb} onOtworzDowod={vi.fn()} />);
   fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
+  await wybierzOperatoraJawnie();
   fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
   // Przycisk biegu odblokowuje się dopiero po prefillu typu z katalogu
   // (asynchroniczny montaż) — jak realny użytkownik klikamy AKTYWNY przycisk.
@@ -201,7 +248,8 @@ describe('KreatorStudium — krok 4 (przegląd)', () => {
     const tabela = screen.getByTestId('mvd-wyn-tabela');
     expect(within(tabela).getByText('Szyna A')).toBeInTheDocument();
     expect(within(tabela).getByText('1,500')).toBeInTheDocument(); // moc przyłączalna
-    expect(within(tabela).getByText('Niepokryte')).toBeInTheDocument(); // werdykt pokrycia
+    // ocena pokrycia = etykieta rekordu `ocena` backendu
+    expect(within(tabela).getAllByText(widokPokryciaFixture().ocena.etykieta.etykieta_pl).length).toBeGreaterThan(0);
   });
 
   it('wybór wiersza pokazuje szczegół wariantu (reużyte wykres i ślad)', async () => {

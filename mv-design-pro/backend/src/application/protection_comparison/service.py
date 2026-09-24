@@ -198,7 +198,10 @@ class ProtectionComparisonService:
         trace_steps.append(
             ProtectionComparisonTraceStep(
                 step="CLASSIFY_CHANGES",
-                description_pl="Klasyfikacja zmian stanów (TRIP_TO_NO_TRIP, NO_TRIP_TO_TRIP, itd.)",
+                description_pl=(
+                    "Klasyfikacja zmian stanów zadziałania: bez zmiany, utrata zadziałania, "
+                    "nowe zadziałanie, zmiana nieoceniona (stan nieprawidłowy)"
+                ),
                 inputs={"row_count": len(rows)},
                 outputs=state_change_counts,
             )

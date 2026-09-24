@@ -885,15 +885,29 @@ def test_parametr_sieci_z_karty_nie_jest_dana_przyjeta() -> None:
 @pytest.mark.parametrize("puste", [True, False])
 @pytest.mark.parametrize("sposob", ["BRAK_METODY", "DEKLARACJA"])
 @pytest.mark.parametrize("dotyczy", [True, False])
-def test_puste_skladowe_wtedy_i_tylko_wtedy_gdy_brak_metody_albo_nie_dotyczy(
+def test_puste_skladowe_wylacznie_przy_nie_dotyczy_albo_brak_metody(
     dotyczy: bool, sposob: MetodaDowodu, puste: bool
 ) -> None:
+    """§4.2: składowe puste WYŁĄCZNIE przy NIE_DOTYCZY albo BRAK_METODY.
+
+    Intencja zachowana (dawny test „puste wtedy i tylko wtedy"): wymaganie stosowalne
+    wykazywane metodą narzędzia nie może być pustym agregatem, a wymaganie niestosowalne nie
+    ma składowych. Zmiana kanonu (karta AB-1a Pakiet C, O-32): przy BRAK_METODY składowe są
+    DOZWOLONE jako informacyjne (kryterium koordynacji nastaw RoCoF jest warunkiem koniecznym
+    RFG_13_1B, ale nie wykazuje wymagania) — status i tak rozstrzyga krok BRAK_METODY.
+    """
     oceny = [] if puste else [f.ocena(dotyczy=dotyczy)]
-    dozwolone = (not dotyczy) or sposob == "BRAK_METODY"
-    if dozwolone == puste:
-        assert f.wymaganie(oceny, sposob=sposob, dotyczy=dotyczy).oceny_skladowe == tuple(oceny)
+    if not dotyczy:
+        poprawne = puste
     else:
-        with pytest.raises(ValidationError, match="puste wtedy i tylko wtedy"):
+        poprawne = sposob == "BRAK_METODY" or not puste
+    if poprawne:
+        rekord = f.wymaganie(oceny, sposob=sposob, dotyczy=dotyczy)
+        assert rekord.oceny_skladowe == tuple(oceny)
+        if dotyczy and sposob == "BRAK_METODY":
+            assert rekord.status_maszynowy == "BRAK_DOWODU"
+    else:
+        with pytest.raises(ValidationError, match="oceny składowe|ocen składowych"):
             f.wymaganie(oceny, sposob=sposob, dotyczy=dotyczy)
 
 
@@ -1285,22 +1299,28 @@ def test_poziomy_dowodu_i_twierdzenia_z_proweniencji() -> None:
 
 
 def test_osie_proweniencji_zachowuja_wartosci_i_etykiety() -> None:
-    """Przeniesienie definicji nie zmienia wartości ani etykiet PL; nowy członek
-    ``STATIC_CALCULATION`` ma etykietę „obliczenie_statyczne"."""
+    """Wartości osi proweniencji bez zmian; ``label_pl`` to NAZWA POLSKA w tekście dla
+    człowieka (JEDNO źródło nazw dla zdań werdyktu, bloku dokumentu i ekranów — luka §5.1
+    pakietu D2: dawne etykiety w postaci identyfikatora ``symulacja_zwalidowana`` trafiały na
+    ekran FRT, SSCI i adekwatności Q); poziom certyfikatu badania typu (odbiór Pakietu C, plan
+    AB O-50) jest dopuszczalny jako dowód regulacyjny."""
     assert {c.value: c.label_pl for c in FieldQuality} == {
-        "DATASHEET": "karta_techniczna",
+        "DATASHEET": "karta techniczna",
         "ESTIMATED": "oszacowane",
-        "SYSTEM_DEFAULT": "domyslne_techniczne",
+        "SYSTEM_DEFAULT": "domyślne techniczne",
     }
     assert {c.value: (c.label_pl, c.regulatory_evidence_eligible) for c in EvidenceTier} == {
-        "VALIDATED_SIMULATION": ("symulacja_zwalidowana", True),
-        "DECLARATION": ("deklaracja_wnioskodawcy", False),
-        "UNVALIDATED_MODEL": ("model_niezwalidowany", False),
-        "NOT_SIMULATED": ("brak_symulacji", False),
+        "VALIDATED_SIMULATION": ("symulacja zwalidowana", True),
+        "TYPE_TEST_CERTIFICATE": ("certyfikat badania typu (wykaz PTPiREE)", True),
+        "DECLARATION": ("deklaracja wnioskodawcy", False),
+        "UNVALIDATED_MODEL": ("model niezwalidowany", False),
+        "NOT_SIMULATED": ("brak symulacji", False),
     }
     assert {c.value: c.label_pl for c in ClaimKind} == {
-        "DYNAMIC_PERFORMANCE": "zachowanie_dynamiczne",
-        "DECLARED_CONFIGURATION": "konfiguracja_zadeklarowana",
-        "STATIC_CALCULATION": "obliczenie_statyczne",
+        "DYNAMIC_PERFORMANCE": "zachowanie dynamiczne",
+        "DECLARED_CONFIGURATION": "konfiguracja zadeklarowana",
+        "STATIC_CALCULATION": "obliczenie statyczne",
     }
+    etykiety = [c.label_pl for osie in (FieldQuality, EvidenceTier, ClaimKind) for c in osie]
+    assert not any("_" in e for e in etykiety), etykiety
     assert werdykt.BRAK_DOWODU_PL == "BRAK WYSTARCZAJĄCEGO DOWODU SPEŁNIENIA WYMAGANIA"

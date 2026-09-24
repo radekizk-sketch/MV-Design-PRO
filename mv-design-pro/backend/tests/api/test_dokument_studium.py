@@ -7,6 +7,13 @@ per wariant + podsumowanie), zachowaną kolejność wariantów, klasę NC RfG z 
 klasyfikacji backendowej, odporność na błąd pojedynczego wariantu (reszta liczona),
 bramkę braków twardych (422 z listą), determinizm bajtowy DOCX i PDF, stabilność
 odcisków/hash, etykiety PL w obu formatach, content-type oraz 404/422.
+
+Karta AB-1a Pakiet C pkt 11: typ modułu wariantu z JEDNEJ klasyfikacji backendu
+(``klasyfikacja_modulu``, progi WOS) z powodem i podstawą; brak napięcia przyłączenia wariantu
+albo brak mocy przyłączalnej → typ nieokreślony z nazwanym powodem (nigdy podstawione 0,0 kV).
+Dowód certyfikatu urządzeń typu (z przypadkiem): TA SAMA weryfikacja tabliczki × wykaz PTPiREE
+co moduły zgodności — iloczyn cech: przypadek {brak, model z urządzeniem typu z rekordem
+wykazu, model bez urządzenia typu, tabliczka odrzucona}.
 """
 
 from __future__ import annotations
@@ -15,14 +22,20 @@ import re
 from io import BytesIO
 from uuid import uuid4
 
+import pymupdf
 import pytest
 from application.analyses.dokument_studium import (
+    BRAK_URZADZEN_TYPU_PL,
     DokumentStudiumBrakiError,
     DokumentStudiumIdentyfikacja,
+    _klasa_nc_rfg,
     build_dokument_studium_view,
     render_dokument_studium_docx,
     render_dokument_studium_pdf,
 )
+from application.analyses.pq_coverage import build_pq_coverage_view
+from application.ncrfg_compliance import weryfikacje_certyfikatow_typu
+from catalog.profiles.nc_rfg import klasyfikacja_modulu
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile
 from docx import Document
 from enm.canonical_analysis import (
@@ -33,7 +46,9 @@ from enm.canonical_analysis import (
 )
 from enm.store import reset_enm_store, set_enm
 from network_model.catalog.repository import get_default_mv_catalog
+from werdykt import OcenaKryterium
 
+from tests import ncrfg_fabryki as f
 from tests.cgmes.golden_enm import build_golden_enm
 
 STUDY_JSON = "/api/oze-analysis/connection-study"
@@ -82,7 +97,7 @@ def _identyfikacja() -> DokumentStudiumIdentyfikacja:
     )
 
 
-def _view(run: CanonicalRun | None = None, warianty: list[str] | None = None):
+def _view(run: CanonicalRun | None = None, warianty: list[str] | None = None, dowody=None):
     return build_dokument_studium_view(
         run or _pf_run(),
         _converter(),
@@ -91,6 +106,7 @@ def _view(run: CanonicalRun | None = None, warianty: list[str] | None = None):
         operator_id=_OPERATOR,
         warianty=warianty or ["bus_sn_c", "bus_nn"],
         identyfikacja=_identyfikacja(),
+        dowody=dowody,
     )
 
 
@@ -104,10 +120,8 @@ def _docx_text(data: bytes) -> str:
 
 
 def _pdf_text(data: bytes) -> str:
-    """Wyciągnij tekst z operatorów PDF (Tj/TJ) — PDF bez kompresji strony."""
-    parts = [m.group(0) for m in re.finditer(rb"\((?:[^()\\]|\\.)*\)\s*Tj", data)]
-    parts += [m.group(1) for m in re.finditer(rb"\[(.*?)\]\s*TJ", data, re.DOTALL)]
-    return b" ".join(parts).decode("latin-1", "replace")
+    with pymupdf.open(stream=data, filetype="pdf") as dokument:
+        return "\n".join(strona.get_text() for strona in dokument)
 
 
 def _payload(run: CanonicalRun, **extra) -> dict:
@@ -130,7 +144,7 @@ def _payload(run: CanonicalRun, **extra) -> dict:
 # --------------------------------------------------------------------------- #
 def test_dwa_warianty_sekcje_i_podsumowanie() -> None:
     view = _view()
-    assert view["kontrakt"] == "DokumentStudiumPrzylaczeniowegoV1"
+    assert view["kontrakt"] == "DokumentStudiumPrzylaczeniowegoV2"
     assert len(view["warianty"]) == 2
     for wariant in view["warianty"]:
         assert {"zdolnosc", "obszar_pq", "pokrycie_pq", "klasa_nc_rfg"} <= set(wariant)
@@ -145,21 +159,72 @@ def test_kolejnosc_wariantow_zachowana() -> None:
 
 
 def test_klasa_nc_rfg_z_klasyfikacji_backendowej() -> None:
-    # Klasa liczona istniejącą klasyfikacją NcRfgProfile.classify_module.
     view = _view(warianty=["bus_sn_c"])
     wariant = view["warianty"][0]
     assert wariant["zdolnosc"]["status"] == "ok"
-    assert wariant["klasa_nc_rfg"]["klasa"] in {"A", "B", "C", "D"}
-    # Wartość zgodna z bezpośrednim wywołaniem jedynego źródła prawdy.
-    max_moc = wariant["zdolnosc"]["max_moc_mw"]
-    oczekiwana = _profile().classify_module(max_moc * 1000.0, wariant["napiecie_kv"])
-    assert wariant["klasa_nc_rfg"]["klasa"] == oczekiwana.id
+    klasa = wariant["klasa_nc_rfg"]
+    assert set(klasa) == {"modul", "powod_pl", "podstawa", "podstawa_pl"}
+    # Wartość zgodna z bezpośrednim wywołaniem jedynego źródła prawdy (moc MW → kW).
+    oczekiwana = klasyfikacja_modulu(
+        wariant["zdolnosc"]["max_moc_mw"] * 1000.0, wariant["napiecie_kv"]
+    )
+    assert klasa["modul"] == oczekiwana.modul
+    assert klasa["powod_pl"] == oczekiwana.powod_pl
+    assert klasa["podstawa"] == oczekiwana.podstawa.model_dump(mode="json")
+    assert "wymogi ogólnego stosowania (WOS)" in klasa["podstawa_pl"]
+    assert view["podsumowanie"][0]["klasa"] == oczekiwana.modul
 
 
-def test_pokrycie_pq_werdykt_w_wariancie() -> None:
-    wariant = _view(warianty=["bus_sn_c"])["warianty"][0]
-    assert wariant["pokrycie_pq"]["status"] == "ok"
-    assert wariant["pokrycie_pq"]["werdykt_pl"] in {"Pokryte", "Niepokryte"}
+@pytest.mark.parametrize(
+    ("moc_mw", "napiecie_kv", "fragment"),
+    [
+        (None, 15.0, "brak dodatniej mocy przyłączalnej wariantu"),
+        (0.0, 15.0, "brak dodatniej mocy przyłączalnej wariantu"),
+        (2.0, None, "brak napięcia przyłączenia wariantu"),
+    ],
+)
+def test_typ_nieokreslony_z_powodem_nigdy_z_podstawionym_napieciem(
+    moc_mw: float | None, napiecie_kv: float | None, fragment: str
+) -> None:
+    """Dawniej brak napięcia wariantu podstawiał 0,0 kV (fabrykacja) — teraz typ nieokreślony
+    z nazwanym powodem i bez podstawy klasyfikacji."""
+    klasa = _klasa_nc_rfg(moc_mw, napiecie_kv)
+    assert klasa == {
+        "modul": None,
+        "powod_pl": klasa["powod_pl"],
+        "podstawa": None,
+        "podstawa_pl": None,
+    }
+    assert fragment in klasa["powod_pl"]
+
+
+def test_moc_ponizej_progu_istotnosci_ma_powod_i_podstawe() -> None:
+    klasa = _klasa_nc_rfg(0.0005, 0.4)
+    assert klasa["modul"] is None
+    assert "poniżej progu istotności" in klasa["powod_pl"]
+    assert klasa["podstawa"] is not None
+
+
+def test_pokrycie_pq_w_wariancie_to_rekord_oceny_kryterium() -> None:
+    """Odbiór Pakietu C (plan AB O-50): sekcja pokrycia P–Q wariantu niesie rekord
+    ``OcenaKryterium`` tej samej funkcji co końcówka pokrycia (bez własnego statusu i bez
+    słownika status→tekst); podstawa wymagania zakresu Q i jej stan są w rekordzie, a wiersz
+    podsumowania i eksport biorą etykietę i zdanie rekordu."""
+    view = _view(warianty=["bus_sn_c"])
+    wariant = view["warianty"][0]
+    assert set(wariant["pokrycie_pq"]) == {"ocena"}
+    ocena = OcenaKryterium.model_validate(wariant["pokrycie_pq"]["ocena"])
+    assert ocena.model_dump(mode="json") == (
+        build_pq_coverage_view(_converter(), _profile())["ocena"]
+    )
+    assert ocena.podstawa == _profile().reactive_power.zrodlo
+    if ocena.podstawa.status == "NIEUSTALONE" and ocena.wynik is not None:
+        assert ocena.status_maszynowy == "BRAK_PODSTAWY"
+    assert view["podsumowanie"][0]["pokrycie_pl"] == ocena.etykieta.etykieta_pl
+    tekst = _docx_text(render_dokument_studium_docx(view))
+    assert f"Pokrycie wymagań P–Q: {ocena.etykieta.etykieta_pl} — " in tekst
+    for slowo in ("Pokryte", "Niepokryte"):
+        assert slowo not in tekst
 
 
 # --------------------------------------------------------------------------- #
@@ -174,8 +239,9 @@ def test_blad_jednego_wariantu_nie_przerywa_dokumentu() -> None:
     assert zly["zdolnosc"]["status"] == "blad"
     assert zly["zdolnosc"]["komunikat_bledu"]
     assert zly["obszar_pq"]["status"] == "blad"
-    # Klasa nieokreślona przy braku mocy przyłączalnej (bez zgadywania).
-    assert zly["klasa_nc_rfg"]["klasa"] is None
+    # Typ nieokreślony przy braku mocy przyłączalnej (bez zgadywania), z nazwanym powodem.
+    assert zly["klasa_nc_rfg"]["modul"] is None
+    assert "brak dodatniej mocy przyłączalnej" in zly["klasa_nc_rfg"]["powod_pl"]
 
 
 # --------------------------------------------------------------------------- #
@@ -281,16 +347,18 @@ def test_docx_etykiety_pl() -> None:
     assert "Zdolność przyłączeniowa" in text
     assert "Obszar pracy P–Q" in text
     assert "Pokrycie wymagań P–Q" in text
-    assert "Klasa NC RfG" in text
+    assert "Typ modułu NC RfG" in text
+    assert "Podstawa klasyfikacji" in text
     assert "Podsumowanie porównawcze wariantów" in text
     assert "Farma PV Wschód" in text
 
 
 def test_pdf_etykiety_pl() -> None:
     text = _pdf_text(render_dokument_studium_pdf(_view(warianty=["bus_sn_c"])))
-    assert "Zdolno" in text  # „Zdolność" (kodowanie latin-1 w ekstrakcji)
-    assert "Pokrycie" in text
-    assert "Podsumowanie" in text
+    assert "Zdolność przyłączeniowa" in text
+    assert "Pokrycie wymagań" in text
+    assert "Typ modułu NC RfG" in text
+    assert "Podsumowanie porównawcze wariantów" in text
 
 
 def test_docx_bez_kodow_projektowych() -> None:
@@ -363,3 +431,80 @@ def test_endpoint_pdf_determinizm(app_client) -> None:
     second = app_client.post(STUDY_PDF, json=payload)
     assert first.status_code == 200
     assert first.content == second.content
+
+
+# --------------------------------------------------------------------------- #
+# Dowód certyfikatu urządzeń typu (weryfikacja serwera: tabliczka × wykaz PTPiREE)
+# --------------------------------------------------------------------------- #
+def _model_z_urzadzeniem_typu(**zmiany_tabliczki: object):
+    tabliczka = {**f.tabliczka(f.rekord_wykazu("A,B")), "catalog_item_id": _CATALOG_ITEM}
+    tabliczka.update(zmiany_tabliczki)
+    return f.model(
+        f.generator("pv-typ", materialized_params=tabliczka),
+        f.generator("pv-inny", materialized_params={"catalog_item_id": "conv-inny"}),
+    )
+
+
+def test_studium_bez_przypadku_nie_ma_sekcji_dowodu() -> None:
+    assert "dowod_certyfikatu" not in _view(warianty=["bus_sn_c"])["zalozenia"]
+
+
+def test_studium_niesie_dowod_urzadzen_typu_z_rejestru() -> None:
+    dowody = weryfikacje_certyfikatow_typu(
+        _model_z_urzadzeniem_typu(), _CATALOG_ITEM, operator_id=_OPERATOR
+    )
+    sekcja = _view(warianty=["bus_sn_c"], dowody=dowody)["zalozenia"]["dowod_certyfikatu"]
+    assert sekcja["stan_pl"] is None
+    [urzadzenie] = sekcja["urzadzenia"]
+    assert urzadzenie["der_ref"] == "pv-typ"
+    assert urzadzenie["dowod"]["rekord_id"] == f.rekord_wykazu("A,B")["id"]
+    assert urzadzenie["odrzucony"] is None
+    tekst = _docx_text(render_dokument_studium_docx(_view(warianty=["bus_sn_c"], dowody=dowody)))
+    assert urzadzenie["dowod"]["numer_dokumentu"] in tekst
+
+
+def test_studium_tabliczka_odrzucona_niesie_powod() -> None:
+    dowody = weryfikacje_certyfikatow_typu(
+        _model_z_urzadzeniem_typu(ptpiree_document_number="INNY/1"),
+        _CATALOG_ITEM,
+        operator_id=_OPERATOR,
+    )
+    [urzadzenie] = _view(warianty=["bus_sn_c"], dowody=dowody)["zalozenia"]["dowod_certyfikatu"][
+        "urzadzenia"
+    ]
+    assert urzadzenie["dowod"] is None
+    assert "przeczy rekordowi" in urzadzenie["odrzucony"]["powod_pl"]
+
+
+def test_studium_bez_urzadzenia_typu_ma_jawny_stan_zerowy() -> None:
+    sekcja = _view(warianty=["bus_sn_c"], dowody=[])["zalozenia"]["dowod_certyfikatu"]
+    assert sekcja == {
+        "catalog_item_id": _CATALOG_ITEM,
+        "urzadzenia": [],
+        "stan_pl": BRAK_URZADZEN_TYPU_PL,
+    }
+
+
+def _przypadek(app_client, enm) -> str:
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    projekt = app_client.post("/api/projects", json={"name": "Studium — test"})
+    przypadek = app_client.post(
+        "/api/study-cases", json={"project_id": projekt.json()["id"], "name": "Wariant"}
+    )
+    case_id = str(przypadek.json()["id"])
+    if enm is not None:
+        set_enm(klucz_twin_dla_przypadku(case_id, app_client.app.state.uow_factory), enm)
+    return case_id
+
+
+def test_endpoint_z_przypadkiem_niesie_dowod_a_bez_modelu_404(app_client) -> None:
+    run = _pf_run()
+    case_id = _przypadek(app_client, _model_z_urzadzeniem_typu())
+    resp = app_client.post(STUDY_JSON, params={"case_id": case_id}, json=_payload(run))
+    assert resp.status_code == 200, resp.text
+    [urzadzenie] = resp.json()["zalozenia"]["dowod_certyfikatu"]["urzadzenia"]
+    assert urzadzenie["der_ref"] == "pv-typ" and urzadzenie["dowod"] is not None
+    bez_modelu = _przypadek(app_client, None)
+    resp = app_client.post(STUDY_JSON, params={"case_id": bez_modelu}, json=_payload(run))
+    assert resp.status_code == 404

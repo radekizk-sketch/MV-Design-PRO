@@ -3,10 +3,12 @@
 PTPIREE-CERTIFICATE-NO-GUESS GUARD — karta CERTYFIKAT-Z-KATALOGU (zero fabrykacji).
 
 BINDING RULE. Status certyfikatu PTPiREE ("czy urządzenie jest na wykazie
-PTPiREE") ma JEDNO źródło prawdy: backend
-(`network_model/catalog/mv_ptpiree_catalog.py::annotate_with_ptpiree_status`
-+ `station-der/certyfikatPtpiree.ts::statusCertyfikatuPtpiree`, który czyta
-`der.catalogs.ptpiree_status` / `ptpiree_certificate_ref`). Zgadywanie tego
+PTPiREE") ma JEDNO źródło prawdy: backend — adnotacja katalogu
+(`network_model/catalog/mv_ptpiree_catalog.py::annotate_with_ptpiree_status`,
+pokazywana wprost z `der.catalogs.ptpiree_status` / `ptpiree_certificate_ref`) oraz
+dowód certyfikatu dopasowany PO STRONIE SERWERA (`dowod_certyfikatu` /
+`certyfikaty_odrzucone` w odpowiedziach klienta V2 `frontend/src/ui2/oze/ncrfg/api.ts`,
+typy `ui2/oze/ncrfg/typy.ts`). Frontend nie liczy statusu certyfikatu. Zgadywanie tego
 statusu z NAZWY referencji katalogowej (`device_catalog_ref?.includes('ptpiree')`)
 jest fabrykacją: rekord nazwany „ptpiree" bez adnotacji backendu daje fałszywy
 `ptpiree_verified`, a rekord certyfikowany bez tego słowa w nazwie — fałszywy
@@ -15,7 +17,9 @@ jest fabrykacją: rekord nazwany „ptpiree" bez adnotacji backendu daje fałszy
 Defekt zmierzony i naprawiony (karta CERTYFIKAT-Z-KATALOGU, 2026-09-16):
   - `ui2/oze/macierz/macierzModel.ts::rozwiazCertyfikat`
   - `ui/workspace/surfaces/NcRfgTestsTab.tsx::inferCertificateStatus`
-Oba teraz delegują do `station-der/certyfikatPtpiree.ts::statusCertyfikatuPtpiree`.
+Karta AB-1a Pakiet D2 (2026-09-23): oba miejsca SKASOWANE razem z klienckim statusem
+certyfikatu (`station-der/certyfikatPtpiree.ts`, ekran `NcRfgTestsTab`) — dowód
+certyfikatu czyta się wyłącznie z odpowiedzi serwera przez klienta V2.
 
 CO WYKRYWA: `.includes('ptpiree')` / `.includes("ptpiree")` (dowolna wielkość
 liter w środku literału) w kodzie WYKONYWALNYM. Komentarze/JSDoc (w tym
@@ -137,7 +141,10 @@ def main() -> int:
             file=sys.stderr,
         )
         print(
-            "Użyj `station-der/certyfikatPtpiree.ts::statusCertyfikatuPtpiree`.",
+            "Dowód certyfikatu czytaj z odpowiedzi serwera przez klienta V2 "
+            "(`frontend/src/ui2/oze/ncrfg/api.ts`: `dowod_certyfikatu`, "
+            "`certyfikaty_odrzucone`); adnotację katalogu pokazuj wprost "
+            "(`der.catalogs.ptpiree_status`).",
             file=sys.stderr,
         )
         print(file=sys.stderr)

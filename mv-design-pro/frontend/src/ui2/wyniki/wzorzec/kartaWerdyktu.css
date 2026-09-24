@@ -21,6 +21,11 @@
   font-family: var(--mvd-font-sans);
   font-size: 13px;
   line-height: 1.5;
+  /* Karta jest kontenerem zapytań o SZEROKOŚĆ: układ pól (niżej) zależy od miejsca, w którym
+     karta stoi (panel boczny 320 px, lista rekordów, ekran pełnej szerokości), nie od okna.
+     Każdy rodzic karty jest blokiem albo kolumną flex (szerokość z rodzica), więc zawieranie
+     szerokości nie zmienia jej rozmiaru. */
+  container-type: inline-size;
 }
 
 .mvd-werdykt :focus-visible {
@@ -95,7 +100,11 @@
   border-top: none;
 }
 
-@media (max-width: 640px) {
+/* Wąska karta: etykieta NAD treścią. Kolumna etykiet 170 px ma sens dopiero, gdy treść dostaje
+   obok niej co najmniej ~300 px. Próg liczony od szerokości KARTY — dawny próg od okna
+   (`@media max-width: 640px`) zostawiał kartę w panelu bocznym macierzy (320 px, okno 1220 px)
+   z treścią ~80 px: tekst łamał się po słowie, a ekran rósł do ~35 000 px wysokości. */
+@container (max-width: 480px) {
   .mvd-werdykt-pole {
     grid-template-columns: minmax(0, 1fr);
     gap: 2px;
@@ -125,13 +134,6 @@
 }
 .mvd-werdykt-para-nazwa {
   color: var(--mvd-muted);
-}
-.mvd-werdykt-kod {
-  padding: 0 4px;
-  border-radius: 3px;
-  background: var(--mvd-chip);
-  color: var(--mvd-muted);
-  font-size: 11px;
 }
 .mvd-werdykt-warunek {
   padding: 2px 0;
@@ -233,4 +235,20 @@
   margin: 0;
   font-size: 13px;
   font-weight: 600;
+}
+
+/* ---- plakietka etykiety (EtykietaWerdyktu: komórki macierzy, listy rekordów) ---- */
+.mvd-werdykt-plakietka {
+  display: inline-flex;
+  align-items: baseline;
+  padding: 1px 8px;
+  border: 1px solid var(--mvd-werdykt-kolor, var(--mvd-muted));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--mvd-werdykt-kolor, var(--mvd-muted)) 14%, var(--mvd-panel));
+  color: var(--mvd-werdykt-kolor, var(--mvd-muted));
+  font-family: var(--mvd-font-sans);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: normal;
 }

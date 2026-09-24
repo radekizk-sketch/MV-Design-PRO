@@ -357,7 +357,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "Zapis/aktualizacja obwodu wtórnego CT/VT na już istniejącym "
             "przekładniku (karta W3-B, mapa 4 #3) — jedyna droga edycji po "
             "utworzeniu; `update_element_parameters` odrzuca kolekcję "
-            "`measurements` (LEGACY_FIELD_COLLECTIONS)."
+            "`measurements` (kolekcja pól edytowana wyłącznie własną operacją)."
         ),
         target_layer="Domain / NetworkModel",
         required_fields=("measurement_ref", "obwod_wtorny"),

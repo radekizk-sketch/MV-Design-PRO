@@ -600,8 +600,8 @@ def _check_stability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             recommended_action_pl=(
                 "Uzupełnij model dynamiczny źródeł: DER (PV/BESS/turbina wiatrowa) "
                 "wymaga jawnie wskazanego profilu (kod 'der.dynamic_profile_missing'); "
-                "maszyna synchroniczna wymaga bloku dynamiki z katalogu "
-                "MASZYNA_SYNCHRONICZNA (kod 'der.dynamika_missing')."
+                "maszyna synchroniczna wymaga bloku dynamiki z katalogu maszyn "
+                "synchronicznych (kod 'der.dynamika_missing')."
             ),
         )
     zrodla_opis = [f"{ref}={res.profile_id}" for ref, res in sorted(resolved.items())[:3]]

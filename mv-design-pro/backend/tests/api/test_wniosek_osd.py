@@ -1,12 +1,15 @@
-"""Testy generatora wniosku OSD (W-707) — serwis kompozycji + końcówki API.
+"""Testy generatora wniosku OSD — serwis kompozycji + końcówki API.
 
 Wniosek OSD to czysta kompozycja gotowych wyników: bilans mocy z walidacji
 energetycznej przebiegu rozpływu (``PF``), zwarcia w punkcie przyłączenia
-z przebiegu zwarciowego (``short_circuit_sn``) oraz zgodność NC RfG tą samą
-ścieżką co certyfikat D14. Testy pokrywają: komplet źródeł → 3 sekcje, bramkę
-braków (lista PL blokuje generację), determinizm bajtowy DOCX, stabilność
-odcisków, etykiety PL i uczciwe adnotacje (schemat, zestawienia), content-type
-oraz 404/422.
+z przebiegu zwarciowego (``short_circuit_sn``) oraz zgodność NC RfG z ZATWIERDZONEGO
+MODELU przypadku tą samą oceną co certyfikat zgodności (karta AB-1a Pakiet C pkt 10):
+sekcja zgodności to bloki rekordów W per moduł, bez liczników i werdyktu zbiorczego;
+braki NC RfG to rekordy W (``braki_ncrfg`` + ``braki_ncrfg_pl``), braki bilansu i zwarć —
+lista po polsku. Iloczyn cech: przebiegi {komplet, zły rodzaj, niezakończony, węzeł
+nieznany} × model NC RfG {bez wymagań stosowalnych (magazyn), moduł A bez certyfikatu,
+bez źródeł, źródło pominięte} × wyjście {JSON, DOCX, PDF} × wejście HTTP {z przypadkiem,
+bez przypadku, ciało z biegiem „co-jeśli", operator nieznany}.
 """
 
 from __future__ import annotations
@@ -16,6 +19,7 @@ from datetime import UTC, datetime
 from io import BytesIO
 from uuid import uuid4
 
+import pymupdf
 import pytest
 from application.analyses.wniosek_osd import (
     WniosekOsdBrakiError,
@@ -26,6 +30,7 @@ from application.analyses.wniosek_osd import (
     render_wniosek_pdf,
     zbierz_braki_wniosku,
 )
+from application.ncrfg_compliance import NcRfgCaseComplianceResponse, zgodnosc_ncrfg_przypadku
 from docx import Document
 from enm.canonical_analysis import (
     CanonicalRun,
@@ -33,51 +38,26 @@ from enm.canonical_analysis import (
     execute_run,
     reset_canonical_runs,
 )
-from enm.models import GenLimits
+from enm.models import EnergyNetworkModel, GenLimits
 from enm.store import reset_enm_store, set_enm
-from network_model.solvers.ncrfg_ptpiree import (
-    NcRfgPtpireeModuleInput,
-    NcRfgPtpireeRunRequest,
-    NcRfgPtpireeSolver,
-)
+from werdykt import WynikWymagania
 
+from tests import ncrfg_fabryki as f
 from tests.cgmes.golden_enm import build_golden_enm
 
 OSD_JSON = "/api/oze-analysis/osd-application"
 OSD_DOCX = "/api/oze-analysis/osd-application.docx"
 OSD_PDF = "/api/oze-analysis/osd-application.pdf"
 
-#: Karta S-1 (dowod dynamiczny): klasa A (215 kW/0,8 kV) — jedyna klasa BEZ
-#: testow dynamicznych T14-T17 w `default_for_modules`, wiec certyfikat (i
-#: wniosek OSD, ktory dzieli bramke z `certyfikat_zgodnosci.py`) faktycznie
-#: powstaje; z certyfikatem PTPiREE (precedens FAB-K, required_count == 0).
-_MODULE_FULL: dict = {
-    "der_ref": "pv-1",
-    "der_name": "PV 215 kW",
-    "der_kind": "PV",
-    "operator_id": "enea",
-    "p_max_kw": 215,
-    "p_min_kw": 10,
-    "voltage_kv": 0.8,
-    "certificate_status": "ptpiree_verified",
-    "has_lvrt_curve": True,
-    "has_hvrt_curve": True,
-    "has_pf_droop": True,
-    "has_qu_curve": True,
-    "has_dynamic_model": True,
-    "has_scada_communication": True,
-    "has_disturbance_recorder": True,
-    "active_power_control_enabled": True,
-    "droop_percent": 5,
-    "dead_band_hz": 0.2,
-    "ramp_rate_pct_per_min": 10,
-    "cos_phi_min": 0.95,
-    "q_range_pct_pn_min": -0.33,
-    "q_range_pct_pn_max": 0.33,
-    "reactive_current_gain": 2,
-    "p_recovery_time_s": 0.8,
-    "harmonic_thdu_percent": 3,
-}
+
+def _model_magazynu() -> EnergyNetworkModel:
+    """Magazyn samodzielny — wymagania NC RfG nie dotyczą (O-28), więc zgodność nie blokuje."""
+    return f.model(f.generator("bess-1", p_mw=2.0, gen_type="bess"))
+
+
+def _model_a() -> EnergyNetworkModel:
+    """Moduł A bez certyfikatu — wymagania bez metody wykazania dają rekordy W braków."""
+    return f.model(f.generator("pv-a", p_mw=0.05), napiecie_kv=0.4)
 
 
 @pytest.fixture(autouse=True)
@@ -113,12 +93,9 @@ def _sc_run() -> CanonicalRun:
     )
 
 
-def _ncrfg(module: dict | None = None) -> NcRfgPtpireeSolver:
-    data = dict(_MODULE_FULL)
-    if module:
-        data.update(module)
-    return NcRfgPtpireeSolver().run(
-        NcRfgPtpireeRunRequest(modules=[NcRfgPtpireeModuleInput(**data)])
+def _ncrfg(enm: EnergyNetworkModel | None = None) -> NcRfgCaseComplianceResponse:
+    return zgodnosc_ncrfg_przypadku(
+        enm if enm is not None else _model_magazynu(), operator_id=f.OPERATOR, case_id="c-1"
     )
 
 
@@ -168,10 +145,8 @@ def _docx_text(data: bytes) -> str:
 
 
 def _pdf_text(data: bytes) -> str:
-    """Wyciągnij tekst z operatorów PDF (Tj/TJ) — PDF bez kompresji strony."""
-    parts = [m.group(0) for m in re.finditer(rb"\((?:[^()\\]|\\.)*\)\s*Tj", data)]
-    parts += [m.group(1) for m in re.finditer(rb"\[(.*?)\]\s*TJ", data, re.DOTALL)]
-    return b" ".join(parts).decode("latin-1", "replace")
+    with pymupdf.open(stream=data, filetype="pdf") as dokument:
+        return "\n".join(strona.get_text() for strona in dokument)
 
 
 def _payload(**extra) -> dict:
@@ -181,10 +156,36 @@ def _payload(**extra) -> dict:
         "wnioskodawca": "OZE Sp. z o.o.",
         "adres_przylaczenia": "Stacja B",
         "bus_ref": "bus_nn",
-        "run_request": {"modules": [dict(_MODULE_FULL)]},
+        "operator_id": f.OPERATOR,
     }
     body.update(extra)
     return body
+
+
+def _przypadek(app_client, enm: EnergyNetworkModel | None = None) -> str:
+    """REALNY projekt + przypadek z zatwierdzonym modelem (klucz projektu, CV-1-W)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    projekt = app_client.post("/api/projects", json={"name": "Wniosek OSD — test"})
+    assert projekt.status_code == 201, projekt.text
+    przypadek = app_client.post(
+        "/api/study-cases", json={"project_id": projekt.json()["id"], "name": "Wariant"}
+    )
+    assert przypadek.status_code == 201, przypadek.text
+    case_id = str(przypadek.json()["id"])
+    set_enm(
+        klucz_twin_dla_przypadku(case_id, app_client.app.state.uow_factory),
+        enm if enm is not None else _model_magazynu(),
+    )
+    return case_id
+
+
+def _post(app_client, sciezka: str, *, case_id: str | None = None, **extra):
+    pf, sc = _pf_run(), _sc_run()
+    cialo = _payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id))
+    cialo.update(extra)
+    params = {} if case_id is None else {"case_id": case_id}
+    return app_client.post(sciezka, params=params, json=cialo)
 
 
 # --------------------------------------------------------------------------- #
@@ -192,7 +193,7 @@ def _payload(**extra) -> dict:
 # --------------------------------------------------------------------------- #
 def test_komplet_zrodel_daje_trzy_sekcje() -> None:
     view = _view()
-    assert view["kontrakt"] == "WniosekOkresleniaWarunkowPrzylaczeniaV1"
+    assert view["kontrakt"] == "WniosekOkresleniaWarunkowPrzylaczeniaV2"
     assert "bilans_mocy" in view
     assert "zwarcia_punkt_przylaczenia" in view
     assert "zgodnosc_nc_rfg" in view
@@ -237,11 +238,23 @@ def test_zwarcia_sekcja_ma_ik_i_sk() -> None:
     assert zwarcia["sk_mva"] is not None
 
 
-def test_zgodnosc_nc_rfg_werdykt_i_odeslanie() -> None:
+def test_zgodnosc_nc_rfg_bloki_rekordow_bez_licznikow() -> None:
     zgodnosc = _view()["zgodnosc_nc_rfg"]
-    assert zgodnosc["status"] in {"zgodny", "niezgodny"}
-    assert zgodnosc["liczba_modulow"] == 1
-    assert "certyfikacie" in zgodnosc["odeslanie_pl"]
+    for pole in ("status", "etykieta_pl", "liczba_modulow", "modulow_zgodnych"):
+        assert pole not in zgodnosc
+    assert zgodnosc["case_id"] == "c-1"
+    [modul] = zgodnosc["moduly"]
+    assert modul["der_ref"] == "bess-1" and modul["technologia"] == "MAGAZYN"
+    assert all(w["rekord"]["status_maszynowy"] == "NIE_DOTYCZY" for w in modul["wymagania"])
+    assert "certyfikacie zgodności" in zgodnosc["odeslanie_pl"]
+
+
+def test_zgodnosc_nc_rfg_ta_sama_sekcja_co_certyfikat() -> None:
+    from application.analyses.certyfikat_zgodnosci import build_certyfikat_view
+
+    zgodnosc = _ncrfg()
+    certyfikat = build_certyfikat_view(zgodnosc, nazwa_projektu="—")
+    assert _view()["zgodnosc_nc_rfg"]["moduly"] == certyfikat["moduly"]
 
 
 # --------------------------------------------------------------------------- #
@@ -269,13 +282,39 @@ def test_braki_nieznany_bus_ref() -> None:
     assert any("nie występuje w wynikach zwarciowych" in b for b in braki)
 
 
-def test_braki_modulow_nc_rfg() -> None:
-    # Klasa A bez certyfikatu PTPiREE: T12 staje się wymagany i pozostaje
-    # `no_data` bez `stop_generation_enabled` — patrz test_certyfikat_zgodnosci.py.
-    ncrfg = _ncrfg({"certificate_status": "unknown"})
-    braki = zbierz_braki_wniosku(_pf_run(), _sc_run(), "bus_nn", ncrfg)
-    assert any(b.startswith("Zgodność NC RfG:") for b in braki)
-    assert any("brak danych do oceny" in b for b in braki)
+def test_braki_modulow_nc_rfg_to_rekordy_w() -> None:
+    """Moduł A bez certyfikatu: braki zgodności to rekordy W (ta sama bramka co certyfikat),
+    nie tekst — lista tekstowa niesie wyłącznie braki bilansu i zwarć."""
+    ncrfg = _ncrfg(_model_a())
+    assert zbierz_braki_wniosku(_pf_run(), _sc_run(), "bus_nn", ncrfg) == []
+    with pytest.raises(WniosekOsdBrakiError) as exc:
+        build_wniosek_osd_view(
+            _pf_run(), _sc_run(), ncrfg, bus_ref="bus_nn", identyfikacja=_identyfikacja()
+        )
+    assert exc.value.braki == []
+    assert exc.value.braki_ncrfg and all(
+        isinstance(b.rekord, WynikWymagania) for b in exc.value.braki_ncrfg
+    )
+    detail = exc.value.detail()
+    # Odbiór Pakietu C (plan AB O-50 pkt 7): każda pozycja braku niesie moduł.
+    assert detail["braki_ncrfg_pl"] == [
+        {"der_ref": b.der_ref, "der_name": b.der_name, "zdanie_pl": b.rekord.wyjasnienie.zdanie_pl}
+        for b in exc.value.braki_ncrfg
+    ]
+    assert [b["der_ref"] for b in detail["braki_ncrfg"]] == [
+        b.der_ref for b in exc.value.braki_ncrfg
+    ]
+
+
+def test_braki_model_bez_zrodel_i_zrodlo_pominiete() -> None:
+    bez_zrodel = zbierz_braki_wniosku(_pf_run(), _sc_run(), "bus_nn", _ncrfg(f.model()))
+    assert any(b.startswith("Zgodność NC RfG:") for b in bez_zrodel)
+    pominiety = _ncrfg(f.model(f.generator("pv-0", p_mw=0.0)))
+    with pytest.raises(WniosekOsdBrakiError) as exc:
+        build_wniosek_osd_view(
+            _pf_run(), _sc_run(), pominiety, bus_ref="bus_nn", identyfikacja=_identyfikacja()
+        )
+    assert [p.der_ref for p in exc.value.pominiete] == ["pv-0"]
 
 
 def test_braki_blokuja_generacje() -> None:
@@ -296,7 +335,7 @@ def test_kolejnosc_brakow_deterministyczna() -> None:
         _fake_run("short_circuit_sn", "FINISHED"),
         _fake_run("PF", "FINISHED"),
         "bus_nn",
-        _ncrfg({"certificate_status": "unknown"}),
+        _ncrfg(f.model()),
     )
     assert "nie jest rozpływem" in braki[0]
     assert "nie jest zwarciowy" in braki[1]
@@ -336,8 +375,11 @@ def test_docx_etykiety_pl() -> None:
     assert "Bilans mocy" in text
     assert "Zwarcia w punkcie przyłączenia" in text
     assert "Zgodność z wymaganiami NC RfG" in text
+    assert "Moduł wytwarzania energii: Źródło bess-1" in text
+    assert "Sposób wykazania:" in text
     assert "Farma PV Wschód" in text
     assert "Odcisk SHA-256 wejścia wniosku" in text
+    assert "Werdykt zbiorczy" not in text and "zgodnych:" not in text
 
 
 def test_docx_adnotacje_schemat_i_zestawienia() -> None:
@@ -348,28 +390,62 @@ def test_docx_adnotacje_schemat_i_zestawienia() -> None:
 
 def test_dokument_bez_kodow_projektowych() -> None:
     text = _docx_text(render_wniosek_osd_docx(_view()))
-    for pattern in (r"\bP\d{2}\b", r"\bE\d{2}\b", r"\bW-\d{3}\b"):
+    for pattern in (r"\bP\d{2}\b", r"\bE\d{2}\b", r"\bW-\d{3}\b", r"\bAB-1"):
         assert re.search(pattern, text) is None, pattern
+
+
+def test_t13_to_samo_zdanie_rekordu_w_json_docx_i_pdf() -> None:
+    view = _view()
+    docx = re.sub(r"\s+", " ", _docx_text(render_wniosek_osd_docx(view)))
+    pdf = re.sub(r"\s+", " ", _pdf_text(render_wniosek_pdf(view)))
+    for wymaganie in view["zgodnosc_nc_rfg"]["moduly"][0]["wymagania"]:
+        zdanie = re.sub(r"\s+", " ", wymaganie["rekord"]["wyjasnienie"]["zdanie_pl"])
+        assert f"Wyjaśnienie: {zdanie}" in docx
+        assert zdanie in pdf
 
 
 # --------------------------------------------------------------------------- #
 # Końcówki API
 # --------------------------------------------------------------------------- #
 def test_endpoint_json_200_komplet(app_client) -> None:
-    pf, sc = _pf_run(), _sc_run()
-    resp = app_client.post(OSD_JSON, json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id)))
-    assert resp.status_code == 200
+    case_id = _przypadek(app_client)
+    resp = _post(app_client, OSD_JSON, case_id=case_id)
+    assert resp.status_code == 200, resp.text
     data = resp.json()
     assert data["identyfikacja"]["projekt"] == "Farma PV Wschód"
     assert "bilans_mocy" in data and "zwarcia_punkt_przylaczenia" in data
+    assert data["zgodnosc_nc_rfg"]["case_id"] == case_id
+
+
+@pytest.mark.parametrize("sciezka", [OSD_JSON, OSD_DOCX, OSD_PDF])
+def test_endpoint_bez_przypadku_to_422(app_client, sciezka: str) -> None:
+    assert _post(app_client, sciezka).status_code == 422
+
+
+@pytest.mark.parametrize("sciezka", [OSD_JSON, OSD_DOCX, OSD_PDF])
+def test_endpoint_cialo_z_biegiem_co_jesli_to_422(app_client, sciezka: str) -> None:
+    case_id = _przypadek(app_client)
+    resp = _post(app_client, sciezka, case_id=case_id, run_request={"modules": [dict(f.KOMPLET)]})
+    assert resp.status_code == 422
+
+
+@pytest.mark.parametrize("sciezka", [OSD_JSON, OSD_DOCX, OSD_PDF])
+def test_endpoint_braki_ncrfg_422_z_rekordami(app_client, sciezka: str) -> None:
+    case_id = _przypadek(app_client, _model_a())
+    resp = _post(app_client, sciezka, case_id=case_id)
+    assert resp.status_code == 422, resp.text
+    detail = resp.json()["detail"]
+    assert detail["braki"] == []
+    assert detail["braki_ncrfg"] and len(detail["braki_ncrfg"]) == len(detail["braki_ncrfg_pl"])
+    for brak, brak_pl in zip(detail["braki_ncrfg"], detail["braki_ncrfg_pl"], strict=True):
+        assert set(brak) == {"der_ref", "der_name", "rekord"}
+        assert set(brak_pl) == {"der_ref", "der_name", "zdanie_pl"}
+        assert (brak["der_ref"], brak["der_name"]) == (brak_pl["der_ref"], brak_pl["der_name"])
+        assert brak["rekord"]["wyjasnienie"]["zdanie_pl"] == brak_pl["zdanie_pl"]
 
 
 def test_endpoint_json_braki_422(app_client) -> None:
-    pf, sc = _pf_run(), _sc_run()
-    resp = app_client.post(
-        OSD_JSON,
-        json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id), bus_ref="bus_nieznany"),
-    )
+    resp = _post(app_client, OSD_JSON, case_id=_przypadek(app_client), bus_ref="bus_nieznany")
     assert resp.status_code == 422
     detail = resp.json()["detail"]
     assert isinstance(detail["braki"], list)
@@ -377,28 +453,19 @@ def test_endpoint_json_braki_422(app_client) -> None:
 
 
 def test_endpoint_nieznany_przebieg_404(app_client) -> None:
-    sc = _sc_run()
-    resp = app_client.post(OSD_JSON, json=_payload(pf_run_id=str(uuid4()), sc_run_id=str(sc.id)))
+    resp = _post(app_client, OSD_JSON, case_id=_przypadek(app_client), pf_run_id=str(uuid4()))
     assert resp.status_code == 404
     assert "nie istnieje" in resp.json()["detail"]
 
 
 def test_endpoint_nieznany_operator_404(app_client) -> None:
-    pf, sc = _pf_run(), _sc_run()
-    module = dict(_MODULE_FULL)
-    module["operator_id"] = "nieistniejacy"
-    resp = app_client.post(
-        OSD_JSON,
-        json=_payload(
-            pf_run_id=str(pf.id), sc_run_id=str(sc.id), run_request={"modules": [module]}
-        ),
-    )
+    resp = _post(app_client, OSD_JSON, case_id=_przypadek(app_client), operator_id="nieistniejacy")
     assert resp.status_code == 404
+    assert "nieistniejacy" in resp.json()["detail"]
 
 
 def test_endpoint_docx_content_type(app_client) -> None:
-    pf, sc = _pf_run(), _sc_run()
-    resp = app_client.post(OSD_DOCX, json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id)))
+    resp = _post(app_client, OSD_DOCX, case_id=_przypadek(app_client))
     assert resp.status_code == 200
     assert resp.headers["content-type"] == (
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -410,18 +477,15 @@ def test_endpoint_docx_content_type(app_client) -> None:
 def test_endpoint_docx_determinizm(app_client) -> None:
     pf, sc = _pf_run(), _sc_run()
     payload = _payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id))
-    first = app_client.post(OSD_DOCX, json=payload)
-    second = app_client.post(OSD_DOCX, json=payload)
+    params = {"case_id": _przypadek(app_client)}
+    first = app_client.post(OSD_DOCX, params=params, json=payload)
+    second = app_client.post(OSD_DOCX, params=params, json=payload)
     assert first.status_code == 200
     assert first.content == second.content
 
 
 def test_endpoint_walidacja_422_pusta_nazwa(app_client) -> None:
-    pf, sc = _pf_run(), _sc_run()
-    resp = app_client.post(
-        OSD_JSON,
-        json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id), nazwa_projektu=""),
-    )
+    resp = _post(app_client, OSD_JSON, case_id=_przypadek(app_client), nazwa_projektu="")
     assert resp.status_code == 422
 
 
@@ -444,18 +508,18 @@ def test_pdf_etykiety_pl() -> None:
     assert "Bilans mocy" in text
     assert "Moc zwarciowa" in text
     assert "Rodzaj zwarcia" in text
-    assert "Werdykt zbiorczy" in text
+    assert "Zgodność z wymaganiami NC RfG" in text
+    assert "Werdykt zbiorczy" not in text
 
 
 def test_pdf_dokument_bez_kodow_projektowych() -> None:
     text = _pdf_text(render_wniosek_pdf(_view()))
-    for pattern in (r"\bP\d{2}\b", r"\bE\d{2}\b", r"\bW-\d{3}\b"):
+    for pattern in (r"\bP\d{2}\b", r"\bE\d{2}\b", r"\bW-\d{3}\b", r"\bAB-1"):
         assert re.search(pattern, text) is None, pattern
 
 
 def test_endpoint_pdf_content_type(app_client) -> None:
-    pf, sc = _pf_run(), _sc_run()
-    resp = app_client.post(OSD_PDF, json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id)))
+    resp = _post(app_client, OSD_PDF, case_id=_przypadek(app_client))
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "application/pdf"
     assert "attachment" in resp.headers["content-disposition"]
@@ -465,24 +529,20 @@ def test_endpoint_pdf_content_type(app_client) -> None:
 def test_endpoint_pdf_determinizm(app_client) -> None:
     pf, sc = _pf_run(), _sc_run()
     payload = _payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id))
-    first = app_client.post(OSD_PDF, json=payload)
-    second = app_client.post(OSD_PDF, json=payload)
+    params = {"case_id": _przypadek(app_client)}
+    first = app_client.post(OSD_PDF, params=params, json=payload)
+    second = app_client.post(OSD_PDF, params=params, json=payload)
     assert first.status_code == 200
     assert first.content == second.content
 
 
 def test_endpoint_pdf_braki_422(app_client) -> None:
-    pf, sc = _pf_run(), _sc_run()
-    resp = app_client.post(
-        OSD_PDF,
-        json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id), bus_ref="bus_nieznany"),
-    )
+    resp = _post(app_client, OSD_PDF, case_id=_przypadek(app_client), bus_ref="bus_nieznany")
     assert resp.status_code == 422
     detail = resp.json()["detail"]
     assert any("nie występuje w wynikach zwarciowych" in b for b in detail["braki"])
 
 
 def test_endpoint_pdf_nieznany_przebieg_404(app_client) -> None:
-    sc = _sc_run()
-    resp = app_client.post(OSD_PDF, json=_payload(pf_run_id=str(uuid4()), sc_run_id=str(sc.id)))
+    resp = _post(app_client, OSD_PDF, case_id=_przypadek(app_client), pf_run_id=str(uuid4()))
     assert resp.status_code == 404

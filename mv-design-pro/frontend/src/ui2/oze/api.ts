@@ -8,39 +8,28 @@
  *   - `backend/src/analysis/grid_strength/serializer.py` (view_to_dict),
  *   - `backend/src/analysis/reactive_adequacy/serializer.py` (view_to_dict),
  *   - `backend/src/network_model/catalog/types.py::ConverterType.to_dict`.
- * Pola pozostają w snake_case, bo to kontrakt API (jak `ui/ncrfg-tests/api.ts`).
+ * Pola pozostają w snake_case, bo to kontrakt API (jak klient NC RfG `ncrfg/api.ts`).
+ * Zgodność NC RfG, certyfikat zgodności i wniosek do OSD mają JEDEN klient V2:
+ * `ui2/oze/ncrfg/{typy,api}.ts` (karta AB-1a Pakiet D2) — ten plik ich nie dubluje.
  * Warstwa PREZENTACJI: klient tylko pobiera dane, niczego nie liczy.
  */
 
-import type { NcRfgRunRequest } from '../../ui/ncrfg-tests/api';
+import type {
+  CertyfikatOdrzucony,
+  DowodCertyfikatu,
+  PozycjaBloku,
+  TypModulu,
+} from './ncrfg/typy';
+import type { OcenaKryterium, PodstawaWymagania } from '../wyniki/wzorzec/werdykt';
 
 // =============================================================================
-// Dowód certyfikacji PTPiREE — application/analyses/dowod_certyfikatu.py
+// Wskazanie przypadku w zapytaniu dokumentu (studium przyłączeniowe)
 // =============================================================================
-
-/**
- * Sekcja „Dowód certyfikacji PTPiREE" jednego urządzenia (1:1 z `sekcja_dowodu`).
- * Wartości pochodzą WPROST z tabliczki urządzenia w modelu — brak danej to `null`,
- * nigdy wartość dopowiedziana. `stan_pl` jest niepusty DOKŁADNIE wtedy, gdy nie ma
- * ani jednej danej (uczciwy stan zerowy do pokazania wprost).
- */
-export interface DowodCertyfikatuPtpiree {
-  readonly der_ref: string;
-  readonly numer_dokumentu: string | null;
-  readonly data_akceptacji: string | null;
-  readonly wersja_wos: string | null;
-  readonly wersja_wipwc: string | null;
-  readonly zakres_ppm: string | null;
-  readonly warunek_waznosci: string | null;
-  readonly adres_zrodla: string | null;
-  readonly stan_pl: string | null;
-}
 
 /**
  * Doklej wskazanie aktywnego przypadku do ścieżki dokumentu. Bez `case_id`
  * backend nie ma skąd wziąć tabliczek urządzeń z modelu i buduje dokument bez
- * sekcji dowodu — przekazujemy przypadek zawsze, gdy wywołujący go zna
- * (wzorzec `runNcRfgPtpireeTests` w `ui/ncrfg-tests/api.ts`).
+ * sekcji dowodu — przekazujemy przypadek zawsze, gdy wywołujący go zna.
  */
 function zPrzypadkiem(sciezka: string, caseId?: string | null): string {
   return caseId ? `${sciezka}?case_id=${encodeURIComponent(caseId)}` : sciezka;
@@ -243,7 +232,7 @@ export interface RekordKonwertera {
 }
 
 // =============================================================================
-// Klient HTTP (wzorzec `ui/ncrfg-tests/api.ts`)
+// Klient HTTP
 // =============================================================================
 
 async function getJson<T>(url: string): Promise<T> {
@@ -385,47 +374,6 @@ export function pobierzZdolnoscPrzylaczeniowa(
 }
 
 // =============================================================================
-// Kategorie modułów NC RfG (progi klas A/B/C/D) — catalog/profiles/nc_rfg/loader.py
-// =============================================================================
-
-/**
- * Kategoria modułu wytwórczego NC RfG (art. 5) — PROGI KATALOGOWE operatora.
- * Odwzorowuje podzbiór `NcRfgModuleType.model_dump` serializowany przez
- * `GET /api/ncrfg-tests/catalog` (`api/ncrfg_ptpiree_tests.py::get_ncrfg_test_catalog`):
- * dolny/górny próg mocy [kW] i górny limit napięcia [kV]. To DANE KATALOGOWE
- * (nie ocena, nie fizyka) — służą mapowaniu słownikowemu mocy granicznej na klasę.
- */
-export interface KlasaModuluNcRfg {
-  readonly id: string; // "A" | "B" | "C" | "D"
-  readonly threshold_kw_min: number;
-  readonly threshold_kw_max: number | null;
-  readonly voltage_kv_max: number | null;
-  readonly description_pl: string;
-}
-
-/** Profil operatora z progami klas (podzbiór wpisu `operators[]` katalogu NC RfG). */
-export interface ProfilOperatoraNcRfg {
-  readonly operator_id: string;
-  readonly operator_name_pl: string;
-  readonly module_types: readonly KlasaModuluNcRfg[];
-}
-
-/** Odpowiedź katalogu NC RfG w zakresie potrzebnym do mapowania klas (operatorzy). */
-export interface OdpowiedzKatalogNcRfg {
-  readonly operators: readonly ProfilOperatoraNcRfg[];
-}
-
-/**
- * Katalog NC RfG (progi klas per operator). Reużywa tej samej końcówki, którą
- * czyta konfigurator DER (`ui/ncrfg-tests/api`); tu potrzebne są wyłącznie progi
- * `module_types` (pominięte w typie `ui/ncrfg-tests`), więc klient ma własny,
- * węższy typ 1:1 z serializacją backendu.
- */
-export function pobierzKatalogKlasNcRfg(): Promise<OdpowiedzKatalogNcRfg> {
-  return getJson<OdpowiedzKatalogNcRfg>('/api/ncrfg-tests/catalog');
-}
-
-// =============================================================================
 // Pokrycie krzywej P–Q wymaganiem operatora — application/analyses/pq_coverage.py
 // =============================================================================
 
@@ -455,9 +403,9 @@ export interface WymaganiePQ {
 }
 
 /**
- * Wynik pokrycia w pojedynczym punkcie krzywej. Pasmo producenta
- * [`q_min_mvar`, `q_max_mvar`] musi obejmować pasmo wymagane; `pokryty`
- * i `margines_mvar` pochodzą WYŁĄCZNIE z backendu (zero ocen lokalnych).
+ * Zapasy pokrycia w pojedynczym punkcie krzywej — WYŁĄCZNIE liczby z backendu. Pasmo
+ * producenta [`q_min_mvar`, `q_max_mvar`] ma objąć pasmo wymagane; punkt nie niesie własnego
+ * statusu ani tekstu (ocena całości to rekord `ocena` widoku — kontrakt werdyktu).
  */
 export interface PunktPokryciaPQ {
   readonly p_mw: number;
@@ -468,17 +416,6 @@ export interface PunktPokryciaPQ {
   readonly zapas_dolny_mvar: number;
   readonly zapas_gorny_mvar: number;
   readonly margines_mvar: number;
-  readonly pokryty: boolean;
-  readonly uwaga: string;
-}
-
-/** Werdykt całości pokrycia (liczba punktów pokrytych + najmniejszy margines). */
-export interface WerdyktPQ {
-  readonly pokryty: boolean;
-  readonly liczba_punktow: number;
-  readonly liczba_pokrytych: number;
-  readonly min_margines_mvar: number;
-  readonly opis_pl: string;
 }
 
 /** Ślad WHITE BOX porównania (wzór ASCII → dane → podstawienie per punkt → wynik). */
@@ -496,13 +433,17 @@ export interface SladPokryciaPQ {
   readonly wynik: string;
 }
 
-/** Widok pokrycia krzywej P–Q (odpowiedź pq-coverage, 1:1 z `build_pq_coverage_view`). */
+/**
+ * Widok pokrycia krzywej P–Q (odpowiedź pq-coverage, 1:1 z `build_pq_coverage_view`). Ocena
+ * = JEDEN rekord `OcenaKryterium` (`pq.pokrycie_zakresu_mocy_biernej`); typ bez krzywej
+ * producenta daje rekord `NIE_OCENIONO` z nazwanym brakiem i pustą listę punktów (nie 422).
+ */
 export interface WidokPokryciaPQ {
   readonly typ_katalogowy: TypKatalogowyPQ;
   readonly operator: OperatorPQ;
   readonly wymaganie: WymaganiePQ;
   readonly punkty: readonly PunktPokryciaPQ[];
-  readonly werdykt: WerdyktPQ;
+  readonly ocena: OcenaKryterium;
   readonly slad_whitebox: SladPokryciaPQ;
 }
 
@@ -514,7 +455,7 @@ export interface ZapytaniePokryciaPQ {
 
 /**
  * Pobierz odpowiedź w treści błędu (`detail`) z końcówki — dla uczciwych
- * komunikatów PL (404 brak typu/operatora, 422 „typ nie ma krzywej producenta").
+ * komunikatów PL (404 brak typu albo operatora).
  */
 async function getJsonZDetalem<T>(url: string): Promise<T> {
   const response = await fetch(url);
@@ -532,8 +473,8 @@ async function getJsonZDetalem<T>(url: string): Promise<T> {
 }
 
 /**
- * Pokrycie krzywej P–Q producenta wymaganiem operatora NC RfG (jawny bieg).
- * Zwraca uczciwy komunikat PL z końcówki, gdy typ nie ma krzywej producenta.
+ * Pokrycie krzywej P–Q producenta wymaganiem operatora NC RfG (jawny bieg). Typ bez krzywej
+ * producenta daje rekord oceny z nazwanym brakiem (nie błąd).
  */
 export function pobierzPokryciePQ(zapytanie: ZapytaniePokryciaPQ): Promise<WidokPokryciaPQ> {
   const url =
@@ -1147,338 +1088,6 @@ export function pobierzOchronaLom(caseId: string): Promise<WidokOchronyLom> {
 }
 
 // =============================================================================
-// Certyfikat zgodności NC RfG — application/analyses/certyfikat_zgodnosci.py
-// =============================================================================
-
-/** Wejście końcówki certyfikatu (1:1 z `CertyfikatZgodnosciRequest`). */
-export interface ZadanieCertyfikatu {
-  readonly run_request: NcRfgRunRequest;
-  readonly nazwa_projektu: string;
-  readonly nazwa_przypadku?: string | null;
-}
-
-/** Identyfikacja projektu w certyfikacie (blok `identyfikacja`). */
-export interface IdentyfikacjaCertyfikatu {
-  readonly projekt: string;
-  readonly przypadek: string | null;
-  readonly procedura: string;
-  readonly wersja_narzedzia: string;
-}
-
-/** Werdykt zbiorczy certyfikatu (blok `werdykt_zbiorczy`). */
-export interface WerdyktZbiorczyCertyfikatu {
-  readonly status: 'zgodny' | 'niezgodny';
-  readonly etykieta_pl: string;
-  readonly liczba_modulow: number;
-  readonly modulow_zgodnych: number;
-  readonly modulow_niezgodnych: number;
-}
-
-/** Wiersz testu w certyfikacie (pozycja `moduly[].testy[]`). */
-export interface TestCertyfikatu {
-  readonly test_id: string;
-  readonly nazwa_pl: string;
-  readonly wymagany: boolean;
-  readonly werdykt: string;
-  readonly werdykt_pl: string;
-  readonly wartosci_pl: string;
-}
-
-/** Moduł wytwórczy w certyfikacie (pozycja `moduly[]`). */
-export interface ModulCertyfikatu {
-  readonly der_ref: string;
-  readonly der_name: string | null;
-  readonly operator_pl: string;
-  readonly klasa: string;
-  readonly rodzina: string;
-  readonly p_max_kw: number;
-  readonly voltage_kv: number;
-  readonly status: string;
-  readonly status_pl: string;
-  readonly podsumowanie: {
-    readonly wymagane: number;
-    readonly spelnia: number;
-    readonly nie_spelnia: number;
-  };
-  readonly testy: readonly TestCertyfikatu[];
-  /**
-   * Dowód certyfikacji PTPiREE urządzenia. Powstaje TYLKO dla żądania z
-   * `case_id` — bez wskazanego przypadku klucza nie ma (kontrakt sprzed dowodu).
-   */
-  readonly dowod_certyfikatu?: DowodCertyfikatuPtpiree;
-}
-
-/** Widok JSON certyfikatu zgodności (1:1 z `build_certyfikat_view`). */
-export interface WidokCertyfikatu {
-  readonly kontrakt: string;
-  readonly tytul: string;
-  readonly identyfikacja: IdentyfikacjaCertyfikatu;
-  readonly werdykt_zbiorczy: WerdyktZbiorczyCertyfikatu;
-  readonly moduly: readonly ModulCertyfikatu[];
-  readonly zalozenia_i_zrodla: readonly string[];
-  readonly odcisk_wejscia_sha256: string;
-  readonly odcisk_wyniku_sha256: string;
-}
-
-/**
- * Błąd bramki kompletności (HTTP 422): certyfikat NIE powstaje, backend zwraca
- * `detail = { komunikat, braki }` — uczciwa lista braków po polsku.
- */
-export class CertyfikatBrakiError extends Error {
-  readonly braki: readonly string[];
-
-  constructor(komunikat: string, braki: readonly string[]) {
-    super(komunikat);
-    this.name = 'CertyfikatBrakiError';
-    this.braki = braki;
-  }
-}
-
-/**
- * Zamień odpowiedź błędu certyfikatu na wyjątek z komunikatem PL. Rozróżnia
- * bramkę kompletności (`detail` obiekt z listą `braki` → `CertyfikatBrakiError`)
- * od pozostałych błędów (`detail` łańcuch → zwykły `Error`).
- */
-async function bladCertyfikatu(response: Response): Promise<Error> {
-  let komunikat = `Zapytanie certyfikatu nie powiodło się: ${response.status} ${response.statusText}`;
-  try {
-    const body = (await response.json()) as { detail?: unknown };
-    const detail = body?.detail;
-    if (detail && typeof detail === 'object') {
-      const obiekt = detail as { komunikat?: unknown; braki?: unknown };
-      const braki = Array.isArray(obiekt.braki)
-        ? obiekt.braki.filter((p): p is string => typeof p === 'string')
-        : [];
-      const tekst = typeof obiekt.komunikat === 'string' && obiekt.komunikat.trim() ? obiekt.komunikat : komunikat;
-      if (braki.length > 0) return new CertyfikatBrakiError(tekst, braki);
-      komunikat = tekst;
-    } else if (typeof detail === 'string' && detail.trim()) {
-      komunikat = detail;
-    }
-  } catch {
-    // Brak treści JSON — pozostaje komunikat ze statusem HTTP.
-  }
-  return new Error(komunikat);
-}
-
-/**
- * Pobierz widok JSON certyfikatu zgodności NC RfG (jawny bieg tym samym solverem
- * co macierz). Rzuca `CertyfikatBrakiError` przy 422 (braki kompletności),
- * zwykły `Error` z komunikatem PL przy pozostałych błędach.
- */
-export async function pobierzCertyfikat(
-  zadanie: ZadanieCertyfikatu,
-  caseId?: string | null,
-): Promise<WidokCertyfikatu> {
-  const response = await fetch(zPrzypadkiem('/api/oze-analysis/compliance-certificate', caseId), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(zadanie),
-  });
-  if (!response.ok) throw await bladCertyfikatu(response);
-  return response.json() as Promise<WidokCertyfikatu>;
-}
-
-/**
- * Pobierz deterministyczny plik DOCX certyfikatu (blob). Obsługa błędów PL jak
- * dla widoku JSON — w tym `CertyfikatBrakiError` przy 422 z listą braków.
- */
-export async function pobierzCertyfikatDocx(
-  zadanie: ZadanieCertyfikatu,
-  caseId?: string | null,
-): Promise<Blob> {
-  const response = await fetch(
-    zPrzypadkiem('/api/oze-analysis/compliance-certificate.docx', caseId),
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(zadanie),
-    },
-  );
-  if (!response.ok) throw await bladCertyfikatu(response);
-  return response.blob();
-}
-
-// =============================================================================
-// Wniosek o określenie warunków przyłączenia (OSD) —
-// application/analyses/wniosek_osd.py (D15); końcówki
-// POST /api/oze-analysis/osd-application(.docx) (api/oze_analysis_runs.py)
-// =============================================================================
-
-/**
- * Wejście generatora wniosku OSD (1:1 z `WniosekOsdRequest`). Identyfikacja +
- * odwołania do zakończonych przebiegów (rozpływ `pf_run_id`, zwarcie `sc_run_id`),
- * węzeł przyłączenia i żądanie biegu NC RfG (te same dane, które wyprodukowały
- * wynik macierzy — `ncRfgStore.ostatnieWejscia`).
- */
-export interface ZadanieWniosku {
-  readonly nazwa_projektu: string;
-  readonly nazwa_przypadku?: string | null;
-  readonly wnioskodawca?: string | null;
-  readonly adres_przylaczenia?: string | null;
-  readonly pf_run_id: string;
-  readonly sc_run_id: string;
-  readonly bus_ref: string;
-  readonly run_request: NcRfgRunRequest;
-}
-
-/** Identyfikacja we wniosku (blok `identyfikacja`, 1:1 z widokiem backendu). */
-export interface IdentyfikacjaWniosku {
-  readonly projekt: string;
-  readonly przypadek: string | null;
-  readonly wnioskodawca: string | null;
-  readonly adres_przylaczenia: string | null;
-  readonly wezel_przylaczenia: string;
-}
-
-/** Podsumowanie walidacji energetycznej w sekcji bilansu (liczby wg werdyktów). */
-export interface PodsumowanieWalidacjiWniosku {
-  readonly spelnione: number;
-  readonly ostrzezenia: number;
-  readonly niespelnione: number;
-  readonly nieobliczone: number;
-}
-
-/** Sekcja „bilans mocy" wniosku (1:1 z `_bilans_mocy_sekcja`). */
-export interface SekcjaBilansuWniosku {
-  readonly moc_zainstalowana_zrodel_mva: number;
-  readonly moc_zainstalowana_w_punkcie_mva: number | null;
-  readonly liczba_wezlow_ze_zrodlami: number;
-  readonly obciazenie_najwyzsze_pct: number | null;
-  readonly obciazenie_element: string | null;
-  readonly wspolczynnik_mocy_slack: number | null;
-  readonly bilans_q_status: string;
-  readonly straty_pct: number | null;
-  readonly straty_status: string;
-  readonly podsumowanie_walidacji: PodsumowanieWalidacjiWniosku;
-}
-
-/** Sekcja „zwarcia w punkcie przyłączenia" wniosku (1:1 z `_zwarcia_sekcja`). */
-export interface SekcjaZwarciaWniosku {
-  readonly bus_ref: string;
-  readonly nazwa_wezla: string;
-  readonly ik_ss_ka: number | null;
-  readonly sk_mva: number | null;
-  readonly ip_ka: number | null;
-  readonly ith_ka: number | null;
-  readonly rodzaj_zwarcia: string | null;
-}
-
-/** Sekcja „zgodność NC RfG" wniosku (1:1 z `_zgodnosc_sekcja`). */
-export interface SekcjaZgodnosciWniosku {
-  readonly status: string;
-  readonly etykieta_pl: string;
-  readonly liczba_modulow: number;
-  readonly modulow_zgodnych: number;
-  readonly modulow_niezgodnych: number;
-  readonly procedura: string;
-  readonly odeslanie_pl: string;
-  readonly odcisk_wejscia_nc_rfg_sha256: string;
-  /**
-   * Dowód certyfikacji PTPiREE per moduł biegu. Powstaje TYLKO dla żądania
-   * z `case_id` — bez wskazanego przypadku klucza nie ma (kontrakt sprzed dowodu).
-   */
-  readonly dowody_certyfikatu?: readonly DowodCertyfikatuPtpiree[];
-}
-
-/** Widok JSON wniosku OSD (1:1 z `build_wniosek_osd_view`). */
-export interface WidokWniosku {
-  readonly kontrakt: string;
-  readonly tytul: string;
-  readonly identyfikacja: IdentyfikacjaWniosku;
-  readonly bilans_mocy: SekcjaBilansuWniosku;
-  readonly zwarcia_punkt_przylaczenia: SekcjaZwarciaWniosku;
-  readonly zgodnosc_nc_rfg: SekcjaZgodnosciWniosku;
-  readonly zalozenia_pl: readonly string[];
-  readonly odciski_sekcji_sha256: Readonly<Record<string, string>>;
-  readonly zrodla: {
-    readonly pf_run_id: string;
-    readonly sc_run_id: string;
-    readonly nc_rfg_input_hash: string;
-  };
-  readonly input_hash: string;
-}
-
-/**
- * Błąd bramki kompletności wniosku (HTTP 422): wniosek NIE powstaje, backend
- * zwraca `detail = { komunikat, braki }` — uczciwa lista braków po polsku.
- */
-export class WniosekBrakiError extends Error {
-  readonly braki: readonly string[];
-
-  constructor(komunikat: string, braki: readonly string[]) {
-    super(komunikat);
-    this.name = 'WniosekBrakiError';
-    this.braki = braki;
-  }
-}
-
-/**
- * Zamień odpowiedź błędu wniosku na wyjątek z komunikatem PL. Rozróżnia bramkę
- * kompletności (`detail` obiekt z listą `braki` → `WniosekBrakiError`) od
- * pozostałych błędów (`detail` łańcuch → zwykły `Error`).
- */
-async function bladWniosku(response: Response): Promise<Error> {
-  let komunikat = `Zapytanie wniosku nie powiodło się: ${response.status} ${response.statusText}`;
-  try {
-    const body = (await response.json()) as { detail?: unknown };
-    const detail = body?.detail;
-    if (detail && typeof detail === 'object') {
-      const obiekt = detail as { komunikat?: unknown; braki?: unknown };
-      const braki = Array.isArray(obiekt.braki)
-        ? obiekt.braki.filter((p): p is string => typeof p === 'string')
-        : [];
-      const tekst =
-        typeof obiekt.komunikat === 'string' && obiekt.komunikat.trim()
-          ? obiekt.komunikat
-          : komunikat;
-      if (braki.length > 0) return new WniosekBrakiError(tekst, braki);
-      komunikat = tekst;
-    } else if (typeof detail === 'string' && detail.trim()) {
-      komunikat = detail;
-    }
-  } catch {
-    // Brak treści JSON — pozostaje komunikat ze statusem HTTP.
-  }
-  return new Error(komunikat);
-}
-
-/**
- * Pobierz widok JSON wniosku OSD (jawny bieg; wniosek zestawia gotowe wyniki).
- * Rzuca `WniosekBrakiError` przy 422 (braki kompletności), zwykły `Error`
- * z komunikatem PL przy pozostałych błędach.
- */
-export async function pobierzWniosek(
-  zadanie: ZadanieWniosku,
-  caseId?: string | null,
-): Promise<WidokWniosku> {
-  const response = await fetch(zPrzypadkiem('/api/oze-analysis/osd-application', caseId), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(zadanie),
-  });
-  if (!response.ok) throw await bladWniosku(response);
-  return response.json() as Promise<WidokWniosku>;
-}
-
-/**
- * Pobierz deterministyczny plik DOCX wniosku OSD (blob). Obsługa błędów PL jak
- * dla widoku JSON — w tym `WniosekBrakiError` przy 422 z listą braków.
- */
-export async function pobierzWniosekDocx(
-  zadanie: ZadanieWniosku,
-  caseId?: string | null,
-): Promise<Blob> {
-  const response = await fetch(zPrzypadkiem('/api/oze-analysis/osd-application.docx', caseId), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(zadanie),
-  });
-  if (!response.ok) throw await bladWniosku(response);
-  return response.blob();
-}
-
-// =============================================================================
 // Dokument studium przyłączeniowego OZE — application/analyses/dokument_studium.py
 // (E13, D17); końcówki POST /api/oze-analysis/connection-study(.docx/.pdf)
 // (api/oze_analysis_runs.py). Serwerowa KOMPOZYCJA sekwencji kreatora studium
@@ -1535,6 +1144,18 @@ export interface ZalozeniaPrzebieguDokumentu {
 }
 
 /**
+ * Urządzenie modelu w sekcji dowodu dokumentu studium (`dokument_studium._urzadzenie`):
+ * rekord wykazu PTPiREE wyprowadzony przez serwer ALBO powód odrzucenia tabliczki ALBO
+ * żadne z nich, oraz wiersze dokumentu (te same zdania co DOCX/PDF — `wiersze_dowodu`).
+ */
+export interface UrzadzenieDowoduDokumentu {
+  readonly der_ref: string;
+  readonly dowod: DowodCertyfikatu | null;
+  readonly odrzucony: CertyfikatOdrzucony | null;
+  readonly wiersze: readonly PozycjaBloku[];
+}
+
+/**
  * Dowód certyfikacji PTPiREE urządzeń modelu związanych z TYPEM katalogowym
  * dokumentu (studium nie uruchamia macierzy NC RfG, więc tożsamością urządzenia
  * jest typ przekształtnika). `stan_pl` niepusty = w modelu nie ma urządzenia
@@ -1542,7 +1163,7 @@ export interface ZalozeniaPrzebieguDokumentu {
  */
 export interface DowodCertyfikatuDokumentu {
   readonly catalog_item_id: string;
-  readonly urzadzenia: readonly DowodCertyfikatuPtpiree[];
+  readonly urzadzenia: readonly UrzadzenieDowoduDokumentu[];
   readonly stan_pl: string | null;
 }
 
@@ -1575,19 +1196,24 @@ export interface ObszarWariantuDokumentu {
   readonly komunikat_bledu: string | null;
 }
 
-/** Sekcja pokrycia wymagania P–Q wariantu (`ok` → werdykt; `blad` → opis). */
+/**
+ * Sekcja pokrycia wymagania P–Q wariantu (`dokument_studium` faza 3) — rekord `ocena`
+ * pokrycia typu katalogowego wymaganiem operatora (ten sam co okno krzywych P–Q).
+ */
 export interface PokrycieWariantuDokumentu {
-  readonly status: StatusFazyDokumentu;
-  readonly pokryty: boolean | null;
-  readonly werdykt_pl: string | null;
-  readonly opis_pl: string | null;
-  readonly komunikat_bledu: string | null;
+  readonly ocena: OcenaKryterium;
 }
 
-/** Klasa NC RfG wariantu (kod klasy lub `null` + opis PL) — z klasyfikacji backendu. */
+/**
+ * Typ modułu NC RfG wariantu (`dokument_studium._klasa_nc_rfg`) — z JEDNEJ klasyfikacji
+ * backendu: typ albo `null` (poniżej progu / nieokreślony) z powodem; podstawa `null`,
+ * gdy typ nieokreślony z braku mocy przyłączalnej albo napięcia węzła.
+ */
 export interface KlasaWariantuDokumentu {
-  readonly klasa: string | null;
-  readonly opis_pl: string;
+  readonly modul: TypModulu | null;
+  readonly powod_pl: string;
+  readonly podstawa: PodstawaWymagania | null;
+  readonly podstawa_pl: string | null;
 }
 
 /** Sekcja pojedynczego wariantu dokumentu (trzy fazy + klasa + odcisk sekcji). */
@@ -1607,8 +1233,9 @@ export interface PodsumowanieWariantuDokumentu {
   readonly bus_ref: string;
   readonly nazwa_wezla: string;
   readonly max_moc_mw: number | null;
-  readonly klasa: string | null;
-  readonly pokrycie_pl: string | null;
+  readonly klasa: TypModulu | null;
+  /** Etykieta rekordu `ocena` pokrycia P–Q wariantu (tekst z rekordu, bez przemapowania). */
+  readonly pokrycie_pl: string;
   readonly pasmo_q_pl: string | null;
 }
 

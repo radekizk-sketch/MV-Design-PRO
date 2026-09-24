@@ -22,6 +22,7 @@ from werdykt.decyzja import przydatnosc_dowodu_wymagania
 from werdykt.kontrakt import (
     METODY_OBLICZENIOWE,
     SUFIKS_STANU_KONCOWEGO,
+    DziedzinaFizyki,
     Kryterium,
     LimitKryterium,
     Margines,
@@ -40,8 +41,14 @@ from werdykt.kontrakt import (
 from werdykt.wyjasnienie import (
     NAZWA_METODY_PL,
     NAZWA_RODZAJU_PODSTAWY_PL,
+    NAZWA_STANU_ZRODLA_PL,
     format_liczba,
     format_wielkosc,
+    nazwa_kompletnosci,
+    nazwa_pokrycia_programu,
+    nazwa_skladowej,
+    nazwa_stanu_danych,
+    nazwa_statusu_modelu,
     opis_danej,
 )
 
@@ -70,14 +77,41 @@ POZYCJA_PODSTAWA = "Podstawa"
 POZYCJA_DOWOD = "Dowód"
 POZYCJA_KOMPLETNOSC = "Kompletność dowodu"
 POZYCJA_POWOD_NIEPELNOSCI = "Powód niepełności"
-POZYCJA_STATUS_MODELU = "Status modelu"
-POZYCJA_STATUS_DANYCH = "Status danych"
+POZYCJA_STATUS_MODELU = "Walidacja modelu urządzenia"
+POZYCJA_STATUS_DANYCH = "Stan danych wejściowych"
 POZYCJA_DANA_PRZYJETA = "Dana przyjęta"
 POZYCJA_ZAKRES = "Zakres ważności"
 POZYCJA_SLAD = "Ślad"
 POZYCJA_KRYTERIUM_SKLADOWE = "Kryterium składowe"
 
 _SYMBOL_RELACJI: dict[Relacja, str] = {"NIE_WIECEJ": "≤", "NIE_MNIEJ": "≥"}
+#: Postać limitu wg relacji kryterium W TEKŚCIE bloku — lustro karty werdyktu
+#: (`NAZWA_RELACJI_PL` w ``KartaWerdyktu.tsx``: T13, ten sam tekst w interfejsie i dokumencie);
+#: kod relacji zostaje w polu ``kryterium.relacja``.
+_NAZWA_RELACJI_PL: dict[Relacja, str] = {
+    "NIE_WIECEJ": "górna granica",
+    "NIE_MNIEJ": "dolna granica",
+    "PASMO": "pasmo dopuszczalne",
+    "OBWIEDNIA_DOLNA": "obwiednia dolna",
+    "OBWIEDNIA_GORNA": "obwiednia górna",
+    "LOGICZNE": "kryterium logiczne",
+}
+#: Rodzaj analizy zakresu ważności W TEKŚCIE bloku — lustro karty werdyktu
+#: (`NAZWA_DZIEDZINY_PL`); kod zostaje w polu ``zakres_waznosci.rodzaj_analizy``.
+_NAZWA_DZIEDZINY_PL: dict[DziedzinaFizyki, str] = {
+    "POWER_FLOW": "rozpływ mocy",
+    "SHORT_CIRCUIT": "zwarcia",
+    "RMS_DYNAMICS": "dynamika RMS",
+    "SEQUENCE_DOMAIN": "składowe symetryczne",
+    "HARMONIC_FREQUENCY_DOMAIN": "harmoniczne (dziedzina częstotliwości)",
+    "SUPRAHARMONIC_FREQUENCY_DOMAIN": "supraharmoniczne (dziedzina częstotliwości)",
+}
+#: Rodzaj skali marginesu względnego (mianownik) — lustro karty werdyktu (`NAZWA_SKALI_PL`).
+_NAZWA_SKALI_PL: dict[str, str] = {
+    "TOLERANCJA": "tolerancja z profilu",
+    "LIMIT": "wartość graniczna",
+    "NIEPEWNOSC": "niepewność",
+}
 
 
 class PozycjaBloku(BaseModel):
@@ -93,7 +127,10 @@ def _pozycja(etykieta_pozycji: str, tresc: str) -> PozycjaBloku:
     return PozycjaBloku(etykieta_pl=etykieta_pozycji, tresc_pl=tresc)
 
 
-def _podstawa(podstawa: PodstawaWymagania) -> str:
+def opis_podstawy(podstawa: PodstawaWymagania) -> str:
+    """Cytat podstawy (dokument, wydanie, jednostka redakcyjna, rodzaj, stan źródła, uwagi) —
+    JEDEN format podstawy w blokach dokumentu i w sekcjach dokumentów formalnych, które cytują
+    podstawę poza rekordem (klasyfikacja modułu, dowód certyfikatu urządzenia)."""
     czesci = [
         f"dokument: „{podstawa.dokument}”",
         f"wydanie: {podstawa.wydanie if podstawa.wydanie is not None else 'nie wskazano'}",
@@ -104,7 +141,7 @@ def _podstawa(podstawa: PodstawaWymagania) -> str:
             else "nie wskazano"
         ),
         f"rodzaj: {NAZWA_RODZAJU_PODSTAWY_PL[podstawa.rodzaj]}",
-        f"stan źródła: {podstawa.status}",
+        f"stan źródła: {NAZWA_STANU_ZRODLA_PL[podstawa.status]}",
     ]
     if podstawa.uwagi_pl is not None:
         czesci.append(f"uwagi: {podstawa.uwagi_pl}")
@@ -124,7 +161,7 @@ def _stosowalnosc(stosowalnosc: Stosowalnosc) -> str:
     if stosowalnosc.warunek_wstepny_nieuruchomiony:
         czesci.append("warunek wstępny kryterium nie wystąpił w scenariuszu")
     if stosowalnosc.podstawa is not None:
-        czesci.append(f"podstawa stosowalności — {_podstawa(stosowalnosc.podstawa)}")
+        czesci.append(f"podstawa stosowalności — {opis_podstawy(stosowalnosc.podstawa)}")
     return "; ".join(czesci)
 
 
@@ -161,7 +198,7 @@ def _limit(limit: LimitKryterium | None, relacja: Relacja) -> str:
         )
         rodzaj = "dolna" if relacja == "OBWIEDNIA_DOLNA" else "górna"
         wartosc = f"obwiednia {rodzaj}: {punkty}"
-    czesci = [wartosc, f"podstawa — {_podstawa(limit.podstawa)}"]
+    czesci = [wartosc, f"podstawa — {opis_podstawy(limit.podstawa)}"]
     if limit.zakres_stosowalnosci_pl is not None:
         czesci.append(f"zakres stosowalności: {limit.zakres_stosowalnosci_pl}")
     if limit.wersja_profilu is not None:
@@ -178,7 +215,10 @@ def _margines(margines: Margines | None) -> str:
     if margines.punkt_pl is not None:
         czesci.append(f"punkt: {margines.punkt_pl}")
     if margines.skala is not None and margines.wzgledny is not None:
-        czesci.append(f"skala: {format_wielkosc(margines.skala)} ({margines.skala_rodzaj})")
+        rodzaj_skali = (
+            _NAZWA_SKALI_PL[margines.skala_rodzaj] if margines.skala_rodzaj is not None else "—"
+        )
+        czesci.append(f"skala: {format_wielkosc(margines.skala)} ({rodzaj_skali})")
         czesci.append(f"margines względny: {format_liczba(margines.wzgledny * 100.0, znak=True)} %")
     else:
         czesci.append("margines względny: brak skali")
@@ -219,14 +259,17 @@ def _warunek_wstepny(kryterium: Kryterium) -> str | None:
         return None
     tresc = kryterium.warunek_wstepny_pl
     if kryterium.warunek_wstepny_podstawa is not None:
-        tresc += f"; podstawa — {_podstawa(kryterium.warunek_wstepny_podstawa)}"
+        tresc += f"; podstawa — {opis_podstawy(kryterium.warunek_wstepny_podstawa)}"
     return tresc
 
 
 def _zakres(zakres: ZakresWaznosci) -> str:
     czesci = [zakres.opis_pl]
     for nazwa, wartosc in (
-        ("rodzaj analizy", zakres.rodzaj_analizy),
+        (
+            "rodzaj analizy",
+            None if zakres.rodzaj_analizy is None else _NAZWA_DZIEDZINY_PL[zakres.rodzaj_analizy],
+        ),
         ("technologia", zakres.technologia),
         ("model urządzenia", zakres.model_urzadzenia),
         ("symetria zakłócenia", zakres.symetria_zaklocenia),
@@ -277,11 +320,11 @@ def _pozycje_dowodu(
 ) -> list[PozycjaBloku]:
     pozycje = [
         _pozycja(POZYCJA_DOWOD, _dowod(dowod, przydatnosc)),
-        _pozycja(POZYCJA_KOMPLETNOSC, kompletnosc),
+        _pozycja(POZYCJA_KOMPLETNOSC, nazwa_kompletnosci(kompletnosc)),
     ]
     pozycje.extend(_pozycja(POZYCJA_POWOD_NIEPELNOSCI, powod) for powod in powody)
-    pozycje.append(_pozycja(POZYCJA_STATUS_MODELU, dowod.status_modelu))
-    pozycje.append(_pozycja(POZYCJA_STATUS_DANYCH, dowod.status_danych.stan))
+    pozycje.append(_pozycja(POZYCJA_STATUS_MODELU, nazwa_statusu_modelu(dowod.status_modelu)))
+    pozycje.append(_pozycja(POZYCJA_STATUS_DANYCH, nazwa_stanu_danych(dowod.status_danych.stan)))
     pozycje.extend(
         _pozycja(POZYCJA_DANA_PRZYJETA, opis_danej(dana))
         for dana in dowod.status_danych.dane_przyjete
@@ -293,16 +336,16 @@ def blok_kryterium(rekord: OcenaKryterium) -> list[PozycjaBloku]:
     """Blok dokumentu dla rekordu K w kolejności §10."""
     relacja = rekord.kryterium.relacja
     przedmiot = rekord.przedmiot
+    # Referencja elementu modelu (`przedmiot.element_ref`) i identyfikator kryterium zostają w
+    # polach rekordu — treść bloku niesie wyłącznie nazwy polskie (strażnik werdyktu).
     opis_przedmiotu = f"{przedmiot.nazwa_pl} — {przedmiot.opis_pl}"
-    if przedmiot.element_ref is not None:
-        opis_przedmiotu += f" (element {przedmiot.element_ref})"
     pozycje = [
         _pozycja(POZYCJA_PRZEDMIOT, opis_przedmiotu),
         _pozycja(POZYCJA_OCENA, rekord.etykieta.etykieta_pl),
         _pozycja(POZYCJA_STOSOWALNOSC, _stosowalnosc(rekord.stosowalnosc)),
         _pozycja(
             POZYCJA_KRYTERIUM,
-            f"{rekord.kryterium.opis_pl} [{rekord.kryterium_id}]; relacja: {relacja}",
+            f"{rekord.kryterium.opis_pl}; relacja: {_NAZWA_RELACJI_PL[relacja]}",
         ),
     ]
     if rekord.kryterium.warunek_latex.strip():
@@ -329,7 +372,7 @@ def blok_kryterium(rekord: OcenaKryterium) -> list[PozycjaBloku]:
             zdanie=wyjasnienie.zdanie_pl,
         )
     )
-    pozycje.append(_pozycja(POZYCJA_PODSTAWA, _podstawa(rekord.podstawa)))
+    pozycje.append(_pozycja(POZYCJA_PODSTAWA, opis_podstawy(rekord.podstawa)))
     pozycje.extend(
         _pozycje_dowodu(
             rekord.dowod,
@@ -343,19 +386,45 @@ def blok_kryterium(rekord: OcenaKryterium) -> list[PozycjaBloku]:
     return pozycje
 
 
+def _sposob_wykazania(rekord: WynikWymagania) -> str:
+    """Sposób wykazania z podstawą reguły, która czyni go właściwym (gdy istnieje)."""
+    tresc: str = NAZWA_METODY_PL[rekord.sposob_wykazania]
+    if rekord.podstawa_sposobu_wykazania is not None:
+        tresc += f"; podstawa reguły — {opis_podstawy(rekord.podstawa_sposobu_wykazania)}"
+    return tresc
+
+
+def _pokrycie(rekord: WynikWymagania) -> str:
+    """Pokrycie programu badań: nazwa pokrycia i zdanie rekordu (gdy niepuste)."""
+    nazwa = nazwa_pokrycia_programu(rekord.pokrycie_programu)
+    if rekord.pokrycie_programu_pl:
+        return f"{nazwa} — {rekord.pokrycie_programu_pl}"
+    return nazwa
+
+
 def blok_wymagania(rekord: WynikWymagania) -> list[PozycjaBloku]:
     """Blok dokumentu dla rekordu W w kolejności §10, a po nim bloki ocen składowych."""
     pozycje = [
-        _pozycja(POZYCJA_WYMAGANIE, f"{rekord.nazwa_pl} [{rekord.wymaganie_id}]"),
+        _pozycja(POZYCJA_WYMAGANIE, rekord.nazwa_pl),
         _pozycja(POZYCJA_OCENA, rekord.etykieta.etykieta_pl),
         _pozycja(POZYCJA_STOSOWALNOSC, _stosowalnosc(rekord.stosowalnosc)),
-        _pozycja(POZYCJA_SPOSOB_WYKAZANIA, NAZWA_METODY_PL[rekord.sposob_wykazania]),
-        _pozycja(POZYCJA_POKRYCIE, f"{rekord.pokrycie_programu} — {rekord.pokrycie_programu_pl}"),
+        _pozycja(POZYCJA_SPOSOB_WYKAZANIA, _sposob_wykazania(rekord)),
+        _pozycja(POZYCJA_POKRYCIE, _pokrycie(rekord)),
     ]
+    nazwy_skladowych = {o.kryterium_id: nazwa_skladowej(o) for o in rekord.oceny_skladowe}
     if rekord.kryteria_naruszone:
-        pozycje.append(_pozycja(POZYCJA_KRYTERIA_NARUSZONE, ", ".join(rekord.kryteria_naruszone)))
+        pozycje.append(
+            _pozycja(
+                POZYCJA_KRYTERIA_NARUSZONE,
+                "; ".join(nazwy_skladowych[k] for k in rekord.kryteria_naruszone),
+            )
+        )
     if rekord.kryterium_najblizej_granicy is not None:
-        pozycje.append(_pozycja(POZYCJA_NAJBLIZEJ_GRANICY, rekord.kryterium_najblizej_granicy))
+        pozycje.append(
+            _pozycja(
+                POZYCJA_NAJBLIZEJ_GRANICY, nazwy_skladowych[rekord.kryterium_najblizej_granicy]
+            )
+        )
     pozycje.extend(
         _pozycja(
             POZYCJA_STAN_KONCOWY,
@@ -373,7 +442,7 @@ def blok_wymagania(rekord: WynikWymagania) -> list[PozycjaBloku]:
             zdanie=wyjasnienie.zdanie_pl,
         )
     )
-    pozycje.append(_pozycja(POZYCJA_PODSTAWA, _podstawa(rekord.podstawa)))
+    pozycje.append(_pozycja(POZYCJA_PODSTAWA, opis_podstawy(rekord.podstawa)))
     pozycje.extend(
         _pozycje_dowodu(
             rekord.dowod,
@@ -385,6 +454,6 @@ def blok_wymagania(rekord: WynikWymagania) -> list[PozycjaBloku]:
     pozycje.append(_pozycja(POZYCJA_ZAKRES, _zakres(rekord.zakres_waznosci)))
     pozycje.extend(_pozycja(POZYCJA_SLAD, _slad(odnosnik)) for odnosnik in rekord.slad)
     for ocena in rekord.oceny_skladowe:
-        pozycje.append(_pozycja(POZYCJA_KRYTERIUM_SKLADOWE, ocena.kryterium_id))
+        pozycje.append(_pozycja(POZYCJA_KRYTERIUM_SKLADOWE, nazwa_skladowej(ocena)))
         pozycje.extend(blok_kryterium(ocena))
     return pozycje

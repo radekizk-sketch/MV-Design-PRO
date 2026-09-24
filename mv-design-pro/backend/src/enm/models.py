@@ -20,7 +20,9 @@ from network_model.core.uziemienie import (
 )
 from pydantic import BaseModel, Field, model_validator
 
+from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
 from .dynamika_modele import ParametryDynamiczne
+from .nastawy_modulu import NastawyZabezpieczenModulu
 from .uziemienie import migruj_uziemienie_slownika
 
 # ---------------------------------------------------------------------------
@@ -644,6 +646,37 @@ class Generator(ENMElement):
     Konsumenci dziedziny czestotliwosci czytaja WYLACZNIE to pole (wzorzec O-44).
     `None` = brak modelu widmowego urzadzenia (sekcja `harmonic` UNKNOWN z nazwanym
     brakiem) — nigdy widmo typowe. Referencja karty NIE trafia do `materialized_params`.
+    """
+
+    modul_istniejacy: ModulIstniejacy | None = None
+    """
+    Modul istniejacy w rozumieniu art. 4 ust. 1 rozporzadzenia 2016/631 (plan AB O-31).
+    `True` — wymagania rozporzadzenia nie maja zastosowania bez modernizacji; `False` —
+    modul nowy; `None` — status nieustalony (ocena wymagan traktuje modul jak nowy, a kazdy
+    rekord niesie zastrzezenie). Most zgodnosci NC RfG przenosi pole 1:1 do wejscia solvera.
+    """
+
+    data_umowy_przylaczeniowej: DataUmowy | None = None
+    """
+    Data zawarcia umowy przylaczeniowej modulu (plan AB O-31) — resolver wersji warstw
+    profilu regulacyjnego (WOS, procedura PTPiREE, WiPWC, IRiESD) wybiera wydanie
+    obowiazujace w tym dniu. `None` — data nieustalona (wersja dobrana bez daty, z uwaga).
+    """
+
+    nastawy_zabezpieczen: NastawyZabezpieczenModulu | None = None
+    """
+    Nastawy zabezpieczen modulu (U<, U>, f<, f>, RoCoF, skok wektora) ze zrodlem
+    (`enm/nastawy_modulu.py`, plan AB O-32). `None` — brak nastaw w modelu: kryteria
+    koordynacji statycznej (`frt.koordynacja_nastaw_u_min`, `rocof.koordynacja_nastaw_lom`)
+    daja NIE_OCENIONO z nazwanym brakiem, nigdy wartosc typowa.
+    """
+
+    deklaracje_modulu: DeklaracjeModulu | None = None
+    """
+    Deklaracje modulu dla testow zgodnosci NC RfG / PTPiREE (T05, T10-T13, T16-T20) ze
+    zrodlem (`enm/deklaracje_modulu.py`, plan AB O-50): nazwy pol 1:1 z wejsciem solvera
+    `NcRfgPtpireeModuleInput`. `None` albo pole puste — brak deklaracji: test daje
+    NIE_OCENIONO z nazwanym brakiem, nigdy wartosc typowa ani „niezadeklarowane".
     """
 
     @model_validator(mode="after")

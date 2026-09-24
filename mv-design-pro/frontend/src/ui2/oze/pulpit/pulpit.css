@@ -110,3 +110,10 @@
   font-size: 11.5px;
   color: var(--mvd-ink);
 }
+
+/* Plakietki rekordów wymagań NC RfG w pozycji listy (etykieta i kolor z rekordu). */
+.mvd-oze-pulpit-poz-plakietki {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}

@@ -357,7 +357,11 @@ POMIJANE_KATALOGI = {
 #: `ui/proof/__tests__/diffTrace.spec.ts` (TS2741), `ui/network-build/forms/__tests__/
 #: voltageDropValidator.test.ts` (TS2322), `ui/sld-overlay/__tests__/
 #: LoadFlowOverlayAdapter.test.ts` (TS6133); zero nowych bledow. Budzet 105 -> 100.
-BUDZET_BLEDOW_POZA_BRAMKA = 100
+#: Karta AB-1a Pakiet D2 (integracja na HEAD z AB-H0 i AB-1b.1a, 2026-09-24, pomiar guardem na
+#: scalonym drzewie int/c): 100 -> 96 — cztery bledy poza bramka zeszly w testach przepisanych
+#: przez D2 (`.at(-1)` w testach NC RfG, fikstura FRT na wygenerowanym katalogu, martwy
+#: parametr `plik` w `dokumentyDowodApi.test`); zero nowych bledow.
+BUDZET_BLEDOW_POZA_BRAMKA = 96
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

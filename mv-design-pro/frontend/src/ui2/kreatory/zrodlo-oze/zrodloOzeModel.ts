@@ -30,6 +30,12 @@ import type {
   SourceOperatingMode,
 } from '../../../types/domainOps';
 import type { DerCatalogBindingsRequest } from '../../../ui/sld/v2/canvas/derPersistenceApi';
+import {
+  PUSTE_DANE_MODULU,
+  polaNcRfgDoPayloadu,
+  zbudujPolaNcRfgGeneratora,
+  type FormularzDanychModulu,
+} from '../../oze/ncrfg/daneModulu';
 
 // Wersja pozycji katalogowej ma JEDNO źródło we froncie (`ui/catalog/catalogBinding`)
 // i musi zgadzać się z wersją, którą materializuje backend
@@ -187,6 +193,10 @@ export interface OzeFormData {
   lvrt_curve_ref: string | null;
   hvrt_curve_ref: string | null;
   pf_curve_ref: string | null;
+  // Plan AB O-50 pkt 5: dane modułu NC RfG zapisywane w modelu razem z wytwórcą — status
+  // art. 4, data umowy przyłączeniowej, nastawy zabezpieczeń i deklaracje modułu (JEDEN
+  // formularz i jedna budowa pól z edycją parametrów generatora: `ui2/oze/ncrfg/daneModulu`).
+  dane_modulu_ncrfg: FormularzDanychModulu;
 }
 
 export interface BladPolaOze {
@@ -230,6 +240,7 @@ export const DANE_DOMYSLNE: OzeFormData = {
   lvrt_curve_ref: null,
   hvrt_curve_ref: null,
   pf_curve_ref: null,
+  dane_modulu_ncrfg: PUSTE_DANE_MODULU,
 };
 
 function parseQuantity(value: number): number {
@@ -320,6 +331,14 @@ export function walidujFormularz(
         field: 'q_max_mvar',
         message: 'Tryb regulacji napięcia wymaga Q min ściśle mniejszego od Q max.',
       });
+    }
+  }
+  // Dane modułu NC RfG: te same reguły co walidator backendu (`pola_nc_rfg_generatora`) —
+  // zapis, który backend odrzuciłby kodem `generator.*_invalid`, nie wychodzi z kreatora.
+  const daneModulu = zbudujPolaNcRfgGeneratora(data.dane_modulu_ncrfg);
+  if (daneModulu.stan === 'blad') {
+    for (const [pole, komunikat] of Object.entries(daneModulu.bledy)) {
+      if (komunikat) errors.push({ field: `dane_modulu_ncrfg.${pole}`, message: komunikat });
     }
   }
   if (data.source_technology === 'BESS') {
@@ -439,6 +458,9 @@ export function zbudujPayload(
       normalizeCatalogBinding(data.converter_catalog_ref, converterCatalogNamespace(data.source_technology)) ??
       undefined,
     materialized_params: materializedParams(converter, pSetpoint),
+    // Plan AB O-50 pkt 5: pola NC RfG modułu — wysyłane wyłącznie z wartością (brak danej
+    // = pole nieobecne; backend zapisuje stan „nieustalone", nigdy wartość typową).
+    ...polaNcRfgDoPayloadu(data.dane_modulu_ncrfg),
   };
 }
 

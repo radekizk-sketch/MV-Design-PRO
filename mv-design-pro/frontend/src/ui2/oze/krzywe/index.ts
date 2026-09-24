@@ -16,7 +16,6 @@ export {
   kolumnyTabeliPQ,
   wierszeTabeliPQ,
   krokiSladuPQ,
-  istotnoscWerdyktuPQ,
 } from './krzyweModel';
 export type { OpcjaTypuPQ, OpcjaOperatoraPQ, PunktWykresuPQ } from './krzyweModel';
 export { KRZYWE_STRINGS } from './strings';

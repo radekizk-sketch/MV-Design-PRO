@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from enm.deklaracje_modulu import POLA_DEKLARACJI, DeklaracjeModulu
 from enm.migrations.nn_field_specs_promocja import migruj as promuj_nn_field_specs
 from enm.models import EnergyNetworkModel
 
@@ -549,7 +550,10 @@ def test_fixtury_niosa_skroty_nieprzenosne() -> None:
         obecne.update(
             klucz.rsplit(".", 1)[-1].split("[")[0] for klucz in _skroty_nieprzenosne(dane)
         )
-    # POMIAR 2026-09-18 na komplecie fixtur repo (69 plików).
+    # POMIAR 2026-09-18 na komplecie fixtur repo (69 plików). 2026-09-24 (Pakiet D2, luka
+    # §5.2): skróty sekcji wniosku i studium liczone nad sekcją skwantyzowaną
+    # (`kontrakt_liczb.kwantyzuj_kontrakt`) — sonda szumu BLAS na 90 fixturach nie rusza
+    # żadnego z nich, więc nie ma ich na tej liście (porównanie dokładne).
     assert obecne == {
         "analysis_id",
         "deterministic_hash",
@@ -570,17 +574,25 @@ def test_fixtury_niosa_skroty_nieprzenosne() -> None:
 
 
 def test_zgodnosc_przekrojowa_ma_ksztalt_trasy() -> None:
-    """Ten sam kształt co `run_ncrfg_compliance_from_model` (api/ncrfg_ptpiree_tests.py,
-    karta S-3): kontrakt biegu macierzy (`NcRfgPtpireeRunResponse` z polami
-    dowodowymi S-1) opakowany per przypadek — solver kanoniczny, numeracja T01–T20."""
+    """Ten sam kształt co `run_ncrfg_compliance_from_model` (api/ncrfg_ptpiree_tests.py):
+    koperta biegu (`NcRfgPtpireeRunResponse` — rekordy testów + ocena wymagań, karta AB-1a
+    Pakiet C) opakowana per przypadek — solver kanoniczny, numeracja T01–T20, źródło danych
+    zatwierdzony model, dowód certyfikatu wyprowadzony przez serwer z wykazu PTPiREE."""
     odpowiedz = eksport.zgodnosc_przekrojowa_sceny_macierz()
-    assert set(odpowiedz) == {"case_id", "operator_id", "der_count", "pominiete", "bieg"}
+    assert set(odpowiedz) == {
+        "case_id",
+        "operator_id",
+        "der_count",
+        "pominiete",
+        "certyfikaty_odrzucone",
+        "bieg",
+    }
     assert odpowiedz["case_id"] == eksport.CASE_ID_HARNESSU
     assert odpowiedz["operator_id"] == eksport.OPERATOR_SCENY_MACIERZ
-    assert odpowiedz["pominiete"] == []
+    assert odpowiedz["pominiete"] == [] and odpowiedz["certyfikaty_odrzucone"] == []
     bieg = odpowiedz["bieg"]
     assert bieg is not None
-    assert bieg["contract"] == "NcRfgPtpireeTestResultV1"
+    assert bieg["contract"] == "NcRfgPtpireeTestResultV2"
     # HARNESS-RESZTA-2: oczekiwania wyprowadzone Z MODELU sceny (zbudowanego
     # operacjami domenowymi), nie z listy gotowych modułów przepisanej obok —
     # referencje i napięcia nadaje domena, a nie autor testu.
@@ -594,32 +606,33 @@ def test_zgodnosc_przekrojowa_ma_ksztalt_trasy() -> None:
         for generator in model.generators
     }
     assert odpowiedz["der_count"] == len(bieg["modules"]) == len(oczekiwane)
+    assert [o["der_ref"] for o in bieg["ocena_wymagan"]] == [m["der_ref"] for m in bieg["modules"]]
     for modul in bieg["modules"]:
         p_max_kw, voltage_kv = oczekiwane[modul["der_ref"]]
         assert modul["p_max_kw"] == pytest.approx(p_max_kw)
         assert modul["voltage_kv"] == pytest.approx(voltage_kv)
-        # Klasa modułu: progi OD-5 (1 MW / 50 MW) — scena zasiewa moduły klasy B.
-        assert modul["module_type"] == "B"
+        # Klasa modułu z jednej klasyfikacji backendu (progi WOS) — scena zasiewa moduły B.
+        assert modul["module_type"] == modul["klasyfikacja"]["modul"] == "B"
+        assert modul["zrodlo_danych"] == "ZATWIERDZONY_MODEL"
         assert {test["test_id"] for test in modul["tests"]} == {f"T{i:02d}" for i in range(1, 21)}
         assert {t["verdict"] for t in modul["tests"]} <= {"pass", "fail", "no_data", "not_required"}
-    # Pola dowodowe S-1 obecne na kopercie biegu i per moduł (jeden kontrakt z `/run`).
-    assert {"reporting_status", "proof_status", "evidence_limitations", "evidence_by_test"} <= set(
-        bieg
-    )
-    assert set(bieg["evidence_per_module"]) == set(oczekiwane)
-    # Certyfikat PTPiREE z REALNEGO katalogu: falownik PV z wykazu PTPiREE ma
-    # numer dokumentu, falownik BESS spoza wykazu — nie ma. Moduły rozpoznawane
+        assert all(
+            t["summary_pl"] == t["ocena"]["wyjasnienie"]["zdanie_pl"] for t in modul["tests"]
+        )
+    for pole in ("reporting_status", "proof_status", "evidence_by_test", "certificate_evidence"):
+        assert pole not in bieg
+    # Certyfikat PTPiREE z REALNEGO katalogu: falownik PV z wykazu PTPiREE ma dowód z rekordu
+    # rejestru, magazyn spoza wykazu — nie ma (i jest poza NC RfG, O-28). Moduły rozpoznawane
     # po technologii Z MODELU (`gen_type`), nie po ręcznej etykiecie.
     technologia = {generator.ref_id: generator.gen_type for generator in model.generators}
-    dowody = {d["der_ref"]: d for d in bieg["certificate_evidence"]}
-    statusy = {m["der_ref"]: m["certificate_status"] for m in bieg["modules"]}
+    moduly = {m["der_ref"]: m for m in bieg["modules"]}
     for der_ref, rodzaj in technologia.items():
         if rodzaj == "pv_inverter":
-            assert dowody[der_ref]["document_number"]
-            assert statusy[der_ref] == "ptpiree_verified"
+            assert moduly[der_ref]["dowod_certyfikatu"]["numer_dokumentu"]
+            assert moduly[der_ref]["technologia"] == "PPM"
         else:
-            assert dowody[der_ref]["document_number"] is None
-            assert statusy[der_ref] == "unknown"
+            assert moduly[der_ref]["dowod_certyfikatu"] is None
+            assert moduly[der_ref]["technologia"] == "MAGAZYN"
 
 
 def test_werdykt_bez_biegow_jest_niesprawdzony() -> None:
@@ -1108,3 +1121,334 @@ def test_falowniki_rozplyw_gpz_feeder_dominujacy_wplyw_ignoruje_szum_sprzezenia(
     assert eksport._dominujacy_wplyw_na_galezi([dominujacy, szum], "X") == dominujacy
     assert eksport._dominujacy_wplyw_na_galezi([szum], "Y") is None
     assert eksport._dominujacy_wplyw_na_galezi([], "X") is None
+
+
+# ---------------------------------------------------------------------------
+# Karta AB-1a Pakiet D2 — sceny NC RfG na kontrakcie V2 (macierz, certyfikat, wniosek)
+# Oczekiwania wyprowadzone Z MODELU sceny (operacje domenowe), nie z listy przepisanej obok.
+# ---------------------------------------------------------------------------
+
+_HEX_64 = re.compile(r"^[0-9a-f]{64}$")
+_TESTY_T01_T20 = [f"T{i:02d}" for i in range(1, 21)]
+
+
+def _operator_z_modelu(model: object) -> str:
+    """Operator sceny = profil NC RfG modułów zapisany w modelu (jednoznaczny)."""
+    profile = {
+        dict(dict(generator.materialized_params or {}).get("profiles") or {}).get(
+            "nc_rfg_profile_ref"
+        )
+        for generator in model.generators  # type: ignore[attr-defined]
+    }
+    assert len(profile) == 1 and None not in profile, profile
+    return str(profile.pop())
+
+
+def test_katalog_ncrfg_zna_operatora_scen_i_testy_t01_t20() -> None:
+    katalog = eksport.ncrfg_katalog()
+    assert set(katalog) == {"procedure_version", "operators", "tests"}
+    assert set(katalog["procedure_version"]) == {
+        "tytul",
+        "wydanie",
+        "status",
+        "adres",
+        "obowiazuje_od",
+        "uwagi_pl",
+    }
+    operatorzy = [operator["operator_id"] for operator in katalog["operators"]]
+    assert _operator_z_modelu(eksport.enm_sceny_macierz()) in operatorzy
+    assert _operator_z_modelu(eksport.enm_sceny_magazyn()) in operatorzy
+    assert [test["test_id"] for test in katalog["tests"]] == _TESTY_T01_T20
+
+
+#: Flagi deklaracji modułu TRÓJSTANOWE (`bool | None`) — bez wymagań programu `*_required`.
+_FLAGI_TROJSTANOWE = tuple(
+    pole
+    for pole in POLA_DEKLARACJI
+    if DeklaracjeModulu.model_fields[pole].annotation == (bool | None)
+    and not pole.endswith("_required")
+)
+
+
+def test_wejscia_sceny_macierz_z_mostu_modelu_z_pochodzeniem() -> None:
+    """Formularz wstępny macierzy (`GET …/wejscia`) = wejścia mostu modelu sceny: moduły
+    w kolejności modelu, pochodzenie „z modelu" dla każdego modułu, bez DER pominiętych; pola
+    LICZONE z deklaracji kreatora w `meta` (statyzm, martwa strefa, zakres Q, Q(U), HVRT) są
+    wypełnione i nazwane „z modelu" (luka §5.3), a pola bez danej modelu — nie."""
+    model = eksport.enm_sceny_macierz()
+    wejscia = eksport.ncrfg_wejscia_scena_macierz()
+    assert set(wejscia) == {"case_id", "operator_id", "modules", "pola_z_modelu", "pominiete"}
+    assert wejscia["case_id"] == eksport.CASE_ID_HARNESSU
+    assert wejscia["operator_id"] == _operator_z_modelu(model)
+    assert [m["der_ref"] for m in wejscia["modules"]] == [g.ref_id for g in model.generators]
+    assert set(wejscia["pola_z_modelu"]) == {g.ref_id for g in model.generators}
+    assert wejscia["pominiete"] == []
+    pv = next(m for m in wejscia["modules"] if m["der_kind"] == "PV")
+    z_modelu = set(wejscia["pola_z_modelu"][pv["der_ref"]])
+    liczone_z_meta = {
+        "droop_percent": 5.0,
+        "dead_band_hz": 0.2,
+        "has_pf_droop": True,
+        "has_qu_curve": True,
+        "has_hvrt_curve": True,
+    }
+    for pole, wartosc in liczone_z_meta.items():
+        assert pv[pole] == wartosc, pole
+        assert pole in z_modelu, pole
+    assert pv["q_range_pct_pn_min"] < 0 < pv["q_range_pct_pn_max"]
+    assert {"q_range_pct_pn_min", "q_range_pct_pn_max"} <= z_modelu
+    assert pv["cos_phi_min"] is None and "cos_phi_min" not in z_modelu
+    assert not z_modelu & {"operator_id", "module_family"}
+
+
+def test_bieg_co_jesli_sceny_macierz_jest_zadaniem_klienta_bez_dowodu_serwera() -> None:
+    """Bieg „co-jeśli" liczy moduły z ZADANIA klienta: ciało = formularz wstępny bez edycji
+    = wejścia mostu odczytane z `GET …/wejscia` (klient niczego z modelu nie wyprowadza sam;
+    kolejność modułów ekranu — po referencji), źródło danych `ZADANIE_KLIENTA`, dowód
+    certyfikatu `null` (wyprowadza go wyłącznie serwer z zatwierdzonego modelu), rekordy
+    T01–T20 z oceną kryterium, zero pól zbiorczych V1."""
+    wejscia = eksport.ncrfg_wejscia_scena_macierz()
+    zadanie = eksport.ncrfg_bieg_scena_macierz_zadanie()
+    assert zadanie == {"modules": sorted(wejscia["modules"], key=lambda m: m["der_ref"])}
+    # Scena niesie wszystkie trzy stany flagi deklaracji (iloczyn cech formularza wstępnego).
+    stany = {modul[pole] for modul in zadanie["modules"] for pole in _FLAGI_TROJSTANOWE}
+    assert stany == {True, False, None}
+    bieg = eksport.ncrfg_bieg_scena_macierz()
+    assert bieg["contract"] == "NcRfgPtpireeTestResultV2"
+    assert [m["der_ref"] for m in bieg["modules"]] == [m["der_ref"] for m in zadanie["modules"]]
+    assert [o["der_ref"] for o in bieg["ocena_wymagan"]] == [m["der_ref"] for m in bieg["modules"]]
+    for modul in bieg["modules"]:
+        assert modul["zrodlo_danych"] == "ZADANIE_KLIENTA"
+        assert modul["dowod_certyfikatu"] is None
+        assert modul["module_type"] == modul["klasyfikacja"]["modul"]
+        assert [test["test_id"] for test in modul["tests"]] == _TESTY_T01_T20
+        assert all(test["ocena"]["wyjasnienie"]["zdanie_pl"] for test in modul["tests"])
+        for pole in ("overall_status", "pass_count", "fail_count", "certificate_status"):
+            assert pole not in modul
+    for pole in ("reporting_status", "proof_status", "evidence_by_test", "certificate_evidence"):
+        assert pole not in bieg
+
+
+def test_certyfikat_scen_jedno_zadanie_i_dwa_wyniki_z_modelu() -> None:
+    """Scena `macierz` (PV bez wykazanej zgodności) daje 422 z brakami; scena `certyfikat`
+    (magazyn — każde wymaganie `NIE_DOTYCZY`, O-28) daje widok dokumentu. Oba z tego samego
+    zadania: identyfikacja z zasiewu, operator z modelu."""
+    zadanie = eksport.certyfikat_scena_zadanie()
+    assert zadanie == {
+        "nazwa_projektu": eksport.NAZWA_PROJEKTU_SCEN_OZE,
+        "nazwa_przypadku": eksport.NAZWA_PRZYPADKU_SCEN_OZE,
+        "operator_id": _operator_z_modelu(eksport.enm_sceny_macierz()),
+    }
+    assert _operator_z_modelu(eksport.enm_sceny_magazyn()) == zadanie["operator_id"]
+
+    braki = eksport.certyfikat_scena_macierz_braki()
+    assert set(braki) == {"komunikat", "braki", "braki_pl", "pominiete", "pominiete_pl"}
+    assert braki["komunikat"]
+    assert braki["braki"] and len(braki["braki"]) == len(braki["braki_pl"])
+    # Braki przypisane do modułu (plan AB O-50 pkt 7): `{der_ref, der_name, rekord}` i zdania
+    # `{der_ref, der_name, zdanie_pl}` — moduły to generatory modelu sceny.
+    generatory = {g.ref_id: g.name for g in eksport.enm_sceny_macierz().generators}
+    for pozycja, zdanie in zip(braki["braki"], braki["braki_pl"], strict=True):
+        assert set(pozycja) == {"der_ref", "der_name", "rekord"}
+        assert set(zdanie) == {"der_ref", "der_name", "zdanie_pl"}
+        assert pozycja["der_ref"] == zdanie["der_ref"] and pozycja["der_ref"] in generatory
+        assert pozycja["der_name"] == zdanie["der_name"] == generatory[pozycja["der_ref"]]
+        assert zdanie["zdanie_pl"] == pozycja["rekord"]["wyjasnienie"]["zdanie_pl"]
+    # Brak = wymaganie stosowalne bez wykazanej zgodności (nigdy SPELNIA ani NIE_DOTYCZY).
+    assert {b["rekord"]["status_maszynowy"] for b in braki["braki"]}.isdisjoint(
+        {"SPELNIA", "NIE_DOTYCZY"}
+    )
+
+    model = eksport.enm_sceny_magazyn()
+    widok = eksport.certyfikat_scena_magazyn()
+    assert widok["kontrakt"] == "CertyfikatZgodnosciNcRfgV2"
+    identyfikacja = widok["identyfikacja"]
+    assert identyfikacja["projekt"] == zadanie["nazwa_projektu"]
+    assert identyfikacja["przypadek"] == zadanie["nazwa_przypadku"]
+    assert identyfikacja["operator_id"] == zadanie["operator_id"]
+    assert identyfikacja["case_id"] == eksport.CASE_ID_HARNESSU
+    assert {m["der_ref"] for m in widok["moduly"]} == {g.ref_id for g in model.generators}
+    for modul in widok["moduly"]:
+        assert modul["zrodlo_danych"] == "ZATWIERDZONY_MODEL"
+        assert modul["technologia"] == "MAGAZYN"
+        assert modul["wymagania"] and all(
+            pozycja["rekord"]["status_maszynowy"] == "NIE_DOTYCZY" for pozycja in modul["wymagania"]
+        )
+    assert _HEX_64.match(widok["odcisk_wejscia_sha256"])
+    assert _HEX_64.match(widok["odcisk_wyniku_sha256"])
+
+
+def test_zgodnosc_przekrojowa_sceny_magazyn_z_modelu() -> None:
+    model = eksport.enm_sceny_magazyn()
+    migawka = eksport.magazyn_scena_migawka()
+    assert [g["ref_id"] for g in migawka["generators"]] == [g.ref_id for g in model.generators]
+    odpowiedz = eksport.ncrfg_zgodnosc_przekrojowa_scena_magazyn()
+    assert odpowiedz["case_id"] == eksport.CASE_ID_HARNESSU
+    assert odpowiedz["operator_id"] == _operator_z_modelu(model)
+    assert odpowiedz["der_count"] == len(model.generators) == 1
+    bieg = odpowiedz["bieg"]
+    assert bieg["contract"] == "NcRfgPtpireeTestResultV2"
+    for modul in bieg["modules"]:
+        assert modul["zrodlo_danych"] == "ZATWIERDZONY_MODEL"
+        assert modul["technologia"] == "MAGAZYN"
+        assert modul["dowod_certyfikatu"] is None
+    assert {
+        rekord["status_maszynowy"]
+        for ocena in bieg["ocena_wymagan"]
+        for rekord in ocena["wymagania"]
+    } == {"NIE_DOTYCZY"}
+
+
+@pytest.mark.parametrize(
+    ("scena_modelu", "scena_zadania", "scena_przebiegow"),
+    [
+        ("enm_sceny_magazyn", "wniosek_scena_magazyn_zadanie", "wniosek_scena_magazyn_przebiegi"),
+        ("enm_sceny_macierz", "wniosek_scena_macierz_zadanie", "wniosek_scena_macierz_przebiegi"),
+    ],
+)
+def test_wniosek_zadanie_wskazuje_przebiegi_sceny_i_szyne_sn(
+    scena_modelu: str, scena_zadania: str, scena_przebiegow: str
+) -> None:
+    """Żądanie wniosku ekranu wskazuje DOKŁADNIE przebiegi zasiane w rejestrze sceny (UUID,
+    rozpływ i zwarcie trójfazowe, zakończone), węzeł SN GPZ i operatora z modelu."""
+    model = getattr(eksport, scena_modelu)()
+    zadanie = getattr(eksport, scena_zadania)()
+    przebiegi = getattr(eksport, scena_przebiegow)()
+    assert zadanie["nazwa_projektu"] == eksport.NAZWA_PROJEKTU_SCEN_OZE
+    assert zadanie["nazwa_przypadku"] == eksport.NAZWA_PRZYPADKU_SCEN_OZE
+    assert zadanie["wnioskodawca"] is None and zadanie["adres_przylaczenia"] is None
+    assert zadanie["operator_id"] == _operator_z_modelu(model)
+    # Węzeł przyłączenia = strona SN transformatora WN/SN GPZ, na napięciu górnej strony
+    # transformatorów blokowych modułów (wyprowadzone z topologii modelu, nie z nazwy szyny).
+    napiecia = {szyna.ref_id: szyna.voltage_kv for szyna in model.buses}
+    szyny_wytworcow = {generator.bus_ref for generator in model.generators}
+    bloki = [t for t in model.transformers if t.lv_bus_ref in szyny_wytworcow]
+    gpz = [t for t in model.transformers if t.lv_bus_ref not in szyny_wytworcow]
+    assert bloki and gpz
+    assert zadanie["bus_ref"] in {t.lv_bus_ref for t in gpz}
+    assert {napiecia[t.hv_bus_ref] for t in bloki} == {napiecia[zadanie["bus_ref"]]}
+    assert [(p["id"], p["analysis_type"], p["status"]) for p in przebiegi] == [
+        (zadanie["pf_run_id"], "LOAD_FLOW", "DONE"),
+        (zadanie["sc_run_id"], "SC_3F", "DONE"),
+    ]
+    for przebieg in przebiegi:
+        assert _WZORZEC_UUID.match(przebieg["id"])
+        assert przebieg["study_case_id"] == eksport.CASE_ID_HARNESSU
+
+
+def test_wniosek_scen_widok_i_braki_z_modelu() -> None:
+    """Scena `wniosek` (magazyn) daje widok V2; scena `wniosek-braki` (PV) daje 422 z tymi
+    samymi rekordami braków NC RfG co certyfikat tej sceny — jedna ocena wymagań."""
+    model = eksport.enm_sceny_magazyn()
+    zadanie = eksport.wniosek_scena_magazyn_zadanie()
+    widok = eksport.wniosek_scena_magazyn()
+    assert widok["kontrakt"] == "WniosekOkresleniaWarunkowPrzylaczeniaV2"
+    assert widok["identyfikacja"] == {
+        "projekt": zadanie["nazwa_projektu"],
+        "przypadek": zadanie["nazwa_przypadku"],
+        "wnioskodawca": None,
+        "adres_przylaczenia": None,
+        "wezel_przylaczenia": zadanie["bus_ref"],
+    }
+    zgodnosc = widok["zgodnosc_nc_rfg"]
+    assert zgodnosc["case_id"] == eksport.CASE_ID_HARNESSU
+    assert zgodnosc["operator_id"] == zadanie["operator_id"]
+    assert {m["der_ref"] for m in zgodnosc["moduly"]} == {g.ref_id for g in model.generators}
+    assert set(widok["odciski_sekcji_sha256"]) == {
+        "bilans_mocy",
+        "zgodnosc_nc_rfg",
+        "zwarcia_punkt_przylaczenia",
+    }
+    assert all(_HEX_64.match(odcisk) for odcisk in widok["odciski_sekcji_sha256"].values())
+
+    braki = eksport.wniosek_scena_macierz_braki()
+    assert set(braki) == {
+        "komunikat",
+        "braki",
+        "braki_ncrfg",
+        "braki_ncrfg_pl",
+        "pominiete",
+        "pominiete_pl",
+    }
+    assert braki["komunikat"]
+    assert braki["braki_ncrfg"] and len(braki["braki_ncrfg"]) == len(braki["braki_ncrfg_pl"])
+    certyfikat = eksport.certyfikat_scena_macierz_braki()
+    assert braki["braki_ncrfg"] == certyfikat["braki"]
+    assert braki["braki_ncrfg_pl"] == certyfikat["braki_pl"]
+
+
+def test_studium_dokument_sceny_macierz_niesie_dowod_urzadzen_typu_z_modelu() -> None:
+    """Sekcja dowodu dokumentu studium (żądanie z `case_id`): urządzenia modelu o TYPIE
+    katalogowym dokumentu, każde z rekordem wykazu PTPiREE albo jawnym brakiem — oczekiwania
+    z tabliczek modelu (status powiązania z wykazem nadaje materializacja katalogowa)."""
+    model = eksport.enm_sceny_macierz()
+    dokument = eksport.studium_dokument_scena_macierz()
+    typ = dokument["zalozenia"]["typ_katalogowy"]["id"]
+    tabliczki = {
+        generator.ref_id: dict(generator.materialized_params or {})
+        for generator in model.generators
+    }
+    urzadzenia_typu = [ref for ref, t in tabliczki.items() if t.get("catalog_item_id") == typ]
+    assert urzadzenia_typu, "scena musi mieć urządzenie typu dokumentu"
+    dowod = dokument["zalozenia"]["dowod_certyfikatu"]
+    assert dowod["catalog_item_id"] == typ
+    assert dowod["stan_pl"] is None
+    assert [u["der_ref"] for u in dowod["urzadzenia"]] == urzadzenia_typu
+    for urzadzenie in dowod["urzadzenia"]:
+        assert urzadzenie["wiersze"] and all(
+            w["etykieta_pl"] and w["tresc_pl"] for w in urzadzenie["wiersze"]
+        )
+        if tabliczki[urzadzenie["der_ref"]].get("ptpiree_status") == "POWIAZANY":
+            assert (
+                urzadzenie["dowod"]["numer_dokumentu"]
+                == tabliczki[urzadzenie["der_ref"]]["ptpiree_document_number"]
+            )
+            assert urzadzenie["odrzucony"] is None
+        else:
+            assert urzadzenie["dowod"] is None
+    assert dokument["zalozenia"]["operator"]["id"] == _operator_z_modelu(model)
+    assert dokument["zalozenia"]["przebieg_bazowy"]["run_id"] == str(eksport._UUID_PF_SCENY_WNIOSEK)
+
+
+@pytest.mark.parametrize(
+    ("nazwa", "status"),
+    [
+        ("krzywe_pokrycie_scena_pv", "BRAK_PODSTAWY"),
+        ("krzywe_pokrycie_scena_bez_krzywej", "NIE_OCENIONO"),
+        ("krzywe_pokrycie_scena_magazyn", "NIE_DOTYCZY"),
+    ],
+)
+def test_krzywe_pq_sceny_niosa_rekord_ocena_bez_statusu_widoku(nazwa: str, status: str) -> None:
+    """Widok pokrycia P–Q na kontrakcie werdyktu: rekord `ocena` (`OcenaKryterium`) i liczby
+    per punkt — bez dawnego `werdykt`/`pokryty`/`uwaga` (status i tekst liczy wyłącznie
+    kontrakt werdyktu). Iloczyn cech scen: porównanie wykonane × brak krzywej × magazyn."""
+    widok = eksport.FIXTURY[nazwa]()
+    assert set(widok) == {
+        "typ_katalogowy",
+        "operator",
+        "wymaganie",
+        "punkty",
+        "ocena",
+        "slad_whitebox",
+    }
+    assert widok["ocena"]["status_maszynowy"] == status
+    assert widok["ocena"]["kryterium_id"] == "pq.pokrycie_zakresu_mocy_biernej"
+    assert widok["ocena"]["wyjasnienie"]["zdanie_pl"]
+    for punkt in widok["punkty"]:
+        assert set(punkt) == {
+            "p_mw",
+            "q_min_mvar",
+            "q_max_mvar",
+            "q_wymagane_min_mvar",
+            "q_wymagane_max_mvar",
+            "zapas_dolny_mvar",
+            "zapas_gorny_mvar",
+            "margines_mvar",
+        }
+    if status == "NIE_OCENIONO":
+        assert widok["punkty"] == []
+        assert widok["ocena"]["wyjasnienie"]["czego_brakuje"]
+    else:
+        assert widok["punkty"]
+    typy = [rekord["id"] for rekord in eksport.krzywe_konwertery_scen()]
+    assert widok["typ_katalogowy"]["id"] in typy

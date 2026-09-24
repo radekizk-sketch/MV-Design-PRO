@@ -38,8 +38,10 @@ V126_CONTRACT_FILES: tuple[Path, ...] = (
     ROOT / "backend/src/network_model/solvers/ncrfg_ptpiree/engine.py",
     ROOT / "backend/src/network_model/solvers/v126_academic.py",
     ROOT / "backend/src/solver_input/v126_contracts.py",
-    ROOT / "frontend/src/ui/ncrfg-tests/api.ts",
-    ROOT / "frontend/src/ui/workspace/surfaces/NcRfgTestsTab.tsx",
+    # Karta AB-1a Pakiet D2: JEDYNY klient V2 NC RfG i ekran macierzy wymogów zastąpiły
+    # skasowane `ui/ncrfg-tests/api.ts` i `ui/workspace/surfaces/NcRfgTestsTab.tsx`.
+    ROOT / "frontend/src/ui2/oze/ncrfg/api.ts",
+    ROOT / "frontend/src/ui2/oze/macierz/MacierzNcRfg.tsx",
     ROOT / "docs/analysis/NC_RFG_PTPiREE_TESTY_KANON.md",
     ROOT / "docs/v12xx/KANON_V12_6_PROFESORSKI.md",
 )

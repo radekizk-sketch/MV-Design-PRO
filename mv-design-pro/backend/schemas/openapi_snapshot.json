@@ -2138,7 +2138,8 @@
     "type": "object"
    },
    "CertyfikatZgodnosciRequest": {
-    "description": "Wejście końcówki certyfikatu: pakiet macierzy + identyfikacja projektu.",
+    "additionalProperties": false,
+    "description": "Wejście końcówki certyfikatu: identyfikacja projektu i operator (profil wymagań).\n\nDane modułów i certyfikaty urządzeń pochodzą WYŁĄCZNIE z zatwierdzonego modelu przypadku\n(``case_id`` w zapytaniu) — ciało żądania nie ma na nie pól.",
     "properties": {
      "nazwa_projektu": {
       "minLength": 1,
@@ -2156,16 +2157,28 @@
       ],
       "title": "Nazwa Przypadku"
      },
-     "run_request": {
-      "$ref": "#/components/schemas/NcRfgPtpireeRunRequest"
+     "operator_id": {
+      "minLength": 1,
+      "title": "Operator Id",
+      "type": "string"
      }
     },
     "required": [
-     "run_request",
-     "nazwa_projektu"
+     "nazwa_projektu",
+     "operator_id"
     ],
     "title": "CertyfikatZgodnosciRequest",
     "type": "object"
+   },
+   "ClaimKind": {
+    "description": "Rodzaj twierdzenia, ktore wynik zdolnosci wspiera.\n\n- ``DYNAMIC_PERFORMANCE``: narzedzie orzeka, jak modul ZACHOWUJE SIE w\n  czasie (LVRT/HVRT, odbudowa mocy czynnej, odpowiedz czestotliwosciowa,\n  praca wyspowa, stabilnosc). Wylacznie zwalidowana symulacja moze\n  wspierac takie twierdzenie.\n- ``DECLARED_CONFIGURATION``: narzedzie orzeka ZADEKLAROWANY albo\n  katalogowy FAKT o module (tryb regulacji, telemechanika, THD z rekordu\n  katalogowego) porownany z wymaganiem. Deklaracja jest wlasciwa\n  podstawa takiego twierdzenia.\n- ``STATIC_CALCULATION``: narzedzie orzeka wielkosc z OBLICZENIA STATYCZNEGO\n  sieci (zwarcia IEC 60909, obciazalnosc i wytrzymalosc przewodow, spadki\n  napiec, rozplyw). Obliczenie solverem o poziomie ``VALIDATED_SIMULATION``\n  jest wlasciwa podstawa takiego twierdzenia; obliczenie bez ustalonej\n  poprawnosci — nie.\n\nDomyslnie ``DYNAMIC_PERFORMANCE`` — SUROWSZE odczytanie, zeby zdolnosc\nzarejestrowana bez przemyslenia nie stala sie dopuszczalna przez pominiecie.",
+    "enum": [
+     "DYNAMIC_PERFORMANCE",
+     "DECLARED_CONFIGURATION",
+     "STATIC_CALCULATION"
+    ],
+    "title": "ClaimKind",
+    "type": "string"
    },
    "CloneStudyCaseRequest": {
     "description": "Request to clone a study case.",
@@ -3301,6 +3314,219 @@
     "title": "DanaPrzyjeta",
     "type": "object"
    },
+   "DeklaracjeModulu": {
+    "additionalProperties": false,
+    "description": "Deklaracje modułu (dane testów T05, T10–T13, T16–T20) ze źródłem.\n\nJednostki: ``p_min_kw`` w kW, ``ramp_rate_pct_per_min`` w % P_max/min,\n``reactive_current_gain`` bezwymiarowe (p.u./p.u.), ``p_recovery_time_s`` i\n``cease_generation_time_s`` w s, ``harmonic_thdu_percent`` w %. Pola ``*_required``\nto wymaganie zdolności dodatkowej w programie szczegółowym badań operatora (brak =\nnie wymagano), pozostałe pola logiczne — deklaracja zdolności modułu (brak = nie\nzadeklarowano, ``False`` = zadeklarowano brak).\n\nPola są ŚCISŁE (``strict=True`` na polu — te same ograniczenia co pola wejścia solvera\n``NcRfgPtpireeModuleInput``, parytet przypięty testem): deklaracja ma typ swojego pola —\nwartość logiczna nie staje się liczbą (``true`` → 1,0 s), napis nie staje się liczbą ani\nwartością logiczną (``\"1.5\"``, ``\"true\"``), liczba nie staje się wartością logiczną\n(``1``); liczba całkowita w polu liczbowym jest liczbą (``100`` → 100,0 kW).",
+    "properties": {
+     "active_power_control_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Active Power Control Enabled"
+     },
+     "black_start_capable": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Black Start Capable"
+     },
+     "black_start_required": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Black Start Required"
+     },
+     "cease_generation_time_s": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cease Generation Time S"
+     },
+     "harmonic_thdu_percent": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Harmonic Thdu Percent"
+     },
+     "has_disturbance_recorder": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Has Disturbance Recorder"
+     },
+     "has_scada_communication": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Has Scada Communication"
+     },
+     "island_operation_capable": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Island Operation Capable"
+     },
+     "island_operation_required": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Island Operation Required"
+     },
+     "p_min_kw": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "P Min Kw"
+     },
+     "p_recovery_time_s": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "P Recovery Time S"
+     },
+     "power_oscillation_damping_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Power Oscillation Damping Enabled"
+     },
+     "power_oscillation_damping_required": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Power Oscillation Damping Required"
+     },
+     "ramp_rate_pct_per_min": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ramp Rate Pct Per Min"
+     },
+     "reactive_current_gain": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reactive Current Gain"
+     },
+     "reduction_generation_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reduction Generation Enabled"
+     },
+     "stop_generation_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stop Generation Enabled"
+     },
+     "zrodlo_pl": {
+      "anyOf": [
+       {
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Zrodlo Pl"
+     }
+    },
+    "title": "DeklaracjeModulu",
+    "type": "object"
+   },
    "DerAudit2Spec": {
     "properties": {
      "bess_operation_mode_refs": {
@@ -3605,6 +3831,28 @@
       "title": "Connection Variant",
       "type": "string"
      },
+     "data_umowy_przylaczeniowej": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Data Umowy Przylaczeniowej"
+     },
+     "deklaracje_modulu": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/DeklaracjeModulu"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
      "der_kind": {
       "enum": [
        "PV",
@@ -3613,6 +3861,27 @@
       ],
       "title": "Der Kind",
       "type": "string"
+     },
+     "modul_istniejacy": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Modul Istniejacy"
+     },
+     "nastawy_zabezpieczen": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NastawyZabezpieczenModulu"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "nc_rfg_module": {
       "anyOf": [
@@ -4154,6 +4423,78 @@
     "title": "DokumentStudiumRequest",
     "type": "object"
    },
+   "DokumentWarstwy": {
+    "additionalProperties": false,
+    "description": "Dokument warstwy: tytuł, wydanie, stan potwierdzenia w repo, data obowiązywania.\n\n``wydanie`` i ``obowiazuje_od`` są polami JAWNYMI w YAML (``null`` = nieustalone) —\nbrak klucza jest błędem, żeby nieustalenie było decyzją, a nie przeoczeniem.",
+    "properties": {
+     "adres": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Adres"
+     },
+     "obowiazuje_od": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Obowiazuje Od"
+     },
+     "status": {
+      "enum": [
+       "ZWERYFIKOWANE",
+       "WSKAZANE",
+       "NIEUSTALONE"
+      ],
+      "title": "Status",
+      "type": "string"
+     },
+     "tytul": {
+      "title": "Tytul",
+      "type": "string"
+     },
+     "uwagi_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Uwagi Pl"
+     },
+     "wydanie": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wydanie"
+     }
+    },
+    "required": [
+     "tytul",
+     "wydanie",
+     "status",
+     "obowiazuje_od"
+    ],
+    "title": "DokumentWarstwy",
+    "type": "object"
+   },
    "DomainOpEnvelopeModel": {
     "description": "Wspólny envelope wywołania operacji domenowej.",
     "properties": {
@@ -4201,6 +4542,112 @@
      "name"
     ],
     "title": "DomainOpPayloadModel",
+    "type": "object"
+   },
+   "DowodCertyfikatu": {
+    "additionalProperties": false,
+    "description": "Rekord wykazu certyfikowanych urządzeń PTPiREE dopasowany PO STRONIE SERWERA.\n\nBudowany wyłącznie w ``application/ncrfg_compliance/model_bridge.py`` z tabliczki\nurządzenia zatwierdzonego modelu dopasowanej do rejestru (snapshot wykazu wskazany przez\nwarstwę WiPWC profilu). Pola pochodzą z rekordu rejestru, nie z tabliczki. Klient API nie\nmoże go przysłać (``/run`` nie ma takiego pola).",
+    "properties": {
+     "adres_zrodla": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Adres Zrodla"
+     },
+     "data_akceptacji": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Data Akceptacji"
+     },
+     "model": {
+      "minLength": 1,
+      "title": "Model",
+      "type": "string"
+     },
+     "numer_dokumentu": {
+      "minLength": 1,
+      "title": "Numer Dokumentu",
+      "type": "string"
+     },
+     "podstawa": {
+      "$ref": "#/components/schemas/PodstawaWymagania"
+     },
+     "producent": {
+      "minLength": 1,
+      "title": "Producent",
+      "type": "string"
+     },
+     "rekord_id": {
+      "minLength": 1,
+      "title": "Rekord Id",
+      "type": "string"
+     },
+     "warunek_waznosci": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Warunek Waznosci"
+     },
+     "wersja_wipwc": {
+      "minLength": 1,
+      "title": "Wersja Wipwc",
+      "type": "string"
+     },
+     "wersja_wos": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wersja Wos"
+     },
+     "zakres_typow": {
+      "items": {
+       "enum": [
+        "A",
+        "B",
+        "C",
+        "D"
+       ],
+       "type": "string"
+      },
+      "title": "Zakres Typow",
+      "type": "array"
+     }
+    },
+    "required": [
+     "rekord_id",
+     "producent",
+     "model",
+     "numer_dokumentu",
+     "data_akceptacji",
+     "wersja_wipwc",
+     "wersja_wos",
+     "zakres_typow",
+     "warunek_waznosci",
+     "adres_zrodla",
+     "podstawa"
+    ],
+    "title": "DowodCertyfikatu",
     "type": "object"
    },
    "DowodModelu": {
@@ -4340,6 +4787,44 @@
     ],
     "title": "EquipmentProofRequest",
     "type": "object"
+   },
+   "Etykieta": {
+    "additionalProperties": false,
+    "description": "Etykieta PL i semantyka koloru statusu (§9) — liczona w backendzie, niesiona w rekordzie.",
+    "properties": {
+     "etykieta_pl": {
+      "title": "Etykieta Pl",
+      "type": "string"
+     },
+     "semantyka": {
+      "enum": [
+       "pozytywna",
+       "negatywna",
+       "ostrzegawcza",
+       "neutralna"
+      ],
+      "title": "Semantyka",
+      "type": "string"
+     }
+    },
+    "required": [
+     "etykieta_pl",
+     "semantyka"
+    ],
+    "title": "Etykieta",
+    "type": "object"
+   },
+   "EvidenceTier": {
+    "description": "Stopien dowodowy WYNIKU obliczenia (trzecia os proweniencji, karta S-1).\n\nOrthogonal do dwoch osi powyzej:\n\n- ``solver_input.provenance.SourceKind`` — skad wartosc WEJSCIOWA pochodzi w potoku;\n- :class:`FieldQuality` — jak bardzo wiarygodna jest wartosc WEJSCIOWA;\n- ``EvidenceTier`` — czy WYNIK obliczenia wolno przedstawic jako dowod\n  spelnienia wymagania normatywnego.\n\nRozroznienie, ktorego dwie starsze osie nie wyrazaja: wejscie moze byc\ndanymi z karty katalogowej najwyzszej jakosci, a mimo to obliczenie, ktore\nje konsumuje, moze nie miec ustalonej poprawnosci fizycznej. Dopuszczalnosc\ndowodowa jest cecha OBLICZENIA (zdolnosci), nie pojedynczego pola.\n\nPoziomy:\n\n- ``VALIDATED_SIMULATION``: obliczenie fizyczne o ustalonej poprawnosci\n  modelu i zachowania numerycznego (istnieje dowod walidacji). JEDYNY\n  poziom obliczenia dopuszczalny jako dowod regulacyjny.\n- ``TYPE_TEST_CERTIFICATE``: narzedzie niczego nie liczy — dowodem jest\n  certyfikat badania typu urzadzenia (badanie u producenta albo w jednostce\n  certyfikujacej), poswiadczony rekordem wykazu PTPiREE dopasowanym po\n  stronie serwera. Dopuszczalny jako dowod regulacyjny twierdzenia o\n  zachowaniu dynamicznym i o konfiguracji zadeklarowanej\n  (:data:`POZIOMY_DOPUSZCZALNE_DLA_TWIERDZENIA`); kompletnosc dowodu\n  (regula pokrycia wymagania certyfikatem, warunek waznosci rekordu)\n  rozstrzyga rekord wymagania, nie poziom. Towarzyszy WYLACZNIE metodzie\n  dowodu ``CERTYFIKAT`` (albo dowodowi laczonemu ze skladowa certyfikatu) —\n  walidatory ``werdykt.kontrakt``.\n- ``DECLARATION``: wartosc zadeklarowana przez wnioskodawce (albo\n  odczytana z profilu) i porownana z wymaganiem. Uprawniona kontrola\n  wymagania — ale obliczenie niczego nie wykazalo.\n- ``UNVALIDATED_MODEL``: obliczenie zostalo wykonane, ale model za nim nie\n  ma ustalonej poprawnosci fizycznej, wiec jego wynik nie moze wspierac\n  wniosku normatywnego.\n- ``NOT_SIMULATED``: zadne obliczenie fizyczne nie zostalo wykonane;\n  wielkosc „symulowana\" przypisana takiemu wynikowi nie jest wartoscia\n  policzona.\n\nZasada nadrzedna (lustro reguly FieldQuality): awans do\n``VALIDATED_SIMULATION`` wynika z WYKAZANEJ zdolnosci, nigdy z nazwania.\nOznaczenie zdolnosci jako zwalidowanej nie czyni jej zwalidowana — poziom\npodnosi sie wylacznie, gdy istnieje dowod walidacji.",
+    "enum": [
+     "VALIDATED_SIMULATION",
+     "TYPE_TEST_CERTIFICATE",
+     "DECLARATION",
+     "UNVALIDATED_MODEL",
+     "NOT_SIMULATED"
+    ],
+    "title": "EvidenceTier",
+    "type": "string"
    },
    "FaultCurrentRequest": {
     "description": "Fault current data for a location.",
@@ -4908,7 +5393,7 @@
     "type": "object"
    },
    "FieldQuality": {
-    "description": "Data-quality provenance axis for a single card field.\n\nOrthogonal to ``solver_input.provenance.SourceKind`` (which records *where* a value came\nfrom in the pipeline). ``FieldQuality`` records *how trustworthy* the value is:\n\n- ``DATASHEET`` (karta_techniczna): value taken from a manufacturer datasheet\n  / type-test report — fully trustworthy for the OSD package.\n- ``ESTIMATED`` (oszacowane): value is an engineering estimate without a real\n  source (e.g. a controller bandwidth assumed from technology defaults). It\n  MUST be tagged ``ESTIMATED`` — never ``DATASHEET`` — until a real source is\n  attached.\n- ``SYSTEM_DEFAULT`` (domyslne_techniczne): value is a system/technical\n  default carried by the schema (the field is present but no real value has\n  been provided).\n\nParamount rule: \"no gaps\" means the schema is COMPLETE (every field present),\nNOT that every field is filled with a fabricated value. A value with no real\nsource is ``ESTIMATED`` (or ``SYSTEM_DEFAULT``), never ``DATASHEET``.",
+    "description": "Data-quality provenance axis for a single card field.\n\nOrthogonal to ``solver_input.provenance.SourceKind`` (which records *where* a value came\nfrom in the pipeline). ``FieldQuality`` records *how trustworthy* the value is:\n\n- ``DATASHEET`` (karta techniczna): value taken from a manufacturer datasheet\n  / type-test report — fully trustworthy for the OSD package.\n- ``ESTIMATED`` (oszacowane): value is an engineering estimate without a real\n  source (e.g. a controller bandwidth assumed from technology defaults). It\n  MUST be tagged ``ESTIMATED`` — never ``DATASHEET`` — until a real source is\n  attached.\n- ``SYSTEM_DEFAULT`` (domyślne techniczne): value is a system/technical\n  default carried by the schema (the field is present but no real value has\n  been provided).\n\nParamount rule: \"no gaps\" means the schema is COMPLETE (every field present),\nNOT that every field is filled with a fabricated value. A value with no real\nsource is ``ESTIMATED`` (or ``SYSTEM_DEFAULT``), never ``DATASHEET``.",
     "enum": [
      "DATASHEET",
      "ESTIMATED",
@@ -5798,6 +6283,122 @@
     "title": "KartaWidmowa",
     "type": "object"
    },
+   "KlasyfikacjaModulu": {
+    "additionalProperties": false,
+    "description": "Wynik klasyfikacji modułu z progami, podstawą i regułą, która zadecydowała.\n\n``modul is None`` — moduł poniżej progu istotności (wymagania NC RfG nie mają\nzastosowania; wołający nazywa ten stan, nie przypisuje klasy). ``podstawa`` — podstawa\nprogów WOS (dziś ``NIEUSTALONE``: klasyfikacja ważna, rekord niesie zastrzeżenie).",
+    "properties": {
+     "modul": {
+      "anyOf": [
+       {
+        "enum": [
+         "A",
+         "B",
+         "C",
+         "D"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Modul"
+     },
+     "napiecie_d_kv": {
+      "title": "Napiecie D Kv",
+      "type": "number"
+     },
+     "podstawa": {
+      "$ref": "#/components/schemas/PodstawaWymagania"
+     },
+     "powod_pl": {
+      "title": "Powod Pl",
+      "type": "string"
+     },
+     "prog_min_kw": {
+      "title": "Prog Min Kw",
+      "type": "number"
+     },
+     "progi_kw": {
+      "additionalProperties": {
+       "type": "number"
+      },
+      "propertyNames": {
+       "enum": [
+        "B",
+        "C",
+        "D"
+       ]
+      },
+      "title": "Progi Kw",
+      "type": "object"
+     }
+    },
+    "required": [
+     "modul",
+     "prog_min_kw",
+     "progi_kw",
+     "napiecie_d_kv",
+     "podstawa",
+     "powod_pl"
+    ],
+    "title": "KlasyfikacjaModulu",
+    "type": "object"
+   },
+   "Kryterium": {
+    "additionalProperties": false,
+    "description": "Kryterium: opis, warunek w LaTeX (obowiązkowy dla relacji liczbowej — T2), relacja\ni opcjonalny warunek wstępny uruchomienia (np. przebieg napięcia nad obwiednią FRT) razem\nz podstawą tego warunku (np. obwiednia z profilu — jej stan źródła wchodzi do kompletności\ndowodu i do zastrzeżeń).",
+    "properties": {
+     "opis_pl": {
+      "title": "Opis Pl",
+      "type": "string"
+     },
+     "relacja": {
+      "enum": [
+       "NIE_WIECEJ",
+       "NIE_MNIEJ",
+       "PASMO",
+       "OBWIEDNIA_DOLNA",
+       "OBWIEDNIA_GORNA",
+       "LOGICZNE"
+      ],
+      "title": "Relacja",
+      "type": "string"
+     },
+     "warunek_latex": {
+      "title": "Warunek Latex",
+      "type": "string"
+     },
+     "warunek_wstepny_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Warunek Wstepny Pl"
+     },
+     "warunek_wstepny_podstawa": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PodstawaWymagania"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "opis_pl",
+     "warunek_latex",
+     "relacja"
+    ],
+    "title": "Kryterium",
+    "type": "object"
+   },
    "LVCircuitReportRequest": {
     "description": "Sekcje nN raportu (karta P0.10 §0.4, zakres minimalny P0).\n\nProvenance (``run_id``/``revision_id``/``przypadek_decydujacy``) jest\nPARAMETREM WEJŚCIOWYM — analizy nN nie są persystowane jako ``AnalysisRun``\n(zob. docstring ``build_nn_circuit_report_section``), więc nie ma obiektu\nprzebiegu, z którego dałoby się je odczytać.",
     "properties": {
@@ -6157,6 +6758,191 @@
     "title": "LVCircuitVerificationPackRequest",
     "type": "object"
    },
+   "LimitKryterium": {
+    "additionalProperties": false,
+    "description": "Limit w DOKŁADNIE jednej postaci (wartość, pasmo albo obwiednia) z podstawą (T4).\n\nPasmo: obie granice w tej samej jednostce, dolna < górna. Obwiednia: co najmniej dwa punkty\no ściśle rosnących chwilach i niepusta jednostka obwiedni.",
+    "properties": {
+     "jednostka_obwiedni": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Jednostka Obwiedni"
+     },
+     "obwiednia": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/PunktObwiedni"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Obwiednia"
+     },
+     "pasmo": {
+      "anyOf": [
+       {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+         {
+          "$ref": "#/components/schemas/Wielkosc"
+         },
+         {
+          "$ref": "#/components/schemas/Wielkosc"
+         }
+        ],
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pasmo"
+     },
+     "podstawa": {
+      "$ref": "#/components/schemas/PodstawaWymagania"
+     },
+     "wartosc": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Wielkosc"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "wersja_profilu": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wersja Profilu"
+     },
+     "zakres_stosowalnosci_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Zakres Stosowalnosci Pl"
+     }
+    },
+    "required": [
+     "podstawa"
+    ],
+    "title": "LimitKryterium",
+    "type": "object"
+   },
+   "Margines": {
+    "additionalProperties": false,
+    "description": "Margines: wartość z definicją i skalą ALBO jawnie niedefiniowalny z powodem.\n\n``wzgledny = wartosc / skala`` (§2.4); skala ma jednostkę marginesu i jest dodatnia;\n``skala_rodzaj`` mówi, czym jest skala (tolerancja z profilu, |limit| albo niepewność).\nBez skali margines względny nie istnieje (``None``) i składnik nie uczestniczy w wyborze\nkryterium najbliżej granicy.",
+    "properties": {
+     "definicja_latex": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Definicja Latex"
+     },
+     "niedefiniowalny": {
+      "default": false,
+      "title": "Niedefiniowalny",
+      "type": "boolean"
+     },
+     "powod_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Powod Pl"
+     },
+     "punkt_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Punkt Pl"
+     },
+     "skala": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Wielkosc"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "skala_rodzaj": {
+      "anyOf": [
+       {
+        "enum": [
+         "TOLERANCJA",
+         "LIMIT",
+         "NIEPEWNOSC"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Skala Rodzaj"
+     },
+     "wartosc": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Wielkosc"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "wzgledny": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wzgledny"
+     }
+    },
+    "title": "Margines",
+    "type": "object"
+   },
    "ModelParametryczny": {
     "additionalProperties": false,
     "description": "Model parametryczny impedancji wewnętrznej (np. Z_conv(f) przekształtnika z pasm\nregulatorów i filtra karty — rodzina literaturowa). Liść NIE liczy Z(f) — nazywa\nrodzinę i niesie parametry; solver modelu należy do warstwy solverów.",
@@ -6406,8 +7192,161 @@
     "title": "NakladkaRoznicResponse",
     "type": "object"
    },
+   "NastawyZabezpieczenModulu": {
+    "additionalProperties": false,
+    "description": "Nastawy zabezpieczeń modułu (U<, U>, f<, f>, RoCoF, skok wektora) ze źródłem.\n\nZakresy są fizyczne (napięcie względne i czasy nieujemne, częstotliwość i RoCoF\ndodatnie, przesunięcie fazy w przedziale (0, 180] stopni). Pary progów tej samej\nwielkości są uporządkowane: ``u_min_pu < u_max_pu`` i ``f_min_hz < f_max_hz``, gdy obie\nwartości pary są podane.\n\nTryb ścisły (``strict``): nastawa jest liczbą — wartość logiczna (``true`` → 1,0) ani\nnapis (``\"0.8\"``) nie są po cichu zamieniane na próg zabezpieczenia; liczba całkowita\njest liczbą (``1`` → 1,0).",
+    "properties": {
+     "f_max_czas_s": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "F Max Czas S"
+     },
+     "f_max_hz": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "F Max Hz"
+     },
+     "f_min_czas_s": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "F Min Czas S"
+     },
+     "f_min_hz": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "F Min Hz"
+     },
+     "przesuniecie_fazy_deg": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "maximum": 180.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Przesuniecie Fazy Deg"
+     },
+     "rocof_czas_s": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rocof Czas S"
+     },
+     "rocof_hz_s": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rocof Hz S"
+     },
+     "u_max_czas_s": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "U Max Czas S"
+     },
+     "u_max_pu": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "U Max Pu"
+     },
+     "u_min_czas_s": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "U Min Czas S"
+     },
+     "u_min_pu": {
+      "anyOf": [
+       {
+        "minimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "U Min Pu"
+     },
+     "zrodlo_pl": {
+      "anyOf": [
+       {
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Zrodlo Pl"
+     }
+    },
+    "title": "NastawyZabezpieczenModulu",
+    "type": "object"
+   },
    "NcRfgCaseComplianceResponse": {
-    "description": "Zgodność NC RfG przypadku: bieg solvera na DER modelu, opakowany per przypadek.\n\n``bieg`` jest ``None`` DOKŁADNIE wtedy, gdy solver nie miał żadnego modułu do\nobjęcia (``der_count == 0``): kontrakt solvera wymaga ≥ 1 modułu, a pusty\nbieg z fabrykowanym odciskiem/raportem byłby fałszem. ``pominiete`` nazywa DER\nmodelu, których solver nie objął (brak mocy / brak napięcia przyłączenia) —\nuczciwy stan zerowy per urządzenie, nie cisza.",
+    "description": "Zgodność NC RfG przypadku: bieg solvera na DER modelu, opakowany per przypadek.\n\n``bieg`` jest ``None`` DOKŁADNIE wtedy, gdy solver nie miał żadnego modułu do objęcia\n(``der_count == 0``): kontrakt solvera wymaga ≥ 1 modułu, a pusty bieg z fabrykowanym\nodciskiem byłby fałszem. ``pominiete`` nazywa DER modelu, których solver nie objął (brak\nmocy / brak napięcia przyłączenia); ``certyfikaty_odrzucone`` — tabliczki urządzeń, których\nserwer nie dopasował do wykazu PTPiREE (z powodem).",
     "properties": {
      "bieg": {
       "anyOf": [
@@ -6422,6 +7361,13 @@
      "case_id": {
       "title": "Case Id",
       "type": "string"
+     },
+     "certyfikaty_odrzucone": {
+      "items": {
+       "$ref": "#/components/schemas/NcRfgCertyfikatOdrzucony"
+      },
+      "title": "Certyfikaty Odrzucone",
+      "type": "array"
      },
      "der_count": {
       "title": "Der Count",
@@ -6444,52 +7390,24 @@
      "operator_id",
      "der_count",
      "pominiete",
+     "certyfikaty_odrzucone",
      "bieg"
     ],
     "title": "NcRfgCaseComplianceResponse",
     "type": "object"
    },
-   "NcRfgCertificateEvidence": {
-    "description": "Dowód certyfikacji PTPiREE urządzenia testowanego w biegu NC RfG.\n\nWartości pochodzą WPROST z tabliczki urządzenia w modelu (``Generator.\nmaterialized_params``), którą kreator DER zapisał z rekordu katalogowego.\nTen moduł niczego nie wylicza i niczego nie dopowiada: brak danej = ``None``\n(uczciwy stan zerowy), nigdy wartość domyślna ani zgadnięta.",
+   "NcRfgCertyfikatOdrzucony": {
+    "description": "Tabliczka urządzenia wskazuje certyfikat z wykazu PTPiREE, ale serwer nie potwierdził\ngo w rejestrze — brak dowodu certyfikatu z nazwanym powodem.",
     "properties": {
-     "acceptance_date": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Acceptance Date"
-     },
-     "certificate_condition": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Certificate Condition"
-     },
      "der_ref": {
       "title": "Der Ref",
       "type": "string"
      },
-     "document_number": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Document Number"
+     "powod_pl": {
+      "title": "Powod Pl",
+      "type": "string"
      },
-     "ppm_scope": {
+     "rekord_ref": {
       "anyOf": [
        {
         "type": "string"
@@ -6498,50 +7416,19 @@
         "type": "null"
        }
       ],
-      "title": "Ppm Scope"
-     },
-     "source_url": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Source Url"
-     },
-     "wipwc_version": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Wipwc Version"
-     },
-     "wos_version": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Wos Version"
+      "title": "Rekord Ref"
      }
     },
     "required": [
-     "der_ref"
+     "der_ref",
+     "rekord_ref",
+     "powod_pl"
     ],
-    "title": "NcRfgCertificateEvidence",
+    "title": "NcRfgCertyfikatOdrzucony",
     "type": "object"
    },
    "NcRfgDerPominiety": {
-    "description": "DER modelu, którego solver NIE może objąć biegiem — jawny powód, nie cisza.\n\nTen sam słownik powodów, co blokada modułu w macierzy frontendu\n(``ui2/oze/macierz/macierzModel.ts::PowodBlokady``): brak mocy albo brak\nnapięcia przyłączenia. Solver wymaga ``p_max_kw > 0`` i ``voltage_kv > 0``\n(kontrakt B-01) — zamiast fabrykować liczbę, DER trafia tutaj.",
+    "description": "DER modelu, którego solver NIE może objąć biegiem — jawny powód, nie cisza.",
     "properties": {
      "der_name": {
       "anyOf": [
@@ -6581,33 +7468,47 @@
     "type": "object"
    },
    "NcRfgPtpireeModuleInput": {
-    "description": "Dane jednego PGM/PPM do pakietu testow zgodnosci.",
+    "additionalProperties": false,
+    "description": "Dane jednego modułu (PGM/PPM) do pakietu testów zgodności.",
     "properties": {
      "active_power_control_enabled": {
-      "default": false,
-      "title": "Active Power Control Enabled",
-      "type": "boolean"
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Active Power Control Enabled"
      },
      "black_start_capable": {
-      "default": false,
-      "title": "Black Start Capable",
-      "type": "boolean"
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Black Start Capable"
      },
      "black_start_required": {
       "default": false,
       "title": "Black Start Required",
       "type": "boolean"
      },
-     "certificate_status": {
-      "default": "unknown",
-      "enum": [
-       "ptpiree_verified",
-       "none",
-       "expired",
-       "unknown"
+     "cease_generation_time_s": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
       ],
-      "title": "Certificate Status",
-      "type": "string"
+      "title": "Cease Generation Time S"
      },
      "cos_phi_min": {
       "anyOf": [
@@ -6622,6 +7523,18 @@
       ],
       "title": "Cos Phi Min"
      },
+     "data_umowy_przylaczeniowej": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Data Umowy Przylaczeniowej"
+     },
      "dead_band_hz": {
       "anyOf": [
        {
@@ -6635,7 +7548,6 @@
       "title": "Dead Band Hz"
      },
      "der_kind": {
-      "default": "PV",
       "enum": [
        "PV",
        "BESS",
@@ -6686,9 +7598,15 @@
       "title": "Harmonic Thdu Percent"
      },
      "has_disturbance_recorder": {
-      "default": false,
-      "title": "Has Disturbance Recorder",
-      "type": "boolean"
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Has Disturbance Recorder"
      },
      "has_dynamic_model": {
       "default": false,
@@ -6716,32 +7634,63 @@
       "type": "boolean"
      },
      "has_scada_communication": {
-      "default": false,
-      "title": "Has Scada Communication",
-      "type": "boolean"
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Has Scada Communication"
      },
      "island_operation_capable": {
-      "default": false,
-      "title": "Island Operation Capable",
-      "type": "boolean"
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Island Operation Capable"
      },
      "island_operation_required": {
       "default": false,
       "title": "Island Operation Required",
       "type": "boolean"
      },
+     "modul_istniejacy": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Modul Istniejacy"
+     },
      "module_family": {
-      "default": "PPM",
       "enum": [
        "PPM",
-       "SyPGM",
-       "Morski_PPM"
+       "SyPGM"
       ],
       "title": "Module Family",
       "type": "string"
      },
+     "nastawy_zabezpieczen_modulu": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/NastawyZabezpieczenModulu"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
      "operator_id": {
-      "default": "enea",
+      "minLength": 1,
       "title": "Operator Id",
       "type": "string"
      },
@@ -6775,9 +7724,15 @@
       "title": "P Recovery Time S"
      },
      "power_oscillation_damping_enabled": {
-      "default": false,
-      "title": "Power Oscillation Damping Enabled",
-      "type": "boolean"
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Power Oscillation Damping Enabled"
      },
      "power_oscillation_damping_required": {
       "default": false,
@@ -6831,14 +7786,26 @@
       "title": "Reactive Current Gain"
      },
      "reduction_generation_enabled": {
-      "default": false,
-      "title": "Reduction Generation Enabled",
-      "type": "boolean"
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reduction Generation Enabled"
      },
      "stop_generation_enabled": {
-      "default": false,
-      "title": "Stop Generation Enabled",
-      "type": "boolean"
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Stop Generation Enabled"
      },
      "voltage_kv": {
       "exclusiveMinimum": 0.0,
@@ -6848,6 +7815,9 @@
     },
     "required": [
      "der_ref",
+     "der_kind",
+     "module_family",
+     "operator_id",
      "p_max_kw",
      "voltage_kv"
     ],
@@ -6855,16 +7825,28 @@
     "type": "object"
    },
    "NcRfgPtpireeModuleResult": {
+    "description": "Wynik modułu: klasyfikacja z podstawą i powodem, technologia, dowód certyfikatu i\nrekordy testów. Bez agregatu i bez liczników (O-13) — zgodność per wymaganie liczy\nocena wymagań.",
     "properties": {
-     "certificate_status": {
-      "default": "unknown",
-      "enum": [
-       "ptpiree_verified",
-       "none",
-       "expired",
-       "unknown"
+     "data_umowy_przylaczeniowej": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
       ],
-      "title": "Certificate Status",
+      "title": "Data Umowy Przylaczeniowej"
+     },
+     "der_kind": {
+      "enum": [
+       "PV",
+       "BESS",
+       "FW",
+       "OTHER"
+      ],
+      "title": "Der Kind",
       "type": "string"
      },
      "der_name": {
@@ -6882,30 +7864,54 @@
       "title": "Der Ref",
       "type": "string"
      },
-     "fail_count": {
-      "title": "Fail Count",
-      "type": "integer"
+     "dowod_certyfikatu": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/DowodCertyfikatu"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "klasyfikacja": {
+      "$ref": "#/components/schemas/KlasyfikacjaModulu"
+     },
+     "modul_istniejacy": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Modul Istniejacy"
      },
      "module_family": {
       "enum": [
        "PPM",
-       "SyPGM",
-       "Morski_PPM"
+       "SyPGM"
       ],
       "title": "Module Family",
       "type": "string"
      },
      "module_type": {
-      "title": "Module Type",
-      "type": "string"
-     },
-     "no_data_count": {
-      "title": "No Data Count",
-      "type": "integer"
-     },
-     "not_required_count": {
-      "title": "Not Required Count",
-      "type": "integer"
+      "anyOf": [
+       {
+        "enum": [
+         "A",
+         "B",
+         "C",
+         "D"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Module Type"
      },
      "operator_id": {
       "title": "Operator Id",
@@ -6915,26 +7921,26 @@
       "title": "Operator Name Pl",
       "type": "string"
      },
-     "overall_status": {
-      "enum": [
-       "zgodny",
-       "niezgodny",
-       "brak_danych"
-      ],
-      "title": "Overall Status",
-      "type": "string"
-     },
      "p_max_kw": {
       "title": "P Max Kw",
       "type": "number"
      },
-     "pass_count": {
-      "title": "Pass Count",
-      "type": "integer"
+     "profile_hash": {
+      "title": "Profile Hash",
+      "type": "string"
      },
-     "required_count": {
-      "title": "Required Count",
-      "type": "integer"
+     "profile_version": {
+      "title": "Profile Version",
+      "type": "string"
+     },
+     "technologia": {
+      "enum": [
+       "PPM",
+       "SPGM",
+       "MAGAZYN"
+      ],
+      "title": "Technologia",
+      "type": "string"
      },
      "tests": {
       "items": {
@@ -6946,6 +7952,17 @@
      "voltage_kv": {
       "title": "Voltage Kv",
       "type": "number"
+     },
+     "wersja_procedury": {
+      "$ref": "#/components/schemas/DokumentWarstwy"
+     },
+     "zrodlo_danych": {
+      "enum": [
+       "ZATWIERDZONY_MODEL",
+       "ZADANIE_KLIENTA"
+      ],
+      "title": "Zrodlo Danych",
+      "type": "string"
      }
     },
     "required": [
@@ -6954,28 +7971,28 @@
      "operator_id",
      "operator_name_pl",
      "module_type",
+     "klasyfikacja",
+     "der_kind",
      "module_family",
+     "technologia",
+     "modul_istniejacy",
+     "data_umowy_przylaczeniowej",
+     "wersja_procedury",
+     "profile_version",
+     "profile_hash",
      "p_max_kw",
      "voltage_kv",
-     "required_count",
-     "pass_count",
-     "fail_count",
-     "no_data_count",
-     "not_required_count",
-     "overall_status",
+     "dowod_certyfikatu",
+     "zrodlo_danych",
      "tests"
     ],
     "title": "NcRfgPtpireeModuleResult",
     "type": "object"
    },
    "NcRfgPtpireeRunRequest": {
-    "description": "Pakiet uruchomienia testow dla jednego lub wielu modulow.",
+    "additionalProperties": false,
+    "description": "Pakiet uruchomienia testów dla jednego lub wielu modułów.\n\nBrak wersji procedury (pochodzi z profilu), brak ziarna (solver jest deterministyczny\nbez losowości) i brak jakiegokolwiek pola certyfikatu — ``extra=\"forbid\"``.",
     "properties": {
-     "deterministic_seed": {
-      "default": 0,
-      "title": "Deterministic Seed",
-      "type": "integer"
-     },
      "modules": {
       "items": {
        "$ref": "#/components/schemas/NcRfgPtpireeModuleInput"
@@ -6983,11 +8000,6 @@
       "minItems": 1,
       "title": "Modules",
       "type": "array"
-     },
-     "procedure_version": {
-      "default": "PTPiREE Procedura testowania v3.0",
-      "title": "Procedure Version",
-      "type": "string"
      },
      "requested_test_ids": {
       "items": {
@@ -7004,58 +8016,16 @@
     "type": "object"
    },
    "NcRfgPtpireeRunResponse": {
-    "description": "Wynik biegu POSZERZONY o dowód certyfikacji (P2) i stopień dowodowy (S-1).\n\nDziedziczy kontrakt solvera w całości — wszystkie istniejące pola zachowują\nnazwy, typy i wartości. Pola ``certificate_evidence``, ``reporting_status``,\n``proof_status``, ``evidence_limitations``, ``evidence_note_pl``,\n``evidence_per_module``, ``evidence_by_test`` są ADDYTYWNE. Ocena dowodowa\nliczona ``ocena_dowodowa_biegu`` (``solver_input.dowod_ncrfg``) — TĄ SAMĄ\nfunkcją, którą czyta bramka certyfikatu\n(``application/analyses/certyfikat_zgodnosci.py::zbierz_braki``).",
+    "description": "Wynik biegu solvera POSZERZONY o ocenę wymagań profilu per moduł.\n\n``ocena_wymagan`` jest OBOWIĄZKOWA (także dla biegu „co-jeśli\"): kolejność i tożsamość\nmodułów muszą być identyczne jak w ``modules`` (walidator — predykat parami). Dowód\ncertyfikatu modułu żyje w JEDNYM miejscu: ``modules[i].dowod_certyfikatu``.",
     "properties": {
-     "certificate_evidence": {
-      "default": [],
-      "items": {
-       "$ref": "#/components/schemas/NcRfgCertificateEvidence"
-      },
-      "title": "Certificate Evidence",
-      "type": "array"
-     },
      "contract": {
-      "default": "NcRfgPtpireeTestResultV1",
+      "default": "NcRfgPtpireeTestResultV2",
       "title": "Contract",
       "type": "string"
      },
      "deterministic_hash": {
       "title": "Deterministic Hash",
       "type": "string"
-     },
-     "evidence_by_test": {
-      "additionalProperties": {
-       "additionalProperties": {
-        "additionalProperties": true,
-        "type": "object"
-       },
-       "type": "object"
-      },
-      "default": {},
-      "title": "Evidence By Test",
-      "type": "object"
-     },
-     "evidence_limitations": {
-      "default": [],
-      "items": {
-       "type": "string"
-      },
-      "title": "Evidence Limitations",
-      "type": "array"
-     },
-     "evidence_note_pl": {
-      "default": "",
-      "title": "Evidence Note Pl",
-      "type": "string"
-     },
-     "evidence_per_module": {
-      "additionalProperties": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "default": {},
-      "title": "Evidence Per Module",
-      "type": "object"
      },
      "input_hash": {
       "title": "Input Hash",
@@ -7068,22 +8038,18 @@
       "title": "Modules",
       "type": "array"
      },
-     "procedure_version": {
-      "title": "Procedure Version",
-      "type": "string"
+     "ocena_wymagan": {
+      "items": {
+       "$ref": "#/components/schemas/OcenaWymaganModulu"
+      },
+      "title": "Ocena Wymagan",
+      "type": "array"
      },
-     "proof_status": {
-      "default": "incomplete",
-      "title": "Proof Status",
-      "type": "string"
+     "procedure_version": {
+      "$ref": "#/components/schemas/DokumentWarstwy"
      },
      "report_pl": {
       "title": "Report Pl",
-      "type": "string"
-     },
-     "reporting_status": {
-      "default": "not_reportable",
-      "title": "Reporting Status",
       "type": "string"
      },
      "solver_version": {
@@ -7113,12 +8079,14 @@
      "modules",
      "test_catalog",
      "white_box_trace",
-     "report_pl"
+     "report_pl",
+     "ocena_wymagan"
     ],
     "title": "NcRfgPtpireeRunResponse",
     "type": "object"
    },
    "NcRfgPtpireeTestDefinition": {
+    "description": "Definicja testu kanonu T01–T20 z JEDYNYM rejestrem zdolności dowodowej testu.\n\n``zdolnosc_id`` — identyfikator zdolności w rejestrze ``solver_input.provenance``\n(poziom dowodowy ``EvidenceTier``); ``rodzaj_twierdzenia`` — rodzaj twierdzenia, które\ntest wspiera (konfiguracja zadeklarowana albo zachowanie dynamiczne).",
     "properties": {
      "ability_pl": {
       "title": "Ability Pl",
@@ -7146,8 +8114,23 @@
       "title": "Procedure Basis Pl",
       "type": "string"
      },
+     "required_without_certificate_for": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Required Without Certificate For",
+      "type": "array"
+     },
+     "rodzaj_twierdzenia": {
+      "$ref": "#/components/schemas/ClaimKind"
+     },
      "test_id": {
       "title": "Test Id",
+      "type": "string"
+     },
+     "zdolnosc_id": {
+      "minLength": 1,
+      "title": "Zdolnosc Id",
       "type": "string"
      }
     },
@@ -7155,28 +8138,27 @@
      "test_id",
      "ability_pl",
      "procedure_basis_pl",
-     "default_for_modules"
+     "default_for_modules",
+     "zdolnosc_id",
+     "rodzaj_twierdzenia"
     ],
     "title": "NcRfgPtpireeTestDefinition",
     "type": "object"
    },
    "NcRfgPtpireeTestResult": {
+    "description": "Wynik testu: rekord ``ocena`` + pola pochodne (kopie z rekordu, walidowane parami).",
     "properties": {
      "ability_pl": {
       "title": "Ability Pl",
       "type": "string"
      },
-     "fix_actions": {
-      "items": {
-       "type": "string"
-      },
-      "title": "Fix Actions",
-      "type": "array"
-     },
      "metrics": {
       "additionalProperties": true,
       "title": "Metrics",
       "type": "object"
+     },
+     "ocena": {
+      "$ref": "#/components/schemas/OcenaKryterium"
      },
      "required": {
       "title": "Required",
@@ -7218,7 +8200,8 @@
      "required",
      "required_reason_pl",
      "verdict",
-     "summary_pl"
+     "summary_pl",
+     "ocena"
     ],
     "title": "NcRfgPtpireeTestResult",
     "type": "object"
@@ -7276,6 +8259,97 @@
      "proof_ref"
     ],
     "title": "NcRfgTraceStep",
+    "type": "object"
+   },
+   "NcRfgWejsciaPrzypadkuResponse": {
+    "description": "Wejścia modułów NC RfG złożone Z MODELU przypadku przez most ``model_bridge`` — TE SAME\nwejścia, które ocenia zgodność przypadku (``zgodnosc_ncrfg_przypadku``), bez biegu.\n\nPO CO: formularz biegu „co-jeśli\" macierzy startuje z danych modelu (także pól liczonych\nz ``meta`` generatora: statyzm, martwa strefa, cosφ, zakresy Q, zdolności z deklaracji\nkreatora i wiązań) jednym odczytem, bez powielania logiki mostu po stronie klienta.\n``pola_z_modelu`` (po ``der_ref``) — pola z wartością z danych modelu (pochodzenie\n„z modelu\" w formularzu; ``model_bridge.pola_wejscia_z_modelu``). ``pominiete`` — DER\nmodelu, których most nie objął (brak mocy / napięcia), z powodem.",
+    "properties": {
+     "case_id": {
+      "title": "Case Id",
+      "type": "string"
+     },
+     "modules": {
+      "items": {
+       "$ref": "#/components/schemas/NcRfgPtpireeModuleInput"
+      },
+      "title": "Modules",
+      "type": "array"
+     },
+     "operator_id": {
+      "title": "Operator Id",
+      "type": "string"
+     },
+     "pola_z_modelu": {
+      "additionalProperties": {
+       "items": {
+        "type": "string"
+       },
+       "type": "array"
+      },
+      "title": "Pola Z Modelu",
+      "type": "object"
+     },
+     "pominiete": {
+      "items": {
+       "$ref": "#/components/schemas/NcRfgDerPominiety"
+      },
+      "title": "Pominiete",
+      "type": "array"
+     }
+    },
+    "required": [
+     "case_id",
+     "operator_id",
+     "modules",
+     "pola_z_modelu",
+     "pominiete"
+    ],
+    "title": "NcRfgWejsciaPrzypadkuResponse",
+    "type": "object"
+   },
+   "Niepewnosc": {
+    "additionalProperties": false,
+    "description": "Niepewność wyniku: wartość z metodą oszacowania ALBO jawny powód braku (§6).\n\nWartość obejmuje WYŁĄCZNIE błąd dyskretyzacji: wynik raportowany jest z biegu kontrolnego\no drobniejszym kroku, a ``u = |m(h) − m(h/2)|``. Niepewność modelowa (parametry\nniezwalidowane) nie jest liczbą — wyraża ją status modelu i kompletność dowodu. Niepewność\njest wielkością nieujemną. Dla metody ``SYMULACJA`` wartość liczbowa jest obowiązkowa\n(walidator ``OcenaKryterium``).",
+    "properties": {
+     "metoda_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Metoda Pl"
+     },
+     "nie_dotyczy": {
+      "default": false,
+      "title": "Nie Dotyczy",
+      "type": "boolean"
+     },
+     "powod_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Powod Pl"
+     },
+     "wartosc": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Wielkosc"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "title": "Niepewnosc",
     "type": "object"
    },
    "NumericDeltaResponse": {
@@ -7337,6 +8411,130 @@
      "moc_va"
     ],
     "title": "ObciazenieAparatu",
+    "type": "object"
+   },
+   "OcenaKryterium": {
+    "additionalProperties": false,
+    "description": "Rekord poziomu K: JEDNO kryterium na JEDNYM przedmiocie (§4.1).\n\nKonstrukcja właściwa: ``werdykt.decyzja.ocen_kryterium``. Konstrukcja bezpośrednia (także\nodczyt z JSON) przechodzi te same wyprowadzenia i jest odrzucana, gdy którekolwiek\nwyprowadzone pole różni się od wyniku reguły.",
+    "properties": {
+     "dowod": {
+      "$ref": "#/components/schemas/StatusDowodu"
+     },
+     "etykieta": {
+      "$ref": "#/components/schemas/Etykieta"
+     },
+     "kompletnosc_dowodu": {
+      "enum": [
+       "PELNY",
+       "NIEPELNY",
+       "NIE_DOTYCZY"
+      ],
+      "title": "Kompletnosc Dowodu",
+      "type": "string"
+     },
+     "kryterium": {
+      "$ref": "#/components/schemas/Kryterium"
+     },
+     "kryterium_id": {
+      "title": "Kryterium Id",
+      "type": "string"
+     },
+     "limit": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/LimitKryterium"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "margines": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Margines"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "niepewnosc": {
+      "$ref": "#/components/schemas/Niepewnosc"
+     },
+     "podstawa": {
+      "$ref": "#/components/schemas/PodstawaWymagania"
+     },
+     "powody_niepelnosci": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Powody Niepelnosci",
+      "type": "array"
+     },
+     "przedmiot": {
+      "$ref": "#/components/schemas/Przedmiot"
+     },
+     "slad": {
+      "items": {
+       "$ref": "#/components/schemas/OdnosnikSladu"
+      },
+      "title": "Slad",
+      "type": "array"
+     },
+     "status_maszynowy": {
+      "enum": [
+       "SPELNIA",
+       "NIE_SPELNIA",
+       "NIEJEDNOZNACZNY",
+       "NIE_OCENIONO",
+       "BRAK_PODSTAWY",
+       "BRAK_DOWODU",
+       "NIE_DOTYCZY"
+      ],
+      "title": "Status Maszynowy",
+      "type": "string"
+     },
+     "stosowalnosc": {
+      "$ref": "#/components/schemas/Stosowalnosc"
+     },
+     "wyjasnienie": {
+      "$ref": "#/components/schemas/WyjasnienieWerdyktu"
+     },
+     "wynik": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/WynikKryterium"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "zakres_waznosci": {
+      "$ref": "#/components/schemas/ZakresWaznosci"
+     }
+    },
+    "required": [
+     "kryterium_id",
+     "przedmiot",
+     "kryterium",
+     "podstawa",
+     "stosowalnosc",
+     "wynik",
+     "limit",
+     "margines",
+     "niepewnosc",
+     "status_maszynowy",
+     "kompletnosc_dowodu",
+     "powody_niepelnosci",
+     "etykieta",
+     "wyjasnienie",
+     "dowod",
+     "zakres_waznosci",
+     "slad"
+    ],
+    "title": "OcenaKryterium",
     "type": "object"
    },
    "OcenaSekcji": {
@@ -7449,6 +8647,64 @@
     "title": "OcenaSkladnika",
     "type": "object"
    },
+   "OcenaWymaganModulu": {
+    "additionalProperties": false,
+    "description": "Rekordy ``WynikWymagania`` jednego modułu — kolejność wymagań = kolejność profilu.",
+    "properties": {
+     "der_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Der Name"
+     },
+     "der_ref": {
+      "title": "Der Ref",
+      "type": "string"
+     },
+     "klasyfikacja": {
+      "$ref": "#/components/schemas/KlasyfikacjaModulu"
+     },
+     "technologia": {
+      "enum": [
+       "PPM",
+       "SPGM",
+       "MAGAZYN"
+      ],
+      "title": "Technologia",
+      "type": "string"
+     },
+     "wymagania": {
+      "items": {
+       "$ref": "#/components/schemas/WynikWymagania"
+      },
+      "title": "Wymagania",
+      "type": "array"
+     },
+     "zrodlo_danych": {
+      "enum": [
+       "ZATWIERDZONY_MODEL",
+       "ZADANIE_KLIENTA"
+      ],
+      "title": "Zrodlo Danych",
+      "type": "string"
+     }
+    },
+    "required": [
+     "der_ref",
+     "der_name",
+     "klasyfikacja",
+     "technologia",
+     "zrodlo_danych",
+     "wymagania"
+    ],
+    "title": "OcenaWymaganModulu",
+    "type": "object"
+   },
    "OdniesienieAmplitudy": {
     "additionalProperties": false,
     "description": "Baza amplitudy wyrażonej w procentach: rodzaj bazy i jej wartość z dokumentu ALBO\nwskazanie pól karty, z których konsument wyliczy bazę (np. ``sn_mva``, ``un_kv`` dla\nprądu znamionowego urządzenia). Dokładnie jedna z dwóch postaci.",
@@ -7545,6 +8801,48 @@
      "odcisk_karty"
     ],
     "title": "OdniesienieKarty",
+    "type": "object"
+   },
+   "OdnosnikSladu": {
+    "additionalProperties": false,
+    "description": "Odnośnik do kroku śladu WHITE BOX (§8).",
+    "properties": {
+     "krok": {
+      "title": "Krok",
+      "type": "string"
+     },
+     "opis_pl": {
+      "title": "Opis Pl",
+      "type": "string"
+     },
+     "run_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Run Id"
+     },
+     "wersja_silnika": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wersja Silnika"
+     }
+    },
+    "required": [
+     "krok",
+     "opis_pl"
+    ],
+    "title": "OdnosnikSladu",
     "type": "object"
    },
    "OdstepstwoWiarygodnosciOdpowiedz": {
@@ -10037,6 +11335,38 @@
     "title": "ProtectionTraceResponse",
     "type": "object"
    },
+   "Przedmiot": {
+    "additionalProperties": false,
+    "description": "CO oceniono: odnośnik elementu, nazwa i zdanie opisujące przedmiot oceny.",
+    "properties": {
+     "element_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Element Ref"
+     },
+     "nazwa_pl": {
+      "title": "Nazwa Pl",
+      "type": "string"
+     },
+     "opis_pl": {
+      "title": "Opis Pl",
+      "type": "string"
+     }
+    },
+    "required": [
+     "element_ref",
+     "nazwa_pl",
+     "opis_pl"
+    ],
+    "title": "Przedmiot",
+    "type": "object"
+   },
    "Przedzial": {
     "additionalProperties": false,
     "description": "Przedział liczbowy z JAWNYM domknięciem obu końców (dana z dokumentu).\n\nBrak domyślnego domknięcia jest celowy: dwa sąsiednie biny mocy z raportu badań\n(np. ``[0,2; 0,5)`` i ``[0,5; 1,0]``) rozstrzygają punkt graniczny wyłącznie przez\ndomknięcie zapisane w dokumencie — domysł „zamknięty z obu stron\" dałby dwa modele\npokrywające ten sam punkt, a „otwarty\" — punkt bez modelu. Granica ``None`` oznacza\nprzedział nieograniczony z tej strony (domknięcie tej strony musi być wtedy ``None``).",
@@ -10191,6 +11521,26 @@
      "x_ohm"
     ],
     "title": "PunktImpedancji",
+    "type": "object"
+   },
+   "PunktObwiedni": {
+    "additionalProperties": false,
+    "description": "Punkt obwiedni limitu: chwila [s] i wartość w jednostce obwiedni.",
+    "properties": {
+     "t_s": {
+      "title": "T S",
+      "type": "number"
+     },
+     "wartosc": {
+      "title": "Wartosc",
+      "type": "number"
+     }
+    },
+    "required": [
+     "t_s",
+     "wartosc"
+    ],
+    "title": "PunktObwiedni",
     "type": "object"
    },
    "PunktPracyWidma": {
@@ -12382,6 +13732,183 @@
     "title": "StationAudit2ConfigBody",
     "type": "object"
    },
+   "StatusDanych": {
+    "additionalProperties": false,
+    "description": "Status danych wejściowych: ``UNVALIDATED_INPUT`` ⇔ lista danych przyjętych niepusta.",
+    "properties": {
+     "dane_przyjete": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/DanaPrzyjeta"
+      },
+      "title": "Dane Przyjete",
+      "type": "array"
+     },
+     "stan": {
+      "enum": [
+       "ZWALIDOWANE",
+       "UNVALIDATED_INPUT"
+      ],
+      "title": "Stan",
+      "type": "string"
+     }
+    },
+    "required": [
+     "stan"
+    ],
+    "title": "StatusDanych",
+    "type": "object"
+   },
+   "StatusDowodu": {
+    "additionalProperties": false,
+    "description": "Dowód stojący za wynikiem: metoda, poziom zdolności narzędzia, rodzaj twierdzenia,\nstatus modelu urządzenia, status danych, odniesienie do dowodu (bieg, certyfikat, raport)\ni przynależność biegu do zadeklarowanej domeny walidacji silnika.\n\n``w_domenie_walidacji`` — wynik predykatu „bieg należy do domeny walidacji\" (§3b);\n``None`` dla metod bez biegu (wszystko poza symulacją i obliczeniem) i dla dowodu, który\ndomeny nie deklaruje; ``domena_pl`` nazywa domenę (manifest walidacji, zakresy parametrów) i\ntowarzyszy każdej rozstrzygniętej wartości predykatu. Obowiązek podania predykatu dla\nwyniku symulacji egzekwuje walidator ``OcenaKryterium``.",
+    "properties": {
+     "domena_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Domena Pl"
+     },
+     "metoda": {
+      "enum": [
+       "CERTYFIKAT",
+       "RAPORT_Z_TESTU",
+       "SYMULACJA",
+       "OBLICZENIE",
+       "DEKLARACJA",
+       "POMIAR",
+       "OCENA_OPERATORA",
+       "DOWOD_LACZONY",
+       "BRAK_METODY"
+      ],
+      "title": "Metoda",
+      "type": "string"
+     },
+     "odniesienie": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Odniesienie"
+     },
+     "poziom": {
+      "$ref": "#/components/schemas/EvidenceTier"
+     },
+     "rodzaj_twierdzenia": {
+      "$ref": "#/components/schemas/ClaimKind"
+     },
+     "status_danych": {
+      "$ref": "#/components/schemas/StatusDanych"
+     },
+     "status_modelu": {
+      "enum": [
+       "UNVALIDATED_MODEL",
+       "VALIDATED_AGAINST_TEST",
+       "CERTIFIED_MODEL",
+       "NIE_DOTYCZY"
+      ],
+      "title": "Status Modelu",
+      "type": "string"
+     },
+     "w_domenie_walidacji": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "W Domenie Walidacji"
+     }
+    },
+    "required": [
+     "metoda",
+     "poziom",
+     "rodzaj_twierdzenia",
+     "status_modelu",
+     "status_danych"
+    ],
+    "title": "StatusDowodu",
+    "type": "object"
+   },
+   "Stosowalnosc": {
+    "additionalProperties": false,
+    "description": "Stosowalność kryterium albo wymagania do przedmiotu; powód niepusty ZAWSZE (T10).\n\n``podstawa`` — podstawa reguły stosowalności (np. progi klas modułów z WOS).\n``modul_istniejacy`` — moduł istniejący w rozumieniu art. 4 rozporządzenia 2016/631;\n``None`` = status nieustalony (dla przedmiotu będącego modułem — zastrzeżenie w wyjaśnieniu).\n``warunek_wstepny_nieuruchomiony`` — kryterium nie stosuje się, bo jego warunek wstępny nie\nwystąpił w scenariuszu (np. napięcie poniżej obwiedni FRT: obowiązek nie został uruchomiony);\nrozróżnia ten powód od niestosowalności z typu albo technologii.",
+    "properties": {
+     "dotyczy": {
+      "title": "Dotyczy",
+      "type": "boolean"
+     },
+     "modul_istniejacy": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Modul Istniejacy"
+     },
+     "podstawa": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PodstawaWymagania"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "powod_pl": {
+      "title": "Powod Pl",
+      "type": "string"
+     },
+     "technologia": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Technologia"
+     },
+     "typ_modulu": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Typ Modulu"
+     },
+     "warunek_wstepny_nieuruchomiony": {
+      "default": false,
+      "title": "Warunek Wstepny Nieuruchomiony",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "dotyczy",
+     "powod_pl"
+    ],
+    "title": "Stosowalnosc",
+    "type": "object"
+   },
    "StudyCaseComparisonResponse": {
     "description": "Study case comparison response.",
     "properties": {
@@ -13737,7 +15264,8 @@
     "type": "object"
    },
    "WniosekOsdRequest": {
-    "description": "Wejście generatora wniosku OSD: identyfikacja + odwołania do przebiegów.",
+    "additionalProperties": false,
+    "description": "Wejście generatora wniosku OSD: identyfikacja, odwołania do przebiegów i operator.\n\nZgodność NC RfG pochodzi WYŁĄCZNIE z zatwierdzonego modelu przypadku (``case_id`` w\nzapytaniu) — ciało żądania nie ma pól modułów ani certyfikatu.",
     "properties": {
      "adres_przylaczenia": {
       "anyOf": [
@@ -13771,13 +15299,15 @@
       ],
       "title": "Nazwa Przypadku"
      },
+     "operator_id": {
+      "minLength": 1,
+      "title": "Operator Id",
+      "type": "string"
+     },
      "pf_run_id": {
       "format": "uuid",
       "title": "Pf Run Id",
       "type": "string"
-     },
-     "run_request": {
-      "$ref": "#/components/schemas/NcRfgPtpireeRunRequest"
      },
      "sc_run_id": {
       "format": "uuid",
@@ -13801,9 +15331,266 @@
      "pf_run_id",
      "sc_run_id",
      "bus_ref",
-     "run_request"
+     "operator_id"
     ],
     "title": "WniosekOsdRequest",
+    "type": "object"
+   },
+   "WyjasnienieWerdyktu": {
+    "additionalProperties": false,
+    "description": "Wyjaśnienie werdyktu (§5): zdanie, przyczyna, czego brakuje, zastrzeżenia.\n\nZdanie jest niepuste zawsze (T1). Obowiązki zależne od statusu (przyczyna, braki) i\nzgodność zastrzeżeń z polami rekordu egzekwują walidatory rekordów K i W.",
+    "properties": {
+     "czego_brakuje": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Czego Brakuje",
+      "type": "array"
+     },
+     "przyczyna_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Przyczyna Pl"
+     },
+     "zastrzezenia": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Zastrzezenia",
+      "type": "array"
+     },
+     "zdanie_pl": {
+      "title": "Zdanie Pl",
+      "type": "string"
+     }
+    },
+    "required": [
+     "zdanie_pl"
+    ],
+    "title": "WyjasnienieWerdyktu",
+    "type": "object"
+   },
+   "WynikKryterium": {
+    "additionalProperties": false,
+    "description": "Wielkość zmierzona albo obliczona: nazwa, symbol, wartość z jednostką, punkt krytyczny.\n\nDla relacji ``LOGICZNE`` wartość jest zapisana jako ``Wielkosc(1.0 | 0.0, \"1\")`` (1 = stan\nwymagany), a ``punkt_krytyczny_pl`` opisuje stan (walidator ``OcenaKryterium``).",
+    "properties": {
+     "chwila_s": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Chwila S"
+     },
+     "metoda": {
+      "enum": [
+       "CERTYFIKAT",
+       "RAPORT_Z_TESTU",
+       "SYMULACJA",
+       "OBLICZENIE",
+       "DEKLARACJA",
+       "POMIAR",
+       "OCENA_OPERATORA",
+       "DOWOD_LACZONY",
+       "BRAK_METODY"
+      ],
+      "title": "Metoda",
+      "type": "string"
+     },
+     "punkt_krytyczny_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Punkt Krytyczny Pl"
+     },
+     "symbol_latex": {
+      "title": "Symbol Latex",
+      "type": "string"
+     },
+     "wartosc": {
+      "$ref": "#/components/schemas/Wielkosc"
+     },
+     "wielkosc_pl": {
+      "title": "Wielkosc Pl",
+      "type": "string"
+     }
+    },
+    "required": [
+     "wielkosc_pl",
+     "symbol_latex",
+     "wartosc",
+     "metoda"
+    ],
+    "title": "WynikKryterium",
+    "type": "object"
+   },
+   "WynikWymagania": {
+    "additionalProperties": false,
+    "description": "Rekord poziomu W: JEDNO wymaganie dla JEDNEGO modułu/obiektu (§4.2).\n\nAgregat NIGDY nie zastępuje składników — oceny składowe są częścią rekordu. Konstrukcja\nwłaściwa: ``werdykt.decyzja.zagreguj_wymaganie``; konstrukcja bezpośrednia jest sprawdzana\ntymi samymi wyprowadzeniami.",
+    "properties": {
+     "dowod": {
+      "$ref": "#/components/schemas/StatusDowodu"
+     },
+     "etykieta": {
+      "$ref": "#/components/schemas/Etykieta"
+     },
+     "kompletnosc_dowodu": {
+      "enum": [
+       "PELNY",
+       "NIEPELNY",
+       "NIE_DOTYCZY"
+      ],
+      "title": "Kompletnosc Dowodu",
+      "type": "string"
+     },
+     "kryteria_naruszone": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Kryteria Naruszone",
+      "type": "array"
+     },
+     "kryterium_najblizej_granicy": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kryterium Najblizej Granicy"
+     },
+     "nazwa_pl": {
+      "title": "Nazwa Pl",
+      "type": "string"
+     },
+     "oceny_skladowe": {
+      "items": {
+       "$ref": "#/components/schemas/OcenaKryterium"
+      },
+      "title": "Oceny Skladowe",
+      "type": "array"
+     },
+     "podstawa": {
+      "$ref": "#/components/schemas/PodstawaWymagania"
+     },
+     "podstawa_sposobu_wykazania": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PodstawaWymagania"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "pokrycie_programu": {
+      "enum": [
+       "PELNE",
+       "CZESCIOWE",
+       "NIE_DOTYCZY"
+      ],
+      "title": "Pokrycie Programu",
+      "type": "string"
+     },
+     "pokrycie_programu_pl": {
+      "title": "Pokrycie Programu Pl",
+      "type": "string"
+     },
+     "powody_niepelnosci": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Powody Niepelnosci",
+      "type": "array"
+     },
+     "slad": {
+      "items": {
+       "$ref": "#/components/schemas/OdnosnikSladu"
+      },
+      "title": "Slad",
+      "type": "array"
+     },
+     "sposob_wykazania": {
+      "enum": [
+       "CERTYFIKAT",
+       "RAPORT_Z_TESTU",
+       "SYMULACJA",
+       "OBLICZENIE",
+       "DEKLARACJA",
+       "POMIAR",
+       "OCENA_OPERATORA",
+       "DOWOD_LACZONY",
+       "BRAK_METODY"
+      ],
+      "title": "Sposob Wykazania",
+      "type": "string"
+     },
+     "status_maszynowy": {
+      "enum": [
+       "SPELNIA",
+       "NIE_SPELNIA",
+       "NIEJEDNOZNACZNY",
+       "NIE_OCENIONO",
+       "BRAK_PODSTAWY",
+       "BRAK_DOWODU",
+       "NIE_DOTYCZY"
+      ],
+      "title": "Status Maszynowy",
+      "type": "string"
+     },
+     "stosowalnosc": {
+      "$ref": "#/components/schemas/Stosowalnosc"
+     },
+     "wyjasnienie": {
+      "$ref": "#/components/schemas/WyjasnienieWerdyktu"
+     },
+     "wymaganie_id": {
+      "title": "Wymaganie Id",
+      "type": "string"
+     },
+     "zakres_waznosci": {
+      "$ref": "#/components/schemas/ZakresWaznosci"
+     }
+    },
+    "required": [
+     "wymaganie_id",
+     "nazwa_pl",
+     "podstawa",
+     "stosowalnosc",
+     "sposob_wykazania",
+     "oceny_skladowe",
+     "pokrycie_programu",
+     "pokrycie_programu_pl",
+     "status_maszynowy",
+     "kompletnosc_dowodu",
+     "powody_niepelnosci",
+     "kryteria_naruszone",
+     "kryterium_najblizej_granicy",
+     "etykieta",
+     "wyjasnienie",
+     "dowod",
+     "zakres_waznosci",
+     "slad"
+    ],
+    "title": "WynikWymagania",
     "type": "object"
    },
    "WytrzymaloscAparaturyRequestModel": {
@@ -13873,6 +15660,108 @@
      "f_max_hz"
     ],
     "title": "ZakresCzestotliwosci",
+    "type": "object"
+   },
+   "ZakresWaznosci": {
+    "additionalProperties": false,
+    "description": "Zakres ważności wyniku (§7): wynik NIGDY nie jest opisany szerzej niż ten zakres.\n\nParametry sieci niosą status danych (jakość każdej wartości jest obowiązkowa).",
+    "properties": {
+     "model_urzadzenia": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Model Urzadzenia"
+     },
+     "ograniczniki": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Ograniczniki",
+      "type": "array"
+     },
+     "opis_pl": {
+      "title": "Opis Pl",
+      "type": "string"
+     },
+     "parametry_sieci": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/DanaPrzyjeta"
+      },
+      "title": "Parametry Sieci",
+      "type": "array"
+     },
+     "regulator": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Regulator"
+     },
+     "rodzaj_analizy": {
+      "anyOf": [
+       {
+        "enum": [
+         "POWER_FLOW",
+         "SHORT_CIRCUIT",
+         "RMS_DYNAMICS",
+         "SEQUENCE_DOMAIN",
+         "HARMONIC_FREQUENCY_DOMAIN",
+         "SUPRAHARMONIC_FREQUENCY_DOMAIN"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rodzaj Analizy"
+     },
+     "symetria_zaklocenia": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Symetria Zaklocenia"
+     },
+     "technologia": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Technologia"
+     },
+     "wykluczenia": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Wykluczenia",
+      "type": "array"
+     }
+    },
+    "required": [
+     "opis_pl"
+    ],
+    "title": "ZakresWaznosci",
     "type": "object"
    },
    "ZgodnoscZadanie": {
@@ -21992,7 +23881,7 @@
   },
   "/api/ncrfg-tests/cases/{case_id}/compliance": {
    "get": {
-    "description": "Zgodność NC RfG WSZYSTKICH DER przypadku liczona Z MODELU (karta S-3, W6-0).\n\nBuduje wejścia solvera z committed ENM przypadku (most\n``application/ncrfg_compliance/model_bridge.py`` — zdolności FRT/P(f)/Q(U),\ncertyfikat PTPiREE, model dynamiczny i granice Q z modelu, zero fabrykacji:\nbrak danej = ``False``/``None`` → solver daje ``no_data``) i uruchamia TEN SAM\n``NcRfgPtpireeSolver``, co bieg macierzy ``POST /api/ncrfg-tests/run``.\nOdpowiedź = kontrakt biegu macierzy (z polami dowodowymi karty S-1)\nopakowany per przypadek; DER bez mocy/napięcia nazwane w ``pominiete``.\nUczciwy stan zerowy: brak DER w modelu → ``der_count == 0``, ``bieg = None``\n(nie błąd). 404 dla nieznanego operatora.",
+    "description": "Zgodność NC RfG WSZYSTKICH źródeł przekształtnikowych przypadku liczona Z MODELU.\n\nMost ``application/ncrfg_compliance/model_bridge.py`` buduje wejścia solvera i dowody\ncertyfikatu urządzeń z zatwierdzonego modelu (zero fabrykacji: brak danej = ocena\nniewykonana z nazwanym brakiem), solver PTPiREE liczy rekordy testów, ocena wymagań —\nrekordy per wymaganie profilu. Uczciwy stan zerowy: brak źródeł → ``der_count == 0``,\n``bieg = None``. 404: nieznany operator.",
     "operationId": "run_ncrfg_compliance_from_model_api_ncrfg_tests_cases__case_id__compliance_get",
     "parameters": [
      {
@@ -22042,8 +23931,61 @@
     ]
    }
   },
+  "/api/ncrfg-tests/cases/{case_id}/wejscia": {
+   "get": {
+    "description": "Wejścia modułów NC RfG złożone z ZATWIERDZONEGO MODELU przypadku mostem\n``model_bridge`` (te same, które ocenia ``/compliance``) — formularz wstępny biegu\n„co-jeśli\" macierzy. 404: nieznany operator.",
+    "operationId": "get_ncrfg_module_inputs_from_model_api_ncrfg_tests_cases__case_id__wejscia_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "operator_id",
+      "required": true,
+      "schema": {
+       "title": "Operator Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/NcRfgWejsciaPrzypadkuResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Ncrfg Module Inputs From Model",
+    "tags": [
+     "ncrfg-ptpiree-tests"
+    ]
+   }
+  },
   "/api/ncrfg-tests/catalog": {
    "get": {
+    "description": "Katalog testów i profile operatorów. Wersja procedury pochodzi z warstwy\n``PROCEDURA_PTPIREE`` profilu (warstwa wspólna dla operatorów — test przypina równość).",
     "operationId": "get_ncrfg_test_catalog_api_ncrfg_tests_catalog_get",
     "responses": {
      "200": {
@@ -22067,15 +24009,15 @@
   },
   "/api/ncrfg-tests/modul": {
    "get": {
-    "description": "Klasyfikacja modułu wytwórczego NC RfG (karta FAB-J).\n\nPunkt wejścia dla kreatora DER i szuflady SLD: oba miejsca pytają o\nOCZEKIWANY moduł dla mocy i napięcia przyłączenia PRZED zapisem, żeby\npokazać go projektantowi jako wartość jawnie wybieraną (nie domyślną).\nJedyne źródło progów: `compliance.nc_rfg_modul.modul_nc_rfg`.",
+    "description": "Klasyfikacja modułu wytwarzania energii NC RfG z progami, podstawą i powodem.\n\nPunkt wejścia kreatora DER i szuflady SLD (klasa pokazywana przed zapisem). Moc w kW.\nWartość nieskończona, nieliczbowa albo ujemna → 422 z komunikatem klasyfikacji.",
     "operationId": "klasyfikuj_modul_ncrfg_api_ncrfg_tests_modul_get",
     "parameters": [
      {
       "in": "query",
-      "name": "p_max_mw",
+      "name": "p_max_kw",
       "required": true,
       "schema": {
-       "title": "P Max Mw",
+       "title": "P Max Kw",
        "type": "number"
       }
      },
@@ -22094,9 +24036,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "additionalProperties": {
-          "type": "string"
-         },
+         "additionalProperties": true,
          "title": "Response Klasyfikuj Modul Ncrfg Api Ncrfg Tests Modul Get",
          "type": "object"
         }
@@ -22123,26 +24063,8 @@
   },
   "/api/ncrfg-tests/run": {
    "post": {
+    "description": "Bieg „co-jeśli\" z danych żądania — źródło danych ``ZADANIE_KLIENTA``.\n\nCiało nie ma pól certyfikatu ani przypadku (nieznane pole → 422): bieg nie może dać\nsposobu wykazania ``CERTYFIKAT`` ani dowodu pełnego. Nieznany operator albo dane poza\ndziedziną klasyfikacji → 422.",
     "operationId": "run_ncrfg_ptpiree_tests_api_ncrfg_tests_run_post",
-    "parameters": [
-     {
-      "in": "query",
-      "name": "case_id",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "format": "uuid",
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Case Id"
-      }
-     }
-    ],
     "requestBody": {
      "content": {
       "application/json": {
@@ -22389,18 +24311,11 @@
      {
       "in": "query",
       "name": "case_id",
-      "required": false,
+      "required": true,
       "schema": {
-       "anyOf": [
-        {
-         "format": "uuid",
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Case Id"
+       "format": "uuid",
+       "title": "Case Id",
+       "type": "string"
       }
      }
     ],
@@ -22451,18 +24366,11 @@
      {
       "in": "query",
       "name": "case_id",
-      "required": false,
+      "required": true,
       "schema": {
-       "anyOf": [
-        {
-         "format": "uuid",
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Case Id"
+       "format": "uuid",
+       "title": "Case Id",
+       "type": "string"
       }
      }
     ],
@@ -22509,18 +24417,11 @@
      {
       "in": "query",
       "name": "case_id",
-      "required": false,
+      "required": true,
       "schema": {
-       "anyOf": [
-        {
-         "format": "uuid",
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Case Id"
+       "format": "uuid",
+       "title": "Case Id",
+       "type": "string"
       }
      }
     ],
@@ -23096,18 +24997,11 @@
      {
       "in": "query",
       "name": "case_id",
-      "required": false,
+      "required": true,
       "schema": {
-       "anyOf": [
-        {
-         "format": "uuid",
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Case Id"
+       "format": "uuid",
+       "title": "Case Id",
+       "type": "string"
       }
      }
     ],
@@ -23158,18 +25052,11 @@
      {
       "in": "query",
       "name": "case_id",
-      "required": false,
+      "required": true,
       "schema": {
-       "anyOf": [
-        {
-         "format": "uuid",
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Case Id"
+       "format": "uuid",
+       "title": "Case Id",
+       "type": "string"
       }
      }
     ],
@@ -23216,18 +25103,11 @@
      {
       "in": "query",
       "name": "case_id",
-      "required": false,
+      "required": true,
       "schema": {
-       "anyOf": [
-        {
-         "format": "uuid",
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Case Id"
+       "format": "uuid",
+       "title": "Case Id",
+       "type": "string"
       }
      }
     ],
@@ -23542,6 +25422,7 @@
   },
   "/api/oze-analysis/pq-coverage": {
    "get": {
+    "description": "Pokrycie wymaganego zakresu mocy biernej profilu operatora obszarem zdolności P–Q typu\nprzekształtnika — widok z rekordem ``ocena`` (``OcenaKryterium``). 404: nieznany typ albo\noperator. Typ bez krzywej producenta daje rekord ``NIE_OCENIONO`` z nazwanym brakiem.",
     "operationId": "get_pq_coverage_api_oze_analysis_pq_coverage_get",
     "parameters": [
      {

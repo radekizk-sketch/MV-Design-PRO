@@ -10,9 +10,9 @@
  *              marginesu (T-C) ORAZ sekwencja zapadów z OTWARTYM śladem kontekstu
  *              siły sieci SCR (T-B),
  *  - oltc    — „Badania regulacji OLTC": sweep pozycji zaczepów + OTWARTY ślad
- *              wywodu przekładni t(n) (kształt z power_flow_oltc_studies.py),
- *  - macierz — macierz NC RfG z werdyktami testów + OTWARTY ślad testu T16
- *              (Wzór → Dane → Podstawienie → Wynik → jednostki).
+ *              wywodu przekładni t(n) (kształt z power_flow_oltc_studies.py).
+ * Scena „macierz" (NC RfG) i dokumenty NC RfG: `dowody-ncrfg-screenshot.spec.ts`
+ * (karta AB-1a Pakiet D2 — kontrakt V2).
  * Wyjście: docs/audit/visual/dowody/dowody_*.png (oba motywy, ślad OTWARTY).
  */
 import { test, expect, type Page } from '@playwright/test';
@@ -41,24 +41,6 @@ const OZE_SCENA_MIGAWKA = JSON.parse(
   ),
 ) as { generators: { ref_id: string }[] };
 const MODUL_DER_SCENY_FRT = OZE_SCENA_MIGAWKA.generators[0].ref_id;
-
-/**
- * Moduły sceny „macierz" — również Z MODELU (`macierz_scena_migawka.json`, ten
- * sam, z którego backend policzył raport zgodności). Rozpoznanie po technologii
- * (`gen_type`), nie po ręcznej etykiecie: identyfikatory nadaje domena.
- */
-const MACIERZ_SCENA_MIGAWKA = JSON.parse(
-  fs.readFileSync(
-    path.resolve(_dirname, '../src/harness-fixtures/generated/macierz_scena_migawka.json'),
-    'utf-8',
-  ),
-) as { generators: { ref_id: string; gen_type: string }[] };
-const MODUL_BESS_SCENY_MACIERZ = MACIERZ_SCENA_MIGAWKA.generators.find(
-  (g) => g.gen_type === 'bess',
-)!.ref_id;
-const MODUL_PV_SCENY_MACIERZ = MACIERZ_SCENA_MIGAWKA.generators.find(
-  (g) => g.gen_type === 'pv_inverter',
-)!.ref_id;
 
 /**
  * Sceny „lom", „frt" i „oltc" karmione są REALNYMI widokami backendu (karty
@@ -292,69 +274,6 @@ test.describe('dowody-oze:screenshot', () => {
       await page.waitForTimeout(300);
       expect(errs, `zero błędów konsoli (oltc/${theme})`).toEqual([]);
       const out = path.join(OUTPUT_DIR, `dowody_oltc_sweep_${theme}.png`);
-      await page.locator('[data-testid="creator-harness-root"]').screenshot({ path: out });
-      expect(fs.existsSync(out)).toBe(true);
-    });
-
-    test(`macierz — werdykty NC RfG z otwartym śladem testu — ${theme}`, async ({ page }) => {
-      const errs = zbierajBledy(page);
-      await otworzScene(page, 'macierz', theme);
-
-      // Sekcja zgodności przekrojowej (W3-D) MUSI dojechać z werdyktami per moduł —
-      // atrapa liczona z backendu (`scripts/eksport_fixtur_harnessu.py`), nie 404
-      // realnego backendu (E2E-FULL-FIX-3: dawny zrzut niósł „Nie udało się…").
-      await expect(page.getByTestId('mvd-oze-zgodnosc-przekrojowa-wiersz')).toHaveCount(2);
-      await expect(page.getByTestId('mvd-oze-zgodnosc-przekrojowa-blad')).toHaveCount(0);
-
-      // Bieg idzie do REALNEGO solvera (E2E-FULL-FIX-3). Odbudowa P po zakłóceniu
-      // to dana DEKLAROWANA przez projektanta w panelu modułu (nie z katalogu):
-      // wpis 1,8 s dla magazynu natywnie w polu panelu — profil operatora wymaga
-      // ≤ 1,0 s, więc T16 magazynu jest niespełniony, z otwartym śladem.
-      await page.getByTestId(`mvd-oze-modul-${MODUL_BESS_SCENY_MACIERZ}`).click();
-      const odbudowaP = page.getByTestId('mvd-oze-param-pRecoveryTimeS');
-      await odbudowaP.fill('1.8');
-      await expect(odbudowaP).toHaveValue('1.8');
-
-      // Jawny bieg testów zgodności (przycisk aktywny — moduły kompletne).
-      const przeprowadz = page.getByTestId('mvd-oze-przeprowadz');
-      await expect(przeprowadz).toBeEnabled();
-      await przeprowadz.click();
-
-      // Macierz wypełniona werdyktami z odpowiedzi solvera (pass/fail/no_data).
-      await expect(page.getByTestId('mvd-oze-komorka-wynik').first()).toBeVisible({ timeout: 20000 });
-      const tabela = page.getByTestId('mvd-oze-macierz-tabela');
-      await expect(tabela).toContainText('LVRT - pozostanie w pracy przy zapadzie napięcia');
-      // Magazyn: niezgodny (T16); instalacja PV: brak danych (T05/T11/T15 bez
-      // deklaracji) — realny solver, nie ręczna atrapa z werdyktem „zgodny".
-      await expect(
-        page.getByTestId(`mvd-oze-podsum-modul-klasa-${MODUL_BESS_SCENY_MACIERZ}`),
-      ).toContainText('B');
-      await expect(
-        page.getByTestId(`mvd-oze-podsum-modul-klasa-${MODUL_PV_SCENY_MACIERZ}`),
-      ).toContainText('B');
-      await expect(page.getByTestId('mvd-oze-podsum-moduly')).toContainText('niezgodny');
-      await expect(page.getByTestId('mvd-oze-podsum-moduly')).toContainText('brak danych');
-
-      // Klik komórki „niespełniony" (T16 × BESS) → szczegół werdyktu + ślad.
-      await page
-        .getByTestId('mvd-oze-komorka-wynik')
-        .filter({ hasText: 'niespełniony' })
-        .first()
-        .click();
-      const szczegol = page.getByTestId('mvd-oze-szczegol-wynik');
-      await expect(szczegol).toContainText('Odbudowa mocy czynnej po zakłóceniu');
-      await expect(szczegol).toContainText('Odbudowa P po zakłóceniu: 1.800s.');
-
-      // OTWARTY ślad testu (kanon: Wzór → Dane → Podstawienie → Wynik → jednostki).
-      await page.getByTestId('mvd-oze-slad-otworz').click();
-      const kroki = page.getByTestId('mvd-oze-slad-kroki');
-      await expect(kroki).toContainText('t_recovery,module <= t_recovery,profile');
-      await expect(kroki).toContainText('1.800 <= 1.000');
-      await expect(kroki).toContainText('s - s = s.');
-
-      await page.waitForTimeout(300);
-      expect(errs, `zero błędów konsoli (macierz/${theme})`).toEqual([]);
-      const out = path.join(OUTPUT_DIR, `dowody_macierz_${theme}.png`);
       await page.locator('[data-testid="creator-harness-root"]').screenshot({ path: out });
       expect(fs.existsSync(out)).toBe(true);
     });

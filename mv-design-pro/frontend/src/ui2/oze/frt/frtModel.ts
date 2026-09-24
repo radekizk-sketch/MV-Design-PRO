@@ -14,8 +14,8 @@
  * kolejność scenariuszy/punktów = kolejność źródłowa odpowiedzi. Brak `Date.now`.
  */
 
+import type { ProfilOperatoraNcRfg } from '../ncrfg/typy';
 import type {
-  ProfilOperatoraNcRfg,
   RodzajTestuFrt,
   ScenariuszFrt,
   WidokTrajektoriiFrt,

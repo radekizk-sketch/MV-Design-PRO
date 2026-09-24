@@ -1,12 +1,12 @@
 /*
  * Teksty pulpitu instalacji OZE (karta P47) — polski język techniczny
  * pierwszoplanowy (MODEL_INTERAKCJI §2.7). Identyfikatory katalogowe pokazywane
- * WYŁĄCZNIE w trybie eksperckim. Werdykty/klasy pochodzą z odpowiedzi backendu.
+ * WYŁĄCZNIE w trybie eksperckim. Etykiety rekordów zgodności NC RfG niesie rekord
+ * backendu (`etykieta.etykieta_pl`) — ten plik nie ma mapy status → tekst dla NC RfG.
  */
 
 import type { ConnectionSide } from '../../../ui/network-build/station-der';
 import { formatLiczba } from '../macierz/strings';
-import type { StatusPulpitu } from './pulpitModel';
 
 export const PULPIT_STRINGS = {
   // Nagłówek
@@ -17,16 +17,26 @@ export const PULPIT_STRINGS = {
   operator: 'Operator sieci',
   wersjaProcedury: 'Wersja procedury',
   odcisk: 'Odcisk deterministyczny',
-  przeprowadz: 'Przeprowadź testy zgodności',
-  wTrakcie: 'Trwają testy zgodności…',
-  bladBiegu: 'Nie udało się przeprowadzić testów zgodności',
+  zrodloOceny:
+    'Ocena zgodności NC RfG zatwierdzonego modelu przypadku — dane modułów i dowód certyfikatu ' +
+    'urządzeń wyprowadza serwer z modelu (ta sama ocena co certyfikat zgodności). Analizę ' +
+    '„co-jeśli" z danymi deklarowanymi prowadzi macierz wymogów.',
+  odswiez: 'Odśwież ocenę zgodności modelu',
+  wTrakcie: 'Trwa ocena zgodności modelu…',
+  brakPrzypadku: 'Brak aktywnego przypadku — ocena zgodności czyta zatwierdzony model przypadku.',
+  bladOceny: 'Nie udało się pobrać oceny zgodności modelu',
   bladKatalogu: 'Nie udało się pobrać katalogu wymogów procedury',
 
   // Lista modułów
   listaTytul: 'Moduły projektu',
-  listaKlasa: 'Klasa',
-  listaBezBiegu: 'testy nieprzeprowadzone',
-  listaZablokowany: 'brak danych wejściowych',
+  listaKlasa: 'Typ modułu',
+  listaPonizejProgu: 'poniżej progu istotności',
+  listaBezOceny: 'ocena modelu niewczytana',
+  listaPozaOcena: 'moduł poza oceną modelu',
+  listaDowod: 'certyfikat',
+  listaOdrzucony: 'tabliczka certyfikatu odrzucona',
+  listaBrakDowodu: 'brak dowodu certyfikatu w modelu',
+  listaWymagania: 'rekordy wymagań',
 
   // Stan pusty
   brakModulow: 'Brak modułów wytwórczych',
@@ -47,17 +57,14 @@ export const PULPIT_STRINGS = {
 
   // Sekcja 2 — zgodność NC RfG
   sekcjaZgodnosc: 'Zgodność NC RfG',
-  zgodnoscKlasa: 'Klasa modułu',
-  zgodnoscKlasaBrak: 'oznaczona po biegu',
-  zgodnoscStatus: 'Status zgodności',
-  zgodnoscSpelnione: 'Spełnione wymagane',
-  zgodnoscBezBiegu:
-    'Nie przeprowadzono jeszcze testów zgodności. Użyj przycisku „Przeprowadź testy zgodności", ' +
-    'aby ocenić moduł względem wymogów operatora.',
-  zgodnoscKomplet: 'Wszystkie wymagane zdolności są spełnione.',
-  zgodnoscNiespelnione: 'Wymogi niespełnione',
-  zgodnoscAkcje: 'Akcje naprawcze',
-  zgodnoscBrakAkcji: 'Backend nie wskazał akcji naprawczej dla tego wymogu.',
+  zgodnoscBezOceny:
+    'Ocena zgodności modelu nie jest wczytana — wymaga aktywnego przypadku i operatora sieci ' +
+    '(z modelu albo jawnego wyboru).',
+  zgodnoscPozaOcena:
+    'Moduł nie jest objęty oceną zatwierdzonego modelu — model przypadku go nie zawiera; ' +
+    'zatwierdź zmiany modelu i odśwież ocenę.',
+  zgodnoscPominiety: 'Serwer pominął moduł w ocenie modelu',
+  zgodnoscWymagania: 'Wymagania profilu operatora (rekordy oceny)',
 
   // Sekcja 3 — praca magazynu (BESS z katalogu konwerterów)
   sekcjaMagazyn: 'Praca magazynu',
@@ -147,22 +154,6 @@ export const PULPIT_STRINGS = {
   dokumentyOpis: 'Dokumentacja przyłączeniowa i raporty modułu w osobnym widoku.',
   dokumentyPrzejdz: 'Przejdź do dokumentacji',
 } as const;
-
-/** Etykiety statusu modułu na liście/karcie (bez interpretacji własnej). */
-export const ETYKIETY_STATUSU_PULPITU: Record<StatusPulpitu, string> = {
-  nieprzeprowadzone: 'testy nieprzeprowadzone',
-  zgodny: 'zgodny',
-  niezgodny: 'niezgodny',
-  brak_danych: 'brak danych',
-};
-
-/** Klasa CSS statusu modułu (kolory wyłącznie przez tokeny --mvd-*). */
-export const KLASA_STATUSU_PULPITU: Record<StatusPulpitu, string> = {
-  nieprzeprowadzone: 'mvd-oze-werdykt-neutralny',
-  zgodny: 'mvd-oze-werdykt-ok',
-  niezgodny: 'mvd-oze-werdykt-err',
-  brak_danych: 'mvd-oze-werdykt-warn',
-};
 
 /**
  * Klasa CSS werdyktu siły sieci (wartości backendu: mocna/słaba/bardzo słaba/

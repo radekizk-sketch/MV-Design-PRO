@@ -4,7 +4,7 @@
  */
 
 import type { FixActionSurfaceDescriptor } from './fixActionSurface';
-import type { PhaseSet } from './enm';
+import type { DeklaracjeModulu, NastawyZabezpieczenModulu, PhaseSet } from './enm';
 import type { UziemienieEkranuKabla } from './uziemienie';
 
 // --- Envelope ---
@@ -580,6 +580,13 @@ export interface AddConverterSourcePayload {
   materialized_params: Record<string, unknown> | null;
   // W2b-DANE: kompletny tor DER-SN (ADDYTYWNY — brak = dotychczasowe zachowanie).
   der_topology?: DerTopologyPayload | null;
+  // Plan AB O-50 pkt 5: pola NC RfG modułu zapisywane razem z wytwórcą (ten sam walidator co
+  // `update_element_parameters`: `enm/deklaracje_modulu.py::pola_nc_rfg_generatora`; kody
+  // odmowy `generator.{modul_istniejacy,data_umowy,nastawy_zabezpieczen,deklaracje_modulu}_invalid`).
+  modul_istniejacy?: boolean | null;
+  data_umowy_przylaczeniowej?: string | null;
+  nastawy_zabezpieczen?: NastawyZabezpieczenModulu | null;
+  deklaracje_modulu?: DeklaracjeModulu | null;
 }
 
 export interface AddGensetNNPayload {

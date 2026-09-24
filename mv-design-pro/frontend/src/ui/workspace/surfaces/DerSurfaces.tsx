@@ -42,10 +42,10 @@ import {
   selectAllDers,
   selectDerById,
   snPointKindForBus,
-  statusCertyfikatuPtpiree,
   useAudit2CatalogSnapshot,
   useBessBatteryTypes,
   useDerDynamicProfiles,
+  opisKlasyfikacjiNcRfg,
   useNcRfgModuleClassification,
   useNcRfgOperatorCatalog,
   useStationDerStore,
@@ -602,12 +602,13 @@ function pfCurveLabel(ref: string | null, pfCurves: readonly PfCurveItem[]): str
 
 /**
  * Karta FAB-J: moduł NC RfG jest klasyfikacją NORMATYWNĄ liczoną backendem
- * (`GET /api/ncrfg-tests/modul`, `compliance/nc_rfg_modul.py`) — ekran go
- * WYŚWIETLA (przekazany przez komponent, który woła klasyfikację), nie liczy
- * sam z progów mocy.
+ * (`GET /api/ncrfg-tests/modul`, `catalog/profiles/nc_rfg::klasyfikacja_modulu`) — ekran ją
+ * WYŚWIETLA (przekazaną przez komponent, który woła klasyfikację), nie liczy sam z progów
+ * mocy. Karta AB-1a Pakiet D2: brak typu (poniżej progu, brak danych, błąd) pokazuje opis
+ * z rekordu/stanu zapytania (`opisKlasyfikacjiNcRfg`), a nie ogólnik „wg profilu".
  */
-function moduleTypeLabel(moduleType: string | null): string {
-  return moduleType ? `moduł ${moduleType}` : 'moduł wg profilu NC RfG';
+function moduleTypeLabel(moduleType: string | null, opisKlasyfikacji: string): string {
+  return moduleType ? `moduł ${moduleType}` : opisKlasyfikacji;
 }
 
 function readinessPl(value: ReadinessAxisStatus): string {
@@ -775,10 +776,13 @@ function buildDerCards(
     readonly dynamicProfiles: readonly DerDynamicProfileItem[];
     /** Moduł NC RfG oczekiwany dla (moc, napięcie) tego wytwórcy — z backendu. */
     readonly moduleType: string | null;
+    /** Opis klasyfikacji (typ, powód backendu albo stan zapytania) — `opisKlasyfikacjiNcRfg`. */
+    readonly moduleTypeOpis: string;
   },
 ): Partial<Record<DerCardId, JSX.Element>> {
   const {
     converters, blockTransformers, ncRfgOperators, pfCurves, bessBatteries, dynamicProfiles, moduleType,
+    moduleTypeOpis,
   } = katalogi;
   const ncRfg = getNcRfgOperator(ncRfgOperators, der.profiles.nc_rfg_profile_ref);
   const inverter = findConverter(der, converters);
@@ -811,7 +815,7 @@ function buildDerCards(
           )}
           <FieldRow label="Urządzenie katalogowe" value={findDeviceLabel(der, converters)} />
           <PtpireeCertificateRow certificateRef={der.catalogs.ptpiree_certificate_ref} />
-          <FieldRow label="Moduł NC RfG" value={moduleTypeLabel(moduleType)} />
+          <FieldRow label="Moduł NC RfG" value={moduleTypeLabel(moduleType, moduleTypeOpis)} />
         </dl>
         <EngineeringNote>
           Konfiguracja zaczyna się od falownika lub PCS, bo to urządzenie definiuje napięcie nN, prąd zwarciowy, model dynamiczny i wymagania FRT.
@@ -896,7 +900,13 @@ function buildDerCards(
           <FieldRow label="Model zwarciowy" value={BRAK_PRADU_ZWARCIOWEGO_FALOWNIKA_PL} />
           <FieldRow
             label="Minimalna moc zwarciowa PCC"
-            value={ncRfg ? `${moduleTypeLabel(moduleType)}: wg profilu ${ncRfg.operator_name_pl}` : 'wg profilu operatora'}
+            value={
+              ncRfg
+                ? moduleType
+                  ? `${moduleTypeLabel(moduleType, moduleTypeOpis)}: wg profilu ${ncRfg.operator_name_pl}`
+                  : `wg profilu ${ncRfg.operator_name_pl}`
+                : 'wg profilu operatora'
+            }
           />
           <FieldRow label="Zgodność przyłączeniowa" value={readinessPl(gotowosc.nc_rfg)} />
         </dl>
@@ -961,11 +971,13 @@ function PvInverterCatalogPanel({
   // nigdy nie docierając do backendu — dokładnie ta sama klasa fabrykacji co
   // usunięte zgadywanie z nazwy (`rozwiazCertyfikat`/`inferCertificateStatus`),
   // tylko innym mechanizmem (zapis zamiast odgadywania). Panel jest teraz
-  // WYŁĄCZNIE do odczytu: pokazuje status z backendu
-  // (`der.catalogs.ptpiree_status`/`ptpiree_certificate_ref`, przez
-  // `statusCertyfikatuPtpiree`) i pozwala PRZESZUKAĆ wykaz jako odniesienie —
-  // bez akcji, która udawałaby certyfikację.
-  const certyfikatStatus = statusCertyfikatuPtpiree(der);
+  // WYŁĄCZNIE do odczytu: pokazuje pozycję wykazu z tabliczki modelu i pozwala
+  // PRZESZUKAĆ wykaz jako odniesienie — bez akcji, która udawałaby certyfikację.
+  // Karta AB-1a Pakiet D2: dawny wiersz „Status w wykazie PTPiREE" liczył status
+  // certyfikatu PO STRONIE KLIENTA (`statusCertyfikatuPtpiree`, skasowany) — powiązanie
+  // z wykazem to wiersz „Certyfikat PTPiREE" (pozycja `ptpiree_certificate_ref` z
+  // tabliczki albo jawny brak powiązania), a dowód certyfikatu urządzenia wyprowadza
+  // serwer w zgodności przypadku (macierz NC RfG).
 
   return (
     <section className="space-y-3">
@@ -976,10 +988,6 @@ function PvInverterCatalogPanel({
           <FieldRow label="Producent" value={inverterManufacturer ?? MISSING_DASH} />
           <FieldRow label="Napięcie urządzenia" value={inverterVoltage ?? MISSING_DASH} />
           <FieldRow label="Prąd zwarciowy falownika" value={faultCurrent} />
-          <FieldRow
-            label="Status w wykazie PTPiREE"
-            value={certyfikatStatus === 'ptpiree_verified' ? 'PTPiREE zweryfikowany (z katalogu)' : 'nieustalony — brak dopasowania w katalogu'}
-          />
           <FieldRow
             label="Certyfikat PTPiREE"
             value={
@@ -1227,13 +1235,14 @@ function DerSurfaceShell({
     [der, converters],
   );
   // Karta FAB-J: moduł NC RfG oczekiwany dla (moc, napięcie) — klasyfikacja
-  // normatywna liczona WYŁĄCZNIE backendem (`compliance/nc_rfg_modul.py`),
+  // normatywna liczona WYŁĄCZNIE backendem (`GET /api/ncrfg-tests/modul`),
   // ekran ją tylko wyświetla. Napięcie: szyna przyłączenia z modelu.
   const moduleTypeQuery = useNcRfgModuleClassification(
-    mocWytworcy.mocGrupyKw !== null ? mocWytworcy.mocGrupyKw / 1000 : null,
+    mocWytworcy.mocGrupyKw,
     der?.connection_voltage_kv ?? null,
   );
-  const moduleType = moduleTypeQuery.data ?? null;
+  const moduleType = moduleTypeQuery.data?.modul ?? null;
+  const moduleTypeOpis = opisKlasyfikacjiNcRfg(moduleTypeQuery);
   const torWytworcy = useMemo(() => {
     if (!der) return [];
     const nazwaSzyny = (ref: string | null): string | null =>
@@ -1478,7 +1487,16 @@ function DerSurfaceShell({
                 sekcjaFunkcji,
                 sekcjaMacierzy,
                 sekcjaDoboru,
-                { converters, blockTransformers, ncRfgOperators, pfCurves, bessBatteries, dynamicProfiles, moduleType },
+                {
+                  converters,
+                  blockTransformers,
+                  ncRfgOperators,
+                  pfCurves,
+                  bessBatteries,
+                  dynamicProfiles,
+                  moduleType,
+                  moduleTypeOpis,
+                },
               ) : undefined}
         />
       </div>

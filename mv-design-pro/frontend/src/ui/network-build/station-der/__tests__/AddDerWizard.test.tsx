@@ -15,6 +15,7 @@
  * zmian — moc/napięcie/producent 1:1) do fikstur poniżej.
  */
 
+import { odpowiedzKlasyfikacji } from '../../../../ui2/oze/ncrfg/__tests__/atrapaKlasyfikacji';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { act, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
@@ -180,20 +181,6 @@ const BESS_BATTERY_FIXTURES = [
   },
 ];
 
-/**
- * Mirror TESTOWY klasyfikacji modułu NC RfG — jedyne źródło progów zostaje
- * `compliance/nc_rfg_modul.py` (`GET /api/ncrfg-tests/modul`); ten mirror tylko
- * UDAJE backend w teście, jak `klasyfikujModulNcRfgDlaTestu` w `SldDetailDrawer.test.tsx`.
- */
-function klasyfikujModulNcRfgDlaTestu(pMaxMw: number, napiecieKv: number): 'A' | 'B' | 'C' | 'D' {
-  if (napiecieKv >= 110) return 'D';
-  const pMaxKw = pMaxMw * 1000;
-  if (pMaxKw >= 75_000) return 'D';
-  if (pMaxKw >= 10_000) return 'C';
-  if (pMaxKw >= 200) return 'B';
-  return 'A';
-}
-
 // Identyfikatory i wartości liczbowe PRZENIESIONE 1:1 z `PV_INVERTER_CATALOG`/
 // `BESS_PCS_CATALOG` (katalog lokalny zostaje w `catalogs.ts` — konsument
 // produkcyjny: `DerSurfaces.tsx`/`InspectorEngineeringView.tsx` — ale kreator
@@ -239,16 +226,10 @@ function mockDerWizardFetch(
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    if (url.includes('/api/ncrfg-tests/modul')) {
-      const params = new URL(url, 'http://localhost').searchParams;
-      const modul = klasyfikujModulNcRfgDlaTestu(
-        Number(params.get('p_max_mw')), Number(params.get('napiecie_kv')),
-      );
-      return new Response(JSON.stringify({ modul }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    // Karta AB-1a Pakiet D2: `/modul` ze wspólnej atrapy — parametry zapytania z migawki
+    // OpenAPI (`p_max_kw`, `napiecie_kv`), progi z katalogu policzonego backendem.
+    const klasyfikacja = odpowiedzKlasyfikacji(url);
+    if (klasyfikacja) return klasyfikacja;
     if (url.includes('/api/ncrfg-tests/catalog')) {
       return new Response(
         JSON.stringify({

@@ -1,75 +1,70 @@
 /*
- * „Macierz wymogów NC RfG per moduł" (karta P39 / rejestr W-614).
+ * „Macierz wymogów NC RfG per moduł" (karta P39 / rejestr W-614) na kontrakcie V2
+ * (karta AB-1a Pakiet D2 §2–§5).
  *
- * Interaktywna macierz zgodności PTPiREE dla WSZYSTKICH modułów wytwórczych
- * projektu naraz: wiersze = wymogi/testy z katalogu procedury, kolumny = moduły
- * (PV/BESS/FW), komórka = werdykt z odpowiedzi solvera. Podsumowanie per moduł
- * i per projekt.
+ * Wiersze = testy katalogu biegu (T01–T20, z podstawą w procedurze, zdolnością dowodową
+ * i rodzajem twierdzenia), kolumny = moduły wytwórcze modelu, komórka = rekord `ocena`
+ * (`OcenaKryterium`) testu z biegu „co-jeśli": plakietka etykiety z rekordu, szczegół przez
+ * `KartaWerdyktu`. Obok: zgodność przypadku liczona z ZATWIERDZONEGO modelu (dowód certyfikatu
+ * urządzenia wyprowadza serwer) i certyfikat zgodności z tego modelu.
  *
- * Granice (NOT-A-SOLVER / Single Model): warstwa tylko prezentuje. Werdykty
- * pochodzą WYŁĄCZNIE z `NcRfgRunResult`; dane DER czytane read-only ze store'a
- * (`useStationDerStore`), zdolności edytowane w stanie lokalnym okna (zero
- * mutacji modelu). Bieg uruchamiany jawnym przyciskiem. Klient API reużyty
- * z `ui/ncrfg-tests/api` — bez własnego klienta.
+ * Granice (NOT-A-SOLVER / Single Model): warstwa tylko prezentuje. Zero agregatów, liczników
+ * i map status → tekst; dane DER czytane read-only ze store'a (`useStationDerStore`), formularz
+ * biegu „co-jeśli" w stanie lokalnym okna (zero mutacji modelu). Operator nigdy nie jest
+ * zgadywany (`ncrfg/operator.ts`). Jeden klient V2 (`ui2/oze/ncrfg/api`).
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
-import { type NcRfgVerdict } from '../../../ui/ncrfg-tests/api';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
+import { EtykietaWerdyktu } from '../../wyniki/wzorzec/KartaWerdyktu';
+import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
+import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec/PrzyciskAkcjiStanu';
+import { useAkcjaDodajZrodloOze } from '../../wyniki/wzorzec/akcjeStanuZerowego';
 import {
-  CertyfikatBrakiError,
+  BrakiCertyfikatuError,
   pobierzCertyfikat,
-  pobierzCertyfikatDocx,
-  type WidokCertyfikatu,
-  type ZadanieCertyfikatu,
-} from '../api';
+  pobierzPlikCertyfikatu,
+  pobierzWejsciaPrzypadkuNcRfg,
+  type FormatDokumentu,
+} from '../ncrfg/api';
+import { ListaRekordowWymagan, NaglowekModuluNcRfg, OpisDokumentuWarstwy } from '../ncrfg/komponenty';
+import { operatorEfektywny, operatorZModelu } from '../ncrfg/operator';
+import type {
+  BrakiCertyfikatu,
+  WejsciaPrzypadkuNcRfg,
+  WejscieModuluNcRfg,
+  WidokCertyfikatu,
+  ZadanieCertyfikatu,
+} from '../ncrfg/typy';
+import { WyborOperatora } from '../ncrfg/WyborOperatora';
 import { useNcRfgStore } from '../ncRfgStore';
 import { PanelModulu } from './PanelModulu';
+import { PodgladCertyfikatu } from './PodgladCertyfikatu';
 import { SekcjaZgodnosciPrzekrojowej } from './SekcjaZgodnosciPrzekrojowej';
-import { SzczegolWerdyktu } from './SzczegolWerdyktu';
+import { SzczegolWerdyktu, nazwaRodzajuTwierdzenia } from './SzczegolWerdyktu';
 import {
+  etykietyObecne,
   mapujMacierz,
-  podsumowanieModulu,
-  podsumowanieProjektu,
+  ocenaWymaganModulu,
+  wynikModulu,
   zbudujModuly,
   zbudujWejscieModulu,
-  type KluczNumeryczny,
-  type KluczZdolnosci,
-  type KomorkaMacierzy,
-  type NumeryczneModulu,
+  zbudujZadanieCertyfikatu,
+  type BledyFormularza,
+  type FormularzModulu,
   type OpisModulu,
-  type PochodzenieDanej,
-  type ZdolnosciModulu,
 } from './macierzModel';
 import {
-  ETYKIETY_STATUSU_MODULU,
-  ETYKIETY_WERDYKTU,
-  KLASA_WERDYKTU,
   MACIERZ_STRINGS,
   formatMoc,
   formatNapiecie,
   nazwaPlikuCertyfikatu,
 } from './strings';
 
-import { PrzyciskAkcjiStanu, useAkcjaDodajZrodloOze } from '../../wyniki/wzorzec';
 import './macierz.css';
-
-interface EdycjaModulu {
-  readonly zdolnosci: ZdolnosciModulu;
-  readonly pochodzenie: Record<KluczZdolnosci, PochodzenieDanej>;
-  readonly numeryczne: NumeryczneModulu;
-}
-
-const LEGENDA: readonly NcRfgVerdict[] = ['pass', 'fail', 'no_data', 'not_required'];
-
-/** Braki kompletności certyfikatu (bramka 422 — uczciwa lista po polsku). */
-interface BrakiCertyfikatu {
-  readonly komunikat: string;
-  readonly braki: readonly string[];
-}
 
 /** Zapisz blob jako plik do pobrania (mechanika przeglądarkowa). */
 function zapiszBlob(blob: Blob, nazwa: string): void {
@@ -84,20 +79,24 @@ function zapiszBlob(blob: Blob, nazwa: string): void {
 }
 
 export interface MacierzNcRfgProps {
-  /** Tryb zaawansowania — odcisk deterministyczny widoczny w trybie eksperckim. */
+  /** Tryb zaawansowania — odciski i identyfikatory w trybie eksperckim. */
   readonly trybZaawansowania: AdvancementMode;
   /**
-   * Pre-selekcja modułu z deep-linku (P-1: akcja SLD „Pokaż zgodność
-   * przyłączeniową" niesie kontekst DER). Dopasowanie po `derRef` (id
-   * przyłączenia) ALBO po nazwie modułu (wspólny klucz kreatora DER dla
-   * generatora ENM). Nieznana wartość = brak pre-selekcji (zero fabrykacji);
-   * żądanie jednorazowe — konsumpcja przez `onPreselekcjaSkonsumowana`
-   * (wzorzec `EkranKompensacji.preselekcjaWezla`).
+   * Pre-selekcja modułu z deep-linku (akcja SLD „Pokaż zgodność przyłączeniową" niesie
+   * kontekst DER). Dopasowanie po `derRef` ALBO po nazwie modułu. Nieznana wartość = brak
+   * pre-selekcji (zero fabrykacji); żądanie jednorazowe — konsumpcja przez
+   * `onPreselekcjaSkonsumowana`.
    */
   readonly preselekcjaModulu?: string | null;
-  /** Wywoływane po konsumpcji żądania pre-selekcji (także nieznanego refu). */
   readonly onPreselekcjaSkonsumowana?: () => void;
 }
+
+/** Stan odczytu wejść modułów z zatwierdzonego modelu przypadku (`GET …/wejscia`). */
+type StanWejscModelu =
+  | { readonly stan: 'brak' }
+  | { readonly stan: 'ladowanie' }
+  | { readonly stan: 'gotowe'; readonly wejscia: WejsciaPrzypadkuNcRfg }
+  | { readonly stan: 'blad'; readonly komunikat: string };
 
 export function MacierzNcRfg({
   trybZaawansowania,
@@ -105,69 +104,98 @@ export function MacierzNcRfg({
   onPreselekcjaSkonsumowana,
 }: MacierzNcRfgProps): JSX.Element {
   const ders = useStationDerStore((state) => selectAllDers(state));
-  const opisyBazowe = useMemo(() => zbudujModuly(ders), [ders]);
-  // K6 / H-5: stan zerowy strumienia OZE prowadzi do dodania modulu wytworczego.
+  // Tożsamość stanu modułów modelu do zależności efektów: rekord store'a ma stałą referencję,
+  // dopóki model się nie zmieni (lista `selectAllDers` powstaje na nowo przy każdym renderze).
+  const stanModulow = useStationDerStore((state) => state.ders);
   const akcjaZrodlo = useAkcjaDodajZrodloOze();
-  // W3-D: nazwy modulow dla sekcji zgodnosci przekrojowej (ten sam zrodlo co
-  // kolumny macierzy — der_ref -> nazwa czytelna, zamiast surowego identyfikatora).
-  const nazwyModulowPrzekrojowe = useMemo(
-    () => Object.fromEntries(opisyBazowe.map((opis) => [opis.derRef, opis.nazwa])),
-    [opisyBazowe],
-  );
-
-  // Stan biegu NC RfG — wspólny store (widoczny również w pulpicie instalacji OZE).
+  // Stan biegu — wspólny store (widoczny również w pulpicie instalacji OZE).
   const katalog = useNcRfgStore((s) => s.katalog);
   const bladKatalogu = useNcRfgStore((s) => s.bladKatalogu);
-  const operatorId = useNcRfgStore((s) => s.operatorId);
+  const operatorWybor = useNcRfgStore((s) => s.operatorWybor);
   const status = useNcRfgStore((s) => s.status);
   const wynik = useNcRfgStore((s) => s.wynik);
   const bladBiegu = useNcRfgStore((s) => s.bladBiegu);
-  const ostatnieWejscia = useNcRfgStore((s) => s.ostatnieWejscia);
   const wynikiFrt = useNcRfgStore((s) => s.wynikiFrt);
   const zaladujKatalog = useNcRfgStore((s) => s.zaladujKatalog);
   const ustawOperator = useNcRfgStore((s) => s.ustawOperator);
   const przeprowadzTesty = useNcRfgStore((s) => s.przeprowadzTesty);
 
-  // Identyfikacja projektu/przypadku do certyfikatu (read-only ze store'u aplikacji).
   const nazwaProjektu = useAppStateStore((s) => s.activeProjectName);
   const nazwaPrzypadku = useAppStateStore((s) => s.activeCaseName);
-  // Aktywny przypadek → backend dopina do certyfikatu dowód certyfikacji PTPiREE
-  // z tabliczek urządzeń modelu (bez niego dokument nie ma sekcji dowodu).
   const aktywnyPrzypadek = useAppStateStore((s) => s.activeCaseId);
 
-  const [edycje, setEdycje] = useState<Record<string, EdycjaModulu>>({});
-  // Stan podglądu certyfikatu zgodności (widok, braki 422 lub błąd — rozłącznie).
+  const zModelu = useMemo(() => operatorZModelu(ders), [ders]);
+  const operatorId = operatorEfektywny(zModelu, operatorWybor);
+
+  // Formularz wstępny biegu „co-jeśli" = wejścia modułów złożone z ZATWIERDZONEGO modelu
+  // przypadku przez most backendu (jeden odczyt; klient niczego z modelu nie wyprowadza sam).
+  const [stanWejsc, setStanWejsc] = useState<StanWejscModelu>({ stan: 'brak' });
+  const wejsciaModelu = stanWejsc.stan === 'gotowe' ? stanWejsc.wejscia : null;
+  const opisyBazowe = useMemo(() => zbudujModuly(ders, wejsciaModelu), [ders, wejsciaModelu]);
+  const nazwyModulow = useMemo(
+    () => Object.fromEntries(opisyBazowe.map((opis) => [opis.derRef, opis.nazwa])),
+    [opisyBazowe],
+  );
+
+  const [formularze, setFormularze] = useState<Record<string, FormularzModulu>>({});
+  const [bledy, setBledy] = useState<Record<string, BledyFormularza>>({});
   const [certyfikat, setCertyfikat] = useState<WidokCertyfikatu | null>(null);
   const [certBraki, setCertBraki] = useState<BrakiCertyfikatu | null>(null);
   const [certBlad, setCertBlad] = useState<string | null>(null);
   const [certLadowanie, setCertLadowanie] = useState(false);
-  const [docxLadowanie, setDocxLadowanie] = useState(false);
+  const [plikLadowanie, setPlikLadowanie] = useState<FormatDokumentu | null>(null);
   const [wybranaKomorka, setWybranaKomorka] = useState<{ derRef: string; testId: string } | null>(
     null,
   );
   const [wybranyModul, setWybranyModul] = useState<string>('');
+  const [filtr, setFiltr] = useState<string>('');
 
-  // Katalog wymogów — pobranie jednorazowe do wspólnego store'a.
   useEffect(() => {
     void zaladujKatalog();
   }, [zaladujKatalog]);
 
-  // Domyślny wybór modułu do panelu.
+  // Każdy nowy odczyt wejść (przypadek, operator albo model zmienione) startuje formularz od
+  // danych modelu — deklaracje lokalne okna dotyczyły poprzednich wejść.
+  useEffect(() => {
+    setFormularze({});
+    setBledy({});
+    if (aktywnyPrzypadek === null || operatorId === null) {
+      setStanWejsc({ stan: 'brak' });
+      return;
+    }
+    let aktualny = true;
+    setStanWejsc({ stan: 'ladowanie' });
+    pobierzWejsciaPrzypadkuNcRfg(aktywnyPrzypadek, operatorId).then(
+      (wejscia) => {
+        if (aktualny) setStanWejsc({ stan: 'gotowe', wejscia });
+      },
+      (err: unknown) => {
+        if (aktualny) {
+          setStanWejsc({
+            stan: 'blad',
+            komunikat: err instanceof Error ? err.message : MACIERZ_STRINGS.bladWejsc,
+          });
+        }
+      },
+    );
+    return () => {
+      aktualny = false;
+    };
+  }, [aktywnyPrzypadek, operatorId, stanModulow]);
+
   useEffect(() => {
     if (!wybranyModul && opisyBazowe[0]) setWybranyModul(opisyBazowe[0].derRef);
   }, [opisyBazowe, wybranyModul]);
 
-  // Pre-selekcja modułu z deep-linku (P-1) — żądanie jednorazowe: dopasowanie
-  // po derRef albo nazwie, konsumpcja również przy nieznanym refie (żaden
-  // kontekst nie zalega); wzorzec `EkranKompensacji`.
+  // Pre-selekcja modułu z deep-linku — żądanie jednorazowe (wzorzec `EkranKompensacji`).
   const skonsumowanaPreselekcja = useRef<string | null>(null);
   useEffect(() => {
     if (preselekcjaModulu === null || preselekcjaModulu === '') {
       skonsumowanaPreselekcja.current = null;
       return;
     }
-    if (preselekcjaModulu === skonsumowanaPreselekcja.current) return; // już skonsumowane
-    if (opisyBazowe.length === 0) return; // poczekaj na moduły ze store'a
+    if (preselekcjaModulu === skonsumowanaPreselekcja.current) return;
+    if (opisyBazowe.length === 0) return;
     const dopasowany = opisyBazowe.find(
       (opis) => opis.derRef === preselekcjaModulu || opis.nazwa === preselekcjaModulu,
     );
@@ -179,109 +207,94 @@ export function MacierzNcRfg({
     onPreselekcjaSkonsumowana?.();
   }, [preselekcjaModulu, opisyBazowe, onPreselekcjaSkonsumowana]);
 
-  // Efektywne opisy = bazowe z modelu + edycje lokalne okna (zero mutacji modelu).
+  // Efektywne opisy = bazowe z modelu + formularz lokalny okna (zero mutacji modelu).
   const opisy = useMemo<OpisModulu[]>(
     () =>
       opisyBazowe.map((opis) => {
-        const edycja = edycje[opis.derRef];
-        if (!edycja) return opis;
-        return {
-          ...opis,
-          zdolnosci: edycja.zdolnosci,
-          pochodzenieZdolnosci: edycja.pochodzenie,
-          numeryczne: edycja.numeryczne,
-        };
+        const formularz = formularze[opis.derRef];
+        return formularz ? { ...opis, formularz } : opis;
       }),
-    [opisyBazowe, edycje],
+    [opisyBazowe, formularze],
   );
-
   const opisWybrany = opisy.find((o) => o.derRef === wybranyModul) ?? opisy[0] ?? null;
 
-  const wiersze = useMemo(
-    () => mapujMacierz(katalog, wynik, opisy),
-    [katalog, wynik, opisy],
-  );
-  const podsumProjektu = useMemo(() => podsumowanieProjektu(opisy, wynik), [opisy, wynik]);
+  const definicje = wynik?.test_catalog ?? katalog?.tests ?? [];
+  const wiersze = useMemo(() => mapujMacierz(definicje, wynik, opisy), [definicje, wynik, opisy]);
+  const opcjeFiltra = useMemo(() => etykietyObecne(wynik), [wynik]);
+  const filtrAktywny = filtr !== '' && opcjeFiltra.some((o) => o.etykieta.etykieta_pl === filtr);
+  const wierszeWidoczne = filtrAktywny
+    ? wiersze.filter((w) =>
+        w.komorki.some(
+          (k) => k.stan === 'wynik' && k.wynik.ocena.etykieta.etykieta_pl === filtr,
+        ),
+      )
+    : wiersze;
 
   const gotoweDoBiegu = opisy.filter((o) => o.powodBlokady === null);
   const powodBlokadyBiegu =
     opisy.length === 0
       ? MACIERZ_STRINGS.brakModulow
-      : gotoweDoBiegu.length === 0
-        ? MACIERZ_STRINGS.brakModulowOpis
-        : status === 'running'
-          ? MACIERZ_STRINGS.wTrakcie
-          : null;
+      : aktywnyPrzypadek === null
+        ? MACIERZ_STRINGS.brakPrzypadkuWejsc
+        : operatorId === null
+          ? MACIERZ_STRINGS.brakOperatora
+          : stanWejsc.stan === 'ladowanie'
+            ? MACIERZ_STRINGS.wczytywanieWejsc
+            : stanWejsc.stan === 'blad'
+              ? MACIERZ_STRINGS.bladWejsc
+              : gotoweDoBiegu.length === 0
+                ? MACIERZ_STRINGS.brakModulowGotowych
+                : status === 'running'
+                  ? MACIERZ_STRINGS.wTrakcie
+                  : null;
 
-  const zmienZdolnosc = (derRef: string, klucz: KluczZdolnosci, wartosc: boolean): void => {
-    const opis = opisy.find((o) => o.derRef === derRef);
-    if (!opis) return;
-    setEdycje((current) => {
-      const poprzednia: EdycjaModulu = current[derRef] ?? {
-        zdolnosci: opis.zdolnosci,
-        pochodzenie: { ...opis.pochodzenieZdolnosci },
-        numeryczne: opis.numeryczne,
-      };
-      return {
-        ...current,
-        [derRef]: {
-          ...poprzednia,
-          zdolnosci: { ...poprzednia.zdolnosci, [klucz]: wartosc },
-          pochodzenie: { ...poprzednia.pochodzenie, [klucz]: 'deklarowane' },
-        },
-      };
-    });
-  };
-
-  const zmienParametr = (derRef: string, klucz: KluczNumeryczny, wartosc: string): void => {
-    const opis = opisy.find((o) => o.derRef === derRef);
-    if (!opis) return;
-    setEdycje((current) => {
-      const poprzednia: EdycjaModulu = current[derRef] ?? {
-        zdolnosci: opis.zdolnosci,
-        pochodzenie: { ...opis.pochodzenieZdolnosci },
-        numeryczne: opis.numeryczne,
-      };
-      return {
-        ...current,
-        [derRef]: {
-          ...poprzednia,
-          numeryczne: { ...poprzednia.numeryczne, [klucz]: wartosc },
-        },
-      };
+  const zmienFormularz = (derRef: string, formularz: FormularzModulu): void => {
+    setFormularze((biezace) => ({ ...biezace, [derRef]: formularz }));
+    setBledy((biezace) => {
+      if (!(derRef in biezace)) return biezace;
+      const { [derRef]: _usuniety, ...reszta } = biezace;
+      return reszta;
     });
   };
 
   const przeprowadz = async (): Promise<void> => {
-    const wejscia = gotoweDoBiegu
-      .map((opis) => zbudujWejscieModulu(opis, operatorId))
-      .filter((m): m is NonNullable<typeof m> => m !== null);
-    await przeprowadzTesty(wejscia, katalog?.procedure_version);
+    if (operatorId === null) return;
+    const wejscia: WejscieModuluNcRfg[] = [];
+    const noweBledy: Record<string, BledyFormularza> = {};
+    for (const opis of gotoweDoBiegu) {
+      const wynikWejscia = zbudujWejscieModulu(opis, operatorId);
+      if (wynikWejscia.stan === 'ok') wejscia.push(wynikWejscia.wejscie);
+      else if (wynikWejscia.stan === 'blad') noweBledy[opis.derRef] = wynikWejscia.bledy;
+    }
+    setBledy(noweBledy);
+    const pierwszyZBledem = Object.keys(noweBledy)[0];
+    if (pierwszyZBledem !== undefined) {
+      setWybranyModul(pierwszyZBledem);
+      return;
+    }
+    await przeprowadzTesty(wejscia);
   };
 
-  // Certyfikat dostępny wyłącznie z zakończonego biegu (zero martwych klików).
-  const certyfikatDostepny =
-    status === 'ready' && wynik !== null && ostatnieWejscia !== null && ostatnieWejscia.length > 0;
+  const modulyZBledem = opisy.filter((o) => o.derRef in bledy).map((o) => o.nazwa);
 
-  const liczbaTestowCertyfikatu = certyfikat
-    ? certyfikat.moduly.reduce((suma, modul) => suma + modul.testy.length, 0)
-    : 0;
+  // Certyfikat — WYŁĄCZNIE z zatwierdzonego modelu przypadku (case_id) i operatora.
+  const certyfikatDostepny = aktywnyPrzypadek !== null && operatorId !== null;
 
-  // Żądanie 1:1 z danymi, które wyprodukowały wynik (`ostatnieWejscia`).
-  const zbudujZadanieCertyfikatu = (): ZadanieCertyfikatu | null => {
-    if (!wynik || !ostatnieWejscia || ostatnieWejscia.length === 0) return null;
-    return {
-      run_request: { modules: ostatnieWejscia, procedure_version: wynik.procedure_version },
-      nazwa_projektu: nazwaProjektu?.trim() ? nazwaProjektu : MACIERZ_STRINGS.projektBezNazwy,
-      nazwa_przypadku: nazwaPrzypadku ?? null,
-    };
+  const zadanieCertyfikatu = (): ZadanieCertyfikatu | null => {
+    if (operatorId === null) return null;
+    return zbudujZadanieCertyfikatu({
+      nazwaProjektu,
+      nazwaPrzypadku,
+      operatorId,
+      nazwaZastepcza: MACIERZ_STRINGS.projektBezNazwy,
+    });
   };
 
   const obsluzBladCertyfikatu = (err: unknown): void => {
-    if (err instanceof CertyfikatBrakiError) {
+    if (err instanceof BrakiCertyfikatuError) {
       setCertyfikat(null);
       setCertBlad(null);
-      setCertBraki({ komunikat: err.message, braki: err.braki });
+      setCertBraki(err.braki);
     } else {
       setCertBraki(null);
       setCertBlad(err instanceof Error ? err.message : MACIERZ_STRINGS.certyfikatBlad);
@@ -289,11 +302,12 @@ export function MacierzNcRfg({
   };
 
   const generujCertyfikat = async (): Promise<void> => {
-    const zadanie = zbudujZadanieCertyfikatu();
-    if (!zadanie) return;
+    const zadanie = zadanieCertyfikatu();
+    if (!zadanie || aktywnyPrzypadek === null) return;
     setCertLadowanie(true);
     setCertBlad(null);
     setCertBraki(null);
+    setCertyfikat(null);
     try {
       setCertyfikat(await pobierzCertyfikat(zadanie, aktywnyPrzypadek));
     } catch (err) {
@@ -303,18 +317,18 @@ export function MacierzNcRfg({
     }
   };
 
-  const pobierzDocx = async (): Promise<void> => {
-    const zadanie = zbudujZadanieCertyfikatu();
-    if (!zadanie) return;
-    setDocxLadowanie(true);
+  const pobierzPlik = async (format: FormatDokumentu): Promise<void> => {
+    const zadanie = zadanieCertyfikatu();
+    if (!zadanie || aktywnyPrzypadek === null) return;
+    setPlikLadowanie(format);
     setCertBlad(null);
     try {
-      const blob = await pobierzCertyfikatDocx(zadanie, aktywnyPrzypadek);
-      zapiszBlob(blob, nazwaPlikuCertyfikatu(new Date()));
+      const blob = await pobierzPlikCertyfikatu(zadanie, aktywnyPrzypadek, format);
+      zapiszBlob(blob, nazwaPlikuCertyfikatu(new Date(), format));
     } catch (err) {
       obsluzBladCertyfikatu(err);
     } finally {
-      setDocxLadowanie(false);
+      setPlikLadowanie(null);
     }
   };
 
@@ -324,15 +338,19 @@ export function MacierzNcRfg({
     setCertBlad(null);
   };
 
-  const komorkaSzczegolu: KomorkaMacierzy | null = wybranaKomorka
+  const komorkaSzczegolu = wybranaKomorka
     ? (wiersze
         .find((w) => w.test.test_id === wybranaKomorka.testId)
         ?.komorki.find((k) => k.derRef === wybranaKomorka.derRef) ?? null)
     : null;
+  const definicjaSzczegolu =
+    definicje.find((d) => d.test_id === wybranaKomorka?.testId) ?? null;
   const nazwaModuluSzczegolu =
     opisy.find((o) => o.derRef === wybranaKomorka?.derRef)?.nazwa ?? null;
 
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
+  const wynikWybranego = opisWybrany ? wynikModulu(wynik, opisWybrany.derRef) : null;
+  const ocenaWybranego = opisWybrany ? ocenaWymaganModulu(wynik, opisWybrany.derRef) : null;
 
   return (
     <div className="mvd-oze" data-testid="mvd-oze-macierz-ncrfg">
@@ -343,26 +361,21 @@ export function MacierzNcRfg({
         </div>
         <div className="mvd-oze-head-akcje">
           <div className="mvd-oze-pola">
-            <label className="mvd-oze-pole">
-              <span>{MACIERZ_STRINGS.operator}</span>
-              <select
-                value={operatorId}
-                onChange={(event) => ustawOperator(event.target.value)}
-                data-testid="mvd-oze-operator"
-              >
-                {(katalog?.operators ?? [{ operator_id: 'enea', operator_name_pl: 'Enea Operator', last_revision: '' }]).map(
-                  (op) => (
-                    <option key={op.operator_id} value={op.operator_id}>
-                      {op.operator_name_pl}
-                    </option>
-                  ),
-                )}
-              </select>
-            </label>
+            <WyborOperatora
+              zModelu={zModelu}
+              operatorzy={katalog?.operators ?? null}
+              wybor={operatorWybor}
+              onWybor={ustawOperator}
+              etykieta={MACIERZ_STRINGS.operator}
+              testid="mvd-oze-operator"
+            />
             {katalog ? (
               <div className="mvd-oze-pole">
                 <span>{MACIERZ_STRINGS.wersjaProcedury}</span>
-                <span>{katalog.procedure_version}</span>
+                <OpisDokumentuWarstwy
+                  dokument={katalog.procedure_version}
+                  testid="mvd-oze-wersja-procedury"
+                />
               </div>
             ) : null}
           </div>
@@ -390,43 +403,50 @@ export function MacierzNcRfg({
           >
             {MACIERZ_STRINGS.certyfikatPrzycisk}
           </button>
-          {trybEkspercki && wynik ? (
-            <div className="mvd-oze-odcisk" data-testid="mvd-oze-odcisk">
-              {MACIERZ_STRINGS.odcisk}: {wynik.deterministic_hash}
-            </div>
+          {wynik ? (
+            <InformacjeAudytowe
+              trybEkspercki={trybEkspercki}
+              testid="mvd-oze-odcisk"
+              wiersze={[
+                { etykieta: MACIERZ_STRINGS.odciskBiegu, wartosc: wynik.deterministic_hash },
+                { etykieta: MACIERZ_STRINGS.odciskWejsciaBiegu, wartosc: wynik.input_hash },
+                { etykieta: MACIERZ_STRINGS.wersjaSolvera, wartosc: wynik.solver_version },
+              ]}
+            />
           ) : null}
         </div>
       </header>
 
+      <p className="mvd-oze-info mvd-oze-opis-biegu" data-testid="mvd-oze-opis-biegu">
+        {MACIERZ_STRINGS.opisBiegu}
+      </p>
+
       {bladKatalogu ? (
-        <div className="mvd-oze-blad" data-testid="mvd-oze-blad-katalogu">
+        <div className="mvd-oze-blad" role="alert" data-testid="mvd-oze-blad-katalogu">
           {MACIERZ_STRINGS.bladKatalogu}: {bladKatalogu}
         </div>
       ) : null}
+      {stanWejsc.stan === 'blad' ? (
+        <div className="mvd-oze-blad" role="alert" data-testid="mvd-oze-blad-wejsc">
+          {MACIERZ_STRINGS.bladWejsc}: {stanWejsc.komunikat}
+        </div>
+      ) : null}
       {bladBiegu ? (
-        <div className="mvd-oze-blad" data-testid="mvd-oze-blad-biegu">
+        <div className="mvd-oze-blad" role="alert" data-testid="mvd-oze-blad-biegu">
           {MACIERZ_STRINGS.bladBiegu}: {bladBiegu}
         </div>
       ) : null}
-
-      {/* Karta S-1 (W6-0): baner biegu — stopień dowodowy z `ocena_dowodowa_biegu`.
-          Zero oceny lokalnej: `wynik.reporting_status` pochodzi z backendu. */}
-      {wynik && wynik.reporting_status === 'not_reportable' ? (
-        <div className="mvd-oze-blad" data-testid="mvd-oze-baner-brak-dowodu">
-          <strong>{MACIERZ_STRINGS.banerBrakDowoduTytul}</strong>
-          <p style={{ margin: '4px 0 0' }}>{wynik.evidence_note_pl}</p>
+      {modulyZBledem.length > 0 ? (
+        <div className="mvd-oze-blad" role="alert" data-testid="mvd-oze-bledy-formularza">
+          {MACIERZ_STRINGS.bledyFormularza}: {modulyZBledem.join(', ')}
         </div>
       ) : null}
 
-      {/* Karta S-3 (2026-09-16, jeden tor NC RfG; dawniej W3-D): zgodnosc przekrojowa
-          — wszystkie DER modelu naraz, liczona z ENM TYM SAMYM solverem i w TYM SAMYM
-          kontrakcie co bieg macierzy (`GET /api/ncrfg-tests/cases/{case_id}/compliance`),
-          niezaleznie od recznego biegu ponizej. Odeslanie „Pokaz w macierzy" wybiera
-          modul w panelu/kolumnie macierzy per DER (ten sam mechanizm co klik naglowka). */}
       <SekcjaZgodnosciPrzekrojowej
         caseId={aktywnyPrzypadek}
         operatorId={operatorId}
-        nazwyModulow={nazwyModulowPrzekrojowe}
+        nazwyModulow={nazwyModulow}
+        trybEkspercki={trybEkspercki}
         onWybierzModul={(derRef) => {
           setWybranyModul(derRef);
           setWybranaKomorka(null);
@@ -434,224 +454,158 @@ export function MacierzNcRfg({
       />
 
       {certyfikat || certBraki || certBlad || certLadowanie ? (
-        <section className="mvd-oze-cert" data-testid="mvd-oze-certyfikat">
-          <div className="mvd-oze-cert-head">
-            <h4 className="mvd-oze-cert-tytul">{MACIERZ_STRINGS.certyfikatNaglowek}</h4>
-            <button
-              type="button"
-              className="mvd-btn"
-              onClick={zamknijCertyfikat}
-              data-testid="mvd-oze-cert-zamknij"
-            >
-              {MACIERZ_STRINGS.certyfikatZamknij}
-            </button>
-          </div>
-
-          {certLadowanie ? (
-            <p data-testid="mvd-oze-cert-ladowanie">{MACIERZ_STRINGS.certyfikatLadowanie}</p>
-          ) : null}
-
-          {certBlad ? (
-            <div className="mvd-oze-blad" data-testid="mvd-oze-cert-blad">
-              {MACIERZ_STRINGS.certyfikatBlad}: {certBlad}
-            </div>
-          ) : null}
-
-          {certBraki ? (
-            <div className="mvd-oze-cert-braki" data-testid="mvd-oze-cert-braki">
-              <h5>{MACIERZ_STRINGS.certyfikatBrakiTytul}</h5>
-              <p>{certBraki.komunikat}</p>
-              <ul>
-                {certBraki.braki.map((brak, indeks) => (
-                  <li key={indeks}>{brak}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {certyfikat ? (
-            <div className="mvd-oze-cert-widok" data-testid="mvd-oze-cert-widok">
-              <div
-                className={`mvd-oze-cert-werdykt ${
-                  certyfikat.werdykt_zbiorczy.status === 'zgodny'
-                    ? 'mvd-oze-werdykt-ok'
-                    : 'mvd-oze-werdykt-err'
-                }`}
-                data-testid="mvd-oze-cert-werdykt"
-              >
-                {certyfikat.werdykt_zbiorczy.etykieta_pl}
-              </div>
-              <dl className="mvd-oze-cert-meta">
-                <div>
-                  <dt>{MACIERZ_STRINGS.certyfikatProjekt}</dt>
-                  <dd>{certyfikat.identyfikacja.projekt}</dd>
-                </div>
-                {certyfikat.identyfikacja.przypadek ? (
-                  <div>
-                    <dt>{MACIERZ_STRINGS.certyfikatPrzypadek}</dt>
-                    <dd>{certyfikat.identyfikacja.przypadek}</dd>
-                  </div>
-                ) : null}
-                <div>
-                  <dt>{MACIERZ_STRINGS.certyfikatProcedura}</dt>
-                  <dd>{certyfikat.identyfikacja.procedura}</dd>
-                </div>
-                <div>
-                  <dt>{MACIERZ_STRINGS.certyfikatNarzedzie}</dt>
-                  <dd>{certyfikat.identyfikacja.wersja_narzedzia}</dd>
-                </div>
-                <div>
-                  <dt>{MACIERZ_STRINGS.certyfikatModuly}</dt>
-                  <dd className="mvd-oze-num">{certyfikat.werdykt_zbiorczy.liczba_modulow}</dd>
-                </div>
-                <div>
-                  <dt>{MACIERZ_STRINGS.certyfikatModulyZgodne}</dt>
-                  <dd className="mvd-oze-num">{certyfikat.werdykt_zbiorczy.modulow_zgodnych}</dd>
-                </div>
-                <div>
-                  <dt>{MACIERZ_STRINGS.certyfikatModulyNiezgodne}</dt>
-                  <dd className="mvd-oze-num">{certyfikat.werdykt_zbiorczy.modulow_niezgodnych}</dd>
-                </div>
-                <div>
-                  <dt>{MACIERZ_STRINGS.certyfikatTesty}</dt>
-                  <dd className="mvd-oze-num">{liczbaTestowCertyfikatu}</dd>
-                </div>
-              </dl>
-
-              {/* Dowód certyfikacji PTPiREE per moduł — dokument składany
-                  u operatora musi pokazywać, NA CO powołuje się deklaracja
-                  zgodności. Wartości WPROST z tabliczki urządzenia w modelu;
-                  brak tabliczki to jawny stan zerowy, nie puste pola. */}
-              {certyfikat.moduly.some((modul) => modul.dowod_certyfikatu) ? (
-                <div className="mvd-oze-cert-dowody" data-testid="mvd-oze-cert-dowody">
-                  <h5>{MACIERZ_STRINGS.certyfikatDowodTytul}</h5>
-                  <ul>
-                    {certyfikat.moduly.map((modul) => {
-                      const dowod = modul.dowod_certyfikatu;
-                      if (!dowod) return null;
-                      const etykieta = modul.der_name || modul.der_ref;
-                      return dowod.stan_pl ? (
-                        <li
-                          key={modul.der_ref}
-                          className="mvd-oze-cert-dowod mvd-oze-cert-dowod--brak"
-                          data-testid={`mvd-oze-cert-dowod-brak-${modul.der_ref}`}
-                        >
-                          {etykieta}: {dowod.stan_pl}
-                        </li>
-                      ) : (
-                        <li
-                          key={modul.der_ref}
-                          className="mvd-oze-cert-dowod"
-                          data-testid={`mvd-oze-cert-dowod-${modul.der_ref}`}
-                        >
-                          {etykieta}: {MACIERZ_STRINGS.certyfikatDowodNumer}{' '}
-                          {dowod.numer_dokumentu ?? '—'}
-                          {dowod.wersja_wipwc
-                            ? ` · ${MACIERZ_STRINGS.certyfikatDowodWipwc} ${dowod.wersja_wipwc}`
-                            : ''}
-                          {dowod.data_akceptacji
-                            ? ` · ${MACIERZ_STRINGS.certyfikatDowodData} ${dowod.data_akceptacji}`
-                            : ''}
-                          {dowod.warunek_waznosci
-                            ? ` · ${MACIERZ_STRINGS.certyfikatDowodWarunek}: ${dowod.warunek_waznosci}`
-                            : ''}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ) : null}
-
-              <button
-                type="button"
-                className="mvd-btn mvd-btn-glowny"
-                onClick={() => void pobierzDocx()}
-                disabled={docxLadowanie}
-                data-testid="mvd-oze-cert-pobierz-docx"
-              >
-                {MACIERZ_STRINGS.certyfikatPobierzDocx}
-              </button>
-            </div>
-          ) : null}
-        </section>
+        <PodgladCertyfikatu
+          widok={certyfikat}
+          braki={certBraki}
+          blad={certBlad}
+          ladowanie={certLadowanie}
+          plikLadowanie={plikLadowanie}
+          trybEkspercki={trybEkspercki}
+          onPobierz={(format) => void pobierzPlik(format)}
+          onZamknij={zamknijCertyfikat}
+        />
       ) : null}
 
       {opisy.length === 0 ? (
         <section className="mvd-oze-info" data-testid="mvd-oze-pusty">
           <h4>{MACIERZ_STRINGS.brakModulow}</h4>
           <p>{MACIERZ_STRINGS.brakModulowOpis}</p>
-          {/* K6 / H-5: bez modułu wytwórczego nie ma czego testować —
-              stan zerowy otwiera formularz źródła OZE na kanwie schematu. */}
           <PrzyciskAkcjiStanu akcja={akcjaZrodlo} testid="mvd-oze-pusty" />
         </section>
       ) : (
         <div className="mvd-oze-uklad">
           <div className="mvd-oze-macierz-wrap" data-testid="mvd-oze-macierz-tabela">
+            {opcjeFiltra.length > 0 ? (
+              <label className="mvd-oze-pole mvd-oze-filtr">
+                <span>{MACIERZ_STRINGS.filtr}</span>
+                <select
+                  value={filtrAktywny ? filtr : ''}
+                  onChange={(event) => setFiltr(event.target.value)}
+                  data-testid="mvd-oze-filtr"
+                >
+                  <option value="">{MACIERZ_STRINGS.filtrWszystkie}</option>
+                  {opcjeFiltra.map((opcja) => (
+                    <option key={opcja.etykieta.etykieta_pl} value={opcja.etykieta.etykieta_pl}>
+                      {opcja.etykieta.etykieta_pl}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <table className="mvd-oze-macierz">
               <thead>
                 <tr>
                   <th className="mvd-oze-col-test">{MACIERZ_STRINGS.naglowekTestu}</th>
-                  {opisy.map((opis) => (
-                    <th key={opis.derRef} className="mvd-oze-modul-h">
-                      <button
-                        type="button"
-                        className="mvd-oze-komorka"
-                        onClick={() => {
-                          setWybranyModul(opis.derRef);
-                          setWybranaKomorka(null);
-                        }}
-                        aria-pressed={wybranyModul === opis.derRef}
-                        data-testid={`mvd-oze-modul-${opis.derRef}`}
-                      >
-                        <span className="mvd-oze-modul-nazwa">
-                          {opis.nazwa} · {opis.rodzaj}
-                        </span>
-                      </button>
-                      <div className="mvd-oze-modul-meta mvd-oze-num">
-                        {formatMoc(opis.mocKw)} · {formatNapiecie(opis.napiecieKv)}
-                      </div>
-                    </th>
-                  ))}
+                  {opisy.map((opis) => {
+                    const wynikKolumny = wynikModulu(wynik, opis.derRef);
+                    const frt = wynikiFrt[opis.derRef];
+                    return (
+                      <th key={opis.derRef} className="mvd-oze-modul-h">
+                        <button
+                          type="button"
+                          className="mvd-oze-komorka"
+                          onClick={() => {
+                            setWybranyModul(opis.derRef);
+                            setWybranaKomorka(null);
+                          }}
+                          aria-pressed={opisWybrany?.derRef === opis.derRef}
+                          title={MACIERZ_STRINGS.pokazModul}
+                          data-testid={`mvd-oze-modul-${opis.derRef}`}
+                        >
+                          <span className="mvd-oze-modul-nazwa">
+                            {opis.nazwa} · {opis.rodzaj}
+                          </span>
+                        </button>
+                        <div className="mvd-oze-modul-meta mvd-oze-num">
+                          {formatMoc(opis.mocKw)} · {formatNapiecie(opis.napiecieKv)}
+                        </div>
+                        {wynikKolumny ? (
+                          <div
+                            className="mvd-oze-modul-meta"
+                            data-testid={`mvd-oze-modul-klasa-${opis.derRef}`}
+                          >
+                            {wynikKolumny.klasyfikacja.modul !== null
+                              ? `${MACIERZ_STRINGS.klasaModulu} ${wynikKolumny.klasyfikacja.modul}`
+                              : MACIERZ_STRINGS.ponizejProgu}
+                          </div>
+                        ) : null}
+                        {/* Stan zapisany przez okno FRT: wyłącznie tekst tego okna — macierz nie
+                            tłumaczy jego istotności na kolor (mapa w kliencie byłaby werdyktem
+                            lakonicznym). */}
+                        {frt?.lvrt ? (
+                          <div className="mvd-oze-modul-meta" data-testid={`mvd-oze-frt-lvrt-${opis.derRef}`}>
+                            {MACIERZ_STRINGS.wynikFrtLvrt}:{' '}
+                            <span data-testid={`mvd-oze-frt-lvrt-tekst-${opis.derRef}`}>{frt.lvrt.tekst}</span>
+                          </div>
+                        ) : null}
+                        {frt?.hvrt ? (
+                          <div className="mvd-oze-modul-meta" data-testid={`mvd-oze-frt-hvrt-${opis.derRef}`}>
+                            {MACIERZ_STRINGS.wynikFrtHvrt}:{' '}
+                            <span data-testid={`mvd-oze-frt-hvrt-tekst-${opis.derRef}`}>{frt.hvrt.tekst}</span>
+                          </div>
+                        ) : null}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
-                {wiersze.length === 0 ? (
+                {wierszeWidoczne.length === 0 ? (
                   <tr>
                     <td colSpan={opisy.length + 1} className="mvd-oze-komorka-pusta">
                       {MACIERZ_STRINGS.brakBieguOpis}
                     </td>
                   </tr>
                 ) : (
-                  wiersze.map((wiersz) => (
+                  wierszeWidoczne.map((wiersz) => (
                     <tr key={wiersz.test.test_id} data-testid="mvd-oze-wiersz">
                       <td className="mvd-oze-col-test">
-                        <div className="mvd-oze-test-nazwa">{wiersz.test.ability_pl}</div>
+                        <div className="mvd-oze-test-nazwa">
+                          {wiersz.test.test_id} · {wiersz.test.ability_pl}
+                        </div>
                         <div className="mvd-oze-test-podstawa">{wiersz.test.procedure_basis_pl}</div>
+                        <div className="mvd-oze-test-podstawa">
+                          {MACIERZ_STRINGS.rodzajTwierdzenia}:{' '}
+                          {nazwaRodzajuTwierdzenia(wiersz.test.rodzaj_twierdzenia)}
+                          {trybEkspercki ? ` · ${MACIERZ_STRINGS.zdolnosc}: ${wiersz.test.zdolnosc_id}` : ''}
+                        </div>
                       </td>
                       {wiersz.komorki.map((komorka) => (
                         <td key={komorka.derRef}>
-                          {komorka.stan === 'wynik' && komorka.werdykt ? (
-                            <button
-                              type="button"
-                              className={`mvd-oze-komorka ${KLASA_WERDYKTU[komorka.werdykt]}`}
-                              onClick={() =>
-                                setWybranaKomorka({
-                                  derRef: komorka.derRef,
-                                  testId: komorka.testId,
-                                })
-                              }
-                              aria-pressed={
-                                wybranaKomorka?.derRef === komorka.derRef &&
-                                wybranaKomorka?.testId === komorka.testId
-                              }
-                              data-testid="mvd-oze-komorka-wynik"
-                            >
-                              {ETYKIETY_WERDYKTU[komorka.werdykt]}
-                            </button>
+                          {komorka.stan === 'wynik' ? (
+                            filtrAktywny && komorka.wynik.ocena.etykieta.etykieta_pl !== filtr ? (
+                              <span
+                                className="mvd-oze-komorka-pusta"
+                                data-testid="mvd-oze-komorka-poza-filtrem"
+                              >
+                                ·
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="mvd-oze-komorka"
+                                onClick={() =>
+                                  setWybranaKomorka({
+                                    derRef: komorka.derRef,
+                                    testId: komorka.testId,
+                                  })
+                                }
+                                aria-pressed={
+                                  wybranaKomorka?.derRef === komorka.derRef &&
+                                  wybranaKomorka?.testId === komorka.testId
+                                }
+                                data-testid="mvd-oze-komorka-wynik"
+                              >
+                                <EtykietaWerdyktu
+                                  etykieta={komorka.wynik.ocena.etykieta}
+                                  status={komorka.wynik.ocena.status_maszynowy}
+                                />
+                              </button>
+                            )
                           ) : komorka.stan === 'brak_danych_modul' ? (
                             <button
                               type="button"
-                              className="mvd-oze-komorka mvd-oze-werdykt-warn"
+                              className="mvd-oze-komorka"
                               onClick={() =>
                                 setWybranaKomorka({
                                   derRef: komorka.derRef,
@@ -660,7 +614,7 @@ export function MacierzNcRfg({
                               }
                               data-testid="mvd-oze-komorka-brak-danych"
                             >
-                              {ETYKIETY_WERDYKTU.no_data}
+                              {MACIERZ_STRINGS.brakWyniku}
                             </button>
                           ) : (
                             <span
@@ -677,136 +631,53 @@ export function MacierzNcRfg({
                 )}
               </tbody>
             </table>
-
-            <div className="mvd-oze-legenda" data-testid="mvd-oze-legenda">
-              <span>{MACIERZ_STRINGS.legenda}:</span>
-              {LEGENDA.map((werdykt) => (
-                <span key={werdykt} className="mvd-oze-legenda-poz">
-                  <span className={`mvd-oze-legenda-znak ${KLASA_WERDYKTU[werdykt]}`} />
-                  {ETYKIETY_WERDYKTU[werdykt]}
-                </span>
-              ))}
-            </div>
-
-            <div className="mvd-oze-podsum" data-testid="mvd-oze-podsum-projektu">
-              <div className="mvd-oze-podsum-poz">
-                <span className="mvd-oze-podsum-etyk">{MACIERZ_STRINGS.moduly}</span>
-                <span className="mvd-oze-podsum-wart mvd-oze-num">{podsumProjektu.liczbaModulow}</span>
-              </div>
-              <div className="mvd-oze-podsum-poz">
-                <span className="mvd-oze-podsum-etyk">{MACIERZ_STRINGS.moduleZgodne}</span>
-                <span className="mvd-oze-podsum-wart mvd-oze-num">{podsumProjektu.zgodne}</span>
-              </div>
-              <div className="mvd-oze-podsum-poz">
-                <span className="mvd-oze-podsum-etyk">{MACIERZ_STRINGS.moduleNiezgodne}</span>
-                <span className="mvd-oze-podsum-wart mvd-oze-num">{podsumProjektu.niezgodne}</span>
-              </div>
-              <div className="mvd-oze-podsum-poz">
-                <span className="mvd-oze-podsum-etyk">{MACIERZ_STRINGS.moduleBrakDanych}</span>
-                <span className="mvd-oze-podsum-wart mvd-oze-num">{podsumProjektu.brakDanych}</span>
-              </div>
-              <div className="mvd-oze-podsum-poz">
-                <span className="mvd-oze-podsum-etyk">{MACIERZ_STRINGS.wymogiSpelnione}</span>
-                <span className="mvd-oze-podsum-wart mvd-oze-num">
-                  {podsumProjektu.spelnioneRazem} / {podsumProjektu.wymaganeRazem}
-                </span>
-              </div>
-            </div>
-
-            <div className="mvd-oze-podsum" data-testid="mvd-oze-podsum-moduly">
-              {opisy.map((opis) => {
-                const p = podsumowanieModulu(opis, wynik);
-                // K5-B (H-3 pkt 4): wynik walidacji FRT/HVRT zapisany z okna
-                // „Walidacja modelu falownika" — ta sama tożsamość modułu
-                // (der.id), werdykt z biegu solvera trajektorii.
-                const frt = wynikiFrt[opis.derRef];
-                // Dowód certyfikatu PTPiREE z tabliczki urządzenia w modelu
-                // (certificate_evidence biegu) — brak numeru dokumentu to
-                // uczciwy stan zerowy, nie wartość dopowiedziana.
-                const dowod =
-                  wynik?.certificate_evidence.find((d) => d.der_ref === opis.derRef) ?? null;
-                return (
-                  <div key={opis.derRef} className="mvd-oze-podsum-poz">
-                    <span className="mvd-oze-podsum-etyk">
-                      {opis.nazwa} · {ETYKIETY_STATUSU_MODULU[p.overallStatus] ?? p.overallStatus}
-                      {p.moduleType ? (
-                        <span
-                          className="mvd-oze-podsum-klasa"
-                          data-testid={`mvd-oze-podsum-modul-klasa-${opis.derRef}`}
-                        >
-                          {' · '}
-                          {MACIERZ_STRINGS.klasaModulu}: {p.moduleType}
-                        </span>
-                      ) : null}
-                      {frt?.lvrt ? (
-                        <span
-                          className={`mvd-oze-podsum-frt mvd-oze-podsum-frt--${frt.lvrt.istotnosc}`}
-                          data-testid={`mvd-oze-frt-lvrt-${opis.derRef}`}
-                        >
-                          {' · '}
-                          {MACIERZ_STRINGS.wynikFrtLvrt}: {frt.lvrt.tekst}
-                        </span>
-                      ) : null}
-                      {frt?.hvrt ? (
-                        <span
-                          className={`mvd-oze-podsum-frt mvd-oze-podsum-frt--${frt.hvrt.istotnosc}`}
-                          data-testid={`mvd-oze-frt-hvrt-${opis.derRef}`}
-                        >
-                          {' · '}
-                          {MACIERZ_STRINGS.wynikFrtHvrt}: {frt.hvrt.tekst}
-                        </span>
-                      ) : null}
-                      {dowod ? (
-                        dowod.document_number ? (
-                          <span
-                            className="mvd-oze-podsum-dowod"
-                            data-testid={`mvd-oze-dowod-${opis.derRef}`}
-                          >
-                            {' · '}
-                            {MACIERZ_STRINGS.dowodCertyfikatu}: {dowod.document_number}
-                            {dowod.wipwc_version ? ` · WiPWC ${dowod.wipwc_version}` : ''}
-                            {dowod.acceptance_date ? ` · ${dowod.acceptance_date}` : ''}
-                          </span>
-                        ) : (
-                          <span
-                            className="mvd-oze-podsum-dowod mvd-oze-podsum-dowod--brak"
-                            data-testid={`mvd-oze-dowod-brak-${opis.derRef}`}
-                          >
-                            {' · '}
-                            {MACIERZ_STRINGS.dowodCertyfikatuBrak}
-                          </span>
-                        )
-                      ) : null}
-                    </span>
-                    <span className="mvd-oze-podsum-wart mvd-oze-num">
-                      {p.passCount} / {p.requiredCount}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <SzczegolWerdyktu
               komorka={komorkaSzczegolu}
+              definicja={definicjaSzczegolu}
               nazwaModulu={nazwaModuluSzczegolu}
               slad={wynik?.white_box_trace ?? []}
+              trybEkspercki={trybEkspercki}
             />
             {opisWybrany ? (
-              <PanelModulu
-                opis={opisWybrany}
-                zdolnosci={opisWybrany.zdolnosci}
-                pochodzenie={opisWybrany.pochodzenieZdolnosci}
-                numeryczne={opisWybrany.numeryczne}
-                ocenaModulu={wynik?.evidence_per_module[opisWybrany.derRef] ?? null}
-                onZmienZdolnosc={(klucz, wartosc) =>
-                  zmienZdolnosc(opisWybrany.derRef, klucz, wartosc)
-                }
-                onZmienParametr={(klucz, wartosc) =>
-                  zmienParametr(opisWybrany.derRef, klucz, wartosc)
-                }
-              />
+              <>
+                <section
+                  className="mvd-oze-panel"
+                  data-testid="mvd-oze-wynik-modulu"
+                  aria-label={MACIERZ_STRINGS.wynikModuluTytul}
+                >
+                  <h4>
+                    {MACIERZ_STRINGS.wynikModuluTytul}: {opisWybrany.nazwa}
+                  </h4>
+                  {wynikWybranego ? (
+                    <>
+                      <NaglowekModuluNcRfg
+                        modul={wynikWybranego}
+                        testid={`mvd-oze-wynik-modulu-naglowek-${opisWybrany.derRef}`}
+                      />
+                      <span className="mvd-oze-panel-etyk">
+                        {MACIERZ_STRINGS.wymaganiaModuluTytul}
+                      </span>
+                      <ListaRekordowWymagan
+                        rekordy={ocenaWybranego?.wymagania ?? []}
+                        testid={`mvd-oze-wymagania-${opisWybrany.derRef}`}
+                      />
+                    </>
+                  ) : (
+                    <p className="mvd-oze-panel-etyk" data-testid="mvd-oze-wynik-modulu-brak">
+                      {wynik ? MACIERZ_STRINGS.wynikModuluBrak : MACIERZ_STRINGS.brakBieguOpis}
+                    </p>
+                  )}
+                </section>
+                <PanelModulu
+                  opis={opisWybrany}
+                  formularz={opisWybrany.formularz}
+                  bledy={bledy[opisWybrany.derRef] ?? {}}
+                  onZmienFormularz={(formularz) => zmienFormularz(opisWybrany.derRef, formularz)}
+                />
+              </>
             ) : null}
           </div>
         </div>

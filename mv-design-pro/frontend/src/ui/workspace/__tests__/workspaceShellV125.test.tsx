@@ -9,6 +9,7 @@ import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useShellStore } from '../../../ui2/shell/useShellStore';
 import { renderWithQueryClient } from '../../../test/queryClientTestUtils';
+import katalogNcRfg from '../../../harness-fixtures/generated/ncrfg_katalog.json';
 
 // Faza 8: WorkspaceSurfaceRouter teraz uzywa hookow audit2 (React Query).
 // Wszystkie testy wymagaja QueryClientProvider.
@@ -375,6 +376,14 @@ describe('workspace shell V12.5 surfaces', () => {
 
   it('otwiera zakladke Testy NC RfG w kontenerze analitycznym E-35', async () => {
     const user = userEvent.setup();
+    // Karta AB-1a Pakiet D2 §7: zakładka renderuje JEDYNY ekran zdolności (macierz NC RfG
+    // na kontrakcie V2), który czyta katalog `GET /api/ncrfg-tests/catalog` — odpowiedź
+    // katalogu policzona backendem (fikstura generowana), pozostałe trasy bez zmian.
+    fetchMock.mockImplementation((input: RequestInfo | URL) =>
+      String(input).includes('/api/ncrfg-tests/catalog')
+        ? mockJsonResponse(katalogNcRfg)
+        : mockJsonResponse(mockAnalysisRunDetail),
+    );
     useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
       titlePl: 'Analizy techniczne',
       subjectKind: 'analysis_run',
@@ -388,8 +397,15 @@ describe('workspace shell V12.5 surfaces', () => {
     const activeSurface = useNetworkBuildStore.getState().activeSurface;
     expect(activeSurface?.screenCode).toBe(ANALYSIS_SURFACE_SCREEN_CODE);
     expect(activeSurface?.tabId).toBe('ncrfg-tests');
-    expect(screen.getByTestId('ncrfg-tests-tab')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 3, name: /Pakiet symulacji/i })).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-oze-macierz-ncrfg')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'Macierz wymogów NC RfG per moduł' }),
+    ).toBeInTheDocument();
+    // Wersja procedury z katalogu backendu (obiekt warstwy) — dowód, że ekran przeczytał
+    // katalog V2, a nie tylko się zamontował.
+    expect(await screen.findByTestId('mvd-oze-wersja-procedury')).toHaveTextContent(
+      katalogNcRfg.procedure_version.tytul,
+    );
   });
 
   it('nie pokazuje wewnetrznego typu analysis_run w kontekscie analitycznym', () => {

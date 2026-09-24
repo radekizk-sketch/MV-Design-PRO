@@ -1,6 +1,6 @@
 """Samotest strażnika kontraktu werdyktu wyjaśnialnego (`werdykt_wyjasnialny_guard.py`).
 
-Karta AB-1a Pakiet E1, pkt A.6: dla każdego z czterech sprawdzeń przypadek pozytywny
+Karta AB-1a Pakiet E1, pkt A.6: dla każdego z pięciu sprawdzeń przypadek pozytywny
 i negatywny na plikach tymczasowych; typ kanoniczny i klasa z polem `WyjasnienieWerdyktu` nie
 są naruszeniem; zapadka w dół; mapa po semantyce dozwolona w module karty, mapa po statusie
 nigdzie; parser TypeScript na porównaniu z progiem; bieżące drzewo zielone z bieżącą listą.
@@ -21,7 +21,12 @@ POKRYCIE — ILOCZYN CECH (reguła KLASA, NIE INSTANCJA pkt 2), nie tylko przyk�
     `tone`/`ostrzezenie` · atrybut JSX · zwrot funkcji o nazwie werdyktu · `if` z `return`
     etykiety · `if` z blokiem układu}; testy wyłączone (`__tests__`, `*.test.*`);
   dokumenty: {renderer przez import `docx` · plik `application/analyses/*.py` · moduł spoza
-    rendererów · `werdykt/dokument.py`} × {mapa na tekst · mapa na kod · liczniki}.
+    rendererów · `werdykt/dokument.py`} × {mapa na tekst · mapa na kod · liczniki};
+  kod w tekście (pakiet D2, luka §5.1): korpus A {pole `*_pl` · lista `czego_brakuje` /
+    `zastrzezenia` · pole rekordu} × {kod z podkreśleniem · z cyframi · jednowyrazowy kod osi
+    stanu · identyfikator małymi literami · emfaza wersalikami · skrót prozy · nazwa polska};
+    korpus B {argument nazwany · klucz słownika · przypisanie atrybutu · f-napis} × {pole
+    tekstu · argument `code=` · docstring}; korpus {brak · pusty · uszkodzony}.
 KOMBINACJE ŚWIADOMIE NIEPOKRYTE: porównanie dwóch wartości nie-stałych (`pst > pst_limit`) —
 strażnik go NIE wykrywa (karta: „między identyfikatorem a literałem liczbowym lub stałą"),
 a test `test_frontend_porownanie_bez_stalej_nie_jest_naruszeniem` PRZYPINA tę granicę.
@@ -604,6 +609,177 @@ def test_normalizacja_python_i_typescript_zgodne() -> None:
         "Łódź",
     ]
     assert guard.normalizuj_w_typescript(teksty) == [guard.normalizuj(t) for t in teksty]
+
+
+# ---------------------------------------------------------------------------
+# Sprawdzenie 5 — kod wyliczenia w tekście dla człowieka (korpus A i B)
+# ---------------------------------------------------------------------------
+
+KONTRAKT_OSI_ATRAPA = """
+from typing import Literal
+
+StatusWerdyktu = Literal["SPELNIA", "NIE_SPELNIA", "NIE_DOTYCZY"]
+KompletnoscDowodu = Literal["PELNY", "NIEPELNY", "NIE_DOTYCZY"]
+StanZrodla = Literal["ZWERYFIKOWANE", "WSKAZANE", "NIEUSTALONE"]
+Relacja = Literal["NIE_WIECEJ", "PASMO", "LOGICZNE"]
+StatusModelu = Literal["UNVALIDATED_MODEL", "CERTIFIED_MODEL", "NIE_DOTYCZY"]
+StanDanych = Literal["ZWALIDOWANE", "UNVALIDATED_INPUT"]
+PokrycieProgramu = Literal["PELNE", "CZESCIOWE", "NIE_DOTYCZY"]
+RodzajPodstawy = Literal["NORMA", "OSD", "WOS"]
+KrokRegulyK = Literal["WYNIK", "METODA"]
+"""
+
+PROWENIENCJA_ATRAPA = """
+from enum import StrEnum
+
+
+class EvidenceTier(StrEnum):
+    VALIDATED_SIMULATION = "VALIDATED_SIMULATION"
+    DECLARATION = "DECLARATION"
+"""
+
+WALIDATOR_ATRAPA = '''
+"""Moduł z kodem THD_U w docstringu — nie jest polem tekstu."""
+
+
+def sprawdz(ref, Problem):
+    yield Problem(code="E_KOD_MASZYNOWY", message_pl=f"Generator {ref} (REGULACJA_NAPIECIA).")
+    yield {"powod_pl": "stan NIEUSTALONE", "kod": "NIE_DOTYCZY"}
+
+
+class Wynik:
+    def __init__(self) -> None:
+        self.opis_pl = "program badań: PELNE"
+'''
+
+
+def _indeks_osi(tmp_path: Path, pliki: dict[str, str] | None = None) -> guard.IndeksBackendu:
+    korzen = tmp_path / "backend" / "src"
+    _zapisz(
+        korzen,
+        {
+            "werdykt/__init__.py": "",
+            "werdykt/kontrakt.py": KONTRAKT_OSI_ATRAPA,
+            "werdykt/proweniencja.py": PROWENIENCJA_ATRAPA,
+            **(pliki or {}),
+        },
+    )
+    return guard.IndeksBackendu(korzen)
+
+
+def _korpus(tmp_path: Path, fixtury: dict[str, object]) -> Path:
+    katalog = tmp_path / "generated"
+    katalog.mkdir(parents=True, exist_ok=True)
+    for nazwa, dane in fixtury.items():
+        (katalog / nazwa).write_text(json.dumps(dane, ensure_ascii=False), encoding="utf-8")
+    return katalog
+
+
+def test_kody_jednowyrazowe_z_osi_stanu_bez_skrotow_i_rzeczownikow(tmp_path: Path) -> None:
+    """Zbiór wyprowadzony z aliasów osi STANU i wyliczeń proweniencji: bez skrótów prozy
+    (`OSD`, `WOS`), bez rzeczowników spoza osi stanu (`NORMA`, `WYNIK`, `METODA`), bez kodów
+    z podkreśleniem (te łapie wzorzec)."""
+    assert guard.kody_jednowyrazowe(_indeks_osi(tmp_path)) == {
+        "SPELNIA",
+        "PELNY",
+        "NIEPELNY",
+        "ZWERYFIKOWANE",
+        "WSKAZANE",
+        "NIEUSTALONE",
+        "PASMO",
+        "LOGICZNE",
+        "ZWALIDOWANE",
+        "PELNE",
+        "CZESCIOWE",
+        "DECLARATION",
+    }
+
+
+def test_kody_jednowyrazowe_bez_aliasu_osi_to_blad_srodowiska(tmp_path: Path) -> None:
+    indeks = _indeks_osi(tmp_path, {"werdykt/kontrakt.py": "StanZrodla = str\n"})
+    with pytest.raises(guard.BladSrodowiska, match="nie jest aliasem"):
+        guard.kody_jednowyrazowe(indeks)
+
+
+@pytest.mark.parametrize(
+    ("klucz", "tekst", "kody"),
+    [
+        # Kod z podkreśleniem w zdaniu `*_pl` (iniekcja z karty: VALIDATED_SIMULATION).
+        ("zdanie_pl", "Symulacja na silniku VALIDATED_SIMULATION.", {"VALIDATED_SIMULATION"}),
+        # Identyfikator wymagania z cyframi w segmentach.
+        ("powod_pl", "wymaganie RFG_13_2 — LFSM-O", {"RFG_13_2"}),
+        # Lista tekstów wyjaśnienia bez sufiksu `_pl`.
+        ("czego_brakuje", ["Dana przyjęta (UNVALIDATED_INPUT)."], {"UNVALIDATED_INPUT"}),
+        ("zastrzezenia", ["stan źródła NIEUSTALONE"], {"NIEUSTALONE"}),
+        # Jednowyrazowy kod osi stanu w zdaniu.
+        ("tresc_pl", "Kompletność dowodu: NIEPELNY", {"NIEPELNY"}),
+        # Pole spoza tekstu dla człowieka — kod na swoim miejscu.
+        ("status_maszynowy", "NIE_SPELNIA", set()),
+        ("kryterium_id", "RFG_13_2", set()),
+        # Identyfikator małymi literami — poza wzorcem karty (zmierzony w meldunku).
+        ("zdanie_pl", "brak pola (harmonic_thdu_percent)", set()),
+        # Rzeczownik wersalikami dla emfazy i skrót prozy — nie kod.
+        ("recommended_action_pl", "WYNIK ROBOCZY; wymagania OSD i WOS", set()),
+        # Nazwa polska zamiast kodu.
+        ("zdanie_pl", "stan źródła „nieustalone”, model urządzenia niezwalidowany", set()),
+    ],
+)
+def test_korpus_odpowiedzi_iloczyn_pola_i_ksztaltu_kodu(
+    tmp_path: Path, klucz: str, tekst: object, kody: set[str]
+) -> None:
+    """Pole {`*_pl` · lista wyjaśnienia · pole rekordu} × kształt {kod z podkreśleniem · z
+    cyframi · jednowyrazowy kod osi stanu · identyfikator małymi literami · emfaza · nazwa
+    polska}, zagnieżdżony w liście obiektów (ścieżka `[]`)."""
+    katalog = _korpus(tmp_path, {"scena.json": {"moduly": [{"ocena": {klucz: tekst}}]}})
+    naruszenia = guard.sprawdz_kody_w_tekscie(_indeks_osi(tmp_path), katalog)
+    sufiks = "[]" if isinstance(tekst, list) else ""
+    assert _tozsamosci(naruszenia) == {
+        f"scena.json:$.moduly[].ocena.{klucz}{sufiks}:{kod}" for kod in kody
+    }
+    assert all(n.sprawdzenie == "5_kod_w_tekscie" for n in naruszenia)
+
+
+def test_korpus_literalow_argument_slownik_przypisanie_i_f_napis(tmp_path: Path) -> None:
+    """Korpus B: literał w argumencie nazwanym, kluczu słownika, przypisaniu atrybutu
+    i stałej części f-napisu; literał spoza pola tekstu (argument `code=`, klucz `kod`,
+    docstring) nie jest naruszeniem."""
+    indeks = _indeks_osi(tmp_path, {"app/__init__.py": "", "app/walidator.py": WALIDATOR_ATRAPA})
+    naruszenia = guard.sprawdz_kody_w_tekscie(indeks, _korpus(tmp_path, {"pusta.json": {}}))
+    assert _tozsamosci(naruszenia) == {
+        "app.walidator:sprawdz.message_pl:REGULACJA_NAPIECIA",
+        "app.walidator:sprawdz.powod_pl:NIEUSTALONE",
+        "app.walidator:Wynik.__init__.self.opis_pl:PELNE",
+    }
+    assert {n.plik for n in naruszenia} == {"backend/src/app/walidator.py"}
+
+
+def test_korpus_literalow_tozsamosc_nie_zalezy_od_linii(tmp_path: Path) -> None:
+    tresc = 'def f(P):\n    return P(zdanie_pl="kod CERTIFIED_MODEL")\n'
+    przed = guard.sprawdz_kody_w_tekscie(
+        _indeks_osi(tmp_path / "a", {"app/__init__.py": "", "app/m.py": tresc}),
+        _korpus(tmp_path / "a", {"x.json": {}}),
+    )
+    po = guard.sprawdz_kody_w_tekscie(
+        _indeks_osi(tmp_path / "b", {"app/__init__.py": "", "app/m.py": "\n\n\n" + tresc}),
+        _korpus(tmp_path / "b", {"x.json": {}}),
+    )
+    assert _tozsamosci(przed) == _tozsamosci(po) == {"app.m:f.zdanie_pl:CERTIFIED_MODEL"}
+    assert [n.linia for n in przed] != [n.linia for n in po]
+
+
+@pytest.mark.parametrize("stan", ["brak", "pusty", "uszkodzony"])
+def test_korpus_odpowiedzi_brak_pusty_uszkodzony_to_blad_srodowiska(
+    tmp_path: Path, stan: str
+) -> None:
+    """Zieleń bez korpusu nic by nie znaczyła — brak, pusty katalog i niepoprawny JSON to
+    błąd środowiska (kod wyjścia 2), nie „zero naruszeń"."""
+    katalog = tmp_path / "generated"
+    if stan != "brak":
+        katalog.mkdir()
+    if stan == "uszkodzony":
+        (katalog / "zla.json").write_text("{nie json", encoding="utf-8")
+    with pytest.raises(guard.BladSrodowiska):
+        guard.sprawdz_kody_w_tekscie(_indeks_osi(tmp_path), katalog)
 
 
 # ---------------------------------------------------------------------------

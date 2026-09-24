@@ -9,7 +9,8 @@ i werdykt projektowy (`GET /api/quality/design-verdict`). Ręczna kopia payloadu
 dryfowała już dwukrotnie (katalog NC RfG, klasy modułów sprzed OD-5), więc te
 atrapy NIE są pisane ręcznie: liczy je ten skrypt DOKŁADNIE tymi funkcjami,
 które wołają końcówki (`zgodnosc_ncrfg_przypadku` — most model → solver
-kanoniczny NC RfG + koperta dowodowa, karta S-3; `zbuduj_werdykt_projektowy`),
+kanoniczny NC RfG + ocena wymagań rekordami `WynikWymagania`, karta AB-1a Pakiet C;
+`zbuduj_werdykt_projektowy`),
 i zapisuje JSON do
 `frontend/src/harness-fixtures/generated/<nazwa>.json`.
 
@@ -20,10 +21,12 @@ Test `tests/ci/test_fixtury_harnessu.py` porównuje JSON w repo ze świeżo
 policzonym (rozjazd = czerwony test, nie cicha rozbieżność).
 
 Użycie (z katalogu `backend`):
-    poetry run python scripts/eksport_fixtur_harnessu.py [--sprawdz]
+    poetry run python scripts/eksport_fixtur_harnessu.py [--sprawdz] [--tylko NAZWA ...]
 
 `--sprawdz` nie zapisuje — kończy kodem 1, gdy którykolwiek JSON różni się od
-świeżo policzonej odpowiedzi.
+świeżo policzonej odpowiedzi. `--tylko` zawęża przeliczenie (zapis albo porównanie)
+do wskazanych fixtur — przy pracy wielu wykonawców na jednym drzewie odświeża się
+wyłącznie własne sceny, a cudze zostają bajt w bajt.
 """
 
 from __future__ import annotations
@@ -62,6 +65,8 @@ from api.generators import (  # noqa: E402
     get_der_instrument_transformers,
     get_der_protection_functions,
 )
+from api.ncrfg_ptpiree_tests import get_ncrfg_test_catalog  # noqa: E402
+from api.oze_analysis_runs import WniosekOsdRequest  # noqa: E402
 from api.proof_pack import SCContributionsRequest, sc3f_contributions  # noqa: E402
 from api.protection_coordination import (  # noqa: E402
     RunCoordinationRequest,
@@ -80,11 +85,20 @@ from api.v126_academic import (  # noqa: E402
     get_v126_trace,
 )
 from application.analyses.arc_flash_view import build_arc_flash_view  # noqa: E402
+from application.analyses.certyfikat_zgodnosci import (  # noqa: E402
+    CertyfikatBrakiError,
+    CertyfikatZgodnosciRequest,
+    build_certyfikat_view,
+)
 from application.analyses.diagnoza_przebiegu import (  # noqa: E402
     zbuduj_diagnoze_przebiegu,
 )
 from application.analyses.dobor_kompensacji import (  # noqa: E402
     build_compensation_sizing_view,
+)
+from application.analyses.dokument_studium import (  # noqa: E402
+    DokumentStudiumIdentyfikacja,
+    build_dokument_studium_view,
 )
 from application.analyses.energy_validation.service import (  # noqa: E402
     build_energy_validation_view,
@@ -96,6 +110,7 @@ from application.analyses.frt_trajektorie import (  # noqa: E402
 from application.analyses.grid_strength import build_grid_strength_view  # noqa: E402
 from application.analyses.migotanie import build_migotanie_view  # noqa: E402
 from application.analyses.ochrona_lom import build_ochrona_lom_view  # noqa: E402
+from application.analyses.pq_coverage import build_pq_coverage_view  # noqa: E402
 from application.analyses.state_estimation.service import (  # noqa: E402
     build_state_estimation_requirements,
     build_state_estimation_view,
@@ -109,6 +124,11 @@ from application.analyses.v126_katalog import katalog_do_dict  # noqa: E402
 from application.analyses.werdykt_projektowy import (  # noqa: E402
     zbuduj_werdykt_projektowy,
 )
+from application.analyses.wniosek_osd import (  # noqa: E402
+    WniosekOsdBrakiError,
+    WniosekOsdIdentyfikacja,
+    build_wniosek_osd_view,
+)
 from application.analyses.wytrzymalosc_cieplna_przewodow import (  # noqa: E402
     build_wytrzymalosc_cieplna_view,
     zbuduj_dowod_cieplny,
@@ -120,7 +140,13 @@ from application.analysis_run.read_model import canonicalize_json  # noqa: E402
 from application.autorytet_biegu_zwarciowego import (  # noqa: E402
     wejscie_koordynacji_z_biegow,
 )
-from application.ncrfg_compliance import zgodnosc_ncrfg_przypadku  # noqa: E402
+from application.ncrfg_compliance import (  # noqa: E402
+    NcRfgWejsciaPrzypadkuResponse,
+    bieg_ncrfg,
+    wejscia_ncrfg_przypadku,
+    weryfikacje_certyfikatow_typu,
+    zgodnosc_ncrfg_przypadku,
+)
 from application.power_flow_comparison.service import (  # noqa: E402
     PowerFlowComparisonService,
 )
@@ -178,6 +204,7 @@ from network_model.solvers.cable_voltage_drop import (  # noqa: E402
     CableRatedCurrentInput,
     compute_cable_rated_current,
 )
+from network_model.solvers.ncrfg_ptpiree.contracts import NcRfgPtpireeRunRequest  # noqa: E402
 from solver_input.v126_contracts import (  # noqa: E402
     V126AnalysisType,
     build_v126_input_from_enm,
@@ -231,6 +258,45 @@ MODULY_SCENY_MACIERZ: tuple[dict[str, Any], ...] = (
             "nc_rfg_profile_ref": "enea",
             "lvrt_curve_ref": "enea",
             "dynamic_model_ref": "default_pv_gfl",
+        },
+        # Dane modułu NC RfG zapisane W MODELU tą samą operacją (plan AB O-50 pkt 5–6):
+        # moduł nowy (art. 4), nastawy zabezpieczeń z karty nastaw, deklaracje CZĘŚCIOWE —
+        # trzy flagi zadeklarowane (dwie „tak", jedna „nie"), reszta NIEZADEKLAROWANA
+        # (`null`), więc formularz „co-jeśli" macierzy pokazuje wszystkie trzy stany flagi
+        # wypełnione z modelu, a certyfikat nadal ma braki (scena „czego brakuje").
+        # Deklaracja kreatora OZE zapisana w `meta` generatora TĄ SAMĄ operacją (statyzm
+        # i martwa strefa P(f)/LFSM, zakres mocy biernej, nachylenie Q(U), zdolność HVRT) —
+        # pola, które most modelu LICZY z danych generatora; formularz „co-jeśli" macierzy
+        # dostaje je z `GET …/wejscia` z pochodzeniem „z modelu" (luka §5.3 pakietu D2:
+        # dawny formularz ich nie widział, bo klient składał go z bloku deklaracji).
+        "deklaracja_kreatora": {
+            "frequency_droop_percent": 5.0,
+            "lfsm_deadband_hz": 0.2,
+            "q_min_mvar": -0.64,
+            "q_max_mvar": 0.64,
+            "qu_slope_pu_per_pu": 2.0,
+            "has_hvrt_curve": True,
+        },
+        "dane_nc_rfg": {
+            "modul_istniejacy": False,
+            "nastawy_zabezpieczen": {
+                "u_min_pu": 0.8,
+                "u_min_czas_s": 1.5,
+                "u_max_pu": 1.15,
+                "u_max_czas_s": 0.2,
+                "f_min_hz": 47.5,
+                "f_min_czas_s": 0.5,
+                "f_max_hz": 52.0,
+                "f_max_czas_s": 0.5,
+                "zrodlo_pl": "Karta nastaw zabezpieczeń instalacji PV",
+            },
+            "deklaracje_modulu": {
+                "has_scada_communication": True,
+                "active_power_control_enabled": True,
+                "stop_generation_enabled": False,
+                "ramp_rate_pct_per_min": 10.0,
+                "zrodlo_pl": "Karta katalogowa falownika SUN2000-215KTL",
+            },
         },
     },
 )
@@ -327,6 +393,8 @@ def _dodaj_modul_oze_sn(
     }
     if modul["bateria"] is not None:
         payload["battery_catalog_ref"] = modul["bateria"]
+    payload.update(modul.get("deklaracja_kreatora") or {})
+    payload.update(modul.get("dane_nc_rfg") or {})
     enm = _operacja_domenowa_sceny(enm, "add_converter_source", payload)
     profile = modul.get("profile") or {}
     if profile:
@@ -525,6 +593,345 @@ def zgodnosc_przekrojowa_sceny_macierz() -> dict[str, Any]:
     return zgodnosc_ncrfg_przypadku(
         enm_sceny_macierz(), operator_id=OPERATOR_SCENY_MACIERZ, case_id=CASE_ID_HARNESSU
     ).model_dump(mode="json")
+
+
+# ---------------------------------------------------------------------------
+# Karta AB-1a Pakiet D2 — bieg „co-jeśli" NC RfG, certyfikat zgodności i wniosek
+# do OSD na kontrakcie V2. Każda odpowiedź liczona TĄ SAMĄ funkcją aplikacyjną co
+# trasa (`bieg_ncrfg` — `POST /api/ncrfg-tests/run`; `build_certyfikat_view` —
+# `POST /api/oze-analysis/compliance-certificate`; `build_wniosek_osd_view` —
+# `POST /api/oze-analysis/osd-application`), a treść 422 — tym samym `detail()`
+# wyjątku braków, który trasa oddaje w `HTTPException`. Obok każdej odpowiedzi
+# dokumentu leży CIAŁO ŻĄDANIA (`*_zadanie`), dla którego ją policzono — harness
+# odmawia (409), gdy ekran wyśle co innego (para predykatów, wzorzec sceny `macierz`).
+# ---------------------------------------------------------------------------
+
+#: Nazwa projektu i przypadku scen OZE — TE SAME, które harness zasiewa w
+#: `useAppStateStore` (sceny `macierz`, `certyfikat`, `wniosek`, `wniosek-braki`);
+#: ekran macierzy i ekran wniosku składają z nich ciało żądania.
+NAZWA_PROJEKTU_SCEN_OZE = "Przyłączenie farmy PV 8 MW"
+NAZWA_PRZYPADKU_SCEN_OZE = "Stan normalny"
+
+#: Sceny okna „Krzywe zdolności P–Q" (typ katalogowy × operator) — iloczyn cech rekordu
+#: `ocena` pokrycia: typ PV z krzywą producenta (porównanie wykonane; profil operatora bez
+#: zweryfikowanej podstawy → `BRAK_PODSTAWY`), typ PV BEZ krzywej (`NIE_OCENIONO` z nazwanym
+#: brakiem, zamiast dawnego 422) i magazyn energii z krzywą (`NIE_DOTYCZY`, O-28).
+_SCENY_KRZYWYCH_PQ: dict[str, tuple[str, str]] = {
+    "pv": ("conv-pv-card-sungrow-sg3150u-mv", "pse"),
+    "bez_krzywej": ("conv-pv-0.5mw-15kv", "pse"),
+    "magazyn": ("conv-bess-card-sungrow-sc2000ud-mv", "pse"),
+}
+
+
+def _pokrycie_pq_sceny(scena: str) -> dict[str, Any]:
+    """Odpowiedź `GET /api/oze-analysis/pq-coverage` — TA SAMA funkcja trasy
+    (`api/oze_analysis_runs.py::get_pq_coverage` → `build_pq_coverage_view`)."""
+    typ_id, operator_id = _SCENY_KRZYWYCH_PQ[scena]
+    typ = get_default_mv_catalog().get_converter_type(typ_id)
+    if typ is None:
+        raise SystemExit(f"[fixtury] scena krzywych P–Q: brak typu {typ_id} w katalogu")
+    return build_pq_coverage_view(typ, load_nc_rfg_profile(operator_id))
+
+
+def krzywe_pokrycie_scena_pv() -> dict[str, Any]:
+    """Pokrycie P–Q typu PV z krzywą producenta wymaganiem operatora sceny."""
+    return _pokrycie_pq_sceny("pv")
+
+
+def krzywe_pokrycie_scena_bez_krzywej() -> dict[str, Any]:
+    """Pokrycie P–Q typu PV bez krzywej producenta — rekord `NIE_OCENIONO` z brakiem."""
+    return _pokrycie_pq_sceny("bez_krzywej")
+
+
+def krzywe_pokrycie_scena_magazyn() -> dict[str, Any]:
+    """Pokrycie P–Q magazynu energii — rekord `NIE_DOTYCZY` (magazyn poza 2016/631)."""
+    return _pokrycie_pq_sceny("magazyn")
+
+
+def krzywe_konwertery_scen() -> list[dict[str, Any]]:
+    """Rekordy katalogu przekształtników scen krzywych P–Q — TA SAMA serializacja co trasa
+    `GET /api/catalog/converter-types` (`ConverterType.to_dict`), w kolejności scen."""
+    katalog = get_default_mv_catalog()
+    rekordy: list[dict[str, Any]] = []
+    for typ_id, _operator in _SCENY_KRZYWYCH_PQ.values():
+        typ = katalog.get_converter_type(typ_id)
+        if typ is None:
+            raise SystemExit(f"[fixtury] scena krzywych P–Q: brak typu {typ_id} w katalogu")
+        rekordy.append(typ.to_dict())
+    return rekordy
+
+
+def ncrfg_katalog() -> dict[str, Any]:
+    """Odpowiedź `GET /api/ncrfg-tests/catalog` — TA SAMA funkcja trasy
+    (`get_ncrfg_test_catalog`): wersja procedury (obiekt warstwy), profile operatorów
+    i katalog testów T01–T20. Testy ekranów D2 czytają katalog z tej fixtury, nie z
+    ręcznie pisanej kopii (dryf katalogu to znana klasa defektu harnessu)."""
+    return get_ncrfg_test_catalog()
+
+
+def _wejscia_sceny(enm: EnergyNetworkModel) -> NcRfgWejsciaPrzypadkuResponse:
+    """Wejścia modułów sceny z modelu — TA SAMA funkcja co trasa
+    `api/ncrfg_ptpiree_tests.py::get_ncrfg_module_inputs_from_model` (most `model_bridge`)."""
+    return wejscia_ncrfg_przypadku(
+        enm, operator_id=OPERATOR_SCENY_MACIERZ, case_id=CASE_ID_HARNESSU
+    )
+
+
+def ncrfg_wejscia_scena_macierz() -> dict[str, Any]:
+    """Odpowiedź `GET /api/ncrfg-tests/cases/{id}/wejscia` sceny `macierz`: formularz wstępny
+    biegu „co-jeśli" (wartości i pochodzenie „z modelu") złożony mostem modelu."""
+    return _wejscia_sceny(enm_sceny_macierz()).model_dump(mode="json")
+
+
+def ncrfg_wejscia_scena_magazyn() -> dict[str, Any]:
+    """Odpowiedź `GET /api/ncrfg-tests/cases/{id}/wejscia` scen `certyfikat`/`wniosek`."""
+    return _wejscia_sceny(enm_sceny_magazyn()).model_dump(mode="json")
+
+
+def ncrfg_bieg_scena_macierz_zadanie() -> dict[str, Any]:
+    """Ciało żądania biegu „co-jeśli" ekranu macierzy w scenie `macierz` z formularzem
+    wstępnym bez edycji = moduły odczytane z `GET …/wejscia` (ten sam most co `/compliance`;
+    klient niczego nie wyprowadza sam — test frontu `ncrfg/__tests__/zadanieSceny.test.ts`
+    sprawdza, że ekran buduje DOKŁADNIE to ciało)."""
+    wejscia = _wejscia_sceny(enm_sceny_macierz())
+    # Ciało = WYŁĄCZNIE moduły (ekran nie wysyła `requested_test_ids`), w kolejności kolumn
+    # ekranu (`selectAllDers` — po referencji).
+    moduly = sorted(wejscia.modules, key=lambda modul: modul.der_ref)
+    return {"modules": [modul.model_dump(mode="json") for modul in moduly]}
+
+
+def ncrfg_bieg_scena_macierz() -> dict[str, Any]:
+    """Odpowiedź `POST /api/ncrfg-tests/run` (źródło danych `ZADANIE_KLIENTA`) dla ciała
+    `ncrfg_bieg_scena_macierz_zadanie` — TA SAMA kompozycja `bieg_ncrfg` co trasa
+    `api/ncrfg_ptpiree_tests.py::run_ncrfg_ptpiree_tests`."""
+    zadanie = NcRfgPtpireeRunRequest.model_validate(ncrfg_bieg_scena_macierz_zadanie())
+    return bieg_ncrfg(zadanie, zrodlo_danych="ZADANIE_KLIENTA").model_dump(mode="json")
+
+
+def _zadanie_certyfikatu_sceny() -> dict[str, Any]:
+    """Ciało `POST /api/oze-analysis/compliance-certificate` ekranu macierzy scen OZE:
+    identyfikacja z zasiewu `useAppStateStore`, operator z modelu (jednoznaczny)."""
+    return CertyfikatZgodnosciRequest(
+        nazwa_projektu=NAZWA_PROJEKTU_SCEN_OZE,
+        nazwa_przypadku=NAZWA_PRZYPADKU_SCEN_OZE,
+        operator_id=OPERATOR_SCENY_MACIERZ,
+    ).model_dump(mode="json")
+
+
+def _certyfikat_albo_braki(enm: EnergyNetworkModel) -> tuple[int, dict[str, Any]]:
+    """(status HTTP, treść) certyfikatu dla modelu przypadku — ta sama ścieżka co
+    `api/oze_analysis_runs.py::_certyfikat_view` (200 z widokiem albo 422 z `detail()`)."""
+    zadanie = CertyfikatZgodnosciRequest.model_validate(_zadanie_certyfikatu_sceny())
+    zgodnosc = zgodnosc_ncrfg_przypadku(
+        enm, operator_id=zadanie.operator_id, case_id=CASE_ID_HARNESSU
+    )
+    try:
+        return 200, build_certyfikat_view(
+            zgodnosc,
+            nazwa_projektu=zadanie.nazwa_projektu,
+            nazwa_przypadku=zadanie.nazwa_przypadku,
+        )
+    except CertyfikatBrakiError as exc:
+        return 422, exc.detail()
+
+
+def certyfikat_scena_zadanie() -> dict[str, Any]:
+    """Ciało żądania certyfikatu scen `macierz` i `certyfikat` (to samo — ta sama identyfikacja)."""
+    return _zadanie_certyfikatu_sceny()
+
+
+def certyfikat_scena_macierz_braki() -> dict[str, Any]:
+    """Treść 422 certyfikatu sceny `macierz` — ekran „czego brakuje do certyfikatu":
+    rekordy W wymagań stosowalnych bez `SPELNIA` (moduł PV z formularzem modelu bez
+    zadeklarowanych zdolności) z ich zdaniami. Scena MUSI dać braki — inaczej ekran
+    braków nie miałby czego pokazać."""
+    status_http, tresc = _certyfikat_albo_braki(enm_sceny_macierz())
+    if status_http != 422:
+        raise SystemExit("[fixtury] scena macierz: certyfikat powstał, a scena pokazuje braki")
+    return tresc
+
+
+def enm_sceny_magazyn() -> EnergyNetworkModel:
+    """Model sceny `certyfikat`/`wniosek`: GPZ 110/15 kV + magazyn energii 1,5 MW (moduł
+    BESS sceny `macierz`, ta sama operacja `add_converter_source` z torem DER-SN).
+    Magazyn nie jest modułem wytwarzania energii w rozumieniu NC RfG (O-28) — każde
+    wymaganie profilu ma `NIE_DOTYCZY`, więc certyfikat POWSTAJE i ekran pokazuje widok
+    dokumentu (sekcja modułu z wierszami, dowodem certyfikatu i rekordami W)."""
+    enm, stacja, szyna_sn = _gpz_sceny_oze(NAZWA_PROJEKTU_SCEN_OZE)
+    enm = _dodaj_modul_oze_sn(enm, stacja, szyna_sn, MODULY_SCENY_MACIERZ[0])
+    model = EnergyNetworkModel.model_validate(enm)
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    return model
+
+
+def magazyn_scena_migawka() -> dict[str, Any]:
+    """Migawka modelu sceny `certyfikat`/`wniosek` (`useSnapshotStore`) — moduły warsztatu
+    wytwórców front wyprowadza z niej odwzorowaniem produkcyjnym (`deryZModelu`)."""
+    return canonicalize_json(enm_sceny_magazyn().model_dump(mode="json"))
+
+
+def ncrfg_zgodnosc_przekrojowa_scena_magazyn() -> dict[str, Any]:
+    """Odpowiedź `GET /api/ncrfg-tests/cases/{id}/compliance` sceny `certyfikat`/`wniosek`
+    — ta sama funkcja co scena `macierz` (`zgodnosc_ncrfg_przypadku`)."""
+    return zgodnosc_ncrfg_przypadku(
+        enm_sceny_magazyn(), operator_id=OPERATOR_SCENY_MACIERZ, case_id=CASE_ID_HARNESSU
+    ).model_dump(mode="json")
+
+
+def certyfikat_scena_magazyn() -> dict[str, Any]:
+    """Widok certyfikatu zgodności sceny `certyfikat` (200) — `build_certyfikat_view`."""
+    status_http, tresc = _certyfikat_albo_braki(enm_sceny_magazyn())
+    if status_http != 200:
+        raise SystemExit(f"[fixtury] scena certyfikat: braki zamiast widoku — {tresc}")
+    return tresc
+
+
+#: Biegi PF i zwarciowy scen wniosku — UUID (kontrakt `WniosekOsdRequest.pf_run_id`
+#: i `sc_run_id` to `UUID`), zamrożone jak kotwice pozostałych scen.
+_UUID_PF_SCENY_WNIOSEK = uuid5(NAMESPACE_URL, "mv-design-pro:harness:wniosek:pf")
+_UUID_SC_SCENY_WNIOSEK = uuid5(NAMESPACE_URL, "mv-design-pro:harness:wniosek:sc")
+
+
+def _szyna_sn_gpz(enm: EnergyNetworkModel) -> str:
+    """Szyna SN GPZ scen OZE — węzeł przyłączenia wniosku (punkt, w którym wniosek
+    zestawia zwarcia); ta sama reguła co `_gpz_sceny_oze`."""
+    return next(szyna.ref_id for szyna in enm.buses if szyna.ref_id.endswith("/bus_sn"))
+
+
+@contextmanager
+def _biegi_sceny_wniosku(enm: EnergyNetworkModel) -> Iterator[tuple[Any, Any]]:
+    """Biegi PF i `short_circuit_sn` modelu sceny wniosku (tor kanoniczny `execute_run`)."""
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        with _zamrozona_tozsamosc_biegu(_UUID_PF_SCENY_WNIOSEK):
+            set_enm(CASE_ID_HARNESSU, enm)
+            bieg_pf = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU, klucz_twin=CASE_ID_HARNESSU, analysis_type="PF"
+                ).id
+            )
+        with _zamrozona_tozsamosc_biegu(_UUID_SC_SCENY_WNIOSEK):
+            bieg_sc = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=CASE_ID_HARNESSU,
+                    analysis_type="short_circuit_sn",
+                ).id
+            )
+        yield bieg_pf, bieg_sc
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+
+def _zadanie_wniosku_sceny(enm: EnergyNetworkModel) -> dict[str, Any]:
+    """Ciało `POST /api/oze-analysis/osd-application` ekranu wniosku sceny: identyfikacja
+    z zasiewu, pola opcjonalne puste (`null`), węzeł = szyna SN GPZ, operator z modelu."""
+    return WniosekOsdRequest(
+        nazwa_projektu=NAZWA_PROJEKTU_SCEN_OZE,
+        nazwa_przypadku=NAZWA_PRZYPADKU_SCEN_OZE,
+        wnioskodawca=None,
+        adres_przylaczenia=None,
+        pf_run_id=_UUID_PF_SCENY_WNIOSEK,
+        sc_run_id=_UUID_SC_SCENY_WNIOSEK,
+        bus_ref=_szyna_sn_gpz(enm),
+        operator_id=OPERATOR_SCENY_MACIERZ,
+    ).model_dump(mode="json")
+
+
+def _wniosek_albo_braki(enm: EnergyNetworkModel) -> tuple[int, dict[str, Any]]:
+    """(status HTTP, treść) wniosku — ścieżka `api/oze_analysis_runs.py::_wniosek_osd_view`."""
+    zadanie = WniosekOsdRequest.model_validate(_zadanie_wniosku_sceny(enm))
+    zgodnosc = zgodnosc_ncrfg_przypadku(
+        enm, operator_id=zadanie.operator_id, case_id=CASE_ID_HARNESSU
+    )
+    with _biegi_sceny_wniosku(enm) as (bieg_pf, bieg_sc):
+        try:
+            return 200, build_wniosek_osd_view(
+                bieg_pf,
+                bieg_sc,
+                zgodnosc,
+                bus_ref=zadanie.bus_ref,
+                identyfikacja=WniosekOsdIdentyfikacja(
+                    nazwa_projektu=zadanie.nazwa_projektu,
+                    nazwa_przypadku=zadanie.nazwa_przypadku,
+                    wnioskodawca=zadanie.wnioskodawca,
+                    adres_przylaczenia=zadanie.adres_przylaczenia,
+                ),
+            )
+        except WniosekOsdBrakiError as exc:
+            return 422, exc.detail()
+
+
+def wniosek_scena_magazyn_zadanie() -> dict[str, Any]:
+    """Ciało żądania wniosku sceny `wniosek` (model magazynu)."""
+    return _zadanie_wniosku_sceny(enm_sceny_magazyn())
+
+
+def wniosek_scena_magazyn() -> dict[str, Any]:
+    """Widok wniosku do OSD sceny `wniosek` (200) — `build_wniosek_osd_view` na realnych
+    biegach PF i zwarciowym modelu magazynu."""
+    status_http, tresc = _wniosek_albo_braki(enm_sceny_magazyn())
+    if status_http != 200:
+        raise SystemExit(f"[fixtury] scena wniosek: braki zamiast widoku — {tresc}")
+    return tresc
+
+
+def wniosek_scena_magazyn_przebiegi() -> list[dict[str, Any]]:
+    """Wpisy rejestru przebiegów sceny `wniosek` (`to_execution_dict`) — ekran wniosku
+    wybiera z nich przebieg rozpływu i zwarciowy (te same identyfikatory co w żądaniu)."""
+    with _biegi_sceny_wniosku(enm_sceny_magazyn()) as (bieg_pf, bieg_sc):
+        return [bieg_pf.to_execution_dict(), bieg_sc.to_execution_dict()]
+
+
+def wniosek_scena_macierz_zadanie() -> dict[str, Any]:
+    """Ciało żądania wniosku sceny `wniosek-braki` (model sceny `macierz`)."""
+    return _zadanie_wniosku_sceny(enm_sceny_macierz())
+
+
+def wniosek_scena_macierz_braki() -> dict[str, Any]:
+    """Treść 422 wniosku sceny `wniosek-braki` — ekran „czego brakuje do wniosku":
+    rekordy W zgodności NC RfG modułu PV bez wykazanej zgodności (i braki tekstowe
+    bilansu/zwarć, jeśli model je ma)."""
+    status_http, tresc = _wniosek_albo_braki(enm_sceny_macierz())
+    if status_http != 422:
+        raise SystemExit("[fixtury] scena wniosek-braki: wniosek powstał, a scena pokazuje braki")
+    return tresc
+
+
+def wniosek_scena_macierz_przebiegi() -> list[dict[str, Any]]:
+    """Wpisy rejestru przebiegów sceny `wniosek-braki` (`to_execution_dict`)."""
+    with _biegi_sceny_wniosku(enm_sceny_macierz()) as (bieg_pf, bieg_sc):
+        return [bieg_pf.to_execution_dict(), bieg_sc.to_execution_dict()]
+
+
+def studium_dokument_scena_macierz() -> dict[str, Any]:
+    """Widok dokumentu studium przyłączeniowego dla żądania Z `case_id` — TA SAMA kompozycja
+    co `api/oze_analysis_runs.py::_dokument_studium_view`: przebieg bazowy PF modelu sceny
+    `macierz` (ten sam bieg co wniosek sceny `wniosek-braki`), typ katalogowy = falownik PV
+    modelu (tożsamość urządzenia w studium to typ przekształtnika), operator z modelu,
+    wariant = szyna SN GPZ, dowody = `weryfikacje_certyfikatow_typu` (tabliczki urządzeń
+    tego typu × wykaz PTPiREE). Testy frontu czytają z tej fixtury sekcję dowodu
+    certyfikatu dokumentu — rekordy wykazu policzone backendem, nie przepisane ręcznie."""
+    enm = enm_sceny_macierz()
+    pv = next(g for g in enm.generators if g.gen_type == "pv_inverter")
+    catalog_item_id = str(dict(pv.materialized_params or {})["catalog_item_id"])
+    dowody = weryfikacje_certyfikatow_typu(enm, catalog_item_id, operator_id=OPERATOR_SCENY_MACIERZ)
+    with _biegi_sceny_wniosku(enm) as (bieg_pf, _bieg_sc):
+        return build_dokument_studium_view(
+            bieg_pf,
+            get_default_mv_catalog().get_converter_type(catalog_item_id),
+            load_nc_rfg_profile(OPERATOR_SCENY_MACIERZ),
+            catalog_item_id=catalog_item_id,
+            operator_id=OPERATOR_SCENY_MACIERZ,
+            warianty=[_szyna_sn_gpz(enm)],
+            identyfikacja=DokumentStudiumIdentyfikacja(
+                nazwa_projektu=NAZWA_PROJEKTU_SCEN_OZE,
+                nazwa_przypadku=NAZWA_PRZYPADKU_SCEN_OZE,
+            ),
+            dowody=dowody,
+        )
 
 
 def werdykt_projektowy_sceny_uwaga() -> dict[str, Any]:
@@ -3706,6 +4113,27 @@ def porownanie_scena_slad_zabezpieczen() -> dict[str, Any]:
 FIXTURY: dict[str, Any] = {
     "ncrfg_zgodnosc_przekrojowa_scena_macierz": zgodnosc_przekrojowa_sceny_macierz,
     "macierz_scena_migawka": macierz_scena_migawka,
+    "ncrfg_katalog": ncrfg_katalog,
+    "krzywe_pokrycie_scena_pv": krzywe_pokrycie_scena_pv,
+    "krzywe_pokrycie_scena_bez_krzywej": krzywe_pokrycie_scena_bez_krzywej,
+    "krzywe_pokrycie_scena_magazyn": krzywe_pokrycie_scena_magazyn,
+    "krzywe_konwertery_scen": krzywe_konwertery_scen,
+    "ncrfg_wejscia_scena_macierz": ncrfg_wejscia_scena_macierz,
+    "ncrfg_bieg_scena_macierz_zadanie": ncrfg_bieg_scena_macierz_zadanie,
+    "ncrfg_bieg_scena_macierz": ncrfg_bieg_scena_macierz,
+    "certyfikat_scena_zadanie": certyfikat_scena_zadanie,
+    "certyfikat_scena_macierz_braki": certyfikat_scena_macierz_braki,
+    "magazyn_scena_migawka": magazyn_scena_migawka,
+    "ncrfg_zgodnosc_przekrojowa_scena_magazyn": ncrfg_zgodnosc_przekrojowa_scena_magazyn,
+    "ncrfg_wejscia_scena_magazyn": ncrfg_wejscia_scena_magazyn,
+    "certyfikat_scena_magazyn": certyfikat_scena_magazyn,
+    "wniosek_scena_magazyn_zadanie": wniosek_scena_magazyn_zadanie,
+    "wniosek_scena_magazyn": wniosek_scena_magazyn,
+    "wniosek_scena_magazyn_przebiegi": wniosek_scena_magazyn_przebiegi,
+    "wniosek_scena_macierz_zadanie": wniosek_scena_macierz_zadanie,
+    "wniosek_scena_macierz_braki": wniosek_scena_macierz_braki,
+    "wniosek_scena_macierz_przebiegi": wniosek_scena_macierz_przebiegi,
+    "studium_dokument_scena_macierz": studium_dokument_scena_macierz,
     "oze_scena_migawka": oze_scena_migawka,
     "wiazania_scena_przekladniki": wiazania_scena_przekladniki,
     "wiazania_scena_funkcje_zabezpieczen": wiazania_scena_funkcje_zabezpieczen,
@@ -3778,18 +4206,29 @@ FIXTURY: dict[str, Any] = {
 }
 
 
-def _json(dane: dict[str, Any]) -> str:
+def _json(dane: Any) -> str:
     return json.dumps(dane, ensure_ascii=False, indent=2, sort_keys=False) + "\n"
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sprawdz", action="store_true", help="tylko porównaj z repo")
+    parser.add_argument(
+        "--tylko",
+        nargs="+",
+        metavar="NAZWA",
+        help="przelicz wyłącznie wskazane fixtury (nazwy z FIXTURY) — pozostałe bez zmian",
+    )
     args = parser.parse_args(argv)
 
+    nieznane = sorted(set(args.tylko or ()) - set(FIXTURY))
+    if nieznane:
+        parser.error(f"nieznane fixtury: {', '.join(nieznane)}")
     FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
     rozjazdy: list[str] = []
     for nazwa, funkcja in FIXTURY.items():
+        if args.tylko and nazwa not in args.tylko:
+            continue
         sciezka = FIXTURES_DIR / f"{nazwa}.json"
         tresc = _json(funkcja())
         if args.sprawdz:

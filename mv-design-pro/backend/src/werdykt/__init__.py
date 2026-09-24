@@ -40,7 +40,7 @@ from werdykt.decyzja import (
     wyprowadz_pola_wymagania,
     zagreguj_wymaganie,
 )
-from werdykt.dokument import PozycjaBloku, blok_kryterium, blok_wymagania
+from werdykt.dokument import PozycjaBloku, blok_kryterium, blok_wymagania, opis_podstawy
 from werdykt.etykiety import SLOWNIK_ETYKIET, PozycjaSlownikaEtykiet, etykieta
 from werdykt.kontrakt import (
     DanaPrzyjeta,
@@ -138,6 +138,7 @@ __all__ = [
     "margines",
     "metody_dopuszczalne",
     "ocen_kryterium",
+    "opis_podstawy",
     "przydatnosc_dowodu_wymagania",
     "status_kryterium",
     "status_wymagania",

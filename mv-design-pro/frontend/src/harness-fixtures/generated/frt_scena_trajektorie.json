@@ -36,11 +36,11 @@
     "audit_ref": "karta_s1_s4_dowod.md §0.9",
     "capability_id": "frt_hvrt.trajectory",
     "claim_kind": "DYNAMIC_PERFORMANCE",
-    "claim_kind_pl": "zachowanie_dynamiczne",
+    "claim_kind_pl": "zachowanie dynamiczne",
     "rationale_pl": "Trajektoria napiecia MVP jest funkcja zadana parametryzowana wejsciem scenariusza, nie rozwiazaniem sieci sprzezonym z reszta modulu — network_model/solvers/frt_hvrt/engine.py.",
     "regulatory_evidence_eligible": false,
     "tier": "UNVALIDATED_MODEL",
-    "tier_pl": "model_niezwalidowany"
+    "tier_pl": "model niezwalidowany"
   },
   "operator": {
     "id": "pse",

@@ -409,7 +409,7 @@ class ProtectionEvaluationEngine:
             return self._make_invalid_evaluation(
                 device=device,
                 fault=fault,
-                notes_pl=f"Nieobsługiwany typ krzywej: {curve_kind} (NOT_SUPPORTED_YET)",
+                notes_pl=f"Nieobsługiwany typ krzywej: {curve_kind}",
             )
 
         # Compute trip time based on curve type

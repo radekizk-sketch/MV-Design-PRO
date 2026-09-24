@@ -9,9 +9,11 @@
  * do `attachDer`. Wybory użytkownika ginęły w klikiek "Utwórz".
  */
 
+import { odpowiedzKlasyfikacji } from '../../../../ui2/oze/ncrfg/__tests__/atrapaKlasyfikacji';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 
 import { useAppStateStore } from '../../../app-state/store';
@@ -109,19 +111,6 @@ const AUDIT2_SNAPSHOT_BODY = {
   mv_neutral_groundings: [],
 };
 
-/**
- * Mirror TESTOWY klasyfikacji modułu NC RfG — jedyne źródło progów zostaje
- * `compliance/nc_rfg_modul.py`; ten mirror tylko UDAJE backend w teście.
- */
-function klasyfikujModulNcRfgDlaTestu(pMaxMw: number, napiecieKv: number): 'A' | 'B' | 'C' | 'D' {
-  if (napiecieKv >= 110) return 'D';
-  const pMaxKw = pMaxMw * 1000;
-  if (pMaxKw >= 75_000) return 'D';
-  if (pMaxKw >= 10_000) return 'C';
-  if (pMaxKw >= 200) return 'B';
-  return 'A';
-}
-
 // Naprawa FAB-I (2026-09-05): katalog urządzeń DER pochodzi WYŁĄCZNIE z backendu
 // — kreator nie ma już listy zastępczej `catalogs.ts`, więc identyfikatory tego
 // pliku (przeniesione 1:1, liczbowo bez zmian z `PV_INVERTER_CATALOG`/
@@ -149,16 +138,10 @@ function mockDerWizardFetch(
 ): void {
   global.fetch = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
-    if (url.includes('/api/ncrfg-tests/modul')) {
-      const params = new URL(url, 'http://localhost').searchParams;
-      const modul = klasyfikujModulNcRfgDlaTestu(
-        Number(params.get('p_max_mw')), Number(params.get('napiecie_kv')),
-      );
-      return new Response(JSON.stringify({ modul }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    // Karta AB-1a Pakiet D2: `/modul` ze wspólnej atrapy — parametry zapytania z migawki
+    // OpenAPI (`p_max_kw`, `napiecie_kv`), progi z katalogu policzonego backendem.
+    const klasyfikacja = odpowiedzKlasyfikacji(url);
+    if (klasyfikacja) return klasyfikacja;
     if (url.includes('/api/ncrfg-tests/catalog')) {
       return new Response(
         JSON.stringify({
@@ -422,6 +405,66 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
     });
   });
 
+  it('dane modułu NC RfG z kroku „Profil" (art. 4, data, nastawy, deklaracje) trafiają do POST …/generators', async () => {
+    // Karta AB-1a Pakiet D2 §0 pkt 8: tabliczka DER zbiera KAŻDE pole danych modułu, jeden
+    // walidator kontraktu (`ui2/oze/ncrfg/daneModulu.ts` ↔ backend `pola_nc_rfg_generatora`).
+    useSnapshotStore.setState({ caseId: 'case-snapshot-001', snapshot: station001Snapshot() } as never);
+    const u = userEvent.setup();
+    render(
+      <AddDerWizard
+        isOpen={true}
+        stationId="station-001"
+        stationName="Stacja Test"
+        derKind="PV"
+        projectId="projekt-test-001"
+        onClose={() => {}}
+        nowIso="2026-04-01T00:00:00Z"
+      />,
+    );
+    await u.click(screen.getByTestId('variant-nN'));
+    await u.click(screen.getByTestId('add-der-next'));
+    await u.type(screen.getByTestId('add-der-name'), 'PV Test');
+    await u.type(screen.getByTestId('add-der-pcc-label'), 'PCC-01');
+    await u.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-device')).not.toBeDisabled());
+    await u.selectOptions(screen.getByTestId('add-der-device'), 'pv_inv_huawei_185');
+    await u.click(screen.getByTestId('add-der-next'));
+    await waitFor(() => expect(screen.getByTestId('add-der-ncrfg')).not.toBeDisabled());
+    await u.selectOptions(screen.getByTestId('add-der-ncrfg'), 'enea');
+
+    const t = 'add-der-dane-modulu';
+    await u.selectOptions(screen.getByTestId(`${t}-modul_istniejacy`), 'tak');
+    await u.type(screen.getByTestId(`${t}-data_umowy_przylaczeniowej`), '2019-04-27');
+    // Deklaracja bez źródła blokuje krok z nazwanym błędem pola.
+    await u.selectOptions(screen.getByTestId(`${t}-flaga-island_operation_capable`), 'nie');
+    expect(screen.getByTestId(`${t}-zrodlo_deklaracji-blad`)).toBeInTheDocument();
+    expect(screen.getByTestId('add-der-next')).toBeDisabled();
+    await u.type(screen.getByTestId(`${t}-zrodlo_deklaracji`), 'deklaracja wytwórcy');
+    await u.type(screen.getByTestId(`${t}-nastawa-u_min_pu`), '0,8');
+    await u.type(screen.getByTestId(`${t}-nastawa-zrodlo_pl`), 'karta nastaw');
+    expect(screen.getByTestId('add-der-next')).not.toBeDisabled();
+    await u.click(screen.getByTestId('add-der-next'));
+    await u.click(screen.getByTestId('add-der-create'));
+
+    await waitFor(() => {
+      const wywolanie = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.find(([url]) =>
+        String(url).includes('/generators'),
+      );
+      expect(wywolanie).toBeDefined();
+      const cialo = JSON.parse(String(wywolanie?.[1]?.body));
+      expect(cialo).toMatchObject({
+        modul_istniejacy: true,
+        data_umowy_przylaczeniowej: '2019-04-27',
+        nastawy_zabezpieczen: { u_min_pu: 0.8, f_min_hz: null, zrodlo_pl: 'karta nastaw' },
+        deklaracje_modulu: {
+          island_operation_capable: false,
+          has_scada_communication: null,
+          zrodlo_pl: 'deklaracja wytwórcy',
+        },
+      });
+    });
+  });
+
   it('przekazuje do API katalogową moc PV 50 kW bez sztucznej podłogi 100 kW', async () => {
     useSnapshotStore.setState({
       caseId: 'case-snapshot-001',
@@ -469,6 +512,16 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
         power_mw: 0.05,
       });
     });
+    // Karta AB-1a Pakiet D2: klasyfikacja modułu pytana w kW (klucze zapytania = parametry
+    // `/modul` z migawki OpenAPI — atrapa odrzuca inne 422), moc grupy 50 kW, nie 0,05 MW.
+    const zapytaniaModul = (global.fetch as ReturnType<typeof vi.fn>).mock.calls
+      .map(([url]) => new URL(String(url), 'http://localhost'))
+      .filter((adres) => adres.pathname === '/api/ncrfg-tests/modul');
+    expect(zapytaniaModul.length).toBeGreaterThan(0);
+    for (const adres of zapytaniaModul) {
+      expect([...adres.searchParams.keys()].sort()).toEqual(['napiecie_kv', 'p_max_kw']);
+      expect(adres.searchParams.get('p_max_kw')).toBe('50');
+    }
   });
 
   it('liczba jednostek trafia do modelu, a moc pozycji to ILOCZYN (V12K-249)', async () => {

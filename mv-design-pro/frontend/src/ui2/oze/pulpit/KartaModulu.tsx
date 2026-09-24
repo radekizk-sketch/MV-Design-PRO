@@ -1,25 +1,28 @@
 /*
  * Karta wybranego modułu (pulpit OZE, karta P47 §2). Sekcje: (1) dane modułu
- * read-only, (2) zgodność NC RfG, (3) praca magazynu (tylko BESS z danymi),
- * (4) zdolność punktu + jakość energii (jawny stan „analiza niewpięta"),
- * (5) dokumenty (callback nawigacji z propsów). Zero fizyki, zero ocen własnych.
+ * read-only, (2) zgodność NC RfG (wynik modułu i rekordy wymagań z oceny zatwierdzonego
+ * modelu — kontrakt V2),
+ * (3) praca magazynu (tylko BESS z danymi), (4) zdolność punktu + adekwatność mocy
+ * biernej, (5) dokumenty (callback nawigacji z propsów). Zero fizyki, zero ocen własnych.
  */
 
-import type { NcRfgRunResult } from '../../../ui/ncrfg-tests/api';
 import type { StationDerConnection } from '../../../ui/network-build/station-der';
 import { formatMoc, formatNapiecie } from '../macierz/strings';
-import type { OpisModulu } from '../macierz';
+import type { OpisModuluModelu } from '../macierz';
 import { SekcjaAdekwatnosciQ } from './SekcjaAdekwatnosciQ';
 import { SekcjaMagazynu } from './SekcjaMagazynu';
 import { SekcjaSilySieci } from './SekcjaSilySieci';
 import { SekcjaZgodnosci } from './SekcjaZgodnosci';
-import { daneModulu, zgodnoscModulu } from './pulpitModel';
+import { daneModulu, type PozycjaModulu } from './pulpitModel';
 import { ETYKIETY_STRONY, PULPIT_STRINGS } from './strings';
 
 export interface KartaModuluProps {
-  readonly opis: OpisModulu;
+  readonly opis: OpisModuluModelu;
   readonly der: StationDerConnection;
-  readonly wynik: NcRfgRunResult | null;
+  /** Pozycja modułu (wynik modułu i rekordy wymagań z oceny zatwierdzonego modelu). */
+  readonly pozycja: PozycjaModulu;
+  /** Czy ocena modelu jest wczytana (stan zerowy sekcji zgodności). */
+  readonly ocenaWczytana: boolean;
   /** Tryb ekspercki odsłania identyfikatory katalogowe. */
   readonly trybEkspercki: boolean;
   /** Nawigacja do dokumentacji modułu (implementacja poza tą kartą). */
@@ -31,13 +34,13 @@ export interface KartaModuluProps {
 export function KartaModulu({
   opis,
   der,
-  wynik,
+  pozycja,
+  ocenaWczytana,
   trybEkspercki,
   onNawiguj,
   wyroznionyModul = null,
 }: KartaModuluProps): JSX.Element {
   const dane = daneModulu(opis, der);
-  const zgodnosc = zgodnoscModulu(opis, wynik);
 
   return (
     <div className="mvd-oze-pulpit-karta" data-testid="mvd-oze-pulpit-karta">
@@ -90,7 +93,7 @@ export function KartaModulu({
       </section>
 
       {/* Sekcja 2 — zgodność NC RfG. */}
-      <SekcjaZgodnosci zgodnosc={zgodnosc} />
+      <SekcjaZgodnosci pozycja={pozycja} ocenaWczytana={ocenaWczytana} />
 
       {/* Sekcja 3 — praca magazynu (BESS z katalogu konwerterów). */}
       <SekcjaMagazynu der={der} trybEkspercki={trybEkspercki} />

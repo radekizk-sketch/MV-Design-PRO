@@ -1329,6 +1329,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # danych wejsciowych (PASS niezmieniony), pliki/zapadka/wykluczenia bez
     # zmian (nowy plik `dowod_ncrfg.py` NIE jest w zapadce dlugu ani w
     # wykluczeniach — zero formul fizycznych, czysta interpretacja rejestru).
+    # [Stan 2026-09-23: `solver_input/dowod_ncrfg.py` i pola dowodowe S-1 kontraktu biegu
+    # skasowane w karcie AB-1a Pakiet C — wpis nizej.]
     # Odbior S-1/S-4 na tym samym drzewie (2026-09-16, po W3-J + V12.7): POMIAR guardem na
     # drzewie scalonym = 3532 (liczba z biegu guarda na tym drzewie, nie z arytmetyki kart).
     # Karta S-2 AUTORYTET (2026-09-16, k_sc DEFAULT_FORBIDDEN): POMIAR guardem
@@ -1577,7 +1579,32 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # scalonym drzewie int/1b1: +44 nazwy AB-1b.1a (wymienione wyzej) i +8 z korzenia
     # `analysis/obciazenie_galezi.py`; `werdykt/kontrakt.py` juz w mapie (AB-H0), wiec
     # +64 z pomiaru na bbcc8555 tu nie wchodzi drugi raz.
-    assert "Pol kontraktow wejsciowych: 3929." in wyjscie, wyjscie
+    # Karta AB-1a Pakiety B + C z odbiorem (2026-09-23, drzewo integracyjne na `2ef62bbc`):
+    # 3843 -> 4002 (+177 nazw, -18 skasowanych). POMIAR: zbior `contract_fields()` zrzucony
+    # na drzewie czystym (`czysty-head`, `src` = HEAD) i na drzewie integracyjnym, roznica
+    # policzona na posortowanych zbiorach, nie arytmetyka karty. Nowe nosniki: warstwy
+    # profilu NC RfG (`catalog/profiles/nc_rfg/loader.py` — dokumenty warstw, progi typow
+    # WOS, program badan, rejestr wykazu PTPiREE), kontrakt V2 solvera PTPiREE
+    # (`ncrfg_ptpiree/contracts.py` — klasyfikacja, dowod certyfikatu, rekord oceny testu),
+    # ocena wymagan (`application/ncrfg_compliance/**`), `enm/nastawy_modulu.py`, pola ENM
+    # generatora (art. 4, data umowy, nastawy) oraz +58 nazw kontraktu rekordu werdyktu
+    # (`werdykt/kontrakt.py`, `werdykt/dokument.py` dolozone do `CONTRACT_SOURCES` — patrz
+    # uzasadnienie tamze: 3944 -> 4002). Skasowane: pola dowodowe S-1 z kontraktu biegu
+    # (`reporting_status`, `proof_status`, `evidence_*`, `per_module`, `certificate_*`),
+    # liczniki modulu (`required_count`, `no_data_count`, `not_required_count`),
+    # `run_request`/`deterministic_seed` dokumentow, `acceptance_date`/`voltage_kv_max`
+    # dawnego modelu klasyfikacji. Zapadka dlugu (56/255) i wykluczenia (13/31) BEZ ZMIANY
+    # — zero nowych podstawien (PASS niezmieniony).
+    # Uzupelnienie odbioru Pakietu C (§0 pkt 7-9 karty integracyjnej, 2026-09-23): 4002 -> 4004
+    # (+2: `deklaracje_modulu` — blok deklaracji modulu generatora `enm/deklaracje_modulu.py`,
+    # `rekord` — `application/ncrfg_compliance/ocena_wymagan.py::BrakWymaganiaModulu`; pozostale
+    # pola nowych klas byly juz w mapie przez kontrakt wejscia solvera PTPiREE). POMIAR guardem
+    # przed i po, roznica zbiorow `contract_fields()`. PASS niezmieniony (zero podstawien —
+    # brak deklaracji konczy sie ocena niewykonana z nazwanym brakiem, nigdy wartoscia).
+    # Integracja B+C+D2 na HEAD z AB-H0 i AB-1b.1a (2026-09-24): 3929 -> 4024 — POMIAR guardem
+    # na scalonym drzewie int/c (korzen `werdykt/dokument.py` + pola kontraktow B+C nieobecne
+    # jeszcze w mapie; `werdykt/kontrakt.py` juz byl z AB-H0).
+    assert "Pol kontraktow wejsciowych: 4024." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1596,7 +1623,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # skasowane w calosci; +1 W3-G1: `application/analyses/power_flow_reconstruction.py`).
         # Karta V12.7 (2026-09-16): 479 -> 480 (+1 nowy modul `application/analyses/
         # v126_wzory.py` — rejestr wzorow LaTeX kroku sladu, karta §0.1).
-        # Karta S-1/S-4 (W6-0): 479 -> 480 (+1 nowy plik `solver_input/dowod_ncrfg.py`).
+        # Karta S-1/S-4 (W6-0): 479 -> 480 (+1 nowy plik `solver_input/dowod_ncrfg.py`,
+        # skasowany w karcie AB-1a Pakiet C — wpis nizej).
         # Odbior na jednym drzewie (2026-09-16): oba nowe pliki razem -> 481 (pomiar guardem).
         # Karta S-2 AUTORYTET (2026-09-16): 479 -> 484 (+5 nowych plikow: `network_model/
         # core/{wklad_zwarciowy_przeksztaltnika,zdolnosci_wkladu_zwarciowego,
@@ -1689,7 +1717,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # zacisk_zabezpieczenia.py` — resolver zacisku; `application/contracts/
         # resultset_dynamic_v1.py` -> `_v2.py` to wymiana 1:1; `analysis/` i `dziedziny/`
         # leza poza zakresem skanu). Pomiar guardem.
-        "Przeskanowano 537 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta AB-1a Pakiety B + C z odbiorem (2026-09-23): 537 -> 539 (pomiar guardem na
+        # drzewie integracyjnym): +4 nowe pliki w zakresie skanu (`network_model/solvers/
+        # ncrfg_ptpiree/stosowalnosc.py`, `enm/nastawy_modulu.py`, `application/
+        # ncrfg_compliance/ocena_wymagan.py`, `application/analyses/sekcja_zgodnosci_ncrfg.py`),
+        # -2 skasowane (`solver_input/dowod_ncrfg.py`, `application/analyses/
+        # dowod_certyfikatu.py`; skasowany pakiet `compliance/` lezy poza zakresem skanu).
+        # Zapadka dlugu i wykluczenia BEZ ZMIANY.
+        # Uzupelnienie odbioru Pakietu C (§0 pkt 7-9): 539 -> 540 (+1 `enm/deklaracje_modulu.py`
+        # — blok deklaracji modulu i jeden walidator pol NC RfG generatora dla obu pisarzy).
+        "Przeskanowano 540 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1777,13 +1814,20 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `solvers/der_selection_preview.py` zdjety, patrz pin zapadki globalnej).
         # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
         # guardem na scalonym drzewie int/h0 (roznice L i AB-H0 sie sumuja).
-        "  network_model: pliki_skanowane=174, dlug=12 plikow/suma 71, "
+        # Karta AB-1a Pakiet C (2026-09-23): network_model 178 -> 179 (+1
+        # `network_model/solvers/ncrfg_ptpiree/stosowalnosc.py` — jedna funkcja stosowalnosci
+        # wymagania i testu); dlug 14/77 i wykluczenia 3/6 BEZ ZMIANY.
+        "  network_model: pliki_skanowane=175, dlug=12 plikow/suma 71, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
-        # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).
+        # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
+        # plik skasowany w karcie AB-1a Pakiet C — wpis nizej).
         # Karta W5-A (2026-09-16): solver_input 11 -> 12 (+1 `solver_input/uklad_sieci_nn.py` —
         # jedna funkcja mapujaca literal modelu -> enum solvera FROZEN; zero dlugu/wykluczen).
-        "  solver_input: pliki_skanowane=12, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
+        # Karta AB-1a Pakiet C (2026-09-23): solver_input 12 -> 11 (-1 skasowany
+        # `solver_input/dowod_ncrfg.py` — dowod zgodnosci NC RfG to rekordy `WynikWymagania`);
+        # dlug 2/8 i wykluczenia 0/0 BEZ ZMIANY.
+        "  solver_input: pliki_skanowane=11, dlug=2 plikow/suma 8, " "wykluczenia=0 plikow/suma 0",
         # Karta W5-D (2026-09-16): enm 41 -> 43 (+2 `fazy_odbioru.py`, `rozplyw_niesymetryczny_wynik.py`).
         # Karta W5-A (2026-09-16): enm +3 `enm/{grupa_polaczen,uziemienie,uklad_sieci_nn}.py`,
         # dlug 8/76 -> 7/73 (wpis `enm/zero_sequence_transformer.py` usuniety z zapadki, patrz wyzej);
@@ -1795,7 +1839,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # nazwana odmowa, nie liczba podstawiona za brak).
         # Decyzja O-53 (2026-09-23): enm dlug 7/73 -> 7/72 (wpis H:local:payload.quantity
         # zdjety, patrz pin zapadki globalnej wyzej).
-        "  enm: pliki_skanowane=50, dlug=7 plikow/suma 72, wykluczenia=0 plikow/suma 0",
+        # Karta AB-1a Pakiet C (2026-09-23): enm 48 -> 49 (+1 `enm/nastawy_modulu.py` —
+        # kontrakt nastaw zabezpieczen modulu ze zrodlem; brak nastaw = `None`, kryteria
+        # koordynacji daja NIE_OCENIONO z nazwanym brakiem); dlug/wykluczenia BEZ ZMIANY.
+        # Uzupelnienie odbioru Pakietu C (§0 pkt 7-9): enm 49 -> 50 (+1
+        # `enm/deklaracje_modulu.py`); dlug/wykluczenia BEZ ZMIANY.
+        "  enm: pliki_skanowane=52, dlug=7 plikow/suma 72, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -1827,7 +1876,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta AB-1b.1a (2026-09-23): application 235 -> 236 (+1
         # `protection_settings/zacisk_zabezpieczenia.py`; kontrakt dynamiki v1 -> v2 1:1;
         # zadnego wpisu w zapadce ani w wykluczeniach).
-        "  application: pliki_skanowane=238, dlug=30 plikow/suma 91, "
+        # Karta AB-1a Pakiet C (2026-09-23): application 237 -> 238 (+2 `application/
+        # ncrfg_compliance/ocena_wymagan.py`, `application/analyses/sekcja_zgodnosci_ncrfg.py`;
+        # -1 skasowany `application/analyses/dowod_certyfikatu.py`); dlug 30/91 i
+        # wykluczenia 4/10 BEZ ZMIANY.
+        "  application: pliki_skanowane=239, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=63, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]

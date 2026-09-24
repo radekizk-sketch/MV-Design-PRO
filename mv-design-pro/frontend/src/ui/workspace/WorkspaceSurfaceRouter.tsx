@@ -71,7 +71,7 @@ import {
 } from './surfaces/InfrastructureSurfaces';
 import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
 import { EkranAnalizAkademickich, type RodzajPrezentowany } from '../../ui2/wyniki/akademickie';
-import { NcRfgTestsTab } from './surfaces/NcRfgTestsTab';
+import { MacierzNcRfg } from '../../ui2/oze/macierz';
 import {
   AnalysisSurfaceComparisonWizard,
   AuditTrailSurface,
@@ -932,6 +932,9 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const setWynikiTab = useShellStore((state) => state.setWynikiTab);
   const setActiveSpace = useShellStore((state) => state.setActiveSpace);
+  // Karta AB-1a Pakiet D2 §7: zakładka „ncrfg-tests" renderuje JEDYNY ekran zdolności —
+  // macierz NC RfG ui2 (kontrakt V2); dawna zakładka V1 skasowana.
+  const trybZaawansowania = useShellStore((state) => state.advancementMode);
   // P-1: zdolności E-33 (wkłady źródeł) i E-34 (weryfikacja cieplna/dynamiczna)
   // mają realnego dostawcę w warsztacie Wyników — zakładka zwarć (sekcja
   // „Wkłady do zwarcia" + panel „Bilans IEC 60909"). Deep-link zakładki
@@ -1073,7 +1076,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         ) : activeAnalysisTab === 'comparison_wizard' ? (
           <AnalysisSurfaceComparisonWizard />
         ) : activeAnalysisTab === 'ncrfg-tests' ? (
-          <NcRfgTestsTab />
+          <MacierzNcRfg trybZaawansowania={trybZaawansowania} />
         ) : activeAnalysisTab === 'trace' ? (
           <div className="space-y-4">
             <ElementCalculationProofPanel

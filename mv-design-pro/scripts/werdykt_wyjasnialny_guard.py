@@ -8,7 +8,7 @@ czego, wynik, limit, margines, przyczyna, podstawa, dowód). Kontrakt
 (typy, schematy, mapy), a nie tekst — nie poluje na słowo „spełnia", tylko na KSZTAŁT, w którym
 lakoniczny werdykt może powstać albo dotrzeć do człowieka.
 
-CZTERY SPRAWDZENIA (każde zwraca naruszenia z TOŻSAMOŚCIĄ, nie z numerem linii):
+PIĘĆ SPRAWDZEŃ (każde zwraca naruszenia z TOŻSAMOŚCIĄ, nie z numerem linii):
 
   1_backend — AST `backend/src/**`. Klasa modelu (pydantic `BaseModel`, `@dataclass`,
       `TypedDict`, `NamedTuple` — także przez dziedziczenie po klasie z drzewa) z polem werdyktu:
@@ -51,6 +51,22 @@ CZTERY SPRAWDZENIA (każde zwraca naruszenia z TOŻSAMOŚCIĄ, nie z numerem lin
       Tekst = literał niebędący kodem maszynowym, f-napis albo stała modułu z takim tekstem;
       mapa status → kod (`PASS` → `SPELNIA`) i słownik liczników nie są mapą etykiet.
       Tożsamość: `moduł:łańcuch.symboli`.
+  5_kod_w_tekscie — kod wyliczenia albo identyfikator maszynowy w TEKŚCIE DLA CZŁOWIEKA (karta
+      AB-1a Pakiet D2, luka §5.1). Pole tekstowe = klucz `*_pl` albo lista tekstów wyjaśnienia
+      (`czego_brakuje`, `zastrzezenia`). Kod = dopasowanie `WZORZEC_KODU_W_TEKSCIE`
+      (`[A-Z]{3,}(_[A-Z]+)+` z karty, rozszerzone o segmenty z cyframi: `RFG_13_2`) albo słowo
+      wersalikami z jednowyrazowych wartości osi STANU kontraktu (`NIEUSTALONE`, `PELNY`,
+      `ZWALIDOWANE` — `kody_jednowyrazowe`, wyprowadzone z `werdykt.kontrakt`
+      i `werdykt.proweniencja`). DWA korpusy, bo tekst powstaje na dwa sposoby:
+      A) odpowiedzi POLICZONE backendem (`frontend/src/harness-fixtures/generated/*.json`,
+         `scripts/eksport_fixtur_harnessu.py` — te same funkcje co trasy API): f-napisy
+         i `.value` wyliczeń składane w czasie biegu; tożsamość
+         `fixtura.json:ścieżka.klucza:KOD` (indeksy list jako `[]`);
+      B) literały źródła `backend/src/**` zasilające pole tekstu (argument nazwany, klucz
+         słownika, przypisanie): ścieżki, których żadna scena nie wywołuje; tożsamość
+         `moduł:łańcuch.symboli:KOD`.
+      Kod wyliczenia i identyfikator zostają w POLACH rekordu (`status_maszynowy`,
+      `dowod.poziom`, `podstawa.status`, `wymaganie_id`…); zdanie niesie nazwę polską.
 
 SŁOWNIK WERDYKTÓW. Wartości z karty (porównanie po normalizacji: małe litery, bez diakrytyków,
 camelCase i spacje → `_`) domknięte na odmianę przymiotnikową (`zgodne`, `spelnione`,
@@ -122,7 +138,42 @@ MODULY_SERIALIZERA = frozenset({"werdykt.dokument", "werdykt.etykiety"})
 TYPY_KANONICZNE = frozenset({"werdykt.kontrakt.OcenaKryterium", "werdykt.kontrakt.WynikWymagania"})
 TYP_WYJASNIENIA = "werdykt.kontrakt.WyjasnienieWerdyktu"
 
-SPRAWDZENIA = ("1_backend", "2_http", "3a_frontend_mapa", "3b_frontend_prog", "4_dokumenty")
+SPRAWDZENIA = (
+    "1_backend",
+    "2_http",
+    "3a_frontend_mapa",
+    "3b_frontend_prog",
+    "4_dokumenty",
+    "5_kod_w_tekscie",
+)
+#: Korpus sprawdzenia 5: odpowiedzi policzone backendem (fixtury harnessu).
+KATALOG_FIXTUR = FRONTEND_SRC / "harness-fixtures" / "generated"
+#: Kod wyliczenia / identyfikator maszynowy w tekście: WIELKIE LITERY z podkreśleniami
+#: (`VALIDATED_SIMULATION`, `NIE_DOTYCZY`, `THD_U`, `RFG_13_2`, `ZASTANE_HVRT`).
+WZORZEC_KODU_W_TEKSCIE = re.compile(r"\b[A-Z][A-Z0-9]{2,}(?:_[A-Z0-9]+)+\b")
+#: Słowo WIELKIMI LITERAMI (kandydat na jednowyrazowy kod wyliczenia kontraktu).
+WZORZEC_SLOWA_WIELKIMI = re.compile(r"\b[A-ZĄĆĘŁŃÓŚŹŻ]{3,}\b")
+#: Listy tekstów wyjaśnienia bez sufiksu `_pl` (pola `WyjasnienieWerdyktu`).
+KLUCZE_TEKSTU_BEZ_SUFIKSU = frozenset({"czego_brakuje", "zastrzezenia"})
+#: Moduły, z których pochodzą jednowyrazowe kody wyliczeń (`kody_jednowyrazowe`).
+MODUL_KONTRAKTU = "werdykt.kontrakt"
+MODUL_PROWENIENCJI = "werdykt.proweniencja"
+#: Skróty polszczyzny technicznej będące zarazem wartościami `RodzajPodstawy` — nie kod.
+SKROTY_PROZY = frozenset({"OSD", "WOS"})
+#: Aliasy osi STANU kontraktu werdyktu, których jednowyrazowe wartości (`NIEUSTALONE`,
+#: `PELNY`, `ZWALIDOWANE`…) są kodem w tekście. Poza listą świadomie: metoda dowodu, rodzaj
+#: podstawy, rodzaj skali, kroki reguły i dziedzina fizyki — ich jednowyrazowe wartości to
+#: zwykłe rzeczowniki (`WYNIK`, `LIMIT`, `NORMA`, `POMIAR`), które proza pisze wersalikami
+#: dla emfazy („WYNIK ROBOCZY"); kody z podkreśleniem tych wyliczeń łapie wzorzec.
+ALIASY_OSI_STANU = (
+    "StatusWerdyktu",
+    "KompletnoscDowodu",
+    "StanZrodla",
+    "Relacja",
+    "StatusModelu",
+    "StanDanych",
+    "PokrycieProgramu",
+)
 KLASY_LISTY = ("MIGRACJA", "ENUM_WEWNETRZNY")
 
 #: Słownik werdyktów z karty AB-1a Pakiet E pkt A.1 (postać znormalizowana).
@@ -1324,14 +1375,184 @@ def sprawdz_frontend(
 # ---------------------------------------------------------------------------
 
 
+def _jest_polem_tekstu(klucz: str | None) -> bool:
+    return klucz is not None and (klucz.endswith("_pl") or klucz in KLUCZE_TEKSTU_BEZ_SUFIKSU)
+
+
+def kody_jednowyrazowe(indeks: IndeksBackendu) -> frozenset[str]:
+    """Jednowyrazowe kody wyliczeń kontraktu werdyktu (`NIEUSTALONE`, `PELNY`, `LOGICZNE`…),
+    wyprowadzone z drzewa, nie z listy: wartości aliasów `ALIASY_OSI_STANU` modułu
+    `werdykt.kontrakt` i wartości wyliczeń `werdykt.proweniencja`. Kod z podkreśleniem łapie
+    `WZORZEC_KODU_W_TEKSCIE`; skróty będące słowami polszczyzny technicznej (`OSD`, `WOS`)
+    nie są kodem. Brak modułów kontraktu albo aliasu z listy = błąd środowiska."""
+    kontrakt = indeks.moduly.get(MODUL_KONTRAKTU)
+    proweniencja = indeks.moduly.get(MODUL_PROWENIENCJI)
+    if kontrakt is None or proweniencja is None:
+        raise BladSrodowiska(
+            f"brak modułów kontraktu werdyktu ({MODUL_KONTRAKTU}, {MODUL_PROWENIENCJI})"
+        )
+    wartosci: set[str] = set()
+    for nazwa in ALIASY_OSI_STANU:
+        alias = kontrakt.aliasy.get(nazwa)
+        if not (
+            isinstance(alias, ast.Subscript)
+            and isinstance(alias.value, ast.Name)
+            and alias.value.id == "Literal"
+        ):
+            raise BladSrodowiska(f"{MODUL_KONTRAKTU}.{nazwa} nie jest aliasem `Literal[...]`")
+        wartosci.update(
+            e.value
+            for e in _elementy(alias.slice)
+            if isinstance(e, ast.Constant) and isinstance(e.value, str)
+        )
+    for klasa in proweniencja.klasy.values():
+        if indeks.jest_enum(MODUL_PROWENIENCJI, klasa):
+            wartosci.update(indeks.wartosci_enum(klasa))
+    kody = (
+        frozenset(w for w in wartosci if "_" not in w and len(w) >= 3 and w.isupper())
+        - SKROTY_PROZY
+    )
+    if not kody:
+        raise BladSrodowiska("kontrakt werdyktu bez jednowyrazowych kodów wyliczeń")
+    return kody
+
+
+def kody_w_tekscie(tekst: str, jednowyrazowe: frozenset[str]) -> list[str]:
+    """Kody wyliczeń w tekście dla człowieka: z podkreśleniem (wzorzec) i jednowyrazowe
+    (zbiór z kontraktu), posortowane bez powtórzeń."""
+    kody = set(WZORZEC_KODU_W_TEKSCIE.findall(tekst))
+    kody.update(s for s in WZORZEC_SLOWA_WIELKIMI.findall(tekst) if s in jednowyrazowe)
+    return sorted(kody)
+
+
+def _naruszenie_kodu(tozsamosc: str, plik: str, linia: int, klucz: str, kod: str) -> Naruszenie:
+    return Naruszenie(
+        "5_kod_w_tekscie",
+        tozsamosc,
+        plik,
+        linia,
+        f"kod `{kod}` w tekście dla człowieka ({klucz}) — nazwa polska w zdaniu, kod "
+        "wyłącznie w polu rekordu",
+        (kod,),
+    )
+
+
+def _kody_w_odpowiedziach(katalog: Path, jednowyrazowe: frozenset[str]) -> list[Naruszenie]:
+    """Korpus A: odpowiedzi POLICZONE backendem (fixtury harnessu) — tekst z f-napisów
+    i `.value` wyliczeń powstaje w czasie biegu. Brak korpusu = błąd środowiska."""
+    if not katalog.is_dir():
+        raise BladSrodowiska(f"brak korpusu odpowiedzi backendu: {katalog}")
+    pliki = sorted(katalog.glob("*.json"))
+    if not pliki:
+        raise BladSrodowiska(f"pusty korpus odpowiedzi backendu: {katalog}")
+    naruszenia: list[Naruszenie] = []
+
+    def odwiedz(dane: object, sciezka: str, klucz: str | None, plik: Path) -> None:
+        if isinstance(dane, dict):
+            for k, v in dane.items():
+                odwiedz(v, f"{sciezka}.{k}", str(k), plik)
+        elif isinstance(dane, list):
+            for v in dane:
+                odwiedz(v, f"{sciezka}[]", klucz, plik)
+        elif isinstance(dane, str) and klucz is not None and _jest_polem_tekstu(klucz):
+            for kod in kody_w_tekscie(dane, jednowyrazowe):
+                naruszenia.append(
+                    _naruszenie_kodu(
+                        f"{plik.name}:{sciezka}:{kod}", _sciezka_wzgledna(plik), 0, klucz, kod
+                    )
+                )
+
+    for plik in pliki:
+        try:
+            dane = json.loads(plik.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as blad:
+            raise BladSrodowiska(f"korpus: {plik.name} nie jest poprawnym JSON: {blad}") from blad
+        odwiedz(dane, "$", None, plik)
+    return naruszenia
+
+
+def _wartosci_pol_tekstu(wezel: ast.AST) -> Iterator[tuple[str, ast.expr]]:
+    """Pary (klucz pola tekstu, wyrażenie wartości) w węźle: argument nazwany `*_pl`,
+    klucz słownika `*_pl` i przypisanie do nazwy/atrybutu `*_pl`."""
+    if isinstance(wezel, ast.Call):
+        for argument in wezel.keywords:
+            if argument.arg is not None and _jest_polem_tekstu(argument.arg):
+                yield argument.arg, argument.value
+    elif isinstance(wezel, ast.Dict):
+        for klucz, wartosc in zip(wezel.keys, wezel.values, strict=True):
+            if (
+                isinstance(klucz, ast.Constant)
+                and isinstance(klucz.value, str)
+                and _jest_polem_tekstu(klucz.value)
+            ):
+                yield klucz.value, wartosc
+    elif isinstance(wezel, ast.Assign | ast.AnnAssign) and wezel.value is not None:
+        cele = wezel.targets if isinstance(wezel, ast.Assign) else [wezel.target]
+        for cel in cele:
+            nazwa = (
+                cel.attr
+                if isinstance(cel, ast.Attribute)
+                else cel.id if isinstance(cel, ast.Name) else None
+            )
+            if nazwa is not None and _jest_polem_tekstu(nazwa):
+                yield nazwa, wezel.value
+
+
+def _kody_w_literalach(indeks: IndeksBackendu, jednowyrazowe: frozenset[str]) -> list[Naruszenie]:
+    """Korpus B: literały i stałe części f-napisów zasilające pole tekstu `*_pl` (albo
+    `czego_brakuje`/`zastrzezenia`) w CAŁYM `backend/src` — także ścieżki, których żadna
+    scena harnessu nie wywołuje. Tożsamość: `moduł:łańcuch.symboli:KOD`."""
+    naruszenia: list[Naruszenie] = []
+    for modul, info in sorted(indeks.moduly.items()):
+        rodzice: dict[int, ast.AST] | None = None
+        for wezel in ast.walk(info.drzewo):
+            for klucz, wartosc in _wartosci_pol_tekstu(wezel):
+                for stala in ast.walk(wartosc):
+                    if not (isinstance(stala, ast.Constant) and isinstance(stala.value, str)):
+                        continue
+                    kody = kody_w_tekscie(stala.value, jednowyrazowe)
+                    if not kody:
+                        continue
+                    if rodzice is None:
+                        rodzice = _rodzice(info.drzewo)
+                    lancuch = _lancuch_py(stala, rodzice, info)
+                    for kod in kody:
+                        naruszenia.append(
+                            _naruszenie_kodu(
+                                f"{modul}:{lancuch}:{kod}",
+                                _plik_backendu(info, indeks.korzen),
+                                stala.lineno,
+                                klucz,
+                                kod,
+                            )
+                        )
+    return naruszenia
+
+
+def sprawdz_kody_w_tekscie(
+    indeks: IndeksBackendu, katalog: Path = KATALOG_FIXTUR
+) -> list[Naruszenie]:
+    """Sprawdzenie 5: kody wyliczeń i identyfikatory maszynowe w polach tekstu dla człowieka
+    — korpus A (odpowiedzi policzone backendem) i korpus B (literały źródła backendu), patrz
+    nagłówek modułu."""
+    jednowyrazowe = kody_jednowyrazowe(indeks)
+    return [
+        *_kody_w_odpowiedziach(katalog, jednowyrazowe),
+        *_kody_w_literalach(indeks, jednowyrazowe),
+    ]
+
+
 def zmierz(
     backend_src: Path = BACKEND_SRC,
     frontend_src: Path = FRONTEND_SRC,
     migawka: Path = MIGAWKA_OPENAPI,
     modul_typescript: Path = MODUL_TYPESCRIPT,
     indeks: IndeksBackendu | None = None,
+    katalog_fixtur: Path | None = None,
 ) -> list[Naruszenie]:
-    """Wszystkie naruszenia drzewa (cztery sprawdzenia), jedno na tożsamość, posortowane."""
+    """Wszystkie naruszenia drzewa (pięć sprawdzeń), jedno na tożsamość, posortowane.
+    Korpus sprawdzenia 5: `katalog_fixtur`; domyślnie `harness-fixtures/generated` pod
+    `frontend_src`."""
     if not backend_src.is_dir():
         raise BladSrodowiska(f"brak katalogu backendu: {backend_src}")
     if indeks is None:
@@ -1341,6 +1562,14 @@ def zmierz(
         *sprawdz_http(migawka),
         *sprawdz_frontend(frontend_src, modul_typescript),
         *sprawdz_dokumenty(indeks),
+        *sprawdz_kody_w_tekscie(
+            indeks,
+            (
+                katalog_fixtur
+                if katalog_fixtur is not None
+                else frontend_src / "harness-fixtures" / "generated"
+            ),
+        ),
     ]
     unikalne: dict[tuple[str, str], Naruszenie] = {}
     for naruszenie in sorted(wszystkie):

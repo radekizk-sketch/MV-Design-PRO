@@ -10,7 +10,7 @@
  * dozwolonych kluczy dla typu elementu; parametry katalogowe zmienia się przez katalog.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { useGrupyPolaczen } from '../../../ui/catalog/useGrupyPolaczen';
@@ -36,6 +36,13 @@ import {
   UKLADY_SIECI_NN,
   UZIEMIENIA_EKRANU_KABLA,
 } from '../../../types/uziemienie';
+import {
+  formularzDanychModuluZModelu,
+  zbudujPolaNcRfgGeneratora,
+  zmienionePolaNcRfg,
+  type FormularzDanychModulu,
+} from '../../oze/ncrfg/daneModulu';
+import { SekcjaDanychModulu } from '../../oze/ncrfg/SekcjaDanychModulu';
 import { EDYCJA_PARAMETROW_STRINGS as T } from './strings';
 
 interface WierszParametru {
@@ -107,8 +114,34 @@ export function KreatorEdycjiParametrow() {
     () => wiersze.filter((w) => w.klucz.trim() && w.wartosc.trim() !== ''),
     [wiersze],
   );
+
+  // Plan AB O-50 pkt 5: generator ma w modelu dane modułu NC RfG (art. 4, data umowy, nastawy
+  // zabezpieczeń, deklaracje) — edycja przez TEN SAM formularz i tę samą budowę pól co kreator
+  // źródła OZE; zapis wyłącznie pól zmienionych wobec modelu (bez nadpisywania niezmienionych).
+  const generator = useSnapshotStore(
+    (s) => s.snapshot?.generators?.find((g) => g.ref_id === elementRef) ?? null,
+  );
+  const [daneModulu, setDaneModulu] = useState<FormularzDanychModulu | null>(() =>
+    generator ? formularzDanychModuluZModelu(generator) : null,
+  );
+  useEffect(() => {
+    if (generator && daneModulu === null) setDaneModulu(formularzDanychModuluZModelu(generator));
+  }, [generator, daneModulu]);
+  const wynikDanychModulu = useMemo(
+    () => (daneModulu ? zbudujPolaNcRfgGeneratora(daneModulu) : null),
+    [daneModulu],
+  );
+  const zmianyNcRfg = useMemo(
+    () =>
+      generator && wynikDanychModulu?.stan === 'ok'
+        ? zmienionePolaNcRfg(wynikDanychModulu.pola, generator)
+        : {},
+    [generator, wynikDanychModulu],
+  );
+  const liczbaZmianNcRfg = Object.keys(zmianyNcRfg).length;
+
   const brakElementu = !elementRef;
-  const kompletne = Boolean(elementRef && wypelnione.length > 0);
+  const kompletne = Boolean(elementRef && (wypelnione.length > 0 || liczbaZmianNcRfg > 0));
 
   const dodajWiersz = useCallback(() => {
     setWiersze((p) => [...p, { klucz: '', wartosc: '' }]);
@@ -129,14 +162,18 @@ export function KreatorEdycjiParametrow() {
       setBladGlobalny(T.brakElementuWalid);
       return;
     }
-    if (wypelnione.length === 0) {
+    if (wynikDanychModulu?.stan === 'blad') {
+      setBladGlobalny(T.bledneDaneModulu);
+      return;
+    }
+    if (wypelnione.length === 0 && liczbaZmianNcRfg === 0) {
       setBladGlobalny(T.brakParametrow);
       return;
     }
     const parameters = wypelnione.reduce<Record<string, unknown>>((acc, w) => {
       acc[w.klucz.trim()] = parsujWartosc(w.wartosc);
       return acc;
-    }, {});
+    }, { ...zmianyNcRfg });
     const payload: Record<string, unknown> = { element_ref: elementRef, parameters };
     if (powod.trim()) payload.reason = powod.trim();
 
@@ -156,11 +193,15 @@ export function KreatorEdycjiParametrow() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, fallbackType, powod, selekcjaPoOperacji, wypelnione]);
+  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, fallbackType, liczbaZmianNcRfg, powod, selekcjaPoOperacji, wynikDanychModulu, wypelnione, zmianyNcRfg]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     { etykieta: T.wierszElement, stan: elementRef ? 'kompletne' : 'brak', wartosc: elementRef || 'Brak' },
-    { etykieta: T.wierszParametry, stan: wypelnione.length > 0 ? 'kompletne' : 'brak', wartosc: `${wypelnione.length} do zapisu` },
+    {
+      etykieta: T.wierszParametry,
+      stan: wypelnione.length + liczbaZmianNcRfg > 0 ? 'kompletne' : 'brak',
+      wartosc: `${wypelnione.length + liczbaZmianNcRfg} do zapisu`,
+    },
     { etykieta: T.wierszPowod, stan: powod.trim() ? 'kompletne' : 'ostrzezenie', wartosc: powod.trim() ? 'Podane' : 'Brak' },
   ];
 
@@ -198,6 +239,18 @@ export function KreatorEdycjiParametrow() {
           <RzadWartosci etykieta={T.zrodloParametrow} wartosc={zrodloParametrow || 'nieznane'} />
         </KreatorSiatka>
       </KreatorSekcja>
+
+      {generator && daneModulu ? (
+        <KreatorSekcja tytul={T.daneModuluTytul} testid="mvd-kreator-edycja-dane-modulu">
+          <KreatorInfo>{T.daneModuluPomoc}</KreatorInfo>
+          <SekcjaDanychModulu
+            formularz={daneModulu}
+            bledy={wynikDanychModulu?.stan === 'blad' ? wynikDanychModulu.bledy : {}}
+            onZmien={setDaneModulu}
+            testid="mvd-kreator-edycja-ncrfg"
+          />
+        </KreatorSekcja>
+      ) : null}
 
       <KreatorSekcja tytul={T.parametryTytul} testid="mvd-kreator-edycja-parametry">
         <KreatorInfo>{T.parametryPomoc}</KreatorInfo>

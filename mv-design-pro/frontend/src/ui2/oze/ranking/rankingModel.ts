@@ -5,13 +5,19 @@
  *
  * Granice (NOT-A-SOLVER): zero fizyki, zero ocen lokalnych. Jedyna arytmetyka to
  * PREZENTACJA: różnica dwóch strat scenariuszy z backendu (D3a) oraz konwersja
- * jednostek MW→kW — obie jawnie skomentowane. Klasa NC RfG to MAPOWANIE SŁOWNIKOWE
- * z progów katalogu operatora (odwzorowanie `NcRfgProfile.classify_module`), nie ocena.
+ * jednostek MW→kW — obie jawnie skomentowane. Typ modułu NC RfG pochodzi WYŁĄCZNIE
+ * z klasyfikacji backendu (`GET /api/ncrfg-tests/modul`, `ncrfg/klasyfikacja.ts`) — dawne
+ * mapowanie z progów katalogu po stronie klienta skasowane (karta AB-1a Pakiet D2).
  * Rodzaj kryterium i etykieta węzła reużyte importem z okna „Zdolność przyłączeniowa".
  */
 
 import type { DefinicjaKolumny, WartoscKomorki, WierszTabeli } from '../../wyniki/wzorzec';
-import type { KlasaModuluNcRfg, OdpowiedzKatalogNcRfg, ScenariuszZdolnosci, WezelZdolnosci } from '../api';
+import type { ScenariuszZdolnosci, WezelZdolnosci } from '../api';
+import {
+  krotkiOpisKlasyfikacji,
+  type StanKlasyfikacji,
+  type ZapytanieKlasyfikacji,
+} from '../ncrfg/klasyfikacja';
 import { etykietaWezla, rodzajKryteriumPL } from '../zdolnosc/zdolnoscModel';
 import { RANKING_STRINGS, fmtMocMW, fmtNapieciaPara, fmtStratyKw } from './strings';
 
@@ -65,43 +71,18 @@ export function napieciaPrzyGranicy(wezel: WezelZdolnosci): NapieciaGraniczne | 
 }
 
 // ---------------------------------------------------------------------------
-// Klasa modułu NC RfG — mapowanie słownikowe z progów katalogu operatora
+// Typ modułu NC RfG — klasyfikacja backendu dla mocy granicznej węzła
 // ---------------------------------------------------------------------------
 
-/** Kategorie klas wybranego operatora z katalogu NC RfG (puste, gdy brak profilu). */
-export function klasyOperatora(
-  katalog: OdpowiedzKatalogNcRfg | null,
-  operatorId: string,
-): readonly KlasaModuluNcRfg[] {
-  const profil = katalog?.operators.find((operator) => operator.operator_id === operatorId);
-  return profil?.module_types ?? [];
-}
+/** Odczyt stanu klasyfikacji backendu dla pary (moc, napięcie) — `useKlasyfikacjeModulow`. */
+export type OdczytKlasyfikacji = (zapytanie: ZapytanieKlasyfikacji) => StanKlasyfikacji;
 
-/**
- * Klasa modułu NC RfG dla mocy granicznej — MAPOWANIE SŁOWNIKOWE z progów katalogu
- * operatora (art. 5). Odwzorowuje 1:1 `NcRfgProfile.classify_module`
- * (`catalog/profiles/nc_rfg/loader.py`): dolny/górny próg mocy [kW] + górny limit
- * napięcia [kV]. To ODCZYT progów z katalogu (nie ocena, nie fizyka). Brak mocy
- * przyłączalnej (≤ 0) albo pustego katalogu → `null` („—" w UI). Napięcie nieznane
- * (`null`) → pomijamy wyłącznie klauzulę napięciową (limit dotyczy dopiero ≥ progu kV).
- */
-export function klasaNcRfg(
-  mocGranicznaMW: number,
+/** Zapytanie o klasyfikację dla mocy granicznej węzła i napięcia węzła ze snapshotu. */
+export function zapytanieKlasyfikacjiWezla(
+  wezel: WezelZdolnosci,
   napiecieKv: number | null,
-  klasy: readonly KlasaModuluNcRfg[],
-): KlasaModuluNcRfg | null {
-  if (mocGranicznaMW <= 0 || klasy.length === 0) return null;
-  const pMaxKw = mocGranicznaMW * 1000; // konwersja jednostek MW→kW (nie fizyka)
-  for (const klasa of klasy) {
-    if (pMaxKw < klasa.threshold_kw_min) continue;
-    if (klasa.threshold_kw_max !== null && pMaxKw >= klasa.threshold_kw_max) continue;
-    if (klasa.voltage_kv_max !== null && napiecieKv !== null && napiecieKv > klasa.voltage_kv_max) {
-      continue;
-    }
-    return klasa;
-  }
-  // Najwyższa kategoria (bez górnego limitu) — jak fallback katalogu.
-  return klasy[klasy.length - 1];
+): ZapytanieKlasyfikacji {
+  return { mocMw: wezel.max_hosting_capacity_mw, napiecieKv };
 }
 
 // ---------------------------------------------------------------------------
@@ -155,10 +136,10 @@ function komorkaNapiec(wezel: WezelZdolnosci): WartoscKomorki {
 function wierszRankingu(
   wezel: WezelZdolnosci,
   napiecieKv: number | null,
-  klasy: readonly KlasaModuluNcRfg[],
+  klasyfikacja: OdczytKlasyfikacji,
 ): WierszTabeli {
   const moc = wezel.max_hosting_capacity_mw;
-  const klasa = klasaNcRfg(moc, napiecieKv, klasy);
+  const stanKlasy = klasyfikacja(zapytanieKlasyfikacjiWezla(wezel, napiecieKv));
   return {
     wezel: { wartosc: etykietaWezla(wezel) },
     [KLUCZ_WIERSZA_RANKINGU]: { wartosc: wezel.bus_ref },
@@ -166,7 +147,7 @@ function wierszRankingu(
     kryterium: { wartosc: rodzajKryteriumPL(wezel.binding_criterion) },
     straty: komorkaStrat(wezel),
     napiecia: komorkaNapiec(wezel),
-    klasa: { wartosc: klasa !== null ? klasa.id : RANKING_STRINGS.kreska },
+    klasa: { wartosc: krotkiOpisKlasyfikacji(stanKlasy, RANKING_STRINGS.kreska) },
   };
 }
 
@@ -174,16 +155,18 @@ function wierszRankingu(
  * Wiersze rankingu w kolejności domyślnej: MALEJĄCO po maksymalnej mocy przyłączalnej
  * (remis rozstrzyga nazwa węzła — stabilnie, PL). Kolejność źródłowa tabeli wzorca = ten
  * ranking; użytkownik może przesortować kolumny klikiem. `napiecieWezla` odwzorowuje
- * bus_ref → napięcie znamionowe [kV] (ze snapshotu) na potrzeby klauzuli napięciowej klas.
+ * bus_ref → napięcie znamionowe [kV] (ze snapshotu) — wejście klasyfikacji backendu.
  */
 export function wierszeRankingu(
   nodes: readonly WezelZdolnosci[],
   napiecieWezla: (busRef: string) => number | null,
-  klasy: readonly KlasaModuluNcRfg[],
+  klasyfikacja: OdczytKlasyfikacji,
 ): WierszTabeli[] {
   const posortowane = [...nodes].sort((a, b) => {
     const cmp = b.max_hosting_capacity_mw - a.max_hosting_capacity_mw;
     return cmp !== 0 ? cmp : etykietaWezla(a).localeCompare(etykietaWezla(b), 'pl');
   });
-  return posortowane.map((wezel) => wierszRankingu(wezel, napiecieWezla(wezel.bus_ref), klasy));
+  return posortowane.map((wezel) =>
+    wierszRankingu(wezel, napiecieWezla(wezel.bus_ref), klasyfikacja),
+  );
 }

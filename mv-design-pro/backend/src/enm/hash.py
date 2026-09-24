@@ -78,7 +78,19 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # + karta AB-H0 §0.7.6: modele widmowe zmaterializowane z kart widmowych. `None` =
     # brak modelu widmowego (sekcja harmonic UNKNOWN) — nie jest trescia modelu dzisiejszych
     # biegow; wiazanie karty zmienia wejscie analiz czestotliwosciowych, wiec zmienia odcisk.
-    "generators": ("dynamika", "modele_widmowe"),
+    # + karta AB-1a Pakiet C (plan AB O-31, O-32): status modulu istniejacego (art. 4),
+    # data umowy przylaczeniowej (resolver wersji warstw profilu) i nastawy zabezpieczen
+    # modulu. `None` = dana nieustalona (ocena wymagan nazywa brak) — nie jest trescia
+    # modelu; podana wartosc zmienia wynik oceny zgodnosci NC RfG, wiec zmienia odcisk.
+    # + odbior Pakietu C (plan AB O-50): deklaracje modulu dla testow NC RfG — to samo prawo.
+    "generators": (
+        "dynamika",
+        "modele_widmowe",
+        "modul_istniejacy",
+        "data_umowy_przylaczeniowej",
+        "nastawy_zabezpieczen",
+        "deklaracje_modulu",
+    ),
 }
 
 #: W5-A: pola SKASOWANE z modelu, ktore odcisk ZACHOWUJE jako `null`. Przed kasacja

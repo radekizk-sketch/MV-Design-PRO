@@ -1,0 +1,1073 @@
+{
+  "procedure_version": {
+    "tytul": "PTPiREE — Procedura testowania modułów wytwarzania energii",
+    "wydanie": "3.0",
+    "status": "WSKAZANE",
+    "adres": "https://ptpiree.pl/kodeksy-sieci/procedura-testowania/",
+    "obowiazuje_od": null,
+    "uwagi_pl": null
+  },
+  "operators": [
+    {
+      "operator_id": "enea",
+      "operator_name_pl": "Enea Operator",
+      "last_revision": "2024-Q4",
+      "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Enea Operator (rewizja 2024-Q4)",
+      "module_types": [
+        {
+          "id": "A",
+          "threshold_kw_min": 0.8,
+          "threshold_kw_max": 200.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu A (mikroinstalacje i małe instalacje, zwykle nN)"
+        },
+        {
+          "id": "B",
+          "threshold_kw_min": 200.0,
+          "threshold_kw_max": 10000.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu B (instalacje przyłączane zwykle do sieci SN)"
+        },
+        {
+          "id": "C",
+          "threshold_kw_min": 10000.0,
+          "threshold_kw_max": 75000.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu C (poza zakresem produktu)"
+        },
+        {
+          "id": "D",
+          "threshold_kw_min": 75000.0,
+          "threshold_kw_max": null,
+          "napiecie_ponizej_kv": null,
+          "description_pl": "Moduły typu D (≥ 75 MW albo przyłączenie ≥ 110 kV; poza zakresem produktu)"
+        }
+      ],
+      "klasyfikacja_zrodlo": {
+        "rodzaj": "WOS",
+        "dokument": "Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE",
+        "wydanie": "2018",
+        "jednostka_redakcyjna": null,
+        "status": "NIEUSTALONE",
+        "uwagi_pl": "wartości progów wg decyzji właściciela O-1 (plan AB §2.1); jednostka redakcyjna dokumentu WOS do wskazania (plan AB §12.1)"
+      },
+      "frequency_response": {
+        "steady_state_hz_min": 49.5,
+        "steady_state_hz_max": 50.5,
+        "transient_hz_min": 47.5,
+        "transient_hz_max": 51.5,
+        "pf_droop_percent": 5.0,
+        "dead_band_hz": 0.2,
+        "ramp_rate_pct_per_min": 10.0,
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "reactive_power": {
+        "q_range_pct_pn_min": -0.33,
+        "q_range_pct_pn_max": 0.33,
+        "cos_phi_min": 0.95,
+        "voltage_control_modes": [
+          "cos_phi_constant",
+          "q_constant",
+          "q_of_u",
+          "voltage_control"
+        ],
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "p_recovery_after_fault": {
+        "required_for_modules": [
+          "B"
+        ],
+        "p_recovery_time_s": 1.0,
+        "p_recovery_rate_pct_per_s": 80.0,
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "ride_through": {
+        "lvrt": [
+          {
+            "time_s": 0.0,
+            "voltage_pu": 0.05
+          },
+          {
+            "time_s": 0.15,
+            "voltage_pu": 0.05
+          },
+          {
+            "time_s": 0.7,
+            "voltage_pu": 0.5
+          },
+          {
+            "time_s": 1.5,
+            "voltage_pu": 0.85
+          },
+          {
+            "time_s": 3.0,
+            "voltage_pu": 0.9
+          }
+        ],
+        "hvrt": [
+          {
+            "time_s": 0.0,
+            "voltage_pu": 1.3
+          },
+          {
+            "time_s": 0.1,
+            "voltage_pu": 1.25
+          },
+          {
+            "time_s": 1.0,
+            "voltage_pu": 1.15
+          },
+          {
+            "time_s": 60.0,
+            "voltage_pu": 1.1
+          }
+        ],
+        "lvrt_typy": [
+          "B"
+        ],
+        "hvrt_typy": [
+          "B"
+        ],
+        "lvrt_zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        },
+        "hvrt_zrodlo": {
+          "rodzaj": "OSD",
+          "dokument": "Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Enea Operator",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "nadpisanie operatora; dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21)"
+        }
+      }
+    },
+    {
+      "operator_id": "energa",
+      "operator_name_pl": "Energa Operator",
+      "last_revision": "2024-Q4",
+      "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Energa Operator (rewizja 2024-Q4)",
+      "module_types": [
+        {
+          "id": "A",
+          "threshold_kw_min": 0.8,
+          "threshold_kw_max": 200.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu A (mikroinstalacje i małe instalacje, zwykle nN)"
+        },
+        {
+          "id": "B",
+          "threshold_kw_min": 200.0,
+          "threshold_kw_max": 10000.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu B (instalacje przyłączane zwykle do sieci SN)"
+        },
+        {
+          "id": "C",
+          "threshold_kw_min": 10000.0,
+          "threshold_kw_max": 75000.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu C (poza zakresem produktu)"
+        },
+        {
+          "id": "D",
+          "threshold_kw_min": 75000.0,
+          "threshold_kw_max": null,
+          "napiecie_ponizej_kv": null,
+          "description_pl": "Moduły typu D (≥ 75 MW albo przyłączenie ≥ 110 kV; poza zakresem produktu)"
+        }
+      ],
+      "klasyfikacja_zrodlo": {
+        "rodzaj": "WOS",
+        "dokument": "Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE",
+        "wydanie": "2018",
+        "jednostka_redakcyjna": null,
+        "status": "NIEUSTALONE",
+        "uwagi_pl": "wartości progów wg decyzji właściciela O-1 (plan AB §2.1); jednostka redakcyjna dokumentu WOS do wskazania (plan AB §12.1)"
+      },
+      "frequency_response": {
+        "steady_state_hz_min": 49.5,
+        "steady_state_hz_max": 50.5,
+        "transient_hz_min": 47.5,
+        "transient_hz_max": 51.5,
+        "pf_droop_percent": 5.0,
+        "dead_band_hz": 0.2,
+        "ramp_rate_pct_per_min": 10.0,
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "reactive_power": {
+        "q_range_pct_pn_min": -0.33,
+        "q_range_pct_pn_max": 0.33,
+        "cos_phi_min": 0.95,
+        "voltage_control_modes": [
+          "cos_phi_constant",
+          "q_constant",
+          "q_of_u",
+          "voltage_control"
+        ],
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "p_recovery_after_fault": {
+        "required_for_modules": [
+          "B"
+        ],
+        "p_recovery_time_s": 1.0,
+        "p_recovery_rate_pct_per_s": 80.0,
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "ride_through": {
+        "lvrt": [
+          {
+            "time_s": 0.0,
+            "voltage_pu": 0.05
+          },
+          {
+            "time_s": 0.15,
+            "voltage_pu": 0.05
+          },
+          {
+            "time_s": 0.7,
+            "voltage_pu": 0.5
+          },
+          {
+            "time_s": 1.5,
+            "voltage_pu": 0.85
+          },
+          {
+            "time_s": 3.0,
+            "voltage_pu": 0.9
+          }
+        ],
+        "hvrt": [
+          {
+            "time_s": 0.0,
+            "voltage_pu": 1.3
+          },
+          {
+            "time_s": 0.1,
+            "voltage_pu": 1.25
+          },
+          {
+            "time_s": 1.0,
+            "voltage_pu": 1.15
+          },
+          {
+            "time_s": 60.0,
+            "voltage_pu": 1.1
+          }
+        ],
+        "lvrt_typy": [
+          "B"
+        ],
+        "hvrt_typy": [
+          "B"
+        ],
+        "lvrt_zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        },
+        "hvrt_zrodlo": {
+          "rodzaj": "OSD",
+          "dokument": "Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Energa Operator",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "nadpisanie operatora; dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21)"
+        }
+      }
+    },
+    {
+      "operator_id": "pge",
+      "operator_name_pl": "PGE Dystrybucja",
+      "last_revision": "2024-Q4",
+      "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · PGE Dystrybucja (rewizja 2024-Q4)",
+      "module_types": [
+        {
+          "id": "A",
+          "threshold_kw_min": 0.8,
+          "threshold_kw_max": 200.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu A (mikroinstalacje i małe instalacje, zwykle nN)"
+        },
+        {
+          "id": "B",
+          "threshold_kw_min": 200.0,
+          "threshold_kw_max": 10000.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu B (instalacje przyłączane zwykle do sieci SN)"
+        },
+        {
+          "id": "C",
+          "threshold_kw_min": 10000.0,
+          "threshold_kw_max": 75000.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu C (poza zakresem produktu)"
+        },
+        {
+          "id": "D",
+          "threshold_kw_min": 75000.0,
+          "threshold_kw_max": null,
+          "napiecie_ponizej_kv": null,
+          "description_pl": "Moduły typu D (≥ 75 MW albo przyłączenie ≥ 110 kV; poza zakresem produktu)"
+        }
+      ],
+      "klasyfikacja_zrodlo": {
+        "rodzaj": "WOS",
+        "dokument": "Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE",
+        "wydanie": "2018",
+        "jednostka_redakcyjna": null,
+        "status": "NIEUSTALONE",
+        "uwagi_pl": "wartości progów wg decyzji właściciela O-1 (plan AB §2.1); jednostka redakcyjna dokumentu WOS do wskazania (plan AB §12.1)"
+      },
+      "frequency_response": {
+        "steady_state_hz_min": 49.5,
+        "steady_state_hz_max": 50.5,
+        "transient_hz_min": 47.5,
+        "transient_hz_max": 51.5,
+        "pf_droop_percent": 5.0,
+        "dead_band_hz": 0.2,
+        "ramp_rate_pct_per_min": 10.0,
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "reactive_power": {
+        "q_range_pct_pn_min": -0.33,
+        "q_range_pct_pn_max": 0.33,
+        "cos_phi_min": 0.95,
+        "voltage_control_modes": [
+          "cos_phi_constant",
+          "q_constant",
+          "q_of_u",
+          "voltage_control"
+        ],
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "p_recovery_after_fault": {
+        "required_for_modules": [
+          "B"
+        ],
+        "p_recovery_time_s": 1.0,
+        "p_recovery_rate_pct_per_s": 80.0,
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "ride_through": {
+        "lvrt": [
+          {
+            "time_s": 0.0,
+            "voltage_pu": 0.05
+          },
+          {
+            "time_s": 0.15,
+            "voltage_pu": 0.05
+          },
+          {
+            "time_s": 0.7,
+            "voltage_pu": 0.5
+          },
+          {
+            "time_s": 1.5,
+            "voltage_pu": 0.85
+          },
+          {
+            "time_s": 3.0,
+            "voltage_pu": 0.9
+          }
+        ],
+        "hvrt": [
+          {
+            "time_s": 0.0,
+            "voltage_pu": 1.3
+          },
+          {
+            "time_s": 0.1,
+            "voltage_pu": 1.25
+          },
+          {
+            "time_s": 1.0,
+            "voltage_pu": 1.15
+          },
+          {
+            "time_s": 60.0,
+            "voltage_pu": 1.1
+          }
+        ],
+        "lvrt_typy": [
+          "B"
+        ],
+        "hvrt_typy": [
+          "B"
+        ],
+        "lvrt_zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        },
+        "hvrt_zrodlo": {
+          "rodzaj": "OSD",
+          "dokument": "Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) PGE Dystrybucja",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "nadpisanie operatora; dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21)"
+        }
+      }
+    },
+    {
+      "operator_id": "pse",
+      "operator_name_pl": "PSE — Polskie Sieci Elektroenergetyczne",
+      "last_revision": "2024-Q4",
+      "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · PSE — Polskie Sieci Elektroenergetyczne (rewizja 2024-Q4)",
+      "module_types": [
+        {
+          "id": "A",
+          "threshold_kw_min": 0.8,
+          "threshold_kw_max": 200.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu A (mikroinstalacje i małe instalacje, zwykle nN)"
+        },
+        {
+          "id": "B",
+          "threshold_kw_min": 200.0,
+          "threshold_kw_max": 10000.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu B (instalacje przyłączane zwykle do sieci SN)"
+        },
+        {
+          "id": "C",
+          "threshold_kw_min": 10000.0,
+          "threshold_kw_max": 75000.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu C (poza zakresem produktu)"
+        },
+        {
+          "id": "D",
+          "threshold_kw_min": 75000.0,
+          "threshold_kw_max": null,
+          "napiecie_ponizej_kv": null,
+          "description_pl": "Moduły typu D (≥ 75 MW albo przyłączenie ≥ 110 kV; poza zakresem produktu)"
+        }
+      ],
+      "klasyfikacja_zrodlo": {
+        "rodzaj": "WOS",
+        "dokument": "Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE",
+        "wydanie": "2018",
+        "jednostka_redakcyjna": null,
+        "status": "NIEUSTALONE",
+        "uwagi_pl": "wartości progów wg decyzji właściciela O-1 (plan AB §2.1); jednostka redakcyjna dokumentu WOS do wskazania (plan AB §12.1)"
+      },
+      "frequency_response": {
+        "steady_state_hz_min": 49.5,
+        "steady_state_hz_max": 50.5,
+        "transient_hz_min": 47.5,
+        "transient_hz_max": 51.5,
+        "pf_droop_percent": 5.0,
+        "dead_band_hz": 0.2,
+        "ramp_rate_pct_per_min": 10.0,
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "reactive_power": {
+        "q_range_pct_pn_min": -0.33,
+        "q_range_pct_pn_max": 0.33,
+        "cos_phi_min": 0.95,
+        "voltage_control_modes": [
+          "cos_phi_constant",
+          "q_constant",
+          "q_of_u",
+          "voltage_control"
+        ],
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "p_recovery_after_fault": {
+        "required_for_modules": [
+          "B"
+        ],
+        "p_recovery_time_s": 1.0,
+        "p_recovery_rate_pct_per_s": 80.0,
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "ride_through": {
+        "lvrt": [
+          {
+            "time_s": 0.0,
+            "voltage_pu": 0.05
+          },
+          {
+            "time_s": 0.15,
+            "voltage_pu": 0.05
+          },
+          {
+            "time_s": 0.7,
+            "voltage_pu": 0.5
+          },
+          {
+            "time_s": 1.5,
+            "voltage_pu": 0.85
+          },
+          {
+            "time_s": 3.0,
+            "voltage_pu": 0.9
+          }
+        ],
+        "hvrt": [
+          {
+            "time_s": 0.0,
+            "voltage_pu": 1.3
+          },
+          {
+            "time_s": 0.1,
+            "voltage_pu": 1.25
+          },
+          {
+            "time_s": 0.5,
+            "voltage_pu": 1.2
+          },
+          {
+            "time_s": 1.0,
+            "voltage_pu": 1.15
+          },
+          {
+            "time_s": 60.0,
+            "voltage_pu": 1.1
+          }
+        ],
+        "lvrt_typy": [
+          "B"
+        ],
+        "hvrt_typy": [
+          "B"
+        ],
+        "lvrt_zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        },
+        "hvrt_zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      }
+    },
+    {
+      "operator_id": "tauron",
+      "operator_name_pl": "Tauron Dystrybucja",
+      "last_revision": "2024-Q4",
+      "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · Tauron Dystrybucja (rewizja 2024-Q4)",
+      "module_types": [
+        {
+          "id": "A",
+          "threshold_kw_min": 0.8,
+          "threshold_kw_max": 200.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu A (mikroinstalacje i małe instalacje, zwykle nN)"
+        },
+        {
+          "id": "B",
+          "threshold_kw_min": 200.0,
+          "threshold_kw_max": 10000.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu B (instalacje przyłączane zwykle do sieci SN)"
+        },
+        {
+          "id": "C",
+          "threshold_kw_min": 10000.0,
+          "threshold_kw_max": 75000.0,
+          "napiecie_ponizej_kv": 110.0,
+          "description_pl": "Moduły typu C (poza zakresem produktu)"
+        },
+        {
+          "id": "D",
+          "threshold_kw_min": 75000.0,
+          "threshold_kw_max": null,
+          "napiecie_ponizej_kv": null,
+          "description_pl": "Moduły typu D (≥ 75 MW albo przyłączenie ≥ 110 kV; poza zakresem produktu)"
+        }
+      ],
+      "klasyfikacja_zrodlo": {
+        "rodzaj": "WOS",
+        "dokument": "Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE",
+        "wydanie": "2018",
+        "jednostka_redakcyjna": null,
+        "status": "NIEUSTALONE",
+        "uwagi_pl": "wartości progów wg decyzji właściciela O-1 (plan AB §2.1); jednostka redakcyjna dokumentu WOS do wskazania (plan AB §12.1)"
+      },
+      "frequency_response": {
+        "steady_state_hz_min": 49.5,
+        "steady_state_hz_max": 50.5,
+        "transient_hz_min": 47.5,
+        "transient_hz_max": 51.5,
+        "pf_droop_percent": 5.0,
+        "dead_band_hz": 0.2,
+        "ramp_rate_pct_per_min": 10.0,
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "reactive_power": {
+        "q_range_pct_pn_min": -0.33,
+        "q_range_pct_pn_max": 0.33,
+        "cos_phi_min": 0.95,
+        "voltage_control_modes": [
+          "cos_phi_constant",
+          "q_constant",
+          "q_of_u",
+          "voltage_control"
+        ],
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "p_recovery_after_fault": {
+        "required_for_modules": [
+          "B"
+        ],
+        "p_recovery_time_s": 1.0,
+        "p_recovery_rate_pct_per_s": 80.0,
+        "zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        }
+      },
+      "ride_through": {
+        "lvrt": [
+          {
+            "time_s": 0.0,
+            "voltage_pu": 0.05
+          },
+          {
+            "time_s": 0.15,
+            "voltage_pu": 0.05
+          },
+          {
+            "time_s": 0.7,
+            "voltage_pu": 0.5
+          },
+          {
+            "time_s": 1.5,
+            "voltage_pu": 0.85
+          },
+          {
+            "time_s": 3.0,
+            "voltage_pu": 0.9
+          }
+        ],
+        "hvrt": [
+          {
+            "time_s": 0.0,
+            "voltage_pu": 1.3
+          },
+          {
+            "time_s": 0.1,
+            "voltage_pu": 1.25
+          },
+          {
+            "time_s": 1.0,
+            "voltage_pu": 1.15
+          },
+          {
+            "time_s": 60.0,
+            "voltage_pu": 1.1
+          }
+        ],
+        "lvrt_typy": [
+          "B"
+        ],
+        "hvrt_typy": [
+          "B"
+        ],
+        "lvrt_zrodlo": {
+          "rodzaj": "NIEUSTALONA",
+          "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+        },
+        "hvrt_zrodlo": {
+          "rodzaj": "OSD",
+          "dokument": "Instrukcja Ruchu i Eksploatacji Sieci Dystrybucyjnej (IRiESD) Tauron Dystrybucja",
+          "wydanie": null,
+          "jednostka_redakcyjna": null,
+          "status": "NIEUSTALONE",
+          "uwagi_pl": "nadpisanie operatora; dokument operatora nie jest w repozytorium — wydanie i jednostki redakcyjne nieustalone (OD-21)"
+        }
+      }
+    }
+  ],
+  "tests": [
+    {
+      "test_id": "T01",
+      "ability_pl": "LFSM-O - ograniczanie mocy przy nadczęstotliwości",
+      "procedure_basis_pl": "LFSM-O jest zdolnością wymaganą od modułu typu A i B (NC RfG art. 13 ust. 2); dla typów C i D test jest obowiązkowy.",
+      "default_for_modules": [
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": "Dla typu A i B test jest wymagany, gdy certyfikat urządzenia z wykazu PTPiREE nie obejmuje typu modułu (katalog wymagań profilu, NC RfG art. 13 ust. 2).",
+      "zdolnosc_id": "ncrfg_ptpiree.frequency_response",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T02",
+      "ability_pl": "LFSM-U - zwiększanie mocy przy podczęstotliwości",
+      "procedure_basis_pl": "Zakres testów zgodności NC RfG dla modułów typu C i D.",
+      "default_for_modules": [
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.frequency_response",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T03",
+      "ability_pl": "FSM - regulacja częstotliwości w paśmie normalnym",
+      "procedure_basis_pl": "Zakres testów zgodności NC RfG dla modułów typu C i D.",
+      "default_for_modules": [
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.frequency_response",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T04",
+      "ability_pl": "Regulacja odbudowy częstotliwości",
+      "procedure_basis_pl": "Zakres testów zgodności NC RfG dla modułów typu C i D.",
+      "default_for_modules": [
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.frequency_response",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T05",
+      "ability_pl": "Możliwość regulacji mocy czynnej",
+      "procedure_basis_pl": "Program ramowy testów PPM oraz sprawdzenia dodatkowe dla regulacji P.",
+      "default_for_modules": [
+        "B",
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.declared_configuration",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T06",
+      "ability_pl": "Tryb regulacji napięcia",
+      "procedure_basis_pl": "Zakres testów zgodności PPM typu C i D.",
+      "default_for_modules": [
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.reactive_voltage_mode",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T07",
+      "ability_pl": "Tryb regulacji mocy biernej Q",
+      "procedure_basis_pl": "Zakres testów zgodności PPM typu C i D.",
+      "default_for_modules": [
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.reactive_voltage_mode",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T08",
+      "ability_pl": "Tryb regulacji współczynnika mocy cosφ",
+      "procedure_basis_pl": "Zakres testów zgodności PPM typu C i D.",
+      "default_for_modules": [
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.reactive_voltage_mode",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T09",
+      "ability_pl": "Zdolność do generacji mocy biernej",
+      "procedure_basis_pl": "Zakres testów zgodności PPM typu B, C i D.",
+      "default_for_modules": [
+        "B",
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.reactive_voltage_mode",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T10",
+      "ability_pl": "Potwierdzenie mocy maksymalnej PMAX",
+      "procedure_basis_pl": "Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.",
+      "default_for_modules": [
+        "B",
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.declared_configuration",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T11",
+      "ability_pl": "Potwierdzenie mocy minimalnej PMIN",
+      "procedure_basis_pl": "Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.",
+      "default_for_modules": [
+        "B",
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.declared_configuration",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T12",
+      "ability_pl": "Zaprzestanie generacji mocy czynnej",
+      "procedure_basis_pl": "Interfejs logiczny: zaprzestanie generacji w czasie wymaganym NC RfG art. 13 ust. 6; test wymagany dla typu A/B przy braku certyfikatu.",
+      "default_for_modules": [],
+      "required_without_certificate_for": [
+        "A",
+        "B"
+      ],
+      "conditional_pl": "Wymagany, gdy certyfikat urządzenia z wykazu PTPiREE nie obejmuje typu modułu.",
+      "zdolnosc_id": "ncrfg_ptpiree.declared_configuration",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T13",
+      "ability_pl": "Zmniejszenie generacji mocy czynnej",
+      "procedure_basis_pl": "Dodatkowy test zgodności, wymagany dla typu B przy braku certyfikatu.",
+      "default_for_modules": [],
+      "required_without_certificate_for": [
+        "B"
+      ],
+      "conditional_pl": "Wymagany, gdy certyfikat urządzenia z wykazu PTPiREE nie obejmuje typu modułu.",
+      "zdolnosc_id": "ncrfg_ptpiree.declared_configuration",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T14",
+      "ability_pl": "LVRT - pozostanie w pracy przy zapadzie napięcia",
+      "procedure_basis_pl": "Test FRT dla modułów B/C/D oraz profili operatora.",
+      "default_for_modules": [
+        "B",
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.ride_through",
+      "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE"
+    },
+    {
+      "test_id": "T15",
+      "ability_pl": "HVRT - pozostanie w pracy przy wzroście napięcia",
+      "procedure_basis_pl": "Test HVRT dla modułów B/C/D oraz profili operatora.",
+      "default_for_modules": [
+        "B",
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.ride_through",
+      "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE"
+    },
+    {
+      "test_id": "T16",
+      "ability_pl": "Odbudowa mocy czynnej po zakłóceniu",
+      "procedure_basis_pl": "Wymaganie profilu operatora dla modułów B/C/D.",
+      "default_for_modules": [
+        "B",
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.p_recovery",
+      "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE"
+    },
+    {
+      "test_id": "T17",
+      "ability_pl": "Prąd bierny podczas FRT",
+      "procedure_basis_pl": "Szybki prąd zwarciowy: NC RfG art. 20 ust. 2 lit. b — moduły PARKU ENERGII typu B (katalog wymagań profilu); moduł synchroniczny typu B nie ma tego wymagania. Dla typów C i D — zakres procedury.",
+      "default_for_modules": [
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.reactive_current_frt",
+      "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE"
+    },
+    {
+      "test_id": "T18",
+      "ability_pl": "Praca wyspowa, rozruch autonomiczny i tłumienie oscylacji",
+      "procedure_basis_pl": "Sprawdzenia dodatkowe wykonywane, gdy zdolność jest wymagana przez właściwego operatora systemu.",
+      "default_for_modules": [],
+      "required_without_certificate_for": [],
+      "conditional_pl": "Wymagany, gdy program szczegółowy wskazuje wymaganą zdolność dodatkową (zakres programu, nie obecność danych).",
+      "zdolnosc_id": "ncrfg_ptpiree.extended_dynamic_capability",
+      "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE"
+    },
+    {
+      "test_id": "T19",
+      "ability_pl": "Rejestracja zakłóceń i komunikacja z operatorem",
+      "procedure_basis_pl": "Dane pomocnicze wymagane do wiarygodnego programu szczegółowego testów.",
+      "default_for_modules": [
+        "C",
+        "D"
+      ],
+      "required_without_certificate_for": [],
+      "conditional_pl": null,
+      "zdolnosc_id": "ncrfg_ptpiree.declared_configuration",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    },
+    {
+      "test_id": "T20",
+      "ability_pl": "Jakość energii - współczynnik THDu źródła",
+      "procedure_basis_pl": "Kontrola uzupełniająca dla przyłączenia PPM z falownikami.",
+      "default_for_modules": [],
+      "required_without_certificate_for": [],
+      "conditional_pl": "Wymagany wyłącznie z zakresu programu szczegółowego; nie zastępuje pełnej analizy harmonicznych.",
+      "zdolnosc_id": "ncrfg_ptpiree.power_quality_declared",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION"
+    }
+  ]
+}

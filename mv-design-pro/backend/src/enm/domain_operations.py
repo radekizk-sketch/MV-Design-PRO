@@ -46,6 +46,7 @@ from network_model.pochodne import (
     susceptancja_z_pojemnosci_s_per_km,
 )
 
+from .deklaracje_modulu import POLA_NC_RFG_GENERATORA, pola_nc_rfg_generatora
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
 from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna
 from .katalog_projektu import BladKataloguProjektu, katalog_biezacy, kontekst_katalogu
@@ -9100,6 +9101,11 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 # przez `EnergyNetworkModel.model_validate` na granicy API (ten sam
                 # mechanizm co `limits`/`overrides`), zero zdublowanej walidacji.
                 "dynamika",
+                # Odbior Pakietu C (plan AB O-50 pkt 5): pola NC RfG modulu — status art. 4,
+                # data umowy przylaczeniowej, nastawy zabezpieczen i deklaracje modulu.
+                # Walidowane PRZED zapisem tym samym pisarzem co `add_converter_source`
+                # (`enm/deklaracje_modulu.py::pola_nc_rfg_generatora`).
+                *POLA_NC_RFG_GENERATORA,
             },
             "substations": {
                 "name",
@@ -9118,6 +9124,14 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "params.key_not_allowed",
             )
 
+    # Pola NC RfG modułu: JEDEN walidator z tworzeniem źródła (`add_converter_source`) —
+    # wartość spoza kontraktu (nastawy bez źródła, data nie-ISO, status nie-logiczny) nie
+    # wchodzi do modelu; zapis niesie postać znormalizowaną kontraktu.
+    if coll == "generators":
+        pola_nc_rfg, blad_nc_rfg = pola_nc_rfg_generatora(parameters)
+        if blad_nc_rfg is not None:
+            return _error_response(*blad_nc_rfg)
+        parameters = {**parameters, **pola_nc_rfg}
     # Korekta ekspercka tabliczki odbioru przechodzi przez ten sam kontrakt modelu
     # ZIP co kreator odbioru: wielomian, którego rozpływ nie policzy, nie ma prawa
     # wejść do modelu żadną z dróg zapisu.

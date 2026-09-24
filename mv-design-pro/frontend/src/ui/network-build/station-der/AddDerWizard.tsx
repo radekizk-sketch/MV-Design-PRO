@@ -33,6 +33,7 @@ import type { BlockTransformerItem } from './audit2-api';
 import {
   formatLvVoltageLabelPl,
   getNcRfgOperator,
+  opisKlasyfikacjiNcRfg,
   useBessBatteryTypes,
   useNcRfgModuleClassification,
   useNcRfgOperatorCatalog,
@@ -54,6 +55,13 @@ import { useStationDerStore } from './store';
 import { snPointKindForBus } from './zModelu';
 import type { ConnectionSide, DerKindUnified, SnConnectionPointKind } from './types';
 import { HelpTooltip } from '../../shared/HelpTooltip';
+import {
+  PUSTE_DANE_MODULU,
+  polaNcRfgDoPayloadu,
+  zbudujPolaNcRfgGeneratora,
+  type FormularzDanychModulu,
+} from '../../../ui2/oze/ncrfg/daneModulu';
+import { SekcjaDanychModulu } from '../../../ui2/oze/ncrfg/SekcjaDanychModulu';
 import { getTooltip } from '../../shared/engineerTooltips';
 
 export interface AddDerWizardProps {
@@ -678,6 +686,11 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const [step, setStep] = useState<StepId>('variant');
   const [selections, setSelections] = useState<WizardSelections>(EMPTY_SELECTIONS);
   const [isCreating, setIsCreating] = useState(false);
+  // Plan AB O-50 pkt 5–6 (karta AB-1a Pakiet D2 §0 pkt 8): dane modułu NC RfG zapisywane
+  // RAZEM z wytwórcą (`POST …/generators` → `add_converter_source`, jeden walidator
+  // backendu). Pusty formularz = stan „nieustalone" (pola nieobecne w ładunku).
+  const [daneModulu, setDaneModulu] = useState<FormularzDanychModulu>(PUSTE_DANE_MODULU);
+  const wynikDanychModulu = useMemo(() => zbudujPolaNcRfgGeneratora(daneModulu), [daneModulu]);
   const [selectedTransformerUpgradeRef, setSelectedTransformerUpgradeRef] = useState('');
   const [isUpdatingTransformer, setIsUpdatingTransformer] = useState(false);
   // Wykaz PTPiREE: WYŁĄCZNIE manifest z backendu (liczność i wersja w opisie kroku) — status
@@ -760,6 +773,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const handleClose = useCallback(() => {
     setStep('variant');
     setSelections({ ...EMPTY_SELECTIONS });
+    setDaneModulu(PUSTE_DANE_MODULU);
     setDeviceSearch('');
     setDeviceVoltageFilter('all');
     setDeviceModeFilter('all');
@@ -992,15 +1006,15 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       : null;
 
   // Karta FAB-J (decyzja #5): JEDYNE źródło klasyfikacji modułu NC RfG —
-  // `compliance/nc_rfg_modul.py` przez `GET /api/ncrfg-tests/modul`. Kreator
+  // `catalog/profiles/nc_rfg::klasyfikacja_modulu` przez `GET /api/ncrfg-tests/modul`. Kreator
   // POKAZUJE oczekiwany moduł projektantowi i wysyła go jawnie w
   // `POST .../generators`, gdzie backend weryfikuje go NIEZALEŻNIE (422 przy
   // rozjeździe) — zero duplikacji progów ustawowych w froncie.
-  const ncRfgModuleQuery = useNcRfgModuleClassification(
-    mocGrupyKwLive !== null ? mocGrupyKwLive / 1000 : null,
-    napiecicPrzylaczeniaKv,
-  );
-  const expectedNcRfgModule = ncRfgModuleQuery.data ?? null;
+  const ncRfgModuleQuery = useNcRfgModuleClassification(mocGrupyKwLive, napiecicPrzylaczeniaKv);
+  // Typ modułu z klasyfikacji backendu; `null` poniżej progu istotności (powód w `powod_pl`)
+  // albo gdy klasyfikacji nie da się wyznaczyć (brak mocy lub napięcia przyłączenia).
+  const expectedNcRfgModule = ncRfgModuleQuery.data?.modul ?? null;
+  const opisKlasyfikacji = opisKlasyfikacjiNcRfg(ncRfgModuleQuery);
 
   const transformerUpgradeOptions = useMemo(
     () => selectTransformerUpgradeOptions(
@@ -1089,7 +1103,10 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         return (
           selections.ncRfgProfileRef !== null &&
           selections.lvrtCurveRef !== null &&
-          selections.hvrtCurveRef !== null
+          selections.hvrtCurveRef !== null &&
+          // Dane modułu spoza kontraktu (data, nastawy, deklaracje bez źródła) blokują
+          // przejście z nazwanym błędem pola — backend odrzuciłby zapis kodem 422.
+          wynikDanychModulu.stan === 'ok'
         );
       case 'review':
         return true;
@@ -1105,6 +1122,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     step,
     transformerPowerWarning,
     voltageMismatchWarning,
+    wynikDanychModulu.stan,
   ]);
 
   const goNext = useCallback(() => {
@@ -1355,6 +1373,8 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         // zapisu — a zgadywanie modułu byłoby tą samą fabrykacją, którą ta
         // karta usuwa wszędzie indziej.
         nc_rfg_module: expectedNcRfgModule ?? undefined,
+        // Dane modułu NC RfG (art. 4, data umowy, nastawy, deklaracje) — wyłącznie podane.
+        ...polaNcRfgDoPayloadu(daneModulu),
       });
 
       if (response.snapshot) {
@@ -1433,6 +1453,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   }, [
     attachDer,
     bessBatteries,
+    daneModulu,
     deviceCatalog,
     derKind,
     effectiveBlockTransformerCatalogRef,
@@ -2199,8 +2220,14 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 className="rounded border border-scada-sn/70 bg-scada-sn/10 p-2 text-[11px] text-scada-text"
               >
                 <span className="font-semibold">Oczekiwany moduł NC RfG: </span>
-                <span>{expectedNcRfgModule ?? 'nie można wyznaczyć (brak mocy lub napięcia przyłączenia)'}</span>
+                <span>{opisKlasyfikacji}</span>
               </div>
+              <SekcjaDanychModulu
+                formularz={daneModulu}
+                bledy={wynikDanychModulu.stan === 'blad' ? wynikDanychModulu.bledy : {}}
+                onZmien={setDaneModulu}
+                testid="add-der-dane-modulu"
+              />
             </div>
           )}
 
@@ -2270,7 +2297,10 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                       : ''
                   }
                 />
-                <ReviewRow label="Moduł NC RfG (oczekiwany przez backend)" value={expectedNcRfgModule ?? ''} />
+                <ReviewRow
+                  label="Moduł NC RfG (oczekiwany przez backend)"
+                  value={ncRfgModuleQuery.data ? opisKlasyfikacji : ''}
+                />
               </ul>
             </div>
           )}

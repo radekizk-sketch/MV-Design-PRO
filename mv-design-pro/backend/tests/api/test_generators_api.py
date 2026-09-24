@@ -4,17 +4,13 @@ import pytest
 
 pytest.importorskip("fastapi")
 
-# Karta FAB-J: `POST .../generators` weryfikuje `nc_rfg_module` względem
-# `compliance.nc_rfg_modul.modul_nc_rfg(power_mw, napiecie_kv)` — 422 przy
-# niezgodności. Naprawa 2026-09-05 (odbiór FAB-J): `modul_nc_rfg` deleguje do
-# `NcRfgProfile.classify_module` (profil YAML solvera PTPiREE), którego progi
-# różnią się od progów URE — patrz `compliance/nc_rfg_modul.py` (rozbieżność
-# opisana liczbowo). Fikstury tego pliku łączą `power_mw: 0.5` (500 kW) na
-# szynie nN 0,4 kV (`_seed_station_enm`), co klasyfikuje się jako moduł „A”
-# (YAML: A 0,8-1 000 kW), NIE „B" jak przed tą naprawą (URE: A 0,8-200 kW,
-# B 200 kW-10 MW) — testy poniżej nie sprawdzają WARTOŚCI modułu (jest tu
-# daną incydentalną dla innych asercji), więc etykieta jest tylko poprawiona
-# do zgodności z klasyfikacją.
+# Karta FAB-J / AB-1a Pakiet C: `POST .../generators` weryfikuje `nc_rfg_module` względem
+# JEDNEJ klasyfikacji backendu `catalog.profiles.nc_rfg.klasyfikacja_modulu(p_max_kw,
+# napiecie_kv)` (progi warstwy WOS: typ A od 0,8 kW, B od 200 kW, C od 10 MW, D od 75 MW albo
+# od 110 kV) — 422 przy niezgodności z powodem klasyfikacji i jej podstawą. Fikstury tego
+# pliku łączą `power_mw: 0.5` (500 kW) na szynie nN 0,4 kV (`_seed_station_enm`), co
+# klasyfikuje się jako moduł „B" — testy poza klasą weryfikacji nie sprawdzają WARTOŚCI
+# modułu (jest tu daną incydentalną), więc etykieta jest tylko zgodna z klasyfikacją.
 
 
 def _create_project_and_case(app_client) -> tuple[str, str]:
@@ -149,7 +145,7 @@ def test_create_der_generator_persists_in_case_enm(app_client) -> None:
             "connection_variant": "nn_side",
             "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
             "source_name": "PV Stacja 1",
-            "nc_rfg_module": "A",
+            "nc_rfg_module": "B",
         },
     )
 
@@ -171,6 +167,54 @@ def test_create_der_generator_persists_in_case_enm(app_client) -> None:
     persisted = app_client.get(f"/api/cases/{case_id}/enm")
     assert persisted.status_code == 200
     assert persisted.json()["generators"][0]["ref_id"] == generator["ref_id"]
+
+
+_POLA_NC_RFG_ZADANIA = {
+    "modul_istniejacy": False,
+    "data_umowy_przylaczeniowej": "2025-03-01",
+    "nastawy_zabezpieczen": {"u_min_pu": 0.8, "u_min_czas_s": 0.2, "zrodlo_pl": "karta nastaw"},
+    "deklaracje_modulu": {
+        "stop_generation_enabled": True,
+        "cease_generation_time_s": 1.0,
+        "has_scada_communication": True,
+        "zrodlo_pl": "deklaracja wytwórcy",
+    },
+}
+
+
+@pytest.mark.parametrize("pole", list(_POLA_NC_RFG_ZADANIA))
+def test_create_der_generator_zapisuje_pola_nc_rfg_modulu(app_client, pole: str) -> None:
+    """Odbiór Pakietu C (plan AB O-50 pkt 5): pola NC RfG modułu z formularza DER trafiają do
+    generatora tym samym pisarzem co kreator OZE (`add_converter_source`); wartość spoza
+    kontraktu (nastawy/deklaracje bez źródła) to 422, nie cichy zapis."""
+    project_id, case_id = _create_project_and_case(app_client)
+    _seed_station_enm(case_id)
+    zadanie = {
+        "station_ref": "station/1",
+        "der_kind": "PV",
+        "power_mw": 0.5,
+        "connection_variant": "nn_side",
+        "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+        "source_name": "PV Stacja 1",
+        "nc_rfg_module": "B",
+    }
+    response = app_client.post(
+        f"/api/projects/{project_id}/cases/{case_id}/generators",
+        json={**zadanie, pole: _POLA_NC_RFG_ZADANIA[pole]},
+    )
+    assert response.status_code == 201, response.text
+    generator = response.json()["snapshot"]["generators"][0]
+    zapisane = generator[pole]
+    if isinstance(zapisane, dict):
+        zapisane = {k: v for k, v in zapisane.items() if v is not None}
+    assert zapisane == _POLA_NC_RFG_ZADANIA[pole]
+    if pole in ("nastawy_zabezpieczen", "deklaracje_modulu"):
+        bez_zrodla = {k: v for k, v in _POLA_NC_RFG_ZADANIA[pole].items() if k != "zrodlo_pl"}
+        odmowa = app_client.post(
+            f"/api/projects/{project_id}/cases/{case_id}/generators",
+            json={**zadanie, pole: bez_zrodla},
+        )
+        assert odmowa.status_code == 422
 
 
 def test_create_der_generator_rejects_power_outside_drawer_contract(app_client) -> None:
@@ -204,7 +248,7 @@ def test_create_der_generator_rejects_source_above_transformer_capacity(app_clie
             "connection_variant": "nn_side",
             "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
             "source_name": "PV za duży dla transformatora",
-            "nc_rfg_module": "A",
+            "nc_rfg_module": "B",
         },
     )
 
@@ -400,7 +444,7 @@ def test_create_der_generator_accepts_materialized_enm_seeded_directly(app_clien
             "connection_variant": "nn_side",
             "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
             "source_name": "PV Stacja 1",
-            "nc_rfg_module": "A",
+            "nc_rfg_module": "B",
         },
     )
 
@@ -606,43 +650,61 @@ class TestWeryfikacjaModuluNcRfgPrzyTworzeniuGeneratora:
                 "power_mw": 0.5,
                 "connection_variant": "nn_side",
                 "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
-                "nc_rfg_module": "B",
+                "nc_rfg_module": "A",
             },
         )
 
         assert response.status_code == 422
         detail = response.json()["detail"]
         assert detail["code"] == "generator.nc_rfg_module_mismatch"
-        assert detail["expected_module"] == "A"
-        assert "500 kW" not in detail["message_pl"]  # liczby w MW/kV, nie zgadywanka
+        assert detail["expected_module"] == "B"
+        # Komunikat niesie powód klasyfikacji (w kW, z progami) i jej podstawę (WOS).
+        klasyfikacja = detail["klasyfikacja"]
+        assert klasyfikacja["powod_pl"] in detail["message_pl"]
+        assert "moc 500 kW" in detail["message_pl"]
+        assert "wymogi ogólnego stosowania (WOS)" in detail["message_pl"]
+        assert klasyfikacja["podstawa"]["status"] == "NIEUSTALONE"
 
         persisted = app_client.get(f"/api/cases/{case_id}/enm")
         assert persisted.json()["generators"] == [], "odrzucone żądanie nie zapisuje generatora"
 
-    def test_zgodny_modul_na_granicy_progu_1_mw_jest_akceptowany(self, app_client) -> None:
-        """Granica A/B wg profilu YAML solvera PTPiREE (delegacja
-        `modul_nc_rfg`, naprawa 2026-09-05) to 1 000 kW, nie 200 kW jak przed
-        naprawą (próg URE) — transformator stacji podniesiony do 1,5 MVA, żeby
-        1 MW PV nie oberwał NIEZWIĄZANEGO `converter.transformer_capacity_exceeded`.
-        """
+    @pytest.mark.parametrize(
+        ("power_mw", "zgodny", "niezgodny"),
+        [
+            (0.2, "B", "A"),  # dokładnie próg typu B wg WOS (200 kW)
+            (0.1999, "A", "B"),  # tuż poniżej progu B
+            (0.0005, None, "A"),  # 0,5 kW — poniżej progu istotności (typ nieokreślony)
+        ],
+    )
+    def test_granica_progu_zgodny_przyjety_niezgodny_odrzucony(
+        self, app_client, power_mw: float, zgodny: str | None, niezgodny: str
+    ) -> None:
+        """Iloczyn cech: strona progu × deklaracja {zgodna, niezgodna}. Moduł poniżej progu
+        istotności nie ma typu — każda deklaracja jest niezgodna (``expected_module = None``
+        z powodem art. 5 ust. 2 lit. a)."""
         project_id, case_id = _create_project_and_case(app_client)
         _seed_station_enm(case_id, transformer_sn_mva=1.5)
 
-        response = app_client.post(
-            f"/api/projects/{project_id}/cases/{case_id}/generators",
-            json={
-                "station_ref": "station/1",
-                "der_kind": "PV",
-                "power_mw": 1.0,
-                "connection_variant": "nn_side",
-                # Decyzja O-53: nastawa 1 MW wymaga jednostki o mocy ≥ 1 MW (dawna pozycja
-                # 0,5 MW z nastawą 1 MW to nastawa ponad moc znamionową falownika).
-                "catalog_ref": "conv-pv-nn-1mw-0p4kv",
-                "nc_rfg_module": "B",
-            },
-        )
+        def _utworz(modul: str) -> object:
+            return app_client.post(
+                f"/api/projects/{project_id}/cases/{case_id}/generators",
+                json={
+                    "station_ref": "station/1",
+                    "der_kind": "PV",
+                    "power_mw": power_mw,
+                    "connection_variant": "nn_side",
+                    "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+                    "nc_rfg_module": modul,
+                },
+            )
 
-        assert response.status_code == 201, response.text
+        odrzucony = _utworz(niezgodny)
+        assert odrzucony.status_code == 422, odrzucony.text
+        assert odrzucony.json()["detail"]["expected_module"] == zgodny
+        if zgodny is None:
+            assert "poniżej progu istotności" in odrzucony.json()["detail"]["message_pl"]
+        else:
+            assert _utworz(zgodny).status_code == 201
 
     def test_transformator_dedykowany_klasyfikuje_wg_strony_sn_nie_szyny_wewnetrznej(
         self, app_client
@@ -955,7 +1017,7 @@ def test_protection_functions_wyprowadzone_z_faktow_pola(app_client) -> None:
             "connection_variant": "nn_side",
             "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
             "source_name": "PV Stacja 1",
-            "nc_rfg_module": "A",
+            "nc_rfg_module": "B",
         },
     )
     assert utworzenie.status_code == 201
@@ -1006,7 +1068,7 @@ def test_protection_functions_zglasza_niezgodnosc_przeznaczenia_urzadzenia(app_c
             "connection_variant": "nn_side",
             "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
             "source_name": "PV Stacja 1",
-            "nc_rfg_module": "A",
+            "nc_rfg_module": "B",
         },
     )
     generator_ref = utworzenie.json()["snapshot"]["generators"][0]["ref_id"]
@@ -1049,7 +1111,7 @@ def test_readiness_endpoint_wola_KANONICZNA_regule_domenowa(app_client) -> None:
             "connection_variant": "nn_side",
             "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
             "source_name": "PV Stacja 1",
-            "nc_rfg_module": "A",
+            "nc_rfg_module": "B",
         },
     )
     assert utworzenie.status_code == 201
@@ -1123,7 +1185,7 @@ def test_dobor_przekladnikow_jest_RACHUNKIEM_a_nie_nazwa_katalogowa(app_client) 
             "connection_variant": "nn_side",
             "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
             "source_name": "PV Stacja 1",
-            "nc_rfg_module": "A",
+            "nc_rfg_module": "B",
         },
     )
     assert utworzenie.status_code == 201
@@ -1388,7 +1450,7 @@ def test_dobor_przekladnikow_bez_wiazania_nie_udaje_werdyktu(app_client) -> None
             "connection_variant": "nn_side",
             "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
             "source_name": "PV Stacja 1",
-            "nc_rfg_module": "A",
+            "nc_rfg_module": "B",
         },
     )
     generator_ref = utworzenie.json()["snapshot"]["generators"][0]["ref_id"]

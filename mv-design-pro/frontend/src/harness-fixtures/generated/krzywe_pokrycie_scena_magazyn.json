@@ -1,0 +1,213 @@
+{
+  "typ_katalogowy": {
+    "id": "conv-bess-card-sungrow-sc2000ud-mv",
+    "nazwa": "Karta falownika PCS BESS Sungrow SC2000UD-MV 2.0 MW / 4.0 MWh / 0.69 kV",
+    "kind": "BESS",
+    "pmax_mw": 2.0,
+    "sn_mva": 2.0
+  },
+  "operator": {
+    "id": "pse",
+    "nazwa": "PSE — Polskie Sieci Elektroenergetyczne",
+    "udzial_q_min_pct_pn": -0.33,
+    "udzial_q_max_pct_pn": 0.33
+  },
+  "wymaganie": {
+    "pn_mw": 2.0,
+    "q_wymagane_min_mvar": -0.66,
+    "q_wymagane_max_mvar": 0.66,
+    "opis": "Prostokatne wymaganie zakresu Q operatora: [udzial_min * Pn, udzial_max * Pn] w kazdym punkcie pracy."
+  },
+  "punkty": [
+    {
+      "p_mw": 0.0,
+      "q_min_mvar": -1.2,
+      "q_max_mvar": 1.2,
+      "q_wymagane_min_mvar": -0.66,
+      "q_wymagane_max_mvar": 0.66,
+      "zapas_dolny_mvar": 0.54,
+      "zapas_gorny_mvar": 0.54,
+      "margines_mvar": 0.54
+    },
+    {
+      "p_mw": 1.0,
+      "q_min_mvar": -1.2,
+      "q_max_mvar": 1.2,
+      "q_wymagane_min_mvar": -0.66,
+      "q_wymagane_max_mvar": 0.66,
+      "zapas_dolny_mvar": 0.54,
+      "zapas_gorny_mvar": 0.54,
+      "margines_mvar": 0.54
+    },
+    {
+      "p_mw": 1.6,
+      "q_min_mvar": -1.2,
+      "q_max_mvar": 1.2,
+      "q_wymagane_min_mvar": -0.66,
+      "q_wymagane_max_mvar": 0.66,
+      "zapas_dolny_mvar": 0.54,
+      "zapas_gorny_mvar": 0.54,
+      "margines_mvar": 0.54
+    },
+    {
+      "p_mw": 2.0,
+      "q_min_mvar": -0.4,
+      "q_max_mvar": 0.4,
+      "q_wymagane_min_mvar": -0.66,
+      "q_wymagane_max_mvar": 0.66,
+      "zapas_dolny_mvar": -0.26,
+      "zapas_gorny_mvar": -0.26,
+      "margines_mvar": -0.26
+    }
+  ],
+  "ocena": {
+    "kryterium_id": "pq.pokrycie_zakresu_mocy_biernej",
+    "przedmiot": {
+      "element_ref": "conv-bess-card-sungrow-sc2000ud-mv",
+      "nazwa_pl": "Karta falownika PCS BESS Sungrow SC2000UD-MV 2.0 MW / 4.0 MWh / 0.69 kV",
+      "opis_pl": "typ katalogowy przekształtnika Karta falownika PCS BESS Sungrow SC2000UD-MV 2.0 MW / 4.0 MWh / 0.69 kV — obszar zdolności P–Q z karty producenta"
+    },
+    "kryterium": {
+      "opis_pl": "Punkty pracy wymagane profilem operatora (zakres mocy biernej w każdym punkcie mocy czynnej) zawierają się w obszarze zdolności P–Q urządzenia — najmniejszy zapas pokrycia po punktach krzywej i obu stronach zakresu",
+      "warunek_latex": "\\min_{p}\\,\\min(q_{\\mathrm{wym},\\min} - q_{\\min}(p),\\; q_{\\max}(p) - q_{\\mathrm{wym},\\max}) \\ge 0",
+      "relacja": "NIE_MNIEJ",
+      "warunek_wstepny_pl": null,
+      "warunek_wstepny_podstawa": null
+    },
+    "podstawa": {
+      "rodzaj": "NIEUSTALONA",
+      "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+      "wydanie": null,
+      "jednostka_redakcyjna": null,
+      "status": "NIEUSTALONE",
+      "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+    },
+    "stosowalnosc": {
+      "typ_modulu": null,
+      "technologia": "magazyn energii",
+      "modul_istniejacy": null,
+      "dotyczy": false,
+      "powod_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+      "podstawa": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wynik": {
+      "wielkosc_pl": "najmniejszy zapas pokrycia wymaganego zakresu mocy biernej w punktach krzywej producenta",
+      "symbol_latex": "\\Delta Q_{\\min}",
+      "wartosc": {
+        "wartosc": -0.26,
+        "jednostka": "Mvar"
+      },
+      "punkt_krytyczny_pl": "P = 2 MW, strona dolna (Q_min): producent −0,4 Mvar … 0,4 Mvar, wymagane −0,66 Mvar … 0,66 Mvar; punkty niepokryte: 1 z 4 (P = 2 MW: Q −0,4 Mvar … 0,4 Mvar, deficyt 0,26 Mvar)",
+      "chwila_s": null,
+      "metoda": "DEKLARACJA"
+    },
+    "limit": {
+      "wartosc": {
+        "wartosc": 0.0,
+        "jednostka": "Mvar"
+      },
+      "pasmo": null,
+      "obwiednia": null,
+      "jednostka_obwiedni": null,
+      "podstawa": {
+        "rodzaj": "NIEUSTALONA",
+        "dokument": "Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)",
+        "wydanie": null,
+        "jednostka_redakcyjna": null,
+        "status": "NIEUSTALONE",
+        "uwagi_pl": "wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony"
+      },
+      "zakres_stosowalnosci_pl": "wymagany zakres mocy biernej operatora PSE — Polskie Sieci Elektroenergetyczne: [−0,33 · Pn, 0,33 · Pn] = [−0,66 Mvar, 0,66 Mvar] przy Pn = 2 MW, w każdym punkcie mocy czynnej krzywej",
+      "wersja_profilu": "NC RfG 2016/631 · WOS 2018 · procedura PTPiREE 3.0 · WiPWC 1.3 · PSE — Polskie Sieci Elektroenergetyczne (rewizja 2024-Q4)"
+    },
+    "margines": {
+      "wartosc": {
+        "wartosc": -0.26,
+        "jednostka": "Mvar"
+      },
+      "definicja_latex": "m = x - x_{\\lim}",
+      "punkt_pl": "P = 2 MW, strona dolna (Q_min): producent −0,4 Mvar … 0,4 Mvar, wymagane −0,66 Mvar … 0,66 Mvar; punkty niepokryte: 1 z 4 (P = 2 MW: Q −0,4 Mvar … 0,4 Mvar, deficyt 0,26 Mvar)",
+      "skala": null,
+      "skala_rodzaj": null,
+      "wzgledny": null,
+      "niedefiniowalny": false,
+      "powod_pl": null
+    },
+    "niepewnosc": {
+      "wartosc": null,
+      "metoda_pl": null,
+      "nie_dotyczy": true,
+      "powod_pl": "porównanie krzywej producenta z karty katalogowej z wymaganiem profilu — niepewność numeryczna nie dotyczy"
+    },
+    "status_maszynowy": "NIE_DOTYCZY",
+    "kompletnosc_dowodu": "NIE_DOTYCZY",
+    "powody_niepelnosci": [],
+    "etykieta": {
+      "etykieta_pl": "Nie dotyczy",
+      "semantyka": "neutralna"
+    },
+    "wyjasnienie": {
+      "zdanie_pl": "Punkty pracy wymagane profilem operatora (zakres mocy biernej w każdym punkcie mocy czynnej) zawierają się w obszarze zdolności P–Q urządzenia — najmniejszy zapas pokrycia po punktach krzywej i obu stronach zakresu (Karta falownika PCS BESS Sungrow SC2000UD-MV 2.0 MW / 4.0 MWh / 0.69 kV) — nie dotyczy: magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu.",
+      "przyczyna_pl": "magazyn energii — art. 3 ust. 2 lit. d rozporządzenia 2016/631 wyłącza urządzenia magazynujące z zakresu wymagań rozporządzenia; wymagania krajowe dla magazynów należą do warstwy magazynów profilu",
+      "czego_brakuje": [],
+      "zastrzezenia": [
+        "Podstawa „Profil wymagań przyłączeniowych operatorów, rewizja pliku 2024-Q4 (pięć identycznych kopii; pochodzenie wartości nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość z profilu operatorów rewizji 2024-Q4 (pięć identycznych kopii); dokument źródłowy nieustalony).",
+        "Zakres ważności: punkty krzywej zdolności P–Q producenta z karty katalogowej typu wobec prostokątnego wymagania zakresu mocy biernej profilu operatora — wynik nie obejmuje: obszar między punktami krzywej producenta (porównanie wyłącznie w punktach krzywej); zależność zdolności mocy biernej od napięcia sieci (krzywa producenta bez parametru napięcia)."
+      ]
+    },
+    "dowod": {
+      "metoda": "DEKLARACJA",
+      "poziom": "DECLARATION",
+      "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
+      "status_modelu": "NIE_DOTYCZY",
+      "status_danych": {
+        "stan": "ZWALIDOWANE",
+        "dane_przyjete": []
+      },
+      "odniesienie": "karta katalogowa typu conv-bess-card-sungrow-sc2000ud-mv (krzywa zdolności P–Q producenta)",
+      "w_domenie_walidacji": null,
+      "domena_pl": null
+    },
+    "zakres_waznosci": {
+      "rodzaj_analizy": null,
+      "opis_pl": "punkty krzywej zdolności P–Q producenta z karty katalogowej typu wobec prostokątnego wymagania zakresu mocy biernej profilu operatora",
+      "technologia": null,
+      "model_urzadzenia": null,
+      "symetria_zaklocenia": null,
+      "parametry_sieci": [],
+      "regulator": null,
+      "ograniczniki": [],
+      "wykluczenia": [
+        "obszar między punktami krzywej producenta (porównanie wyłącznie w punktach krzywej)",
+        "zależność zdolności mocy biernej od napięcia sieci (krzywa producenta bez parametru napięcia)"
+      ]
+    },
+    "slad": [
+      {
+        "run_id": null,
+        "wersja_silnika": null,
+        "krok": "pq-coverage:conv-bess-card-sungrow-sc2000ud-mv:pse:porownanie",
+        "opis_pl": "porównanie pasma producenta z pasmem wymaganym w punktach krzywej (ślad WHITE BOX widoku: wzór, dane, podstawienie, wynik)"
+      }
+    ]
+  },
+  "slad_whitebox": {
+    "wzor": "\\Delta Q_{\\min} = \\min_{p}\\,\\min(q_{\\text{wym,min}} - q_{\\min,\\text{prod}}(p),\\; q_{\\max,\\text{prod}}(p) - q_{\\text{wym,max}}) \\ge 0;\\quad q_{\\text{wym,min}} = u_{\\min} \\cdot P_{n},\\; q_{\\text{wym,max}} = u_{\\max} \\cdot P_{n}",
+    "dane": {
+      "pn_mw": 2.0,
+      "udzial_q_min_pct_pn": -0.33,
+      "udzial_q_max_pct_pn": 0.33,
+      "q_wymagane_min_mvar": -0.66,
+      "q_wymagane_max_mvar": 0.66,
+      "liczba_punktow_krzywej": 4
+    },
+    "podstawienie": [
+      "p=0.0 MW: min(0.54, 0.54) = 0.54 Mvar",
+      "p=1.0 MW: min(0.54, 0.54) = 0.54 Mvar",
+      "p=1.6 MW: min(0.54, 0.54) = 0.54 Mvar",
+      "p=2.0 MW: min(-0.26, -0.26) = -0.26 Mvar"
+    ],
+    "wynik": "min = -0.26 Mvar; punkty z ujemnym zapasem: 1 z 4"
+  }
+}

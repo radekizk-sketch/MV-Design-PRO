@@ -1,4 +1,8 @@
-import type { DomainOpResponseV1 } from '../../../../types/enm';
+import type {
+  DeklaracjeModulu,
+  DomainOpResponseV1,
+  NastawyZabezpieczenModulu,
+} from '../../../../types/enm';
 
 export type DerKind = 'PV' | 'BESS' | 'FW';
 /**
@@ -29,7 +33,17 @@ export interface DerGeneratorConfigRequest {
   readonly battery_catalog_ref?: string | null;
   readonly source_name?: string;
   readonly quantity?: number;
-  readonly nc_rfg_module?: NcRfgModule;
+  /** Klasyfikacja backendu (`/api/ncrfg-tests/modul`); `null` = poniżej progu istotności. */
+  readonly nc_rfg_module?: NcRfgModule | null;
+  /**
+   * Plan AB O-50 pkt 5: pola NC RfG modułu zapisywane razem z wytwórcą
+   * (`api/generators.py::DerGeneratorCreateRequest`, ten sam pisarz `add_converter_source`).
+   * Typy ścisłe backendu: status art. 4 wyłącznie logiczny, data wyłącznie `RRRR-MM-DD`.
+   */
+  readonly modul_istniejacy?: boolean | null;
+  readonly data_umowy_przylaczeniowej?: string | null;
+  readonly nastawy_zabezpieczen?: NastawyZabezpieczenModulu | null;
+  readonly deklaracje_modulu?: DeklaracjeModulu | null;
 }
 
 export class DerPersistenceApiError extends Error {

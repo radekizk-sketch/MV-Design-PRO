@@ -10,6 +10,8 @@
  * wyniki z backendu (NOT-A-SOLVER).
  */
 
+import type { FormatDokumentu } from '../ncrfg/api';
+
 export const WNIOSEK_STRINGS = {
   // Nagłówek
   tytul: 'Wniosek o określenie warunków przyłączenia',
@@ -42,24 +44,28 @@ export const WNIOSEK_STRINGS = {
   adres: 'Adres przyłączenia',
   poleOpcjonalne: 'opcjonalne',
 
-  // Zgodność NC RfG — źródło biegu
+  // Zgodność NC RfG — źródło: zatwierdzony model przypadku
   sekcjaNcRfg: 'Zgodność NC RfG',
-  ncRfgZBiegu:
-    'Wniosek używa danych ostatniego zakończonego biegu zgodności NC RfG ' +
-    '(macierz wymogów / certyfikat) — tej samej ścieżki obliczeniowej.',
-  ncRfgLiczbaModulow: 'Liczba modułów w biegu',
+  ncRfgZModelu:
+    'Sekcję zgodności NC RfG serwer wyprowadza z zatwierdzonego modelu aktywnego przypadku ' +
+    '(ta sama ocena wymagań co certyfikat zgodności i zgodność przypadku w macierzy); dowód ' +
+    'certyfikatu urządzenia pochodzi z tabliczek w modelu.',
+  operator: 'Operator (profil wymagań NC RfG)',
 
   // Akcje
   generuj: 'Zbuduj wniosek',
   generujPonownie: 'Przebuduj wniosek',
   pobierzDocx: 'Pobierz DOCX',
+  pobierzPdf: 'Pobierz PDF',
   zamknij: 'Zamknij podgląd wniosku',
   ladowanie: 'Buduję wniosek…',
 
   // Blokady przycisku (uczciwe powody PL — zero martwych klików)
-  blokadaNcRfg:
-    'Najpierw przeprowadź testy zgodności NC RfG (macierz wymogów) — wniosek ' +
-    'powstaje wyłącznie z zakończonego biegu.',
+  blokadaBrakPrzypadku:
+    'Wybierz aktywny przypadek obliczeniowy — sekcja zgodności NC RfG powstaje wyłącznie ' +
+    'z zatwierdzonego modelu przypadku.',
+  blokadaBrakOperatora:
+    'Wybierz operatora (profil wymagań NC RfG) — moduły modelu nie wskazują go jednoznacznie.',
   blokadaBrakRozplywu:
     'Wskaż zakończony przebieg rozpływu mocy — bez niego wniosek nie zestawi bilansu mocy.',
   blokadaBrakZwarcia:
@@ -77,11 +83,6 @@ export const WNIOSEK_STRINGS = {
   bilansObciazenie: 'Najwyższe obciążenie elementu',
   bilansWspMocy: 'Współczynnik mocy w punkcie bilansowym',
   bilansStraty: 'Straty sieciowe',
-  bilansWalidacja: 'Walidacja energetyczna',
-  bilansSpelnione: 'spełnione',
-  bilansOstrzezenia: 'ostrzeżenia',
-  bilansNiespelnione: 'niespełnione',
-  bilansNieobliczone: 'nieobliczone',
 
   // Wynik — sekcja zwarć
   zwarciaTytul: 'Zwarcia w punkcie przyłączenia',
@@ -94,20 +95,16 @@ export const WNIOSEK_STRINGS = {
 
   // Wynik — sekcja zgodności
   zgodnoscTytul: 'Zgodność z wymaganiami NC RfG',
-  zgodnoscWerdykt: 'Werdykt zbiorczy',
-  zgodnoscModuly: 'Liczba modułów',
-  zgodnoscZgodne: 'Modułów zgodnych',
-  zgodnoscNiezgodne: 'Modułów niezgodnych',
   zgodnoscProcedura: 'Procedura',
 
   // Wynik — założenia i odciski
   zalozeniaTytul: 'Założenia i źródła',
-  odciskiTytul: 'Odciski sekcji',
+  odciskiTytul: 'Odcisk sekcji',
   odciskWejscia: 'Odcisk wejścia wniosku',
+  odciskWejsciaNcRfg: 'Odcisk wejścia oceny zgodności NC RfG',
 
-  // Braki (bramka 422)
-  brakiTytul: 'Wniosek nie może powstać',
-  brakiOpis: 'Uzupełnij braki przyłączeniowe i powtórz generację.',
+  // Braki (bramka 422) — ekran „czego brakuje do wniosku"
+  brakiTytul: 'Czego brakuje do wniosku',
 
   // Błąd API
   bladTytul: 'Nie udało się zbudować wniosku',
@@ -121,19 +118,6 @@ export const WNIOSEK_STRINGS = {
   jednMVA: 'MVA',
   jednProcent: '%',
 } as const;
-
-/** Etykiety statusu walidacji energetycznej (klucz backendu → PL). */
-export const STATUS_WALIDACJI_WNIOSEK_PL: Record<string, string> = {
-  PASS: 'spełnia',
-  WARNING: 'ostrzeżenie',
-  FAIL: 'nie spełnia',
-  NOT_COMPUTED: 'brak danych',
-};
-
-/** Etykieta PL statusu walidacji (myślnik gdy nieznany). */
-export function statusWalidacjiWniosekPL(status: string): string {
-  return STATUS_WALIDACJI_WNIOSEK_PL[status] ?? status;
-}
 
 /** Deterministyczny format liczby z przecinkiem dziesiętnym (PL). */
 export function fmtLiczbaWniosku(value: number | null, miejsca = 2): string {
@@ -152,12 +136,12 @@ export function fmtZJednostkaWniosku(
 }
 
 /**
- * Nazwa pliku DOCX wniosku: `wniosek-osd-RRRR-MM-DD.docx`. Czysta (data
- * przekazywana jako argument — bez `Date.now`).
+ * Nazwa pliku wniosku: `wniosek-osd-RRRR-MM-DD.<docx|pdf>`. Czysta (data przekazywana
+ * jako argument — bez `Date.now`).
  */
-export function nazwaPlikuWniosku(data: Date): string {
+export function nazwaPlikuWniosku(data: Date, format: FormatDokumentu): string {
   const rrrr = data.getFullYear().toString().padStart(4, '0');
   const mm = (data.getMonth() + 1).toString().padStart(2, '0');
   const dd = data.getDate().toString().padStart(2, '0');
-  return `wniosek-osd-${rrrr}-${mm}-${dd}.docx`;
+  return `wniosek-osd-${rrrr}-${mm}-${dd}.${format}`;
 }

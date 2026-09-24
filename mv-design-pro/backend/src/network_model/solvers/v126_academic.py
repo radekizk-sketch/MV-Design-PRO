@@ -506,8 +506,8 @@ class V126AcademicSolver:
         kf_values = [float(n["k_factor"]) for n in nodes]
         sanity = _sanity_block(
             [
-                ("thd_finite", _finite(*thd_values), "THD_U nieskończone/NaN"),
-                ("thd_max", max(thd_values, default=0.0) <= 100.0, "THD_U > 100% (niefizyczne)"),
+                ("thd_finite", _finite(*thd_values), "THDu nieskończone albo nieokreślone"),
+                ("thd_max", max(thd_values, default=0.0) <= 100.0, "THDu > 100% (niefizyczne)"),
                 ("tdd_finite", _finite(*tdd_values), "TDD nieskończone/NaN"),
                 (
                     "k_factor_nonneg",

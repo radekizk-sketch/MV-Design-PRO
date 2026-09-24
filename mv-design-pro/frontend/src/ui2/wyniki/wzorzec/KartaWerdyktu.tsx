@@ -17,7 +17,11 @@
  *  - nie liczy marginesu, kompletności, statusu ani żadnej reguły K/W — tylko formatuje liczby
  *    z rekordu (najwyżej 4 cyfry znaczące, bez własnych progów);
  *  - nie składa zdań wyjaśnienia: `zdanie_pl`, `przyczyna_pl`, `czego_brakuje` i `zastrzezenia`
- *    są wyświetlane dosłownie (to samo, co dokument formalny — T13).
+ *    są wyświetlane dosłownie (to samo, co dokument formalny — T13);
+ *  - nie pokazuje w pierwszym planie surowych identyfikatorów (identyfikator kryterium/
+ *    wymagania, referencja elementu, kody osi dowodu, identyfikatory biegów, wersje silnika):
+ *    te idą do zwiniętej wspólnej sekcji `InformacjeAudytowe` karty; pierwszy plan niesie
+ *    wyłącznie nazwy polskie tych samych wartości.
  *
  * JEDYNE miejsce mapowania SEMANTYKI koloru (`pozytywna` / `negatywna` / `ostrzegawcza` /
  * `neutralna`) na kolor to `SEMANTYKA_KOLOR` poniżej — na tokeny motywu `--mvd-*`, więc oba
@@ -61,7 +65,13 @@ import {
   type WynikKryterium,
   type WynikWymagania,
   type ZakresWaznosci,
+  type Etykieta,
+  type StatusWerdyktu,
 } from './werdykt';
+import {
+  InformacjeAudytowe,
+  type WierszInformacjiAudytowych,
+} from './InformacjeAudytowe';
 import './wzorzec.css';
 import './kartaWerdyktu.css';
 
@@ -115,28 +125,30 @@ const NAZWA_RODZAJU_PODSTAWY_PL: Readonly<Record<RodzajPodstawy, string>> = {
   NIEUSTALONA: 'warstwa o nieustalonym pochodzeniu',
 };
 
-/** Poziom dowodowy ZDOLNOŚCI narzędzia — `werdykt.proweniencja.EvidenceTier.label_pl` zdaniowo. */
+/** Poziom dowodowy ZDOLNOŚCI narzędzia — lustro `werdykt.proweniencja.EvidenceTier.label_pl`. */
 const NAZWA_POZIOMU_PL: Readonly<Record<EvidenceTier, string>> = {
   VALIDATED_SIMULATION: 'symulacja zwalidowana',
+  TYPE_TEST_CERTIFICATE: 'certyfikat badania typu (wykaz PTPiREE)',
   DECLARATION: 'deklaracja wnioskodawcy',
   UNVALIDATED_MODEL: 'model niezwalidowany',
   NOT_SIMULATED: 'brak symulacji',
 };
 
-/** Rodzaj twierdzenia — `werdykt.proweniencja.ClaimKind.label_pl` zdaniowo. */
+/** Rodzaj twierdzenia — lustro `werdykt.proweniencja.ClaimKind.label_pl`. */
 const NAZWA_TWIERDZENIA_PL: Readonly<Record<ClaimKind, string>> = {
   DYNAMIC_PERFORMANCE: 'zachowanie dynamiczne',
   DECLARED_CONFIGURATION: 'konfiguracja zadeklarowana',
   STATIC_CALCULATION: 'obliczenie statyczne',
 };
 
-/** Jakość danej — `werdykt.proweniencja.FieldQuality.label_pl` zdaniowo. */
+/** Jakość danej — lustro `werdykt.proweniencja.FieldQuality.label_pl`. */
 const NAZWA_JAKOSCI_PL: Readonly<Record<FieldQuality, string>> = {
   DATASHEET: 'karta techniczna',
   ESTIMATED: 'oszacowane',
   SYSTEM_DEFAULT: 'domyślne techniczne',
 };
 
+/** Stan źródła podstawy — lustro `werdykt.wyjasnienie.NAZWA_STANU_ZRODLA_PL`. */
 const NAZWA_STANU_ZRODLA_PL: Readonly<Record<StanZrodla, string>> = {
   ZWERYFIKOWANE: 'zweryfikowane',
   WSKAZANE: 'wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)',
@@ -289,13 +301,13 @@ const TEKSTY = {
   technologia: 'technologia',
   modulIstniejacy: 'moduł istniejący (art. 4 rozporządzenia 2016/631)',
   modulNowy: 'moduł nowy (art. 4 rozporządzenia 2016/631)',
-  modulNieustalony: 'status nowy albo istniejący modułu nieustalony',
+  modulNieustalony: 'nie ustalono, czy moduł jest nowy, czy istniejący (art. 4 rozporządzenia 2016/631)',
   warunekNieuruchomiony: 'warunek wstępny kryterium nie wystąpił w scenariuszu',
   metodaDowodu: 'metoda',
   poziom: 'poziom zdolności narzędzia',
   twierdzenie: 'rodzaj twierdzenia',
-  statusModelu: 'status modelu',
-  statusDanych: 'status danych',
+  statusModelu: 'walidacja modelu urządzenia',
+  statusDanych: 'stan danych wejściowych',
   danePrzyjete: 'dane przyjęte',
   odniesienie: 'odniesienie do dowodu',
   domenaWalidacji: 'domena walidacji silnika',
@@ -314,6 +326,12 @@ const TEKSTY = {
   wykluczenia: 'wykluczenia (wynik ich nie obejmuje)',
   identyfikatorBiegu: 'identyfikator biegu',
   wersjaSilnika: 'wersja silnika',
+  identyfikatorKryterium: 'identyfikator kryterium',
+  identyfikatorWymagania: 'identyfikator wymagania',
+  kodPoziomu: 'kod poziomu zdolności narzędzia',
+  kodWalidacjiModelu: 'kod walidacji modelu urządzenia',
+  kodStanuDanych: 'kod stanu danych wejściowych',
+  kodStanuZrodla: 'kod stanu źródła podstawy',
   brakSladu: 'rekord nie niesie odnośników śladu',
   najblizejBrak: 'nie wskazano — powód podaje pole „Przyczyna” w wyjaśnieniu',
   naruszoneBrak: 'brak',
@@ -376,10 +394,6 @@ function Para({ nazwa, children }: { readonly nazwa: string; readonly children: 
 }
 
 /** Kod maszynowy osi dowodu obok nazwy PL (ten sam zapis, którego używa dokument formalny). */
-function Kod({ children }: { readonly children: string }) {
-  return <code className="mvd-werdykt-kod mvd-num">{children}</code>;
-}
-
 function ListaTekstow({
   pozycje,
   testId,
@@ -447,8 +461,7 @@ function PodstawaSzczegoly({
       </Para>
       <Para nazwa={TEKSTY.rodzajPodstawy}>{NAZWA_RODZAJU_PODSTAWY_PL[podstawa.rodzaj]}</Para>
       <Para nazwa={TEKSTY.stanZrodla}>
-        <span className="mvd-werdykt-stan-zrodla">{NAZWA_STANU_ZRODLA_PL[podstawa.status]}</span>{' '}
-        <Kod>{podstawa.status}</Kod>
+        <span className="mvd-werdykt-stan-zrodla">{NAZWA_STANU_ZRODLA_PL[podstawa.status]}</span>
       </Para>
       {podstawa.uwagi_pl !== null && <Para nazwa={TEKSTY.uwagi}>{podstawa.uwagi_pl}</Para>}
     </span>
@@ -475,7 +488,7 @@ function ListaDanych({
           {dana.jakosc !== null && (
             <>
               {' · '}
-              {TEKSTY.jakoscDanej}: {NAZWA_JAKOSCI_PL[dana.jakosc]} <Kod>{dana.jakosc}</Kod>
+              {TEKSTY.jakoscDanej}: {NAZWA_JAKOSCI_PL[dana.jakosc]}
             </>
           )}
           {' — '}
@@ -720,14 +733,14 @@ function TrescDowodu({ dowod, testId }: { readonly dowod: StatusDowodu; readonly
     <>
       <Para nazwa={TEKSTY.metodaDowodu}>{NAZWA_METODY_PL[dowod.metoda]}</Para>
       <Para nazwa={TEKSTY.poziom}>
-        {NAZWA_POZIOMU_PL[dowod.poziom]} <Kod>{dowod.poziom}</Kod>
+        {NAZWA_POZIOMU_PL[dowod.poziom]}
       </Para>
       <Para nazwa={TEKSTY.twierdzenie}>{NAZWA_TWIERDZENIA_PL[dowod.rodzaj_twierdzenia]}</Para>
       <Para nazwa={TEKSTY.statusModelu}>
-        {nazwaStatusuModelu(dowod.status_modelu)} <Kod>{dowod.status_modelu}</Kod>
+        {nazwaStatusuModelu(dowod.status_modelu)}
       </Para>
       <Para nazwa={TEKSTY.statusDanych}>
-        {NAZWA_STANU_DANYCH_PL[dowod.status_danych.stan]} <Kod>{dowod.status_danych.stan}</Kod>
+        {NAZWA_STANU_DANYCH_PL[dowod.status_danych.stan]}
       </Para>
       {dowod.status_danych.dane_przyjete.length > 0 && (
         <div className="mvd-werdykt-podsekcja">
@@ -843,20 +856,49 @@ function TrescSladu({ slad }: { readonly slad: readonly OdnosnikSladu[] }) {
       {slad.map((odnosnik, indeks) => (
         <li key={`${indeks}-${odnosnik.krok}`}>
           <span className="mvd-werdykt-para-nazwa">{odnosnik.krok}:</span> {odnosnik.opis_pl}
-          {odnosnik.run_id !== null && (
-            <span className="mvd-werdykt-para mvd-werdykt-meta">
-              {TEKSTY.identyfikatorBiegu}: <Kod>{odnosnik.run_id}</Kod>
-            </span>
-          )}
-          {odnosnik.wersja_silnika !== null && (
-            <span className="mvd-werdykt-para mvd-werdykt-meta">
-              {TEKSTY.wersjaSilnika}: <Kod>{odnosnik.wersja_silnika}</Kod>
-            </span>
-          )}
         </li>
       ))}
     </ol>
   );
+}
+
+/**
+ * Surowe identyfikatory rekordu (identyfikator kryterium/wymagania, referencja elementu, kody
+ * osi dowodu, identyfikatory biegów i wersje silnika ze śladu) — materiał audytowy, poza
+ * pierwszym planem karty: wspólna sekcja `InformacjeAudytowe` (zwinięta). Pierwszy plan niesie
+ * wyłącznie nazwy polskie tych samych wartości.
+ */
+function wierszeAudytoweRekordu(rekord: RekordWerdyktu): WierszInformacjiAudytowych[] {
+  const wymaganie = jestWynikiemWymagania(rekord);
+  const wiersze: WierszInformacjiAudytowych[] = [
+    wymaganie
+      ? { etykieta: TEKSTY.identyfikatorWymagania, wartosc: rekord.wymaganie_id }
+      : { etykieta: TEKSTY.identyfikatorKryterium, wartosc: rekord.kryterium_id },
+  ];
+  if (!wymaganie && rekord.przedmiot.element_ref !== null) {
+    wiersze.push({ etykieta: TEKSTY.element, wartosc: rekord.przedmiot.element_ref });
+  }
+  wiersze.push(
+    { etykieta: TEKSTY.kodStanuZrodla, wartosc: rekord.podstawa.status },
+    { etykieta: TEKSTY.kodPoziomu, wartosc: rekord.dowod.poziom },
+    { etykieta: TEKSTY.kodWalidacjiModelu, wartosc: rekord.dowod.status_modelu },
+    { etykieta: TEKSTY.kodStanuDanych, wartosc: rekord.dowod.status_danych.stan },
+  );
+  rekord.slad.forEach((odnosnik, indeks) => {
+    if (odnosnik.run_id !== null) {
+      wiersze.push({
+        etykieta: `${TEKSTY.identyfikatorBiegu} (${indeks + 1}. ${odnosnik.krok})`,
+        wartosc: odnosnik.run_id,
+      });
+    }
+    if (odnosnik.wersja_silnika !== null) {
+      wiersze.push({
+        etykieta: `${TEKSTY.wersjaSilnika} (${indeks + 1}. ${odnosnik.krok})`,
+        wartosc: odnosnik.wersja_silnika,
+      });
+    }
+  });
+  return wiersze;
 }
 
 /** Nazwa oceny składowej — lustro `backend/src/werdykt/wyjasnienie.py::nazwa_skladowej`. */
@@ -1017,21 +1059,11 @@ function KartaWerdyktuRekordu({
         <Tytul id={idTytulu} className="mvd-werdykt-tytul">
           {wymaganie ? rekord.nazwa_pl : rekord.kryterium.opis_pl}
         </Tytul>
-        <p className="mvd-werdykt-meta">
-          {!wymaganie && (
-            <>
-              {TEKSTY.przedmiot}: {rekord.przedmiot.nazwa_pl} — {rekord.przedmiot.opis_pl}
-              {rekord.przedmiot.element_ref !== null && (
-                <>
-                  {' · '}
-                  {TEKSTY.element} <Kod>{rekord.przedmiot.element_ref}</Kod>
-                </>
-              )}
-              {' · '}
-            </>
-          )}
-          <Kod>{identyfikator}</Kod>
-        </p>
+        {!wymaganie && (
+          <p className="mvd-werdykt-meta">
+            {TEKSTY.przedmiot}: {rekord.przedmiot.nazwa_pl} — {rekord.przedmiot.opis_pl}
+          </p>
+        )}
       </header>
       <dl className="mvd-werdykt-pola">
         <Pole etykieta={TEKSTY.ocena} testId={`${testId}-ocena`}>
@@ -1071,6 +1103,11 @@ function KartaWerdyktuRekordu({
       <SekcjaRozwijana tytul={TEKSTY.slad} domyslnieZwinieta={zwiniete} testId={`${testId}-slad`}>
         <TrescSladu slad={rekord.slad} />
       </SekcjaRozwijana>
+      <InformacjeAudytowe
+        wiersze={wierszeAudytoweRekordu(rekord)}
+        trybEkspercki
+        testid={`${testId}-audyt`}
+      />
       {wymaganie && (
         <section className="mvd-werdykt-skladowe" data-testid={`${testId}-skladowe`}>
           <h4 className="mvd-werdykt-skladowe-tytul">
@@ -1107,5 +1144,38 @@ export function KartaWerdyktu({ rekord, zwiniete = true, naglowek }: KartaWerdyk
       naglowek={naglowek}
       zagniezdzona={false}
     />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Plakietka etykiety (komórka macierzy, listy rekordów)
+// ---------------------------------------------------------------------------
+
+export interface EtykietaWerdyktuProps {
+  /** Etykieta Z REKORDU backendu (`rekord.etykieta`) — tekst i semantyka bez przemapowania. */
+  readonly etykieta: Etykieta;
+  /** Status maszynowy rekordu — wyłącznie atrybut `data-status` (filtry, testy), nigdy tekst. */
+  readonly status?: StatusWerdyktu | null;
+  readonly testid?: string;
+}
+
+/**
+ * Kompaktowa plakietka etykiety rekordu werdyktu — ten sam kolor semantyki co karta
+ * (`SEMANTYKA_KOLOR`, jedyna mapa semantyka → kolor). Tekst WYŁĄCZNIE `etykieta.etykieta_pl`.
+ * Szczegół rekordu pokazuje `KartaWerdyktu`; plakietka nie zastępuje karty (§9: etykieta bez
+ * wyjaśnienia nie jest odpowiedzią inżynierską — konsument zawsze prowadzi do karty).
+ */
+export function EtykietaWerdyktu({ etykieta, status = null, testid }: EtykietaWerdyktuProps) {
+  const styl: StylKarty = { '--mvd-werdykt-kolor': SEMANTYKA_KOLOR[etykieta.semantyka] };
+  return (
+    <span
+      className="mvd-werdykt-plakietka"
+      style={styl}
+      data-testid={testid}
+      data-semantyka={etykieta.semantyka}
+      data-status={status ?? undefined}
+    >
+      {etykieta.etykieta_pl}
+    </span>
   );
 }

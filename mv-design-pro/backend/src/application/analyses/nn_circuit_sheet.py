@@ -267,7 +267,7 @@ def _iz_prime_dla_kabla(cable: Cable) -> dict[str, Any]:
             "status": "brak danych",
             "reason_pl": (
                 f"Kabel '{cable.ref_id}' bez zmaterializowanej obciążalności katalogowej "
-                "(materialized_params.i_max_a) — brak wiązania z katalogiem KABEL_NN."
+                "(obciążalność długotrwała z karty typu) — brak wiązania z katalogiem kabli nN."
             ),
         }
     iz_katalogowe = float(iz_katalogowe)

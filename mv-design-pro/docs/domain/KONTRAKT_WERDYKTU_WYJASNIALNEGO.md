@@ -152,8 +152,9 @@ która go pokazuje.
 1. wymaganie nie stosuje się (typ × technologia × nowy/istniejący moduł; prawo operatora do
    określenia wymagania niewykonane) → `NIE_DOTYCZY` z powodem;
 2. sposób wykazania `BRAK_METODY` (ani certyfikat, ani test/symulacja narzędzia) →
-   `BRAK_DOWODU`; to JEDYNY przypadek (poza `NIE_DOTYCZY`), w którym `oceny_skladowe` jest
+   `BRAK_DOWODU`; to JEDYNY przypadek (poza `NIE_DOTYCZY`), w którym `oceny_skladowe` może być
    puste — wyjaśnienie nazywa metodę właściwą (certyfikat urządzenia albo raport z badania typu);
+   składowe przy `BRAK_METODY` są dozwolone WYŁĄCZNIE jako INFORMACYJNE (reguła w §4.2);
 3. wymaganie stosowalne, ale każda ocena składowa `NIE_DOTYCZY` → `NIE_OCENIONO` (zakaz pustego
    `SPELNIA` — przegląd #6d);
 4. którakolwiek ocena składowa `NIE_SPELNIA` → `NIE_SPELNIA`; `kryteria_naruszone` = WSZYSTKIE
@@ -245,6 +246,30 @@ klient przysyłający `ptpiree_verified` nie może wytworzyć `PELNY`.
 | L4 (jedna wyrocznia, AB-1d_min) | `UNVALIDATED_MODEL` (zdolność bez drugiej drogi) | — (kompletność `NIEPELNY` z powodem „silnik L4 — druga niezależna droga w toku") |
 | poniżej L4 / poza domeną manifestu | `UNVALIDATED_MODEL` albo `NOT_SIMULATED` | — |
 | bez obliczenia (deklaracja) | `DECLARATION` | `NIE_DOTYCZY` |
+| bez obliczenia (certyfikat badania typu z wykazu PTPiREE — badanie typu u producenta albo w jednostce certyfikującej, rekord wykazu dopasowany przez serwer do tabliczki urządzenia) | `TYPE_TEST_CERTIFICATE` (etykieta „certyfikat badania typu (wykaz PTPiREE)”) | `NIE_DOTYCZY` |
+
+Poziom `TYPE_TEST_CERTIFICATE` (odbiór Pakietu C, plan AB O-50) jest dopuszczalny jako dowód
+regulacyjny twierdzenia o zachowaniu dynamicznym i o konfiguracji zadeklarowanej — nie twierdzenia
+z obliczenia statycznego (tam wyłącznie zwalidowany solver); JEDNA tabela
+`werdykt.proweniencja.POZIOMY_DOPUSZCZALNE_DLA_TWIERDZENIA` (zachowanie dynamiczne:
+`VALIDATED_SIMULATION`, `TYPE_TEST_CERTIFICATE`; konfiguracja zadeklarowana: dodatkowo
+`DECLARATION`; obliczenie statyczne: `VALIDATED_SIMULATION`) rozstrzyga dopuszczalność zdolności
+narzędzia (`CapabilityEvidence.regulatory_evidence_eligible`). Kompletności dowodu poziom nie
+przesądza: przy regule pokrycia wymagania certyfikatem o stanie `NIEUSTALONE` (warstwa WiPWC) i
+przy niepotwierdzonym warunku ważności rekordu wykazu rozstrzyga rekord (`NIEPELNY` z powodem).
+Poziom i metoda są parą: dowód metodą `CERTYFIKAT` niesie WYŁĄCZNIE poziom `TYPE_TEST_CERTIFICATE`,
+a ten poziom towarzyszy wyłącznie metodzie `CERTYFIKAT` albo dowodowi łączonemu ze STOSOWALNĄ
+składową wykazaną certyfikatem (najsłabszy poziom składników) — rekord bez certyfikatu nigdy nie
+niesie poziomu certyfikatu (walidatory `StatusDowodu._poziom_certyfikatu` i `WynikWymagania`).
+Symulacja i obliczenie są przydatne wyłącznie na zdolności `VALIDATED_SIMULATION` (tożsamość
+poziomu, nie „dopuszczalność regulacyjna" poziomu). Testy przypinające:
+`tests/werdykt/test_werdykt_podstawa_sposobu.py::test_poziom_certyfikatu_badania_typu_wylacznie_z_certyfikatem`,
+`::test_rekord_ze_sposobem_certyfikat_niesie_poziom_certyfikatu`,
+`::test_dowod_laczony_z_poziomem_certyfikatu_wymaga_skladowej_certyfikatu`,
+`::test_poziomy_dopuszczalne_dla_twierdzenia`,
+`tests/application/ncrfg_compliance/test_ncrfg_ocena_wymagan.py::test_poziom_certyfikatu_badania_typu_wylacznie_przy_certyfikacie`
+(iloczyn typ modułu × certyfikat {obejmuje, nie obejmuje, tabliczka niespójna, brak}) oraz
+`tests/test_ncrfg_ptpiree_solver.py::test_dopuszczalnosc_zdolnosci_z_tabeli_poziomow`.
 
 Zakres reguły „dwie niezależne drogi" (O-7, O-48): dotyczy twierdzeń manifestu o WIERNOŚCI modelu rodziny
 urządzeń (np. GFL w zapadzie — D-11.3…D-11.7); własności implementacji (konwencja osi i baz, niezmiennik
@@ -289,12 +314,30 @@ metody `SYMULACJA` — bieg poza domeną = `NIEPELNY` z nazwanym parametrem poza
 | `podstawa` | `PodstawaWymagania` wymagania (dokument, wydanie, jednostka redakcyjna, warstwa, stan źródła) |
 | `stosowalnosc` | `Stosowalnosc`: typ, technologia, nowy/istniejący moduł (art. 4), `dotyczy`, `powod_pl` (zawsze niepusty), `podstawa` |
 | `sposob_wykazania` | `MetodaDowodu` (§1) bez `POMIAR` (pomiar jest metodą WYNIKU; wykazanie wymagania pomiarem to `RAPORT_Z_TESTU`); `BRAK_METODY` = narzędzie nie ma ani certyfikatu pokrywającego, ani testu/symulacji; walidator: `dowod.metoda == sposob_wykazania` |
-| `oceny_skladowe` | lista `OcenaKryterium` (≥ 1; pusta WYŁĄCZNIE przy `NIE_DOTYCZY` albo `BRAK_METODY`) |
+| `podstawa_sposobu_wykazania` | `PodstawaWymagania` REGUŁY, która czyni sposób wykazania właściwym dla wymagania (np. reguła pokrycia wymagania certyfikatem urządzenia z warstwy WiPWC); wchodzi do kompletności i do zastrzeżeń jak podstawa wymagania — stan `NIEUSTALONE` → `NIEPELNY` (`BRAK_DOWODU`), nigdy `SPELNIA`; `None`, gdy sposób nie opiera się na osobnej regule; przy `BRAK_METODY` zawsze `None` |
+| `oceny_skladowe` | lista `OcenaKryterium` (≥ 1; pusta WYŁĄCZNIE przy `NIE_DOTYCZY` albo `BRAK_METODY`; przy `BRAK_METODY` składowe są INFORMACYJNE — reguła niżej) |
 | `pokrycie_programu`, `pokrycie_programu_pl` | `PELNE` / `CZESCIOWE` / `NIE_DOTYCZY` + zdanie, jaki zbiór scenariuszy programu badań pokryto (§2.3 pkt 8) |
 | `status_maszynowy`, `kompletnosc_dowodu`, `powody_niepelnosci` | §2.3, §3 |
 | `kryteria_naruszone`, `kryterium_najblizej_granicy` | §2.3 (`None` z powodem, gdy brak marginesu względnego) |
 | `etykieta` | §9 |
 | `wyjasnienie`, `dowod`, `zakres_waznosci`, `slad` | jak na poziomie K, zagregowane |
+
+**Składowe informacyjne przy `BRAK_METODY`** (odbiór Pakietu C, plan AB O-50). Składowa jest
+informacyjna, gdy wymaganie nie ma w narzędziu metody wykazania (`sposob_wykazania ==
+BRAK_METODY`), a kryterium stosowalne do wymagania jest jego warunkiem KONIECZNYM, który samo go
+nie wykazuje (np. koordynacja nastaw zabezpieczeń RoCoF/LoM przy wymaganiu wytrzymałości RoCoF
+modułu bez certyfikatu). Wtedy: (1) status wymagania pozostaje `BRAK_DOWODU` — krok 2 reguły §2.3
+rozstrzyga przed składowymi, niezależnie od ich statusów (także `NIE_SPELNIA`), więc
+`kryteria_naruszone` jest puste, a `kryterium_najblizej_granicy` = `None`; (2) wyjaśnienie po
+zdaniu o braku metody dopisuje zdanie „Kryteria składowe (informacyjnie — nie wykazują
+wymagania): …” ze skrótowym opisem każdej STOSOWALNEJ składowej (bez składowych stosowalnych —
+bez tego zdania); (3) braki składowych (z nazwą składowej) trafiają do `czego_brakuje` wymagania;
+(4) `podstawa_sposobu_wykazania` jest `None`. Wymaganie stosowalne z innym sposobem wykazania MA
+co najmniej jedną składową (walidator). Testy przypinające:
+`tests/werdykt/test_werdykt_podstawa_sposobu.py::test_brak_metody_ze_skladowa_informacyjna`
+(składowa spełniona × naruszona × nieoceniona),
+`::test_brak_metody_bez_skladowych_nie_ma_zdania_o_skladowych` i
+`tests/werdykt/test_werdykt_kontrakt.py::test_puste_skladowe_wylacznie_przy_nie_dotyczy_albo_brak_metody`.
 
 Wymagania z wieloma kryteriami NIE łączą artykułów: pozostanie w pracy podczas zwarcia to NC RfG
 art. 14 ust. 3 (typ B, PPM i SPGM); szybki prąd zwarciowy — art. 20 ust. 2 lit. b i c (tylko
@@ -445,8 +488,19 @@ nigdy zamiast niej.
 Raport, certyfikat i wniosek do OSD renderują TEN SAM rekord (jeden serializer rekordu do bloku
 dokumentu) i powstają wyłącznie z zatwierdzonego modelu przypadku (§3a). Minimum bloku: Wymaganie · Ocena · Kryterium · Wynik · Margines · Stan końcowy (gdy
 kryterium stanu końcowego istnieje) · Podstawa (dokument / wydanie / jednostka redakcyjna / stan
-źródła) · Dowód (metoda, odniesienie do biegu/certyfikatu) · Status modelu · Status danych · Zakres
-ważności. Dokument twierdzący zgodność wymaga §3 (PEŁNY) dla każdego wymagania stosowalnego.
+źródła) · Dowód (metoda, odniesienie do biegu/certyfikatu) · Walidacja modelu urządzenia · Stan
+danych wejściowych · Zakres ważności. Treść każdej pozycji niesie NAZWY polskie wartości (poziom
+dowodowy, rodzaj twierdzenia, jakość danej — `label_pl` wyliczeń `werdykt.proweniencja`; stan
+źródła, relacja, kompletność, status modelu, stan danych — mapy `werdykt.wyjasnienie`), a kody
+wyliczeń i identyfikatory (`kryterium_id`, `wymaganie_id`, `element_ref`) zostają w polach rekordu
+(pakiet D2, luka §5.1; test `tests/werdykt/test_werdykt_dokument.py::test_tekst_rekordu_i_bloku_bez_kodow_wyliczen`). Dokument twierdzący zgodność wymaga §3 (PEŁNY) dla każdego wymagania stosowalnego.
+Gdy dokument nie powstaje, treść odmowy niesie braki jako PEŁNE rekordy `WynikWymagania`
+przypisane do obiektu, którego dotyczą (dla modułów wytwarzania: `{der_ref, der_name, rekord}`
+oraz zdania `{der_ref, der_name, zdanie_pl}` — odbiór Pakietu C, plan AB O-50 pkt 7), nigdy
+płaską listę komunikatów. Testy przypinające:
+`tests/application/ncrfg_compliance/test_ncrfg_ocena_wymagan.py::test_braki_to_wymagania_stosowalne_bez_spelnia`,
+`tests/api/test_certyfikat_zgodnosci.py::test_endpoint_braki_422_z_rekordami_i_zdaniami`,
+`tests/api/test_wniosek_osd.py::test_endpoint_braki_ncrfg_422_z_rekordami`.
 
 ## 11. Inwarianty i testy kontraktu (obowiązkowe, falsyfikujące)
 
@@ -498,11 +552,18 @@ Bada KONTRAKT, nie tekst (nie poluje na słowo „spełnia"):
    (klasa wzorca #4 inwentarza: werdykt liczony w UI).
 4. **Dokumenty formalne:** mapy status → etykieta w rendererach DOCX/PDF wyłącznie w serializerze
    rekordu.
+5. **Kod w tekście dla człowieka (pakiet D2, luka §5.1):** w polach tekstu (`*_pl`,
+   `czego_brakuje`, `zastrzezenia`) nie ma kodu wyliczenia ani identyfikatora maszynowego —
+   wzorzec `[A-Z]{3,}(_[A-Z]+)+` (z segmentami cyfrowymi, np. `RFG_13_2`) oraz jednowyrazowe
+   wartości osi stanu kontraktu (`NIEUSTALONE`, `PELNY`, `ZWALIDOWANE` …, wyprowadzone z aliasów
+   `werdykt.kontrakt` i wyliczeń `werdykt.proweniencja`). Dwa korpusy: odpowiedzi policzone
+   backendem (fixtury harnessu, te same funkcje co trasy API) i literały źródła `backend/src/**`
+   zasilające pole tekstu. Kod zostaje w polach rekordu; zdanie niesie nazwę polską.
 
 Zapadka: stan zastany z inwentarza (plan AB §8) jest przypięty LISTĄ TOŻSAMOŚCI
 (`moduł:symbol kwalifikowany`, nie `plik:linia` — linie dryfują, a licznik pozwalałby zastąpić
 naprawione naruszenie nowym; przegląd #18); lista może tylko maleć, nowa tożsamość łamiąca
-kontrakt = czerwony guard. Self-test z przypadkiem pozytywnym i negatywnym dla każdego z czterech
+kontrakt = czerwony guard. Self-test z przypadkiem pozytywnym i negatywnym dla każdego z pięciu
 sprawdzeń. Wpięcie: `scripts/guardy_z_ci.py` + właściwe workflow CI.
 
 ## 13. Zakres przedmiotowy i migracja

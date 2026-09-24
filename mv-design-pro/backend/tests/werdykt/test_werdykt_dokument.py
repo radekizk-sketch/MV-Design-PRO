@@ -10,8 +10,9 @@ katalogu rekordów K i W, nie na przykładzie.
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
-from typing import get_args
+from typing import Literal, get_args, get_origin
 
 import pytest
 import werdykt
@@ -26,7 +27,16 @@ from werdykt import (
     etykieta,
 )
 from werdykt import dokument as modul_dokumentu
+from werdykt import kontrakt as modul_kontraktu
 from werdykt.etykiety import SLOWNIK_ETYKIET
+from werdykt.proweniencja import ClaimKind, EvidenceTier, FieldQuality
+from werdykt.wyjasnienie import (
+    NAZWA_STANU_ZRODLA_PL,
+    nazwa_kompletnosci,
+    nazwa_skladowej,
+    nazwa_stanu_danych,
+    nazwa_statusu_modelu,
+)
 
 from tests.werdykt import fabryki as f
 
@@ -53,8 +63,8 @@ KOLEJNOSC_K = [
     "Dowód",
     "Kompletność dowodu",
     "Powód niepełności",
-    "Status modelu",
-    "Status danych",
+    "Walidacja modelu urządzenia",
+    "Stan danych wejściowych",
     "Dana przyjęta",
     "Zakres ważności",
     "Ślad",
@@ -76,8 +86,8 @@ KOLEJNOSC_W = [
     "Dowód",
     "Kompletność dowodu",
     "Powód niepełności",
-    "Status modelu",
-    "Status danych",
+    "Walidacja modelu urządzenia",
+    "Stan danych wejściowych",
     "Dana przyjęta",
     "Zakres ważności",
     "Ślad",
@@ -91,8 +101,8 @@ MINIMUM_K = {
     "Wyjaśnienie",
     "Podstawa",
     "Dowód",
-    "Status modelu",
-    "Status danych",
+    "Walidacja modelu urządzenia",
+    "Stan danych wejściowych",
     "Zakres ważności",
 }
 MINIMUM_W = {
@@ -101,8 +111,8 @@ MINIMUM_W = {
     "Wyjaśnienie",
     "Podstawa",
     "Dowód",
-    "Status modelu",
-    "Status danych",
+    "Walidacja modelu urządzenia",
+    "Stan danych wejściowych",
     "Zakres ważności",
 }
 
@@ -130,9 +140,15 @@ def _sprawdz_t13(blok: list[PozycjaBloku], rekord: OcenaKryterium | WynikWymagan
     assert _wartosci(blok, "Czego brakuje") == list(w.czego_brakuje)
     assert _wartosci(blok, "Przyczyna") == ([] if w.przyczyna_pl is None else [w.przyczyna_pl])
     assert _wartosci(blok, "Ocena") == [rekord.etykieta.etykieta_pl]
-    assert _wartosci(blok, "Status modelu") == [rekord.dowod.status_modelu]
-    assert _wartosci(blok, "Status danych") == [rekord.dowod.status_danych.stan]
-    assert _wartosci(blok, "Kompletność dowodu") == [rekord.kompletnosc_dowodu]
+    # Kody wyliczeń zostają w polach rekordu; blok niesie nazwy polskie (strażnik werdyktu,
+    # sprawdzenie `5_kod_w_tekscie`).
+    assert _wartosci(blok, "Walidacja modelu urządzenia") == [
+        nazwa_statusu_modelu(rekord.dowod.status_modelu)
+    ]
+    assert _wartosci(blok, "Stan danych wejściowych") == [
+        nazwa_stanu_danych(rekord.dowod.status_danych.stan)
+    ]
+    assert _wartosci(blok, "Kompletność dowodu") == [nazwa_kompletnosci(rekord.kompletnosc_dowodu)]
     assert _wartosci(blok, "Powód niepełności") == list(rekord.powody_niepelnosci)
 
 
@@ -159,17 +175,24 @@ def test_t13_blok_wymagania_niesie_to_samo_zdanie_i_bloki_skladowych(
     assert _kolejnosc_zgodna(etykiety, KOLEJNOSC_W), etykiety
     reszta = blok[len(wlasne) :]
     oczekiwana_reszta: list[PozycjaBloku] = []
+    # Identyfikator kryterium (`kryterium_id`) zostaje w polach rekordu; nagłówek bloku
+    # składowej i listy kryteriów niosą nazwę składowej (opis kryterium i przedmiotu).
+    nazwy = {o.kryterium_id: nazwa_skladowej(o) for o in rekord.oceny_skladowe}
     for ocena in rekord.oceny_skladowe:
         oczekiwana_reszta.append(
-            PozycjaBloku(etykieta_pl="Kryterium składowe", tresc_pl=ocena.kryterium_id)
+            PozycjaBloku(etykieta_pl="Kryterium składowe", tresc_pl=nazwa_skladowej(ocena))
         )
         oczekiwana_reszta.extend(blok_kryterium(ocena))
     assert reszta == oczekiwana_reszta
     assert _wartosci(wlasne, "Kryteria naruszone") == (
-        [", ".join(rekord.kryteria_naruszone)] if rekord.kryteria_naruszone else []
+        ["; ".join(nazwy[k] for k in rekord.kryteria_naruszone)]
+        if rekord.kryteria_naruszone
+        else []
     )
     assert _wartosci(wlasne, "Kryterium najbliżej granicy") == (
-        [] if rekord.kryterium_najblizej_granicy is None else [rekord.kryterium_najblizej_granicy]
+        []
+        if rekord.kryterium_najblizej_granicy is None
+        else [nazwy[rekord.kryterium_najblizej_granicy]]
     )
 
 
@@ -186,7 +209,9 @@ def test_stan_koncowy_tylko_gdy_istnieje_kryterium_stanu_koncowego(
 
 
 def test_t6_t7_dokument_niesie_status_modelu_i_dane_przyjete() -> None:
-    """Zastrzeżenie UNVALIDATED_MODEL i dana przyjęta z wartością są w tekście dokumentu."""
+    """Zastrzeżenie modelu niezwalidowanego i dana przyjęta z wartością są w tekście
+    dokumentu — nazwami polskimi; kody ``UNVALIDATED_MODEL``/``UNVALIDATED_INPUT`` wyłącznie
+    w polach rekordu."""
     rekord = f.ocena(
         dowod_oceny=f.dowod_symulacji(
             status_modelu="UNVALIDATED_MODEL", stan_danych="UNVALIDATED_INPUT"
@@ -196,13 +221,16 @@ def test_t6_t7_dokument_niesie_status_modelu_i_dane_przyjete() -> None:
     )
     for blok in (blok_kryterium(rekord), blok_wymagania(f.wymaganie([rekord], sposob="SYMULACJA"))):
         teksty = [p.tresc_pl for p in blok]
-        assert "UNVALIDATED_MODEL" in _wartosci(blok, "Status modelu")
-        assert any("Status modelu urządzenia: UNVALIDATED_MODEL" in t for t in teksty)
+        # Blok W niesie też bloki składowych — pozycja składowej nazywa model niezwalidowany.
+        assert "model urządzenia niezwalidowany" in _wartosci(blok, "Walidacja modelu urządzenia")
+        assert any(t.startswith("Model urządzenia niezwalidowany — ") for t in teksty)
+        assert not any("UNVALIDATED" in t for t in teksty), teksty
         assert any(
             "moc zwarciowa sieci S_k″ = 120 MVA" in t for t in _wartosci(blok, "Dana przyjęta")
         )
         assert any(
-            "(UNVALIDATED_INPUT)" in t and "120 MVA" in t for t in _wartosci(blok, "Zastrzeżenia")
+            t.startswith("Dana przyjęta bez walidacji: ") and "120 MVA" in t
+            for t in _wartosci(blok, "Zastrzeżenia")
         )
 
 
@@ -211,7 +239,7 @@ def test_pozycja_podstawy_ma_dokument_wydanie_jednostke_i_stan(stan: StanZrodla)
     rekord = f.ocena(stan_kryterium=stan)
     (podstawa,) = _wartosci(blok_kryterium(rekord), "Podstawa")
     assert f"dokument: „{rekord.podstawa.dokument}”" in podstawa
-    assert f"stan źródła: {stan}" in podstawa
+    assert f"stan źródła: {NAZWA_STANU_ZRODLA_PL[stan]}" in podstawa
     assert "wydanie:" in podstawa and "jednostka redakcyjna:" in podstawa
     if stan != "NIEUSTALONE":
         assert "wydanie: 3.0" in podstawa and "jednostka redakcyjna: pkt 5.3" in podstawa
@@ -266,7 +294,7 @@ def test_pozycja_warunku_wstepnego_niesie_podstawe_ze_stanem(stan_warunku: StanZ
     assert podstawa is not None
     assert warunek.startswith("U_PCC(t) ≥ obwiednia; podstawa — ")
     assert f"dokument: „{podstawa.dokument}”" in warunek
-    assert f"stan źródła: {stan_warunku}" in warunek
+    assert f"stan źródła: {NAZWA_STANU_ZRODLA_PL[stan_warunku]}" in warunek
 
 
 def test_pozycje_latex_osobno_od_tekstu() -> None:
@@ -334,3 +362,66 @@ def test_dokument_czyta_etykiete_z_rekordu() -> None:
             ).etykieta_pl
         )
     assert "etykieta" not in {n for n in dir(modul_dokumentu) if not n.startswith("_")}
+
+
+# ---------------------------------------------------------------------------
+# Kody wyliczeń wyłącznie w polach rekordu (luka §5.1 pakietu D2)
+# ---------------------------------------------------------------------------
+
+#: Kod wyliczenia z podkreśleniem — ten sam kształt co strażnik werdyktu (sprawdzenie
+#: ``5_kod_w_tekscie``): ``VALIDATED_SIMULATION``, ``NIE_DOTYCZY``, ``RFG_13_2``.
+WZORZEC_KODU_Z_PODKRESLENIEM = re.compile(r"\b[A-Z][A-Z0-9]{2,}(?:_[A-Z0-9]+)+\b")
+#: Skróty, które są słowami polszczyzny technicznej, a zarazem wartościami ``RodzajPodstawy``.
+SKROTY_PROZY = frozenset({"OSD", "WOS"})
+
+
+def _kody_jednowyrazowe() -> frozenset[str]:
+    """Jednowyrazowe kody wyliczeń kontraktu (``NIEUSTALONE``, ``PELNY``, ``LOGICZNE``…) —
+    wyprowadzone z aliasów ``Literal`` modułu ``werdykt.kontrakt`` i osi proweniencji, żeby
+    nowa wartość wyliczenia trafiała pod test bez edycji listy."""
+    kody: set[str] = set()
+    for nazwa in dir(modul_kontraktu):
+        obiekt = getattr(modul_kontraktu, nazwa)
+        if get_origin(obiekt) is Literal:
+            kody.update(w for w in get_args(obiekt) if isinstance(w, str))
+    kody.update(c.value for os_ in (ClaimKind, EvidenceTier, FieldQuality) for c in os_)
+    return frozenset(k for k in kody if "_" not in k and len(k) >= 3 and k.isupper()) - SKROTY_PROZY
+
+
+KODY_JEDNOWYRAZOWE = _kody_jednowyrazowe()
+
+
+def test_kody_jednowyrazowe_wyprowadzone_z_kontraktu() -> None:
+    """PIN zbioru: stany źródła, kompletność, relacja logiczna, metody — bez skrótów prozy."""
+    assert {"ZWERYFIKOWANE", "WSKAZANE", "NIEUSTALONE", "PELNY", "NIEPELNY"} <= KODY_JEDNOWYRAZOWE
+    assert {"LOGICZNE", "PASMO", "SYMULACJA", "CERTYFIKAT", "ZWALIDOWANE"} <= KODY_JEDNOWYRAZOWE
+    assert not KODY_JEDNOWYRAZOWE & SKROTY_PROZY
+
+
+def _teksty_dla_czlowieka(rekord: OcenaKryterium | WynikWymagania) -> list[str]:
+    w = rekord.wyjasnienie
+    blok = blok_kryterium(rekord) if isinstance(rekord, OcenaKryterium) else blok_wymagania(rekord)
+    return [
+        w.zdanie_pl,
+        *([] if w.przyczyna_pl is None else [w.przyczyna_pl]),
+        *w.czego_brakuje,
+        *w.zastrzezenia,
+        *rekord.powody_niepelnosci,
+        *(p.tresc_pl for p in blok if "LaTeX" not in p.etykieta_pl),
+    ]
+
+
+@pytest.mark.parametrize(
+    "nazwa, rekord", [*REKORDY_K, *REKORDY_W], ids=[n for n, _ in [*REKORDY_K, *REKORDY_W]]
+)
+def test_tekst_rekordu_i_bloku_bez_kodow_wyliczen(
+    nazwa: str, rekord: OcenaKryterium | WynikWymagania
+) -> None:
+    """Cały katalog rekordów K i W (każda relacja × każda droga do każdego statusu): zdanie,
+    przyczyna, braki, zastrzeżenia, powody niepełności i KAŻDA pozycja bloku dokumentu niosą
+    nazwy polskie — kod wyliczenia (z podkreśleniem albo jednowyrazowy) zostaje w polach
+    rekordu (``status_maszynowy``, ``dowod.*``, ``podstawa.status``, ``kryterium_id``)."""
+    for tekst in _teksty_dla_czlowieka(rekord):
+        assert not WZORZEC_KODU_Z_PODKRESLENIEM.findall(tekst), tekst
+        slowa = set(re.findall(r"\b[A-ZĄĆĘŁŃÓŚŹŻ]{3,}\b", tekst))
+        assert not slowa & KODY_JEDNOWYRAZOWE, (slowa & KODY_JEDNOWYRAZOWE, tekst)

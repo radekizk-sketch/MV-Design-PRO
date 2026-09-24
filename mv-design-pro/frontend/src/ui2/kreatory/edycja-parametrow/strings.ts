@@ -64,4 +64,10 @@ export const EDYCJA_PARAMETROW_STRINGS = {
     + 'przesłanka pomiarowa. Każda korekta powinna nieść uzasadnienie; parametry katalogowe zostają '
     + 'pod kontrolą katalogu.',
   teoriaPodstawa: 'Podstawa: reguła Catalog Binding + ślad audytowy zmian modelu (architektura ENM).',
+  daneModuluTytul: 'Dane modułu NC RfG źródła',
+  daneModuluPomoc:
+    'Zapisywane są wyłącznie pola zmienione względem modelu — ten sam walidator co przy '
+    + 'tworzeniu źródła; brak danej pozostaje brakiem, nigdy wartością typową.',
+  bledneDaneModulu:
+    'Dane modułu NC RfG zawierają błędy pól — popraw je przed zapisem (pola oznaczone niżej).',
 } as const;

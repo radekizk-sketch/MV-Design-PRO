@@ -549,6 +549,20 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # Karta AB-1b.1a (2026-09-23): `werdykt/kontrakt.py` (wyzej, z AB-H0) czyta takze
     # `application/contracts/resultset_dynamic_v2.py` (`DziedzinaFizyki`) — ten sam
     # korzen, bez drugiego wpisu.
+    # Odbior Pakietu C karty AB-1a (2026-09-23): pin mapy zazadal decyzji dla dwoch
+    # modulow pakietu-lisca `werdykt`, importowanych bezposrednio przez warstwe objeta
+    # skanem (ocena wymagan NC RfG `application/ncrfg_compliance/ocena_wymagan.py`,
+    # solver `network_model/solvers/ncrfg_ptpiree/engine.py`, dokumenty
+    # `application/analyses/{certyfikat_zgodnosci,wniosek_osd,dokument_studium,
+    # sekcja_zgodnosci_ncrfg,pq_coverage}.py`). Oba deklaruja KONTRAKT REKORDU
+    # werdyktu wyjasnialnego (`kontrakt.py`: OcenaKryterium/WynikWymagania i typy pol;
+    # `dokument.py`: PozycjaBloku dokumentu), czytany przez warstwe skanowana — nie
+    # kolekcje atrybutow typu wbudowanego, wiec wg precedensu `real`/`imag` nie
+    # kwalifikuja sie do MODEL_ROOTS_POZA_MAPA. Pomiar: +58 nowych nazw pol
+    # (3944 -> 4002; `wartosc`/`jednostka`/`status` byly juz w mapie przez inne korzenie,
+    # najkrotsze nowe: `krok`, `pasmo`, `skala`, `poziom`, `metoda`), ZERO nowych
+    # trafien (RC=0, zapadka dlugu 56 plikow/suma 255 bez zmian) — decyzja „do mapy".
+    "werdykt/dokument.py",
 )
 
 #: Korzenie modeli SWIADOMIE POZA mapa pol — z POWODEM MERYTORYCZNYM, nie „poza

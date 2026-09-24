@@ -207,6 +207,10 @@ POZIOMY_BEZ_WALIDACJI: frozenset[EvidenceTier] = frozenset(
 )
 #: Metody, przy których istnieje obliczenie (ślad WHITE BOX i dziedzina fizyki obowiązkowe).
 METODY_OBLICZENIOWE: frozenset[MetodaDowodu] = frozenset(("SYMULACJA", "OBLICZENIE"))
+#: Metody dowodu, którym może towarzyszyć poziom ``TYPE_TEST_CERTIFICATE`` (§3 tabela poziomów):
+#: certyfikat (poziom obowiązkowy) i dowód łączony ze składową certyfikatu (najsłabszy poziom
+#: składników — walidator ``WynikWymagania`` żąda stosowalnej składowej certyfikatu).
+METODY_Z_POZIOMEM_CERTYFIKATU: frozenset[MetodaDowodu] = frozenset(("CERTYFIKAT", "DOWOD_LACZONY"))
 #: Statusy, dla których ``czego_brakuje`` jest obowiązkowe (§5).
 STATUSY_Z_BRAKAMI: frozenset[StatusWerdyktu] = frozenset(
     ("NIE_OCENIONO", "BRAK_PODSTAWY", "BRAK_DOWODU", "NIEJEDNOZNACZNY")
@@ -407,6 +411,25 @@ class StatusDowodu(_Zamrozony):
             )
         return self
 
+    @model_validator(mode="after")
+    def _poziom_certyfikatu(self) -> Self:
+        """Poziom ``TYPE_TEST_CERTIFICATE`` ⇔ dowód certyfikatem badania typu (§3 tabela
+        poziomów): certyfikat zawsze niesie ten poziom, a poziom certyfikatu nigdy nie opisuje
+        obliczenia, symulacji, deklaracji ani braku metody."""
+        certyfikat = EvidenceTier.TYPE_TEST_CERTIFICATE
+        if self.metoda == "CERTYFIKAT" and self.poziom is not certyfikat:
+            raise ValueError(
+                f"Dowód certyfikatem urządzenia ma poziom {certyfikat.value} (certyfikat "
+                f"badania typu) — poziom {self.poziom.value} nie opisuje certyfikatu."
+            )
+        if self.poziom is certyfikat and self.metoda not in METODY_Z_POZIOMEM_CERTYFIKATU:
+            raise ValueError(
+                f"Poziom {certyfikat.value} (certyfikat badania typu) towarzyszy wyłącznie "
+                f"dowodowi certyfikatem albo dowodowi łączonemu ze składową certyfikatu — nie "
+                f"metodzie {self.metoda}."
+            )
+        return self
+
     @property
     def przydatnosc_dowodowa(self) -> bool:
         """Czy metoda jest właściwa dla rodzaju twierdzenia (§3 pkt 1) — fail-closed.
@@ -433,13 +456,13 @@ class StatusDowodu(_Zamrozony):
             return False
         if self.metoda == "SYMULACJA":
             return (
-                self.poziom.regulatory_evidence_eligible
+                self.poziom is EvidenceTier.VALIDATED_SIMULATION
                 and self.status_modelu in STATUSY_MODELU_ZWALIDOWANEGO
             )
         if self.metoda == "OBLICZENIE":
             return (
                 self.rodzaj_twierdzenia in TWIERDZENIA_Z_OBLICZENIEM
-                and self.poziom.regulatory_evidence_eligible
+                and self.poziom is EvidenceTier.VALIDATED_SIMULATION
             )
         return False
 
@@ -1038,6 +1061,13 @@ class WynikWymagania(_RekordWerdyktu):
     podstawa: PodstawaWymagania
     stosowalnosc: Stosowalnosc
     sposob_wykazania: MetodaDowodu
+    #: Podstawa REGUŁY, która czyni sposób wykazania właściwym dla tego wymagania (np. reguła
+    #: pokrycia wymagania certyfikatem urządzenia z warstwy WiPWC). Wchodzi do kompletności
+    #: dowodu i do zastrzeżeń jak podstawa wymagania: reguła o stanie ``NIEUSTALONE`` czyni
+    #: dowód niepełnym (``BRAK_DOWODU``), nigdy ``SPELNIA``. ``None`` — sposób wykazania nie
+    #: opiera się na osobnej regule (test, deklaracja, obliczenie); przy ``BRAK_METODY``
+    #: zawsze ``None`` (brak metody nie ma reguły).
+    podstawa_sposobu_wykazania: PodstawaWymagania | None = None
     oceny_skladowe: tuple[OcenaKryterium, ...]
     pokrycie_programu: PokrycieProgramu
     pokrycie_programu_pl: Tekst
@@ -1063,6 +1093,7 @@ class WynikWymagania(_RekordWerdyktu):
             podstawa=self.podstawa,
             stosowalnosc=self.stosowalnosc,
             sposob_wykazania=self.sposob_wykazania,
+            podstawa_sposobu_wykazania=self.podstawa_sposobu_wykazania,
             oceny=self.oceny_skladowe,
             pokrycie_programu=self.pokrycie_programu,
             pokrycie_programu_pl=self.pokrycie_programu_pl,
@@ -1136,11 +1167,25 @@ class WynikWymagania(_RekordWerdyktu):
                 f"Wymaganie {self.wymaganie_id}: warunek wstępny jest cechą kryterium — "
                 "niestosowalność wymagania wynika z typu, technologii albo statusu modułu."
             )
-        puste_dozwolone = (not dotyczy) or self.sposob_wykazania == "BRAK_METODY"
-        if puste_dozwolone != (not self.oceny_skladowe):
+        # §4.2: składowe są puste WYŁĄCZNIE przy NIE_DOTYCZY albo BRAK_METODY. Wymaganie
+        # niestosowalne nie ma składowych (nic nie jest oceniane); przy BRAK_METODY składowe są
+        # dozwolone jako INFORMACYJNE (np. kryterium koordynacji nastaw, które jest warunkiem
+        # koniecznym, ale nie wykazuje wymagania) — reguła W daje BRAK_DOWODU niezależnie od nich.
+        if not dotyczy and self.oceny_skladowe:
             raise ValueError(
-                f"Wymaganie {self.wymaganie_id}: oceny składowe są puste wtedy i tylko wtedy, gdy "
-                "wymaganie nie dotyczy przedmiotu albo sposób wykazania to BRAK_METODY."
+                f"Wymaganie {self.wymaganie_id}: wymaganie nie dotyczy przedmiotu, więc nie ma "
+                "ocen składowych (oceny składowe są puste przy NIE_DOTYCZY)."
+            )
+        if dotyczy and self.sposob_wykazania != "BRAK_METODY" and not self.oceny_skladowe:
+            raise ValueError(
+                f"Wymaganie {self.wymaganie_id}: oceny składowe są puste wyłącznie przy "
+                "NIE_DOTYCZY albo sposobie wykazania BRAK_METODY — sposób "
+                f"{self.sposob_wykazania} wymaga co najmniej jednej oceny składowej."
+            )
+        if self.sposob_wykazania == "BRAK_METODY" and self.podstawa_sposobu_wykazania is not None:
+            raise ValueError(
+                f"Wymaganie {self.wymaganie_id}: sposób wykazania BRAK_METODY nie ma reguły, "
+                "która czyniłaby go właściwym — podstawa sposobu wykazania musi być pusta."
             )
         identyfikatory = [ocena.kryterium_id for ocena in self.oceny_skladowe]
         if len(set(identyfikatory)) != len(identyfikatory):
@@ -1158,6 +1203,19 @@ class WynikWymagania(_RekordWerdyktu):
             raise ValueError(
                 f"Wymaganie {self.wymaganie_id}: metoda dowodu {self.dowod.metoda} różni się od "
                 f"sposobu wykazania {self.sposob_wykazania}."
+            )
+        if (
+            self.dowod.poziom is EvidenceTier.TYPE_TEST_CERTIFICATE
+            and self.dowod.metoda == "DOWOD_LACZONY"
+            and not any(
+                ocena.status_maszynowy != "NIE_DOTYCZY" and ocena.dowod.metoda == "CERTYFIKAT"
+                for ocena in self.oceny_skladowe
+            )
+        ):
+            raise ValueError(
+                f"Wymaganie {self.wymaganie_id}: dowód łączony ma poziom "
+                f"{EvidenceTier.TYPE_TEST_CERTIFICATE.value} bez stosowalnej składowej "
+                "wykazanej certyfikatem — rekord bez certyfikatu nie niesie poziomu certyfikatu."
             )
         self._sprawdz_pokrycie(dotyczy)
         self._sprawdz_zakres()

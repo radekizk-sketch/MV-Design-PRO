@@ -28,8 +28,12 @@ const pobierzKatalog = vi.fn();
 const pobierzTrajektorie = vi.fn();
 const pobierzSekwencja = vi.fn();
 
+// Katalog NC RfG z JEDNEGO klienta V2 (`ui2/oze/ncrfg/api`, karta AB-1a Pakiet D2).
+vi.mock('../../ncrfg/api', () => ({
+  pobierzKatalogNcRfg: () => pobierzKatalog(),
+}));
+
 vi.mock('../../api', () => ({
-  pobierzKatalogKlasNcRfg: () => pobierzKatalog(),
   pobierzTrajektorieFrt: (zapytanie: unknown) => pobierzTrajektorie(zapytanie),
   pobierzSekwencjeFrt: (zapytanie: unknown) => pobierzSekwencja(zapytanie),
 }));

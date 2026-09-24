@@ -21,15 +21,20 @@
  *      tego urządzenia, ale PODNOSI je dla urządzenia niepowiązanego
  *      (kontrola dodatnia — bez niej asercja przechodziłaby także wtedy, gdyby
  *      tor gotowości w ogóle nie działał),
- *   4. bieg NC RfG uruchomiony przyciskiem: dowód NA EKRANIE niesie NUMER
- *      DOKUMENTU i wersję WiPWC z wykazu, a urządzenie niepowiązane — uczciwy
- *      stan zerowy „brak dowodu",
- *   5. certyfikat zgodności: żądanie idzie z `case_id` aktywnego przypadku
- *      (bez niego backend nie ma skąd wziąć tabliczek i sekcja dowodu znika),
- *      a podgląd i plik DOCX niosą numer dokumentu tego samego urządzenia.
+ *   4. ocena zgodności ZATWIERDZONEGO MODELU (kontrakt V2, karta AB-1a Pakiet D2 —
+ *      `GET /api/ncrfg-tests/cases/{id}/compliance`, operator wybrany JAWNIE, bo moduły
+ *      modelu nie wskazują wspólnego profilu): dowód NA EKRANIE niesie NUMER DOKUMENTU
+ *      i wersję WiPWC z wykazu, a urządzenie niepowiązane — uczciwy stan zerowy „brak
+ *      dowodu"; bieg „co-jeśli" macierzy (dane z formularza) dowodu NIE niesie — dowód
+ *      wyprowadza wyłącznie serwer z modelu,
+ *   5. certyfikat zgodności: żądanie idzie z `case_id` aktywnego przypadku i operatorem
+ *      z wyboru; model, którego moduły PV nie wykazują zdolności (brak pisarza tych pól
+ *      w modelu), dostaje uczciwe 422 „czego brakuje" — rekordy wymagań bez wykazanej
+ *      zgodności, w których dowód urządzenia powiązanego występuje z NUMEREM DOKUMENTU;
+ *      plik DOCX idzie tą samą bramką (ten sam przypadek, te same braki).
  *
- * Asercje idą po TREŚCI (numer dokumentu, wersja WiPWC), nie po samym istnieniu
- * elementów — element bez danej przechodziłby test tak samo jak element z daną.
+ * Asercje idą po TREŚCI (numer dokumentu, wersja WiPWC, liczba braków), nie po samym
+ * istnieniu elementów — element bez danej przechodziłby test tak samo jak element z daną.
  */
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
@@ -258,12 +263,8 @@ async function przeladujPowloke(page: Page): Promise<void> {
   await odswiezenie;
 }
 
-/** Deklaracja zdolności modułu (dana „deklarowane") — bramka kompletności certyfikatu. */
-async function zadeklarujZdolnoscModulu(page: Page, derRef: string): Promise<void> {
-  await page.getByTestId(`mvd-oze-modul-${derRef}`).click();
-  await expect(page.getByTestId('mvd-oze-panel-modulu')).toBeVisible();
-  await page.getByTestId('mvd-oze-zdolnosc-stopGenerationEnabled').check();
-}
+/** Operator wybrany JAWNIE (profil wymagań) — moduły modelu nie wskazują wspólnego profilu. */
+const OPERATOR = 'pse';
 
 test('krytyczny łańcuch dowodu PTPiREE: kreator OZE → tabliczka w modelu → gotowość → bieg NC RfG → dowód na ekranie → certyfikat zgodności', async ({
   page,
@@ -280,11 +281,11 @@ test('krytyczny łańcuch dowodu PTPiREE: kreator OZE → tabliczka w modelu →
   // ------------------------------------------------------------------
   await otworzMacierzZgodnosci(page);
   await expect(page.getByTestId('mvd-oze-pusty')).toContainText('Brak modułów wytwórczych do oceny');
-  // W3-D: sekcja "Zgodność przekrojowa przypadku" czyta model NA ŻYWO,
-  // niezależnie od macierzy per DER — bez modułu w modelu pokazuje WŁASNY
-  // uczciwy stan zerowy (nie ukrywa się razem z macierzą, nie udaje danych).
+  // W3-D / kontrakt V2: sekcja „Zgodność przypadku" czyta model NA ŻYWO, niezależnie od
+  // macierzy per DER — bez modułu w modelu operator nie wynika z modelu, więc sekcja
+  // pokazuje WŁASNY uczciwy stan zerowy (bez zapytania, bez operatora z domysłu).
   await expect(page.getByTestId('mvd-oze-zgodnosc-przekrojowa')).toBeVisible({ timeout: 30000 });
-  await expect(page.getByTestId('mvd-oze-zgodnosc-przekrojowa-brak-der')).toBeVisible({
+  await expect(page.getByTestId('mvd-oze-zgodnosc-przekrojowa-brak-operatora')).toBeVisible({
     timeout: 30000,
   });
   await page.getByRole('button', { name: 'Dodaj źródło OZE' }).click();
@@ -383,81 +384,142 @@ test('krytyczny łańcuch dowodu PTPiREE: kreator OZE → tabliczka w modelu →
   ).toContain(refNiepowiazany);
 
   // ------------------------------------------------------------------
-  // Krok 7: bieg NC RfG na obu modułach — przycisk klikany NATYWNIE.
+  // Krok 7: ocena zgodności ZATWIERDZONEGO MODELU — operator wybrany natywnie.
+  // Urządzenie kontrolne nie ma profilu NC RfG, więc model nie rozstrzyga operatora
+  // (kontrakt V2: operator nigdy z domysłu) — pole wymaga jawnego wyboru.
   // ------------------------------------------------------------------
   await przeladujPowloke(page);
   await otworzMacierzZgodnosci(page);
   await expect(page.getByTestId('mvd-oze-macierz-tabela')).toBeVisible({ timeout: 30000 });
-  // W3-D: sekcja przekrojowa widzi OBA źródła NA ŻYWO z modelu, BEZ klikania
-  // „Przeprowadź testy zgodności" (krok niżej) — dowód, że jest niezależna od
-  // biegu macierzy per DER, nie jego duplikatem. Kanon zastępujący skasowany
-  // `application/compliance/source_compliance.py` (karta W3-D).
-  await expect(page.getByTestId('mvd-oze-zgodnosc-przekrojowa-tabela')).toBeVisible({
-    timeout: 30000,
-  });
-  await expect(page.getByTestId(`mvd-oze-zgodnosc-przekrojowa-werdykt-${refPowiazany}`)).toBeVisible();
-  await expect(
-    page.getByTestId(`mvd-oze-zgodnosc-przekrojowa-werdykt-${refNiepowiazany}`),
-  ).toBeVisible();
-  // Zdolność „zaprzestanie generacji" (test T12) jest daną DEKLAROWANĄ projektanta —
-  // bez niej bramka kompletności certyfikatu odrzuca dokument (uczciwa lista braków).
-  await zadeklarujZdolnoscModulu(page, refPowiazany);
-  await zadeklarujZdolnoscModulu(page, refNiepowiazany!);
+  await expect(page.getByTestId('mvd-oze-operator')).toHaveAttribute('data-zrodlo', 'wybor');
+  await expect(page.getByTestId('mvd-oze-zgodnosc-przekrojowa-brak-operatora')).toBeVisible();
+  const zadanieOceny = page.waitForRequest(
+    (żądanie) =>
+      żądanie.url().includes(`/api/ncrfg-tests/cases/${seed.caseId}/compliance`)
+      && żądanie.method() === 'GET',
+    { timeout: 60000 },
+  );
+  // Wejścia mostu modelu dla formularza „co-jeśli" (`GET …/wejscia`) — REALNY backend liczy je
+  // z tego samego ENM co ocenę przypadku; pobrane po wyborze operatora.
+  const odpowiedzWejsc = page.waitForResponse(
+    (odpowiedz) => {
+      const adres = new URL(odpowiedz.url());
+      return (
+        adres.pathname === `/api/ncrfg-tests/cases/${seed.caseId}/wejscia`
+        && adres.searchParams.get('operator_id') === OPERATOR
+        && odpowiedz.request().method() === 'GET'
+      );
+    },
+    { timeout: 60000 },
+  );
+  await page.getByTestId('mvd-oze-operator-wybor').selectOption(OPERATOR);
+  expect(new URL((await zadanieOceny).url()).searchParams.get('operator_id')).toBe(OPERATOR);
+  const wejscia = await odpowiedzWejsc;
+  expect(wejscia.status(), 'GET …/wejscia na realnym backendzie').toBe(200);
+  const wejsciaModelu = (await wejscia.json()) as { modules: { der_ref: string }[] };
+  expect(wejsciaModelu.modules.map((m) => m.der_ref)).toContain(refPowiazany);
+  // Sekcja widzi OBA źródła z modelu BEZ biegu „co-jeśli" — niezależna od macierzy per DER.
+  for (const ref of [refPowiazany, refNiepowiazany!]) {
+    await expect(page.getByTestId(`mvd-oze-zgodnosc-przekrojowa-modul-${ref}`)).toBeVisible({
+      timeout: 60000,
+    });
+  }
 
+  // ------------------------------------------------------------------
+  // Krok 8: DOWÓD NA EKRANIE — numer dokumentu i wersja WiPWC wykazu przy urządzeniu
+  // powiązanym, uczciwy stan zerowy przy urządzeniu spoza wykazu (dowód z modelu).
+  // ------------------------------------------------------------------
+  const naglowekPowiazany = `mvd-oze-zgodnosc-przekrojowa-naglowek-${refPowiazany}`;
+  await expect(page.getByTestId(`${naglowekPowiazany}-dowod`)).toHaveAttribute('data-stan', 'dowod');
+  await expect(page.getByTestId(`${naglowekPowiazany}-dowod-numer`)).toContainText(NUMER_DOKUMENTU);
+  await expect(page.getByTestId(`${naglowekPowiazany}-dowod-wipwc`)).toContainText(
+    `WiPWC ${WERSJA_WIPWC}`,
+  );
+  await expect(page.getByTestId(`${naglowekPowiazany}-zrodlo`)).toContainText('zatwierdzony model');
+  const naglowekNiepowiazany = `mvd-oze-zgodnosc-przekrojowa-naglowek-${refNiepowiazany}`;
+  await expect(page.getByTestId(`${naglowekNiepowiazany}-dowod`)).toHaveAttribute('data-stan', 'brak');
+  await expect(page.getByTestId(`${naglowekNiepowiazany}-dowod-numer`)).toHaveCount(0);
+
+  // Bieg „co-jeśli" macierzy (dane formularza) — przycisk klikany NATYWNIE. Wynik modułu
+  // z biegu NIE niesie dowodu: dowód wyprowadza wyłącznie serwer z zatwierdzonego modelu.
+  // Formularz wstępny bez edycji składa się DOKŁADNIE w wejścia mostu modelu z `GET …/wejscia`
+  // (ciało biegu = te same moduły, pole w pole — zero domysłu klienta).
+  const zadanieBiegu = page.waitForRequest(
+    (żądanie) =>
+      new URL(żądanie.url()).pathname === '/api/ncrfg-tests/run' && żądanie.method() === 'POST',
+    { timeout: 60000 },
+  );
   await page.getByTestId('mvd-oze-przeprowadz').click();
+  const cialoBiegu = (await zadanieBiegu).postDataJSON() as { modules: { der_ref: string }[] };
+  const poReferencji = (moduly: { der_ref: string }[]) =>
+    Object.fromEntries(moduly.map((modul) => [modul.der_ref, modul]));
+  expect(Object.keys(cialoBiegu)).toEqual(['modules']);
+  expect(poReferencji(cialoBiegu.modules)).toEqual(poReferencji(wejsciaModelu.modules));
   await expect(page.getByTestId('mvd-oze-komorka-wynik').first()).toBeVisible({ timeout: 60000 });
+  await page.getByTestId(`mvd-oze-modul-${refPowiazany}`).click();
+  const naglowekBiegu = `mvd-oze-wynik-modulu-naglowek-${refPowiazany}`;
+  await expect(page.getByTestId(`${naglowekBiegu}-dowod`)).toHaveAttribute('data-stan', 'brak');
+  await expect(page.getByTestId(`${naglowekBiegu}-zrodlo`)).toContainText('formularz');
 
   // ------------------------------------------------------------------
-  // Krok 8: DOWÓD NA EKRANIE — numer dokumentu wykazu przy urządzeniu
-  // powiązanym, uczciwy stan zerowy przy urządzeniu spoza wykazu.
-  // ------------------------------------------------------------------
-  const dowod = page.getByTestId(`mvd-oze-dowod-${refPowiazany}`);
-  await expect(dowod).toContainText(NUMER_DOKUMENTU);
-  await expect(dowod).toContainText(`WiPWC ${WERSJA_WIPWC}`);
-  await expect(page.getByTestId(`mvd-oze-dowod-brak-${refNiepowiazany}`)).toBeVisible();
-  await expect(page.getByTestId(`mvd-oze-dowod-${refNiepowiazany}`)).toHaveCount(0);
-
-  // ------------------------------------------------------------------
-  // Krok 9: CERTYFIKAT ZGODNOŚCI — żądanie z aktywnym przypadkiem i dowód
-  // w podglądzie. Bez `case_id` backend nie ma skąd wziąć tabliczek modelu
-  // i dokument wraca bez sekcji dowodu.
+  // Krok 9: CERTYFIKAT ZGODNOŚCI — żądanie z aktywnym przypadkiem i operatorem z wyboru.
+  // Moduły PV modelu nie wykazują zdolności wymaganych profilem (model nie ma pisarza tych
+  // pól) — backend odpowiada 422 „czego brakuje", a dowód urządzenia powiązanego występuje
+  // w rekordach braków z NUMEREM DOKUMENTU wykazu.
   // ------------------------------------------------------------------
   const zadanieCertyfikatu = page.waitForRequest(
     (żądanie) =>
-      żądanie.url().includes('/api/oze-analysis/compliance-certificate')
-      && !żądanie.url().includes('.docx')
+      new URL(żądanie.url()).pathname === '/api/oze-analysis/compliance-certificate'
       && żądanie.method() === 'POST',
     { timeout: 60000 },
   );
   await page.getByTestId('mvd-oze-certyfikat-przycisk').click();
-  const urlCertyfikatu = (await zadanieCertyfikatu).url();
+  const certyfikat = await zadanieCertyfikatu;
   expect(
-    urlCertyfikatu,
-    'żądanie certyfikatu bez case_id — dokument powstałby bez sekcji dowodu',
-  ).toContain(`case_id=${seed.caseId}`);
+    new URL(certyfikat.url()).searchParams.get('case_id'),
+    'żądanie certyfikatu bez case_id — backend nie ma skąd wziąć modelu przypadku',
+  ).toBe(seed.caseId);
+  const cialoCertyfikatu = certyfikat.postDataJSON() as Record<string, unknown>;
+  expect(cialoCertyfikatu).toEqual({
+    nazwa_projektu: seed.projectName,
+    nazwa_przypadku: seed.caseName,
+    operator_id: OPERATOR,
+  });
 
   await expect(page.getByTestId('mvd-oze-certyfikat')).toBeVisible({ timeout: 60000 });
-  await expect(page.getByTestId('mvd-oze-cert-braki')).toHaveCount(0);
-  await expect(page.getByTestId('mvd-oze-cert-widok')).toBeVisible({ timeout: 60000 });
-
-  const dowodCertyfikatu = page.getByTestId(`mvd-oze-cert-dowod-${refPowiazany}`);
-  await expect(dowodCertyfikatu).toContainText(NUMER_DOKUMENTU);
-  await expect(dowodCertyfikatu).toContainText(`WiPWC ${WERSJA_WIPWC}`);
-  await expect(page.getByTestId(`mvd-oze-cert-dowod-brak-${refNiepowiazany}`)).toContainText(
-    'Brak danych tabliczki urządzenia w modelu.',
-  );
+  const braki = page.getByTestId('mvd-oze-cert-braki');
+  await expect(braki).toBeVisible({ timeout: 60000 });
+  await expect(page.getByTestId('mvd-oze-cert-widok')).toHaveCount(0);
+  await expect(braki).toContainText(NUMER_DOKUMENTU);
+  const rekordyBrakow = page
+    .getByTestId('mvd-oze-cert-braki-lista-rekordy')
+    .locator('li.mvd-ncrfg-wymaganie');
+  const liczbaBrakow = await rekordyBrakow.count();
+  expect(liczbaBrakow).toBeGreaterThan(0);
+  // Bez widoku dokumentu nie ma czego pobrać — przyciski pobrań nie istnieją.
+  await expect(page.getByTestId('mvd-oze-cert-pobierz-docx')).toHaveCount(0);
 
   // ------------------------------------------------------------------
-  // Krok 10: plik DOCX certyfikatu idzie tą samą drogą (ten sam przypadek).
+  // Krok 10: plik DOCX certyfikatu idzie TĄ SAMĄ bramką (ten sam przypadek, to samo ciało):
+  // weryfikacja niezależna przez API — te same braki co na ekranie.
   // ------------------------------------------------------------------
-  const zadanieDocx = page.waitForResponse(
-    (odpowiedz) =>
-      odpowiedz.url().includes('/api/oze-analysis/compliance-certificate.docx')
-      && odpowiedz.request().method() === 'POST',
-    { timeout: 60000 },
+  const odpowiedzDocx = await request.post(
+    `${BACKEND_BASE}/api/oze-analysis/compliance-certificate.docx?case_id=${seed.caseId}`,
+    { data: cialoCertyfikatu, timeout: 60000 },
   );
-  await page.getByTestId('mvd-oze-cert-pobierz-docx').click();
-  const odpowiedzDocx = await zadanieDocx;
-  expect(odpowiedzDocx.url()).toContain(`case_id=${seed.caseId}`);
-  expect(odpowiedzDocx.status()).toBe(200);
+  expect(odpowiedzDocx.status()).toBe(422);
+  const detalDocx = (
+    (await odpowiedzDocx.json()) as {
+      detail: { braki: { der_ref: string; rekord: { wymaganie_id: string } }[] };
+    }
+  ).detail;
+  expect(detalDocx.braki).toHaveLength(liczbaBrakow);
+  // Każdy brak należy do nazwanego modułu — ekran grupuje go pod tym samym `der_ref`.
+  for (const brak of detalDocx.braki) {
+    await expect(
+      page
+        .getByTestId(`mvd-oze-cert-braki-lista-modul-${brak.der_ref}`)
+        .getByTestId(`mvd-oze-cert-braki-lista-rekordy-${brak.der_ref}-${brak.rekord.wymaganie_id}`),
+    ).toBeVisible();
+  }
 });

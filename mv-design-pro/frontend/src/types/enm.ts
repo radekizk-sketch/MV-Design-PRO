@@ -706,6 +706,97 @@ export interface Generator extends ENMElement {
    * `harmonic` UNKNOWN z nazwanym brakiem) — nigdy widmo typowe.
    */
   modele_widmowe?: ModeleWidmoweElementu | null;
+
+  /**
+   * Moduł istniejący w rozumieniu art. 4 ust. 1 rozporządzenia 2016/631 (`enm/models.py`,
+   * plan AB O-31): `true` — wymagania rozporządzenia nie mają zastosowania bez modernizacji,
+   * `false` — moduł nowy, `null` — status nieustalony. Typ ścisły: wyłącznie wartość logiczna.
+   */
+  modul_istniejacy?: boolean | null;
+
+  /**
+   * Data zawarcia umowy przyłączeniowej `RRRR-MM-DD` — resolver wersji warstw profilu NC RfG
+   * (procedura PTPiREE, WiPWC, IRiESD). `null` — data nieustalona. Liczba nie jest datą.
+   */
+  data_umowy_przylaczeniowej?: string | null;
+
+  /** Nastawy zabezpieczeń modułu ze źródłem (`enm/nastawy_modulu.py`, plan AB O-32). */
+  nastawy_zabezpieczen?: NastawyZabezpieczenModulu | null;
+
+  /**
+   * Deklaracje modułu dla testów zgodności NC RfG / PTPiREE (`enm/deklaracje_modulu.py`,
+   * plan AB O-50): nazwy 1:1 z wejściem solvera. `null` — brak deklaracji (ocena niewykonana
+   * z nazwanym brakiem, nigdy wartość typowa).
+   */
+  deklaracje_modulu?: DeklaracjeModulu | null;
+}
+
+/**
+ * `enm/nastawy_modulu.py::NastawyZabezpieczenModulu` — nastawy zabezpieczeń modułu (U<, U>,
+ * f<, f>, RoCoF, skok wektora) ze źródłem. Kontrakt ścisły: wartości wyłącznie liczbowe;
+ * `zrodlo_pl` obowiązkowe, gdy podano choć jedną wartość; `u_min_pu < u_max_pu`,
+ * `f_min_hz < f_max_hz`, gdy obie wartości pary są podane.
+ */
+export interface NastawyZabezpieczenModulu {
+  /** U< — próg [p.u. U_n], ≥ 0. */
+  u_min_pu?: number | null;
+  /** U< — czas [s], ≥ 0. */
+  u_min_czas_s?: number | null;
+  /** U> — próg [p.u. U_n], > 0. */
+  u_max_pu?: number | null;
+  /** U> — czas [s], ≥ 0. */
+  u_max_czas_s?: number | null;
+  /** f< — próg [Hz], > 0. */
+  f_min_hz?: number | null;
+  /** f< — czas [s], ≥ 0. */
+  f_min_czas_s?: number | null;
+  /** f> — próg [Hz], > 0. */
+  f_max_hz?: number | null;
+  /** f> — czas [s], ≥ 0. */
+  f_max_czas_s?: number | null;
+  /** RoCoF — próg [Hz/s], > 0. */
+  rocof_hz_s?: number | null;
+  /** RoCoF — czas [s], ≥ 0. */
+  rocof_czas_s?: number | null;
+  /** Skok wektora — próg [°], w przedziale (0, 180]. */
+  przesuniecie_fazy_deg?: number | null;
+  /** Skąd pochodzą nastawy (nastawnik zabezpieczenia, karta nastaw, dokument projektu). */
+  zrodlo_pl?: string | null;
+}
+
+/**
+ * `enm/deklaracje_modulu.py::DeklaracjeModulu` — deklaracje modułu (T05, T10–T13, T16–T20) ze
+ * źródłem; nazwy 1:1 z `NcRfgPtpireeModuleInput`. Kontrakt ścisły: flagi wyłącznie
+ * `true`/`false`/`null` (`null` — nie zadeklarowano, `false` — zadeklarowano brak funkcji),
+ * liczby wyłącznie liczbowe; `zrodlo_pl` obowiązkowe, gdy podano choć jedną wartość.
+ */
+export interface DeklaracjeModulu {
+  /** Moc minimalna [kW], ≥ 0 (T10/T11). */
+  p_min_kw?: number | null;
+  has_scada_communication?: boolean | null;
+  has_disturbance_recorder?: boolean | null;
+  active_power_control_enabled?: boolean | null;
+  stop_generation_enabled?: boolean | null;
+  reduction_generation_enabled?: boolean | null;
+  /** Wymaganie zdolności dodatkowej w programie badań operatora (T18); brak = nie wymagano. */
+  island_operation_required?: boolean | null;
+  island_operation_capable?: boolean | null;
+  black_start_required?: boolean | null;
+  black_start_capable?: boolean | null;
+  power_oscillation_damping_required?: boolean | null;
+  power_oscillation_damping_enabled?: boolean | null;
+  /** Szybkość zmiany mocy [% P_max/min], > 0. */
+  ramp_rate_pct_per_min?: number | null;
+  /** Wzmocnienie prądu biernego [p.u./p.u.], ≥ 0 (T17). */
+  reactive_current_gain?: number | null;
+  /** Czas odbudowy mocy czynnej po zwarciu [s], ≥ 0 (T16). */
+  p_recovery_time_s?: number | null;
+  /** Współczynnik THD napięcia [%], ≥ 0 (T20). */
+  harmonic_thdu_percent?: number | null;
+  /** Czas zaprzestania generacji na polecenie [s], > 0 (T12). */
+  cease_generation_time_s?: number | null;
+  /** Skąd pochodzą deklaracje (karta katalogowa, deklaracja wytwórcy, dokument projektu). */
+  zrodlo_pl?: string | null;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,37 +1,47 @@
 /*
- * EkranWniosku — okno „Wniosek OSD" (karta W-707 / E13). Domyka strumień OZE:
- * kompletuje wniosek o określenie warunków przyłączenia z GOTOWYCH wyników
- * (rozpływ + zwarcie + bieg NC RfG) przez `POST /api/oze-analysis/osd-application`.
+ * EkranWniosku — okno „Wniosek OSD" (karta W-707 / E13; kontrakt V2 — karta AB-1a Pakiet D2
+ * §5). Domyka strumień OZE: kompletuje wniosek o określenie warunków przyłączenia z GOTOWYCH
+ * wyników (rozpływ + zwarcie) i z oceny zgodności NC RfG ZATWIERDZONEGO modelu przypadku
+ * przez `POST /api/oze-analysis/osd-application?case_id=`.
  *
- * Formularz: wybór zakończonego przebiegu rozpływu i zwarciowego (rejestr biegów,
- * filtry rodzaju jak „Jakość wyników"/„Zgodność powykonawcza"), węzeł
- * przyłączenia, identyfikacja (nazwa projektu wymagana) oraz żądanie NC RfG 1:1
- * z ostatnim zakończonym biegiem (`ncRfgStore.ostatnieWejscia`, wzorzec
- * certyfikatu P39c). Bez zakończonego biegu NC RfG / bez przebiegów / bez węzła /
- * bez nazwy projektu → przycisk nieaktywny z uczciwym tytułem PL.
+ * Formularz: wybór zakończonego przebiegu rozpływu i zwarciowego (rejestr biegów), węzeł
+ * przyłączenia, identyfikacja (nazwa projektu wymagana) i operator (profil wymagań NC RfG —
+ * z modelu, gdy moduły wskazują jednego; inaczej jawny wybór bez wartości domyślnej). Bez
+ * aktywnego przypadku / operatora / przebiegów / węzła / nazwy projektu → przycisk nieaktywny
+ * z uczciwym tytułem PL.
  *
- * Wynik: sekcje wniosku (bilans mocy, zwarcia punktu, zgodność NC RfG) w tabelach
- * i opisach PL, adnotacje `zalozenia_pl` zawsze widoczne, odciski sekcji w trybie
- * eksperckim. Braki 422 → uczciwa lista PL („wniosek nie może powstać"). „Pobierz
- * DOCX" zapisuje `wniosek-osd-<data>.docx`.
+ * Wynik: sekcje wniosku (bilans mocy, zwarcia punktu, zgodność NC RfG — sekcje modułów
+ * z rekordami wymagań przez `KartaWerdyktu`), `zalozenia_pl` zawsze widoczne, odciski
+ * w informacjach audytowych (tryb ekspercki). Odpowiedź 422 z brakami to ekran „czego
+ * brakuje do wniosku" (braki tekstowe + rekordy W + źródła pominięte). „Pobierz DOCX/PDF"
+ * zapisuje `wniosek-osd-<data>.<format>`.
  *
- * Granice (NOT-A-SOLVER / Single Model): warstwa tylko prezentuje. Wszystkie
- * wielkości i werdykty pochodzą WYŁĄCZNIE z backendu; dane biegu NC RfG czytane
- * read-only ze wspólnego store'u; zero mutacji modelu, zero fizyki.
+ * Granice (NOT-A-SOLVER / Single Model): warstwa tylko prezentuje. Wszystkie wielkości
+ * i rekordy pochodzą WYŁĄCZNIE z backendu; zero mutacji modelu, zero fizyki, zero map
+ * status → tekst i zero liczników.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
+import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
+import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
 import {
+  BrakiWnioskuError,
+  pobierzPlikWniosku,
   pobierzWniosek,
-  pobierzWniosekDocx,
-  WniosekBrakiError,
-  type WidokWniosku,
-  type ZadanieWniosku,
-} from '../api';
+  type FormatDokumentu,
+} from '../ncrfg/api';
+import {
+  BrakiDokumentu,
+  OpisDokumentuWarstwy,
+  SekcjaModuluDokumentu,
+} from '../ncrfg/komponenty';
+import { operatorEfektywny, operatorZModelu } from '../ncrfg/operator';
+import type { BrakiWniosku, WidokWniosku, ZadanieWniosku } from '../ncrfg/typy';
+import { WyborOperatora } from '../ncrfg/WyborOperatora';
 import { useNcRfgStore } from '../ncRfgStore';
 import {
   domyslnyPrzebieg,
@@ -44,17 +54,10 @@ import {
   fmtLiczbaWniosku,
   fmtZJednostkaWniosku,
   nazwaPlikuWniosku,
-  statusWalidacjiWniosekPL,
   WNIOSEK_STRINGS as T,
 } from './strings';
 
 import './wniosek.css';
-
-/** Braki kompletności wniosku (bramka 422 — uczciwa lista po polsku). */
-interface BrakiWniosku {
-  readonly komunikat: string;
-  readonly braki: readonly string[];
-}
 
 /** Zapisz blob jako plik do pobrania (mechanika przeglądarkowa). */
 function zapiszBlob(blob: Blob, nazwa: string): void {
@@ -79,16 +82,19 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
   const rozplywy = useMemo(() => przebiegiRozplywu(runs), [runs]);
   const zwarcia = useMemo(() => przebiegiZwarciowe(runs), [runs]);
 
-  // Bieg NC RfG — wspólny store (widoczny również w macierzy i certyfikacie).
-  const wynikNcRfg = useNcRfgStore((s) => s.wynik);
-  const ostatnieWejscia = useNcRfgStore((s) => s.ostatnieWejscia);
-  const statusNcRfg = useNcRfgStore((s) => s.status);
+  // Operator (profil wymagań NC RfG) — z modelu albo jawny wybór (wspólny store z macierzą).
+  const ders = useStationDerStore((state) => selectAllDers(state));
+  const zModelu = useMemo(() => operatorZModelu(ders), [ders]);
+  const katalog = useNcRfgStore((s) => s.katalog);
+  const operatorWybor = useNcRfgStore((s) => s.operatorWybor);
+  const ustawOperator = useNcRfgStore((s) => s.ustawOperator);
+  const zaladujKatalog = useNcRfgStore((s) => s.zaladujKatalog);
+  const operatorId = operatorEfektywny(zModelu, operatorWybor);
 
   // Identyfikacja domyślna z aktywnego projektu/przypadku (read-only, jednorazowo).
   const nazwaProjektuBazowa = useAppStateStore((s) => s.activeProjectName);
   const nazwaPrzypadkuBazowa = useAppStateStore((s) => s.activeCaseName);
-  // Aktywny przypadek → backend dopina do wniosku dowód certyfikacji PTPiREE
-  // z tabliczek urządzeń modelu (bez niego dokument nie ma sekcji dowodu).
+  // Aktywny przypadek — zgodność NC RfG i dowód certyfikatu serwer wyprowadza z jego modelu.
   const aktywnyPrzypadek = useAppStateStore((s) => s.activeCaseId);
 
   const [pfRunId, setPfRunId] = useState<string | null>(null);
@@ -103,7 +109,11 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
   const [braki, setBraki] = useState<BrakiWniosku | null>(null);
   const [blad, setBlad] = useState<string | null>(null);
   const [ladowanie, setLadowanie] = useState(false);
-  const [docxLadowanie, setDocxLadowanie] = useState(false);
+  const [plikLadowanie, setPlikLadowanie] = useState<FormatDokumentu | null>(null);
+
+  useEffect(() => {
+    void zaladujKatalog();
+  }, [zaladujKatalog]);
 
   // Domyślny wybór przebiegów (preferuje aktywny, inaczej ostatni z listy).
   useEffect(() => {
@@ -121,18 +131,13 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
     );
   }, [zwarcia, activeRunId]);
 
-  const maBiegNcRfg =
-    statusNcRfg === 'ready' &&
-    wynikNcRfg !== null &&
-    ostatnieWejscia !== null &&
-    ostatnieWejscia.length > 0;
-
   const powodBlokady = powodBlokadyWniosku({
+    caseId: aktywnyPrzypadek,
+    operatorId,
     pfRunId,
     scRunId,
     busRef,
     nazwaProjektu,
-    maBiegNcRfg,
   });
 
   // Każda zmiana wejścia unieważnia poprzedni podgląd (stale-result guard).
@@ -143,7 +148,7 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
   };
 
   const zbudujZadanie = (): ZadanieWniosku | null => {
-    if (powodBlokady !== null || pfRunId === null || scRunId === null || !ostatnieWejscia) {
+    if (powodBlokady !== null || pfRunId === null || scRunId === null || operatorId === null) {
       return null;
     }
     return zbudujZadanieWniosku({
@@ -151,16 +156,15 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
       scRunId,
       busRef,
       identyfikacja: { nazwaProjektu, nazwaPrzypadku, wnioskodawca, adres },
-      modules: ostatnieWejscia,
-      procedureVersion: wynikNcRfg?.procedure_version,
+      operatorId,
     });
   };
 
   const obsluzBlad = (err: unknown): void => {
-    if (err instanceof WniosekBrakiError) {
+    if (err instanceof BrakiWnioskuError) {
       setWidok(null);
       setBlad(null);
-      setBraki({ komunikat: err.message, braki: err.braki });
+      setBraki(err.braki);
     } else {
       setBraki(null);
       setBlad(err instanceof Error ? err.message : T.bladTytul);
@@ -169,7 +173,7 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
 
   const generuj = async (): Promise<void> => {
     const zadanie = zbudujZadanie();
-    if (!zadanie) return;
+    if (!zadanie || aktywnyPrzypadek === null) return;
     setLadowanie(true);
     setBlad(null);
     setBraki(null);
@@ -182,18 +186,18 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
     }
   };
 
-  const pobierzDocx = async (): Promise<void> => {
+  const pobierzPlik = async (format: FormatDokumentu): Promise<void> => {
     const zadanie = zbudujZadanie();
-    if (!zadanie) return;
-    setDocxLadowanie(true);
+    if (!zadanie || aktywnyPrzypadek === null) return;
+    setPlikLadowanie(format);
     setBlad(null);
     try {
-      const blob = await pobierzWniosekDocx(zadanie, aktywnyPrzypadek);
-      zapiszBlob(blob, nazwaPlikuWniosku(new Date()));
+      const blob = await pobierzPlikWniosku(zadanie, aktywnyPrzypadek, format);
+      zapiszBlob(blob, nazwaPlikuWniosku(new Date(), format));
     } catch (err) {
       obsluzBlad(err);
     } finally {
-      setDocxLadowanie(false);
+      setPlikLadowanie(null);
     }
   };
 
@@ -338,13 +342,18 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
 
         <section className="mvd-wniosek-sekcja">
           <h4 className="mvd-wniosek-sekcja-tytul">{T.sekcjaNcRfg}</h4>
-          <p className="mvd-wniosek-pole-opis">{T.ncRfgZBiegu}</p>
-          {maBiegNcRfg && ostatnieWejscia ? (
-            <p className="mvd-wniosek-ncrfg-meta" data-testid="mvd-wniosek-ncrfg-meta">
-              {T.ncRfgLiczbaModulow}:{' '}
-              <span className="mvd-num">{ostatnieWejscia.length}</span>
-            </p>
-          ) : null}
+          <p className="mvd-wniosek-pole-opis">{T.ncRfgZModelu}</p>
+          <WyborOperatora
+            zModelu={zModelu}
+            operatorzy={katalog?.operators ?? null}
+            wybor={operatorWybor}
+            onWybor={(wybor) => {
+              ustawOperator(wybor);
+              unewaznij();
+            }}
+            etykieta={T.operator}
+            testid="mvd-wniosek-operator"
+          />
         </section>
       </div>
 
@@ -376,17 +385,24 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
       {braki ? (
         <div className="mvd-wniosek-braki" data-testid="mvd-wniosek-braki">
           <h4>{T.brakiTytul}</h4>
-          <p>{braki.komunikat}</p>
-          <ul>
-            {braki.braki.map((brak, indeks) => (
-              <li key={indeks}>{brak}</li>
-            ))}
-          </ul>
+          <BrakiDokumentu
+            komunikat={braki.komunikat}
+            brakiTekstowe={braki.braki}
+            braki={braki.braki_ncrfg}
+            zdania={braki.braki_ncrfg_pl}
+            pominietePl={braki.pominiete_pl}
+            testid="mvd-wniosek-braki-lista"
+          />
         </div>
       ) : null}
 
       {widok ? (
-        <WynikWniosku widok={widok} trybEkspercki={trybEkspercki} onPobierzDocx={pobierzDocx} docxLadowanie={docxLadowanie} />
+        <WynikWniosku
+          widok={widok}
+          trybEkspercki={trybEkspercki}
+          onPobierz={(format) => void pobierzPlik(format)}
+          plikLadowanie={plikLadowanie}
+        />
       ) : null}
     </div>
   );
@@ -395,21 +411,20 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
 interface WynikWnioskuProps {
   readonly widok: WidokWniosku;
   readonly trybEkspercki: boolean;
-  readonly onPobierzDocx: () => void;
-  readonly docxLadowanie: boolean;
+  readonly onPobierz: (format: FormatDokumentu) => void;
+  readonly plikLadowanie: FormatDokumentu | null;
 }
 
 function WynikWniosku({
   widok,
   trybEkspercki,
-  onPobierzDocx,
-  docxLadowanie,
+  onPobierz,
+  plikLadowanie,
 }: WynikWnioskuProps): JSX.Element {
   const bilans = widok.bilans_mocy;
   const zwarcia = widok.zwarcia_punkt_przylaczenia;
   const zgodnosc = widok.zgodnosc_nc_rfg;
   const identyfikacja = widok.identyfikacja;
-  const pw = bilans.podsumowanie_walidacji;
 
   return (
     <section className="mvd-wniosek-wynik" data-testid="mvd-wniosek-wynik">
@@ -429,18 +444,32 @@ function WynikWniosku({
             <p className="mvd-wniosek-wynik-meta">{identyfikacja.adres_przylaczenia}</p>
           ) : null}
         </div>
-        <button
-          type="button"
-          className="mvd-btn mvd-btn-glowny"
-          onClick={onPobierzDocx}
-          disabled={docxLadowanie}
-          data-testid="mvd-wniosek-pobierz-docx"
-        >
-          {T.pobierzDocx}
-        </button>
+        <div className="mvd-wniosek-pobierz">
+          <button
+            type="button"
+            className="mvd-btn mvd-btn-glowny"
+            onClick={() => onPobierz('docx')}
+            disabled={plikLadowanie !== null}
+            data-testid="mvd-wniosek-pobierz-docx"
+          >
+            {T.pobierzDocx}
+          </button>
+          <button
+            type="button"
+            className="mvd-btn"
+            onClick={() => onPobierz('pdf')}
+            disabled={plikLadowanie !== null}
+            data-testid="mvd-wniosek-pobierz-pdf"
+          >
+            {T.pobierzPdf}
+          </button>
+        </div>
       </div>
 
-      {/* Sekcja 1 — bilans mocy */}
+      {/* Sekcja 1 — bilans mocy: wartości z rozpływu. Kody statusu walidacji energetycznej
+          (`bilans_q_status`, `straty_status`) i liczności `podsumowanie_walidacji` backend
+          podaje bez rekordu wyjaśnienia — pierwszy plan ich nie pokazuje (werdykt bez
+          wyjaśnienia jest zakazany); luka backendu zgłoszona w meldunku karty D2. */}
       <div className="mvd-wniosek-sek" data-testid="mvd-wniosek-bilans">
         <h5 className="mvd-wniosek-sek-tytul">{T.bilansTytul}</h5>
         <dl className="mvd-wniosek-dl">
@@ -469,36 +498,13 @@ function WynikWniosku({
           </div>
           <div>
             <dt>{T.bilansWspMocy}</dt>
-            <dd className="mvd-num">
-              {fmtLiczbaWniosku(bilans.wspolczynnik_mocy_slack, 3)}
-              {' · '}
-              {statusWalidacjiWniosekPL(bilans.bilans_q_status)}
-            </dd>
+            <dd className="mvd-num">{fmtLiczbaWniosku(bilans.wspolczynnik_mocy_slack, 3)}</dd>
           </div>
           <div>
             <dt>{T.bilansStraty}</dt>
-            <dd className="mvd-num">
-              {fmtZJednostkaWniosku(bilans.straty_pct, T.jednProcent)}
-              {' · '}
-              {statusWalidacjiWniosekPL(bilans.straty_status)}
-            </dd>
+            <dd className="mvd-num">{fmtZJednostkaWniosku(bilans.straty_pct, T.jednProcent)}</dd>
           </div>
         </dl>
-        <div className="mvd-wniosek-walidacja" data-testid="mvd-wniosek-walidacja">
-          <span className="mvd-wniosek-walidacja-etyk">{T.bilansWalidacja}:</span>
-          <span>
-            {T.bilansSpelnione} <span className="mvd-num">{pw.spelnione}</span>
-          </span>
-          <span>
-            {T.bilansOstrzezenia} <span className="mvd-num">{pw.ostrzezenia}</span>
-          </span>
-          <span>
-            {T.bilansNiespelnione} <span className="mvd-num">{pw.niespelnione}</span>
-          </span>
-          <span>
-            {T.bilansNieobliczone} <span className="mvd-num">{pw.nieobliczone}</span>
-          </span>
-        </div>
       </div>
 
       {/* Sekcja 2 — zwarcia w punkcie przyłączenia */}
@@ -534,35 +540,27 @@ function WynikWniosku({
         </table>
       </div>
 
-      {/* Sekcja 3 — zgodność NC RfG */}
+      {/* Sekcja 3 — zgodność NC RfG (sekcje modułów, rekordy wymagań — bez agregatu). */}
       <div className="mvd-wniosek-sek" data-testid="mvd-wniosek-zgodnosc">
         <h5 className="mvd-wniosek-sek-tytul">{T.zgodnoscTytul}</h5>
-        <div
-          className={`mvd-wniosek-werdykt ${
-            zgodnosc.status === 'zgodny' ? 'mvd-wniosek-werdykt-ok' : 'mvd-wniosek-werdykt-err'
-          }`}
-          data-testid="mvd-wniosek-werdykt"
-        >
-          {zgodnosc.etykieta_pl}
-        </div>
         <dl className="mvd-wniosek-dl">
           <div>
-            <dt>{T.zgodnoscModuly}</dt>
-            <dd className="mvd-num">{zgodnosc.liczba_modulow}</dd>
-          </div>
-          <div>
-            <dt>{T.zgodnoscZgodne}</dt>
-            <dd className="mvd-num">{zgodnosc.modulow_zgodnych}</dd>
-          </div>
-          <div>
-            <dt>{T.zgodnoscNiezgodne}</dt>
-            <dd className="mvd-num">{zgodnosc.modulow_niezgodnych}</dd>
-          </div>
-          <div>
             <dt>{T.zgodnoscProcedura}</dt>
-            <dd>{zgodnosc.procedura}</dd>
+            <dd>
+              <OpisDokumentuWarstwy
+                dokument={zgodnosc.procedura}
+                testid="mvd-wniosek-zgodnosc-procedura"
+              />
+            </dd>
           </div>
         </dl>
+        {zgodnosc.moduly.map((sekcja) => (
+          <SekcjaModuluDokumentu
+            key={sekcja.der_ref}
+            sekcja={sekcja}
+            testid={`mvd-wniosek-modul-${sekcja.der_ref}`}
+          />
+        ))}
         <p className="mvd-wniosek-odeslanie">{zgodnosc.odeslanie_pl}</p>
       </div>
 
@@ -576,22 +574,21 @@ function WynikWniosku({
         </ul>
       </div>
 
-      {trybEkspercki ? (
-        <dl className="mvd-wniosek-odciski" data-testid="mvd-wniosek-odciski">
-          <div>
-            <dt>{T.odciskWejscia}</dt>
-            <dd className="mvd-num">{widok.input_hash}</dd>
-          </div>
-          {Object.entries(widok.odciski_sekcji_sha256).map(([nazwa, odcisk]) => (
-            <div key={nazwa}>
-              <dt>
-                {T.odciskiTytul}: {nazwa}
-              </dt>
-              <dd className="mvd-num">{odcisk}</dd>
-            </div>
-          ))}
-        </dl>
-      ) : null}
+      <InformacjeAudytowe
+        trybEkspercki={trybEkspercki}
+        testid="mvd-wniosek-odciski"
+        wiersze={[
+          { etykieta: T.odciskWejscia, wartosc: widok.input_hash },
+          {
+            etykieta: T.odciskWejsciaNcRfg,
+            wartosc: zgodnosc.odcisk_wejscia_nc_rfg_sha256,
+          },
+          ...Object.entries(widok.odciski_sekcji_sha256).map(([nazwa, odcisk]) => ({
+            etykieta: `${T.odciskiTytul}: ${nazwa}`,
+            wartosc: odcisk,
+          })),
+        ]}
+      />
     </section>
   );
 }

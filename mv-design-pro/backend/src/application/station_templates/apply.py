@@ -179,7 +179,10 @@ def _zastosuj_gpz_pod_blokada(
     if not source_ref:
         raise TemplateApplyError(
             code="template.grid_source_catalog_missing",
-            message_pl=f"Szablon '{template.id}' nie wskazuje warunków zasilania GPZ (ZRODLO_SN).",
+            message_pl=(
+                f"Szablon '{template.id}' nie wskazuje warunków zasilania GPZ (typ z katalogu "
+                "źródeł zasilania SN)."
+            ),
         )
     apparatus_ref = overrides.get("sn_bay_apparatus_ref") or _cascade_manufacturer_choice(
         template.schema.sn_bay_apparatus_options, catalog_profile

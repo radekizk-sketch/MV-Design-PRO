@@ -1,113 +1,94 @@
-/*
- * Testy czystych adapterów pulpitu instalacji OZE (pulpitModel, karta P47).
- * Weryfikują: listę modułów (przed/po biegu, moduł zablokowany), zgodność
- * (testy niespełnione), dane modułu (odnośniki katalogowe) oraz sekcję pracy
- * magazynu (tylko BESS, tylko gdy dane realnie istnieją).
+/**
+ * Model pulpitu OZE na kontrakcie V2 (karta AB-1a Pakiet D2 §6): pozycja modułu = dane
+ * warsztatu wytwórców + wynik modułu, rekordy wymagań, odrzucenie tabliczki i pominięcie
+ * WYŁĄCZNIE z oceny zatwierdzonego modelu (bez statusu i liczników; o objęciu modułu oceną
+ * rozstrzyga most modelu — klient nie powtarza reguły brak mocy / napięcia, luka §5.3);
+ * sekcje danych modułu i pracy magazynu wyłącznie z realnego kształtu `StationDerConnection`.
  */
 
 import { describe, expect, it } from 'vitest';
 
-import { zbudujModuly } from '../../macierz';
-import { derFixture, wynikFixture } from '../../macierz/__tests__/fixtures';
-import { daneModulu, pracaMagazynu, zbudujPozycje, zgodnoscModulu } from '../pulpitModel';
+import { opisyModulow } from '../../macierz';
+import { derFixture, deryScenyMacierz, zgodnoscFixture } from '../../macierz/__tests__/fixtures';
+import type { ZgodnoscPrzypadkuNcRfg } from '../../ncrfg/typy';
+import { daneModulu, pracaMagazynu, zbudujPozycje } from '../pulpitModel';
 
-describe('zbudujPozycje — lista modułów (kryterium 1)', () => {
-  it('przed biegiem status to „nieprzeprowadzone"', () => {
-    const opisy = zbudujModuly([derFixture({ id: 'pv-1', nominal_power_kw: 500 })]);
+describe('zbudujPozycje — dane modelu + ocena zatwierdzonego modelu', () => {
+  const opisy = [
+    ...opisyModulow(deryScenyMacierz()),
+    ...opisyModulow([derFixture({ id: 'zz-fw', der_kind: 'FW', connection_voltage_kv: null })]),
+  ];
+  const KLUCZE = ['derRef', 'nazwa', 'ocena', 'odrzucony', 'pominietyPowodPl', 'rodzaj', 'wynik'];
+
+  it('bez oceny: bez wyniku, rekordów, odrzucenia i pominięcia — żadnego powodu liczonego po stronie klienta', () => {
     const pozycje = zbudujPozycje(opisy, null);
-    expect(pozycje[0].status).toBe('nieprzeprowadzone');
-    expect(pozycje[0].przeprowadzono).toBe(false);
-    expect(pozycje[0].klasa).toBeNull();
-  });
-
-  it('po biegu klasa i status pochodzą z odpowiedzi backendu', () => {
-    const opisy = zbudujModuly([
-      derFixture({ id: 'pv-1', nominal_power_kw: 500 }),
-      derFixture({ id: 'bess-1', der_kind: 'BESS', nominal_power_kw: 800 }),
+    expect(pozycje.map((p) => [p.wynik, p.ocena, p.odrzucony, p.pominietyPowodPl])).toEqual([
+      [null, null, null, null],
+      [null, null, null, null],
+      [null, null, null, null],
     ]);
-    const pozycje = zbudujPozycje(opisy, wynikFixture());
-    const pv = pozycje.find((p) => p.derRef === 'pv-1')!;
-    const bess = pozycje.find((p) => p.derRef === 'bess-1')!;
-    expect(pv.klasa).toBe('PV');
-    expect(pv.status).toBe('zgodny');
-    expect(pv.passCount).toBe(2);
-    expect(pv.requiredCount).toBe(2);
-    expect(bess.status).toBe('niezgodny');
+    for (const pozycja of pozycje) expect(Object.keys(pozycja).sort()).toEqual(KLUCZE);
   });
 
-  it('moduł bez napięcia jest zablokowany i ma status „brak danych"', () => {
-    const opisy = zbudujModuly([
-      derFixture({ id: 'fw-1', der_kind: 'FW', connection_voltage_kv: null, connection_side: 'dedicated_transformer' }),
-    ]);
-    const pozycje = zbudujPozycje(opisy, wynikFixture());
-    expect(pozycje[0].zablokowany).toBe(true);
-    expect(pozycje[0].status).toBe('brak_danych');
-    expect(pozycje[0].przeprowadzono).toBe(false);
-  });
-});
-
-describe('zgodnoscModulu — sekcja 2 (kryterium 2)', () => {
-  it('przed biegiem oznacza brak przeprowadzenia', () => {
-    const opisy = zbudujModuly([derFixture({ id: 'pv-1', nominal_power_kw: 500 })]);
-    const z = zgodnoscModulu(opisy[0], null);
-    expect(z.przeprowadzono).toBe(false);
-    expect(z.niespelnione).toHaveLength(0);
+  it('z oceną: wynik modułu i rekordy W z oceny (te same obiekty); moduł spoza oceny bez wyniku', () => {
+    const ocena = zgodnoscFixture();
+    const pozycje = zbudujPozycje(opisy, ocena);
+    expect(pozycje[0].wynik).toBe(ocena.bieg!.modules[0]);
+    expect(pozycje[1].ocena).toBe(ocena.bieg!.ocena_wymagan[1]);
+    expect(pozycje[2].wynik).toBeNull();
+    expect(pozycje[2].ocena).toBeNull();
+    for (const pozycja of pozycje) expect(Object.keys(pozycja).sort()).toEqual(KLUCZE);
   });
 
-  it('po biegu wybiera wyłącznie testy niespełnione z akcjami naprawczymi', () => {
-    const opisy = zbudujModuly([derFixture({ id: 'bess-1', der_kind: 'BESS', nominal_power_kw: 800 })]);
-    const z = zgodnoscModulu(opisy[0], wynikFixture());
-    expect(z.przeprowadzono).toBe(true);
-    expect(z.niespelnione).toHaveLength(1);
-    expect(z.niespelnione[0].test_id).toBe('FRT_LVRT');
-    expect(z.niespelnione[0].fix_actions.length).toBeGreaterThan(0);
+  it('odrzucenie tabliczki i pominięcie przypisane po referencji modułu (rekordy serwera)', () => {
+    const [bess, pv] = deryScenyMacierz();
+    const ocena: ZgodnoscPrzypadkuNcRfg = {
+      ...zgodnoscFixture(),
+      certyfikaty_odrzucone: [{ der_ref: bess.id, rekord_ref: 'rekord-x', powod_pl: 'odrzucona' }],
+      pominiete: [{ der_ref: 'zz-fw', der_name: null, powod: 'brak_napiecia', powod_pl: 'pominięty' }],
+    };
+    const pozycje = zbudujPozycje(opisy, ocena);
+    expect(pozycje[0].derRef).toBe(bess.id);
+    expect(pozycje[0].odrzucony).toBe(ocena.certyfikaty_odrzucone[0]);
+    expect(pozycje[1].derRef).toBe(pv.id);
+    expect(pozycje[1].odrzucony).toBeNull();
+    expect(pozycje[2].pominietyPowodPl).toBe('pominięty');
+    expect(pozycje[0].pominietyPowodPl).toBeNull();
+  });
+
+  it('serwer jest autorytetem: moduł z brakiem danych w warsztacie, a z wynikiem w ocenie, pokazuje wynik', () => {
+    const ocena = zgodnoscFixture();
+    const [bess] = deryScenyMacierz();
+    const opisyBezNapiecia = opisyModulow([{ ...bess, connection_voltage_kv: null }]);
+    const [pozycja] = zbudujPozycje(opisyBezNapiecia, ocena);
+    expect(opisyBezNapiecia[0].napiecieKv).toBeNull();
+    expect(pozycja.wynik).toBe(ocena.bieg!.modules[0]);
   });
 });
 
 describe('daneModulu — sekcja 1', () => {
-  it('zbiera obecne odnośniki katalogowe z etykietami PL', () => {
+  it('odnośniki katalogowe obecne na module z etykietami PL (identyfikator certyfikatu jako dana)', () => {
     const der = derFixture({
       id: 'pv-1',
       nominal_power_kw: 500,
       catalogs: { device_catalog_ref: 'inv-1', ptpiree_certificate_ref: 'cert-1' },
     });
-    const opis = zbudujModuly([der])[0];
-    const dane = daneModulu(opis, der);
+    const dane = daneModulu(opisyModulow([der])[0], der);
     expect(dane.mocKw).toBe(500);
-    expect(dane.odnosniki.map((o) => o.etykieta)).toEqual([
-      'Urządzenie wytwórcze',
-      'Certyfikat PTPiREE',
+    expect(dane.odnosniki).toEqual([
+      { etykieta: 'Urządzenie wytwórcze', wartosc: 'inv-1' },
+      { etykieta: 'Certyfikat PTPiREE', wartosc: 'cert-1' },
     ]);
-    expect(dane.odnosniki[0].wartosc).toBe('inv-1');
   });
 });
 
 describe('pracaMagazynu — sekcja 3 (tylko BESS z danymi)', () => {
-  it('BESS z katalogiem baterii zwraca dane magazynu', () => {
-    const der = derFixture({
-      id: 'bess-1',
-      der_kind: 'BESS',
-      catalogs: { battery_catalog_ref: 'bat-1' },
-    });
-    expect(pracaMagazynu(der)?.bateriaRef).toBe('bat-1');
-  });
-
-  it('BESS z trybami pracy zwraca dane magazynu', () => {
-    const der = derFixture({
-      id: 'bess-1',
-      der_kind: 'BESS',
-      profiles: { bess_operation_mode_refs: ['tryb-a', 'tryb-b'] },
-    });
-    expect(pracaMagazynu(der)?.trybyPracy).toHaveLength(2);
-  });
-
-  it('BESS bez danych magazynu zwraca null (sekcja pominięta)', () => {
-    const der = derFixture({ id: 'bess-1', der_kind: 'BESS' });
-    expect(pracaMagazynu(der)).toBeNull();
-  });
-
-  it('moduł inny niż BESS zwraca null', () => {
-    const der = derFixture({ id: 'pv-1', catalogs: { battery_catalog_ref: 'bat-1' } });
-    expect(pracaMagazynu(der)).toBeNull();
+  it.each([
+    ['BESS z katalogiem baterii', { der_kind: 'BESS', catalogs: { battery_catalog_ref: 'bat-1' } }, { bateriaRef: 'bat-1', trybyPracy: [] }],
+    ['BESS z trybami pracy', { der_kind: 'BESS', profiles: { bess_operation_mode_refs: ['a', 'b'] } }, { bateriaRef: null, trybyPracy: ['a', 'b'] }],
+    ['BESS bez danych', { der_kind: 'BESS' }, null],
+    ['PV z referencją baterii', { catalogs: { battery_catalog_ref: 'bat-1' } }, null],
+  ] as const)('%s', (_opis, nadpisanie, oczekiwane) => {
+    expect(pracaMagazynu(derFixture({ id: 'x', ...(nadpisanie as object) }))).toEqual(oczekiwane);
   });
 });

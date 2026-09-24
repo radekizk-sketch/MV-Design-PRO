@@ -319,6 +319,74 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
+  // Plan AB O-50 pkt 5–6 (karta AB-1a Pakiet D2 §0 pkt 8): KAŻDE pole danych modułu NC RfG
+  // (art. 4, data umowy, nastawy zabezpieczeń, deklaracje) trafia do `add_converter_source`
+  // — natywna ścieżka: krok „Zgodność" → pola → „Zapisz".
+  async function wypelnijDoZgodnosci(): Promise<string> {
+    render(<KreatorZrodlaOze />);
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-krok-zgodnosc'));
+    const t = 'mvd-kreator-oze-zgodnosc-dane-modulu';
+    await waitFor(() => expect(screen.getByTestId(t)).toBeInTheDocument());
+    return t;
+  }
+
+  it('dane modułu NC RfG (art. 4, data, nastawy, deklaracje) → pola ładunku add_converter_source', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    const t = await wypelnijDoZgodnosci();
+    await userEvent.selectOptions(screen.getByTestId(`${t}-modul_istniejacy`), 'nie');
+    await userEvent.type(screen.getByTestId(`${t}-data_umowy_przylaczeniowej`), '2025-05-12');
+    await userEvent.type(screen.getByTestId(`${t}-nastawa-f_min_hz`), '47,5');
+    await userEvent.type(screen.getByTestId(`${t}-nastawa-zrodlo_pl`), 'karta nastaw');
+    await userEvent.selectOptions(screen.getByTestId(`${t}-flaga-has_scada_communication`), 'tak');
+    await userEvent.selectOptions(screen.getByTestId(`${t}-flaga-has_disturbance_recorder`), 'nie');
+    await userEvent.type(screen.getByTestId(`${t}-liczba-ramp_rate_pct_per_min`), '10');
+    await userEvent.type(screen.getByTestId(`${t}-zrodlo_deklaracji`), 'karta katalogowa');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
+
+    await waitFor(() =>
+      expect(executeDomainOperationMock).toHaveBeenCalledWith('case-1', 'add_converter_source', expect.anything()),
+    );
+    const payload = executeDomainOperationMock.mock.calls.find((c) => c[1] === 'add_converter_source')![2];
+    expect(payload.modul_istniejacy).toBe(false);
+    expect(payload.data_umowy_przylaczeniowej).toBe('2025-05-12');
+    expect(payload.nastawy_zabezpieczen).toMatchObject({ f_min_hz: 47.5, u_min_pu: null, zrodlo_pl: 'karta nastaw' });
+    expect(payload.deklaracje_modulu).toMatchObject({
+      has_scada_communication: true,
+      has_disturbance_recorder: false,
+      // Nie zadeklarowano = `null`, nigdy `false`.
+      active_power_control_enabled: null,
+      ramp_rate_pct_per_min: 10,
+      p_min_kw: null,
+      zrodlo_pl: 'karta katalogowa',
+    });
+  });
+
+  it('bez danych modułu: pola NC RfG NIEOBECNE w ładunku (stan „nieustalone", nie wartość typowa)', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    await wypelnijDoZgodnosci();
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
+    await waitFor(() =>
+      expect(executeDomainOperationMock).toHaveBeenCalledWith('case-1', 'add_converter_source', expect.anything()),
+    );
+    const payload = executeDomainOperationMock.mock.calls.find((c) => c[1] === 'add_converter_source')![2];
+    for (const pole of ['modul_istniejacy', 'data_umowy_przylaczeniowej', 'nastawy_zabezpieczen', 'deklaracje_modulu']) {
+      expect(payload, pole).not.toHaveProperty(pole);
+    }
+  });
+
+  it('deklaracja bez źródła → nazwany błąd pola i zero zapisu (backend odrzuciłby 422)', async () => {
+    const t = await wypelnijDoZgodnosci();
+    await userEvent.selectOptions(screen.getByTestId(`${t}-flaga-has_scada_communication`), 'tak');
+    expect(screen.getByTestId(`${t}-zrodlo_deklaracji-blad`)).toHaveTextContent('źródło deklaracji');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
+    expect(executeDomainOperationMock).not.toHaveBeenCalledWith('case-1', 'add_converter_source', expect.anything());
+  });
+
   it('k_sc z karty producenta pokazany wprost w kroku katalogu, brak deklaracji pokazuje jawny stan „brak"', async () => {
     fetchConverterTypesMock.mockResolvedValue([
       { ...DOMYSLNE_KONWERTERY[0], id: 'conv-pv-ksc-a', k_sc: 1.15 },

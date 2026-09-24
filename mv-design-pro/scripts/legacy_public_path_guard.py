@@ -2047,6 +2047,167 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "X2",
         zasieg="plik",
     ),
+    # --- Karta AB-1a Pakiet B+C (2026-09-23): kontrakt V2 NC RfG/PTPiREE ---------
+    # Kasacja drugiego toru dowodu certyfikatu i agregatów V1 (meldunek integracji B+C,
+    # pozycja (f)2). Pola V1 kontraktów zapisane `Klasa.pole` (zasięg: plik kontraktu).
+    _be_sciezka("solver_input/dowod_ncrfg.py", "BC"),
+    _be_sciezka("application/analyses/dowod_certyfikatu.py", "BC"),
+    _be_sciezka("compliance", "BC"),
+    *[
+        _be_sciezka(f"catalog/profiles/nc_rfg/{op}.yaml", "BC")
+        for op in ("enea", "energa", "pge", "pse", "tauron")
+    ],
+    *_be_def(
+        "solver_input/dowod_ncrfg.py",
+        "ocena_dowodowa_biegu ocena_dowodowa_testu OcenaDowodowaBiegu OcenaDowodowaModulu "
+        "testy_bez_klasyfikacji",
+        "BC",
+    ),
+    *_be_def(
+        "application/analyses/dowod_certyfikatu.py",
+        "NcRfgCertificateEvidence dowody_certyfikatu dowody_certyfikatu_typu "
+        "dowody_certyfikatu_z_enm sekcje_dowodow",
+        "BC",
+    ),
+    *_be_def("compliance/nc_rfg_modul.py", "modul_nc_rfg NcRfgModul", "BC"),
+    *_be_def(
+        "application/ncrfg_compliance/model_bridge.py", "certificate_status_z_tabliczki", "BC"
+    ),
+    *_be_def("network_model/solvers/ncrfg_ptpiree/contracts.py", "PtpireeCertificateStatus", "BC"),
+    *_be_def(
+        "catalog/profiles/nc_rfg/loader.py",
+        "NcRfgProfileLoader NcRfgComplianceTest SUPPORTED_OPERATORS",
+        "BC",
+    ),
+    *_be_def(
+        "catalog/profiles/nc_rfg/loader.py",
+        "classify_module NcRfgProfile.compliance_tests NcRfgModuleType.voltage_kv_max",
+        "BC",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "application/analyses/certyfikat_zgodnosci.py",
+        "_STATUS_MODULU_PL _WERDYKT_PL CertyfikatZgodnosciRequest.run_request",
+        "BC",
+        zasieg="plik",
+    ),
+    *_be_def("api/oze_analysis_runs.py", "WniosekOsdRequest.run_request", "BC", zasieg="plik"),
+    *_be_def(
+        "network_model/solvers/ncrfg_ptpiree/contracts.py",
+        "NcRfgPtpireeModuleResult.overall_status NcRfgPtpireeModuleResult.pass_count "
+        "NcRfgPtpireeModuleResult.fail_count NcRfgPtpireeModuleResult.no_data_count "
+        "NcRfgPtpireeModuleResult.not_required_count NcRfgPtpireeModuleResult.required_count "
+        "NcRfgPtpireeModuleResult.certificate_status NcRfgPtpireeModuleInput.certificate_status "
+        "NcRfgPtpireeRunRequest.deterministic_seed NcRfgPtpireeRunRequest.procedure_version "
+        "NcRfgPtpireeTestResult.fix_actions",
+        "BC",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "application/ncrfg_compliance/bieg.py",
+        "NcRfgPtpireeRunResponse.reporting_status NcRfgPtpireeRunResponse.proof_status "
+        "NcRfgPtpireeRunResponse.evidence_limitations NcRfgPtpireeRunResponse.evidence_note_pl "
+        "NcRfgPtpireeRunResponse.evidence_per_module NcRfgPtpireeRunResponse.evidence_by_test "
+        "NcRfgPtpireeRunResponse.certificate_evidence",
+        "BC",
+        zasieg="plik",
+    ),
+    # --- Karta AB-1a Pakiet D2 (2026-09-23): jeden klient V2 NC RfG we froncie ---------
+    # Kasacja klienta V1 (`ui/ncrfg-tests/**`), drugiego ekranu tej samej zdolności
+    # (`NcRfgTestsTab`), klienckiego statusu certyfikatu, agregatów i map status→tekst/kolor
+    # poza `KartaWerdyktu.tsx` oraz klienckich progów klasyfikacji modułu.
+    _fe_sciezka("ui/ncrfg-tests", "D2"),
+    _fe_sciezka("ui/workspace/surfaces/NcRfgTestsTab.tsx", "D2"),
+    _fe_sciezka("ui/network-build/station-der/certyfikatPtpiree.ts", "D2"),
+    *_fe_def(
+        "ui/ncrfg-tests/api.ts",
+        "runNcRfgPtpireeTests fetchNcRfgTestCatalog fetchNcRfgCaseCompliance "
+        "NcRfgCertificateStatus NcRfgCertificateEvidence NcRfgVerdict NcRfgRunRequest "
+        "NcRfgRunResult NcRfgModuleResult NcRfgModuleInput NcRfgTestResult NcRfgTestDefinition "
+        "NcRfgTestCatalogResponse NcRfgCaseComplianceResponse NcRfgOperatorProfile "
+        "NcRfgDerPominiety OcenaDowodowaModuluNcRfg OcenaDowodowaTestuNcRfg",
+        "D2",
+    ),
+    *_fe_def("ui/workspace/surfaces/NcRfgTestsTab.tsx", "NcRfgTestsTab", "D2"),
+    *_fe_def("ui/network-build/station-der/certyfikatPtpiree.ts", "statusCertyfikatuPtpiree", "D2"),
+    *_fe_def(
+        "ui/network-build/station-der/derRemoteCatalogs.ts",
+        "fetchNcRfgModuleClassification NcRfgModuleLetter",
+        "D2",
+    ),
+    *_fe_def(
+        "ui2/oze/macierz/macierzModel.ts",
+        "PodsumowanieModulu PodsumowanieProjektu agregujPodsumowania podsumowanieModulu "
+        "podsumowanieModuluZWyniku podsumowanieProjektu podsumowaniaZBiegu testyNiespelnione "
+        "rozwiazCertyfikat",
+        "D2",
+    ),
+    *_fe_def(
+        "ui2/oze/macierz/macierzModel.ts",
+        "KluczNumeryczny KluczZdolnosci NumeryczneModulu StanKomorki",
+        "D2",
+        zasieg="plik",
+    ),
+    *_fe_def(
+        "ui2/oze/macierz/strings.ts",
+        "ETYKIETY_WERDYKTU KLASA_WERDYKTU ETYKIETY_STATUSU_MODULU",
+        "D2",
+    ),
+    *_fe_def(
+        "ui2/oze/macierz/zgodnoscPrzekrojowaModel.ts",
+        "podsumowanieZgodnosciPrzekrojowej stopienDowodowyModulu brakiZgodnosciPrzekrojowej "
+        "wierszeZgodnosciPrzekrojowej",
+        "D2",
+    ),
+    *_fe_def("ui2/oze/macierz/zgodnoscPrzekrojowaModel.ts", "BrakiModulu", "D2", zasieg="plik"),
+    *_fe_def("ui2/oze/pulpit/strings.ts", "ETYKIETY_STATUSU_PULPITU KLASA_STATUSU_PULPITU", "D2"),
+    *_fe_def("ui2/oze/pulpit/pulpitModel.ts", "StatusPulpitu zgodnoscModulu ZgodnoscModulu", "D2"),
+    *_fe_def(
+        "ui2/oze/wniosek/strings.ts", "STATUS_WALIDACJI_WNIOSEK_PL statusWalidacjiWniosekPL", "D2"
+    ),
+    *_fe_def("ui2/oze/krzywe/krzyweModel.ts", "istotnoscWerdyktuPQ", "D2"),
+    *_fe_def("ui2/oze/studium/studiumModel.ts", "werdyktPokryciaPL", "D2"),
+    *_fe_def("ui2/oze/ranking/rankingModel.ts", "klasaNcRfg klasyOperatora", "D2"),
+    *_fe_def(
+        "ui2/oze/api.ts",
+        "WerdyktPQ WerdyktZbiorczyCertyfikatu DowodCertyfikatuPtpiree KlasaModuluNcRfg "
+        "ModulCertyfikatu TestCertyfikatu OdpowiedzKatalogNcRfg pobierzKatalogKlasNcRfg "
+        "pobierzCertyfikatDocx pobierzWniosekDocx CertyfikatBrakiError WniosekBrakiError",
+        "D2",
+    ),
+    *_fe_wzorzec("ui/sld/v2/canvas/enmToSldAdapter.ts", ("deriveNcRfgModule",), "D2"),
+    *_fe_wzorzec("ui/sld/v2/canvas/SldDetailDrawer.tsx", ("ncRfgModule: 'A'",), "D2"),
+    *_fe_wzorzec(
+        "ui2/oze/ncrfg/typy.ts",
+        (
+            "overall_status",
+            "pass_count",
+            "fail_count",
+            "no_data_count",
+            "required_count",
+            "certificate_status",
+            "certificate_evidence",
+            "reporting_status",
+            "proof_status",
+            "evidence_by_test",
+            "evidence_per_module",
+            "fix_actions",
+            "run_request",
+            "NcRfgPtpireeTestResultV1",
+        ),
+        "D2",
+    ),
+    # --- AB-1b.1a (2026-09-23): kontrakt wyniku dynamiki v1 zastapiony przez v2 (probki L/P) --
+    _be_sciezka("application/contracts/resultset_dynamic_v1.py", "1B1A"),
+    *_be_def(
+        "application/contracts/resultset_dynamic_v1.py",
+        "ResultSetDynamicV1 KanalDynamicznyV1 ZdarzenieWykonaneV1 WlasnosciBieguV1 "
+        "TozsamoscBieguDynamicznegoV1 MetrykaDynamicznaV1 StopienDowodowyV1 "
+        "zbuduj_resultset_dynamiczny_v1",
+        "1B1A",
+    ),
+    # --- AB-H0 / O-53 (2026-09-24): druga regula mocy transformatora toru DER-SN --------------
+    *_be_def("enm/der_sn_validation.py", "validate_transformer_power", "H0"),
 )
 
 _PY_DEF_TYPES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
@@ -2085,6 +2246,19 @@ def _ts_definicja(nazwa: str) -> re.Pattern[str]:
     )
 
 
+#: Wpisy spoza inwentarza LEGACY_USUNAC (etykieta wiersza → karta kasacji).
+KARTY_WPISOW_SPOZA_INWENTARZA: dict[str, str] = {
+    "BC": "AB-1a Pakiet B+C",
+    "D2": "AB-1a Pakiet D2",
+    "1B1A": "AB-1b.1a",
+    "H0": "AB-H0 (O-53)",
+}
+
+
+def _karta_wpisu(wpis: WpisPakietuL) -> str:
+    return KARTY_WPISOW_SPOZA_INWENTARZA.get(wpis.wiersz, "AB-1a Pakiet L")
+
+
 def check_pakiet_l_resurrection() -> list[str]:
     """Karta AB-1a Pakiet L (2026-09-23): skasowane pozycje LEGACY_USUNAC nie moga
     wrocic — patrz komentarz nad `PAKIET_L_WPISY` (trzy rodzaje wpisu, zasieg
@@ -2099,7 +2273,7 @@ def check_pakiet_l_resurrection() -> list[str]:
         if zrodlo_istnieje(korzenie[wpis.warstwa] / wpis.sciezka, wzorce):
             violations.append(
                 f"[resurrected-module] {wpis.warstwa}/src/{wpis.sciezka}: pozycja "
-                f"LEGACY_USUNAC {wpis.wiersz} (usunieta w karcie AB-1a Pakiet L, "
+                f"LEGACY_USUNAC {wpis.wiersz} (usunieta w karcie {_karta_wpisu(wpis)}, "
                 "2026-09-23) — nie odtwarzaj"
             )
 
@@ -2124,7 +2298,8 @@ def check_pakiet_l_resurrection() -> list[str]:
                 if trafiony is not None:
                     violations.append(
                         f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} (pozycja "
-                        f"LEGACY_USUNAC {trafiony.wiersz}, usunieta w karcie AB-1a Pakiet L) "
+                        f"LEGACY_USUNAC {trafiony.wiersz}, usunieta w karcie "
+                        f"{_karta_wpisu(trafiony)}) "
                         "nie moze wrocic"
                     )
 
@@ -2148,8 +2323,8 @@ def check_pakiet_l_resurrection() -> list[str]:
                     if wzorzec.search(tekst):
                         violations.append(
                             f"[resurrected-definition] {rel_path}: export {wpis.symbol} "
-                            f"(pozycja LEGACY_USUNAC {wpis.wiersz}, usunieta w karcie AB-1a "
-                            "Pakiet L) nie moze wrocic"
+                            f"(pozycja LEGACY_USUNAC {wpis.wiersz}, usunieta w karcie "
+                            f"{_karta_wpisu(wpis)}) nie moze wrocic"
                         )
                 for wpis in plikowe_fe.get(rel_src, []):
                     if wpis.symbol is None:
@@ -2163,7 +2338,8 @@ def check_pakiet_l_resurrection() -> list[str]:
                     if trafienie:
                         violations.append(
                             f"{znacznik} {rel_path}: {wpis.symbol!r} (pozycja LEGACY_USUNAC "
-                            f"{wpis.wiersz}, usunieta z tego pliku w karcie AB-1a Pakiet L) "
+                            f"{wpis.wiersz}, usunieta z tego pliku w karcie "
+                            f"{_karta_wpisu(wpis)}) "
                             "nie moze wrocic"
                         )
     return violations

@@ -5,14 +5,14 @@
  * EKRANU ANALIZY (`ui2/wyniki/wzorzec`).
  *
  * Granice (NOT-A-SOLVER): zero fizyki, zero ocen lokalnych, zero nowych końcówek.
- * Jedyna arytmetyka to PREZENTACJA: przyrost strat [kW] i klasa NC RfG REUŻYTE
- * importem z okna „Ranking punktów przyłączenia" (`../ranking/rankingModel`),
+ * Jedyna arytmetyka to PREZENTACJA: przyrost strat [kW] REUŻYTY importem z okna „Ranking
+ * punktów przyłączenia" (`../ranking/rankingModel`); typ modułu NC RfG pochodzi WYŁĄCZNIE
+ * z klasyfikacji backendu (`GET /api/ncrfg-tests/modul`, `../ncrfg/klasyfikacja`),
  * a pasmo Q to ODCZYT wierzchołka obszaru najbliższego mocy typu (bez interpolacji).
  * Runner nigdy nie rzuca wyjątkiem — błąd jednego wariantu nie przerywa pozostałych.
  */
 
 import type {
-  KlasaModuluNcRfg,
   RekordKonwertera,
   WezelZdolnosci,
   WidokObszaruPQ,
@@ -24,7 +24,12 @@ import type {
   ZapytanieZdolnosci,
 } from '../api';
 import type { DefinicjaKolumny, WartoscKomorki, WierszTabeli } from '../../wyniki/wzorzec';
-import { klasaNcRfg, przyrostStratKw } from '../ranking/rankingModel';
+import { krotkiOpisKlasyfikacji } from '../ncrfg/klasyfikacja';
+import {
+  przyrostStratKw,
+  zapytanieKlasyfikacjiWezla,
+  type OdczytKlasyfikacji,
+} from '../ranking/rankingModel';
 import { fmtMocMW, fmtStratyKw } from '../ranking/strings';
 import { fmtMvarObszar } from '../obszar/strings';
 import { STUDIUM_STRINGS } from './strings';
@@ -298,12 +303,13 @@ export function pasmoQwPunkcie(widok: WidokObszaruPQ | null, mocZrodlaMW: number
   );
 }
 
-/** Werdykt pokrycia P–Q jako etykieta PL (wprost z flagi `werdykt.pokryty`). */
-export function werdyktPokryciaPL(widok: WidokPokryciaPQ | null): string {
+/**
+ * Ocena pokrycia P–Q w wierszu przeglądu: etykieta rekordu `ocena` (`OcenaKryterium`
+ * backendu) bez przemapowania — tekst i status liczy kontrakt werdyktu, nie ten moduł.
+ */
+export function etykietaPokryciaPL(widok: WidokPokryciaPQ | null): string {
   if (widok === null) return STUDIUM_STRINGS.kreska;
-  return widok.werdykt.pokryty
-    ? STUDIUM_STRINGS.pokryciePokryte
-    : STUDIUM_STRINGS.pokrycieNiepokryte;
+  return widok.ocena.etykieta.etykieta_pl;
 }
 
 // ---------------------------------------------------------------------------
@@ -342,11 +348,12 @@ export function kolumnyStudium(): DefinicjaKolumny[] {
   ];
 }
 
-/** Kontekst budowy wierszy (nazwa/napięcie węzła, klasy operatora, moc typu). */
+/** Kontekst budowy wierszy (nazwa/napięcie węzła, klasyfikacja backendu, moc typu). */
 export interface KontekstWierszaStudium {
   readonly nazwaWezla: (busRef: string) => string;
   readonly napiecieWezla: (busRef: string) => number | null;
-  readonly klasy: readonly KlasaModuluNcRfg[];
+  /** Odczyt klasyfikacji backendu (`useKlasyfikacjeModulow`) dla pary (moc, napięcie). */
+  readonly klasyfikacja: OdczytKlasyfikacji;
   readonly mocZrodlaMW: number;
 }
 
@@ -366,11 +373,11 @@ function komorkaStratStudium(wezel: WezelZdolnosci | null): WartoscKomorki {
 function komorkaKlasaStudium(
   wezel: WezelZdolnosci | null,
   napiecieKv: number | null,
-  klasy: readonly KlasaModuluNcRfg[],
+  klasyfikacja: OdczytKlasyfikacji,
 ): WartoscKomorki {
   if (wezel === null) return { wartosc: STUDIUM_STRINGS.kreska };
-  const klasa = klasaNcRfg(wezel.max_hosting_capacity_mw, napiecieKv, klasy);
-  return { wartosc: klasa !== null ? klasa.id : STUDIUM_STRINGS.kreska };
+  const stan = klasyfikacja(zapytanieKlasyfikacjiWezla(wezel, napiecieKv));
+  return { wartosc: krotkiOpisKlasyfikacji(stan, STUDIUM_STRINGS.kreska) };
 }
 
 /** Wiersz przeglądu dla jednego wariantu (semantyka `ValueRow`). */
@@ -385,8 +392,8 @@ export function wierszStudium(
     [KLUCZ_WIERSZA_STUDIUM]: { wartosc: wariant.busRef },
     moc: komorkaMocStudium(wezel),
     straty: komorkaStratStudium(wezel),
-    klasa: komorkaKlasaStudium(wezel, napiecieKv, kontekst.klasy),
-    pokrycie: { wartosc: werdyktPokryciaPL(wariant.pokrycie.dane) },
+    klasa: komorkaKlasaStudium(wezel, napiecieKv, kontekst.klasyfikacja),
+    pokrycie: { wartosc: etykietaPokryciaPL(wariant.pokrycie.dane) },
     pasmoQ: { wartosc: pasmoQwPunkcie(wariant.obszar.dane, kontekst.mocZrodlaMW) },
   };
 }

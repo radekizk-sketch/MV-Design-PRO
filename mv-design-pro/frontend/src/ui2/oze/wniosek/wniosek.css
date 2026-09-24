@@ -99,11 +99,6 @@
   color: var(--mvd-muted);
 }
 
-.mvd-wniosek-ncrfg-meta {
-  margin: 0;
-  font-size: 13px;
-}
-
 .mvd-wniosek-akcje {
   display: flex;
   gap: 8px;
@@ -124,14 +119,14 @@
 
 .mvd-wniosek-braki {
   padding: 12px 14px;
-  border: 1px solid var(--mvd-err);
+  border: 1px solid var(--mvd-warn);
   border-radius: 6px;
   background: var(--mvd-panel);
 }
 
 .mvd-wniosek-braki h4 {
   margin: 0 0 6px;
-  color: var(--mvd-err);
+  color: var(--mvd-ink);
 }
 
 .mvd-wniosek-braki ul {
@@ -211,19 +206,6 @@
   font-weight: 600;
 }
 
-.mvd-wniosek-walidacja {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  font-size: 13px;
-  color: var(--mvd-muted);
-}
-
-.mvd-wniosek-walidacja-etyk {
-  font-weight: 600;
-  color: var(--mvd-ink);
-}
-
 .mvd-wniosek-tabela {
   border-collapse: collapse;
   width: 100%;
@@ -241,23 +223,6 @@
   color: var(--mvd-muted);
   font-weight: 600;
   width: 55%;
-}
-
-.mvd-wniosek-werdykt {
-  align-self: flex-start;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-weight: 600;
-}
-
-.mvd-wniosek-werdykt-ok {
-  background: var(--mvd-ok-bg);
-  color: var(--mvd-ok);
-}
-
-.mvd-wniosek-werdykt-err {
-  background: var(--mvd-err-bg);
-  color: var(--mvd-err);
 }
 
 .mvd-wniosek-odeslanie {
@@ -293,4 +258,12 @@
 .mvd-wniosek-odciski dd {
   margin: 0;
   word-break: break-all;
+}
+
+/* Pobranie dokumentu wniosku (DOCX i PDF — te same wiersze). */
+.mvd-wniosek-pobierz {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-start;
 }

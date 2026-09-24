@@ -128,7 +128,7 @@ SCHNEIDER_ELECTRIC = Manufacturer(
     ),
     notes_pl=(
         "Międzynarodowy producent rozdzielnic SN. Dodany w programie "
-        "Reference Engine V1 (REFERENCE_ENGINE_SPEC_V1.md) — rodzina SM6-24 "
+        "Reference Engine V1 (specyfikacja silnika referencyjnego, wersja 1) — rodzina SM6-24 "
         "w rejestrze rodzin ze statusem repo_verified. Status producenta "
         "requires_catalog do czasu zatwierdzenia oficjalnych kart PDF."
     ),

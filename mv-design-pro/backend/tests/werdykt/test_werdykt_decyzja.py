@@ -41,7 +41,11 @@ from werdykt import (
     status_wymagania,
 )
 from werdykt.proweniencja import ClaimKind, EvidenceTier
-from werdykt.wyjasnienie import format_wielkosc, nazwa_skladowej
+from werdykt.wyjasnienie import (
+    format_wielkosc,
+    nazwa_skladowej,
+    powod_modelu_niezwalidowanego,
+)
 
 from tests.werdykt import fabryki as f
 
@@ -652,7 +656,7 @@ def test_przydatnosc_dowodowa_na_iloczynie_cech(metoda: MetodaDowodu) -> None:
     """Metoda × poziom zdolności × rodzaj twierdzenia × status modelu × domena walidacji
     (9 × 4 × 3 × 4 × 3 dla biegu)."""
     for poziom, twierdzenie, model, w_domenie in itertools.product(
-        EvidenceTier, ClaimKind, STATUSY_MODELU, domeny_metody(metoda)
+        f.poziomy_metody(metoda), ClaimKind, STATUSY_MODELU, domeny_metody(metoda)
     ):
         dowod = f.dowod(
             metoda=metoda,
@@ -672,7 +676,7 @@ def test_przydatnosc_jest_podzbiorem_dopuszczalnosci(metoda: MetodaDowodu) -> No
     """Predykaty parami: metoda przydatna (§3 pkt 1) jest zawsze metodą dopuszczalną (§2.2
     pkt 2) — kryterium ocenione dowodem przydatnym nigdy nie spada do NIE_OCENIONO z metody."""
     for poziom, twierdzenie, model, w_domenie in itertools.product(
-        EvidenceTier, ClaimKind, STATUSY_MODELU, domeny_metody(metoda)
+        f.poziomy_metody(metoda), ClaimKind, STATUSY_MODELU, domeny_metody(metoda)
     ):
         dowod = f.dowod(
             metoda=metoda,
@@ -696,7 +700,7 @@ def test_kompletnosc_dowodu_na_iloczynie_cech(
     powody (T6, T7, bieg poza domeną §3b)."""
     podstawa = f.podstawa(stan_podstawy)
     for poziom, twierdzenie, model, w_domenie, stan_danych in itertools.product(
-        EvidenceTier, ClaimKind, STATUSY_MODELU, domeny_metody(metoda), f.STANY_DANYCH
+        f.poziomy_metody(metoda), ClaimKind, STATUSY_MODELU, domeny_metody(metoda), f.STANY_DANYCH
     ):
         dowod = f.dowod(
             metoda=metoda,
@@ -718,7 +722,8 @@ def test_kompletnosc_dowodu_na_iloczynie_cech(
         assert kompletnosc == ("PELNY" if pelny else "NIEPELNY"), opis
         assert bool(powody) == (not pelny), opis
         if model == "UNVALIDATED_MODEL":
-            assert any("UNVALIDATED_MODEL" in p for p in powody), opis
+            # Nazwa polska w zdaniu; kod `UNVALIDATED_MODEL` wyłącznie w `dowod.status_modelu`.
+            assert powod_modelu_niezwalidowanego() in powody, opis
         if w_domenie is False:
             assert any(
                 p.startswith("Bieg poza zadeklarowaną domeną walidacji: D-11") for p in powody
@@ -735,9 +740,12 @@ def test_kompletnosc_dowodu_na_iloczynie_cech(
         if (
             wymaga_poziomu
             and metoda in DOPUSZCZALNE_WG_KONTRAKTU[twierdzenie]
-            and not poziom.regulatory_evidence_eligible
+            and poziom is not EvidenceTier.VALIDATED_SIMULATION
         ):
-            assert any(poziom.value in p for p in powody), opis
+            # Ten sam predykat co `StatusDowodu.przydatnosc_dowodowa` (poziom symulacji
+            # zwalidowanej); poziom nazwany po polsku, kod wyłącznie w `dowod.poziom`.
+            assert any(f"„{poziom.label_pl}”" in p for p in powody), opis
+            assert not any(poziom.value in p for p in powody), opis
         if metoda not in DOPUSZCZALNE_WG_KONTRAKTU[twierdzenie] and metoda != "BRAK_METODY":
             assert any("nie jest właściwa dla" in p for p in powody), opis
         assert len(set(powody)) == len(powody), opis
@@ -759,7 +767,9 @@ def test_kompletnosc_kryterium_obejmuje_podstawe_kryterium_limitu_i_warunku_wste
     )
     pelny = "NIEUSTALONE" not in (stan_kryterium, stan_limitu, stan_warunku)
     assert rekord.kompletnosc_dowodu == ("PELNY" if pelny else "NIEPELNY")
-    powody_nieustalone = [p for p in rekord.powody_niepelnosci if "NIEUSTALONE" in p]
+    powody_nieustalone = [
+        p for p in rekord.powody_niepelnosci if "ma stan źródła „nieustalone”" in p
+    ]
     # Podstawy NIEUSTALONE w fabrykach to ten sam dokument zastany — powód jest jeden.
     assert len(powody_nieustalone) == (0 if pelny else 1)
 
@@ -845,7 +855,7 @@ def test_dowod_laczony_przydatny_wtedy_i_tylko_wtedy_gdy_kazda_stosowalna_sklado
 def test_przydatnosc_dowodu_wymagania_bez_laczenia_to_przydatnosc_dowodu(
     metoda: MetodaDowodu,
 ) -> None:
-    for twierdzenie, poziom in itertools.product(ClaimKind, EvidenceTier):
+    for twierdzenie, poziom in itertools.product(ClaimKind, f.poziomy_metody(metoda)):
         dowod = f.dowod(metoda=metoda, poziom=poziom, twierdzenie=twierdzenie)
         assert przydatnosc_dowodu_wymagania(dowod, [f.ocena()]) == dowod.przydatnosc_dowodowa
 
@@ -1196,7 +1206,7 @@ def test_t18_pokrycie_pelne_nie_blokuje_spelnienia(
 
 
 @pytest.mark.parametrize("twierdzenie", list(ClaimKind))
-@pytest.mark.parametrize("poziom", list(EvidenceTier))
+@pytest.mark.parametrize("poziom", f.poziomy_metody("OBLICZENIE"))
 def test_obliczenie_przydatne_wylacznie_dla_obliczenia_statycznego_na_zwalidowanym_solverze(
     twierdzenie: ClaimKind, poziom: EvidenceTier
 ) -> None:
@@ -1251,7 +1261,12 @@ def test_twierdzenie_z_obliczenia_statycznego_na_rekordzie_k(metoda: MetodaDowod
     bieg = metoda == "SYMULACJA"
     dowod = f.dowod(
         metoda=metoda,
-        poziom=EvidenceTier.VALIDATED_SIMULATION,
+        # Certyfikat niesie wyłącznie poziom certyfikatu badania typu (§3 tabela poziomów).
+        poziom=(
+            EvidenceTier.TYPE_TEST_CERTIFICATE
+            if metoda == "CERTYFIKAT"
+            else EvidenceTier.VALIDATED_SIMULATION
+        ),
         twierdzenie=ClaimKind.STATIC_CALCULATION,
         w_domenie=True if bieg else None,
         domena=f.DOMENA_WALIDACJI if bieg else None,

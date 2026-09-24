@@ -63,12 +63,17 @@ const SCENY = [
   // B-02 / W3-E (2026-09-10): „akademickie" = katalog kart „Analizy specjalistyczne"
   // (widok domyślny, bez `rodzaj`); „ocena" / „ocena-przekroczenia" = ekran „Ocena
   // techniczna wyników" bez przekroczeń i z realnymi NIE SPEŁNIA (obciążenie ×8).
-  'akademickie', 'cieplna', 'dokumentacja', 'edycja-parametrow', 'estymacja', 'frt', 'kompensacja',
+  // Karta AB-1a Pakiet D2: „certyfikat" / „wniosek" / „wniosek-braki" / „pulpit-oze" — ekrany
+  // dokumentów NC RfG i pulpit instalacji OZE na kontrakcie V2 (stan wejściowy sceny).
+  'akademickie', 'certyfikat', 'cieplna', 'dokumentacja', 'edycja-parametrow', 'estymacja', 'frt',
+  'kompensacja',
   'kompensacja-wynik', 'lom', 'macierz', 'migotanie', 'ocena', 'ocena-przekroczenia',
   'odbior-zgodnosc', 'odgalezienie',
   'oltc', 'pole-nn', 'pomiar', 'porownanie', 'przekaznik', 'przypisanie-katalogu', 'pulpit',
+  'pulpit-oze',
   'rozplyw', 'sila-sieci', 'slup-odgalezny', 'ssci', 'swiezosc', 'uwaga', 'walidacja',
-  'wyniki-skladowe', 'wyniki-stabilnosc', 'wyniki-stan-fazowy', 'wyniki-zbieznosc', 'zksn',
+  'wniosek', 'wniosek-braki', 'wyniki-skladowe', 'wyniki-stabilnosc', 'wyniki-stan-fazowy',
+  'wyniki-zbieznosc', 'zksn',
   'zrodlo', 'zrodlo-dyspozycyjne', 'zwarcia', 'zwarcia-rozplyw',
 ].filter((s) => !JUZ_KADROWANE.has(s));
 

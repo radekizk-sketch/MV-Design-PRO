@@ -36,6 +36,7 @@ from werdykt.proweniencja import ClaimKind, EvidenceTier, FieldQuality
 from werdykt.wyjasnienie import (
     NAZWA_METODY_PL,
     NAZWA_RODZAJU_PODSTAWY_PL,
+    NAZWA_STANU_ZRODLA_PL,
     metody_przydatne_pl,
     nazwa_skladowej,
     opis_podstawy,
@@ -202,7 +203,8 @@ def test_brak_podstawy_zaczyna_od_werdyktu_niewydanego_i_pokazuje_wynik_informac
         f"{rekord.kryterium.opis_pl} ({rekord.przedmiot.nazwa_pl}) — werdykt zgodności "
         "niewydany: brak ustalonej podstawy parametru"
     )
-    assert "NIEUSTALONE" in zdanie
+    # Stan źródła nazwany po polsku; kod `NIEUSTALONE` wyłącznie w `podstawa.status`.
+    assert "ma stan źródła „nieustalone”" in zdanie and "NIEUSTALONE" not in zdanie
     assert "informacyjn" in zdanie
 
 
@@ -277,9 +279,10 @@ def test_naruszenie_na_modelu_niezwalidowanym_mowi_o_walidacji(relacja: Relacja)
         u=f.NIEPEWNOSC_ROZSTRZYGALNA[relacja],
     )
     assert rekord.status_maszynowy == "NIE_SPELNIA"
-    assert "wykazano na modelu bez walidacji" in rekord.wyjasnienie.zdanie_pl
+    assert "wykazano na modelu urządzenia bez walidacji" in rekord.wyjasnienie.zdanie_pl
     wymaganie = f.wymaganie([rekord], sposob="SYMULACJA")
-    assert "wykazano na modelu bez walidacji" in wymaganie.wyjasnienie.zdanie_pl
+    assert "wykazano na modelu urządzenia bez walidacji" in wymaganie.wyjasnienie.zdanie_pl
+    assert "UNVALIDATED" not in rekord.wyjasnienie.zdanie_pl + wymaganie.wyjasnienie.zdanie_pl
 
 
 # ---------------------------------------------------------------------------
@@ -313,15 +316,24 @@ def test_zastrzezenia_stanu_zrodla_kazdej_podstawy(
     odrebne = {p for p in (rekord.podstawa, rekord.limit.podstawa) if p.status != "ZWERYFIKOWANE"}
     podstaw = [z for z in zastrzezenia if z.startswith("Podstawa ")]
     assert len(podstaw) == len(odrebne)
+    # Stan źródła w zdaniu — nazwa polska w cudzysłowie; kod wyłącznie w `podstawa.status`.
+    nazwa_stanu = {"WSKAZANE": "„wskazane”", "NIEUSTALONE": "„nieustalone”"}
     for podstawa in odrebne:
-        assert any(podstawa.dokument in z and podstawa.status in z for z in podstaw)
+        assert any(
+            podstawa.dokument in z and f"stan źródła {nazwa_stanu[podstawa.status]}" in z
+            for z in podstaw
+        )
     for z in podstaw:
-        if "stan źródła WSKAZANE" in z:
+        assert "WSKAZANE" not in z and "NIEUSTALONE" not in z, z
+        if "stan źródła „wskazane”" in z:
             assert "treść dokumentu nie jest dołączona do repozytorium" in z
     stosowalnosc = [z for z in zastrzezenia if z.startswith("Stosowalność wyznaczona")]
     if stan_stosowalnosci in ("WSKAZANE", "NIEUSTALONE"):
         assert len(stosowalnosc) == 1
-        assert f"wg podstawy o stanie {stan_stosowalnosci}" in stosowalnosc[0]
+        assert (
+            f"wg podstawy o stanie źródła „{NAZWA_STANU_ZRODLA_PL[stan_stosowalnosci]}”"
+            in stosowalnosc[0]
+        )
     else:
         assert stosowalnosc == []
     if not odrebne and stan_stosowalnosci in (None, "ZWERYFIKOWANE"):
@@ -345,13 +357,14 @@ def test_t6_t7_zastrzezenia_modelu_i_danych_na_iloczynie(
         u=0.5,
     )
     zastrzezenia = rekord.wyjasnienie.zastrzezenia
-    modelu = [z for z in zastrzezenia if "Status modelu urządzenia: UNVALIDATED_MODEL" in z]
+    assert not any("UNVALIDATED" in z for z in zastrzezenia), zastrzezenia
+    modelu = [z for z in zastrzezenia if z.startswith("Model urządzenia niezwalidowany — ")]
     assert len(modelu) == (1 if model == "UNVALIDATED_MODEL" else 0)
-    danych = [z for z in zastrzezenia if "(UNVALIDATED_INPUT)" in z]
+    danych = [z for z in zastrzezenia if z.startswith("Dana przyjęta bez walidacji: ")]
     if stan_danych == "UNVALIDATED_INPUT":
         assert len(danych) == 1
         assert "moc zwarciowa sieci S_k″ = 120 MVA" in danych[0]
-        assert "jakość danej ESTIMATED" in danych[0]
+        assert "jakość danej: oszacowane" in danych[0]
         assert "założona do czasu otrzymania warunków przyłączenia" in danych[0]
     else:
         assert danych == []
@@ -370,20 +383,28 @@ def test_t7_zastrzezenie_kazdej_danej_przyjetej(
         ),
     )
     rekord = f.ocena(dowod_oceny=f.dowod(dane=dane))
-    danych = [z for z in rekord.wyjasnienie.zastrzezenia if "(UNVALIDATED_INPUT)" in z]
+    danych = [
+        z for z in rekord.wyjasnienie.zastrzezenia if z.startswith("Dana przyjęta bez walidacji: ")
+    ]
     assert len(danych) == 2
     pierwsza = danych[0]
     assert ("= 120 MVA" in pierwsza) == (wartosc is not None)
     assert ("bez wartości liczbowej" in pierwsza) == (wartosc is None)
-    assert (f"jakość danej {jakosc.value}" in pierwsza) if jakosc else "jakość" not in pierwsza
+    if jakosc is not None:
+        # Nazwa jakości danej (`FieldQuality.label_pl`); kod wyłącznie w `dana.jakosc`.
+        assert f"jakość danej: {jakosc.label_pl}" in pierwsza
+        assert jakosc.value not in pierwsza
+    else:
+        assert "jakość" not in pierwsza
     assert "stosunek X/R = 8" in danych[1]
 
 
 METODY_OSI: tuple[MetodaDowodu, ...] = ("SYMULACJA", "OBLICZENIE", "DEKLARACJA")
 
 
-@pytest.mark.parametrize("metoda", METODY_OSI)
-@pytest.mark.parametrize("poziom", list(EvidenceTier))
+@pytest.mark.parametrize(
+    ("metoda", "poziom"), [(m, p) for m in METODY_OSI for p in f.poziomy_metody(m)]
+)
 def test_zastrzezenie_osi_zdolnosci_narzedzia(metoda: MetodaDowodu, poziom: EvidenceTier) -> None:
     """Oś zdolności narzędzia (EvidenceTier) jest nazwana osobno od osi modelu urządzenia."""
     bieg = metoda in ("SYMULACJA", "OBLICZENIE")
@@ -407,7 +428,7 @@ def test_zastrzezenie_osi_zdolnosci_narzedzia(metoda: MetodaDowodu, poziom: Evid
     )
     assert len(osi) == (1 if oczekiwane else 0)
     if oczekiwane:
-        assert poziom.value in osi[0]
+        assert f"„{poziom.label_pl}”" in osi[0] and poziom.value not in osi[0]
 
 
 @pytest.mark.parametrize("typ_modulu", ["B", None])
@@ -528,7 +549,9 @@ def _przydatna_w_jakiejs_konfiguracji(
             w_domenie=w_domenie,
             domena=None if w_domenie is None else f.DOMENA_WALIDACJI,
         ).przydatnosc_dowodowa
-        for poziom, model, w_domenie in itertools.product(EvidenceTier, f.STATUSY_MODELU, domeny)
+        for poziom, model, w_domenie in itertools.product(
+            f.poziomy_metody(metoda), f.STATUSY_MODELU, domeny
+        )
     )
 
 
@@ -546,11 +569,14 @@ def test_metody_przydatne_zgodne_z_formula_przydatnosci(
         assert (nazwa in tekst) == _przydatna_w_jakiejs_konfiguracji(
             metoda, twierdzenie, poziom_rekordu
         ), metoda
+    # Warunki poziomu zdolności i statusu modelu — nazwami polskimi, bez kodów wyliczeń.
+    assert "VALIDATED" not in tekst and "CERTIFIED" not in tekst
     if twierdzenie is ClaimKind.DYNAMIC_PERFORMANCE:
-        assert "VALIDATED_SIMULATION" in tekst and "VALIDATED_AGAINST_TEST" in tekst
+        assert "„symulacja zwalidowana”" in tekst
+        assert "model urządzenia zwalidowany wynikiem testu" in tekst
         assert "domenie walidacji" in tekst
     if twierdzenie is ClaimKind.STATIC_CALCULATION:
-        assert "obliczenie na zdolności o poziomie VALIDATED_SIMULATION" in tekst
+        assert "obliczenie solverem zwalidowanym" in tekst
 
 
 # ---------------------------------------------------------------------------
@@ -587,7 +613,8 @@ def test_zastrzezenie_podstawy_warunku_wstepnego(
     podstawa = rekord.kryterium.warunek_wstepny_podstawa
     assert podstawa is not None
     assert zastrzezenia[0].startswith(
-        f"Warunek wstępny („{warunek}”) oparty na podstawie o stanie {stan_warunku}: "
+        f"Warunek wstępny („{warunek}”) oparty na podstawie o stanie źródła "
+        f"„{NAZWA_STANU_ZRODLA_PL[stan_warunku]}”: "
     )
     assert podstawa.dokument in zastrzezenia[0]
 

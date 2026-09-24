@@ -12,6 +12,8 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { SekcjaDanychModulu } from '../../oze/ncrfg/SekcjaDanychModulu';
+import { zbudujPolaNcRfgGeneratora } from '../../oze/ncrfg/daneModulu';
 
 import {
   fetchCtTypes,
@@ -221,6 +223,9 @@ export function KrokZgodnosc({ dane, zmien, testid = 'mvd-kreator-oze-zgodnosc' 
   }, []);
 
   const profil = getNcRfgOperator(ncRfgOperatorzy, dane.nc_rfg_profile_ref);
+  // Błędy danych modułu NC RfG liczone TĄ SAMĄ funkcją co walidacja zapisu kreatora.
+  const wynikDanychModulu = zbudujPolaNcRfgGeneratora(dane.dane_modulu_ncrfg);
+  const bledyDanychModulu = wynikDanychModulu.stan === 'blad' ? wynikDanychModulu.bledy : {};
 
   const opcjeProfili = useMemo(
     () => ncRfgOperatorzy.map((o) => ({ id: o.operator_id, etykieta: o.operator_name_pl })),
@@ -296,6 +301,12 @@ export function KrokZgodnosc({ dane, zmien, testid = 'mvd-kreator-oze-zgodnosc' 
           />
         </>
       ) : null}
+      <SekcjaDanychModulu
+        formularz={dane.dane_modulu_ncrfg}
+        bledy={bledyDanychModulu}
+        onZmien={(formularz) => zmien('dane_modulu_ncrfg', formularz)}
+        testid={`${testid}-dane-modulu`}
+      />
       <PanelTeorii
         tytul={T.teoriaZgodnoscTytul}
         opis={T.teoriaZgodnoscOpis}

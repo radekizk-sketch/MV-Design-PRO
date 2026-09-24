@@ -1293,6 +1293,13 @@ class AddConverterSourcePayload(_FrozenBase):
     # W2b-DANE: kompletny tor DER-SN (kanon POLECENIE_DER_SN_TOPOLOGIA_2026-07).
     # ADDYTYWNY — brak pola = dotychczasowe zachowanie (wariant nn/A bez zmian).
     der_topology: DerTopologyPayload | None = None
+    # Odbiór Pakietu C (plan AB O-50 pkt 5): pola NC RfG modułu zapisywane w generatorze
+    # (walidacja `enm/deklaracje_modulu.py::pola_nc_rfg_generatora` — ta sama, co w
+    # `update_element_parameters`). Brak = dana nieustalona (ocena wymagań nazywa brak).
+    modul_istniejacy: bool | None = None
+    data_umowy_przylaczeniowej: str | None = None
+    nastawy_zabezpieczen: dict[str, Any] | None = None
+    deklaracje_modulu: dict[str, Any] | None = None
 
 
 class AddGensetNNPayload(_FrozenBase):

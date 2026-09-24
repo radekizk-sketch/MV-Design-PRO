@@ -479,8 +479,15 @@ def kompletnosc_wymagania(
     dowod: StatusDowodu,
     podstawa: PodstawaWymagania,
     oceny: Sequence[OcenaKryterium],
+    podstawa_sposobu_wykazania: PodstawaWymagania | None = None,
 ) -> tuple[KompletnoscDowodu, list[str]]:
-    """Kompletność dowodu wymagania: dowód i podstawa wymagania + agregat składowych.
+    """Kompletność dowodu wymagania: dowód, podstawa wymagania, podstawa reguły sposobu
+    wykazania + agregat składowych.
+
+    Podstawa reguły sposobu wykazania (np. reguła pokrycia wymagania certyfikatem z warstwy
+    WiPWC) jest warunkiem pełnego dowodu jak podstawa wymagania (§3 pkt 3): stan
+    ``NIEUSTALONE`` daje powód niepełności nazywający regułę i metodę, więc sam certyfikat
+    przy regule bez wskazanej jednostki redakcyjnej daje ``BRAK_DOWODU``, nigdy ``SPELNIA``.
 
     Właściwość metody rozstrzyga ``przydatnosc_dowodu_wymagania`` (ten sam predykat, który
     wystawia API): dla dowodu łączonego (``DOWOD_LACZONY``) — każda stosowalna ocena składowa
@@ -503,6 +510,13 @@ def kompletnosc_wymagania(
                 [ocena for ocena in stosowalne if not ocena.dowod.przydatnosc_dowodowa]
             )
     powody = _powody_niepelnosci(dowod, [podstawa], powod_metody)
+    if (
+        podstawa_sposobu_wykazania is not None
+        and podstawa_sposobu_wykazania.status == "NIEUSTALONE"
+    ):
+        powody.append(
+            wyjasnienie.powod_reguly_sposobu_wykazania(dowod.metoda, podstawa_sposobu_wykazania)
+        )
     for ocena in stosowalne:
         powody.extend(
             wyjasnienie.z_nazwa_skladowej(ocena, powod) for powod in ocena.powody_niepelnosci
@@ -779,6 +793,7 @@ def wyprowadz_pola_wymagania(
     stosowalnosc: Stosowalnosc,
     sposob_wykazania: MetodaDowodu,
     oceny: Sequence[OcenaKryterium],
+    podstawa_sposobu_wykazania: PodstawaWymagania | None = None,
     pokrycie_programu: PokrycieProgramu,
     pokrycie_programu_pl: str,
     dowod: StatusDowodu,
@@ -787,7 +802,11 @@ def wyprowadz_pola_wymagania(
     """Status, naruszenia, najbliższe granicy, braki, kompletność, etykieta i zastrzeżenia W."""
     oceny_krotka = tuple(oceny)
     kompletnosc, powody = kompletnosc_wymagania(
-        dotyczy=stosowalnosc.dotyczy, dowod=dowod, podstawa=podstawa, oceny=oceny_krotka
+        dotyczy=stosowalnosc.dotyczy,
+        dowod=dowod,
+        podstawa=podstawa,
+        oceny=oceny_krotka,
+        podstawa_sposobu_wykazania=podstawa_sposobu_wykazania,
     )
     status, krok, naruszone, najblizej, braki = _rozstrzygnij_wymaganie(
         _WejscieW(
@@ -814,6 +833,7 @@ def wyprowadz_pola_wymagania(
             oceny=oceny_krotka,
             dowod=dowod,
             zakres_waznosci=zakres_waznosci,
+            podstawa_sposobu_wykazania=podstawa_sposobu_wykazania,
         ),
     )
 
@@ -908,17 +928,20 @@ def zagreguj_wymaganie(
     zakres_waznosci: ZakresWaznosci,
     slad: Sequence[OdnosnikSladu],
     braki_dodatkowe: Sequence[str] = (),
+    podstawa_sposobu_wykazania: PodstawaWymagania | None = None,
 ) -> WynikWymagania:
     """Zbuduj rekord W: agregacja §2.3, kompletność §3, etykieta i wyjaśnienie z reguły.
 
-    Kompletność wymagania = dowód i podstawa wymagania + powody niepełności stosowalnych
-    składowych (każda z własnym dowodem, podstawą kryterium i podstawą limitu).
+    Kompletność wymagania = dowód, podstawa wymagania i podstawa reguły sposobu wykazania
+    (``podstawa_sposobu_wykazania``, np. reguła pokrycia certyfikatem) + powody niepełności
+    stosowalnych składowych (każda z własnym dowodem, podstawą kryterium i podstawą limitu).
     """
     oceny = tuple(oceny_skladowe)
     pochodne = wyprowadz_pola_wymagania(
         podstawa=podstawa,
         stosowalnosc=stosowalnosc,
         sposob_wykazania=sposob_wykazania,
+        podstawa_sposobu_wykazania=podstawa_sposobu_wykazania,
         oceny=oceny,
         pokrycie_programu=pokrycie_programu,
         pokrycie_programu_pl=pokrycie_programu_pl,
@@ -932,6 +955,7 @@ def zagreguj_wymaganie(
         podstawa=podstawa,
         stosowalnosc=stosowalnosc,
         sposob_wykazania=sposob_wykazania,
+        podstawa_sposobu_wykazania=podstawa_sposobu_wykazania,
         oceny_skladowe=oceny,
         pokrycie_programu=pokrycie_programu,
         pokrycie_programu_pl=pokrycie_programu_pl,

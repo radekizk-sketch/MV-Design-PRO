@@ -71,9 +71,9 @@
       "evidence": {
         "capability_id": "dynamic_stability.fault_clear",
         "tier": "UNVALIDATED_MODEL",
-        "tier_pl": "model_niezwalidowany",
+        "tier_pl": "model niezwalidowany",
         "claim_kind": "DYNAMIC_PERFORMANCE",
-        "claim_kind_pl": "zachowanie_dynamiczne",
+        "claim_kind_pl": "zachowanie dynamiczne",
         "regulatory_evidence_eligible": false,
         "rationale_pl": "Katy wirnika i wielkosci pozwarciowe pochodza z opcji biegu (z wartosciami domyslnymi); werdykt jest porownaniem progowym wzgledem tych katow, nie calkowaniem rownan ruchu ukladu — enm/canonical_analysis.py::_execute_dynamic_stability.",
         "audit_ref": "karta_s1_s4_dowod.md §0.5"
@@ -129,7 +129,7 @@
       "formula_set_version": "dynamic_stability_fault_clear_v1",
       "standard_basis_ref": "DYNAMIC_STABILITY_FAULT_CLEAR_V1",
       "input_hash": "88f75c73f3fe8d62daf5f98f083edf449e49a131275802ecf5dfdb7cd5bf3ed3",
-      "result_hash": "8597e76e1e55fc093ecfe0bd3fdf1292786e39dcd57a614a005c5a4d7b83259c",
+      "result_hash": "9b2025dbd0f8b7eb1bdcfeca339044de0f1a65f92f7917fd0ae39918890f421c",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

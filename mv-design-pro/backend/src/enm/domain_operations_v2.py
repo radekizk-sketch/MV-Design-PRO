@@ -58,6 +58,7 @@ from network_model.solvers.protection_iec60255 import compute_idmt_generic
 from . import der_sn_validation as der_val
 from .assembler import czestotliwosc_studium_hz
 from .catalog_completion import NN_FIELD_ORIGIN_OPERACJA_DOMENOWA
+from .deklaracje_modulu import pola_nc_rfg_generatora
 from .domain_operations import (
     FUNKCJA_POMIARU_DOMYSLNA_POLA_DOKLADANEGO,
     POLE_BLOKU_FABRYCZNEGO,
@@ -5259,6 +5260,7 @@ def _add_converter_source_der_sn(
     technology: str,
     catalog_ref: str,
     der_topology: dict[str, Any],
+    pola_nc_rfg: dict[str, Any],
 ) -> dict[str, Any]:
     """Materializuj KOMPLETNY tor DER przyłączonego po stronie SN (kanon
     POLECENIE_DER_SN_TOPOLOGIA_2026-07): szyna nN producenta → TR blokowy (osobny
@@ -5753,6 +5755,7 @@ def _add_converter_source_der_sn(
             "in_service": True,
             "tags": [],
             "meta": generator_meta,
+            **pola_nc_rfg,
         }
     )
     created.append(generator_ref)
@@ -5799,6 +5802,12 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "Źródło przekształtnikowe wymaga jawnego typu source_technology (PV, BESS lub FW).",
             "converter.source_technology_missing",
         )
+    # Odbiór Pakietu C (plan AB O-50 pkt 5): pola NC RfG modułu (art. 4, data umowy, nastawy,
+    # deklaracje) — JEDEN walidator z aktualizacją generatora, sprawdzany PRZED mutacją, dla
+    # obu torów (nN/blokowy i DER-SN).
+    pola_nc_rfg, blad_nc_rfg = pola_nc_rfg_generatora(payload)
+    if blad_nc_rfg is not None:
+        return _error_response(*blad_nc_rfg)
 
     # V12K-023: Backwards-compatible aliases for FE-canonical variants.
     # FE DerRenderer.connectionVariant deklaruje 5 wartosci:
@@ -5864,6 +5873,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             technology=technology,
             catalog_ref=catalog_ref,
             der_topology=der_topology,
+            pola_nc_rfg=pola_nc_rfg,
         )
 
     bus_nn_ref = payload.get("bus_nn_ref")
@@ -6119,6 +6129,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "in_service": True,
             "tags": [],
             "meta": generator_meta,
+            **pola_nc_rfg,
         }
     )
 

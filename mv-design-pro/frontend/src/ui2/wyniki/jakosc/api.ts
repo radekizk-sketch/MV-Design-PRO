@@ -30,7 +30,7 @@
  *   `analysis/energy_validation/models.py:23-35` (mapowane na polski w `strings`).
  *
  * Warstwa PREZENTACJI: wyłącznie odczyt (GET), zero fizyki, zero mutacji.
- * Wzór pobierania: `ui/ncrfg-tests/api.ts`.
+ * Wzór pobierania: `ui2/oze/ncrfg/api.ts` (jeden klient zgodności NC RfG).
  */
 
 import type { TraceStep } from '../../../ui/results-inspector/types';
@@ -244,7 +244,7 @@ export interface WalidacjaResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Pobieranie (GET) — wzór `ui/ncrfg-tests/api.ts`
+// Pobieranie (GET) — wzór `ui2/oze/ncrfg/api.ts`
 // ---------------------------------------------------------------------------
 
 async function getJson<T>(url: string): Promise<T> {

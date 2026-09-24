@@ -637,10 +637,13 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     // `DER_BINDING_KEYS`), więc klik dawał urządzeniu status „zweryfikowany" bez
     // pokrycia w katalogu — USUNIĘTY jako fabrykacja (ta sama klasa co zgadywanie
     // z nazwy w `rozwiazCertyfikat`/`inferCertificateStatus`). Panel jest teraz
-    // WYŁĄCZNIE do odczytu: bez generatora w modelu status jest uczciwie
-    // nieustalony, nie „do wyboru z listy".
+    // WYŁĄCZNIE do odczytu: bez generatora w modelu powiązanie z wykazem jest
+    // uczciwie nieustalone, nie „do wyboru z listy". Karta AB-1a Pakiet D2: status
+    // liczony po stronie klienta skasowany — jedynym nośnikiem jest pozycja wykazu
+    // z tabliczki modelu (tu: brak), a nie wywnioskowany kod statusu.
     expect(screen.queryByText('zastosuj')).not.toBeInTheDocument();
-    expect(screen.getByText(/nieustalony — brak dopasowania w katalogu/)).toBeInTheDocument();
+    expect(screen.getByText('brak powiązania z wykazem PTPiREE')).toBeInTheDocument();
+    expect(screen.queryByText(/Status w wykazie PTPiREE/)).not.toBeInTheDocument();
     expect(screen.getByText('Zakres obliczeń')).toBeInTheDocument();
   });
 

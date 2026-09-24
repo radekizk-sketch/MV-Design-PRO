@@ -12,7 +12,7 @@ from api.domain_ops_policy import validate_and_materialize_catalog_binding
 from api.klucz_twin_dep import KluczTwin
 from application.analyses.protection.catalog.catalog_store import list_devices
 from application.field_read_model import build_field_read_model
-from compliance.nc_rfg_modul import modul_nc_rfg
+from catalog.profiles.nc_rfg import klasyfikacja_modulu
 from domain.canonical_operations import resolve_operation_name
 from domain.der_protection_functions import (
     FaktyPolaWytworcy,
@@ -31,8 +31,15 @@ from domain.dobor_przekladnika import (
     sprawdz_dobor_ct,
     sprawdz_dobor_vt,
 )
+from enm.deklaracje_modulu import (
+    POLA_NC_RFG_GENERATORA,
+    DataUmowy,
+    DeklaracjeModulu,
+    ModulIstniejacy,
+)
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
+from enm.nastawy_modulu import NastawyZabezpieczenModulu
 from enm.store import blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
@@ -41,6 +48,7 @@ from network_model.catalog.audit2_catalogs import get_block_transformer
 from network_model.pochodne import kv_na_v, kva_na_mva, mw_na_kw, v_na_kv
 from network_model.solvers.equipment_checks.ct_burden_saturation import CtDeviceBurden
 from pydantic import BaseModel, Field, field_validator
+from werdykt import opis_podstawy
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +104,12 @@ class DerGeneratorCreateRequest(BaseModel):
     source_name: str | None = Field(default=None, min_length=1)
     quantity: int = Field(default=1, ge=1, le=100)
     nc_rfg_module: Literal["A", "B", "C", "D"] | None = None
+    # Odbiór Pakietu C (plan AB O-50 pkt 5): pola NC RfG modułu zapisywane razem z wytwórcą
+    # (ten sam pisarz `add_converter_source` co kreator OZE). Brak = dana nieustalona.
+    modul_istniejacy: ModulIstniejacy | None = None
+    data_umowy_przylaczeniowej: DataUmowy | None = None
+    nastawy_zabezpieczen: NastawyZabezpieczenModulu | None = None
+    deklaracje_modulu: DeklaracjeModulu | None = None
 
     @field_validator("station_ref", "catalog_ref")
     @classmethod
@@ -522,8 +536,8 @@ def _weryfikuj_modul_ncrfg(
     napiecie_kv = _napiecie_przylaczenia_kv(enm_dict, req, payload, canonical_variant)
     if napiecie_kv is None:
         return
-    oczekiwany_modul = modul_nc_rfg(req.power_mw, napiecie_kv)
-    if oczekiwany_modul == req.nc_rfg_module:
+    klasyfikacja = klasyfikacja_modulu(mw_na_kw(req.power_mw), napiecie_kv)
+    if klasyfikacja.modul == req.nc_rfg_module:
         return
     raise HTTPException(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -531,10 +545,11 @@ def _weryfikuj_modul_ncrfg(
             "code": "generator.nc_rfg_module_mismatch",
             "message_pl": (
                 f"Moduł NC RfG „{req.nc_rfg_module}” nie zgadza się z klasyfikacją: "
-                f"przy mocy {req.power_mw:g} MW i napięciu przyłączenia "
-                f"{napiecie_kv:g} kV oczekiwany moduł to „{oczekiwany_modul}”."
+                f"{klasyfikacja.powod_pl}. Podstawa klasyfikacji — "
+                f"{opis_podstawy(klasyfikacja.podstawa)}."
             ),
-            "expected_module": oczekiwany_modul,
+            "expected_module": klasyfikacja.modul,
+            "klasyfikacja": klasyfikacja.model_dump(mode="json"),
         },
     )
 
@@ -576,6 +591,10 @@ def _build_domain_payload(
 
     if req.nc_rfg_module is not None:
         payload["nc_rfg_module"] = req.nc_rfg_module
+    zadanie_json = req.model_dump(mode="json", exclude_none=True)
+    payload.update(
+        {pole: zadanie_json[pole] for pole in POLA_NC_RFG_GENERATORA if pole in zadanie_json}
+    )
     if req.battery_catalog_ref:
         payload["battery_catalog_ref"] = req.battery_catalog_ref
 

@@ -301,8 +301,8 @@ function derZGeneratora(
     // tabliczką falownika — pochodna, nie osobny wybór (`_certyfikat_ptpiree_z_katalogu`).
     ptpiree_certificate_ref: readString(materialized.ptpiree_certificate_ref),
     // Karta CERTYFIKAT-Z-KATALOGU: status dopasowania ('POWIAZANY'/'NIEPOWIAZANY')
-    // z TEJ SAMEJ tabliczki — JEDYNE źródło `NcRfgCertificateStatus` prezentacji
-    // (`certyfikatPtpiree.ts`), zero zgadywania z nazwy referencji katalogowej.
+    // z TEJ SAMEJ tabliczki — adnotacja katalogu pokazywana wprost (karta AB-1a D2:
+    // bez klienckiego statusu certyfikatu), zero zgadywania z nazwy referencji katalogowej.
     ptpiree_status: readString(materialized.ptpiree_status),
     battery_catalog_ref: readString(materialized.battery_catalog_ref),
     ...materializedBindings,

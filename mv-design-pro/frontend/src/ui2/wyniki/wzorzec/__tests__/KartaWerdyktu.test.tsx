@@ -25,7 +25,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
-import { KartaWerdyktu, SEMANTYKA_KOLOR } from '../KartaWerdyktu';
+import { EtykietaWerdyktu, KartaWerdyktu, SEMANTYKA_KOLOR } from '../KartaWerdyktu';
 import type {
   DanaPrzyjeta,
   Etykieta,
@@ -263,7 +263,7 @@ export function ocenaCzasuAktywacjiSpelniona(): OcenaKryterium {
     status_maszynowy: 'SPELNIA',
     kompletnosc_dowodu: 'NIEPELNY',
     powody_niepelnosci: [
-      'Dana przyjęta bez walidacji: moc zwarciowa sieci S_k″ = 120 MVA, jakość danej ESTIMATED — założona do czasu otrzymania warunków przyłączenia.',
+      'Dana przyjęta bez walidacji: moc zwarciowa sieci S_k″ = 120 MVA, jakość danej: oszacowane — założona do czasu otrzymania warunków przyłączenia.',
     ],
     etykieta: { etykieta_pl: 'Kryterium spełnione — dowód niepełny', semantyka: 'ostrzegawcza' },
     wyjasnienie: {
@@ -272,7 +272,7 @@ export function ocenaCzasuAktywacjiSpelniona(): OcenaKryterium {
       przyczyna_pl: null,
       czego_brakuje: [],
       zastrzezenia: [
-        'Dana przyjęta bez walidacji (UNVALIDATED_INPUT): moc zwarciowa sieci S_k″ = 120 MVA, jakość danej ESTIMATED — założona do czasu otrzymania warunków przyłączenia.',
+        'Dana przyjęta bez walidacji: moc zwarciowa sieci S_k″ = 120 MVA, jakość danej: oszacowane — założona do czasu otrzymania warunków przyłączenia.',
         ZASTRZEZENIE_ZAKRESU,
       ],
     },
@@ -501,7 +501,7 @@ export function ocenaPozostaniaWPracy(): OcenaKryterium {
       przyczyna_pl: null,
       czego_brakuje: [],
       zastrzezenia: [
-        'Warunek wstępny („napięcie w punkcie przyłączenia nie niższe niż obwiednia profilu w całym przedziale 0–3 s”) oparty na podstawie o stanie WSKAZANE: „Profil wymagań OSD — obwiednia zapadu”, wydanie 3.0, tab. 4 (procedura PTPiREE).',
+        'Warunek wstępny („napięcie w punkcie przyłączenia nie niższe niż obwiednia profilu w całym przedziale 0–3 s”) oparty na podstawie o stanie źródła „wskazane (dokument i jednostka redakcyjna wskazane, treść poza repozytorium)”: „Profil wymagań OSD — obwiednia zapadu”, wydanie 3.0, tab. 4 (procedura PTPiREE).',
         ZASTRZEZENIE_ZAKRESU,
       ],
     },
@@ -593,19 +593,19 @@ export function ocenaBezPodstawyLimitu(): OcenaKryterium {
     status_maszynowy: 'BRAK_PODSTAWY',
     kompletnosc_dowodu: 'NIEPELNY',
     powody_niepelnosci: [
-      'Podstawa „Profil zastany operatorów (pochodzenie nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła NIEUSTALONE — wymagany stan ZWERYFIKOWANE albo WSKAZANE (dokument, wydanie i jednostka redakcyjna).',
+      'Podstawa „Profil zastany operatorów (pochodzenie nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).',
     ],
     etykieta: { etykieta_pl: 'Brak zweryfikowanej podstawy wymagania', semantyka: 'ostrzegawcza' },
     wyjasnienie: {
       zdanie_pl:
-        'Czas aktywacji prądu biernego (Moduł PV 2 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil zastany operatorów (pochodzenie nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła NIEUSTALONE. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): czas aktywacji prądu biernego: 38 ms wobec wymaganych ≤ 40 ms wg „Profil zastany operatorów (pochodzenie nieustalone)” (margines +2 ms, względnie +5 % wartości granicznej).',
+        'Czas aktywacji prądu biernego (Moduł PV 2 MW) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Profil zastany operatorów (pochodzenie nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): czas aktywacji prądu biernego: 38 ms wobec wymaganych ≤ 40 ms wg „Profil zastany operatorów (pochodzenie nieustalone)” (margines +2 ms, względnie +5 % wartości granicznej).',
       przyczyna_pl:
-        'podstawa limitu „Profil zastany operatorów (pochodzenie nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła NIEUSTALONE',
+        'podstawa limitu „Profil zastany operatorów (pochodzenie nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone”',
       czego_brakuje: [
-        'Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil zastany operatorów (pochodzenie nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła NIEUSTALONE — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość przeniesiona z dawnych profili).',
+        'Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Profil zastany operatorów (pochodzenie nieustalone)” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość przeniesiona z dawnych profili).',
       ],
       zastrzezenia: [
-        'Podstawa „Profil zastany operatorów (pochodzenie nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła NIEUSTALONE — pochodzenie wartości nieustalone (wartość przeniesiona z dawnych profili).',
+        'Podstawa „Profil zastany operatorów (pochodzenie nieustalone)” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość przeniesiona z dawnych profili).',
         ZASTRZEZENIE_ZAKRESU,
       ],
     },
@@ -677,7 +677,7 @@ export function wymaganieBezMetody(): WynikWymagania {
     status_maszynowy: 'BRAK_DOWODU',
     kompletnosc_dowodu: 'NIEPELNY',
     powody_niepelnosci: [
-      'Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie VALIDATED_SIMULATION (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia o statusie VALIDATED_AGAINST_TEST lub CERTIFIED_MODEL, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.',
+      'Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.',
     ],
     kryteria_naruszone: [],
     kryterium_najblizej_granicy: null,
@@ -689,7 +689,7 @@ export function wymaganieBezMetody(): WynikWymagania {
         'sposób wykazania: brak metody w narzędziu (ani certyfikat pokrywający wymaganie, ani test lub symulacja narzędzia)',
       czego_brakuje: [
         'Metoda wykazania wymagania: certyfikat urządzenia albo raport z badania typu pokrywający wymaganie — narzędzie nie ma metody wykazania.',
-        'Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie VALIDATED_SIMULATION (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia o statusie VALIDATED_AGAINST_TEST lub CERTIFIED_MODEL, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.',
+        'Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany, pomiar albo dowód łączony, w którym każde stosowalne kryterium składowe ma metodę przydatną.',
       ],
       zastrzezenia: [],
     },
@@ -853,10 +853,13 @@ describe('KartaWerdyktu — pełny rekord kryterium (poziom K)', () => {
       'Kompletność dowodu',
     ]);
     const przyciski = within(artykul).getAllByRole('button');
-    expect(przyciski.map((p) => p.textContent)).toEqual([
+    expect(przyciski.map((p) => p.textContent).slice(0, 2)).toEqual([
       'Zakres ważnościRozwiń',
       'Ślad obliczeńRozwiń',
     ]);
+    // Surowe identyfikatory rekordu — w zwiniętej wspólnej sekcji audytowej (ostatni przycisk).
+    expect(przyciski).toHaveLength(3);
+    expect(przyciski[2]).toHaveTextContent(/^Informacje audytowe\d+$/);
     expect(artykul).toHaveAttribute('data-poziom', 'K');
   });
 
@@ -874,7 +877,8 @@ describe('KartaWerdyktu — pełny rekord kryterium (poziom K)', () => {
     expect(podstawaLimitu).toHaveTextContent('dokument: „Warunki przyłączenia OSD”');
     expect(podstawaLimitu).toHaveTextContent('wydanie: 3.0');
     expect(podstawaLimitu).toHaveTextContent('jednostka redakcyjna: pkt 7.2');
-    expect(podstawaLimitu).toHaveTextContent('stan źródła: zweryfikowane ZWERYFIKOWANE');
+    expect(podstawaLimitu).toHaveTextContent('stan źródła: zweryfikowane');
+    expect(podstawaLimitu).not.toHaveTextContent('ZWERYFIKOWANE');
 
     const margines = karta(`${id}-margines`);
     expect(margines).toHaveTextContent('+2 ms');
@@ -898,17 +902,21 @@ describe('KartaWerdyktu — pełny rekord kryterium (poziom K)', () => {
     const id = 'mvd-werdykt-frt.czas_aktywacji_iq';
     const dowod = karta(`${id}-dowod`);
     expect(dowod).toHaveTextContent('metoda: symulacja');
-    expect(dowod).toHaveTextContent('poziom zdolności narzędzia: symulacja zwalidowana VALIDATED_SIMULATION');
+    expect(dowod).toHaveTextContent('poziom zdolności narzędzia: symulacja zwalidowana');
     expect(dowod).toHaveTextContent('rodzaj twierdzenia: zachowanie dynamiczne');
     expect(dowod).toHaveTextContent(
-      'status modelu: model urządzenia zwalidowany wynikiem testu VALIDATED_AGAINST_TEST',
+      'walidacja modelu urządzenia: model urządzenia zwalidowany wynikiem testu',
     );
-    expect(dowod).toHaveTextContent('status danych: dane przyjęte bez walidacji UNVALIDATED_INPUT');
+    expect(dowod).toHaveTextContent('stan danych wejściowych: dane przyjęte bez walidacji');
+    // Kody osi dowodu (lustro enumów backendu) nie stoją w pierwszym planie karty.
+    for (const kod of ['VALIDATED_SIMULATION', 'VALIDATED_AGAINST_TEST', 'UNVALIDATED_INPUT', 'ESTIMATED']) {
+      expect(dowod).not.toHaveTextContent(kod);
+    }
     const dane = karta(`${id}-dowod-dane-przyjete`);
     expect(dane.tagName).toBe('UL');
     expect(within(dane).getAllByRole('listitem')).toHaveLength(1);
     expect(dane).toHaveTextContent('moc zwarciowa sieci S_k″: 120 MVA');
-    expect(dane).toHaveTextContent('jakość danej: oszacowane ESTIMATED');
+    expect(dane).toHaveTextContent('jakość danej: oszacowane');
     expect(dane).toHaveTextContent('założona do czasu otrzymania warunków przyłączenia');
     expect(dowod).toHaveTextContent('odniesienie do dowodu: bieg-001');
 
@@ -1070,11 +1078,11 @@ describe('KartaWerdyktu — pełny rekord kryterium (poziom K)', () => {
     expect(karta(`${id}-kompletnosc`)).toHaveTextContent('nie dotyczy');
   });
 
-  it('brak podstawy: stan źródła NIEUSTALONE zawsze widoczny, brak wydania i jednostki nazwany wprost, uwagi podstawy', () => {
+  it('brak podstawy: stan źródła „nieustalone” zawsze widoczny, brak wydania i jednostki nazwany wprost, uwagi podstawy', () => {
     render(<KartaWerdyktu rekord={ocenaBezPodstawyLimitu()} />);
     const podstawaLimitu = karta('mvd-werdykt-lfsm.statyzm-limit-podstawa');
     expect(podstawaLimitu).toHaveAttribute('data-stan-zrodla', 'NIEUSTALONE');
-    expect(podstawaLimitu).toHaveTextContent('stan źródła: nieustalone NIEUSTALONE');
+    expect(podstawaLimitu).toHaveTextContent('stan źródła: nieustalone');
     expect(podstawaLimitu).toHaveTextContent('wydanie: nie wskazano');
     expect(podstawaLimitu).toHaveTextContent('jednostka redakcyjna: nie wskazano');
     expect(podstawaLimitu).toHaveTextContent('rodzaj: warstwa o nieustalonym pochodzeniu');
@@ -1139,8 +1147,9 @@ describe('KartaWerdyktu — sekcje rozwijane (zakres ważności, ślad) — naty
     await uzytkownik.keyboard(' ');
     const slad = karta(`${id}-slad`);
     expect(slad).toHaveTextContent('metryka: wartość metryki z przebiegu');
-    expect(slad).toHaveTextContent('identyfikator biegu: bieg-001');
-    expect(slad).toHaveTextContent('wersja silnika: 1.0.0');
+    // Identyfikator biegu i wersja silnika to metadane produkcyjne — sekcja audytowa, nie ślad.
+    expect(slad).not.toHaveTextContent('bieg-001');
+    expect(slad).not.toHaveTextContent('1.0.0');
   });
 
   it('zwiniete={false} otwiera sekcje od razu — także w ocenach składowych wymagania', () => {
@@ -1338,6 +1347,56 @@ describe('KartaWerdyktu — iloczyn cech: poziom × status × semantyka (etykiet
   });
 });
 
+describe('EtykietaWerdyktu — plakietka komórki macierzy i listy rekordów: iloczyn status × semantyka', () => {
+  const PRZYPADKI = ([...STATUSY, null] as const).flatMap((status, indeksStatusu) =>
+    SEMANTYKI.map((semantyka) => ({ status, indeksStatusu, semantyka })),
+  );
+
+  it.each(PRZYPADKI)(
+    'status $status × semantyka $semantyka — napis wyłącznie z rekordu, kolor z semantyki, status tylko atrybutem',
+    ({ status, indeksStatusu, semantyka }) => {
+      // Napis nie niesie literału statusu — asercja „status nie jest tekstem" musi coś mierzyć.
+      const napis = `Etykieta rekordu nr ${indeksStatusu} (${semantyka})`;
+      const { unmount } = render(
+        <EtykietaWerdyktu
+          etykieta={{ etykieta_pl: napis, semantyka }}
+          status={status}
+          testid="plakietka"
+        />,
+      );
+      const plakietka = screen.getByTestId('plakietka');
+      expect(plakietka.textContent).toBe(napis);
+      expect(plakietka).toHaveAttribute('data-semantyka', semantyka);
+      expect(plakietka.style.getPropertyValue('--mvd-werdykt-kolor')).toBe(SEMANTYKA_KOLOR[semantyka]);
+      if (status === null) {
+        expect(plakietka).not.toHaveAttribute('data-status');
+      } else {
+        expect(plakietka).toHaveAttribute('data-status', status);
+        // Status maszynowy nigdy nie jest tekstem dla użytkownika (§9).
+        expect(plakietka.textContent).not.toContain(status);
+      }
+      unmount();
+    },
+  );
+
+  it('ta sama etykieta rekordu co karta: plakietka i karta pokazują identyczny napis i kolor', () => {
+    const rekord = ocenaNapieciaNadObwiednia();
+    render(
+      <>
+        <EtykietaWerdyktu etykieta={rekord.etykieta} status={rekord.status_maszynowy} testid="plakietka" />
+        <KartaWerdyktu rekord={rekord} />
+      </>,
+    );
+    const idKarty = `mvd-werdykt-${rekord.kryterium_id}`;
+    expect(screen.getByTestId('plakietka').textContent).toBe(
+      screen.getByTestId(`${idKarty}-etykieta`).textContent,
+    );
+    expect(screen.getByTestId('plakietka').style.getPropertyValue('--mvd-werdykt-kolor')).toBe(
+      screen.getByTestId(idKarty).style.getPropertyValue('--mvd-werdykt-kolor'),
+    );
+  });
+});
+
 describe('KartaWerdyktu — jedyna mapa koloru i brak logiki statusu (przypięcie deklaracji modułu)', () => {
   const ZRODLO_KARTY = readFileSync(join(__dirname, '..', 'KartaWerdyktu.tsx'), 'utf-8');
   const ZRODLO_CSS = readFileSync(join(__dirname, '..', 'kartaWerdyktu.css'), 'utf-8');
@@ -1360,5 +1419,118 @@ describe('KartaWerdyktu — jedyna mapa koloru i brak logiki statusu (przypięci
     expect(ZRODLO_CSS).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
     expect(ZRODLO_CSS).not.toMatch(/\brgba?\(/);
     expect(ZRODLO_CSS).not.toMatch(/\bhsla?\(/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Pierwszy plan karty bez kodu produkcyjnego; surowe identyfikatory w sekcji audytowej
+// ---------------------------------------------------------------------------
+
+/**
+ * Reguły strażnika prezentacji (`ui2/wyniki/akademickie/__tests__/prezentacja.straznik.test.tsx`)
+ * zastosowane do KARTY werdyktu — karta jest wspólna dla wszystkich ekranów, więc napis
+ * kodowy w jej pierwszym planie trafia na każdy ekran (identyfikator kryterium z kropkowaną
+ * ścieżką, etykiety „status modelu"/„status danych" — trzy czerwone przypadki strażnika).
+ * Reguły = reguły strażnika plus kod wyliczenia WIELKIMI literami z podkreśleniem: zdania
+ * backendu (`werdykt/wyjasnienie.py`) niosą od pakietu D2 (luka §5.1) nazwy polskie, a kod
+ * zostaje w polach rekordu — strażnik werdyktu pilnuje tego w odpowiedziach backendu
+ * (sprawdzenie `5_kod_w_tekscie`), a ta reguła na PIERWSZYM PLANIE karty (rekordy testu
+ * odwzorowują zdania backendu).
+ */
+const REGULY_KODU: readonly { readonly nazwa: string; readonly wzorzec: RegExp }[] = [
+  { nazwa: 'ścieżka klucza', wzorzec: /[a-z][a-z0-9]*_?[a-z0-9]*\.[a-z][a-z0-9_]{2,}/ },
+  { nazwa: 'identyfikator z podkreśleniem', wzorzec: /\b[a-z]{2,}_[a-z][a-z0-9_]*\b/ },
+  { nazwa: 'anglicyzm', wzorzec: /\b(status|run|trace|proof|evidence|hash)\b/i },
+  { nazwa: 'kod wyliczenia', wzorzec: /\b[A-Z][A-Z0-9]{2,}(?:_[A-Z0-9]+)+\b/ },
+];
+
+function tekstPierwszegoPlanu(korzen: HTMLElement): string[] {
+  const wynik: string[] = [];
+  const odwiedz = (element: Element): void => {
+    if (element.classList.contains('mvd-audyt')) return;
+    element.childNodes.forEach((wezel) => {
+      if (wezel.nodeType === Node.TEXT_NODE) {
+        const tekst = (wezel.textContent ?? '').trim();
+        if (tekst !== '') wynik.push(tekst);
+      } else if (wezel.nodeType === Node.ELEMENT_NODE) {
+        odwiedz(wezel as Element);
+      }
+    });
+  };
+  odwiedz(korzen);
+  return wynik;
+}
+
+describe('KartaWerdyktu — pierwszy plan bez kodu produkcyjnego, identyfikatory w sekcji audytowej', () => {
+  // Iloczyn cech: poziom rekordu (K × W, w tym W z ocenami składowymi i bez metody) × każdy
+  // status/stan podstawy z fixtur × sekcje rozwinięte (`zwiniete={false}`).
+  const PRZYPADKI: readonly (readonly [string, () => OcenaKryterium | WynikWymagania])[] = [
+    ['K spełnione (identyfikator z kropką, element modelu)', ocenaCzasuAktywacjiSpelniona],
+    ['K naruszone', ocenaCzasuAktywacjiNaruszona],
+    ['K nad obwiednią', ocenaNapieciaNadObwiednia],
+    ['K niejednoznaczne', ocenaOdbudowyNiejednoznaczna],
+    ['K pozostanie w pracy', ocenaPozostaniaWPracy],
+    ['K nie dotyczy', ocenaPasmaNieDotyczy],
+    ['K bez podstawy limitu', ocenaBezPodstawyLimitu],
+    ['W naruszone (z ocenami składowymi)', wymaganieNaruszone],
+    ['W bez metody', wymaganieBezMetody],
+    ['W spełnione', wymaganieSpelnione],
+  ];
+
+  it.each(PRZYPADKI)('%s: rozwinięta karta — zero napisów kodowych poza sekcją audytową', (_opis, fabryka) => {
+    const rekord = fabryka();
+    render(<KartaWerdyktu rekord={rekord} zwiniete={false} />);
+    const identyfikator = 'wymaganie_id' in rekord ? rekord.wymaganie_id : rekord.kryterium_id;
+    const artykul = karta(`mvd-werdykt-${identyfikator}`);
+    const naruszenia = tekstPierwszegoPlanu(artykul).flatMap((tekst) =>
+      REGULY_KODU.filter((r) => r.wzorzec.test(tekst)).map((r) => `${r.nazwa}: „${tekst}”`),
+    );
+    expect(naruszenia).toEqual([]);
+  });
+
+  it('samotest reguły kodu wyliczenia: kod w zdaniu rekordu jest naruszeniem pierwszego planu', () => {
+    // Iniekcja: zdanie backendu sprzed luki §5.1 (kod poziomu zdolności w tekście). Bez tego
+    // samotestu „zero naruszeń" wyżej mogłoby znaczyć „reguła nic nie wykrywa".
+    const bazowy = ocenaCzasuAktywacjiSpelniona();
+    const rekord = {
+      ...bazowy,
+      wyjasnienie: {
+        ...bazowy.wyjasnienie,
+        zdanie_pl: `${bazowy.wyjasnienie.zdanie_pl} Silnik o poziomie VALIDATED_SIMULATION.`,
+      },
+    };
+    render(<KartaWerdyktu rekord={rekord} zwiniete={false} />);
+    const naruszenia = tekstPierwszegoPlanu(karta(`mvd-werdykt-${rekord.kryterium_id}`)).flatMap(
+      (tekst) => REGULY_KODU.filter((r) => r.wzorzec.test(tekst)).map((r) => r.nazwa),
+    );
+    expect(naruszenia).toContain('kod wyliczenia');
+  });
+
+  it('sekcja audytowa (natywny klik) niesie identyfikator, element modelu, kody osi dowodu i bieg ze śladu', async () => {
+    const uzytkownik = userEvent.setup();
+    const rekord = ocenaCzasuAktywacjiSpelniona();
+    render(<KartaWerdyktu rekord={rekord} />);
+    const id = `mvd-werdykt-${rekord.kryterium_id}`;
+    expect(screen.queryByTestId(`${id}-audyt-lista`)).toBeNull();
+    await uzytkownik.click(karta(`${id}-audyt-przelacz`));
+    const lista = karta(`${id}-audyt-lista`);
+    expect(lista).toHaveTextContent(`identyfikator kryterium${rekord.kryterium_id}`);
+    expect(lista).toHaveTextContent(`element modelu${rekord.przedmiot.element_ref}`);
+    expect(lista).toHaveTextContent(`kod poziomu zdolności narzędzia${rekord.dowod.poziom}`);
+    expect(lista).toHaveTextContent(`kod walidacji modelu urządzenia${rekord.dowod.status_modelu}`);
+    expect(lista).toHaveTextContent(`kod stanu danych wejściowych${rekord.dowod.status_danych.stan}`);
+    expect(lista).toHaveTextContent(`kod stanu źródła podstawy${rekord.podstawa.status}`);
+    const zBiegiem = rekord.slad.filter((o) => o.run_id !== null);
+    expect(zBiegiem.length).toBeGreaterThan(0);
+    for (const odnosnik of zBiegiem) expect(lista).toHaveTextContent(odnosnik.run_id!);
+  });
+
+  it('poziom certyfikatu badania typu ma polską nazwę (lustro EvidenceTier backendu)', () => {
+    const bazowy = ocenaCzasuAktywacjiSpelniona();
+    const rekord = { ...bazowy, dowod: { ...bazowy.dowod, poziom: 'TYPE_TEST_CERTIFICATE' as const } };
+    render(<KartaWerdyktu rekord={rekord} />);
+    expect(karta(`mvd-werdykt-${rekord.kryterium_id}-dowod`)).toHaveTextContent(
+      'poziom zdolności narzędzia: certyfikat badania typu (wykaz PTPiREE)',
+    );
   });
 });

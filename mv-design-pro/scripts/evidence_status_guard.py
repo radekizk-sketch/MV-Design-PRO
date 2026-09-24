@@ -6,8 +6,10 @@ kartą `_execute_dynamic_stability` (`enm/canonical_analysis.py`) wpisywał
 ``proof_status="complete"`` / ``reporting_status="reportable"`` NA SZTYWNO dla
 wyniku o zdolności bez ustalonej poprawności fizycznej — dowód regulacyjny
 bez bezpiecznika. Naprawa: te dwie wartości muszą być WYPROWADZANE z rejestru
-dowodowego (``solver_input.provenance.classify_dynamic_capability`` +
-``solver_input.dowod_ncrfg.ocena_dowodowa_biegu``), nie zaszyte jako stała.
+dowodowego (``solver_input.provenance.classify_dynamic_capability``), nie zaszyte
+jako stała. Zgodność NC RfG nie niesie tych pól wcale: jej dowodem są rekordy
+``werdykt.WynikWymagania`` (kompletność dowodu liczona regułą kontraktu werdyktu,
+karta AB-1a Pakiet C).
 
 Guard AST-owy (nie grep — precyzja jak `backend_no_physics_guard.py`): skanuje
 ``backend/src/**/*.py`` (poza `network_model/solvers/**`, FROZEN B-01 —
@@ -94,18 +96,6 @@ _ALLOWLIST: tuple[tuple[str, str, str], ...] = (
         "Wartość WYPROWADZONA z rejestru dowodowego "
         "(`classify_dynamic_capability('dynamic_stability.fault_clear')."
         "regulatory_evidence_eligible`) — karta S-1, koniec tautologii.",
-    ),
-    (
-        "solver_input/dowod_ncrfg.py",
-        "_ocena_modulu",
-        "To JEST rejestr — funkcja oceniająca zgodnie z EvidenceTier per moduł "
-        "(brak ograniczeń ⇒ reportable/complete jest WNIOSKIEM klasyfikacji).",
-    ),
-    (
-        "solver_input/dowod_ncrfg.py",
-        "ocena_dowodowa_biegu",
-        "To JEST rejestr — agregacja ocen modułów (wszystkie reportable/complete "
-        "⇒ bieg reportable/complete), jedno źródło prawdy karty S-1.",
     ),
 )
 
@@ -276,8 +266,8 @@ def main() -> int:
         print(file=sys.stderr)
         print(
             "Fix: wyprowadź reporting_status/proof_status z "
-            "solver_input.provenance.classify_dynamic_capability (albo "
-            "solver_input.dowod_ncrfg.ocena_dowodowa_biegu dla NC RfG), albo "
+            "solver_input.provenance.classify_dynamic_capability (zgodność NC RfG: "
+            "rekordy werdykt.WynikWymagania, bez tych pól), albo "
             "dodaj miejsce do _ALLOWLIST z jednozdaniowym uzasadnieniem "
             "(wynik statyczny z solvera FROZEN z kompletnymi danymi).",
             file=sys.stderr,

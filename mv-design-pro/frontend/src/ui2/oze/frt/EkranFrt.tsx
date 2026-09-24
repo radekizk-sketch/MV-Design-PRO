@@ -21,8 +21,8 @@ import { SladWywodu, TabelaWynikow } from '../../wyniki/wzorzec';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
 import { notify } from '../../../ui/notifications/store';
 import { useNcRfgStore } from '../ncRfgStore';
+import { pobierzKatalogNcRfg } from '../ncrfg/api';
 import {
-  pobierzKatalogKlasNcRfg,
   pobierzTrajektorieFrt,
   type RodzajTestuFrt,
   type WidokTrajektoriiFrt,
@@ -230,7 +230,7 @@ export function EkranFrt({ trybZaawansowania, onOtworzDowod }: EkranFrtProps) {
   useEffect(() => {
     let anulowane = false;
     setOperatorzy({ rodzaj: 'ladowanie' });
-    pobierzKatalogKlasNcRfg()
+    pobierzKatalogNcRfg()
       .then((katalog) => {
         if (anulowane) return;
         setOperatorzy({ rodzaj: 'gotowe', dane: opcjeOperatorowFrt(katalog.operators) });

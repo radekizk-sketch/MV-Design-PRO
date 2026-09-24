@@ -1,233 +1,226 @@
-/*
- * Testy okna „Wniosek OSD" (karta W-707): dostępność generacji (każdy powód
- * blokady), walidacja nazwy projektu, render sekcji z fixture 1:1, braki 422,
- * błąd API PL, pobranie DOCX (mock blob), tryb ekspercki (odciski) i etykiety PL.
+/**
+ * Okno „Wniosek OSD" na kontrakcie V2 (karta AB-1a Pakiet D2 §5).
  *
- * Klient wniosku mockowany częściowo — zachowujemy realną klasę `WniosekBrakiError`
- * (komponent używa `instanceof`).
+ * Granica atrapy = `fetch` (produkcyjny klient `ncrfg/api.ts`); odpowiedzi policzone backendem
+ * (widok modelu magazynu, 422 modelu sceny `macierz`, katalog). Rejestr przebiegów i moduły
+ * zasiane z tych samych fixtur, z których backend policzył odpowiedzi. Iloczyn cech: przypadek
+ * (brak / jest) × operator (z modelu / wymaga wyboru) × odpowiedź (widok / braki / błąd) ×
+ * plik (DOCX / PDF) × tryb (podstawowy / ekspercki). Interakcje natywne (`userEvent`).
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../../ui/app-state';
+import { useStationDerStore, type StationDerConnection } from '../../../../ui/network-build/station-der';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
-import { pobierzWniosek, pobierzWniosekDocx, WniosekBrakiError } from '../../api';
+import type { ExecutionRun } from '../../../../ui/study-cases/types';
+import { katalogFixture } from '../../macierz/__tests__/fixtures';
+import { atrapaSieci, odpowiedzJson, odpowiedzPliku, type WywolanieSieci } from '../../ncrfg/__tests__/atrapaSieci';
 import { useNcRfgStore } from '../../ncRfgStore';
 import { EkranWniosku } from '../EkranWniosku';
-import { WNIOSEK_STRINGS } from '../strings';
+import { WNIOSEK_STRINGS as T } from '../strings';
 import {
-  przebiegFixture,
-  wejscieModuluFixture,
+  brakiWnioskuFixture,
+  deryMacierzy,
+  deryMagazynu,
+  przebiegiMacierzy,
+  przebiegiMagazynu,
   widokWnioskuFixture,
-  wynikNcRfgFixture,
+  zadanieMacierzy,
+  zadanieMagazynu,
 } from './fixtures';
 
-vi.mock('../../api', async () => {
-  const actual = await vi.importActual<typeof import('../../api')>('../../api');
-  return {
-    ...actual,
-    pobierzWniosek: vi.fn(),
-    pobierzWniosekDocx: vi.fn(),
-  };
-});
+type Odpowiedz = 'widok' | 'braki' | 'blad';
 
-/** Ustaw zakończone przebiegi rozpływu i zwarcia w rejestrze biegów. */
-function ustawPrzebiegi(): void {
-  useExecutionRunsStore.setState({
-    runs: [przebiegFixture('run-lf-1', 'LOAD_FLOW'), przebiegFixture('run-sc-1', 'SC_3F')],
-    activeRunId: null,
-  });
+function trasy(odpowiedz: Odpowiedz) {
+  return atrapaSieci([
+    { metoda: 'GET', sciezka: '/api/ncrfg-tests/catalog', odpowiedz: () => odpowiedzJson(200, katalogFixture()) },
+    {
+      metoda: 'POST',
+      sciezka: '/api/oze-analysis/osd-application',
+      odpowiedz: () =>
+        odpowiedz === 'widok'
+          ? odpowiedzJson(200, widokWnioskuFixture())
+          : odpowiedz === 'braki'
+            ? odpowiedzJson(422, { detail: brakiWnioskuFixture() })
+            : odpowiedzJson(404, { detail: 'Brak przebiegu o wskazanym identyfikatorze.' }),
+    },
+    {
+      metoda: 'POST',
+      sciezka: /^\/api\/oze-analysis\/osd-application\.(docx|pdf)$/,
+      odpowiedz: () => odpowiedzPliku('PK', 'application/octet-stream'),
+    },
+  ]);
 }
 
-/** Ustaw zakończony bieg NC RfG we wspólnym store'u (źródło run_request). */
-function ustawBiegNcRfg(): void {
-  useNcRfgStore.setState({
-    status: 'ready',
-    wynik: wynikNcRfgFixture(),
-    ostatnieWejscia: [wejscieModuluFixture()],
-  });
+function zasiej(ders: readonly StationDerConnection[], runs: ExecutionRun[], caseId: string | null = 'case-demo'): void {
+  useStationDerStore.setState({ ders: Object.fromEntries(ders.map((d) => [d.id, d])) });
+  useExecutionRunsStore.setState({ runs, activeRunId: null });
+  useAppStateStore.setState({
+    activeProjectName: 'Przyłączenie farmy PV 8 MW',
+    activeCaseName: 'Stan normalny',
+    activeCaseId: caseId,
+  } as never);
+}
+
+function posty(wywolania: readonly WywolanieSieci[], sciezka: string): WywolanieSieci[] {
+  return wywolania.filter((w) => w.metoda === 'POST' && w.sciezka === sciezka);
+}
+
+async function zbuduj(uzytkownik: ReturnType<typeof userEvent.setup>, busRef: string): Promise<void> {
+  await uzytkownik.type(screen.getByTestId('mvd-wniosek-wezel'), busRef);
+  const przycisk = screen.getByTestId('mvd-wniosek-generuj');
+  await waitFor(() => expect(przycisk).toBeEnabled());
+  await uzytkownik.click(przycisk);
 }
 
 beforeEach(() => {
-  useExecutionRunsStore.setState({ runs: [], activeRunId: null });
   useNcRfgStore.getState().reset();
-  useAppStateStore.setState({
-    activeProjectName: null,
-    activeCaseName: null,
-    activeCaseId: null,
-  } as never);
 });
 
 afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  useStationDerStore.setState({ ders: {} });
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
   useNcRfgStore.getState().reset();
-  vi.clearAllMocks();
 });
 
-describe('EkranWniosku — dostępność generacji', () => {
-  it('renderuje okno z tytułem PL i podtytułem', () => {
-    render(<EkranWniosku trybZaawansowania="basic" />);
-    expect(screen.getByTestId('mvd-wniosek-ekran')).toBeInTheDocument();
-    expect(screen.getByText(WNIOSEK_STRINGS.tytul)).toBeInTheDocument();
-    expect(screen.getByText(WNIOSEK_STRINGS.podtytul)).toBeInTheDocument();
-  });
-
-  it('bez biegu NC RfG: przycisk nieaktywny z tytułem o teście zgodności', () => {
-    ustawPrzebiegi();
+describe('dostępność generacji — bramka kompletności', () => {
+  it('bez aktywnego przypadku: przycisk nieaktywny z tytułem o przypadku (zgodność z modelu)', async () => {
+    trasy('widok');
+    zasiej(deryMagazynu(), przebiegiMagazynu(), null);
     render(<EkranWniosku trybZaawansowania="basic" />);
     const przycisk = screen.getByTestId('mvd-wniosek-generuj');
     expect(przycisk).toBeDisabled();
-    expect(przycisk).toHaveAttribute('title', WNIOSEK_STRINGS.blokadaNcRfg);
+    expect(przycisk).toHaveAttribute('title', T.blokadaBrakPrzypadku);
   });
 
-  it('bez przebiegu rozpływu: przycisk nieaktywny z tytułem o rozpływie', () => {
-    ustawBiegNcRfg();
+  it('operator z modelu pokazany jako fakt; różne profile → wymagany wybór bez wartości domyślnej', async () => {
+    trasy('widok');
+    zasiej(deryMagazynu(), przebiegiMagazynu());
+    const { unmount } = render(<EkranWniosku trybZaawansowania="basic" />);
+    expect(screen.getByTestId('mvd-wniosek-operator')).toHaveAttribute('data-zrodlo', 'model');
+    unmount();
+    const [bess, pv] = deryMacierzy();
+    zasiej([bess, { ...pv, profiles: { ...pv.profiles, nc_rfg_profile_ref: 'pse' } }], przebiegiMacierzy());
+    const uzytkownik = userEvent.setup();
     render(<EkranWniosku trybZaawansowania="basic" />);
-    const przycisk = screen.getByTestId('mvd-wniosek-generuj');
-    expect(przycisk).toBeDisabled();
-    expect(przycisk).toHaveAttribute('title', WNIOSEK_STRINGS.blokadaBrakRozplywu);
+    const wybor = screen.getByTestId('mvd-wniosek-operator-wybor') as HTMLSelectElement;
+    expect(wybor.value).toBe('');
+    await uzytkownik.type(screen.getByTestId('mvd-wniosek-wezel'), 'szyna');
+    expect(screen.getByTestId('mvd-wniosek-generuj')).toHaveAttribute('title', T.blokadaBrakOperatora);
+    await waitFor(() => expect(wybor).toBeEnabled());
+    await uzytkownik.selectOptions(wybor, 'enea');
+    expect(screen.getByTestId('mvd-wniosek-generuj')).toBeEnabled();
   });
 
-  it('waliduje nazwę projektu: pusta → blokada, po wpisaniu → aktywny', () => {
-    ustawPrzebiegi();
-    ustawBiegNcRfg();
+  it('pusta nazwa projektu → blokada; wpisanie → aktywny', async () => {
+    trasy('widok');
+    zasiej(deryMagazynu(), przebiegiMagazynu());
+    const uzytkownik = userEvent.setup();
     render(<EkranWniosku trybZaawansowania="basic" />);
-    fireEvent.change(screen.getByTestId('mvd-wniosek-wezel'), { target: { value: 'bus-1' } });
-    const przycisk = screen.getByTestId('mvd-wniosek-generuj');
-    // Brak nazwy projektu (activeProjectName = null) → blokada wymaganego pola.
-    expect(przycisk).toBeDisabled();
-    expect(przycisk).toHaveAttribute('title', WNIOSEK_STRINGS.blokadaBrakProjektu);
-    fireEvent.change(screen.getByTestId('mvd-wniosek-projekt'), {
-      target: { value: 'Projekt A' },
-    });
-    expect(screen.getByTestId('mvd-wniosek-generuj')).not.toBeDisabled();
+    await uzytkownik.type(screen.getByTestId('mvd-wniosek-wezel'), 'szyna');
+    await uzytkownik.clear(screen.getByTestId('mvd-wniosek-projekt'));
+    expect(screen.getByTestId('mvd-wniosek-generuj')).toHaveAttribute('title', T.blokadaBrakProjektu);
+    await uzytkownik.type(screen.getByTestId('mvd-wniosek-projekt'), 'Projekt');
+    expect(screen.getByTestId('mvd-wniosek-generuj')).toBeEnabled();
   });
 });
 
-describe('EkranWniosku — generacja i sekcje', () => {
-  /** Ustaw kompletny formularz (przebiegi + bieg NC RfG + nazwa projektu + węzeł). */
-  function renderGotowy(tryb: 'basic' | 'expert' = 'basic'): void {
-    ustawPrzebiegi();
-    ustawBiegNcRfg();
-    useAppStateStore.setState({ activeProjectName: 'Farma PV Wschód' });
-    render(<EkranWniosku trybZaawansowania={tryb} />);
-    fireEvent.change(screen.getByTestId('mvd-wniosek-wezel'), { target: { value: 'bus-1' } });
-  }
-
-  it('klik „Zbuduj wniosek" wywołuje klienta z żądaniem 1:1 (przebiegi + run_request)', async () => {
-    vi.mocked(pobierzWniosek).mockResolvedValue(widokWnioskuFixture());
-    renderGotowy();
-    fireEvent.click(screen.getByTestId('mvd-wniosek-generuj'));
-    await waitFor(() => expect(pobierzWniosek).toHaveBeenCalledTimes(1));
-    const zadanie = vi.mocked(pobierzWniosek).mock.calls[0][0];
-    expect(zadanie.pf_run_id).toBe('run-lf-1');
-    expect(zadanie.sc_run_id).toBe('run-sc-1');
-    expect(zadanie.bus_ref).toBe('bus-1');
-    expect(zadanie.nazwa_projektu).toBe('Farma PV Wschód');
-    expect(zadanie.run_request.modules).toHaveLength(1);
-    expect(zadanie.run_request.procedure_version).toBe('PTPiREE 2024');
-  });
-
-  it('żądanie wniosku niesie aktywny przypadek (bez niego dokument nie ma dowodu PTPiREE)', async () => {
-    vi.mocked(pobierzWniosek).mockResolvedValue(widokWnioskuFixture());
-    vi.mocked(pobierzWniosekDocx).mockResolvedValue(new Blob(['docx']));
-    ustawPrzebiegi();
-    ustawBiegNcRfg();
-    useAppStateStore.setState({
-      activeProjectName: 'Farma PV Wschód',
-      activeCaseId: 'case-oze-1',
-    } as never);
+describe('generacja — żądanie V2 i widok', () => {
+  it('żądanie = ciało fixtury sceny (case_id w zapytaniu, operator z modelu, bez biegu zgodności w ciele)', async () => {
+    const wywolania = trasy('widok');
+    zasiej(deryMagazynu(), przebiegiMagazynu());
+    const uzytkownik = userEvent.setup();
     render(<EkranWniosku trybZaawansowania="basic" />);
-    fireEvent.change(screen.getByTestId('mvd-wniosek-wezel'), { target: { value: 'bus-1' } });
-
-    fireEvent.click(screen.getByTestId('mvd-wniosek-generuj'));
-
-    await waitFor(() => expect(pobierzWniosek).toHaveBeenCalledTimes(1));
-    expect(vi.mocked(pobierzWniosek).mock.calls[0][1]).toBe('case-oze-1');
-  });
-
-  it('render sekcji wniosku z fixture 1:1 (bilans, zwarcia, zgodność, założenia)', async () => {
-    vi.mocked(pobierzWniosek).mockResolvedValue(widokWnioskuFixture());
-    renderGotowy();
-    fireEvent.click(screen.getByTestId('mvd-wniosek-generuj'));
-    expect(await screen.findByTestId('mvd-wniosek-wynik')).toBeInTheDocument();
-    // Bilans mocy — moc źródeł i najwyższe obciążenie.
-    const bilans = screen.getByTestId('mvd-wniosek-bilans');
-    expect(bilans).toHaveTextContent('1,30 MVA');
-    expect(bilans).toHaveTextContent('Transformator T1');
-    // Zwarcia w punkcie — nazwa węzła i Ik''.
-    const zwarcia = screen.getByTestId('mvd-wniosek-zwarcia');
-    expect(zwarcia).toHaveTextContent('Szyna GPZ');
-    expect(zwarcia).toHaveTextContent('12,50 kA');
-    // Zgodność — werdykt zbiorczy PL.
-    expect(screen.getByTestId('mvd-wniosek-werdykt')).toHaveTextContent(
-      'Zgodny z wymaganiami NC RfG',
-    );
-    // Założenia — adnotacje o schemacie i zestawieniach.
-    const zalozenia = screen.getByTestId('mvd-wniosek-zalozenia');
-    expect(zalozenia).toHaveTextContent('Schemat elektryczny');
-    expect(zalozenia).toHaveTextContent('Zestawienia materiałowe');
-  });
-
-  it('braki 422: uczciwa lista PL, brak podglądu wniosku', async () => {
-    vi.mocked(pobierzWniosek).mockRejectedValue(
-      new WniosekBrakiError('Wniosek nie może powstać — dane niekompletne.', [
-        'Bilans mocy: przebieg rozpływu nie jest zakończony.',
-        'Zwarcia w punkcie przyłączenia: węzeł nie występuje w wynikach.',
-      ]),
-    );
-    renderGotowy();
-    fireEvent.click(screen.getByTestId('mvd-wniosek-generuj'));
-    const braki = await screen.findByTestId('mvd-wniosek-braki');
-    expect(braki).toHaveTextContent(WNIOSEK_STRINGS.brakiTytul);
-    expect(braki).toHaveTextContent('Bilans mocy: przebieg rozpływu nie jest zakończony.');
-    expect(braki).toHaveTextContent('węzeł nie występuje w wynikach');
-    expect(screen.queryByTestId('mvd-wniosek-wynik')).not.toBeInTheDocument();
-  });
-
-  it('błąd API: komunikat PL w panelu błędu', async () => {
-    vi.mocked(pobierzWniosek).mockRejectedValue(new Error('Nieznany profil operatora sieci.'));
-    renderGotowy();
-    fireEvent.click(screen.getByTestId('mvd-wniosek-generuj'));
-    const blad = await screen.findByTestId('mvd-wniosek-blad');
-    expect(blad).toHaveTextContent('Nieznany profil operatora sieci.');
-    expect(screen.queryByTestId('mvd-wniosek-braki')).not.toBeInTheDocument();
-  });
-
-  it('pobranie DOCX: blob zapisany przez URL.createObjectURL, nazwa z datą', async () => {
-    vi.mocked(pobierzWniosek).mockResolvedValue(widokWnioskuFixture());
-    const blob = new Blob(['docx'], {
-      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    });
-    vi.mocked(pobierzWniosekDocx).mockResolvedValue(blob);
-
-    // jsdom nie implementuje URL.createObjectURL — shim + spy.
-    if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
-    if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => undefined;
-    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
-    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
-
-    renderGotowy();
-    fireEvent.click(screen.getByTestId('mvd-wniosek-generuj'));
-    fireEvent.click(await screen.findByTestId('mvd-wniosek-pobierz-docx'));
-    await waitFor(() => expect(pobierzWniosekDocx).toHaveBeenCalledTimes(1));
-    expect(createObjectURL).toHaveBeenCalledWith(blob);
-  });
-
-  it('tryb ekspercki: odciski sekcji widoczne; tryb podstawowy je ukrywa', async () => {
-    vi.mocked(pobierzWniosek).mockResolvedValue(widokWnioskuFixture());
-    renderGotowy('expert');
-    fireEvent.click(screen.getByTestId('mvd-wniosek-generuj'));
-    const odciski = await screen.findByTestId('mvd-wniosek-odciski');
-    expect(odciski).toHaveTextContent('wniosek-input-hash');
-    expect(odciski).toHaveTextContent('odcisk-bilans');
-  });
-
-  it('tryb podstawowy: odciski sekcji ukryte', async () => {
-    vi.mocked(pobierzWniosek).mockResolvedValue(widokWnioskuFixture());
-    renderGotowy('basic');
-    fireEvent.click(screen.getByTestId('mvd-wniosek-generuj'));
+    await zbuduj(uzytkownik, zadanieMagazynu().bus_ref);
     await screen.findByTestId('mvd-wniosek-wynik');
-    expect(screen.queryByTestId('mvd-wniosek-odciski')).not.toBeInTheDocument();
+    const [zadanie] = posty(wywolania, '/api/oze-analysis/osd-application');
+    expect(zadanie.zapytanie.get('case_id')).toBe('case-demo');
+    expect(zadanie.cialo).toEqual(zadanieMagazynu());
+  });
+
+  it('widok: bilans (wartości bez kodów statusu i liczników), zwarcia, sekcje modułów z rekordami W', async () => {
+    trasy('widok');
+    zasiej(deryMagazynu(), przebiegiMagazynu());
+    const uzytkownik = userEvent.setup();
+    render(<EkranWniosku trybZaawansowania="basic" />);
+    await zbuduj(uzytkownik, zadanieMagazynu().bus_ref);
+    const widok = widokWnioskuFixture();
+    const bilans = await screen.findByTestId('mvd-wniosek-bilans');
+    expect(bilans).not.toHaveTextContent(widok.bilans_mocy.bilans_q_status);
+    expect(bilans).not.toHaveTextContent(/spełnione|niespełnione|ostrzeżenia/);
+    expect(screen.getByTestId('mvd-wniosek-zwarcia')).toHaveTextContent(widok.zwarcia_punkt_przylaczenia.nazwa_wezla);
+    expect(screen.getByTestId('mvd-wniosek-zgodnosc-procedura')).toHaveTextContent(widok.zgodnosc_nc_rfg.procedura.tytul);
+    for (const sekcja of widok.zgodnosc_nc_rfg.moduly) {
+      const modul = screen.getByTestId(`mvd-wniosek-modul-${sekcja.der_ref}`);
+      expect(within(modul).getByTestId(`mvd-wniosek-modul-${sekcja.der_ref}-wiersze`)).toHaveTextContent(
+        sekcja.wiersze[0].etykieta_pl,
+      );
+    }
+    expect(screen.getByTestId('mvd-wniosek-zalozenia')).toHaveTextContent(widok.zalozenia_pl[0]);
+    expect(screen.queryByTestId('mvd-wniosek-werdykt')).toBeNull();
+    expect(document.body).not.toHaveTextContent('[object Object]');
+  });
+
+  it('422 z brakami → ekran „czego brakuje": braki tekstowe, rekordy W (plakietka z rekordu), źródła pominięte', async () => {
+    const wywolania = trasy('braki');
+    zasiej(deryMacierzy(), przebiegiMacierzy());
+    const uzytkownik = userEvent.setup();
+    render(<EkranWniosku trybZaawansowania="basic" />);
+    await zbuduj(uzytkownik, zadanieMacierzy().bus_ref);
+    const braki = await screen.findByTestId('mvd-wniosek-braki');
+    const fixtura = brakiWnioskuFixture();
+    expect(braki).toHaveTextContent(T.brakiTytul);
+    expect(braki).toHaveTextContent(fixtura.komunikat);
+    // Brak należy do nazwanego modułu (`der_ref`/`der_name` z odpowiedzi 422).
+    const brak = fixtura.braki_ncrfg[0];
+    const modul = within(braki).getByTestId(`mvd-wniosek-braki-lista-modul-${brak.der_ref}`);
+    expect(modul).toHaveTextContent(brak.der_name ?? brak.der_ref);
+    expect(
+      within(modul).getByTestId(`mvd-wniosek-braki-lista-rekordy-${brak.der_ref}-${brak.rekord.wymaganie_id}-etykieta`),
+    ).toHaveTextContent(brak.rekord.etykieta.etykieta_pl);
+    expect(screen.queryByTestId('mvd-wniosek-wynik')).toBeNull();
+    expect(posty(wywolania, '/api/oze-analysis/osd-application')[0].cialo).toEqual(zadanieMacierzy());
+  });
+
+  it('błąd backendu → komunikat z treścią detail, bez podglądu', async () => {
+    trasy('blad');
+    zasiej(deryMagazynu(), przebiegiMagazynu());
+    const uzytkownik = userEvent.setup();
+    render(<EkranWniosku trybZaawansowania="basic" />);
+    await zbuduj(uzytkownik, zadanieMagazynu().bus_ref);
+    expect(await screen.findByTestId('mvd-wniosek-blad')).toHaveTextContent('Brak przebiegu o wskazanym identyfikatorze.');
+  });
+
+  it.each(['docx', 'pdf'] as const)('pobranie %s → plik z tego samego żądania i nazwa z formatem', async (format) => {
+    const wywolania = trasy('widok');
+    zasiej(deryMagazynu(), przebiegiMagazynu());
+    const utworz = vi.fn(() => 'blob:wniosek');
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: utworz, revokeObjectURL: vi.fn() }));
+    const uzytkownik = userEvent.setup();
+    render(<EkranWniosku trybZaawansowania="basic" />);
+    await zbuduj(uzytkownik, zadanieMagazynu().bus_ref);
+    await uzytkownik.click(await screen.findByTestId(`mvd-wniosek-pobierz-${format}`));
+    await waitFor(() => expect(utworz).toHaveBeenCalledTimes(1));
+    const [plik] = posty(wywolania, `/api/oze-analysis/osd-application.${format}`);
+    expect(plik.zapytanie.get('case_id')).toBe('case-demo');
+    expect(plik.cialo).toEqual(zadanieMagazynu());
+  });
+
+  it.each([
+    ['basic', false],
+    ['expert', true],
+  ] as const)('tryb %s → odciski w informacjach audytowych: %s', async (tryb, widoczne) => {
+    trasy('widok');
+    zasiej(deryMagazynu(), przebiegiMagazynu());
+    const uzytkownik = userEvent.setup();
+    render(<EkranWniosku trybZaawansowania={tryb} />);
+    await zbuduj(uzytkownik, zadanieMagazynu().bus_ref);
+    await screen.findByTestId('mvd-wniosek-wynik');
+    expect(screen.queryByTestId('mvd-wniosek-odciski') !== null).toBe(widoczne);
   });
 });

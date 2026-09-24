@@ -64,12 +64,24 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
     # W6-1 K-E (`enm/domain_ops_models.py::AddNNLoadPayload`).
     # AB-H0 §0.7.6: `Generator.modele_widmowe` (modele z kart widmowych) — to samo prawo;
     # test odcisku: `tests/enm/test_karty_widmowe_modelu.py`.
+    # AB-1a Pakiet C: `Generator.modul_istniejacy`, `data_umowy_przylaczeniowej`
+    # i `nastawy_zabezpieczen` (O-31, O-32) — to samo prawo (brak = dana nieustalona,
+    # poza odciskiem); test pisarzy i odcisku: `test_pola_art4_i_nastawy_poza_haszem_gdy_none`.
+    # Odbiór Pakietu C (O-50): `Generator.deklaracje_modulu` — to samo prawo; test odcisku:
+    # `tests/enm/test_deklaracje_modulu.py::test_deklaracje_poza_odciskiem_gdy_none`.
     assert _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE == {
         "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu", "neutral_grounding"),
         "loads": ("phases",),
         "transformers": ("lv_earthing_system",),
         "branches": ("screen_bonding",),
-        "generators": ("dynamika", "modele_widmowe"),
+        "generators": (
+            "dynamika",
+            "modele_widmowe",
+            "modul_istniejacy",
+            "data_umowy_przylaczeniowej",
+            "nastawy_zabezpieczen",
+            "deklaracje_modulu",
+        ),
     }
 
 

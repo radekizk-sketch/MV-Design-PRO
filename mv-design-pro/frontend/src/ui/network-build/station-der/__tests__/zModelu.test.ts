@@ -16,7 +16,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { rozwiazNapiecieKv } from '../../../../ui2/oze/macierz/macierzModel';
-import { statusCertyfikatuPtpiree } from '../certyfikatPtpiree';
 import { selectAllDers, useStationDerStore } from '../store';
 import { EMPTY_DER_CATALOGS, EMPTY_DER_PROFILES, EMPTY_DER_READINESS } from '../types';
 import type { StationDerConnection } from '../types';
@@ -212,12 +211,13 @@ describe('synchronizujZModelu — model wygrywa, praca lokalna nie ginie', () =>
   /**
    * Karta CERTYFIKAT-Z-KATALOGU: ryzyko nazwane przy odbiorze karty — status
    * certyfikatu PTPiREE jest POCHODNĄ katalogu, nie wyborem projektanta
-   * (`DerCatalogSelections.ptpiree_status`, `certyfikatPtpiree.ts`). Bez tej
-   * naprawy lokalny zapis (jakimkolwiek mechanizmem — store bez backendu)
-   * PRZEŻYWAŁBY synchronizację z modelem i `statusCertyfikatuPtpiree` zwracałby
-   * `'ptpiree_verified'` na podstawie DEKLARACJI, nie katalogu — DOKŁADNIE ta
-   * sama klasa fabrykacji co usunięte `includes('ptpiree')`, tylko innym
-   * mechanizmem (zapis zamiast zgadywania z nazwy).
+   * (`DerCatalogSelections.ptpiree_status`). Bez tej naprawy lokalny zapis
+   * (jakimkolwiek mechanizmem — store bez backendu) PRZEŻYWAŁBY synchronizację
+   * z modelem i ekran pokazywałby powiązanie z wykazem na podstawie DEKLARACJI,
+   * nie katalogu — DOKŁADNIE ta sama klasa fabrykacji co usunięte
+   * `includes('ptpiree')`, tylko innym mechanizmem (zapis zamiast zgadywania z nazwy).
+   * (Karta AB-1a Pakiet D2: kliencki predykat statusu certyfikatu skasowany — status
+   * pokazuje się wyłącznie z adnotacji backendu, którą ten test przypina do modelu.)
    */
   it('samodeklarowany ptpiree_certificate_ref na id modelu NIE PRZEŻYWA ponownej synchronizacji', () => {
     const dery = deryZModelu(migawka({ generators: [generatorPv()] as never }), null);
@@ -236,7 +236,6 @@ describe('synchronizujZModelu — model wygrywa, praca lokalna nie ginie', () =>
 
     expect(wynik?.catalogs.ptpiree_certificate_ref).toBeNull();
     expect(wynik?.catalogs.ptpiree_status).toBeNull();
-    expect(statusCertyfikatuPtpiree(wynik!)).toBe('unknown');
   });
 
   it('readiness lokalna (updateDerReadiness) PRZEŻYWA synchronizację — naprawa jest WĄSKA, nie ogólna zmiana precedencji', () => {

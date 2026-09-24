@@ -2264,9 +2264,26 @@ def test_pakiet_l_every_deleted_row_has_a_gate_entry() -> None:
     skasowane wiersze inwentarza — kazdy MUSI miec wpis bramki, a pominiety
     NIE moze go miec (bramka pilnuje faktow, nie planow)."""
     wiersze = {w.wiersz.split(" ")[0] for w in guard.PAKIET_L_WPISY}
-    assert wiersze == PAKIET_L_WIERSZE_SKASOWANE | PAKIET_L_POZA_INWENTARZEM
+    assert wiersze == (
+        PAKIET_L_WIERSZE_SKASOWANE
+        | PAKIET_L_POZA_INWENTARZEM
+        | set(guard.KARTY_WPISOW_SPOZA_INWENTARZA)
+    )
     assert not (wiersze & PAKIET_L_WIERSZE_POMINIETE)
     assert len(PAKIET_L_WIERSZE_SKASOWANE | PAKIET_L_WIERSZE_POMINIETE) == 48
+
+
+def test_pakiet_l_liczba_wpisow_z_pomiaru() -> None:
+    """Pin z POMIARU (karta AB-1a Pakiet D2, 2026-09-23): 244 wpisy Pakietu L + wpisy kasacji
+    B+C (meldunek integracji, (f)2) + wpisy kasacji D2. Zmiana liczby = świadoma zmiana pinu."""
+    liczby = {}
+    for w in guard.PAKIET_L_WPISY:
+        klucz = w.wiersz if w.wiersz in guard.KARTY_WPISOW_SPOZA_INWENTARZA else "L"
+        liczby[klucz] = liczby.get(klucz, 0) + 1
+    # Integracja B+C+D2 na HEAD z AB-H0 i AB-1b.1a (2026-09-24): +9 wpisow AB-1b.1a (sciezka
+    # `resultset_dynamic_v1.py` + 8 definicji) i +1 AB-H0 (`validate_transformer_power`).
+    assert liczby == {"L": 244, "BC": 50, "D2": 85, "1B1A": 9, "H0": 1}
+    assert len(guard.PAKIET_L_WPISY) == 244 + 50 + 85 + 9 + 1
 
 
 def test_pakiet_l_entries_are_well_formed() -> None:

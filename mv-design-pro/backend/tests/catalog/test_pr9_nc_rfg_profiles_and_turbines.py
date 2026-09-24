@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from catalog.profiles.nc_rfg import (
     NcRfgProfile,
+    klasyfikuj_modul,
     list_available_operators,
     load_nc_rfg_profile,
 )
@@ -42,33 +43,38 @@ class TestNcRfgProfileStructure:
         assert ids == ["A", "B", "C", "D"]
 
     def test_pse_classify_module_a_for_small_pv(self) -> None:
-        profile = load_nc_rfg_profile("pse")
-        # 5 kW PV po nN = kategoria A
-        mt = profile.classify_module(p_max_kw=5.0, voltage_kv=0.4)
-        assert mt is not None
-        assert mt.id == "A"
+        # Intencja zachowana: mała instalacja PV 5 kW przyłączona do nN jest modułem typu A.
+        # Zmiana kanonu (plan AB §6 pkt 2): klasyfikacja jest krajowa (WOS) i nie zależy od
+        # operatora — metoda profilu `classify_module` zastąpiona jedyną funkcją
+        # `klasyfikuj_modul`, która zwraca identyfikator typu zamiast obiektu klasy.
+        assert klasyfikuj_modul(p_max_kw=5.0, napiecie_kv=0.4) == "A"
 
     def test_pse_classify_module_b_for_5mw_pv(self) -> None:
-        profile = load_nc_rfg_profile("pse")
-        mt = profile.classify_module(p_max_kw=5000.0, voltage_kv=15.0)
-        assert mt is not None
-        assert mt.id == "B"
+        # Intencja zachowana: farma PV 5 MW przyłączona do SN 15 kV jest modułem typu B
+        # (progi WOS: 200 kW ≤ P < 10 MW) — `classify_module` → `klasyfikuj_modul`.
+        assert klasyfikuj_modul(p_max_kw=5000.0, napiecie_kv=15.0) == "B"
 
     def test_pse_classify_module_d_for_75mw_fw(self) -> None:
-        profile = load_nc_rfg_profile("pse")
-        # 75 MW FW = kategoria D
-        mt = profile.classify_module(p_max_kw=75000.0, voltage_kv=110.0)
-        assert mt is not None
-        assert mt.id == "D"
+        # Intencja zachowana: farma wiatrowa 75 MW jest modułem typu D — `classify_module` →
+        # `klasyfikuj_modul`. Pierwotny przypadek (75 MW na 110 kV) spełniał OBIE reguły typu
+        # D naraz, więc nie odróżniał reguły mocy od reguły napięciowej; dopisane przypadki
+        # rozdzielają je (75 MW na 30 kV — sama moc; 100 kW na 110 kV — samo napięcie).
+        assert klasyfikuj_modul(p_max_kw=75000.0, napiecie_kv=110.0) == "D"
+        assert klasyfikuj_modul(p_max_kw=75000.0, napiecie_kv=30.0) == "D"
+        assert klasyfikuj_modul(p_max_kw=100.0, napiecie_kv=110.0) == "D"
 
-    def test_pse_has_18_compliance_tests(self) -> None:
+    def test_pse_requirement_catalog_covers_frt_and_hvrt(self) -> None:
+        # Intencja zachowana: profil niesie katalog sprawdzeń zgodności, w którym są
+        # wymagania FRT (LVRT) i HVRT. Zmiana kanonu (OD-26): pole `compliance_tests`
+        # (18 pozycji T1–T18) jest skasowane — katalogiem jest `wymagania` (wymaganie
+        # przyłączeniowe z testami kanonu PTPiREE T01–T20), więc liczba 18 i identyfikatory
+        # T1/T2 zastąpione identyfikatorami wymagań i ich testami.
         profile = load_nc_rfg_profile("pse")
-        assert len(profile.compliance_tests) == 18
-        # Sprawdź T1=LVRT, T2=HVRT
-        t1 = next((t for t in profile.compliance_tests if t.id == "T1"), None)
-        t2 = next((t for t in profile.compliance_tests if t.id == "T2"), None)
-        assert t1 is not None and "LVRT" in t1.name_pl
-        assert t2 is not None and "HVRT" in t2.name_pl
+        assert len(profile.wymagania) == 16
+        frt = profile.wymaganie("RFG_14_3")
+        hvrt = profile.wymaganie("ZASTANE_HVRT")
+        assert "FRT" in frt.nazwa_pl and frt.testy == ("T14",)
+        assert "HVRT" in hvrt.nazwa_pl and hvrt.testy == ("T15",)
 
     def test_lvrt_curve_has_5_points(self) -> None:
         profile = load_nc_rfg_profile("pse")
@@ -141,9 +147,15 @@ class TestNcRfgProfileMultipleOperators:
     """Test sprawdza że wszystkie 5 operatorów ma spójną strukturę."""
 
     @pytest.mark.parametrize("operator_id", ["pse", "energa", "tauron", "enea", "pge"])
-    def test_all_operators_have_18_tests(self, operator_id: str) -> None:
+    def test_all_operators_have_same_requirement_catalog(self, operator_id: str) -> None:
+        # Intencja zachowana: każdy operator ma ten sam, kompletny katalog sprawdzeń. Zmiana
+        # kanonu (OD-26): `compliance_tests` (18 pozycji) skasowane — katalogiem jest
+        # `wymagania`; wymagania pochodzą z warstw wspólnych (NC RfG, zastana, magazyny),
+        # więc zbiór identyfikatorów jest identyczny u każdego operatora.
         profile = load_nc_rfg_profile(operator_id)
-        assert len(profile.compliance_tests) == 18
+        referencyjny = load_nc_rfg_profile("pse")
+        assert len(profile.wymagania) == 16
+        assert [w.id for w in profile.wymagania] == [w.id for w in referencyjny.wymagania]
 
     @pytest.mark.parametrize("operator_id", ["pse", "energa", "tauron", "enea", "pge"])
     def test_all_operators_have_4_module_types(self, operator_id: str) -> None:
@@ -152,7 +164,11 @@ class TestNcRfgProfileMultipleOperators:
 
     @pytest.mark.parametrize("operator_id", ["pse", "energa", "tauron", "enea", "pge"])
     def test_all_operators_classify_5mw_as_b(self, operator_id: str) -> None:
+        # Intencja zachowana: moduł 5 MW na SN 15 kV to typ B u każdego operatora. Zmiana
+        # kanonu: klasyfikacja jest krajowa (`klasyfikuj_modul`, bez operatora), a zgodność
+        # per operator sprawdzamy na klasach modułów jego profilu (ta sama reguła progów).
         profile = load_nc_rfg_profile(operator_id)
-        mt = profile.classify_module(p_max_kw=5000.0, voltage_kv=15.0)
-        assert mt is not None
-        assert mt.id == "B"
+        assert klasyfikuj_modul(p_max_kw=5000.0, napiecie_kv=15.0) == "B"
+        klasa_b = next(mt for mt in profile.module_types if mt.id == "B")
+        assert klasa_b.threshold_kw_max is not None
+        assert klasa_b.threshold_kw_min <= 5000.0 < klasa_b.threshold_kw_max

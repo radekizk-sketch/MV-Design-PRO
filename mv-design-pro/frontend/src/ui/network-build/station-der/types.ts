@@ -94,11 +94,11 @@ export interface DerCatalogSelections {
    * `'POWIAZANY'` | `'NIEPOWIAZANY'` | `null` (tabliczka bez adnotacji — urządzenie
    * spoza wykazu lub materializacja poza torem katalogowym).
    *
-   * Karta CERTYFIKAT-Z-KATALOGU (zero fabrykacji): JEDYNE źródło statusu
-   * certyfikatu w warstwie prezentacji — `NcRfgCertificateStatus` wyprowadzany
-   * z tego pola (`station-der/certyfikatPtpiree.ts::statusCertyfikatuPtpiree`,
-   * ten sam predykat co backendowe
-   * `application/ncrfg_compliance/model_bridge.py::certificate_status_z_tabliczki`).
+   * Karta CERTYFIKAT-Z-KATALOGU (zero fabrykacji) i karta AB-1a Pakiet D2: warstwa
+   * prezentacji pokazuje tę ADNOTACJĘ katalogu wprost (bez statusu certyfikatu liczonego
+   * po stronie klienta — dawny predykat `statusCertyfikatuPtpiree` skasowany); dowód
+   * certyfikatu urządzenia wyprowadza WYŁĄCZNIE serwer
+   * (`application/ncrfg_compliance/model_bridge.py`, zgodność przypadku NC RfG).
    * NIGDY zgadywanie z nazwy referencji katalogowej (`device_catalog_ref?.includes('ptpiree')`
    * był fabrykacją: rekord nazwany „ptpiree" bez adnotacji dawał fałszywy
    * `ptpiree_verified`, rekord certyfikowany bez tego słowa w nazwie — fałszywy `unknown`).

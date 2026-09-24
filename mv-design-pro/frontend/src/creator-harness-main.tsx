@@ -7,6 +7,9 @@
  * Query: `?creator=pole|oze|transformator|kompensator|magistrala|odbior|zrodlo|arcflash&theme=light|dark`.
  * Sceny dowodowe OZE (karta V-A): `?creator=lom|frt|oltc|macierz` — ekrany z pełnym
  * wywodem akademickim (WHITE BOX/KaTeX) na realnych komponentach.
+ * Sceny dokumentów NC RfG (karta AB-1a Pakiet D2): `certyfikat` (widok certyfikatu),
+ * `wniosek` / `wniosek-braki` (wniosek do OSD: widok / „czego brakuje") i `pulpit-oze`
+ * (pulpit instalacji OZE); scena `macierz` daje certyfikat 422 z brakami.
  * Sceny rundy dowodowej V-B (pełne wywody na żywych ekranach wyników):
  * `kompensacja-wynik|sila-sieci|odbior-zgodnosc|estymacja|ssci|migotanie`
  * (scena „odbior-zgodnosc" = ekran „Zgodność powykonawcza"; nazwa `odbior`
@@ -194,6 +197,27 @@ import diagnozaScenyBieg from './harness-fixtures/generated/diagnoza_scena_bieg.
 // wytwórców front wyprowadza z nich odwzorowaniem produkcyjnym `deryZModelu`.
 import ozeScenyMigawka from './harness-fixtures/generated/oze_scena_migawka.json';
 import macierzScenyMigawka from './harness-fixtures/generated/macierz_scena_migawka.json';
+// Karta AB-1a Pakiet D2: sceny NC RfG na kontrakcie V2 — certyfikat zgodności (422 z brakami
+// w scenie `macierz`, widok dokumentu w scenie `certyfikat`), wniosek do OSD (`wniosek`,
+// `wniosek-braki`) i zgodność przypadku modelu magazynu — policzone BACKENDEM tymi samymi
+// funkcjami co trasy (`eksport_fixtur_harnessu.py`), razem z ciałami żądań, które ekrany MAJĄ
+// wysłać (para predykatów: inne żądanie → odmowa 409, nie wynik policzony dla innych danych).
+import magazynScenyMigawka from './harness-fixtures/generated/magazyn_scena_migawka.json';
+import zgodnoscPrzekrojowaScenyMagazyn from './harness-fixtures/generated/ncrfg_zgodnosc_przekrojowa_scena_magazyn.json';
+// Luka §5.3 pakietu D2: formularz wstępny biegu „co-jeśli" macierzy = wejścia modułów złożone
+// z committed ENM mostem modelu (`GET …/cases/{id}/wejscia`), policzone backendem.
+import wejsciaScenyMacierz from './harness-fixtures/generated/ncrfg_wejscia_scena_macierz.json';
+import wejsciaScenyMagazyn from './harness-fixtures/generated/ncrfg_wejscia_scena_magazyn.json';
+import type { WejsciaPrzypadkuNcRfg } from './ui2/oze/ncrfg/typy';
+import certyfikatScenyZadanie from './harness-fixtures/generated/certyfikat_scena_zadanie.json';
+import certyfikatScenyMacierzBraki from './harness-fixtures/generated/certyfikat_scena_macierz_braki.json';
+import certyfikatScenyMagazyn from './harness-fixtures/generated/certyfikat_scena_magazyn.json';
+import wniosekScenyMagazyn from './harness-fixtures/generated/wniosek_scena_magazyn.json';
+import wniosekScenyMagazynZadanie from './harness-fixtures/generated/wniosek_scena_magazyn_zadanie.json';
+import wniosekScenyMagazynPrzebiegi from './harness-fixtures/generated/wniosek_scena_magazyn_przebiegi.json';
+import wniosekScenyMacierzZadanie from './harness-fixtures/generated/wniosek_scena_macierz_zadanie.json';
+import wniosekScenyMacierzBraki from './harness-fixtures/generated/wniosek_scena_macierz_braki.json';
+import wniosekScenyMacierzPrzebiegi from './harness-fixtures/generated/wniosek_scena_macierz_przebiegi.json';
 import wiazaniaScenyPrzekladniki from './harness-fixtures/generated/wiazania_scena_przekladniki.json';
 import wiazaniaScenyFunkcjeZabezpieczen from './harness-fixtures/generated/wiazania_scena_funkcje_zabezpieczen.json';
 // HARNESS-RESZTA-2: scena „porownanie" w trybie ZABEZPIECZENIA — lista biegów,
@@ -204,7 +228,8 @@ import porownanieScenyWynikZabezpieczen from './harness-fixtures/generated/porow
 import porownanieScenySladZabezpieczen from './harness-fixtures/generated/porownanie_scena_slad_zabezpieczen.json';
 import { REWIZJA_SIECI_ZLOTEJ, migawkaSieciZlotej } from './harness-fixtures/migawkaSieciZlotej';
 import { EkranOceny } from './ui2/wyniki/ocena';
-import { SekcjaSilySieci } from './ui2/oze/pulpit';
+import { PulpitOze, SekcjaSilySieci } from './ui2/oze/pulpit';
+import { EkranWniosku } from './ui2/oze/wniosek';
 import { EkranRozplywu } from './ui2/wyniki/rozplyw';
 import { EkranZwarc } from './ui2/wyniki/zwarcia';
 import { EkranPorownania } from './ui2/wyniki/porownanie';
@@ -633,6 +658,57 @@ const originalFetch = window.fetch.bind(window);
  */
 function creatorZUrl(): string {
   return new URLSearchParams(window.location.search).get('creator') ?? 'pole';
+}
+
+/** JSON z kluczami posortowanymi rekurencyjnie — porównanie ciała żądania niezależne od kolejności pól. */
+function jsonKanoniczny(wartosc: unknown): string {
+  const uporzadkuj = (v: unknown): unknown =>
+    Array.isArray(v)
+      ? v.map(uporzadkuj)
+      : v !== null && typeof v === 'object'
+        ? Object.fromEntries(
+            Object.keys(v as Record<string, unknown>)
+              .sort()
+              .map((k) => [k, uporzadkuj((v as Record<string, unknown>)[k])]),
+          )
+        : v;
+  return JSON.stringify(uporzadkuj(wartosc));
+}
+
+/**
+ * Odpowiedź dokumentu NC RfG sceny (certyfikat / wniosek) — PARA PREDYKATÓW (KLASA, NIE
+ * INSTANCJA): fixtura opisuje DOKŁADNIE jedno żądanie (ciało policzone backendem obok
+ * odpowiedzi) dla przypadku zasiewu. Inne ciało albo inny przypadek → odmowa 409 z nazwanym
+ * rozjazdem (łapie ją bramka „Nie udało się" specu), nigdy odpowiedź policzona dla innych danych.
+ * 422 niesie `detail` w kształcie `CertyfikatBrakiError.detail()` / `WniosekOsdBrakiError.detail()`.
+ */
+function odpowiedzDokumentuSceny(
+  url: string,
+  init: RequestInit | undefined,
+  oczekiwane: { readonly zadanie: unknown; readonly status: 200 | 422; readonly tresc: unknown },
+): Response {
+  const adres = new URL(url, window.location.origin);
+  const cialo = JSON.parse(String(init?.body ?? 'null')) as unknown;
+  const powody: string[] = [];
+  if (adres.searchParams.get('case_id') !== 'case-demo') {
+    powody.push(`przypadek ${adres.searchParams.get('case_id') ?? '(brak)'} zamiast case-demo`);
+  }
+  if (jsonKanoniczny(cialo) !== jsonKanoniczny(oczekiwane.zadanie)) {
+    powody.push(`ciało żądania ${JSON.stringify(cialo)} różne od fixtury ${JSON.stringify(oczekiwane.zadanie)}`);
+  }
+  if (powody.length > 0) {
+    return new Response(
+      JSON.stringify({
+        detail: `atrapa dokumentu NC RfG: ${powody.join('; ')} — uruchom scripts/eksport_fixtur_harnessu.py`,
+      }),
+      { status: 409, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  const tresc = oczekiwane.status === 422 ? { detail: oczekiwane.tresc } : oczekiwane.tresc;
+  return new Response(JSON.stringify(tresc), {
+    status: oczekiwane.status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 /**
@@ -1111,13 +1187,44 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   if (url.includes('/api/ncrfg-tests/run')) {
     // Scena „macierz" (E2E-FULL-FIX-3, 2026-09-10): bieg NC RfG/PTPiREE idzie do
     // REALNEGO solvera (bezstanowy i deterministyczny jak katalog wyżej). Dawna
-    // ręczna atrapa niosła klasę modułu B dla 0,8 MW przy 0,4 kV (progi OD-5:
-    // A < 1 MW) oraz werdykty dla danych, których scena nie wysyłała — trzeci
-    // dryf tej samej klasy co katalog. Parametr `case_id` jest ZDEJMOWANY: dopina
-    // on wyłącznie dowód certyfikatu z tabliczek modelu, a `case-demo` zasiewu nie
-    // istnieje w backendzie (404); bez przypadku backend odsyła dowód z pustymi
-    // polami (`dowody_certyfikatu(None, …)` — uczciwy stan zerowy).
-    return originalFetch('/api/ncrfg-tests/run', init);
+    // ręczna atrapa niosła klasę modułu dla danych, których scena nie wysyłała —
+    // trzeci dryf tej samej klasy co katalog. Kontrakt V2 (karta AB-1a Pakiet D2):
+    // ciało biegu „co-jeśli" to WYŁĄCZNIE moduły (źródło danych `ZADANIE_KLIENTA`,
+    // dowód certyfikatu `null` — wyprowadza go tylko serwer z zatwierdzonego modelu),
+    // bez parametru przypadku; to samo ciało dla formularza wstępnego sceny opisuje
+    // fixtura `ncrfg_bieg_scena_macierz_zadanie.json` (test pary frontu).
+    return originalFetch(input, init);
+  }
+  if (url.includes('/api/ncrfg-tests/cases/') && url.includes('/wejscia')) {
+    // Formularz wstępny biegu „co-jeśli" macierzy czyta committed ENM, którego harness nie ma —
+    // odpowiedź liczy `scripts/eksport_fixtur_harnessu.py` TĄ SAMĄ funkcją
+    // (`wejscia_ncrfg_przypadku`: most model → wejście solvera z pochodzeniem pól), co trasa
+    // `get_ncrfg_module_inputs_from_model`. Para predykatów (jak zgodność przypadku niżej):
+    // moduły wejść (objęte i pominięte) MUSZĄ opisywać moduły zasiane w scenie, a operator
+    // zapytania — operatora fixtury; rozjazd to odmowa 409, nie formularz innego modelu.
+    const wejsciaSceny = (
+      ['certyfikat', 'wniosek'].includes(creatorZUrl()) ? wejsciaScenyMagazyn : wejsciaScenyMacierz
+    ) as unknown as WejsciaPrzypadkuNcRfg;
+    const zasiane = selectAllDers(useStationDerStore.getState())
+      .map((der) => der.id)
+      .sort();
+    const zAtrapy = [
+      ...wejsciaSceny.modules.map((modul) => modul.der_ref),
+      ...wejsciaSceny.pominiete.map((der) => der.der_ref),
+    ].sort();
+    const operatorZapytania = new URL(url, window.location.origin).searchParams.get('operator_id');
+    if (zasiane.join(';') !== zAtrapy.join(';') || operatorZapytania !== wejsciaSceny.operator_id) {
+      return new Response(
+        JSON.stringify({
+          detail:
+            `atrapa wejść modułów opisuje moduły [${zAtrapy.join(', ')}] operatora `
+            + `${wejsciaSceny.operator_id}, scena zasiewa [${zasiane.join(', ')}] i pyta o `
+            + `operatora ${operatorZapytania ?? '(brak)'} — uruchom scripts/eksport_fixtur_harnessu.py`,
+        }),
+        { status: 409, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    return jsonOK(wejsciaSceny);
   }
   if (url.includes('/api/ncrfg-tests/cases/') && url.includes('/compliance')) {
     // Zgodność przekrojowa przypadku (karta S-3, dawniej W3-D) czyta committed ENM,
@@ -1128,23 +1235,65 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // moduły biegu MUSZĄ opisywać moduły zasiane w tej scenie — rozjazd
     // ref/mocy/napięcia to odmowa 409 (łapie ją bramka „Nie udało się" specu),
     // nie cicha atrapa z poprzedniego zasiewu.
+    // Karta AB-1a Pakiet D2: sceny magazynu (`certyfikat`, `wniosek`) czytają zgodność
+    // modelu magazynu; operator zapytania (profil NC RfG modułów modelu) jest częścią pary.
+    const zgodnoscSceny = ['certyfikat', 'wniosek'].includes(creatorZUrl())
+      ? zgodnoscPrzekrojowaScenyMagazyn
+      : zgodnoscPrzekrojowaScenyMacierz;
     const zasiane = selectAllDers(useStationDerStore.getState())
       .map((der) => `${der.id}|${der.nominal_power_kw}|${der.connection_voltage_kv}`)
       .sort();
-    const zAtrapy = (zgodnoscPrzekrojowaScenyMacierz.bieg?.modules ?? [])
+    const zAtrapy = (zgodnoscSceny.bieg?.modules ?? [])
       .map((modul) => `${modul.der_ref}|${modul.p_max_kw}|${modul.voltage_kv}`)
       .sort();
-    if (zasiane.join(';') !== zAtrapy.join(';')) {
+    const operatorZapytania = new URL(url, window.location.origin).searchParams.get('operator_id');
+    if (zasiane.join(';') !== zAtrapy.join(';') || operatorZapytania !== zgodnoscSceny.operator_id) {
       return new Response(
         JSON.stringify({
           detail:
-            `atrapa zgodności przekrojowej opisuje moduły [${zAtrapy.join(', ')}], scena zasiewa `
-            + `[${zasiane.join(', ')}] — uruchom scripts/eksport_fixtur_harnessu.py`,
+            `atrapa zgodności przekrojowej opisuje moduły [${zAtrapy.join(', ')}] operatora `
+            + `${zgodnoscSceny.operator_id}, scena zasiewa [${zasiane.join(', ')}] i pyta o `
+            + `operatora ${operatorZapytania ?? '(brak)'} — uruchom scripts/eksport_fixtur_harnessu.py`,
         }),
         { status: 409, headers: { 'Content-Type': 'application/json' } },
       );
     }
-    return jsonOK(zgodnoscPrzekrojowaScenyMacierz);
+    return jsonOK(zgodnoscSceny);
+  }
+  if (new URL(url, window.location.origin).pathname === '/api/oze-analysis/compliance-certificate') {
+    // Certyfikat zgodności NC RfG (karta AB-1a Pakiet D2 §5): powstaje WYŁĄCZNIE z
+    // zatwierdzonego modelu przypadku, którego harness nie ma — odpowiedź liczy
+    // `eksport_fixtur_harnessu.py` ścieżką trasy (`build_certyfikat_view` albo
+    // `CertyfikatBrakiError.detail()`). Scena `macierz` (PV bez wykazanej zgodności) →
+    // 422 „czego brakuje"; scena `certyfikat` (magazyn — wymagania NIE_DOTYCZY) → widok.
+    // Pliki DOCX/PDF (ścieżki `.docx`/`.pdf`) idą do realnego backendu — atrapa nie
+    // udaje binarnego dokumentu.
+    const scena = creatorZUrl();
+    if (scena === 'macierz') {
+      return odpowiedzDokumentuSceny(url, init, {
+        zadanie: certyfikatScenyZadanie, status: 422, tresc: certyfikatScenyMacierzBraki,
+      });
+    }
+    if (scena === 'certyfikat') {
+      return odpowiedzDokumentuSceny(url, init, {
+        zadanie: certyfikatScenyZadanie, status: 200, tresc: certyfikatScenyMagazyn,
+      });
+    }
+  }
+  if (new URL(url, window.location.origin).pathname === '/api/oze-analysis/osd-application') {
+    // Wniosek do OSD (karta AB-1a Pakiet D2 §5): model przypadku + biegi PF i SC — te same
+    // zasiane w rejestrze przebiegów sceny (identyfikatory UUID z fixtury przebiegów).
+    const scena = creatorZUrl();
+    if (scena === 'wniosek') {
+      return odpowiedzDokumentuSceny(url, init, {
+        zadanie: wniosekScenyMagazynZadanie, status: 200, tresc: wniosekScenyMagazyn,
+      });
+    }
+    if (scena === 'wniosek-braki') {
+      return odpowiedzDokumentuSceny(url, init, {
+        zadanie: wniosekScenyMacierzZadanie, status: 422, tresc: wniosekScenyMacierzBraki,
+      });
+    }
   }
   if (url.includes('/api/oze-analysis/lom-protection')) {
     // HARNESS-RESZTA-2: scena "lom" — REALNY widok backendu
@@ -1579,12 +1728,15 @@ if (creator === 'arcflash') {
     started_at: '2026-07-22T09:15:00Z', finished_at: '2026-07-22T09:15:04Z',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({ runs: [runSc] } as never);
-} else if (creator === 'macierz') {
+} else if (creator === 'macierz' || creator === 'pulpit-oze' || creator === 'wniosek-braki') {
   // Scena „macierz" (V-A): dwa moduły DER z modelu (kolejność `selectAllDers`
-  // jest deterministyczna — sort po referencji) — gotowe do biegu NC RfG.
+  // jest deterministyczna — sort po referencji) — gotowe do biegu NC RfG. Ten sam
+  // model zasila pulpit instalacji OZE (`pulpit-oze`) i wniosek z brakami
+  // (`wniosek-braki`, karta AB-1a Pakiet D2). Identyfikacja z ciała żądania fixtury
+  // certyfikatu (jedno źródło z backendem, nie literał przepisany obok).
   useAppStateStore.setState({
-    activeProjectName: 'Przyłączenie farmy PV 8 MW',
-    activeCaseName: 'Stan normalny',
+    activeProjectName: certyfikatScenyZadanie.nazwa_projektu,
+    activeCaseName: certyfikatScenyZadanie.nazwa_przypadku,
   } as never);
   // HARNESS-RESZTA-2: moduły Z MODELU sceny (`macierz_scena_migawka.json` —
   // TEN SAM model, z którego policzono raport zgodności przekrojowej). Moduły
@@ -1594,6 +1746,30 @@ if (creator === 'arcflash') {
   // Wcześniej scena niosła DRUGI opis tych samych modułów, pilnowany tylko
   // porównaniem 409 przy trasie zgodności.
   zasiejWytworcowZModelu(macierzScenyMigawka, 'proj-demo');
+  if (creator === 'wniosek-braki') {
+    // Wniosek do OSD bez wykazanej zgodności NC RfG (karta AB-1a Pakiet D2): TEN SAM model
+    // co macierz + biegi PF i SC tego modelu z rejestru (UUID z fixtury przebiegów).
+    useExecutionRunsStore.setState({
+      runs: wniosekScenyMacierzPrzebiegi as unknown as ExecutionRun[],
+      activeRunId: null,
+    } as never);
+  }
+} else if (creator === 'certyfikat' || creator === 'wniosek') {
+  // Karta AB-1a Pakiet D2: model magazynu energii (moduł BESS sceny `macierz`, ta sama
+  // operacja domenowa) — magazyn nie jest modułem wytwarzania energii w rozumieniu NC RfG
+  // (O-28), więc każde wymaganie profilu ma `NIE_DOTYCZY`, a certyfikat i wniosek POWSTAJĄ.
+  // Identyfikacja z ciała żądania fixtury (jedno źródło z backendem).
+  useAppStateStore.setState({
+    activeProjectName: certyfikatScenyZadanie.nazwa_projektu,
+    activeCaseName: certyfikatScenyZadanie.nazwa_przypadku,
+  } as never);
+  zasiejWytworcowZModelu(magazynScenyMigawka, 'proj-demo');
+  if (creator === 'wniosek') {
+    useExecutionRunsStore.setState({
+      runs: wniosekScenyMagazynPrzebiegi as unknown as ExecutionRun[],
+      activeRunId: null,
+    } as never);
+  }
 } else if (creator === 'oltc') {
   // Scena „oltc" (V-A): aktywny przypadek `case-demo` z zasiewu globalnego
   // (useAppStateStore) — bieg badania przez podmienione końcówki execution.
@@ -1923,7 +2099,12 @@ function Harness() {
   else if (creator === 'frt')
     node = <EkranFrt trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'oltc') node = <EkranBadanOltc />;
-  else if (creator === 'macierz') node = <MacierzNcRfg trybZaawansowania="expert" />;
+  else if (creator === 'macierz' || creator === 'certyfikat')
+    node = <MacierzNcRfg trybZaawansowania="expert" />;
+  else if (creator === 'wniosek' || creator === 'wniosek-braki')
+    node = <EkranWniosku trybZaawansowania="expert" />;
+  else if (creator === 'pulpit-oze')
+    node = <PulpitOze trybZaawansowania="expert" onNawiguj={() => undefined} />;
   else if (creator === 'koordynacja') node = <EkranKoordynacji />;
   else if (creator === 'wyniki-skladowe') node = <EkranSkladowych />;
   else if (creator === 'wyniki-zbieznosc') node = <EkranZbieznosci />;
