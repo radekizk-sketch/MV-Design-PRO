@@ -24,18 +24,18 @@ import type { LineType, CableType } from '../types';
 function sortTypes<T extends { id: string; name: string; manufacturer?: string }>(types: T[]): T[] {
   return types.sort((a, b) => {
     // manufacturer (nulls last)
-    const hasA = a.manufacturer != null;
-    const hasB = b.manufacturer != null;
-    if (!hasA && !hasB) {
+    const producentA = a.manufacturer;
+    const producentB = b.manufacturer;
+    if (producentA == null && producentB == null) {
       // Both null - skip to name comparison
-    } else if (!hasA) {
+    } else if (producentA == null) {
       return 1; // a (null) goes after b
-    } else if (!hasB) {
+    } else if (producentB == null) {
       return -1; // a goes before b (null)
     } else {
       // Both have manufacturer - compare
-      if (a.manufacturer < b.manufacturer) return -1;
-      if (a.manufacturer > b.manufacturer) return 1;
+      if (producentA < producentB) return -1;
+      if (producentA > producentB) return 1;
     }
 
     // name

@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fetchTypesByCategory } from '../catalog/api';
 import { buildContextMenuActions } from '../context-menu/actions';
-import type { LineType, CableType, TransformerType, SwitchEquipmentType } from '../catalog/types';
+import type { LineType } from '../catalog/types';
 
 // Mock fetch
 global.fetch = vi.fn();

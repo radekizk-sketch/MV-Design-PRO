@@ -162,7 +162,12 @@ POMIJANE_KATALOGI = {
 #     `base_template`, więc przestały być niezgodne z typem.
 # `e2e/` i `playwright.config.ts` weszły DO bramki (0 błędów) — nie są już
 # długiem, tylko zasięgiem.
-BUDZET_BLEDOW_POZA_BRAMKA = 531
+#     Spadek 531 -> 524 (2026-09-24): po module nN dług urósł do 658
+#     (`cadSymbolRegistry.test.tsx` bez importu `describe/it/expect` z vitest —
+#     122 błędy; 4 zbędne `@ts-expect-error` w `workspacePanels.test.tsx`).
+#     Naprawione u źródła razem z nieużywanymi importami (`type-catalog`,
+#     `topology-store`) i zawężeniem `manufacturer` w `api-sorting.test.ts`.
+BUDZET_BLEDOW_POZA_BRAMKA = 524
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,
