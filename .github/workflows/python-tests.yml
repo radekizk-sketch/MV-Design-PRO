@@ -126,6 +126,14 @@ jobs:
       - name: Dynamika Import Boundary Guard
         working-directory: mv-design-pro
         run: python scripts/dynamika_granica_importow_guard.py
+      # Karta AB-H0 §0.1: kontrakty dziedziny czestotliwosci (`backend/src/dziedziny/`)
+      # sa lisciem grafu importow — wolno im stdlib z zamknietej listy, `pydantic`,
+      # `werdykt.kontrakt` i `werdykt.proweniencja`; zadna warstwa produktu (katalog,
+      # ENM, solvery, aplikacja, API). `arch_guard` nie widzi pakietu (sprawdza tylko
+      # sciezki `solvers`/`analysis`), wiec ta granica ma wlasnego straznika (AST).
+      - name: Dziedziny Import Boundary Guard
+        working-directory: mv-design-pro
+        run: python scripts/dziedziny_granica_importow_guard.py
       # CV-2-W: status wynikow PRZYPADKU jest wyprowadzany z jego biegow i koperty
       # rewizji (application/study_case/status_wynikow.py). Kolumna
       # `study_cases.result_status` to dane zastane — zaden kod jej nie pisze.

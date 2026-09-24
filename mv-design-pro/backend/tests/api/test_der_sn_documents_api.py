@@ -14,7 +14,8 @@ from infrastructure.persistence.repositories.document_store_repository import (
     document_store_repository_scope,
 )
 
-_TR_BLOCK = "tr-sn-nn-15-04-1000kva-dyn11"
+#: Decyzja O-53: TR blokowy ≥ max(S_n,jedn·n, P/cosφ) — falownik 1 MW ma S_n 1,1 MVA.
+_TR_BLOCK = "tr-sn-nn-15-04-1250kva-dyn11"
 _CABLE = "cable-base-epr-al-1c-240"
 #: Aparat pola SN — RZECZYWISTA pozycja katalogu (dawne „ap-sn-cb-630" nie
 #: istniało; operacja przyjmowała je bez sprawdzenia — defekt G).
@@ -245,9 +246,11 @@ def _der_payload_4mva(*, cable_ref: str, laying_conditions: object | None) -> di
     119,3 A (nie przechodzi)."""
     payload = _der_sn_payload()
     payload["source_name"] = "Blok PV SN 4 MVA"
-    payload["quantity"] = 2
+    # Decyzja O-53: 3 × 1 MW (S_n,jedn·n = 3,3 MVA) mieszczą się w TR 4 MVA; dawne
+    # 2 × 2 MW (4,4 MVA) przekraczały go — tor DER-SN porównywał wyłącznie P/cosφ.
+    payload["quantity"] = 3
     payload["power_setpoint_mw"] = 2.0
-    payload["catalog_binding"]["catalog_item_id"] = "conv-pv-nn-2mw-0p69kv"
+    payload["catalog_binding"]["catalog_item_id"] = "conv-pv-nn-1mw-0p69kv"
     topology = payload["der_topology"]
     topology["inverter_output_voltage_kv"] = 0.69
     topology["block_transformer"] = {

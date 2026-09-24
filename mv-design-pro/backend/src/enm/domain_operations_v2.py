@@ -24,13 +24,23 @@ import math
 from dataclasses import dataclass
 from typing import Any, cast
 
+from domain.generator_validation import (
+    KLUCZ_META_KONTROLI_MOCY,
+    TECHNOLOGIA_WG_RODZAJU_GENERATORA,
+    WARIANTY_PRZYLACZENIA_NN,
+    WARIANTY_PRZYLACZENIA_TR_BLOKOWY,
+    JawneWejsciaKontroliMocy,
+    moc_czynna_jednostki_mw,
+    sprawdz_moc_generatora,
+    technologia_generatora,
+)
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.mv_ptpiree_catalog import annotate_with_ptpiree_status
 from network_model.catalog.switchgear import (
     NiezgodnoscKonfiguracjiError,
     family_supports_voltage,
 )
-from network_model.catalog.types import CatalogBinding
+from network_model.catalog.types import CatalogBinding, pola_karty_obecne
 from network_model.core.uziemienie import ROLE_UZIEMNIKA
 from network_model.pochodne import (
     km_na_m,
@@ -39,7 +49,6 @@ from network_model.pochodne import (
     m_na_km,
     moc_bierna_z_czynnej_i_cos_phi,
     moc_pozorna_z_czynnej_mva,
-    mva_na_kva,
     mvar_na_kvar,
     mw_na_kw,
 )
@@ -80,10 +89,19 @@ from .domain_operations import (
 )
 from .exceptions import DomainInvariantError
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
-from .katalog_projektu import katalog_biezacy
+from .katalog_projektu import katalog_biezacy, sekcja_katalogu_projektu
+from .katalog_projektu_karty import (
+    KLUCZ_KART_WIDMOWYCH,
+    BladKartWidmowych,
+    dodaj_karte_do_sekcji,
+    identyfikatory_kart,
+    materializuj_karty_generatora,
+    nieznane_karty,
+)
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
 from .migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
+from .models import liczba_torow
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     PlanPolaKatalogowego,
@@ -1326,112 +1344,208 @@ def _has_transformer_in_path(enm: dict[str, Any], station: dict[str, Any]) -> bo
     return False
 
 
-def _station_transformers_for_bus(
+def _indeks_transformatorow_wysp(enm: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    """Szyna → transformatory, których strona nN (`lv_bus_ref`) leży w tej samej WYSPIE
+    galwanicznej co szyna: składowa spójna grafu gałęzi ENM (linie, kable, aparaty
+    łączeniowe, bezpieczniki — żadna z nich nie zmienia poziomu napięcia; transformatory
+    są osobną kolekcją i wyspy nie łączą). Stan łącznika NIE jest brany pod uwagę:
+    kontrola dotyczy projektowej mocy transformacji, nie stanu łączeniowego studium.
+    Liczony RAZ na model (O(gałęzie + transformatory)) — kontrola wielu źródeł na
+    przejściu modelu nie przechodzi grafu od nowa dla każdego źródła."""
+    sasiedzi: dict[str, set[str]] = {}
+    for galaz in enm.get("branches", []):
+        if not isinstance(galaz, dict):
+            continue
+        poczatek, koniec = galaz.get("from_bus_ref"), galaz.get("to_bus_ref")
+        if not isinstance(poczatek, str) or not isinstance(koniec, str):
+            continue
+        sasiedzi.setdefault(poczatek, set()).add(koniec)
+        sasiedzi.setdefault(koniec, set()).add(poczatek)
+    transformatory_wg_szyny: dict[str, list[dict[str, Any]]] = {}
+    for transformator in enm.get("transformers", []):
+        if isinstance(transformator, dict) and isinstance(transformator.get("lv_bus_ref"), str):
+            transformatory_wg_szyny.setdefault(transformator["lv_bus_ref"], []).append(
+                transformator
+            )
+    indeks: dict[str, list[dict[str, Any]]] = {}
+    for start in sorted(set(sasiedzi) | set(transformatory_wg_szyny)):
+        if start in indeks:
+            continue
+        wyspa = {start}
+        do_odwiedzenia = [start]
+        while do_odwiedzenia:
+            for nastepna in sasiedzi.get(do_odwiedzenia.pop(), ()):
+                if nastepna not in wyspa:
+                    wyspa.add(nastepna)
+                    do_odwiedzenia.append(nastepna)
+        transformatory = sorted(
+            (t for szyna in wyspa for t in transformatory_wg_szyny.get(szyna, ())),
+            key=lambda t: str(t.get("ref_id") or ""),
+        )
+        for szyna in wyspa:
+            indeks[szyna] = transformatory
+    return indeks
+
+
+def _transformatory_zasilajace(
     enm: dict[str, Any],
-    station: dict[str, Any],
-    *,
-    bus_ref: str | None = None,
-    transformer_ref: str | None = None,
+    generator: dict[str, Any],
+    indeks: dict[str, list[dict[str, Any]]] | None = None,
 ) -> list[dict[str, Any]]:
-    station_transformer_refs = {
-        ref for ref in station.get("transformer_refs", []) if isinstance(ref, str) and ref.strip()
-    }
-    station_bus_refs = {
-        ref for ref in station.get("bus_refs", []) if isinstance(ref, str) and ref.strip()
-    }
-    candidates: list[dict[str, Any]] = []
-    for transformer in enm.get("transformers", []):
-        if not isinstance(transformer, dict):
-            continue
-        ref = transformer.get("ref_id") or transformer.get("id")
-        if isinstance(transformer_ref, str) and transformer_ref.strip():
-            if ref == transformer_ref:
-                candidates.append(transformer)
-            continue
-        if isinstance(bus_ref, str) and bus_ref.strip():
-            if transformer.get("hv_bus_ref") == bus_ref or transformer.get("lv_bus_ref") == bus_ref:
-                candidates.append(transformer)
-            continue
-        if isinstance(ref, str) and ref in station_transformer_refs:
-            candidates.append(transformer)
-        elif station_bus_refs and (
-            transformer.get("hv_bus_ref") in station_bus_refs
-            or transformer.get("lv_bus_ref") in station_bus_refs
-        ):
-            candidates.append(transformer)
-    return candidates
+    """Transformatory zasilające źródło przekształtnikowe — JEDNA topologia dla wszystkich
+    dróg kontroli mocy O-53 (tworzenie, przypisanie typu, aktualizacja, usunięcie).
+
+    Klasyfikacja wariantu przyłączenia z TYCH SAMYCH zbiorów co walidacja przyłączenia
+    (`domain.generator_validation`), więc wariant aliasowy (np. zapisany aktualizacją
+    `LV_BEHIND_STATION_TRANSFORMER`) nie wypada z kontroli:
+
+    * wariant z transformatorem blokowym — wskazany `blocking_transformer_ref`;
+    * wariant po stronie nN stacji — transformatory wyspy nN szyny źródła
+      (`_indeks_transformatorow_wysp`: także źródło za kablem nN albo na sekcji za sprzęgłem);
+    * inny albo brak wariantu — brak transformatora do porównania (pusta lista).
+    """
+    wariant = generator.get("connection_variant")
+    if wariant in WARIANTY_PRZYLACZENIA_TR_BLOKOWY:
+        ref = generator.get("blocking_transformer_ref")
+        if not isinstance(ref, str) or not ref.strip():
+            return []
+        return [
+            t for t in enm.get("transformers", []) if isinstance(t, dict) and t.get("ref_id") == ref
+        ]
+    szyna = generator.get("bus_ref")
+    if wariant not in WARIANTY_PRZYLACZENIA_NN or not isinstance(szyna, str) or not szyna:
+        return []
+    if indeks is None:
+        indeks = _indeks_transformatorow_wysp(enm)
+    return list(indeks.get(szyna, ()))
 
 
-def _converter_required_apparent_power_mva(
-    payload: dict[str, Any],
-    materialized_params: dict[str, Any],
-) -> float | None:
-    quantity_raw = payload.get("quantity")
-    quantity = int(quantity_raw) if isinstance(quantity_raw, int | float) else 1
-    quantity = max(quantity, 1)
-    candidates: list[float] = []
-    for value in (
-        materialized_params.get("sn_mva"),
-        materialized_params.get("pmax_mw"),
-        _kw_to_mw(materialized_params.get("max_power_kw")),
-        _kw_to_mw(materialized_params.get("rated_power_ac_kw")),
-        _kw_to_mw(materialized_params.get("discharge_power_kw")),
-        _as_float(payload.get("power_setpoint_mw")),
-    ):
-        if isinstance(value, int | float) and value > 0:
-            candidates.append(float(value))
-    if not candidates:
-        return None
-    return max(candidates) * quantity
-
-
-def _validate_converter_transformer_capacity(
-    enm: dict[str, Any],
-    *,
-    station: dict[str, Any],
-    bus_ref: str,
-    blocking_transformer_ref: str | None,
-    connection_variant: str,
-    technology: str,
-    payload: dict[str, Any],
-    materialized_params: dict[str, Any],
-) -> dict[str, Any] | None:
-    transformer_ref = (
-        blocking_transformer_ref
-        if connection_variant == "block_transformer"
-        and isinstance(blocking_transformer_ref, str)
-        and blocking_transformer_ref.strip()
-        else None
-    )
-    transformers = _station_transformers_for_bus(
-        enm,
-        station,
-        bus_ref=bus_ref if connection_variant == "nn_side" else None,
-        transformer_ref=transformer_ref,
-    )
-    if not transformers:
-        return None
-
-    capacity_mva = 0.0
-    for transformer in transformers:
-        sn_mva = _as_float(transformer.get("sn_mva"))
+def _moc_transformatorow_mva(transformatory: list[dict[str, Any]]) -> float | None:
+    """Σ S_n,TR · liczba torów (`liczba_torow` — ta sama reguła co solver)."""
+    suma = 0.0
+    for transformator in transformatory:
+        sn_mva = _as_float(transformator.get("sn_mva"))
         if sn_mva is not None and sn_mva > 0:
-            capacity_mva += sn_mva
-    if capacity_mva <= 0:
+            suma += sn_mva * liczba_torow(transformator)
+    if suma <= 0:
         return None
+    return suma
 
-    required_mva = _converter_required_apparent_power_mva(payload, materialized_params)
-    if required_mva is None or required_mva <= capacity_mva + 1e-9:
-        return None
 
-    return _error_response(
-        (
-            f"Moc katalogowa źródła {technology} ({mva_na_kva(required_mva):.0f} kVA) "
-            f"przekracza moc transformatora stacji ({mva_na_kva(capacity_mva):.0f} kVA). "
-            "Wybierz mniejszy wariant źródła albo zastosuj transformator dedykowany."
-        ),
-        "converter.transformer_capacity_exceeded",
+def kontrola_mocy_generatora_w_modelu(
+    enm: dict[str, Any],
+    generator: dict[str, Any],
+    *,
+    tabliczka: dict[str, Any] | None = None,
+    sprawdz_nastawe: bool = True,
+    indeks: dict[str, list[dict[str, Any]]] | None = None,
+) -> dict[str, Any] | None:
+    """Decyzja O-53 dla rekordu generatora w modelu `enm`: nastawa ≤ moc znamionowa
+    instalacji oraz moc transformatora zasilającego — `domain.generator_validation.
+    sprawdz_moc_generatora`, jedna reguła i jeden kod dla każdej drogi zapisu.
+    Zwraca odpowiedź błędu albo `None`."""
+    transformatory = _transformatory_zasilajace(enm, generator, indeks)
+    odmowa = sprawdz_moc_generatora(
+        generator,
+        moc_transformatorow_mva=_moc_transformatorow_mva(transformatory),
+        tabliczka=tabliczka,
+        sprawdz_nastawe=sprawdz_nastawe,
     )
+    if odmowa is None:
+        return None
+    return _error_response(odmowa.komunikat_pl, odmowa.kod)
+
+
+#: Pola rekordu generatora, które są wejściami kontroli mocy O-53: rodzaj, nastawa, liczba
+#: jednostek, tabliczka i topologia przyłączenia (plus zapis jawnych wejść w `meta`).
+_POLA_REKORDU_KONTROLI_MOCY: tuple[str, ...] = (
+    "gen_type",
+    "p_mw",
+    "quantity",
+    "n_parallel",
+    "catalog_ref",
+    "materialized_params",
+    "connection_variant",
+    "blocking_transformer_ref",
+    "station_ref",
+    "bus_ref",
+)
+
+
+def _wejscia_rekordu_kontroli_mocy(generator: dict[str, Any]) -> tuple[Any, ...]:
+    meta = generator.get("meta")
+    zapis = meta.get(KLUCZ_META_KONTROLI_MOCY) if isinstance(meta, dict) else None
+    return (*(generator.get(pole) for pole in _POLA_REKORDU_KONTROLI_MOCY), zapis)
+
+
+def _moc_zasilajaca_generator_mva(
+    enm: dict[str, Any],
+    generator: dict[str, Any],
+    indeks: dict[str, list[dict[str, Any]]],
+) -> float | None:
+    return _moc_transformatorow_mva(_transformatory_zasilajace(enm, generator, indeks))
+
+
+def odmowa_kontroli_mocy_po_zmianie(
+    stary: dict[str, Any], nowy: dict[str, Any]
+) -> dict[str, Any] | None:
+    """Decyzja O-53 na PRZEJŚCIU modelu stary → nowy (aktualizacja parametrów, przypisanie
+    typu, usunięcie elementu) — JEDNO kryterium, które źródła sprawdzić, zamiast listy pól
+    per operacja.
+
+    * rekord źródła przekształtnikowego nowy albo zmieniony w polach wejść kontroli
+      (`_POLA_REKORDU_KONTROLI_MOCY`, zapis jawnych wejść) — pełna kontrola (nastawa ≤ moc
+      znamionowa, moc transformatora);
+    * rekord bez zmian, ale inna moc transformatorów, które go zasilają (zmiana mocy,
+      liczby torów, typu albo strony nN transformatora, usunięcie transformatora albo
+      aparatu łączeniowego między sekcjami nN) — kontrola mocy transformatora (nastawa się
+      nie zmieniła). Porównanie zbioru zasilającego PRZED i PO zmianie łapie także źródło,
+      które transformator STRACIŁO (dawniej sprawdzane były tylko źródła wciąż zasilane
+      przez zmieniony transformator).
+
+    Kolejność deterministyczna (`ref_id`); zwraca odpowiedź błędu pierwszej odmowy albo
+    `None`."""
+    poprzednie = {
+        str(generator.get("ref_id")): generator
+        for generator in stary.get("generators", [])
+        if isinstance(generator, dict)
+    }
+    indeks_stary = _indeks_transformatorow_wysp(stary)
+    indeks_nowy = _indeks_transformatorow_wysp(nowy)
+    for generator in sorted(
+        (g for g in nowy.get("generators", []) if isinstance(g, dict)),
+        key=lambda g: str(g.get("ref_id") or ""),
+    ):
+        if technologia_generatora(generator) is None:
+            continue
+        poprzedni = poprzednie.get(str(generator.get("ref_id")))
+        if poprzedni is None or _wejscia_rekordu_kontroli_mocy(
+            poprzedni
+        ) != _wejscia_rekordu_kontroli_mocy(generator):
+            blad = kontrola_mocy_generatora_w_modelu(nowy, generator, indeks=indeks_nowy)
+        elif _moc_zasilajaca_generator_mva(
+            stary, poprzedni, indeks_stary
+        ) != _moc_zasilajaca_generator_mva(nowy, generator, indeks_nowy):
+            blad = kontrola_mocy_generatora_w_modelu(
+                nowy, generator, sprawdz_nastawe=False, indeks=indeks_nowy
+            )
+        else:
+            continue
+        if blad is not None:
+            return blad
+    return None
+
+
+def zapis_wejsc_kontroli_mocy(
+    *, cos_phi: object, wspolczynnik_jednoczesnosci: object, przeciazalnosc_pu: object
+) -> dict[str, Any]:
+    """Zapis `meta.kontrola_mocy_zrodla` z JAWNYCH wejść toru tworzenia (tylko liczby
+    podane w payloadzie; brak = brak, nazwany w zapisie)."""
+    return JawneWejsciaKontroliMocy(
+        cos_phi=_as_float(cos_phi),
+        wspolczynnik_jednoczesnosci=_as_float(wspolczynnik_jednoczesnosci),
+        przeciazalnosc_transformatora_pu=_as_float(przeciazalnosc_pu),
+    ).zapis_meta()
 
 
 def _resolve_catalog_ref(
@@ -1676,6 +1790,10 @@ def _materialize_nn_source_params(
             # poziomie — domyślkę przypisuje WYŁĄCZNIE mapping.py, z jawnym
             # śladem WHITE BOX).
             "k_sc": result.solver_fields.get("k_sc"),
+            # Karta AB-H0 §0.8: pola karty (sekcje fundamental/harmonic/dynamic
+            # i proweniencja pól) — WYŁĄCZNIE obecne w pozycji; jedna lista
+            # (`POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE`) dla wszystkich przestrzeni.
+            **pola_karty_obecne(result.solver_fields),
         }
     elif namespace == "ZRODLO_NN_BESS":
         zmapowane = {
@@ -1691,6 +1809,8 @@ def _materialize_nn_source_params(
             # Karta S-2 AUTORYTET — patrz komentarz w gałęzi PV powyżej, ten
             # sam kontrakt (`BESSInverterType.solver_fields` niesie „k_sc").
             "k_sc": result.solver_fields.get("k_sc"),
+            # Karta AB-H0 §0.8 — jak w gałęzi PV.
+            **pola_karty_obecne(result.solver_fields),
         }
     elif namespace == "CONVERTER":
         # Falownik wiatrowy: TA SAMA przestrzeń katalogu, co w torze stacyjnym
@@ -4316,6 +4436,10 @@ def _build_converter_materialized_params(
             # Karta S-2 AUTORYTET: k_sc katalogowy (`_materialize_nn_source_params`
             # go teraz niesie) — brak w karcie → `None`, zero fabrykacji tutaj.
             "k_sc": z_katalogu.get("k_sc"),
+            # Karta AB-H0 §0.8: pola karty WYŁĄCZNIE obecne (jedna lista dla PV/BESS/FW
+            # i obu torów tworzenia źródła) — pozycja bez tych danych daje tabliczkę
+            # bajtowo identyczną.
+            **pola_karty_obecne(z_katalogu),
         }
     elif technology == "BESS":
         z_katalogu, blad = _materialize_nn_source_params(
@@ -4343,11 +4467,13 @@ def _build_converter_materialized_params(
             # MOC POZORNA Z KATALOGU, nie z przeliczenia mocy rozładowania
             # (dług 8 rejestru V12K-315): pozycja `conv-bess-nn-2mw-0p4kv` ma
             # 2,2 MVA, a tor atomowy liczył 2,0 — ta sama pozycja dawała inne
-            # liczby niż tor stacyjny (`_nn_source_nameplate_from_catalog`).
+            # liczby niż tor stacyjny (dziś tor stacyjny woła TĘ funkcję — karta AB-H0).
             "sn_mva": _kw_to_mw(z_katalogu.get("s_n_kva")),
             "e_kwh": z_katalogu.get("usable_capacity_kwh"),
             # Karta S-2 AUTORYTET: k_sc katalogowy — patrz komentarz w gałęzi PV.
             "k_sc": z_katalogu.get("k_sc"),
+            # Karta AB-H0 §0.8 — jak w gałęzi PV.
+            **pola_karty_obecne(z_katalogu),
         }
     else:
         z_katalogu, blad = _materialize_nn_source_params(
@@ -4368,6 +4494,9 @@ def _build_converter_materialized_params(
             "control_mode": z_katalogu.get("control_mode"),
             # Karta S-2 AUTORYTET: k_sc katalogowy — patrz komentarz w gałęzi PV.
             "k_sc": z_katalogu.get("k_sc"),
+            # Karta AB-H0 §0.8 — jak w gałęzi PV (dawniej tor atomowy wiatru gubił
+            # pasma regulatorów i filtr, które przestrzeń CONVERTER materializuje).
+            **pola_karty_obecne(z_katalogu),
         }
 
     tabliczka.update(_certyfikat_ptpiree_z_katalogu(namespace, catalog_ref))
@@ -4391,6 +4520,129 @@ def _build_converter_materialized_params(
     return tabliczka, None
 
 
+def tabliczka_zrodla_przeksztaltnikowego(
+    technology: str, catalog_ref: str
+) -> dict[str, Any] | None:
+    """Tabliczka pozycji katalogu źródła przekształtnikowego (PV/BESS/FW) z TEJ SAMEJ
+    materializacji, którą tor tworzenia zapisuje do `Generator.materialized_params`.
+
+    Decyzja O-53 (predykaty parami): selektory szablonów stacji dobierają jednostkę
+    (moc zadana ≤ moc czynna jednostki) i transformator (moc wymagana źródła) z tej
+    tabliczki i tymi samymi funkcjami `domain.generator_validation`, którymi operacja
+    tworzenia potem to sprawdza — nie z tokenu mocy w nazwie pozycji ani z osobnego
+    odczytu `sn_mva`. `None`: technologia spoza torów przekształtnikowych albo pozycja
+    bez kompletnej tabliczki (tor tworzenia odmówiłby jej nazwanym kodem)."""
+    przestrzen = _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO.get(technology)
+    if przestrzen is None:
+        return None
+    tabliczka, blad = _build_converter_materialized_params(
+        technology=technology,
+        namespace=przestrzen,
+        payload={},
+        catalog_ref=catalog_ref,
+    )
+    return None if blad is not None else tabliczka
+
+
+#: Rodzaj przekształtnika pozycji katalogu (`ConverterType.kind`) → rodzaje generatora ENM,
+#: które tor tworzenia z tej pozycji wytwarza — wyprowadzone z JEDNEJ mapy
+#: `domain.generator_validation.TECHNOLOGIA_WG_RODZAJU_GENERATORA` (technologia `FW` ↔
+#: rodzaj pozycji `WIND`).
+_GEN_TYPES_RODZAJU_PRZEKSZTALTNIKA: dict[str, frozenset[str]] = {
+    ("WIND" if technologia == "FW" else technologia): frozenset(
+        rodzaj
+        for rodzaj, technologia_rodzaju in TECHNOLOGIA_WG_RODZAJU_GENERATORA.items()
+        if technologia_rodzaju == technologia
+    )
+    for technologia in sorted(set(TECHNOLOGIA_WG_RODZAJU_GENERATORA.values()))
+}
+
+#: Przestrzenie źródeł nN mają rodzaj przesądzony przestrzenią (projekcje PV/BESS).
+_RODZAJ_PRZESTRZENI_ZRODLA: dict[str, str] = {"ZRODLO_NN_PV": "PV", "ZRODLO_NN_BESS": "BESS"}
+
+
+def kontrola_tabliczki_przypisanej(
+    enm: dict[str, Any],
+    *,
+    generator: dict[str, Any],
+    technology: str,
+    namespace: str,
+    catalog_ref: str,
+    tabliczka: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Kontrole toru tworzenia źródła wobec typu PRZYPISANEGO istniejącemu generatorowi.
+
+    Karta AB-H0 (domknięcie klasy „jedna tabliczka"): `assign_catalog_to_element`
+    materializował tabliczkę nowej pozycji bez żadnej z kontroli, którymi tor tworzenia
+    chroni model. Ta funkcja woła te same kontrole (zero drugiej implementacji):
+
+    1. rodzaj przekształtnika pozycji ↔ rodzaj generatora (`converter.rodzaj_niezgodny`);
+    2. napięcie znamionowe pozycji ↔ napięcie szyny generatora (`converter.voltage_mismatch`);
+       dla generatora toru DER-SN (`meta.der_topology.connection_level == "sn"`) ↔ napięcie
+       wyjściowe falownika toru (`der.inverter_voltage_mismatch`, jak tor DER-SN);
+    3. decyzja O-53 — nastawa ≤ moc znamionowa instalacji z NOWEJ tabliczki oraz moc
+       transformatora zasilającego (`kontrola_mocy_generatora_w_modelu`, ta sama funkcja,
+       jeden kod dla każdego toru; jawne wejścia z `meta.kontrola_mocy_zrodla`).
+
+    Zwraca odpowiedź błędu albo ``None``, gdy tabliczkę wolno zapisać.
+    """
+    rodzaj = _RODZAJ_PRZESTRZENI_ZRODLA.get(namespace)
+    if rodzaj is None:
+        typ = katalog_biezacy().get_converter_type(catalog_ref)
+        rodzaj = str(typ.kind.value) if typ is not None else None
+    dozwolone = _GEN_TYPES_RODZAJU_PRZEKSZTALTNIKA.get(rodzaj or "")
+    gen_type = generator.get("gen_type")
+    if dozwolone is not None and gen_type not in dozwolone:
+        return _error_response(
+            f"Pozycja '{catalog_ref}' jest przekształtnikiem rodzaju {rodzaj}, a generator "
+            f"'{generator.get('ref_id')}' jest rodzaju '{gen_type}'. Przypisanie typu nie "
+            "zmienia rodzaju źródła — wskaż pozycję tego samego rodzaju albo utwórz nowe "
+            "źródło właściwym kreatorem.",
+            "converter.rodzaj_niezgodny",
+        )
+
+    converter_voltage_kv = _as_float(tabliczka.get("un_kv"))
+    if converter_voltage_kv is None or converter_voltage_kv <= 0:
+        return _error_response(
+            f"Źródło {technology} wymaga napięcia znamionowego un_kv z katalogu.",
+            "converter.un_kv_missing",
+        )
+    meta_generatora = generator.get("meta")
+    topologia_der = (
+        meta_generatora.get("der_topology") if isinstance(meta_generatora, dict) else None
+    )
+    if isinstance(topologia_der, dict) and topologia_der.get("connection_level") == "sn":
+        napiecie_wyjscia_kv = _as_float(topologia_der.get("inverter_output_voltage_kv"))
+        if napiecie_wyjscia_kv is None or napiecie_wyjscia_kv <= 0:
+            return _error_response(
+                "Tor DER-SN wymaga napięcia wyjściowego falownika (inverter_output_voltage_kv).",
+                "der.inverter_voltage_missing",
+            )
+        if not _same_nominal_voltage(converter_voltage_kv, napiecie_wyjscia_kv):
+            return _error_response(
+                "Napięcie katalogowe falownika nie jest zgodne z napięciem wyjściowym toru "
+                f"DER. Falownik: {converter_voltage_kv:g} kV, wyjście: "
+                f"{napiecie_wyjscia_kv:g} kV.",
+                "der.inverter_voltage_mismatch",
+            )
+    else:
+        bus_voltage_kv = _bus_voltage_kv(enm, str(generator.get("bus_ref") or ""))
+        if bus_voltage_kv is None:
+            return _error_response(
+                "Nie znaleziono napięcia szyny dla źródła przekształtnikowego.",
+                "converter.bus_voltage_missing",
+            )
+        if not _same_nominal_voltage(converter_voltage_kv, bus_voltage_kv):
+            return _error_response(
+                (
+                    "Napięcie katalogowe źródła nie jest zgodne z napięciem szyny. "
+                    f"Źródło: {converter_voltage_kv:g} kV, szyna: {bus_voltage_kv:g} kV."
+                ),
+                "converter.voltage_mismatch",
+            )
+    return kontrola_mocy_generatora_w_modelu(enm, generator, tabliczka=tabliczka)
+
+
 def _resolve_converter_defaults(
     technology: str,
     payload: dict[str, Any],
@@ -4408,12 +4660,13 @@ def _resolve_converter_defaults(
     quantity = max(quantity, 1)
     explicit_power_mw = _as_float(payload.get("power_setpoint_mw"))
 
+    # Moc jednostki z tabliczki — JEDNA lista pól per technologia
+    # (`domain.generator_validation.moc_czynna_jednostki_mw`), ta sama, z którą kontrola
+    # O-53 porównuje nastawę (moc znamionowa instalacji = moc jednostki · n).
     if technology == "PV":
         default_power = _first_number(
             payload.get("power_setpoint_mw"),
-            materialized_params.get("pmax_mw"),
-            _kw_to_mw(materialized_params.get("max_power_kw")),
-            _kw_to_mw(materialized_params.get("rated_power_ac_kw")),
+            moc_czynna_jednostki_mw("PV", materialized_params),
         )
         name = str(payload.get("source_name") or "Blok PV")
         return (
@@ -4459,9 +4712,7 @@ def _resolve_converter_defaults(
     if technology == "BESS":
         default_power = _first_number(
             payload.get("power_setpoint_mw"),
-            materialized_params.get("pmax_mw"),
-            _kw_to_mw(materialized_params.get("discharge_power_kw")),
-            _kw_to_mw(materialized_params.get("charge_power_kw")),
+            moc_czynna_jednostki_mw("BESS", materialized_params),
         )
         name = str(payload.get("source_name") or "Blok BESS")
         return (
@@ -4529,8 +4780,7 @@ def _resolve_converter_defaults(
 
     default_power = _first_number(
         payload.get("power_setpoint_mw"),
-        materialized_params.get("pmax_mw"),
-        _kw_to_mw(materialized_params.get("max_power_kw")),
+        moc_czynna_jednostki_mw("FW", materialized_params),
     )
     return (
         str(payload.get("source_name") or "Blok FW"),
@@ -5430,22 +5680,35 @@ def _add_converter_source_der_sn(
         )
     tr_sn_mva = float(tr_sn_mva_raw)
 
-    # D1 wymaganie 5: moc TR blokowego — ΣS falowników ≤ Sn_TR · dopuszczalne obciążenie
-    # (z uwzgl. współczynnika jednoczesności). Sn_TR = wartość ZMATERIALIZOWANA z katalogu
-    # (autorytatywna — ta sama, którą widzi solver i kaskada prądowa); ΣS z mocy czynnej
-    # falowników przez cosφ znamionowy (inaczej P=S konserwatywnie).
-    cos_phi = _first_number(payload.get("cos_phi"), materialized_params.get("cosphi"))
-    sum_apparent_mva = der_val.converter_apparent_power_mva(p_mw, cos_phi)
-    power_error = der_val.validate_transformer_power(
-        sum_apparent_power_mva=sum_apparent_mva,
-        transformer_sn_mva=tr_sn_mva,
-        loadability_pu=_as_float(block_spec.get("loadability_pu")),
-        simultaneity_factor=_as_float(der_topology.get("simultaneity_factor")),
-    )
-    if power_error is not None:
-        return _error_response(power_error.message_pl, power_error.code)
-
     new_enm.setdefault("transformers", []).append(tr_data)
+
+    # D1 wymaganie 5 = decyzja O-53: nastawa ≤ moc znamionowa instalacji oraz
+    # max(S_n,jedn·n, P/cosφ)·k_j ≤ S_n,TR·k_obc — TA SAMA kontrola co tor atomowy,
+    # stacyjny, przypisanie typu i aktualizacja parametrów, na rekordzie generatora, który
+    # operacja zapisze; S_n,TR = TR blokowy ZMATERIALIZOWANY z katalogu (ten sam, który
+    # widzi solver). Jawne wejścia (cosφ, jednoczesność, przeciążalność) trafiają do
+    # `meta.kontrola_mocy_zrodla`.
+    zapis_kontroli_mocy = zapis_wejsc_kontroli_mocy(
+        cos_phi=payload.get("cos_phi"),
+        wspolczynnik_jednoczesnosci=der_topology.get("simultaneity_factor"),
+        przeciazalnosc_pu=block_spec.get("loadability_pu"),
+    )
+    blad_mocy = kontrola_mocy_generatora_w_modelu(
+        new_enm,
+        {
+            "gen_type": gen_type,
+            "p_mw": p_mw,
+            "bus_ref": producer_bus_ref,
+            "connection_variant": "block_transformer",
+            "blocking_transformer_ref": block_tr_ref,
+            "quantity": gen_meta.get("quantity"),
+            "n_parallel": gen_meta.get("quantity"),
+            "materialized_params": materialized_params,
+            "meta": {KLUCZ_META_KONTROLI_MOCY: zapis_kontroli_mocy},
+        },
+    )
+    if blad_mocy is not None:
+        return blad_mocy
     created.append(block_tr_ref)
     _emit("TRANSFORMER_CREATED", block_tr_ref)
 
@@ -5468,6 +5731,7 @@ def _add_converter_source_der_sn(
             "has_block_transformer": True,
             "has_dedicated_mv_field": True,
         },
+        KLUCZ_META_KONTROLI_MOCY: zapis_kontroli_mocy,
     }
     new_enm.setdefault("generators", []).append(
         {
@@ -5741,19 +6005,6 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "converter.voltage_mismatch",
         )
 
-    capacity_error = _validate_converter_transformer_capacity(
-        enm,
-        station=station,
-        bus_ref=bus_nn_ref,
-        blocking_transformer_ref=blocking_transformer_ref,
-        connection_variant=connection_variant,
-        technology=technology,
-        payload=payload,
-        materialized_params=materialized_params,
-    )
-    if capacity_error is not None:
-        return capacity_error
-
     name, gen_type, event_type, meta, p_mw = _resolve_converter_defaults(
         technology,
         payload,
@@ -5765,6 +6016,30 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "mocy znamionowej w katalogu.",
             "generator.power_missing",
         )
+    # Decyzja O-53: nastawa ≤ moc znamionowa instalacji i moc transformatora — TA SAMA
+    # kontrola co przypisanie typu i aktualizacja parametrów, na rekordzie generatora,
+    # który operacja zapisze (jawne wejścia trafiają do `meta.kontrola_mocy_zrodla`).
+    zapis_kontroli_mocy = zapis_wejsc_kontroli_mocy(
+        cos_phi=payload.get("cos_phi"),
+        wspolczynnik_jednoczesnosci=payload.get("simultaneity_factor"),
+        przeciazalnosc_pu=payload.get("loadability_pu"),
+    )
+    blad_mocy = kontrola_mocy_generatora_w_modelu(
+        enm,
+        {
+            "gen_type": gen_type,
+            "p_mw": p_mw,
+            "bus_ref": bus_nn_ref,
+            "connection_variant": connection_variant,
+            "blocking_transformer_ref": blocking_transformer_ref,
+            "quantity": meta.get("quantity"),
+            "n_parallel": meta.get("quantity"),
+            "materialized_params": materialized_params,
+            "meta": {KLUCZ_META_KONTROLI_MOCY: zapis_kontroli_mocy},
+        },
+    )
+    if blad_mocy is not None:
+        return blad_mocy
     # Karta FAB-D1 (D3 cleanup) — patrz uzasadnienie przy pierwszym wywołaniu wyżej.
     q_mvar = _first_number(payload.get("q_min_mvar"))
     source_sequence = _next_converter_source_sequence(
@@ -5822,6 +6097,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         **meta,
         "field_ref": field_ref,
         "source_sequence_index": source_sequence,
+        KLUCZ_META_KONTROLI_MOCY: zapis_kontroli_mocy,
     }
     new_enm.setdefault("generators", []).append(
         {
@@ -6682,7 +6958,47 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
             if get_bess_operation_mode(str(tryb_ref)) is None:
                 nieznane.append(f"bess_operation_mode_refs={tryb_ref}")
 
+    # Karta AB-H0 §0.7.6: `karty_widmowe_ref` — LISTA id kart widmowych, każda
+    # rozstrzygana w katalogu MODELU (statyczny + karty projektu, `katalog_biezacy`).
+    # Kształt listy sprawdza `identyfikatory_kart` (łańcuch nie jest iterowany znakami);
+    # tu — wyłącznie istnienie, ten sam predykat dla bramy API i operacji.
+    karty_ref = wiazania.get(KLUCZ_KART_WIDMOWYCH)
+    if isinstance(karty_ref, list | tuple):
+        for karta_id in nieznane_karty([str(k) for k in karty_ref], katalog):
+            nieznane.append(f"{KLUCZ_KART_WIDMOWYCH}={karta_id}")
+
     return nieznane
+
+
+def dodaj_karte_widmowa_projektu(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Dołóż kartę widmową PROJEKTU do katalogu projektu modelu (karta AB-H0 §0.7.3).
+
+    Payload: ``{"karta": {…rekord KartaWidmowa…}}``. Karta projektu to dane inżyniera
+    (widmo ręczne albo import raportu badań dla projektu) — reguły w
+    ``enm.katalog_projektu_karty.dodaj_karte_do_sekcji``: kontrakt karty (odmowa z kodem
+    ``KAT-T``), status ``NIEWERYFIKOWANY``/``PROJEKTOWY_V1``, typ urządzenia w katalogu
+    modelu, id wolne; ta sama treść pod tym samym id — operacja idempotentna. Karta
+    NIE wiąże się z żadnym generatorem: wiązanie robi ``set_der_catalog_bindings``
+    kluczem ``karty_widmowe_ref``.
+    """
+    rekord = payload.get("karta")
+    if not isinstance(rekord, dict):
+        return _error_response(
+            "Brak rekordu karty widmowej (`karta`).", "karta_widmowa.payload_missing"
+        )
+    try:
+        sekcja, karta = dodaj_karte_do_sekcji(
+            sekcja_katalogu_projektu(enm), rekord, katalog_biezacy()
+        )
+    except BladKartWidmowych as blad:
+        return _error_response(str(blad), blad.kod)
+    new_enm = kopia_graniczna_enm(enm)
+    new_enm["katalog_projektu"] = sekcja
+    return _response(
+        new_enm,
+        updated=[karta.id],
+        events=[{"event_seq": 1, "event_type": "CATALOG_ASSIGNED", "element_id": karta.id}],
+    )
 
 
 def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -6710,16 +7026,28 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
 
     obecne_wiazania = {k: payload[k] for k in DER_BINDING_KEYS if k in payload}
     obecne_profile = {k: payload[k] for k in DER_PROFILE_KEYS if k in payload}
-    if not obecne_wiazania and not obecne_profile:
+    karty_obecne = KLUCZ_KART_WIDMOWYCH in payload
+    if not obecne_wiazania and not obecne_profile and not karty_obecne:
         return _error_response(
             "Żadne wiązanie ani profil nie zostały podane.", "der_bindings.payload_empty"
         )
+    # Karta AB-H0 §0.7.6: karty widmowe — lista id (albo `null`/`[]` = odwiązanie).
+    try:
+        karty_ids = identyfikatory_kart(payload.get(KLUCZ_KART_WIDMOWYCH))
+    except BladKartWidmowych as blad:
+        return _error_response(str(blad), blad.kod)
+    if karty_ids is not None:
+        obecne_wiazania_kart = {KLUCZ_KART_WIDMOWYCH: list(karty_ids)}
+    else:
+        obecne_wiazania_kart = {}
 
     # Karta FAB-L: profile (`obecne_profile`) dołączone do wejścia obok wiązań —
     # `_nieznane_referencje_katalogowe` sama rozstrzyga, które klucze ma czym
     # sprawdzić (dziś: `bess_operation_mode_refs`; pozostałe profile bez dostawcy
     # przechodzą bez zmian, jak dotąd).
-    nieznane = _nieznane_referencje_katalogowe({**obecne_wiazania, **obecne_profile})
+    nieznane = _nieznane_referencje_katalogowe(
+        {**obecne_wiazania, **obecne_profile, **obecne_wiazania_kart}
+    )
     if nieznane:
         return _error_response(
             "Referencje katalogowe nie istnieja w katalogu: " + ", ".join(nieznane) + ".",
@@ -6753,6 +7081,20 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
             materialized.pop(klucz, None)
         else:
             materialized[klucz] = wartosc
+
+    # Karty widmowe: ZMATERIALIZOWANA kopia modeli z proweniencją w polu typowanym
+    # `Generator.modele_widmowe` — referencja NIE trafia do `materialized_params`.
+    if karty_obecne:
+        if karty_ids is None:
+            generator["modele_widmowe"] = None
+        else:
+            try:
+                modele = materializuj_karty_generatora(
+                    karty_ids, generator.get("catalog_ref"), katalog_biezacy()
+                )
+            except BladKartWidmowych as blad:
+                return _error_response(str(blad), blad.kod)
+            generator["modele_widmowe"] = modele.model_dump(mode="json")
 
     if obecne_profile:
         profile = materialized.setdefault("profiles", {})
@@ -7010,6 +7352,23 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
     ),
     PozycjaBramyKatalogowejV2("set_der_catalog_bindings", "ct_catalog_ref", "CT", True),
     PozycjaBramyKatalogowejV2("set_der_catalog_bindings", "vt_catalog_ref", "VT", True),
+    # Karta AB-H0 §0.7: lista id kart widmowych (istnienie w katalogu MODELU i zgodność
+    # `urzadzenie_ref` z typem generatora) oraz typ przekształtnika karty projektu.
+    PozycjaBramyKatalogowejV2(
+        "set_der_catalog_bindings",
+        "karty_widmowe_ref",
+        "KARTA_WIDMOWA",
+        True,
+        "materializacja przez `materializuj_karty_generatora` — "
+        "`der_bindings.catalog_ref_unknown`/`der_bindings.karta_widmowa_innego_urzadzenia`",
+    ),
+    PozycjaBramyKatalogowejV2(
+        "dodaj_karte_widmowa_projektu",
+        "karta.urzadzenie_ref",
+        "CONVERTER",
+        True,
+        "`dodaj_karte_do_sekcji` — `karta_widmowa.urzadzenie_nieznane`",
+    ),
     PozycjaBramyKatalogowejV2(
         "add_genset_nn",
         "genset_spec",
@@ -7122,6 +7481,7 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "set_source_operating_mode",
         "set_dynamic_profile",
         "set_der_catalog_bindings",
+        "dodaj_karte_widmowa_projektu",
         # P0.1 nN — topologia obwodow nN
         "add_nn_cable_segment",
         "add_nn_distribution_board",
@@ -7161,6 +7521,7 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "set_source_operating_mode": set_source_operating_mode,
     "set_dynamic_profile": set_dynamic_profile,
     "set_der_catalog_bindings": set_der_catalog_bindings,
+    "dodaj_karte_widmowa_projektu": dodaj_karte_widmowa_projektu,
     "add_nn_cable_segment": add_nn_cable_segment,
     "add_nn_distribution_board": add_nn_distribution_board,
     "add_nn_switch_device": add_nn_switch_device,

@@ -48,6 +48,7 @@ _MIERNIK = _zaladuj_miernik()
 
 POLA_METADANYCH = _MIERNIK.POLA_METADANYCH
 RODZINY_MIERNIKA = _MIERNIK.RODZINY_MIERNIKA
+RODZINY_PUSTE_Z_POWODEM = _MIERNIK.RODZINY_PUSTE_Z_POWODEM
 ZNACZNIK_KONIEC = _MIERNIK.ZNACZNIK_KONIEC
 ZNACZNIK_POCZATEK = _MIERNIK.ZNACZNIK_POCZATEK
 PomiarRodziny = _MIERNIK.PomiarRodziny
@@ -57,6 +58,7 @@ renderuj_blok_generowany = _MIERNIK.renderuj_blok_generowany
 zloz_dokument = _MIERNIK.zloz_dokument
 zmierz_katalog = _MIERNIK.zmierz_katalog
 zmierz_rodzine = _MIERNIK.zmierz_rodzine
+zmierz_karty_widmowe = _MIERNIK.zmierz_karty_widmowe
 
 
 @dataclass(frozen=True)
@@ -92,16 +94,17 @@ def _pozycja(**nadpisania: object) -> _TypSyntetyczny:
 def test_kazdy_rejestr_repozytorium_jest_objety_miernikiem() -> None:
     """Rodzina spoza miernika ZNIKA z tabeli i nikt tego nie zauwazy.
 
-    Zbior rejestrow czytamy z KONTRAKTU repozytorium (pola `dict[str, ...]`
-    dataclassy `CatalogRepository`), nie z drugiej listy — dwie listy, ktore
-    „dzis sie zgadzaja", rozjada sie przy pierwszym nowym rejestrze.
+    Zbior rejestrow czytamy z KONTRAKTU repozytorium (KAZDE pole `dict[str, ...]`
+    dataclassy `CatalogRepository`), nie z drugiej listy ani z sufiksu nazwy — filtr
+    po sufiksach (`_types`, `_curves`, …) przepuscil po cichu rejestr `karty_widmowe`
+    (karta AB-H0), czyli dokladnie ten defekt, ktorego ten test pilnuje.
     """
     from dataclasses import fields as pola_dataclassy
 
     rejestry = {
         pole.name
         for pole in pola_dataclassy(CatalogRepository)
-        if pole.name.endswith(("_types", "_curves", "_templates", "_certificates"))
+        if str(pole.type).startswith("dict[")
     }
     objete = set(RODZINY_MIERNIKA.values())
     assert rejestry == objete, {
@@ -117,9 +120,62 @@ def test_pomiar_zywego_katalogu_obejmuje_komplet_rodzin() -> None:
 
 
 def test_zadna_rodzina_zywego_katalogu_nie_jest_pusta() -> None:
-    """Kontrola DODATNIA: rodzina pusta to albo defekt danych, albo martwy rejestr."""
-    puste = [p.rodzina for p in zmierz_katalog() if p.liczba_pozycji == 0]
-    assert not puste, puste
+    """Kontrola DODATNIA: rodzina pusta to albo defekt danych, albo martwy rejestr —
+    chyba że stoi w `RODZINY_PUSTE_Z_POWODEM` (predykat parami: pusta ⇔ z powodem)."""
+    puste = {p.rodzina for p in zmierz_katalog() if p.liczba_pozycji == 0}
+    assert puste == set(RODZINY_PUSTE_Z_POWODEM), puste
+    assert all(powod.strip() for powod in RODZINY_PUSTE_Z_POWODEM.values())
+
+
+def test_pomiar_kart_widmowych_zywego_katalogu() -> None:
+    """Pomiar 2026-09-23: 0 kart, 0 ze 176 typów przekształtników z kartą."""
+    pomiar = zmierz_karty_widmowe()
+    assert pomiar.to_dict() == {
+        "liczba_kart": 0,
+        "liczba_typow": 176,
+        "typy_z_karta": 0,
+        "karty_wg_statusu": [],
+    }
+    blok = renderuj_blok_generowany(zmierz_katalog(), pomiar)
+    assert "Typów przekształtników z co najmniej jedną kartą widmową: 0 z 176" in blok
+
+
+def test_pomiar_kart_widmowych_liczy_typy_i_statusy() -> None:
+    import dataclasses
+
+    from tests.dziedziny import fabryki as f
+
+    katalog = get_default_mv_catalog()
+    typy = sorted(katalog.converter_types)[:2]
+    karty = [
+        f.karta(id="k-1", urzadzenie_ref=typy[0]),
+        f.karta(id="k-2", urzadzenie_ref=typy[0], verification_status="REFERENCYJNY"),
+        f.karta(id="k-3", urzadzenie_ref=typy[1]),
+        f.karta(id="k-4", urzadzenie_ref="typ-spoza-katalogu"),
+    ]
+    z_kartami = dataclasses.replace(katalog, karty_widmowe={k.id: k for k in karty})
+    pomiar = zmierz_karty_widmowe(z_kartami)
+    assert pomiar.liczba_kart == 4
+    assert pomiar.typy_z_karta == 2
+    assert pomiar.karty_wg_statusu == (("NIEWERYFIKOWANY", 3), ("REFERENCYJNY", 1))
+    rodzina = next(p for p in zmierz_katalog(z_kartami) if p.rodzina == "spectral-card")
+    assert rodzina.liczba_pozycji == 4
+    assert rodzina.pozycje_z_proweniencja == 4
+    # Kontrakt karty nie ma pól dopuszczających `None` (dowody to krotka) — miernik to
+    # mierzy, nie zakłada.
+    assert rodzina.pola_opcjonalne == 0
+
+
+def test_pola_opcjonalne_modelu_pydantic_ta_sama_regula() -> None:
+    from pydantic import BaseModel
+
+    class _ModelSyntetyczny(BaseModel):
+        id: str
+        wartosc: float
+        opcjonalna: float | None = None
+        source_reference: str | None = None
+
+    assert _pola_opcjonalne(_ModelSyntetyczny) == ("opcjonalna",)
 
 
 def test_zaden_identyfikator_nie_powtarza_sie_w_rodzinie() -> None:

@@ -75,7 +75,10 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # dla przyszlego solvera W6-2 (jeszcze nie istnieje) — nie jest trescia modelu
     # dzisiejszych biegow SC/PF; podana wartosc zmieni tylko przyszly bieg
     # dynamika_rms, wiec dopiero wtedy zmienia odcisk.
-    "generators": ("dynamika",),
+    # + karta AB-H0 §0.7.6: modele widmowe zmaterializowane z kart widmowych. `None` =
+    # brak modelu widmowego (sekcja harmonic UNKNOWN) — nie jest trescia modelu dzisiejszych
+    # biegow; wiazanie karty zmienia wejscie analiz czestotliwosciowych, wiec zmienia odcisk.
+    "generators": ("dynamika", "modele_widmowe"),
 }
 
 #: W5-A: pola SKASOWANE z modelu, ktore odcisk ZACHOWUJE jako `null`. Przed kasacja
@@ -112,6 +115,17 @@ def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:
     # model (odciski sprzed pola bajtowo niezmienione); obecna sekcja wchodzi do hasha.
     if payload.get("katalog_projektu") is None:
         payload.pop("katalog_projektu", None)
+    elif isinstance(payload["katalog_projektu"], dict):
+        # Karta AB-H0 §0.7.3: karty widmowe projektu — lista addytywna; pusta lista to
+        # ten sam katalog projektu co przed kartą (odcisk bajtowo niezmieniony). Nowy słownik
+        # zamiast mutacji: `hash_migawki_enm` nie kopiuje sekcji, a migawki wołającego
+        # nie wolno dotknąć.
+        if not payload["katalog_projektu"].get("karty_widmowe"):
+            payload["katalog_projektu"] = {
+                klucz: wartosc
+                for klucz, wartosc in payload["katalog_projektu"].items()
+                if klucz != "karty_widmowe"
+            }
     for key in _ELEMENT_KEYS:
         if key in payload and isinstance(payload[key], list):
             for item in payload[key]:

@@ -299,7 +299,20 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "hvrt_curve_ref",
             "pf_curve_ref",
             "bess_operation_mode_refs",
+            # Karta AB-H0 §0.7.6: lista id kart widmowych — modele materializowane do
+            # `Generator.modele_widmowe` (referencja NIE trafia do materialized_params).
+            "karty_widmowe_ref",
         ),
+        creates_elements=False,
+    ),
+    # Karta AB-H0 §0.7.3: karta widmowa PROJEKTU (dane inżyniera — widmo ręczne albo
+    # import raportu badań dla projektu) w sekcji `katalog_projektu.karty_widmowe`.
+    "dodaj_karte_widmowa_projektu": OperationSpec(
+        canonical_name="dodaj_karte_widmowa_projektu",
+        category=OperationCategory.OZE_NN,
+        description_pl="Dodanie karty widmowej urządzenia do katalogu projektu",
+        target_layer="Domain / NetworkModel",
+        required_fields=("karta",),
         creates_elements=False,
     ),
     # --- Protection (6 operations) ---
@@ -1209,24 +1222,67 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
     ),
     # Karta W2-C: karta katalogowa przekształtnika ISTNIEJE i niesie moc
     # znamionową (inaczej trafiłby w `generator.converter_card_missing` powyżej),
-    # ale nie niesie widma prądu harmonicznych (IEC 61000-3-12 / IEEE 519,
-    # `ConverterType.harmonic_spectrum_percent`). WARNING, nie BLOCKER: sam
-    # przekształtnik nadal wchodzi do wejścia V12.6 (moc, tryb, droop) — pomijany
-    # jest wyłącznie jego wkład do wstrzyknięcia harmonicznych. Zastępuje zaszyte
-    # widmo {5:3%, 7:2%, 11:1,2%, 13:1%} wstrzykiwane wcześniej KAŻDEMU
-    # przekształtnikowi bez różnicy między producentami — to była fabrykacja
-    # (dyrektywa właściciela „zero fabrykacji").
+    # ale wejście V12.6 nie ma widma prądu harmonicznych tego źródła. Karta AB-H0:
+    # pole `ConverterType.harmonic_spectrum_percent` skasowane (0 ze 176 pozycji
+    # niosło widmo), więc jedynym torem widma jest jawne wejście projektanta
+    # (`parameters.harmonic_spectra`); widmo ręczne z błędnym wpisem jest odrzucane W
+    # CAŁOŚCI z powodem (`solver_input/v126_contracts.py::_widma_jawne_z_parametrow`).
+    # WARNING, nie BLOCKER: sam przekształtnik nadal wchodzi do wejścia V12.6 (moc,
+    # tryb, droop) — pomijany jest wyłącznie jego wkład do wstrzyknięcia
+    # harmonicznych. Zastępuje zaszyte widmo {5:3%, 7:2%, 11:1,2%, 13:1%}
+    # wstrzykiwane wcześniej KAŻDEMU przekształtnikowi bez różnicy między
+    # producentami — to była fabrykacja (dyrektywa właściciela „zero fabrykacji").
     "generator.harmonic_spectrum_missing": ReadinessCodeSpec(
         code="generator.harmonic_spectrum_missing",
         area=ReadinessArea.GENERATORS,
         priority=4,
         level=ReadinessLevel.WARNING,
         message_pl=(
-            "Karta katalogowa przekształtnika nie niesie widma prądu harmonicznych — "
-            "wkład źródła do analizy jakości energii V12.6 jest pominięty (podaj "
-            "widmo ręcznie w oknie analizy albo uzupełnij kartę katalogową)"
+            "Brak widma prądu harmonicznych przekształtnika — wkład źródła do analizy "
+            "jakości energii V12.6 jest pominięty (podaj poprawne widmo ręcznie w oknie "
+            "analizy; karta katalogowa typu nie niesie widma)"
         ),
         fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    # Decyzja O-53 (karta AB-H0): JEDNA reguła mocy źródła przekształtnikowego wobec
+    # transformatora i nastawy wobec mocy znamionowej — `domain/generator_validation.py`,
+    # wołana przez tor atomowy, stacyjny, DER-SN, przypisanie typu, aktualizację parametrów
+    # i raport zgodności toru DER-SN. Jeden kod na warunek (dawny kod toru DER-SN
+    # `converter.der_sn.moc_transformatora_niewystarczajaca` skasowany na rzecz
+    # `converter.transformer_capacity_exceeded`).
+    "converter.transformer_capacity_exceeded": ReadinessCodeSpec(
+        code="converter.transformer_capacity_exceeded",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Moc wymagana źródła przekształtnikowego — max(S_n jednostki · liczba jednostek; "
+            "P/cosφ) · współczynnik jednoczesności — przekracza moc transformatora "
+            "zasilającego · przeciążalność"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    "converter.setpoint_above_rating": ReadinessCodeSpec(
+        code="converter.setpoint_above_rating",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Moc zadana źródła przekształtnikowego przekracza moc znamionową instalacji "
+            "(moc czynna jednostki z karty · liczba jednostek)"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "p_mw"},
+    ),
+    "converter.power_check_input_invalid": ReadinessCodeSpec(
+        code="converter.power_check_input_invalid",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Jawne wejście kontroli mocy źródła poza zakresem: cosφ i współczynnik "
+            "jednoczesności z przedziału (0; 1], przeciążalność transformatora dodatnia"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry"},
     ),
     # Ring
     "ring.endpoints_missing": ReadinessCodeSpec(

@@ -29,15 +29,6 @@ from __future__ import annotations
 import math
 from unittest.mock import patch
 
-# Import PRZED `enm.domain_operations_v2`: `enm/domain_operations.py` (linia
-# ~10326) i `enm/domain_operations_v2.py` (linia ~43) importuja sie WZAJEMNIE
-# (dlug preegzystujacy, nie wprowadzony karta W3-A) — modul `domain_operations`
-# musi zdazyc dojsc do WLASNEGO konca (gdzie dopiero importuje `_v2`) zanim
-# `domain_operations_v2` sam zacznie sie ladowac, inaczej `from enm import
-# domain_operations_v2` jako PIERWSZY dotyk `enm.*` w procesie konczy sie
-# `ImportError: cannot import name 'ALL_V2_HANDLERS' from partially
-# initialized module` (potwierdzone w izolacji tego pliku bez tej linii).
-import enm.domain_operations  # noqa: F401,E402
 import pytest
 from application.protection_analysis import engine as pa_engine  # noqa: E402
 from application.protection_analysis.engine import compute_iec_inverse_time  # noqa: E402

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
-from enm.models import EnergyNetworkModel
+from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, Cable, EnergyNetworkModel, OverheadLine
 from network_model.pochodne import kva_na_mva, prad_roboczy_a
 from pydantic import BaseModel, Field
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
@@ -105,13 +105,14 @@ class V126HarmonicSourceInput(BaseModel):
     source_ref: str
     base_current_a: float = Field(gt=0)
     spectrum_percent: dict[int, float] = Field(default_factory=dict)
-    # Karta W2-C: skad widmo TEGO zrodla pochodzi — "KATALOG" (karta katalogowa
-    # przeksztaltnika, `ConverterType.harmonic_spectrum_percent`) albo "RECZNE"
-    # (jawne wejscie projektanta, `V126RunRequest.parameters.harmonic_spectra`,
-    # wzorzec OD-15(a)). Pole ADDYTYWNE (solver FROZEN go nie czyta — B-01);
-    # sluzy WHITE BOX/UI do pokazania proweniencji per zrodlo, zamiast milczenia
-    # o tym, skad liczba przyszla.
-    spectrum_provenance: str = "KATALOG"
+    # Karta W2-C: skad widmo TEGO zrodla pochodzi. Jedyny dostawca to jawne wejscie
+    # projektanta (`V126RunRequest.parameters.harmonic_spectra`, wzorzec OD-15(a)) —
+    # "RECZNE". Dawny dostawca "KATALOG" (`ConverterType.harmonic_spectrum_percent`)
+    # zniknal razem z polem (karta AB-H0 §0.5: 0 ze 176 pozycji nioslo widmo; widmo
+    # urzadzenia niesie odtad karta widmowa, `Generator.modele_widmowe`). Pole BEZ
+    # wartosci domyslnej: budowniczy wejscia zawsze nazywa proweniencje, nigdy jej nie
+    # przyjmuje. Pole ADDYTYWNE (solver FROZEN go nie czyta — B-01); sluzy WHITE BOX/UI.
+    spectrum_provenance: str
 
 
 class V126ConverterInput(BaseModel):
@@ -452,75 +453,86 @@ def _impedancja_skupiona_aparatu_ohm(branch: Any) -> tuple[float, float]:
     return (r_ohm if r_ohm is not None else 0.0, x_ohm if x_ohm is not None else 0.0)
 
 
-#: Rodzaje generatora materializowane z katalogu przekształtników (`ConverterType`,
-#: `CatalogNamespace.CONVERTER`) — jedyne, dla których V12.6 buduje wejście
-#: przekształtnika/źródła harmonicznego. Wyodrębnione ze stałej w treści pętli
-#: (było powtórzone dosłownie), żeby `build_v126_input_from_enm` i
-#: `pominiete_zrodla_v126` używały DOKŁADNIE tego samego zbioru (reguła KLASA §3).
-_RODZAJE_PRZEKSZTALTNIKOWE: frozenset[str] = frozenset(
-    {"pv_inverter", "bess", "fw_pmsg", "fw_dfig", "fw_scig"}
-)
+#: Rodzaje generatora, dla których V12.6 buduje wejście przekształtnika/źródła
+#: harmonicznego = kanoniczny zbiór `enm.models.GEN_TYPES_PRZEKSZTALTNIKOWE` (karta
+#: AB-H0 Pakiet D: dawna lokalna kopia pomijała `wind_inverter` — turbina z pełnym
+#: przekształtnikiem znikała z analiz V12.6 bez kodu). `build_v126_input_from_enm`,
+#: `pominiete_zrodla_v126` i `generatory_przeksztaltnikowe_v126` czytają TEN obiekt
+#: (reguła KLASA §3; parytet: `tests/enm/test_gen_types_przeksztaltnikowe.py`).
 
 
 def generatory_przeksztaltnikowe_v126(enm: EnergyNetworkModel) -> list[str]:
     """Referencje generatorów PV/BESS/wiatrowych (kandydatów przekształtnika/
     źródła harmonicznego V12.6) modelu — używane przez `api/v126_academic.py`
     do listy generatorów w komunikacie 422, kiedy ŻADEN z nich nie ma danych
-    (ten sam zbiór `_RODZAJE_PRZEKSZTALTNIKOWE`, co budowa wejścia)."""
-    return [g.ref_id for g in enm.generators if g.gen_type in _RODZAJE_PRZEKSZTALTNIKOWE]
+    (ten sam zbiór `GEN_TYPES_PRZEKSZTALTNIKOWE`, co budowa wejścia)."""
+    return [g.ref_id for g in enm.generators if g.gen_type in GEN_TYPES_PRZEKSZTALTNIKOWE]
 
 
-def _card_spectrum(card: dict[str, Any], klucz: str) -> dict[int, float] | None:
-    """Widmo harmonicznych z materializowanej karty katalogowej — `dict[int, float]`
-    albo `None`. Klucze wracają jako tekst po przejściu przez `ConverterType.to_dict`
-    (JSON nie zna kluczy całkowitych) i ewentualną trwałość ENM — odporne na obie
-    postacie, jak `_card_float`/`_liczba_lub_none` dla pól skalarnych. Wpis
-    niedający się zinterpretować (klucz/wartość nie liczbowe) unieważnia CAŁE
-    widmo (`None`), zamiast po cichu gubić pojedynczą harmoniczną."""
-    surowe = card.get(klucz)
-    if not isinstance(surowe, dict) or not surowe:
-        return None
-    wynik: dict[int, float] = {}
-    for rzad, procent in surowe.items():
-        try:
-            rzad_i = int(rzad)
-            procent_f = float(procent)
-        except (TypeError, ValueError):
-            return None
-        wynik[rzad_i] = procent_f
-    return wynik
+@dataclass(frozen=True)
+class WidmaJawne:
+    """Jawne widma harmoniczne projektanta po walidacji.
+
+    ``widma`` = widma przyjęte W CAŁOŚCI {generator_ref: {rząd: %}};
+    ``odrzucone`` = {generator_ref: powód} — widmo z choćby jednym błędnym wpisem jest
+    odrzucane W CAŁOŚCI z nazwanym powodem (zero częściowego czyszczenia: widmo bez
+    jednej harmonicznej to INNE widmo niż podane, a różnica nie byłaby nigdzie widoczna).
+    """
+
+    widma: dict[str, dict[int, float]]
+    odrzucone: dict[str, str]
 
 
-def _widma_jawne_z_parametrow(parameters: dict[str, Any] | None) -> dict[str, dict[int, float]]:
+def _blad_wpisu_widma(rzad: object, procent: object) -> str | None:
+    """Powód odrzucenia jednego wpisu `{rząd: %}` albo `None` (wpis poprawny)."""
+    if isinstance(procent, bool):
+        return f"rząd {rzad!r}: wartość logiczna {procent!r} zamiast procentu"
+    try:
+        rzad_i = int(str(rzad))
+        procent_f = float(procent)  # type: ignore[arg-type]  # dowolny wpis JSON
+    except (TypeError, ValueError):
+        return f"wpis {rzad!r}: {procent!r} nie jest parą liczb (rząd, procent)"
+    if rzad_i < 2 or rzad_i > 50:
+        return f"rząd {rzad_i} poza zakresem 2…50"
+    if not 0.0 <= procent_f <= 100.0:
+        return f"rząd {rzad_i}: {procent_f} % poza zakresem 0…100 %"
+    return None
+
+
+def _widma_jawne_z_parametrow(parameters: dict[str, Any] | None) -> WidmaJawne:
     """Jawne widma harmoniczne z wejścia projektanta (`V126RunRequest.parameters.
     harmonic_spectra: {generator_ref: {rząd: %}}`, wzorzec OD-15(a) „nastawy jako
-    wejście jawne") — proweniencja RECZNE, nadpisuje widmo karty katalogowej.
-    Wpis źle ukształtowany (rząd/wartość nienumeryczne, rząd poza 2..50, procent
-    poza 0..100) jest POMIJANY, nie fabrykuje widma z niepoprawnych danych —
-    generator wraca do stanu „brak widma" (kod `generator.harmonic_spectrum_missing`),
-    zamiast dostać połowicznie wyczyszczone dane bez ostrzeżenia."""
-    wynik: dict[str, dict[int, float]] = {}
+    wejście jawne") — proweniencja RECZNE (jedyne źródło widma wejścia V12.6).
+    Widmo z choćby jednym wpisem źle ukształtowanym (rząd/wartość nienumeryczne, rząd
+    poza 2..50, procent poza 0..100) jest ODRZUCANE W CAŁOŚCI z powodem wymieniającym
+    każdy błędny wpis — generator wraca do stanu „brak widma" (kod
+    `generator.harmonic_spectrum_missing` z tym powodem), nigdy nie dostaje widma
+    połowicznie wyczyszczonego bez ostrzeżenia."""
+    widma: dict[str, dict[int, float]] = {}
+    odrzucone: dict[str, str] = {}
     if not isinstance(parameters, dict):
-        return wynik
+        return WidmaJawne(widma, odrzucone)
     surowe = parameters.get("harmonic_spectra")
     if not isinstance(surowe, dict):
-        return wynik
+        return WidmaJawne(widma, odrzucone)
     for generator_ref, widmo in surowe.items():
-        if not isinstance(generator_ref, str) or not isinstance(widmo, dict) or not widmo:
+        if not isinstance(generator_ref, str):
             continue
-        oczyszczone: dict[int, float] = {}
-        for rzad, procent in widmo.items():
-            try:
-                rzad_i = int(rzad)
-                procent_f = float(procent)
-            except (TypeError, ValueError):
-                continue
-            if rzad_i < 2 or rzad_i > 50 or not (0.0 <= procent_f <= 100.0):
-                continue
-            oczyszczone[rzad_i] = procent_f
-        if oczyszczone:
-            wynik[generator_ref] = oczyszczone
-    return wynik
+        if not isinstance(widmo, dict) or not widmo:
+            odrzucone[generator_ref] = "widmo ręczne puste albo nie jest mapą {rząd: %}"
+            continue
+        bledy = [
+            blad
+            for rzad, procent in widmo.items()
+            if (blad := _blad_wpisu_widma(rzad, procent)) is not None
+        ]
+        rzedy = [int(str(rzad)) for rzad in widmo] if not bledy else []
+        bledy += [f"rząd {r} podany wielokrotnie" for r in sorted(set(rzedy)) if rzedy.count(r) > 1]
+        if bledy:
+            odrzucone[generator_ref] = "; ".join(bledy)
+            continue
+        widma[generator_ref] = {int(str(rzad)): float(procent) for rzad, procent in widmo.items()}
+    return WidmaJawne(widma, odrzucone)
 
 
 @dataclass(frozen=True)
@@ -550,7 +562,7 @@ class OcenaKartyPrzeksztaltnika:
 
 
 def _oceb_karte_przeksztaltnika(
-    generator: Any, jawne_widma: dict[str, dict[int, float]]
+    generator: Any, jawne_widma: WidmaJawne
 ) -> OcenaKartyPrzeksztaltnika:
     """Ocena karty katalogowej jednego generatora PV/BESS/wiatrowego — zero
     fabrykacji: każda wielkość pochodzi z `generator.materialized_params`
@@ -616,26 +628,31 @@ def _oceb_karte_przeksztaltnika(
             "przekształtnik pominięty w wejściu V12.6."
         )
 
-    widmo_karty = _card_spectrum(card, "harmonic_spectrum_percent")
-    widmo_reczne = jawne_widma.get(ref)
+    # Widmo WYŁĄCZNIE z jawnego wejścia projektanta. Karta katalogowa przekształtnika
+    # nie niesie widma (pole `harmonic_spectrum_percent` skasowane — karta AB-H0 §0.5),
+    # więc odczyt klucza z `materialized_params` czytałby wyłącznie wartość wstrzykniętą
+    # mimo katalogu — tor skasowany u źródła, nie osłonięty.
+    widmo_reczne = jawne_widma.widma.get(ref)
     if widmo_reczne:
-        spectrum = widmo_reczne
+        spectrum: dict[int, float] | None = widmo_reczne
         spectrum_provenance: str | None = "RECZNE"
         spectrum_kod: str | None = None
         spectrum_powod: str | None = None
-    elif widmo_karty:
-        spectrum = widmo_karty
-        spectrum_provenance = "KATALOG"
-        spectrum_kod = None
-        spectrum_powod = None
+    elif ref in jawne_widma.odrzucone:
+        spectrum = None
+        spectrum_provenance = None
+        spectrum_kod = "generator.harmonic_spectrum_missing"
+        spectrum_powod = (
+            "Widmo ręczne przekształtnika odrzucone w całości — "
+            f"{jawne_widma.odrzucone[ref]}. Popraw widmo w oknie analizy."
+        )
     else:
         spectrum = None
         spectrum_provenance = None
         spectrum_kod = "generator.harmonic_spectrum_missing"
         spectrum_powod = (
-            "Karta katalogowa przekształtnika nie niesie widma prądu harmonicznych "
-            "(IEC 61000-3-12 / IEEE 519) — podaj widmo ręcznie w oknie analizy albo "
-            "uzupełnij kartę katalogową."
+            "Brak widma prądu harmonicznych przekształtnika w wejściu analizy — podaj "
+            "widmo ręcznie w oknie analizy (karta katalogowa typu nie niesie widma)."
         )
 
     return OcenaKartyPrzeksztaltnika(
@@ -712,7 +729,7 @@ def pominiete_zrodla_v126(
     jawne_widma = _widma_jawne_z_parametrow(parameters)
     wynik: list[dict[str, str]] = []
     for generator in enm.generators:
-        if generator.gen_type not in _RODZAJE_PRZEKSZTALTNIKOWE:
+        if generator.gen_type not in GEN_TYPES_PRZEKSZTALTNIKOWE:
             continue
         ocena = _oceb_karte_przeksztaltnika(generator, jawne_widma)
         if ocena.converter_kod is not None:
@@ -777,10 +794,11 @@ def build_v126_input_from_enm(
             p + generator.p_mw,
             q + wynik_q.q_mvar if wynik_q.q_mvar is not None else q,
         )
-        if generator.gen_type in _RODZAJE_PRZEKSZTALTNIKOWE:
+        if generator.gen_type in GEN_TYPES_PRZEKSZTALTNIKOWE:
             # Karta W2-C (zero fabrykacji wejścia V12.6): moc znamionowa, tryb
-            # (GFL/GFM), statyzmy droop i widmo harmoniczne pochodzą WYŁĄCZNIE
-            # z karty katalogowej przekształtnika (`_oceb_karte_przeksztaltnika`
+            # (GFL/GFM) i statyzmy droop pochodzą WYŁĄCZNIE z karty katalogowej
+            # przekształtnika, widmo harmoniczne — WYŁĄCZNIE z jawnego wejścia
+            # projektanta (`_oceb_karte_przeksztaltnika`
             # — JEDNO źródło prawdy dzielone z `pominiete_zrodla_v126`, reguła
             # KLASA §3). Brak karty w ogóle ALBO brak mocy znamionowej w karcie
             # => przekształtnik POMINIĘTY z wejścia V12.6 w całości (kod
@@ -825,19 +843,25 @@ def build_v126_input_from_enm(
             # zaszytych 15 kV. Gdy szyna generatora nie istnieje w modelu, zrodla
             # harmonicznego NIE MA — brak wezla to brak miejsca wstrzykniecia,
             # a nie powod do przyjecia napiecia z powietrza. Widmo (`ocena.spectrum`)
-            # jest `None`, gdy karta katalogowa go nie niesie i projektant nie podal
-            # go recznie — zrodlo NIE WCHODZI do wejscia (kod
+            # jest `None`, gdy projektant nie podal go recznie (karta katalogowa widma
+            # nie niesie) — zrodlo NIE WCHODZI do wejscia (kod
             # `generator.harmonic_spectrum_missing`), zamiast dostac zaszyte widmo
             # wspolne dla kazdego przeksztaltnika (fabrykacja usunieta ta karta).
             un_kv = napiecie_szyny_kv.get(generator.bus_ref)
-            if ocena.spectrum is not None and un_kv is not None and un_kv > 0:
+            if (
+                ocena.spectrum is not None
+                and ocena.spectrum_provenance is not None
+                and ocena.rated_mva is not None  # zawsze prawda po `converter_kod is None`
+                and un_kv is not None
+                and un_kv > 0
+            ):
                 harmonic_sources.append(
                     V126HarmonicSourceInput(
                         bus_ref=generator.bus_ref,
                         source_ref=generator.ref_id,
                         base_current_a=prad_roboczy_a(ocena.rated_mva, un_kv),
                         spectrum_percent=ocena.spectrum,
-                        spectrum_provenance=ocena.spectrum_provenance or "KATALOG",
+                        spectrum_provenance=ocena.spectrum_provenance,
                     )
                 )
 
@@ -864,7 +888,7 @@ def build_v126_input_from_enm(
             is_open = True
         else:
             is_open = False
-        if branch.type in {"line_overhead", "cable"}:
+        if isinstance(branch, OverheadLine | Cable):
             # `length_km`, `r_ohm_per_km`, `x_ohm_per_km` sa polami WYMAGANYMI
             # modeli `OverheadLine`/`Cable`, wiec czytamy je wprost. Do tej karty
             # staly tu `getattr(..., 1.0 / 0.18 / 0.12)`; te wartosci zapasowe byly

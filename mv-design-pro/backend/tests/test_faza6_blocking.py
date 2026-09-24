@@ -16,10 +16,7 @@ BINDING: Nieprzejście jakiegokolwiek testu blokuje merge.
 from __future__ import annotations
 
 import pytest
-from enm.domain_operations import (
-    CANONICAL_OPS,
-    execute_domain_operation,
-)
+from enm.domain_operations import execute_domain_operation
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
@@ -146,10 +143,12 @@ class TestAllOperationsReturnSnapshot:
         assert isinstance(result["fix_actions"], list)
 
     def test_all_canonical_ops_registered(self) -> None:
-        """Wszystkie kanoniczne operacje muszą mieć handler."""
-        assert "refresh_snapshot" in CANONICAL_OPS
-        assert "add_grid_source_sn" in CANONICAL_OPS
-        assert "continue_trunk_segment_sn" in CANONICAL_OPS
+        """Wszystkie kanoniczne operacje muszą mieć handler (jeden rejestr operacji)."""
+        from enm.rejestr_operacji import HANDLERY, OPERACJE_KANONICZNE
+
+        for operacja in ("refresh_snapshot", "add_grid_source_sn", "continue_trunk_segment_sn"):
+            assert operacja in OPERACJE_KANONICZNE
+            assert operacja in HANDLERY
 
 
 # ---------------------------------------------------------------------------

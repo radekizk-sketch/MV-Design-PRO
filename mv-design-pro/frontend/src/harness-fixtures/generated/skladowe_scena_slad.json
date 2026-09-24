@@ -119,28 +119,28 @@
       "formula_latex": "Z_k = Z_1 + Z_2 + Z_0",
       "inputs": {
         "z1_ohm": {
-          "re": 0.05413962601553557,
+          "re": 0.05413962601553552,
           "im": 1.062646512021273
         },
         "z2_ohm": {
-          "re": 0.05413962601553557,
+          "re": 0.05413962601553552,
           "im": 1.062646512021273
         },
         "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
         "short_circuit_type": "1F",
         "z0_ohm": {
-          "re": 5.115907697472721e-13,
+          "re": 1.2745363593957127e-09,
           "im": -10162.601626014506
         }
       },
-      "substitution": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(5.11591e-13 - j 10162.6\\right)",
-      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(5.11591e-13 - j 10162.6\\right)",
+      "substitution": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
+      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
       "result": {
         "z_equiv_ohm": {
-          "re": 0.10827925203158273,
+          "re": 0.1082792533056074,
           "im": -10160.476332990464
         },
-        "r_ohm": 0.10827925203158273,
+        "r_ohm": 0.1082792533056074,
         "x_ohm": -10160.476332990464,
         "z_equiv_abs_ohm": 10160.476333567425
       },
@@ -220,14 +220,14 @@
       "title": "Współczynnik udaru",
       "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
       "inputs": {
-        "r_ohm": 0.10827925203158273,
+        "r_ohm": 0.1082792533056074,
         "x_ohm": -10160.476332990464,
-        "rx_ratio": -1.0656907066453806e-05
+        "rx_ratio": -1.0656907191844057e-05
       },
       "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
       "result": {
-        "kappa": 2.000031331807623
+        "kappa": 2.0000313318079916
       },
       "notes": null,
       "step": 5,
@@ -262,13 +262,13 @@
       "title": "Prąd udarowy",
       "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
       "inputs": {
-        "kappa": 2.000031331807623,
+        "kappa": 2.0000313318079916,
         "ikss_a": 2.8127459172824247
       },
       "substitution": "2.00003 \\cdot \\sqrt{2} \\cdot 2.81275",
       "substitution_latex": "2.00003 \\cdot \\sqrt{2} \\cdot 2.81275",
       "result": {
-        "ip_a": 7.955771479858984
+        "ip_a": 7.955771479860451
       },
       "notes": null,
       "step": 6,
@@ -304,7 +304,7 @@
       "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
       "inputs": {
         "ikss_a": 2.8127459172824247,
-        "kappa": 2.000031331807623,
+        "kappa": 2.0000313318079916,
         "tb_s": 0.1,
         "ta_s": 0.0,
         "exp_factor": 0.0
@@ -348,13 +348,13 @@
       "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
       "inputs": {
         "ikss_a": 2.8127459172824247,
-        "m_factor": 2.0062793725739287,
+        "m_factor": 2.0062793726479917,
         "n_factor": 1.0
       },
       "substitution": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
       "substitution_latex": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
       "result": {
-        "ith_a": 4.876914833203306
+        "ith_a": 4.876914833263379
       },
       "notes": null,
       "step": 8,
@@ -963,11 +963,11 @@
       "formula_latex": "Z_k = Z_1 + Z_2 + Z_0",
       "inputs": {
         "z1_ohm": {
-          "re": 0.0025853234455180648,
+          "re": 0.0025853234455180643,
           "im": 0.011567826009893416
         },
         "z2_ohm": {
-          "re": 0.0025853234455180648,
+          "re": 0.0025853234455180643,
           "im": 0.011567826009893416
         },
         "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
@@ -1385,28 +1385,28 @@
       "formula_latex": "Z_k = Z_1 + Z_2 + Z_0",
       "inputs": {
         "z1_ohm": {
-          "re": 0.05413962601553557,
+          "re": 0.05413962601553552,
           "im": 1.062646512021273
         },
         "z2_ohm": {
-          "re": 0.05413962601553557,
+          "re": 0.05413962601553552,
           "im": 1.062646512021273
         },
         "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
         "short_circuit_type": "1F",
         "z0_ohm": {
-          "re": 5.115907697472721e-13,
+          "re": 1.2745363593957127e-09,
           "im": -10162.601626014506
         }
       },
-      "substitution": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(5.11591e-13 - j 10162.6\\right)",
-      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(5.11591e-13 - j 10162.6\\right)",
+      "substitution": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
+      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
       "result": {
         "z_equiv_ohm": {
-          "re": 0.10827925203158273,
+          "re": 0.1082792533056074,
           "im": -10160.476332990464
         },
-        "r_ohm": 0.10827925203158273,
+        "r_ohm": 0.1082792533056074,
         "x_ohm": -10160.476332990464,
         "z_equiv_abs_ohm": 10160.476333567425
       },
@@ -1486,14 +1486,14 @@
       "title": "Współczynnik udaru",
       "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
       "inputs": {
-        "r_ohm": 0.10827925203158273,
+        "r_ohm": 0.1082792533056074,
         "x_ohm": -10160.476332990464,
-        "rx_ratio": -1.0656907066453806e-05
+        "rx_ratio": -1.0656907191844057e-05
       },
       "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
       "result": {
-        "kappa": 2.000031331807623
+        "kappa": 2.0000313318079916
       },
       "notes": null,
       "step": 32,
@@ -1528,13 +1528,13 @@
       "title": "Prąd udarowy",
       "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
       "inputs": {
-        "kappa": 2.000031331807623,
+        "kappa": 2.0000313318079916,
         "ikss_a": 2.8127459172824247
       },
       "substitution": "2.00003 \\cdot \\sqrt{2} \\cdot 2.81275",
       "substitution_latex": "2.00003 \\cdot \\sqrt{2} \\cdot 2.81275",
       "result": {
-        "ip_a": 7.955771479858984
+        "ip_a": 7.955771479860451
       },
       "notes": null,
       "step": 33,
@@ -1570,7 +1570,7 @@
       "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
       "inputs": {
         "ikss_a": 2.8127459172824247,
-        "kappa": 2.000031331807623,
+        "kappa": 2.0000313318079916,
         "tb_s": 0.1,
         "ta_s": 0.0,
         "exp_factor": 0.0
@@ -1614,13 +1614,13 @@
       "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
       "inputs": {
         "ikss_a": 2.8127459172824247,
-        "m_factor": 2.0062793725739287,
+        "m_factor": 2.0062793726479917,
         "n_factor": 1.0
       },
       "substitution": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
       "substitution_latex": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
       "result": {
-        "ith_a": 4.876914833203306
+        "ith_a": 4.876914833263379
       },
       "notes": null,
       "step": 35,
@@ -1807,17 +1807,17 @@
       "formula_latex": "Z_k = Z_1 + Z_2 + Z_0",
       "inputs": {
         "z1_ohm": {
-          "re": 0.7557255080898564,
-          "im": 1.9264383236339513
+          "re": 0.7557255080898567,
+          "im": 1.9264383236339517
         },
         "z2_ohm": {
-          "re": 0.7557255080898564,
-          "im": 1.9264383236339513
+          "re": 0.7557255080898567,
+          "im": 1.9264383236339517
         },
         "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
         "short_circuit_type": "1F",
         "z0_ohm": {
-          "re": 1.4260000000003763,
+          "re": 1.4260000012739338,
           "im": -10158.881626014505
         }
       },
@@ -1825,10 +1825,10 @@
       "substitution_latex": "\\left(0.755726 + j 1.92644\\right) + \\left(0.755726 + j 1.92644\\right) + \\left(1.426 - j 10158.9\\right)",
       "result": {
         "z_equiv_ohm": {
-          "re": 2.937451016180089,
+          "re": 2.9374510174536472,
           "im": -10155.028749367237
         },
-        "r_ohm": 2.937451016180089,
+        "r_ohm": 2.9374510174536472,
         "x_ohm": -10155.028749367237,
         "z_equiv_abs_ohm": 10155.029174211839
       },
@@ -1908,14 +1908,14 @@
       "title": "Współczynnik udaru",
       "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
       "inputs": {
-        "r_ohm": 2.937451016180089,
+        "r_ohm": 2.9374510174536472,
         "x_ohm": -10155.028749367237,
-        "rx_ratio": -0.00028926072871660974
+        "rx_ratio": -0.0002892607288420213
       },
       "substitution": "1.02 + 0.98 \\cdot e^{-3 \\cdot -0.000289261}",
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -0.000289261}",
       "result": {
-        "kappa": 2.0008507956416874
+        "kappa": 2.000850795642056
       },
       "notes": null,
       "step": 41,
@@ -1950,13 +1950,13 @@
       "title": "Prąd udarowy",
       "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
       "inputs": {
-        "kappa": 2.0008507956416874,
+        "kappa": 2.000850795642056,
         "ikss_a": 2.814254674665133
       },
       "substitution": "2.00085 \\cdot \\sqrt{2} \\cdot 2.81425",
       "substitution_latex": "2.00085 \\cdot \\sqrt{2} \\cdot 2.81425",
       "result": {
-        "ip_a": 7.963300387945985
+        "ip_a": 7.963300387947451
       },
       "notes": null,
       "step": 42,
@@ -1992,7 +1992,7 @@
       "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
       "inputs": {
         "ikss_a": 2.814254674665133,
-        "kappa": 2.0008507956416874,
+        "kappa": 2.000850795642056,
         "tb_s": 0.1,
         "ta_s": 0.0,
         "exp_factor": 0.0
@@ -2036,13 +2036,13 @@
       "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
       "inputs": {
         "ikss_a": 2.814254674665133,
-        "m_factor": 2.180154353257737,
+        "m_factor": 2.1801543533403005,
         "n_factor": 1.0
       },
       "substitution": "2.81425 \\cdot \\sqrt{2.18015 + 1}",
       "substitution_latex": "2.81425 \\cdot \\sqrt{2.18015 + 1}",
       "result": {
-        "ith_a": 5.018656781575755
+        "ith_a": 5.018656781640902
       },
       "notes": null,
       "step": 44,
@@ -2483,7 +2483,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "e10090b3023996f178d7c5307a5f3ca6e636c22723371defbd41728e72130fee",
-      "result_hash": "e7d7ff7448d94808f365e40ee8ef80ef8b6657a15e7ee41eb8aad94c494a1ed1",
+      "result_hash": "dce6ce1832e65e3f15d0c16a921f74e05161deb3418ed4c38ab768e7b1ee4d89",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
@@ -2494,7 +2494,7 @@
       "catalog_materialization_status": "not_materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "0115ee1a3faf1c42a814ef7cf160e7277ae2f926b1fdb48aced9919e0d6b2d95",
+      "catalog_fingerprint": "b64a1bd963c0fa67c10552c6139338fcaec350fefba9de8b04d2054e30af1af0",
       "model_revision": 1,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",

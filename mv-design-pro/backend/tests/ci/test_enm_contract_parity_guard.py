@@ -76,15 +76,25 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     Karta W5-A (2026-09-16) dodaje DWA pola Literal z lustrem w `types/enm.ts`
     (`types/uziemienie.ts`, pin do snapshotu OpenAPI): `Transformer.lv_earthing_system:
     UkladSieciNn | None` (uklad sieci nN — dawniej worek `meta`) i `Cable.screen_bonding:
-    UziemienieEkranuKabla | None` (uklad uziemienia ekranu kabla) — licznik 117 -> 119 (po W5-D)."""
+    UziemienieEkranuKabla | None` (uklad uziemienia ekranu kabla) — licznik 117 -> 119 (po W5-D).
+
+    Karta AB-H0 (2026-09-23) dopisuje do `SPRAWDZANE` dwie encje kontraktow dziedziny
+    czestotliwosci widoczne w `enm.models` (`KartaWidmowa`, `ModeleWidmoweElementu`).
+    `KartaWidmowa` niesie DWA pola Literal z lustrem w `types/enm.ts` i zachowanym
+    parytetem zbioru wartosci: `verification_status` (ZWERYFIKOWANY / NIEWERYFIKOWANY /
+    CZESCIOWO_ZWERYFIKOWANY / REFERENCYJNY — stan weryfikacji rekordu karty, ten sam
+    slownik co metadane rekordu katalogu) i `catalog_status` (PRODUKCYJNY_V1 /
+    REFERENCYJNY_V1 / ANALITYCZNY_V1 / TESTOWY / PROJEKTOWY_V1 — status rekordu, z
+    `PROJEKTOWY_V1` dla karty katalogu projektu); `ModeleWidmoweElementu` pol Literal nie
+    ma — licznik 119 -> 121 (pomiar guardem na drzewie integracji AB-H0)."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 119, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 119 — "
+    assert int(dopasowanie.group(1)) == 121, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 121 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

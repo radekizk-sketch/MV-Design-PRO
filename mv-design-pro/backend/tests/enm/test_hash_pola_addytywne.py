@@ -62,12 +62,14 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
     # 55/56 sieci bez zmiany odcisku po tej poprawce, jedyna różnica ma inne
     # udokumentowane źródło — kasacja referencji profilu obciążenia odbioru,
     # W6-1 K-E (`enm/domain_ops_models.py::AddNNLoadPayload`).
+    # AB-H0 §0.7.6: `Generator.modele_widmowe` (modele z kart widmowych) — to samo prawo;
+    # test odcisku: `tests/enm/test_karty_widmowe_modelu.py`.
     assert _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE == {
         "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu", "neutral_grounding"),
         "loads": ("phases",),
         "transformers": ("lv_earthing_system",),
         "branches": ("screen_bonding",),
-        "generators": ("dynamika",),
+        "generators": ("dynamika", "modele_widmowe"),
     }
 
 

@@ -117,10 +117,22 @@ def test_realne_pliki_sa_zielone() -> None:
         assert naruszenia == [], "\n".join(naruszenia)
 
 
+def test_kazdy_modul_dziedziny_jest_skanowany() -> None:
+    """Karta AB-H0: nowy moduł liścia `dziedziny/` bez wpisu w SCAN_FILES = czerwień
+    (lista plików nie może rosnąć wolniej niż pakiet)."""
+    moduly = {
+        str(sciezka.relative_to(ROOT))
+        for sciezka in (ROOT / "backend" / "src" / "dziedziny").glob("*.py")
+    }
+    assert len(moduly) >= 9, "skan pakietu `dziedziny` stracił kotwicę"
+    assert moduly <= set(SCAN_FILES), sorted(moduly - set(SCAN_FILES))
+
+
 if __name__ == "__main__":
     test_czysta_klasa_zielona()
     test_iniekcje_wszystkich_postaci_czerwone()
     test_none_default_nie_jest_naruszeniem()
     test_dyskryminator_tekstowy_nie_jest_naruszeniem()
     test_realne_pliki_sa_zielone()
+    test_kazdy_modul_dziedziny_jest_skanowany()
     print("test_dynamika_zero_default_guard: OK")

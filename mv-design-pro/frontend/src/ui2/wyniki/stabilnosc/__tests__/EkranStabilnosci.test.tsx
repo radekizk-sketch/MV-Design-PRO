@@ -194,9 +194,15 @@ describe('EkranStabilnosci — formularz scenariusza (karta W2 pkt 1, zero fabry
     );
   });
 
-  it('brak KAŻDEGO pola z osobna blokuje wysyłkę (iloczyn cech, nie przykład z karty)', async () => {
-    for (const pominietePole of POLA_SCENARIUSZA_STABILNOSCI) {
-      cleanup();
+  // Pomiar 2026-09-23 (odbiór AB-H0): iloczyn braków był JEDNYM testem z pętlą po 9 polach
+  // (9 renderów ekranu × 8 pól wpisywanych znak po znaku) — 2,37 s samodzielnie, a pod
+  // obciążeniem maszyny przekraczał limit 5 s i wywracał także następny test. Przyczyna to
+  // długość jednego testu, nie wolna ścieżka produktu: każdy brak jest teraz OSOBNYM
+  // przypadkiem (`it.each`) z tą samą, w pełni natywną ścieżką (wpisywanie znak po znaku,
+  // natywny klik) — iloczyn cech bez zmian, a każdy przypadek mieści się w limicie z zapasem.
+  it.each(POLA_SCENARIUSZA_STABILNOSCI.map((pole) => [pole.klucz, pole] as const))(
+    'brak pola %s z osobna blokuje wysyłkę (iloczyn cech, nie przykład z karty)',
+    async (_klucz, pominietePole) => {
       const user = userEvent.setup();
       const createAndExecuteRun = vi.fn();
       useExecutionRunsStore.setState({ runs: [], createAndExecuteRun } as never);
@@ -219,8 +225,8 @@ describe('EkranStabilnosci — formularz scenariusza (karta W2 pkt 1, zero fabry
         createAndExecuteRun,
         `pole ${pominietePole.klucz}: bieg NIE powinien wystartować`,
       ).not.toHaveBeenCalled();
-    }
-  });
+    },
+  );
 
   it('natywny klik „Uruchom ocenę progową" z kompletem pól wysyła DOKŁADNIE kontrakt opcji biegu', async () => {
     const user = userEvent.setup();

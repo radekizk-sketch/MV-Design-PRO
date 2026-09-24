@@ -169,9 +169,9 @@ class TestGranice:
         # Kontrola odwrotna do V12K-191: operacja poza białą listą jest martwa,
         # więc wpis musi istnieć, a nie tylko handler.
         from domain.canonical_operations import CANONICAL_OPERATIONS
-        from enm.domain_operations import CANONICAL_OPS
+        from enm.rejestr_operacji import OPERACJE_KANONICZNE
 
-        assert "set_der_catalog_bindings" in CANONICAL_OPS
+        assert "set_der_catalog_bindings" in OPERACJE_KANONICZNE
         assert "set_der_catalog_bindings" in CANONICAL_OPERATIONS
 
     def test_determinizm_dwa_identyczne_wywolania_daja_ten_sam_model(self) -> None:

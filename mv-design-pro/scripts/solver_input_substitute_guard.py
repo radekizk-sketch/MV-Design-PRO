@@ -510,6 +510,33 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "protection/curves/curve_calculator.py",
     "protection/curves/iec_curves.py",
     "protection/curves/ieee_curves.py",
+    # Karta AB-H0 (2026-09-23) — pin mapy zazadal decyzji dla pieciu korzeni po
+    # wpieciu kart widmowych: `enm/models.py` (`Generator.modele_widmowe`,
+    # `KatalogProjektu.karty_widmowe`), `network_model/catalog/sekcje_modelu.py`,
+    # `application/model_urzadzenia/sekcje_elementu.py` i `api/karty_widmowe.py`
+    # importuja kontrakty lisciowego pakietu `dziedziny/` (karta widmowa, widmo
+    # zrodla, sekcje modelu, kanon nazw) oraz typy `werdykt/kontrakt.py`, z ktorych
+    # te kontrakty sa zbudowane (`Wielkosc`, `PodstawaWymagania`, `DanaPrzyjeta`).
+    # To DANE WEJSCIOWE analiz dziedziny czestotliwosci (widmo pradu harmonicznych,
+    # impedancja/admitancja zrodla, pasma regulatorow) materializowane na element
+    # sieci — decyzja „do mapy", tak jak `network_model/catalog/types.py` obok;
+    # zadne pole nie jest atrybutem typu wbudowanego (precedens `real`/`imag`
+    # w `MODEL_ROOTS_POZA_MAPA` nie zachodzi). Pomiar ponizej przy pinie w
+    # samotescie (`comm` zbiorow `contract_fields()` przed/po dolozeniu).
+    "dziedziny/kanon.py",
+    "dziedziny/karta_widmowa.py",
+    "dziedziny/sekcje.py",
+    "dziedziny/widmo.py",
+    "werdykt/kontrakt.py",
+    # Decyzja O-53 (2026-09-23) — pin mapy zazadal decyzji dla
+    # `domain/generator_validation.py`: tor atomowy/DER-SN (`enm/domain_operations_v2`),
+    # stacyjny i aktualizacja (`enm/domain_operations`) oraz raport zgodnosci
+    # czytaja z niego JEDNA regule mocy zrodla i jej jawne wejscia
+    # (`JawneWejsciaKontroliMocy`: cos_phi, wspolczynnik_jednoczesnosci,
+    # przeciazalnosc_transformatora_pu). To DANE WEJSCIOWE kontroli mocy
+    # (brak = 1,0 bez redukcji nazwany w `meta`, nie cicha jedynka) —
+    # decyzja „do mapy"; pola nie sa atrybutami typu wbudowanego.
+    "domain/generator_validation.py",
 )
 
 #: Korzenie modeli SWIADOMIE POZA mapa pol — z POWODEM MERYTORYCZNYM, nie „poza
@@ -772,16 +799,12 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # — nalezy go ODRZUCIC walidacja (jak dwa wiersze wyzej robia napiecia), a nie
     # zastepowac liczba. Ujawnione dopiero w rundzie 3, po dolozeniu
     # `enm/domain_ops_models.py` do mapy pol.
-    "network_model/solvers/der_selection_preview.py": {
-        "B:ifexp:data.loadability_pu": 1,
-        # `reserve_pu` (3x) dolozone w rundzie 4 — ta sama rodzina, co dwa wpisy
-        # obok, ale widoczna dopiero po dolozeniu WLASNYCH deklaracji warstwy do
-        # mapy: `CableSelectionInput`/`BlockTransformerSelectionInput` mieszkaja
-        # w `network_model/solvers/**`, wiec warstwa ich nie IMPORTUJE i pin mapy
-        # nie mogl o nie zapytac.
-        "B:ifexp:data.reserve_pu": 3,
-        "B:ifexp:data.simultaneity_factor": 1,
-    },
+    # Decyzja O-53 (2026-09-24): wpis `network_model/solvers/der_selection_preview.py`
+    # ("B:ifexp:data.loadability_pu" 1, "B:ifexp:data.reserve_pu" 3,
+    # "B:ifexp:data.simultaneity_factor" 1) ZDJETY — dlug nazwany wyzej naprawiony
+    # dokladnie wg wlasnej recepty: wspolczynnik niedodatni i ujemna rezerwa sa BLEDEM
+    # WEJSCIA (`ValueError` -> 422), a dziedzine inzynierska k_j/k_obc/cosφ orzeka jedna
+    # funkcja `domain.generator_validation.blad_wejsc_kontroli_mocy` w API podgladu.
     # Odczyt WYNIKU rozplywu z wartoscia zastepcza zero: `getattr(solution,
     # "losses_total", 0.0 + 0.0j)`. Zero strat nie jest brakiem strat — to zero
     # udajace pomiar, dokladnie ta klasa, ktora karta zdjela z `q_available_mvar`.
@@ -1237,8 +1260,12 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # candidates) * quantity`, w. 1543) — TA SAMA klasa kardynalnosci, co
         # `D:dictor:payload.quantity` obok (jedynka = brak redukcji liczba
         # jednostek), tylko przez nosnik lokalny w INNEJ funkcji tego samego
-        # pliku. Zostaje w budzecie z tym samym powodem merytorycznym.
-        "H:local:payload.quantity": 1,
+        # pliku. Decyzja O-53 (2026-09-23): wpis "H:local:payload.quantity"
+        # ZDJETY — `_converter_required_apparent_power_mva` skasowana; moc
+        # wymagana zrodla liczy JEDNA regula `domain/generator_validation.
+        # sprawdz_moc_generatora`, a liczbe jednostek bierze z modelu
+        # (`enm/models.liczba_jednostek_zrodla`, ta sama regula co solver), nie
+        # z surowego payloadu z jedynka zastepcza. Dlug USUNIETY, nie zmalal cicho.
         # Karta GUARD-SUB (2026-09-05): `ds_settings.get("time_dial", 1.0)` /
         # `us_settings.get("time_dial", 1.0)` w `calculate_tcc_curve`/
         # `validate_selectivity` (w. 1153-1154) — NOWO WIDOCZNE dopiero po
@@ -1306,8 +1333,15 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:spec.i_thermal_calculated_ka": 1,
         "F:dictget:spec.t_clearing_s": 1,
     },
+    # Decyzja O-53 (2026-09-24): klucz "B:ifexp:request.cos_phi" -> "B:ifexp:zrodlo.cos_phi"
+    # (budzet BEZ ZMIANY, 1). To samo podstawienie cosφ = 1,0 za brak cosφ w doborze kabla,
+    # teraz w JEDNEJ funkcji `_cos_phi_doboru_kabla` wolanej przez podglad kreatora ORAZ
+    # przez sprawdzenie odstepstw dokumentu DER-SN (`api/der_sn_documents.py`), ktore
+    # dotad mialo zaszyte `cos_phi=0.95` (liczba niewidoczna dla skanera — dlug ukryty,
+    # teraz objety tym jednym wpisem). Funkcja przyjmuje nosnik z polem `cos_phi`, zeby
+    # forma B pozostala widoczna dla skanera (parametr skalarny wypadlby ze wzorca).
     "api/grid_source_preview.py": {
-        "B:ifexp:request.cos_phi": 1,
+        "B:ifexp:zrodlo.cos_phi": 1,
     },
     "application/analyses/fault_loop/route.py": {
         "A:or:branch.r_ohm": 1,

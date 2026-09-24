@@ -4,10 +4,13 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from functools import lru_cache
 
+from dziedziny.karta_widmowa import KartaWidmowa
 from network_model.pochodne import mva_na_kva, mw_na_kw
 
+from .karty_widmowe import karta_widmowa_z_rekordu
 from .mv_benchmark_catalog import jest_rekordem_benchmarku
 from .types import (
+    POLA_KARTY_PROJEKCJI,
     BESSBatteryType,
     BESSInverterType,
     CableType,
@@ -75,6 +78,17 @@ def _copy_catalog_quality(record: dict) -> dict:
         if str(field_name).startswith("ptpiree_") and value is not None:
             quality[field_name] = value
     return quality
+
+
+def _pola_karty_projekcji(params: dict) -> dict[str, object]:
+    """Pola karty przekształtnika niesione przez projekcję PV/BESS (`POLA_KARTY_PROJEKCJI`
+    i `k_sc`) — WYŁĄCZNIE obecne w rekordzie (karta AB-H0 §0.8: projekcja nie gubi pól
+    karty, a pozycja bez tych danych daje projekcję bajtowo identyczną)."""
+    return {
+        nazwa: params[nazwa]
+        for nazwa in ("k_sc", *POLA_KARTY_PROJEKCJI)
+        if params.get(nazwa) is not None
+    }
 
 
 #: Memoizacja OBIEKTOW certyfikatow PTPiREE (V12K-321, dlug wydajnosci P1-D1).
@@ -203,6 +217,7 @@ def _derive_pv_records(converter_records: Iterable[dict]) -> list[dict]:
                     "grid_code": params.get("grid_code"),
                     "manufacturer": params.get("manufacturer"),
                     "dynamic_profile_id": params.get("dynamic_profile_id"),
+                    **_pola_karty_projekcji(params),
                     **_copy_catalog_quality(record),
                 },
             }
@@ -231,6 +246,7 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
                     ),
                     "manufacturer": params.get("manufacturer"),
                     "dynamic_profile_id": params.get("dynamic_profile_id"),
+                    **_pola_karty_projekcji(params),
                     **_copy_catalog_quality(record),
                 },
             }
@@ -275,6 +291,11 @@ class CatalogRepository:
     ptpiree_generator_certificates: dict[str, PtpireeGeneratorCertificate] = field(
         default_factory=dict
     )
+    #: Karta AB-H0 §0.7: karty widmowe (`KARTA_WIDMOWA`) — osobne rekordy wskazujące typ
+    #: przekształtnika przez `urzadzenie_ref`. Katalog statyczny niesie je wyłącznie
+    #: z dokumentem (`karty_widmowe.wczytaj_karty_statyczne`); karty projektu dokłada
+    #: nakładka modelu (`enm/katalog_projektu.py`).
+    karty_widmowe: dict[str, KartaWidmowa] = field(default_factory=dict)
 
     @classmethod
     def from_records(
@@ -304,6 +325,7 @@ class CatalogRepository:
         shunt_capacitor_types: Iterable[dict] | None = None,
         synchronous_generator_types: Iterable[dict] | None = None,
         ptpiree_generator_certificates: Iterable[dict] | None = None,
+        karty_widmowe: Iterable[dict] | None = None,
     ) -> CatalogRepository:
         def _build_line_type(record: dict) -> LineType:
             data = {"id": record.get("id"), "name": record.get("name")}
@@ -524,6 +546,9 @@ class CatalogRepository:
                     list(ptpiree_generator_certificates or []),
                 )
             },
+            karty_widmowe=_karty_bez_kolizji(
+                [karta_widmowa_z_rekordu(rekord) for rekord in list(karty_widmowe or [])]
+            ),
         )
 
     def list_line_types(self) -> list[LineType]:
@@ -681,6 +706,19 @@ class CatalogRepository:
     ) -> PtpireeGeneratorCertificate | None:
         return self.ptpiree_generator_certificates.get(str(type_id))
 
+    def list_karty_widmowe(self, urzadzenie_ref: str | None = None) -> list[KartaWidmowa]:
+        """Karty widmowe (wszystkie albo wskazujące typ `urzadzenie_ref`), posortowane
+        deterministycznie po (typ urządzenia, id karty)."""
+        karty = [
+            karta
+            for karta in self.karty_widmowe.values()
+            if urzadzenie_ref is None or karta.urzadzenie_ref == str(urzadzenie_ref)
+        ]
+        return sorted(karty, key=lambda karta: (karta.urzadzenie_ref, karta.id))
+
+    def get_karta_widmowa(self, karta_id: str) -> KartaWidmowa | None:
+        return self.karty_widmowe.get(str(karta_id))
+
     @staticmethod
     def _sorted(values: Iterable) -> list:
         return sorted(values, key=lambda item: (str(item.name), str(item.id)))
@@ -697,6 +735,17 @@ class CatalogRepository:
     def _sorted_pl(values: Iterable) -> list:
         """Sort protection types by name_pl, then id (deterministic)."""
         return sorted(values, key=lambda item: (str(item.name_pl), str(item.id)))
+
+
+def _karty_bez_kolizji(karty: list[KartaWidmowa]) -> dict[str, KartaWidmowa]:
+    """Słownik kart po id; powtórzony id karty to rekord uszkodzony (jedna karta = jeden
+    dokument), nie „ostatni wygrywa"."""
+    wynik: dict[str, KartaWidmowa] = {}
+    for karta in karty:
+        if karta.id in wynik:
+            raise ValueError(f"catalog.duplicate_id: karta widmowa '{karta.id}' powtórzona.")
+        wynik[karta.id] = karta
+    return wynik
 
 
 #: Memoizacja CALEGO kanonicznego repozytorium katalogowego (V12K-322, dlug 9 / DET-9).
@@ -726,6 +775,7 @@ def get_default_mv_catalog() -> CatalogRepository:
 
     This is the canonical catalog for MV network design.
     """
+    from .karty_widmowe import wczytaj_karty_statyczne
     from .mv_auxiliary_catalog import (
         get_all_ct_types,
         get_all_load_types,
@@ -781,4 +831,5 @@ def get_default_mv_catalog() -> CatalogRepository:
         + get_all_benchmark_shunt_capacitor_records(),
         synchronous_generator_types=get_all_benchmark_synchronous_generator_records(),
         ptpiree_generator_certificates=get_all_ptpiree_generator_certificates(),
+        karty_widmowe=wczytaj_karty_statyczne(),
     )

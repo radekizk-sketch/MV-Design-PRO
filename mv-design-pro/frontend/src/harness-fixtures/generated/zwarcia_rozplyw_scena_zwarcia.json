@@ -10,7 +10,7 @@
       "from_node_name": "Stacja B SN",
       "to_node_id": "bus_sn_c",
       "to_node_name": "Stacja C SN",
-      "i_ka": 0.6436033616984872,
+      "i_ka": 0.6436033616984862,
       "direction": "to_from"
     },
     {
@@ -21,7 +21,7 @@
       "from_node_name": "Stacja B SN",
       "to_node_id": "bus_sn_c",
       "to_node_name": "Stacja C SN",
-      "i_ka": 3.729268498730293e-19,
+      "i_ka": 1.9668632369481116e-18,
       "direction": "brak"
     },
     {
@@ -43,7 +43,7 @@
       "from_node_name": "GPZ 110kV",
       "to_node_id": "bus_sn_main",
       "to_node_name": "Szyna SN",
-      "i_ka": 2.0440800089908452e-18,
+      "i_ka": 1.8282807406207646e-18,
       "direction": "brak"
     },
     {
@@ -54,7 +54,7 @@
       "from_node_name": "Stacja B SN",
       "to_node_id": "bus_nn",
       "to_node_name": "Szyna nN",
-      "i_ka": 1.4428786787177603e-16,
+      "i_ka": 2.2137004483243453e-16,
       "direction": "brak"
     },
     {
@@ -85,20 +85,20 @@
       "result": {
         "v_nodes_pu": [
           {
-            "re": -0.024062056006904697,
-            "im": -0.47228733867612127
+            "re": -0.024062056006904677,
+            "im": -0.4722873386761213
           },
           {
-            "re": -0.004067518675826007,
+            "re": -0.004067518675826008,
             "im": -0.03833789139221796
           },
           {
-            "re": -0.024062056006904683,
+            "re": -0.024062056006904635,
             "im": -0.47228733867612116
           },
           {
-            "re": 0.0035298602175610205,
-            "im": -0.4363539280660024
+            "re": 0.0035298602175609884,
+            "im": -0.4363539280660025
           }
         ]
       },
@@ -113,12 +113,12 @@
         "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
         "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
         "v_from_pu": {
-          "re": -0.024062056006904697,
-          "im": -0.47228733867612127
+          "re": -0.024062056006904677,
+          "im": -0.4722873386761213
         },
         "v_to_pu": {
-          "re": 0.0035298602175610205,
-          "im": -0.4363539280660024
+          "re": 0.0035298602175609884,
+          "im": -0.4363539280660025
         },
         "y_series_pu": {
           "re": 1.0614653988488996,
@@ -129,8 +129,8 @@
       "substitution": "|(-0.0240621-j0.472287 - 0.00352986-j0.436354) * 1.06147-j1.17941| * 8953.06",
       "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(0.00352986 - j 0.436354\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 8953.06",
       "result": {
-        "fraction": 0.07188639828645332,
-        "i_contrib_a": 643.6033616984872,
+        "fraction": 0.07188639828645321,
+        "i_contrib_a": 643.6033616984862,
         "direction": "to_from"
       },
       "notes": null
@@ -144,12 +144,12 @@
         "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
         "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
         "v_from_pu": {
-          "re": -0.004067518675826007,
+          "re": -0.004067518675826008,
           "im": -0.03833789139221796
         },
         "v_to_pu": {
-          "re": -0.024062056006904697,
-          "im": -0.47228733867612127
+          "re": -0.024062056006904677,
+          "im": -0.4722873386761213
         },
         "y_series_pu": {
           "re": 0.0854818482409529,
@@ -160,7 +160,7 @@
       "substitution": "|(-0.00406752-j0.0383379 - -0.0240621-j0.472287) * 0.0854818-j2.13534| * 8953.06",
       "substitution_latex": "\\left| \\left(\\left(-0.00406752 - j 0.0383379\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 8953.06",
       "result": {
-        "fraction": 0.928353888704157,
+        "fraction": 0.9283538887041571,
         "i_contrib_a": 8311.609676631322,
         "direction": "from_to"
       },
@@ -175,11 +175,11 @@
         "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
         "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
         "v_from_pu": {
-          "re": -0.024062056006904697,
-          "im": -0.47228733867612127
+          "re": -0.024062056006904677,
+          "im": -0.4722873386761213
         },
         "v_to_pu": {
-          "re": -0.024062056006904683,
+          "re": -0.024062056006904635,
           "im": -0.47228733867612116
         },
         "y_series_pu": {
@@ -191,8 +191,8 @@
       "substitution": "|(-0.0240621-j0.472287 - -0.0240621-j0.472287) * 0.0330249-j0.140202| * 8953.06",
       "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0330249 - j 0.140202\\right)\\right| \\cdot 8953.06",
       "result": {
-        "fraction": 1.6116036296579875e-17,
-        "i_contrib_a": 1.4428786787177604e-13,
+        "fraction": 2.4725624753603307e-17,
+        "i_contrib_a": 2.2137004483243454e-13,
         "direction": "to_from"
       },
       "notes": null
@@ -209,7 +209,7 @@
       "substitution_latex": "\\sum = 8311.61 \\approx 8953.06",
       "result": {
         "sum_into_fault_a": 8311.609676631322,
-        "fraction_sum": 0.928353888704157
+        "fraction_sum": 0.9283538887041571
       },
       "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
     }
@@ -273,7 +273,7 @@
       "catalog_materialization_status": "not_materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "0115ee1a3faf1c42a814ef7cf160e7277ae2f926b1fdb48aced9919e0d6b2d95",
+      "catalog_fingerprint": "b64a1bd963c0fa67c10552c6139338fcaec350fefba9de8b04d2054e30af1af0",
       "model_revision": 1,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",

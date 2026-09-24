@@ -24,6 +24,15 @@ from network_model.solvers.power_flow_types import (
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 _TR_BLOCK = "tr-sn-nn-15-04-1000kva-dyn11"
+#: Decyzja O-53: moc TR blokowego ≥ max(S_n,jedn·n, P/cosφ). Jednostka wiatrowa nN ma
+#: w katalogu najmniej 2 MW (S_n 2,2 MVA), więc tor FW dostaje TR 2,5 MVA; kilka
+#: jednostek PV (przypadek 5) — TR 2 MVA.
+_TR_BLOCK_WG_TECHNOLOGII = {
+    "PV": _TR_BLOCK,
+    "BESS": _TR_BLOCK,
+    "FW": "tr-sn-nn-15-04-2500kva-dyn11",
+}
+_TR_BLOCK_2000 = "tr-sn-nn-15-04-2000kva-dyn11"
 _CABLE = "cable-base-epr-al-1c-240"
 #: Aparat pola SN i aparat pola nN — RZECZYWISTE pozycje katalogu. Wcześniejsze
 #: „ap-sn-cb-630" / „ap-nn-630" nie istniały w żadnej kategorii: operacja
@@ -37,8 +46,11 @@ _APARAT_NN = "cb_nn_630a"
 #: dlatego payloady nie niosą już `materialized_params`: kanał, w którym test
 #: podawał własne liczby pod prawdziwie brzmiącym refem, był samym defektem.
 _KONWERTER = {
-    "PV": "conv-pv-nn-1mw-0p4kv",
-    "BESS": "conv-bess-nn-1mw-0p4kv",
+    # Decyzja O-53: jednostki 0,5 MW (S_n 0,55 MVA) mieszczą się w TR 1 MVA; dawne 1 MW
+    # (S_n 1,1 MVA) przekraczały moc TR blokowego 1 MVA — tor DER-SN tego nie widział,
+    # bo porównywał wyłącznie P/cosφ.
+    "PV": "conv-pv-nn-0p5mw-0p4kv",
+    "BESS": "conv-bess-nn-0p5mw-0p4kv",
     "FW": "conv-wind-nn-2mw-0p4kv",
 }
 
@@ -131,6 +143,8 @@ def _der_sn_payload(
     vt: bool = True,
     surge_arrester: bool = True,
     include_block_spec: bool = True,
+    power_setpoint_mw: float = 0.5,
+    block_tr: str | None = None,
 ) -> dict:
     namespace = {
         "PV": "ZRODLO_NN_PV",
@@ -138,15 +152,16 @@ def _der_sn_payload(
         "FW": "CONVERTER",
     }[technology]
     block_transformer = None
+    tr_bloku = block_tr or _TR_BLOCK_WG_TECHNOLOGII[technology]
     if include_block_spec:
         block_transformer = {
             "rated_power_mva": 1.0,
             "primary_voltage_kv": 15.0,
             "secondary_voltage_kv": 0.4,
-            "catalog_ref": _TR_BLOCK,
+            "catalog_ref": tr_bloku,
             "catalog_binding": {
                 "catalog_namespace": "TRAFO_SN_NN",
-                "catalog_item_id": _TR_BLOCK,
+                "catalog_item_id": tr_bloku,
                 "catalog_item_version": "2024.1",
                 "materialize": True,
                 "snapshot_mapping_version": "1.0",
@@ -159,7 +174,7 @@ def _der_sn_payload(
         "bus_nn_ref": mv_bus_ref,
         "source_name": source_name,
         "quantity": quantity,
-        "power_setpoint_mw": 1.0,
+        "power_setpoint_mw": power_setpoint_mw,
         "catalog_binding": {
             "catalog_namespace": namespace,
             "catalog_item_id": _KONWERTER[technology],
@@ -378,13 +393,19 @@ def test_case5_pv_multiple_inverters_shared_lv() -> None:
     result = execute_domain_operation(
         _sn_station_enm(),
         "add_converter_source",
-        _der_sn_payload(quantity=3, lv_switchgear_variant="multi-feeder"),
+        _der_sn_payload(
+            quantity=3,
+            lv_switchgear_variant="multi-feeder",
+            power_setpoint_mw=1.0,
+            block_tr=_TR_BLOCK_2000,
+        ),
     )
     assert not result.get("error"), result.get("error")
     gen = result["snapshot"]["generators"][0]
     assert gen["quantity"] == 3
     assert gen["n_parallel"] == 3
-    # Moc skalowana liczbą jednostek (1 MW × 3) — power_setpoint jawny nadpisuje.
+    # Moc skalowana liczbą jednostek (0,5 MW × 3) — power_setpoint jawny nadpisuje
+    # (1,0 MW ≤ moc znamionowa 1,5 MW, O-53).
     assert gen["p_mw"] == 1.0  # power_setpoint_mw jawnie = 1.0
 
 

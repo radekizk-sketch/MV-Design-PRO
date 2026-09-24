@@ -46,7 +46,14 @@ from network_model.catalog.repository import CatalogRepository, get_default_mv_c
 
 #: Rodzaje typów, które model może nieść lokalnie (klucze sekcji = pola
 #: `CatalogRepository`, żeby nakładka była mechaniczna, bez tłumaczenia nazw).
-RODZAJE_TYPOW_PROJEKTU: tuple[str, ...] = ("line_types", "cable_types", "transformer_types")
+#: Karta AB-H0 §0.7.3: `karty_widmowe` — karty widmowe projektu (kontrakt
+#: `dziedziny.karta_widmowa.KartaWidmowa`, ten sam budowniczy i ta sama reguła kolizji).
+RODZAJE_TYPOW_PROJEKTU: tuple[str, ...] = (
+    "line_types",
+    "cable_types",
+    "transformer_types",
+    "karty_widmowe",
+)
 
 #: Status weryfikacji pozycji z arkusza — dana inżyniera, nie karta producenta.
 STATUS_WERYFIKACJI_ARKUSZA = "NIEWERYFIKOWANY"
@@ -95,6 +102,7 @@ def _katalog_z_klucza(klucz: str) -> CatalogRepository:
             line_types=sekcja.get("line_types", []),
             cable_types=sekcja.get("cable_types", []),
             transformer_types=sekcja.get("transformer_types", []),
+            karty_widmowe=sekcja.get("karty_widmowe", []),
         )
     except (KeyError, TypeError, ValueError) as blad:
         raise BladKataloguProjektu(

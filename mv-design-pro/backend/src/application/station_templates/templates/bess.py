@@ -71,9 +71,13 @@ def _bess(
 
 # 2026-07-17 (spójność elektryczna): moc jednostkowa i liczba kontenerów są
 # PROPAGOWANE do DerKindSpec (wcześniej gubione — każdy szablon wychodził z
-# domyślnym 1.0 MW). Warianty 5 MW modelowane jako 2 kontenery po 2,5 MW
-# (standard przemysłowy; pojedynczy blok 5 MW przez TR SN/nN 0.4 kV nie
-# istnieje w typoszeregu i byłby fizycznie wątpliwy).
+# domyślnym 1.0 MW). Warianty 5 MW składane z kontenerów, które ISTNIEJĄ w katalogu
+# (`BESS_SN_OPTIONS`: 0,5 / 1 / 2 / 5 MW). Decyzja O-53 (2026-09-23): dawne „2 kontenery
+# po 2,5 MW" nie miały pozycji katalogowej 2,5 MW — dobór brał jednostkę 2 MW z nastawą
+# 2,5 MW, czyli nastawę ponad moc znamionową falownika (dziś odmowa nazwana
+# `converter.setpoint_above_rating`), a jednostka 5 MW (S_n 5,5 MVA) przekracza TR blokowy
+# 2,5 MVA. Moc i energia szablonu bez zmian: FCR_N 5 × 1 MW / 2 MWh = 5 MW / 10 MWh,
+# aFRR 10 × 0,5 MW / 1 MWh = 5 MW / 5 MWh.
 BESS_TEMPLATES = (
     _bess(
         "tpl_bess_500kw_1mwh",
@@ -103,18 +107,20 @@ BESS_TEMPLATES = (
     _bess(
         "tpl_bess_5mw_10mwh_fcr_n",
         "BESS 5 MW / 10 MWh (FCR_N services)",
-        "Duży magazyn 5 MW/10 MWh do usług FCR_N (rezerwa pierwotna) — 2 kontenery po 2,5 MW.",
-        bess_count=2,
-        bess_p_mw_each=2.5,
+        "Duży magazyn 5 MW/10 MWh do usług FCR_N (rezerwa pierwotna) — 5 kontenerów po "
+        "1 MW / 2 MWh.",
+        bess_count=5,
+        bess_p_mw_each=1.0,
         use_case="FCR_N — automatyczna rezerwa pierwotna częstotliwości.",
         nc_rfg_type="D",
     ),
     _bess(
         "tpl_bess_5mw_5mwh_afrr",
         "BESS 5 MW / 5 MWh (C-rate 1.0, aFRR services)",
-        "Magazyn 5 MW/5 MWh (C=1) do aFRR (rezerwa wtórna automatyczna) — 2 kontenery po 2,5 MW.",
-        bess_count=2,
-        bess_p_mw_each=2.5,
+        "Magazyn 5 MW/5 MWh (C=1) do aFRR (rezerwa wtórna automatyczna) — 10 kontenerów po "
+        "0,5 MW / 1 MWh.",
+        bess_count=10,
+        bess_p_mw_each=0.5,
         use_case="aFRR — automatyczna rezerwa wtórna częstotliwości (PSE).",
         nc_rfg_type="D",
     ),

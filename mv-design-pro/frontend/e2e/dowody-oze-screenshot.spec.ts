@@ -246,9 +246,9 @@ test.describe('dowody-oze:screenshot', () => {
         FRT_SCENA_SEKWENCJA.werdykt_sekwencji_pl,
       );
       const kontekst = page.getByTestId('mvd-frt-sekw-kontekst');
-      // Werdykt siły sieci i SCR — WPROST z odpowiedzi backendu (na tej sieci
-      // moduł PV 0,215 MVA przy Sk″ 14,6 MVA daje sieć MOCNĄ; dawna asercja
-      // cytowała „sieć słaba"/„2,250" z atrapy sprzed konwersji sceny).
+      // Werdykt siły sieci i SCR — WPROST z odpowiedzi backendu (na sieci sceny
+      // analiz OZE moduł PV 0,215 MVA przy Sk″ 37,97 MVA daje sieć MOCNĄ; dawna
+      // asercja cytowała „sieć słaba"/„2,250" z atrapy sprzed konwersji sceny).
       await expect(kontekst).toContainText(FRT_KONTEKST_SILY.verdict);
       await expect(kontekst).toContainText(liczbaFrtPl(FRT_KONTEKST_SILY.scr));
 

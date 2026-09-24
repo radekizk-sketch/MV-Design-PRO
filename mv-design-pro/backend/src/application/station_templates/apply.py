@@ -19,8 +19,8 @@ from typing import Any
 from application.station_templates.schema import (
     StationTemplate,
     TemplateCategory,
-    _converter_apparent_power_mva,
     _der_catalog_for_power,
+    _moc_wymagana_jednostki_der_mva,
     _opcja_transformatora_dla_wymaganej_mocy,
     _opcja_transformatora_wg_tokenu_id,
     resolve_template_default_shunt_choice,
@@ -30,7 +30,7 @@ from application.station_templates.schema import (
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.store import blokada_twin
-from network_model.pochodne import mw_na_kw
+from network_model.pochodne import mva_na_kva
 
 logger = logging.getLogger(__name__)
 
@@ -1215,7 +1215,7 @@ def _template_der_required_kva(
 
     This is only a deterministic catalog selector. Network physics still lives
     in solver/domain code and uses materialized catalog data. `_der_catalog_
-    for_power`/`_converter_apparent_power_mva` są WSPÓLNYMI prymitywami ze
+    for_power`/`_moc_wymagana_jednostki_der_mva` są WSPÓLNYMI prymitywami ze
     `schema.py` (2026-09, przegląd V12T-016) — czyste, bez zależności od
     `overrides`, więc bez ryzyka rozjazdu z wersją wyświetlania (`schema.py::
     _wymagana_moc_der_domyslna_kva`, ta sama logika z `overrides={}`).
@@ -1228,25 +1228,25 @@ def _template_der_required_kva(
     if der_total <= 0:
         return None
 
-    total_mw = 0.0
+    total_mva = 0.0
     for i in range(der_total):
         spec = der_specs[i % len(der_specs)]
         override_key = f"der_{spec.kind}_p_mw_each"
         p_mw_each = float(overrides.get(override_key, spec.default_p_mw_each))
-        # Jedna prawda mocy: walidacja domenowa
-        # (`converter.transformer_capacity_exceeded`) porównuje z KATALOGOWĄ
-        # mocą POZORNĄ jednostki (`sn_mva`, np. Vestas 3 MW = 3.3 MVA) —
-        # selektor transformatora musi liczyć tę samą wielkość, inaczej
-        # dobiera TR po mocy czynnej i walidacja odrzuca (3300 > 3150 kVA).
+        # Jedna prawda mocy (decyzja O-53): tor tworzenia sprawdza
+        # `converter.transformer_capacity_exceeded` regułą `max(S_n,jedn·n, P/cosφ)·k_j`
+        # na tabliczce pozycji — selektor transformatora liczy TĘ SAMĄ wielkość tą samą
+        # funkcją (`_moc_wymagana_jednostki_der_mva`), inaczej dobierałby TR po innej
+        # mocy niż ta, którą operacja potem odrzuca (np. Vestas 3 MW: S_n = 3,3 MVA,
+        # nie 3,0 MW — 3300 > 3150 kVA).
         catalog_ref = overrides.get(f"der_{spec.kind}_ref") or _der_catalog_for_power(
             spec, p_mw_each
         )
-        apparent_mva = _converter_apparent_power_mva(catalog_ref)
-        total_mw += apparent_mva if apparent_mva is not None else p_mw_each
+        total_mva += _moc_wymagana_jednostki_der_mva(spec.kind, catalog_ref, p_mw_each) or 0.0
 
-    if total_mw <= 0:
+    if total_mva <= 0:
         return None
-    return int(round(mw_na_kw(total_mw)))
+    return int(round(mva_na_kva(total_mva)))
 
 
 #: Kody ról pól SN szablonu → kanoniczne role pola operacji domenowych

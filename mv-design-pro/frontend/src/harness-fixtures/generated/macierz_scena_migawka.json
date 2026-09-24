@@ -477,6 +477,16 @@
         "frequency_droop_percent": null,
         "has_hvrt_curve": null,
         "has_lvrt_curve": null,
+        "kontrola_mocy_zrodla": {
+          "cos_phi": null,
+          "przeciazalnosc_transformatora_pu": null,
+          "przyjete_pl": [
+            "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
+            "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
+            "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+          ],
+          "wspolczynnik_jednoczesnosci": null
+        },
         "lfsm_allow_increase": true,
         "lfsm_deadband_hz": null,
         "q_max_mvar": null,
@@ -491,6 +501,7 @@
         "u_set_pu": null,
         "usable_capacity_kwh": 1000.0
       },
+      "modele_widmowe": null,
       "n_parallel": 3,
       "name": "Magazyn energii 1,5 MW",
       "overrides": [],
@@ -514,13 +525,142 @@
       "id": "46143ff5-4af1-55cb-9990-36e930a4c4bb",
       "limits": null,
       "materialized_params": {
+        "card_field_status": {
+          "control_delay_ms": {
+            "field_name": "control_delay_ms",
+            "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej",
+            "quality": "ESTIMATED",
+            "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018"
+          },
+          "cosphi_max": {
+            "field_name": "cosphi_max",
+            "quality": "DATASHEET",
+            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+          },
+          "cosphi_min": {
+            "field_name": "cosphi_min",
+            "quality": "DATASHEET",
+            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+          },
+          "current_loop_bandwidth_hz": {
+            "field_name": "current_loop_bandwidth_hz",
+            "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej",
+            "quality": "ESTIMATED",
+            "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018"
+          },
+          "filter_l_pu": {
+            "field_name": "filter_l_pu",
+            "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej",
+            "quality": "ESTIMATED",
+            "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018"
+          },
+          "filter_r_pu": {
+            "field_name": "filter_r_pu",
+            "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej",
+            "quality": "ESTIMATED",
+            "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018"
+          },
+          "flicker_c": {
+            "field_name": "flicker_c",
+            "note": "wartosc analityczna klasy (konserwatywnie), do potwierdzenia karta zgodnosci",
+            "quality": "ESTIMATED",
+            "source_ref": "Wspolczynnik emisji migotania c(psi_k) — wartosc analityczna klasy (konserwatywnie), do potwierdzenia karta zgodnosci sieciowej urzadzenia; metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008"
+          },
+          "manufacturer": {
+            "field_name": "manufacturer",
+            "quality": "DATASHEET",
+            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+          },
+          "model": {
+            "field_name": "model",
+            "quality": "DATASHEET",
+            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+          },
+          "p_installed_mw": {
+            "field_name": "p_installed_mw",
+            "quality": "DATASHEET",
+            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+          },
+          "pll_bandwidth_hz": {
+            "field_name": "pll_bandwidth_hz",
+            "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej",
+            "quality": "ESTIMATED",
+            "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018"
+          },
+          "pmax_mw": {
+            "field_name": "pmax_mw",
+            "quality": "DATASHEET",
+            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+          },
+          "pn_ac_mw": {
+            "field_name": "pn_ac_mw",
+            "quality": "DATASHEET",
+            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+          },
+          "qmax_mvar": {
+            "field_name": "qmax_mvar",
+            "quality": "DATASHEET",
+            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+          },
+          "qmin_mvar": {
+            "field_name": "qmin_mvar",
+            "quality": "DATASHEET",
+            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+          },
+          "sn_mva": {
+            "field_name": "sn_mva",
+            "quality": "DATASHEET",
+            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+          },
+          "un_kv": {
+            "field_name": "un_kv",
+            "quality": "DATASHEET",
+            "source_ref": "Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)"
+          },
+          "voltage_loop_bandwidth_hz": {
+            "field_name": "voltage_loop_bandwidth_hz",
+            "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej",
+            "quality": "ESTIMATED",
+            "source_ref": "Typowe pasma regulatorow IBG (oszacowanie): A. Yazdani, R. Iravani, 'Voltage-Sourced Converters in Power Systems', Wiley/IEEE 2010; IEEE Std 1547-2018"
+          }
+        },
         "catalog_item_id": "conv-pv-card-huawei-sun2000-215ktl",
         "catalog_item_version": "2024.1",
+        "control_delay_ms": 0.5,
         "control_mode": "Q_OF_U",
+        "current_loop_bandwidth_hz": 900.0,
         "dynamic_model_ref": "default_pv_gfl",
+        "filter_l_pu": 0.08,
+        "filter_r_pu": 0.005,
+        "flicker_c": 0.3,
         "k_sc": null,
         "max_power_kw": 215.0,
+        "p_installed_mw": 0.3225,
+        "pll_bandwidth_hz": 30.0,
         "pmax_mw": 0.215,
+        "pn_ac_mw": 0.215,
+        "pq_curve": [
+          [
+            0.0,
+            -0.129,
+            0.129
+          ],
+          [
+            0.108,
+            -0.129,
+            0.129
+          ],
+          [
+            0.172,
+            -0.129,
+            0.129
+          ],
+          [
+            0.215,
+            -0.043,
+            0.043
+          ]
+        ],
         "profiles": {
           "lvrt_curve_ref": "enea",
           "nc_rfg_profile_ref": "enea"
@@ -536,7 +676,8 @@
         "ptpiree_wipwc_version": "1.2",
         "rated_power_ac_kw": 215.0,
         "sn_mva": 0.215,
-        "un_kv": 0.8
+        "un_kv": 0.8,
+        "voltage_loop_bandwidth_hz": 80.0
       },
       "meta": {
         "block_transformer_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/der/block_transformer",
@@ -559,6 +700,16 @@
         "frequency_droop_percent": null,
         "has_hvrt_curve": null,
         "has_lvrt_curve": null,
+        "kontrola_mocy_zrodla": {
+          "cos_phi": null,
+          "przeciazalnosc_transformatora_pu": null,
+          "przyjete_pl": [
+            "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
+            "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
+            "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+          ],
+          "wspolczynnik_jednoczesnosci": null
+        },
         "lfsm_deadband_hz": null,
         "q_max_mvar": null,
         "q_min_mvar": null,
@@ -569,6 +720,7 @@
         "source_sequence_index": 0,
         "u_set_pu": null
       },
+      "modele_widmowe": null,
       "n_parallel": 9,
       "name": "Instalacja PV 1,9 MW",
       "overrides": [],

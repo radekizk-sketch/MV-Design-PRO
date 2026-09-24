@@ -37,7 +37,6 @@ from network_model.pochodne import (
     impedancja_rozproszenia_transformatora_ohm,
     impedancja_zerowa_zrodla_z_uziemienia_ohm,
     km_na_m,
-    kva_na_mva,
     kvar_na_mvar,
     kw_na_mw,
     m_na_km,
@@ -50,6 +49,7 @@ from network_model.pochodne import (
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
 from .grupa_polaczen import GRUPY_POLACZEN_IEC60076, grupa_polaczen_poprawna
 from .katalog_projektu import BladKataloguProjektu, katalog_biezacy, kontekst_katalogu
+from .katalog_projektu_karty import BladKartWidmowych, materializuj_karty_generatora
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
 from .migrations.nn_field_specs_promocja import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
@@ -74,7 +74,11 @@ from .zrodlo_zwarcie import PASMO_U_SET_PU, u_set_pu_w_pasmie
 # Canonical operation names
 # ---------------------------------------------------------------------------
 
-CANONICAL_OPS = frozenset(
+#: Nazwy operacji kanonicznych deklarowane w TYM module (część rejestru). Pełny zbiór
+#: operacji systemu (ten + ``domain_operations_v2.V2_CANONICAL_OPS``) i pełna mapa
+#: handlerów żyją w ``enm.rejestr_operacji`` — moduł, który importuje oba pliki operacji,
+#: żeby żaden z nich nie importował drugiego „z dołu" (cykl importów, karta AB-H0 P10).
+CANONICAL_OPS_V1 = frozenset(
     {
         "add_grid_source_sn",
         "add_sn_bay",
@@ -3257,12 +3261,12 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
             s_n_kva = mva_na_kva(float(t["sn_mva"])) if t.get("sn_mva") else None
 
             if catalog:
-                type_data = catalog.get_transformer_type(catalog_ref)
-                if type_data:
-                    uk_percent = type_data.uk_percent
-                    p0_kw = type_data.p0_kw
-                    pk_kw = type_data.pk_kw
-                    s_n_kva = mva_na_kva(type_data.rated_power_mva)
+                typ_transformatora = catalog.get_transformer_type(catalog_ref)
+                if typ_transformatora:
+                    uk_percent = typ_transformatora.uk_percent
+                    p0_kw = typ_transformatora.p0_kw
+                    pk_kw = typ_transformatora.pk_kw
+                    s_n_kva = mva_na_kva(typ_transformatora.rated_power_mva)
 
         transformers_sn_nn[t["ref_id"]] = {
             "catalog_item_id": catalog_ref,
@@ -5613,39 +5617,6 @@ _NN_SOURCE_KIND_MAP: dict[str, tuple[str, str, str, str]] = {
 }
 
 
-def _nn_source_nameplate_from_catalog(
-    catalog_namespace: str,
-    catalog_params: dict[str, Any],
-) -> tuple[float, float, float] | None:
-    """Tabliczka źródła nN ``(un_kv, pmax_mw, sn_mva)`` — WYŁĄCZNIE z katalogu.
-
-    Jednostki różnią się między przestrzeniami katalogu: ZRODLO_NN_PV/BESS trzymają
-    moce w kW i kVA (przelicznik 1/1000), CONVERTER (FW) od razu w MW i MVA.
-    Wyprowadzenie jest kopią przeliczeń toru atomowego `add_converter_source`.
-
-    Brak którejkolwiek wartości ⇒ ``None`` i JAWNY błąd u wołającego. Nigdy nie
-    podstawiamy tabliczki z payloadu — model deklaruje ``source_mode: KATALOG``,
-    więc liczby MUSZĄ pochodzić z pozycji katalogowej.
-    """
-    un_kv = _as_positive_float(catalog_params.get("un_kv"))
-    if catalog_namespace == "ZRODLO_NN_PV":
-        pmax_kw = _as_positive_float(catalog_params.get("p_max_kw"))
-        sn_kva = _as_positive_float(catalog_params.get("s_n_kva"))
-        pmax_mw = kw_na_mw(pmax_kw) if pmax_kw is not None else None
-        sn_mva = kva_na_mva(sn_kva) if sn_kva is not None else None
-    elif catalog_namespace == "ZRODLO_NN_BESS":
-        pmax_kw = _as_positive_float(catalog_params.get("p_discharge_kw"))
-        sn_kva = _as_positive_float(catalog_params.get("s_n_kva"))
-        pmax_mw = kw_na_mw(pmax_kw) if pmax_kw is not None else None
-        sn_mva = kva_na_mva(sn_kva) if sn_kva is not None else None
-    else:
-        pmax_mw = _as_positive_float(catalog_params.get("pmax_mw"))
-        sn_mva = _as_positive_float(catalog_params.get("sn_mva"))
-    if un_kv is None or pmax_mw is None or sn_mva is None:
-        return None
-    return un_kv, pmax_mw, sn_mva
-
-
 def _materialize_nn_source(
     *,
     new_enm: dict[str, Any],
@@ -5694,18 +5665,33 @@ def _materialize_nn_source(
     )
     if isinstance(materialization, dict):
         return materialization
-    binding_payload, catalog_params = materialization
-    nameplate = _nn_source_nameplate_from_catalog(catalog_namespace, catalog_params)
-    if nameplate is None:
+    # JEDNA TABLICZKA ŹRÓDŁA PRZEKSZTAŁTNIKOWEGO (karta AB-H0, domknięcie klasy toru
+    # stacyjnego). Tor stacyjny składał dotąd WŁASNĄ tabliczkę (`un_kv`/`pmax_mw`/`sn_mva`
+    # + pola karty) i gubił względem toru atomowego `k_sc`, `control_mode`, moce kW
+    # i KOMPLET pól certyfikatu PTPiREE — źródło stacyjne z certyfikowanym falownikiem
+    # nie niosło dowodu NC RfG (zmierzone na karcie referencyjnej PV). Teraz tor
+    # stacyjny, tor atomowy (`add_converter_source`), DER-SN i przypisanie typu wołają
+    # TĘ SAMĄ funkcję; tor stacyjny dokłada wyłącznie pola stacji (niżej).
+    from enm.domain_operations_v2 import _build_converter_materialized_params
+
+    tabliczka, blad_tabliczki = _build_converter_materialized_params(
+        technology=_technology,
+        namespace=catalog_namespace,
+        payload={},
+        catalog_ref=str(source_converter_ref),
+    )
+    if blad_tabliczki is not None:
+        return blad_tabliczki
+    un_kv = _as_positive_float(tabliczka.get("un_kv"))
+    pmax_mw = _as_positive_float(tabliczka.get("pmax_mw"))
+    if un_kv is None or pmax_mw is None:
         return _error_response(
             f"Pozycja katalogowa źródła nN '{source_converter_ref}' "
             f"(kategoria {catalog_namespace}) nie ma kompletnej tabliczki: wymagane "
-            "napięcie znamionowe, moc czynna i moc pozorna. Wskaż inną pozycję "
-            "katalogu albo uzupełnij rekord katalogowy — operacja nie przyjmie "
-            "tabliczki z formularza.",
+            "napięcie znamionowe i moc czynna. Wskaż inną pozycję katalogu albo uzupełnij "
+            "rekord katalogowy — operacja nie przyjmie tabliczki z formularza.",
             "catalog.materialization_incomplete",
         )
-    un_kv, pmax_mw, sn_mva = nameplate
 
     protection_catalog_ref: str | None = None
     if isinstance(source_protection, dict):
@@ -5729,28 +5715,23 @@ def _materialize_nn_source(
     station_transformer_ref = transformer_ref if transformer_created else None
     p_mw = pmax_mw
     materialized_source_params = {
-        "catalog_item_id": binding_payload["catalog_item_id"],
-        "catalog_item_version": binding_payload["catalog_item_version"],
-        "un_kv": un_kv,
-        "pmax_mw": pmax_mw,
-        "sn_mva": sn_mva,
+        **tabliczka,
         "station_transformer_ref": station_transformer_ref,
         "protection_intent": source_protection if isinstance(source_protection, dict) else None,
     }
 
     # PARYTET KONTROLI DOBORU z torem atomowym (`add_converter_source`): ta sama
     # pozycja katalogowa i ten sam transformator MUSZĄ dać ten sam werdykt
-    # niezależnie od drogi. Dotąd kontrola mocy transformatora istniała WYŁĄCZNIE
-    # w torze atomowym, więc falownik przekraczający moc transformatora stacji
-    # bywał przyjęty przy tworzeniu stacji i odrzucony przy dodaniu źródła osobno
-    # — dwa różne werdykty dla tego samego doboru. Reużyta jest DOKŁADNIE ta sama
-    # funkcja kontrolna (zero równoległej implementacji), a kontrola stoi PRZED
-    # dopisaniem generatora, więc odrzucenie nie zostawia śladu w migawce.
+    # niezależnie od drogi. Reużyta jest DOKŁADNIE ta sama funkcja kontrolna (decyzja
+    # O-53: `kontrola_mocy_generatora_w_modelu`), a kontrola stoi PRZED dopisaniem
+    # generatora, więc odrzucenie nie zostawia śladu w migawce.
+    from domain.generator_validation import KLUCZ_META_KONTROLI_MOCY
     from enm.domain_operations_v2 import (
         _bus_voltage_kv,
         _has_transformer_in_path,
         _same_nominal_voltage,
-        _validate_converter_transformer_capacity,
+        kontrola_mocy_generatora_w_modelu,
+        zapis_wejsc_kontroli_mocy,
     )
 
     station = next(
@@ -5794,19 +5775,26 @@ def _materialize_nn_source(
             "converter.voltage_mismatch",
         )
 
-    if station is not None:
-        capacity_error = _validate_converter_transformer_capacity(
-            new_enm,
-            station=station,
-            bus_ref=nn_bus_id,
-            blocking_transformer_ref=None,
-            connection_variant="nn_side",
-            technology=_technology,
-            payload=nn_block,
-            materialized_params=materialized_source_params,
-        )
-        if capacity_error is not None:
-            return capacity_error
+    # Decyzja O-53: nastawa ≤ moc znamionowa i moc transformatora stacji — ta sama
+    # kontrola co każdy tor, z jawnymi wejściami bloku nN (brak = brak, nazwany w meta).
+    zapis_kontroli_mocy = zapis_wejsc_kontroli_mocy(
+        cos_phi=nn_block.get("cos_phi"),
+        wspolczynnik_jednoczesnosci=nn_block.get("simultaneity_factor"),
+        przeciazalnosc_pu=nn_block.get("loadability_pu"),
+    )
+    blad_mocy = kontrola_mocy_generatora_w_modelu(
+        new_enm,
+        {
+            "gen_type": gen_type,
+            "p_mw": p_mw,
+            "bus_ref": nn_bus_id,
+            "connection_variant": "nn_side",
+            "materialized_params": materialized_source_params,
+            "meta": {KLUCZ_META_KONTROLI_MOCY: zapis_kontroli_mocy},
+        },
+    )
+    if blad_mocy is not None:
+        return blad_mocy
 
     new_enm.setdefault("generators", []).append(
         {
@@ -5831,6 +5819,7 @@ def _materialize_nn_source(
                     source_protection if isinstance(source_protection, dict) else None
                 ),
                 "render_as_station_internal_source": True,
+                KLUCZ_META_KONTROLI_MOCY: zapis_kontroli_mocy,
             },
         }
     )
@@ -8661,6 +8650,7 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
 
 def _brama_katalogowa_przypisania(
     *,
+    enm: dict[str, Any],
     collection: str,
     catalog_item_id: str,
     catalog_namespace: str | None,
@@ -8703,7 +8693,7 @@ def _brama_katalogowa_przypisania(
             "catalog.namespace_required",
         )
 
-    return _materialize_catalog_payload(
+    wynik = _materialize_catalog_payload(
         catalog_ref=catalog_item_id,
         catalog_binding={
             "catalog_namespace": catalog_namespace,
@@ -8712,6 +8702,69 @@ def _brama_katalogowa_przypisania(
         default_namespace=catalog_namespace,
         default_version=catalog_version,
     )
+    if collection != "generators" or not isinstance(wynik, tuple):
+        return wynik
+    # JEDNA TABLICZKA ŹRÓDŁA PRZEKSZTAŁTNIKOWEGO (karta AB-H0 Pakiet D). Przypisanie
+    # typu do istniejącego generatora materializowało dotąd GOŁY kontrakt przestrzeni
+    # (`s_n_kva`/`p_max_kw` w kW), a tor tworzenia (`add_converter_source`, DER-SN)
+    # — tabliczkę `_build_converter_materialized_params` (`sn_mva`, `pmax_mw`, `k_sc`,
+    # certyfikat PTPiREE). Po przypisaniu tego samego typu generator tracił `sn_mva` i
+    # certyfikat — zmierzone na karcie referencyjnej PV. Teraz oba tory wołają TĘ SAMĄ
+    # funkcję; pola elementu spoza typu przekształtnika (pakiet baterii, transformator
+    # stacji, zamiar zabezpieczenia) przechodzą bez zmian — nie należą do pozycji.
+    from enm.domain_operations_v2 import (
+        _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO,
+        _build_converter_materialized_params,
+        kontrola_tabliczki_przypisanej,
+    )
+
+    technologia = next(
+        (
+            technologia
+            for technologia, przestrzen in _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO.items()
+            if przestrzen == catalog_namespace
+        ),
+        None,
+    )
+    if technologia is None:
+        return wynik
+    binding_payload, _kontrakt = wynik
+    biezaca = target_element.get("materialized_params")
+    biezaca = biezaca if isinstance(biezaca, dict) else {}
+    tabliczka, blad = _build_converter_materialized_params(
+        technology=technologia,
+        namespace=catalog_namespace,
+        payload={"bess_mode": biezaca.get("operation_mode")},
+        catalog_ref=catalog_item_id,
+    )
+    if blad is not None:
+        return blad
+    tabliczka.update({pole: biezaca[pole] for pole in _POLA_ZRODLA_SPOZA_TYPU if pole in biezaca})
+    # Te same kontrole co tor tworzenia (rodzaj, napięcie szyny, moc transformatora
+    # stacji) — przypisanie nie może wprowadzić do modelu tego, czego kreator nie przyjmie.
+    blad_kontroli = kontrola_tabliczki_przypisanej(
+        enm,
+        generator=target_element,
+        technology=technologia,
+        namespace=catalog_namespace,
+        catalog_ref=catalog_item_id,
+        tabliczka=tabliczka,
+    )
+    if blad_kontroli is not None:
+        return blad_kontroli
+    return binding_payload, tabliczka
+
+
+#: Pola tabliczki źródła przekształtnikowego, które NIE pochodzą z pozycji typu
+#: przekształtnika (osobny aparat albo topologia elementu) — przypisanie innej pozycji
+#: typu przenosi je bez zmian: pakiet baterii BESS (`_materializuj_bateria_bess`),
+#: transformator stacji i zamiar zabezpieczenia toru stacyjnego (`_materialize_nn_source`).
+_POLA_ZRODLA_SPOZA_TYPU: tuple[str, ...] = (
+    "battery_catalog_ref",
+    "battery",
+    "station_transformer_ref",
+    "protection_intent",
+)
 
 
 def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -8796,6 +8849,7 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
         # dostawały deklarację pochodzenia katalogowego bez tabliczki i bez
         # sprawdzenia, czy wskazana pozycja w ogóle istnieje.
         brama = _brama_katalogowa_przypisania(
+            enm=new_enm,
             collection=coll,
             catalog_item_id=str(catalog_item_id),
             catalog_namespace=catalog_namespace,
@@ -8821,6 +8875,27 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "catalog_item_version"
             ] = effective_catalog_version
 
+        # Karta AB-H0 §0.7.6: modele widmowe generatora należą do typu, który wskazują
+        # karty (`urzadzenie_ref`). Przypisanie katalogu PRZEMATERIALIZOWUJE je z bieżących
+        # kart katalogu modelu; karta innego urządzenia (zmiana typu) = odmowa nazwana —
+        # nigdy ciche zachowanie widma obcego urządzenia ani ciche skasowanie wiązania.
+        modele_widmowe = target_element.get("modele_widmowe")
+        if coll == "generators" and isinstance(modele_widmowe, dict):
+            karty_ids = tuple(
+                sorted(str(zrodlo["karta_id"]) for zrodlo in modele_widmowe.get("zrodla", []))
+            )
+            try:
+                nowe_modele = materializuj_karty_generatora(
+                    karty_ids, str(catalog_item_id), katalog_biezacy()
+                )
+            except BladKartWidmowych as blad:
+                return _error_response(
+                    f"{blad} Odwiąż karty widmowe (`karty_widmowe_ref: null`) albo wskaż "
+                    "karty nowego typu.",
+                    blad.kod,
+                )
+            target_element["modele_widmowe"] = nowe_modele.model_dump(mode="json")
+
         # Fizyka z TEJ SAMEJ materializacji, którą przepuściła brama — drugie
         # wywołanie katalogu mogłoby dać inny wynik niż sprawdzony przez bramę.
         if binding_przypisania is not None:
@@ -8833,6 +8908,15 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 )
             elif coll == "transformers":
                 _apply_materialized_transformer_fields(target_element, tabliczka_przypisania)
+
+    # Decyzja O-53: nowy typ zmienia wejścia kontroli mocy (tabliczka źródła albo moc
+    # transformatora) — każde źródło, którego one dotyczą, przechodzi tę samą kontrolę co
+    # przy tworzeniu (jedno kryterium przejścia modelu, `odmowa_kontroli_mocy_po_zmianie`).
+    from enm.domain_operations_v2 import odmowa_kontroli_mocy_po_zmianie
+
+    blad_mocy = odmowa_kontroli_mocy_po_zmianie(enm, new_enm)
+    if blad_mocy is not None:
+        return blad_mocy
 
     return _response(
         new_enm,
@@ -9061,10 +9145,44 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         if blad_ekranu is not None:
             return blad_ekranu
 
+    # Decyzja O-53 (jedna tabliczka, jedna kontrola): zmiana TYPU źródła przekształtnikowego
+    # przez aktualizację parametrów idzie tą samą drogą co przypisanie typu — materializacja
+    # tabliczki nowej pozycji i komplet kontroli toru tworzenia (rodzaj, napięcie, nastawa,
+    # moc transformatora), liczony na STANIE KOŃCOWYM (pozostałe parametry zapisane
+    # wcześniej). Wcześniej `catalog_ref` zmieniał się bez przematerializowania tabliczki,
+    # więc model deklarował typ, którego parametrów nie niósł.
+    zmiana_typu_zrodla = (
+        coll == "generators"
+        and "catalog_ref" in parameters
+        and parameters.get("catalog_ref") != current_element.get("catalog_ref")
+        and str(current_element.get("gen_type") or "") in GEN_TYPES_PRZEKSZTALTNIKOWE
+    )
+
     new_enm = kopia_graniczna_enm(enm)
     for key, value in parameters.items():
-        if key not in ("ref_id", "id", "type"):
-            new_enm[coll][idx][key] = value
+        if key in ("ref_id", "id", "type") or (zmiana_typu_zrodla and key == "catalog_ref"):
+            continue
+        new_enm[coll][idx][key] = value
+
+    if zmiana_typu_zrodla:
+        return assign_catalog_to_element(
+            new_enm,
+            {
+                "element_ref": element_ref,
+                "catalog_item_id": parameters.get("catalog_ref"),
+                "catalog_namespace": current_element.get("catalog_namespace"),
+            },
+        )
+
+    # Decyzja O-53: zmiana mocy, liczby jednostek, przyłączenia albo jawnych wejść
+    # generatora — i każda zmiana mocy transformatorów zasilających źródło (moc, liczba
+    # torów, strona nN transformatora, szyny aparatu łączeniowego między sekcjami nN) —
+    # przechodzi TĘ SAMĄ kontrolę co tor tworzenia (jedno kryterium przejścia modelu).
+    from enm.domain_operations_v2 import odmowa_kontroli_mocy_po_zmianie
+
+    blad_mocy = odmowa_kontroli_mocy_po_zmianie(enm, new_enm)
+    if blad_mocy is not None:
+        return blad_mocy
 
     return _response(
         new_enm,
@@ -9230,6 +9348,15 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
                 if bp.get("ref_id") not in branch_points_to_delete
             ]
             deleted_set.update(branch_points_to_delete)
+
+    # Decyzja O-53: usunięcie transformatora albo aparatu łączeniowego między sekcjami nN
+    # zmniejsza moc transformacji zasilającą źródła — ta sama kontrola co zmiana mocy
+    # transformatora (jedno kryterium przejścia modelu). Odmowa nie zostawia skutku.
+    from enm.domain_operations_v2 import odmowa_kontroli_mocy_po_zmianie
+
+    blad_mocy = odmowa_kontroli_mocy_po_zmianie(enm, new_enm)
+    if blad_mocy is not None:
+        return blad_mocy
 
     deleted_ids = sorted(deleted_set)
     for event_seq, ref in enumerate(deleted_ids, start=1):
@@ -10577,19 +10704,19 @@ def execute_domain_operation(
 ) -> dict[str, Any]:
     """Główny punkt wejścia — wywołaj handler kanonicznej operacji.
 
-    Kanoniczne nazwy: patrz CANONICAL_OPS.
+    Kanoniczne nazwy i handlery: JEDEN rejestr ``enm.rejestr_operacji`` (operacje tego
+    modułu i ``domain_operations_v2``). Import rejestru w chwili wywołania, nie na poziomie
+    modułu: rejestr importuje ten moduł, więc import „z góry" domknąłby cykl.
     """
+    from enm.rejestr_operacji import HANDLERY, OPERACJE_KANONICZNE
+
     canonical_name = op_name
 
-    handler = _HANDLERS.get(canonical_name)
-    if handler is None:
-        from .domain_operations_v2 import ALL_V2_HANDLERS
-
-        handler = ALL_V2_HANDLERS.get(canonical_name)
+    handler = HANDLERY.get(canonical_name)
 
     if handler is None:
         return _error_response(
-            f"Nieznana operacja: '{op_name}'. Dostępne: {', '.join(sorted(CANONICAL_OPS))}",
+            f"Nieznana operacja: '{op_name}'. Dostępne: {', '.join(sorted(OPERACJE_KANONICZNE))}",
             "dispatcher.unknown_operation",
         )
 
@@ -10628,13 +10755,3 @@ def execute_domain_operation(
         except Exception:
             result.setdefault("semantic_issues", [])
     return result
-
-
-# ---------------------------------------------------------------------------
-# V2 Integration — ochrona, Study Case, źródła nN, operacje uniwersalne
-# ---------------------------------------------------------------------------
-
-from .domain_operations_v2 import ALL_V2_HANDLERS, V2_CANONICAL_OPS  # noqa: E402
-
-CANONICAL_OPS = CANONICAL_OPS | V2_CANONICAL_OPS
-_HANDLERS.update(ALL_V2_HANDLERS)

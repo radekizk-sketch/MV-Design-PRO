@@ -4,13 +4,17 @@ Warstwa APPLICATION (mapowanie, NIE fizyka). Odczytuje GOTOWY wynik przebiegu
 zwarciowego (``short_circuit_sn``) oraz dane modelu (moc zainstalowana źródeł
 falownikowych IBG w węźle przyłączenia) i buduje wejścia dla gotowego buildera
 interpretacji ``analysis.grid_strength``. ZERO obliczeń fizycznych — moc zwarciowa
-S_sc'' pochodzi z solvera IEC 60909, moc zainstalowana z katalogu przekształtnika.
+S_sc'' pochodzi z solvera IEC 60909, moc zainstalowana z karty przekształtnika
+zmaterializowanej w elemencie ENM.
 
 Odwzorowania (plik:linia w kodzie źródłowym):
 - ``s_sc_mva`` ← ``build_short_circuit_results(run)`` → wiersz ``sk_mva`` per węzeł
   (``enm.canonical_analysis.build_short_circuit_results``),
-- ``s_installed_mva`` ← suma ``sn_mva`` przekształtników źródeł IBG w węźle
-  (``materialized_params.sn_mva`` lub ``ConverterType.sn_mva`` z katalogu).
+- ``s_installed_mva`` ← suma ``materialized_params.sn_mva`` przekształtników źródeł IBG
+  w węźle — WYŁĄCZNIE z migawki modelu przebiegu. Karta AB-H0 Pakiet D: skasowany
+  odczyt zapasowy ``ConverterType.sn_mva`` z katalogu STATYCZNEGO po ``catalog_ref``
+  (omijał materializację i katalog projektu modelu; wynik zależał od stanu katalogu w
+  chwili odczytu, nie od modelu, na którym liczono zwarcie).
 """
 
 from __future__ import annotations
@@ -24,25 +28,12 @@ from analysis.grid_strength.models import (
     GridStrengthContext,
 )
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
+from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
 
-# Typy źródeł falownikowych (Inverter-Based Generation) — SCR dotyczy punktu
-# przyłączenia źródeł energoelektronicznych. Generatory synchroniczne pominięte.
-IBG_GEN_TYPES: frozenset[str] = frozenset(
-    {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
-)
-
-
-def _resolve_converter(catalog_ref: str | None) -> Any | None:
-    """Rozwiąż ``ConverterType`` z katalogu domyślnego po ``catalog_ref``.
-
-    Zwraca ``None`` gdy ref pusty lub pozycja nie jest przekształtnikiem
-    (uczciwie — brak fabrykowania mocy znamionowej).
-    """
-    if not catalog_ref:
-        return None
-    from network_model.catalog.repository import get_default_mv_catalog
-
-    return get_default_mv_catalog().get_converter_type(str(catalog_ref))
+# Źródła falownikowe (Inverter-Based Generation) — SCR dotyczy punktu przyłączenia
+# źródeł energoelektronicznych; zbiór = kanoniczny `GEN_TYPES_PRZEKSZTALTNIKOWE`
+# (karta AB-H0 Pakiet D: lokalna kopia skasowana, parytet w
+# `tests/enm/test_gen_types_przeksztaltnikowe.py`). Generatory synchroniczne pominięte.
 
 
 def resolve_n_parallel(gen: dict[str, Any]) -> int:
@@ -68,11 +59,10 @@ def resolve_n_parallel(gen: dict[str, Any]) -> int:
 def _installed_mva_for_generator(gen: dict[str, Any]) -> float | None:
     """Moc pozorna zainstalowana źródła IBG [MVA] z danych modelu.
 
-    Moc znamionowa pojedynczej jednostki S_n (priorytet:
-    ``materialized_params.sn_mva`` → ``ConverterType.sn_mva`` z katalogu)
-    przemnożona przez krotność jednostek równoległych ``n_parallel``
-    (``resolve_n_parallel``; brak/None → 1): moc zainstalowana = S_n × n_parallel.
-    Brak S_n → None.
+    Moc znamionowa pojedynczej jednostki S_n (``materialized_params.sn_mva`` —
+    karta zmaterializowana w elemencie, jedyne źródło) przemnożona przez krotność
+    jednostek równoległych ``n_parallel`` (``resolve_n_parallel``; brak/None → 1):
+    moc zainstalowana = S_n × n_parallel. Brak S_n → None.
     """
     materialized = gen.get("materialized_params") or {}
     unit_sn: float | None = None
@@ -84,12 +74,6 @@ def _installed_mva_for_generator(gen: dict[str, Any]) -> float | None:
             value = 0.0
         if value > 0.0:
             unit_sn = value
-    if unit_sn is None:
-        converter = _resolve_converter(gen.get("catalog_ref"))
-        if converter is not None and getattr(converter, "sn_mva", None):
-            value = float(converter.sn_mva)
-            if value > 0.0:
-                unit_sn = value
     if unit_sn is None:
         return None
     return unit_sn * resolve_n_parallel(gen)
@@ -119,7 +103,7 @@ def _installed_mva_by_bus(snapshot: dict[str, Any]) -> dict[str, float | None]:
     for gen in snapshot.get("generators") or []:
         if not isinstance(gen, dict):
             continue
-        if str(gen.get("gen_type") or "") not in IBG_GEN_TYPES:
+        if str(gen.get("gen_type") or "") not in GEN_TYPES_PRZEKSZTALTNIKOWE:
             continue
         bus_ref = gen.get("bus_ref")
         if not isinstance(bus_ref, str):
@@ -147,7 +131,7 @@ def _modules_by_bus(snapshot: dict[str, Any]) -> dict[str, tuple[BusSourceModule
     for gen in snapshot.get("generators") or []:
         if not isinstance(gen, dict):
             continue
-        if str(gen.get("gen_type") or "") not in IBG_GEN_TYPES:
+        if str(gen.get("gen_type") or "") not in GEN_TYPES_PRZEKSZTALTNIKOWE:
             continue
         bus_ref = gen.get("bus_ref")
         if not isinstance(bus_ref, str):

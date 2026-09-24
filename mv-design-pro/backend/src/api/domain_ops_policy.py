@@ -747,6 +747,10 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     ),
     PozycjaBramyApi("set_der_catalog_bindings", "ct_catalog_ref", PRZESTRZEN_WIAZANIA_DER, True),
     PozycjaBramyApi("set_der_catalog_bindings", "vt_catalog_ref", PRZESTRZEN_WIAZANIA_DER, True),
+    # Karta AB-H0 §0.7: karty widmowe — lista id kart (istnienie w katalogu MODELU,
+    # ten sam predykat co operacja) i typ przekształtnika wskazany przez kartę projektu.
+    PozycjaBramyApi("set_der_catalog_bindings", "karty_widmowe_ref", PRZESTRZEN_WIAZANIA_DER, True),
+    PozycjaBramyApi("dodaj_karte_widmowa_projektu", "karta.urzadzenie_ref", "CONVERTER", True),
     # --- Pozycje, dla których katalogu NIE MA ------------------------------
     PozycjaBramyApi(
         "add_genset_nn",
@@ -895,11 +899,11 @@ def _blad_pozycji_api(
             errors=[{"code": "catalog.unknown_namespace", "message_pl": komunikat}],
         )
 
-    from network_model.catalog.repository import get_default_mv_catalog
+    # Katalog MODELU (statyczny + pozycje projektu): końcówka `domain-ops` woła bramę w
+    # `kontekst_katalogu(model)`; poza nim `katalog_biezacy()` = katalog statyczny.
+    from enm.katalog_projektu import katalog_biezacy
 
-    wynik = materialize_catalog_binding(
-        CatalogBinding.from_dict(binding_data), get_default_mv_catalog()
-    )
+    wynik = materialize_catalog_binding(CatalogBinding.from_dict(binding_data), katalog_biezacy())
     if wynik.success:
         return None
     kod = wynik.error_code or "catalog.materialization_failed"
@@ -1045,6 +1049,14 @@ def _referencje_dodatkowe(
             payload.get("catalog_binding"),
         )
 
+    # Karta AB-H0 §0.7.3: karta widmowa projektu wskazuje typ przekształtnika
+    # (`urzadzenie_ref`) — ten sam typ, który operacja sprawdza w katalogu MODELU
+    # (`enm.katalog_projektu_karty.dodaj_karte_do_sekcji`).
+    if operation == "dodaj_karte_widmowa_projektu":
+        karta = payload.get("karta")
+        if isinstance(karta, dict):
+            _dodaj("Typ urządzenia karty widmowej", "CONVERTER", karta.get("urzadzenie_ref"))
+
     return znalezione
 
 
@@ -1071,12 +1083,16 @@ def _blad_wiazan_der(operation: str, payload: dict[str, Any]) -> CatalogPolicyEr
     from enm.domain_operations_v2 import (
         DER_BINDING_KEYS,
         DER_PROFILE_KEYS,
+        KLUCZ_KART_WIDMOWYCH,
         _nieznane_referencje_katalogowe,
     )
 
+    # Karta AB-H0 §0.7.6: `karty_widmowe_ref` — ten sam predykat istnienia karty co
+    # operacja domenowa, w katalogu MODELU (statyczny + karty projektu): końcówka
+    # `domain-ops` woła bramę w kontekście katalogu modelu (`kontekst_katalogu`).
     wiazania = {
         klucz: payload[klucz]
-        for klucz in (*DER_BINDING_KEYS, *DER_PROFILE_KEYS)
+        for klucz in (*DER_BINDING_KEYS, *DER_PROFILE_KEYS, KLUCZ_KART_WIDMOWYCH)
         if klucz in payload
     }
     nieznane = _nieznane_referencje_katalogowe(wiazania)
@@ -1518,9 +1534,10 @@ def validate_and_materialize_catalog_binding(
             {},
         )
 
-    from network_model.catalog.repository import get_default_mv_catalog
+    # Katalog MODELU (statyczny + pozycje projektu) — jak w `_blad_referencji_dodatkowej`.
+    from enm.katalog_projektu import katalog_biezacy
 
-    catalog = get_default_mv_catalog()
+    catalog = katalog_biezacy()
     mat_result = materialize_catalog_binding(binding, catalog)
     if not mat_result.success:
         return (

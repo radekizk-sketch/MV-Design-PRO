@@ -1,32 +1,32 @@
 {
-  "analysis_id": "a4411a9c1f4423ca3ae667cdf4bf13dca349ae8316c0c923a26a1479a2d7a2a6",
+  "analysis_id": "ca862bf7c78b2d4cf4db958e8bc8ea88dcae0533ed999467d52cdd17437c9c1e",
   "context": {
-    "project_name": "CGMES Golden Net",
+    "project_name": "Scena analiz OZE",
     "case_name": null,
     "case_id": "case-demo",
     "run_timestamp": "2026-09-16T09:00:00+00:00",
-    "snapshot_hash": "b3796310aaae880789c8ff890da494e8e4eaca8448d37dbd4e53dab326d157bc",
+    "snapshot_hash": "2175ba2334727477554488ec7fdc539b3e90a7e2aae65d4db14a49e8d571941a",
     "run_id": "run-sc-scena-oze-analiz"
   },
   "weak_threshold": 3.0,
   "very_weak_threshold": 2.0,
   "entries": [
     {
-      "bus_ref": "bus_nn",
-      "nominal_kv": 0.4,
-      "s_sc_mva": 14.6134,
+      "bus_ref": "nn/c4b0f7648d5d23031f9bac28ea7120a5/feeder_bus",
+      "nominal_kv": 0.8,
+      "s_sc_mva": 37.9713,
       "s_installed_mva": 0.215,
-      "scr": 67.9692,
+      "scr": 176.6107,
       "verdict": "mocna",
       "is_weak": false,
-      "why_pl": "SCR = 67.9692 ≥ 3.0 — sieć mocna w węźle; klasyczne założenia pracy źródła falownikowego pozostają ważne.",
+      "why_pl": "SCR = 176.6107 ≥ 3.0 — sieć mocna w węźle; klasyczne założenia pracy źródła falownikowego pozostają ważne.",
       "missing_data": [],
       "white_box": [
         {
           "symbol": "SCR",
           "formula_latex": "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
-          "substitution_pl": "SCR = 14.6134 MVA / 0.215 MVA",
-          "result_pl": "SCR = 67.9692 (–)"
+          "substitution_pl": "SCR = 37.9713 MVA / 0.215 MVA",
+          "result_pl": "SCR = 176.6107 (–)"
         },
         {
           "symbol": "werdykt",
@@ -37,7 +37,7 @@
       ],
       "modules": [
         {
-          "ref": "gen_pv",
+          "ref": "pv/e301ee69be096048e5a61a4d6dba4c14/converter",
           "name": "Farma PV",
           "sn_mva": 0.215
         }
@@ -48,15 +48,15 @@
     "total_buses": 1,
     "weak_bus_count": 0,
     "not_computed_count": 0,
-    "wscr": 67.9692,
+    "wscr": 176.6107,
     "wscr_verdict": "mocna",
-    "wscr_why_pl": "WSCR = 67.9692 dla 1 źródeł — sieć mocna. WSCR ujmuje wzajemne oddziaływanie źródeł falownikowych w pobliżu (metodyka ERCOT).",
+    "wscr_why_pl": "WSCR = 176.6107 dla 1 źródeł — sieć mocna. WSCR ujmuje wzajemne oddziaływanie źródeł falownikowych w pobliżu (metodyka ERCOT).",
     "wscr_white_box": [
       {
         "symbol": "WSCR",
         "formula_latex": "\\mathrm{WSCR} = \\dfrac{\\sum_i S_{sc,i}'' \\cdot S_{n,i}}{\\left(\\sum_i S_{n,i}\\right)^2}",
-        "substitution_pl": "licznik Σ(S_sc·S_n) = 3.1419 MVA²; (Σ S_n)² = 0.0462 MVA²",
-        "result_pl": "WSCR = 67.9692 (–), n = 1"
+        "substitution_pl": "licznik Σ(S_sc·S_n) = 8.1638 MVA²; (Σ S_n)² = 0.0462 MVA²",
+        "result_pl": "WSCR = 176.6107 (–), n = 1"
       }
     ]
   }

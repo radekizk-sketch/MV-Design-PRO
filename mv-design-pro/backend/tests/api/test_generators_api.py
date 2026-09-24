@@ -635,7 +635,9 @@ class TestWeryfikacjaModuluNcRfgPrzyTworzeniuGeneratora:
                 "der_kind": "PV",
                 "power_mw": 1.0,
                 "connection_variant": "nn_side",
-                "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+                # Decyzja O-53: nastawa 1 MW wymaga jednostki o mocy ≥ 1 MW (dawna pozycja
+                # 0,5 MW z nastawą 1 MW to nastawa ponad moc znamionową falownika).
+                "catalog_ref": "conv-pv-nn-1mw-0p4kv",
                 "nc_rfg_module": "B",
             },
         )

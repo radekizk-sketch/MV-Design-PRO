@@ -15,11 +15,11 @@
           "im": 13.623853211009173
         },
         "ir_a": 96.22504486493763,
-        "ikss_partial_a": 643.6441371387431,
-        "ratio_ik_ir": 6.688946085108799,
+        "ikss_partial_a": 643.6441371387432,
+        "ratio_ik_ir": 6.6889460851088,
         "mu": 0.7046722960377743,
         "q": 1.0,
-        "ib_a": 453.55819194881013,
+        "ib_a": 453.5581919488102,
         "is_synchronous_machine": true,
         "p_per_pole_mw": 0.0,
         "wywod": [
@@ -46,25 +46,25 @@
         ]
       }
     ],
-    "ikss_machines_a": 643.6441371387431,
-    "ib_machines_a": 453.55819194881013,
+    "ikss_machines_a": 643.6441371387432,
+    "ib_machines_a": 453.5581919488102,
     "motors_negligible": true,
     "white_box": {
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
       "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "z_kk_ohm": {
-        "re": 0.05413962601553557,
+        "re": 0.05413962601553552,
         "im": 1.062646512021273
       },
       "i_base_a": 3849.0017945975055,
-      "ikss_total_a": 8953.06173406898,
+      "ikss_total_a": 8953.061734068979,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 447.65308670344905,
+      "small_motor_limit_a": 447.65308670344893,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -193,11 +193,11 @@
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: 3fcc1859ae51...",
+        "wartosc_pl": "obecny: 95321b3e91d6...",
         "status": "PASS"
       }
     ],
-    "input_hash": "3fcc1859ae51ec40e2cf3f84874b0f6d1fd4ca725ebbf9a5f53e84c7321433d2"
+    "input_hash": "95321b3e91d6d630b57fbb025cd8e5f43fbdb0892f7764265b75610612e2730e"
   },
   "80c21edb-e0ec-5378-acd6-e90f5ec0bc57": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -215,11 +215,11 @@
           "im": 13.623853211009173
         },
         "ir_a": 96.22504486493763,
-        "ikss_partial_a": 81.961475008182,
-        "ratio_ik_ir": 0.851768633864748,
+        "ikss_partial_a": 81.96147500818202,
+        "ratio_ik_ir": 0.8517686338647481,
         "mu": 1.0,
         "q": 1.0,
-        "ib_a": 81.961475008182,
+        "ib_a": 81.96147500818202,
         "is_synchronous_machine": true,
         "p_per_pole_mw": 0.0,
         "wywod": [
@@ -246,8 +246,8 @@
         ]
       }
     ],
-    "ikss_machines_a": 81.961475008182,
-    "ib_machines_a": 81.961475008182,
+    "ikss_machines_a": 81.96147500818202,
+    "ib_machines_a": 81.96147500818202,
     "motors_negligible": true,
     "white_box": {
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
@@ -393,11 +393,11 @@
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: 60168aff769b...",
+        "wartosc_pl": "obecny: e8ee67a87753...",
         "status": "PASS"
       }
     ],
-    "input_hash": "60168aff769b294e488b3ecf9f3c32dd6406d84f3a32e9716028121d8dfe1035"
+    "input_hash": "e8ee67a87753fb05ed0b069453ce11d3b7aef45e221b1cd835c3317691b54e25"
   },
   "d70aff7b-d056-5804-acce-c9bc5707612b": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -453,7 +453,7 @@
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
       "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "z_kk_ohm": {
-        "re": 0.0025853234455180648,
+        "re": 0.0025853234455180643,
         "im": 0.011567826009893416
       },
       "i_base_a": 144337.56729740644,
@@ -593,11 +593,11 @@
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: 2425e22fffaf...",
+        "wartosc_pl": "obecny: 8b9683b7b7c3...",
         "status": "PASS"
       }
     ],
-    "input_hash": "2425e22fffaf974ce69636ee785a82cc60eaa680342024078115b91ba40887ff"
+    "input_hash": "8b9683b7b7c37039d01236dfd50a66fd1cc0309cacc4674426dd0e08c685b4b2"
   },
   "d93618a6-23da-5d59-ae10-a7242961b790": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -615,11 +615,11 @@
           "im": 13.623853211009173
         },
         "ir_a": 96.22504486493763,
-        "ikss_partial_a": 643.6441371387431,
-        "ratio_ik_ir": 6.688946085108799,
+        "ikss_partial_a": 643.6441371387432,
+        "ratio_ik_ir": 6.6889460851088,
         "mu": 0.7046722960377743,
         "q": 1.0,
-        "ib_a": 453.55819194881013,
+        "ib_a": 453.5581919488102,
         "is_synchronous_machine": true,
         "p_per_pole_mw": 0.0,
         "wywod": [
@@ -646,25 +646,25 @@
         ]
       }
     ],
-    "ikss_machines_a": 643.6441371387431,
-    "ib_machines_a": 453.55819194881013,
+    "ikss_machines_a": 643.6441371387432,
+    "ib_machines_a": 453.5581919488102,
     "motors_negligible": true,
     "white_box": {
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
       "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "z_kk_ohm": {
-        "re": 0.05413962601553557,
+        "re": 0.05413962601553552,
         "im": 1.062646512021273
       },
       "i_base_a": 3849.0017945975055,
-      "ikss_total_a": 8953.06173406898,
+      "ikss_total_a": 8953.061734068979,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 447.65308670344905,
+      "small_motor_limit_a": 447.65308670344893,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -793,11 +793,11 @@
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: 207adc9ba02d...",
+        "wartosc_pl": "obecny: 7a921f63c728...",
         "status": "PASS"
       }
     ],
-    "input_hash": "207adc9ba02d65dc70306cbf25899c1614728d76c7ca3135acba02ae20894424"
+    "input_hash": "7a921f63c728555cb427da1fa2a261c39613016680eeca887864fb0bd083a85a"
   },
   "e22c09ea-bf55-54b7-8c57-88efc2eb8989": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -815,9 +815,9 @@
           "im": 13.623853211009173
         },
         "ir_a": 96.22504486493763,
-        "ikss_partial_a": 697.5284696120004,
-        "ratio_ik_ir": 7.248928494562491,
-        "mu": 0.6907812470719705,
+        "ikss_partial_a": 697.5284696120003,
+        "ratio_ik_ir": 7.248928494562489,
+        "mu": 0.6907812470719706,
         "q": 1.0,
         "ib_a": 481.83958610678076,
         "is_synchronous_machine": true,
@@ -846,25 +846,25 @@
         ]
       }
     ],
-    "ikss_machines_a": 697.5284696120004,
+    "ikss_machines_a": 697.5284696120003,
     "ib_machines_a": 481.83958610678076,
     "motors_negligible": true,
     "white_box": {
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
       "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "z_kk_ohm": {
-        "re": 0.7557255080898564,
-        "im": 1.9264383236339513
+        "re": 0.7557255080898567,
+        "im": 1.9264383236339517
       },
       "i_base_a": 3849.0017945975055,
-      "ikss_total_a": 4603.471933192969,
+      "ikss_total_a": 4603.471933192967,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 230.17359665964847,
+      "small_motor_limit_a": 230.17359665964838,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -993,10 +993,10 @@
       },
       {
         "pozycja_pl": "Determinizm kontraktu (input_hash)",
-        "wartosc_pl": "obecny: f53345f5e5a5...",
+        "wartosc_pl": "obecny: cc3b19128a93...",
         "status": "PASS"
       }
     ],
-    "input_hash": "f53345f5e5a582a0614dbadc5bb96b7fa1dee546adcd78dd809acc62c5c9d0f0"
+    "input_hash": "cc3b19128a93df80bff75f740c097167a0401612ae2985f34b2896e43bc5c7db"
   }
 }

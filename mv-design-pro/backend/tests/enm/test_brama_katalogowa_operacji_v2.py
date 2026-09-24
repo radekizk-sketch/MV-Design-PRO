@@ -51,6 +51,7 @@ from enm.domain_operations_v2 import (
     V2_CATALOG_REF_PAYLOAD_KEYS,
 )
 from enm.dziennik_zmian import wyczysc_dziennik
+from enm.katalog_projektu import kontekst_katalogu
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
@@ -570,6 +571,38 @@ def _zepsuj_klucz(payload: dict[str, Any], klucz: str) -> None:
     payload[klucz] = str(payload[klucz]) + LITEROWKA
 
 
+#: Karta AB-H0 §0.7: karta widmowa PROJEKTU typu magazynu z `_payload_konwerter`
+#: (dane testowe kontraktu z `tests/dziedziny/fabryki.py`).
+KARTA_PROJEKTU = "karta-widmowa-projektu-1"
+
+
+def _rekord_karty_projektu() -> dict[str, Any]:
+    from tests.dziedziny import fabryki as f
+
+    return f.karta(
+        id=KARTA_PROJEKTU,
+        urzadzenie_ref=REF_BESS,
+        verification_status="NIEWERYFIKOWANY",
+        catalog_status="PROJEKTOWY_V1",
+    ).model_dump(mode="json")
+
+
+def _payload_karty_projektu(_snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {"karta": _rekord_karty_projektu()}
+
+
+def _payload_wiazania_kart(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {"generator_ref": _generator(snapshot)["ref_id"], "karty_widmowe_ref": [KARTA_PROJEKTU]}
+
+
+def _zepsuj_karte(payload: dict[str, Any]) -> None:
+    payload["karta"]["urzadzenie_ref"] = str(payload["karta"]["urzadzenie_ref"]) + LITEROWKA
+
+
+def _zepsuj_liste_kart(payload: dict[str, Any]) -> None:
+    payload["karty_widmowe_ref"] = [str(payload["karty_widmowe_ref"][0]) + LITEROWKA]
+
+
 INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
     PrzypadekIniekcji(
         "catalog_ref", "add_ct", _payload_ct, lambda p: _zepsuj_klucz(p, "catalog_ref")
@@ -736,6 +769,27 @@ INIEKCJE_WIAZAN_DER: tuple[PrzypadekIniekcji, ...] = tuple(
         oczekiwany_kod="der_bindings.catalog_ref_unknown",
     )
     for klucz in ("protection_catalog_ref", "ct_catalog_ref", "vt_catalog_ref")
+) + (
+    # Karta AB-H0 §0.7.6: karta widmowa istnieje w katalogu PROJEKTU modelu (dołożona
+    # operacją `dodaj_karte_widmowa_projektu` w `_przygotowana_siec`).
+    PrzypadekIniekcji(
+        "karty_widmowe_ref",
+        "set_der_catalog_bindings",
+        _payload_wiazania_kart,
+        _zepsuj_liste_kart,
+        oczekiwany_kod="der_bindings.catalog_ref_unknown",
+    ),
+)
+
+#: Karta AB-H0 §0.7.3: typ przekształtnika wskazany przez kartę widmową projektu.
+INIEKCJE_KART_WIDMOWYCH: tuple[PrzypadekIniekcji, ...] = (
+    PrzypadekIniekcji(
+        "karta.urzadzenie_ref",
+        "dodaj_karte_widmowa_projektu",
+        _payload_karty_projektu,
+        _zepsuj_karte,
+        oczekiwany_kod="karta_widmowa.urzadzenie_nieznane",
+    ),
 )
 
 #: Pozycje inwentarza pokryte NIE iniekcją referencji, lecz osobnym dowodem —
@@ -856,7 +910,10 @@ def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:
 
 def test_kazda_pozycja_inwentarza_ma_pokrycie() -> None:
     """Asercja NA LIŚCIE: żadna pozycja inwentarza nie zostaje bez dowodu."""
-    z_iniekcji = {f"{p.operacja}|{p.sciezka}" for p in (*INIEKCJE, *INIEKCJE_WIAZAN_DER)}
+    z_iniekcji = {
+        f"{p.operacja}|{p.sciezka}"
+        for p in (*INIEKCJE, *INIEKCJE_WIAZAN_DER, *INIEKCJE_KART_WIDMOWYCH)
+    }
     z_inwentarza = {f"{p.operacja}|{p.sciezka}" for p in V2_CATALOG_GATE_INVENTORY}
     pokryte = z_iniekcji | set(POKRYCIE_POZA_INIEKCJAMI)
     assert z_inwentarza <= pokryte, (
@@ -885,7 +942,15 @@ def test_inwentarz_i_zbiory_kluczy_pochodza_z_jednego_zrodla() -> None:
     # Każda pozycja inwentarza jest albo referencją, albo wiązaniem, albo jawnie
     # nazwaną tabliczką/specyfikacją (te dwie ostatnie nie są kanałem wskazania).
     pozostale = klucze_inwentarza - referencje - wiazania
-    assert pozostale == {"materialized_params", "genset_spec", "ups_spec"}, sorted(pozostale)
+    # Karta AB-H0: `karty_widmowe_ref` (lista id kart widmowych) i `urzadzenie_ref` (typ
+    # przekształtnika karty projektu) — referencje o nazwach spoza wzorca `*catalog_ref`.
+    assert pozostale == {
+        "materialized_params",
+        "genset_spec",
+        "ups_spec",
+        "karty_widmowe_ref",
+        "urzadzenie_ref",
+    }, sorted(pozostale)
 
 
 def test_operacje_v2_nie_czytaja_referencji_spoza_inwentarza() -> None:
@@ -996,7 +1061,8 @@ def test_pozycje_niebramkowane_maja_uzasadnienie_merytoryczne() -> None:
 
 
 PRZYPADKI = [
-    pytest.param(p, id=f"{p.operacja}|{p.sciezka}") for p in (*INIEKCJE, *INIEKCJE_WIAZAN_DER)
+    pytest.param(p, id=f"{p.operacja}|{p.sciezka}")
+    for p in (*INIEKCJE, *INIEKCJE_WIAZAN_DER, *INIEKCJE_KART_WIDMOWYCH)
 ]
 
 
@@ -1013,6 +1079,10 @@ def _przygotowana_siec(przypadek: PrzypadekIniekcji) -> dict[str, Any]:
         snapshot = _wykonaj(snapshot, "add_ct", _payload_ct(snapshot))
     if przypadek.operacja == "set_der_catalog_bindings":
         snapshot = _wykonaj(snapshot, "add_converter_source", _payload_konwerter(snapshot))
+    if przypadek.sciezka == "karty_widmowe_ref":
+        snapshot = _wykonaj(
+            snapshot, "dodaj_karte_widmowa_projektu", _payload_karty_projektu(snapshot)
+        )
     if przypadek.operacja == "add_nn_switch_device":
         snapshot = _wykonaj(
             snapshot,
@@ -1072,6 +1142,10 @@ def test_literowka_odrzucona_w_torze_payloadu(
         snapshot = _operacja_api(
             klient, case_id, "add_converter_source", _payload_konwerter(snapshot)
         )
+    if przypadek.sciezka == "karty_widmowe_ref":
+        snapshot = _operacja_api(
+            klient, case_id, "dodaj_karte_widmowa_projektu", _payload_karty_projektu(snapshot)
+        )
     if przypadek.operacja == "add_nn_switch_device":
         snapshot = _operacja_api(
             klient,
@@ -1112,7 +1186,10 @@ def test_komplet_poprawnych_referencji_przechodzi_oba_tory(przypadek: PrzypadekI
     snapshot = _przygotowana_siec(przypadek)
     payload = przypadek.zbuduj(snapshot)
 
-    blad, _ = validate_and_materialize_catalog_binding(przypadek.operacja, payload)
+    # Brama w kontekście katalogu MODELU — dokładnie jak końcówka `domain-ops`
+    # (`api/enm.py`): pozycje projektu (karty widmowe) istnieją wyłącznie w modelu.
+    with kontekst_katalogu(snapshot):
+        blad, _ = validate_and_materialize_catalog_binding(przypadek.operacja, payload)
     assert blad is None, blad
 
     wynik = execute_domain_operation(copy.deepcopy(snapshot), przypadek.operacja, payload)

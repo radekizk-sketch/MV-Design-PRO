@@ -25,6 +25,7 @@ from api.fault_scenarios import router as fault_scenarios_router
 from api.generators import router as generators_router
 from api.grid_source_preview import router as grid_source_preview_router
 from api.health import router as health_router
+from api.karty_widmowe import router as karty_widmowe_router
 from api.middleware import RequestIdMiddleware
 from api.ncrfg_ptpiree_tests import router as ncrfg_ptpiree_tests_router
 from api.nn_proof import router as nn_proof_router
@@ -182,6 +183,7 @@ app.include_router(sld_overrides_router)
 app.include_router(switchgear_config_router)
 app.include_router(solver_capabilities_router, prefix="/api")
 app.include_router(solver_input_router)
+app.include_router(karty_widmowe_router)
 
 
 @app.get("/")

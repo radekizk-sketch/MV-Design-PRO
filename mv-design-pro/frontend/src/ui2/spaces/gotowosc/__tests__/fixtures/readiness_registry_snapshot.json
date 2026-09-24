@@ -149,6 +149,18 @@
       "code": "connection.power_limit_missing"
     },
     {
+      "area": "GENERATORS",
+      "code": "converter.power_check_input_invalid"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "converter.setpoint_above_rating"
+    },
+    {
+      "area": "GENERATORS",
+      "code": "converter.transformer_capacity_exceeded"
+    },
+    {
       "area": "CATALOGS",
       "code": "ct.accuracy_limit_missing"
     },
@@ -537,5 +549,5 @@
       "code": "vt.winding_category_missing"
     }
   ],
-  "count": 134
+  "count": 137
 }

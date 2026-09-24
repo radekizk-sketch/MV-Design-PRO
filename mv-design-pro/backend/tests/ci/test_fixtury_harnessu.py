@@ -35,8 +35,11 @@ import importlib.util
 import json
 import re
 from pathlib import Path
+from typing import Any
 
 import pytest
+from enm.migrations.nn_field_specs_promocja import migruj as promuj_nn_field_specs
+from enm.models import EnergyNetworkModel
 
 _SKRYPT = Path(__file__).resolve().parents[2] / "scripts" / "eksport_fixtur_harnessu.py"
 _spec = importlib.util.spec_from_file_location("eksport_fixtur_harnessu", _SKRYPT)
@@ -884,17 +887,48 @@ def test_stan_fazowy_ma_run_id_stabilny_i_pokazuje_alert_asymetrii() -> None:
 # ---------------------------------------------------------------------------
 # Karta HARNESS-RESZTA (kontynuacja, 2026-09-16) — sceny „siła-sieci",
 # „migotanie", „kompensacja(-wynik)", „walidacja"/„rozplyw", „cieplna",
-# „arcflash": realny bieg backendu (short_circuit_sn/PF na sieci złotej).
+# „arcflash": realny bieg backendu (short_circuit_sn/PF). „siła-sieci" i
+# „migotanie" od karty AB-H0 na sieci sceny analiz OZE (`_enm_sceny_oze_analiz`),
+# pozostałe na sieci złotej.
 # ---------------------------------------------------------------------------
+
+
+def _falownik_sceny_oze() -> dict[str, Any]:
+    """Falownik PV sceny analiz OZE — wyłącznie ten z karty `_KARTA_PV_SCENY_OZE`,
+    w postaci, którą widzi bieg (model po automigracji magazynu).
+
+    Karta AB-H0 (§0 pkt 2): scena nie dopisuje już `catalog_ref` karty 0,8 kV do
+    falownika na szynie 0,4 kV sieci złotej (przypisanie typu odmawia takiej pary
+    `converter.voltage_mismatch`, tak jak tor tworzenia), tylko buduje własną sieć
+    operacjami domenowymi (stacja 15/0,8 kV + `add_converter_source`). Refy szyny
+    i falownika nadaje domena, więc test bierze je z tej samej sieci zamiast
+    przepisywać je ręcznie — intencja bez zmian: wpis dotyczy węzła z falownikiem
+    katalogowym, a moc/współczynnik pochodzą z karty. Szyna: magazyn modelu
+    (`enm/store.py`) promuje pole źródłowe nN do realnego aparatu i szyny odpływu
+    (`enm/migrations/nn_field_specs_promocja.py`, LV-INV-12), więc falownik wariantu
+    `nn_side` stoi w biegu na szynie odpływu za aparatem pola, nie na szynie
+    zbiorczej nN — test stosuje TĘ SAMĄ migrację."""
+    model, _ = promuj_nn_field_specs(
+        EnergyNetworkModel.model_validate(eksport._enm_sceny_oze_analiz())
+    )
+    falowniki = [
+        g.model_dump(mode="json")
+        for g in model.generators
+        if g.catalog_ref == eksport._KARTA_PV_SCENY_OZE
+    ]
+    assert len(falowniki) == 1, falowniki
+    return falowniki[0]
 
 
 def test_sila_sieci_ma_scr_realny_z_katalogu_i_werdykt_mocna() -> None:
     widok = eksport.sila_sieci_scena_wynik()
     _run_idy_nie_sa_uuid(widok)
     assert widok["context"]["run_id"] == eksport.RUN_ID_SCENY_OZE_ANALIZ
+    falownik = _falownik_sceny_oze()
     wpis = widok["entries"][0]
-    assert wpis["bus_ref"] == "bus_nn"
-    assert wpis["modules"][0]["ref"] == "gen_pv"
+    assert wpis["bus_ref"] == falownik["bus_ref"]
+    assert wpis["nominal_kv"] == 0.8, "falownik karty 0,8 kV na szynie nN 0,8 kV stacji"
+    assert wpis["modules"][0]["ref"] == falownik["ref_id"]
     assert wpis["s_installed_mva"] == 0.215, "moc znamionowa MUSI pochodzic z karty katalogu MV"
     assert wpis["scr"] is not None and wpis["scr"] > widok["weak_threshold"]
     assert wpis["verdict"] == "mocna"
@@ -903,9 +937,11 @@ def test_sila_sieci_ma_scr_realny_z_katalogu_i_werdykt_mocna() -> None:
 def test_migotanie_ma_pst_realny_z_katalogu() -> None:
     widok = eksport.migotanie_scena_wynik()
     _run_idy_nie_sa_uuid(widok)
+    falownik = _falownik_sceny_oze()
     bus = widok["buses"][0]
+    assert bus["bus_ref"] == falownik["bus_ref"]
     modul = bus["modules"][0]
-    assert modul["gen_ref"] == "gen_pv"
+    assert modul["gen_ref"] == falownik["ref_id"]
     assert modul["flicker_c"] == 0.3, "wspolczynnik migotania MUSI pochodzic z karty katalogu MV"
     assert modul["included"] is True
     assert bus["pst"] is not None

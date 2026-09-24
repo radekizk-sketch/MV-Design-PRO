@@ -145,15 +145,17 @@ def test_zaden_rodzaj_wycofany_poza_hosting_i_opf_nie_jest_wycofany() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _zlota_siec_z_karta_pv(widmo: dict[int, float] | None) -> EnergyNetworkModel:
+def _zlota_siec_z_karta_pv(klucz_wstrzykniety: dict[int, float] | None) -> EnergyNetworkModel:
     """Kopia złotej sieci, w której `gen_pv` MA kartę przekształtnika (napięcie,
-    moc znamionowa, tryb) — z widmem harmonicznym karty albo bez niego. Złota
-    sieć bazowa nie niesie karty w ogóle, więc ten wariant jest potrzebny do
-    rozróżnienia klasy „brak karty" od klasy „karta bez widma"."""
+    moc znamionowa, tryb). Złota sieć bazowa nie niesie karty w ogóle, więc ten
+    wariant jest potrzebny do rozróżnienia klasy „brak karty" od klasy „karta bez
+    widma". Karta AB-H0: karta katalogowa NIE niesie widma (pole skasowane);
+    `klucz_wstrzykniety` wkłada klucz skasowanego pola mimo katalogu — żeby pinować,
+    że most i gotowość go NIE czytają."""
     enm = build_golden_enm().model_copy(deep=True)
     karta: dict[str, object] = {"un_kv": 0.4, "sn_mva": 2.2, "control_mode": "Q_OF_U"}
-    if widmo is not None:
-        karta["harmonic_spectrum_percent"] = widmo
+    if klucz_wstrzykniety is not None:
+        karta["harmonic_spectrum_percent"] = klucz_wstrzykniety
     for gen in enm.generators:
         if gen.ref_id == "gen_pv":
             gen.materialized_params = karta
@@ -218,7 +220,7 @@ def test_pq_widmo_reczne_nie_odblokowuje_gen_pv_bez_karty() -> None:
 def test_pq_karta_bez_widma_jest_brakiem_widma_z_kluczem_parametru() -> None:
     """Klasa „karta bez widma": jedyny przypadek, w którym `harmonic_spectra`
     NAPRAWDĘ usuwa brak — dlatego tylko ten warunek niesie klucz parametru."""
-    enm = _zlota_siec_z_karta_pv(widmo=None)
+    enm = _zlota_siec_z_karta_pv(klucz_wstrzykniety=None)
     wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, {})
     kody = {w.kod for w in wynik.warunki}
     assert "generator.harmonic_spectrum_missing" in kody
@@ -233,7 +235,7 @@ def test_pq_karta_bez_widma_z_widmem_recznym_jest_potwierdzona() -> None:
     """Domknięcie pary predykatów: parametr wskazany kluczem FAKTYCZNIE usuwa
     brak — po podaniu widma ręcznego most buduje źródło harmoniczne, a gotowość
     jest POTWIERDZONA z warunkiem `zrodla.odksztalcajace` spełnionym."""
-    enm = _zlota_siec_z_karta_pv(widmo=None)
+    enm = _zlota_siec_z_karta_pv(klucz_wstrzykniety=None)
     parametry = {"harmonic_spectra": {"gen_pv": {"5": 4.5, "7": 2.1}}}
     wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, parametry)
     model = build_v126_input_from_enm(enm, parameters=parametry)
@@ -244,11 +246,32 @@ def test_pq_karta_bez_widma_z_widmem_recznym_jest_potwierdzona() -> None:
     assert wynik.gotowosc == GOTOWOSC_POTWIERDZONA
 
 
-def test_pq_karta_z_widmem_katalogowym_jest_potwierdzona_bez_parametrow() -> None:
-    enm = _zlota_siec_z_karta_pv(widmo={5: 4.5, 7: 2.1})
+def test_pq_klucz_widma_wstrzykniety_do_karty_nie_potwierdza_gotowosci() -> None:
+    """Przepisany w karcie AB-H0 (dawniej: „karta z widmem katalogowym jest
+    potwierdzona bez parametrów"). Pole `ConverterType.harmonic_spectrum_percent`
+    skasowane — klucz w karcie elementu może pochodzić wyłącznie z wstrzyknięcia mimo
+    katalogu i NIE jest widmem: gotowość melduje brak widma z kluczem parametru, tak
+    samo jak bieg (ten sam predykat, `pominiete_zrodla_v126`)."""
+    enm = _zlota_siec_z_karta_pv(klucz_wstrzykniety={5: 4.5, 7: 2.1})
     wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, {})
-    assert wynik.gotowosc == GOTOWOSC_POTWIERDZONA
-    assert {w.kod for w in wynik.braki} == set()
+    assert build_v126_input_from_enm(enm).harmonic_sources == []
+    brak = next(w for w in wynik.warunki if w.kod == "generator.harmonic_spectrum_missing")
+    assert brak.elementy == ("gen_pv",)
+    assert brak.klucz_parametru == "harmonic_spectra"
+    assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
+
+
+def test_pq_widmo_reczne_czesciowo_bledne_nie_potwierdza_gotowosci() -> None:
+    """Gotowość ekranu = bieg: widmo ręczne z jednym błędnym wpisem (rząd 51) jest
+    odrzucane W CAŁOŚCI przez most (zero częściowego czyszczenia) — gotowość nie może
+    go potwierdzić, a bieg nie dostaje źródła."""
+    enm = _zlota_siec_z_karta_pv(klucz_wstrzykniety=None)
+    parametry = {"harmonic_spectra": {"gen_pv": {"5": 4.5, "51": 1.0}}}
+    wynik = ocen_gotowosc_v126(enm, V126AnalysisType.POWER_QUALITY_HARMONICS, parametry)
+    assert build_v126_input_from_enm(enm, parameters=parametry).harmonic_sources == []
+    brak = next(w for w in wynik.warunki if w.kod == "generator.harmonic_spectrum_missing")
+    assert brak.elementy == ("gen_pv",)
+    assert wynik.gotowosc == GOTOWOSC_NIEPOTWIERDZONA
 
 
 def test_pq_brak_karty_i_karta_bez_widma_w_jednym_modelu_sa_dwoma_warunkami() -> None:

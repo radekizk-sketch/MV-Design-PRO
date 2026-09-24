@@ -31,7 +31,7 @@ from enm.assembler import (
     KOD_NIESYMETRIA_NIERADIALNA,
     diagnoza_niesymetrii,
 )
-from enm.models import EnergyNetworkModel
+from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel
 from enm.topology import derive
 from enm.zrodlo_zwarcie import TrybDanych, dane_zwarciowe_zrodla
 from network_model.catalog.governance import Poziom, wymagalnosc_katalogu
@@ -446,14 +446,9 @@ def _check_loadability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     )
 
 
-_DER_GEN_TYPES = (
-    "pv_inverter",
-    "bess",
-    "wind_inverter",
-    "fw_pmsg",
-    "fw_dfig",
-    "fw_scig",
-)
+#: Rodzaje DER = kanoniczny zbiór `GEN_TYPES_PRZEKSZTALTNIKOWE` (karta AB-H0 Pakiet D:
+#: lokalna kopia skasowana; parytet w `tests/enm/test_gen_types_przeksztaltnikowe.py`).
+_DER_GEN_TYPES = GEN_TYPES_PRZEKSZTALTNIKOWE
 
 
 def _resolve_der_dynamic_for_generator(gen):  # type: ignore[no-untyped-def]
@@ -763,10 +758,7 @@ def _check_dynamika_rms(
 
 def _check_ncrfg_compliance(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     """Zgodność NC RfG — testbench dostępny (PR-16-impl)."""
-    has_der = any(
-        g.gen_type in ("pv_inverter", "bess", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig")
-        for g in enm.generators
-    )
+    has_der = any(g.gen_type in _DER_GEN_TYPES for g in enm.generators)
     if not has_der:
         return ReadinessTypeReport(
             calculation_type="ncrfg_compliance",

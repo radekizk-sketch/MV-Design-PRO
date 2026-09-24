@@ -92,6 +92,16 @@
         "frequency_droop_percent": null,
         "has_hvrt_curve": null,
         "has_lvrt_curve": null,
+        "kontrola_mocy_zrodla": {
+          "cos_phi": null,
+          "przeciazalnosc_transformatora_pu": null,
+          "przyjete_pl": [
+            "Współczynnika jednoczesności nie podano — przyjęto 1,0 (brak redukcji).",
+            "Przeciążalności transformatora nie podano — przyjęto 1,0 (brak ulgi).",
+            "cosφ nie podano — człon nastawy liczony z cosφ karty, a bez niego z |P| (dolna granica mocy pozornej)."
+          ],
+          "wspolczynnik_jednoczesnosci": null
+        },
         "lfsm_deadband_hz": null,
         "q_max_mvar": null,
         "q_min_mvar": null,
@@ -102,6 +112,7 @@
         "source_sequence_index": 0,
         "u_set_pu": null
       },
+      "modele_widmowe": null,
       "n_parallel": 1,
       "name": "Farma PV 1 MW",
       "overrides": [],

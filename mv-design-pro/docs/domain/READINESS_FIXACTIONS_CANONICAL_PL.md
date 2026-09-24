@@ -52,7 +52,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **134** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **137** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -145,6 +145,9 @@ Wszystkie **134** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `oze.transformer_required` | GENERATORS | 1 | BLOCKER | Źródło OZE wymaga transformatora w ścieżce zasilania | panel: `inspector`, tab: `transformator` |
 | `bess.energy_module_missing` | GENERATORS | 2 | BLOCKER | Falownik BESS nie ma przypisanego modułu magazynu energii | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `bess.soc_limits_invalid` | GENERATORS | 2 | BLOCKER | Ograniczenia SOC magazynu BESS są nieprawidłowe (min >= max albo poza zakresem 0-100%) | panel: `inspector`, tab: `parametry`, focus: `soc_min_percent` |
+| `converter.power_check_input_invalid` | GENERATORS | 2 | BLOCKER | Jawne wejście kontroli mocy źródła poza zakresem: cosφ i współczynnik jednoczesności z przedziału (0; 1], przeciążalność transformatora dodatnia | panel: `inspector`, tab: `parametry` |
+| `converter.setpoint_above_rating` | GENERATORS | 2 | BLOCKER | Moc zadana źródła przekształtnikowego przekracza moc znamionową instalacji (moc czynna jednostki z karty · liczba jednostek) | panel: `inspector`, tab: `parametry`, focus: `p_mw` |
+| `converter.transformer_capacity_exceeded` | GENERATORS | 2 | BLOCKER | Moc wymagana źródła przekształtnikowego — max(S_n jednostki · liczba jednostek; P/cosφ) · współczynnik jednoczesności — przekracza moc transformatora zasilającego · przeciążalność | panel: `inspector`, tab: `katalog` |
 | `der.dynamic_profile_missing` | GENERATORS | 2 | BLOCKER | Rodzaj źródła DER nie ma mapowania na profil dynamiczny, albo profil nie został wskazany jawnie — stabilność RMS i FRT/LVRT/HVRT nie mogą zbudować modelu tego generatora | panel: `inspector`, tab: `parametry`, focus: `gen_type` |
 | `der.dynamika_missing` | GENERATORS | 2 | BLOCKER | Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego | panel: `inspector`, tab: `parametry`, focus: `dynamika` |
 | `der.inverter_certificate_unlinked` | GENERATORS | 2 | WARNING | Przetwornica źródła DER nie ma powiązanego certyfikatu PTPiREE — wniosek do OSD może zostać odrzucony. Ostateczna akceptacja przyłączeniowa pozostaje po stronie właściwego OSD | panel: `inspector`, tab: `katalog` |
@@ -158,7 +161,7 @@ Wszystkie **134** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `pv.control_mode_missing` | GENERATORS | 2 | BLOCKER | Falownik PV nie ma określonego trybu regulacji | panel: `inspector`, tab: `regulacja`, focus: `control_mode` |
 | `ups.backup_time_invalid` | GENERATORS | 2 | BLOCKER | Czas podtrzymania UPS jest nieprawidłowy (musi być > 0) | panel: `inspector`, tab: `parametry`, focus: `backup_time_min` |
 | `der.inverter_certificate_conditional` | GENERATORS | 3 | WARNING | Certyfikat PTPiREE przetwornicy DER jest powiązany warunkowo — rekord wykazu niesie notę o warunkach, którą trzeba potwierdzić przed warunkami przyłączenia | panel: `inspector`, tab: `katalog` |
-| `generator.harmonic_spectrum_missing` | GENERATORS | 4 | WARNING | Karta katalogowa przekształtnika nie niesie widma prądu harmonicznych — wkład źródła do analizy jakości energii V12.6 jest pominięty (podaj widmo ręcznie w oknie analizy albo uzupełnij kartę katalogową) | panel: `inspector`, tab: `katalog` |
+| `generator.harmonic_spectrum_missing` | GENERATORS | 4 | WARNING | Brak widma prądu harmonicznych przekształtnika — wkład źródła do analizy jakości energii V12.6 jest pominięty (podaj poprawne widmo ręcznie w oknie analizy; karta katalogowa typu nie niesie widma) | panel: `inspector`, tab: `katalog` |
 | `genset.fuel_type_missing` | GENERATORS | 4 | INFO | Agregat nie ma określonego rodzaju paliwa | panel: `inspector`, tab: `parametry`, focus: `fuel_type` |
 | `inverter.k_sc_default_forbidden` | GENERATORS | 4 | WARNING | Udział zwarciowy falownika (k_sc) nie ma miarodajnej deklaracji w karcie katalogowej konwertera — przyjęto wartość domyślną IEC 60909 (1,1) jako wynik ROBOCZY. Domyślka systemowa NIE JEST podstawą doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego — uzupełnij k_sc z karty producenta albo certyfikatu jednostki wytwórczej | panel: `inspector`, tab: `katalog` |
 | `conductor.fault_duration_missing` | PROTECTION | 2 | WARNING | Brak czasu wyłączenia zabezpieczenia — bez niego nie da się sprawdzić, czy przekrój wytrzyma zwarcie | panel: `analizy`, tab: `zabezpieczenia` |
@@ -195,10 +198,10 @@ Wszystkie **134** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 83 |
+| BLOCKER | 86 |
 | WARNING | 50 |
 | INFO | 1 |
-| **Razem** | **134** |
+| **Razem** | **137** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
@@ -206,10 +209,10 @@ Wszystkie **134** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | TOPOLOGY | 6 |
 | CATALOGS | 48 |
 | STATIONS | 13 |
-| GENERATORS | 22 |
+| GENERATORS | 25 |
 | PROTECTION | 9 |
 | ANALYSIS | 20 |
-| **Razem** | **134** |
+| **Razem** | **137** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

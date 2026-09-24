@@ -1304,7 +1304,11 @@ def stabilnosc_scena_slad() -> dict[str, Any]:
 # Karta HARNESS-RESZTA (kontynuacja, 2026-09-16) — sceny „siła-sieci",
 # „migotanie", „kompensacja(-wynik)", „walidacja"/„rozplyw"/„uwaga", „cieplna",
 # „arcflash" — realny bieg backendu (analiza interpretacyjna na przebiegu
-# short_circuit_sn/PF sieci złotej), zero recznie wpisanych liczb fizycznych.
+# short_circuit_sn/PF), zero recznie wpisanych liczb fizycznych. Sieć: złota dla
+# „kompensacja(-wynik)", „walidacja"/„rozplyw"/„uwaga", „cieplna", „arcflash";
+# „siła-sieci", „migotanie" (i kontekst siły sieci sceny „frt") — od karty AB-H0
+# własna sieć sceny analiz OZE (`_enm_sceny_oze_analiz`, stacja 15/0,8 kV z falownikiem
+# PV z karty), bo karta 0,8 kV nie może już siedzieć na szynie 0,4 kV sieci złotej.
 # ---------------------------------------------------------------------------
 
 RUN_ID_SCENY_OZE_ANALIZ = "run-sc-scena-oze-analiz"
@@ -1317,30 +1321,103 @@ RUN_ID_SCENY_ROZPLYW = "run-lf-scena-rozplyw"
 _UUID_SCENY_ROZPLYW = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ROZPLYW)
 
 
+#: Karta przekształtnika PV sceny analiz OZE — REALNA karta katalogu MV
+#: (`network_model/catalog/mv_converter_catalog.py`: Sn = 0,215 MVA, U_n = 0,8 kV,
+#: c = 0,30) — jedna z trzech pozycji katalogu z współczynnikiem migotania.
+_KARTA_PV_SCENY_OZE = "conv-pv-card-huawei-sun2000-215ktl"
+#: Transformator stacji sceny: 15/0,8 kV 2,5 MVA — strona nN zgodna z napięciem
+#: znamionowym falownika karty (tor tworzenia źródła odmawia niezgodności napięć).
+_KATALOG_TRAFO_SCENY_OZE = "tr-sn-nn-15-0p8-2p5mva-dyn11-inverter"
+
+
+def _enm_sceny_oze_analiz() -> dict[str, Any]:
+    """Sieć sceny analiz OZE budowana operacjami domenowymi (tą samą drogą, którą model
+    buduje projektant): GPZ 110/15 kV → kabel 500 m → stacja 15/0,8 kV 2,5 MVA →
+    falownik PV z karty `_KARTA_PV_SCENY_OZE` utworzony `add_converter_source`
+    (tabliczka z JEDNEJ materializacji katalogu: Sn, U_n, współczynnik migotania,
+    certyfikat PTPiREE)."""
+    enm = EnergyNetworkModel(header=ENMHeader(name="Scena analiz OZE")).model_dump(mode="json")
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "add_grid_source_sn",
+        {
+            "voltage_kv": 15.0,
+            "source_name": "GPZ 110/15",
+            "sk3_mva": 250.0,
+            "rx_ratio": 0.1,
+            "catalog_ref": _KATALOG_ZRODLA_KOORD,
+            "hv_voltage_kv": 110.0,
+            "transformer_sn_mva": 25.0,
+        },
+    )
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "continue_trunk_segment_sn",
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500,
+                "name": "Magistrala stacji PV",
+                "catalog_ref": _KATALOG_KABLA_KOORD,
+            }
+        },
+    )
+    koniec_magistrali = str(
+        [galaz for galaz in enm["branches"] if galaz.get("type") in ("cable", "line_overhead")][-1][
+            "to_bus_ref"
+        ]
+    )
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "append_station_on_endpoint",
+        {
+            "endpoint_bus_ref": koniec_magistrali,
+            "station": {"name": "Stacja PV", "station_type": "terminal"},
+            "nn_voltage_kv": 0.8,
+            "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "TRANSFORMATOROWE"}],
+            "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
+            "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_SCENY_OZE},
+            "nn_block": {"outgoing_feeders_nn_count": 1},
+        },
+    )
+    stacja = next(s for s in enm["substations"] if s.get("station_type") != "gpz")
+    szyna_nn = next(
+        b["ref_id"]
+        for b in enm["buses"]
+        if b["ref_id"] in stacja["bus_refs"] and abs(float(b["voltage_kv"]) - 0.8) < 1e-9
+    )
+    return _operacja_domenowa_sceny(
+        enm,
+        "add_converter_source",
+        {
+            "source_technology": "PV",
+            "connection_variant": "nn_side",
+            "station_ref": stacja["ref_id"],
+            "bus_nn_ref": szyna_nn,
+            "source_name": "Farma PV",
+            "catalog_ref": _KARTA_PV_SCENY_OZE,
+        },
+    )
+
+
 def _bieg_sceny_oze_analiz() -> Any:
-    """Bieg `short_circuit_sn` KOTWICY scen „siła-sieci"/„migotanie" — sieć
-    złota z `catalog_ref` DOPISANYM na `gen_pv` (`conv-pv-card-huawei-sun2000-
-    215ktl`, REALNA karta katalogu MV — `network_model/catalog/
-    mv_converter_catalog.py`, sn_mva=0.215, flicker_c=0.30), bo
-    `_installed_mva_for_generator`/`_resolve_converter`
-    (`application/analyses/grid_strength.py`) rozwiązują moc znamionowaą/
-    współczynnik migotania WYŁĄCZNIE przez `Generator.catalog_ref` — sieć
-    złota bazowa (`build_golden_enm`, bez tego pola) daje uczciwe „brak
-    danych" na KAŻDYM węźle (zmierzone bezpośrednio), co nie demonstruje
-    ekranu. Dopisanie jednego pola katalogowego na kopii ENM nie zmienia
-    topologii/fizyki reszty sieci — SCR/Pst policzone są REALNIE
-    (`build_grid_strength_view`/`build_migotanie_view`) z realnego Sk''
-    solvera i realnej mocy/współczynnika katalogu, nie wpisane ręcznie.
-    `id`/zegar przypięte jak `_bieg_sceny_zwarcia` (ta sama klasa
-    niedeterminizmu: `element.id`/`header.created_at` losowane przy
-    KAŻDYM `build_golden_enm()`)."""
+    """Bieg `short_circuit_sn` KOTWICY scen „siła-sieci"/„migotanie"/„frt" na sieci
+    `_enm_sceny_oze_analiz` (falownik PV z REALNEJ karty katalogu, utworzony torem
+    tworzenia źródła).
+
+    Karta AB-H0: `grid_strength`/`migotanie` czytają moc znamionową i współczynnik
+    migotania WYŁĄCZNIE z karty zmaterializowanej w elemencie. Scena dopisywała dotąd na
+    sieci złotej sam `catalog_ref` karty 0,8 kV do falownika na szynie 0,4 kV (liczby
+    brał skasowany odczyt zapasowy z katalogu statycznego, a moc zwarciową falownika
+    most liczył z |P| = 0,4 MW zamiast Sn = 0,215 MVA karty); przypisanie typu odmawia
+    dziś takiej pary tym samym werdyktem co tor tworzenia (`converter.voltage_mismatch`).
+    SCR/Pst policzone są REALNIE (`build_grid_strength_view`/`build_migotanie_view`) z
+    realnego Sk'' solvera i realnej materializacji katalogu, nie wpisane ręcznie.
+    `id`/zegar przypięte jak `_bieg_sceny_zwarcia`."""
     reset_canonical_runs()
     reset_enm_store()
     try:
-        enm = build_golden_enm()
-        for gen in enm.generators:
-            if gen.ref_id == "gen_pv":
-                gen.catalog_ref = "conv-pv-card-huawei-sun2000-215ktl"
+        enm = EnergyNetworkModel.model_validate(_enm_sceny_oze_analiz())
         _fiksuj_niedeterminizm_sceny_zwarcia(enm)
         with _zamrozona_tozsamosc_biegu(_UUID_SCENY_OZE_ANALIZ):
             set_enm(CASE_ID_HARNESSU, enm)

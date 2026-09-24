@@ -128,8 +128,13 @@ def _primary_class(branch: Any) -> str:
 
 
 def _gen_class(gen: Any) -> str:
-    ibr = {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
-    return "PowerElectronicsConnection" if gen.gen_type in ibr else "SynchronousMachine"
+    # Kanoniczny zbiór przekształtnikowy (karta AB-H0 Pakiet D) — ten sam, którym
+    # eksporter klasyfikuje PowerElectronicsConnection (`cgmes_exporter._IBR_TYPES`).
+    from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
+
+    if gen.gen_type in GEN_TYPES_PRZEKSZTALTNIKOWE:
+        return "PowerElectronicsConnection"
+    return "SynchronousMachine"
 
 
 # ---------------------------------------------------------------------------

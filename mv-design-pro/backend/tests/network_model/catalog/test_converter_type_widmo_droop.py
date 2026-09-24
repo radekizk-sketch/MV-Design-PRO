@@ -1,13 +1,19 @@
-"""`ConverterType` — widmo harmonicznych i statyzmy GFM (karta W2-C).
+"""`ConverterType` — statyzmy GFM (karta W2-C) i skasowane pole widma (karta AB-H0 §0.7.5).
 
-Trzy pola opcjonalne dodane do kontraktu katalogu przekształtników, ZERO wartości
-domyślnych: `harmonic_spectrum_percent`, `droop_p_f_percent`, `droop_q_u_percent`.
+Dwa pola opcjonalne kontraktu katalogu przekształtników, ZERO wartości domyślnych:
+`droop_p_f_percent`, `droop_q_u_percent`. Dawne pole `harmonic_spectrum_percent`
+(rząd → % prądu znamionowego, bez fazy, punktu pracy, dokumentu i nazwanej bazy) jest
+SKASOWANE: widmo urządzenia to osobny rekord katalogu — karta widmowa
+(`dziedziny.karta_widmowa.KartaWidmowa`, przestrzeń `KARTA_WIDMOWA`; reguły kształtu
+widma KAT-T-009/014/015/016 przypięte parami w `test_niezmienniki_obie_strony.py`).
 Klasa testu (reguła KLASA §2): {pole obecne poprawne · pole obecne niepoprawne ·
-pole nieobecne} × {to_dict/from_dict round-trip} × {cała opublikowana lista 168
-pozycji — PIN 0, do czasu OD-17 (karta z realną kartą producenta)}.
+pole nieobecne} × {to_dict/from_dict round-trip} × {cała opublikowana lista 176
+pozycji (pomiar 2026-09-23) — PIN 0, do czasu OD-17 (realna karta producenta)}.
 """
 
 from __future__ import annotations
+
+from dataclasses import fields
 
 import pytest
 from network_model.catalog.mv_converter_catalog import get_all_converter_types
@@ -34,11 +40,9 @@ def _typ(**nadpisania: object) -> ConverterType:
 
 def test_pola_domyslnie_zadne() -> None:
     typ = _typ()
-    assert typ.harmonic_spectrum_percent is None
     assert typ.droop_p_f_percent is None
     assert typ.droop_q_u_percent is None
     slownik = typ.to_dict()
-    assert "harmonic_spectrum_percent" not in slownik
     assert "droop_p_f_percent" not in slownik
     assert "droop_q_u_percent" not in slownik
 
@@ -48,23 +52,16 @@ def test_pola_domyslnie_zadne() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_widmo_i_droop_round_trip_to_dict_from_dict() -> None:
-    typ = _typ(
-        control_mode="GRID_FORMING",
-        harmonic_spectrum_percent={5: 4.5, 7: 2.1, 11: 1.0},
-        droop_p_f_percent=4.0,
-        droop_q_u_percent=3.0,
-    )
+def test_droop_round_trip_to_dict_from_dict() -> None:
+    typ = _typ(control_mode="GRID_FORMING", droop_p_f_percent=4.0, droop_q_u_percent=3.0)
     slownik = typ.to_dict()
-    # JSON nie zna kluczy całkowitych — to_dict stringuje klucze widma.
-    assert slownik["harmonic_spectrum_percent"] == {"5": 4.5, "7": 2.1, "11": 1.0}
     assert slownik["droop_p_f_percent"] == pytest.approx(4.0)
     assert slownik["droop_q_u_percent"] == pytest.approx(3.0)
 
     odtworzony = ConverterType.from_dict(slownik)
-    assert odtworzony.harmonic_spectrum_percent == {5: 4.5, 7: 2.1, 11: 1.0}
     assert odtworzony.droop_p_f_percent == pytest.approx(4.0)
     assert odtworzony.droop_q_u_percent == pytest.approx(3.0)
+    assert odtworzony.to_dict() == slownik
 
 
 def test_typy_bez_nowych_pol_sa_bajtowo_identyczne_po_round_tripie() -> None:
@@ -74,31 +71,27 @@ def test_typy_bez_nowych_pol_sa_bajtowo_identyczne_po_round_tripie() -> None:
     typ = _typ()
     odtworzony = ConverterType.from_dict(typ.to_dict())
     assert odtworzony.to_dict() == typ.to_dict()
-    assert odtworzony.harmonic_spectrum_percent is None
     assert odtworzony.droop_p_f_percent is None
     assert odtworzony.droop_q_u_percent is None
 
 
 # ---------------------------------------------------------------------------
-# Pole obecne niepoprawne — __post_init__ odrzuca jawnie
+# Pole widma skasowane z typu (karta AB-H0 §0.7.5)
 # ---------------------------------------------------------------------------
 
 
-def test_widmo_puste_jest_odrzucone() -> None:
-    with pytest.raises(ValueError, match="nie moze byc puste"):
-        _typ(harmonic_spectrum_percent={})
+def test_pole_widma_skasowane_z_kontraktu_typu() -> None:
+    """Widmo urządzenia nie jest polem typu: konstruktor nie zna pola, a `to_dict`
+    żadnej pozycji go nie niesie (widmo = karta widmowa, osobny rekord)."""
+    assert "harmonic_spectrum_percent" not in {pole.name for pole in fields(ConverterType)}
+    with pytest.raises(TypeError, match="harmonic_spectrum_percent"):
+        _typ(harmonic_spectrum_percent={5: 3.0})
+    assert "harmonic_spectrum_percent" not in _typ().to_dict()
 
 
-@pytest.mark.parametrize("rzad", [1, 0, -5, 51, 100])
-def test_widmo_z_rzedem_poza_2_50_jest_odrzucone(rzad: int) -> None:
-    with pytest.raises(ValueError, match="2..50"):
-        _typ(harmonic_spectrum_percent={rzad: 3.0})
-
-
-@pytest.mark.parametrize("procent", [-0.1, 100.1, 250.0])
-def test_widmo_z_procentem_poza_0_100_jest_odrzucone(procent: float) -> None:
-    with pytest.raises(ValueError, match="0..100"):
-        _typ(harmonic_spectrum_percent={5: procent})
+# ---------------------------------------------------------------------------
+# Pole obecne niepoprawne — __post_init__ odrzuca jawnie
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("wartosc", [0.0, -1.0, -0.01])
@@ -119,22 +112,20 @@ def test_droop_q_u_niedodatni_jest_odrzucony(wartosc: float) -> None:
 
 
 def test_zadna_opublikowana_pozycja_katalogu_nie_ma_widma_ani_droopu() -> None:
-    """PIN 0: żaden z 168 opublikowanych typów przekształtników nie deklaruje
-    widma harmonicznych ani statyzmów GFM, bo REPO nie niesie żadnej realnej
-    karty producenta z tymi danymi (`ConverterType.harmonic_spectrum_percent`
-    docstring) — podanie liczby bez źródła byłoby dokładnie tą fabrykacją, którą
-    ta karta usuwa z `solver_input/v126_contracts.py`. Rośnie wyłącznie wtedy,
-    gdy do repo trafia policzalna karta producenta (karta OD-17) — zmiana tego
-    pinu bez takiego źródła jest naruszeniem tej samej reguły."""
+    """PIN 0: żaden ze 176 opublikowanych typów przekształtników (pomiar
+    `get_all_converter_types()` 2026-09-23) nie deklaruje statyzmów GFM ani nie niesie
+    skasowanego klucza widma, bo REPO nie ma żadnej realnej karty producenta z tymi
+    danymi — podanie liczby bez źródła byłoby fabrykacją, którą karta W2-C usunęła z
+    `solver_input/v126_contracts.py`. Rośnie wyłącznie wtedy, gdy do repo trafia
+    policzalna karta producenta (karta OD-17); widmo — wyłącznie jako karta widmowa
+    z wyciągiem dokumentu (`network_model/catalog/karty_widmowe/`)."""
     rekordy = get_all_converter_types()
-    assert (
-        len(rekordy) >= 100
-    ), "pomiar bazowy (168 na dzień karty W2-C) — spadek poniżej sugeruje inny katalog"
-    z_widmem = [r["id"] for r in rekordy if r["params"].get("harmonic_spectrum_percent")]
+    assert len(rekordy) == 176, "pomiar bazowy 2026-09-23 — zmiana liczby to inny katalog"
+    z_widmem = [r["id"] for r in rekordy if "harmonic_spectrum_percent" in r["params"]]
     z_droop = [
         r["id"]
         for r in rekordy
         if r["params"].get("droop_p_f_percent") or r["params"].get("droop_q_u_percent")
     ]
-    assert z_widmem == [], f"pozycje z widmem bez pokrycia źródłem: {z_widmem}"
+    assert z_widmem == [], f"pozycje ze skasowanym kluczem widma: {z_widmem}"
     assert z_droop == [], f"pozycje z droop bez pokrycia źródłem: {z_droop}"

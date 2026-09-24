@@ -16,11 +16,13 @@ Schema covers:
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
-from network_model.pochodne import mva_na_kva, mw_na_kw
+from domain.generator_validation import moc_czynna_jednostki_mw, moc_pozorna_wymagana_mva
+from network_model.pochodne import mva_na_kva
 
 
 class TemplateCategory(StrEnum):
@@ -369,53 +371,69 @@ def _opcja_transformatora_dla_wymaganej_mocy(
     return rated_options[-1][1] if rated_options else None
 
 
-def _der_catalog_for_power(der_spec: Any, p_mw_each: float) -> str | None:
-    """Domyślna pozycja katalogowa DER dobrana do mocy JEDNOSTKOWEJ szablonu —
-    dopasowanie DOKŁADNE mocy zakodowanej w `catalog_ref` (np. `conv-wind-
-    3mw-…`), w braku — najbliższe; brak parsowalnych tokenów ⇒ `None`.
+def _tabliczka_der(kind: str, catalog_ref: object) -> Mapping[str, Any] | None:
+    """Tabliczka pozycji katalogu DER z materializacji toru tworzenia źródła (decyzja
+    O-53: selektor i kontrola operacji czytają TĘ SAMĄ tabliczkę); `None` gdy brak refu
+    albo pozycja nie ma kompletnej tabliczki."""
+    if not isinstance(catalog_ref, str) or not catalog_ref.strip():
+        return None
+    from enm.domain_operations_v2 import tabliczka_zrodla_przeksztaltnikowego
 
-    Promowane z `apply.py` (2026-09, przegląd V12T-016) — funkcja jest CZYSTA
-    (bez zależności od `overrides`/kontekstu żądania), więc mieszka w schema.py
-    jako współdzielony prymityw dla obu ścieżek (wyświetlanie i materializacja)."""
+    return tabliczka_zrodla_przeksztaltnikowego(kind, catalog_ref)
+
+
+def _der_catalog_for_power(der_spec: Any, p_mw_each: float) -> str | None:
+    """Domyślna pozycja katalogowa DER dobrana do mocy JEDNOSTKOWEJ szablonu.
+
+    Decyzja O-53 (predykaty parami): moc jednostki pozycji to P_max,jedn z jej
+    tabliczki (`domain.generator_validation.moc_czynna_jednostki_mw`) — ta sama
+    wielkość, z którą tor tworzenia porównuje nastawę (`converter.setpoint_above_rating`).
+    Dawny odczyt tokenu mocy z nazwy pozycji (`-3mw`) nie widział pozycji nazwanych
+    `-0p5mw-`/`-50kw-` — selektor zwracał wtedy pozycję domyślną i operacja odmawiała.
+    Kolejność: dokładne dopasowanie mocy, inaczej NAJMNIEJSZA pozycja, która tę moc
+    wyda, inaczej największa (nastawa zostanie nazwana odmową przy materializacji);
+    brak pozycji z tabliczką ⇒ `None`.
+
+    Promowane z `apply.py` (2026-09, przegląd V12T-016) — współdzielony prymityw dla
+    obu ścieżek (wyświetlanie i materializacja)."""
     options = getattr(der_spec, "catalog_options", ()) or ()
+    kind = str(getattr(der_spec, "kind", ""))
     parsed: list[tuple[float, str]] = []
     for option in options:
         ref = getattr(option, "catalog_ref", None)
-        if not isinstance(ref, str):
+        tabliczka = _tabliczka_der(kind, ref)
+        if tabliczka is None or not isinstance(ref, str):
             continue
-        match = re.search(r"-(\d+(?:\.\d+)?)mw", ref.lower())
-        if match is not None:
-            parsed.append((float(match.group(1)), ref))
+        moc_jednostki = moc_czynna_jednostki_mw(kind, tabliczka)
+        if moc_jednostki is not None:
+            parsed.append((moc_jednostki, ref))
     if not parsed:
         return None
     exact = [ref for power, ref in parsed if abs(power - p_mw_each) < 1e-9]
     if exact:
         return exact[0]
-    return min(parsed, key=lambda item: (abs(item[0] - p_mw_each), item[0]))[1]
+    wystarczajace = [item for item in parsed if item[0] >= p_mw_each - 1e-9]
+    if wystarczajace:
+        return min(wystarczajace, key=lambda item: (item[0], item[1]))[1]
+    return max(parsed, key=lambda item: (item[0], item[1]))[1]
 
 
-def _converter_apparent_power_mva(catalog_ref: object) -> float | None:
-    """Katalogowa moc pozorna jednostki przekształtnikowej [MVA] — z REALNEGO
-    rekordu katalogu (`ConverterType.sn_mva`); `None` gdy brak refu/rekordu.
-
-    Promowane z `apply.py` (2026-09, przegląd V12T-016) — jak
-    `_der_catalog_for_power`, czysty prymityw bez zależności od kontekstu
-    żądania."""
-    if not isinstance(catalog_ref, str) or not catalog_ref.strip():
-        return None
-    try:
-        from network_model.catalog import get_default_mv_catalog
-    except ImportError:
-        return None
-    item = get_default_mv_catalog().get_converter_type(catalog_ref)
-    value = getattr(item, "sn_mva", None) if item is not None else None
-    if value is None:
-        return None
-    try:
-        parsed = float(value)
-    except (TypeError, ValueError):
-        return None
-    return parsed if parsed > 0 else None
+def _moc_wymagana_jednostki_der_mva(
+    kind: str, catalog_ref: object, p_mw_each: float
+) -> float | None:
+    """Moc wymagana JEDNEJ jednostki DER szablonu [MVA] — `max(S_n,jedn, |P|/cosφ)`
+    z `domain.generator_validation.moc_pozorna_wymagana_mva` na tabliczce pozycji
+    (n = 1: szablon tworzy każdą jednostkę osobnym źródłem; cosφ z karty, bo szablon
+    nie podaje jawnego; bez współczynnika jednoczesności — dobór na jednoczesną pracę
+    wszystkich jednostek). Pozycja bez tabliczki — sam człon nastawy |P|. Ta sama
+    reguła, którą tor tworzenia sprawdza z transformatorem (decyzja O-53)."""
+    return moc_pozorna_wymagana_mva(
+        technologia=kind,
+        tabliczka=_tabliczka_der(kind, catalog_ref) or {},
+        liczba_jednostek=1,
+        moc_czynna_mw=p_mw_each,
+        cos_phi=None,
+    )
 
 
 def _wymagana_moc_der_domyslna_kva(template: StationTemplate) -> int | None:
@@ -430,16 +448,15 @@ def _wymagana_moc_der_domyslna_kva(template: StationTemplate) -> int | None:
     der_total = template.schema.der_total_count.default
     if der_total <= 0:
         return None
-    total_mw = 0.0
+    total_mva = 0.0
     for i in range(der_total):
         spec = der_specs[i % len(der_specs)]
         p_mw_each = spec.default_p_mw_each
         catalog_ref = _der_catalog_for_power(spec, p_mw_each)
-        apparent_mva = _converter_apparent_power_mva(catalog_ref)
-        total_mw += apparent_mva if apparent_mva is not None else p_mw_each
-    if total_mw <= 0:
+        total_mva += _moc_wymagana_jednostki_der_mva(spec.kind, catalog_ref, p_mw_each) or 0.0
+    if total_mva <= 0:
         return None
-    return int(round(mw_na_kw(total_mw)))
+    return int(round(mva_na_kva(total_mva)))
 
 
 def resolve_template_default_transformer_choice(template: StationTemplate) -> CatalogChoice | None:

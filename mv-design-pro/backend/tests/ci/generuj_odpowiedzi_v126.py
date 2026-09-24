@@ -172,6 +172,9 @@ def model_wejsciowy() -> V126AcademicInput:
                 source_ref="pv/3c8e2a94",
                 base_current_a=80.0,
                 spectrum_percent={5: 3.0, 7: 2.0, 11: 1.0},
+                # Karta AB-H0: proweniencja widma jest polem WYMAGANYM (bez domyślki
+                # „KATALOG”) — wejście solvera zbudowane ręcznie w teście to widmo RĘCZNE.
+                spectrum_provenance="RECZNE",
             )
         ],
         parameters={

@@ -18,7 +18,12 @@ rosnac szybciej niz pokrycie.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import tempfile
 from collections.abc import Callable
+from pathlib import Path
+from typing import Any
 
 import pytest
 from network_model.catalog.audit2_catalogs import (
@@ -26,6 +31,7 @@ from network_model.catalog.audit2_catalogs import (
     HvFusePasmoTcc,
     PfCurveItem,
 )
+from network_model.catalog.karty_widmowe import karta_widmowa_z_rekordu, wczytaj_karty_statyczne
 from network_model.catalog.lv_ampacity_iec60364_5_52 import WpisNormyNN
 from network_model.catalog.lv_disconnection_times_iec60364_4_41 import WpisCzasuWylaczenia
 from network_model.catalog.niezmienniki_katalogu import (
@@ -39,13 +45,14 @@ from network_model.catalog.types import (
     ConverterKind,
     ConverterType,
     LVFuseLinkType,
-    _harmonic_spectrum_from_raw,
     _normalize_catalog_status,
     _normalize_verification_status,
     _validate_float_range,
     _validate_katalogowy_k_sc,
     _validate_pq_curve,
 )
+
+from tests.dziedziny import fabryki as f
 
 # ---------------------------------------------------------------------------
 # Wytworniki rekordow syntetycznych
@@ -124,6 +131,56 @@ def _krzywa_pf(**nadpisania: object) -> PfCurveItem:
     return PfCurveItem(**parametry)  # type: ignore[arg-type]
 
 
+def _rekord_karty(**model: object) -> dict[str, Any]:
+    """Syntetyczny rekord karty widmowej (postac JSON) z nadpisaniami PIERWSZEGO modelu."""
+    rekord = f.karta().to_dict()
+    rekord["modele"][0].update(model)
+    return rekord
+
+
+def _karta(**model: object) -> object:
+    return karta_widmowa_z_rekordu(_rekord_karty(**model))
+
+
+def _karta_z(**karta: object) -> object:
+    rekord = _rekord_karty()
+    rekord.update(karta)
+    return karta_widmowa_z_rekordu(rekord)
+
+
+def _json(obiekt: Any) -> Any:
+    return obiekt.model_dump(mode="json")
+
+
+def _skladowe(*f_hz: float, wartosc: float = 3.0, faza: float | None = None) -> list[Any]:
+    return [_json(f.skladowa(x, wartosc, faza=faza)) for x in f_hz]
+
+
+def _supraharmoniczny(**model: object) -> object:
+    return _karta(
+        dziedzina="SUPRAHARMONIC_FREQUENCY_DOMAIN",
+        zakres_czestotliwosci={"f_min_hz": 2000.0, "f_max_hz": 150000.0},
+        skladowe=_skladowe(16000.0),
+        **model,
+    )
+
+
+def _karty_statyczne(z_wyciagiem: bool) -> object:
+    """Katalog kart statycznych w katalogu tymczasowym: karta z wyciagiem albo bez."""
+    with tempfile.TemporaryDirectory() as katalog:
+        sciezka = Path(katalog)
+        wyciag = sciezka / "raport.txt"
+        wyciag.write_text("wyciag raportu badan", encoding="utf-8")
+        plik: dict[str, Any] = {"karta": _rekord_karty()}
+        if z_wyciagiem:
+            plik["wyciag_dokumentu"] = {
+                "plik": "raport.txt",
+                "sha256": hashlib.sha256(wyciag.read_bytes()).hexdigest(),
+            }
+        (sciezka / "karta-1.json").write_text(json.dumps(plik), encoding="utf-8")
+        return wczytaj_karty_statyczne(sciezka)
+
+
 # ---------------------------------------------------------------------------
 # Tabela przypadkow: kod -> (rekord NIEPOPRAWNY, rekord NIETYPOWY ale LEGALNY)
 # ---------------------------------------------------------------------------
@@ -175,9 +232,23 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
         lambda: _validate_pq_curve(((1.0, -0.3, 0.3), (0.5, -0.3, 0.3))),
         lambda: _validate_pq_curve(((0.0, -0.3, 0.3), (0.001, -0.3, 0.3))),
     ),
+    # --- karta widmowa (rekord ``KartaWidmowa``; kody z ``karty_widmowe``) ----
     "KAT-T-009": (
-        lambda: _harmonic_spectrum_from_raw([(5, 3.0)]),
-        lambda: (_harmonic_spectrum_from_raw(None), _harmonic_spectrum_from_raw({"5": 3.0})),
+        # Rownowaznik Nortona bez admitancji wewnetrznej.
+        lambda: _karta(rodzaj="NORTON_EQUIVALENT"),
+        # Norton z admitancja i model pasywny bez zrodla (sama impedancja) — oba legalne.
+        lambda: (
+            _karta(
+                rodzaj="NORTON_EQUIVALENT",
+                admitancja=[_json(p) for p in f.admitancja(250.0, 350.0)],
+            ),
+            _karta(
+                rodzaj="FREQUENCY_DEPENDENT_EQUIVALENT",
+                skladowe=[],
+                odniesienie_amplitudy=None,
+                impedancja=[_json(p) for p in f.impedancja(250.0, 350.0)],
+            ),
+        ),
     ),
     "KAT-T-010": (
         lambda: _validate_float_range("ir_range", (1.0, 0.4)),
@@ -201,18 +272,30 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
         lambda: (_konwerter(droop_q_u_percent=0.5), _konwerter(droop_q_u_percent=40.0)),
     ),
     "KAT-T-014": (
-        lambda: _konwerter(harmonic_spectrum_percent={}),
-        lambda: _konwerter(harmonic_spectrum_percent={5: 0.0}),
+        lambda: _karta(skladowe=[]),
+        # Widmo jednoskladnikowe o amplitudzie zerowej (skladowa zmierzona i rowna zero).
+        lambda: _karta(skladowe=_skladowe(250.0, wartosc=0.0)),
     ),
     "KAT-T-015": (
-        lambda: _konwerter(harmonic_spectrum_percent={1: 1.0}),
-        # Skraje zakresu (2 i 50) MUSZA przejsc — inaczej granica jest o jeden za waska.
-        lambda: _konwerter(harmonic_spectrum_percent={2: 1.0, 50: 0.1}),
+        # Skladowa poza zakresem modelu [0; 2500] Hz.
+        lambda: _karta(skladowe=_skladowe(2550.0)),
+        # Skraj zakresu (2500 Hz przy zakresie domknietym) i interharmoniczna MUSZA przejsc.
+        lambda: _karta(skladowe=_skladowe(175.0, 2500.0)),
     ),
     "KAT-T-016": (
-        lambda: _konwerter(harmonic_spectrum_percent={5: 100.1}),
+        # Rekord SUROWY (bez fabryki): bramka ma zadzialac na danych z pliku karty.
+        lambda: _karta(
+            skladowe=[
+                {
+                    "f_hz": 250.0,
+                    "amplituda": {"wartosc": 100.1, "jednostka": "%"},
+                    "faza_deg": None,
+                    "faza_nieznana_powod_pl": "faza nieznana — karta nie podaje",
+                }
+            ]
+        ),
         # Skraje 0 % i 100 % sa legalne.
-        lambda: _konwerter(harmonic_spectrum_percent={5: 0.0, 7: 100.0}),
+        lambda: _karta(skladowe=[*_skladowe(250.0, wartosc=0.0), *_skladowe(350.0, wartosc=100.0)]),
     ),
     "KAT-T-017": (
         lambda: _konwerter(p_installed_mw=1.0, pn_ac_mw=2.0).validate_power_hierarchy(),
@@ -320,6 +403,68 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
     "KAT-T-033": (
         lambda: WpisNormyNN(wartosc=0.8, podstawa=""),
         lambda: WpisNormyNN(wartosc=0.8, podstawa="IEC 60364-5-52 tab. B.52.14"),
+    ),
+    # --- karta widmowa: reguly kontraktu ``dziedziny`` -----------------------
+    "KAT-T-034": (
+        lambda: _karta_z(modele=[_rekord_karty()["modele"][0]] * 2),
+        lambda: _karta_z(
+            modele=[_json(f.model(ident="m-1")), _json(f.model(ident="m-2", wersja="2"))]
+        ),
+    ),
+    "KAT-T-035": (
+        # Certyfikat ZGODNOSCI nie jest dowodem widma urzadzenia.
+        lambda: _karta_z(
+            dowody=[_json(f.dowod("CERTYFIKAT_ZGODNOSCI", ("HARMONIC_FREQUENCY_DOMAIN",)))]
+        ),
+        # Raport badan pokrywajacy obie dziedziny czestotliwosci — legalny.
+        lambda: _karta_z(
+            dowody=[
+                _json(
+                    f.dowod(
+                        "RAPORT_BADAN",
+                        ("SUPRAHARMONIC_FREQUENCY_DOMAIN", "HARMONIC_FREQUENCY_DOMAIN"),
+                    )
+                )
+            ]
+        ),
+    ),
+    "KAT-T-036": (
+        # Norma nie jest zrodlem widma URZADZENIA (limit ≠ emisja).
+        lambda: _karta(podstawa=_json(f.podstawa(rodzaj="NORMA"))),
+        # Zalozenie projektowe inzyniera ze stanem NIEUSTALONE — legalne, jawnie oznaczone.
+        lambda: _karta(
+            podstawa=_json(f.podstawa(rodzaj="ZALOZENIE_PROJEKTOWE", status="NIEUSTALONE"))
+        ),
+    ),
+    "KAT-T-037": (
+        # Faza podana bez wielkosci odniesienia fazy.
+        lambda: _karta(skladowe=_skladowe(250.0, faza=30.0)),
+        # Faza z odniesieniem; faza ujemna i 0° sa legalne.
+        lambda: _karta(
+            skladowe=[*_skladowe(250.0, faza=-150.0), *_skladowe(350.0, faza=0.0)],
+            odniesienie_fazy=_json(f.odniesienie_fazy()),
+        ),
+    ),
+    "KAT-T-038": (
+        lambda: _karta(rodzaj="MEASURED_SPECTRUM"),
+        lambda: _karta(rodzaj="MEASURED_SPECTRUM", pomiar=_json(f.pomiar_kompletny(rbw=False))),
+    ),
+    "KAT-T-039": (
+        # Czestotliwosc przelaczania w modelu harmonicznym (2–50 rzad).
+        lambda: _karta(czestotliwosc_przelaczania_hz=16000.0),
+        lambda: _supraharmoniczny(czestotliwosc_przelaczania_hz=16000.0),
+    ),
+    "KAT-T-040": (
+        lambda: _karta(
+            punkt_pracy=_json(f.punkt_pracy())
+            | {"p": {**_json(f.punkt_pracy())["p"], "dolna": 2.0}}
+        ),
+        # Przedzial zdegenerowany domkniety z obu stron (punkt pomiaru) — legalny.
+        lambda: _karta(punkt_pracy=_json(f.punkt_pracy(p=(0.5, 0.5)))),
+    ),
+    "KAT-T-041": (
+        lambda: _karty_statyczne(z_wyciagiem=False),
+        lambda: _karty_statyczne(z_wyciagiem=True),
     ),
 }
 

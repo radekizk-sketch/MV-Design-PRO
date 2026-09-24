@@ -360,12 +360,6 @@ class TestHarnessDaneScen:
         eliminuje ryzyko dwoch niezaleznych predykatow, ktore "dzis sie zgadzaja"
         (KLASA NIE INSTANCJA #3).
         """
-        # Import `enm.domain_operations` PRZED `domain_operations_v2` — ten drugi
-        # modul importowany BEZPOSREDNIO jako pierwszy w procesie konczy sie
-        # `ImportError` (czesciowo zainicjowany modul, cykl domain_operations.py:
-        # `from .domain_operations_v2 import ALL_V2_HANDLERS`). Ten sam porzadek
-        # importow co `tests/enm/test_set_der_catalog_bindings.py`.
-        import enm.domain_operations  # noqa: F401
         from enm.domain_operations_v2 import _nieznane_referencje_katalogowe
 
         source = _tekst(_HARNESS_TS)

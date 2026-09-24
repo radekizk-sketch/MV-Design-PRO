@@ -1,26 +1,26 @@
 {
-  "input_hash": "62c6693636084cd68a316340d1cd6b655271526c64baae32c3a4a9641853a3a6",
+  "input_hash": "8a735c79e982e794f86e28a20916d8b344194ef54c65d036f505c74547a4cef0",
   "kontekst_sily_sieci": {
-    "bus_ref": "bus_nn",
+    "bus_ref": "nn/c4b0f7648d5d23031f9bac28ea7120a5/feeder_bus",
     "is_weak": false,
     "missing_data": [],
     "modules": [
       {
         "name": "Farma PV",
-        "ref": "gen_pv",
+        "ref": "pv/e301ee69be096048e5a61a4d6dba4c14/converter",
         "sn_mva": 0.215
       }
     ],
-    "nominal_kv": 0.4,
+    "nominal_kv": 0.8,
     "s_installed_mva": 0.215,
-    "s_sc_mva": 14.6134,
-    "scr": 67.9692,
+    "s_sc_mva": 37.9713,
+    "scr": 176.6107,
     "verdict": "mocna",
     "white_box": [
       {
         "formula_latex": "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
-        "result_pl": "SCR = 67.9692 (–)",
-        "substitution_pl": "SCR = 14.6134 MVA / 0.215 MVA",
+        "result_pl": "SCR = 176.6107 (–)",
+        "substitution_pl": "SCR = 37.9713 MVA / 0.215 MVA",
         "symbol": "SCR"
       },
       {
@@ -30,7 +30,7 @@
         "symbol": "werdykt"
       }
     ],
-    "why_pl": "SCR = 67.9692 ≥ 3.0 — sieć mocna w węźle; klasyczne założenia pracy źródła falownikowego pozostają ważne."
+    "why_pl": "SCR = 176.6107 ≥ 3.0 — sieć mocna w węźle; klasyczne założenia pracy źródła falownikowego pozostają ważne."
   },
   "kontekst_sily_sieci_powod_pl": null,
   "liczba_zapadow": 2,

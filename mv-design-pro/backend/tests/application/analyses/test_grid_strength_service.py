@@ -169,8 +169,12 @@ def test_synchronous_generator_excluded_from_entries() -> None:
     assert view["entries"] == []
 
 
-def test_installed_power_resolved_from_converter_catalog() -> None:
-    # Brak materialized_params → moc z katalogu przekształtnika (pv_inv_sma_2500).
+def test_installed_power_is_not_read_from_static_catalog() -> None:
+    # Przepisany w karcie AB-H0 Pakiet D (dawniej: „brak materialized_params → moc z
+    # katalogu przekształtnika"). Moc zainstalowana pochodzi WYŁĄCZNIE z karty
+    # zmaterializowanej w elemencie migawki przebiegu; sam `catalog_ref` nie daje liczby
+    # z katalogu STATYCZNEGO (omijał materializację i katalog projektu modelu) — węzeł
+    # zostaje „brak danych", jak każdy IBG bez mocy znamionowej.
     gen = {
         "ref_id": "g1",
         "bus_ref": "b1",
@@ -185,7 +189,21 @@ def test_installed_power_resolved_from_converter_catalog() -> None:
         graph_nodes={"n1": {"element_id": "b1"}},
     )
     view = build_grid_strength_view(run)
-    assert view["entries"][0]["s_installed_mva"] == pytest.approx(2.75)
+    assert view["entries"][0]["s_installed_mva"] is None
+
+
+@pytest.mark.parametrize(
+    "gen_type", ["pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"]
+)
+def test_every_converter_gen_type_is_ibg(gen_type: str) -> None:
+    # Iloczyn: każdy rodzaj kanonicznego zbioru przekształtnikowego wchodzi do SCR.
+    run = _sc_run(
+        generators=[_ibg("g1", "b1", sn_mva=2.0, gen_type=gen_type)],
+        buses=[_bus("b1")],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "b1"}},
+    )
+    assert build_grid_strength_view(run)["entries"][0]["s_installed_mva"] == pytest.approx(2.0)
 
 
 def test_ibg_bus_without_installed_power_is_no_data() -> None:

@@ -47,12 +47,16 @@ class TestCanonicalOps:
     """Kompletność i spójność operacji kanonicznych."""
 
     def test_canonical_ops_minimum_count(self):
-        from enm.domain_operations import CANONICAL_OPS
+        # Pełny zbiór operacji systemu żyje w rejestrze (karta AB-H0 P10: rozcięcie cyklu
+        # domain_operations ↔ domain_operations_v2), nie w jednym z plików operacji.
+        from enm.rejestr_operacji import OPERACJE_KANONICZNE
 
-        assert len(CANONICAL_OPS) >= 16, f"Expected >= 16 canonical ops, got {len(CANONICAL_OPS)}"
+        assert (
+            len(OPERACJE_KANONICZNE) >= 16
+        ), f"Expected >= 16 canonical ops, got {len(OPERACJE_KANONICZNE)}"
 
     def test_legacy_aliases_rejected(self):
-        from enm.domain_operations import CANONICAL_OPS
+        from enm.rejestr_operacji import OPERACJE_KANONICZNE
 
         legacy_aliases = {
             "add_trunk_segment_sn",
@@ -63,13 +67,17 @@ class TestCanonicalOps:
             "add_nn_feeder",
         }
         for alias in legacy_aliases:
-            assert alias not in CANONICAL_OPS
+            assert alias not in OPERACJE_KANONICZNE
 
     def test_all_handlers_registered(self):
-        from enm.domain_operations import _HANDLERS, CANONICAL_OPS
+        # Dawniej `assert op in _HANDLERS or True` — asercja zawsze prawdziwa (tautologia),
+        # więc test niczego nie pilnował. Intencja: każda operacja kanoniczna ma handler
+        # w JEDNYM rejestrze, a rejestr nie ma handlerów spoza listy kanonicznej.
+        from enm.rejestr_operacji import HANDLERY, OPERACJE_KANONICZNE
 
-        for op in CANONICAL_OPS:
-            assert op in _HANDLERS or True, f"Handler missing for canonical op: {op}"
+        assert set(OPERACJE_KANONICZNE) == set(HANDLERY), sorted(
+            set(OPERACJE_KANONICZNE) ^ set(HANDLERY)
+        )
 
 
 class TestDomainEvents:

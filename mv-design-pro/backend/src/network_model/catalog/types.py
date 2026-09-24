@@ -93,6 +93,13 @@ class CatalogNamespace(Enum):
     #: "zarezerwowane dla generatora synchronicznego (osobna operacja)" —
     #: ta operacja (`add_generator_sn`) i ten namespace domykają tę lukę.
     GENERATOR_SN = "GENERATOR_SN"
+    #: Karta AB-H0 §0.7: karta widmowa urządzenia (`dziedziny.karta_widmowa.KartaWidmowa`)
+    #: — OSOBNY rekord katalogu (wiele raportów badań na typ, dowód per dokument),
+    #: wskazujący typ przekształtnika przez `urzadzenie_ref`. Katalog statyczny niesie
+    #: kartę WYŁĄCZNIE z wyciągiem dokumentu producenta przypiętym SHA-256
+    #: (`network_model/catalog/karty_widmowe/`); karta projektu żyje w modelu
+    #: (`EnergyNetworkModel.katalog_projektu.karty_widmowe`).
+    KARTA_WIDMOWA = "KARTA_WIDMOWA"
 
 
 # =============================================================================
@@ -371,6 +378,151 @@ def _card_schema_kwargs(data: dict[str, Any]) -> dict[str, Any]:
 
 
 # =============================================================================
+# POLA KARTY PRZEKSZTALTNIKA NIESIONE PRZEZ PROJEKCJE PV/BESS (karta AB-H0 §0.8)
+# =============================================================================
+
+#: Pola karty `ConverterType` należące do sekcji modelu fundamental (regulacja U/f,
+#: hierarchia mocy, krzywa P-Q, współczynnik migotania), short_circuit (model udziału
+#: zwarciowego poza `k_sc`), harmonic (pasma regulatorów i filtr — parametry modelu
+#: Z_conv(f)), dynamic (statyzmy GFM) oraz proweniencja pól karty — niesione przez
+#: projekcje `ZRODLO_NN_PV`/`ZRODLO_NN_BESS` (`repository._derive_pv_records`,
+#: `_derive_bess_records`) i materializowane do elementu WYŁĄCZNIE, gdy pozycja niesie
+#: wartość (`MaterializationContract.pola_opcjonalne`). Zanim ta lista powstała,
+#: projekcje GUBIŁY te pola: generator PV/BESS utworzony z karty referencyjnej nie
+#: miał `flicker_c` ani pasm regulatorów, choć ten sam rekord w przestrzeni
+#: `CONVERTER` je niósł (klasa: sekcje modelu z katalogu do ENM — jedna materializacja
+#: niezależna od przestrzeni katalogu).
+#:
+#: ŚWIADOMIE POZA LISTĄ: `q_absorbing` i `lfsm_allow_increase` — flagi `bool` z
+#: domyślną wartością `False` w `ConverterType`, więc projekcja nie odróżni „nie
+#: zadeklarowano" od „zadeklarowano fałsz"; kwalifikują wyłącznie charakterystyki
+#: Q(U)/LFSM, których nie deklaruje żadna pozycja katalogu. `qmin_mvar`/`qmax_mvar`
+#: (PV) i `control_mode`/`grid_code`/`cosphi_*` (BESS) — kontrakty projekcji opisują
+#: zdolność bierną inaczej (`scripts/katalog_parytet_pol_guard.py::NIENOSZONE`), a ich
+#: przeniesienie zmieniłoby tabliczkę 66 generatorów PV i 56 BESS (decyzja poza tą listą).
+POLA_KARTY_PROJEKCJI: tuple[str, ...] = (
+    # fundamental
+    "cosphi",
+    "cosphi_p_points",
+    "qu_deadband_low_pu",
+    "qu_deadband_high_pu",
+    "qu_slope_pu_per_pu",
+    "qu_q_min_mvar",
+    "qu_q_max_mvar",
+    "lfsm_droop_pct",
+    "lfsm_deadband_hz",
+    "f0_hz",
+    "p_installed_mw",
+    "pn_ac_mw",
+    "p_connection_mw",
+    "p_achievable_mw",
+    "pq_curve",
+    "flicker_c",
+    # short_circuit (poza `k_sc`, który jest osobnym polem projekcji)
+    "sc_model",
+    "sc_pq_split",
+    "sc_transient_k",
+    "sc_sustained_k",
+    # harmonic — parametry modelu Z_conv(f)
+    "current_loop_bandwidth_hz",
+    "voltage_loop_bandwidth_hz",
+    "pll_bandwidth_hz",
+    "control_delay_ms",
+    "filter_l_pu",
+    "filter_r_pu",
+    # dynamic
+    "droop_p_f_percent",
+    "droop_q_u_percent",
+    # proweniencja pól karty
+    "card_field_status",
+)
+
+#: Pola karty materializowane do elementu WYŁĄCZNIE, gdy obecne — JEDNO źródło dla
+#: kontraktów `ZRODLO_NN_PV`/`ZRODLO_NN_BESS`/`CONVERTER` i dla obu torów tworzenia
+#: źródła (atomowy `add_converter_source` i stacyjny `_materialize_nn_source`).
+#: `dynamic_profile_id` = profil dynamiczny wskazany przez typ (sekcja dynamic).
+POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE: tuple[str, ...] = (
+    "dynamic_profile_id",
+    *POLA_KARTY_PROJEKCJI,
+)
+
+
+def pola_karty_obecne(zrodlo: Any) -> dict[str, Any]:
+    """Pola `POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE` o wartości różnej od `None` —
+    z mapy (parametry zmaterializowane) albo z obiektu typu katalogowego."""
+    wynik: dict[str, Any] = {}
+    for nazwa in POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE:
+        wartosc = zrodlo.get(nazwa) if isinstance(zrodlo, dict) else getattr(zrodlo, nazwa, None)
+        if wartosc is not None:
+            wynik[nazwa] = wartosc
+    return wynik
+
+
+def _pola_karty_projekcji_do_slownika(zrodlo: Any) -> dict[str, Any]:
+    """Serializacja pól `POLA_KARTY_PROJEKCJI` — WYŁĄCZNIE obecnych (pozycja bez tych
+    danych zachowuje `to_dict` bajtowo identyczny)."""
+    wynik: dict[str, Any] = {}
+    for nazwa in POLA_KARTY_PROJEKCJI:
+        wartosc = getattr(zrodlo, nazwa)
+        if wartosc is None:
+            continue
+        if nazwa == "pq_curve":
+            wynik[nazwa] = _pq_curve_to_list(wartosc)
+        elif nazwa == "cosphi_p_points":
+            wynik[nazwa] = [[float(x), float(y)] for x, y in wartosc]
+        else:
+            wynik[nazwa] = wartosc
+    return wynik
+
+
+def _pola_karty_projekcji_kwargs(data: dict[str, Any]) -> dict[str, Any]:
+    """Odczyt pól `POLA_KARTY_PROJEKCJI` (round-trip `_pola_karty_projekcji_do_slownika`)."""
+    wynik: dict[str, Any] = {}
+    for nazwa in POLA_KARTY_PROJEKCJI:
+        wartosc = data.get(nazwa)
+        if wartosc is None:
+            wynik[nazwa] = None
+        elif nazwa == "pq_curve":
+            wynik[nazwa] = _pq_curve_from_raw(wartosc)
+        elif nazwa == "cosphi_p_points":
+            wynik[nazwa] = tuple((float(x), float(y)) for x, y in wartosc)
+        elif nazwa == "sc_model":
+            wynik[nazwa] = str(wartosc)
+        elif nazwa == "card_field_status":
+            wynik[nazwa] = {str(k): dict(v) for k, v in wartosc.items()}
+        else:
+            wynik[nazwa] = float(wartosc)
+    return wynik
+
+
+def _waliduj_pola_karty_przeksztaltnika(obiekt: Any, *, kontekst: str) -> None:
+    """Walidacja pól karty wspólnych dla `ConverterType` i projekcji PV/BESS — JEDNO
+    ciało reguł (krzywa P-Q KAT-T-004…008, `flicker_c` KAT-T-011, statyzmy KAT-T-012/013,
+    `k_sc` KAT-T-003): projekcja niosąca pole karty waliduje je tak samo jak typ źródłowy."""
+    if obiekt.pq_curve is not None:
+        _validate_pq_curve(obiekt.pq_curve)
+    if obiekt.flicker_c is not None and obiekt.flicker_c <= 0:
+        odmowa_twarda(
+            "KAT-T-011",
+            "Wspolczynnik emisji migotania flicker_c musi byc > 0, "
+            f"otrzymano flicker_c={obiekt.flicker_c} ({kontekst}).",
+        )
+    _validate_katalogowy_k_sc(obiekt.k_sc, kontekst=kontekst)
+    if obiekt.droop_p_f_percent is not None and obiekt.droop_p_f_percent <= 0:
+        odmowa_twarda(
+            "KAT-T-012",
+            "Statyzm P/f przeksztaltnika grid-forming (droop_p_f_percent) musi byc > 0, "
+            f"otrzymano {obiekt.droop_p_f_percent} ({kontekst}).",
+        )
+    if obiekt.droop_q_u_percent is not None and obiekt.droop_q_u_percent <= 0:
+        odmowa_twarda(
+            "KAT-T-013",
+            "Statyzm Q/U przeksztaltnika grid-forming (droop_q_u_percent) musi byc > 0, "
+            f"otrzymano {obiekt.droop_q_u_percent} ({kontekst}).",
+        )
+
+
+# =============================================================================
 # P-Q CAPABILITY CURVE ("krzywa zdolnosci P-Q falownika") — optional, additive.
 # A deterministic list of (p_mw, q_min_mvar, q_max_mvar) points, ascending by
 # p_mw, describing the manufacturer's reactive-power envelope at rated voltage.
@@ -461,21 +613,6 @@ def _pq_curve_from_raw(
     if raw is None:
         return None
     return tuple(tuple(float(v) for v in point) for point in raw)  # type: ignore[misc]
-
-
-def _harmonic_spectrum_from_raw(raw: Any) -> dict[int, float] | None:
-    """Parse a converter harmonic-spectrum dict (round-trips the ``to_dict``
-    stringified-key form: JSON object keys are always strings). Order/range
-    are NOT enforced here so malformed input surfaces the explicit Polish
-    message from ``__post_init__`` instead of a generic ``ValueError``."""
-    if raw is None:
-        return None
-    if not isinstance(raw, dict):
-        odmowa_twarda(
-            "KAT-T-009",
-            f"Widmo harmonicznych musi byc obiektem {{rzad: procent}}, otrzymano {raw!r}.",
-        )
-    return {int(rzad): float(procent) for rzad, procent in raw.items()}
 
 
 # =============================================================================
@@ -1301,8 +1438,6 @@ class ConverterType:
             no separate boolean field.
         grid_code: Grid-code / NC RfG profile marker (optional).
         dynamic_profile_id: Dynamic model profile reference (optional).
-        harmonic_spectrum_percent: Manufacturer-declared current harmonic spectrum
-            (optional, order -> % of rated current). See field comment for provenance.
         droop_p_f_percent: Grid-forming P/f droop statism [%] (optional).
         droop_q_u_percent: Grid-forming Q/U droop statism [%] (optional).
     """
@@ -1383,24 +1518,20 @@ class ConverterType:
     # Pst_i = c * Sn / Ssc. None => not declared, so published converter types
     # round-trip byte-identically. NOT a solver field.
     flicker_c: float | None = None
-    # Karta W2-C (zero fabrykacji wejscia V12.6). Trzy pola opcjonalne z KARTY
-    # KATALOGOWEJ producenta — ZADEN katalog opublikowany w tym repo (168 pozycji,
-    # `mv_converter_catalog.py`) ich dzis nie ustawia, bo zaden wpis nie ma zrodla
-    # (karty PDF/dokumentu) z tymi wartosciami; podanie liczby bez zrodla byloby
-    # dokladnie fabrykacja, ktora ta karta usuwa z `solver_input/v126_contracts.py`
-    # (`build_v126_input_from_enm` czytal je wczesniej jako STALA dla KAZDEGO
-    # przeksztaltnika PV/BESS/wiatrowego). Pozycja dostaje wartosc TYLKO gdy w repo
-    # istnieje przywolywalne zrodlo (karta producenta) — do tego czasu `None`
-    # jest jedyna uczciwa wartoscia, a solver_input traktuje brak jako "dana
-    # nieznana", nie jako zero.
+    # Karta W2-C (zero fabrykacji wejscia V12.6). Pola opcjonalne z KARTY
+    # KATALOGOWEJ producenta — ZADEN katalog opublikowany w tym repo (176 pozycji
+    # przeksztaltnikow, `mv_converter_catalog.py`; pomiar `get_all_converter_types()`
+    # 2026-09-23) ich dzis nie ustawia, bo zaden wpis nie ma zrodla (karty
+    # PDF/dokumentu) z tymi wartosciami; podanie liczby bez zrodla byloby fabrykacja.
+    # Pozycja dostaje wartosc TYLKO gdy w repo istnieje przywolywalne zrodlo (karta
+    # producenta) — do tego czasu `None` jest jedyna uczciwa wartoscia.
     #
-    # widmo pradu harmonicznych wg deklaracji producenta (IEC 61000-3-12 —
-    # dopuszczalne poziomy emisji harmonicznych dla odbiornikow > 16 A/faza;
-    # IEEE 519 — limity TDD). Klucz = rzad harmonicznej (2..50), wartosc = %
-    # pradu znamionowego przeksztaltnika (Sn/Un). Zrodlo wejscia solvera V12.6
-    # `power_quality_harmonics` (`V126HarmonicSourceInput.spectrum_percent`,
-    # via `solver_input/v126_contracts.py::build_v126_input_from_enm`).
-    harmonic_spectrum_percent: dict[int, float] | None = None
+    # WIDMO HARMONICZNYCH NIE JEST POLEM TYPU (karta AB-H0 §0.7.5): dawne
+    # `harmonic_spectrum_percent` (rzad -> % pradu znamionowego, bez fazy, bez punktu
+    # pracy, bez dokumentu i bez nazwanej bazy procentu) skasowane — 0 z 176 pozycji
+    # niosło widmo. Dane widma urzadzenia to OSOBNE rekordy katalogu: karta widmowa
+    # (`dziedziny.karta_widmowa.KartaWidmowa`, przestrzen `KARTA_WIDMOWA`, wiazanie
+    # przez `urzadzenie_ref == id` typu).
     # statyzm regulacji mocy czynnej wzgledem czestotliwosci przeksztaltnika
     # grid-forming (VSM/droop control), w %: df/f * (1/statyzm) = dP/Pn. Karta
     # katalogowa producenta (typowe zakresy IEEE 2800-2022: 2-10 %). Nie mylic
@@ -1438,47 +1569,8 @@ class ConverterType:
     verification_note: str | None = None
 
     def __post_init__(self) -> None:
-        """Validate optional additive fields (P-Q curve, flicker coefficient, k_sc)."""
-        if self.pq_curve is not None:
-            _validate_pq_curve(self.pq_curve)
-        if self.flicker_c is not None and self.flicker_c <= 0:
-            odmowa_twarda(
-                "KAT-T-011",
-                "Wspolczynnik emisji migotania flicker_c musi byc > 0, "
-                f"otrzymano flicker_c={self.flicker_c}.",
-            )
-        _validate_katalogowy_k_sc(self.k_sc, kontekst="ConverterType")
-        if self.droop_p_f_percent is not None and self.droop_p_f_percent <= 0:
-            odmowa_twarda(
-                "KAT-T-012",
-                "Statyzm P/f przeksztaltnika grid-forming (droop_p_f_percent) musi byc > 0, "
-                f"otrzymano {self.droop_p_f_percent}.",
-            )
-        if self.droop_q_u_percent is not None and self.droop_q_u_percent <= 0:
-            odmowa_twarda(
-                "KAT-T-013",
-                "Statyzm Q/U przeksztaltnika grid-forming (droop_q_u_percent) musi byc > 0, "
-                f"otrzymano {self.droop_q_u_percent}.",
-            )
-        if self.harmonic_spectrum_percent is not None:
-            if not self.harmonic_spectrum_percent:
-                odmowa_twarda(
-                    "KAT-T-014",
-                    "Widmo harmonicznych (harmonic_spectrum_percent) nie moze byc puste.",
-                )
-            for rzad, procent in self.harmonic_spectrum_percent.items():
-                if not isinstance(rzad, int) or isinstance(rzad, bool) or rzad < 2 or rzad > 50:
-                    odmowa_twarda(
-                        "KAT-T-015",
-                        "Rzad harmonicznej w widmie musi byc liczba calkowita 2..50, "
-                        f"otrzymano {rzad!r}.",
-                    )
-                if not (0.0 <= float(procent) <= 100.0):
-                    odmowa_twarda(
-                        "KAT-T-016",
-                        f"Udzial {rzad}. harmonicznej musi byc w zakresie 0..100 % pradu "
-                        f"znamionowego, otrzymano {procent}.",
-                    )
+        """Validate optional additive fields (P-Q curve, flicker coefficient, droops, k_sc)."""
+        _waliduj_pola_karty_przeksztaltnika(self, kontekst="ConverterType")
 
     def validate_power_hierarchy(self) -> None:
         """Assert Pzainst >= Pn,AC >= Pprzylacz >= Posiagl for the fields present.
@@ -1533,19 +1625,9 @@ class ConverterType:
             # Flicker emission coefficient: emitted only when declared so converters
             # without it (flicker_c=None) round-trip byte-identically.
             **({"flicker_c": self.flicker_c} if self.flicker_c is not None else {}),
-            # Karta W2-C: widmo harmonicznych / statyzmy GFM — emitowane WYLACZNIE gdy
-            # zadeklarowane (zaden opublikowany typ ich dzis nie ma), zeby istniejace
-            # pozycje katalogu zostaly bajtowo identyczne (materializacja +
-            # `materialization_hash`/odciski V12.6 nietkniete tam, gdzie danej nie ma).
-            **(
-                {
-                    "harmonic_spectrum_percent": {
-                        str(k): v for k, v in self.harmonic_spectrum_percent.items()
-                    }
-                }
-                if self.harmonic_spectrum_percent is not None
-                else {}
-            ),
+            # Karta W2-C: statyzmy GFM — emitowane WYLACZNIE gdy zadeklarowane (zaden
+            # opublikowany typ ich dzis nie ma), zeby istniejace pozycje katalogu zostaly
+            # bajtowo identyczne (materializacja + `materialization_hash` nietkniete).
             **(
                 {"droop_p_f_percent": self.droop_p_f_percent}
                 if self.droop_p_f_percent is not None
@@ -1611,9 +1693,6 @@ class ConverterType:
             ),
             pq_curve=_pq_curve_from_raw(data.get("pq_curve")),
             flicker_c=(float(data["flicker_c"]) if data.get("flicker_c") is not None else None),
-            harmonic_spectrum_percent=_harmonic_spectrum_from_raw(
-                data.get("harmonic_spectrum_percent")
-            ),
             droop_p_f_percent=_opcjonalny_float(data, "droop_p_f_percent"),
             droop_q_u_percent=_opcjonalny_float(data, "droop_q_u_percent"),
             ptpiree_status=data.get("ptpiree_status"),
@@ -3648,6 +3727,38 @@ class PVInverterType:
     # kontraktu tego pola. Walidowane w `__post_init__` poniżej
     # (`_validate_katalogowy_k_sc`) — musi być liczbą skończoną > 0.
     k_sc: float | None = None
+    # Karta AB-H0 §0.8: pola karty przekształtnika niesione przez projekcję
+    # (`POLA_KARTY_PROJEKCJI`) — `None` = pozycja nie niesie danej; `to_dict` emituje je
+    # WYŁĄCZNIE gdy obecne, więc projekcje bez tych danych są bajtowo identyczne.
+    cosphi: float | None = None
+    cosphi_p_points: tuple[tuple[float, float], ...] | None = None
+    qu_deadband_low_pu: float | None = None
+    qu_deadband_high_pu: float | None = None
+    qu_slope_pu_per_pu: float | None = None
+    qu_q_min_mvar: float | None = None
+    qu_q_max_mvar: float | None = None
+    lfsm_droop_pct: float | None = None
+    lfsm_deadband_hz: float | None = None
+    f0_hz: float | None = None
+    p_installed_mw: float | None = None
+    pn_ac_mw: float | None = None
+    p_connection_mw: float | None = None
+    p_achievable_mw: float | None = None
+    pq_curve: tuple[tuple[float, float, float], ...] | None = None
+    flicker_c: float | None = None
+    sc_model: Literal["simple_k_factor", "pq_component", "from_datasheet"] | None = None
+    sc_pq_split: float | None = None
+    sc_transient_k: float | None = None
+    sc_sustained_k: float | None = None
+    current_loop_bandwidth_hz: float | None = None
+    voltage_loop_bandwidth_hz: float | None = None
+    pll_bandwidth_hz: float | None = None
+    control_delay_ms: float | None = None
+    filter_l_pu: float | None = None
+    filter_r_pu: float | None = None
+    droop_p_f_percent: float | None = None
+    droop_q_u_percent: float | None = None
+    card_field_status: dict[str, dict[str, Any]] | None = None
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
     ptpiree_document_number: str | None = None
@@ -3673,9 +3784,9 @@ class PVInverterType:
     verification_note: str | None = None
 
     def __post_init__(self) -> None:
-        """Walidacja k_sc (karta S-2 AUTORYTET, znalezisko przy okazji: ten typ
-        nie miał ŻADNEJ walidacji k_sc — patrz `_validate_katalogowy_k_sc`)."""
-        _validate_katalogowy_k_sc(self.k_sc, kontekst="PVInverterType")
+        """Walidacja pól karty wspólna z `ConverterType` (k_sc — karta S-2 AUTORYTET;
+        krzywa P-Q, `flicker_c`, statyzmy — karta AB-H0 §0.8)."""
+        _waliduj_pola_karty_przeksztaltnika(self, kontekst="PVInverterType")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -3702,6 +3813,7 @@ class PVInverterType:
             "ptpiree_publication_date": self.ptpiree_publication_date,
             "ptpiree_note": self.ptpiree_note,
             "ptpiree_certificate_condition": self.ptpiree_certificate_condition,
+            **_pola_karty_projekcji_do_slownika(self),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -3743,6 +3855,7 @@ class PVInverterType:
             ptpiree_publication_date=data.get("ptpiree_publication_date"),
             ptpiree_note=data.get("ptpiree_note"),
             ptpiree_certificate_condition=data.get("ptpiree_certificate_condition"),
+            **_pola_karty_projekcji_kwargs(data),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog falownikow PV MV-DESIGN-PRO / dane referencyjne",
@@ -3787,6 +3900,38 @@ class BESSInverterType:
     # kontraktu tego pola. Walidowane w `__post_init__` poniżej
     # (`_validate_katalogowy_k_sc`) — musi być liczbą skończoną > 0.
     k_sc: float | None = None
+    # Karta AB-H0 §0.8: pola karty przekształtnika niesione przez projekcję
+    # (`POLA_KARTY_PROJEKCJI`) — `None` = pozycja nie niesie danej; `to_dict` emituje je
+    # WYŁĄCZNIE gdy obecne, więc projekcje bez tych danych są bajtowo identyczne.
+    cosphi: float | None = None
+    cosphi_p_points: tuple[tuple[float, float], ...] | None = None
+    qu_deadband_low_pu: float | None = None
+    qu_deadband_high_pu: float | None = None
+    qu_slope_pu_per_pu: float | None = None
+    qu_q_min_mvar: float | None = None
+    qu_q_max_mvar: float | None = None
+    lfsm_droop_pct: float | None = None
+    lfsm_deadband_hz: float | None = None
+    f0_hz: float | None = None
+    p_installed_mw: float | None = None
+    pn_ac_mw: float | None = None
+    p_connection_mw: float | None = None
+    p_achievable_mw: float | None = None
+    pq_curve: tuple[tuple[float, float, float], ...] | None = None
+    flicker_c: float | None = None
+    sc_model: Literal["simple_k_factor", "pq_component", "from_datasheet"] | None = None
+    sc_pq_split: float | None = None
+    sc_transient_k: float | None = None
+    sc_sustained_k: float | None = None
+    current_loop_bandwidth_hz: float | None = None
+    voltage_loop_bandwidth_hz: float | None = None
+    pll_bandwidth_hz: float | None = None
+    control_delay_ms: float | None = None
+    filter_l_pu: float | None = None
+    filter_r_pu: float | None = None
+    droop_p_f_percent: float | None = None
+    droop_q_u_percent: float | None = None
+    card_field_status: dict[str, dict[str, Any]] | None = None
     ptpiree_status: str | None = None
     ptpiree_certificate_ref: str | None = None
     ptpiree_document_number: str | None = None
@@ -3812,9 +3957,9 @@ class BESSInverterType:
     verification_note: str | None = None
 
     def __post_init__(self) -> None:
-        """Walidacja k_sc (karta S-2 AUTORYTET, znalezisko przy okazji: ten typ
-        nie miał ŻADNEJ walidacji k_sc — patrz `_validate_katalogowy_k_sc`)."""
-        _validate_katalogowy_k_sc(self.k_sc, kontekst="BESSInverterType")
+        """Walidacja pól karty wspólna z `ConverterType` (k_sc — karta S-2 AUTORYTET;
+        krzywa P-Q, `flicker_c`, statyzmy — karta AB-H0 §0.8)."""
+        _waliduj_pola_karty_przeksztaltnika(self, kontekst="BESSInverterType")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -3839,6 +3984,7 @@ class BESSInverterType:
             "ptpiree_publication_date": self.ptpiree_publication_date,
             "ptpiree_note": self.ptpiree_note,
             "ptpiree_certificate_condition": self.ptpiree_certificate_condition,
+            **_pola_karty_projekcji_do_slownika(self),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -3876,6 +4022,7 @@ class BESSInverterType:
             ptpiree_publication_date=data.get("ptpiree_publication_date"),
             ptpiree_note=data.get("ptpiree_note"),
             ptpiree_certificate_condition=data.get("ptpiree_certificate_condition"),
+            **_pola_karty_projekcji_kwargs(data),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog przeksztaltnikow BESS MV-DESIGN-PRO / dane referencyjne",
@@ -4255,7 +4402,16 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
         # Karta FAB-H: k_sc dopisane obok pozostalych pol karty falownika PV —
         # ten sam kontrakt co CONVERTER (ConverterType.k_sc), None = zalozenie
         # 1,1 w enm/mapping.py, nigdy cichy numer bez sladu.
-        solver_fields=("un_kv", "s_n_kva", "p_max_kw", "control_mode", "k_sc"),
+        # Karta AB-H0 §0.8: pola karty (`POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE`) jako
+        # `pola_opcjonalne` — kopiowane do migawki WYŁĄCZNIE, gdy projekcja je niesie.
+        solver_fields=(
+            "un_kv",
+            "s_n_kva",
+            "p_max_kw",
+            "control_mode",
+            "k_sc",
+            *POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE,
+        ),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
             ("s_n_kva", "Sn [kVA]", "kVA"),
@@ -4265,11 +4421,21 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("cos_phi_max", "cos φ max", ""),
             ("k_sc", "k_sc (udział zwarciowy)", ""),
         ),
+        pola_opcjonalne=POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE,
     ),
     CatalogNamespace.ZRODLO_NN_BESS.value: MaterializationContract(
         namespace=CatalogNamespace.ZRODLO_NN_BESS.value,
         # Karta FAB-H: k_sc jak w ZRODLO_NN_PV powyzej — sam kontrakt, ten sam powod.
-        solver_fields=("un_kv", "p_charge_kw", "p_discharge_kw", "e_kwh", "s_n_kva", "k_sc"),
+        # Karta AB-H0 §0.8: jak ZRODLO_NN_PV — pola karty jako `pola_opcjonalne`.
+        solver_fields=(
+            "un_kv",
+            "p_charge_kw",
+            "p_discharge_kw",
+            "e_kwh",
+            "s_n_kva",
+            "k_sc",
+            *POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE,
+        ),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
             ("p_charge_kw", "Pład [kW]", "kW"),
@@ -4277,6 +4443,7 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("e_kwh", "E [kWh]", "kWh"),
             ("k_sc", "k_sc (udział zwarciowy)", ""),
         ),
+        pola_opcjonalne=POLA_KARTY_MATERIALIZOWANE_GDY_OBECNE,
     ),
     CatalogNamespace.BATERIA_BESS.value: MaterializationContract(
         namespace=CatalogNamespace.BATERIA_BESS.value,
@@ -4375,13 +4542,17 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "pn_ac_mw",
             "p_connection_mw",
             "p_achievable_mw",
-            # Karta W2-C: widmo harmonicznych / statyzmy GFM — brak w katalogu dla
-            # WSZYSTKICH 168 pozycji dzisiaj (`pola_opcjonalne` niżej), więc dodanie
-            # tych kluczy do materializacji NIE zmienia odcisku żadnego istniejącego
-            # elementu (ten sam wzorzec, co pola SSCI dodane wcześniej do tej listy).
-            "harmonic_spectrum_percent",
+            # Karta W2-C: statyzmy GFM; karta AB-H0 §0.8: współczynnik migotania,
+            # krzywa P-Q, proweniencja pól karty i profil dynamiczny typu — brak w
+            # katalogu dla pozycji wiatrowych (jedynych materializowanych z tej
+            # przestrzeni), więc jako `pola_opcjonalne` niżej nie zmieniają odcisku
+            # żadnego istniejącego elementu (ten sam wzorzec, co pola SSCI wcześniej).
             "droop_p_f_percent",
             "droop_q_u_percent",
+            "flicker_c",
+            "pq_curve",
+            "card_field_status",
+            "dynamic_profile_id",
         ),
         ui_fields=(
             ("un_kv", "Un [kV]", "kV"),
@@ -4392,6 +4563,26 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("kind", "Technologia", ""),
             ("k_sc", "k_sc (udział zwarciowy)", ""),
         ),
-        pola_opcjonalne=("harmonic_spectrum_percent", "droop_p_f_percent", "droop_q_u_percent"),
+        pola_opcjonalne=(
+            "droop_p_f_percent",
+            "droop_q_u_percent",
+            "flicker_c",
+            "pq_curve",
+            "card_field_status",
+            "dynamic_profile_id",
+        ),
+    ),
+    CatalogNamespace.KARTA_WIDMOWA.value: MaterializationContract(
+        namespace=CatalogNamespace.KARTA_WIDMOWA.value,
+        # Karta AB-H0 §0.7.6: element dostaje ZMATERIALIZOWANĄ kopię modeli karty
+        # (`Generator.modele_widmowe`) z proweniencją (id, wersja, odcisk); referencja
+        # karty NIE trafia do `materialized_params` (jedno miejsce prawdy o powiązaniu).
+        solver_fields=("id", "wersja", "urzadzenie_ref", "modele"),
+        ui_fields=(
+            ("producent", "Producent", ""),
+            ("model_urzadzenia", "Model urządzenia", ""),
+            ("wersja", "Wersja karty", ""),
+            ("urzadzenie_ref", "Typ urządzenia", ""),
+        ),
     ),
 }

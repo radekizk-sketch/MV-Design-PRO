@@ -77,6 +77,30 @@ const ODBIOR_WIERSZ_NARUSZENIA = ODBIOR_SCENA_WYNIK.wiersze.find(
 )!;
 
 /**
+ * Węzeł i moduł sceny analiz OZE („sila-sieci", „migotanie") — Z FIXTUR REALNEGO
+ * biegu (`sila_sieci_scena_wynik.json`, `migotanie_scena_wynik.json`). Karta AB-H0
+ * (§0 pkt 2): przypisanie typu odmawia karty falownika 0,8 kV na szynie 0,4 kV sieci
+ * złotej (`converter.voltage_mismatch`, jak tor tworzenia), więc scena buduje własną
+ * sieć operacjami domenowymi (GPZ → kabel 500 m → stacja 15/0,8 kV 2,5 MVA → falownik
+ * PV z karty) i referencje szyny/modułu nadaje domena — spec je CYTUJE zamiast wpisywać.
+ */
+const SILA_SIECI_SCENA_WYNIK = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/sila_sieci_scena_wynik.json'),
+    'utf-8',
+  ),
+) as { entries: { bus_ref: string }[] };
+const WEZEL_SILY_SIECI = SILA_SIECI_SCENA_WYNIK.entries[0].bus_ref;
+const MIGOTANIE_SCENA_WYNIK = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/migotanie_scena_wynik.json'),
+    'utf-8',
+  ),
+) as { buses: { bus_ref: string; modules: { gen_ref: string }[] }[] };
+const WEZEL_MIGOTANIA = MIGOTANIE_SCENA_WYNIK.buses[0].bus_ref;
+const MODUL_MIGOTANIA = MIGOTANIE_SCENA_WYNIK.buses[0].modules[0].gen_ref;
+
+/**
  * Pomiary telemetryczne estymacji WLS — Z FIXTURY REALNEGO biegu
  * (`estymacja_scena_wynik.json`, karta HARNESS-RESZTA). NAPRAWA
  * HARNESS-RESZTA-2: spec wpisywał własny zestaw na węzłach `BUS-1`/`BUS-2`,
@@ -162,21 +186,24 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     }
   } else if (scena === 'sila-sieci') {
     // Wynik SCR/WSCR z zasianego przebiegu zwarciowego → otwarte OBA wywody:
-    // systemowy (WSCR) i węzłowy (bus_nn, jedyny węzeł z modułem OZE
-    // katalogowym w sieci złotej — HARNESS-RESZTA-kontynuacja: dawny słaby
+    // systemowy (WSCR) i węzłowy (szyna pola źródłowego nN 0,8 kV stacji sceny
+    // analiz OZE — tam stoi falownik po promocji pola do realnego aparatu; jedyny
+    // węzeł z modułem OZE katalogowym — HARNESS-RESZTA-kontynuacja: dawny słaby
     // węzeł 'SZ-FW1' z ręcznie pisanego mocka nie odpowiadał żadnemu
     // realnemu węzłowi po konwersji sceny na realny bieg backendu; SCR
-    // realnej farmy PV [0,215 MVA] w tym węźle daje werdykt „mocna", nie
-    // „słaba" — intencja bez zmian: DWA otwarte wywody, teraz na realnych
-    // liczbach).
+    // realnej farmy PV [0,215 MVA z karty] przy Sk″ = 37,97 MVA za transformatorem
+    // 2,5 MVA daje werdykt „mocna", nie „słaba" — intencja bez zmian: DWA otwarte
+    // wywody, na realnych liczbach).
     const sekcja = page.getByTestId('mvd-oze-pulpit-sila');
     await expect(page.getByTestId('mvd-oze-sila-wynik')).toBeVisible();
-    await expect(page.getByTestId('mvd-oze-sila-wscr')).toContainText('67,97');
+    await expect(page.getByTestId('mvd-oze-sila-wscr')).toContainText('176,61');
     await page.getByTestId('mvd-oze-sila-wscr-slad-otworz').click();
-    await expect(sekcja).toContainText('licznik Σ(S_sc·S_n) = 3.1419 MVA²');
-    await page.getByTestId('mvd-oze-sila-slad-otworz-bus_nn').click();
-    await expect(sekcja).toContainText('SCR = 14.6134 MVA / 0.215 MVA');
-    await expect(page.getByTestId('mvd-oze-sila-werdykt-bus_nn')).toContainText('mocna');
+    await expect(sekcja).toContainText('licznik Σ(S_sc·S_n) = 8.1638 MVA²');
+    await page.getByTestId(`mvd-oze-sila-slad-otworz-${WEZEL_SILY_SIECI}`).click();
+    await expect(sekcja).toContainText('SCR = 37.9713 MVA / 0.215 MVA');
+    await expect(page.getByTestId(`mvd-oze-sila-werdykt-${WEZEL_SILY_SIECI}`)).toContainText(
+      'mocna',
+    );
   } else if (scena === 'odbior-zgodnosc') {
     // Pomiary z obiektu w edytorze wierszy + jawne tolerancje → raport →
     // wybór wiersza → otwarty ślad slad_pl (kroki tekstowe).
@@ -254,25 +281,26 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     // węzeł 'SZ-PV2'/moduł 'gen-pv-2' bez współczynnika i werdykt
     // „przekroczenie" z ręcznie pisanego mocka nie odpowiadały żadnemu
     // realnemu węzłowi po konwersji sceny na realny bieg backendu — jedyny
-    // węzeł sieci złotej z modułem OZE katalogowym to `bus_nn`/`gen_pv`,
+    // węzeł sceny analiz OZE z modułem OZE katalogowym to szyna pola źródłowego
+    // nN 0,8 kV stacji z falownikiem PV karty (`WEZEL_MIGOTANIA`/`MODUL_MIGOTANIA`),
     // MA współczynnik emisji [flicker_c=0,3] (wliczony do sumowania, nie
-    // pominięty) i mieści się w granicach planowania (Pst=0,0044 ≪ 0,9);
+    // pominięty) i mieści się w granicach planowania (Pst=0,0017 ≪ 0,9);
     // intencja bez zmian: wiersz węzła → szczegół modułu → otwarty ślad z
     // formułą KaTeX, teraz na realnych liczbach (jeden moduł, nie dwa).
     await expect(page.getByTestId('mvd-jakosc-migotanie')).toBeVisible();
     await expect(page.getByTestId('mvd-wyn-tabela')).toContainText(
       'w granicach planowania',
     );
-    await page.getByTestId('mvd-wyn-tabela').getByText('bus_nn').click();
+    await page.getByTestId('mvd-wyn-tabela').getByText(WEZEL_MIGOTANIA).click();
     const szczegol = page.getByTestId('mvd-jakosc-migotanie-szczegol');
-    await expect(szczegol).toContainText('gen_pv');
+    await expect(szczegol).toContainText(MODUL_MIGOTANIA);
     await expect(szczegol).toContainText('Wliczony do sumowania');
     await page.getByTestId('mvd-jakosc-mig-slad-otworz').click();
     const slad = page.getByTestId('mvd-jakosc-mig-slad');
     const wzor = slad.locator('[data-testid="math-rendered"]').first();
     await expect(wzor).toBeVisible();
     expect(await wzor.getAttribute('data-latex')).toContain('P_{st');
-    await expect(slad).toContainText('P_st = (0.004414^3)^(1/3)');
+    await expect(slad).toContainText('P_st = (0.001699^3)^(1/3)');
   } else {
     // arcflash: parametry projektowe → „Przelicz" (POST) → wiersz szyny →
     // otwarty ślad IEEE 1584-2018 (I_arc, CF, E, AFB, ŚOI) w KaTeX.

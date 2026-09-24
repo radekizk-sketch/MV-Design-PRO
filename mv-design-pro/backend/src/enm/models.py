@@ -7,10 +7,12 @@ Jedno źródło prawdy dla projektu (case-bound).
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Annotated, Any, Literal, get_args
 from uuid import UUID, uuid4
 
+from dziedziny.karta_widmowa import KartaWidmowa, ModeleWidmoweElementu
 from network_model.core.uziemienie import (
     RolaUziemnika,
     TypPunktuNeutralnego,
@@ -632,6 +634,16 @@ class Generator(ENMElement):
     wiatr_typ_1..4), kazdy z WYMAGANA proweniencja. Zero fizyki: pole niesie
     wylacznie dane wejsciowe konsumowane przez solver W6-2
     (`network_model/solvers/dynamika/`, jeszcze nie istnieje w tej karcie).
+    """
+
+    modele_widmowe: ModeleWidmoweElementu | None = None
+    """
+    Modele widmowe zrodla (karta AB-H0 §0.7.6): ZMATERIALIZOWANA kopia modeli z kart
+    widmowych wskazanych kluczem `karty_widmowe_ref` operacji `set_der_catalog_bindings`,
+    z proweniencja kazdej karty (id, wersja, przestrzen STATYCZNA/PROJEKT, odcisk).
+    Konsumenci dziedziny czestotliwosci czytaja WYLACZNIE to pole (wzorzec O-44).
+    `None` = brak modelu widmowego urzadzenia (sekcja `harmonic` UNKNOWN z nazwanym
+    brakiem) — nigdy widmo typowe. Referencja karty NIE trafia do `materialized_params`.
     """
 
     @model_validator(mode="after")
@@ -1677,11 +1689,16 @@ class KatalogProjektu(BaseModel):
     line_types: list[RekordTypuProjektu] = []
     cable_types: list[RekordTypuProjektu] = []
     transformer_types: list[RekordTypuProjektu] = []
+    #: Karta AB-H0 §0.7.3: karty widmowe PROJEKTU (dane inżyniera — widmo ręczne albo
+    #: import karty producenta dla projektu; status `NIEWERYFIKOWANY`/`PROJEKTOWY_V1`).
+    #: Kontrakt rekordu = `dziedziny.karta_widmowa.KartaWidmowa` (ten sam co katalogu
+    #: statycznego). Pusta lista jest poza odciskiem modelu (`enm/hash.py`).
+    karty_widmowe: list[KartaWidmowa] = []
 
     @model_validator(mode="after")
     def _unikalne_i_posortowane(self) -> KatalogProjektu:
         widziane: set[str] = set()
-        for rodzaj in ("line_types", "cable_types", "transformer_types"):
+        for rodzaj in ("line_types", "cable_types", "transformer_types", "karty_widmowe"):
             rekordy = getattr(self, rodzaj)
             for rekord in rekordy:
                 if not rekord.id.strip():
@@ -1752,7 +1769,9 @@ Bay.model_rebuild()
 # ---------------------------------------------------------------------------
 
 
-def liczba_torow(element: Cable | OverheadLine | Transformer | Generator) -> int:
+def liczba_torow(
+    element: Cable | OverheadLine | Transformer | Generator | Mapping[str, Any],
+) -> int:
     """Liczba identycznych torów/jednostek pracujących równolegle (≥ 1).
 
     JEDYNA definicja tej reguły dla `Cable.n_parallel`/`Transformer.n_parallel`/
@@ -1792,8 +1811,36 @@ def liczba_torow(element: Cable | OverheadLine | Transformer | Generator) -> int
     nN nie ma dziś wielotorowego wariantu w modelu) — `getattr` z domyślnym
     `None` obejmuje ten przypadek bez zmiany zachowania (zawsze zwraca `1`),
     identycznie jak przed tą kartą.
+
+    Decyzja O-53 (karta AB-H0): element może być też REKORDEM migawki (słownik, jak go
+    widzą operacje domenowe) — ta sama reguła dla obu postaci, bez drugiej kopii warunku.
     """
-    wartosc = getattr(element, "n_parallel", None)
+    if isinstance(element, Mapping):
+        wartosc = element.get("n_parallel")
+    else:
+        wartosc = getattr(element, "n_parallel", None)
     if isinstance(wartosc, int):
         return wartosc
     return 1
+
+
+def liczba_jednostek_zrodla(element: Generator | Mapping[str, Any]) -> int:
+    """Liczba jednostek, które reprezentuje element generatora (≥ 1) — JEDYNA reguła.
+
+    `quantity` (jawna liczba jednostek) ma pierwszeństwo przed `n_parallel`
+    (czytanym przez `liczba_torow`). Tę samą regułę stosuje solver (skalowanie mocy
+    znamionowej w `enm.mapping`) i kontrola mocy źródła przekształtnikowego w torach
+    tworzenia, przypisaniu typu i aktualizacji parametrów (decyzja O-53) — jeden model,
+    jedna liczba jednostek. Wartość niedodatnia jest sprowadzana do 1 (zachowanie
+    solvera sprzed wydzielenia funkcji, zmierzone testem `test_liczba_torow_n_parallel`).
+    """
+    if isinstance(element, Mapping):
+        ilosc = element.get("quantity")
+    else:
+        ilosc = element.quantity
+    liczba = ilosc if isinstance(ilosc, int) and not isinstance(ilosc, bool) and ilosc else None
+    if liczba is None:
+        liczba = liczba_torow(element)
+    if liczba < 1:
+        return 1
+    return liczba

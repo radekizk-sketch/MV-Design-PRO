@@ -81,7 +81,12 @@ MAPA_SERII: tuple[Seria, ...] = (
         "Dowody analiz i studiów",
         "Powierzchnie wynikowe z policzonym materiałem: arc flash, estymacja stanu, "
         "kompensacja, migotanie, zgodność odbioru, siła sieci, SSCI, FRT, LoM, sweep OLTC, "
-        "macierz analiz oraz dowody czasu i linii z serii F-K1.",
+        "macierz analiz oraz dowody czasu i linii z serii F-K1. "
+        "2026-09-23 (AB-H0, O-53): siła sieci, migotanie i FRT przeliczone na własnej sieci "
+        "sceny analiz OZE (stacja 15/0,8 kV, falownik PV z karty 0,8 kV) zamiast szyny "
+        "0,4 kV sieci złotej, której karta 0,8 kV nie może już zasilać — S_k″ 14,61 → "
+        "37,97 MVA, SCR 67,97 → 176,61, P_st 0,0044 → 0,0017: zmieniła się sieć sceny, "
+        "nie fizyka.",
     ),
     Seria(
         "fk7",

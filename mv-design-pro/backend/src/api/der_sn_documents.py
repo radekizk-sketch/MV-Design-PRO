@@ -134,7 +134,9 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
         from api.grid_source_preview import (
             _block_transformer_candidates,
             _cable_candidates,
+            _cos_phi_doboru_kabla,
         )
+        from domain.generator_validation import JawneWejsciaKontroliMocy
         from network_model.solvers.der_selection_preview import (
             BlockTransformerSelectionInput,
             CableSelectionInput,
@@ -143,14 +145,24 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
         )
 
         sum_apparent = sum_apparent_power_mva(track)
-        if sum_apparent <= 0:
+        if sum_apparent is None or sum_apparent <= 0:
             return None
+        # Propozycja z TYMI SAMYMI wielkościami co kontrola mocy O-53 toru: moc wymagana
+        # max(S_n,jedn·n, P/cosφ) i jawne współczynniki zapisane przez tor tworzenia (brak
+        # jawnego współczynnika = 1,0, bez redukcji — jak kontrola).
+        wejscia = JawneWejsciaKontroliMocy.z_meta(track.generator.get("meta"))
+        dodatkowe: dict[str, float] = {}
+        if wejscia.wspolczynnik_jednoczesnosci is not None:
+            dodatkowe["simultaneity_factor"] = wejscia.wspolczynnik_jednoczesnosci
+        if wejscia.przeciazalnosc_transformatora_pu is not None:
+            dodatkowe["loadability_pu"] = wejscia.przeciazalnosc_transformatora_pu
         tr_result = propose_block_transformer(
             BlockTransformerSelectionInput(
                 sum_apparent_power_mva=sum_apparent,
                 primary_voltage_kv=float(sn_bus_kv),
                 secondary_voltage_kv=float(inverter_kv),
                 candidates=_block_transformer_candidates(),
+                **dodatkowe,
             )
         )
         deviations: list[dict[str, Any]] = []
@@ -190,7 +202,10 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
                     transformer_current_a=tr_current,
                     length_km=float(cable_length_km),
                     line_voltage_v=kv_na_v(float(sn_bus_kv)),
-                    cos_phi=0.95,
+                    # cosφ z TEJ SAMEJ reguły co podgląd kreatora (jawny cosφ zapisany
+                    # przez tor tworzenia, bez niego 1,0) — dawne zaszyte 0,95 dawało
+                    # propozycję przy innym założeniu niż dobór (fałszywe ⚠).
+                    cos_phi=_cos_phi_doboru_kabla(wejscia),
                     candidates=_cable_candidates(),
                     derating=_cable_derating_from_model(cable),
                 )

@@ -174,8 +174,23 @@ ma dwa mechanizmy, nie deklaracje:
   kodem ORAZ rekord nietypowy, lecz legalny, ktory przechodzi. Zbior kodow w
   testach musi byc rowny zbiorowi kodow twardych rejestru.
 
-Kody: `KAT-T-001` … `KAT-T-033` (twarde), `KAT-W-001` … `KAT-W-006`
+Kody: `KAT-T-001` … `KAT-T-041` (twarde), `KAT-W-001` … `KAT-W-006`
 (wiarygodnosc). Nazwe reguly wolno przeredagowac, kodu nie.
+
+Karta AB-H0 §0.7.5: `KAT-T-009`/`014`/`015`/`016` sa PRZECELOWANE z dawnego pola
+`ConverterType.harmonic_spectrum_percent` (skasowane; 0 ze 176 pozycji nioslo widmo)
+na rekord karty widmowej (`dziedziny.karta_widmowa.KartaWidmowa`, przestrzen
+`KARTA_WIDMOWA`): 009 ksztalt modelu widmowego, 014 model widmowy niepusty, 015
+czestotliwosc skladowej > 0 Hz w zakresie modelu bez duplikatow, 016 amplituda
+nieujemna z nazwana baza procentu. Nowe reguly karty: 034 identyfikatory modeli
+unikalne, 035 dowod karty jest dowodem widma, 036 podstawa danych widma (karta
+producenta albo zalozenie projektowe), 037 faza (nieznana ≠ zero, odniesienie fazy),
+038 komplet parametrow pomiaru, 039 czestotliwosc przelaczania wylacznie w dziedzinie
+supraharmonicznej, 040 przedzial punktu pracy z jawnym domknieciem, 041 karta
+statyczna wylacznie z wyciagiem dokumentu przypietym SHA-256. Identyfikator reguly
+kontraktu (`dziedziny.kanon.REGULY_KONTRAKTU`) mapuje na kod `KAT-T`
+(`network_model/catalog/karty_widmowe/__init__.py::KODY_REGUL_KARTY`, parytet
+przypiety testem).
 
 ### Reguly wiarygodnosci — dlaczego NIE sa bramkami
 
@@ -265,9 +280,9 @@ decyzje podejmuje czlowiek.
 | Rodzina | Pozycji | Produkcyjnych | Pól opcjonalnych w kontrakcie | Wypełnienie pól opcjonalnych [%] | Pozycji z proweniencją | Pola bez ani jednej wartości | Duplikaty id |
 |---|---:|---:|---:|---:|---:|---|---|
 | `bess-battery` | 2 | 0 | 0 | — | 2 | brak | brak |
-| `bess-inverter` | 64 | 0 | 15 | 26,9 | 64 | `k_sc`, `ptpiree_certificate_condition`, `ptpiree_certificate_ref`, `ptpiree_document_acceptance_date`, `ptpiree_document_number`, `ptpiree_ppm_scope`, `ptpiree_publication_date`, `ptpiree_source_url`, `ptpiree_wipwc_version`, `ptpiree_wos_version` | brak |
+| `bess-inverter` | 64 | 0 | 43 | 9,8 | 64 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_certificate_ref`, `ptpiree_document_acceptance_date`, `ptpiree_document_number`, `ptpiree_ppm_scope`, `ptpiree_publication_date`, `ptpiree_source_url`, `ptpiree_wipwc_version`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
 | `cable` | 63 | 62 | 18 | 45,7 | 63 | `b0_siemens_per_km`, `ith_1s_a`, `z0_reference_bonding` | brak |
-| `converter` | 176 | 0 | 51 | 20,6 | 176 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `harmonic_spectrum_percent`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
+| `converter` | 176 | 0 | 50 | 21,0 | 176 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
 | `ct` | 12 | 0 | 7 | 60,7 | 12 | `idyn_ka_peak`, `rct_ohm` | brak |
 | `line` | 153 | 25 | 14 | 10,7 | 153 | `b0_siemens_per_km`, `base_type_id`, `ith_1s_a`, `manufacturer`, `trade_name` | brak |
 | `load` | 3 | 0 | 4 | 58,3 | 3 | `profile_id` | brak |
@@ -280,19 +295,22 @@ decyzje podejmuje czlowiek.
 | `protection-device` | 12 | 0 | 6 | 79,2 | 12 | brak | brak |
 | `protection-setting-template` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
 | `ptpiree-certificate` | 6887 | 6887 | 3 | 100,0 | 6887 | brak | brak |
-| `pv-inverter` | 66 | 0 | 18 | 39,6 | 66 | `k_sc`, `ptpiree_certificate_condition`, `ptpiree_wos_version` | brak |
+| `pv-inverter` | 66 | 0 | 46 | 16,2 | 66 | `cosphi`, `cosphi_p_points`, `droop_p_f_percent`, `droop_q_u_percent`, `f0_hz`, `k_sc`, `lfsm_deadband_hz`, `lfsm_droop_pct`, `p_achievable_mw`, `p_connection_mw`, `ptpiree_certificate_condition`, `ptpiree_wos_version`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_q_max_mvar`, `qu_q_min_mvar`, `qu_slope_pu_per_pu`, `sc_pq_split`, `sc_sustained_k`, `sc_transient_k` | brak |
 | `shunt-capacitor` | 6 | 0 | 2 | 50,0 | 6 | `manufacturer` | brak |
 | `source-system` | 22 | 22 | 12 | 75,0 | 22 | `ik3_min_ka`, `rx_ratio_min`, `sk3_min_mva` | brak |
+| `spectral-card` | 0 | 0 | 0 | — | 0 | brak | brak |
 | `surge-arrester` | 12 | 0 | 3 | 100,0 | 12 | brak | brak |
 | `switch-equipment` | 48 | 45 | 4 | 85,4 | 48 | brak | brak |
 | `synchronous-generator` | 22 | 0 | 1 | 0,0 | 22 | `manufacturer` | brak |
 | `transformer` | 212 | 50 | 5 | 96,2 | 212 | brak | brak |
 | `vt` | 13 | 0 | 7 | 90,1 | 13 | brak | brak |
 
-Rodzin objętych pomiarem: 24. Pozycji łącznie: 7962, w tym produkcyjnych: 7154. Pozycji z proweniencją strukturalną: 7962.
+Rodzin objętych pomiarem: 25. Pozycji łącznie: 7962, w tym produkcyjnych: 7154. Pozycji z proweniencją strukturalną: 7962.
 
-Rodziny bez ani jednej pozycji: brak.
+Rodziny bez ani jednej pozycji: `spectral-card`.
 
 Rodziny z duplikatami identyfikatorów: brak.
+
+Karty widmowe: 0. Typów przekształtników z co najmniej jedną kartą widmową: 0 z 176. Karty wg statusu weryfikacji: brak kart.
 
 <!-- GENEROWANE: gotowosc katalogow — koniec -->

@@ -17,9 +17,16 @@ bramką `generator.q_missing` (`tests/api/test_v126_generator_q_missing_api.py`)
   bieg dałby zerowe odkształcenie z braku danych, nie z pomiaru), a NIE kodem
   `generator.harmonic_spectrum_missing`; test pilnuje, że oba kody się nie mylą;
 * CZĘŚĆ źródeł ma dane => bieg przechodzi, `pominiete_zrodla` w odpowiedzi
-  nazywa pominięte źródła, `zrodla_widma` niesie proweniencję (KATALOG/RECZNE)
-  źródeł, które DO wejścia trafiły;
+  nazywa pominięte źródła, `zrodla_widma` niesie proweniencję źródeł, które DO
+  wejścia trafiły;
 * inna analiza V12.6 (nieczytająca tych pól) nie jest blokowana w ogóle.
+
+Przepisany w karcie AB-H0: pole `ConverterType.harmonic_spectrum_percent` skasowane
+(0 ze 176 pozycji niosło widmo), więc „źródło z danymi" dostawało dotąd widmo z klucza
+wstrzykniętego RĘCZNIE do `materialized_params` (proweniencja „KATALOG", której żaden
+typ katalogu nie produkuje). Intencja testów bez zmian — źródło z widmem to teraz
+źródło z kartą (moc znamionowa) i widmem jawnym projektanta (`harmonic_spectra`,
+proweniencja RECZNE); klucz wstrzyknięty jest pinowany jako martwy.
 """
 
 from __future__ import annotations
@@ -33,13 +40,10 @@ from fastapi.testclient import TestClient
 _SZYNA_A = "BUS_A"
 _SZYNA_B = "BUS_B"
 
-_KARTA_Z_WIDMEM = {
-    "un_kv": 15.0,
-    "sn_mva": 2.2,
-    "control_mode": "Q_OF_U",
-    "harmonic_spectrum_percent": {5: 4.5, 7: 2.1},
-}
 _KARTA_BEZ_WIDMA = {"un_kv": 15.0, "sn_mva": 2.2, "control_mode": "Q_OF_U"}
+#: Klucz skasowanego pola wstrzyknięty mimo katalogu — most go NIE czyta.
+_KARTA_Z_KLUCZEM_WSTRZYKNIETYM = {**_KARTA_BEZ_WIDMA, "harmonic_spectrum_percent": {5: 4.5}}
+_WIDMO_RECZNE = {"5": 4.5, "7": 2.1}
 
 
 def _generator(ref_id: str, **nadpisania: object) -> dict:
@@ -107,14 +111,19 @@ def _uruchom(client: TestClient, case_id: str, rodzaj: str, parametry: dict | No
 
 def test_power_quality_harmonics_zadne_zrodlo_nie_ma_widma_zwraca_422() -> None:
     """PIN NA DEFEKT: przed naprawą oba źródła dostałyby zaszyte widmo i bieg
-    przeszedłby cicho ze zmyślonym THD/TDD."""
+    przeszedłby cicho ze zmyślonym THD/TDD. PV-2 niesie klucz skasowanego pola
+    wstrzyknięty do karty — nadal „brak widma" (klucz martwy)."""
     with TestClient(app) as client:
         case_id = _seed_case(
             client,
             _model(
                 generators=[
                     _generator("PV-1", materialized_params=_KARTA_BEZ_WIDMA),
-                    _generator("PV-2", bus_ref=_SZYNA_B, materialized_params=_KARTA_BEZ_WIDMA),
+                    _generator(
+                        "PV-2",
+                        bus_ref=_SZYNA_B,
+                        materialized_params=_KARTA_Z_KLUCZEM_WSTRZYKNIETYM,
+                    ),
                 ]
             ),
         )
@@ -163,12 +172,17 @@ def test_power_quality_harmonics_czesciowe_dane_przechodzi_z_pominietymi_zrodlam
             client,
             _model(
                 generators=[
-                    _generator("PV-OK", materialized_params=_KARTA_Z_WIDMEM),
+                    _generator("PV-OK", materialized_params=_KARTA_BEZ_WIDMA),
                     _generator("PV-BRAK", bus_ref=_SZYNA_B, materialized_params=_KARTA_BEZ_WIDMA),
                 ]
             ),
         )
-        resp = _uruchom(client, case_id, "power_quality_harmonics")
+        resp = _uruchom(
+            client,
+            case_id,
+            "power_quality_harmonics",
+            {"harmonic_spectra": {"PV-OK": _WIDMO_RECZNE}},
+        )
         assert resp.status_code == 200, resp.text
         wynik = client.get(resp.json()["result_url"])
     assert wynik.status_code == 200
@@ -177,7 +191,7 @@ def test_power_quality_harmonics_czesciowe_dane_przechodzi_z_pominietymi_zrodlam
     assert set(pominiete) == {"PV-BRAK"}
     assert pominiete["PV-BRAK"]["kod"] == "generator.harmonic_spectrum_missing"
     zrodla_widma = {z["ref"]: z for z in payload["zrodla_widma"]}
-    assert zrodla_widma == {"PV-OK": {"ref": "PV-OK", "proweniencja": "KATALOG"}}
+    assert zrodla_widma == {"PV-OK": {"ref": "PV-OK", "proweniencja": "RECZNE"}}
 
 
 def test_power_quality_harmonics_wszystkie_zrodla_maja_widmo_brak_pominietych_w_odpowiedzi() -> (
@@ -187,22 +201,31 @@ def test_power_quality_harmonics_wszystkie_zrodla_maja_widmo_brak_pominietych_w_
     nie pojawia się w odpowiedzi w ogóle (pole addytywne, nie pusta lista)."""
     with TestClient(app) as client:
         case_id = _seed_case(
-            client, _model(generators=[_generator("PV-OK", materialized_params=_KARTA_Z_WIDMEM)])
+            client, _model(generators=[_generator("PV-OK", materialized_params=_KARTA_BEZ_WIDMA)])
         )
-        resp = _uruchom(client, case_id, "power_quality_harmonics")
+        resp = _uruchom(
+            client,
+            case_id,
+            "power_quality_harmonics",
+            {"harmonic_spectra": {"PV-OK": _WIDMO_RECZNE}},
+        )
         assert resp.status_code == 200, resp.text
         wynik = client.get(resp.json()["result_url"])
     payload = wynik.json()
     assert "pominiete_zrodla" not in payload
-    assert payload["zrodla_widma"] == [{"ref": "PV-OK", "proweniencja": "KATALOG"}]
+    assert payload["zrodla_widma"] == [{"ref": "PV-OK", "proweniencja": "RECZNE"}]
 
 
 def test_widmo_reczne_w_zadaniu_daje_proweniencje_reczne_w_odpowiedzi() -> None:
-    """Jawne wejście projektanta (`parameters.harmonic_spectra`) nadpisuje brak
-    karty — źródło wchodzi z proweniencją RECZNE, nie ma go w pominiętych."""
+    """Jawne wejście projektanta (`parameters.harmonic_spectra`) — źródło wchodzi z
+    proweniencją RECZNE, nie ma go w pominiętych; klucz wstrzyknięty do karty nie
+    zmienia proweniencji."""
     with TestClient(app) as client:
         case_id = _seed_case(
-            client, _model(generators=[_generator("PV-1", materialized_params=_KARTA_BEZ_WIDMA)])
+            client,
+            _model(
+                generators=[_generator("PV-1", materialized_params=_KARTA_Z_KLUCZEM_WSTRZYKNIETYM)]
+            ),
         )
         resp = _uruchom(
             client,

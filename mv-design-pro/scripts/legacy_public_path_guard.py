@@ -566,10 +566,13 @@ W3G1_RUN_TRIGGER_ORPHAN_RELATIVE_PATHS: dict[str, str] = {
 # wlasna checklista `compliant/audit_required/non_compliant` i progi 80 %/100 %
 # mocy DER vs transformator liczone W PRZEGLADARCE (fizyka w FE), 0 importerow
 # poza 3 wlasnymi testami (pomiar 2026-09-16). Sprawdzenie mocy DER vs
-# transformator ISTNIEJE w backendzie: `enm/der_sn_validation.py::
-# validate_transformer_power` (kod `converter.der_sn.moc_transformatora_
-# niewystarczajaca`), wolane przy operacji (`enm/domain_operations_v2.py`,
-# `add_converter_source` z TR blokowym) i na committed modelu
+# transformator ISTNIEJE w backendzie: od O-53 (AB-H0, 2026-09-24) jedna regula
+# `domain/generator_validation.py::sprawdz_moc_generatora` (kod
+# `converter.transformer_capacity_exceeded`; dawne `enm/der_sn_validation.py::
+# validate_transformer_power` z kodem `converter.der_sn.moc_transformatora_
+# niewystarczajaca` skasowane), wolana w kazdym torze zapisu zrodla
+# (`enm/domain_operations_v2.py`: tor atomowy, stacyjny, DER-SN, przypisanie typu,
+# aktualizacja, usuniecie) i na committed modelu
 # (`application/analyses/raport_zgodnosci.py`, pozycja `moc_transformatora`).
 #
 # Po S-3 trasa `/compliance` buduje `NcRfgPtpireeModuleInput` z committed ENM
@@ -602,7 +605,7 @@ S3_FRONTEND_ISLAND_RELATIVE_PATHS: dict[str, str] = {
     ),
     "ui/network-build/station-der/derPowerValidation.ts": (
         "progi 80 %/100 % mocy DER vs transformator w FE — kanon: "
-        "enm/der_sn_validation.py::validate_transformer_power"
+        "domain/generator_validation.py::sprawdz_moc_generatora (O-53)"
     ),
     "ui/network-build/station-der/__tests__/NcRfgComplianceBadge.test.tsx": (
         "testy wyspy NcRfgComplianceBadge (bez komponentu do testowania)"

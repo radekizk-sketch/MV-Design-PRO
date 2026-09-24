@@ -4,8 +4,9 @@ Zakres: emisja pojedynczego źródła (rachunek ręczny), prawo sumowania m=3
 (rachunek ręczny), moduł bez współczynnika/mocy pominięty z INFO, węzeł bez
 Sk'' bez oceny, przekroczenie poziomu planowania (werdykt PL), szybka zmiana
 napięcia d(%) (rachunek ręczny), determinizm z input_hash, błędy rodzaju/statusu
-przebiegu, rozwiązanie współczynnika z katalogu, wykluczenie generatora
-synchronicznego oraz walidacja katalogowa flicker_c.
+przebiegu, współczynnik z karty zmaterializowanej torem kanonicznym (bez odczytu
+zapasowego z katalogu statycznego), wykluczenie generatora synchronicznego oraz
+walidacja katalogowa flicker_c.
 """
 
 from __future__ import annotations
@@ -219,21 +220,83 @@ def test_rapid_voltage_change_independent_of_missing_coefficient() -> None:
 # --------------------------------------------------------------------------
 
 
-def test_flicker_coefficient_resolved_from_converter_catalog() -> None:
-    # Bez materialized → c i Sn z katalogu (conv-pv-card-huawei-sun2000-215ktl:
-    # flicker_c=0.30, sn_mva=0.215). Pst_i = 0.30 · 0.215 / 100.
+# Przepisane w karcie AB-H0 Pakiet D (dawniej: „bez materialized → c i Sn z katalogu").
+# Migotanie czyta WYŁĄCZNIE kartę zmaterializowaną w elemencie ENM: generator powstaje
+# torem kanonicznym (`add_converter_source` z karty referencyjnej, materializacja niesie
+# `flicker_c` i `sn_mva`), a odczyt zapasowy z katalogu STATYCZNEGO po `catalog_ref` —
+# skasowany — jest pinowany dwustronnie (katalog podmieniony w czasie testu nie zmienia
+# wyniku; element bez materializacji nie dostaje liczb z katalogu).
+
+TYP_PV_Z_KARTA = "conv-pv-card-huawei-sun2000-215ktl"
+
+
+def _generator_kanoniczny() -> tuple[dict, list[dict]]:
+    """Generator PV z karty referencyjnej utworzony operacją domenową + szyny modelu."""
+    from tests.enm import test_karty_widmowe_modelu as km
+
+    snapshot = km._model(km.TORY[0])
+    generator = km._generator(snapshot)
+    assert generator["catalog_ref"] == TYP_PV_Z_KARTA
+    return generator, list(snapshot["buses"])
+
+
+def _run_kanoniczny() -> CanonicalRun:
+    generator, szyny = _generator_kanoniczny()
+    return _sc_run(
+        generators=[generator],
+        buses=szyny,
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": generator["bus_ref"]}},
+    )
+
+
+def test_flicker_coefficient_from_canonically_materialized_card() -> None:
+    # Karta referencyjna: flicker_c = 0.30, sn_mva = 0.215 (zmaterializowane w elemencie).
     expected = round(0.30 * 0.215 / 100.0, 6)
+    generator, _ = _generator_kanoniczny()
+    assert generator["materialized_params"]["flicker_c"] == 0.3
+    assert generator["materialized_params"]["sn_mva"] == 0.215
+    module = build_migotanie_view(_run_kanoniczny())["buses"][0]["modules"][0]
+    assert module["flicker_c"] == 0.3
+    assert module["sn_mva"] == 0.215
+    assert module["pst_i"] == expected
+
+
+def test_static_catalog_swapped_at_test_time_does_not_change_view(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import dataclasses
+
+    from network_model.catalog import repository
+
+    przed = build_migotanie_view(_run_kanoniczny())
+    katalog = repository.get_default_mv_catalog()
+    typ = katalog.converter_types[TYP_PV_Z_KARTA]
+    podmieniony = dataclasses.replace(
+        katalog,
+        converter_types={
+            **katalog.converter_types,
+            TYP_PV_Z_KARTA: dataclasses.replace(typ, flicker_c=0.9, sn_mva=9.9),
+        },
+    )
+    monkeypatch.setattr(repository, "get_default_mv_catalog", lambda: podmieniony)
+    po = build_migotanie_view(_run_kanoniczny())
+    assert po["buses"] == przed["buses"]
+    assert po["input_hash"] == przed["input_hash"]
+
+
+def test_generator_without_materialized_card_gets_no_catalog_numbers() -> None:
+    # Sam `catalog_ref` bez materializacji: moduł pominięty z INFO (nie liczby z katalogu).
     run = _sc_run(
-        generators=[_ibg("g1", "b1", catalog_ref="conv-pv-card-huawei-sun2000-215ktl")],
+        generators=[_ibg("g1", "b1", catalog_ref=TYP_PV_Z_KARTA)],
         buses=[_bus("b1")],
         sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
         graph_nodes={"n1": {"element_id": "b1"}},
     )
-    view = build_migotanie_view(run)
-    module = view["buses"][0]["modules"][0]
-    assert module["flicker_c"] == 0.3
-    assert module["sn_mva"] == 0.215
-    assert module["pst_i"] == expected
+    module = build_migotanie_view(run)["buses"][0]["modules"][0]
+    assert module["flicker_c"] is None
+    assert module["sn_mva"] is None
+    assert module["included"] is False
 
 
 def test_synchronous_generator_excluded() -> None:

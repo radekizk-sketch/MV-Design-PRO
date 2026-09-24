@@ -1243,10 +1243,17 @@ def _domain_ops_pod_blokada(case_id: str, klucz: str, req: DomainOpEnvelopeModel
         )
 
     resolved_name = resolve_operation_name(req.operation.name)
-    policy_error, pola_bramy = validate_and_materialize_catalog_binding(
-        resolved_name,
-        req.operation.payload,
-    )
+    # Brama katalogowa rozstrzyga referencje w katalogu MODELU (statyczny + pozycje
+    # projektu — typy z arkusza, karty widmowe projektu), tym samym co operacja
+    # (`execute_domain_operation` → `kontekst_katalogu`). Inaczej brama odrzucałaby 422
+    # pozycję, którą operacja uznaje (karta AB-H0 §0.7.6).
+    from enm.katalog_projektu import kontekst_katalogu
+
+    with kontekst_katalogu(enm_dict):
+        policy_error, pola_bramy = validate_and_materialize_catalog_binding(
+            resolved_name,
+            req.operation.payload,
+        )
     if policy_error:
         raise HTTPException(
             status_code=422,

@@ -311,6 +311,11 @@ INWENTARZ_KLUCZA_PRZYPADKU: dict[str, str] = {
     # `klucz: KluczTwin`, oba rozwiązywane z TEGO SAMEGO segmentu `{case_id}` adresu
     # (bez `UUID(...)`/`str(...)` pomiędzy) — wzorzec identyczny z `diagnostics.py`.
     "solver_input.py": KLUCZ_SUROWY,
+    # Karta AB-H0 Pakiet E: sekcje modelu urządzenia ELEMENTU
+    # (`GET /api/cases/{case_id}/enm/elementy/{ref}/sekcje-modelu`) czytają model tą
+    # samą drogą co `GET /api/cases/{case_id}/enm` — `case_id: str` obok
+    # `klucz: KluczTwin` z tego samego segmentu adresu, bez `UUID(...)`/`str(...)`.
+    "karty_widmowe.py": KLUCZ_SUROWY,
     # W1 (2026-09-09): agregacja odbiorów per stacja dla audytu 2 czyta ENM projektu
     # (dawniej migawkę legacy `uow.snapshots`, której nikt nie zapisywał) — adres
     # projektem przez tłumacza, zero własnej konwersji klucza przypadku.

@@ -841,8 +841,8 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // Karta HARNESS-RESZTA (kontynuacja): scena "sila-sieci" — REALNY bieg
     // backendu (eksport_fixtur_harnessu.py::sila_sieci_scena_wynik, TA SAMA
     // funkcja co koncowka `build_grid_strength_view`) na biegu kotwicy scen
-    // "sila-sieci"/"migotanie" (siec zlota z catalog_ref na gen_pv) — zero
-    // recznie wpisanych liczb fizycznych.
+    // "sila-sieci"/"migotanie" (siec sceny analiz OZE: stacja 15/0,8 kV z falownikiem
+    // PV z karty, `_enm_sceny_oze_analiz`) — zero recznie wpisanych liczb fizycznych.
     return jsonOK(silaSieciScenyWynik);
   }
   if (url.includes('/api/oze-analysis/compensation-sizing')) {
@@ -857,8 +857,8 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // Karta HARNESS-RESZTA (kontynuacja): scena "migotanie" — REALNY bieg
     // backendu (eksport_fixtur_harnessu.py::migotanie_scena_wynik, TA SAMA
     // funkcja co koncowka `build_migotanie_view`) na biegu kotwicy scen
-    // "sila-sieci"/"migotanie" (siec zlota z catalog_ref na gen_pv) — zero
-    // recznie wpisanych liczb fizycznych.
+    // "sila-sieci"/"migotanie" (siec sceny analiz OZE: stacja 15/0,8 kV z falownikiem
+    // PV z karty, `_enm_sceny_oze_analiz`) — zero recznie wpisanych liczb fizycznych.
     return jsonOK(migotanieScenyWynik);
   }
   if (url.includes('/api/quality/as-built-compliance')) {

@@ -49,6 +49,20 @@ SCAN_FILES: tuple[str, ...] = (
     # Ten sam zakaz domyślek liczbowych: brak nastawy albo brak parametru sieci
     # to brak pola wymaganego, nigdy cicha wartość zastępcza.
     "backend/src/network_model/solvers/dynamika/kontrakty.py",
+    # Karta AB-H0 §0.1: kontrakty dziedziny częstotliwości (liść `dziedziny/`) — ten
+    # sam zakaz: pole fizyczne widma, pomiaru, pasma, punktu pracy albo wymagania
+    # jakości energii nie ma domyślki liczbowej (brak danej = `None` albo pole
+    # wymagane). Komplet plików liścia pilnuje self-test
+    # `test_dynamika_zero_default_guard.py::test_kazdy_modul_dziedziny_jest_skanowany`.
+    "backend/src/dziedziny/__init__.py",
+    "backend/src/dziedziny/dziedzina_analizy.py",
+    "backend/src/dziedziny/jakosc_energii.py",
+    "backend/src/dziedziny/kanon.py",
+    "backend/src/dziedziny/karta_widmowa.py",
+    "backend/src/dziedziny/pasmo.py",
+    "backend/src/dziedziny/pomiar.py",
+    "backend/src/dziedziny/sekcje.py",
+    "backend/src/dziedziny/widmo.py",
 )
 
 #: Pola dozwolone z domyślką TEKSTOWĄ (dyskryminator wariantu, nie wielkość

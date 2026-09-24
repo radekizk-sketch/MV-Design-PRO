@@ -126,11 +126,15 @@ SPRAWDZANE: dict[str, str] = {
     "GroundingConfig": "GroundingConfig",
     "InterlockEntry": "InterlockEntry",
     "Junction": "Junction",
+    # Karta AB-H0 §0.7: karta widmowa (katalog projektu) i nośnik modeli widmowych
+    # generatora — kontrakty liścia `dziedziny/`, widoczne w `enm.models` przez import.
+    "KartaWidmowa": "KartaWidmowa",
     "KatalogProjektu": "KatalogProjektu",
     "LineDropCompensation": "LineDropCompensation",
     "Load": "Load",
     "Measurement": "Measurement",
     "MeasurementRating": "MeasurementRating",
+    "ModeleWidmoweElementu": "ModeleWidmoweElementu",
     "OverheadLine": "OverheadLine",
     "ParameterOverride": "ParameterOverride",
     "Port": "Port",

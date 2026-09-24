@@ -224,6 +224,9 @@ class TestV126SanityWithRealInputs:
                         source_ref="HS1",
                         base_current_a=50.0,
                         spectrum_percent={5: 20.0, 7: 14.0, 11: 9.0},
+                        # Karta AB-H0: proweniencja widma jest polem WYMAGANYM (bez domyślki
+                        # „KATALOG”) — wejście solvera zbudowane ręcznie w teście to widmo RĘCZNE.
+                        spectrum_provenance="RECZNE",
                     )
                 ]
             }
@@ -268,6 +271,9 @@ class TestV126SanityWithRealInputs:
                         source_ref="HS1",
                         base_current_a=50.0,
                         spectrum_percent={5: 20.0},
+                        # Karta AB-H0: proweniencja widma jest polem WYMAGANYM (bez domyślki
+                        # „KATALOG”) — wejście solvera zbudowane ręcznie w teście to widmo RĘCZNE.
+                        spectrum_provenance="RECZNE",
                     )
                 ]
             }

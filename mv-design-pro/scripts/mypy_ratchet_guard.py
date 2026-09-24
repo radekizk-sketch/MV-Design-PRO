@@ -157,8 +157,24 @@ BACKEND = ROOT / "backend"
 # — 1 blad var-annotated). Pomiar `mypy src` (mypy 1.19.1): czysty HEAD `d0d02f0f`
 # 271/48 (729 plikow), `d0d02f0f` + Pakiet L 266/46 (716 plikow); roznica zbiorow
 # bledow = dokladnie te 5 bledow, zero nowych => 266/46.
-BASELINE_ERRORS = 266
-BASELINE_FILES = 46
+# AB-H0 (2026-09-23, karty widmowe + jedna materializacja): 271/48 -> 255/46.
+# POMIAR: `mypy src` na drzewie integracji i na czystym HEAD (`2ef62bbc`), listy
+# bledow porownane `comm` — znikaja WYLACZNIE bledy dwoch plikow, zero nowych:
+# `enm/domain_operations.py` 9 (zmienna `type_data` niosla typ kabla/linii i
+# transformatora naraz — teraz osobna `typ_transformatora`) i
+# `solver_input/v126_contracts.py` 7 (dostep do `length_km`/`r_ohm_per_km` bez
+# zwezenia `isinstance(branch, OverheadLine | Cable)` i `float | None` do
+# `prad_roboczy_a`). Zero `# type: ignore`, zero poszerzen do `Any`.
+# Decyzja O-53 (2026-09-24): 255/46 -> 254/45 — pomiar `mypy src` na drzewie integracji
+# przed i po, listy bledow porownane: znika JEDYNY blad `api/grid_source_preview.py`
+# (`view["sets"]` typu `object` iterowane pod `# type: ignore[arg-type]`, ktory nie
+# obejmowal kodu `attr-defined`) — jawne `cast(list[dict[str, Any]], ...)` na wyniku
+# `widok_zestawow()`, zignorowanie zdjete; zero nowych bledow.
+# Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
+# `mypy src` na scalonym drzewie int/h0 (L i AB-H0 zdejmuja bledy w roznych plikach,
+# roznice sie sumuja; zero nowych bledow).
+BASELINE_ERRORS = 249
+BASELINE_FILES = 43
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

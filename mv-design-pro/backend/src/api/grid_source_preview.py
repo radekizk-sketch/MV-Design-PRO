@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
+from domain.generator_validation import (
+    BEZ_REDUKCJI,
+    JawneWejsciaKontroliMocy,
+    blad_wejsc_kontroli_mocy,
+    moc_pozorna_z_nastawy_mva,
+)
 from enm.der_sn_validation import (
-    DEFAULT_SIMULTANEITY_FACTOR,
-    DEFAULT_TRANSFORMER_LOADABILITY_PU,
     NN_VOLTAGE_TOLERANCE_KV,
     SN_VOLTAGE_TOLERANCE_KV,
-    converter_apparent_power_mva,
     rated_current_a,
 )
 from fastapi import APIRouter, HTTPException
@@ -632,12 +635,17 @@ class FieldApparatusSelectionResponse(BaseModel):
 
 class DerSelectionPreviewRequest(BaseModel):
     sum_active_power_mw: float = Field(gt=0)
-    cos_phi: float | None = Field(default=None, gt=0, le=1)
+    # Decyzja O-53: dziedzinę cosφ, k_j i k_obc sprawdza JEDNA funkcja domenowa
+    # (`blad_wejsc_kontroli_mocy`, ta sama co w operacji dodania źródła) — nie osobne
+    # ograniczenia pól, które dawniej przepuszczały k_j > 1 odrzucane potem przez operację.
+    cos_phi: float | None = None
     inverter_output_kv: float = Field(gt=0)
     sn_bus_voltage_kv: float = Field(gt=0)
     cable_length_km: float = Field(gt=0)
-    simultaneity_factor: float = Field(default=DEFAULT_SIMULTANEITY_FACTOR, gt=0)
-    loadability_pu: float = Field(default=DEFAULT_TRANSFORMER_LOADABILITY_PU, gt=0)
+    # Decyzja O-53: brak jawnego współczynnika = 1,0, element neutralny (bez redukcji i bez
+    # ulgi) — ta sama stała co kontrola mocy operacji domenowych.
+    simultaneity_factor: float = BEZ_REDUKCJI
+    loadability_pu: float = BEZ_REDUKCJI
     transformer_reserve_pu: float = Field(default=0.0, ge=0)
     cable_reserve_pu: float = Field(default=0.0, ge=0)
     field_reserve_pu: float = Field(default=0.0, ge=0)
@@ -675,6 +683,21 @@ def _rejected_response(
         )
         for item in rejected
     ]
+
+
+def _cos_phi_doboru_kabla(
+    zrodlo: DerSelectionPreviewRequest | JawneWejsciaKontroliMocy,
+) -> float:
+    """cosφ prądu toru w doborze kabla (ΔU): jawny cosφ falownika, a bez niego 1,0
+    (sama moc czynna — człon bierny ΔU znika).
+
+    JEDNA reguła dla podglądu kreatora (żądanie podglądu) i dla sprawdzenia odstępstw
+    dokumentu DER-SN (jawne wejścia zapisane przez tor tworzenia, `api/der_sn_documents.py`)
+    — dokument liczy propozycję kabla ponownie i porównuje ją z zastosowanym przekrojem;
+    przy innym cosφ niż w doborze (dawniej zaszyte 0,95) zgłaszałby odstępstwo od
+    propozycji, której kreator nigdy nie pokazał. Podstawienie 1,0 za brak cosφ jest
+    długiem nazwanym w `solver_input_substitute_guard` (jeden wpis dla obu miejsc)."""
+    return zrodlo.cos_phi if zrodlo.cos_phi is not None else 1.0
 
 
 def _block_transformer_candidates() -> tuple[BlockTransformerCandidate, ...]:
@@ -789,7 +812,10 @@ def list_cable_laying_conditions() -> CableLayingConditionsResponse:
     """
     view = widok_zestawow()
     return CableLayingConditionsResponse(
-        sets=[CableLayingConditionsSetResponse(**item) for item in view["sets"]],  # type: ignore[arg-type]
+        sets=[
+            CableLayingConditionsSetResponse(**item)
+            for item in cast(list[dict[str, Any]], view["sets"])
+        ],
         custom_name=str(view["custom_name"]),
         default_name=str(view["default_name"]),
         limitation_pl=str(view["limitation_pl"]),
@@ -805,12 +831,24 @@ def preview_der_selection(
 ) -> DerSelectionPreviewResponse:
     """Kaskadowy dobór toru DER-SN: TR blokowy → kabel SN → aparat pola SN.
 
-    ΣS liczy D1 `converter_apparent_power_mva` (ΣP·/cosφ). Prąd znamionowy TR
+    ΣS liczy człon nastawy kontroli mocy O-53 (`moc_pozorna_z_nastawy_mva`: ΣP/cosφ).
+    Podgląd nie zna karty jednostki ani liczby jednostek, więc człon S_n,jedn·n kontroli
+    operacji nie wchodzi tu do wymagania — operacja dodania źródła sprawdza go osobno.
+    Prąd znamionowy TR
     (strona SN) z D1 `rated_current_a`. Kabel i pole dobierane od prądu SN
     zaproponowanego TR (kaskada I_TR ≤ Iz ≤ In). Zero fizyki rozpływu/zwarcia.
     """
+    odmowa = blad_wejsc_kontroli_mocy(
+        JawneWejsciaKontroliMocy(
+            cos_phi=request.cos_phi,
+            wspolczynnik_jednoczesnosci=request.simultaneity_factor,
+            przeciazalnosc_transformatora_pu=request.loadability_pu,
+        )
+    )
+    if odmowa is not None:
+        raise HTTPException(status_code=422, detail=odmowa.komunikat_pl)
     try:
-        sum_apparent_power_mva = converter_apparent_power_mva(
+        sum_apparent_power_mva = moc_pozorna_z_nastawy_mva(
             request.sum_active_power_mw, request.cos_phi
         )
         tr_result = propose_block_transformer(
@@ -869,7 +907,7 @@ def preview_der_selection(
             detail="Nie można wyznaczyć prądu znamionowego TR (moc/napięcie).",
         )
 
-    cos_phi_load = request.cos_phi if request.cos_phi is not None else 1.0
+    cos_phi_load = _cos_phi_doboru_kabla(request)
     try:
         # F-K7: nazwa zestawu / współczynniki własne → współczynniki. Nieznany zestaw i
         # brak opisu warunków własnych kończą się 422 (fail-closed), nie cichym

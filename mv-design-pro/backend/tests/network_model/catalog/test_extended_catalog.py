@@ -53,6 +53,7 @@ class TestCatalogNamespace:
             "OGRANICZNIK_SN",
             "KOMPENSATOR_SN",
             "PTPIREE_CERTYFIKAT_GENERATORA",
+            "KARTA_WIDMOWA",  # karta AB-H0 §0.7 — karta widmowa urządzenia (osobny rekord)
         }
         actual = {ns.value for ns in CatalogNamespace}
         assert actual == expected

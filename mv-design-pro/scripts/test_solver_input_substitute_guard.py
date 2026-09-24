@@ -1513,7 +1513,31 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `upstream_trace`, `upstream_trip_time_s`, `visual_state`, `voltages_at_buses_pu`,
     # `voltages_at_oze_pu`, `voltages_within_limits`, `ybus_description`. PASS bramki
     # niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 3750." in wyjscie, wyjscie
+    # Karta AB-H0 (2026-09-23, karty widmowe + sekcje modelu): 3843 -> 3968. POMIAR:
+    # zbior `contract_fields()` zrzucony na czystym HEAD (`2ef62bbc`) i na drzewie
+    # integracji, roznica `comm` na posortowanych zbiorach, w dwoch krokach:
+    # (1) klasy AB-H0 w korzeniach juz objetych mapa: +21 nazw (`dowody`, `harmonic`,
+    # `jakosci_zrodel`, `karty`, `karty_bez_typu`, `karty_wg_statusu`, `karty_widmowe`,
+    # `liczba_kart`, `liczba_typow`, `modele_widmowe`, `odrzucone`, `pola`, `producent`,
+    # `status_weryfikacji_rekordu`, `supraharmonic`, `typ_id`, `typy_z_karta`, `widma`,
+    # `widmo`, `wymagany`, `zrodla_modeli_widmowych`) i -1 (`harmonic_spectrum_percent`
+    # — kasacja odczytu widma z `materialized_params`, widmo tylko z karty) = 3863;
+    # (2) piec korzeni dolozonych do `CONTRACT_SOURCES` na zadanie pinu mapy
+    # (`dziedziny/{kanon,karta_widmowa,sekcje,widmo}.py`, `werdykt/kontrakt.py`):
+    # +105 nazw = 3968. Najkrotsze nazwy sprawdzone pod katem kolizji (`u` — napiecie
+    # punktu pracy widma, `soc` — stan naladowania punktu pracy, `krok`, `skala`,
+    # `limit`, `pomiar`) — ZERO nowych trafien (zapadka 56/255 i wykluczenia 13/31
+    # bez zmian, RC=0). W tej samej karcie usuniete jedno NOWE podstawienie wykryte
+    # przez bramke (`generator.n_parallel or 1` w kontroli mocy przy przypisaniu typu,
+    # `enm/domain_operations_v2.py`) — liczba jednostek nie jest dopowiadana.
+    # Decyzja O-53 (2026-09-23): 3968 -> 3970. `domain/generator_validation.py`
+    # dolozony do `CONTRACT_SOURCES` na zadanie pinu mapy (enm czyta z niego JEDNA
+    # regule mocy zrodla); `comm` zbiorow przed/po: +2 nazwy
+    # (`przeciazalnosc_transformatora_pu`, `wspolczynnik_jednoczesnosci`; `cos_phi`,
+    # `kod`, `komunikat_pl` juz byly w mapie). Zero nowych trafien skanera.
+    # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
+    # guardem na scalonym drzewie int/h0 (roznice L i AB-H0 sie sumuja).
+    assert "Pol kontraktow wejsciowych: 3877." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1614,7 +1638,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/proof_engine/packs/qu_regulation.py` (C46),
         # `application/reference_patterns/reporting.py` (C51)); zero nowych plikow.
         # POMIAR guardem na drzewach `d0d02f0f` i `d0d02f0f` + Pakiet L.
-        "Przeskanowano 529 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta AB-H0 (2026-09-23): 537 -> 544 (+7 plikow: `network_model/catalog/
+        # karty_widmowe/__init__.py`, `network_model/catalog/sekcje_modelu.py`,
+        # `enm/katalog_projektu_karty.py`, `enm/rejestr_operacji.py`,
+        # `application/model_urzadzenia/{__init__,sekcje_elementu}.py`,
+        # `api/karty_widmowe.py`); zero plikow skasowanych, dlug i wykluczenia bez zmian.
+        # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
+        # guardem na scalonym drzewie int/h0 (roznice L i AB-H0 sie sumuja).
+        "Przeskanowano 536 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1642,7 +1673,19 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `network_model/proof/power_flow_proof_builder.py` ("F:dictget:deltas.delta_v_pu": 1)
     # zdjety RAZEM z plikiem (A35: martwy dowod rozplywu, 0 importerow poza testem);
     # z `CONTRACT_SOURCES` zdjety `domain/result_set.py` (C55). Pomiar guardem.
-    assert "Zapadka dlugu (fizyczne): 55 plikow, suma 254." in wyjscie, wyjscie
+    # Decyzja O-53 (2026-09-23): 56/255 -> 56/254 — wpis "H:local:payload.quantity"
+    # (`_converter_required_apparent_power_mva`, jedynka zastepcza liczby jednostek)
+    # USUNIETY z zapadki razem z funkcja: moc wymagana zrodla liczy jedna regula
+    # domenowa, liczba jednostek z `enm/models.liczba_jednostek_zrodla`.
+    # Decyzja O-53 (2026-09-24, klasa w selektorach): 56/254 -> 55/249 — wpis
+    # `network_model/solvers/der_selection_preview.py` (k_j/k_obc niedodatnie -> 1,0,
+    # ujemna rezerwa -> 0, razem 5) zdjety: dana spoza dziedziny jest bledem wejscia.
+    # Klucz `api/grid_source_preview.py` przemianowany (`request.cos_phi` ->
+    # `zrodlo.cos_phi`) bez zmiany budzetu — jedna funkcja cosφ doboru kabla dla
+    # podgladu i dokumentu DER-SN (dawne zaszyte 0,95 w dokumencie).
+    # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
+    # guardem na scalonym drzewie int/h0 (roznice L i AB-H0 sie sumuja).
+    assert "Zapadka dlugu (fizyczne): 54 plikow, suma 248." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 13 plikow, suma 31." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -1683,7 +1726,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta AB-1a Pakiet L (2026-09-23): network_model 178 -> 172 (-5 plikow
         # `network_model/proof/**`, -1 `network_model/catalog/drift_detection.py`),
         # dlug 14/77 -> 13/76 (wpis ZASTANE `power_flow_proof_builder.py` zdjety z plikiem).
-        "  network_model: pliki_skanowane=172, dlug=13 plikow/suma 76, "
+        # Karta AB-H0 (2026-09-23): network_model 178 -> 180, enm 48 -> 50,
+        # application 237 -> 239, api 62 -> 63 (pliki wymienione przy pinie
+        # „Przeskanowano"); dlug i wykluczenia per korzen BEZ ZMIAN.
+        # Decyzja O-53 (2026-09-24): network_model dlug 14/77 -> 13/72 (wpis
+        # `solvers/der_selection_preview.py` zdjety, patrz pin zapadki globalnej).
+        # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
+        # guardem na scalonym drzewie int/h0 (roznice L i AB-H0 sie sumuja).
+        "  network_model: pliki_skanowane=174, dlug=12 plikow/suma 71, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki).
@@ -1699,7 +1749,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta W6-3B (2026-09-18): enm 47 -> 48 (+1 `enm/adapter_dynamiki.py`; zero
         # dlugu/wykluczen — adapter SKLADA i MAPUJE, kazdy brak danej konczy sie
         # nazwana odmowa, nie liczba podstawiona za brak).
-        "  enm: pliki_skanowane=48, dlug=7 plikow/suma 73, wykluczenia=0 plikow/suma 0",
+        # Decyzja O-53 (2026-09-23): enm dlug 7/73 -> 7/72 (wpis H:local:payload.quantity
+        # zdjety, patrz pin zapadki globalnej wyzej).
+        "  enm: pliki_skanowane=50, dlug=7 plikow/suma 72, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -1726,9 +1778,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/proof_engine/packs/qu_regulation.py`, -1
         # `application/reference_patterns/reporting.py`; zaden nie mial wpisu w
         # zapadce ani w wykluczeniach).
-        "  application: pliki_skanowane=235, dlug=30 plikow/suma 91, "
+        # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
+        # guardem na scalonym drzewie int/h0 (roznice L i AB-H0 sie sumuja).
+        "  application: pliki_skanowane=237, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=62, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
+        "  api: pliki_skanowane=63, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

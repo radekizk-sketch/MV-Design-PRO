@@ -11,6 +11,12 @@ import type {
   UkladSieciNn,
   UziemienieEkranuKabla,
 } from './uziemienie';
+import type {
+  DanaPrzyjeta,
+  FieldQuality,
+  PodstawaWymagania,
+  Wielkosc,
+} from '../ui2/wyniki/wzorzec/werdykt';
 
 // ---------------------------------------------------------------------------
 // Supporting types
@@ -692,6 +698,202 @@ export interface Generator extends ENMElement {
    * `resultset_dynamic_v1`.
    */
   dynamika?: ParametryDynamiczne | null;
+
+  /**
+   * Modele widmowe źródła (karta AB-H0 §0.7.6): ZMATERIALIZOWANA kopia modeli z kart
+   * widmowych wskazanych kluczem `karty_widmowe_ref` operacji `set_der_catalog_bindings`,
+   * z proweniencją każdej karty. `null` = brak modelu widmowego urządzenia (sekcja
+   * `harmonic` UNKNOWN z nazwanym brakiem) — nigdy widmo typowe.
+   */
+  modele_widmowe?: ModeleWidmoweElementu | null;
+}
+
+// ---------------------------------------------------------------------------
+// Karty widmowe i modele źródeł widmowych — lustro liścia `backend/src/dziedziny/`
+// (karta AB-H0 §0.4–§0.7). Kształt JSON rekordów (`model_dump(mode="json")`);
+// krotki backendu są listami.
+// ---------------------------------------------------------------------------
+
+/** Przedział z JAWNYM domknięciem obu końców (`null` granica = nieograniczony z tej strony). */
+export interface PrzedzialDziedziny {
+  dolna: number | null;
+  gorna: number | null;
+  domkniecie_dolne: boolean | null;
+  domkniecie_gorne: boolean | null;
+}
+
+export type RodzajModeluWidmowego =
+  | 'CURRENT_SPECTRUM'
+  | 'VOLTAGE_SPECTRUM'
+  | 'NORTON_EQUIVALENT'
+  | 'THEVENIN_EQUIVALENT'
+  | 'MEASURED_SPECTRUM'
+  | 'FREQUENCY_DEPENDENT_EQUIVALENT';
+
+export type DziedzinaWidmowa = 'HARMONIC_FREQUENCY_DOMAIN' | 'SUPRAHARMONIC_FREQUENCY_DOMAIN';
+
+export type DziedzinaFizyki =
+  | 'POWER_FLOW'
+  | 'SHORT_CIRCUIT'
+  | 'RMS_DYNAMICS'
+  | 'SEQUENCE_DOMAIN'
+  | 'HARMONIC_FREQUENCY_DOMAIN'
+  | 'SUPRAHARMONIC_FREQUENCY_DOMAIN';
+
+/** Składowa widma: częstotliwość w Hz, amplituda z jednostką, faza albo powód jej braku. */
+export interface SkladowaWidma {
+  f_hz: number;
+  amplituda: Wielkosc;
+  faza_deg: number | null;
+  faza_nieznana_powod_pl?: string | null;
+}
+
+export interface PunktAdmitancji {
+  f_hz: number;
+  g_s: number;
+  b_s: number;
+}
+
+export interface PunktImpedancji {
+  f_hz: number;
+  r_ohm: number;
+  x_ohm: number;
+}
+
+export interface ParametrModeluWidmowego {
+  nazwa: string;
+  wartosc: Wielkosc;
+  jakosc: FieldQuality;
+}
+
+export interface ModelParametrycznyWidma {
+  rodzina: 'Z_conv_literaturowy';
+  parametry: ParametrModeluWidmowego[];
+}
+
+export interface OdniesienieAmplitudy {
+  rodzaj: 'I_N_URZADZENIA' | 'I_1_W_PUNKCIE_PRACY' | 'U_1' | 'U_N';
+  wartosc?: Wielkosc | null;
+  pola_karty?: string[];
+}
+
+export interface OdniesienieFazy {
+  wielkosc: 'U_1_ZACISKOW' | 'I_1_URZADZENIA';
+  konwencja: 'THETA_H_MINUS_H_THETA_1';
+}
+
+export interface PunktPracyWidma {
+  baza_mocy: 'S_N_URZADZENIA' | 'P_N_URZADZENIA';
+  p: PrzedzialDziedziny;
+  q?: PrzedzialDziedziny | null;
+  u?: PrzedzialDziedziny | null;
+  soc?: PrzedzialDziedziny | null;
+  tryb?: 'LADOWANIE' | 'ROZLADOWANIE' | 'POSTOJ' | null;
+  stacjonarny?: boolean;
+}
+
+export interface OknoPomiaru {
+  rodzaj_pl: string;
+  dlugosc_s: number;
+  liczba_okresow?: number | null;
+}
+
+export interface AgregacjaPomiaru {
+  czas_s: number;
+  statystyka_pl: string;
+}
+
+export interface KalibracjaPomiaru {
+  dokument: string;
+  data: string;
+}
+
+/** Parametry pomiaru widma (komplet: metoda, rozdzielczość, okno, agregacja, podstawa). */
+export interface ParametryPomiaru {
+  metoda?: string | null;
+  czestotliwosc_probkowania_hz?: number | null;
+  okno?: OknoPomiaru | null;
+  rozdzielczosc_hz?: number | null;
+  rbw_hz?: number | null;
+  agregacja?: AgregacjaPomiaru | null;
+  czas_pomiaru_s?: number | null;
+  poziom_szumu?: Wielkosc | null;
+  kalibracja?: KalibracjaPomiaru | null;
+  warunki_sieci_probierczej?: DanaPrzyjeta[];
+  podstawa?: PodstawaWymagania | null;
+}
+
+/** Model źródła widmowego (`dziedziny.widmo.ModelZrodlaWidmowego`). */
+export interface ModelZrodlaWidmowego {
+  ident: string;
+  rodzaj: RodzajModeluWidmowego;
+  dziedzina: DziedzinaWidmowa;
+  f1_hz: number;
+  zakres_czestotliwosci: { f_min_hz: number; f_max_hz: number };
+  skladowe?: SkladowaWidma[];
+  admitancja?: PunktAdmitancji[] | null;
+  impedancja?: PunktImpedancji[] | null;
+  model_parametryczny?: ModelParametrycznyWidma | null;
+  punkt_pracy: PunktPracyWidma;
+  odniesienie_amplitudy?: OdniesienieAmplitudy | null;
+  odniesienie_fazy?: OdniesienieFazy | null;
+  pomiar?: ParametryPomiaru | null;
+  pasmo_ref?: string | null;
+  podstawa: PodstawaWymagania;
+  wersja: string;
+  czestotliwosc_przelaczania_hz?: number | null;
+}
+
+/** Rekord dowodu modelu (raport badań, pomiar, certyfikat) z pokrytymi dziedzinami. */
+export interface DowodModelu {
+  rodzaj:
+    | 'DEKLARACJA_KARTY'
+    | 'RAPORT_BADAN'
+    | 'POMIAR'
+    | 'CERTYFIKAT_ZGODNOSCI'
+    | 'CERTYFIKAT_MODELU';
+  pokrywa: DziedzinaFizyki[];
+  podstawa: PodstawaWymagania;
+  odniesienie_pl: string;
+}
+
+/** Karta widmowa urządzenia (`dziedziny.karta_widmowa.KartaWidmowa`) — osobny rekord. */
+export interface KartaWidmowa {
+  id: string;
+  urzadzenie_ref: string;
+  producent: string;
+  model_urzadzenia: string;
+  modele: ModelZrodlaWidmowego[];
+  dowody?: DowodModelu[];
+  podstawa: PodstawaWymagania;
+  wersja: string;
+  verification_status:
+    | 'ZWERYFIKOWANY'
+    | 'NIEWERYFIKOWANY'
+    | 'CZESCIOWO_ZWERYFIKOWANY'
+    | 'REFERENCYJNY';
+  source_reference: string;
+  catalog_status:
+    | 'PRODUKCYJNY_V1'
+    | 'REFERENCYJNY_V1'
+    | 'ANALITYCZNY_V1'
+    | 'TESTOWY'
+    | 'PROJEKTOWY_V1';
+  contract_version: string;
+}
+
+/** Proweniencja karty zmaterializowanej w elemencie (id, wersja, przestrzeń, odcisk). */
+export interface OdniesienieKarty {
+  karta_id: string;
+  wersja: string;
+  przestrzen: 'STATYCZNA' | 'PROJEKT';
+  odcisk_karty: string;
+}
+
+/** Nośnik modeli widmowych w elemencie (`Generator.modele_widmowe`). */
+export interface ModeleWidmoweElementu {
+  modele: ModelZrodlaWidmowego[];
+  zrodla: OdniesienieKarty[];
 }
 
 /**
@@ -1499,6 +1701,8 @@ export interface KatalogProjektu {
   line_types: RekordTypuProjektu[];
   cable_types: RekordTypuProjektu[];
   transformer_types: RekordTypuProjektu[];
+  /** Karta AB-H0 §0.7.3: karty widmowe projektu (dane inżyniera, `NIEWERYFIKOWANY`). */
+  karty_widmowe?: KartaWidmowa[];
 }
 
 // ---------------------------------------------------------------------------

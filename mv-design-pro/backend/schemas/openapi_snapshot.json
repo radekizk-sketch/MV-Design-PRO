@@ -1,6 +1,27 @@
 {
  "components": {
   "schemas": {
+   "AgregacjaPomiaru": {
+    "additionalProperties": false,
+    "description": "Agregacja wyników pomiaru: czas agregacji i statystyka (np. „wartość średnia 10 min\",\n„95. percentyl\") — z dokumentu.",
+    "properties": {
+     "czas_s": {
+      "exclusiveMinimum": 0.0,
+      "title": "Czas S",
+      "type": "number"
+     },
+     "statystyka_pl": {
+      "title": "Statystyka Pl",
+      "type": "string"
+     }
+    },
+    "required": [
+     "czas_s",
+     "statystyka_pl"
+    ],
+    "title": "AgregacjaPomiaru",
+    "type": "object"
+   },
    "ApplyTemplateRequest": {
     "description": "K30-20: Apply template payload.",
     "properties": {
@@ -3238,6 +3259,48 @@
     "title": "CurveSettingsRequest",
     "type": "object"
    },
+   "DanaPrzyjeta": {
+    "additionalProperties": false,
+    "description": "Dana przyjęta do oceny bez pełnej walidacji (wartość, powód, jakość danej).",
+    "properties": {
+     "jakosc": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/FieldQuality"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "nazwa_pl": {
+      "title": "Nazwa Pl",
+      "type": "string"
+     },
+     "powod_pl": {
+      "title": "Powod Pl",
+      "type": "string"
+     },
+     "wartosc": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Wielkosc"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "nazwa_pl",
+     "wartosc",
+     "powod_pl",
+     "jakosc"
+    ],
+    "title": "DanaPrzyjeta",
+    "type": "object"
+   },
    "DerAudit2Spec": {
     "properties": {
      "bess_operation_mode_refs": {
@@ -3636,8 +3699,6 @@
      "cos_phi": {
       "anyOf": [
        {
-        "exclusiveMinimum": 0.0,
-        "maximum": 1.0,
         "type": "number"
        },
        {
@@ -3669,7 +3730,6 @@
      },
      "loadability_pu": {
       "default": 1.0,
-      "exclusiveMinimum": 0.0,
       "title": "Loadability Pu",
       "type": "number"
      },
@@ -3686,7 +3746,6 @@
      },
      "simultaneity_factor": {
       "default": 1.0,
-      "exclusiveMinimum": 0.0,
       "title": "Simultaneity Factor",
       "type": "number"
      },
@@ -4126,6 +4185,53 @@
      "name"
     ],
     "title": "DomainOpPayloadModel",
+    "type": "object"
+   },
+   "DowodModelu": {
+    "additionalProperties": false,
+    "description": "Rekord dowodu: rodzaj, dziedziny, które pokrywa (niepuste), podstawa i odniesienie\n(np. numer raportu badań, numer certyfikatu z wykazu).",
+    "properties": {
+     "odniesienie_pl": {
+      "title": "Odniesienie Pl",
+      "type": "string"
+     },
+     "podstawa": {
+      "$ref": "#/components/schemas/PodstawaWymagania"
+     },
+     "pokrywa": {
+      "items": {
+       "enum": [
+        "POWER_FLOW",
+        "SHORT_CIRCUIT",
+        "RMS_DYNAMICS",
+        "SEQUENCE_DOMAIN",
+        "HARMONIC_FREQUENCY_DOMAIN",
+        "SUPRAHARMONIC_FREQUENCY_DOMAIN"
+       ],
+       "type": "string"
+      },
+      "title": "Pokrywa",
+      "type": "array"
+     },
+     "rodzaj": {
+      "enum": [
+       "DEKLARACJA_KARTY",
+       "RAPORT_BADAN",
+       "POMIAR",
+       "CERTYFIKAT_ZGODNOSCI",
+       "CERTYFIKAT_MODELU"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     }
+    },
+    "required": [
+     "rodzaj",
+     "pokrywa",
+     "podstawa",
+     "odniesienie_pl"
+    ],
+    "title": "DowodModelu",
     "type": "object"
    },
    "ElementResultResponse": {
@@ -4784,6 +4890,16 @@
     ],
     "title": "FieldConfigRequest",
     "type": "object"
+   },
+   "FieldQuality": {
+    "description": "Data-quality provenance axis for a single card field.\n\nOrthogonal to ``solver_input.provenance.SourceKind`` (which records *where* a value came\nfrom in the pipeline). ``FieldQuality`` records *how trustworthy* the value is:\n\n- ``DATASHEET`` (karta_techniczna): value taken from a manufacturer datasheet\n  / type-test report — fully trustworthy for the OSD package.\n- ``ESTIMATED`` (oszacowane): value is an engineering estimate without a real\n  source (e.g. a controller bandwidth assumed from technology defaults). It\n  MUST be tagged ``ESTIMATED`` — never ``DATASHEET`` — until a real source is\n  attached.\n- ``SYSTEM_DEFAULT`` (domyslne_techniczne): value is a system/technical\n  default carried by the schema (the field is present but no real value has\n  been provided).\n\nParamount rule: \"no gaps\" means the schema is COMPLETE (every field present),\nNOT that every field is filled with a fabricated value. A value with no real\nsource is ``ESTIMATED`` (or ``SYSTEM_DEFAULT``), never ``DATASHEET``.",
+    "enum": [
+     "DATASHEET",
+     "ESTIMATED",
+     "SYSTEM_DEFAULT"
+    ],
+    "title": "FieldQuality",
+    "type": "string"
    },
    "FixActionResponse": {
     "properties": {
@@ -5558,6 +5674,114 @@
     "title": "ImportResponse",
     "type": "object"
    },
+   "KalibracjaPomiaru": {
+    "additionalProperties": false,
+    "description": "Świadectwo kalibracji przyrządu: dokument i data (tekst z dokumentu).",
+    "properties": {
+     "data": {
+      "title": "Data",
+      "type": "string"
+     },
+     "dokument": {
+      "title": "Dokument",
+      "type": "string"
+     }
+    },
+    "required": [
+     "dokument",
+     "data"
+    ],
+    "title": "KalibracjaPomiaru",
+    "type": "object"
+   },
+   "KartaWidmowa": {
+    "additionalProperties": false,
+    "description": "Rekord karty widmowej urządzenia (metadane katalogu wg ``catalog_metadata_guard``).",
+    "properties": {
+     "catalog_status": {
+      "enum": [
+       "PRODUKCYJNY_V1",
+       "REFERENCYJNY_V1",
+       "ANALITYCZNY_V1",
+       "TESTOWY",
+       "PROJEKTOWY_V1"
+      ],
+      "title": "Catalog Status",
+      "type": "string"
+     },
+     "contract_version": {
+      "title": "Contract Version",
+      "type": "string"
+     },
+     "dowody": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/DowodModelu"
+      },
+      "title": "Dowody",
+      "type": "array"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "model_urzadzenia": {
+      "title": "Model Urzadzenia",
+      "type": "string"
+     },
+     "modele": {
+      "items": {
+       "$ref": "#/components/schemas/ModelZrodlaWidmowego"
+      },
+      "title": "Modele",
+      "type": "array"
+     },
+     "podstawa": {
+      "$ref": "#/components/schemas/PodstawaWymagania"
+     },
+     "producent": {
+      "title": "Producent",
+      "type": "string"
+     },
+     "source_reference": {
+      "title": "Source Reference",
+      "type": "string"
+     },
+     "urzadzenie_ref": {
+      "title": "Urzadzenie Ref",
+      "type": "string"
+     },
+     "verification_status": {
+      "enum": [
+       "ZWERYFIKOWANY",
+       "NIEWERYFIKOWANY",
+       "CZESCIOWO_ZWERYFIKOWANY",
+       "REFERENCYJNY"
+      ],
+      "title": "Verification Status",
+      "type": "string"
+     },
+     "wersja": {
+      "title": "Wersja",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "urzadzenie_ref",
+     "producent",
+     "model_urzadzenia",
+     "modele",
+     "podstawa",
+     "wersja",
+     "verification_status",
+     "source_reference",
+     "catalog_status",
+     "contract_version"
+    ],
+    "title": "KartaWidmowa",
+    "type": "object"
+   },
    "LVCircuitReportRequest": {
     "description": "Sekcje nN raportu (karta P0.10 §0.4, zakres minimalny P0).\n\nProvenance (``run_id``/``revision_id``/``przypadek_decydujacy``) jest\nPARAMETREM WEJŚCIOWYM — analizy nN nie są persystowane jako ``AnalysisRun``\n(zob. docstring ``build_nn_circuit_report_section``), więc nie ma obiektu\nprzebiegu, z którego dałoby się je odczytać.",
     "properties": {
@@ -5915,6 +6139,189 @@
      "vdrop_delta_u_total_kv"
     ],
     "title": "LVCircuitVerificationPackRequest",
+    "type": "object"
+   },
+   "ModelParametryczny": {
+    "additionalProperties": false,
+    "description": "Model parametryczny impedancji wewnętrznej (np. Z_conv(f) przekształtnika z pasm\nregulatorów i filtra karty — rodzina literaturowa). Liść NIE liczy Z(f) — nazywa\nrodzinę i niesie parametry; solver modelu należy do warstwy solverów.",
+    "properties": {
+     "parametry": {
+      "items": {
+       "$ref": "#/components/schemas/ParametrModelu"
+      },
+      "title": "Parametry",
+      "type": "array"
+     },
+     "rodzina": {
+      "const": "Z_conv_literaturowy",
+      "title": "Rodzina",
+      "type": "string"
+     }
+    },
+    "required": [
+     "rodzina",
+     "parametry"
+    ],
+    "title": "ModelParametryczny",
+    "type": "object"
+   },
+   "ModelZrodlaWidmowego": {
+    "additionalProperties": false,
+    "description": "Model źródła widmowego urządzenia w jednym punkcie pracy i jednej dziedzinie.",
+    "properties": {
+     "admitancja": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/PunktAdmitancji"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Admitancja"
+     },
+     "czestotliwosc_przelaczania_hz": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Czestotliwosc Przelaczania Hz"
+     },
+     "dziedzina": {
+      "enum": [
+       "HARMONIC_FREQUENCY_DOMAIN",
+       "SUPRAHARMONIC_FREQUENCY_DOMAIN"
+      ],
+      "title": "Dziedzina",
+      "type": "string"
+     },
+     "f1_hz": {
+      "exclusiveMinimum": 0.0,
+      "title": "F1 Hz",
+      "type": "number"
+     },
+     "ident": {
+      "title": "Ident",
+      "type": "string"
+     },
+     "impedancja": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/PunktImpedancji"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Impedancja"
+     },
+     "model_parametryczny": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ModelParametryczny"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "odniesienie_amplitudy": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/OdniesienieAmplitudy"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "odniesienie_fazy": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/OdniesienieFazy"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "pasmo_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pasmo Ref"
+     },
+     "podstawa": {
+      "$ref": "#/components/schemas/PodstawaWymagania"
+     },
+     "pomiar": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ParametryPomiaru"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "punkt_pracy": {
+      "$ref": "#/components/schemas/PunktPracyWidma"
+     },
+     "rodzaj": {
+      "enum": [
+       "CURRENT_SPECTRUM",
+       "VOLTAGE_SPECTRUM",
+       "NORTON_EQUIVALENT",
+       "THEVENIN_EQUIVALENT",
+       "MEASURED_SPECTRUM",
+       "FREQUENCY_DEPENDENT_EQUIVALENT"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     },
+     "skladowe": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/SkladowaWidma"
+      },
+      "title": "Skladowe",
+      "type": "array"
+     },
+     "wersja": {
+      "title": "Wersja",
+      "type": "string"
+     },
+     "zakres_czestotliwosci": {
+      "$ref": "#/components/schemas/ZakresCzestotliwosci"
+     }
+    },
+    "required": [
+     "ident",
+     "rodzaj",
+     "dziedzina",
+     "f1_hz",
+     "zakres_czestotliwosci",
+     "punkt_pracy",
+     "podstawa",
+     "wersja"
+    ],
+    "title": "ModelZrodlaWidmowego",
     "type": "object"
    },
    "NakladkaRoznicResponse": {
@@ -6916,6 +7323,214 @@
     "title": "ObciazenieAparatu",
     "type": "object"
    },
+   "OcenaSekcji": {
+    "additionalProperties": false,
+    "description": "Status sekcji z powodem, składnikami i danymi przyjętymi bez walidacji.",
+    "properties": {
+     "dane_przyjete": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/DanaPrzyjeta"
+      },
+      "title": "Dane Przyjete",
+      "type": "array"
+     },
+     "powod_pl": {
+      "title": "Powod Pl",
+      "type": "string"
+     },
+     "sekcja": {
+      "enum": [
+       "fundamental",
+       "short_circuit",
+       "dynamic",
+       "harmonic",
+       "supraharmonic",
+       "certification",
+       "measurement",
+       "validation"
+      ],
+      "title": "Sekcja",
+      "type": "string"
+     },
+     "skladniki": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/OcenaSkladnika"
+      },
+      "title": "Skladniki",
+      "type": "array"
+     },
+     "status": {
+      "enum": [
+       "VALIDATED",
+       "UNVALIDATED",
+       "MEASURED",
+       "CERTIFIED",
+       "UNKNOWN",
+       "OUTSIDE_DOMAIN"
+      ],
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "sekcja",
+     "status",
+     "powod_pl"
+    ],
+    "title": "OcenaSekcji",
+    "type": "object"
+   },
+   "OcenaSkladnika": {
+    "additionalProperties": false,
+    "description": "Status jednego składnika z powodem i danymi przyjętymi bez walidacji.",
+    "properties": {
+     "dane_przyjete": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/DanaPrzyjeta"
+      },
+      "title": "Dane Przyjete",
+      "type": "array"
+     },
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "powod_pl": {
+      "title": "Powod Pl",
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "VALIDATED",
+       "UNVALIDATED",
+       "MEASURED",
+       "CERTIFIED",
+       "UNKNOWN",
+       "OUTSIDE_DOMAIN"
+      ],
+      "title": "Status",
+      "type": "string"
+     },
+     "uwzgledniony": {
+      "title": "Uwzgledniony",
+      "type": "boolean"
+     },
+     "wymagany": {
+      "title": "Wymagany",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "nazwa",
+     "wymagany",
+     "uwzgledniony",
+     "status",
+     "powod_pl"
+    ],
+    "title": "OcenaSkladnika",
+    "type": "object"
+   },
+   "OdniesienieAmplitudy": {
+    "additionalProperties": false,
+    "description": "Baza amplitudy wyrażonej w procentach: rodzaj bazy i jej wartość z dokumentu ALBO\nwskazanie pól karty, z których konsument wyliczy bazę (np. ``sn_mva``, ``un_kv`` dla\nprądu znamionowego urządzenia). Dokładnie jedna z dwóch postaci.",
+    "properties": {
+     "pola_karty": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Pola Karty",
+      "type": "array"
+     },
+     "rodzaj": {
+      "enum": [
+       "I_N_URZADZENIA",
+       "I_1_W_PUNKCIE_PRACY",
+       "U_1",
+       "U_N"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     },
+     "wartosc": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Wielkosc"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "rodzaj"
+    ],
+    "title": "OdniesienieAmplitudy",
+    "type": "object"
+   },
+   "OdniesienieFazy": {
+    "additionalProperties": false,
+    "description": "Wielkość podstawowa, względem której podano fazy, i konwencja fazy względnej.",
+    "properties": {
+     "konwencja": {
+      "const": "THETA_H_MINUS_H_THETA_1",
+      "title": "Konwencja",
+      "type": "string"
+     },
+     "wielkosc": {
+      "enum": [
+       "U_1_ZACISKOW",
+       "I_1_URZADZENIA"
+      ],
+      "title": "Wielkosc",
+      "type": "string"
+     }
+    },
+    "required": [
+     "wielkosc",
+     "konwencja"
+    ],
+    "title": "OdniesienieFazy",
+    "type": "object"
+   },
+   "OdniesienieKarty": {
+    "additionalProperties": false,
+    "description": "Proweniencja karty zmaterializowanej w elemencie: id, wersja, przestrzeń i odcisk\nSHA-256 karty (``KartaWidmowa.odcisk()``) z chwili materializacji.",
+    "properties": {
+     "karta_id": {
+      "title": "Karta Id",
+      "type": "string"
+     },
+     "odcisk_karty": {
+      "title": "Odcisk Karty",
+      "type": "string"
+     },
+     "przestrzen": {
+      "enum": [
+       "STATYCZNA",
+       "PROJEKT"
+      ],
+      "title": "Przestrzen",
+      "type": "string"
+     },
+     "wersja": {
+      "title": "Wersja",
+      "type": "string"
+     }
+    },
+    "required": [
+     "karta_id",
+     "wersja",
+     "przestrzen",
+     "odcisk_karty"
+    ],
+    "title": "OdniesienieKarty",
+    "type": "object"
+   },
    "OdstepstwoWiarygodnosciOdpowiedz": {
     "description": "Jedna pozycja katalogu do przegladu — sygnal, nie odmowa.",
     "properties": {
@@ -6943,6 +7558,38 @@
      "opis_wartosci"
     ],
     "title": "OdstepstwoWiarygodnosciOdpowiedz",
+    "type": "object"
+   },
+   "OknoPomiaru": {
+    "additionalProperties": false,
+    "description": "Okno analizy widmowej: rodzaj (np. prostokątne zsynchronizowane), długość i liczba\nokresów podstawowej — wszystkie z dokumentu pomiaru.",
+    "properties": {
+     "dlugosc_s": {
+      "exclusiveMinimum": 0.0,
+      "title": "Dlugosc S",
+      "type": "number"
+     },
+     "liczba_okresow": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Liczba Okresow"
+     },
+     "rodzaj_pl": {
+      "title": "Rodzaj Pl",
+      "type": "string"
+     }
+    },
+    "required": [
+     "rodzaj_pl",
+     "dlugosc_s"
+    ],
+    "title": "OknoPomiaru",
     "type": "object"
    },
    "OperatingCurrentRequest": {
@@ -7291,6 +7938,154 @@
     "title": "OverridesResponse",
     "type": "object"
    },
+   "ParametrModelu": {
+    "additionalProperties": false,
+    "description": "Parametr modelu parametrycznego: nazwa pola karty, wartość z jednostką, jakość danej.",
+    "properties": {
+     "jakosc": {
+      "$ref": "#/components/schemas/FieldQuality"
+     },
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "wartosc": {
+      "$ref": "#/components/schemas/Wielkosc"
+     }
+    },
+    "required": [
+     "nazwa",
+     "wartosc",
+     "jakosc"
+    ],
+    "title": "ParametrModelu",
+    "type": "object"
+   },
+   "ParametryPomiaru": {
+    "additionalProperties": false,
+    "description": "Parametry pomiaru widma (IEC 61000-4-7, IEC 61000-4-30, CISPR 16-1-1 — wg dokumentu).\n\n``warunki_sieci_probierczej`` — S_k, X/R, tło sieci probierczej jako dane przyjęte ze\nstatusem jakości (każda pozycja MUSI mieć jakość — jak parametry sieci w\n``werdykt.kontrakt.ZakresWaznosci``).",
+    "properties": {
+     "agregacja": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/AgregacjaPomiaru"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "czas_pomiaru_s": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Czas Pomiaru S"
+     },
+     "czestotliwosc_probkowania_hz": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Czestotliwosc Probkowania Hz"
+     },
+     "kalibracja": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/KalibracjaPomiaru"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "metoda": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Metoda"
+     },
+     "okno": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/OknoPomiaru"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "podstawa": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PodstawaWymagania"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "poziom_szumu": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Wielkosc"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "rbw_hz": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rbw Hz"
+     },
+     "rozdzielczosc_hz": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rozdzielczosc Hz"
+     },
+     "warunki_sieci_probierczej": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/DanaPrzyjeta"
+      },
+      "title": "Warunki Sieci Probierczej",
+      "type": "array"
+     }
+    },
+    "title": "ParametryPomiaru",
+    "type": "object"
+   },
    "PatternListResponse": {
     "description": "Response for pattern list.",
     "properties": {
@@ -7478,6 +8273,81 @@
      "poprawny"
     ],
     "title": "PodgladArkuszaResponse",
+    "type": "object"
+   },
+   "PodstawaWymagania": {
+    "additionalProperties": false,
+    "description": "Podstawa wymagania albo wartości (§1): skąd pochodzi i w jakim stanie jest źródło.\n\nJEDEN typ podstawy w produkcie (uogólnienie ``ZrodloWartosci`` profilu NC RfG).\nStan ``WSKAZANE`` albo ``ZWERYFIKOWANE`` wymaga niepustych ``dokument``, ``wydanie``\ni ``jednostka_redakcyjna`` — bez nich stan jest ``NIEUSTALONE`` (przeetykietowanie nie\npodnosi stanu). Rodzaj ``NIEUSTALONA`` (warstwa bez ustalonego pochodzenia) nie może mieć\nstanu mocniejszego niż ``NIEUSTALONE``. Walidator sprawdza niepustość jednostki\nredakcyjnej, nie jej treść — opis słowny parametru w tym polu to błąd wołającego.",
+    "properties": {
+     "dokument": {
+      "title": "Dokument",
+      "type": "string"
+     },
+     "jednostka_redakcyjna": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Jednostka Redakcyjna"
+     },
+     "rodzaj": {
+      "enum": [
+       "ROZPORZADZENIE_UE",
+       "NORMA",
+       "PRAWO_KRAJOWE",
+       "WOS",
+       "PROCEDURA_PTPIREE",
+       "WIPWC",
+       "OSD",
+       "KATALOG_PRODUCENTA",
+       "ZALOZENIE_PROJEKTOWE",
+       "NIEUSTALONA"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "ZWERYFIKOWANE",
+       "WSKAZANE",
+       "NIEUSTALONE"
+      ],
+      "title": "Status",
+      "type": "string"
+     },
+     "uwagi_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Uwagi Pl"
+     },
+     "wydanie": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Wydanie"
+     }
+    },
+    "required": [
+     "rodzaj",
+     "dokument",
+     "status"
+    ],
+    "title": "PodstawaWymagania",
     "type": "object"
    },
    "PodsumowanieArkuszaModel": {
@@ -7920,6 +8790,70 @@
      }
     },
     "title": "PowerFlowRunCreateRequest",
+    "type": "object"
+   },
+   "PozycjaRejestruKart": {
+    "additionalProperties": false,
+    "description": "Typ przekształtnika: karty widmowe, które go wskazują, i dwie sekcje częstotliwości.",
+    "properties": {
+     "harmonic": {
+      "$ref": "#/components/schemas/OcenaSekcji"
+     },
+     "karty": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Karty",
+      "type": "array"
+     },
+     "nazwa": {
+      "title": "Nazwa",
+      "type": "string"
+     },
+     "producent": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Producent"
+     },
+     "rodzaj": {
+      "title": "Rodzaj",
+      "type": "string"
+     },
+     "status_weryfikacji_rekordu": {
+      "enum": [
+       "ZWERYFIKOWANY",
+       "NIEWERYFIKOWANY",
+       "CZESCIOWO_ZWERYFIKOWANY",
+       "REFERENCYJNY"
+      ],
+      "title": "Status Weryfikacji Rekordu",
+      "type": "string"
+     },
+     "supraharmonic": {
+      "$ref": "#/components/schemas/OcenaSekcji"
+     },
+     "typ_id": {
+      "title": "Typ Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "typ_id",
+     "nazwa",
+     "producent",
+     "rodzaj",
+     "status_weryfikacji_rekordu",
+     "karty",
+     "harmonic",
+     "supraharmonic"
+    ],
+    "title": "PozycjaRejestruKart",
     "type": "object"
    },
    "PreviewResponse": {
@@ -9072,6 +10006,64 @@
     "title": "ProtectionTraceResponse",
     "type": "object"
    },
+   "Przedzial": {
+    "additionalProperties": false,
+    "description": "Przedział liczbowy z JAWNYM domknięciem obu końców (dana z dokumentu).\n\nBrak domyślnego domknięcia jest celowy: dwa sąsiednie biny mocy z raportu badań\n(np. ``[0,2; 0,5)`` i ``[0,5; 1,0]``) rozstrzygają punkt graniczny wyłącznie przez\ndomknięcie zapisane w dokumencie — domysł „zamknięty z obu stron\" dałby dwa modele\npokrywające ten sam punkt, a „otwarty\" — punkt bez modelu. Granica ``None`` oznacza\nprzedział nieograniczony z tej strony (domknięcie tej strony musi być wtedy ``None``).",
+    "properties": {
+     "dolna": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dolna"
+     },
+     "domkniecie_dolne": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Domkniecie Dolne"
+     },
+     "domkniecie_gorne": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Domkniecie Gorne"
+     },
+     "gorna": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Gorna"
+     }
+    },
+    "required": [
+     "dolna",
+     "gorna",
+     "domkniecie_dolne",
+     "domkniecie_gorne"
+    ],
+    "title": "Przedzial",
+    "type": "object"
+   },
    "PrzegladWiarygodnosciOdpowiedz": {
     "description": "Przeglad wiarygodnosci CALEGO katalogu — pozycje do przegladu, zero odmowy.",
     "properties": {
@@ -9116,6 +10108,132 @@
      "reguly"
     ],
     "title": "PrzegladWiarygodnosciOdpowiedz",
+    "type": "object"
+   },
+   "PunktAdmitancji": {
+    "additionalProperties": false,
+    "description": "Punkt admitancji wewnętrznej Y(f) = G + jB [S] (równoważnik Nortona / tabela).",
+    "properties": {
+     "b_s": {
+      "title": "B S",
+      "type": "number"
+     },
+     "f_hz": {
+      "exclusiveMinimum": 0.0,
+      "title": "F Hz",
+      "type": "number"
+     },
+     "g_s": {
+      "title": "G S",
+      "type": "number"
+     }
+    },
+    "required": [
+     "f_hz",
+     "g_s",
+     "b_s"
+    ],
+    "title": "PunktAdmitancji",
+    "type": "object"
+   },
+   "PunktImpedancji": {
+    "additionalProperties": false,
+    "description": "Punkt impedancji wewnętrznej Z(f) = R + jX [Ω] (równoważnik Thévenina / tabela).",
+    "properties": {
+     "f_hz": {
+      "exclusiveMinimum": 0.0,
+      "title": "F Hz",
+      "type": "number"
+     },
+     "r_ohm": {
+      "title": "R Ohm",
+      "type": "number"
+     },
+     "x_ohm": {
+      "title": "X Ohm",
+      "type": "number"
+     }
+    },
+    "required": [
+     "f_hz",
+     "r_ohm",
+     "x_ohm"
+    ],
+    "title": "PunktImpedancji",
+    "type": "object"
+   },
+   "PunktPracyWidma": {
+    "additionalProperties": false,
+    "description": "Domena punktu pracy modelu (z raportu badań): przedziały P, Q, U, SOC i tryb.\n\n``p`` — przedział mocy czynnej w jednostkach względnych nazwanej bazy\n(``baza_mocy``); ``q`` w tej samej bazie; ``u`` w „p.u. (U_n)\"; ``soc`` w ułamku\npojemności [0; 1]. Liczby WYŁĄCZNIE z dokumentu. ``stacjonarny`` — deklaracja\nwarunku emisji: model stacjonarny nie jest wybierany dla migawki w stanie\nprzejściowym (O-37).",
+    "properties": {
+     "baza_mocy": {
+      "enum": [
+       "S_N_URZADZENIA",
+       "P_N_URZADZENIA"
+      ],
+      "title": "Baza Mocy",
+      "type": "string"
+     },
+     "p": {
+      "$ref": "#/components/schemas/Przedzial"
+     },
+     "q": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Przedzial"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "soc": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Przedzial"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "stacjonarny": {
+      "default": true,
+      "title": "Stacjonarny",
+      "type": "boolean"
+     },
+     "tryb": {
+      "anyOf": [
+       {
+        "enum": [
+         "LADOWANIE",
+         "ROZLADOWANIE",
+         "POSTOJ"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tryb"
+     },
+     "u": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/Przedzial"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "baza_mocy",
+     "p"
+    ],
+    "title": "PunktPracyWidma",
     "type": "object"
    },
    "PunktZwarciowyDiffResponse": {
@@ -9665,6 +10783,65 @@
      "reason_pl"
     ],
     "title": "RejectedCandidateResponse",
+    "type": "object"
+   },
+   "RejestrKartWidmowych": {
+    "additionalProperties": false,
+    "description": "Pomiar pokrycia typów przekształtników (``CONVERTER``) kartami widmowymi katalogu —\nJEDNO źródło dla końcówki ``GET /api/catalog/karty-widmowe/rejestr`` i miernika\n``backend/scripts/inwentarz_katalogow.py`` (tabela SPEC_KATALOGI).",
+    "properties": {
+     "karty_bez_typu": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Karty Bez Typu",
+      "type": "array"
+     },
+     "karty_wg_statusu": {
+      "items": {
+       "maxItems": 2,
+       "minItems": 2,
+       "prefixItems": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ],
+       "type": "array"
+      },
+      "title": "Karty Wg Statusu",
+      "type": "array"
+     },
+     "liczba_kart": {
+      "title": "Liczba Kart",
+      "type": "integer"
+     },
+     "liczba_typow": {
+      "title": "Liczba Typow",
+      "type": "integer"
+     },
+     "pozycje": {
+      "items": {
+       "$ref": "#/components/schemas/PozycjaRejestruKart"
+      },
+      "title": "Pozycje",
+      "type": "array"
+     },
+     "typy_z_karta": {
+      "title": "Typy Z Karta",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "liczba_typow",
+     "typy_z_karta",
+     "liczba_kart",
+     "karty_wg_statusu",
+     "karty_bez_typu",
+     "pozycje"
+    ],
+    "title": "RejestrKartWidmowych",
     "type": "object"
    },
    "ResultSetResponse": {
@@ -10424,6 +11601,84 @@
     "title": "ScenarioEligibilityResponse",
     "type": "object"
    },
+   "SekcjeModeluOdpowiedz": {
+    "additionalProperties": false,
+    "description": "Osiem sekcji modelu urządzenia (typu albo elementu) z kontekstem danych.",
+    "properties": {
+     "element_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Element Ref"
+     },
+     "klasa": {
+      "title": "Klasa",
+      "type": "string"
+     },
+     "przestrzen": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Przestrzen"
+     },
+     "sekcje": {
+      "items": {
+       "$ref": "#/components/schemas/OcenaSekcji"
+      },
+      "title": "Sekcje",
+      "type": "array"
+     },
+     "status_weryfikacji_rekordu": {
+      "enum": [
+       "ZWERYFIKOWANY",
+       "NIEWERYFIKOWANY",
+       "CZESCIOWO_ZWERYFIKOWANY",
+       "REFERENCYJNY"
+      ],
+      "title": "Status Weryfikacji Rekordu",
+      "type": "string"
+     },
+     "typ_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Typ Id"
+     },
+     "zrodla_modeli_widmowych": {
+      "default": [],
+      "items": {
+       "$ref": "#/components/schemas/OdniesienieKarty"
+      },
+      "title": "Zrodla Modeli Widmowych",
+      "type": "array"
+     }
+    },
+    "required": [
+     "przestrzen",
+     "typ_id",
+     "element_ref",
+     "klasa",
+     "status_weryfikacji_rekordu",
+     "sekcje"
+    ],
+    "title": "SekcjeModeluOdpowiedz",
+    "type": "object"
+   },
    "SetActiveRequest": {
     "description": "Request to set active case.",
     "properties": {
@@ -10603,6 +11858,49 @@
      "formula_ref"
     ],
     "title": "ShuntCompensatorPreviewResponse",
+    "type": "object"
+   },
+   "SkladowaWidma": {
+    "additionalProperties": false,
+    "description": "Jedna składowa widma: częstotliwość [Hz], amplituda z jednostką, faza albo powód braku.\n\n``faza_deg`` jest wymagana jawnie (``None`` = faza nieznana — wtedy powód obowiązkowy);\nbrak pola nie oznacza zera.",
+    "properties": {
+     "amplituda": {
+      "$ref": "#/components/schemas/Wielkosc"
+     },
+     "f_hz": {
+      "exclusiveMinimum": 0.0,
+      "title": "F Hz",
+      "type": "number"
+     },
+     "faza_deg": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Faza Deg"
+     },
+     "faza_nieznana_powod_pl": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Faza Nieznana Powod Pl"
+     }
+    },
+    "required": [
+     "f_hz",
+     "amplituda",
+     "faza_deg"
+    ],
+    "title": "SkladowaWidma",
     "type": "object"
    },
    "SladKroku": {
@@ -12387,6 +13685,26 @@
     "title": "VtGroundingValidationRequest",
     "type": "object"
    },
+   "Wielkosc": {
+    "additionalProperties": false,
+    "description": "Liczba z jednostką (T3). Wartość skończona — NaN i nieskończoność są odrzucane.",
+    "properties": {
+     "jednostka": {
+      "title": "Jednostka",
+      "type": "string"
+     },
+     "wartosc": {
+      "title": "Wartosc",
+      "type": "number"
+     }
+    },
+    "required": [
+     "wartosc",
+     "jednostka"
+    ],
+    "title": "Wielkosc",
+    "type": "object"
+   },
    "WniosekOsdRequest": {
     "description": "Wejście generatora wniosku OSD: identyfikacja + odwołania do przebiegów.",
     "properties": {
@@ -12502,6 +13820,28 @@
      "station_ref"
     ],
     "title": "WytrzymaloscAparaturyRequestModel",
+    "type": "object"
+   },
+   "ZakresCzestotliwosci": {
+    "additionalProperties": false,
+    "description": "Zakres częstotliwości modelu [Hz] — domknięty z obu stron, z dokumentu.",
+    "properties": {
+     "f_max_hz": {
+      "exclusiveMinimum": 0.0,
+      "title": "F Max Hz",
+      "type": "number"
+     },
+     "f_min_hz": {
+      "minimum": 0.0,
+      "title": "F Min Hz",
+      "type": "number"
+     }
+    },
+    "required": [
+     "f_min_hz",
+     "f_max_hz"
+    ],
+    "title": "ZakresCzestotliwosci",
     "type": "object"
    },
    "ZgodnoscZadanie": {
@@ -15559,6 +16899,58 @@
     ]
    }
   },
+  "/api/cases/{case_id}/enm/elementy/{ref}/sekcje-modelu": {
+   "get": {
+    "description": "Osiem sekcji modelu urządzenia elementu ENM (katalog MODELU, karty z proweniencją).",
+    "operationId": "sekcje_modelu_elementu_api_cases__case_id__enm_elementy__ref__sekcje_modelu_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "ref",
+      "required": true,
+      "schema": {
+       "title": "Ref",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SekcjeModeluOdpowiedz"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Sekcje Modelu Elementu",
+    "tags": [
+     "karty-widmowe"
+    ]
+   }
+  },
   "/api/cases/{case_id}/enm/fault-loop-feeders": {
    "get": {
     "description": "Pętla zwarcia we WSZYSTKICH punktach nN, pogrupowana per odpływ (karta P0.6, G-05).\n\nKontrakt danych kompletny (każdy osiągalny punkt każdego odpływu, ze\nwskazaniem punktu najgorszego per odpływ) — heatmapa/UI nN STUDIO w P0.9,\ntu tylko dane. Read-only; solver liczy fizykę.",
@@ -17419,6 +18811,124 @@
     ]
    }
   },
+  "/api/catalog/karty-widmowe": {
+   "get": {
+    "description": "Karty widmowe katalogu statycznego (posortowane po typie i id).",
+    "operationId": "lista_kart_widmowych_api_catalog_karty_widmowe_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "urzadzenie_ref",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Urzadzenie Ref"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/KartaWidmowa"
+         },
+         "title": "Response Lista Kart Widmowych Api Catalog Karty Widmowe Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Lista Kart Widmowych",
+    "tags": [
+     "karty-widmowe"
+    ]
+   }
+  },
+  "/api/catalog/karty-widmowe/rejestr": {
+   "get": {
+    "description": "Pokrycie typów przekształtników kartami widmowymi ze statusem sekcji częstotliwości.",
+    "operationId": "rejestr_kart_api_catalog_karty_widmowe_rejestr_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RejestrKartWidmowych"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Rejestr Kart",
+    "tags": [
+     "karty-widmowe"
+    ]
+   }
+  },
+  "/api/catalog/karty-widmowe/{karta_id}": {
+   "get": {
+    "operationId": "karta_widmowa_api_catalog_karty_widmowe__karta_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "karta_id",
+      "required": true,
+      "schema": {
+       "title": "Karta Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/KartaWidmowa"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Karta Widmowa",
+    "tags": [
+     "karty-widmowe"
+    ]
+   }
+  },
   "/api/catalog/line-types": {
    "get": {
     "description": "List all line types from the canonical MV catalog.",
@@ -18259,6 +19769,58 @@
     "summary": "List Pv Inverter Types",
     "tags": [
      "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/sekcje-modelu/{przestrzen}/{typ_id}": {
+   "get": {
+    "description": "Osiem sekcji modelu typu katalogowego (status wyprowadzany przy każdym zapytaniu).",
+    "operationId": "sekcje_modelu_typu_api_catalog_sekcje_modelu__przestrzen___typ_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "przestrzen",
+      "required": true,
+      "schema": {
+       "title": "Przestrzen",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "typ_id",
+      "required": true,
+      "schema": {
+       "title": "Typ Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SekcjeModeluOdpowiedz"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Sekcje Modelu Typu",
+    "tags": [
+     "karty-widmowe"
     ]
    }
   },
@@ -26241,7 +27803,7 @@
   },
   "/api/solver/der-selection-preview": {
    "post": {
-    "description": "Kaskadowy dobór toru DER-SN: TR blokowy → kabel SN → aparat pola SN.\n\nΣS liczy D1 `converter_apparent_power_mva` (ΣP·/cosφ). Prąd znamionowy TR\n(strona SN) z D1 `rated_current_a`. Kabel i pole dobierane od prądu SN\nzaproponowanego TR (kaskada I_TR ≤ Iz ≤ In). Zero fizyki rozpływu/zwarcia.",
+    "description": "Kaskadowy dobór toru DER-SN: TR blokowy → kabel SN → aparat pola SN.\n\nΣS liczy człon nastawy kontroli mocy O-53 (`moc_pozorna_z_nastawy_mva`: ΣP/cosφ).\nPodgląd nie zna karty jednostki ani liczby jednostek, więc człon S_n,jedn·n kontroli\noperacji nie wchodzi tu do wymagania — operacja dodania źródła sprawdza go osobno.\nPrąd znamionowy TR\n(strona SN) z D1 `rated_current_a`. Kabel i pole dobierane od prądu SN\nzaproponowanego TR (kaskada I_TR ≤ Iz ≤ In). Zero fizyki rozpływu/zwarcia.",
     "operationId": "preview_der_selection_api_solver_der_selection_preview_post",
     "requestBody": {
      "content": {

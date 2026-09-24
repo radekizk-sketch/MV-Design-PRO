@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from network_model.pochodne import moc_pozorna_z_czynnej_mva, prad_znamionowy_a
+from network_model.pochodne import prad_znamionowy_a
 
 # ---------------------------------------------------------------------------
 # Tolerancje napięciowe — JEDNA konwencja repo (nie nowa).
@@ -29,17 +29,6 @@ from network_model.pochodne import moc_pozorna_z_czynnej_mva, prad_znamionowy_a
 SN_VOLTAGE_TOLERANCE_KV = 0.01
 NN_VOLTAGE_TOLERANCE_KV = 0.001
 
-# ---------------------------------------------------------------------------
-# Domyślne stałe normowe (konserwatywne), gdy katalog/payload ich nie niesie.
-#   - Dopuszczalne obciążenie TR (przeciążalność): 1,0 = brak zapasu przeciążeniowego.
-#     PN-EN 60076-7 dopuszcza wartości >1,0 przy określonym profilu obciążenia i
-#     temperaturze otoczenia — wtedy wymagane JAWNE podanie (block_transformer.loadability_pu).
-#   - Współczynnik jednoczesności: 1,0 = wszystkie jednostki pracują szczytowo
-#     równocześnie (konserwatywnie dla źródeł OZE tej samej technologii na wspólnym torze).
-# Trzymane w JEDNYM module (docstring źródła), nie rozproszone jako literały.
-# ---------------------------------------------------------------------------
-DEFAULT_TRANSFORMER_LOADABILITY_PU = 1.0
-DEFAULT_SIMULTANEITY_FACTOR = 1.0
 
 ConnectionMethod = Literal[
     "der_za_tr_stacji",
@@ -215,48 +204,6 @@ def validate_block_transformer_vector_group(
             f"❌ Układ połączeń „{requested_vector_group}” jest niezgodny z typem katalogowym "
             f"transformatora blokowego (grupa katalogowa: „{catalog_vector_group}”). Wybierz typ "
             f"katalogowy o żądanym układzie połączeń albo grupę zgodną z typem.",
-        )
-    return None
-
-
-def converter_apparent_power_mva(active_power_mw: float, cos_phi: float | None) -> float:
-    """ΣS falowników z ΣP: MW→MVA przez cosφ znamionowy (gdy podany), inaczej P=S (konserwatywnie).
-
-    active_power_mw to zmaterializowana moc czynna źródła (już z uwzględnieniem liczby
-    jednostek — n_parallel — bo tak liczy `_resolve_converter_defaults`).
-    """
-    if cos_phi is not None and 0.0 < cos_phi <= 1.0:
-        return moc_pozorna_z_czynnej_mva(active_power_mw, cos_phi)
-    return active_power_mw
-
-
-def validate_transformer_power(
-    *,
-    sum_apparent_power_mva: float,
-    transformer_sn_mva: float,
-    loadability_pu: float | None,
-    simultaneity_factor: float | None,
-) -> ValidationError | None:
-    """Wymaganie 5: ΣS falowników ≤ Sn_TR · dopuszczalne_obciążenie (z uwzgl. jednoczesności)."""
-    loadability = (
-        loadability_pu
-        if (loadability_pu and loadability_pu > 0)
-        else (DEFAULT_TRANSFORMER_LOADABILITY_PU)
-    )
-    simultaneity = (
-        simultaneity_factor
-        if (simultaneity_factor and simultaneity_factor > 0)
-        else (DEFAULT_SIMULTANEITY_FACTOR)
-    )
-    if transformer_sn_mva <= 0:
-        return None  # brak danych Sn — walidacja mocy pominięta (katalog nie niesie Sn)
-    effective_load_mva = sum_apparent_power_mva * simultaneity
-    allowable_mva = transformer_sn_mva * loadability
-    if effective_load_mva > allowable_mva + 1e-9:
-        return ValidationError(
-            "converter.der_sn.moc_transformatora_niewystarczajaca",
-            f"❌ Moc transformatora jest niewystarczająca (ΣS={effective_load_mva:g} MVA > "
-            f"dopuszczalne {allowable_mva:g} MVA).",
         )
     return None
 

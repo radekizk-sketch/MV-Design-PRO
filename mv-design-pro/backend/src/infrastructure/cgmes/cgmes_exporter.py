@@ -54,6 +54,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING
 
+from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
 from network_model.pochodne import kw_na_w, prad_znamionowy_a
 
 from .mrid import mrid_for, urn
@@ -438,7 +439,10 @@ def _ik_a(sk3_mva: float | None, ik3_ka: float | None, bus_kv: float | None) -> 
 # Generator -> SynchronousMachine | PowerElectronicsConnection
 # ---------------------------------------------------------------------------
 
-_IBR_TYPES = {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
+#: Źródła energoelektroniczne (PowerElectronicsConnection) = kanoniczny zbiór
+#: `enm.models.GEN_TYPES_PRZEKSZTALTNIKOWE` (karta AB-H0 Pakiet D: jedno źródło, parytet
+#: w `tests/enm/test_gen_types_przeksztaltnikowe.py`).
+_IBR_TYPES = GEN_TYPES_PRZEKSZTALTNIKOWE
 
 
 def _emit_generator(eq: ET.Element, tp: ET.Element, gen: Generator) -> None:

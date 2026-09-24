@@ -309,12 +309,18 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     ),
     RegulaKatalogu(
         kod="KAT-T-009",
-        nazwa="Widmo harmonicznych jako obiekt rzad->procent",
+        nazwa="Ksztalt modelu widmowego karty (rodzaj ↔ zrodlo i czesc wewnetrzna)",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
-        podstawa="Kontrakt pola `harmonic_spectrum_percent`",
+        podstawa=(
+            "Kontrakt karty widmowej `dziedziny.karta_widmowa.KartaWidmowa` (karta AB-H0 "
+            "§0.4.3; regula `widmo.ksztalt`) — przecelowana z dawnego pola "
+            "`ConverterType.harmonic_spectrum_percent` (skasowanego, 0/176 pozycji z widmem)"
+        ),
         uzasadnienie=(
-            "Ksztalt widma jest czescia kontraktu; wartosc innego typu to uszkodzony "
-            "zapis, a nie inna reprezentacja tej samej danej."
+            "Rodzaj modelu okresla, co model niesie: widmo pradu/napiecia — tylko zrodlo, "
+            "rownowaznik Nortona/Thevenina — zrodlo i czesc wewnetrzna na tej samej siatce, "
+            "rownowaznik zalezny od czestotliwosci — wylacznie czesc wewnetrzna. Rekord "
+            "o innym ksztalcie to uszkodzony zapis, a nie inna reprezentacja tej samej danej."
         ),
     ),
     RegulaKatalogu(
@@ -362,35 +368,49 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     ),
     RegulaKatalogu(
         kod="KAT-T-014",
-        nazwa="Widmo harmonicznych niepuste",
+        nazwa="Model widmowy niepusty (karta ma model, model ze zrodlem ma skladowe)",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
-        podstawa="Kontrakt pola `harmonic_spectrum_percent` — `None` znaczy brak danej",
+        podstawa=(
+            "Kontrakt karty widmowej (karta AB-H0 §0.7.1; regula `widmo.niepuste`) — "
+            "przecelowana z dawnego pola `harmonic_spectrum_percent`"
+        ),
         uzasadnienie=(
-            "Jak KAT-T-004: brak widma zapisujemy `None`, nie pustym obiektem, ktory "
-            "konsument policzylby jako „widmo zerowe”."
+            "Jak KAT-T-004: brak widma to brak karty, nie pusta karta ani pusty model, "
+            "ktory konsument policzylby jako „widmo zerowe”."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-015",
-        nazwa="Rzad harmonicznej calkowity w przedziale 2..50",
+        nazwa=(
+            "Czestotliwosc skladowej widma > 0 Hz, w zakresie czestotliwosci modelu, "
+            "bez duplikatow"
+        ),
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
-        podstawa="IEC 61000-4-7 — zakres oceny harmonicznych do rzedu 50",
+        podstawa=(
+            "Kontrakt karty widmowej (karta AB-H0 §0.4.4; regula `widmo.czestotliwosc`) — "
+            "czestotliwosc f w Hz z liczb rzeczywistych dodatnich zastepuje dawny „rzad "
+            "calkowity 2..50”"
+        ),
         uzasadnienie=(
-            "Produkt deklaruje ocene emisji harmonicznych w zakresie normowanym przez "
-            "IEC 61000-4-7 (rzedy 2..50). Rzad 0/1 nie jest harmoniczna, a powyzej 50 "
-            "produkt nie deklaruje wyniku — to granica ZAKRESU, nie fizyki."
+            "Kontrakt przyjmuje f ∈ R+ (takze interharmoniczne i supraharmoniczne), wiec "
+            "calkowity rzad nie jest juz warunkiem. Czestotliwosc niedodatnia nie istnieje, "
+            "duplikat daje dwie wartosci jednej skladowej (wynik zalezny od kolejnosci "
+            "wierszy), a skladowa spoza zakresu dokumentu jest ekstrapolacja danych."
         ),
     ),
     RegulaKatalogu(
         kod="KAT-T-016",
-        nazwa="Udzial harmonicznej w przedziale 0..100 % pradu znamionowego",
+        nazwa="Amplituda skladowej nieujemna, udzial procentowy <= 100 % z nazwana baza",
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
-        podstawa="Kontrakt pola — udzial wyrazony w % pradu znamionowego",
+        podstawa=(
+            "Kontrakt karty widmowej (karta AB-H0 §0.4.5; regula `widmo.amplituda`) — "
+            "procent zawsze z nazwana baza (I_n urzadzenia, I_1 w punkcie pracy, U_1, U_n)"
+        ),
         uzasadnienie=(
-            "Dolna granica jest konieczna (udzial ujemny nie istnieje), gorna jest "
-            "granica zakresu produktu: pojedyncza harmoniczna przekraczajaca prad "
-            "znamionowy opisuje stan awaryjny, a nie widmo emisji przy pracy "
-            "znamionowej. Klasa slabsza z tych dwoch — nie twierdzimy wiecej, niz wiemy."
+            "Amplituda ujemna nie istnieje; „% pradu znamionowego” i „% podstawowej” to "
+            "rozne wielkosci, wiec goly procent jest niejednoznaczny. Gorna granica 100 % "
+            "bazy jest granica zakresu produktu (widmo emisji, nie stan awaryjny) — klasa "
+            "slabsza z dwoch, nie twierdzimy wiecej, niz wiemy."
         ),
     ),
     RegulaKatalogu(
@@ -572,6 +592,108 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
         klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
         podstawa="Wzorzec proweniencji katalogu — kazdy wpis tablicy niesie podstawe",
         uzasadnienie="Jak KAT-T-031, dla tablic obciazalnosci dlugotrwalej.",
+    ),
+    # -----------------------------------------------------------------------
+    # dziedziny/karta_widmowa.py — karta widmowa urządzenia (karta AB-H0 §0.7)
+    # (KAT-T-009, 014, 015, 016 wyżej są PRZECELOWANE na rekord karty)
+    # -----------------------------------------------------------------------
+    RegulaKatalogu(
+        kod="KAT-T-034",
+        nazwa="Identyfikatory modeli karty widmowej unikalne",
+        klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
+        podstawa="Kontrakt karty widmowej (regula `karta.modele_unikalne`)",
+        uzasadnienie=(
+            "Identyfikator modelu wskazuje model w wyborze (f, punkt pracy) i w "
+            "proweniencji elementu; dwa modele o jednym identyfikatorze czynia odnosnik "
+            "niejednoznacznym."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-035",
+        nazwa="Dowod karty widmowej jest dowodem widma w dziedzinie czestotliwosci",
+        klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
+        podstawa="Kontrakt karty widmowej (reguly `karta.dowody`, `dowod.pokrywa`)",
+        uzasadnienie=(
+            "Karta niesie raport badan, pomiar albo certyfikat modelu pokrywajacy dziedzine "
+            "harmoniczna lub supraharmoniczna; certyfikat zgodnosci NC RfG albo dowod "
+            "innej dziedziny w karcie widmowej podnioslby status sekcji, ktorej nie dotyczy."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-036",
+        nazwa="Podstawa danych widma: karta producenta albo zalozenie projektowe",
+        klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
+        podstawa=(
+            "Kontrakt karty widmowej (regula `widmo.podstawa`) i `werdykt.PodstawaWymagania`"
+        ),
+        uzasadnienie=(
+            "Dane urzadzenia pochodza z dokumentu producenta albo od inzyniera projektu; "
+            "podstawa innego rodzaju (norma, OSD) albo podstawa o stanie mocniejszym niz "
+            "pozwalaja jej pola klamalaby o pochodzeniu widma."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-037",
+        nazwa="Faza skladowej widma: nieznana to nie zero, interharmoniczna bez fazy",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa="Definicja fazy wzglednej skladowej wobec podstawowej (karta AB-H0 §0.4.6)",
+        uzasadnienie=(
+            "Faza skladowej o czestotliwosci niebedacej wielokrotnoscia podstawowej nie ma "
+            "stalego odniesienia — nie istnieje jako liczba. Faza nieznana zapisana jako 0 "
+            "czyni sume fazorowa falszywa (sonda P10: dwa zrodla 5 % = jedno 10 %)."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-038",
+        nazwa="Komplet parametrow pomiaru widma zmierzonego (RBW dla supraharmonicznych)",
+        klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
+        podstawa=(
+            "Kontrakt parametrow pomiaru `dziedziny.pomiar` (karta AB-H0 §0.5; regula "
+            "`widmo.pomiar`)"
+        ),
+        uzasadnienie=(
+            "Widmo zmierzone bez metody, rozdzielczosci, okna, agregacji i dokumentu nie ma "
+            "okreslonego zakresu waznosci; w pasmie supraharmonicznym wynik zalezy od pasma "
+            "rozdzielczosci analizatora."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-039",
+        nazwa="Czestotliwosc przelaczania wylacznie w modelu dziedziny supraharmonicznej",
+        klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
+        podstawa=(
+            "Niezmiennik produktu „czestotliwosc przelaczania nigdy w DAE” (karta AB-H0 "
+            "§0.14; regula `widmo.przelaczanie`)"
+        ),
+        uzasadnienie=(
+            "Czestotliwosc przelaczania opisuje emisje w pasmie 2–150 kHz; w modelu "
+            "harmonicznym nie ma konsumenta, a jej obecnosc zachecalaby do uzycia jej tam, "
+            "gdzie produkt jej nie modeluje."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-040",
+        nazwa="Przedzialy punktu pracy widma z jawnym domknieciem i porzadkiem granic",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa="Definicja przedzialu liczbowego (regula `kanon.przedzial`)",
+        uzasadnienie=(
+            "Przedzial z granica dolna wieksza od gornej albo zdegenerowany i otwarty jest "
+            "zbiorem PUSTYM — model o takiej domenie nie obejmuje zadnego punktu pracy."
+        ),
+    ),
+    RegulaKatalogu(
+        kod="KAT-T-041",
+        nazwa="Karta widmowa katalogu statycznego z wyciagiem dokumentu przypietym SHA-256",
+        klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
+        podstawa=(
+            "Wzorzec karty z dokumentem (SPEC_KATALOGI — wzorzec ABB Emax 2; karta AB-H0 "
+            "§0.9.4): katalog statyczny przyjmuje widmo WYLACZNIE z dokumentem producenta"
+        ),
+        uzasadnienie=(
+            "Bez dokumentu karta w katalogu statycznym bylaby widmem „typowym” podanym jako "
+            "dana urzadzenia — dokladnie fabrykacja, ktorej katalog zabrania. Skrot SHA-256 "
+            "wiaze rekord z konkretnym wyciagiem, wiec podmiana dokumentu jest wykrywalna."
+        ),
     ),
     # -----------------------------------------------------------------------
     # REGULY WIARYGODNOSCI — sygnal do przegladu, NIGDY odmowa

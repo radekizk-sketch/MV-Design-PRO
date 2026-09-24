@@ -28,6 +28,29 @@ from functools import lru_cache
 from typing import Any
 
 from .repository import CatalogRepository, get_default_mv_catalog
+from .types import POLA_KARTY_PROJEKCJI
+
+#: Pola typów DODANE PO ZAMROŻENIU odcisków, które w zrzucie kanonicznym występują
+#: WYŁĄCZNIE, gdy niosą wartość (ten sam kontrakt „addytywnie, `exclude_none`", co
+#: `enm/hash.py::_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`): projekcja bez danych karty ma
+#: odcisk sprzed karty AB-H0 §0.8, projekcja z danymi — inny (zmiana katalogu jest zmianą
+#: wejścia materializacji). Klucz = nazwa klasy typu. Przypięte testem
+#: `tests/network_model/catalog/test_odcisk_katalogu_karty_widmowe.py`.
+_POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE: dict[str, tuple[str, ...]] = {
+    "PVInverterType": POLA_KARTY_PROJEKCJI,
+    "BESSInverterType": POLA_KARTY_PROJEKCJI,
+}
+#: Pola SKASOWANE z typów, które odcisk ZACHOWUJE jako `null` (wzorzec W5-A z
+#: `enm/hash.py::_POLA_SKASOWANE_W_ODCISKU`). `ConverterType.harmonic_spectrum_percent`
+#: (karta AB-H0 §0.7.5) było `None` w 176/176 pozycjach — kasacja pola nie jest zmianą
+#: danych katalogu i nie może przestawić odcisku każdej migawki.
+_POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {
+    "ConverterType": ("harmonic_spectrum_percent",),
+}
+#: Przestrzenie repozytorium DODANE PO ZAMROŻENIU odcisków, pomijane w zrzucie, gdy są
+#: puste (karta AB-H0 §0.7: `karty_widmowe` — katalog statyczny nie ma dziś ani jednej
+#: karty; pierwsza karta z dokumentem zmieni odcisk, bo zmienia katalog).
+_PRZESTRZENIE_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE: frozenset[str] = frozenset(("karty_widmowe",))
 
 
 def _kanon(wartosc: Any) -> Any:
@@ -44,6 +67,23 @@ def _kanon(wartosc: Any) -> Any:
     return str(wartosc)
 
 
+def _postac_typu(typ: Any) -> Any:
+    """Postać kanoniczna jednego typu pod odcisk — JEDNA reguła dla wszystkich przestrzeni."""
+    if dataclasses.is_dataclass(typ) and not isinstance(typ, type):
+        postac = dataclasses.asdict(typ)
+        klasa = type(typ).__name__
+        for nazwa in _POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE.get(klasa, ()):
+            if postac.get(nazwa) is None:
+                postac.pop(nazwa, None)
+        for nazwa in _POLA_SKASOWANE_W_ODCISKU.get(klasa, ()):
+            postac.setdefault(nazwa, None)
+        return postac
+    model_dump = getattr(typ, "model_dump", None)
+    if callable(model_dump):
+        return model_dump(mode="json")
+    return typ
+
+
 def zrzut_kanoniczny(katalog: CatalogRepository) -> dict[str, Any]:
     """Wszystkie przestrzenie typow repozytorium jako slownik `{przestrzen: {id: typ}}`."""
     zrzut: dict[str, Any] = {}
@@ -51,12 +91,10 @@ def zrzut_kanoniczny(katalog: CatalogRepository) -> dict[str, Any]:
         wartosc = getattr(katalog, pole.name)
         if not isinstance(wartosc, dict):
             continue
+        if not wartosc and pole.name in _PRZESTRZENIE_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE:
+            continue
         zrzut[pole.name] = {
-            str(identyfikator): (
-                dataclasses.asdict(typ)
-                if dataclasses.is_dataclass(typ) and not isinstance(typ, type)
-                else typ
-            )
+            str(identyfikator): _postac_typu(typ)
             for identyfikator, typ in sorted(wartosc.items(), key=lambda para: str(para[0]))
         }
     return zrzut

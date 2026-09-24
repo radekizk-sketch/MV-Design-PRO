@@ -55,6 +55,7 @@ from network_model.catalog.repository import (  # noqa: E402
     CatalogRepository,
     get_default_mv_catalog,
 )
+from network_model.catalog.sekcje_modelu import rejestr_kart_widmowych  # noqa: E402
 
 REPO_ROOT = BACKEND_DIR.parent
 DOKUMENT = REPO_ROOT / "docs" / "system" / "SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md"
@@ -113,6 +114,19 @@ RODZINY_MIERNIKA: dict[str, str] = {
     "ptpiree-certificate": "ptpiree_generator_certificates",
     "pv-inverter": "pv_inverter_types",
     "bess-inverter": "bess_inverter_types",
+    # Karta AB-H0 §0.7: karty widmowe — osobne rekordy danych sekcji harmonic/
+    # supraharmonic typu przekształtnika (katalog statyczny: wyłącznie z wyciągiem
+    # dokumentu producenta).
+    "spectral-card": "karty_widmowe",
+}
+
+#: Rodziny, które w żywym katalogu legalnie NIE MAJĄ pozycji — z powodem (pomiar, nie
+#: deklaracja: test przypina, że rodzina jest pusta DOKŁADNIE wtedy, gdy stoi tutaj).
+RODZINY_PUSTE_Z_POWODEM: dict[str, str] = {
+    "spectral-card": (
+        "w repozytorium nie ma raportu badań widma żadnego typu przekształtnika — karta "
+        "statyczna istnieje wyłącznie z wyciągiem dokumentu producenta (pomiar 2026-09-23)"
+    ),
 }
 
 
@@ -148,6 +162,16 @@ class PomiarRodziny:
         }
 
 
+def _pola_kontraktu(typ: Any) -> dict[str, str]:
+    """Pola kontraktu rodziny → zapis adnotacji: dataclass albo model pydantic."""
+    if is_dataclass(typ):
+        return {pole.name: str(pole.type) for pole in fields(typ)}
+    pola_modelu = getattr(typ, "model_fields", None)
+    if isinstance(pola_modelu, dict):
+        return {nazwa: str(pole.annotation) for nazwa, pole in pola_modelu.items()}
+    return {}
+
+
 def _pola_opcjonalne(typ: Any) -> tuple[str, ...]:
     """Pola kontraktu, ktore MOGA byc puste — czyli te, ktorych kompletnosc mierzymy.
 
@@ -156,17 +180,15 @@ def _pola_opcjonalne(typ: Any) -> tuple[str, ...]:
     tak samo. Kompletnosc ma sens wylacznie dla pol, ktorych rekord legalnie moze
     nie niesc; metadane katalogu sa z niej wylaczone, bo opisuja rekord, nie wyrob.
     """
-    if not is_dataclass(typ):
-        return ()
     # PREDYKAT: adnotacja kontraktu dopuszcza `None`. Pole z wartoscia domyslna
     # INNA niz `None` (np. `catalog_status: str = "REFERENCYJNY_V1"`) jest zawsze
     # wypelnione i tez nic nie mierzy — liczy sie wylacznie to, czego rekord
-    # legalnie MOZE nie niesc.
+    # legalnie MOZE nie niesc. Dataclass i model pydantic — ta sama reguła.
     return tuple(
         sorted(
-            pole.name
-            for pole in fields(typ)
-            if pole.name not in POLA_METADANYCH and "None" in str(pole.type)
+            nazwa
+            for nazwa, adnotacja in _pola_kontraktu(typ).items()
+            if nazwa not in POLA_METADANYCH and "None" in adnotacja
         )
     )
 
@@ -200,7 +222,7 @@ def zmierz_rodzine(rodzina: str, pozycje: list[Any]) -> PomiarRodziny:
         )
     typ = type(pozycje[0])
     opcjonalne = _pola_opcjonalne(typ)
-    nazwy_pol = {pole.name for pole in fields(typ)} if is_dataclass(typ) else set()
+    nazwy_pol = set(_pola_kontraktu(typ))
     pola_dokumentu = tuple(n for n in POLA_PROWENIENCJI_DOKUMENTU if n in nazwy_pol)
 
     wypelnione = 0
@@ -245,6 +267,37 @@ def zmierz_katalog(katalog: CatalogRepository | None = None) -> tuple[PomiarRodz
     )
 
 
+@dataclass(frozen=True)
+class PomiarKartWidmowych:
+    """Pokrycie typów przekształtników kartami widmowymi (karta AB-H0 §0.7)."""
+
+    liczba_kart: int
+    liczba_typow: int
+    typy_z_karta: int
+    karty_wg_statusu: tuple[tuple[str, int], ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "liczba_kart": self.liczba_kart,
+            "liczba_typow": self.liczba_typow,
+            "typy_z_karta": self.typy_z_karta,
+            "karty_wg_statusu": [list(para) for para in self.karty_wg_statusu],
+        }
+
+
+def zmierz_karty_widmowe(katalog: CatalogRepository | None = None) -> PomiarKartWidmowych:
+    """Ile typów przekształtników ma kartę widmową i jak zweryfikowane są karty —
+    z JEDNEGO rejestru (``sekcje_modelu.rejestr_kart_widmowych``), tego samego, który
+    zwraca końcówka ``GET /api/catalog/karty-widmowe/rejestr``."""
+    rejestr = rejestr_kart_widmowych(katalog or get_default_mv_catalog())
+    return PomiarKartWidmowych(
+        liczba_kart=rejestr.liczba_kart,
+        liczba_typow=rejestr.liczba_typow,
+        typy_z_karta=rejestr.typy_z_karta,
+        karty_wg_statusu=rejestr.karty_wg_statusu,
+    )
+
+
 def _liczba(wartosc: float | None) -> str:
     return "—" if wartosc is None else f"{wartosc:.1f}".replace(".", ",")
 
@@ -271,7 +324,9 @@ def renderuj_tabele(pomiary: tuple[PomiarRodziny, ...]) -> str:
     return "\n".join(wiersze)
 
 
-def renderuj_blok_generowany(pomiary: tuple[PomiarRodziny, ...]) -> str:
+def renderuj_blok_generowany(
+    pomiary: tuple[PomiarRodziny, ...], karty: PomiarKartWidmowych | None = None
+) -> str:
     laczna_liczba = sum(p.liczba_pozycji for p in pomiary)
     laczne_produkcyjne = sum(p.liczba_produkcyjnych for p in pomiary)
     laczna_proweniencja = sum(p.pozycje_z_proweniencja for p in pomiary)
@@ -303,6 +358,24 @@ def renderuj_blok_generowany(pomiary: tuple[PomiarRodziny, ...]) -> str:
             )
             + ".",
             "",
+            *(
+                []
+                if karty is None
+                else [
+                    f"Karty widmowe: {karty.liczba_kart}. Typów przekształtników z co najmniej "
+                    f"jedną kartą widmową: {karty.typy_z_karta} z {karty.liczba_typow}. "
+                    "Karty wg statusu weryfikacji: "
+                    + (
+                        ", ".join(
+                            f"`{status}` {liczba}" for status, liczba in karty.karty_wg_statusu
+                        )
+                        if karty.karty_wg_statusu
+                        else "brak kart"
+                    )
+                    + ".",
+                    "",
+                ]
+            ),
             ZNACZNIK_KONIEC,
         ]
     )
@@ -321,7 +394,8 @@ def zloz_dokument(tresc: str, blok: str) -> str:
 
 def wygeneruj_dokument(katalog: CatalogRepository | None = None) -> str:
     return zloz_dokument(
-        DOKUMENT.read_text(encoding="utf-8"), renderuj_blok_generowany(zmierz_katalog(katalog))
+        DOKUMENT.read_text(encoding="utf-8"),
+        renderuj_blok_generowany(zmierz_katalog(katalog), zmierz_karty_widmowe(katalog)),
     )
 
 

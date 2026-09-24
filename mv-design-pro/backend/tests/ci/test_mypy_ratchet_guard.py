@@ -70,8 +70,16 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # 2026-09-23 (Pakiet L): kasacja martwego dowodu P18 (4 bledy arg-type w
     # `proof_inspector/inspector.py`) i rendererow krzywych I-t (1 blad w
     # `protection_curves_it/renderer_svg.py`) ⇒ 271/48 → 266/46.
-    assert modul.BASELINE_ERRORS == 266
-    assert modul.BASELINE_FILES == 46
+    # 2026-09-23 (AB-H0): 271/48 -> 255/46 — pomiar `mypy src` na drzewie integracji
+    # vs czysty HEAD `2ef62bbc`: znika 9 błędów `enm/domain_operations.py` i 7
+    # `solver_input/v126_contracts.py`, zero nowych (opis w guardzie przy `BASELINE_*`).
+    # Decyzja O-53 (2026-09-24): 255/46 -> 254/45 — znika jedyny błąd
+    # `api/grid_source_preview.py` (opis przy `BASELINE_*` w guardzie), zero nowych.
+    # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
+    # `mypy src` na scalonym drzewie int/h0 (L i AB-H0 zdejmuja bledy w roznych plikach,
+    # roznice sie sumuja; zero nowych bledow).
+    assert modul.BASELINE_ERRORS == 249
+    assert modul.BASELINE_FILES == 43
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

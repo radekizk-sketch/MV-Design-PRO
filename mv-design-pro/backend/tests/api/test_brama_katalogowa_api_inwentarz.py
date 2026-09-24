@@ -59,6 +59,7 @@ from enm import domain_operations, domain_operations_v2
 from enm.domain_operations import execute_domain_operation
 from enm.domain_operations_v2 import V2_CATALOG_GATE_INVENTORY
 from enm.dziennik_zmian import wyczysc_dziennik
+from enm.katalog_projektu import kontekst_katalogu
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.store import reset_enm_store, set_enm
 from fastapi.testclient import TestClient
@@ -118,6 +119,34 @@ class IniekcjaBramy:
     sciezka: str
     zbuduj: Callable[[], dict[str, Any]]
     zepsuj: Callable[[dict[str, Any]], None]
+    #: Model, w którego katalogu brama rozstrzyga referencję (`kontekst_katalogu`) —
+    #: jak końcówka `domain-ops`. `None` = katalog statyczny (model bez pozycji projektu).
+    model: Callable[[], dict[str, Any]] | None = None
+
+
+#: Karta AB-H0 §0.7: karta widmowa PROJEKTU typu przekształtnika (dane testowe kontraktu
+#: z `tests/dziedziny/fabryki.py`), wiązana kluczem `karty_widmowe_ref`.
+KARTA_PROJEKTU = "karta-widmowa-projektu-1"
+TYP_KARTY = "conv-bess-nn-2mw-0p4kv"
+
+
+def _rekord_karty_projektu(urzadzenie_ref: str = TYP_KARTY) -> dict[str, Any]:
+    from tests.dziedziny import fabryki as f
+
+    return f.karta(
+        id=KARTA_PROJEKTU,
+        urzadzenie_ref=urzadzenie_ref,
+        verification_status="NIEWERYFIKOWANY",
+        catalog_status="PROJEKTOWY_V1",
+    ).model_dump(mode="json")
+
+
+def _model_z_karta_projektu() -> dict[str, Any]:
+    return {**_pusty_enm(), "katalog_projektu": {"karty_widmowe": [_rekord_karty_projektu()]}}
+
+
+def _zepsuj_pierwszy_element_listy(payload: dict[str, Any], klucz: str) -> None:
+    payload[klucz] = [str(payload[klucz][0]) + LITEROWKA, *payload[klucz][1:]]
 
 
 def _zepsuj_klucz(payload: dict[str, Any], *sciezka: Any) -> None:
@@ -636,6 +665,21 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         lambda: {"generator_ref": "gen-1", "vt_catalog_ref": REF_VT},
         lambda p: _zepsuj_klucz(p, "vt_catalog_ref"),
     ),
+    # Karta AB-H0 §0.7.6: karta widmowa istnieje wyłącznie w katalogu PROJEKTU modelu —
+    # brama rozstrzyga ją w kontekście katalogu modelu (jak końcówka `domain-ops`).
+    IniekcjaBramy(
+        "set_der_catalog_bindings",
+        "karty_widmowe_ref",
+        lambda: {"generator_ref": "gen-1", "karty_widmowe_ref": [KARTA_PROJEKTU]},
+        lambda p: _zepsuj_pierwszy_element_listy(p, "karty_widmowe_ref"),
+        model=_model_z_karta_projektu,
+    ),
+    IniekcjaBramy(
+        "dodaj_karte_widmowa_projektu",
+        "karta.urzadzenie_ref",
+        lambda: {"karta": _rekord_karty_projektu()},
+        lambda p: _zepsuj_klucz(p, "karta", "urzadzenie_ref"),
+    ),
     # --- P0.1 nN — topologia obwodów nN (karta P0.1, C §4.1) -----------------
     IniekcjaBramy(
         "add_nn_cable_segment",
@@ -706,15 +750,18 @@ def test_literowka_w_kazdej_pozycji_daje_ten_sam_kod(iniekcja: IniekcjaBramy) ->
     potrzebuje modelu — sprawdzamy DOKŁADNIE ten predykat, który stoi przed
     operacją domenową na produkcyjnej drodze zapisu.
     """
+    model = iniekcja.model() if iniekcja.model is not None else _pusty_enm()
     poprawny = iniekcja.zbuduj()
-    bez_bledu, _ = validate_and_materialize_catalog_binding(iniekcja.operacja, poprawny)
+    with kontekst_katalogu(model):
+        bez_bledu, _ = validate_and_materialize_catalog_binding(iniekcja.operacja, poprawny)
     assert bez_bledu is None, f"{iniekcja.sciezka}: poprawny payload odrzucony ({bez_bledu})"
 
     zepsuty = copy.deepcopy(poprawny)
     iniekcja.zepsuj(zepsuty)
     assert zepsuty != poprawny, f"{iniekcja.sciezka}: iniekcja nie zmieniła payloadu"
 
-    blad, pola = validate_and_materialize_catalog_binding(iniekcja.operacja, zepsuty)
+    with kontekst_katalogu(model):
+        blad, pola = validate_and_materialize_catalog_binding(iniekcja.operacja, zepsuty)
 
     assert blad is not None, f"{iniekcja.sciezka}: brama przyjęła nieistniejącą pozycję"
     assert blad.code == "catalog.item_not_found", blad
@@ -970,6 +1017,9 @@ def test_zbiory_kluczy_pochodza_z_inwentarza() -> None:
     # Reszta to pozycje nazwane wprost (wyposażenie pola, tabliczki, specyfikacje) —
     # zbiór ZAMKNIĘTY, żeby nowa nazwa nie przeszła niezauważona.
     pozostale = klucze - referencje - wiazania
+    # Karta AB-H0: `karty_widmowe_ref` (lista id kart widmowych) i `urzadzenie_ref`
+    # (typ przekształtnika karty projektu) — referencje o nazwach spoza wzorca
+    # `*catalog_ref`, jawnie wymienione.
     assert pozostale == {
         "ct",
         "vt",
@@ -977,6 +1027,8 @@ def test_zbiory_kluczy_pochodza_z_inwentarza() -> None:
         "materialized_params",
         "genset_spec",
         "ups_spec",
+        "karty_widmowe_ref",
+        "urzadzenie_ref",
     }, sorted(pozostale)
 
 

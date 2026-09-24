@@ -68,6 +68,7 @@ from .models import (
     OverheadLine,
     Source,
     SwitchBranch,
+    liczba_jednostek_zrodla,
     liczba_torow,
 )
 from .models import TapChanger as EnmTapChanger
@@ -659,10 +660,11 @@ def _gen_quantity(gen: Generator) -> int:
     ``quantity`` (explicit unit count) takes priority over ``n_parallel``
     (identical-units-in-parallel neutral-element reading via
     ``enm.models.liczba_torow`` — karta CI-A 2026-09-04, jedyna definicja tej
-    reguly, wspolna z Cable/Transformer wyzej w tym pliku).
+    reguly, wspolna z Cable/Transformer wyzej w tym pliku). Decyzja O-53: cialo
+    reguly to `enm.models.liczba_jednostek_zrodla` — ta sama liczba jednostek w solverze
+    i w kontroli mocy zrodla operacji domenowych.
     """
-    q = gen.quantity or liczba_torow(gen)
-    return q if q >= 1 else 1
+    return liczba_jednostek_zrodla(gen)
 
 
 def _gen_rated_apparent_mva(

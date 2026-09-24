@@ -1,71 +1,13 @@
+"""Kontrakt wejścia solverów (v1.0): kanoniczne, wersjonowane i deterministyczne przejście
+ENM (graf sieci + katalog) → wejście gotowe dla solvera, ze śladem proweniencji każdego
+parametru.
+
+Moduły importuje się WPROST (``solver_input.builder.build_solver_input``,
+``solver_input.eligibility.check_eligibility``, ``solver_input.provenance`` …). Ten plik
+celowo nie re-eksportuje niczego (karta AB-H0 §0.0): gorliwy import budowniczego w
+``__init__`` sprawiał, że import SAMEGO modułu ``solver_input.provenance`` ładował
+``solver_input.builder`` i katalog (``network_model.catalog.repository``), a katalog nie
+mógł zaimportować kontraktów, które przez ten łańcuch prowadziły z powrotem do niego
+(cykl ``network_model.catalog.types`` ↔ ``repository``). Pomiar przed zmianą: zero miejsc
+w ``src/``, ``tests/`` i ``scripts/`` importowało nazwę z korzenia pakietu.
 """
-Solver-input contract package (v1.0).
-
-Provides canonical, versioned, deterministic transformation from
-ENM (NetworkGraph + Catalog) to solver-ready input with full
-parameter provenance tracing.
-
-Public API:
-    build_solver_input()     — main entry point
-    check_eligibility()      — per-analysis gating
-    build_eligibility_map()  — all analyses gating
-"""
-
-from solver_input.builder import build_solver_input
-from solver_input.contracts import (
-    SOLVER_INPUT_CONTRACT_VERSION,
-    AnalysisEligibilityEntry,
-    BranchPayload,
-    BusPayload,
-    EligibilityMap,
-    EligibilityResult,
-    InverterSourcePayload,
-    LoadFlowPayload,
-    ProvenanceEntrySchema,
-    ProvenanceSummarySchema,
-    ShortCircuitPayload,
-    SolverAnalysisType,
-    SolverInputEnvelope,
-    SolverInputIssue,
-    SolverInputIssueSeverity,
-    SwitchPayload,
-    TransformerPayload,
-)
-from solver_input.eligibility import build_eligibility_map, check_eligibility
-from solver_input.provenance import (
-    ProvenanceEntry,
-    ProvenanceSummary,
-    SourceKind,
-    SourceRef,
-    build_provenance_summary,
-    compute_value_hash,
-)
-
-__all__ = [
-    "SOLVER_INPUT_CONTRACT_VERSION",
-    "AnalysisEligibilityEntry",
-    "BranchPayload",
-    "BusPayload",
-    "EligibilityMap",
-    "EligibilityResult",
-    "InverterSourcePayload",
-    "LoadFlowPayload",
-    "ProvenanceEntry",
-    "ProvenanceEntrySchema",
-    "ProvenanceSummary",
-    "ProvenanceSummarySchema",
-    "ShortCircuitPayload",
-    "SolverAnalysisType",
-    "SolverInputEnvelope",
-    "SolverInputIssue",
-    "SolverInputIssueSeverity",
-    "SourceKind",
-    "SourceRef",
-    "SwitchPayload",
-    "TransformerPayload",
-    "build_eligibility_map",
-    "build_provenance_summary",
-    "build_solver_input",
-    "check_eligibility",
-    "compute_value_hash",
-]
