@@ -17,6 +17,7 @@ import type { Manufacturer } from '../../catalog/manufacturer';
 import type { SwitchgearFamily } from '../../catalog/SwitchgearFamilyPicker';
 import type { ConverterType, TransformerType } from '../../catalog/types';
 import type { Substation } from '../../../types/enm';
+import { FIELD_ROLE_LABEL_PL } from '../../sld/v2/station-rozdzielnia/contract';
 
 export type SnFieldRole = 'LINIA_IN' | 'LINIA_OUT' | 'LINIA_ODG' | 'TRANSFORMATOROWE' | 'SPRZEGLO';
 
@@ -28,13 +29,13 @@ export const SWITCHGEAR_MANUFACTURER_ORDER = [
   'ABB',
 ];
 
-export const FIELD_ROLE_LABELS: Readonly<Record<string, string>> = {
-  LINIA_IN: 'Pole liniowe wejściowe',
-  LINIA_OUT: 'Pole liniowe wyjściowe',
-  LINIA_ODG: 'Pole odgałęźne',
-  TRANSFORMATOROWE: 'Pole transformatorowe',
-  SPRZEGLO: 'Pole sprzęgłowe',
-};
+/**
+ * Etykiety ról pól SN — JEDNA mapa: `FIELD_ROLE_LABEL_PL` kontraktu rozdzielnicy (lustro nazw
+ * pól nadawanych przez backend, `enm.domain_operations.NAZWA_ROLI_POLA_SN_PL`; parytet przypięty
+ * testem backendu). Dawna kopia tutaj rozjechała się z kontraktem („Pole sprzęgłowe" wobec
+ * „Pole sprzęgła") i nie znała pola pomiarowego — kreator stacji pokazywał wtedy kod roli.
+ */
+export const FIELD_ROLE_LABELS: Readonly<Record<string, string>> = FIELD_ROLE_LABEL_PL;
 
 export const SOURCE_STATUS_LABEL_PL: Readonly<Record<CompleteMvBayTemplateSummary['source_status'], string>> = {
   official_catalog: 'pakiet katalogowy',

@@ -84,6 +84,7 @@ from .domain_operations import (
     _rodzaj_aparatu_sn_z_katalogu,
     _station_has_transformer,
     blad_pomiaru_w_torze_tranzytu,
+    nazwa_roli_pola_sn,
     rozstrzygnij_pomiar_pola,
     szyna_prowadzi_tranzyt_sn,
     wybor_bloku_fabrycznego,
@@ -1864,15 +1865,9 @@ def _normalize_sn_bay_role(payload: dict[str, Any]) -> str:
 
 
 def _default_sn_bay_name(role: str) -> str:
-    return {
-        "IN": "Pole liniowe dopływowe",
-        "OUT": "Pole liniowe odpływowe",
-        "FEEDER": "Pole liniowe SN",
-        "TR": "Pole transformatorowe",
-        "COUPLER": "Pole sprzęgła",
-        "MEASUREMENT": "Pole pomiarowe",
-        "OZE": "Pole źródłowe SN",
-    }.get(role, "Pole SN")
+    """Nazwa domyślna pola SN — JEDNA mapa nazw ról (`nazwa_roli_pola_sn`, karta #140); dawna
+    kopia tutaj miała inne słownictwo niż wcięcie stacji i schemat (dopływowe/odpływowe)."""
+    return nazwa_roli_pola_sn(role)
 
 
 def _resolve_bay_template_protection_codes(
@@ -3401,7 +3396,7 @@ def add_nn_section_coupler(enm: dict[str, Any], payload: dict[str, Any]) -> dict
 
     coupler_data: dict[str, Any] = {
         "ref_id": coupler_ref,
-        "name": f"Sprzęgło sekcyjne {station.get('name') or station_ref}",
+        "name": " ".join(filter(None, ["Sprzęgło sekcyjne", station.get("name")])),
         "type": "bus_coupler",
         "from_bus_ref": last_bus_ref,
         "to_bus_ref": new_bus_ref,
@@ -3543,7 +3538,7 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         new_enm,
         {
             "ref_id": mid_bus_ref,
-            "name": f"Szyna pośrednia {segment.get('name') or segment_ref}",
+            "name": " ".join(filter(None, ["Szyna pośrednia", segment.get("name")])),
             "voltage_kv": from_voltage,
             "meta": {"visual_role": "NN_SPLIT_BUS"},
         },
@@ -3558,7 +3553,7 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
 
     left_data: dict[str, Any] = {
         "ref_id": left_ref,
-        "name": f"{segment.get('name') or segment_ref} (A)",
+        "name": f"{segment.get('name') or 'Odcinek kabla nN'} (A)",
         "type": "cable",
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": mid_bus_ref,
@@ -3579,7 +3574,7 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
 
     right_data: dict[str, Any] = {
         "ref_id": right_ref,
-        "name": f"{segment.get('name') or segment_ref} (B)",
+        "name": f"{segment.get('name') or 'Odcinek kabla nN'} (B)",
         "type": "cable",
         "from_bus_ref": mid_bus_ref,
         "to_bus_ref": to_bus_ref,

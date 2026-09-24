@@ -261,7 +261,9 @@ def test_invalid_equipment_aborts_whole_station_operation() -> None:
 
     assert result.get("error_code") == "catalog.ref_required"
     komunikat = result.get("error") or ""
-    assert "LINIA_IN" in komunikat
+    # Komunikat wskazuje pole jego nazwą z modelu (karta #140: bez kodu roli i identyfikatora).
+    assert "Pole liniowe wejściowe 1" in komunikat
+    assert "LINIA_IN" not in komunikat
     assert "zabezpieczenia" in komunikat
     # Migawka pusta = do zapisu nie trafia ani stacja, ani wyposażenie.
     assert result.get("snapshot") is None

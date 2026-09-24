@@ -1016,9 +1016,9 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
         tags: [],
         meta: {
           field_specs: [
-            { field_ref: 'field-in', name: 'Pole LINIA_IN 1', bay_role: 'IN', bus_ref: 'bus-sn', equipment_refs: ['sw-in'], meta: { field_role: 'LINIA_IN' } },
-            { field_ref: 'field-out', name: 'Pole LINIA_OUT 1', bay_role: 'OUT', bus_ref: 'bus-sn', equipment_refs: ['sw-out'], meta: { field_role: 'LINIA_OUT' } },
-            { field_ref: 'field-tr', name: 'Pole TRANSFORMATOROWE 1', bay_role: 'TR', bus_ref: 'bus-sn', equipment_refs: ['sw-tr'], meta: { field_role: 'TRANSFORMATOROWE' } },
+            { field_ref: 'field-in', name: 'Pole liniowe wejściowe 1', bay_role: 'IN', bus_ref: 'bus-sn', equipment_refs: ['sw-in'], meta: { field_role: 'LINIA_IN' } },
+            { field_ref: 'field-out', name: 'Pole liniowe wyjściowe 1', bay_role: 'OUT', bus_ref: 'bus-sn', equipment_refs: ['sw-out'], meta: { field_role: 'LINIA_OUT' } },
+            { field_ref: 'field-tr', name: 'Pole transformatorowe 1', bay_role: 'TR', bus_ref: 'bus-sn', equipment_refs: ['sw-tr'], meta: { field_role: 'TRANSFORMATOROWE' } },
           ],
         },
         station_type: 'inline',

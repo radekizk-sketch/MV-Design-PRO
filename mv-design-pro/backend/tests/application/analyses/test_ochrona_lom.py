@@ -446,7 +446,7 @@ def _specyfikacja_pola(
     on_segment_sn`, `add_converter_source`) — w `Substation.meta.field_specs`."""
     return {
         "field_ref": field_ref,
-        "name": "Pole LINIA_OUT 2",
+        "name": "Pole liniowe wyjściowe 2",
         "bay_role": bay_role,
         "bus_ref": bus_ref,
         "equipment_refs": ["cb_1"],

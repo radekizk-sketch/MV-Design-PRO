@@ -105,9 +105,10 @@ def test_insert_station_without_apparatus_ref_returns_validation_error() -> None
     )
     assert response.get("error_code") == "station.insert.field_apparatus_ref_missing"
     message = response.get("error") or ""
-    # Komunikat po polsku, ze wskazaniem pola (numer + rola) i nazwą kontraktu.
-    assert "Pole SN nr 1" in message
-    assert "LINIA_IN" in message
+    # Komunikat po polsku, ze wskazaniem pola (numer + nazwa roli, bez kodu roli — karta #140)
+    # i nazwą kontraktu.
+    assert "Pole SN nr 1 (pole liniowe wejściowe)" in message
+    assert "LINIA_IN" not in message
     assert "apparatus_catalog_ref" in message
     # Model nietknięty (walidacja przed jakąkolwiek zmianą).
     assert response.get("snapshot") is None
@@ -125,8 +126,8 @@ def test_insert_station_without_apparatus_ref_points_at_first_incomplete_field()
         copy.deepcopy(snap), "insert_station_on_segment_sn", payload
     )
     assert response.get("error_code") == "station.insert.field_apparatus_ref_missing"
-    assert "Pole SN nr 2" in (response.get("error") or "")
-    assert "LINIA_OUT" in (response.get("error") or "")
+    assert "Pole SN nr 2 (pole liniowe wyjściowe)" in (response.get("error") or "")
+    assert "LINIA_OUT" not in (response.get("error") or "")
 
 
 def test_append_station_without_apparatus_ref_returns_validation_error() -> None:

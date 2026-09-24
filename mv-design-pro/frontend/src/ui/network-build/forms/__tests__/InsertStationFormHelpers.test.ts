@@ -196,9 +196,14 @@ describe('constants', () => {
     expect(SWITCHGEAR_MANUFACTURER_ORDER).toHaveLength(4);
     expect(SWITCHGEAR_MANUFACTURER_ORDER[0]).toBe('ZPUE_WLOSZCZOWA');
   });
-  it('FIELD_ROLE_LABELS pokrywa 5 ról', () => {
-    expect(Object.keys(FIELD_ROLE_LABELS)).toHaveLength(5);
+  it('FIELD_ROLE_LABELS pokrywa 6 ról kanonicznych jedną mapą z kontraktem rozdzielnicy', () => {
+    // Karta #140: kopia mapy nie znała pola pomiarowego (kreator pokazywał kod roli).
+    expect(Object.keys(FIELD_ROLE_LABELS).sort()).toEqual(
+      ['LINIA_IN', 'LINIA_ODG', 'LINIA_OUT', 'POMIAROWE', 'SPRZEGLO', 'TRANSFORMATOROWE'],
+    );
     expect(FIELD_ROLE_LABELS.LINIA_IN).toBe('Pole liniowe wejściowe');
+    expect(FIELD_ROLE_LABELS.POMIAROWE).toBe('Pole pomiarowe');
+    expect(FIELD_ROLE_LABELS.SPRZEGLO).toBe('Pole sprzęgła');
   });
 });
 

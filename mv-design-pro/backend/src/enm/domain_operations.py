@@ -5155,9 +5155,9 @@ def _typ_i_nazwa_aparatu_pola(
 
 def _field_apparatus_missing_error(*, index: int, field_role: str, code: str) -> dict[str, Any]:
     """Jawny błąd walidacji: pole SN bez wskazanego aparatu (B-12)."""
-    rola = field_role.strip() or "bez roli"
+    rola = nazwa_roli_pola_sn(field_role).lower() if field_role.strip() else "bez roli"
     return _error_response(
-        f"Pole SN nr {index + 1} (rola: {rola}) nie ma wskazanego aparatu. "
+        f"Pole SN nr {index + 1} ({rola}) nie ma wskazanego aparatu. "
         "Wskaż pozycję katalogu APARAT_SN w polu 'apparatus_catalog_ref' tego pola "
         "albo wspólną dla wszystkich pól w 'field_apparatus_catalog_ref'.",
         code,
@@ -5214,10 +5214,10 @@ def _materialize_sn_field_apparatus_catalog(
     komunikatu — parytet z torem atomowym (`add_sn_bay`, `insert_section_switch_sn`),
     gdzie ten sam ref jest odrzucany.
     """
-    rola = field_role.strip() or "bez roli"
+    rola = nazwa_roli_pola_sn(field_role).lower() if field_role.strip() else "bez roli"
     return _brama_katalogowa_aparatu_sn(
         apparatus_catalog_ref,
-        opis_pl=f"Pole SN nr {index + 1} (rola: {rola})",
+        opis_pl=f"Pole SN nr {index + 1} ({rola})",
     )
 
 
@@ -5326,25 +5326,25 @@ def _zastosuj_wyposazenie_pol(
                     default_version="2024.1",
                 )
                 if isinstance(materializacja, dict):
-                    rola = field_role.strip() or "bez roli"
+                    nazwa_pola = _nazwa_pola_w_modelu(new_enm, field_ref, field_role)
                     return _error_response(
-                        f"Pole {rola} ({field_ref}) — nie udało się dodać {etykieta}: "
+                        f"{nazwa_pola} — nie udało się dodać {etykieta}: "
                         f"{materializacja['error']}",
                         str(materializacja.get("error_code") or kod_bledu),
                     )
             odpowiedz = handlery[nazwa_operacji](new_enm, {**dane, "bay_ref": field_ref})
             blad = odpowiedz.get("error")
             if blad:
-                rola = field_role.strip() or "bez roli"
+                nazwa_pola = _nazwa_pola_w_modelu(new_enm, field_ref, field_role)
                 return _error_response(
-                    f"Pole {rola} ({field_ref}) — nie udało się dodać {etykieta}: {blad}",
+                    f"{nazwa_pola} — nie udało się dodać {etykieta}: {blad}",
                     str(odpowiedz.get("error_code") or kod_bledu),
                 )
             migawka = odpowiedz.get("snapshot")
             if not isinstance(migawka, dict):
                 return _error_response(
-                    f"Pole {field_role} ({field_ref}) — operacja {nazwa_operacji} "
-                    "nie zwróciła migawki modelu.",
+                    f"{_nazwa_pola_w_modelu(new_enm, field_ref, field_role)} — operacja "
+                    f"{nazwa_operacji} nie zwróciła migawki modelu.",
                     kod_bledu,
                 )
             new_enm = migawka
@@ -5924,6 +5924,55 @@ def _canonical_sn_field_role(raw: object) -> str:
         return ""
     normalized = raw.strip().upper()
     return _SN_FIELD_ROLE_ALIASES.get(normalized, normalized)
+
+
+#: Polska nazwa pola SN wg kanonicznej roli — JEDNA prawda nazw domyślnych pól i komunikatów
+#: operacji stacji (lustro `FIELD_ROLE_LABEL_PL` w
+#: `frontend/src/ui/sld/v2/station-rozdzielnia/contract.ts`, parytet przypięty testem). Kod roli
+#: (`LINIA_IN`, `TR`) jest wartością pola `field_role`/`bay_role`, nigdy częścią nazwy, którą
+#: projektant widzi na schemacie, w drzewie i w zdaniach wyników.
+NAZWA_ROLI_POLA_SN_PL: dict[str, str] = {
+    "LINIA_IN": "Pole liniowe wejściowe",
+    "LINIA_OUT": "Pole liniowe wyjściowe",
+    "LINIA_ODG": "Pole odgałęźne",
+    "TRANSFORMATOROWE": "Pole transformatorowe",
+    "SPRZEGLO": "Pole sprzęgła",
+    "POMIAROWE": "Pole pomiarowe",
+}
+
+#: Rola pola źródłowego (`Bay.bay_role == "OZE"`) nie ma kanonicznej roli pola SN.
+_NAZWA_POLA_ZRODLOWEGO_PL = "Pole źródłowe SN"
+#: Pole bez roli albo z rolą spoza kanonu — nazwa ogólna, bez zgadywania roli.
+_NAZWA_POLA_SN_OGOLNA_PL = "Pole SN"
+
+
+def nazwa_roli_pola_sn(rola: object) -> str:
+    """Polska nazwa pola SN dla roli podanej kanonicznie (`LINIA_IN`) albo aliasem modelu (`IN`).
+
+    Rola pusta albo spoza kanonu daje nazwę ogólną „Pole SN" (funkcja nie zgaduje roli)."""
+    if isinstance(rola, str) and rola.strip().upper() == "OZE":
+        return _NAZWA_POLA_ZRODLOWEGO_PL
+    return NAZWA_ROLI_POLA_SN_PL.get(_canonical_sn_field_role(rola), _NAZWA_POLA_SN_OGOLNA_PL)
+
+
+def _nazwa_pola_w_modelu(enm: dict[str, Any], field_ref: str, field_role: str) -> str:
+    """Nazwa pola do komunikatu dla projektanta: nazwa z modelu (pole albo specyfikacja pola
+    stacji, która je opisuje), a bez niej nazwa roli — nigdy surowy identyfikator pola."""
+    kandydaci: list[tuple[object, object]] = [
+        (bay.get("ref_id"), bay.get("name"))
+        for bay in enm.get("bays", []) or []
+        if isinstance(bay, dict)
+    ]
+    for substation in enm.get("substations", []) or []:
+        if isinstance(substation, dict):
+            kandydaci.extend(
+                (spec.get("field_ref"), spec.get("name"))
+                for spec in _field_specs_for_substation(substation)
+            )
+    for ref, nazwa in kandydaci:
+        if ref == field_ref and isinstance(nazwa, str) and nazwa.strip():
+            return nazwa.strip()
+    return nazwa_roli_pola_sn(field_role)
 
 
 def klasa_przylaczenia_sn(role_pol: Iterable[object]) -> str:
@@ -6837,7 +6886,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         field_specs.append(
             _build_field_spec(
                 field_ref=field_ref,
-                name=f"Pole {field_role or 'SN'} {idx + 1}",
+                name=f"{nazwa_roli_pola_sn(field_role)} {idx + 1}",
                 bay_role=bay_role,
                 bus_ref=sn_bus_id,
                 equipment_refs=[breaker_ref],
@@ -8497,7 +8546,7 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
             new_enm,
             {
                 "ref_id": new_hv_bus_ref,
-                "name": f"Szyna {auto_hv_voltage_kv:g} kV (TR {tr_ref[-8:]})",
+                "name": f"Szyna {auto_hv_voltage_kv:g} kV — strona GN transformatora SN/nN",
                 "voltage_kv": auto_hv_voltage_kv,
                 "tags": ["topology_terminal"],
                 "meta": {
@@ -8527,7 +8576,7 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
             new_enm,
             {
                 "ref_id": new_lv_bus_ref,
-                "name": f"Szyna {auto_lv_voltage_kv:g} kV (TR {tr_ref[-8:]})",
+                "name": f"Szyna {auto_lv_voltage_kv:g} kV — strona DN transformatora SN/nN",
                 "voltage_kv": auto_lv_voltage_kv,
                 "tags": ["topology_terminal"],
                 "meta": {
@@ -10289,7 +10338,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
 
     new_bay_in = {
         "ref_id": bay_in_ref,
-        "name": f"Pole IN — {station_name}",
+        "name": f"{nazwa_roli_pola_sn('IN')} — {station_name}",
         "bay_role": "IN",
         "substation_ref": substation_ref,
         "bus_ref": endpoint_bus_ref,
@@ -10413,7 +10462,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
 
         new_bay_tr = {
             "ref_id": bay_tr_ref,
-            "name": f"Pole TR — {station_name}",
+            "name": f"{nazwa_roli_pola_sn('TR')} — {station_name}",
             "bay_role": "TR",
             "substation_ref": substation_ref,
             "bus_ref": endpoint_bus_ref,
@@ -10460,7 +10509,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 new_enm = bay_materialization.enm
         new_bay = {
             "ref_id": bay_ref,
-            "name": f"Pole {bay_role} — {station_name}",
+            "name": f"{nazwa_roli_pola_sn(bay_role)} — {station_name}",
             "bay_role": bay_role,
             "substation_ref": substation_ref,
             "bus_ref": endpoint_bus_ref,

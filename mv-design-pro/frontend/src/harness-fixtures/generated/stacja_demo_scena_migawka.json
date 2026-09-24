@@ -616,7 +616,7 @@
               "requires_catalog_binding": true,
               "terminal_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field_terminal/000"
             },
-            "name": "Pole LINIA_IN 1",
+            "name": "Pole liniowe wejściowe 1",
             "protection_codes": [
               "51",
               "50",
@@ -640,7 +640,7 @@
               "requires_catalog_binding": true,
               "terminal_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field_terminal/001"
             },
-            "name": "Pole LINIA_OUT 2",
+            "name": "Pole liniowe wyjściowe 2",
             "protection_codes": [
               "51",
               "50",
@@ -666,7 +666,7 @@
               "requires_catalog_binding": true,
               "terminal_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field_terminal/002"
             },
-            "name": "Pole TRANSFORMATOROWE 3",
+            "name": "Pole transformatorowe 3",
             "protection_codes": [
               "87T",
               "51",

@@ -347,7 +347,7 @@
       "substation_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/station"
     },
     {
-      "bay_name": "Pole LINIA_IN 1",
+      "bay_name": "Pole liniowe wejściowe 1",
       "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/000",
       "bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
       "checks": [
@@ -360,7 +360,7 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "kody zabezpieczeń pola „Pole LINIA_IN 1”",
+              "odniesienie": "kody zabezpieczeń pola „Pole liniowe wejściowe 1”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -413,7 +413,7 @@
             ],
             "przedmiot": {
               "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/000",
-              "nazwa_pl": "Pole LINIA_IN 1",
+              "nazwa_pl": "Pole liniowe wejściowe 1",
               "opis_pl": "Pole przyłączeniowe — obecność funkcji ochrony od pracy wyspowej"
             },
             "slad": [
@@ -444,7 +444,7 @@
                 "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole LINIA_IN 1) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
+              "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
             },
             "wynik": {
               "chwila_s": null,
@@ -486,7 +486,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "DEKLARACJA",
-          "odniesienie": "nastawy zabezpieczeń pola „Pole LINIA_IN 1”",
+          "odniesienie": "nastawy zabezpieczeń pola „Pole liniowe wejściowe 1”",
           "poziom": "DECLARATION",
           "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
           "status_danych": {
@@ -503,13 +503,13 @@
         "kompletnosc_dowodu": "NIEPELNY",
         "kryteria_naruszone": [],
         "kryterium_najblizej_granicy": null,
-        "nazwa_pl": "Ochrona od pracy wyspowej pola Pole LINIA_IN 1",
+        "nazwa_pl": "Ochrona od pracy wyspowej pola Pole liniowe wejściowe 1",
         "oceny_skladowe": [
           {
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "kody zabezpieczeń pola „Pole LINIA_IN 1”",
+              "odniesienie": "kody zabezpieczeń pola „Pole liniowe wejściowe 1”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -562,7 +562,7 @@
             ],
             "przedmiot": {
               "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/000",
-              "nazwa_pl": "Pole LINIA_IN 1",
+              "nazwa_pl": "Pole liniowe wejściowe 1",
               "opis_pl": "Pole przyłączeniowe — obecność funkcji ochrony od pracy wyspowej"
             },
             "slad": [
@@ -593,7 +593,7 @@
                 "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole LINIA_IN 1) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
+              "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
             },
             "wynik": {
               "chwila_s": null,
@@ -634,7 +634,7 @@
         "pokrycie_programu_pl": "wymaganie wykazywane porównaniem nastaw zadeklarowanych — program badań nie dotyczy",
         "powody_niepelnosci": [
           "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole LINIA_IN 1): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
         ],
         "slad": [
           {
@@ -657,17 +657,17 @@
         },
         "wyjasnienie": {
           "czego_brakuje": [
-            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole LINIA_IN 1): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
-            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole LINIA_IN 1): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
+            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
+            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole LINIA_IN 1): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
           ],
-          "przyczyna_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole LINIA_IN 1) — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”",
+          "przyczyna_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1) — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”",
           "zastrzezenia": [
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
             "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
           ],
-          "zdanie_pl": "Ochrona od pracy wyspowej pola Pole LINIA_IN 1 („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — werdykt zgodności niewydany: brak ustalonej podstawy parametru. Kryteria bez ustalonej podstawy: Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole LINIA_IN 1) — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”."
+          "zdanie_pl": "Ochrona od pracy wyspowej pola Pole liniowe wejściowe 1 („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — werdykt zgodności niewydany: brak ustalonej podstawy parametru. Kryteria bez ustalonej podstawy: Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1) — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”."
         },
         "wymaganie_id": "lom.stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/000",
         "zakres_waznosci": {
@@ -688,7 +688,7 @@
       "substation_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/station"
     },
     {
-      "bay_name": "Pole LINIA_OUT 2",
+      "bay_name": "Pole liniowe wyjściowe 2",
       "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
       "bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
       "checks": [
@@ -701,7 +701,7 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -747,7 +747,7 @@
               "definicja_latex": "m = x - x_{\\lim}",
               "niedefiniowalny": false,
               "powod_pl": null,
-              "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "skala": {
                 "jednostka": "Hz/s",
                 "wartosc": 2.0
@@ -778,7 +778,7 @@
             ],
             "przedmiot": {
               "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
-              "nazwa_pl": "Pole LINIA_OUT 2",
+              "nazwa_pl": "Pole liniowe wyjściowe 2",
               "opis_pl": "Pole przyłączeniowe — Szybkość zmian częstotliwości (df/dt)"
             },
             "slad": [
@@ -808,12 +808,12 @@
                 "Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość 2 Hz/s bez dokumentu źródłowego z wydaniem i jednostką redakcyjną).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole LINIA_OUT 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): nastawa df/dt funkcji 81R: 1 Hz/s wobec wymaganych ≥ 2 Hz/s wg „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (margines −1 Hz/s, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”, względnie −50 % wartości granicznej)."
+              "zdanie_pl": "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole liniowe wyjściowe 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): nastawa df/dt funkcji 81R: 1 Hz/s wobec wymaganych ≥ 2 Hz/s wg „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (margines −1 Hz/s, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”, względnie −50 % wartości granicznej)."
             },
             "wynik": {
               "chwila_s": null,
               "metoda": "DEKLARACJA",
-              "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "symbol_latex": "\\left(\\frac{df}{dt}\\right)_{\\mathrm{nast}}",
               "wartosc": {
                 "jednostka": "Hz/s",
@@ -868,7 +868,7 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -914,7 +914,7 @@
               "definicja_latex": "m = x_{\\lim} - x",
               "niedefiniowalny": false,
               "powod_pl": null,
-              "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "skala": {
                 "jednostka": "Hz",
                 "wartosc": 47.5
@@ -945,7 +945,7 @@
             ],
             "przedmiot": {
               "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
-              "nazwa_pl": "Pole LINIA_OUT 2",
+              "nazwa_pl": "Pole liniowe wyjściowe 2",
               "opis_pl": "Pole przyłączeniowe — Podczęstotliwościowa (f<)"
             },
             "slad": [
@@ -975,12 +975,12 @@
                 "Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): próg funkcji 81U: 47,5 Hz wobec wymaganych ≤ 47,5 Hz wg art. 13 ust. 1 lit. a „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz” (margines 0 Hz, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”, względnie 0 % wartości granicznej)."
+              "zdanie_pl": "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): próg funkcji 81U: 47,5 Hz wobec wymaganych ≤ 47,5 Hz wg art. 13 ust. 1 lit. a „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz” (margines 0 Hz, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”, względnie 0 % wartości granicznej)."
             },
             "wynik": {
               "chwila_s": null,
               "metoda": "DEKLARACJA",
-              "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "symbol_latex": "f_{\\mathrm{81U}}",
               "wartosc": {
                 "jednostka": "Hz",
@@ -1035,7 +1035,7 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -1081,7 +1081,7 @@
               "definicja_latex": "m = x - x_{\\lim}",
               "niedefiniowalny": false,
               "powod_pl": null,
-              "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "skala": {
                 "jednostka": "Hz",
                 "wartosc": 51.5
@@ -1112,7 +1112,7 @@
             ],
             "przedmiot": {
               "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
-              "nazwa_pl": "Pole LINIA_OUT 2",
+              "nazwa_pl": "Pole liniowe wyjściowe 2",
               "opis_pl": "Pole przyłączeniowe — Nadczęstotliwościowa (f>)"
             },
             "slad": [
@@ -1142,12 +1142,12 @@
                 "Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): próg funkcji 81O: 51,5 Hz wobec wymaganych ≥ 51,5 Hz wg art. 13 ust. 1 lit. a „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz” (margines 0 Hz, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”, względnie 0 % wartości granicznej)."
+              "zdanie_pl": "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): próg funkcji 81O: 51,5 Hz wobec wymaganych ≥ 51,5 Hz wg art. 13 ust. 1 lit. a „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz” (margines 0 Hz, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”, względnie 0 % wartości granicznej)."
             },
             "wynik": {
               "chwila_s": null,
               "metoda": "DEKLARACJA",
-              "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "symbol_latex": "f_{\\mathrm{81O}}",
               "wartosc": {
                 "jednostka": "Hz",
@@ -1202,7 +1202,7 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -1246,7 +1246,7 @@
             ],
             "przedmiot": {
               "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
-              "nazwa_pl": "Pole LINIA_OUT 2",
+              "nazwa_pl": "Pole liniowe wyjściowe 2",
               "opis_pl": "Pole przyłączeniowe — koordynacja czasowa ochrony LoM z SPZ"
             },
             "slad": [
@@ -1278,7 +1278,7 @@
                 "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+              "zdanie_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
             },
             "wynik": null,
             "zakres_waznosci": {
@@ -1313,7 +1313,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "DEKLARACJA",
-          "odniesienie": "nastawy zabezpieczeń pola „Pole LINIA_OUT 2”",
+          "odniesienie": "nastawy zabezpieczeń pola „Pole liniowe wyjściowe 2”",
           "poziom": "DECLARATION",
           "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
           "status_danych": {
@@ -1330,13 +1330,13 @@
         "kompletnosc_dowodu": "NIEPELNY",
         "kryteria_naruszone": [],
         "kryterium_najblizej_granicy": null,
-        "nazwa_pl": "Ochrona od pracy wyspowej pola Pole LINIA_OUT 2",
+        "nazwa_pl": "Ochrona od pracy wyspowej pola Pole liniowe wyjściowe 2",
         "oceny_skladowe": [
           {
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -1382,7 +1382,7 @@
               "definicja_latex": "m = x - x_{\\lim}",
               "niedefiniowalny": false,
               "powod_pl": null,
-              "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "skala": {
                 "jednostka": "Hz/s",
                 "wartosc": 2.0
@@ -1413,7 +1413,7 @@
             ],
             "przedmiot": {
               "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
-              "nazwa_pl": "Pole LINIA_OUT 2",
+              "nazwa_pl": "Pole liniowe wyjściowe 2",
               "opis_pl": "Pole przyłączeniowe — Szybkość zmian częstotliwości (df/dt)"
             },
             "slad": [
@@ -1443,12 +1443,12 @@
                 "Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość 2 Hz/s bez dokumentu źródłowego z wydaniem i jednostką redakcyjną).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole LINIA_OUT 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): nastawa df/dt funkcji 81R: 1 Hz/s wobec wymaganych ≥ 2 Hz/s wg „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (margines −1 Hz/s, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”, względnie −50 % wartości granicznej)."
+              "zdanie_pl": "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole liniowe wyjściowe 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): nastawa df/dt funkcji 81R: 1 Hz/s wobec wymaganych ≥ 2 Hz/s wg „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (margines −1 Hz/s, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”, względnie −50 % wartości granicznej)."
             },
             "wynik": {
               "chwila_s": null,
               "metoda": "DEKLARACJA",
-              "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "symbol_latex": "\\left(\\frac{df}{dt}\\right)_{\\mathrm{nast}}",
               "wartosc": {
                 "jednostka": "Hz/s",
@@ -1474,7 +1474,7 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -1520,7 +1520,7 @@
               "definicja_latex": "m = x_{\\lim} - x",
               "niedefiniowalny": false,
               "powod_pl": null,
-              "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "skala": {
                 "jednostka": "Hz",
                 "wartosc": 47.5
@@ -1551,7 +1551,7 @@
             ],
             "przedmiot": {
               "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
-              "nazwa_pl": "Pole LINIA_OUT 2",
+              "nazwa_pl": "Pole liniowe wyjściowe 2",
               "opis_pl": "Pole przyłączeniowe — Podczęstotliwościowa (f<)"
             },
             "slad": [
@@ -1581,12 +1581,12 @@
                 "Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): próg funkcji 81U: 47,5 Hz wobec wymaganych ≤ 47,5 Hz wg art. 13 ust. 1 lit. a „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz” (margines 0 Hz, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”, względnie 0 % wartości granicznej)."
+              "zdanie_pl": "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): próg funkcji 81U: 47,5 Hz wobec wymaganych ≤ 47,5 Hz wg art. 13 ust. 1 lit. a „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz” (margines 0 Hz, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”, względnie 0 % wartości granicznej)."
             },
             "wynik": {
               "chwila_s": null,
               "metoda": "DEKLARACJA",
-              "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "symbol_latex": "f_{\\mathrm{81U}}",
               "wartosc": {
                 "jednostka": "Hz",
@@ -1612,7 +1612,7 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -1658,7 +1658,7 @@
               "definicja_latex": "m = x - x_{\\lim}",
               "niedefiniowalny": false,
               "powod_pl": null,
-              "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "skala": {
                 "jednostka": "Hz",
                 "wartosc": 51.5
@@ -1689,7 +1689,7 @@
             ],
             "przedmiot": {
               "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
-              "nazwa_pl": "Pole LINIA_OUT 2",
+              "nazwa_pl": "Pole liniowe wyjściowe 2",
               "opis_pl": "Pole przyłączeniowe — Nadczęstotliwościowa (f>)"
             },
             "slad": [
@@ -1719,12 +1719,12 @@
                 "Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): próg funkcji 81O: 51,5 Hz wobec wymaganych ≥ 51,5 Hz wg art. 13 ust. 1 lit. a „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz” (margines 0 Hz, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”, względnie 0 % wartości granicznej)."
+              "zdanie_pl": "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): próg funkcji 81O: 51,5 Hz wobec wymaganych ≥ 51,5 Hz wg art. 13 ust. 1 lit. a „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz” (margines 0 Hz, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”, względnie 0 % wartości granicznej)."
             },
             "wynik": {
               "chwila_s": null,
               "metoda": "DEKLARACJA",
-              "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "symbol_latex": "f_{\\mathrm{81O}}",
               "wartosc": {
                 "jednostka": "Hz",
@@ -1750,7 +1750,7 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+              "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -1794,7 +1794,7 @@
             ],
             "przedmiot": {
               "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
-              "nazwa_pl": "Pole LINIA_OUT 2",
+              "nazwa_pl": "Pole liniowe wyjściowe 2",
               "opis_pl": "Pole przyłączeniowe — koordynacja czasowa ochrony LoM z SPZ"
             },
             "slad": [
@@ -1826,7 +1826,7 @@
                 "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+              "zdanie_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
             },
             "wynik": null,
             "zakres_waznosci": {
@@ -1857,10 +1857,10 @@
         "pokrycie_programu_pl": "wymaganie wykazywane porównaniem nastaw zadeklarowanych — program badań nie dotyczy",
         "powody_niepelnosci": [
           "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole LINIA_OUT 2): Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+          "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole liniowe wyjściowe 2): Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+          "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+          "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+          "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
         ],
         "slad": [
           {
@@ -1901,26 +1901,26 @@
         },
         "wyjasnienie": {
           "czego_brakuje": [
-            "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole LINIA_OUT 2): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość 2 Hz/s bez dokumentu źródłowego z wydaniem i jednostką redakcyjną).",
-            "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
-            "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
-            "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
-            "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2): Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
-            "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2): Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło.",
+            "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole liniowe wyjściowe 2): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość 2 Hz/s bez dokumentu źródłowego z wydaniem i jednostką redakcyjną).",
+            "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
+            "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
+            "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+            "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2): Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+            "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2): Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło.",
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-            "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole LINIA_OUT 2): Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-            "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-            "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-            "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+            "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole liniowe wyjściowe 2): Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+            "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+            "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+            "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
           ],
-          "przyczyna_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)",
+          "przyczyna_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)",
           "zastrzezenia": [
             "Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość 2 Hz/s bez dokumentu źródłowego z wydaniem i jednostką redakcyjną).",
             "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji).",
             "Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw)."
           ],
-          "zdanie_pl": "Ochrona od pracy wyspowej pola Pole LINIA_OUT 2 („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — ocena niewykonana. Kryteria nieocenione: Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)."
+          "zdanie_pl": "Ochrona od pracy wyspowej pola Pole liniowe wyjściowe 2 („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — ocena niewykonana. Kryteria nieocenione: Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)."
         },
         "wymaganie_id": "lom.stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
         "zakres_waznosci": {
@@ -1941,7 +1941,7 @@
       "substation_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/station"
     },
     {
-      "bay_name": "Pole TRANSFORMATOROWE 3",
+      "bay_name": "Pole transformatorowe 3",
       "bay_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002",
       "bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
       "checks": [
@@ -1954,7 +1954,7 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "kody zabezpieczeń pola „Pole TRANSFORMATOROWE 3”",
+              "odniesienie": "kody zabezpieczeń pola „Pole transformatorowe 3”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -2007,7 +2007,7 @@
             ],
             "przedmiot": {
               "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002",
-              "nazwa_pl": "Pole TRANSFORMATOROWE 3",
+              "nazwa_pl": "Pole transformatorowe 3",
               "opis_pl": "Pole przyłączeniowe — obecność funkcji ochrony od pracy wyspowej"
             },
             "slad": [
@@ -2038,7 +2038,7 @@
                 "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole TRANSFORMATOROWE 3) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
+              "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
             },
             "wynik": {
               "chwila_s": null,
@@ -2080,7 +2080,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "DEKLARACJA",
-          "odniesienie": "nastawy zabezpieczeń pola „Pole TRANSFORMATOROWE 3”",
+          "odniesienie": "nastawy zabezpieczeń pola „Pole transformatorowe 3”",
           "poziom": "DECLARATION",
           "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
           "status_danych": {
@@ -2097,13 +2097,13 @@
         "kompletnosc_dowodu": "NIEPELNY",
         "kryteria_naruszone": [],
         "kryterium_najblizej_granicy": null,
-        "nazwa_pl": "Ochrona od pracy wyspowej pola Pole TRANSFORMATOROWE 3",
+        "nazwa_pl": "Ochrona od pracy wyspowej pola Pole transformatorowe 3",
         "oceny_skladowe": [
           {
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "kody zabezpieczeń pola „Pole TRANSFORMATOROWE 3”",
+              "odniesienie": "kody zabezpieczeń pola „Pole transformatorowe 3”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -2156,7 +2156,7 @@
             ],
             "przedmiot": {
               "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002",
-              "nazwa_pl": "Pole TRANSFORMATOROWE 3",
+              "nazwa_pl": "Pole transformatorowe 3",
               "opis_pl": "Pole przyłączeniowe — obecność funkcji ochrony od pracy wyspowej"
             },
             "slad": [
@@ -2187,7 +2187,7 @@
                 "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole TRANSFORMATOROWE 3) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
+              "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
             },
             "wynik": {
               "chwila_s": null,
@@ -2228,7 +2228,7 @@
         "pokrycie_programu_pl": "wymaganie wykazywane porównaniem nastaw zadeklarowanych — program badań nie dotyczy",
         "powody_niepelnosci": [
           "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole TRANSFORMATOROWE 3): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
         ],
         "slad": [
           {
@@ -2251,17 +2251,17 @@
         },
         "wyjasnienie": {
           "czego_brakuje": [
-            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole TRANSFORMATOROWE 3): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
-            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole TRANSFORMATOROWE 3): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
+            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
+            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole TRANSFORMATOROWE 3): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
           ],
-          "przyczyna_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole TRANSFORMATOROWE 3) — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”",
+          "przyczyna_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3) — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”",
           "zastrzezenia": [
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
             "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
           ],
-          "zdanie_pl": "Ochrona od pracy wyspowej pola Pole TRANSFORMATOROWE 3 („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — werdykt zgodności niewydany: brak ustalonej podstawy parametru. Kryteria bez ustalonej podstawy: Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole TRANSFORMATOROWE 3) — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”."
+          "zdanie_pl": "Ochrona od pracy wyspowej pola Pole transformatorowe 3 („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — werdykt zgodności niewydany: brak ustalonej podstawy parametru. Kryteria bez ustalonej podstawy: Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3) — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”."
         },
         "wymaganie_id": "lom.stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002",
         "zakres_waznosci": {
@@ -2453,7 +2453,7 @@
           "dowod": {
             "domena_pl": null,
             "metoda": "DEKLARACJA",
-            "odniesienie": "kody zabezpieczeń pola „Pole LINIA_IN 1”",
+            "odniesienie": "kody zabezpieczeń pola „Pole liniowe wejściowe 1”",
             "poziom": "DECLARATION",
             "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
             "status_danych": {
@@ -2506,7 +2506,7 @@
           ],
           "przedmiot": {
             "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/000",
-            "nazwa_pl": "Pole LINIA_IN 1",
+            "nazwa_pl": "Pole liniowe wejściowe 1",
             "opis_pl": "Pole przyłączeniowe — obecność funkcji ochrony od pracy wyspowej"
           },
           "slad": [
@@ -2537,7 +2537,7 @@
               "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
               "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
             ],
-            "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole LINIA_IN 1) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
+            "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
           },
           "wynik": {
             "chwila_s": null,
@@ -2568,7 +2568,7 @@
           "dowod": {
             "domena_pl": null,
             "metoda": "DEKLARACJA",
-            "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+            "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
             "poziom": "DECLARATION",
             "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
             "status_danych": {
@@ -2614,7 +2614,7 @@
             "definicja_latex": "m = x - x_{\\lim}",
             "niedefiniowalny": false,
             "powod_pl": null,
-            "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+            "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
             "skala": {
               "jednostka": "Hz/s",
               "wartosc": 2.0
@@ -2645,7 +2645,7 @@
           ],
           "przedmiot": {
             "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
-            "nazwa_pl": "Pole LINIA_OUT 2",
+            "nazwa_pl": "Pole liniowe wyjściowe 2",
             "opis_pl": "Pole przyłączeniowe — Szybkość zmian częstotliwości (df/dt)"
           },
           "slad": [
@@ -2675,12 +2675,12 @@
               "Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość 2 Hz/s bez dokumentu źródłowego z wydaniem i jednostką redakcyjną).",
               "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
             ],
-            "zdanie_pl": "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole LINIA_OUT 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): nastawa df/dt funkcji 81R: 1 Hz/s wobec wymaganych ≥ 2 Hz/s wg „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (margines −1 Hz/s, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”, względnie −50 % wartości granicznej)."
+            "zdanie_pl": "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole liniowe wyjściowe 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): nastawa df/dt funkcji 81R: 1 Hz/s wobec wymaganych ≥ 2 Hz/s wg „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (margines −1 Hz/s, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”, względnie −50 % wartości granicznej)."
           },
           "wynik": {
             "chwila_s": null,
             "metoda": "DEKLARACJA",
-            "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+            "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
             "symbol_latex": "\\left(\\frac{df}{dt}\\right)_{\\mathrm{nast}}",
             "wartosc": {
               "jednostka": "Hz/s",
@@ -2706,7 +2706,7 @@
           "dowod": {
             "domena_pl": null,
             "metoda": "DEKLARACJA",
-            "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+            "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
             "poziom": "DECLARATION",
             "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
             "status_danych": {
@@ -2752,7 +2752,7 @@
             "definicja_latex": "m = x_{\\lim} - x",
             "niedefiniowalny": false,
             "powod_pl": null,
-            "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+            "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
             "skala": {
               "jednostka": "Hz",
               "wartosc": 47.5
@@ -2783,7 +2783,7 @@
           ],
           "przedmiot": {
             "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
-            "nazwa_pl": "Pole LINIA_OUT 2",
+            "nazwa_pl": "Pole liniowe wyjściowe 2",
             "opis_pl": "Pole przyłączeniowe — Podczęstotliwościowa (f<)"
           },
           "slad": [
@@ -2813,12 +2813,12 @@
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
               "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
             ],
-            "zdanie_pl": "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): próg funkcji 81U: 47,5 Hz wobec wymaganych ≤ 47,5 Hz wg art. 13 ust. 1 lit. a „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz” (margines 0 Hz, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”, względnie 0 % wartości granicznej)."
+            "zdanie_pl": "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): próg funkcji 81U: 47,5 Hz wobec wymaganych ≤ 47,5 Hz wg art. 13 ust. 1 lit. a „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz” (margines 0 Hz, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”, względnie 0 % wartości granicznej)."
           },
           "wynik": {
             "chwila_s": null,
             "metoda": "DEKLARACJA",
-            "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+            "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
             "symbol_latex": "f_{\\mathrm{81U}}",
             "wartosc": {
               "jednostka": "Hz",
@@ -2844,7 +2844,7 @@
           "dowod": {
             "domena_pl": null,
             "metoda": "DEKLARACJA",
-            "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+            "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
             "poziom": "DECLARATION",
             "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
             "status_danych": {
@@ -2890,7 +2890,7 @@
             "definicja_latex": "m = x - x_{\\lim}",
             "niedefiniowalny": false,
             "powod_pl": null,
-            "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+            "punkt_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
             "skala": {
               "jednostka": "Hz",
               "wartosc": 51.5
@@ -2921,7 +2921,7 @@
           ],
           "przedmiot": {
             "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
-            "nazwa_pl": "Pole LINIA_OUT 2",
+            "nazwa_pl": "Pole liniowe wyjściowe 2",
             "opis_pl": "Pole przyłączeniowe — Nadczęstotliwościowa (f>)"
           },
           "slad": [
@@ -2951,12 +2951,12 @@
               "Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
               "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
             ],
-            "zdanie_pl": "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): próg funkcji 81O: 51,5 Hz wobec wymaganych ≥ 51,5 Hz wg art. 13 ust. 1 lit. a „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz” (margines 0 Hz, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”, względnie 0 % wartości granicznej)."
+            "zdanie_pl": "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa limitu „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone”. Wynik obliczeniowy wobec przyjętej wartości (informacyjnie): próg funkcji 81O: 51,5 Hz wobec wymaganych ≥ 51,5 Hz wg art. 13 ust. 1 lit. a „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz” (margines 0 Hz, punkt: nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”, względnie 0 % wartości granicznej)."
           },
           "wynik": {
             "chwila_s": null,
             "metoda": "DEKLARACJA",
-            "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+            "punkt_krytyczny_pl": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
             "symbol_latex": "f_{\\mathrm{81O}}",
             "wartosc": {
               "jednostka": "Hz",
@@ -2982,7 +2982,7 @@
           "dowod": {
             "domena_pl": null,
             "metoda": "DEKLARACJA",
-            "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole LINIA_OUT 2”",
+            "odniesienie": "nastawy zabezpieczenia „Zabezpieczenie od pracy wyspowej pola wytwórcy” pola „Pole liniowe wyjściowe 2”",
             "poziom": "DECLARATION",
             "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
             "status_danych": {
@@ -3026,7 +3026,7 @@
           ],
           "przedmiot": {
             "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/001",
-            "nazwa_pl": "Pole LINIA_OUT 2",
+            "nazwa_pl": "Pole liniowe wyjściowe 2",
             "opis_pl": "Pole przyłączeniowe — koordynacja czasowa ochrony LoM z SPZ"
           },
           "slad": [
@@ -3058,7 +3058,7 @@
               "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
               "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
             ],
-            "zdanie_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
+            "zdanie_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2) — ocena niewykonana: brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło). Akcja naprawcza: wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe."
           },
           "wynik": null,
           "zakres_waznosci": {
@@ -3079,7 +3079,7 @@
           "dowod": {
             "domena_pl": null,
             "metoda": "DEKLARACJA",
-            "odniesienie": "kody zabezpieczeń pola „Pole TRANSFORMATOROWE 3”",
+            "odniesienie": "kody zabezpieczeń pola „Pole transformatorowe 3”",
             "poziom": "DECLARATION",
             "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
             "status_danych": {
@@ -3132,7 +3132,7 @@
           ],
           "przedmiot": {
             "element_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_field/002",
-            "nazwa_pl": "Pole TRANSFORMATOROWE 3",
+            "nazwa_pl": "Pole transformatorowe 3",
             "opis_pl": "Pole przyłączeniowe — obecność funkcji ochrony od pracy wyspowej"
           },
           "slad": [
@@ -3163,7 +3163,7 @@
               "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
               "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
             ],
-            "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole TRANSFORMATOROWE 3) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
+            "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
           },
           "wynik": {
             "chwila_s": null,
@@ -3205,12 +3205,12 @@
       "powody_niepelnosci": [
         "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
         "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-        "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole LINIA_IN 1): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-        "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole LINIA_OUT 2): Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-        "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-        "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-        "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-        "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole TRANSFORMATOROWE 3): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+        "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+        "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole liniowe wyjściowe 2): Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+        "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+        "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+        "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+        "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
       ],
       "slad": [
         {
@@ -3271,33 +3271,33 @@
         "czego_brakuje": [
           "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
           "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
-          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole LINIA_IN 1): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
-          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole LINIA_IN 1): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
-          "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole LINIA_OUT 2): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość 2 Hz/s bez dokumentu źródłowego z wydaniem i jednostką redakcyjną).",
-          "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
-          "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
-          "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
-          "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2): Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
-          "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2): Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło.",
-          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole TRANSFORMATOROWE 3): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
-          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole TRANSFORMATOROWE 3): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
+          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
+          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
+          "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole liniowe wyjściowe 2): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość 2 Hz/s bez dokumentu źródłowego z wydaniem i jednostką redakcyjną).",
+          "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
+          "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy).",
+          "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2): Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij dane wejściowe.",
+          "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2): Limit kryterium z podstawą (dokument, wydanie, jednostka redakcyjna) — kryterium nie ma wartości granicznej.",
+          "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2): Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło.",
+          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
+          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
           "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
           "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole LINIA_IN 1): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole LINIA_OUT 2): Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole LINIA_OUT 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole TRANSFORMATOROWE 3): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+          "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole liniowe wyjściowe 2): Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+          "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+          "Próg funkcji 81O nie niższy niż górna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+          "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
         ],
-        "przyczyna_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)",
+        "przyczyna_pl": "Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)",
         "zastrzezenia": [
           "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
           "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji).",
           "Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wartość 2 Hz/s bez dokumentu źródłowego z wydaniem i jednostką redakcyjną).",
           "Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (wydanie nieustalone w rejestrze podstaw; krawędź okna progu 81U/81O wyprowadzona z pasma pozostawania w pracy)."
         ],
-        "zdanie_pl": "Ochrona od pracy wyspowej modułów wytwórczych sieci („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — ocena niewykonana. Kryteria nieocenione: Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole LINIA_OUT 2) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)."
+        "zdanie_pl": "Ochrona od pracy wyspowej modułów wytwórczych sieci („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — ocena niewykonana. Kryteria nieocenione: Funkcja LoM wyłącza moduł przed ponownym załączeniem SPZ jednostek nadrzędnych (Pole liniowe wyjściowe 2) — brak wyznaczonej wielkości ocenianej (Przerwa beznapięciowa SPZ jednostek nadrzędnych — nie jest zapisana w dokumencie sieci, więc porównanie z czasem LoM się nie odbyło)."
       },
       "wymaganie_id": "lom.siec",
       "zakres_waznosci": {
