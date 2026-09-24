@@ -23,6 +23,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
+import * as zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -31,6 +32,39 @@ const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/sld_audyt');
 
 const POZIOMY = [0, 1, 2] as const;
 const MOTYWY = ['light', 'dark'] as const;
+
+/**
+ * Tło kanwy wg palety motywu (`ui/sld/v3/theme/palette.ts`:
+ * `LIGHT_TECHNICAL_SLD_PALETTE.canvasBackground` i `colorTokens.CANVAS_BACKGROUND`).
+ */
+const TLO_PALETY = { light: '#FFFFFF', dark: '#0B0F14' } as const;
+
+/**
+ * Kolor piksela (0,0) zrzutu PNG jako `#RRGGBB` — bez zewnętrznej biblioteki:
+ * dla PIERWSZEGO piksela PIERWSZEGO wiersza każdy filtr PNG (None/Sub/Up/
+ * Average/Paeth) daje surowe bajty, bo predyktory odwołują się do zer.
+ */
+function pikselNarozny(png: Buffer): string {
+  const idat: Buffer[] = [];
+  let offset = 8;
+  let kanaly = 0;
+  while (offset < png.length) {
+    const dlugosc = png.readUInt32BE(offset);
+    const typ = png.toString('ascii', offset + 4, offset + 8);
+    const dane = png.subarray(offset + 8, offset + 8 + dlugosc);
+    if (typ === 'IHDR') {
+      const typKoloru = dane[9];
+      kanaly = typKoloru === 6 ? 4 : typKoloru === 2 ? 3 : 0;
+      if (dane[8] !== 8 || kanaly === 0) throw new Error(`nieobsługiwany format PNG (typ ${typKoloru})`);
+    }
+    if (typ === 'IDAT') idat.push(dane);
+    if (typ === 'IEND') break;
+    offset += 12 + dlugosc;
+  }
+  const surowe = zlib.inflateSync(Buffer.concat(idat));
+  const hex = (i: number) => surowe[1 + i].toString(16).padStart(2, '0').toUpperCase();
+  return `#${hex(0)}${hex(1)}${hex(2)}`;
+}
 
 /**
  * Kadry SZCZEGOLU (V12K-234). Powiekszenie robi KAMERA, zeby declutter przestal ukrywac
@@ -311,32 +345,25 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
   }
 
   /**
-   * V12K-234: NIEZMIENNIK MOTYWU, zamiast komentarza w harnessie.
+   * NIEZMIENNIK MOTYWU (KD-8 poz. 1 + karta Z-3, zamiast komentarza w harnessie).
    *
-   * Kanwa v3 ma STALE tlo techniczne (`SLD_V3_BACKGROUND`) — swiadoma decyzja
-   * projektowa: rysunek techniczny nie reaguje na motyw interfejsu. Harness ustawia
-   * `data-theme` dla spojnosci strony oceny, ale render jest od niego niezalezny,
-   * wiec para zrzutow jasny/ciemny jest BAJTOWO IDENTYCZNA.
-   *
-   * Dopoki to byl tylko komentarz, szesc plikow nazwanych „light" i „dark" sugerowalo
-   * pokrycie motywow, ktorego NIE MA — a przy ogledzinach materialu audytowego
-   * wygladalo to na defekt renderu (i tak wlasnie zostalo raz zdiagnozowane, blednie).
-   * Ten test zamienia decyzje w SPRAWDZANY FAKT: jesli kanwa kiedys zacznie reagowac
-   * na motyw, asercja padnie i wymusi decyzje — albo zrzuty maja sie roznic naprawde,
-   * albo duplikat trzeba usunac. Milczaca zmiana w zadna strone nie przejdzie.
+   * Kanwa v3 ma paletę sterowaną motywem (`sldPaletteForTheme`, ocena właściciela
+   * KD-8: „przy »Motyw: jasny« ciemne pozostają kanwa SLD…" = defekt). Harness
+   * podaje motyw kanwie wprost (`paletteMode`), więc para zrzutów jasny/ciemny
+   * MUSI się różnić, a tło każdego zrzutu musi być tłem palety SWOJEGO motywu.
+   * Dawny niezmiennik („para bajtowo identyczna", V12K-234) opisywał stan sprzed
+   * KD-8/Z-3 i po karcie Z-3 był czerwony — dwa predykaty o jednym fakcie.
+   * Milcząca zmiana w żadną stronę nie przejdzie: kanwa niezależna od motywu
+   * albo tło spoza palety kończą test błędem.
    */
-  test('niezmiennik: kanwa techniczna jest NIEZALEZNA od motywu (para zrzutow identyczna)', () => {
+  test('niezmiennik: kanwa techniczna idzie za motywem (tło palety motywu, para różna)', () => {
     for (const lod of POZIOMY) {
       const jasny = fs.readFileSync(path.join(OUTPUT_DIR, `sld_L${lod}_light.png`));
       const ciemny = fs.readFileSync(path.join(OUTPUT_DIR, `sld_L${lod}_dark.png`));
 
-      expect(
-        jasny.equals(ciemny),
-        `L${lod}: zrzuty jasny/ciemny ROZNIA sie, a kanwa v3 ma stale tlo techniczne. `
-          + 'Albo render zaczal reagowac na motyw (wtedy zaktualizuj ten niezmiennik i '
-          + 'opis w screenshot-harness-main.tsx), albo do zrzutu wszedl element chrome '
-          + 'harnessu, ktory do materialu audytowego nie nalezy.',
-      ).toBe(true);
+      expect(jasny.equals(ciemny), `L${lod}: zrzuty jasny/ciemny identyczne — kanwa nie reaguje na motyw`).toBe(false);
+      expect(pikselNarozny(jasny), `L${lod}: tło zrzutu jasnego`).toBe(TLO_PALETY.light);
+      expect(pikselNarozny(ciemny), `L${lod}: tło zrzutu ciemnego`).toBe(TLO_PALETY.dark);
     }
   });
 });
