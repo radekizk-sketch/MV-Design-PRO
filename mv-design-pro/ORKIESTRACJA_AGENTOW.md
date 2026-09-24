@@ -5,7 +5,7 @@
 
 > **Uwaga o dojrzałości funkcji.** Dynamic workflows to **research preview** (Claude Code v2.1.154+, plany płatne). Traktuj jako narzędzie produkcyjne dla zadań masowych, ale z gate'ami właściciela — nie jako autopilota całego projektu.
 >
-> **Uwaga wykonawcza (2026-05-29):** w bieżącym harnessie agenta narzędzie *Workflow* (runtime skryptu JS) **nie jest wystawione** — dostępny prymityw orkiestracji to **subagent** (`Agent`/Explore/general-purpose), uruchamialny równolegle/w tle. Wzorce poniżej realizuje się subagentami (zgodnie z mapą §1: SLD = „subagenty sekwencyjnie", audyt/walidacja = swarm subagentów). Gdy runtime workflow stanie się dostępny — te same wzorce przenoszą się 1:1.
+> **Uwaga wykonawcza:** narzędzie *Workflow* uruchamiasz tylko, gdy właściciel jawnie o nie poprosi (słowo `ultracode` albo prośba o workflow); w pozostałych przypadkach wzorce poniżej realizujesz subagentami (`Agent`, równolegle/w tle) — SLD = „subagenty sekwencyjnie", audyt/walidacja = swarm subagentów.
 
 ---
 
@@ -45,33 +45,34 @@ Trzy prymitywy Claude Code różnią się tym, **kto trzyma plan**:
 
 ---
 
-## 3. SKŁAD SWARM — subagenty wyspecjalizowane
+## 3. SKŁAD SWARM — wykonawcy z `.claude/agents/`
 
-Definiuj jako `.claude/agents/*.md` (frontmatter: `description`, `prompt`, `tools`, `model`, `disallowedTools`). Opis: „Użyj, gdy…", jawny format wyjścia, jeden cel.
+Drzewo agentów (`CLAUDE.md`, sekcja „Model i pisanie promptów"): sesja główna Opus 5.5 na `high`
+planuje, deleguje, recenzuje i weryfikuje; wykonawcy Opus 5.5 na `medium` (effort podnosisz tylko,
+gdy zadanie tego wymaga). Role z §4 realizują trzy definicje:
 
-| Subagent | Model | Rola | Narzędzia |
-|---|---|---|---|
-| `audytor-repo` | Haiku | Skan repo, zakazane frazy/`no_module`/sieroty, inwentarz (§5.0) — read-only | read, grep, glob |
-| `solver-engineer` | Opus | Implementacja solvera (D-01…D-06): metoda + kontrakt + White Box | read, write, edit, bash |
-| `test-engineer` | Sonnet | Testy jednostkowe + sanity-bounds; weryfikacja progów K-04/K-08 | read, write, edit, bash |
-| `recenzent-norm` | Opus | Adwersarialna recenzja: IEC/PN-EN, poprawność wartości, brak drugiej prawdy | read, grep |
-| `sld-layout` | Opus | Silnik layoutu drzewiastego + kontrakt geometrii (port→port) | read, write, edit |
-| `wizualizator` | Sonnet | Harness Playwright, produkcja zrzutów (NIE wystawia werdyktu — B-02) | read, bash |
+| Wykonawca | Rola w §4 | Narzędzia |
+|---|---|---|
+| `explorer` | audyt repo, inwentarz, skan zakazanych fraz/sierot — read-only | Read, Grep, Glob, Bash (odczyt) |
+| `worker` | implementacja solvera/UI wg kontraktu + testy i sanity-bounds; harness Playwright i zrzuty (bez werdyktu — B-02) | pełne; commit bez push |
+| `researcher` | normy IEC/PN-EN, dokumentacja bibliotek i API | Read, Grep, Glob, WebFetch, WebSearch |
 
-**Zasada modelu:** read-only → Haiku (koszt), implementacja/recenzja → Opus (jakość), testy → Sonnet. `CLAUDE_CODE_SUBAGENT_MODEL` może wymusić pułap kosztów.
+Recenzję adwersarialną wykonuje sesja główna albo osobny `explorer`
+z kryteriami K + sanity-bounds w prompcie. Dwa nieudane podejścia do tego samego problemu →
+STOP i meldunek; przejście na Fable 5.1 to decyzja właściciela.
 
 ---
 
 ## 4. WZORCE WORKFLOW DLA BIEŻĄCYCH ZADAŃ
 
 ### 4.1. Domknięcie długu funkcjonalnego (D-01…D-06)
-Fazy: (1) `audytor-repo` inwentaryzuje stan każdej pozycji; (2) równolegle `solver-engineer` implementuje wg kontraktu; (3) `test-engineer` dokłada testy + sanity-bounds; (4) `recenzent-norm` adwersarialnie sprawdza zgodność i wartości; (5) scalenie tylko pozycji, które przeszły; reszta → FEEDBACK. Gate: przegląd dekompozycji PRZED dispatchem.
+Fazy: (1) `explorer` inwentaryzuje stan każdej pozycji; (2) równolegle `worker` implementuje wg kontraktu wraz z testami i sanity-bounds; (3) `researcher` dostarcza podstawę normową tam, gdzie jej brak; (4) sesja główna (albo osobny `explorer` w roli recenzenta) adwersarialnie sprawdza zgodność i wartości; (5) scalenie tylko pozycji, które przeszły; reszta → FEEDBACK. Gate: przegląd dekompozycji PRZED dispatchem.
 
 ### 4.2. Walidacja wiarygodności wartości (K-04 + K-08)
-Fan-out: jeden agent na solver V12.6 liczy benchmark vs próg/sanity-bounds; `recenzent-norm` głosuje, które wiarygodne; raport per próg.
+Fan-out: jeden agent na solver V12.6 liczy benchmark vs próg/sanity-bounds; sesja główna rozstrzyga, które wiarygodne; raport per próg.
 
 ### 4.3. SLD — etapy z gate'em (B-02), nie jeden workflow w tle
-- Etap A: `sld-layout` buduje silnik drzewa + zakotwiczenie portów na 52 stacjach; `wizualizator` produkuje zrzuty. → **STOP, ocena właściciela.**
+- Etap A: `worker` buduje silnik drzewa + zakotwiczenie portów na 52 stacjach i produkuje zrzuty. → **STOP, ocena właściciela.**
 - Etap B (po ACCEPT): klikalność (V-08) + łańcuchy OZE (V-10); zrzuty. → **STOP.**
 - Etap C: tryb prezentacyjny + 11 warunków. → **STOP, werdykt ≥8/10.**
 

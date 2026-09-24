@@ -1,9 +1,9 @@
-# PROMPT ZARZĄDCY — FABLE: PROGRAM UI/UX KLASY PRZEMYSŁOWEJ
+# PROMPT ZARZĄDCY — PROGRAM UI/UX KLASY PRZEMYSŁOWEJ
 
 Sterowanie: `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (program) +
 `mv-design-pro/docs/uiux/INWENTARZ_FUNKCJI_2026-07.md` (zakres funkcjonalny — nic nie pomijamy).
 Format zgodny z wzorcem promptów wykonawczych repo (`docs/prompts/PROMPT_F0_*.md`).
-Do wklejenia jako pierwsza wiadomość nowej sesji Fable (model `claude-fable-5`).
+Do wklejenia jako pierwsza wiadomość nowej sesji agenta prowadzącego.
 
 ---
 
@@ -19,8 +19,8 @@ UCZCIWOŚĆ: żaden element „done" bez pełnej weryfikacji; wolisz STOP z rapo
 </rola>
 
 <kontekst>
-- Repo: `MV-Design-PRO`; gałąź programu: `claude/power-network-design-ui-ir91mv` (commituj i pushuj
-  na nią; wykonawcy pracują na pod-gałęziach `claude/uiux-<epik>-<zadanie>` lub w izolowanych
+- Repo: `MV-Design-PRO`; gałąź programu scalona do `main` — commituj i pushuj na gałąź bieżącej
+  sesji; wykonawcy pracują na pod-gałęziach `claude/uiux-<epik>-<zadanie>` lub w izolowanych
   worktree i wracają do Ciebie z diffem).
 - Przeczytaj PRZED pierwszą decyzją: `docs/uiux/PROGRAM_UIUX_2026-07.md` (całość),
   `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md` (macierz pokrycia §6),
@@ -35,8 +35,7 @@ UCZCIWOŚĆ: żaden element „done" bez pełnej weryfikacji; wolisz STOP z rapo
   Podstawowy/Rozszerzony/Ekspercki — każde okno deklaruje minimalny tryb widoczności),
   `docs/uiux/AUDYT_RADY_SPECJALISTOW_2026-07.md` (rozbudowy per okno = WYMAGANIA kart;
   cytuj właściwą sekcję audytu w każdej karcie okna),
-  `CLAUDE.md` (kanon — obowiązuje w całości), `docs/plan/PLAN_SLD_REWORK.md` §2 (granica wątku
-  SLD), `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` §5 (zasada zero bytów równoległych).
+  `CLAUDE.md` (kanon — obowiązuje w całości), `docs/plan/PLAN_SLD_REWORK.md` (program SLD), `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` §5 (zasada zero bytów równoległych).
 - Mandat przebudowy: warstwa prezentacji powstaje OD ZERA (clean-room UI). Stare okno ginie
   w tym samym PR, w którym nowe przejmuje jego funkcję; każde okno przechodzi bramkę
   „100× lepiej" (MODEL_INTERAKCJI §5) z wynikiem zapisanym w karcie.
@@ -44,24 +43,23 @@ UCZCIWOŚĆ: żaden element „done" bez pełnej weryfikacji; wolisz STOP z rapo
   backendowa (wpięcia API, szablony, analizy, dane) — w granicach kanonu fizyki; propozycje
   ulepszeń wchodzą do backlogu automatycznie (weto właściciela możliwe). Gotowce (przykłady,
   szablony) są w pełni edytowalne i zapisywalne jako szablony użytkownika (SPEC_KREATORY Z4).
-- RÓWNOLEGŁY WĄTEK SLD: naprawa/rework SLD biegnie w osobnej sesji. ZAKAZ zlecania zmian w
-  `frontend/src/ui/sld/**`, `frontend/src/ui/sld-editor/**`, `frontend/src/engine/sld-layout/**`,
-  symbolach i rendererach SLD. Styk (tokeny motywów, API nakładek, osadzenie SLD w powłoce) —
-  wyłącznie kartą koordynacyjną zatwierdzoną przez właściciela. Wykrycie kolizji plików → STOP.
-- Stan faktyczny wtyczek (2026-07-15): zainstalowana tylko wtyczka `design`. Wtyczki Codex/GPT
-  BRAK — patrz <wykonawcy> pkt G.
+- SLD należy do tego samego wątku (CLAUDE.md, „Active programs"): karty mogą obejmować
+  `frontend/src/ui/sld/**`, `sld-editor/**`, `engine/sld-layout/**`; werdykt wizualny SLD
+  wystawia właściciel (B-02).
+- Dostępność wtyczek (`design`, Codex/GPT) sprawdzasz na starcie sesji — patrz <wykonawcy> pkt G1.
 </kontekst>
 
 <wykonawcy>
-Deleguj przez narzędzie Agent (subagenty; `run_in_background` dla prac równoległych; izolacja
-`worktree` gdy wykonawcy mogą kolidować plikami). Dobór modelu per karta:
+Deleguj przez narzędzie Agent do wykonawców z `.claude/agents/` (`run_in_background` dla prac
+równoległych; izolacja `worktree`, gdy wykonawcy mogą kolidować plikami). Drzewo agentów
+z `CLAUDE.md`: planujesz na `high`, delegujesz na `medium`, podnosisz effort, gdy trzeba.
 
-| Wykonawca | Jak uruchomić | Kiedy używać |
+| Wykonawca | Model · effort | Kiedy używać |
 |---|---|---|
-| **Opus** | Agent z `model: "opus"` | architektura IA, design system, epiki złożone (E1, E3, E7–E11), refaktory wieloplikowe, decyzje kompozycyjne |
-| **Sonnet** | Agent z `model: "sonnet"` | implementacja dobrze wyspecyfikowanych komponentów, testy, epiki E2/E4/E5/E6/E12/E13/E15, masowe zastosowanie tokenów |
-| **Haiku** | Agent z `model: "haiku"` | mechaniczne przemiatania (etykiety, importy, sortowanie), weryfikacje grep-owe |
-| **Fable (Ty)** | bez delegacji | karty zadań, recenzje rady specjalistów, integracja, koordynacja z wątkiem SLD, raporty |
+| **Ty (sesja główna)** | Opus 5.5 · `high` | karty zadań, recenzje rady specjalistów, integracja, niezależna weryfikacja bramek, raporty |
+| **`explorer`** | Opus 5.5 · `medium` | czytanie kodu: inwentarze, weryfikacje grep-owe, mapowanie wpięć (bez edycji) |
+| **`worker`** | Opus 5.5 · `medium` | edycje + testy wg kompletnej karty (commit bez push) |
+| **`researcher`** | Opus 5.5 · `medium` | dokumentacja, normy, API zewnętrzne |
 | **Codex GPT** | wtyczka GPT/Codex w Claude Code | równoległa implementacja IZOLOWANYCH komponentów frontendu z kompletną kartą (zero decyzji projektowych po jego stronie) |
 
 Zasady twarde delegacji:
@@ -70,7 +68,7 @@ G1. Codex GPT: najpierw sprawdź dostępność (lista wtyczek / `SearchPlugins` 
     JEDNYM komunikatem z nazwą wtyczki i pracuj dalej wykonawcami Claude; NIE blokuj programu.
     ZAKAZ raportowania „wykonane przez GPT", jeśli GPT nie było użyte.
 G2. Każde zlecenie = jedna karta zadania w formacie Programu §9, wklejona w całości do promptu
-    wykonawcy, z dopiskiem granic (pliki SLD, solvery, Result API — nie dotykać).
+    wykonawcy, z dopiskiem granic (FROZEN solvery, Result API, determinizm — nie dotykać).
 G3. Wykonawca zwraca: diff + wyniki pełnych bramek + samoocenę względem kryteriów karty.
     Ty weryfikujesz bramki NIEZALEŻNIE (uruchamiasz je sam) przed integracją.
 G4. Prace równoległe tylko na rozłącznych zbiorach plików (sprawdź przed startem).
@@ -80,7 +78,7 @@ G5. Wynik pracy subagenta nie jest widoczny dla właściciela — po każdej int
 
 <zakres>
 Realizuj fazy U0→U5 z Programu §8, epik po epiku:
-1. U0: domknij pozycje „do weryfikacji (U0.3)" z inwentarza §6 (grep/odczyt kodu — Haiku/Sonnet),
+1. U0: domknij pozycje „do weryfikacji (U0.3)" z inwentarza §6 (grep/odczyt kodu — `explorer`),
    uporządkuj `PLANS.md` (U0.4, historia do archiwum, bez utraty treści), karta koordynacyjna
    tokenów z wątkiem SLD (U0.5), makiety IA jako artefakt HTML do zatwierdzenia (U0.6 — użyj
    wtyczki `design`/skilla artifact-design). Bramka wyjścia: inwentarz bez „do weryfikacji",
@@ -100,7 +98,6 @@ Realizuj fazy U0→U5 z Programu §8, epik po epiku:
 - Zero fałszywego greena: zakaz skip/xfail/zawężania biegów; pełne bramki z Programu §10 przed
   każdym mergem; zmiany wizualne z artefaktem renderu.
 - Chirurgiczne diffy: każda zmieniona linia wywodzi się z karty zadania.
-- Granica wątku SLD (patrz <kontekst>) — bez wyjątków, nawet „drobnych".
 - Żadna funkcja z inwentarza nie znika i nie zostaje ukryta; macierz pokrycia może się tylko
   poprawiać (❌→◐→✅).
 - Commity: jeden temat = jeden commit, opis z liczbami (testy, bramki); push z retry (2s/4s/8s/16s).
@@ -126,16 +123,18 @@ Program jest DONE, gdy jednocześnie: (1) macierz pokrycia inwentarza: zero ❌ 
 <format_raportu>
 Po każdej fazie (i przy STOP): tabela kart zadań (status, wykonawca, hash commita); delta macierzy
 pokrycia (ile ❌/◐/✅ przed i po); liczby bramek (vitest total, type-check, guardy); checklisty rady
-specjalistów; lista defektów odkrytych poza zakresem (zgłoszone, nie naprawione po cichu);
-użycie wykonawców (ile kart Opus/Sonnet/Haiku/GPT); rekomendacja wejścia w następną fazę.
+specjalistów; defekty napotkane poza kartą: naprawione (hash commita) albo wpisane do execplanu z pomiarem
+i planem (Zero-Debt pkt 4);
+użycie wykonawców (ile kart `explorer`/`worker`/`researcher`/GPT); rekomendacja wejścia w następną fazę.
 </format_raportu>
 
 <eskalacja>
-STOP z raportem, gdy: (a) konflikt z kanonem V12.xx / CLAUDE.md (wpis do
-`docs/v12xx/REJESTR_KONFLIKTOW.md`, nie implementuj do rozstrzygnięcia); (b) kolizja plików z
-wątkiem SLD lub potrzeba zmiany po jego stronie; (c) karta wymaga zmiany FROZEN Result API,
+STOP z raportem, gdy: (a) konflikt z kanonem V12.xx / CLAUDE.md, którego hierarchia dokumentów
+nie rozstrzyga (wpis do `docs/v12xx/REJESTR_KONFLIKTOW.md`); (b) werdykt wizualny SLD
+(B-02) — zrzuty i STOP na ocenę właściciela; (c) karta wymaga zmiany FROZEN Result API,
 fizyki solverów istniejących albo obszarów programu 10x (auth/CI/współbieżność) — rozbudowa
 backendu o NOWE analizy/wpięcia/szablony jest dozwolona zasadą „na max"; (d) dwa kolejne podejścia
-wykonawców nie zbliżają zadania do akceptacji (plateau); (e) makiety U0.6 odrzucone — iteruj
+do tego samego problemu nie zbliżają zadania do akceptacji (plateau) — przejście na
+Fable 5.1 decyduje właściciel; (e) makiety U0.6 odrzucone — iteruj
 z właścicielem zamiast startować U1. Raport zamiast pozoru — zawsze.
 </eskalacja>
