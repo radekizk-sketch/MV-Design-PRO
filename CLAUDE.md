@@ -98,6 +98,7 @@ Fallback włączaj domyślnie: `betas: ["server-side-fallback-2026-07-01"]` + `f
 - Subagenty **asynchroniczne** biją wzorzec „uruchom i czekaj": zachowują kontekst między podzadaniami (tańsze odczyty z cache) i nie blokują orkiestratora na najwolniejszym wykonawcy.
 - Proste kroki: `effort: "low"`. Recenzja, architektura, solver: `high`/`xhigh`.
 - Daj modelowi powierzchnię pamięci: plik `.md` na wnioski plus instrukcję, żeby do niego zaglądał w kolejnych sesjach — w długich przebiegach daje mierzalną poprawę.
+- Metody użycia agentów w tym repo (zaktualizowane 2026-09-24 wg „Migrating to Claude Fable 5.1 → Long-running agent recommendations"): `mv-design-pro/ORKIESTRACJA_AGENTOW.md` §3a pkt 1–15 — główny wykonawca Opus 5.5, Fable zarządza i weryfikuje na czystym drzewie; delegacja asynchroniczna, weryfikator ze świeżym kontekstem, meldunki ugruntowane w kodach wyjścia, granice nazwane w karcie, karta bez listy kroków, wznawianie wykonawców po limicie API zamiast tworzenia nowych.
 
 ### Prompting — czego NIE robić po migracji
 - **Odchudź prompty i skille pisane pod starsze modele.** Rozpisany proces („krok 1, krok 2…") OBNIŻA jakość na Fable 5.1. Podawaj cel, ograniczenia i kryterium ukończenia zamiast wyliczać kroki.

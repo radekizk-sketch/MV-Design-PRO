@@ -87,6 +87,41 @@ Reguły oszczędności tokenów (te same, które obniżają koszt bez utraty jak
 6. **Meldunki zarządcy do właściciela:** wynik, decyzje, co dalej — jedno zdanie na wątek;
    stan „bez zmian" jednym zdaniem.
 
+Metody użycia agentów wg dokumentacji Anthropic dla Fable 5.1 (aktualizacja 2026-09-24; źródło:
+`shared/model-migration.md` → „Migrating to Claude Fable 5.1 → Behavioral shifts / Long-running
+agent recommendations"; główny wykonawca pozostaje Opus 5.5, Fable zarządza i weryfikuje):
+7. **Deleguj asynchronicznie, nie „uruchom i czekaj".** Subagenci równolegli są na Fable 5.1
+   niezawodni: zarządca zleca kartę, wraca do własnej pracy, a wynik odbiera powiadomieniem;
+   zarządca nigdy nie blokuje się na najwolniejszym wykonawcy. Pytanie wykonawcy o decyzję
+   (`SendMessage` do zarządcy) dostaje odpowiedź, a wykonawca w tym czasie robi części
+   niezależne od decyzji — tak jak w integracjach AB-1b.1a (resolver zacisku, klasa P9).
+8. **Weryfikator ze świeżym kontekstem bije samokrytykę.** Odbiór dużej karty = niezależna
+   weryfikacja na czystym drzewie (`odbior-*`): pełna regresja, guardy, piny z pomiaru — przez
+   zarządcę albo osobnego agenta bez kontekstu wykonawcy; wykonawca nie certyfikuje sam siebie.
+9. **Twierdzenia o postępie ugruntowane w wynikach narzędzi.** Meldunek §103 podaje kody wyjścia
+   łapane bezpośrednio i ścieżki logów; zdanie „zielone" bez logu nie istnieje (to eliminuje
+   sfabrykowane meldunki statusu, które dokumentacja Anthropic wymienia jako ryzyko długich biegów).
+10. **Granice nazwane wprost w każdej karcie.** Fable 5.1 i Opus 5.5 chętnie robią rzeczy sąsiednie
+    (sprzątanie, dodatkowe testy, przepisanie całego pliku zamiast łaty): karta wylicza, czego NIE
+    wolno — git zmieniający stan, cudze pliki, rdzenie FROZEN, docs poza listą, kasacje bez dowodu.
+11. **Powierzchnia pamięci.** Karty, decyzje §0 i stan wykonawców żyją w plikach o stałej ścieżce
+    (scratchpad `karta_*.md`, `skroty/STAN_WYKONAWCOW_*.md`, rejestr O-… w planie); wykonawca dostaje
+    ścieżkę i polecenie zaglądania do niej, zarządca dopisuje decyzje do karty, nie tylko do czatu.
+12. **Karta bez listy kroków.** Rozpisany proces obniża jakość na Fable 5.1 — karta podaje cel, powód,
+    granice, kryterium ukończenia i format meldunku; wykonawca sam planuje. Wyjątek: procedura
+    bezpieczeństwa (np. kolejność commit → rebase → piny → push), którą zarządca wykonuje osobiście.
+13. **Bez zatrzymania na opisie następnego kroku.** Tura kończy się dowodem (log, diff, meldunek), nie
+    zdaniem „teraz uruchomię…"; wykonawca nie prosi o pozwolenie, którego karta już udzieliła. Jedyne
+    zatrzymania: B-01, B-02, bramki bezpieczeństwa, realne rozstrzygnięcia produktowe.
+14. **Wywołania niezależne równolegle, ciężkie procesy pojedynczo.** Odczyty/grepy/testy celowane w
+    jednym wywołaniu; regresja, vitest, e2e — jeden proces naraz na wykonawcę, w tle z sentinelem.
+15. **Odporność na limity API.** Gdy wykonawca kończy błędem limitu (HTTP 429, „weekly limit"), jego
+    drzewo `odbior-*` i logi zostają nietknięte; zarządca odczytuje stan z transkryptu i logów (ostatnie
+    wywołania narzędzi, sentinele), kontynuuje sam pracę krytyczną dla ścieżki (scalenia zweryfikowanych
+    drzew) z wysiłkiem dobranym do zadania, a po odblokowaniu WZNAWIA tych samych wykonawców
+    (`SendMessage` — kontekst i cache zostają) od miejsca przerwania, z opisem stanu z logów. Zakaz
+    tworzenia nowych wykonawców do dokończenia cudzej, na wpół naniesionej pracy, gdy da się wznowić.
+
 ---
 
 ## 4. WZORCE WORKFLOW DLA BIEŻĄCYCH ZADAŃ
