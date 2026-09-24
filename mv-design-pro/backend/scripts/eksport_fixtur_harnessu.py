@@ -32,8 +32,10 @@ wyłącznie własne sceny, a cudze zostają bajt w bajt.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import sys
+import typing
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -3656,6 +3658,180 @@ def nazwy_obiektow_scen_akademickich() -> dict[str, Any]:
     }
 
 
+#: Korzeń źródeł skanowanych pod budowę identyfikatorów elementów ENM.
+_ZRODLA_BACKENDU = BACKEND_DIR / "src"
+
+#: Nazwy zmiennych będących NUMEREM porządkowym w budowie identyfikatora
+#: (`section/{order}`, `bay/{idx + 1}/{field_index + 1}`) — segment liczbowy,
+#: który etykieta zapasowa frontu dokleja do poprzedniego członu.
+_ZMIENNE_NUMERYCZNE = frozenset(
+    {"idx", "order", "ordinal", "index", "i", "role_index", "field_index"}
+)
+
+
+def _wartosci_zmiennych_segmentu() -> dict[tuple[str, str], tuple[str, ...]]:
+    """Zbiory wartości zmiennych SŁOWNYCH w identyfikatorach — z JEDNEGO źródła każdy.
+
+    Klucz: (funkcja budująca identyfikator, wyrażenie w klamrach). Wartości czytane
+    z tych samych map i typów, z których operacja je bierze — nie przepisane ręcznie.
+    """
+    from enm.domain_operations import _NN_SOURCE_KIND_MAP, _SN_FIELD_ROLE_TO_BAY_ROLE
+    from enm.domain_operations_v2 import _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO
+    from enm.models import BranchPointSN
+
+    technologie = tuple(k.lower() for k in _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO)
+    rodzaje_punktu = tuple(
+        str(v) for v in typing.get_args(BranchPointSN.model_fields["branch_point_type"].annotation)
+    )
+    return {
+        ("_materialize_nn_source", "gen_type"): tuple(v[1] for v in _NN_SOURCE_KIND_MAP.values()),
+        ("_add_converter_source_der_sn", "prefix"): technologie,
+        ("add_converter_source", "prefix"): technologie,
+        ("_insert_branch_point_on_segment_sn", "branch_point_type"): rodzaje_punktu,
+        ("append_station_on_endpoint", "field_role.lower()"): tuple(
+            rola.lower() for rola in _SN_FIELD_ROLE_TO_BAY_ROLE
+        ),
+    }
+
+
+def _czy_numeryczne(wyrazenie: ast.expr) -> bool:
+    nazwy = {n.id for n in ast.walk(wyrazenie) if isinstance(n, ast.Name)}
+    return bool(nazwy) and nazwy <= _ZMIENNE_NUMERYCZNE
+
+
+def _wartosci_z_petli(funkcja: ast.AST, nazwa: str) -> tuple[str, ...] | None:
+    """Wartości zmiennej pętli `for <nazwa> in (<literały>)` w tej samej funkcji."""
+    for wezel in ast.walk(funkcja):
+        if (
+            isinstance(wezel, ast.For)
+            and isinstance(wezel.target, ast.Name)
+            and wezel.target.id == nazwa
+            and isinstance(wezel.iter, ast.Tuple | ast.List)
+            and all(
+                isinstance(e, ast.Constant) and isinstance(e.value, str) for e in wezel.iter.elts
+            )
+        ):
+            return tuple(str(e.value) for e in wezel.iter.elts)  # type: ignore[attr-defined]
+    return None
+
+
+def _segmenty_szablonu(
+    czesci: list[ast.expr], funkcja: ast.AST, nazwa_funkcji: str, miejsce: str
+) -> list[str]:
+    """Rozwija ścieżkę identyfikatora (`a/{x}/b_{n}`) na segmenty słownika.
+
+    Segment liczbowy znika (front dokleja numer do poprzedniego członu), segment
+    `<rodzaj>_{numer}` daje rodzaj z przyrostkiem `_1` (reguła `<rodzaj>_<numer>`
+    frontu), zmienna słowna rozwija się na swój zbiór wartości. Zmienna, której
+    zbioru nie znamy, KOŃCZY eksport błędem z miejscem w kodzie — nowe słownictwo
+    identyfikatorów nie przejdzie bez decyzji.
+    """
+    wartosci = _wartosci_zmiennych_segmentu()
+    segmenty: list[list[str]] = [[""]]
+    for czesc in czesci:
+        if isinstance(czesc, ast.Constant) and isinstance(czesc.value, str):
+            kawalki = czesc.value.split("/")
+            for pozycja, kawalek in enumerate(kawalki):
+                if pozycja > 0:
+                    segmenty.append([""])
+                segmenty[-1] = [w + kawalek for w in segmenty[-1]]
+            continue
+        wyrazenie = czesc.value if isinstance(czesc, ast.FormattedValue) else czesc
+        tekst = ast.unparse(wyrazenie)
+        if _czy_numeryczne(wyrazenie):
+            segmenty[-1] = [w + "{n}" for w in segmenty[-1]]
+            continue
+        zbior = wartosci.get((nazwa_funkcji, tekst))
+        if zbior is None and isinstance(wyrazenie, ast.Name):
+            zbior = _wartosci_z_petli(funkcja, wyrazenie.id)
+        if zbior is None:
+            raise ValueError(
+                f"{miejsce}: zmienna `{tekst}` w identyfikatorze elementu nie ma znanego "
+                "zbioru wartości — dopisz jej źródło w `_wartosci_zmiennych_segmentu`."
+            )
+        segmenty[-1] = [w + v for w in segmenty[-1] for v in zbior]
+    wynik: list[str] = []
+    for warianty in segmenty:
+        for segment in warianty:
+            if segment in ("", "{n}"):
+                continue
+            wynik.append(segment.replace("_{n}", "_1").replace("{n}", "1"))
+    return wynik
+
+
+def segmenty_referencji_modelu() -> dict[str, Any]:
+    """Pełne słownictwo segmentów identyfikatorów elementów, które buduje backend.
+
+    Wyrocznia strażnika słownika etykiet zapasowych frontu
+    (`ui2/wyniki/akademickie/__tests__/slownikSegmentow.test.ts`): zamiast
+    próbki referencji z jednej fikstury — POMIAR KODU, który identyfikatory
+    buduje. Skanowane są wszystkie wywołania `_make_id(prefiks, ziarno, ścieżka)`
+    oraz f-stringi w kształcie `"<prefiks>/{ziarno}/<ścieżka>"` w `src/**`, a także
+    przyrostki podziału odcinka doklejane do identyfikatora (`"{ref}_L"`, `"{ref}_SR"`,
+    `"{ref}_L_{rodzaj punktu}"` — każdy przyrostek zaczynający się od `_` i wielkiej litery).
+    """
+    segmenty: set[str] = set()
+    przyrostki: set[str] = set()
+    pliki: set[str] = set()
+    for sciezka in sorted(_ZRODLA_BACKENDU.rglob("*.py")):
+        drzewo = ast.parse(sciezka.read_text(encoding="utf-8"))
+        wzgledna = sciezka.relative_to(BACKEND_DIR).as_posix()
+        funkcje = [
+            w for w in ast.walk(drzewo) if isinstance(w, ast.FunctionDef | ast.AsyncFunctionDef)
+        ]
+        for funkcja in funkcje:
+            for wezel in ast.walk(funkcja):
+                miejsce = f"{wzgledna}:{getattr(wezel, 'lineno', 0)}"
+                if (
+                    isinstance(wezel, ast.Call)
+                    and isinstance(wezel.func, ast.Name)
+                    and wezel.func.id == "_make_id"
+                    and len(wezel.args) == 3
+                ):
+                    prefiks, _, sciezka_lokalna = wezel.args
+                    czesci: list[ast.expr] = [prefiks, ast.Constant("/")]
+                    if isinstance(sciezka_lokalna, ast.JoinedStr):
+                        czesci.extend(sciezka_lokalna.values)
+                    else:
+                        czesci.append(sciezka_lokalna)
+                    segmenty.update(_segmenty_szablonu(czesci, funkcja, funkcja.name, miejsce))
+                    pliki.add(wzgledna)
+                elif isinstance(wezel, ast.JoinedStr) and len(wezel.values) >= 2:
+                    pierwszy, drugi = wezel.values[0], wezel.values[1]
+                    if (
+                        isinstance(pierwszy, ast.Constant)
+                        and isinstance(pierwszy.value, str)
+                        and pierwszy.value.endswith("/")
+                        and pierwszy.value[:-1].isidentifier()
+                        and pierwszy.value[:-1].islower()
+                        and isinstance(drugi, ast.FormattedValue)
+                        and "seed" in ast.unparse(drugi.value)
+                    ):
+                        czesci = [ast.Constant(pierwszy.value), *wezel.values[2:]]
+                        segmenty.update(_segmenty_szablonu(czesci, funkcja, funkcja.name, miejsce))
+                        pliki.add(wzgledna)
+                    elif (
+                        isinstance(pierwszy, ast.FormattedValue)
+                        and isinstance(pierwszy.value, ast.Name)
+                        and pierwszy.value.id.endswith(("_id", "_ref"))
+                        and isinstance(drugi, ast.Constant)
+                        and isinstance(drugi.value, str)
+                        and len(drugi.value) > 1
+                        and drugi.value[0] == "_"
+                        and drugi.value[1].isupper()
+                    ):
+                        for przyrostek in _segmenty_szablonu(
+                            list(wezel.values[1:]), funkcja, funkcja.name, miejsce
+                        ):
+                            przyrostki.add(przyrostek)
+                        pliki.add(wzgledna)
+    return {
+        "segmenty": sorted(segmenty),
+        "przyrostki_podzialu": sorted(przyrostki),
+        "pliki_zrodlowe": sorted(pliki),
+    }
+
+
 def _biegi_sceny_akademickiej() -> dict[str, Any]:
     """Komplet biegów V12.6 sceny — po jednym na rodzaj, który złota sieć
     UMIE policzyć z parametrami sceny (`PARAMETRY_SCENY_AKADEMICKIE`).
@@ -4289,6 +4465,7 @@ FIXTURY: dict[str, Any] = {
     "katalog_analiz_v126": katalog_analiz_v126,
     "gotowosc_v126_scena_akademickie": gotowosc_v126_scena_akademickie,
     "nazwy_obiektow_scen_akademickich": nazwy_obiektow_scen_akademickich,
+    "segmenty_referencji_modelu": segmenty_referencji_modelu,
     "gotowosc_v126_scena_akademickie_parametry": gotowosc_v126_scena_akademickie_parametry,
     "werdykt_projektowy_scena_ocena": werdykt_projektowy_scena_ocena,
     "werdykt_projektowy_scena_ocena_przekroczenia": werdykt_projektowy_scena_ocena_przekroczenia,
