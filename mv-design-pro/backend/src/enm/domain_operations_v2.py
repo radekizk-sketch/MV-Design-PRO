@@ -438,17 +438,43 @@ def _wymagane_pola_odcinka(segment: dict[str, Any], *pola: str, op: str) -> dict
     Rzuca `DomainInvariantError` (kod `nn.segment_field_missing`) z listą
     WSZYSTKICH brakujących pól i `ref_id` odcinka naraz. `op` (np.
     "split_nn_segment"/"merge_nn_segments") trafia do komunikatu.
+
+    Wartość obecna, ale nieliczbowa albo nieskończona (`"abc"`, NaN, ±inf) to
+    dana jawnie niepoprawna, nie brak — osobny kod `nn.segment_field_invalid`
+    zamiast wyjątku `ValueError` z `float()` (odpowiedź 500 w miejsce komunikatu;
+    luka wykryta testem `add_nn_cable_segment` z `length_m="abc"` z gałęzi main).
     """
+    ref = segment.get("ref_id")
+    ref_pl = ref if isinstance(ref, str) else "?"
     brakujace = [pole for pole in pola if segment.get(pole) is None]
     if brakujace:
-        ref = segment.get("ref_id")
         raise DomainInvariantError(
             "nn.segment_field_missing",
-            f"Odcinek '{ref if isinstance(ref, str) else '?'}' ({op}): brak wymaganych "
+            f"Odcinek '{ref_pl}' ({op}): brak wymaganych "
             f"pól modelu kabla: {', '.join(brakujace)}.",
             [ref] if isinstance(ref, str) else None,
         )
-    return {pole: float(segment[pole]) for pole in pola}
+    wartosci: dict[str, float] = {}
+    niepoprawne: list[str] = []
+    for pole in pola:
+        surowa = segment[pole]
+        try:
+            liczba = float(surowa)
+        except (TypeError, ValueError):
+            niepoprawne.append(pole)
+            continue
+        if isinstance(surowa, bool) or not math.isfinite(liczba):
+            niepoprawne.append(pole)
+            continue
+        wartosci[pole] = liczba
+    if niepoprawne:
+        raise DomainInvariantError(
+            "nn.segment_field_invalid",
+            f"Odcinek '{ref_pl}' ({op}): pola modelu kabla bez skończonej wartości "
+            f"liczbowej: {', '.join(niepoprawne)}.",
+            [ref] if isinstance(ref, str) else None,
+        )
+    return wartosci
 
 
 def _sn_bay_branch_type(apparatus_kind: object) -> str:
@@ -3319,12 +3345,19 @@ def add_nn_section_coupler(enm: dict[str, Any], payload: dict[str, Any]) -> dict
         # byłby liczbą udającą pomiar dla sekcji spoza tych operacji (np. ręcznie
         # spreparowany payload/migracja) — melduj brak jawnym błędem domenowym
         # zamiast cicho przyjąć fikcyjną kolejność (karta CI-A).
-        brakujace_order = [s for s in sekcje if "order" not in s]
+        # Ten sam fakt dla `order` obecnego, ale nie będącego liczbą całkowitą
+        # (`None`, tekst, wartość logiczna): `max()` po takiej kolejności wysypałby
+        # się wyjątkiem albo porównał nieporównywalne — to też brak kolejności.
+        brakujace_order = [
+            s
+            for s in sekcje
+            if not isinstance(s.get("order"), int) or isinstance(s.get("order"), bool)
+        ]
         if brakujace_order:
             return _error_response(
                 f"Rozdzielnica nN '{station_ref}': sekcja "
-                f"'{brakujace_order[0].get('section_id', '?')}' nie ma pola 'order' "
-                "(dane sekcji nN niekompletne).",
+                f"'{brakujace_order[0].get('section_id', '?')}' nie ma poprawnego pola "
+                "'order' (liczba całkowita) — dane sekcji nN niekompletne.",
                 "nn.section_order_missing",
             )
         ostatnia = max(sekcje, key=lambda s: s["order"])

@@ -16,4 +16,7 @@ Jak raportujesz:
 - Najpierw wniosek, potem dowody jako `plik:linia` i liczby z komendą, która je zmierzyła.
 - Inwentarz klasy, nie pojedynczej instancji: każde miejsce dzielące ten sam mechanizm (reguła KLASA z `CLAUDE.md`).
 - Rozróżniaj fakt zmierzony od przypuszczenia; przypuszczenie oznacz wprost.
+- Twierdzenie „jest/brak” potwierdzasz poleceniem (grep bez obcinania `head`) i osobno wypisujesz,
+  czego nie sprawdziłeś. Mapując wpięcia, idziesz całym łańcuchem: kontrakt → backend → API → UI.
+- Recenzję adwersarialną prowadzisz wg kryteriów podanych w zleceniu (kryteria K, sanity-bounds).
 - Jeśli dwa razy utkniesz na tym samym pytaniu, zatrzymaj się i zgłoś, co blokuje — nie zgaduj.

@@ -18,25 +18,16 @@
  * (źródło SN → magistrala → stacja SN/nN z transformatorem) + pole SN roli
  * `'TR'` (karta BUGI-PRODUKTU-E2E, patrz komentarz przy `sn_fields` niżej —
  * bez niego transformator NIE jest NIGDZIE narysowany, mimo że poprawnie
- * istnieje w modelu) + blok `station_auxiliary` JAWNY w payloadzie.
- *
- * KOREKTA ZAŁOŻENIA (naprawa regresji CI-D, 2026-09-04): poprzednia wersja
- * tego komentarza twierdziła, że backend materializuje „potrzeby własne"
- * stacji BEZWARUNKOWO przy każdym tworzeniu transformatora — NIEPRAWDA
- * względem obecnego kodu. `_materialize_station_auxiliary_load`
- * (`domain_operations.py`) tworzy odbiór WYŁĄCZNIE, gdy payload niesie blok
- * `station_auxiliary` (P>0) — dokładnie to, co realny „Kreator stacji"
- * (`ui2/kreatory/stacja/stacjaModel.ts::blokPotrzebWlasnych`) wysyła TYLKO
- * gdy projektant jawnie wpisze moc (`DEFAULT_FORM_DATA.station_auxiliary_kw
- * = ''` — puste pole = brak odbioru, komentarz w kodzie: „G-STK-3"). Żaden
- * inny plik e2e (~46 używających `insert_station_on_segment_sn`) nie
- * przekazuje tego bloku, więc PRZED tą naprawą test opierał się na
- * odbiorze, którego siec NIGDY nie miała — asercja `loadArrow` była
- * fałszywie pozytywna wyłącznie tak długo, jak nikt jej realnie nie
- * sprawdził na żywym backendzie. Naprawa: sieć jawnie ZAMAWIA potrzeby
- * własne (jak zrobiłby to projektant w kreatorze), więc `loadArrow` jest
- * asercją POZYTYWNĄ opartą o REALNY odbiór, nie o zignorowany domysł;
- * negatyw bramki (b) idzie przez brak źródła DER.
+ * istnieje w modelu). Odbiór „potrzeb własnych" stacji powstaje WYŁĄCZNIE z
+ * jawnego bloku `station_auxiliary` operacji stacyjnej
+ * (`_materialize_station_auxiliary_load`) — dokładnie to, co realny „Kreator
+ * stacji" (`ui2/kreatory/stacja/stacjaModel.ts::blokPotrzebWlasnych`) wysyła
+ * TYLKO gdy projektant jawnie wpisze moc (`DEFAULT_FORM_DATA.
+ * station_auxiliary_kw = ''` — puste pole = brak odbioru, G-STK-3). Bramka (b)
+ * sprawdza więc PARĘ (scalone z gałęzi main): brak bloku ⇒ brak wpisu
+ * `loadArrow`, jawne potrzeby własne (b2) ⇒ wpis. Wcześniejsze wersje tej
+ * karty zakładały raz odbiór bezwarunkowy, raz jego brak — para asercji
+ * przypina oba kierunki naraz, więc żadne z tych założeń nie wróci po cichu.
  *
  * Uruchomienie (WYŁĄCZNIE tak — patrz CLAUDE.md/karta):
  *   cd mv-design-pro/frontend && node ./scripts/playwright-run.mjs \
@@ -144,15 +135,11 @@ async function createProjectAndCase(
  * Sieć BEZ DER: źródło SN → magistrala (1 odcinek) → stacja SN/nN z
  * transformatorem. Żaden krok NIE dodaje generatora/PV/BESS — symbole DER
  * (np. `derPv`) nie mają prawa pojawić się na scenie ani w legendzie.
- * `loadArrow` ("Odbiór (zagregowany)") NA ODWRÓT: JEST obecny, bo
- * `insert_station_on_segment_sn` niesie tu JAWNY blok `station_auxiliary`
- * (P>0) — TA SAMA droga, którą realny „Kreator stacji" wysyła, gdy
- * projektant wpisze moc potrzeb własnych (`stacjaModel.ts::
- * blokPotrzebWlasnych`, G-STK-3; `_materialize_station_auxiliary_load`,
- * `domain_operations.py`). Backend NIE tworzy tego odbioru bez tego bloku
- * (puste pole w kreatorze = brak odbioru, `DEFAULT_FORM_DATA.
- * station_auxiliary_kw = ''`) — poprzednia wersja komentarza zakładała
- * odwrotnie i test padał na żywym backendzie (naprawa regresji CI-D).
+ * `loadArrow` ("Odbiór (zagregowany)") zależy od parametru `potrzebyWlasne`:
+ * bez niego sieć nie ma ŻADNEGO odbioru (backend nie tworzy potrzeb własnych
+ * bez jawnego bloku `station_auxiliary`), z nim — `insert_station_on_segment_sn`
+ * niesie blok P>0 tą samą drogą, którą wysyła „Kreator stacji"
+ * (`stacjaModel.ts::blokPotrzebWlasnych`, G-STK-3).
  *
  * POLE 'TR' JEST WYMAGANE (karta BUGI-PRODUKTU-E2E, diagnoza root-cause).
  * Backend (`domain_operations.py::insert_station_on_segment_sn`) ZAWSZE łączy
@@ -177,7 +164,11 @@ async function createProjectAndCase(
  * legendę (jej filtr „tylko obecne symbole"), a nie nieudokumentowany brak
  * rysunku.
  */
-async function buildStationNetworkWithoutDer(request: APIRequestContext, caseId: string): Promise<void> {
+async function buildStationNetworkWithoutDer(
+  request: APIRequestContext,
+  caseId: string,
+  potrzebyWlasne?: { active_power_kw: number; cos_phi: number },
+): Promise<void> {
   await executeDomainOp(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
@@ -205,20 +196,12 @@ async function buildStationNetworkWithoutDer(request: APIRequestContext, caseId:
     station_type: 'B',
     insert_at: { value: 0.5 },
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
+    ...(potrzebyWlasne ? { station_auxiliary: potrzebyWlasne } : {}),
     sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
     transformer: {
       create: true,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
     },
-    // Odbiór „potrzeby własne" (G-STK-3) — JAWNY, jak wpisałby go projektant
-    // w kreatorze (`stacjaModel.ts::blokPotrzebWlasnych`); bez tego bloku
-    // `_materialize_station_auxiliary_load` nie tworzy ŻADNEGO odbioru
-    // (patrz komentarz nagłówka pliku) i `loadArrow` w legendzie (b) nie ma
-    // czego pokazać. Wartości jak w innych fixture'ach odbioru nN w e2e
-    // (np. `test_add_nn_load_po_promocji...` w backendzie) — rząd wielkości
-    // realnych potrzeb własnych stacji SN/nN, cosφ jak domyślna wartość
-    // kreatora (`DEFAULT_FORM_DATA.station_auxiliary_cosphi`).
-    station_auxiliary: { active_power_kw: 5.0, cos_phi: 0.95 },
   });
 }
 
@@ -313,14 +296,9 @@ test.describe('Legenda symboli na żądanie (K12)', () => {
     await expect(panel.getByTestId('sld-v3-legend-panel-item-transformer2W')).toBeVisible();
     await expect(panel.getByTestId('sld-v3-legend-panel-item-gridSource')).toBeVisible();
 
-    // Pozytyw (karta BUGI-PRODUKTU-E2E, POPRAWKA ZALOZENIA): backend materializuje
-    // "potrzeby wlasne" stacji — maly, ZAWSZE obecny odbior nN — bezwarunkowo przy
-    // KAZDYM tworzeniu transformatora (`_materialize_station_auxiliary_load`,
-    // `domain_operations.py::insert_station_on_segment_sn`, poza gestia pola `TR`).
-    // Ta siec WIEC ma agregat 0,4 kV — `loadArrow` to REALNY, nie fabrykowany wpis;
-    // dawna asercja negatywna byla oparta na blednym zalozeniu (patrz komentarz
-    // naglowka pliku).
-    await expect(panel.getByTestId('sld-v3-legend-panel-item-loadArrow')).toBeVisible();
+    // Negatyw (zero fabrykacji): sieć NIE ma żadnego odbioru (brak kroku odbioru
+    // i brak bloku `station_auxiliary`) — strzałka odbioru nie może być wpisem.
+    await expect(panel.getByTestId('sld-v3-legend-panel-item-loadArrow')).toHaveCount(0);
 
     // Negatyw (zero fabrykacji, §0.3 karty): sieć NIE ma ŻADNEGO źródła DER —
     // "Instalacja fotowoltaiczna" nie może być wpisem legendy tego projektu.
@@ -330,6 +308,24 @@ test.describe('Legenda symboli na żądanie (K12)', () => {
     // "Linia napowietrzna" nigdy nie jest wpisem (v3 nie renderuje tego stylu
     // linii — zero fabrykacji rozciągnięte na linie, patrz `projectLegend.ts`).
     await expect(panel.getByTestId('sld-v3-legend-panel-item-overhead')).toHaveCount(0);
+  });
+
+  test('(b2) jawne potrzeby własne stacji ⇒ strzałka odbioru JEST wpisem legendy', async ({
+    page,
+    request,
+  }) => {
+    const seed = await createProjectAndCase(request);
+    await buildStationNetworkWithoutDer(request, seed.caseId, {
+      active_power_kw: 5.0,
+      cos_phi: 0.9,
+    });
+    await openSldWithActiveCase(page, seed);
+
+    await page.getByTestId('sld-v3-legend-toggle').click();
+    const panel = page.getByTestId('sld-v3-legend-panel');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId('sld-v3-legend-panel-item-loadArrow')).toBeVisible();
+    await expect(panel.getByTestId('sld-v3-legend-panel-item-derPv')).toHaveCount(0);
   });
 
   test('(c) zamknięcie panelu przywraca kanwę bez legendy', async ({ page, request }) => {

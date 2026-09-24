@@ -115,7 +115,7 @@ Objective: przebudowa całego UI/UX do klasy ETAP/PowerFactory wg
 zakres funkcjonalny gwarantowany przez
 [`docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`](docs/uiux/INWENTARZ_FUNKCJI_2026-07.md),
 orkiestracja wg [`docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md`](docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md).
-Gałąź programu: `claude/power-network-design-ui-ir91mv`.
+Gałąź programu `claude/power-network-design-ui-ir91mv` scalona do `main` (K0); praca na gałęzi bieżącej sesji.
 
 Progress:
 - [x] U0.1 Inwentarz funkcji + macierz pokrycia (2026-07-15; bilans: 8 funkcji bez UI, ~17 częściowych)

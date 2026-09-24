@@ -5,7 +5,7 @@
 
 > **Uwaga o dojrzałości funkcji.** Dynamic workflows to **research preview** (Claude Code v2.1.154+, plany płatne). Traktuj jako narzędzie produkcyjne dla zadań masowych, ale z gate'ami właściciela — nie jako autopilota całego projektu.
 >
-> **Uwaga wykonawcza (2026-05-29):** w bieżącym harnessie agenta narzędzie *Workflow* (runtime skryptu JS) **nie jest wystawione** — dostępny prymityw orkiestracji to **subagent** (`Agent`/Explore/general-purpose), uruchamialny równolegle/w tle. Wzorce poniżej realizuje się subagentami (zgodnie z mapą §1: SLD = „subagenty sekwencyjnie", audyt/walidacja = swarm subagentów). Gdy runtime workflow stanie się dostępny — te same wzorce przenoszą się 1:1.
+> **Uwaga wykonawcza:** narzędzie *Workflow* uruchamiasz tylko, gdy właściciel jawnie o nie poprosi (słowo `ultracode` albo prośba o workflow); w pozostałych przypadkach wzorce poniżej realizujesz subagentami (`Agent`, równolegle/w tle) — SLD = „subagenty sekwencyjnie", audyt/walidacja = swarm subagentów.
 
 ---
 
@@ -79,6 +79,16 @@ Utknięcie: wykonawca, który dwa razy nie rozwiąże tego samego problemu (ten 
 różnych próbach, ta sama niejasność karty), zatrzymuje się i melduje próby, wynik i hipotezę; sesja
 główna decyduje o eskalacji, a eskalację do Fable 5.1 zleca właściciel.
 
+Role z §4 realizują te definicje: `explorer` — audyt repo, inwentarz klasy, skan zakazanych
+fraz i sierot (tylko odczyt); `worker` / `worker-rdzen` — implementacja solvera/UI wg kontraktu,
+testy i sanity-bounds, harness Playwright i zrzuty (bez werdyktu wizualnego — B-02); `researcher`
+— normy IEC/PN-EN, NC RfG, PTPiREE/WOS, dokumentacja bibliotek i API. Recenzję adwersarialną
+wykonuje sesja główna albo osobny `explorer` z kryteriami K i sanity-bounds w prompcie.
+Scalone z gałęzi main (PR #476, który trzymał definicje w `docs/prompts/agenci/` do czasu zgody
+na `.claude/agents/`): definicje żyją w JEDNYM miejscu, `.claude/agents/`, bo tylko stamtąd
+Claude Code ładuje typy subagentów; zgoda właściciela — polecenie z 2026-09-24 (drzewo agentów
+„custom subagents explorer/worker/researcher”).
+
 ### 3a. Dobór modelu i wysiłku do złożoności zadania (dyrektywa właściciela 2026-09-23)
 
 Zarządca dobiera model i `effort` do zadania, nie „na wszelki wypadek" (wytyczne Anthropic dla
@@ -109,7 +119,8 @@ Reguły oszczędności tokenów (te same, które obniżają koszt bez utraty jak
 
 Metody użycia agentów wg dokumentacji Anthropic dla Fable 5.1 (aktualizacja 2026-09-24; źródło:
 `shared/model-migration.md` → „Migrating to Claude Fable 5.1 → Behavioral shifts / Long-running
-agent recommendations"; główny wykonawca pozostaje Opus 5.5, Fable zarządza i weryfikuje):
+agent recommendations"; sesja główna Opus 5.5 na `high` planuje i weryfikuje,
+Fable 5.1 wchodzi wyłącznie po eskalacji decyzją właściciela):
 7. **Deleguj asynchronicznie, nie „uruchom i czekaj".** Subagenci równolegli są na Fable 5.1
    niezawodni: zarządca zleca kartę, wraca do własnej pracy, a wynik odbiera powiadomieniem;
    zarządca nigdy nie blokuje się na najwolniejszym wykonawcy. Pytanie wykonawcy o decyzję
@@ -147,13 +158,13 @@ agent recommendations"; główny wykonawca pozostaje Opus 5.5, Fable zarządza i
 ## 4. WZORCE WORKFLOW DLA BIEŻĄCYCH ZADAŃ
 
 ### 4.1. Domknięcie długu funkcjonalnego (D-01…D-06)
-Fazy: (1) `audytor-repo` inwentaryzuje stan każdej pozycji; (2) równolegle `solver-engineer` implementuje wg kontraktu; (3) `test-engineer` dokłada testy + sanity-bounds; (4) `recenzent-norm` adwersarialnie sprawdza zgodność i wartości; (5) scalenie tylko pozycji, które przeszły; reszta → FEEDBACK. Gate: przegląd dekompozycji PRZED dispatchem.
+Fazy: (1) `explorer` inwentaryzuje stan każdej pozycji; (2) równolegle `worker` implementuje wg kontraktu wraz z testami i sanity-bounds; (3) `researcher` dostarcza podstawę normową tam, gdzie jej brak; (4) sesja główna (albo osobny `explorer` w roli recenzenta) adwersarialnie sprawdza zgodność i wartości; (5) scalenie tylko pozycji, które przeszły; reszta → FEEDBACK. Gate: przegląd dekompozycji PRZED dispatchem.
 
 ### 4.2. Walidacja wiarygodności wartości (K-04 + K-08)
-Fan-out: jeden agent na solver V12.6 liczy benchmark vs próg/sanity-bounds; `recenzent-norm` głosuje, które wiarygodne; raport per próg.
+Fan-out: jeden agent na solver V12.6 liczy benchmark vs próg/sanity-bounds; sesja główna rozstrzyga, które wiarygodne; raport per próg.
 
 ### 4.3. SLD — etapy z gate'em (B-02), nie jeden workflow w tle
-- Etap A: `sld-layout` buduje silnik drzewa + zakotwiczenie portów na 52 stacjach; `wizualizator` produkuje zrzuty. → **STOP, ocena właściciela.**
+- Etap A: `worker` buduje silnik drzewa + zakotwiczenie portów na 52 stacjach i produkuje zrzuty. → **STOP, ocena właściciela.**
 - Etap B (po ACCEPT): klikalność (V-08) + łańcuchy OZE (V-10); zrzuty. → **STOP.**
 - Etap C: tryb prezentacyjny + 11 warunków. → **STOP, werdykt ≥8/10.**
 

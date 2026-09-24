@@ -23,6 +23,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
+import * as zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 
@@ -32,6 +33,39 @@ const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/sld_audyt');
 
 const POZIOMY = [0, 1, 2] as const;
 const MOTYWY = ['light', 'dark'] as const;
+
+/**
+ * Tło kanwy wg palety motywu (`ui/sld/v3/theme/palette.ts`:
+ * `LIGHT_TECHNICAL_SLD_PALETTE.canvasBackground` i `colorTokens.CANVAS_BACKGROUND`).
+ */
+const TLO_PALETY = { light: '#FFFFFF', dark: '#0B0F14' } as const;
+
+/**
+ * Kolor piksela (0,0) zrzutu PNG jako `#RRGGBB` — bez zewnętrznej biblioteki:
+ * dla PIERWSZEGO piksela PIERWSZEGO wiersza każdy filtr PNG (None/Sub/Up/
+ * Average/Paeth) daje surowe bajty, bo predyktory odwołują się do zer.
+ */
+function pikselNarozny(png: Buffer): string {
+  const idat: Buffer[] = [];
+  let offset = 8;
+  let kanaly = 0;
+  while (offset < png.length) {
+    const dlugosc = png.readUInt32BE(offset);
+    const typ = png.toString('ascii', offset + 4, offset + 8);
+    const dane = png.subarray(offset + 8, offset + 8 + dlugosc);
+    if (typ === 'IHDR') {
+      const typKoloru = dane[9];
+      kanaly = typKoloru === 6 ? 4 : typKoloru === 2 ? 3 : 0;
+      if (dane[8] !== 8 || kanaly === 0) throw new Error(`nieobsługiwany format PNG (typ ${typKoloru})`);
+    }
+    if (typ === 'IDAT') idat.push(dane);
+    if (typ === 'IEND') break;
+    offset += 12 + dlugosc;
+  }
+  const surowe = zlib.inflateSync(Buffer.concat(idat));
+  const hex = (i: number) => surowe[1 + i].toString(16).padStart(2, '0').toUpperCase();
+  return `#${hex(0)}${hex(1)}${hex(2)}`;
+}
 
 /**
  * Kadry SZCZEGOLU (V12K-234). Powiekszenie robi KAMERA, zeby declutter przestal ukrywac
@@ -336,9 +370,12 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
    * jest w liście testów krytycznych `sld-determinism.yml`. Rolą TEGO testu
    * zostaje więc pilnowanie, że materiał audytowy „light"/„dark" NIE jest
    * duplikatem w bajtach — inaczej motyw przestał realnie dotrzeć do kanwy
-   * (dokładnie regresja odwrotna do tej, którą łapał stary niezmiennik).
+   * (dokładnie regresja odwrotna do tej, którą łapał stary niezmiennik) — ORAZ
+   * że tło każdego zrzutu jest tłem palety SWOJEGO motywu (piksel narożny vs
+   * `TLO_PALETY`, scalone z gałęzi main, karta Z-3): sama różność pary nie
+   * wyklucza zamiany palet miejscami ani tła spoza palety.
    */
-  test('niezmiennik: kanwa techniczna REAGUJE na motyw (KD-8) — para zrzutów RÓŻNA', () => {
+  test('niezmiennik: kanwa techniczna idzie za motywem (tło palety motywu, para różna)', () => {
     for (const lod of POZIOMY) {
       const jasny = fs.readFileSync(path.join(OUTPUT_DIR, `sld_L${lod}_light.png`));
       const ciemny = fs.readFileSync(path.join(OUTPUT_DIR, `sld_L${lod}_dark.png`));
@@ -351,6 +388,8 @@ test.describe('SLD — audyt powykonawczy: ekrany L0/L1/L2', () => {
           + '`effectiveThemeMode`/`useSldPalette` w `SldCanvasV3.tsx`), albo `screenshot-'
           + 'harness-main.tsx` przestał ustawiać `data-theme` przed renderem.',
       ).toBe(false);
+      expect(pikselNarozny(jasny), `L${lod}: tło zrzutu jasnego`).toBe(TLO_PALETY.light);
+      expect(pikselNarozny(ciemny), `L${lod}: tło zrzutu ciemnego`).toBe(TLO_PALETY.dark);
     }
   });
 });

@@ -1,5 +1,9 @@
 # PROMPT DOWODZENIA — Fable nadzorca, Opus wykonawca (2026-07-29)
 
+> **Status: zapis historyczny.** K0 wykonane — gałąź nadzoru scalona do `main`. Liczby poniżej
+> to migawka z 2026-07-29; bieżący stan: `mv-design-pro/STAN_REPO.md` i `mv-design-pro/PLANS.md`.
+> Role i delegację wyznacza drzewo agentów w `CLAUDE.md`.
+
 > **Jak użyć:** wklej ten plik jako pierwszy prompt sesji Fable. Fable DOWODZI tym
 > programem: architekt, zarządca, bramkarz jakości. Opus wykonuje karty, które Fable
 > projektuje i odbiera. Ścieżka pliku:

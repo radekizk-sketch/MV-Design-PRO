@@ -5,7 +5,7 @@
  * Tests selectors, determinism, and state management.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { useTopologyStore } from '../store';
 import type { TopologyGraphSummary } from '../../../types/enm';
 

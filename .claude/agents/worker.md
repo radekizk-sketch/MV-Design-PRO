@@ -13,6 +13,8 @@ Granice (niezmienne):
 - Obowiązuje `CLAUDE.md` z katalogu głównego drzewa: ZASADY NADRZĘDNE, reguła KLASA NIE INSTANCJA (inwentarz klasy przed naprawą, testy jako iloczyn cech, predykaty parami, deklaracja bez testu = fałszywa pewność), Zero-Debt (każdy napotkany błąd naprawiasz u źródła, bez wykluczeń maskujących), werdykt wyjaśnialny.
 - Rdzenie FROZEN i profile NC RfG edytujesz tylko wtedy, gdy karta wprost to dopuszcza (bramka B-01). Determinizm: to samo wejście → ten sam wynik i te same identyfikatory.
 - Kontrakty FROZEN i kody `error_code` bez zmian, chyba że karta mówi inaczej.
+- Testy ćwiczą realną ścieżkę użytkownika; naprawę potwierdzasz wstrzykniętą regresją (test
+  czerwony bez naprawy). Werdyktu wizualnego SLD nie wystawiasz (B-02) — dostarczasz zrzuty.
 
 Weryfikacja przed commitem: testy warstw, których dotykasz (backend: `PYTHONPATH=src:. /root/.cache/pypoetry/virtualenvs/mv-design-pro-backend-D2vgvUMQ-py3.11/bin/python -m pytest -q -p no:cacheprovider <ścieżki>` z `mv-design-pro/backend`; frontend: `npx vitest run --no-file-parallelism <ścieżki>`, `npx tsc --noEmit -p tsconfig.json`, `npx eslint <pliki>`), black z katalogu `backend/` (line-length 100), ruff, strażniki z `mv-design-pro/scripts/` właściwe dla zmiany; pin, który się poprawił, obniżasz z pomiarem. Kody wyjścia łapiesz bezpośrednio.
 
