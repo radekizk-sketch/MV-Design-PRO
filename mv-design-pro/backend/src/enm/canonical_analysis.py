@@ -2499,8 +2499,23 @@ def build_short_circuit_rozplyw(run: CanonicalRun, target_id: str) -> dict[str, 
                 "branch_contributions": _sc_rozplyw_galeziowy(
                     pobierz_rozplyw_biegu(run, target_id), graph_nodes, graph_branches
                 ),
+                # WHITE BOX śladu rozpływu Thevenina (TH-1) tego punktu — surowy,
+                # bez projekcji. Odpowiedź POST świeżego biegu go nie niesie
+                # (iloczyn punkt×gałąź), więc ta końcówka jest JEDYNĄ drogą do
+                # niego dla wskazanego punktu. ``None`` = uczciwy brak.
+                KLUCZ_SLADU_ROZPLYWU: item.get(KLUCZ_SLADU_ROZPLYWU),
             }
     raise KeyError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
+
+
+#: Ślad WHITE BOX rozpływu prądu zwarciowego w gałęziach (TH-1) — per punkt.
+KLUCZ_SLADU_ROZPLYWU = "branch_flow_trace"
+#: Ładunki per punkt zwarcia rzędu punkt×gałąź: KLASA pól, których odpowiedź
+#: POST świeżego biegu NIE niesie (V12K-284). Jedno źródło prawdy dla wycięcia
+#: z POST i dostarczenia na żądanie (`build_short_circuit_rozplyw`). Pomiar
+#: 2026-09-24 (sieć 50 stacji po module nN, 411 punktów): `branch_flow_trace`
+#: 78 MB z 100 MB odpowiedzi — druga instancja tej klasy, pominięta w KD-2.
+KLUCZE_PER_PUNKT_NA_ZADANIE = frozenset({KLUCZ_ROZPLYWU, KLUCZ_SLADU_ROZPLYWU})
 
 
 def wiersze_swiezego_biegu_bez_rozplywu(run: CanonicalRun) -> list[dict[str, Any]]:
@@ -2521,6 +2536,8 @@ def wiersze_swiezego_biegu_bez_rozplywu(run: CanonicalRun) -> list[dict[str, Any
 
     Rozpływ jest NIETKNIĘTY: solver liczy go jak dotąd, zapis biegu przenosi go
     bajtowo do osobnej tabeli (K14). Zmienia się WYŁĄCZNIE treść odpowiedzi POST.
+    Ta sama reguła obejmuje ślad rozpływu (`branch_flow_trace`) — zbiór wyciętych
+    pól to `KLUCZE_PER_PUNKT_NA_ZADANIE`, a oba ładunki wraca końcówka punktu.
     Wiersz nie będący słownikiem przechodzi bez zmian (zero zgadywania).
     """
     wiersze: list[dict[str, Any]] = []
@@ -2530,7 +2547,11 @@ def wiersze_swiezego_biegu_bez_rozplywu(run: CanonicalRun) -> list[dict[str, Any
             continue
         wiersze.append(
             {
-                **{klucz: wartosc for klucz, wartosc in item.items() if klucz != KLUCZ_ROZPLYWU},
+                **{
+                    klucz: wartosc
+                    for klucz, wartosc in item.items()
+                    if klucz not in KLUCZE_PER_PUNKT_NA_ZADANIE
+                },
                 KLUCZ_DOSTEPNOSCI_ROZPLYWU: _rozplyw_dostepny(item),
             }
         )

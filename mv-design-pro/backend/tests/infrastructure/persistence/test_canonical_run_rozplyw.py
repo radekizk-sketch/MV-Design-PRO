@@ -381,3 +381,36 @@ def test_czyszczenie_biegow_usuwa_rozplyw() -> None:
 
     assert _wiersze_rozplywu(bieg.id) == {}
     assert get_run(bieg.id) is None
+
+
+def test_odpowiedz_post_nie_niesie_ladunkow_per_punkt_a_koncowka_punktu_je_zwraca() -> None:
+    """KLASA pól rzędu punkt×gałąź: wkłady (K14) ORAZ ślad rozpływu (TH-1).
+
+    Pomiar 2026-09-24 (sieć 50 stacji, 411 punktów): sam `branch_flow_trace`
+    inline dawał 78 MB z 100 MB odpowiedzi POST. Iloczyn cech:
+    {wkłady, ślad} × {wiersz POST, końcówka punktu} × {bieg w pamięci, zapis}.
+    """
+    from enm.canonical_analysis import (
+        KLUCZ_SLADU_ROZPLYWU,
+        wiersze_swiezego_biegu_bez_rozplywu,
+    )
+
+    bieg = _swiezy_bieg()
+    slady = {
+        item["fault_node_id"]: item.get(KLUCZ_SLADU_ROZPLYWU) for item in bieg.raw_result["results"]
+    }
+    assert any(slady.values()), "sieć testowa musi dać niepusty ślad rozpływu"
+
+    for wiersz in wiersze_swiezego_biegu_bez_rozplywu(bieg):
+        # Nazwy JAWNE, nie `KLUCZE_PER_PUNKT_NA_ZADANIE` — test sprawdzany zbiorem
+        # z kodu przechodziłby także po okrojeniu tego zbioru (iniekcja 2026-09-24).
+        assert "branch_contributions" not in wiersz
+        assert "branch_flow_trace" not in wiersz
+        assert "branch_contributions_available" in wiersz
+
+    zapisany = get_run(bieg.id)
+    assert zapisany is not None
+    for punkt, slad in slady.items():
+        for przebieg in (bieg, zapisany):
+            widok = build_short_circuit_rozplyw(przebieg, punkt)
+            assert _kanonicznie(widok[KLUCZ_SLADU_ROZPLYWU]) == _kanonicznie(slad)

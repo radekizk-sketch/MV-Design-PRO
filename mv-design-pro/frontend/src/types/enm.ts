@@ -203,6 +203,8 @@ export interface Cable extends BranchBase {
   return_conductor_cross_section_mm2?: number | null;
   return_conductor_material?: string | null;
   return_conductor_r_ohm_per_km_20c?: number | null;
+  /** Reaktancja jednostkowa przewodu powrotnego (Ω/km) — lustro `Cable.return_conductor_x_ohm_per_km`. */
+  return_conductor_x_ohm_per_km?: number | null;
   return_conductor_jth_1s_a_per_mm2?: number | null;
   return_conductor_ith_1s_a?: number | null;
   rating?: BranchRating | null;

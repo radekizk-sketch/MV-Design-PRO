@@ -480,7 +480,13 @@ const EXPECTED_STATION_COUNT = 53;
 // (pomiar w docstringu `formatRatedVoltageKv`). Gęstość tuszu po zmianie: L0
 // referencyjna 1,67 % → 1,66 %, L0 długi ciąg 2,03 % → 2,03 % (bez zmiany).
 // Zero nowych kolizji jakiegokolwiek rodzaju (ten skrypt zielony).
-const VERTICAL_LENGTH_BASELINE = { 0: 22440, 1: 39448, 2: 39448 };
+// LV DOMAIN PROJECTION (po B-02, 2026-09-01) — baseline PODNIESIONY do
+// 22672/45656/45656, TEN SAM co w `buildScene.test.ts` i
+// `buildScene.schemat10s7p6.test.ts` (uzasadnienie zmierzone tamże: pion portalu
+// domeny nN na zacisku każdej stacji z TR + wyższe pasma B4). Przy tamtym
+// re-baseline ten skrypt pominięto, więc bramka CI była czerwona na `main`;
+// obie wartości muszą się zmieniać w jednym commicie.
+const VERTICAL_LENGTH_BASELINE = { 0: 22672, 1: 45656, 2: 45656 };
 
 /**
  * SCHEMAT-10 S6 (V12K-137) — funkcja kosztu layoutu (recenzja ekspercka pkt 3):

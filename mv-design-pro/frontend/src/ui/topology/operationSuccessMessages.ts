@@ -73,6 +73,23 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   // wiązania katalogowe wytwórcy — a obie zmieniają wynik analiz.
   set_connection_conditions: 'Zapisano warunki przyłączenia OSD',
   set_der_catalog_bindings: 'Zapisano wiązania katalogowe wytwórcy',
+  // GPZ / aparatura SN
+  append_station_on_endpoint: 'Dołączono stację na końcu ciągu SN',
+  add_gpz_section: 'Dodano sekcję szyn GPZ',
+  update_gpz_section: 'Zaktualizowano sekcję szyn GPZ',
+  delete_gpz_section: 'Usunięto sekcję szyn GPZ',
+  add_shunt_compensator_sn: 'Dodano baterię kondensatorów SN',
+  add_surge_arrester_sn: 'Dodano ogranicznik przepięć w polu SN',
+  // Sieć nN
+  add_nn_cable_segment: 'Dodano odcinek kabla nN',
+  add_nn_distribution_board: 'Dodano rozdzielnicę nN',
+  add_nn_switch_device: 'Dodano aparat w torze nN',
+  add_nn_section_coupler: 'Dodano sekcję szyn i sprzęgło nN',
+  split_nn_segment: 'Rozcięto odcinek kabla nN',
+  merge_nn_segments: 'Scalono odcinki kabla nN',
+  set_nn_cable_laying_conditions: 'Zapisano warunki ułożenia kabla nN',
+  remove_nn_element: 'Usunięto element nN',
+  copy_nn_feeder: 'Skopiowano odpływ nN',
   // DER variants (nN bus/feeder/source-field)
   bus_nn_add_converter_source_pv: 'Dodano PV na szynie nN',
   bus_nn_add_converter_source_bess: 'Dodano magazyn BESS na szynie nN',

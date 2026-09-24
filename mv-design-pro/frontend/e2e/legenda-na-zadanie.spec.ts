@@ -18,11 +18,13 @@
  * (źródło SN → magistrala → stacja SN/nN z transformatorem, BEZ kroku
  * dodania odbioru/Load) + pole SN roli `'TR'` (karta BUGI-PRODUKTU-E2E,
  * patrz komentarz przy `sn_fields` niżej — bez niego transformator NIE jest
- * NIGDZIE narysowany, mimo że poprawnie istnieje w modelu). ZALOŻENIE „sieć
- * bez agregatu 0,4 kV" z pierwszej wersji tej karty było BŁĘDNE: backend
- * materializuje „potrzeby własne" stacji (mały odbiór nN) bezwarunkowo przy
- * KAŻDYM tworzeniu transformatora — sieć WIĘC ma agregat, a `loadArrow` jest
- * dziś asercją POZYTYWNĄ; negatyw bramki (b) idzie przez brak źródła DER.
+ * NIGDZIE narysowany, mimo że poprawnie istnieje w modelu). Sieć bez kroku
+ * odbioru NIE ma agregatu 0,4 kV: odbiór „potrzeb własnych" stacji powstaje
+ * wyłącznie z jawnego bloku `station_auxiliary` operacji stacyjnej
+ * (`_materialize_station_auxiliary_load`). Wcześniejsza pozytywna asercja
+ * `loadArrow` opierała się na fantomowym odbiorze 30 kW, który odczyt modelu
+ * materializował z pól nN — tę fabrykację usunięto, więc bramka (b) sprawdza
+ * parę: brak odbioru ⇒ brak wpisu, jawne potrzeby własne ⇒ wpis.
  *
  * Uruchomienie (WYŁĄCZNIE tak — patrz CLAUDE.md/karta):
  *   cd mv-design-pro/frontend && node ./scripts/playwright-run.mjs \
@@ -157,7 +159,11 @@ async function createProjectAndCase(
  * legendę (jej filtr „tylko obecne symbole"), a nie nieudokumentowany brak
  * rysunku.
  */
-async function buildStationNetworkWithoutDer(request: APIRequestContext, caseId: string): Promise<void> {
+async function buildStationNetworkWithoutDer(
+  request: APIRequestContext,
+  caseId: string,
+  potrzebyWlasne?: { active_power_kw: number; cos_phi: number },
+): Promise<void> {
   await executeDomainOp(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
@@ -183,6 +189,7 @@ async function buildStationNetworkWithoutDer(request: APIRequestContext, caseId:
     station_type: 'B',
     insert_at: { value: 0.5 },
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
+    ...(potrzebyWlasne ? { station_auxiliary: potrzebyWlasne } : {}),
     sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
     transformer: {
       create: true,
@@ -282,14 +289,9 @@ test.describe('Legenda symboli na żądanie (K12)', () => {
     await expect(panel.getByTestId('sld-v3-legend-panel-item-transformer2W')).toBeVisible();
     await expect(panel.getByTestId('sld-v3-legend-panel-item-gridSource')).toBeVisible();
 
-    // Pozytyw (karta BUGI-PRODUKTU-E2E, POPRAWKA ZALOZENIA): backend materializuje
-    // "potrzeby wlasne" stacji — maly, ZAWSZE obecny odbior nN — bezwarunkowo przy
-    // KAZDYM tworzeniu transformatora (`_materialize_station_auxiliary_load`,
-    // `domain_operations.py::insert_station_on_segment_sn`, poza gestia pola `TR`).
-    // Ta siec WIEC ma agregat 0,4 kV — `loadArrow` to REALNY, nie fabrykowany wpis;
-    // dawna asercja negatywna byla oparta na blednym zalozeniu (patrz komentarz
-    // naglowka pliku).
-    await expect(panel.getByTestId('sld-v3-legend-panel-item-loadArrow')).toBeVisible();
+    // Negatyw (zero fabrykacji): sieć NIE ma żadnego odbioru (brak kroku odbioru
+    // i brak bloku `station_auxiliary`) — strzałka odbioru nie może być wpisem.
+    await expect(panel.getByTestId('sld-v3-legend-panel-item-loadArrow')).toHaveCount(0);
 
     // Negatyw (zero fabrykacji, §0.3 karty): sieć NIE ma ŻADNEGO źródła DER —
     // "Instalacja fotowoltaiczna" nie może być wpisem legendy tego projektu.
@@ -299,6 +301,24 @@ test.describe('Legenda symboli na żądanie (K12)', () => {
     // "Linia napowietrzna" nigdy nie jest wpisem (v3 nie renderuje tego stylu
     // linii — zero fabrykacji rozciągnięte na linie, patrz `projectLegend.ts`).
     await expect(panel.getByTestId('sld-v3-legend-panel-item-overhead')).toHaveCount(0);
+  });
+
+  test('(b2) jawne potrzeby własne stacji ⇒ strzałka odbioru JEST wpisem legendy', async ({
+    page,
+    request,
+  }) => {
+    const seed = await createProjectAndCase(request);
+    await buildStationNetworkWithoutDer(request, seed.caseId, {
+      active_power_kw: 5.0,
+      cos_phi: 0.9,
+    });
+    await openSldWithActiveCase(page, seed);
+
+    await page.getByTestId('sld-v3-legend-toggle').click();
+    const panel = page.getByTestId('sld-v3-legend-panel');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId('sld-v3-legend-panel-item-loadArrow')).toBeVisible();
+    await expect(panel.getByTestId('sld-v3-legend-panel-item-derPv')).toHaveCount(0);
   });
 
   test('(c) zamknięcie panelu przywraca kanwę bez legendy', async ({ page, request }) => {

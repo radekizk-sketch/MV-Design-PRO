@@ -2828,21 +2828,25 @@ def _add_nn_cable_segment_internal(
             "nn.cable_from_bus_not_nn",
         )
 
-    length_m = _opt_float_any(payload.get("length_m")) or 0.0
-    if length_m <= 0:
+    length_m = _opt_float_any(payload.get("length_m"))
+    if length_m is None or length_m <= 0:
         return _error_response(
             "Długość odcinka nN (length_m) musi być > 0.", "nn.cable_length_invalid"
         )
 
-    n_parallel_raw = payload.get("n_parallel", 1)
-    try:
-        n_parallel = int(n_parallel_raw)
-    except (TypeError, ValueError):
-        return _error_response(
-            "n_parallel musi być liczbą całkowitą >= 1.", "nn.cable_n_parallel_invalid"
-        )
-    if n_parallel < 1:
-        return _error_response("n_parallel musi być >= 1.", "nn.cable_n_parallel_invalid")
+    # Brak n_parallel = pojedynczy tor: kontrakt `Cable.n_parallel` (None/1 = jeden tor),
+    # więc brak pola przechodzi do ENM jako brak, a nie jako podstawiona liczba.
+    n_parallel_raw = payload.get("n_parallel")
+    n_parallel: int | None = None
+    if n_parallel_raw is not None:
+        try:
+            n_parallel = int(n_parallel_raw)
+        except (TypeError, ValueError):
+            return _error_response(
+                "n_parallel musi być liczbą całkowitą >= 1.", "nn.cable_n_parallel_invalid"
+            )
+        if n_parallel < 1:
+            return _error_response("n_parallel musi być >= 1.", "nn.cable_n_parallel_invalid")
 
     catalog_ref = _require_catalog_ref(
         payload_ref=payload.get("catalog_ref"),
@@ -2942,7 +2946,7 @@ def _add_nn_cable_segment_internal(
         "status": "closed",
         "meta": {},
     }
-    if n_parallel != 1:
+    if n_parallel is not None and n_parallel != 1:
         branch_data["n_parallel"] = n_parallel
     if laying_conditions:
         # F-K7 (wzorzec DER): warunki ułożenia to ZAŁOŻENIE DOBORU, nie parametr
@@ -3244,8 +3248,15 @@ def add_nn_section_coupler(enm: dict[str, Any], payload: dict[str, Any]) -> dict
     bus_refs = station.get("bus_refs") or []
     sekcje = [s for s in (station.get("nn_sections") or []) if isinstance(s, dict)]
     if sekcje:
-        ostatnia = max(sekcje, key=lambda s: s.get("order", 0))
-        last_order = ostatnia.get("order", 0)
+        # `NnSection.order` jest polem wymaganym kontraktu — sekcja bez kolejności
+        # to niespójne dane, a nie sekcja numer 0.
+        if any(not isinstance(s.get("order"), int) for s in sekcje):
+            return _error_response(
+                f"Rozdzielnica nN '{station_ref}' ma sekcję szyn bez kolejności (order).",
+                "nn.coupler_section_order_missing",
+            )
+        ostatnia = max(sekcje, key=lambda s: s["order"])
+        last_order = ostatnia["order"]
         last_bus_ref = ostatnia.get("bus_ref")
     else:
         if not bus_refs:
@@ -3417,7 +3428,15 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
             "nn.split_segment_not_nn_band",
         )
 
-    length_km = _opt_float_any(segment.get("length_km")) or 0.0
+    length_km = _opt_float_any(segment.get("length_km"))
+    r_ohm_per_km = _opt_float_any(segment.get("r_ohm_per_km"))
+    x_ohm_per_km = _opt_float_any(segment.get("x_ohm_per_km"))
+    if length_km is None or r_ohm_per_km is None or x_ohm_per_km is None:
+        return _error_response(
+            f"Odcinek '{segment_ref}' nie ma długości albo impedancji jednostkowej "
+            "(length_km, r_ohm_per_km, x_ohm_per_km) — rozcięcie niemożliwe.",
+            "nn.split_segment_data_missing",
+        )
     length_m_total = length_km * 1000.0
 
     split_at_m = _opt_float_any(payload.get("split_at_m"))
@@ -3469,8 +3488,8 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": mid_bus_ref,
         "length_km": split_at_m / 1000.0,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": r_ohm_per_km,
+        "x_ohm_per_km": x_ohm_per_km,
         "status": segment.get("status", "closed"),
     }
     _copy_split_segment_fields(left_data, segment)
@@ -3490,8 +3509,8 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
         "from_bus_ref": mid_bus_ref,
         "to_bus_ref": to_bus_ref,
         "length_km": (length_m_total - split_at_m) / 1000.0,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": r_ohm_per_km,
+        "x_ohm_per_km": x_ohm_per_km,
         "status": segment.get("status", "closed"),
     }
     _copy_split_segment_fields(right_data, segment)
@@ -3626,8 +3645,16 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
                 "nn.merge_shared_bus_not_isolated",
             )
 
-    dlugosc_a = segment_a.get("length_km") or 0.0
-    dlugosc_b = segment_b.get("length_km") or 0.0
+    dlugosc_a = _opt_float_any(segment_a.get("length_km"))
+    dlugosc_b = _opt_float_any(segment_b.get("length_km"))
+    r_ohm_per_km = _opt_float_any(segment_a.get("r_ohm_per_km"))
+    x_ohm_per_km = _opt_float_any(segment_a.get("x_ohm_per_km"))
+    if dlugosc_a is None or dlugosc_b is None or r_ohm_per_km is None or x_ohm_per_km is None:
+        return _error_response(
+            "Scalane odcinki muszą mieć długość (length_km) i impedancję jednostkową "
+            "(r_ohm_per_km, x_ohm_per_km) — brak danej uniemożliwia scalenie.",
+            "nn.merge_segment_data_missing",
+        )
 
     seed = _compute_seed({"op": "merge_nn_segments", "a": segment_a_ref, "b": segment_b_ref})
     merged_ref = _make_id("nn", seed, "merged")
@@ -3654,8 +3681,8 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
         "from_bus_ref": zewnetrzna_a,
         "to_bus_ref": zewnetrzna_b,
         "length_km": dlugosc_a + dlugosc_b,
-        "r_ohm_per_km": segment_a.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment_a.get("x_ohm_per_km", 0.0),
+        "r_ohm_per_km": r_ohm_per_km,
+        "x_ohm_per_km": x_ohm_per_km,
         "status": "closed",
     }
     _copy_split_segment_fields(merged_data, segment_a)
