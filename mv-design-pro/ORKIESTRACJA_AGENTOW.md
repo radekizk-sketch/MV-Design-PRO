@@ -73,6 +73,7 @@ bramka bezpieczeństwa, recenzja adwersarzowa → `high`/`xhigh` (tabela §3a).
 | `explorer` | Opus 5.5 · medium | Odczyt i pomiar: inwentarz klasy `plik:linia`, stan kart, zależności — zero edycji | Read, Grep, Glob, Bash (tylko odczyt) |
 | `worker` | Opus 5.5 · medium | Karta end-to-end w swoim drzewie `odbior-*`: zmiana, testy jako iloczyn cech, strażniki, jeden commit lokalny, meldunek | Read, Edit, Write, Bash, Grep, Glob |
 | `researcher` | Opus 5.5 · medium | Źródła: IEC, NC RfG, PTPiREE/WOS, dokumentacja bibliotek — z punktem i wydaniem | Read, Grep, Glob, Bash, WebFetch, WebSearch |
+| `worker-rdzen` | Opus 5.5 · high | Rola `worker` z podniesionym wysiłkiem: rdzeń solvera (dynamika), wyrocznie, bramki poprawności (strażnik werdyktu) | jak `worker` |
 
 Utknięcie: wykonawca, który dwa razy nie rozwiąże tego samego problemu (ten sam test czerwony po dwóch
 różnych próbach, ta sama niejasność karty), zatrzymuje się i melduje próby, wynik i hipotezę; sesja
