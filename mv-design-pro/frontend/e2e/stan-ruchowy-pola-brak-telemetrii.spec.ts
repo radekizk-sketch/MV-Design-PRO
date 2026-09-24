@@ -11,13 +11,22 @@
  *      pokazuje „brak telemetrii" (dawniej „zamknięty / LOKALNY / Komunikacja: OK").
  *
  * Zrzuty dowodowe dla werdyktu wizualnego właściciela (B-02) — oba motywy, motyw
- * przełączany REALNYM przyciskiem powłoki z asercją na `data-theme` — trafiają do katalogu
- * wyników biegu (`testInfo.outputPath`).
+ * przełączany REALNYM przyciskiem powłoki z asercją na `data-theme` — trafiają do
+ * `docs/audit/visual/dowody/dowod_stan-pola-brak-telemetrii_<light|dark>.png` (ten sam
+ * katalog i wzorzec nazw co pozostałe specy dowodów; strona oceny zbiera je sama).
  *
  * Uruchomienie (cwd: mv-design-pro/frontend):
  *   PLAYWRIGHT_REAL_BACKEND=1 npx playwright test e2e/stan-ruchowy-pola-brak-telemetrii.spec.ts
  */
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+
+const OUTPUT_DIR = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../docs/audit/visual/dowody',
+);
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -186,7 +195,7 @@ async function aparatPola(page: Page) {
 test('pole SN bez źródła runtime — model odczytu i szuflada SLD: brak telemetrii (oba motywy)', async ({
   page,
   request,
-}, testInfo) => {
+}) => {
   test.setTimeout(240_000);
   const seed = await siecZPolem(request);
 
@@ -232,11 +241,14 @@ test('pole SN bez źródła runtime — model odczytu i szuflada SLD: brak telem
   await expect(stanAparatu).not.toContainText('OK');
   await expect(stanAparatu).not.toContainText('LOKALNY');
 
-  for (const motyw of ['light_technical', 'dark_scada'] as const) {
+  for (const [motyw, przyrostek] of [
+    ['light_technical', 'light'],
+    ['dark_scada', 'dark'],
+  ] as const) {
     await ustawMotyw(page, motyw);
     await expect(stanAparatu).toBeVisible();
     await page.screenshot({
-      path: testInfo.outputPath(`k135-szuflada-stan-aparatu-brak-telemetrii-${motyw}.png`),
+      path: path.join(OUTPUT_DIR, `dowod_stan-pola-brak-telemetrii_${przyrostek}.png`),
       fullPage: false,
     });
   }
