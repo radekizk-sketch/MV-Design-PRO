@@ -19,6 +19,7 @@ from enm.interlock_rules import (
     earthing_interlock_violation,
 )
 from enm.models import Bay, BayPrimaryDevice, EnergyNetworkModel, Substation
+from enm.slownik_komunikatow import opis_obiektu
 from network_model.catalog.switchgear import (
     SwitchgearFamily,
     czy_rodzina_obsluguje_napiecie,
@@ -27,6 +28,10 @@ from network_model.catalog.switchgear import (
 from network_model.catalog.switchgear.apparatus_vocabulary import (
     FAMILY_APPARATUS_FOR_ENM_KIND,
 )
+from network_model.catalog.switchgear.complete_mv_bay_template import (
+    nazwa_rodzaju_pola_katalogowego_pl,
+)
+from network_model.catalog.switchgear.device_instance import nazwa_rodzaju_aparatu_pl
 from network_model.pochodne import mva_na_kva
 
 from .models import (
@@ -73,7 +78,22 @@ _LATERAL_PLACEMENTS = frozenset({"GROUND_BRANCH", "OFF_PATH"})
 
 
 def _kind_pl(kind: str) -> str:
-    return _KIND_NAME_PL.get(kind, kind)
+    return _KIND_NAME_PL.get(kind, "aparat innego rodzaju")
+
+
+def _opis_transformatora(transformer: object) -> str:
+    """Transformator w treści sprawdzenia — nazwa z modelu, nigdy identyfikator (#142)."""
+    return opis_obiektu(transformer, "Transformator")
+
+
+def _aparat_pl(device: BayPrimaryDevice) -> str:
+    """Aparat w treści sprawdzenia: rodzaj + oznaczenie operatorskie (Q0, QE1) — nigdy
+    identyfikator aparatu (treść trafia do gotowości operacji, karta #142)."""
+    return (
+        f"{_kind_pl(device.kind)} {device.designation}"
+        if device.designation
+        else (_kind_pl(device.kind))
+    )
 
 
 def _is_subsequence(seq: Sequence[str], template: Sequence[str]) -> bool:
@@ -182,12 +202,10 @@ def _profile_checks_for_bay(
             f"profile.lateral_placement.{device.kind}",
             ok,
             (
-                f"Aparat boczny {_kind_pl(device.kind)} ('{device.device_ref}') "
-                f"poza osią toru (placement {device.placement})."
+                f"Aparat boczny {_aparat_pl(device)} poza osią toru."
                 if ok
-                else f"Aparat {_kind_pl(device.kind)} ('{device.device_ref}') leży W OSI "
-                f"toru (placement {device.placement}) — ES/VT/SA są z definicji boczne "
-                f"(SLD_CAD_SPEC_V3 §18.1)."
+                else f"Aparat {_aparat_pl(device)} leży W OSI toru — uziemnik, przekładnik "
+                "napięciowy i ogranicznik przepięć są z definicji aparatami bocznymi."
             ),
         )
 
@@ -213,9 +231,9 @@ def _interlock_checks_for_bay(bay: Bay, pack_id: str) -> list[ComplianceCheck]:
     violated = bool(closed_es and closed_main)
     message = (
         "Blokada uziemnika naruszona: uziemnik ("
-        + ", ".join(d.device_ref for d in closed_es)
+        + ", ".join(_aparat_pl(d) for d in closed_es)
         + ") zamknięty przy zamkniętym łączniku toru ("
-        + ", ".join(d.device_ref for d in closed_main)
+        + ", ".join(_aparat_pl(d) for d in closed_main)
         + ")."
         if violated
         else "Blokada uziemnik ↔ łącznik toru głównego zachowana."
@@ -282,7 +300,9 @@ def _cell_match_check_for_bay(
         else "Skład pola ("
         + ", ".join(_kind_pl(k) for k in sorted(bay_kinds))
         + f") nie odpowiada żadnej konfiguracji celki rodziny "
-        f"{family.family_name} (kandydaci: " + ", ".join(c.cell_code for c in candidates) + ")."
+        f"{family.family_name} (kandydaci: "
+        + ", ".join(f"{c.cell_code} ({c.name_pl})" for c in candidates)
+        + ")."
     )
     return [
         ComplianceCheck(
@@ -321,10 +341,16 @@ def _family_checks_for_bay(
             "family.bay_kind",
             ok,
             (
-                f"Typ pola „{bay_kind}” dostępny w rodzinie {family.family_name}."
+                f"Pole rodzaju „{nazwa_rodzaju_pola_katalogowego_pl(bay_kind)}” dostępne "
+                f"w rodzinie {family.family_name}."
                 if ok
-                else f"Typ pola „{bay_kind}” niedostępny w rodzinie "
-                f"{family.family_name} (dozwolone: " + ", ".join(family.allowed_bay_kinds) + ")."
+                else f"Pole rodzaju „{nazwa_rodzaju_pola_katalogowego_pl(bay_kind)}” niedostępne "
+                f"w rodzinie {family.family_name} (dozwolone: "
+                + ", ".join(
+                    f"„{nazwa_rodzaju_pola_katalogowego_pl(rodzaj)}”"
+                    for rodzaj in family.allowed_bay_kinds
+                )
+                + ")."
             ),
         )
 
@@ -338,12 +364,11 @@ def _family_checks_for_bay(
                 f"family.apparatus.{device.kind}",
                 ok,
                 (
-                    f"Aparat {_kind_pl(device.kind)} ('{device.device_ref}') "
-                    f"w słowniku rodziny {family.family_name}."
+                    f"Aparat {_aparat_pl(device)} w słowniku rodziny {family.family_name}."
                     if ok
-                    else f"Aparat {_kind_pl(device.kind)} ('{device.device_ref}') "
-                    f"SPOZA słownika rodziny {family.family_name} "
-                    f"(brak „{family_kind}” w allowed_apparatus_kinds)."
+                    else f"Aparat {_aparat_pl(device)} SPOZA słownika rodziny "
+                    f"{family.family_name} (rodzina nie dopuszcza aparatu "
+                    f"„{nazwa_rodzaju_aparatu_pl(family_kind)}”)."
                 ),
             )
 
@@ -496,11 +521,12 @@ def _osd_checks(pack: ReferencePack, enm: EnergyNetworkModel) -> list[Compliance
                     "osd_enea.station.transformer_power_limit",
                     ok,
                     (
-                        f"Transformator '{transformer_ref}' {mva_na_kva(transformer.sn_mva):g} "
+                        f"{_opis_transformatora(transformer)} "
+                        f"{mva_na_kva(transformer.sn_mva):g} "
                         f"kVA ≤ granicy {mva_na_kva(limit_mva):g} kVA dla konstrukcji "
                         f"„{construction}”."
                         if ok
-                        else f"Transformator '{transformer_ref}' "
+                        else f"{_opis_transformatora(transformer)} "
                         f"{mva_na_kva(transformer.sn_mva):g} kVA "
                         f"przekracza granicę {mva_na_kva(limit_mva):g} kVA dla stacji "
                         f"„{construction}” (Zeszyt 1 rys. 1 s. 10 / Zeszyt 3 §4.1 s. 7)."
@@ -653,7 +679,9 @@ def _checks_for_pack(
                     message_pl=(
                         "Wszystkie aparaty pola mają symbol w słowniku IEC 60617."
                         if not unknown
-                        else "Aparaty bez symbolu w słowniku IEC 60617: " + ", ".join(unknown) + "."
+                        else "Aparaty bez symbolu w słowniku IEC 60617: "
+                        + ", ".join(sorted({_kind_pl(k) for k in unknown}))
+                        + "."
                     ),
                 )
             )

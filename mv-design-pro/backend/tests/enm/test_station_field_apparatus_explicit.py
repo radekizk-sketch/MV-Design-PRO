@@ -17,6 +17,7 @@ from __future__ import annotations
 import copy
 from typing import Any
 
+from enm import slownik_komunikatow
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
@@ -106,10 +107,13 @@ def test_insert_station_without_apparatus_ref_returns_validation_error() -> None
     assert response.get("error_code") == "station.insert.field_apparatus_ref_missing"
     message = response.get("error") or ""
     # Komunikat po polsku, ze wskazaniem pola (numer + nazwa roli, bez kodu roli — karta #140)
-    # i nazwą kontraktu.
+    # i polską nazwą pola formularza — NIE nazwą pola kontraktu (karta #142 odwraca
+    # dawne utrwalenie `apparatus_catalog_ref` w treści: projektant nie zna kontraktu API,
+    # a kod maszynowy niesie `error_code`).
     assert "Pole SN nr 1 (pole liniowe wejściowe)" in message
     assert "LINIA_IN" not in message
-    assert "apparatus_catalog_ref" in message
+    assert slownik_komunikatow.pole("apparatus_catalog_ref") in message
+    assert "apparatus_catalog_ref" not in message
     # Model nietknięty (walidacja przed jakąkolwiek zmianą).
     assert response.get("snapshot") is None
 
@@ -142,7 +146,9 @@ def test_append_station_without_apparatus_ref_returns_validation_error() -> None
         },
     )
     assert response.get("error_code") == "station.append.field_apparatus_ref_missing"
-    assert "apparatus_catalog_ref" in (response.get("error") or "")
+    # Karta #142: nazwa pola formularza w treści, pole kontraktu wyłącznie w danych maszynowych.
+    assert slownik_komunikatow.pole("apparatus_catalog_ref") in (response.get("error") or "")
+    assert "apparatus_catalog_ref" not in (response.get("error") or "")
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +178,11 @@ def test_insert_station_uses_explicit_apparatus_ref_per_field() -> None:
     for breaker in breakers:
         message = breaker["meta"]["catalog_message"]
         assert "jawnie wskazanej" in message
-        assert breaker["catalog_ref"] in message
+        # Karta #142: pozycję nazywa jej nazwa katalogowa, identyfikator zostaje w
+        # `catalog_ref` (dane maszynowe) — nie w treści.
+        nazwa = slownik_komunikatow.nazwa_pozycji_katalogu(breaker["catalog_ref"])
+        assert nazwa and f"„{nazwa}”" in message
+        assert breaker["catalog_ref"] not in message
 
 
 def test_append_station_uses_explicit_apparatus_ref() -> None:

@@ -819,6 +819,13 @@ def test_remis_pelnej_dotkliwosci_rozstrzyga_element_ref_rosnaco() -> None:
 #: „Brak prądu zacisku początkowego w wyniku rozpływu.", „Brak prądu znamionowego
 #: (obciążalności) gałęzi w modelu."); dotkliwość, ranking, napięcia, przepływy,
 #: iteracje NR, liczniki i kolejność BEZ ZMIAN.
+#: Karta #142 (2026-09-24): odcisk gn01 przeliczony ŚWIADOMIE. Stan wyjściowy: na bazie
+#: 3243077b test był już czerwony (odcisk f2826159…, bo karta #140 zmieniła treść
+#: `catalog_message` aparatów pól stacji). Karta #142 zmienia tę treść ponownie (nazwa typu
+#: aparatu zamiast kodu grupy katalogu i identyfikatora pozycji). DOWÓD (pełny `widok`
+#: baza vs drzewo, `diff` JSON): różnią się WYŁĄCZNIE `context.snapshot_hash` i
+#: `input_hash` (treść komunikatu w meta gałęzi migawki); kontyngencje, ranking,
+#: podsumowanie, przypadek bazowy — identyczne co do bajtu. gn03 nie ma pól z tą treścią.
 ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # 2026-09-24 (karta #140): 949454ac… → f2826159…. Różnica ustalona porównaniem
     # pełnych widoków przed i po karcie pole po polu: zmieniły się WYŁĄCZNIE

@@ -56,8 +56,11 @@ class TestBrakTypuIBrakParyOdrzucone:
         wynik = execute_domain_operation(_empty_enm(), "add_grid_source_sn", _base_payload())
         assert wynik.get("error_code") == "catalog.ref_required", wynik
         assert wynik.get("snapshot") is None
-        assert "hv_voltage_kv" in str(wynik.get("error"))
-        assert "transformer_sn_mva" in str(wynik.get("error"))
+        # Karta #142: pola kreatora GPZ słowami, bez kluczy kontraktu.
+        tresc = str(wynik.get("error"))
+        assert "„Napięcie szyny 110 kV”" in tresc, tresc
+        assert "„Moc znamionowa Sn”" in tresc, tresc
+        assert "hv_voltage_kv" not in tresc and "transformer_sn_mva" not in tresc, tresc
 
     def test_tylko_hv_voltage_kv_bez_mocy_odrzucone(self) -> None:
         wynik = execute_domain_operation(

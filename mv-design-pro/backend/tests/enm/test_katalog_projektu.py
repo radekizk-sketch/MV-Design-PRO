@@ -188,7 +188,8 @@ def test_ten_sam_ref_bez_sekcji_jest_nazwanym_bledem_katalogu() -> None:
 def test_kolizja_id_z_katalogiem_statycznym_jest_nazwanym_bledem() -> None:
     zajety = sorted(get_default_mv_catalog().line_types)[0]
     sekcja = _sekcja(line_types=[{**_LINIA, "id": zajety}])
-    with pytest.raises(BladKataloguProjektu, match="katalogu statycznego"):
+    # Karta #142: rodzaj pozycji słowami („typy linii”), kolizja nazwana typem producenta.
+    with pytest.raises(BladKataloguProjektu, match="typy linii.*zajęte w katalogu statycznym"):
         katalog_dla_modelu({"katalog_projektu": sekcja})
     enm = pusty_enm(name="kolizja", sn_nominal_kv=15.0)
     enm["katalog_projektu"] = sekcja
@@ -210,5 +211,6 @@ def test_kolizja_id_z_katalogiem_statycznym_jest_nazwanym_bledem() -> None:
 def test_rekord_bez_obciazalnosci_nie_staje_sie_typem_z_zerem() -> None:
     params = {k: v for k, v in _LINIA["params"].items() if k != "rated_current_a"}
     sekcja = _sekcja(line_types=[{**_LINIA, "params": params}])
-    with pytest.raises(BladKataloguProjektu, match="rated_current_a"):
+    # Karta #142: brakujące pole etykietą tabliczki, nie kluczem rekordu.
+    with pytest.raises(BladKataloguProjektu, match="„Imax \\[A\\]”"):
         katalog_dla_modelu({"katalog_projektu": sekcja})

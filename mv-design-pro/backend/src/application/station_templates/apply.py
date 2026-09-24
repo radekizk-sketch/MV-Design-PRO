@@ -27,9 +27,10 @@ from application.station_templates.schema import (
     template_wchodzi_w_segment,
     transformer_voltages_kv,
 )
-from enm.domain_operations import execute_domain_operation
+from enm.domain_operations import execute_domain_operation, nazwa_roli_pola_sn
 from enm.models import EnergyNetworkModel
 from enm.rola_pola_sn import kanoniczna_rola_pola_sn
+from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu, opis_pozycji_katalogu
 from enm.store import blokada_twin
 from network_model.pochodne import mva_na_kva
 
@@ -92,8 +93,8 @@ def apply_template_to_case(
         raise TemplateApplyError(
             code="template.target_segment_required",
             message_pl=(
-                f"Szablon '{template.id}' wstawia się w istniejący odcinek SN — "
-                "podaj target_segment_id."
+                f"Szablon „{template.name_pl}” wstawia się w istniejący odcinek SN — "
+                "wskaż odcinek magistrali, w który ma zostać wstawiona stacja."
             ),
         )
     if not template_wchodzi_w_segment(template) and target_segment_id:
@@ -107,7 +108,7 @@ def apply_template_to_case(
         raise TemplateApplyError(
             code="template.korzen_modelu_nie_wchodzi_w_segment",
             message_pl=(
-                f"Szablon '{template.id}' to stacja zasilająca (GPZ 110/SN) — "
+                f"Szablon „{template.name_pl}” to stacja zasilająca (GPZ 110/SN) — "
                 "jest korzeniem modelu, a nie stacją wstawianą w istniejący "
                 "odcinek magistrali. Zbuduj ją jako źródło zasilania sieci "
                 "(bez wskazywania odcinka)."
@@ -172,7 +173,7 @@ def _zastosuj_gpz_pod_blokada(
     if not transformer_ref:
         raise TemplateApplyError(
             code="template.transformer_catalog_missing",
-            message_pl=f"Szablon '{template.id}' nie wskazuje transformatora WN/SN.",
+            message_pl=f"Szablon „{template.name_pl}” nie wskazuje transformatora WN/SN.",
         )
     source_ref = overrides.get("grid_source_ref") or _cascade_manufacturer_choice(
         template.schema.grid_source_options, catalog_profile
@@ -181,7 +182,7 @@ def _zastosuj_gpz_pod_blokada(
         raise TemplateApplyError(
             code="template.grid_source_catalog_missing",
             message_pl=(
-                f"Szablon '{template.id}' nie wskazuje warunków zasilania GPZ (typ z katalogu "
+                f"Szablon „{template.name_pl}” nie wskazuje warunków zasilania GPZ (typ z katalogu "
                 "źródeł zasilania SN)."
             ),
         )
@@ -191,7 +192,7 @@ def _zastosuj_gpz_pod_blokada(
     if not apparatus_ref:
         raise TemplateApplyError(
             code="template.sn_bay_apparatus_missing",
-            message_pl=f"Szablon '{template.id}' nie wskazuje aparatu pól liniowych GPZ.",
+            message_pl=f"Szablon „{template.name_pl}” nie wskazuje aparatu pól liniowych GPZ.",
         )
     transformer_count = int(
         overrides.get("transformer_count", template.schema.transformer_count.default)
@@ -204,8 +205,8 @@ def _zastosuj_gpz_pod_blokada(
         raise TemplateApplyError(
             code="template.transformer_catalog_missing",
             message_pl=(
-                f"Szablon '{template.id}': katalog nie ma napięcia dolnego strony "
-                f"transformatora '{transformer_ref}'."
+                f"Szablon „{template.name_pl}”: katalog nie ma napięcia dolnego strony "
+                f"transformatora ({opis_pozycji_katalogu(transformer_ref, None, 'typ')})."
             ),
         )
 
@@ -565,8 +566,8 @@ def _zastosuj_szablon_pod_blokada(
                 raise TemplateApplyError(
                     code="template.ct_catalog_missing",
                     message_pl=(
-                        f"Szablon '{template.id}' wskazuje przekładnik CT "
-                        f"'{ct_catalog_ref}', którego katalog nie ma."
+                        f"Szablon „{template.name_pl}” wskazuje przekładnik prądowy (CT), "
+                        "którego katalog nie ma."
                     ),
                 )
             ct_result = execute_domain_operation(
@@ -596,8 +597,8 @@ def _zastosuj_szablon_pod_blokada(
                 raise TemplateApplyError(
                     code="template.vt_catalog_missing",
                     message_pl=(
-                        f"Szablon '{template.id}' wskazuje przekładnik VT "
-                        f"'{vt_catalog_ref}', którego katalog nie ma."
+                        f"Szablon „{template.name_pl}” wskazuje przekładnik napięciowy (VT), "
+                        "którego katalog nie ma."
                     ),
                 )
             vt_result = execute_domain_operation(
@@ -805,7 +806,7 @@ def _zabuduj_stacje_w_odgalezieniu(
         raise TemplateApplyError(
             code="template.branch_segment_missing",
             message_pl=(
-                f"Odcinek '{target_segment_id}' nie istnieje w modelu — "
+                "Wskazany odcinek nie istnieje w modelu — "
                 "nie ma od czego poprowadzić odgałęzienia do stacji klienta."
             ),
         )
@@ -814,9 +815,9 @@ def _zabuduj_stacje_w_odgalezieniu(
         raise TemplateApplyError(
             code="template.branch_segment_not_sn",
             message_pl=(
-                f"Odcinek '{target_segment_id}' nie jest odcinkiem SN "
-                f"(typ: '{seg_type}'), więc nie można z niego wyprowadzić "
-                "odgałęzienia do stacji abonenckiej."
+                f"{opis_obiektu(segment, 'Odcinek')} nie jest odcinkiem SN "
+                f"(rodzaj: {nazwa_rodzaju_galezi(seg_type)}), więc nie można z niego "
+                "wyprowadzić odgałęzienia do stacji abonenckiej."
             ),
         )
 
@@ -830,7 +831,8 @@ def _zabuduj_stacje_w_odgalezieniu(
             code="template.branch_point_catalog_missing",
             message_pl=(
                 "Katalog punktów rozgałęzienia nie ma pozycji dla tego rodzaju "
-                "odcinka. Wskaż pozycję parametrem 'branch_point_catalog_ref'."
+                "odcinka. Wskaż pozycję punktu rozgałęzienia (słup rozgałęźny albo ZKSN) "
+                "w parametrach szablonu."
             ),
         )
 
@@ -863,10 +865,7 @@ def _zabuduj_stacje_w_odgalezieniu(
     if dlugosc_m <= 0:
         raise TemplateApplyError(
             code="template.branch_length_invalid",
-            message_pl=(
-                "Długość odgałęzienia do stacji klienta musi być większa od zera "
-                "(parametr 'branch_length_m')."
-            ),
+            message_pl="Długość odgałęzienia do stacji klienta musi być większa od zera.",
         )
     # Typ kabla/linii gałęzi: wskazanie projektanta, inaczej TEN SAM typ, co odcinek
     # macierzysty — wzorzec kreatora odgałęzienia (`initial_catalog_ref` z
@@ -879,7 +878,7 @@ def _zabuduj_stacje_w_odgalezieniu(
             message_pl=(
                 "Brak pozycji katalogowej odcinka odgałęzienia. Odcinek magistrali "
                 "nie ma wiązania katalogowego, więc wskaż typ kabla/linii gałęzi "
-                "parametrem 'branch_segment_catalog_ref'."
+                "w parametrach szablonu."
             ),
         )
 
@@ -1277,9 +1276,9 @@ def _resolve_sn_field_specs(
             raise TemplateApplyError(
                 code="template.sn_bay_apparatus_missing",
                 message_pl=(
-                    f"Szablon '{template.id}' nie wskazuje aparatu dla pola SN o roli "
-                    f"'{role}'. Uzupełnij listę aparatury szablonu albo podaj "
-                    "'sn_bay_apparatus_ref' w parametrach."
+                    f"Szablon „{template.name_pl}” nie wskazuje aparatu dla pola "
+                    f"„{nazwa_roli_pola_sn(role)}”. Uzupełnij listę aparatury szablonu albo "
+                    "wskaż aparat pola SN w parametrach szablonu."
                 ),
             )
         spec: dict[str, Any] = {
@@ -1339,9 +1338,9 @@ def _resolve_sn_bay_roles(template: StationTemplate, count: int) -> list[str]:
         raise TemplateApplyError(
             code="template.sn_bays_count_below_minimum",
             message_pl=(
-                f"Szablon '{template.id}' opisuje przyłącze klienta z układem "
+                f"Szablon „{template.name_pl}” opisuje przyłącze klienta z układem "
                 f"pomiarowo-rozliczeniowym, więc wymaga co najmniej {len(wymagane)} "
-                f"pól SN ({', '.join(declared[i] for i in sorted(wymagane))}). "
+                f"pól SN ({', '.join(nazwa_roli_pola_sn(declared[i]) for i in sorted(wymagane))}). "
                 f"Żądano {count}. Zwiększ liczbę pól albo wybierz szablon stacji "
                 "dystrybucyjnej (bez pomiaru rozliczeniowego)."
             ),

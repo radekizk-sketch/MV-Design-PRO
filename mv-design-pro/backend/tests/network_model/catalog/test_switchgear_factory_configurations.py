@@ -20,6 +20,9 @@ from network_model.catalog.switchgear import (
     list_factory_configurations_for_family,
     list_switchgear_families,
 )
+from network_model.catalog.switchgear.complete_mv_bay_template import (
+    nazwa_rodzaju_pola_katalogowego_pl,
+)
 from network_model.catalog.switchgear.errors import NiezgodnoscKonfiguracjiError
 from pydantic import ValidationError
 
@@ -438,8 +441,13 @@ def test_jednostka_o_funkcji_spoza_katalogu_rodziny_to_twardy_blad() -> None:
             ),
         ],
     )
-    with pytest.raises(NiezgodnoscKonfiguracjiError, match="której"):
+    # Karta #142: funkcja jednostki i funkcje rodziny nazwane słowami kreatora
+    # („Pole pomiarowe”), kod rodzaju pola („pomiarowe”) zostaje w danych bloku.
+    with pytest.raises(NiezgodnoscKonfiguracjiError, match="której") as blad:
         family_supports_factory_configuration(blok)
+    assert f"„{nazwa_rodzaju_pola_katalogowego_pl('pomiarowe')}”" in str(blad.value)
+    assert "'pomiarowe'" not in str(blad.value)
+    assert "liniowe_odplywowe" not in str(blad.value)
 
 
 def test_blok_przypisany_do_rodziny_modulowej_to_twardy_blad() -> None:

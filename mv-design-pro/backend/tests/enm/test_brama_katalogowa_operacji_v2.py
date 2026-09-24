@@ -1314,7 +1314,10 @@ def test_tabliczka_z_zawyzona_moca_jest_odrzucana() -> None:
 
     assert wynik.get("error_code") == "catalog.nameplate_mismatch", wynik.get("error")
     assert wynik.get("snapshot") is None
-    assert "pmax_mw" in str(wynik.get("error"))
+    # Karta #142: pole tabliczki etykietą i pozycja katalogu nazwą — bez klucza i ref.
+    tresc = str(wynik.get("error"))
+    assert "„Pmax [MW]”" in tresc and "„PCS BESS 2 MW / 0.4 kV nN”" in tresc, tresc
+    assert "pmax_mw" not in tresc and REF_BESS not in tresc, tresc
 
 
 def test_tabliczka_nie_obchodzi_kontroli_zgodnosci_napiec() -> None:
@@ -1449,7 +1452,9 @@ def test_brama_api_porownuje_swoja_materializacje_z_modelem() -> None:
     rozbieznosc = rozbieznosc_wobec_bramy(pola_bramy, wiazanie, skazona, utworzone)
     assert rozbieznosc is not None
     assert rozbieznosc["code"] == "catalog.gate_result_mismatch"
-    assert "un_kv" in rozbieznosc["message_pl"]
+    # Karta #142: parametr etykietą tabliczki, bez klucza kontraktu.
+    assert "„Un [kV]”" in rozbieznosc["message_pl"]
+    assert "un_kv" not in rozbieznosc["message_pl"]
 
     # ZAKRES: ten sam skażony element POZA listą zmian tej operacji nie może
     # blokować zapisu — kontrola pilnuje bieżącego zapisu, nie długu rewizji.
@@ -1502,7 +1507,9 @@ def test_koncowka_domain_ops_odrzuca_rozjazd_bramy_i_modelu(
     assert odpowiedz.status_code == 422, odpowiedz.text
     szczegol = odpowiedz.json()["detail"]
     assert szczegol["code"] == "catalog.gate_result_mismatch", szczegol
-    assert "un_kv" in szczegol["message_pl"]
+    # Karta #142: parametr etykietą tabliczki, bez klucza kontraktu.
+    assert "„Un [kV]”" in szczegol["message_pl"]
+    assert "un_kv" not in szczegol["message_pl"]
     # Odrzucenie BEZ SKUTKU: model nie drgnął.
     po = klient.get(f"/api/cases/{case_id}/enm").json()
     assert po["header"]["hash_sha256"] == hash_przed

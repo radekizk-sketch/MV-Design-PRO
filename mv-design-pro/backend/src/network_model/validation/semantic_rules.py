@@ -23,6 +23,8 @@ Reguły są pure — bez mutacji ENM, bez stanu globalnego.
 
 from collections.abc import Callable
 
+from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu
+
 from .validator import Severity, ValidationIssue
 
 SemanticRule = Callable[[dict], list[ValidationIssue]]
@@ -88,8 +90,9 @@ def rule_cable_cannot_start_from_pole(enm: dict) -> list[ValidationIssue]:
                 ValidationIssue(
                     code="semantic.cable_cannot_start_from_pole",
                     message=(
-                        f"Słup rozgałęźny '{bp.get('ref_id')}' jest osadzony na segmencie "
-                        f"typu '{seg_type}', a wymaga linii napowietrznej."
+                        f"{opis_obiektu(bp, 'Słup rozgałęźny')} jest osadzony na odcinku "
+                        f"rodzaju „{nazwa_rodzaju_galezi(seg_type)}”, a wymaga linii "
+                        "napowietrznej."
                     ),
                     severity=Severity.ERROR,
                     element_id=bp.get("ref_id"),
@@ -122,8 +125,8 @@ def rule_overhead_cannot_start_from_zksn(enm: dict) -> list[ValidationIssue]:
                 ValidationIssue(
                     code="semantic.overhead_cannot_host_zksn",
                     message=(
-                        f"ZKSN '{bp.get('ref_id')}' jest osadzona na segmencie typu "
-                        f"'{seg_type}', a wymaga kabla."
+                        f"{opis_obiektu(bp, 'ZKSN')} jest osadzona na odcinku rodzaju "
+                        f"„{nazwa_rodzaju_galezi(seg_type)}”, a wymaga kabla."
                     ),
                     severity=Severity.ERROR,
                     element_id=bp.get("ref_id"),
@@ -174,15 +177,16 @@ def rule_der_must_match_bay_type(enm: dict) -> list[ValidationIssue]:
                 ValidationIssue(
                     code="semantic.der_bay_type_mismatch",
                     message=(
-                        f"Generator '{gen.get('ref_id')}' typu '{gen_type}' jest w polu "
-                        f"'{bay_ref}' o roli '{bay_role}'. Wymagane pole o roli zgodnej "
-                        f"z typem źródła."
+                        f"{opis_obiektu(gen, 'Generator')} jest w polu "
+                        f"({opis_obiektu(bay, 'pole')}), którego rola nie odpowiada rodzajowi "
+                        "źródła. Wymagane pole o roli zgodnej z rodzajem źródła."
                     ),
                     severity=Severity.ERROR,
                     element_id=gen.get("ref_id"),
                     field="bay_ref",
                     suggested_fix=(
-                        f"Przenieś generator do pola o roli {sorted(allowed)} lub zmień rolę pola."
+                        "Przenieś generator do pola źródłowego albo odpływowego zgodnego "
+                        "z rodzajem źródła lub zmień rolę pola."
                     ),
                 )
             )
@@ -223,14 +227,15 @@ def rule_source_voltage_match_bus(enm: dict) -> list[ValidationIssue]:
                 ValidationIssue(
                     code="semantic.source_voltage_mismatch",
                     message=(
-                        f"Źródło '{src.get('ref_id')}' ma napięcie {src_v} kV, a "
-                        f"szyna '{bus_ref}' {bus_v} kV (różnica {diff_pct:.1f}%)."
+                        f"{opis_obiektu(src, 'Źródło zasilania')} ma napięcie {src_v:g} kV, "
+                        f"a szyna ({opis_obiektu(bus, 'szyna')}) {bus_v:g} kV (różnica "
+                        f"{diff_pct:.1f}%)."
                     ),
                     severity=Severity.ERROR,
                     element_id=src.get("ref_id"),
                     field="voltage_kv",
                     suggested_fix=(
-                        f"Wyrównaj napięcie źródła do {bus_v} kV lub przyłącz do innej szyny."
+                        f"Wyrównaj napięcie źródła do {bus_v:g} kV lub przyłącz do innej szyny."
                     ),
                 )
             )
@@ -264,21 +269,26 @@ def rule_transformer_voltage_polarity(enm: dict) -> list[ValidationIssue]:
         if hv_voltage_raw is None or lv_voltage_raw is None:
             brakujace_strony = [
                 strona
-                for strona, wartosc in (("HV", hv_voltage_raw), ("LV", lv_voltage_raw))
+                for strona, wartosc in (
+                    ("górnego napięcia", hv_voltage_raw),
+                    ("dolnego napięcia", lv_voltage_raw),
+                )
                 if wartosc is None
             ]
             issues.append(
                 ValidationIssue(
                     code="semantic.transformer_bus_voltage_missing",
                     message=(
-                        f"Transformator '{tr.get('ref_id')}' — nie da się sprawdzić "
-                        f"polaryzacji: szyna(-y) {', '.join(brakujace_strony)} nie ma "
-                        "znanego napięcia (voltage_kv)."
+                        f"{opis_obiektu(tr, 'Transformator')} — nie da się sprawdzić "
+                        f"polaryzacji: szyna {' i '.join(brakujace_strony)} nie ma "
+                        "znanego napięcia znamionowego."
                     ),
                     severity=Severity.WARNING,
                     element_id=tr.get("ref_id"),
                     field="voltage_kv",
-                    suggested_fix="Uzupełnij napięcie znamionowe szyny HV i LV.",
+                    suggested_fix=(
+                        "Uzupełnij napięcie znamionowe szyn górnego i dolnego napięcia."
+                    ),
                 )
             )
             continue
@@ -292,13 +302,17 @@ def rule_transformer_voltage_polarity(enm: dict) -> list[ValidationIssue]:
                 ValidationIssue(
                     code="semantic.transformer_polarity_reversed",
                     message=(
-                        f"Transformator '{tr.get('ref_id')}' ma odwróconą polarność: "
-                        f"strona HV ({hv_ref}, {hv_v} kV) niższa niż LV ({lv_ref}, {lv_v} kV)."
+                        f"{opis_obiektu(tr, 'Transformator')} ma odwróconą polarność: strona "
+                        f"górnego napięcia ({opis_obiektu(hv_bus, 'szyna')}, {hv_v:g} kV) "
+                        f"niższa niż strona dolnego ({opis_obiektu(lv_bus, 'szyna')}, "
+                        f"{lv_v:g} kV)."
                     ),
                     severity=Severity.ERROR,
                     element_id=tr.get("ref_id"),
                     field="hv_bus_ref",
-                    suggested_fix="Zamień przypisanie hv_bus_ref ↔ lv_bus_ref.",
+                    suggested_fix=(
+                        "Zamień przypisanie szyny górnego i dolnego napięcia transformatora."
+                    ),
                 )
             )
     return issues
@@ -322,8 +336,8 @@ def rule_no_orphan_branch_points(enm: dict) -> list[ValidationIssue]:
                 ValidationIssue(
                     code="semantic.branch_point_missing_parent",
                     message=(
-                        f"Punkt rozgałęzienia '{bp.get('ref_id')}' nie ma określonego "
-                        f"segmentu nadrzędnego (parent_segment_id)."
+                        f"{opis_obiektu(bp, 'Punkt rozgałęzienia')} nie ma określonego "
+                        "odcinka nadrzędnego."
                     ),
                     severity=Severity.ERROR,
                     element_id=bp.get("ref_id"),
@@ -337,8 +351,8 @@ def rule_no_orphan_branch_points(enm: dict) -> list[ValidationIssue]:
                 ValidationIssue(
                     code="semantic.branch_point_orphan",
                     message=(
-                        f"Punkt rozgałęzienia '{bp.get('ref_id')}' wskazuje na segment "
-                        f"'{parent_seg}', który nie istnieje w sieci."
+                        f"{opis_obiektu(bp, 'Punkt rozgałęzienia')} wskazuje odcinek "
+                        "nadrzędny, który nie istnieje w sieci."
                     ),
                     severity=Severity.ERROR,
                     element_id=bp.get("ref_id"),
@@ -377,8 +391,8 @@ def rule_zero_length_segment(enm: dict) -> list[ValidationIssue]:
                 ValidationIssue(
                     code="semantic.zero_length_segment",
                     message=(
-                        f"Segment '{br.get('ref_id') or br.get('id')}' typu '{br_type}' "
-                        f"ma długość {length_v} km. Wymagana dodatnia długość."
+                        f"{opis_obiektu(br, 'Odcinek')} ({nazwa_rodzaju_galezi(br_type)}) "
+                        f"ma długość {length_v:g} km. Wymagana dodatnia długość."
                     ),
                     severity=Severity.WARNING,
                     element_id=br.get("ref_id") or br.get("id"),
@@ -410,7 +424,7 @@ def rule_zero_power_load(enm: dict) -> list[ValidationIssue]:
                 ValidationIssue(
                     code="semantic.zero_power_load",
                     message=(
-                        f"Odbiór '{load.get('ref_id')}' ma P=0 kW i Q=0 kvar — "
+                        f"{opis_obiektu(load, 'Odbiór')} ma P=0 kW i Q=0 kvar — "
                         f"nie wpływa na obliczenia rozpływowe."
                     ),
                     severity=Severity.WARNING,

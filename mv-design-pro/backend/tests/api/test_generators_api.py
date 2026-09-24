@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from enm.slownik_komunikatow import nazwa_pola
 
 pytest.importorskip("fastapi")
 
@@ -934,10 +935,13 @@ def test_bess_operation_mode_refs_nieznany_tryb_jest_422(app_client) -> None:
 
     assert response.status_code == 422
     assert response.json()["detail"]["code"] == "der_bindings.catalog_ref_unknown"
-    assert (
-        "bess_operation_mode_refs=mode_KTORY_NIE_ISTNIEJE"
-        in response.json()["detail"]["message_pl"]
-    )
+    # Karta #142: treść nazywa pole formularza („Tryb pracy magazynu”), w którym wybrano
+    # pozycję spoza katalogu; dane maszynowe `pole=wartość` i wpisana wartość zostają
+    # w predykacie operacji, nie w zdaniu dla projektanta.
+    komunikat = response.json()["detail"]["message_pl"]
+    assert nazwa_pola("bess_operation_mode_refs") in komunikat
+    assert "bess_operation_mode_refs" not in komunikat
+    assert "mode_KTORY_NIE_ISTNIEJE" not in komunikat
     # Model bez zmian — literówka w JEDNYM elemencie listy odrzuca całe żądanie.
     assert "profiles" not in _wiazania_z_modelu(app_client, case_id)
 

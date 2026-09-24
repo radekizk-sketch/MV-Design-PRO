@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from enm.slownik_komunikatow import opis_operacji, pole
 from enm.zrodlo_zwarcie import tryb_danych
 from network_model.catalog.materialization import (
     materialize_catalog_binding,
@@ -877,8 +878,8 @@ def _blad_pozycji_api(
         if get_tap_changer(referencja) is not None:
             return None
         komunikat = (
-            f"Pozycja katalogowa '{referencja}' nie istnieje w katalogu przełączników "
-            "zaczepów. Wskaż pozycję istniejącą w katalogu."
+            "Wskazana pozycja nie istnieje w katalogu przełączników zaczepów. Wskaż "
+            "pozycję istniejącą w katalogu."
         )
         return CatalogPolicyError(
             code="catalog.item_not_found",
@@ -892,7 +893,10 @@ def _blad_pozycji_api(
     if validate_catalog_binding(binding_data):
         # Nieznana kategoria katalogu podana w payloadzie — ten sam kontrakt co
         # dla wiązania głównego (brama nie zgaduje kategorii za klienta).
-        komunikat = f"Nieznana kategoria katalogu: {przestrzen}"
+        komunikat = (
+            "Wskazana grupa katalogu nie istnieje — brama nie dobiera grupy katalogu "
+            "za projektanta."
+        )
         return CatalogPolicyError(
             code="catalog.unknown_namespace",
             message_pl=f"{opis_pl}: {komunikat}",
@@ -1085,6 +1089,7 @@ def _blad_wiazan_der(operation: str, payload: dict[str, Any]) -> CatalogPolicyEr
         DER_PROFILE_KEYS,
         KLUCZ_KART_WIDMOWYCH,
         _nieznane_referencje_katalogowe,
+        opis_nieznanych_wiazan,
     )
 
     # Karta AB-H0 §0.7.6: `karty_widmowe_ref` — ten sam predykat istnienia karty co
@@ -1098,10 +1103,11 @@ def _blad_wiazan_der(operation: str, payload: dict[str, Any]) -> CatalogPolicyEr
     nieznane = _nieznane_referencje_katalogowe(wiazania)
     if not nieznane:
         return None
+    # Dane maszynowe `pole=wartość` zostają w predykacie; do projektanta idzie nazwa
+    # pola formularza — TEN SAM opis co w operacji domenowej (karta #142).
     komunikat = (
-        "Referencje katalogowe nie istnieją w katalogu: "
-        + ", ".join(nieznane)
-        + ". Wskaż pozycję istniejącą w katalogu."
+        f"Wskazane pozycje nie istnieją w katalogu: {opis_nieznanych_wiazan(nieznane)} — "
+        "wybierz je ponownie z katalogu."
     )
     return CatalogPolicyError(
         code="catalog.item_not_found",
@@ -1263,9 +1269,11 @@ def _validate_station_field_apparatus_bindings(
     pola = sn_fields if isinstance(sn_fields, list) else []
 
     sprawdzone: set[str] = set()
-    for index, pole in enumerate(pola, start=1):
+    for index, pole_sn in enumerate(pola, start=1):
         ref = (
-            _tekst_referencji(pole.get("apparatus_catalog_ref")) if isinstance(pole, dict) else None
+            _tekst_referencji(pole_sn.get("apparatus_catalog_ref"))
+            if isinstance(pole_sn, dict)
+            else None
         )
         ref = ref or wspolny_ref
         if ref is None or ref in sprawdzone:
@@ -1421,8 +1429,8 @@ def validate_and_materialize_catalog_binding(
                     {
                         "code": "catalog.ref_required",
                         "message_pl": (
-                            "Ręczny odpowiednik GPZ musi być kompletny albo należy podać "
-                            "'catalog_binding'."
+                            "Ręczny odpowiednik GPZ musi być kompletny albo należy wskazać "
+                            f"pozycję katalogu w polu {pole('catalog_ref', operation)}."
                         ),
                     }
                 ],
@@ -1463,7 +1471,8 @@ def validate_and_materialize_catalog_binding(
                     {
                         "code": "catalog.ref_required",
                         "message_pl": (
-                            f"Operacja '{operation}' wymaga 'catalog_binding' w payload."
+                            f"Operacja {opis_operacji(operation)} wymaga pozycji katalogu — "
+                            f"wybierz ją w polu {pole('catalog_ref', operation)}."
                         ),
                     }
                 ],
@@ -1490,9 +1499,8 @@ def validate_and_materialize_catalog_binding(
                     {
                         "code": "catalog.item_not_found",
                         "message_pl": (
-                            f"Pozycja katalogowa '{catalog_ref}' nie istnieje w katalogu "
-                            "ZKSN i słupów odgałęźnych SN. Wskaż pozycję istniejącą "
-                            "w katalogu."
+                            "Wskazana pozycja nie istnieje w katalogu ZKSN i słupów "
+                            "odgałęźnych SN. Wskaż pozycję istniejącą w katalogu."
                         ),
                     }
                 ],
@@ -1527,7 +1535,10 @@ def validate_and_materialize_catalog_binding(
                 errors=[
                     {
                         "code": "catalog.ref_required",
-                        "message_pl": "Nie można odczytać danych 'catalog_binding'.",
+                        "message_pl": (
+                            "Nie można odczytać wskazania pozycji katalogu — wybierz pozycję "
+                            "ponownie."
+                        ),
                     }
                 ],
             ),

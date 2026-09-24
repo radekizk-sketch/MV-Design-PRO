@@ -199,7 +199,9 @@ class TestWiazanieMusiIstniecWKatalogu:
         )
 
         assert wynik.get("error_code") == "der_bindings.catalog_ref_unknown"
-        assert "ct_TYP_KTORY_NIE_ISTNIEJE" in (wynik.get("error") or "")
+        # Karta #142: pole formularza słowami, bez wpisanej referencji.
+        assert "„Przekładnik prądowy (CT)”" in (wynik.get("error") or "")
+        assert "ct_TYP_KTORY_NIE_ISTNIEJE" not in (wynik.get("error") or "")
 
     def test_realny_typ_katalogu_przechodzi(self) -> None:
         wynik = _wykonaj({"generator_ref": "gen_pv_1", "ct_catalog_ref": "ct_200_5_5p10_10va_abb"})
@@ -232,7 +234,10 @@ class TestWiazanieMusiIstniecWKatalogu:
         )
 
         assert wynik.get("error_code") == "der_bindings.catalog_ref_unknown"
-        assert "dynamic_model_ref=dyn_dowolne" in (wynik.get("error") or "")
+        # Karta #142: pole formularza słowami, bez danych `klucz=wartość`.
+        assert "„Model dynamiczny urządzenia”" in (wynik.get("error") or "")
+        assert "dynamic_model_ref" not in (wynik.get("error") or "")
+        assert "dyn_dowolne" not in (wynik.get("error") or "")
 
     def test_dynamic_model_ref_realny_profil_der_dynamic_przechodzi(self) -> None:
         wynik = _wykonaj(
@@ -268,7 +273,10 @@ class TestWiazanieMusiIstniecWKatalogu:
         )
 
         assert wynik.get("error_code") == "der_bindings.catalog_ref_unknown"
-        assert "bess_operation_mode_refs=mode_KTORY_NIE_ISTNIEJE" in (wynik.get("error") or "")
+        # Karta #142: pole formularza słowami, bez danych `klucz=wartość`.
+        assert "„Tryb pracy magazynu”" in (wynik.get("error") or "")
+        assert "bess_operation_mode_refs" not in (wynik.get("error") or "")
+        assert "mode_KTORY_NIE_ISTNIEJE" not in (wynik.get("error") or "")
         assert wynik.get("snapshot") is None
 
     def test_bess_operation_mode_refs_realne_tryby_przechodza(self) -> None:

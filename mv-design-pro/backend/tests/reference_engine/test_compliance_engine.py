@@ -6,6 +6,7 @@ poza standardem OSD) + determinizm raportu. Wyrocznia gryzie.
 """
 
 import json
+import re
 
 from enm.models import (
     Bay,
@@ -418,6 +419,33 @@ class TestCellMatchCompliance:
         checks = _cell_match_check_for_bay(bay, pack, family)
         assert len(checks) == 1
         assert checks[0].status == "fail"
+        # Karta #142: skład pola słowami („Wyłącznik”), kandydat — oznaczeniem celki
+        # producenta z jej nazwą; kody rodzajów aparatu ENM nie trafiają do treści.
+        from reference_engine.compliance import _kind_pl
+
+        komunikat = checks[0].message_pl
+        assert _kind_pl("CB") in komunikat
+        assert "C (Celka liniowa rozłącznikowa)" in komunikat
+        assert re.search(r"\b(?:CB|ES|LOAD_SWITCH|CABLE_HEAD)\b", komunikat) is None
+
+    def test_aparat_bez_symbolu_iec60617_nazwany_slowami(self) -> None:
+        # Karta #142: gałąź „aparat bez symbolu” (osiągalna, gdy model dostanie rodzaj
+        # aparatu bez wpisu w słowniku symboli) nazywa aparat słowami, nie kodem ENM.
+        from reference_engine import get_reference_pack
+        from reference_engine.compliance import _checks_for_pack, _kind_pl
+
+        pakiet = get_reference_pack("iec60617")
+        okrojony = pakiet.model_copy(
+            update={"symbol_map": [e for e in pakiet.symbol_map if e.kind != "ES"]}
+        )
+        enm = _enm([_rmu_line_bay()])
+        checks = _checks_for_pack(
+            okrojony, enm, {s.ref_id: s for s in enm.substations}, {"bus/sn": 15.0}
+        )
+        niezgodne = [c for c in checks if c.status == "fail"]
+        assert len(niezgodne) == 1
+        assert _kind_pl("ES") in niezgodne[0].message_pl
+        assert re.search(r"\bES\b", niezgodne[0].message_pl) is None
 
     def test_pack_without_cells_is_data_gated(self) -> None:
         # Bramka danych: pakiet bez konfiguracji celek = zero sprawdzeń.

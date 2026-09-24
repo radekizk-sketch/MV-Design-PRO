@@ -53,6 +53,8 @@ from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
 from network_model.catalog.types import CatalogNamespace
 
+from tests.enm.test_komunikaty_operacji_bez_kodow import kody_w_tekscie
+
 REF_ZRODLO = "src-gpz-15kv-250mva-rx010"
 REF_KABEL = "cable-tfk-yakxs-3x120"
 REF_TRAFO = "tr-sn-nn-15-04-630kva-dyn11"
@@ -463,7 +465,14 @@ def test_literowka_odrzucona_w_torze_payloadu(
     assert odpowiedz.status_code == 422, odpowiedz.text
     szczegol = odpowiedz.json()["detail"]
     assert szczegol["code"] == "catalog.item_not_found", szczegol
-    assert "Nie znaleziono rekordu katalogu" in szczegol["message_pl"]
+    # Karta #142: przyczyna słowami (pozycji nie ma w katalogu), bez wpisanej referencji
+    # i bez kodów — iloczyn: każda pozycja inwentarza × obie operacje stacyjne.
+    assert "nie ma w grupie katalogu" in szczegol["message_pl"] or (
+        "nie istnieje w katalogu" in szczegol["message_pl"]
+    ), szczegol["message_pl"]
+    for tekst in (szczegol["message_pl"], *(e["message_pl"] for e in szczegol["errors"])):
+        assert LITEROWKA not in tekst, tekst
+        assert not kody_w_tekscie(tekst), tekst
     # Model NIE został zmieniony — brama stoi PRZED wykonaniem operacji.
     migawka = klient.get(f"/api/cases/{case_id}/enm").json()
     assert migawka["substations"] == [] or all(

@@ -196,10 +196,12 @@ TABLICA_GRUPOWANIA_GRUNTU_NN: dict[int, WpisNormyNN] = {
 }
 
 # Powod, dla ktorego rejestry sa czesciowe — zapisany w kodzie, zeby nie
-# wygladaly na przeoczenie (patrz tez lista brakow w docstringu modulu).
+# wygladaly na przeoczenie (patrz tez lista brakow w docstringu modulu). Tresc czyta
+# projektant (kreator źródła OZE, odmowa operacji kabla nN) — bez nazw kart i kodów
+# (karta #142).
 OGRANICZENIE_TABLIC_PL = (
-    "Rejestry zawierają wyłącznie wpisy tablic PN-HD 60364-5-52 zweryfikowane w DWÓCH "
-    "niezależnych publikowanych źródłach (karta P0.5a). Braki: korekta temperatury "
+    "Rejestry zawierają wyłącznie wpisy tablic PN-HD 60364-5-52 zweryfikowane w dwóch "
+    "niezależnych publikowanych źródłach. Braki: korekta temperatury "
     "powietrza poniżej 30°C, grupowanie w powietrzu dla 5 obwodów, grupowanie w "
     "gruncie dla 5–6 obwodów, metody ułożenia inne niż uproszczone „powietrze”/„grunt” "
     "— system nie fabrykuje współczynników z jednego źródła ani z pamięci."

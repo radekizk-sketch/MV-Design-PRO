@@ -813,4 +813,7 @@ def test_wspolczynniki_bez_nazwy_zestawu_sa_odrzucane() -> None:
     )
     assert result.get("error")
     assert result["error_code"] == "der.mv_cable_laying_conditions_invalid"
-    assert "bez nazwy zestawu" in result["error"]
+    # Karta #142: pole formularza słowami, bez kluczy współczynników.
+    assert "bez wyboru zestawu warunków ułożenia" in result["error"]
+    assert "„Warunki ułożenia kabla”" in result["error"]
+    assert "f_grunt" not in result["error"]

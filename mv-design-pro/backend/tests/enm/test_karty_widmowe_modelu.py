@@ -280,7 +280,11 @@ def test_karta_nieznana_jest_odrzucona(tor: Tor) -> None:
     snapshot = _model(tor)
     wynik = _wiaz(snapshot, _generator(snapshot)["ref_id"], ["karta-ktorej-nie-ma"])
     assert wynik.get("error_code") == "der_bindings.catalog_ref_unknown", wynik
-    assert "karty_widmowe_ref=karta-ktorej-nie-ma" in str(wynik.get("error"))
+    # Karta #142: pole nazwane jak w formularzu, bez klucza kontraktu i identyfikatora
+    # karty (dawniej test wymagał ``karty_widmowe_ref=<id>`` w treści).
+    tresc = str(wynik.get("error"))
+    assert "„Karty widmowe urządzenia”" in tresc, tresc
+    assert "karty_widmowe_ref" not in tresc and "karta-ktorej-nie-ma" not in tresc, tresc
 
 
 @pytest.mark.parametrize(
@@ -400,7 +404,11 @@ def test_przypisanie_innego_typu_jest_odmowa_nazwana() -> None:
         },
     )
     assert wynik.get("error_code") == "der_bindings.karta_widmowa_innego_urzadzenia", wynik
-    assert "karty_widmowe_ref: null" in str(wynik.get("error"))
+    # Karta #142: podpowiedź naprawy słowami projektanta, nie zapisem kontraktu
+    # (dawniej ``karty_widmowe_ref: null`` w treści).
+    tresc = str(wynik.get("error"))
+    assert "Odwiąż karty widmowe generatora" in tresc, tresc
+    assert "karty_widmowe_ref" not in tresc and "conv-pv-nn-0p5mw-0p8kv" not in tresc, tresc
 
 
 def test_aktualizacja_parametrow_nie_gubi_modeli() -> None:
@@ -555,7 +563,13 @@ def test_karta_projektu_odmowy_nazwane(zmiana: dict[str, Any], kod: str) -> None
     wynik = _dodaj_wynik(snapshot, rekord)
     assert wynik.get("error_code") == kod, wynik
     if kod == "karta_widmowa.odrzucona":
-        assert "KAT-T-014" in str(wynik.get("error"))
+        # Karta #142: kod reguły katalogu w maszynowej części odpowiedzi, nie w zdaniu
+        # dla projektanta (dawniej test wymagał kodu w treści — utrwalenie defektu).
+        assert wynik.get("kod_reguly_katalogu") == "KAT-T-014", wynik
+        tresc = str(wynik.get("error"))
+        assert "KAT-T" not in tresc and rekord["id"] not in tresc, tresc
+        assert "[widmo." not in tresc, tresc  # identyfikator reguły kontraktu to kod
+        assert "twardą regułę katalogu kart widmowych" in tresc, tresc
 
 
 def test_karta_projektu_inna_tresc_pod_tym_samym_id_odrzucona() -> None:

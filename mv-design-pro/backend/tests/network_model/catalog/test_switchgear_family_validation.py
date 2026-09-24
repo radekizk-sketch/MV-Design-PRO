@@ -71,8 +71,14 @@ def test_rodzina_bez_karty_odbija_kazde_sprawdzenie_walidatora(rodzina_widmo) ->
         lambda: fv.family_supports_short_circuit(ref, 16.0),
         lambda: fv.wymagaj_rodziny_oferowanej(ref),
     ):
-        with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie ma potwierdzonych"):
+        # Karta #142: zdanie dla projektanta nazywa powód blokady słowami
+        # („wymaga karty katalogowej producenta”), a status i referencja rodziny
+        # zostają w danych katalogu — nie w komunikacie.
+        with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie jest dopuszczona") as blad:
             wywolanie()
+        assert "wymaga karty katalogowej producenta" in str(blad.value)
+        assert rodzina_widmo.status not in str(blad.value)
+        assert ref not in str(blad.value)
 
 
 def test_rodzina_bez_zadeklarowanej_konstrukcji_nie_ma_toru(monkeypatch) -> None:
@@ -169,7 +175,7 @@ def test_bay_template_supports_apparatus_para() -> None:
     szablon = _szablon("ZPUE_WLOSZCZOWA__ROTOBLOK", "transformatorowe")
     assert fv.bay_template_supports_apparatus(szablon, "circuit_breaker") == "FABRYCZNY"
     # Aparat spoza listy pola = twardy błąd, nie ciche „nie ma".
-    with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie przewiduje elementu"):
+    with pytest.raises(NiezgodnoscKonfiguracjiError, match="nie przewiduje aparatu"):
         fv.bay_template_supports_apparatus(szablon, "surge_arrester")
 
 

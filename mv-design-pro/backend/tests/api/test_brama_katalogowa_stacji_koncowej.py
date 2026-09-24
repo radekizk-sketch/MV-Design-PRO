@@ -165,9 +165,15 @@ def test_ta_sama_literowka_w_obu_torach_daje_ten_sam_blad_katalogu(klient: TestC
     assert srodek.status_code == 422, srodek.text
     assert koniec.json()["detail"]["code"] == "catalog.item_not_found"
     assert srodek.json()["detail"]["code"] == "catalog.item_not_found"
-    assert REF_TRAFO_LITEROWKA in koniec.json()["detail"]["message_pl"]
-    # Komunikat po polsku, wskazujący PRZYCZYNĘ (nieistniejąca pozycja), nie objaw.
-    assert "Nie znaleziono rekordu katalogu" in koniec.json()["detail"]["message_pl"]
+    # Komunikat po polsku, wskazujący PRZYCZYNĘ (nieistniejąca pozycja), nie objaw —
+    # i TEN SAM w obu torach (parytet treści, nie tylko kodu). Karta #142: grupa katalogu
+    # nazwana słowami przeglądarki katalogu, wpisana (błędna) referencja nie trafia do
+    # zdania — projektant wybiera pozycję z listy, nie przepisuje identyfikatora.
+    komunikat = koniec.json()["detail"]["message_pl"]
+    assert komunikat == srodek.json()["detail"]["message_pl"]
+    assert "Wskazanej pozycji nie ma w grupie katalogu" in komunikat
+    assert "„Typy transformatorów SN/nN”" in komunikat
+    assert REF_TRAFO_LITEROWKA not in komunikat
 
 
 def test_zly_ref_bez_tabliczki_tez_odrzucony_zamiast_blokady_o_braku_uk(

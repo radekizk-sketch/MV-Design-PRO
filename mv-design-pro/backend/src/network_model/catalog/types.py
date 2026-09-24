@@ -102,6 +102,46 @@ class CatalogNamespace(Enum):
     KARTA_WIDMOWA = "KARTA_WIDMOWA"
 
 
+#: Kategoria katalogu → nazwa grupy katalogu w treści dla projektanta (karta #142).
+#: Słowa = etykiety przeglądarki katalogu frontu
+#: (``ui/catalog/elementCatalogRegistry.ts::NAMESPACE_LABEL_PL``); parytet wspólnych
+#: kluczy i kompletność względem ``CatalogNamespace`` przypięte testem
+#: ``tests/enm/test_komunikaty_operacji_bez_kodow.py``. Kod kategorii zostaje w danych
+#: maszynowych (``catalog_namespace``, ``error_code``) — do komunikatu idzie ta nazwa.
+NAZWY_KATEGORII_KATALOGU_PL: dict[str, str] = {
+    "LINIA_SN": "Typy linii napowietrznych",
+    "KABEL_SN": "Typy kabli SN",
+    "ZRODLO_SN": "Typy zasilania systemowego SN",
+    "TRAFO_SN_NN": "Typy transformatorów SN/nN",
+    "APARAT_SN": "Typy aparatury SN",
+    "APARAT_NN": "Typy aparatury nN",
+    "APARAT_NN_MCB": "Typy wyłączników instalacyjnych nN",
+    "WKLADKA_NN": "Typy wkładek topikowych nN",
+    "KABEL_NN": "Typy kabli nN",
+    "CT": "Typy przekładników prądowych",
+    "VT": "Typy przekładników napięciowych",
+    "OGRANICZNIK_SN": "Typy ograniczników przepięć SN",
+    "OBCIAZENIE": "Typy obciążeń",
+    "KOMPENSATOR_SN": "Typy baterii kondensatorów SN",
+    "ZRODLO_NN_PV": "Typy falowników PV",
+    "ZRODLO_NN_BESS": "Typy falowników BESS",
+    "BATERIA_BESS": "Typy pakietów baterii BESS",
+    "ZABEZPIECZENIE": "Typy zabezpieczeń",
+    "NASTAWY_ZABEZPIECZEN": "Szablony nastaw zabezpieczeń",
+    "PTPIREE_CERTYFIKAT_GENERATORA": "Certyfikaty PTPiREE generatorów",
+    "CONVERTER": "Typy konwerterów",
+    "GENERATOR_SN": "Typy generatorów synchronicznych SN",
+    "KARTA_WIDMOWA": "Karty widmowe urządzeń",
+    "mv_branch_points": "Typy punktów rozgałęzienia SN",
+}
+
+
+def nazwa_kategorii_katalogu_pl(kategoria: object) -> str | None:
+    """Nazwa grupy katalogu dla kategorii (enum albo kod) albo ``None`` spoza słownika."""
+    klucz = getattr(kategoria, "value", kategoria)
+    return NAZWY_KATEGORII_KATALOGU_PL.get(str(klucz)) if klucz is not None else None
+
+
 # =============================================================================
 # CATALOG QUALITY META - zamrozone statusy i kontrakt danych katalogowych
 # =============================================================================
@@ -4586,3 +4626,17 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
         ),
     ),
 }
+
+
+def etykieta_pola_katalogu_pl(klucz: str) -> str | None:
+    """Polski opis pola tabliczki z kontraktów materializacji (``ui_fields``) albo ``None``.
+
+    Jedno źródło nazw pól tabliczki katalogowej w treści komunikatów (karta #142): opis,
+    który podgląd katalogu pokazuje przy wartości. Kategorie przeglądane w stałej,
+    posortowanej kolejności — ten sam klucz zawsze daje ten sam opis (determinizm).
+    """
+    for kategoria in sorted(MATERIALIZATION_CONTRACTS):
+        for pole, etykieta, _jednostka in MATERIALIZATION_CONTRACTS[kategoria].ui_fields:
+            if pole == klucz and etykieta:
+                return etykieta
+    return None

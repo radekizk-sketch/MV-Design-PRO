@@ -593,7 +593,9 @@ class TestSourcesBusMissing:
         trafienia = [i for i in raport.issues if i.code == "sources.bus_missing"]
         assert len(trafienia) == 1
         assert trafienia[0].severity == SEVERITY_BLOCKER
-        assert "bus_widmo" in trafienia[0].message_pl
+        # Karta #142: źródło nazwane nazwą z modelu, bez identyfikatora szyny.
+        assert "Źródło zasilania „Grid”" in trafienia[0].message_pl
+        assert "bus_widmo" not in trafienia[0].message_pl
         assert trafienia[0].element_refs == ["src_1"]
         assert trafienia[0].fix_action is not None
         assert trafienia[0].fix_action.modal_type == "SourceModal"
@@ -741,8 +743,11 @@ class TestGeneratorVoltageControlIncomplete:
         assert issue.severity == SEVERITY_BLOCKER
         assert is_blocking_severity(issue.severity) is True
         assert issue.element_refs == ["gen_1"]
-        assert "u_set_pu" in issue.message_pl
-        assert "q_min_mvar" in issue.message_pl
+        # Karta #142: pola formularza generatora słowami, bez kluczy kontraktu.
+        assert "„Nastawa napięcia U”" in issue.message_pl
+        assert "„Q min (pobór, podwzbudzenie)”" in issue.message_pl
+        assert "u_set_pu" not in issue.message_pl
+        assert "q_min_mvar" not in issue.message_pl
         assert issue.fix_action is not None
         assert issue.fix_action.modal_type == "GeneratorModal"
         assert raport.status == STATUS_FAIL
@@ -827,9 +832,10 @@ class TestGeneratorVoltageControlProfile:
             modul_walidatora,
             "load_nc_rfg_profile",
             lambda ref: SimpleNamespace(
+                operator_name_pl="PSE — Polskie Sieci Elektroenergetyczne",
                 reactive_power=SimpleNamespace(
                     voltage_control_modes=["cos_phi_constant", "q_constant", "q_of_u"]
-                )
+                ),
             ),
         )
         raport = self._raport(
@@ -841,7 +847,9 @@ class TestGeneratorVoltageControlProfile:
         assert len(trafienia) == 1
         assert trafienia[0].severity == SEVERITY_BLOCKER
         assert trafienia[0].element_refs == ["gen_1"]
-        assert "'pse'" in trafienia[0].message_pl
+        # Karta #142: operator nazwą z profilu, nie identyfikatorem profilu.
+        assert "„PSE — Polskie Sieci Elektroenergetyczne”" in trafienia[0].message_pl
+        assert "'pse'" not in trafienia[0].message_pl
         assert trafienia[0].fix_action is not None
         assert trafienia[0].fix_action.modal_type == "GeneratorModal"
         assert trafienia[0].fix_action.payload_hint == {"required": "control_mode"}

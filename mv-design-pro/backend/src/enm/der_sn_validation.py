@@ -99,7 +99,9 @@ def validate_connection_method(
     if connection_method not in CONNECTION_METHODS:
         return ValidationError(
             "converter.der_sn.sposob_przylaczenia_nieznany",
-            f"❌ Nieznany sposób przyłączenia DER: „{connection_method}”.",
+            "❌ Nieznany sposób przyłączenia DER — wybierz: „DER za transformatorem stacji”, "
+            "„DER z transformatorem blokowym”, „DER bezpośrednio na SN” albo „DER przez "
+            "rozdzielnię producenta”.",
         )
 
     if connection_method == "der_za_tr_stacji":

@@ -26,6 +26,8 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, model_validator
 
+from .slownik_komunikatow import lista_pl, nazwa_pola, pole
+
 #: Pola wartości nastaw w kolejności słownika Banku Nastaw (parytet przypięty testem).
 POLA_NASTAW: tuple[str, ...] = (
     "u_min_pu",
@@ -73,11 +75,13 @@ class NastawyZabezpieczenModulu(BaseModel):
 
     @model_validator(mode="after")
     def _zrodlo_i_porzadek(self) -> Self:
-        podane = [pole for pole in POLA_NASTAW if getattr(self, pole) is not None]
+        podane = [klucz for klucz in POLA_NASTAW if getattr(self, klucz) is not None]
         if podane and (self.zrodlo_pl is None or not self.zrodlo_pl.strip()):
             raise ValueError(
-                f"Nastawy zabezpieczeń modułu ({', '.join(podane)}) bez wskazania źródła — "
-                "podaj `zrodlo_pl` (nastawnik zabezpieczenia, karta nastaw albo dokument)."
+                f"Nastawy zabezpieczeń modułu ({lista_pl((pole(p) for p in podane), 'i')}) "
+                f"bez wskazania źródła — uzupełnij pole "
+                f"„{nazwa_pola('zrodlo_pl', 'nastawy_zabezpieczen')}” (nastawnik zabezpieczenia, "
+                "karta nastaw albo dokument)."
             )
         for dolna, gorna in (("u_min_pu", "u_max_pu"), ("f_min_hz", "f_max_hz")):
             wartosc_dolna = getattr(self, dolna)
@@ -88,7 +92,8 @@ class NastawyZabezpieczenModulu(BaseModel):
                 and not wartosc_dolna < wartosc_gorna
             ):
                 raise ValueError(
-                    f"Nastawa `{dolna}` = {wartosc_dolna} nie jest mniejsza od `{gorna}` = "
-                    f"{wartosc_gorna} — próg dolny musi leżeć poniżej progu górnego."
+                    f"Nastawa {pole(dolna)} = {wartosc_dolna:g} nie jest mniejsza od nastawy "
+                    f"{pole(gorna)} = {wartosc_gorna:g} — próg dolny musi leżeć poniżej progu "
+                    "górnego."
                 )
         return self

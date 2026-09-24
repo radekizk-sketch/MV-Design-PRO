@@ -281,9 +281,11 @@ def test_rodzina_blokowa_jest_odrzucona_z_wskazaniem_kanalu_blokow(tor: str) -> 
     assert odpowiedz.get("error"), f"tor {tor}: rodzina blokowa przeszla bez bledu"
     assert odpowiedz.get("error_code") == KOD_BLEDU_POLA_KATALOGOWEGO
     komunikat = str(odpowiedz["error"])
-    assert "BLOKÓW fabrycznych" in komunikat
-    assert "add_sn_bay_from_catalog" in komunikat
-    assert "factory_configuration_ref" in komunikat
+    # Karta #142: kanał bloków nazwany polami formularza, bez nazwy operacji i klucza.
+    assert "z bloków fabrycznych" in komunikat
+    assert "„Blok fabryczny”" in komunikat
+    assert "add_sn_bay_from_catalog" not in komunikat
+    assert "factory_configuration_ref" not in komunikat
     # Operacja meldująca błąd nie zostawia skutku: brak migawki i brak elementów.
     assert odpowiedz.get("snapshot") is None
     assert not odpowiedz.get("created")

@@ -33,6 +33,8 @@ from typing import Any
 
 from network_model.solvers.power_flow_zip import ZipCoeffs, validate_zip_coeffs
 
+from .slownik_komunikatow import pole
+
 #: Współczynniki modelu ZIP dobierane PER ODBIÓR — dokładnie te, które projektant
 #: widzi w kontrakcie pól OBCIAZENIE (``MATERIALIZATION_CONTRACTS``) i ustawia w
 #: kreatorze odbioru. Wielkości odniesienia układu (``v0_pu``, ``f0_hz``) NIE są
@@ -132,7 +134,7 @@ def zip_odbioru_z_payloadu(
         liczba = _liczba(surowa)
         if liczba is None:
             return None, (
-                f"Współczynnik modelu obciążenia (ZIP) '{klucz}' musi być liczbą, "
+                f"Współczynnik modelu obciążenia (ZIP) {pole(klucz)} musi być liczbą, "
                 f"otrzymano: {surowa!r}."
             )
         wspolczynniki[klucz] = liczba

@@ -44,6 +44,7 @@ from pydantic import (
 )
 
 from .nastawy_modulu import NastawyZabezpieczenModulu
+from .slownik_komunikatow import lista_pl, nazwa_pola, opis_bledu_walidacji, pole
 
 _DATA_ISO = re.compile(r"\d{4}-\d{2}-\d{2}")
 
@@ -132,11 +133,12 @@ class DeklaracjeModulu(BaseModel):
 
     @model_validator(mode="after")
     def _zrodlo(self) -> Self:
-        podane = [pole for pole in POLA_DEKLARACJI if getattr(self, pole) is not None]
+        podane = [klucz for klucz in POLA_DEKLARACJI if getattr(self, klucz) is not None]
         if podane and (self.zrodlo_pl is None or not self.zrodlo_pl.strip()):
             raise ValueError(
-                f"Deklaracje modułu ({', '.join(podane)}) bez wskazania źródła — podaj "
-                "`zrodlo_pl` (karta katalogowa, deklaracja wytwórcy albo dokument projektu)."
+                f"Deklaracje modułu ({lista_pl((pole(p) for p in podane), 'i')}) bez wskazania "
+                f"źródła — uzupełnij pole „{nazwa_pola('zrodlo_pl', 'deklaracje_modulu')}” "
+                "(karta katalogowa, deklaracja wytwórcy albo dokument projektu)."
             )
         return self
 
@@ -154,13 +156,6 @@ _MODUL_ISTNIEJACY: TypeAdapter[bool] = TypeAdapter(ModulIstniejacy)
 _DATA: TypeAdapter[date] = TypeAdapter(DataUmowy)
 
 
-def _opis_bledu(blad: ValidationError) -> str:
-    return "; ".join(
-        f"{'.'.join(str(czesc) for czesc in pozycja['loc']) or 'wartość'}: {pozycja['msg']}"
-        for pozycja in blad.errors()
-    )
-
-
 def pola_nc_rfg_generatora(
     parametry: Mapping[str, Any],
 ) -> tuple[dict[str, Any], tuple[str, str] | None]:
@@ -175,16 +170,16 @@ def pola_nc_rfg_generatora(
     ``deklaracje_modulu`` — ``DeklaracjeModulu``.
     """
     pola: dict[str, Any] = {}
-    for pole in POLA_NC_RFG_GENERATORA:
-        if pole not in parametry:
+    for klucz in POLA_NC_RFG_GENERATORA:
+        if klucz not in parametry:
             continue
-        wartosc = parametry[pole]
+        wartosc = parametry[klucz]
         if wartosc is None:
-            pola[pole] = None
+            pola[klucz] = None
             continue
-        if pole == "modul_istniejacy":
+        if klucz == "modul_istniejacy":
             try:
-                pola[pole] = _MODUL_ISTNIEJACY.validate_python(wartosc)
+                pola[klucz] = _MODUL_ISTNIEJACY.validate_python(wartosc)
             except ValidationError:
                 return {}, (
                     "Status modułu istniejącego (art. 4 ust. 1 rozporządzenia 2016/631) musi "
@@ -193,14 +188,14 @@ def pola_nc_rfg_generatora(
                 )
             continue
         try:
-            if pole == "data_umowy_przylaczeniowej":
-                pola[pole] = _DATA.validate_python(wartosc).isoformat()
-            elif pole == "nastawy_zabezpieczen":
-                pola[pole] = NastawyZabezpieczenModulu.model_validate(wartosc).model_dump(
+            if klucz == "data_umowy_przylaczeniowej":
+                pola[klucz] = _DATA.validate_python(wartosc).isoformat()
+            elif klucz == "nastawy_zabezpieczen":
+                pola[klucz] = NastawyZabezpieczenModulu.model_validate(wartosc).model_dump(
                     mode="json", exclude_none=True
                 )
             else:
-                pola[pole] = DeklaracjeModulu.model_validate(wartosc).model_dump(
+                pola[klucz] = DeklaracjeModulu.model_validate(wartosc).model_dump(
                     mode="json", exclude_none=True
                 )
         except ValidationError as blad:
@@ -209,5 +204,8 @@ def pola_nc_rfg_generatora(
                 "nastawy_zabezpieczen": "generator.nastawy_zabezpieczen_invalid",
                 "deklaracje_modulu": "generator.deklaracje_modulu_invalid",
             }
-            return {}, (f"Pole `{pole}` poza kontraktem: {_opis_bledu(blad)}.", kody[pole])
+            return {}, (
+                f"{nazwa_pola(klucz)}: {opis_bledu_walidacji(blad, klucz)}.",
+                kody[klucz],
+            )
     return pola, None

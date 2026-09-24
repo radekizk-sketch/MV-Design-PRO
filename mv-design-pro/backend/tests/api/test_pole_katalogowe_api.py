@@ -26,6 +26,7 @@ from typing import Any
 import pytest
 from api.main import app
 from enm.dziennik_zmian import wyczysc_dziennik
+from enm.slownik_komunikatow import nazwa_pola
 from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
 
@@ -234,7 +235,10 @@ def test_konfiguracja_spoza_katalogu_nie_zmienia_modelu(klient: TestClient) -> N
 
     assert wynik["error_code"] == "sn.pole_katalogowe_niezgodne"
     assert wynik["preview"]["werdykt"] == "INVALID"
-    assert "BLOK" in wynik["preview"]["komunikat_pl"]
+    # Karta #142: droga bloku wskazana słowami formularza kreatora („Blok fabryczny”),
+    # nie kodem toru konfiguracji (`BLOK_RMU`).
+    assert nazwa_pola("factory_configuration_ref") in wynik["preview"]["komunikat_pl"]
+    assert "BLOK_RMU" not in wynik["preview"]["komunikat_pl"]
     assert _odcisk(klient, case_id) == odcisk_przed
 
 

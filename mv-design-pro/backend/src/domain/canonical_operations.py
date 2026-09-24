@@ -353,12 +353,10 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
     "set_measurement_secondary_circuit": OperationSpec(
         canonical_name="set_measurement_secondary_circuit",
         category=OperationCategory.PROTECTION,
-        description_pl=(
-            "Zapis/aktualizacja obwodu wtórnego CT/VT na już istniejącym "
-            "przekładniku (karta W3-B, mapa 4 #3) — jedyna droga edycji po "
-            "utworzeniu; `update_element_parameters` odrzuca kolekcję "
-            "`measurements` (kolekcja pól edytowana wyłącznie własną operacją)."
-        ),
+        # Karta W3-B (mapa 4 #3): jedyna droga edycji obwodu wtórnego po utworzeniu —
+        # `update_element_parameters` odrzuca kolekcję `measurements`. Opis czyta
+        # projektant (treść komunikatu operacji, karta #142) — bez kodów.
+        description_pl=("Zapis obwodu wtórnego przekładnika CT/VT na już istniejącym przekładniku"),
         target_layer="Domain / NetworkModel",
         required_fields=("measurement_ref", "obwod_wtorny"),
         optional_fields=("vt_uzwojenie",),
@@ -1116,10 +1114,12 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.GENERATORS,
         priority=2,
         level=ReadinessLevel.BLOCKER,
+        # Nazwy pól = kreator źródła OZE (`slownik_komunikatow.NAZWY_POL_KONTRAKTU_PL`:
+        # `u_set_pu`, `q_min_mvar`, `q_max_mvar`; parytet przypięty testem karty #142).
         message_pl=(
             "Generator w trybie regulacji napięcia nie ma kompletnej nastawy — "
-            "wymagana nastawa napięcia u_set_pu w paśmie [0,9; 1,1] pu oraz granice "
-            "mocy biernej q_min_mvar < q_max_mvar"
+            "wymagana „Nastawa napięcia U” w paśmie [0,9; 1,1] pu oraz granice mocy "
+            "biernej „Q min (pobór, podwzbudzenie)” < „Q max (oddawanie, nadwzbudzenie)”"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "u_set_pu"},
     ),
@@ -1147,8 +1147,8 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=2,
         level=ReadinessLevel.BLOCKER,
         message_pl=(
-            "Profil NC RfG operatora nie dopuszcza trybu regulacji napięcia "
-            "(voltage_control) — zmień tryb regulacji albo profil operatora"
+            "Profil NC RfG operatora nie dopuszcza trybu „Regulacja napięcia (U = const)” "
+            "— zmień tryb regulacji albo profil operatora"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "control_mode"},
     ),

@@ -40,30 +40,34 @@ def _tabliczka_kompletna() -> dict:
 
 def test_require_transformer_fields_tabliczka_kompletna_przechodzi() -> None:
     """Dana JAWNA (komplet pól) przechodzi bez zmian — brak odrzucenia."""
-    assert _require_transformer_fields(_tabliczka_kompletna(), "tr/probny") is None
+    assert _require_transformer_fields(_tabliczka_kompletna()) is None
 
 
 def test_require_transformer_fields_brak_jednego_pola_odrzuca_kodem() -> None:
     tabliczka = _tabliczka_kompletna()
     tabliczka["pk_kw"] = None
-    blad = _require_transformer_fields(tabliczka, "tr/probny")
+    blad = _require_transformer_fields(tabliczka)
     assert blad is not None
     assert blad["error_code"] == "transformer.field_missing"
-    assert "straty obciążeniowe" in blad["error"]
+    # Karta #142: nazwa pola formularza, bez klucza kontraktu i identyfikatora elementu.
+    assert "„Straty obciążeniowe Pk”" in blad["error"]
+    assert "pk_kw" not in blad["error"]
     assert blad["snapshot"] is None
 
 
 def test_require_transformer_fields_brak_wielu_pol_wymienia_wszystkie_naraz() -> None:
     """Jeden kod, lista WSZYSTKICH brakujących pól w jednym komunikacie."""
     tabliczka = {"sn_mva": None, "uhv_kv": 15.0, "ulv_kv": None, "uk_percent": 6.0, "pk_kw": None}
-    blad = _require_transformer_fields(tabliczka, "tr/probny")
+    blad = _require_transformer_fields(tabliczka)
     assert blad is not None
     assert blad["error_code"] == "transformer.field_missing"
-    for oczekiwane in ("moc znamionowa", "napięcie dolne", "straty obciążeniowe"):
+    for oczekiwane in ("„Moc znamionowa”", "„Napięcie DN”", "„Straty obciążeniowe Pk”"):
         assert oczekiwane in blad["error"]
+    for klucz in ("sn_mva", "ulv_kv", "pk_kw"):
+        assert klucz not in blad["error"]
     # Pola KOMPLETNE (uhv_kv, uk_percent) nie trafiają do listy braków.
-    assert "napięcie górne" not in blad["error"]
-    assert "napięcie zwarcia" not in blad["error"]
+    assert "Napięcie GN" not in blad["error"]
+    assert "Napięcie zwarcia" not in blad["error"]
 
 
 def test_require_transformer_fields_zero_jest_wynikiem_nie_brakiem() -> None:
@@ -71,7 +75,7 @@ def test_require_transformer_fields_zero_jest_wynikiem_nie_brakiem() -> None:
     danej — ta funkcja pilnuje WYŁĄCZNIE nieobecności (None), nie sensowności."""
     tabliczka = _tabliczka_kompletna()
     tabliczka["pk_kw"] = 0.0
-    assert _require_transformer_fields(tabliczka, "tr/probny") is None
+    assert _require_transformer_fields(tabliczka) is None
 
 
 # ---------------------------------------------------------------------------

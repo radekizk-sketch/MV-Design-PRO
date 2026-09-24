@@ -333,7 +333,7 @@ def _resolve_sn_connection_bus(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={
                 "code": "generator.sn_connection_bus_unknown",
-                "message_pl": f"Punkt przyłączenia SN '{bus_ref}' nie istnieje w modelu sieci.",
+                "message_pl": "Wskazany punkt przyłączenia SN nie istnieje w modelu sieci.",
             },
         )
     if abs(bus_voltage - hv_kv) > 0.05:
@@ -892,7 +892,7 @@ def get_der_protection_functions(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "code": "generator.not_found",
-                "message_pl": f"Wytwórca {generator_ref} nie istnieje w modelu.",
+                "message_pl": "Wskazany wytwórca nie istnieje w modelu sieci.",
             },
         )
 
@@ -970,7 +970,7 @@ def get_der_readiness(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "code": "generator.not_found",
-                "message_pl": f"Wytwórca {generator_ref} nie istnieje w modelu.",
+                "message_pl": "Wskazany wytwórca nie istnieje w modelu sieci.",
             },
         )
 
@@ -1035,7 +1035,7 @@ def get_der_instrument_transformers(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "code": "generator.not_found",
-                "message_pl": f"Wytwórca {generator_ref} nie istnieje w modelu.",
+                "message_pl": "Wskazany wytwórca nie istnieje w modelu sieci.",
             },
         )
 

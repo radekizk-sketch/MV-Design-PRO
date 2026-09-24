@@ -118,7 +118,8 @@ def test_kazde_pole_wejscia_solvera_ma_nosnik_w_modelu() -> None:
 
 @pytest.mark.parametrize("pole", POLA_DEKLARACJI)
 def test_deklaracja_bez_zrodla_jest_odrzucana(pole: str) -> None:
-    with pytest.raises(ValidationError, match="zrodlo_pl"):
+    # Karta #142: pole nazwane jak w formularzu, nie kluczem kontraktu.
+    with pytest.raises(ValidationError, match="„Źródło deklaracji”"):
         DeklaracjeModulu(**{pole: _POPRAWNE[pole]})
     assert getattr(_deklaracje(**{pole: _POPRAWNE[pole]}), pole) == _POPRAWNE[pole]
 

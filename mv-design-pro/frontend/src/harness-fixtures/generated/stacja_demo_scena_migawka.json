@@ -15,7 +15,7 @@
       },
       "meta": {
         "bay_role": "TR",
-        "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu APARAT_SN: sw-cb-abb-vd4-17kv-630a.",
+        "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
         "field_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field/002",
         "field_role": "TRANSFORMATOROWE",
         "render_on_sld": false,
@@ -50,7 +50,7 @@
       },
       "meta": {
         "bay_role": "OUT",
-        "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu APARAT_SN: sw-cb-abb-vd4-17kv-630a.",
+        "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
         "field_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field/001",
         "field_role": "LINIA_OUT",
         "render_on_sld": false,
@@ -166,7 +166,7 @@
       },
       "meta": {
         "bay_role": "IN",
-        "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu APARAT_SN: sw-cb-abb-vd4-17kv-630a.",
+        "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
         "field_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_field/000",
         "field_role": "LINIA_IN",
         "render_on_sld": false,

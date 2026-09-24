@@ -8,11 +8,16 @@ Komunikaty po polsku.
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 
 from catalog.profiles.nc_rfg import load_nc_rfg_profile
 from network_model.catalog.governance import (
     brakuje_wymaganej_referencji,
     wymagalnosc_katalogu,
+)
+from network_model.core.uziemienie import (
+    ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
+    ETYKIETA_PL_UZIEMIENIA_EKRANU,
 )
 from network_model.pochodne import prad_z_mocy_pozornej_ka
 from pydantic import BaseModel
@@ -50,6 +55,13 @@ from .severity import (
     is_warning_severity,
     severity_rank,
 )
+from .slownik_komunikatow import (
+    NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL,
+    nazwa_rodzaju_generatora,
+    opis_elementu,
+    opis_obiektu,
+    pole,
+)
 from .topology import derive
 from .uklad_sieci_nn import transformatory_bez_ukladu_nn
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
@@ -72,6 +84,14 @@ _voltage_band = pasmo_napieciowe
 
 
 _STRICT_PORT_BINDING_ENV = "ENM_STRICT_PORT_BINDING"
+
+
+def _oznaczenia_aparatow(aparaty: Sequence[object]) -> str:
+    """Aparaty pola w treści komunikatu: oznaczenie operatorskie (Q0, QE1), nie
+    identyfikator aparatu; aparat bez oznaczenia opisuje jego rodzaj (karta #142)."""
+    return ", ".join(
+        str(getattr(aparat, "designation", None) or "aparat bez oznaczenia") for aparat in aparaty
+    )
 
 
 def _strict_port_binding_enabled() -> bool:
@@ -197,7 +217,7 @@ class ENMValidator:
                     severity=SEVERITY_BLOCKER,
                     message_pl="Brak szyn (węzłów) w modelu sieci.",
                     wizard_step_hint="K3",
-                    suggested_fix="Dodaj przynajmniej jedną szynę w kroku K2 lub K3.",
+                    suggested_fix="Dodaj przynajmniej jedną szynę (źródło zasilania albo stację).",
                     fix_action=FixAction(
                         action_type="ADD_MISSING_DEVICE",
                         modal_type="NodeModal",
@@ -217,10 +237,13 @@ class ENMValidator:
                     ValidationIssue(
                         code="E004",
                         severity=SEVERITY_BLOCKER,
-                        message_pl=f"Szyna '{bus.ref_id}' nie ma napięcia znamionowego (voltage_kv <= 0).",
+                        message_pl=(
+                            f"{opis_obiektu(bus, 'Szyna')} nie ma napięcia znamionowego "
+                            "(napięcie ≤ 0 kV)."
+                        ),
                         element_refs=[bus.ref_id],
                         wizard_step_hint="K3",
-                        suggested_fix=f"Ustaw napięcie znamionowe szyny '{bus.name}'.",
+                        suggested_fix=(f"Ustaw napięcie znamionowe: {opis_obiektu(bus, 'szyna')}."),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
                             element_ref=bus.ref_id,
@@ -239,12 +262,15 @@ class ENMValidator:
                             code="E005",
                             severity=SEVERITY_BLOCKER,
                             message_pl=(
-                                f"Gałąź '{branch.ref_id}' ma zerową impedancję "
+                                f"{opis_obiektu(branch, 'Gałąź')} ma zerową impedancję "
                                 f"(R=0 i X=0 Ω/km)."
                             ),
                             element_refs=[branch.ref_id],
                             wizard_step_hint="K4",
-                            suggested_fix=f"Wprowadź parametry impedancji gałęzi '{branch.name}'.",
+                            suggested_fix=(
+                                "Wprowadź parametry impedancji: "
+                                f"{opis_obiektu(branch, 'gałąź')}."
+                            ),
                             fix_action=FixAction(
                                 action_type="OPEN_MODAL",
                                 element_ref=branch.ref_id,
@@ -262,11 +288,14 @@ class ENMValidator:
                         code="E006",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Transformator '{trafo.ref_id}' nie ma napięcia zwarcia (uk% <= 0)."
+                            f"{opis_obiektu(trafo, 'Transformator')} nie ma napięcia zwarcia "
+                            "(uk ≤ 0 %)."
                         ),
                         element_refs=[trafo.ref_id],
                         wizard_step_hint="K5",
-                        suggested_fix=f"Wprowadź uk% transformatora '{trafo.name}'.",
+                        suggested_fix=(
+                            f"Wprowadź napięcie zwarcia uk: {opis_obiektu(trafo, 'transformator')}."
+                        ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
                             element_ref=trafo.ref_id,
@@ -284,12 +313,15 @@ class ENMValidator:
                         code="E007",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Transformator '{trafo.ref_id}': strona HV i LV "
-                            f"podłączone do tej samej szyny '{trafo.hv_bus_ref}'."
+                            f"{opis_obiektu(trafo, 'Transformator')}: strona górnego i dolnego "
+                            "napięcia podłączona do tej samej szyny "
+                            f"({opis_elementu(enm, trafo.hv_bus_ref, 'szyna')})."
                         ),
                         element_refs=[trafo.ref_id],
                         wizard_step_hint="K5",
-                        suggested_fix="Podłącz strony HV i LV do różnych szyn.",
+                        suggested_fix=(
+                            "Podłącz strony górnego i dolnego napięcia do różnych szyn."
+                        ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
                             element_ref=trafo.ref_id,
@@ -314,8 +346,8 @@ class ENMValidator:
                     code="sources.bus_missing",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Źródło '{source.ref_id}' nie jest podłączone do istniejącej "
-                        f"szyny (bus_ref='{source.bus_ref}')."
+                        f"{opis_obiektu(source, 'Źródło zasilania')} nie jest podłączone "
+                        "do istniejącej szyny."
                     ),
                     element_refs=[source.ref_id],
                     wizard_step_hint="K2",
@@ -338,14 +370,14 @@ class ENMValidator:
                         code="sources.no_short_circuit_params",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Źródło '{source.ref_id}' nie ma parametrów zwarciowych "
-                            f"(brak Sk'', Ik'' lub R/X)."
+                            f"{opis_obiektu(source, 'Źródło zasilania')} nie ma parametrów "
+                            f"zwarciowych (brak Sk'', Ik'' lub R/X)."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K2",
                         suggested_fix=(
-                            f"Wprowadź moc zwarciową Sk'' lub impedancję R+jX "
-                            f"źródła '{source.name}'."
+                            f"Wprowadź moc zwarciową Sk'' lub impedancję R+jX: "
+                            f"{opis_obiektu(source, 'źródło zasilania')}."
                         ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
@@ -375,18 +407,18 @@ class ENMValidator:
                         code="E028",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"DER '{gen.ref_id}' (typ {gen_type}) nie ma "
-                            f"`connection_variant`. Każdy falownik wymaga jawnego "
-                            f"określenia toru przyłączenia (po stronie nN za "
-                            f"transformatorem stacji, dedykowane pole SN z transformatorem "
-                            f"przyłączeniowym albo osobna stacja przyłączeniowa źródła)."
+                            f"{opis_obiektu(gen, 'Źródło DER')} ({nazwa_rodzaju_generatora(gen_type)}) "
+                            f"nie ma określonego pola {pole('connection_variant')}. Każdy "
+                            "falownik wymaga jawnego określenia toru przyłączenia (po stronie "
+                            "nN za transformatorem stacji, dedykowane pole SN z transformatorem "
+                            "przyłączeniowym albo osobna stacja przyłączeniowa źródła)."
                         ),
                         element_refs=[gen.ref_id],
                         wizard_step_hint="K6",
                         suggested_fix=(
-                            f"Wybierz wariant przyłączenia DER '{gen.name or gen.ref_id}': "
-                            f"nN za transformatorem stacji, dedykowany transformator blokowy, "
-                            f"lub osobna stacja źródłowa SN."
+                            f"Wybierz sposób przyłączenia: {opis_obiektu(gen, 'źródło DER')} — "
+                            "nN za transformatorem stacji, dedykowany transformator blokowy "
+                            "albo osobna stacja źródłowa SN."
                         ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
@@ -437,18 +469,21 @@ class ENMValidator:
                         code="E029",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Falownik '{gen.ref_id}' (typ {gen_type}) "
+                            f"{opis_obiektu(gen, 'Falownik')} ({nazwa_rodzaju_generatora(gen_type)}) "
                             f"jest podłączony bezpośrednio do szyny SN "
-                            f"({bus_ref}, U={bus_voltage} kV). "
+                            f"({opis_elementu(enm, bus_ref, 'szyna')}, U={bus_voltage:g} kV). "
                             f"Każdy falownik energoelektroniczny jest elementem nN — "
-                            f"wymagany transformator nn/SN w torze przyłączenia."
+                            f"wymagany transformator nN/SN w torze przyłączenia."
                         ),
                         element_refs=[gen.ref_id, bus_ref],
                         wizard_step_hint="K6",
                         suggested_fix=(
-                            f"Przepnij falownik na szynę nN i dodaj transformator nn/SN "
-                            f"łączący ją z aktualną szyną SN ({bus_ref}). "
-                            f"Lub użyj connection_variant='block_transformer' z trafem blokowym."
+                            f"Przepnij falownik na szynę nN i dodaj transformator nN/SN "
+                            f"łączący ją z aktualną szyną SN "
+                            f"({opis_elementu(enm, bus_ref, 'szyna')}) albo wybierz sposób "
+                            "przyłączenia "
+                            f"„{NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL['block_transformer']}” "
+                            "z transformatorem blokowym."
                         ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
@@ -489,22 +524,23 @@ class ENMValidator:
                 continue
             braki: list[str] = []
             if not u_set_valid:
-                braki.append("nastawa napięcia u_set_pu w paśmie [0,9; 1,1] pu")
+                braki.append(f"{pole('u_set_pu')} w paśmie [0,9; 1,1] pu")
             if not q_bounds_valid:
-                braki.append("granice mocy biernej q_min_mvar < q_max_mvar")
+                braki.append(f"granice mocy biernej {pole('q_min_mvar')} < {pole('q_max_mvar')}")
             issues.append(
                 ValidationIssue(
                     code="generators.voltage_control_incomplete",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Generator '{gen.ref_id}' w trybie regulacji napięcia "
+                        f"{opis_obiektu(gen, 'Generator')} w trybie regulacji napięcia "
                         f"nie ma: {'; '.join(braki)}."
                     ),
                     element_refs=[gen.ref_id],
                     wizard_step_hint="K6",
                     suggested_fix=(
-                        f"Uzupełnij nastawę napięcia (u_set_pu) i granice mocy biernej "
-                        f"(q_min_mvar/q_max_mvar) generatora '{gen.name or gen.ref_id}'."
+                        f"Uzupełnij {pole('u_set_pu')} i granice mocy biernej "
+                        f"({pole('q_min_mvar')}, {pole('q_max_mvar')}): "
+                        f"{opis_obiektu(gen, 'generator')}."
                     ),
                     fix_action=FixAction(
                         action_type="OPEN_MODAL",
@@ -527,8 +563,8 @@ class ENMValidator:
                     code="sources.u_set_pu_out_of_range",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Źródło '{source.ref_id}': napięcie zadane szyny bilansującej "
-                        f"u_set_pu={source.u_set_pu:g} p.u. leży poza pasmem "
+                        f"{opis_obiektu(source, 'Źródło zasilania')}: napięcie zadane szyny "
+                        f"bilansującej {source.u_set_pu:g} p.u. leży poza pasmem "
                         f"{PASMO_U_SET_PU[0]:g}–{PASMO_U_SET_PU[1]:g} p.u."
                     ),
                     element_refs=[source.ref_id],
@@ -574,9 +610,9 @@ class ENMValidator:
                         code="sources.sk_min_exceeds_max",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Źródło '{source.ref_id}': dane scenariusza minimalnego przekraczają "
-                            f"maksymalne ({'; '.join(sprzeczne)}) — bieg MIN dałby prąd większy "
-                            f"niż MAX."
+                            f"{opis_obiektu(source, 'Źródło zasilania')}: dane scenariusza "
+                            f"minimalnego przekraczają maksymalne ({'; '.join(sprzeczne)}) — "
+                            "bieg MIN dałby prąd większy niż MAX."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K2",
@@ -642,16 +678,15 @@ class ENMValidator:
                         code="generators.voltage_control_profile_missing",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Generator '{gen.ref_id}' w trybie regulacji napięcia "
-                            "nie ma profilu NC RfG operatora — tryb "
-                            "wymaga profilu dopuszczającego regulację napięcia "
-                            "(voltage_control)."
+                            f"{opis_obiektu(gen, 'Generator')} w trybie regulacji napięcia "
+                            "nie ma profilu NC RfG operatora — tryb wymaga profilu "
+                            "dopuszczającego regulację napięcia."
                         ),
                         element_refs=[gen.ref_id],
                         wizard_step_hint="K6",
                         suggested_fix=(
-                            f"Wybierz profil NC RfG operatora dla generatora "
-                            f"'{gen.name or gen.ref_id}' (krok „zgodność” kreatora OZE)."
+                            f"Wybierz profil NC RfG operatora w polu {pole('nc_rfg_profile_ref')}: "
+                            f"{opis_obiektu(gen, 'generator')} (krok „zgodność” kreatora OZE)."
                         ),
                         fix_action=fix_action,
                     )
@@ -665,15 +700,15 @@ class ENMValidator:
                         code="generators.voltage_control_profile_missing",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Generator '{gen.ref_id}' w trybie regulacji napięcia wskazuje "
-                            f"profil NC RfG '{profile_ref}', którego nie ma w katalogu "
+                            f"{opis_obiektu(gen, 'Generator')} w trybie regulacji napięcia "
+                            "wskazuje profil NC RfG operatora, którego nie ma w katalogu "
                             "operatorów."
                         ),
                         element_refs=[gen.ref_id],
                         wizard_step_hint="K6",
                         suggested_fix=(
-                            f"Wybierz istniejący profil NC RfG operatora dla generatora "
-                            f"'{gen.name or gen.ref_id}'."
+                            "Wybierz istniejący profil NC RfG operatora: "
+                            f"{opis_obiektu(gen, 'generator')}."
                         ),
                         fix_action=fix_action,
                     )
@@ -685,15 +720,17 @@ class ENMValidator:
                         code="generators.voltage_control_not_permitted",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Profil NC RfG operatora '{profile_ref}' nie dopuszcza trybu "
-                            f"regulacji napięcia (voltage_control) dla generatora "
-                            f"'{gen.ref_id}'."
+                            "Profil NC RfG operatora "
+                            f"„{nc_rfg_profile.operator_name_pl}” nie dopuszcza trybu "
+                            "„Regulacja napięcia (U = const)” dla: "
+                            f"{opis_obiektu(gen, 'generator')}."
                         ),
                         element_refs=[gen.ref_id],
                         wizard_step_hint="K6",
                         suggested_fix=(
-                            f"Zmień tryb regulacji generatora '{gen.name or gen.ref_id}' "
-                            "albo wybierz profil operatora dopuszczający regulację napięcia."
+                            f"Zmień {pole('control_mode')} albo wybierz profil operatora "
+                            "dopuszczający regulację napięcia: "
+                            f"{opis_obiektu(gen, 'generator')}."
                         ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
@@ -722,12 +759,12 @@ class ENMValidator:
                         code="E009",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Gałąź '{branch.ref_id}' nie ma referencji katalogowej "
-                            f"(catalog_ref)."
+                            f"{opis_obiektu(branch, 'Gałąź')} nie ma przypisanej pozycji "
+                            "katalogowej."
                         ),
                         element_refs=[branch.ref_id],
                         wizard_step_hint="K4",
-                        suggested_fix="Przypisz element z katalogu i zapisz catalog_ref.",
+                        suggested_fix="Przypisz typ z katalogu do tej gałęzi.",
                         fix_action=FixAction(
                             action_type="SELECT_CATALOG",
                             element_ref=branch.ref_id,
@@ -746,12 +783,12 @@ class ENMValidator:
                         code="E009",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Transformator '{trafo.ref_id}' nie ma referencji katalogowej "
-                            f"(catalog_ref)."
+                            f"{opis_obiektu(trafo, 'Transformator')} nie ma przypisanej pozycji "
+                            "katalogowej."
                         ),
                         element_refs=[trafo.ref_id],
                         wizard_step_hint="K5",
-                        suggested_fix="Przypisz transformator z katalogu i zapisz catalog_ref.",
+                        suggested_fix="Przypisz typ transformatora z katalogu.",
                         fix_action=FixAction(
                             action_type="SELECT_CATALOG",
                             element_ref=trafo.ref_id,
@@ -780,12 +817,12 @@ class ENMValidator:
                         code="E009",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Źródło '{source.ref_id}' nie ma referencji katalogowej "
-                            f"(catalog_ref)."
+                            f"{opis_obiektu(source, 'Źródło zasilania')} nie ma przypisanej "
+                            "pozycji katalogowej."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K2",
-                        suggested_fix="Wybierz źródło systemowe z katalogu i zapisz catalog_ref.",
+                        suggested_fix="Wybierz typ źródła systemowego z katalogu.",
                         fix_action=FixAction(
                             action_type="SELECT_CATALOG",
                             element_ref=source.ref_id,
@@ -819,17 +856,17 @@ class ENMValidator:
                         code="W010",
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
-                            f"Generator przekształtnikowy '{generator.ref_id}' nie ma "
-                            f"referencji katalogowej (catalog_ref). Model pozostaje "
-                            f"ogólnie użyteczny, ale obliczenia zwarciowe dla tego "
-                            f"generatora są zablokowane w gotowości obliczeniowej "
-                            f"(kod 'inverter.k_sc_missing') do czasu przypisania katalogu."
+                            f"{opis_obiektu(generator, 'Generator przekształtnikowy')} nie ma "
+                            "przypisanej pozycji katalogowej. Model pozostaje ogólnie "
+                            "użyteczny, ale obliczenia zwarciowe dla tego generatora są "
+                            "zablokowane w gotowości obliczeniowej do czasu przypisania typu "
+                            "z katalogu."
                         ),
                         element_refs=[generator.ref_id],
                         wizard_step_hint="K6",
                         suggested_fix=(
-                            "Przypisz typ przekształtnika z katalogu i zapisz catalog_ref, "
-                            "żeby zwarcie liczyło się ze zmierzonym k_sc."
+                            "Przypisz typ przekształtnika z katalogu, żeby zwarcie liczyło się "
+                            "z udziałem zwarciowym k_sc z karty katalogowej."
                         ),
                         fix_action=FixAction(
                             action_type="SELECT_CATALOG",
@@ -873,8 +910,8 @@ class ENMValidator:
                     code="E030",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Połączenie '{branch.ref_id}' nie ma wskazanego portu "
-                        f"endpointu {sides_pl}. Wskaż port pola SN na właściwej "
+                        f"{opis_obiektu(branch, 'Połączenie')} nie ma wskazanego portu "
+                        f"końca {sides_pl}. Wskaż port pola SN na właściwej "
                         f"szynie w karcie odcinka."
                     ),
                     element_refs=[branch.ref_id],
@@ -921,7 +958,8 @@ class ENMValidator:
                         code="sources.sk_ik_voltage_inconsistent",
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
-                            f"Źródło '{source.ref_id}': Ik''={source.ik3_ka:.2f} kA nie zgadza się "
+                            f"{opis_obiektu(source, 'Źródło zasilania')}: "
+                            f"Ik''={source.ik3_ka:.2f} kA nie zgadza się "
                             f"z Sk''={source.sk3_mva:.0f} MVA przy U={bus.voltage_kv:g} kV "
                             f"(oczekiwane Ik''=Sk''/(√3·U)={expected_ik_ka:.2f} kA). "
                             f"Dane zwarciowe i napięcie odniesienia muszą dotyczyć TEJ SAMEJ szyny."
@@ -957,10 +995,10 @@ class ENMValidator:
                     code="bays.earthing_interlock_violation",
                     severity=SEVERITY_IMPORTANT,
                     message_pl=(
-                        f"Pole '{bay.ref_id}': uziemnik "
-                        f"({', '.join(d.device_ref for d in closed_es)}) ZAMKNIĘTY przy "
+                        f"{opis_obiektu(bay, 'Pole')}: uziemnik "
+                        f"({_oznaczenia_aparatow(closed_es)}) ZAMKNIĘTY przy "
                         f"jednocześnie zamkniętym łączniku toru głównego "
-                        f"({', '.join(d.device_ref for d in closed_main)}) — niedozwolona "
+                        f"({_oznaczenia_aparatow(closed_main)}) — niedozwolona "
                         f"kombinacja stanów (uziemienie toru pod napięciem, blokada "
                         f"rozdzielnicy)."
                     ),
@@ -998,7 +1036,8 @@ class ENMValidator:
                         code="sources.sk_min_ik_min_voltage_inconsistent",
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
-                            f"Źródło '{source.ref_id}': Ik''min={source.ik3_min_ka:.2f} kA nie "
+                            f"{opis_obiektu(source, 'Źródło zasilania')}: "
+                            f"Ik''min={source.ik3_min_ka:.2f} kA nie "
                             f"zgadza się z Sk''min={source.sk3_min_mva:.0f} MVA przy "
                             f"U={bus.voltage_kv:g} kV (oczekiwane "
                             f"Ik''min=Sk''min/(√3·U)={expected_ik_min_ka:.2f} kA). "
@@ -1055,12 +1094,12 @@ class ENMValidator:
                             code="W001",
                             severity=SEVERITY_IMPORTANT,
                             message_pl=(
-                                f"Gałąź '{branch.ref_id}' nie ma składowej zerowej (Z₀) — "
-                                f"zwarcia 1F/2F-Z niedostępne."
+                                f"{opis_obiektu(branch, 'Gałąź')} nie ma składowej zerowej "
+                                f"(Z₀) — zwarcia 1F/2F-Z niedostępne."
                             ),
                             element_refs=[branch.ref_id],
                             wizard_step_hint="K7",
-                            suggested_fix="Wprowadź parametry R₀/X₀ w kroku K7.",
+                            suggested_fix="Wprowadź parametry składowej zerowej R₀/X₀ gałęzi.",
                             fix_action=FixAction(
                                 action_type="OPEN_MODAL",
                                 element_ref=branch.ref_id,
@@ -1078,8 +1117,8 @@ class ENMValidator:
                         code="W002",
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
-                            f"Źródło '{source.ref_id}' nie ma składowej zerowej (Z₀) — "
-                            f"zwarcia 1F/2F-Z niedostępne."
+                            f"{opis_obiektu(source, 'Źródło zasilania')} nie ma składowej "
+                            f"zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K2",
@@ -1101,7 +1140,7 @@ class ENMValidator:
                     severity=SEVERITY_IMPORTANT,
                     message_pl="Brak odbiorów i generatorów — rozpływ mocy będzie pusty.",
                     wizard_step_hint="K6",
-                    suggested_fix="Dodaj odbiory lub generatory w kroku K6.",
+                    suggested_fix="Dodaj odbiory lub generatory.",
                     fix_action=FixAction(
                         action_type="ADD_MISSING_DEVICE",
                         modal_type="LoadModal",
@@ -1118,8 +1157,7 @@ class ENMValidator:
                         code="W004",
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
-                            f"Transformator '{trafo.ref_id}' nie ma grupy "
-                            f"połączeń (vector_group)."
+                            f"{opis_obiektu(trafo, 'Transformator')} nie ma grupy połączeń."
                         ),
                         element_refs=[trafo.ref_id],
                         wizard_step_hint="K5",
@@ -1158,12 +1196,16 @@ class ENMValidator:
                         code="E010",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Element '{elem.ref_id}' ma overrides, ale "
-                            f"parameter_source != 'OVERRIDE'."
+                            f"{opis_obiektu(elem, 'Element')} ma nadpisane parametry, ale nie "
+                            "jest oznaczony jako element z parametrami nadpisanymi względem "
+                            "katalogu."
                         ),
                         element_refs=[elem.ref_id],
                         wizard_step_hint="K4",
-                        suggested_fix="Ustaw parameter_source='OVERRIDE' lub usuń overrides.",
+                        suggested_fix=(
+                            "Oznacz źródło parametrów elementu jako nadpisanie katalogu albo "
+                            "usuń nadpisane parametry."
+                        ),
                         fix_action=FixAction(
                             action_type="NAVIGATE_TO_ELEMENT",
                             element_ref=elem.ref_id,
@@ -1185,7 +1227,8 @@ class ENMValidator:
                         code="I001",
                         severity=SEVERITY_INFO,
                         message_pl=(
-                            f"Łącznik '{branch.ref_id}' w stanie 'open' — " f"odcina część sieci."
+                            f"{opis_obiektu(branch, 'Łącznik')} jest otwarty — odcina część "
+                            "sieci."
                         ),
                         element_refs=[branch.ref_id],
                         wizard_step_hint="K3",
@@ -1206,7 +1249,7 @@ class ENMValidator:
                         code="I002",
                         severity=SEVERITY_INFO,
                         message_pl=(
-                            f"Gałąź '{branch.ref_id}' bez katalogu — "
+                            f"{opis_obiektu(branch, 'Gałąź')} bez katalogu — "
                             f"parametry wprowadzone ręcznie."
                         ),
                         element_refs=[branch.ref_id],
@@ -1235,8 +1278,8 @@ class ENMValidator:
                             code="W005",
                             severity=SEVERITY_IMPORTANT,
                             message_pl=(
-                                f"Stacja '{sub.ref_id}' zawiera referencję do "
-                                f"nieistniejącej szyny '{br}'."
+                                f"{opis_obiektu(sub, 'Stacja')} odwołuje się do szyny, której "
+                                "nie ma w modelu sieci."
                             ),
                             element_refs=[sub.ref_id, br],
                             wizard_step_hint="K3",
@@ -1250,8 +1293,8 @@ class ENMValidator:
                             code="W005",
                             severity=SEVERITY_IMPORTANT,
                             message_pl=(
-                                f"Stacja '{sub.ref_id}' zawiera referencję do "
-                                f"nieistniejącego transformatora '{tr}'."
+                                f"{opis_obiektu(sub, 'Stacja')} odwołuje się do transformatora, "
+                                "którego nie ma w modelu sieci."
                             ),
                             element_refs=[sub.ref_id, tr],
                             wizard_step_hint="K5",
@@ -1269,8 +1312,8 @@ class ENMValidator:
                         code="W006",
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
-                            f"Pole '{bay.ref_id}' referencja do nieistniejącej "
-                            f"stacji '{bay.substation_ref}'."
+                            f"{opis_obiektu(bay, 'Pole')} odwołuje się do stacji, której nie ma "
+                            "w modelu sieci."
                         ),
                         element_refs=[bay.ref_id, bay.substation_ref],
                         wizard_step_hint="K3",
@@ -1283,8 +1326,8 @@ class ENMValidator:
                         code="W006",
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
-                            f"Pole '{bay.ref_id}' referencja do nieistniejącej "
-                            f"szyny '{bay.bus_ref}'."
+                            f"{opis_obiektu(bay, 'Pole')} odwołuje się do szyny, której nie ma "
+                            "w modelu sieci."
                         ),
                         element_refs=[bay.ref_id, bay.bus_ref],
                         wizard_step_hint="K3",
@@ -1300,8 +1343,8 @@ class ENMValidator:
                         code="W007",
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
-                            f"Węzeł T '{junc.ref_id}' ma {len(junc.connected_branch_refs)} "
-                            f"gałęzi — wymagane minimum 3."
+                            f"{opis_obiektu(junc, 'Węzeł T')} ma "
+                            f"{len(junc.connected_branch_refs)} gałęzi — wymagane minimum 3."
                         ),
                         element_refs=[junc.ref_id],
                         wizard_step_hint="K4",
@@ -1315,8 +1358,8 @@ class ENMValidator:
                             code="W007",
                             severity=SEVERITY_IMPORTANT,
                             message_pl=(
-                                f"Węzeł T '{junc.ref_id}' referencja do "
-                                f"nieistniejącej gałęzi '{br_ref}'."
+                                f"{opis_obiektu(junc, 'Węzeł T')} odwołuje się do gałęzi, której "
+                                "nie ma w modelu sieci."
                             ),
                             element_refs=[junc.ref_id, br_ref],
                             wizard_step_hint="K4",
@@ -1333,8 +1376,8 @@ class ENMValidator:
                             code="W008",
                             severity=SEVERITY_IMPORTANT,
                             message_pl=(
-                                f"Magistrala '{corr.ref_id}' referencja do "
-                                f"nieistniejącego segmentu '{seg_ref}'."
+                                f"{opis_obiektu(corr, 'Magistrala')} odwołuje się do odcinka, "
+                                "którego nie ma w modelu sieci."
                             ),
                             element_refs=[corr.ref_id, seg_ref],
                             wizard_step_hint="K4",
@@ -1364,7 +1407,8 @@ class ENMValidator:
                         code="I003",
                         severity=SEVERITY_INFO,
                         message_pl=(
-                            f"Stacja '{sub.ref_id}' nie ma przypisanych pól rozdzielczych."
+                            f"{opis_obiektu(sub, 'Stacja')} nie ma przypisanych pól "
+                            "rozdzielczych."
                         ),
                         element_refs=[sub.ref_id],
                         wizard_step_hint="K3",
@@ -1378,7 +1422,7 @@ class ENMValidator:
                     ValidationIssue(
                         code="I004",
                         severity=SEVERITY_INFO,
-                        message_pl=(f"Magistrala '{corr.ref_id}' nie ma segmentów."),
+                        message_pl=f"{opis_obiektu(corr, 'Magistrala')} nie ma odcinków.",
                         element_refs=[corr.ref_id],
                         wizard_step_hint="K4",
                     )
@@ -1392,8 +1436,8 @@ class ENMValidator:
                         code="I005",
                         severity=SEVERITY_INFO,
                         message_pl=(
-                            f"Magistrala pierścieniowa '{corr.ref_id}' nie ma "
-                            f"zdefiniowanego punktu normalnie otwartego (NO)."
+                            f"{opis_obiektu(corr, 'Magistrala pierścieniowa')} nie ma "
+                            f"zdefiniowanego punktu normalnie otwartego (NOP)."
                         ),
                         element_refs=[corr.ref_id],
                         wizard_step_hint="K4",
@@ -1432,7 +1476,7 @@ class ENMValidator:
                     wizard_step_hint="K5",
                     suggested_fix=(
                         "Dodaj do rozdzielni SN tej stacji pole transformatorowe "
-                        "(rola TR) i przypisz do niego transformator."
+                        "i przypisz do niego transformator."
                     ),
                     fix_action=FixAction(
                         action_type="OPEN_MODAL",
@@ -1465,8 +1509,8 @@ class ENMValidator:
                         code="E040",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Bateria kondensatorów '{cap.ref_id}' referencja do "
-                            f"nieistniejącej szyny '{cap.bus_ref}'."
+                            f"{opis_obiektu(cap, 'Bateria kondensatorów')} odwołuje się do "
+                            "szyny, której nie ma w modelu sieci."
                         ),
                         element_refs=[cap.ref_id, cap.bus_ref],
                         wizard_step_hint="K6",
@@ -1486,13 +1530,14 @@ class ENMValidator:
                         code="E041",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Bateria kondensatorów '{cap.ref_id}' nie ma dodatniej "
-                            f"mocy znamionowej (rated_mvar <= 0)."
+                            f"{opis_obiektu(cap, 'Bateria kondensatorów')} nie ma dodatniej "
+                            "mocy znamionowej (moc ≤ 0 Mvar)."
                         ),
                         element_refs=[cap.ref_id],
                         wizard_step_hint="K6",
                         suggested_fix=(
-                            f"Wprowadź moc bierną znamionową baterii '{cap.name}' [Mvar]."
+                            "Wprowadź moc bierną znamionową [Mvar]: "
+                            f"{opis_obiektu(cap, 'bateria kondensatorów')}."
                         ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
@@ -1509,12 +1554,15 @@ class ENMValidator:
                         code="E042",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Bateria kondensatorów '{cap.ref_id}' nie ma dodatniego "
-                            f"napięcia znamionowego (rated_kv <= 0)."
+                            f"{opis_obiektu(cap, 'Bateria kondensatorów')} nie ma dodatniego "
+                            "napięcia znamionowego (napięcie ≤ 0 kV)."
                         ),
                         element_refs=[cap.ref_id],
                         wizard_step_hint="K6",
-                        suggested_fix=(f"Wprowadź napięcie znamionowe baterii '{cap.name}' [kV]."),
+                        suggested_fix=(
+                            "Wprowadź napięcie znamionowe [kV]: "
+                            f"{opis_obiektu(cap, 'bateria kondensatorów')}."
+                        ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
                             element_ref=cap.ref_id,
@@ -1538,9 +1586,9 @@ class ENMValidator:
                         code="W040",
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
-                            f"Bateria kondensatorów '{cap.ref_id}' ma napięcie "
-                            f"znamionowe {cap.rated_kv} kV niespójne z napięciem "
-                            f"szyny '{cap.bus_ref}' ({bus.voltage_kv} kV)."
+                            f"{opis_obiektu(cap, 'Bateria kondensatorów')} ma napięcie "
+                            f"znamionowe {cap.rated_kv:g} kV niespójne z napięciem "
+                            f"szyny ({opis_obiektu(bus, 'szyna')}, {bus.voltage_kv:g} kV)."
                         ),
                         element_refs=[cap.ref_id, cap.bus_ref],
                         wizard_step_hint="K6",
@@ -1567,6 +1615,9 @@ class ENMValidator:
         if len(widok.wyspy) <= 1:
             return
 
+        # Szyny nazywa ich nazwa z modelu (karta #142) — indeks raz na przebieg, nie
+        # przeszukanie całego modelu dla każdej szyny każdej wyspy.
+        szyny_wg_ref = {b.ref_id: b for b in enm.buses}
         for wyspa in widok.wyspy:
             if not wyspa.zasilona:
                 island_refs = list(wyspa.szyny)
@@ -1576,8 +1627,8 @@ class ENMValidator:
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"Wyspa sieci odcięta od źródła zasilania: "
-                            f"{', '.join(island_refs[:5])}"
-                            f"{'...' if len(island_refs) > 5 else ''}."
+                            f"{', '.join(opis_obiektu(szyny_wg_ref.get(ref), 'szyna') for ref in island_refs[:5])}"
+                            f"{f' i {len(island_refs) - 5} więcej' if len(island_refs) > 5 else ''}."
                         ),
                         element_refs=island_refs[:10],
                         wizard_step_hint="K4",
@@ -1655,9 +1706,9 @@ class ENMValidator:
                     code="W009",
                     severity=SEVERITY_IMPORTANT,
                     message_pl=(
-                        f"Szyna '{bus.ref_id}' deklaruje częstotliwość "
-                        f"{bus.frequency_hz} Hz, a studium liczone jest dla "
-                        f"{czestotliwosc_studium} Hz — model jest wewnętrznie sprzeczny."
+                        f"{opis_obiektu(bus, 'Szyna')} deklaruje częstotliwość "
+                        f"{bus.frequency_hz:g} Hz, a studium liczone jest dla "
+                        f"{czestotliwosc_studium:g} Hz — model jest wewnętrznie sprzeczny."
                     ),
                     element_refs=[bus.ref_id],
                     wizard_step_hint="K3",
@@ -1700,10 +1751,10 @@ class ENMValidator:
                     code="E020",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Gałąź '{branch.ref_id}' łączy pasma napięciowe "
-                        f"{band_from} ({from_bus.voltage_kv} kV) i "
-                        f"{band_to} ({to_bus.voltage_kv} kV). Gałąź nie może "
-                        f"przechodzić między pasmami - jedynym dozwolonym "
+                        f"{opis_obiektu(branch, 'Gałąź')} łączy pasma napięciowe "
+                        f"{band_from} ({from_bus.voltage_kv:g} kV) i "
+                        f"{band_to} ({to_bus.voltage_kv:g} kV). Gałąź nie może "
+                        f"przechodzić między pasmami — jedynym dozwolonym "
                         f"przejściem jest transformator."
                     ),
                     element_refs=[
@@ -1774,10 +1825,11 @@ class ENMValidator:
                         code="E021",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Stacja przelotowa '{sub.ref_id}': pola liniowe wejściowe i wyjściowe "
-                            f"({', '.join(sorted(offending_bays))}) nie są "
-                            f"podpięte do szyny SN. Ciągłość SN nie może "
-                            f"przechodzić przez stronę nN ani transformator."
+                            f"{opis_obiektu(sub, 'Stacja przelotowa')}: pola liniowe wejściowe "
+                            "i wyjściowe ("
+                            f"{', '.join(sorted(opis_elementu(enm, ref, 'pole') for ref in offending_bays))}"
+                            ") nie są podpięte do szyny SN. Ciągłość SN nie może "
+                            "przechodzić przez stronę nN ani transformator."
                         ),
                         element_refs=[sub.ref_id, *offending_bays],
                         wizard_step_hint="K3",
@@ -1801,16 +1853,16 @@ class ENMValidator:
                         code="E021",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Stacja przelotowa '{sub.ref_id}': pola liniowe wejściowe i wyjściowe "
-                            f"podpięte do różnych szyn SN "
-                            f"({', '.join(sorted(mv_buses_used))}). "
-                            f"Ciągłość SN przez stację przelotową wymaga "
-                            f"wspólnej magistrali SN."
+                            f"{opis_obiektu(sub, 'Stacja przelotowa')}: pola liniowe wejściowe "
+                            "i wyjściowe podpięte do różnych szyn SN ("
+                            f"{', '.join(sorted(opis_elementu(enm, ref, 'szyna') for ref in mv_buses_used))}"
+                            "). Ciągłość SN przez stację przelotową wymaga wspólnej magistrali SN."
                         ),
                         element_refs=[sub.ref_id, *sorted(mv_buses_used)],
                         wizard_step_hint="K3",
                         suggested_fix=(
-                            "Podłącz pola liniowe wejściowe i wyjściowe do tej samej szyny SN stacji."
+                            "Podłącz pola liniowe wejściowe i wyjściowe do tej samej szyny SN "
+                            "stacji."
                         ),
                         fix_action=FixAction(
                             action_type="OPEN_MODAL",
@@ -1867,10 +1919,10 @@ class ENMValidator:
                     ValidationIssue(
                         code="E-W5-01",
                         severity=SEVERITY_BLOCKER,
-                        message_pl=f"Źródło '{source.ref_id}': {blad}.",
+                        message_pl=f"{opis_obiektu(source, 'Źródło zasilania')}: {blad}.",
                         element_refs=[source.ref_id],
                         wizard_step_hint="K1",
-                        suggested_fix="Uzupełnij impedancje punktu neutralnego źródła.",
+                        suggested_fix="Uzupełnij impedancję punktu neutralnego źródła.",
                         fix_action=_fix(source.ref_id, "SourceModal", "neutral_grounding"),
                     )
                 )
@@ -1894,14 +1946,15 @@ class ENMValidator:
                         code="E-W5-01",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Źródło '{source.ref_id}': punkt neutralny opisany jako izolowany, "
-                            "a podano skończoną impedancję zerową (r0/x0 albo z0/z1) — opis i "
-                            "liczby są sprzeczne (sieć izolowana nie ma bocznika zerowego)."
+                            f"{opis_obiektu(source, 'Źródło zasilania')}: punkt neutralny "
+                            "opisany jako izolowany, a podano skończoną impedancję zerową "
+                            "(R0/X0 albo Z0/Z1) — opis i liczby są sprzeczne (sieć izolowana "
+                            "nie ma bocznika zerowego)."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K1",
                         suggested_fix=(
-                            "Usuń r0/x0 (z0/z1) źródła albo zmień typ punktu neutralnego."
+                            "Usuń R0/X0 (Z0/Z1) źródła albo zmień typ punktu neutralnego."
                         ),
                         fix_action=_fix(source.ref_id, "SourceModal", "neutral_grounding"),
                     )
@@ -1912,15 +1965,18 @@ class ENMValidator:
                         code="E-W5-01",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Źródło '{source.ref_id}': punkt neutralny opisany jako uziemiony "
-                            f"({cfg.type}), a źródło nie ma impedancji zerowej (r0/x0 albo z0/z1) — "
-                            "zwarcie 1F liczyłoby sieć bez bocznika zerowego źródła, wbrew opisowi."
+                            f"{opis_obiektu(source, 'Źródło zasilania')}: punkt neutralny "
+                            "opisany jako uziemiony "
+                            f"({ETYKIETA_PL_PUNKTU_NEUTRALNEGO.get(cfg.type, 'uziemiony')}), "
+                            "a źródło nie ma impedancji zerowej (R0/X0 albo Z0/Z1) — zwarcie 1F "
+                            "liczyłoby sieć bez bocznika zerowego źródła, wbrew opisowi."
                         ),
                         element_refs=[source.ref_id],
                         wizard_step_hint="K1",
                         suggested_fix=(
-                            "Podaj r0/x0 (z0/z1) źródła albo zbuduj GPZ kreatorem z transformatorem "
-                            "WN/SN — Z0 zostanie wyprowadzone z opisu punktu neutralnego."
+                            "Podaj R0/X0 (Z0/Z1) źródła albo zbuduj GPZ kreatorem z "
+                            "transformatorem WN/SN — Z0 zostanie wyprowadzone z opisu punktu "
+                            "neutralnego."
                         ),
                         fix_action=_fix(source.ref_id, "SourceModal", "zero_sequence"),
                     )
@@ -1936,8 +1992,8 @@ class ENMValidator:
                             code="E-W5-02",
                             severity=SEVERITY_BLOCKER,
                             message_pl=(
-                                f"Transformator '{trafo.ref_id}': grupa połączeń "
-                                f"'{trafo.vector_group}' spoza słownika IEC 60076-1 "
+                                f"{opis_obiektu(trafo, 'Transformator')}: grupa połączeń "
+                                f"„{trafo.vector_group}” spoza słownika IEC 60076-1 "
                                 f"({len(GRUPY_POLACZEN_IEC60076)} grup)."
                             ),
                             element_refs=[trafo.ref_id],
@@ -1948,7 +2004,7 @@ class ENMValidator:
                     )
                 else:
                     grupa = parsuj_grupe_polaczen(trafo.vector_group)
-            for strona, cfg, pole in (
+            for strona, cfg, klucz_uzwojenia in (
                 ("górnego (SN/WN)", trafo.hv_neutral, "hv_neutral"),
                 ("dolnego (nN/SN)", trafo.lv_neutral, "lv_neutral"),
             ):
@@ -1961,30 +2017,33 @@ class ENMValidator:
                             code="E-W5-01",
                             severity=SEVERITY_BLOCKER,
                             message_pl=(
-                                f"Transformator '{trafo.ref_id}', punkt neutralny uzwojenia "
-                                f"{strona}: {blad}."
+                                f"{opis_obiektu(trafo, 'Transformator')}, punkt neutralny "
+                                f"uzwojenia {strona}: {blad}."
                             ),
                             element_refs=[trafo.ref_id],
                             wizard_step_hint="K6",
-                            suggested_fix="Uzupełnij impedancje punktu neutralnego.",
-                            fix_action=_fix(trafo.ref_id, "TransformerModal", pole),
+                            suggested_fix="Uzupełnij impedancję punktu neutralnego.",
+                            fix_action=_fix(trafo.ref_id, "TransformerModal", klucz_uzwojenia),
                         )
                     )
                     continue
                 if grupa is None or not uziemienie_grounded(cfg.type):
                     continue
                 punkt_dostepny = (
-                    grupa.gn_punkt_neutralny if pole == "hv_neutral" else grupa.dn_punkt_neutralny
+                    grupa.gn_punkt_neutralny
+                    if klucz_uzwojenia == "hv_neutral"
+                    else grupa.dn_punkt_neutralny
                 )
-                litera = grupa.gn_typ if pole == "hv_neutral" else grupa.dn_typ
+                litera = grupa.gn_typ if klucz_uzwojenia == "hv_neutral" else grupa.dn_typ
                 if not punkt_dostepny:
                     issues.append(
                         ValidationIssue(
                             code="E-W5-03",
                             severity=SEVERITY_BLOCKER,
                             message_pl=(
-                                f"Transformator '{trafo.ref_id}': uziemienie ({cfg.type}) "
-                                f"uzwojenia {strona}, którego litera grupy '{litera}' "
+                                f"{opis_obiektu(trafo, 'Transformator')}: uziemienie "
+                                f"({ETYKIETA_PL_PUNKTU_NEUTRALNEGO.get(cfg.type, 'uziemiony')}) "
+                                f"uzwojenia {strona}, którego litera grupy „{litera}” "
                                 f"({trafo.vector_group}) nie wyprowadza punktu neutralnego — "
                                 "brak zacisku N do uziemienia."
                             ),
@@ -1994,7 +2053,7 @@ class ENMValidator:
                                 "Wybierz grupę z wyprowadzonym punktem neutralnym (YN/yn/ZN/zn) "
                                 "albo usuń konfigurację uziemienia tej strony."
                             ),
-                            fix_action=_fix(trafo.ref_id, "TransformerModal", pole),
+                            fix_action=_fix(trafo.ref_id, "TransformerModal", klucz_uzwojenia),
                         )
                     )
 
@@ -2013,13 +2072,14 @@ class ENMValidator:
                     code="W-W5-01",
                     severity=SEVERITY_IMPORTANT,
                     message_pl=(
-                        f"Kabel '{branch.ref_id}': zadeklarowany układ uziemienia ekranu "
-                        f"'{branch.screen_bonding}' "
+                        f"{opis_obiektu(branch, 'Kabel')}: zadeklarowany układ uziemienia ekranu "
+                        f"„{ETYKIETA_PL_UZIEMIENIA_EKRANU.get(str(branch.screen_bonding), 'inny')}” "
                         + (
-                            f"różni się od układu odniesienia katalogowych r0/x0 '{odniesienie}'"
+                            "różni się od układu odniesienia katalogowych R0/X0 "
+                            f"„{ETYKIETA_PL_UZIEMIENIA_EKRANU.get(str(odniesienie), 'inny')}”"
                             if odniesienie is not None
-                            else "bez układu odniesienia katalogowych r0/x0 (typ nie deklaruje "
-                            "z0_reference_bonding)"
+                            else "bez układu odniesienia katalogowych R0/X0 (typ kabla nie "
+                            "deklaruje układu uziemienia ekranu, dla którego podano R0/X0)"
                         )
                         + " — składowa zerowa kabla nie jest przeliczana; wynik 1F/2FG "
                         "obowiązuje dla układu odniesienia."
@@ -2027,7 +2087,7 @@ class ENMValidator:
                     element_refs=[branch.ref_id],
                     wizard_step_hint="K3",
                     suggested_fix=(
-                        "Dobierz typ kabla z r0/x0 dla tego układu ekranu albo zmień deklarację."
+                        "Dobierz typ kabla z R0/X0 dla tego układu ekranu albo zmień deklarację."
                     ),
                     fix_action=_fix(branch.ref_id, "BranchModal", "screen_bonding"),
                 )
@@ -2102,9 +2162,9 @@ class ENMValidator:
                     code="E060",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Odbiór nN '{load.ref_id}' na szynie '{load.bus_ref}' nie ma "
-                        f"ciągłej ścieżki (przez zamknięte gałęzie/transformatory) "
-                        f"do żadnego źródła zasilania."
+                        f"{opis_obiektu(load, 'Odbiór nN')} na szynie "
+                        f"({opis_obiektu(bus_by_ref.get(load.bus_ref), 'szyna')}) nie ma ciągłej ścieżki "
+                        "(przez zamknięte gałęzie/transformatory) do żadnego źródła zasilania."
                     ),
                     element_refs=[load.ref_id, load.bus_ref],
                     wizard_step_hint="K6",
@@ -2131,9 +2191,9 @@ class ENMValidator:
                     code="E060",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Źródło nN '{gen.ref_id}' na szynie '{gen.bus_ref}' nie ma "
-                        f"ciągłej ścieżki (przez zamknięte gałęzie/transformatory) "
-                        f"do reszty sieci zasilanej."
+                        f"{opis_obiektu(gen, 'Źródło nN')} na szynie "
+                        f"({opis_obiektu(bus_by_ref.get(gen.bus_ref), 'szyna')}) nie ma ciągłej ścieżki "
+                        "(przez zamknięte gałęzie/transformatory) do reszty sieci zasilanej."
                     ),
                     element_refs=[gen.ref_id, gen.bus_ref],
                     wizard_step_hint="K6",
@@ -2163,9 +2223,9 @@ class ENMValidator:
                         code="W061",
                         severity=SEVERITY_IMPORTANT,
                         message_pl=(
-                            f"Gałąź nN '{branch.ref_id}' (z automigracji pól nN) nie ma "
-                            f"wiązania z katalogiem kabli nN albo aparatów nN — dane "
-                            f"katalogowe pola źródłowego nie były dostępne przy migracji."
+                            f"{opis_obiektu(branch, 'Gałąź nN')} (z automigracji pól nN) nie ma "
+                            "wiązania z katalogiem kabli nN albo aparatów nN — dane "
+                            "katalogowe pola źródłowego nie były dostępne przy migracji."
                         ),
                         element_refs=[branch.ref_id],
                         wizard_step_hint="K6",
@@ -2184,8 +2244,8 @@ class ENMValidator:
                     code="E061",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Gałąź nN '{branch.ref_id}' nie ma wiązania z katalogiem kabli nN "
-                        f"albo aparatów nN."
+                        f"{opis_obiektu(branch, 'Gałąź nN')} nie ma wiązania z katalogiem "
+                        "kabli nN albo aparatów nN."
                     ),
                     element_refs=[branch.ref_id],
                     wizard_step_hint="K6",
@@ -2219,9 +2279,9 @@ class ENMValidator:
                     code="E062",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Gałąź '{branch.ref_id}' łączy dwie szyny nN o różnych "
-                        f"napięciach znamionowych ({from_bus.voltage_kv} kV i "
-                        f"{to_bus.voltage_kv} kV) bez transformatora."
+                        f"{opis_obiektu(branch, 'Gałąź')} łączy dwie szyny nN o różnych "
+                        f"napięciach znamionowych ({from_bus.voltage_kv:g} kV i "
+                        f"{to_bus.voltage_kv:g} kV) bez transformatora."
                     ),
                     element_refs=[branch.ref_id, from_bus.ref_id, to_bus.ref_id],
                     wizard_step_hint="K6",
@@ -2245,13 +2305,13 @@ class ENMValidator:
                     code="E063",
                     severity=SEVERITY_BLOCKER,
                     message_pl=(
-                        f"Transformator '{trafo.ref_id}' stacji '{sub.ref_id}' zasila "
-                        f"odbiory nN, ale nie deklaruje układu uziemienia sieci nN "
-                        f"(lv_earthing_system)."
+                        f"{opis_obiektu(trafo, 'Transformator')} ({opis_obiektu(sub, 'stacja')}) "
+                        "zasila odbiory nN, ale nie deklaruje układu uziemienia sieci nN "
+                        f"(pole {pole('lv_earthing_system')})."
                     ),
                     element_refs=[trafo.ref_id, sub.ref_id],
                     wizard_step_hint="K6",
-                    suggested_fix=("Wybierz układ uziemienia sieci nN (TN-S/TN-C/TN-C-S/TT/IT)."),
+                    suggested_fix="Wybierz układ uziemienia sieci nN (TN-S/TN-C/TN-C-S/TT/IT).",
                     fix_action=FixAction(
                         action_type="OPEN_MODAL",
                         element_ref=trafo.ref_id,
@@ -2270,8 +2330,8 @@ class ENMValidator:
                         code="E064",
                         severity=SEVERITY_BLOCKER,
                         message_pl=(
-                            f"Zabezpieczenie '{pa.ref_id}' wskazuje nieistniejącą gałąź "
-                            f"'{pa.breaker_ref}' (breaker_ref)."
+                            f"{opis_obiektu(pa, 'Zabezpieczenie')} wskazuje wyłącznik, którego "
+                            "nie ma w modelu sieci."
                         ),
                         element_refs=[pa.ref_id, pa.breaker_ref],
                         wizard_step_hint="K7",
@@ -2301,8 +2361,8 @@ class ENMValidator:
                     code="W060",
                     severity=SEVERITY_IMPORTANT,
                     message_pl=(
-                        f"Kabel nN '{branch.ref_id}' nie ma zadeklarowanych warunków "
-                        f"ułożenia — obciążalność liczona wg założenia katalogowego."
+                        f"{opis_obiektu(branch, 'Kabel nN')} nie ma zadeklarowanych warunków "
+                        "ułożenia — obciążalność liczona wg założenia katalogowego."
                     ),
                     element_refs=[branch.ref_id],
                     wizard_step_hint="K6",
@@ -2334,9 +2394,11 @@ class ENMValidator:
                     code="W062",
                     severity=SEVERITY_IMPORTANT,
                     message_pl=(
-                        f"Szyna nN '{bus_ref}' ma {len(refs)} źródła/generatory "
-                        f"({', '.join(sorted(refs))}) bezpośrednio na tej samej szynie "
-                        f"— brak sprzęgła/logiki SZR rozdzielającej równoległą pracę."
+                        f"{opis_elementu(enm, bus_ref, 'Szyna nN')} ma {len(refs)} "
+                        "źródła/generatory ("
+                        f"{', '.join(sorted(opis_elementu(enm, ref, 'źródło') for ref in refs))}"
+                        ") bezpośrednio na tej samej szynie — brak sprzęgła/logiki SZR "
+                        "rozdzielającej równoległą pracę."
                     ),
                     element_refs=[bus_ref, *sorted(refs)],
                     wizard_step_hint="K6",

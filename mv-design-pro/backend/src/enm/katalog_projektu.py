@@ -36,13 +36,20 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import logging
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import lru_cache
 from typing import Any
 
+from network_model.catalog.niezmienniki_katalogu import OdmowaKatalogu
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
+from network_model.ir_fields import BrakujacePoleIRError
+
+from .slownik_komunikatow import etykieta_parametru
+
+logger = logging.getLogger(__name__)
 
 #: Rodzaje typów, które model może nieść lokalnie (klucze sekcji = pola
 #: `CatalogRepository`, żeby nakładka była mechaniczna, bez tłumaczenia nazw).
@@ -55,6 +62,14 @@ RODZAJE_TYPOW_PROJEKTU: tuple[str, ...] = (
     "karty_widmowe",
 )
 
+#: Rodzaj typów projektu → nazwa grupy w treści dla projektanta (karta #142).
+NAZWY_RODZAJOW_TYPOW_PROJEKTU_PL: dict[str, str] = {
+    "line_types": "typy linii",
+    "cable_types": "typy kabli",
+    "transformer_types": "typy transformatorów",
+    "karty_widmowe": "karty widmowe",
+}
+
 #: Status weryfikacji pozycji z arkusza — dana inżyniera, nie karta producenta.
 STATUS_WERYFIKACJI_ARKUSZA = "NIEWERYFIKOWANY"
 STATUS_KATALOGU_PROJEKTU = "PROJEKTOWY_V1"
@@ -65,7 +80,23 @@ _KATALOG_OPERACJI: ContextVar[CatalogRepository | None] = ContextVar(
 
 
 class BladKataloguProjektu(ValueError):
-    """Sekcja `katalog_projektu` nie daje się złożyć w katalog (kolizja/niepełny rekord)."""
+    """Sekcja `katalog_projektu` nie daje się złożyć w katalog (kolizja/niepełny rekord).
+
+    ``kod_reguly`` — kod twardej reguły katalogu (``KAT-T-…``), gdy odmówiła brama rekordu
+    katalogu; trafia do maszynowej części odpowiedzi operacji, nie do zdania (karta #142).
+    """
+
+    def __init__(self, komunikat: str, *, kod_reguly: str | None = None) -> None:
+        super().__init__(komunikat)
+        self.kod_reguly = kod_reguly
+
+
+#: Kontekst rekordu w odmowie brakującego pola (nazwa klasy typu) → rodzaj pozycji projektu.
+_RODZAJ_Z_KONTEKSTU_REKORDU: dict[str, str] = {
+    "LineType": "line_types",
+    "CableType": "cable_types",
+    "TransformerType": "transformer_types",
+}
 
 
 def sekcja_katalogu_projektu(enm: object) -> dict[str, list[dict[str, Any]]] | None:
@@ -93,6 +124,15 @@ def klucz_sekcji(sekcja: Mapping[str, list[dict[str, Any]]]) -> str:
     return json.dumps(sekcja, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
+def _nazwa_typu(typ: object) -> str:
+    """Nazwa typu katalogu statycznego do treści komunikatu (nigdy jego identyfikator)."""
+    for atrybut in ("name", "model_urzadzenia"):
+        nazwa = getattr(typ, atrybut, None)
+        if isinstance(nazwa, str) and nazwa.strip():
+            return nazwa.strip()
+    return "bez nazwy"
+
+
 @lru_cache(maxsize=32)
 def _katalog_z_klucza(klucz: str) -> CatalogRepository:
     sekcja: dict[str, list[dict[str, Any]]] = json.loads(klucz)
@@ -104,9 +144,44 @@ def _katalog_z_klucza(klucz: str) -> CatalogRepository:
             transformer_types=sekcja.get("transformer_types", []),
             karty_widmowe=sekcja.get("karty_widmowe", []),
         )
-    except (KeyError, TypeError, ValueError) as blad:
+    except KeyError as blad:
+        # Brak klucza rekordu to brak pola arkusza — nazwany etykietą pola, nie kluczem.
         raise BladKataloguProjektu(
-            f"Rekord katalogu projektu nie daje się złożyć w typ katalogowy: {blad}"
+            "Rekord katalogu projektu nie daje się złożyć w typ katalogowy: brak pola "
+            f"{etykieta_parametru(str(blad.args[0]) if blad.args else '')}."
+        ) from blad
+    except BrakujacePoleIRError as blad:
+        # Ta sama klasa co brak klucza: wymagana dana fizyczna rekordu nieznana — pole
+        # nazwane etykietą, rodzaj pozycji słowami (kontekst rekordu to nazwa klasy typu).
+        rodzaj = _RODZAJ_Z_KONTEKSTU_REKORDU.get(str(blad.context))
+        gdzie = f" ({NAZWY_RODZAJOW_TYPOW_PROJEKTU_PL[rodzaj]})" if rodzaj else ""
+        raise BladKataloguProjektu(
+            f"Rekord katalogu projektu{gdzie} nie daje się złożyć w typ katalogowy: brak "
+            f"wymaganej danej {etykieta_parametru(blad.field)} — dana fizyczna nieznana nie "
+            "jest zerem; uzupełnij ją w arkuszu i zaimportuj go ponownie."
+        ) from blad
+    except TypeError as blad:
+        raise BladKataloguProjektu(
+            "Rekord katalogu projektu nie daje się złożyć w typ katalogowy: wartość pola "
+            "ma niepoprawny typ (liczba, tekst albo lista zamiast innej)."
+        ) from blad
+    except OdmowaKatalogu as blad:
+        # Odmowa bramy rekordu katalogu (rejestr niezmienników) jest pisana dla opiekuna
+        # katalogu: klucze pól, kody wartości, kod reguły. Kod reguły idzie do maszynowej
+        # części odpowiedzi, pełna treść — do dziennika serwera; projektant dostaje zdanie.
+        logger.warning("Odmowa rekordu katalogu projektu %s: %s", blad.kod, blad)
+        raise BladKataloguProjektu(
+            "Rekord katalogu projektu nie daje się złożyć w typ katalogowy — narusza twardą "
+            "regułę katalogu (status albo parametr spoza dopuszczonego zakresu); popraw "
+            "pozycję w arkuszu i zaimportuj go ponownie.",
+            kod_reguly=blad.kod,
+        ) from blad
+    except ValueError as blad:
+        logger.warning("Rekord katalogu projektu odrzucony: %s", blad)
+        raise BladKataloguProjektu(
+            "Rekord katalogu projektu nie daje się złożyć w typ katalogowy — wartość pola "
+            "jest spoza dopuszczonego zakresu; popraw pozycję w arkuszu i zaimportuj go "
+            "ponownie."
         ) from blad
     nadpisania: dict[str, dict[str, Any]] = {}
     for rodzaj in RODZAJE_TYPOW_PROJEKTU:
@@ -116,10 +191,17 @@ def _katalog_z_klucza(klucz: str) -> CatalogRepository:
         statyczne = getattr(domyslny, rodzaj)
         kolizje = sorted(identyfikator for identyfikator in lokalne if identyfikator in statyczne)
         if kolizje:
+            # Identyfikatory pozycji projektu wpisał projektant w arkuszu — to jego dane,
+            # więc wolno je zacytować; typ producenta, który przesłaniają, nazywa nazwa.
+            zajete = "; ".join(
+                f"„{identyfikator}” (typ producenta " f"„{_nazwa_typu(statyczne[identyfikator])}”)"
+                for identyfikator in kolizje
+            )
             raise BladKataloguProjektu(
-                f"Pozycje katalogu projektu ({rodzaj}) noszą identyfikatory katalogu "
-                f"statycznego: {kolizje} — typ producenta nie może być przesłonięty "
-                "parametrami użytkownika; nadaj pozycjom projektu własne identyfikatory."
+                f"Pozycje katalogu projektu ({NAZWY_RODZAJOW_TYPOW_PROJEKTU_PL[rodzaj]}) noszą "
+                f"identyfikatory zajęte w katalogu statycznym: {zajete} — typ producenta nie "
+                "może być przesłonięty parametrami użytkownika; nadaj pozycjom projektu "
+                "własne identyfikatory."
             )
         nadpisania[rodzaj] = {**statyczne, **lokalne}
     return dataclasses.replace(domyslny, **nadpisania)

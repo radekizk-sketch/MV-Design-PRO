@@ -55,6 +55,8 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TypeAlias
 
+from .slownik_komunikatow import opis_nazwy
+
 #: Element migawki ENM: słownik surowej migawki biegu ALBO obiekt modelu
 #: (`enm.models`). Świadomie `object`, nie `Any`: `object` wymusza jawne
 #: zawężenie przed użyciem (i tak robione tu `isinstance`-ami), a `Any`
@@ -179,6 +181,10 @@ class TransformatorBezPolaSN:
 
     hv_bus_ref: str
     """Szyna SN, na której leży strona górna transformatora."""
+
+    transformer_name: str = ""
+    """Nazwa transformatora z modelu (pusta, gdy migawka jej nie niesie) — do komunikatu:
+    treść dla projektanta nie niesie identyfikatora (karta #142)."""
 
 
 # ---------------------------------------------------------------------------
@@ -319,6 +325,7 @@ def transformatory_bez_pola_sn(enm: ElementEnm) -> list[TransformatorBezPolaSN]:
                     station_name=_tekst(stacja, "name"),
                     transformer_ref=_ref(transformator),
                     hv_bus_ref=hv,
+                    transformer_name=_tekst(transformator, "name"),
                 )
             )
 
@@ -329,7 +336,7 @@ def transformatory_bez_pola_sn(enm: ElementEnm) -> list[TransformatorBezPolaSN]:
 def komunikat_braku_pola(znalezisko: TransformatorBezPolaSN) -> str:
     """Komunikat OSTRZEŻENIA — brzmienie z dyspozycji recenzenta (§7)."""
     return (
-        f"Transformator '{znalezisko.transformer_ref}' jest połączony elektrycznie "
-        f"z szyną SN, lecz nie posiada kompletnej konfiguracji pola "
-        f"transformatorowego po stronie SN."
+        f"{opis_nazwy(znalezisko.transformer_name, 'Transformator')} jest połączony "
+        "elektrycznie z szyną SN, lecz nie posiada kompletnej konfiguracji pola "
+        "transformatorowego po stronie SN."
     )

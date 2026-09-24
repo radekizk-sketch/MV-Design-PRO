@@ -276,7 +276,10 @@ def test_zla_pozycja_aparatu_pola_konczy_operacje(
 
     assert wynik.get("error_code") == "catalog.item_not_found", wynik
     assert wynik.get("snapshot") is None
-    assert "APARAT_SN" in str(wynik.get("error"))
+    # Karta #142: grupa katalogu nazwą, bez kodu przestrzeni i wpisanej referencji.
+    tresc = str(wynik.get("error"))
+    assert "„Typy aparatury SN”" in tresc, tresc
+    assert "APARAT_SN" not in tresc and LITEROWKA not in tresc, tresc
     # Operacja meldująca błąd nie zostawia żadnego skutku.
     assert wejscie == przed
 

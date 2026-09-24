@@ -78,9 +78,11 @@ from enm.canonical_analysis import (
 )
 from enm.dziennik_zmian import wpisy_od as wpisy_dziennika_od
 from enm.hash import compute_enm_hash
+from enm.katalog_projektu import katalog_dla_modelu
 from enm.models import EnergyNetworkModel
 from enm.rewizje import RewizjaNieistniejeError, RewizjaUszkodzonaError
 from enm.severity import empty_severity_counts
+from enm.slownik_komunikatow import NAZWY_KOLEKCJI_PL, opis_elementu
 from enm.store import ZrodloZmiany, blokada_twin
 from enm.store import checkout as _checkout_rewizji
 from enm.store import get_enm as _get_enm
@@ -105,6 +107,7 @@ from enm.topology_ops import (
 from enm.v2_projection import project_enm_v1_to_v2
 from enm.validator import ENMValidator
 from fastapi import APIRouter, HTTPException, Request
+from network_model.catalog.materialization import nazwa_pozycji_w_katalogu
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -1191,15 +1194,22 @@ def rozbieznosc_wobec_bramy(
                 and element.get("catalog_ref") != pozycja
             ):
                 continue
+            rodzaj = NAZWY_KOLEKCJI_PL.get(kolekcja, "element")
             for opis in rozbieznosci_tabliczki(tabliczka, pola_bramy, etykieta_deklaracji="model"):
-                rozbieznosci.append(f"{element.get('ref_id')}: {opis}")
+                rozbieznosci.append(
+                    f"{opis_elementu(migawka, element.get('ref_id'), rodzaj)} — {opis}"
+                )
 
     if not rozbieznosci:
         return None
+    # Pozycję katalogu nazywa jej nazwa w katalogu MODELU (statyczny + projekt), nigdy
+    # identyfikator (karta #142).
+    nazwa_pozycji = nazwa_pozycji_w_katalogu(katalog_dla_modelu(migawka), None, pozycja)
+    opis_pozycji = f"„{nazwa_pozycji}”" if nazwa_pozycji else "wskazanej pozycji katalogowej"
     return {
         "code": "catalog.gate_result_mismatch",
         "message_pl": (
-            f"Model zapisałby dla pozycji katalogowej '{pozycja}' wartości inne niż "
+            f"Model zapisałby dla pozycji katalogowej {opis_pozycji} wartości inne niż "
             "zmaterializowane przez bramę katalogową: "
             + "; ".join(sorted(rozbieznosci))
             + ". Operacja została odrzucona, model pozostał bez zmian."
@@ -1258,8 +1268,9 @@ def _domain_ops_pod_blokada(case_id: str, klucz: str, req: DomainOpEnvelopeModel
         raise HTTPException(
             status_code=409,
             detail=(
-                f"Konflikt wersji: oczekiwany hash '{req.snapshot_base_hash}', "
-                f"aktualny '{current_hash}'. Odśwież snapshot i spróbuj ponownie."
+                "Konflikt wersji: model sieci zmienił się od chwili, w której operacja go "
+                "odczytała (inna wersja modelu niż ta, na której ją oparto). Odśwież widok "
+                "modelu i spróbuj ponownie."
             ),
         )
 

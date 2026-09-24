@@ -42,16 +42,20 @@ def blad_konfiguracji_uziemienia(
     brak jej wartości nie może być cicho podstawiony zerem (to zamieniłoby
     uziemienie impedancyjne w bezpośrednie i zawyżyło I''k1). Składowa
     przeciwna (X rezystora, R dławika) jest fizycznie pomijalna — dozwolony brak.
+
+    Treść trafia do projektanta (karta #142): pole formularza nazwane jak w kreatorze
+    źródła (``ui2/kreatory/zrodlo/strings.ts`` ``uziemienieR``/``uziemienieX``), bez
+    nazwy pola kontraktu.
     """
     if typ == "resistor_grounded" and (r_ohm is None or r_ohm <= 0):
         return (
-            "uziemienie przez rezystor wymaga dodatniej rezystancji R_N [Ω] "
-            "(GroundingConfig.r_ohm) — nie wolno przyjąć R_N = 0"
+            "uziemienie przez rezystor wymaga dodatniej rezystancji R_N [Ω] w polu "
+            "„R uziemienia” — nie wolno przyjąć R_N = 0"
         )
     if typ == "petersen_coil" and (x_ohm is None or x_ohm <= 0):
         return (
-            "cewka Petersena wymaga dodatniej reaktancji dławika X_N [Ω] "
-            "(GroundingConfig.x_ohm) — nie wolno przyjąć X_N = 0"
+            "cewka Petersena wymaga dodatniej reaktancji dławika X_N [Ω] w polu "
+            "„X cewki” — nie wolno przyjąć X_N = 0"
         )
     return None
 

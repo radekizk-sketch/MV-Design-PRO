@@ -168,7 +168,7 @@ def test_catalog_inheritance_propagates_source_catalog() -> None:
     assert inh["source_catalog_ref"] == CATALOG_LINE_70
     assert inh["first_inherits"] is True
     assert inh["second_inherits"] is True
-    assert "Obie połówki dziedziczą" in inh["rule"]
+    assert "Obie części odcinka dziedziczą" in inh["rule"]
 
 
 # ---------------------------------------------------------------------------

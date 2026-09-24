@@ -10,19 +10,61 @@ REGUŁA WSPÓLNA DLA WSZYSTKICH SPRAWDZEŃ: rodzina, której katalog nie potwier
 źródłem (`status='requires_catalog'`), NIE wchodzi do konfiguratora. Predykat
 „wolno budować" ma jedno źródło — `list_offered_switchgear_families()` — więc
 nie da się wejść bocznymi drzwiami przez pojedyncze sprawdzenie.
+
+TREŚĆ BŁĘDU DLA PROJEKTANTA (karta #142). Komunikat trafia do kreatora stacji
+i pola SN bez tłumaczenia po drodze, więc nazywa rodzinę jej nazwą handlową,
+rodzaj pola, aparat, tor konfiguracji i powód blokady — polskimi słowami
+(mapy przy typach katalogu). Referencja rodziny, pola i kod rodzaju zostają
+w danych katalogu, nie w zdaniu.
 """
 
 from __future__ import annotations
 
-from .complete_mv_bay_template import BayKind, CompleteMvBayTemplate
-from .device_instance import ApparatusKind, StatusWyposazenia
+from collections.abc import Iterable
+
+from .complete_mv_bay_template import (
+    BayKind,
+    CompleteMvBayTemplate,
+    nazwa_rodzaju_pola_katalogowego_pl,
+)
+from .device_instance import ApparatusKind, StatusWyposazenia, nazwa_rodzaju_aparatu_pl
 from .errors import NiezgodnoscKonfiguracjiError
 from .factory_configuration import FactoryConfiguration
 from .families import (
     SWITCHGEAR_FAMILY_REGISTRY,
     list_offered_switchgear_families,
 )
-from .switchgear_family import SwitchgearFamily
+from .registry import MANUFACTURER_REGISTRY
+from .switchgear_family import (
+    NAZWY_TOROW_KONFIGURACJI_PL,
+    POWODY_BLOKADY_RODZINY_PL,
+    SwitchgearFamily,
+)
+
+
+def _lista_nazw(nazwy: Iterable[str]) -> str:
+    """„a”, „b” i „c” — lista nazw w zdaniu (posortowana, bez powtórzeń)."""
+    elementy = sorted(set(nazwy))
+    if len(elementy) <= 1:
+        return "".join(f"„{nazwa}”" for nazwa in elementy)
+    return ", ".join(f"„{nazwa}”" for nazwa in elementy[:-1]) + f" i „{elementy[-1]}”"
+
+
+def nazwa_rodziny_pl(switchgear_family_ref: str | None) -> str:
+    """Nazwa handlowa rodziny do zdania; rodzina spoza rejestru = opis, nie referencja."""
+    rodzina = SWITCHGEAR_FAMILY_REGISTRY.get(switchgear_family_ref or "")
+    return rodzina.family_name if rodzina is not None else "spoza katalogu rozdzielnic"
+
+
+def opis_pola_katalogowego_pl(template: CompleteMvBayTemplate) -> str:
+    """Katalogowe pole w środku zdania z nazwą rodziny (``CompleteMvBayTemplate.opis_pl``)."""
+    rodzina = SWITCHGEAR_FAMILY_REGISTRY.get(template.switchgear_family_ref or "")
+    return template.opis_pl(rodzina.family_name if rodzina is not None else None)
+
+
+def _producent_pl(family: SwitchgearFamily) -> str:
+    producent = MANUFACTURER_REGISTRY.get(family.manufacturer_ref)
+    return producent.name if producent is not None else "producent spoza rejestru"
 
 
 def get_family_or_raise(switchgear_family_ref: str) -> SwitchgearFamily:
@@ -30,7 +72,8 @@ def get_family_or_raise(switchgear_family_ref: str) -> SwitchgearFamily:
     family = SWITCHGEAR_FAMILY_REGISTRY.get(switchgear_family_ref)
     if family is None:
         raise NiezgodnoscKonfiguracjiError(
-            f"Rodzina rozdzielnicy {switchgear_family_ref!r} nie istnieje w katalogu."
+            "Wskazana rodzina rozdzielnicy nie istnieje w katalogu rozdzielnic SN — "
+            "wybierz rodzinę z listy producenta."
         )
     return family
 
@@ -45,16 +88,18 @@ def wymagaj_rodziny_oferowanej(switchgear_family_ref: str) -> SwitchgearFamily:
     family = get_family_or_raise(switchgear_family_ref)
     oferowane = {f.switchgear_family_ref for f in list_offered_switchgear_families()}
     if family.switchgear_family_ref not in oferowane:
+        powod = POWODY_BLOKADY_RODZINY_PL.get(
+            family.status, "status rodziny nie dopuszcza budowania konfiguracji"
+        )
         raise NiezgodnoscKonfiguracjiError(
-            f"Rodzina {family.family_name} ({family.manufacturer_ref}) nie ma "
-            "potwierdzonych parametrów kartą katalogową (status "
-            f"{family.status!r}) — nie można na niej budować konfiguracji."
+            f"Rodzina {family.family_name} ({_producent_pl(family)}) nie jest dopuszczona "
+            f"do budowania konfiguracji: {powod}."
         )
     if family.tor_konfiguracji is None:
         raise NiezgodnoscKonfiguracjiError(
-            f"Rodzina {family.family_name} nie deklaruje konstrukcji, więc nie "
-            "da się ustalić toru konfiguracji (modularny albo blok RMU) — "
-            "uzupełnij kartę katalogową."
+            f"Rodzina {family.family_name} nie deklaruje konstrukcji, więc nie da się "
+            f"ustalić toru konfiguracji ({_lista_nazw(NAZWY_TOROW_KONFIGURACJI_PL.values())}) "
+            "— uzupełnij kartę katalogową."
         )
     return family
 
@@ -64,8 +109,9 @@ def family_supports_bay_kind(switchgear_family_ref: str, bay_kind: BayKind) -> N
     family = wymagaj_rodziny_oferowanej(switchgear_family_ref)
     if bay_kind not in family.allowed_bay_kinds:
         raise NiezgodnoscKonfiguracjiError(
-            f"Rodzina {family.family_name} nie przewiduje pola typu "
-            f"{bay_kind!r} (typy katalogowe: {sorted(family.allowed_bay_kinds)})."
+            f"Rodzina {family.family_name} nie przewiduje pola rodzaju "
+            f"„{nazwa_rodzaju_pola_katalogowego_pl(bay_kind)}” (rodzina przewiduje: "
+            f"{_lista_nazw(map(nazwa_rodzaju_pola_katalogowego_pl, family.allowed_bay_kinds))})."
         )
 
 
@@ -75,8 +121,8 @@ def family_supports_apparatus(switchgear_family_ref: str, apparatus_kind: str) -
     if apparatus_kind not in family.allowed_apparatus_kinds:
         raise NiezgodnoscKonfiguracjiError(
             f"Rodzina {family.family_name} nie dopuszcza aparatu "
-            f"{apparatus_kind!r} (słownik rodziny: "
-            f"{sorted(family.allowed_apparatus_kinds)})."
+            f"„{nazwa_rodzaju_aparatu_pl(apparatus_kind)}” (aparaty rodziny: "
+            f"{_lista_nazw(map(nazwa_rodzaju_aparatu_pl, family.allowed_apparatus_kinds))})."
         )
 
 
@@ -190,11 +236,14 @@ def family_supports_bay_template(
     """
     family = wymagaj_rodziny_oferowanej(switchgear_family_ref)
     if template.switchgear_family_ref != family.switchgear_family_ref:
-        rodzima = template.switchgear_family_ref or "brak rodziny (szablon kanoniczny)"
+        rodzima = (
+            f"rodziny {nazwa_rodziny_pl(template.switchgear_family_ref)}"
+            if template.switchgear_family_ref
+            else "szablonów kanonicznych bez rodziny"
+        )
         raise NiezgodnoscKonfiguracjiError(
-            f"Pole {template.template_ref} należy do rodziny {rodzima}, nie do "
-            f"{family.family_name} — katalog producenta nie przewiduje takiej "
-            "kombinacji."
+            f"Katalogowe {template.opis_pl()} należy do {rodzima}, nie do rodziny "
+            f"{family.family_name} — katalog producenta nie przewiduje takiej kombinacji."
         )
     family_supports_bay_kind(switchgear_family_ref, template.bay_kind)
 
@@ -212,8 +261,8 @@ def bay_template_supports_apparatus(
         if instance.apparatus_kind == apparatus_kind:
             return instance.status_wyposazenia
     raise NiezgodnoscKonfiguracjiError(
-        f"Pole {template.template_ref} nie przewiduje elementu "
-        f"{apparatus_kind!r} — katalog rodziny go nie dopuszcza."
+        f"Katalogowe {opis_pola_katalogowego_pl(template)} nie przewiduje aparatu "
+        f"„{nazwa_rodzaju_aparatu_pl(apparatus_kind)}” — katalog rodziny go nie dopuszcza."
     )
 
 
@@ -226,25 +275,27 @@ def family_supports_factory_configuration(configuration: FactoryConfiguration) -
     """
     family = wymagaj_rodziny_oferowanej(configuration.switchgear_family_ref)
     if family.tor_konfiguracji != "BLOK_RMU":
+        tor = NAZWY_TOROW_KONFIGURACJI_PL.get(str(family.tor_konfiguracji), "inny tor")
         raise NiezgodnoscKonfiguracjiError(
-            f"Konfiguracja fabryczna {configuration.code} przypisana do rodziny "
-            f"{family.family_name}, która jest składana z pojedynczych pól "
-            f"(tor {family.tor_konfiguracji}) — bloki fabryczne mają tylko "
-            "rodziny RMU."
+            f"Blok fabryczny {configuration.code} („{configuration.name_pl}”) przypisano do "
+            f"rodziny {family.family_name}, która prowadzi torem „{tor}” — bloki fabryczne "
+            "mają tylko rodziny RMU."
         )
     for unit in configuration.units:
         if unit.bay_kind not in family.allowed_bay_kinds:
             raise NiezgodnoscKonfiguracjiError(
                 f"Jednostka {unit.unit_code} ({unit.unit_name_pl}) bloku "
-                f"{configuration.code} ma funkcję {unit.bay_kind!r}, której "
-                f"rodzina {family.family_name} nie przewiduje "
-                f"(typy katalogowe: {sorted(family.allowed_bay_kinds)})."
+                f"{configuration.code} ma funkcję "
+                f"„{nazwa_rodzaju_pola_katalogowego_pl(unit.bay_kind)}”, której rodzina "
+                f"{family.family_name} nie przewiduje (rodzina przewiduje: "
+                f"{_lista_nazw(map(nazwa_rodzaju_pola_katalogowego_pl, family.allowed_bay_kinds))})."
             )
         for apparatus_kind in unit.apparatus_kinds:
             if apparatus_kind not in family.allowed_apparatus_kinds:
                 raise NiezgodnoscKonfiguracjiError(
                     f"Jednostka {unit.unit_code} ({unit.unit_name_pl}) bloku "
-                    f"{configuration.code} wymaga aparatu {apparatus_kind!r} "
-                    f"spoza słownika rodziny {family.family_name} "
-                    f"({sorted(family.allowed_apparatus_kinds)})."
+                    f"{configuration.code} wymaga aparatu "
+                    f"„{nazwa_rodzaju_aparatu_pl(apparatus_kind)}” spoza słownika rodziny "
+                    f"{family.family_name} (aparaty rodziny: "
+                    f"{_lista_nazw(map(nazwa_rodzaju_aparatu_pl, family.allowed_apparatus_kinds))})."
                 )

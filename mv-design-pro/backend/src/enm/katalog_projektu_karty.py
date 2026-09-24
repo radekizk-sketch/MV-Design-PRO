@@ -22,6 +22,7 @@ proweniencja w polu typowanym ``Generator.modele_widmowe``.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable, Mapping
 from typing import Any
 
@@ -37,17 +38,44 @@ from network_model.catalog.repository import CatalogRepository, get_default_mv_c
 from pydantic import ValidationError
 
 from .katalog_projektu import STATUS_KATALOGU_PROJEKTU, STATUS_WERYFIKACJI_ARKUSZA
+from .slownik_komunikatow import (
+    NAZWY_STATUSOW_KATALOGU_PL,
+    NAZWY_STATUSOW_WERYFIKACJI_PL,
+    opis_bledu_walidacji,
+    pole,
+)
+
+logger = logging.getLogger(__name__)
 
 #: Klucz payloadu ``set_der_catalog_bindings`` — lista id kart widmowych generatora.
 KLUCZ_KART_WIDMOWYCH = "karty_widmowe_ref"
 
 
 class BladKartWidmowych(ValueError):
-    """Nazwana odmowa operacji na kartach widmowych (``kod`` = kod błędu operacji)."""
+    """Nazwana odmowa operacji na kartach widmowych (``kod`` = kod błędu operacji).
 
-    def __init__(self, kod: str, komunikat: str) -> None:
+    ``kod_reguly`` — kod twardej reguły katalogu (``KAT-T-…``), gdy odmówiła brama rekordu
+    karty; trafia do maszynowej części odpowiedzi operacji, nie do zdania (karta #142).
+    """
+
+    def __init__(self, kod: str, komunikat: str, *, kod_reguly: str | None = None) -> None:
         super().__init__(komunikat)
         self.kod = kod
+        self.kod_reguly = kod_reguly
+
+
+def _opis_karty(karta: KartaWidmowa) -> str:
+    """Karta widmowa w treści komunikatu: producent, model i wersja — nie identyfikator."""
+    return f"karta widmowa {karta.producent} {karta.model_urzadzenia} (wersja {karta.wersja})"
+
+
+def _opis_typu(katalog: CatalogRepository, ref: object, rodzaj: str) -> str:
+    """Typ katalogu w treści komunikatu: nazwa typu z katalogu modelu — nie identyfikator."""
+    typ = katalog.get_converter_type(str(ref)) if ref else None
+    nazwa = getattr(typ, "name", None) if typ is not None else None
+    if isinstance(nazwa, str) and nazwa.strip() and nazwa.strip() != ref:
+        return f"{rodzaj} „{nazwa.strip()}”"
+    return f"{rodzaj} spoza katalogu przekształtników modelu" if ref else f"{rodzaj} bez wskazania"
 
 
 def przestrzen_karty(karta_id: str) -> PrzestrzenKarty:
@@ -65,15 +93,15 @@ def identyfikatory_kart(wartosc: object) -> tuple[str, ...] | None:
     ):
         raise BladKartWidmowych(
             "der_bindings.karty_widmowe_ref_invalid",
-            f"`{KLUCZ_KART_WIDMOWYCH}` musi być listą identyfikatorów kart widmowych "
-            f"(otrzymano {type(wartosc).__name__}).",
+            f"Pole {pole(KLUCZ_KART_WIDMOWYCH)} musi wskazywać listę kart widmowych "
+            "z katalogu modelu.",
         )
     if not wartosc:
         return None
     if len(set(wartosc)) != len(wartosc):
         raise BladKartWidmowych(
             "der_bindings.karty_widmowe_ref_invalid",
-            f"`{KLUCZ_KART_WIDMOWYCH}` powtarza identyfikatory kart: {list(wartosc)}.",
+            f"Pole {pole(KLUCZ_KART_WIDMOWYCH)} wskazuje tę samą kartę widmową więcej niż raz.",
         )
     return tuple(sorted(str(element) for element in wartosc))
 
@@ -91,21 +119,21 @@ def materializuj_karty_generatora(
     if nieznane:
         raise BladKartWidmowych(
             "der_bindings.catalog_ref_unknown",
-            "Karty widmowe nie istnieją w katalogu modelu: "
-            + ", ".join(f"{KLUCZ_KART_WIDMOWYCH}={karta_id}" for karta_id in nieznane)
-            + ".",
+            f"Pole {pole(KLUCZ_KART_WIDMOWYCH)} wskazuje karty spoza katalogu modelu "
+            f"(liczba: {len(nieznane)}) — wybierz karty widmowe z katalogu.",
         )
     karty = [katalog.get_karta_widmowa(karta_id) for karta_id in karty_ids]
     obce = [
-        f"{karta.id} (wskazuje typ {karta.urzadzenie_ref!r})"
+        f"{_opis_karty(karta)} opisuje {_opis_typu(katalog, karta.urzadzenie_ref, 'typ')}"
         for karta in karty
         if karta is not None and karta.urzadzenie_ref != catalog_ref
     ]
     if obce:
         raise BladKartWidmowych(
             "der_bindings.karta_widmowa_innego_urzadzenia",
-            f"Karty widmowe opisują inne urządzenie niż typ generatora {catalog_ref!r}: "
-            + ", ".join(obce)
+            "Karty widmowe opisują inne urządzenie niż "
+            f"{_opis_typu(katalog, catalog_ref, 'typ generatora')}: "
+            + "; ".join(obce)
             + ". Karta widmowa należy do typu urządzenia, który wskazuje.",
         )
     try:
@@ -115,7 +143,7 @@ def materializuj_karty_generatora(
     except ValidationError as blad:
         raise BladKartWidmowych(
             "der_bindings.karty_widmowe_kolizja",
-            f"Modele wskazanych kart nie dają się złożyć w element: {blad.errors()[0]['msg']}",
+            f"Modele wskazanych kart nie dają się złożyć w element: {opis_bledu_walidacji(blad)}.",
         ) from blad
 
 
@@ -128,18 +156,18 @@ def problemy_zrodel_modeli(
         karta = katalog.get_karta_widmowa(zrodlo.karta_id)
         if karta is None:
             problemy.append(
-                f"karta {zrodlo.karta_id} (wersja {zrodlo.wersja}) nie istnieje w katalogu "
-                "modelu — usunięta po materializacji"
+                f"karta widmowa zmaterializowana w wersji {zrodlo.wersja} nie istnieje już "
+                "w katalogu modelu — usunięta po materializacji"
             )
         elif karta.odcisk() != zrodlo.odcisk_karty:
             problemy.append(
-                f"karta {zrodlo.karta_id} zmieniona po materializacji (wersja w modelu "
-                f"{karta.wersja}, zmaterializowana {zrodlo.wersja})"
+                f"{_opis_karty(karta)} zmieniona po materializacji (zmaterializowana wersja "
+                f"{zrodlo.wersja})"
             )
         elif karta.urzadzenie_ref != catalog_ref:
             problemy.append(
-                f"karta {zrodlo.karta_id} wskazuje typ {karta.urzadzenie_ref!r}, a generator "
-                f"typ {catalog_ref!r}"
+                f"{_opis_karty(karta)} opisuje {_opis_typu(katalog, karta.urzadzenie_ref, 'typ')}"
+                f", a generator ma {_opis_typu(katalog, catalog_ref, 'typ')}"
             )
     return problemy
 
@@ -157,29 +185,47 @@ def dodaj_karte_do_sekcji(
     try:
         karta = karta_widmowa_z_rekordu(rekord)
     except OdmowaKatalogu as blad:
-        raise BladKartWidmowych("karta_widmowa.odrzucona", str(blad)) from blad
+        # Odmowa bramy rekordu karty jest pisana dla opiekuna katalogu (identyfikator karty,
+        # opis biblioteki walidacji po angielsku, kod reguły). Kod reguły idzie do maszynowej
+        # części odpowiedzi, pełna treść — do dziennika serwera; projektant dostaje zdanie
+        # z nazwami pól formularza (błąd kształtu danych karty jest przyczyną odmowy).
+        logger.warning("Odmowa karty widmowej projektu %s: %s", blad.kod, blad)
+        przyczyna = blad.__cause__ or blad.__context__
+        szczegoly = (
+            f": {opis_bledu_walidacji(przyczyna)}" if isinstance(przyczyna, ValidationError) else ""
+        )
+        raise BladKartWidmowych(
+            "karta_widmowa.odrzucona",
+            "Karta widmowa z arkusza narusza twardą regułę katalogu kart widmowych"
+            f"{szczegoly} — popraw kartę w arkuszu i zapisz ją ponownie.",
+            kod_reguly=blad.kod,
+        ) from blad
     if (
         karta.verification_status != STATUS_WERYFIKACJI_ARKUSZA
         or karta.catalog_status != STATUS_KATALOGU_PROJEKTU
     ):
         raise BladKartWidmowych(
             "karta_widmowa.status_projektu",
-            f"Karta projektu '{karta.id}' niesie dane inżyniera: status weryfikacji "
-            f"{STATUS_WERYFIKACJI_ARKUSZA} i status katalogu {STATUS_KATALOGU_PROJEKTU} "
-            f"(otrzymano {karta.verification_status}/{karta.catalog_status}) — status "
+            f"Karta projektu ({_opis_karty(karta)}) niesie dane inżyniera: status weryfikacji "
+            f"„{NAZWY_STATUSOW_WERYFIKACJI_PL[STATUS_WERYFIKACJI_ARKUSZA]}” i status katalogu "
+            f"„{NAZWY_STATUSOW_KATALOGU_PL[STATUS_KATALOGU_PROJEKTU]}” (otrzymano "
+            f"„{NAZWY_STATUSOW_WERYFIKACJI_PL.get(karta.verification_status, 'inny')}” / "
+            f"„{NAZWY_STATUSOW_KATALOGU_PL.get(karta.catalog_status, 'inny')}”) — status "
             "zweryfikowany nadaje wyłącznie katalog statyczny z dokumentem.",
         )
     if katalog.get_converter_type(karta.urzadzenie_ref) is None:
         raise BladKartWidmowych(
             "karta_widmowa.urzadzenie_nieznane",
-            f"Karta '{karta.id}' wskazuje typ {karta.urzadzenie_ref!r}, którego nie ma w "
-            "katalogu przekształtników modelu.",
+            f"Karta projektu ({_opis_karty(karta)}) wskazuje typ urządzenia, którego nie ma "
+            "w katalogu przekształtników modelu.",
         )
-    if karta.id in get_default_mv_catalog().karty_widmowe:
+    statyczna = get_default_mv_catalog().karty_widmowe.get(karta.id)
+    if statyczna is not None:
         raise BladKartWidmowych(
             "karta_widmowa.id_zajety",
-            f"Identyfikator '{karta.id}' należy do karty katalogu statycznego — karta "
-            "projektu nie może jej przesłonić.",
+            f"Identyfikator karty „{karta.id}” z arkusza należy do karty katalogu statycznego "
+            f"({_opis_karty(statyczna)}) — karta projektu nie może jej przesłonić; nadaj "
+            "karcie własny identyfikator.",
         )
     nowa: dict[str, Any] = {klucz: list(wartosc) for klucz, wartosc in (sekcja or {}).items()}
     istniejace = [dict(r) for r in nowa.get("karty_widmowe", [])]
@@ -190,8 +236,8 @@ def dodaj_karte_do_sekcji(
             return nowa, karta
         raise BladKartWidmowych(
             "karta_widmowa.id_zajety",
-            f"Karta projektu '{karta.id}' istnieje z inną treścią — nowe wydanie karty "
-            "dostaje nowy identyfikator.",
+            f"Karta projektu o identyfikatorze „{karta.id}” z arkusza istnieje z inną treścią "
+            "— nowe wydanie karty dostaje nowy identyfikator.",
         )
     zajete = {
         str(r.get("id"))
@@ -202,7 +248,8 @@ def dodaj_karte_do_sekcji(
     if karta.id in zajete:
         raise BladKartWidmowych(
             "karta_widmowa.id_zajety",
-            f"Identyfikator '{karta.id}' jest już użyty w sekcji katalogu projektu.",
+            f"Identyfikator karty „{karta.id}” z arkusza jest już użyty przez inną pozycję "
+            "katalogu projektu.",
         )
     nowa["karty_widmowe"] = sorted(
         [*istniejace, karta.model_dump(mode="json")], key=lambda r: str(r["id"])

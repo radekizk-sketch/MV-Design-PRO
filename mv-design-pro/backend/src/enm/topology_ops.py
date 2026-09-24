@@ -39,6 +39,11 @@ from typing import Any, Literal
 from network_model.core.topologia import ma_cykl, polaczone, poziomy, przeglad_wszerz
 
 from .load_zip_model import zip_odbioru_z_parametrow_materializacji
+from .slownik_komunikatow import (
+    NAZWY_KOLEKCJI_PL,
+    NAZWY_RODZAJOW_ZABEZPIECZENIA_PL,
+    opis_elementu,
+)
 
 # ---------------------------------------------------------------------------
 # Operation Result
@@ -102,6 +107,30 @@ def _ref_id_unique(enm: dict[str, Any], ref_id: str) -> bool:
     return ref_id not in _all_refs_set(enm)
 
 
+def _blad_zajetego_identyfikatora(enm: dict[str, Any], ref_id: str) -> OpIssue:
+    """Identyfikator nowego elementu zajęty — treść nazywa element, który go ma (karta #142).
+
+    Identyfikator zostaje w ``element_ref`` (dane maszynowe); projektant czyta rodzaj
+    i nazwę elementu z modelu, nigdy sam identyfikator.
+    """
+    rodzaj = next(
+        (
+            NAZWY_KOLEKCJI_PL.get(kolekcja, "element")
+            for kolekcja, elementy in enm.items()
+            if isinstance(elementy, list)
+            and any(isinstance(e, dict) and e.get("ref_id") == ref_id for e in elementy)
+        ),
+        "element",
+    )
+    return OpIssue(
+        "OP_REF_DUPLICATE",
+        "BLOCKER",
+        f"Identyfikator nowego elementu jest już zajęty przez {opis_elementu(enm, ref_id, rodzaj)}"
+        " — ten sam element nie może powstać drugi raz.",
+        ref_id,
+    )
+
+
 def _krawedzie_w_ruchu(enm: dict[str, Any]) -> list[tuple[str, str]]:
     """Krawędzie topologiczne słownika ENM: gałęzie nie-``open`` + transformatory
     (końce po ``ref``, także spoza listy szyn — jak dotąd w tym module)."""
@@ -154,11 +183,11 @@ def create_node(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
     ref_id = data.get("ref_id", "")
 
     if not ref_id:
-        issues.append(OpIssue("OP_NO_REF", "BLOCKER", "Brak ref_id węzła"))
-    elif not _ref_id_unique(enm, ref_id):
         issues.append(
-            OpIssue("OP_REF_DUPLICATE", "BLOCKER", f"ref_id '{ref_id}' już istnieje", ref_id)
+            OpIssue("OP_NO_REF", "BLOCKER", "Operacja nie nadała identyfikatora nowej szynie.")
         )
+    elif not _ref_id_unique(enm, ref_id):
+        issues.append(_blad_zajetego_identyfikatora(enm, ref_id))
 
     voltage = data.get("voltage_kv", 0)
     if voltage <= 0:
@@ -190,7 +219,9 @@ def update_node(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
     idx = next((i for i, b in enumerate(buses) if b.get("ref_id") == ref_id), None)
     if idx is None:
         issues.append(
-            OpIssue("OP_NOT_FOUND", "BLOCKER", f"Węzeł '{ref_id}' nie znaleziony", ref_id)
+            OpIssue(
+                "OP_NOT_FOUND", "BLOCKER", "Wskazana szyna nie istnieje w modelu sieci.", ref_id
+            )
         )
         return TopologyOpResult(False, enm, "update_node", issues)
 
@@ -214,7 +245,9 @@ def delete_node(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
 
     if idx is None:
         issues.append(
-            OpIssue("OP_NOT_FOUND", "BLOCKER", f"Węzeł '{ref_id}' nie znaleziony", ref_id)
+            OpIssue(
+                "OP_NOT_FOUND", "BLOCKER", "Wskazana szyna nie istnieje w modelu sieci.", ref_id
+            )
         )
         return TopologyOpResult(False, enm, "delete_node", issues)
 
@@ -222,27 +255,29 @@ def delete_node(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
     deps: list[str] = []
     for b in enm.get("branches", []):
         if b.get("from_bus_ref") == ref_id or b.get("to_bus_ref") == ref_id:
-            deps.append(f"gałąź '{b.get('ref_id', '?')}'")
+            deps.append(opis_elementu(enm, b.get("ref_id"), "gałąź"))
     for t in enm.get("transformers", []):
         if t.get("hv_bus_ref") == ref_id or t.get("lv_bus_ref") == ref_id:
-            deps.append(f"transformator '{t.get('ref_id', '?')}'")
+            deps.append(opis_elementu(enm, t.get("ref_id"), "transformator"))
     for s in enm.get("sources", []):
         if s.get("bus_ref") == ref_id:
-            deps.append(f"źródło '{s.get('ref_id', '?')}'")
+            deps.append(opis_elementu(enm, s.get("ref_id"), "źródło zasilania"))
     for ld in enm.get("loads", []):
         if ld.get("bus_ref") == ref_id:
-            deps.append(f"odbiór '{ld.get('ref_id', '?')}'")
+            deps.append(opis_elementu(enm, ld.get("ref_id"), "odbiór"))
     for g in enm.get("generators", []):
         if g.get("bus_ref") == ref_id:
-            deps.append(f"generator '{g.get('ref_id', '?')}'")
+            deps.append(opis_elementu(enm, g.get("ref_id"), "generator"))
 
     if deps:
         issues.append(
             OpIssue(
                 "OP_HAS_DEPENDENCIES",
                 "BLOCKER",
-                f"Węzeł '{ref_id}' ma zależności: {', '.join(deps[:5])}"
-                + (f" i {len(deps) - 5} więcej" if len(deps) > 5 else ""),
+                f"{opis_elementu(enm, ref_id, 'Szyna')} ma przyłączone elementy: "
+                f"{', '.join(deps[:5])}"
+                + (f" i {len(deps) - 5} więcej" if len(deps) > 5 else "")
+                + " — najpierw je odłącz albo usuń.",
                 ref_id,
             )
         )
@@ -264,11 +299,11 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
     branch_type = data.get("type", "line_overhead")
 
     if not ref_id:
-        issues.append(OpIssue("OP_NO_REF", "BLOCKER", "Brak ref_id gałęzi"))
-    elif not _ref_id_unique(enm, ref_id):
         issues.append(
-            OpIssue("OP_REF_DUPLICATE", "BLOCKER", f"ref_id '{ref_id}' już istnieje", ref_id)
+            OpIssue("OP_NO_REF", "BLOCKER", "Operacja nie nadała identyfikatora nowej gałęzi.")
         )
+    elif not _ref_id_unique(enm, ref_id):
+        issues.append(_blad_zajetego_identyfikatora(enm, ref_id))
 
     from_ref = data.get("from_bus_ref", "")
     to_ref = data.get("to_bus_ref", "")
@@ -276,11 +311,17 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
 
     if from_ref not in bus_refs:
         issues.append(
-            OpIssue("OP_FROM_NOT_FOUND", "BLOCKER", f"Szyna źródłowa '{from_ref}' nie istnieje")
+            OpIssue(
+                "OP_FROM_NOT_FOUND",
+                "BLOCKER",
+                "Szyna początkowa gałęzi nie istnieje w modelu sieci.",
+            )
         )
     if to_ref not in bus_refs:
         issues.append(
-            OpIssue("OP_TO_NOT_FOUND", "BLOCKER", f"Szyna docelowa '{to_ref}' nie istnieje")
+            OpIssue(
+                "OP_TO_NOT_FOUND", "BLOCKER", "Szyna końcowa gałęzi nie istnieje w modelu sieci."
+            )
         )
     if from_ref and to_ref and from_ref == to_ref:
         issues.append(
@@ -384,7 +425,9 @@ def update_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
 
     if idx is None:
         issues.append(
-            OpIssue("OP_NOT_FOUND", "BLOCKER", f"Gałąź '{ref_id}' nie znaleziona", ref_id)
+            OpIssue(
+                "OP_NOT_FOUND", "BLOCKER", "Wskazana gałąź nie istnieje w modelu sieci.", ref_id
+            )
         )
         return TopologyOpResult(False, enm, "update_branch", issues)
 
@@ -402,7 +445,9 @@ def delete_branch(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
 
     if idx is None:
         issues.append(
-            OpIssue("OP_NOT_FOUND", "BLOCKER", f"Gałąź '{ref_id}' nie znaleziona", ref_id)
+            OpIssue(
+                "OP_NOT_FOUND", "BLOCKER", "Wskazana gałąź nie istnieje w modelu sieci.", ref_id
+            )
         )
         return TopologyOpResult(False, enm, "delete_branch", issues)
 
@@ -415,8 +460,9 @@ def delete_branch(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
                     OpIssue(
                         "OP_HAS_PROTECTION",
                         "BLOCKER",
-                        f"Wyłącznik '{ref_id}' ma przypisane zabezpieczenie "
-                        f"'{pa.get('ref_id', '?')}' — najpierw odłącz zabezpieczenie",
+                        f"{opis_elementu(enm, ref_id, 'Wyłącznik')} ma przypisane "
+                        f"{opis_elementu(enm, pa.get('ref_id'), 'zabezpieczenie')} — najpierw "
+                        "odłącz zabezpieczenie.",
                         ref_id,
                     )
                 )
@@ -443,11 +489,11 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
     ref_id = data.get("ref_id", "")
 
     if not ref_id:
-        issues.append(OpIssue("OP_NO_REF", "BLOCKER", "Brak ref_id urządzenia"))
-    elif not _ref_id_unique(enm, ref_id):
         issues.append(
-            OpIssue("OP_REF_DUPLICATE", "BLOCKER", f"ref_id '{ref_id}' już istnieje", ref_id)
+            OpIssue("OP_NO_REF", "BLOCKER", "Operacja nie nadała identyfikatora nowemu urządzeniu.")
         )
+    elif not _ref_id_unique(enm, ref_id):
+        issues.append(_blad_zajetego_identyfikatora(enm, ref_id))
 
     bus_refs = _bus_refs_set(enm)
 
@@ -455,12 +501,28 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         hv = data.get("hv_bus_ref", "")
         lv = data.get("lv_bus_ref", "")
         if hv not in bus_refs:
-            issues.append(OpIssue("OP_HV_NOT_FOUND", "BLOCKER", f"Szyna HV '{hv}' nie istnieje"))
+            issues.append(
+                OpIssue(
+                    "OP_HV_NOT_FOUND",
+                    "BLOCKER",
+                    "Szyna górnego napięcia transformatora nie istnieje w modelu sieci.",
+                )
+            )
         if lv not in bus_refs:
-            issues.append(OpIssue("OP_LV_NOT_FOUND", "BLOCKER", f"Szyna LV '{lv}' nie istnieje"))
+            issues.append(
+                OpIssue(
+                    "OP_LV_NOT_FOUND",
+                    "BLOCKER",
+                    "Szyna dolnego napięcia transformatora nie istnieje w modelu sieci.",
+                )
+            )
         if hv == lv and hv:
             issues.append(
-                OpIssue("OP_HV_EQ_LV", "BLOCKER", "Szyna HV i LV nie mogą być identyczne")
+                OpIssue(
+                    "OP_HV_EQ_LV",
+                    "BLOCKER",
+                    "Szyny górnego i dolnego napięcia transformatora muszą być różne.",
+                )
             )
         if data.get("sn_mva", 0) <= 0:
             issues.append(OpIssue("OP_SN_INVALID", "BLOCKER", "Moc znamionowa Sn musi być > 0 MVA"))
@@ -548,7 +610,11 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
     elif device_type == "load":
         bus_ref = data.get("bus_ref", "")
         if bus_ref not in bus_refs:
-            issues.append(OpIssue("OP_BUS_NOT_FOUND", "BLOCKER", f"Szyna '{bus_ref}' nie istnieje"))
+            issues.append(
+                OpIssue(
+                    "OP_BUS_NOT_FOUND", "BLOCKER", "Wskazana szyna nie istnieje w modelu sieci."
+                )
+            )
         # Tabliczka odbioru niesie wielomian ZIP czytany przez rozpływ. Sprawdzamy
         # go NA WEJŚCIU, tym samym kontraktem co kreator odbioru — inaczej odbiór
         # z sumą udziałów ≠ 1 wchodziłby do modelu bez słowa i wywracał dopiero
@@ -581,7 +647,11 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
     elif device_type == "generator":
         bus_ref = data.get("bus_ref", "")
         if bus_ref not in bus_refs:
-            issues.append(OpIssue("OP_BUS_NOT_FOUND", "BLOCKER", f"Szyna '{bus_ref}' nie istnieje"))
+            issues.append(
+                OpIssue(
+                    "OP_BUS_NOT_FOUND", "BLOCKER", "Wskazana szyna nie istnieje w modelu sieci."
+                )
+            )
         if any(i.severity == "BLOCKER" for i in issues):
             return TopologyOpResult(False, enm, "create_device", issues)
 
@@ -609,7 +679,11 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
     elif device_type == "source":
         bus_ref = data.get("bus_ref", "")
         if bus_ref not in bus_refs:
-            issues.append(OpIssue("OP_BUS_NOT_FOUND", "BLOCKER", f"Szyna '{bus_ref}' nie istnieje"))
+            issues.append(
+                OpIssue(
+                    "OP_BUS_NOT_FOUND", "BLOCKER", "Wskazana szyna nie istnieje w modelu sieci."
+                )
+            )
         # Check if there's already a grid source on this bus
         for s in enm.get("sources", []):
             if s.get("bus_ref") == bus_ref:
@@ -617,7 +691,7 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
                     OpIssue(
                         "OP_DUPLICATE_SOURCE",
                         "WARNING",
-                        f"Szyna '{bus_ref}' ma już źródło zasilania",
+                        f"{opis_elementu(enm, bus_ref, 'Szyna')} ma już źródło zasilania.",
                     )
                 )
         if any(i.severity == "BLOCKER" for i in issues):
@@ -668,7 +742,12 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
 
     else:
         issues.append(
-            OpIssue("OP_UNKNOWN_DEVICE", "BLOCKER", f"Nieznany typ urządzenia: '{device_type}'")
+            OpIssue(
+                "OP_UNKNOWN_DEVICE",
+                "BLOCKER",
+                "Nieznany rodzaj urządzenia — operacja obsługuje transformator, odbiór, "
+                "generator i źródło zasilania.",
+            )
         )
         return TopologyOpResult(False, enm, "create_device", issues)
 
@@ -688,7 +767,12 @@ def update_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
     coll = collection_map.get(device_type)
     if not coll:
         issues.append(
-            OpIssue("OP_UNKNOWN_DEVICE", "BLOCKER", f"Nieznany typ urządzenia: '{device_type}'")
+            OpIssue(
+                "OP_UNKNOWN_DEVICE",
+                "BLOCKER",
+                "Nieznany rodzaj urządzenia — operacja obsługuje transformator, odbiór, "
+                "generator i źródło zasilania.",
+            )
         )
         return TopologyOpResult(False, enm, "update_device", issues)
 
@@ -696,7 +780,12 @@ def update_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
     idx = next((i for i, x in enumerate(items) if x.get("ref_id") == ref_id), None)
     if idx is None:
         issues.append(
-            OpIssue("OP_NOT_FOUND", "BLOCKER", f"Urządzenie '{ref_id}' nie znalezione", ref_id)
+            OpIssue(
+                "OP_NOT_FOUND",
+                "BLOCKER",
+                "Wskazane urządzenie nie istnieje w modelu sieci.",
+                ref_id,
+            )
         )
         return TopologyOpResult(False, enm, "update_device", issues)
 
@@ -718,14 +807,24 @@ def delete_device(enm: dict[str, Any], device_type: str, ref_id: str) -> Topolog
     coll = collection_map.get(device_type)
     if not coll:
         issues.append(
-            OpIssue("OP_UNKNOWN_DEVICE", "BLOCKER", f"Nieznany typ urządzenia: '{device_type}'")
+            OpIssue(
+                "OP_UNKNOWN_DEVICE",
+                "BLOCKER",
+                "Nieznany rodzaj urządzenia — operacja obsługuje transformator, odbiór, "
+                "generator i źródło zasilania.",
+            )
         )
         return TopologyOpResult(False, enm, "delete_device", issues)
 
     items = enm.get(coll, [])
     if not any(x.get("ref_id") == ref_id for x in items):
         issues.append(
-            OpIssue("OP_NOT_FOUND", "BLOCKER", f"Urządzenie '{ref_id}' nie znalezione", ref_id)
+            OpIssue(
+                "OP_NOT_FOUND",
+                "BLOCKER",
+                "Wskazane urządzenie nie istnieje w modelu sieci.",
+                ref_id,
+            )
         )
         return TopologyOpResult(False, enm, "delete_device", issues)
 
@@ -744,15 +843,19 @@ def create_measurement(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpR
     ref_id = data.get("ref_id", "")
 
     if not ref_id:
-        issues.append(OpIssue("OP_NO_REF", "BLOCKER", "Brak ref_id przekładnika"))
-    elif not _ref_id_unique(enm, ref_id):
         issues.append(
-            OpIssue("OP_REF_DUPLICATE", "BLOCKER", f"ref_id '{ref_id}' już istnieje", ref_id)
+            OpIssue(
+                "OP_NO_REF", "BLOCKER", "Operacja nie nadała identyfikatora nowemu przekładnikowi."
+            )
         )
+    elif not _ref_id_unique(enm, ref_id):
+        issues.append(_blad_zajetego_identyfikatora(enm, ref_id))
 
     bus_ref = data.get("bus_ref", "")
     if bus_ref not in _bus_refs_set(enm):
-        issues.append(OpIssue("OP_BUS_NOT_FOUND", "BLOCKER", f"Szyna '{bus_ref}' nie istnieje"))
+        issues.append(
+            OpIssue("OP_BUS_NOT_FOUND", "BLOCKER", "Wskazana szyna nie istnieje w modelu sieci.")
+        )
 
     mtype = data.get("measurement_type", "")
     if mtype not in ("CT", "VT"):
@@ -760,7 +863,7 @@ def create_measurement(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpR
             OpIssue(
                 "OP_INVALID_MTYPE",
                 "BLOCKER",
-                f"Typ przekładnika musi być 'CT' lub 'VT', podano: '{mtype}'",
+                "Przekładnik musi być prądowy (CT) albo napięciowy (VT).",
             )
         )
 
@@ -770,7 +873,7 @@ def create_measurement(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpR
             OpIssue(
                 "OP_RATING_MISSING",
                 "BLOCKER",
-                "Przekładnia (ratio_primary/ratio_secondary) wymagana",
+                "Uzupełnij przekładnię przekładnika — wartość pierwotną i wtórną.",
             )
         )
 
@@ -799,7 +902,12 @@ def delete_measurement(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
     measurements = enm.get("measurements", [])
     if not any(m.get("ref_id") == ref_id for m in measurements):
         issues.append(
-            OpIssue("OP_NOT_FOUND", "BLOCKER", f"Przekładnik '{ref_id}' nie znaleziony", ref_id)
+            OpIssue(
+                "OP_NOT_FOUND",
+                "BLOCKER",
+                "Wskazany przekładnik nie istnieje w modelu sieci.",
+                ref_id,
+            )
         )
         return TopologyOpResult(False, enm, "delete_measurement", issues)
 
@@ -810,7 +918,8 @@ def delete_measurement(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
                 OpIssue(
                     "OP_CT_IN_USE",
                     "BLOCKER",
-                    f"CT '{ref_id}' jest używany w zabezpieczeniu '{pa.get('ref_id', '?')}'"
+                    f"{opis_elementu(enm, ref_id, 'Przekładnik prądowy')} jest używany przez "
+                    f"{opis_elementu(enm, pa.get('ref_id'), 'zabezpieczenie')}"
                     " — najpierw odłącz zabezpieczenie",
                     ref_id,
                 )
@@ -834,11 +943,13 @@ def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
     ref_id = data.get("ref_id", "")
 
     if not ref_id:
-        issues.append(OpIssue("OP_NO_REF", "BLOCKER", "Brak ref_id zabezpieczenia"))
-    elif not _ref_id_unique(enm, ref_id):
         issues.append(
-            OpIssue("OP_REF_DUPLICATE", "BLOCKER", f"ref_id '{ref_id}' już istnieje", ref_id)
+            OpIssue(
+                "OP_NO_REF", "BLOCKER", "Operacja nie nadała identyfikatora nowemu zabezpieczeniu."
+            )
         )
+    elif not _ref_id_unique(enm, ref_id):
+        issues.append(_blad_zajetego_identyfikatora(enm, ref_id))
 
     breaker_ref = data.get("breaker_ref", "")
     breaker_refs = _find_breaker_refs(enm)
@@ -847,7 +958,7 @@ def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
             OpIssue(
                 "OP_BREAKER_NOT_FOUND",
                 "BLOCKER",
-                f"Wyłącznik '{breaker_ref}' nie istnieje lub nie jest typu 'breaker'",
+                "Wskazany aparat nie istnieje w modelu sieci albo nie jest wyłącznikiem.",
             )
         )
 
@@ -858,8 +969,8 @@ def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
                 OpIssue(
                     "OP_BREAKER_HAS_PROTECTION",
                     "BLOCKER",
-                    f"Wyłącznik '{breaker_ref}' ma już zabezpieczenie "
-                    f"'{pa.get('ref_id', '?')}'",
+                    f"{opis_elementu(enm, breaker_ref, 'Wyłącznik')} ma już "
+                    f"{opis_elementu(enm, pa.get('ref_id'), 'zabezpieczenie')}.",
                 )
             )
 
@@ -869,7 +980,11 @@ def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
         ct_refs = _find_ct_refs(enm)
         if ct_ref not in ct_refs:
             issues.append(
-                OpIssue("OP_CT_NOT_FOUND", "BLOCKER", f"Przekładnik CT '{ct_ref}' nie istnieje")
+                OpIssue(
+                    "OP_CT_NOT_FOUND",
+                    "BLOCKER",
+                    "Wskazany przekładnik prądowy (CT) nie istnieje w modelu sieci.",
+                )
             )
 
     # Jeśli typ wymaga CT a nie podano
@@ -880,7 +995,8 @@ def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
             OpIssue(
                 "OP_CT_REQUIRED",
                 "BLOCKER",
-                f"Zabezpieczenie typu '{device_type}' wymaga przekładnika CT",
+                f"Zabezpieczenie {NAZWY_RODZAJOW_ZABEZPIECZENIA_PL[device_type]} wymaga "
+                "przekładnika prądowego (CT) — wskaż przekładnik pola.",
             )
         )
 
@@ -913,7 +1029,12 @@ def update_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
 
     if idx is None:
         issues.append(
-            OpIssue("OP_NOT_FOUND", "BLOCKER", f"Zabezpieczenie '{ref_id}' nie znalezione", ref_id)
+            OpIssue(
+                "OP_NOT_FOUND",
+                "BLOCKER",
+                "Wskazane zabezpieczenie nie istnieje w modelu sieci.",
+                ref_id,
+            )
         )
         return TopologyOpResult(False, enm, "update_protection", issues)
 
@@ -923,7 +1044,9 @@ def update_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
         if data["ct_ref"] not in ct_refs:
             issues.append(
                 OpIssue(
-                    "OP_CT_NOT_FOUND", "BLOCKER", f"Przekładnik CT '{data['ct_ref']}' nie istnieje"
+                    "OP_CT_NOT_FOUND",
+                    "BLOCKER",
+                    "Wskazany przekładnik prądowy (CT) nie istnieje w modelu sieci.",
                 )
             )
 
@@ -942,7 +1065,12 @@ def detach_protection(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
     pas = enm.get("protection_assignments", [])
     if not any(x.get("ref_id") == ref_id for x in pas):
         issues.append(
-            OpIssue("OP_NOT_FOUND", "BLOCKER", f"Zabezpieczenie '{ref_id}' nie znalezione", ref_id)
+            OpIssue(
+                "OP_NOT_FOUND",
+                "BLOCKER",
+                "Wskazane zabezpieczenie nie istnieje w modelu sieci.",
+                ref_id,
+            )
         )
         return TopologyOpResult(False, enm, "detach_protection", issues)
 

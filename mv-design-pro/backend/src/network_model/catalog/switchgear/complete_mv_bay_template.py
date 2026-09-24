@@ -28,6 +28,7 @@ import hashlib
 import json
 from typing import Literal
 
+from enm.rola_pola_sn import nazwa_roli_pola_sn_z_okresleniem
 from pydantic import BaseModel, Field
 
 from ..bay_templates import BayTemplate
@@ -52,6 +53,43 @@ BayKind = Literal[
     "napowietrzne",
     "nop_lacznikowe",
 ]
+
+#: Rodzaj pola katalogowego (`BayKind`) → rola kanonu ról pól SN z określeniem rodzaju albo
+#: własna nazwa rodzaju bez roli kanonu (karty #141 i #142). Ta sama tablica co
+#: `OPIS_RODZAJU_POLA` w `frontend/src/ui/catalog/BayTemplatePicker.tsx` — termin roli zawsze
+#: z kanonu (`enm.rola_pola_sn`), rodzaj dokłada tylko określenie; parytet z frontem i
+#: kompletność względem `BayKind` przypięte testem
+#: `tests/enm/test_komunikaty_operacji_bez_kodow.py`.
+OPIS_RODZAJU_POLA_KATALOGOWEGO: dict[str, tuple[str, str] | str] = {
+    "liniowe_doplywowe": ("LINIA_IN", ""),
+    "liniowe_odplywowe": ("LINIA_OUT", ""),
+    "transformatorowe": ("TRANSFORMATOROWE", ""),
+    "pomiarowe": ("POMIAROWE", ""),
+    "sprzeglowe_podluzne": ("SPRZEGLO", "podłużnego"),
+    "sprzeglowe_poprzeczne": ("SPRZEGLO", "poprzecznego"),
+    "sekcyjne": "Pole sekcyjne",
+    "potrzeb_wlasnych": "Pole potrzeb własnych",
+    "odgromnikowe": "Pole odgromnikowe",
+    "pv": ("PV_SN", ""),
+    "bess": ("BESS_SN", ""),
+    "fw": ("FW_SN", ""),
+    "rezerwowe": "Pole rezerwowe",
+    "kablowe": "Pole kablowe",
+    "napowietrzne": "Pole napowietrzne",
+    "nop_lacznikowe": "Pole łącznikowe NOP",
+}
+
+#: Rodzaj pola katalogowego → nazwa w treści dla projektanta (karta #142).
+NAZWY_RODZAJOW_POLA_KATALOGOWEGO_PL: dict[str, str] = {
+    rodzaj: opis if isinstance(opis, str) else nazwa_roli_pola_sn_z_okresleniem(*opis)
+    for rodzaj, opis in OPIS_RODZAJU_POLA_KATALOGOWEGO.items()
+}
+
+
+def nazwa_rodzaju_pola_katalogowego_pl(bay_kind: object) -> str:
+    """Nazwa rodzaju pola katalogowego; rodzaj spoza słownika = „Pole innego rodzaju"."""
+    return NAZWY_RODZAJOW_POLA_KATALOGOWEGO_PL.get(str(bay_kind), "Pole innego rodzaju")
+
 
 SourceStatus = Literal[
     "official_catalog",
@@ -97,6 +135,19 @@ class CompleteMvBayTemplate(BaseModel):
     version: str = "1.0"
     hash: str = ""
     notes_pl: str | None = None
+
+    def opis_pl(self, family_name: str | None = None) -> str:
+        """Pole katalogowe w środku zdania — nigdy referencja szablonu (karta #142).
+
+        „pole „Nazwa katalogowa”" albo rodzaj pola małą literą („pole liniowe wyjściowe"),
+        z dopiskiem „rodziny X", gdy wołający zna nazwę rodziny i zdanie jej nie niesie.
+        """
+        if self.template_name_pl and self.template_name_pl.strip():
+            opis = f"pole „{self.template_name_pl.strip()}”"
+        else:
+            rodzaj = nazwa_rodzaju_pola_katalogowego_pl(self.bay_kind)
+            opis = rodzaj[:1].lower() + rodzaj[1:]
+        return f"{opis} rodziny {family_name}" if family_name else opis
 
     def is_verified(self) -> bool:
         return (

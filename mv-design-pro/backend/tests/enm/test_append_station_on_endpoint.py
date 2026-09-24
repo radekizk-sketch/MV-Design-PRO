@@ -1024,7 +1024,10 @@ def test_zly_ref_katalogowy_konczy_operacje_bledem_zamiast_wstrzykiwac_impedancj
     )
 
     assert response.get("error_code") == "catalog.item_not_found"
-    assert "trafo-ktorego-nie-ma" in response.get("error", "")
+    # Karta #142: grupa katalogu słowami, bez wpisanej referencji (dawniej test wymagał
+    # identyfikatora pozycji w treści).
+    assert "„Typy transformatorów SN/nN”" in response.get("error", "")
+    assert "trafo-ktorego-nie-ma" not in response.get("error", "")
     # Operacja nie utrwala migawki — model zostaje bez stacji-widma.
     assert response["snapshot"] is None
     assert response["changes"]["created_element_ids"] == []
