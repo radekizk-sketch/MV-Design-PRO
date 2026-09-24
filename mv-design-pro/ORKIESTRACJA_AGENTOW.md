@@ -45,20 +45,38 @@ Trzy prymitywy Claude Code różnią się tym, **kto trzyma plan**:
 
 ---
 
-## 3. SKŁAD SWARM — subagenty wyspecjalizowane
+## 3. SKŁAD SWARM — drzewo agentów (dyrektywa właściciela 2026-09-24)
 
-Definiuj jako `.claude/agents/*.md` (frontmatter: `description`, `prompt`, `tools`, `model`, `disallowedTools`). Opis: „Użyj, gdy…", jawny format wyjścia, jeden cel.
+Drzewo agentów Claude Code na Opus 5.5 — „planuj na high, deleguj na medium, podnoś, gdy trzeba”:
 
-| Subagent | Model | Rola | Narzędzia |
+```
+Opus 5.5 · high — sesja główna (plan, karty, integracja)
+        │ deleguje do własnych subagentów, domyślnie medium
+        ├── explorer   · Opus 5.5 · medium — czyta kod i dokumenty, mierzy klasę defektu
+        ├── worker     · Opus 5.5 · medium — zmiany + testy w swoim drzewie, commit lokalny
+        └── researcher · Opus 5.5 · medium — normy, dokumenty regulacyjne, dokumentacja bibliotek
+        │
+Opus 5.5 · high — powrót do sesji głównej: przegląd i weryfikacja na czystym drzewie
+        │
+        └ utknięcie dwa razy na tym samym problemie → stop + meldunek → decyzja właściciela (Fable 5.1)
+```
+
+Definicje są w repozytorium: `.claude/agents/explorer.md`, `worker.md`, `researcher.md` (frontmatter
+`name`, `description`, `tools`, `model: claude-opus-5-5`, `effort: medium`; treść pliku = instrukcja
+roli). Sesja, która nie widzi ich jako typów agenta (katalog `.claude/agents/` powstał w jej trakcie —
+Claude Code wczytuje go przy starcie), używa agenta ogólnego z `model: opus` i instrukcją roli
+wskazaną ścieżką do tego pliku. `effort` podnosi się tylko z powodu: rdzeń solvera, rdzeń FROZEN,
+bramka bezpieczeństwa, recenzja adwersarzowa → `high`/`xhigh` (tabela §3a).
+
+| Subagent | Model · effort | Rola | Narzędzia |
 |---|---|---|---|
-| `audytor-repo` | Haiku | Skan repo, zakazane frazy/`no_module`/sieroty, inwentarz (§5.0) — read-only | read, grep, glob |
-| `solver-engineer` | Opus | Implementacja solvera (D-01…D-06): metoda + kontrakt + White Box | read, write, edit, bash |
-| `test-engineer` | Sonnet | Testy jednostkowe + sanity-bounds; weryfikacja progów K-04/K-08 | read, write, edit, bash |
-| `recenzent-norm` | Opus | Adwersarialna recenzja: IEC/PN-EN, poprawność wartości, brak drugiej prawdy | read, grep |
-| `sld-layout` | Opus | Silnik layoutu drzewiastego + kontrakt geometrii (port→port) | read, write, edit |
-| `wizualizator` | Sonnet | Harness Playwright, produkcja zrzutów (NIE wystawia werdyktu — B-02) | read, bash |
+| `explorer` | Opus 5.5 · medium | Odczyt i pomiar: inwentarz klasy `plik:linia`, stan kart, zależności — zero edycji | Read, Grep, Glob, Bash (tylko odczyt) |
+| `worker` | Opus 5.5 · medium | Karta end-to-end w swoim drzewie `odbior-*`: zmiana, testy jako iloczyn cech, strażniki, jeden commit lokalny, meldunek | Read, Edit, Write, Bash, Grep, Glob |
+| `researcher` | Opus 5.5 · medium | Źródła: IEC, NC RfG, PTPiREE/WOS, dokumentacja bibliotek — z punktem i wydaniem | Read, Grep, Glob, Bash, WebFetch, WebSearch |
 
-**Zasada modelu:** read-only → Haiku (koszt), implementacja/recenzja → Opus (jakość), testy → Sonnet. `CLAUDE_CODE_SUBAGENT_MODEL` może wymusić pułap kosztów.
+Utknięcie: wykonawca, który dwa razy nie rozwiąże tego samego problemu (ten sam test czerwony po dwóch
+różnych próbach, ta sama niejasność karty), zatrzymuje się i melduje próby, wynik i hipotezę; sesja
+główna decyduje o eskalacji, a eskalację do Fable 5.1 zleca właściciel.
 
 ### 3a. Dobór modelu i wysiłku do złożoności zadania (dyrektywa właściciela 2026-09-23)
 
@@ -69,7 +87,8 @@ Fable 5.1/Opus 5.5 w CLAUDE.md, sekcja „Multi-agent i subagenty" i „Promptin
 |---|---|---|---|
 | Odczyt i streszczenie (transkrypty, logi CI, inwentarz faktów `plik:linia`, skan grepem) | Sonnet (Haiku przy czystym skanie) | `low` | stan sześciu wykonawców z transkryptów; inwentarz frontendu pod D2 |
 | Krok mechaniczny bez decyzji (kopiowanie zmierzonych fixtur, jeden guard, porównanie hunków dwóch drzew) | Sonnet | `low` | weryfikacja, że `odbior-*` zawiera wyłącznie hunki jednego pakietu |
-| Implementacja, integracja na czystym drzewie, testy klasy, migracje kontraktów | Opus 5.5 | `high` | Pakiety C, D1/D2, L, AB-H0, rdzeń dynamiki |
+| Implementacja karty w drzewie `odbior-*`, testy klasy, migracje kontraktów (subagent `worker`) | Opus 5.5 | `medium` (domyślnie; podnoszony z powodu) | karty językowe #141–#145, porządki, Pakiet E2 |
+| Integracja na czystym drzewie, przegląd i weryfikacja (sesja główna) | Opus 5.5 | `high` | scalanie kart, pełna regresja, odbiór zrzutów |
 | Solver, rdzeń FROZEN, bramka bezpieczeństwa, recenzja adwersarzowa, architektura | Opus 5.5 (Fable osobiście, gdy „opcja max") | `xhigh`/`max` | AB-1b.1a, wyrocznie, decyzje O-… |
 
 Reguły oszczędności tokenów (te same, które obniżają koszt bez utraty jakości):

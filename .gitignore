@@ -56,7 +56,10 @@ htmlcov/
 *.egg
 venv/
 .env
-.claude/
+# Katalog lokalny Claude Code (drzewa robocze, pliki tymczasowe) poza repozytorium;
+# definicje subagentów drzewa właściciela (ORKIESTRACJA_AGENTOW.md §3) są częścią projektu.
+.claude/*
+!.claude/agents/
 .playwright-mcp/
 mv-design-pro/qa-*.png
 mv-design-ui-implementation-*.png
