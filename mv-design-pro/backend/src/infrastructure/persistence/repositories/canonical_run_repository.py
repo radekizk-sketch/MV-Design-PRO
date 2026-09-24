@@ -333,7 +333,8 @@ class CanonicalRunRepository:
         self,
         run_id: UUID,
         os_czasu_s: list[float],
-        probki: dict[str, list[float]],
+        strona_probki: list[str],
+        probki: dict[str, list[float | None]],
     ) -> None:
         """Utrwal szeregi czasowe biegu `dynamika_rms` — osobno od artefaktu
         biegu (karta W6-1 SS0 p.6, wzorzec `_zapisz_rozplyw`/`CanonicalRunBranchFlowORM`).
@@ -343,7 +344,15 @@ class CanonicalRunRepository:
         aktualizacji do uzgadniania. Bieg nieutrwalony (brak wiersza nadrzednego,
         np. bieg w pamieci testu/harnessu) — bez klucza obcego do przypiecia,
         wywolanie jest cichym no-op (ten sam wzorzec co `zapisz_rozplyw_punktu`).
+
+        `strona_probki` (`C`/`L`/`P`) ma dlugosc osi czasu; `None` w probce
+        przechodzi nietkniete (wartosc niedostepna, nie liczba).
         """
+        if len(strona_probki) != len(os_czasu_s):
+            raise ValueError(
+                f"strona_probki ({len(strona_probki)}) i os_czasu_s ({len(os_czasu_s)}) "
+                "musza miec te sama dlugosc"
+            )
         if self._session.get(CanonicalRunORM, run_id) is None:
             return
         self._session.execute(
@@ -355,6 +364,7 @@ class CanonicalRunRepository:
                     run_id=run_id,
                     klucz_kanalu=klucz_kanalu,
                     os_czasu_s_json=list(os_czasu_s),
+                    strona_probki_json=list(strona_probki),
                     probki_json=list(probki[klucz_kanalu]),
                 )
             )
@@ -363,8 +373,12 @@ class CanonicalRunRepository:
         self,
         run_id: UUID,
         klucze_kanalow: list[str] | None = None,
-    ) -> tuple[list[float], dict[str, list[float]]] | None:
+    ) -> tuple[list[float], list[str] | None, dict[str, list[float | None]]] | None:
         """Szeregi czasowe biegu `dynamika_rms` z osobnej tabeli.
+
+        Zwraca (os czasu, strona kazdej probki, probki kanalow). Strona `None`
+        oznacza wiersz zapisany przed kontraktem `resultset_dynamic_v2` — warstwa
+        wyzej odmawia odczytu nazwanym bledem (bez domyslnej strony).
 
         Zwraca `None`, gdy bieg NIE MA zadnego zapisanego kanalu (bieg nigdy nie
         policzony jako `dynamika_rms`, albo policzony bez zapisu szeregow) — to
@@ -376,6 +390,7 @@ class CanonicalRunRepository:
         stmt = select(
             CanonicalRunTimeSeriesORM.klucz_kanalu,
             CanonicalRunTimeSeriesORM.os_czasu_s_json,
+            CanonicalRunTimeSeriesORM.strona_probki_json,
             CanonicalRunTimeSeriesORM.probki_json,
         ).where(CanonicalRunTimeSeriesORM.run_id == run_id)
         if klucze_kanalow:
@@ -392,11 +407,13 @@ class CanonicalRunRepository:
                 ).first()
                 if istnieje is None:
                     return None
-                return [], {}
+                return [], [], {}
             return None
         os_czasu_s = list(wiersze[0][1])
-        probki = {klucz: list(wartosci) for klucz, _, wartosci in wiersze}
-        return os_czasu_s, probki
+        strona = wiersze[0][2]
+        strona_probki = None if strona is None else list(strona)
+        probki = {klucz: list(wartosci) for klucz, _, _, wartosci in wiersze}
+        return os_czasu_s, strona_probki, probki
 
     def claim_for_execution(self, run_id: UUID, *, started_at: datetime) -> bool:
         """Atomowo przejmij bieg do wykonania: cokolwiek-poza-terminalnym -> RUNNING.

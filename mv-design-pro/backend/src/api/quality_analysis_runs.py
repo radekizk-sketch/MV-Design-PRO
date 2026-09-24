@@ -40,7 +40,7 @@ widok. Zły rodzaj przebiegu / błąd danych → 422 z komunikatem w języku pol
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
 from api.klucz_twin_dep import KluczTwin
@@ -78,12 +78,18 @@ router = APIRouter(tags=["quality-analysis"])
 
 
 class PomiarWejscie(BaseModel):
-    """Pojedynczy pomiar z obiektu (rejestrator/pomiar odbiorowy)."""
+    """Pojedynczy pomiar z obiektu (rejestrator/pomiar odbiorowy).
+
+    `zacisk` (decyzja O-51): miejsce pomiaru MOCY gałęzi — `od` (zacisk początkowy) albo
+    `do` (końcowy). Wymagany dla P/Q gałęzi (brak = odmowa nazwana w wierszu raportu, nie
+    domysł „początek gałęzi"); pomiar napięcia węzła zacisku nie ma.
+    """
 
     element_ref: str
     wielkosc: str
     wartosc: float
     jednostka: str
+    zacisk: Literal["od", "do"] | None = None
 
 
 class TolerancjeWejscie(BaseModel):

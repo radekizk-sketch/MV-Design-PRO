@@ -60,6 +60,7 @@ const ODBIOR_SCENA_WYNIK = JSON.parse(
     element_ref: string;
     wielkosc: string;
     wartosc_pomiar: number;
+    zacisk: 'od' | 'do' | null;
     werdykt: string;
     slad_pl: string[];
   }[];
@@ -70,6 +71,9 @@ const POMIARY_ODBIORU = ODBIOR_SCENA_WYNIK.wiersze.map((wiersz) => ({
   wielkosc: wiersz.wielkosc,
   // Edytor przyjmuje liczbę w zapisie PL (przecinek dziesiętny).
   wartosc: String(wiersz.wartosc_pomiar).replace('.', ','),
+  // Miejsce pomiaru mocy gałęzi (decyzja O-51) — z rekordu fixtury; `null` = protokół
+  // bez zacisku (wiersz „brak miejsca pomiaru").
+  zacisk: wiersz.zacisk,
 }));
 /** Wiersz z naruszeniem — na nim scena otwiera wywód (to on niesie werdykt). */
 const ODBIOR_WIERSZ_NARUSZENIA = ODBIOR_SCENA_WYNIK.wiersze.find(
@@ -213,6 +217,12 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
       await page.getByTestId(`mvd-odbior-element-${i}`).fill(p.element);
       await page.getByTestId(`mvd-odbior-wielkosc-${i}`).selectOption(p.wielkosc);
       await page.getByTestId(`mvd-odbior-wartosc-${i}`).fill(p.wartosc);
+      if (p.zacisk) {
+        // Etykiety zacisków z backendu, bez zaznaczenia domyślnego — klik natywny.
+        const zacisk = page.getByTestId(`mvd-odbior-zacisk-${i}-${p.zacisk}`);
+        await expect(zacisk).not.toBeChecked();
+        await zacisk.click();
+      }
     }
     await page.getByTestId('mvd-odbior-tol-napiecie').fill('5');
     await page.getByTestId('mvd-odbior-tol-moc').fill('10');
@@ -220,8 +230,13 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     await expect(page.getByTestId('mvd-odbior-wynik')).toBeVisible();
     await expect(page.getByTestId('mvd-odbior-podsumowanie')).toBeVisible();
     await expect(page.getByTestId('mvd-wyn-tabela')).toContainText('poza tolerancją');
+    await expect(page.getByTestId('mvd-wyn-tabela')).toContainText('brak miejsca pomiaru');
+    // Ta sama gałąź ma dwa wiersze (P na zacisku, Q bez zacisku) — wiersz naruszenia
+    // wskazuje jego werdykt, nie sam identyfikator elementu.
     await page
       .getByTestId('mvd-wyn-tabela')
+      .getByTestId('mvd-wyn-wiersz')
+      .filter({ hasText: ODBIOR_WIERSZ_NARUSZENIA.werdykt })
       .getByText(ODBIOR_WIERSZ_NARUSZENIA.element_ref, { exact: true })
       .click();
     await expect(page.getByTestId('mvd-odbior-szczegol')).toBeVisible();

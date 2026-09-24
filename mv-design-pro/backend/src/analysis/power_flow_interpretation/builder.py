@@ -12,19 +12,26 @@ KANON (BINDING):
 REGULY SEVERITY (jawne, stale; napieciowe od karty W3-J sourcowane z
 `analysis.normative.kryteria_napiecia` — jedno zrodlo prawdy, patrz modul):
 - Voltage: |V - 1.0| < 5% -> INFO, 5-10% -> WARN, >10% -> HIGH
-- Branch loading: jesli dostepne dane o obciazeniu
+- Branch loading: `loading_pct` z jednej funkcji obciazenia (prady obu zaciskow wobec
+  pradow znamionowych zaciskow z grafu modelu, decyzja O-51); waznosc wg strat (P22b)
 """
 
 from __future__ import annotations
 
 import hashlib
 import logging
+from collections.abc import Mapping
 from datetime import datetime
 from typing import TYPE_CHECKING
 
 from analysis.normative.kryteria_napiecia import (
     KRYTERIUM_OSTRZEZENIE_PROCENT,
     KRYTERIUM_PRZEKROCZENIE_PROCENT,
+)
+from analysis.obciazenie_galezi import (
+    obciazenie_galezi,
+    prad_zacisku_do_a,
+    prad_zacisku_od_a,
 )
 from analysis.power_flow_interpretation.models import (
     BranchLoadingFinding,
@@ -38,6 +45,7 @@ from analysis.power_flow_interpretation.models import (
     VoltageFinding,
 )
 from analysis.power_flow_interpretation.serializer import SEVERITY_ORDER
+from network_model.core.branch import Branch
 from network_model.pochodne import mvar_na_kvar, mw_na_kw
 
 if TYPE_CHECKING:
@@ -109,6 +117,7 @@ class PowerFlowInterpretationBuilder:
         power_flow_result: PowerFlowResult,
         run_id: str,
         run_timestamp: datetime | None = None,
+        galezie_modelu: Mapping[str, Branch] | None = None,
     ) -> PowerFlowInterpretationResult:
         """Build interpretation from power flow result.
 
@@ -116,6 +125,9 @@ class PowerFlowInterpretationBuilder:
             power_flow_result: Wynik rozplywu mocy (READ-ONLY)
             run_id: ID runu rozplywu mocy
             run_timestamp: Opcjonalny timestamp runu (dla determinizmu)
+            galezie_modelu: Galezie grafu modelu biegu (dane znamionowe) — zrodlo
+                pradow znamionowych zaciskow dla `loading_pct` (decyzja O-51); brak
+                galezi = obciazenie nieznane (`None`), nigdy zero
 
         Returns:
             PowerFlowInterpretationResult z pelnymi obserwacjami i rankingiem
@@ -132,7 +144,7 @@ class PowerFlowInterpretationBuilder:
 
         # Build findings
         voltage_findings = self._build_voltage_findings(power_flow_result, run_id)
-        branch_findings = self._build_branch_findings(power_flow_result, run_id)
+        branch_findings = self._build_branch_findings(power_flow_result, run_id, galezie_modelu)
 
         # Build summary with ranking
         summary = self._build_summary(voltage_findings, branch_findings)
@@ -256,6 +268,7 @@ class PowerFlowInterpretationBuilder:
         self,
         power_flow_result: PowerFlowResult,
         run_id: str,
+        galezie_modelu: Mapping[str, Branch] | None = None,
     ) -> list[BranchLoadingFinding]:
         """Build branch loading findings from power flow result."""
         findings: list[BranchLoadingFinding] = []
@@ -305,9 +318,24 @@ class PowerFlowInterpretationBuilder:
             losses_p_mw = p_from + p_to
             losses_q_mvar = q_from + q_to
 
-            # Loading percentage - not available from basic PowerFlowResult
-            # Would need branch ratings from catalog
-            loading_pct = None
+            # Obciazenie galezi (decyzja O-51): JEDNA funkcja obciazenia
+            # (`analysis/obciazenie_galezi.py`) — prad kazdego zacisku wobec pradu
+            # znamionowego tego zacisku z grafu modelu biegu. Brak galezi w modelu
+            # albo brak pradu zacisku = None (uczciwy brak). Regula waznosci ponizej
+            # zostaje przy stratach (P22b) — jej zmiana nalezy do fali WW-1 (plan §8).
+            galaz = galezie_modelu.get(branch_id) if galezie_modelu is not None else None
+            loading_pct = obciazenie_galezi(
+                galaz,
+                prad_od_a=prad_zacisku_od_a(power_flow_result.branch_current_ka.get(branch_id)),
+                prad_do_a=prad_zacisku_do_a(
+                    s_to,
+                    (
+                        power_flow_result.node_voltage_kv.get(galaz.to_node_id)
+                        if galaz is not None
+                        else None
+                    ),
+                ),
+            ).obciazenie_pct
 
             # Determine severity based on losses magnitude
             # Since we don't have ratings, use losses as proxy
@@ -422,31 +450,32 @@ class PowerFlowInterpretationBuilder:
         # Build ranking (top N issues)
         ranked_items: list[InterpretationRankedItem] = []
 
-        # Add voltage findings to ranking
-        for f in voltage_findings:
-            if f.severity != FindingSeverity.INFO:  # Only WARN and HIGH
+        # Add voltage findings to ranking (osobne nazwy zmiennych pętli: jedna nazwa dla
+        # `VoltageFinding` i `BranchLoadingFinding` chowała przed analizą typów różnicę pól)
+        for ustalenie_napiecia in voltage_findings:
+            if ustalenie_napiecia.severity != FindingSeverity.INFO:  # Only WARN and HIGH
                 ranked_items.append(
                     InterpretationRankedItem(
                         rank=0,  # Will be assigned later
                         element_type="voltage",
-                        element_id=f.bus_id,
-                        severity=f.severity,
-                        magnitude=f.deviation_pct,
-                        description_pl=f.description_pl,
+                        element_id=ustalenie_napiecia.bus_id,
+                        severity=ustalenie_napiecia.severity,
+                        magnitude=ustalenie_napiecia.deviation_pct,
+                        description_pl=ustalenie_napiecia.description_pl,
                     )
                 )
 
         # Add branch findings to ranking
-        for f in branch_findings:
-            if f.severity != FindingSeverity.INFO:  # Only WARN and HIGH
+        for ustalenie_galezi in branch_findings:
+            if ustalenie_galezi.severity != FindingSeverity.INFO:  # Only WARN and HIGH
                 ranked_items.append(
                     InterpretationRankedItem(
                         rank=0,  # Will be assigned later
                         element_type="branch_loading",
-                        element_id=f.branch_id,
-                        severity=f.severity,
-                        magnitude=mw_na_kw(abs(f.losses_p_mw)),  # kW for comparison
-                        description_pl=f.description_pl,
+                        element_id=ustalenie_galezi.branch_id,
+                        severity=ustalenie_galezi.severity,
+                        magnitude=mw_na_kw(abs(ustalenie_galezi.losses_p_mw)),  # kW for comparison
+                        description_pl=ustalenie_galezi.description_pl,
                     )
                 )
 

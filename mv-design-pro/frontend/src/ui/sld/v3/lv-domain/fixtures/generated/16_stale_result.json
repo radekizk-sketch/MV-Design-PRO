@@ -966,7 +966,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "1440ed156349a443dd6e51fc3ed251318f9d21bc973cd44d74380ce8552e1dd1",
+  "projection_hash": "f5065affbdc72547584f7ff51b49c25ae7653ff3990e2cda5f048ad2e42ae818",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {
@@ -1520,6 +1520,13 @@
               "source": "solver",
               "unit": "A",
               "value": 2.34697408
+            },
+            "LOADING_PCT": {
+              "code": "LOADING_PCT",
+              "format_hint": "fixed1",
+              "source": "solver",
+              "unit": "%",
+              "value": 9.67875797
             },
             "LOSSES_P_MW": {
               "code": "LOSSES_P_MW",

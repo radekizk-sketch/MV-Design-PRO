@@ -49,7 +49,11 @@ def _ocena_biegu(wywolanie) -> tuple[str, str]:
     probki = getattr(wynik, "probki", None)
     if probki is not None:
         for klucz, szereg in probki.items():
-            tablica = np.asarray(szereg, dtype=float)
+            # `None` to wartosc NIEDOSTEPNA z nazwana przyczyna (karta AB-1b.1 par. 0 pkt
+            # 6-8: kod jakosci czestotliwosci albo kat fazora zerowego) — nie liczba i nie
+            # NaN; przyczyne kazdego `None` przypina `test_silnik.py`. Tu liczy sie, zeby
+            # KAZDA liczba byla skonczona.
+            tablica = np.asarray([w for w in szereg if w is not None], dtype=float)
             if not np.all(np.isfinite(tablica)):
                 return ("WARTOSC NIESKONCZONA W WYNIKU", klucz)
     return ("WYNIK SKONCZONY", "")
@@ -158,7 +162,13 @@ PRZYPADKI = {
     "zwarcie metaliczne (R_f = X_f = 0)": _bieg(
         zdarzenia=(
             ZwarcieWezla(
-                t_s=0.2, wezel="GEN", typ="3F", r_f_ohm=0.0, x_f_ohm=0.0, t_usuniecia_s=None
+                t_s=0.2,
+                wezel="GEN",
+                typ="3F",
+                r_f_ohm=0.0,
+                x_f_ohm=0.0,
+                t_usuniecia_s=None,
+                sposob_usuniecia=None,
             ),
         )
     ),
@@ -171,6 +181,7 @@ PRZYPADKI = {
                 r_f_ohm=0.0,
                 x_f_ohm=0.1 * stanowisko.Z_BAZOWA_OM,
                 t_usuniecia_s=None,
+                sposob_usuniecia=None,
             ),
         )
     ),
@@ -184,13 +195,20 @@ PRZYPADKI = {
                 r_f_ohm=0.0,
                 x_f_ohm=0.002 * stanowisko.Z_BAZOWA_OM,
                 t_usuniecia_s=None,
+                sposob_usuniecia=None,
             ),
         ),
     ),
     "zdarzenie wskazuje nieistniejaca galaz": _bieg(
         zdarzenia=(
             ZwarcieWezla(
-                t_s=0.2, wezel="BRAK", typ="3F", r_f_ohm=0.0, x_f_ohm=1.0, t_usuniecia_s=None
+                t_s=0.2,
+                wezel="BRAK",
+                typ="3F",
+                r_f_ohm=0.0,
+                x_f_ohm=1.0,
+                t_usuniecia_s=None,
+                sposob_usuniecia=None,
             ),
         )
     ),

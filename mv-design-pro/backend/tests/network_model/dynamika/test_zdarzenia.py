@@ -18,7 +18,6 @@ from network_model.solvers.dynamika import (
 )
 from network_model.solvers.dynamika.kontrakty import (
     KOD_ZDARZENIE_BEZ_ELEMENTU,
-    KOD_ZWARCIE_METALICZNE,
     KOD_ZWARCIE_NIESYMETRYCZNE,
     WezelDynamiki,
 )
@@ -44,6 +43,7 @@ def _buduj(uklad, zdarzenia, horyzont_s: float = 2.0):
         HarmonogramDynamiki(tuple(zdarzenia)),
         wezly=uklad.wezly,
         galezie=uklad.galezie,
+        odsprzegi=(),
         odbiory=uklad.odbiory,
         urzadzenia=(uklad.maszyna, uklad.szyna),
         s_bazowa_mva=100.0,
@@ -63,6 +63,7 @@ def test_zwarcie_rozwija_sie_na_zalozenie_i_zdjecie() -> None:
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_OHM,
                 t_usuniecia_s=0.35,
+                sposob_usuniecia="samoczynne",
             )
         ],
     )
@@ -107,6 +108,7 @@ def test_zwarcie_niesymetryczne_jest_odmawiane_nazwanym_kodem() -> None:
                         r_f_ohm=0.0,
                         x_f_ohm=X_ZWARCIA_OHM,
                         t_usuniecia_s=None,
+                        sposob_usuniecia=None,
                     )
                 ],
             )
@@ -118,7 +120,13 @@ def test_zwarcie_niesymetryczne_jest_odmawiane_nazwanym_kodem() -> None:
     "zdarzenie",
     [
         ZwarcieWezla(
-            t_s=0.1, wezel="NIE_MA", typ="3F", r_f_ohm=0.0, x_f_ohm=0.1, t_usuniecia_s=None
+            t_s=0.1,
+            wezel="NIE_MA",
+            typ="3F",
+            r_f_ohm=0.0,
+            x_f_ohm=0.1,
+            t_usuniecia_s=None,
+            sposob_usuniecia=None,
         ),
         ZmianaGalezi(t_s=0.1, galaz="NIE_MA", zalaczona=False),
         OdlaczenieZrodla(t_s=0.1, zrodlo="NIE_MA"),
@@ -154,6 +162,7 @@ def test_zdjecie_zwarcia_poza_horyzontem_jest_odmawiane() -> None:
                     r_f_ohm=0.0,
                     x_f_ohm=X_ZWARCIA_OHM,
                     t_usuniecia_s=3.0,
+                    sposob_usuniecia="samoczynne",
                 )
             ],
             horyzont_s=1.0,
@@ -174,10 +183,11 @@ def test_zwarcie_zalozone_i_zdjete_wraca_do_stanu_wyjsciowego() -> None:
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_OHM,
                 t_usuniecia_s=0.2,
+                sposob_usuniecia="samoczynne",
             )
         ],
     )
-    stan = stan_poczatkowy_scenariusza(uklad.galezie)
+    stan = stan_poczatkowy_scenariusza(uklad.galezie, (), uklad.odbiory)
     po_zalozeniu = zastosuj(wpisy[0], stan)
     assert po_zalozeniu.admitancje_zwarc != ()
     po_zdjeciu = zastosuj(wpisy[1], po_zalozeniu)
@@ -193,7 +203,7 @@ def test_skoki_obciazenia_sumuja_sie() -> None:
             SkokObciazenia(t_s=0.2, odbior="ODB1", delta_p_pu=-0.3, delta_q_pu=0.0),
         ],
     )
-    stan = stan_poczatkowy_scenariusza(uklad.galezie)
+    stan = stan_poczatkowy_scenariusza(uklad.galezie, (), uklad.odbiory)
     for wpis in wpisy:
         stan = zastosuj(wpis, stan)
     odbiory = odbiory_po_zdarzeniach(uklad.odbiory, stan)
@@ -217,6 +227,7 @@ def test_zdarzenie_wykonuje_sie_w_DOKLADNEJ_chwili_nie_na_siatce_kroku() -> None
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_PLYTKIEGO_OHM,
                 t_usuniecia_s=0.247,
+                sposob_usuniecia="samoczynne",
             ),
         )
     )
@@ -292,6 +303,7 @@ def test_zdarzenia_rownoczesne_dziela_jeden_pomiar_chwili() -> None:
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_PLYTKIEGO_OHM,
                 t_usuniecia_s=None,
+                sposob_usuniecia=None,
             ),
         )
     )
@@ -321,6 +333,7 @@ def test_permutacja_zdarzen_rownoczesnych_nie_zmienia_wyniku() -> None:
         r_f_ohm=0.0,
         x_f_ohm=X_ZWARCIA_PLYTKIEGO_OHM,
         t_usuniecia_s=0.3,
+        sposob_usuniecia="samoczynne",
     )
     przebiegi = []
     for kolejnosc in ((galaz, zwarcie), (zwarcie, galaz)):
@@ -373,6 +386,7 @@ def test_zdarzenie_wykonuje_sie_niezaleznie_od_reprezentacji_chwili(
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_OHM,
                 t_usuniecia_s=t_usuniecia_s,
+                sposob_usuniecia=None if t_usuniecia_s is None else "samoczynne",
             ),
         )
     )
@@ -403,36 +417,51 @@ def test_zdarzenie_w_chwili_horyzontu_tez_sie_wykonuje() -> None:
     assert wynik.zdarzenia_wykonane[0].t_wykonany_s == 0.5
 
 
-def test_zwarcie_metaliczne_konczy_sie_nazwana_odmowa_a_nie_dzieleniem_przez_zero() -> None:
-    """Zwarcie o zerowej impedancji: NAZWANA odmowa rdzenia, nie `ZeroDivisionError`.
+def test_zwarcie_metaliczne_idzie_wierszem_ograniczenia_a_nie_admitancja() -> None:
+    """Zwarcie o zerowej impedancji: wpis BEZ admitancji i wezel w `zwarcia_metaliczne`.
 
-    KOREKTA 2026-09-18 (bramka SO-1A). Docstring `konwencje.admitancja_zwarcia_pu`
-    deklarowal, ze zwarcie metaliczne „jest odrzucane przez wolajacego
-    (`zdarzenia.py`)" — deklaracja BEZ POKRYCIA. Kontrakt danych
-    (`enm/scenariusze.py::Zwarcie`) przyjmuje `r_f_ohm = x_f_ohm = 0` (oba pola
-    `ge=0.0`), wiec projektant mogl wpisac wartosc, ktora konczyla bieg golym
-    `ZeroDivisionError` — wyjatkiem, ktorego `execute_run` nie lapie, czyli
-    bledem 500 zamiast komunikatu. Ten test przypina obietnice do zachowania.
+    PRZEPISANY ŚWIADOMIE (karta AB-1b.1 §0 pkt 3). Dawna wersja przypinala odmowe
+    `dynamika.zwarcie_metaliczne_bez_admitancji` — zabezpieczenie przed golym
+    `ZeroDivisionError` (KOREKTA 2026-09-18, bramka SO-1A: kontrakt danych przyjmuje
+    `r_f_ohm = x_f_ohm = 0`, wiec projektant mogl dostac blad 500). Intencja
+    ZACHOWANA i wzmocniona: zadna sciezka nie dzieli przez zero — zwarcie metaliczne
+    nie przechodzi przez `admitancja_zwarcia_pu`, tylko przez wiersz ograniczenia
+    `V = 0` (IEC 60909 definiuje zwarcie bezimpedancyjne; „bardzo duza admitancja"
+    bylaby fabrykacja). Bieg z takim zwarciem: `test_obszary_beznapieciowe.py`.
     """
     harmonogram = HarmonogramDynamiki(
         zdarzenia=(
             ZwarcieWezla(
-                t_s=0.1, wezel="szyna", typ="3F", r_f_ohm=0.0, x_f_ohm=0.0, t_usuniecia_s=None
+                t_s=0.1,
+                wezel="szyna",
+                typ="3F",
+                r_f_ohm=0.0,
+                x_f_ohm=0.0,
+                t_usuniecia_s=0.2,
+                sposob_usuniecia="samoczynne",
             ),
         )
     )
-    with pytest.raises(OdmowaDynamiki) as blad:
-        zbuduj_harmonogram(
-            harmonogram,
-            wezly=(WezelDynamiki(ident="szyna", u_n_kv=15.0),),
-            galezie=(),
-            odbiory=(),
-            urzadzenia=(),
-            s_bazowa_mva=100.0,
-            horyzont_s=1.0,
-        )
-    assert blad.value.kod == KOD_ZWARCIE_METALICZNE
-    assert "szyna" in str(blad.value)
+    wpisy = zbuduj_harmonogram(
+        harmonogram,
+        wezly=(WezelDynamiki(ident="szyna", u_n_kv=15.0),),
+        galezie=(),
+        odsprzegi=(),
+        odbiory=(),
+        urzadzenia=(),
+        s_bazowa_mva=100.0,
+        horyzont_s=1.0,
+    )
+    assert [(wpis.rodzaj, wpis.admitancja_pu) for wpis in wpisy] == [
+        ("zwarcie", None),
+        ("zdjecie_zwarcia", None),
+    ]
+    stan = stan_poczatkowy_scenariusza((), (), ())
+    po_zalozeniu = zastosuj(wpisy[0], stan)
+    assert po_zalozeniu.zwarcia_metaliczne == frozenset({"szyna"})
+    assert po_zalozeniu.admitancje_zwarc == ()
+    # Para zalozenie/zdjecie z jednego zrodla prawdy: stan wraca DOKLADNIE do wyjsciowego.
+    assert zastosuj(wpisy[1], po_zalozeniu) == stan
 
 
 def test_zwarcie_o_niezerowej_impedancji_przechodzi_ta_sama_sciezka() -> None:
@@ -441,7 +470,13 @@ def test_zwarcie_o_niezerowej_impedancji_przechodzi_ta_sama_sciezka() -> None:
     harmonogram = HarmonogramDynamiki(
         zdarzenia=(
             ZwarcieWezla(
-                t_s=0.1, wezel="szyna", typ="3F", r_f_ohm=0.5, x_f_ohm=0.0, t_usuniecia_s=None
+                t_s=0.1,
+                wezel="szyna",
+                typ="3F",
+                r_f_ohm=0.5,
+                x_f_ohm=0.0,
+                t_usuniecia_s=None,
+                sposob_usuniecia=None,
             ),
         )
     )
@@ -449,6 +484,7 @@ def test_zwarcie_o_niezerowej_impedancji_przechodzi_ta_sama_sciezka() -> None:
         harmonogram,
         wezly=(WezelDynamiki(ident="szyna", u_n_kv=15.0),),
         galezie=(),
+        odsprzegi=(),
         odbiory=(),
         urzadzenia=(),
         s_bazowa_mva=100.0,

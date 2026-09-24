@@ -8,14 +8,14 @@
       "conductor_material": "AL",
       "cross_section_mm2": 120.0,
       "delta_t_s": 0.3,
-      "i_load_max_a": 22.76878177990488,
+      "i_load_max_a": 22.768781749828918,
       "i_nominal_a": 230.0,
-      "ik2_min_end_a": 7130.191175002975,
-      "ik3_max_beginning_a": 9621.45923592044,
-      "ik3_max_end_a": 9056.559147375217,
-      "ik3_min_beginning_a": 8746.781123564037,
-      "ik3_min_end_a": 8233.235588522924,
-      "ik_max_next_bus_a": 8767.005250876466,
+      "ik2_min_end_a": 7130.191175002978,
+      "ik3_max_beginning_a": 9621.459235920445,
+      "ik3_max_end_a": 9056.559147375221,
+      "ik3_min_beginning_a": 8746.78112356404,
+      "ik3_min_end_a": 8233.235588522928,
+      "ik_max_next_bus_a": 8767.005250876473,
       "k_b": 1.2,
       "k_bth": 1.1,
       "length_km": 0.45
@@ -26,11 +26,13 @@
     "next_bus_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
     "project_name": "Magistrala SN — scena koordynacji",
     "run_timestamp": "2026-09-16T09:00:00+00:00",
-    "solver_version": "IEC_60909;load-flow-newton-raphson-v1"
+    "solver_version": "IEC_60909;load-flow-newton-raphson-v1",
+    "zacisk_zabezpieczenia": "od",
+    "zrodlo_zacisku": "wskazanie"
   },
   "wynik": {
     "delayed": {
-      "i_load_max_a": 22.76878177990488,
+      "i_load_max_a": 22.768781749828918,
       "i_setting_a": 27.3,
       "is_valid": true,
       "k_b": 1.2,
@@ -40,7 +42,7 @@
         {
           "formula": "I_{>} = k_b \\cdot I_{obc,max}",
           "inputs": {
-            "I_obc_max_A": 22.76878177990488,
+            "I_obc_max_A": 22.768781749828918,
             "k_b": 1.2
           },
           "result": {
@@ -64,7 +66,7 @@
         {
           "formula": "k_{cz} = I_{k2,min,end} / I_{>}",
           "inputs": {
-            "I_k2_min_end_A": 7130.191175002975,
+            "I_k2_min_end_A": 7130.191175002978,
             "I_setting_A": 27.3
           },
           "passed": true,
@@ -112,7 +114,7 @@
         {
           "formula": "I_{>>} \\geq k_b \\cdot I_{k,max,next}",
           "inputs": {
-            "I_k_max_next_A": 8767.005250876466,
+            "I_k_max_next_A": 8767.005250876473,
             "k_b": 1.2
           },
           "result": {
@@ -139,7 +141,7 @@
         {
           "formula": "I_{>>} < \\frac{I_{k,min,bus}}{k_b}",
           "inputs": {
-            "I_k_min_bus_A": 8746.781123564037,
+            "I_k_min_bus_A": 8746.78112356404,
             "k_b": 1.2
           },
           "result": {

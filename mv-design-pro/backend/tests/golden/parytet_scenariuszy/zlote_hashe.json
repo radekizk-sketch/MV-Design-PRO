@@ -66,7 +66,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "260f8ed1de046d57d76577c5246635050c183c02bfb453a30ae430bbfd9bc26e"
+    "sha256": "f3a32f25de0a940fbd0ded3576675c15f7714af91712ae2995c51cb379314df2"
   },
   "hosting_capacity/napiecie_graniczne/b_rem_max10": {
     "parametry": {
@@ -87,7 +87,7 @@
       "kwargs": {},
       "siec": "golden"
     },
-    "sha256": "26512f32cdf364807791f8911e4cd751d9f0d15fdff9f80ebb17fe30798c38fd"
+    "sha256": "fcb5a99d20a23f0baa32cac0decb7b47bf05a6dd93ab44565395df432daa4e79"
   },
   "kontyngencje_n1/golden/zakres": {
     "parametry": {
@@ -103,7 +103,7 @@
       "kwargs": {},
       "siec": "pierscien"
     },
-    "sha256": "79fba89f21e90b5d7f610acf5bd862a106fdcb131bdec939976c75838c66352f"
+    "sha256": "dd0325ae94f7f5cd769bf1dbf6b04225950985e16592165d0d1d1e877a2e4800"
   },
   "kontyngencje_n1/pierscien/zakres": {
     "parametry": {
@@ -122,11 +122,12 @@
         "k_b": 1.35,
         "k_bth": 1.18,
         "line_id": "ln1",
-        "next_bus_id": "b_b"
+        "next_bus_id": "b_b",
+        "zacisk_zabezpieczenia": "od"
       },
       "siec": "promieniowa"
     },
-    "sha256": "0ded9a572df3bfcddb8195f4c7fc8e4ab2d1eba7bc609d3779f179f464704a61"
+    "sha256": "a898930c30fd5bcb256b8dfc47249c94fd3d54f253b7fc7e96eb366ec995cfa9"
   },
   "nastawy/promieniowa/ln1_bb_cmin1_0": {
     "parametry": {
@@ -134,11 +135,12 @@
       "kwargs": {
         "c_min": 1.0,
         "line_id": "ln1",
-        "next_bus_id": "b_b"
+        "next_bus_id": "b_b",
+        "zacisk_zabezpieczenia": "od"
       },
       "siec": "promieniowa"
     },
-    "sha256": "3cb1b3dfd11ddb3ec1f971f26ee3453ce188245a2d478547af28421164d341e6"
+    "sha256": "1860b7824ea7ae6c1a063704c9625469b291bf35da95e0d326c0f15302f6be33"
   },
   "nastawy/rozgalezienie/ln1_bb_cmin1_0": {
     "parametry": {
@@ -146,11 +148,12 @@
       "kwargs": {
         "c_min": 1.0,
         "line_id": "ln1",
-        "next_bus_id": "b_b"
+        "next_bus_id": "b_b",
+        "zacisk_zabezpieczenia": "od"
       },
       "siec": "rozgalezienie"
     },
-    "sha256": "723f167e8cdb8f1d43ec779192fe3dcdeb2989a80b09ce310f47bc90a9068845"
+    "sha256": "0cd5350af07d04de46e60a9f63c94685aab933e5e5a2b3e3966a12cf56cf7b47"
   },
   "nastawy/rozgalezienie/ln1_bc_cmin1_0": {
     "parametry": {
@@ -158,11 +161,12 @@
       "kwargs": {
         "c_min": 1.0,
         "line_id": "ln1",
-        "next_bus_id": "b_c"
+        "next_bus_id": "b_c",
+        "zacisk_zabezpieczenia": "od"
       },
       "siec": "rozgalezienie"
     },
-    "sha256": "f450e51cd3f6984f80585b37d48596b81753bc4088a80e902d5bd2c75437ad70"
+    "sha256": "2b99e8988bb0a1287f5c9a4b3b8500190a4ec90b7129bc5e882f32a2e677a258"
   },
   "odpowiedz_osd/golden/cosfi": {
     "parametry": {
@@ -304,7 +308,7 @@
       },
       "siec": "golden"
     },
-    "sha256": "36738842f85584f041382928004232c581ade05b6979db89844c36cde5ec45a4"
+    "sha256": "b4da4b041d8e1966daf86d210160898ea11660543759149486ac27ab5c0f7e2c"
   },
   "pq_area/golden/bus_sn_c_p4_q3": {
     "parametry": {

@@ -21,9 +21,11 @@ regulacja pierwotna) wymaga urzadzenia z wlasna dynamika, nie rozszerzania tego.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 
+from ..kontrakty import SprzezenieUrzadzenia
 from ..konwencje import zmiana_bazy_impedancji
 from .bazowe import (
     admitancja_wewnetrzna,
@@ -47,6 +49,22 @@ class SzynaSztywna:
     wezel: str
     r_pu: float
     x_pu: float
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = ()
+
+    @property
+    def sprzezenie(self) -> SprzezenieUrzadzenia:
+        """SEM za impedancja Thevenina (niezerowa) — sprzezenie przez prad."""
+        return "pradowe"
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "ident": self.ident,
+            "wezel": self.wezel,
+            "r_pu": self.r_pu,
+            "x_pu": self.x_pu,
+        }
 
     @property
     def nazwy_stanow(self) -> tuple[str, ...]:

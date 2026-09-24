@@ -156,7 +156,7 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
 async function zbudujSiecGotowaDoObliczen(
   request: APIRequestContext,
   caseId: string,
-): Promise<{ stationSnBusRefs: string[] }> {
+): Promise<{ stationSnBusRefs: string[]; kabelRefs: string[] }> {
   let op = await executeDomainOp(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
@@ -282,7 +282,7 @@ async function zbudujSiecGotowaDoObliczen(
     }
   }
   expect(readiness?.ready).toBe(true);
-  return { stationSnBusRefs };
+  return { stationSnBusRefs, kabelRefs: odcinkiLiniowe.map((branch) => branch.ref_id) };
 }
 
 /** Bieg przez API execution — zwraca id przebiegu DONE (wzorzec deep-link). */
@@ -337,21 +337,32 @@ test('E-28: nastawa urządzenia zapisana do konfiguracji przypadku TRWA po pełn
   test.setTimeout(240000);
 
   const caseId = await createCaseFromUi(page, request);
-  await zbudujSiecGotowaDoObliczen(request, caseId);
+  const { kabelRefs } = await zbudujSiecGotowaDoObliczen(request, caseId);
+  expect(kabelRefs.length).toBeGreaterThan(0);
   await uruchomBiegPrzezApi(request, caseId, 'SC_3F');
 
   await przeladujPowloke(page);
   await otworzKoordynacje(page);
 
-  // Realna ścieżka projektanta: dodaj urządzenie → wskaż element modelu →
+  // Realna ścieżka projektanta: dodaj urządzenie → wskaż odcinek kabla z modelu →
+  // wskaż zacisk (decyzja O-51 pkt 7: prąd roboczy = prąd ZACISKU gałęzi; etykiety
+  // zacisków z nazwami szyn przychodzą z backendu, brak zacisku domyślnego) →
   // zmień nastawę I> → zapisz.
   await page.getByRole('button', { name: 'Dodaj urządzenie' }).click();
   const lokalizacja = page.getByTestId('device-location-select');
   await expect(lokalizacja).toBeVisible({ timeout: 20000 });
-  // Pierwszy REALNY element modelu z listy (opcja 0 = „wskaż element…").
-  await lokalizacja.selectOption({ index: 1 });
-  const wybranaLokalizacja = await lokalizacja.inputValue();
-  expect(wybranaLokalizacja.length).toBeGreaterThan(0);
+  const kabelRef = kabelRefs[0];
+  await lokalizacja.selectOption(kabelRef);
+  const zaciskOd = page.getByTestId('device-terminal-od');
+  await expect(zaciskOd).toBeVisible({ timeout: 20000 });
+  await expect(zaciskOd).not.toBeChecked();
+  await expect(page.getByTestId('device-terminal')).toContainText('Zacisk początkowy — szyna');
+  await expect(page.getByTestId('device-terminal')).toContainText('Zacisk końcowy — szyna');
+  // Bez wskazania backend nazywa brak (kod kanonu), zamiast przyjąć „od".
+  await expect(page.getByTestId('device-terminal-missing')).toBeVisible();
+  await zaciskOd.click();
+  await expect(zaciskOd).toBeChecked();
+  await expect(page.getByTestId('device-terminal-missing')).toHaveCount(0);
 
   const stopien51 = page.locator('[data-testid="stage-editor-Stopień I> (51)"]');
   const pradRozruchowy = stopien51.locator('input[type="number"]').first();
@@ -372,11 +383,20 @@ test('E-28: nastawa urządzenia zapisana do konfiguracji przypadku TRWA po pełn
   );
   expect(konfiguracja.ok()).toBeTruthy();
   const overrides = ((await konfiguracja.json()) as {
-    overrides: Record<string, { settings?: { stage_51?: { pickup_current_a?: number } } }>;
+    overrides: Record<
+      string,
+      {
+        location_element_id?: string;
+        zacisk?: string;
+        settings?: { stage_51?: { pickup_current_a?: number } };
+      }
+    >;
   }).overrides;
   const kluczeUrzadzen = Object.keys(overrides).filter((k) => k.startsWith('coordination_device:'));
   expect(kluczeUrzadzen).toHaveLength(1);
   expect(overrides[kluczeUrzadzen[0]].settings?.stage_51?.pickup_current_a).toBe(175);
+  expect(overrides[kluczeUrzadzen[0]].location_element_id).toBe(kabelRef);
+  expect(overrides[kluczeUrzadzen[0]].zacisk).toBe('od');
 
   // WYJŚCIE I POWRÓT z pełnym przeładowaniem: stan React wyzerowany, więc
   // jedynym źródłem urządzenia jest serwer (hydratacja z GET protection-config).
@@ -397,6 +417,8 @@ test('E-28: nastawa urządzenia zapisana do konfiguracji przypadku TRWA po pełn
     .locator('input[type="number"]')
     .first();
   await expect(pradPoPowrocie).toHaveValue('175', { timeout: 20000 });
+  // Zacisk wraca z serwera — wskazanie projektanta, nie domyślka.
+  await expect(page.getByTestId('device-terminal-od')).toBeChecked({ timeout: 20000 });
 });
 
 test('OZE: „Przyłącz źródło w tym węźle" otwiera formularz źródła z preselekcją węzła (bramka K5-B b)', async ({ page, request }) => {

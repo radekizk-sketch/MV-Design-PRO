@@ -39,6 +39,8 @@ def _galaz(przekladnia: complex = complex(1.0, 0.0), b: float = 0.0) -> GalazDyn
         y_szeregowa_pu=1.0 / complex(0.02, 0.2),
         b_poprzeczna_pu=b,
         przekladnia=przekladnia,
+        aktywna_na_starcie=True,
+        rodzaj="linia",
     )
 
 
@@ -71,7 +73,9 @@ def test_ybus_z_przekladnia_zespolona() -> None:
 
 def test_odsprzeg_wchodzi_na_przekatna() -> None:
     model = zloz_model_sieci(
-        WEZLY, (_galaz(),), (OdsprzegDynamiki("BAT", "B", g_pu=0.01, b_pu=0.5),)
+        WEZLY,
+        (_galaz(),),
+        (OdsprzegDynamiki("BAT", "B", g_pu=0.01, b_pu=0.5, aktywna_na_starcie=True),),
     )
     bez = zloz_model_sieci(WEZLY, (_galaz(),), ())
     roznica = model.ybus.toarray() - bez.ybus.toarray()
@@ -101,7 +105,9 @@ def test_wylaczenie_i_zalaczenie_galezi_wraca_do_punktu_wyjscia() -> None:
 
 
 def test_galaz_do_nieistniejacego_wezla_jest_odmawiana() -> None:
-    galaz = GalazDynamiki("L", "A", "NIE_MA", 1.0 / complex(0.0, 0.2), 0.0, complex(1.0, 0.0))
+    galaz = GalazDynamiki(
+        "L", "A", "NIE_MA", 1.0 / complex(0.0, 0.2), 0.0, complex(1.0, 0.0), True, "linia"
+    )
     with pytest.raises(OdmowaDynamiki) as blad:
         zloz_model_sieci(WEZLY, (galaz,), ())
     assert blad.value.kod == KOD_SIEC_NIESPOJNA

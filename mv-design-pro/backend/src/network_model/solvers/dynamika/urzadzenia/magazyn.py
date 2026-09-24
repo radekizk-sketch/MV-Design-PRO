@@ -49,12 +49,14 @@ istnialaby tylko w testach.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 import numpy as np
 from network_model.pochodne import kw_na_mw, mw_na_kw
 
-from ..kontrakty import KOD_PUNKT_PRACY_POZA_OGRANICZENIEM, OdmowaDynamiki
+from ..kontrakty import KOD_PUNKT_PRACY_POZA_OGRANICZENIEM, OdmowaDynamiki, SprzezenieUrzadzenia
 from ..konwencje import moc_pu, zmiana_bazy_mocy_wzglednej
+from .bazowe import parametry_bloku
 from .okno_mocy import OknoMocy
 from .pochodne_kierunkowe import Dual, Zespolona
 from .przeksztaltnik_gfl import RdzenGFL
@@ -82,6 +84,22 @@ class Zasobnik:
     soc_max: float
     soc_poczatkowy: float
     s_bazowa_mva: float
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = ()
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "pojemnosc_kwh": self.pojemnosc_kwh,
+            "p_ladowania_max_pu": self.p_ladowania_max_pu,
+            "p_rozladowania_max_pu": self.p_rozladowania_max_pu,
+            "sprawnosc_ladowania": self.sprawnosc_ladowania,
+            "sprawnosc_rozladowania": self.sprawnosc_rozladowania,
+            "soc_min": self.soc_min,
+            "soc_max": self.soc_max,
+            "soc_poczatkowy": self.soc_poczatkowy,
+            "s_bazowa_mva": self.s_bazowa_mva,
+        }
 
     def okno_mocy(self) -> OknoMocy:
         """Okno mocy z granic ladowania i rozladowania kontraktu.
@@ -169,6 +187,28 @@ class Magazyn:
     rdzen: RdzenPrzeksztaltnika
     zasobnik: Zasobnik
     uklad: UkladStanow = field(compare=False)
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = (
+        (
+            "uklad",
+            "uklad stanow jest WYPROWADZONY z konfiguracji blokow urzadzenia; jego "
+            "nazwy wchodza do odcisku osobno jako `nazwy_stanow`",
+        ),
+    )
+
+    @property
+    def sprzezenie(self) -> SprzezenieUrzadzenia:
+        """Magazyn: rdzen przeksztaltnika (nadazny albo tworzacy) — prad do wezla."""
+        return "pradowe"
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "ident": self.ident,
+            "wezel": self.wezel,
+            "rdzen": parametry_bloku(self.rdzen),
+            "zasobnik": parametry_bloku(self.zasobnik),
+        }
 
     @property
     def nazwy_stanow(self) -> tuple[str, ...]:

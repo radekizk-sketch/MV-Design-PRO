@@ -4,7 +4,7 @@ Co ten moduł sprawdza:
 
 * dyspozycja i rejestracja rodzaju biegu (W6-1) — tworzenie, listing, kontrakty odczytu;
 * PEŁNA ŚCIEŻKA UŻYTKOWNIKA (W6-3B): rozpływ mocy → bieg czasowy wskazujący ten
-  rozpływ jako punkt pracy → `ResultSetDynamicV1` z niepustymi kanałami, zdarzeniami
+  rozpływ jako punkt pracy → `ResultSetDynamicV2` z niepustymi kanałami, zdarzeniami
   i metrykami → szeregi czasowe na żądanie osobnym endpointem;
 * NAZWANE odmowy na tej samej ścieżce (brak punktu pracy, brak nastaw, brak
   scenariusza) — status FAILED z kodem, nigdy pusty wynik;
@@ -256,18 +256,20 @@ class TestBudowaWidokowOdczytu:
             build_dynamika_results(run)
 
     def test_metadane_bez_probek_zwracaja_kontrakt(self) -> None:
-        from application.contracts.resultset_dynamic_v1 import (
-            ResultSetDynamicV1,
-            TozsamoscBieguDynamicznegoV1,
-            WlasnosciBieguV1,
-            zbuduj_resultset_dynamiczny_v1,
+        from application.contracts.resultset_dynamic_v2 import (
+            ResultSetDynamicV2,
+            TozsamoscBieguDynamicznegoV2,
+            WlasnosciBieguV2,
+            dziedzina_fizyki_dynamiki,
+            zbuduj_resultset_dynamiczny_v2,
         )
         from enm.canonical_analysis import build_dynamika_results
 
         run_id = uuid4()
-        wynik = ResultSetDynamicV1(
+        wynik = ResultSetDynamicV2(
             run_id=str(run_id),
-            wlasnosci_biegu=WlasnosciBieguV1(
+            dziedzina_fizyki=dziedzina_fizyki_dynamiki(),
+            wlasnosci_biegu=WlasnosciBieguV2(
                 zbiegl=True,
                 kroki=10,
                 kroki_odrzucone=0,
@@ -278,7 +280,7 @@ class TestBudowaWidokowOdczytu:
                 dt_s=0.001,
                 tolerancja=1e-6,
             ),
-            tozsamosc=TozsamoscBieguDynamicznegoV1(
+            tozsamosc=TozsamoscBieguDynamicznegoV2(
                 odcisk_migawki="a",
                 odcisk_punktu_pracy="b",
                 odcisk_nastaw_solvera="c",
@@ -287,36 +289,42 @@ class TestBudowaWidokowOdczytu:
                 wersja_solvera="0.0.0",
             ),
         )
-        raw_result = zbuduj_resultset_dynamiczny_v1(wynik, z_probkami=False)
+        raw_result = zbuduj_resultset_dynamiczny_v2(wynik, z_probkami=False)
         run = _domyslny_canonical_run(run_id, "case-1", "dynamika_rms", raw_result)
 
         payload = build_dynamika_results(run)
-        assert payload["kontrakt"] == "resultset_dynamic_v1"
+        assert payload["kontrakt"] == "resultset_dynamic_v2"
+        assert payload["dziedzina_fizyki"] == ["RMS_DYNAMICS"]
         assert payload["os_czasu_s"] == []
+        assert payload["strona_probki"] == []
         assert payload["probki"] == {}
 
-    def test_zbuduj_resultset_dynamiczny_v1_deterministyczny_bit_w_bit(self) -> None:
+    def test_zbuduj_resultset_dynamiczny_v2_deterministyczny_bit_w_bit(self) -> None:
         """Karta W6-1 SS0 p.6/DT-11: dwa zrzuty TEGO SAMEGO obiektu musza byc
         bajt w bajt rowne (funkcja czysta: model_dump + kwantyzacja, zero
         losowosci/czasu/IO). Iloczyn cech bogatszy niz test kontraktu
-        wyzej: kanaly, probki (z_probkami=True), zdarzenia_wykonane,
-        metryki, stopien_dowodowy, zalozenia — wszystkie pola niepuste
-        naraz, nie tylko szkielet."""
-        from application.contracts.resultset_dynamic_v1 import (
-            KanalDynamicznyV1,
-            MetrykaDynamicznaV1,
-            ResultSetDynamicV1,
-            StopienDowodowyV1,
-            TozsamoscBieguDynamicznegoV1,
-            WlasnosciBieguV1,
-            ZdarzenieWykonaneV1,
-            zbuduj_resultset_dynamiczny_v1,
+        wyzej: kanaly, probki z wartoscia niedostepna (z_probkami=True),
+        strony probek z powtorzona chwila zdarzenia, zdarzenia_wykonane ze
+        skutkami topologicznymi, metryki, stopien_dowodowy, zalozenia —
+        wszystkie pola niepuste naraz, nie tylko szkielet."""
+        from application.contracts.resultset_dynamic_v2 import (
+            KanalDynamicznyV2,
+            MetrykaDynamicznaV2,
+            OdbiorOdcietyV2,
+            ResultSetDynamicV2,
+            StopienDowodowyV2,
+            TozsamoscBieguDynamicznegoV2,
+            WlasnosciBieguV2,
+            ZdarzenieWykonaneV2,
+            dziedzina_fizyki_dynamiki,
+            zbuduj_resultset_dynamiczny_v2,
         )
 
-        wynik = ResultSetDynamicV1(
+        wynik = ResultSetDynamicV2(
             run_id=str(uuid4()),
+            dziedzina_fizyki=dziedzina_fizyki_dynamiki(),
             kanaly=(
-                KanalDynamicznyV1(
+                KanalDynamicznyV2(
                     klucz="u_pu@b1",
                     przestrzen="siec",
                     jednostka="pu",
@@ -324,10 +332,11 @@ class TestBudowaWidokowOdczytu:
                     opis_pl="Napiecie wezlowe.",
                 ),
             ),
-            os_czasu_s=(0.0, 0.001, 0.002),
-            probki={"u_pu@b1": (1.0, 0.999999999123456, 0.998)},
+            os_czasu_s=(0.0, 0.001, 0.001, 0.002),
+            strona_probki=("C", "L", "P", "C"),
+            probki={"u_pu@b1": (1.0, 0.999999999123456, None, 0.998)},
             zdarzenia_wykonane=(
-                ZdarzenieWykonaneV1(
+                ZdarzenieWykonaneV2(
                     t_zaplanowany_s=0.001,
                     t_wykonany_s=0.001,
                     rodzaj="zwarcie",
@@ -335,9 +344,12 @@ class TestBudowaWidokowOdczytu:
                     delta_x_max=1e-6,
                     delta_y_max=1e-6,
                     residuum_kcl_max=1e-9,
+                    obszary_odciete=("b2",),
+                    odbiory_odciete=(OdbiorOdcietyV2(ref="odb-1", p_pu=0.03, q_pu=0.008),),
+                    obszary_zasilone_ponownie=(),
                 ),
             ),
-            wlasnosci_biegu=WlasnosciBieguV1(
+            wlasnosci_biegu=WlasnosciBieguV2(
                 zbiegl=True,
                 kroki=10,
                 kroki_odrzucone=0,
@@ -348,7 +360,7 @@ class TestBudowaWidokowOdczytu:
                 dt_s=0.001,
                 tolerancja=1e-6,
             ),
-            tozsamosc=TozsamoscBieguDynamicznegoV1(
+            tozsamosc=TozsamoscBieguDynamicznegoV2(
                 odcisk_migawki="a",
                 odcisk_punktu_pracy="b",
                 odcisk_nastaw_solvera="c",
@@ -357,12 +369,12 @@ class TestBudowaWidokowOdczytu:
                 wersja_solvera="0.0.0",
             ),
             metryki=(
-                MetrykaDynamicznaV1(
+                MetrykaDynamicznaV2(
                     klucz="u_min_pu", wartosc=0.998, jednostka="pu", element_ref="b1"
                 ),
             ),
             stopien_dowodowy=(
-                StopienDowodowyV1(
+                StopienDowodowyV2(
                     capability_id="dynamika_rms",
                     tier="UNVALIDATED_MODEL",
                     tier_pl="Model niezwalidowany",
@@ -376,12 +388,15 @@ class TestBudowaWidokowOdczytu:
             zalozenia=("Zero calkowania w W6-1.",),
         )
 
-        pierwszy = zbuduj_resultset_dynamiczny_v1(wynik, z_probkami=True)
-        drugi = zbuduj_resultset_dynamiczny_v1(wynik, z_probkami=True)
+        pierwszy = zbuduj_resultset_dynamiczny_v2(wynik, z_probkami=True)
+        drugi = zbuduj_resultset_dynamiczny_v2(wynik, z_probkami=True)
         assert pierwszy == drugi
         assert json.dumps(pierwszy, sort_keys=True) == json.dumps(drugi, sort_keys=True)
-        # Kwantyzacja 9 cyfr znaczacych (DT-11) dziala na probkach.
+        # Kwantyzacja 9 cyfr znaczacych (DT-11) dziala na probkach, a wartosc
+        # niedostepna przechodzi jako `None` (nie 0.0, nie NaN).
         assert pierwszy["probki"]["u_pu@b1"][1] == pytest.approx(0.999999999, rel=0, abs=1e-9)
+        assert pierwszy["probki"]["u_pu@b1"][2] is None
+        assert pierwszy["strona_probki"] == ["C", "L", "P", "C"]
 
     def test_brak_szeregow_key_error(self) -> None:
         from enm.canonical_analysis import build_dynamika_time_series
@@ -415,15 +430,56 @@ class TestPersystencjaSzeregow:
         )
 
         run_id = self._zapisany_bieg()
-        os_czasu_s = [0.0, 0.001, 0.002]
-        probki = {"u_pu@b1": [1.0, 0.99, 0.6], "omega_pu@g1": [1.0, 1.0001, 1.0002]}
+        os_czasu_s = [0.0, 0.001, 0.001, 0.002]
+        strony = ["C", "L", "P", "C"]
+        probki = {
+            "u_pu@b1": [1.0, 0.99, 0.6, 0.61],
+            "f_hz@b1": [50.0, None, None, 49.9],
+        }
         with canonical_run_repository_scope() as repo:
-            repo.zapisz_szeregi_dynamiczne(run_id, os_czasu_s, probki)
+            repo.zapisz_szeregi_dynamiczne(run_id, os_czasu_s, strony, probki)
 
         run = _domyslny_canonical_run(run_id, "case-1", "dynamika_rms", {"kontrakt": "x"})
         wynik = build_dynamika_time_series(run)
         assert wynik["os_czasu_s"] == os_czasu_s
+        assert wynik["strona_probki"] == strony
+        # Wartosc niedostepna wraca jako `None` — nie 0.0 i nie NaN.
         assert wynik["probki"] == probki
+
+    def test_strona_innej_dlugosci_niz_os_odrzucona(self) -> None:
+        from infrastructure.persistence.repositories.canonical_run_repository import (
+            canonical_run_repository_scope,
+        )
+
+        run_id = self._zapisany_bieg()
+        with canonical_run_repository_scope() as repo, pytest.raises(ValueError):
+            repo.zapisz_szeregi_dynamiczne(run_id, [0.0, 0.1], ["C"], {"a": [1.0, 2.0]})
+
+    def test_wiersz_bez_strony_probek_odmowa_nazwana(self) -> None:
+        """Wiersz sprzed kontraktu v2 (kolumna addytywna = NULL) nie dostaje
+        domyslnej strony — odczyt konczy sie nazwana odmowa (404 w API)."""
+        from enm.canonical_analysis import build_dynamika_time_series
+        from infrastructure.persistence.models import CanonicalRunTimeSeriesORM
+        from infrastructure.persistence.repositories.canonical_run_repository import (
+            get_canonical_run_session_factory,
+        )
+
+        run_id = self._zapisany_bieg()
+        session_factory = get_canonical_run_session_factory()
+        with session_factory() as session:
+            session.add(
+                CanonicalRunTimeSeriesORM(
+                    run_id=run_id,
+                    klucz_kanalu="u_pu@b1",
+                    os_czasu_s_json=[0.0],
+                    strona_probki_json=None,
+                    probki_json=[1.0],
+                )
+            )
+            session.commit()
+        run = _domyslny_canonical_run(run_id, "case-1", "dynamika_rms", {"kontrakt": "x"})
+        with pytest.raises(KeyError, match="resultset_dynamic_v2"):
+            build_dynamika_time_series(run)
 
     def test_filtr_kanalow(self) -> None:
         from enm.canonical_analysis import build_dynamika_time_series
@@ -433,7 +489,9 @@ class TestPersystencjaSzeregow:
 
         run_id = self._zapisany_bieg()
         with canonical_run_repository_scope() as repo:
-            repo.zapisz_szeregi_dynamiczne(run_id, [0.0, 1.0], {"a": [1.0, 2.0], "b": [3.0, 4.0]})
+            repo.zapisz_szeregi_dynamiczne(
+                run_id, [0.0, 1.0], ["C", "C"], {"a": [1.0, 2.0], "b": [3.0, 4.0]}
+            )
         run = _domyslny_canonical_run(run_id, "case-1", "dynamika_rms", {"kontrakt": "x"})
         wynik = build_dynamika_time_series(run, ["a"])
         assert set(wynik["probki"]) == {"a"}
@@ -446,7 +504,7 @@ class TestPersystencjaSzeregow:
 
         run_id = self._zapisany_bieg()
         with canonical_run_repository_scope() as repo:
-            repo.zapisz_szeregi_dynamiczne(run_id, [0.0], {"a": [1.0]})
+            repo.zapisz_szeregi_dynamiczne(run_id, [0.0], ["C"], {"a": [1.0]})
         run = _domyslny_canonical_run(run_id, "case-1", "dynamika_rms", {"kontrakt": "x"})
         with pytest.raises(KeyError):
             build_dynamika_time_series(run, ["nieistniejacy"])
@@ -458,11 +516,11 @@ class TestPersystencjaSzeregow:
 
         run_id = self._zapisany_bieg()
         with canonical_run_repository_scope() as repo:
-            repo.zapisz_szeregi_dynamiczne(run_id, [0.0], {"a": [1.0], "b": [2.0]})
-            repo.zapisz_szeregi_dynamiczne(run_id, [0.0], {"c": [3.0]})
+            repo.zapisz_szeregi_dynamiczne(run_id, [0.0], ["C"], {"a": [1.0], "b": [2.0]})
+            repo.zapisz_szeregi_dynamiczne(run_id, [0.0], ["C"], {"c": [3.0]})
             wynik = repo.get_szeregi_dynamiczne(run_id)
         assert wynik is not None
-        _, probki = wynik
+        _, _, probki = wynik
         assert set(probki) == {"c"}
 
     def test_bieg_nieutrwalony_zapis_no_op(self) -> None:
@@ -473,7 +531,7 @@ class TestPersystencjaSzeregow:
         )
 
         with canonical_run_repository_scope() as repo:
-            repo.zapisz_szeregi_dynamiczne(uuid4(), [0.0], {"a": [1.0]})  # nie rzuca
+            repo.zapisz_szeregi_dynamiczne(uuid4(), [0.0], ["C"], {"a": [1.0]})  # nie rzuca
 
     def test_clear_all_usuwa_szeregi_czasowe(self) -> None:
         """KLASA NIE INSTANCJA: `clear_all` musi kasowac WSZYSTKIE tabele zalezne
@@ -488,7 +546,7 @@ class TestPersystencjaSzeregow:
 
         run_id = self._zapisany_bieg()
         with canonical_run_repository_scope() as repo:
-            repo.zapisz_szeregi_dynamiczne(run_id, [0.0], {"a": [1.0]})
+            repo.zapisz_szeregi_dynamiczne(run_id, [0.0], ["C"], {"a": [1.0]})
             repo.clear_all()
 
         session_factory = get_canonical_run_session_factory()
@@ -505,12 +563,13 @@ class TestPersystencjaSzeregow:
 
 class TestHttpEndpointyWynikow:
     def test_metadane_i_szeregi_przez_http(self, client: TestClient) -> None:
-        from application.contracts.resultset_dynamic_v1 import (
-            KanalDynamicznyV1,
-            ResultSetDynamicV1,
-            TozsamoscBieguDynamicznegoV1,
-            WlasnosciBieguV1,
-            zbuduj_resultset_dynamiczny_v1,
+        from application.contracts.resultset_dynamic_v2 import (
+            KanalDynamicznyV2,
+            ResultSetDynamicV2,
+            TozsamoscBieguDynamicznegoV2,
+            WlasnosciBieguV2,
+            dziedzina_fizyki_dynamiki,
+            zbuduj_resultset_dynamiczny_v2,
         )
         from infrastructure.persistence.repositories.canonical_run_repository import (
             canonical_run_repository_scope,
@@ -518,10 +577,11 @@ class TestHttpEndpointyWynikow:
 
         case_id = _nowy_przypadek(client)
         run_id = uuid4()
-        wynik = ResultSetDynamicV1(
+        wynik = ResultSetDynamicV2(
             run_id=str(run_id),
+            dziedzina_fizyki=dziedzina_fizyki_dynamiki(),
             kanaly=(
-                KanalDynamicznyV1(
+                KanalDynamicznyV2(
                     klucz="u_pu@bus-1",
                     przestrzen="siec",
                     jednostka="pu",
@@ -529,7 +589,7 @@ class TestHttpEndpointyWynikow:
                     opis_pl="Napiecie szyny 1",
                 ),
             ),
-            wlasnosci_biegu=WlasnosciBieguV1(
+            wlasnosci_biegu=WlasnosciBieguV2(
                 zbiegl=True,
                 kroki=5,
                 kroki_odrzucone=0,
@@ -540,7 +600,7 @@ class TestHttpEndpointyWynikow:
                 dt_s=0.001,
                 tolerancja=1e-6,
             ),
-            tozsamosc=TozsamoscBieguDynamicznegoV1(
+            tozsamosc=TozsamoscBieguDynamicznegoV2(
                 odcisk_migawki="a",
                 odcisk_punktu_pracy="b",
                 odcisk_nastaw_solvera="c",
@@ -549,16 +609,18 @@ class TestHttpEndpointyWynikow:
                 wersja_solvera="0.0.0",
             ),
         )
-        raw_result = zbuduj_resultset_dynamiczny_v1(wynik, z_probkami=False)
+        raw_result = zbuduj_resultset_dynamiczny_v2(wynik, z_probkami=False)
         run = _domyslny_canonical_run(run_id, case_id, "dynamika_rms", raw_result)
         with canonical_run_repository_scope() as repo:
             repo.save(run)
-            repo.zapisz_szeregi_dynamiczne(run_id, [0.0, 0.001], {"u_pu@bus-1": [1.0, 0.999]})
+            repo.zapisz_szeregi_dynamiczne(
+                run_id, [0.0, 0.001], ["C", "C"], {"u_pu@bus-1": [1.0, 0.999]}
+            )
 
         metadane = client.get(f"/api/analysis-runs/{run_id}/results/dynamika")
         assert metadane.status_code == 200, metadane.text
         body = metadane.json()
-        assert body["kontrakt"] == "resultset_dynamic_v1"
+        assert body["kontrakt"] == "resultset_dynamic_v2"
         assert body["probki"] == {}
         assert body["kanaly"][0]["klucz"] == "u_pu@bus-1"
 
@@ -568,6 +630,7 @@ class TestHttpEndpointyWynikow:
         )
         assert szeregi.status_code == 200, szeregi.text
         assert szeregi.json()["probki"] == {"u_pu@bus-1": [1.0, 0.999]}
+        assert szeregi.json()["strona_probki"] == ["C", "C"]
 
         brak_kanalu = client.get(
             f"/api/analysis-runs/{run_id}/results/dynamika/time-series",
@@ -587,7 +650,7 @@ def test_reproducibility_niesie_solver_family_dynamika_rms() -> None:
     run = _domyslny_canonical_run(uuid4(), "case-1", "dynamika_rms", {"kontrakt": "x"})
     repro = build_analysis_case_reproducibility(run)
     assert repro["solver_family"] == "dynamika_rms_dae"
-    assert repro["formula_set_version"] == "resultset_dynamic_v1"
+    assert repro["formula_set_version"] == "resultset_dynamic_v2"
     assert repro["standard_basis_ref"] == "DYNAMIKA_RMS_DAE_V1"
 
 
@@ -622,6 +685,7 @@ SCENARIUSZ_CZASOWY = {
             "r_f_ohm": 0.0,
             "x_f_ohm": 1.0,
             "t_usuniecia_s": 0.2,
+            "sposob_usuniecia": "samoczynne",
         }
     ],
 }
@@ -666,7 +730,7 @@ def _uruchom_dynamike(client: TestClient, case_id: str, solver_input: dict) -> d
 
 class TestSciezkaUzytkownika:
     def test_bieg_konczy_sie_wynikiem_a_nie_odmowa(self, client: TestClient) -> None:
-        """Dowód zdolności: bieg `dynamika_rms` oddaje `ResultSetDynamicV1`.
+        """Dowód zdolności: bieg `dynamika_rms` oddaje `ResultSetDynamicV2`.
 
         To jest dokładnie to, czego przed kartą W6-3B nie było: rdzeń DAE i
         biblioteka urządzeń istniały, a jedyny punkt wejścia odmawiał zawsze.
@@ -689,13 +753,15 @@ class TestSciezkaUzytkownika:
         wynik = client.get(f"/api/analysis-runs/{bieg['run_id']}/results/dynamika")
         assert wynik.status_code == 200, wynik.text
         ladunek = wynik.json()
-        assert ladunek["kontrakt"] == "resultset_dynamic_v1"
+        assert ladunek["kontrakt"] == "resultset_dynamic_v2"
+        assert ladunek["dziedzina_fizyki"] == ["RMS_DYNAMICS"]
         assert ladunek["pf_run_id"] == pf_run_id
         assert ladunek["wlasnosci_biegu"]["zbiegl"] is True
         assert ladunek["wlasnosci_biegu"]["kroki"] > 0
         # Szeregi NIE wchodzą do wiersza biegu (lekcja wydajnościowa) — wchodzą
         # do osobnej tabeli i wracają osobnym endpointem.
         assert ladunek["os_czasu_s"] == [] and ladunek["probki"] == {}
+        assert ladunek["strona_probki"] == []
 
         klucze = {kanal["klucz"] for kanal in ladunek["kanaly"]}
         assert {"u_pu@b-sn-b", "omega_pu@gen-synchroniczny", "p_pu@gen-pv"} <= klucze
@@ -721,6 +787,26 @@ class TestSciezkaUzytkownika:
         probki = szeregi.json()["probki"]["u_pu@b-sn-b"]
         assert len(probki) == len(szeregi.json()["os_czasu_s"]) > 1
         assert min(probki) < 0.9 * probki[0], "zwarcie musi obniżyć napięcie szyny"
+
+        # Próbki obustronne przez CAŁĄ ścieżkę (solver → baza → HTTP): chwila
+        # każdego zdarzenia ma parę `L`/`P`, a częstotliwość w niej jest `None`
+        # z kodem jakości 3 — wartość niedostępna nie staje się liczbą po drodze.
+        f_szeregi = client.get(
+            f"/api/analysis-runs/{bieg['run_id']}/results/dynamika/time-series",
+            params={"kanaly": "f_hz@b-sn-b,jakosc_f@b-sn-b"},
+        ).json()
+        strony = f_szeregi["strona_probki"]
+        os_czasu = f_szeregi["os_czasu_s"]
+        assert [(t, s) for t, s in zip(os_czasu, strony, strict=True) if s != "C"] == [
+            (0.1, "L"),
+            (0.1, "P"),
+            (0.2, "L"),
+            (0.2, "P"),
+        ]
+        for indeks, strona in enumerate(strony):
+            if strona != "C":
+                assert f_szeregi["probki"]["f_hz@b-sn-b"][indeks] is None
+                assert f_szeregi["probki"]["jakosc_f@b-sn-b"][indeks] == 3.0
 
     def test_determinizm_dwa_biegi_ten_sam_wynik(self, client: TestClient) -> None:
         """Ta sama piątka odcisków ⇒ ten sam ładunek i te same szeregi.
@@ -764,6 +850,7 @@ class TestSciezkaUzytkownika:
             f"/api/analysis-runs/{drugi['run_id']}/results/dynamika/time-series"
         ).json()
         assert szeregi_a["os_czasu_s"] == szeregi_b["os_czasu_s"]
+        assert szeregi_a["strona_probki"] == szeregi_b["strona_probki"]
         assert szeregi_a["probki"] == szeregi_b["probki"]
 
     def test_odmowa_bez_nastaw_numerycznych(self, client: TestClient) -> None:

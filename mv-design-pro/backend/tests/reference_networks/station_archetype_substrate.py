@@ -49,6 +49,12 @@ import math
 import os
 from typing import Any, Literal
 
+from analysis.obciazenie_galezi import (
+    ObciazenieGalezi,
+    obciazenie_galezi,
+    prad_zacisku_do_a,
+    prad_zacisku_od_a,
+)
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
@@ -795,6 +801,29 @@ def _wb(
     }
 
 
+def _zaokraglij(wartosc: float | None, cyfry: int) -> float | None:
+    return round(wartosc, cyfry) if wartosc is not None else None
+
+
+def _obciazenie_galezi(
+    sol: PowerFlowNewtonSolution, branch_id: str, branch: Any
+) -> ObciazenieGalezi:
+    """Obciążenie gałęzi archetypu — JEDNA funkcja produktu (decyzja O-51).
+
+    Prąd zacisku `od` z rdzenia, prąd zacisku `do` z mocy strony `to` i napięcia węzła
+    `to`, obciążenie z większego ilorazu prąd/prąd znamionowy zacisku
+    (`analysis/obciazenie_galezi.py`) — ta sama definicja co tabela gałęzi produktu.
+    """
+    return obciazenie_galezi(
+        branch,
+        prad_od_a=prad_zacisku_od_a(sol.branch_current_ka.get(branch_id)),
+        prad_do_a=prad_zacisku_do_a(
+            sol.branch_s_to_mva.get(branch_id),
+            sol.node_voltage_kv.get(branch.to_node_id),
+        ),
+    )
+
+
 def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
     graph, slack_id, pq, buses = _vf_graph_and_pq(archetype)
     pf_input = PowerFlowInput(
@@ -861,8 +890,12 @@ def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
         s_from = sol.branch_s_from_mva.get(branch_id)
         i_ka = float(sol.branch_current_ka.get(branch_id, 0.0))
         branch = graph.branches[branch_id]
-        rated_a = float(getattr(branch, "rated_current_a", 0.0) or 0.0)
-        loading_pct = round((i_ka * 1000.0 / rated_a) * 100.0, 2) if rated_a > 0 else None
+        obciazenie = _obciazenie_galezi(sol, branch_id, branch)
+        loading_pct = (
+            round(obciazenie.obciazenie_pct, 2) if obciazenie.obciazenie_pct is not None else None
+        )
+        i_zn_od_a = _zaokraglij(obciazenie.prad_znamionowy_od_a, 2)
+        i_zn_do_a = _zaokraglij(obciazenie.prad_znamionowy_do_a, 2)
         p_mw = round(float(s_from.real), 4) if s_from is not None else 0.0
         q_mvar = round(float(s_from.imag), 4) if s_from is not None else 0.0
         s_mva = round((p_mw**2 + q_mvar**2) ** 0.5, 4)
@@ -906,9 +939,21 @@ def build_voltage_flow_companion(archetype: str) -> dict[str, Any]:
                 ),
                 _wb(
                     "Obciazenie pola",
-                    r"obc. = \frac{I}{I_{zn}} \cdot 100\%",
-                    {"i_a": i_a, "i_zn_a": rated_a if rated_a > 0 else None},
-                    (rf"obc. = \frac{{{i_a}}}{{{rated_a}}} \cdot 100\%" if rated_a > 0 else "n/d"),
+                    r"obc. = \max\left(\frac{I_{od}}{I_{zn,od}}, \frac{I_{do}}{I_{zn,do}}\right)"
+                    r" \cdot 100\%",
+                    {
+                        "i_od_a": _zaokraglij(obciazenie.prad_od_a, 2),
+                        "i_do_a": _zaokraglij(obciazenie.prad_do_a, 2),
+                        "i_zn_od_a": i_zn_od_a,
+                        "i_zn_do_a": i_zn_do_a,
+                    },
+                    (
+                        rf"obc. = \max\left(\frac{{{_zaokraglij(obciazenie.prad_od_a, 2)}}}"
+                        rf"{{{i_zn_od_a}}}, \frac{{{_zaokraglij(obciazenie.prad_do_a, 2)}}}"
+                        rf"{{{i_zn_do_a}}}\right) \cdot 100\%"
+                        if loading_pct is not None
+                        else "n/d"
+                    ),
                     {"loading_percent": loading_pct},
                     "%",
                     "interpretacja",
@@ -1146,7 +1191,7 @@ def _oze_companion(
         s_from = sol.branch_s_from_mva.get(branch_id)
         i_ka = float(sol.branch_current_ka.get(branch_id, 0.0))
         branch = graph.branches[branch_id]
-        rated_a = float(getattr(branch, "rated_current_a", 0.0) or 0.0)
+        obciazenie = _obciazenie_galezi(sol, branch_id, branch)
         p_mw = round(float(s_from.real), 4) if s_from is not None else 0.0
         q_mvar = round(float(s_from.imag), 4) if s_from is not None else 0.0
         vf_branches[branch_id] = {
@@ -1157,7 +1202,9 @@ def _oze_companion(
             "s_mva": round((p_mw**2 + q_mvar**2) ** 0.5, 4),
             "direction": _flow_direction(p_mw),
             "loading_percent": (
-                round((i_ka * 1000.0 / rated_a) * 100.0, 2) if rated_a > 0 else None
+                round(obciazenie.obciazenie_pct, 2)
+                if obciazenie.obciazenie_pct is not None
+                else None
             ),
         }
     sc_buses = {

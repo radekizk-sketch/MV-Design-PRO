@@ -69,6 +69,7 @@ def _nasz_przebieg(uklad, *, dt_s: float = KROK_S):
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_OHM,
                 t_usuniecia_s=T_ZDJECIA_S,
+                sposob_usuniecia="samoczynne",
             ),
         )
     )

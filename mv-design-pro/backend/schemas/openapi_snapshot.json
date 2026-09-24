@@ -4023,6 +4023,22 @@
      },
      "settings": {
       "$ref": "#/components/schemas/ProtectionSettingsRequest"
+     },
+     "zacisk": {
+      "anyOf": [
+       {
+        "enum": [
+         "od",
+         "do"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Zacisk gałęzi lokalizacji (decyzja O-51 pkt 7): wymagany dla lokalizacji-gałęzi, dla łącznika rozstrzyga model; prąd zwarciowy lokalizacji = prąd szyny zacisku",
+      "title": "Zacisk"
      }
     },
     "required": [
@@ -8465,7 +8481,7 @@
     "type": "object"
    },
    "PomiarWejscie": {
-    "description": "Pojedynczy pomiar z obiektu (rejestrator/pomiar odbiorowy).",
+    "description": "Pojedynczy pomiar z obiektu (rejestrator/pomiar odbiorowy).\n\n`zacisk` (decyzja O-51): miejsce pomiaru MOCY gałęzi — `od` (zacisk początkowy) albo\n`do` (końcowy). Wymagany dla P/Q gałęzi (brak = odmowa nazwana w wierszu raportu, nie\ndomysł „początek gałęzi\"); pomiar napięcia węzła zacisku nie ma.",
     "properties": {
      "element_ref": {
       "title": "Element Ref",
@@ -8482,6 +8498,21 @@
      "wielkosc": {
       "title": "Wielkosc",
       "type": "string"
+     },
+     "zacisk": {
+      "anyOf": [
+       {
+        "enum": [
+         "od",
+         "do"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Zacisk"
      }
     },
     "required": [
@@ -14934,7 +14965,7 @@
   },
   "/api/analysis-runs/{run_id}/nastawy": {
    "get": {
-    "description": "Nastawy I>/I>> (JSON): metoda Hoppela, TA SAMA fizyka co pakiet dowodowy\nZIP (karta W3-C1) — bez pobierania pliku. Ekran koordynacji czyta tę trasę,\na przycisk „Pobierz pakiet dowodowy\" woła ZIP z tym samym zapytaniem.\n\nSerwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy\n``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg\nzwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i\ntrzy wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min.",
+    "description": "Nastawy I>/I>> (JSON): metoda Hoppela, TA SAMA fizyka co pakiet dowodowy\nZIP (karta W3-C1) — bez pobierania pliku. Ekran koordynacji czyta tę trasę,\na przycisk „Pobierz pakiet dowodowy\" woła ZIP z tym samym zapytaniem.\n\nSerwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy\n``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg\nzwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i\nwybory inżynierskie: chroniony odcinek, kolejną szynę, c_min i — gdy model\nmilczy — zacisk, przy którym stoi zabezpieczenie (decyzja O-51).",
     "operationId": "get_nastawy_api_analysis_runs__run_id__nastawy_get",
     "parameters": [
      {
@@ -14963,6 +14994,28 @@
       "schema": {
        "title": "Nastepna Szyna",
        "type": "string"
+      }
+     },
+     {
+      "description": "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy.",
+      "in": "query",
+      "name": "zacisk_zabezpieczenia",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "od",
+          "do"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy.",
+       "title": "Zacisk Zabezpieczenia"
       }
      },
      {
@@ -15073,6 +15126,28 @@
       "schema": {
        "title": "Nastepna Szyna",
        "type": "string"
+      }
+     },
+     {
+      "description": "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy.",
+      "in": "query",
+      "name": "zacisk_zabezpieczenia",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "od",
+          "do"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy.",
+       "title": "Zacisk Zabezpieczenia"
       }
      },
      {
@@ -15200,7 +15275,7 @@
   },
   "/api/analysis-runs/{run_id}/pakiet-dowodowy-nastaw": {
    "get": {
-    "description": "Pakiet dowodowy nastaw I>/I>> (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).\n\nSerwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy\n``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg\nzwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i\ntrzy wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min.",
+    "description": "Pakiet dowodowy nastaw I>/I>> (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).\n\nSerwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy\n``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg\nzwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i\nwybory inżynierskie: chroniony odcinek, kolejną szynę, c_min i — gdy model\nmilczy — zacisk, przy którym stoi zabezpieczenie (decyzja O-51).",
     "operationId": "get_pakiet_dowodowy_nastaw_api_analysis_runs__run_id__pakiet_dowodowy_nastaw_get",
     "parameters": [
      {
@@ -15229,6 +15304,28 @@
       "schema": {
        "title": "Nastepna Szyna",
        "type": "string"
+      }
+     },
+     {
+      "description": "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy.",
+      "in": "query",
+      "name": "zacisk_zabezpieczenia",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "od",
+          "do"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy.",
+       "title": "Zacisk Zabezpieczenia"
       }
      },
      {
@@ -15297,7 +15394,7 @@
   },
   "/api/analysis-runs/{run_id}/pakiet-dowodowy-nastaw/dostepnosc": {
    "get": {
-    "description": "Czy TEN przebieg (zwarcie trójfazowe c_max) może być kotwicą pakietu nastaw.\n\nZwraca listę linii/kabli z kompletem danych katalogowych (przekrój, materiał,\nprąd znamionowy) — kandydatów na chroniony odcinek — a dla każdej z nich listę\nszyn kandydujących na „kolejną strefę\" (warunek selektywności). Wybór odcinka i\nszyny należy do inżyniera; kod niczego nie zgaduje.",
+    "description": "Czy TEN przebieg (zwarcie trójfazowe c_max) może być kotwicą pakietu nastaw.\n\nZwraca listę linii/kabli z kompletem danych katalogowych (przekrój, materiał,\nprąd znamionowy) — kandydatów na chroniony odcinek — a dla każdej z nich zacisk\nzabezpieczenia z modelu, zaciski dozwolone z etykietami szyn, rekord odmowy bez\nwskazania i listy szyn kandydujących na „kolejną strefę\" (warunek selektywności)\nosobno dla każdego zacisku (decyzja O-51). Wybór odcinka, zacisku (gdy model\nmilczy) i szyny należy do inżyniera; kod niczego nie zgaduje.",
     "operationId": "get_pakiet_dowodowy_nastaw_dostepnosc_api_analysis_runs__run_id__pakiet_dowodowy_nastaw_dostepnosc_get",
     "parameters": [
      {
@@ -16423,6 +16520,49 @@
      }
     },
     "summary": "Get Analysis Run Trace Summary"
+   }
+  },
+  "/api/analysis-runs/{run_id}/zaciski-galezi": {
+   "get": {
+    "description": "Etykiety zacisków (`od` / `do`, z nazwami szyn) każdej gałęzi z impedancją\nmigawki biegu — do formularzy, w których inżynier wskazuje zacisk (miejsce pomiaru\nmocy gałęzi w zgodności powykonawczej, decyzja O-51). Read-only.",
+    "operationId": "get_zaciski_galezi_api_analysis_runs__run_id__zaciski_galezi_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "run_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Run Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Zaciski Galezi Api Analysis Runs  Run Id  Zaciski Galezi Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Zaciski Galezi"
    }
   },
   "/api/cases/{case_id}/analysis-eligibility": {
@@ -18035,6 +18175,80 @@
      }
     },
     "summary": "Post Wytrzymalosc Aparatury",
+    "tags": [
+     "enm"
+    ]
+   }
+  },
+  "/api/cases/{case_id}/enm/zacisk-lokalizacji": {
+   "get": {
+    "description": "Miejsce prądu urządzenia koordynacji wskazanego w przypadku (decyzja O-51, pkt 7).\n\nTen sam resolver co pakiet nastaw (`zacisk_zabezpieczenia.miejsce_urzadzenia`):\nłącznik jako lokalizacja — gałąź i zacisk z łańcucha szeregowego modelu; gałąź —\nwymagane wskazanie `zacisk`; szyna — brak zacisków. Odpowiedź niesie etykiety\nzacisków z nazwami szyn i odmowę nazwaną z kodem kanonu. Read-only.",
+    "operationId": "get_zacisk_lokalizacji_api_cases__case_id__enm_zacisk_lokalizacji_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "lokalizacja",
+      "required": true,
+      "schema": {
+       "title": "Lokalizacja",
+       "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "zacisk",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "od",
+          "do"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Zacisk"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Zacisk Lokalizacji Api Cases  Case Id  Enm Zacisk Lokalizacji Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Zacisk Lokalizacji",
     "tags": [
      "enm"
     ]
@@ -25737,7 +25951,7 @@
   },
   "/api/protection-coordination/projects/{project_id}/run": {
    "post": {
-    "description": "Run protection coordination analysis.\n\nEligibility (patrz `_check_run_eligibility`): wymaga co najmniej jednego\nurzadzenia, jednej lokalizacji pradu zwarciowego i jednej lokalizacji\npradu roboczego — inaczej 400 z uczciwym komunikatem PL (nie 500, nie\nfabrykowany PASS).\n\nGRANICA AUTORYTETU (karta S-2 AUTORYTET) — DWIE BRAMKI, OBIE KONIECZNE.\nBramka pierwsza: prądy zwarciowe przychodziły dotąd jako GOŁE LICZBY w\nżądaniu i nikt nie pytał, skąd pochodzą — wystarczyło je podać, żeby\ndostać werdykt selektywności/czułości na dowolnie wymyślonych danych.\nBramka druga: proweniencja wkładu falownikowego biegów, z których te\nliczby pochodzą, musi być miarodajna (nie domyślka systemowa). Pierwsza\nbez drugiej przepuszczałaby liczby z powietrza policzone na dobrym\nmodelu; druga bez pierwszej — liczby z biegu policzonego z domyślki k_sc.\n\nPRĄDY ROBOCZE POZOSTAJĄ NIEZWIĄZANE Z ŻADNYM BIEGIEM — ZMIERZONY,\nNAZWANY BRAK (nie przeoczenie). Prąd zwarciowy jest kluczowany WĘZŁEM\nzwarcia, prąd roboczy GAŁĘZIĄ rozpływu — przestrzenie identyfikatorów są\nw praktyce rozłączne, a kontrakt koordynacji ma jedno pole `location_id`\nna obie wielkości, więc związanie prądu roboczego tym samym mechanizmem\nodrzucałoby większość realnych żądań. Domknięcie wymaga relacji\n„zabezpieczenie → chroniona gałąź\" w modelu (`BayProtectionControlUnit.\nprotected_branch_ref`, decyzja architekta A-4, wchodzi w wycinku W4) —\nto decyzja produktowa/modelowa, nie poprawka w tym pliku.\n\nAnalyzes:\n- Sensitivity (will devices trip for minimum fault?)\n- Selectivity (proper time grading between devices?)\n- Overload protection (won't trip on normal current?)\n\nReturns summary with overall PASS/MARGINAL/FAIL verdict.",
+    "description": "Run protection coordination analysis.\n\nEligibility (patrz `_check_run_eligibility`): wymaga co najmniej jednego\nurzadzenia, jednej lokalizacji pradu zwarciowego i jednej lokalizacji\npradu roboczego — inaczej 400 z uczciwym komunikatem PL (nie 500, nie\nfabrykowany PASS).\n\nGRANICA AUTORYTETU (karta S-2 AUTORYTET) — DWIE BRAMKI, OBIE KONIECZNE.\nBramka pierwsza: prądy zwarciowe przychodziły dotąd jako GOŁE LICZBY w\nżądaniu i nikt nie pytał, skąd pochodzą — wystarczyło je podać, żeby\ndostać werdykt selektywności/czułości na dowolnie wymyślonych danych.\nBramka druga: proweniencja wkładu falownikowego biegów, z których te\nliczby pochodzą, musi być miarodajna (nie domyślka systemowa). Pierwsza\nbez drugiej przepuszczałaby liczby z powietrza policzone na dobrym\nmodelu; druga bez pierwszej — liczby z biegu policzonego z domyślki k_sc.\n\nMIEJSCE URZĄDZENIA (decyzja O-51 pkt 7). Lokalizacja urządzenia to szyna,\ngałąź ze wskazanym zaciskiem (`DeviceRequest.zacisk`) albo łącznik (zacisk\nz modelu — łańcuch szeregowy, `zacisk_zabezpieczenia.miejsce_urzadzenia`).\nPrąd zwarciowy lokalizacji-gałęzi/łącznika to prąd SZYNY zacisku i tak\njest potwierdzany wobec biegów (`szyny_zwarcia_lokalizacji`); prąd roboczy\nto prąd TEGO zacisku z biegu rozpływu (ekran czyta go z wiersza gałęzi:\n`i_a` dla `od`, `i_do_a` dla `do`).\n\nPRĄDY ROBOCZE NIE SĄ POTWIERDZANE WOBEC BIEGU ROZPŁYWU — NAZWANY BRAK.\n`pf_run_id` jest opcjonalny i nie wchodzi do bramki autorytetu; liczba prądu\nroboczego przechodzi jako echo ekranu (patrz rejestr planu AB, wpis O-51).\n\nAnalyzes:\n- Sensitivity (will devices trip for minimum fault?)\n- Selectivity (proper time grading between devices?)\n- Overload protection (won't trip on normal current?)\n\nReturns summary with overall PASS/MARGINAL/FAIL verdict.",
     "operationId": "run_coordination_analysis_api_protection_coordination_projects__project_id__run_post",
     "parameters": [
      {

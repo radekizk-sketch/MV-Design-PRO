@@ -22,10 +22,12 @@ import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
 import { przebiegRozplywu } from '../jakosc';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
+  fetchZaciskiGalezi,
   postZgodnoscPowykonawcza,
   type WidokZgodnosci,
   type WielkoscPomiaru,
   type WierszZgodnosci,
+  type ZaciskiGaleziBiegu,
   type ZgodnoscZadanie,
 } from './api';
 import {
@@ -35,6 +37,7 @@ import {
   kluczWierszaZgodnosci,
   naWierszeZgodnosci,
   naZalozeniaZgodnosci,
+  wielkoscNaZacisku,
   zbudujZadanie,
   type TrybWejscia,
   type WierszEdytora,
@@ -290,6 +293,11 @@ function WynikZgodnosci({
           wartosc={p.brak_wyniku}
           istotnosc="warn"
         />
+        <Chip
+          etykieta={ODBIOR_STRINGS.podsumBrakMiejsca}
+          wartosc={p.brak_miejsca_pomiaru}
+          istotnosc="warn"
+        />
       </div>
       <p className="mvd-odbior-najwieksza" data-testid="mvd-odbior-najwieksza">
         <span className="mvd-odbior-najwieksza-etyk">{ODBIOR_STRINGS.podsumNajwieksza}:</span>{' '}
@@ -314,7 +322,71 @@ function WynikZgodnosci({
 // Formularz wejścia — tryb (CSV / wiersze) + tolerancje
 // ---------------------------------------------------------------------------
 
+/** Etykiety zacisków gałęzi przebiegu (backend) albo stan ich pobierania. */
+type StanZaciskow =
+  | { readonly rodzaj: 'ladowanie' }
+  | { readonly rodzaj: 'blad' }
+  | { readonly rodzaj: 'gotowe'; readonly dane: ZaciskiGaleziBiegu['zaciski'] };
+
+/**
+ * Wybór zacisku pomiaru mocy gałęzi (decyzja O-51) — etykiety z nazwami szyn z backendu,
+ * bez zaznaczenia domyślnego. Element spoza gałęzi przebiegu: jawna informacja.
+ */
+function WyborZacisku({
+  indeks,
+  wiersz,
+  zaciski,
+  onZacisk,
+}: {
+  indeks: number;
+  wiersz: WierszEdytora;
+  zaciski: StanZaciskow;
+  onZacisk: (z: 'od' | 'do') => void;
+}) {
+  if (!wielkoscNaZacisku(wiersz.wielkosc) || wiersz.element_ref.trim() === '') return null;
+  if (zaciski.rodzaj === 'ladowanie') return null;
+  if (zaciski.rodzaj === 'blad') {
+    return (
+      <p className="mvd-odbior-zacisk-info" data-testid={`mvd-odbior-zacisk-blad-${indeks}`}>
+        {ODBIOR_STRINGS.edytorZaciskBlad}
+      </p>
+    );
+  }
+  const galaz = zaciski.dane[wiersz.element_ref.trim()];
+  if (!galaz) {
+    return (
+      <p className="mvd-odbior-zacisk-info" data-testid={`mvd-odbior-zacisk-nie-galaz-${indeks}`}>
+        {ODBIOR_STRINGS.edytorZaciskNieGalaz}
+      </p>
+    );
+  }
+  return (
+    <fieldset className="mvd-odbior-zacisk" data-testid={`mvd-odbior-zacisk-${indeks}`}>
+      <legend>{ODBIOR_STRINGS.edytorZacisk}</legend>
+      {(['od', 'do'] as const).map((z) => (
+        <label key={z} className="mvd-odbior-zacisk-opcja">
+          <input
+            type="radio"
+            name={`mvd-odbior-zacisk-${indeks}`}
+            value={z}
+            checked={wiersz.zacisk === z}
+            onChange={() => onZacisk(z)}
+            data-testid={`mvd-odbior-zacisk-${indeks}-${z}`}
+          />
+          {galaz[z].etykieta_pl}
+        </label>
+      ))}
+      {wiersz.zacisk === null && (
+        <p className="mvd-odbior-zacisk-info" data-testid={`mvd-odbior-zacisk-brak-${indeks}`}>
+          {ODBIOR_STRINGS.edytorZaciskBrak}
+        </p>
+      )}
+    </fieldset>
+  );
+}
+
 interface FormularzProps {
+  zaciski: StanZaciskow;
   tryb: TrybWejscia;
   onTryb: (t: TrybWejscia) => void;
   csv: string;
@@ -328,6 +400,7 @@ interface FormularzProps {
 }
 
 function Formularz({
+  zaciski,
   tryb,
   onTryb,
   csv,
@@ -391,9 +464,12 @@ function Formularz({
                     id={`mvd-odbior-element-${i}`}
                     type="text"
                     value={w.element_ref}
+                    // Zmiana elementu kasuje wskazany zacisk — dotyczył poprzedniej gałęzi.
                     onChange={(e) =>
                       onWiersze((poprz) =>
-                        poprz.map((x, j) => (j === i ? { ...x, element_ref: e.target.value } : x)),
+                        poprz.map((x, j) =>
+                          j === i ? { ...x, element_ref: e.target.value, zacisk: null } : x,
+                        ),
                       )
                     }
                     data-testid={`mvd-odbior-element-${i}`}
@@ -404,10 +480,13 @@ function Formularz({
                   <select
                     id={`mvd-odbior-wielkosc-${i}`}
                     value={w.wielkosc}
+                    // Napięcie mierzy się w węźle — zmiana wielkości kasuje zacisk.
                     onChange={(e) =>
                       onWiersze((poprz) =>
                         poprz.map((x, j) =>
-                          j === i ? { ...x, wielkosc: e.target.value as WielkoscPomiaru } : x,
+                          j === i
+                            ? { ...x, wielkosc: e.target.value as WielkoscPomiaru, zacisk: null }
+                            : x,
                         ),
                       )
                     }
@@ -441,6 +520,14 @@ function Formularz({
                     {JEDNOSTKA_WIELKOSCI[w.wielkosc]}
                   </span>
                 </div>
+                <WyborZacisku
+                  indeks={i}
+                  wiersz={w}
+                  zaciski={zaciski}
+                  onZacisk={(z) =>
+                    onWiersze((poprz) => poprz.map((x, j) => (j === i ? { ...x, zacisk: z } : x)))
+                  }
+                />
                 <button
                   type="button"
                   className="mvd-odbior-usun"
@@ -535,6 +622,25 @@ export function EkranOdbioru({ trybZaawansowania, onOtworzDowod }: EkranOdbioruP
   const [stan, setStan] = useState<StanZasobu>({ rodzaj: 'idle' });
 
   const runId = przebieg?.id ?? null;
+  const [zaciski, setZaciski] = useState<StanZaciskow>({ rodzaj: 'ladowanie' });
+
+  // Etykiety zacisków gałęzi migawki TEGO przebiegu (decyzja O-51) — do wskazania
+  // miejsca pomiaru mocy gałęzi.
+  useEffect(() => {
+    if (runId === null) return;
+    let anulowane = false;
+    setZaciski({ rodzaj: 'ladowanie' });
+    fetchZaciskiGalezi(runId)
+      .then((dane) => {
+        if (!anulowane) setZaciski({ rodzaj: 'gotowe', dane: dane.zaciski });
+      })
+      .catch(() => {
+        if (!anulowane) setZaciski({ rodzaj: 'blad' });
+      });
+    return () => {
+      anulowane = true;
+    };
+  }, [runId]);
 
   // Zmiana przebiegu unieważnia poprzedni raport (stale-result guard).
   useEffect(() => {
@@ -612,6 +718,7 @@ export function EkranOdbioru({ trybZaawansowania, onOtworzDowod }: EkranOdbioruP
       </header>
 
       <Formularz
+        zaciski={zaciski}
         tryb={tryb}
         onTryb={(t) => {
           setTryb(t);

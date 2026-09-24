@@ -1,12 +1,17 @@
-"""Budowa wyniku czasowego — ksztalt kontraktu `resultset_dynamic_v1` (SS0 p.1/p.6).
+"""Budowa wyniku czasowego — ksztalt kontraktu `resultset_dynamic_v2` (SS0 p.1/p.6).
 
 DLACZEGO SLOWNIK, A NIE MODEL PYDANTIC. Rdzen nie importuje warstwy aplikacyjnej
-(SS0 p.1) — model `ResultSetDynamicV1` zyje w `application/contracts/`, wiec
+(SS0 p.1) — model `ResultSetDynamicV2` zyje w `application/contracts/`, wiec
 import stad bylby zlamaniem granicy pakietu. Rdzen buduje wiec LADUNEK o polach
 1:1 z tym kontraktem, a warstwa aplikacyjna waliduje go swoim modelem. Ze ladunek
 naprawde pasuje do kontraktu, nie jest tu deklaracja: testy pakietu wolaja
-`ResultSetDynamicV1.model_validate(...)` na ladunku z prawdziwego biegu, wiec
+`ResultSetDynamicV2.model_validate(...)` na ladunku z prawdziwego biegu, wiec
 kazdy rozjazd pol wywraca test, a nie dopiero produkcje.
+
+DLACZEGO V2 (karta AB-1b.1 par. 0 pkt 14). Zmiany nie sa addytywne: probki moga byc
+`None` (wartosc niedostepna, kat fazora zerowego), a powtorzone chwile osi czasu (probki
+obustronne `L`/`P`) rozroznia `strona_probki`. Kontrakt v1 zostal usuniety bez warstwy
+zgodnosci (konsumentow interfejsu: zero).
 
 SZEREGI CZASOWE NIE WCHODZA DO `raw_result` biegu — `os_czasu_s` i `probki` sa
 w ladunku obecne, ale wolajacy zapisuje je do osobnej tabeli szeregow, a w
@@ -42,7 +47,12 @@ class ZdarzenieWykonane:
     `delta_x_max`, `delta_y_max` i `residuum_kcl_max` opisuja skok CHWILI, bo
     algebra jest rozwiazywana raz, po naniesieniu wszystkich zdarzen tej chwili.
     Rozdzielanie pomiaru na „wklad kazdego zdarzenia" wymagaloby posrednich
-    topologii, ktore w rzeczywistosci nigdy nie istnialy.
+    topologii, ktore w rzeczywistosci nigdy nie istnialy. Ta sama zasada dotyczy
+    skutkow topologicznych chwili (karta AB-1b.1 par. 0 pkt 2): `obszary_odciete`
+    (wezly, ktore w tej chwili STALY sie beznapieciowe), `odbiory_odciete` (odbiory,
+    ktore w tej chwili stracily obwod — identyfikator i moc zadana sprzed odciecia,
+    pu, konwencja poboru) oraz `obszary_zasilone_ponownie` (wezly, ktore w tej
+    chwili PRZESTALY byc beznapieciowe). Kolejnosc = kolejnosc wezlow/odbiorow wejscia.
     """
 
     t_zaplanowany_s: float
@@ -52,6 +62,9 @@ class ZdarzenieWykonane:
     delta_x_max: float
     delta_y_max: float
     residuum_kcl_max: float
+    obszary_odciete: tuple[str, ...]
+    odbiory_odciete: tuple[tuple[str, complex], ...]
+    obszary_zasilone_ponownie: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -86,7 +99,10 @@ class WynikDynamiki:
 
     kanaly: tuple[KanalWyniku, ...]
     os_czasu_s: tuple[float, ...]
-    probki: dict[str, tuple[float, ...]]
+    #: Strona kazdej probki (`C` siatka, `L` przed zdarzeniami chwili, `P` po nich) —
+    #: rownolegle do `os_czasu_s` (ta sama dlugosc, przypiete testem).
+    strona_probki: tuple[str, ...]
+    probki: dict[str, tuple[float | None, ...]]
     zdarzenia_wykonane: tuple[ZdarzenieWykonane, ...]
     wlasnosci: WlasnosciBiegu
     tozsamosc: TozsamoscBiegu
@@ -95,8 +111,13 @@ class WynikDynamiki:
     slad_white_box: dict[str, Any]
 
 
-def ladunek_resultset_dynamic_v1(wynik: WynikDynamiki, run_id: str) -> dict[str, Any]:
-    """Ladunek o polach 1:1 z kontraktem `resultset_dynamic_v1`, skwantyzowany.
+def _kwantyzuj_lub_brak(wartosc: float | None) -> float | None:
+    """`None` (wartosc niedostepna) przechodzi bez zmiany — kwantyzowana jest tylko liczba."""
+    return None if wartosc is None else kwantyzuj(wartosc)
+
+
+def ladunek_resultset_dynamic_v2(wynik: WynikDynamiki, run_id: str) -> dict[str, Any]:
+    """Ladunek o polach 1:1 z kontraktem `resultset_dynamic_v2`, skwantyzowany.
 
     `stopien_dowodowy` wychodzi PUSTY: klasyfikacja mocy dowodowej zdolnosci jest
     rozstrzygnieciem rejestru proweniencji, nie rdzenia obliczeniowego — solver,
@@ -104,7 +125,7 @@ def ladunek_resultset_dynamic_v1(wynik: WynikDynamiki, run_id: str) -> dict[str,
     zasada zero fabrykacji.
     """
     return {
-        "kontrakt": "resultset_dynamic_v1",
+        "kontrakt": "resultset_dynamic_v2",
         "run_id": run_id,
         "analysis_type": "dynamika_rms",
         "kanaly": [
@@ -118,8 +139,9 @@ def ladunek_resultset_dynamic_v1(wynik: WynikDynamiki, run_id: str) -> dict[str,
             for kanal in wynik.kanaly
         ],
         "os_czasu_s": [kwantyzuj(chwila) for chwila in wynik.os_czasu_s],
+        "strona_probki": list(wynik.strona_probki),
         "probki": {
-            klucz: [kwantyzuj(wartosc) for wartosc in szereg]
+            klucz: [_kwantyzuj_lub_brak(wartosc) for wartosc in szereg]
             for klucz, szereg in wynik.probki.items()
         },
         "zdarzenia_wykonane": [
@@ -131,6 +153,12 @@ def ladunek_resultset_dynamic_v1(wynik: WynikDynamiki, run_id: str) -> dict[str,
                 "delta_x_max": kwantyzuj(zdarzenie.delta_x_max),
                 "delta_y_max": kwantyzuj(zdarzenie.delta_y_max),
                 "residuum_kcl_max": kwantyzuj(zdarzenie.residuum_kcl_max),
+                "obszary_odciete": list(zdarzenie.obszary_odciete),
+                "odbiory_odciete": [
+                    {"ref": ident, "p_pu": kwantyzuj(moc.real), "q_pu": kwantyzuj(moc.imag)}
+                    for ident, moc in zdarzenie.odbiory_odciete
+                ],
+                "obszary_zasilone_ponownie": list(zdarzenie.obszary_zasilone_ponownie),
             }
             for zdarzenie in wynik.zdarzenia_wykonane
         ],
@@ -174,5 +202,5 @@ __all__ = [
     "WlasnosciBiegu",
     "WynikDynamiki",
     "ZdarzenieWykonane",
-    "ladunek_resultset_dynamic_v1",
+    "ladunek_resultset_dynamic_v2",
 ]

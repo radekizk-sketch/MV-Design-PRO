@@ -43,7 +43,16 @@ def test_g6_inna_baza_urzadzenia() -> None:
 
 
 def test_g7_czestotliwosc_wezlowa() -> None:
-    _sprawdz(bramki.g7_czestotliwosc_wezlowa(), ("G7_blad_czestotliwosci_wezlowej_hz",))
+    pomiary = bramki.g7_czestotliwosc_wezlowa()
+    _sprawdz(
+        pomiary,
+        (
+            "G7_blad_czestotliwosci_wezlowej_hz",
+            "G7_czestotliwosc_w_chwili_zdarzenia_jako_liczba",
+        ),
+    )
+    # Predykat chwili zdarzenia musi miec co sprawdzac: dwie chwile zdarzen x (L, P).
+    assert pomiary["_probki_zdarzen"] == 4.0
 
 
 def test_g8_granica_odmowy() -> None:
@@ -75,6 +84,48 @@ def test_g13_wyspa_bez_zrodla() -> None:
     pomiary = bramki.g13_wyspa_bez_zrodla()
     _sprawdz(pomiary, ("G13_wyspa_bez_zrodla_nieodmowiona",))
     assert set(pomiary["_wyspa_bez_zrodla"].values()) == {"dynamika.wyspa_bez_zrodla"}
+
+
+def test_g16_zwarcie_w_linii() -> None:
+    pomiary = bramki.g16_zwarcie_w_linii()
+    _sprawdz(pomiary, ("G16_blad_czwornika_wzgl",))
+    assert len(pomiary["_zwarcie_w_linii"]) == 2 * len(bramki.POLOZENIA_G16)
+
+
+def test_g16_fazory_pradow_galezi() -> None:
+    pomiary = bramki.g16_fazory_pradow_galezi()
+    _sprawdz(pomiary, ("G16_blad_modulu_pradu_galezi_wzgl", "G16_blad_kata_pradu_galezi_rad"))
+    assert len(pomiary["_fazory_d15"]) == len(bramki.ZWARCIA_D15)
+
+
+def test_g16_parytet_iec60909() -> None:
+    pomiary = bramki.g16_parytet_iec60909()
+    _sprawdz(pomiary, ("G16_blad_parytetu_iec60909_wzgl", "G16_kierunek_niezgodny_iec60909"))
+    # I_k'' + cztery galezie (pierscien i odgalezienie bez pradu zwarciowego).
+    assert len(pomiary["_parytet_iec60909"]) == 1 + len(bramki.LINIE_IEC)
+
+
+def test_g17_obszar_beznapieciowy() -> None:
+    pomiary = bramki.g17_obszar_beznapieciowy()
+    _sprawdz(pomiary, ("G17_napiecie_obszaru_odcietego_pu", "G17_blad_ponownego_zasilenia_pu"))
+    assert pomiary["_odleglosc_od_pierwiastka_nizszego_pu"] > 0.1
+
+
+def test_g19_predykat_izolacji() -> None:
+    pomiary = bramki.g19_predykat_izolacji()
+    _sprawdz(pomiary, ("G19_niezgodnosc_predykatu_izolacji",))
+    assert pomiary["_przypadki_sprawdzone"] == 16
+
+
+def test_g20_probki_obustronne() -> None:
+    _sprawdz(
+        bramki.g20_probki_obustronne(),
+        (
+            "G20_blad_algebry_probek_L_P_wzgl",
+            "G20_skok_stanu_rozniczkowego_rad",
+            "G20_naruszenia_osi_i_czestotliwosci",
+        ),
+    )
 
 
 def test_rejestr_progow_pokrywa_wszystkie_bramki() -> None:

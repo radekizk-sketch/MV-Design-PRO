@@ -52,7 +52,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **137** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **143** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -169,8 +169,13 @@ Wszystkie **137** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `vt.secondary_circuit_missing` | PROTECTION | 2 | WARNING | Brak danych obwodu wtórnego przekładnika napięciowego (długość, przekrój) — uzupełnij, by policzyć zmianę napięcia obwodu | panel: `wizard`, tab: `pomiary`, focus: `vt_obwod_wtorny` |
 | `ct.required_alf_missing` | PROTECTION | 3 | WARNING | Brak wymaganego współczynnika granicznego z funkcji zabezpieczeniowych pola — bez niego kryterium nasycenia nie ma odniesienia | panel: `analizy`, tab: `zabezpieczenia` |
 | `protection.ct_required` | PROTECTION | 3 | BLOCKER | Przekaźnik wymaga przekładnika prądowego (CT) | panel: `inspector`, tab: `zabezpieczenia` |
+| `protection.device_breaker_not_in_series` | PROTECTION | 3 | BLOCKER | Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej zacisk jako miejsce urządzenia | panel: `analizy`, tab: `zabezpieczenia` |
 | `protection.fault_current_missing` | PROTECTION | 3 | WARNING | Brak prądu zwarciowego z biegu SC — uruchom analizę zwarciową, by wyznaczyć nastawy bezzwłoczne I>> (50/50N) i ziemnozwarciowe (51N) | panel: `analizy`, tab: `zwarciowa` |
 | `protection.nominal_current_missing` | PROTECTION | 3 | WARNING | Brak prądu znamionowego pola — uzupełnij, by wyznaczyć nastawę rozruchową I> (51) | panel: `inspector`, tab: `parametry`, focus: `in_a` |
+| `protection.relay_terminal_breaker_loop` | PROTECTION | 3 | BLOCKER | Wyłącznik z przypiętym zabezpieczeniem stoi w szeregu z oboma zaciskami tej samej gałęzi (pętla) — popraw połączenia albo przypięcie zabezpieczenia w modelu | panel: `inspector`, tab: `zabezpieczenia` |
+| `protection.relay_terminal_choice_missing` | PROTECTION | 3 | BLOCKER | Model ma zabezpieczenia w szeregu z oboma zaciskami gałęzi (gałąź zasilana dwustronnie albo pierścień) — wskaż zacisk, którego dotyczą nastawy | panel: `analizy`, tab: `zabezpieczenia` |
+| `protection.relay_terminal_contradicts_model` | PROTECTION | 3 | BLOCKER | Wskazany zacisk nie odpowiada żadnemu zabezpieczeniu z modelu — wyłącznik z przypiętym zabezpieczeniem stoi w szeregu z drugim zaciskiem gałęzi | panel: `analizy`, tab: `zabezpieczenia` |
+| `protection.relay_terminal_indication_missing` | PROTECTION | 3 | BLOCKER | Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy | panel: `analizy`, tab: `zabezpieczenia` |
 | `protection.vt_required` | PROTECTION | 3 | BLOCKER | Pole wymaga przekładnika napięciowego (VT) | panel: `inspector`, tab: `zabezpieczenia` |
 | `protection.settings_incomplete` | PROTECTION | 4 | WARNING | Nastawy przekaźnika niekompletne | panel: `inspector`, tab: `nastawy` |
 | `analysis.blocked_by_readiness` | ANALYSIS | 1 | BLOCKER | Analiza zablokowana przez niezaspokojone wymagania gotowości | panel: `readiness` |
@@ -187,6 +192,7 @@ Wszystkie **137** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `verdict.run_failed` | ANALYSIS | 2 | WARNING | Bieg zakończył się błędem — kryterium nie ma na czym się oprzeć | panel: `analizy` |
 | `verdict.run_missing` | ANALYSIS | 2 | WARNING | Brak zakończonego biegu wymaganego przez kryterium — uruchom obliczenia, by je ocenić | panel: `analizy` |
 | `verdict.run_stale` | ANALYSIS | 2 | WARNING | Model zmienił się po biegu — wynik nie opisuje bieżącego modelu; uruchom obliczenia ponownie | panel: `analizy` |
+| `analysis.as_built_measurement_terminal_missing` | ANALYSIS | 3 | BLOCKER | Pomiar mocy gałęzi bez miejsca pomiaru — wskaż zacisk gałęzi (początkowy albo końcowy), na którym wykonano pomiar; gałąź z przekładnią albo susceptancją ma na obu końcach inne moce | panel: `analizy`, tab: `odbior` |
 | `power_flow.unbalanced_losses_self_impedance` | ANALYSIS | 4 | WARNING | Założenie biegu: straty gałęzi liczone z impedancji własnej \|I\|²·R_s — solver BFS pomija wyraz wzajemny, więc przy Z0 ≠ Z1 straty są przybliżone (napięcia i prądy bez zmian) | panel: `inspector`, tab: `parametry`, focus: `r0_ohm_per_km` |
 | `power_flow.unbalanced_magnetising_branch_omitted` | ANALYSIS | 4 | WARNING | Założenie biegu: gałąź magnesująca transformatora (P0, i0) pominięta — solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję zwarcia | panel: `inspector`, tab: `transformator` |
 | `power_flow.unbalanced_shunt_admittance_omitted` | ANALYSIS | 4 | WARNING | Założenie biegu: admitancja poprzeczna (pojemność) gałęzi pominięta — solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję szeregową | panel: `inspector`, tab: `parametry`, focus: `b_siemens_per_km` |
@@ -198,10 +204,10 @@ Wszystkie **137** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 86 |
+| BLOCKER | 92 |
 | WARNING | 50 |
 | INFO | 1 |
-| **Razem** | **137** |
+| **Razem** | **143** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
@@ -210,9 +216,9 @@ Wszystkie **137** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | CATALOGS | 48 |
 | STATIONS | 13 |
 | GENERATORS | 25 |
-| PROTECTION | 9 |
-| ANALYSIS | 20 |
-| **Razem** | **137** |
+| PROTECTION | 14 |
+| ANALYSIS | 21 |
+| **Razem** | **143** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

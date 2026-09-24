@@ -132,6 +132,14 @@ from application.proof_engine.pakiet_nastaw import (  # noqa: E402
 from application.protection_comparison.service import (  # noqa: E402
     ProtectionComparisonService,
 )
+from application.protection_settings.zacisk_zabezpieczenia import (  # noqa: E402
+    ZACISKI,
+    Zacisk,
+    opis_miejsca_urzadzenia,
+    rodzaj_lokalizacji,
+    szyny_zwarcia_lokalizacji,
+    zaciski_galezi_migawki,
+)
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile  # noqa: E402
 from diagnostics.engine import DiagnosticEngine  # noqa: E402
 from diagnostics.preflight import (  # noqa: E402
@@ -2132,17 +2140,24 @@ def koordynacja_scena_pakiet_dostepnosc_min() -> dict[str, Any]:
         )
 
 
+#: Zacisk zabezpieczenia odcinka sceny (decyzja O-51): sieć sceny nie przypina
+#: zabezpieczeń do wyłączników (model milczy), więc ekran wymaga wskazania — scena
+#: wskazuje zacisk początkowy (strona Stacji S01), tak jak klika go spec e2e.
+ZACISK_ZABEZPIECZENIA_SCENY_KOORD = "od"
+
+
 def _pozycja_nastaw_sceny_koordynacja(bieg_max: Any, linia: str) -> dict[str, Any]:
     """Pozycja dostępności pakietu nastaw dla chronionego odcinka sceny — wybór
     wskazany przez BUDOWĘ sieci (ref odcinka S01→S02), potwierdzony przez
     `dostepnosc_pakietu_nastaw` (jedno źródło prawdy listy kandydatów; po
     naprawie predykatu parami z tej karty lista niesie WYŁĄCZNIE pary, które
-    da się policzyć)."""
+    da się policzyć) dla zacisku wskazanego przez scenę."""
     dostepnosc = dostepnosc_pakietu_nastaw(bieg_max)
     return next(
         wiersz
         for wiersz in dostepnosc["linie"]
-        if wiersz["line_id"] == linia and wiersz["nastepne_szyny_kandydujace"]
+        if wiersz["line_id"] == linia
+        and wiersz["nastepne_szyny_wg_zacisku"][ZACISK_ZABEZPIECZENIA_SCENY_KOORD]
     )
 
 
@@ -2155,8 +2170,9 @@ def koordynacja_scena_nastawy() -> dict[str, Any]:
         widok = zbuduj_odpowiedz_nastaw_json(
             bieg_max,
             line_id=pozycja["line_id"],
-            next_bus_id=pozycja["nastepne_szyny_kandydujace"][0],
+            next_bus_id=pozycja["nastepne_szyny_wg_zacisku"][ZACISK_ZABEZPIECZENIA_SCENY_KOORD][0],
             c_min=1.0,
+            zacisk_zabezpieczenia=ZACISK_ZABEZPIECZENIA_SCENY_KOORD,
         )
         return _ustabilizuj_identyfikatory(
             canonicalize_json(widok), _mapa_identyfikatorow_koordynacji(bieg_max, bieg_min, bieg_pf)
@@ -2173,18 +2189,68 @@ def koordynacja_scena_nastawy_dopasowanie() -> dict[str, Any]:
             bieg_max,
             device_id=_APARAT_DOPASOWANIA_KOORD,
             line_id=pozycja["line_id"],
-            next_bus_id=pozycja["nastepne_szyny_kandydujace"][0],
+            next_bus_id=pozycja["nastepne_szyny_wg_zacisku"][ZACISK_ZABEZPIECZENIA_SCENY_KOORD][0],
             c_min=1.0,
+            zacisk_zabezpieczenia=ZACISK_ZABEZPIECZENIA_SCENY_KOORD,
         )
         return _ustabilizuj_identyfikatory(
             canonicalize_json(widok), _mapa_identyfikatorow_koordynacji(bieg_max, bieg_min, bieg_pf)
         )
 
 
-def _szyny_zabezpieczen_koordynacji(model: EnergyNetworkModel) -> list[str]:
-    """Lokalizacje dwóch zabezpieczeń sceny: szyny SN obu stacji (posortowane —
-    kolejność deterministyczna, niezależna od kolejności budowy)."""
-    return sorted(szyna.ref_id for szyna in model.buses if szyna.ref_id.endswith("/sn_bus"))
+#: Zacisk zabezpieczeń odcinków magistrali w scenie E-28: początkowy (strona zasilania),
+#: klikany przez spec zrzutów (`wszystkie-sceny-screenshot.spec.ts`).
+ZACISK_ZABEZPIECZEN_SCENY_KOORD = "od"
+
+
+def _lokalizacje_zabezpieczen_koordynacji(
+    model: EnergyNetworkModel,
+) -> list[tuple[str, str]]:
+    """Lokalizacje dwóch zabezpieczeń sceny (decyzja O-51 pkt 7): odcinki magistrali
+    zasilające szyny SN obu stacji (GPZ → S01, S01 → S02), każde przy zacisku
+    POCZĄTKOWYM — przekaźnik w polu liniowym strony zasilania. Posortowane —
+    kolejność deterministyczna, niezależna od kolejności budowy."""
+    return sorted(
+        (galaz.ref_id, ZACISK_ZABEZPIECZEN_SCENY_KOORD)
+        for galaz in model.branches
+        if galaz.type == "cable" and galaz.to_bus_ref.endswith("/sn_bus")
+    )
+
+
+def koordynacja_scena_miejsca() -> dict[str, Any]:
+    """Odpowiedzi `GET /api/cases/{id}/enm/zacisk-lokalizacji` (`opis_miejsca_urzadzenia` —
+    TA SAMA funkcja, którą woła końcówka) dla KAŻDEJ lokalizacji z listy wyboru ekranu
+    (szyny, gałęzie, transformatory migawki) i każdego wskazania, które ekran może
+    wysłać (brak; dla gałęzi i łączników także `od` i `do`). Klucz: `lokalizacja|zacisk`
+    (pusty zacisk = brak wskazania). `urzadzenia_sceny` — lokalizacje i zaciski dwóch
+    zabezpieczeń sceny (spec zrzutów wskazuje je natywnymi klikami)."""
+    with _biegi_sceny_koordynacja() as (bieg_max, _bieg_min, _bieg_pf, model, _linia):
+        migawka = bieg_max.snapshot
+        refy = sorted(
+            {b.ref_id for b in model.buses}
+            | {g.ref_id for g in model.branches}
+            | {t.ref_id for t in model.transformers}
+        )
+        rozstrzygniecia: dict[str, Any] = {}
+        for ref in refy:
+            wskazania: tuple[Zacisk | None, ...] = (
+                (None,)
+                if rodzaj_lokalizacji(migawka, ref) in ("szyna", "brak")
+                else (None, *ZACISKI)
+            )
+            for wskazanie in wskazania:
+                rozstrzygniecia[f"{ref}|{wskazanie or ''}"] = opis_miejsca_urzadzenia(
+                    migawka, ref, wskazanie
+                )
+        return canonicalize_json(
+            {
+                "rozstrzygniecia": rozstrzygniecia,
+                "urzadzenia_sceny": [
+                    {"lokalizacja": lokalizacja, "zacisk": zacisk}
+                    for lokalizacja, zacisk in _lokalizacje_zabezpieczen_koordynacji(model)
+                ],
+            }
+        )
 
 
 def koordynacja_scena_wynik() -> dict[str, Any]:
@@ -2200,22 +2266,27 @@ def koordynacja_scena_wynik() -> dict[str, Any]:
     podmienia je na identyfikatory z ŻĄDANIA, dopasowując po
     `location_element_id` — tożsamość, nie fizyka.
 
-    PRĄDY ROBOCZE — NAZWANY BRAK PRODUKTU, NIE FABRYKACJA. Prąd zwarciowy jest
-    kluczowany SZYNĄ, prąd roboczy GAŁĘZIĄ rozpływu, a kontrakt koordynacji ma
-    jedno pole `location_id` na obie wielkości; relacji „zabezpieczenie →
-    chroniona gałąź" model jeszcze nie niesie (nazwane w docstringu końcówki
-    `run_coordination_analysis` jako decyzja A-4). Żądanie niesie więc prądy
-    robocze GAŁĘZI (realne, z biegu rozpływu), a analizator zwraca dla obu
-    zabezpieczeń uczciwy werdykt `ERROR` „Brak danych o prądzie roboczym dla
-    lokalizacji …". Poprzednia scena ukrywała ten brak, podając wiersze
-    GAŁĘZIOWE o identyfikatorach SZYN — liczby wyglądały na wynik rozpływu,
-    a opisywały byt, którego nie ma."""
+    ŻĄDANIE = TO, KTÓRE WYSYŁA EKRAN (decyzja O-51 pkt 7). Zabezpieczenia stoją
+    na odcinkach magistrali przy wskazanym zacisku (`_lokalizacje_zabezpieczen_
+    koordynacji`); prąd zwarciowy lokalizacji to prąd SZYNY zacisku
+    (`szyny_zwarcia_lokalizacji` — ten sam resolver co końcówka i ekran), prąd
+    roboczy to prąd TEGO zacisku z wiersza gałęzi rozpływu (`i_a` dla `od`,
+    `i_do_a` dla `do` — `pradyZBiegow.ts::pradRoboczyZWiersza`). Do tej karty
+    zabezpieczenia stały na SZYNACH, żądanie niosło prądy robocze wszystkich
+    gałęzi z samego zacisku `od`, a analizator zwracał dla obu zabezpieczeń
+    `ERROR` braku prądu roboczego — relacji „zabezpieczenie → chroniona gałąź"
+    wtedy nie było."""
     with _biegi_sceny_koordynacja() as (bieg_max, bieg_min, bieg_pf, model, _linia):
         wejscie = wejscie_koordynacji_z_biegow(
             run_id_max=str(bieg_max.id), run_id_min=str(bieg_min.id)
         )
-        galezie = build_branch_results_response(bieg_pf)["rows"]
-        lokalizacje = _szyny_zabezpieczen_koordynacji(model)
+        galezie = {
+            wiersz["element_id"]: wiersz
+            for wiersz in build_branch_results_response(bieg_pf)["rows"]
+        }
+        miejsca = _lokalizacje_zabezpieczen_koordynacji(model)
+        szyny, odmowy = szyny_zwarcia_lokalizacji(bieg_max.snapshot, list(miejsca))
+        assert not odmowy, odmowy
         zadanie = RunCoordinationRequest(
             devices=[
                 {
@@ -2225,22 +2296,25 @@ def koordynacja_scena_wynik() -> dict[str, Any]:
                     "name": NAZWA_SZABLONU_ZABEZPIECZENIA_KOORD,
                     "device_type": "RELAY",
                     "location_element_id": lokalizacja,
+                    "zacisk": zacisk,
                     "settings": _SZABLON_ZABEZPIECZENIA_KOORD,
                 }
-                for lokalizacja in lokalizacje
+                for lokalizacja, zacisk in miejsca
             ],
             fault_currents=[
                 {
                     "location_id": lokalizacja,
-                    "ik_max_3f_a": wejscie.prady_max_a[lokalizacja],
-                    "ik_min_3f_a": wejscie.prady_min_a[lokalizacja],
+                    "ik_max_3f_a": wejscie.prady_max_a[szyny[lokalizacja]],
+                    "ik_min_3f_a": wejscie.prady_min_a[szyny[lokalizacja]],
                 }
-                for lokalizacja in lokalizacje
+                for lokalizacja, _zacisk in miejsca
             ],
             operating_currents=[
-                {"location_id": wiersz["element_id"], "i_operating_a": wiersz["i_a"]}
-                for wiersz in galezie
-                if isinstance(wiersz.get("i_a"), int | float) and wiersz["i_a"] > 0.0
+                {
+                    "location_id": lokalizacja,
+                    "i_operating_a": galezie[lokalizacja]["i_a" if zacisk == "od" else "i_do_a"],
+                }
+                for lokalizacja, zacisk in miejsca
             ],
             pf_run_id=str(bieg_pf.id),
             sc_run_id=str(bieg_max.id),
@@ -2632,15 +2706,20 @@ def _pomiary_odbiorowe_sceny(bieg: Any) -> list[dict[str, Any]]:
     1. napięcie węzła W TOLERANCJI (odchyłka `_ODCHYLKA_W_TOLERANCJI_PCT`),
     2. moc czynna gałęzi POZA TOLERANCJĄ (`_ODCHYLKA_POZA_TOLERANCJA_PCT`),
     3. pomiar elementu, którego NIE MA w modelu (brak odpowiednika),
-    4. moc bierna gałęzi, której wynik rozpływu nie niesie (brak wyniku) —
+    4. moc bierna tej samej gałęzi BEZ wskazanego zacisku — odmowa nazwana „brak
+       miejsca pomiaru" (decyzja O-51: gałąź z susceptancją ma na końcach inne
+       P/Q, więc rekord bez zacisku nie jest porównywany z żadnym końcem),
+    5. moc bierna gałęzi, której wynik rozpływu nie niesie (brak wyniku) —
        pozycja powstaje TYLKO wtedy, gdy sieć ma taką gałąź. Na sieci złotej
-       KAŻDA gałąź niesie moc bierną (zmierzone), więc czwarty werdykt na tej
-       scenie nie występuje; scena pokazuje trzy, bo tyle sieć uczciwie daje —
-       dołożenie czwartego wymagałoby pomiaru elementu wymyślonego.
+       KAŻDA gałąź niesie moc bierną (zmierzone), więc ten werdykt na tej
+       scenie nie występuje; scena pokazuje cztery, bo tyle sieć uczciwie daje —
+       dołożenie piątego wymagałoby pomiaru elementu wymyślonego.
 
     Wartości 1 i 2 pochodzą Z WYNIKU biegu powiększonego o nazwaną odchyłkę —
     protokół odbioru z definicji różni się od modelu, a bez różnicy ekran nie
-    pokazałby ANI JEDNEGO werdyktu poza „w tolerancji"."""
+    pokazałby ANI JEDNEGO werdyktu poza „w tolerancji". Pomiar mocy czynnej (2)
+    jest wykonany na zacisku POCZĄTKOWYM (`od`) — wartość odniesienia to moc tego
+    zacisku (`p_mw` wiersza gałęzi)."""
     # Dopasowanie pomiaru do modelu idzie po `element_id` wierszy widoków
     # szyn/gałęzi (= `ref_id` ENM) — TA SAMA przestrzeń nazw, której używa
     # `zgodnosc_powykonawcza._bus_upu_by_element`/`_branch_pq_by_element`.
@@ -2697,6 +2776,16 @@ def _pomiary_odbiorowe_sceny(bieg: Any) -> list[dict[str, Any]]:
             "wielkosc": "P",
             "wartosc": float(galaz["p_mw"]) * (1.0 + _ODCHYLKA_POZA_TOLERANCJA_PCT / 100.0),
             "jednostka": "MW",
+            "zacisk": "od",
+        },
+        {
+            # Protokół podaje moc bierną gałęzi bez miejsca pomiaru — wartość z
+            # zacisku początkowego jest tu wyłącznie daną wejściową rekordu; backend
+            # jej NIE porównuje (brak zacisku = odmowa nazwana).
+            "element_ref": str(galaz["element_id"]),
+            "wielkosc": "Q",
+            "wartosc": float(galaz["q_mvar"]),
+            "jednostka": "Mvar",
         },
         {
             # Element z protokołu odbioru, którego w modelu NIE MA — pole
@@ -2717,6 +2806,22 @@ def _pomiary_odbiorowe_sceny(bieg: Any) -> list[dict[str, Any]]:
             }
         )
     return pomiary
+
+
+def odbior_zgodnosc_scena_zaciski() -> dict[str, Any]:
+    """Odpowiedź `GET /api/analysis-runs/{run_id}/zaciski-galezi` (`zaciski_galezi_migawki`
+    — TA SAMA funkcja, którą woła końcówka) dla biegu sceny: etykiety zacisków z nazwami
+    szyn, które formularz pokazuje przy wskazaniu miejsca pomiaru mocy gałęzi."""
+    with _bieg_sceny_pomiarowej() as bieg:
+        return _ustabilizuj_identyfikatory(
+            canonicalize_json(
+                {
+                    "run_id": str(bieg.id),
+                    "zaciski": zaciski_galezi_migawki(bieg.snapshot),
+                }
+            ),
+            _mapa_identyfikatorow_sceny_pomiarowej(bieg),
+        )
 
 
 def odbior_zgodnosc_scena_wynik() -> dict[str, Any]:
@@ -3643,6 +3748,7 @@ FIXTURY: dict[str, Any] = {
     "koordynacja_scena_nastawy": koordynacja_scena_nastawy,
     "koordynacja_scena_nastawy_dopasowanie": koordynacja_scena_nastawy_dopasowanie,
     "koordynacja_scena_wynik": koordynacja_scena_wynik,
+    "koordynacja_scena_miejsca": koordynacja_scena_miejsca,
     "porownanie_scena_biegi_pf": porownanie_scena_biegi_pf,
     "porownanie_scena_wynik_pf": porownanie_scena_wynik_pf,
     "porownanie_scena_slad_pf": porownanie_scena_slad_pf,
@@ -3654,6 +3760,7 @@ FIXTURY: dict[str, Any] = {
     "estymacja_scena_wymagania": estymacja_scena_wymagania,
     "estymacja_scena_wynik": estymacja_scena_wynik,
     "odbior_zgodnosc_scena_wynik": odbior_zgodnosc_scena_wynik,
+    "odbior_zgodnosc_scena_zaciski": odbior_zgodnosc_scena_zaciski,
     "frt_scena_trajektorie": frt_scena_trajektorie,
     "frt_scena_sekwencja": frt_scena_sekwencja,
     "lom_scena_wynik": lom_scena_wynik,

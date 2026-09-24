@@ -23,6 +23,7 @@ jednym predykatem uzywanym w obu miejscach.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 from ..kontrakty import KOD_PARAMETRY_SPRZECZNE, OdmowaDynamiki
 from .pochodne_kierunkowe import Dual, ogranicz
@@ -49,6 +50,22 @@ class OknoMocy:
     dol_pu: float
     gora_pu: float
     domkniecie_gory: Dual | None = None
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = (
+        (
+            "domkniecie_gory",
+            "domkniecie ZALEZNE OD STANU (crowbar) skladane w trakcie "
+            "liczenia pochodnych (`z_domknieciem`); w urzadzeniu zbudowanym przez fabryke "
+            "jest zawsze `None`, a nastawy crowbar wchodza do odcisku przez `crowbar`",
+        ),
+    )
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "dol_pu": self.dol_pu,
+            "gora_pu": self.gora_pu,
+        }
 
     def __post_init__(self) -> None:
         if self.dol_pu > self.gora_pu:

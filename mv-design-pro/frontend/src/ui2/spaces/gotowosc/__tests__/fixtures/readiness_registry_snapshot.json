@@ -2,6 +2,10 @@
   "codes": [
     {
       "area": "ANALYSIS",
+      "code": "analysis.as_built_measurement_terminal_missing"
+    },
+    {
+      "area": "ANALYSIS",
       "code": "analysis.blocked_by_readiness"
     },
     {
@@ -378,11 +382,31 @@
     },
     {
       "area": "PROTECTION",
+      "code": "protection.device_breaker_not_in_series"
+    },
+    {
+      "area": "PROTECTION",
       "code": "protection.fault_current_missing"
     },
     {
       "area": "PROTECTION",
       "code": "protection.nominal_current_missing"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.relay_terminal_breaker_loop"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.relay_terminal_choice_missing"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.relay_terminal_contradicts_model"
+    },
+    {
+      "area": "PROTECTION",
+      "code": "protection.relay_terminal_indication_missing"
     },
     {
       "area": "PROTECTION",
@@ -549,5 +573,5 @@
       "code": "vt.winding_category_missing"
     }
   ],
-  "count": 137
+  "count": 143
 }

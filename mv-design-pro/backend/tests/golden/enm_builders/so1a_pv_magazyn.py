@@ -21,12 +21,17 @@ CO SIEC CWICZY (iloczyn cech, nie jeden przyklad):
 * **wylacznik jako osobny element** (`type: breaker`) miedzy szyna GPZ a polem
   magistralnym — zdarzenia `wylaczenie_galezi` / `zalaczenie_galezi` trafiaja w
   APARAT, ktory w rzeczywistosci otwiera zabezpieczenie, a nie w kabel.
-* **zwarcie na szynie SN** stacji magistralnej — instalacja widzi zapad przez
-  impedancje sieci, a nie zwarcie na wlasnych zaciskach.
+* **zwarcie na szynie SN** pola magistralnego — instalacja widzi zapad przez
+  impedancje sieci, a nie zwarcie na wlasnych zaciskach. Zwarcie jest usuwane
+  przez ODCIECIE obu stron (wylacznik pola od GPZ i kabel magistrali od stacji),
+  bo w pierscieniu zamknietym jest zasilane z dwoch stron (karta AB-1b.1 §0 pkt 4:
+  dawne zdjecie zwarcia na szynie stacji, ktora pierscien nadal zasilal, bylo
+  zniknieciem luku pod napieciem, a nie skutkiem dzialania aparatu).
 * **magistrala SN pracujaca w pierscieniu zamknietym**: szyna stacji jest zasilana
   z dwoch stron — polem magistralnym przez wylacznik oraz przez miejsce
-  przylaczenia OZE. Otwarcie wylacznika przenosi zasilanie stacji na druga strone
-  pierscienia, a ponowne zalaczenie zamyka pierscien z powrotem.
+  przylaczenia OZE. Otwarcie pola przenosi zasilanie stacji na druga strone
+  pierscienia (szyna pola zostaje obszarem beznapieciowym), a ponowne zalaczenie
+  zamyka pierscien z powrotem.
 * transformator 110/15 kV z zaczepem POZA znamionowym i grupa Dyn11 (przekladnia
   ZESPOLONA: modul != 1 i kat != 0 rownoczesnie);
 * kabel z niezerowa susceptancja poprzeczna i linia napowietrzna (dwie klasy
@@ -43,7 +48,10 @@ rozpoznania wyspy w trakcie biegu i warunku brzegowego wyspy, czyli zdolnosci
 deterministycznego wykonania RMS i zdarzen na fali W6-A, wiec jego uklad nie moze
 zalezec od zdolnosci nastepnej fali. Pierscien spelnia opis scenariusza (zwarcie
 na szynie SN, otwarcie wylacznika, ponowne zalaczenie, 10 s obserwacji) i jest
-dobrze postawiony w KAZDEJ chwili biegu: siec pozostaje spojna i zasilana.
+dobrze postawiony w KAZDEJ chwili biegu: wszystkie odbiory pozostaja zasilane, a
+jedyny odcinek bez zasilania — szyna pola miedzy otwartymi aparatami, bez odbiorow
+i bez zrodel — jest obszarem beznapieciowym rdzenia (V = 0, karta AB-1b.1, D-16),
+a nie wyspa z praca wyspowa (D11 pelne pozostaje zakresem kolejnej fali).
 
 KLASA WYROCZNI. `REGRESSION_ONLY`: siec z dwoma przeksztaltnikami, odbiorami o
 stalej mocy i transformatorem z przesunieciem fazowym nie ma rozwiazania

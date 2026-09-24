@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 import pytest
@@ -74,8 +76,13 @@ def test_krok_wyjscia_niewspolmierny_z_krokiem_calkowania() -> None:
     assert wynik.os_czasu_s[-1] <= 0.2
 
 
-def test_zdarzenie_w_chwili_zero_jest_w_probce_zerowej() -> None:
-    """Regula: probka w chwili `t` to stan PO zdarzeniach tej chwili — takze dla t = 0."""
+def test_zdarzenie_w_chwili_zero_ma_probki_L_i_P() -> None:
+    """Regula obustronna takze dla t = 0: `L` to punkt pracy, `P` — stan PO zdarzeniu.
+
+    PRZEPISANY ŚWIADOMIE (karta AB-1b.1 par. 0 pkt 6): dawniej probka zerowa byla jedna
+    (prawostronna). Intencja zachowana — zdarzenie w t = 0 jest widoczne w wyniku od razu
+    (probka `P` z zapadem) — a punkt pracy nie ginie (probka `L`).
+    """
     uklad = zbuduj_smib()
     harmonogram = HarmonogramDynamiki(
         (
@@ -86,6 +93,7 @@ def test_zdarzenie_w_chwili_zero_jest_w_probce_zerowej() -> None:
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_PLYTKIEGO_OHM,
                 t_usuniecia_s=0.1,
+                sposob_usuniecia="samoczynne",
             ),
         )
     )
@@ -95,7 +103,12 @@ def test_zdarzenie_w_chwili_zero_jest_w_probce_zerowej() -> None:
     ze_zwarciem = SilnikDynamiki(
         uklad.wejscie(harmonogram, nastawy(dt_s=0.001, horyzont_s=0.3, krok_wyjscia_s=0.01))
     ).uruchom()
-    assert ze_zwarciem.probki["u_pu@GEN"][0] < bez.probki["u_pu@GEN"][0]
+    assert ze_zwarciem.os_czasu_s[:2] == (0.0, 0.0)
+    assert ze_zwarciem.strona_probki[:2] == ("L", "P")
+    assert bez.strona_probki[0] == "C"
+    assert ze_zwarciem.probki["u_pu@GEN"][0] == bez.probki["u_pu@GEN"][0]
+    assert ze_zwarciem.probki["u_pu@GEN"][1] < bez.probki["u_pu@GEN"][0]
+    assert ze_zwarciem.probki["f_hz@GEN"][0] is None and ze_zwarciem.probki["f_hz@GEN"][1] is None
     assert ze_zwarciem.zdarzenia_wykonane[0].t_wykonany_s == 0.0
 
 
@@ -195,6 +208,7 @@ def test_slad_white_box_niesie_siec_nastawy_i_kroki_szczegolne() -> None:
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_OHM,
                 t_usuniecia_s=0.2,
+                sposob_usuniecia="samoczynne",
             ),
         )
     )
@@ -207,8 +221,13 @@ def test_slad_white_box_niesie_siec_nastawy_i_kroki_szczegolne() -> None:
         "siec",
         "nastawy",
         "kroki_szczegolne",
+        # Karta AB-1b.1 (par. 0 pkt 4): usuniecie zwarcia `samoczynne` jest jawna
+        # idealizacja — slad niesie jej zdanie obok zalozen wyniku.
+        "idealizacje_harmonogramu",
         "podsumowanie_krokow",
     }
+    assert len(slad["idealizacje_harmonogramu"]) == 1
+    assert "samoczynnie" in slad["idealizacje_harmonogramu"][0]
     assert len(slad["siec"]["odcisk_ybus"]) == 64
     assert slad["siec"]["liczba_wezlow"] == 2
     assert slad["nastawy"]["integrator"] == "trapez_niejawny"
@@ -260,6 +279,7 @@ def test_metryki_wskazuja_minimum_napiecia_i_jego_chwile() -> None:
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_OHM,
                 t_usuniecia_s=0.2,
+                sposob_usuniecia="samoczynne",
             ),
         )
     )
@@ -299,7 +319,15 @@ def test_skok_obciazenia_zmienia_punkt_pracy_sieci() -> None:
 
 @pytest.mark.parametrize(
     ("nazwa", "jednostka"),
-    [("delta_rad", "rad"), ("omega_pu", "pu"), ("tau_s", "s")],
+    [
+        ("delta_rad", "rad"),
+        ("omega_pu", "pu"),
+        ("tau_s", "s"),
+        # `_pu_na_s` konczy sie tez na `_s` — regula tempa MUSI wygrac z regula sekund
+        # (karta AB-1b.1 par. 0 pkt 15: przed poprawka tempo dostawalo jednostke „s").
+        ("sem_modul_tempo_pu_na_s", "pu/s"),
+        ("odchylka_pulsacji_tempo_pu_na_s", "pu/s"),
+    ],
 )
 def test_jednostka_stanu_z_sufiksu_nazwy(nazwa: str, jednostka: str) -> None:
     assert jednostka_stanu(nazwa) == jednostka
@@ -356,6 +384,7 @@ def test_zaden_kanal_wyniku_nie_wpuszcza_NaN_ani_Inf_jako_wartosci_inzynierskiej
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_PLYTKIEGO_OHM,
                 t_usuniecia_s=0.2,
+                sposob_usuniecia="samoczynne",
             ),
             SkokObciazenia(t_s=0.5, odbior="ODB1", delta_p_pu=0.15, delta_q_pu=0.05),
         )
@@ -365,13 +394,35 @@ def test_zaden_kanal_wyniku_nie_wpuszcza_NaN_ani_Inf_jako_wartosci_inzynierskiej
     ).uruchom()
 
     assert len(wynik.kanaly) > 10, "Bieg bez kanalow nie sprawdzilby niczego"
+    # Od karty AB-1b.1 (par. 0 pkt 6-8) wartosc NIEDOSTEPNA jest `None`, nie liczba. `None`
+    # jest dopuszczalne WYLACZNIE z nazwana przyczyna w innym kanale tej samej probki:
+    # czestotliwosc — kod jakosci 2/3/4; kat fazora — modul DOKLADNIE zero. Kazda liczba
+    # jest skonczona (zero NaN/Inf).
+    przyczyny = {
+        "f_hz": ("jakosc_f", lambda wartosc: wartosc in (2.0, 3.0, 4.0)),
+        "u_f_est_hz": ("jakosc_f", lambda wartosc: wartosc in (2.0, 3.0, 4.0)),
+        "kat_deg": ("u_pu", lambda wartosc: wartosc == 0.0),
+        "i_od_kat_deg": ("i_od_pu", lambda wartosc: wartosc == 0.0),
+        "i_do_kat_deg": ("i_do_pu", lambda wartosc: wartosc == 0.0),
+        "i_zwarcia_kat_deg": ("i_zwarcia_pu", lambda wartosc: wartosc == 0.0),
+    }
+    liczba_none = 0
     for kanal in wynik.kanaly:
-        szereg = np.asarray(wynik.probki[kanal.klucz], dtype=float)
-        assert szereg.size == len(wynik.os_czasu_s), f"{kanal.klucz}: dlugosc szeregu"
-        assert bool(np.all(np.isfinite(szereg))), (
-            f"{kanal.klucz}: wartosc nieskonczona w probkach "
-            f"{np.flatnonzero(~np.isfinite(szereg)).tolist()}"
-        )
+        szereg = wynik.probki[kanal.klucz]
+        assert len(szereg) == len(wynik.os_czasu_s), f"{kanal.klucz}: dlugosc szeregu"
+        rodzina, _, element = kanal.klucz.partition("@")
+        for indeks, wartosc in enumerate(szereg):
+            if wartosc is None:
+                assert rodzina in przyczyny, f"{kanal.klucz}[{indeks}]: None bez przyczyny"
+                kanal_przyczyny, warunek = przyczyny[rodzina]
+                przyczyna = wynik.probki[f"{kanal_przyczyny}@{element}"][indeks]
+                assert warunek(przyczyna), (kanal.klucz, indeks, przyczyna)
+                liczba_none += 1
+            else:
+                assert math.isfinite(wartosc), f"{kanal.klucz}[{indeks}] = {wartosc!r}"
+    # Dwie chwile zwarcia i chwila skoku obciazenia x (L, P) x wezly: None istnieje, wiec
+    # sprawdzenie przyczyn nie jest puste.
+    assert liczba_none > 0
     assert bool(np.all(np.isfinite(np.asarray(wynik.os_czasu_s, dtype=float))))
 
 
@@ -411,6 +462,16 @@ class _UrzadzenieZeSkazonaPochodna:
     @property
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         return self.bazowe.stany_bez_rownowagi
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = ()
+
+    @property
+    def sprzezenie(self) -> str:
+        """Atrapa deleguje prad do urzadzenia bazowego — sprzezenie pradowe, JAWNIE."""
+        return "pradowe"
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        return {"bazowe": self.bazowe.parametry_tozsamosci(), "skazony_stan": self.skazony_stan}
 
     def stan_poczatkowy(self, napiecie_pu: complex, moc_pu: complex) -> np.ndarray:
         return self.bazowe.stan_poczatkowy(napiecie_pu, moc_pu)

@@ -15,6 +15,7 @@ import {
 import type {
   BranchResultRow,
   BusResultRow,
+  ResultTableMeta,
   ShortCircuitRow,
 } from '../results-inspector/types';
 import { CatalogBrowser } from '../network-build/CatalogBrowser';
@@ -579,16 +580,32 @@ function buildBusResultAnalysisRows(rows: readonly BusResultRow[]): AnalysisTabl
   }));
 }
 
-function buildBranchResultAnalysisRows(rows: readonly BranchResultRow[]): AnalysisTableRow[] {
+/** Etykieta kolumny z indeksu wyników backendu (`build_results_index`) — ekran nie
+ * nadaje własnych nazw wielkościom wyniku; brak kolumny w indeksie = klucz pola. */
+function etykietaKolumnyIndeksu(tabela: ResultTableMeta | undefined, klucz: string): string {
+  return tabela?.columns.find((kolumna) => kolumna.key === klucz)?.label_pl ?? klucz;
+}
+
+function buildBranchResultAnalysisRows(
+  rows: readonly BranchResultRow[],
+  tabela: ResultTableMeta | undefined,
+): AnalysisTableRow[] {
+  // Decyzja O-51 (klasa P9): prąd OBU zacisków gałęzi — gałąź z susceptancją albo z
+  // przekładnią ma na końcach inne prądy; etykiety zacisków z indeksu wyników.
+  const etykietaOd = etykietaKolumnyIndeksu(tabela, 'i_a');
+  const etykietaDo = etykietaKolumnyIndeksu(tabela, 'i_do_a');
   return rows.map((row, index) => ({
     key: `branch-result:${row.branch_id}:${index}`,
     type: 'Gałąź',
     name: row.name || formatResultObjectLabel(row.element_id ?? row.branch_id) || row.branch_id,
     voltage: `${formatResultObjectLabel(row.from_bus)} → ${formatResultObjectLabel(row.to_bus)}`,
     input: 'Rozpływ mocy; dane z wyniku serwerowego',
-    resultA: `${formatNullableResult('I', row.i_a, 'A', 1)}; ${formatNullableResult('obc.', row.loading_pct, '%', 1)}`,
+    resultA: `${formatNullableResult(etykietaOd, row.i_a, 'A', 1)}; ${formatNullableResult(etykietaDo, row.i_do_a, 'A', 1)}; ${formatNullableResult('obc.', row.loading_pct, '%', 1)}`,
     resultB: `${formatNullableResult('P', row.p_mw, 'MW', 3)}; ${formatNullableResult('Q', row.q_mvar, 'MVAr', 3)}; ${formatNullableResult('S', row.s_mva, 'MVA', 3)}`,
-    status: formatFlags(row.flags),
+    status:
+      row.loading_pct === null && row.loading_powod_braku_pl
+        ? `${formatFlags(row.flags)}; obciążenie: ${row.loading_powod_braku_pl}`
+        : formatFlags(row.flags),
   }));
 }
 
@@ -692,7 +709,10 @@ function useServerAnalysisRows(runId: string | null): ServerAnalysisRowsState {
         if (hasResultTable('branches', tables)) {
           batches.push(
             fetchBranchResults(selectedRunId).then((payload) =>
-              buildBranchResultAnalysisRows(Array.isArray(payload.rows) ? payload.rows : []),
+              buildBranchResultAnalysisRows(
+                Array.isArray(payload.rows) ? payload.rows : [],
+                tables.find((tabela) => tabela.table_id === 'branches'),
+              ),
             ),
           );
         }

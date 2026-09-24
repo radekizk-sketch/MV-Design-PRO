@@ -1169,7 +1169,7 @@ def map_enm_to_network_graph(
                 # limit 100,0 %" — fabrykacja przeciazenia, nie brak danych.
                 # Konsumenci grafu juz umieja czytac 0.0 jako „wielkosc nieznana,
                 # kryterium niesprawdzalne": `analysis/energy_validation/builder.py`
-                # (pozycja NOT_COMPUTED „Brak pradu znamionowego galezi"),
+                # (pozycja NOT_COMPUTED z powodem `POWOD_BRAK_PRADU_ZNAMIONOWEGO_PL`),
                 # `analysis/power_flow/analysis.py`, `application/sld/overlay_builder.py`
                 # i `backend/tests/reference_networks/station_archetype_substrate.py`
                 # (przeniesiony z `application/reference_networks/` karta K2,

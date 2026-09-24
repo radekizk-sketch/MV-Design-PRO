@@ -68,7 +68,7 @@ def test_bramka_zwraca_zero_na_czystym_drzewie() -> None:
         ),
         (
             "_iniekcja_aplikacja.py",
-            "from application.contracts.resultset_dynamic_v1 import ResultSetDynamicV1\n",
+            "from application.contracts.resultset_dynamic_v2 import ResultSetDynamicV2\n",
             "warstwa 'application' jest nad rdzeniem",
         ),
         (

@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from application.analyses.protection.coordination import (
@@ -41,6 +41,9 @@ from application.autorytet_biegu_zwarciowego import (
     BiegNiemiarodajnyError,
     niezgodnosci_pradow_koordynacji,
     wejscie_koordynacji_z_biegow,
+)
+from application.protection_settings.zacisk_zabezpieczenia import (
+    szyny_zwarcia_lokalizacji,
 )
 from domain.protection_device import (
     CurveStandard,
@@ -103,6 +106,13 @@ class DeviceRequest(BaseModel):
     name: str
     device_type: str = Field(..., description="RELAY/FUSE/RECLOSER/CIRCUIT_BREAKER")
     location_element_id: str
+    zacisk: Literal["od", "do"] | None = Field(
+        None,
+        description=(
+            "Zacisk gałęzi lokalizacji (decyzja O-51 pkt 7): wymagany dla lokalizacji-gałęzi, "
+            "dla łącznika rozstrzyga model; prąd zwarciowy lokalizacji = prąd szyny zacisku"
+        ),
+    )
     settings: ProtectionSettingsRequest
     manufacturer: str | None = None
     model: str | None = None
@@ -376,15 +386,17 @@ def run_coordination_analysis(
     bez drugiej przepuszczałaby liczby z powietrza policzone na dobrym
     modelu; druga bez pierwszej — liczby z biegu policzonego z domyślki k_sc.
 
-    PRĄDY ROBOCZE POZOSTAJĄ NIEZWIĄZANE Z ŻADNYM BIEGIEM — ZMIERZONY,
-    NAZWANY BRAK (nie przeoczenie). Prąd zwarciowy jest kluczowany WĘZŁEM
-    zwarcia, prąd roboczy GAŁĘZIĄ rozpływu — przestrzenie identyfikatorów są
-    w praktyce rozłączne, a kontrakt koordynacji ma jedno pole `location_id`
-    na obie wielkości, więc związanie prądu roboczego tym samym mechanizmem
-    odrzucałoby większość realnych żądań. Domknięcie wymaga relacji
-    „zabezpieczenie → chroniona gałąź" w modelu (`BayProtectionControlUnit.
-    protected_branch_ref`, decyzja architekta A-4, wchodzi w wycinku W4) —
-    to decyzja produktowa/modelowa, nie poprawka w tym pliku.
+    MIEJSCE URZĄDZENIA (decyzja O-51 pkt 7). Lokalizacja urządzenia to szyna,
+    gałąź ze wskazanym zaciskiem (`DeviceRequest.zacisk`) albo łącznik (zacisk
+    z modelu — łańcuch szeregowy, `zacisk_zabezpieczenia.miejsce_urzadzenia`).
+    Prąd zwarciowy lokalizacji-gałęzi/łącznika to prąd SZYNY zacisku i tak
+    jest potwierdzany wobec biegów (`szyny_zwarcia_lokalizacji`); prąd roboczy
+    to prąd TEGO zacisku z biegu rozpływu (ekran czyta go z wiersza gałęzi:
+    `i_a` dla `od`, `i_do_a` dla `do`).
+
+    PRĄDY ROBOCZE NIE SĄ POTWIERDZANE WOBEC BIEGU ROZPŁYWU — NAZWANY BRAK.
+    `pf_run_id` jest opcjonalny i nie wchodzi do bramki autorytetu; liczba prądu
+    roboczego przechodzi jako echo ekranu (patrz rejestr planu AB, wpis O-51).
 
     Analyzes:
     - Sensitivity (will devices trip for minimum fault?)
@@ -413,8 +425,17 @@ def run_coordination_analysis(
             detail={"powod": brak.powod, "komunikat_pl": brak.komunikat_pl},
         ) from brak
 
+    # Decyzja O-51 pkt 7: lokalizacja-gałąź (ze wskazanym zaciskiem) albo łącznik ma prąd
+    # zwarciowy SZYNY swojego zacisku — ten sam resolver, z którego czyta go ekran.
+    szyny_zwarcia, odmowy_zwarcia = szyny_zwarcia_lokalizacji(
+        dict(wejscie.migawka),
+        [(d.location_element_id, d.zacisk) for d in request.devices],
+    )
     niezgodnosci = niezgodnosci_pradow_koordynacji(
-        wejscie, [pozycja.model_dump() for pozycja in request.fault_currents]
+        wejscie,
+        [pozycja.model_dump() for pozycja in request.fault_currents],
+        szyny_lokalizacji=szyny_zwarcia,
+        odmowy_lokalizacji=odmowy_zwarcia,
     )
     if niezgodnosci:
         raise HTTPException(

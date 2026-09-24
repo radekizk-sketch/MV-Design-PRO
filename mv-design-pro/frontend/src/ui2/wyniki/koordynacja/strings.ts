@@ -53,10 +53,20 @@ export const KOORDYNACJA_STRINGS = {
     + 'do doboru nastaw. Uzupełnij dane katalogowe elementu w modelu sieci.',
   nastawyWybierzSzyne: 'Kolejna szyna (warunek selektywności)',
   nastawyWybierzSzynePlaceholder: 'Wybierz szynę…',
-  nastawyBrakSzynKandydujacych: 'Ten odcinek nie ma gałęzi w dół — warunek '
-    + 'selektywności I>> nie ma z czym porównać (linia jest ostatnim odcinkiem '
-    + 'promienia). Wybierz inny chroniony odcinek.',
+  nastawyBrakSzynKandydujacych: 'Za końcem odcinka (od strony przeciwnej do '
+    + 'zabezpieczenia) nie ma kolejnej gałęzi — warunek selektywności I>> nie ma z czym '
+    + 'porównać. Wybierz inny chroniony odcinek albo drugi zacisk.',
   nastawyLiczSzynaPrzycisk: 'Policz nastawy',
+
+  // Miejsce zabezpieczenia — zacisk chronionego odcinka (decyzja O-51): z modelu, gdy
+  // zabezpieczenie jest przypięte do wyłącznika w szeregu z zaciskiem, inaczej wybór
+  // inżyniera; etykiety zacisków (nazwy szyn) przychodzą z backendu.
+  nastawyZacisk: 'Miejsce zabezpieczenia (zacisk chronionego odcinka)',
+  nastawyZaciskZModelu: 'Z modelu (zabezpieczenie przypięte do wyłącznika w szeregu z zaciskiem)',
+  nastawyPowodWybierzSzyne: 'Wybierz kolejną szynę strefy selektywności.',
+  nastawyZaciskWyniku: 'Miejsce zabezpieczenia',
+  nastawyZrodloZaciskuModel: 'z modelu',
+  nastawyZrodloZaciskuWskazanie: 'wskazane',
 
   // Parametry inżynierskie — jawne, z opisanym źródłem wartości domyślnej.
   nastawyParametryTytul: 'Parametry doboru',

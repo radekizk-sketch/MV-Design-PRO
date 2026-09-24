@@ -39,6 +39,18 @@ const KOORDYNACJA_SCENA_WYNIK = JSON.parse(
   ),
 ) as { devices: { location_element_id: string }[] };
 
+/**
+ * Decyzja O-51 pkt 7: zabezpieczenia sceny stoją na odcinkach magistrali przy WSKAZANYM
+ * zacisku — lokalizacje i zaciski z fixtury rozstrzygnięć backendu (tej samej, którą
+ * serwuje atrapa `GET …/enm/zacisk-lokalizacji`).
+ */
+const KOORDYNACJA_SCENA_MIEJSCA = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/koordynacja_scena_miejsca.json'),
+    'utf-8',
+  ),
+) as { urzadzenia_sceny: { lokalizacja: string; zacisk: 'od' | 'do' }[] };
+
 /** Sceny kadrowane przez `creator-screenshot.spec.ts` — tam mają własne interakcje. */
 const JUZ_KADROWANE = new Set([
   'pole', 'oze', 'arcflash', 'magistrala', 'kompensator', 'transformator', 'odbior', 'wiazania',
@@ -195,30 +207,32 @@ test.describe('koordynacja:screenshot', () => {
       // HARNESS-RESZTA-2 (2026-09-17): refy CYTOWANE Z FIXTURY realnego biegu
       // backendu (szyny SN obu stacji magistrali sceny) — wcześniej spec podawał
       // refy sieci, która nie istnieje w żadnym modelu repozytorium.
-      const elementy = KOORDYNACJA_SCENA_WYNIK.devices.map((u) => u.location_element_id);
-      expect(elementy.length, 'fixtura koordynacji musi opisywać dwa zabezpieczenia').toBe(2);
-      for (const element of elementy) {
+      const miejsca = KOORDYNACJA_SCENA_MIEJSCA.urzadzenia_sceny;
+      expect(miejsca.length, 'fixtura koordynacji musi opisywać dwa zabezpieczenia').toBe(2);
+      expect(miejsca.map((m) => m.lokalizacja).sort()).toEqual(
+        KOORDYNACJA_SCENA_WYNIK.devices.map((u) => u.location_element_id).sort(),
+      );
+      for (const { lokalizacja, zacisk } of miejsca) {
         await page.getByTitle('Zastosuj szablon').click();
         // Klik ZAWĘŻONY do okna szablonów: po dodaniu pierwszego zabezpieczenia ta sama
         // nazwa jest też na liście urządzeń POD nakładką, a `.first()` trafiał w nią
         // i modal przechwytywał zdarzenie.
         await page.locator('div.fixed.inset-0').getByText('Przekaznik 50/51 (typowy)').click();
         await expect(page.getByTestId('protection-settings-editor')).toBeVisible();
-        await page.getByTestId('device-location-select').selectOption(element);
+        await page.getByTestId('device-location-select').selectOption(lokalizacja);
+        // Zacisk gałęzi — etykieta z nazwą szyny z backendu, brak zacisku domyślnego.
+        const zaciskUrzadzenia = page.getByTestId(`device-terminal-${zacisk}`);
+        await expect(zaciskUrzadzenia).not.toBeChecked();
+        await zaciskUrzadzenia.click();
         await page.getByRole('button', { name: 'Zapisz konfigurację' }).click();
       }
 
-      // Prądy ZWARCIOWE obu biegów (c_max i c_min) związały się z elementami.
-      // Prąd ROBOCZY związać się NIE MOŻE i ekran uczciwie to melduje: prąd
-      // zwarciowy jest kluczowany SZYNĄ, prąd roboczy GAŁĘZIĄ rozpływu, a modelu
-      // nie niesie relacji „zabezpieczenie → chroniona gałąź" (decyzja A-4,
-      // nazwana w docstringu końcówki `run_coordination_analysis`). Do karty
-      // HARNESS-RESZTA-2 atrapa zakrywała ten brak, podając wiersze GAŁĘZIOWE o
-      // identyfikatorach SZYN — panel milczał, a werdykt przeciążeniowy wyglądał
-      // na policzony. Bramka pilnuje teraz, że brak jest NAZWANY na ekranie.
-      const brakiPradow = page.getByTestId('coordination-missing-currents');
-      await expect(brakiPradow, 'ekran musi nazwać brak prądu roboczego').toBeVisible();
-      await expect(brakiPradow).toContainText('prądu roboczego');
+      // Decyzja O-51 pkt 7: prąd ZWARCIOWY szyny zacisku (biegi c_max i c_min) i prąd
+      // ROBOCZY tego samego zacisku (bieg rozpływu) związały się z obydwoma
+      // zabezpieczeniami — panel braków nie ma czego meldować. Do tej karty
+      // zabezpieczenia stały na szynach, a prąd roboczy był nazwanym brakiem (relacji
+      // „zabezpieczenie → chroniona gałąź" wtedy nie było).
+      await expect(page.getByTestId('coordination-missing-currents')).toHaveCount(0);
       const uruchom = page.getByTestId('run-analysis-button');
       await expect(uruchom).toBeEnabled();
       await uruchom.click();

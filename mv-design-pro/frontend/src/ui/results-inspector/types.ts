@@ -130,11 +130,21 @@ export interface BranchResultRow {
   name: string;
   from_bus: string;
   to_bus: string;
+  /** Prąd zacisku początkowego (`od`) [A]. */
   i_a: number | null;
+  /**
+   * Prąd zacisku końcowego (`do`) [A] — pole ADDYTYWNE kontraktu wiersza gałęzi
+   * (decyzja O-51, klasa P9): gałąź z susceptancją albo z przekładnią ma na końcach
+   * inne prądy. Opcjonalne tylko dla odpowiedzi sprzed pola; `null` = brak danej.
+   */
+  i_do_a?: number | null;
   s_mva: number | null;
   p_mw: number | null;
   q_mvar: number | null;
+  /** Obciążenie z większego ilorazu prąd zacisku / prąd znamionowy zacisku [%]. */
   loading_pct: number | null;
+  /** Powód braku obciążenia (addytywne; `null`, gdy obciążenie policzono). */
+  loading_powod_braku_pl?: string | null;
   flags: string[];
 }
 
@@ -528,7 +538,8 @@ export const TRACE_VALUE_LABELS: Record<string, string> = {
   ikss_ka: 'Prąd zwarciowy początkowy Ik"',
   ip_ka: 'Prąd udarowy ip',
   ith_ka: 'Prąd cieplny Ith',
-  i_a: 'Prąd',
+  i_a: 'Prąd zacisku początkowego',
+  i_do_a: 'Prąd zacisku końcowego',
   // Voltages
   un_kv: 'Napięcie znamionowe',
   u_kv: 'Napięcie',

@@ -86,8 +86,8 @@ def test_happy_path_csv(app_client) -> None:
     wezel = _pierwszy_wezel(run_id)
     model_kv = round(wezel["u_pu"] * wezel["un_kv"], 3)
     csv_text = (
-        "element_ref;wielkosc;wartosc;jednostka\n"
-        f"{wezel['element_id']};U;{str(model_kv).replace('.', ',')};kV\n"
+        "element_ref;wielkosc;wartosc;jednostka;zacisk\n"
+        f"{wezel['element_id']};U;{str(model_kv).replace('.', ',')};kV;\n"
     )
     resp = app_client.post(
         AS_BUILT,
@@ -176,10 +176,106 @@ def test_brak_tolerancji_422(app_client) -> None:
 
 def test_blad_csv_numer_wiersza_422(app_client) -> None:
     run_id = _pf_run_id()
-    csv_text = "element_ref;wielkosc;wartosc;jednostka\nbus_a;U;abc;kV\n"
+    csv_text = "element_ref;wielkosc;wartosc;jednostka;zacisk\nbus_a;U;abc;kV;\n"
     resp = app_client.post(
         AS_BUILT,
         json={"run_id": str(run_id), "csv": csv_text, "tolerancje": {"napiecie_pct": 1.0}},
     )
     assert resp.status_code == 422
     assert "Wiersz 2 CSV" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Decyzja O-51 (klasa P9, miejsce 12): miejsce pomiaru mocy gałęzi w rekordzie
+# ---------------------------------------------------------------------------
+
+
+def _pierwsza_galaz(run_id):
+    from enm.canonical_analysis import build_branch_results
+
+    run = get_run(run_id)
+    return next(r for r in build_branch_results(run)["rows"] if r.get("p_to_mw") is not None)
+
+
+@pytest.mark.parametrize("zacisk", ["od", "do"])
+def test_pomiar_mocy_z_zaciskiem_porownuje_z_tym_zaciskiem(app_client, zacisk: str) -> None:
+    run_id = _pf_run_id()
+    galaz = _pierwsza_galaz(run_id)
+    model = galaz["p_mw"] if zacisk == "od" else galaz["p_to_mw"]
+    resp = app_client.post(
+        AS_BUILT,
+        json={
+            "run_id": str(run_id),
+            "pomiary": [
+                {
+                    "element_ref": galaz["element_id"],
+                    "wielkosc": "P",
+                    "wartosc": model,
+                    "jednostka": "MW",
+                    "zacisk": zacisk,
+                }
+            ],
+            "tolerancje": {"moc_pct": 1.0},
+        },
+    )
+    assert resp.status_code == 200
+    wiersz = resp.json()["wiersze"][0]
+    assert wiersz["zacisk"] == zacisk
+    assert wiersz["werdykt"] == "w tolerancji"
+    assert wiersz["wartosc_model"] == pytest.approx(model, abs=1e-6)
+
+
+def test_pomiar_mocy_bez_zacisku_to_odmowa_nazwana_w_wierszu(app_client) -> None:
+    run_id = _pf_run_id()
+    galaz = _pierwsza_galaz(run_id)
+    resp = app_client.post(
+        AS_BUILT,
+        json={
+            "run_id": str(run_id),
+            "pomiary": [
+                {
+                    "element_ref": galaz["element_id"],
+                    "wielkosc": "P",
+                    "wartosc": galaz["p_mw"],
+                    "jednostka": "MW",
+                }
+            ],
+            "tolerancje": {"moc_pct": 1.0},
+        },
+    )
+    assert resp.status_code == 200
+    wiersz = resp.json()["wiersze"][0]
+    assert wiersz["werdykt"] == "brak miejsca pomiaru"
+    assert wiersz["kod_odmowy"] == "analysis.as_built_measurement_terminal_missing"
+    assert resp.json()["podsumowanie"]["brak_miejsca_pomiaru"] == 1
+
+
+def test_zacisk_spoza_literalu_to_422_walidacji(app_client) -> None:
+    run_id = _pf_run_id()
+    resp = app_client.post(
+        AS_BUILT,
+        json={
+            "run_id": str(run_id),
+            "pomiary": [
+                {
+                    "element_ref": "x",
+                    "wielkosc": "P",
+                    "wartosc": 1.0,
+                    "jednostka": "MW",
+                    "zacisk": "srodek",
+                }
+            ],
+            "tolerancje": {"moc_pct": 1.0},
+        },
+    )
+    assert resp.status_code == 422
+
+
+def test_zaciski_galezi_biegu_z_etykietami(app_client) -> None:
+    run_id = _pf_run_id()
+    galaz = _pierwsza_galaz(run_id)
+    resp = app_client.get(f"/api/analysis-runs/{run_id}/zaciski-galezi")
+    assert resp.status_code == 200
+    zaciski = resp.json()["zaciski"][galaz["element_id"]]
+    assert zaciski["od"]["etykieta_pl"].startswith("Zacisk początkowy — szyna ")
+    assert zaciski["do"]["etykieta_pl"].startswith("Zacisk końcowy — szyna ")

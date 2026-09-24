@@ -26,13 +26,63 @@ const RUN_SC_MAX = {
   started_at: '2026-09-09T07:59:00Z',
 } as never;
 
+/** Odmowa bez wskazania — tekst z rekordu backendu (kanon kodów gotowości). */
+const ODMOWA_BRAK_WSKAZANIA = {
+  kod: 'protection.relay_terminal_indication_missing',
+  powod_pl:
+    'Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie — wskaż zacisk '
+    + 'początkowy albo końcowy — gałąź ln1: Zacisk początkowy — szyna GPZ SN albo '
+    + 'Zacisk końcowy — szyna Stacja A.',
+};
+
+function zaciski(od: string, doSzyna: string) {
+  return {
+    od: { szyna_ref: od, etykieta_pl: `Zacisk początkowy — szyna ${od}` },
+    do: { szyna_ref: doSzyna, etykieta_pl: `Zacisk końcowy — szyna ${doSzyna}` },
+  };
+}
+
 const DOSTEPNOSC_OK = {
   run_id: 'run-sc-max',
   dostepny: true,
   powod_pl: null,
   linie: [
-    { line_id: 'ln1', nazwa: 'Linia GPZ – Stacja A', nastepne_szyny_kandydujace: ['b_b'] },
-    { line_id: 'ln2', nazwa: 'Linia Stacja A – Stacja B', nastepne_szyny_kandydujace: [] },
+    {
+      // Model milczy — wymagany wybór zacisku; kandydaci osobno dla każdego zacisku.
+      line_id: 'ln1',
+      nazwa: 'Linia GPZ – Stacja A',
+      zacisk_z_modelu: null,
+      wymaga_wskazania_zacisku: true,
+      zaciski_dozwolone: ['od', 'do'],
+      odmowa_zacisku: ODMOWA_BRAK_WSKAZANIA,
+      zaciski: zaciski('GPZ SN', 'Stacja A'),
+      nastepne_szyny_wg_zacisku: { od: ['b_b'], do: [] },
+    },
+    {
+      // Model rozstrzyga (zabezpieczenie w szeregu z zaciskiem `od`) — tylko do odczytu.
+      line_id: 'ln2',
+      nazwa: 'Linia Stacja A – Stacja B',
+      zacisk_z_modelu: 'od',
+      wymaga_wskazania_zacisku: false,
+      zaciski_dozwolone: ['od'],
+      odmowa_zacisku: null,
+      zaciski: zaciski('Stacja A', 'Stacja B'),
+      nastepne_szyny_wg_zacisku: { od: ['b_c'], do: [] },
+    },
+    {
+      // Pętla: wyłącznik w szeregu z oboma zaciskami — brak dozwolonego zacisku.
+      line_id: 'ln3',
+      nazwa: 'Linia z pętlą',
+      zacisk_z_modelu: null,
+      wymaga_wskazania_zacisku: false,
+      zaciski_dozwolone: [],
+      odmowa_zacisku: {
+        kod: 'protection.relay_terminal_breaker_loop',
+        powod_pl: 'Wyłącznik z przypiętym zabezpieczeniem stoi w szeregu z oboma zaciskami.',
+      },
+      zaciski: zaciski('Stacja B', 'Stacja C'),
+      nastepne_szyny_wg_zacisku: { od: [], do: [] },
+    },
   ],
 };
 
@@ -89,6 +139,8 @@ const WYNIK_NASTAW = {
     c_min: 1.0,
     line_id: 'ln1',
     next_bus_id: 'b_b',
+    zacisk_zabezpieczenia: 'od',
+    zrodlo_zacisku: 'wskazanie',
     project_name: 'Projekt testowy',
     case_name: 'case-1',
     line_name: 'Linia GPZ – Stacja A',
@@ -263,7 +315,7 @@ describe('SekcjaNastaw — brak kandydatów (dostępność bez linii)', () => {
 });
 
 describe('SekcjaNastaw — wynik', () => {
-  it('wybór odcinka i szyny (native), policzenie nastaw, tabela wyniku widoczna', async () => {
+  it('wybór odcinka, zacisku i szyny (native), policzenie nastaw, tabela wyniku widoczna', async () => {
     ustawKontekst();
     useExecutionRunsStore.setState({ runs: [RUN_SC_MAX] });
     mockDomyslny();
@@ -274,7 +326,15 @@ describe('SekcjaNastaw — wynik', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
 
     await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln1');
+    // Model milczy: liczenie zablokowane z powodem z rekordu odmowy backendu.
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-policz')).toBeDisabled();
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-policz-powod').textContent).toBe(
+      ODMOWA_BRAK_WSKAZANIA.powod_pl,
+    );
+    expect(screen.queryByTestId('mvd-koordynacja-nastawy-select-szyna')).toBeNull();
+    await user.click(screen.getByLabelText('Zacisk początkowy — szyna GPZ SN'));
     await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-szyna'), 'b_b');
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-policz')).toBeEnabled();
     await user.click(screen.getByTestId('mvd-koordynacja-nastawy-policz'));
 
     await waitFor(() =>
@@ -294,6 +354,55 @@ describe('SekcjaNastaw — wynik', () => {
     expect(url.searchParams.get('linia')).toBe('ln1');
     expect(url.searchParams.get('nastepna_szyna')).toBe('b_b');
     expect(url.searchParams.get('c_min')).toBe('1');
+    expect(url.searchParams.get('zacisk_zabezpieczenia')).toBe('od');
+    // Miejsce zabezpieczenia w wyniku — etykieta z backendu i źródło.
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-wynik-zacisk').textContent).toContain(
+      'Zacisk początkowy — szyna GPZ SN',
+    );
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-pobierz-zip').getAttribute('href')).toContain(
+      'zacisk_zabezpieczenia=od',
+    );
+  });
+
+  it('model rozstrzyga zacisk: tylko do odczytu, bez parametru wskazania w zapytaniu', async () => {
+    ustawKontekst();
+    useExecutionRunsStore.setState({ runs: [RUN_SC_MAX] });
+    mockDomyslny();
+    const user = userEvent.setup();
+
+    render(<SekcjaNastaw caseId="case-1" />);
+    await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln2');
+
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-zacisk-z-modelu').textContent).toContain(
+      'Zacisk początkowy — szyna Stacja A',
+    );
+    expect(screen.queryByRole('radio')).toBeNull();
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-szyna'), 'b_c');
+    await user.click(screen.getByTestId('mvd-koordynacja-nastawy-policz'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-koordynacja-nastawy-wynik')).toBeInTheDocument(),
+    );
+    const wywolanie = fetchMock.mock.calls.find(([u]) => String(u).includes('/nastawy?'));
+    const url = new URL(String(wywolanie?.[0]), 'http://localhost');
+    expect(url.searchParams.has('zacisk_zabezpieczenia')).toBe(false);
+  });
+
+  it('pętla wyłącznika (brak dozwolonego zacisku): odmowa z rekordu, liczenie zablokowane', async () => {
+    ustawKontekst();
+    useExecutionRunsStore.setState({ runs: [RUN_SC_MAX] });
+    mockDomyslny();
+    const user = userEvent.setup();
+
+    render(<SekcjaNastaw caseId="case-1" />);
+    await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln3');
+
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-zacisk-odmowa').textContent).toContain(
+      'w szeregu z oboma zaciskami',
+    );
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-policz')).toBeDisabled();
   });
 
   it('odcinek bez gałęzi w dół pokazuje uczciwy powód zamiast pustego selecta szyny', async () => {
@@ -305,10 +414,13 @@ describe('SekcjaNastaw — wynik', () => {
     render(<SekcjaNastaw caseId="case-1" />);
     await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
 
-    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln2');
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln1');
+    // Zacisk końcowy: za końcem odcinka (szyna GPZ) nie ma kolejnej gałęzi.
+    await user.click(screen.getByLabelText('Zacisk końcowy — szyna Stacja A'));
 
     expect(screen.getByTestId('mvd-koordynacja-nastawy-brak-szyn')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-koordynacja-nastawy-select-szyna')).toBeNull();
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-policz')).toBeDisabled();
   });
 
   it('422 z backendu pokazuje treść odpowiedzi, nie ogólnik', async () => {
@@ -324,10 +436,16 @@ describe('SekcjaNastaw — wynik', () => {
         return { ok: true, status: 200, json: async () => [] } as Response;
       }
       if (url.includes('/nastawy?')) {
+        // Odmowa bramy nastaw: `{kod, powod_pl}` (kod `null` poza odmowami zacisku).
         return {
           ok: false,
           status: 422,
-          json: async () => ({ detail: 'Element ln1 nie jest linią z kompletem danych katalogowych.' }),
+          json: async () => ({
+            detail: {
+              kod: null,
+              powod_pl: 'Element ln1 nie jest linią z kompletem danych katalogowych.',
+            },
+          }),
         } as Response;
       }
       throw new Error(`Niespodziewane wywołanie: ${url}`);
@@ -337,6 +455,7 @@ describe('SekcjaNastaw — wynik', () => {
     render(<SekcjaNastaw caseId="case-1" />);
     await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
     await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln1');
+    await user.click(screen.getByLabelText('Zacisk początkowy — szyna GPZ SN'));
     await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-szyna'), 'b_b');
     await user.click(screen.getByTestId('mvd-koordynacja-nastawy-policz'));
 
@@ -357,6 +476,7 @@ describe('SekcjaNastaw — dopasowanie do aparatu', () => {
     render(<SekcjaNastaw caseId="case-1" />);
     await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
     await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln1');
+    await user.click(screen.getByLabelText('Zacisk początkowy — szyna GPZ SN'));
     await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-szyna'), 'b_b');
     await user.click(screen.getByTestId('mvd-koordynacja-nastawy-policz'));
     await waitFor(() =>

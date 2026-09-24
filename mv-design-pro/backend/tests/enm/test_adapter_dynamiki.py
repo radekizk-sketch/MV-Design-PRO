@@ -16,7 +16,9 @@ odmowa działa" nie dowodzi, że działają pozostałe.
 
 from __future__ import annotations
 
+import cmath
 import copy
+import math
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -49,7 +51,14 @@ from enm.assembler import czestotliwosc_studium_hz, zbuduj_graf, zloz_wejscie_ro
 from enm.canonical_analysis import CanonicalRun, _execute_power_flow
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
-from network_model.solvers.dynamika import OdmowaDynamiki, SilnikDynamiki, zloz_model_sieci
+from network_model.solvers.dynamika import (
+    HarmonogramDynamiki,
+    OdmowaDynamiki,
+    SilnikDynamiki,
+    ZmianaGalezi,
+    ZmianaOdsprzegu,
+    zloz_model_sieci,
+)
 from network_model.solvers.power_flow_newton_internal import build_slack_island, build_ybus_pu
 
 from tests.golden.enm_builders.dynamika_rms import build_dynamika_rms_enm
@@ -82,6 +91,7 @@ SCENARIUSZ: dict[str, Any] = {
             "r_f_ohm": 0.0,
             "x_f_ohm": 1.0,
             "t_usuniecia_s": 0.2,
+            "sposob_usuniecia": "samoczynne",
         },
         {
             "rodzaj": "skok_obciazenia",
@@ -94,6 +104,16 @@ SCENARIUSZ: dict[str, Any] = {
 }
 
 HASH_MIGAWKI = "sha256:g16"
+
+
+def _po_zdarzeniu(wynik: Any, i: int, t_zdarzenia: float) -> bool:
+    """Czy próbka `i` opisuje stan PO zdarzeniu w chwili `t_zdarzenia` (strona `P` albo później).
+
+    Chwila zdarzenia ma parę próbek `L`/`P` (karta AB-1b.1 §0 pkt 6), więc o przynależności do
+    okna decyduje strona próbki, nie sama chwila.
+    """
+    t = wynik.os_czasu_s[i]
+    return t > t_zdarzenia or (t == t_zdarzenia and wynik.strona_probki[i] == "P")
 
 
 def migawka() -> dict[str, Any]:
@@ -251,13 +271,28 @@ class TestParytetYbus:
         # normy macierzy (~1,6e4 dla tej sieci), nie różnicą modelu.
         assert najwieksza_roznica < 1.0e-9, f"rozjazd Y-bus: {najwieksza_roznica}"
 
-    def test_lacznik_zamkniety_wchodzi_a_otwarty_nie(self, snapshot_g16: dict[str, Any]) -> None:
+    def test_lacznik_otwarty_i_galaz_poza_ruchem_sa_w_rdzeniu_jako_NIEAKTYWNE(
+        self, snapshot_g16: dict[str, Any]
+    ) -> None:
+        """Przepisany wg karty AB-1b.1 (par. 0 pkt 1) — INTENCJA ZACHOWANA.
+
+        Dawniej: „łącznik otwarty i gałąź poza ruchem nie wchodzą do macierzy" przypięte
+        ich NIEOBECNOŚCIĄ w widoku. Nieobecność czyniła je nieosiągalnymi dla zdarzenia
+        załączenia (W6-A Z-03). Intencja — element otwarty NIE PRZEWODZI w t = 0 — jest
+        teraz przypięta flagą `aktywna_na_starcie=False` (macierz t = 0 bez zmian pilnuje
+        `test_ybus_dynamiki_rowna_ybus_rozplywu`), a element jest w widoku.
+        """
         widok = zloz_widok_sieci(snapshot_g16, zbuduj_graf(snapshot_g16), base_mva=100.0)
-        identy = {galaz.ident for galaz in widok.galezie}
-        assert "spr-szyn" in identy, "łącznik ZAMKNIĘTY musi wejść do macierzy (zwarcie szyn)"
-        assert "odl-rezerwa" not in identy, "łącznik OTWARTY nie przewodzi — nie ma go w macierzy"
-        assert "kab-odplyw" in identy, "kabel w ruchu wchodzi do macierzy"
-        assert "kab-rezerwa" not in identy, "gałąź POZA RUCHEM nie wchodzi do macierzy"
+        po_identach = {galaz.ident: galaz for galaz in widok.galezie}
+        assert po_identach["spr-szyn"].aktywna_na_starcie is True
+        assert po_identach["spr-szyn"].rodzaj == "lacznik"
+        assert po_identach["odl-rezerwa"].aktywna_na_starcie is False
+        assert po_identach["odl-rezerwa"].rodzaj == "lacznik"
+        assert po_identach["kab-odplyw"].aktywna_na_starcie is True
+        assert po_identach["kab-odplyw"].rodzaj == "kabel"
+        assert po_identach["kab-rezerwa"].aktywna_na_starcie is False
+        assert po_identach["lin-oze"].rodzaj == "linia"
+        assert po_identach["tr-gpz"].rodzaj == "transformator"
 
     def test_przekladnia_zespolona_transformatora(self, snapshot_g16: dict[str, Any]) -> None:
         """Moduł ≠ 1 (zaczep + przekładnia poza-znamionowa) i kąt ≠ 0 (Dyn11) RAZEM."""
@@ -278,13 +313,21 @@ class TestParytetYbus:
     def test_bateria_zalaczona_jest_odsprzegiem_a_wylaczona_nie(
         self, snapshot_g16: dict[str, Any]
     ) -> None:
+        """Przepisany wg karty AB-1b.1 — bateria wyłączona jest odsprzęgiem NIEAKTYWNYM.
+
+        Intencja (bateria wyłączona nie wchodzi do macierzy t = 0) przypięta flagą, a nie
+        nieobecnością: nieobecna bateria nie mogła zostać załączona zdarzeniem.
+        """
         widok = zloz_widok_sieci(snapshot_g16, zbuduj_graf(snapshot_g16), base_mva=100.0)
-        (bateria,) = widok.odsprzegi
+        bateria, wylaczona = widok.odsprzegi
         assert bateria.ident == "bat-kompensacja"
         assert bateria.wezel == "b-sn-a"
         assert bateria.g_pu == 0.0
         assert bateria.b_pu == pytest.approx(2.0 / 100.0)
-        assert "bat-wylaczona" not in {odsprzeg.ident for odsprzeg in widok.odsprzegi}
+        assert bateria.aktywna_na_starcie is True
+        assert wylaczona.ident == "bat-wylaczona"
+        assert wylaczona.aktywna_na_starcie is False
+        assert wylaczona.b_pu == pytest.approx(1.5 / 100.0)
 
     def test_zloz_widok_sieci_odmawia_galezi_do_nieistniejacej_szyny(
         self, snapshot_g16: dict[str, Any]
@@ -309,6 +352,388 @@ class TestParytetYbus:
         with pytest.raises(OdmowaWejsciaDynamiki) as blad:
             zloz_widok_sieci(snapshot, zbuduj_graf(snapshot_g16), base_mva=100.0)
         assert blad.value.kod == KOD_ELEMENT_BEZ_SZYNY
+
+
+# ---------------------------------------------------------------------------
+# Aktywność elementów (karta AB-1b.1, P2, twierdzenie D-19)
+# ---------------------------------------------------------------------------
+
+
+def _jako_bezpiecznik(snapshot: dict[str, Any], ref_id: str) -> dict[str, Any]:
+    """Ta sama sieć, w której wskazany łącznik jest BEZPIECZNIKIEM (inny typ ENM)."""
+    wynik = copy.deepcopy(snapshot)
+    for galaz in wynik["branches"]:
+        if galaz["ref_id"] == ref_id:
+            galaz["type"] = "fuse"
+            galaz["rated_current_a"] = 200.0
+            galaz["rated_voltage_kv"] = 15.0
+    return EnergyNetworkModel.model_validate(wynik).model_dump(mode="json")
+
+
+def _ze_statusem(snapshot: dict[str, Any], ref_id: str, status: str) -> dict[str, Any]:
+    wynik = copy.deepcopy(snapshot)
+    for kolekcja in ("branches", "shunt_capacitors"):
+        for element in wynik[kolekcja]:
+            if element["ref_id"] == ref_id:
+                element["status"] = status
+    return wynik
+
+
+class TestAktywnoscElementow:
+    """D-19: element nieaktywny w t = 0 i zamknięty zdarzeniem daje macierz ROZPŁYWU
+    migawki z tym elementem zamkniętym — wyrocznia niezależna: `build_ybus_pu` (FROZEN).
+
+    Iloczyn cech na sieci G16: łącznik otwarty (odłącznik), bezpiecznik otwarty (ta
+    sama gałąź jako `fuse`), kabel poza ruchem, bateria wyłączona. Złożenie po
+    zdarzeniu idzie DROGĄ SILNIKA: `zbuduj_harmonogram` → `zastosuj` na stanie
+    początkowym → `zloz_model_sieci` ze zbiorami aktywności stanu.
+    """
+
+    @staticmethod
+    def _macierz_po_zdarzeniu(snapshot: dict[str, Any], zdarzenie: Any) -> Any:
+        from network_model.solvers.dynamika.zdarzenia import (
+            stan_poczatkowy_scenariusza,
+            zastosuj,
+            zbuduj_harmonogram,
+        )
+
+        widok = zloz_widok_sieci(snapshot, zbuduj_graf(snapshot), base_mva=100.0)
+        (wpis,) = zbuduj_harmonogram(
+            HarmonogramDynamiki((zdarzenie,)),
+            wezly=widok.wezly,
+            galezie=widok.galezie,
+            odsprzegi=widok.odsprzegi,
+            odbiory=widok.odbiory,
+            urzadzenia=(),
+            s_bazowa_mva=100.0,
+            horyzont_s=1.0,
+        )
+        stan = zastosuj(
+            wpis, stan_poczatkowy_scenariusza(widok.galezie, widok.odsprzegi, widok.odbiory)
+        )
+        return zloz_model_sieci(
+            widok.wezly,
+            widok.galezie,
+            widok.odsprzegi,
+            galezie_aktywne=stan.galezie_aktywne,
+            odsprzegi_aktywne=stan.odsprzegi_aktywne,
+        )
+
+    @pytest.mark.parametrize(
+        ("ref_id", "bezpiecznik"),
+        [
+            ("odl-rezerwa", False),
+            ("odl-rezerwa", True),
+            ("kab-rezerwa", False),
+            ("bat-wylaczona", False),
+        ],
+        ids=["lacznik", "bezpiecznik", "kabel_poza_ruchem", "bateria"],
+    )
+    def test_ybus_po_zalaczeniu_rowna_ybus_rozplywu_z_elementem_zamknietym(
+        self, snapshot_g16: dict[str, Any], ref_id: str, bezpiecznik: bool
+    ) -> None:
+        snapshot = _jako_bezpiecznik(snapshot_g16, ref_id) if bezpiecznik else snapshot_g16
+        zdarzenie = (
+            ZmianaOdsprzegu(0.1, ref_id, True)
+            if ref_id.startswith("bat")
+            else ZmianaGalezi(0.1, ref_id, True)
+        )
+        model = self._macierz_po_zdarzeniu(snapshot, zdarzenie)
+        ybus_pf, indeks_pf, _ = TestParytetYbus()._macierze(
+            _ze_statusem(snapshot, ref_id, "closed")
+        )
+        ybus_dyn = model.ybus.toarray()
+        najwieksza = max(
+            abs(
+                ybus_dyn[i, j]
+                - ybus_pf[indeks_pf[ref_to_graph_id(wi)], indeks_pf[ref_to_graph_id(wj)]]
+            )
+            for i, wi in enumerate(model.identy_wezlow)
+            for j, wj in enumerate(model.identy_wezlow)
+        )
+        # Ten sam próg i to samo uzasadnienie, co `test_ybus_dynamiki_rowna_ybus_rozplywu`.
+        assert najwieksza < 1.0e-9, f"rozjazd Y-bus po załączeniu {ref_id}: {najwieksza}"
+
+    def test_ybus_t0_z_elementami_nieaktywnymi_jest_bitowo_ta_sama(
+        self, snapshot_g16: dict[str, Any]
+    ) -> None:
+        """Elementy nieaktywne w widoku nie zmieniają macierzy t = 0 ani o bit."""
+        widok = zloz_widok_sieci(snapshot_g16, zbuduj_graf(snapshot_g16), base_mva=100.0)
+        z_nieaktywnymi = zloz_model_sieci(widok.wezly, widok.galezie, widok.odsprzegi)
+        bez_nieaktywnych = zloz_model_sieci(
+            widok.wezly,
+            tuple(g for g in widok.galezie if g.aktywna_na_starcie),
+            tuple(o for o in widok.odsprzegi if o.aktywna_na_starcie),
+        )
+        assert (z_nieaktywnymi.ybus != bez_nieaktywnych.ybus).nnz == 0
+
+    @pytest.mark.parametrize(
+        "zdarzenia",
+        [
+            [{"rodzaj": "zalaczenie_galezi", "t_s": 0.1, "element_ref": "odl-rezerwa"}],
+            [
+                {"rodzaj": "zalaczenie_galezi", "t_s": 0.1, "element_ref": "odl-rezerwa"},
+                {"rodzaj": "wylaczenie_galezi", "t_s": 0.2, "element_ref": "kab-odplyw"},
+            ],
+            [
+                {"rodzaj": "wylaczenie_galezi", "t_s": 0.1, "element_ref": "spr-szyn"},
+                {"rodzaj": "zalaczenie_galezi", "t_s": 0.2, "element_ref": "spr-szyn"},
+            ],
+            [
+                {"rodzaj": "wylaczenie_galezi", "t_s": 0.1, "element_ref": "bat-kompensacja"},
+                {"rodzaj": "zalaczenie_galezi", "t_s": 0.2, "element_ref": "bat-wylaczona"},
+            ],
+            [
+                {"rodzaj": "odlaczenie_odbioru", "t_s": 0.1, "ref_id": "odb-odplyw"},
+                {"rodzaj": "zalaczenie_odbioru", "t_s": 0.2, "ref_id": "odb-odplyw"},
+            ],
+        ],
+        ids=[
+            "zamkniecie_lacznika_rezerwowego",
+            "zamknij_przed_otwarciem",
+            "sprzeglo_otwarte_i_zamkniete",
+            "baterie_zdarzeniem_galezi",
+            "odbior_odlaczony_i_zalaczony",
+        ],
+    )
+    def test_laczenia_na_sciezce_uzytkownika(
+        self,
+        snapshot_g16: dict[str, Any],
+        punkt_g16: PunktPracyRozplywu,
+        zdarzenia: list[dict[str, Any]],
+    ) -> None:
+        """Rozpływ → adapter → rdzeń: każde łączenie wykonane, zero odmów.
+
+        Pierwszy przypadek jest detektorem mutacji M27 (adapter znów porzuca gałąź
+        nieaktywną): porzucony łącznik rezerwowy kończył bieg
+        `dynamika.zdarzenie_bez_elementu`.
+        """
+        scenariusz = {"horyzont_s": 0.3, "krok_wyjscia_s": 0.02, "zdarzenia": zdarzenia}
+        wynik = SilnikDynamiki(
+            wejscie=zloz(snapshot_g16, opcje(dynamika=scenariusz), punkt_g16)
+        ).uruchom()
+        oczekiwane = {
+            ("wylaczenie_galezi", "bat-kompensacja"): "wylaczenie_odsprzegu",
+            ("zalaczenie_galezi", "bat-wylaczona"): "zalaczenie_odsprzegu",
+        }
+        assert [(z.rodzaj, z.ref) for z in wynik.zdarzenia_wykonane] == [
+            (
+                oczekiwane.get((z["rodzaj"], z.get("element_ref")), z["rodzaj"]),
+                z.get("element_ref", z.get("ref_id")),
+            )
+            for z in zdarzenia
+        ]
+        assert wynik.wlasnosci.max_residuum_g < 1e-8
+
+    def test_zdarzenie_laczeniowe_galezi_na_generatorze_odrzuca_walidacja_danych(
+        self, snapshot_g16: dict[str, Any]
+    ) -> None:
+        """Predykat `_refy_zdarzenia` niesie DOZWOLONE kolekcje, nie tylko istnienie refu."""
+        from enm.scenariusze import (
+            OperatingScenario,
+            RodzajScenariusza,
+            ScenariuszDynamiczny,
+            ScenariuszNieprzystajeError,
+            WylaczenieGalezi,
+            apply_scenario,
+        )
+
+        scenariusz = OperatingScenario(
+            scenario_id="aktywnosc",
+            name="Łączenie w złej roli",
+            kind=RodzajScenariusza.CUSTOM,
+            dynamika=ScenariuszDynamiczny(
+                horyzont_s=0.3,
+                krok_wyjscia_s=0.02,
+                zdarzenia=(WylaczenieGalezi(t_s=0.1, element_ref="gen-pv"),),
+            ),
+        )
+        with pytest.raises(ScenariuszNieprzystajeError, match="generators"):
+            apply_scenario(EnergyNetworkModel.model_validate(snapshot_g16), scenariusz)
+
+
+class TestObszarBeznapieciowy:
+    """D-16 na ścieżce użytkownika: SZR z przerwą beznapięciową i węzeł martwy od t = 0.
+
+    Karta AB-1b.1 §0 pkt 2. Przed kartą oba scenariusze kończyły się odmową: SZR —
+    `dynamika.reinicjalizacja_niezbiezna` z przyczyną `dynamika.wyspa_bez_zrodla`
+    (odcinek z odbiorem, bez źródła, w chwili przerwy), węzeł martwy od t = 0 —
+    odmową adaptera `dynamika.punkt_pracy_niepelny` (węzły nierozwiązane rozpływu).
+    """
+
+    SCENARIUSZ_SZR: dict[str, Any] = {
+        "horyzont_s": 0.6,
+        "krok_wyjscia_s": 0.02,
+        "zdarzenia": [
+            {"rodzaj": "wylaczenie_galezi", "t_s": 0.1, "element_ref": "kab-odplyw"},
+            {"rodzaj": "odlaczenie_zrodla", "t_s": 0.1, "ref_id": "gen-pv"},
+            {"rodzaj": "zalaczenie_galezi", "t_s": 0.4, "element_ref": "odl-rezerwa"},
+        ],
+    }
+
+    def test_szr_z_przerwa_beznapieciowa(
+        self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
+    ) -> None:
+        wynik = SilnikDynamiki(
+            wejscie=zloz(snapshot_g16, opcje(dynamika=self.SCENARIUSZ_SZR), punkt_g16)
+        ).uruchom()
+        odciecie = [z for z in wynik.zdarzenia_wykonane if z.t_wykonany_s == 0.1]
+        zasilenie = [z for z in wynik.zdarzenia_wykonane if z.t_wykonany_s == 0.4]
+        assert {z.obszary_odciete for z in odciecie} == {("b-odplyw", "b-oze")}
+        assert {z.odbiory_odciete for z in odciecie} == {(("odb-odplyw", complex(0.03, 0.008)),)}
+        assert {z.obszary_zasilone_ponownie for z in zasilenie} == {("b-odplyw", "b-oze")}
+        for i in range(len(wynik.os_czasu_s)):
+            # Okno po STRONIE próbki (karta AB-1b.1 §0 pkt 6): `P` chwili odcięcia i `L`
+            # chwili ponownego zasilenia należą do przerwy beznapięciowej.
+            if _po_zdarzeniu(wynik, i, 0.1) and not _po_zdarzeniu(wynik, i, 0.4):
+                assert wynik.probki["u_pu@b-odplyw"][i] == 0.0
+                assert wynik.probki["u_pu@b-oze"][i] == 0.0
+                # Brak zatrucia: węzeł żywy zachowuje częstotliwość, gdy obszar ma V = 0.
+                assert wynik.probki["jakosc_f@b-sn-a"][i] != 2.0
+            elif _po_zdarzeniu(wynik, i, 0.4):
+                assert wynik.probki["u_pu@b-odplyw"][i] > 0.8
+        from network_model.solvers.dynamika.silnik import (
+            ZALOZENIE_OBSZARU_BEZNAPIECIOWEGO,
+            ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA,
+        )
+
+        assert ZALOZENIE_OBSZARU_BEZNAPIECIOWEGO in wynik.zalozenia
+        assert ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA in wynik.zalozenia
+        assert wynik.wlasnosci.max_residuum_g < 1e-8
+
+    def test_wezel_martwy_od_t0_zasilany_zamknieciem_lacznika(self) -> None:
+        """Odcinek {b-odplyw, b-oze} bez źródła i bez połączenia: rozpływ go nie rozwiązuje,
+        rdzeń klasyfikuje go jako beznapięciowy od t = 0, zamknięcie `odl-rezerwa` zasila."""
+        snapshot = migawka()
+        snapshot["generators"] = [g for g in snapshot["generators"] if g["ref_id"] != "gen-pv"]
+        for galaz in snapshot["branches"]:
+            if galaz["ref_id"] == "kab-odplyw":
+                galaz["status"] = "open"
+        bieg = _bieg_rozplywu(snapshot)
+        nierozwiazane = set(bieg.raw_result["result_v1"]["unsolved_node_ids"])
+        assert nierozwiazane == {ref_to_graph_id("b-odplyw"), ref_to_graph_id("b-oze")}
+        scenariusz = {
+            "horyzont_s": 0.3,
+            "krok_wyjscia_s": 0.02,
+            "zdarzenia": [
+                {"rodzaj": "zalaczenie_galezi", "t_s": 0.1, "element_ref": "odl-rezerwa"}
+            ],
+        }
+        wynik = SilnikDynamiki(
+            wejscie=zloz(snapshot, opcje(dynamika=scenariusz), punkt_pracy(snapshot, bieg))
+        ).uruchom()
+        assert wynik.slad_white_box["inicjalizacja"]["wezly_beznapieciowe"] == [
+            "b-odplyw",
+            "b-oze",
+        ]
+        (zdarzenie,) = wynik.zdarzenia_wykonane
+        assert zdarzenie.obszary_zasilone_ponownie == ("b-odplyw", "b-oze")
+        # Probka `P` chwili zamkniecia (stan po zdarzeniu); `L` tuz przed nia to jeszcze
+        # obszar beznapieciowy, wiec wchodzi do zakresu zer.
+        i = next(
+            k
+            for k, (t, strona) in enumerate(zip(wynik.os_czasu_s, wynik.strona_probki, strict=True))
+            if t == 0.1 and strona == "P"
+        )
+        assert all(u == 0.0 for u in wynik.probki["u_pu@b-odplyw"][:i])
+        assert wynik.probki["u_pu@b-odplyw"][-1] > 0.8
+
+
+class TestZwarcieWLinii:
+    """Zwarcie w linii/kablu `x*L` na ścieżce użytkownika (karta AB-1b.1 §0 pkt 5).
+
+    Kontrakt danych: `element_ref` + `polozenie_wzgledne` zamiast `bus_ref`; adapter
+    mapuje je na `ZwarcieGalezi`; rdzeń odmawia transformatorowi i łącznikowi (brak
+    długości elektrycznej), a walidacja danych odmawia elementowi spoza kolekcji gałęzi.
+    """
+
+    @staticmethod
+    def _scenariusz(element_ref: str) -> dict[str, Any]:
+        return {
+            "horyzont_s": 0.3,
+            "krok_wyjscia_s": 0.02,
+            "zdarzenia": [
+                {
+                    "rodzaj": "zwarcie",
+                    "t_s": 0.1,
+                    "element_ref": element_ref,
+                    "polozenie_wzgledne": 0.5,
+                    "typ": "3F",
+                    "r_f_ohm": 0.0,
+                    "x_f_ohm": 1.0,
+                    "t_usuniecia_s": 0.2,
+                    "sposob_usuniecia": "samoczynne",
+                }
+            ],
+        }
+
+    def test_zwarcie_w_kablu_na_sciezce_uzytkownika(
+        self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
+    ) -> None:
+        wynik = SilnikDynamiki(
+            wejscie=zloz(snapshot_g16, opcje(dynamika=self._scenariusz("kab-odplyw")), punkt_g16)
+        ).uruchom()
+        assert [(z.rodzaj, z.ref) for z in wynik.zdarzenia_wykonane] == [
+            ("zwarcie_galezi", "kab-odplyw"),
+            ("zdjecie_zwarcia_galezi", "kab-odplyw"),
+        ]
+        prad = wynik.probki["i_zwarcia_pu@kab-odplyw:x=0.5"]
+        for i in range(len(wynik.os_czasu_s)):
+            if _po_zdarzeniu(wynik, i, 0.1) and not _po_zdarzeniu(wynik, i, 0.2):
+                assert prad[i] > 0.0
+            else:
+                assert prad[i] == 0.0
+        assert any("kab-odplyw" in zdanie for zdanie in wynik.zalozenia)
+
+    @pytest.mark.parametrize("element_ref", ["tr-gpz", "spr-szyn"])
+    def test_zwarcie_w_transformatorze_albo_laczniku_odmawia_rdzen(
+        self,
+        snapshot_g16: dict[str, Any],
+        punkt_g16: PunktPracyRozplywu,
+        element_ref: str,
+    ) -> None:
+        with pytest.raises(OdmowaDynamiki) as blad:
+            SilnikDynamiki(
+                wejscie=zloz(snapshot_g16, opcje(dynamika=self._scenariusz(element_ref)), punkt_g16)
+            ).uruchom()
+        assert blad.value.kod == "dynamika.zwarcie_galezi_nieobslugiwane"
+        assert blad.value.szczegoly["galaz"] == element_ref
+
+    @pytest.mark.parametrize("element_ref", ["tr-gpz", "gen-pv", "odb-odplyw"])
+    def test_zwarcie_w_elemencie_spoza_galezi_odrzuca_walidacja_danych(
+        self, snapshot_g16: dict[str, Any], element_ref: str
+    ) -> None:
+        """Walidacja danych dopuszcza wyłącznie kolekcję `branches` (linie, kable, łączniki)."""
+        from enm.scenariusze import (
+            OperatingScenario,
+            RodzajScenariusza,
+            ScenariuszDynamiczny,
+            ScenariuszNieprzystajeError,
+            Zwarcie,
+            apply_scenario,
+        )
+
+        scenariusz = OperatingScenario(
+            scenario_id="zwarcie-w-linii",
+            name="Zwarcie w złym elemencie",
+            kind=RodzajScenariusza.CUSTOM,
+            dynamika=ScenariuszDynamiczny(
+                horyzont_s=0.3,
+                krok_wyjscia_s=0.02,
+                zdarzenia=(
+                    Zwarcie(
+                        t_s=0.1,
+                        element_ref=element_ref,
+                        polozenie_wzgledne=0.5,
+                        typ="3F",
+                        r_f_ohm=0.0,
+                        x_f_ohm=1.0,
+                    ),
+                ),
+            ),
+        )
+        with pytest.raises(ScenariuszNieprzystajeError):
+            apply_scenario(EnergyNetworkModel.model_validate(snapshot_g16), scenariusz)
 
 
 # ---------------------------------------------------------------------------
@@ -505,13 +930,13 @@ class TestBiegKoncaDoKonca:
         self, snapshot_g16: dict[str, Any], punkt_g16: PunktPracyRozplywu
     ) -> None:
         """Dwa niezależne biegi z tego samego wejścia — ładunek bit w bit ten sam."""
-        from network_model.solvers.dynamika import ladunek_resultset_dynamic_v1
+        from network_model.solvers.dynamika import ladunek_resultset_dynamic_v2
 
         pierwszy = SilnikDynamiki(wejscie=zloz(snapshot_g16, opcje(), punkt_g16)).uruchom()
         drugi = SilnikDynamiki(wejscie=zloz(snapshot_g16, opcje(), punkt_g16)).uruchom()
         assert pierwszy.tozsamosc == drugi.tozsamosc
-        ladunek_a = ladunek_resultset_dynamic_v1(pierwszy, run_id="bieg")
-        ladunek_b = ladunek_resultset_dynamic_v1(drugi, run_id="bieg")
+        ladunek_a = ladunek_resultset_dynamic_v2(pierwszy, run_id="bieg")
+        ladunek_b = ladunek_resultset_dynamic_v2(drugi, run_id="bieg")
         # `czas_obliczen_s` jest pomiarem zegara, nie wynikiem fizyki — poza porównaniem.
         for ladunek in (ladunek_a, ladunek_b):
             ladunek["wlasnosci_biegu"].pop("czas_obliczen_s")
@@ -596,22 +1021,53 @@ class TestOdmowyPunktuPracy:
             )
         assert blad.value.kod == KOD_PUNKT_PRACY_NIEPELNY
 
-    def test_wezly_nierozwiazane(
+    def test_wezel_nierozwiazany_ze_zrodlem_to_odmowa_przy_skladaniu_urzadzen(
         self, snapshot_g16: dict[str, Any], rozplyw_g16: CanonicalRun
     ) -> None:
+        """Wezel nierozwiazany Z urzadzeniem: odmowa `punkt_pracy_niepelny` z nazwa zrodla.
+
+        PRZEPISANY ŚWIADOMIE (karta AB-1b.1 §0 pkt 2). Dawniej adapter odmawial z gory
+        KAZDEMU wezlowi nierozwiazanemu, co czynilo niewykonalnym wezel martwy od t = 0
+        (odcinek zasilany dopiero zamknieciem lacznika). Intencja zachowana: wezel
+        nierozwiazany, do ktorego jest przylaczone ZRODLO, nadal konczy sie nazwana
+        odmowa adaptera (bez napiecia i mocy szyny urzadzenie nie ma stanu
+        poczatkowego) — tyle ze w miejscu, w ktorym brak ma skutek, i z nazwa zrodla.
+        """
         raw = copy.deepcopy(rozplyw_g16.raw_result)
         raw["result_v1"]["unsolved_node_ids"] = [ref_to_graph_id("b-oze")]
+        punkt = punkt_pracy_z_biegu_rozplywu(
+            run_id="r1",
+            analysis_type="PF",
+            status="FINISHED",
+            snapshot_hash=HASH_MIGAWKI,
+            raw_result=raw,
+            snapshot=snapshot_g16,
+            oczekiwany_snapshot_hash=HASH_MIGAWKI,
+        )
+        assert "b-oze" not in punkt.napiecia_pu
         with pytest.raises(OdmowaWejsciaDynamiki) as blad:
-            punkt_pracy_z_biegu_rozplywu(
-                run_id="r1",
-                analysis_type="PF",
-                status="FINISHED",
-                snapshot_hash=HASH_MIGAWKI,
-                raw_result=raw,
-                snapshot=snapshot_g16,
-                oczekiwany_snapshot_hash=HASH_MIGAWKI,
-            )
+            zloz(snapshot_g16, opcje(), punkt)
         assert blad.value.kod == KOD_PUNKT_PRACY_NIEPELNY
+        assert blad.value.elementy == ("gen-pv",)
+
+    def test_wezel_nierozwiazany_bez_zrodla_w_wyspie_zywej_odmawia_rdzen(
+        self, snapshot_g16: dict[str, Any], rozplyw_g16: CanonicalRun
+    ) -> None:
+        """`b-odplyw` (tylko odbior) polaczony z wyspa zywa: brak napiecia to odmowa rdzenia."""
+        raw = copy.deepcopy(rozplyw_g16.raw_result)
+        raw["result_v1"]["unsolved_node_ids"] = [ref_to_graph_id("b-odplyw")]
+        punkt = punkt_pracy_z_biegu_rozplywu(
+            run_id="r1",
+            analysis_type="PF",
+            status="FINISHED",
+            snapshot_hash=HASH_MIGAWKI,
+            raw_result=raw,
+            snapshot=snapshot_g16,
+            oczekiwany_snapshot_hash=HASH_MIGAWKI,
+        )
+        with pytest.raises(OdmowaDynamiki) as blad:
+            SilnikDynamiki(zloz(snapshot_g16, opcje(), punkt)).uruchom()
+        assert blad.value.kod == "dynamika.punkt_pracy_napiecie_missing"
 
     def test_szyna_bez_napiecia_w_wyniku(
         self, snapshot_g16: dict[str, Any], rozplyw_g16: CanonicalRun
@@ -1086,3 +1542,77 @@ def test_b8_parytet_chwili_zerowej_na_realnej_sciezce_produktu(
     assert oze["p_from_mw"] < 0.0 < oze["p_to_mw"], "brak przeplywu wstecznego w zakresie B-8"
     assert kabel["p_from_mw"] + kabel["p_to_mw"] > 1.0e-4, "brak strat czynnych w zakresie B-8"
     assert kabel["q_from_mvar"] + kabel["q_to_mvar"] < -1.0e-4, "brak susceptancji w zakresie B-8"
+
+
+def test_f14_probka_L_chwili_zerowej_z_fazorami_pradow_zgodna_z_rozplywem(
+    snapshot_g16: dict[str, Any],
+    rozplyw_g16: CanonicalRun,
+    punkt_g16: PunktPracyRozplywu,
+) -> None:
+    """F-14 w probce `L` zdarzenia w `t = 0` — z MODULEM I KATEM pradow obu zaciskow.
+
+    Zdarzenie w `t = 0` (karta AB-1b.1 §0 pkt 6): probka `L` tej chwili jest punktem pracy
+    PRZED zdarzeniem, czyli dokladnie stanem rozplywu. Prad zacisku z wyniku rozplywu to
+    `I = conj(S / V)` (moc strony i napiecie wezla tej strony, FROZEN `PowerFlowResultV1`),
+    porownany z modulem `i_*_pu@` i katem `i_*_kat_deg@` rdzenia — obie strony kazdej
+    galezi, w tym transformator z przesunieciem fazowym grupy i kabel z susceptancja.
+    """
+    scenariusz = {
+        "horyzont_s": 0.02,
+        "krok_wyjscia_s": 0.02,
+        "zdarzenia": [
+            {
+                "rodzaj": "zwarcie",
+                "t_s": 0.0,
+                "bus_ref": "b-sn-b",
+                "typ": "3F",
+                "r_f_ohm": 0.0,
+                "x_f_ohm": 1.0,
+                "t_usuniecia_s": 0.01,
+                "sposob_usuniecia": "samoczynne",
+            }
+        ],
+    }
+    wejscie = zloz(snapshot_g16, opcje(dynamika=scenariusz), punkt_g16)
+    wynik = SilnikDynamiki(wejscie=wejscie).uruchom()
+    assert wynik.os_czasu_s[:2] == (0.0, 0.0)
+    assert wynik.strona_probki[:2] == ("L", "P")
+    lewa = 0
+    rezultat = rozplyw_g16.raw_result["result_v1"]
+    wezly = {
+        ref_to_graph_id(k[len("u_pu@") :]): k[len("u_pu@") :]
+        for k in wynik.probki
+        if k.startswith("u_pu@")
+    }
+    galezie = {
+        ref_to_graph_id(k[len("p_od_pu@") :]): k[len("p_od_pu@") :]
+        for k in wynik.probki
+        if k.startswith("p_od_pu@")
+    }
+    napiecia = {
+        wiersz["bus_id"]: cmath.rect(wiersz["v_pu"], math.radians(wiersz["angle_deg"]))
+        for wiersz in rezultat["bus_results"]
+    }
+    for bus_id, ref in wezly.items():
+        assert wynik.probki[f"u_pu@{ref}"][lewa] == pytest.approx(abs(napiecia[bus_id]), rel=1e-9)
+    grafu = zbuduj_graf(snapshot_g16)
+    s_bazowa = wejscie.s_bazowa_mva
+    porownane = 0
+    for wiersz in rezultat["branch_results"]:
+        ref = galezie[wiersz["branch_id"]]
+        galaz_grafu = grafu.branches[wiersz["branch_id"]]
+        for zacisk, wezel, p, q in (
+            ("od", galaz_grafu.from_node_id, wiersz["p_from_mw"], wiersz["q_from_mvar"]),
+            ("do", galaz_grafu.to_node_id, wiersz["p_to_mw"], wiersz["q_to_mvar"]),
+        ):
+            prad = (complex(p, q) / s_bazowa / napiecia[wezel]).conjugate()
+            assert wynik.probki[f"i_{zacisk}_pu@{ref}"][lewa] == pytest.approx(
+                abs(prad), rel=1e-9
+            ), (ref, zacisk)
+            kat = wynik.probki[f"i_{zacisk}_kat_deg@{ref}"][lewa]
+            roznica = (math.radians(kat) - cmath.phase(prad) + math.pi) % (2 * math.pi) - math.pi
+            assert abs(roznica) < 1e-8, (ref, zacisk, kat, math.degrees(cmath.phase(prad)))
+            porownane += 1
+    # Trzy galezie wyniku rozplywu G16 (jak w B-8: sprzeglo szyn zwijane przez tor
+    # rozplywu nie ma wiersza) x dwa zaciski.
+    assert porownane == 6, f"porownano {porownane} fazorow zamiast 6 — zmienil sie zakres G16"

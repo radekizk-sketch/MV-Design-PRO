@@ -9,13 +9,19 @@ from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import UUID, uuid4
 
+from analysis.obciazenie_galezi import (
+    obciazenie_galezi,
+    prad_zacisku_do_a,
+    prad_zacisku_od_a,
+)
 from application.automation.trace import (
     build_automation_trace,
     build_post_fault_topology_effect,
 )
-from application.contracts.resultset_dynamic_v1 import (
-    ResultSetDynamicV1,
-    zbuduj_resultset_dynamiczny_v1,
+from application.contracts.resultset_dynamic_v2 import (
+    ResultSetDynamicV2,
+    dziedzina_fizyki_dynamiki,
+    zbuduj_resultset_dynamiczny_v2,
 )
 from application.proof_engine.packs.phase_state_sn import (
     PhaseStateSNProofPack,
@@ -90,12 +96,12 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
     canonical_run_repository_scope,
 )
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
+from network_model.core.branch import Branch
 from network_model.core.graph import NetworkGraph
 from network_model.core.voltage_factor import c_for_node
 from network_model.pochodne import (
     a_na_ka,
     calka_joule_ka2s,
-    ka_na_a,
     kv_na_v,
     napiecie_fazowe_v,
     v_na_kv,
@@ -103,7 +109,7 @@ from network_model.pochodne import (
 from network_model.solvers.dynamika import (
     WERSJA_SOLVERA,
     SilnikDynamiki,
-    ladunek_resultset_dynamic_v1,
+    ladunek_resultset_dynamic_v2,
 )
 from network_model.solvers.phase_state_sn import (
     OpenPhaseFlags,
@@ -1784,12 +1790,16 @@ def _execute_dynamika_rms(run: CanonicalRun) -> None:
 
     Łańcuch biegu: migawka efektywna + punkt pracy z rozpływu → `WejscieDynamiki`
     (`enm/adapter_dynamiki.py`) → `SilnikDynamiki` (rdzeń W6-2, FROZEN wobec tej
-    warstwy) → ładunek `resultset_dynamic_v1` (`solvers/dynamika/wynik.py`) →
-    `ResultSetDynamicV1` (kontrakt aplikacyjny) w `run.raw_result`.
+    warstwy) → ładunek `resultset_dynamic_v2` (`solvers/dynamika/wynik.py`) →
+    `ResultSetDynamicV2` (kontrakt aplikacyjny) w `run.raw_result`. Dziedzina
+    fizyki wyniku pochodzi z JEDNEJ mapy produktu (`dziedziny.dziedzina_analizy`),
+    nie z tej warstwy.
 
     SZEREGI CZASOWE NIE WCHODZĄ DO WIERSZA BIEGU (PERF-SC-50, karta W6-1 SS0 p.6):
     `raw_result` niesie metadane, metryki, tożsamość i stopień dowodowy, a próbki
-    trafiają do `canonical_run_time_series` (endpoint `.../time-series` na żądanie).
+    (wraz ze stroną każdej próbki `C`/`L`/`P` i wartościami niedostępnymi jako
+    `None`) trafiają do `canonical_run_time_series` (endpoint `.../time-series`
+    na żądanie).
 
     Każda odmowa — adaptera (`OdmowaWejsciaDynamiki`) i rdzenia (`OdmowaDynamiki`) —
     idzie w górę nietknięta: `execute_run` zapisuje status FAILED z komunikatem PL
@@ -1811,17 +1821,18 @@ def _execute_dynamika_rms(run: CanonicalRun) -> None:
         f_bazowa_hz=czestotliwosc_studium_hz(snapshot),
     )
     wynik = SilnikDynamiki(wejscie=wejscie).uruchom()
-    ladunek = ladunek_resultset_dynamic_v1(wynik, run_id=str(run.id))
+    ladunek = ladunek_resultset_dynamic_v2(wynik, run_id=str(run.id))
     ewidencja = classify_dynamic_capability(ZDOLNOSC_DYNAMIKI_RMS)
-    kontrakt = ResultSetDynamicV1.model_validate(
+    kontrakt = ResultSetDynamicV2.model_validate(
         {
             **ladunek,
+            "dziedzina_fizyki": list(dziedzina_fizyki_dynamiki()),
             "stopien_dowodowy": [ewidencja.to_dict()],
             "zalozenia": [*ladunek["zalozenia"], *zalozenia_wejscia(snapshot)],
         }
     )
     run.raw_result = {
-        **zbuduj_resultset_dynamiczny_v1(kontrakt, z_probkami=False),
+        **zbuduj_resultset_dynamiczny_v2(kontrakt, z_probkami=False),
         # Tożsamość punktu pracy jest częścią WYNIKU, nie ciekawostką śladu:
         # bez niej nie da się powiedzieć, OD JAKIEGO stanu ruszył przebieg.
         "pf_run_id": punkt.run_id,
@@ -1837,11 +1848,15 @@ def _execute_dynamika_rms(run: CanonicalRun) -> None:
     ]
     run.power_flow_trace = None
     with canonical_run_repository_scope() as repository:
+        # `None` przechodzi NIETKNIĘTE: wartość niedostępna (częstotliwość w
+        # chwili zdarzenia, kąt fazora zerowego) nie jest liczbą i nie może się
+        # nią stać po drodze do bazy (karta AB-1b.1 §0 pkt 6).
         repository.zapisz_szeregi_dynamiczne(
             run.id,
             [float(chwila) for chwila in kontrakt.os_czasu_s],
+            list(kontrakt.strona_probki),
             {
-                klucz: [float(wartosc) for wartosc in szereg]
+                klucz: [None if wartosc is None else float(wartosc) for wartosc in szereg]
                 for klucz, szereg in kontrakt.probki.items()
             },
         )
@@ -1850,9 +1865,10 @@ def _execute_dynamika_rms(run: CanonicalRun) -> None:
 def build_dynamika_results(run: CanonicalRun) -> dict[str, Any]:
     """Metadane wyniku `dynamika_rms` BEZ próbek (karta W6-1 SS0 p.6).
 
-    Zwraca `ResultSetDynamicV1` zapisany w `run.raw_result` (kanały, metryki,
-    tożsamość, własności biegu, stopień dowodowy) — `os_czasu_s`/`probki`
-    ZAWSZE puste (szeregi w osobnej tabeli, endpoint `.../time-series`).
+    Zwraca `ResultSetDynamicV2` zapisany w `run.raw_result` (kanały, metryki,
+    tożsamość, własności biegu, stopień dowodowy, dziedzina fizyki) —
+    `os_czasu_s`/`strona_probki`/`probki` ZAWSZE puste (szeregi w osobnej
+    tabeli, endpoint `.../time-series`).
     Brak wyniku (bieg nieuruchomiony albo zakończony odmową — nazwaną, nie
     pustym wynikiem) → `KeyError` (API tłumaczy na 404 nazwany, ten sam wzorzec
     co `build_short_circuit_rozplyw`)."""
@@ -1869,7 +1885,10 @@ def build_dynamika_time_series(
     """Próbki szeregów czasowych biegu `dynamika_rms` na żądanie (SS0 p.6).
 
     Czyta `canonical_run_time_series` (osobna tabela — PERF-SC-50: nigdy pełny
-    szereg w wierszu biegu). `klucze_kanalow` filtruje do podanych kluczy; brak
+    szereg w wierszu biegu). Odpowiedź niesie oś czasu z POWTÓRZONYMI chwilami
+    zdarzeń i `strona_probki` tej samej długości (`C` siatka, `L` przed
+    zdarzeniem, `P` po zdarzeniu); próbka `None` to wartość niedostępna, nigdy
+    liczba podstawiona. `klucze_kanalow` filtruje do podanych kluczy; brak
     biegu tego typu, brak zapisanych szeregów, albo ŻADEN z żądanych kluczy nie
     istnieje → `KeyError` (API: 404 nazwany, zero cichej pustej odpowiedzi)."""
     if run.analysis_type != "dynamika_rms":
@@ -1882,10 +1901,20 @@ def build_dynamika_time_series(
         wynik = repository.get_szeregi_dynamiczne(run.id, klucze_kanalow)
     if wynik is None:
         raise KeyError(f"Brak zapisanych szeregów czasowych dla biegu {run.id}")
-    os_czasu_s, probki = wynik
+    os_czasu_s, strona_probki, probki = wynik
+    if strona_probki is None:
+        raise KeyError(
+            f"Szeregi biegu {run.id} zapisano przed kontraktem resultset_dynamic_v2 (brak "
+            "strony próbek) — przelicz bieg dynamiki, żeby odczytać przebieg"
+        )
     if klucze_kanalow and not probki:
         raise KeyError(f"Żaden z żądanych kanałów {klucze_kanalow} nie istnieje w biegu {run.id}")
-    return {"run_id": str(run.id), "os_czasu_s": os_czasu_s, "probki": probki}
+    return {
+        "run_id": str(run.id),
+        "os_czasu_s": os_czasu_s,
+        "strona_probki": strona_probki,
+        "probki": probki,
+    }
 
 
 def _execute_v126(run: CanonicalRun) -> None:
@@ -3128,7 +3157,16 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                         {"key": "name", "label_pl": "Nazwa"},
                         {"key": "from_bus", "label_pl": "Od"},
                         {"key": "to_bus", "label_pl": "Do"},
-                        {"key": "i_a", "label_pl": "I", "unit": "A"},
+                        {
+                            "key": "i_a",
+                            "label_pl": "I (zacisk poczatkowy)",
+                            "unit": "A",
+                        },
+                        {
+                            "key": "i_do_a",
+                            "label_pl": "I (zacisk koncowy)",
+                            "unit": "A",
+                        },
                         {"key": "p_mw", "label_pl": "P", "unit": "MW"},
                         {"key": "q_mvar", "label_pl": "Q", "unit": "MVAr"},
                         {"key": "s_mva", "label_pl": "S", "unit": "MVA"},
@@ -3320,6 +3358,20 @@ def build_bus_results(run: CanonicalRun) -> dict[str, Any]:
     return {"run_id": str(run.id), "rows": rows}
 
 
+def galezie_modelu_biegu(run: CanonicalRun) -> dict[str, Branch] | None:
+    """Gałęzie grafu MIGAWKI biegu (dane znamionowe: obciążalność, S_n i U_n stron).
+
+    Ta sama droga ENM → graf co sam bieg (`zbuduj_graf`). Migawka, której bieżący
+    kontrakt ENM nie przyjmuje (bieg zapisany wcześniejszą wersją modelu), daje
+    `None` — obciążenie wiersza jest wtedy nazwanym brakiem, a pozostałe wielkości
+    wyniku zostają (pydantic `ValidationError` dziedziczy po `ValueError`).
+    """
+    try:
+        return dict(zbuduj_graf(run.snapshot).branches)
+    except ValueError:
+        return None
+
+
 def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "PF":
         return {"run_id": str(run.id), "rows": []}
@@ -3328,6 +3380,7 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
     graph_branches = (raw_result.get("graph") or {}).get("branches", {})
     branch_current_ka = raw_result.get("branch_current_ka", {})
     node_voltage_kv = raw_result.get("node_voltage_kv", {})
+    galezie_modelu = galezie_modelu_biegu(run)
     # LF-KONTRAKT (V12K-161): mapa napięć węzłów w p.u. (z FROZEN
     # ``result_v1.bus_results``) — potrzebna do deterministycznej pochodnej ΔU%
     # (różnica potencjałów końców gałęzi), analogicznie jak ``loading_pct``
@@ -3342,15 +3395,34 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
     for item in result_v1.get("branch_results", []):
         branch_id = item["branch_id"]
         branch = graph_branches.get(branch_id, {})
-        i_ka = branch_current_ka.get(branch_id)
-        i_a = ka_na_a(i_ka) if i_ka is not None else None
+        # `i_a` to prad ZACISKU POCZATKOWEGO (`from`) — tak liczy go rdzen rozplywu
+        # (FROZEN `power_flow_newton_internal`, prad strony `from`).
+        i_a = prad_zacisku_od_a(branch_current_ka.get(branch_id))
         p_from = item.get("p_from_mw", 0.0)
         q_from = item.get("q_from_mvar", 0.0)
         s_mva = math.sqrt(p_from**2 + q_from**2)
-        rated_current_a = branch.get("rated_current_a")
-        loading_pct = (
-            (i_a / rated_current_a * 100.0) if i_a is not None and rated_current_a else None
+        # OD-35 = (c) (karta AB-1b.1 P9): prad ZACISKU KONCOWEGO z mocy strony `to`
+        # (FROZEN `PowerFlowBranchResult`) i napiecia wezla `to` — ta sama funkcja co
+        # kazde inne miejsce obciazenia galezi (`analysis/obciazenie_galezi.py`). Galaz
+        # z susceptancja albo z przekladnia ma na obu koncach INNY prad; brak napiecia
+        # wezla `to` (albo napiecie zerowe) => None, nie domysl.
+        p_to = item.get("p_to_mw")
+        q_to = item.get("q_to_mvar")
+        i_do_a = prad_zacisku_do_a(
+            complex(p_to, q_to) if p_to is not None and q_to is not None else None,
+            node_voltage_kv.get(branch.get("to_node_id", "")),
         )
+        # Obciazalnosc dotyczy GALEZI, nie strony (decyzje O-46, O-51): obciazenie z
+        # wiekszego z dwoch ilorazow prad zacisku / prad znamionowy zacisku — linia i
+        # kabel z obciazalnosci, transformator z S_n i U_n kazdej strony. Dane
+        # znamionowe z grafu migawki biegu (ta sama droga co bieg); brak = None z
+        # NAZWANYM powodem w wierszu, nigdy zero.
+        obciazenie = obciazenie_galezi(
+            None if galezie_modelu is None else galezie_modelu.get(branch_id),
+            prad_od_a=i_a,
+            prad_do_a=i_do_a,
+        )
+        loading_pct = obciazenie.obciazenie_pct
         # LF-KONTRAKT (V12K-161): współczynnik mocy gałęzi — pochodna |P|/|S|
         # (wzorzec loading_pct). Bez znaku (cosφ jako moduł); gałąź jałowa
         # (S=0) ⇒ None (uczciwy brak, nie 0/0).
@@ -3385,10 +3457,14 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
                 "from_bus": branch.get("from_node_id", ""),
                 "to_bus": branch.get("to_node_id", ""),
                 "i_a": i_a,
+                "i_do_a": i_do_a,
                 "s_mva": s_mva,
                 "p_mw": item.get("p_from_mw"),
                 "q_mvar": item.get("q_from_mvar"),
                 "loading_pct": loading_pct,
+                # O-51: powód braku obciążenia (brak danych znamionowych w modelu albo
+                # brak prądu zacisku w wyniku); None, gdy obciążenie policzono.
+                "loading_powod_braku_pl": obciazenie.powod_braku_pl,
                 # LF-KONTRAKT (V12K-161): pass-through składowych strat/końca „to"
                 # WPROST z FROZEN ``PowerFlowBranchResult`` (już policzone przez
                 # solver, tu bez zmian) + pochodne cosφ/ΔU. Straty transformatora

@@ -4,6 +4,9 @@ Wolane BEZPOSREDNIO na warstwie aplikacji (funkcje `pakiet_nastaw.py`) — ZERO
 TestClient/ASGI (zakaz karty). Pokrycie: dostepnosc x budowa (jedno zrodlo
 prawdy), determinizm dwoch pobran, zawartosc ZIP (dowod + zrodlo + wykaz +
 odcisk), zrodlo pieciu pol nastaw = silnik (nie wynik biegu).
+
+Zacisk zabezpieczenia (decyzja O-51, wariant (b)): siec syntetyczna nie przypina
+zabezpieczen do wylacznikow, wiec budowa niesie jawne wskazanie `od`.
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ from application.proof_engine.pakiet_nastaw import (
     dostepnosc_pakietu_nastaw,
     zbuduj_pakiet_nastaw,
 )
+from application.protection_settings.zacisk_zabezpieczenia import KOD_BRAK_WSKAZANIA
 from enm.canonical_analysis import CanonicalRun, _execute_short_circuit
 from enm.models import BranchRating, Bus, EnergyNetworkModel, ENMHeader, Load, OverheadLine, Source
 
@@ -91,11 +95,23 @@ def _rozpakuj(zawartosc: bytes) -> dict[str, bytes]:
 
 
 def test_dostepnosc_listuje_linie_i_kandydatow_nastepnej_szyny() -> None:
+    """Model milczy (brak przypięć zabezpieczeń) — każda linia wymaga wskazania zacisku,
+    a kandydaci kolejnej szyny liczą się ZA KOŃCEM odcinka osobno dla każdego zacisku
+    (decyzja O-51): `ln1` od strony GPZ widzi `b_b`, od strony stacji A — nic (GPZ nie ma
+    innej linii); `ln2` od strony stacji B widzi za stacją A szynę GPZ."""
     dostepnosc = dostepnosc_pakietu_nastaw(_kotwica())
     assert dostepnosc["dostepny"] is True
     linie = {pozycja["line_id"]: pozycja for pozycja in dostepnosc["linie"]}
-    assert linie["ln1"]["nastepne_szyny_kandydujace"] == ["b_b"]
-    assert linie["ln2"]["nastepne_szyny_kandydujace"] == []
+    assert linie["ln1"]["nastepne_szyny_wg_zacisku"] == {"od": ["b_b"], "do": []}
+    assert linie["ln2"]["nastepne_szyny_wg_zacisku"] == {"od": [], "do": ["b_src"]}
+    for pozycja in linie.values():
+        assert pozycja["zacisk_z_modelu"] is None
+        assert pozycja["wymaga_wskazania_zacisku"] is True
+        assert pozycja["odmowa_zacisku"]["kod"] == KOD_BRAK_WSKAZANIA
+    assert linie["ln1"]["zaciski"] == {
+        "od": {"szyna_ref": "b_src", "etykieta_pl": "Zacisk początkowy — szyna GPZ SN"},
+        "do": {"szyna_ref": "b_a", "etykieta_pl": "Zacisk końcowy — szyna Stacja A"},
+    }
 
 
 def test_dostepnosc_kotwicy_zlego_rodzaju_jest_niedostepna() -> None:
@@ -108,7 +124,13 @@ def test_dostepnosc_kotwicy_zlego_rodzaju_jest_niedostepna() -> None:
 
 
 def test_zbuduj_pakiet_nastaw_zawiera_dowod_zrodlo_wykaz_odcisk() -> None:
-    nazwa, zawartosc = zbuduj_pakiet_nastaw(_kotwica(), line_id="ln1", next_bus_id="b_b", c_min=1.0)
+    nazwa, zawartosc = zbuduj_pakiet_nastaw(
+        _kotwica(),
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.0,
+        zacisk_zabezpieczenia="od",
+    )
     assert nazwa.endswith(".zip")
     pliki = _rozpakuj(zawartosc)
     assert "proof_pack/proof.json" in pliki
@@ -128,10 +150,14 @@ def test_zbuduj_pakiet_nastaw_pieciu_pol_nastaw_pochodzi_z_silnika_nie_z_zaszyte
     from application.protection_settings.engine import ProtectionSettingsEngine
 
     kotwica = _kotwica()
-    _, zawartosc = zbuduj_pakiet_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+    _, zawartosc = zbuduj_pakiet_nastaw(
+        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+    )
     proof = json.loads(_rozpakuj(zawartosc)["proof_pack/proof.json"])
 
-    wejscie = zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+    wejscie = zbuduj_wejscie_nastaw(
+        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+    )
     wynik = ProtectionSettingsEngine.calculate(wejscie.engine_input)
 
     key_results = proof["summary"]["key_results"]
@@ -145,17 +171,31 @@ def test_zbuduj_pakiet_nastaw_pieciu_pol_nastaw_pochodzi_z_silnika_nie_z_zaszyte
 def test_dwa_pobrania_tego_samego_biegu_sa_bajt_w_bajt_identyczne() -> None:
     run_id = UUID(int=42)
     _, zawartosc1 = zbuduj_pakiet_nastaw(
-        _kotwica(run_id), line_id="ln1", next_bus_id="b_b", c_min=1.0
+        _kotwica(run_id),
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.0,
+        zacisk_zabezpieczenia="od",
     )
     _, zawartosc2 = zbuduj_pakiet_nastaw(
-        _kotwica(run_id), line_id="ln1", next_bus_id="b_b", c_min=1.0
+        _kotwica(run_id),
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.0,
+        zacisk_zabezpieczenia="od",
     )
     assert zawartosc1 == zawartosc2
 
 
 def test_linia_nieznana_konczy_sie_pakiet_nastaw_error() -> None:
     with pytest.raises(PakietNastawError):
-        zbuduj_pakiet_nastaw(_kotwica(), line_id="nieznana", next_bus_id="b_b", c_min=1.0)
+        zbuduj_pakiet_nastaw(
+            _kotwica(),
+            line_id="nieznana",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -202,7 +242,11 @@ def _kotwica_sieci(siec: EnergyNetworkModel) -> CanonicalRun:
 
 
 def test_kazda_reklamowana_para_dostepnosci_daje_nastawy_na_kazdej_sieci_rejestru() -> None:
-    """ILOCZYN CECH: siec rejestru x reklamowana para (odcinek, szyna) x obie strony.
+    """ILOCZYN CECH: siec rejestru x reklamowana para (odcinek, zacisk, szyna) x obie strony.
+
+    Pelna rownosc dostepnosci i budowy dla KAZDEJ trojki (takze odmow i ich kodow, z
+    przypieciami zabezpieczen w modelu) — `tests/application/test_zacisk_zabezpieczenia.py
+    ::test_predykaty_parami_dostepnosc_rowna_sie_biegowi_na_kazdej_trojce`.
 
     Kontrakt: KAZDA para, ktora `dostepnosc_pakietu_nastaw` pokazuje projektantowi,
     MUSI dac sie policzyc. Pomiar przed naprawa (karta HARNESS-RESZTA-2): 12 par
@@ -259,21 +303,33 @@ def test_kazda_reklamowana_para_dostepnosci_daje_nastawy_na_kazdej_sieci_rejestr
             assert dostepnosc["linie"] == [], nazwa_sieci
             continue
         # Dostepny znaczy: CO NAJMNIEJ JEDNA para do policzenia (inaczej ekran
-        # obiecuje sciezke, ktorej nie ma).
+        # obiecuje sciezke, ktorej nie ma). Od decyzji O-51 para to (zacisk, szyna):
+        # kandydaci kolejnej szyny licza sie za koncem odcinka dla kazdego zacisku.
         assert any(
-            pozycja["nastepne_szyny_kandydujace"] for pozycja in dostepnosc["linie"]
+            any(pozycja["nastepne_szyny_wg_zacisku"].values()) for pozycja in dostepnosc["linie"]
         ), nazwa_sieci
         for pozycja in dostepnosc["linie"]:
-            for szyna in pozycja["nastepne_szyny_kandydujace"]:
-                reklamowane += 1
-                odpowiedz = zbuduj_odpowiedz_nastaw_json(
-                    kotwica, line_id=pozycja["line_id"], next_bus_id=szyna, c_min=1.0
-                )
-                assert odpowiedz["dostepnosc_pakietu"] is True, (
-                    nazwa_sieci,
-                    pozycja["line_id"],
-                    szyna,
-                )
-                assert odpowiedz["wynik"]["delayed"]["i_setting_a"] > 0.0
+            for zacisk, szyny in pozycja["nastepne_szyny_wg_zacisku"].items():
+                for szyna in szyny:
+                    reklamowane += 1
+                    odpowiedz = zbuduj_odpowiedz_nastaw_json(
+                        kotwica,
+                        line_id=pozycja["line_id"],
+                        next_bus_id=szyna,
+                        c_min=1.0,
+                        # Wskazanie tylko tam, gdzie dostepnosc go wymaga — gdy model
+                        # rozstrzyga, budowa bierze zacisk z modelu.
+                        zacisk_zabezpieczenia=(
+                            zacisk if pozycja["wymaga_wskazania_zacisku"] else None
+                        ),
+                    )
+                    assert odpowiedz["dostepnosc_pakietu"] is True, (
+                        nazwa_sieci,
+                        pozycja["line_id"],
+                        zacisk,
+                        szyna,
+                    )
+                    assert odpowiedz["wejscie"]["zacisk_zabezpieczenia"] == zacisk
+                    assert odpowiedz["wynik"]["delayed"]["i_setting_a"] > 0.0
 
     assert reklamowane > 0, "test nie sprawdzil ANI JEDNEJ pary — bramka bylaby niema"

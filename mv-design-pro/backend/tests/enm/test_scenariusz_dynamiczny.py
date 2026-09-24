@@ -59,7 +59,15 @@ def enm() -> EnergyNetworkModel:
 
 class TestKazdyRodzajZdarzenia:
     def test_zwarcie_z_usunieciem(self):
-        z = Zwarcie(t_s=0.1, bus_ref="b1", typ="3F", r_f_ohm=0.0, x_f_ohm=0.0, t_usuniecia_s=0.2)
+        z = Zwarcie(
+            t_s=0.1,
+            bus_ref="b1",
+            typ="3F",
+            r_f_ohm=0.0,
+            x_f_ohm=0.0,
+            t_usuniecia_s=0.2,
+            sposob_usuniecia="izolacja",
+        )
         assert z.rodzaj == "zwarcie"
 
     def test_zwarcie_bez_usuniecia_jawnie_nieusuwane(self):
@@ -121,7 +129,13 @@ class TestTPozaHoryzontem:
                 krok_wyjscia_s=0.1,
                 zdarzenia=(
                     Zwarcie(
-                        t_s=0.5, bus_ref="b1", typ="3F", r_f_ohm=0.0, x_f_ohm=0.0, t_usuniecia_s=2.0
+                        t_s=0.5,
+                        bus_ref="b1",
+                        typ="3F",
+                        r_f_ohm=0.0,
+                        x_f_ohm=0.0,
+                        t_usuniecia_s=2.0,
+                        sposob_usuniecia="samoczynne",
                     ),
                 ),
             )
@@ -231,6 +245,7 @@ class TestRefNieistniejacy:
                         r_f_ohm=0.0,
                         x_f_ohm=0.0,
                         t_usuniecia_s=0.15,
+                        sposob_usuniecia="samoczynne",
                     ),
                     SkokObciazenia(t_s=1.0, ref_id="ld1", delta_p_mw=0.2, delta_q_mvar=0.0),
                 ),

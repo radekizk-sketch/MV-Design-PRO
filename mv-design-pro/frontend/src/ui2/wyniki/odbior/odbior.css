@@ -165,6 +165,36 @@
 .mvd-odbior-pole--jednostka {
   min-width: 60px;
 }
+/* Miejsce pomiaru mocy gałęzi (decyzja O-51) — pełna szerokość wiersza edytora. */
+.mvd-odbior-zacisk {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+}
+.mvd-odbior-zacisk legend {
+  padding: 0 4px;
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-odbior-zacisk-opcja {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+.mvd-odbior-zacisk-info {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
 .mvd-odbior-jednostka {
   padding: 5px 0;
   font-size: 13px;

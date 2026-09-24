@@ -188,3 +188,108 @@ def test_protection_config_known_template_ref_accepted(app_client) -> None:
     )
     assert put_resp.status_code == 200
     assert put_resp.json()["template_ref"] == "template_ref_oc_ef_500"
+
+
+# ---------------------------------------------------------------------------
+# Decyzja O-51 (pkt 7): zacisk urządzenia koordynacji — ten sam resolver co pakiet
+# nastaw; walidacja ADDYTYWNA zapisu i odczyt rozstrzygnięcia dla interfejsu.
+# ---------------------------------------------------------------------------
+
+
+def _przypadek_z_modelem(app_client) -> str:
+    """Przypadek, którego projekt ma model: linia L (F → T), wyłącznik pola CB_od
+    (S_od → F) w szeregu z zaciskiem `od` linii (sieć resolvera z testów aplikacji)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+    from enm.models import EnergyNetworkModel
+    from enm.store import set_enm
+
+    from tests.application.test_zacisk_zabezpieczenia import _siec_resolvera
+
+    case_id = _utworz_projekt_i_przypadek(app_client)
+    klucz = klucz_twin_dla_przypadku(case_id, app_client.app.state.uow_factory)
+    set_enm(klucz, EnergyNetworkModel.model_validate(_siec_resolvera("wprost", "od")))
+    return case_id
+
+
+def _urzadzenie_z_zaciskiem(lokalizacja: str, zacisk: str | None) -> dict:
+    urzadzenie: dict = {
+        "id": "dev-1",
+        "name": "Zabezpieczenie pola",
+        "device_type": "RELAY",
+        "location_element_id": lokalizacja,
+        "settings": {"stage_51": {"enabled": True, "pickup_current_a": 120.0}},
+    }
+    if zacisk is not None:
+        urzadzenie["zacisk"] = zacisk
+    return urzadzenie
+
+
+def _zapisz(app_client, case_id: str, urzadzenie: dict):
+    return app_client.put(
+        f"/api/study-cases/{case_id}/protection-config",
+        json={
+            "template_ref": None,
+            "template_fingerprint": None,
+            "library_manifest_ref": None,
+            "overrides": {"coordination_device:dev-1": urzadzenie},
+        },
+    )
+
+
+@pytest.mark.parametrize(
+    ("lokalizacja", "zacisk", "status", "fragment"),
+    [
+        ("L", "do", 200, None),
+        ("L", None, 200, None),
+        ("CB_od", "od", 200, None),
+        ("CB_od", None, 200, None),
+        ("L", "srodek", 422, "'srodek'"),
+        ("F", "od", 422, "bez zacisków"),
+        (
+            "CB_od",
+            "do",
+            422,
+            "Wskazany zacisk nie odpowiada żadnemu zabezpieczeniu z modelu",
+        ),
+    ],
+)
+def test_protection_config_zacisk_urzadzenia_walidacja_addytywna(
+    app_client, lokalizacja: str, zacisk: str | None, status: int, fragment: str | None
+) -> None:
+    case_id = _przypadek_z_modelem(app_client)
+    odpowiedz = _zapisz(app_client, case_id, _urzadzenie_z_zaciskiem(lokalizacja, zacisk))
+    assert odpowiedz.status_code == status, odpowiedz.json()
+    if fragment is not None:
+        assert fragment in odpowiedz.json()["detail"]
+    else:
+        zapisane = odpowiedz.json()["overrides"]["coordination_device:dev-1"]
+        assert zapisane.get("zacisk") == zacisk
+
+
+@pytest.mark.parametrize(
+    ("lokalizacja", "zacisk", "oczekiwane"),
+    [
+        ("CB_od", None, {"galaz_ref": "L", "zacisk": "od", "zrodlo_zacisku": "model"}),
+        ("L", "do", {"galaz_ref": "L", "zacisk": "do", "zrodlo_zacisku": "wskazanie"}),
+        ("L", None, {"galaz_ref": None, "zacisk": None, "zrodlo_zacisku": None}),
+        ("F", None, {"galaz_ref": None, "zacisk": None, "zrodlo_zacisku": None}),
+    ],
+)
+def test_zacisk_lokalizacji_endpoint(
+    app_client, lokalizacja: str, zacisk: str | None, oczekiwane: dict
+) -> None:
+    case_id = _przypadek_z_modelem(app_client)
+    params = {"lokalizacja": lokalizacja}
+    if zacisk is not None:
+        params["zacisk"] = zacisk
+    odpowiedz = app_client.get(f"/api/cases/{case_id}/enm/zacisk-lokalizacji", params=params)
+    assert odpowiedz.status_code == 200
+    opis = odpowiedz.json()
+    assert {k: opis[k] for k in oczekiwane} == oczekiwane
+    if lokalizacja == "L":
+        assert opis["wymaga_wskazania_zacisku"] is True
+        assert opis["zaciski"]["od"]["etykieta_pl"] == "Zacisk początkowy — szyna Stacja F"
+    if lokalizacja == "L" and zacisk is None:
+        assert opis["odmowa_zacisku"]["kod"] == "protection.relay_terminal_indication_missing"
+    if lokalizacja == "F":
+        assert opis["rodzaj_lokalizacji"] == "szyna" and opis["zaciski"] is None

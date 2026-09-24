@@ -287,7 +287,26 @@ const DOSTEPNOSC_E2E = {
   run_id: 'run-sc-1',
   dostepny: true,
   powod_pl: null,
-  linie: [{ line_id: 'ln1', nazwa: 'Linia testowa', nastepne_szyny_kandydujace: ['b_b'] }],
+  linie: [
+    {
+      line_id: 'ln1',
+      nazwa: 'Linia testowa',
+      // Kształt dostępności od decyzji O-51: zacisk zabezpieczenia i kandydaci kolejnej
+      // szyny osobno dla każdego zacisku (model milczy — wymagany wybór).
+      zacisk_z_modelu: null,
+      wymaga_wskazania_zacisku: true,
+      zaciski_dozwolone: ['od', 'do'],
+      odmowa_zacisku: {
+        kod: 'protection.relay_terminal_indication_missing',
+        powod_pl: 'Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie.',
+      },
+      zaciski: {
+        od: { szyna_ref: 'b_a', etykieta_pl: 'Zacisk początkowy — szyna A' },
+        do: { szyna_ref: 'b_b', etykieta_pl: 'Zacisk końcowy — szyna B' },
+      },
+      nastepne_szyny_wg_zacisku: { od: ['b_b'], do: [] },
+    },
+  ],
 };
 
 describe('EkranKoordynacji — nastawy z analizy (karta W3-C1)', () => {

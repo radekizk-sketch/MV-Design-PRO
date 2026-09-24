@@ -46,6 +46,25 @@ from .errors import (
 )
 
 
+def _migawka_modelu_przypadku(
+    case_id: str, uow_factory: Callable[[], Any]
+) -> dict[str, Any] | None:
+    """Migawka modelu projektu przypadku (magazyn Canonical Project Twin) albo `None`, gdy
+    przypadek nie należy do projektu albo projekt nie ma jeszcze modelu — walidacja
+    zacisku urządzeń sprawdza wtedy wyłącznie literał (nie ma czego być sprzecznym)."""
+    from application.twin_key import klucz_twin_dla_przypadku
+    from enm import store
+    from enm.klucz_twin import PrzypadekBezProjektuError
+
+    try:
+        klucz = klucz_twin_dla_przypadku(case_id, uow_factory)
+    except PrzypadekBezProjektuError:
+        return None
+    if not store.has_enm(klucz):
+        return None
+    return store.get_enm(klucz).model_dump(mode="json")
+
+
 @dataclass
 class StudyCaseListItem:
     """Summary item for listing study cases.
@@ -442,8 +461,23 @@ class StudyCaseService:
 
         Raises:
             StudyCaseNotFoundError: If case doesn't exist
-            ValueError: If template_ref doesn't exist in catalog
+            ValueError: If template_ref doesn't exist in catalog, or a coordination
+                device carries an invalid terminal (`zacisk`) or one contradicting the model
         """
+        # Decyzja O-51 (pkt 7): zacisk urządzenia koordynacji — walidacja ADDYTYWNA tym
+        # samym resolverem co pakiet nastaw (sprzeczność z modelem = odmowa nazwana).
+        # Model projektu czytany PRZED otwarciem jednostki pracy zapisu (tłumaczenie
+        # klucza otwiera własną jednostkę pracy).
+        from application.protection_settings.zacisk_zabezpieczenia import (
+            odmowy_zaciskow_urzadzen,
+        )
+
+        powody = odmowy_zaciskow_urzadzen(
+            _migawka_modelu_przypadku(str(case_id), self._uow_factory), overrides or {}
+        )
+        if powody:
+            raise ValueError(" ".join(powody))
+
         with self._uow_factory() as uow:
             repo = uow.cases
             if repo is None:

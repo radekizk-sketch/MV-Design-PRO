@@ -46,6 +46,15 @@ ktorym odbior o stalej mocy ZADA mocy, ktorej w wyspie nie ma z czego wziac:
   rozwiazania IZOLOWANEGO nadal nie ma.
 
 W obu przypadkach nie istnieje punkt pracy, wokol ktorego mozna calkowac.
+
+DWA POZIOMY, JEDEN PREDYKAT (karta AB-1b.1 par. 0 pkt 2). `klasyfikuj_wyspy` dzieli
+wyspy na ZYWE (co najmniej jedno urzadzenie wnosi do algebry) i BEZNAPIECIOWE (zadne
+nie wnosi). Silnik wola ja w KAZDEJ chwili zdarzen i odcina wyspy beznapieciowe (wiersz
+ograniczenia `V = 0`, odbiory odciete — obwod bez drogi do zrodla nie przewodzi), wiec
+bieg trwa. Odmowa `sprawdz_zasilanie_wysp` zostaje na poziomie ALGEBRY jako siatka
+bezpieczenstwa i uzywa TEJ SAMEJ klasyfikacji (regula predykatow parami, CLAUDE.md
+„KLASA, NIE INSTANCJA" pkt 3): wyspa, ktora silnik uznal za zywa, nie moze zostac
+odrzucona przez algebre jako „bez zrodla" i odwrotnie.
 """
 
 from __future__ import annotations
@@ -116,10 +125,43 @@ def urzadzenie_wnosi_do_algebry(
     modulu. Porownanie jest z ZEREM DOKLADNYM, bo pytanie jest strukturalne
     (czy skladnik w ogole wchodzi do rownania), a nie ilosciowe; kazdy prog
     bylby tutaj wymyslona granica miedzy „male zrodlo" a „brak zrodla".
+
+    Urzadzenie o sprzezeniu NAPIECIOWYM wnosi z definicji: narzuca napiecie swojego
+    wezla wierszem ograniczenia (`V = E(x)`), a jego prad wyprowadza bilans wezla — nie
+    ma lokalnego wzoru na prad, ktory mozna by porownac z zerem.
     """
+    if urzadzenie.sprzezenie == "napieciowe":
+        return True
     if urzadzenie.prad_pu(stan, napiecie_pu) != 0:
         return True
     return bool(np.any(urzadzenie.jakobian_prad_napiecie(stan, napiecie_pu) != 0.0))
+
+
+def klasyfikuj_wyspy(
+    przydzial: tuple[int, ...],
+    indeks_wezla: dict[str, int],
+    urzadzenia: tuple[Urzadzenie, ...],
+    stany: tuple[np.ndarray, ...],
+    napiecia: np.ndarray,
+) -> tuple[frozenset[int], frozenset[int]]:
+    """Numery wysp (ZYWE, BEZNAPIECIOWE) — jeden predykat `urzadzenie_wnosi_do_algebry`.
+
+    Wyspa jest zywa, gdy CHOC JEDNO jej urzadzenie wnosi do algebry w biezacym punkcie
+    `(x, V)`; pozostale wyspy sa beznapieciowe. Suma obu zbiorow to wszystkie wyspy,
+    czesc wspolna jest pusta (przypiete testem). Pusta siec nie ma wysp.
+    """
+    if not przydzial:
+        return frozenset(), frozenset()
+    zywe: set[int] = set()
+    for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
+        pozycja = indeks_wezla[urzadzenie.wezel]
+        wyspa = przydzial[pozycja]
+        if wyspa in zywe:
+            continue
+        if urzadzenie_wnosi_do_algebry(urzadzenie, stan, complex(napiecia[pozycja])):
+            zywe.add(wyspa)
+    wszystkie = frozenset(range(max(przydzial) + 1))
+    return frozenset(zywe), wszystkie - zywe
 
 
 def sprawdz_zasilanie_wysp(
@@ -156,21 +198,17 @@ def sprawdz_zasilanie_wysp(
     if not any(zapotrzebowanie):
         return
 
-    zasilane = [False] * liczba_wysp
-    bezczynne: list[list[str]] = [[] for _ in range(liczba_wysp)]
-    for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
-        pozycja = indeks_wezla[urzadzenie.wezel]
-        wyspa = przydzial[pozycja]
-        if zapotrzebowanie[wyspa] == 0.0:
-            continue
-        if urzadzenie_wnosi_do_algebry(urzadzenie, stan, complex(napiecia[pozycja])):
-            zasilane[wyspa] = True
-        else:
-            bezczynne[wyspa].append(urzadzenie.ident)
-
+    zywe, _ = klasyfikuj_wyspy(przydzial, indeks_wezla, urzadzenia, stany, napiecia)
     for wyspa in range(liczba_wysp):
-        if zapotrzebowanie[wyspa] == 0.0 or zasilane[wyspa]:
+        if zapotrzebowanie[wyspa] == 0.0 or wyspa in zywe:
             continue
+        # Urzadzenia wyspy odrzuconej NIE wnosza do algebry (inaczej wyspa bylaby zywa),
+        # wiec lista „bez wkladu" to po prostu wszystkie urzadzenia tej wyspy.
+        bezczynne = tuple(
+            urzadzenie.ident
+            for urzadzenie in urzadzenia
+            if przydzial[indeks_wezla[urzadzenie.wezel]] == wyspa
+        )
         wezly_wyspy = tuple(
             ident for pozycja, ident in enumerate(identy_wezlow) if przydzial[pozycja] == wyspa
         )
@@ -183,8 +221,8 @@ def sprawdz_zasilanie_wysp(
             f"Wyspa {wezly_wyspy} niesie odbior ({opis_odbiorow}) przy t={t_s} s, a zadne "
             f"przylaczone do niej urzadzenie nie wnosi pradu ani pochodnej pradu po napieciu"
             + (
-                f" (urzadzenia bez wkladu: {tuple(bezczynne[wyspa])})"
-                if bezczynne[wyspa]
+                f" (urzadzenia bez wkladu: {bezczynne})"
+                if bezczynne
                 else " (w wyspie nie ma zadnego urzadzenia)"
             )
             + ". Punkt pracy nie istnieje: odbior o stalej mocy zada mocy, ktorej w wyspie "
@@ -194,11 +232,12 @@ def sprawdz_zasilanie_wysp(
             wezly=wezly_wyspy,
             odbiory=tuple(ident for ident, _, _, _ in odbiory_wyspy[wyspa]),
             moc_odbiorow_pu=zapotrzebowanie[wyspa],
-            urzadzenia_bez_wkladu=tuple(bezczynne[wyspa]),
+            urzadzenia_bez_wkladu=bezczynne,
         )
 
 
 __all__ = [
+    "klasyfikuj_wyspy",
     "przydzial_wysp",
     "sprawdz_zasilanie_wysp",
     "urzadzenie_wnosi_do_algebry",

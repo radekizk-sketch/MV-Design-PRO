@@ -161,6 +161,8 @@ def _uklad(przypadek: Przypadek):
             y_szeregowa_pu=1.0 / complex(przypadek.r_linii_pu, przypadek.x_linii_pu),
             b_poprzeczna_pu=przypadek.b_poprzeczna_pu,
             przekladnia=przypadek.przekladnia,
+            aktywna_na_starcie=True,
+            rodzaj="linia",
         ),
     )
     odbiory = (OdbiorDynamiki(ident="O1", wezel="B", p_pu=przypadek.p_pu, q_pu=przypadek.q_pu),)

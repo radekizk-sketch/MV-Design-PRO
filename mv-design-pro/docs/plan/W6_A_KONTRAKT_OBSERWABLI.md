@@ -209,6 +209,17 @@ $$|V_i| \le u_V \;\Rightarrow\; \texttt{NIEDOSTEPNA}
 **Zakaz zamrożony:** wartość niedostępna **nie jest** zastępowana częstotliwością znamionową.
 Kanał zwraca stan jakości, a nie „ładną liczbę".
 
+> **AKTUALIZACJA 2026-09-23 (karta AB-1b.1 P5, kontrakt `resultset_dynamic_v2`).** Wartość
+> niedostępna jest w wyniku **`None`**, nie liczbą: `f_hz@` i `u_f_est_hz@` niosą `None`, a
+> PRZYCZYNĘ niesie kanał `jakosc_f@` z kodem (`obserwable.OPIS_JAKOSCI_PL`): `0` rozróżnialna,
+> `1` nierozróżnialna, `2` niedostępna — nieokreślona numerycznie (fazor w kuli niepewności albo
+> jakobian osobliwy), `3` niedostępna — chwila nieciągłości zdarzenia (§5), `4` niedostępna —
+> węzeł bez napięcia (obszar beznapięciowy albo napięcie narzucone `V = 0`: zwarcie metaliczne).
+> Dostępność jest **per węzeł**: węzeł bez napięcia nie odbiera częstotliwości węzłom żywym. Kąt
+> fazora (`kat_deg@`, `i_od_kat_deg@`, `i_do_kat_deg@`, `i_zwarcia_kat_deg@`) jest `None` dla
+> fazora DOKŁADNIE zerowego — `angle(0) = 0` byłoby sfabrykowaną fazą. Dowody: `test_wynik.py`,
+> `test_probki_obustronne.py::test_jakosc_czestotliwosci_ma_kod_przyczyny`, bramka G7 cz. 2, SO-1A.
+
 ---
 
 ## 5. Zdarzenia nieciągłe — konwencja (wymóg właściciela)
@@ -225,6 +236,17 @@ chwili"* (`dynamika/silnik.py:744` i dalej, `ZALOZENIA_RDZENIA`). W6-A dopisuje 
    jak zdarzenie ma dziś `t_zaplanowany_s` i `t_wykonany_s`.
 4. **Zakaz zamrożony:** nieciągłość łączeniowa **nie może** wyprodukować impulsu ROCOF. Impuls
    z różniczkowania skoku algebraicznego nie jest zjawiskiem fizycznym, tylko artefaktem metody.
+
+> **KONWENCJA ROZSTRZYGNIĘTA 2026-09-23 (karta AB-1b.1 §0 pkt 6, P5).** Każda chwila zdarzenia —
+> na siatce wyjścia, poza nią, w `t = 0` i w `t = horyzont`, pojedyncza i z kilkoma zdarzeniami
+> równoczesnymi — ma DWIE próbki: `L` (stan PRZED naniesieniem zdarzeń chwili: model, odbiory i
+> urządzenia chwili poprzedniej, napięcia z końca ostatniego kroku; w `t = 0` punkt pracy) i `P`
+> (stan PO zdarzeniach i JEDNEJ re-inicjalizacji). Oś czasu niesie powtórzoną chwilę, a stronę
+> każdej próbki — pole `strona_probki` (`C` siatka, `L`, `P`); para `L`/`P` zastępuje próbkę `C`
+> tej chwili. Stan różniczkowy w `L` i `P` jest bitowo ten sam. Częstotliwość w OBU próbkach jest
+> `None` z kodem 3 (pkt 2 powyżej obowiązuje dla obu stron, nie dla „jednej próbki"). Dawne
+> zdanie o próbce prawostronnej (`silnik.py`, `ZALOZENIA_RDZENIA`) zostało zastąpione. Twierdzenie
+> D-18 (bramka G20: `L` wobec algebry SMIB sprzed zdarzenia, `P` — po; mutacje M28, M29).
 
 ---
 
@@ -267,6 +289,17 @@ czyli JEDNĄ stronę pod nazwą sugerującą wielkość gałęzi. **Kontrakt dyn
 powtarza.** (Tor statyczny jest w zbiorze FROZEN, więc jego korekta jest osobną sprawą do decyzji
 właściciela — patrz §10.)
 
+> **AKTUALIZACJA 2026-09-23 (karta AB-1b.1 P5/P9, OD-35 = (c), decyzja O-46).** Fazory prądów
+> zacisków: obok modułów `i_od_pu@`/`i_do_pu@` rdzeń publikuje kąty `i_od_kat_deg@`/`i_do_kat_deg@`
+> (ten sam układ wirujący co `kat_deg@` węzłów), kanał stanu `stan_galezi@` (1 załączona,
+> 0 wyłączona — gałąź otwarta ma moduł 0,0 DOKŁADNIE i kąt `None`, nie 0°), a miejsce zwarcia —
+> `i_zwarcia_kat_deg@`. Strona statyczna (rdzeń FROZEN nietknięty): `build_branch_results` niesie
+> `i_do_a` (prąd zacisku końcowego z mocy strony `to` i napięcia węzła `to`, wzór I = S/(√3·U)
+> z `network_model/pochodne`), etykietę kolumny `i_a` „I (zacisk poczatkowy)", a `loading_pct`
+> liczy z WIĘKSZEGO z dwóch prądów zacisków. Zmiana nazwy `i_a` → `i_od_a` w interfejsie — fala
+> WW-1. Twierdzenie D-15 (bramka G16: superpozycja Thevenina i parytet z FROZEN IEC 60909;
+> mutacje M30, M32); testy `tests/enm/test_prad_obu_zaciskow_galezi.py`.
+
 ### 7.2 Wzory — te same, którymi liczy rozpływ
 
 Dla gałęzi bez przekładni (linia, kabel), z admitancją szeregową `y` i CAŁKOWITĄ susceptancją
@@ -282,6 +315,16 @@ I_{do} = -\frac{V_i}{|t|}e^{j\varphi}\,y + V_j\,y$$
 
 To są **te same wyrażenia**, które stosuje tor statyczny (`power_flow_newton_internal.py:1105-1112`).
 Zgodność nie jest deklaracją: jest bramką odbioru §9.
+
+> **DOPRECYZOWANIE 2026-09-23 (karta AB-1b.1 P5, wyrocznia `tests/walidacja_fizyczna/wyrocznia_fazorow.py`).**
+> Wzór transformatora powyżej jest poprawny dla `t = |t|·e^{−jφ}`, gdzie `φ` =
+> `transformer_phase_shift_rad(grupa)` — tak buduje przekładnię adapter
+> (`enm/adapter_dynamiki.py::_przekladnia_zespolona`: `|t|·exp(−jφ)`) i tak liczy rozpływ
+> (`e_neg` przy `V_j`). Zdanie „`t = |t|e^{jφ}`" ma więc odwrócony znak kąta wobec wzoru. W
+> postaci niezależnej od znaku kąta (konwencja MATPOWER, zespolona przekładnia `t` =
+> `GalazDynamiki.przekladnia`): `I_od = (y + jB/2)/|t|² · V_i − y/conj(t) · V_j`,
+> `I_do = −y/t · V_i + (y + jB/2) · V_j` — idealny transformator po stronie `od`; w tej postaci
+> wyrocznia Thevenina zgadza się z rdzeniem do 10⁻¹⁴ (bramka G16, D-15).
 
 ### 7.3 Jednostki i znaczenie fizyczne
 
@@ -352,6 +395,15 @@ wyprowadzony PRZED biegiem.
 **F-14 jest bramką nadrzędną.** Jeżeli w chwili `t = 0` obserwable dynamiczne nie zgadzają się
 z punktem pracy, od którego bieg wystartował, to cała reszta przebiegu opisuje inny układ.
 
+> **ODCZYT PRZYJĘTY 2026-09-23 (karta AB-1b.1 P5).** F-3: szyna sztywna ma stałą SEM (stała
+> częstotliwość) — przypadek wymaga źródła testowego U/f/θ (AB-1b.1 P7, poza zakresem P0–P5).
+> F-6: próbka w `t_zd` nie jest jedna — para `L`/`P` (§5), obie z `f = None` i kodem 3; wartości
+> lewo- i prawostronne NIE są liczbami częstotliwości (pochodna przez nieciągłość nie istnieje),
+> a skończone i różne są napięcia i prądy obu próbek. F-13: gałąź wyłączona ma kanały od `t = 0`,
+> moduł prądu 0,0 DOKŁADNIE (fakt fizyczny, nie ciche zero), kąt `None` i kanał
+> `stan_galezi@ = 0` niosący przyczynę. Dowody: `test_probki_obustronne.py`, bramki G7 cz. 2,
+> G16 (fazory), G20.
+
 ### 9.3 Obserwable urządzeń
 
 | # | Przypadek | Wynik oczekiwany |
@@ -367,6 +419,7 @@ z punktem pracy, od którego bieg wystartował, to cała reszta przebiegu opisuj
 | Id | Sprawa | Dlaczego decyzja, a nie wykonanie |
 |---|---|---|
 | **OD-35** | Tor statyczny rozpływu wystawia `branch_current_pu` = prąd JEDNEJ strony pod nazwą sugerującą wielkość gałęzi (`power_flow_newton_internal.py:1116`). Kontrakt dynamiczny tego nie powtarza, więc powstaną dwa różne znaczenia tej samej nazwy w produkcie | plik jest w zbiorze FROZEN (`scripts/solver_diff_guard.py:39-47`) — korekta wymaga bramki B-01. Warianty: (a) rozszerzyć wynik statyczny o drugą stronę pod bramką B-01; (b) zostawić i nazwać różnicę w prezentacji; (c) wystawić drugą stronę w warstwie odczytu bez zmiany rdzenia. Rekomendacja: **(c)** — pełna informacja bez ruszania zamrożonego rdzenia |
+| | **Rozstrzygnięcie OD-35 (2026-09-23, decyzja O-46, karta AB-1b.1 P9): wariant (c)** — `build_branch_results` wystawia `i_do_a` (prąd zacisku końcowego z mocy strony `to` i napięcia węzła `to`), etykietę strony dla `i_a` i obciążenie z większego zacisku; rdzeń FROZEN nietknięty. | — |
 | **OD-36** | Żądana dokładność kąta `Δθ_dop`, z której wynika granica domeny ważności `f_i` (§4) | to wielkość inżynierska, nie numeryczna: określa, od jakiego zapadu przestajemy orzekać o częstotliwości. Rekomendacja: podać ją jako jawne pole nastaw biegu z wartością wymaganą, nie domyślną |
 | **OD-37** | Silnik indukcyjny jako rodzina dynamiczna — patrz `docs/audit/DYSPOZYCJA_STABILITY_RMS.md` | duże silniki SN decydują o stabilności napięciowej po zwarciu (zapad, zatrzymanie, prąd rozruchowy przy odbudowie). Rodzina jest wymieniona w martwym module, **nie ma jej** w bibliotece W6-3A i nie ma jej w zamrożonej macierzy. To rozszerzenie celu, więc decyzja właściciela |
 
@@ -492,6 +545,9 @@ pomiarem byłby zgadywaniem.
   nie zostało wykonane; tożsamości analityczne F-1…F-5 i parytet B-8 to dowody **wewnętrzne**,
 * **jednostka amperowa** prądów gałęzi — kontrakt wystawia jednostki względne; przeliczenie na
   ampery należy do warstwy prezentacji przez pakiet wielkości pochodnych.
+
+> **Stan 2026-09-23 (karta AB-1b.1 P5):** fazory prądów obu zacisków (moduł i kąt), kanał stanu
+> gałęzi i prąd w miejscu zwarcia są w wyniku (D-15, L5); ROCOF, C2–C5 i F-7 bez zmian.
 
 ---
 
@@ -803,6 +859,19 @@ poprzednia — PRZED nim. Częstotliwość w chwili zdarzenia jest wartością `
 wyliczoną z rozwiązania, a nie różnicą próbek: przed zdarzeniem `f = 50,000000 Hz`, w
 chwili zdarzenia `f = 46,76 / 73,11 Hz` w zależności od skoku kąta.
 
+> **PRZED AB-1b.1 — ZASTĄPIONE (2026-09-23).** Liczby tego załącznika opisują scenariusz sprzed
+> karty AB-1b.1: zwarcie na `b-sn-stacja`, „usunięte" przez `t_usuniecia_s` bez aparatu, który
+> by je izolował (pierścień dalej zasilał szynę), oraz jedną próbkę prawostronną z liczbą
+> częstotliwości w chwili zdarzenia. Od AB-1b.1 ten scenariusz kończy się odmową
+> `dynamika.zwarcie_nieodizolowane` (predykat izolacji w stanie t⁺, D-17; test
+> `test_dawny_scenariusz_z_usunieciem_izolacja_na_szynie_zasilanej_to_odmowa`). Scenariusz
+> poprawiony na NIEZMIENIONEJ sieci G17: zwarcie łukowe na szynie pola `b-pole`, usunięcie
+> `izolacja` przez otwarcie `wyl-pole` i `kab-magistrala` w 1,180 s (szyna pola staje się
+> obszarem beznapięciowym, `V = 0` dokładnie, kod jakości 4), SPZ obu aparatów w 2,180 s; oś
+> 504 próbek (501 siatki + po jednej parze `L`/`P` w trzech chwilach zdarzeń), częstotliwość w
+> chwilach zdarzeń `None` z kodem 3. Przebieg przypięty testami
+> `tests/e2e/test_so1a_scenariusz_odniesienia.py`.
+
 **Jakość przy najgłębszym zapadzie (§8):** w biegu z `R_f = 0,2 Ω` napięcie schodzi do
 **0,0249 pu**, a największe `u_f,est` w całym biegu wynosi **2,1·10⁻⁹ Hz** — dziewięć rzędów
 wielkości poniżej raportowanych odchyłek. Faza jest więc numerycznie wyznaczona i werdykt
@@ -1081,6 +1150,12 @@ Mutacja M8 (zdjęcie sortowania) zabijana przez `test_kolejnosc_kanoniczna_jest_
 ma i jej brak jest **meldowany odmową nazwaną**, a nie cichym pominięciem. Klasyfikacja:
 **OPEN — POPRAWNIE ODROCZONE DO W6-B** (wymaga modelu stanu łączeniowego w rdzeniu, nie łatki).
 W tej rundzie nienaprawiane zgodnie z §12 promptu.
+
+> **ZAMKNIĘTE 2026-09-23 (karta AB-1b.1 P2, twierdzenie D-19).** Gałęzie otwarte i poza ruchem,
+> łączniki i baterie wyłączone istnieją w rdzeniu od `t = 0` jako NIEAKTYWNE (`aktywna_na_starcie`
+> w kontrakcie gałęzi i odsprzęgu); macierz admitancyjna w `t = 0` jest bitowo ta sama, a
+> `zalaczenie_galezi` na `kab-rezerwa`/`odl-rezerwa` wykonuje się (SZR z obszarem
+> beznapięciowym, test `TestAktywnoscElementow`, mutacja M27).
 
 **F-7** — bez zmian wobec Z2.5: wyrocznia zewnętrzna dla `f_hz@szyna` nie istnieje, ANDES w CI
 porównuje inną wielkość fizyczną i dowodem F-7 nie jest. Dług fali **W6-F**.

@@ -72,6 +72,7 @@ from __future__ import annotations
 import cmath
 import math
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 import numpy as np
 
@@ -79,6 +80,7 @@ from ..kontrakty import (
     KOD_PARAMETRY_SPRZECZNE,
     KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
     OdmowaDynamiki,
+    SprzezenieUrzadzenia,
 )
 from ..konwencje import (
     CWIERC_OBROTU_RAD,
@@ -89,7 +91,7 @@ from ..konwencje import (
     zmiana_bazy_mocy_wzglednej,
     zmiana_bazy_stalej_bezwladnosci,
 )
-from .bazowe import modul_niezerowy
+from .bazowe import modul_niezerowy, parametry_bloku
 from .pochodne_kierunkowe import Dual, Zespolona, kwadrat, obrot
 from .regulatory import (
     RegulatorNapieciaSEXS,
@@ -126,6 +128,15 @@ class WspolczynnikiNasycenia:
 
     prog_pu: float
     wspolczynnik: float
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = ()
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "prog_pu": self.prog_pu,
+            "wspolczynnik": self.wspolczynnik,
+        }
 
     @property
     def aktywne(self) -> bool:
@@ -246,6 +257,45 @@ class MaszynaSynchroniczna:
     turbina: RegulatorObrotowTGOV1 | None
     stabilizator: StabilizatorPSS1A | None
     uklad: UkladStanow = field(compare=False)
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = (
+        (
+            "uklad",
+            "uklad stanow jest WYPROWADZONY z konfiguracji blokow urzadzenia; jego "
+            "nazwy wchodza do odcisku osobno jako `nazwy_stanow`",
+        ),
+    )
+
+    @property
+    def sprzezenie(self) -> SprzezenieUrzadzenia:
+        """Maszyna 6. rzedu: SEM podprzejsciowa za reaktancja — prad do wezla."""
+        return "pradowe"
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "ident": self.ident,
+            "wezel": self.wezel,
+            "h_s": self.h_s,
+            "d_pu": self.d_pu,
+            "xd_pu": self.xd_pu,
+            "xq_pu": self.xq_pu,
+            "xd_prim_pu": self.xd_prim_pu,
+            "xq_prim_pu": self.xq_prim_pu,
+            "xd_bis_pu": self.xd_bis_pu,
+            "xq_bis_pu": self.xq_bis_pu,
+            "xl_pu": self.xl_pu,
+            "ra_pu": self.ra_pu,
+            "td0_prim_s": self.td0_prim_s,
+            "tq0_prim_s": self.tq0_prim_s,
+            "td0_bis_s": self.td0_bis_s,
+            "tq0_bis_s": self.tq0_bis_s,
+            "nasycenie": parametry_bloku(self.nasycenie),
+            "omega_bazowa_rad_s": self.omega_bazowa_rad_s,
+            "wzbudzenie": parametry_bloku(self.wzbudzenie),
+            "turbina": parametry_bloku(self.turbina),
+            "stabilizator": parametry_bloku(self.stabilizator),
+        }
 
     @property
     def nazwy_stanow(self) -> tuple[str, ...]:

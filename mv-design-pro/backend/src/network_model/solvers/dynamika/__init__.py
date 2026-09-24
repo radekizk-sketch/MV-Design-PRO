@@ -13,7 +13,7 @@ re-inicjalizacja algebry przy TRZYMANYCH stanach rozniczkowych, tozsamosc biegu 
 pieciu odciskow.
 
     wynik = SilnikDynamiki(wejscie).uruchom()
-    ladunek = ladunek_resultset_dynamic_v1(wynik, run_id="...")
+    ladunek = ladunek_resultset_dynamic_v2(wynik, run_id="...")
 """
 
 from .calkowanie import (
@@ -40,6 +40,9 @@ from .kontrakty import (
     WejscieDynamiki,
     WezelDynamiki,
     ZmianaGalezi,
+    ZmianaOdbioru,
+    ZmianaOdsprzegu,
+    ZwarcieGalezi,
     ZwarcieWezla,
 )
 from .reinicjalizacja import RaportReinicjalizacji, reinicjalizuj
@@ -52,7 +55,7 @@ from .wynik import (
     WlasnosciBiegu,
     WynikDynamiki,
     ZdarzenieWykonane,
-    ladunek_resultset_dynamic_v1,
+    ladunek_resultset_dynamic_v2,
 )
 
 __all__ = [
@@ -86,9 +89,12 @@ __all__ = [
     "WynikKroku",
     "ZdarzenieWykonane",
     "ZmianaGalezi",
+    "ZmianaOdbioru",
+    "ZmianaOdsprzegu",
+    "ZwarcieGalezi",
     "ZwarcieWezla",
     "blad_lokalny",
-    "ladunek_resultset_dynamic_v1",
+    "ladunek_resultset_dynamic_v2",
     "reinicjalizuj",
     "residuum_kcl_niezalezne",
     "rozwiaz_algebre",

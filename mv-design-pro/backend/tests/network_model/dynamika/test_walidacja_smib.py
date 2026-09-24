@@ -128,6 +128,7 @@ def _stabilny(uklad, czas_trwania_s: float) -> bool:
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_OHM,
                 t_usuniecia_s=0.1 + czas_trwania_s,
+                sposob_usuniecia="samoczynne",
             ),
         )
     )
@@ -187,6 +188,7 @@ def test_czestotliwosc_modu_z_przebiegu_zgadza_sie_z_wartosciami_wlasnymi() -> N
                 r_f_ohm=0.0,
                 x_f_ohm=50.0,
                 t_usuniecia_s=0.06,
+                sposob_usuniecia="samoczynne",
             ),
         )
     )
@@ -249,6 +251,7 @@ def _dryf_energii(uklad, dt_s: float) -> float:
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_OHM,
                 t_usuniecia_s=0.18,
+                sposob_usuniecia="samoczynne",
             ),
         )
     )
@@ -299,6 +302,7 @@ def test_bilans_energii_domyka_sie_takze_przy_tlumieniu() -> None:
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_OHM,
                 t_usuniecia_s=0.18,
+                sposob_usuniecia="samoczynne",
             ),
         )
     )
@@ -332,6 +336,7 @@ def test_tlumienie_wygasza_kolysania_a_jego_brak_nie() -> None:
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_OHM,
                 t_usuniecia_s=0.18,
+                sposob_usuniecia="samoczynne",
             ),
         )
     )

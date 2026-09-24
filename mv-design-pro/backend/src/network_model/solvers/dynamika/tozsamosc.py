@@ -21,13 +21,14 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from .kontrakty import (
+    GalazDynamiki,
     HarmonogramDynamiki,
     NastawySolvera,
     OdbiorDynamiki,
@@ -35,8 +36,8 @@ from .kontrakty import (
     PunktPracy,
     Urzadzenie,
     WejscieDynamiki,
+    WezelDynamiki,
 )
-from .siec import ModelSieci
 
 #: Wersja rdzenia — ta sama etykieta, ktora rejestr rodzajow biegu przypisuje
 #: `dynamika_rms` jako podstawe normatywna (`standard_basis_ref`).
@@ -72,16 +73,58 @@ def skrot_kanoniczny(tresc: Any) -> str:
     return hashlib.sha256(kanoniczny.encode("utf-8")).hexdigest()
 
 
+def _normalizuj(wartosc: Any) -> Any:
+    """Wartosc parametru w postaci kanonicznej: liczby skwantyzowane, struktury rekurencyjnie.
+
+    JEDNA regula dla odcisku migawki i odcisku harmonogramu. Poprzednia wersja
+    odcisku harmonogramu wolala `kwantyzuj(float(x))` na KAZDYM polu, ktore nie bylo
+    napisem ani `None` — zdarzenie z polem zagniezdzonym (krotka, dataklasa) wywrocilo
+    by bieg na `float(krotka)` zamiast dac odcisk (karta AB-1b.1 par. 0 pkt 13).
+    """
+    if wartosc is None or isinstance(wartosc, bool | str):
+        return wartosc
+    if isinstance(wartosc, complex):
+        return _kwantyzuj_zespolona(wartosc)
+    if isinstance(wartosc, int | float | np.floating | np.integer):
+        return kwantyzuj(float(wartosc))
+    if isinstance(wartosc, dict):
+        return {str(klucz): _normalizuj(pozycja) for klucz, pozycja in wartosc.items()}
+    if isinstance(wartosc, tuple | list):
+        return [_normalizuj(pozycja) for pozycja in wartosc]
+    if is_dataclass(wartosc) and not isinstance(wartosc, type):
+        return {
+            "rodzaj": type(wartosc).__name__,
+            "pola": {
+                pole.name: _normalizuj(getattr(wartosc, pole.name)) for pole in fields(wartosc)
+            },
+        }
+    raise TypeError(
+        f"Wartosc typu {type(wartosc).__name__!r} nie ma postaci kanonicznej odcisku — "
+        "dopisz ja jawnie zamiast haszowac reprezentacje tekstowa"
+    )
+
+
 def odcisk_migawki(
-    model: ModelSieci,
+    *,
+    wezly: tuple[WezelDynamiki, ...],
+    galezie: tuple[GalazDynamiki, ...],
+    odsprzegi: tuple[OdsprzegDynamiki, ...],
     odbiory: tuple[OdbiorDynamiki, ...],
     urzadzenia: tuple[Urzadzenie, ...],
 ) -> str:
-    """Odcisk WIDOKU SIECI, na ktorym rdzen liczyl: wezly, galezie, odsprzegi,
-    odbiory i urzadzenia (z parametrami i wymiarem stanu)."""
+    """Odcisk WIDOKU SIECI, na ktorym rdzen liczyl: wezly, galezie, odsprzegi, odbiory i
+    urzadzenia z KOMPLETEM parametrow (`Urzadzenie.parametry_tozsamosci`) i sprzezeniem.
+
+    DEFEKT NAPRAWIONY (karta AB-1b.1 par. 0 pkt 13, sonda 11). Ten docstring od poczatku
+    obiecywal „urzadzenia z parametrami", a odcisk haszowal wylacznie `ident`, `wezel` i
+    nazwy stanow: dwie maszyny rozniace sie tylko stala H dawaly IDENTYCZNA piatke
+    odciskow przy roznych przebiegach, czyli kontrakt „ta sama piatka => ten sam wynik"
+    byl falszywy. Odcisk liczy sie z WEJSCIA biegu (nie z urzadzen po zdarzeniach —
+    opakowanie urzadzenia odlaczonego jest skutkiem harmonogramu, nie migawki).
+    """
     return skrot_kanoniczny(
         {
-            "wezly": [[wezel.ident, kwantyzuj(wezel.u_n_kv)] for wezel in model.wezly],
+            "wezly": [[wezel.ident, kwantyzuj(wezel.u_n_kv)] for wezel in wezly],
             "galezie": [
                 [
                     galaz.ident,
@@ -90,19 +133,34 @@ def odcisk_migawki(
                     _kwantyzuj_zespolona(galaz.y_szeregowa_pu),
                     kwantyzuj(galaz.b_poprzeczna_pu),
                     _kwantyzuj_zespolona(galaz.przekladnia),
+                    galaz.aktywna_na_starcie,
+                    galaz.rodzaj,
                 ]
-                for galaz in model.galezie
+                for galaz in galezie
             ],
             "odsprzegi": [
-                [odsprzeg.ident, odsprzeg.wezel, kwantyzuj(odsprzeg.g_pu), kwantyzuj(odsprzeg.b_pu)]
-                for odsprzeg in _posortowane_odsprzegi(model.odsprzegi)
+                [
+                    odsprzeg.ident,
+                    odsprzeg.wezel,
+                    kwantyzuj(odsprzeg.g_pu),
+                    kwantyzuj(odsprzeg.b_pu),
+                    odsprzeg.aktywna_na_starcie,
+                ]
+                for odsprzeg in _posortowane_odsprzegi(odsprzegi)
             ],
             "odbiory": [
                 [odbior.ident, odbior.wezel, kwantyzuj(odbior.p_pu), kwantyzuj(odbior.q_pu)]
                 for odbior in odbiory
             ],
             "urzadzenia": [
-                [urzadzenie.ident, urzadzenie.wezel, list(urzadzenie.nazwy_stanow)]
+                [
+                    urzadzenie.ident,
+                    urzadzenie.wezel,
+                    list(urzadzenie.nazwy_stanow),
+                    urzadzenie.sprzezenie,
+                    type(urzadzenie).__name__,
+                    _normalizuj(urzadzenie.parametry_tozsamosci()),
+                ]
                 for urzadzenie in urzadzenia
             ],
         }
@@ -156,19 +214,21 @@ def odcisk_harmonogramu(harmonogram: HarmonogramDynamiki) -> str:
     Kolejnosc zapisu jest czescia tresci (remis czasowy rozstrzyga indeks
     wstawienia), wiec dwa harmonogramy o tych samych zdarzeniach zapisanych w
     innej kolejnosci maja ROZNE odciski — ten sam kontrakt, co w warstwie danych.
+    Pola zagniezdzone (krotki, dataklasy) przechodza REKURENCYJNIE przez
+    `_normalizuj` — jedna regula postaci kanonicznej dla calego modulu.
     """
-    tresc: list[Any] = []
-    for zdarzenie in harmonogram.zdarzenia:
-        pola: dict[str, Any] = {}
-        for nazwa, wartosc in vars(zdarzenie).items():
-            if isinstance(wartosc, bool) or wartosc is None or isinstance(wartosc, str):
-                pola[nazwa] = wartosc
-            elif isinstance(wartosc, complex):
-                pola[nazwa] = _kwantyzuj_zespolona(wartosc)
-            else:
-                pola[nazwa] = kwantyzuj(float(wartosc))
-        tresc.append({"rodzaj": type(zdarzenie).__name__, "pola": pola})
-    return skrot_kanoniczny(tresc)
+    return skrot_kanoniczny(
+        [
+            {
+                "rodzaj": type(zdarzenie).__name__,
+                "pola": {
+                    pole.name: _normalizuj(getattr(zdarzenie, pole.name))
+                    for pole in fields(zdarzenie)
+                },
+            }
+            for zdarzenie in harmonogram.zdarzenia
+        ]
+    )
 
 
 def odcisk_implementacji() -> str:
@@ -199,12 +259,16 @@ class TozsamoscBiegu:
     wersja_solvera: str
 
 
-def zbuduj_tozsamosc(
-    wejscie: WejscieDynamiki, model: ModelSieci, urzadzenia: tuple[Urzadzenie, ...]
-) -> TozsamoscBiegu:
-    """Zloz tozsamosc biegu z wejscia i zlozonego modelu sieci."""
+def zbuduj_tozsamosc(wejscie: WejscieDynamiki) -> TozsamoscBiegu:
+    """Zloz tozsamosc biegu z WEJSCIA (migawka, punkt pracy, nastawy, harmonogram, kod)."""
     return TozsamoscBiegu(
-        odcisk_migawki=odcisk_migawki(model, wejscie.odbiory, urzadzenia),
+        odcisk_migawki=odcisk_migawki(
+            wezly=wejscie.wezly,
+            galezie=wejscie.galezie,
+            odsprzegi=wejscie.odsprzegi,
+            odbiory=wejscie.odbiory,
+            urzadzenia=wejscie.urzadzenia,
+        ),
         odcisk_punktu_pracy=odcisk_punktu_pracy(wejscie.punkt_pracy),
         odcisk_nastaw_solvera=odcisk_nastaw(wejscie.nastawy),
         odcisk_harmonogramu=odcisk_harmonogramu(wejscie.harmonogram),

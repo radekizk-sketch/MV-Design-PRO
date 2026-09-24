@@ -21,10 +21,11 @@ a nie „prawie zero".
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 
-from ..kontrakty import Urzadzenie
+from ..kontrakty import SprzezenieUrzadzenia, Urzadzenie
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,19 @@ class UrzadzenieOdlaczone:
     def stany_bez_rownowagi(self) -> tuple[str, ...]:
         """Opakowanie PRZENOSI deklaracje urzadzenia bazowego, nie tworzy wlasnej."""
         return self.bazowe.stany_bez_rownowagi
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = ()
+
+    @property
+    def sprzezenie(self) -> SprzezenieUrzadzenia:
+        """Odlaczone urzadzenie NIE narzuca napiecia i nie wstrzykuje pradu: sprzezenie
+        pradowe z pradem tozsamosciowo zerowym — takze wtedy, gdy urzadzenie bazowe
+        bylo zrodlem napieciowym (wezel wraca wtedy do zwyklego rownania KCL)."""
+        return "pradowe"
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Parametry urzadzenia bazowego — opakowanie jest rozpoznawane po nazwie klasy."""
+        return {"bazowe": self.bazowe.parametry_tozsamosci()}
 
     def stan_poczatkowy(self, napiecie_pu: complex, moc_pu: complex) -> np.ndarray:
         return self.bazowe.stan_poczatkowy(napiecie_pu, moc_pu)

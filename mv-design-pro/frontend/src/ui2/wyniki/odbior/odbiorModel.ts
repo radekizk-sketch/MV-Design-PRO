@@ -22,6 +22,7 @@ import type {
   WidokZgodnosci,
   WielkoscPomiaru,
   WierszZgodnosci,
+  ZaciskPomiaru,
   ZgodnoscZadanie,
 } from './api';
 import {
@@ -45,6 +46,11 @@ export interface WierszEdytora {
   readonly element_ref: string;
   readonly wielkosc: WielkoscPomiaru;
   readonly wartosc: string;
+  /**
+   * Miejsce pomiaru mocy gałęzi (decyzja O-51) — wskazuje inżynier (etykiety z nazwami
+   * szyn z backendu), BEZ wartości domyślnej. Dotyczy wyłącznie P/Q.
+   */
+  readonly zacisk: ZaciskPomiaru | null;
 }
 
 /** Domyślny (pusty) wiersz edytora. */
@@ -52,7 +58,13 @@ export const WIERSZ_EDYTORA_DOMYSLNY: WierszEdytora = {
   element_ref: '',
   wielkosc: 'U',
   wartosc: '',
+  zacisk: null,
 };
+
+/** Czy wielkość jest mocą gałęzi (P/Q — pomiar na zacisku). */
+export function wielkoscNaZacisku(wielkosc: WielkoscPomiaru): boolean {
+  return wielkosc === 'P' || wielkosc === 'Q';
+}
 
 /** Czy wiersz edytora jest całkowicie pusty (do pominięcia przy serializacji). */
 export function wierszPusty(w: WierszEdytora): boolean {
@@ -101,11 +113,14 @@ function serializujWiersze(
       bledy.push(`Wiersz ${numer}: wartość „${w.wartosc.trim()}" nie jest liczbą.`);
       return;
     }
+    // Zacisk wysyłany WYŁĄCZNIE dla mocy gałęzi i tylko gdy wskazany — brak wskazania
+    // rozstrzyga backend odmową nazwaną („brak miejsca pomiaru"), nie domyślny koniec.
     pomiary.push({
       element_ref: element,
       wielkosc: w.wielkosc,
       wartosc,
       jednostka: JEDNOSTKA_WIELKOSCI[w.wielkosc],
+      ...(wielkoscNaZacisku(w.wielkosc) && w.zacisk !== null ? { zacisk: w.zacisk } : {}),
     });
   });
   return { pomiary, bledy };
@@ -205,14 +220,16 @@ export function zbudujZadanie(wejscie: WejscieBudowy): WynikBudowy {
 
 export const KLUCZ_WIERSZA_ZGODNOSCI = 'kluczWiersza';
 
-/** Deterministyczny, unikatowy klucz wiersza raportu (element + wielkość). */
+/** Deterministyczny, unikatowy klucz wiersza raportu (element + wielkość + zacisk —
+ * dwa pomiary mocy tej samej gałęzi na obu zaciskach to dwa wiersze). */
 export function kluczWierszaZgodnosci(w: WierszZgodnosci): string {
-  return `${w.element_ref}::${w.wielkosc}`;
+  return `${w.element_ref}::${w.wielkosc}::${w.zacisk ?? ''}`;
 }
 
 export const KOLUMNY_ZGODNOSCI: DefinicjaKolumny[] = [
   { klucz: 'element', etykieta: ODBIOR_STRINGS.kolElement, wyrownanie: 'lewo' },
   { klucz: 'wielkosc', etykieta: ODBIOR_STRINGS.kolWielkosc, wyrownanie: 'lewo' },
+  { klucz: 'miejsce', etykieta: ODBIOR_STRINGS.kolMiejsce, wyrownanie: 'lewo' },
   { klucz: 'pomiar', etykieta: ODBIOR_STRINGS.kolPomiar, mono: true },
   { klucz: 'model', etykieta: ODBIOR_STRINGS.kolModel, mono: true },
   { klucz: 'odchylka', etykieta: ODBIOR_STRINGS.kolOdchylka, mono: true },
@@ -259,6 +276,7 @@ export function mapujWierszZgodnosci(w: WierszZgodnosci): WierszTabeli {
   return {
     element: { wartosc: w.element_ref },
     wielkosc: { wartosc: wielkoscPL(w.wielkosc) },
+    miejsce: { wartosc: w.miejsce_pomiaru_pl ?? ODBIOR_STRINGS.kreska },
     pomiar: komorkaLiczba(w.wartosc_pomiar, fmtWartosc, { jednostka: w.jednostka }),
     model: komorkaLiczba(w.wartosc_model, fmtWartosc, {
       jednostka: w.jednostka,

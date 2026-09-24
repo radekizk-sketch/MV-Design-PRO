@@ -59,6 +59,7 @@ from __future__ import annotations
 
 import cmath
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 import numpy as np
 
@@ -66,12 +67,14 @@ from ..kontrakty import (
     KOD_PARAMETRY_SPRZECZNE,
     KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
     OdmowaDynamiki,
+    SprzezenieUrzadzenia,
 )
 from ..konwencje import (
     pulsacja_bazowa_rad_s,
     zmiana_bazy_impedancji,
     zmiana_bazy_mocy_wzglednej,
 )
+from .bazowe import parametry_bloku
 from .okno_mocy import OknoMocy
 from .pochodne_kierunkowe import (
     Dual,
@@ -123,6 +126,31 @@ class RdzenGFM:
     tiq_s: float
     omega_bazowa_rad_s: float
     uklad: UkladStanow = field(compare=False)
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = (
+        (
+            "uklad",
+            "uklad stanow rdzenia jest WYPROWADZONY z jego nastaw (np. opoznienie "
+            "odbudowy dodaje stan); nazwy wchodza do odcisku jako `nazwy_stanow` urzadzenia",
+        ),
+    )
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "tryb": self.tryb,
+            "mp_pu": self.mp_pu,
+            "mq_pu": self.mq_pu,
+            "h_wirtualne_s": self.h_wirtualne_s,
+            "d_wirtualne_pu": self.d_wirtualne_pu,
+            "r_wirtualne_pu": self.r_wirtualne_pu,
+            "x_wirtualne_pu": self.x_wirtualne_pu,
+            "i_max_pu": self.i_max_pu,
+            "strategia_ograniczenia": self.strategia_ograniczenia,
+            "tp_s": self.tp_s,
+            "tiq_s": self.tiq_s,
+            "omega_bazowa_rad_s": self.omega_bazowa_rad_s,
+        }
 
     @property
     def ma_bezwladnosc(self) -> bool:
@@ -413,6 +441,22 @@ class PrzeksztaltnikGFM:
     wezel: str
     rdzen: RdzenGFM
     okno_mocy: OknoMocy
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = ()
+
+    @property
+    def sprzezenie(self) -> SprzezenieUrzadzenia:
+        """Przeksztaltnik tworzacy siec: SEM za impedancja WIRTUALNA (niezerowa) — do sieci wchodzi prad."""
+        return "pradowe"
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "ident": self.ident,
+            "wezel": self.wezel,
+            "rdzen": parametry_bloku(self.rdzen),
+            "okno_mocy": parametry_bloku(self.okno_mocy),
+        }
 
     @property
     def nazwy_stanow(self) -> tuple[str, ...]:

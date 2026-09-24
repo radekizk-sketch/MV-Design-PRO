@@ -32,13 +32,16 @@ IEC 61400-27-1 dla typu 4):
 ODBUDOWA MOCY CZYNNEJ PO ZAPADZIE. `p_odbudowa_pu_na_s` ogranicza TEMPO wzrostu
 mocy czynnej po ustapieniu zapadu (ogranicznik szybkosci na pochodnej skladowej
 czynnej, przeliczony z mocy na prad przez biezace napiecie). `p_odbudowa_
-opoznienie_s` opoznia ZWOLNIENIE tego ogranicznika: stan `odbudowa_zwolnienie_pu`
-dazy do 1 po wyjsciu z zapadu i do 0 w zapadzie, z ta wlasnie stala czasowa.
-Licznik czasu bezwzgledny bylby tu niemozliwy do uczciwego zapisania — protokol
-`Urzadzenie` nie podaje czasu, a reset licznika jest zdarzeniem dyskretnym,
-ktorego rdzen nie zna poza harmonogramem. Stala czasowa zwolnienia realizuje to
-samo opoznienie bez wprowadzania do rdzenia pojecia, ktorego on nie ma.
-Przy `p_odbudowa_opoznienie_s = 0` stanu nie ma, a zwolnienie jest natychmiastowe.
+opoznienie_s` jest w tym modelu STALA CZASOWA czlonu inercyjnego zwolnienia, NIE
+opoznieniem (czasem martwym): stan `odbudowa_zwolnienie_pu` dazy do 1 po wyjsciu z
+zapadu i do 0 w zapadzie wykladniczo, z ta stala czasowa — zaczyna sie zmieniac
+NATYCHMIAST i po czasie `p_odbudowa_opoznienie_s` osiaga ok. 63 % zmiany. Czlon
+inercyjny nie jest rownowazny opoznieniu transportowemu (korekta 2026-09-23: dawne
+zdanie „stala czasowa realizuje to samo opoznienie" bylo nieprawdziwe). Przebieg
+rozni sie wiec od przebiegu urzadzenia z licznikiem czasu zwalniajacym ogranicznik
+skokowo po uplywie nastawy — licznik wymagalby w rdzeniu czasu dyskretnego i
+resetu, ktorych protokol `Urzadzenie` nie ma. Przy `p_odbudowa_opoznienie_s = 0`
+stanu nie ma, a zwolnienie jest natychmiastowe.
 
 GRANICE PRACY CIAGLEJ. `u_min_ciagle_pu`/`u_max_ciagle_pu` wyznaczaja pasmo, w
 ktorym dziala statyzm Q/U. Poza nim regulacja biernej przechodzi w tryb wsparcia
@@ -57,16 +60,17 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 import numpy as np
 
-from ..kontrakty import KOD_PUNKT_PRACY_POZA_OGRANICZENIEM, OdmowaDynamiki
+from ..kontrakty import KOD_PUNKT_PRACY_POZA_OGRANICZENIEM, OdmowaDynamiki, SprzezenieUrzadzenia
 from ..konwencje import (
     CWIERC_OBROTU_RAD,
     pulsacja_bazowa_rad_s,
     zmiana_bazy_mocy_wzglednej,
 )
-from .bazowe import modul_niezerowy
+from .bazowe import modul_niezerowy, parametry_bloku
 from .okno_mocy import OknoMocy
 from .pochodne_kierunkowe import (
     Dual,
@@ -161,6 +165,37 @@ class RdzenGFL:
     omega_bazowa_rad_s: float
     f_bazowa_hz: float
     uklad: UkladStanow = field(compare=False)
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = (
+        (
+            "uklad",
+            "uklad stanow rdzenia jest WYPROWADZONY z jego nastaw (np. opoznienie "
+            "odbudowy dodaje stan); nazwy wchodza do odcisku jako `nazwy_stanow` urzadzenia",
+        ),
+    )
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "i_max_pu": self.i_max_pu,
+            "priorytet_ogranicznika": self.priorytet_ogranicznika,
+            "pll_kp": self.pll_kp,
+            "pll_ki": self.pll_ki,
+            "k_frt": self.k_frt,
+            "prog_frt_pu": self.prog_frt_pu,
+            "tp_s": self.tp_s,
+            "tiq_s": self.tiq_s,
+            "p_odbudowa_pu_na_s": self.p_odbudowa_pu_na_s,
+            "p_odbudowa_opoznienie_s": self.p_odbudowa_opoznienie_s,
+            "droop_p_f_pu": self.droop_p_f_pu,
+            "martwa_strefa_f_hz": self.martwa_strefa_f_hz,
+            "droop_q_u_pu": self.droop_q_u_pu,
+            "martwa_strefa_u_pu": self.martwa_strefa_u_pu,
+            "u_min_ciagle_pu": self.u_min_ciagle_pu,
+            "u_max_ciagle_pu": self.u_max_ciagle_pu,
+            "omega_bazowa_rad_s": self.omega_bazowa_rad_s,
+            "f_bazowa_hz": self.f_bazowa_hz,
+        }
 
     @property
     def ma_zwolnienie_odbudowy(self) -> bool:
@@ -427,10 +462,17 @@ def zbuduj_rdzen_gfl(
 
     Przeliczaja sie: `i_max_pu` i `p_odbudowa_pu_na_s` (wielkosci mocy/pradu,
     mnoznik `S_urz/S_uklad`) oraz `k_frt` (wzmocnienie prad na napiecie).
-    NIE przeliczaja sie: statyzmy (`droop_p_f_pu`, `droop_q_u_pu` sa zdefiniowane
-    jako stosunki wzgledne w bazie urzadzenia i wchodza do zadania mocy, ktore
-    juz jest w bazie urzadzenia — dlatego przeliczany jest WYNIK dzialania
-    statyzmu, a nie sam statyzm), progi napieciowe i stale czasowe.
+    NIE przeliczaja sie: progi napieciowe i stale czasowe (niezmiennicze wzgledem
+    bazy mocy) ORAZ statyzmy `droop_p_f_pu`, `droop_q_u_pu`.
+
+    STAN FAKTYCZNY STATYZMOW (korekta 2026-09-23; dawne zdanie „przeliczany jest WYNIK
+    dzialania statyzmu" bylo nieprawdziwe). Statyzmy sa stosunkami wzglednymi w bazie
+    URZADZENIA, a ich korekta (`odchylka / droop`) jest dodawana w `zadania_pradu` do
+    zadania mocy trzymanego w stanie w bazie UKLADU — bez mnoznika `S_urz/S_uklad`.
+    Ani statyzm, ani jego wynik nie jest wiec sprowadzany do bazy ukladu: przy
+    `s_n_mva != s_bazowa_mva` korekta P/f i Q/U ma skale bledna o czynnik
+    `S_uklad/S_urz` (zmierzone w karcie AB-1b.2). Poprawka fizyki nalezy do karty
+    AB-1b.2; ta funkcja jej NIE wprowadza.
     """
     return RdzenGFL(
         i_max_pu=zmiana_bazy_mocy_wzglednej(i_max_pu, s_n_mva, s_bazowa_mva),
@@ -464,6 +506,22 @@ class PrzeksztaltnikGFL:
     rdzen: RdzenGFL
     okno_mocy: OknoMocy
 
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = ()
+
+    @property
+    def sprzezenie(self) -> SprzezenieUrzadzenia:
+        """Przeksztaltnik nadazny: zrodlo PRADU sterowane petla synchronizacji."""
+        return "pradowe"
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "ident": self.ident,
+            "wezel": self.wezel,
+            "rdzen": parametry_bloku(self.rdzen),
+            "okno_mocy": parametry_bloku(self.okno_mocy),
+        }
+
     @property
     def nazwy_stanow(self) -> tuple[str, ...]:
         return self.rdzen.uklad.nazwy
@@ -472,13 +530,18 @@ class PrzeksztaltnikGFL:
     def granice_stanow(self) -> tuple[tuple[float, float] | None, ...]:
         """Zaden stan nadaznego nie potrzebuje rzutowania — i to jest WYNIK, nie brak.
 
-        Skladowe pradu sa czlonami inercyjnymi ZADAN, ktore ogranicznik sprowadza
-        do kola `|I| <= i_max` PRZED calkowaniem. Czlon inercyjny daje srednia
-        wazona przeszlych wejsc, a kolo jest zbiorem WYPUKLYM, wiec prad
-        rzeczywisty nie moze z niego wyjsc — ograniczenie jest dotrzymane z
-        konstrukcji, bez ani jednego rzutowania. Stan zwolnienia odbudowy jest
-        czlonem inercyjnym sygnalu dwustanowego, wiec z tego samego powodu lezy
-        w [0, 1]. Stany odniesien maja zerowa pochodna.
+        STAN FAKTYCZNY OGRANICZNIKA PRADU (korekta 2026-09-23; dawny argument
+        „czlon inercyjny + wypuklosc kola => |I| <= i_max z konstrukcji" byl
+        nieprawdziwy). Ogranicznik dziala na ZADANIA, przed czlonami inercyjnymi
+        `Tp` (czynna) i `Tiq` (bierna). Argument wypuklosci obowiazuje wylacznie przy
+        `Tp == Tiq` i nieaktywnym ograniczniku tempa odbudowy — wtedy wektor pradu jest
+        srednia wazona wektorow zadan z kola. Przy `Tp != Tiq` skladowe sa usredniane
+        z ROZNYMI wagami i wektor pradu rzeczywistego moze wyjsc poza kolo: zmierzone
+        w karcie AB-1b.2 `|I|/i_max` do 1,1407 przy `Tp/Tiq = 10`. Model NIE deklaruje
+        granic stanow pradu i tego nie ukrywa; ograniczenie pradu RZECZYWISTEGO jest
+        poprawka fizyki karty AB-1b.2. Stan zwolnienia odbudowy jest czlonem
+        inercyjnym sygnalu z przedzialu [0, 1] (jedna skladowa, jedna stala czasowa),
+        wiec w tym przedziale lezy. Stany odniesien maja zerowa pochodna.
         """
         return tuple(None for _ in self.nazwy_stanow)
 

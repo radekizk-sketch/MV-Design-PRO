@@ -78,8 +78,16 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
     # `mypy src` na scalonym drzewie int/h0 (L i AB-H0 zdejmuja bledy w roznych plikach,
     # roznice sie sumuja; zero nowych bledow).
-    assert modul.BASELINE_ERRORS == 249
-    assert modul.BASELINE_FILES == 43
+    # 2026-09-23 (karta integracyjna AB-1b.1a): przeciążenia `ensure_utc` w
+    # `infrastructure/persistence/time_utils.py` (11 błędów `datetime | None` w pięciu
+    # repozytoriach persystencji) i przepisany adapter dynamiki (1 błąd `attr-defined`)
+    # ⇒ 266/46 → 254/42; zastane błędy w plikach dotkniętych kartą (kolizje nazw w
+    # `power_flow_interpretation/builder.py` i `sanity_bounds.py`, zawężenia w
+    # `nn_circuit_sheet.py`) — kolejne 7 ⇒ 247/39 (różnica zbiorów błędów HEAD/drzewo =
+    # dokładnie te 19, zero nowych).
+    # Integracja AB-1b.1a na HEAD z AB-H0 (2026-09-24): pomiar na scalonym drzewie 249/43 -> 230/36.
+    assert modul.BASELINE_ERRORS == 230
+    assert modul.BASELINE_FILES == 36
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

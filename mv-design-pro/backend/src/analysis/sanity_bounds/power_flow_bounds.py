@@ -15,13 +15,15 @@ Trzy niezależne oceny (§0.17, dosłownie):
    źródłem prawdy progu KREDYBILNOŚCI napięcia — domknięcie CZĘŚCIOWE 6 #10,
    bo pełny zintegrowany raport PQ/EN 50160 to osobna, większa zdolność, patrz
    inwentarz klasy w meldunku karty).
-2. Obciążenie gałęzi (linia/kabel — wielkość znamionowa to prąd In) wobec prądu
-   znamionowego z KATALOGU. Brak In w katalogu daje stan „dane niekompletne",
-   NIGDY podstawienie 0/inf za brakującą daną (solver_input_substitute_guard).
-   Transformator NIE wchodzi w tę ocenę — jego wielkość znamionowa to moc Sn,
-   nie prąd In (§0.17 mówi wprost „In katalogu"); obciążenie transformatora ma
-   już WARN/FAIL jakościowy w ``analysis/energy_validation`` (TRANSFORMER_
-   LOADING) — inna klasa (próg projektowy, nie kredybilność wyniku solvera).
+2. Obciążenie gałęzi wobec prądu znamionowego KAŻDEGO zacisku (decyzja O-51):
+   linia i kabel — In z katalogu na obu zaciskach; transformator — prąd znamionowy
+   zacisku I_r = S_n/(√3·U_n,strona) (IEC 60076-1, przez `network_model/pochodne`).
+   Obciążenie = max(I_od/I_r,od; I_do/I_r,do) z JEDNEJ funkcji
+   (`analysis/obciazenie_galezi.py`, ta sama co tabela gałęzi i walidacja
+   energetyczna) — kabel z susceptancją i transformator mają na końcach różne
+   prądy, więc ocena z jednego zacisku zaniżała obciążenie. Brak danej
+   znamionowej albo prądu zacisku daje stan „dane niekompletne" z nazwanym
+   powodem, NIGDY podstawienie 0/inf (solver_input_substitute_guard).
 3. Straty czynne sieci wobec sumy mocy czynnej odbiorów — próg JAWNY,
    NAZWANY parametr z uzasadnieniem inżynierskim (``DOMYSLNY_PROG_STRAT_
    PROCENT``/``UZASADNIENIE_PROGU_STRAT_PL``), nie zaszyta stała bez źródła.
@@ -44,7 +46,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from analysis.normative.kryteria_napiecia import PASMO_WIARYGODNOSCI_PROCENT
-from analysis.sanity_bounds.short_circuit_bounds import CREDIBLE, INCOMPLETE, OUT_OF_RANGE
+from analysis.obciazenie_galezi import ObciazenieGalezi, Zacisk
+from analysis.sanity_bounds.short_circuit_bounds import (
+    CREDIBLE,
+    INCOMPLETE,
+    OUT_OF_RANGE,
+)
 from network_model.pochodne import a_na_ka
 
 #: Cytat normy dla pasma napięciowego (jedno miejsce — mapa 6 #10, domknięcie
@@ -168,18 +175,29 @@ def evaluate_bus_voltage(
 
 
 # =============================================================================
-# 2. Obciążenie gałęzi (linia/kabel) — prąd wobec In katalogu
+# 2. Obciążenie gałęzi — prądy obu zacisków wobec prądów znamionowych zacisków
 # =============================================================================
 
 
 @dataclass(frozen=True)
 class BranchLoadingSanityVerdict:
+    """Werdykt wiarygodności obciążenia gałęzi.
+
+    `current_ka` i `rated_current_a` dotyczą zacisku DECYDUJĄCEGO (`zacisk_decydujacy`);
+    pola `*_od_*` / `*_do_*` niosą oba zaciski (addytywnie, decyzja O-51).
+    """
+
     current_ka: float | None
     rated_current_a: float | None
     loading_pct: float | None
     in_range: bool
     status: str
     why_pl: str
+    zacisk_decydujacy: Zacisk | None = None
+    current_od_ka: float | None = None
+    current_do_ka: float | None = None
+    rated_current_od_a: float | None = None
+    rated_current_do_a: float | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -189,57 +207,71 @@ class BranchLoadingSanityVerdict:
             "in_range": self.in_range,
             "status": self.status,
             "why_pl": self.why_pl,
+            "zacisk_decydujacy": self.zacisk_decydujacy,
+            "current_od_ka": self.current_od_ka,
+            "current_do_ka": self.current_do_ka,
+            "rated_current_od_a": self.rated_current_od_a,
+            "rated_current_do_a": self.rated_current_do_a,
         }
 
 
-def evaluate_branch_loading(
-    current_ka: float | None,
-    rated_current_a: float | None,
-) -> BranchLoadingSanityVerdict:
-    """Ocena wiarygodności obciążenia gałęzi wobec prądu znamionowego (In) katalogu.
+def _ka_lub_brak(prad_a: float | None) -> float | None:
+    return a_na_ka(prad_a) if prad_a is not None else None
 
-    Brak In w katalogu daje „dane niekompletne" — NIGDY podstawienie 0/inf za
-    brakującą daną katalogową (solver_input_substitute_guard, karta W3-G2 §Granice).
+
+def evaluate_branch_loading(obciazenie: ObciazenieGalezi) -> BranchLoadingSanityVerdict:
+    """Ocena wiarygodności obciążenia gałęzi wobec prądów znamionowych zacisków.
+
+    Wejście pochodzi z JEDNEJ funkcji obciążenia (`analysis/obciazenie_galezi.py`).
+    Brak prądu zacisku albo danej znamionowej daje „dane niekompletne" z powodem tej
+    funkcji — NIGDY podstawienie 0/inf za brakującą daną (solver_input_substitute_guard,
+    karta W3-G2 §Granice). W paśmie: obciążenie ≤ 100 % (prąd zacisku decydującego nie
+    przekracza jego prądu znamionowego).
     """
-    if current_ka is None or not _is_finite(current_ka):
+    wspolne = {
+        "current_od_ka": _ka_lub_brak(obciazenie.prad_od_a),
+        "current_do_ka": _ka_lub_brak(obciazenie.prad_do_a),
+        "rated_current_od_a": obciazenie.prad_znamionowy_od_a,
+        "rated_current_do_a": obciazenie.prad_znamionowy_do_a,
+    }
+    if obciazenie.obciazenie_pct is None or obciazenie.zacisk_decydujacy is None:
         return BranchLoadingSanityVerdict(
-            current_ka=current_ka,
-            rated_current_a=rated_current_a,
+            current_ka=None,
+            rated_current_a=None,
             loading_pct=None,
             in_range=False,
             status=INCOMPLETE,
-            why_pl="Brak prądu gałęzi w wyniku rozpływu.",
+            why_pl=obciazenie.powod_braku_pl or "",
+            zacisk_decydujacy=None,
+            **wspolne,
         )
-    if rated_current_a is None or rated_current_a <= 0.0 or not _is_finite(rated_current_a):
-        return BranchLoadingSanityVerdict(
-            current_ka=current_ka,
-            rated_current_a=rated_current_a,
-            loading_pct=None,
-            in_range=False,
-            status=INCOMPLETE,
-            why_pl="Brak danych katalogowych o prądzie znamionowym (In) gałęzi.",
-        )
-    rated_ka = a_na_ka(rated_current_a)
-    loading_pct = abs(current_ka) / rated_ka * 100.0
-    in_range = abs(current_ka) <= rated_ka
+    loading_pct = obciazenie.obciazenie_pct
+    prad_ka = _ka_lub_brak(obciazenie.prad_decydujacy_a)
+    znamionowy_a = obciazenie.prad_znamionowy_decydujacy_a
+    assert prad_ka is not None and znamionowy_a is not None
+    znamionowy_ka = a_na_ka(znamionowy_a)
+    zacisk = obciazenie.zacisk_decydujacy
+    in_range = loading_pct <= 100.0
     if in_range:
         why = (
-            f"I = {abs(current_ka):.4f} kA nie przekracza In = {rated_ka:.4f} kA "
-            f"(obciążenie {loading_pct:.1f} %)."
+            f"I = {abs(prad_ka):.4f} kA (zacisk {zacisk}) nie przekracza I_r = "
+            f"{znamionowy_ka:.4f} kA tego zacisku (obciążenie {loading_pct:.1f} %)."
         )
     else:
         why = (
-            f"I = {abs(current_ka):.4f} kA przekracza In = {rated_ka:.4f} kA "
-            f"(obciążenie {loading_pct:.1f} %) — wynik fizycznie wątpliwy "
-            "(błąd modelu/doboru przekroju?)."
+            f"I = {abs(prad_ka):.4f} kA (zacisk {zacisk}) przekracza I_r = "
+            f"{znamionowy_ka:.4f} kA tego zacisku (obciążenie {loading_pct:.1f} %) — wynik "
+            "fizycznie wątpliwy (błąd modelu/doboru przekroju?)."
         )
     return BranchLoadingSanityVerdict(
-        current_ka=current_ka,
-        rated_current_a=rated_current_a,
+        current_ka=prad_ka,
+        rated_current_a=znamionowy_a,
         loading_pct=loading_pct,
         in_range=in_range,
         status=CREDIBLE if in_range else OUT_OF_RANGE,
         why_pl=why,
+        zacisk_decydujacy=zacisk,
+        **wspolne,
     )
 
 

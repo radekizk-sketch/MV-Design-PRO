@@ -12,6 +12,12 @@ Pokrycie jako ILOCZYN CECH (nie jeden przyklad z karty):
 
 ZERO nowej fizyki w tescie: zwarcie i rozplyw licza istniejace solvery przez
 istniejaca sciezke wykonania (`enm.canonical_analysis`).
+
+Zacisk zabezpieczenia (decyzja O-51, wariant (b)): sieci tego modulu nie przypinaja
+zabezpieczen do wylacznikow (model milczy), wiec kazde wywolanie niesie JAWNE wskazanie
+`zacisk_zabezpieczenia="od"` — orientacja, ktora pakiet przyjmowal przed decyzja.
+Iloczyn cech resolvera (przypiecie x wskazanie x zgodnosc) i orientacja `do` —
+`tests/application/test_zacisk_zabezpieczenia.py`.
 """
 
 from __future__ import annotations
@@ -191,13 +197,13 @@ def test_linie_kandydujace_wyklucza_galaz_bez_danych_katalogowych() -> None:
 
 def test_kandydaci_nastepnej_szyny_rozgalezienie() -> None:
     enm = _siec_rozgalezienie()
-    kandydaci = kandydaci_nastepnej_szyny(enm.model_dump(mode="json"), "ln1")
+    kandydaci = kandydaci_nastepnej_szyny(enm.model_dump(mode="json"), "ln1", "od")
     assert kandydaci == ["b_b", "b_c"]
 
 
 def test_kandydaci_nastepnej_szyny_slepy_koniec_jest_pusty() -> None:
     enm = _siec_slepy_koniec()
-    kandydaci = kandydaci_nastepnej_szyny(enm.model_dump(mode="json"), "ln1")
+    kandydaci = kandydaci_nastepnej_szyny(enm.model_dump(mode="json"), "ln1", "od")
     assert kandydaci == []
 
 
@@ -208,7 +214,9 @@ def test_kandydaci_nastepnej_szyny_slepy_koniec_jest_pusty() -> None:
 
 def test_zbuduj_wejscie_nastaw_wypelnia_wszystkie_dziewiec_wczesniej_brakujacych_pol() -> None:
     kotwica = _kotwica(_siec_promieniowa())
-    wejscie = zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+    wejscie = zbuduj_wejscie_nastaw(
+        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+    )
     ei = wejscie.engine_input
 
     # Galaz c_min (3 pola) — inna niz c_max, bo c=1.0 != c=1.10 na TEJ SAMEJ sieci.
@@ -237,8 +245,20 @@ def test_zbuduj_wejscie_nastaw_wypelnia_wszystkie_dziewiec_wczesniej_brakujacych
 def test_zbuduj_wejscie_nastaw_deterministyczny_dla_tych_samych_wejsc() -> None:
     kotwica1 = _kotwica(_siec_promieniowa(), run_id=UUID(int=1))
     kotwica2 = _kotwica(_siec_promieniowa(), run_id=UUID(int=1))
-    w1 = zbuduj_wejscie_nastaw(kotwica1, line_id="ln1", next_bus_id="b_b", c_min=1.0)
-    w2 = zbuduj_wejscie_nastaw(kotwica2, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+    w1 = zbuduj_wejscie_nastaw(
+        kotwica1,
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.0,
+        zacisk_zabezpieczenia="od",
+    )
+    w2 = zbuduj_wejscie_nastaw(
+        kotwica2,
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.0,
+        zacisk_zabezpieczenia="od",
+    )
     assert w1.engine_input == w2.engine_input
 
 
@@ -258,6 +278,7 @@ def test_k_b_k_bth_delta_t_s_pochodza_z_parametrow_wywolania_nie_z_opcji_kotwicy
         delta_t_s=0.45,
         k_b=1.35,
         k_bth=1.18,
+        zacisk_zabezpieczenia="od",
     )
     assert wejscie.engine_input.k_b == 1.35
     assert wejscie.engine_input.k_bth == 1.18
@@ -272,37 +293,73 @@ def test_k_b_k_bth_delta_t_s_pochodza_z_parametrow_wywolania_nie_z_opcji_kotwicy
 def test_kotwica_niezakonczona_odmawia() -> None:
     kotwica = _kotwica(_siec_promieniowa(), status_="RUNNING", wykonaj=False)
     with pytest.raises(BrakDanychNastawError, match="nie jest zakończony"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_kotwica_rodzaju_rozplyw_odmawia() -> None:
     kotwica = _kotwica(_siec_promieniowa(), analysis_type="PF")
     with pytest.raises(BrakDanychNastawError, match="short_circuit_sn"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_kotwica_zwarcia_dwufazowego_odmawia_bo_to_nie_galaz_maksymalna() -> None:
     kotwica = _kotwica(_siec_promieniowa(), fault_type="2F")
     with pytest.raises(BrakDanychNastawError, match="TRÓJFAZOWYM"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_kotwica_c_factor_ponizej_progu_odmawia() -> None:
     kotwica = _kotwica(_siec_promieniowa(), c_factor=0.95)
     with pytest.raises(BrakDanychNastawError, match="galezi maksymalnej|maksymalnej"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 @pytest.mark.parametrize("c_min", [0.0, -1.0, 1.20])
 def test_c_min_poza_dopuszczalnym_zakresem_odmawia(c_min: float) -> None:
     kotwica = _kotwica(_siec_promieniowa(), c_factor=1.10)
     with pytest.raises(BrakDanychNastawError, match="c_min"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=c_min)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=c_min,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_c_min_rowny_c_max_jest_dopuszczalny_brzeg() -> None:
     kotwica = _kotwica(_siec_promieniowa(), c_factor=1.10)
-    wejscie = zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.10)
+    wejscie = zbuduj_wejscie_nastaw(
+        kotwica,
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.10,
+        zacisk_zabezpieczenia="od",
+    )
     assert wejscie.engine_input.ik3_min_beginning_a == pytest.approx(
         wejscie.engine_input.ik3_max_beginning_a
     )
@@ -311,7 +368,13 @@ def test_c_min_rowny_c_max_jest_dopuszczalny_brzeg() -> None:
 def test_linia_nieznana_odmawia() -> None:
     kotwica = _kotwica(_siec_promieniowa())
     with pytest.raises(BrakDanychNastawError, match="ln_nieznana"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln_nieznana", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln_nieznana",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_linia_bez_danych_katalogowych_odmawia() -> None:
@@ -319,13 +382,25 @@ def test_linia_bez_danych_katalogowych_odmawia() -> None:
     enm2 = enm.model_copy(update={"branches": [*enm.branches, _linia_bez_danych_katalogowych()]})
     kotwica = _kotwica(enm2)
     with pytest.raises(BrakDanychNastawError, match="katalogowych"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln_bez_katalogu", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln_bez_katalogu",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_nastepna_szyna_spoza_migawki_odmawia() -> None:
     kotwica = _kotwica(_siec_promieniowa())
     with pytest.raises(BrakDanychNastawError, match="b_nieznana"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_nieznana", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_nieznana",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_nastepna_szyna_bez_zwarcia_odmawia() -> None:
@@ -340,7 +415,13 @@ def test_nastepna_szyna_bez_zwarcia_odmawia() -> None:
         wiersz for wiersz in kotwica.raw_result["results"] if wiersz.get("fault_node_id") != graf_b
     ]
     with pytest.raises(BrakDanychNastawError, match="nie zawiera prądu zwarcia 3F"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_zbuduj_wejscie_nastaw_nie_mutuje_migawki_kotwicy_pin_spojnosci() -> None:
@@ -379,7 +460,9 @@ def test_zbuduj_wejscie_nastaw_nie_mutuje_migawki_kotwicy_pin_spojnosci() -> Non
     assert migawka.snapshot == kotwica.snapshot, "wariant liczy sie na tej samej tresci co kotwica"
     assert migawka.snapshot is not kotwica.snapshot, "migawka wariantu to KOPIA, nie referencja"
 
-    wejscie = zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+    wejscie = zbuduj_wejscie_nastaw(
+        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+    )
 
     assert wejscie.engine_input.ik3_min_beginning_a > 0  # dowod, ze warianty faktycznie policzono
     assert kotwica.snapshot == snapshot_przed, "kotwica bazowa NIETKNIETA (Case Immutability)"
@@ -418,7 +501,9 @@ def test_wariant_rozplywu_nastaw_zawsze_metoda_nr_niezaleznie_od_opcji_kotwicy(
     kotwica = _kotwica(_siec_promieniowa())
     kotwica.options = {**kotwica.options, "solver_method": "gauss-seidel"}
 
-    wejscie = zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+    wejscie = zbuduj_wejscie_nastaw(
+        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+    )
 
     assert wejscie.engine_input.i_load_max_a > 0
     warianty_pf = [run for run in przechwycone if run.analysis_type == "PF"]
@@ -469,7 +554,13 @@ def test_kotwica_z_para_audit2_bez_fabryki_odmawia_jawnie() -> None:
     }
 
     with pytest.raises(BrakDanychNastawError, match="nie dostal fabryki UnitOfWork"):
-        zbuduj_wejscie_nastaw(kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0)
+        zbuduj_wejscie_nastaw(
+            kotwica,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        )
 
 
 def test_kotwica_z_para_audit2_i_fabryka_liczy_komplet_wariantow(uow_factory) -> None:
@@ -481,7 +572,12 @@ def test_kotwica_z_para_audit2_i_fabryka_liczy_komplet_wariantow(uow_factory) ->
     }
 
     wejscie = zbuduj_wejscie_nastaw(
-        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, uow_factory=uow_factory
+        kotwica,
+        line_id="ln1",
+        next_bus_id="b_b",
+        c_min=1.0,
+        uow_factory=uow_factory,
+        zacisk_zabezpieczenia="od",
     )
 
     assert wejscie.engine_input is not None

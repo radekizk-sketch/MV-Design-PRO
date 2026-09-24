@@ -67,14 +67,14 @@
       "conductor_material": "AL",
       "cross_section_mm2": 120.0,
       "delta_t_s": 0.3,
-      "i_load_max_a": 22.76878177990488,
+      "i_load_max_a": 22.768781749828918,
       "i_nominal_a": 230.0,
-      "ik2_min_end_a": 7130.191175002975,
-      "ik3_max_beginning_a": 9621.45923592044,
-      "ik3_max_end_a": 9056.559147375217,
-      "ik3_min_beginning_a": 8746.781123564037,
-      "ik3_min_end_a": 8233.235588522924,
-      "ik_max_next_bus_a": 8767.005250876466,
+      "ik2_min_end_a": 7130.191175002978,
+      "ik3_max_beginning_a": 9621.459235920445,
+      "ik3_max_end_a": 9056.559147375221,
+      "ik3_min_beginning_a": 8746.78112356404,
+      "ik3_min_end_a": 8233.235588522928,
+      "ik_max_next_bus_a": 8767.005250876473,
       "k_b": 1.2,
       "k_bth": 1.1,
       "length_km": 0.45
@@ -85,7 +85,9 @@
     "next_bus_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
     "project_name": "Magistrala SN — scena koordynacji",
     "run_timestamp": "2026-09-16T09:00:00+00:00",
-    "solver_version": "IEC_60909;load-flow-newton-raphson-v1"
+    "solver_version": "IEC_60909;load-flow-newton-raphson-v1",
+    "zacisk_zabezpieczenia": "od",
+    "zrodlo_zacisku": "wskazanie"
   },
   "status": "DEGRADED",
   "vendor_mapping": {

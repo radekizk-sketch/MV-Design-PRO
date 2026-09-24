@@ -1,10 +1,11 @@
 {
   "analysis_id": "run-lf-scena-pomiary",
-  "input_hash": "84e471da339a9dfffcbd7d90526ad579f9cf0498cc0a0e75c8dff1ceffc498b7",
+  "input_hash": "66621ab10965b9fdbc051e5e4256fdd40553ecaf23ef3102bb97cec557aaa9db",
   "podsumowanie": {
+    "brak_miejsca_pomiaru": 1,
     "brak_odpowiednika": 1,
     "brak_wyniku": 0,
-    "liczba_punktow": 3,
+    "liczba_punktow": 4,
     "najwieksza_odchylka_element_ref": "line_b_c",
     "najwieksza_odchylka_pct": -12.5,
     "najwieksza_odchylka_wielkosc": "P",
@@ -19,6 +20,8 @@
     {
       "element_ref": "POLE-REZERWOWE-12",
       "jednostka": "kV",
+      "kod_odmowy": null,
+      "miejsce_pomiaru_pl": null,
       "odchylka_bezwzgledna": null,
       "odchylka_pct": null,
       "slad_pl": [
@@ -28,11 +31,14 @@
       "wartosc_model": null,
       "wartosc_pomiar": 15.0,
       "werdykt": "brak odpowiednika w modelu",
-      "wielkosc": "U"
+      "wielkosc": "U",
+      "zacisk": null
     },
     {
       "element_ref": "bus_hv",
       "jednostka": "kV",
+      "kod_odmowy": null,
+      "miejsce_pomiaru_pl": null,
       "odchylka_bezwzgledna": 1.1,
       "odchylka_pct": 1.0,
       "slad_pl": [
@@ -46,15 +52,18 @@
       "wartosc_model": 110.0,
       "wartosc_pomiar": 111.1,
       "werdykt": "w tolerancji",
-      "wielkosc": "U"
+      "wielkosc": "U",
+      "zacisk": null
     },
     {
       "element_ref": "line_b_c",
       "jednostka": "MW",
+      "kod_odmowy": null,
+      "miejsce_pomiaru_pl": "Zacisk początkowy — szyna Stacja B SN",
       "odchylka_bezwzgledna": -0.099645,
       "odchylka_pct": -12.5,
       "slad_pl": [
-        "Model P na początku gałęzi = -0.797159 MW",
+        "Model P na zacisku od (Zacisk początkowy — szyna Stacja B SN) = -0.797159 MW",
         "Pomiar P = -0.896804 MW",
         "Odchyłka = pomiar − model = -0.099645 MW (-12.500000%)",
         "Tolerancja = ±10.000000%",
@@ -64,13 +73,31 @@
       "wartosc_model": -0.797159,
       "wartosc_pomiar": -0.896804,
       "werdykt": "poza tolerancją",
-      "wielkosc": "P"
+      "wielkosc": "P",
+      "zacisk": "od"
+    },
+    {
+      "element_ref": "line_b_c",
+      "jednostka": "Mvar",
+      "kod_odmowy": "analysis.as_built_measurement_terminal_missing",
+      "miejsce_pomiaru_pl": null,
+      "odchylka_bezwzgledna": null,
+      "odchylka_pct": null,
+      "slad_pl": [
+        "Pomiar mocy gałęzi bez miejsca pomiaru — wskaż zacisk gałęzi (początkowy albo końcowy), na którym wykonano pomiar; gałąź z przekładnią albo susceptancją ma na obu końcach inne moce (gałąź 'line_b_c', wielkość Q)."
+      ],
+      "tolerancja_pct": null,
+      "wartosc_model": null,
+      "wartosc_pomiar": -0.198947,
+      "werdykt": "brak miejsca pomiaru",
+      "wielkosc": "Q",
+      "zacisk": null
     }
   ],
   "zalozenia_pl": [
     "Porównanie 1:1 pomiar–model (wynik rozpływu tylko do odczytu, bez modyfikacji); bez estymacji stanu i bez korekt modelu.",
     "Napięcie przeliczane na kV z wartości względnej przez napięcie znamionowe węzła: $U = u \\cdot U_{n}$.",
-    "Moce P/Q odczytywane na początku gałęzi (w kierunku od węzła początkowego).",
+    "Moce P/Q odczytywane na zacisku gałęzi wskazanym w rekordzie pomiaru (zacisk początkowy albo końcowy); pomiar mocy gałęzi bez zacisku nie jest porównywany z żadnym końcem gałęzi — dostaje odmowę nazwaną.",
     "Konwencja znaku mocy biernej nierozstrzygnięta w danych pomiarowych: Q porównywane po wartości bezwzględnej $|Q|$; znak odchyłki nie jest interpretowany.",
     "Tolerancje wyłącznie jawne (z żądania); brak udokumentowanego źródła normatywnego dla wartości domyślnych, więc domyślnych nie przyjęto."
   ],

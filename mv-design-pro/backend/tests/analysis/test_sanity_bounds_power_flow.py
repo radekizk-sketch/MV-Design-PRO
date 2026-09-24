@@ -11,6 +11,7 @@ wejściowe są niekompletne/niefizyczne (brak fabrykacji z braku danych).
 from __future__ import annotations
 
 import pytest
+from analysis.obciazenie_galezi import obciazenie_galezi, prad_zacisku_od_a
 from analysis.sanity_bounds.power_flow_bounds import (
     CREDIBLE,
     DOMYSLNY_PROG_STRAT_PROCENT,
@@ -23,6 +24,7 @@ from analysis.sanity_bounds.power_flow_bounds import (
     evaluate_bus_voltage,
     evaluate_network_losses,
 )
+from network_model.core.branch import BranchType, LineBranch
 
 # =============================================================================
 # 1. Napięcia szyn — Un ± 10 %
@@ -99,34 +101,79 @@ class TestBusVoltageBounds:
 
 
 # =============================================================================
-# 2. Obciążenie gałęzi — prąd wobec In katalogu
+# 2. Obciążenie gałęzi — prądy obu zacisków wobec prądów znamionowych zacisków
 # =============================================================================
+#
+# Kanon od decyzji O-51 (klasa P9): wejściem oceny jest wynik JEDNEJ funkcji obciążenia
+# (`analysis/obciazenie_galezi.py`), nie para (prąd jednej strony, In katalogu). Intencje
+# dawnych testów zachowane: 25 % / 100 % / 125 % dla In = 400 A, granica włącznie, moduł
+# prądu, brak In = stan nazwany (nigdy 0/inf), brak prądu = stan nazwany, NaN/inf = brak.
+# Iloczyn rodzaj gałęzi × zacisk decydujący × próg — `test_obciazenie_zaciskow_miejsca.py`.
+
+
+def _kabel_400a() -> LineBranch:
+    return LineBranch(
+        id="k1",
+        name="Kabel k1",
+        branch_type=BranchType.CABLE,
+        from_node_id="a",
+        to_node_id="b",
+        r_ohm_per_km=0.2,
+        x_ohm_per_km=0.1,
+        b_us_per_km=80.0,
+        length_km=1.0,
+        rated_current_a=400.0,
+    )
+
+
+def _ocena(prad_od_ka: float | None, prad_do_ka: float | None, *, in_a: float | None = 400.0):
+    galaz = _kabel_400a()
+    galaz.rated_current_a = in_a if in_a is not None else 0.0
+    return evaluate_branch_loading(
+        obciazenie_galezi(
+            galaz,
+            prad_od_a=prad_zacisku_od_a(prad_od_ka),
+            prad_do_a=prad_zacisku_od_a(prad_do_ka),
+        )
+    )
 
 
 class TestBranchLoadingBounds:
     def test_below_rated_current_is_credible(self) -> None:
-        v = evaluate_branch_loading(0.1, 400.0)
+        v = _ocena(0.1, 0.09)
         assert v.in_range is True
         assert v.status == CREDIBLE
         assert v.loading_pct == pytest.approx(25.0)
+        assert v.zacisk_decydujacy == "od"
 
     def test_at_rated_current_is_credible(self) -> None:
         # In = 400 A = 0.4 kA — obciążenie DOKŁADNIE 100 % jest jeszcze wiarygodne
         # (granica włącznie, jak w short_circuit_bounds).
-        v = evaluate_branch_loading(0.4, 400.0)
+        v = _ocena(0.4, 0.39)
         assert v.in_range is True
         assert v.status == CREDIBLE
-        assert v.loading_pct == pytest.approx(100.0)
+        assert v.loading_pct == 100.0
 
     def test_above_rated_current_is_out_of_range(self) -> None:
-        v = evaluate_branch_loading(0.5, 400.0)
+        v = _ocena(0.5, 0.49)
         assert v.in_range is False
         assert v.status == OUT_OF_RANGE
         assert v.loading_pct == pytest.approx(125.0)
         assert "wątpliwy" in v.why_pl
 
+    def test_decyduje_zacisk_z_wiekszym_pradem(self) -> None:
+        """Kabel z susceptancją: prąd strony `do` większy — ocena z NIEGO (dawniej
+        wyłącznie strona `from`, co zaniżało obciążenie)."""
+        v = _ocena(0.38, 0.42)
+        assert v.zacisk_decydujacy == "do"
+        assert v.status == OUT_OF_RANGE
+        assert v.current_ka == pytest.approx(0.42)
+        assert v.current_od_ka == pytest.approx(0.38)
+        assert v.current_do_ka == pytest.approx(0.42)
+        assert "zacisk do" in v.why_pl
+
     def test_negative_current_uses_magnitude(self) -> None:
-        v = evaluate_branch_loading(-0.1, 400.0)
+        v = _ocena(-0.1, 0.09)
         assert v.in_range is True
         assert v.loading_pct == pytest.approx(25.0)
 
@@ -135,25 +182,26 @@ class TestBranchLoadingBounds:
         self, rated_current_a: float | None
     ) -> None:
         """Brak In katalogu → stan NAZWANY, nigdy podstawienie 0/inf za brak danych."""
-        v = evaluate_branch_loading(0.1, rated_current_a)
+        v = _ocena(0.1, 0.1, in_a=rated_current_a)
         assert v.status == INCOMPLETE
         assert v.in_range is False
         assert v.loading_pct is None
-        assert "katalog" in v.why_pl
+        assert "znamionowego" in v.why_pl
 
     def test_missing_current_is_incomplete(self) -> None:
-        v = evaluate_branch_loading(None, 400.0)
+        v = _ocena(None, 0.1)
         assert v.status == INCOMPLETE
         assert v.loading_pct is None
-        assert "prądu gałęzi" in v.why_pl
+        assert "prądu zacisku" in v.why_pl
 
     def test_nan_inf_current_incomplete(self) -> None:
-        assert evaluate_branch_loading(float("inf"), 400.0).status == INCOMPLETE
-        assert evaluate_branch_loading(float("nan"), 400.0).status == INCOMPLETE
+        assert _ocena(float("inf"), 0.1).status == INCOMPLETE
+        assert _ocena(float("nan"), 0.1).status == INCOMPLETE
+        assert _ocena(0.1, float("nan")).status == INCOMPLETE
 
     def test_determinism_and_serialization(self) -> None:
-        a = evaluate_branch_loading(0.1, 400.0).to_dict()
-        b = evaluate_branch_loading(0.1, 400.0).to_dict()
+        a = _ocena(0.1, 0.09).to_dict()
+        b = _ocena(0.1, 0.09).to_dict()
         assert a == b
         assert set(a.keys()) == {
             "current_ka",
@@ -162,6 +210,11 @@ class TestBranchLoadingBounds:
             "in_range",
             "status",
             "why_pl",
+            "zacisk_decydujacy",
+            "current_od_ka",
+            "current_do_ka",
+            "rated_current_od_a",
+            "rated_current_do_a",
         }
 
 
@@ -264,7 +317,7 @@ def test_iloczyn_cech_trzech_niezaleznych_osi(
     straty_w_progu: bool,
 ) -> None:
     napiecie = evaluate_bus_voltage(15.0, 15.2 if napiecie_w_pasmie else 25.0)
-    obciazenie = evaluate_branch_loading(0.1, 400.0 if in_katalogu_obecne else None)
+    obciazenie = _ocena(0.1, 0.09, in_a=400.0 if in_katalogu_obecne else None)
     straty = evaluate_network_losses(1.0 if straty_w_progu else 5.0, 10.0)
 
     assert napiecie.status == (CREDIBLE if napiecie_w_pasmie else OUT_OF_RANGE)

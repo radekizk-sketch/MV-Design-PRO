@@ -19,10 +19,23 @@ import { EkranOdbioru } from '../EkranOdbioru';
 import { widokZgodnosciFixture } from './fixtures';
 
 const post = vi.fn();
+const pobierzZaciski = vi.fn();
 
 vi.mock('../api', () => ({
   postZgodnoscPowykonawcza: (zadanie: unknown) => post(zadanie),
+  fetchZaciskiGalezi: (runId: string) => pobierzZaciski(runId),
 }));
+
+/** Odpowiedź `GET …/zaciski-galezi` (kształt `zaciski_galezi_migawki` 1:1). */
+const ZACISKI_BIEGU = {
+  run_id: 'run-lf-1',
+  zaciski: {
+    'LINE-2': {
+      od: { szyna_ref: 'BUS-GPZ', etykieta_pl: 'Zacisk początkowy — szyna GPZ SN' },
+      do: { szyna_ref: 'BUS-1', etykieta_pl: 'Zacisk końcowy — szyna Stacja 1' },
+    },
+  },
+};
 
 function przebiegRozplywuFixture(): ExecutionRun {
   return {
@@ -50,6 +63,7 @@ function wypelnijPomiarU() {
 
 beforeEach(() => {
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
+  pobierzZaciski.mockResolvedValue(ZACISKI_BIEGU);
 });
 afterEach(() => vi.clearAllMocks());
 
@@ -96,12 +110,16 @@ describe('EkranOdbioru — serializacja i raport', () => {
     fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
 
     await screen.findByTestId('mvd-odbior-wynik');
-    expect(screen.getAllByTestId('mvd-odbior-chip')).toHaveLength(4);
+    expect(screen.getAllByTestId('mvd-odbior-chip')).toHaveLength(5);
     const tabela = screen.getByTestId('mvd-wyn-tabela');
     expect(tabela).toHaveTextContent('w tolerancji');
     expect(tabela).toHaveTextContent('poza tolerancją');
-    // Sekcja założeń zawsze widoczna z uwagą V12K-040 (Q po |wartości|).
-    expect(screen.getByTestId('mvd-wyn-zalozenia')).toHaveTextContent('V12K-040');
+    // Sekcja założeń zawsze widoczna: Q po |wartości| i moc na WSKAZANYM zacisku.
+    expect(screen.getByTestId('mvd-wyn-zalozenia')).toHaveTextContent('wartości bezwzględnej');
+    expect(screen.getByTestId('mvd-wyn-zalozenia')).toHaveTextContent('na zacisku gałęzi');
+    // Pomiar mocy bez zacisku: werdykt nazwany, miejsce pomiaru z etykietą backendu.
+    expect(tabela).toHaveTextContent('brak miejsca pomiaru');
+    expect(tabela).toHaveTextContent('Zacisk początkowy — szyna GPZ SN');
     // Największa odchyłka z podsumowania (przecinek PL).
     expect(screen.getByTestId('mvd-odbior-najwieksza')).toHaveTextContent('12,50');
     expect(screen.getByTestId('mvd-odbior-najwieksza')).toHaveTextContent('LINE-2');
@@ -218,14 +236,114 @@ describe('EkranOdbioru — edytor wierszy i tryb CSV', () => {
     render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     fireEvent.click(screen.getByTestId('mvd-odbior-tryb-csv'));
     fireEvent.change(screen.getByTestId('mvd-odbior-csv'), {
-      target: { value: 'element_ref;wielkosc;wartosc;jednostka\nBUS-1;U;15,3;kV' },
+      target: { value: 'element_ref;wielkosc;wartosc;jednostka;zacisk\nBUS-1;U;15,3;kV;' },
     });
     fireEvent.change(screen.getByTestId('mvd-odbior-tol-napiecie'), { target: { value: '5' } });
     fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
     expect(post).toHaveBeenCalledWith({
       run_id: 'run-lf-1',
-      csv: 'element_ref;wielkosc;wartosc;jednostka\nBUS-1;U;15,3;kV',
+      csv: 'element_ref;wielkosc;wartosc;jednostka;zacisk\nBUS-1;U;15,3;kV;',
       tolerancje: { napiecie_pct: 5 },
     });
+  });
+});
+
+/**
+ * Miejsce pomiaru mocy gałęzi (decyzja O-51, klasa P9 miejsce 12). Iloczyn cech: wielkość
+ * {U, P, Q} × element {gałąź przebiegu, spoza gałęzi} × wskazanie {brak, od, do}; etykiety
+ * z backendu, brak zaznaczenia domyślnego, kliki natywne.
+ */
+describe('EkranOdbioru — zacisk pomiaru mocy gałęzi', () => {
+  function wiersz0(element: string, wielkosc: 'U' | 'P' | 'Q', wartosc: string) {
+    fireEvent.change(screen.getByTestId('mvd-odbior-element-0'), { target: { value: element } });
+    fireEvent.change(screen.getByTestId('mvd-odbior-wielkosc-0'), { target: { value: wielkosc } });
+    fireEvent.change(screen.getByTestId('mvd-odbior-wartosc-0'), { target: { value: wartosc } });
+  }
+
+  it.each(['P', 'Q'] as const)(
+    '%s na gałęzi: etykiety zacisków z backendu, bez domyślnego; klik → zacisk w żądaniu',
+    async (wielkosc) => {
+      ustawPrzebieg();
+      post.mockReturnValue(new Promise(() => {}));
+      render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+      wiersz0('LINE-2', wielkosc, '4,5');
+      fireEvent.change(screen.getByTestId('mvd-odbior-tol-moc'), { target: { value: '10' } });
+
+      const od = (await screen.findByTestId('mvd-odbior-zacisk-0-od')) as HTMLInputElement;
+      const doZ = screen.getByTestId('mvd-odbior-zacisk-0-do') as HTMLInputElement;
+      expect(pobierzZaciski).toHaveBeenCalledWith('run-lf-1');
+      expect(od.checked || doZ.checked).toBe(false);
+      const pole = screen.getByTestId('mvd-odbior-zacisk-0');
+      expect(pole).toHaveTextContent('Zacisk początkowy — szyna GPZ SN');
+      expect(pole).toHaveTextContent('Zacisk końcowy — szyna Stacja 1');
+      expect(screen.getByTestId('mvd-odbior-zacisk-brak-0')).toBeInTheDocument();
+
+      fireEvent.click(doZ);
+      expect(doZ.checked).toBe(true);
+      expect(screen.queryByTestId('mvd-odbior-zacisk-brak-0')).toBeNull();
+      fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
+      expect(post).toHaveBeenCalledWith({
+        run_id: 'run-lf-1',
+        pomiary: [
+          {
+            element_ref: 'LINE-2',
+            wielkosc,
+            wartosc: 4.5,
+            jednostka: wielkosc === 'P' ? 'MW' : 'Mvar',
+            zacisk: 'do',
+          },
+        ],
+        tolerancje: { moc_pct: 10 },
+      });
+    },
+  );
+
+  it('P bez wskazania: żądanie BEZ zacisku (odmowę nazywa backend), nie z domyślnym końcem', async () => {
+    ustawPrzebieg();
+    post.mockReturnValue(new Promise(() => {}));
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    wiersz0('LINE-2', 'P', '4,5');
+    fireEvent.change(screen.getByTestId('mvd-odbior-tol-moc'), { target: { value: '10' } });
+    await screen.findByTestId('mvd-odbior-zacisk-0-od');
+    fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
+    expect(post).toHaveBeenCalledWith({
+      run_id: 'run-lf-1',
+      pomiary: [{ element_ref: 'LINE-2', wielkosc: 'P', wartosc: 4.5, jednostka: 'MW' }],
+      tolerancje: { moc_pct: 10 },
+    });
+  });
+
+  it('zmiana elementu albo przejście na U kasuje wskazany zacisk; U nie ma wyboru zacisku', async () => {
+    ustawPrzebieg();
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    wiersz0('LINE-2', 'P', '4,5');
+    fireEvent.click(await screen.findByTestId('mvd-odbior-zacisk-0-od'));
+    expect((screen.getByTestId('mvd-odbior-zacisk-0-od') as HTMLInputElement).checked).toBe(true);
+
+    fireEvent.change(screen.getByTestId('mvd-odbior-wielkosc-0'), { target: { value: 'U' } });
+    expect(screen.queryByTestId('mvd-odbior-zacisk-0')).toBeNull();
+    fireEvent.change(screen.getByTestId('mvd-odbior-wielkosc-0'), { target: { value: 'P' } });
+    expect((screen.getByTestId('mvd-odbior-zacisk-0-od') as HTMLInputElement).checked).toBe(false);
+
+    fireEvent.click(screen.getByTestId('mvd-odbior-zacisk-0-do'));
+    fireEvent.change(screen.getByTestId('mvd-odbior-element-0'), { target: { value: 'LINE-2 ' } });
+    expect((screen.getByTestId('mvd-odbior-zacisk-0-do') as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('element spoza gałęzi przebiegu: jawna informacja, bez przycisków wyboru', async () => {
+    ustawPrzebieg();
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    wiersz0('BUS-1', 'P', '1');
+    expect(await screen.findByTestId('mvd-odbior-zacisk-nie-galaz-0')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-odbior-zacisk-0-od')).toBeNull();
+  });
+
+  it('błąd pobrania etykiet: komunikat, bez wyboru zacisku z domysłu', async () => {
+    ustawPrzebieg();
+    pobierzZaciski.mockRejectedValue(new Error('404'));
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    wiersz0('LINE-2', 'P', '1');
+    expect(await screen.findByTestId('mvd-odbior-zacisk-blad-0')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-odbior-zacisk-0-od')).toBeNull();
   });
 });

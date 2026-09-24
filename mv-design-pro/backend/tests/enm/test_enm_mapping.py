@@ -967,7 +967,10 @@ class TestObciazalnoscGalezi:
         view = EnergyValidationBuilder().build(pf, graph, EnergyValidationConfig())
         pozycje = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
         assert [i.status for i in pozycje] == [EnergyValidationStatus.NOT_COMPUTED]
-        assert pozycje[0].why_pl == "Brak pradu znamionowego galezi."
+        # Powód z JEDNEJ definicji obciążenia gałęzi (AB-1b.1a, O-51) — nie literał kopiowany.
+        from analysis.obciazenie_galezi import POWOD_BRAK_PRADU_ZNAMIONOWEGO_PL
+
+        assert pozycje[0].why_pl == POWOD_BRAK_PRADU_ZNAMIONOWEGO_PL
         assert pozycje[0].observed_value is None
 
 

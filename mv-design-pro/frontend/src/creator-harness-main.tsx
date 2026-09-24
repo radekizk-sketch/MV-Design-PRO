@@ -142,6 +142,7 @@ import koordynacjaScenyPakietDostepnoscMin from './harness-fixtures/generated/ko
 import koordynacjaScenyNastawy from './harness-fixtures/generated/koordynacja_scena_nastawy.json';
 import koordynacjaScenyNastawyDopasowanie from './harness-fixtures/generated/koordynacja_scena_nastawy_dopasowanie.json';
 import koordynacjaScenyWynik from './harness-fixtures/generated/koordynacja_scena_wynik.json';
+import koordynacjaScenyMiejsca from './harness-fixtures/generated/koordynacja_scena_miejsca.json';
 // HARNESS-RESZTA-2: scena "porownanie" (A/B rozplywu) — dwa REALNE biegi PF
 // jednego projektu (siec zlota i ta sama siec z obciazeniem x1,6) + wynik i slad
 // `PowerFlowComparisonService`; scena "oltc" — REALNY bieg PF z opcja badania
@@ -158,6 +159,7 @@ import oltcScenyWynik from './harness-fixtures/generated/oltc_scena_wynik.json';
 import estymacjaScenyWymagania from './harness-fixtures/generated/estymacja_scena_wymagania.json';
 import estymacjaScenyWynik from './harness-fixtures/generated/estymacja_scena_wynik.json';
 import odbiorZgodnoscScenyWynik from './harness-fixtures/generated/odbior_zgodnosc_scena_wynik.json';
+import odbiorZgodnoscScenyZaciski from './harness-fixtures/generated/odbior_zgodnosc_scena_zaciski.json';
 // HARNESS-RESZTA-2: sceny "frt" i "lom" — REALNE widoki backendu na REALNEJ
 // karcie przeksztaltnika i REALNYM profilu operatora NC RfG.
 import frtScenyTrajektorie from './harness-fixtures/generated/frt_scena_trajektorie.json';
@@ -377,26 +379,69 @@ function pradAZFixtury(
   return null;
 }
 
+type RozstrzygniecieMiejsca = {
+  readonly zacisk: 'od' | 'do' | null;
+  readonly zaciski: Record<'od' | 'do', { readonly szyna_ref: string }> | null;
+  readonly odmowa_zacisku: { readonly powod_pl: string } | null;
+};
+
+const ROZSTRZYGNIECIA_MIEJSC = koordynacjaScenyMiejsca.rozstrzygniecia as unknown as Record<
+  string,
+  RozstrzygniecieMiejsca
+>;
+
+/** Odpowiedź `GET …/enm/zacisk-lokalizacji` z fixtury backendu; spoza fixtury — 404 nazwane. */
+function odpowiedzMiejscaSceny(url: string): Response {
+  const parametry = new URL(url, 'http://harness.local').searchParams;
+  const klucz = `${parametry.get('lokalizacja') ?? ''}|${parametry.get('zacisk') ?? ''}`;
+  const rekord = ROZSTRZYGNIECIA_MIEJSC[klucz];
+  if (rekord === undefined) {
+    return new Response(
+      JSON.stringify({ detail: `atrapa miejsca: brak rozstrzygnięcia ${klucz} — uruchom scripts/eksport_fixtur_harnessu.py` }),
+      { status: 404, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  return new Response(JSON.stringify(rekord), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+/**
+ * Szyna prądu zwarciowego lokalizacji urządzenia z żądania — TA SAMA reguła co backend
+ * (`szyny_zwarcia_lokalizacji`): gałąź/łącznik → szyna zacisku rozstrzygniętego przez
+ * resolver, szyna → ona sama; odmowa resolvera → powód.
+ */
+function szynaZwarciaZadania(
+  lokalizacja: string,
+  zacisk: string | null | undefined,
+): { readonly szyna: string } | { readonly powod: string } {
+  const rekord = ROZSTRZYGNIECIA_MIEJSC[`${lokalizacja}|${zacisk ?? ''}`];
+  if (rekord === undefined) return { powod: `lokalizacja ${lokalizacja} spoza migawki sceny` };
+  if (rekord.odmowa_zacisku) return { powod: rekord.odmowa_zacisku.powod_pl };
+  if (rekord.zacisk && rekord.zaciski) return { szyna: rekord.zaciski[rekord.zacisk].szyna_ref };
+  return { szyna: lokalizacja };
+}
+
 /**
  * Wynik koordynacji dla ŻĄDANIA ekranu — albo nazwana odmowa 409.
  *
  * PARA PREDYKATÓW (KLASA, NIE INSTANCJA — wzorzec sceny `macierz`): fixtura
  * opisuje DOKŁADNIE jedno żądanie (dwa zabezpieczenia z szablonu 50/51 na
- * szynach SN obu stacji, prądy zwarciowe z biegów MAX i MIN). Gdy ekran wyśle
+ * odcinkach magistrali przy zacisku początkowym, prądy zwarciowe szyn zacisków z
+ * biegów MAX i MIN, prądy robocze zacisków z biegu rozpływu). Gdy ekran wyśle
  * co innego, atrapa ODMAWIA zamiast podać wynik policzony dla innych danych.
  * Tolerancja porównania prądów 1e-9 względna — DOKŁADNIE ta sama, którą stosuje
  * backend (`TOLERANCJA_WZGLEDNA_PRADU`, `application/autorytet_biegu_
  * zwarciowego.py`); to margines podwójnego przeliczenia jednostek (A → kA → A),
  * nie tolerancja inżynierska.
  *
- * PRĄDY ROBOCZE NIE SĄ CZĘŚCIĄ PARY — NAZWANY BRAK PRODUKTU. Prąd zwarciowy
- * jest kluczowany SZYNĄ, prąd roboczy GAŁĘZIĄ rozpływu, a kontrakt koordynacji
- * ma jedno pole `location_id` na obie wielkości; relacji „zabezpieczenie →
- * chroniona gałąź" model jeszcze nie niesie (nazwane w docstringu końcówki
- * `run_coordination_analysis` jako decyzja A-4). Ekran uczciwie melduje ten brak
- * panelem „brak prądu roboczego", a analizator zwraca werdykt ERROR — scena
- * pokazuje obie strony tego braku zamiast go zakrywać wierszami gałęziowymi o
- * identyfikatorach szyn (tak robiła atrapa sprzed tej karty).
+ * MIEJSCE URZĄDZENIA (decyzja O-51 pkt 7). Lokalizacja-gałąź niesie zacisk; prąd
+ * zwarciowy lokalizacji to prąd SZYNY zacisku (ta sama reguła co backend,
+ * `szynaZwarciaZadania`), prąd roboczy — prąd TEGO zacisku z wiersza gałęzi
+ * rozpływu (`i_a` dla `od`, `i_do_a` dla `do`). Backend prądów roboczych nie
+ * potwierdza wobec biegu (nazwany brak w docstringu `run_coordination_analysis`),
+ * ale atrapa MUSI je sprawdzić: wynik fixtury policzono dla tych liczb.
  */
 function wynikKoordynacjiDlaZadania(cialo: BodyInit | null | undefined): WynikKoordynacjiSceny | Response {
   const odmowa = (powod: string): Response =>
@@ -406,9 +451,19 @@ function wynikKoordynacjiDlaZadania(cialo: BodyInit | null | undefined): WynikKo
     });
 
   const zadanie = JSON.parse(String(cialo ?? '{}')) as {
-    devices?: { id?: string; location_element_id?: string; settings?: unknown }[];
+    devices?: { id?: string; location_element_id?: string; zacisk?: string | null; settings?: unknown }[];
     fault_currents?: { location_id?: string; ik_max_3f_a?: number; ik_min_3f_a?: number }[];
+    sc_run_id?: string;
+    sc_run_id_min?: string;
   };
+  // Karta S-2: backend potwierdza prądy wobec DWÓCH wskazanych biegów — żądanie bez nich
+  // (albo z innymi) backend odrzuca, więc atrapa też.
+  if (zadanie.sc_run_id !== koordynacjaScenyZwarciaMax.run_id) {
+    return odmowa(`żądanie wskazuje bieg maksymalny ${String(zadanie.sc_run_id)}, fixtura ${koordynacjaScenyZwarciaMax.run_id}`);
+  }
+  if (zadanie.sc_run_id_min !== koordynacjaScenyZwarciaMin.run_id) {
+    return odmowa(`żądanie wskazuje bieg minimalny ${String(zadanie.sc_run_id_min)}, fixtura ${koordynacjaScenyZwarciaMin.run_id}`);
+  }
   const zZadania = zadanie.devices ?? [];
   const zFixtury = koordynacjaScenyWynik.devices;
   if (zZadania.length !== zFixtury.length) {
@@ -434,17 +489,37 @@ function wynikKoordynacjiDlaZadania(cialo: BodyInit | null | undefined): WynikKo
 
   for (const pozycja of zadanie.fault_currents ?? []) {
     const lokalizacja = pozycja.location_id ?? '';
+    const urzadzenie = zZadania.find((u) => u.location_element_id === lokalizacja);
+    const punkt = szynaZwarciaZadania(lokalizacja, urzadzenie?.zacisk);
+    if ('powod' in punkt) return odmowa(`${lokalizacja}: brak szyny zwarcia lokalizacji — ${punkt.powod}`);
     for (const [klucz, fixtura] of [
       ['ik_max_3f_a', koordynacjaScenyZwarciaMax],
       ['ik_min_3f_a', koordynacjaScenyZwarciaMin],
     ] as const) {
       const podany = pozycja[klucz];
-      const zBiegu = pradAZFixtury(fixtura, lokalizacja);
+      const zBiegu = pradAZFixtury(fixtura, punkt.szyna);
       if (typeof podany !== 'number') continue;
       if (zBiegu === null) return odmowa(`bieg nie ma prądu zwarciowego dla lokalizacji ${lokalizacja}`);
       if (Math.abs(podany - zBiegu) > 1e-9 * Math.max(Math.abs(zBiegu), 1)) {
         return odmowa(`${lokalizacja}.${klucz}: żądanie ${podany} A, bieg ${zBiegu} A`);
       }
+    }
+  }
+
+  const zadanieRobocze = JSON.parse(String(cialo ?? '{}')) as {
+    operating_currents?: { location_id?: string; i_operating_a?: number }[];
+  };
+  const robocze = zadanieRobocze.operating_currents ?? [];
+  if (robocze.length !== zZadania.length) {
+    return odmowa(`żądanie niesie ${robocze.length} prądów roboczych dla ${zZadania.length} zabezpieczeń`);
+  }
+  for (const pozycja of robocze) {
+    const lokalizacja = pozycja.location_id ?? '';
+    const urzadzenie = zZadania.find((u) => u.location_element_id === lokalizacja);
+    const wiersz = koordynacjaScenyGalezie.rows.find((w) => w.element_id === lokalizacja);
+    const zBiegu = urzadzenie?.zacisk === 'do' ? wiersz?.i_do_a : wiersz?.i_a;
+    if (typeof zBiegu !== 'number' || pozycja.i_operating_a !== zBiegu) {
+      return odmowa(`${lokalizacja}: prąd roboczy żądania ${String(pozycja.i_operating_a)} A, bieg rozpływu ${String(zBiegu)} A`);
     }
   }
 
@@ -613,6 +688,10 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       return jsonOK(min ? koordynacjaScenyZwarciaMin : koordynacjaScenyZwarciaMax);
     }
     if (url.includes('/results/branches')) return jsonOK(koordynacjaScenyGalezie);
+    // Decyzja O-51 pkt 7: miejsce prądu urządzenia rozstrzyga backend
+    // (`opis_miejsca_urzadzenia`) — odpowiedzi policzone dla KAŻDEJ lokalizacji listy
+    // wyboru i każdego wskazania (`koordynacja_scena_miejsca.json`).
+    if (url.includes('/enm/zacisk-lokalizacji')) return odpowiedzMiejscaSceny(url);
     if (url.includes('/enm')) return jsonOK(koordynacjaScenyMigawka);
     // Sekcja nastaw probuje kandydatow SC_3F DONE od NAJNOWSZEGO —
     // bieg MINIMALNY jest w zasiewie sceny celowo NOWSZY niz maksymalny, tak jak
@@ -860,6 +939,11 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // "sila-sieci"/"migotanie" (siec sceny analiz OZE: stacja 15/0,8 kV z falownikiem
     // PV z karty, `_enm_sceny_oze_analiz`) — zero recznie wpisanych liczb fizycznych.
     return jsonOK(migotanieScenyWynik);
+  }
+  if (url.includes(`/api/analysis-runs/${odbiorZgodnoscScenyZaciski.run_id}/zaciski-galezi`)) {
+    // Decyzja O-51: etykiety zacisków gałęzi biegu sceny (miejsce pomiaru mocy) —
+    // `zaciski_galezi_migawki`, TA SAMA funkcja co końcówka.
+    return jsonOK(odbiorZgodnoscScenyZaciski);
   }
   if (url.includes('/api/quality/as-built-compliance')) {
     // HARNESS-RESZTA-2: scena "odbior-zgodnosc" — REALNY bieg backendu

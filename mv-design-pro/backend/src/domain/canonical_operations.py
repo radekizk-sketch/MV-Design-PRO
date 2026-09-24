@@ -1349,6 +1349,68 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
     ),
+    # Decyzja O-51 (klasa P9, wariant (b)): zacisk gałęzi, przy którym stoi zabezpieczenie —
+    # JEDEN resolver (`application/protection_settings/zacisk_zabezpieczenia.py`): model
+    # (przypięcie urządzenia pakietu do wyłącznika w SZEREGU z zaciskiem — KCL na łańcuchu
+    # szeregowym) → jawne wskazanie inżyniera → odmowa nazwana, po jednym kodzie na
+    # przyczynę. Wnioskowanie z topologii („strona zasilania") jest heurystyką — zakaz.
+    "protection.relay_terminal_indication_missing": ReadinessCodeSpec(
+        code="protection.relay_terminal_indication_missing",
+        area=ReadinessArea.PROTECTION,
+        priority=3,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden "
+            "wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż "
+            "zacisk początkowy albo końcowy"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
+    ),
+    "protection.relay_terminal_choice_missing": ReadinessCodeSpec(
+        code="protection.relay_terminal_choice_missing",
+        area=ReadinessArea.PROTECTION,
+        priority=3,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Model ma zabezpieczenia w szeregu z oboma zaciskami gałęzi (gałąź zasilana "
+            "dwustronnie albo pierścień) — wskaż zacisk, którego dotyczą nastawy"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
+    ),
+    "protection.relay_terminal_contradicts_model": ReadinessCodeSpec(
+        code="protection.relay_terminal_contradicts_model",
+        area=ReadinessArea.PROTECTION,
+        priority=3,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Wskazany zacisk nie odpowiada żadnemu zabezpieczeniu z modelu — wyłącznik z "
+            "przypiętym zabezpieczeniem stoi w szeregu z drugim zaciskiem gałęzi"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
+    ),
+    "protection.device_breaker_not_in_series": ReadinessCodeSpec(
+        code="protection.device_breaker_not_in_series",
+        area=ReadinessArea.PROTECTION,
+        priority=3,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Łącznik wskazany jako miejsce urządzenia nie stoi w szeregu z zaciskiem żadnej "
+            "gałęzi (szyna z innymi przyłączeniami, odbiór albo źródło) — wskaż gałąź i jej "
+            "zacisk jako miejsce urządzenia"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
+    ),
+    "protection.relay_terminal_breaker_loop": ReadinessCodeSpec(
+        code="protection.relay_terminal_breaker_loop",
+        area=ReadinessArea.PROTECTION,
+        priority=3,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Wyłącznik z przypiętym zabezpieczeniem stoi w szeregu z oboma zaciskami tej "
+            "samej gałęzi (pętla) — popraw połączenia albo przypięcie zabezpieczenia w modelu"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "zabezpieczenia"},
+    ),
     # Warunki przyłączenia OSD jako kryterium (karta F-K2, znalezisko Z2 audytu FLOW).
     # Moc przyłączeniowa i wymagany cosφ z dokumentu OSD są danymi WEJŚCIOWYMI projektu;
     # bez nich ocena punktu przyłączenia jest NIESPRAWDZONA, a nie spełniona.
@@ -2496,6 +2558,22 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "domyślnych"
         ),
         fix_navigation={"panel": "analizy", "tab": "stabilnosc"},
+    ),
+    # Decyzja O-51 (klasa P9, miejsce 12): pomiar mocy gałęzi niesie zacisk, na którym go
+    # wykonano (`od` / `do`) — gałąź z przekładnią albo susceptancją ma na końcach inne
+    # P/Q. Rekord bez zacisku nie jest porównywany z żadnym końcem gałęzi (zakaz domysłu
+    # „początek gałęzi"), tylko dostaje tę odmowę w wierszu raportu.
+    "analysis.as_built_measurement_terminal_missing": ReadinessCodeSpec(
+        code="analysis.as_built_measurement_terminal_missing",
+        area=ReadinessArea.ANALYSIS,
+        priority=3,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Pomiar mocy gałęzi bez miejsca pomiaru — wskaż zacisk gałęzi (początkowy albo "
+            "końcowy), na którym wykonano pomiar; gałąź z przekładnią albo susceptancją ma "
+            "na obu końcach inne moce"
+        ),
+        fix_navigation={"panel": "analizy", "tab": "odbior"},
     ),
 }
 

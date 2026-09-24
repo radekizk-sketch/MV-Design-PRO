@@ -46,6 +46,7 @@ from enm.canonical_analysis import (
     build_short_circuit_results,
     build_short_circuit_rozplyw,
     dobierz_pasmo_min_max_zwarcia,
+    galezie_modelu_biegu,
 )
 from network_model.pochodne import a_na_ka
 
@@ -397,6 +398,18 @@ def build_power_flow_interpretation(run: CanonicalRun) -> dict[str, Any]:
         },
         branch_s_from_mva=_pf_branch_s_mva(branch_results, "p_from_mw", "q_from_mvar"),
         branch_s_to_mva=_pf_branch_s_mva(branch_results, "p_to_mw", "q_to_mvar"),
+        # Decyzja O-51: prąd zacisku `od` (rdzeń rozpływu) i napięcia węzłów — dane
+        # jednej funkcji obciążenia gałęzi (`loading_pct` obserwacji gałęzi).
+        node_voltage_kv={
+            str(wezel): float(napiecie)
+            for wezel, napiecie in ((run.raw_result or {}).get("node_voltage_kv") or {}).items()
+            if napiecie is not None
+        },
+        branch_current_ka={
+            str(galaz): float(prad)
+            for galaz, prad in ((run.raw_result or {}).get("branch_current_ka") or {}).items()
+            if prad is not None
+        },
     )
 
     context = InterpretationContext(
@@ -409,6 +422,7 @@ def build_power_flow_interpretation(run: CanonicalRun) -> dict[str, Any]:
         power_flow_result=power_flow_result,
         run_id=str(run.id),
         run_timestamp=run.created_at,
+        galezie_modelu=galezie_modelu_biegu(run),
     )
     return interpretation.to_dict()
 
@@ -480,7 +494,7 @@ def build_dynamic_stability_time_series_response(run: CanonicalRun) -> dict[str,
 
 
 def build_dynamika_results_response(run: CanonicalRun) -> dict[str, Any]:
-    """Metadane `ResultSetDynamicV1` (karta W6-1) — `KeyError` się propaguje (API: 404)."""
+    """Metadane `ResultSetDynamicV2` (karta W6-1) — `KeyError` się propaguje (API: 404)."""
     payload = build_dynamika_results(run)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload

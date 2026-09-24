@@ -116,12 +116,24 @@ export interface NapieciePasmoItem {
 export interface ObciazeniePasmoItem {
   readonly target_id: string;
   readonly target_name: string | null;
+  /** Prąd zacisku DECYDUJĄCEGO [kA] (większy iloraz prąd / prąd znamionowy zacisku). */
   readonly current_ka: number | null;
+  /** Prąd znamionowy zacisku decydującego [A]. */
   readonly rated_current_a: number | null;
   readonly loading_pct: number | null;
   readonly in_range: boolean;
   readonly status: string;
   readonly why_pl: string;
+  /**
+   * Pola ADDYTYWNE (decyzja O-51, klasa P9): zacisk decydujący oraz prądy i prądy
+   * znamionowe OBU zacisków — transformatory i kable z susceptancją mają na końcach
+   * inne prądy. Opcjonalne tylko dla odpowiedzi sprzed pól; `null` = brak danej.
+   */
+  readonly zacisk_decydujacy?: 'od' | 'do' | null;
+  readonly current_od_ka?: number | null;
+  readonly current_do_ka?: number | null;
+  readonly rated_current_od_a?: number | null;
+  readonly rated_current_do_a?: number | null;
 }
 
 /** Ocena wiarygodności strat czynnych sieci wobec sumy mocy czynnej odbiorów. */

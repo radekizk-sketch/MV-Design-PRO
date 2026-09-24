@@ -5,9 +5,9 @@
       "created_at": "2026-09-17T08:00:00+00:00",
       "ct_ratio": null,
       "device_type": "RELAY",
-      "id": "d1350b00-eeae-51dd-b166-da50c3544127",
+      "id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
       "location_description": null,
-      "location_element_id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
+      "location_element_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
       "manufacturer": null,
       "model": null,
       "name": "Przekaznik 50/51 (typowy)",
@@ -43,9 +43,9 @@
       "created_at": "2026-09-17T08:00:00+00:00",
       "ct_ratio": null,
       "device_type": "RELAY",
-      "id": "b2634602-af36-5829-8625-574220ae4ca9",
+      "id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
       "location_description": null,
-      "location_element_id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
+      "location_element_id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L",
       "manufacturer": null,
       "model": null,
       "name": "Przekaznik 50/51 (typowy)",
@@ -80,53 +80,53 @@
   ],
   "fault_markers": [
     {
-      "current_a": 8767.005250876466,
+      "current_a": 9621.459235920445,
       "fault_type": "3F",
-      "id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus_ik_max_3f",
-      "label_pl": "Ik\"max 3F (stn/01bb98b8035012aa5698e4fc47869f83/sn_bus)",
-      "location": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+      "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L_ik_max_3f",
+      "label_pl": "Ik\"max 3F (seg/9704d44d1ae3394b377910d77a80b97c/segment_L)",
+      "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L"
     },
     {
-      "current_a": 7624.832677934474,
+      "current_a": 8746.781124267436,
       "fault_type": "3F",
-      "id": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus_ik_min_3f",
-      "label_pl": "Ik\"min 3F (stn/01bb98b8035012aa5698e4fc47869f83/sn_bus)",
-      "location": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus"
+      "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L_ik_min_3f",
+      "label_pl": "Ik\"min 3F (seg/9704d44d1ae3394b377910d77a80b97c/segment_L)",
+      "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L"
     },
     {
-      "current_a": 9056.559147375217,
+      "current_a": 9056.559147375221,
       "fault_type": "3F",
-      "id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus_ik_max_3f",
-      "label_pl": "Ik\"max 3F (stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus)",
-      "location": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
+      "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L_ik_max_3f",
+      "label_pl": "Ik\"max 3F (seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L)",
+      "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L"
     },
     {
-      "current_a": 8034.309745271617,
+      "current_a": 8034.309745271616,
       "fault_type": "3F",
-      "id": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus_ik_min_3f",
-      "label_pl": "Ik\"min 3F (stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus)",
-      "location": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
+      "id": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L_ik_min_3f",
+      "label_pl": "Ik\"min 3F (seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L)",
+      "location": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L"
     }
   ],
   "overall_verdict": "FAIL",
   "overload_checks": [
     {
-      "device_id": "d1350b00-eeae-51dd-b166-da50c3544127",
-      "i_operating_a": 0.0,
+      "device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
+      "i_operating_a": 22.768781749828918,
       "i_pickup_a": 400.0,
-      "margin_percent": 0.0,
-      "notes_pl": "Brak danych o prądzie roboczym dla lokalizacji stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
-      "verdict": "ERROR",
-      "verdict_pl": "Błąd analizy"
+      "margin_percent": 1656.7914014679577,
+      "notes_pl": "Przeciążalność prawidłowa: I_pickup/I_rob = 17.57 >= 1.2",
+      "verdict": "PASS",
+      "verdict_pl": "Prawidłowa"
     },
     {
-      "device_id": "b2634602-af36-5829-8625-574220ae4ca9",
-      "i_operating_a": 0.0,
+      "device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
+      "i_operating_a": 11.384885698880636,
       "i_pickup_a": 400.0,
-      "margin_percent": 0.0,
-      "notes_pl": "Brak danych o prądzie roboczym dla lokalizacji stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus",
-      "verdict": "ERROR",
-      "verdict_pl": "Błąd analizy"
+      "margin_percent": 3413.4300912597487,
+      "notes_pl": "Przeciążalność prawidłowa: I_pickup/I_rob = 35.13 >= 1.2",
+      "verdict": "PASS",
+      "verdict_pl": "Prawidłowa"
     }
   ],
   "pf_run_id": "run-lf-scena-koordynacja",
@@ -135,33 +135,33 @@
   "sc_run_id": "run-sc-scena-koordynacja-max",
   "selectivity_checks": [
     {
-      "analysis_current_a": 8767.005250876466,
-      "downstream_device_id": "d1350b00-eeae-51dd-b166-da50c3544127",
+      "analysis_current_a": 9621.459235920445,
+      "downstream_device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
       "margin_s": 0.0,
       "notes_pl": "Brak selektywności! Zabezpieczenie nadrzędne zadziała przed podrzędnym (Δt = 0.000s)",
       "required_margin_s": 0.2,
-      "t_downstream_s": 0.6594251853325538,
-      "t_upstream_s": 0.6594251853325538,
-      "upstream_device_id": "b2634602-af36-5829-8625-574220ae4ca9",
+      "t_downstream_s": 0.6395404367732404,
+      "t_upstream_s": 0.6395404367732404,
+      "upstream_device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
       "verdict": "FAIL",
       "verdict_pl": "Nieskoordynowane"
     }
   ],
   "sensitivity_checks": [
     {
-      "device_id": "d1350b00-eeae-51dd-b166-da50c3544127",
-      "i_fault_min_a": 7624.832677934474,
+      "device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
+      "i_fault_min_a": 8746.781124267436,
       "i_pickup_a": 400.0,
-      "margin_percent": 1806.2081694836183,
-      "notes_pl": "Czułość wystarczająca: I_min/I_pickup = 19.06 >= 1.5",
+      "margin_percent": 2086.695281066859,
+      "notes_pl": "Czułość wystarczająca: I_min/I_pickup = 21.87 >= 1.5",
       "verdict": "PASS",
       "verdict_pl": "Prawidłowa"
     },
     {
-      "device_id": "b2634602-af36-5829-8625-574220ae4ca9",
-      "i_fault_min_a": 8034.309745271617,
+      "device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
+      "i_fault_min_a": 8034.309745271616,
       "i_pickup_a": 400.0,
-      "margin_percent": 1908.5774363179046,
+      "margin_percent": 1908.5774363179037,
       "notes_pl": "Czułość wystarczająca: I_min/I_pickup = 20.09 >= 1.5",
       "verdict": "PASS",
       "verdict_pl": "Prawidłowa"
@@ -171,10 +171,10 @@
     "overall_verdict": "FAIL",
     "overall_verdict_pl": "Nieskoordynowane",
     "overload": {
-      "error": 2,
+      "error": 0,
       "fail": 0,
       "marginal": 0,
-      "pass": 0
+      "pass": 2
     },
     "selectivity": {
       "error": 0,
@@ -195,7 +195,7 @@
     {
       "color": "#2563eb",
       "curve_type": "IEC_SI",
-      "device_id": "d1350b00-eeae-51dd-b166-da50c3544127",
+      "device_id": "a135c343-d2ba-57a9-b209-564b1ab09f88",
       "device_name": "Przekaznik 50/51 (typowy)",
       "pickup_current_a": 400.0,
       "podstawa_kod": "KRZYWA_PRZEKAZNIKOWA",
@@ -707,7 +707,7 @@
     {
       "color": "#dc2626",
       "curve_type": "IEC_SI",
-      "device_id": "b2634602-af36-5829-8625-574220ae4ca9",
+      "device_id": "096dfd8c-a5de-53dd-8752-a14c2d2bc2bd",
       "device_name": "Przekaznik 50/51 (typowy)",
       "pickup_current_a": 400.0,
       "podstawa_kod": "KRZYWA_PRZEKAZNIKOWA",
@@ -1222,7 +1222,7 @@
       "description_pl": "Indeksowanie prądów według lokalizacji",
       "inputs": {
         "fault_locations": 2,
-        "operating_locations": 5
+        "operating_locations": 2
       },
       "outputs": {},
       "step": "index_currents"
@@ -1238,28 +1238,28 @@
     {
       "description_pl": "Sprawdzenie czułości: Przekaznik 50/51 (typowy)",
       "inputs": {
-        "i_fault_min_a": 7624.832677934474,
+        "i_fault_min_a": 8746.781124267436,
         "i_pickup_a": 400.0
       },
       "outputs": {
-        "margin_percent": 1806.2081694836183,
-        "ratio": 19.062081694836184,
+        "margin_percent": 2086.695281066859,
+        "ratio": 21.86695281066859,
         "verdict": "PASS"
       },
-      "step": "sensitivity_d1350b00"
+      "step": "sensitivity_a135c343"
     },
     {
       "description_pl": "Sprawdzenie czułości: Przekaznik 50/51 (typowy)",
       "inputs": {
-        "i_fault_min_a": 8034.309745271617,
+        "i_fault_min_a": 8034.309745271616,
         "i_pickup_a": 400.0
       },
       "outputs": {
-        "margin_percent": 1908.5774363179046,
-        "ratio": 20.085774363179045,
+        "margin_percent": 1908.5774363179037,
+        "ratio": 20.085774363179038,
         "verdict": "PASS"
       },
-      "step": "sensitivity_b2634602"
+      "step": "sensitivity_096dfd8c"
     },
     {
       "description_pl": "Rozpoczęcie sprawdzania przeciążalności",
@@ -1268,6 +1268,32 @@
       },
       "outputs": {},
       "step": "check_overload_start"
+    },
+    {
+      "description_pl": "Sprawdzenie przeciążalności: Przekaznik 50/51 (typowy)",
+      "inputs": {
+        "i_operating_a": 22.768781749828918,
+        "i_pickup_a": 400.0
+      },
+      "outputs": {
+        "margin_percent": 1656.7914014679577,
+        "ratio": 17.567914014679577,
+        "verdict": "PASS"
+      },
+      "step": "overload_a135c343"
+    },
+    {
+      "description_pl": "Sprawdzenie przeciążalności: Przekaznik 50/51 (typowy)",
+      "inputs": {
+        "i_operating_a": 11.384885698880636,
+        "i_pickup_a": 400.0
+      },
+      "outputs": {
+        "margin_percent": 3413.4300912597487,
+        "ratio": 35.13430091259749,
+        "verdict": "PASS"
+      },
+      "step": "overload_096dfd8c"
     },
     {
       "description_pl": "Rozpoczęcie sprawdzania selektywności czasowej",
@@ -1280,16 +1306,16 @@
     {
       "description_pl": "Selektywność: Przekaznik 50/51 (typowy) → Przekaznik 50/51 (typowy)",
       "inputs": {
-        "analysis_current_a": 8767.005250876466,
+        "analysis_current_a": 9621.459235920445,
         "min_cti_s": 0.2
       },
       "outputs": {
         "margin_s": 0.0,
-        "t_downstream_s": 0.6594251853325538,
-        "t_upstream_s": 0.6594251853325538,
+        "t_downstream_s": 0.6395404367732404,
+        "t_upstream_s": 0.6395404367732404,
         "verdict": "FAIL"
       },
-      "step": "selectivity_d1350b00_b2634602"
+      "step": "selectivity_a135c343_096dfd8c"
     },
     {
       "description_pl": "Generowanie krzywych czasowo-prądowych (TCC)",

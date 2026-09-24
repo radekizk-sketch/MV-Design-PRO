@@ -6,7 +6,8 @@
  * przypadku — kasacja V12K-189 (druga metodyka, 0 konsumentów) oznacza, że
  * `SekcjaNastaw.tsx` idzie odtąd WYŁĄCZNIE przez `/analysis-runs/{id}/nastawy`
  * (metoda Hoppela). Droga: kotwica (bieg SC_3F przez realny klik „Oblicz") →
- * wybór chronionego odcinka i kolejnej szyny → tabela nastaw → dobór aparatu.
+ * wybór chronionego odcinka, zacisku zabezpieczenia (klik, gdy model milczy —
+ * decyzja O-51) i kolejnej szyny → tabela nastaw → dobór aparatu.
  *
  * Wzorzec URUCHOMIENIA BIEGU (klik „Oblicz", toast, zakładka koordynacji):
  * e2e/restart-po-biegu.spec.ts / e2e/critical-run-flow.spec.ts (real backend).
@@ -327,6 +328,20 @@ test('kotwica → wybór odcinka → tabela nastaw I>/I>> widoczna (real backend
   await expect(selectLinia).toBeVisible();
   await selectLinia.selectOption(chronionyOdcinek);
 
+  // Decyzja O-51 (wariant (b)): sieć e2e nie przypina zabezpieczeń do wyłączników,
+  // więc model milczy o zacisku zabezpieczenia — liczenie jest ZABLOKOWANE z powodem
+  // z rekordu odmowy backendu, dopóki inżynier nie wskaże zacisku REALNYM klikiem.
+  // Zabezpieczenie stoi przy GPZ (zacisk początkowy odcinka GPZ → Stacja 1), więc
+  // kolejną strefą jest szyna Stacji 2 za końcem odcinka.
+  await expect(page.getByTestId('mvd-koordynacja-nastawy-policz')).toBeDisabled();
+  await expect(page.getByTestId('mvd-koordynacja-nastawy-policz-powod')).toContainText(
+    'Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie',
+  );
+  const zaciskPoczatkowy = page.getByTestId('mvd-koordynacja-nastawy-zacisk-od');
+  await expect(zaciskPoczatkowy).toBeVisible();
+  await zaciskPoczatkowy.click();
+  await expect(zaciskPoczatkowy).toBeChecked();
+
   const selectSzyna = page.getByTestId('mvd-koordynacja-nastawy-select-szyna');
   await expect(selectSzyna).toBeVisible();
   await selectSzyna.selectOption(kolejnaSzyna);
@@ -340,10 +355,15 @@ test('kotwica → wybór odcinka → tabela nastaw I>/I>> widoczna (real backend
   await expect(wynik).toContainText(/\d+[.,]\d+ A/);
   await expect(page.getByTestId('mvd-koordynacja-nastawy-werdykt')).toBeVisible();
 
-  // Pakiet dowodowy — link do TEJ SAMEJ fizyki w postaci ZIP.
+  // Miejsce zabezpieczenia w wyniku — etykieta zacisku z backendu, źródło „wskazane".
+  await expect(page.getByTestId('mvd-koordynacja-nastawy-wynik-zacisk')).toContainText(
+    'Zacisk początkowy',
+  );
+
+  // Pakiet dowodowy — link do TEJ SAMEJ fizyki w postaci ZIP (z tym samym zaciskiem).
   await expect(page.getByTestId('mvd-koordynacja-nastawy-pobierz-zip')).toHaveAttribute(
     'href',
-    /\/api\/analysis-runs\/.+\/pakiet-dowodowy-nastaw\?/,
+    /\/api\/analysis-runs\/.+\/pakiet-dowodowy-nastaw\?.*zacisk_zabezpieczenia=od/,
   );
 
   // Dobór aparatu (karta W3-C1 §0.4): lista aparatów z katalogu analitycznego

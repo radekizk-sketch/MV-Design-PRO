@@ -117,6 +117,8 @@ def zbuduj_smib(*, d_pu: float = 0.0, ra_pu: float = 0.0) -> UkladSmib:
                 y_szeregowa_pu=1.0 / complex(0.0, X_LINII_PU),
                 b_poprzeczna_pu=0.0,
                 przekladnia=complex(1.0, 0.0),
+                aktywna_na_starcie=True,
+                rodzaj="linia",
             ),
         ),
         odbiory=(),
@@ -150,6 +152,8 @@ def zbuduj_smib_dwutorowy(*, d_pu: float = 0.0) -> UkladSmib:
             y_szeregowa_pu=1.0 / complex(0.0, 2.0 * X_LINII_PU),
             b_poprzeczna_pu=0.0,
             przekladnia=complex(1.0, 0.0),
+            aktywna_na_starcie=True,
+            rodzaj="linia",
         )
         for numer in (1, 2)
     )

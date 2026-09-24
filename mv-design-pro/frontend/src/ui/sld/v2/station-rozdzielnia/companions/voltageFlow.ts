@@ -75,17 +75,19 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "title": "Prad galezi I"
           },
           {
-            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
             "inputs": {
-              "i_a": 51.32,
-              "i_zn_a": 630.0
+              "i_do_a": 51.32,
+              "i_od_a": 51.32,
+              "i_zn_do_a": 630.0,
+              "i_zn_od_a": 630.0
             },
             "result": {
               "loading_percent": 8.15
             },
             "result_unit": "%",
             "source": "interpretacja",
-            "substitution_latex": "obc. = \\frac{51.32}{630.0} \\cdot 100\\%",
+            "substitution_latex": "obc. = \\max\\left(\\frac{51.32}{630.0}, \\frac{51.32}{630.0}\\right) \\cdot 100\\%",
             "title": "Obciazenie pola"
           }
         ]
@@ -142,17 +144,19 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "title": "Prad galezi I"
           },
           {
-            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
             "inputs": {
-              "i_a": 33.22,
-              "i_zn_a": 630.0
+              "i_do_a": 33.22,
+              "i_od_a": 33.22,
+              "i_zn_do_a": 630.0,
+              "i_zn_od_a": 630.0
             },
             "result": {
               "loading_percent": 5.27
             },
             "result_unit": "%",
             "source": "interpretacja",
-            "substitution_latex": "obc. = \\frac{33.22}{630.0} \\cdot 100\\%",
+            "substitution_latex": "obc. = \\max\\left(\\frac{33.22}{630.0}, \\frac{33.22}{630.0}\\right) \\cdot 100\\%",
             "title": "Obciazenie pola"
           }
         ]
@@ -161,7 +165,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "branch_ref": "sr/branch/tr",
         "direction": "forward",
         "i_a": 18.11,
-        "loading_percent": null,
+        "loading_percent": 74.69,
         "p_mw": 0.44,
         "q_mvar": 0.1611,
         "s_mva": 0.4686,
@@ -209,17 +213,19 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "title": "Prad galezi I"
           },
           {
-            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
             "inputs": {
-              "i_a": 18.11,
-              "i_zn_a": null
+              "i_do_a": 679.17,
+              "i_od_a": 18.11,
+              "i_zn_do_a": 909.33,
+              "i_zn_od_a": 24.25
             },
             "result": {
-              "loading_percent": null
+              "loading_percent": 74.69
             },
             "result_unit": "%",
             "source": "interpretacja",
-            "substitution_latex": "n/d",
+            "substitution_latex": "obc. = \\max\\left(\\frac{18.11}{24.25}, \\frac{679.17}{909.33}\\right) \\cdot 100\\%",
             "title": "Obciazenie pola"
           }
         ]
@@ -394,17 +400,19 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "title": "Prad galezi I"
           },
           {
-            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
             "inputs": {
-              "i_a": 14.74,
-              "i_zn_a": 630.0
+              "i_do_a": 14.74,
+              "i_od_a": 14.74,
+              "i_zn_do_a": 630.0,
+              "i_zn_od_a": 630.0
             },
             "result": {
               "loading_percent": 2.34
             },
             "result_unit": "%",
             "source": "interpretacja",
-            "substitution_latex": "obc. = \\frac{14.74}{630.0} \\cdot 100\\%",
+            "substitution_latex": "obc. = \\max\\left(\\frac{14.74}{630.0}, \\frac{14.74}{630.0}\\right) \\cdot 100\\%",
             "title": "Obciazenie pola"
           }
         ]
@@ -413,7 +421,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
         "branch_ref": "sr/branch/tr",
         "direction": "forward",
         "i_a": 14.74,
-        "loading_percent": null,
+        "loading_percent": 60.77,
         "p_mw": 0.35,
         "q_mvar": 0.154,
         "s_mva": 0.3824,
@@ -461,17 +469,19 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "title": "Prad galezi I"
           },
           {
-            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
             "inputs": {
-              "i_a": 14.74,
-              "i_zn_a": null
+              "i_do_a": 552.63,
+              "i_od_a": 14.74,
+              "i_zn_do_a": 909.33,
+              "i_zn_od_a": 24.25
             },
             "result": {
-              "loading_percent": null
+              "loading_percent": 60.77
             },
             "result_unit": "%",
             "source": "interpretacja",
-            "substitution_latex": "n/d",
+            "substitution_latex": "obc. = \\max\\left(\\frac{14.74}{24.25}, \\frac{552.63}{909.33}\\right) \\cdot 100\\%",
             "title": "Obciazenie pola"
           }
         ]
@@ -646,17 +656,19 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "title": "Prad galezi I"
           },
           {
-            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
             "inputs": {
-              "i_a": 12.95,
-              "i_zn_a": 630.0
+              "i_do_a": 12.95,
+              "i_od_a": 12.95,
+              "i_zn_do_a": 630.0,
+              "i_zn_od_a": 630.0
             },
             "result": {
               "loading_percent": 2.06
             },
             "result_unit": "%",
             "source": "interpretacja",
-            "substitution_latex": "obc. = \\frac{12.95}{630.0} \\cdot 100\\%",
+            "substitution_latex": "obc. = \\max\\left(\\frac{12.95}{630.0}, \\frac{12.95}{630.0}\\right) \\cdot 100\\%",
             "title": "Obciazenie pola"
           }
         ]
@@ -713,17 +725,19 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "title": "Prad galezi I"
           },
           {
-            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
             "inputs": {
-              "i_a": 32.02,
-              "i_zn_a": 630.0
+              "i_do_a": 32.02,
+              "i_od_a": 32.02,
+              "i_zn_do_a": 630.0,
+              "i_zn_od_a": 630.0
             },
             "result": {
               "loading_percent": 5.08
             },
             "result_unit": "%",
             "source": "interpretacja",
-            "substitution_latex": "obc. = \\frac{32.02}{630.0} \\cdot 100\\%",
+            "substitution_latex": "obc. = \\max\\left(\\frac{32.02}{630.0}, \\frac{32.02}{630.0}\\right) \\cdot 100\\%",
             "title": "Obciazenie pola"
           }
         ]
@@ -780,17 +794,19 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "title": "Prad galezi I"
           },
           {
-            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
             "inputs": {
-              "i_a": 19.07,
-              "i_zn_a": 630.0
+              "i_do_a": 19.07,
+              "i_od_a": 19.07,
+              "i_zn_do_a": 630.0,
+              "i_zn_od_a": 630.0
             },
             "result": {
               "loading_percent": 3.03
             },
             "result_unit": "%",
             "source": "interpretacja",
-            "substitution_latex": "obc. = \\frac{19.07}{630.0} \\cdot 100\\%",
+            "substitution_latex": "obc. = \\max\\left(\\frac{19.07}{630.0}, \\frac{19.07}{630.0}\\right) \\cdot 100\\%",
             "title": "Obciazenie pola"
           }
         ]
@@ -913,17 +929,19 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "title": "Prad galezi I"
           },
           {
-            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
             "inputs": {
-              "i_a": 27.14,
-              "i_zn_a": 630.0
+              "i_do_a": 27.14,
+              "i_od_a": 27.14,
+              "i_zn_do_a": 630.0,
+              "i_zn_od_a": 630.0
             },
             "result": {
               "loading_percent": 4.31
             },
             "result_unit": "%",
             "source": "interpretacja",
-            "substitution_latex": "obc. = \\frac{27.14}{630.0} \\cdot 100\\%",
+            "substitution_latex": "obc. = \\max\\left(\\frac{27.14}{630.0}, \\frac{27.14}{630.0}\\right) \\cdot 100\\%",
             "title": "Obciazenie pola"
           }
         ]
@@ -980,17 +998,19 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "title": "Prad galezi I"
           },
           {
-            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
             "inputs": {
-              "i_a": 24.69,
-              "i_zn_a": 630.0
+              "i_do_a": 24.69,
+              "i_od_a": 24.69,
+              "i_zn_do_a": 630.0,
+              "i_zn_od_a": 630.0
             },
             "result": {
               "loading_percent": 3.92
             },
             "result_unit": "%",
             "source": "interpretacja",
-            "substitution_latex": "obc. = \\frac{24.69}{630.0} \\cdot 100\\%",
+            "substitution_latex": "obc. = \\max\\left(\\frac{24.69}{630.0}, \\frac{24.69}{630.0}\\right) \\cdot 100\\%",
             "title": "Obciazenie pola"
           }
         ]
@@ -1047,17 +1067,19 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "title": "Prad galezi I"
           },
           {
-            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
             "inputs": {
-              "i_a": 27.14,
-              "i_zn_a": 630.0
+              "i_do_a": 27.14,
+              "i_od_a": 27.14,
+              "i_zn_do_a": 630.0,
+              "i_zn_od_a": 630.0
             },
             "result": {
               "loading_percent": 4.31
             },
             "result_unit": "%",
             "source": "interpretacja",
-            "substitution_latex": "obc. = \\frac{27.14}{630.0} \\cdot 100\\%",
+            "substitution_latex": "obc. = \\max\\left(\\frac{27.14}{630.0}, \\frac{27.14}{630.0}\\right) \\cdot 100\\%",
             "title": "Obciazenie pola"
           }
         ]
@@ -1114,17 +1136,19 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
             "title": "Prad galezi I"
           },
           {
-            "formula_latex": "obc. = \\frac{I}{I_{zn}} \\cdot 100\\%",
+            "formula_latex": "obc. = \\max\\left(\\frac{I_{od}}{I_{zn,od}}, \\frac{I_{do}}{I_{zn,do}}\\right) \\cdot 100\\%",
             "inputs": {
-              "i_a": 24.69,
-              "i_zn_a": 630.0
+              "i_do_a": 24.69,
+              "i_od_a": 24.69,
+              "i_zn_do_a": 630.0,
+              "i_zn_od_a": 630.0
             },
             "result": {
               "loading_percent": 3.92
             },
             "result_unit": "%",
             "source": "interpretacja",
-            "substitution_latex": "obc. = \\frac{24.69}{630.0} \\cdot 100\\%",
+            "substitution_latex": "obc. = \\max\\left(\\frac{24.69}{630.0}, \\frac{24.69}{630.0}\\right) \\cdot 100\\%",
             "title": "Obciazenie pola"
           }
         ]

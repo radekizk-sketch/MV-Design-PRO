@@ -204,6 +204,7 @@ def bieg_ze_zwarciem(
                 r_f_ohm=0.0,
                 x_f_ohm=x_zwarcia_ohm,
                 t_usuniecia_s=t_zwarcia_s + czas_trwania_s,
+                sposob_usuniecia="samoczynne",
             ),
         )
     )
@@ -219,7 +220,9 @@ def sprawdz_zgodnosc_malosygnalowa(
     opis: str,
 ) -> tuple[float, float]:
     """Porownaj mod z wartosci wlasnych z modem odczytanym z przebiegu."""
-    pomiar = zmierz_oscylacje(wynik.os_czasu_s, wynik.probki[klucz_kanalu], od_s)
+    pomiar = zmierz_oscylacje(
+        tuple(_czas(wynik).tolist()), tuple(_szereg(wynik, klucz_kanalu).tolist()), od_s
+    )
     mod = mod_najblizszy(mod_ukladu(uklad, nastawy()), pomiar.czestotliwosc_hz)
     blad_czestotliwosci = abs(pomiar.czestotliwosc_hz - mod.czestotliwosc_hz) / mod.czestotliwosc_hz
     zanik_modu = -float(mod.wartosc_wlasna.real)
@@ -236,8 +239,28 @@ def sprawdz_zgodnosc_malosygnalowa(
     return blad_czestotliwosci, blad_tlumienia
 
 
+def _indeksy_siatki_prawostronnej(wynik: WynikDynamiki) -> list[int]:
+    """Probki `C` i `P` — dawna siatka wyjscia z probka prawostronna chwili zdarzenia.
+
+    Od karty AB-1b.1 (par. 0 pkt 6) chwila zdarzenia ma pare `L`/`P` o TEJ SAMEJ chwili;
+    pomiary tego modulu (rozniczkowanie po czasie, odstepy maksimow) wymagaja osi scisle
+    rosnacej, wiec czytaja strony `C` i `P` — dokladnie os sprzed probek obustronnych.
+    """
+    return [i for i, strona in enumerate(wynik.strona_probki) if strona in ("C", "P")]
+
+
+def _czas(wynik: WynikDynamiki) -> np.ndarray:
+    return np.asarray(
+        [wynik.os_czasu_s[i] for i in _indeksy_siatki_prawostronnej(wynik)], dtype=float
+    )
+
+
 def _szereg(wynik: WynikDynamiki, klucz: str) -> np.ndarray:
-    return np.asarray(wynik.probki[klucz], dtype=float)
+    wartosci = [wynik.probki[klucz][i] for i in _indeksy_siatki_prawostronnej(wynik)]
+    # `None` (wartosc niedostepna) nie jest zamieniane na NaN — jawny blad zamiast cichej
+    # liczby w pomiarze.
+    assert all(w is not None for w in wartosci), f"{klucz}: wartosc niedostepna w pomiarze"
+    return np.asarray(wartosci, dtype=float)
 
 
 # ---------------------------------------------------------------------------
@@ -307,7 +330,7 @@ def test_maszyna_przyspiesza_zgodnie_z_rownaniem_ruchu() -> None:
     urzadzenie = maszyna()
     uklad = zloz_uklad(urzadzenie, p_pu=0.8)
     wynik = bieg_ze_zwarciem(uklad, horyzont_s=1.0, czas_trwania_s=0.1, krok_wyjscia_s=0.002)
-    czas = np.asarray(wynik.os_czasu_s, dtype=float)
+    czas = _czas(wynik)
     predkosc = _szereg(wynik, "omega_pu@G1")
     moc_zaciskow = _szereg(wynik, "p_pu@G1")
     moc_bierna = _szereg(wynik, "q_pu@G1")
@@ -397,8 +420,17 @@ def test_gfl_mod_synchronizacji_zgodny_z_przebiegiem() -> None:
     )
 
 
-def test_gfl_nie_przekracza_ogranicznika_pradu_w_zadnym_kroku() -> None:
-    """`|I| <= i_max` w CALYM przebiegu, przy zwarciu wymuszajacym ograniczenie."""
+def test_gfl_nie_przekracza_ogranicznika_pradu_w_probkach_wyjscia() -> None:
+    """`|I| <= i_max` w KAZDEJ PROBCE WYJSCIA, przy zwarciu wymuszajacym ograniczenie.
+
+    NAZWA SKORYGOWANA (2026-09-23): dawne „w_zadnym_kroku" obiecywalo sprawdzenie
+    kazdego kroku calkowania, a test czyta stany pradu wylacznie na siatce wyjscia.
+    Zakres jest tez waski: nastawy biblioteki (`Tp = 0,02 s`, `Tiq = 0,01 s`, stosunek 2)
+    i ten jeden scenariusz. Ogranicznik dziala na ZADANIACH przed czlonami inercyjnymi,
+    wiec przy `Tp != Tiq` prad RZECZYWISTY moze wyjsc poza kolo (karta AB-1b.2:
+    `|I|/i_max` do 1,1407 przy `Tp/Tiq = 10`) — ten test tego nie obejmuje i nie jest
+    dowodem ogranicznika dla dowolnych nastaw.
+    """
     urzadzenie = przeksztaltnik_gfl()
     uklad = zloz_uklad(urzadzenie, p_pu=0.25)
     wynik = bieg_ze_zwarciem(
@@ -458,7 +490,7 @@ def test_gfl_wstrzykuje_prad_bierny_przy_zapadzie() -> None:
         zloz_uklad(urzadzenie, p_pu=0.25), horyzont_s=1.0, czas_trwania_s=0.15
     )
     bez = bieg_ze_zwarciem(zloz_uklad(bez_wsparcia, p_pu=0.25), horyzont_s=1.0, czas_trwania_s=0.15)
-    czas = np.asarray(ze_wsparciem.os_czasu_s, dtype=float)
+    czas = _czas(ze_wsparciem)
     w_zwarciu = (czas > 0.15) & (czas < 0.25)
     napiecie = _szereg(ze_wsparciem, "u_pu@GEN")[w_zwarciu]
     napiecie_bez = _szereg(bez, "u_pu@GEN")[w_zwarciu]
@@ -542,7 +574,7 @@ def test_gfl_petla_synchronizacji_nadaza_za_katem_napiecia_wezla() -> None:
     """
     uklad = zloz_uklad(przeksztaltnik_gfl(), p_pu=0.25)
     wynik = bieg_ze_zwarciem(uklad, horyzont_s=2.0, czas_trwania_s=0.15)
-    czas = np.asarray(wynik.os_czasu_s, dtype=float)
+    czas = _czas(wynik)
     kat_pll = _szereg(wynik, "pll_kat_rad@PV1")
     kat_wezla = np.radians(_szereg(wynik, "kat_deg@GEN"))
     uchyb = np.arctan2(np.sin(kat_pll - kat_wezla), np.cos(kat_pll - kat_wezla))
@@ -788,7 +820,7 @@ def test_gfm_statyzm_obniza_czestotliwosc_w_przebiegu() -> None:
     urzadzenie = przeksztaltnik_gfm(tryb="vsm")
     uklad = zloz_uklad(urzadzenie, p_pu=0.3)
     wynik = bieg_ze_zwarciem(uklad, horyzont_s=2.0, czas_trwania_s=0.08)
-    czas = np.asarray(wynik.os_czasu_s, dtype=float)
+    czas = _czas(wynik)
     predkosc = _szereg(wynik, "omega_pu@GFM1")
     moc_filtru = _szereg(wynik, "p_filtr_pu@GFM1")
     assert (
@@ -886,7 +918,7 @@ def test_magazyn_rozladowanie_i_ladowanie_maja_przeciwne_znaki_dryfu_soc() -> No
         urzadzenie = magazyn()
         uklad = zloz_uklad(urzadzenie, p_pu=p_pu)
         wynik = bieg_ze_zwarciem(uklad, horyzont_s=1.0, czas_trwania_s=0.0001)
-        czas = np.asarray(wynik.os_czasu_s, dtype=float)
+        czas = _czas(wynik)
         soc = _szereg(wynik, "soc_pu@BESS1")
         zasobnik = urzadzenie.zasobnik
         sprawnosc = (
@@ -943,7 +975,7 @@ def bilans_energii_kwh(
     kW), przelicznika `3600`, ROZDZIELENIA sprawnosci na dwa kierunki oraz tego, ze
     pochodna trafia do stanu `soc_pu`, a nie obok.
     """
-    czas = np.asarray(wynik.os_czasu_s, dtype=float)
+    czas = _czas(wynik)
     soc = _szereg(wynik, f"soc_pu@{ident}")
     moc_pu = _szereg(wynik, f"p_pu@{ident}")
     wybor = czas >= od_s - 1.0e-12
@@ -1024,12 +1056,13 @@ def test_magazyn_bilans_energii_trzyma_przy_ZMIANIE_ZNAKU_mocy_w_biegu() -> None
                 r_f_ohm=0.0,
                 x_f_ohm=X_ZWARCIA_OHM,
                 t_usuniecia_s=0.18,
+                sposob_usuniecia="samoczynne",
             ),
         )
     )
     wynik = SilnikDynamiki(uklad.wejscie(harmonogram, nast)).uruchom()
 
-    czas = np.asarray(wynik.os_czasu_s, dtype=float)
+    czas = _czas(wynik)
     moc = _szereg(wynik, "p_pu@BESS1")
     okno = czas > 0.18 + 1.0e-9
     dodatnie = int((moc[okno] > 0.0).sum())
@@ -1182,7 +1215,7 @@ def test_turbina_typ3_crowbar_ogranicza_moc_czynna_przy_przekroczeniu_pradu() ->
     wynik_bez = bieg_ze_zwarciem(
         zloz_uklad(bez_crowbar, p_pu=0.2), horyzont_s=2.0, czas_trwania_s=0.15
     )
-    czas = np.asarray(wynik.os_czasu_s, dtype=float)
+    czas = _czas(wynik)
     sygnal = _szereg(wynik, "crowbar_pu@WT1")
     moc = _szereg(wynik, "p_pu@WT1")
     moc_bez = _szereg(wynik_bez, "p_pu@WT1")

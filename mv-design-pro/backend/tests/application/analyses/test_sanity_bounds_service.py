@@ -17,6 +17,7 @@ przypadku bazowego (golden PF run) — dowodzi też, że osie są NIEZALEŻNE
 
 from __future__ import annotations
 
+import math
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -328,10 +329,14 @@ def test_pf_branch_missing_catalog_current_is_incomplete_not_zero_or_inf() -> No
     view = build_power_flow_sanity_bounds_view(run2)
     item = next(i for i in view["obciazenia"]["items"] if i["target_name"] == branch_name)
     assert item["status"] == "dane niekompletne"
-    assert item["rated_current_a"] in (None, 0.0)
+    assert item["rated_current_a"] is None
+    assert item["rated_current_od_a"] is None and item["rated_current_do_a"] is None
     assert item["loading_pct"] is None
-    assert "katalog" in item["why_pl"]
-    assert item["current_ka"] is not None, "prąd ZNANY z wyniku PF — brakuje wyłącznie In"
+    assert "znamionowego" in item["why_pl"]
+    # Prądy OBU zacisków ZNANE z wyniku PF — brakuje wyłącznie In (kanon O-51: ocena z
+    # obu zacisków; dawniej jedno pole `current_ka` strony `from`).
+    assert item["current_od_ka"] is not None
+    assert item["current_do_ka"] is not None
 
     inne = [i for i in view["obciazenia"]["items"] if i["target_name"] != branch_name]
     assert all(i["status"] == "zweryfikowany" for i in inne), "reszta gałęzi nietknięta"
@@ -374,26 +379,41 @@ def test_pf_branch_loading_out_of_range_is_isolated_to_that_branch() -> None:
     assert view["straty"]["status"] == "zweryfikowany", "straty nietknięte"
 
 
-def test_pf_transformers_are_not_assessed_by_current_band_but_lines_are() -> None:
-    """Filtr ``isinstance(branch, LineBranch)`` (odbiór fali 3 W3): transformator
-    ma wielkość znamionową MOC (Sn) — jego obciążenie ocenia ``energy_validation``
-    (inna klasa: zgodność projektowa), NIE pasmo prądowe In. Dowód NIE-vacuous:
-    graf biegu MA gałęzie transformatorowe i ŻADNA nie trafia do osi obciążeń,
-    a KAŻDA załączona linia/kabel — trafia."""
+def test_pf_transformers_and_lines_are_assessed_by_terminal_current_band() -> None:
+    """Kanon O-51 (klasa P9; dawniej filtr ``isinstance(branch, LineBranch)`` — transformator
+    był wyłączony, bo „jego wielkością znamionową jest moc S_n, nie prąd In"). Prąd
+    znamionowy zacisku transformatora I_r = S_n / (√3 · U_n,strona) (IEC 60076-1) jest
+    daną modelu, więc pasmo obejmuje KAŻDĄ załączoną linię, kabel i transformator, a
+    prąd znamionowy każdego zacisku transformatora wynika z S_n i napięcia TEJ strony.
+    Dowód NIE-vacuous: graf biegu MA gałęzie transformatorowe."""
     run = _pf_run()
     graph = graf_z_biegu(run)
-    transformatory = {bid for bid, b in graph.branches.items() if isinstance(b, TransformerBranch)}
+    transformatory = {
+        bid: b
+        for bid, b in graph.branches.items()
+        if isinstance(b, TransformerBranch) and b.in_service
+    }
     linie_zalaczone = {
         bid for bid, b in graph.branches.items() if isinstance(b, LineBranch) and b.in_service
     }
     assert transformatory, "sieć wzorcowa bez transformatora — test byłby pusty"
     assert linie_zalaczone
 
-    ocenione = {
-        i["target_id"] for i in build_power_flow_sanity_bounds_view(run)["obciazenia"]["items"]
+    pozycje = {
+        i["target_id"]: i for i in build_power_flow_sanity_bounds_view(run)["obciazenia"]["items"]
     }
-    assert ocenione == linie_zalaczone
-    assert ocenione.isdisjoint(transformatory)
+    assert set(pozycje) == linie_zalaczone | set(transformatory)
+    for bid, transformator in transformatory.items():
+        pozycja = pozycje[bid]
+        assert pozycja["rated_current_od_a"] == pytest.approx(
+            transformator.rated_power_mva * 1000.0 / (math.sqrt(3.0) * transformator.voltage_hv_kv),
+            rel=1e-12,
+        )
+        assert pozycja["rated_current_do_a"] == pytest.approx(
+            transformator.rated_power_mva * 1000.0 / (math.sqrt(3.0) * transformator.voltage_lv_kv),
+            rel=1e-12,
+        )
+        assert pozycja["zacisk_decydujacy"] in ("od", "do")
 
 
 def test_pf_out_of_service_line_is_not_assessed_and_rest_untouched() -> None:

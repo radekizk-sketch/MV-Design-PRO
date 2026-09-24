@@ -34,11 +34,41 @@ export async function runCoordinationAnalysis(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    throw new Error(error.detail || `HTTP ${response.status}`);
+    const error = (await response.json().catch(() => null)) as { detail?: unknown } | null;
+    throw new Error(komunikatOdmowyAnalizy(error?.detail, response.status));
   }
 
   return response.json();
+}
+
+/**
+ * Treść odmowy `POST …/run` — backend zwraca `detail` jako tekst (bramka 400) albo
+ * rekord: `{powod, komunikat_pl, niezgodnosci?}` (autorytet biegów, 422) lub
+ * `{powod, blokady: [{komunikat_pl}]}` (wejście niemiarodajne, 422). Rekord
+ * przekazany wprost do `new Error` dawał komunikat „[object Object]".
+ */
+export function komunikatOdmowyAnalizy(detail: unknown, status: number): string {
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  if (typeof detail === 'object' && detail !== null && !Array.isArray(detail)) {
+    const rekord = detail as {
+      komunikat_pl?: unknown;
+      niezgodnosci?: unknown;
+      blokady?: unknown;
+    };
+    const czesci: string[] = [];
+    if (typeof rekord.komunikat_pl === 'string') czesci.push(rekord.komunikat_pl);
+    if (Array.isArray(rekord.niezgodnosci)) {
+      czesci.push(...rekord.niezgodnosci.filter((n): n is string => typeof n === 'string'));
+    }
+    if (Array.isArray(rekord.blokady)) {
+      for (const blokada of rekord.blokady) {
+        const tekst = (blokada as { komunikat_pl?: unknown } | null)?.komunikat_pl;
+        if (typeof tekst === 'string') czesci.push(tekst);
+      }
+    }
+    if (czesci.length > 0) return czesci.join(' ');
+  }
+  return `Analiza koordynacji odrzucona (HTTP ${status}).`;
 }
 
 /**

@@ -12,7 +12,6 @@ from network_model.solvers.dynamika import (
     SkokObciazenia,
     ZwarcieWezla,
     zbuduj_tozsamosc,
-    zloz_model_sieci,
 )
 from network_model.solvers.dynamika.tozsamosc import (
     CYFRY_KWANTYZACJI,
@@ -40,15 +39,14 @@ HARMONOGRAM = HarmonogramDynamiki(
             r_f_ohm=0.0,
             x_f_ohm=X_ZWARCIA_PLYTKIEGO_OHM,
             t_usuniecia_s=0.2,
+            sposob_usuniecia="samoczynne",
         ),
     )
 )
 
 
 def _tozsamosc(uklad, harmonogram=HARMONOGRAM, **zmiany):
-    wejscie = uklad.wejscie(harmonogram, nastawy(**zmiany))
-    model = zloz_model_sieci(uklad.wezly, uklad.galezie, ())
-    return zbuduj_tozsamosc(wejscie, model, (uklad.maszyna, uklad.szyna))
+    return zbuduj_tozsamosc(uklad.wejscie(harmonogram, nastawy(**zmiany)))
 
 
 def test_kwantyzacja_do_dziewieciu_cyfr_i_bez_ujemnego_zera() -> None:

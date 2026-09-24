@@ -42,6 +42,7 @@ HARMONOGRAM = HarmonogramDynamiki(
             r_f_ohm=0.0,
             x_f_ohm=X_ZWARCIA_PLYTKIEGO_OHM,
             t_usuniecia_s=0.12,
+            sposob_usuniecia="samoczynne",
         ),
     )
 )

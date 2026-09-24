@@ -30,9 +30,16 @@ def test_testy_wskazane_w_manifescie_istnieja(twierdzenie: Twierdzenie) -> None:
         plik = KORZEN_BACKENDU / sciezka
         assert plik.is_file(), f"{twierdzenie.ident}: brak pliku {sciezka}"
         if nazwa:
+            # Wezel `Klasa::test` (test w klasie) — sprawdzane OBA czlony.
+            *klasy, funkcja = nazwa.split("::")
+            tresc = plik.read_text()
+            for klasa in klasy:
+                assert (
+                    f"class {klasa}" in tresc
+                ), f"{twierdzenie.ident}: brak klasy {klasa} w {sciezka}"
             assert (
-                f"def {nazwa}(" in plik.read_text()
-            ), f"{twierdzenie.ident}: brak testu {nazwa} w {sciezka}"
+                f"def {funkcja}(" in tresc
+            ), f"{twierdzenie.ident}: brak testu {funkcja} w {sciezka}"
 
 
 @pytest.mark.parametrize("twierdzenie", MANIFEST, ids=lambda t: t.ident)
@@ -84,3 +91,31 @@ def test_kazda_mutacja_jest_uzyta_przez_jakies_twierdzenie() -> None:
         m.ident for m in mutacje.MUTACJE if m.ident not in powolane and m.ident != "M21"
     )
     assert not nieuzywane, f"mutacje bez twierdzenia w manifescie: {nieuzywane}"
+
+
+WYROCZNIE_NIEZALEZNE = (
+    "wyrocznia.py",
+    "wyrocznia_zdarzen.py",
+    "wyrocznia_pradow.py",
+    "wyrocznia_fazorow.py",
+)
+
+
+@pytest.mark.parametrize("plik", WYROCZNIE_NIEZALEZNE)
+def test_wyrocznia_nie_importuje_rdzenia_dynamiki(plik: str) -> None:
+    """Deklaracja z docstringow wyroczni („ZERO importow z rdzenia") przypieta testem.
+
+    Wyrocznia dzielaca kod z produktem potwierdzalaby produkt jego wlasnym bledem —
+    sprawdzane na drzewie skladniowym, nie na tekscie (komentarz nie jest importem).
+    """
+    import ast
+
+    drzewo = ast.parse((Path(__file__).parent / plik).read_text())
+    moduly: list[str] = []
+    for wezel in ast.walk(drzewo):
+        if isinstance(wezel, ast.Import):
+            moduly.extend(alias.name for alias in wezel.names)
+        elif isinstance(wezel, ast.ImportFrom) and wezel.module:
+            moduly.append(wezel.module)
+    zakazane = [m for m in moduly if m.startswith(("network_model", "enm", "solvers"))]
+    assert not zakazane, f"{plik} importuje kod produktu: {zakazane}"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from api.analysis_run_exports import (
@@ -48,6 +48,7 @@ from application.proof_engine.pakiet_nastaw import (
     zbuduj_odpowiedz_nastaw_json,
     zbuduj_pakiet_nastaw,
 )
+from application.protection_settings.zacisk_zabezpieczenia import zaciski_galezi_migawki
 from enm.canonical_analysis import (
     CanonicalRun,
 )
@@ -544,14 +545,36 @@ def get_pakiet_dowodowy(run_id: UUID, punkt: str | None = Query(default=None)) -
     )
 
 
+@router.get("/analysis-runs/{run_id}/zaciski-galezi")
+def get_zaciski_galezi(run_id: UUID) -> dict[str, Any]:
+    """Etykiety zacisków (`od` / `do`, z nazwami szyn) każdej gałęzi z impedancją
+    migawki biegu — do formularzy, w których inżynier wskazuje zacisk (miejsce pomiaru
+    mocy gałęzi w zgodności powykonawczej, decyzja O-51). Read-only."""
+    run = _require_canonical_run(run_id)
+    return canonicalize_json(
+        {"run_id": str(run.id), "zaciski": zaciski_galezi_migawki(run.snapshot)}
+    )
+
+
+def _odmowa_nastaw(exc: PakietNastawError) -> HTTPException:
+    """422 bramy nastaw: powód po polsku i kod z kanonu kodów gotowości (gdy odmowa go
+    niesie — zacisk zabezpieczenia, decyzja O-51; inaczej `kod` = null)."""
+    return HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail={"kod": exc.kod, "powod_pl": str(exc)},
+    )
+
+
 @router.get("/analysis-runs/{run_id}/pakiet-dowodowy-nastaw/dostepnosc")
 def get_pakiet_dowodowy_nastaw_dostepnosc(run_id: UUID) -> dict[str, Any]:
     """Czy TEN przebieg (zwarcie trójfazowe c_max) może być kotwicą pakietu nastaw.
 
     Zwraca listę linii/kabli z kompletem danych katalogowych (przekrój, materiał,
-    prąd znamionowy) — kandydatów na chroniony odcinek — a dla każdej z nich listę
-    szyn kandydujących na „kolejną strefę" (warunek selektywności). Wybór odcinka i
-    szyny należy do inżyniera; kod niczego nie zgaduje.
+    prąd znamionowy) — kandydatów na chroniony odcinek — a dla każdej z nich zacisk
+    zabezpieczenia z modelu, zaciski dozwolone z etykietami szyn, rekord odmowy bez
+    wskazania i listy szyn kandydujących na „kolejną strefę" (warunek selektywności)
+    osobno dla każdego zacisku (decyzja O-51). Wybór odcinka, zacisku (gdy model
+    milczy) i szyny należy do inżyniera; kod niczego nie zgaduje.
     """
     return canonicalize_json(dostepnosc_pakietu_nastaw(_require_canonical_run(run_id)))
 
@@ -561,6 +584,14 @@ def get_pakiet_dowodowy_nastaw(
     run_id: UUID,
     linia: str = Query(...),
     nastepna_szyna: str = Query(...),
+    zacisk_zabezpieczenia: Literal["od", "do"] | None = Query(
+        default=None,
+        description=(
+            "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). "
+            "Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; "
+            "zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy."
+        ),
+    ),
     c_min: float = Query(default=1.0),
     delta_t_s: float = Query(default=0.3),
     k_b: float = Query(default=1.2),
@@ -572,7 +603,8 @@ def get_pakiet_dowodowy_nastaw(
     Serwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy
     ``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg
     zwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i
-    trzy wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min.
+    wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min i — gdy model
+    milczy — zacisk, przy którym stoi zabezpieczenie (decyzja O-51).
     """
     run = _require_canonical_run(run_id)
     try:
@@ -581,15 +613,14 @@ def get_pakiet_dowodowy_nastaw(
             line_id=linia,
             next_bus_id=nastepna_szyna,
             c_min=c_min,
+            zacisk_zabezpieczenia=zacisk_zabezpieczenia,
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
             uow_factory=uow_factory,
         )
     except PakietNastawError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        ) from exc
+        raise _odmowa_nastaw(exc) from exc
     return Response(
         content=content,
         media_type="application/zip",
@@ -602,6 +633,14 @@ def get_nastawy(
     run_id: UUID,
     linia: str = Query(...),
     nastepna_szyna: str = Query(...),
+    zacisk_zabezpieczenia: Literal["od", "do"] | None = Query(
+        default=None,
+        description=(
+            "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). "
+            "Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; "
+            "zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy."
+        ),
+    ),
     c_min: float = Query(default=1.0),
     delta_t_s: float = Query(default=0.3),
     k_b: float = Query(default=1.2),
@@ -615,7 +654,8 @@ def get_nastawy(
     Serwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy
     ``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg
     zwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i
-    trzy wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min.
+    wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min i — gdy model
+    milczy — zacisk, przy którym stoi zabezpieczenie (decyzja O-51).
     """
     run = _require_canonical_run(run_id)
     try:
@@ -624,15 +664,14 @@ def get_nastawy(
             line_id=linia,
             next_bus_id=nastepna_szyna,
             c_min=c_min,
+            zacisk_zabezpieczenia=zacisk_zabezpieczenia,
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
             uow_factory=uow_factory,
         )
     except PakietNastawError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        ) from exc
+        raise _odmowa_nastaw(exc) from exc
     return canonicalize_json(odpowiedz)
 
 
@@ -642,6 +681,14 @@ def get_nastawy_dopasowanie(
     device_id: str = Query(...),
     linia: str = Query(...),
     nastepna_szyna: str = Query(...),
+    zacisk_zabezpieczenia: Literal["od", "do"] | None = Query(
+        default=None,
+        description=(
+            "Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). "
+            "Wymagany, gdy model nie przypina zabezpieczenia do wyłącznika przy zacisku; "
+            "zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy."
+        ),
+    ),
     c_min: float = Query(default=1.0),
     delta_t_s: float = Query(default=0.3),
     k_b: float = Query(default=1.2),
@@ -663,15 +710,14 @@ def get_nastawy_dopasowanie(
             line_id=linia,
             next_bus_id=nastepna_szyna,
             c_min=c_min,
+            zacisk_zabezpieczenia=zacisk_zabezpieczenia,
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
             uow_factory=uow_factory,
         )
     except PakietNastawError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        ) from exc
+        raise _odmowa_nastaw(exc) from exc
     return canonicalize_json(odpowiedz)
 
 

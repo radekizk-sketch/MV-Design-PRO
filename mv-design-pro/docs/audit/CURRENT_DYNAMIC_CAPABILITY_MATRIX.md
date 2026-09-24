@@ -38,7 +38,7 @@ konsumentów.
 | Tor | Wejście | Rdzeń | Wyjście | Konsument produkcyjny |
 |-----|---------|-------|---------|----------------------|
 | **T1 — LEGACY `DYNAMIC_STABILITY`** | 9 pól wpisanych przez inżyniera (`enm/canonical_analysis.py:1528-1547`) | brak całkowania; porównanie progowe (`application/stability/dynamic_stability.py:183-247`) | `stable/STABLE/UNSTABLE`, `stability_index`, marginesy | ekran `ui2/wyniki/stabilnosc/**` (1 528 linii) |
-| **T2 — RMS/DAE `dynamika_rms`** | migawka efektywna + jawny `pf_run_id` + scenariusz + nastawy (`enm/adapter_dynamiki.py`) | całkowanie DAE (`network_model/solvers/dynamika/**`, 9 589 linii) | `ResultSetDynamicV1` + szeregi czasowe w osobnej tabeli | **ŻADEN** — front nie ma ekranu (patrz §3 wiersz T2-UI) |
+| **T2 — RMS/DAE `dynamika_rms`** | migawka efektywna + jawny `pf_run_id` + scenariusz + nastawy (`enm/adapter_dynamiki.py`) | całkowanie DAE (`network_model/solvers/dynamika/**`, 9 589 linii) | `ResultSetDynamicV2` (próbki L/P chwili zdarzenia, AB-1b.1a) + szeregi czasowe w osobnej tabeli | **ŻADEN** — front nie ma ekranu (patrz §3 wiersz T2-UI) |
 | **T3 — FRT/HVRT `frt_hvrt`** | scenariusz zapadu (`network_model/solvers/frt_hvrt/contracts.py`) | funkcja zadana w czasie, bez sprzężenia z siecią (`engine.py:23-60`) | trajektoria V/Iq/P + margines do obwiedni | katalog dynamiczny DER, bramka gotowości |
 | **T4 — `stability_rms` (MARTWY)** | — | `network_model/solvers/stability_rms/**` (603 linie) | — | **ZERO importów produkcyjnych** (weryfikacja poniżej) |
 
@@ -74,10 +74,10 @@ Kolumny: zdolność · status wykonania · status walidacji · dowód (`plik:lin
 | Analiza małosygnałowa (wartości własne, częstotliwość i tłumienie modu) | `EXECUTABLE` | `VALIDATED_AGAINST_REFERENCE` (vs przebieg) | `solvers/dynamika/walidacja/malosygnalowa.py` (129 l.) | `test_walidacja_smib.py`, `test_biblioteka_przebiegi.py` |
 | Kryterium równych pól (całka pierwsza) jako niezależna wyrocznia | `EXECUTABLE` | — | `solvers/dynamika/walidacja/rowne_pola.py` (334 l.) | `test_walidacja_smib.py` |
 | Wyrocznia zewnętrzna ANDES (SMIB) | `EXECUTABLE` | — | `tests/network_model/dynamika/wyrocznia_andes.py` | `test_wyrocznia_andes.py:103,119,134` |
-| Tożsamość biegu (pięć odcisków + wersja solvera) | `EXECUTABLE` | — | `solvers/dynamika/tozsamosc.py` (234 l.); `application/contracts/resultset_dynamic_v1.py:91-101` | `test_tozsamosc.py` (12) |
+| Tożsamość biegu (pięć odcisków + wersja solvera) | `EXECUTABLE` | — | `solvers/dynamika/tozsamosc.py` (234 l.); `application/contracts/resultset_dynamic_v2.py:157-169` | `test_tozsamosc.py` (12) |
 | Adapter ENM → wejście dynamiki (15 nazwanych odmów) | `EXECUTABLE` | — | `enm/adapter_dynamiki.py:167-201` | `tests/enm/test_adapter_dynamiki.py` |
 | Punkt pracy z JAWNIE wskazanego biegu rozpływu (`pf_run_id`) | `EXECUTABLE` | — | `enm/adapter_dynamiki.py:382`; `enm/canonical_analysis.py:1819-1824` | `tests/test_dynamika_rms_run.py` |
-| Zapis szeregów czasowych poza wierszem biegu | `EXECUTABLE` | — | `enm/canonical_analysis.py:1840-1848`; `infrastructure/persistence/models.py:455-471` | `tests/test_dynamika_rms_run.py` |
+| Zapis szeregów czasowych poza wierszem biegu | `EXECUTABLE` | — | `enm/canonical_analysis.py::_execute_dynamika_rms`; `infrastructure/persistence/models.py::CanonicalRunTimeSeriesORM` (od AB-1b.1: kolumna `strona_probki_json`, próbki `None` dla wartości niedostępnej; kontrakt `resultset_dynamic_v2` ze schematem `backend/schemas/resultset_dynamic_v2_schema.json`) | `tests/test_dynamika_rms_run.py`, `tests/application/test_resultset_dynamic_v2.py` |
 | Endpoint metadanych i endpoint próbek na żądanie | `EXECUTABLE` | — | `api/analysis_runs.py:767-790` | `tests/api/**` |
 | **Powierzchnia użytkownika toru T2 (ekran)** | **`NOT_IMPLEMENTED`** | — | `grep -rln "dynamika_rms" frontend/src` → **wyłącznie** `frontend/src/types/enm.ts` | brak |
 | Zwarcia niesymetryczne (2F/1F/2FZ) w torze czasowym | `REFUSED_BY_CORE` | — | `solvers/dynamika/zdarzenia.py:21-23,47`; kod `KOD_ZWARCIE_NIESYMETRYCZNE` | `test_zdarzenia.py` |
@@ -162,7 +162,7 @@ częstotliwość węzła sieci i nie wolno jej podstawiać pod `f(t)`.
 | Wyłączenie linii / transformatora | j.w. (gałąź) | j.w. | `EXECUTABLE` |
 | Odłączenie generatora / źródła | `scenariusze.py:216-223` | `zdarzenia.py:49` (`odlaczenie_zrodla`) | `EXECUTABLE` |
 | Skok obciążenia | `scenariusze.py:226-236` | `zdarzenia.py:49` (`skok_obciazenia`) | `EXECUTABLE` — WYŁĄCZNIE dla odbioru (`KOD_SKOK_POZA_ODBIOREM`) |
-| Odłączenie odbioru | — | — | `NOT_IMPLEMENTED` jako nazwane zdarzenie (składalne ze skoku o pełną moc) |
+| Odłączenie odbioru | `scenariusze.py` (`odlaczenie_odbioru` / `zalaczenie_odbioru`) | `zdarzenia.py` (`ZmianaOdbioru`) | `EXECUTABLE` jako nazwane zdarzenie od karty AB-1b.1 (P2; odbiór poza bilansem węzła, powrót z mocą zadaną) |
 | Skok zadania `P`/`Q`/napięcia wytwórcy | `scenariusze.py:239-250` (`komenda_regulacji`) | — | `MODEL_ONLY` + `REFUSED_BY_CORE` |
 | Skok zadania mocy magazynu | j.w. | — | `MODEL_ONLY` + `REFUSED_BY_CORE` |
 | Synchronizacja / ponowne załączenie źródła | `scenariusze.py:252-260` | — | `MODEL_ONLY` + `REFUSED_BY_CORE` |

@@ -47,7 +47,11 @@ from enm.adapter_dynamiki import (
 from enm.assembler import czestotliwosc_studium_hz, zbuduj_graf
 from enm.canonical_analysis import CanonicalRun, _execute_power_flow
 from enm.models import EnergyNetworkModel
+from network_model.solvers.dynamika import OdmowaDynamiki
+from network_model.solvers.dynamika.kontrakty import KOD_ZWARCIE_NIEODIZOLOWANE
 from network_model.solvers.dynamika.obserwable import (
+    JAKOSC_BEZ_NAPIECIA,
+    JAKOSC_CHWILA_ZDARZENIA,
     JAKOSC_NIEDOSTEPNA,
     JAKOSC_NIEROZROZNIALNA,
     JAKOSC_ROZROZNIALNA,
@@ -66,13 +70,13 @@ T_USUNIECIA_S = 1.180
 T_ZALACZENIA_S = 2.180
 HORYZONT_S = 10.0
 
-#: Rezystancja luku zwarcia. NIE jest pokretlem zbieznosci: zwarcie metaliczne
-#: (`R_f = X_f = 0`) nie ma w modelu wezlowym skonczonej admitancji i konczy sie
-#: nazwana odmowa rdzenia, wiec impedancja MUSI byc niezerowa. Wartosc 0,5 om
-#: odpowiada lukowi dlugosci rzedu 0,3 m przy pradzie zwarciowym rzedu kilku kA
-#: (wzor Warringtona), czyli typowemu przeskokowi na rozdzielnicy SN. Pomiar
-#: wrazliwosci (raport rundy): bieg wykonuje sie dla 5,0 / 2,0 / 1,0 / 0,5 / 0,2 om,
-#: a zapad na przylaczu siega odpowiednio 0,93 / 0,72 / 0,49 / 0,29 / 0,14 pu.
+#: Rezystancja luku zwarcia — wartosc ZAMROZONA opisem scenariusza, nie pokretlo
+#: zbieznosci. 0,5 om odpowiada lukowi dlugosci rzedu 0,3 m przy pradzie zwarciowym
+#: rzedu kilku kA (wzor Warringtona), czyli typowemu przeskokowi na rozdzielnicy SN.
+#: Zwarcie metaliczne jest od karty AB-1b.1 obliczalne (wiersz ograniczenia `V = 0`),
+#: ale scenariusz opisuje zwarcie lukowe. Dawne pomiary wrazliwosci na R_f (0,2-5,0 om)
+#: dotyczyly zwarcia na szynie stacji magistralnej — po przeniesieniu zwarcia na szyne
+#: pola (karta AB-1b.1 §0 pkt 4, pytanie 4) nie sa przenoszone.
 R_LUKU_OHM = 0.5
 
 NASTAWY_SOLVERA: dict[str, Any] = {
@@ -87,7 +91,41 @@ NASTAWY_SOLVERA: dict[str, Any] = {
     "integrator": "trapez_niejawny",
 }
 
+#: SCENARIUSZ POPRAWIONY (karta AB-1b.1 §0 pkt 4, decyzja zarzadcy — pytanie 4). Dawny
+#: scenariusz zdejmowal zwarcie w 1,180 s na szynie stacji magistralnej, ktora pierscien
+#: nadal zasilal od strony przylacza OZE — „usuniecie" bylo zniknieciem luku POD
+#: NAPIECIEM, a nie skutkiem zadzialania aparatu (dawny test sam to przyznawal). Teraz
+#: zwarcie jest na szynie POLA magistralnego, a w 1,180 s zabezpieczenia otwieraja OBIE
+#: strony: wylacznik pola od GPZ i kabel magistrali od stacji (w pierscieniu zamknietym
+#: zwarcie jest zasilane z dwoch stron). Szyna pola jest wtedy obszarem beznapieciowym,
+#: wiec usuniecie `izolacja` przechodzi predykat izolacji; w 2,180 s oba aparaty
+#: zamykaja sie ponownie (SPZ). Siec G17 BEZ ZMIAN (zlote hashe PF/SC nietkniete).
 SCENARIUSZ_SO1A: dict[str, Any] = {
+    "horyzont_s": HORYZONT_S,
+    "krok_wyjscia_s": 0.02,
+    "zdarzenia": [
+        {
+            "rodzaj": "zwarcie",
+            "t_s": T_ZWARCIA_S,
+            "bus_ref": "b-pole",
+            "typ": "3F",
+            "r_f_ohm": R_LUKU_OHM,
+            "x_f_ohm": 0.0,
+            "t_usuniecia_s": T_USUNIECIA_S,
+            "sposob_usuniecia": "izolacja",
+        },
+        {"rodzaj": "wylaczenie_galezi", "t_s": T_USUNIECIA_S, "element_ref": "wyl-pole"},
+        {"rodzaj": "wylaczenie_galezi", "t_s": T_USUNIECIA_S, "element_ref": "kab-magistrala"},
+        {"rodzaj": "zalaczenie_galezi", "t_s": T_ZALACZENIA_S, "element_ref": "wyl-pole"},
+        {"rodzaj": "zalaczenie_galezi", "t_s": T_ZALACZENIA_S, "element_ref": "kab-magistrala"},
+    ],
+}
+
+#: DAWNY scenariusz z JAWNYM rodzajem usuniecia `izolacja`: zdjecie zwarcia na szynie
+#: stacji, ktora po otwarciu samego wylacznika pola nadal zasila pierscien. Rdzen MUSI
+#: odmowic `dynamika.zwarcie_nieodizolowane` — to jest detektor mutacji M26 (predykat
+#: izolacji wylaczony => ten scenariusz zostalby przyjety).
+SCENARIUSZ_SO1A_STARY_IZOLACJA: dict[str, Any] = {
     "horyzont_s": HORYZONT_S,
     "krok_wyjscia_s": 0.02,
     "zdarzenia": [
@@ -99,6 +137,7 @@ SCENARIUSZ_SO1A: dict[str, Any] = {
             "r_f_ohm": R_LUKU_OHM,
             "x_f_ohm": 0.0,
             "t_usuniecia_s": T_USUNIECIA_S,
+            "sposob_usuniecia": "izolacja",
         },
         {"rodzaj": "wylaczenie_galezi", "t_s": T_USUNIECIA_S, "element_ref": "wyl-pole"},
         {"rodzaj": "zalaczenie_galezi", "t_s": T_ZALACZENIA_S, "element_ref": "wyl-pole"},
@@ -181,8 +220,24 @@ def bieg_so1a(migawka_so1a: dict[str, Any]) -> WynikDynamiki:
     return _wykonaj(migawka_so1a)
 
 
-def _indeks(os_czasu: tuple[float, ...], t_s: float) -> int:
-    return min(range(len(os_czasu)), key=lambda i: abs(os_czasu[i] - t_s))
+def _indeks(bieg: WynikDynamiki, t_s: float, strona: str = "C") -> int:
+    """Indeks probki o chwili `t_s` i JAWNEJ stronie (karta AB-1b.1 §0 pkt 6).
+
+    Chwila zdarzenia ma DWIE probki (`L` przed, `P` po) i zadnej `C`, wiec wybor
+    „najblizszej chwili" bylby niejednoznaczny — test mowi wprost, ktory stan czyta.
+    """
+    trafienia = [
+        i
+        for i, (t, s) in enumerate(zip(bieg.os_czasu_s, bieg.strona_probki, strict=True))
+        if s == strona and abs(t - t_s) < 1e-9
+    ]
+    assert len(trafienia) == 1, (t_s, strona, trafienia)
+    return trafienia[0]
+
+
+def _po_zdarzeniu(t: float, strona: str, t_zdarzenia: float) -> bool:
+    """Czy probka (t, strona) opisuje stan PO zdarzeniu w chwili `t_zdarzenia`."""
+    return t > t_zdarzenia + 1e-9 or (abs(t - t_zdarzenia) < 1e-9 and strona == "P")
 
 
 # ---------------------------------------------------------------------------
@@ -219,14 +274,26 @@ def test_uklad_spelnia_zamrozony_opis_so1a(migawka_so1a: dict[str, Any]) -> None
     assert zdarzenia[0]["t_s"] == 1.000 and zdarzenia[0]["typ"] == "3F"
     assert zdarzenia[0]["bus_ref"] in {bus.ref_id for bus in enm.buses}
     assert zdarzenia[0]["t_usuniecia_s"] == pytest.approx(1.180), "180 ms po zwarciu"
-    assert zdarzenia[1]["t_s"] == pytest.approx(1.180), "wylacznik otwiera sie po 180 ms"
-    assert zdarzenia[2]["t_s"] == pytest.approx(2.180), "ponowne zalaczenie 1 s po otwarciu"
+    assert (
+        zdarzenia[0]["sposob_usuniecia"] == "izolacja"
+    ), "zwarcie usuwa ZADZIALANIE aparatow, a nie gasniecie luku pod napieciem"
+    otwarcia = [z for z in zdarzenia if z["rodzaj"] == "wylaczenie_galezi"]
+    zalaczenia = [z for z in zdarzenia if z["rodzaj"] == "zalaczenie_galezi"]
+    assert all(z["t_s"] == pytest.approx(1.180) for z in otwarcia), "otwarcie po 180 ms"
+    assert all(
+        z["t_s"] == pytest.approx(2.180) for z in zalaczenia
+    ), "ponowne zalaczenie 1 s po otwarciu"
+    assert {z["element_ref"] for z in otwarcia} == {z["element_ref"] for z in zalaczenia}
     assert SCENARIUSZ_SO1A["horyzont_s"] == 10.0, "zbadaj zachowanie sieci przez 10 s"
 
-    wylacznik = {galaz.ref_id: galaz for galaz in enm.branches}[zdarzenia[1]["element_ref"]]
+    galezie = {galaz.ref_id: galaz for galaz in enm.branches}
     assert (
-        wylacznik.type == "breaker"
-    ), "zdarzenie otwarcia ma trafiac w APARAT (wylacznik), nie w kabel"
+        galezie["wyl-pole"].type == "breaker"
+    ), "otwarcie od strony GPZ ma trafiac w APARAT (wylacznik), nie w kabel"
+    # Szyna pola lezy MIEDZY dwoma otwieranymi elementami — po ich otwarciu nie ma
+    # innej drogi zasilania (to sprawdza predykat izolacji rdzenia w biegu).
+    for ref in ("wyl-pole", "kab-magistrala"):
+        assert zdarzenia[0]["bus_ref"] in (galezie[ref].from_bus_ref, galezie[ref].to_bus_ref)
 
 
 # ---------------------------------------------------------------------------
@@ -244,26 +311,39 @@ def test_punkt_pracy_dzieli_moc_wezla_miedzy_obie_instalacje(
     rownoczesnie. Sam fakt, ze bieg sie wykonuje, tego nie wykrywa.
     """
     baza_mva = 100.0
-    i0 = _indeks(bieg_so1a.os_czasu_s, 0.0)
+    i0 = _indeks(bieg_so1a, 0.0)
     assert bieg_so1a.probki["p_pu@gen-pv"][i0] == pytest.approx(2.75 / baza_mva, rel=1e-9)
     assert bieg_so1a.probki["p_pu@gen-magazyn"][i0] == pytest.approx(0.50 / baza_mva, rel=1e-9)
 
 
 def test_wszystkie_zdarzenia_wykonane_w_zamrozonych_chwilach(bieg_so1a: WynikDynamiki) -> None:
-    """Os zdarzen: zwarcie 1,000 s; zdjecie + otwarcie 1,180 s; zalaczenie 2,180 s."""
+    """Os zdarzen: zwarcie 1,000 s; zdjecie + otwarcie obu stron 1,180 s; SPZ 2,180 s.
+
+    PRZEPISANY ŚWIADOMIE (karta AB-1b.1 §0 pkt 4): scenariusz poprawiony — zwarcie na
+    szynie pola, otwarcie obu stron pierscienia. Intencja zachowana: kazde zdarzenie
+    wykonane w chwili zaplanowanej, bez skoku stanow rozniczkowych; dopisane skutki
+    topologiczne chwili (obszar odciety i zasilony ponownie).
+    """
     wykonane = [
         (z.rodzaj, z.ref, z.t_zaplanowany_s, z.t_wykonany_s) for z in bieg_so1a.zdarzenia_wykonane
     ]
     assert wykonane == [
-        ("zwarcie", "b-sn-stacja", T_ZWARCIA_S, T_ZWARCIA_S),
-        ("zdjecie_zwarcia", "b-sn-stacja", T_USUNIECIA_S, T_USUNIECIA_S),
+        ("zwarcie", "b-pole", T_ZWARCIA_S, T_ZWARCIA_S),
+        ("zdjecie_zwarcia", "b-pole", T_USUNIECIA_S, T_USUNIECIA_S),
         ("wylaczenie_galezi", "wyl-pole", T_USUNIECIA_S, T_USUNIECIA_S),
+        ("wylaczenie_galezi", "kab-magistrala", T_USUNIECIA_S, T_USUNIECIA_S),
         ("zalaczenie_galezi", "wyl-pole", T_ZALACZENIA_S, T_ZALACZENIA_S),
+        ("zalaczenie_galezi", "kab-magistrala", T_ZALACZENIA_S, T_ZALACZENIA_S),
     ]
     # Zdarzenie zmienia WYLACZNIE zmienne algebraiczne: stany rozniczkowe sa
     # ciagle (uklad DAE indeksu 1), wiec kazda niezerowa `delta_x_max` bylaby
     # skokiem stanu urzadzenia, ktorego zadne rownanie nie przewiduje.
-    assert [z.delta_x_max for z in bieg_so1a.zdarzenia_wykonane] == [0.0, 0.0, 0.0, 0.0]
+    assert [z.delta_x_max for z in bieg_so1a.zdarzenia_wykonane] == [0.0] * 6
+    usuniecie = [z for z in bieg_so1a.zdarzenia_wykonane if z.t_wykonany_s == T_USUNIECIA_S]
+    spz = [z for z in bieg_so1a.zdarzenia_wykonane if z.t_wykonany_s == T_ZALACZENIA_S]
+    assert {z.obszary_odciete for z in usuniecie} == {("b-pole",)}
+    assert {z.odbiory_odciete for z in usuniecie} == {()}, "szyna pola nie ma odbiorow"
+    assert {z.obszary_zasilone_ponownie for z in spz} == {("b-pole",)}
     assert all(
         z.residuum_kcl_max < NASTAWY_SOLVERA["eps_init"] for z in bieg_so1a.zdarzenia_wykonane
     )
@@ -272,9 +352,9 @@ def test_wszystkie_zdarzenia_wykonane_w_zamrozonych_chwilach(bieg_so1a: WynikDyn
 def test_topologia_po_otwarciu_i_po_zalaczeniu_wylacznika(bieg_so1a: WynikDynamiki) -> None:
     """Otwarta galaz niesie DOKLADNIE zero, zalaczona wraca do przewodzenia."""
     probki = bieg_so1a.probki
-    przed = _indeks(bieg_so1a.os_czasu_s, 0.5)
-    po_otwarciu = _indeks(bieg_so1a.os_czasu_s, 1.5)
-    po_zalaczeniu = _indeks(bieg_so1a.os_czasu_s, 3.0)
+    przed = _indeks(bieg_so1a, 0.5)
+    po_otwarciu = _indeks(bieg_so1a, 1.5)
+    po_zalaczeniu = _indeks(bieg_so1a, 3.0)
 
     assert probki["i_od_pu@wyl-pole"][przed] > 0.0
     for kanal in ("i_od_pu", "i_do_pu", "p_od_pu", "q_od_pu", "p_do_pu", "q_do_pu"):
@@ -288,6 +368,34 @@ def test_topologia_po_otwarciu_i_po_zalaczeniu_wylacznika(bieg_so1a: WynikDynami
     # (zdolnosc D11, fala W6-B).
     for i in range(len(bieg_so1a.os_czasu_s)):
         assert probki["u_pu@b-sn-stacja"][i] > 0.0
+    # Szyna pola miedzy dwoma otwartymi aparatami jest obszarem beznapieciowym: napiecie
+    # ZERO DOKLADNE (wiersz ograniczenia), a prad zwarcia zniknal razem z zasileniem.
+    # PRZEPISANE ŚWIADOMIE (karta AB-1b.1 §0 pkt 6): okno liczone po STRONIE probki —
+    # probka `L` chwili zdarzenia to stan przed nim, `P` po nim. Intencja bez zmian.
+    for i, (t, strona) in enumerate(
+        zip(bieg_so1a.os_czasu_s, bieg_so1a.strona_probki, strict=True)
+    ):
+        odciety = _po_zdarzeniu(t, strona, T_USUNIECIA_S) and not _po_zdarzeniu(
+            t, strona, T_ZALACZENIA_S
+        )
+        w_zwarciu = _po_zdarzeniu(t, strona, T_ZWARCIA_S) and not _po_zdarzeniu(
+            t, strona, T_USUNIECIA_S
+        )
+        if odciety:
+            assert probki["u_pu@b-pole"][i] == 0.0
+            assert probki["i_zwarcia_pu@b-pole"][i] == 0.0
+            assert probki["stan_zasilania@b-pole"][i] == 0.0
+        elif w_zwarciu:
+            assert probki["i_zwarcia_pu@b-pole"][i] > 0.0
+        else:
+            assert probki["i_zwarcia_pu@b-pole"][i] == 0.0
+    # Galaz otwarta: modul zero dokladne, kat NIEOKRESLONY (`None`, nie 0,0 z
+    # `angle(0)`), a stan galezi niesie przyczyne.
+    assert probki["stan_galezi@wyl-pole"][po_otwarciu] == 0.0
+    assert probki["i_od_kat_deg@wyl-pole"][po_otwarciu] is None
+    assert probki["i_do_kat_deg@wyl-pole"][po_otwarciu] is None
+    assert probki["stan_galezi@wyl-pole"][po_zalaczeniu] == 1.0
+    assert probki["i_od_kat_deg@wyl-pole"][po_zalaczeniu] is not None
 
 
 def test_obserwable_inzynierskie_sa_kompletne(bieg_so1a: WynikDynamiki) -> None:
@@ -301,6 +409,9 @@ def test_obserwable_inzynierskie_sa_kompletne(bieg_so1a: WynikDynamiki) -> None:
     for galaz in galezie:
         for rodzina in ("i_od_pu", "i_do_pu", "p_od_pu", "q_od_pu", "p_do_pu", "q_do_pu"):
             assert f"{rodzina}@{galaz}" in klucze
+    # Miejsce zwarcia ma wlasne kanaly (karta AB-1b.1 §0 pkt 5), znane od t = 0.
+    for rodzina in ("i_zwarcia_pu", "u_zwarcia_pu"):
+        assert f"{rodzina}@b-pole" in klucze
     # Instalacja PV i magazyn oddaja SWOJE stany — bez wymyslania sygnalow,
     # ktorych model nie ma.
     for kanal in ("p_pu", "q_pu", "pll_kat_rad", "i_czynny_pu", "i_bierny_pu"):
@@ -323,48 +434,98 @@ def test_jakosc_czestotliwosci_jest_uczciwa_w_kazdej_fazie(bieg_so1a: WynikDynam
 
     PRZED ZWARCIEM uklad jest w stanie ustalonym, wiec odchylka od czestotliwosci
     znamionowej NIE jest rozrozniania od szumu numerycznego — i to jest poprawny
-    werdykt, a nie brak. PO KAZDYM ZDARZENIU odchylka jest o rzedy wielkosci
-    wieksza od oszacowanego bledu, wiec staje sie rozroznialna.
+    werdykt, a nie brak. PO KAZDYM ZDARZENIU (pierwsza probka siatki za chwila
+    zdarzenia) odchylka jest o rzedy wielkosci wieksza od oszacowanego bledu, wiec
+    staje sie rozroznialna. W SAMEJ chwili zdarzenia czestotliwosc jest niedostepna
+    (chwila nieciaglosci, kod 3) w OBU probkach `L` i `P` — nie liczba.
+
+    PRZEPISANE ŚWIADOMIE (karta AB-1b.1 §0 pkt 6, 7): dawniej probka chwili zdarzenia
+    byla jedna (prawostronna) i niosla liczbe z pochodnej liczonej przez nieciaglosc.
     """
     probki = bieg_so1a.probki
-    przed = _indeks(bieg_so1a.os_czasu_s, 0.5)
+    przed = _indeks(bieg_so1a, 0.5)
     for wezel in ("b-110", "b-przylacze", "b-sn-stacja"):
         assert probki[f"jakosc_f@{wezel}"][przed] == JAKOSC_NIEROZROZNIALNA
         assert probki[f"f_hz@{wezel}"][przed] == pytest.approx(50.0, abs=1e-6)
 
     for chwila in (T_ZWARCIA_S, T_USUNIECIA_S, T_ZALACZENIA_S):
-        i = _indeks(bieg_so1a.os_czasu_s, chwila)
+        for strona in ("L", "P"):
+            i = _indeks(bieg_so1a, chwila, strona)
+            for wezel in ("b-110", "b-pole", "b-przylacze", "b-sn-gpz", "b-sn-stacja"):
+                assert probki[f"f_hz@{wezel}"][i] is None
+                assert probki[f"u_f_est_hz@{wezel}"][i] is None
+                assert probki[f"jakosc_f@{wezel}"][i] == JAKOSC_CHWILA_ZDARZENIA
+        i = _indeks(bieg_so1a, chwila, "P") + 1
+        assert bieg_so1a.strona_probki[i] == "C"
         for wezel in ("b-110", "b-przylacze", "b-sn-stacja"):
             assert probki[f"jakosc_f@{wezel}"][i] == JAKOSC_ROZROZNIALNA
             assert probki[f"u_f_est_hz@{wezel}"][i] < abs(
                 probki[f"f_hz@{wezel}"][i] - 50.0
             ), "ROZROZNIALNA znaczy: odchylka przewyzsza oszacowany blad numeryczny"
 
-    # Stan NIEDOSTEPNA nie pojawia sie nigdzie — i to jest MIERZALNE, nie zalozone:
-    # najwieksze oszacowanie bledu w calym biegu jest o rzedy wielkosci mniejsze
-    # od najmniejszego modulu napiecia, wiec fazor nigdzie nie wpada do wlasnej
-    # kuli niepewnosci.
-    assert all(
-        probki[f"jakosc_f@{wezel}"][i] != JAKOSC_NIEDOSTEPNA
-        for wezel in ("b-110", "b-pole", "b-przylacze", "b-sn-gpz", "b-sn-stacja")
-        for i in range(len(bieg_so1a.os_czasu_s))
-    )
+    # Stan „bez napiecia" (kod 4) wystepuje WYLACZNIE w obszarze beznapieciowym, a
+    # „nieokreslona numerycznie" (kod 2) NIGDZIE — i to jest MIERZALNE, nie zalozone.
+    # PRZEPISANE ŚWIADOMIE (karta AB-1b.1 §0 pkt 2, 4, 7): szyna pola miedzy dwoma
+    # otwartymi aparatami ma V = 0 DOKLADNIE, fazor zerowy nie ma kata, a przyczyna
+    # braku jest nazwana osobnym kodem. Intencja zachowana dla KAZDEGO wezla
+    # zasilanego: fazor nigdzie nie wpada do wlasnej kuli niepewnosci, a wezel odciety
+    # nie zatruwa sasiadow.
+    for wezel in ("b-110", "b-pole", "b-przylacze", "b-sn-gpz", "b-sn-stacja"):
+        for i, (t, strona) in enumerate(
+            zip(bieg_so1a.os_czasu_s, bieg_so1a.strona_probki, strict=True)
+        ):
+            jakosc = probki[f"jakosc_f@{wezel}"][i]
+            assert jakosc != JAKOSC_NIEDOSTEPNA, (wezel, t, strona)
+            if strona != "C":
+                continue
+            w_obszarze = wezel == "b-pole" and T_USUNIECIA_S < t < T_ZALACZENIA_S
+            assert (jakosc == JAKOSC_BEZ_NAPIECIA) == w_obszarze, (wezel, t)
+            assert (probki[f"f_hz@{wezel}"][i] is None) == w_obszarze, (wezel, t)
 
 
-def test_probka_w_chwili_zdarzenia_jest_granica_prawostronna(bieg_so1a: WynikDynamiki) -> None:
-    """Probka w `t_zdarzenia` opisuje uklad PO zdarzeniu, poprzednia — PRZED nim.
+def test_chwila_zdarzenia_ma_probke_L_przed_i_P_po(bieg_so1a: WynikDynamiki) -> None:
+    """Chwila zdarzenia niesie DWIE probki: `L` — uklad przed zdarzeniem, `P` — po nim.
 
-    Gdyby silnik probkowal przed naniesieniem zdarzenia, zapad napiecia pojawilby
-    sie o jedna probke za pozno, a czestotliwosc liczona z rozwiazania nie
-    pokazywalaby skoku kata w chwili, w ktorej on zachodzi.
+    PRZEPISANY ŚWIADOMIE (karta AB-1b.1 §0 pkt 6; dawniej „granica prawostronna" z
+    jedna probka). Intencja zachowana i wzmocniona: zapad napiecia jest widoczny W
+    chwili zwarcia (probka `P`), a stan tuz przed nim nie ginie (probka `L`). Gdyby
+    silnik probkowal `L` po re-inicjalizacji (mutacja M28), `L` pokazalaby zapad.
     """
     probki = bieg_so1a.probki
-    i = _indeks(bieg_so1a.os_czasu_s, T_ZWARCIA_S)
-    assert bieg_so1a.os_czasu_s[i] == pytest.approx(T_ZWARCIA_S)
-    assert probki["u_pu@b-sn-stacja"][i - 1] > 1.0, "probka poprzednia: uklad przed zwarciem"
-    assert probki["u_pu@b-sn-stacja"][i] < 0.4, "probka zdarzenia: uklad JUZ w zwarciu"
-    assert probki["f_hz@b-sn-stacja"][i - 1] == pytest.approx(50.0, abs=1e-6)
-    assert abs(probki["f_hz@b-sn-stacja"][i] - 50.0) > 1.0
+    lewa = _indeks(bieg_so1a, T_ZWARCIA_S, "L")
+    prawa = _indeks(bieg_so1a, T_ZWARCIA_S, "P")
+    assert prawa == lewa + 1
+    assert probki["u_pu@b-sn-stacja"][lewa] > 1.0, "probka L: uklad przed zwarciem"
+    assert probki["u_pu@b-sn-stacja"][prawa] < 0.4, "probka P: uklad JUZ w zwarciu"
+    assert probki["u_pu@b-sn-stacja"][lewa] == pytest.approx(
+        probki["u_pu@b-sn-stacja"][lewa - 1], abs=1e-6
+    ), "L to granica lewostronna stanu ustalonego sprzed zwarcia"
+    # Otwarcie aparatow w chwili usuniecia: `L` jeszcze w zwarciu, `P` juz odciete.
+    lewa_us = _indeks(bieg_so1a, T_USUNIECIA_S, "L")
+    prawa_us = _indeks(bieg_so1a, T_USUNIECIA_S, "P")
+    assert probki["i_zwarcia_pu@b-pole"][lewa_us] > 0.0
+    assert probki["u_pu@b-pole"][prawa_us] == 0.0
+    assert probki["stan_galezi@wyl-pole"][lewa_us] == 1.0
+    assert probki["stan_galezi@wyl-pole"][prawa_us] == 0.0
+
+
+def test_dawny_scenariusz_z_usunieciem_izolacja_na_szynie_zasilanej_to_odmowa(
+    migawka_so1a: dict[str, Any],
+) -> None:
+    """Zdjecie zwarcia `izolacja` na szynie, ktora pierscien nadal zasila: odmowa nazwana.
+
+    Detektor mutacji M26: z wylaczonym predykatem izolacji ten scenariusz przeszedlby,
+    a przebieg pokazywalby „usuniecie zwarcia" bez zadnego aparatu, ktory je usunal.
+    """
+    with pytest.raises(OdmowaDynamiki) as blad:
+        _wykonaj(migawka_so1a, SCENARIUSZ_SO1A_STARY_IZOLACJA)
+    assert blad.value.kod == KOD_ZWARCIE_NIEODIZOLOWANE
+    assert blad.value.szczegoly["wezel"] == "b-sn-stacja"
+    assert blad.value.szczegoly["t_s"] == T_USUNIECIA_S
+    assert "b-przylacze" in blad.value.szczegoly["wyspa"]
+    assert {"gen-pv", "gen-magazyn", "zrodlo-110"} <= set(
+        blad.value.szczegoly["urzadzenia_wnoszace"]
+    )
 
 
 def test_residua_i_zachowanie_solvera_sa_w_kontrakcie(bieg_so1a: WynikDynamiki) -> None:
@@ -374,7 +535,11 @@ def test_residua_i_zachowanie_solvera_sa_w_kontrakcie(bieg_so1a: WynikDynamiki) 
     assert wlasnosci.max_residuum_g <= NASTAWY_SOLVERA["tolerancja"] * 10.0
     assert wlasnosci.kroki > 0
     assert wlasnosci.integrator == "trapez_niejawny"
-    assert len(bieg_so1a.os_czasu_s) == int(round(HORYZONT_S / 0.02)) + 1
+    # Siatka 0,02 s na 10 s (501 chwil) plus po jednej dodatkowej probce w KAZDEJ z
+    # trzech chwil zdarzen (1,000 / 1,180 / 2,180 s — wszystkie na siatce): para `L`/`P`
+    # zastepuje probke `C` tej chwili.
+    assert len(bieg_so1a.os_czasu_s) == int(round(HORYZONT_S / 0.02)) + 1 + 3
+    assert bieg_so1a.strona_probki.count("L") == bieg_so1a.strona_probki.count("P") == 3
     assert bieg_so1a.os_czasu_s[-1] == pytest.approx(HORYZONT_S)
 
 
@@ -389,6 +554,7 @@ def test_powtorzony_bieg_daje_identyczny_wynik(
     """
     powtorzony = _wykonaj(migawka_so1a)
     assert powtorzony.os_czasu_s == bieg_so1a.os_czasu_s
+    assert powtorzony.strona_probki == bieg_so1a.strona_probki
     assert set(powtorzony.probki) == set(bieg_so1a.probki)
     for klucz in bieg_so1a.probki:
         assert powtorzony.probki[klucz] == bieg_so1a.probki[klucz], klucz
@@ -407,8 +573,8 @@ def test_powtorzony_bieg_daje_identyczny_wynik(
 #: a `time.` występuje tam w DWÓCH miejscach: `:128` (start zegara) i `:273`
 #: (`czas_obliczen_s=time.perf_counter() - zegar`, składane po zakończeniu pętli).
 #: Żaden kod produkcyjny tego pola NIE CZYTA — jedyne wystąpienie poza silnikiem i
-#: serializacją (`wynik.py:66` deklaracja, `wynik.py:143` kwantyzacja) to bierne pole
-#: schematu `application/contracts/resultset_dynamic_v1.py:87`. Wyłączenie jest tą samą,
+#: serializacją (`wynik.py` deklaracja i kwantyzacja) to bierne pole schematu
+#: `application/contracts/resultset_dynamic_v2.py::WlasnosciBieguV2`. Wyłączenie jest tą samą,
 #: już przypiętą decyzją co w `test_wynik.py:170`, `test_adapter_dynamiki.py:515` i
 #: `test_dynamika_rms_run.py:728`, a `docs/evidence/CONVERGENCE_EVIDENCE.md:735` mówi
 #: wprost, że pole „nie wchodzi do żadnego odcisku".
@@ -422,7 +588,7 @@ ZIARNA_BRAMKI: tuple[tuple[str, int], ...] = (("1", 1), ("987654321", 1), ("0", 
 _KOD_PODPROCESU = """
 import json, os, sys
 import tests.e2e.test_so1a_scenariusz_odniesienia as m
-from network_model.solvers.dynamika import ladunek_resultset_dynamic_v1
+from network_model.solvers.dynamika import ladunek_resultset_dynamic_v2
 
 wynik = m._wykonaj(m._migawka())
 json.dump(
@@ -433,7 +599,7 @@ json.dump(
             "wersja": sys.version_info[:3],
             "pid": os.getpid(),
         },
-        "ladunek": ladunek_resultset_dynamic_v1(wynik, run_id=m.RUN_ID_DETERMINIZMU),
+        "ladunek": ladunek_resultset_dynamic_v2(wynik, run_id=m.RUN_ID_DETERMINIZMU),
     },
     sys.stdout,
     ensure_ascii=False,

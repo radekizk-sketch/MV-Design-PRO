@@ -818,7 +818,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/tr",
           "direction": "reverse",
           "i_a": 1.35,
-          "loading_percent": null,
+          "loading_percent": 5.59,
           "p_mw": -0.035,
           "q_mvar": 0.0041,
           "s_mva": 0.0352
@@ -1651,7 +1651,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/tr",
           "direction": "reverse",
           "i_a": 34.29,
-          "loading_percent": null,
+          "loading_percent": 89.09,
           "p_mw": -0.891,
           "q_mvar": 0.0476,
           "s_mva": 0.8923
@@ -3388,7 +3388,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/tr",
           "direction": "reverse",
           "i_a": 74.67,
-          "loading_percent": null,
+          "loading_percent": 77.6,
           "p_mw": -1.9344,
           "q_mvar": 0.1581,
           "s_mva": 1.9409
@@ -4957,7 +4957,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/tr-bess",
           "direction": "reverse",
           "i_a": 36.14,
-          "loading_percent": null,
+          "loading_percent": 75.12,
           "p_mw": -0.9247,
           "q_mvar": 0.1636,
           "s_mva": 0.9391
@@ -4966,7 +4966,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/tr-pv",
           "direction": "reverse",
           "i_a": 37.28,
-          "loading_percent": null,
+          "loading_percent": 96.85,
           "p_mw": -0.9648,
           "q_mvar": 0.0849,
           "s_mva": 0.9685
@@ -6155,7 +6155,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/tr",
           "direction": "reverse",
           "i_a": 35.3,
-          "loading_percent": null,
+          "loading_percent": 96.3,
           "p_mw": -0.9595,
           "q_mvar": 0.0844,
           "s_mva": 0.9632
@@ -7166,7 +7166,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/tr",
           "direction": "reverse",
           "i_a": 36.15,
-          "loading_percent": null,
+          "loading_percent": 75.13,
           "p_mw": -0.9247,
           "q_mvar": 0.1636,
           "s_mva": 0.9391
@@ -8336,7 +8336,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/wtg-tr1",
           "direction": "reverse",
           "i_a": 76.11,
-          "loading_percent": null,
+          "loading_percent": 79.1,
           "p_mw": -1.9796,
           "q_mvar": 0.0916,
           "s_mva": 1.9817
@@ -8345,7 +8345,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/wtg-tr2",
           "direction": "reverse",
           "i_a": 76.11,
-          "loading_percent": null,
+          "loading_percent": 79.1,
           "p_mw": -1.9796,
           "q_mvar": 0.0916,
           "s_mva": 1.9817
@@ -8354,7 +8354,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/wtg-tr3",
           "direction": "reverse",
           "i_a": 76.11,
-          "loading_percent": null,
+          "loading_percent": 79.1,
           "p_mw": -1.9796,
           "q_mvar": 0.0916,
           "s_mva": 1.9817
@@ -9600,7 +9600,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/wtg-tr1",
           "direction": "reverse",
           "i_a": 76.11,
-          "loading_percent": null,
+          "loading_percent": 79.1,
           "p_mw": -1.9796,
           "q_mvar": 0.0916,
           "s_mva": 1.9817
@@ -9609,7 +9609,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/wtg-tr2",
           "direction": "reverse",
           "i_a": 76.11,
-          "loading_percent": null,
+          "loading_percent": 79.1,
           "p_mw": -1.9796,
           "q_mvar": 0.0916,
           "s_mva": 1.9817
@@ -9618,7 +9618,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/wtg-tr3",
           "direction": "reverse",
           "i_a": 76.11,
-          "loading_percent": null,
+          "loading_percent": 79.1,
           "p_mw": -1.9796,
           "q_mvar": 0.0916,
           "s_mva": 1.9817
@@ -10862,7 +10862,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/wtg-tr1",
           "direction": "reverse",
           "i_a": 32.37,
-          "loading_percent": null,
+          "loading_percent": 84.1,
           "p_mw": -0.8408,
           "q_mvar": 0.0414,
           "s_mva": 0.8418
@@ -10871,7 +10871,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/wtg-tr2",
           "direction": "reverse",
           "i_a": 32.37,
-          "loading_percent": null,
+          "loading_percent": 84.1,
           "p_mw": -0.8408,
           "q_mvar": 0.0414,
           "s_mva": 0.8418
@@ -10880,7 +10880,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/wtg-tr3",
           "direction": "reverse",
           "i_a": 32.37,
-          "loading_percent": null,
+          "loading_percent": 84.1,
           "p_mw": -0.8408,
           "q_mvar": 0.0414,
           "s_mva": 0.8418
@@ -12966,7 +12966,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/tr-pv",
           "direction": "reverse",
           "i_a": 76.09,
-          "loading_percent": null,
+          "loading_percent": 79.08,
           "p_mw": -1.9797,
           "q_mvar": 0.0916,
           "s_mva": 1.9818
@@ -12975,7 +12975,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "branch_ref": "sr/branch/tr-wind",
           "direction": "reverse",
           "i_a": 57.1,
-          "loading_percent": null,
+          "loading_percent": 74.17,
           "p_mw": -1.4857,
           "q_mvar": 0.0644,
           "s_mva": 1.4871

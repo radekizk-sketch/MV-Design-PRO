@@ -45,6 +45,7 @@ klasy „regulator nie schodzi z limitu", dlatego jest tu wykluczony z konstrukc
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 from ..kontrakty import (
     KOD_PARAMETRY_SPRZECZNE,
@@ -136,6 +137,20 @@ class RegulatorNapieciaSEXS:
     efd_min_pu: float
     efd_max_pu: float
 
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = ()
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "wariant": self.wariant,
+            "ka": self.ka,
+            "ta_s": self.ta_s,
+            "tb_s": self.tb_s,
+            "tc_s": self.tc_s,
+            "efd_min_pu": self.efd_min_pu,
+            "efd_max_pu": self.efd_max_pu,
+        }
+
     @property
     def ma_wyprzedzenie(self) -> bool:
         return self.tb_s > 0.0
@@ -206,6 +221,20 @@ class RegulatorObrotowTGOV1:
     t3_s: float
     p_min_pu: float
     p_max_pu: float
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = ()
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "wariant": self.wariant,
+            "r_pu": self.r_pu,
+            "t1_s": self.t1_s,
+            "t2_s": self.t2_s,
+            "t3_s": self.t3_s,
+            "p_min_pu": self.p_min_pu,
+            "p_max_pu": self.p_max_pu,
+        }
 
     @property
     def ma_zawor(self) -> bool:
@@ -285,6 +314,22 @@ class StabilizatorPSS1A:
     t4_s: float
     limit_min_pu: float
     limit_max_pu: float
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = ()
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "wariant": self.wariant,
+            "ks": self.ks,
+            "tw_s": self.tw_s,
+            "t1_s": self.t1_s,
+            "t2_s": self.t2_s,
+            "t3_s": self.t3_s,
+            "t4_s": self.t4_s,
+            "limit_min_pu": self.limit_min_pu,
+            "limit_max_pu": self.limit_max_pu,
+        }
 
     @property
     def ma_wyprzedzenie1(self) -> bool:

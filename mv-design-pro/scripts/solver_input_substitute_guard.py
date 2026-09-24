@@ -449,6 +449,15 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "analysis/energy_validation/models.py",
     "analysis/grid_strength/models.py",
     "analysis/lf_sensitivity/builder.py",
+    # Karta AB-1b.1a (2026-09-23, klasa P9 — decyzje O-46, O-51): jedna definicja
+    # obciazenia galezi z pradow OBU zaciskow (`ObciazenieGalezi`,
+    # `PradyZnamionoweZaciskow` — dataclassy WYNIKU interpretacji), importowana
+    # przez `enm/canonical_analysis.py`, `api/canonical_run_views.py` i analizy
+    # `application/analyses/**` (warstwy objete skanem). Pomiar: 9 pol, 8 nowych
+    # nazw (do_a, obciazenie_pct, od_a, powod_braku_pl, prad_do_a, prad_od_a,
+    # prad_znamionowy_do_a, prad_znamionowy_od_a); zadne nie jest atrybutem typu
+    # wbudowanego, wiec nie kwalifikuje sie do MODEL_ROOTS_POZA_MAPA.
+    "analysis/obciazenie_galezi.py",
     # Karta W3-J (2026-09-16): jedno zrodlo kryteriow napieciowych — dataclass
     # WYNIKU/KONTRAKTU (`KryteriaNapieciowe`, komplet stalych normatywnych),
     # importowana bezposrednio przez `application/analyses/voltage_profile_view.py`
@@ -537,6 +546,9 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # (brak = 1,0 bez redukcji nazwany w `meta`, nie cicha jedynka) —
     # decyzja „do mapy"; pola nie sa atrybutami typu wbudowanego.
     "domain/generator_validation.py",
+    # Karta AB-1b.1a (2026-09-23): `werdykt/kontrakt.py` (wyzej, z AB-H0) czyta takze
+    # `application/contracts/resultset_dynamic_v2.py` (`DziedzinaFizyki`) — ten sam
+    # korzen, bez drugiego wpisu.
 )
 
 #: Korzenie modeli SWIADOMIE POZA mapa pol — z POWODEM MERYTORYCZNYM, nie „poza

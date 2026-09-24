@@ -155,7 +155,8 @@ Pełna tabela: macierz §4. Rozstrzygnięcia produktowe:
 | **`I(t)`, `P(t)`, `Q(t)` gałęzi** | NIE | brak kanału → brak przebiegu; wpisane do rejestru luk P1 |
 | **`I_q(t)` wsparcia napięciowego jako wielkość FRT** | NIE | brak kanału → tor FRT nie może dziś dzielić przebiegów z RMS |
 
-**Zamrożone:** jeżeli sygnału nie ma w `ResultSetDynamicV1`, interfejs go nie pokazuje i nie
+**Zamrożone:** jeżeli sygnału nie ma w kontrakcie wyniku czasowego (`ResultSetDynamicV2` od
+karty AB-1b.1; wcześniej `ResultSetDynamicV1`), interfejs go nie pokazuje i nie
 wylicza. Wielkość pochodna liczona w przeglądarce z próbek jest zakazana (fizyka w UI).
 
 ---

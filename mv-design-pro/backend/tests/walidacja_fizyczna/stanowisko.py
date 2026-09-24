@@ -102,13 +102,22 @@ def zbuduj(
                 1.0 / complex(0.0, 2.0 * x_linii_pu),
                 0.0,
                 complex(1.0, 0.0),
+                True,
+                "linia",
             )
             for n in (1, 2)
         )
     else:
         galezie = (
             GalazDynamiki(
-                "LINIA", "GEN", "SYS", 1.0 / complex(0.0, x_linii_pu), 0.0, complex(1.0, 0.0)
+                "LINIA",
+                "GEN",
+                "SYS",
+                1.0 / complex(0.0, x_linii_pu),
+                0.0,
+                complex(1.0, 0.0),
+                True,
+                "linia",
             ),
         )
     if odbior_p_pu is None:
@@ -175,20 +184,62 @@ def uruchom(uklad: dict, harmonogram=(), **kw):
     return SilnikDynamiki(wejscie).uruchom()
 
 
-def szereg(wynik, klucz: str) -> np.ndarray:
-    return np.asarray(wynik.probki[klucz], dtype=float)
+#: Strony probek odtwarzajace DAWNA siatke wyjscia (karta AB-1b.1 par. 0 pkt 0): probki
+#: siatki `C` i probka prawostronna `P` kazdej chwili zdarzenia — dokladnie te chwile i te
+#: stany, ktore rdzen oddawal przed wprowadzeniem probek obustronnych. Bramki mierzace
+#: trajektorie wobec wyroczni czytaja te strony, zeby definicja porownania sie nie zmienila.
+SIATKA_PRAWOSTRONNA = "CP"
 
 
-def czas(wynik) -> np.ndarray:
-    return np.asarray(wynik.os_czasu_s, dtype=float)
+def _indeksy_stron(wynik, strony: str) -> list[int]:
+    if not strony or set(strony) - {"C", "L", "P"}:
+        raise ValueError(f"Strony probek spoza zbioru C/L/P: {strony!r}")
+    return [i for i, strona in enumerate(wynik.strona_probki) if strona in strony]
+
+
+def szereg(wynik, klucz: str, *, strony: str) -> np.ndarray:
+    """Probki kanalu o JAWNIE wskazanych stronach (`C`, `L`, `P`).
+
+    Wartosc niedostepna (`None`) NIE jest zamieniana na NaN: `np.asarray(..., float)`
+    zrobilby z niej NaN, a np. `max(0.0, nan)` zwraca 0,0 — brak zniknalby z pomiaru bez
+    sladu. Kanal z `None` na wybranych stronach konczy sie tu jawnym bledem.
+    """
+    indeksy = _indeksy_stron(wynik, strony)
+    wartosci = [wynik.probki[klucz][i] for i in indeksy]
+    brakujace = [wynik.os_czasu_s[i] for i, w in zip(indeksy, wartosci, strict=True) if w is None]
+    if brakujace:
+        raise ValueError(
+            f"Kanal {klucz} ma wartosc niedostepna (None) na stronach {strony!r} w chwilach "
+            f"{brakujace[:5]} — wybierz strony jawnie, zamiast zamieniac brak na liczbe"
+        )
+    return np.asarray(wartosci, dtype=float)
+
+
+def czas(wynik, *, strony: str) -> np.ndarray:
+    """Chwile probek o JAWNIE wskazanych stronach (ta sama selekcja co `szereg`)."""
+    return np.asarray([wynik.os_czasu_s[i] for i in _indeksy_stron(wynik, strony)], dtype=float)
+
+
+def indeks_probki(wynik, t_s: float, strona: str) -> int:
+    """Indeks JEDYNEJ probki o chwili `t_s` i stronie `strona` (blad, gdy brak/wiele)."""
+    trafienia = [
+        i
+        for i, (t, s) in enumerate(zip(wynik.os_czasu_s, wynik.strona_probki, strict=True))
+        if s == strona and abs(t - t_s) <= 1e-12
+    ]
+    if len(trafienia) != 1:
+        raise ValueError(f"Probka t={t_s} strona {strona}: trafienia {trafienia}")
+    return trafienia[0]
 
 
 __all__ = [
     "F_BAZOWA_HZ",
+    "SIATKA_PRAWOSTRONNA",
     "S_BAZOWA_MVA",
     "U_N_KV",
     "Z_BAZOWA_OM",
     "czas",
+    "indeks_probki",
     "nastawy",
     "szereg",
     "uruchom",

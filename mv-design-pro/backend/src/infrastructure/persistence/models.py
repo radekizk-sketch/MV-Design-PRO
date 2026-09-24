@@ -452,9 +452,9 @@ class CanonicalRunTimeSeriesORM(Base):
     (karta W6-1 SS0 p.6, wzorzec `CanonicalRunBranchFlowORM` — PERF-SC-50: nigdy
     pelny szereg w wierszu biegu).
 
-    `ResultSetDynamicV1` zapisany w `canonical_runs.raw_result_json` niesie
-    WYLACZNIE metadane/metryki/tozsamosc (`os_czasu_s`/`probki` puste —
-    `zbuduj_resultset_dynamiczny_v1(..., z_probkami=False)`); probki kazdego
+    `ResultSetDynamicV2` zapisany w `canonical_runs.raw_result_json` niesie
+    WYLACZNIE metadane/metryki/tozsamosc (`os_czasu_s`/`strona_probki`/`probki`
+    puste — `zbuduj_resultset_dynamiczny_v2(..., z_probkami=False)`); probki kazdego
     kanalu leza tutaj, jeden wiersz na (run_id, klucz_kanalu). API rozdziela
     endpoint metadanych (bez probek) od endpointu `.../time-series` (na zadanie,
     z filtrem `kanaly=`) — patrz `api/analysis_runs_dynamika.py`.
@@ -468,13 +468,23 @@ class CanonicalRunTimeSeriesORM(Base):
         ForeignKey("canonical_runs.id", ondelete="CASCADE"),
         primary_key=True,
     )
-    #: Klucz kanalu (`ResultSetDynamicV1.kanaly[].klucz`, np. "u_pu@b12").
+    #: Klucz kanalu (`ResultSetDynamicV2.kanaly[].klucz`, np. "u_pu@b12").
     klucz_kanalu: Mapped[str] = mapped_column(String(512), primary_key=True)
     #: Wspolna os czasu biegu (sekundy) — ta sama dla wszystkich kanalow tego
     #: biegu; powielona per wiersz (jak `contributions_json` dla wkladow) zeby
     #: odczyt jednego kanalu nie wymagal JOIN-a do drugiej tabeli.
     os_czasu_s_json: Mapped[list[float]] = mapped_column(DeterministicJSON(), nullable=False)
-    probki_json: Mapped[list[float]] = mapped_column(DeterministicJSON(), nullable=False)
+    #: Probki kanalu; `null` to wartosc NIEDOSTEPNA (czestotliwosc w chwili zdarzenia,
+    #: kat fazora zerowego — przyczyne niesie kanal jakosci albo stanu elementu),
+    #: nigdy liczba podstawiona (karta AB-1b.1 par. 0 pkt 6).
+    probki_json: Mapped[list[float | None]] = mapped_column(DeterministicJSON(), nullable=False)
+    #: Strona kazdej probki osi czasu (`C` siatka, `L` przed zdarzeniem, `P` po
+    #: zdarzeniu; ta sama dlugosc co `os_czasu_s_json`). Kolumna ADDYTYWNA (nullable):
+    #: wiersz zapisany przed kontraktem `resultset_dynamic_v2` czyta sie jako `None`
+    #: i odczyt konczy sie NAZWANA odmowa (bieg do ponownego przeliczenia), nie
+    #: domyslna strona; dokladana do istniejacej bazy przez `db.init_db`
+    #: (`_dolacz_kolumny_addytywne`).
+    strona_probki_json: Mapped[list[str] | None] = mapped_column(DeterministicJSON(), nullable=True)
 
 
 class RunBatchORM(Base):

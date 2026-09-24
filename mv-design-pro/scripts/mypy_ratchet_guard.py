@@ -173,8 +173,25 @@ BACKEND = ROOT / "backend"
 # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
 # `mypy src` na scalonym drzewie int/h0 (L i AB-H0 zdejmuja bledy w roznych plikach,
 # roznice sie sumuja; zero nowych bledow).
-BASELINE_ERRORS = 249
-BASELINE_FILES = 43
+# 2026-09-23 (karta integracyjna AB-1b.1a, drzewo `bbcc8555` + AB-1b.1a): przeciazenia
+# `ensure_utc` w `infrastructure/persistence/time_utils.py` (`datetime` -> `datetime`,
+# `None` -> `None`) zdjely U ZRODLA 11 bledow `datetime | None` w pieciu repozytoriach
+# persystencji (canonical_run 3, analysis_run 2, analysis_run_index 1, document_store 3,
+# run_batch 2), a przepisany adapter dynamiki — 1 blad `attr-defined` (`ENMElement.bus_ref`).
+# W plikach dotknietych karta (klasa P9) zdjete zastane bledy u zrodla: KOLIZJE NAZW
+# (`power_flow_interpretation/builder.py` — jedna zmienna petli dla `VoltageFinding` i
+# `BranchLoadingFinding`, 3 bledy; `application/analyses/sanity_bounds.py` — jeden `verdict`
+# dla werdyktu napiecia i obciazenia, 1 blad) oraz zawezenia w `nn_circuit_sheet.py` (aparat
+# korzenia zawezany przez klase `SwitchBranch | FuseBranch`, kandydat aparatu jako
+# `KandydatAparatuNn | None` z jawna galezia odmowy, powod doboru `str | None`; 3 bledy).
+# Pomiar `mypy src` (mypy 1.19.1): czysty HEAD `bbcc8555` 266/46, drzewo karty 247/39;
+# roznica zbiorow bledow = dokladnie te 19, zero nowych => 247/39.
+# Integracja AB-1b.1a na HEAD z AB-H0 (2026-09-24): POMIAR `mypy src` na scalonym drzewie
+# int/1b1 — 249/43 (HEAD) -> 230/36: znika dokladnie 19 bledow AB-1b.1a (11 w repozytoriach
+# persystencji przez przeciazenia `ensure_utc`, 1 `adapter_dynamiki`, 7 w plikach karty),
+# zero nowych.
+BASELINE_ERRORS = 230
+BASELINE_FILES = 36
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

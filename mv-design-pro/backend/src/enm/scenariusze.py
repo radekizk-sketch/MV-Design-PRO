@@ -170,25 +170,57 @@ _MAX_HORYZONT_DYNAMIKI_S = 600.0
 
 
 class Zwarcie(BaseModel):
-    """Zwarcie w wezle — 3F w W6-2; 2F/1F/2FZ modelowane w W6-4 (skladowe
-    symetryczne); tu WYLACZNIE ksztalt danych, solver decyduje co umie policzyc."""
+    """Zwarcie w WEZLE (`bus_ref`) albo w LINII/KABLU w miejscu `x*L` (`element_ref` +
+    `polozenie_wzgledne` w przedziale otwartym (0, 1), liczone od zacisku poczatkowego
+    galezi) — dokladnie jedno z dwoch miejsc (karta AB-1b.1 par. 0 pkt 5). 3F w W6-2;
+    2F/1F/2FZ modelowane w W6-4 (skladowe symetryczne); tu WYLACZNIE ksztalt danych,
+    solver decyduje co umie policzyc (zwarcie w transformatorze albo laczniku konczy sie
+    odmowa rdzenia `dynamika.zwarcie_galezi_nieobslugiwane`)."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     rodzaj: Literal["zwarcie"] = "zwarcie"
     t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
-    bus_ref: str = Field(min_length=1)
+    bus_ref: str | None = Field(default=None, min_length=1)
+    element_ref: str | None = Field(default=None, min_length=1)
+    polozenie_wzgledne: float | None = Field(default=None, gt=0.0, lt=1.0)
     typ: Literal["3F", "2F", "1F", "2FZ"]
     r_f_ohm: float = Field(ge=0.0, le=100_000.0)
     x_f_ohm: float = Field(ge=0.0, le=100_000.0)
     t_usuniecia_s: float | None = Field(default=None, ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    #: Jawny sposob usuniecia (karta AB-1b.1 par. 0 pkt 4): `izolacja` — aparaty
+    #: odcinaja miejsce zwarcia (rdzen sprawdza to w stanie po zdarzeniach chwili
+    #: usuniecia i odmawia `dynamika.zwarcie_nieodizolowane`, gdy miejsce nadal jest
+    #: zasilane); `samoczynne` — zadeklarowana idealizacja zwarcia przemijajacego
+    #: (luk gasnie pod napieciem), dopisywana do zalozen wyniku. Podawany razem z
+    #: `t_usuniecia_s` albo wcale — ta sama para, ktora waliduje kontrakt rdzenia.
+    sposob_usuniecia: Literal["izolacja", "samoczynne"] | None = None
 
     @model_validator(mode="after")
     def _usuniecie_po_zwarciu(self) -> Zwarcie:
+        if (self.bus_ref is None) == (self.element_ref is None):
+            raise ValueError(
+                "Zwarcie: podaj dokladnie jedno miejsce — `bus_ref` (zwarcie w wezle) albo "
+                "`element_ref` z `polozenie_wzgledne` (zwarcie w linii/kablu w x*L); "
+                f"podano bus_ref={self.bus_ref!r}, element_ref={self.element_ref!r}."
+            )
+        if (self.element_ref is None) != (self.polozenie_wzgledne is None):
+            raise ValueError(
+                "Zwarcie: `polozenie_wzgledne` podaje sie razem z `element_ref` i tylko z nim "
+                f"(element_ref={self.element_ref!r}, "
+                f"polozenie_wzgledne={self.polozenie_wzgledne!r})."
+            )
         if self.t_usuniecia_s is not None and self.t_usuniecia_s <= self.t_s:
             raise ValueError(
                 f"Zwarcie: t_usuniecia_s ({self.t_usuniecia_s}) musi byc pozniej niz "
                 f"t_s ({self.t_s}) — zwarcie nie moze byc usuniete przed wystapieniem."
+            )
+        if (self.t_usuniecia_s is None) != (self.sposob_usuniecia is None):
+            raise ValueError(
+                f"Zwarcie: t_usuniecia_s ({self.t_usuniecia_s}) i sposob_usuniecia "
+                f"({self.sposob_usuniecia}) podaje sie razem albo wcale — usuniecie bez "
+                "jawnego sposobu nie mowi, czy luk zgasl po odcieciu (izolacja), czy pod "
+                "napieciem (samoczynne)."
             )
         return self
 
@@ -224,8 +256,13 @@ class OdlaczenieZrodla(BaseModel):
 
 
 class SkokObciazenia(BaseModel):
-    """Skokowa zmiana mocy odbioru/zrodla w chwili t_s (delta wzgledem stanu
-    poczatkowego scenariusza — solver dodaje delte do punktu pracy z rozplywu)."""
+    """Skokowa zmiana mocy ODBIORU w chwili t_s (delta wzgledem stanu poczatkowego
+    scenariusza — solver dodaje delte do punktu pracy z rozplywu).
+
+    KOREKTA 2026-09-23 (karta AB-1b.1, S18): docstring mowil „odbioru/zrodla", a
+    adapter biegu odmawia skoku wskazujacego zrodlo (`dynamika.skok_obciazenia_poza_
+    odbiorem`) — deklaracja bez pokrycia. Skokowa zmiana nastawy wytworcy to komenda
+    regulacji, nie skok obciazenia."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -234,6 +271,31 @@ class SkokObciazenia(BaseModel):
     ref_id: str = Field(min_length=1)
     delta_p_mw: float = Field(ge=-100_000.0, le=100_000.0)
     delta_q_mvar: float = Field(ge=-100_000.0, le=100_000.0)
+
+
+class OdlaczenieOdbioru(BaseModel):
+    """NAZWANE odlaczenie odbioru w chwili t_s (karta AB-1b.1, FREEZE par. 2 wiersz D7).
+
+    Odlaczenie jest zdarzeniem laczeniowym, nie skokiem mocy do zera: odbior odlaczony
+    nie ma obwodu i nie wchodzi do bilansu wezla, a jego wczesniejsze skoki mocy
+    wracaja z nim przy `zalaczenie_odbioru`.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["odlaczenie_odbioru"] = "odlaczenie_odbioru"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    ref_id: str = Field(min_length=1)
+
+
+class ZalaczenieOdbioru(BaseModel):
+    """Ponowne zalaczenie odbioru odlaczonego wczesniej zdarzeniem `odlaczenie_odbioru`."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    rodzaj: Literal["zalaczenie_odbioru"] = "zalaczenie_odbioru"
+    t_s: float = Field(ge=0.0, le=_MAX_HORYZONT_DYNAMIKI_S)
+    ref_id: str = Field(min_length=1)
 
 
 class KomendaRegulacji(BaseModel):
@@ -266,6 +328,8 @@ ZdarzenieDynamiczne = Annotated[
     | ZalaczenieGalezi
     | OdlaczenieZrodla
     | SkokObciazenia
+    | OdlaczenieOdbioru
+    | ZalaczenieOdbioru
     | KomendaRegulacji
     | Synchronizacja,
     Field(discriminator="rodzaj"),
@@ -332,15 +396,39 @@ class ScenariuszDynamiczny(BaseModel):
 #: Referencje elementu wymagane przez kazdy rodzaj zdarzenia — (atrybut, opis)
 #: uzywane przez `_waliduj_zdarzenia_dynamiczne` (jedno zrodlo prawdy predykatu
 #: "ref istnieje w modelu", zamiast siedmiu odrebnych sprawdzen).
-def _refy_zdarzenia(zdarzenie: ZdarzenieDynamiczne) -> tuple[tuple[str, str], ...]:
+#: Kolekcje ENM, na ktorych moze dzialac zdarzenie laczeniowe galezi (karta AB-1b.1
+#: par. 0 pkt 1): galezie, transformatory i BATERIE KONDENSATOROW — laczenie baterii
+#: jest ta sama klasa mechanizmu, co laczenie galezi (adapter rozpoznaje kolekcje).
+KOLEKCJE_LACZENIA_GALEZI: tuple[str, ...] = ("branches", "transformers", "shunt_capacitors")
+
+
+def _refy_zdarzenia(
+    zdarzenie: ZdarzenieDynamiczne,
+) -> tuple[tuple[str, str, tuple[str, ...]], ...]:
+    """(atrybut, ref, DOZWOLONE kolekcje) kazdej referencji zdarzenia — JEDEN predykat.
+
+    Dozwolone kolekcje sa czescia predykatu, nie tylko istnienie referencji: przed
+    karta AB-1b.1 `wylaczenie_galezi` wskazujace GENERATOR przechodzilo walidacje
+    danych (element „istnieje w jakiejs kolekcji") i konczylo sie dopiero odmowa
+    rdzenia — klasa „ref istnieje, ale w zlej roli" byla niewidoczna dla projektanta.
+    Adapter biegu czyta te sama klasyfikacje kolekcji (bateria -> zdarzenie odsprzegu).
+    """
     if isinstance(zdarzenie, Zwarcie):
-        return (("bus_ref", zdarzenie.bus_ref),)
+        if zdarzenie.bus_ref is not None:
+            return (("bus_ref", zdarzenie.bus_ref, ("buses",)),)
+        assert zdarzenie.element_ref is not None  # gwarantuje walidator modelu
+        return (("element_ref", zdarzenie.element_ref, ("branches",)),)
     if isinstance(zdarzenie, WylaczenieGalezi | ZalaczenieGalezi):
-        return (("element_ref", zdarzenie.element_ref),)
-    if isinstance(zdarzenie, OdlaczenieZrodla | SkokObciazenia | KomendaRegulacji):
-        return (("ref_id", zdarzenie.ref_id),)
+        return (("element_ref", zdarzenie.element_ref, KOLEKCJE_LACZENIA_GALEZI),)
+    if isinstance(zdarzenie, OdlaczenieZrodla | KomendaRegulacji):
+        return (("ref_id", zdarzenie.ref_id, ("generators", "sources")),)
+    if isinstance(zdarzenie, SkokObciazenia | OdlaczenieOdbioru | ZalaczenieOdbioru):
+        return (("ref_id", zdarzenie.ref_id, ("loads",)),)
     if isinstance(zdarzenie, Synchronizacja):
-        return (("ref_id", zdarzenie.ref_id), ("bus_ref", zdarzenie.bus_ref))
+        return (
+            ("ref_id", zdarzenie.ref_id, ("generators", "sources")),
+            ("bus_ref", zdarzenie.bus_ref, ("buses",)),
+        )
     raise AssertionError(f"Nieznany rodzaj zdarzenia: {zdarzenie!r}")  # pragma: no cover
 
 
@@ -618,7 +706,7 @@ def _waliduj_zdarzenia_dynamiczne(snapshot: dict[str, Any], scenariusz: Operatin
     dynamika = scenariusz.dynamika
     assert dynamika is not None  # wolane wylacznie gdy blok ustawiony
     for zdarzenie in dynamika.zdarzenia_uporzadkowane:
-        for atrybut, ref in _refy_zdarzenia(zdarzenie):
+        for atrybut, ref, dozwolone in _refy_zdarzenia(zdarzenie):
             if atrybut == "bus_ref":
                 if ref not in _indeks_elementow(snapshot, "buses"):
                     raise ScenariuszNieprzystajeError(
@@ -626,14 +714,23 @@ def _waliduj_zdarzenia_dynamiczne(snapshot: dict[str, Any], scenariusz: Operatin
                         ref,
                         f"zdarzenie '{zdarzenie.rodzaj}' (t_s={zdarzenie.t_s}): brak takiej szyny",
                     )
-            else:
-                if _znajdz_kolekcje(snapshot, ref) is None:
-                    raise ScenariuszNieprzystajeError(
-                        scenariusz.scenario_id,
-                        ref,
-                        f"zdarzenie '{zdarzenie.rodzaj}' (t_s={zdarzenie.t_s}): "
-                        "brak elementu w zadnej kolekcji",
-                    )
+                continue
+            kolekcja = _znajdz_kolekcje(snapshot, ref)
+            if kolekcja is None:
+                raise ScenariuszNieprzystajeError(
+                    scenariusz.scenario_id,
+                    ref,
+                    f"zdarzenie '{zdarzenie.rodzaj}' (t_s={zdarzenie.t_s}): "
+                    "brak elementu w zadnej kolekcji",
+                )
+            if kolekcja not in dozwolone:
+                raise ScenariuszNieprzystajeError(
+                    scenariusz.scenario_id,
+                    ref,
+                    f"zdarzenie '{zdarzenie.rodzaj}' (t_s={zdarzenie.t_s}): element nalezy do "
+                    f"kolekcji '{kolekcja}', a ten rodzaj zdarzenia dziala wylacznie na "
+                    f"{', '.join(dozwolone)}",
+                )
 
 
 def _przeskaluj(p_mw: float, mnoznik: float) -> float:

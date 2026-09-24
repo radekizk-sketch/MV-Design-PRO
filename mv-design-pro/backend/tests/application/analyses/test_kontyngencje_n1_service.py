@@ -26,6 +26,7 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 import pytest
+from analysis.obciazenie_galezi import POWOD_BRAK_PRADU_ZNAMIONOWEGO_PL
 from application.analyses.kontyngencje_n1 import (
     POWOD_WYKLUCZENIA_PL,
     _klucz_rankingu,
@@ -488,7 +489,8 @@ def test_brak_obciazalnosci_pomija_kryterium_pradowe_jawnie() -> None:
         p for p in kontyngencja["kryteria_pominiete"] if p["check_type"] == "BRANCH_LOADING"
     ]
     assert [p["element_name"] for p in pominiete] == ["Linia bez obciazalnosci"]
-    assert pominiete[0]["powod_pl"] == "Brak pradu znamionowego galezi."
+    # Powód z JEDNEJ definicji obciążenia gałęzi (AB-1b.1a, O-51) — nie literał kopiowany.
+    assert pominiete[0]["powod_pl"] == POWOD_BRAK_PRADU_ZNAMIONOWEGO_PL
     assert pominiete[0]["element_ref"] == "ln_bez_ratingu"
     # Gałąź bez obciążalności NIE MOŻE trafić do przeciążeń: przed naprawą
     # mostu ENM→graf dostawała podstawiony prąd znamionowy 1 A i meldowała
@@ -807,9 +809,19 @@ def test_remis_pelnej_dotkliwosci_rozstrzyga_element_ref_rosnaco() -> None:
 #: widoków nowy vs. model bez pola): różnią się WYŁĄCZNIE `context.snapshot_hash` i
 #: `input_hash` (odcisk treści modelu); `kontyngencje`, `ranking`, `podsumowanie`,
 #: `przypadek_bazowy` są identyczne co do bajtu — fizyka N-1 bez zmian.
+#: AB-1b.1a (2026-09-23, klasa P9 — decyzje O-46, O-51): odciski przeliczone ŚWIADOMIE.
+#: Kontrola BRANCH_LOADING walidacji energetycznej (z której widok N-1 bierze kryteria
+#: pominięte) liczy odtąd obciążenie JEDNĄ definicją z prądów obu zacisków
+#: (`analysis/obciazenie_galezi.py`), także dla transformatorów (prąd znamionowy zacisku
+#: z `network_model/pochodne`, zamiast mocy pozornej). DOWÓD (pełny `widok` HEAD vs
+#: drzewo, `scratchpad/integracja_1b1/n1/roznice.txt`): różnią się WYŁĄCZNIE teksty
+#: `kryteria_pominiete[*].powod_pl` (9 pozycji gn01, 14 gn03 — powody tej jednej definicji:
+#: „Brak prądu zacisku początkowego w wyniku rozpływu.", „Brak prądu znamionowego
+#: (obciążalności) gałęzi w modelu."); dotkliwość, ranking, napięcia, przepływy,
+#: iteracje NR, liczniki i kolejność BEZ ZMIAN.
 ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
-    "gn01_promieniowa": "5a99f85511779f7cdc471738239533b44fa0e61881bc7882c79cdfa30f3c13f0",
-    "gn03_pierscien": "3a2023b2425f60490a1be1b702ac2f478047c3a44da9420b6d3638c97a486c49",
+    "gn01_promieniowa": "949454acb89aea1ba066c18265eb93460a84cb19d6ef0cf48f56d3889256d083",
+    "gn03_pierscien": "9bd7b9a8119daa5c171da5b221a35dd0820a138ea65d4e2dcb85e2105648970b",
 }
 
 

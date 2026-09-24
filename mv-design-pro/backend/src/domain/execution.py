@@ -63,7 +63,7 @@ class ExecutionAnalysisType(StrEnum):
     PROTECTION = "PROTECTION"
     #: Rodzaj biegu `dynamika_rms` (karta W6-1 rejestracja, W6-2 rdzeń DAE,
     #: W6-3 urządzenia i adapter). Wykonanie kończy się WYNIKIEM
-    #: (`resultset_dynamic_v1`) albo NAZWANĄ odmową — nigdy fasadą.
+    #: (`resultset_dynamic_v2`) albo NAZWANĄ odmową — nigdy fasadą.
     DYNAMIKA_RMS = "DYNAMIKA_RMS"
 
 

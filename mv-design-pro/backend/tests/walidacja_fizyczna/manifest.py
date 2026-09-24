@@ -108,7 +108,9 @@ MANIFEST: tuple[Twierdzenie, ...] = (
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
             "uklad bezstratny (Ra = R_s = 0), maszyna 2. rzedu bez regulatorow, zwarcie "
-            "trojfazowe symetryczne usuwane bez zmiany topologii pozwarciowej"
+            "trojfazowe symetryczne usuwane bez zmiany topologii pozwarciowej — usuniecie "
+            "`samoczynne` (jawna idealizacja zwarcia przemijajacego, zapisywana w zalozeniach "
+            "wyniku); usuniecie `izolacja` ze zmiana topologii jest poza tym twierdzeniem (D-17)"
         ),
         poziom="L5",
     ),
@@ -159,9 +161,12 @@ MANIFEST: tuple[Twierdzenie, ...] = (
         mutacje=("M18", "M19"),
         bramka_ci="Walidacja fizyczna dynamiki",
         zakres_waznosci=(
-            "odbior o stalej mocy i wyspy bez zrodla; NIE obejmuje wyspy martwej BEZ odbioru "
-            "(V = 0 jest wtedy rozwiazaniem fizycznym, ktorego ten rdzen nie reprezentuje — "
-            "konczy sie osobliwym jakobianem i odmowa `dynamika.algebra_niezbiezna`)"
+            "odbior o stalej mocy i wyspy bez zrodla NA POZIOMIE ALGEBRY (`rozwiaz_algebre` "
+            "bez wierszy ograniczenia); tam wyspa martwa BEZ odbioru i bez bocznika nadal "
+            "konczy sie osobliwym jakobianem i odmowa `dynamika.algebra_niezbiezna`. Na "
+            "poziomie BIEGU silnik odcina wyspe bez urzadzenia wnoszacego do algebry "
+            "(obszar beznapieciowy, V = 0 dokladnie) i nie podaje jej algebrze — wyspa "
+            "martwa, patrz D-16"
         ),
         poziom="L5",
     ),
@@ -221,6 +226,236 @@ MANIFEST: tuple[Twierdzenie, ...] = (
         zakres_waznosci="ta sama platforma i ta sama wersja numpy/scipy",
         poziom="L4",
         uwagi="L4: brak mutacji falsyfikujacej (iniekcja niedeterminizmu wymagalaby zmiany typu kolekcji).",
+    ),
+)
+
+#: Twierdzenia karty AB-1b.1 (rdzen zdarzen): D-15..D-19, D-21 — pakiety P2-P5.
+MANIFEST = MANIFEST + (
+    Twierdzenie(
+        ident="D-15",
+        zdolnosc=(
+            "Fazory pradow galezi: modul i kat pradu OBU zaciskow kazdej galezi oraz pradu "
+            "zwarcia, w probkach L i P chwili zwarcia; kat None dla fazora zerowego"
+        ),
+        rownanie=(
+            "(i) I_f = V_k(t_f-) / (Z_kk + Z_f), dV = -Z[:, k] I_f, "
+            "I_ij(t_f+) = I_ij(t_f-) + stempel_ij(dV) (pi z idealnym transformatorem po "
+            "stronie od: I_od = (y + jB/2)/|a|^2 V_od - y/conj(a) V_do, "
+            "I_do = -y/a V_od + (y + jB/2) V_do); "
+            "(ii) I_k'' = c U_n / (sqrt3 |Z_kk|) i prady galezi z podzialu Z-bus (IEC 60909-0)"
+        ),
+        wyrocznia=(
+            "(i) wyrocznia_fazorow.superpozycja_thevenina — kolumna Z sieci zdrowej, bez "
+            "skladania sieci zwartej (zero importow z rdzenia); (ii) FROZEN "
+            "network_model.solvers.short_circuit_iec60909.ShortCircuitIEC60909Solver "
+            "(ikss_a, branch_contributions: modul i kierunek)"
+        ),
+        wzorzec=(
+            "(i) bramki.bieg_d15: szyna sztywna + linia z B + transformator 1,025/-30 st. + "
+            "linie + odbiory jako admitancje + maszyna klasyczna; zwarcie 3F w A, T, B, C "
+            "(R_f > 0 i metaliczne); (ii) bramki.g16_parytet_iec60909: zrodlo S_k'' = 250 MVA, "
+            "R/X = 0,1, U = c_max = 1,1; pierscien Q-A-B-Q + odgalezienie B-C, B = 0; zwarcie "
+            "metaliczne w B"
+        ),
+        testy=(
+            "tests/walidacja_fizyczna/test_zdarzenia_rdzenia.py"
+            "::test_d15_fazory_pradow_galezi_wobec_superpozycji_thevenina",
+            "tests/walidacja_fizyczna/test_zdarzenia_rdzenia.py"
+            "::test_d15_parytet_z_zamrozonym_solverem_iec60909",
+            "tests/walidacja_fizyczna/test_bramki.py::test_g16_fazory_pradow_galezi",
+            "tests/walidacja_fizyczna/test_bramki.py::test_g16_parytet_iec60909",
+            "tests/walidacja_fizyczna/test_probki_obustronne.py::test_kanaly_galezi_modul_i_kat",
+        ),
+        mutacje=("M30", "M32"),
+        bramka_ci="Walidacja fizyczna dynamiki",
+        zakres_waznosci=(
+            "skladowa zgodna, zwarcie 3F w wezle (R_f >= 0), siec liniowa w chwili zwarcia "
+            "(zrodla jako SEM za admitancja, odbiory jako admitancje); parytet IEC 60909 "
+            "wylacznie dla sieci bez transformatorow (K_T), generatorow (K_G), odbiorow i "
+            "susceptancji — tam metoda zrodla zastepczego i bieg od U = c_max sa ta sama "
+            "algebra; kat fazora numerycznie bliskiego zeru (szum zaokraglen) NIE jest "
+            "twierdzeniem — `None` wylacznie dla zera dokladnego"
+        ),
+        poziom="L5",
+    ),
+    Twierdzenie(
+        ident="D-18",
+        zdolnosc=(
+            "Probki obustronne: chwila zdarzenia ma probke L (stan przed zdarzeniami chwili) "
+            "i P (po nich i po jednej re-inicjalizacji); czestotliwosc w obu niedostepna"
+        ),
+        rownanie=(
+            "L: Y(t_z-) V = I(x(t_z)); P: Y(t_z+) V = I(x(t_z)); x(t_z-) = x(t_z+) "
+            "(stan rozniczkowy ciagly); f(t_z) = None, kod jakosci 3"
+        ),
+        wyrocznia=(
+            "wyrocznia.UkladSMIB.macierz — algebra SMIB przed i po zwarciu przy kacie wirnika "
+            "z probki (zero importow z rdzenia)"
+        ),
+        wzorzec=(
+            "bramki.g20_probki_obustronne: SMIB, zwarcie w 0,3 s (na siatce) i usuniecie w "
+            "0,4237 s (poza siatka)"
+        ),
+        testy=(
+            "tests/walidacja_fizyczna/test_zdarzenia_rdzenia.py"
+            "::test_d18_probki_obustronne_wobec_algebry_smib",
+            "tests/walidacja_fizyczna/test_bramki.py::test_g20_probki_obustronne",
+            "tests/walidacja_fizyczna/test_probki_obustronne.py::test_os_czasu_i_strony_probek",
+            "tests/network_model/dynamika/test_wynik.py"
+            "::test_czestotliwosc_w_chwili_zdarzenia_jest_None_z_kodem_3_w_obu_probkach",
+        ),
+        mutacje=("M28", "M29"),
+        bramka_ci="Walidacja fizyczna dynamiki",
+        zakres_waznosci=(
+            "zdarzenia planowane (topologia, zwarcia, odsprzegi, odbiory) na siatce, poza nia, "
+            "w t = 0 i w t = horyzont, pojedyncze i rownoczesne; zdarzenia warunkowe, "
+            "przypisania stanu i profile (pakiety P6-P8) poza tym twierdzeniem"
+        ),
+        poziom="L5",
+    ),
+    Twierdzenie(
+        ident="D-16",
+        zdolnosc=(
+            "Obszar beznapieciowy: wyspa bez urzadzenia wnoszacego do algebry ma V = 0, "
+            "odbiory odciete, ponowne zasilenie trafia w rozwiazanie fizyczne"
+        ),
+        rownanie=(
+            "wezel obszaru: V_k - 0 = 0 (wiersz ograniczenia zamiast KCL; ogolnie "
+            "V_k - E_k(x) = 0 z blokiem jakobianu sprzezonego -dE/dx); po ponownym "
+            "zasileniu odbior stalej mocy za impedancja Z od SEM E: "
+            "E conj(V) - |V|^2 = Z conj(S), rozwiazanie fizyczne = pierwiastek WYZSZY"
+        ),
+        wyrocznia=(
+            "wyrocznia_zdarzen.napiecie_odbioru_stalej_mocy — postac zamknieta rownania "
+            "kwadratowego w |V|^2 (zero importow z rdzenia)"
+        ),
+        wzorzec=(
+            "bramki.g17_obszar_beznapieciowy: zrodlo za impedancja + linia otwarta w t = 0 + "
+            "odbior S = 0,6 + j0,2 pu; zamkniecie linii w t = 0,05 s"
+        ),
+        testy=(
+            "tests/walidacja_fizyczna/test_zdarzenia_rdzenia.py"
+            "::test_d16_wezel_odciety_ma_zero_a_ponowne_zasilenie_trafia_w_wyzszy_pierwiastek",
+            "tests/walidacja_fizyczna/test_bramki.py::test_g17_obszar_beznapieciowy",
+            "tests/network_model/dynamika/test_obszary_beznapieciowe.py"
+            "::test_obszar_beznapieciowy_iloczyn_cech",
+            "tests/enm/test_adapter_dynamiki.py::TestObszarBeznapieciowy"
+            "::test_szr_z_przerwa_beznapieciowa",
+            "tests/network_model/dynamika/test_obszary_beznapieciowe.py"
+            "::test_jakobian_sprzezony_wiersza_ograniczenia_zgodny_z_roznica_skonczona",
+        ),
+        mutacje=("M35", "M36", "M37"),
+        bramka_ci="Walidacja fizyczna dynamiki",
+        zakres_waznosci=(
+            "wyspa, w ktorej ZADNE urzadzenie nie wnosi pradu ani dI/dV (predykat "
+            "`wyspy.urzadzenie_wnosi_do_algebry`); NIE obejmuje wyspy z samymi przeksztaltnikami "
+            "nadaznymi (wnosza prad, wiec wyspa jest zywa — klasyfikacja tworzace/nadazne i "
+            "bilans P/Q przed Newtonem to zakres D11 pelnego, karta AB-5); pierwiastek wyzszy "
+            "jest dowodzony dla odbioru stalej mocy za impedancja od SEM stalej; blok -dE/dx "
+            "wiersza ograniczenia dowodzony testem roznicowym na atrapie zrodla napieciowego "
+            "(wyrocznia fizyczna zrodla testowego idealnego U/f/theta — pakiet P7 karty)"
+        ),
+        poziom="L5",
+    ),
+    Twierdzenie(
+        ident="D-17",
+        zdolnosc=(
+            "Predykat izolacji: usuniecie zwarcia `izolacja` wymaga odciecia miejsca zwarcia "
+            "w stanie PO zdarzeniach chwili (t+)"
+        ),
+        rownanie=(
+            "dopuszczalne <=> skladowa spojna grafu galezi aktywnych stanu t+ zawierajaca "
+            "miejsce zwarcia nie ma urzadzenia wnoszacego do algebry"
+        ),
+        wyrocznia=(
+            "wyrocznia_zdarzen.miejsce_odizolowane — spojnosc grafu w `networkx` (zero importow "
+            "z rdzenia), wszystkie 16 podzbiorow otwieranych galezi pierscienia"
+        ),
+        wzorzec="bramki.pierscien_d17: pierscien S-A-B-C, szyna sztywna w S, maszyna w C",
+        testy=(
+            "tests/walidacja_fizyczna/test_zdarzenia_rdzenia.py"
+            "::test_d17_predykat_izolacji_zgodny_ze_spojnoscia_grafu",
+            "tests/walidacja_fizyczna/test_bramki.py::test_g19_predykat_izolacji",
+            "tests/network_model/dynamika/test_zwarcia_semantyka.py"
+            "::test_predykat_izolacji_iloczyn_cech",
+            "tests/e2e/test_so1a_scenariusz_odniesienia.py"
+            "::test_dawny_scenariusz_z_usunieciem_izolacja_na_szynie_zasilanej_to_odmowa",
+        ),
+        mutacje=("M26",),
+        bramka_ci="Walidacja fizyczna dynamiki",
+        zakres_waznosci=(
+            "zwarcie w wezle i w linii/kablu x*L; usuniecie `samoczynne` jest JAWNA "
+            "idealizacja poza tym twierdzeniem (zapisywana w zalozeniach wyniku); chwila "
+            "zadzialania aparatu jest dana wejsciowa scenariusza (SO-1A), nie wynikiem "
+            "nastaw zabezpieczen (SO-1B)"
+        ),
+        poziom="L5",
+    ),
+    Twierdzenie(
+        ident="D-19",
+        zdolnosc=(
+            "Elementy nieaktywne w t = 0 sa w rdzeniu: zamkniecie zdarzeniem daje macierz "
+            "rozplywu migawki z elementem zamknietym"
+        ),
+        rownanie=(
+            "Ybus_dyn(stan po zamknieciu) = Ybus_PF(migawka z elementem zamknietym); element "
+            "nieaktywny nie jest stemplowany (Ybus t = 0 bitowo bez zmiany)"
+        ),
+        wyrocznia=(
+            "`power_flow_newton_internal.build_ybus_pu` (tor rozplywu, FROZEN) — niezalezne "
+            "zlozenie macierzy z grafu IR"
+        ),
+        wzorzec=(
+            "siec G16: odlacznik rezerwowy (takze jako bezpiecznik), kabel poza ruchem, bateria "
+            "wylaczona"
+        ),
+        testy=(
+            "tests/enm/test_adapter_dynamiki.py::TestAktywnoscElementow"
+            "::test_ybus_po_zalaczeniu_rowna_ybus_rozplywu_z_elementem_zamknietym",
+            "tests/enm/test_adapter_dynamiki.py::TestAktywnoscElementow"
+            "::test_ybus_t0_z_elementami_nieaktywnymi_jest_bitowo_ta_sama",
+            "tests/enm/test_adapter_dynamiki.py::TestAktywnoscElementow"
+            "::test_laczenia_na_sciezce_uzytkownika",
+        ),
+        mutacje=("M27",),
+        bramka_ci="Python tests (pelna regresja backendu)",
+        zakres_waznosci=(
+            "linie, kable, transformatory, laczniki, bezpieczniki i baterie kondensatorow; "
+            "prog 1e-9 jak w parytecie Ybus t = 0; ponowne przylaczenie ZRODLA "
+            "(synchronizacja) jest poza twierdzeniem — kryteria dU/df/dtheta to zakres AB-5"
+        ),
+        poziom="L5",
+    ),
+    Twierdzenie(
+        ident="D-21",
+        zdolnosc="Zwarcie w linii/kablu w miejscu x*L jako czwornik Krona w rdzeniu",
+        rownanie=(
+            "Y_zred = Y_ee - Y_ei Y_ii^-1 Y_ie dla odcinkow pi (y/dx, B*dx) z admitancja "
+            "zwarcia w wezle wewnetrznym; zwarcie metaliczne: wezel wewnetrzny uziemiony"
+        ),
+        wyrocznia=(
+            "wyrocznia_pradow — gesta algebra z JAWNYM wezlem wewnetrznym (bez redukcji), "
+            "uziemienie przez usuniecie wiersza i kolumny (zero importow z rdzenia)"
+        ),
+        wzorzec=(
+            "bramki.zmierz_zwarcie_w_linii: zrodlo za impedancja, linia z susceptancja, "
+            "bocznik na koncu; x w {0,1; 0,3; 0,5; 0,85} x {R_f > 0, metaliczne}"
+        ),
+        testy=(
+            "tests/walidacja_fizyczna/test_zdarzenia_rdzenia.py"
+            "::test_d21_zwarcie_w_linii_wobec_jawnego_wezla_wewnetrznego",
+            "tests/walidacja_fizyczna/test_bramki.py::test_g16_zwarcie_w_linii",
+            "tests/network_model/dynamika/test_zwarcia_semantyka.py"
+            "::test_czwornik_przy_polozeniu_do_zera_daje_zwarcie_w_wezle_od",
+        ),
+        mutacje=("M34",),
+        bramka_ci="Walidacja fizyczna dynamiki",
+        zakres_waznosci=(
+            "linie i kable (przekladnia 1) w skladowej zgodnej, zwarcie 3F; transformator i "
+            "lacznik koncza sie odmowa `dynamika.zwarcie_galezi_nieobslugiwane`; model pi "
+            "odcinkow (bez linii dlugiej o parametrach rozlozonych)"
+        ),
+        poziom="L5",
     ),
 )
 

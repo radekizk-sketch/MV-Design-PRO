@@ -9,8 +9,10 @@
  *    (`useExecutionRunsStore`); backend jest jedynym sędzią „czy to c_max" (dostępność
  *    sprawdza to samo, czego wymaga budowa — predykaty parami, karta W3-C1),
  *  - brak kotwicy → uczciwy stan zerowy z akcją „Uruchom zwarcie 3F (c_max)",
- *  - dostępność → wybór chronionego odcinka i kolejnej szyny (listy z odpowiedzi;
- *    pusta lista niesie powód, nie ogólnik),
+ *  - dostępność → wybór chronionego odcinka, miejsca zabezpieczenia (zacisk: z modelu
+ *    tylko do odczytu albo wybór inżyniera z etykietami z backendu, decyzja O-51) i
+ *    kolejnej szyny za końcem odcinka (listy z odpowiedzi; pusta lista niesie powód,
+ *    nie ogólnik; brak zacisku = liczenie zablokowane z powodem z rekordu odmowy),
  *  - parametry inżynierskie (c_min, Δt, k_b, k_bth) jako jawne pola z wartością
  *    domyślną opisaną źródłem — nic ukrytego,
  *  - wynik: I>, I>>, sprawdzenie cieplne, SPZ, uwagi silnika — każda liczba z
@@ -38,6 +40,7 @@ import {
   type DostepnoscNastaw,
   type OdpowiedzNastaw,
   type ParametryNastaw,
+  type ZaciskZabezpieczenia,
 } from './nastawyApi';
 import { KOORDYNACJA_STRINGS as T } from './strings';
 
@@ -154,6 +157,8 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
   const [bladKotwicy, setBladKotwicy] = useState<string | null>(null);
 
   const [linia, setLinia] = useState<string>('');
+  // Wskazanie inżyniera — używane WYŁĄCZNIE, gdy model nie rozstrzyga zacisku.
+  const [zaciskWskazany, setZaciskWskazany] = useState<ZaciskZabezpieczenia | null>(null);
   const [szyna, setSzyna] = useState<string>('');
   const [parametry, setParametry] = useState<ParametryNastaw>(PARAMETRY_NASTAW_DOMYSLNE);
 
@@ -179,6 +184,7 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
     setPowodBrakuKotwicy(null);
     setBladKotwicy(null);
     setLinia('');
+    setZaciskWskazany(null);
     setSzyna('');
     setFazaWyniku('idle');
     setOdpowiedz(null);
@@ -231,17 +237,30 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
   }, []);
 
   const liniaWybrana = dostepnosc?.linie.find((l) => l.line_id === linia) ?? null;
-  const szynyKandydujace = liniaWybrana?.nastepne_szyny_kandydujace ?? [];
+  // Zacisk zabezpieczenia: z modelu (tylko do odczytu) albo wskazanie inżyniera, gdy
+  // backend go wymaga — nigdy zacisk przyjęty domyślnie przez interfejs.
+  const zacisk: ZaciskZabezpieczenia | null =
+    liniaWybrana?.zacisk_z_modelu
+    ?? (liniaWybrana?.wymaga_wskazania_zacisku ? zaciskWskazany : null);
+  // Parametr żądania tylko dla wskazania — gdy rozstrzyga model, jest zbędny.
+  const wskazanieDoZapytania: ZaciskZabezpieczenia | null =
+    liniaWybrana?.zacisk_z_modelu ? null : zaciskWskazany;
+  const szynyKandydujace = liniaWybrana && zacisk ? liniaWybrana.nastepne_szyny_wg_zacisku[zacisk] : [];
+  const powodBlokadyLiczenia = !zacisk
+    ? (liniaWybrana?.odmowa_zacisku?.powod_pl ?? null)
+    : !szyna
+      ? T.nastawyPowodWybierzSzyne
+      : null;
 
   async function policzNastawy() {
-    if (!runId || !linia || !szyna) return;
+    if (!runId || !linia || !zacisk || !szyna) return;
     setFazaWyniku('liczenie');
     setBladWyniku(null);
     setOdpowiedz(null);
     setDopasowanie(null);
     setFazaDopasowania('idle');
     try {
-      const wynik = await fetchNastawy(runId, linia, szyna, parametry);
+      const wynik = await fetchNastawy(runId, linia, szyna, wskazanieDoZapytania, parametry);
       setOdpowiedz(wynik);
       setFazaWyniku('gotowe');
     } catch (e: unknown) {
@@ -252,11 +271,18 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
 
   async function dopasujAparat(idAparatu: string) {
     setDeviceId(idAparatu);
-    if (!runId || !linia || !szyna || !idAparatu) return;
+    if (!runId || !linia || !zacisk || !szyna || !idAparatu) return;
     setFazaDopasowania('liczenie');
     setBladDopasowania(null);
     try {
-      const wynik = await fetchDopasowanieAparatu(runId, idAparatu, linia, szyna, parametry);
+      const wynik = await fetchDopasowanieAparatu(
+        runId,
+        idAparatu,
+        linia,
+        szyna,
+        wskazanieDoZapytania,
+        parametry,
+      );
       setDopasowanie(wynik);
       setFazaDopasowania('gotowe');
     } catch (e: unknown) {
@@ -324,6 +350,7 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
               value={linia}
               onChange={(e) => {
                 setLinia(e.target.value);
+                setZaciskWskazany(null);
                 setSzyna('');
                 setFazaWyniku('idle');
                 setOdpowiedz(null);
@@ -337,7 +364,45 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
               ))}
             </select>
 
-            {linia ? (
+            {liniaWybrana ? (
+              <fieldset
+                className="mvd-koordynacja-nastawy-zacisk"
+                data-testid="mvd-koordynacja-nastawy-zacisk"
+              >
+                <legend>{T.nastawyZacisk}</legend>
+                {liniaWybrana.zacisk_z_modelu ? (
+                  <p data-testid="mvd-koordynacja-nastawy-zacisk-z-modelu">
+                    {liniaWybrana.zaciski[liniaWybrana.zacisk_z_modelu].etykieta_pl} —{' '}
+                    {T.nastawyZaciskZModelu}
+                  </p>
+                ) : liniaWybrana.zaciski_dozwolone.length === 0 ? (
+                  <p data-testid="mvd-koordynacja-nastawy-zacisk-odmowa" data-tone="bad">
+                    {liniaWybrana.odmowa_zacisku?.powod_pl}
+                  </p>
+                ) : (
+                  liniaWybrana.zaciski_dozwolone.map((z) => (
+                    <label key={z} className="mvd-koordynacja-nastawy-zacisk-opcja">
+                      <input
+                        type="radio"
+                        name="mvd-nastawy-zacisk"
+                        value={z}
+                        checked={zaciskWskazany === z}
+                        onChange={() => {
+                          setZaciskWskazany(z);
+                          setSzyna('');
+                          setFazaWyniku('idle');
+                          setOdpowiedz(null);
+                        }}
+                        data-testid={`mvd-koordynacja-nastawy-zacisk-${z}`}
+                      />
+                      {liniaWybrana.zaciski[z].etykieta_pl}
+                    </label>
+                  ))
+                )}
+              </fieldset>
+            ) : null}
+
+            {linia && zacisk ? (
               szynyKandydujace.length === 0 ? (
                 <p data-testid="mvd-koordynacja-nastawy-brak-szyn" data-tone="idle">
                   {T.nastawyBrakSzynKandydujacych}
@@ -363,7 +428,7 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
             ) : null}
           </div>
 
-          {linia && szyna ? (
+          {linia ? (
             <div className="mvd-koordynacja-nastawy-parametry" data-testid="mvd-koordynacja-nastawy-parametry">
               <h4>{T.nastawyParametryTytul}</h4>
               <label>
@@ -410,10 +475,16 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
                 type="button"
                 className="mvd-koordynacja-akcja"
                 data-testid="mvd-koordynacja-nastawy-policz"
+                disabled={powodBlokadyLiczenia !== null}
                 onClick={() => void policzNastawy()}
               >
                 {T.nastawyLiczSzynaPrzycisk}
               </button>
+              {powodBlokadyLiczenia !== null ? (
+                <p data-testid="mvd-koordynacja-nastawy-policz-powod" data-tone="idle">
+                  {powodBlokadyLiczenia}
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -431,6 +502,17 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
                 data-tone={odpowiedz.wynik.overall_valid ? 'ok' : 'warn'}
               >
                 {odpowiedz.wynik.overall_valid ? T.nastawyWynikKompletny : T.nastawyWynikNiepelny}
+              </p>
+
+              <p data-testid="mvd-koordynacja-nastawy-wynik-zacisk">
+                {T.nastawyZaciskWyniku}:{' '}
+                {liniaWybrana?.zaciski[odpowiedz.wejscie.zacisk_zabezpieczenia].etykieta_pl
+                  ?? odpowiedz.wejscie.zacisk_zabezpieczenia}{' '}
+                (
+                {odpowiedz.wejscie.zrodlo_zacisku === 'model'
+                  ? T.nastawyZrodloZaciskuModel
+                  : T.nastawyZrodloZaciskuWskazanie}
+                )
               </p>
 
               <h4>{T.nastawySekcjaZwloczna}</h4>
@@ -528,7 +610,13 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
 
               {odpowiedz.dostepnosc_pakietu ? (
                 <a
-                  href={adresPakietuDowodowego(runId ?? '', linia, szyna, parametry)}
+                  href={adresPakietuDowodowego(
+                    runId ?? '',
+                    linia,
+                    szyna,
+                    wskazanieDoZapytania,
+                    parametry,
+                  )}
                   className="mvd-koordynacja-akcja"
                   data-testid="mvd-koordynacja-nastawy-pobierz-zip"
                 >

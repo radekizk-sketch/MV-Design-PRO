@@ -408,7 +408,7 @@ REJESTR: tuple[WpisRejestru, ...] = (
         klasa_przypadku="bieg czasowy RMS (DAE): maszyna synchroniczna + przekształtnik GFL",
         cel=(
             "ścieżka użytkownika biegu czasowego: migawka -> rozpływ (punkt pracy) -> "
-            "bieg `dynamika_rms` -> kontrakt `resultset_dynamic_v1`"
+            "bieg `dynamika_rms` -> kontrakt `resultset_dynamic_v2`"
         ),
         topologia=(
             "GPZ 110/15 kV (TR Dyn11 z zaczepem) -> dwie sekcje SN ze sprzęgłem -> kabel -> "
@@ -440,8 +440,9 @@ REJESTR: tuple[WpisRejestru, ...] = (
         klasa_przypadku="scenariusz odniesienia SO-1A: instalacja PV 2,75 MW + magazyn energii",
         cel=(
             "wykonanie zamrożonego scenariusza odniesienia SO-1A: migawka -> rozpływ "
-            "(punkt pracy) -> zdarzenia (zwarcie 3F, zdjęcie, otwarcie i ponowne "
-            "załączenie wyłącznika) -> bieg RMS 10 s -> obserwable inżynierskie"
+            "(punkt pracy) -> zdarzenia (zwarcie 3F, otwarcie obu stron pola, usunięcie "
+            "zwarcia przez izolację, ponowne załączenie) -> bieg RMS 10 s -> obserwable "
+            "inżynierskie"
         ),
         topologia=(
             "GPZ 110/15 kV (TR Dyn11 z zaczepem) -> szyna SN; magistrala SN w pierścieniu "
@@ -452,14 +453,22 @@ REJESTR: tuple[WpisRejestru, ...] = (
         poziomy_napiec="110/15 kV",
         uziemienie="wg buildera (punkt neutralny nie wchodzi do składowej zgodnej)",
         scenariusz=(
-            "zwarcie 3F na szynie SN stacji magistralnej w t = 1,000 s; zdjęcie zwarcia i "
-            "otwarcie wyłącznika w t = 1,180 s; ponowne załączenie w t = 2,180 s; horyzont 10 s"
+            "zwarcie 3F (R_f = 0,5 Ω) na szynie pola magistralnego w t = 1,000 s; w "
+            "t = 1,180 s otwarcie wyłącznika pola i kabla magistrali (odcięcie obu stron "
+            "pierścienia) oraz usunięcie zwarcia rodzaju `izolacja` (szyna pola w obszarze "
+            "beznapięciowym); ponowne załączenie obu w t = 2,180 s (SPZ); horyzont 10 s "
+            "(karta AB-1b.1 §0 pkt 4 — dawne zdjęcie zwarcia na szynie zasilanej przez "
+            "pierścień było zniknięciem łuku pod napięciem)"
         ),
         analizy=("LF", "DYNAMIKA_RMS"),
         inwarianty=(
             "każde zdarzenie wykonane w chwili zaplanowanej, ze zerową zmianą stanów różniczkowych",
             "otwarta gałąź niesie dokładnie zero we wszystkich sześciu kanałach zacisków",
-            "dwa biegi tej samej piątki odcisków dają identyczny wynik (501 próbek x 79 kanałów)",
+            "szyna pola między otwartymi aparatami: napięcie i prąd zwarcia DOKŁADNIE zero",
+            "usunięcie `izolacja` na szynie nadal zasilanej przez pierścień jest odmową "
+            "`dynamika.zwarcie_nieodizolowane`",
+            "dwa biegi tej samej piątki odcisków dają identyczny wynik (504 próbki = 501 chwil "
+            "siatki + 3 pary L/P, x 102 kanały — pomiar sondy 2 karty AB-1b.1a)",
             "podział mocy węzła: każda instalacja startuje ze SWOJEJ mocy z modelu",
         ),
         wyrocznie=(),

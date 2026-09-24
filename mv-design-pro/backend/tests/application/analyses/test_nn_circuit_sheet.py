@@ -516,3 +516,96 @@ class TestDeterminizm:
             fault_duration_s=0.2,
         )
         assert a == b
+
+
+class TestIbZaciskOdStronyRozdzielnicy:
+    """Decyzja O-51 (klasa P9, miejsce 11): Ib = prąd ZACISKU gałęzi od strony
+    rozdzielnicy — orientacja z trasy od szyny rozdzielnicy, nie z konwencji `from`.
+
+    Iloczyn cech: {odcinek zamodelowany zgodnie z trasą, odcinek zamodelowany „pod prąd"
+    (from/to odwrócone)} × {korzeń odpływu = aparat bez impedancji (Ib z pierwszego kabla
+    trasy), korzeń = kabel wprost z rozdzielnicy}. Kable niosą celowo DUŻĄ susceptancję
+    (0,5 S/km), żeby prądy obu zacisków wyraźnie się różniły: kabel bez odbioru na końcu
+    ma na zacisku dalszym prąd ≈ 0 (węzeł bez innych przyłączeń), a na bliższym —
+    prąd ładowania. Stara reguła (`i_a` = zacisk `from`) dla kabla odwróconego brała
+    zacisk dalszy.
+    """
+
+    @staticmethod
+    def _siec(odwrocone: bool) -> EnergyNetworkModel:
+        enm = _siec_referencyjna()
+        for kabel in enm.branches:
+            if kabel.ref_id in ("c_mcb", "c_bez_aparatu"):
+                kabel.b_siemens_per_km = 0.5
+                if odwrocone:
+                    kabel.from_bus_ref, kabel.to_bus_ref = (
+                        kabel.to_bus_ref,
+                        kabel.from_bus_ref,
+                    )
+        return enm
+
+    @staticmethod
+    def _wiersz_tabeli(run, ref: str) -> dict:
+        from enm.canonical_analysis import build_branch_results
+
+        return next(w for w in build_branch_results(run)["rows"] if w["element_id"] == ref)
+
+    @pytest.mark.parametrize("odwrocone", [False, True])
+    @pytest.mark.parametrize(
+        ("korzen", "kabel"), [("ap_mcb", "c_mcb"), ("c_bez_aparatu", "c_bez_aparatu")]
+    )
+    def test_iloczyn_orientacja_odcinka_x_rodzaj_korzenia(
+        self, odwrocone: bool, korzen: str, kabel: str
+    ) -> None:
+        enm = self._siec(odwrocone)
+        _wgraj_siec(enm)
+        run = execute_run(create_run(case_id=CASE_ID, klucz_twin=CASE_ID, analysis_type="PF").id)
+        assert run.status == "FINISHED", run.error_message
+
+        wiersz = next(
+            w
+            for w in build_nn_circuit_sheet(enm=enm, station_ref="stn", load_flow_run=run)[
+                "wiersze"
+            ]
+            if w["feeder_root_branch_ref"] == korzen
+        )
+        tabela = self._wiersz_tabeli(run, kabel)
+        zacisk_blizszy = "do" if odwrocone else "od"
+        zacisk_dalszy = "od" if odwrocone else "do"
+        klucz = {"od": "i_a", "do": "i_do_a"}
+        assert wiersz["zrodlo_ib"] == "rozpływ"
+        assert (wiersz["galaz_ib_ref"], wiersz["zacisk_ib"]) == (kabel, zacisk_blizszy)
+        assert wiersz["ib"]["wartosc"] == tabela[klucz[zacisk_blizszy]]
+        assert f"zacisku {zacisk_blizszy}" in wiersz["ib"]["zrodlo_pl"]
+        # Zaciski wyraźnie różne (zmierzone: kabel MCB 8,69 A wobec 9,15 A, kabel bez
+        # odbioru — prąd ładowania wobec ≈ 0) — test rozróżnia regułę trasy od `from`.
+        blizszy, dalszy = tabela[klucz[zacisk_blizszy]], tabela[klucz[zacisk_dalszy]]
+        assert abs(blizszy - dalszy) > 0.03 * max(blizszy, dalszy)
+
+    def test_galaz_poza_trasa_od_rozdzielnicy_to_odmowa_bez_ib(self) -> None:
+        from application.analyses.nn_circuit_sheet import (
+            build_nn_circuit_sheet_row_for_breaker,
+        )
+
+        enm = _siec_referencyjna()
+        _wgraj_siec(enm)
+        run = execute_run(create_run(case_id=CASE_ID, klucz_twin=CASE_ID, analysis_type="PF").id)
+        # Aparat odpływu gG nie leży na trasie do punktu odpływu MCB.
+        wiersz = build_nn_circuit_sheet_row_for_breaker(
+            enm=enm,
+            station_ref="stn",
+            bus_ref="b_mcb_end",
+            breaker_ref="ap_gg",
+            load_flow_run=run,
+        )
+        assert wiersz["ib"]["status"] == "nierozstrzygalne"
+        assert "nie leży na trasie" in wiersz["ib"]["reason_pl"]
+        assert wiersz["zrodlo_ib"] == "brak"
+        assert wiersz["galaz_ib_ref"] is None and wiersz["zacisk_ib"] is None
+        assert wiersz["zapas_zabezpieczenia_procent"]["status"] == "nierozstrzygalne"
+        assert wiersz["status_doboru"]["status"] == "brak danych"
+        # Bez biegu rozpływu orientacja nie jest potrzebna — Ib z tabliczki (źródło nazwane).
+        bez_biegu = build_nn_circuit_sheet_row_for_breaker(
+            enm=enm, station_ref="stn", bus_ref="b_mcb_end", breaker_ref="ap_gg"
+        )
+        assert bez_biegu["zrodlo_ib"] == "tabliczka" and bez_biegu["ib"]["status"] == "OK"

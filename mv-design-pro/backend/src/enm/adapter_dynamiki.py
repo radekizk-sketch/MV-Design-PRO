@@ -5,7 +5,7 @@ biblioteka urządzeń (karta W6-3A) istniały, a jedyny punkt wejścia biegu
 (`enm/canonical_analysis.py::_execute_dynamika_rms`) odmawiał ZAWSZE — cała
 warstwa czasowa była „zdolnością bez toku pracy". Ten moduł jest brakującym
 ogniwem: składa `WejscieDynamiki` z migawki efektywnej i punktu pracy z rozpływu,
-a wynik oddaje warstwie aplikacyjnej jako ładunek `resultset_dynamic_v1`.
+a wynik oddaje warstwie aplikacyjnej jako ładunek `resultset_dynamic_v2`.
 
 ZERO FIZYKI (CLAUDE.md, reguła NOT-A-SOLVER). Ten moduł SKŁADA i MAPUJE: czyta
 admitancje gałęzi z modelu domenowego (`network_model/core/branch.py` — te same
@@ -84,10 +84,12 @@ from enm.models import (
 # niesie jego kontrakt.
 from enm.scenariusze import (
     KomendaRegulacji,
+    OdlaczenieOdbioru,
     ScenariuszDynamiczny,
     Synchronizacja,
     WylaczenieGalezi,
     ZalaczenieGalezi,
+    ZalaczenieOdbioru,
     Zwarcie,
 )
 from enm.scenariusze import OdlaczenieZrodla as OdlaczenieZrodlaScenariusza
@@ -109,6 +111,9 @@ from network_model.solvers.dynamika import (
     WejscieDynamiki,
     WezelDynamiki,
     ZmianaGalezi,
+    ZmianaOdbioru,
+    ZmianaOdsprzegu,
+    ZwarcieGalezi,
     ZwarcieWezla,
 )
 from network_model.solvers.dynamika.kontrakty import ZdarzenieDynamiki
@@ -245,10 +250,15 @@ def braki_modelu_dynamiki(enm: EnergyNetworkModel) -> tuple[BrakDynamiki, ...]:
     # rozpływ liczy się bez nich — dla biegu czasowego byłoby to liczenie innej
     # sieci niż zapisana.
     szyny = {bus.ref_id for bus in enm.buses}
-    powiazania: list[tuple[str, str]] = [
-        (element.ref_id, element.bus_ref)
-        for element in (*enm.generators, *enm.sources, *enm.loads, *enm.shunt_capacitors)
-    ]
+    # Kolekcje rozpisane osobno: rozpakowanie `(*generators, *sources, ...)` gubilo typ
+    # elementu (mypy widzial wspolna baze `ENMElement` bez `bus_ref` — blad typow sprzed
+    # karty AB-1b.1, naprawiony przy okazji, bo lezal w pliku tej karty).
+    powiazania: list[tuple[str, str]] = (
+        [(gen.ref_id, gen.bus_ref) for gen in enm.generators]
+        + [(zrodlo.ref_id, zrodlo.bus_ref) for zrodlo in enm.sources]
+        + [(odbior.ref_id, odbior.bus_ref) for odbior in enm.loads]
+        + [(bateria.ref_id, bateria.bus_ref) for bateria in enm.shunt_capacitors]
+    )
     for galaz in enm.branches:
         powiazania.append((galaz.ref_id, galaz.from_bus_ref))
         powiazania.append((galaz.ref_id, galaz.to_bus_ref))
@@ -422,9 +432,18 @@ def punkt_pracy_z_biegu_rozplywu(
     dane), a magazyn biegów otwiera wołający.
 
     Każdy brak kończy się NAZWANĄ odmową: inny rodzaj biegu, bieg niezakończony,
-    inna migawka, brak zbieżności, węzły nierozwiązane. Punkt pracy „prawie
-    dobry" nie istnieje — bieg dynamiki startowałby wtedy skokiem, a pierwsza
-    sekunda przebiegu byłaby artefaktem rozruchu.
+    inna migawka, brak zbieżności, niekompletne wielkości szyny rozwiązanej. Punkt
+    pracy „prawie dobry" nie istnieje — bieg dynamiki startowałby wtedy skokiem, a
+    pierwsza sekunda przebiegu byłaby artefaktem rozruchu.
+
+    WĘZŁY NIEROZWIĄZANE (`unsolved_node_ids` — spoza wyspy bilansującej) NIE są
+    odmową adaptera (karta AB-1b.1 §0 pkt 2): punkt pracy ich po prostu nie niesie,
+    a rozstrzyga RDZEŃ jednym predykatem wysp — węzeł wyspy bez urządzenia
+    wnoszącego do algebry jest obszarem beznapięciowym od t = 0 (np. odcinek
+    zasilany dopiero zamknięciem łącznika), każdy inny brak napięcia to odmowa
+    `dynamika.punkt_pracy_napiecie_missing`. Urządzenie przyłączone do węzła
+    nierozwiązanego jest odmową adaptera już przy składaniu urządzeń
+    (`zloz_urzadzenia`), bo bez napięcia i mocy węzła nie ma stanu początkowego.
     """
     if analysis_type != "PF":
         raise OdmowaWejsciaDynamiki(
@@ -460,14 +479,7 @@ def punkt_pracy_z_biegu_rozplywu(
             f"Bieg rozpływu {run_id!r} nie zbiegł — nie ma punktu pracy do startu",
             elementy=(run_id,),
         )
-    nierozwiazane = tuple(sorted(str(pozycja) for pozycja in wynik.get("unsolved_node_ids") or ()))
-    if nierozwiazane:
-        raise OdmowaWejsciaDynamiki(
-            KOD_PUNKT_PRACY_NIEPELNY,
-            f"Bieg rozpływu {run_id!r} zostawił węzły bez rozwiązania "
-            f"({len(nierozwiazane)}) — punkt pracy nie obejmuje całej sieci",
-            elementy=nierozwiazane,
-        )
+    nierozwiazane = frozenset(str(pozycja) for pozycja in wynik.get("unsolved_node_ids") or ())
 
     ref_wezla = {ref_to_graph_id(bus["ref_id"]): str(bus["ref_id"]) for bus in snapshot["buses"]}
     base_mva = float(wynik["base_mva"])
@@ -475,7 +487,7 @@ def punkt_pracy_z_biegu_rozplywu(
     wstrzyki: dict[str, complex] = {}
     for szyna in wynik.get("bus_results") or []:
         ref_id = ref_wezla.get(str(szyna["bus_id"]))
-        if ref_id is None:
+        if ref_id is None or str(szyna["bus_id"]) in nierozwiazane:
             continue
         modul = szyna["v_pu"]
         kat_deg = szyna["angle_deg"]
@@ -490,7 +502,13 @@ def punkt_pracy_z_biegu_rozplywu(
             )
         napiecia[ref_id] = cmath.rect(float(modul), math.radians(float(kat_deg)))
         wstrzyki[ref_id] = complex(moc_pu(float(moc_p), base_mva), moc_pu(float(moc_q), base_mva))
-    brakujace = tuple(sorted(set(ref_wezla.values()) - set(napiecia)))
+    brakujace = tuple(
+        sorted(
+            ref_id
+            for graph_id, ref_id in ref_wezla.items()
+            if ref_id not in napiecia and graph_id not in nierozwiazane
+        )
+    )
     if brakujace:
         raise OdmowaWejsciaDynamiki(
             KOD_PUNKT_PRACY_NIEPELNY,
@@ -599,12 +617,17 @@ def harmonogram_z_scenariusza(
     scenariusz: ScenariuszDynamiczny,
     *,
     identy_odbiorow: frozenset[str],
+    identy_odsprzegow: frozenset[str],
     base_mva: float,
 ) -> HarmonogramDynamiki:
     """`HarmonogramDynamiki` z harmonogramu scenariusza — rodzaj spoza zbioru = odmowa.
 
-    Rdzeń wykonuje pięć rodzajów zdarzeń: założenie zwarcia, zdjęcie zwarcia (wpis
-    rozwijany z `t_usuniecia_s`), otwarcie gałęzi, zamknięcie gałęzi, odłączenie
+    Rdzeń wykonuje: założenie zwarcia w węźle albo w linii/kablu w miejscu `x*L`
+    (`element_ref` + `polozenie_wzgledne` → `ZwarcieGalezi`), zdjęcie zwarcia (wpis
+    rozwijany z `t_usuniecia_s` i jawnego `sposob_usuniecia`), otwarcie i zamknięcie gałęzi,
+    wyłączenie i załączenie odsprzęgu (bateria wskazana przez `wylaczenie_galezi` /
+    `zalaczenie_galezi` — adapter rozpoznaje kolekcję, ta sama klasyfikacja co
+    `enm.scenariusze._refy_zdarzenia`), odłączenie i załączenie odbioru, odłączenie
     źródła i skok obciążenia. Komenda regulacji i synchronizacja źródła są w
     kontrakcie danych (W6-1), ale rdzeń ich nie wykonuje — kończą się NAZWANĄ
     odmową, nigdy cichym pominięciem (pominięte zdarzenie zamieniłoby scenariusz
@@ -616,7 +639,7 @@ def harmonogram_z_scenariusza(
     """
     zdarzenia: list[ZdarzenieDynamiki] = []
     for zdarzenie in scenariusz.zdarzenia:
-        if isinstance(zdarzenie, Zwarcie):
+        if isinstance(zdarzenie, Zwarcie) and zdarzenie.bus_ref is not None:
             zdarzenia.append(
                 ZwarcieWezla(
                     t_s=zdarzenie.t_s,
@@ -625,14 +648,46 @@ def harmonogram_z_scenariusza(
                     r_f_ohm=zdarzenie.r_f_ohm,
                     x_f_ohm=zdarzenie.x_f_ohm,
                     t_usuniecia_s=zdarzenie.t_usuniecia_s,
+                    sposob_usuniecia=zdarzenie.sposob_usuniecia,
+                )
+            )
+        elif isinstance(zdarzenie, Zwarcie):
+            # Walidator kontraktu danych gwarantuje pare (element_ref, polozenie_wzgledne),
+            # gdy nie ma `bus_ref` — adapter nie ma tu czego rozstrzygac.
+            assert zdarzenie.element_ref is not None
+            assert zdarzenie.polozenie_wzgledne is not None
+            zdarzenia.append(
+                ZwarcieGalezi(
+                    t_s=zdarzenie.t_s,
+                    galaz=zdarzenie.element_ref,
+                    polozenie_wzgledne=zdarzenie.polozenie_wzgledne,
+                    typ=zdarzenie.typ,
+                    r_f_ohm=zdarzenie.r_f_ohm,
+                    x_f_ohm=zdarzenie.x_f_ohm,
+                    t_usuniecia_s=zdarzenie.t_usuniecia_s,
+                    sposob_usuniecia=zdarzenie.sposob_usuniecia,
                 )
             )
         elif isinstance(zdarzenie, WylaczenieGalezi | ZalaczenieGalezi):
+            zalaczenie = isinstance(zdarzenie, ZalaczenieGalezi)
+            if zdarzenie.element_ref in identy_odsprzegow:
+                zdarzenia.append(
+                    ZmianaOdsprzegu(
+                        t_s=zdarzenie.t_s, odsprzeg=zdarzenie.element_ref, zalaczony=zalaczenie
+                    )
+                )
+            else:
+                zdarzenia.append(
+                    ZmianaGalezi(
+                        t_s=zdarzenie.t_s, galaz=zdarzenie.element_ref, zalaczona=zalaczenie
+                    )
+                )
+        elif isinstance(zdarzenie, OdlaczenieOdbioru | ZalaczenieOdbioru):
             zdarzenia.append(
-                ZmianaGalezi(
+                ZmianaOdbioru(
                     t_s=zdarzenie.t_s,
-                    galaz=zdarzenie.element_ref,
-                    zalaczona=isinstance(zdarzenie, ZalaczenieGalezi),
+                    odbior=zdarzenie.ref_id,
+                    zalaczony=isinstance(zdarzenie, ZalaczenieOdbioru),
                 )
             )
         elif isinstance(zdarzenie, OdlaczenieZrodlaScenariusza):
@@ -756,8 +811,11 @@ def zloz_widok_sieci(
                     f"Gałąź {branch.ref_id!r} nie ma odwzorowania w modelu obliczeniowym",
                     elementy=(branch.ref_id,),
                 )
-            if not linia.in_service:
-                continue
+            # Linia/kabel POZA RUCHEM (`status: open`) wchodzi do rdzenia jako galaz
+            # NIEAKTYWNA (karta AB-1b.1 par. 0 pkt 1) — nie jest porzucana. Porzucenie
+            # czynilo kabel rezerwowy NIEOSIAGALNYM dla zdarzenia zalaczenia
+            # (`dynamika.zdarzenie_bez_elementu`, W6-A Z-03). Galaz nieaktywna nie jest
+            # stemplowana, wiec macierz t = 0 jest bitowo ta sama, co rozplywu.
             z_bazowa = impedancja_z_napiecia_i_mocy_ohm(
                 _napiecie_wezla_kv(graph, linia.to_node_id), base_mva
             )
@@ -769,6 +827,8 @@ def zloz_widok_sieci(
                     y_szeregowa_pu=linia.get_series_admittance() * z_bazowa,
                     b_poprzeczna_pu=(linia.get_shunt_admittance() * z_bazowa).imag,
                     przekladnia=complex(1.0, 0.0),
+                    aktywna_na_starcie=linia.in_service,
+                    rodzaj="kabel" if isinstance(branch, Cable) else "linia",
                 )
             )
         elif isinstance(branch, SwitchBranch | FuseBranch):
@@ -782,8 +842,11 @@ def zloz_widok_sieci(
                     f"Łącznik {branch.ref_id!r} nie ma odwzorowania w modelu obliczeniowym",
                     elementy=(branch.ref_id,),
                 )
-            if not lacznik.in_service or lacznik.state != SwitchState.CLOSED:
-                continue
+            # Lacznik OTWARTY (albo poza ruchem) jest galezia NIEAKTYWNA o impedancji
+            # zastepczej lacznika zamknietego — ta sama liczba, ktora stempluje rozplyw
+            # dla stanu zamknietego, wiec zamkniecie zdarzeniem daje macierz rozplywu
+            # migawki z lacznikiem zamknietym (twierdzenie D-19).
+            aktywny = lacznik.in_service and lacznik.state == SwitchState.CLOSED
             z_bazowa = impedancja_z_napiecia_i_mocy_ohm(
                 _napiecie_wezla_kv(graph, lacznik.to_node_id), base_mva
             )
@@ -795,6 +858,8 @@ def zloz_widok_sieci(
                     y_szeregowa_pu=z_bazowa / IMPEDANCJA_LACZNIKA_ZAMKNIETEGO_OHM,
                     b_poprzeczna_pu=0.0,
                     przekladnia=complex(1.0, 0.0),
+                    aktywna_na_starcie=aktywny,
+                    rodzaj="lacznik",
                 )
             )
         else:
@@ -814,8 +879,6 @@ def zloz_widok_sieci(
                 f"Transformator {trafo.ref_id!r} nie ma odwzorowania w modelu obliczeniowym",
                 elementy=(trafo.ref_id,),
             )
-        if not element.in_service:
-            continue
         z_bazowa = impedancja_z_napiecia_i_mocy_ohm(
             _napiecie_wezla_kv(graph, element.to_node_id), base_mva
         )
@@ -835,18 +898,23 @@ def zloz_widok_sieci(
                 y_szeregowa_pu=z_bazowa / impedancja_ohm,
                 b_poprzeczna_pu=0.0,
                 przekladnia=_przekladnia_zespolona(graph, element),
+                aktywna_na_starcie=element.in_service,
+                rodzaj="transformator",
             )
         )
 
+    # Bateria WYLACZONA (`status: open`) jest odsprzegiem NIEAKTYWNYM — zdarzenie
+    # `zalaczenie_galezi` wskazujace baterie ma ja co zalaczyc (ta sama klasa
+    # mechanizmu, co laczenie galezi; karta AB-1b.1 par. 0 pkt 1).
     odsprzegi = tuple(
         OdsprzegDynamiki(
             ident=bateria.ref_id,
             wezel=bateria.bus_ref,
             g_pu=0.0,
             b_pu=moc_pu(_moc_baterii_mvar(bateria), base_mva),
+            aktywna_na_starcie=bateria.status == "closed",
         )
         for bateria in sorted(enm.shunt_capacitors, key=lambda s: s.ref_id)
-        if bateria.status == "closed"
     )
 
     odbiory = tuple(
@@ -1006,6 +1074,22 @@ def zloz_urzadzenia(
     enm = EnergyNetworkModel.model_validate(snapshot)
     urzadzenia: list[Urzadzenie] = []
 
+    przylaczenia_zrodel = [(zrodlo.bus_ref, zrodlo.ref_id) for zrodlo in enm.sources] + [
+        (gen.bus_ref, gen.ref_id) for gen in enm.generators
+    ]
+    poza_punktem_pracy = tuple(
+        sorted((szyna, ref) for szyna, ref in przylaczenia_zrodel if szyna not in punkt.napiecia_pu)
+    )
+    if poza_punktem_pracy:
+        raise OdmowaWejsciaDynamiki(
+            KOD_PUNKT_PRACY_NIEPELNY,
+            f"Bieg rozpływu {punkt.run_id!r} nie rozwiązał szyn, do których są "
+            "przyłączone źródła ("
+            + ", ".join(f"{ref} na {szyna}" for szyna, ref in poza_punktem_pracy)
+            + ") — bez napięcia i mocy szyny urządzenie nie ma stanu początkowego",
+            elementy=tuple(ref for _, ref in poza_punktem_pracy),
+        )
+
     moce: dict[str, complex] = {}
 
     impedancje_zrodel = {zrodlo.name: zrodlo.z_ohm for zrodlo in graph.get_grid_sc_sources()}
@@ -1134,6 +1218,7 @@ def zloz_wejscie_dynamiki(
     harmonogram = harmonogram_z_scenariusza(
         scenariusz,
         identy_odbiorow=frozenset(odbior.ident for odbior in widok.odbiory),
+        identy_odsprzegow=frozenset(odsprzeg.ident for odsprzeg in widok.odsprzegi),
         base_mva=base_mva,
     )
     # Moc punktu pracy KAŻDEGO urządzenia pochodzi z tego samego podziału, z którego

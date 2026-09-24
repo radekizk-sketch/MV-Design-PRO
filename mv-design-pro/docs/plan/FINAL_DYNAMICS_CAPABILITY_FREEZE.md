@@ -174,7 +174,24 @@ Klucz łączący z tablicą B: kolumna **ZDOLNOŚĆ**.
 | **I1** Przestrzeń robocza dynamiki | jedno miejsce całego badania | GAP | CURRENT | — | cała powierzchnia | **W6-I** |
 | **I2** Przeglądarka przebiegów klasy inżynierskiej | odczyt wyniku bez eksportu do arkusza | GAP | CURRENT | — | wspólna oś, kursor, znaczniki zdarzeń, hierarchia wyboru | **W6-I** |
 | **I3** Powiązanie przebiegów ze schematem | orientacja w sieci, nie w liście identyfikatorów | GAP | CURRENT | mechanizm zaznaczenia i nakładki istnieje | wpięcie przebiegów | **W6-I** |
-| **I4** Oś czasu zdarzeń wykonanych | „co i kiedy faktycznie zaszło" | GAP | CURRENT | `ZdarzenieWykonaneV1` w kontrakcie | prezentacja | **W6-I** |
+| **I4** Oś czasu zdarzeń wykonanych | „co i kiedy faktycznie zaszło" | GAP | CURRENT | `ZdarzenieWykonaneV2` w kontrakcie (od AB-1b.1: ze skutkami topologicznymi chwili) | prezentacja | **W6-I** |
+
+> **STAN PO KARCIE AB-1b.1, pakiety P0–P5 i P9 (2026-09-23).** Wiersze macierzy zostają jako
+> zapis rozpoznania; stan rdzenia po karcie:
+> **A3** — PARTIAL (bez zmiany klasy): dochodzą zdarzenia zwarcia w linii w miejscu `x·L`,
+> załączenia/wyłączenia odsprzęgu, odłączenia/załączenia odbioru i jawny `sposob_usuniecia`
+> zwarcia (`izolacja` z predykatem izolacji w stanie t⁺ / `samoczynne`); zdarzenia warunkowe i
+> przypisania stanu (P6–P8) nadal brak. **B4** — EXECUTABLE L5: `P/Q/I` obu zacisków każdej
+> gałęzi z kątem fazora prądu i kanałem stanu gałęzi (D-15, wyrocznia Thevenina i parytet z FROZEN
+> IEC 60909); gałęzie otwarte istnieją w rdzeniu od `t = 0` jako nieaktywne. **D7** — odłączenie
+> odbioru jako NAZWANE zdarzenie (`OdlaczenieOdbioru`/`ZalaczenieOdbioru` → `ZmianaOdbioru`);
+> automatyka zrzutu nadal AB-5. **D11 (część)** — obszar beznapięciowy: wyspa bez urządzenia
+> wnoszącego do algebry ma `V = 0` DOKŁADNIE, odbiory odcięte z mocą sprzed odcięcia w
+> `zdarzenia_wykonane`, ponowne zasilenie w pierwiastku fizycznym (D-16); klasyfikacja wysp
+> tworzące/nadążne i praca wyspowa GFM — AB-5. **D13** — GAP (pakiet P6 karty, niewykonany w tym
+> przebiegu). **D14 (prymityw zdarzeń warunkowych)** — GAP (pakiet P8, niewykonany w tym
+> przebiegu). Kontrakt wyniku: `resultset_dynamic_v2` (próbki obustronne `L`/`P`, `None` dla
+> wartości niedostępnej, dziedzina fizyki z mapy produktu).
 
 ---
 
@@ -333,7 +350,7 @@ Dochodzą dwie nowe:
 
 | Id | Sprawa | Rekomendacja |
 |----|--------|--------------|
-| **OD-35** | Tor statyczny rozpływu wystawia prąd JEDNEJ strony gałęzi pod nazwą sugerującą wielkość gałęzi; kontrakt dynamiczny tego nie powtarza — powstają dwa znaczenia tej samej nazwy | wystawić drugą stronę w warstwie odczytu, bez ruszania zamrożonego rdzenia (`W6_A_KONTRAKT_OBSERWABLI.md` §10) |
+| **OD-35** | Tor statyczny rozpływu wystawia prąd JEDNEJ strony gałęzi pod nazwą sugerującą wielkość gałęzi; kontrakt dynamiczny tego nie powtarza — powstają dwa znaczenia tej samej nazwy | wystawić drugą stronę w warstwie odczytu, bez ruszania zamrożonego rdzenia (`W6_A_KONTRAKT_OBSERWABLI.md` §10). **ROZSTRZYGNIĘTE 2026-09-23 — wariant (c), decyzja O-46; wykonane w karcie AB-1b.1 P9:** `build_branch_results` niesie `i_do_a`, etykietę strony `i_a` i obciążenie z większego zacisku (test `tests/enm/test_prad_obu_zaciskow_galezi.py`); zmiana nazwy `i_a` → `i_od_a` — fala WW-1 |
 | **OD-36** | Żądana dokładność kąta, z której wynika granica domeny ważności częstotliwości | jawne pole nastaw biegu z wartością wymaganą, nie domyślną |
 | **OD-37** | **Silnik indukcyjny jako rodzina dynamiczna** (wiersz C6) — duże napędy SN decydują o zachowaniu napięciowym po zwarciu; rodzina występuje w martwym module, nie ma jej w bibliotece ani w macierzy | przyjąć do celu (rozszerzenie, nie redukcja); fala do ustalenia po W6-A |
 

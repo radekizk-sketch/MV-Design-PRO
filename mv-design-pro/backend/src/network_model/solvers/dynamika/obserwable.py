@@ -114,7 +114,14 @@ from .kontrakty import (
     OdmowaDynamiki,
     Urzadzenie,
 )
-from .siec import ModelSieci, jakobian_algebry, residuum_algebry
+from .siec import (
+    ModelSieci,
+    czwornik_galezi,
+    jakobian_algebry,
+    ograniczenia_napiecia,
+    residuum_algebry,
+    zwarcia_galezi_modelu,
+)
 
 #: Kody stanu jakosci obserwabli (szeregi wyniku sa float-only i bez NaN, wiec stan
 #: jakosci jest kodem liczbowym o ZAMKNIETYM zbiorze wartosci; mapowanie jest czescia
@@ -127,13 +134,26 @@ from .siec import ModelSieci, jakobian_algebry, residuum_algebry
 #: fazorowego, ale nie bedaca „czestotliwoscia szyny" w sensie inzynierskim.
 JAKOSC_ROZROZNIALNA = 0.0
 JAKOSC_NIEROZROZNIALNA = 1.0
+#: Niedostepna NUMERYCZNIE: fazor w kuli wlasnej niepewnosci (`|V| <= u_V`), osobliwy
+#: jakobian w punkcie probki albo w punkcie skorygowanym.
 JAKOSC_NIEDOSTEPNA = 2.0
+#: Niedostepna w CHWILI NIECIAGLOSCI zdarzenia (probki `L` i `P`, karta AB-1b.1 par. 0
+#: pkt 7): kat skacze, pochodna dwustronna nie istnieje, a jednostronne sa zdominowane
+#: podokresowym stanem przejsciowym, ktorego model RMS nie reprezentuje.
+JAKOSC_CHWILA_ZDARZENIA = 3.0
+#: Niedostepna w wezle BEZ NAPIECIA: obszar beznapieciowy albo napiecie narzucone zerem
+#: (zwarcie metaliczne) — fazor zerowy nie ma kata.
+JAKOSC_BEZ_NAPIECIA = 4.0
 
-#: Opisy stanow jakosci — jedno zrodlo prawdy dla wyniku i dla prezentacji.
+#: Opisy stanow jakosci — jedno zrodlo prawdy dla wyniku i dla prezentacji. Zbior kodow
+#: jest ZAMKNIETY (przypiety testem): wartosc niedostepna to `None` z jednym z kodow 2-4,
+#: nigdy liczba podstawiona (W6-A par. 4: zakaz zastepowania czestotliwoscia znamionowa).
 OPIS_JAKOSCI_PL: dict[float, str] = {
     JAKOSC_ROZROZNIALNA: "odchylka rozroznialna numerycznie",
     JAKOSC_NIEROZROZNIALNA: "odchylka nierozroznialna od bledu numerycznego",
-    JAKOSC_NIEDOSTEPNA: "niedostepna",
+    JAKOSC_NIEDOSTEPNA: "niedostepna — nieokreslona numerycznie",
+    JAKOSC_CHWILA_ZDARZENIA: "niedostepna — chwila nieciaglosci zdarzenia",
+    JAKOSC_BEZ_NAPIECIA: "niedostepna — wezel bez napiecia",
 }
 
 #: Propagacja skonczona NIE ma dobieranej stalej: wspolczynniki `1/(|V| - u_V)` oraz
@@ -144,10 +164,14 @@ OPIS_JAKOSCI_PL: dict[float, str] = {
 
 @dataclass(frozen=True)
 class CzestotliwoscWezla:
-    """Czestotliwosc elektryczna wezla: wartosc, niepewnosc i stan jakosci."""
+    """Czestotliwosc elektryczna wezla: wartosc, niepewnosc i stan jakosci.
 
-    f_hz: float
-    niepewnosc_hz: float
+    `f_hz` i `niepewnosc_hz` sa `None` WTEDY I TYLKO WTEDY, gdy `jakosc` jest jednym z
+    kodow niedostepnosci (2, 3, 4) — przypiete testem.
+    """
+
+    f_hz: float | None
+    niepewnosc_hz: float | None
     jakosc: float
 
 
@@ -186,13 +210,29 @@ def _prawa_strona_dae(
 
     Odbiory o stalej mocy nie maja stanow, wiec nie wnosza tu nic — wnosza wylacznie
     do jakobianu po lewej stronie.
+
+    Wiersz OGRANICZENIA `V_k - E_k(x) = 0` zrozniczkowany po czasie daje
+    `Vdot_k = (dE/dx) xdot` — prawa strona tego wiersza to wklad urzadzenia o
+    sprzezeniu napieciowym, a dla `E = 0` (obszar beznapieciowy, zwarcie metaliczne)
+    zero. Urzadzenie pradowe w wezle ograniczonym nie wnosi nic (jego wiersz KCL nie
+    istnieje).
     """
     liczba = model.liczba_wezlow
     prawa_strona = np.zeros(2 * liczba, dtype=float)
+    ograniczone = {pozycja for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)}
     for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
         pozycja = model.indeks_wezla[urzadzenie.wezel]
         napiecie = complex(napiecia[pozycja])
-        wklad = urzadzenie.jakobian_prad_stan(stan, napiecie) @ urzadzenie.pochodne(stan, napiecie)
+        if urzadzenie.sprzezenie == "napieciowe":
+            wklad = urzadzenie.jakobian_napiecia_bez_obciazenia(stan) @ urzadzenie.pochodne(
+                stan, napiecie
+            )
+        elif pozycja in ograniczone:
+            continue
+        else:
+            wklad = urzadzenie.jakobian_prad_stan(stan, napiecie) @ urzadzenie.pochodne(
+                stan, napiecie
+            )
         prawa_strona[pozycja] += float(wklad[0])
         prawa_strona[pozycja + liczba] += float(wklad[1])
     return prawa_strona
@@ -263,6 +303,13 @@ def pochodna_napiec_z_niepewnoscia(
     smieciem, ktory zanieczyscilby `u_Vdot` WSZYSTKICH wezlow (faktoryzacja jest wspolna).
     Wtedy niepewnosci pochodnej sa NIESKONCZONE, co przez nierownosc propagacji czyni kazdy
     wezel NIEDOSTEPNYM — bez zadnego progu i bez podstawionej liczby.
+
+    WEZEL O NAPIECIU NARZUCONYM ZEREM (obszar beznapieciowy, zwarcie metaliczne — karta
+    AB-1b.1 par. 0 pkt 2-3) jest z tego warunku WYLACZONY: jego napiecie jest zerem
+    DOKLADNYM z definicji wiersza ograniczenia, a nie wynikiem Newtona bliskim zera, wiec
+    jakobian w punkcie skorygowanym nie ma tam osobliwosci odbioru (odbiory takiego wezla
+    nie wchodza do rownan). Sam wezel dostaje czestotliwosc NIEDOSTEPNA z
+    `czestotliwosc_wezla` (`|V| = 0 <= u_V`), a wezly zywe nie sa zatruwane.
     """
     liczba = model.liczba_wezlow
     jakobian = jakobian_algebry(model, odbiory, urzadzenia, stany, napiecia)
@@ -276,12 +323,14 @@ def pochodna_napiec_z_niepewnoscia(
     niepewnosc_napiecia = np.abs(blad_napiecia)
     napiecia_skorygowane = napiecia - blad_napiecia
 
+    badane = np.ones(liczba, dtype=bool)
+    badane[list(model.pozycje_zerowe)] = False
     punkt_skorygowany_obliczalny = bool(
-        np.all(np.abs(napiecia) > niepewnosc_napiecia)
+        np.all(np.abs(napiecia[badane]) > niepewnosc_napiecia[badane])
         and np.all(np.isfinite(niepewnosc_napiecia))
         and np.all(np.isfinite(napiecia_skorygowane.real))
         and np.all(np.isfinite(napiecia_skorygowane.imag))
-        and np.all(np.abs(napiecia_skorygowane) > 0.0)
+        and np.all(np.abs(napiecia_skorygowane[badane]) > 0.0)
     )
     if not punkt_skorygowany_obliczalny:
         return PochodnaZNiepewnoscia(
@@ -311,16 +360,17 @@ def pochodna_napiec_z_niepewnoscia(
     )
 
 
-def czestotliwosc_niedostepna(f_bazowa_hz: float) -> CzestotliwoscWezla:
-    """Obserwabla, ktorej nie da sie wyznaczyc ani ograniczyc — jeden ksztalt na caly modul.
+def czestotliwosc_niedostepna(jakosc: float) -> CzestotliwoscWezla:
+    """Obserwabla, ktorej nie da sie wyznaczyc ani ograniczyc — `None` z kodem przyczyny.
 
-    Niepewnosc rowna CALEJ czestotliwosci znamionowej: nawet konsument ignorujacy kod
-    jakosci widzi wtedy, ze liczba nie niesie tresci. Zero byloby gorsze niz brak —
-    sugerowaloby pomiar dokladny.
+    KOREKTA (karta AB-1b.1 par. 0 pkt 7). Dawna wersja podstawiala czestotliwosc
+    ZNAMIONOWA jako wartosc i jako niepewnosc — konsument ignorujacy kod jakosci
+    dostawal dokladnie 50,0 Hz, czyli liczbe wygladajaca na pomiar. W6-A par. 4 zakazuje
+    tego wprost: wartosc niedostepna jest BRAKIEM (`None`), a przyczyne niesie kod.
     """
-    return CzestotliwoscWezla(
-        f_hz=f_bazowa_hz, niepewnosc_hz=f_bazowa_hz, jakosc=JAKOSC_NIEDOSTEPNA
-    )
+    if jakosc not in (JAKOSC_NIEDOSTEPNA, JAKOSC_CHWILA_ZDARZENIA, JAKOSC_BEZ_NAPIECIA):
+        raise AssertionError(f"Kod {jakosc!r} nie jest kodem niedostepnosci czestotliwosci")
+    return CzestotliwoscWezla(f_hz=None, niepewnosc_hz=None, jakosc=jakosc)
 
 
 def rozdzielczosc_porownania_hz(f_bazowa_hz: float, f_hz: float, niepewnosc_hz: float) -> float:
@@ -375,7 +425,13 @@ def czestotliwosc_wezla(
     if not math.isfinite(niepewnosc_napiecia_pu) or modul <= niepewnosc_napiecia_pu:
         # Fazor lezy WEWNATRZ wlasnej kuli niepewnosci — jego kat nie niesie informacji, a
         # mianownik nierownosci propagacji przestaje byc dodatni.
-        return czestotliwosc_niedostepna(f_bazowa_hz)
+        return czestotliwosc_niedostepna(JAKOSC_NIEDOSTEPNA)
+    if modul * modul == 0.0:
+        # |V|^2 nie jest reprezentowalny (|V| < ~1,5e-162 pu): mianownik tozsamosci
+        # znika w arytmetyce, a nie w fizyce. To nie jest prog, tylko granica
+        # reprezentacji — kat takiego fazora nie niesie informacji (pomiar: odcinek za
+        # zwarciem metalicznym w linii dawal |V| ~ 1e-170 i `ZeroDivisionError`).
+        return czestotliwosc_niedostepna(JAKOSC_NIEDOSTEPNA)
 
     pochodna_kata = (pochodna_napiecia_pu_s * napiecie_pu.conjugate()).imag / (modul * modul)
     f_hz = f_bazowa_hz + pochodna_kata / (2.0 * math.pi)
@@ -385,7 +441,7 @@ def czestotliwosc_wezla(
         + abs(pochodna_napiecia_pu_s) * niepewnosc_napiecia_pu / (modul * zapas_modulu)
     ) / (2.0 * math.pi)
     if not math.isfinite(niepewnosc_hz) or not math.isfinite(f_hz):
-        return czestotliwosc_niedostepna(f_bazowa_hz)
+        return czestotliwosc_niedostepna(JAKOSC_NIEDOSTEPNA)
     odchylka_hz = abs(f_hz - f_bazowa_hz)
     jakosc = (
         JAKOSC_ROZROZNIALNA
@@ -406,12 +462,29 @@ def wielkosci_galezi(
 
     GALAZ WYLACZONA nie przewodzi: oba prady i obie moce sa DOKLADNIE zerowe. To jest fakt
     fizyczny, nie ciche zero — kanal pozostaje obecny, a wartosc jest prawdziwa.
+
+    GALAZ ZE ZWARCIEM w miejscu x*L (karta AB-1b.1 par. 0 pkt 5): prady zaciskow z TEGO
+    SAMEGO stempla czwornika, ktorym galaz wchodzi do Ybus (`siec.czwornik_galezi`) —
+    wzor pi zdrowej galezi przestaje wtedy opisywac galaz.
     """
     if galaz.ident not in model.galezie_aktywne:
         return WielkosciGalezi(i_od_pu=0j, i_do_pu=0j, s_od_pu=0j, s_do_pu=0j)
 
     napiecie_od = complex(napiecia[model.indeks_wezla[galaz.wezel_od]])
     napiecie_do = complex(napiecia[model.indeks_wezla[galaz.wezel_do]])
+    zwarcia = zwarcia_galezi_modelu(model, galaz.ident)
+    if zwarcia:
+        y_oo, y_od, y_do, y_dd = czwornik_galezi(
+            galaz.y_szeregowa_pu, galaz.b_poprzeczna_pu, zwarcia
+        )
+        i_od_zwarcie = y_oo * napiecie_od + y_od * napiecie_do
+        i_do_zwarcie = y_do * napiecie_od + y_dd * napiecie_do
+        return WielkosciGalezi(
+            i_od_pu=i_od_zwarcie,
+            i_do_pu=i_do_zwarcie,
+            s_od_pu=napiecie_od * i_od_zwarcie.conjugate(),
+            s_do_pu=napiecie_do * i_do_zwarcie.conjugate(),
+        )
     y_szeregowa = galaz.y_szeregowa_pu
     y_poprzeczna_polowa = complex(0.0, galaz.b_poprzeczna_pu / 2.0)
     a = galaz.przekladnia
@@ -430,6 +503,8 @@ def wielkosci_galezi(
 
 
 __all__ = [
+    "JAKOSC_BEZ_NAPIECIA",
+    "JAKOSC_CHWILA_ZDARZENIA",
     "JAKOSC_NIEDOSTEPNA",
     "JAKOSC_NIEROZROZNIALNA",
     "JAKOSC_ROZROZNIALNA",

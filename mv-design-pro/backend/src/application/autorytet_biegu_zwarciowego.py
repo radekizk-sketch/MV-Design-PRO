@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
@@ -301,6 +301,10 @@ class WejscieKoordynacjiZBiegow:
     koordynacji". Niepuste MUSI zablokować wynik autorytatywny: wiersz z
     ``NaN`` nie jest wierszem bez prądu, tylko wierszem, którego prąd nie jest
     liczbą — a to inna informacja i inna decyzja."""
+    migawka: Mapping[str, Any] = field(default_factory=dict)
+    """Migawka modelu, na której stoją OBA biegi (ta sama — sprawdzone). Źródło
+    rozstrzygnięcia zacisku urządzenia na gałęzi albo łączniku (szyna, na której
+    leży prąd zwarciowy lokalizacji — decyzja O-51 pkt 7)."""
 
 
 def _identyfikatory_wiersza(wiersz: Mapping[str, Any], grafy: Mapping[str, Any]) -> tuple[str, ...]:
@@ -442,6 +446,7 @@ def wejscie_koordynacji_z_biegow(
         prady_max_a=prady_max,
         prady_min_a=prady_min,
         wartosci_odrzucone=odrzucone_max + odrzucone_min,
+        migawka=bieg_max.snapshot or {},
     )
 
 
@@ -456,9 +461,20 @@ TOLERANCJA_WZGLEDNA_PRADU = 1.0e-9
 
 
 def niezgodnosci_pradow_koordynacji(
-    wejscie: WejscieKoordynacjiZBiegow, prady_zadania: Iterable[Mapping[str, Any]]
+    wejscie: WejscieKoordynacjiZBiegow,
+    prady_zadania: Iterable[Mapping[str, Any]],
+    *,
+    szyny_lokalizacji: Mapping[str, str] | None = None,
+    odmowy_lokalizacji: Mapping[str, str] | None = None,
 ) -> tuple[str, ...]:
-    """Czym prądy z żądania różnią się od prądów biegów. Pusto = to te same liczby."""
+    """Czym prądy z żądania różnią się od prądów biegów. Pusto = to te same liczby.
+
+    `szyny_lokalizacji` / `odmowy_lokalizacji` — wynik `szyny_zwarcia_lokalizacji`
+    (decyzja O-51 pkt 7): lokalizacja-gałąź albo łącznik ma prąd zwarciowy SZYNY swojego
+    zacisku, więc porównanie idzie z wierszem biegu tej szyny; lokalizacja z odmową
+    resolvera nie ma czym potwierdzić podanej wartości (niezgodność z powodem)."""
+    szyny = szyny_lokalizacji or {}
+    odmowy = odmowy_lokalizacji or {}
     # WARTOŚCI ODRZUCONE IDĄ PIERWSZE. Wiersz, którego prąd nie jest liczbą, nie
     # może zostać „potwierdzony" żadną wartością z żądania — a bez tej pozycji
     # jego brak w mapie wyglądałby jak brak lokalizacji w biegu, czyli inna
@@ -466,6 +482,11 @@ def niezgodnosci_pradow_koordynacji(
     roznice: list[str] = list(wejscie.wartosci_odrzucone)
     for pozycja in prady_zadania:
         lokalizacja = str(pozycja.get("location_id") or "")
+        if lokalizacja in odmowy:
+            roznice.append(f"{lokalizacja}: brak szyny zwarcia lokalizacji — {odmowy[lokalizacja]}")
+            continue
+        szyna = szyny.get(lokalizacja, lokalizacja)
+        opis_punktu = lokalizacja if szyna == lokalizacja else f"{lokalizacja} (szyna {szyna})"
         for klucz, mapa, opis in (
             ("ik_max_3f_a", wejscie.prady_max_a, "maksymalny"),
             ("ik_min_3f_a", wejscie.prady_min_a, "minimalny"),
@@ -483,17 +504,17 @@ def niezgodnosci_pradow_koordynacji(
                     f"skończoną liczbą dodatnią"
                 )
                 continue
-            z_biegu = mapa.get(lokalizacja)
+            z_biegu = mapa.get(szyna)
             if z_biegu is None:
                 roznice.append(
-                    f"{lokalizacja}: bieg {opis} nie zawiera prądu zwarciowego dla tej "
+                    f"{opis_punktu}: bieg {opis} nie zawiera prądu zwarciowego dla tej "
                     "lokalizacji — nie ma czym potwierdzić podanej wartości"
                 )
                 continue
             odchylka = abs(float(podany) - z_biegu)
             if odchylka > TOLERANCJA_WZGLEDNA_PRADU * max(abs(z_biegu), 1.0):
                 roznice.append(
-                    f"{lokalizacja}.{klucz}: podano {float(podany):.6f} A, "
+                    f"{opis_punktu}.{klucz}: podano {float(podany):.6f} A, "
                     f"bieg {opis} policzył {z_biegu:.6f} A"
                 )
         for klucz in ("ik_max_2f_a", "ik_min_1f_a"):

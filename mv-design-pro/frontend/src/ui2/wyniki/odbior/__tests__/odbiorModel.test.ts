@@ -26,7 +26,7 @@ import {
 import { widokZgodnosciFixture } from './fixtures';
 
 function wiersz(over: Partial<WierszEdytora> = {}): WierszEdytora {
-  return { element_ref: 'BUS-1', wielkosc: 'U', wartosc: '15,3', ...over };
+  return { element_ref: 'BUS-1', wielkosc: 'U', wartosc: '15,3', zacisk: null, ...over };
 }
 
 describe('zbudujZadanie — serializacja wierszy', () => {
@@ -35,7 +35,7 @@ describe('zbudujZadanie — serializacja wierszy', () => {
       runId: 'run-lf-1',
       tryb: 'wiersze',
       csv: '',
-      wiersze: [wiersz({ element_ref: 'BUS-1', wielkosc: 'U', wartosc: '15,3' })],
+      wiersze: [wiersz({ element_ref: 'BUS-1', wielkosc: 'U', wartosc: '15,3', zacisk: null })],
       tolNapiecie: '5',
       tolMoc: '',
     });
@@ -55,9 +55,9 @@ describe('zbudujZadanie — serializacja wierszy', () => {
       tryb: 'wiersze',
       csv: '',
       wiersze: [
-        wiersz({ element_ref: 'BUS-1', wielkosc: 'U', wartosc: '15,3' }),
-        { element_ref: '', wielkosc: 'P', wartosc: '' }, // pusty — pomijany
-        { element_ref: 'LINE-2', wielkosc: 'P', wartosc: '' }, // błąd: brak wartości
+        wiersz({ element_ref: 'BUS-1', wielkosc: 'U', wartosc: '15,3', zacisk: null }),
+        { element_ref: '', wielkosc: 'P', wartosc: '', zacisk: null }, // pusty — pomijany
+        { element_ref: 'LINE-2', wielkosc: 'P', wartosc: '', zacisk: null }, // błąd: brak wartości
       ],
       tolNapiecie: '5',
       tolMoc: '10',
@@ -65,6 +65,33 @@ describe('zbudujZadanie — serializacja wierszy', () => {
     expect(wynik.ok).toBe(false);
     if (wynik.ok) return;
     expect(wynik.bledy.some((b) => b.includes('Wiersz 3'))).toBe(true);
+  });
+
+  /**
+   * Decyzja O-51: zacisk wysyłany WYŁĄCZNIE dla mocy gałęzi i tylko gdy wskazany.
+   * Iloczyn: wielkość {U, P, Q} × zacisk {null, od, do}.
+   */
+  it.each([
+    ['U', null, undefined],
+    ['U', 'od', undefined],
+    ['P', null, undefined],
+    ['P', 'od', 'od'],
+    ['Q', 'do', 'do'],
+    ['Q', null, undefined],
+  ] as const)('%s z zaciskiem %s → pole zacisk w żądaniu: %s', (wielkosc, zacisk, oczekiwany) => {
+    const wynik = zbudujZadanie({
+      runId: 'run-lf-1',
+      tryb: 'wiersze',
+      csv: '',
+      wiersze: [wiersz({ element_ref: 'LINE-2', wielkosc, wartosc: '1', zacisk })],
+      tolNapiecie: '5',
+      tolMoc: '5',
+    });
+    expect(wynik.ok).toBe(true);
+    if (!wynik.ok) return;
+    const pomiar = wynik.zadanie.pomiary?.[0];
+    expect(pomiar?.zacisk).toBe(oczekiwany);
+    expect('zacisk' in (pomiar ?? {})).toBe(oczekiwany !== undefined);
   });
 
   it('wartość nieliczbowa → błąd PL z numerem wiersza', () => {
@@ -136,7 +163,7 @@ describe('zbudujZadanie — walidacja tolerancji', () => {
       runId: 'run-lf-1',
       tryb: 'wiersze',
       csv: '',
-      wiersze: [{ element_ref: 'LINE-2', wielkosc: 'P', wartosc: '4,5' }],
+      wiersze: [{ element_ref: 'LINE-2', wielkosc: 'P', wartosc: '4,5', zacisk: null }],
       tolNapiecie: '5',
       tolMoc: '',
     });
@@ -164,7 +191,7 @@ describe('zbudujZadanie — walidacja tolerancji', () => {
       runId: 'run-lf-1',
       tryb: 'wiersze',
       csv: '',
-      wiersze: [{ element_ref: 'LINE-2', wielkosc: 'P', wartosc: '4,5' }],
+      wiersze: [{ element_ref: 'LINE-2', wielkosc: 'P', wartosc: '4,5', zacisk: null }],
       tolNapiecie: '',
       tolMoc: '-3',
     });
@@ -178,7 +205,7 @@ describe('zbudujZadanie — walidacja tolerancji', () => {
       runId: 'run-lf-1',
       tryb: 'wiersze',
       csv: '',
-      wiersze: [{ element_ref: '', wielkosc: 'U', wartosc: '' }],
+      wiersze: [{ element_ref: '', wielkosc: 'U', wartosc: '', zacisk: null }],
       tolNapiecie: '5',
       tolMoc: '',
     });
@@ -194,7 +221,9 @@ describe('adaptery tabeli i formatery', () => {
     const poza = mapujWierszZgodnosci(dane.wiersze[1]); // LINE-2 / P / poza tolerancją
     expect(poza.odchylka.ostrzezenie).toBe(true);
     expect(poza.element.wartosc).toBe('LINE-2');
-    expect(poza[KLUCZ_WIERSZA_ZGODNOSCI].wartosc).toBe('LINE-2::P');
+    expect(poza[KLUCZ_WIERSZA_ZGODNOSCI].wartosc).toBe('LINE-2::P::od');
+    // Miejsce pomiaru — etykieta z nazwą szyny wprost z backendu.
+    expect(poza.miejsce.wartosc).toBe('Zacisk początkowy — szyna GPZ SN');
 
     const brak = mapujWierszZgodnosci(dane.wiersze[2]); // NIEZNANY-3 — brak modelu
     expect(brak.model.wartosc).toBe(ODBIOR_STRINGS.kreska);
@@ -223,14 +252,27 @@ describe('adaptery tabeli i formatery', () => {
       'LINE-2',
       'NIEZNANY-3',
       'TRAFO-4',
+      'TRAFO-4',
     ]);
+  });
+
+  it('klucz wiersza rozróżnia pomiary mocy tej samej gałęzi na obu zaciskach', () => {
+    const dane = widokZgodnosciFixture();
+    const bazowy = dane.wiersze[1];
+    const klucze = naWierszeZgodnosci([
+      bazowy,
+      { ...bazowy, zacisk: 'do', miejsce_pomiaru_pl: 'Zacisk końcowy — szyna Stacja 1' },
+      { ...bazowy, zacisk: null, miejsce_pomiaru_pl: null, werdykt: 'brak miejsca pomiaru' },
+    ]).map((w) => w[KLUCZ_WIERSZA_ZGODNOSCI].wartosc);
+    expect(new Set(klucze).size).toBe(3);
   });
 
   it('naZalozeniaZgodnosci mapuje wszystkie założenia z backendu', () => {
     const dane = widokZgodnosciFixture();
     const zalozenia = naZalozeniaZgodnosci(dane);
     expect(zalozenia).toHaveLength(dane.zalozenia_pl.length);
-    expect(zalozenia[3].wartosc).toContain('V12K-040');
+    expect(zalozenia[2].wartosc).toContain('na zacisku gałęzi');
+    expect(zalozenia[3].wartosc).toContain('wartości bezwzględnej');
   });
 
   it('istotnoscWerdyktu odwzorowuje kolory tokenów per werdykt', () => {
@@ -238,6 +280,7 @@ describe('adaptery tabeli i formatery', () => {
     expect(istotnoscWerdyktu('poza tolerancją')).toBe('err');
     expect(istotnoscWerdyktu('brak wyniku dla elementu')).toBe('warn');
     expect(istotnoscWerdyktu('brak odpowiednika w modelu')).toBe('neutral');
+    expect(istotnoscWerdyktu('brak miejsca pomiaru')).toBe('warn');
   });
 
   it('formatery i parser z przecinkiem dziesiętnym PL', () => {
@@ -249,7 +292,7 @@ describe('adaptery tabeli i formatery', () => {
   });
 
   it('wierszPusty rozpoznaje całkowicie pusty wiersz edytora', () => {
-    expect(wierszPusty({ element_ref: '', wielkosc: 'U', wartosc: '' })).toBe(true);
-    expect(wierszPusty({ element_ref: 'BUS-1', wielkosc: 'U', wartosc: '' })).toBe(false);
+    expect(wierszPusty({ element_ref: '', wielkosc: 'U', wartosc: '', zacisk: null })).toBe(true);
+    expect(wierszPusty({ element_ref: 'BUS-1', wielkosc: 'U', wartosc: '', zacisk: null })).toBe(false);
   });
 });

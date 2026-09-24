@@ -10,10 +10,14 @@
  *
  * Zasady tego modułu:
  * 1. Prąd zwarciowy pochodzi z wiersza biegu zwarciowego (`ikss_ka` → A),
- *    prąd roboczy z wiersza gałęziowego rozpływu (`i_ka` → A). ZERO własnej
- *    arytmetyki poza przeliczeniem jednostki.
- * 2. Dopasowanie po identyfikatorze elementu urządzenia
- *    (`location_element_id`) — najpierw `element_id` wiersza, potem `target_id`.
+ *    prąd roboczy z wiersza gałęziowego rozpływu — prąd ZACISKU, przy którym stoi
+ *    urządzenie (`i_a` — zacisk `od`, `i_do_a` — zacisk `do`), wskazanego przez
+ *    rozstrzygnięcie backendu (`miejsceUrzadzenia.ts`, decyzja O-51 pkt 7). ZERO
+ *    własnej arytmetyki poza przeliczeniem jednostki; brak rozstrzygnięcia zacisku
+ *    = brak prądu roboczego z powodem z rekordu odmowy, nigdy `i_a` domyślnie.
+ * 2. Dopasowanie prądu zwarciowego po szynie miejsca urządzenia — szynie zacisku
+ *    gałęzi rozstrzygniętego przez backend albo szynie wskazanej wprost jako
+ *    lokalizacja — najpierw `element_id` wiersza, potem `target_id`.
  * 3. Brak dopasowania albo brak wartości ⇒ pozycji NIE MA. Nigdy wartość
  *    zastępcza, nigdy zero, nigdy przepisanie Ik_max jako Ik_min.
  * 4. `Ik_min` wymaga OSOBNEGO biegu minimalnego. Bez niego pozycja prądowa
@@ -24,6 +28,7 @@
  */
 
 import type { ShortCircuitRow, BranchResultRow } from '../results-inspector/types';
+import type { MiejsceUrzadzenia } from './miejsceUrzadzenia';
 import type { FaultCurrentData, OperatingCurrentData, ProtectionDevice } from './types';
 
 /** Identyfikatory elementu, po których wolno dopasować wiersz do urządzenia. */
@@ -52,27 +57,26 @@ export function pradyZwarcioweZBiegu(
 }
 
 /**
- * Prąd roboczy [A] per identyfikator gałęzi z wierszy rozpływu.
+ * Prąd roboczy [A] urządzenia — prąd ZACISKU gałęzi rozstrzygniętego przez backend.
  *
- * UWAGA JEDNOSTKOWA: wiersz gałęziowy rozpływu niesie prąd w AMPERACH (`i_a`),
- * a wiersz zwarciowy w KILOAMPERACH (`ikss_ka`) — dlatego tylko ten drugi
+ * UWAGA JEDNOSTKOWA: wiersz gałęziowy rozpływu niesie prąd w AMPERACH (`i_a`,
+ * `i_do_a`), a wiersz zwarciowy w KILOAMPERACH (`ikss_ka`) — dlatego tylko ten drugi
  * przelicza się przez 1000. Pomyłka tutaj dawałaby błąd o trzy rzędy wielkości
  * w kryterium przeciążenia.
+ *
+ * Zwraca liczbę albo powód braku (`null` = brak bez powodu z backendu — lokalizacja
+ * bez zacisków, np. szyna, albo wiersz bez prądu zacisku).
  */
-export function pradyRoboczeZRozplywu(
+export function pradRoboczyZWiersza(
   wiersze: readonly BranchResultRow[],
-): Map<string, number> {
-  const mapa = new Map<string, number>();
-  for (const wiersz of wiersze) {
-    const wartosc =
-      typeof wiersz.i_a === 'number' && Number.isFinite(wiersz.i_a) ? wiersz.i_a : null;
-    if (wartosc === null || !wiersz.branch_id) continue;
-    const klucze = [wiersz.element_id, wiersz.branch_id].filter((x): x is string => Boolean(x));
-    for (const klucz of klucze) {
-      if (!mapa.has(klucz)) mapa.set(klucz, wartosc);
-    }
-  }
-  return mapa;
+  miejsce: MiejsceUrzadzenia | undefined,
+): { readonly wartosc: number } | { readonly powod: string | null } {
+  if (!miejsce) return { powod: null };
+  if (miejsce.odmowa_zacisku) return { powod: miejsce.odmowa_zacisku.powod_pl };
+  if (!miejsce.galaz_ref || !miejsce.zacisk) return { powod: null };
+  const wiersz = wiersze.find((w) => (w.element_id ?? w.branch_id) === miejsce.galaz_ref);
+  const wartosc = miejsce.zacisk === 'od' ? wiersz?.i_a : wiersz?.i_do_a;
+  return typeof wartosc === 'number' && Number.isFinite(wartosc) ? { wartosc } : { powod: null };
 }
 
 /** Pozycja braku danej wejściowej koordynacji (do uczciwego komunikatu w UI). */
@@ -81,6 +85,8 @@ export interface BrakDanejPradowej {
   readonly deviceName: string;
   readonly locationElementId: string;
   readonly czegoBrakuje: 'prad_zwarciowy_max' | 'prad_zwarciowy_min' | 'prad_roboczy';
+  /** Powód z rekordu backendu (odmowa zacisku), gdy brak ma nazwaną przyczynę. */
+  readonly powod?: string;
 }
 
 export interface PradyKoordynacji {
@@ -102,13 +108,12 @@ export function zbudujPradyKoordynacji(params: {
   readonly wierszeMax: readonly ShortCircuitRow[];
   readonly wierszeMin?: readonly ShortCircuitRow[];
   readonly wierszeGalezi?: readonly BranchResultRow[];
+  /** Rozstrzygnięcie miejsca prądu per id urządzenia (backend, decyzja O-51 pkt 7). */
+  readonly miejsca?: ReadonlyMap<string, MiejsceUrzadzenia>;
 }): PradyKoordynacji {
-  const { urzadzenia, wierszeMax, wierszeMin, wierszeGalezi } = params;
+  const { urzadzenia, wierszeMax, wierszeMin, wierszeGalezi, miejsca } = params;
   const mapaMax = pradyZwarcioweZBiegu(wierszeMax);
   const mapaMin = wierszeMin ? pradyZwarcioweZBiegu(wierszeMin) : new Map<string, number>();
-  const mapaRobocze = wierszeGalezi
-    ? pradyRoboczeZRozplywu(wierszeGalezi)
-    : new Map<string, number>();
 
   const faultCurrents: FaultCurrentData[] = [];
   const operatingCurrents: OperatingCurrentData[] = [];
@@ -116,16 +121,24 @@ export function zbudujPradyKoordynacji(params: {
 
   for (const urzadzenie of urzadzenia) {
     const lokalizacja = urzadzenie.location_element_id;
-    const ikMax = mapaMax.get(lokalizacja);
-    const ikMin = mapaMin.get(lokalizacja);
-    const iRob = mapaRobocze.get(lokalizacja);
+    const miejsce = miejsca?.get(urzadzenie.id);
+    // Prąd zwarciowy W MIEJSCU urządzenia: szyna ZACISKU gałęzi rozstrzygniętego przez
+    // backend (ten sam zacisk co prąd roboczy) albo szyna wskazana wprost jako lokalizacja.
+    // Wiersze biegu zwarciowego są per szyna — lokalizacja-gałąź bez zacisku nie ma
+    // prądu zwarciowego (jawny brak), zamiast prądu „którejś" szyny.
+    const szynaZwarcia =
+      miejsce?.zacisk && miejsce.zaciski ? miejsce.zaciski[miejsce.zacisk].szyna_ref : lokalizacja;
+    const ikMax = mapaMax.get(szynaZwarcia);
+    const ikMin = mapaMin.get(szynaZwarcia);
+    const robocze = wierszeGalezi ? pradRoboczyZWiersza(wierszeGalezi, miejsce) : { powod: null };
 
-    const brak = (czego: BrakDanejPradowej['czegoBrakuje']): void => {
+    const brak = (czego: BrakDanejPradowej['czegoBrakuje'], powod?: string | null): void => {
       braki.push({
         deviceId: urzadzenie.id,
         deviceName: urzadzenie.name,
         locationElementId: lokalizacja,
         czegoBrakuje: czego,
+        ...(powod ? { powod } : {}),
       });
     };
 
@@ -143,10 +156,10 @@ export function zbudujPradyKoordynacji(params: {
       });
     }
 
-    if (iRob === undefined) {
-      brak('prad_roboczy');
+    if ('wartosc' in robocze) {
+      operatingCurrents.push({ location_id: lokalizacja, i_operating_a: robocze.wartosc });
     } else {
-      operatingCurrents.push({ location_id: lokalizacja, i_operating_a: iRob });
+      brak('prad_roboczy', robocze.powod);
     }
   }
 
@@ -155,6 +168,7 @@ export function zbudujPradyKoordynacji(params: {
 
 /** Odpowiedź biegu zwarciowego w zakresie, którego potrzebuje klasyfikacja. */
 export interface BiegZwarciowyDoPodzialu {
+  readonly run_id: string;
   readonly rows: readonly ShortCircuitRow[];
   readonly konfiguracja_biegu?: { readonly scenariusz?: 'MAX' | 'MIN' | null } | null;
 }
@@ -165,6 +179,14 @@ export interface BiegZwarciowyDoPodzialu {
  * `raw_result["scenario"]` — to samo źródło, które czyta most autorytetu
  * koordynacji po stronie serwera). Kanoniczny bieg liczy JEDEN scenariusz, więc
  * pełna koordynacja wymaga dwóch biegów.
+ *
+ * JEDEN BIEG NA SCENARIUSZ. `biegi` przychodzą od NAJNOWSZEGO; z każdego scenariusza
+ * brany jest wyłącznie pierwszy (najnowszy) bieg, a jego identyfikator wraca jako
+ * `runIdMax` / `runIdMin` — te same identyfikatory idą w żądaniu analizy
+ * (`sc_run_id` / `sc_run_id_min`), a backend potwierdza prądy żądania wobec DOKŁADNIE
+ * tych dwóch biegów (`wejscie_koordynacji_z_biegow`). Scalanie wierszy kilku biegów
+ * tego samego scenariusza dawało prądy, których żaden pojedynczy bieg nie potwierdza.
+ * Starsze biegi tego scenariusza trafiają do `pominiete` (jawnie, nie cicho).
  *
  * NAPRAWA DOMYSŁU (karta HARNESS-RESZTA-2, 2026-09-17). Do tej karty klasyfikacja
  * szła po współczynniku `c` wiersza z progiem `c >= 1 → MAX`. Na sieci ŚREDNIEGO
@@ -182,14 +204,35 @@ export function podzielWierszeNaPrzypadki(biegi: readonly BiegZwarciowyDoPodzial
   readonly max: readonly ShortCircuitRow[];
   readonly min: readonly ShortCircuitRow[];
   readonly bezScenariusza: readonly ShortCircuitRow[];
+  readonly runIdMax: string | null;
+  readonly runIdMin: string | null;
+  readonly pominiete: readonly string[];
 } {
-  const max: ShortCircuitRow[] = [];
-  const min: ShortCircuitRow[] = [];
+  let max: readonly ShortCircuitRow[] = [];
+  let min: readonly ShortCircuitRow[] = [];
+  let runIdMax: string | null = null;
+  let runIdMin: string | null = null;
   const bezScenariusza: ShortCircuitRow[] = [];
+  const pominiete: string[] = [];
   for (const bieg of biegi) {
     const scenariusz = bieg.konfiguracja_biegu?.scenariusz ?? null;
-    const cel = scenariusz === 'MAX' ? max : scenariusz === 'MIN' ? min : bezScenariusza;
-    cel.push(...bieg.rows);
+    if (scenariusz === 'MAX') {
+      if (runIdMax === null) {
+        runIdMax = bieg.run_id;
+        max = bieg.rows;
+      } else {
+        pominiete.push(bieg.run_id);
+      }
+    } else if (scenariusz === 'MIN') {
+      if (runIdMin === null) {
+        runIdMin = bieg.run_id;
+        min = bieg.rows;
+      } else {
+        pominiete.push(bieg.run_id);
+      }
+    } else {
+      bezScenariusza.push(...bieg.rows);
+    }
   }
-  return { max, min, bezScenariusza };
+  return { max, min, bezScenariusza, runIdMax, runIdMin, pominiete };
 }

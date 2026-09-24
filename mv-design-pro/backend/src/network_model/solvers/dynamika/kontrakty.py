@@ -52,8 +52,6 @@ KOD_KROK_NIEZBIEZNY = "dynamika.krok_niezbiezny"
 KOD_WARTOSC_NIESKONCZONA = "dynamika.wartosc_nieskonczona"
 #: Zwarcie niesymetryczne (2F/1F/2FZ) — modelowane dopiero skladowymi (SS0 p.5).
 KOD_ZWARCIE_NIESYMETRYCZNE = "dynamika.zwarcie_niesymetryczne_nieobslugiwane"
-#: Zwarcie metaliczne (R_f = X_f = 0) — w modelu wezlowym nie ma skonczonej admitancji.
-KOD_ZWARCIE_METALICZNE = "dynamika.zwarcie_metaliczne_bez_admitancji"
 #: Zdarzenie wskazuje element, ktorego model nie ma (zero cichego pominiecia).
 KOD_ZDARZENIE_BEZ_ELEMENTU = "dynamika.zdarzenie_bez_elementu"
 #: Re-inicjalizacja algebry po zdarzeniu nie zbiegla (SS0 p.5).
@@ -97,14 +95,38 @@ KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY = "dynamika.zakres_waznosci_przekroczony"
 #: `wyspy.py`.
 KOD_WYSPA_BEZ_ZRODLA = "dynamika.wyspa_bez_zrodla"
 
+#: Zdarzenie wewnetrznie sprzeczne: usuniecie zwarcia bez jawnego sposobu usuniecia
+#: albo sposob bez chwili usuniecia, usuniecie nie pozniej niz zalozenie, polozenie
+#: zwarcia w linii poza przedzialem otwartym (0, 1). Zwiazek miedzy polami zdarzenia,
+#: nie brak pola — ten sam wzorzec, co `dynamika.nastawy_sprzeczne` dla nastaw.
+KOD_ZDARZENIE_SPRZECZNE = "dynamika.zdarzenie_sprzeczne"
+#: Usuniecie zwarcia rodzaju `izolacja` w chwili, w ktorej miejsce zwarcia (w stanie
+#: PO naniesieniu wszystkich zdarzen tej chwili) nadal lezy w wyspie zasilanej —
+#: zadne otwarcie nie odcielo zwarcia, wiec „usuniecie" byloby zniknieciem luku pod
+#: napieciem, czyli innym zjawiskiem niz zadeklarowane.
+KOD_ZWARCIE_NIEODIZOLOWANE = "dynamika.zwarcie_nieodizolowane"
+#: Zwarcie w miejscu x*L galezi, ktora nie jest linia ani kablem (transformator,
+#: lacznik) — dlugosc elektryczna takiej galezi nie istnieje.
+KOD_ZWARCIE_GALEZI_NIEOBSLUGIWANE = "dynamika.zwarcie_galezi_nieobslugiwane"
+#: Odbior o STALEJ MOCY w wezle, ktoremu wiersz ograniczenia narzuca napiecie zerowe
+#: (zwarcie metaliczne w wezle) — model `P = const` nie ma rozwiazania przy U = 0.
+KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU = "dynamika.odbior_stalej_mocy_przy_zerowym_napieciu"
+#: Dwa rozne warunki narzucajace napiecie w JEDNYM wezle (zwarcie metaliczne na
+#: zaciskach idealnego zrodla napieciowego, dwa zrodla napieciowe w jednym wezle):
+#: uklad jest sprzeczny — pierwsze prawo Kirchhoffa zadaloby nieskonczonego pradu.
+KOD_NAPIECIE_NARZUCONE_SPRZECZNE = "dynamika.napiecie_narzucone_sprzeczne"
+
 #: Zamkniety rejestr kodow odmow tego rdzenia. Nowy kod DOPISUJESZ tutaj —
 #: `OdmowaDynamiki` odrzuca kod spoza rejestru (deklaracja z przypietym testem,
-#: nie obietnica w docstringu).
+#: nie obietnica w docstringu). Kod DOPISYWANY jest razem z mechanizmem, ktory go
+#: podnosi — kod bez zadnej sciezki odmowy bylby deklaracja bez pokrycia.
 KODY_ODMOW: tuple[str, ...] = (
     KOD_ALGEBRA_NIEZBIEZNA,
     KOD_INICJALIZACJA_NIEZBIEZNA,
     KOD_KROK_NIEZBIEZNY,
+    KOD_NAPIECIE_NARZUCONE_SPRZECZNE,
     KOD_NASTAWY_SPRZECZNE,
+    KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU,
     KOD_PARAMETRY_SPRZECZNE,
     KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
     KOD_REINICJALIZACJA_NIEZBIEZNA,
@@ -115,7 +137,9 @@ KODY_ODMOW: tuple[str, ...] = (
     KOD_WYSPA_BEZ_ZRODLA,
     KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY,
     KOD_ZDARZENIE_BEZ_ELEMENTU,
-    KOD_ZWARCIE_METALICZNE,
+    KOD_ZDARZENIE_SPRZECZNE,
+    KOD_ZWARCIE_GALEZI_NIEOBSLUGIWANE,
+    KOD_ZWARCIE_NIEODIZOLOWANE,
     KOD_ZWARCIE_NIESYMETRYCZNE,
 )
 
@@ -157,15 +181,27 @@ class WezelDynamiki:
     u_n_kv: float
 
 
+#: Rodzaj galezi — rozstrzyga, czy galaz ma DLUGOSC elektryczna (zwarcie w miejscu x*L
+#: wolno postawic wylacznie w linii i kablu; transformator i lacznik nie maja punktu
+#: „w polowie dlugosci"). Rodzaj podaje adapter z typu elementu ENM.
+RodzajGalezi = Literal["linia", "kabel", "transformator", "lacznik"]
+
+
 @dataclass(frozen=True)
 class GalazDynamiki:
-    """Galaz w modelu pi z przekladnia zespolona (linia/kabel/transformator).
+    """Galaz w modelu pi z przekladnia zespolona (linia/kabel/transformator/lacznik).
 
     `przekladnia` = 1+0j dla linii i kabli; dla transformatora niesie moduł
     (zaczep, zmiana bazy napieciowej) i przesuniecie fazowe grupy polaczen —
     ten sam ksztalt, ktorym liczy rozplyw.
     `y_szeregowa_pu` to ADMITANCJA galezi (1/z), `b_poprzeczna_pu` to CALKOWITA
     susceptancja poprzeczna modelu pi (dzielona po polowie na obie strony).
+
+    AKTYWNOSC (karta AB-1b.1 par. 0 pkt 1). `aktywna_na_starcie` jest polem WYMAGANYM:
+    galaz otwarta albo poza ruchem ISTNIEJE w rdzeniu od t = 0 i niesie stan
+    nieaktywny — zdarzenie zalaczenia ma wtedy co zamknac (sprzeglo normalnie otwarte,
+    lacznik rezerwowy, kabel rezerwowy). Galaz nieaktywna nie jest stemplowana, wiec
+    macierz admitancyjna w t = 0 jest bitowo ta sama, co bez niej.
     """
 
     ident: str
@@ -174,16 +210,23 @@ class GalazDynamiki:
     y_szeregowa_pu: complex
     b_poprzeczna_pu: float
     przekladnia: complex
+    aktywna_na_starcie: bool
+    rodzaj: RodzajGalezi
 
 
 @dataclass(frozen=True)
 class OdsprzegDynamiki:
-    """Element poprzeczny w wezle (bateria, dlawik) — admitancja stala."""
+    """Element poprzeczny w wezle (bateria, dlawik) — admitancja stala.
+
+    `aktywna_na_starcie` jak w `GalazDynamiki`: bateria wylaczona istnieje w rdzeniu
+    i moze zostac zalaczona zdarzeniem (`ZmianaOdsprzegu`).
+    """
 
     ident: str
     wezel: str
     g_pu: float
     b_pu: float
+    aktywna_na_starcie: bool
 
 
 @dataclass(frozen=True)
@@ -221,6 +264,51 @@ class PunktPracy:
 # ---------------------------------------------------------------------------
 
 
+#: Sposob usuniecia zwarcia (karta AB-1b.1, par. 0 pkt 4). `izolacja` — zwarcie gasnie,
+#: bo aparaty ODCINAJA jego miejsce od kazdego zrodla; rdzen sprawdza to w stanie PO
+#: naniesieniu wszystkich zdarzen chwili usuniecia i odmawia, gdy miejsce nadal lezy w
+#: wyspie zasilanej (`dynamika.zwarcie_nieodizolowane`). `samoczynne` — jawna
+#: IDEALIZACJA zwarcia przemijajacego (luk gasnie pod napieciem), dopisywana do zalozen
+#: wyniku; tak usuwaja zwarcie wzorce bramek G2-G12 i twierdzenia D-04 („usuwane bez
+#: zmiany topologii pozwarciowej").
+SposobUsuniecia = Literal["izolacja", "samoczynne"]
+
+
+def _sprawdz_usuniecie(
+    t_s: float, t_usuniecia_s: float | None, sposob: SposobUsuniecia | None, miejsce: str
+) -> None:
+    """Para (chwila, sposob) usuniecia — oba pola albo zadne; usuniecie PO zalozeniu.
+
+    Jedno zrodlo prawdy dla zwarcia w wezle i w linii (predykaty parami). Kontrakt
+    danych (`enm/scenariusze.py::Zwarcie`) waliduje te sama pare wlasnym walidatorem,
+    bo nie importuje rdzenia — zgodnosc obu przypina test obu warstw.
+    """
+    if (t_usuniecia_s is None) != (sposob is None):
+        raise OdmowaDynamiki(
+            KOD_ZDARZENIE_SPRZECZNE,
+            f"Zwarcie {miejsce} w t={t_s} s: chwila usuniecia ({t_usuniecia_s}) i sposob "
+            f"usuniecia ({sposob}) musza byc podane razem albo wcale — usuniecie bez "
+            "jawnego sposobu nie mowi, czy luk zgasl po odcieciu, czy pod napieciem",
+            t_s=t_s,
+            t_usuniecia_s=t_usuniecia_s,
+            sposob_usuniecia=sposob,
+        )
+    if sposob is not None and sposob not in ("izolacja", "samoczynne"):
+        raise OdmowaDynamiki(
+            KOD_ZDARZENIE_SPRZECZNE,
+            f"Zwarcie {miejsce}: nieznany sposob usuniecia {sposob!r}",
+            sposob_usuniecia=sposob,
+        )
+    if t_usuniecia_s is not None and t_usuniecia_s <= t_s:
+        raise OdmowaDynamiki(
+            KOD_ZDARZENIE_SPRZECZNE,
+            f"Zwarcie {miejsce}: usuniecie w t={t_usuniecia_s} s nie jest pozniejsze niz "
+            f"zalozenie w t={t_s} s",
+            t_s=t_s,
+            t_usuniecia_s=t_usuniecia_s,
+        )
+
+
 @dataclass(frozen=True)
 class ZwarcieWezla:
     """Zwarcie w wezle: admitancja zwarcia dopisana do Ybus (SS0 p.5).
@@ -230,6 +318,9 @@ class ZwarcieWezla:
     `dynamika.zwarcie_niesymetryczne_nieobslugiwane`. Gdyby pole bylo zawezone
     do `Literal["3F"]`, odmowa nie mialaby gdzie powstac i niesymetria wchodzilaby
     po cichu jako zwarcie trojfazowe.
+
+    `sposob_usuniecia` jest WYMAGANY (bez domyslki) i rowny `None` wtedy i tylko
+    wtedy, gdy `t_usuniecia_s is None` — sprawdzane przy konstrukcji.
     """
 
     t_s: float
@@ -238,6 +329,58 @@ class ZwarcieWezla:
     r_f_ohm: float
     x_f_ohm: float
     t_usuniecia_s: float | None
+    sposob_usuniecia: SposobUsuniecia | None
+
+    def __post_init__(self) -> None:
+        _sprawdz_usuniecie(
+            self.t_s, self.t_usuniecia_s, self.sposob_usuniecia, f"w wezle {self.wezel!r}"
+        )
+
+
+@dataclass(frozen=True)
+class ZwarcieGalezi:
+    """Zwarcie w linii/kablu w miejscu `x*L` od zacisku `wezel_od` (karta AB-1b.1 par. 0 pkt 5).
+
+    Zwarcie jest STANEM GALEZI w rdzeniu, nie podzialem linii w adapterze: dopoki
+    trwa, galaz jest stemplowana czwornikiem z redukcji Krona wezla wewnetrznego
+    (polowki pi `y/x`, `y/(1-x)` z susceptancjami `B*x`, `B*(1-x)` i admitancja
+    zwarcia w wezle wewnetrznym — `siec.stempel_galezi`); po usunieciu stempel
+    zdrowej galezi wraca bitowo, bo siec jest skladana od nowa. Podzial linii OD t = 0
+    zmienilby rozklad pradu ladowania (B*x/2 i B*(1-x)/2 na koncach zamiast B/2), wiec
+    punkt pracy z rozplywu przestalby byc rownowaga.
+
+    `polozenie_wzgledne` lezy w przedziale OTWARTYM (0, 1): zwarcie na zacisku to
+    zwarcie w WEZLE (`ZwarcieWezla`), nie w galezi — dwa zapisy tego samego zjawiska
+    bylyby dwiema prawdami. Obslugiwane wylacznie linie i kable (dlugosc elektryczna
+    transformatora ani lacznika nie istnieje) — inne galezie koncza sie odmowa
+    `dynamika.zwarcie_galezi_nieobslugiwane` przy budowie harmonogramu.
+    """
+
+    t_s: float
+    galaz: str
+    polozenie_wzgledne: float
+    typ: str
+    r_f_ohm: float
+    x_f_ohm: float
+    t_usuniecia_s: float | None
+    sposob_usuniecia: SposobUsuniecia | None
+
+    def __post_init__(self) -> None:
+        if not 0.0 < self.polozenie_wzgledne < 1.0:
+            raise OdmowaDynamiki(
+                KOD_ZDARZENIE_SPRZECZNE,
+                f"Zwarcie w galezi {self.galaz!r}: polozenie wzgledne "
+                f"{self.polozenie_wzgledne} poza przedzialem otwartym (0, 1) — zwarcie na "
+                "zacisku galezi zadaje sie jako zwarcie w wezle",
+                galaz=self.galaz,
+                polozenie_wzgledne=self.polozenie_wzgledne,
+            )
+        _sprawdz_usuniecie(
+            self.t_s,
+            self.t_usuniecia_s,
+            self.sposob_usuniecia,
+            f"w galezi {self.galaz!r} (x = {self.polozenie_wzgledne})",
+        )
 
 
 @dataclass(frozen=True)
@@ -247,6 +390,34 @@ class ZmianaGalezi:
     t_s: float
     galaz: str
     zalaczona: bool
+
+
+@dataclass(frozen=True)
+class ZmianaOdsprzegu:
+    """Wylaczenie (`zalaczony=False`) albo zalaczenie (`True`) odsprzegu w chwili t.
+
+    Laczenie baterii kondensatorow jest ta sama klasa mechanizmu, co laczenie galezi:
+    zmienia skladnik macierzy admitancyjnej, a siec jest skladana od nowa.
+    """
+
+    t_s: float
+    odsprzeg: str
+    zalaczony: bool
+
+
+@dataclass(frozen=True)
+class ZmianaOdbioru:
+    """NAZWANE odlaczenie (`zalaczony=False`) albo zalaczenie (`True`) odbioru w chwili t.
+
+    Odlaczenie odbioru jest zdarzeniem laczeniowym (FREEZE par. 2 wiersz D7), a NIE
+    skokiem mocy do zera: odbior odlaczony nie ma obwodu, wiec nie wchodzi do bilansu
+    wezla w ogole, a skoki mocy naniesione wczesniej zostaja przy nim na czas ponownego
+    zalaczenia.
+    """
+
+    t_s: float
+    odbior: str
+    zalaczony: bool
 
 
 @dataclass(frozen=True)
@@ -267,7 +438,15 @@ class SkokObciazenia:
     delta_q_pu: float
 
 
-ZdarzenieDynamiki = ZwarcieWezla | ZmianaGalezi | OdlaczenieZrodla | SkokObciazenia
+ZdarzenieDynamiki = (
+    ZwarcieWezla
+    | ZwarcieGalezi
+    | ZmianaGalezi
+    | ZmianaOdsprzegu
+    | ZmianaOdbioru
+    | OdlaczenieZrodla
+    | SkokObciazenia
+)
 
 
 @dataclass(frozen=True)
@@ -363,6 +542,9 @@ class NastawySolvera:
 # ---------------------------------------------------------------------------
 # Protokol urzadzenia (SS0 p.4)
 # ---------------------------------------------------------------------------
+
+#: Sposob wejscia urzadzenia do algebry sieci — patrz `Urzadzenie.sprzezenie`.
+SprzezenieUrzadzenia = Literal["pradowe", "napieciowe"]
 
 
 @runtime_checkable
@@ -480,6 +662,35 @@ class Urzadzenie(Protocol):
         Wiekszosc urzadzen zwraca krotke pusta — kazdy ich stan ma byc rownowaga.
         """
 
+    @property
+    def sprzezenie(self) -> SprzezenieUrzadzenia:
+        """Jak urzadzenie wchodzi do algebry sieci — deklaracja JAWNA w kazdej klasie.
+
+        * `"pradowe"` — urzadzenie wstrzykuje prad `prad_pu(x, V)` do rownania KCL swojego
+          wezla (zrodlo za impedancja, przeksztaltnik, maszyna). Tak wchodzi kazde
+          urzadzenie biblioteki.
+        * `"napieciowe"` — urzadzenie NARZUCA napiecie wezla `V = E(x)`
+          (`napiecie_bez_obciazenia`, jakobian `jakobian_napiecia_bez_obciazenia`):
+          wiersz KCL wezla zastepuje wiersz ograniczenia `V - E(x) = 0`, a prad
+          urzadzenia jest WYPROWADZANY z bilansu wezla (`siec.prad_wezla_ograniczonego`).
+          Tak wchodzi idealne zrodlo napieciowe (impedancja zerowa) — INNY mechanizm niz
+          droga Nortona, ktora zerowej impedancji odmawia (`bazowe.admitancja_wewnetrzna`).
+
+        Protokol NIE ma domyslki: przyszle zrodlo napieciowe zadeklarowane „z rozpedu"
+        jako pradowe policzyloby inny uklad niz zbudowany, bez jednego sladu.
+        """
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Parametry urzadzenia wchodzace do `tozsamosc.odcisk_migawki` — JAWNIE, bez refleksji.
+
+        Kazde pole dataklasy urzadzenia jest tutaj ALBO na liscie `POLA_POZA_ODCISKIEM`
+        klasy (z uzasadnieniem) — przypina to `test_tozsamosc_urzadzen`. Bloki
+        zagniezdzone (rdzen regulacji, regulatory, zasobnik) oddaja SWOJE
+        `parametry_tozsamosci()`. Bez tego dwa biegi rozniace sie stala H albo
+        wzmocnieniem petli synchronizacji mialy identyczna piatke odciskow przy
+        ROZNYCH wynikach (defekt `odcisk_migawki`, karta AB-1b.1 par. 0 pkt 13).
+        """
+
     def stan_poczatkowy(self, napiecie_pu: complex, moc_pu: complex) -> np.ndarray:
         """Stan rownowagi dla zadanego punktu pracy (napiecie zaciskow + moc oddawana)."""
 
@@ -554,7 +765,9 @@ __all__ = [
     "KOD_BRAK_POLA",
     "KOD_INICJALIZACJA_NIEZBIEZNA",
     "KOD_KROK_NIEZBIEZNY",
+    "KOD_NAPIECIE_NARZUCONE_SPRZECZNE",
     "KOD_NASTAWY_SPRZECZNE",
+    "KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU",
     "KOD_PARAMETRY_SPRZECZNE",
     "KOD_PUNKT_PRACY_POZA_OGRANICZENIEM",
     "KOD_REINICJALIZACJA_NIEZBIEZNA",
@@ -562,9 +775,12 @@ __all__ = [
     "KOD_SIEC_NIESPOJNA",
     "KOD_WARIANT_BEZ_PARAMETROW",
     "KOD_WARTOSC_NIESKONCZONA",
+    "KOD_WYSPA_BEZ_ZRODLA",
     "KOD_ZDARZENIE_BEZ_ELEMENTU",
+    "KOD_ZDARZENIE_SPRZECZNE",
     "KOD_ZAKRES_WAZNOSCI_PRZEKROCZONY",
-    "KOD_ZWARCIE_METALICZNE",
+    "KOD_ZWARCIE_GALEZI_NIEOBSLUGIWANE",
+    "KOD_ZWARCIE_NIEODIZOLOWANE",
     "KOD_ZWARCIE_NIESYMETRYCZNE",
     "GalazDynamiki",
     "HarmonogramDynamiki",
@@ -575,12 +791,18 @@ __all__ = [
     "OdmowaDynamiki",
     "OdsprzegDynamiki",
     "PunktPracy",
+    "RodzajGalezi",
     "SkokObciazenia",
+    "SposobUsuniecia",
+    "SprzezenieUrzadzenia",
     "Urzadzenie",
     "WejscieDynamiki",
     "WezelDynamiki",
     "ZdarzenieDynamiki",
     "ZmianaGalezi",
+    "ZmianaOdbioru",
+    "ZmianaOdsprzegu",
+    "ZwarcieGalezi",
     "ZwarcieWezla",
     "odmowa_braku_pola",
 ]

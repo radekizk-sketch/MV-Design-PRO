@@ -38,10 +38,19 @@ from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_des
 from application.protection_settings.batch_run import (
     C_MAX_MIN_DOPUSZCZALNY,
     BrakDanychNastawError,
+    DaneLinii,
     kandydaci_nastepnej_szyny,
     linie_kandydujace,
     oblicz_nastawy,
     szyna_ma_prad_zwarciowy,
+)
+from application.protection_settings.zacisk_zabezpieczenia import (
+    ZACISKI,
+    OdmowaZacisku,
+    Zacisk,
+    ZaciskZabezpieczenia,
+    rozstrzygnij_zacisk,
+    zaciski_galezi,
 )
 from enm.canonical_analysis import CanonicalRun
 
@@ -74,15 +83,26 @@ _POWOD_BRAK_PARY_Z_PRADEM = (
 
 
 class PakietNastawError(ValueError):
-    """Pakietu nastaw nie da się zbudować dla tych parametrów (powód po polsku)."""
+    """Pakietu nastaw nie da się zbudować dla tych parametrów (powód po polsku).
+
+    `kod` — kod z kanonu kodów gotowości, gdy odmowa go niesie (zacisk zabezpieczenia).
+    """
+
+    def __init__(self, powod_pl: str, *, kod: str | None = None) -> None:
+        super().__init__(powod_pl)
+        self.kod = kod
 
 
 def dostepnosc_pakietu_nastaw(run: CanonicalRun) -> dict[str, Any]:
     """Opis dostępności pakietu dowodowego nastaw dla PODANEGO przebiegu-kotwicy.
 
     Lista `linie` — kandydaci na chroniony odcinek — pochodzi z TEJ SAMEJ funkcji
-    (`linie_kandydujace`), której użyje budowa; każda linia niesie z kolei listę
-    `nastepne_szyny_kandydujace` (może być pusta — linia bez rozgałęzienia w dół).
+    (`linie_kandydujace`), której użyje budowa. Każda linia niesie zacisk zabezpieczenia
+    z modelu (`zacisk_z_modelu`), znacznik `wymaga_wskazania_zacisku`, zaciski, które
+    budowa przyjmie (`zaciski_dozwolone`), etykiety obu zacisków z nazwami szyn
+    (`zaciski`), rekord odmowy bez wskazania (`odmowa_zacisku`) i listy kandydatów
+    kolejnej szyny osobno dla każdego zacisku (`nastepne_szyny_wg_zacisku`, lista pusta
+    — zacisk niedozwolony albo linia bez rozgałęzienia za końcem).
     """
     if run.status != "FINISHED":
         return _niedostepny(run, _POWOD_KOTWICA_NIEZAKONCZONA)
@@ -112,24 +132,13 @@ def dostepnosc_pakietu_nastaw(run: CanonicalRun) -> dict[str, Any]:
     # kolejna szyna) nie była raportowalnym punktem zwarcia kotwicy. Pomiar na
     # HEAD: 12 reklamowanych par na 6 sieciach repozytorium, 0 działających —
     # pełny rozkład w docstringu `batch_run.szyna_ma_prad_zwarciowy`. Teraz oba
-    # końce czytają TEN SAM predykat.
-    wynik = run.raw_result
+    # końce czytają TEN SAM predykat. Od decyzji O-51 także TEN SAM resolver zacisku
+    # zabezpieczenia (`_pozycja_dostepnosci`) — orientacja odcinka nie jest konwencją.
     pozycje = [
-        {
-            "line_id": linia.ref_id,
-            "nazwa": linia.nazwa,
-            "nastepne_szyny_kandydujace": [
-                szyna
-                for szyna in kandydaci_nastepnej_szyny(run.snapshot, linia.ref_id)
-                if szyna_ma_prad_zwarciowy(wynik, szyna)
-            ],
-        }
-        for linia in linie
-        if szyna_ma_prad_zwarciowy(wynik, linia.from_bus_ref)
-        and szyna_ma_prad_zwarciowy(wynik, linia.to_bus_ref)
+        pozycja for linia in linie if (pozycja := _pozycja_dostepnosci(run, linia)) is not None
     ]
-    if not any(pozycja["nastepne_szyny_kandydujace"] for pozycja in pozycje):
-        return _niedostepny(run, _POWOD_BRAK_PARY_Z_PRADEM)
+    if not any(any(p["nastepne_szyny_wg_zacisku"].values()) for p in pozycje):
+        return _niedostepny(run, _powod_braku_pary(pozycje))
 
     return {
         "run_id": str(run.id),
@@ -137,6 +146,79 @@ def dostepnosc_pakietu_nastaw(run: CanonicalRun) -> dict[str, Any]:
         "powod_pl": None,
         "linie": pozycje,
     }
+
+
+def _pozycja_dostepnosci(run: CanonicalRun, linia: DaneLinii) -> dict[str, Any] | None:
+    """Pozycja linii w dostępności — TEN SAM resolver zacisku co budowa (predykaty parami).
+
+    Decyzja O-51 (wariant (b)): dozwolone zaciski to dokładnie te, dla których
+    `rozstrzygnij_zacisk` — wołany przez budowę — rozstrzyga wskazanie; zacisk z modelu
+    i odmowa bez wskazania to wynik tego samego wywołania z `None`. Kandydaci kolejnej
+    szyny liczą się ZA KOŃCEM odcinka osobno dla każdego zacisku
+    (`nastepne_szyny_wg_zacisku`); zacisk niedozwolony ma listę pustą. `odmowa_zacisku`
+    to rekord, który budowa zwróciłaby bez wskazania — interfejs pokazuje go wprost, bez
+    własnego tekstu. Linia bez prądu zwarcia 3F na obu zaciskach nie jest kandydatem
+    (budowa wymaga Ik3 na początku i końcu odcinka niezależnie od orientacji).
+    """
+    wynik = run.raw_result
+    if not (
+        szyna_ma_prad_zwarciowy(wynik, linia.from_bus_ref)
+        and szyna_ma_prad_zwarciowy(wynik, linia.to_bus_ref)
+    ):
+        return None
+    zaciski = zaciski_galezi(run.snapshot, linia.ref_id)
+    if zaciski is None:
+        return None
+    bez_wskazania = rozstrzygnij_zacisk(run.snapshot, linia.ref_id, None)
+    dozwolone: tuple[Zacisk, ...] = tuple(
+        zacisk
+        for zacisk in ZACISKI
+        if isinstance(
+            rozstrzygnij_zacisk(run.snapshot, linia.ref_id, zacisk),
+            ZaciskZabezpieczenia,
+        )
+    )
+    odmowa = bez_wskazania if isinstance(bez_wskazania, OdmowaZacisku) else None
+    return {
+        "line_id": linia.ref_id,
+        "nazwa": linia.nazwa,
+        "zacisk_z_modelu": (
+            bez_wskazania.zacisk if isinstance(bez_wskazania, ZaciskZabezpieczenia) else None
+        ),
+        "wymaga_wskazania_zacisku": odmowa is not None and bool(dozwolone),
+        "zaciski_dozwolone": list(dozwolone),
+        "odmowa_zacisku": odmowa.to_dict() if odmowa is not None else None,
+        "zaciski": zaciski.to_dict(),
+        "nastepne_szyny_wg_zacisku": {
+            zacisk: (
+                [
+                    szyna
+                    for szyna in kandydaci_nastepnej_szyny(run.snapshot, linia.ref_id, zacisk)
+                    if szyna_ma_prad_zwarciowy(wynik, szyna)
+                ]
+                if zacisk in dozwolone
+                else []
+            )
+            for zacisk in ZACISKI
+        },
+    }
+
+
+def _powod_braku_pary(pozycje: list[dict[str, Any]]) -> str:
+    """Powód niedostępności, gdy żadna linia nie daje pary odcinek/szyna.
+
+    Linia bez żadnego dozwolonego zacisku (wyłącznik z przypięciem w pętli z oboma
+    zaciskami) nie ma pary z powodu odmowy zacisku, nie z braku prądu zwarciowego — powód
+    nazywa wtedy tę odmowę wprost (rekord resolvera), a ogólny powód braku prądu dochodzi
+    tylko wtedy, gdy istnieje też linia z dozwolonym zaciskiem i bez pary (albo żadnej
+    pozycji).
+    """
+    odmowy = [p["odmowa_zacisku"]["powod_pl"] for p in pozycje if not p["zaciski_dozwolone"]]
+    bez_odmowy = [p for p in pozycje if p["zaciski_dozwolone"]]
+    czesci = [*odmowy]
+    if bez_odmowy or not pozycje:
+        czesci.append(_POWOD_BRAK_PARY_Z_PRADEM)
+    return " ".join(czesci)
 
 
 def _niedostepny(run: CanonicalRun, powod_pl: str) -> dict[str, Any]:
@@ -154,6 +236,7 @@ def zbuduj_pakiet_nastaw(
     line_id: str,
     next_bus_id: str,
     c_min: float,
+    zacisk_zabezpieczenia: Zacisk | None,
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
     k_bth: float = 1.1,
@@ -170,13 +253,14 @@ def zbuduj_pakiet_nastaw(
             line_id=line_id,
             next_bus_id=next_bus_id,
             c_min=c_min,
+            zacisk_zabezpieczenia=zacisk_zabezpieczenia,
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
             uow_factory=uow_factory,
         )
     except BrakDanychNastawError as exc:
-        raise PakietNastawError(str(exc)) from exc
+        raise PakietNastawError(str(exc), kod=exc.kod) from exc
 
     wejscie = nastawy.wejscie
     wynik_silnika = nastawy.wynik
@@ -231,6 +315,7 @@ def zbuduj_odpowiedz_nastaw_json(
     line_id: str,
     next_bus_id: str,
     c_min: float,
+    zacisk_zabezpieczenia: Zacisk | None,
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
     k_bth: float = 1.1,
@@ -252,13 +337,14 @@ def zbuduj_odpowiedz_nastaw_json(
             line_id=line_id,
             next_bus_id=next_bus_id,
             c_min=c_min,
+            zacisk_zabezpieczenia=zacisk_zabezpieczenia,
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
             uow_factory=uow_factory,
         )
     except BrakDanychNastawError as exc:
-        raise PakietNastawError(str(exc)) from exc
+        raise PakietNastawError(str(exc), kod=exc.kod) from exc
 
     return {
         "wynik": nastawy.wynik.to_dict(),
@@ -276,6 +362,7 @@ def zbuduj_odpowiedz_dopasowania(
     line_id: str,
     next_bus_id: str,
     c_min: float,
+    zacisk_zabezpieczenia: Zacisk | None,
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
     k_bth: float = 1.1,
@@ -294,13 +381,14 @@ def zbuduj_odpowiedz_dopasowania(
             line_id=line_id,
             next_bus_id=next_bus_id,
             c_min=c_min,
+            zacisk_zabezpieczenia=zacisk_zabezpieczenia,
             delta_t_s=delta_t_s,
             k_b=k_b,
             k_bth=k_bth,
             uow_factory=uow_factory,
         )
     except BrakDanychNastawError as exc:
-        raise PakietNastawError(str(exc)) from exc
+        raise PakietNastawError(str(exc), kod=exc.kod) from exc
 
     wymaganie = wymaganie_z_nastaw(nastawy.wynik)
     dopasowanie = dopasuj_do_aparatu(wymaganie, device_id=device_id)
@@ -340,6 +428,8 @@ def _proweniencja_wejscia(
         "c_min": c_min,
         "line_id": line_id,
         "next_bus_id": next_bus_id,
+        "zacisk_zabezpieczenia": wejscie.zacisk_zabezpieczenia,
+        "zrodlo_zacisku": wejscie.zrodlo_zacisku,
         "project_name": wejscie.project_name,
         "case_name": wejscie.case_name,
         "line_name": wejscie.line_name,

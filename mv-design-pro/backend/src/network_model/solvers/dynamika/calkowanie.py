@@ -17,6 +17,12 @@ urzadzen i sieci:
     dR_x/dx = I - (dt/2) df/dx      dR_x/dy = -(dt/2) df/dy
     dR_y/dx = -dI/dx                dR_y/dy = dg/dy
 
+Wiersz OGRANICZENIA wezla o napieciu narzuconym (`V_k - E_k(x) = 0`, karta AB-1b.1
+par. 0 pkt 3) ma `dR_y/dx = -dE/dx` (z `jakobian_napiecia_bez_obciazenia` urzadzenia o
+sprzezeniu napieciowym; dla `E = 0` blok zerowy) i jednostkowy `dR_y/dy` (z
+`siec.jakobian_algebry`). Prad urzadzenia pradowego w takim wezle nie wchodzi do
+zadnego rownania, wiec jego blok `-dI/dx` nie jest stemplowany.
+
 Schemat rozdzielony (najpierw stany, potem algebra) bylby tansza, ale INNA
 metoda: przy silnym sprzezeniu (zwarcie na zaciskach) traci rzad i potrafi
 „zbiegac" do punktu, ktory nie spelnia obu rownan naraz. Wybor jest zapisany
@@ -57,8 +63,10 @@ from .siec import (
     WSPOLCZYNNIK_ARMIJO,
     ModelSieci,
     jakobian_algebry,
+    ograniczenia_napiecia,
     residuum_algebry,
     rozwiaz_algebre,
+    rzutuj_napiecia_zerowe,
 )
 from .skonczonosc import sprawdz_wektor
 
@@ -245,6 +253,11 @@ def _jakobian_sprzezony(
     wiec ich wiersz jakobianu to wiersz macierzy jednostkowej. Blok `dR_y/dx`
     zostaje bez zmian — prad urzadzenia nadal zalezy od tego stanu, zmienia sie
     wylacznie rownanie, ktore ten stan WYZNACZA.
+
+    Wezel z wierszem ograniczenia: urzadzenie o sprzezeniu napieciowym wnosi
+    `dR_y/dx = -dE/dx` (jego wiersz), urzadzenie pradowe w takim wezle — nic (wiersz
+    KCL, do ktorego wnosiloby prad, zostal zastapiony). Siec bez ograniczen idzie
+    dokladnie dotychczasowa sciezka.
     """
     liczba_wezlow = kontekst.model.liczba_wezlow
     wymiary = kontekst.wymiary_stanow
@@ -256,6 +269,10 @@ def _jakobian_sprzezony(
         else np.asarray(nasycone, dtype=bool)
     )
 
+    ograniczone = {
+        pozycja for pozycja, _ in ograniczenia_napiecia(kontekst.model, kontekst.urzadzenia)
+    }
+
     wiersze: list[int] = []
     kolumny: list[int] = []
     wartosci: list[float] = []
@@ -266,7 +283,13 @@ def _jakobian_sprzezony(
         napiecie = complex(napiecia[pozycja])
         blok_ff = urzadzenie.jakobian_stan_stan(stan, napiecie)
         blok_fy = urzadzenie.jakobian_stan_napiecie(stan, napiecie)
-        blok_iy = urzadzenie.jakobian_prad_stan(stan, napiecie)
+        if urzadzenie.sprzezenie == "napieciowe":
+            # Wiersz `V - E(x) = 0`: pochodna po stanie to `-dE/dx`.
+            blok_iy = urzadzenie.jakobian_napiecia_bez_obciazenia(stan)
+        elif pozycja in ograniczone:
+            blok_iy = None
+        else:
+            blok_iy = urzadzenie.jakobian_prad_stan(stan, napiecie)
         for wiersz in range(wymiar):
             if maska[przesuniecie + wiersz]:
                 wiersze.append(przesuniecie + wiersz)
@@ -284,11 +307,12 @@ def _jakobian_sprzezony(
                 wiersze.append(przesuniecie + wiersz)
                 kolumny.append(liczba_stanow + pozycja + kolumna_napiecia * liczba_wezlow)
                 wartosci.append(-polowa_kroku * float(blok_fy[wiersz, kolumna_napiecia]))
-        for wiersz_pradu in (0, 1):
-            for kolumna in range(wymiar):
-                wiersze.append(liczba_stanow + pozycja + wiersz_pradu * liczba_wezlow)
-                kolumny.append(przesuniecie + kolumna)
-                wartosci.append(-float(blok_iy[wiersz_pradu, kolumna]))
+        if blok_iy is not None:
+            for wiersz_pradu in (0, 1):
+                for kolumna in range(wymiar):
+                    wiersze.append(liczba_stanow + pozycja + wiersz_pradu * liczba_wezlow)
+                    kolumny.append(przesuniecie + kolumna)
+                    wartosci.append(-float(blok_iy[wiersz_pradu, kolumna]))
         przesuniecie += wymiar
 
     blok_stanow = sparse.coo_matrix(
@@ -427,9 +451,12 @@ class TrapezNiejawny:
             stany_biezace = rozpakuj_stany(
                 rzutuj_stany(wektor[:liczba_stanow], dolne, gorne), wymiary
             )
-            napiecia_biezace = (
+            # Ten sam rzut dla napiec narzuconych zerem (`siec.rzutuj_napiecia_zerowe`):
+            # rownanie liniowe `V = 0` jest spelnione DOKLADNIE, nie do bledu LU.
+            napiecia_biezace = rzutuj_napiecia_zerowe(
+                kontekst.model,
                 wektor[liczba_stanow : liczba_stanow + liczba_wezlow]
-                + 1j * wektor[liczba_stanow + liczba_wezlow :]
+                + 1j * wektor[liczba_stanow + liczba_wezlow :],
             )
             return stany_biezace, napiecia_biezace
 

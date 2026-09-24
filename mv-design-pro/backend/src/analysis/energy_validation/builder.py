@@ -19,6 +19,11 @@ from analysis.energy_validation.models import (
     EnergyValidationView,
 )
 from analysis.energy_validation.serializer import STATUS_ORDER
+from analysis.obciazenie_galezi import (
+    obciazenie_galezi,
+    prad_zacisku_do_a,
+    prad_zacisku_od_a,
+)
 from analysis.power_flow.result import PowerFlowResult
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
@@ -93,86 +98,11 @@ class EnergyValidationBuilder:
         graph: NetworkGraph,
         config: EnergyValidationConfig,
     ) -> list[EnergyValidationItem]:
-        items: list[EnergyValidationItem] = []
-        for branch_id in sorted(graph.branches.keys()):
-            branch = graph.branches[branch_id]
-            if not isinstance(branch, LineBranch):
-                continue
-            if not branch.in_service:
-                continue
-
-            i_ka = _znana(pf.branch_current_ka.get(branch_id))
-            if i_ka is None:
-                items.append(
-                    EnergyValidationItem(
-                        check_type=EnergyCheckType.BRANCH_LOADING,
-                        target_id=branch_id,
-                        target_name=branch.name,
-                        observed_value=None,
-                        unit="%",
-                        limit_warn=config.loading_warn_pct,
-                        limit_fail=config.loading_fail_pct,
-                        margin_pct=None,
-                        status=EnergyValidationStatus.NOT_COMPUTED,
-                        why_pl="Brak pradu galezi w wynikach PF.",
-                    )
-                )
-                continue
-
-            rated_ka = a_na_ka(branch.rated_current_a)
-            if rated_ka <= 0:
-                items.append(
-                    EnergyValidationItem(
-                        check_type=EnergyCheckType.BRANCH_LOADING,
-                        target_id=branch_id,
-                        target_name=branch.name,
-                        observed_value=None,
-                        unit="%",
-                        limit_warn=config.loading_warn_pct,
-                        limit_fail=config.loading_fail_pct,
-                        margin_pct=None,
-                        status=EnergyValidationStatus.NOT_COMPUTED,
-                        why_pl="Brak pradu znamionowego galezi.",
-                    )
-                )
-                continue
-
-            loading_pct = (abs(i_ka) / rated_ka) * 100.0
-            status, why = _threshold_check(
-                loading_pct,
-                config.loading_warn_pct,
-                config.loading_fail_pct,
-                "Obciazenie",
-                "%",
-            )
-            margin = loading_pct - config.loading_fail_pct
-
-            items.append(
-                EnergyValidationItem(
-                    check_type=EnergyCheckType.BRANCH_LOADING,
-                    target_id=branch_id,
-                    target_name=branch.name,
-                    observed_value=loading_pct,
-                    unit="%",
-                    limit_warn=config.loading_warn_pct,
-                    limit_fail=config.loading_fail_pct,
-                    margin_pct=margin,
-                    status=status,
-                    why_pl=why,
-                    white_box=_white_box_progowe(
-                        "obciazenie = |I| / I_n * 100%",
-                        r"\varepsilon = \frac{|I|}{I_n} \cdot 100\%",
-                        f"|I| = {abs(i_ka):.4f} kA (wynik PF), I_n = {rated_ka:.4f} kA (dane galezi)",
-                        rf"\varepsilon = \frac{{{abs(i_ka):.4f}}}{{{rated_ka:.4f}}} \cdot 100\% = {loading_pct:.2f}\%",
-                        f"obciazenie = {loading_pct:.2f} %",
-                        config.loading_warn_pct,
-                        config.loading_fail_pct,
-                        "%",
-                        status,
-                    ),
-                )
-            )
-        return items
+        return [
+            self._pozycja_obciazenia(EnergyCheckType.BRANCH_LOADING, branch_id, branch, pf, config)
+            for branch_id, branch in sorted(graph.branches.items())
+            if isinstance(branch, LineBranch) and branch.in_service
+        ]
 
     def _check_transformer_loading(
         self,
@@ -180,92 +110,101 @@ class EnergyValidationBuilder:
         graph: NetworkGraph,
         config: EnergyValidationConfig,
     ) -> list[EnergyValidationItem]:
-        items: list[EnergyValidationItem] = []
-        for branch_id in sorted(graph.branches.keys()):
-            branch = graph.branches[branch_id]
-            if not isinstance(branch, TransformerBranch):
-                continue
-            if not branch.in_service:
-                continue
-
-            s_from = _znana_zespolona(pf.branch_s_from_mva.get(branch_id))
-            s_to = _znana_zespolona(pf.branch_s_to_mva.get(branch_id))
-
-            if s_from is None and s_to is None:
-                items.append(
-                    EnergyValidationItem(
-                        check_type=EnergyCheckType.TRANSFORMER_LOADING,
-                        target_id=branch_id,
-                        target_name=branch.name,
-                        observed_value=None,
-                        unit="%",
-                        limit_warn=config.loading_warn_pct,
-                        limit_fail=config.loading_fail_pct,
-                        margin_pct=None,
-                        status=EnergyValidationStatus.NOT_COMPUTED,
-                        why_pl="Brak mocy pozornej transformatora w wynikach PF.",
-                    )
-                )
-                continue
-
-            s_mva = max(
-                abs(s_from) if s_from is not None else 0.0,
-                abs(s_to) if s_to is not None else 0.0,
+        return [
+            self._pozycja_obciazenia(
+                EnergyCheckType.TRANSFORMER_LOADING, branch_id, branch, pf, config
             )
+            for branch_id, branch in sorted(graph.branches.items())
+            if isinstance(branch, TransformerBranch) and branch.in_service
+        ]
 
-            if branch.rated_power_mva <= 0:
-                items.append(
-                    EnergyValidationItem(
-                        check_type=EnergyCheckType.TRANSFORMER_LOADING,
-                        target_id=branch_id,
-                        target_name=branch.name,
-                        observed_value=None,
-                        unit="%",
-                        limit_warn=config.loading_warn_pct,
-                        limit_fail=config.loading_fail_pct,
-                        margin_pct=None,
-                        status=EnergyValidationStatus.NOT_COMPUTED,
-                        why_pl="Brak mocy znamionowej transformatora.",
-                    )
-                )
-                continue
+    @staticmethod
+    def _pozycja_obciazenia(
+        check_type: EnergyCheckType,
+        branch_id: str,
+        branch: LineBranch | TransformerBranch,
+        pf: PowerFlowResult,
+        config: EnergyValidationConfig,
+    ) -> EnergyValidationItem:
+        """Obciążenie linii, kabla albo transformatora — JEDNA definicja (decyzja O-51).
 
-            loading_pct = (s_mva / branch.rated_power_mva) * 100.0
-            status, why = _threshold_check(
-                loading_pct,
+        ε = max(|I_od| / I_r,od ; |I_do| / I_r,do) · 100 % przez
+        `analysis/obciazenie_galezi.py` (ta sama funkcja co tabela gałęzi i pasma
+        wiarygodności): prąd zacisku `od` z rdzenia rozpływu, prąd zacisku `do` z mocy
+        strony `to` i napięcia węzła `to`; prąd znamionowy linii z obciążalności, a
+        transformatora z S_n i U_n każdej strony. Dla transformatora to definicja
+        prądowa (IEC 60076-7: współczynnik obciążenia K = I / I_r) — różni się od
+        dawnego max(|S|) / S_n, gdy napięcie strony odbiega od znamionowego. Brak danej
+        = pozycja NOT_COMPUTED z nazwanym powodem.
+        """
+        wynik = obciazenie_galezi(
+            branch,
+            prad_od_a=prad_zacisku_od_a(pf.branch_current_ka.get(branch_id)),
+            prad_do_a=prad_zacisku_do_a(
+                pf.branch_s_to_mva.get(branch_id),
+                pf.node_voltage_kv.get(branch.to_node_id),
+            ),
+        )
+        if wynik.obciazenie_pct is None:
+            return EnergyValidationItem(
+                check_type=check_type,
+                target_id=branch_id,
+                target_name=branch.name,
+                observed_value=None,
+                unit="%",
+                limit_warn=config.loading_warn_pct,
+                limit_fail=config.loading_fail_pct,
+                margin_pct=None,
+                status=EnergyValidationStatus.NOT_COMPUTED,
+                why_pl=wynik.powod_braku_pl or "",
+            )
+        loading_pct = wynik.obciazenie_pct
+        status, why = _threshold_check(
+            loading_pct,
+            config.loading_warn_pct,
+            config.loading_fail_pct,
+            "Obciazenie",
+            "%",
+        )
+        assert wynik.prad_od_a is not None and wynik.prad_do_a is not None
+        assert wynik.prad_znamionowy_od_a is not None and wynik.prad_znamionowy_do_a is not None
+        i_od_ka = a_na_ka(abs(wynik.prad_od_a))
+        i_do_ka = a_na_ka(abs(wynik.prad_do_a))
+        ir_od_ka = a_na_ka(wynik.prad_znamionowy_od_a)
+        ir_do_ka = a_na_ka(wynik.prad_znamionowy_do_a)
+        zrodlo_znamionowych = (
+            "S_n i U_n strony transformatora"
+            if isinstance(branch, TransformerBranch)
+            else "obciazalnosc galezi"
+        )
+        return EnergyValidationItem(
+            check_type=check_type,
+            target_id=branch_id,
+            target_name=branch.name,
+            observed_value=loading_pct,
+            unit="%",
+            limit_warn=config.loading_warn_pct,
+            limit_fail=config.loading_fail_pct,
+            margin_pct=loading_pct - config.loading_fail_pct,
+            status=status,
+            why_pl=why,
+            white_box=_white_box_progowe(
+                "obciazenie = max(|I_od| / I_r,od; |I_do| / I_r,do) * 100%",
+                r"\varepsilon = \max\left(\frac{|I_{od}|}{I_{r,od}}, "
+                r"\frac{|I_{do}|}{I_{r,do}}\right) \cdot 100\%",
+                f"|I_od| = {i_od_ka:.4f} kA, |I_do| = {i_do_ka:.4f} kA (wynik PF), "
+                f"I_r,od = {ir_od_ka:.4f} kA, I_r,do = {ir_do_ka:.4f} kA "
+                f"({zrodlo_znamionowych}); decyduje zacisk {wynik.zacisk_decydujacy}",
+                rf"\varepsilon = \max\left(\frac{{{i_od_ka:.4f}}}{{{ir_od_ka:.4f}}}, "
+                rf"\frac{{{i_do_ka:.4f}}}{{{ir_do_ka:.4f}}}\right) \cdot 100\% "
+                rf"= {loading_pct:.2f}\%",
+                f"obciazenie = {loading_pct:.2f} %",
                 config.loading_warn_pct,
                 config.loading_fail_pct,
-                "Obciazenie",
                 "%",
-            )
-            margin = loading_pct - config.loading_fail_pct
-
-            items.append(
-                EnergyValidationItem(
-                    check_type=EnergyCheckType.TRANSFORMER_LOADING,
-                    target_id=branch_id,
-                    target_name=branch.name,
-                    observed_value=loading_pct,
-                    unit="%",
-                    limit_warn=config.loading_warn_pct,
-                    limit_fail=config.loading_fail_pct,
-                    margin_pct=margin,
-                    status=status,
-                    why_pl=why,
-                    white_box=_white_box_progowe(
-                        "obciazenie = max(|S_gora|, |S_dol|) / S_n * 100%",
-                        r"\varepsilon = \frac{\max(|S_{\text{gora}}|, |S_{\text{dol}}|)}{S_n} \cdot 100\%",
-                        f"S = {s_mva:.4f} MVA (wynik PF), S_n = {branch.rated_power_mva:.4f} MVA",
-                        rf"\varepsilon = \frac{{{s_mva:.4f}}}{{{branch.rated_power_mva:.4f}}} \cdot 100\% = {loading_pct:.2f}\%",
-                        f"obciazenie = {loading_pct:.2f} %",
-                        config.loading_warn_pct,
-                        config.loading_fail_pct,
-                        "%",
-                        status,
-                    ),
-                )
-            )
-        return items
+                status,
+            ),
+        )
 
     def _check_voltage_deviation(
         self,

@@ -36,6 +36,7 @@ def _zwarcie(t_s: float, x_f_pu: float, t_usuniecia_s: float | None) -> ZwarcieW
         r_f_ohm=0.0,
         x_f_ohm=x_f_pu * stanowisko.Z_BAZOWA_OM,
         t_usuniecia_s=t_usuniecia_s,
+        sposob_usuniecia=None if t_usuniecia_s is None else "samoczynne",
     )
 
 
@@ -84,12 +85,15 @@ def test_stan_rozniczkowy_ciagly_a_algebraiczny_skacze() -> None:
     assert zdarzenie.delta_y_max > 0.1, "napiecie wezla musi skoczyc przy zwarciu"
 
 
-def test_probka_w_chwili_zdarzenia_jest_stanem_po_zdarzeniu() -> None:
-    """Kontrakt PRAWOSTRONNY: probka w `t` niesie stan PO wykonaniu zdarzen tej chwili.
+def test_probki_w_chwili_zdarzenia_L_przed_i_P_po_zdarzeniu() -> None:
+    """Kontrakt OBUSTRONNY (karta AB-1b.1 par. 0 pkt 6): chwila zdarzenia ma probke `L`
+    (stan PRZED zdarzeniami tej chwili) i `P` (stan PO nich i po re-inicjalizacji).
 
-    Sprawdzane na wielkosci, ktora SKACZE (modul napiecia wezla), a nie na kacie
-    wirnika — ten jest ciagly i nie odroznilby obu konwencji. Bez tego testu
-    kontrakt z docstringu `silnik.py` bylby deklaracja bez pokrycia.
+    PRZEPISANY ŚWIADOMIE: dawniej jedna probka prawostronna. Intencja zachowana
+    (probka `P` niesie skok), dopisana strona lewa. Sprawdzane na wielkosci, ktora
+    SKACZE (modul napiecia wezla), a nie na kacie wirnika — ten jest ciagly i nie
+    odroznilby obu stron. Bez tego testu kontrakt z docstringu `silnik.py` bylby
+    deklaracja bez pokrycia.
     """
     wynik = stanowisko.uruchom(
         stanowisko.zbuduj(),
@@ -98,15 +102,17 @@ def test_probka_w_chwili_zdarzenia_jest_stanem_po_zdarzeniu() -> None:
         dt_s=5e-4,
         krok_wyjscia_s=5e-4,
     )
-    czas = stanowisko.czas(wynik)
-    modul = stanowisko.szereg(wynik, "u_pu@GEN")
+    czas = stanowisko.czas(wynik, strony=stanowisko.SIATKA_PRAWOSTRONNA)
+    modul = stanowisko.szereg(wynik, "u_pu@GEN", strony=stanowisko.SIATKA_PRAWOSTRONNA)
     i_zdarzenia = int(np.flatnonzero(np.isclose(czas, 0.3, atol=1e-12))[0])
     przed = float(modul[i_zdarzenia - 1])
     w_chwili = float(modul[i_zdarzenia])
     assert w_chwili < 0.9 * przed, (
-        f"probka w chwili zdarzenia ({w_chwili}) nie rozni sie od przedzwarciowej ({przed}) "
-        "— kontrakt prawostronny zlamany"
+        f"probka P chwili zdarzenia ({w_chwili}) nie rozni sie od przedzwarciowej ({przed}) "
+        "— strona prawa zlamana"
     )
+    lewa = wynik.probki["u_pu@GEN"][stanowisko.indeks_probki(wynik, 0.3, "L")]
+    assert lewa == pytest.approx(przed, rel=1e-9), "probka L to stan przed zwarciem"
 
 
 # --------------------------------------------------------------- tozsamosc zdarzenia
@@ -155,7 +161,7 @@ def _bieg_dwoch_zdarzen_w_tej_samej_chwili(kolejnosc_odwrotna: bool) -> tuple[fl
         dt_s=5e-4,
         krok_wyjscia_s=5e-4,
     )
-    return tuple(stanowisko.szereg(wynik, "delta_rad@G1"))
+    return tuple(stanowisko.szereg(wynik, "delta_rad@G1", strony=stanowisko.SIATKA_PRAWOSTRONNA))
 
 
 def test_dwa_zdarzenia_w_tej_samej_chwili_daja_ten_sam_wynik() -> None:
@@ -187,9 +193,10 @@ def test_wynik_nie_zalezy_od_pythonhashseed(ziarno: str) -> None:
         "u=stanowisko.zbuduj(x_linii_pu=0.15, dwutorowa=True);"
         "z=(ZmianaGalezi(t_s=0.3, galaz='LINIA2', zalaczona=False),"
         " ZwarcieWezla(t_s=0.3, wezel='GEN', typ='3F', r_f_ohm=0.0,"
-        "  x_f_ohm=0.5*stanowisko.Z_BAZOWA_OM, t_usuniecia_s=None));"
+        "  x_f_ohm=0.5*stanowisko.Z_BAZOWA_OM, t_usuniecia_s=None, sposob_usuniecia=None));"
         "w=stanowisko.uruchom(u,z,horyzont_s=0.5,dt_s=5e-4,krok_wyjscia_s=5e-4);"
-        "print(json.dumps([float(x) for x in stanowisko.szereg(w,'delta_rad@G1')]))"
+        "print(json.dumps([float(x) for x in"
+        " stanowisko.szereg(w,'delta_rad@G1',strony=stanowisko.SIATKA_PRAWOSTRONNA)]))"
     )
     srodowisko = dict(os.environ, PYTHONHASHSEED=ziarno)
     proces = subprocess.run(

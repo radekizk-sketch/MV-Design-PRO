@@ -20,6 +20,8 @@ niewidoczny do pierwszego zwarcia.
 
 from __future__ import annotations
 
+from typing import Protocol
+
 import numpy as np
 
 from ..kontrakty import (
@@ -28,6 +30,19 @@ from ..kontrakty import (
     OdmowaDynamiki,
 )
 from .pochodne_kierunkowe import Dual, Zespolona, kwadrat, pierwiastek
+
+
+class _BlokZTozsamoscia(Protocol):
+    def parametry_tozsamosci(self) -> dict[str, object]: ...
+
+
+def parametry_bloku(blok: _BlokZTozsamoscia | None) -> dict[str, object] | None:
+    """Parametry tozsamosci bloku zagniezdzonego; `None` = blok NIEOBECNY (np. brak AVR).
+
+    Nieobecnosc bloku jest trescia odcisku (maszyna bez regulatora napiecia to inny
+    uklad niz maszyna z regulatorem), wiec `None` przechodzi do odcisku wprost.
+    """
+    return None if blok is None else blok.parametry_tozsamosci()
 
 
 def blok_mnozenia_zespolonego(mnoznik: complex) -> np.ndarray:
@@ -91,6 +106,7 @@ def modul_niezerowy(fazor: Zespolona, opis: str) -> Dual:
 
 __all__ = [
     "admitancja_wewnetrzna",
+    "parametry_bloku",
     "blok_mnozenia_zespolonego",
     "jakobian_prad_napiecie_zrodla",
     "modul_niezerowy",

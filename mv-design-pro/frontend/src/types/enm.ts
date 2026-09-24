@@ -695,7 +695,7 @@ export interface Generator extends ENMElement {
    * Kontrakt wejsciowy KAZDEGO wytworcy: bez tego bloku bieg `dynamika_rms`
    * odmawia nazwanym kodem `dynamika.zrodlo_bez_bloku_dynamiki`. Bieg startuje
    * z punktu pracy wskazanego rozplywu (`solver_input.pf_run_id`) i oddaje
-   * `resultset_dynamic_v1`.
+   * `resultset_dynamic_v2`.
    */
   dynamika?: ParametryDynamiczne | null;
 

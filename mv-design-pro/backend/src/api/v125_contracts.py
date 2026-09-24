@@ -341,7 +341,7 @@ def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
         "short_circuit_sn": "iec60909_v1",
         "phase_state_sn": "phase_state_sn_v1",
         "dynamic_stability": "dynamic_stability_fault_clear_v1",
-        "dynamika_rms": "resultset_dynamic_v1",
+        "dynamika_rms": "resultset_dynamic_v2",
     }.get(run.analysis_type, "canonical_run_v1")
     standard_basis_ref = {
         "PF": "NR_POWER_FLOW",

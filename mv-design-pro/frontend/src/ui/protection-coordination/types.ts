@@ -63,6 +63,13 @@ export interface ProtectionDevice {
   name: string;
   device_type: DeviceType;
   location_element_id: string;
+  /**
+   * Zacisk lokalizacji-GAŁĘZI, przy którym stoi urządzenie (decyzja O-51, pkt 7):
+   * `od` — zacisk początkowy, `do` — końcowy. Wskazywany klikiem, gdy model nie
+   * rozstrzyga (lokalizacja-łącznik rozstrzyga go sam — pole zbędne). Brak = prąd
+   * roboczy nieustalony (nazwany brak), nigdy prąd zacisku początkowego domyślnie.
+   */
+  zacisk?: 'od' | 'do';
   settings: OvercurrentSettings;
   manufacturer?: string;
   model?: string;
@@ -225,7 +232,10 @@ export interface RunCoordinationRequest {
   operating_currents: OperatingCurrentData[];
   config?: CoordinationConfig;
   pf_run_id?: string;
+  /** Bieg zwarciowy MAKSYMALNY, którym backend potwierdza `ik_max_3f_a` (karta S-2). */
   sc_run_id?: string;
+  /** Bieg zwarciowy MINIMALNY, którym backend potwierdza `ik_min_3f_a` (karta S-2). */
+  sc_run_id_min?: string;
 }
 
 export interface CoordinationConfig {
@@ -304,6 +314,11 @@ export const LABELS = {
     locationNoModel:
       'Model przypadku nie jest wczytany — nie ma z czego wskazać elementu. '
       + 'Wybierz aktywny wariant pracy, a lista szyn i gałęzi pojawi się tutaj.',
+    // Decyzja O-51 (pkt 7): zacisk, przy którym stoi urządzenie — etykiety zacisków
+    // (nazwy szyn) i odmowy przychodzą z backendu.
+    terminal: 'Zacisk gałęzi (miejsce urządzenia)',
+    terminalFromModel: 'Z modelu (łącznik w szeregu z zaciskiem gałęzi)',
+    terminalLoading: 'Rozstrzyganie miejsca urządzenia…',
     settings: 'Nastawy',
     noDevices: 'Dodaj urządzenia zabezpieczeniowe',
     selectToEdit: 'Wybierz urządzenie do edycji',
@@ -530,6 +545,9 @@ export const LABELS = {
       + 'niesprawdzalna. Prąd maksymalny nie zastąpi minimalnego.',
     brakPraduRoboczego:
       'Brak prądu roboczego z rozpływu mocy — kryterium przeciążenia jest niesprawdzalne.',
+    brakPraduZaciskuWierszu:
+      'Wiersz gałęzi wyniku rozpływu nie niesie prądu wskazanego zacisku — kryterium '
+      + 'przeciążenia jest niesprawdzalne.',
     // V12K-262: lokalizacja urządzenia to element modelu, nie tekst wpisany z ręki.
     brakLokalizacji:
       'Wskaż element modelu dla każdego zabezpieczenia — bez lokalizacji nie da się '

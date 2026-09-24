@@ -5,7 +5,8 @@
  * ZERO producentów biegów i ZERO konsumentów frontendu). Kontrakt 1:1 z
  * `api/analysis_runs.py`:
  *   - `GET /analysis-runs/{run_id}/pakiet-dowodowy-nastaw/dostepnosc` — kandydaci
- *     (linie chronione + kolejne szyny) dla przebiegu-kotwicy,
+ *     (linie chronione + zacisk zabezpieczenia z modelu albo wymóg wskazania +
+ *     kolejne szyny osobno dla każdego zacisku, decyzja O-51) dla przebiegu-kotwicy,
  *   - `GET /analysis-runs/{run_id}/nastawy` — nastawy w JSON (ta sama fizyka co
  *     pakiet dowodowy ZIP),
  *   - `GET /analysis-runs/{run_id}/nastawy/dopasowanie` — dobór aparatu z
@@ -15,10 +16,35 @@
  * ZERO fizyki w UI: każda liczba tej sekcji pochodzi z odpowiedzi backendu.
  */
 
+/** Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). */
+export type ZaciskZabezpieczenia = 'od' | 'do';
+
+/** Zacisk linii z modelu: szyna i etykieta z nazwą szyny (backend). */
+export interface ZaciskLinii {
+  readonly szyna_ref: string;
+  readonly etykieta_pl: string;
+}
+
+/** Odmowa nazwana resolvera zacisku (kod kanonu kodów gotowości + powód PL). */
+export interface OdmowaZacisku {
+  readonly kod: string;
+  readonly powod_pl: string;
+}
+
 export interface KandydatLinii {
   readonly line_id: string;
   readonly nazwa: string;
-  readonly nastepne_szyny_kandydujace: readonly string[];
+  /** Zacisk rozstrzygnięty przez model (przypięcie zabezpieczenia w szeregu z zaciskiem). */
+  readonly zacisk_z_modelu: ZaciskZabezpieczenia | null;
+  /** Model milczy albo ma zabezpieczenia przy obu zaciskach — wymagany wybór inżyniera. */
+  readonly wymaga_wskazania_zacisku: boolean;
+  /** Zaciski, które budowa pakietu przyjmie (ten sam resolver co budowa). */
+  readonly zaciski_dozwolone: readonly ZaciskZabezpieczenia[];
+  /** Rekord odmowy bez wskazania — powód pokazywany wprost przy zablokowanym liczeniu. */
+  readonly odmowa_zacisku: OdmowaZacisku | null;
+  readonly zaciski: Readonly<Record<ZaciskZabezpieczenia, ZaciskLinii>>;
+  /** Kandydaci kolejnej szyny ZA KOŃCEM odcinka — osobno dla każdego zacisku. */
+  readonly nastepne_szyny_wg_zacisku: Readonly<Record<ZaciskZabezpieczenia, readonly string[]>>;
 }
 
 export interface DostepnoscNastaw {
@@ -100,6 +126,9 @@ export interface ProweniencjaNastaw {
   readonly c_min: number;
   readonly line_id: string;
   readonly next_bus_id: string;
+  /** Zacisk zabezpieczenia użyty przez pakiet i jego źródło (model albo wskazanie). */
+  readonly zacisk_zabezpieczenia: ZaciskZabezpieczenia;
+  readonly zrodlo_zacisku: 'model' | 'wskazanie';
   readonly project_name: string;
   readonly case_name: string;
   readonly line_name: string;
@@ -182,6 +211,11 @@ async function odczytajBlad(response: Response): Promise<string> {
     if (typeof dane.detail === 'string' && dane.detail.trim().length > 0) {
       return dane.detail;
     }
+    // Odmowa bramy nastaw (422): `{kod, powod_pl}` — powód pokazywany wprost.
+    const detal = dane.detail as { powod_pl?: unknown } | null | undefined;
+    if (detal && typeof detal.powod_pl === 'string' && detal.powod_pl.trim().length > 0) {
+      return detal.powod_pl;
+    }
   } catch {
     // Treść błędu jest opcjonalna — komunikat poniżej wystarcza projektantowi.
   }
@@ -205,12 +239,15 @@ export async function fetchDostepnoscNastaw(
   return (await response.json()) as DostepnoscNastaw;
 }
 
+/** Zapytanie nastaw. `zacisk` = wskazanie inżyniera — `null`, gdy zacisk rozstrzyga
+ * model (parametr jest wtedy zbędny i NIE jest wysyłany, decyzja O-51). */
 function parametryDoQuery(
   linia: string,
   nastepnaSzyna: string,
+  zacisk: ZaciskZabezpieczenia | null,
   parametry: ParametryNastaw,
 ): URLSearchParams {
-  return new URLSearchParams({
+  const query = new URLSearchParams({
     linia,
     nastepna_szyna: nastepnaSzyna,
     c_min: String(parametry.c_min),
@@ -218,16 +255,19 @@ function parametryDoQuery(
     k_b: String(parametry.k_b),
     k_bth: String(parametry.k_bth),
   });
+  if (zacisk !== null) query.set('zacisk_zabezpieczenia', zacisk);
+  return query;
 }
 
 export async function fetchNastawy(
   runId: string,
   linia: string,
   nastepnaSzyna: string,
+  zacisk: ZaciskZabezpieczenia | null,
   parametry: ParametryNastaw = PARAMETRY_NASTAW_DOMYSLNE,
   options: { signal?: AbortSignal } = {},
 ): Promise<OdpowiedzNastaw> {
-  const query = parametryDoQuery(linia, nastepnaSzyna, parametry);
+  const query = parametryDoQuery(linia, nastepnaSzyna, zacisk, parametry);
   const response = await fetch(
     `/api/analysis-runs/${encodeURIComponent(runId)}/nastawy?${query.toString()}`,
     { signal: options.signal },
@@ -246,10 +286,11 @@ export async function fetchDopasowanieAparatu(
   deviceId: string,
   linia: string,
   nastepnaSzyna: string,
+  zacisk: ZaciskZabezpieczenia | null,
   parametry: ParametryNastaw = PARAMETRY_NASTAW_DOMYSLNE,
   options: { signal?: AbortSignal } = {},
 ): Promise<DopasowanieAparatu> {
-  const query = parametryDoQuery(linia, nastepnaSzyna, parametry);
+  const query = parametryDoQuery(linia, nastepnaSzyna, zacisk, parametry);
   query.set('device_id', deviceId);
   const response = await fetch(
     `/api/analysis-runs/${encodeURIComponent(runId)}/nastawy/dopasowanie?${query.toString()}`,
@@ -295,8 +336,9 @@ export function adresPakietuDowodowego(
   runId: string,
   linia: string,
   nastepnaSzyna: string,
+  zacisk: ZaciskZabezpieczenia | null,
   parametry: ParametryNastaw,
 ): string {
-  const query = parametryDoQuery(linia, nastepnaSzyna, parametry);
+  const query = parametryDoQuery(linia, nastepnaSzyna, zacisk, parametry);
   return `/api/analysis-runs/${encodeURIComponent(runId)}/pakiet-dowodowy-nastaw?${query.toString()}`;
 }

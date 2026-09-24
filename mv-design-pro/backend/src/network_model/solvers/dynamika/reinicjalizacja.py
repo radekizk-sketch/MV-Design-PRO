@@ -26,6 +26,14 @@ Tutaj defekt jest niemozliwy Z KONSTRUKCJI, na trzy sposoby naraz:
 Punkt 1 jest przypiety testem mutacyjnym: podmiana migawki na wynik po
 rozwiazaniu (dokladnie ten defekt) MUSI wywrocic test — inaczej deklaracja z tego
 docstringa bylaby obietnica bez pokrycia.
+
+PUNKT STARTOWY NEWTONA A NAPIECIA PRZED ZDARZENIEM (karta AB-1b.1 par. 0 pkt 2).
+Wezel, ktory w tej chwili PRZESTAJE miec napiecie narzucone zerem (ponowne zasilenie
+obszaru odcietego, zdjecie zwarcia metalicznego), startowalby Newtona z `V = 0` — a
+odbior o stalej mocy ma tam `1/|V|^2`. Silnik podaje wtedy osobny `napiecia_startowe`
+(napiecie najblizszego wezla zywego); to jest WYBOR PUNKTU STARTOWEGO, nie korekta
+rozwiazania. Skok `delta_y` jest nadal mierzony wzgledem napiec PRZED zdarzeniem —
+migawki, nie punktu startowego.
 """
 
 from __future__ import annotations
@@ -41,7 +49,7 @@ from .kontrakty import (
     OdmowaDynamiki,
     Urzadzenie,
 )
-from .siec import ModelSieci, residuum_kcl_niezalezne, rozwiaz_algebre
+from .siec import ModelSieci, residuum_kcl_niezalezne, rozwiaz_algebre, wezly_ograniczone
 
 
 @dataclass(frozen=True)
@@ -55,6 +63,10 @@ class RaportReinicjalizacji:
     residuum_algebry: float
     iteracje: int
     nawroty: int
+    #: Wezly z wierszem ograniczenia napiecia w nowym stanie (obszar odciety, zwarcie
+    #: metaliczne, zrodlo napieciowe) — POZA `residuum_kcl_max`, bo ich bilans jest z
+    #: definicji domknieciem pradu elementu narzucajacego napiecie.
+    wezly_ograniczone: tuple[str, ...]
 
 
 def reinicjalizuj(
@@ -66,6 +78,7 @@ def reinicjalizuj(
     *,
     nastawy: NastawySolvera,
     t_s: float,
+    napiecia_startowe: np.ndarray | None = None,
 ) -> tuple[np.ndarray, RaportReinicjalizacji]:
     """Rozwiaz algebre na NOWEJ topologii przy TRZYMANYCH stanach rozniczkowych.
 
@@ -76,6 +89,11 @@ def reinicjalizuj(
     """
     migawka_napiec = np.array(napiecia_przed, dtype=complex, copy=True)
     migawka_stanow = tuple(np.array(stan, dtype=float, copy=True) for stan in stany_przed)
+    start = (
+        migawka_napiec
+        if napiecia_startowe is None
+        else np.array(napiecia_startowe, dtype=complex, copy=True)
+    )
 
     try:
         wynik = rozwiaz_algebre(
@@ -83,7 +101,7 @@ def reinicjalizuj(
             odbiory,
             urzadzenia,
             migawka_stanow,
-            migawka_napiec,
+            start,
             tolerancja=nastawy.tolerancja,
             max_iteracji=nastawy.max_iteracji_newtona,
             max_nawrotow=nastawy.max_nawrotow,
@@ -124,6 +142,7 @@ def reinicjalizuj(
         residuum_algebry=wynik.residuum,
         iteracje=wynik.iteracje,
         nawroty=wynik.nawroty,
+        wezly_ograniczone=wezly_ograniczone(model, urzadzenia),
     )
 
 

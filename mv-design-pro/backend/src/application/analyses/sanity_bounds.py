@@ -17,7 +17,8 @@ Warstwa APPLICATION (mapowanie, NIE fizyka). Dwie niezależne oceny:
 2. ``build_power_flow_sanity_bounds_view`` (karta W3-G2, KARTA_W3_KONWERGENCJA_
    FIZYKI_2026-09.md §0.17) — GOTOWY wynik przebiegu rozpływu (``PF``): pasma
    wiarygodności napięć szyn (Un ± 10 %, PN-EN 50160), obciążeń gałęzi
-   (linia/kabel wobec In katalogu) i strat czynnych sieci (wobec sumy mocy
+   (linia, kabel i transformator — prąd każdego zacisku wobec prądu znamionowego
+   zacisku, decyzja O-51) i strat czynnych sieci (wobec sumy mocy
    czynnej odbiorów), delegując ocenę do ``analysis.sanity_bounds.power_flow_
    bounds``. ZERO fizyki — napięcia/prądy/straty z solvera Newton-Raphson (przez
    ``application.analyses.power_flow_reconstruction``, WSPÓLNA rekonstrukcja z
@@ -35,6 +36,13 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from analysis.obciazenie_galezi import (
+    PradyZnamionoweZaciskow,
+    obciazenie_galezi,
+    prad_zacisku_do_a,
+    prad_zacisku_od_a,
+    prady_znamionowe_zaciskow,
+)
 from analysis.sanity_bounds.power_flow_bounds import (
     DOMYSLNY_PROG_STRAT_PROCENT,
     NORMA_NAPIECIA_PL,
@@ -60,7 +68,7 @@ from application.analyses.power_flow_reconstruction import (
     wynik_rozplywu_z_biegu,
 )
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
-from network_model.core.branch import LineBranch
+from network_model.core.branch import LineBranch, TransformerBranch
 
 
 def _voltage_by_target(run: CanonicalRun) -> dict[str, float | None]:
@@ -156,16 +164,23 @@ def _voltage_verdict_niezbiezny(nominal_kv: float | None) -> VoltageBandSanityVe
     )
 
 
-def _loading_verdict_niezbiezny(rated_current_a: float | None) -> BranchLoadingSanityVerdict:
-    """Werdykt obciążenia przy niezbieżnym biegu — In jest daną KATALOGU (znana
-    niezależnie od zbieżności), prąd z solvera (current_ka) jest NIEZNANY."""
+def _loading_verdict_niezbiezny(
+    galaz: LineBranch | TransformerBranch,
+) -> BranchLoadingSanityVerdict:
+    """Werdykt obciążenia przy niezbieżnym biegu — prądy znamionowe zacisków są daną
+    MODELU (znane niezależnie od zbieżności), prądy zacisków z solvera są NIEZNANE."""
+    znamionowe = prady_znamionowe_zaciskow(galaz)
+    ir_od = znamionowe.od_a if isinstance(znamionowe, PradyZnamionoweZaciskow) else None
+    ir_do = znamionowe.do_a if isinstance(znamionowe, PradyZnamionoweZaciskow) else None
     return BranchLoadingSanityVerdict(
         current_ka=None,
-        rated_current_a=rated_current_a,
+        rated_current_a=None,
         loading_pct=None,
         in_range=False,
         status=INCOMPLETE,
         why_pl=POWOD_NIEZBIEZNOSCI_PL,
+        rated_current_od_a=ir_od,
+        rated_current_do_a=ir_do,
     )
 
 
@@ -235,23 +250,34 @@ def build_power_flow_sanity_bounds_view(run: CanonicalRun) -> dict[str, Any]:
         )
         napiecia.append({"target_id": node_id, "target_name": node.name, **verdict.to_dict()})
 
-    # Obciążenie gałęzi ma wielkość znamionową PRĄD (In) — dotyczy WYŁĄCZNIE
-    # linii/kabli (§0.17: „obciążenia gałęzi ≤ In katalogu"). Transformator ma
-    # wielkość znamionową MOC (Sn), inne kryterium — jego obciążenie ma już
-    # WARN/FAIL jakościowy w ``analysis/energy_validation`` (TRANSFORMER_LOADING,
-    # inna klasa: zgodność projektowa, nie kredybilność wyniku solvera).
+    # Obciążenie gałęzi (decyzja O-51): prąd KAŻDEGO zacisku wobec prądu znamionowego
+    # TEGO zacisku — linia i kabel z In katalogu, transformator z S_n i U_n strony
+    # (I_r = S_n/(√3·U_n), `network_model/pochodne`). Jedna funkcja obciążenia
+    # (`analysis/obciazenie_galezi.py`) dla tabeli gałęzi, walidacji energetycznej i
+    # tych pasm — ocena z jednego zacisku zaniżała obciążenie kabla z susceptancją.
     obciazenia: list[dict[str, Any]] = []
     for branch_id, branch in sorted(graph.branches.items()):
-        if not isinstance(branch, LineBranch) or not branch.in_service:
+        if not isinstance(branch, LineBranch | TransformerBranch) or not branch.in_service:
             continue
-        verdict = (
-            _loading_verdict_niezbiezny(branch.rated_current_a)
+        werdykt_obciazenia = (
+            _loading_verdict_niezbiezny(branch)
             if not pf.converged
             else evaluate_branch_loading(
-                pf.branch_current_ka.get(branch_id), branch.rated_current_a
+                obciazenie_galezi(
+                    branch,
+                    prad_od_a=prad_zacisku_od_a(pf.branch_current_ka.get(branch_id)),
+                    prad_do_a=prad_zacisku_do_a(
+                        pf.branch_s_to_mva.get(branch_id),
+                        pf.node_voltage_kv.get(branch.to_node_id),
+                    ),
+                )
             )
         )
-        obciazenia.append({"target_id": branch_id, "target_name": branch.name, **verdict.to_dict()})
+        # Osobna nazwa werdyktu obciążenia (nie `verdict` pętli napięć) — jedna nazwa dla dwóch
+        # typów werdyktu chowała przed analizą typów różnicę pól.
+        obciazenia.append(
+            {"target_id": branch_id, "target_name": branch.name, **werdykt_obciazenia.to_dict()}
+        )
 
     straty_verdict = (
         _losses_verdict_niezbiezny(DOMYSLNY_PROG_STRAT_PROCENT)

@@ -77,11 +77,21 @@ from application.protection_settings.engine import (
     ProtectionSettingsInput,
     ProtectionSettingsResult,
 )
-from enm.canonical_analysis import CanonicalRun, bieg_wariantu, wykonaj_bieg_w_pamieci
+from application.protection_settings.zacisk_zabezpieczenia import (
+    OdmowaZacisku,
+    Zacisk,
+    ZrodloZacisku,
+    rozstrzygnij_zacisk,
+)
+from enm.canonical_analysis import (
+    CanonicalRun,
+    bieg_wariantu,
+    build_branch_results,
+    wykonaj_bieg_w_pamieci,
+)
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
-from network_model.pochodne import ka_na_a
 
 #: Rodzaje gałęzi ENM kwalifikowane jako "linia chroniona" — mają impedancję
 #: jednostkową, długość i mogą nieść dane katalogowe cieplne (F-K1). Aparat
@@ -98,8 +108,13 @@ class BrakDanychNastawError(ValueError):
     """Zbiorczego biegu nastaw nie da się złożyć dla podanych parametrów (powód PL).
 
     Brama pakietu dowodowego (`pakiet_nastaw.py`) tłumaczy ten wyjątek na odpowiedź
-    HTTP i pokazuje powód wprost — zero cichego pominięcia.
+    HTTP i pokazuje powód wprost — zero cichego pominięcia. `kod` niesie kod z kanonu
+    kodów gotowości, gdy odmowa go ma (np. zacisk zabezpieczenia, decyzja O-51).
     """
+
+    def __init__(self, powod_pl: str, *, kod: str | None = None) -> None:
+        super().__init__(powod_pl)
+        self.kod = kod
 
 
 @dataclass(frozen=True)
@@ -126,6 +141,11 @@ class WejscieNastawZBiegow:
     line_name: str
     run_timestamp: datetime
     solver_version: str
+    #: Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51): orientacja
+    #: pakietu („początek" = ten zacisk) i miejsce prądu obciążenia `i_load_max_a`.
+    zacisk_zabezpieczenia: Zacisk
+    #: Skąd zacisk: z modelu (przypięcie zabezpieczenia do wyłącznika) albo ze wskazania.
+    zrodlo_zacisku: ZrodloZacisku
 
 
 def linie_kandydujace(snapshot: dict[str, Any] | None) -> list[DaneLinii]:
@@ -178,11 +198,15 @@ def _dane_linii_z_galezi(surowa: Any) -> DaneLinii | None:
     )
 
 
-def kandydaci_nastepnej_szyny(snapshot: dict[str, Any] | None, line_id: str) -> list[str]:
-    """Szyny osiągalne JEDNYM krokiem w dół od końca chronionej linii.
+def kandydaci_nastepnej_szyny(
+    snapshot: dict[str, Any] | None, line_id: str, zacisk: Zacisk
+) -> list[str]:
+    """Szyny osiągalne JEDNYM krokiem w dół od KOŃCA chronionej linii.
 
-    Kandydat = druga szyna dowolnej INNEJ gałęzi liniowej dotykającej szyny końca
-    (``to_bus_ref``) chronionej linii. Lista bywa pusta (linia jest ostatnim
+    Końcem jest zacisk PRZECIWNY do zacisku zabezpieczenia (`zacisk`, rozstrzygnięty
+    przez `zacisk_zabezpieczenia.rozstrzygnij_zacisk` — decyzja O-51: orientacja pakietu
+    z jednego źródła, nie z konwencji `from`). Kandydat = druga szyna dowolnej INNEJ
+    gałęzi liniowej dotykającej szyny końca. Lista bywa pusta (linia jest ostatnim
     odcinkiem promienia — brak warunku selektywności w dół) albo wieloelementowa
     (rozgałęzienie) — w obu przypadkach wybór NIE jest zgadywany przez kod.
     """
@@ -196,7 +220,7 @@ def kandydaci_nastepnej_szyny(snapshot: dict[str, Any] | None, line_id: str) -> 
     )
     if linia is None:
         return []
-    koniec = linia.to_bus_ref
+    koniec = linia.to_bus_ref if zacisk == "od" else linia.from_bus_ref
     kandydaci: set[str] = set()
     for surowa in (snapshot or {}).get("branches") or []:
         inna = _dane_linii_z_galezi(surowa)
@@ -290,6 +314,7 @@ def zbuduj_wejscie_nastaw(
     line_id: str,
     next_bus_id: str,
     c_min: float,
+    zacisk_zabezpieczenia: Zacisk | None,
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
     k_bth: float = 1.1,
@@ -307,6 +332,13 @@ def zbuduj_wejscie_nastaw(
     `uow_factory` (CV-4.2b): fabryka `UnitOfWork` wołającego — trzy warianty
     dziedziczą parę audytu 2 kotwicy, więc kotwica z konfiguracją audytu 2
     stacji wymaga jej do odczytu tej konfiguracji (`wykonaj_bieg_w_pamieci`).
+
+    `zacisk_zabezpieczenia` (decyzja O-51, wariant (b)): jawne wskazanie inżyniera
+    (`od`/`do`) albo `None`. BEZ wartości domyślnej — rozstrzyga `rozstrzygnij_zacisk`
+    (model → wskazanie → odmowa nazwana z kodem). Z rozstrzygniętego zacisku bierze się
+    orientacja CAŁEGO pakietu: „początek" odcinka (Ik3 max/min na początku, prąd
+    obciążenia w miejscu zabezpieczenia), „koniec" (Ik3 na końcu, Ik2 min) i kolejna
+    strefa za końcem.
     """
     if kotwica.status != "FINISHED":
         raise BrakDanychNastawError(
@@ -347,7 +379,11 @@ def zbuduj_wejscie_nastaw(
             "katalogowych (przekrój, materiał, prąd znamionowy) w migawce kotwicy."
         )
 
-    kandydaci = kandydaci_nastepnej_szyny(kotwica.snapshot, line_id)
+    rozstrzygniecie = rozstrzygnij_zacisk(kotwica.snapshot, line_id, zacisk_zabezpieczenia)
+    if isinstance(rozstrzygniecie, OdmowaZacisku):
+        raise BrakDanychNastawError(rozstrzygniecie.powod_pl, kod=rozstrzygniecie.kod)
+
+    kandydaci = kandydaci_nastepnej_szyny(kotwica.snapshot, line_id, rozstrzygniecie.zacisk)
     if next_bus_id not in kandydaci:
         opis_kandydatow = ", ".join(kandydaci) if kandydaci else "brak — linia bez gałęzi w dół"
         raise BrakDanychNastawError(
@@ -356,8 +392,8 @@ def zbuduj_wejscie_nastaw(
             "listy kandydatów."
         )
 
-    graf_poczatku = ref_to_graph_id(linia.from_bus_ref)
-    graf_konca = ref_to_graph_id(linia.to_bus_ref)
+    graf_poczatku = ref_to_graph_id(rozstrzygniecie.szyna_zacisku_ref)
+    graf_konca = ref_to_graph_id(rozstrzygniecie.szyna_przeciwna_ref)
     graf_nastepnej = ref_to_graph_id(next_bus_id)
 
     ik3_max_beginning_a = _prad_zwarciowy_w_wezle(kotwica_wynik, graf_poczatku)
@@ -444,15 +480,13 @@ def zbuduj_wejscie_nastaw(
             "Wariant rozpływu mocy migawki kotwicy nie osiągnął zbieżności — "
             "prąd obciążenia maksymalnego chronionego odcinka nie jest wynikiem."
         )
-    graf_linii = ref_to_graph_id(line_id)
-    prad_galezi_ka = (pf_wynik.get("branch_current_ka") or {}).get(graf_linii)
-    i_load_max_a = _opcjonalna_liczba(prad_galezi_ka)
+    i_load_max_a = _prad_w_miejscu_zabezpieczenia(wariant_pf, linia, rozstrzygniecie.zacisk)
     if i_load_max_a is None:
         raise BrakDanychNastawError(
-            f"Wariant rozpływu mocy nie policzył prądu gałęzi {line_id} — chroniony "
-            "odcinek nie jest częścią rozwiązanej wyspy zasilanej."
+            f"Wariant rozpływu mocy nie policzył prądu zacisku {rozstrzygniecie.zacisk} "
+            f"gałęzi {line_id} — chroniony odcinek nie jest częścią rozwiązanej wyspy "
+            "zasilanej."
         )
-    i_load_max_a = ka_na_a(i_load_max_a)  # kA -> A
 
     pf_solver_version = pf_wynik.get("solver_version")
     solver_version = (
@@ -493,7 +527,30 @@ def zbuduj_wejscie_nastaw(
         line_name=linia.nazwa,
         run_timestamp=_znacznik_czasu(kotwica),
         solver_version=solver_version,
+        zacisk_zabezpieczenia=rozstrzygniecie.zacisk,
+        zrodlo_zacisku=rozstrzygniecie.zrodlo,
     )
+
+
+def _prad_w_miejscu_zabezpieczenia(
+    wariant_pf: CanonicalRun, linia: DaneLinii, zacisk: Zacisk
+) -> float | None:
+    """Prąd obciążenia [A] w miejscu zabezpieczenia — prąd TEGO zacisku linii (klasa P9).
+
+    JEDNA droga z tabelą gałęzi (`enm.canonical_analysis.build_branch_results`, predykaty
+    parami): zacisk `od` = kolumna `i_a` (prąd strony `from` rdzenia rozpływu), zacisk `do`
+    = kolumna `i_do_a` (prąd z mocy strony `to` i napięcia węzła `to`,
+    `analysis/obciazenie_galezi.py`). Ten sam wiersz czyta prąd roboczy urządzeń
+    koordynacji po stronie interfejsu. Brak danej = `None` (odmowa wyżej), nigdy zero.
+    """
+    graf_linii = ref_to_graph_id(linia.ref_id)
+    wiersz = next(
+        (w for w in build_branch_results(wariant_pf)["rows"] if w["branch_id"] == graf_linii),
+        None,
+    )
+    if wiersz is None:
+        return None
+    return _opcjonalna_liczba(wiersz["i_a" if zacisk == "od" else "i_do_a"])
 
 
 def _znacznik_czasu(run: CanonicalRun) -> datetime:
@@ -522,6 +579,7 @@ def oblicz_nastawy(
     line_id: str,
     next_bus_id: str,
     c_min: float,
+    zacisk_zabezpieczenia: Zacisk | None,
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
     k_bth: float = 1.1,
@@ -539,6 +597,7 @@ def oblicz_nastawy(
         line_id=line_id,
         next_bus_id=next_bus_id,
         c_min=c_min,
+        zacisk_zabezpieczenia=zacisk_zabezpieczenia,
         delta_t_s=delta_t_s,
         k_b=k_b,
         k_bth=k_bth,

@@ -38,9 +38,11 @@ from __future__ import annotations
 
 import cmath
 from dataclasses import dataclass
+from typing import ClassVar
 
 import numpy as np
 
+from ..kontrakty import SprzezenieUrzadzenia
 from ..konwencje import (
     pulsacja_bazowa_rad_s,
     sprawdz_stala_bezwladnosci,
@@ -82,6 +84,25 @@ class MaszynaKlasyczna:
     x_prim_pu: float
     ra_pu: float
     omega_bazowa_rad_s: float
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = ()
+
+    @property
+    def sprzezenie(self) -> SprzezenieUrzadzenia:
+        """Zrodlo SEM za reaktancja przejsciowa — prad wstrzykiwany do wezla."""
+        return "pradowe"
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "ident": self.ident,
+            "wezel": self.wezel,
+            "h_s": self.h_s,
+            "d_pu": self.d_pu,
+            "x_prim_pu": self.x_prim_pu,
+            "ra_pu": self.ra_pu,
+            "omega_bazowa_rad_s": self.omega_bazowa_rad_s,
+        }
 
     @property
     def nazwy_stanow(self) -> tuple[str, ...]:

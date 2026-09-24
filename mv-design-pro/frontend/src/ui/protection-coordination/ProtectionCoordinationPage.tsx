@@ -63,6 +63,7 @@ import {
   type BiegZwarciowyDoPodzialu,
 } from './pradyZBiegow';
 import type { BrakDanejPradowej } from './pradyZBiegow';
+import { fetchMiejsceUrzadzenia, type MiejsceUrzadzenia } from './miejsceUrzadzenia';
 import { lokalizacjeKoordynacji } from './lokalizacjeZModelu';
 import type { LokalizacjaModelu } from './lokalizacjeZModelu';
 
@@ -467,6 +468,12 @@ export function ProtectionCoordinationPage() {
   });
   // F-K4 faza 3b: braki danych prądowych z biegów (uczciwy stan zamiast atrapy).
   const [brakiPradowe, setBrakiPradowe] = useState<readonly BrakDanejPradowej[]>([]);
+  // Biegi, z których zbudowano prądy — ich identyfikatory idą w żądaniu analizy.
+  const [biegiKoordynacji, setBiegiKoordynacji] = useState<{
+    readonly sc_run_id: string | null;
+    readonly sc_run_id_min: string | null;
+    readonly pf_run_id: string | null;
+  }>({ sc_run_id: null, sc_run_id_min: null, pf_run_id: null });
   // K5-B (H-2): wykonawca nastaw E-28 — urządzenia i nastawy żyją w konfiguracji
   // PRZYPADKU (`ProtectionConfig.overrides`, klucz per urządzenie), nie w useState.
   // `ostatniaKonfiguracja` trzyma pełny ProtectionConfig z ostatniego GET/PUT —
@@ -583,20 +590,26 @@ export function ProtectionCoordinationPage() {
 
   // F-K4 faza 3b: prądy wejściowe koordynacji pochodzą WYŁĄCZNIE z zakończonych
   // biegów obliczeniowych. Klasyfikacja przypadku (maksymalny / minimalny) idzie po
-  // REALNYM współczynniku `c` z wiersza wyniku (IEC 60909: c_max ≈ 1,10,
-  // c_min ≈ 0,95) — kanoniczny bieg liczy jeden scenariusz, więc pełna koordynacja
-  // wymaga dwóch biegów. Braki są raportowane jawnie, nigdy uzupełniane liczbą.
+  // SCENARIUSZU zapisanym na biegu (`konfiguracja_biegu.scenariusz`, patrz
+  // `podzielWierszeNaPrzypadki`) — kanoniczny bieg liczy jeden scenariusz, więc pełna
+  // koordynacja wymaga dwóch biegów. Braki są raportowane jawnie, nigdy uzupełniane liczbą.
   const przebiegi = useExecutionRunsStore((s) => s.runs);
-  const urzadzeniaKlucz = state.devices.map((d) => d.location_element_id).join('|');
+  // Klucz zależności: lokalizacja I zacisk urządzenia (decyzja O-51 pkt 7) — zmiana
+  // zacisku zmienia prąd roboczy (inny wiersz/kolumna tabeli gałęzi).
+  const urzadzeniaKlucz = state.devices
+    .map((d) => `${d.location_element_id}:${d.zacisk ?? ''}`)
+    .join('|');
   useEffect(() => {
     if (state.devices.length === 0) {
       setBrakiPradowe([]);
       return;
     }
     const zakonczone = przebiegi.filter((r) => r.status === 'DONE');
-    const biegiZwarciowe = zakonczone.filter((r) =>
-      ['SC_3F', 'SC_1F', 'SC_2F', 'SC_2F_G'].includes(r.analysis_type),
-    );
+    // Od NAJNOWSZEGO — `podzielWierszeNaPrzypadki` bierze jeden (najnowszy) bieg na
+    // scenariusz, a jego identyfikator idzie w żądaniu analizy (`sc_run_id[_min]`).
+    const biegiZwarciowe = zakonczone
+      .filter((r) => ['SC_3F', 'SC_1F', 'SC_2F', 'SC_2F_G'].includes(r.analysis_type))
+      .sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? ''));
     const biegRozplywu = zakonczone.find((r) => r.analysis_type === 'LOAD_FLOW') ?? null;
     let anulowane = false;
 
@@ -617,8 +630,28 @@ export function ProtectionCoordinationPage() {
           wierszeGalezi = [];
         }
       }
+      // Decyzja O-51 (pkt 7): miejsce prądu każdego urządzenia rozstrzyga backend (ten
+      // sam resolver co pakiet nastaw) — gałąź i zacisk albo odmowa nazwana.
+      const miejsca = new Map<string, MiejsceUrzadzenia>();
+      if (caseId) {
+        for (const urzadzenie of state.devices) {
+          if (urzadzenie.location_element_id.trim() === '') continue;
+          try {
+            miejsca.set(
+              urzadzenie.id,
+              await fetchMiejsceUrzadzenia(
+                caseId,
+                urzadzenie.location_element_id,
+                urzadzenie.zacisk ?? null,
+              ),
+            );
+          } catch {
+            // Brak rozstrzygnięcia = brak prądu roboczego (jawny), nie wartość zastępcza.
+          }
+        }
+      }
       if (anulowane) return;
-      const { max, min } = podzielWierszeNaPrzypadki(wynikiZwarciowe);
+      const { max, min, runIdMax, runIdMin } = podzielWierszeNaPrzypadki(wynikiZwarciowe);
       const prady = zbudujPradyKoordynacji({
         // V12K-262: urządzenie bez wskazanego elementu pomijamy TUTAJ, żeby nie
         // raportować mu „braku prądu zwarciowego" — prawdziwym brakiem jest
@@ -627,6 +660,7 @@ export function ProtectionCoordinationPage() {
         wierszeMax: max,
         wierszeMin: min,
         wierszeGalezi,
+        miejsca,
       });
       setState((prev) => ({
         ...prev,
@@ -634,6 +668,11 @@ export function ProtectionCoordinationPage() {
         operatingCurrents: [...prady.operatingCurrents],
       }));
       setBrakiPradowe(prady.braki);
+      setBiegiKoordynacji({
+        sc_run_id: runIdMax,
+        sc_run_id_min: runIdMin,
+        pf_run_id: biegRozplywu?.id ?? null,
+      });
     })();
 
     return () => {
@@ -641,7 +680,7 @@ export function ProtectionCoordinationPage() {
     };
     // Zależność po identyfikatorach lokalizacji (`urzadzeniaKlucz`): zmiana nastaw
     // urządzenia nie wymaga ponownego pobierania wyników biegów.
-  }, [urzadzeniaKlucz, przebiegi]);
+  }, [urzadzeniaKlucz, przebiegi, caseId]);
 
   // Add new device
   const handleAddDevice = useCallback(() => {
@@ -793,11 +832,18 @@ export function ProtectionCoordinationPage() {
     setState((prev) => ({ ...prev, status: 'RUNNING', error: null }));
 
     try {
+      // Karta S-2 AUTORYTET: backend potwierdza prądy żądania wobec DWÓCH zapisanych
+      // biegów — bez ich identyfikatorów każde żądanie kończyło się odmową 422 (ekran
+      // nigdy ich nie wysyłał; atrapa harnessu przechwytywała `/run`, więc defekt był
+      // niewidoczny). Identyfikatory = biegi, z których ekran zbudował prądy.
       const summary = await runCoordinationAnalysis(projectId, {
         devices: state.devices,
         fault_currents: state.faultCurrents,
         operating_currents: state.operatingCurrents,
         config: DEFAULT_CONFIG,
+        sc_run_id: biegiKoordynacji.sc_run_id ?? undefined,
+        sc_run_id_min: biegiKoordynacji.sc_run_id_min ?? undefined,
+        pf_run_id: biegiKoordynacji.pf_run_id ?? undefined,
       });
 
       const result = await getCoordinationResult(summary.run_id);
@@ -817,7 +863,7 @@ export function ProtectionCoordinationPage() {
         error: err instanceof Error ? err.message : LABELS.status.error,
       }));
     }
-  }, [projectId, state.devices, state.faultCurrents, state.operatingCurrents]);
+  }, [projectId, state.devices, state.faultCurrents, state.operatingCurrents, biegiKoordynacji]);
   uruchomAnalize.current = () => void handleRunAnalysis();
 
   // Get editing device
@@ -896,7 +942,7 @@ export function ProtectionCoordinationPage() {
                       {brak.czegoBrakuje === 'prad_zwarciowy_min'
                         ? LABELS.validation.brakPraduMinimalnego
                         : brak.czegoBrakuje === 'prad_roboczy'
-                          ? LABELS.validation.brakPraduRoboczego
+                          ? (brak.powod ?? LABELS.validation.brakPraduRoboczego)
                           : LABELS.validation.brakPradowZwarciowych}
                     </li>
                   ))}
@@ -942,6 +988,7 @@ export function ProtectionCoordinationPage() {
                 }
                 lokalizacje={lokalizacje}
                 bladLokalizacji={bladLokalizacji}
+                caseId={caseId}
               />
             ) : state.result ? (
               <div className="space-y-4">

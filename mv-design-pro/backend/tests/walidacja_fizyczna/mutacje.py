@@ -171,6 +171,161 @@ MUTACJE: tuple[Mutacja, ...] = (
         bramki=("g5_czas_zdarzenia",),
     ),
     Mutacja(
+        "M26",
+        "Predykat izolacji wylaczony: usuniecie zwarcia `izolacja` na szynie nadal "
+        "zasilanej przez pierscien przechodzi — luk „gasnie” pod napieciem bez aparatu.",
+        "network_model/solvers/dynamika/silnik.py",
+        "            if odizolowane:\n                continue",
+        "            if True:\n                continue",
+        "G19 (predykat izolacji wobec spojnosci grafu t+) i test odmowy dawnego SO-1A",
+        bramki=("g19_predykat_izolacji",),
+        testy=(
+            "tests/e2e/test_so1a_scenariusz_odniesienia.py"
+            "::test_dawny_scenariusz_z_usunieciem_izolacja_na_szynie_zasilanej_to_odmowa",
+        ),
+    ),
+    Mutacja(
+        "M27",
+        "Adapter znow porzuca lacznik otwarty: element nieaktywny w t = 0 znika z rdzenia, "
+        "wiec jego zamkniecie zdarzeniem nie ma czego zamknac.",
+        "enm/adapter_dynamiki.py",
+        "            aktywny = lacznik.in_service and lacznik.state == SwitchState.CLOSED\n",
+        "            aktywny = lacznik.in_service and lacznik.state == SwitchState.CLOSED\n"
+        "            if not aktywny:\n                continue\n",
+        "test sciezki uzytkownika: zamkniecie lacznika rezerwowego G16 (D-19)",
+        bramki=(),
+        testy=(
+            "tests/enm/test_adapter_dynamiki.py::TestAktywnoscElementow"
+            "::test_laczenia_na_sciezce_uzytkownika",
+        ),
+    ),
+    Mutacja(
+        "M28",
+        "Probka `L` pobierana PO re-inicjalizacji: strona lewa chwili zdarzenia pokazuje "
+        "juz stan po zdarzeniu, wiec stan tuz przed zwarciem ginie z wyniku.",
+        "network_model/solvers/dynamika/silnik.py",
+        "        if zdarzenia_chwili:\n"
+        "            self._probkuj(\n"
+        "                probkowanie,\n"
+        '                "L",\n'
+        "                t_s,\n"
+        "                poprzednia.model,\n"
+        "                poprzednia.odbiory,\n"
+        "                poprzednia.urzadzenia,\n"
+        "                stany,\n"
+        "                napiecia,\n"
+        "            )\n"
+        "        chwila = self._nanies_chwile(\n"
+        "            t_s, wpisy, poprzednia, stany, napiecia, wykonane, kroki_szczegolne\n"
+        "        )\n",
+        "        chwila = self._nanies_chwile(\n"
+        "            t_s, wpisy, poprzednia, stany, napiecia, wykonane, kroki_szczegolne\n"
+        "        )\n"
+        "        if zdarzenia_chwili:\n"
+        "            self._probkuj(\n"
+        "                probkowanie,\n"
+        '                "L",\n'
+        "                t_s,\n"
+        "                chwila.model,\n"
+        "                chwila.odbiory,\n"
+        "                chwila.urzadzenia,\n"
+        "                stany,\n"
+        "                chwila.napiecia,\n"
+        "            )\n",
+        "G20 (probka L wobec algebry wyroczni sieci sprzed zdarzenia, D-18) i test osi czasu",
+        bramki=("g20_probki_obustronne",),
+        testy=(
+            "tests/walidacja_fizyczna/test_probki_obustronne.py"
+            "::test_os_czasu_i_strony_probek[na_siatce-jedno]",
+        ),
+    ),
+    Mutacja(
+        "M29",
+        "Czestotliwosc w chwili zdarzenia publikowana jako LICZBA: pochodna fazy liczona "
+        "przez nieciaglosc udaje wartosc, ktorej nie ma.",
+        "network_model/solvers/dynamika/silnik.py",
+        '        if strona != "C":\n            czestotliwosci = [',
+        "        if False:\n            czestotliwosci = [",
+        "G20 (predykat osi i czestotliwosci chwili zdarzenia, D-18), G7 cz. 2 i test kontraktu",
+        bramki=("g20_probki_obustronne",),
+        testy=(
+            "tests/network_model/dynamika/test_wynik.py"
+            "::test_czestotliwosc_w_chwili_zdarzenia_jest_None_z_kodem_3_w_obu_probkach",
+        ),
+    ),
+    Mutacja(
+        "M30",
+        "Kat pradu galezi otwartej publikowany jako 0,0 z `angle(0)`: fazor zerowy dostaje "
+        "sfabrykowana faze.",
+        "network_model/solvers/dynamika/silnik.py",
+        "    if fazor == 0:\n        return None\n    return float(np.degrees(np.angle(fazor)))",
+        "    return float(np.degrees(np.angle(fazor)))",
+        "test kanalow galezi: galaz otwarta w probce P ma kat None (D-15)",
+        bramki=(),
+        testy=(
+            "tests/walidacja_fizyczna/test_probki_obustronne.py"
+            "::test_kanaly_galezi_modul_i_kat[otwarta-P]",
+        ),
+    ),
+    Mutacja(
+        "M32",
+        "Sprzezenie w kacie fazora pradu zacisku poczatkowego: kat pradu ma odwrocony znak, "
+        "modul bez zmian — kierunek przeplywu bez sladu w module.",
+        "network_model/solvers/dynamika/silnik.py",
+        '            probki[f"i_od_kat_deg@{galaz.ident}"].append(_kat_deg(wielkosci.i_od_pu))',
+        '            probki[f"i_od_kat_deg@{galaz.ident}"].append('
+        "_kat_deg(wielkosci.i_od_pu.conjugate()))",
+        "G16 (fazory pradow galezi wobec superpozycji Thevenina wyroczni, D-15)",
+        bramki=("g16_fazory_pradow_galezi",),
+    ),
+    Mutacja(
+        "M34",
+        "Czwornik zwarcia w linii z polowkami zamienionymi (x <-> 1-x): miejsce zwarcia "
+        "liczone od niewlasciwego zacisku.",
+        "network_model/solvers/dynamika/siec.py",
+        "        dlugosc = punkty[i + 1] - punkty[i]",
+        "        dlugosc = 1.0 - (punkty[i + 1] - punkty[i])",
+        "G16 (czwornik wobec jawnego wezla wewnetrznego wyroczni, D-21)",
+        bramki=("g16_zwarcie_w_linii",),
+    ),
+    Mutacja(
+        "M35",
+        "Klasyfikacja obszarow beznapieciowych wylaczona: wezel bez zrodla nigdy nie jest "
+        "odcinany, wiec wezel martwy od t = 0 albo odcinek po przerwie SZR konczy bieg "
+        "odmowa zamiast napieciem zerowym.",
+        "network_model/solvers/dynamika/silnik.py",
+        "            wezel.ident for pozycja, wezel in enumerate(wezly) if przydzial[pozycja] not in zywe",
+        "            wezel.ident for pozycja, wezel in enumerate(wezly) if False",
+        "G17 (obszar beznapieciowy i ponowne zasilenie, D-16)",
+        bramki=("g17_obszar_beznapieciowy",),
+    ),
+    Mutacja(
+        "M36",
+        "Ponowne zasilenie startuje Newtona od zera zamiast od napiecia sasiada: odbior "
+        "stalej mocy nie ma w zerze pradu (odmowa punktu startowego zamiast biegu), a start "
+        "z dolu prowadzilby do pierwiastka nizszego.",
+        "network_model/solvers/dynamika/silnik.py",
+        "                    start[sasiad] = start[biezacy]",
+        "                    start[sasiad] = 0j",
+        "G17 (pierwiastek wyzszy wobec wyroczni kwadratowej, D-16)",
+        bramki=("g17_obszar_beznapieciowy",),
+    ),
+    Mutacja(
+        "M37",
+        "Pominiety blok -dE/dx wiersza ograniczenia w jakobianie sprzezonym: Newton kroku "
+        "traci kierunek dla wezla o napieciu narzuconym przez stan urzadzenia.",
+        "network_model/solvers/dynamika/calkowanie.py",
+        "            blok_iy = urzadzenie.jakobian_napiecia_bez_obciazenia(stan)",
+        "            blok_iy = None",
+        "test jakobianu sprzezonego wobec roznicy skonczonej na atrapie zrodla napieciowego "
+        "(D-16: jeden mechanizm wiersza ograniczenia V - E(x) = 0)",
+        bramki=(),
+        testy=(
+            "tests/network_model/dynamika/test_obszary_beznapieciowe.py"
+            "::test_jakobian_sprzezony_wiersza_ograniczenia_zgodny_z_roznica_skonczona",
+        ),
+    ),
+    Mutacja(
         "M21",
         "MUTACJA KONTROLNA BEZ SKUTKU — zmiana samego komentarza. Harness MUSI "
         "zakwalifikowac ja jako niewazna, a nie zameldowac zabicia.",

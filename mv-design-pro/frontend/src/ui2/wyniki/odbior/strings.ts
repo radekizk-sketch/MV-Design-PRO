@@ -35,9 +35,11 @@ export const ODBIOR_STRINGS = {
   // Pole CSV
   csvEtykieta: 'Pomiary w formacie CSV',
   csvOpis:
-    'Nagłówek: element_ref;wielkosc;wartosc;jednostka. Separator średnik lub przecinek; '
-    + 'przy średniku dopuszczalny polski przecinek dziesiętny. Wielkość: U (kV), P (MW), Q (Mvar).',
-  csvPlaceholder: 'element_ref;wielkosc;wartosc;jednostka',
+    'Nagłówek: element_ref;wielkosc;wartosc;jednostka;zacisk. Separator średnik lub przecinek; '
+    + 'przy średniku dopuszczalny polski przecinek dziesiętny. Wielkość: U (kV), P (MW), Q (Mvar). '
+    + 'Zacisk (od — początkowy, do — końcowy gałęzi) wyłącznie dla P i Q; dla U pusty. '
+    + 'Pomiar mocy gałęzi bez zacisku nie jest porównywany (brak miejsca pomiaru).',
+  csvPlaceholder: 'element_ref;wielkosc;wartosc;jednostka;zacisk',
 
   // Edytor wierszy
   edytorTytul: 'Pomiary — edytor wierszy',
@@ -45,6 +47,12 @@ export const ODBIOR_STRINGS = {
   edytorWielkosc: 'Wielkość',
   edytorWartosc: 'Wartość',
   edytorJednostka: 'Jednostka',
+  edytorZacisk: 'Miejsce pomiaru (zacisk gałęzi)',
+  edytorZaciskBrak:
+    'Wskaż zacisk — gałąź z susceptancją albo przekładnią ma na końcach inne P/Q; bez '
+    + 'zacisku pomiar nie zostanie porównany (brak miejsca pomiaru).',
+  edytorZaciskNieGalaz: 'Element nie jest gałęzią tego przebiegu — brak zacisków do wskazania.',
+  edytorZaciskBlad: 'Nie udało się pobrać etykiet zacisków gałęzi przebiegu.',
   edytorDodaj: 'Dodaj wiersz',
   edytorUsun: 'Usuń',
   edytorUsunAria: 'Usuń wiersz pomiaru',
@@ -79,6 +87,7 @@ export const ODBIOR_STRINGS = {
 
   // Kolumny raportu
   kolElement: 'Element',
+  kolMiejsce: 'Miejsce pomiaru',
   kolWielkosc: 'Wielkość',
   kolPomiar: 'Pomiar',
   kolModel: 'Model',
@@ -92,6 +101,7 @@ export const ODBIOR_STRINGS = {
   podsumPoza: 'Poza tolerancją',
   podsumBrakOdpowiednika: 'Brak odpowiednika',
   podsumBrakWyniku: 'Brak wyniku',
+  podsumBrakMiejsca: 'Brak miejsca pomiaru',
   podsumNajwieksza: 'Największa odchyłka',
 
   // Założenia
@@ -125,6 +135,7 @@ export const WERDYKT_ZGODNOSCI = {
   pozaTolerancja: 'poza tolerancją',
   brakOdpowiednika: 'brak odpowiednika w modelu',
   brakWyniku: 'brak wyniku dla elementu',
+  brakMiejscaPomiaru: 'brak miejsca pomiaru',
 } as const;
 
 /** Istotność werdyktu (dobór koloru tagu/chipu) — na bazie tekstu z backendu. */
@@ -132,6 +143,7 @@ export function istotnoscWerdyktu(werdykt: string): IstotnoscWerdyktu {
   if (werdykt === WERDYKT_ZGODNOSCI.wTolerancji) return 'ok';
   if (werdykt === WERDYKT_ZGODNOSCI.pozaTolerancja) return 'err';
   if (werdykt === WERDYKT_ZGODNOSCI.brakWyniku) return 'warn';
+  if (werdykt === WERDYKT_ZGODNOSCI.brakMiejscaPomiaru) return 'warn';
   return 'neutral';
 }
 

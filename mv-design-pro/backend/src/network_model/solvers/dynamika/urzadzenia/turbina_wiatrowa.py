@@ -76,6 +76,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 import numpy as np
 
@@ -84,8 +85,10 @@ from ..kontrakty import (
     KOD_PUNKT_PRACY_POZA_OGRANICZENIEM,
     KOD_WARIANT_BEZ_PARAMETROW,
     OdmowaDynamiki,
+    SprzezenieUrzadzenia,
 )
 from ..konwencje import pulsacja_bazowa_rad_s, zmiana_bazy_mocy_wzglednej
+from .bazowe import parametry_bloku
 from .okno_mocy import OknoMocy
 from .pochodne_kierunkowe import Dual, Zespolona, kwadrat, maksimum, ogranicz, pierwiastek
 from .przeksztaltnik_gfl import (
@@ -184,6 +187,17 @@ class Crowbar:
     czas_zwloki_s: float
     czas_trwania_s: float
 
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = ()
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "prog_pradu_pu": self.prog_pradu_pu,
+            "prad_pelnego_zadzialania_pu": self.prad_pelnego_zadzialania_pu,
+            "czas_zwloki_s": self.czas_zwloki_s,
+            "czas_trwania_s": self.czas_trwania_s,
+        }
+
     @property
     def zalacza_sie_natychmiast(self) -> bool:
         return self.czas_zwloki_s <= 0.0
@@ -259,6 +273,17 @@ class TorMechaniczny:
     pitch_min_rad: float
     pitch_max_rad: float
 
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = ()
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "h_calkowite_s": self.h_calkowite_s,
+            "pitch_tempo_rad_s": self.pitch_tempo_rad_s,
+            "pitch_min_rad": self.pitch_min_rad,
+            "pitch_max_rad": self.pitch_max_rad,
+        }
+
     def udzial_mocy(self, kat: Dual) -> Dual:
         """`(beta_max - beta)/(beta_max - beta_min)` — udzial mocy aerodynamicznej."""
         return (self.pitch_max_rad - kat) / (self.pitch_max_rad - self.pitch_min_rad)
@@ -293,6 +318,32 @@ class TurbinaWiatrowa:
     okno_mocy: OknoMocy
     omega_bazowa_rad_s: float
     uklad: UkladStanow = field(compare=False)
+
+    POLA_POZA_ODCISKIEM: ClassVar[tuple[tuple[str, str], ...]] = (
+        (
+            "uklad",
+            "uklad stanow jest WYPROWADZONY z konfiguracji blokow urzadzenia; jego "
+            "nazwy wchodza do odcisku osobno jako `nazwy_stanow`",
+        ),
+    )
+
+    @property
+    def sprzezenie(self) -> SprzezenieUrzadzenia:
+        """Turbina typu 3/4: przeksztaltnik nadazny — prad wstrzykiwany do wezla."""
+        return "pradowe"
+
+    def parametry_tozsamosci(self) -> dict[str, object]:
+        """Komplet parametrow do odcisku migawki — jawnie, pole po polu."""
+        return {
+            "ident": self.ident,
+            "wezel": self.wezel,
+            "typ": self.typ,
+            "rdzen": parametry_bloku(self.rdzen),
+            "tor": parametry_bloku(self.tor),
+            "crowbar": parametry_bloku(self.crowbar),
+            "okno_mocy": parametry_bloku(self.okno_mocy),
+            "omega_bazowa_rad_s": self.omega_bazowa_rad_s,
+        }
 
     @property
     def nazwy_stanow(self) -> tuple[str, ...]:

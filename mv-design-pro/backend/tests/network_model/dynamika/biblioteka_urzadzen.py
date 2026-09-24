@@ -124,6 +124,8 @@ def zloz_uklad(
                 y_szeregowa_pu=1.0 / complex(0.0, x_linii_pu),
                 b_poprzeczna_pu=0.0,
                 przekladnia=complex(1.0, 0.0),
+                aktywna_na_starcie=True,
+                rodzaj="linia",
             ),
         ),
         urzadzenie=urzadzenie,

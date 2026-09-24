@@ -45,6 +45,13 @@ vi.mock('../api', () => ({
   getExportDocxUrl: () => 'about:blank',
 }));
 
+// Decyzja O-51 (pkt 7): miejsce prądu urządzenia rozstrzyga backend
+// (`GET /api/cases/{id}/enm/zacisk-lokalizacji`) — mock na granicy modułu klienta.
+const fetchMiejsce = vi.fn();
+vi.mock('../miejsceUrzadzenia', () => ({
+  fetchMiejsceUrzadzenia: (...args: unknown[]) => fetchMiejsce(...args),
+}));
+
 vi.mock('../../study-cases/api', () => ({
   getProtectionConfig: (...args: unknown[]) => getConfig(...args),
   updateProtectionConfig: (...args: unknown[]) => putConfig(...args),
@@ -109,6 +116,11 @@ function wierszSC(cFactor: number, ikssKa: number) {
   };
 }
 
+/** Wiersz zwarciowy szyny `bus_2` (zacisk końcowy linii `line_1`). */
+function wierszSC2(cFactor: number, ikssKa: number) {
+  return { ...wierszSC(cFactor, ikssKa), target_id: 'bus_2', element_id: 'bus_2', target_name: 'Szyna 2' };
+}
+
 /**
  * Migawka modelu przypadku — źródło listy lokalizacji (V12K-262). `ref_id` jest
  * tą samą przestrzenią nazw co `element_id` wiersza wyniku, więc wskazanie
@@ -120,8 +132,63 @@ const MIGAWKA = {
     { id: 'b1', ref_id: 'bus_1', name: 'Szyna 1' },
     { id: 'b2', ref_id: 'bus_2', name: 'Szyna 2' },
   ],
-  branches: [],
+  branches: [{ id: 'l1', ref_id: 'line_1', name: 'Magistrala', type: 'cable' }],
   transformers: [],
+};
+
+const ZACISKI_LINII = {
+  od: { szyna_ref: 'bus_1', etykieta_pl: 'Zacisk początkowy — szyna Szyna 1' },
+  do: { szyna_ref: 'bus_2', etykieta_pl: 'Zacisk końcowy — szyna Szyna 2' },
+};
+
+const POWOD_BRAK_WSKAZANIA =
+  'Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie — wskaż zacisk.';
+
+/**
+ * Odpowiedź backendu w kształcie `opis_miejsca_urzadzenia` (1:1): gałąź wymaga
+ * wskazania zacisku (bez niego odmowa nazwana), szyna nie ma zacisków.
+ */
+function rozstrzygniecie(_caseId: string, lokalizacja: string, zacisk: 'od' | 'do' | null) {
+  if (lokalizacja === 'line_1') {
+    return {
+      lokalizacja_ref: 'line_1',
+      rodzaj_lokalizacji: 'galaz',
+      zaciski: ZACISKI_LINII,
+      galaz_ref: zacisk ? 'line_1' : null,
+      zacisk,
+      zrodlo_zacisku: zacisk ? 'wskazanie' : null,
+      wymaga_wskazania_zacisku: true,
+      odmowa_zacisku: zacisk
+        ? null
+        : { kod: 'protection.relay_terminal_indication_missing', powod_pl: POWOD_BRAK_WSKAZANIA },
+    };
+  }
+  return {
+    lokalizacja_ref: lokalizacja,
+    rodzaj_lokalizacji: 'szyna',
+    zaciski: null,
+    galaz_ref: null,
+    zacisk: null,
+    zrodlo_zacisku: null,
+    wymaga_wskazania_zacisku: false,
+    odmowa_zacisku: null,
+  };
+}
+
+/** Wiersz gałęziowy rozpływu linii `line_1` — prądy obu zacisków (kabel z susceptancją). */
+const WIERSZ_LINII = {
+  branch_id: 'line-1',
+  element_id: 'line_1',
+  name: 'Magistrala',
+  from_bus: 'bus_1',
+  to_bus: 'bus_2',
+  i_a: 180,
+  i_do_a: 175,
+  s_mva: null,
+  p_mw: null,
+  q_mvar: null,
+  loading_pct: null,
+  flags: [],
 };
 
 /** Realna droga projektanta: dodaj urządzenie → wskaż element → zapisz. */
@@ -131,6 +198,42 @@ async function dodajUrzadzenieWLokalizacji(refId: string): Promise<void> {
   fireEvent.change(wybor, { target: { value: refId } });
   fireEvent.click(screen.getByText(LABELS.actions.save));
 }
+
+/**
+ * Realna droga dla lokalizacji-GAŁĘZI (decyzja O-51 pkt 7): dodaj urządzenie → wskaż
+ * linię z listy modelu → kliknij zacisk (etykieta z backendu) → zapisz.
+ */
+async function dodajUrzadzenieNaLinii(zacisk: 'od' | 'do'): Promise<void> {
+  fireEvent.click(screen.getByText(LABELS.devices.add));
+  fireEvent.change(await screen.findByTestId('device-location-select'), {
+    target: { value: 'line_1' },
+  });
+  fireEvent.click(await screen.findByTestId(`device-terminal-${zacisk}`));
+  fireEvent.click(screen.getByText(LABELS.actions.save));
+}
+
+/** Minimalny kompletny wynik analizy (kształt kontraktu `getCoordinationResult`). */
+const WYNIK: CoordinationResult = {
+  run_id: 'run-coord-1',
+  project_id: 'proj-1',
+  sensitivity_checks: [],
+  selectivity_checks: [],
+  overload_checks: [],
+  tcc_curves: [],
+  fault_markers: [],
+  overall_verdict: 'PASS',
+  summary: {
+    total_devices: 1,
+    total_checks: 0,
+    sensitivity: { pass: 0, marginal: 0, fail: 0, error: 0 },
+    selectivity: { pass: 0, marginal: 0, fail: 0, error: 0 },
+    overload: { pass: 0, marginal: 0, fail: 0, error: 0 },
+    overall_verdict: 'PASS',
+    overall_verdict_pl: 'Zgodne',
+  },
+  trace_steps: [],
+  created_at: '2026-07-29T00:00:00Z',
+};
 
 const PUSTA_KONFIGURACJA = {
   template_ref: null,
@@ -149,6 +252,9 @@ beforeEach(() => {
   fetchSnapshot.mockResolvedValue(MIGAWKA);
   getConfig.mockResolvedValue(PUSTA_KONFIGURACJA);
   putConfig.mockResolvedValue(PUSTA_KONFIGURACJA);
+  fetchMiejsce.mockImplementation(async (caseId: string, lok: string, zacisk: 'od' | 'do' | null) =>
+    rozstrzygniecie(caseId, lok, zacisk),
+  );
 });
 
 afterEach(() => {
@@ -183,41 +289,96 @@ describe('ProtectionCoordinationPage — prądy tylko z biegów (naprawa fabryka
     expect(runAnalysis).not.toHaveBeenCalled();
   });
 
-  it('dwa biegi zwarciowe (scenariusz MAX i MIN) + rozpływ dają komplet prądów', async () => {
+  /**
+   * Klasa P9 (decyzja O-51 pkt 7): prąd roboczy = prąd ZACISKU gałęzi, przy którym stoi
+   * urządzenie. Dawny test dopasowywał wiersz GAŁĘZI do lokalizacji-SZYNY (`element_id:
+   * 'bus_1'` w wierszu gałęzi) — kształt, którego backend nigdy nie wystawia. Teraz realna
+   * droga: wskaż linię z listy modelu, kliknij zacisk (etykieta z backendu), zapisz.
+   */
+  it('dwa biegi zwarciowe (scenariusz MAX i MIN) + rozpływ + wskazany zacisk dają komplet prądów i żądanie z biegami', async () => {
     useExecutionRunsStore.setState({ runs: [BIEG_SC_MAX, BIEG_SC_MIN, BIEG_LF] } as never);
     fetchSC.mockImplementation(async (id: string) =>
       id === 'run-sc-max'
         ? odpowiedzSC(id, 'MAX', 1.1, 8.4)
         : odpowiedzSC(id, 'MIN', 1.0, 3.1),
     );
-    fetchBranches.mockResolvedValue({
-      run_id: 'run-lf',
-      rows: [
-        {
-          branch_id: 'line-1',
-          element_id: 'bus_1',
-          name: 'Magistrala',
-          from_bus: 'a',
-          to_bus: 'b',
-          i_a: 180,
-          s_mva: null,
-          p_mw: null,
-          q_mvar: null,
-          loading_pct: null,
-          flags: [],
-        },
-      ],
-    });
+    fetchBranches.mockResolvedValue({ run_id: 'run-lf', rows: [WIERSZ_LINII] });
+    runAnalysis.mockResolvedValue({ run_id: 'run-coord-1' });
+    getResult.mockResolvedValue(WYNIK);
 
     render(<ProtectionCoordinationPage />);
-    await dodajUrzadzenieWLokalizacji('bus_1');
-
-    // Urządzenie wskazuje `bus_1` — dopasowanie do wiersza wyniku po `element_id`.
-    await waitFor(() => expect(fetchSC).toHaveBeenCalledTimes(2));
-    await waitFor(() =>
-      expect(screen.queryByTestId('coordination-missing-currents')).toBeNull(),
+    fireEvent.click(screen.getByText(LABELS.devices.add));
+    fireEvent.change(await screen.findByTestId('device-location-select'), {
+      target: { value: 'line_1' },
+    });
+    const zaciskOd = await screen.findByTestId('device-terminal-od');
+    expect(screen.getByTestId('device-terminal').textContent).toContain(
+      'Zacisk początkowy — szyna Szyna 1',
     );
+    fireEvent.click(zaciskOd);
+    fireEvent.click(screen.getByText(LABELS.actions.save));
+
+    // Miejsce prądu rozstrzyga backend dla WSKAZANEGO zacisku.
+    await waitFor(() => expect(fetchMiejsce).toHaveBeenCalledWith('case-1', 'line_1', 'od'));
+    fireEvent.click(screen.getByTestId('run-analysis-button'));
+    await waitFor(() => expect(runAnalysis).toHaveBeenCalledTimes(1));
+
+    // Żądanie niesie: prąd zwarciowy SZYNY zacisku `od` (bus_1) pod lokalizacją linii,
+    // prąd roboczy zacisku `od` (i_a = 180 A, nie i_do_a = 175 A), zacisk urządzenia
+    // i identyfikatory biegów, którymi backend potwierdza prądy (karta S-2).
+    const [, zadanie] = runAnalysis.mock.calls[0] as [string, Record<string, unknown>];
+    expect(zadanie.fault_currents).toEqual([
+      { location_id: 'line_1', ik_max_3f_a: 8400, ik_min_3f_a: 3100 },
+    ]);
+    expect(zadanie.operating_currents).toEqual([{ location_id: 'line_1', i_operating_a: 180 }]);
+    expect((zadanie.devices as { zacisk?: string }[])[0].zacisk).toBe('od');
+    expect(zadanie.sc_run_id).toBe('run-sc-max');
+    expect(zadanie.sc_run_id_min).toBe('run-sc-min');
+    expect(zadanie.pf_run_id).toBe('run-lf');
+    expect(screen.queryByTestId('coordination-missing-currents')).toBeNull();
   });
+
+  it('zacisk `do` → prąd roboczy i prąd zwarciowy z zacisku końcowego', async () => {
+    useExecutionRunsStore.setState({ runs: [BIEG_SC_MAX, BIEG_SC_MIN, BIEG_LF] } as never);
+    fetchSC.mockImplementation(async (id: string) =>
+      id === 'run-sc-max'
+        ? { ...odpowiedzSC(id, 'MAX', 1.1, 8.4), rows: [wierszSC(1.1, 8.4), wierszSC2(1.1, 6.0)] }
+        : { ...odpowiedzSC(id, 'MIN', 1.0, 3.1), rows: [wierszSC(1.0, 3.1), wierszSC2(1.0, 2.5)] },
+    );
+    fetchBranches.mockResolvedValue({ run_id: 'run-lf', rows: [WIERSZ_LINII] });
+    runAnalysis.mockResolvedValue({ run_id: 'run-coord-1' });
+    getResult.mockResolvedValue(WYNIK);
+
+    render(<ProtectionCoordinationPage />);
+    await dodajUrzadzenieNaLinii('do');
+    await waitFor(() => expect(fetchMiejsce).toHaveBeenCalledWith('case-1', 'line_1', 'do'));
+    fireEvent.click(screen.getByTestId('run-analysis-button'));
+    await waitFor(() => expect(runAnalysis).toHaveBeenCalledTimes(1));
+
+    const [, zadanie] = runAnalysis.mock.calls[0] as [string, Record<string, unknown>];
+    expect(zadanie.fault_currents).toEqual([
+      { location_id: 'line_1', ik_max_3f_a: 6000, ik_min_3f_a: 2500 },
+    ]);
+    expect(zadanie.operating_currents).toEqual([{ location_id: 'line_1', i_operating_a: 175 }]);
+  });
+
+  it('linia bez wskazanego zacisku → brak prądu roboczego z powodem backendu, nie prąd „od"', async () => {
+    useExecutionRunsStore.setState({ runs: [BIEG_SC_MAX, BIEG_SC_MIN, BIEG_LF] } as never);
+    fetchSC.mockImplementation(async (id: string) =>
+      id === 'run-sc-max'
+        ? odpowiedzSC(id, 'MAX', 1.1, 8.4)
+        : odpowiedzSC(id, 'MIN', 1.0, 3.1),
+    );
+    fetchBranches.mockResolvedValue({ run_id: 'run-lf', rows: [WIERSZ_LINII] });
+
+    render(<ProtectionCoordinationPage />);
+    await dodajUrzadzenieWLokalizacji('line_1');
+
+    const panel = await screen.findByTestId('coordination-missing-currents');
+    await waitFor(() => expect(panel.textContent).toContain(POWOD_BRAK_WSKAZANIA));
+    expect(fetchMiejsce).toHaveBeenCalledWith('case-1', 'line_1', null);
+  });
+
   it('brak biegu rozpływu → panel mówi wprost, że prąd roboczy jest niedostępny', async () => {
     // Same biegi zwarciowe: kryterium przeciążenia zostaje niesprawdzalne i to
     // musi być widoczne, a nie ukryte zerem.
@@ -265,7 +426,7 @@ describe('ProtectionCoordinationPage — lokalizacja z modelu, nie z wyobraźni'
     fireEvent.click(screen.getByText(LABELS.devices.add));
 
     const wybor = (await screen.findByTestId('device-location-select')) as HTMLSelectElement;
-    expect([...wybor.options].map((o) => o.value)).toEqual(['', 'bus_1', 'bus_2']);
+    expect([...wybor.options].map((o) => o.value)).toEqual(['', 'bus_1', 'bus_2', 'line_1']);
     expect(fetchSnapshot).toHaveBeenCalledWith('case-1');
   });
 
@@ -289,27 +450,16 @@ describe('ProtectionCoordinationPage — lokalizacja z modelu, nie z wyobraźni'
         ? odpowiedzSC(id, 'MAX', 1.1, 8.4)
         : odpowiedzSC(id, 'MIN', 1.0, 3.1),
     );
-    fetchBranches.mockResolvedValue({
-      run_id: 'run-lf',
-      rows: [
-        {
-          branch_id: 'line-1', element_id: 'bus_1', name: 'Magistrala',
-          from_bus: 'a', to_bus: 'b', i_a: 180, s_mva: null, p_mw: null,
-          q_mvar: null, loading_pct: null, flags: [],
-        },
-      ],
-    });
+    fetchBranches.mockResolvedValue({ run_id: 'run-lf', rows: [WIERSZ_LINII] });
 
     render(<ProtectionCoordinationPage />);
-    await dodajUrzadzenieWLokalizacji('bus_1');
-    await waitFor(() =>
-      expect(screen.queryByTestId('coordination-missing-currents')).toBeNull(),
-    );
+    await dodajUrzadzenieNaLinii('od');
+    await waitFor(() => expect(fetchMiejsce).toHaveBeenCalledWith('case-1', 'line_1', 'od'));
 
     fireEvent.click(screen.getByTitle(LABELS.devices.clone));
 
-    // Klon nie dostaje `bus_1_copy` (element, którego nie ma w modelu) ani prądów
-    // przepisanych z `bus_1` — jego lokalizacja jest pusta i wymaga wskazania.
+    // Klon nie dostaje `line_1_copy` (element, którego nie ma w modelu) ani prądów
+    // przepisanych z `line_1` — jego lokalizacja jest pusta i wymaga wskazania.
     await waitFor(() =>
       expect(
         screen.getAllByText(
@@ -317,7 +467,7 @@ describe('ProtectionCoordinationPage — lokalizacja z modelu, nie z wyobraźni'
         ).length,
       ).toBe(1),
     );
-    expect(screen.queryByText(/bus_1_copy/)).toBeNull();
+    expect(screen.queryByText(/line_1_copy/)).toBeNull();
 
     fireEvent.click(screen.getByTestId('run-analysis-button'));
     await waitFor(() =>
@@ -354,27 +504,6 @@ describe('ProtectionCoordinationPage — nastawy trwają w konfiguracji przypadk
     },
   };
 
-  const WYNIK: CoordinationResult = {
-    run_id: 'run-coord-1',
-    project_id: 'proj-1',
-    sensitivity_checks: [],
-    selectivity_checks: [],
-    overload_checks: [],
-    tcc_curves: [],
-    fault_markers: [],
-    overall_verdict: 'PASS',
-    summary: {
-      total_devices: 1,
-      total_checks: 0,
-      sensitivity: { pass: 0, marginal: 0, fail: 0, error: 0 },
-      selectivity: { pass: 0, marginal: 0, fail: 0, error: 0 },
-      overload: { pass: 0, marginal: 0, fail: 0, error: 0 },
-      overall_verdict: 'PASS',
-      overall_verdict_pl: 'Zgodne',
-    },
-    trace_steps: [],
-    created_at: '2026-07-29T00:00:00Z',
-  };
 
   it('hydratacja z GET: urządzenie zapisane w przypadku pojawia się na liście', async () => {
     getConfig.mockResolvedValue({
@@ -439,24 +568,15 @@ describe('ProtectionCoordinationPage — nastawy trwają w konfiguracji przypadk
         ? odpowiedzSC(id, 'MAX', 1.1, 8.4)
         : odpowiedzSC(id, 'MIN', 1.0, 3.1),
     );
-    fetchBranches.mockResolvedValue({
-      run_id: 'run-lf',
-      rows: [
-        {
-          branch_id: 'line-1', element_id: 'bus_1', name: 'Magistrala',
-          from_bus: 'a', to_bus: 'b', i_a: 180, s_mva: null, p_mw: null,
-          q_mvar: null, loading_pct: null, flags: [],
-        },
-      ],
-    });
+    // Prąd roboczy z zacisku linii (decyzja O-51 pkt 7) — dawniej wiersz GAŁĘZI
+    // udawał wiersz szyny (`element_id: 'bus_1'`), kształt, którego backend nie wystawia.
+    fetchBranches.mockResolvedValue({ run_id: 'run-lf', rows: [WIERSZ_LINII] });
     runAnalysis.mockResolvedValue({ run_id: 'run-coord-1' });
     getResult.mockResolvedValue(WYNIK);
 
     render(<ProtectionCoordinationPage />);
-    await dodajUrzadzenieWLokalizacji('bus_1');
-    await waitFor(() =>
-      expect(screen.queryByTestId('coordination-missing-currents')).toBeNull(),
-    );
+    await dodajUrzadzenieNaLinii('od');
+    await waitFor(() => expect(fetchMiejsce).toHaveBeenCalledWith('case-1', 'line_1', 'od'));
 
     fireEvent.click(screen.getByTestId('run-analysis-button'));
     await screen.findByTestId('tab-navigation');

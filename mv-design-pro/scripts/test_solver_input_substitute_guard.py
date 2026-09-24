@@ -1537,7 +1537,47 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `kod`, `komunikat_pl` juz byly w mapie). Zero nowych trafien skanera.
     # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
     # guardem na scalonym drzewie int/h0 (roznice L i AB-H0 sie sumuja).
-    assert "Pol kontraktow wejsciowych: 3877." in wyjscie, wyjscie
+    # Karta AB-1b.1a (2026-09-23, integracja): 3750 -> 3866 (+116 nazw, zero usunietych).
+    # POMIAR skryptem `scratchpad/integracja_1b1/delta_pol_kontraktu.py`: zbior HEAD odtworzony
+    # z plikow niezmienionych + `git show HEAD:` plikow zmienionych w zakresie zrodel (3750 =
+    # pin HEAD), zbior drzewa = `contract_fields()` guardu. Trzy skladniki:
+    # (a) +44 nazwy nowych pol w zrodlach juz objetych mapa (dynamika AB-1b.1a, klasa P9
+    # decyzji O-46/O-51 — prady i obciazenie z OBU zaciskow galezi, zacisk zabezpieczenia,
+    # miejsce urzadzenia; tozsamosc i odcisk biegu dynamicznego):
+    # `POLA_POZA_ODCISKIEM`, `aktywna_na_starcie`, `current_do_ka`, `current_od_ka`,
+    # `druga_szyna`, `dziedzina_fizyki`, `element`, `etykieta_do_pl`, `etykieta_od_pl`,
+    # `galaz_ref`, `laczeniowy`, `miejsca_zwarc`, `migawka`, `obszary_odciete`,
+    # `obszary_zasilone_ponownie`, `odbiory_aktywne`, `odbiory_odciete`, `odsprzeg`,
+    # `odsprzegi_aktywne`, `os_czasu`, `polozenie`, `polozenie_wzgledne`, `pozycje_zerowe`,
+    # `rated_current_do_a`, `rated_current_od_a`, `sposob_usuniecia`, `start_od_sasiada`,
+    # `strona_probki`, `strona_probki_json`, `strony`, `szyna_do_ref`, `szyna_od_ref`,
+    # `szyna_przeciwna_ref`, `szyna_zacisku_ref`, `wezly_beznapieciowe`, `wezly_ograniczone`,
+    # `zacisk`, `zacisk_decydujacy`, `zacisk_zabezpieczenia`, `zaciski`, `zalaczony`,
+    # `zrodlo_zacisku`, `zwarcia_galezi`, `zwarcia_metaliczne`;
+    # (b) +8 z nowego korzenia `analysis/obciazenie_galezi.py` (pin mapy zazadal decyzji):
+    # `do_a`, `obciazenie_pct`, `od_a`, `powod_braku_pl`, `prad_do_a`, `prad_od_a`,
+    # `prad_znamionowy_do_a`, `prad_znamionowy_od_a`;
+    # (c) +64 z nowego korzenia `werdykt/kontrakt.py` (czytany przez
+    # `application/contracts/resultset_dynamic_v2.py`):
+    # `chwila_s`, `czego_brakuje`, `dane_przyjete`, `definicja_latex`, `dokument`, `domena_pl`,
+    # `dotyczy`, `etykieta`, `jednostka_obwiedni`, `jednostka_redakcyjna`, `kompletnosc_dowodu`,
+    # `krok`, `kryteria_naruszone`, `kryterium_najblizej_granicy`, `limit`, `metoda`, `metoda_pl`,
+    # `model_urzadzenia`, `modul_istniejacy`, `nie_dotyczy`, `niedefiniowalny`, `niepewnosc`,
+    # `obwiednia`, `oceny_skladowe`, `ograniczniki`, `parametry_sieci`, `pasmo`,
+    # `pokrycie_programu`, `pokrycie_programu_pl`, `powody_niepelnosci`, `poziom`, `przedmiot`,
+    # `punkt_krytyczny_pl`, `punkt_pl`, `regulator`, `relacja`, `rodzaj_analizy`,
+    # `rodzaj_twierdzenia`, `semantyka`, `skala`, `skala_rodzaj`, `sposob_wykazania`,
+    # `status_danych`, `status_maszynowy`, `status_modelu`, `stosowalnosc`, `symetria_zaklocenia`,
+    # `technologia`, `typ_modulu`, `w_domenie_walidacji`, `warunek_wstepny_nieuruchomiony`,
+    # `warunek_wstepny_pl`, `warunek_wstepny_podstawa`, `wersja_profilu`, `wersja_silnika`,
+    # `wydanie`, `wyjasnienie`, `wykluczenia`, `wymaganie_id`, `wzgledny`,
+    # `zakres_stosowalnosci_pl`, `zakres_waznosci`, `zastrzezenia`, `zdanie_pl`.
+    # PASS bramki niezmieniony (zero podstawien — zapadka 55/254 i wykluczenia 13/31 bez zmian).
+    # Integracja AB-1b.1a na HEAD z AB-H0 (2026-09-24): 3877 -> 3929 — POMIAR guardem na
+    # scalonym drzewie int/1b1: +44 nazwy AB-1b.1a (wymienione wyzej) i +8 z korzenia
+    # `analysis/obciazenie_galezi.py`; `werdykt/kontrakt.py` juz w mapie (AB-H0), wiec
+    # +64 z pomiaru na bbcc8555 tu nie wchodzi drugi raz.
+    assert "Pol kontraktow wejsciowych: 3929." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1645,7 +1685,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `api/karty_widmowe.py`); zero plikow skasowanych, dlug i wykluczenia bez zmian.
         # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
         # guardem na scalonym drzewie int/h0 (roznice L i AB-H0 sie sumuja).
-        "Przeskanowano 536 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta AB-1b.1a (2026-09-23): 529 -> 530 (+1 `application/protection_settings/
+        # zacisk_zabezpieczenia.py` — resolver zacisku; `application/contracts/
+        # resultset_dynamic_v1.py` -> `_v2.py` to wymiana 1:1; `analysis/` i `dziedziny/`
+        # leza poza zakresem skanu). Pomiar guardem.
+        "Przeskanowano 537 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1780,7 +1824,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # zapadce ani w wykluczeniach).
         # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
         # guardem na scalonym drzewie int/h0 (roznice L i AB-H0 sie sumuja).
-        "  application: pliki_skanowane=237, dlug=30 plikow/suma 91, "
+        # Karta AB-1b.1a (2026-09-23): application 235 -> 236 (+1
+        # `protection_settings/zacisk_zabezpieczenia.py`; kontrakt dynamiki v1 -> v2 1:1;
+        # zadnego wpisu w zapadce ani w wykluczeniach).
+        "  application: pliki_skanowane=238, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=63, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]

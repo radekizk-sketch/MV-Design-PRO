@@ -734,15 +734,29 @@ def zbierz_hashe() -> dict[str, dict[str, Any]]:
     )
 
     # === D6: protection_settings.batch_run.zbuduj_wejscie_nastaw ==============
+    # Decyzja O-51 (wariant (b)): sieci harnessu nie przypinają zabezpieczeń do wyłączników
+    # (model milczy), więc zacisk zabezpieczenia jest JAWNYM wskazaniem — `od`, czyli
+    # orientacja, którą pakiet przyjmował przed decyzją (prądy wyniku bez zmian).
     kotwica_promieniowa = _kotwica_3f_cmax(_siec_promieniowa(), siec="promieniowa")
     kotwica_rozgalezienie = _kotwica_3f_cmax(_siec_rozgalezienie(), siec="rozgalezienie")
 
     _zapisz(
         "nastawy/promieniowa/ln1_bb_cmin1_0",
-        zbuduj_wejscie_nastaw(kotwica_promieniowa, line_id="ln1", next_bus_id="b_b", c_min=1.0),
+        zbuduj_wejscie_nastaw(
+            kotwica_promieniowa,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        ),
         siec="promieniowa",
         funkcja="zbuduj_wejscie_nastaw",
-        kwargs={"line_id": "ln1", "next_bus_id": "b_b", "c_min": 1.0},
+        kwargs={
+            "line_id": "ln1",
+            "next_bus_id": "b_b",
+            "c_min": 1.0,
+            "zacisk_zabezpieczenia": "od",
+        },
     )
     _zapisz(
         "nastawy/promieniowa/ln1_bb_cmin0_9_niestandardowe",
@@ -751,6 +765,7 @@ def zbierz_hashe() -> dict[str, dict[str, Any]]:
             line_id="ln1",
             next_bus_id="b_b",
             c_min=0.9,
+            zacisk_zabezpieczenia="od",
             delta_t_s=0.45,
             k_b=1.35,
             k_bth=1.18,
@@ -761,6 +776,7 @@ def zbierz_hashe() -> dict[str, dict[str, Any]]:
             "line_id": "ln1",
             "next_bus_id": "b_b",
             "c_min": 0.9,
+            "zacisk_zabezpieczenia": "od",
             "delta_t_s": 0.45,
             "k_b": 1.35,
             "k_bth": 1.18,
@@ -768,17 +784,39 @@ def zbierz_hashe() -> dict[str, dict[str, Any]]:
     )
     _zapisz(
         "nastawy/rozgalezienie/ln1_bb_cmin1_0",
-        zbuduj_wejscie_nastaw(kotwica_rozgalezienie, line_id="ln1", next_bus_id="b_b", c_min=1.0),
+        zbuduj_wejscie_nastaw(
+            kotwica_rozgalezienie,
+            line_id="ln1",
+            next_bus_id="b_b",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        ),
         siec="rozgalezienie",
         funkcja="zbuduj_wejscie_nastaw",
-        kwargs={"line_id": "ln1", "next_bus_id": "b_b", "c_min": 1.0},
+        kwargs={
+            "line_id": "ln1",
+            "next_bus_id": "b_b",
+            "c_min": 1.0,
+            "zacisk_zabezpieczenia": "od",
+        },
     )
     _zapisz(
         "nastawy/rozgalezienie/ln1_bc_cmin1_0",
-        zbuduj_wejscie_nastaw(kotwica_rozgalezienie, line_id="ln1", next_bus_id="b_c", c_min=1.0),
+        zbuduj_wejscie_nastaw(
+            kotwica_rozgalezienie,
+            line_id="ln1",
+            next_bus_id="b_c",
+            c_min=1.0,
+            zacisk_zabezpieczenia="od",
+        ),
         siec="rozgalezienie",
         funkcja="zbuduj_wejscie_nastaw",
-        kwargs={"line_id": "ln1", "next_bus_id": "b_c", "c_min": 1.0},
+        kwargs={
+            "line_id": "ln1",
+            "next_bus_id": "b_c",
+            "c_min": 1.0,
+            "zacisk_zabezpieczenia": "od",
+        },
     )
 
     return wyniki

@@ -355,6 +355,64 @@ def test_sc_run_id_realny_ale_prady_rozbiezne_odrzucony(app_client: Any) -> None
     assert response.json()["detail"]["powod"] == "PRADY_NIEZGODNE_Z_BIEGIEM"
 
 
+# =============================================================================
+# Decyzja O-51 pkt 7 — miejsce urządzenia: lokalizacja-GAŁĄŹ ze wskazanym zaciskiem.
+# Prąd zwarciowy lokalizacji-gałęzi to prąd SZYNY zacisku (kabel c1: od = bus_2,
+# do = bus_1) i tak jest potwierdzany wobec biegów — ten sam resolver, z którego
+# ekran czyta prąd (`zacisk_zabezpieczenia.szyny_zwarcia_lokalizacji`).
+# Iloczyn cech: zacisk {od, do, brak} × prąd {prąd szyny zacisku, prąd drugiej szyny}.
+# =============================================================================
+
+_SZYNA_ZACISKU_KABLA = {"od": "bus_2", "do": "bus_1"}
+
+
+def _payload_na_kablu(zacisk: str | None, szyna_pradu: str) -> dict[str, Any]:
+    payload = _reference_payload()
+    urzadzenie = payload["devices"][0]
+    urzadzenie["location_element_id"] = "c1"
+    if zacisk is not None:
+        urzadzenie["zacisk"] = zacisk
+    payload["devices"] = [urzadzenie]
+    zrodlo = next(f for f in payload["fault_currents"] if f["location_id"] == szyna_pradu)
+    payload["fault_currents"] = [{**zrodlo, "location_id": "c1"}]
+    payload["operating_currents"] = [{"location_id": "c1", "i_operating_a": 150.0}]
+    return payload
+
+
+@pytest.mark.parametrize("zacisk", ["od", "do"])
+def test_lokalizacja_galaz_prad_szyny_zacisku_przyjety(app_client: Any, zacisk: str) -> None:
+    response = _run(app_client, _payload_na_kablu(zacisk, _SZYNA_ZACISKU_KABLA[zacisk]))
+    assert response.status_code == 201, response.text
+    assert response.json()["total_devices"] == 1
+
+
+@pytest.mark.parametrize("zacisk", ["od", "do"])
+def test_lokalizacja_galaz_prad_drugiej_szyny_odrzucony(app_client: Any, zacisk: str) -> None:
+    druga = _SZYNA_ZACISKU_KABLA["do" if zacisk == "od" else "od"]
+    response = _run(app_client, _payload_na_kablu(zacisk, druga))
+    assert response.status_code == 422, response.text
+    detail = response.json()["detail"]
+    assert detail["powod"] == "PRADY_NIEZGODNE_Z_BIEGIEM"
+    assert any(
+        f"c1 (szyna {_SZYNA_ZACISKU_KABLA[zacisk]})" in n for n in detail["niezgodnosci"]
+    ), detail
+
+
+def test_lokalizacja_galaz_bez_zacisku_odmowa_nazwana(app_client: Any) -> None:
+    response = _run(app_client, _payload_na_kablu(None, "bus_2"))
+    assert response.status_code == 422, response.text
+    niezgodnosci = response.json()["detail"]["niezgodnosci"]
+    assert any(
+        "c1: brak szyny zwarcia lokalizacji" in n and "wskaż zacisk" in n for n in niezgodnosci
+    )
+
+
+def test_zacisk_spoza_od_do_odrzucony_walidacja(app_client: Any) -> None:
+    payload = _payload_na_kablu("od", "bus_2")
+    payload["devices"][0]["zacisk"] = "srodek"
+    assert _run(app_client, payload).status_code == 422
+
+
 def test_sc_run_id_min_scenariusz_zamieniony_z_max_odrzucony(app_client: Any) -> None:
     """Bieg MAX podstawiony jako MIN (scenariusz odwrócony) — 422, nie ciche
     przyjęcie: czułość liczona z prądu maksymalnego dałaby werdykt zawyżony."""

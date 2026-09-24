@@ -31,7 +31,7 @@ SC_3F/SC_1F/SC_2F/SC_2F_G/LOAD_FLOW`) -> `POST /api/execution/runs/{id}/execute`
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from api.domain_ops_policy import (
@@ -68,6 +68,9 @@ from application.analyses.wytrzymalosc_aparatury_pol import (
 from application.eligibility_service import EligibilityService
 from application.field_read_model import build_field_read_model
 from application.protection_read_model import build_protection_read_model
+from application.protection_settings.zacisk_zabezpieczenia import (
+    opis_miejsca_urzadzenia,
+)
 from domain.canonical_operations import resolve_operation_name
 from domain.readiness_bridge import opis_kanoniczny
 from enm.canonical_analysis import (
@@ -314,6 +317,24 @@ def get_enm_protection_view(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Return read-only protection view derived directly from ENM."""
     enm = _get_enm(klucz)
     return build_protection_read_model(case_id, enm)
+
+
+@router.get("/{case_id}/enm/zacisk-lokalizacji")
+def get_zacisk_lokalizacji(
+    case_id: str,
+    klucz: KluczTwin,
+    lokalizacja: str,
+    zacisk: Literal["od", "do"] | None = None,
+) -> dict[str, Any]:
+    """Miejsce prądu urządzenia koordynacji wskazanego w przypadku (decyzja O-51, pkt 7).
+
+    Ten sam resolver co pakiet nastaw (`zacisk_zabezpieczenia.miejsce_urzadzenia`):
+    łącznik jako lokalizacja — gałąź i zacisk z łańcucha szeregowego modelu; gałąź —
+    wymagane wskazanie `zacisk`; szyna — brak zacisków. Odpowiedź niesie etykiety
+    zacisków z nazwami szyn i odmowę nazwaną z kodem kanonu. Read-only.
+    """
+    enm = _get_enm(klucz)
+    return opis_miejsca_urzadzenia(enm.model_dump(mode="json"), lokalizacja, zacisk)
 
 
 @router.get("/{case_id}/enm/field-view")

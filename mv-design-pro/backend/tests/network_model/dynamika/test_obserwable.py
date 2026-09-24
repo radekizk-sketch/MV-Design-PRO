@@ -24,6 +24,8 @@ from network_model.solvers.dynamika import (
     WezelDynamiki,
 )
 from network_model.solvers.dynamika.obserwable import (
+    JAKOSC_BEZ_NAPIECIA,
+    JAKOSC_CHWILA_ZDARZENIA,
     JAKOSC_NIEDOSTEPNA,
     JAKOSC_NIEROZROZNIALNA,
     JAKOSC_ROZROZNIALNA,
@@ -127,9 +129,10 @@ def test_f3_przejscie_kata_przez_pi_nie_tworzy_impulsu() -> None:
 def test_f4_zapad_do_zera_konczy_sie_stanem_niedostepnym_a_nie_liczba() -> None:
     """Fazor wewnatrz kuli niepewnosci => brak informacji o kacie.
 
-    Wartosc nie jest po cichu podstawiana jako znamionowa: NIEPEWNOSC rowna sie wtedy
-    calej czestotliwosci znamionowej, wiec nawet konsument ignorujacy kod jakosci widzi,
-    ze liczba nic nie znaczy.
+    Wartosc nie jest po cichu podstawiana jako znamionowa. PRZEPISANY ŚWIADOMIE (karta
+    AB-1b.1 par. 0 pkt 7): dawniej wartosc byla liczba z niepewnoscia rowna calej
+    czestotliwosci znamionowej; od kontraktu `resultset_dynamic_v2` wartosc niedostepna to
+    `None` — konsument ignorujacy kod jakosci nie dostaje ZADNEJ liczby do przeczytania.
     """
     wynik = czestotliwosc_wezla(
         complex(NIEPEWNOSC_NAPIECIA / 2.0, 0.0),
@@ -139,7 +142,8 @@ def test_f4_zapad_do_zera_konczy_sie_stanem_niedostepnym_a_nie_liczba() -> None:
         niepewnosc_pochodnej_pu_s=0.0,
     )
     assert wynik.jakosc == JAKOSC_NIEDOSTEPNA
-    assert wynik.niepewnosc_hz == F_BAZOWA_HZ
+    assert wynik.f_hz is None
+    assert wynik.niepewnosc_hz is None
 
 
 def test_f4b_pasmo_nierozroznialnosci_jest_wyprowadzone_a_nie_zgadniete() -> None:
@@ -282,8 +286,17 @@ def test_rozdzielczosc_porownania_jest_ziarnistoscia_arytmetyki_a_nie_stala() ->
 
 def test_kody_jakosci_sa_zamknietym_zbiorem_z_opisem() -> None:
     """Deklaracja „zamkniety zbior kodow" ma przypiety test (regula KLASA par. 4)."""
-    assert set(OPIS_JAKOSCI_PL) == {JAKOSC_ROZROZNIALNA, JAKOSC_NIEROZROZNIALNA, JAKOSC_NIEDOSTEPNA}
-    assert len({JAKOSC_ROZROZNIALNA, JAKOSC_NIEROZROZNIALNA, JAKOSC_NIEDOSTEPNA}) == 3
+    kody = {
+        JAKOSC_ROZROZNIALNA,
+        JAKOSC_NIEROZROZNIALNA,
+        JAKOSC_NIEDOSTEPNA,
+        JAKOSC_CHWILA_ZDARZENIA,
+        JAKOSC_BEZ_NAPIECIA,
+    }
+    assert set(OPIS_JAKOSCI_PL) == kody
+    assert len(kody) == 5
+    # Trzy przyczyny niedostepnosci sa rozlaczne i nazwane (karta AB-1b.1 par. 0 pkt 7).
+    assert all(OPIS_JAKOSCI_PL[kod].startswith("niedostepna") for kod in kody if kod >= 2.0)
 
 
 # ---------------------------------------------------------------------------
@@ -301,6 +314,8 @@ def _model_dwuwezlowy(
         y_szeregowa_pu=y_szeregowa_pu,
         b_poprzeczna_pu=b_poprzeczna_pu,
         przekladnia=przekladnia,
+        aktywna_na_starcie=True,
+        rodzaj="linia",
     )
     model = zloz_model_sieci((WezelDynamiki("A", U_N_KV), WezelDynamiki("B", U_N_KV)), (galaz,), ())
     return model, galaz
@@ -419,6 +434,8 @@ def _wyspa_maszyna_odbior(delta_p_pu: float) -> WejscieDynamiki:
                 y_szeregowa_pu=1.0 / complex(0.0, X_LINII_PU),
                 b_poprzeczna_pu=0.0,
                 przekladnia=complex(1.0, 0.0),
+                aktywna_na_starcie=True,
+                rodzaj="linia",
             ),
         ),
         odsprzegi=(),
@@ -454,7 +471,14 @@ def test_f2_bieg_wyspowy_kazda_szyna_czyta_czestotliwosc_maszyny() -> None:
     for ident in ("GEN", "ODB"):
         szereg = wynik.probki[f"f_hz@{ident}"]
         assert len(szereg) == len(omega)
-        for chwila, (f_hz, omega_pu) in enumerate(zip(szereg, omega, strict=True)):
+        for chwila, (f_hz, omega_pu, strona) in enumerate(
+            zip(szereg, omega, wynik.strona_probki, strict=True)
+        ):
+            if strona != "C":
+                # Chwila skoku obciazenia: czestotliwosc niedostepna w OBU probkach L/P
+                # (karta AB-1b.1 par. 0 pkt 6) — tozsamosc F-2 dotyczy probek siatki.
+                assert f_hz is None, f"szyna {ident}, probka {chwila}"
+                continue
             assert f_hz == pytest.approx(
                 F_BAZOWA_HZ * omega_pu, rel=1e-6
             ), f"szyna {ident}, probka {chwila}"
@@ -465,12 +489,20 @@ def test_f5_kazda_probka_biegu_ze_zdarzeniem_jest_skonczona_i_ma_kod_jakosci() -
     wynik = SilnikDynamiki(wejscie=_wyspa_maszyna_odbior(delta_p_pu=0.3)).uruchom()
     dozwolone = set(OPIS_JAKOSCI_PL)
     for ident in ("GEN", "ODB"):
-        for f_hz in wynik.probki[f"f_hz@{ident}"]:
-            assert math.isfinite(f_hz)
-        for niepewnosc in wynik.probki[f"u_f_est_hz@{ident}"]:
-            assert math.isfinite(niepewnosc) and niepewnosc >= 0.0
-        for kod in wynik.probki[f"jakosc_f@{ident}"]:
+        for f_hz, niepewnosc, kod in zip(
+            wynik.probki[f"f_hz@{ident}"],
+            wynik.probki[f"u_f_est_hz@{ident}"],
+            wynik.probki[f"jakosc_f@{ident}"],
+            strict=True,
+        ):
             assert kod in dozwolone
+            if kod >= JAKOSC_NIEDOSTEPNA:
+                # Wartosc niedostepna to `None` (nie NaN, nie liczba) — z kodem przyczyny.
+                assert f_hz is None and niepewnosc is None
+            else:
+                assert math.isfinite(f_hz)
+                assert math.isfinite(niepewnosc) and niepewnosc >= 0.0
+    assert JAKOSC_CHWILA_ZDARZENIA in wynik.probki["jakosc_f@GEN"], "bieg bez chwili zdarzenia"
 
 
 def test_b8_parytet_chwili_zerowej_z_punktem_pracy() -> None:
@@ -619,6 +651,8 @@ def _uklad_z_odbiorem(p_odbioru_pu: float) -> tuple[object, ...]:
                 y_szeregowa_pu=1.0 / complex(0.0, 0.30),
                 b_poprzeczna_pu=0.0,
                 przekladnia=complex(1.0, 0.0),
+                aktywna_na_starcie=True,
+                rodzaj="linia",
             ),
         ),
         (),
@@ -725,6 +759,8 @@ def test_niepewnosc_rosnie_gdy_jakobian_algebry_staje_sie_gorzej_uwarunkowany() 
                     y_szeregowa_pu=1.0 / complex(0.0, 0.30),
                     b_poprzeczna_pu=0.0,
                     przekladnia=complex(1.0, 0.0),
+                    aktywna_na_starcie=True,
+                    rodzaj="linia",
                 ),
             ),
             (),
@@ -802,6 +838,8 @@ def _wyspa_z_druga_galezia(t_otwarcia_s: float) -> WejscieDynamiki:
                 y_szeregowa_pu=1.0 / complex(0.0, X_LINII_PU),
                 b_poprzeczna_pu=0.0,
                 przekladnia=complex(1.0, 0.0),
+                aktywna_na_starcie=True,
+                rodzaj="linia",
             ),
             GalazDynamiki(
                 ident="LINIA2",
@@ -810,6 +848,8 @@ def _wyspa_z_druga_galezia(t_otwarcia_s: float) -> WejscieDynamiki:
                 y_szeregowa_pu=1.0 / complex(0.0, 2.0 * X_LINII_PU),
                 b_poprzeczna_pu=0.0,
                 przekladnia=complex(1.0, 0.0),
+                aktywna_na_starcie=True,
+                rodzaj="linia",
             ),
         ),
         odsprzegi=(),
@@ -828,28 +868,33 @@ def _wyspa_z_druga_galezia(t_otwarcia_s: float) -> WejscieDynamiki:
     )
 
 
-def test_z1_probka_w_chwili_zdarzenia_jest_granica_prawostronna() -> None:
-    """par. 7: kontrakt probki w chwili `t_e` to granica PRAWOSTRONNA — jawnie i z testem.
+def test_z1_chwila_zdarzenia_ma_probke_L_przed_i_P_po_laczeniu() -> None:
+    """par. 7: kontrakt probek w chwili `t_e` — jawnie i z testem.
 
-    Silnik wykonuje zdarzenie i reinicjalizuje algebre PRZED pobraniem probki, wiec probka
-    w chwili zdarzenia opisuje siec PO zmianie. Galaz otwarta w `t_e` musi wiec w tej samej
-    probce miec prad DOKLADNIE zerowy, a w probce poprzedniej — niezerowy. Bez tego zapisu
-    konsument nie wie, czy `t_e` czyta stan sprzed, czy po lączeniu.
+    PRZEPISANY ŚWIADOMIE (karta AB-1b.1 par. 0 pkt 6): dawniej jedna probka prawostronna.
+    Chwila `t_e` ma teraz DWIE probki: `L` (siec PRZED laczeniem) i `P` (PO nim i po
+    re-inicjalizacji). Galaz otwarta w `t_e` ma w `P` prad DOKLADNIE zerowy i kat `None`,
+    a w `L` — niezerowy. Intencja zachowana: konsument wie, ktora probka czyta ktory stan,
+    bo strona jest polem wyniku, a nie konwencja do zgadniecia.
     """
     t_otwarcia_s = 0.20
     wynik = SilnikDynamiki(wejscie=_wyspa_z_druga_galezia(t_otwarcia_s)).uruchom()
-    os_czasu = list(wynik.os_czasu_s)
-    indeks = min(range(len(os_czasu)), key=lambda pozycja: abs(os_czasu[pozycja] - t_otwarcia_s))
-    assert os_czasu[indeks] == pytest.approx(
-        t_otwarcia_s, abs=1e-12
-    ), "brak probki w chwili zdarzenia"
+    chwile = [
+        (i, strona)
+        for i, (t, strona) in enumerate(zip(wynik.os_czasu_s, wynik.strona_probki, strict=True))
+        if t == pytest.approx(t_otwarcia_s, abs=1e-12)
+    ]
+    assert [strona for _, strona in chwile] == ["L", "P"], "brak pary probek w chwili zdarzenia"
+    (lewa, _), (prawa, _) = chwile
 
-    prad_w_chwili = wynik.probki["i_od_pu@LINIA2"][indeks]
-    prad_przed = wynik.probki["i_od_pu@LINIA2"][indeks - 1]
-    assert prad_w_chwili == 0.0, "probka w chwili zdarzenia czyta stan SPRZED laczenia"
-    assert prad_przed > 1.0e-3, "drugi tor nie przewodzil przed otwarciem — scenariusz pusty"
+    assert wynik.probki["i_od_pu@LINIA2"][prawa] == 0.0, "probka P czyta stan SPRZED laczenia"
+    assert wynik.probki["i_od_kat_deg@LINIA2"][prawa] is None
+    assert wynik.probki["stan_galezi@LINIA2"][prawa] == 0.0
+    assert wynik.probki["i_od_pu@LINIA2"][lewa] > 1.0e-3, "drugi tor nie przewodzil przed otwarciem"
+    assert wynik.probki["stan_galezi@LINIA2"][lewa] == 1.0
     for przyrostek in ("i_do_pu", "p_od_pu", "q_od_pu", "p_do_pu", "q_do_pu"):
-        assert wynik.probki[f"{przyrostek}@LINIA2"][indeks] == 0.0
+        assert wynik.probki[f"{przyrostek}@LINIA2"][prawa] == 0.0
+        assert wynik.probki[f"{przyrostek}@LINIA2"][lewa] != 0.0
 
 
 def test_z2_iniekcja_rozniczkowanie_przez_nieciaglosc_daje_impuls() -> None:
@@ -864,11 +909,18 @@ def test_z2_iniekcja_rozniczkowanie_przez_nieciaglosc_daje_impuls() -> None:
     """
     t_otwarcia_s = 0.20
     wynik = SilnikDynamiki(wejscie=_wyspa_z_druga_galezia(t_otwarcia_s)).uruchom()
-    os_czasu = list(wynik.os_czasu_s)
-    indeks = min(range(len(os_czasu)), key=lambda pozycja: abs(os_czasu[pozycja] - t_otwarcia_s))
+    # PRZEPISANY ŚWIADOMIE (karta AB-1b.1 par. 0 pkt 6): konsument roznicuje katy po
+    # probkach SIATKI (`C`) — os ma w chwili zdarzenia pare L/P o tej samej chwili, wiec
+    # roznica wsteczna przez nia dzielilaby przez zero. Probka siatki tuz za zdarzeniem
+    # i tuz przed nim obejmuja skok kata; kanal analityczny w pierwszej probce siatki po
+    # zdarzeniu nie niesie impulsu, a w samej chwili zdarzenia jest `None` (kod 3).
+    siatka = [i for i, strona in enumerate(wynik.strona_probki) if strona == "C"]
+    os_czasu = wynik.os_czasu_s
+    indeks = next(i for i in siatka if os_czasu[i] > t_otwarcia_s)
+    poprzedni = max(i for i in siatka if os_czasu[i] < t_otwarcia_s)
     katy = wynik.probki["kat_deg@ODB"]
-    krok_s = os_czasu[indeks] - os_czasu[indeks - 1]
-    roznicowa_hz = F_BAZOWA_HZ + math.radians(katy[indeks] - katy[indeks - 1]) / (
+    krok_s = os_czasu[indeks] - os_czasu[poprzedni]
+    roznicowa_hz = F_BAZOWA_HZ + math.radians(katy[indeks] - katy[poprzedni]) / (
         2.0 * math.pi * krok_s
     )
     analityczna_hz = wynik.probki["f_hz@ODB"][indeks]
@@ -877,6 +929,12 @@ def test_z2_iniekcja_rozniczkowanie_przez_nieciaglosc_daje_impuls() -> None:
         "scenariusz nie cwiczy nieciaglosci"
     )
     assert abs(analityczna_hz - F_BAZOWA_HZ) < 1.0, "kanal analityczny niesie impuls zdarzenia"
+    prawa = next(
+        i
+        for i, (t, strona) in enumerate(zip(os_czasu, wynik.strona_probki, strict=True))
+        if t == t_otwarcia_s and strona == "P"
+    )
+    assert wynik.probki["f_hz@ODB"][prawa] is None
 
 
 def test_b9_przekladnia_i_susceptancja_naraz_zgadzaja_sie_ze_wzorami_ybus() -> None:
@@ -1023,7 +1081,9 @@ def test_a05_punkt_skorygowany_poza_domena_nie_liczy_sie_wcale() -> None:
             niepewnosc_pochodnej_pu_s=1.0,
         )
         assert wynik.jakosc == JAKOSC_NIEDOSTEPNA, f"|V|={modul}, u_V={niepewnosc}"
-        assert math.isfinite(wynik.f_hz) and math.isfinite(wynik.niepewnosc_hz)
+        # Od karty AB-1b.1 (par. 0 pkt 7) wartosc niedostepna to `None` — zadnej liczby
+        # udajacej pomiar i zadnego NaN.
+        assert wynik.f_hz is None and wynik.niepewnosc_hz is None
     niedostepna = czestotliwosc_wezla(
         complex(1.0, 0.0),
         complex(1.0, 0.0),
@@ -1239,3 +1299,22 @@ def test_a01_znak_korekty_newtona_jest_przypiety_w_zrodle() -> None:
     )
     assert isinstance(wyrazenie.left, ast.Name) and wyrazenie.left.id == "napiecia"
     assert isinstance(wyrazenie.right, ast.Name) and wyrazenie.right.id == "blad_napiecia"
+
+
+def test_fazor_o_kwadracie_modulu_niereprezentowalnym_jest_niedostepny() -> None:
+    """|V|^2 ponizej najmniejszej liczby normalnej: NIEDOSTEPNA, nie `ZeroDivisionError`.
+
+    Granica reprezentacji, nie prog: `|V| = 1e-170` przechodzi warunek `|V| > u_V` przy
+    `u_V = 0`, ale `|V|^2` jest w arytmetyce zerem (pomiar P4 karty AB-1b.1 — odcinek za
+    zwarciem metalicznym w linii przed wprowadzeniem `siec.galezie_laczace`).
+    """
+    from network_model.solvers.dynamika.obserwable import JAKOSC_NIEDOSTEPNA, czestotliwosc_wezla
+
+    wynik = czestotliwosc_wezla(
+        complex(1e-170, 0.0),
+        complex(0.0, 1e-170),
+        f_bazowa_hz=50.0,
+        niepewnosc_napiecia_pu=0.0,
+        niepewnosc_pochodnej_pu_s=0.0,
+    )
+    assert wynik.jakosc == JAKOSC_NIEDOSTEPNA

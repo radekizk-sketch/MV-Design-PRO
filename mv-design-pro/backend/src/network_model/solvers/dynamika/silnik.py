@@ -25,9 +25,22 @@ PRZEBIEG BIEGU:
    nastepuje JEDNA re-inicjalizacja algebry. Diagnostyka (`delta_y`, residuum KCL)
    opisuje wiec skok CHWILI — rozbijanie jej na „wklad zdarzenia" wymagaloby
    posrednich topologii, ktore nigdy nie istnialy.
-6. **Probka po zdarzeniu.** Probka w chwili `t` jest stanem PO wykonaniu
-   wszystkich zdarzen tej chwili. Jedna regula dla calej osi czasu, takze dla
-   `t = 0` (zwarcie zadane na `t = 0` jest w probce zerowej juz obecne).
+5a. **Obszary beznapieciowe (karta AB-1b.1 par. 0 pkt 2).** W stanie PO zdarzeniach
+   chwili (i w t = 0) wyspy sa klasyfikowane JEDNYM predykatem
+   (`wyspy.klasyfikuj_wyspy`): wyspa bez urzadzenia wnoszacego do algebry jest
+   ODCIETA — jej wezly dostaja wiersz ograniczenia `V = 0`, jej odbiory nie
+   pobieraja pradu (obwod bez drogi do zrodla), a bieg trwa. Wezel, ktory przestaje
+   miec napiecie narzucone zerem, startuje Newtona od napiecia najblizszego wezla
+   zywego (przeszukiwanie wszerz w kolejnosci indeksow — wybor punktu startowego,
+   nie korekta rozwiazania).
+6. **Probki obustronne (karta AB-1b.1 par. 0 pkt 6).** W KAZDEJ chwili, w ktorej
+   wykonuje sie choc jedno zdarzenie, wynik niesie DWIE probki o tej samej chwili:
+   `L` — stan PRZED naniesieniem jakiegokolwiek zdarzenia tej chwili (model, odbiory
+   i urzadzenia z konca ostatniego kroku; w `t = 0` dokladnie punkt pracy z rozplywu),
+   i `P` — stan PO naniesieniu wszystkich zdarzen i jednej re-inicjalizacji. Zwykla
+   probka siatki ma strone `C`. Zdarzenie na siatce daje pare `L, P` zamiast jednej
+   probki; zdarzenie poza siatka daje nowa pare. Strona kazdej probki jest w
+   `strona_probki`, rownoleglym do osi czasu.
 
 BEZ HISTORII OBIEKTU. `SilnikDynamiki` jest zamrozony i nie trzyma zadnego stanu
 miedzy biegami — caly stan biegu zyje w zmiennych lokalnych `uruchom`. Dwa biegi
@@ -54,27 +67,46 @@ from .calkowanie import (
 from .kontrakty import (
     KOD_INICJALIZACJA_NIEZBIEZNA,
     KOD_KROK_NIEZBIEZNY,
+    KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU,
+    KOD_ZWARCIE_NIEODIZOLOWANE,
+    HarmonogramDynamiki,
     NastawySolvera,
     OdbiorDynamiki,
     OdmowaDynamiki,
     Urzadzenie,
     WejscieDynamiki,
+    ZwarcieGalezi,
+    ZwarcieWezla,
     odmowa_braku_pola,
 )
 from .obserwable import (
+    JAKOSC_BEZ_NAPIECIA,
+    JAKOSC_CHWILA_ZDARZENIA,
+    JAKOSC_NIEDOSTEPNA,
+    CzestotliwoscWezla,
     czestotliwosc_niedostepna,
     czestotliwosc_wezla,
     pochodna_napiec_z_niepewnoscia,
     wielkosci_galezi,
 )
 from .reinicjalizacja import reinicjalizuj
-from .siec import ModelSieci, residuum_algebry, zloz_model_sieci
+from .siec import (
+    ModelSieci,
+    galezie_laczace,
+    miejsca_zwarcia_galezi,
+    ograniczenia_napiecia,
+    prad_wezla_ograniczonego,
+    residuum_algebry,
+    zloz_model_sieci,
+    zwarcia_galezi_modelu,
+)
 from .skonczonosc import sprawdz_napiecia
 from .tozsamosc import kwantyzuj, skrot_kanoniczny, zbuduj_tozsamosc
 from .urzadzenia.fabryka import RODZINY_OBSLUGIWANE
 from .urzadzenia.odlaczone import UrzadzenieOdlaczone
 from .waznosc import sprawdz_zakresy_waznosci
 from .wynik import KanalWyniku, Metryka, WlasnosciBiegu, WynikDynamiki, ZdarzenieWykonane
+from .wyspy import klasyfikuj_wyspy, przydzial_wysp, urzadzenie_wnosi_do_algebry
 from .zdarzenia import (
     StanScenariusza,
     WpisHarmonogramu,
@@ -115,6 +147,11 @@ class _Chwila:
     kontekst: KontekstKroku
     bylo_zdarzenie: bool
     residuum_kcl_max: float
+    #: Odbiory ODCIETE (w obszarze beznapieciowym) — nie wchodza do `odbiory`.
+    odbiory_odciete: frozenset[str]
+    #: Czy w tej chwili ktorys wezel startowal Newtona od napiecia sasiada (ponowne
+    #: zasilenie) — wchodzi do `zalozenia` wyniku.
+    start_od_sasiada: bool
 
 
 @dataclass(frozen=True)
@@ -134,23 +171,38 @@ class SilnikDynamiki:
             wejscie.harmonogram,
             wezly=wejscie.wezly,
             galezie=wejscie.galezie,
+            odsprzegi=wejscie.odsprzegi,
             odbiory=wejscie.odbiory,
             urzadzenia=wejscie.urzadzenia,
             s_bazowa_mva=wejscie.s_bazowa_mva,
             horyzont_s=nastawy.horyzont_s,
         )
 
-        model = zloz_model_sieci(wejscie.wezly, wejscie.galezie, wejscie.odsprzegi)
         urzadzenia = tuple(wejscie.urzadzenia)
         stany = self._stany_poczatkowe(urzadzenia)
-        napiecia = self._napiecia_poczatkowe(model)
-        odbiory = wejscie.odbiory
+        stan_scenariusza = stan_poczatkowy_scenariusza(
+            wejscie.galezie, wejscie.odsprzegi, wejscie.odbiory
+        )
+        napiecia, beznapieciowe = self._napiecia_poczatkowe(stan_scenariusza, urzadzenia, stany)
+        model = self._model_dla(stan_scenariusza, beznapieciowe)
+        odbiory, odciete = _rozdziel_odbiory(
+            odbiory_po_zdarzeniach(wejscie.odbiory, stan_scenariusza), beznapieciowe
+        )
+        self._sprawdz_wezly_zerowe(0.0, model, odbiory, urzadzenia, stany)
         kontekst = KontekstKroku(model, odbiory, urzadzenia, nastawy)
         slad_inicjalizacji = self._bramka_rownowagi(kontekst, stany, napiecia)
+        slad_inicjalizacji["wezly_beznapieciowe"] = [
+            ident for ident in model.identy_wezlow if ident in beznapieciowe
+        ]
+        slad_inicjalizacji["odbiory_odciete"] = _opis_odbiorow(odciete)
+        odciecia_w_biegu = bool(beznapieciowe)
+        starty_od_sasiada = False
 
-        kanaly = self._kanaly(model, urzadzenia)
-        probki: dict[str, list[float]] = {kanal.klucz: [] for kanal in kanaly}
+        miejsca_zwarc = _miejsca_zwarc(wpisy)
+        kanaly = self._kanaly(model, urzadzenia, miejsca_zwarc)
+        probki: dict[str, list[float | None]] = {kanal.klucz: [] for kanal in kanaly}
         os_czasu: list[float] = []
+        strony: list[str] = []
         wykonane: list[ZdarzenieWykonane] = []
         kroki_szczegolne: list[dict[str, Any]] = []
 
@@ -162,18 +214,37 @@ class SilnikDynamiki:
 
         t_s = 0.0
         indeks_probki = 0
-        stan_scenariusza = stan_poczatkowy_scenariusza(wejscie.galezie)
-
-        chwila = self._nanies_chwile(
-            t_s, wpisy, 0, stan_scenariusza, urzadzenia, stany, napiecia, wykonane, kroki_szczegolne
+        chwila = _Chwila(
+            indeks_wpisu=0,
+            stan_scenariusza=stan_scenariusza,
+            model=model,
+            odbiory=odbiory,
+            urzadzenia=urzadzenia,
+            napiecia=napiecia,
+            kontekst=kontekst,
+            bylo_zdarzenie=False,
+            residuum_kcl_max=0.0,
+            odbiory_odciete=frozenset(odbior.ident for odbior in odciete),
+            start_od_sasiada=False,
         )
-        stan_scenariusza = chwila.stan_scenariusza
+
+        chwila = self._chwila_z_probkami(
+            t_s,
+            wpisy,
+            chwila,
+            stany,
+            napiecia,
+            wykonane,
+            kroki_szczegolne,
+            _Probkowanie(probki, os_czasu, strony, miejsca_zwarc),
+            na_siatce=True,
+        )
         model, odbiory, urzadzenia = chwila.model, chwila.odbiory, chwila.urzadzenia
         napiecia, kontekst = chwila.napiecia, chwila.kontekst
         indeks_wpisu = chwila.indeks_wpisu
         max_residuum_g = max(max_residuum_g, chwila.residuum_kcl_max)
-
-        self._probkuj(probki, os_czasu, t_s, model, odbiory, urzadzenia, stany, napiecia)
+        odciecia_w_biegu = odciecia_w_biegu or bool(model.wezly_beznapieciowe)
+        starty_od_sasiada = starty_od_sasiada or chwila.start_od_sasiada
         indeks_probki = 1
 
         dt_biezace = nastawy.dt_s
@@ -235,25 +306,25 @@ class SilnikDynamiki:
                 max_residuum_g = max(max_residuum_g, wynik_kroku.residuum_algebry)
             t_s = cel
 
-            chwila = self._nanies_chwile(
+            na_siatce = self._jest_chwila_probki(t_s, indeks_probki, nastawy)
+            chwila = self._chwila_z_probkami(
                 t_s,
                 wpisy,
-                indeks_wpisu,
-                stan_scenariusza,
-                urzadzenia,
+                chwila,
                 stany,
                 napiecia,
                 wykonane,
                 kroki_szczegolne,
+                _Probkowanie(probki, os_czasu, strony, miejsca_zwarc),
+                na_siatce=na_siatce,
             )
-            stan_scenariusza = chwila.stan_scenariusza
             model, odbiory, urzadzenia = chwila.model, chwila.odbiory, chwila.urzadzenia
             napiecia, kontekst = chwila.napiecia, chwila.kontekst
             indeks_wpisu = chwila.indeks_wpisu
             max_residuum_g = max(max_residuum_g, chwila.residuum_kcl_max)
-
-            if self._jest_chwila_probki(t_s, indeks_probki, nastawy):
-                self._probkuj(probki, os_czasu, t_s, model, odbiory, urzadzenia, stany, napiecia)
+            odciecia_w_biegu = odciecia_w_biegu or bool(model.wezly_beznapieciowe)
+            starty_od_sasiada = starty_od_sasiada or chwila.start_od_sasiada
+            if na_siatce:
                 indeks_probki += 1
 
         if indeks_wpisu != len(wpisy):
@@ -264,6 +335,10 @@ class SilnikDynamiki:
                 "cichy skip jest defektem silnika, nie wlasnoscia scenariusza."
             )
 
+        zalozenia_biegu = zalozenia_harmonogramu(wejscie.harmonogram) + (
+            ((ZALOZENIE_OBSZARU_BEZNAPIECIOWEGO,) if odciecia_w_biegu else ())
+            + ((ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA,) if starty_od_sasiada else ())
+        )
         wlasnosci = WlasnosciBiegu(
             zbiegl=True,
             kroki=kroki,
@@ -278,12 +353,13 @@ class SilnikDynamiki:
         return WynikDynamiki(
             kanaly=kanaly,
             os_czasu_s=tuple(os_czasu),
+            strona_probki=tuple(strony),
             probki={klucz: tuple(szereg) for klucz, szereg in probki.items()},
             zdarzenia_wykonane=tuple(wykonane),
             wlasnosci=wlasnosci,
-            tozsamosc=zbuduj_tozsamosc(wejscie, model, urzadzenia),
+            tozsamosc=zbuduj_tozsamosc(wejscie),
             metryki=self._metryki(kanaly, probki, os_czasu),
-            zalozenia=ZALOZENIA_RDZENIA,
+            zalozenia=ZALOZENIA_RDZENIA + zalozenia_biegu,
             slad_white_box=self._slad(
                 slad_inicjalizacji,
                 model,
@@ -292,6 +368,7 @@ class SilnikDynamiki:
                 kroki,
                 kroki_odrzucone,
                 iteracje_max,
+                zalozenia_biegu,
             ),
         )
 
@@ -319,16 +396,190 @@ class SilnikDynamiki:
             )
         return tuple(stany)
 
-    def _napiecia_poczatkowe(self, model: ModelSieci) -> np.ndarray:
+    def _napiecia_poczatkowe(
+        self,
+        stan: StanScenariusza,
+        urzadzenia: tuple[Urzadzenie, ...],
+        stany: tuple[np.ndarray, ...],
+    ) -> tuple[np.ndarray, frozenset[str]]:
+        """Napiecia t = 0 i wezly OBSZARU BEZNAPIECIOWEGO topologii poczatkowej.
+
+        Brak napiecia wezla w punkcie pracy (rozplyw go nie rozwiazal) jest dopuszczalny
+        WYLACZNIE, gdy ten sam predykat, ktorym silnik klasyfikuje wyspy w chwilach
+        zdarzen, uzna wezel za beznapieciowy (wezel martwy od poczatku, zasilany pozniej
+        zamknieciem lacznika) — wtedy `V = 0`. Brak napiecia wezla wyspy zywej konczy sie
+        odmowa `punkt_pracy_napiecie_missing`, jak dotad. Napiecie PODANE dla wezla
+        martwego nie jest nadpisywane: bramka rownowagi sprawdzi je z wierszem
+        ograniczenia `V = 0` (niezerowe = wejscie niespojne, odmowa z residuum wezla).
+        """
         punkt = self.wejscie.punkt_pracy
-        wartosci: list[complex] = []
-        for ident in model.identy_wezlow:
-            if ident not in punkt.napiecia_pu:
+        wezly = self.wejscie.wezly
+        wartosci = np.array(
+            [punkt.napiecia_pu.get(wezel.ident, 0j) for wezel in wezly], dtype=complex
+        )
+        # TEN SAM predykat i ta sama funkcja, co w chwilach zdarzen (predykaty parami):
+        # napiecie 0 podstawione za brak wchodzi wylacznie do wezlow BEZ urzadzen, bo
+        # urzadzenie bez napiecia punktu pracy odmowilo juz w `_stany_poczatkowe`.
+        beznapieciowe, _ = self._obszary_beznapieciowe(stan, urzadzenia, stany, wartosci)
+        for wezel in wezly:
+            if wezel.ident not in punkt.napiecia_pu and wezel.ident not in beznapieciowe:
                 raise odmowa_braku_pola(
-                    "punkt_pracy_napiecie", f"Punkt pracy nie ma napiecia wezla {ident!r}"
+                    "punkt_pracy_napiecie", f"Punkt pracy nie ma napiecia wezla {wezel.ident!r}"
                 )
-            wartosci.append(punkt.napiecia_pu[ident])
-        return np.array(wartosci, dtype=complex)
+        return wartosci, beznapieciowe
+
+    def _sprawdz_wezly_zerowe(
+        self,
+        t_s: float,
+        model: ModelSieci,
+        odbiory: tuple[OdbiorDynamiki, ...],
+        urzadzenia: tuple[Urzadzenie, ...],
+        stany: tuple[np.ndarray, ...],
+    ) -> None:
+        """NAZWANE odmowy modeli, ktore nie maja rozwiazania przy napieciu narzuconym zerem.
+
+        * Odbior o STALEJ MOCY w wezle zwartym metalicznie: `P = const` przy `U = 0`
+          nie ma rozwiazania (zniesie to przejscie PQ -> Z, karta AB-1b.3). Odbiory
+          obszaru beznapieciowego sa ODCIETE wczesniej (brak obwodu), wiec tu nie trafiaja.
+        * Urzadzenie, ktorego rownania nie maja okreslonej wartosci przy `U = 0`
+          (regulacja czytajaca modul napiecia, petla synchronizacji fazowej) — odmowa
+          urzadzenia przenoszona z KONTEKSTEM: wezel, urzadzenie, chwila.
+
+        Sprawdzenie jest w chwili NARZUCENIA zera, a nie w pierwszym kroku calkowania:
+        odmowa w srodku kroku mowilaby o „kroku niezbieznym", a nie o przyczynie. Z tego
+        samego powodu tutaj pada odmowa DWOCH warunkow napiecia w jednym wezle
+        (`ograniczenia_napiecia`) — inaczej wyszlaby z Newtona re-inicjalizacji jako
+        „re-inicjalizacja niezbiezna".
+        """
+        ograniczenia_napiecia(model, urzadzenia)
+        if not model.pozycje_zerowe:
+            return
+        zerowe = {model.identy_wezlow[pozycja] for pozycja in model.pozycje_zerowe}
+        for wezel in model.identy_wezlow:
+            if wezel not in model.zwarcia_metaliczne or wezel in model.wezly_beznapieciowe:
+                continue
+            stalej_mocy = tuple(
+                odbior.ident
+                for odbior in odbiory
+                if odbior.wezel == wezel and complex(odbior.p_pu, odbior.q_pu) != 0
+            )
+            if stalej_mocy:
+                raise OdmowaDynamiki(
+                    KOD_ODBIOR_STALEJ_MOCY_PRZY_ZEROWYM_NAPIECIU,
+                    f"Zwarcie metaliczne w wezle {wezel!r} (t={t_s} s) narzuca U = 0, a wezel "
+                    f"zasila odbiory o stalej mocy {stalej_mocy} — model P = const nie ma "
+                    "rozwiazania przy zerowym napieciu. Podaj impedancje zwarcia (R_f, X_f) "
+                    "albo odlacz odbior przed zwarciem.",
+                    wezel=wezel,
+                    odbiory=stalej_mocy,
+                    t_s=t_s,
+                )
+        for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
+            if urzadzenie.wezel not in zerowe:
+                continue
+            try:
+                urzadzenie.pochodne(stan, 0j)
+                if urzadzenie.sprzezenie == "pradowe":
+                    urzadzenie.prad_pu(stan, 0j)
+                    urzadzenie.jakobian_prad_napiecie(stan, 0j)
+            except OdmowaDynamiki as odmowa:
+                szczegoly = dict(odmowa.szczegoly)
+                szczegoly.update(
+                    {"wezel": urzadzenie.wezel, "urzadzenie": urzadzenie.ident, "t_s": t_s}
+                )
+                raise OdmowaDynamiki(
+                    odmowa.kod,
+                    f"Urzadzenie {urzadzenie.ident!r} w wezle {urzadzenie.wezel!r} o napieciu "
+                    f"narzuconym zerem (t={t_s} s) nie ma okreslonego modelu przy U = 0: "
+                    f"{odmowa}",
+                    **szczegoly,
+                ) from odmowa
+
+    def _napiecia_startowe(
+        self,
+        poprzedni: ModelSieci,
+        model: ModelSieci,
+        napiecia: np.ndarray,
+        urzadzenia: tuple[Urzadzenie, ...],
+        stany: tuple[np.ndarray, ...],
+    ) -> tuple[np.ndarray | None, tuple[str, ...], tuple[str, ...]]:
+        """Punkt startowy Newtona chwili zdarzen oraz wezly startujace od sasiada / od SEM.
+
+        `None` jako punkt startowy znaczy: zbior wezlow zerowych sie nie zmienil, Newton
+        startuje z napiec sprzed zdarzenia (dotychczasowa sciezka, parytet bitowy).
+
+        Wezel NOWO zerowy startuje od zera (wartosci, ktora narzuca jego rownanie). Wezel,
+        ktory PRZESTAJE byc zerowy (ponowne zasilenie, zdjecie zwarcia metalicznego),
+        startuje od napiecia najblizszego wezla, ktory zerowy nie byl i nie jest:
+        przeszukiwanie wszerz po galeziach LACZACYCH nowego stanu (`siec.galezie_laczace` —
+        ta sama definicja polaczenia, co przydzial wysp), zrodla i sasiedzi w kolejnosci
+        indeksow (deterministycznie).
+
+        Wezel NIEOSIAGALNY od zadnego takiego wezla (wyspa zlozona wylacznie z wezlow
+        zerowych przed zdarzeniem — np. wezel z maszyna po zdjeciu zwarcia metalicznego,
+        bez galezi) startuje od napiecia JALOWEGO (SEM) pierwszego urzadzenia wnoszacego do
+        algebry w tym wezle, a jego sasiedzi — dalej wszerz od niego. Wyspa zywa zawsze ma
+        takie urzadzenie (inaczej bylaby beznapieciowa), wiec zaden ponownie zasilony wezel
+        nie startuje od zera — punkt, w ktorym odbior o stalej mocy nie ma pradu. To jest
+        wybor punktu startowego, nie korekta rozwiazania.
+        """
+        przed = set(poprzedni.pozycje_zerowe)
+        po = set(model.pozycje_zerowe)
+        if przed == po:
+            return None, (), ()
+        start = np.array(napiecia, dtype=complex, copy=True)
+        for pozycja in po:
+            start[pozycja] = 0j
+        do_uzupelnienia = przed - po
+        if not do_uzupelnienia:
+            return start, (), ()
+        laczace = galezie_laczace(model.galezie_aktywne, model.zwarcia_galezi)
+        sasiedzi: list[list[int]] = [[] for _ in range(model.liczba_wezlow)]
+        for galaz in model.galezie:
+            if galaz.ident not in laczace:
+                continue
+            od = model.indeks_wezla[galaz.wezel_od]
+            do = model.indeks_wezla[galaz.wezel_do]
+            if od != do:
+                sasiedzi[od].append(do)
+                sasiedzi[do].append(od)
+        kolejka = [
+            pozycja
+            for pozycja in range(model.liczba_wezlow)
+            if pozycja not in przed and pozycja not in po
+        ]
+        odwiedzone = set(kolejka)
+        od_sem: set[int] = set()
+
+        def rozszerz(kolejka: list[int]) -> None:
+            glowa = 0
+            while glowa < len(kolejka):
+                biezacy = kolejka[glowa]
+                glowa += 1
+                for sasiad in sorted(sasiedzi[biezacy]):
+                    if sasiad in odwiedzone or sasiad not in do_uzupelnienia:
+                        continue
+                    odwiedzone.add(sasiad)
+                    start[sasiad] = start[biezacy]
+                    kolejka.append(sasiad)
+
+        rozszerz(kolejka)
+        for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
+            pozycja = model.indeks_wezla[urzadzenie.wezel]
+            if pozycja not in do_uzupelnienia or pozycja in odwiedzone:
+                continue
+            if not urzadzenie_wnosi_do_algebry(urzadzenie, stan, complex(start[pozycja])):
+                continue
+            start[pozycja] = urzadzenie.napiecie_bez_obciazenia(stan)
+            odwiedzone.add(pozycja)
+            od_sem.add(pozycja)
+            rozszerz([pozycja])
+        od_sasiada = tuple(
+            model.identy_wezlow[pozycja]
+            for pozycja in sorted(do_uzupelnienia)
+            if pozycja in odwiedzone and pozycja not in od_sem
+        )
+        return start, od_sasiada, tuple(model.identy_wezlow[pozycja] for pozycja in sorted(od_sem))
 
     def _bramka_rownowagi(
         self, kontekst: KontekstKroku, stany: tuple[np.ndarray, ...], napiecia: np.ndarray
@@ -372,8 +623,24 @@ class SilnikDynamiki:
                 )
             )
             przesuniecie += wymiar
+        # MODUL residuum ZESPOLONEGO wezla (Re i Im). Korekta 2026-09-23 (karta AB-1b.1):
+        # dawny zapis `abs(reszta_algebry[pozycja])` czytal wylacznie czesc RZECZYWISTA
+        # (wektor residuum jest w postaci [Re; Im]), wiec niezbilansowanie czysto urojone
+        # wezla meldowalo sie jako zero. Pomiar: wezel martwy z podanym napieciem
+        # 1,0461 pu meldowal residuum 1,0205 (sama czesc rzeczywista).
+        liczba_wezlow = kontekst.model.liczba_wezlow
         residua_wezlow = tuple(
-            (ident, kwantyzuj(float(abs(reszta_algebry[pozycja]))))
+            (
+                ident,
+                kwantyzuj(
+                    abs(
+                        complex(
+                            float(reszta_algebry[pozycja]),
+                            float(reszta_algebry[pozycja + liczba_wezlow]),
+                        )
+                    )
+                ),
+            )
             for pozycja, ident in enumerate(kontekst.model.identy_wezlow)
         )
 
@@ -437,42 +704,94 @@ class SilnikDynamiki:
             do_wykonania.append(wpis)
         return do_wykonania
 
+    def _chwila_z_probkami(
+        self,
+        t_s: float,
+        wpisy: tuple[WpisHarmonogramu, ...],
+        poprzednia: _Chwila,
+        stany: tuple[np.ndarray, ...],
+        napiecia: np.ndarray,
+        wykonane: list[ZdarzenieWykonane],
+        kroki_szczegolne: list[dict[str, Any]],
+        probkowanie: _Probkowanie,
+        *,
+        na_siatce: bool,
+    ) -> _Chwila:
+        """Chwila osi czasu z probkami: `L` + `P` przy zdarzeniu, `C` na siatce bez zdarzen.
+
+        Probka `L` powstaje PRZED `_nanies_chwile` — z modelu, odbiorow i urzadzen chwili
+        poprzedniej i z napiec z konca ostatniego kroku (te same obiekty, na ktorych stal
+        krok calkowania). Dopiero potem zdarzenia sa nanoszone, a probka `P` bierze stan
+        po jednej re-inicjalizacji. Jedna regula dla calej osi, takze dla `t = 0` (tam
+        `L` jest punktem pracy z rozplywu) i dla chwili horyzontu.
+        """
+        zdarzenia_chwili = bool(self._wpisy_chwili(t_s, wpisy, poprzednia.indeks_wpisu))
+        if zdarzenia_chwili:
+            self._probkuj(
+                probkowanie,
+                "L",
+                t_s,
+                poprzednia.model,
+                poprzednia.odbiory,
+                poprzednia.urzadzenia,
+                stany,
+                napiecia,
+            )
+        chwila = self._nanies_chwile(
+            t_s, wpisy, poprzednia, stany, napiecia, wykonane, kroki_szczegolne
+        )
+        if zdarzenia_chwili or na_siatce:
+            self._probkuj(
+                probkowanie,
+                "P" if zdarzenia_chwili else "C",
+                t_s,
+                chwila.model,
+                chwila.odbiory,
+                chwila.urzadzenia,
+                stany,
+                chwila.napiecia,
+            )
+        return chwila
+
     def _nanies_chwile(
         self,
         t_s: float,
         wpisy: tuple[WpisHarmonogramu, ...],
-        indeks_wpisu: int,
-        stan_scenariusza: StanScenariusza,
-        urzadzenia: tuple[Urzadzenie, ...],
+        poprzednia: _Chwila,
         stany: tuple[np.ndarray, ...],
         napiecia: np.ndarray,
         wykonane: list[ZdarzenieWykonane],
         kroki_szczegolne: list[dict[str, Any]],
     ) -> _Chwila:
-        """Nanies wszystkie wpisy chwili `t_s`, zloz siec od nowa, re-inicjalizuj RAZ."""
+        """Nanies wszystkie wpisy chwili `t_s`, zloz siec od nowa, re-inicjalizuj RAZ.
+
+        Chwila BEZ zdarzen zachowuje model, odbiory i urzadzenia chwili poprzedniej
+        (topologia zmienia sie wylacznie w chwilach zdarzen; ponowne zlozenie z tego
+        samego stanu daloby bitowo ta sama macierz). Chwila ZE zdarzeniami klasyfikuje
+        wyspy stanu PO zdarzeniach, odcina obszary beznapieciowe i dopiero wtedy
+        rozwiazuje algebre.
+        """
         wejscie = self.wejscie
-        do_wykonania = self._wpisy_chwili(t_s, wpisy, indeks_wpisu)
+        do_wykonania = self._wpisy_chwili(t_s, wpisy, poprzednia.indeks_wpisu)
 
         if not do_wykonania:
-            model = self._model_dla(stan_scenariusza)
-            odbiory = odbiory_po_zdarzeniach(wejscie.odbiory, stan_scenariusza)
             return _Chwila(
-                indeks_wpisu=indeks_wpisu,
-                stan_scenariusza=stan_scenariusza,
-                model=model,
-                odbiory=odbiory,
-                urzadzenia=urzadzenia,
+                indeks_wpisu=poprzednia.indeks_wpisu,
+                stan_scenariusza=poprzednia.stan_scenariusza,
+                model=poprzednia.model,
+                odbiory=poprzednia.odbiory,
+                urzadzenia=poprzednia.urzadzenia,
                 napiecia=napiecia,
-                kontekst=KontekstKroku(model, odbiory, urzadzenia, wejscie.nastawy),
+                kontekst=poprzednia.kontekst,
                 bylo_zdarzenie=False,
                 residuum_kcl_max=0.0,
+                odbiory_odciete=poprzednia.odbiory_odciete,
+                start_od_sasiada=False,
             )
 
-        nowy_stan = stan_scenariusza
+        nowy_stan = poprzednia.stan_scenariusza
         for wpis in do_wykonania:
             nowy_stan = zastosuj(wpis, nowy_stan)
-        model = self._model_dla(nowy_stan)
-        odbiory = odbiory_po_zdarzeniach(wejscie.odbiory, nowy_stan)
         urzadzenia_po = tuple(
             (
                 UrzadzenieOdlaczone(urzadzenie)
@@ -480,7 +799,21 @@ class SilnikDynamiki:
                 and not isinstance(urzadzenie, UrzadzenieOdlaczone)
                 else urzadzenie
             )
-            for urzadzenie in urzadzenia
+            for urzadzenie in poprzednia.urzadzenia
+        )
+        beznapieciowe, przydzial = self._obszary_beznapieciowe(
+            nowy_stan, urzadzenia_po, stany, napiecia
+        )
+        self._sprawdz_izolacje(
+            t_s, do_wykonania, nowy_stan, beznapieciowe, przydzial, urzadzenia_po, stany, napiecia
+        )
+        model = self._model_dla(nowy_stan, beznapieciowe)
+        odbiory, odciete = _rozdziel_odbiory(
+            odbiory_po_zdarzeniach(wejscie.odbiory, nowy_stan), beznapieciowe
+        )
+        self._sprawdz_wezly_zerowe(t_s, model, odbiory, urzadzenia_po, stany)
+        napiecia_startowe, start_od_sasiada, start_od_sem = self._napiecia_startowe(
+            poprzednia.model, model, napiecia, urzadzenia_po, stany
         )
 
         napiecia_po, raport = reinicjalizuj(
@@ -491,6 +824,23 @@ class SilnikDynamiki:
             napiecia,
             nastawy=wejscie.nastawy,
             t_s=t_s,
+            napiecia_startowe=napiecia_startowe,
+        )
+        przed_martwe = poprzednia.model.wezly_beznapieciowe
+        obszary_odciete = tuple(
+            ident
+            for ident in model.identy_wezlow
+            if ident in beznapieciowe and ident not in przed_martwe
+        )
+        obszary_zasilone = tuple(
+            ident
+            for ident in model.identy_wezlow
+            if ident in przed_martwe and ident not in beznapieciowe
+        )
+        odbiory_odciete = tuple(
+            (odbior.ident, complex(odbior.p_pu, odbior.q_pu))
+            for odbior in odciete
+            if odbior.ident not in poprzednia.odbiory_odciete
         )
         for wpis in do_wykonania:
             wykonane.append(
@@ -502,6 +852,9 @@ class SilnikDynamiki:
                     delta_x_max=raport.delta_x_max,
                     delta_y_max=raport.delta_y_max,
                     residuum_kcl_max=raport.residuum_kcl_max,
+                    obszary_odciete=obszary_odciete,
+                    odbiory_odciete=odbiory_odciete,
+                    obszary_zasilone_ponownie=obszary_zasilone,
                 )
             )
         kroki_szczegolne.append(
@@ -514,10 +867,18 @@ class SilnikDynamiki:
                 "residuum_kcl_max": kwantyzuj(raport.residuum_kcl_max),
                 "iteracje": raport.iteracje,
                 "nawroty": raport.nawroty,
+                "obszary_odciete": list(obszary_odciete),
+                "odbiory_odciete": _opis_odbiorow(
+                    tuple(odbior for odbior in odciete if odbior.ident in dict(odbiory_odciete))
+                ),
+                "obszary_zasilone_ponownie": list(obszary_zasilone),
+                "wezly_ograniczone": list(raport.wezly_ograniczone),
+                "wezly_start_od_sasiada": list(start_od_sasiada),
+                "wezly_start_od_sem_urzadzenia": list(start_od_sem),
             }
         )
         return _Chwila(
-            indeks_wpisu=indeks_wpisu + len(do_wykonania),
+            indeks_wpisu=poprzednia.indeks_wpisu + len(do_wykonania),
             stan_scenariusza=nowy_stan,
             model=model,
             odbiory=odbiory,
@@ -526,15 +887,115 @@ class SilnikDynamiki:
             kontekst=KontekstKroku(model, odbiory, urzadzenia_po, wejscie.nastawy),
             bylo_zdarzenie=True,
             residuum_kcl_max=raport.residuum_kcl_max,
+            odbiory_odciete=frozenset(odbior.ident for odbior in odciete),
+            start_od_sasiada=bool(start_od_sasiada or start_od_sem),
         )
 
-    def _model_dla(self, stan: StanScenariusza) -> ModelSieci:
+    def _obszary_beznapieciowe(
+        self,
+        stan: StanScenariusza,
+        urzadzenia: tuple[Urzadzenie, ...],
+        stany: tuple[np.ndarray, ...],
+        napiecia: np.ndarray,
+    ) -> tuple[frozenset[str], tuple[int, ...]]:
+        """Wezly wysp, w ktorych ZADNE urzadzenie nie wnosi do algebry (stan PO zdarzeniach),
+        oraz przydzial wezlow do wysp tego stanu.
+
+        Predykat jest oceniany w punkcie SPRZED re-inicjalizacji (stany trzymane, napiecia
+        z konca ostatniego kroku) — pytanie jest strukturalne (czy skladnik w ogole
+        wchodzi do rownania), wiec nie zalezy od rozwiazania, ktore dopiero powstanie.
+        """
+        wezly = self.wejscie.wezly
+        indeks = {wezel.ident: pozycja for pozycja, wezel in enumerate(wezly)}
+        przydzial = przydzial_wysp(
+            tuple(indeks),
+            indeks,
+            self.wejscie.galezie,
+            galezie_laczace(stan.galezie_aktywne, stan.zwarcia_galezi),
+        )
+        zywe, _ = klasyfikuj_wyspy(przydzial, indeks, urzadzenia, stany, napiecia)
+        beznapieciowe = frozenset(
+            wezel.ident for pozycja, wezel in enumerate(wezly) if przydzial[pozycja] not in zywe
+        )
+        return beznapieciowe, przydzial
+
+    def _sprawdz_izolacje(
+        self,
+        t_s: float,
+        do_wykonania: list[WpisHarmonogramu],
+        stan: StanScenariusza,
+        beznapieciowe: frozenset[str],
+        przydzial: tuple[int, ...],
+        urzadzenia: tuple[Urzadzenie, ...],
+        stany: tuple[np.ndarray, ...],
+        napiecia: np.ndarray,
+    ) -> None:
+        """PREDYKAT IZOLACJI usuniecia `izolacja` w stanie t+ (karta AB-1b.1 par. 0 pkt 4).
+
+        Luk gasnie przy PRZERWANIU pradu, czyli w chwili otwarcia. Usuniecie zwarcia
+        rodzaju `izolacja` jest wiec dopuszczalne wylacznie wtedy, gdy PO naniesieniu
+        wszystkich zdarzen chwili miejsce zwarcia lezy w obszarze beznapieciowym (wezel)
+        albo galaz zwarta jest nieaktywna lub ma oba zaciski w obszarze beznapieciowym.
+        Ponowne podanie napiecia w tej samej chwili co usuniecie tez konczy sie odmowa —
+        usuniecie trzeba datowac na przerwe beznapieciowa. Odmowa niesie pomiar: miejsce,
+        sklad wyspy i urzadzenia, ktore ja zasilaja.
+        """
+        wezly = self.wejscie.wezly
+        indeks = {wezel.ident: pozycja for pozycja, wezel in enumerate(wezly)}
+        galezie = {galaz.ident: galaz for galaz in self.wejscie.galezie}
+        for wpis in do_wykonania:
+            if wpis.sposob_usuniecia != "izolacja":
+                continue
+            if wpis.rodzaj == "zdjecie_zwarcia":
+                zaciski: tuple[str, ...] = (wpis.ref,)
+                odizolowane = wpis.ref in beznapieciowe
+                miejsce: dict[str, object] = {"wezel": wpis.ref}
+            else:
+                galaz = galezie[wpis.ref]
+                zaciski = (galaz.wezel_od, galaz.wezel_do)
+                odizolowane = wpis.ref not in stan.galezie_aktywne or all(
+                    wezel in beznapieciowe for wezel in zaciski
+                )
+                miejsce = {"galaz": wpis.ref, "polozenie_wzgledne": wpis.polozenie_wzgledne}
+            if odizolowane:
+                continue
+            zasilany = next(wezel for wezel in zaciski if wezel not in beznapieciowe)
+            numer = przydzial[indeks[zasilany]]
+            wyspa = tuple(
+                wezel.ident for pozycja, wezel in enumerate(wezly) if przydzial[pozycja] == numer
+            )
+            wnoszace = tuple(
+                urzadzenie.ident
+                for urzadzenie, stan_urzadzenia in zip(urzadzenia, stany, strict=True)
+                if przydzial[indeks[urzadzenie.wezel]] == numer
+                and urzadzenie_wnosi_do_algebry(
+                    urzadzenie, stan_urzadzenia, complex(napiecia[indeks[urzadzenie.wezel]])
+                )
+            )
+            raise OdmowaDynamiki(
+                KOD_ZWARCIE_NIEODIZOLOWANE,
+                f"Usuniecie zwarcia {miejsce} w t={t_s} s zadeklarowane jako `izolacja`, ale "
+                f"w stanie po zdarzeniach tej chwili miejsce zwarcia nadal lezy w wyspie "
+                f"zasilanej {wyspa} przez {wnoszace}. Zaden aparat nie przerwal pradu zwarcia: "
+                "dodaj otwarcie galezi odcinajacych miejsce zwarcia w tej chwili albo "
+                "zadeklaruj usuniecie `samoczynne` (idealizacja zwarcia przemijajacego).",
+                t_s=t_s,
+                wyspa=wyspa,
+                urzadzenia_wnoszace=wnoszace,
+                **miejsce,
+            )
+
+    def _model_dla(self, stan: StanScenariusza, beznapieciowe: frozenset[str]) -> ModelSieci:
         return zloz_model_sieci(
             self.wejscie.wezly,
             self.wejscie.galezie,
             self.wejscie.odsprzegi,
             galezie_aktywne=stan.galezie_aktywne,
+            odsprzegi_aktywne=stan.odsprzegi_aktywne,
             admitancje_zwarc=stan.admitancje_zwarc,
+            zwarcia_metaliczne=stan.zwarcia_metaliczne,
+            wezly_beznapieciowe=beznapieciowe,
+            zwarcia_galezi=stan.zwarcia_galezi,
         )
 
     # -- os czasu ---------------------------------------------------------
@@ -570,7 +1031,10 @@ class SilnikDynamiki:
     # -- kanaly, probki, metryki -----------------------------------------
 
     def _kanaly(
-        self, model: ModelSieci, urzadzenia: tuple[Urzadzenie, ...]
+        self,
+        model: ModelSieci,
+        urzadzenia: tuple[Urzadzenie, ...],
+        miejsca_zwarc: tuple[_MiejsceZwarcia, ...],
     ) -> tuple[KanalWyniku, ...]:
         kanaly: list[KanalWyniku] = []
         for ident in model.identy_wezlow:
@@ -622,6 +1086,89 @@ class SilnikDynamiki:
                 )
             )
         kanaly.extend(self._kanaly_obserwabli(model))
+        for miejsce in miejsca_zwarc:
+            kanaly.append(
+                KanalWyniku(
+                    klucz=f"i_zwarcia_pu@{miejsce.klucz}",
+                    przestrzen="obserwabla",
+                    jednostka="pu",
+                    element_ref=miejsce.element,
+                    opis_pl=f"Modul pradu do ziemi w miejscu zwarcia {miejsce.opis_pl}",
+                )
+            )
+            kanaly.append(
+                KanalWyniku(
+                    klucz=f"u_zwarcia_pu@{miejsce.klucz}",
+                    przestrzen="obserwabla",
+                    jednostka="pu",
+                    element_ref=miejsce.element,
+                    opis_pl=f"Modul napiecia w miejscu zwarcia {miejsce.opis_pl}",
+                )
+            )
+            kanaly.append(
+                KanalWyniku(
+                    klucz=f"i_zwarcia_kat_deg@{miejsce.klucz}",
+                    przestrzen="obserwabla",
+                    jednostka="deg",
+                    element_ref=miejsce.element,
+                    opis_pl=(
+                        f"Kat fazora pradu do ziemi w miejscu zwarcia {miejsce.opis_pl} "
+                        "(brak wartosci przy pradzie zerowym)"
+                    ),
+                )
+            )
+        kanaly.extend(self._kanaly_stanow_i_katow(model))
+        return tuple(kanaly)
+
+    def _kanaly_stanow_i_katow(self, model: ModelSieci) -> tuple[KanalWyniku, ...]:
+        """Kanaly karty AB-1b.1 (par. 0 pkt 8): stan zasilania wezla, stan galezi, katy fazorow.
+
+        Dopisane ZA dawnymi kanalami, wiec dawna lista kanalow jest bitowo prefiksem nowej.
+        Katy fazorow pradu leza w tym samym ukladzie wirujacym, co `kat_deg@` wezlow; przy
+        pradzie DOKLADNIE zerowym (galaz otwarta, obszar beznapieciowy) kata nie ma —
+        probka niesie `None`, a jednoznacznosc zera modulu niesie `stan_galezi@`.
+        """
+        kanaly: list[KanalWyniku] = []
+        for ident in model.identy_wezlow:
+            kanaly.append(
+                KanalWyniku(
+                    klucz=f"stan_zasilania@{ident}",
+                    przestrzen="siec",
+                    jednostka="kod",
+                    element_ref=ident,
+                    opis_pl=(
+                        f"Stan zasilania szyny {ident}: 1 zasilana, 0 beznapieciowa, "
+                        "2 napiecie narzucone (zwarcie metaliczne albo zrodlo idealne)"
+                    ),
+                )
+            )
+        for galaz in model.galezie:
+            kanaly.append(
+                KanalWyniku(
+                    klucz=f"stan_galezi@{galaz.ident}",
+                    przestrzen="siec",
+                    jednostka="kod",
+                    element_ref=galaz.ident,
+                    opis_pl=f"Stan galezi {galaz.ident}: 1 zalaczona, 0 wylaczona",
+                )
+            )
+            for przyrostek, zacisk in (
+                ("i_od_kat_deg", "poczatkowego"),
+                ("i_do_kat_deg", "koncowego"),
+            ):
+                kanaly.append(
+                    KanalWyniku(
+                        klucz=f"{przyrostek}@{galaz.ident}",
+                        przestrzen="obserwabla",
+                        jednostka="deg",
+                        element_ref=galaz.ident,
+                        opis_pl=(
+                            f"Kat fazora pradu zacisku {zacisk} galezi {galaz.ident} "
+                            f"({galaz.wezel_od} -> {galaz.wezel_do}); brak wartosci przy "
+                            "pradzie zerowym"
+                        ),
+                    )
+                )
         return tuple(kanaly)
 
     def _kanaly_obserwabli(self, model: ModelSieci) -> tuple[KanalWyniku, ...]:
@@ -686,8 +1233,8 @@ class SilnikDynamiki:
 
     def _probkuj(
         self,
-        probki: dict[str, list[float]],
-        os_czasu: list[float],
+        probkowanie: _Probkowanie,
+        strona: str,
         t_s: float,
         model: ModelSieci,
         odbiory: tuple[OdbiorDynamiki, ...],
@@ -695,24 +1242,128 @@ class SilnikDynamiki:
         stany: tuple[np.ndarray, ...],
         napiecia: np.ndarray,
     ) -> None:
-        os_czasu.append(t_s)
+        """Jedna probka WSZYSTKICH kanalow ze strona `C`, `L` albo `P`."""
+        probki = probkowanie.probki
+        probkowanie.os_czasu.append(t_s)
+        probkowanie.strony.append(strona)
         for pozycja, ident in enumerate(model.identy_wezlow):
             napiecie = complex(napiecia[pozycja])
             probki[f"u_pu@{ident}"].append(abs(napiecie))
-            probki[f"kat_deg@{ident}"].append(float(np.degrees(np.angle(napiecie))))
+            probki[f"kat_deg@{ident}"].append(_kat_deg(napiecie))
         for urzadzenie, stan in zip(urzadzenia, stany, strict=True):
             for nazwa, wartosc in zip(urzadzenie.nazwy_stanow, stan, strict=True):
                 probki[f"{nazwa}@{urzadzenie.ident}"].append(float(wartosc))
             pozycja = model.indeks_wezla[urzadzenie.wezel]
             napiecie = complex(napiecia[pozycja])
-            moc = napiecie * urzadzenie.prad_pu(stan, napiecie).conjugate()
+            prad = (
+                prad_wezla_ograniczonego(
+                    model, odbiory, urzadzenia, stany, napiecia, urzadzenie.wezel
+                )
+                if urzadzenie.sprzezenie == "napieciowe"
+                else urzadzenie.prad_pu(stan, napiecie)
+            )
+            moc = napiecie * prad.conjugate()
             probki[f"p_pu@{urzadzenie.ident}"].append(float(moc.real))
             probki[f"q_pu@{urzadzenie.ident}"].append(float(moc.imag))
-        self._probkuj_obserwable(probki, model, odbiory, urzadzenia, stany, napiecia)
+        self._probkuj_obserwable(probki, strona, model, odbiory, urzadzenia, stany, napiecia)
+        self._probkuj_zwarcia(
+            probki, model, odbiory, urzadzenia, stany, napiecia, probkowanie.miejsca_zwarc
+        )
+        self._probkuj_stany_i_katy(probki, model, urzadzenia, napiecia)
+
+    def _probkuj_stany_i_katy(
+        self,
+        probki: dict[str, list[float | None]],
+        model: ModelSieci,
+        urzadzenia: tuple[Urzadzenie, ...],
+        napiecia: np.ndarray,
+    ) -> None:
+        """Stan zasilania wezlow, stan galezi i katy fazorow pradow zaciskow."""
+        narzucone = {
+            model.identy_wezlow[pozycja] for pozycja, _ in ograniczenia_napiecia(model, urzadzenia)
+        }
+        for ident in model.identy_wezlow:
+            if ident in model.wezly_beznapieciowe:
+                kod = STAN_ZASILANIA_BEZNAPIECIOWY
+            elif ident in narzucone:
+                kod = STAN_ZASILANIA_NARZUCONE
+            else:
+                kod = STAN_ZASILANIA_ZASILANY
+            probki[f"stan_zasilania@{ident}"].append(kod)
+        for galaz in model.galezie:
+            wielkosci = wielkosci_galezi(model, galaz, napiecia)
+            probki[f"stan_galezi@{galaz.ident}"].append(
+                1.0 if galaz.ident in model.galezie_aktywne else 0.0
+            )
+            probki[f"i_od_kat_deg@{galaz.ident}"].append(_kat_deg(wielkosci.i_od_pu))
+            probki[f"i_do_kat_deg@{galaz.ident}"].append(_kat_deg(wielkosci.i_do_pu))
+
+    def _probkuj_zwarcia(
+        self,
+        probki: dict[str, list[float | None]],
+        model: ModelSieci,
+        odbiory: tuple[OdbiorDynamiki, ...],
+        urzadzenia: tuple[Urzadzenie, ...],
+        stany: tuple[np.ndarray, ...],
+        napiecia: np.ndarray,
+        miejsca_zwarc: tuple[_MiejsceZwarcia, ...],
+    ) -> None:
+        """Prad DO ZIEMI i napiecie w KAZDYM miejscu zwarcia z harmonogramu (karta par. 0 pkt 5).
+
+        Zwarcie w wezle z admitancja: `I = y_f V`; metaliczne: prad elementu narzucajacego
+        `V = 0` z bilansu wezla, ze znakiem przeciwnym (`siec.prad_wezla_ograniczonego` —
+        ta sama funkcja, ktora daje moc zrodla napieciowego). Zwarcie w galezi: wezel
+        wewnetrzny rozwiazany jawnie (`siec.miejsca_zwarcia_galezi`). Miejsce BEZ trwajacego
+        zwarcia ma prad zerowy (fakt fizyczny); napiecie wezla jest napieciem wezla, a
+        napiecie punktu `x*L` galezi zdrowej — rozwiazaniem tych samych odcinkow pi z
+        admitancja zwarcia zero; galaz wylaczona jest beznapieciowa.
+        """
+        admitancje = dict(model.admitancje_zwarc)
+        for miejsce in miejsca_zwarc:
+            if miejsce.polozenie is None:
+                pozycja = model.indeks_wezla[miejsce.element]
+                napiecie = complex(napiecia[pozycja])
+                if miejsce.element in admitancje:
+                    prad = admitancje[miejsce.element] * napiecie
+                elif miejsce.element in model.zwarcia_metaliczne:
+                    prad = -prad_wezla_ograniczonego(
+                        model, odbiory, urzadzenia, stany, napiecia, miejsce.element
+                    )
+                else:
+                    prad = 0j
+            else:
+                napiecie, prad = self._miejsce_w_galezi(model, napiecia, miejsce)
+            probki[f"i_zwarcia_pu@{miejsce.klucz}"].append(abs(prad))
+            probki[f"u_zwarcia_pu@{miejsce.klucz}"].append(abs(napiecie))
+            probki[f"i_zwarcia_kat_deg@{miejsce.klucz}"].append(_kat_deg(prad))
+
+    def _miejsce_w_galezi(
+        self, model: ModelSieci, napiecia: np.ndarray, miejsce: _MiejsceZwarcia
+    ) -> tuple[complex, complex]:
+        """(napiecie, prad do ziemi) w punkcie `x*L` galezi w biezacym stanie modelu."""
+        if miejsce.element not in model.galezie_aktywne:
+            return 0j, 0j
+        galaz = next(g for g in model.galezie if g.ident == miejsce.element)
+        assert miejsce.polozenie is not None
+        zwarcia = zwarcia_galezi_modelu(model, galaz.ident)
+        if not any(polozenie == miejsce.polozenie for polozenie, _ in zwarcia):
+            zwarcia = ((miejsce.polozenie, 0j),)
+        wyniki = miejsca_zwarcia_galezi(
+            galaz.y_szeregowa_pu,
+            galaz.b_poprzeczna_pu,
+            zwarcia,
+            complex(napiecia[model.indeks_wezla[galaz.wezel_od]]),
+            complex(napiecia[model.indeks_wezla[galaz.wezel_do]]),
+        )
+        for (polozenie, _), wynik in zip(zwarcia, wyniki, strict=True):
+            if polozenie == miejsce.polozenie:
+                return wynik
+        raise AssertionError("miejsce zwarcia nie znalezione")  # pragma: no cover
 
     def _probkuj_obserwable(
         self,
-        probki: dict[str, list[float]],
+        probki: dict[str, list[float | None]],
+        strona: str,
         model: ModelSieci,
         odbiory: tuple[OdbiorDynamiki, ...],
         urzadzenia: tuple[Urzadzenie, ...],
@@ -730,28 +1381,47 @@ class SilnikDynamiki:
         ALBO nie istnieje, ALBO nie da sie ograniczyc jej bledu — i wtedy kazdy wezel
         dostaje stan NIEDOSTEPNA. Bieg trwa dalej, bo algebra zbiegla; ale zbiezny Newton
         nie jest dowodem, ze wyprowadzona z niego czestotliwosc cokolwiek znaczy.
+
+        CHWILA ZDARZENIA (probki `L` i `P`) — czestotliwosc NIE jest liczona: kat skacze,
+        pochodna dwustronna nie istnieje (kod 3 dla kazdego wezla). WEZEL BEZ NAPIECIA
+        (obszar beznapieciowy, zwarcie metaliczne) w probce `C` — kod 4; wezly zywe liczone
+        normalnie (dostepnosc per wezel, `obserwable.pochodna_napiec_z_niepewnoscia`).
         """
         f_bazowa_hz = self.wejscie.f_bazowa_hz
-        try:
-            pomiar = pochodna_napiec_z_niepewnoscia(model, odbiory, urzadzenia, stany, napiecia)
-        except OdmowaDynamiki:
-            niedostepna = czestotliwosc_niedostepna(f_bazowa_hz)
-            for ident in model.identy_wezlow:
-                probki[f"f_hz@{ident}"].append(niedostepna.f_hz)
-                probki[f"u_f_est_hz@{ident}"].append(niedostepna.niepewnosc_hz)
-                probki[f"jakosc_f@{ident}"].append(niedostepna.jakosc)
+        czestotliwosci: list[CzestotliwoscWezla]
+        if strona != "C":
+            czestotliwosci = [
+                czestotliwosc_niedostepna(JAKOSC_CHWILA_ZDARZENIA) for _ in model.identy_wezlow
+            ]
         else:
-            for pozycja, ident in enumerate(model.identy_wezlow):
-                czestotliwosc = czestotliwosc_wezla(
-                    complex(napiecia[pozycja]),
-                    complex(pomiar.pochodna_pu_s[pozycja]),
-                    f_bazowa_hz=f_bazowa_hz,
-                    niepewnosc_napiecia_pu=float(pomiar.niepewnosc_napiecia_pu[pozycja]),
-                    niepewnosc_pochodnej_pu_s=float(pomiar.niepewnosc_pochodnej_pu_s[pozycja]),
-                )
-                probki[f"f_hz@{ident}"].append(czestotliwosc.f_hz)
-                probki[f"u_f_est_hz@{ident}"].append(czestotliwosc.niepewnosc_hz)
-                probki[f"jakosc_f@{ident}"].append(czestotliwosc.jakosc)
+            try:
+                pomiar = pochodna_napiec_z_niepewnoscia(model, odbiory, urzadzenia, stany, napiecia)
+            except OdmowaDynamiki:
+                czestotliwosci = [
+                    czestotliwosc_niedostepna(JAKOSC_NIEDOSTEPNA) for _ in model.identy_wezlow
+                ]
+            else:
+                zerowe = set(model.pozycje_zerowe)
+                czestotliwosci = [
+                    (
+                        czestotliwosc_niedostepna(JAKOSC_BEZ_NAPIECIA)
+                        if pozycja in zerowe
+                        else czestotliwosc_wezla(
+                            complex(napiecia[pozycja]),
+                            complex(pomiar.pochodna_pu_s[pozycja]),
+                            f_bazowa_hz=f_bazowa_hz,
+                            niepewnosc_napiecia_pu=float(pomiar.niepewnosc_napiecia_pu[pozycja]),
+                            niepewnosc_pochodnej_pu_s=float(
+                                pomiar.niepewnosc_pochodnej_pu_s[pozycja]
+                            ),
+                        )
+                    )
+                    for pozycja in range(model.liczba_wezlow)
+                ]
+        for ident, czestotliwosc in zip(model.identy_wezlow, czestotliwosci, strict=True):
+            probki[f"f_hz@{ident}"].append(czestotliwosc.f_hz)
+            probki[f"u_f_est_hz@{ident}"].append(czestotliwosc.niepewnosc_hz)
+            probki[f"jakosc_f@{ident}"].append(czestotliwosc.jakosc)
         for galaz in model.galezie:
             wielkosci = wielkosci_galezi(model, galaz, napiecia)
             probki[f"i_od_pu@{galaz.ident}"].append(abs(wielkosci.i_od_pu))
@@ -764,14 +1434,14 @@ class SilnikDynamiki:
     def _metryki(
         self,
         kanaly: tuple[KanalWyniku, ...],
-        probki: dict[str, list[float]],
+        probki: dict[str, list[float | None]],
         os_czasu: list[float],
     ) -> tuple[Metryka, ...]:
         metryki: list[Metryka] = []
         napieciowe = [kanal for kanal in kanaly if kanal.klucz.startswith("u_pu@")]
         if napieciowe and os_czasu:
             wartosc, element, klucz = min(
-                (min(probki[kanal.klucz]), kanal.element_ref or "", kanal.klucz)
+                (_min_liczb(probki[kanal.klucz]), kanal.element_ref or "", kanal.klucz)
                 for kanal in napieciowe
             )
             metryki.append(Metryka("u_min_pu", wartosc, "pu", "min_t min_k |V_k(t)|", element))
@@ -790,15 +1460,21 @@ class SilnikDynamiki:
             if klucz.startswith("omega_pu@"):
                 ident = klucz.split("@", 1)[1]
                 metryki.append(
-                    Metryka(f"omega_max_pu@{ident}", max(szereg), "pu", "max_t omega(t)", ident)
+                    Metryka(
+                        f"omega_max_pu@{ident}", _max_liczb(szereg), "pu", "max_t omega(t)", ident
+                    )
                 )
                 metryki.append(
-                    Metryka(f"omega_min_pu@{ident}", min(szereg), "pu", "min_t omega(t)", ident)
+                    Metryka(
+                        f"omega_min_pu@{ident}", _min_liczb(szereg), "pu", "min_t omega(t)", ident
+                    )
                 )
             elif klucz.startswith("delta_rad@"):
                 ident = klucz.split("@", 1)[1]
                 metryki.append(
-                    Metryka(f"delta_max_rad@{ident}", max(szereg), "rad", "max_t delta(t)", ident)
+                    Metryka(
+                        f"delta_max_rad@{ident}", _max_liczb(szereg), "rad", "max_t delta(t)", ident
+                    )
                 )
         return tuple(metryki)
 
@@ -811,6 +1487,7 @@ class SilnikDynamiki:
         kroki: int,
         kroki_odrzucone: int,
         iteracje_max: int,
+        idealizacje: tuple[str, ...],
     ) -> dict[str, Any]:
         """Slad WHITE BOX biegu — BEZ szeregow czasowych.
 
@@ -854,6 +1531,9 @@ class SilnikDynamiki:
                 "krok_wyjscia_s": kwantyzuj(nastawy.krok_wyjscia_s),
             },
             "kroki_szczegolne": kroki_szczegolne,
+            # Idealizacje zadeklarowane w harmonogramie (usuniecie zwarcia `samoczynne`)
+            # — te same zdania, co w `zalozenia` wyniku; slad nie moze ich przemilczec.
+            "idealizacje_harmonogramu": list(idealizacje),
             "podsumowanie_krokow": {
                 "kroki": kroki,
                 "kroki_odrzucone": kroki_odrzucone,
@@ -878,8 +1558,141 @@ ZALOZENIA_RDZENIA: tuple[str, ...] = (
     "miec rozwiazania (odmowa nazwana, nie ekstrapolacja).",
     "Zwarcia wylacznie trojfazowe; niesymetria wymaga skladowych symetrycznych.",
     "Rodziny urzadzen skladane przez rdzen: " + ", ".join(RODZINY_OBSLUGIWANE) + ".",
-    "Probka w chwili t jest stanem PO wykonaniu wszystkich zdarzen tej chwili.",
+    "W chwili kazdego zdarzenia wynik niesie dwie probki: L (stan przed naniesieniem "
+    "zdarzen tej chwili) i P (stan po zdarzeniach i jednej re-inicjalizacji algebry); "
+    "czestotliwosc w obu jest niedostepna (chwila nieciaglosci), a strone kazdej probki "
+    "niesie strona_probki.",
 )
+
+#: Kody `stan_zasilania@` (karta AB-1b.1 par. 0 pkt 8) — zbior ZAMKNIETY, przypiety testem.
+STAN_ZASILANIA_BEZNAPIECIOWY = 0.0
+STAN_ZASILANIA_ZASILANY = 1.0
+STAN_ZASILANIA_NARZUCONE = 2.0
+
+
+@dataclass(frozen=True)
+class _Probkowanie:
+    """Bufory probek biegu przekazywane do jednej funkcji probkujacej (bez stanu obiektu)."""
+
+    probki: dict[str, list[float | None]]
+    os_czasu: list[float]
+    strony: list[str]
+    miejsca_zwarc: tuple[_MiejsceZwarcia, ...]
+
+
+def _kat_deg(fazor: complex) -> float | None:
+    """Kat fazora w stopniach; `None` przy fazorze DOKLADNIE zerowym.
+
+    `np.angle(0) = 0,0` byloby fabrykowanym katem (karta AB-1b.1 par. 0 pkt 7-8): fazor
+    zerowy nie ma kierunku, a zero stopni jest poprawna, niezerowa informacja o fazie.
+    """
+    if fazor == 0:
+        return None
+    return float(np.degrees(np.angle(fazor)))
+
+
+def _min_liczb(szereg: list[float | None]) -> float:
+    return min(wartosc for wartosc in szereg if wartosc is not None)
+
+
+def _max_liczb(szereg: list[float | None]) -> float:
+    return max(wartosc for wartosc in szereg if wartosc is not None)
+
+
+#: Zalozenie dopisywane do wyniku, gdy w biegu wystapil obszar beznapieciowy (w t = 0
+#: albo po zdarzeniu). Zdanie jest stale, wiec wynik z tym mechanizmem i bez niego
+#: roznia sie wylacznie obecnoscia tego wiersza.
+ZALOZENIE_OBSZARU_BEZNAPIECIOWEGO = (
+    "Obszar beznapieciowy (wyspa, w ktorej zadne urzadzenie nie wnosi pradu ani pochodnej "
+    "pradu po napieciu) ma napiecie rowne zeru dokladnie, a jego odbiory nie pobieraja "
+    "pradu — obwod bez drogi do zrodla nie przewodzi; wykaz odcietych wezlow i odbiorow "
+    "niesie kazde wykonane zdarzenie."
+)
+#: Zalozenie dopisywane do wyniku, gdy ktorys wezel startowal Newtona od napiecia sasiada.
+ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA = (
+    "Wezel ponownie zasilony (albo po zdjeciu zwarcia metalicznego) startuje obliczenie "
+    "rozplywu chwili od napiecia najblizszego wezla zywego (przeszukiwanie wszerz w "
+    "kolejnosci indeksow), a gdy takiego nie ma — od napiecia jalowego (SEM) urzadzenia "
+    "przylaczonego w tym wezle; to jest wybor punktu startowego Newtona, nie korekta "
+    "rozwiazania; przy odbiorach o stalej mocy prowadzi do rozwiazania o wyzszym napieciu."
+)
+
+
+@dataclass(frozen=True)
+class _MiejsceZwarcia:
+    """Miejsce zwarcia z harmonogramu: wezel (`polozenie is None`) albo punkt `x*L` galezi."""
+
+    element: str
+    polozenie: float | None
+
+    @property
+    def klucz(self) -> str:
+        return self.element if self.polozenie is None else f"{self.element}:x={self.polozenie!r}"
+
+    @property
+    def opis_pl(self) -> str:
+        if self.polozenie is None:
+            return f"na szynie {self.element}"
+        return f"w galezi {self.element} (x = {self.polozenie!r} dlugosci od zacisku poczatkowego)"
+
+
+def _miejsca_zwarc(wpisy: tuple[WpisHarmonogramu, ...]) -> tuple[_MiejsceZwarcia, ...]:
+    """Miejsca WSZYSTKICH zwarc harmonogramu w kolejnosci pierwszego wystapienia — kanaly
+    wyniku sa znane w t = 0, wiec zestaw kanalow nie zalezy od przebiegu."""
+    miejsca: list[_MiejsceZwarcia] = []
+    for wpis in wpisy:
+        if wpis.rodzaj == "zwarcie":
+            miejsce = _MiejsceZwarcia(wpis.ref, None)
+        elif wpis.rodzaj == "zwarcie_galezi":
+            miejsce = _MiejsceZwarcia(wpis.ref, wpis.polozenie_wzgledne)
+        else:
+            continue
+        if miejsce not in miejsca:
+            miejsca.append(miejsce)
+    return tuple(miejsca)
+
+
+def _rozdziel_odbiory(
+    odbiory: tuple[OdbiorDynamiki, ...], beznapieciowe: frozenset[str]
+) -> tuple[tuple[OdbiorDynamiki, ...], tuple[OdbiorDynamiki, ...]]:
+    """(odbiory zasilane, odbiory ODCIETE) — odciety to odbior w obszarze beznapieciowym."""
+    zasilane = tuple(odbior for odbior in odbiory if odbior.wezel not in beznapieciowe)
+    odciete = tuple(odbior for odbior in odbiory if odbior.wezel in beznapieciowe)
+    return zasilane, odciete
+
+
+def _opis_odbiorow(odbiory: tuple[OdbiorDynamiki, ...]) -> list[list[Any]]:
+    """Opis odbiorow do sladu White Box: [ident, wezel, P, Q] (pu, skwantyzowane)."""
+    return [
+        [odbior.ident, odbior.wezel, kwantyzuj(odbior.p_pu), kwantyzuj(odbior.q_pu)]
+        for odbior in odbiory
+    ]
+
+
+def zalozenia_harmonogramu(harmonogram: HarmonogramDynamiki) -> tuple[str, ...]:
+    """Idealizacje ZADEKLAROWANE w harmonogramie biegu — dopisywane do zalozen wyniku.
+
+    Usuniecie zwarcia `samoczynne` (karta AB-1b.1 par. 0 pkt 4) nie jest wykonywane
+    przez zaden aparat: zwarcie znika pod napieciem. To jest jawna IDEALIZACJA
+    zwarcia przemijajacego i czytelnik przebiegu musi ja widziec obok wyniku, a nie
+    wylacznie w danych wejsciowych. Kolejnosc = kolejnosc zapisu harmonogramu.
+    """
+    zdania: list[str] = []
+    for zdarzenie in harmonogram.zdarzenia:
+        if isinstance(zdarzenie, ZwarcieWezla) and zdarzenie.sposob_usuniecia == "samoczynne":
+            zdania.append(
+                f"Zwarcie w wezle {zdarzenie.wezel} (t = {zdarzenie.t_s} s) usuniete samoczynnie "
+                f"w t = {zdarzenie.t_usuniecia_s} s — idealizacja zwarcia przemijajacego: luk "
+                "gasnie pod napieciem, bez zmiany topologii i bez dzialania aparatu."
+            )
+        elif isinstance(zdarzenie, ZwarcieGalezi) and zdarzenie.sposob_usuniecia == "samoczynne":
+            zdania.append(
+                f"Zwarcie w galezi {zdarzenie.galaz} w x = {zdarzenie.polozenie_wzgledne!r} "
+                f"(t = {zdarzenie.t_s} s) usuniete samoczynnie w t = {zdarzenie.t_usuniecia_s} s "
+                "— idealizacja zwarcia przemijajacego: luk gasnie pod napieciem, bez zmiany "
+                "topologii i bez dzialania aparatu."
+            )
+    return tuple(zdania)
 
 
 def jednostka_stanu(nazwa: str) -> str:
@@ -887,16 +1700,22 @@ def jednostka_stanu(nazwa: str) -> str:
 
     Brak sufiksu jednostki to blad kontraktu urzadzenia, nie powod do zgadywania:
     kanal bez jednostki byloby liczba bez znaczenia fizycznego w wyniku.
+
+    KOLEJNOSC REGUL JEST TRESCIA: `_pu_na_s` (tempo zmiany wielkosci w pu) konczy sie
+    tez na `_s`, wiec regula sekund sprawdzana wczesniej nadawalaby stanowi tempa
+    jednostke „s" (karta AB-1b.1 par. 0 pkt 15).
     """
     if nazwa.endswith("_rad"):
         return "rad"
     if nazwa.endswith("_pu"):
         return "pu"
+    if nazwa.endswith("_pu_na_s"):
+        return "pu/s"
     if nazwa.endswith("_s"):
         return "s"
     raise AssertionError(
         f"Stan {nazwa!r} nie niesie jednostki w nazwie — kontrakt nazw stanow wymaga "
-        "sufiksu jednostki (_rad, _pu, _s)."
+        "sufiksu jednostki (_rad, _pu, _pu_na_s, _s)."
     )
 
 
@@ -904,8 +1723,14 @@ __all__ = [
     "MARGINES_DOBORU_KROKU",
     "MAX_SPADEK_KROKU",
     "MAX_WZROST_KROKU",
+    "STAN_ZASILANIA_BEZNAPIECIOWY",
+    "STAN_ZASILANIA_NARZUCONE",
+    "STAN_ZASILANIA_ZASILANY",
     "TOLERANCJA_CZASU_S",
     "ZALOZENIA_RDZENIA",
+    "ZALOZENIE_OBSZARU_BEZNAPIECIOWEGO",
+    "ZALOZENIE_STARTU_PONOWNEGO_ZASILENIA",
     "SilnikDynamiki",
     "jednostka_stanu",
+    "zalozenia_harmonogramu",
 ]

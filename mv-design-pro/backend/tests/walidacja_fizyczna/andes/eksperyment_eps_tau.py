@@ -96,6 +96,7 @@ def przebieg_produktu(dt_s: float) -> Przebieg:
         r_f_ohm=ZWARCIE["r_f_pu"] * stanowisko.Z_BAZOWA_OM,
         x_f_ohm=ZWARCIE["x_f_pu"] * stanowisko.Z_BAZOWA_OM,
         t_usuniecia_s=ZWARCIE["t_usuniecia_s"],
+        sposob_usuniecia="samoczynne",
     )
     wynik = stanowisko.uruchom(
         uklad, (zdarzenie,), horyzont_s=HORYZONT_S, dt_s=dt_s, krok_wyjscia_s=dt_s
@@ -104,8 +105,9 @@ def przebieg_produktu(dt_s: float) -> Przebieg:
 
     odniesienie = cmath.phase(sem_szyny(uklady.zbuduj_smib()))
     return Przebieg(
-        czas_s=stanowisko.czas(wynik),
-        delta_rad=stanowisko.szereg(wynik, "delta_rad@G1") - odniesienie,
+        czas_s=stanowisko.czas(wynik, strony=stanowisko.SIATKA_PRAWOSTRONNA),
+        delta_rad=stanowisko.szereg(wynik, "delta_rad@G1", strony=stanowisko.SIATKA_PRAWOSTRONNA)
+        - odniesienie,
     )
 
 

@@ -200,7 +200,9 @@ def test_granica_dostepnosci_jest_fail_closed() -> None:
             niepewnosc_pochodnej_pu_s=u_v,
         )
         assert wynik.jakosc == JAKOSC_NIEDOSTEPNA, (modul, mnoznik)
-        assert wynik.f_hz == F_N_HZ
+        # PRZEPISANE ŚWIADOMIE (karta AB-1b.1 par. 0 pkt 7): wartosc niedostepna to `None`,
+        # nie czestotliwosc znamionowa podstawiona w miejsce braku — fail-closed mocniej.
+        assert wynik.f_hz is None and wynik.niepewnosc_hz is None
 
 
 def test_tuz_nad_granica_wartosc_jest_publikowana_ale_nieufna() -> None:
