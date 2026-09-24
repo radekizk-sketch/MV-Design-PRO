@@ -18,6 +18,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../../../ui/app-state';
+import { useShellStore } from '../../../../shell/useShellStore';
 import { EkranImportuArkusza } from '../EkranImportuArkusza';
 import { ARKUSZ_STRINGS as T } from '../strings';
 
@@ -247,7 +248,7 @@ describe('EkranImportuArkusza — podgląd zawartości', () => {
 });
 
 describe('EkranImportuArkusza — import do modelu', () => {
-  it('import poprawnego arkusza → nowy projekt, odcisk modelu i jawny następny krok', async () => {
+  it('import poprawnego arkusza → nowy projekt, jawny następny krok, odcisk poza pierwszym planem', async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn(async () => odpowiedz(IMPORT_OK));
     vi.stubGlobal('fetch', fetchMock);
@@ -265,10 +266,44 @@ describe('EkranImportuArkusza — import do modelu', () => {
     const raport = await screen.findByTestId('mvd-ark-raport');
     expect(raport).toHaveTextContent(T.raportZaimportowano);
     expect(screen.getByTestId('mvd-ark-raport-liczby')).toHaveTextContent('12');
-    expect(screen.getByTestId('mvd-ark-raport-odcisk')).toHaveTextContent('abcdef0123456789');
+    // Odcisk modelu — metadana produkcyjna: poza pierwszym planem (V12.7 §0.3).
+    expect(raport).not.toHaveTextContent('abcdef0123456789');
     expect(screen.getByTestId('mvd-ark-nastepny-krok')).toHaveTextContent(T.raportNastepnyKrok);
     expect(screen.queryByTestId('mvd-ark-raport-typy-projektu')).toBeNull();
   });
+
+  it.each([
+    ['basic', false],
+    ['extended', false],
+    ['expert', true],
+  ] as const)(
+    'odcisk modelu w informacjach audytowych — tryb %s → widoczne: %s',
+    async (tryb, widoczne) => {
+      const poprzedni = useShellStore.getState().advancementMode;
+      useShellStore.setState({ advancementMode: tryb });
+      try {
+        const user = userEvent.setup();
+        vi.stubGlobal('fetch', vi.fn(async () => odpowiedz(IMPORT_OK)));
+        render(<EkranImportuArkusza onZamknij={vi.fn()} />);
+        await user.upload(screen.getByTestId('mvd-ark-plik') as HTMLInputElement, plikArkusza());
+        await user.click(screen.getByTestId('mvd-ark-import'));
+        await screen.findByTestId('mvd-ark-raport');
+        if (!widoczne) {
+          expect(screen.queryByTestId('mvd-ark-raport-audyt')).toBeNull();
+          return;
+        }
+        await user.click(screen.getByTestId('mvd-ark-raport-audyt-przelacz'));
+        expect(screen.getByTestId('mvd-ark-raport-audyt-lista')).toHaveTextContent(
+          `${T.raportOdcisk}${IMPORT_OK.enm_hash}`,
+        );
+      } finally {
+        // Odmontowanie PRZED przywróceniem trybu — inaczej zmiana store
+        // re-renderuje zamontowany ekran poza act().
+        cleanup();
+        useShellStore.setState({ advancementMode: poprzedni });
+      }
+    },
+  );
 
   it('nazwa projektu podana przez projektanta trafia do wysyłki', async () => {
     const user = userEvent.setup();

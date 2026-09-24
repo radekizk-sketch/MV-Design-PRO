@@ -136,18 +136,21 @@ export async function podejrzyjArchiwum(plik: File): Promise<PodgladArchiwum> {
 export type StatusRoznicy = 'IDENTICAL' | 'MODIFIED' | 'ADDED' | 'REMOVED';
 
 /**
- * Zmiana wartości pola elementu (`FieldChangeResponse`). `*_value_pl` — ta sama
- * wartość z odwołaniami do elementów podstawionymi ich nazwami (backend,
- * `domain.archive_diff._z_nazwami_referencji`); `null`, gdy wartość nie niesie
- * odwołania z nazwą — wtedy ekran pokazuje wartość surową.
+ * Zmiana wartości pola elementu (`FieldChangeResponse`). `*_value_pl` — czytelna
+ * postać PL zbudowana przez backend (`domain.archive_diff.tekst_wartosci_pl`:
+ * etykiety pól, jednostki, nazwy elementów zamiast identyfikatorów); ekran
+ * wyświetla WYŁĄCZNIE ją, surowe `*_value` zostają do audytu. `audytowe` —
+ * metadana produkcyjna (odcisk, wersja, rewizja, czas), która trafia do
+ * informacji audytowych, nie na pierwszy plan.
  */
 export interface ZmianaPola {
   readonly field_name: string;
   readonly old_value: unknown;
   readonly new_value: unknown;
   readonly label_pl: string;
-  readonly old_value_pl: unknown;
-  readonly new_value_pl: unknown;
+  readonly old_value_pl: string;
+  readonly new_value_pl: string;
+  readonly audytowe: boolean;
 }
 
 /** Różnica elementu (`ElementDiffResponse`) — nazwa projektanta i etykieta PL rodzaju. */
@@ -156,6 +159,8 @@ export interface RoznicaElementu {
   readonly element_name: string | null;
   readonly element_type: string;
   readonly element_type_label_pl: string;
+  /** Tożsamość to identyfikator techniczny (przebieg) — poza pierwszym planem ekranu. */
+  readonly identyfikator_audytowy: boolean;
   readonly status: StatusRoznicy;
   readonly field_changes: readonly ZmianaPola[];
 }

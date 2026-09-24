@@ -4888,6 +4888,11 @@
       "title": "Field Changes",
       "type": "array"
      },
+     "identyfikator_audytowy": {
+      "description": "Tożsamość elementu to identyfikator techniczny (przebieg) — poza pierwszym planem",
+      "title": "Identyfikator Audytowy",
+      "type": "boolean"
+     },
      "status": {
       "title": "Status",
       "type": "string"
@@ -4897,6 +4902,7 @@
      "element_id",
      "element_type",
      "element_type_label_pl",
+     "identyfikator_audytowy",
      "status",
      "field_changes"
     ],
@@ -5567,6 +5573,11 @@
    "FieldChangeResponse": {
     "description": "Zmiana wartosci pola elementu.",
     "properties": {
+     "audytowe": {
+      "description": "Metadana produkcyjna (odcisk, wersja, rewizja, czas) — poza pierwszym planem",
+      "title": "Audytowe",
+      "type": "boolean"
+     },
      "field_name": {
       "title": "Field Name",
       "type": "string"
@@ -5579,20 +5590,25 @@
       "title": "New Value"
      },
      "new_value_pl": {
-      "description": "Wartość B z odwołaniami do elementów podstawionymi ich nazwami (jeśli są)",
-      "title": "New Value Pl"
+      "description": "Wartość B w czytelnej postaci PL (jak `old_value_pl`)",
+      "title": "New Value Pl",
+      "type": "string"
      },
      "old_value": {
       "title": "Old Value"
      },
      "old_value_pl": {
-      "description": "Wartość A z odwołaniami do elementów podstawionymi ich nazwami (jeśli są)",
-      "title": "Old Value Pl"
+      "description": "Wartość A w czytelnej postaci PL (etykiety pól, jednostki, nazwy elementów zamiast identyfikatorów) — ekran pokazuje wyłącznie tę postać",
+      "title": "Old Value Pl",
+      "type": "string"
      }
     },
     "required": [
      "field_name",
-     "label_pl"
+     "label_pl",
+     "old_value_pl",
+     "new_value_pl",
+     "audytowe"
     ],
     "title": "FieldChangeResponse",
     "type": "object"

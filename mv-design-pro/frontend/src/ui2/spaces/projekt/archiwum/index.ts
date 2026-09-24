@@ -27,7 +27,6 @@ export {
 export {
   ARCHIWUM_STRINGS,
   formatujDateArchiwum,
-  formatujWartoscPola,
   jestPlikiemArchiwum,
   nazwaPlikuArchiwum,
   nazwaPlikuPaczkiZmian,

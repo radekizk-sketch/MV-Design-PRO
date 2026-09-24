@@ -8,6 +8,10 @@
 
 import type { ReactNode } from 'react';
 
+import { isModeAtLeast } from '../../../shell/modeModel';
+import { useShellStore } from '../../../shell/useShellStore';
+import { InformacjeAudytowe, type WierszInformacjiAudytowych } from '../../../wyniki/wzorzec';
+import '../../../wyniki/wzorzec/wzorzec.css';
 import type { WynikImportu } from './api';
 import { ARCHIWUM_STRINGS as T } from './strings';
 
@@ -58,6 +62,21 @@ export function ListaKomunikatow({
   );
 }
 
+/** Tryb ekspercki powłoki — jedyny warunek widoczności informacji audytowych (V12.7 §0.3). */
+export function useTrybEkspercki(): boolean {
+  return isModeAtLeast(
+    useShellStore((s) => s.advancementMode),
+    'expert',
+  );
+}
+
+/** Wiersze informacji audytowych z par (etykieta, wartość) — brak wartości = brak wiersza. */
+export function wierszeAudytowe(
+  pary: ReadonlyArray<readonly [string, string | null | undefined]>,
+): WierszInformacjiAudytowych[] {
+  return pary.flatMap(([etykieta, wartosc]) => (wartosc ? [{ etykieta, wartosc }] : []));
+}
+
 /** Zdanie werdyktu dla statusu importu (uczciwie, wprost z odpowiedzi). */
 export function werdyktImportu(wynik: WynikImportu): {
   tekst: string;
@@ -89,20 +108,14 @@ export function RaportImportu({
   children?: ReactNode;
 }) {
   const werdykt = werdyktImportu(wynik);
+  const trybEkspercki = useTrybEkspercki();
   return (
     <div className="mvd-arch-raport" data-wariant={werdykt.wariant} data-testid={`${prefiks}-raport`}>
       <span className="mvd-arch-meta-k">{T.raportTytul}</span>
       <p className="mvd-arch-werdykt" role="status">
         {werdykt.tekst}
       </p>
-      {wynik.migrated_from_version || children ? (
-        <div className="mvd-arch-kv-siatka">
-          {wynik.migrated_from_version ? (
-            <Wiersz etykieta={T.raportMigracja} wartosc={wynik.migrated_from_version} />
-          ) : null}
-          {children}
-        </div>
-      ) : null}
+      {children ? <div className="mvd-arch-kv-siatka">{children}</div> : null}
       <ListaKomunikatow
         tytul={T.raportOstrzezenia}
         pozycje={wynik.warnings}
@@ -137,6 +150,12 @@ export function RaportImportu({
         </button>
       </div>
       {wynik.project_id ? <p className="mvd-arch-nastepny">{T.raportNastepnyKrok}</p> : null}
+      {/* Wersja zapisu źródłowego to metadana — zdanie o migracji jest w ostrzeżeniach backendu. */}
+      <InformacjeAudytowe
+        wiersze={wierszeAudytowe([[T.raportMigracja, wynik.migrated_from_version]])}
+        trybEkspercki={trybEkspercki}
+        testid={`${prefiks}-audyt`}
+      />
     </div>
   );
 }

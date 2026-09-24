@@ -6,6 +6,7 @@ import { ETAPY } from '../../../proces';
 import { PULPIT_STRINGS } from '../strings';
 import { INSPECTOR_STRINGS } from '../../../inspector';
 import { useAppStateStore } from '../../../../ui/app-state';
+import { useShellStore } from '../../../shell/useShellStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useStudyCasesStore } from '../../../../ui/study-cases/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
@@ -125,6 +126,36 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
   // WIERSZ ZASTĄPIONY, INTENCJA ZACHOWANA: poprzednio sprawdzał, że na pulpicie
   // jest DOKŁADNIE jeden kafel-zaślepka „wkrótce". Karta PULPIT-NBA usunęła
   // zaślepkę (ZASADA NR 1), więc test pilnuje teraz, że nie wróciła.
+  it.each([
+    ['basic', false],
+    ['extended', false],
+    ['expert', true],
+  ] as const)(
+    'odcisk modelu poza kaflami — informacje audytowe pulpitu tylko w trybie %s → %s',
+    async (tryb, widoczne) => {
+      const poprzedni = useShellStore.getState().advancementMode;
+      useShellStore.setState({ advancementMode: tryb });
+      try {
+        const odcisk = useSnapshotStore.getState().snapshot!.header.hash_sha256;
+        const { container, unmount } = render(<PulpitProjektu {...props()} />);
+        const siatka = container.querySelector('.mvd-pulpit-grid') as HTMLElement;
+        expect(siatka.textContent).not.toContain(odcisk.slice(0, 10));
+        if (!widoczne) {
+          expect(screen.queryByTestId('pulpit-audyt')).toBeNull();
+          unmount();
+          return;
+        }
+        fireEvent.click(screen.getByTestId('pulpit-audyt-przelacz'));
+        expect(screen.getByTestId('pulpit-audyt-lista')).toHaveTextContent(
+          `${PULPIT_STRINGS.odcisk}${odcisk}`,
+        );
+        unmount();
+      } finally {
+        useShellStore.setState({ advancementMode: poprzedni });
+      }
+    },
+  );
+
   it('pulpit nie ma ŻADNEJ zaślepki „wkrótce" (zakaz zaślepek)', () => {
     render(<PulpitProjektu {...props()} />);
     expect(screen.queryByText(/wkrótce/i)).not.toBeInTheDocument();

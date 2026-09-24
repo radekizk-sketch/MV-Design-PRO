@@ -213,12 +213,49 @@ test('porównanie dwóch paczek projektu — wynik po nazwach elementów i nazwa
     .filter({ has: page.getByRole('rowheader', { name: 'Kolejność odcinków magistrali' }) });
   for (const nazwa of ODCINKI) await expect(kolejnosc).toContainText(nazwa);
 
+  // Kontrakt prezentacji V12.7 §0.3 + wartości złożone po polsku (odbiór karty):
+  // pierwszy plan wyniku bez surowego JSON-a i bez metadanych produkcyjnych
+  // (odciski paczek i modelu, sygnatura, rewizja) — w trybie podstawowym sekcji
+  // informacji audytowych nie ma wcale.
+  const trescWyniku = (await wynik.textContent()) ?? '';
+  expect(trescWyniku).not.toMatch(/[{}"]/);
+  const odciskiApi = (await odpowiedz.json()) as {
+    archive_hash_a: string;
+    archive_hash_b: string;
+    deterministic_signature: string;
+  };
+  for (const odcisk of [
+    odciskiApi.archive_hash_a,
+    odciskiApi.archive_hash_b,
+    odciskiApi.deterministic_signature,
+  ]) {
+    expect(trescWyniku).not.toContain(odcisk.slice(0, 16));
+  }
+  await expect(siec.getByRole('rowheader', { name: 'Odcisk SHA-256' })).toHaveCount(0);
+  await expect(siec.getByRole('rowheader', { name: 'Rewizja' })).toHaveCount(0);
+  await expect(page.getByTestId('mvd-arch-por-audyt')).toHaveCount(0);
+
+  // Tryb ekspercki (natywny klik przełącznika powłoki) → zwinięte informacje
+  // audytowe; po rozwinięciu — odciski obu paczek i zmiany metadanych nagłówka.
+  await page
+    .getByRole('group', { name: /tryb/i })
+    .getByRole('button', { name: 'Ekspercki' })
+    .click();
+  const audyt = page.getByTestId('mvd-arch-por-audyt');
+  await expect(audyt).toBeVisible();
+  await expect(page.getByTestId('mvd-arch-por-audyt-lista')).toHaveCount(0);
+  await page.getByTestId('mvd-arch-por-audyt-przelacz').click();
+  const listaAudytu = page.getByTestId('mvd-arch-por-audyt-lista');
+  await expect(listaAudytu).toContainText(odciskiApi.archive_hash_a);
+  await expect(listaAudytu).toContainText(odciskiApi.archive_hash_b);
+  await expect(listaAudytu).toContainText('Nagłówek modelu sieci');
+
   for (const [motyw, przyrostek] of [
     ['light_technical', 'light'],
     ['dark_scada', 'dark'],
   ] as const) {
     await ustawMotyw(page, motyw);
-    await wynik.scrollIntoViewIfNeeded();
+    await audyt.scrollIntoViewIfNeeded();
     await page.screenshot({
       path: path.join(OUTPUT_DIR, `dowod_archiwum-porownanie_${przyrostek}.png`),
       fullPage: true,

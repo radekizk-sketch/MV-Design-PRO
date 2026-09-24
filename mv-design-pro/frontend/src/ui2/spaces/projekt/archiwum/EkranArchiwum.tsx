@@ -24,6 +24,7 @@ import './archiwum.css';
 import { useAppStateStore } from '../../../../ui/app-state';
 import { getProject } from '../../../../ui/projects/api';
 import { getActiveStudyCase } from '../../../../ui/study-cases/api';
+import { InformacjeAudytowe } from '../../../wyniki/wzorzec';
 import {
   eksportujArchiwum,
   importujArchiwum,
@@ -39,10 +40,11 @@ import {
   jestPlikiemArchiwum,
   nazwaPlikuArchiwum,
 } from './strings';
-import { RaportImportu, Wiersz, zapiszBlob } from './wspolne';
+import { RaportImportu, Wiersz, useTrybEkspercki, wierszeAudytowe, zapiszBlob } from './wspolne';
 
 /** Podgląd zawartości paczki (odpowiedź końcówki podglądu, bez importu). */
 function PodgladPaczki({ podglad }: { podglad: PodgladArchiwum }) {
+  const trybEkspercki = useTrybEkspercki();
   if (!podglad.valid) {
     return (
       <div className="mvd-arch-blad" role="alert" data-testid="mvd-arch-podglad-blad">
@@ -59,12 +61,7 @@ function PodgladPaczki({ podglad }: { podglad: PodgladArchiwum }) {
         <p className="mvd-arch-opis">{podglad.project_description}</p>
       ) : null}
       <div className="mvd-arch-kv-siatka">
-        <Wiersz etykieta={T.podgladWersja} wartosc={podglad.schema_version ?? '—'} />
         <Wiersz etykieta={T.podgladData} wartosc={formatujDateArchiwum(podglad.exported_at)} />
-        <Wiersz
-          etykieta={T.podgladOdcisk}
-          wartosc={podglad.archive_hash ? podglad.archive_hash.slice(0, 16) : '—'}
-        />
       </div>
       {z ? (
         <div className="mvd-arch-kv-siatka" data-testid="mvd-arch-podglad-zawartosc">
@@ -76,6 +73,15 @@ function PodgladPaczki({ podglad }: { podglad: PodgladArchiwum }) {
           <Wiersz etykieta={T.podgladModele} wartosc={String(z.enm_models_count)} />
         </div>
       ) : null}
+      {/* Wersja zapisu i odcisk paczki — metadane produkcyjne (V12.7 §0.3). */}
+      <InformacjeAudytowe
+        wiersze={wierszeAudytowe([
+          [T.podgladWersja, podglad.schema_version],
+          [T.podgladOdcisk, podglad.archive_hash],
+        ])}
+        trybEkspercki={trybEkspercki}
+        testid="mvd-arch-podglad-audyt"
+      />
     </div>
   );
 }

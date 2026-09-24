@@ -72,8 +72,16 @@ test('klasa A: arkusz operatora → model projektu → bieg rozpływu → wyniki
   await expect(page.getByTestId('mvd-ark-typy-projektu')).toContainText('T1');
   expect(await page.getByTestId('mvd-ark-zastrzezenia').count()).toBe(0);
 
-  // Krok 3: import → raport z odciskiem modelu.
-  await page.getByTestId('mvd-ark-import').click();
+  // Krok 3: import → raport; odcisk modelu z odpowiedzi REALNEJ końcówki importu
+  // (metadana produkcyjna — kontrakt prezentacji V12.7 §0.3: NIE na pierwszym
+  // planie raportu, tylko w informacjach audytowych trybu eksperckiego).
+  const [odpowiedzImportu] = await Promise.all([
+    page.waitForResponse((r) => r.url().endsWith('/api/import/xlsx') && r.request().method() === 'POST'),
+    page.getByTestId('mvd-ark-import').click(),
+  ]);
+  expect(odpowiedzImportu.status()).toBe(200);
+  const odcisk = ((await odpowiedzImportu.json()) as { enm_hash: string }).enm_hash;
+  expect(odcisk).toMatch(/^[0-9a-f]{16,}$/);
   const raport = page.getByTestId('mvd-ark-raport');
   await expect(raport).toBeVisible({ timeout: 30000 });
   await expect(raport).toHaveAttribute('data-wariant', 'ok');
@@ -84,8 +92,8 @@ test('klasa A: arkusz operatora → model projektu → bieg rozpływu → wyniki
     '1',
     '2',
   ]);
-  const odcisk = (await page.getByTestId('mvd-ark-raport-odcisk').locator('.mvd-ark-kv-v').textContent()) ?? '';
-  expect(odcisk).toMatch(/^[0-9a-f]{16}$/);
+  await expect(raport).not.toContainText(odcisk.slice(0, 16));
+  await expect(page.getByTestId('mvd-ark-raport-audyt')).toHaveCount(0);
 
   // Krok 4: otwarcie zaimportowanego projektu ustawia kontekst aplikacji
   // (projekt + aktywny wariant bazowy utworzony przez import).

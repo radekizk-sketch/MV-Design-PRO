@@ -1,6 +1,8 @@
 /*
- * Kafel „Spójność" (W-101) — rewizja bieżącego modelu, odcisk (suma kontrolna)
- * oraz aktualność wyników aktywnego przypadku. Świeżość: IMPORTUJE współdzielony
+ * Kafel „Spójność" (W-101) — rewizja bieżącego modelu oraz aktualność wyników
+ * aktywnego przypadku. Odcisk modelu (suma kontrolna) to metadana produkcyjna:
+ * NIE stoi w kaflu, tylko w informacjach audytowych pulpitu (`PulpitProjektu`,
+ * tryb ekspercki — kontrakt prezentacji V12.7 §0.3). Świeżość: IMPORTUJE współdzielony
  * `FreshnessBadge` z `ui2/inspector` (SPEC_POWIAZANIA §6.2 — jeden znacznik, zakaz
  * lokalnych wariantów; karta §5 kryt. 4).
  *
@@ -15,7 +17,7 @@
 
 import { Kafel, KafelWiersz, Tag } from './Kafel';
 import { FreshnessBadge } from '../../inspector';
-import { PULPIT_STRINGS, rewizjaModeluLabel, odciskKrotki } from './strings';
+import { PULPIT_STRINGS, rewizjaModeluLabel } from './strings';
 import type { SpojnoscKafel } from './pulpitAdapter';
 
 export function KafelSpojnosci({
@@ -30,11 +32,6 @@ export function KafelSpojnosci({
       <div className="mvd-kafel-kv">
         <KafelWiersz etykieta={PULPIT_STRINGS.modelTytul}>
           <span className="mvd-num">{rewizjaModeluLabel(dane.rewizjaModelu)}</span>
-        </KafelWiersz>
-        <KafelWiersz etykieta={PULPIT_STRINGS.odcisk}>
-          <span className="mvd-num" title={dane.odcisk}>
-            {odciskKrotki(dane.odcisk)}
-          </span>
         </KafelWiersz>
         <KafelWiersz etykieta={PULPIT_STRINGS.wyniki}>
           {dane.rewizjaWynikow !== null ? (

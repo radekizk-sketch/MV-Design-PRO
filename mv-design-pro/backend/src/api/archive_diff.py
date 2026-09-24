@@ -55,13 +55,15 @@ class FieldChangeResponse(BaseModel):
     old_value: Any = None
     new_value: Any = None
     label_pl: str
-    old_value_pl: Any = Field(
-        default=None,
-        description="Wartość A z odwołaniami do elementów podstawionymi ich nazwami (jeśli są)",
+    old_value_pl: str = Field(
+        description=(
+            "Wartość A w czytelnej postaci PL (etykiety pól, jednostki, nazwy elementów "
+            "zamiast identyfikatorów) — ekran pokazuje wyłącznie tę postać"
+        ),
     )
-    new_value_pl: Any = Field(
-        default=None,
-        description="Wartość B z odwołaniami do elementów podstawionymi ich nazwami (jeśli są)",
+    new_value_pl: str = Field(description="Wartość B w czytelnej postaci PL (jak `old_value_pl`)")
+    audytowe: bool = Field(
+        description="Metadana produkcyjna (odcisk, wersja, rewizja, czas) — poza pierwszym planem"
     )
 
 
@@ -74,6 +76,9 @@ class ElementDiffResponse(BaseModel):
     )
     element_type: str
     element_type_label_pl: str
+    identyfikator_audytowy: bool = Field(
+        description="Tożsamość elementu to identyfikator techniczny (przebieg) — poza pierwszym planem"
+    )
     status: str
     field_changes: list[FieldChangeResponse]
 
@@ -137,6 +142,7 @@ def _to_response(result: ArchiveDiffResult) -> ArchiveDiffResponse:
                     label_pl=fc.label_pl,
                     old_value_pl=fc.old_value_pl,
                     new_value_pl=fc.new_value_pl,
+                    audytowe=fc.audytowe,
                 )
                 for fc in ed.field_changes
             ]
@@ -146,6 +152,7 @@ def _to_response(result: ArchiveDiffResult) -> ArchiveDiffResponse:
                     element_name=ed.element_name,
                     element_type=ed.element_type,
                     element_type_label_pl=ed.element_type_label_pl,
+                    identyfikator_audytowy=ed.identyfikator_audytowy,
                     status=ed.status.value,
                     field_changes=field_changes,
                 )

@@ -38,7 +38,7 @@ export const PULPIT_STRINGS = {
 
   // Kafel „Spójność"
   spojnosc: 'Spójność',
-  odcisk: 'Odcisk',
+  odcisk: 'Odcisk modelu sieci',
   wyniki: 'Wyniki',
   wynikiAktualne: 'aktualne',
   wynikiNieaktualne: 'nieaktualne',
@@ -134,11 +134,6 @@ export const STATUS_WYNIKOW_LABEL: Record<StudyCaseResultStatus, string> = {
 /** „Model: rew. {n}" — rewizja bieżącego modelu sieci (karta §4). */
 export function rewizjaModeluLabel(rewizja: number): string {
   return `Model: rew. ${rewizja}`;
-}
-
-/** Skrócony odcisk (pierwsze 10 znaków sumy kontrolnej) — pełny w atrybucie title. */
-export function odciskKrotki(hash: string): string {
-  return hash.slice(0, 10);
 }
 
 /**

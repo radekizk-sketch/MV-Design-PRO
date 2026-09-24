@@ -90,10 +90,14 @@ export const ARCHIWUM_STRINGS = {
   wynikZmienione: 'Elementy zmienione',
   wynikBezZmian: 'Bez zmian',
   wynikSekcjaBezRozbicia: 'Treść zmieniona w całości (część bez rozbicia na elementy).',
+  wynikTylkoMetadane:
+    'Zmienione wyłącznie metadane (odciski, wersje, znaczniki czasu) — w informacjach audytowych.',
+  audytOdciskA: 'Odcisk paczki A',
+  audytOdciskB: 'Odcisk paczki B',
+  audytSygnatura: 'Sygnatura porównania',
   statusDodany: 'Dodano',
   statusUsuniety: 'Usunięto',
   statusZmieniony: 'Zmieniono',
-  wartoscPusta: '—',
 
   // Paczka zmian (eksport i import przyrostowy)
   paczkaEyebrow: 'PRZEKAŻ SAME ZMIANY',
@@ -152,15 +156,6 @@ function czlonNazwy(nazwaProjektu: string | null, data: Date): string {
 export function jestPlikiemArchiwum(nazwa: string): boolean {
   const male = nazwa.toLowerCase();
   return male.endsWith('.zip') || male.endsWith('.mvdp.zip');
-}
-
-/** Wartość pola w wyniku porównania: tekst/liczba wprost, brak → „—", obiekt → zapis JSON. */
-export function formatujWartoscPola(wartosc: unknown): string {
-  if (wartosc === null || wartosc === undefined || wartosc === '') return ARCHIWUM_STRINGS.wartoscPusta;
-  if (typeof wartosc === 'string') return wartosc;
-  if (typeof wartosc === 'number') return String(wartosc);
-  if (typeof wartosc === 'boolean') return wartosc ? 'tak' : 'nie';
-  return JSON.stringify(wartosc);
 }
 
 /** Data z archiwum w czytelnym PL formacie („RRRR-MM-DD GG:MM"); pusta → „—". */

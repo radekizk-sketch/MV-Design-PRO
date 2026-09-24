@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { KafelSpojnosci } from '../KafelSpojnosci';
-import { PULPIT_STRINGS, rewizjaModeluLabel, odciskKrotki } from '../strings';
+import { PULPIT_STRINGS, rewizjaModeluLabel } from '../strings';
 import { INSPECTOR_STRINGS } from '../../../inspector';
 import type { SpojnoscKafel } from '../pulpitAdapter';
 
@@ -14,11 +14,12 @@ const dane = (over: Partial<SpojnoscKafel> = {}): SpojnoscKafel => ({
 });
 
 describe('KafelSpojnosci — rewizja, odcisk, świeżość (FreshnessBadge z ui2/inspector)', () => {
-  it('pokazuje rewizję modelu i skrócony odcisk (pełny w title)', () => {
-    render(<KafelSpojnosci dane={dane()} />);
+  it('pokazuje rewizję modelu; odcisk NIE stoi w kaflu (metadana — informacje audytowe pulpitu)', () => {
+    const { container } = render(<KafelSpojnosci dane={dane()} />);
     expect(screen.getByText(rewizjaModeluLabel(7))).toBeInTheDocument();
-    const odcisk = screen.getByText(odciskKrotki('a1b2c3d4e5f60718293a4b5c6d7e8f90'));
-    expect(odcisk).toHaveAttribute('title', 'a1b2c3d4e5f60718293a4b5c6d7e8f90');
+    expect(container.textContent).not.toContain('a1b2c3d4e5');
+    expect(screen.queryByText(PULPIT_STRINGS.odcisk)).toBeNull();
+    expect(container.querySelector('[title="a1b2c3d4e5f60718293a4b5c6d7e8f90"]')).toBeNull();
   });
 
   it('stan „aktualne": renderuje współdzielony FreshnessBadge (etykieta „aktualne")', () => {

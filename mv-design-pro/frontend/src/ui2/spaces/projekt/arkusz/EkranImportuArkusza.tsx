@@ -19,6 +19,10 @@ import './arkusz.css';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { getActiveStudyCase } from '../../../../ui/study-cases/api';
+import { isModeAtLeast } from '../../../shell/modeModel';
+import { useShellStore } from '../../../shell/useShellStore';
+import { InformacjeAudytowe } from '../../../wyniki/wzorzec';
+import '../../../wyniki/wzorzec/wzorzec.css';
 import {
   importujArkusz,
   OdrzucenieArkusza,
@@ -129,6 +133,12 @@ export interface EkranImportuArkuszaProps {
 export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
   const setActiveProject = useAppStateStore((s) => s.setActiveProject);
   const setActiveCase = useAppStateStore((s) => s.setActiveCase);
+  // Odcisk modelu to metadana produkcyjna — tylko w informacjach audytowych,
+  // widocznych w trybie eksperckim (kontrakt prezentacji V12.7 §0.3).
+  const trybEkspercki = isModeAtLeast(
+    useShellStore((s) => s.advancementMode),
+    'expert',
+  );
 
   const [plik, setPlik] = useState<File | null>(null);
   const [nazwa, setNazwa] = useState('');
@@ -337,11 +347,6 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
           {wynik.podsumowanie && (
             <Podsumowanie dane={wynik.podsumowanie} testid="mvd-ark-raport-liczby" />
           )}
-          {wynik.enm_hash && (
-            <div className="mvd-ark-kv-siatka" data-testid="mvd-ark-raport-odcisk">
-              <Wiersz etykieta={T.raportOdcisk} wartosc={wynik.enm_hash.slice(0, 16)} />
-            </div>
-          )}
           <ListaKomunikatow
             tytul={T.ostrzezeniaTytul}
             pozycje={wynik.ostrzezenia}
@@ -374,6 +379,11 @@ export function EkranImportuArkusza({ onZamknij }: EkranImportuArkuszaProps) {
                 : T.raportNastepnyKrok}
             </p>
           ) : null}
+          <InformacjeAudytowe
+            wiersze={wynik.enm_hash ? [{ etykieta: T.raportOdcisk, wartosc: wynik.enm_hash }] : []}
+            trybEkspercki={trybEkspercki}
+            testid="mvd-ark-raport-audyt"
+          />
         </section>
       )}
     </div>

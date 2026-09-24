@@ -699,8 +699,9 @@ class TestModelSieci:
         }
         raport = format_diff_report_pl(wynik)
         assert "--- Model sieci ---" in raport
-        # Etykieta pola z pełnymi polskimi znakami — ekran porównania pokazuje ją wprost.
-        assert "Napięcie znamionowe [kV]: 15.0 -> 20.0" in raport
+        # Etykieta pola z pełnymi polskimi znakami i wartości w czytelnej postaci PL
+        # (`tekst_wartosci_pl`: liczba całkowita bez „.0") — ekran i raport ją pokazują.
+        assert "Napięcie znamionowe [kV]: 15 -> 20" in raport
 
     def test_ten_sam_model_pod_innymi_przypadkami_to_brak_zmiany_sieci(self):
         """Dwa projekty z ta sama siecia: wpisy pod roznymi przypadkami, hash sekcji
@@ -930,11 +931,11 @@ def _zmiany_pol(sd: SectionDiff, element_id: str) -> dict[str, object]:
 
 
 class TestOdwolaniaPoNazwach:
-    """Wartości pól-odwołań (`*_ref`, listy odwołań, obiekty z odwołaniem) pokazane
-    NAZWAMI elementów — iloczyn cech: {skalar, lista, obiekt w liście} x {element
-    nazwany w obu wersjach, przemianowany między wersjami, bez nazwy, odwołanie
-    wiszące} x {jeden model projektu, modele per przypadek}. Surowe wartości bez
-    zmian (audyt); pole tożsamości nigdy nie jest podstawiane."""
+    """Wartości pól-odwołań (`*_ref`, listy odwołań, obiekty z odwołaniem) w czytelnej
+    postaci PL z NAZWAMI elementów — iloczyn cech: {skalar, lista, obiekt w liście} x
+    {element nazwany w obu wersjach, przemianowany między wersjami, bez nazwy,
+    odwołanie wiszące} x {jeden model projektu, modele per przypadek}. Surowe
+    wartości bez zmian (audyt); pole tożsamości nigdy nie jest podstawiane."""
 
     @staticmethod
     def _porownaj():
@@ -979,26 +980,25 @@ class TestOdwolaniaPoNazwach:
     def test_lista_bez_nazwy_i_wiszace_odwolanie_zostaja_identyfikatorem(self):
         pola = _zmiany_pol(_enm(self._porownaj().section_diffs), "run-1")
         zmiana = pola["stations"]
-        assert zmiana.old_value_pl == ["Szyna GPZ"]
-        assert zmiana.new_value_pl == ["Szyna GPZ", "Szyna nowa", "b3", "wiszace-odwolanie"]
+        assert zmiana.old_value_pl == "Szyna GPZ"
+        assert zmiana.new_value_pl == "Szyna GPZ, Szyna nowa, b3, wiszace-odwolanie"
         assert zmiana.new_value == ["b1", "b2", "b3", "wiszace-odwolanie"]
 
     def test_obiekty_w_liscie(self):
         pola = _zmiany_pol(_enm(self._porownaj().section_diffs), "run-1")
         zmiana = pola["segments"]
-        assert zmiana.old_value_pl == [{"order": 1, "segment_ref": "Szyna GPZ"}]
-        assert zmiana.new_value_pl == [
-            {"order": 1, "segment_ref": "Szyna GPZ"},
-            {"order": 2, "segment_ref": "Szyna nowa"},
-        ]
+        assert zmiana.old_value_pl == "1) Kolejność: 1, Odcinek: Szyna GPZ"
+        assert zmiana.new_value_pl == (
+            "1) Kolejność: 1, Odcinek: Szyna GPZ; 2) Kolejność: 2, Odcinek: Szyna nowa"
+        )
 
-    def test_wartosc_bez_odwolan_nie_ma_wersji_z_nazwami(self):
+    def test_wartosc_bez_odwolan_to_tekst_wprost(self):
         pola = _zmiany_pol(_enm(self._porownaj().section_diffs), "b2")
         zmiana = pola["name"]
         assert (zmiana.old_value, zmiana.new_value) == ("Szyna stara", "Szyna nowa")
-        assert (zmiana.old_value_pl, zmiana.new_value_pl) == (None, None)
+        assert (zmiana.old_value_pl, zmiana.new_value_pl) == ("Szyna stara", "Szyna nowa")
 
-    def test_pole_tozsamosci_nie_jest_podstawiane(self):
+    def test_pole_tozsamosci_nie_jest_podstawiane_i_jest_audytowe(self):
         a = _make_archive(
             enm_models=[{"case_id": "sc-1", "snapshot": _model(buses=[_szyna("b1", 15.0)])}]
         )
@@ -1011,7 +1011,8 @@ class TestOdwolaniaPoNazwach:
             ]
         )
         zmiana = _zmiany_pol(_enm(compare_archives(a, b).section_diffs), "b1")["id"]
-        assert (zmiana.new_value, zmiana.new_value_pl) == ("b1", None)
+        # `b1` jest też nazwą szyny — pole tożsamości zostaje identyfikatorem.
+        assert (zmiana.new_value, zmiana.new_value_pl, zmiana.audytowe) == ("b1", "b1", True)
 
     def test_modele_per_przypadek_biora_nazwy_z_wlasnego_przypadku(self):
         def _wpis(case_id: str, nazwa: str, ref: str | None) -> dict:
@@ -1030,25 +1031,200 @@ class TestOdwolaniaPoNazwach:
             enm_models=[_wpis("sc-1", "Nazwa sc-1", "b1"), _wpis("sc-2", "Nazwa sc-2", "b1")]
         )
         sd = _enm(compare_archives(a, b).section_diffs)
-        nowe = {
-            ed.element_type: ed.field_changes[0].new_value_pl
+        zmiany = {
+            ed.element_type: ed.field_changes[0]
             for ed in sd.element_diffs
             if ed.element_id == "run-1"
         }
-        assert nowe == {
+        assert {typ: fc.new_value_pl for typ, fc in zmiany.items()} == {
             "przypadek:sc-1.line_runs": "Nazwa sc-1",
             "przypadek:sc-2.line_runs": "Nazwa sc-2",
         }
+        assert {fc.old_value_pl for fc in zmiany.values()} == {"—"}
 
     def test_raport_tekstowy_nazywa_elementy_i_odwolania(self):
         raport = format_diff_report_pl(self._porownaj())
         assert "[ZMODYFIKOWANY] Ciągi linii 'Ciąg 1' (run-1)" in raport
         assert "Szyna GPZ -> Szyna nowa" in raport
         assert "[ZMODYFIKOWANY] Szyny 'Szyna nowa' (b2)" in raport
+        assert "[" + '{"' not in raport  # zero surowego JSON-a
 
-    def test_odpowiedz_serializuje_wartosci_z_nazwami(self):
+    def test_odpowiedz_serializuje_postac_pl_i_flage_audytowa(self):
         slownik = self._porownaj().to_dict()
         enm = next(s for s in slownik["section_diffs"] if s["section_name"] == "enm")
         ciag = next(e for e in enm["element_diffs"] if e["element_id"] == "run-1")
         pole = next(f for f in ciag["field_changes"] if f["field_name"] == "from_bus_ref")
         assert (pole["old_value_pl"], pole["new_value_pl"]) == ("Szyna GPZ", "Szyna nowa")
+        assert pole["audytowe"] is False
+        assert ciag["identyfikator_audytowy"] is False
+
+
+# ============================================================================
+# WARTOŚCI ZŁOŻONE PO POLSKU (karta ARCHIWUM PROJEKTU, odbiór 2026-09-24)
+# ============================================================================
+
+_SLOWNIK = {"u_max_pu": 1.1, "u_min_pu": 0.9}
+_LISTA_SKALAROW = [0.4, 15, True]
+_LISTA_OBIEKTOW = [{"order": 2, "segment_ref": "b2"}, {"order": 1, "segment_ref": "b1"}]
+_ZAGNIEZDZENIE = {"limits": {"in_a": 250.5}, "tags": ["a", "b"], "overrides": []}
+_NAZWY = {"b1": "Szyna GPZ", "b2": "Szyna nowa"}
+
+
+class TestWartosciZlozonePoPolsku:
+    """Czytelna postać PL wartości złożonych (`tekst_wartosci_pl`) — iloczyn cech:
+    {słownik, lista skalarów, lista obiektów, zagnieżdżenie} x {strona A, strona B}.
+    Nigdy surowy JSON; surowa wartość zostaje w `old_value`/`new_value`."""
+
+    @pytest.mark.parametrize(
+        ("wartosc", "oczekiwane"),
+        [
+            (_SLOWNIK, "Napięcie maksymalne [p.u.]: 1,1, Napięcie minimalne [p.u.]: 0,9"),
+            (_LISTA_SKALAROW, "0,4, 15, tak"),
+            (
+                _LISTA_OBIEKTOW,
+                "1) Kolejność: 2, Odcinek: Szyna nowa; 2) Kolejność: 1, Odcinek: Szyna GPZ",
+            ),
+            (
+                _ZAGNIEZDZENIE,
+                "Granice: (Prąd znamionowy [A]: 250,5), Nadpisania parametrów: brak, "
+                "Znaczniki: (a, b)",
+            ),
+        ],
+        ids=["slownik", "lista_skalarow", "lista_obiektow", "zagniezdzenie"],
+    )
+    @pytest.mark.parametrize("strona", ["A", "B"])
+    def test_postac_pl_po_stronie(self, wartosc, oczekiwane, strona):
+        from domain.archive_diff import tekst_wartosci_pl
+
+        wezel = {"ref_id": "x", "name": "Obiekt", "pole": wartosc}
+        pusty = {"ref_id": "x", "name": "Obiekt", "pole": None}
+        a, b = (wezel, pusty) if strona == "A" else (pusty, wezel)
+        model_a = _model(
+            buses=[_szyna("b1", 15.0, name="Szyna GPZ"), _szyna("b2", 15.0, name="Szyna nowa")]
+        )
+        model_b = _model(
+            buses=[_szyna("b1", 15.0, name="Szyna GPZ"), _szyna("b2", 15.0, name="Szyna nowa")]
+        )
+        model_a["line_runs"] = [a]
+        model_b["line_runs"] = [b]
+        wynik = compare_archives(
+            _make_archive(enm_models=[{"case_id": "sc-1", "snapshot": model_a}]),
+            _make_archive(enm_models=[{"case_id": "sc-1", "snapshot": model_b}]),
+        )
+        zmiana = _zmiany_pol(_enm(wynik.section_diffs), "x")["pole"]
+        po_stronie = zmiana.old_value_pl if strona == "A" else zmiana.new_value_pl
+        druga = zmiana.new_value_pl if strona == "A" else zmiana.old_value_pl
+        assert po_stronie == oczekiwane
+        assert druga == "—"
+        assert "{" not in po_stronie and '"' not in po_stronie
+        # Surowa wartość bez zmian (audyt).
+        assert (zmiana.old_value if strona == "A" else zmiana.new_value) == wartosc
+        # Funkcja wprost daje to samo co ścieżka porównania.
+        assert tekst_wartosci_pl(wartosc, _NAZWY) == oczekiwane
+
+    def test_obiekt_z_nazwa_pomija_identyfikatory(self):
+        from domain.archive_diff import tekst_wartosci_pl
+
+        assert tekst_wartosci_pl([{"id": "u-1", "ref_id": "b1", "name": "Szyna GPZ"}]) == (
+            "1) Nazwa: Szyna GPZ"
+        )
+        assert tekst_wartosci_pl({"ref_id": "b9"}) == "Identyfikator elementu: b9"
+
+    @pytest.mark.parametrize(
+        ("wartosc", "oczekiwane"),
+        [
+            (None, "—"),
+            ("", "—"),
+            (False, "nie"),
+            (3.0, "3"),
+            (0.125, "0,125"),
+            ([], "brak"),
+            ({}, "brak"),
+        ],
+    )
+    def test_wartosci_proste_i_puste(self, wartosc, oczekiwane):
+        from domain.archive_diff import tekst_wartosci_pl
+
+        assert tekst_wartosci_pl(wartosc) == oczekiwane
+
+    def test_sekcje_poza_modelem_tez_maja_postac_pl(self):
+        """Ustawienia przypadków (słownik) — ta sama postać PL poza sekcją modelu."""
+        wynik = compare_archives(
+            _make_archive(settings={"c_factor_max": 1.1, "tryb": {"a": 1}}),
+            _make_archive(settings={"c_factor_max": 1.05, "tryb": {"a": 2}}),
+        )
+        sd = next(s for s in wynik.section_diffs if s.section_name == "cases")
+        teksty = {
+            fc.field_name: (fc.old_value_pl, fc.new_value_pl)
+            for ed in sd.element_diffs
+            for fc in ed.field_changes
+        }
+        assert teksty["c_factor_max"] == ("1,1", "1,05")
+
+
+class TestMetadaneAudytowe:
+    """Metadane produkcyjne (odciski, wersje, rewizje, znaczniki czasu,
+    identyfikatory techniczne) oznaczone `audytowe` — ekran nie pokazuje ich na
+    pierwszym planie (kontrakt prezentacji V12.7 §0.3)."""
+
+    @pytest.mark.parametrize(
+        "pole",
+        [
+            "hash_sha256",
+            "schema_version",
+            "enm_version",
+            "revision",
+            "created_at",
+            "updated_at",
+            "id",
+            "ref_id",
+            "run_id",
+            "solver_version",
+            "snapshot_hash",
+            "input_hash",
+        ],
+    )
+    def test_pole_audytowe(self, pole):
+        from domain.archive_diff import pole_audytowe
+
+        assert pole_audytowe(pole)
+        assert FieldChange(pole, "a", "b", pole).audytowe
+
+    @pytest.mark.parametrize("pole", ["name", "voltage_kv", "bus_ref", "segments", "p_mw"])
+    def test_pole_inzynierskie(self, pole):
+        from domain.archive_diff import pole_audytowe
+
+        assert not pole_audytowe(pole)
+
+    def test_naglowek_modelu_odcisk_i_rewizja_audytowe(self):
+        a = _make_archive(
+            enm_models=[
+                {
+                    "case_id": "sc-1",
+                    "snapshot": _model(header={"name": "S", "revision": 2, "hash_sha256": "aa"}),
+                }
+            ]
+        )
+        b = _make_archive(
+            enm_models=[
+                {
+                    "case_id": "sc-1",
+                    "snapshot": _model(header={"name": "S2", "revision": 4, "hash_sha256": "bb"}),
+                }
+            ]
+        )
+        pola = _zmiany_pol(_enm(compare_archives(a, b).section_diffs), "header")
+        assert {k: fc.audytowe for k, fc in pola.items()} == {
+            "hash_sha256": True,
+            "revision": True,
+            "name": False,
+        }
+
+    def test_przebieg_ma_tozsamosc_audytowa(self):
+        wynik = compare_archives(
+            _make_archive(canonical_runs=[]),
+            _make_archive(canonical_runs=[{"id": "run-7", "status": "DONE"}]),
+        )
+        sd = next(s for s in wynik.section_diffs if s.section_name == "runs")
+        assert [ed.identyfikator_audytowy for ed in sd.element_diffs] == [True]
+        assert sd.element_diffs[0].to_dict()["identyfikator_audytowy"] is True

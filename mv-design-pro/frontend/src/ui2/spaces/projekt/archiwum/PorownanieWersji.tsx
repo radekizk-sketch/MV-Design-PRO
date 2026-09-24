@@ -7,8 +7,13 @@
  * Wynik pokazuje części archiwum i elementy po NAZWACH nadanych przez
  * projektanta i etykietach PL rodzaju (`element_name`, `element_type_label_pl`,
  * `section_label_pl` z backendu); identyfikator pojawia się tylko, gdy element
- * nazwy nie niesie. Wartości pól-odwołań (szyna przyłączenia, odcinki magistrali)
- * też po nazwach — `old_value_pl`/`new_value_pl` z backendu, surowe tylko bez nich.
+ * nazwy nie niesie. Wartości pól — także złożone (słowniki, listy obiektów) i
+ * odwołania (szyna przyłączenia, odcinki magistrali) — to czytelna postać PL z
+ * backendu (`old_value_pl`/`new_value_pl`); ekran niczego nie formatuje sam.
+ * Metadane produkcyjne (odciski paczek, sygnatura porównania, zmiany odcisków,
+ * wersji, rewizji i znaczników czasu, identyfikatory przebiegów — flagi
+ * `audytowe`/`identyfikator_audytowy` z backendu) idą WYŁĄCZNIE do wspólnego
+ * `InformacjeAudytowe` (tryb ekspercki), nie na pierwszy plan (kontrakt V12.7 §0.3).
  * Błąd archiwum to zdanie backendu z nazwanym plikiem (A/B)
  * i ścieżką pola. ZERO porównywania po stronie ekranu.
  */
@@ -16,6 +21,10 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
 
 import { listProjects, type Project } from '../../../../ui/projects/api';
+import { isModeAtLeast } from '../../../shell/modeModel';
+import { useShellStore } from '../../../shell/useShellStore';
+import { InformacjeAudytowe, type WierszInformacjiAudytowych } from '../../../wyniki/wzorzec';
+import '../../../wyniki/wzorzec/wzorzec.css';
 import {
   porownajArchiwa,
   porownajProjekty,
@@ -24,7 +33,7 @@ import {
   type StatusRoznicy,
   type WynikPorownania,
 } from './api';
-import { ARCHIWUM_STRINGS as T, formatujWartoscPola, jestPlikiemArchiwum } from './strings';
+import { ARCHIWUM_STRINGS as T, jestPlikiemArchiwum } from './strings';
 import { Wiersz } from './wspolne';
 
 const ETYKIETA_STATUSU: Record<Exclude<StatusRoznicy, 'IDENTICAL'>, string> = {
@@ -44,12 +53,45 @@ function etykietaStatusu(status: StatusRoznicy): string {
  */
 function podpisElementu(roznica: RoznicaElementu): string | null {
   if (roznica.element_name) return roznica.element_name;
+  // Identyfikator techniczny (przebieg) — tylko w informacjach audytowych.
+  if (roznica.identyfikator_audytowy) return null;
   return roznica.element_id !== roznica.element_type ? roznica.element_id : null;
+}
+
+/**
+ * Wiersze informacji audytowych porównania: odciski obu paczek, sygnatura,
+ * zmiany pól-metadanych i tożsamości techniczne elementów. Etykieta niesie
+ * część › rodzaj › element (identyfikator) › pole — jednoznaczna w obrębie wyniku.
+ */
+export function wierszeAudytowePorownania(wynik: WynikPorownania): WierszInformacjiAudytowych[] {
+  const wiersze: WierszInformacjiAudytowych[] = [
+    { etykieta: T.audytOdciskA, wartosc: wynik.archive_hash_a },
+    { etykieta: T.audytOdciskB, wartosc: wynik.archive_hash_b },
+    { etykieta: T.audytSygnatura, wartosc: wynik.deterministic_signature },
+  ];
+  for (const sekcja of wynik.section_diffs) {
+    for (const roznica of sekcja.element_diffs) {
+      const nazwa = roznica.element_name ? ` ${roznica.element_name}` : '';
+      const element = `${sekcja.section_label_pl} › ${roznica.element_type_label_pl}${nazwa} (${roznica.element_id})`;
+      if (roznica.identyfikator_audytowy) {
+        wiersze.push({ etykieta: element, wartosc: etykietaStatusu(roznica.status) });
+      }
+      for (const zmiana of roznica.field_changes.filter((z) => z.audytowe)) {
+        wiersze.push({
+          etykieta: `${element} › ${zmiana.label_pl}`,
+          wartosc: `${zmiana.old_value_pl} → ${zmiana.new_value_pl}`,
+        });
+      }
+    }
+  }
+  return wiersze;
 }
 
 /** Jeden element różnicy: status, rodzaj, podpis (`podpisElementu`), zmiany pól. */
 function ElementRoznicy({ roznica }: { roznica: RoznicaElementu }) {
   const podpis = podpisElementu(roznica);
+  const zmianyInzynierskie = roznica.field_changes.filter((z) => !z.audytowe);
+  const tylkoMetadane = roznica.field_changes.length > 0 && zmianyInzynierskie.length === 0;
   return (
     <li className="mvd-arch-el" data-status={roznica.status} data-testid="mvd-arch-por-element">
       <div className="mvd-arch-el-naglowek">
@@ -57,23 +99,24 @@ function ElementRoznicy({ roznica }: { roznica: RoznicaElementu }) {
         <span className="mvd-arch-el-typ">{roznica.element_type_label_pl}</span>
         {podpis ? <strong className="mvd-arch-el-nazwa">{podpis}</strong> : null}
       </div>
-      {roznica.field_changes.length > 0 ? (
+      {zmianyInzynierskie.length > 0 ? (
         <table className="mvd-arch-el-pola">
           <tbody>
-            {roznica.field_changes.map((zmiana) => (
+            {zmianyInzynierskie.map((zmiana) => (
               <tr key={zmiana.field_name}>
                 <th scope="row">{zmiana.label_pl}</th>
-                <td className="mvd-num">
-                  {formatujWartoscPola(zmiana.old_value_pl ?? zmiana.old_value)}
-                </td>
+                <td className="mvd-num">{zmiana.old_value_pl}</td>
                 <td aria-hidden="true">→</td>
-                <td className="mvd-num">
-                  {formatujWartoscPola(zmiana.new_value_pl ?? zmiana.new_value)}
-                </td>
+                <td className="mvd-num">{zmiana.new_value_pl}</td>
               </tr>
             ))}
           </tbody>
         </table>
+      ) : null}
+      {tylkoMetadane ? (
+        <p className="mvd-arch-opis" data-testid="mvd-arch-por-tylko-metadane">
+          {T.wynikTylkoMetadane}
+        </p>
       ) : null}
     </li>
   );
@@ -99,6 +142,17 @@ function SekcjaRoznic({ sekcja }: { sekcja: RoznicaSekcji }) {
 
 /** Wynik porównania — werdykt, liczniki, części zmienione i lista części bez zmian. */
 export function WynikPorownaniaWidok({ wynik }: { wynik: WynikPorownania }) {
+  const trybEkspercki = isModeAtLeast(
+    useShellStore((s) => s.advancementMode),
+    'expert',
+  );
+  const audyt = (
+    <InformacjeAudytowe
+      wiersze={wierszeAudytowePorownania(wynik)}
+      trybEkspercki={trybEkspercki}
+      testid="mvd-arch-por-audyt"
+    />
+  );
   if (wynik.overall_status === 'IDENTICAL') {
     return (
       <div className="mvd-arch-raport" data-wariant="ok" data-testid="mvd-arch-por-wynik">
@@ -106,6 +160,7 @@ export function WynikPorownaniaWidok({ wynik }: { wynik: WynikPorownania }) {
         <p className="mvd-arch-werdykt" role="status">
           {T.wynikIdentyczne}
         </p>
+        {audyt}
       </div>
     );
   }
@@ -135,6 +190,7 @@ export function WynikPorownaniaWidok({ wynik }: { wynik: WynikPorownania }) {
           {T.wynikBezZmian}: {bezZmian.map((s) => s.section_label_pl).join(', ')}
         </p>
       ) : null}
+      {audyt}
     </div>
   );
 }

@@ -131,20 +131,38 @@ class DiffStatus(StrEnum):
 class FieldChange:
     """Zmiana wartosci pola elementu.
 
-    `old_value_pl` / `new_value_pl` — ta sama wartosc z odwolaniami do
-    elementow modelu sieci (`ref_id`) podstawionymi NAZWAMI nadanymi przez
-    projektanta: strona A z nazw archiwum A, strona B z nazw archiwum B
-    (`_z_nazwami_referencji`). `None`, gdy wartosc nie niesie zadnego
-    odwolania z nazwa — wtedy ekran pokazuje wartosc surowa. Surowe
-    `old_value` / `new_value` zostaja bez zmian (audyt).
+    `old_value_pl` / `new_value_pl` — CZYTELNA POSTAC PL wartosci
+    (`tekst_wartosci_pl`): liczby z przecinkiem dziesietnym, `tak`/`nie`,
+    slowniki jako „Etykieta pola: wartosc", listy obiektow numerowane, a
+    odwolania do elementow modelu sieci (`ref_id`) zamienione na NAZWY
+    projektanta — strona A z nazw archiwum A, strona B z nazw archiwum B
+    (`_z_nazwami_referencji`). Ekran wyswietla wylacznie te postac; surowe
+    `old_value` / `new_value` zostaja bez zmian (audyt, eksport). Postac
+    nieprzekazana jawnie powstaje w `__post_init__` z wartosci surowej bez
+    slownika nazw — zawsze jest tekstem, nigdy brakiem.
+
+    `audytowe` — pole jest metadana produkcyjna (odcisk, wersja, rewizja,
+    znacznik czasu, identyfikator techniczny; `pole_audytowe`), ktorej ekran
+    nie pokazuje na pierwszym planie (kontrakt prezentacji V12.7 §0.3).
     """
 
     field_name: str
     old_value: object
     new_value: object
     label_pl: str
-    old_value_pl: object = None
-    new_value_pl: object = None
+    old_value_pl: str | None = None
+    new_value_pl: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.old_value_pl is None:
+            object.__setattr__(self, "old_value_pl", tekst_wartosci_pl(self.old_value))
+        if self.new_value_pl is None:
+            object.__setattr__(self, "new_value_pl", tekst_wartosci_pl(self.new_value))
+
+    @property
+    def audytowe(self) -> bool:
+        """Metadana produkcyjna (`pole_audytowe`) — poza pierwszym planem ekranu."""
+        return pole_audytowe(self.field_name)
 
     def to_dict(self) -> dict[str, Any]:
         """Serializacja do slownika."""
@@ -155,6 +173,7 @@ class FieldChange:
             "label_pl": self.label_pl,
             "old_value_pl": self.old_value_pl,
             "new_value_pl": self.new_value_pl,
+            "audytowe": self.audytowe,
         }
 
 
@@ -179,6 +198,13 @@ class ElementDiff:
         """Etykieta PL rodzaju elementu (`buses` -> „Szyny")."""
         return etykieta_typu_elementu_pl(self.element_type)
 
+    @property
+    def identyfikator_audytowy(self) -> bool:
+        """Tozsamosc elementu jest identyfikatorem technicznym (przebieg obliczen:
+        `run_id`) — ekran nie pokazuje jej na pierwszym planie, tylko w
+        informacjach audytowych (kontrakt prezentacji V12.7 §0.3)."""
+        return self.element_type in _RODZAJE_Z_TOZSAMOSCIA_AUDYTOWA
+
     def to_dict(self) -> dict[str, Any]:
         """Serializacja do slownika."""
         return {
@@ -186,6 +212,7 @@ class ElementDiff:
             "element_name": self.element_name,
             "element_type": self.element_type,
             "element_type_label_pl": self.element_type_label_pl,
+            "identyfikator_audytowy": self.identyfikator_audytowy,
             "status": self.status.value,
             "field_changes": [fc.to_dict() for fc in self.field_changes],
         }
@@ -345,7 +372,134 @@ _ETYKIETY_POL_PL: dict[str, str] = {
     "substation_ref": "Stacja",
     "equipment_refs": "Aparaty pola",
     "protection_ref": "Zabezpieczenie",
+    # obiekty zagniezdzone modelu (wartosci zlozone pokazywane po polsku)
+    "order": "Kolejność",
+    "segment_ref": "Odcinek",
+    "limits": "Granice",
+    "u_min_pu": "Napięcie minimalne [p.u.]",
+    "u_max_pu": "Napięcie maksymalne [p.u.]",
+    "in_a": "Prąd znamionowy [A]",
+    "ith_ka": "Prąd cieplny 1 s [kA]",
+    "idyn_ka": "Prąd dynamiczny [kA]",
+    "p_min_mw": "Moc czynna minimalna [MW]",
+    "p_max_mw": "Moc czynna maksymalna [MW]",
+    "q_min_mvar": "Moc bierna minimalna [Mvar]",
+    "q_max_mvar": "Moc bierna maksymalna [Mvar]",
+    "ratio_primary": "Przekładnia — strona pierwotna",
+    "ratio_secondary": "Przekładnia — strona wtórna",
+    "accuracy_class": "Klasa dokładności",
+    "burden_va": "Obciążenie znamionowe [VA]",
+    "key": "Parametr",
+    "value": "Wartość",
+    "reason": "Uzasadnienie",
+    "unit_system": "Układ jednostek",
+    "sn_nominal_kv": "Napięcie znamionowe SN [kV]",
+    "function_type": "Funkcja zabezpieczenia",
+    "threshold_a": "Próg prądowy [A]",
+    "time_delay_s": "Zwłoka [s]",
+    "curve_type": "Charakterystyka",
+    "time_multiplier": "Mnożnik czasowy",
+    "is_directional": "Kierunkowe",
+    "moc_przylaczeniowa_mw": "Moc przyłączeniowa [MW]",
+    "wymagany_cos_phi": "Wymagany cos φ",
+    "tryb_pracy": "Tryb pracy",
+    "enm_hash": "Odcisk modelu sieci",
+    "archive_hash": "Odcisk archiwum",
+    "run_id": "Identyfikator przebiegu",
+    "solver_version": "Wersja solvera",
+    "input_hash": "Odcisk danych wejściowych",
 }
+
+
+# Metadane produkcyjne (kontrakt prezentacji V12.7 §0.3): odciski, wersje,
+# rewizje, znaczniki czasu, identyfikatory techniczne. Zmiana takiego pola
+# NIE trafia na pierwszy plan ekranu porownania, tylko do informacji
+# audytowych. Kazde pole `*_hash` jest odciskiem niezaleznie od listy.
+_POLA_AUDYTOWE: frozenset[str] = frozenset(
+    {
+        "id",
+        "ref_id",
+        "hash_sha256",
+        "schema_version",
+        "enm_version",
+        "revision",
+        "created_at",
+        "updated_at",
+        "run_id",
+        "solver_version",
+        "deterministic_signature",
+    }
+)
+
+# Rodzaje elementow, ktorych tozsamosc to identyfikator techniczny (`run_id`).
+_RODZAJE_Z_TOZSAMOSCIA_AUDYTOWA: frozenset[str] = frozenset(
+    {"canonical_runs", "analysis_runs_index"}
+)
+
+
+def pole_audytowe(field_name: str) -> bool:
+    """Czy pole jest metadana produkcyjna (`_POLA_AUDYTOWE` albo `*_hash`)."""
+    return field_name in _POLA_AUDYTOWE or field_name.endswith("_hash")
+
+
+_PUSTA_WARTOSC = "—"
+
+
+def _tekst_liczby(liczba: int | float) -> str:
+    """Liczba bez zaokraglania (pelna wartosc zapisana w archiwum), przecinek dziesietny."""
+    if isinstance(liczba, float) and liczba.is_integer():
+        return str(int(liczba))
+    return repr(liczba).replace(".", ",")
+
+
+def tekst_wartosci_pl(
+    wartosc: object, nazwy: dict[str, str] | None = None, *, zagniezdzona: bool = False
+) -> str:
+    """Czytelna postac PL wartosci pola porownania (nigdy surowy JSON).
+
+    * brak / pusty tekst -> „—"; `True`/`False` -> „tak"/„nie";
+    * liczba -> pelna wartosc z przecinkiem dziesietnym;
+    * tekst -> nazwa elementu, gdy tekst jest `ref_id` elementu z nazwa
+      (`nazwy`), inaczej tekst wprost;
+    * lista pusta / slownik pusty -> „brak";
+    * lista wartosci prostych -> „a, b, c";
+    * lista zawierajaca obiekty -> „1) …; 2) …" (pozycja bez nawiasu — numer ja rozdziela);
+    * slownik -> „Etykieta pola: wartosc, …" (etykiety `_field_label_pl`,
+      jednostki w etykietach; klucze w kolejnosci alfabetycznej — determinizm).
+      Identyfikatory (`id`, `ref_id`) pomijane, gdy obiekt niesie nazwe.
+    Wartosc zlozona wewnatrz innej wartosci zlozonej ujeta w nawias.
+    """
+    slownik_nazw = nazwy or {}
+    if wartosc is None or wartosc == "":
+        return _PUSTA_WARTOSC
+    if isinstance(wartosc, bool):
+        return "tak" if wartosc else "nie"
+    if isinstance(wartosc, int | float):
+        return _tekst_liczby(wartosc)
+    if isinstance(wartosc, str):
+        return slownik_nazw.get(wartosc, wartosc)
+    if isinstance(wartosc, list):
+        if not wartosc:
+            return "brak"
+        if any(isinstance(w, dict | list) for w in wartosc):
+            tekst = "; ".join(
+                f"{i}) {tekst_wartosci_pl(w, slownik_nazw)}" for i, w in enumerate(wartosc, start=1)
+            )
+        else:
+            tekst = ", ".join(tekst_wartosci_pl(w, slownik_nazw) for w in wartosc)
+        return f"({tekst})" if zagniezdzona else tekst
+    if isinstance(wartosc, dict):
+        if not wartosc:
+            return "brak"
+        pomin = _POLA_TOZSAMOSCI_MODELU if _nazwa_elementu(wartosc) else ()
+        tekst = ", ".join(
+            f"{_field_label_pl(klucz)}: "
+            f"{tekst_wartosci_pl(wartosc[klucz], slownik_nazw, zagniezdzona=True)}"
+            for klucz in sorted(wartosc)
+            if klucz not in pomin
+        )
+        return f"({tekst})" if zagniezdzona else tekst
+    return str(wartosc)
 
 
 def _field_label_pl(field_name: str) -> str:
@@ -732,27 +886,17 @@ def _nazwy_elementow_modelu(model: object) -> dict[str, str]:
 _POLA_BEZ_PODSTAWIENIA: frozenset[str] = frozenset(_POLA_TOZSAMOSCI_MODELU)
 
 
-def _podstaw_nazwy(wartosc: object, nazwy: dict[str, str]) -> object:
-    """Wartosc z kazdym tekstem bedacym `ref_id` elementu z nazwa zamienionym na nazwe."""
-    if isinstance(wartosc, str):
-        return nazwy.get(wartosc, wartosc)
-    if isinstance(wartosc, list):
-        return [_podstaw_nazwy(w, nazwy) for w in wartosc]
-    if isinstance(wartosc, dict):
-        return {k: _podstaw_nazwy(w, nazwy) for k, w in wartosc.items()}
-    return wartosc
-
-
 def _z_nazwami_referencji(
     roznice: list[ElementDiff],
     nazwy_a: dict[str, str],
     nazwy_b: dict[str, str],
 ) -> list[ElementDiff]:
-    """Uzupelnij zmiany pol o wartosci z nazwami (`FieldChange.old_value_pl/new_value_pl`).
+    """Czytelna postac zmian pol z NAZWAMI elementow (`FieldChange.old_value_pl/new_value_pl`).
 
     Strona A bierze nazwy z modelu A, strona B z modelu B — element
     przemianowany miedzy wersjami jest po kazdej stronie pokazany nazwa, ktora
-    wtedy nosil. Wartosc bez zadnego odwolania z nazwa zostaje `None`.
+    wtedy nosil. Pole tozsamosci elementu (`_POLA_BEZ_PODSTAWIENIA`) zostaje
+    postacia bez nazw — jego wartosc jest identyfikatorem, nie odwolaniem.
     """
     wynik: list[ElementDiff] = []
     for roznica in roznice:
@@ -761,13 +905,11 @@ def _z_nazwami_referencji(
             if zmiana.field_name in _POLA_BEZ_PODSTAWIENIA:
                 zmiany.append(zmiana)
                 continue
-            stara = _podstaw_nazwy(zmiana.old_value, nazwy_a)
-            nowa = _podstaw_nazwy(zmiana.new_value, nazwy_b)
             zmiany.append(
                 replace(
                     zmiana,
-                    old_value_pl=stara if stara != zmiana.old_value else None,
-                    new_value_pl=nowa if nowa != zmiana.new_value else None,
+                    old_value_pl=tekst_wartosci_pl(zmiana.old_value, nazwy_a),
+                    new_value_pl=tekst_wartosci_pl(zmiana.new_value, nazwy_b),
                 )
             )
         wynik.append(replace(roznica, field_changes=tuple(zmiany)))
@@ -1070,11 +1212,7 @@ def format_diff_report_pl(diff_result: ArchiveDiffResult) -> str:
             )
             lines.append(f"    [{_status_pl(ed.status)}] {ed.element_type_label_pl} {podpis}")
             for fc in ed.field_changes:
-                stara = fc.old_value if fc.old_value_pl is None else fc.old_value_pl
-                nowa = fc.new_value if fc.new_value_pl is None else fc.new_value_pl
-                lines.append(
-                    f"      {fc.label_pl}: {_format_value(stara)} -> {_format_value(nowa)}"
-                )
+                lines.append(f"      {fc.label_pl}: {fc.old_value_pl} -> {fc.new_value_pl}")
         lines.append("")
 
     lines.append(f"Sygnatura: {diff_result.deterministic_signature[:16]}...")
@@ -1092,17 +1230,3 @@ def _status_pl(status: DiffStatus) -> str:
         DiffStatus.REMOVED: "USUNIETY",
     }
     return mapping.get(status, status.value)
-
-
-def _format_value(value: Any) -> str:
-    """Sformatuj wartosc do czytelnej postaci."""
-    if value is None:
-        return "(brak)"
-    if isinstance(value, str) and len(value) > 50:
-        return f'"{value[:47]}..."'
-    if isinstance(value, list | dict):
-        s = json.dumps(value, ensure_ascii=False)
-        if len(s) > 50:
-            return f"{s[:47]}..."
-        return s
-    return str(value)

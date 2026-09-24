@@ -54,7 +54,7 @@ from domain.project_archive import (  # noqa: E402
     dict_to_archive,
 )
 from enm.klucz_twin import klucz_twin_projektu  # noqa: E402
-from enm.models import Bus, Load  # noqa: E402
+from enm.models import Bus, BusLimits, Load  # noqa: E402
 from enm.store import get_enm, reset_enm_store, set_enm  # noqa: E402
 from infrastructure.persistence.models import ProjectORM, StudyCaseORM  # noqa: E402
 
@@ -695,6 +695,55 @@ def test_porownanie_pokazuje_odwolania_nazwami_elementow(klient, uow_factory) ->
     assert (pole["old_value"], pole["new_value"]) == ("SN-1", "SN-2")
     assert (pole["old_value_pl"], pole["new_value_pl"]) == ("Szyna SN", "Szyna rezerwowa")
     assert "Szyna SN -> Szyna rezerwowa" in resp.json()["report_pl"]
+
+
+def test_porownanie_wartosci_zlozone_po_polsku_i_flagi_audytowe(klient, uow_factory) -> None:
+    """Trasa API: wartość złożona (słownik granic napięcia szyny) po obu stronach
+    ma czytelną postać PL, nie JSON; każda zmiana pola niesie flagę `audytowe`,
+    a każdy element `identyfikator_audytowy` (kontrakt prezentacji V12.7 §0.3)."""
+    projekt_a = _utworz_projekt(
+        uow_factory,
+        "Projekt A",
+        [
+            Bus(
+                ref_id="SN-1",
+                name="Szyna SN",
+                voltage_kv=15.0,
+                nominal_limits=BusLimits(u_min_pu=0.9),
+            )
+        ],
+    )
+    projekt_b = _utworz_projekt(
+        uow_factory,
+        "Projekt B",
+        [
+            Bus(
+                ref_id="SN-1",
+                name="Szyna SN",
+                voltage_kv=15.0,
+                nominal_limits=BusLimits(u_min_pu=0.95, u_max_pu=1.1),
+            )
+        ],
+    )
+
+    resp = klient.post(_url_projekty(projekt_a, projekt_b))
+
+    assert resp.status_code == 200, resp.text
+    szyna = _roznice(resp.json(), "enm")[("buses", "SN-1")]
+    pole = {fc["field_name"]: fc for fc in szyna["field_changes"]}["nominal_limits"]
+    assert pole["old_value_pl"] == "Napięcie maksymalne [p.u.]: —, Napięcie minimalne [p.u.]: 0,9"
+    assert pole["new_value_pl"] == (
+        "Napięcie maksymalne [p.u.]: 1,1, Napięcie minimalne [p.u.]: 0,95"
+    )
+    assert pole["old_value"] == {"u_min_pu": 0.9, "u_max_pu": None}
+    assert pole["audytowe"] is False
+    for sekcja in resp.json()["section_diffs"]:
+        for element in sekcja["element_diffs"]:
+            assert isinstance(element["identyfikator_audytowy"], bool)
+            for zmiana in element["field_changes"]:
+                assert isinstance(zmiana["audytowe"], bool)
+                assert isinstance(zmiana["old_value_pl"], str)
+                assert isinstance(zmiana["new_value_pl"], str)
 
 
 @pytest.mark.parametrize(

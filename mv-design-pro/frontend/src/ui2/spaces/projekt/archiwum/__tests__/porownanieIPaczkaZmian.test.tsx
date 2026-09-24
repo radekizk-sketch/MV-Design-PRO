@@ -19,8 +19,9 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../../../ui/app-state';
+import { useShellStore } from '../../../../shell/useShellStore';
 import { EkranArchiwum } from '../EkranArchiwum';
-import { ARCHIWUM_STRINGS as T, formatujWartoscPola } from '../strings';
+import { ARCHIWUM_STRINGS as T } from '../strings';
 
 function plik(nazwa: string): File {
   return new File([new Uint8Array([80, 75, 3, 4])], nazwa, { type: 'application/zip' });
@@ -78,6 +79,7 @@ const WYNIK_ROZNICE = {
           element_name: 'Szyna nN stacji',
           element_type: 'buses',
           element_type_label_pl: 'Szyny',
+          identyfikator_audytowy: false,
           status: 'ADDED',
           field_changes: [],
         },
@@ -86,6 +88,7 @@ const WYNIK_ROZNICE = {
           element_name: 'Szyna SN GPZ',
           element_type: 'buses',
           element_type_label_pl: 'Szyny',
+          identyfikator_audytowy: false,
           status: 'MODIFIED',
           field_changes: [
             {
@@ -93,8 +96,18 @@ const WYNIK_ROZNICE = {
               old_value: 15,
               new_value: 20,
               label_pl: 'Napięcie znamionowe [kV]',
-              old_value_pl: null,
-              new_value_pl: null,
+              old_value_pl: '15',
+              new_value_pl: '20',
+              audytowe: false,
+            },
+            {
+              field_name: 'nominal_limits',
+              old_value: { u_min_pu: 0.9 },
+              new_value: { u_min_pu: 0.95, u_max_pu: 1.1 },
+              label_pl: 'Granice napięcia',
+              old_value_pl: 'Napięcie minimalne [p.u.]: 0,9',
+              new_value_pl: 'Napięcie maksymalne [p.u.]: 1,1, Napięcie minimalne [p.u.]: 0,95',
+              audytowe: false,
             },
           ],
         },
@@ -103,6 +116,7 @@ const WYNIK_ROZNICE = {
           element_name: 'Odbiór zakładu',
           element_type: 'loads',
           element_type_label_pl: 'Odbiory',
+          identyfikator_audytowy: false,
           status: 'MODIFIED',
           field_changes: [
             {
@@ -112,6 +126,7 @@ const WYNIK_ROZNICE = {
               label_pl: 'Szyna przyłączenia',
               old_value_pl: 'Szyna SN GPZ',
               new_value_pl: 'Szyna nN stacji',
+              audytowe: false,
             },
           ],
         },
@@ -120,6 +135,7 @@ const WYNIK_ROZNICE = {
           element_name: null,
           element_type: 'header',
           element_type_label_pl: 'Nagłówek modelu sieci',
+          identyfikator_audytowy: false,
           status: 'MODIFIED',
           field_changes: [
             {
@@ -127,8 +143,18 @@ const WYNIK_ROZNICE = {
               old_value: 2,
               new_value: 4,
               label_pl: 'Rewizja',
-              old_value_pl: null,
-              new_value_pl: null,
+              old_value_pl: '2',
+              new_value_pl: '4',
+              audytowe: true,
+            },
+            {
+              field_name: 'hash_sha256',
+              old_value: 'c'.repeat(64),
+              new_value: 'd'.repeat(64),
+              label_pl: 'Odcisk SHA-256',
+              old_value_pl: 'c'.repeat(64),
+              new_value_pl: 'd'.repeat(64),
+              audytowe: true,
             },
           ],
         },
@@ -149,6 +175,7 @@ const WYNIK_ROZNICE = {
           element_name: null,
           element_type: 'canonical_runs',
           element_type_label_pl: 'Przebiegi obliczeń',
+          identyfikator_audytowy: true,
           status: 'ADDED',
           field_changes: [],
         },
@@ -174,7 +201,7 @@ const WYNIK_ROZNICE = {
     total_elements_removed: 0,
     total_elements_modified: 3,
   },
-  deterministic_signature: 's',
+  deterministic_signature: 'e'.repeat(64),
   report_pl: '',
 };
 
@@ -239,20 +266,75 @@ describe('Porównanie dwóch paczek', () => {
     expect(within(siec).getByText('Napięcie znamionowe [kV]')).toBeTruthy();
     expect(within(siec).getByText('15')).toBeTruthy();
     expect(within(siec).getByText('20')).toBeTruthy();
+    // Wartość złożona (słownik) — czytelna postać PL z backendu, wyświetlona wprost;
+    // zero surowego JSON-a w wyniku.
+    const granice = within(siec).getByText('Granice napięcia').closest('tr') as HTMLElement;
+    expect(within(granice).getByText('Napięcie minimalne [p.u.]: 0,9')).toBeTruthy();
+    expect(
+      within(granice).getByText(
+        'Napięcie maksymalne [p.u.]: 1,1, Napięcie minimalne [p.u.]: 0,95',
+      ),
+    ).toBeTruthy();
+    expect(wynik.textContent).not.toMatch(/[{}"]/);
     // Identyfikator elementu NIE jest pokazywany, gdy element ma nazwę.
     expect(within(wynik).queryByText('bus-uuid-nn-2')).toBeNull();
-    // Element bez nazwy — identyfikator jest jedyną tożsamością, jaką backend niesie.
+    // Przebieg: tożsamość to identyfikator techniczny (`identyfikator_audytowy`) —
+    // na pierwszym planie tylko rodzaj i status, identyfikator w informacjach audytowych.
     const przebiegi = screen.getByTestId('mvd-arch-por-sekcja-runs');
-    expect(within(przebiegi).getByText('run-7')).toBeTruthy();
     expect(within(przebiegi).getByText('Przebiegi obliczeń')).toBeTruthy();
-    // Obiekt porównywany pole po polu (identyfikator = rodzaj) — sama etykieta PL,
-    // bez powtórzenia surowego klucza „header".
+    expect(within(przebiegi).queryByText('run-7')).toBeNull();
+    // Nagłówek modelu: zmienione wyłącznie metadane (rewizja, odcisk) — na pierwszym
+    // planie tylko wskazanie, że są w informacjach audytowych; żadnych odcisków.
     expect(within(siec).getByText('Nagłówek modelu sieci')).toBeTruthy();
     expect(within(siec).queryByText('header')).toBeNull();
-    expect(within(siec).getByText('Rewizja')).toBeTruthy();
+    expect(within(siec).queryByText('Rewizja')).toBeNull();
+    expect(within(siec).queryByText('Odcisk SHA-256')).toBeNull();
+    expect(screen.getByTestId('mvd-arch-por-tylko-metadane')).toHaveTextContent(
+      T.wynikTylkoMetadane,
+    );
+    expect(wynik.textContent).not.toContain('c'.repeat(16));
+    expect(wynik.textContent).not.toContain('a'.repeat(16));
+    // Tryb podstawowy — informacji audytowych nie ma wcale (V12.7 §0.3).
+    expect(screen.queryByTestId('mvd-arch-por-audyt')).toBeNull();
     expect(screen.getByTestId('mvd-arch-por-bez-zmian')).toHaveTextContent(
       'Przypadki obliczeniowe',
     );
+  });
+
+  it('tryb ekspercki → metadane porównania WYŁĄCZNIE w informacjach audytowych', async () => {
+    const poprzedni = useShellStore.getState().advancementMode;
+    useShellStore.setState({ advancementMode: 'expert' });
+    try {
+      const user = userEvent.setup();
+      vi.stubGlobal('fetch', vi.fn(async () => odp(200, WYNIK_ROZNICE)));
+      render(<EkranArchiwum onZamknij={vi.fn()} />);
+      await user.upload(screen.getByTestId('mvd-arch-por-plik-a'), plik('przed.mvdp.zip'));
+      await user.upload(screen.getByTestId('mvd-arch-por-plik-b'), plik('po.mvdp.zip'));
+      await user.click(screen.getByTestId('mvd-arch-por-pliki'));
+
+      const audyt = await screen.findByTestId('mvd-arch-por-audyt');
+      // Zwinięte domyślnie — pierwszy plan bez odcisków także w trybie eksperckim.
+      expect(screen.queryByTestId('mvd-arch-por-audyt-lista')).toBeNull();
+      await user.click(within(audyt).getByTestId('mvd-arch-por-audyt-przelacz'));
+      const lista = screen.getByTestId('mvd-arch-por-audyt-lista');
+      expect(lista).toHaveTextContent(`${T.audytOdciskA}${'a'.repeat(64)}`);
+      expect(lista).toHaveTextContent(`${T.audytOdciskB}${'b'.repeat(64)}`);
+      expect(lista).toHaveTextContent(`${T.audytSygnatura}${'e'.repeat(64)}`);
+      expect(lista).toHaveTextContent(
+        'Model sieci › Nagłówek modelu sieci (header) › Rewizja2 → 4',
+      );
+      expect(lista).toHaveTextContent(
+        `Model sieci › Nagłówek modelu sieci (header) › Odcisk SHA-256${'c'.repeat(64)} → ${'d'.repeat(64)}`,
+      );
+      expect(lista).toHaveTextContent(`Wykonania analiz › Przebiegi obliczeń (run-7)${T.statusDodany}`);
+      // Zmiany inżynierskie nie są dublowane w informacjach audytowych.
+      expect(lista).not.toHaveTextContent('Napięcie znamionowe');
+    } finally {
+      // Odmontowanie PRZED przywróceniem trybu — inaczej zmiana store
+      // re-renderuje zamontowany ekran poza act().
+      cleanup();
+      useShellStore.setState({ advancementMode: poprzedni });
+    }
   });
 
   it('archiwa identyczne → jedno zdanie werdyktu', async () => {
@@ -583,20 +665,5 @@ describe('Paczka zmian — import', () => {
     await user.click(await screen.findByTestId('mvd-arch-paczka-ponow'));
     expect(screen.queryByTestId('mvd-arch-paczka-raport')).toBeNull();
     expect(screen.getByTestId('mvd-arch-paczka-import')).toBeDisabled();
-  });
-});
-
-describe('formatujWartoscPola', () => {
-  it.each([
-    [null, '—'],
-    [undefined, '—'],
-    ['', '—'],
-    ['Szyna', 'Szyna'],
-    [15.5, '15.5'],
-    [true, 'tak'],
-    [false, 'nie'],
-    [{ a: 1 }, '{"a":1}'],
-  ])('%j → %s', (wartosc, oczekiwane) => {
-    expect(formatujWartoscPola(wartosc)).toBe(oczekiwane);
   });
 });

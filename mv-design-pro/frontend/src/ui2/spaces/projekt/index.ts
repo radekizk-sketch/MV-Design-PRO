@@ -43,6 +43,5 @@ export {
   PULPIT_STRINGS,
   STATUS_WYNIKOW_LABEL,
   rewizjaModeluLabel,
-  odciskKrotki,
   formatCzasPrzebiegu,
 } from './strings';
