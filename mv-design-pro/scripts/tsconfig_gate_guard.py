@@ -368,7 +368,11 @@ POMIJANE_KATALOGI = {
 #: `../api`); porownanie list bledow PRZED/PO linia po linii — zero nowych. Budzet 100 -> 98.
 #: Ponowne zlozenie Pakietu 0 na HEAD `1b422cdd` (B+C+D2 i #135, 2026-09-24, pomiar guardem na
 #: scalonym drzewie): 96 -> 95 (przepisane testy LoM; drugi z dwoch bledow zszedl juz w D2).
-BUDZET_BLEDOW_POZA_BRAMKA = 95
+#: Scalenie main (PR #476) do galezi programu (2026-09-24, pomiar guardem na `57cc0745`):
+#: 95 -> 94 — main usunal nieuzywany import `vi` w `ui/topology/__tests__/
+#: topology-store.test.ts` (TS6133); zdublowany import vitest z auto-scalenia w
+#: `cadSymbolRegistry.test.tsx` naprawiony w `01eae4df`; zero nowych bledow.
+BUDZET_BLEDOW_POZA_BRAMKA = 94
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

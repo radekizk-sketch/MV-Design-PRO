@@ -29,6 +29,11 @@ DAWNA_SEKWENCJA = (
     "AB-3b → AB-4 → AB-H1 → AB-5 → AB-5b → AB-H2 → W6-K → AB-3c → AB-H3 → AB-6 → AB-H4 → AB-7"
 )
 
+#: Przyrosty dopisane do planu PO stanie historycznym, który odtwarza `_plan_sprzed_podzialu_bess`
+#: (korekta O-20) — ich wierszy §11 w tamtym planie nie było, więc kopia historyczna ich nie niesie.
+#: Nowy przyrost w planie bez wpisu tutaj zatrzyma test komunikatem „przyrost bez miejsca”.
+NOWSZE_OD_STANU_HISTORYCZNEGO = frozenset({"AB-P1"})  # O-54 (2026-09-24)
+
 
 def _zamien_sekwencje(tekst: str, nowa: str) -> str:
     """Podmiana wiersza sekwencji W OBRĘBIE §5 (jak czyta go strażnik — parowanie `**` liczone
@@ -52,6 +57,8 @@ def _plan_sprzed_podzialu_bess(tekst: str) -> str:
             wynik.append(linia)
             continue
         kom = guard.komorki(linia)
+        if kom and kom[0] in NOWSZE_OD_STANU_HISTORYCZNEGO:
+            continue
         if kom and kom[0] == "AB-4a":
             kom[0] = "AB-4"
             kom[3] = "AB-1b.1, AB-1b.2, AB-1a (warstwa magazynów), AB-H2, AB-3 (migawki)"
