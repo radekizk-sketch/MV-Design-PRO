@@ -9,10 +9,12 @@ KANON:
 - Read-only — brak mutacji
 - Deterministyczny — ten sam input = ten sam output
 
-BLEDY: jedyny 400 (pliki) / 404 (projekty) to nazwany `ArchiveError` z serwisu —
-archiwum nieczytelne, niezgodne ze schematem, z naruszona integralnoscia, albo
-projekt nieistniejacy. Kazdy inny wyjatek WYBUCHA (500), bo oznacza blad programu,
-nie zle wejscie: dawne `except (ArchiveError, Exception)` przez wiele kart
+BLEDY: nazwany `ArchiveError` z serwisu — archiwum nieczytelne, niezgodne ze
+schematem (brak sekcji albo pola na DOWOLNYM poziomie, ze sciezka pola), w
+niezgodnej wersji albo z naruszona integralnoscia — to 422 z polskim komunikatem
+wskazujacym archiwum (A/B); projekt nieistniejacy (`ArchiveProjectNotFoundError`)
+to 404; zle rozszerzenie pliku to 400. Kazdy inny wyjatek WYBUCHA (500), bo
+oznacza blad programu, nie zle wejscie: dawne `except (ArchiveError, Exception)` przez wiele kart
 zamienialo `AttributeError` (wolanie nieistniejacej metody serwisu) na 400
 „Blad odczytu archiwum A" — kazde porownanie plikow konczylo sie odmowa, a nikt
 nie widzial dlaczego.
@@ -32,6 +34,7 @@ from domain.archive_diff import (
 )
 from domain.project_archive import (
     ArchiveError,
+    ArchiveProjectNotFoundError,
 )
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
@@ -52,13 +55,25 @@ class FieldChangeResponse(BaseModel):
     old_value: Any = None
     new_value: Any = None
     label_pl: str
+    old_value_pl: Any = Field(
+        default=None,
+        description="Wartość A z odwołaniami do elementów podstawionymi ich nazwami (jeśli są)",
+    )
+    new_value_pl: Any = Field(
+        default=None,
+        description="Wartość B z odwołaniami do elementów podstawionymi ich nazwami (jeśli są)",
+    )
 
 
 class ElementDiffResponse(BaseModel):
     """Roznica na poziomie elementu."""
 
     element_id: str
+    element_name: str | None = Field(
+        default=None, description="Nazwa elementu nadana przez projektanta (jeśli jest)"
+    )
     element_type: str
+    element_type_label_pl: str
     status: str
     field_changes: list[FieldChangeResponse]
 
@@ -67,6 +82,7 @@ class SectionDiffResponse(BaseModel):
     """Roznica na poziomie sekcji."""
 
     section_name: str
+    section_label_pl: str
     status: str
     hash_a: str
     hash_b: str
@@ -119,13 +135,17 @@ def _to_response(result: ArchiveDiffResult) -> ArchiveDiffResponse:
                     old_value=fc.old_value,
                     new_value=fc.new_value,
                     label_pl=fc.label_pl,
+                    old_value_pl=fc.old_value_pl,
+                    new_value_pl=fc.new_value_pl,
                 )
                 for fc in ed.field_changes
             ]
             element_diffs.append(
                 ElementDiffResponse(
                     element_id=ed.element_id,
+                    element_name=ed.element_name,
                     element_type=ed.element_type,
+                    element_type_label_pl=ed.element_type_label_pl,
                     status=ed.status.value,
                     field_changes=field_changes,
                 )
@@ -133,6 +153,7 @@ def _to_response(result: ArchiveDiffResult) -> ArchiveDiffResponse:
         section_diffs.append(
             SectionDiffResponse(
                 section_name=sd.section_name,
+                section_label_pl=sd.section_label_pl,
                 status=sd.status.value,
                 hash_a=sd.hash_a,
                 hash_b=sd.hash_b,
@@ -189,13 +210,13 @@ async def compare_archive_files(
         ArchiveDiffResponse z pelnym wynikiem porownania
     """
     # Walidacja rozszerzen
+    # Wielkość liter bez znaczenia — ten sam predykat co wybór pliku w UI
+    # (`jestPlikiemArchiwum`), inaczej „PROJEKT.ZIP" przechodzi ekran i odbija się tutaj.
     for label, f in [("A", file_a), ("B", file_b)]:
-        if not f.filename or not (f.filename.endswith(".zip") or f.filename.endswith(".mvdp.zip")):
+        if not (f.filename or "").lower().endswith((".zip", ".mvdp.zip")):
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    f"Nieprawidlowe rozszerzenie pliku {label}. " f"Oczekiwano .zip lub .mvdp.zip"
-                ),
+                detail=f"Nieprawidłowe rozszerzenie pliku {label}. Oczekiwano .zip lub .mvdp.zip",
             )
 
     bytes_a = await file_a.read()
@@ -212,16 +233,16 @@ async def compare_archive_files(
             archive_a = ProjectArchiveService.load_archive(bytes_a)
         except ArchiveError as e:
             raise HTTPException(
-                status_code=400,
-                detail=f"Blad odczytu archiwum A: {e}",
+                status_code=422,
+                detail=f"Archiwum A: {e}",
             ) from e
 
         try:
             archive_b = ProjectArchiveService.load_archive(bytes_b)
         except ArchiveError as e:
             raise HTTPException(
-                status_code=400,
-                detail=f"Blad odczytu archiwum B: {e}",
+                status_code=422,
+                detail=f"Archiwum B: {e}",
             ) from e
 
         result = compare_archives(archive_a, archive_b)
@@ -257,18 +278,18 @@ def compare_project_archives(
 
         try:
             archive_a = service.build_archive(project_id_a)
-        except ArchiveError as e:
+        except ArchiveProjectNotFoundError as e:
             raise HTTPException(
                 status_code=404,
-                detail=f"Blad budowania archiwum projektu A: {e}",
+                detail=f"Projekt A: {e}",
             ) from e
 
         try:
             archive_b = service.build_archive(project_id_b)
-        except ArchiveError as e:
+        except ArchiveProjectNotFoundError as e:
             raise HTTPException(
                 status_code=404,
-                detail=f"Blad budowania archiwum projektu B: {e}",
+                detail=f"Projekt B: {e}",
             ) from e
 
     result = compare_archives(archive_a, archive_b)

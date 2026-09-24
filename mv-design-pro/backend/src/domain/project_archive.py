@@ -31,7 +31,11 @@ słownik `network_model`, gdy trzeba skompilować model z danych legacy
 from __future__ import annotations
 
 import hashlib
+import io
 import json
+import zipfile
+import zlib
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
@@ -62,6 +66,10 @@ class ArchiveError(Exception):
     pass
 
 
+class ArchiveProjectNotFoundError(ArchiveError):
+    """Projekt, z którego ma powstać archiwum, nie istnieje (odpowiedź 404, nie 422)."""
+
+
 class ArchiveVersionError(ArchiveError):
     """Błąd wersji schematu archiwum."""
 
@@ -86,9 +94,17 @@ class ArchiveIntegrityError(ArchiveError):
 
 
 class ArchiveStructureError(ArchiveError):
-    """Błąd struktury archiwum (brakujące sekcje)."""
+    """Błąd struktury archiwum — brak albo zły typ sekcji/pola NA KAŻDYM POZIOMIE.
 
-    def __init__(self, message: str) -> None:
+    `sciezka` nazywa miejsce w archiwum (`cases`, `project_meta.name`,
+    `fingerprints.archive_hash`, `deltas[2].status`) — ta sama ścieżka jest w
+    komunikacie, więc projektant widzi, KTÓREGO pola brakuje, a nie surowy
+    `KeyError`. `None` tylko dla błędów, które nie dotyczą jednego pola
+    (np. zły identyfikator formatu całego pliku ma ścieżkę `format_id`).
+    """
+
+    def __init__(self, message: str, sciezka: str | None = None) -> None:
+        self.sciezka = sciezka
         super().__init__(f"Błąd struktury archiwum: {message}")
 
 
@@ -408,80 +424,249 @@ def dict_to_archive(data: dict[str, Any]) -> ProjectArchive:
     sięga po `data["network_model"]` wprost, gdy trzeba skompilować model z
     danych legacy (archiwum 2.x bez `enm.models`).
     """
-    # Walidacja podstawowej struktury — sekcje formatu 3.0.0.
-    required_keys = [
-        "schema_version",
-        "format_id",
-        "project_meta",
-        "cases",
-        "runs",
-        "results",
-        "fingerprints",
-    ]
-    for key in required_keys:
+    # Walidacja struktury NA KAŻDYM POZIOMIE — sekcje formatu 3.0.0 i ich pola.
+    # Każdy brak i każdy zły typ to nazwany `ArchiveStructureError` ze ścieżką
+    # pola (`project_meta.name`, `fingerprints.cases_hash`), nigdy surowy
+    # `KeyError`/`AttributeError` z odwołania `pm["id"]` / `cases.get(...)`.
+    for key in _WYMAGANE_SEKCJE:
         if key not in data:
-            raise ArchiveStructureError(f"Brak wymaganej sekcji: {key}")
+            raise ArchiveStructureError(f"Brak wymaganej sekcji: {key}", sciezka=key)
 
-    # Walidacja format_id
-    if data["format_id"] != ARCHIVE_FORMAT_ID:
-        raise ArchiveStructureError(f"Nieprawidłowy identyfikator formatu: {data['format_id']}")
+    format_id = _tekst(data, "", "format_id")
+    if format_id != ARCHIVE_FORMAT_ID:
+        raise ArchiveStructureError(
+            f"Nieprawidłowy identyfikator formatu: {format_id}", sciezka="format_id"
+        )
 
     # Walidacja wersji (obsługujemy migracje)
-    schema_version = data["schema_version"]
+    schema_version = _tekst(data, "", "schema_version")
     if not _is_compatible_version(schema_version):
         raise ArchiveVersionError(ARCHIVE_SCHEMA_VERSION, schema_version)
 
-    pm = data["project_meta"]
-    cases = data["cases"]
-    runs = data["runs"]
-    interpretations = data.get("interpretations", {"cached": []})
-    issues = data.get("issues", {"snapshot": []})
-    enm = data.get("enm", {"models": []})
-    fp = data["fingerprints"]
+    pm = _sekcja(data, "project_meta")
+    cases = _sekcja(data, "cases")
+    runs = _sekcja(data, "runs")
+    _sekcja(data, "results")
+    interpretations = _sekcja(data, "interpretations", wymagana=False)
+    issues = _sekcja(data, "issues", wymagana=False)
+    enm = _sekcja(data, "enm", wymagana=False)
 
     return ProjectArchive(
         schema_version=schema_version,
-        format_id=data["format_id"],
+        format_id=format_id,
         project_meta=ProjectMeta(
-            id=pm["id"],
-            name=pm["name"],
-            description=pm.get("description"),
-            schema_version=pm["schema_version"],
-            connection_node_id=pm.get("connection_node_id"),
-            sources=pm.get("sources", []),
-            created_at=pm["created_at"],
-            updated_at=pm["updated_at"],
+            id=_tekst(pm, "project_meta", "id"),
+            name=_tekst(pm, "project_meta", "name"),
+            description=_tekst_lub_brak(pm, "project_meta", "description"),
+            schema_version=_tekst(pm, "project_meta", "schema_version"),
+            connection_node_id=_tekst_lub_brak(pm, "project_meta", "connection_node_id"),
+            sources=_lista(pm, "project_meta", "sources"),
+            created_at=_tekst(pm, "project_meta", "created_at"),
+            updated_at=_tekst(pm, "project_meta", "updated_at"),
         ),
         cases=CasesSection(
-            study_cases=cases.get("study_cases", []),
-            operating_cases=cases.get("operating_cases", []),
-            settings=cases.get("settings"),
+            study_cases=_lista(cases, "cases", "study_cases"),
+            operating_cases=_lista(cases, "cases", "operating_cases"),
+            settings=_obiekt_lub_brak(cases, "cases", "settings"),
         ),
         runs=RunsSection(
-            canonical_runs=runs.get("canonical_runs", []),
-            analysis_runs_index=runs.get("analysis_runs_index", []),
+            canonical_runs=_lista(runs, "runs", "canonical_runs"),
+            analysis_runs_index=_lista(runs, "runs", "analysis_runs_index"),
         ),
         results=ResultsSection(),
         interpretations=InterpretationsSection(
-            cached=interpretations.get("cached", []),
+            cached=_lista(interpretations, "interpretations", "cached"),
         ),
         issues=IssuesSection(
-            snapshot=issues.get("snapshot", []),
+            snapshot=_lista(issues, "issues", "snapshot"),
         ),
         enm=EnmSection(
-            models=enm.get("models", []),
+            models=_lista(enm, "enm", "models"),
         ),
-        fingerprints=ArchiveFingerprints(
-            archive_hash=fp["archive_hash"],
-            project_meta_hash=fp["project_meta_hash"],
-            cases_hash=fp["cases_hash"],
-            runs_hash=fp["runs_hash"],
-            results_hash=fp["results_hash"],
-            interpretations_hash=fp.get("interpretations_hash", ""),
-            issues_hash=fp.get("issues_hash", ""),
-            enm_hash=fp.get("enm_hash", ""),
-        ),
+        fingerprints=odciski_ze_slownika(data["fingerprints"], "fingerprints"),
     )
+
+
+# Sekcje, bez których plik nie jest archiwum formatu 3.0.0 (kolejność = kolejność
+# zgłaszania braków). `interpretations`/`issues`/`enm` są opcjonalne: archiwa
+# sprzed tych sekcji ich nie niosą — brak = pusta sekcja, obecność = obiekt.
+_WYMAGANE_SEKCJE: tuple[str, ...] = (
+    "schema_version",
+    "format_id",
+    "project_meta",
+    "cases",
+    "runs",
+    "results",
+    "fingerprints",
+)
+
+# Pola odcisków: WYMAGANE (bez nich nie da się sprawdzić integralności ani
+# porównać archiwów) i opcjonalne (sekcje dodane po formacie 1.x — brak = "").
+_WYMAGANE_ODCISKI: tuple[str, ...] = (
+    "archive_hash",
+    "project_meta_hash",
+    "cases_hash",
+    "runs_hash",
+    "results_hash",
+)
+_OPCJONALNE_ODCISKI: tuple[str, ...] = ("interpretations_hash", "issues_hash", "enm_hash")
+
+
+#: Konstruktor nazwanego błędu struktury: (komunikat, ścieżka pola) -> błąd.
+#: Archiwum projektu zgłasza `ArchiveStructureError`, paczka zmian
+#: `IncrementalStructureError` — walidacja pól jest wspólna.
+FabrykaBleduStruktury = Callable[[str, str], ArchiveError]
+
+
+def _pelna_sciezka(sekcja: str, klucz: str) -> str:
+    return f"{sekcja}.{klucz}" if sekcja else klucz
+
+
+def _sekcja(data: dict[str, Any], klucz: str, *, wymagana: bool = True) -> dict[str, Any]:
+    """Sekcja archiwum jako obiekt; brak sekcji opcjonalnej = pusty obiekt."""
+    if klucz not in data:
+        if wymagana:
+            raise ArchiveStructureError(f"Brak wymaganej sekcji: {klucz}", sciezka=klucz)
+        return {}
+    wartosc = data[klucz]
+    if not isinstance(wartosc, dict):
+        raise ArchiveStructureError(f"Sekcja {klucz} nie jest obiektem", sciezka=klucz)
+    return wartosc
+
+
+def _tekst(
+    sekcja: dict[str, Any],
+    nazwa_sekcji: str,
+    klucz: str,
+    blad: FabrykaBleduStruktury = ArchiveStructureError,
+) -> str:
+    """Wymagane pole tekstowe; brak albo inny typ = nazwany błąd ze ścieżką."""
+    sciezka = _pelna_sciezka(nazwa_sekcji, klucz)
+    if klucz not in sekcja:
+        raise blad(f"Brak wymaganego pola: {sciezka}", sciezka)
+    wartosc = sekcja[klucz]
+    if not isinstance(wartosc, str):
+        raise blad(f"Pole {sciezka} nie jest tekstem", sciezka)
+    return wartosc
+
+
+def _tekst_lub_brak(
+    sekcja: dict[str, Any],
+    nazwa_sekcji: str,
+    klucz: str,
+    blad: FabrykaBleduStruktury = ArchiveStructureError,
+) -> str | None:
+    """Opcjonalne pole tekstowe (brak albo `null` = `None`)."""
+    wartosc = sekcja.get(klucz)
+    if wartosc is None or isinstance(wartosc, str):
+        return wartosc
+    sciezka = _pelna_sciezka(nazwa_sekcji, klucz)
+    raise blad(f"Pole {sciezka} nie jest tekstem", sciezka)
+
+
+def _lista(sekcja: dict[str, Any], nazwa_sekcji: str, klucz: str) -> list[Any]:
+    """Opcjonalna lista (brak = pusta lista, obecna = musi być listą)."""
+    wartosc = sekcja.get(klucz, [])
+    if isinstance(wartosc, list):
+        return wartosc
+    sciezka = _pelna_sciezka(nazwa_sekcji, klucz)
+    raise ArchiveStructureError(f"Pole {sciezka} nie jest listą", sciezka=sciezka)
+
+
+def _obiekt_lub_brak(
+    sekcja: dict[str, Any], nazwa_sekcji: str, klucz: str
+) -> dict[str, Any] | None:
+    """Opcjonalny obiekt (brak albo `null` = `None`)."""
+    wartosc = sekcja.get(klucz)
+    if wartosc is None or isinstance(wartosc, dict):
+        return wartosc
+    sciezka = _pelna_sciezka(nazwa_sekcji, klucz)
+    raise ArchiveStructureError(f"Pole {sciezka} nie jest obiektem", sciezka=sciezka)
+
+
+def odciski_ze_slownika(
+    fp: object,
+    sciezka_sekcji: str,
+    blad: FabrykaBleduStruktury = ArchiveStructureError,
+) -> ArchiveFingerprints:
+    """Odciski archiwum ze słownika — JEDNA walidacja dla archiwum i paczki zmian.
+
+    Te same pola odcisków niesie `project.json` (sekcja `fingerprints`) i paczka
+    zmian (`incremental.json`, sekcja `fingerprints`) — obie drogi odczytu
+    wołają tę funkcję, więc brak pola daje w obu ten sam nazwany błąd ze
+    ścieżką (`fingerprints.cases_hash`), nie surowy `KeyError`.
+    """
+    if not isinstance(fp, dict):
+        raise blad(f"Sekcja {sciezka_sekcji} nie jest obiektem", sciezka_sekcji)
+    wymagane = {klucz: _tekst(fp, sciezka_sekcji, klucz, blad) for klucz in _WYMAGANE_ODCISKI}
+    opcjonalne = {
+        klucz: _tekst_lub_brak(fp, sciezka_sekcji, klucz, blad) or ""
+        for klucz in _OPCJONALNE_ODCISKI
+    }
+    return ArchiveFingerprints(**wymagane, **opcjonalne)
+
+
+# ============================================================================
+# ODCZYT PLIKU ZIP — JEDEN DEKODER dla archiwum projektu i paczki zmian
+# ============================================================================
+
+
+def odczytaj_wpisy_zip(
+    archive_bytes: bytes,
+    plik_glowny: str,
+    *,
+    pliki_opcjonalne: tuple[str, ...] = (),
+    blad: Callable[[str], ArchiveError] = ArchiveError,
+) -> dict[str, bytes]:
+    """Wpisy pliku ZIP (`plik_glowny` + obecne `pliki_opcjonalne`) jako bajty.
+
+    JEDYNE miejsce, w którym niezaufane bajty ZIP są rozpakowywane — archiwum
+    projektu (`project.json` + `manifest.json`, `application/project_archive/
+    service.py::_odczytaj_archiwum_zip`) i paczka zmian (`incremental.json`,
+    `domain/incremental_archive.py::deserialize_incremental`). Inwentarz
+    uszkodzeń, na które odczyt naprawdę trafia, każde jako nazwany błąd PL:
+      * bajty nie są archiwum ZIP / uszkodzony katalog albo CRC — `BadZipFile`;
+      * uszkodzony strumień skompresowany — `zlib.error`, `EOFError` (urwany);
+      * wpis zaszyfrowany (`RuntimeError`) albo nieobsługiwana metoda kompresji
+        (`NotImplementedError`) — zgłaszane przez `ZipFile.read` dla wpisu;
+      * brak wymaganego pliku w archiwum.
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(archive_bytes), "r") as zf:
+            nazwy = zf.namelist()
+            if plik_glowny not in nazwy:
+                raise blad(f"Archiwum nie zawiera pliku {plik_glowny}")
+            return {
+                nazwa: zf.read(nazwa)
+                for nazwa in (plik_glowny, *pliki_opcjonalne)
+                if nazwa in nazwy
+            }
+    except zipfile.BadZipFile as e:
+        raise blad("Nieprawidłowy format archiwum ZIP") from e
+    except (zlib.error, EOFError) as e:
+        raise blad(f"Uszkodzone dane skompresowane w archiwum ZIP: {e}") from e
+    except (RuntimeError, NotImplementedError) as e:
+        raise blad(f"Nie można odczytać wpisu archiwum ZIP: {e}") from e
+
+
+def obiekt_json(
+    bajty: bytes,
+    nazwa_pliku: str,
+    opis_obiektu: str,
+    blad: Callable[[str], ArchiveError] = ArchiveError,
+) -> dict[str, Any]:
+    """Treść pliku JSON z archiwum jako obiekt — tekst UTF-8, poprawny JSON, obiekt."""
+    try:
+        tekst = bajty.decode("utf-8")
+    except UnicodeDecodeError as e:
+        raise blad(f"Plik {nazwa_pliku} nie jest poprawnym tekstem UTF-8") from e
+    try:
+        dane = json.loads(tekst)
+    except json.JSONDecodeError as e:
+        raise blad(f"Błąd parsowania JSON: {e}") from e
+    if not isinstance(dane, dict):
+        raise blad(f"Plik {nazwa_pliku} nie zawiera obiektu {opis_obiektu}")
+    return dane
 
 
 def _is_compatible_version(version: str) -> bool:

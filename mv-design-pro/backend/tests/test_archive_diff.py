@@ -699,7 +699,8 @@ class TestModelSieci:
         }
         raport = format_diff_report_pl(wynik)
         assert "--- Model sieci ---" in raport
-        assert "Napiecie znamionowe [kV]: 15.0 -> 20.0" in raport
+        # Etykieta pola z pełnymi polskimi znakami — ekran porównania pokazuje ją wprost.
+        assert "Napięcie znamionowe [kV]: 15.0 -> 20.0" in raport
 
     def test_ten_sam_model_pod_innymi_przypadkami_to_brak_zmiany_sieci(self):
         """Dwa projekty z ta sama siecia: wpisy pod roznymi przypadkami, hash sekcji
@@ -912,3 +913,142 @@ class TestKazdaZmienionaSekcjaMaRozbicie:
         sd = next(s for s in wynik.section_diffs if s.section_name == sekcja)
         assert sd.status == DiffStatus.MODIFIED
         assert sd.element_diffs, f"sekcja {sekcja} zmieniona bez wskazania elementu"
+
+
+# ============================================================================
+# ODWOŁANIA DO ELEMENTÓW PO NAZWACH (karta ARCHIWUM PROJEKTU, 2026-09-24)
+# ============================================================================
+
+
+def _ciag(ref_id: str, nazwa: str, **pola: object) -> dict:
+    return {"ref_id": ref_id, "name": nazwa, **pola}
+
+
+def _zmiany_pol(sd: SectionDiff, element_id: str) -> dict[str, object]:
+    ed = next(e for e in sd.element_diffs if e.element_id == element_id)
+    return {fc.field_name: fc for fc in ed.field_changes}
+
+
+class TestOdwolaniaPoNazwach:
+    """Wartości pól-odwołań (`*_ref`, listy odwołań, obiekty z odwołaniem) pokazane
+    NAZWAMI elementów — iloczyn cech: {skalar, lista, obiekt w liście} x {element
+    nazwany w obu wersjach, przemianowany między wersjami, bez nazwy, odwołanie
+    wiszące} x {jeden model projektu, modele per przypadek}. Surowe wartości bez
+    zmian (audyt); pole tożsamości nigdy nie jest podstawiane."""
+
+    @staticmethod
+    def _porownaj():
+        szyny_a = [
+            _szyna("b1", 15.0, name="Szyna GPZ"),
+            _szyna("b2", 15.0, name="Szyna stara"),
+            _szyna("b3", 15.0, name=""),
+        ]
+        szyny_b = [
+            _szyna("b1", 15.0, name="Szyna GPZ"),
+            _szyna("b2", 15.0, name="Szyna nowa"),
+            _szyna("b3", 15.0, name=""),
+        ]
+        ciag_a = _ciag(
+            "run-1",
+            "Ciąg 1",
+            from_bus_ref="b1",
+            stations=["b1"],
+            segments=[{"order": 1, "segment_ref": "b1"}],
+        )
+        ciag_b = _ciag(
+            "run-1",
+            "Ciąg 1",
+            from_bus_ref="b2",
+            stations=["b1", "b2", "b3", "wiszace-odwolanie"],
+            segments=[{"order": 1, "segment_ref": "b1"}, {"order": 2, "segment_ref": "b2"}],
+        )
+        a = _make_archive(
+            enm_models=[{"case_id": "sc-1", "snapshot": _model(buses=szyny_a, line_runs=[ciag_a])}]
+        )
+        b = _make_archive(
+            enm_models=[{"case_id": "sc-1", "snapshot": _model(buses=szyny_b, line_runs=[ciag_b])}]
+        )
+        return compare_archives(a, b)
+
+    def test_skalar_przemianowany_element_nazwa_z_wlasnej_wersji(self):
+        pola = _zmiany_pol(_enm(self._porownaj().section_diffs), "run-1")
+        zmiana = pola["from_bus_ref"]
+        assert (zmiana.old_value, zmiana.new_value) == ("b1", "b2")
+        assert (zmiana.old_value_pl, zmiana.new_value_pl) == ("Szyna GPZ", "Szyna nowa")
+
+    def test_lista_bez_nazwy_i_wiszace_odwolanie_zostaja_identyfikatorem(self):
+        pola = _zmiany_pol(_enm(self._porownaj().section_diffs), "run-1")
+        zmiana = pola["stations"]
+        assert zmiana.old_value_pl == ["Szyna GPZ"]
+        assert zmiana.new_value_pl == ["Szyna GPZ", "Szyna nowa", "b3", "wiszace-odwolanie"]
+        assert zmiana.new_value == ["b1", "b2", "b3", "wiszace-odwolanie"]
+
+    def test_obiekty_w_liscie(self):
+        pola = _zmiany_pol(_enm(self._porownaj().section_diffs), "run-1")
+        zmiana = pola["segments"]
+        assert zmiana.old_value_pl == [{"order": 1, "segment_ref": "Szyna GPZ"}]
+        assert zmiana.new_value_pl == [
+            {"order": 1, "segment_ref": "Szyna GPZ"},
+            {"order": 2, "segment_ref": "Szyna nowa"},
+        ]
+
+    def test_wartosc_bez_odwolan_nie_ma_wersji_z_nazwami(self):
+        pola = _zmiany_pol(_enm(self._porownaj().section_diffs), "b2")
+        zmiana = pola["name"]
+        assert (zmiana.old_value, zmiana.new_value) == ("Szyna stara", "Szyna nowa")
+        assert (zmiana.old_value_pl, zmiana.new_value_pl) == (None, None)
+
+    def test_pole_tozsamosci_nie_jest_podstawiane(self):
+        a = _make_archive(
+            enm_models=[{"case_id": "sc-1", "snapshot": _model(buses=[_szyna("b1", 15.0)])}]
+        )
+        b = _make_archive(
+            enm_models=[
+                {
+                    "case_id": "sc-1",
+                    "snapshot": _model(buses=[_szyna("b1", 15.0, id="b1")]),
+                }
+            ]
+        )
+        zmiana = _zmiany_pol(_enm(compare_archives(a, b).section_diffs), "b1")["id"]
+        assert (zmiana.new_value, zmiana.new_value_pl) == ("b1", None)
+
+    def test_modele_per_przypadek_biora_nazwy_z_wlasnego_przypadku(self):
+        def _wpis(case_id: str, nazwa: str, ref: str | None) -> dict:
+            return {
+                "case_id": case_id,
+                "snapshot": _model(
+                    buses=[_szyna("b1", 15.0, name=nazwa)],
+                    line_runs=[_ciag("run-1", "Ciąg", from_bus_ref=ref)],
+                ),
+            }
+
+        a = _make_archive(
+            enm_models=[_wpis("sc-1", "Nazwa sc-1", None), _wpis("sc-2", "Nazwa sc-2", None)]
+        )
+        b = _make_archive(
+            enm_models=[_wpis("sc-1", "Nazwa sc-1", "b1"), _wpis("sc-2", "Nazwa sc-2", "b1")]
+        )
+        sd = _enm(compare_archives(a, b).section_diffs)
+        nowe = {
+            ed.element_type: ed.field_changes[0].new_value_pl
+            for ed in sd.element_diffs
+            if ed.element_id == "run-1"
+        }
+        assert nowe == {
+            "przypadek:sc-1.line_runs": "Nazwa sc-1",
+            "przypadek:sc-2.line_runs": "Nazwa sc-2",
+        }
+
+    def test_raport_tekstowy_nazywa_elementy_i_odwolania(self):
+        raport = format_diff_report_pl(self._porownaj())
+        assert "[ZMODYFIKOWANY] Ciągi linii 'Ciąg 1' (run-1)" in raport
+        assert "Szyna GPZ -> Szyna nowa" in raport
+        assert "[ZMODYFIKOWANY] Szyny 'Szyna nowa' (b2)" in raport
+
+    def test_odpowiedz_serializuje_wartosci_z_nazwami(self):
+        slownik = self._porownaj().to_dict()
+        enm = next(s for s in slownik["section_diffs"] if s["section_name"] == "enm")
+        ciag = next(e for e in enm["element_diffs"] if e["element_id"] == "run-1")
+        pole = next(f for f in ciag["field_changes"] if f["field_name"] == "from_bus_ref")
+        assert (pole["old_value_pl"], pole["new_value_pl"]) == ("Szyna GPZ", "Szyna nowa")

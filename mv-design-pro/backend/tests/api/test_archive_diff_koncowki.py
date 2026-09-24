@@ -8,22 +8,24 @@ archiwów kończyło się HTTP 400 „Blad odczytu archiwum A: ... has no attrib
 a porównanie po `project_id` wybuchało 500. Żaden test nie ćwiczył tych końcówek
 na prawdziwych archiwach — stąd funkcja pozorna przez wiele kart.
 
-ŚCIEŻKA. Router `archive_diff` jest ŚWIADOMIE ODSTAWIONY (nie zamontowany w
-`api/main.py` — `scripts/router_mount_guard.py::SWIADOMIE_ODSTAWIONE`: montować
-wyłącznie z konsumentem UI, którego jeszcze nie ma). Test buduje więc własną
-aplikację FastAPI z TYM SAMYM obiektem `router` pod prefiksem `/api` — kod
-końcówek, serwis, magazyn ENM i baza są prawdziwe; archiwa ZIP powstają przez
-`ProjectArchiveService.export_project` z projektów w bazie z realnym modelem sieci.
+ŚCIEŻKA. Router `archive_diff` jest ZAMONTOWANY w `api/main.py` pod `/api`
+(karta ARCHIWUM PROJEKTU, 2026-09-24 — konsument: okno „Archiwum projektu (ZIP)").
+Test woła APLIKACJĘ PRODUKCYJNĄ (`app_client`), więc montaż jest częścią tego,
+co test sprawdza; kod końcówek, serwis, magazyn ENM i baza są prawdziwe; archiwa
+ZIP powstają przez `ProjectArchiveService.export_project` z projektów w bazie
+z realnym modelem sieci.
 
 ILOCZYN CECH (reguła KLASA, NIE INSTANCJA):
 * źródło archiwum {pliki ZIP, projekty po `project_id`} × różnica {sieć, sieć +
   metadane/przypadki, brak} — wynik zawsze równy `domain.archive_diff` liczonemu
   NIEZALEŻNIE (własne rozpakowanie ZIP w teście, nie przez serwis);
-* rodzaj uszkodzenia archiwum (10 rodzajów) × pozycja {A, B} — zawsze 400 z
-  nazwanym błędem `ArchiveError` i komunikatem PL, nigdy połknięty wyjątek obcy;
+* rodzaj uszkodzenia archiwum (14 rodzajów, w tym brak pola i zły typ na
+  poziomie zagnieżdżonym) × pozycja {A, B} — zawsze 422 z nazwanym błędem
+  `ArchiveError`, komunikatem PL nazywającym archiwum i ścieżką pola, nigdy
+  połknięty wyjątek obcy;
 * ten sam uszkodzony ZIP × wszystkie trzy wejścia serwisu {porównanie, import,
   podgląd} — ten sam komunikat (JEDEN dekoder ZIP, nie trzy kopie);
-* wyjątek spoza `ArchiveError` × obie końcówki — wybucha, nie staje się 400.
+* wyjątek spoza `ArchiveError` × obie końcówki — wybucha, nie staje się 4xx.
 """
 
 from __future__ import annotations
@@ -52,7 +54,7 @@ from domain.project_archive import (  # noqa: E402
     dict_to_archive,
 )
 from enm.klucz_twin import klucz_twin_projektu  # noqa: E402
-from enm.models import Bus  # noqa: E402
+from enm.models import Bus, Load  # noqa: E402
 from enm.store import get_enm, reset_enm_store, set_enm  # noqa: E402
 from infrastructure.persistence.models import ProjectORM, StudyCaseORM  # noqa: E402
 
@@ -79,17 +81,9 @@ def _enm_store_tmp(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def klient(uow_factory):
-    from api.archive_diff import router
-    from api.dependencies import get_uow_factory
-    from fastapi import FastAPI
-    from fastapi.testclient import TestClient
-
-    app = FastAPI()
-    app.include_router(router, prefix="/api")
-    app.dependency_overrides[get_uow_factory] = lambda: uow_factory
-    with TestClient(app) as client:
-        yield client
+def klient(app_client):
+    """Aplikacja produkcyjna (`api.main.app`) — trasa istnieje tylko, jeśli jest zamontowana."""
+    return app_client
 
 
 # ============================================================================
@@ -322,6 +316,24 @@ def test_porownanie_plikow_odrzuca_zle_rozszerzenie(klient, uow_factory) -> None
     assert "rozszerzenie pliku B" in resp.json()["detail"]
 
 
+def test_porownanie_plikow_rozszerzenie_bez_wzgledu_na_wielkosc_liter(klient, uow_factory):
+    """Ten sam predykat co wybór pliku w UI (`jestPlikiemArchiwum` porównuje małe
+    litery): „PROJEKT.MVDP.ZIP" przechodzi ekran, więc musi przejść końcówkę."""
+    projekt = _utworz_projekt(uow_factory, "Projekt", [])
+    archiwum = _eksport(uow_factory, projekt)
+
+    resp = klient.post(
+        URL_PLIKI,
+        files={
+            "file_a": ("PROJEKT.MVDP.ZIP", archiwum, "application/zip"),
+            "file_b": ("Kopia.Zip", archiwum, "application/zip"),
+        },
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["overall_status"] == "IDENTICAL"
+
+
 # ============================================================================
 # PORÓWNANIE PO project_id
 # ============================================================================
@@ -365,12 +377,12 @@ def test_porownanie_projektow_nieistniejacy_projekt_404(klient, uow_factory, poz
 
     assert resp.status_code == 404
     detail = resp.json()["detail"]
-    assert detail.startswith(f"Blad budowania archiwum projektu {pozycja}: ")
+    assert detail.startswith(f"Projekt {pozycja}: ")
     assert f"Projekt o ID {brak} nie istnieje" in detail
 
 
 # ============================================================================
-# ARCHIWA USZKODZONE — jedyny dopuszczalny 400 to nazwany ArchiveError
+# ARCHIWA USZKODZONE — jedyny dopuszczalny 422 to nazwany ArchiveError
 # ============================================================================
 
 
@@ -383,6 +395,13 @@ def _uszkodzone_archiwa(poprawne: bytes) -> dict[str, tuple[bytes, str]]:
         **dane,
         "project_meta": {k: v for k, v in dane["project_meta"].items() if k != "id"},
     }
+    bez_pola_odcisku = {
+        **dane,
+        "fingerprints": {k: v for k, v in dane["fingerprints"].items() if k != "cases_hash"},
+    }
+    zly_typ_pola = {**dane, "project_meta": {**dane["project_meta"], "name": 5}}
+    sekcja_nie_obiekt = {**dane, "cases": []}
+    lista_nie_lista = {**dane, "runs": {**dane["runs"], "canonical_runs": {}}}
     zla_wersja = {**dane, "schema_version": "9.0.0"}
     naruszona = {**dane, "project_meta": {**dane["project_meta"], "name": "Podmieniona nazwa"}}
 
@@ -408,7 +427,26 @@ def _uszkodzone_archiwa(poprawne: bytes) -> dict[str, tuple[bytes, str]]:
             _podmien_project_json(poprawne, bez_sekcji),
             "Brak wymaganej sekcji: cases",
         ),
-        "brak_pola": (_podmien_project_json(poprawne, bez_pola), "'id'"),
+        "brak_pola": (
+            _podmien_project_json(poprawne, bez_pola),
+            "Brak wymaganego pola: project_meta.id",
+        ),
+        "brak_pola_odcisku": (
+            _podmien_project_json(poprawne, bez_pola_odcisku),
+            "Brak wymaganego pola: fingerprints.cases_hash",
+        ),
+        "zly_typ_pola": (
+            _podmien_project_json(poprawne, zly_typ_pola),
+            "Pole project_meta.name nie jest tekstem",
+        ),
+        "sekcja_nie_obiekt": (
+            _podmien_project_json(poprawne, sekcja_nie_obiekt),
+            "Sekcja cases nie jest obiektem",
+        ),
+        "lista_nie_lista": (
+            _podmien_project_json(poprawne, lista_nie_lista),
+            "Pole runs.canonical_runs nie jest listą",
+        ),
         "zla_wersja": (
             _podmien_project_json(poprawne, zla_wersja),
             "Nieobsługiwana wersja schematu archiwum",
@@ -429,6 +467,10 @@ RODZAJE_USZKODZEN = [
     "json_nie_obiekt",
     "brak_sekcji",
     "brak_pola",
+    "brak_pola_odcisku",
+    "zly_typ_pola",
+    "sekcja_nie_obiekt",
+    "lista_nie_lista",
     "zla_wersja",
     "naruszona_integralnosc",
     "uszkodzona_kompresja",
@@ -437,7 +479,7 @@ RODZAJE_USZKODZEN = [
 
 @pytest.mark.parametrize("pozycja", ["A", "B"])
 @pytest.mark.parametrize("rodzaj", RODZAJE_USZKODZEN)
-def test_porownanie_plikow_uszkodzone_archiwum_400(klient, uow_factory, rodzaj, pozycja) -> None:
+def test_porownanie_plikow_uszkodzone_archiwum_422(klient, uow_factory, rodzaj, pozycja) -> None:
     projekt = _utworz_projekt(
         uow_factory, "Projekt", [Bus(ref_id="SN-1", name="Szyna SN", voltage_kv=15.0)]
     )
@@ -447,9 +489,9 @@ def test_porownanie_plikow_uszkodzone_archiwum_400(klient, uow_factory, rodzaj, 
 
     resp = _porownaj_pliki(klient, a, b)
 
-    assert resp.status_code == 400, resp.text
+    assert resp.status_code == 422, resp.text
     detail = resp.json()["detail"]
-    assert detail.startswith(f"Blad odczytu archiwum {pozycja}: "), detail
+    assert detail.startswith(f"Archiwum {pozycja}: "), detail
     assert fragment in detail, detail
     assert "attribute" not in detail, "komunikat obcego wyjątku zamiast nazwanego błędu"
 
@@ -529,7 +571,7 @@ def test_podglad_uszkodzonego_manifestu_nazwany_blad(uow_factory, test_db_sessio
 # ============================================================================
 
 
-def test_porownanie_plikow_obcy_wyjatek_nie_staje_sie_400(klient, uow_factory, monkeypatch):
+def test_porownanie_plikow_obcy_wyjatek_nie_staje_sie_4xx(klient, uow_factory, monkeypatch):
     projekt = _utworz_projekt(uow_factory, "Projekt", [])
     archiwum = _eksport(uow_factory, projekt)
 
@@ -587,3 +629,87 @@ def test_zmiana_statusu_sekcji_sieci_zgodna_z_domena(uow_factory) -> None:
     statusy = {sd.section_name: sd.status for sd in wynik.section_diffs}
     assert statusy["enm"] == DiffStatus.IDENTICAL
     assert statusy["cases"] == DiffStatus.MODIFIED
+
+
+# ============================================================================
+# NAZWY ZAMIAST IDENTYFIKATORÓW (ekran porównania czyta te pola wprost)
+# ============================================================================
+
+
+def test_porownanie_niesie_nazwy_elementow_i_etykiety_pl(klient, uow_factory) -> None:
+    """Element dodany/usunięty/zmieniony niesie nazwę nadaną przez projektanta
+    (dla usuniętego — ze strony A), a rodzaj elementu i sekcja — etykiety PL."""
+    projekt_a = _utworz_projekt(
+        uow_factory,
+        "Projekt A",
+        [
+            Bus(ref_id="SN-1", name="Szyna SN", voltage_kv=15.0),
+            Bus(ref_id="SN-9", name="Szyna usuwana", voltage_kv=15.0),
+        ],
+    )
+    projekt_b = _utworz_projekt(
+        uow_factory,
+        "Projekt B",
+        [
+            Bus(ref_id="SN-1", name="Szyna SN po zmianie", voltage_kv=20.0),
+            Bus(ref_id="NN-2", name="Szyna nN", voltage_kv=0.4),
+        ],
+    )
+
+    resp = klient.post(_url_projekty(projekt_a, projekt_b))
+
+    assert resp.status_code == 200, resp.text
+    enm = _roznice(resp.json(), "enm")
+    assert enm[("buses", "NN-2")]["element_name"] == "Szyna nN"
+    assert enm[("buses", "SN-9")]["element_name"] == "Szyna usuwana"
+    assert enm[("buses", "SN-1")]["element_name"] == "Szyna SN po zmianie"
+    assert {
+        ed["element_type_label_pl"] for ed in enm.values() if ed["element_type"] == "buses"
+    } == {"Szyny"}
+    etykiety = {sd["section_name"]: sd["section_label_pl"] for sd in resp.json()["section_diffs"]}
+    assert etykiety["enm"] == "Model sieci"
+    assert etykiety["project_meta"] == "Metadane projektu"
+
+
+def test_porownanie_pokazuje_odwolania_nazwami_elementow(klient, uow_factory) -> None:
+    """Odbiór przełączony na inną szynę: pole `bus_ref` niesie obok surowego
+    identyfikatora wartość z NAZWAMI szyn (strona A z projektu A, B z projektu B),
+    więc ekran nie pokazuje projektantowi identyfikatorów."""
+    szyny = [
+        Bus(ref_id="SN-1", name="Szyna SN", voltage_kv=15.0),
+        Bus(ref_id="SN-2", name="Szyna rezerwowa", voltage_kv=15.0),
+    ]
+    projekt_a = _utworz_projekt(uow_factory, "Projekt A", szyny)
+    projekt_b = _utworz_projekt(uow_factory, "Projekt B", szyny)
+    for projekt, szyna in ((projekt_a, "SN-1"), (projekt_b, "SN-2")):
+        klucz = klucz_twin_projektu(projekt)
+        model = get_enm(klucz).model_copy(deep=True)
+        model.loads = [Load(ref_id="L-1", name="Odbiór 1", bus_ref=szyna, p_mw=1.0, q_mvar=0.2)]
+        set_enm(klucz, model)
+
+    resp = klient.post(_url_projekty(projekt_a, projekt_b))
+
+    assert resp.status_code == 200, resp.text
+    odbior = _roznice(resp.json(), "enm")[("loads", "L-1")]
+    pole = {fc["field_name"]: fc for fc in odbior["field_changes"]}["bus_ref"]
+    assert (pole["old_value"], pole["new_value"]) == ("SN-1", "SN-2")
+    assert (pole["old_value_pl"], pole["new_value_pl"]) == ("Szyna SN", "Szyna rezerwowa")
+    assert "Szyna SN -> Szyna rezerwowa" in resp.json()["report_pl"]
+
+
+@pytest.mark.parametrize(
+    ("typ", "etykieta"),
+    [
+        ("buses", "Szyny"),
+        ("model", "Parametry modelu sieci"),
+        ("study_cases", "Przypadki obliczeniowe"),
+        ("katalog_projektu.kable", "Katalog projektu › kable"),
+        ("przypadek:c-1.buses", "Szyny (przypadek c-1)"),
+        ("przypadek:c-1", "Parametry modelu sieci (przypadek c-1)"),
+        ("nieznana_kolekcja", "nieznana_kolekcja"),
+    ],
+)
+def test_etykieta_typu_elementu_pl(typ: str, etykieta: str) -> None:
+    from domain.archive_diff import etykieta_typu_elementu_pl
+
+    assert etykieta_typu_elementu_pl(typ) == etykieta

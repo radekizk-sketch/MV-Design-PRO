@@ -147,9 +147,8 @@ async def import_project(
         Wynik importu z informacjami o statusie
     """
     # Walidacja typu pliku
-    if not file.filename or not (
-        file.filename.endswith(".zip") or file.filename.endswith(".mvdp.zip")
-    ):
+    # Wielkość liter bez znaczenia — ten sam predykat co wybór pliku w UI.
+    if not (file.filename or "").lower().endswith((".zip", ".mvdp.zip")):
         return ImportResponse(
             status="FAILED",
             project_id=None,

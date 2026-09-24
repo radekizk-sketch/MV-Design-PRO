@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Any
 
@@ -129,12 +129,22 @@ class DiffStatus(StrEnum):
 
 @dataclass(frozen=True)
 class FieldChange:
-    """Zmiana wartosci pola elementu."""
+    """Zmiana wartosci pola elementu.
+
+    `old_value_pl` / `new_value_pl` — ta sama wartosc z odwolaniami do
+    elementow modelu sieci (`ref_id`) podstawionymi NAZWAMI nadanymi przez
+    projektanta: strona A z nazw archiwum A, strona B z nazw archiwum B
+    (`_z_nazwami_referencji`). `None`, gdy wartosc nie niesie zadnego
+    odwolania z nazwa — wtedy ekran pokazuje wartosc surowa. Surowe
+    `old_value` / `new_value` zostaja bez zmian (audyt).
+    """
 
     field_name: str
     old_value: object
     new_value: object
     label_pl: str
+    old_value_pl: object = None
+    new_value_pl: object = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serializacja do slownika."""
@@ -143,23 +153,39 @@ class FieldChange:
             "old_value": self.old_value,
             "new_value": self.new_value,
             "label_pl": self.label_pl,
+            "old_value_pl": self.old_value_pl,
+            "new_value_pl": self.new_value_pl,
         }
 
 
 @dataclass(frozen=True)
 class ElementDiff:
-    """Roznica na poziomie pojedynczego elementu."""
+    """Roznica na poziomie pojedynczego elementu.
+
+    `element_name` — nazwa elementu nadana przez projektanta (pole `name`
+    elementu po stronie B, a dla elementu usunietego — po stronie A); `None`,
+    gdy element nazwy nie niesie (np. przebieg obliczen, pola proste modelu).
+    Ekran pokazuje nazwe, a identyfikator tylko wtedy, gdy nazwy nie ma.
+    """
 
     element_id: str
     element_type: str
     status: DiffStatus
     field_changes: tuple[FieldChange, ...]
+    element_name: str | None = None
+
+    @property
+    def element_type_label_pl(self) -> str:
+        """Etykieta PL rodzaju elementu (`buses` -> „Szyny")."""
+        return etykieta_typu_elementu_pl(self.element_type)
 
     def to_dict(self) -> dict[str, Any]:
         """Serializacja do slownika."""
         return {
             "element_id": self.element_id,
+            "element_name": self.element_name,
             "element_type": self.element_type,
+            "element_type_label_pl": self.element_type_label_pl,
             "status": self.status.value,
             "field_changes": [fc.to_dict() for fc in self.field_changes],
         }
@@ -178,10 +204,16 @@ class SectionDiff:
     elements_modified: int
     element_diffs: tuple[ElementDiff, ...]
 
+    @property
+    def section_label_pl(self) -> str:
+        """Etykieta PL sekcji archiwum (`enm` -> „Model sieci")."""
+        return _SECTION_LABELS_PL.get(self.section_name, self.section_name)
+
     def to_dict(self) -> dict[str, Any]:
         """Serializacja do slownika."""
         return {
             "section_name": self.section_name,
+            "section_label_pl": self.section_label_pl,
             "status": self.status.value,
             "hash_a": self.hash_a,
             "hash_b": self.hash_b,
@@ -220,35 +252,105 @@ class ArchiveDiffResult:
 # ============================================================================
 
 
+# Etykiety PL pol porownywanych elementow (ekran porownania pokazuje je wprost,
+# wiec pelne polskie znaki). Obejmuja metadane projektu, naglowek modelu sieci
+# i pola elementow modelu (`enm.models`), ktore projektant zmienia: tozsamosc,
+# szyny, galezie (linie/kable), transformatory, zrodla, odbiory, magistrale,
+# ciagi linii, stacje i pola. Pole spoza slownika pokazuje nazwe pola wprost —
+# zero zgadywania znaczenia (przypiete testem `custom_field`).
+_ETYKIETY_POL_PL: dict[str, str] = {
+    # tozsamosc i metadane
+    "id": "Identyfikator",
+    "ref_id": "Identyfikator elementu",
+    "name": "Nazwa",
+    "description": "Opis",
+    "tags": "Znaczniki",
+    "meta": "Metadane",
+    "status": "Status",
+    "type": "Typ",
+    "created_at": "Data utworzenia",
+    "updated_at": "Data aktualizacji",
+    "schema_version": "Wersja schematu",
+    "revision": "Rewizja",
+    "hash_sha256": "Odcisk SHA-256",
+    "enm_version": "Wersja modelu sieci",
+    "defaults": "Wartości domyślne modelu",
+    "connection_conditions": "Warunki przyłączenia",
+    # katalog
+    "catalog_ref": "Referencja katalogowa",
+    "catalog_namespace": "Przestrzeń katalogu",
+    "parameter_source": "Źródło parametrów",
+    "source_mode": "Tryb źródła parametrów",
+    "materialized_params": "Parametry z katalogu",
+    "overrides": "Nadpisania parametrów",
+    # szyny i polaczenia
+    "voltage_kv": "Napięcie znamionowe [kV]",
+    "voltage_level": "Poziom napięcia",
+    "frequency_hz": "Częstotliwość [Hz]",
+    "zone": "Strefa",
+    "nominal_limits": "Granice napięcia",
+    "from_node_id": "Węzeł początkowy",
+    "to_node_id": "Węzeł końcowy",
+    "from_bus_ref": "Szyna początkowa",
+    "to_bus_ref": "Szyna końcowa",
+    "bus_ref": "Szyna przyłączenia",
+    # galezie (linie, kable)
+    "length_km": "Długość [km]",
+    "r_ohm_per_km": "Rezystancja [Ω/km]",
+    "x_ohm_per_km": "Reaktancja [Ω/km]",
+    "b_siemens_per_km": "Susceptancja [S/km]",
+    "r0_ohm_per_km": "Rezystancja zerowa [Ω/km]",
+    "x0_ohm_per_km": "Reaktancja zerowa [Ω/km]",
+    "b0_siemens_per_km": "Susceptancja zerowa [S/km]",
+    "rated_current_a": "Prąd znamionowy [A]",
+    "conductor_material": "Materiał przewodu",
+    "cross_section_mm2": "Przekrój [mm²]",
+    "n_parallel": "Liczba torów równoległych",
+    "rating": "Obciążalność",
+    "insulation": "Izolacja",
+    # transformatory
+    "hv_bus_ref": "Szyna strony górnej",
+    "lv_bus_ref": "Szyna strony dolnej",
+    "sn_mva": "Moc znamionowa [MVA]",
+    "uhv_kv": "Napięcie strony górnej [kV]",
+    "ulv_kv": "Napięcie strony dolnej [kV]",
+    "uk_percent": "Napięcie zwarcia [%]",
+    "pk_kw": "Straty obciążeniowe [kW]",
+    "p0_kw": "Straty jałowe [kW]",
+    "i0_percent": "Prąd jałowy [%]",
+    "vector_group": "Grupa połączeń",
+    "tap_position": "Położenie przełącznika zaczepów",
+    # zrodla, odbiory, generatory
+    "active_power": "Moc czynna",
+    "reactive_power": "Moc bierna",
+    "p_mw": "Moc czynna [MW]",
+    "q_mvar": "Moc bierna [Mvar]",
+    "sk3_mva": "Moc zwarciowa [MVA]",
+    "ik3_ka": "Prąd zwarciowy [kA]",
+    "rx_ratio": "Stosunek R/X",
+    "c_max": "Współczynnik napięciowy c max",
+    "c_min": "Współczynnik napięciowy c min",
+    "model": "Model",
+    "quantity": "Liczba sztuk",
+    # magistrale, ciagi linii, stacje, pola
+    "corridor_type": "Rodzaj magistrali",
+    "ordered_segment_refs": "Kolejność odcinków magistrali",
+    "no_point_ref": "Punkt normalnie otwarty",
+    "segments": "Odcinki ciągu linii",
+    "stations": "Stacje na ciągu linii",
+    "station_type": "Rodzaj stacji",
+    "bus_refs": "Szyny stacji",
+    "transformer_refs": "Transformatory stacji",
+    "bay_role": "Rola pola",
+    "substation_ref": "Stacja",
+    "equipment_refs": "Aparaty pola",
+    "protection_ref": "Zabezpieczenie",
+}
+
+
 def _field_label_pl(field_name: str) -> str:
-    """Etykieta PL dla nazwy pola."""
-    labels: dict[str, str] = {
-        "id": "Identyfikator",
-        "name": "Nazwa",
-        "description": "Opis",
-        "voltage_level": "Poziom napiecia",
-        "active_power": "Moc czynna",
-        "reactive_power": "Moc bierna",
-        "r_ohm_per_km": "Rezystancja [Ohm/km]",
-        "x_ohm_per_km": "Reaktancja [Ohm/km]",
-        "length_km": "Dlugosc [km]",
-        "rated_current_a": "Prad znamionowy [A]",
-        "from_node_id": "Wez.poczatkowy",
-        "to_node_id": "Wez.koncowy",
-        "status": "Status",
-        "type": "Typ",
-        "created_at": "Data utworzenia",
-        "updated_at": "Data aktualizacji",
-        "schema_version": "Wersja schematu",
-        "voltage_kv": "Napiecie znamionowe [kV]",
-        "revision": "Rewizja",
-        "hash_sha256": "Odcisk SHA-256",
-        "ref_id": "Identyfikator elementu",
-        "catalog_ref": "Referencja katalogowa",
-        "from_bus_ref": "Szyna poczatkowa",
-        "to_bus_ref": "Szyna koncowa",
-    }
-    return labels.get(field_name, field_name)
+    """Etykieta PL dla nazwy pola (`_ETYKIETY_POL_PL`; spoza slownika — nazwa wprost)."""
+    return _ETYKIETY_POL_PL.get(field_name, field_name)
 
 
 def _get_section_hash(fingerprints: ArchiveFingerprints, section_name: str) -> str:
@@ -328,6 +430,7 @@ def compare_element_lists(
                     element_type=element_type,
                     status=DiffStatus.REMOVED,
                     field_changes=(),
+                    element_name=_nazwa_elementu(index_a[eid]),
                 )
             )
         elif not in_a and in_b:
@@ -338,6 +441,7 @@ def compare_element_lists(
                     element_type=element_type,
                     status=DiffStatus.ADDED,
                     field_changes=(),
+                    element_name=_nazwa_elementu(index_b[eid]),
                 )
             )
         else:
@@ -352,6 +456,7 @@ def compare_element_lists(
                         element_type=element_type,
                         status=DiffStatus.MODIFIED,
                         field_changes=tuple(field_changes),
+                        element_name=_nazwa_elementu(el_b) or _nazwa_elementu(el_a),
                     )
                 )
 
@@ -385,6 +490,65 @@ def _compare_fields(
             )
 
     return changes
+
+
+def _nazwa_elementu(element: dict[str, Any]) -> str | None:
+    """Nazwa elementu nadana przez projektanta (`name`), jesli jest niepustym tekstem."""
+    nazwa = element.get("name")
+    return nazwa if isinstance(nazwa, str) and nazwa.strip() else None
+
+
+# Etykiety PL rodzajow elementow porownania (`ElementDiff.element_type`):
+# kolekcje modelu sieci (`enm.models.EnergyNetworkModel`), listy sekcji
+# przypadkow i przebiegow (`SECTION_LIST_KEYS`) oraz obiekty porownywane pole
+# po polu (`_SECTION_OBJECT_KEYS`, korzen modelu). Rodzaj spoza slownika
+# (obiekt zagniezdzony nowszego formatu) pokazuje sciezke wprost — zero
+# zgadywania nazwy.
+_ETYKIETY_TYPOW_PL: dict[str, str] = {
+    _ELEMENT_MODELU: "Parametry modelu sieci",
+    "header": "Nagłówek modelu sieci",
+    "buses": "Szyny",
+    "branches": "Gałęzie (linie, kable, łączniki)",
+    "transformers": "Transformatory",
+    "sources": "Źródła zasilania",
+    "loads": "Odbiory",
+    "generators": "Generatory",
+    "shunt_capacitors": "Baterie kondensatorów",
+    "substations": "Stacje",
+    "bays": "Pola rozdzielni",
+    "junctions": "Złącza",
+    "corridors": "Magistrale",
+    "measurements": "Przekładniki pomiarowe",
+    "protection_assignments": "Przypisania zabezpieczeń",
+    "branch_points": "Punkty rozgałęzienia SN",
+    "line_runs": "Ciągi linii",
+    "connection_nodes": "Węzły przyłączeniowe",
+    "katalog_projektu": "Katalog projektu",
+    "project_meta": "Metadane projektu",
+    "study_cases": "Przypadki obliczeniowe",
+    "operating_cases": "Przypadki ruchowe",
+    "settings": "Ustawienia przypadków",
+    "canonical_runs": "Przebiegi obliczeń",
+    "analysis_runs_index": "Indeks przebiegów (historyczny)",
+}
+
+_PRZEDROSTEK_PRZYPADKU = "przypadek:"
+
+
+def etykieta_typu_elementu_pl(element_type: str) -> str:
+    """Etykieta PL rodzaju elementu porownania.
+
+    `buses` -> „Szyny"; sciezka zagniezdzona `katalog_projektu.kable` ->
+    „Katalog projektu › kable" (znane czlony przetlumaczone, nieznane wprost);
+    model przypadku sprzed CV-1-W `przypadek:<id>.buses` -> „Szyny (przypadek <id>)".
+    """
+    przypadek = ""
+    sciezka = element_type
+    if sciezka.startswith(_PRZEDROSTEK_PRZYPADKU):
+        przypadek, _, sciezka = sciezka[len(_PRZEDROSTEK_PRZYPADKU) :].partition(".")
+        sciezka = sciezka or _ELEMENT_MODELU
+    etykieta = " › ".join(_ETYKIETY_TYPOW_PL.get(czlon, czlon) for czlon in sciezka.split("."))
+    return f"{etykieta} (przypadek {przypadek})" if przypadek else etykieta
 
 
 def _pole_tozsamosci(elementy: list[Any]) -> str | None:
@@ -517,14 +681,97 @@ def _roznice_sekcji_enm(
     jeden_a, model_a = _jedyny_model(modele_a)
     jeden_b, model_b = _jedyny_model(modele_b)
     if jeden_a and jeden_b:
-        return _roznice_obiektu(model_a, model_b, "")
+        return _z_nazwami_referencji(
+            _roznice_obiektu(model_a, model_b, ""),
+            _nazwy_elementow_modelu(model_a),
+            _nazwy_elementow_modelu(model_b),
+        )
 
     roznice: list[ElementDiff] = []
     for case_id in sorted(set(modele_a) | set(modele_b)):
         roznice.extend(
-            _roznice_obiektu(modele_a.get(case_id), modele_b.get(case_id), f"przypadek:{case_id}")
+            _z_nazwami_referencji(
+                _roznice_obiektu(
+                    modele_a.get(case_id), modele_b.get(case_id), f"przypadek:{case_id}"
+                ),
+                _nazwy_elementow_modelu(modele_a.get(case_id)),
+                _nazwy_elementow_modelu(modele_b.get(case_id)),
+            )
         )
     return roznice
+
+
+def _nazwy_elementow_modelu(model: object) -> dict[str, str]:
+    """`ref_id` -> nazwa projektanta dla KAZDEGO elementu modelu sieci, ktory ja niesie.
+
+    Przechodzi caly zrzut modelu (kolekcje i obiekty zagniezdzone): element to
+    slownik z tekstowym `ref_id` i niepusta nazwa (`_nazwa_elementu`). Element
+    bez nazwy nie trafia do slownika — jego odwolanie zostaje identyfikatorem
+    (zero zgadywania nazwy).
+    """
+    nazwy: dict[str, str] = {}
+
+    def _odwiedz(wezel: object) -> None:
+        if isinstance(wezel, dict):
+            ref_id = wezel.get("ref_id")
+            nazwa = _nazwa_elementu(wezel)
+            if isinstance(ref_id, str) and nazwa is not None:
+                nazwy[ref_id] = nazwa
+            for wartosc in wezel.values():
+                _odwiedz(wartosc)
+        elif isinstance(wezel, list):
+            for wartosc in wezel:
+                _odwiedz(wartosc)
+
+    _odwiedz(model)
+    return nazwy
+
+
+# Pola tozsamosci samego elementu — ich wartosc JEST identyfikatorem elementu,
+# nie odwolaniem do innego, wiec zostaje surowa.
+_POLA_BEZ_PODSTAWIENIA: frozenset[str] = frozenset(_POLA_TOZSAMOSCI_MODELU)
+
+
+def _podstaw_nazwy(wartosc: object, nazwy: dict[str, str]) -> object:
+    """Wartosc z kazdym tekstem bedacym `ref_id` elementu z nazwa zamienionym na nazwe."""
+    if isinstance(wartosc, str):
+        return nazwy.get(wartosc, wartosc)
+    if isinstance(wartosc, list):
+        return [_podstaw_nazwy(w, nazwy) for w in wartosc]
+    if isinstance(wartosc, dict):
+        return {k: _podstaw_nazwy(w, nazwy) for k, w in wartosc.items()}
+    return wartosc
+
+
+def _z_nazwami_referencji(
+    roznice: list[ElementDiff],
+    nazwy_a: dict[str, str],
+    nazwy_b: dict[str, str],
+) -> list[ElementDiff]:
+    """Uzupelnij zmiany pol o wartosci z nazwami (`FieldChange.old_value_pl/new_value_pl`).
+
+    Strona A bierze nazwy z modelu A, strona B z modelu B — element
+    przemianowany miedzy wersjami jest po kazdej stronie pokazany nazwa, ktora
+    wtedy nosil. Wartosc bez zadnego odwolania z nazwa zostaje `None`.
+    """
+    wynik: list[ElementDiff] = []
+    for roznica in roznice:
+        zmiany: list[FieldChange] = []
+        for zmiana in roznica.field_changes:
+            if zmiana.field_name in _POLA_BEZ_PODSTAWIENIA:
+                zmiany.append(zmiana)
+                continue
+            stara = _podstaw_nazwy(zmiana.old_value, nazwy_a)
+            nowa = _podstaw_nazwy(zmiana.new_value, nazwy_b)
+            zmiany.append(
+                replace(
+                    zmiana,
+                    old_value_pl=stara if stara != zmiana.old_value else None,
+                    new_value_pl=nowa if nowa != zmiana.new_value else None,
+                )
+            )
+        wynik.append(replace(roznica, field_changes=tuple(zmiany)))
+    return wynik
 
 
 def _roznice_elementow_sekcji(
@@ -814,12 +1061,19 @@ def format_diff_report_pl(diff_result: ArchiveDiffResult) -> str:
             lines.append(f"  Zmodyfikowane: {sd.elements_modified}")
 
         for ed in sd.element_diffs:
-            lines.append(f"    [{_status_pl(ed.status)}] " f"{ed.element_type} '{ed.element_id}'")
+            # Etykieta PL rodzaju i nazwa projektanta; identyfikator w nawiasie
+            # (raport jest też zapisem audytowym), sam — gdy elementu nie nazwano.
+            podpis = (
+                f"'{ed.element_name}' ({ed.element_id})"
+                if ed.element_name
+                else f"'{ed.element_id}'"
+            )
+            lines.append(f"    [{_status_pl(ed.status)}] {ed.element_type_label_pl} {podpis}")
             for fc in ed.field_changes:
+                stara = fc.old_value if fc.old_value_pl is None else fc.old_value_pl
+                nowa = fc.new_value if fc.new_value_pl is None else fc.new_value_pl
                 lines.append(
-                    f"      {fc.label_pl}: "
-                    f"{_format_value(fc.old_value)} -> "
-                    f"{_format_value(fc.new_value)}"
+                    f"      {fc.label_pl}: {_format_value(stara)} -> {_format_value(nowa)}"
                 )
         lines.append("")
 

@@ -223,6 +223,53 @@
     "title": "ArcFlashZadanie",
     "type": "object"
    },
+   "ArchiveDiffResponse": {
+    "description": "Pelny wynik porownania archiwow.",
+    "properties": {
+     "archive_hash_a": {
+      "title": "Archive Hash A",
+      "type": "string"
+     },
+     "archive_hash_b": {
+      "title": "Archive Hash B",
+      "type": "string"
+     },
+     "deterministic_signature": {
+      "title": "Deterministic Signature",
+      "type": "string"
+     },
+     "overall_status": {
+      "title": "Overall Status",
+      "type": "string"
+     },
+     "report_pl": {
+      "default": "",
+      "description": "Czytelny raport roznic w jezyku polskim",
+      "title": "Report Pl",
+      "type": "string"
+     },
+     "section_diffs": {
+      "items": {
+       "$ref": "#/components/schemas/SectionDiffResponse"
+      },
+      "title": "Section Diffs",
+      "type": "array"
+     },
+     "summary": {
+      "$ref": "#/components/schemas/DiffSummaryResponse"
+     }
+    },
+    "required": [
+     "archive_hash_a",
+     "archive_hash_b",
+     "overall_status",
+     "section_diffs",
+     "summary",
+     "deterministic_signature"
+    ],
+    "title": "ArchiveDiffResponse",
+    "type": "object"
+   },
    "ArchiveSummary": {
     "description": "Podsumowanie zawartości archiwum.\n\nW1-B-ARCH: model sieci żyje wyłącznie w ENM — archiwum formatu 3.0.0 nie\nniesie już sekcji `network_model`/`sld_diagrams`/`proofs` (tabele ORM,\nktóre je zasilały, skasował W1), więc podsumowanie liczy to, co archiwum\nNAPRAWDĘ niesie: przypadki, biegi kanoniczne, wpisy modelu ENM per\nprzypadek (`enm_models_count`).",
     "properties": {
@@ -813,6 +860,77 @@
      "formula_ref"
     ],
     "title": "BlockTransformerSelectionResponse",
+    "type": "object"
+   },
+   "Body_compare_archive_files_api_archives_diff_post": {
+    "properties": {
+     "file_a": {
+      "description": "Archiwum A (ZIP) — bazowe",
+      "format": "binary",
+      "title": "File A",
+      "type": "string"
+     },
+     "file_b": {
+      "description": "Archiwum B (ZIP) — porownywane",
+      "format": "binary",
+      "title": "File B",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file_a",
+     "file_b"
+    ],
+    "title": "Body_compare_archive_files_api_archives_diff_post",
+    "type": "object"
+   },
+   "Body_export_incremental_api_projects__project_id__export_incremental_post": {
+    "properties": {
+     "base_file": {
+      "description": "Archiwum bazowe (ZIP), które odbiorca już ma",
+      "format": "binary",
+      "title": "Base File",
+      "type": "string"
+     }
+    },
+    "required": [
+     "base_file"
+    ],
+    "title": "Body_export_incremental_api_projects__project_id__export_incremental_post",
+    "type": "object"
+   },
+   "Body_import_incremental_api_projects_import_incremental_post": {
+    "properties": {
+     "base_file": {
+      "description": "Archiwum bazowe (ZIP)",
+      "format": "binary",
+      "title": "Base File",
+      "type": "string"
+     },
+     "delta_file": {
+      "description": "Paczka zmian (ZIP)",
+      "format": "binary",
+      "title": "Delta File",
+      "type": "string"
+     },
+     "new_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Nazwa nowego projektu (opcjonalna)",
+      "title": "New Name"
+     }
+    },
+    "required": [
+     "base_file",
+     "delta_file"
+    ],
+    "title": "Body_import_incremental_api_projects_import_incremental_post",
     "type": "object"
    },
    "Body_import_project_api_projects_import_post": {
@@ -4348,6 +4466,45 @@
     "title": "DeviceWithstandValidationRequest",
     "type": "object"
    },
+   "DiffSummaryResponse": {
+    "description": "Podsumowanie diff-a.",
+    "properties": {
+     "sections_identical": {
+      "title": "Sections Identical",
+      "type": "integer"
+     },
+     "sections_modified": {
+      "title": "Sections Modified",
+      "type": "integer"
+     },
+     "sections_total": {
+      "title": "Sections Total",
+      "type": "integer"
+     },
+     "total_elements_added": {
+      "title": "Total Elements Added",
+      "type": "integer"
+     },
+     "total_elements_modified": {
+      "title": "Total Elements Modified",
+      "type": "integer"
+     },
+     "total_elements_removed": {
+      "title": "Total Elements Removed",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "sections_total",
+     "sections_identical",
+     "sections_modified",
+     "total_elements_added",
+     "total_elements_removed",
+     "total_elements_modified"
+    ],
+    "title": "DiffSummaryResponse",
+    "type": "object"
+   },
    "DokumentStudiumRequest": {
     "description": "Wejście generatora dokumentu studium: identyfikacja + parametry sekwencji.",
     "properties": {
@@ -4695,6 +4852,55 @@
      "odniesienie_pl"
     ],
     "title": "DowodModelu",
+    "type": "object"
+   },
+   "ElementDiffResponse": {
+    "description": "Roznica na poziomie elementu.",
+    "properties": {
+     "element_id": {
+      "title": "Element Id",
+      "type": "string"
+     },
+     "element_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Nazwa elementu nadana przez projektanta (jeśli jest)",
+      "title": "Element Name"
+     },
+     "element_type": {
+      "title": "Element Type",
+      "type": "string"
+     },
+     "element_type_label_pl": {
+      "title": "Element Type Label Pl",
+      "type": "string"
+     },
+     "field_changes": {
+      "items": {
+       "$ref": "#/components/schemas/FieldChangeResponse"
+      },
+      "title": "Field Changes",
+      "type": "array"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "element_id",
+     "element_type",
+     "element_type_label_pl",
+     "status",
+     "field_changes"
+    ],
+    "title": "ElementDiffResponse",
     "type": "object"
    },
    "ElementResultResponse": {
@@ -5356,6 +5562,39 @@
      "formula_ref"
     ],
     "title": "FieldApparatusSelectionResponse",
+    "type": "object"
+   },
+   "FieldChangeResponse": {
+    "description": "Zmiana wartosci pola elementu.",
+    "properties": {
+     "field_name": {
+      "title": "Field Name",
+      "type": "string"
+     },
+     "label_pl": {
+      "title": "Label Pl",
+      "type": "string"
+     },
+     "new_value": {
+      "title": "New Value"
+     },
+     "new_value_pl": {
+      "description": "Wartość B z odwołaniami do elementów podstawionymi ich nazwami (jeśli są)",
+      "title": "New Value Pl"
+     },
+     "old_value": {
+      "title": "Old Value"
+     },
+     "old_value_pl": {
+      "description": "Wartość A z odwołaniami do elementów podstawionymi ich nazwami (jeśli są)",
+      "title": "Old Value Pl"
+     }
+    },
+    "required": [
+     "field_name",
+     "label_pl"
+    ],
+    "title": "FieldChangeResponse",
     "type": "object"
    },
    "FieldConfigRequest": {
@@ -6173,6 +6412,78 @@
      "migrated_from_version"
     ],
     "title": "ImportResponse",
+    "type": "object"
+   },
+   "IncrementalImportResponse": {
+    "description": "Wynik importu paczki zmian — kształt `ImportResponse` importu pełnego\n(ten sam zapis nowego projektu) + liczba nałożonych sekcji.",
+    "properties": {
+     "catalog_mapping_required": {
+      "default": false,
+      "title": "Catalog Mapping Required",
+      "type": "boolean"
+     },
+     "elements_without_catalog": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Elements Without Catalog",
+      "type": "array"
+     },
+     "errors": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Errors",
+      "type": "array"
+     },
+     "migrated_from_version": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Migrated From Version"
+     },
+     "project_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Project Id"
+     },
+     "sections_applied": {
+      "title": "Sections Applied",
+      "type": "integer"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "warnings": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+     }
+    },
+    "required": [
+     "status",
+     "project_id",
+     "warnings",
+     "errors",
+     "migrated_from_version",
+     "sections_applied"
+    ],
+    "title": "IncrementalImportResponse",
     "type": "object"
    },
    "KalibracjaPomiaru": {
@@ -12982,6 +13293,63 @@
     "title": "ScenarioEligibilityResponse",
     "type": "object"
    },
+   "SectionDiffResponse": {
+    "description": "Roznica na poziomie sekcji.",
+    "properties": {
+     "element_diffs": {
+      "items": {
+       "$ref": "#/components/schemas/ElementDiffResponse"
+      },
+      "title": "Element Diffs",
+      "type": "array"
+     },
+     "elements_added": {
+      "title": "Elements Added",
+      "type": "integer"
+     },
+     "elements_modified": {
+      "title": "Elements Modified",
+      "type": "integer"
+     },
+     "elements_removed": {
+      "title": "Elements Removed",
+      "type": "integer"
+     },
+     "hash_a": {
+      "title": "Hash A",
+      "type": "string"
+     },
+     "hash_b": {
+      "title": "Hash B",
+      "type": "string"
+     },
+     "section_label_pl": {
+      "title": "Section Label Pl",
+      "type": "string"
+     },
+     "section_name": {
+      "title": "Section Name",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     }
+    },
+    "required": [
+     "section_name",
+     "section_label_pl",
+     "status",
+     "hash_a",
+     "hash_b",
+     "elements_added",
+     "elements_removed",
+     "elements_modified",
+     "element_diffs"
+    ],
+    "title": "SectionDiffResponse",
+    "type": "object"
+   },
    "SekcjeModeluOdpowiedz": {
     "additionalProperties": false,
     "description": "Osiem sekcji modelu urządzenia (typu albo elementu) z kontekstem danych.",
@@ -18452,6 +18820,102 @@
      }
     },
     "summary": "Get Zaciski Galezi"
+   }
+  },
+  "/api/archives/diff": {
+   "post": {
+    "description": "Porownaj dwa archiwa projektu przeslane jako pliki ZIP.\n\nEndpoint read-only, zero mutacji.\nZwraca pelny diff na poziomie sekcji i elementow\noraz czytelny raport PL.\n\nArgs:\n    file_a: Plik archiwum A (bazowe)\n    file_b: Plik archiwum B (porownywane)\n\nReturns:\n    ArchiveDiffResponse z pelnym wynikiem porownania",
+    "operationId": "compare_archive_files_api_archives_diff_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_compare_archive_files_api_archives_diff_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ArchiveDiffResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Compare Archive Files",
+    "tags": [
+     "archive-diff"
+    ]
+   }
+  },
+  "/api/archives/diff/projects/{project_id_a}/{project_id_b}": {
+   "post": {
+    "description": "Porownaj biezace archiwa dwoch projektow.\n\nPobiera aktualny stan obu projektow, tworzy archiwa\ni wykonuje porownanie.\n\nArgs:\n    project_id_a: ID projektu A (bazowy)\n    project_id_b: ID projektu B (porownywany)\n\nReturns:\n    ArchiveDiffResponse z pelnym wynikiem porownania",
+    "operationId": "compare_project_archives_api_archives_diff_projects__project_id_a___project_id_b__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id_a",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id A",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "project_id_b",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id B",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ArchiveDiffResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Compare Project Archives",
+    "tags": [
+     "archive-diff"
+    ]
    }
   },
   "/api/cases/{case_id}/analysis-eligibility": {
@@ -26485,6 +26949,48 @@
     ]
    }
   },
+  "/api/projects/import/incremental": {
+   "post": {
+    "description": "Nałóż paczkę zmian na archiwum bazowe i zapisz wynik jako nowy projekt.",
+    "operationId": "import_incremental_api_projects_import_incremental_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_import_incremental_api_projects_import_incremental_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IncrementalImportResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Import Incremental",
+    "tags": [
+     "incremental-archive"
+    ]
+   }
+  },
   "/api/projects/import/preview": {
    "post": {
     "description": "Podgląd zawartości archiwum bez importu.\n\nArgs:\n    file: Plik archiwum ZIP\n\nReturns:\n    Podsumowanie zawartości archiwum",
@@ -27174,6 +27680,58 @@
     "summary": "Export Project",
     "tags": [
      "project-archive"
+    ]
+   }
+  },
+  "/api/projects/{project_id}/export/incremental": {
+   "post": {
+    "description": "Paczka zmian projektu względem archiwum bazowego (plik ZIP do pobrania).\n\nNagłówki `X-*` niosą metryki (sekcje zmienione/niezmienione, rozmiary,\noszczędność) — te same, które liczy `compute_export_result`.",
+    "operationId": "export_incremental_api_projects__project_id__export_incremental_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_export_incremental_api_projects__project_id__export_incremental_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Export Incremental",
+    "tags": [
+     "incremental-archive"
     ]
    }
   },

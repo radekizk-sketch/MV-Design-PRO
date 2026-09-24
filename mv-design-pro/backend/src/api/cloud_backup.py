@@ -205,11 +205,6 @@ def backup_project(
             status_code=404,
             detail=f"Błąd eksportu projektu: {exc}",
         )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Błąd wewnętrzny eksportu: {exc}",
-        )
 
     # Oblicz hash
     archive_hash = compute_file_hash(archive_bytes)
@@ -354,18 +349,15 @@ def restore_from_backup(
 
     archive_hash = compute_file_hash(archive_bytes)
 
-    # Importuj archiwum
-    try:
-        with uow_factory() as uow:
-            service = ProjectArchiveService(uow.session)
-            result = service.import_project(
-                archive_bytes=archive_bytes,
-                verify_integrity=True,
-            )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Błąd importu archiwum z kopii zapasowej: {exc}",
+    # Importuj archiwum. `import_project` sam zamienia każdy błąd archiwum na
+    # wynik FAILED z nazwanymi błędami (obsłużony niżej jako 422); wyjątek
+    # spoza archiwum to błąd programu i wybucha (500 z pełnym śladem) — dawne
+    # łapanie wyjątku ogólnego zamieniało go na 500 z samym komunikatem, gubiąc ślad.
+    with uow_factory() as uow:
+        service = ProjectArchiveService(uow.session)
+        result = service.import_project(
+            archive_bytes=archive_bytes,
+            verify_integrity=True,
         )
 
     if result.status.value == "FAILED":

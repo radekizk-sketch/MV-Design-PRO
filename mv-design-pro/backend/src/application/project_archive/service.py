@@ -15,7 +15,6 @@ from __future__ import annotations
 import io
 import json
 import zipfile
-import zlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -26,12 +25,26 @@ from application.twin_key import (
     kolejnosc_promocji,
     migruj_projekt_z_legacy_z_repozytorium,
 )
+from domain.incremental_archive import (
+    IncrementalArchive,
+    IncrementalArchiveError,
+    IncrementalExportResult,
+    IncrementalStructureError,
+    SectionChangeStatus,
+    apply_incremental_archive,
+    build_incremental_archive,
+    compute_export_result,
+    deserialize_incremental,
+    serialize_incremental,
+)
 from domain.project_archive import (
     ARCHIVE_FORMAT_ID,
     ARCHIVE_SCHEMA_VERSION,
     ArchiveError,
     ArchiveImportResult,
     ArchiveImportStatus,
+    ArchiveProjectNotFoundError,
+    ArchiveStructureError,
     CasesSection,
     EnmSection,
     InterpretationsSection,
@@ -43,6 +56,8 @@ from domain.project_archive import (
     archive_to_dict,
     compute_archive_fingerprints,
     dict_to_archive,
+    obiekt_json,
+    odczytaj_wpisy_zip,
     verify_archive_integrity,
 )
 from enm.canonical_analysis import odtworz_bieg_z_archiwum
@@ -103,11 +118,11 @@ class ProjectArchiveService:
         projektów i porównanie ich plików ZIP opisują TO SAMO archiwum.
 
         Raises:
-            ArchiveError: gdy projekt nie istnieje
+            ArchiveProjectNotFoundError: gdy projekt nie istnieje
         """
         project = self._session.get(ProjectORM, project_id)
         if project is None:
-            raise ArchiveError(f"Projekt o ID {project_id} nie istnieje")
+            raise ArchiveProjectNotFoundError(f"Projekt o ID {project_id} nie istnieje")
         return self._collect_project_data(project)
 
     def export_project(self, project_id: UUID) -> bytes:
@@ -123,32 +138,7 @@ class ProjectArchiveService:
         Raises:
             ArchiveError: gdy projekt nie istnieje lub eksport się nie powiódł
         """
-        archive = self.build_archive(project_id)
-
-        # Konwertuj do JSON
-        archive_dict = archive_to_dict(archive)
-        archive_json = json.dumps(
-            archive_dict, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-        )
-
-        # Utwórz ZIP
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr("project.json", archive_json)
-            # Dodaj manifest
-            manifest = {
-                "format_id": ARCHIVE_FORMAT_ID,
-                "schema_version": ARCHIVE_SCHEMA_VERSION,
-                "project_name": archive.project_meta.name,
-                "exported_at": datetime.now(UTC).isoformat(),
-                "archive_hash": archive.fingerprints.archive_hash,
-            }
-            zf.writestr(
-                "manifest.json",
-                json.dumps(manifest, sort_keys=True, indent=2, ensure_ascii=False),
-            )
-
-        return zip_buffer.getvalue()
+        return _spakuj_archiwum(self.build_archive(project_id))
 
     def _collect_project_data(self, project: ProjectORM) -> ProjectArchive:
         """Zbierz wszystkie dane projektu.
@@ -496,49 +486,7 @@ class ProjectArchiveService:
                         errors=integrity_errors,
                     )
 
-            # Sprawdź wersję (dla ostrzeżeń o migracji)
-            migrated_from = None
-            if archive.schema_version != ARCHIVE_SCHEMA_VERSION:
-                migrated_from = archive.schema_version
-                warnings.append(
-                    f"Zmigrowano z wersji {archive.schema_version} do {ARCHIVE_SCHEMA_VERSION}"
-                )
-
-            # Zapisz do bazy danych (dopisuje ostrzeżenia — np. model 2.x nie do
-            # odtworzenia, W1-B-ARCH §0.2 — nigdy cicho).
-            project_id = self._restore_project(archive, archive_dict, new_project_name, warnings)
-
-            # Bramka katalogowa po imporcie — sprawdz elementy modelu ENM (jedynego
-            # nośnika sieci, W1-B-ARCH §0.4) bez catalog_ref. Model może nie istnieć
-            # (import bez sieci, albo model 2.x nie odtworzony — ostrzeżenie już
-            # wyżej) — wtedy bramka jest pusta, nie błędna.
-            klucz_projektu = migruj_projekt_z_legacy_z_repozytorium(
-                project_id, CaseRepository(self._session)
-            ).klucz_projektu
-            model_projektu = get_enm(klucz_projektu) if has_enm(klucz_projektu) else None
-            elements_no_catalog = _find_elements_without_catalog(model_projektu)
-            catalog_mapping_needed = len(elements_no_catalog) > 0
-
-            if catalog_mapping_needed:
-                warnings.append(
-                    f"Import wymaga mapowania katalogowego: "
-                    f"{len(elements_no_catalog)} element(ów) bez katalogu"
-                )
-
-            final_status = (
-                ArchiveImportStatus.CATALOG_MAPPING_REQUIRED
-                if catalog_mapping_needed
-                else ArchiveImportStatus.SUCCESS
-            )
-
-            return ArchiveImportResult(
-                status=final_status,
-                project_id=str(project_id),
-                warnings=warnings,
-                migrated_from_version=migrated_from,
-                elements_without_catalog=elements_no_catalog,
-                catalog_mapping_required=catalog_mapping_needed,
-            )
+            return self._przywroc_archiwum(archive, archive_dict, new_project_name, warnings)
 
         except ArchiveError as e:
             # Błędy dekodowania ZIP/JSON przychodzą tu już jako nazwany
@@ -548,6 +496,63 @@ class ProjectArchiveService:
                 project_id=None,
                 errors=[str(e)],
             )
+
+    def _przywroc_archiwum(
+        self,
+        archive: ProjectArchive,
+        archive_dict: dict[str, Any],
+        new_project_name: str | None,
+        warnings: list[str],
+    ) -> ArchiveImportResult:
+        """Zapisz zdekodowane (i sprawdzone) archiwum jako NOWY projekt.
+
+        Wspólny koniec importu pełnego (`import_project`) i przyrostowego
+        (`import_incremental`) — ta sama migracja, odtworzenie i bramka
+        katalogowa, bez drugiej kopii tej drogi.
+        """
+        # Sprawdź wersję (dla ostrzeżeń o migracji)
+        migrated_from = None
+        if archive.schema_version != ARCHIVE_SCHEMA_VERSION:
+            migrated_from = archive.schema_version
+            warnings.append(
+                f"Zmigrowano z wersji {archive.schema_version} do {ARCHIVE_SCHEMA_VERSION}"
+            )
+
+        # Zapisz do bazy danych (dopisuje ostrzeżenia — np. model 2.x nie do
+        # odtworzenia, W1-B-ARCH §0.2 — nigdy cicho).
+        project_id = self._restore_project(archive, archive_dict, new_project_name, warnings)
+
+        # Bramka katalogowa po imporcie — sprawdz elementy modelu ENM (jedynego
+        # nośnika sieci, W1-B-ARCH §0.4) bez catalog_ref. Model może nie istnieć
+        # (import bez sieci, albo model 2.x nie odtworzony — ostrzeżenie już
+        # wyżej) — wtedy bramka jest pusta, nie błędna.
+        klucz_projektu = migruj_projekt_z_legacy_z_repozytorium(
+            project_id, CaseRepository(self._session)
+        ).klucz_projektu
+        model_projektu = get_enm(klucz_projektu) if has_enm(klucz_projektu) else None
+        elements_no_catalog = _find_elements_without_catalog(model_projektu)
+        catalog_mapping_needed = len(elements_no_catalog) > 0
+
+        if catalog_mapping_needed:
+            warnings.append(
+                f"Import wymaga mapowania katalogowego: "
+                f"{len(elements_no_catalog)} element(ów) bez katalogu"
+            )
+
+        final_status = (
+            ArchiveImportStatus.CATALOG_MAPPING_REQUIRED
+            if catalog_mapping_needed
+            else ArchiveImportStatus.SUCCESS
+        )
+
+        return ArchiveImportResult(
+            status=final_status,
+            project_id=str(project_id),
+            warnings=warnings,
+            migrated_from_version=migrated_from,
+            elements_without_catalog=elements_no_catalog,
+            catalog_mapping_required=catalog_mapping_needed,
+        )
 
     def _restore_project(
         self,
@@ -916,13 +921,136 @@ class ProjectArchiveService:
             ArchiveError: archiwum nieczytelne, niezgodne ze schematem albo
                 naruszające własne odciski (komunikat PL)
         """
-        odczyt = _odczytaj_archiwum_zip(archive_bytes)
-        bledy_integralnosci = verify_archive_integrity(odczyt.surowy)
+        return _odczytaj_zweryfikowane(archive_bytes).archiwum
+
+    # ========================================================================
+    # PACZKA ZMIAN (eksport i import przyrostowy)
+    # ========================================================================
+
+    def export_incremental(self, project_id: UUID, base_archive_bytes: bytes) -> EksportPrzyrostowy:
+        """Paczka zmian otwartego projektu względem WSKAZANEGO archiwum bazowego.
+
+        Baza to plik archiwum (ZIP), który odbiorca już ma — nie stan w pamięci
+        procesu: paczka jest odtwarzalna po restarcie serwera, dwa równoległe
+        eksporty nie dzielą żadnego stanu, a ta sama baza i ten sam projekt dają
+        tę samą paczkę (poza datą w manifeście bazy, przepisaną wprost).
+
+        Raises:
+            ArchiveProjectNotFoundError: projekt nie istnieje
+            ArchiveError: archiwum bazowe nieczytelne, niezgodne ze schematem
+                albo naruszające własne odciski
+        """
+        biezace = self.build_archive(project_id)
+        baza = _odczytaj_zweryfikowane(base_archive_bytes)
+        paczka = build_incremental_archive(
+            baza.archiwum.fingerprints,
+            biezace,
+            # Data paczki bazowej z jej manifestu; brak manifestu = pusta
+            # (nieznana), nie „teraz" — zero fabrykacji daty.
+            base_timestamp=_data_eksportu_z_manifestu(baza.manifest) or "",
+        )
+        bajty_paczki = serialize_incremental(paczka)
+        wynik = compute_export_result(biezace, paczka, _spakuj_archiwum(biezace), bajty_paczki)
+        return EksportPrzyrostowy(bajty=bajty_paczki, paczka=paczka, wynik=wynik)
+
+    def import_incremental(
+        self,
+        base_archive_bytes: bytes,
+        delta_bytes: bytes,
+        new_project_name: str | None = None,
+    ) -> ImportPrzyrostowy:
+        """Nałóż paczkę zmian na archiwum bazowe i zapisz wynik jako NOWY projekt.
+
+        Ta sama droga zapisu co import pełny (`_przywroc_archiwum`): otwarty
+        projekt zostaje nietknięty. Archiwum odtworzone z paczki przechodzi
+        weryfikację integralności wobec odcisków niesionych przez paczkę —
+        paczka, której dane nie zgadzają się z jej własnymi odciskami, nie
+        staje się projektem.
+
+        Raises:
+            ArchiveError: archiwum bazowe nieczytelne / niezgodne ze schematem /
+                naruszające odciski
+            IncrementalArchiveError: paczka nieczytelna / niezgodna ze schematem,
+                albo archiwum odtworzone z niej narusza jej własne odciski
+            BaseHashMismatchError: paczka powstała względem innego archiwum
+        """
+        baza = _odczytaj_zweryfikowane(base_archive_bytes)
+        paczka = deserialize_incremental(delta_bytes)
+        try:
+            odtworzone = apply_incremental_archive(baza.archiwum, paczka)
+        except ArchiveStructureError as e:
+            # Dane sekcji niesione przez PACZKĘ nie tworzą poprawnego archiwum
+            # (np. `project_meta` bez nazwy) — błąd paczki, nie archiwum bazowego
+            # (to przeszło walidację wyżej). Ta sama ścieżka pola.
+            raise IncrementalStructureError(
+                f"dane sekcji niezgodne ze schematem archiwum — {e}", e.sciezka
+            ) from e
+        surowy = archive_to_dict(odtworzone)
+        bledy_integralnosci = verify_archive_integrity(surowy)
         if bledy_integralnosci:
-            raise ArchiveError(
-                "Archiwum nie przeszło weryfikacji integralności: " + "; ".join(bledy_integralnosci)
+            raise IncrementalArchiveError(
+                "Archiwum odtworzone z paczki zmian nie przeszło weryfikacji integralności: "
+                + "; ".join(bledy_integralnosci)
             )
-        return odczyt.archiwum
+        wynik = self._przywroc_archiwum(odtworzone, surowy, new_project_name, [])
+        zastosowane = sum(1 for d in paczka.deltas if d.status != SectionChangeStatus.UNCHANGED)
+        return ImportPrzyrostowy(wynik=wynik, sekcje_zastosowane=zastosowane)
+
+
+@dataclass(frozen=True)
+class EksportPrzyrostowy:
+    """Wynik eksportu paczki zmian: bajty ZIP + paczka + metryki."""
+
+    bajty: bytes
+    paczka: IncrementalArchive
+    wynik: IncrementalExportResult
+
+
+@dataclass(frozen=True)
+class ImportPrzyrostowy:
+    """Wynik importu paczki zmian: wynik zapisu nowego projektu + liczba sekcji."""
+
+    wynik: ArchiveImportResult
+    sekcje_zastosowane: int
+
+
+def _spakuj_archiwum(archive: ProjectArchive) -> bytes:
+    """Archiwum -> plik ZIP (`project.json` + `manifest.json`) — jedyny pakujący."""
+    archive_dict = archive_to_dict(archive)
+    archive_json = json.dumps(
+        archive_dict, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("project.json", archive_json)
+        manifest = {
+            "format_id": ARCHIVE_FORMAT_ID,
+            "schema_version": ARCHIVE_SCHEMA_VERSION,
+            "project_name": archive.project_meta.name,
+            "exported_at": datetime.now(UTC).isoformat(),
+            "archive_hash": archive.fingerprints.archive_hash,
+        }
+        zf.writestr(
+            "manifest.json",
+            json.dumps(manifest, sort_keys=True, indent=2, ensure_ascii=False),
+        )
+    return zip_buffer.getvalue()
+
+
+def _odczytaj_zweryfikowane(archive_bytes: bytes) -> _OdczytaneArchiwum:
+    """Dekodowanie (`_odczytaj_archiwum_zip`) + OBOWIĄZKOWA weryfikacja integralności.
+
+    Wspólne dla porównania i obu stron paczki zmian: każda z tych dróg
+    rozstrzyga po odciskach zapisanych W archiwum, więc archiwum, którego
+    treść nie zgadza się z własnymi odciskami, dałoby wynik fałszywy.
+    """
+    odczyt = _odczytaj_archiwum_zip(archive_bytes)
+    bledy_integralnosci = verify_archive_integrity(odczyt.surowy)
+    if bledy_integralnosci:
+        raise ArchiveError(
+            "Archiwum nie przeszło weryfikacji integralności: " + "; ".join(bledy_integralnosci)
+        )
+    return odczyt
 
 
 @dataclass(frozen=True)
@@ -935,57 +1063,29 @@ class _OdczytaneArchiwum:
 
 
 def _odczytaj_archiwum_zip(archive_bytes: bytes) -> _OdczytaneArchiwum:
-    """JEDYNY dekoder pliku ZIP archiwum projektu — import, podgląd i porównanie.
+    """JEDYNY dekoder pliku ZIP archiwum projektu — import, podgląd, porównanie
+    i archiwum bazowe paczki zmian (eksport/import przyrostowy).
 
-    Każde uszkodzenie pliku zamienia na nazwany `ArchiveError` z komunikatem PL
-    (wołający odpowiada nazwanym błędem, nigdy połkniętym wyjątkiem ogólnym).
-    Inwentarz uszkodzeń, na które odczyt niezaufanych bajtów ZIP naprawdę
-    trafia (każde przypięte testem w `tests/api/test_archive_diff_koncowki.py`):
-      * bajty nie są archiwum ZIP / uszkodzony katalog albo CRC — `BadZipFile`;
-      * uszkodzony strumień skompresowany — `zlib.error`, `EOFError` (urwany);
-      * wpis zaszyfrowany (`RuntimeError`) albo nieobsługiwana metoda kompresji
-        (`NotImplementedError`) — zgłaszane przez `ZipFile.read` dla wpisu;
-      * brak `project.json`; `project.json` nie w UTF-8; niepoprawny JSON;
-        JSON, który nie jest obiektem;
-      * obiekt bez wymaganej sekcji / w złej wersji — `dict_to_archive` sam
-        zgłasza `ArchiveStructureError` / `ArchiveVersionError`;
-      * sekcja bez wymaganego POLA albo złego typu — `dict_to_archive` czyta
-        pola wprost (`pm["id"]`, `cases.get(...)`), więc zgłasza `KeyError` /
-        `TypeError` / `AttributeError`. Tłumaczenie obejmuje WYŁĄCZNIE wywołanie
-        tego czystego odwzorowania słownika na dataclassy (zero innej logiki
-        pod spodem), więc te trzy typy znaczą tu zawsze „archiwum niezgodne ze
-        schematem", nie błąd programu.
+    Każde uszkodzenie pliku jest nazwanym `ArchiveError` z komunikatem PL
+    (wołający odpowiada nazwanym błędem, nigdy połkniętym wyjątkiem ogólnym):
+      * uszkodzenia samego ZIP — `domain.project_archive.odczytaj_wpisy_zip`
+        (wspólny z paczką zmian);
+      * `project.json` nie w UTF-8 / niepoprawny JSON / nie obiekt —
+        `domain.project_archive.obiekt_json`;
+      * brak sekcji, brak POLA na dowolnym poziomie, zły typ, zła wersja —
+        `dict_to_archive` sam zgłasza `ArchiveStructureError` (ze ścieżką pola)
+        albo `ArchiveVersionError`. Dawne tłumaczenie `KeyError`/`TypeError`/
+        `AttributeError` na „brak albo zły typ pola" zniknęło: maskowało każdy
+        błąd programu w odwzorowaniu jako „archiwum niezgodne ze schematem".
+    Każde z tych uszkodzeń przypina test w `tests/api/test_archive_diff_koncowki.py`.
     """
-    try:
-        with zipfile.ZipFile(io.BytesIO(archive_bytes), "r") as zf:
-            nazwy = zf.namelist()
-            if "project.json" not in nazwy:
-                raise ArchiveError("Archiwum nie zawiera pliku project.json")
-            project_json_bytes = zf.read("project.json")
-            manifest = zf.read("manifest.json") if "manifest.json" in nazwy else None
-    except zipfile.BadZipFile as e:
-        raise ArchiveError("Nieprawidłowy format archiwum ZIP") from e
-    except (zlib.error, EOFError) as e:
-        raise ArchiveError(f"Uszkodzone dane skompresowane w archiwum ZIP: {e}") from e
-    except (RuntimeError, NotImplementedError) as e:
-        raise ArchiveError(f"Nie można odczytać wpisu archiwum ZIP: {e}") from e
-
-    try:
-        project_json = project_json_bytes.decode("utf-8")
-    except UnicodeDecodeError as e:
-        raise ArchiveError("Plik project.json nie jest poprawnym tekstem UTF-8") from e
-    try:
-        surowy = json.loads(project_json)
-    except json.JSONDecodeError as e:
-        raise ArchiveError(f"Błąd parsowania JSON: {e}") from e
-    if not isinstance(surowy, dict):
-        raise ArchiveError("Plik project.json nie zawiera obiektu archiwum")
-
-    try:
-        archiwum = dict_to_archive(surowy)
-    except (KeyError, TypeError, AttributeError) as e:
-        raise ArchiveError(f"Archiwum niezgodne ze schematem — brak albo zły typ pola: {e}") from e
-    return _OdczytaneArchiwum(surowy=surowy, archiwum=archiwum, manifest=manifest)
+    wpisy = odczytaj_wpisy_zip(archive_bytes, "project.json", pliki_opcjonalne=("manifest.json",))
+    surowy = obiekt_json(wpisy["project.json"], "project.json", "archiwum")
+    return _OdczytaneArchiwum(
+        surowy=surowy,
+        archiwum=dict_to_archive(surowy),
+        manifest=wpisy.get("manifest.json"),
+    )
 
 
 def _data_eksportu_z_manifestu(manifest: bytes | None) -> str | None:
