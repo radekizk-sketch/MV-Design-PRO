@@ -2220,6 +2220,87 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         ("buildSnapshotFieldReadModel", "fieldReadModelRichness"),
         "135",
     ),
+    # --- AB-1a Pakiet 0 (2026-09-24): werdykty fabrykowane (FRT, tor T1, SSCI, LoM, werdykt
+    # projektowy, stabilność) skasowane — ocena niewykonana z nazwanym powodem zamiast nich ---
+    *_be_def(
+        "application/automation/trace.py",
+        "AutomationTraceEvent AutomationTrace build_automation_trace",
+        "P0",
+    ),
+    *_be_def(
+        "application/stability/dynamic_stability.py",
+        "DynamicStabilityThresholds DynamicStabilityResult evaluate_fault_clear_dynamic_stability "
+        "KRYTERIA_PROWENIENCJA_PL",
+        "P0",
+    ),
+    *_be_def(
+        "application/stability/dynamic_stability.py",
+        "_KRYTERIA_ETYKIETY_PL _normalize_margin _normalize_floor",
+        "P0",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "analysis/ssci_stability/models.py",
+        "VERDICT_STABLE VERDICT_RISK VERDICT_UNSTABLE DEFAULT_PM_RISK_DEG DEFAULT_PM_UNSTABLE_DEG",
+        "P0",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "application/analyses/frt_trajektorie.py",
+        "_verdict_pl _WERDYKT_W_OBWIEDNI _WERDYKT_POZA_OBWIEDNIA _WERDYKT_MODUL_WYPADL",
+        "P0",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "application/analyses/frt_sekwencja.py",
+        "_werdykt_sekwencji_pl _WERDYKT_SEKWENCJA_W_OBWIEDNI",
+        "P0",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "application/analyses/ochrona_lom.py",
+        "_field_status _overall_status _SEVERITY_RANK",
+        "P0",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "application/analyses/werdykt_projektowy.py",
+        "_stan_z_licznikow _WYNIK_Z_STATUSU",
+        "P0",
+        zasieg="plik",
+    ),
+    *_be_def(
+        "enm/canonical_analysis.py",
+        "_progi_oceny_stabilnosci_z_opcji",
+        "P0",
+        zasieg="plik",
+    ),
+    *_fe_def(
+        "ui2/oze/frt/frtModel.ts",
+        "werdyktCalosciFrt WerdyktCalosciFrt IstotnoscFrt RANGA_WERDYKTU WERDYKT_CALOSCI",
+        "P0",
+    ),
+    *_fe_def(
+        "ui2/oze/frt/sekwencjaModel.ts",
+        "werdyktSekwencji WerdyktSekwencji IstotnoscSekwencji SEKW_W_OBWIEDNI",
+        "P0",
+    ),
+    *_fe_def("ui2/oze/lom/strings.ts", "STATUS_LOM_PL statusLomPL", "P0"),
+    *_fe_def("ui2/wyniki/ssci/EkranSsci.tsx", "ChipWerdyktu", "P0"),
+    *_fe_def("ui2/wyniki/ssci/api.ts", "WerdyktKod", "P0"),
+    *_fe_def(
+        "ui2/wyniki/ssci/model.ts",
+        "istotnoscWerdyktu etykietaWerdyktu",
+        "P0",
+        zasieg="plik",
+    ),
+    *_fe_def(
+        "ui2/wyniki/stabilnosc/model.ts",
+        "werdyktStabilnosciPL naruszoneKryteriaPL naKryteriaOcenyProgowej KryteriumOcenyProgowej "
+        "elementWerdyktuStabilnosci",
+        "P0",
+    ),
+    *_fe_def("ui2/wyniki/stabilnosc/strings.ts", "KRYTERIUM_PL kryteriumPL", "P0"),
 )
 
 _PY_DEF_TYPES = (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
@@ -2265,6 +2346,7 @@ KARTY_WPISOW_SPOZA_INWENTARZA: dict[str, str] = {
     "1B1A": "AB-1b.1a",
     "H0": "AB-H0 (O-53)",
     "135": "karta #135",
+    "P0": "AB-1a Pakiet 0",
 }
 
 

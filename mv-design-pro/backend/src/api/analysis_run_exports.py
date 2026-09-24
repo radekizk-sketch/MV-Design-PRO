@@ -494,7 +494,7 @@ def build_analysis_run_export_payload(run: CanonicalRun) -> dict[str, Any]:
 
 
 def build_analysis_run_trace_export_payload(run: CanonicalRun) -> dict[str, Any]:
-    trace_payload = canonicalize_json(build_extended_trace_response(run))
+    trace_payload: dict[str, Any] = canonicalize_json(build_extended_trace_response(run))
     if not trace_payload.get("white_box_trace"):
         raise ValueError("Ślad obliczeniowy niedostępny dla tego obliczenia.")
     short_circuit_currents = _build_short_circuit_proof_currents(run)
@@ -1212,10 +1212,14 @@ def export_run_report_docx_response(
                         " | ".join(
                             [
                                 str(row_data.get("source_id") or "—"),
-                                f"Status={row_data.get('status') or '—'}",
+                                f"Status oceny={row_data.get('status') or '—'}",
                                 f"t_wyl={row_data.get('clearing_time_ms') or '—'} ms",
-                                f"Margines={row_data.get('clearing_margin_ms') or '—'} ms",
-                                f"Indeks={row_data.get('stability_index') or '—'}",
+                                str(
+                                    ((row_data.get("ocena") or {}).get("wyjasnienie") or {}).get(
+                                        "zdanie_pl"
+                                    )
+                                    or "—"
+                                ),
                             ]
                         )
                     )
@@ -1394,7 +1398,7 @@ def export_run_report_pdf_response(
                     "rows", []
                 )[: limits["rows"]]:
                     draw_line(
-                        f"{row_data.get('source_id')}: status={row_data.get('status') or '—'}, t_wyl={row_data.get('clearing_time_ms') or '—'} ms, indeks={row_data.get('stability_index') or '—'}"
+                        f"{row_data.get('source_id')}: status oceny={row_data.get('status') or '—'}, t_wyl={row_data.get('clearing_time_ms') or '—'} ms — {((row_data.get('ocena') or {}).get('wyjasnienie') or {}).get('zdanie_pl') or '—'}"
                     )
             elif table.get("table_id") == "automation_trace":
                 for row_data in (results_section.get("automation_trace", {}) or {}).get("rows", [])[

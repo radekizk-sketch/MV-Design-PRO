@@ -3,8 +3,9 @@
  * mapowanie, zero fizyki i zero ocen własnych.
  *
  * Pilnuje tego, czego nie wolno zgubić w prezentacji:
- * 1. trzy wyniki oceny elementu mają WŁASNE, rozróżnialne etykiety i klasy (żaden nie
- *    zlewa się z innym; BRAK PODSTAW nigdy nie czyta się jak spełnienie),
+ * 1. cztery wyniki oceny elementu mają WŁASNE, rozróżnialne etykiety i klasy (żaden nie
+ *    zlewa się z innym; BRAK PODSTAW ani WYNIK NIEJEDNOZNACZNY nigdy nie czytają się jak
+ *    spełnienie),
  * 2. grupy renderują się WYŁĄCZNIE z pozycjami niosącymi oceny elementów; pozycje bez
  *    elementów lądują w „bez podstawy" — z jednego predykatu (`elementy.length`),
  * 3. blokada „BRAK WYNIKÓW DO OCENY" i oznaczenie biegu NIEAKTUALNEGO to PARA z jednego
@@ -82,6 +83,7 @@ function pozycja(over: Partial<PozycjaOceny> = {}): PozycjaOceny {
     liczba_ocenionych: 1,
     liczba_naruszen: 0,
     liczba_niesprawdzonych: 0,
+    liczba_niejednoznacznych: 0,
     liczba_ostrzezen: 0,
     wiodacy_element_id: 'L-07',
     wiodacy_opis_pl: null,
@@ -118,9 +120,9 @@ function odpowiedz(over: Partial<OdpowiedzOceny> = {}): OdpowiedzOceny {
     model_hash: 'abc',
     pozycje: [pozycja()],
     zrodla: [zrodlo(), zrodlo({ rodzaj: 'short_circuit_sn', run_id: 'run-sc-1' }), zrodlo({ rodzaj: 'model', run_id: null })],
-    podsumowanie: { spelnione: 1, naruszone: 0, niesprawdzone: 0, nie_dotyczy: 0, razem: 1 },
+    podsumowanie: { spelnione: 1, naruszone: 0, niejednoznaczne: 0, niesprawdzone: 0, nie_dotyczy: 0, razem: 1 },
     zakres_poza_automatem: [],
-    ocena: { oceniono: 1, spelnia: 1, nie_spelnia: 0, brak_podstaw: 0 },
+    ocena: { oceniono: 1, spelnia: 1, nie_spelnia: 0, niejednoznaczny: 0, brak_podstaw: 0 },
     grupy: [
       { kod: 'napiecia', nazwa_pl: 'Napięcia' },
       { kod: 'obciazalnosc', nazwa_pl: 'Obciążalność' },
@@ -129,13 +131,19 @@ function odpowiedz(over: Partial<OdpowiedzOceny> = {}): OdpowiedzOceny {
   };
 }
 
-describe('wyniki oceny elementu — trzy stany, nigdy dwa', () => {
-  it('każdy wynik ma własną etykietę i klasę; BRAK PODSTAW nie brzmi jak spełnienie', () => {
-    const etykiety = [wynikPL('SPELNIA'), wynikPL('NIE_SPELNIA'), wynikPL('BRAK_PODSTAW')];
-    expect(new Set(etykiety).size).toBe(3);
-    expect(new Set([klasaWyniku('SPELNIA'), klasaWyniku('NIE_SPELNIA'), klasaWyniku('BRAK_PODSTAW')]).size).toBe(3);
+// Zmiana kanonu (rozstrzygnięcie zarządcy 2026-09-23, kontrakt werdyktu §2.1): czwarty wynik
+// NIEJEDNOZNACZNY — ostrzeżenie dostawcy bez wniosku binarnego. Intencja zachowana: każdy
+// wynik rozróżnialny, żaden poza SPEŁNIA nie brzmi jak spełnienie.
+describe('wyniki oceny elementu — cztery stany, nigdy dwa', () => {
+  it('każdy wynik ma własną etykietę i klasę; BRAK PODSTAW i WYNIK NIEJEDNOZNACZNY nie brzmią jak spełnienie', () => {
+    const wyniki = ['SPELNIA', 'NIE_SPELNIA', 'NIEJEDNOZNACZNY', 'BRAK_PODSTAW'] as const;
+    const etykiety = wyniki.map((wynik) => wynikPL(wynik));
+    expect(new Set(etykiety).size).toBe(4);
+    expect(new Set(wyniki.map((wynik) => klasaWyniku(wynik))).size).toBe(4);
     expect(wynikPL('BRAK_PODSTAW')).toBe(T.wynikBrakPodstaw);
     expect(wynikPL('BRAK_PODSTAW').startsWith('SPEŁNIA')).toBe(false);
+    expect(wynikPL('NIEJEDNOZNACZNY')).toBe(T.wynikNiejednoznaczny);
+    expect(wynikPL('NIEJEDNOZNACZNY').startsWith('SPEŁNIA')).toBe(false);
     // Zakaz skrótów PASS/WARN/FAIL (prompt właściciela §6): etykiety są zdaniami PL.
     for (const etykieta of etykiety) expect(etykieta).not.toMatch(/\b(PASS|WARN|FAIL)\b/);
   });
@@ -223,16 +231,56 @@ describe('blokada BRAK WYNIKÓW i bieg nieaktualny — para z jednego źródła'
 
 describe('ocena całościowa — z liczników backendu, nigdy z porównań w UI', () => {
   it('NIE SPEŁNIA > 0 → decyzja projektowa; BRAK PODSTAW > 0 → nie równa się spełnieniu; inaczej spełnia', () => {
-    expect(ocenaCalosciowaPL(odpowiedz({ ocena: { oceniono: 3, spelnia: 2, nie_spelnia: 1, brak_podstaw: 0 } }))).toBe(
-      T.ocenaCalosciowaNieSpelnia,
-    );
-    expect(ocenaCalosciowaPL(odpowiedz({ ocena: { oceniono: 2, spelnia: 2, nie_spelnia: 0, brak_podstaw: 1 } }))).toBe(
-      T.ocenaCalosciowaBrakPodstaw,
-    );
-    expect(ocenaCalosciowaPL(odpowiedz({ werdykt: 'NIESPRAWDZONE', ocena: { oceniono: 0, spelnia: 0, nie_spelnia: 0, brak_podstaw: 0 } }))).toBe(
-      T.ocenaCalosciowaBrakPodstaw,
-    );
+    expect(
+      ocenaCalosciowaPL(odpowiedz({ ocena: { oceniono: 3, spelnia: 2, nie_spelnia: 1, niejednoznaczny: 0, brak_podstaw: 0 } })),
+    ).toBe(T.ocenaCalosciowaNieSpelnia);
+    expect(
+      ocenaCalosciowaPL(odpowiedz({ ocena: { oceniono: 2, spelnia: 2, nie_spelnia: 0, niejednoznaczny: 0, brak_podstaw: 1 } })),
+    ).toBe(T.ocenaCalosciowaBrakPodstaw);
+    expect(
+      ocenaCalosciowaPL(
+        odpowiedz({ werdykt: 'NIESPRAWDZONE', ocena: { oceniono: 0, spelnia: 0, nie_spelnia: 0, niejednoznaczny: 0, brak_podstaw: 0 } }),
+      ),
+    ).toBe(T.ocenaCalosciowaBrakPodstaw);
     expect(ocenaCalosciowaPL(odpowiedz())).toBe(T.ocenaCalosciowaSpelnia);
+  });
+
+  // Kolejność §2.3 kontraktu werdyktu (rozstrzygnięcie zarządcy 2026-09-23): naruszenie →
+  // niejednoznaczność → brak podstaw — zdanie całościowe nigdy nie jest lepsze niż najgorsza
+  // składowa, iloczyn liczników {naruszenie × niejednoznaczność × brak podstaw}.
+  it('WYNIK NIEJEDNOZNACZNY: po naruszeniu, przed brakiem podstaw — w każdej kombinacji liczników', () => {
+    for (const nieSpelnia of [0, 1]) {
+      for (const niejednoznaczny of [0, 1]) {
+        for (const brakPodstaw of [0, 1]) {
+          const zdanie = ocenaCalosciowaPL(
+            odpowiedz({
+              ocena: {
+                oceniono: 1 + nieSpelnia + niejednoznaczny,
+                spelnia: 1,
+                nie_spelnia: nieSpelnia,
+                niejednoznaczny,
+                brak_podstaw: brakPodstaw,
+              },
+            }),
+          );
+          const oczekiwane =
+            nieSpelnia > 0
+              ? T.ocenaCalosciowaNieSpelnia
+              : niejednoznaczny > 0
+                ? T.ocenaCalosciowaNiejednoznaczny
+                : brakPodstaw > 0
+                  ? T.ocenaCalosciowaBrakPodstaw
+                  : T.ocenaCalosciowaSpelnia;
+          expect(zdanie, `${nieSpelnia}/${niejednoznaczny}/${brakPodstaw}`).toBe(oczekiwane);
+        }
+      }
+    }
+    // Werdykt backendu NIEJEDNOZNACZNE bez liczników elementów — zdanie z werdyktu, nie „spełnia".
+    expect(
+      ocenaCalosciowaPL(
+        odpowiedz({ werdykt: 'NIEJEDNOZNACZNE', ocena: { oceniono: 0, spelnia: 0, nie_spelnia: 0, niejednoznaczny: 0, brak_podstaw: 0 } }),
+      ),
+    ).toBe(T.ocenaCalosciowaNiejednoznaczny);
   });
 });
 

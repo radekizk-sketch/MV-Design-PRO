@@ -9,10 +9,10 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import { EkranLom } from '../EkranLom';
-import { widokLomPustyFixture, widokOchronyLomFixture } from './fixtures';
+import { poleWidoku, widokLomPustyFixture, widokOchronyLomFixture } from './fixtures';
 
 const pobierz = vi.fn();
 let aktywnyPrzypadek: { id: string } | null = null;
@@ -29,7 +29,9 @@ vi.mock('../../../../ui/study-cases/store', async (importActual) => {
 beforeEach(() => {
   aktywnyPrzypadek = null;
 });
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('EkranLom — stany wejściowe', () => {
   it('bez aktywnego przypadku → uczciwy stan, bez wołań API', () => {
@@ -64,19 +66,24 @@ describe('EkranLom — prezentacja wyniku', () => {
     await screen.findByTestId('mvd-lom-wynik');
   }
 
-  it('tabela pól pokazuje nazwy pól i statusy PL', async () => {
+  // Intencja zachowana: tabela pokazuje nazwy pól i statusy PL z backendu. Zmiana kanonu
+  // (2026-09-23): status pola to etykieta REKORDU pola (słownik „Błąd/Ostrzeżenie" modułu
+  // skasowany) — pole bez funkcji LoM: „Brak zweryfikowanej podstawy wymagania".
+  it('tabela pól pokazuje nazwy pól i etykiety rekordów pól', async () => {
     await renderGotowe();
     const tabela = screen.getByTestId('mvd-wyn-tabela');
-    expect(tabela).toHaveTextContent('Pole PV A');
-    expect(tabela).toHaveTextContent('Pole BESS B');
-    expect(tabela).toHaveTextContent('Błąd');
-    expect(tabela).toHaveTextContent('Ostrzeżenie');
+    for (const pole of widokOchronyLomFixture().fields) {
+      expect(tabela).toHaveTextContent(pole.bay_name);
+      expect(tabela).toHaveTextContent(pole.ocena.etykieta.etykieta_pl);
+      expect(tabela).not.toHaveTextContent(pole.status);
+    }
+    expect(tabela).toHaveTextContent('Brak zweryfikowanej podstawy wymagania');
   });
 
   it('rozwinięcie wiersza → porównania z oknem normatywnym i źródłem', async () => {
     await renderGotowe();
-    // Drugi wiersz (kolejność źródłowa) = Pole BESS B (ROCOF poniżej okna).
-    fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[1]);
+    // Pierwszy wiersz (sortowanie backendu po identyfikatorze) = Pole BESS B (ROCOF poniżej okna).
+    fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[0]);
     const szczegol = screen.getByTestId('mvd-lom-szczegol');
     expect(szczegol).toHaveTextContent('Szybkość zmian częstotliwości');
     expect(szczegol).toHaveTextContent('df/dt ≥ 2.0 Hz/s');
@@ -87,8 +94,8 @@ describe('EkranLom — prezentacja wyniku', () => {
 
   it('wywód z backendu → ślad obliczeń na żądanie z wzorami KaTeX (zasada 2026-07-22)', async () => {
     await renderGotowe();
-    // Drugi wiersz = Pole BESS B; jego check ROCOF (indeks 0) niesie wywód.
-    fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[1]);
+    // Pierwszy wiersz = Pole BESS B; jego check ROCOF (indeks 0) niesie wywód.
+    fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[0]);
     const szczegol = screen.getByTestId('mvd-lom-szczegol');
     // Domyślnie zwinięty (bez przeładowania ekranu) — dostępny na klik.
     expect(screen.queryByTestId('mvd-lom-check-slad-0')).not.toBeInTheDocument();
@@ -98,18 +105,53 @@ describe('EkranLom — prezentacja wyniku', () => {
     expect(wzory.length).toBe(2);
     // Podstawienie liczbowe z realnej nastawy (LaTeX).
     expect(wzory[1].getAttribute('data-latex')).toContain('1.0000 < 2.0');
-    // Kroki danych/werdyktu tekstowe (latex=null) pozostają monospace.
-    expect(slad).toHaveTextContent('Werdykt: WARN');
+    // Kroki danych i wyniku porównania tekstowe (latex=null). Zmiana kanonu (2026-09-23):
+    // ostatni krok śladu to wynik porównania, nie werdykt — ocenę niesie rekord porównania.
+    expect(slad).toHaveTextContent('Wynik porownania: poza oknem');
+    expect(slad).not.toHaveTextContent('Werdykt');
     // Check SPZ (bez porównania) → uczciwy brak przycisku śladu.
     expect(szczegol).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-lom-check-slad-1-btn')).not.toBeInTheDocument();
   });
 
-  it('chipy podsumowania odzwierciedlają by_status', async () => {
+  // Intencja zachowana: chipy podsumowania odzwierciedlają liczniki statusów backendu.
+  // Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): chipy pochodzą z listy
+  // `summary.statusy` — liczniki pól wg etykiety REKORDU pola (słownik „Poprawna/Błąd"
+  // skasowany); interfejs nie ma własnej mapy etykiet.
+  it('chipy podsumowania odzwierciedlają listę statusów backendu', async () => {
     await renderGotowe();
     const chipy = screen.getAllByTestId('mvd-lom-chip');
-    expect(chipy).toHaveLength(4);
-    expect(screen.getByTestId('mvd-lom-podsumowanie')).toHaveTextContent('Błędy');
+    expect(chipy.map((c) => c.textContent)).toEqual(
+      widokOchronyLomFixture().summary.statusy.map((l) => `${l.liczba}${l.etykieta.etykieta_pl}`),
+    );
+    expect(chipy.map((c) => c.textContent).join(' ')).not.toMatch(/Poprawna|Błąd/);
+  });
+
+  it('ocena sieci: etykieta rekordu widoczna, karta rekordu na świadomy klik', async () => {
+    await renderGotowe();
+    const widok = widokOchronyLomFixture();
+    const sekcja = screen.getByTestId('mvd-lom-ocena-sieci-sekcja');
+    expect(sekcja).toHaveTextContent(widok.summary.ocena.etykieta.etykieta_pl);
+    expect(screen.queryByTestId('mvd-lom-ocena-sieci')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-lom-ocena-sieci-przelacz'));
+    expect(screen.getByTestId('mvd-lom-ocena-sieci')).toHaveAttribute(
+      'data-status',
+      widok.summary.ocena.status_maszynowy,
+    );
+  });
+
+  it('szczegół pola: karta rekordu pola i etykieta rekordu każdego porównania', async () => {
+    await renderGotowe();
+    const bess = poleWidoku(widokOchronyLomFixture(), 'Pole BESS B');
+    fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[0]);
+    expect(screen.getByTestId('mvd-lom-ocena')).toHaveAttribute(
+      'data-status',
+      bess.ocena.status_maszynowy,
+    );
+    const tagi = within(screen.getByTestId('mvd-lom-checks')).getAllByTestId('mvd-lom-tag');
+    expect(tagi.map((t) => t.textContent)).toEqual(
+      bess.checks.map((check) => check.ocena.etykieta.etykieta_pl),
+    );
   });
 
   it('moduły bez pola pokazane jawnie z powodem PL', async () => {
@@ -134,7 +176,7 @@ describe('EkranLom — prezentacja wyniku', () => {
     pobierz.mockResolvedValue(widokOchronyLomFixture());
     render(<EkranLom trybZaawansowania="expert" onOtworzDowod={vi.fn()} />);
     const eksp = await screen.findByTestId('mvd-lom-eksp');
-    expect(eksp).toHaveTextContent('lom-hash-abc');
+    expect(eksp).toHaveTextContent(widokOchronyLomFixture().input_hash);
   });
 
   it('brak pól i brak modułów bez pola → uczciwy stan „brak pól"', async () => {

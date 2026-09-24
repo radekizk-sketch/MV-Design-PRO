@@ -1083,11 +1083,13 @@ def test_dynamic_stability_run_exposes_results_and_automation_trace(client: Test
     assert stability.status_code == 200
     stability_payload = stability.json()
     assert stability_payload["analysis_case_context"]["rodzaj_przypadku"] == "PRACA_PO_ZAKLOCENIU"
-    assert stability_payload["rows"][0]["status"] == "STABLE"
+    # Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): wiersz to echo scenariusza
+    # z rekordem oceny NIE_OCENIONO (dawniej werdykt „STABLE" z kątów wpisanych ręcznie).
+    assert stability_payload["rows"][0]["status"] == "NIE_OCENIONO"
+    assert stability_payload["rows"][0]["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
     assert stability_payload["rows"][0]["proof_ref"].startswith("proof:dynamic-stability:")
-    # Karta S-1 (W6-0): stopien dowodowy WYPROWADZANY z rejestru — werdykt
-    # progowy z katow opcji biegu NIE jest dowodem regulacyjnym (UNVALIDATED_
-    # MODEL), niezaleznie od tego, ze wynik fizyczny jest "STABLE".
+    # Karta S-1 (W6-0): stopien dowodowy WYPROWADZANY z rejestru — echo scenariusza
+    # z katow opcji biegu NIE jest dowodem regulacyjnym (UNVALIDATED_MODEL).
     row = stability_payload["rows"][0]
     assert row["proof_status"] == "incomplete"
     assert row["reporting_status"] == "not_reportable"
@@ -1107,8 +1109,12 @@ def test_dynamic_stability_run_exposes_results_and_automation_trace(client: Test
     automation_trace = client.get(f"/api/analysis-runs/{run_id}/results/automation-trace")
     assert automation_trace.status_code == 200
     automation_payload = automation_trace.json()
-    assert len(automation_payload["rows"]) == 5
-    assert automation_payload["rows"][-1]["event_type"] == "DYNAMIC_STABILITY_EVALUATED"
+    # Zmiana kanonu (2026-09-23): ślad automatyki BEZ narracji zdarzeń (dawniej pięć
+    # zdarzeń z czasu wyłączenia wpisanego ręcznie, zakończonych DYNAMIC_STABILITY_EVALUATED);
+    # zostaje efekt topologii zadeklarowany w opcjach biegu i rekord oceny.
+    assert automation_payload["rows"] == []
+    assert automation_payload["topology_effect"]["opened_element_ids"] == ["cb-a", "cb-b"]
+    assert automation_payload["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
 
     # Domyślna odpowiedź wyników NIE niesie szeregu czasowego (na żądanie).
     assert "time_series" not in stability_payload["rows"][0]

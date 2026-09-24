@@ -176,6 +176,11 @@ POLA_TEKSTU_Z_LICZBAMI: frozenset[str] = frozenset(
 #: Ciąg szesnastkowy skrótu w napisie (goły albo po prefiksie rodzaju, np.
 #: `proof:short-circuit:<64hex>`, `report:v126:<rodzaj>:<16hex>`).
 _HEX_SKROTU = re.compile(r"[0-9a-f]{16,}")
+#: Ziarno identyfikatora elementu ENM (`enm/domain_operations._make_id`: `prefiks/<ziarno>/ścieżka`)
+#: — tożsamość domenowa nadana deterministycznie z referencji modelu (tor DER-SN sceny
+#: „akademickie": `pv/<ziarno>/der/producer_nn_bus`), nie skrót wyniku; pin kształtu skrótów
+#: (16/64 znaki) go nie dotyczy.
+_ZIARNO_IDENTYFIKATORA_ENM = re.compile(r"(?<=/)[0-9a-f]{32}(?=/)")
 #: Literał liczbowy w tekście. Odgrodzony z obu stron od znaków alfanumerycznych i
 #: kropki, żeby `15kv`, `v1.2.3` ani `lvrt_conv-pv-1mw` nie były czytane jak liczby.
 _LICZBA_W_TEKSCIE = re.compile(
@@ -536,7 +541,8 @@ def test_atrapa_jest_deterministyczna(nazwa: str) -> None:
     skroty_b = _skroty_nieprzenosne(drugie)
     assert skroty_a == skroty_b
     for sciezka, wartosc in skroty_a.items():
-        dlugosci = {len(m.group(0)) for m in _HEX_SKROTU.finditer(wartosc)}
+        bez_ziaren = _ZIARNO_IDENTYFIKATORA_ENM.sub("", wartosc)
+        dlugosci = {len(m.group(0)) for m in _HEX_SKROTU.finditer(bez_ziaren)}
         assert dlugosci <= {16, 64}, (nazwa, sciezka, wartosc)
 
 
@@ -681,13 +687,14 @@ def test_gotowosc_v126_scena_akademickie_ma_14_analiz_i_rozklad_stanow() -> None
 
 
 #: Stan gotowości KAŻDEGO rodzaju z parametrami sceny — zmierzony REALNYM
-#: wywołaniem na złotej sieci, nie założony. Harmoniczne i SSCI zostają
-#: NIEPOTWIERDZONE, bo `gen_pv` złotej sieci nie ma karty przekształtnika (mocy
-#: znamionowej) — żaden parametr formularza tego nie zastąpi; fixtura pokazuje
-#: tę przyczynę po nazwie zamiast udawać komplet danych.
+#: wywołaniem na sieci sceny, nie założony. Zmiana kanonu (uczciwość natychmiastowa
+#: 2026-09-23): sieć sceny = złota sieć z farmą PV toru DER-SN (karta przekształtnika), TA SAMA
+#: co biegów sceny (dawniej gotowość liczono na złotej sieci BEZ karty — harmoniczne
+#: i SSCI były NIEPOTWIERDZONE `generator.converter_card_missing`, choć scena niosła
+#: bieg SSCI policzony na sieci Z kartą: dwa modele w jednej scenie).
 _OCZEKIWANE_STANY_Z_PARAMETRAMI: dict[str, tuple[str, str | None]] = {
-    "power_quality_harmonics": ("NIEPOTWIERDZONA", "generator.converter_card_missing"),
-    "ssci_impedance": ("NIEPOTWIERDZONA", "generator.converter_card_missing"),
+    "power_quality_harmonics": ("POTWIERDZONA", None),
+    "ssci_impedance": ("POTWIERDZONA", None),
     "earthing_safety": ("POTWIERDZONA", None),
     "earth_fault_detection": ("POTWIERDZONA", None),
     "neutral_earthing_design": ("POTWIERDZONA", None),
@@ -746,18 +753,76 @@ def test_gotowosc_z_parametrami_ma_ksztalt_koncowki_i_oczekiwane_stany() -> None
 
 
 def test_gotowosc_z_parametrami_rozni_sie_od_gotowosci_bez_parametrow() -> None:
-    """Dowód, że parametry sceny COŚ zmieniają: każdy rodzaj POTWIERDZONY z
-    parametrami jest NIEPOTWIERDZONY bez nich (fixtura bazowa) — inaczej scena
-    „wypełnienie formularza" nie pokazywałaby żadnej zmiany stanu."""
+    """Dowód, że parametry sceny COŚ zmieniają: każdy rodzaj z parametrem WYMAGANYM
+    (karta katalogu, `wymagane`) POTWIERDZONY z parametrami jest NIEPOTWIERDZONY bez
+    nich (fixtura bazowa) — inaczej scena „wypełnienie formularza" nie pokazywałaby
+    żadnej zmiany stanu. Zmiana kanonu (2026-09-23, sieć sceny z kartą przekształtnika):
+    rodzaj wyłącznie z parametrami OPCJONALNYMI (SSCI — oznaczenie przekształtnika) wolno
+    potwierdzić bez nich — to reguła gotowości, nie brak zmiany stanu."""
+    katalog = {item["kod"]: item for item in eksport.katalog_analiz_v126()["items"]}
     bez = {a["kod"]: a["gotowosc"] for a in eksport.gotowosc_v126_scena_akademickie()["analizy"]}
     z_parametrami = {
         a["kod"]: a["gotowosc"]
         for a in eksport.gotowosc_v126_scena_akademickie_parametry()["analizy"]
     }
     for kod, (stan, _) in _OCZEKIWANE_STANY_Z_PARAMETRAMI.items():
-        if stan == "POTWIERDZONA":
+        if stan != "POTWIERDZONA":
+            continue
+        assert z_parametrami[kod] == "POTWIERDZONA", kod
+        if any(pole["wymagane"] for pole in katalog[kod]["dane"]["od_uzytkownika"]):
             assert bez[kod] == "NIEPOTWIERDZONA", kod
-            assert z_parametrami[kod] == "POTWIERDZONA", kod
+
+
+#: Rodzaje POTWIERDZONE na sieci sceny, dla których scena ŚWIADOMIE nie niesie biegu —
+#: z powodem (uczciwość natychmiastowa 2026-09-23: liczby solvera harmonicznego
+#: niezwalidowanego nie są przypinane w fixturach; bieg z oceną niewykonaną sprawdzają
+#: testy `tests/uczciwosc/test_jakosc_energii_bez_werdyktu.py` na realnym biegu).
+_POTWIERDZONE_BEZ_BIEGU_SCENY = {"power_quality_harmonics"}
+
+
+def test_gotowosc_i_biegi_sceny_akademickiej_z_jednego_modelu() -> None:
+    """Predykaty parami: gotowość i biegi sceny pochodzą z JEDNEGO modelu. Każdy rodzaj
+    z biegiem sceny jest POTWIERDZONY (bazowo albo z parametrami sceny), a każdy rodzaj
+    POTWIERDZONY ma bieg — poza jawną listą z powodem. Dawny rozjazd (gotowość na sieci
+    bez karty przekształtnika, biegi na sieci z kartą) dawał w oknie SSCI bieg, którego
+    gotowość tej samej sceny odmawiała."""
+    bazowa = eksport.gotowosc_v126_scena_akademickie()
+    z_parametrami = eksport.gotowosc_v126_scena_akademickie_parametry()
+    assert z_parametrami["model_hash"] == bazowa["model_hash"]
+    potwierdzone = {a["kod"] for a in bazowa["analizy"] if a["gotowosc"] == "POTWIERDZONA"} | {
+        a["kod"] for a in z_parametrami["analizy"] if a["gotowosc"] == "POTWIERDZONA"
+    }
+    biegi = set(eksport.akademickie_scena_biegi()["biegi"])
+    assert biegi <= potwierdzone, biegi - potwierdzone
+    assert potwierdzone - biegi == _POTWIERDZONE_BEZ_BIEGU_SCENY
+
+
+def test_opisy_gotowosci_sceny_akademickiej_bez_surowych_referencji() -> None:
+    """KLASA, nie instancja: opis warunku gotowości jest tekstem dla projektanta — element
+    nazywa lista `elementy` (ekran pokazuje nazwę ze schematu), więc ŻADEN opis (bazowo
+    i z parametrami sceny, warunki i braki) nie niesie surowej referencji ENM ani nazwy
+    pola kontraktu. Wykryte po ujednoliceniu modelu sceny (2026-09-23): warunki SSCI
+    brzmiały „Moc bierna przekształtnika gen_pv jest znana"."""
+    enm = eksport._enm_sceny_akademickiej()
+    referencje = (
+        {bus.ref_id for bus in enm.buses}
+        | {gen.ref_id for gen in enm.generators}
+        | {branch.ref_id for branch in enm.branches}
+    )
+    identyfikator = re.compile(r"\b[a-z]{2,}_[a-z][a-z0-9_]*\b")
+    for odpowiedz in (
+        eksport.gotowosc_v126_scena_akademickie(),
+        eksport.gotowosc_v126_scena_akademickie_parametry(),
+    ):
+        for analiza in odpowiedz["analizy"]:
+            for pozycja in [*analiza["warunki"], *analiza["braki"]]:
+                opis = pozycja["opis_pl"]
+                for ref in referencje:
+                    assert not re.search(rf"(?<![\w/]){re.escape(ref)}(?![\w/])", opis), (
+                        analiza["kod"],
+                        opis,
+                    )
+                assert not identyfikator.search(opis), (analiza["kod"], opis)
 
 
 def test_werdykt_projektowy_scena_ocena_ma_oceny_bez_naruszen() -> None:
@@ -1033,7 +1098,16 @@ def test_stabilnosc_wyniki_i_slad_dziela_ten_sam_run_id_i_scenariusz() -> None:
     assert wiersz["source_id"] == "gen_sync"
     assert wiersz["faulted_element_id"] == "line_b_c"
     assert wiersz["cleared_by_element_ids"] == ["fuse_c"]
-    assert wiersz["status"] == "STABLE"
+    # Intencja zachowana: wynik i slad sceny dziela ten sam bieg i scenariusz, a atrapa nie
+    # zawyza poziomu dowodu. Zmiana kanonu (uczciwosc natychmiastowa 2026-09-23): tor nie
+    # rozwiazuje sieci, wiec wiersz to echo scenariusza z rekordem oceny NIE_OCENIONO (dawniej
+    # werdykt STABLE z katow wpisanych recznie), a slad automatyki nie opowiada zdarzen
+    # zabezpieczen (dawniej piec zdarzen z czasu wpisanego recznie) — niesie rekord oceny.
+    assert wiersz["status"] == "NIE_OCENIONO"
+    assert wiersz["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
+    assert wiersz["ocena"]["kryterium_id"] == (
+        f"dynamic_stability.fault_clear.{wiersz['scenario_id']}"
+    )
     # Karta S-1 (W6-0): zdolnosc dynamic_stability.fault_clear jest
     # UNVALIDATED_MODEL — atrapa NIE MOZE pokazywac "pelny/raportowalny"
     # (defekt starej, recznie wpisanej atrapy, naprawiony tu u zrodla).
@@ -1041,14 +1115,9 @@ def test_stabilnosc_wyniki_i_slad_dziela_ten_sam_run_id_i_scenariusz() -> None:
     assert wiersz["reporting_status"] == "not_reportable"
     assert wiersz["dopuszczalnosc_raportowa"] is False
     assert wiersz["evidence"]["tier"] == "UNVALIDATED_MODEL"
-    typy_zdarzen = [row["event_type"] for row in slad["rows"]]
-    assert typy_zdarzen == [
-        "AUTOMATION_STARTED",
-        "FAULT_APPLIED",
-        "FAULT_CLEARED",
-        "POST_FAULT_TOPOLOGY_EFFECT",
-        "DYNAMIC_STABILITY_EVALUATED",
-    ]
+    assert slad["rows"] == []
+    assert slad["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
+    assert slad["ocena"]["kryterium_id"] == wiersz["ocena"]["kryterium_id"]
 
 
 def test_falowniki_rozplyw_gpz_feeder_niesie_tor_gpz_i_tor_falownika_na_realnej_topologii() -> None:

@@ -275,6 +275,8 @@ export const AKADEMICKIE_STRINGS = {
 
   // Ekran wyniku
   werdyktTytul: 'Wynik oceny',
+  ocenaTytul: 'Ocena',
+  audytPowodyTytul: 'Stan solvera (ustalenia audytu)',
   werdyktBrak: 'Solver nie wystawił oceny dla tej analizy',
   werdyktZbiorczy: (spelnione: number, lacznie: number, obiekty: string): string =>
     `kryterium spełnione dla ${spelnione} z ${lacznie} ${obiekty}`,
@@ -294,8 +296,9 @@ export const AKADEMICKIE_STRINGS = {
   // Wiarygodność wyniku (blok kontroli granic fizycznych solvera)
   wiarygodnoscTytul: 'Wiarygodność wyniku',
   wiarygodnoscOpis:
-    'Kontrola granic fizycznych wykonana przez solver po obliczeniach — odpowiada '
-    + 'na pytanie „czy tym liczbom można ufać", a nie „czy projekt jest zgodny z normą".',
+    'Kontrola pasma wykonana przez solver po obliczeniach — sprawdza wyłącznie, czy liczby '
+    + 'leżą w paśmie fizycznie możliwym; nie jest weryfikacją wyniku (wyrocznią ani pomiarem) '
+    + 'ani oceną zgodności projektu z normą.',
   wiarygodnoscSprawdzen: (zdane: number, lacznie: number): string =>
     `sprawdzeń zdanych: ${zdane} z ${lacznie}`,
 

@@ -13,16 +13,17 @@ export const SSCI_STRINGS = {
   // Nagłówek
   tytul: 'Stabilność SSCI',
   opisWstep:
-    'Werdykt stabilności podsynchronicznej interakcji regulacyjnej (SSCI) wg '
-    + 'kryterium impedancyjnego Nyquista (Sun 2011 / Wen 2016). Solver liczy tablice '
-    + 'Z_grid(f)/Z_conv(f) i wzmocnienie pętli mniejszej L(f); ekran tylko prezentuje '
-    + 'gotowy werdykt, metryki i wywód — zero fizyki w UI.',
+    'Stabilność podsynchronicznej interakcji regulacyjnej (SSCI) wg kryterium '
+    + 'impedancyjnego Nyquista (Sun 2011 / Wen 2016). Impedancja sieci Z_grid(f) jest dziś '
+    + 'liczona bez przekładni transformatora, dlatego ocena nie jest wykonywana — ekran '
+    + 'pokazuje powód, wskaźnik strefy ujemnej rezystancji przekształtnika i metryki '
+    + 'kryterium jako materiał audytowy.',
   runId: 'Identyfikator przebiegu',
 
   // Stan bez aktywnego przypadku
   brakPrzypadku: 'Brak aktywnego przypadku obliczeniowego',
   brakPrzypadkuOpis:
-    'Aktywuj przypadek obliczeniowy z committed modelem sieci (ENM). Werdykt SSCI '
+    'Aktywuj przypadek obliczeniowy z committed modelem sieci (ENM). Analiza SSCI '
     + 'powstaje z tablic impedancji przekształtnika i sieci dla tego modelu.',
 
   // Akcja uruchomienia
@@ -33,19 +34,14 @@ export const SSCI_STRINGS = {
     + '(pasma regulatora prądu, PLL, filtr) tworzą Z_conv, a moc zwarciowa węzła — Z_grid.',
 
   // Stany biegu
-  ladowanie: 'Trwa wyznaczanie werdyktu stabilności SSCI…',
-  blad: 'Nie udało się wyznaczyć werdyktu stabilności SSCI',
+  ladowanie: 'Trwa analiza stabilności SSCI…',
+  blad: 'Nie udało się wykonać analizy stabilności SSCI',
 
-  // Werdykt (chip główny)
-  werdyktTytul: 'Werdykt',
-  werdyktStabilny: 'stabilny',
-  werdyktRyzyko: 'ryzyko SSCI',
-  werdyktNiestabilny: 'niestabilny',
-  werdyktBrakDanych: 'brak danych',
+  // Identyfikacja przekształtnika i węzła
   chipPrzekształtnik: 'Przekształtnik',
   chipWezel: 'Węzeł',
 
-  // Metryki kryterium impedancyjnego
+  // Metryki kryterium impedancyjnego (sekcja audytowa)
   metrykiTytul: 'Metryki kryterium impedancyjnego',
   metrMaxGain: 'Maks. wzmocnienie pętli max|L|',
   metrMaxGainOpis: '|L|=1 ⟺ przecięcie modułów |Z_grid|=|Z_conv| (granica stabilności bezwarunkowej).',
@@ -56,28 +52,28 @@ export const SSCI_STRINGS = {
   metrOdlegloscMinusJeden: 'Odległość od punktu −1',
   metrOdlegloscOpis: 'Najmniejsza odległość przebiegu L(jω) od punktu −1 (kryterium Nyquista).',
   metrOkrazenia: 'Okrążenia punktu −1',
-  metrRezystancjaUjemna: 'Rezystancja ujemna Re(Z_conv) < 0',
+  metrRezystancjaUjemna: 'Strefa ujemnej rezystancji przekształtnika Re(Z_conv) < 0',
+  metrRezystancjaOpis:
+    'Wskaźnik zależy wyłącznie od modelu przekształtnika (pasma regulatora prądu i PLL) '
+    + '— informacja o mechanizmie umożliwiającym SSCI, nie ocena interakcji z siecią.',
   metrRezystancjaObecna: 'obecna',
   metrRezystancjaBrak: 'brak',
   metrPrzyF: 'przy f',
+  metrReMin: 'Re_min',
 
   // Panel proweniencji
-  provTytul: 'Proweniencja werdyktu',
+  provTytul: 'Proweniencja danych przekształtnika',
   provJakosc: 'Najgorsza jakość pól karty',
   provSzacowana: 'wartości szacowane',
   provPotwierdzona: 'wartości potwierdzone',
   provPolaZrodlowe: 'Pola źródłowe',
 
   // Braki danych (uczciwość)
-  brakiTytul: 'Brak danych do werdyktu',
+  brakiTytul: 'Brak tablic impedancji',
   brakiOpis:
     'Bez przekształtnika/DER lub przy niekompletnych polach karty falownika kryterium '
-    + 'impedancyjne nie ma tablic Z_grid/Z_conv/L — solver NIE zmyśla werdyktu. Uzupełnij '
-    + 'przekształtnik w modelu (karta falownika), aby uzyskać werdykt SSCI.',
+    + 'impedancyjne nie ma tablic Z_grid/Z_conv/L — solver niczego nie zmyśla.',
   brakiPola: 'Brakujące pola',
-
-  // Uzasadnienie
-  dlaczegoTytul: 'Uzasadnienie',
 
   // Ślad WHITE BOX (tryb ekspercki)
   sladTytul: 'Ślad obliczeń SSCI (pełna jawność)',
@@ -88,13 +84,12 @@ export const SSCI_STRINGS = {
   sladKolWynik: 'Wynik',
   sladKolJednostka: 'Kontrola jednostek',
   ekspAnalizaId: 'Identyfikator analizy',
-  ekspProgGain: 'Próg przecięcia modułów |L|',
-  ekspProgRyzyko: 'Próg marginesu (ryzyko) [°]',
-  ekspProgNiestabilny: 'Próg marginesu (niestabilność) [°]',
+  ekspProgGain: 'Granica przecięcia modułów |L|',
 
   // Jednostki i wartości puste
   jednStopnie: '°',
   jednHz: 'Hz',
+  jednOhm: 'Ω',
   kreska: '—',
 } as const;
 
@@ -120,4 +115,9 @@ export function fmtStopnie(n: number): string {
 /** Częstotliwość [Hz] — 2 miejsca po przecinku. */
 export function fmtHz(n: number): string {
   return fmtLiczba(n, 2);
+}
+
+/** Rezystancja [Ω] — 4 miejsca po przecinku (wartości rzędu mΩ w strefie ujemnej). */
+export function fmtOhm(n: number): string {
+  return fmtLiczba(n, 4);
 }

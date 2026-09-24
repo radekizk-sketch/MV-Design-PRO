@@ -66,7 +66,6 @@ export type ElementType =
   | 'UPS'                    // Z: UPS
   // Pomiary i zabezpieczenia nN (AA–AE)
   | 'EnergyMeter'            // AA: Licznik energii
-  | 'PowerQualityMeter'      // AB: Pomiar jakości energii
   | 'SurgeArresterNN'        // AC: Ogranicznik przepięć nN
   | 'Earthing'               // AD: Uziemienie
   | 'MeasurementNN'          // AE: Przekładnik nN (CT/VT)

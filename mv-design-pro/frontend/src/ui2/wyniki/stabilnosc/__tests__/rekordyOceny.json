@@ -1,0 +1,165 @@
+{
+  "scenariusz_dyn_1": {
+    "dowod": {
+      "domena_pl": null,
+      "metoda": "BRAK_METODY",
+      "odniesienie": null,
+      "poziom": "UNVALIDATED_MODEL",
+      "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+      "status_danych": {
+        "dane_przyjete": [
+          {
+            "jakosc": "ESTIMATED",
+            "nazwa_pl": "czas wyłączenia zwarcia",
+            "powod_pl": "wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci",
+            "wartosc": {
+              "jednostka": "ms",
+              "wartosc": 120.0
+            }
+          },
+          {
+            "jakosc": "ESTIMATED",
+            "nazwa_pl": "kąt mocy przed zwarciem",
+            "powod_pl": "wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci",
+            "wartosc": {
+              "jednostka": "°",
+              "wartosc": 10.0
+            }
+          },
+          {
+            "jakosc": "ESTIMATED",
+            "nazwa_pl": "kąt mocy w czasie zwarcia",
+            "powod_pl": "wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci",
+            "wartosc": {
+              "jednostka": "°",
+              "wartosc": 75.0
+            }
+          },
+          {
+            "jakosc": "ESTIMATED",
+            "nazwa_pl": "kąt mocy po zwarciu",
+            "powod_pl": "wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci",
+            "wartosc": {
+              "jednostka": "°",
+              "wartosc": 28.0
+            }
+          },
+          {
+            "jakosc": "ESTIMATED",
+            "nazwa_pl": "napięcie po zwarciu",
+            "powod_pl": "wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci",
+            "wartosc": {
+              "jednostka": "p.u. (U_n)",
+              "wartosc": 0.97
+            }
+          },
+          {
+            "jakosc": "ESTIMATED",
+            "nazwa_pl": "częstotliwość po zwarciu",
+            "powod_pl": "wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci",
+            "wartosc": {
+              "jednostka": "p.u. (f_n)",
+              "wartosc": 0.99
+            }
+          }
+        ],
+        "stan": "UNVALIDATED_INPUT"
+      },
+      "status_modelu": "NIE_DOTYCZY",
+      "w_domenie_walidacji": null
+    },
+    "etykieta": {
+      "etykieta_pl": "Ocena niewykonana",
+      "semantyka": "neutralna"
+    },
+    "kompletnosc_dowodu": "NIEPELNY",
+    "kryterium": {
+      "opis_pl": "Stabilność kątowa źródła po wyłączeniu zwarcia",
+      "relacja": "LOGICZNE",
+      "warunek_latex": "",
+      "warunek_wstepny_pl": null,
+      "warunek_wstepny_podstawa": null
+    },
+    "kryterium_id": "dynamic_stability.fault_clear.dyn-1",
+    "limit": null,
+    "margines": null,
+    "niepewnosc": {
+      "metoda_pl": null,
+      "nie_dotyczy": true,
+      "powod_pl": "brak wielkości rozstrzygającej — bieg nie rozwiązuje sieci, więc niepewność wyniku nie dotyczy",
+      "wartosc": null
+    },
+    "podstawa": {
+      "dokument": "Progi oceny stabilności podane w opcjach biegu",
+      "jednostka_redakcyjna": null,
+      "rodzaj": "NIEUSTALONA",
+      "status": "NIEUSTALONE",
+      "uwagi_pl": "progi bez dokumentu źródłowego — przyjmowane w opcjach biegu",
+      "wydanie": null
+    },
+    "powody_niepelnosci": [
+      "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
+      "Dana przyjęta bez walidacji: czas wyłączenia zwarcia = 120 ms, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+      "Dana przyjęta bez walidacji: kąt mocy przed zwarciem = 10 °, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+      "Dana przyjęta bez walidacji: kąt mocy w czasie zwarcia = 75 °, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+      "Dana przyjęta bez walidacji: kąt mocy po zwarciu = 28 °, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+      "Dana przyjęta bez walidacji: napięcie po zwarciu = 0,97 p.u. (U_n), jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+      "Dana przyjęta bez walidacji: częstotliwość po zwarciu = 0,99 p.u. (f_n), jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+      "Podstawa „Progi oceny stabilności podane w opcjach biegu” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+    ],
+    "przedmiot": {
+      "element_ref": "src/pv/1",
+      "nazwa_pl": "Źródło src/pv/1",
+      "opis_pl": "Źródło w scenariuszu wyłączenia zwarcia na elemencie line/gpz/1"
+    },
+    "slad": [],
+    "status_maszynowy": "NIE_OCENIONO",
+    "stosowalnosc": {
+      "dotyczy": true,
+      "modul_istniejacy": null,
+      "podstawa": null,
+      "powod_pl": "scenariusz wyłączenia zwarcia wskazuje oceniane źródło",
+      "technologia": null,
+      "typ_modulu": null,
+      "warunek_wstepny_nieuruchomiony": false
+    },
+    "wyjasnienie": {
+      "czego_brakuje": [
+        "Metoda dowodu właściwa dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+        "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+        "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Progi oceny stabilności podane w opcjach biegu” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: progi bez dokumentu źródłowego — przyjmowane w opcjach biegu).",
+        "Bieg dynamiki RMS na silniku kanonicznym z modelem źródeł, sieci i obciążeń, zweryfikowany wyrocznią — kąty mocy, napięcie i częstotliwość po zwarciu oraz czas wyłączenia w tym biegu pochodzą z wartości wpisanych przez użytkownika, nie z rozwiązania sieci.",
+        "Przebieg kątów mocy, napięcia i częstotliwości wyznaczony z rozwiązania sieci, a nie wpisany ręcznie.",
+        "Zadziałanie zabezpieczeń wyznaczone z ich nastaw i przebiegu prądów zwarciowych (zabezpieczenia nie są w tym biegu symulowane).",
+        "Obliczenie dynamiki czasowej z punktem pracy z rozpływu (bieg kanoniczny albo program zewnętrzny) — do tego czasu ten bieg pokazuje wyłącznie scenariusz wpisany przez użytkownika."
+      ],
+      "przyczyna_pl": "brak metody dowodu, która wykazuje zachowania dynamicznego",
+      "zastrzezenia": [
+        "Podstawa „Progi oceny stabilności podane w opcjach biegu” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (progi bez dokumentu źródłowego — przyjmowane w opcjach biegu).",
+        "Dana przyjęta bez walidacji: czas wyłączenia zwarcia = 120 ms, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+        "Dana przyjęta bez walidacji: kąt mocy przed zwarciem = 10 °, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+        "Dana przyjęta bez walidacji: kąt mocy w czasie zwarcia = 75 °, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+        "Dana przyjęta bez walidacji: kąt mocy po zwarciu = 28 °, jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+        "Dana przyjęta bez walidacji: napięcie po zwarciu = 0,97 p.u. (U_n), jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+        "Dana przyjęta bez walidacji: częstotliwość po zwarciu = 0,99 p.u. (f_n), jakość danej: oszacowane — wpisana przez użytkownika w opcjach biegu — nie z rozwiązania sieci.",
+        "Zakres ważności: Echo scenariusza wyłączenia zwarcia wpisanego przez użytkownika — wynik nie obejmuje: przebieg kątów mocy wyznaczony z rozwiązania sieci; zadziałanie zabezpieczeń wyznaczone z nastaw."
+      ],
+      "zdanie_pl": "Stabilność kątowa źródła po wyłączeniu zwarcia (Źródło src/pv/1) — ocena niewykonana: brak metody dowodu, która wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar."
+    },
+    "wynik": null,
+    "zakres_waznosci": {
+      "model_urzadzenia": null,
+      "ograniczniki": [],
+      "opis_pl": "Echo scenariusza wyłączenia zwarcia wpisanego przez użytkownika",
+      "parametry_sieci": [],
+      "regulator": null,
+      "rodzaj_analizy": null,
+      "symetria_zaklocenia": null,
+      "technologia": null,
+      "wykluczenia": [
+        "przebieg kątów mocy wyznaczony z rozwiązania sieci",
+        "zadziałanie zabezpieczeń wyznaczone z nastaw"
+      ]
+    }
+  }
+}

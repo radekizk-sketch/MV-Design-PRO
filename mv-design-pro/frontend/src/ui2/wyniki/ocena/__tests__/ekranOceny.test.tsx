@@ -23,6 +23,7 @@ import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import ocenaScena from '../../../../harness-fixtures/generated/werdykt_projektowy_scena_ocena.json';
 import przekroczeniaScena from '../../../../harness-fixtures/generated/werdykt_projektowy_scena_ocena_przekroczenia.json';
+import niejednoznacznyWerdykt from './werdyktNiejednoznaczny.json';
 import { EkranOceny } from '../EkranOceny';
 import type { OcenaElementu, OdpowiedzOceny, PozycjaOceny, ZrodloOceny } from '../api';
 import { grupyZWynikami, pozycjeBezPodstaw } from '../model';
@@ -30,6 +31,10 @@ import { OCENA_STRINGS as T } from '../strings';
 
 const FIXTURA_OCENA = ocenaScena as unknown as OdpowiedzOceny;
 const FIXTURA_PRZEKROCZENIA = przekroczeniaScena as unknown as OdpowiedzOceny;
+/** Odpowiedź z ostrzeżeniem doborów toru źródła — złożona backendem
+ *  (`backend/tests/uczciwosc/generuj_fixtury_ocen_fe.py::_werdykt_niejednoznaczny`, parytet
+ *  `test_fixtury_ocen_fe.py`), nie ręcznie. */
+const FIXTURA_NIEJEDNOZNACZNA = niejednoznacznyWerdykt as unknown as OdpowiedzOceny;
 
 const fetchMock = vi.fn();
 const poprawWModeluMock = vi.fn();
@@ -148,7 +153,7 @@ describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi siec
     expect(within(podstawa).queryByTestId('mvd-ocena-przebieg-model')).toBeNull();
   });
 
-  it('PODSUMOWANIE z liczników backendu: OCENIONO · SPEŁNIA · NIE SPEŁNIA · BRAK PODSTAW (per element)', async () => {
+  it('PODSUMOWANIE z liczników backendu: OCENIONO · SPEŁNIA · NIE SPEŁNIA · WYNIK NIEJEDNOZNACZNY · BRAK PODSTAW (per element)', async () => {
     fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_OCENA));
     render(<EkranOceny />);
     await screen.findByTestId('mvd-ocena-podsumowanie');
@@ -157,6 +162,9 @@ describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi siec
     expect(screen.getByTestId('mvd-ocena-licznik-oceniono')).toHaveTextContent(`${T.oceniono}${liczniki.oceniono}`);
     expect(screen.getByTestId('mvd-ocena-licznik-spelnia')).toHaveTextContent(`${T.spelnia}${liczniki.spelnia}`);
     expect(screen.getByTestId('mvd-ocena-licznik-nie-spelnia')).toHaveTextContent(`${T.nieSpelnia}${liczniki.nie_spelnia}`);
+    expect(screen.getByTestId('mvd-ocena-licznik-niejednoznaczny')).toHaveTextContent(
+      `${T.niejednoznaczny}${liczniki.niejednoznaczny}`,
+    );
     expect(screen.getByTestId('mvd-ocena-licznik-brak-podstaw')).toHaveTextContent(`${T.brakPodstaw}${liczniki.brak_podstaw}`);
     // Sieć złota bez przekroczeń, ale z kryteriami bez podstawy: nie równa się spełnieniu.
     expect(screen.getByTestId('mvd-ocena-calosciowa')).toHaveTextContent(T.ocenaCalosciowaBrakPodstaw);
@@ -215,6 +223,35 @@ describe('EkranOceny — kontrakt ekranu (prompt §4) na realnej odpowiedzi siec
       expect(within(wiersz).getByTestId('mvd-ocena-wynik')).toHaveTextContent(T.wynikBrakPodstaw);
       expect(wiersz).toHaveTextContent(e.wniosek_pl);
     }
+  });
+
+  // Rozstrzygnięcie zarządcy 2026-09-23 (kontrakt werdyktu §2.1/§2.3): ostrzeżenie dostawcy
+  // doborów toru DER-SN to WYNIK NIEJEDNOZNACZNY — ekran pokazuje wynik z odpowiedzi, nie
+  // własną interpretację ostrzeżenia, a zdanie całościowe nie jest lepsze niż najgorsza składowa.
+  it('WYNIK NIEJEDNOZNACZNY: wiersz, uzasadnienie dostawcy, licznik i ocena całościowa z odpowiedzi backendu', async () => {
+    fetchMock.mockResolvedValue(odpowiedzOk(FIXTURA_NIEJEDNOZNACZNA));
+    render(<EkranOceny />);
+    await screen.findByTestId('mvd-ocena-podsumowanie');
+    const niejednoznaczne = FIXTURA_NIEJEDNOZNACZNA.pozycje.flatMap((p) => p.elementy).filter((e) => e.wynik === 'NIEJEDNOZNACZNY');
+    // Kontrola dodatnia: backend zbudował co najmniej jeden taki element.
+    expect(niejednoznaczne.length).toBeGreaterThan(0);
+    expect(FIXTURA_NIEJEDNOZNACZNA.werdykt).toBe('NIEJEDNOZNACZNE');
+    const wiersze = Array.from(document.querySelectorAll('tr[data-wynik="NIEJEDNOZNACZNY"]'));
+    expect(wiersze).toHaveLength(niejednoznaczne.length);
+    wiersze.forEach((wiersz, indeks) => {
+      const zBackendu = niejednoznaczne[indeks];
+      expect(wiersz.classList.contains('mvd-ocena-wynik--niejednoznaczny')).toBe(true);
+      expect(within(wiersz as HTMLElement).getByTestId('mvd-ocena-wynik')).toHaveTextContent(T.wynikNiejednoznaczny);
+      expect(wiersz).toHaveTextContent(zBackendu.wniosek_pl);
+      expect(wiersz).toHaveTextContent(zBackendu.uzasadnienie_pl ?? '');
+    });
+    expect(screen.getByTestId('mvd-ocena-licznik-niejednoznaczny')).toHaveTextContent(
+      `${T.niejednoznaczny}${FIXTURA_NIEJEDNOZNACZNA.ocena.niejednoznaczny}`,
+    );
+    expect(screen.getByTestId('mvd-ocena-calosciowa')).toHaveTextContent(T.ocenaCalosciowaNiejednoznaczny);
+    // Pozycja doborów jest widoczna w swojej grupie — nie ląduje w „bez podstawy".
+    expect(screen.getByTestId('mvd-ocena-pozycja-dobor.tor_der_sn')).toBeTruthy();
+    expect(screen.queryByTestId('mvd-ocena-bez-podstaw-dobor.tor_der_sn')).toBeNull();
   });
 
   it('PRZEKROCZENIA: wiersze NIE SPEŁNIA WYMAGAŃ z ujemnym marginesem; ocena całościowa wymaga decyzji projektowej', async () => {

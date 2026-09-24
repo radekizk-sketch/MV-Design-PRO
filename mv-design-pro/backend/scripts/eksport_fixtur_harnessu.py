@@ -962,10 +962,22 @@ def katalog_analiz_v126() -> dict[str, Any]:
 
 def gotowosc_v126_scena_akademickie() -> dict[str, Any]:
     """Odpowiedź `GET /api/cases/{id}/v126/gotowosc` (BEZ `analysis_type`, komplet
-    14 rodzajów) na złotej sieci — TA SAMA funkcja (`odpowiedz_gotowosci`), którą
+    14 rodzajów) na sieci sceny — TA SAMA funkcja (`odpowiedz_gotowosci`), którą
     woła końcówka `get_v126_gotowosc` (karta B02-BE-TESTY §1: JEDNO źródło
-    prawdy dla końcówki i dla ten eksport)."""
-    return odpowiedz_gotowosci(CASE_ID_HARNESSU, build_golden_enm(), None, {})
+    prawdy dla końcówki i dla ten eksport).
+
+    Sieć sceny = złota sieć z farmą PV przyłączoną torem DER-SN, z kartą przekształtnika
+    zmaterializowaną operacją kanoniczną (`_enm_sceny_akademickiej`) — TEN SAM model, na którym liczone są biegi sceny
+    (`akademickie_scena_biegi`). Dawniej gotowość liczono na złotej sieci BEZ karty,
+    a biegi na sieci Z kartą: scena miała dwa modele naraz, więc SSCI miało bieg,
+    którego gotowość tej samej sceny odmawiała (zrzut okna SSCI był nieosiągalny).
+    Jedna scena = jeden model (uczciwość natychmiastowa 2026-09-23)."""
+    return odpowiedz_gotowosci(CASE_ID_HARNESSU, _enm_sceny_akademickiej(), None, {})
+
+
+#: Falownik farmy PV sceny „akademickie" — identyfikator nadany deterministycznie przez
+#: operację `add_converter_source` (tor DER-SN, `_enm_sceny_akademickiej` sprawdza równość).
+REF_FALOWNIKA_SCENY_AKADEMICKIEJ = "pv/9d008ed355939bef762652554f56b2e4/converter"
 
 
 #: Parametry projektanta sceny „akademickie" per rodzaj z sekcją „od użytkownika"
@@ -980,9 +992,9 @@ def gotowosc_v126_scena_akademickie() -> dict[str, Any]:
 #: „domyślnymi" solvera; gotowość policzona TĄ SAMĄ funkcją co bramka 422.
 PARAMETRY_SCENY_AKADEMICKIE: dict[str, dict[str, Any]] = {
     "power_quality_harmonics": {
-        "harmonic_spectra": {"gen_pv": {"5": 4.5, "7": 2.1, "11": 1.2}},
+        "harmonic_spectra": {REF_FALOWNIKA_SCENY_AKADEMICKIEJ: {"5": 4.5, "7": 2.1, "11": 1.2}},
     },
-    "ssci_impedance": {"ssci_converter_ref": "gen_pv"},
+    "ssci_impedance": {"ssci_converter_ref": REF_FALOWNIKA_SCENY_AKADEMICKIEJ},
     "earthing_safety": {
         "earthing": {
             "gpz_ref": "bus_hv",
@@ -1038,17 +1050,16 @@ PARAMETRY_SCENY_AKADEMICKIE: dict[str, dict[str, Any]] = {
 
 def gotowosc_v126_scena_akademickie_parametry() -> dict[str, Any]:
     """Odpowiedzi `GET /api/cases/{id}/v126/gotowosc?analysis_type=…&parametry=…`
-    na złotej sieci dla KAŻDEGO rodzaju z `PARAMETRY_SCENY_AKADEMICKIE` — TĄ SAMĄ
+    na sieci sceny dla KAŻDEGO rodzaju z `PARAMETRY_SCENY_AKADEMICKIE` — TĄ SAMĄ
     funkcją (`odpowiedz_gotowosci` z rodzajem: scalanie propozycji z modelu +
     `ocen_gotowosc_v126`), którą woła końcówka i którą POST odmawia 422.
 
     Kształt: pola końcówki (`case_id`, `model_hash`, `przedmiot`) + `parametry`
     (per rodzaj — to, co formularz musi wysłać) + `analizy` (jedna pozycja per
-    rodzaj, w kolejności `PARAMETRY_SCENY_AKADEMICKIE`). Rodzaje, których złota
-    sieć NIE odblokuje żadnym parametrem (`gen_pv` bez karty przekształtnika →
-    harmoniczne i SSCI), zostają NIEPOTWIERDZONE z nazwaną przyczyną — fixtura
-    jest uczciwa, nie „na ładnie" (pin: `tests/ci/test_fixtury_harnessu.py`)."""
-    enm = build_golden_enm()
+    rodzaj, w kolejności `PARAMETRY_SCENY_AKADEMICKIE`). Sieć = sieć sceny z kartą
+    przekształtnika (`_enm_sceny_akademickiej`), ta sama co biegów sceny — stany
+    gotowości zmierzone na niej przypina `tests/ci/test_fixtury_harnessu.py`."""
+    enm = _enm_sceny_akademickiej()
     bazowa = odpowiedz_gotowosci(CASE_ID_HARNESSU, enm, None, {})
     analizy = [
         odpowiedz_gotowosci(CASE_ID_HARNESSU, enm, V126AnalysisType(kod), parametry)["analizy"][0]
@@ -1609,10 +1620,10 @@ def _zamrozona_tozsamosc_biegu(uuid_kotwicy: UUID) -> Iterator[None]:
 #: asymetria pradow fazowych (opcje ponizej) ma widoczny wplyw na straty per
 #: faza. Pradyw fazowe A/B/C sa DANYMI WEJSCIOWYMI sceny (zalozenie
 #: projektanta — scenariusz obciazenia niezrownowazonego, TAKI SAM status jak
-#: `threshold_criteria` sceny stabilnosci nizej), nie wynikiem solvera; wynik
-#: (napiecia/straty/asymetrie/flagi) liczy REALNIE `PhaseStateSNSolver`
-#: (`_execute_phase_state_sn`, `enm/canonical_analysis.py`) — zero fabrykacji
-#: wyniku.
+#: katy, napiecie i czestotliwosc po zwarciu w opcjach sceny stabilnosci nizej),
+#: nie wynikiem solvera; wynik (napiecia/straty/asymetrie/flagi) liczy REALNIE
+#: `PhaseStateSNSolver` (`_execute_phase_state_sn`, `enm/canonical_analysis.py`)
+#: — zero fabrykacji wyniku.
 _OPCJE_SCENY_STAN_FAZOWY: dict[str, Any] = {
     "target_bus_ref": "bus_sn_b",
     "load_current_a": [135.0, 78.0, 100.0],
@@ -1657,10 +1668,11 @@ def stan_fazowy_scena_wyniki() -> dict[str, Any]:
 #: sieci zlotej — `PhaseClearSourceState` opisuje WYLACZNIE zrodla wirujace,
 #: falownik `gen_pv` fizycznie nie ma kata mocy). Katy/napiecie/czestotliwosc
 #: po zwarciu i stala czasowa odbudowy SA SCENARIUSZEM PRZYJETYM W OPCJACH
-#: BIEGU tej analizy (dokladnie tak, jak `threshold_criteria` dotychczasowej
-#: atrapy to dokumentowaly) — `evaluate_fault_clear_dynamic_stability` liczy
-#: REALNIE werdykt progowy i `build_automation_trace` slad automatyki z tych
-#: opcji (`_execute_dynamic_stability`), zero fabrykacji wyniku.
+#: BIEGU tej analizy — tor nie rozwiazuje sieci, wiec bieg
+#: (`_execute_dynamic_stability`) zwraca ECHO scenariusza z ocena niewykonana
+#: (`NIE_OCENIONO`, bez werdyktu STABLE/UNSTABLE i bez narracji zadzialania
+#: zabezpieczen — uczciwosc natychmiastowa 2026-09-23), efekt topologiczny
+#: zadeklarowany w opcjach i przebieg zadany z jawna uwaga; zero fabrykacji wyniku.
 _OPCJE_SCENY_STABILNOSC: dict[str, Any] = {
     "scenario_id": "dyn-scena-stabilnosc",
     "source_ref": "gen_sync",
@@ -3489,33 +3501,159 @@ def lom_scena_wynik() -> dict[str, Any]:
 
 RUN_ID_SCENY_AKADEMICKIEJ = "run-v126-scena-akademickie"
 
-#: Karta katalogowa przekształtnika materializowana na `gen_pv` sieci sceny —
-#: REALNY rekord katalogu MV (moc znamionowa, napięcie, tryb regulacji, widmo
-#: harmoniczne, jeśli karta je niesie). Materializacja karty na tabliczce
-#: generatora jest DOKŁADNIE tym, co robi brama katalogowa aplikacji
-#: (`set_der_catalog_bindings` → `Generator.materialized_params`); bez niej
-#: `_ocena_karty_przeksztaltnika` melduje `generator.converter_card_missing`, a
-#: rodzaje czytające przekształtniki (`ssci_impedance`,
-#: `power_quality_harmonics`) odmawiają gotowości — zmierzone bezpośrednio.
-#: Zero liczb wpisanych ręcznie: cała tabliczka pochodzi z rekordu katalogu.
+#: Karta katalogowa przekształtnika sceny — REALNY rekord katalogu MV (moc znamionowa,
+#: napięcie wyjściowe 0,8 kV, tryb regulacji) z polami karty analizy SSCI (pasma pętli
+#: prądowej i PLL, indukcyjność filtra). Bez karty `_ocena_karty_przeksztaltnika` melduje
+#: `generator.converter_card_missing`, a rodzaje czytające przekształtniki
+#: (`ssci_impedance`, `power_quality_harmonics`) odmawiają gotowości — zmierzone
+#: bezpośrednio. Pola SSCI niosą w katalogu wyłącznie karty przekształtników na napięcie
+#: 0,69–0,8 kV (żadna karta 0,4 kV), więc falownik tej karty przyłącza się przez własny
+#: transformator blokowy, nie do szyny nN 0,4 kV stacji.
 _KARTA_PRZEKSZTALTNIKA_SCENY_V126 = "conv-pv-card-huawei-sun2000-215ktl"
+
+#: Transformator blokowy 15/0,8 kV 0,5 MVA (rekord katalogu `TRAFO_SN_NN`): strona dolna
+#: równa napięciu wyjściowemu falownika karty, moc ≥ mocy znamionowej dwóch falowników
+#: (2 × 0,215 MVA) — kontrola mocy źródła (O-53) liczy ją z tego rekordu.
+_TRANSFORMATOR_BLOKOWY_SCENY_V126 = "tr-sn-nn-15-0p8-0p5mva-dyn11-inverter"
+_APARAT_POLA_SN_SCENY_V126 = "sw-cb-abb-vd4-17kv-630a"
+_KABEL_SN_SCENY_V126 = "cable-base-epr-al-1c-240"
+
+
+def _wiazanie_katalogowe_sceny(przestrzen: str, pozycja: str) -> dict[str, Any]:
+    return {
+        "catalog_namespace": przestrzen,
+        "catalog_item_id": pozycja,
+        "catalog_item_version": "2024.1",
+        "materialize": True,
+        "snapshot_mapping_version": "1.0",
+    }
 
 
 def _enm_sceny_akademickiej() -> EnergyNetworkModel:
-    """Sieć złota z kartą przekształtnika ZMATERIALIZOWANĄ na `gen_pv`."""
-    enm = build_golden_enm()
-    rekord = get_default_mv_catalog().get_converter_type(_KARTA_PRZEKSZTALTNIKA_SCENY_V126)
-    if rekord is None:
+    """Sieć złota z farmą PV przyłączoną torem DER-SN KANONICZNĄ operacją.
+
+    Farma PV sceny (dwa falowniki karty `_KARTA_PRZEKSZTALTNIKA_SCENY_V126`, nastawa
+    0,4 MW) powstaje operacją domenową `add_converter_source` z topologią DER-SN — tą samą,
+    którą projektant przyłącza źródło po stronie SN: szyna producenta 0,8 kV → transformator
+    blokowy 15/0,8 kV → kabel SN → dedykowane pole SN na szynie SN stacji B. Tabliczkę
+    falownika materializuje kontrakt projekcji katalogu (`MaterializationContract`) w
+    przestrzeni `CONVERTER` — jej kontrakt niesie pola karty analizy SSCI; zero liczb
+    wpisanych ręcznie.
+
+    Dlaczego nie falownik nN sieci złotej (`gen_pv` na szynie 0,4 kV): karta z polami SSCI
+    ma napięcie 0,8 kV, a przypięcie jej do źródła na szynie 0,4 kV odrzuca kontrola
+    zgodności napięć (O-53: „Napięcie katalogowe źródła nie jest zgodne z napięciem szyny.
+    Źródło: 0.8 kV, szyna: 0.4 kV.") — dawniej scena wpisywała kartę wprost do
+    `Generator.materialized_params` i niosła falownik 0,8 kV na szynie 0,4 kV (fikstura
+    omijająca walidację). Źródło nN sieci złotej nie wchodzi do sceny: bez karty
+    przekształtnika blokowałoby gotowość rodzajów czytających przekształtniki.
+
+    Identyfikator generatora nadaje operacja (deterministycznie); scena sprawdza, że jest
+    równy `REF_FALOWNIKA_SCENY_AKADEMICKIEJ`, którym posługują się parametry projektanta.
+    """
+    baza = build_golden_enm().model_dump(mode="json")
+    baza["generators"] = [g for g in baza["generators"] if g["ref_id"] != "gen_pv"]
+    wynik = execute_domain_operation(
+        baza,
+        "add_converter_source",
+        {
+            "source_technology": "PV",
+            "connection_variant": "block_transformer",
+            "station_ref": "sub_b",
+            "bus_nn_ref": "bus_sn_b",
+            "source_name": "Farma PV",
+            "quantity": 2,
+            "power_setpoint_mw": 0.4,
+            # Jawny cel mocy biernej 0 Mvar (praca przy cosφ = 1) — ta sama dana co źródło nN
+            # sieci złotej (`q_mvar=0.0`); operacja toru DER-SN czyta cel Q z `q_min_mvar`,
+            # a brak zostawia `None` (gotowość SSCI i niezawodności: `generator.q_missing`).
+            "q_min_mvar": 0.0,
+            "catalog_binding": _wiazanie_katalogowe_sceny(
+                "CONVERTER", _KARTA_PRZEKSZTALTNIKA_SCENY_V126
+            ),
+            "der_topology": {
+                "connection_level": "sn",
+                "inverter_output_voltage_kv": 0.8,
+                "has_manufacturer_lv_switchgear": True,
+                "lv_switchgear_variant": "multi-feeder",
+                "has_block_transformer": True,
+                "block_transformer": {
+                    "rated_power_mva": 0.5,
+                    "primary_voltage_kv": 15.0,
+                    "secondary_voltage_kv": 0.8,
+                    "catalog_ref": _TRANSFORMATOR_BLOKOWY_SCENY_V126,
+                    "catalog_binding": _wiazanie_katalogowe_sceny(
+                        "TRAFO_SN_NN", _TRANSFORMATOR_BLOKOWY_SCENY_V126
+                    ),
+                },
+                "has_dedicated_mv_field": True,
+                "mv_bus_ref": "bus_sn_b",
+                "mv_field_configuration": {
+                    "switching_device": "CB",
+                    "ct": True,
+                    "vt": True,
+                    "earthing_switch": True,
+                    "surge_arrester": True,
+                    "protection_relay": True,
+                    "cable_head": True,
+                    "cable_length_km": 0.05,
+                    "apparatus_catalog_binding": _wiazanie_katalogowe_sceny(
+                        "APARAT_SN", _APARAT_POLA_SN_SCENY_V126
+                    ),
+                    "cable_catalog_ref": _KABEL_SN_SCENY_V126,
+                    "cable_catalog_binding": _wiazanie_katalogowe_sceny(
+                        "KABEL_SN", _KABEL_SN_SCENY_V126
+                    ),
+                },
+            },
+        },
+    )
+    if wynik.get("error"):
+        raise SystemExit(f"[fixtury] scena akademicka: {wynik['error']}")
+    enm = EnergyNetworkModel.model_validate(wynik["snapshot"])
+    falowniki = [g.ref_id for g in enm.generators if g.gen_type != "synchronous"]
+    if falowniki != [REF_FALOWNIKA_SCENY_AKADEMICKIEJ]:
         raise SystemExit(
-            "[fixtury] karta przekształtnika sceny akademickiej nie istnieje: "
-            f"{_KARTA_PRZEKSZTALTNIKA_SCENY_V126}"
+            "[fixtury] scena akademicka: operacja nadała falownikowi identyfikator "
+            f"{falowniki}, parametry sceny wskazują {REF_FALOWNIKA_SCENY_AKADEMICKIEJ}"
         )
-    for generator in enm.generators:
-        if generator.ref_id == "gen_pv":
-            generator.catalog_ref = _KARTA_PRZEKSZTALTNIKA_SCENY_V126
-            generator.materialized_params = dict(rekord.to_dict())
     _fiksuj_niedeterminizm_sceny_zwarcia(enm)
     return enm
+
+
+#: Kolekcje ENM, których nazwy czyta most referencja → nazwa okien wyników
+#: (`ui/topology/snapshotStore.selectElementName`).
+_KOLEKCJE_NAZW_OBIEKTOW = (
+    "buses",
+    "branches",
+    "transformers",
+    "sources",
+    "generators",
+    "loads",
+    "substations",
+    "bays",
+)
+
+
+def nazwy_obiektow_scen_akademickich() -> dict[str, Any]:
+    """Nazwy obiektów (referencja → nazwa) sieci złotej i sieci sceny „akademickie" — JEDNO
+    źródło nazw atrapy migawki frontu (`harness-fixtures/migawkaSieciZlotej.ts`).
+
+    Dawniej atrapa niosła RĘCZNĄ kopię nazw sieci złotej (z poprawionymi znakami diakrytycznymi,
+    których model nie ma) i rozjechała się ze sceną, gdy ta przeszła na tor DER-SN: wyniki sceny
+    wskazywały elementy, których kopia nie znała, więc strażnik prezentacji zobaczył etykiety
+    zapasowe z członami identyfikatora (`instalacja PV · der · producer_nn_bus`). Nazwy pochodzą
+    teraz z tych samych modeli, na których liczone są biegi i gotowość scen."""
+    nazwy: dict[str, dict[str, str]] = {kolekcja: {} for kolekcja in _KOLEKCJE_NAZW_OBIEKTOW}
+    for enm in (build_golden_enm(), _enm_sceny_akademickiej()):
+        dane = enm.model_dump(mode="json")
+        for kolekcja in _KOLEKCJE_NAZW_OBIEKTOW:
+            for element in dane.get(kolekcja) or []:
+                nazwy[kolekcja][str(element["ref_id"])] = str(element["name"])
+    return {
+        kolekcja: [{"ref_id": ref, "name": nazwa} for ref, nazwa in sorted(elementy.items())]
+        for kolekcja, elementy in nazwy.items()
+    }
 
 
 def _biegi_sceny_akademickiej() -> dict[str, Any]:
@@ -3528,7 +3666,8 @@ def _biegi_sceny_akademickiej() -> dict[str, Any]:
     policzony „na oko". Zmierzone bezpośrednio po materializacji karty
     przekształtnika: 11 rodzajów liczy się, 1 odmawia
     (`insulation_coordination` — sieć nie niesie danych koordynacji izolacji),
-    2 są wycofane (`hosting_capacity`, `opf_loss_lcc`).
+    2 są wycofane (`hosting_capacity`, `opf_loss_lcc`). Z 11 liczonych scena NIE
+    niesie `power_quality_harmonics` (solver niezwalidowany — patrz pętla niżej).
 
     Rodzaj `ssci_impedance` dostaje DODATKOWO werdykt stabilności
     (`get_v126_ssci_stability` — osobna końcówka, którą czyta ekran SSCI).
@@ -3543,6 +3682,15 @@ def _biegi_sceny_akademickiej() -> dict[str, Any]:
         set_enm(CASE_ID_HARNESSU, enm)
         for rodzaj in V126AnalysisType:
             if _wycofanie_v126(rodzaj) is not None:
+                continue
+            # Uczciwość natychmiastowa (audyt harmonicznych 2026-09-23): bieg jakości
+            # energii tej sceny dawał THD_U 3049 % na szynie nN i ~64 % na szynach SN
+            # z solvera niezwalidowanego, a ta fixtura przypinała te liczby bajt w bajt
+            # jako „złote". Przypięcie skasowane RAZEM z biegiem sceny (nie osłabione do
+            # progu wiarygodności) — ekran E-40 harnessu pokazuje uczciwą gotowość bez
+            # liczb; wynik z oceną niewykonaną sprawdzają testy
+            # `tests/uczciwosc/test_jakosc_energii_bez_werdyktu.py` na realnym biegu.
+            if rodzaj is V126AnalysisType.POWER_QUALITY_HARMONICS:
                 continue
             parametry = uzupelnij_parametry_z_modelu(
                 enm, rodzaj, PARAMETRY_SCENY_AKADEMICKIE.get(rodzaj.value, {})
@@ -4140,6 +4288,7 @@ FIXTURY: dict[str, Any] = {
     "werdykt_projektowy_scena_uwaga": werdykt_projektowy_sceny_uwaga,
     "katalog_analiz_v126": katalog_analiz_v126,
     "gotowosc_v126_scena_akademickie": gotowosc_v126_scena_akademickie,
+    "nazwy_obiektow_scen_akademickich": nazwy_obiektow_scen_akademickich,
     "gotowosc_v126_scena_akademickie_parametry": gotowosc_v126_scena_akademickie_parametry,
     "werdykt_projektowy_scena_ocena": werdykt_projektowy_scena_ocena,
     "werdykt_projektowy_scena_ocena_przekroczenia": werdykt_projektowy_scena_ocena_przekroczenia,

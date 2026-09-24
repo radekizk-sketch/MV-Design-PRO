@@ -36,6 +36,7 @@ from application.analyses.werdykt_projektowy import (
     STAN_SPELNIONE,
     WYNIK_BRAK_PODSTAW,
     WYNIK_NIE_SPELNIA,
+    WYNIK_NIEJEDNOZNACZNY,
     WYNIK_SPELNIA,
     ZRODLO_PF,
     ZRODLO_SC,
@@ -639,14 +640,20 @@ def test_liczniki_ocena_sa_suma_wynikow_po_wszystkich_elementach() -> None:
     elementy = [element for pozycja in werdykt.pozycje for element in pozycja.elementy]
     spelnia = sum(1 for e in elementy if e.wynik == WYNIK_SPELNIA)
     nie_spelnia = sum(1 for e in elementy if e.wynik == WYNIK_NIE_SPELNIA)
+    niejednoznaczny = sum(1 for e in elementy if e.wynik == WYNIK_NIEJEDNOZNACZNY)
     brak = sum(1 for e in elementy if e.wynik == WYNIK_BRAK_PODSTAW)
     ocena = werdykt.ocena
+    # Zmiana kanonu (rozstrzygnięcie zarządcy 2026-09-23, §2.3 kontraktu werdyktu): wynik
+    # NIEJEDNOZNACZNY ma własny licznik i należy do ocenionych. Intencja zachowana — liczniki
+    # są sumą wyników po WSZYSTKICH elementach, a OCENIONO + BRAK PODSTAW = wszystkie elementy.
     assert ocena == {
-        "oceniono": spelnia + nie_spelnia,
+        "oceniono": spelnia + nie_spelnia + niejednoznaczny,
         "spelnia": spelnia,
         "nie_spelnia": nie_spelnia,
+        "niejednoznaczny": niejednoznaczny,
         "brak_podstaw": brak,
     }
+    assert ocena["oceniono"] + ocena["brak_podstaw"] == len(elementy)
     assert elementy, "złota sieć z PF+SC musi dać co najmniej jeden element"
 
 

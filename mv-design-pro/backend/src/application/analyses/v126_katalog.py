@@ -36,6 +36,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from application.v126_artifacts import POWODY_NIEZWALIDOWANIA_HARMONICZNYCH_PL
 from solver_input.v126_contracts import V126AnalysisType
 
 # --- Grupy inżynierskie -----------------------------------------------------
@@ -343,10 +344,18 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             "Czy odkształcenie napięcia i prądu w węzłach sieci mieści się w granicach "
             "kompatybilności elektromagnetycznej?"
         ),
+        # Uczciwość natychmiastowa (audyt harmonicznych 2026-09-23): zakres i dane opisują
+        # to, co solver FAKTYCZNIE robi. Dawne twierdzenia „harmoniczne rzędów 2–49",
+        # „skan … z wykrywaniem rezonansów" i „moc zwarciowa źródła zasilania" były
+        # fałszywe (18 zaszytych rzędów z cichym pomijaniem pozostałych, „rezonans" = każdy
+        # punkt skanu ponad 10·|Z(50 Hz)|, sieć nadrzędna jako admitancja 1e6 S).
         zakres_pl=(
             "Wszystkie szyny modelu; źródła odkształcające = przekształtniki z widmem "
-            "harmonicznym (karta katalogowa albo widmo podane ręcznie); harmoniczne rzędów "
-            "2–49; skan impedancji węzłów w paśmie 50–2500 Hz z wykrywaniem rezonansów."
+            "harmonicznym (karta katalogowa albo widmo podane ręcznie); 18 zaszytych rzędów "
+            "harmonicznych (pozostałe rzędy widma są pomijane); skan modułu impedancji "
+            "węzłów w paśmie 50–2500 Hz. Wynik solvera jest niezwalidowany — ocena "
+            "kompatybilności nie jest wykonywana, liczby są dostępne wyłącznie w sekcji "
+            "audytowej."
         ),
         wielkosci_glowne=(
             WielkoscGlowna("THD_U", "Współczynnik odkształcenia napięcia", "%", r"\mathrm{THD}_U"),
@@ -390,12 +399,12 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             DanaZModelu("Napięcie znamionowe i obciążenie szyn", "szyny, odbiory"),
             DanaZModelu("Impedancje i susceptancje gałęzi", "linie, kable, aparaty łączeniowe"),
             DanaZModelu("Parametry transformatorów", "transformatory (S_n, u_k)"),
-            DanaZModelu("Moc zwarciowa źródła zasilania", "źródło sieci nadrzędnej"),
             DanaZModelu(
                 "Widmo harmoniczne i moc znamionowa przekształtników",
                 "karty katalogowe przekształtników PV/BESS/wiatrowych",
             ),
         ),
+        uwagi_metody_pl=POWODY_NIEZWALIDOWANIA_HARMONICZNYCH_PL,
         od_uzytkownika=(
             ParametrUzytkownika(
                 "harmonic_spectra",
@@ -418,8 +427,8 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
         zakres_pl=(
             "Jeden przekształtnik — wskazany parametrem albo pierwszy przekształtnik modelu; "
             "impedancja sieci widziana z jego szyny i impedancja wyjściowa przekształtnika "
-            "w paśmie podsynchronicznym; werdykt kryterium Nyquista wystawia okno "
-            "„Stabilność SSCI”."
+            "w paśmie podsynchronicznym. Ocena stabilności kryterium Nyquista nie jest "
+            "wykonywana: impedancja sieci liczona jest bez przekładni transformatora."
         ),
         wielkosci_glowne=(
             WielkoscGlowna(
@@ -448,9 +457,10 @@ KATALOG_ANALIZ_V126: tuple[KartaAnalizy, ...] = (
             ),
         ),
         bez_podstawy_pl=(
-            "Ta analiza dostarcza tablice impedancji; werdykt stabilności (kryterium "
-            "impedancyjne Nyquista wg Sun 2011 / Wen 2016) wystawia osobne okno "
-            "„Stabilność SSCI” z własnym kontraktem."
+            "Ta analiza dostarcza tablice impedancji. Ocena stabilności (kryterium "
+            "impedancyjne Nyquista wg Sun 2011 / Wen 2016) nie jest wykonywana — impedancja "
+            "sieci Z_grid(f) liczona jest bez przekładni transformatora; okno „Stabilność "
+            "SSCI” pokazuje wyjaśnienie i metryki wyłącznie jako materiał audytowy."
         ),
         dane_z_modelu=(
             DanaZModelu(

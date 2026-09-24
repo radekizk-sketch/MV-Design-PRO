@@ -98,7 +98,9 @@ def test_sanity_bounds_endpoint_returns_view(app_client) -> None:
     assert data["analysis_id"] == str(run_id)
     assert len(data["items"]) >= 5
     statuses = {item["status"] for item in data["items"]}
-    assert "zweryfikowany" in statuses
+    # Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): „w paśmie wiarygodności"
+    # zamiast „zweryfikowany" — intencja bez zmian (wiarygodny Ik'' na sieci złotej).
+    assert "w paśmie wiarygodności" in statuses
 
 
 def test_sanity_bounds_endpoint_is_deterministic(app_client) -> None:
@@ -134,7 +136,8 @@ def test_sanity_bounds_pf_endpoint_returns_power_flow_bands(app_client) -> None:
     assert data["converged"] is True
     assert "napiecia" in data and "obciazenia" in data and "straty" in data
     assert len(data["napiecia"]["items"]) >= 5
-    assert {item["status"] for item in data["napiecia"]["items"]} == {"zweryfikowany"}
+    # Zmiana kanonu (2026-09-23): etykieta pasma zamiast „zweryfikowany"; intencja bez zmian.
+    assert {item["status"] for item in data["napiecia"]["items"]} == {"w paśmie wiarygodności"}
     assert "PN-EN 50160" in data["napiecia"]["norm_ref"]
     assert data["napiecia"]["band_pct"] == 10.0
     assert data["straty"]["threshold_pct"] == 10.0
@@ -687,8 +690,19 @@ def test_design_verdict_endpoint_niesie_ocene_grupy_i_elementy_per_pozycja(app_c
     assert resp.status_code == 200, resp.text
     data = resp.json()
 
-    assert set(data["ocena"].keys()) == {"oceniono", "spelnia", "nie_spelnia", "brak_podstaw"}
-    assert data["ocena"]["oceniono"] == data["ocena"]["spelnia"] + data["ocena"]["nie_spelnia"]
+    # Zmiana kanonu (rozstrzygnięcie zarządcy 2026-09-23, §2.3 kontraktu werdyktu): licznik
+    # wyników niejednoznacznych należy do ocenionych. Intencja zachowana — pin kluczy
+    # i sumy liczników widocznych przez API.
+    assert set(data["ocena"].keys()) == {
+        "oceniono",
+        "spelnia",
+        "nie_spelnia",
+        "niejednoznaczny",
+        "brak_podstaw",
+    }
+    assert data["ocena"]["oceniono"] == (
+        data["ocena"]["spelnia"] + data["ocena"]["nie_spelnia"] + data["ocena"]["niejednoznaczny"]
+    )
 
     assert data["grupy"], "brak grup na odpowiedzi API"
     for grupa in data["grupy"]:

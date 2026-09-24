@@ -356,7 +356,6 @@ export function getContextMenuHeader(
     Genset: 'Agregat',
     UPS: 'UPS',
     EnergyMeter: 'Licznik energii',
-    PowerQualityMeter: 'Pomiar jakości',
     SurgeArresterNN: 'Ogranicznik przepięć nN',
     Earthing: 'Uziemienie',
     MeasurementNN: 'Przekładnik nN',

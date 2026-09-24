@@ -75,6 +75,20 @@ wejściowego (odtwarzalność wymaga, by ten sam ładunek dawał ten sam wynik),
 KAŻDA zmiana ładunku — nawet pola, którego ta analiza fizycznie nie czyta —
 przesuwa ziarno i wynik losowania w paśmie niepewności Monte Carlo. To nie jest
 zmiana merytoryczna zdolności przyłączeniowej, tylko przesunięcie próbki losowej.
+
+2026-09-23, uczciwość natychmiastowa (audyty harmonicznych i dynamiki). Fixtura przestaje być
+odciskiem SUROWEGO solvera, a staje się odciskiem ODPOWIEDZI API (granica
+`application/v126_artifacts.py::wynik_v126_dla_powierzchni`). Wartości liczbowe solvera bez
+zmian (solver FROZEN nietknięty); zmienia się kształt i etykiety:
+
+  rodzaj / pole                                  PRZED                    PO
+  ---------------------------------------------- ------------------------ ------------------------
+  każdy rodzaj: sanity.status (w paśmie)         „zweryfikowany"          „w paśmie wiarygodności"
+  power_quality_harmonics: nodes, sanity         na wierzchu ładunku      w `wynik_audytowy`
+  power_quality_harmonics: compatibility_status  „zgodny"/„niezgodny"     „NIE_OCENIONO"
+  power_quality_harmonics: violated_limits       lista „limitów"          usunięte (werdykty)
+  power_quality_harmonics / ssci_impedance       —                        `ocena` (NIE_OCENIONO)
+  reliability_contingency: contingency_ranking   obecny                   zdjęty + `ranking_n1`
 """
 
 from __future__ import annotations
@@ -91,6 +105,7 @@ from typing import Any
 if str(Path(__file__).resolve().parents[2] / "src") not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
+from application.v126_artifacts import wynik_v126_dla_powierzchni  # noqa: E402
 from network_model.solvers.v126_academic import V126AcademicSolver  # noqa: E402
 from solver_input.v126_contracts import (  # noqa: E402
     V126AcademicInput,
@@ -216,11 +231,18 @@ def model_wejsciowy() -> V126AcademicInput:
 
 
 def zbuduj_odpowiedzi() -> dict[str, Any]:
-    """Uruchamia solver dla KAŻDEGO rodzaju kontraktu i zwraca ładunki wyników."""
+    """Uruchamia solver dla KAŻDEGO rodzaju kontraktu i zwraca ładunki wyników TAK, jak
+    widzi je ekran: przez granicę `wynik_v126_dla_powierzchni` (ta sama funkcja, którą woła
+    `enm/canonical_analysis.py::_execute_v126` przed zapisem wyniku biegu). Fixtura strażnika
+    prezentacji jest odciskiem ODPOWIEDZI API — surowy ładunek solvera pokazywałby strażnikowi
+    pola, których ekran nigdy nie dostaje (ranking N-1, liczby jakości energii poza sekcją
+    audytową, etykietę „zweryfikowany"), i odwrotnie."""
     solver = V126AcademicSolver()
     model = model_wejsciowy()
     return {
-        analysis_type.value: solver.run(analysis_type, model)["result"]
+        analysis_type.value: wynik_v126_dla_powierzchni(
+            analysis_type.value, solver.run(analysis_type, model)
+        )["result"]
         for analysis_type in V126AnalysisType
     }
 

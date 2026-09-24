@@ -11,10 +11,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { WykresTrajektoriiChart } from '../WykresTrajektoriiChart';
 import { punktyObwiedniFrt, punktyTrajektoriiFrt } from '../frtModel';
 import { FRT_STRINGS } from '../strings';
-import { widokLvrtWObwiedniFixture } from './fixtures';
+import { widokLvrtFixture } from './fixtures';
 
 function renderWykres() {
-  const widok = widokLvrtWObwiedniFixture();
+  const widok = widokLvrtFixture();
   return render(
     <WykresTrajektoriiChart
       trajektoria={punktyTrajektoriiFrt(widok.scenariusze[0])}

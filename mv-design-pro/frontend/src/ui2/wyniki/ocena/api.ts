@@ -13,17 +13,29 @@
  * Parametrem jest PRZYPADEK, nie przebieg — ocena zestawia kryteria z wielu
  * biegów (rozpływ + zwarcia) i danych modelu. Warstwa PREZENTACJI: wyłącznie
  * odczyt (GET), zero fizyki, zero ocen własnych — WYNIK OCENY każdego elementu
- * (SPEŁNIA / NIE SPEŁNIA / BRAK PODSTAW) przychodzi z backendu.
+ * (SPEŁNIA / NIE SPEŁNIA / WYNIK NIEJEDNOZNACZNY / BRAK PODSTAW) przychodzi z backendu.
  */
 
-/** Stan kryterium (agregat pozycji). Czwarty stan NIE_DOTYCZY nie zastępuje żadnego z trzech. */
-export type StanKryterium = 'SPELNIONE' | 'NARUSZONE' | 'NIESPRAWDZONE' | 'NIE_DOTYCZY';
+/**
+ * Stan kryterium (agregat pozycji = stan najgorszego elementu wg §2.3 kontraktu werdyktu:
+ * NARUSZONE → NIEJEDNOZNACZNE → NIESPRAWDZONE → SPELNIONE). NIE_DOTYCZY nie zastępuje
+ * żadnego z nich.
+ */
+export type StanKryterium =
+  | 'SPELNIONE'
+  | 'NARUSZONE'
+  | 'NIEJEDNOZNACZNE'
+  | 'NIESPRAWDZONE'
+  | 'NIE_DOTYCZY';
 
 /** Rodzaj źródła danych kryterium (biegi albo model). */
 export type ZrodloKryterium = 'PF' | 'short_circuit_sn' | 'model';
 
-/** Wynik oceny JEDNEGO elementu — trzy stany, nigdy dwa (`WYNIK_*` backendu). */
-export type WynikOceny = 'SPELNIA' | 'NIE_SPELNIA' | 'BRAK_PODSTAW';
+/**
+ * Wynik oceny JEDNEGO elementu (`WYNIK_*` backendu). `NIEJEDNOZNACZNY` — ostrzeżenie
+ * dostawcy bez wniosku binarnego (kontrakt werdyktu §2.1), nigdy spełnienie.
+ */
+export type WynikOceny = 'SPELNIA' | 'NIE_SPELNIA' | 'NIEJEDNOZNACZNY' | 'BRAK_PODSTAW';
 
 /** Warunek kryterium (`WARUNEK_*` backendu) — steruje zapisem odniesienia. */
 export type WarunekKryterium = 'nie_wiecej_niz' | 'nie_mniej_niz' | 'w_pasmie' | 'zgodnosc';
@@ -50,7 +62,7 @@ export interface OcenaElementu {
    *  liczby. Pusty, gdy `margines` jest `null` (pasmo, zgodność, brak podstaw)
    *  albo gdy dostawca podał margines już policzony (formuła nieznana tutaj). */
   readonly margines_wzor_latex: string;
-  /** Uwaga przy wyniku SPEŁNIA (np. zapas w paśmie ostrzegawczym). */
+  /** Uwaga przy wyniku SPEŁNIA (np. zapas w paśmie ostrzegawczym) — wyłącznie SPEŁNIA. */
   readonly uwaga_pl: string | null;
   /** Uzasadnienie dostawcy (dlaczego tak oceniono). */
   readonly uzasadnienie_pl: string | null;
@@ -75,6 +87,8 @@ export interface PozycjaOceny {
   readonly liczba_ocenionych: number;
   readonly liczba_naruszen: number;
   readonly liczba_niesprawdzonych: number;
+  /** Elementy z wynikiem NIEJEDNOZNACZNY (wyprowadzone z elementów po stronie backendu). */
+  readonly liczba_niejednoznacznych: number;
   readonly liczba_ostrzezen: number;
   readonly wiodacy_element_id: string | null;
   readonly wiodacy_opis_pl: string | null;
@@ -114,20 +128,25 @@ export interface ZrodloOceny {
   readonly powod_pl: string | null;
 }
 
-/** Podsumowanie kryteriów: NIESPRAWDZONE nigdy nie dolicza się do spełnionych. */
+/** Podsumowanie kryteriów: NIEJEDNOZNACZNE i NIESPRAWDZONE nigdy nie doliczają się do spełnionych. */
 export interface PodsumowanieKryteriow {
   readonly spelnione: number;
   readonly naruszone: number;
+  readonly niejednoznaczne: number;
   readonly niesprawdzone: number;
   readonly nie_dotyczy: number;
   readonly razem: number;
 }
 
-/** Liczniki PER ELEMENT (nagłówek ekranu): OCENIONO = SPEŁNIA + NIE SPEŁNIA. */
+/**
+ * Liczniki PER ELEMENT (nagłówek ekranu): OCENIONO = SPEŁNIA + NIE SPEŁNIA + WYNIK
+ * NIEJEDNOZNACZNY; OCENIONO + BRAK PODSTAW = wszystkie elementy.
+ */
 export interface LicznikiOceny {
   readonly oceniono: number;
   readonly spelnia: number;
   readonly nie_spelnia: number;
+  readonly niejednoznaczny: number;
   readonly brak_podstaw: number;
 }
 
@@ -140,7 +159,7 @@ export interface WpisZakresu {
 
 /** Pełna odpowiedź `GET /api/quality/design-verdict`. */
 export interface OdpowiedzOceny {
-  readonly werdykt: 'SPELNIONE' | 'NARUSZONE' | 'NIESPRAWDZONE';
+  readonly werdykt: 'SPELNIONE' | 'NARUSZONE' | 'NIEJEDNOZNACZNE' | 'NIESPRAWDZONE';
   readonly case_id: string;
   readonly model_hash: string;
   readonly pozycje: readonly PozycjaOceny[];

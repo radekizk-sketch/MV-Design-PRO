@@ -265,7 +265,10 @@ def _krok_k_metoda(w: _WejscieK) -> _WynikKroku:
 
 def _krok_k_wynik(w: _WejscieK) -> _WynikKroku:
     if w.wynik is None:
-        return _WynikKroku(status="NIE_OCENIONO", braki=(wyjasnienie.brak_wyniku(),))
+        return _WynikKroku(
+            status="NIE_OCENIONO",
+            braki=(wyjasnienie.brak_wyniku(jest_metoda=w.dowod.metoda != "BRAK_METODY"),),
+        )
     return _WynikKroku()
 
 

@@ -75,13 +75,25 @@ def test_sequence_endpoint_is_deterministic(app_client) -> None:
     assert first == second
 
 
-def test_sequence_endpoint_conjunction_failing_dip(app_client) -> None:
+def test_sequence_endpoint_dip_with_solver_disconnect_has_no_verdict(app_client) -> None:
+    """Intencja zachowana: końcówka przenosi skład sekwencji z meldunkiem odłączenia
+    w zapadzie 2. Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): dawny werdykt
+    „sekwencja niezaliczona — zapad 2" był koniunkcją tautologii wobec profilu wejściowego;
+    teraz sekwencja i każdy zapad niosą rekord NIE_OCENIONO, meldunek solvera zostaje
+    polem audytowym zapadu."""
     resp = app_client.get(
         SEQ,
         params={"der_ref": _DER_REF, "operator_id": "pse", "sekwencja": "0.30:0.15,0.02:0.20"},
     )
     assert resp.status_code == 200
-    assert resp.json()["werdykt_sekwencji_pl"] == "sekwencja niezaliczona — zapad 2"
+    dane = resp.json()
+    assert dane["werdykt_sekwencji_pl"] == "nie oceniono"
+    assert dane["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
+    assert [zapad["ocena"]["status_maszynowy"] for zapad in dane["zapady"]] == [
+        "NIE_OCENIONO",
+        "NIE_OCENIONO",
+    ]
+    assert dane["zapady"][1]["stayed_connected"] is False
 
 
 # --------------------------------------------------------------------------

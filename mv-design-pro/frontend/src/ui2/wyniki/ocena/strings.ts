@@ -36,11 +36,14 @@ export const OCENA_STRINGS = {
   oceniono: 'OCENIONO',
   spelnia: 'SPEŁNIA WYMAGANIA',
   nieSpelnia: 'NIE SPEŁNIA WYMAGAŃ',
+  niejednoznaczny: 'WYNIK NIEJEDNOZNACZNY',
   brakPodstaw: 'BRAK PODSTAW DO OCENY',
   ocenaCalosciowaSpelnia:
     'Wszystkie ocenione elementy spełniają wymagania w kryteriach objętych oceną automatyczną.',
   ocenaCalosciowaNieSpelnia:
     'Część elementów nie spełnia wymagań — pozycje z wynikiem „NIE SPEŁNIA WYMAGAŃ" wymagają decyzji projektowej.',
+  ocenaCalosciowaNiejednoznaczny:
+    'Brak elementów nie spełniających wymagań, ale część wyników jest niejednoznaczna — wymagają weryfikacji; to nie jest równoznaczne ze spełnieniem.',
   ocenaCalosciowaBrakPodstaw:
     'Brak elementów nie spełniających wymagań, ale część kryteriów nie ma podstawy do oceny — to nie jest równoznaczne ze spełnieniem.',
 
@@ -56,6 +59,7 @@ export const OCENA_STRINGS = {
   kolDzialania: 'Powiązania',
   wynikSpelnia: 'SPEŁNIA WYMAGANIA',
   wynikNieSpelnia: 'NIE SPEŁNIA WYMAGAŃ',
+  wynikNiejednoznaczny: 'WYNIK NIEJEDNOZNACZNY — WYMAGA WERYFIKACJI',
   wynikBrakPodstaw: 'BRAK PODSTAW DO OCENY SPEŁNIENIA WYMAGANIA',
   odniesienieBrak: 'brak wartości granicznej — ocena zgodności z warunkami',
   progUwagi: 'próg uwagi',

@@ -1092,7 +1092,12 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // backendu (`get_v126_catalog("analysis-types")`).
     return jsonOK(akademickieScenyBiegi.typy);
   }
-  if (url.includes('/v126/') && !url.includes('ssci_impedance')) {
+  if (url.includes('/v126/') && !url.includes('/ssci_impedance/stability')) {
+    // Uczciwosc natychmiastowa (2026-09-23): trasa obejmuje TAKZE `ssci_impedance`
+    // (koperta, wynik, slad, dowod, raport) — dawny warunek wykluczal caly rodzaj,
+    // wiec okno analiz specjalistycznych po uruchomieniu SSCI dostawalo 422 na
+    // wyniku V12.6 (obslugiwana byla tylko koperta i widok stabilnosci okna SSCI).
+    // Widok stabilnosci (`/ssci_impedance/stability`) ma osobna trase nizej.
     // Scena "akademickie": koperta biegu, wynik, slad WHITE BOX, pakiet
     // dowodowy i raport z REALNYCH biegow V12.6 na sieci zlotej
     // (`eksport_fixtur_harnessu.py::akademickie_scena_biegi` — DOKLADNIE te
@@ -1104,16 +1109,19 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     }>;
     const rodzaj = Object.keys(biegi).find((kod) => url.includes(kod));
     if (rodzaj === undefined) {
-      // Rodzaj, ktorego siec sceny NIE UMIE policzyc (brak karty
-      // przeksztaltnika z moca znamionowa, brak danych izolacji) albo wycofany
-      // z powierzchni — odmowa NAZWANA, nie wynik policzony "na oko". Ekran i
-      // tak nie pusci uruchomienia: gotowosc tych rodzajow jest
-      // NIEPOTWIERDZONA w fixturze `gotowosc_v126_scena_akademickie`.
+      // Rodzaj bez biegu sceny — odmowa NAZWANA, nie wynik policzony "na oko".
+      // Dwie klasy: (a) siec sceny nie spelnia warunkow gotowosci (brak danych
+      // izolacji) albo rodzaj wycofany — ekran i tak nie pusci uruchomienia;
+      // (b) jakosc energii: gotowosc POTWIERDZONA, ale scena SWIADOMIE nie niesie
+      // biegu — liczby solvera harmonicznego niezwalidowanego nie sa przypinane
+      // w fixturach (uczciwosc natychmiastowa 2026-09-23; para predykatow
+      // gotowosc/bieg przypieta w `tests/ci/test_fixtury_harnessu.py`).
       return new Response(
         JSON.stringify({
           detail:
-            'Scena harnessu nie ma biegu tego rodzaju analizy — siec sceny nie spelnia '
-            + 'jego warunkow gotowosci (patrz fixtura gotowosci).',
+            'Scena harnessu nie niesie biegu tego rodzaju analizy — rodzaj bez gotowości '
+            + 'na sieci sceny albo wynik solvera niezwalidowanego, którego fixtury nie przypinają '
+            + '(bieg z oceną niewykonaną wykonuje aplikacja z backendem).',
         }),
         { status: 422, headers: { 'Content-Type': 'application/json' } },
       );
@@ -1125,17 +1133,13 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.includes('/results/v126/')) return jsonOK(bieg.wynik);
     return jsonOK(bieg.koperta);
   }
-  if (url.includes('/runs/v126/ssci_impedance')) {
-    // Scena "ssci": utworzenie przebiegu SSCI (koperta V126RunResponse) —
-    // HARNESS-RESZTA-2: koperta REALNEGO biegu backendu.
-    return jsonOK(akademickieScenyBiegi.biegi.ssci_impedance.koperta);
-  }
   if (url.includes('/results/v126/ssci_impedance/stability')) {
-    // Scena "ssci": werdykt stabilnosci SSCI (kryterium impedancyjne Nyquista)
-    // — HARNESS-RESZTA-2: REALNY widok backendu (`get_v126_ssci_stability`, TA
-    // SAMA funkcja co koncowka) na REALNYM biegu `ssci_impedance` sieci zlotej
-    // z ZMATERIALIZOWANA karta przeksztaltnika. Wczesniej caly werdykt wraz z
-    // wywodem White Box byl wpisany recznie.
+    // Scena "ssci": widok stabilnosci SSCI (kryterium impedancyjne Nyquista) —
+    // ocena niewykonana z metrykami audytowymi (uczciwosc natychmiastowa
+    // 2026-09-23) — HARNESS-RESZTA-2: REALNY widok backendu
+    // (`get_v126_ssci_stability`, TA SAMA funkcja co koncowka) na REALNYM biegu
+    // `ssci_impedance` sieci zlotej z karta przeksztaltnika przypieta operacja
+    // domenowa. Wczesniej caly widok wraz z wywodem White Box byl wpisany recznie.
     return jsonOK(akademickieScenyBiegi.biegi.ssci_impedance.stabilnosc);
   }
   // Karta FAB-L (§0 L6): USUNIĘTA kompozycja `/api/catalog/complete-bay-templates`

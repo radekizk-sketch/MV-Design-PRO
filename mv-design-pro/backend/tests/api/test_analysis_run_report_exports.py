@@ -14,6 +14,11 @@ from api.analysis_run_exports import (
     normalize_report_options,
 )
 from api.v125_contracts import build_export_artifact
+from application.stability.dynamic_stability import (
+    FaultClearScenario,
+    FaultClearSourceState,
+    echo_scenariusza_stabilnosci,
+)
 from enm.canonical_analysis import CanonicalRun
 
 
@@ -384,6 +389,25 @@ def _build_phase_state_run() -> CanonicalRun:
 
 
 def _build_dynamic_stability_run() -> CanonicalRun:
+    """Bieg `dynamic_stability` w kształcie z `_execute_dynamic_stability` po uczciwości
+    natychmiastowej (2026-09-23): echo scenariusza z rekordem oceny NIE_OCENIONO, ślad
+    automatyki bez zdarzeń, stopień dowodowy UNVALIDATED_MODEL (niepełny, nieraportowalny)."""
+    echo = echo_scenariusza_stabilnosci(
+        FaultClearScenario(
+            scenario_id="dyn-1",
+            faulted_element_id="line-1",
+            clearing_time_ms=120.0,
+            cleared_by_element_ids=("cb-1",),
+            source_state=FaultClearSourceState(
+                source_id="src-main",
+                pre_fault_angle_deg=10.0,
+                during_fault_angle_deg=75.0,
+                post_fault_angle_deg=28.0,
+                post_fault_voltage_pu=0.97,
+                post_fault_frequency_pu=0.99,
+            ),
+        )
+    )
     return CanonicalRun(
         id=uuid4(),
         case_id="case-dyn",
@@ -400,36 +424,24 @@ def _build_dynamic_stability_run() -> CanonicalRun:
         raw_result={
             "analysis_type": "dynamic_stability",
             "proof_ref": "proof:dynamic-stability:dyn-1",
-            "proof_status": "complete",
-            "reporting_status": "reportable",
-            "result": {
-                "scenario_id": "dyn-1",
-                "source_id": "src-main",
-                "faulted_element_id": "line-1",
-                "status": "STABLE",
-                "stability_index": 0.66,
-                "clearing_time_ms": 120.0,
-                "clearing_margin_ms": 30.0,
-                "angle_swing_deg": 65.0,
-                "post_fault_voltage_pu": 0.97,
-                "post_fault_frequency_pu": 0.99,
-                "limiting_factor": "clearing_time",
-            },
+            "proof_status": "incomplete",
+            "reporting_status": "not_reportable",
+            "result": echo.to_dict(),
+            "ocena": echo.ocena,
             "automation_trace": {
                 "topology_effect": {"network_state": "RECONFIGURED"},
-                "events": [
-                    {"event_seq": 1, "event_type": "AUTOMATION_STARTED", "detail": "Start"},
-                    {"event_seq": 5, "event_type": "DYNAMIC_STABILITY_EVALUATED", "detail": "Eval"},
-                ],
+                "events": [],
             },
+            "topology_effect": {"network_state": "RECONFIGURED"},
         },
         white_box_trace=[
             {
                 "step": 1,
-                "title": "Krok stabilnosci",
+                "title": "Echo scenariusza wpisanego przez użytkownika. "
+                + echo.ocena["wyjasnienie"]["zdanie_pl"],
                 "proof_ref": "proof:dynamic-stability:dyn-1",
-                "proof_status": "complete",
-                "reporting_status": "reportable",
+                "proof_status": "incomplete",
+                "reporting_status": "not_reportable",
             }
         ],
     )
@@ -538,12 +550,18 @@ def test_report_payload_supports_phase_state_focus_table() -> None:
 
 
 def test_export_payload_supports_dynamic_stability_bundle() -> None:
+    """Intencja zachowana: pakiet eksportu biegu stabilności niesie wiersz wyniku, ślad
+    automatyki i metadane dowodowe. Zmiana kanonu (uczciwość natychmiastowa 2026-09-23):
+    wiersz to echo z rekordem NIE_OCENIONO (dawniej STABLE), ślad bez narracji zdarzeń
+    (dawniej DYNAMIC_STABILITY_EVALUATED), dowód niepełny (UNVALIDATED_MODEL)."""
     payload = build_analysis_run_export_payload(_build_dynamic_stability_run())
 
     assert payload["report_type"] == "dynamic_stability"
-    assert payload["dynamic_stability"]["rows"][0]["status"] == "STABLE"
-    assert payload["automation_trace"]["rows"][-1]["event_type"] == "DYNAMIC_STABILITY_EVALUATED"
-    assert payload["metadata"]["proof_status"] == "complete"
+    wiersz = payload["dynamic_stability"]["rows"][0]
+    assert wiersz["status"] == "NIE_OCENIONO"
+    assert wiersz["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
+    assert payload["automation_trace"]["rows"] == []
+    assert payload["metadata"]["proof_status"] == "incomplete"
 
 
 def test_report_payload_marks_readiness_blockers_as_partial_with_missing_prerequisites() -> None:

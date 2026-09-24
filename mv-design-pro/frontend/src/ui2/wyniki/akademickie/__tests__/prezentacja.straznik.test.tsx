@@ -233,14 +233,30 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
     });
   });
 
+  // Intencja zachowana: ekran odpowiada na pytanie inżynierskie z karty — wynik oceny,
+  // jej podstawa i następny krok. Zmiana kanonu (uczciwość natychmiastowa 2026-09-23):
+  // rodzaje z werdyktem rodzaju `ocena` (jakość energii, SSCI) NIE mają chipu werdyktu ani
+  // wierszy podstawy z karty — ocena wobec tej podstawy nie została wykonana. Wynikiem oceny
+  // jest wtedy rekord `NIE_OCENIONO` z odpowiedzi backendu w karcie werdyktu.
   RODZAJE.forEach((rodzaj) => {
     it(`«${rodzaj}» — ekran odpowiada na pytanie inżynierskie: pytanie z karty, wynik oceny, podstawa z karty, następny krok`, async () => {
       const ekran = await uruchomRodzaj(rodzaj);
       const karta = KATALOG.find((k) => k.kod === rodzaj)!;
       const projekt = PREZENTACJA[rodzaj as keyof typeof PREZENTACJA];
       expect(screen.getByTestId('mvd-akad-pytanie')).toHaveTextContent(karta.pytanie_pl.slice(0, 40));
-      expect(screen.getByTestId('mvd-akad-werdykt-chip')).toBeInTheDocument();
       const werdykt = screen.getByTestId('mvd-akad-werdykt');
+      if (projekt.werdykt.rodzaj === 'ocena') {
+        const rekord = (ODPOWIEDZI[rodzaj as keyof typeof ODPOWIEDZI] as {
+          ocena: { status_maszynowy: string; wyjasnienie: { zdanie_pl: string } };
+        }).ocena;
+        expect(rekord.status_maszynowy).toBe('NIE_OCENIONO');
+        expect(screen.getByTestId('mvd-akad-ocena')).toHaveAttribute('data-status', 'NIE_OCENIONO');
+        expect(werdykt).toHaveTextContent(rekord.wyjasnienie.zdanie_pl);
+        expect(screen.queryByTestId('mvd-akad-werdykt-chip')).not.toBeInTheDocument();
+        expect(screen.getByTestId('mvd-akad-nastepny-krok')).toHaveTextContent(projekt.nastepnyKrok.slice(0, 40));
+        return;
+      }
+      expect(screen.getByTestId('mvd-akad-werdykt-chip')).toBeInTheDocument();
       if (karta.podstawa_oceny.length > 0) {
         expect(werdykt).toHaveTextContent(karta.podstawa_oceny[0].zrodlo_pl.slice(0, 30));
       } else {
@@ -251,6 +267,21 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
     });
   });
 
+  // ILOCZYN CECH: rodzaj z sekcją audytową × sekcja rozwinięta × reguły strażnika. Liczby
+  // solvera niezwalidowanego w sekcji audytowej to materiał dla projektanta — podpisany po
+  // polsku, bez ścieżek kluczy i surowych referencji, tak jak reszta ekranu.
+  RODZAJE.filter((rodzaj) => PREZENTACJA[rodzaj as keyof typeof PREZENTACJA].sekcjaAudytowa).forEach(
+    (rodzaj) => {
+      it(`«${rodzaj}» — rozwinięta sekcja audytowa bez kodu produkcyjnego`, async () => {
+        const ekran = await uruchomRodzaj(rodzaj);
+        expect(screen.queryByTestId('mvd-akad-audyt-tresc')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('mvd-akad-audyt-przelacz'));
+        expect(screen.getByTestId('mvd-akad-audyt-tresc')).toBeInTheDocument();
+        expect(naruszenia(ekran), `rodzaj ${rodzaj}`).toEqual([]);
+      });
+    },
+  );
+
   it('zapis techniczny jest ZWINIĘTY — pola kontraktu nie wchodzą na ekran same z siebie', async () => {
     const grupa = Object.keys(ODPOWIEDZI.reliability_contingency)[0];
     expect(grupa, 'fixtura odpowiedzi bez grup — parser nośnika do poprawy').toBeTruthy();
@@ -260,9 +291,13 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
     await waitFor(() => expect(screen.getByTestId(`mvd-akad-grupa-${grupa}`)).toBeInTheDocument());
   });
 
+  // Intencja zachowana: obiekty w tabeli nazwane jak na schemacie. Zmiana kanonu
+  // (uczciwość natychmiastowa 2026-09-23): tabela węzłów jakości energii żyje w zwiniętej
+  // sekcji audytowej (solver niezwalidowany) — rozwinięcie natywnym klikiem.
   it('obiekty nazwane jak na schemacie — surowa referencja nie dociera do tabeli', async () => {
     await uruchomRodzaj('power_quality_harmonics');
-    const tabela = screen.getByTestId('mvd-akad-obiekty-nodes');
+    fireEvent.click(screen.getByTestId('mvd-akad-audyt-przelacz'));
+    const tabela = screen.getByTestId('mvd-akad-obiekty-wynik_audytowy.nodes');
     expect(tabela).toHaveTextContent('GPZ Zachód');
     expect(tabela).toHaveTextContent('Stacja SN/nN Ogrodowa');
     expect(tabela.textContent ?? '').not.toContain('860003b4514aa388b39561d5005ce584');
@@ -307,7 +342,8 @@ describe('strażnik prezentacji — rodzaje prezentowane na realnych odpowiedzia
   it('obiekt spoza migawki dostaje uczciwą etykietę zapasową, nie zmyśloną nazwę', async () => {
     useSnapshotStore.getState().reset();
     await uruchomRodzaj('power_quality_harmonics');
-    const tabela = screen.getByTestId('mvd-akad-obiekty-nodes');
+    fireEvent.click(screen.getByTestId('mvd-akad-audyt-przelacz'));
+    const tabela = screen.getByTestId('mvd-akad-obiekty-wynik_audytowy.nodes');
     expect(tabela).toHaveTextContent('GPZ · sekcja 001 · szyna SN');
     expect(tabela.textContent ?? '').not.toContain('860003b4514aa388b39561d5005ce584');
   });

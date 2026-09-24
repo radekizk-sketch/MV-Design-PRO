@@ -2,73 +2,58 @@
  * Model i adaptery ekranu „Stabilność dynamiczna" (E-32, karta P-3).
  * Czyste projekcje read-only — ZERO fizyki, ZERO pobrań, ZERO mutacji.
  *
+ * UCZCIWOŚĆ (2026-09-23): bieg `dynamic_stability` NIE rozwiązuje sieci — kąty mocy,
+ * napięcie i częstotliwość po zwarciu oraz czas wyłączenia WPISUJE użytkownik. Dawny
+ * werdykt STABILNY/NIESTABILNY (wskaźnik, margines, czynnik, statusy kryteriów) był
+ * porównaniem tych liczb z progami z opcji biegu, a ślad automatyki opowiadał
+ * „wyłączenie przez zabezpieczenia" z czasu wpisanego ręcznie. Kontrakt wyniku to
+ * teraz ECHO scenariusza + rekord oceny `NIE_OCENIONO` (`ocena`) z backendu.
+ *
  * ŹRÓDŁA DANYCH — realny kontrakt (mapowanie plik:linia, zero zgadywania):
- * - Wiersz wyniku: `build_dynamic_stability_results` (enm/canonical_analysis.py:
- *   2037-2059) → jeden wiersz = `DynamicStabilityResult.to_dict`
- *   (application/stability/dynamic_stability.py:119-140): status STABLE/UNSTABLE,
- *   stability_index, clearing_time_ms, max_clearing_time_ms, clearing_margin_ms,
- *   angle_swing_deg, post_fault_voltage_pu, post_fault_frequency_pu,
- *   limiting_factor, violated_checks, checks + werdykt raportowalności.
- *   Endpoint: `GET /analysis-runs/{id}/results/dynamic-stability`
- *   (api/analysis_runs.py:398-402).
- * - Ślad automatyki: `build_automation_trace_results` (canonical_analysis.py:
- *   2062-2072) → zdarzenia {event_seq, event_type, element_id, detail} +
- *   topology_effect (application/automation/trace.py:17-55).
+ * - Wiersz wyniku: `build_dynamic_stability_results` (enm/canonical_analysis.py) →
+ *   `EchoScenariuszaStabilnosci.to_dict` (application/stability/dynamic_stability.py):
+ *   scenariusz, kąty, napięcie i częstotliwość po zwarciu, czas wyłączenia, status
+ *   `NIE_OCENIONO`, `ocena` + pola raportowalności.
+ *   Endpoint: `GET /analysis-runs/{id}/results/dynamic-stability`.
+ * - Ślad automatyki: `build_automation_trace_results` → `rows` zawsze puste (zdarzeń
+ *   nie ma skąd wziąć — zabezpieczenia nie są symulowane) + `topology_effect`
+ *   ZADEKLAROWANY w opcjach biegu + `ocena`.
  *   Endpoint: `GET /analysis-runs/{id}/results/automation-trace`.
- * - GAP (uczciwa granica): kontrakt NIE niesie szeregu czasowego przebiegu —
- *   sekcja wielkości prezentuje wartości skrajne/końcowe backendu z jawną notą.
+ * - Przebieg: `GET …/dynamic-stability/time-series` — przebieg ZADANY z `uwaga_pl`.
  */
 
-import type { ElementType } from '../../../ui/types';
 import type { WierszZalozenia } from '../wzorzec';
-import { kryteriumPL, STABILNOSC_STRINGS as T } from './strings';
+import type { RekordOcenyNiewykonanej } from '../wzorzec/OcenaNiewykonana';
+import { STABILNOSC_STRINGS as T } from './strings';
 
 // ---------------------------------------------------------------------------
 // Kształty odpowiedzi backendu (lustro 1:1 pól konsumowanych)
 // ---------------------------------------------------------------------------
 
-/** Wiersz wyniku stabilności (pola opcjonalne — starsze zapisy bez pól → uczciwa kreska). */
+/** Wiersz wyniku — echo scenariusza wpisanego przez użytkownika + rekord oceny. */
 export interface WierszStabilnosci {
   readonly scenario_id?: string;
+  readonly scenario_type?: string;
   readonly source_id?: string;
   readonly faulted_element_id?: string;
-  /** Rodzaj elementu ze snapshotu biegu (F-K4 faza 3) — bez niego nie da się
-   *  zaznaczyć elementu w modelu; `null`/brak = nie ustalono (zero zgadywania). */
-  readonly source_kind?: string | null;
-  readonly faulted_element_kind?: string | null;
   readonly cleared_by_element_ids?: readonly string[];
-  readonly stable?: boolean;
+  /** Status maszynowy — jedyna wartość `NIE_OCENIONO` (tor nie wydaje werdyktu). */
   readonly status?: string;
-  readonly criteria_version?: string;
-  readonly stability_index?: number;
+  readonly contract_version?: string;
   readonly clearing_time_ms?: number;
-  readonly max_clearing_time_ms?: number;
-  readonly clearing_margin_ms?: number;
-  readonly angle_swing_deg?: number;
+  readonly pre_fault_angle_deg?: number;
+  readonly during_fault_angle_deg?: number;
+  readonly post_fault_angle_deg?: number;
   readonly post_fault_voltage_pu?: number;
   readonly post_fault_frequency_pu?: number;
-  readonly limiting_factor?: string;
-  readonly violated_checks?: readonly string[];
-  readonly checks?: Readonly<Record<string, boolean>>;
+  /** Rekord oceny niewykonanej (zdanie, czego brakuje, akcja naprawcza). */
+  readonly ocena?: RekordOcenyNiewykonanej;
   readonly proof_ref?: string | null;
   readonly proof_status?: string | null;
   readonly proof_status_pl?: string | null;
   readonly reporting_status?: string | null;
   readonly reporting_status_pl?: string | null;
   readonly reporting_limitations?: readonly string[];
-  /** Kryteria oceny progowej JAWNIE nazwane (karta W2 pkt 1) — etykieta PL,
-   *  jednostka, wartość i nota o pochodzeniu (kryterium przyjęte w opcjach
-   *  biegu, nie zaszyte). Starsze zapisy bez pola → uczciwy brak sekcji. */
-  readonly threshold_criteria?: readonly KryteriumOcenyProgowej[];
-}
-
-/** Jedno kryterium oceny progowej — lustro `DynamicStabilityThresholds.kryteria_oceny_progowej`. */
-export interface KryteriumOcenyProgowej {
-  readonly key: string;
-  readonly label_pl: string;
-  readonly value: number;
-  readonly unit: string;
-  readonly source_pl: string;
 }
 
 export interface OdpowiedzStabilnosci {
@@ -76,25 +61,19 @@ export interface OdpowiedzStabilnosci {
   readonly rows: readonly WierszStabilnosci[];
 }
 
-/** Zdarzenie śladu automatyki (AutomationTraceEvent.to_dict). */
-export interface ZdarzenieAutomatyki {
-  readonly event_seq: number;
-  readonly event_type: string;
-  readonly element_id?: string | null;
-  readonly detail?: string;
-}
-
-/** Efekt topologiczny po wyłączeniu (PostFaultTopologyEffect.to_dict — pola konsumowane). */
+/** Efekt topologiczny ZADEKLAROWANY w opcjach biegu (PostFaultTopologyEffect.to_dict). */
 export interface EfektTopologii {
   readonly network_state?: string;
   readonly outage_scope?: string;
   readonly opened_element_ids?: readonly string[];
 }
 
+/** Ślad automatyki — `rows` zawsze puste (zabezpieczenia niesymulowane). */
 export interface OdpowiedzSladuAutomatyki {
   readonly run_id: string;
   readonly topology_effect?: EfektTopologii | null;
-  readonly rows: readonly ZdarzenieAutomatyki[];
+  readonly rows: readonly unknown[];
+  readonly ocena?: RekordOcenyNiewykonanej | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -120,7 +99,9 @@ export interface OdpowiedzPrzebieguStabilnosci {
   readonly run_id: string;
   readonly has_time_series: boolean;
   readonly time_unit: string;
-  readonly criteria_version?: string | null;
+  readonly contract_version?: string | null;
+  /** Charakter przebiegu (zadany, nie rozwiązanie sieci) — z backendu, przy liczbach. */
+  readonly uwaga_pl?: string | null;
   readonly quantities: readonly WielkoscPrzebiegu[];
   readonly points: readonly PunktPrzebiegu[];
 }
@@ -324,11 +305,6 @@ export function fmtPu(n: number): string {
   return fmtLiczba(n, 3);
 }
 
-/** Wskaźnik bezwymiarowy — 3 miejsca po przecinku. */
-export function fmtWskaznik(n: number): string {
-  return fmtLiczba(n, 3);
-}
-
 // ---------------------------------------------------------------------------
 // Adaptery sekcji
 // ---------------------------------------------------------------------------
@@ -339,99 +315,52 @@ export function naZalozeniaStabilnosci(row: WierszStabilnosci): WierszZalozenia[
     { etykieta: T.zalElement, wartosc: row.faulted_element_id ?? T.kreska },
     { etykieta: T.zalZrodlo, wartosc: row.source_id ?? T.kreska },
     {
-      etykieta: T.zalCzasWylaczenia,
-      wartosc: row.clearing_time_ms != null ? fmtMs(row.clearing_time_ms) : T.kreska,
-      jednostka: row.clearing_time_ms != null ? T.jednMs : undefined,
-    },
-    {
       etykieta: T.zalWylaczaly,
       wartosc:
         row.cleared_by_element_ids && row.cleared_by_element_ids.length > 0
           ? row.cleared_by_element_ids.join(', ')
           : T.kreska,
     },
-    {
-      etykieta: T.zalMaksCzas,
-      wartosc: row.max_clearing_time_ms != null ? fmtMs(row.max_clearing_time_ms) : T.kreska,
-      jednostka: row.max_clearing_time_ms != null ? T.jednMs : undefined,
-    },
-    { etykieta: T.zalKryteria, wartosc: row.criteria_version ?? T.kreska },
   ];
 }
 
-/** Werdykt PL — wprost ze statusu backendu (STABLE/UNSTABLE), bez interpretacji. */
-export function werdyktStabilnosciPL(row: WierszStabilnosci): string {
-  if (row.status === 'STABLE') return T.werdyktStabilny;
-  if (row.status === 'UNSTABLE') return T.werdyktNiestabilny;
-  return row.status ?? T.kreska;
-}
-
-/** Naruszone kryteria (PL) — z pola `violated_checks` backendu. */
-export function naruszoneKryteriaPL(row: WierszStabilnosci): string {
-  const naruszone = row.violated_checks ?? [];
-  if (naruszone.length === 0) return T.werdyktBrakNaruszen;
-  return naruszone.map(kryteriumPL).join(', ');
-}
-
-/** Jedna pozycja tabeli wielkości po zakłóceniu. */
-export interface PozycjaWielkosci {
+/** Jedna pozycja echa scenariusza (wartość wpisana przez użytkownika). */
+export interface PozycjaEcha {
   readonly klucz: string;
   readonly wielkosc: string;
   readonly wartosc: string;
-  readonly jednostka: string;
-  /** Status kryterium backendu (`checks[klucz]`); undefined = kontrakt bez wpisu. */
-  readonly spelnione: boolean | undefined;
 }
 
 /**
- * Tabela wielkości po zakłóceniu — wartości i statusy kryteriów WPROST
- * z wiersza backendu (`checks`); zero progów i porównań w UI.
+ * Echo scenariusza — liczby WPISANE przez użytkownika, zwrócone przez backend bez
+ * żadnego porównania z progami. Brak pola → kreska (uczciwy brak, zero domysłu).
  */
-export function naWielkosciStabilnosci(row: WierszStabilnosci): PozycjaWielkosci[] {
-  const checks = row.checks ?? {};
+export function naEchoScenariusza(row: WierszStabilnosci): PozycjaEcha[] {
   const pozycja = (
     klucz: string,
     wielkosc: string,
     wartosc: number | undefined,
     format: (n: number) => string,
     jednostka: string,
-  ): PozycjaWielkosci => ({
+  ): PozycjaEcha => ({
     klucz,
     wielkosc,
-    wartosc: wartosc != null ? format(wartosc) : T.kreska,
-    jednostka,
-    spelnione: klucz in checks ? checks[klucz] : undefined,
+    wartosc: wartosc != null ? `${format(wartosc)} ${jednostka}` : T.kreska,
   });
   return [
-    pozycja('clearing_time', T.wielkoscCzas, row.clearing_time_ms, fmtMs, T.jednMs),
-    pozycja('angle_swing', T.wielkoscKat, row.angle_swing_deg, fmtDeg, T.jednDeg),
-    pozycja('voltage_recovery', T.wielkoscNapiecie, row.post_fault_voltage_pu, fmtPu, T.jednPu),
+    pozycja('clearing_time_ms', T.echoCzas, row.clearing_time_ms, fmtMs, T.jednMs),
+    pozycja('pre_fault_angle_deg', T.echoKatPrzed, row.pre_fault_angle_deg, fmtDeg, T.jednDeg),
+    pozycja('during_fault_angle_deg', T.echoKatWCzasie, row.during_fault_angle_deg, fmtDeg, T.jednDeg),
+    pozycja('post_fault_angle_deg', T.echoKatPo, row.post_fault_angle_deg, fmtDeg, T.jednDeg),
+    pozycja('post_fault_voltage_pu', T.echoNapiecie, row.post_fault_voltage_pu, fmtPu, T.jednPu),
     pozycja(
-      'frequency_recovery',
-      T.wielkoscCzestotliwosc,
+      'post_fault_frequency_pu',
+      T.echoCzestotliwosc,
       row.post_fault_frequency_pu,
       fmtPu,
       T.jednPu,
     ),
   ];
-}
-
-/**
- * Kryteria oceny progowej do wyświetlenia — WPROST z wiersza backendu
- * (`threshold_criteria`), zero progów wymyślonych w UI. Starszy wiersz bez
- * pola → pusta lista (sekcja się nie renderuje, uczciwy brak zamiast zgadywania).
- */
-export function naKryteriaOcenyProgowej(
-  row: WierszStabilnosci,
-): readonly KryteriumOcenyProgowej[] {
-  return row.threshold_criteria ?? [];
-}
-
-/** Zdarzenia śladu automatyki posortowane deterministycznie po event_seq. */
-export function naZdarzenia(rows: readonly ZdarzenieAutomatyki[]): ZdarzenieAutomatyki[] {
-  return [...rows].sort(
-    (a, b) => a.event_seq - b.event_seq || a.event_type.localeCompare(b.event_type),
-  );
 }
 
 /** Jedna seria wykresu przebiegu (pole punktu → etykieta PL + jednostka). */
@@ -463,46 +392,4 @@ export function naSeriePrzebiegu(
     serie.push({ dataKey: mapa.klucz, nazwa: mapa.nazwa, jednostka: q.unit });
   }
   return serie;
-}
-
-// ---------------------------------------------------------------------------
-// Pętla decyzji (F-K4 faza 3): rodzaj domenowy z kontraktu → typ elementu UI
-// ---------------------------------------------------------------------------
-
-/**
- * Typ elementu interfejsu dla rodzaju z kontraktu backendu (`enm/element_kind.py`).
- * `null` = rodzaju nie ustalono albo nie mapuje się na element schematu — wtedy
- * akcji nie ma, bo prowadziłaby w nikąd.
- */
-export function typElementuStabilnosci(rodzaj: string | null | undefined): ElementType | null {
-  switch (rodzaj) {
-    case 'szyna':
-      return 'Bus';
-    case 'galaz_liniowa':
-      return 'LineBranch';
-    case 'transformator':
-      return 'TransformerBranch';
-    case 'zrodlo':
-      return 'Source';
-    case 'generator':
-      return 'Generator';
-    default:
-      return null;
-  }
-}
-
-/** Element, do którego prowadzi werdykt niestabilności: najpierw miejsce zwarcia,
- *  potem źródło (to ono traci stabilność). `null` gdy kontrakt nie niesie rodzaju. */
-export function elementWerdyktuStabilnosci(
-  wiersz: WierszStabilnosci,
-): { ref: string; typ: ElementType } | null {
-  const kandydaci: readonly [string | undefined, string | null | undefined][] = [
-    [wiersz.faulted_element_id, wiersz.faulted_element_kind],
-    [wiersz.source_id, wiersz.source_kind],
-  ];
-  for (const [ref, rodzaj] of kandydaci) {
-    const typ = typElementuStabilnosci(rodzaj);
-    if (ref && typ) return { ref, typ };
-  }
-  return null;
 }

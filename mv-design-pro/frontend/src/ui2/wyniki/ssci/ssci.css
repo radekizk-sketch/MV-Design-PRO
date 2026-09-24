@@ -100,7 +100,7 @@
   outline-offset: 2px;
 }
 
-/* ---- chip werdyktu ---- */
+/* ---- identyfikacja przekształtnika i węzła ---- */
 .mvd-ssci-werdykt {
   display: flex;
   flex-direction: column;
@@ -112,41 +112,9 @@
   align-items: center;
   gap: 10px;
 }
-.mvd-ssci-werdykt-etyk {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--mvd-muted);
-}
 .mvd-ssci-werdykt-meta {
   font-size: 12px;
   color: var(--mvd-muted);
-}
-.mvd-ssci-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--mvd-line);
-  background: var(--mvd-panel-2);
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--mvd-ink);
-}
-.mvd-ssci-chip--ok {
-  border-color: var(--mvd-ok);
-  background: var(--mvd-ok-bg);
-}
-.mvd-ssci-chip--warn {
-  border-color: var(--mvd-warn);
-  background: var(--mvd-warn-bg);
-}
-.mvd-ssci-chip--err {
-  border-color: var(--mvd-err);
-  background: var(--mvd-err-bg);
-}
-.mvd-ssci-chip--neutral {
-  border-color: var(--mvd-line);
-  background: var(--mvd-panel-2);
 }
 
 /* ---- tag statusu ---- */
@@ -178,14 +146,6 @@
   background: var(--mvd-panel-2);
 }
 
-/* ---- uzasadnienie ---- */
-.mvd-ssci-dlaczego-tresc {
-  margin: 0;
-  font-size: 13px;
-  color: var(--mvd-ink);
-  line-height: 1.5;
-}
-
 /* ---- metryki (grid) ---- */
 .mvd-ssci-metryki-grid {
   display: grid;
@@ -200,15 +160,6 @@
   border: 1px solid var(--mvd-line);
   border-radius: 6px;
   background: var(--mvd-panel);
-}
-.mvd-ssci-metryka--ok {
-  border-color: var(--mvd-ok);
-}
-.mvd-ssci-metryka--warn {
-  border-color: var(--mvd-warn);
-}
-.mvd-ssci-metryka--err {
-  border-color: var(--mvd-err);
 }
 .mvd-ssci-metryka--neutral {
   border-color: var(--mvd-line);
@@ -341,18 +292,4 @@
   font-size: 12px;
   color: var(--mvd-ink);
   word-break: break-all;
-}
-
-/* ---- pętla decyzji (F-K4): ryzyko SSCI → szyna przyłączenia w modelu ---- */
-.mvd-ssci-popraw {
-  border: 1px solid var(--mvd-accent);
-  border-radius: 3px;
-  background: transparent;
-  color: var(--mvd-accent);
-  cursor: pointer;
-  font: inherit;
-  padding: 3px 9px;
-}
-.mvd-ssci-popraw:hover {
-  background: var(--mvd-sel);
 }

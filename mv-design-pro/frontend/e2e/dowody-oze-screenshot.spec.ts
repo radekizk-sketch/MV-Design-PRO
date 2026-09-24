@@ -6,9 +6,12 @@
  * store'y + podmieniony fetch o kształcie 1:1 z backendem):
  *  - lom     — „Praca wyspowa": checki per porównanie + OTWARTY wywód okna
  *              normatywnego 81R (KaTeX; NC RfG Art. 13 / PTPiREE),
- *  - frt     — „Walidacja modelu falownika": trajektorie z OTWARTYM wywodem
- *              marginesu (T-C) ORAZ sekwencja zapadów z OTWARTYM śladem kontekstu
- *              siły sieci SCR (T-B),
+ *  - frt     — „Walidacja modelu falownika": trajektorie z rekordem oceny
+ *              niewykonanej (NIE_OCENIONO, uczciwość natychmiastowa 2026-09-23 —
+ *              trajektoria zadana profilem wejściowym, dawny werdykt „w obwiedni"
+ *              był tautologią), OTWARTYM wywodem scenariusza i rozwiniętą sekcją
+ *              audytową ORAZ sekwencja zapadów z rekordem oceny i OTWARTYM śladem
+ *              kontekstu siły sieci SCR (T-B),
  *  - oltc    — „Badania regulacji OLTC": sweep pozycji zaczepów + OTWARTY ślad
  *              wywodu przekładni t(n) (kształt z power_flow_oltc_studies.py).
  * Scena „macierz" (NC RfG) i dokumenty NC RfG: `dowody-ncrfg-screenshot.spec.ts`
@@ -60,6 +63,7 @@ const LOM_SCENA_WYNIK = JSON.parse(
     bay_ref: string;
     bay_name: string;
     status: string;
+    ocena: { etykieta: { etykieta_pl: string } };
     checks: { function_ansi: string | null; severity: string; value: number | null }[];
   }[];
 };
@@ -76,7 +80,10 @@ const FRT_SCENA_TRAJEKTORIE = JSON.parse(
     path.resolve(_dirname, '../src/harness-fixtures/generated/frt_scena_trajektorie.json'),
     'utf-8',
   ),
-) as { scenariusze: { liczba_punktow_trajektorii: number; werdykt_pl: string }[] };
+) as {
+  ocena: { wyjasnienie: { zdanie_pl: string } };
+  scenariusze: { wywod: { tekst: string }[] }[];
+};
 const FRT_SCENARIUSZ = FRT_SCENA_TRAJEKTORIE.scenariusze[0];
 const FRT_SCENA_SEKWENCJA = JSON.parse(
   fs.readFileSync(
@@ -84,7 +91,7 @@ const FRT_SCENA_SEKWENCJA = JSON.parse(
     'utf-8',
   ),
 ) as {
-  werdykt_sekwencji_pl: string;
+  ocena: { wyjasnienie: { zdanie_pl: string } };
   kontekst_sily_sieci: {
     bus_ref: string;
     scr: number;
@@ -153,10 +160,11 @@ test.describe('dowody-oze:screenshot', () => {
       const errs = zbierajBledy(page);
       await otworzScene(page, 'lom', theme);
 
-      // Tabela pól z werdyktami backendu (statusy PL, zero oceny w UI).
+      // Tabela pól z etykietami REKORDÓW pól z backendu (zero oceny w UI). Zmiana kanonu
+      // (2026-09-23): słownik „Ostrzeżenie/Błąd" modułu skasowany — etykieta z rekordu pola.
       const tabela = page.getByTestId('mvd-wyn-tabela');
       await expect(tabela).toContainText(LOM_POLE_Z_OCENA.bay_name);
-      await expect(tabela).toContainText('Ostrzeżenie');
+      await expect(tabela).toContainText(LOM_POLE_Z_OCENA.ocena.etykieta.etykieta_pl);
 
       // Natywny klik wiersza pola → szczegół z porównaniami i normą.
       await page
@@ -168,14 +176,16 @@ test.describe('dowody-oze:screenshot', () => {
       await expect(szczegol).toContainText('df/dt ≥ 2.0 Hz/s'); // okno normatywne
       await expect(szczegol).toContainText('Rozporządzenie Komisji (UE) 2016/631'); // norma
 
-      // OTWARTY wywód checka 81R: KaTeX wyrenderowany + werdykt w krokach.
+      // OTWARTY wywód checka 81R: KaTeX wyrenderowany + wynik porównania w krokach (ocenę
+      // niesie rekord porównania — zmiana kanonu 2026-09-23).
       await page.getByTestId('mvd-lom-check-slad-0-btn').click();
       const slad = page.getByTestId('mvd-lom-check-slad-0');
       await expect(slad.locator('[data-testid="math-rendered"]').first()).toBeVisible();
       await expect(slad).toContainText(
         `Dane: nastawa = ${LOM_NASTAWA_81R.value!.toFixed(4)}`,
       );
-      await expect(slad).toContainText(`Werdykt: ${LOM_NASTAWA_81R.severity}`);
+      await expect(slad).toContainText('Wynik porownania:');
+      await expect(slad).not.toContainText('Werdykt');
 
       await page.waitForTimeout(300);
       expect(errs, `zero błędów konsoli (lom/${theme})`).toEqual([]);
@@ -184,7 +194,7 @@ test.describe('dowody-oze:screenshot', () => {
       expect(fs.existsSync(out)).toBe(true);
     });
 
-    test(`frt — wywód marginesu (T-C) i ślad siły sieci (T-B) otwarte — ${theme}`, async ({
+    test(`frt — ocena niewykonana, wywód scenariusza i ślad siły sieci (T-B) otwarte — ${theme}`, async ({
       page,
     }) => {
       const errs = zbierajBledy(page);
@@ -195,18 +205,25 @@ test.describe('dowody-oze:screenshot', () => {
       await page.getByTestId('mvd-frt-operator').selectOption('pse');
       await page.getByTestId('mvd-frt-oblicz').click();
 
-      const werdykt = page.getByTestId('mvd-frt-werdykt');
-      await expect(werdykt).toContainText('Model odzwierciedla wymagania profilu operatora');
-      await expect(page.getByTestId('mvd-frt-wynik')).toContainText('w obwiedni');
+      // Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): pierwszy plan to rekord
+      // oceny NIE_OCENIONO z backendu (zdanie + czego brakuje), bez werdyktu
+      // „Model odzwierciedla…" ani „w obwiedni" (tautologia wobec profilu wejściowego).
+      const ocena = page.getByTestId('mvd-frt-ocena');
+      await expect(ocena).toHaveAttribute('data-status', 'NIE_OCENIONO');
+      await expect(ocena).toContainText(FRT_SCENA_TRAJEKTORIE.ocena.wyjasnienie.zdanie_pl);
+      await expect(page.getByTestId('mvd-frt-wynik')).not.toContainText('w obwiedni');
 
-      // T-C: OTWARTY wywód marginesu scenariusza (m_U — KaTeX wyrenderowany).
+      // Pola solvera wyłącznie w sekcji audytowej — rozwijanej natywnym klikiem.
+      await page.getByTestId('mvd-frt-audyt-przelacz').click();
+      await expect(page.getByTestId('mvd-frt-audyt-tresc')).toBeVisible();
+
+      // OTWARTY wywód scenariusza: echo wejścia solvera i powód braku oceny.
       await page.getByTestId('mvd-frt-slad-0-btn').click();
       const sladWywodu = page.getByTestId('mvd-frt-slad-0');
-      await expect(sladWywodu.locator('[data-testid="math-rendered"]').first()).toBeVisible();
-      await expect(sladWywodu).toContainText(
-        `liczba punktow trajektorii: ${FRT_SCENARIUSZ.liczba_punktow_trajektorii}`,
-      );
-      await expect(sladWywodu).toContainText(`Werdykt: ${FRT_SCENARIUSZ.werdykt_pl}`);
+      for (const krok of FRT_SCENARIUSZ.wywod) {
+        await expect(sladWywodu).toContainText(krok.tekst);
+      }
+      await expect(sladWywodu).not.toContainText('Werdykt:');
 
       await page.waitForTimeout(300);
       const outTraj = path.join(OUTPUT_DIR, `dowody_frt_trajektorie_${theme}.png`);
@@ -224,9 +241,9 @@ test.describe('dowody-oze:screenshot', () => {
       await page.getByTestId('mvd-frt-sekw-bus').fill(FRT_KONTEKST_SILY.bus_ref);
       await page.getByTestId('mvd-frt-sekw-oblicz').click();
 
-      await expect(page.getByTestId('mvd-frt-sekw-werdykt')).toContainText(
-        FRT_SCENA_SEKWENCJA.werdykt_sekwencji_pl,
-      );
+      const ocenaSekwencji = page.getByTestId('mvd-frt-sekw-ocena');
+      await expect(ocenaSekwencji).toHaveAttribute('data-status', 'NIE_OCENIONO');
+      await expect(ocenaSekwencji).toContainText(FRT_SCENA_SEKWENCJA.ocena.wyjasnienie.zdanie_pl);
       const kontekst = page.getByTestId('mvd-frt-sekw-kontekst');
       // Werdykt siły sieci i SCR — WPROST z odpowiedzi backendu (na sieci sceny
       // analiz OZE moduł PV 0,215 MVA przy Sk″ 37,97 MVA daje sieć MOCNĄ; dawna

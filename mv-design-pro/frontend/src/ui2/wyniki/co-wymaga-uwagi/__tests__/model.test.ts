@@ -130,6 +130,7 @@ function pozycjaWerdyktu(over: Partial<PozycjaOceny> = {}): PozycjaOceny {
     liczba_ocenionych: 12,
     liczba_naruszen: 2,
     liczba_niesprawdzonych: 0,
+    liczba_niejednoznacznych: 0,
     liczba_ostrzezen: 1,
     wiodacy_element_id: 'L-07',
     wiodacy_opis_pl: 'Gałąź L-07 obciążona w 118%',
@@ -153,9 +154,16 @@ function werdyktFixture(pozycje: PozycjaOceny[]): OdpowiedzOceny {
     model_hash: 'hash',
     pozycje,
     zrodla: [],
-    podsumowanie: { spelnione: 0, naruszone: pozycje.length, niesprawdzone: 0, nie_dotyczy: 0, razem: pozycje.length },
+    podsumowanie: {
+      spelnione: 0,
+      naruszone: pozycje.length,
+      niejednoznaczne: 0,
+      niesprawdzone: 0,
+      nie_dotyczy: 0,
+      razem: pozycje.length,
+    },
     zakres_poza_automatem: [],
-    ocena: { oceniono: 0, spelnia: 0, nie_spelnia: 0, brak_podstaw: 0 },
+    ocena: { oceniono: 0, spelnia: 0, nie_spelnia: 0, niejednoznaczny: 0, brak_podstaw: 0 },
     grupy: [{ kod: 'obciazalnosc', nazwa_pl: 'Obciążalność' }],
   };
 }

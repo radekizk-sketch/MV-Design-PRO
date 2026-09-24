@@ -3,6 +3,12 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Literal
 
+from application.stability.dynamic_stability import WERSJA_KONTRAKTU_ECHA
+from network_model.solvers.phase_state_sn import PHASE_STATE_SN_SOLVER_VERSION
+from network_model.solvers.power_flow_trace import POWER_FLOW_SOLVER_VERSION
+from network_model.solvers.power_flow_unbalanced import UNBALANCED_PF_SOLVER_VERSION
+from network_model.solvers.v126_academic import V126_SOLVER_VERSION
+
 AnalysisCapability = Literal[
     "SC_3F",
     "SC_1F",
@@ -42,12 +48,21 @@ class SolverCapability:
     # dostępny do nowych biegów, choć pozostaje odtwarzalny z biegów
     # historycznych i uruchamialny wprost w testach solvera.
     availability: Literal["available", "withdrawn"]
-    implementation_status: Literal["implemented"]
+    # "UNVALIDATED" (uczciwość natychmiastowa, audyty harmonicznych i dynamiki
+    # 2026-09-23): zdolność jest wykonywana, ale jej wynik NIE jest oceną inżynierską —
+    # solver bez wyroczni (jakość energii, SSCI) albo tor bez rozwiązania sieci
+    # (stabilność z kątów wpisanych przez użytkownika). Powierzchnia takiej zdolności
+    # niesie ocenę niewykonaną, a wpis nie jest raportowalny.
+    implementation_status: Literal["implemented", "UNVALIDATED"]
+    # Wersja solvera z JEGO stałej (import), nie osobna etykieta rejestru — wyjątek:
+    # zwarcia IEC 60909, których solver FROZEN (B-01) nie wystawia stałej wersji.
     solver_version: str
     required_inputs: tuple[str, ...]
     output_contract: str
     proof_support: bool
     reportable: bool
+    # Test odniesienia ISTNIEJĄCY w `backend/tests` (ścieżka względem katalogu testów,
+    # `plik.py::funkcja` albo `plik.py::Klasa::metoda`) — przypięte testem rejestru.
     reference_test: str
     applicability: str
 
@@ -66,7 +81,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         output_contract="ShortCircuitResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="short-circuit-all-fault-types.test.py::test_short_circuit_three_phase_reportable",
+        reference_test="test_short_circuit_iec60909.py::test_ikss_3ph_transformer_only_matches_formula",
         applicability="Zwarcie trojfazowe na wezle SN zgodnie z IEC 60909.",
     ),
     "SC_1F": SolverCapability(
@@ -79,7 +94,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         output_contract="ShortCircuitResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="short-circuit-all-fault-types.test.py::test_short_circuit_single_phase_reportable",
+        reference_test="test_short_circuit_iec60909.py::test_unbalanced_fault_currents_are_ordered",
         applicability="Zwarcie jednofazowe doziemne z siecia zerowa, pojemnosciami doziemnymi i uziemieniem.",
     ),
     "SC_2F": SolverCapability(
@@ -97,7 +112,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         output_contract="ShortCircuitResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="short-circuit-all-fault-types.test.py::test_short_circuit_two_phase_reportable",
+        reference_test="test_short_circuit_iec60909.py::test_unbalanced_fault_currents_are_ordered",
         applicability="Zwarcie dwufazowe bez udzialu ziemi.",
     ),
     "SC_2F_G": SolverCapability(
@@ -110,7 +125,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         output_contract="ShortCircuitResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="short-circuit-all-fault-types.test.py::test_short_circuit_two_phase_ground_reportable",
+        reference_test="test_short_circuit_iec60909.py::test_2ph_ground_depends_on_z0_and_requires_it",
         applicability="Zwarcie dwufazowe z ziemia z uwzglednieniem toru zerowego.",
     ),
     "LOAD_FLOW_NR": SolverCapability(
@@ -118,12 +133,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="PF",
         availability="available",
         implementation_status="implemented",
-        solver_version="load-flow-nr-v1",
+        solver_version=POWER_FLOW_SOLVER_VERSION,
         required_inputs=("snapshot", "slack_node", "pq_nodes", "branch_admittance"),
         output_contract="PowerFlowResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="load-flow-nr-reference.test.py::test_newton_result_contract",
+        reference_test="test_power_flow_v2.py::test_pv_stays_pv_when_q_within_limits",
         applicability="Kanoniczny rozpływ mocy Newtona-Raphsona.",
     ),
     "LOAD_FLOW_GS_DIAGNOSTIC": SolverCapability(
@@ -131,12 +146,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="PF",
         availability="available",
         implementation_status="implemented",
-        solver_version="load-flow-gs-v1",
+        solver_version=POWER_FLOW_SOLVER_VERSION,
         required_inputs=("snapshot", "slack_node", "pq_nodes", "branch_admittance"),
         output_contract="PowerFlowResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="load-flow-gs-diagnostic.test.py::test_gauss_seidel_trace_and_report_status",
+        reference_test="test_power_flow_gauss_seidel.py::TestGaussSeidelBasic::test_two_bus_converges",
         applicability="Tryb diagnostyczny Gaussa-Seidla dla przypadkow zbieznosciowo kontrolowanych.",
     ),
     "LOAD_FLOW_FD_PERFORMANCE": SolverCapability(
@@ -144,7 +159,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="PF",
         availability="available",
         implementation_status="implemented",
-        solver_version="load-flow-fd-v1",
+        solver_version=POWER_FLOW_SOLVER_VERSION,
         required_inputs=(
             "snapshot",
             "slack_node",
@@ -155,7 +170,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         output_contract="PowerFlowResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="load-flow-fast-decoupled.test.py::test_fast_decoupled_trace_and_applicability",
+        reference_test="test_power_flow_fast_decoupled.py::TestFastDecoupledBasic::test_two_bus_converges",
         applicability="Tryb wydajnosciowy fast-decoupled przy spelnionych warunkach stosowalnosci.",
     ),
     # Karta W5-D (F-1): rozpływ niesymetryczny jako bieg produktu — solver FROZEN
@@ -165,7 +180,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="rozplyw_niesymetryczny",
         availability="available",
         implementation_status="implemented",
-        solver_version="load-flow-unbalanced-bfs-v1",
+        solver_version=UNBALANCED_PF_SOLVER_VERSION,
         required_inputs=(
             "snapshot",
             "slack_node",
@@ -176,7 +191,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         output_contract="ResultSetPowerFlowUnbalancedV1",
         proof_support=True,
         reportable=True,
-        reference_test="tests/enm/test_rozplyw_niesymetryczny_bieg.py::test_bieg_deterministyczny",
+        reference_test="enm/test_rozplyw_niesymetryczny_bieg.py::test_dwa_biegi_tej_samej_migawki_sa_bit_w_bit",
         applicability=(
             "Rozplyw niesymetryczny sieci promieniowej z odbiorami per faza "
             "(faza-N) — napiecia/prady per faza, VUF wg IEC 61000-4-30."
@@ -187,12 +202,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="phase_state_sn",
         availability="available",
         implementation_status="implemented",
-        solver_version="phase-state-sn-v1",
+        solver_version=PHASE_STATE_SN_SOLVER_VERSION,
         required_inputs=("snapshot", "phase_loads", "open_phase_flags"),
         output_contract="PhaseStateSNResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="phase-state-sn-reference.test.py::test_phase_state_has_proof",
+        reference_test="test_phase_state_sn_solver.py::test_phase_state_sn_solver_balanced_reference_case",
         applicability="Analiza stanu fazowego SN dla asymetrii, przerw fazowych i niezrownowazenia.",
     ),
     # USUNIETE (karta W3-D, 2026-09-09): "SOURCE_FRT_LVRT_HVRT" i "SOURCE_COMPLIANCE"
@@ -207,42 +222,53 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         capability="DYNAMIC_STABILITY",
         analysis_type="dynamic_stability",
         availability="available",
-        implementation_status="implemented",
-        solver_version="dynamic-stability-v1",
-        required_inputs=("source_state", "fault_clear_scenario", "critical_clear_time"),
-        output_contract="DynamicStabilityResultV1",
+        implementation_status="UNVALIDATED",
+        solver_version=WERSJA_KONTRAKTU_ECHA,
+        required_inputs=("source_state", "fault_clear_scenario", "clearing_time_ms"),
+        output_contract="DynamicStabilityEchoV2",
         proof_support=True,
-        reportable=True,
-        reference_test="dynamic-stability-reference.test.py::test_fault_clear_stability_reportable",
-        applicability="Ocena stabilnosci w zdefiniowanym zakresie zaklocen i czasu wylaczenia.",
+        reportable=False,
+        reference_test="uczciwosc/test_stabilnosc_katow_bez_werdyktu.py::test_wiersz_wyniku_nie_niesie_werdyktu_stabilnosci",
+        applicability=(
+            "Echo scenariusza wylaczenia zwarcia wpisanego przez uzytkownika (katy, napiecie i "
+            "czestotliwosc po zwarciu, czas wylaczenia) — bez werdyktu stabilnosci: tor nie "
+            "rozwiazuje sieci; ocena niewykonana do czasu biegu dynamiki RMS z wyrocznia."
+        ),
     ),
     "POWER_QUALITY_HARMONICS": SolverCapability(
         capability="POWER_QUALITY_HARMONICS",
         analysis_type="power_quality_harmonics",
         availability="available",
-        implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        implementation_status="UNVALIDATED",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("committed_enm", "harmonic_sources", "branch_admittance"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
-        reference_test="test_v126_academic_solver.py::test_power_quality_trace_and_hash_are_deterministic",
-        applicability="Harmonic power flow, THDU/TDD, skan Z(f), rezonans i kompatybilnosc jakosci energii.",
+        reportable=False,
+        reference_test="uczciwosc/test_jakosc_energii_bez_werdyktu.py::test_wynik_e40_niesie_ocene_niewykonana_i_zero_liczb_poza_audytem",
+        applicability=(
+            "Rozplyw harmoniczny solvera niezwalidowanego (bez przekladni transformatora, siec "
+            "nadrzedna jako admitancja 1e6 S, 18 zaszytych rzedow, bez wyroczni) — ocena "
+            "kompatybilnosci niewykonana, liczby THD/TDD/K/U_h/skan Z wylacznie w sekcji "
+            "audytowej."
+        ),
     ),
     "SSCI_IMPEDANCE": SolverCapability(
         capability="SSCI_IMPEDANCE",
         analysis_type="ssci_impedance",
         availability="available",
-        implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        implementation_status="UNVALIDATED",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("committed_enm", "converter_card", "fault_level"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
-        reportable=True,
-        reference_test="test_v126_ssci_impedance.py::test_ssci_envelope_shape_and_arrays",
+        reportable=False,
+        reference_test="uczciwosc/test_ssci_bez_werdyktu.py::test_widok_ssci_na_realnym_biegu_nie_niesie_werdyktu_stabilnosci",
         applicability=(
-            "Stabilnosc impedancyjna SSCI (Sun 2011/Wen 2016): Z_grid(f)/Z_conv(f), "
-            "wzmocnienie petli mniejszej L(f) i werdykt Nyquista."
+            "Tablice impedancji SSCI (Sun 2011/Wen 2016): Z_grid(f)/Z_conv(f) i wzmocnienie "
+            "petli mniejszej L(f) — Z_grid(f) liczone bez przekladni transformatora, wiec "
+            "ocena kryterium Nyquista niewykonana; metryki L(f) wylacznie jako material "
+            "audytowy, wskaznik strefy ujemnej rezystancji przeksztaltnika jako informacja."
         ),
     ),
     "VOLTAGE_STABILITY": SolverCapability(
@@ -250,7 +276,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="voltage_stability",
         availability="available",
         implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("committed_enm", "load_generation_balance", "fault_level"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
@@ -263,7 +289,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="reliability_contingency",
         availability="available",
         implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("committed_enm", "failure_rates", "mttr", "customer_counts"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
@@ -276,7 +302,7 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="earthing_safety",
         availability="available",
         implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("committed_enm", "soil_model", "grid_geometry", "fault_current"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
@@ -289,15 +315,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="neutral_earthing_design",
         availability="available",
         implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("committed_enm", "line_to_earth_capacitance_b0", "neutral_earthing_type"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
         reportable=True,
-        reference_test=(
-            "test_v126_neutral_earthing_design.py::"
-            "TestPetersenResonanceTuning::test_coil_inductance_matches_resonance_formula"
-        ),
+        reference_test="test_v126_neutral_earthing_design.py::TestPetersenResonanceTuning::test_coil_inductance_matches_resonance_formula",
         applicability=(
             "Projekt uziemienia punktu neutralnego: dlawik Petersena (kompensacja "
             "rezonansowa Ic) albo rezystor NER (dobor R i sprawdzenie cieplne)."
@@ -308,12 +331,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="insulation_coordination",
         availability="available",
         implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("committed_enm", "u_m", "arrester", "tov"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="test_v126_academic_solver.py::test_insulation_margin_is_computed",
+        reference_test="test_v126_bil_parytet.py::test_bil_solvera_rowny_bil_katalogu",
         applicability="IEC 60071/60099: BIL, MCOV, TOV i margines ogranicznika.",
     ),
     "EARTH_FAULT_DETECTION": SolverCapability(
@@ -321,12 +344,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="earth_fault_detection",
         availability="available",
         implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("neutral_grounding", "relay_methods"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="test_v126_academic_solver.py::test_earth_fault_method_decision_table",
+        reference_test="test_v126_academic_solver.py::test_each_v126_analysis_has_deterministic_proof_and_report_artifacts",
         applicability="Dobor watometrycznej, admitancyjnej, transient directional albo 5 harmonicznej.",
     ),
     "TRANSIENT_TRV": SolverCapability(
@@ -334,12 +357,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="transient_trv",
         availability="available",
         implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("committed_enm", "breaker_rated_voltage", "trv_envelope"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="test_v126_academic_solver.py::test_transient_trv_contract",
+        reference_test="test_v126_academic_solver.py::test_each_v126_analysis_has_deterministic_proof_and_report_artifacts",
         applicability="TRV, inrush transformatora i alert ferrorezonansu.",
     ),
     "MOTOR_STARTING": SolverCapability(
@@ -347,12 +370,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="motor_starting",
         availability="available",
         implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("committed_enm", "motor_cards", "source_impedance"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="test_v126_academic_solver.py::test_motor_starting_voltage_dip",
+        reference_test="test_v126_academic_solver.py::test_each_v126_analysis_has_deterministic_proof_and_report_artifacts",
         applicability="Zapad napiecia rozruchowego, moment-poslizg i termika I2t.",
     ),
     "HOSTING_CAPACITY": SolverCapability(
@@ -360,12 +383,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="hosting_capacity",
         availability="withdrawn",
         implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("committed_enm", "stochastic_profiles", "limits"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="test_v126_academic_solver.py::test_hosting_capacity_is_seeded",
+        reference_test="test_v126_hosting_rng_izolacja.py::test_t3_determinizm_ten_sam_model_i_szyna_daje_identyczny_wynik",
         applicability=(
             "Stochastyczna hosting capacity OZE z deterministycznym Monte Carlo — "
             "wycofana z powierzchni nowych biegów (karta W3-E, 2026-09-09): lokalna "
@@ -378,12 +401,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="opf_loss_lcc",
         availability="withdrawn",
         implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("committed_enm", "branch_limits", "cost_profile"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="test_v126_academic_solver.py::test_opf_losses_lcc_contract",
+        reference_test="test_v126_academic_solver.py::test_each_v126_analysis_has_deterministic_proof_and_report_artifacts",
         applicability=(
             "Minimalizacja strat, energia strat, LCC i emisja CO2 — wycofana z "
             "powierzchni nowych biegów (karta W3-E, 2026-09-09): β = 0,45 zaszyte, "
@@ -396,12 +419,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="benchmark_validation",
         availability="available",
         implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("benchmark_references",),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="test_v126_academic_solver.py::test_benchmark_validation_passes_reference_contract",
+        reference_test="test_v126_academic_solver.py::test_each_v126_analysis_has_deterministic_proof_and_report_artifacts",
         applicability="Regresja IEEE 9/14/39 oraz CIGRE MV.",
     ),
     "UNCERTAINTY_SENSITIVITY": SolverCapability(
@@ -409,12 +432,12 @@ SOLVER_CAPABILITY_REGISTRY: dict[AnalysisCapability, SolverCapability] = {
         analysis_type="uncertainty_sensitivity",
         availability="available",
         implementation_status="implemented",
-        solver_version="v126-academic-whitebox-1.0",
+        solver_version=V126_SOLVER_VERSION,
         required_inputs=("committed_enm", "catalog_tolerances"),
         output_contract="AcademicAnalysisResultV1",
         proof_support=True,
         reportable=True,
-        reference_test="test_v126_academic_solver.py::test_uncertainty_contract",
+        reference_test="test_v126_academic_solver.py::test_each_v126_analysis_has_deterministic_proof_and_report_artifacts",
         applicability="Niepewnosc k=2 i ranking wrazliwosci parametrow.",
     ),
 }

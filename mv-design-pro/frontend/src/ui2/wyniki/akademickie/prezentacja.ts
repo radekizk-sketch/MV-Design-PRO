@@ -20,6 +20,12 @@
  * solver zwraca wartość dopuszczalną (np. `u_touch_allowable_v`), pokazujemy ją
  * jako wartość odniesienia obok wielkości — także wprost z odpowiedzi.
  *
+ * UCZCIWOŚĆ NATYCHMIASTOWA (2026-09-23): rodzaje, dla których backend NIE wykonuje
+ * oceny (jakość energii — solver harmoniczny niezwalidowany; SSCI — Z_grid bez
+ * przekładni transformatora), mają werdykt rodzaju `ocena`: panel pokazuje rekord
+ * `NIE_OCENIONO` z odpowiedzi (zdanie, braki, akcja), a liczby solvera — jeśli są —
+ * wyłącznie w zwiniętej sekcji audytowej (`sekcjaAudytowa`) pod nagłówkiem z backendu.
+ *
  * ROZSTRZYGNIĘCIE O UCZCIWOŚCI: rodzaje, dla których solver NIE wystawia progu
  * normatywnego (straty/LCC, niepewność, niezawodność), mają `kryterium` mówiące
  * to WPROST — „wielkość projektowa, solver nie wystawia progu normatywnego".
@@ -113,7 +119,16 @@ export interface WerdyktLiczbowy {
   readonly jednostka: string;
 }
 
-export type WerdyktRodzaju = WerdyktPojedynczy | WerdyktZbiorczy | WerdyktLiczbowy;
+/**
+ * Ocena niewykonana — rekord `NIE_OCENIONO` z odpowiedzi (`application/ocena_niewykonana.py`)
+ * pod wskazaną ścieżką. Panel pokazuje zdanie, braki i akcję naprawczą wprost z rekordu.
+ */
+export interface WerdyktOceny {
+  readonly rodzaj: 'ocena';
+  readonly sciezka: string;
+}
+
+export type WerdyktRodzaju = WerdyktPojedynczy | WerdyktZbiorczy | WerdyktLiczbowy | WerdyktOceny;
 
 /** Wielkość główna ekranu — liczba z jednostką i (gdy solver ją zwraca) odniesieniem. */
 export interface WielkoscGlowna {
@@ -171,6 +186,18 @@ export interface WielkoscPominieta {
   readonly powod: string;
 }
 
+/**
+ * Sekcja audytowa rodzaju — liczby solvera, który NIE jest podstawą oceny. Wszystkie
+ * ścieżki wskazują w głąb jednego klucza odpowiedzi (`wynik_audytowy`); nagłówek
+ * i powody pochodzą z backendu. Sekcja jest zwinięta na starcie.
+ */
+export interface SekcjaAudytowaRodzaju {
+  readonly naglowekSciezka: string;
+  readonly powodySciezka: string;
+  readonly wiarygodnoscSciezka: string;
+  readonly tabele: readonly TabelaObiektow[];
+}
+
 /** Kompletny projekt prezentacji jednego rodzaju analizy. */
 export interface PrezentacjaRodzaju {
   /*
@@ -188,7 +215,9 @@ export interface PrezentacjaRodzaju {
    *  bez takiego pominięcia (dziś: tylko `earth_fault_detection`). */
   readonly wielkosciPominiete?: readonly WielkoscPominieta[];
   readonly tabele: readonly TabelaObiektow[];
-  /** Jawny następny krok projektanta po odczytaniu werdyktu. */
+  /** Sekcja audytowa — tylko dla rodzajów z oceną niewykonaną i liczbami solvera. */
+  readonly sekcjaAudytowa?: SekcjaAudytowaRodzaju;
+  /** Jawny następny krok projektanta po odczytaniu wyniku. */
   readonly nastepnyKrok: string;
 }
 
@@ -206,9 +235,21 @@ const SPELNIONY: MapaWerdyktu = {
   niespelniony: { tekst: 'niespełnione', istotnosc: 'err' },
 };
 
-/** Blok wiarygodności `sanity` — wspólny dla wszystkich rodzajów (K-08). */
+/**
+ * Status węzła w sekcji audytowej jakości energii — `NIE_OCENIONO` (dawniej „zgodny"
+ * nawet dla szyny bez danych). Jedyna etykieta: „Ocena niewykonana", kolor neutralny.
+ */
+const OCENA_NIEWYKONANA_STATUS: MapaWerdyktu = {
+  NIE_OCENIONO: { tekst: 'Ocena niewykonana', istotnosc: 'neutral' },
+};
+
+/**
+ * Blok wiarygodności `sanity` — wspólny dla wszystkich rodzajów (K-08). Kontrola
+ * sprawdza wyłącznie PASMO fizycznie możliwe — backend nazywa to „w paśmie
+ * wiarygodności" (dawniej „zweryfikowany", co twierdziło weryfikację, której nie ma).
+ */
 export const MAPA_WIARYGODNOSCI: MapaWerdyktu = {
-  zweryfikowany: { tekst: 'wyniki wiarygodne', istotnosc: 'ok' },
+  'w paśmie wiarygodności': { tekst: 'wynik w paśmie wiarygodności', istotnosc: 'ok' },
   'poza zakresem wiarygodności': {
     tekst: 'wynik poza zakresem wiarygodności',
     istotnosc: 'err',
@@ -236,51 +277,50 @@ export const MAPA_WIARYGODNOSCI: MapaWerdyktu = {
 export const PREZENTACJA: Record<RodzajPrezentowany, PrezentacjaRodzaju> = {
   // -------------------------------------------------------------------------
   power_quality_harmonics: {
-    werdykt: {
-      rodzaj: 'zbiorczy',
-      sciezkaTablicy: 'nodes',
-      kluczStatusu: 'compatibility_status',
-      mapa: ZGODNY,
-      wartoscSpelniona: 'zgodny',
-      obiektyDopelniacz: 'węzłów',
-    },
+    // Uczciwość natychmiastowa (2026-09-23): solver harmoniczny niezwalidowany — ocena
+    // niewykonana, ŻADNA liczba (THD, TDD, K, U_h, skan Z, „rezonanse") na pierwszym
+    // planie; tabela węzłów wyłącznie w sekcji audytowej.
+    werdykt: { rodzaj: 'ocena', sciezka: 'ocena' },
     wielkosciGlowne: [],
-    tabele: [
-      {
-        sciezka: 'nodes',
-        tytul: 'Odkształcenie w węzłach sieci',
-        kluczRef: 'bus_ref',
-        etykietaRef: 'Szyna',
-        kolumny: [
-          { klucz: 'thd_u_percent', etykieta: 'Odkształcenie napięcia THD_U', jednostka: '%' },
-          { klucz: 'tdd_percent', etykieta: 'Odkształcenie prądu TDD', jednostka: '%' },
-          { klucz: 'k_factor', etykieta: 'Współczynnik K (obciążenie transformatora)' },
-          {
-            klucz: 'compatibility_status',
-            etykieta: 'Kryterium kompatybilności',
-            mapaStatusu: ZGODNY,
-          },
-        ],
-      },
-    ],
+    tabele: [],
+    sekcjaAudytowa: {
+      naglowekSciezka: 'wynik_audytowy.naglowek_pl',
+      powodySciezka: 'wynik_audytowy.powody_pl',
+      wiarygodnoscSciezka: 'wynik_audytowy.sanity',
+      tabele: [
+        {
+          sciezka: 'wynik_audytowy.nodes',
+          tytul: 'Odkształcenie w węzłach sieci (solver niezwalidowany)',
+          kluczRef: 'bus_ref',
+          etykietaRef: 'Szyna',
+          kolumny: [
+            { klucz: 'thd_u_percent', etykieta: 'Odkształcenie napięcia THD_U', jednostka: '%' },
+            { klucz: 'tdd_percent', etykieta: 'Odkształcenie prądu TDD', jednostka: '%' },
+            { klucz: 'k_factor', etykieta: 'Współczynnik K (obciążenie transformatora)' },
+            {
+              klucz: 'compatibility_status',
+              etykieta: 'Kompatybilność',
+              mapaStatusu: OCENA_NIEWYKONANA_STATUS,
+            },
+          ],
+        },
+      ],
+    },
     nastepnyKrok:
-      'Przy przekroczeniu limitu: sprawdź rezonanse w skanie impedancji węzła, '
-      + 'a następnie dobierz filtr harmonicznych albo zmień punkt przyłączenia źródła '
-      + 'odkształcającego w modelu sieci.',
+      'Do czasu solvera harmonicznego z wyrocznią jakość energii w węzłach oceń pomiarem '
+      + 'albo obliczeniem zewnętrznym; liczby obecnego solvera służą wyłącznie audytowi.',
   },
 
   // -------------------------------------------------------------------------
   ssci_impedance: {
-    werdykt: {
-      rodzaj: 'pojedynczy',
-      sciezki: ['sanity.status'],
-      mapa: MAPA_WIARYGODNOSCI,
-    },
+    // Uczciwość natychmiastowa (2026-09-23): Z_grid(f) bez przekładni transformatora —
+    // ocena niewykonana (rekord `ocena` z backendu), nie chip wiarygodności jako werdykt.
+    werdykt: { rodzaj: 'ocena', sciezka: 'ocena' },
     wielkosciGlowne: [],
     tabele: [],
     nastepnyKrok:
-      'Przejdź do okna „Stabilność SSCI" po werdykt Nyquista dla wybranego '
-      + 'przekształtnika i węzła przyłączenia.',
+      'Okno „Stabilność SSCI" pokazuje wskaźnik strefy ujemnej rezystancji przekształtnika '
+      + 'oraz metryki kryterium impedancyjnego jako materiał audytowy.',
   },
 
   // -------------------------------------------------------------------------

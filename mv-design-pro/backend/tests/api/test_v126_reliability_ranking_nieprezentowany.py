@@ -160,8 +160,10 @@ def test_wrapper_zdejmuje_klucze_rankingu_i_przelicza_status_wiarygodnosci() -> 
     naruszenia = [v["check"] for v in wynik["sanity"]["violations"]]
     assert "n1_overload" not in naruszenia
     # Jedyne naruszenie fikstury było n1_overload — po jego zdjęciu status
-    # WRACA do "zweryfikowany" (SAIDI/SAIFI fikstury są w granicach fizycznych).
-    assert wynik["sanity"]["status"] == "zweryfikowany"
+    # WRACA do pasma wiarygodności (SAIDI/SAIFI fikstury są w granicach fizycznych).
+    # Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): etykieta „w paśmie
+    # wiarygodności" (`CREDIBLE`) zamiast literału solvera „zweryfikowany".
+    assert wynik["sanity"]["status"] == "w paśmie wiarygodności"
 
     assert wynik["ranking_n1"] == {
         "status": "NIEPREZENTOWANY",

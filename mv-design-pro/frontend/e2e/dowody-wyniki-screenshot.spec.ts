@@ -143,10 +143,11 @@ const liczbaDokladnaPl = (wartosc: number): string =>
   String(Number.parseFloat(wartosc.toPrecision(4))).replace('.', ',');
 
 /**
- * Werdykt SSCI — z REALNEGO biegu backendu (`akademickie_scena_biegi.json`,
+ * Widok SSCI — z REALNEGO biegu backendu (`akademickie_scena_biegi.json`,
  * karta HARNESS-RESZTA). NAPRAWA HARNESS-RESZTA-2: spec cytował max|L| = „1,42"
  * z atrapy sprzed konwersji; realna sieć złota z kartą przekształtnika daje
- * max|L| = 126,4445 i ten sam werdykt „niestabilny".
+ * max|L| = 126,4445. Od 2026-09-23 (uczciwość natychmiastowa) widok nie niesie
+ * werdyktu — rekord oceny NIE_OCENIONO, a max|L| jest materiałem audytowym.
  */
 const SSCI_WERDYKT = (
   JSON.parse(
@@ -154,7 +155,18 @@ const SSCI_WERDYKT = (
       path.resolve(_dirname, '../src/harness-fixtures/generated/akademickie_scena_biegi.json'),
       'utf-8',
     ),
-  ) as { biegi: { ssci_impedance: { stabilnosc: { verdict: { max_minor_loop_gain: number } } } } }
+  ) as {
+    biegi: {
+      ssci_impedance: {
+        stabilnosc: {
+          verdict: {
+            max_minor_loop_gain: number;
+            ocena: { wyjasnienie: { zdanie_pl: string } };
+          };
+        };
+      };
+    };
+  }
 ).biegi.ssci_impedance.stabilnosc.verdict;
 
 /** Prowadzi scenę do stanu „wywód OTWARTY" — realne kliki, zero syntetyki. */
@@ -278,10 +290,18 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
       liczbaDokladnaPl(ESTYMACJA_SCENA_WYNIK.white_box[0].objective_j),
     );
   } else if (scena === 'ssci') {
-    // Jawny bieg SSCI (utworzenie przebiegu + werdykt) → otwarty ślad.
+    // Jawny bieg SSCI (utworzenie przebiegu) → rekord oceny → sekcja audytowa → ślad.
+    // Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): werdyktu „niestabilny" nie
+    // ma — Z_grid(f) solvera liczone bez przekładni transformatora; pierwszy plan to
+    // rekord NIE_OCENIONO z backendu, metryki L(f) w zwiniętej sekcji audytowej.
     await page.getByTestId('mvd-ssci-uruchom').click();
     await expect(page.getByTestId('mvd-ssci-wynik')).toBeVisible();
-    await expect(page.getByTestId('mvd-ssci-chip-werdykt')).toContainText('niestabiln');
+    const ocena = page.getByTestId('mvd-ssci-ocena');
+    await expect(ocena).toHaveAttribute('data-status', 'NIE_OCENIONO');
+    await expect(ocena).toContainText(SSCI_WERDYKT.ocena.wyjasnienie.zdanie_pl);
+    await expect(page.getByTestId('mvd-ssci-chip-werdykt')).toHaveCount(0);
+    await expect(page.getByTestId('mvd-ssci-metryki')).toHaveCount(0);
+    await page.getByTestId('mvd-ssci-audyt-przelacz').click();
     await expect(page.getByTestId('mvd-ssci-metryki')).toBeVisible();
     await page.getByTestId('mvd-ssci-slad-otworz').click();
     await expect(page.getByTestId('mvd-ssci-slad')).toContainText('max|L|');

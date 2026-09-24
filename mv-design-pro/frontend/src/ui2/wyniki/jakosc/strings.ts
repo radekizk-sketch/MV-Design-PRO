@@ -426,19 +426,21 @@ export function istotnoscWalidacji(kod: StatusWalidacji): IstotnoscStatusu {
 }
 
 /**
- * Gotowe statusy wiarygodności zwarciowej — tekst polski JEST wprost z backendu
- * (`analysis/sanity_bounds/short_circuit_bounds.py:29-31`). Tu tylko utrwalone,
- * aby wyznaczyć istotność tagu bez powielania literałów.
+ * Gotowe statusy pasma wiarygodności — tekst polski JEST wprost z backendu
+ * (`analysis/sanity_bounds/short_circuit_bounds.py`: `CREDIBLE`, `OUT_OF_RANGE`,
+ * `INCOMPLETE`). Tu tylko utrwalone, aby wyznaczyć istotność tagu bez powielania
+ * literałów. „W paśmie wiarygodności" (dawniej „zweryfikowany") mówi wyłącznie, że
+ * liczba leży w paśmie fizycznie możliwym — nie jest weryfikacją wyrocznią.
  */
 export const STATUS_WIARYGODNOSCI = {
-  zweryfikowany: 'zweryfikowany',
+  wPasmie: 'w paśmie wiarygodności',
   pozaZakresem: 'poza zakresem wiarygodności',
   niekompletne: 'dane niekompletne',
 } as const;
 
 /** Istotność statusu wiarygodności (dobór koloru tagu) — na bazie tekstu z backendu. */
 export function istotnoscWiarygodnosci(status: string): IstotnoscStatusu {
-  if (status === STATUS_WIARYGODNOSCI.zweryfikowany) return 'ok';
+  if (status === STATUS_WIARYGODNOSCI.wPasmie) return 'ok';
   if (status === STATUS_WIARYGODNOSCI.pozaZakresem) return 'err';
   return 'neutral';
 }

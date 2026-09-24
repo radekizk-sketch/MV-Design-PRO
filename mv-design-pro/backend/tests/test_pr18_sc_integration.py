@@ -520,7 +520,9 @@ class TestResultMapper:
         # D-14b: guard sanity-bounds Ik'' wpięty na ścieżce konsumpcji (overlay/proof
         # czytają global_results). Golden MV → Ik'' wiarygodny.
         assert "ikss_sanity" in gr
-        assert gr["ikss_sanity"]["status"] == "zweryfikowany"
+        # Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): „w paśmie wiarygodności"
+        # zamiast „zweryfikowany" — intencja bez zmian (Ik'' golden MV wiarygodny).
+        assert gr["ikss_sanity"]["status"] == "w paśmie wiarygodności"
         assert gr["ikss_sanity"]["in_range"] is True
         assert gr["ikss_sanity"]["voltage_band"] == "SN"
         assert gr["ikss_sanity"]["blocks_osd_package"] is False

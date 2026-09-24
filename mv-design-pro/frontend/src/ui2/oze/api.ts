@@ -20,7 +20,15 @@ import type {
   PozycjaBloku,
   TypModulu,
 } from './ncrfg/typy';
-import type { OcenaKryterium, PodstawaWymagania } from '../wyniki/wzorzec/werdykt';
+import type { RekordOcenyNiewykonanej } from '../wyniki/wzorzec/OcenaNiewykonana';
+import type {
+  Etykieta,
+  OcenaKryterium,
+  PodstawaWymagania,
+  RekordWerdyktu,
+  StatusWerdyktu,
+  WynikWymagania,
+} from '../wyniki/wzorzec/werdykt';
 
 // =============================================================================
 // Wskazanie przypadku w zapytaniu dokumentu (studium przyłączeniowe)
@@ -641,9 +649,17 @@ export interface OcenaDowodowaZdolnosci {
 }
 
 /**
- * Wynik pojedynczego scenariusza FRT/HVRT (1:1 z `FrtScenarioResult` + werdykt PL
- * zbudowany po stronie backendu WYŁĄCZNIE z pól solvera — `werdykt_pl` przyjmuje
- * „w obwiedni" / „poza obwiednią" / „moduł wypadł"). Zero oceny po stronie UI.
+ * Rekord oceny trajektorii i sekwencji FRT — status `NIE_OCENIONO` z powodem (1:1 z
+ * `ocena_frt_niewykonana()`): trajektoria jest zadana profilem wejściowym, a kryterium
+ * v > 0,05 p.u. wobec tego samego profilu jest tautologią. Etykieta z rekordu.
+ */
+export type RekordOcenyFrt = RekordOcenyNiewykonanej;
+
+/**
+ * Wynik pojedynczego scenariusza FRT/HVRT (1:1 z `FrtScenarioResult` + rekord oceny).
+ * Pola solvera (`status`, `stayed_connected`, marginesy, odzysk) są materiałem
+ * AUDYTOWYM (tautologia wobec profilu wejściowego) — prezentowane wyłącznie w sekcji
+ * audytowej. `werdykt_pl` ma jedyną wartość „nie oceniono" (kontrakt `str`).
  */
 export interface ScenariuszFrt {
   readonly scenario_id: string;
@@ -653,10 +669,11 @@ export interface ScenariuszFrt {
   readonly margin_to_curve_pu: number | null;
   readonly p_recovery_time_s: number | null;
   readonly werdykt_pl: string;
+  readonly ocena: RekordOcenyFrt;
   readonly liczba_punktow_trajektorii: number;
   /**
-   * Wywód dyplomowy {tekst, latex} scenariusza (zasada KaTeX 2026-07-22):
-   * wzór marginesu → dane → podstawienie z pól solvera → werdykt. Addytywny.
+   * Wywód {tekst, latex} scenariusza (zasada KaTeX 2026-07-22): echo wejścia solvera →
+   * charakter trajektorii → powód braku oceny. Addytywny.
    */
   readonly wywod?: readonly KrokWywoduKanoniczny[];
   readonly trajektoria: readonly PunktTrajektoriiFrt[];
@@ -690,6 +707,10 @@ export interface WidokTrajektoriiFrt {
    */
   readonly obwiednia_profilu?: ObwiedniaProfiluFrt;
   readonly scenariusze: readonly ScenariuszFrt[];
+  /** Rekord oceny widoku (`NIE_OCENIONO` z powodem) — nieobecny przy `blocked`. */
+  readonly ocena?: RekordOcenyFrt;
+  /** Nagłówek sekcji audytowej pól solvera (z backendu) — nieobecny przy `blocked`. */
+  readonly sekcja_audytowa_pl?: string;
   /** Stopień dowodowy trajektorii (karta S-1) — nieobecny przy `blocked`. */
   readonly ocena_dowodowa?: OcenaDowodowaZdolnosci;
   /** Kod gotowości (istniejący rejestr) — obecny WYŁĄCZNIE przy `blocked`. */
@@ -898,9 +919,9 @@ export function pobierzOdpowiedzOsd(
 
 /**
  * Pojedynczy zapad sekwencji (1:1 z `zapady[]` w `build_frt_sekwencja_view`).
- * `werdykt_pl` przyjmuje „w obwiedni" / „poza obwiednią" / „moduł wypadł" — pola
- * solvera FROZEN, ZERO oceny w UI. `wejscie_solvera` to ślad WHITE BOX wejścia
- * scenariusza (tryb ekspercki).
+ * `werdykt_pl` ma jedyną wartość „nie oceniono", `ocena` niesie powód; pola solvera
+ * (status, utrzymanie, marginesy, odzysk) to materiał audytowy. `wejscie_solvera` to
+ * ślad WHITE BOX wejścia scenariusza (tryb ekspercki).
  */
 export interface ZapadSekwencjiFrt {
   readonly scenario_id: string;
@@ -912,6 +933,7 @@ export interface ZapadSekwencjiFrt {
   readonly margin_to_curve_s: number | null;
   readonly p_recovery_time_s: number | null;
   readonly werdykt_pl: string;
+  readonly ocena: RekordOcenyFrt;
   readonly wejscie_solvera: {
     readonly test_kind: string;
     readonly voltage_dip_depth_pu: number;
@@ -922,10 +944,10 @@ export interface ZapadSekwencjiFrt {
 
 /**
  * Widok sekwencji zapadów FRT (odpowiedź frt-sequence, 1:1 z
- * `build_frt_sekwencja_view`). `werdykt_sekwencji_pl` = koniunkcja werdyktów
- * zapadów po stronie backendu („sekwencja w obwiedni" lub „sekwencja niezaliczona
- * — zapad N"). `kontekst_sily_sieci` to wiersz SCR/WSCR węzła z widoku siły sieci
- * (D1) lub `null` (wtedy `kontekst_sily_sieci_powod_pl` niesie uczciwy powód).
+ * `build_frt_sekwencja_view`). Sekwencja nie jest oceniana: `werdykt_sekwencji_pl` ma
+ * jedyną wartość „nie oceniono", powód niesie `ocena`. `kontekst_sily_sieci` to wiersz
+ * SCR/WSCR węzła z widoku siły sieci (D1) lub `null` (wtedy
+ * `kontekst_sily_sieci_powod_pl` niesie uczciwy powód).
  */
 export interface WidokSekwencjiFrt {
   readonly modul_der: ModulDerFrt;
@@ -941,6 +963,10 @@ export interface WidokSekwencjiFrt {
    */
   readonly obwiednia_profilu?: ObwiedniaProfiluFrt;
   readonly werdykt_sekwencji_pl?: string;
+  /** Rekord oceny sekwencji (`NIE_OCENIONO` z powodem). */
+  readonly ocena?: RekordOcenyFrt;
+  /** Nagłówek sekcji audytowej pól solvera (z backendu). */
+  readonly sekcja_audytowa_pl?: string;
   readonly zalozenia_pl?: string;
   readonly kontekst_sily_sieci?: WpisSilyWezla | null;
   readonly kontekst_sily_sieci_powod_pl?: string | null;
@@ -1004,7 +1030,11 @@ export function pobierzSekwencjeFrt(zapytanie: ZapytanieSekwencjiFrt): Promise<W
 // (api/oze_analysis_runs.py:74)
 // =============================================================================
 
-/** Poziom istotności porównania/pola LoM (1:1 z `severity` backendu). */
+/**
+ * Klasa porównania nastawy LoM (1:1 z `severity` backendu) — materiał śladu porównania.
+ * Ocenę porównania niesie rekord `ocena` (etykieta, zdanie, czego brakuje); klasa nie jest
+ * etykietą i interfejs jej nie wyświetla jako statusu.
+ */
 export type IstotnoscLom = 'OK' | 'INFO' | 'WARN' | 'ERROR';
 
 /**
@@ -1019,14 +1049,17 @@ export type OknoNormatywneLom =
 
 /**
  * Pojedyncze porównanie (check) pola: obecność funkcji, okno normatywne albo
- * koordynacja SPZ. `value`/`unit` opisują nastawę; `message_pl` niesie gotowy
- * werdykt PL z backendu (ZERO oceny w UI).
+ * koordynacja SPZ. `value`/`unit` opisują nastawę; `message_pl` to opis porównania PL
+ * z backendu, a ocenę (etykieta, zdanie, czego brakuje) niesie rekord `ocena` (ZERO oceny
+ * w UI).
  */
 export interface PorownanieLom {
   readonly kind: string;
   readonly function_ansi: string | null;
   readonly function_label_pl: string | null;
   readonly severity: IstotnoscLom;
+  /** Rekord oceny porównania (`OcenaKryterium`) — jedyne źródło etykiety i wyjaśnienia. */
+  readonly ocena: OcenaKryterium;
   readonly message_pl: string;
   readonly value: number | null;
   readonly unit: string | null;
@@ -1040,14 +1073,19 @@ export interface PorownanieLom {
   readonly wywod?: readonly KrokWywoduKanoniczny[];
 }
 
-/** Pole przyłączeniowe modułu wytwórczego z oceną ochrony LoM. */
+/**
+ * Pole przyłączeniowe modułu wytwórczego z oceną ochrony LoM. `ocena` to rekord pola:
+ * wymaganie (`WynikWymagania`, agregacja rekordów porównań) albo — pole BEZ porównań —
+ * rekord `NIE_OCENIONO` poziomu K (puste ≠ spełnia). `status` = status maszynowy rekordu.
+ */
 export interface PoleLom {
   readonly bay_ref: string;
   readonly bay_name: string;
   readonly substation_ref: string | null;
   readonly bus_ref: string;
   readonly generating_module_refs: readonly string[];
-  readonly status: IstotnoscLom;
+  readonly status: StatusWerdyktu;
+  readonly ocena: RekordWerdyktu;
   readonly checks: readonly PorownanieLom[];
 }
 
@@ -1057,12 +1095,21 @@ export interface ZrodloNormatywneLom {
   readonly source_pl: string | null;
 }
 
-/** Podsumowanie liczbowe oceny LoM. */
+/** Licznik pól o jednym statusie i etykiecie rekordu pola (etykieta z rekordu backendu). */
+export interface LicznikStatusuLom {
+  readonly status: StatusWerdyktu;
+  readonly liczba: number;
+  readonly etykieta: Etykieta;
+}
+
+/** Podsumowanie oceny LoM: liczniki pól i rekord wymagania całej sieci. */
 export interface PodsumowanieLom {
   readonly fields_total: number;
   readonly generating_modules_total: number;
-  readonly by_status: Readonly<Record<IstotnoscLom, number>>;
-  readonly overall_status: IstotnoscLom;
+  /** Liczniki w kolejności pierwszego wystąpienia wśród pól, każdy z etykietą z rekordu. */
+  readonly statusy: readonly LicznikStatusuLom[];
+  /** Rekord wymagania sieci (agregacja rekordów pól i modułów bez pola). */
+  readonly ocena: WynikWymagania;
 }
 
 /** Widok weryfikacji ochrony LoM (odpowiedź lom-protection, 1:1 z buildera). */

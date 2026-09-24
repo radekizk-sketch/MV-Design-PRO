@@ -190,8 +190,19 @@ BACKEND = ROOT / "backend"
 # int/1b1 — 249/43 (HEAD) -> 230/36: znika dokladnie 19 bledow AB-1b.1a (11 w repozytoriach
 # persystencji przez przeciazenia `ensure_utc`, 1 `adapter_dynamiki`, 7 w plikach karty),
 # zero nowych.
-BASELINE_ERRORS = 230
-BASELINE_FILES = 36
+# 2026-09-23 (karta AB-1a Pakiet 0, drzewo integracyjne `bbcc8555` + Pakiet 0): plik
+# `enm/canonical_analysis.py` dotkniety pakietem wyczyszczony z bledow typow — kolizja
+# nazwy `result` miedzy trzema typami wynikow w `_run_oltc_study` (dwa bledy assignment:
+# `TapSweepResult`/`OptimizationResult` pod zmienna `AnnualProfileResult`, rozdzielone na
+# `przemiatanie`/`optymalizacja`) i dwa `float(object)` w `_build_power_flow_trace_steps`
+# (arg-type, `cast(float, ...)` na wartosciach iteracji). Pomiar `mypy src` (mypy 1.19.1):
+# HEAD `bbcc8555` 266/46 (716 plikow), `bbcc8555` + Pakiet 0 262/45 (717 plikow — nowy
+# `application/ocena_niewykonana.py` bez bledow); roznica zbiorow bledow = dokladnie te
+# 4 bledy, zero nowych => 262/45.
+# Ponowne zlozenie Pakietu 0 na HEAD `1b422cdd` (B+C+D2 i #135, 2026-09-24): pomiar guardem na
+# scalonym drzewie 230/36 -> 226/35 (te same 4 bledy `enm/canonical_analysis.py`, zero nowych).
+BASELINE_ERRORS = 226
+BASELINE_FILES = 35
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

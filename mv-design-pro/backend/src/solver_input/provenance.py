@@ -257,10 +257,10 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             capability_id="dynamic_stability.fault_clear",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             rationale_pl=(
-                "Katy wirnika i wielkosci pozwarciowe pochodza z opcji biegu "
-                "(z wartosciami domyslnymi); werdykt jest porownaniem "
-                "progowym wzgledem tych katow, nie calkowaniem rownan ruchu "
-                "ukladu — enm/canonical_analysis.py::_execute_dynamic_stability."
+                "Katy mocy, napiecie i czestotliwosc po zwarciu oraz czas wylaczenia "
+                "wpisuje uzytkownik w opcjach biegu; bieg nie rozwiazuje sieci i nie "
+                "calkuje rownan ruchu ukladu, wiec zwraca wylacznie echo scenariusza "
+                "bez oceny stabilnosci (uczciwosc natychmiastowa 2026-09-23)."
             ),
             audit_ref=f"{_AUDIT_CARD} §0.5",
         ),

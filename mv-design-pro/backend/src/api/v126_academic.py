@@ -23,9 +23,7 @@ from pydantic import BaseModel
 from solver_input.v126_contracts import (
     V126AcademicInput,
     V126AnalysisType,
-    V126ConverterInput,
     V126EarthingInput,
-    V126HarmonicSourceInput,
     V126InsulationInput,
     V126MotorInput,
     V126RunRequest,
@@ -158,9 +156,38 @@ def _require_run(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any
     return run
 
 
+#: Surowe nadpisania wejścia solvera z `parameters` SKASOWANE (uczciwość natychmiastowa,
+#: audyt harmonicznych 2026-09-23): `harmonic_sources` i `converters` z żądania omijały
+#: kartę katalogową i bramkę gotowości (podstawienie następowało PO ocenie gotowości), a źródła
+#: harmoniczne dostawały fałszywą proweniencję `KATALOG`. Widmo harmoniczne podaje się kartą
+#: katalogową przekształtnika albo formularzem `harmonic_spectra` (proweniencja `RECZNE`),
+#: przekształtnik — powiązaniem katalogowym generatora w modelu. Interfejs nigdy tych kluczy
+#: nie wysyłał; żądanie, które je niesie, dostaje jawną odmowę, nie ciche pominięcie.
+_SKASOWANE_NADPISANIA_WEJSCIA: dict[str, str] = {
+    "harmonic_sources": (
+        "Nadpisanie źródeł harmonicznych parametrem „harmonic_sources” zostało usunięte — "
+        "widmo podaje się kartą katalogową przekształtnika albo formularzem widma "
+        "„harmonic_spectra”."
+    ),
+    "converters": (
+        "Nadpisanie przekształtników parametrem „converters” zostało usunięte — przekształtnik "
+        "wchodzi do analizy wyłącznie przez powiązanie katalogowe generatora w modelu."
+    ),
+}
+
+
 def _with_parameter_payloads(
     model: V126AcademicInput, parameters: dict[str, Any]
 ) -> V126AcademicInput:
+    """Dołóż do wejścia solvera dane PROJEKTANTA z `parameters` (uziom, izolacja, silniki).
+
+    Raises:
+        ValueError: gdy `parameters` niesie skasowane nadpisanie wejścia solvera
+            (`harmonic_sources`, `converters`) — komunikat po polsku nazywa klucz.
+    """
+    skasowane = [klucz for klucz in _SKASOWANE_NADPISANIA_WEJSCIA if klucz in parameters]
+    if skasowane:
+        raise ValueError(" ".join(_SKASOWANE_NADPISANIA_WEJSCIA[k] for k in skasowane))
     update: dict[str, Any] = {"parameters": parameters}
     if isinstance(parameters.get("earthing"), dict):
         update["earthing"] = V126EarthingInput.model_validate(parameters["earthing"])
@@ -174,18 +201,6 @@ def _with_parameter_payloads(
         update["motors"] = [
             V126MotorInput.model_validate(item)
             for item in parameters["motors"]
-            if isinstance(item, dict)
-        ]
-    if isinstance(parameters.get("harmonic_sources"), list):
-        update["harmonic_sources"] = [
-            V126HarmonicSourceInput.model_validate(item)
-            for item in parameters["harmonic_sources"]
-            if isinstance(item, dict)
-        ]
-    if isinstance(parameters.get("converters"), list):
-        update["converters"] = [
-            V126ConverterInput.model_validate(item)
-            for item in parameters["converters"]
             if isinstance(item, dict)
         ]
     return model.model_copy(update=update)
@@ -233,6 +248,12 @@ def run_v126_analysis(
     # przekaźnika, ograniczniki, liczba odbiorców). Parametry wyprowadzalne
     # z modelu (najwyższe Un jako napięcie łącznika, sposób uziemienia punktu
     # neutralnego) trafiają do biegu JAWNIE — proweniencja w zapisie wejścia.
+    skasowane = [k for k in _SKASOWANE_NADPISANIA_WEJSCIA if k in request.parameters]
+    if skasowane:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=" ".join(_SKASOWANE_NADPISANIA_WEJSCIA[k] for k in skasowane),
+        )
     parametry = uzupelnij_parametry_z_modelu(enm, analysis_type, request.parameters)
     gotowosc = ocen_gotowosc_v126(enm, analysis_type, parametry)
     if not gotowosc.potwierdzona:
@@ -355,15 +376,15 @@ def get_v126_trace(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, A
 
 @router.get("/analysis-runs/{run_id}/results/v126/ssci_impedance/stability")
 def get_v126_ssci_stability(run_id: UUID) -> dict[str, Any]:
-    """Werdykt stabilności SSCI (kryterium impedancyjne Nyquista) dla gotowego
-    przebiegu ``ssci_impedance``.
+    """Stabilność SSCI (kryterium impedancyjne Nyquista) dla gotowego przebiegu
+    ``ssci_impedance`` — ocena niewykonana z wyjaśnieniem.
 
     Warstwa analizy (Sun 2011 / Wen 2016) odczytuje tablice Z_grid(f)/Z_conv(f)/L(f)
-    z przebiegu i wydaje werdykt (stabilny / ryzyko SSCI / niestabilny / brak danych)
-    z metrykami (max|L|, margines różnicy faz, częstotliwość winna, bliskość −1,
-    okrążenia) i wywodem White Box. ZERO fizyki w API — analiza tylko interpretuje
-    gotowy wynik solvera. Uczciwy stan zerowy: brak przekształtnika/DER lub braki
-    karty falownika → werdykt „brak danych" (bez fabrykacji).
+    z przebiegu i liczy metryki (max|L|, margines różnicy faz, częstotliwość najgorszego
+    marginesu, bliskość −1, okrążenia) z wywodem White Box jako materiał audytowy.
+    Werdykt NIE jest wydawany (`ocena.status_maszynowy` = `NIE_OCENIONO`): Z_grid(f)
+    solvera liczone jest bez przekładni transformatora. Wskaźnik strefy ujemnej
+    rezystancji przekształtnika (Re_min, częstotliwość) zostaje. ZERO fizyki w API.
 
     404 gdy przebieg nie istnieje; 409 gdy rodzaj przebiegu to nie ``ssci_impedance``;
     422 gdy przebieg nie niesie payloadu solvera SSCI.

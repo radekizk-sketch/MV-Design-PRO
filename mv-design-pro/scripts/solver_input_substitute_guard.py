@@ -482,6 +482,17 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # threshold_why_pl), ZERO nowych trafien (RC=0 niezmieniony).
     "analysis/sanity_bounds/power_flow_bounds.py",
     "analysis/sanity_bounds/short_circuit_bounds.py",
+    # Karta AB-1a Pakiet 0 (2026-09-23) — pin mapy zazadal decyzji dla dwoch korzeni
+    # czytanych przez zakres od wpiecia rekordow oceny niewykonanej: modele widoku
+    # stabilnosci SSCI (serwis `application/analyses/ssci_stability/service.py` czyta
+    # fabryke rekordu `ocena_ssci_niewykonana`) i kontrakt rekordu werdyktu
+    # (`application/ocena_niewykonana.py` i dostawcy rekordow LoM/FRT/T1). Ten sam
+    # precedens co `analysis/sanity_bounds/*` i `analysis/grid_strength/models.py`: WYNIK/
+    # KONTRAKT oceny czytany przez warstwe objeta skanem, zadne pole nie jest atrybutem
+    # typu wbudowanego (brak kolizji jak `real`/`imag`), wiec decyzja "do mapy". Pomiar
+    # delty pol i trafien przy wpisie w tescie samym guarda (zero nowych trafien).
+    "analysis/ssci_stability/models.py",
+    "werdykt/kontrakt.py",
     "analysis/voltage_profile/models.py",
     "catalog/profiles/nc_rfg/loader.py",
     "diagnostics/preflight.py",
@@ -1097,7 +1108,10 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "F:dictget:item.q_from_mvar": 1,
         "F:dictget:iteration.max_mismatch_pu": 2,
         "F:dictget:p.load_scale": 1,
-        "F:dictget:row.event_seq": 1,
+        # Karta AB-1a Pakiet 0 (2026-09-23): `row.event_seq` (sortowanie wierszy sladu
+        # automatyki z domyslnym 0) SKASOWANY razem z narracja zdarzen toru T1 — slad nie
+        # niesie wierszy zdarzen (bieg nie symuluje zabezpieczen); budzet zdjety, zapadka
+        # w dol z pomiaru ("Dlug ZMALAL" na drzewie integracyjnym).
         # W2 pkt 1 (2026-09-09): szesc zastepnikow scenariusza stabilnosci
         # (`run.clearing_time_ms`, `run.*_fault_*`) SKASOWANYCH razem z fabrykacja
         # stabilnosci dynamicznej (scenariusz jawny albo odmowa) — budzety zdjete,

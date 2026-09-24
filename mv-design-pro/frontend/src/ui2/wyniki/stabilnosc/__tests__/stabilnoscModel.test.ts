@@ -1,50 +1,53 @@
 /**
  * Testy czystych adapterów ekranu „Stabilność dynamiczna" (E-32, karta P-3).
- * Fixture 1:1 z realnym kontraktem `DynamicStabilityResult.to_dict`
- * (application/stability/dynamic_stability.py:119-140).
+ * Fixture 1:1 z realnym kontraktem `EchoScenariuszaStabilnosci.to_dict`
+ * (application/stability/dynamic_stability.py) — echo scenariusza wpisanego przez
+ * użytkownika + rekord oceny `NIE_OCENIONO` wygenerowany przez backend.
+ *
+ * Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): adaptery werdyktu
+ * (`werdyktStabilnosciPL`, `naruszoneKryteriaPL`, `naWielkosciStabilnosci`) i śladu
+ * zdarzeń automatyki (`naZdarzenia`) zniknęły razem z werdyktem progowym i narracją
+ * zabezpieczeń — tor nie rozwiązuje sieci, więc nie ma czego ocenić ani opowiedzieć.
+ * Intencja zachowana: dane wprost z backendu, brak pola → kreska (zero fabrykacji).
  */
 
 import { describe, expect, it } from 'vitest';
 
+import * as model from '../model';
 import {
+  fmtDeg,
   fmtMs,
   fmtPu,
   fmtS,
-  naruszoneKryteriaPL,
+  naEchoScenariusza,
   naSeriePrzebiegu,
-  naWielkosciStabilnosci,
   naZalozeniaStabilnosci,
-  naZdarzenia,
-  werdyktStabilnosciPL,
   wybierzPrzebiegStabilnosci,
   type WielkoscPrzebiegu,
   type WierszStabilnosci,
 } from '../model';
+import type { RekordOcenyNiewykonanej } from '../../wzorzec/OcenaNiewykonana';
 import { STABILNOSC_STRINGS as T } from '../strings';
+import rekordyOceny from './rekordyOceny.json';
+
+const OCENA = (rekordyOceny as unknown as { scenariusz_dyn_1: RekordOcenyNiewykonanej })
+  .scenariusz_dyn_1;
 
 const WIERSZ: WierszStabilnosci = {
   scenario_id: 'dyn-1',
+  scenario_type: 'FAULT_CLEAR',
   source_id: 'src/pv/1',
   faulted_element_id: 'line/gpz/1',
   cleared_by_element_ids: ['cb-main', 'cb-tie'],
-  stable: false,
-  status: 'UNSTABLE',
-  criteria_version: 'dynamic_stability_fault_clear_v1',
-  stability_index: 0.412,
-  clearing_time_ms: 180,
-  max_clearing_time_ms: 150,
-  clearing_margin_ms: -30,
-  angle_swing_deg: 65,
+  status: 'NIE_OCENIONO',
+  contract_version: 'dynamic_stability_fault_clear_echo_v2',
+  clearing_time_ms: 120,
+  pre_fault_angle_deg: 10,
+  during_fault_angle_deg: 75,
+  post_fault_angle_deg: 28,
   post_fault_voltage_pu: 0.97,
   post_fault_frequency_pu: 0.99,
-  limiting_factor: 'clearing_time',
-  violated_checks: ['clearing_time'],
-  checks: {
-    clearing_time: false,
-    angle_swing: true,
-    voltage_recovery: true,
-    frequency_recovery: true,
-  },
+  ocena: OCENA,
   reporting_status_pl: 'raportowalny',
   reporting_limitations: [],
 };
@@ -70,60 +73,41 @@ describe('wybierzPrzebiegStabilnosci', () => {
   });
 });
 
-describe('adaptery werdyktu i założeń (dane wprost z backendu)', () => {
-  it('założenia niosą scenariusz zakłócenia: element, czas, kryteria', () => {
+describe('adaptery założeń i echa scenariusza (dane wprost z backendu)', () => {
+  it('założenia niosą scenariusz zakłócenia: element, źródło, elementy wyłączające', () => {
     const zalozenia = naZalozeniaStabilnosci(WIERSZ);
     expect(zalozenia.map((z) => String(z.wartosc))).toEqual([
       'line/gpz/1',
       'src/pv/1',
-      '180,0',
       'cb-main, cb-tie',
-      '150,0',
-      'dynamic_stability_fault_clear_v1',
     ]);
   });
 
-  it('werdykt PL mapuje status backendu bez interpretacji', () => {
-    expect(werdyktStabilnosciPL(WIERSZ)).toBe('NIESTABILNY');
-    expect(werdyktStabilnosciPL({ ...WIERSZ, status: 'STABLE' })).toBe('STABILNY');
-    expect(werdyktStabilnosciPL({ ...WIERSZ, status: undefined })).toBe('—');
-  });
-
-  it('naruszone kryteria tłumaczone słownikiem PL; brak → „brak naruszeń"', () => {
-    expect(naruszoneKryteriaPL(WIERSZ)).toBe('czas wyłączenia zwarcia');
-    expect(naruszoneKryteriaPL({ ...WIERSZ, violated_checks: [] })).toBe('brak naruszeń');
-  });
-
-  it('wielkości po zakłóceniu: wartości + status kryterium z pola checks', () => {
-    const wielkosci = naWielkosciStabilnosci(WIERSZ);
-    expect(wielkosci).toHaveLength(4);
-    expect(wielkosci[0]).toMatchObject({
-      klucz: 'clearing_time',
-      wartosc: '180,0',
-      spelnione: false,
-    });
-    expect(wielkosci[2]).toMatchObject({
-      klucz: 'voltage_recovery',
-      wartosc: '0,970',
-      spelnione: true,
-    });
-  });
-
-  it('starszy wynik bez pól → kreski i status nieoznaczony (zero fabrykacji)', () => {
-    const wielkosci = naWielkosciStabilnosci({});
-    expect(wielkosci.every((w) => w.wartosc === '—')).toBe(true);
-    expect(wielkosci.every((w) => w.spelnione === undefined)).toBe(true);
-  });
-});
-
-describe('naZdarzenia — deterministyczna kolejność śladu automatyki', () => {
-  it('sortuje po event_seq', () => {
-    const zdarzenia = naZdarzenia([
-      { event_seq: 3, event_type: 'FAULT_CLEARED' },
-      { event_seq: 1, event_type: 'AUTOMATION_STARTED' },
-      { event_seq: 2, event_type: 'FAULT_APPLIED' },
+  it('echo zwraca wartości wpisane przez użytkownika z jednostkami, w kolejności kontraktu', () => {
+    expect(naEchoScenariusza(WIERSZ)).toEqual([
+      { klucz: 'clearing_time_ms', wielkosc: T.echoCzas, wartosc: '120,0 ms' },
+      { klucz: 'pre_fault_angle_deg', wielkosc: T.echoKatPrzed, wartosc: '10,0 °' },
+      { klucz: 'during_fault_angle_deg', wielkosc: T.echoKatWCzasie, wartosc: '75,0 °' },
+      { klucz: 'post_fault_angle_deg', wielkosc: T.echoKatPo, wartosc: '28,0 °' },
+      { klucz: 'post_fault_voltage_pu', wielkosc: T.echoNapiecie, wartosc: '0,970 p.u.' },
+      { klucz: 'post_fault_frequency_pu', wielkosc: T.echoCzestotliwosc, wartosc: '0,990 p.u.' },
     ]);
-    expect(zdarzenia.map((z) => z.event_seq)).toEqual([1, 2, 3]);
+  });
+
+  it('wiersz bez pól → kreski w echu i założeniach (zero fabrykacji)', () => {
+    expect(naEchoScenariusza({}).every((pozycja) => pozycja.wartosc === T.kreska)).toBe(true);
+    expect(naZalozeniaStabilnosci({}).every((z) => z.wartosc === T.kreska)).toBe(true);
+  });
+
+  it('model nie ma adapterów werdyktu ani narracji zdarzeń automatyki', () => {
+    for (const nazwa of [
+      'werdyktStabilnosciPL',
+      'naruszoneKryteriaPL',
+      'naWielkosciStabilnosci',
+      'naZdarzenia',
+    ]) {
+      expect(nazwa in model).toBe(false);
+    }
   });
 });
 
@@ -154,8 +138,9 @@ describe('naSeriePrzebiegu — serie wykresu z metadanych backendu (zero fabryka
 });
 
 describe('formaty deterministyczne (przecinek PL)', () => {
-  it('fmtMs / fmtPu / fmtS', () => {
+  it('fmtMs / fmtDeg / fmtPu / fmtS', () => {
     expect(fmtMs(120)).toBe('120,0');
+    expect(fmtDeg(28)).toBe('28,0');
     expect(fmtPu(0.9666)).toBe('0,967');
     expect(fmtS(0.125)).toBe('0,125');
   });

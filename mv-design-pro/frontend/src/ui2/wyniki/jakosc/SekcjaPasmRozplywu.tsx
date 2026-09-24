@@ -10,7 +10,7 @@
  * zwarciowa): napięcia szyn (Un ± 10 %, PN-EN 50160), obciążenia gałęzi
  * (linia/kabel wobec In katalogu) i straty czynne sieci (próg jawny, z
  * uzasadnieniem inżynierskim). Status trójstanowy IDENTYCZNY jak Wiarygodność
- * zwarciowa (zweryfikowany / poza zakresem wiarygodności / dane niekompletne)
+ * zwarciowa (w paśmie wiarygodności / poza zakresem wiarygodności / dane niekompletne)
  * — reużywa `istotnoscWiarygodnosci`/`STATUS_WIARYGODNOSCI` (jedno źródło
  * prawdy wokabularza statusu, KLASA NIE INSTANCJA).
  *

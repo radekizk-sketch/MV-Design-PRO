@@ -71,6 +71,8 @@ export function wynikPL(wynik: WynikOceny): string {
       return T.wynikSpelnia;
     case 'NIE_SPELNIA':
       return T.wynikNieSpelnia;
+    case 'NIEJEDNOZNACZNY':
+      return T.wynikNiejednoznaczny;
     case 'BRAK_PODSTAW':
       return T.wynikBrakPodstaw;
   }
@@ -83,14 +85,22 @@ export function klasaWyniku(wynik: WynikOceny): string {
       return 'mvd-ocena-wynik--spelnia';
     case 'NIE_SPELNIA':
       return 'mvd-ocena-wynik--nie-spelnia';
+    case 'NIEJEDNOZNACZNY':
+      return 'mvd-ocena-wynik--niejednoznaczny';
     case 'BRAK_PODSTAW':
       return 'mvd-ocena-wynik--brak-podstaw';
   }
 }
 
-/** Zdanie oceny całościowej (jawny następny krok) — z liczników backendu. */
+/**
+ * Zdanie oceny całościowej (jawny następny krok) — z liczników i werdyktu backendu,
+ * w kolejności §2.3 kontraktu werdyktu (naruszenie → niejednoznaczność → brak podstaw).
+ */
 export function ocenaCalosciowaPL(odpowiedz: OdpowiedzOceny): string {
   if (odpowiedz.ocena.nie_spelnia > 0) return T.ocenaCalosciowaNieSpelnia;
+  if (odpowiedz.ocena.niejednoznaczny > 0 || odpowiedz.werdykt === 'NIEJEDNOZNACZNE') {
+    return T.ocenaCalosciowaNiejednoznaczny;
+  }
   if (odpowiedz.ocena.brak_podstaw > 0 || odpowiedz.werdykt === 'NIESPRAWDZONE') {
     return T.ocenaCalosciowaBrakPodstaw;
   }

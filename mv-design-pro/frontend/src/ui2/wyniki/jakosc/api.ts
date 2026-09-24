@@ -9,7 +9,7 @@
  *   `analysis_id`/`context`/`items`/`summary`); pojedynczy element =
  *   `ShortCircuitSanityVerdict.to_dict` + `target_id`/`element_id`/`target_name`
  *   (`analysis/sanity_bounds/short_circuit_bounds.py:46-57`). Pole `status`
- *   niesie GOTOWY tekst polski wprost z backendu („zweryfikowany" /
+ *   niesie GOTOWY tekst polski wprost z backendu („w paśmie wiarygodności" /
  *   „poza zakresem wiarygodności" / „dane niekompletne").
  * - Pasma zdrowego rozsądku rozpływu — TA SAMA końcówka `GET /api/quality/
  *   sanity-bounds?run_id=`, dispatch wg rodzaju przebiegu (karta W3-G2,
@@ -91,7 +91,7 @@ export interface WiarygodnoscResponse {
 // przebieg PF zamiast SC.
 // ---------------------------------------------------------------------------
 
-/** Podsumowanie trójstanowe (zweryfikowany/poza zakresem/niekompletne) sekcji. */
+/** Podsumowanie trójstanowe (w paśmie/poza zakresem/niekompletne) sekcji. */
 export interface PasmaSummary {
   readonly credible_count: number;
   readonly out_of_range_count: number;

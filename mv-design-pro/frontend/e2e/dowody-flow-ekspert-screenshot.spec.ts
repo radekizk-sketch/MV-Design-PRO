@@ -11,8 +11,10 @@
  *                      + tabela pętli OLTC + ślad iteracji OTWARTY,
  *  - e31-stan-fazowy — tabela napięć/prądów per faza + asymetrie z werdyktem
  *                      (PRZEKROCZENIE z flagi solvera),
- *  - e32-stabilnosc  — werdykt STABILNY + statusy kryteriów (checks) + ślad
- *                      automatyki OTWARTY.
+ *  - e32-stabilnosc  — rekord oceny NIE_OCENIONO (uczciwość natychmiastowa
+ *                      2026-09-23: kąty wpisane przez użytkownika, dawny werdykt
+ *                      STABILNY był porównaniem wpisanych liczb z progami) + echo
+ *                      scenariusza + ślad OTWARTY bez narracji zdarzeń.
  * Wyjście: docs/audit/visual/flow-ekspert/e29..e32-<scena>-<motyw>.png (oba motywy).
  */
 import { test, expect, type Page } from '@playwright/test';
@@ -197,15 +199,19 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     await expect(asymetrie).toContainText('29,39');
     await expect(asymetrie).toContainText('PRZEKROCZENIE');
   } else {
-    // wyniki-stabilnosc: werdykt STABILNY + statusy kryteriów (checks) → ślad
-    // automatyki OTWARTY (natywny klik).
-    // Wskaznik z REALNEGO biegu backendu (dynamic_stability, scena
-    // stabilnosc, karta HARNESS-RESZTA): stability_index=0,685417.
-    await expect(page.getByTestId('mvd-stabilnosc-werdykt-status')).toContainText('STABILNY');
-    await expect(page.getByTestId('mvd-stabilnosc-wskaznik')).toContainText('0,685');
-    await expect(page.getByTestId('mvd-stabilnosc-wielkosci')).toContainText('spełnione');
+    // wyniki-stabilnosc (zmiana kanonu 2026-09-23): rekord oceny NIE_OCENIONO z
+    // REALNEGO biegu backendu (scena stabilnosc) zamiast werdyktu STABILNY, echo
+    // scenariusza wpisanego przez użytkownika, ślad OTWARTY natywnym klikiem — bez
+    // narracji zdarzeń zabezpieczeń (efekt topologii zadeklarowany w opcjach).
+    const wiersz = fixtura('stabilnosc_scena_wyniki').rows[0];
+    const ocena = page.getByTestId('mvd-stabilnosc-ocena');
+    await expect(ocena).toHaveAttribute('data-status', 'NIE_OCENIONO');
+    await expect(ocena).toContainText(wiersz.ocena.wyjasnienie.zdanie_pl);
+    await expect(page.getByTestId('mvd-stabilnosc-echo')).toBeVisible();
+    await expect(page.getByTestId('mvd-stabilnosc')).not.toContainText('STABILNY');
     await page.getByTestId('mvd-stabilnosc-slad-btn').click();
-    await expect(page.getByTestId('mvd-stabilnosc-zdarzenia')).toBeVisible();
+    await expect(page.getByTestId('mvd-stabilnosc-topologia')).toBeVisible();
+    await expect(page.getByTestId('mvd-stabilnosc-zdarzenia')).toHaveCount(0);
   }
 }
 

@@ -12,9 +12,11 @@ export const FRT_STRINGS = {
   // Nagłówek okna
   tytul: 'Walidacja modelu falownika (trajektorie FRT)',
   opisWstep:
-    'Porównanie trajektorii napięcia, prądu biernego i mocy czynnej modułu DER '
-    + 'z obwiednią profilu operatora OSD (NC RfG) dla testu przejścia przez zapad '
-    + '(LVRT) lub wzrost (HVRT) napięcia — z jawnym werdyktem z solvera.',
+    'Trajektoria napięcia, prądu biernego i mocy czynnej modułu DER dla testu przejścia '
+    + 'przez zapad (LVRT) lub wzrost (HVRT) napięcia, na tle obwiedni wymaganej przez '
+    + 'profil operatora OSD (NC RfG). Napięcie trajektorii jest dziś zadane profilem '
+    + 'wejściowym, a nie wyznaczone z rozwiązania sieci, dlatego zdolność FRT nie jest '
+    + 'oceniana — okno pokazuje powód i to, czego brakuje do oceny.',
 
   // Dobór modułu, operatora i rodzaju testu
   wyborModul: 'Moduł DER (instalacja OZE)',
@@ -46,21 +48,19 @@ export const FRT_STRINGS = {
   ladowanie: 'Symulacja trajektorii FRT/HVRT…',
   blad: 'Nie udało się uruchomić testu FRT',
 
-  // Werdykt całości (agregacja prezentacyjna najgorszego statusu per scenariusz)
-  werdyktWObwiedni: 'Model odzwierciedla wymagania profilu operatora',
-  werdyktPozaObwiednia: 'Trajektoria wychodzi poza obwiednię profilu operatora',
-  werdyktModulWypadl: 'Moduł wypadł z pracy podczas zakłócenia',
-  werdyktOpisAgregacja:
-    'Werdykt całości to prezentacyjna agregacja najgorszego werdyktu scenariusza '
-    + '(z pól solvera) — nie jest to odrębna ocena fizyczna.',
-
-  // K5-B (H-3 pkt 4): akcja wyjściowa — zapis werdyktu do zgodności NC RfG
-  // (wspólny store biegu NC RfG; macierz wymogów pokazuje wynik FRT).
+  // K5-B (H-3 pkt 4): akcja wyjściowa — zapis STANU OCENY do zgodności NC RfG
+  // (wspólny store biegu NC RfG; macierz wymogów pokazuje go przy module).
   zapiszWynik: 'Zapisz wynik do zgodności NC RfG',
   zapiszWynikOpis:
-    'Werdykt walidacji trafia do wspólnego stanu zgodności NC RfG — macierz '
-    + 'wymogów pokaże go przy tym module.',
-  zapiszWynikZapisano: 'Wynik walidacji zapisany — widoczny w macierzy wymogów NC RfG',
+    'Stan oceny trajektorii (dziś: ocena niewykonana) trafia do wspólnego stanu '
+    + 'zgodności NC RfG — macierz wymogów pokaże go przy tym module.',
+  zapiszWynikZapisano: 'Stan oceny zapisany — widoczny w macierzy wymogów NC RfG',
+
+  // Obwiednia profilu — informacja o wymaganiu (opis z backendu przy wykresie)
+  obwiedniaTytul: 'Obwiednia wymagana przez profil operatora',
+
+  // Sekcja audytowa (pola solvera uproszczonego)
+  audytStatusSolvera: 'Status biegu solvera',
 
   // Założenia (część wyniku)
   zalozeniaModul: 'Moduł DER',
@@ -69,19 +69,19 @@ export const FRT_STRINGS = {
   zalozeniaRodzaj: 'Rodzaj testu',
   zalozeniaPmax: 'Moc maksymalna Pmax',
   zalozeniaUn: 'Napięcie znamionowe Un',
-  zalozeniaStatusSolvera: 'Status solvera',
   // Stopień dowodowy trajektorii (karta S-1 §0.9) — czy wynik wolno
   // przedstawić jako dowód regulacyjny (dziś: nie, model niezwalidowany).
   zalozeniaPodstawa: 'Stopień dowodowy',
 
-  // Tabela scenariuszy
+  // Tabela scenariuszy (pierwszy plan) i tabela audytowa pól solvera
   kolScenariusz: 'Scenariusz',
   kolGlebokosc: 'Napięcie skrajne',
+  kolOcena: 'Ocena',
+  kolStatusSolvera: 'Status solvera',
   kolUtrzymanie: 'Utrzymanie pracy',
   kolMarginesS: 'Margines do krzywej',
   kolMarginesPu: 'Margines do krzywej',
   kolOdzysk: 'Czas odzysku P',
-  kolWerdykt: 'Werdykt',
   utrzymanieTak: 'Tak',
   utrzymanieNie: 'Nie',
 
@@ -90,16 +90,17 @@ export const FRT_STRINGS = {
   wykresOsX: 'Czas t',
   wykresOsY: 'Wartość',
   legendaNapiecie: 'Napięcie U(t)',
-  legendaObwiednia: 'Obwiednia profilu',
+  legendaObwiednia: 'Obwiednia wymagana (informacja)',
   legendaP: 'Moc czynna P(t)',
   legendaIq: 'Prąd bierny Iq(t)',
   serieTytul: 'Serie dodatkowe:',
   seriaP: 'Pokaż P(t)',
   seriaIq: 'Pokaż Iq(t)',
 
-  // Status solvera (etykiety PL)
-  statusOk: 'OK — moduł utrzymał pracę',
-  statusDerDropped: 'Moduł wypadł z synchronizacji',
+  // Status biegu solvera (etykiety PL, sekcja audytowa) — opis meldunku modelu
+  // uproszczonego, nie ocena zdolności modułu.
+  statusOk: 'moduł nie odłączył się w modelu uproszczonym',
+  statusDerDropped: 'moduł odłączył się w modelu uproszczonym',
   // Karta S-4: brak modelu dynamicznego DER w wejściu solvera mapowany na
   // granicy na `blocked` — nazwany kod gotowości i brakujące pola towarzyszą
   // temu stanowi w widoku (`kod_gotowosci` / `missing_fields_pl`), ta
@@ -127,8 +128,8 @@ export const FRT_STRINGS = {
   sekwTytul: 'Sekwencja zapadów',
   sekwOpis:
     'Zdefiniuj serię kolejnych zapadów napięcia (głębokość i czas trwania) dla '
-    + 'wybranego modułu i operatora, aby ocenić zdolność przejścia przez wielokrotne '
-    + 'zakłócenia. Werdykt sekwencji pochodzi z solvera (koniunkcja werdyktów zapadów).',
+    + 'wybranego modułu i operatora. Każdy zapad liczony jest trajektorią zadaną profilem '
+    + 'wejściowym, dlatego ani zapad, ani sekwencja nie są oceniane.',
   sekwBrakDoboru: 'Wybierz moduł DER i operatora powyżej',
   sekwBrakDoboruOpis:
     'Sekwencja zapadów korzysta z tego samego modułu i operatora co test trajektorii. '
@@ -142,21 +143,11 @@ export const FRT_STRINGS = {
   sekwPrzyciskOblicz: 'Uruchom sekwencję',
   sekwPrzyciskPrzelicz: 'Przelicz sekwencję',
   sekwIdle: 'Zdefiniuj zapady i uruchom sekwencję',
-  sekwIdleOpis: 'Jawny bieg policzy każdy zapad od stanu ustalonego i złoży werdykt sekwencji.',
+  sekwIdleOpis: 'Jawny bieg policzy trajektorię każdego zapadu od stanu ustalonego.',
   sekwLadowanie: 'Symulacja sekwencji zapadów…',
   sekwBlad: 'Nie udało się uruchomić sekwencji zapadów',
-  sekwWerdyktWObwiedni: 'Sekwencja mieści się w obwiedni profilu operatora',
-  sekwWerdyktNiezaliczona: 'Sekwencja niezaliczona — zapad wyszedł poza obwiednię profilu',
-  sekwWerdyktOpis:
-    'Werdykt sekwencji to koniunkcja werdyktów zapadów z solvera — nie jest to '
-    + 'odrębna ocena fizyczna.',
   sekwZalozeniaTytul: 'Założenia',
   sekwKolZapad: 'Zapad',
-  sekwKolUtrzymanie: 'Utrzymanie pracy',
-  sekwKolMarginesPu: 'Margines do krzywej',
-  sekwKolMarginesS: 'Margines do krzywej',
-  sekwKolOdzysk: 'Czas odzysku P',
-  sekwKolWerdykt: 'Werdykt',
   sekwKontekstTytul: 'Kontekst siły sieci',
   sekwKontekstScr: 'Wskaźnik zwarciowy SCR',
   sekwKontekstMocZwarciowa: 'Moc zwarciowa Sk″',

@@ -235,6 +235,7 @@
 
 /* ---- moduły bez pola / źródła normatywne ---- */
 .mvd-lom-bez-pola,
+.mvd-lom-ocena-sieci,
 .mvd-lom-zrodla {
   display: flex;
   flex-direction: column;
@@ -249,6 +250,16 @@
   margin: 0;
   font-size: 14px;
   font-weight: 600;
+}
+.mvd-lom-przelacz {
+  margin-left: auto;
+  padding: 3px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  font-size: 12px;
+  cursor: pointer;
 }
 .mvd-lom-bez-pola-opis {
   margin: 0;

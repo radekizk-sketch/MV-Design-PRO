@@ -141,6 +141,7 @@
 .mvd-ocena-licznik--nie-spelnia .mvd-ocena-licznik-liczba {
   color: var(--mvd-err);
 }
+.mvd-ocena-licznik--niejednoznaczny .mvd-ocena-licznik-liczba,
 .mvd-ocena-licznik--brak .mvd-ocena-licznik-liczba {
   color: var(--mvd-warn);
 }
@@ -267,7 +268,8 @@
 .mvd-ocena-wynik--nie-spelnia td.mvd-ocena-wynik {
   color: var(--mvd-err);
 }
-.mvd-ocena-wynik--brak-podstaw td.mvd-ocena-wynik {
+.mvd-ocena-wynik--brak-podstaw td.mvd-ocena-wynik,
+.mvd-ocena-wynik--niejednoznaczny td.mvd-ocena-wynik {
   color: var(--mvd-warn);
   white-space: normal;
   min-width: 160px;

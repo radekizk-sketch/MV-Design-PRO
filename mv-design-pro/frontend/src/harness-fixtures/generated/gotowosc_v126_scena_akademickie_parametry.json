@@ -1,14 +1,15 @@
 {
   "case_id": "case-demo",
-  "model_hash": "6e6bfe8c2ccf7f4bf8fd606848e4d5b231d59e6f353b708227454dd58d741849",
+  "model_hash": "6567168519d7a0ab51de693250ff673053aa907307bc5bd1faf2a403fb084d22",
   "przedmiot": {
-    "liczba_szyn": 5,
-    "liczba_galezi": 4,
-    "liczba_transformatorow": 2,
+    "liczba_szyn": 8,
+    "liczba_galezi": 6,
+    "liczba_transformatorow": 3,
     "liczba_zrodel_przeksztaltnikowych": 1,
     "liczba_generatorow": 2,
     "poziomy_napiec_kv": [
       0.4,
+      0.8,
       15.0,
       110.0
     ],
@@ -24,7 +25,7 @@
   "parametry": {
     "power_quality_harmonics": {
       "harmonic_spectra": {
-        "gen_pv": {
+        "pv/9d008ed355939bef762652554f56b2e4/converter": {
           "5": 4.5,
           "7": 2.1,
           "11": 1.2
@@ -32,7 +33,7 @@
       }
     },
     "ssci_impedance": {
-      "ssci_converter_ref": "gen_pv"
+      "ssci_converter_ref": "pv/9d008ed355939bef762652554f56b2e4/converter"
     },
     "earthing_safety": {
       "earthing": {
@@ -97,7 +98,7 @@
   "analizy": [
     {
       "kod": "power_quality_harmonics",
-      "gotowosc": "NIEPOTWIERDZONA",
+      "gotowosc": "POTWIERDZONA",
       "warunki": [
         {
           "kod": "model.wezly",
@@ -108,56 +109,51 @@
           "klucz_parametru": null
         },
         {
-          "kod": "generator.converter_card_missing",
-          "opis_pl": "Przekształtniki bez karty katalogowej z mocą znamionową (z niej liczony jest prąd bazowy wstrzyknięcia; widmo ręczne jej nie zastępuje) — generatory bez karty przekształtnika",
-          "spelniony": false,
+          "kod": "zrodla.odksztalcajace",
+          "opis_pl": "Źródła odkształcające z widmem harmonicznym: 1",
+          "spelniony": true,
           "elementy": [
-            "gen_pv"
+            "pv/9d008ed355939bef762652554f56b2e4/converter"
           ],
           "blokujacy": true,
           "klucz_parametru": null
         }
       ],
-      "braki": [
-        {
-          "kod": "generator.converter_card_missing",
-          "opis_pl": "Przekształtniki bez karty katalogowej z mocą znamionową (z niej liczony jest prąd bazowy wstrzyknięcia; widmo ręczne jej nie zastępuje) — generatory bez karty przekształtnika",
-          "spelniony": false,
-          "elementy": [
-            "gen_pv"
-          ],
-          "blokujacy": true,
-          "klucz_parametru": null
-        }
-      ],
+      "braki": [],
       "uwagi": [],
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "5",
+          "wartosc_pl": "8",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
             "bus_sn_b",
             "bus_sn_c",
-            "bus_nn"
+            "bus_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
           ]
         },
         {
           "nazwa_pl": "Gałęzie (impedancje, długości)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "5",
           "elementy": [
             "cab_main_b",
             "line_b_c",
-            "sw_coupler"
+            "sw_coupler",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_device",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
           ]
         },
         {
           "nazwa_pl": "Transformatory (S_n, u_k)",
-          "wartosc_pl": "2",
+          "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
-            "tr_sn_nn"
+            "tr_sn_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
           ]
         },
         {
@@ -167,19 +163,16 @@
         },
         {
           "nazwa_pl": "Przekształtniki z kartą katalogową",
-          "wartosc_pl": "0",
-          "elementy": []
+          "wartosc_pl": "1",
+          "elementy": [
+            "pv/9d008ed355939bef762652554f56b2e4/converter"
+          ]
         },
         {
           "nazwa_pl": "Źródła harmoniczne z widmem",
-          "wartosc_pl": "0",
-          "elementy": []
-        },
-        {
-          "nazwa_pl": "Szyny z mocą zwarciową źródła",
           "wartosc_pl": "1",
           "elementy": [
-            "bus_hv"
+            "pv/9d008ed355939bef762652554f56b2e4/converter"
           ]
         }
       ],
@@ -188,7 +181,7 @@
     },
     {
       "kod": "ssci_impedance",
-      "gotowosc": "NIEPOTWIERDZONA",
+      "gotowosc": "POTWIERDZONA",
       "warunki": [
         {
           "kod": "model.wezly",
@@ -199,56 +192,71 @@
           "klucz_parametru": null
         },
         {
-          "kod": "generator.converter_card_missing",
-          "opis_pl": "Żaden przekształtnik nie ma karty katalogowej z mocą znamionową — generatory bez karty przekształtnika",
-          "spelniony": false,
+          "kod": "przeksztaltnik.obecny",
+          "opis_pl": "Przekształtniki z kartą katalogową w modelu: 1",
+          "spelniony": true,
           "elementy": [
-            "gen_pv"
+            "pv/9d008ed355939bef762652554f56b2e4/converter"
           ],
           "blokujacy": true,
           "klucz_parametru": null
-        }
-      ],
-      "braki": [
+        },
         {
-          "kod": "generator.converter_card_missing",
-          "opis_pl": "Żaden przekształtnik nie ma karty katalogowej z mocą znamionową — generatory bez karty przekształtnika",
-          "spelniony": false,
+          "kod": "generator.q_missing",
+          "opis_pl": "Moc bierna przekształtnika analizy SSCI jest znana",
+          "spelniony": true,
           "elementy": [
-            "gen_pv"
+            "pv/9d008ed355939bef762652554f56b2e4/converter"
+          ],
+          "blokujacy": true,
+          "klucz_parametru": null
+        },
+        {
+          "kod": "przeksztaltnik.karta_ssci",
+          "opis_pl": "Karta przekształtnika analizy SSCI niesie pasmo pętli prądowej, pasmo PLL i indukcyjność filtra",
+          "spelniony": true,
+          "elementy": [
+            "pv/9d008ed355939bef762652554f56b2e4/converter"
           ],
           "blokujacy": true,
           "klucz_parametru": null
         }
       ],
+      "braki": [],
       "uwagi": [],
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "5",
+          "wartosc_pl": "8",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
             "bus_sn_b",
             "bus_sn_c",
-            "bus_nn"
+            "bus_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
           ]
         },
         {
           "nazwa_pl": "Gałęzie (impedancje, długości)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "5",
           "elementy": [
             "cab_main_b",
             "line_b_c",
-            "sw_coupler"
+            "sw_coupler",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_device",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
           ]
         },
         {
           "nazwa_pl": "Transformatory (S_n, u_k)",
-          "wartosc_pl": "2",
+          "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
-            "tr_sn_nn"
+            "tr_sn_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
           ]
         },
         {
@@ -258,8 +266,10 @@
         },
         {
           "nazwa_pl": "Przekształtniki z kartą katalogową",
-          "wartosc_pl": "0",
-          "elementy": []
+          "wartosc_pl": "1",
+          "elementy": [
+            "pv/9d008ed355939bef762652554f56b2e4/converter"
+          ]
         },
         {
           "nazwa_pl": "Szyny z mocą zwarciową źródła",
@@ -298,30 +308,36 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "5",
+          "wartosc_pl": "8",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
             "bus_sn_b",
             "bus_sn_c",
-            "bus_nn"
+            "bus_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
           ]
         },
         {
           "nazwa_pl": "Gałęzie (impedancje, długości)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "5",
           "elementy": [
             "cab_main_b",
             "line_b_c",
-            "sw_coupler"
+            "sw_coupler",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_device",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
           ]
         },
         {
           "nazwa_pl": "Transformatory (S_n, u_k)",
-          "wartosc_pl": "2",
+          "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
-            "tr_sn_nn"
+            "tr_sn_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
           ]
         },
         {
@@ -374,30 +390,36 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "5",
+          "wartosc_pl": "8",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
             "bus_sn_b",
             "bus_sn_c",
-            "bus_nn"
+            "bus_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
           ]
         },
         {
           "nazwa_pl": "Gałęzie (impedancje, długości)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "5",
           "elementy": [
             "cab_main_b",
             "line_b_c",
-            "sw_coupler"
+            "sw_coupler",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_device",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
           ]
         },
         {
           "nazwa_pl": "Transformatory (S_n, u_k)",
-          "wartosc_pl": "2",
+          "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
-            "tr_sn_nn"
+            "tr_sn_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
           ]
         },
         {
@@ -430,7 +452,7 @@
         },
         {
           "kod": "galezie.b0",
-          "opis_pl": "Linie i kable z susceptancją zerową (pojemność doziemna): 1 z 2",
+          "opis_pl": "Linie i kable z susceptancją zerową (pojemność doziemna): 1 z 3",
           "spelniony": true,
           "elementy": [
             "cab_main_b"
@@ -456,10 +478,11 @@
         },
         {
           "kod": "galezie.bez_b0",
-          "opis_pl": "1 z 2 linii/kabli bez susceptancji zerowej — pominięte w sumie pojemności doziemnej",
+          "opis_pl": "2 z 3 linii/kabli bez susceptancji zerowej — pominięte w sumie pojemności doziemnej",
           "spelniony": false,
           "elementy": [
-            "line_b_c"
+            "line_b_c",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
           ],
           "blokujacy": false,
           "klucz_parametru": null
@@ -469,10 +492,11 @@
       "uwagi": [
         {
           "kod": "galezie.bez_b0",
-          "opis_pl": "1 z 2 linii/kabli bez susceptancji zerowej — pominięte w sumie pojemności doziemnej",
+          "opis_pl": "2 z 3 linii/kabli bez susceptancji zerowej — pominięte w sumie pojemności doziemnej",
           "spelniony": false,
           "elementy": [
-            "line_b_c"
+            "line_b_c",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
           ],
           "blokujacy": false,
           "klucz_parametru": null
@@ -481,30 +505,36 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "5",
+          "wartosc_pl": "8",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
             "bus_sn_b",
             "bus_sn_c",
-            "bus_nn"
+            "bus_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
           ]
         },
         {
           "nazwa_pl": "Gałęzie (impedancje, długości)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "5",
           "elementy": [
             "cab_main_b",
             "line_b_c",
-            "sw_coupler"
+            "sw_coupler",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_device",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
           ]
         },
         {
           "nazwa_pl": "Transformatory (S_n, u_k)",
-          "wartosc_pl": "2",
+          "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
-            "tr_sn_nn"
+            "tr_sn_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
           ]
         },
         {
@@ -573,30 +603,36 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "5",
+          "wartosc_pl": "8",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
             "bus_sn_b",
             "bus_sn_c",
-            "bus_nn"
+            "bus_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
           ]
         },
         {
           "nazwa_pl": "Gałęzie (impedancje, długości)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "5",
           "elementy": [
             "cab_main_b",
             "line_b_c",
-            "sw_coupler"
+            "sw_coupler",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_device",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
           ]
         },
         {
           "nazwa_pl": "Transformatory (S_n, u_k)",
-          "wartosc_pl": "2",
+          "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
-            "tr_sn_nn"
+            "tr_sn_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
           ]
         },
         {
@@ -646,30 +682,36 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "5",
+          "wartosc_pl": "8",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
             "bus_sn_b",
             "bus_sn_c",
-            "bus_nn"
+            "bus_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
           ]
         },
         {
           "nazwa_pl": "Gałęzie (impedancje, długości)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "5",
           "elementy": [
             "cab_main_b",
             "line_b_c",
-            "sw_coupler"
+            "sw_coupler",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_device",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
           ]
         },
         {
           "nazwa_pl": "Transformatory (S_n, u_k)",
-          "wartosc_pl": "2",
+          "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
-            "tr_sn_nn"
+            "tr_sn_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
           ]
         },
         {
@@ -710,7 +752,7 @@
         },
         {
           "kod": "model.galezie",
-          "opis_pl": "Gałęzie do zdarzeń N-1: 3",
+          "opis_pl": "Gałęzie do zdarzeń N-1: 5",
           "spelniony": true,
           "elementy": [],
           "blokujacy": true,
@@ -730,10 +772,11 @@
         },
         {
           "kod": "galezie.bez_obciazalnosci",
-          "opis_pl": "1 z 3 gałęzi bez obciążalności długotrwałej (model ani karta) — dla nich dotkliwość bez członu przeciążeniowego",
+          "opis_pl": "2 z 5 gałęzi bez obciążalności długotrwałej (model ani karta) — dla nich dotkliwość bez członu przeciążeniowego",
           "spelniony": false,
           "elementy": [
-            "sw_coupler"
+            "sw_coupler",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_device"
           ],
           "blokujacy": false,
           "klucz_parametru": null
@@ -743,10 +786,11 @@
       "uwagi": [
         {
           "kod": "galezie.bez_obciazalnosci",
-          "opis_pl": "1 z 3 gałęzi bez obciążalności długotrwałej (model ani karta) — dla nich dotkliwość bez członu przeciążeniowego",
+          "opis_pl": "2 z 5 gałęzi bez obciążalności długotrwałej (model ani karta) — dla nich dotkliwość bez członu przeciążeniowego",
           "spelniony": false,
           "elementy": [
-            "sw_coupler"
+            "sw_coupler",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_device"
           ],
           "blokujacy": false,
           "klucz_parametru": null
@@ -755,30 +799,36 @@
       "dane_z_modelu": [
         {
           "nazwa_pl": "Szyny (napięcia znamionowe)",
-          "wartosc_pl": "5",
+          "wartosc_pl": "8",
           "elementy": [
             "bus_hv",
             "bus_sn_main",
             "bus_sn_b",
             "bus_sn_c",
-            "bus_nn"
+            "bus_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/producer_nn_bus",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_hv_bus",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_terminal"
           ]
         },
         {
           "nazwa_pl": "Gałęzie (impedancje, długości)",
-          "wartosc_pl": "3",
+          "wartosc_pl": "5",
           "elementy": [
             "cab_main_b",
             "line_b_c",
-            "sw_coupler"
+            "sw_coupler",
+            "sn/9d008ed355939bef762652554f56b2e4/der/field_device",
+            "pv/9d008ed355939bef762652554f56b2e4/der/mv_cable"
           ]
         },
         {
           "nazwa_pl": "Transformatory (S_n, u_k)",
-          "wartosc_pl": "2",
+          "wartosc_pl": "3",
           "elementy": [
             "tr_hv_sn",
-            "tr_sn_nn"
+            "tr_sn_nn",
+            "pv/9d008ed355939bef762652554f56b2e4/der/block_transformer"
           ]
         },
         {

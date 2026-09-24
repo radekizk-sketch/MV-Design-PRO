@@ -1,7 +1,7 @@
 """Testy sanity-bounds rozpływu: napięcia, obciążenia gałęzi, straty — karta W3-G2.
 
 Trzy pure-funkcje (``analysis.sanity_bounds.power_flow_bounds``), siostrzane wobec
-``evaluate_short_circuit_current``: ten sam werdykt trójstanowy (zweryfikowany /
+``evaluate_short_circuit_current``: ten sam werdykt trójstanowy (w paśmie wiarygodności /
 poza zakresem wiarygodności / dane niekompletne). Testy jako ILOCZYN CECH:
 {napięcie w paśmie / poza} × {In katalogu obecne / brak} × {straty ≤ / >} —
 oraz osobno test, że KAŻDA funkcja daje stan NAZWANY, nigdy werdykt, gdy dane

@@ -556,13 +556,6 @@
   },
   {
    "sprawdzenie": "1_backend",
-   "tozsamosc": "application.stability.dynamic_stability:DynamicStabilityResult.status",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz C49 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "C49"
-  },
-  {
-   "sprawdzenie": "1_backend",
    "tozsamosc": "application.symphony.models:RunAttempt.status",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany spoza inwentarza 2026-09-23 (miejsce nieznane inwentarzowi).",
@@ -1039,13 +1032,6 @@
   },
   {
    "sprawdzenie": "3a_frontend_mapa",
-   "tozsamosc": "frontend/src/ui2/oze/lom/strings.ts:STATUS_LOM_PL",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D19 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D19"
-  },
-  {
-   "sprawdzenie": "3a_frontend_mapa",
    "tozsamosc": "frontend/src/ui2/wyniki/akademickie/prezentacja.ts:PREZENTACJA.earth_fault_detection.werdykt.mapa",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D31 (MIGRACJA): migracja (plan §8).",
@@ -1277,20 +1263,6 @@
   },
   {
    "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/oze/frt/frtModel.ts:wierszScenariuszaFrt.margines_pu.ostrzezenie",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D16 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "D16 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/oze/frt/sekwencjaModel.ts:wierszZapadu.margines_pu.ostrzezenie",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D17 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "D17 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
    "tozsamosc": "frontend/src/ui2/spaces/gotowosc/adapters/gotowoscAdapter.ts:statusGotowosci",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Inwentarz D75: 75. `spaces/gotowosc/adapters/gotowoscAdapter.ts:275-316` `statusGotowosci` OK/WARN/FAIL (documented \"null→OK\" debt). **ENUM_WEWNETRZNY.**",
@@ -1347,13 +1319,6 @@
   },
   {
    "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/wyniki/ssci/model.ts:naMetryki.istotnosc",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D53 opisuje ten plik, nie ten symbol.",
-   "wiersz_inwentarza": "D53 (dopasowanie po pliku)"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
    "tozsamosc": "frontend/src/ui2/wyniki/wrazliwosc/model.ts:komorkaMarginesu.ostrzezenie",
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz D57 opisuje ten plik, nie ten symbol.",
@@ -1386,6 +1351,216 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz A3 (MIGRACJA): migracja (plan §8).",
    "wiersz_inwentarza": "A3"
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].checks[].ocena.margines.punkt_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].checks[].ocena.przedmiot.nazwa_pl:LINIA_IN",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].checks[].ocena.przedmiot.nazwa_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].checks[].ocena.wyjasnienie.zdanie_pl:LINIA_IN",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].checks[].ocena.wyjasnienie.zdanie_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].checks[].ocena.wynik.punkt_krytyczny_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.nazwa_pl:LINIA_IN",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.nazwa_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.oceny_skladowe[].margines.punkt_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.oceny_skladowe[].przedmiot.nazwa_pl:LINIA_IN",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.oceny_skladowe[].przedmiot.nazwa_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.oceny_skladowe[].wyjasnienie.zdanie_pl:LINIA_IN",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.oceny_skladowe[].wyjasnienie.zdanie_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.oceny_skladowe[].wynik.punkt_krytyczny_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.wyjasnienie.czego_brakuje[]:LINIA_IN",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.wyjasnienie.czego_brakuje[]:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.wyjasnienie.przyczyna_pl:LINIA_IN",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.wyjasnienie.przyczyna_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.wyjasnienie.zdanie_pl:LINIA_IN",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.fields[].ocena.wyjasnienie.zdanie_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.summary.ocena.oceny_skladowe[].margines.punkt_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.summary.ocena.oceny_skladowe[].przedmiot.nazwa_pl:LINIA_IN",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.summary.ocena.oceny_skladowe[].przedmiot.nazwa_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.summary.ocena.oceny_skladowe[].wyjasnienie.zdanie_pl:LINIA_IN",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.summary.ocena.oceny_skladowe[].wyjasnienie.zdanie_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.summary.ocena.oceny_skladowe[].wynik.punkt_krytyczny_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.summary.ocena.wyjasnienie.czego_brakuje[]:LINIA_IN",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.summary.ocena.wyjasnienie.czego_brakuje[]:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.summary.ocena.wyjasnienie.przyczyna_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
+  },
+  {
+   "sprawdzenie": "5_kod_w_tekscie",
+   "tozsamosc": "lom_scena_wynik.json:$.summary.ocena.wyjasnienie.zdanie_pl:LINIA_OUT",
+   "klasa": "MIGRACJA",
+   "uzasadnienie_pl": "Nazwa domyślna pola SN z kodu roli (`Pole LINIA_IN 1`) nadawana przez operację domenową stacji — klasa „nazwa elementu z kodu maszynowego\" (7 miejsc w `enm/domain_operations*.py`), karta #140 wykonywana bezpośrednio po Pakiecie 0; zapadka w dół zdejmie wpis po regeneracji sceny LoM.",
+   "wiersz_inwentarza": null
   }
  ]
 }

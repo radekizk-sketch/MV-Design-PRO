@@ -69,7 +69,7 @@ describe('adapter wiarygodności', () => {
   });
 
   it('status pochodzi wprost z backendu (tekst polski, bez oceny lokalnej)', () => {
-    expect(wiersze[0].status.wartosc).toBe('zweryfikowany');
+    expect(wiersze[0].status.wartosc).toBe('w paśmie wiarygodności');
     expect(wiersze[1].status.wartosc).toBe('poza zakresem wiarygodności');
     expect(wiersze[2].status.wartosc).toBe('dane niekompletne');
   });

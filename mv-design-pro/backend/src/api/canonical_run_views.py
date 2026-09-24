@@ -55,7 +55,8 @@ def build_run_trace_payload(run: CanonicalRun) -> dict[str, Any] | list[dict[str
     if run.analysis_type == "PF":
         return run.power_flow_trace
     if run.white_box_trace:
-        return build_extended_trace(run).get("white_box_trace", [])
+        slad: list[dict[str, Any]] = build_extended_trace(run).get("white_box_trace", [])
+        return slad
     return None
 
 
@@ -138,13 +139,14 @@ def build_run_summary_json(run: CanonicalRun) -> dict[str, Any]:
             "current_unbalance_percent": row.get("current_unbalance_percent"),
         }
     if run.analysis_type == "dynamic_stability":
+        # Tor z kątów wpisanych przez użytkownika nie wydaje werdyktu (uczciwość
+        # natychmiastowa 2026-09-23) — podsumowanie niesie status oceny, bez indeksu
+        # stabilności i czynnika ograniczającego (były składowymi werdyktu progowego).
         rows = build_dynamic_stability_results(run).get("rows", [])
         row = rows[0] if rows else {}
         return {
             "row_count": len(rows),
             "status": row.get("status"),
-            "stability_index": row.get("stability_index"),
-            "limiting_factor": row.get("limiting_factor"),
         }
     return {"row_count": 0}
 

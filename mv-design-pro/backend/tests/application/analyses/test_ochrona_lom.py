@@ -96,9 +96,16 @@ def test_module_without_lom_is_error() -> None:
         protection_assignments=[_assignment([])],
     )
     view = build_ochrona_lom_view(enm)
-    assert _field_status(view) == "ERROR"
     presence = [c for c in _checks(view) if c["kind"] == "obecnosc"]
     assert presence and presence[0]["severity"] == "ERROR"
+    # Intencja zachowana: pole bez funkcji LoM jest wykazane (porównanie ERROR, rekord z wynikiem
+    # logicznym 0). Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): status pola to status
+    # rekordu werdyktu — podstawa wymagania LoM (IRiESD) ma stan NIEUSTALONE, więc reguła K daje
+    # BRAK_PODSTAWY zamiast „ERROR" ze słownika modułu.
+    assert _field_status(view) == "BRAK_PODSTAWY"
+    rekord = presence[0]["ocena"]
+    assert rekord["wynik"]["wartosc"]["wartosc"] == 0.0
+    assert rekord["status_maszynowy"] == "BRAK_PODSTAWY"
 
 
 def test_declared_code_without_settings_is_info() -> None:
@@ -269,7 +276,10 @@ def test_module_without_field_is_reported() -> None:
     )
     view = build_ochrona_lom_view(enm)
     assert view["modules_without_field"] == ["gen_lonely"]
-    assert view["summary"]["overall_status"] == "INFO"
+    # Intencja zachowana: moduł bez pola nie daje oceny poprawnej całości. Zmiana kanonu
+    # (2026-09-23): całość to rekord wymagania sieci — moduł bez pola wnosi rekord oceny
+    # niewykonanej, więc wymaganie sieci jest NIE_OCENIONO (dawniej „INFO" ze słownika modułu).
+    assert view["summary"]["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
 
 
 # ---------------------------------------------------------------------------
@@ -367,8 +377,9 @@ def test_rocof_wywod_has_formula_substitution_and_verdict() -> None:
     # Podstawienie liczbowe (LaTeX) z realnej nastawy.
     assert kroki[2]["latex"] is not None
     assert "2.5000" in kroki[2]["latex"] and r"\ge 2.0" in kroki[2]["latex"]
-    # Werdykt tekstowy.
-    assert kroki[3]["latex"] is None and kroki[3]["tekst"].startswith("Werdykt: OK")
+    # Wynik porównania tekstowy (zmiana kanonu 2026-09-23: ocenę niesie rekord porównania,
+    # ostatni krok śladu nie jest werdyktem — intencja zachowana: krok kończy wywód).
+    assert kroki[3]["latex"] is None and kroki[3]["tekst"].startswith("Wynik porownania: w oknie")
 
 
 def test_rocof_below_window_wywod_uses_opposite_sign() -> None:
@@ -383,7 +394,7 @@ def test_rocof_below_window_wywod_uses_opposite_sign() -> None:
     kroki = rocof["wywod"]
     assert "1.0000 < 2.0" in kroki[2]["latex"]
     assert "NIESPELNIONE" in kroki[2]["tekst"]
-    assert kroki[3]["tekst"].startswith("Werdykt: WARN")
+    assert kroki[3]["tekst"].startswith("Wynik porownania: poza oknem")
 
 
 def test_wywod_empty_when_no_real_comparison() -> None:

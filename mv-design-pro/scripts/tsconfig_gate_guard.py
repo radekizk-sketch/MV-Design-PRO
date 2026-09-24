@@ -361,7 +361,14 @@ POMIJANE_KATALOGI = {
 #: scalonym drzewie int/c): 100 -> 96 — cztery bledy poza bramka zeszly w testach przepisanych
 #: przez D2 (`.at(-1)` w testach NC RfG, fikstura FRT na wygenerowanym katalogu, martwy
 #: parametr `plik` w `dokumentyDowodApi.test`); zero nowych bledow.
-BUDZET_BLEDOW_POZA_BRAMKA = 96
+#: Karta AB-1a Pakiet 0 (2026-09-23, pomiar guardem na drzewie integracyjnym `bbcc8555` +
+#: Pakiet 0): 100 -> 98. Dwa bledy zeszly RAZEM z przepisaniem testow ekranu ochrony LoM na
+#: rekordy oceny: `ui2/oze/lom/__tests__/EkranLom.test.tsx` (TS2322, `afterEach` zwracal
+#: `VitestUtils`) i `ui2/oze/lom/__tests__/fixtures.ts` (TS2307, import nieistniejacego
+#: `../api`); porownanie list bledow PRZED/PO linia po linii — zero nowych. Budzet 100 -> 98.
+#: Ponowne zlozenie Pakietu 0 na HEAD `1b422cdd` (B+C+D2 i #135, 2026-09-24, pomiar guardem na
+#: scalonym drzewie): 96 -> 95 (przepisane testy LoM; drugi z dwoch bledow zszedl juz w D2).
+BUDZET_BLEDOW_POZA_BRAMKA = 95
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

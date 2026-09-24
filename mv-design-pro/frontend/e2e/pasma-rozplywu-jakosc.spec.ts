@@ -400,7 +400,9 @@ test(
     // trójstanowe widoczne wprost (dowód, że werdykt nie jest fabrykowany
     // placeholderem — pochodzi z realnej oceny backendu).
     await expect(page.getByTestId('mvd-jakosc-pasma-rozplywu-niezbiezny')).toHaveCount(0);
-    await expect(sekcja).toContainText('zweryfikowany');
+    // Etykieta pasma (uczciwość natychmiastowa 2026-09-23): „w paśmie wiarygodności"
+    // zamiast „zweryfikowany" — kontrola pasma nie jest weryfikacją wyrocznią.
+    await expect(sekcja).toContainText('w paśmie wiarygodności');
 
     // Pętla interakcji: wybór wiersza szyny pokazuje uzasadnienie w szczególe
     // (klik natywny na wierszu tabeli, jak w pozostałych sekcjach ekranu).

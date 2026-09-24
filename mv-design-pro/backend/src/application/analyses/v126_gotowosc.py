@@ -517,21 +517,24 @@ def _warunki_ssci(
     warunki.append(
         Warunek(
             kod=_KOD_Q,
+            # Element nazywa lista `elementy` (ekran pokazuje nazwę ze schematu) — opis
+            # bez surowej referencji modelu (uczciwość natychmiastowa 2026-09-23: dawny opis
+            # „przekształtnika gen_pv" wystawiał identyfikator ENM na ekran projektanta).
             opis_pl=(
-                f"Moc bierna przekształtnika {wybrany.ref} jest znana"
+                "Moc bierna przekształtnika analizy SSCI jest znana"
                 if wybrany.q_mvar is not None
-                else f"Przekształtnik analizy SSCI bez mocy biernej: {wybrany.ref}"
+                else "Przekształtnik analizy SSCI bez mocy biernej"
             ),
             spelniony=wybrany.q_mvar is not None,
             elementy=(wybrany.ref,),
         )
     )
     brakujace_pola = [
-        nazwa
-        for nazwa, wartosc in (
-            ("current_loop_bandwidth_hz", wybrany.current_loop_bandwidth_hz),
-            ("pll_bandwidth_hz", wybrany.pll_bandwidth_hz),
-            ("filter_l_pu", wybrany.filter_l_pu),
+        nazwa_pl
+        for nazwa_pl, wartosc in (
+            ("pasmo pętli prądowej", wybrany.current_loop_bandwidth_hz),
+            ("pasmo PLL", wybrany.pll_bandwidth_hz),
+            ("indukcyjność filtra", wybrany.filter_l_pu),
         )
         if wartosc is None
     ]
@@ -539,10 +542,10 @@ def _warunki_ssci(
         Warunek(
             kod="przeksztaltnik.karta_ssci",
             opis_pl=(
-                f"Karta przekształtnika {wybrany.ref} niesie pasmo pętli prądowej, pasmo PLL "
+                "Karta przekształtnika analizy SSCI niesie pasmo pętli prądowej, pasmo PLL "
                 "i indukcyjność filtra"
                 if not brakujace_pola
-                else f"Karta przekształtnika {wybrany.ref} bez pól: " + ", ".join(brakujace_pola)
+                else "Karta przekształtnika analizy SSCI bez pól: " + ", ".join(brakujace_pola)
             ),
             spelniony=not brakujace_pola,
             elementy=(wybrany.ref,),
@@ -962,7 +965,10 @@ def _dane_z_modelu(
             )
         )
     szyny_sk = tuple(b.ref for b in model.buses if b.fault_level_mva)
-    if szyny_sk:
+    # Tor harmoniczny NIE czyta mocy zwarciowej (sieć nadrzędna = admitancja 1e6 S na
+    # pierwszej szynie — audyt harmonicznych 2026-09-23); pokazanie jej jako danej tej
+    # analizy było tym samym fałszywym twierdzeniem, co w karcie katalogu.
+    if szyny_sk and rodzaj != V126AnalysisType.POWER_QUALITY_HARMONICS:
         dane.append(
             DanaZModeluWartosc("Szyny z mocą zwarciową źródła", f"{len(szyny_sk)}", szyny_sk)
         )

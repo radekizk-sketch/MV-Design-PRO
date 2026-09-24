@@ -131,7 +131,7 @@ describe('SekcjaPasmRozplywu — sekcja Straty sieciowe', () => {
     render(<SekcjaPasmRozplywu {...props()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-pasma-rozplywu')).toBeTruthy());
     const blok = screen.getByTestId('mvd-jakosc-pasma-straty');
-    expect(within(blok).getByText('zweryfikowany')).toBeTruthy();
+    expect(within(blok).getByText('w paśmie wiarygodności')).toBeTruthy();
     expect(within(blok).getByText(PASMA_ROZPLYWU_FIXTURE.straty.why_pl)).toBeTruthy();
     const uzasadnienie = screen.getByTestId('mvd-jakosc-pasma-straty-uzasadnienie');
     expect(uzasadnienie.textContent).toContain(PASMA_ROZPLYWU_FIXTURE.straty.threshold_why_pl);
@@ -145,7 +145,7 @@ describe('SekcjaPasmRozplywu — bieg niezbieżny (uczciwość, zero fabrykacji)
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-pasma-rozplywu')).toBeTruthy());
     expect(screen.getByTestId('mvd-jakosc-pasma-rozplywu-niezbiezny')).toBeTruthy();
     expect(screen.getAllByText('dane niekompletne').length).toBeGreaterThan(0);
-    expect(screen.queryByText('zweryfikowany')).toBeNull();
+    expect(screen.queryByText('w paśmie wiarygodności')).toBeNull();
     expect(screen.queryByText('poza zakresem wiarygodności')).toBeNull();
     const straty = screen.getByTestId('mvd-jakosc-pasma-straty');
     expect(within(straty).getByText('dane niekompletne')).toBeTruthy();

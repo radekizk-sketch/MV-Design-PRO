@@ -9,7 +9,7 @@
  *      modelu, przebiegi (identyfikator, stan ZAKOŃCZONY, czas, aktualność),
  *      pakiet wyników;
  *   2. PODSUMOWANIE — OCENIONO n · SPEŁNIA WYMAGANIA n · NIE SPEŁNIA WYMAGAŃ n ·
- *      BRAK PODSTAW DO OCENY n (liczniki per element z backendu);
+ *      WYNIK NIEJEDNOZNACZNY n · BRAK PODSTAW DO OCENY n (liczniki per element z backendu);
  *   3. POZYCJE OCENY w grupach znaczeniowych (wyłącznie grupy z wynikami):
  *      PRZEDMIOT · WIELKOŚĆ · WARTOŚĆ OBLICZONA · WARTOŚĆ ODNIESIENIA · MARGINES ·
  *      PODSTAWA OCENY · WYNIK OCENY · WNIOSEK — z powiązaniami: schemat (SLD),
@@ -149,6 +149,13 @@ function Podsumowanie({ dane }: { dane: OdpowiedzOceny }) {
           <span className="mvd-ocena-licznik-etyk">{T.nieSpelnia}</span>
           <span className="mvd-ocena-licznik-liczba mvd-num">{liczniki.nie_spelnia}</span>
         </span>
+        <span
+          className="mvd-ocena-licznik mvd-ocena-licznik--niejednoznaczny"
+          data-testid="mvd-ocena-licznik-niejednoznaczny"
+        >
+          <span className="mvd-ocena-licznik-etyk">{T.niejednoznaczny}</span>
+          <span className="mvd-ocena-licznik-liczba mvd-num">{liczniki.niejednoznaczny}</span>
+        </span>
         <span className="mvd-ocena-licznik mvd-ocena-licznik--brak" data-testid="mvd-ocena-licznik-brak-podstaw">
           <span className="mvd-ocena-licznik-etyk">{T.brakPodstaw}</span>
           <span className="mvd-ocena-licznik-liczba mvd-num">{liczniki.brak_podstaw}</span>
@@ -232,7 +239,7 @@ function WierszElementu({
       <td className="mvd-ocena-wniosek">
         <span>{element.wniosek_pl}</span>
         {element.uwaga_pl && <span className="mvd-ocena-uwaga">{element.uwaga_pl}</span>}
-        {element.wynik === 'BRAK_PODSTAW' && element.uzasadnienie_pl && (
+        {(element.wynik === 'BRAK_PODSTAW' || element.wynik === 'NIEJEDNOZNACZNY') && element.uzasadnienie_pl && (
           <span className="mvd-ocena-uwaga">{element.uzasadnienie_pl}</span>
         )}
       </td>

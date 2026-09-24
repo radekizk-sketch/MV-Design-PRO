@@ -151,26 +151,6 @@
   overflow-wrap: anywhere;
 }
 
-.mvd-stabilnosc-chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 2px 9px;
-  font: 600 10.5px/1.6 var(--mvd-font-mono);
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-.mvd-stabilnosc-chip[data-stan='ok'] {
-  background: var(--mvd-ok-bg);
-  color: var(--mvd-ok);
-}
-
-.mvd-stabilnosc-chip[data-stan='brak'] {
-  background: var(--mvd-warn-bg);
-  color: var(--mvd-warn);
-}
-
 /* --- Tabele ------------------------------------------------------------------ */
 
 .mvd-stabilnosc-tabela {
@@ -387,19 +367,4 @@
 .mvd-stabilnosc-formularz-uruchom:focus-visible {
   outline: 2px solid var(--mvd-focus);
   outline-offset: 2px;
-}
-
-/* ---- pętla decyzji (F-K4 faza 3): utrata stabilności → element w modelu ---- */
-.mvd-stabilnosc-popraw {
-  margin-top: 8px;
-  border: 1px solid var(--mvd-accent);
-  border-radius: 3px;
-  background: transparent;
-  color: var(--mvd-accent);
-  cursor: pointer;
-  font: inherit;
-  padding: 4px 10px;
-}
-.mvd-stabilnosc-popraw:hover {
-  background: var(--mvd-sel);
 }

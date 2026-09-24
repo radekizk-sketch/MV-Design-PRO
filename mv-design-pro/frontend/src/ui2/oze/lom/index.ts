@@ -16,8 +16,6 @@ export {
 } from './lomModel';
 export {
   LOM_STRINGS,
-  STATUS_LOM_PL,
-  statusLomPL,
   istotnoscLom,
   fmtNastawaLom,
   fmtOknoLom,

@@ -1,15 +1,15 @@
-"""Testy końcówki API werdyktu stabilności SSCI (faza 1 — ekspozycja backendowa).
+"""Testy końcówki API stabilności SSCI (ekspozycja backendowa analizy ``ssci_stability``).
 
-Domyka OSTATNIĄ lukę inwentarza: analiza ``ssci_stability`` (kryterium
-impedancyjne Nyquista, Sun 2011 / Wen 2016) istniała bez punktu wejścia. Końcówka
-``GET /api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability`` wystawia
-werdykt na bazie GOTOWEGO przebiegu V12.6 ``ssci_impedance``.
+Końcówka ``GET /api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability``
+wystawia widok na bazie GOTOWEGO przebiegu V12.6 ``ssci_impedance``.
 
-Kontrakt: gotowy przebieg → widok werdyktu (metryki + flagi + White Box);
-determinizm (dwa wywołania identyczne); 404 (brak przebiegu); 409 (rodzaj przebiegu
-V12.6 inny niż ``ssci_impedance``); uczciwy stan zerowy (brak przekształtnika/DER
-→ werdykt „brak danych", bez fabrykacji). Payloady liczy REALNY solver D-03 (karta
-referencyjna Huawei), a ścieżka HTTP GET jest wykonywana natywnie.
+Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): werdyktu NIE ma — Z_grid(f) solvera
+liczone bez przekładni transformatora; pole ``verdict`` = „nie oceniono", ``is_risk`` =
+null, rekord ``ocena`` (``NIE_OCENIONO``) nazywa braki, metryki kryterium impedancyjnego
+zostają materiałem audytowym pod ``sekcja_audytowa_pl``. Intencja zachowana: gotowy
+przebieg → widok (metryki + White Box + proweniencja); determinizm; 404; 409; uczciwy
+stan zerowy (brak przekształtnika → nazwany brak, bez fabrykacji). Payloady liczy REALNY
+solver D-03 (karta referencyjna Huawei), a ścieżka HTTP GET jest wykonywana natywnie.
 """
 
 from __future__ import annotations
@@ -17,12 +17,8 @@ from __future__ import annotations
 from uuid import UUID, uuid4
 
 import pytest
-from analysis.ssci_stability import (
-    VERDICT_NO_DATA,
-    VERDICT_RISK,
-    VERDICT_STABLE,
-    VERDICT_UNSTABLE,
-)
+from analysis.ssci_stability import VERDICT_NIE_OCENIONO
+from analysis.ssci_stability.models import BRAK_TABLIC_SSCI_PL, SEKCJA_AUDYTOWA_SSCI_PL
 from enm.canonical_analysis import reset_canonical_runs
 from network_model.catalog.repository import get_default_mv_catalog
 from solver_input.v126_contracts import (
@@ -119,20 +115,29 @@ def _seed_run(
     return run.id
 
 
+def _sprawdz_bez_werdyktu(body: dict) -> dict:
+    verdict = body["verdict"]
+    assert verdict["verdict"] == VERDICT_NIE_OCENIONO, verdict["verdict"]
+    assert verdict["is_risk"] is None
+    assert verdict["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
+    assert verdict["why_pl"] == verdict["ocena"]["wyjasnienie"]["zdanie_pl"]
+    assert body["sekcja_audytowa_pl"] == SEKCJA_AUDYTOWA_SSCI_PL
+    return verdict
+
+
 # ---------------------------------------------------------------------------
-# Werdykt na realnym przebiegu
+# Widok bez werdyktu na realnym przebiegu (metryki = materiał audytowy)
 # ---------------------------------------------------------------------------
 
 
-def test_stability_weak_grid_flags_ssci_risk(app_client) -> None:
+def test_stability_weak_grid_metrics_without_verdict(app_client) -> None:
     card = _reference_card()
     run_id = _seed_run(_model(card, scr=1.5))
     resp = app_client.get(STABILITY.format(run_id=run_id))
     assert resp.status_code == 200, resp.text
     body = resp.json()
-    verdict = body["verdict"]
-    assert verdict["verdict"] in (VERDICT_RISK, VERDICT_UNSTABLE), verdict["verdict"]
-    assert verdict["is_risk"] is True
+    # Dawniej „ryzyko SSCI"/„niestabilny" z is_risk=True.
+    verdict = _sprawdz_bez_werdyktu(body)
     assert verdict["has_magnitude_crossover"] is True
     assert verdict["offending_frequency_hz"] is not None
     # White Box audytowalny (Wzór→Dane→Podstawienie→Wynik→Jednostka).
@@ -144,14 +149,13 @@ def test_stability_weak_grid_flags_ssci_risk(app_client) -> None:
     assert body["analysis_id"]
 
 
-def test_stability_strong_grid_is_stable(app_client) -> None:
+def test_stability_strong_grid_metrics_without_verdict(app_client) -> None:
     card = _reference_card()
     run_id = _seed_run(_model(card, scr=50.0))
     resp = app_client.get(STABILITY.format(run_id=run_id))
     assert resp.status_code == 200, resp.text
-    verdict = resp.json()["verdict"]
-    assert verdict["verdict"] == VERDICT_STABLE, verdict["verdict"]
-    assert verdict["is_risk"] is False
+    # Dawniej „stabilny" z is_risk=False.
+    verdict = _sprawdz_bez_werdyktu(resp.json())
     assert verdict["has_magnitude_crossover"] is False
     assert verdict["offending_frequency_hz"] is None
 
@@ -165,15 +169,17 @@ def test_stability_endpoint_is_deterministic(app_client) -> None:
 
 
 def test_stability_no_converter_is_honest_no_data(app_client) -> None:
-    """Brak przekształtnika/DER → solver „dane niekompletne" → werdykt „brak danych"
-    z jawnym ``missing_data`` (ZERO fabrykacji), zwrócony 200."""
+    """Brak przekształtnika/DER → solver „dane niekompletne" → ocena niewykonana z nazwanym
+    brakiem przekształtnika i tablic (dawniej werdykt „brak danych" z is_risk=False, czyli
+    „brak ryzyka"), jawne ``missing_data`` (ZERO fabrykacji), zwrócony 200."""
     card = _reference_card()
     run_id = _seed_run(_model(card, scr=1.5, with_converter=False))
     resp = app_client.get(STABILITY.format(run_id=run_id))
     assert resp.status_code == 200, resp.text
-    verdict = resp.json()["verdict"]
-    assert verdict["verdict"] == VERDICT_NO_DATA
-    assert verdict["is_risk"] is False
+    verdict = _sprawdz_bez_werdyktu(resp.json())
+    braki = verdict["ocena"]["wyjasnienie"]["czego_brakuje"]
+    assert BRAK_TABLIC_SSCI_PL in braki
+    assert any(b.startswith("Przekształtnik w modelu sieci") for b in braki), braki
     assert verdict["missing_data"]
     assert verdict["max_minor_loop_gain"] is None
 

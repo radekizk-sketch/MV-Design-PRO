@@ -1,23 +1,20 @@
 /**
  * EkranStabilnosci — REALNY dostawca ui2 ekranu kanonicznego E-32
  * „Stabilność dynamiczna" (karta P-3, FLOW §0.3 „kontrakt ekranu prowadzącego").
- * Zastępuje zastępczy `EkranKontraktuAnalizy` dla E-32.
  *
- * Rama prowadząca (wzorzec EkranAnalizy: ZAŁOŻENIA → WERDYKT → TABELA →
- * ślad na żądanie):
- *  - nagłówek: eyebrow + JEDNO zdanie celu inżynierskiego,
- *  - stan wejścia: brak zakończonego przebiegu DYNAMIC_STABILITY → uczciwy
- *    stan zerowy z akcją „Przejdź do obliczeń",
- *  - ZAŁOŻENIA: scenariusz zakłócenia (element, czas wyłączenia, kryteria),
- *  - WERDYKT stabilności z backendu (STABLE/UNSTABLE, wskaźnik, margines,
- *    czynnik ograniczający, naruszone kryteria),
- *  - WIELKOŚCI po zakłóceniu ze statusami kryteriów backendu (`checks`) +
- *    jawna nota GAP: kontrakt nie niesie szeregu czasowego,
- *  - ŚLAD AUTOMATYKI na żądanie (zwinięty przycisk — wzorzec SladWywodu) +
- *    odesłanie do pełnego dowodu (`setWynikiTab('dowod', runId)`).
+ * UCZCIWOŚĆ (2026-09-23): bieg `dynamic_stability` nie rozwiązuje sieci — kąty mocy,
+ * napięcie i częstotliwość po zwarciu oraz czas wyłączenia wpisuje użytkownik. Ekran
+ * NIE wystawia werdyktu STABILNY/NIESTABILNY ani statusów kryteriów i nie opowiada
+ * zadziałania zabezpieczeń. Rama:
+ *  - nagłówek: eyebrow + JEDNO zdanie celu,
+ *  - stan wejścia: brak zakończonego przebiegu DYNAMIC_STABILITY → formularz scenariusza,
+ *  - OCENA: rekord `NIE_OCENIONO` z backendu (zdanie, czego brakuje, akcja naprawcza),
+ *  - ZAŁOŻENIA i ECHO scenariusza (liczby wpisane przez użytkownika, bez porównań),
+ *  - PRZEBIEG czasowy na żądanie z uwagą backendu (przebieg zadany),
+ *  - ŚLAD AUTOMATYKI na żądanie: bez zdarzeń, efekt topologii ZADEKLAROWANY,
+ *  - odesłanie do pełnego dowodu (`setWynikiTab('dowod', runId)`), raportowalność.
  *
- * ZERO fizyki, ZERO progów w UI: werdykty, marginesy i statusy kryteriów
- * pochodzą wyłącznie z backendu. Stylowanie wyłącznie tokenami --mvd-*.
+ * ZERO fizyki, ZERO progów w UI. Stylowanie wyłącznie tokenami --mvd-*.
  */
 
 import { useMemo, useState } from 'react';
@@ -30,23 +27,17 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
-import { akcjaNaprawcza, SekcjaZalozen, usePoprawWModelu } from '../wzorzec';
+import { SekcjaZalozen } from '../wzorzec';
+import { OcenaNiewykonana } from '../wzorzec/OcenaNiewykonana';
 import { usePrzebiegStabilnosci, useWynikStabilnosci } from './api';
 import { FormularzScenariusza } from './FormularzScenariusza';
-import { elementWerdyktuStabilnosci } from './model';
 import {
-  fmtMs,
-  fmtWskaznik,
-  naKryteriaOcenyProgowej,
-  naruszoneKryteriaPL,
+  naEchoScenariusza,
   naSeriePrzebiegu,
-  naWielkosciStabilnosci,
   naZalozeniaStabilnosci,
-  naZdarzenia,
-  werdyktStabilnosciPL,
   wybierzPrzebiegStabilnosci,
 } from './model';
-import { kryteriumPL, STABILNOSC_STRINGS as T, zdarzeniePL } from './strings';
+import { STABILNOSC_STRINGS as T } from './strings';
 import { WykresPrzebieguChart } from './WykresPrzebieguChart';
 
 function Stan({
@@ -93,7 +84,6 @@ export function EkranStabilnosci() {
   const clearRouteManagedSurface = useNetworkBuildStore((s) => s.clearRouteManagedSurface);
   const activeRunId = useAppStateStore((s) => s.activeRunId);
   const przebiegi = useExecutionRunsStore((s) => s.runs);
-  const poprawWModelu = usePoprawWModelu();
   const [sladWidoczny, setSladWidoczny] = useState(false);
   const [przebiegWidoczny, setPrzebiegWidoczny] = useState(false);
 
@@ -103,7 +93,6 @@ export function EkranStabilnosci() {
   );
   const dane = useWynikStabilnosci(przebieg?.id ?? null);
   const wiersz = dane?.wiersz ?? null;
-  const zdarzenia = dane?.zdarzenia ? naZdarzenia(dane.zdarzenia) : null;
 
   // Przebieg czasowy — ładowany NA ŻĄDANIE (klik „Pokaż przebieg").
   const przebiegDane = usePrzebiegStabilnosci(przebieg?.id ?? null, przebiegWidoczny);
@@ -165,143 +154,32 @@ export function EkranStabilnosci() {
         />
       ) : (
         <>
+          {wiersz.ocena && (
+            <OcenaNiewykonana ocena={wiersz.ocena} testid="mvd-stabilnosc-ocena" />
+          )}
+
           <SekcjaZalozen zalozenia={naZalozeniaStabilnosci(wiersz)} />
 
-          <section
-            className="mvd-stabilnosc-sekcja"
-            data-testid="mvd-stabilnosc-werdykt"
-            data-werdykt={wiersz.status ?? 'nieznany'}
-          >
-            <h4>{T.werdyktTytul}</h4>
-            <p className="mvd-stabilnosc-nota">{T.werdyktOpis}</p>
-            <dl className="mvd-stabilnosc-siatka">
-              <div className="mvd-stabilnosc-wartosc" data-testid="mvd-stabilnosc-werdykt-status">
-                <dt>{T.werdyktStatus}</dt>
-                <dd>
-                  <span
-                    className="mvd-stabilnosc-chip"
-                    data-stan={wiersz.status === 'STABLE' ? 'ok' : 'brak'}
-                  >
-                    {werdyktStabilnosciPL(wiersz)}
-                  </span>
-                </dd>
-              </div>
-              <div className="mvd-stabilnosc-wartosc" data-testid="mvd-stabilnosc-wskaznik">
-                <dt>{T.werdyktWskaznik}</dt>
-                <dd className="mvd-num">
-                  {wiersz.stability_index != null ? fmtWskaznik(wiersz.stability_index) : T.kreska}
-                </dd>
-              </div>
-              <div className="mvd-stabilnosc-wartosc" data-testid="mvd-stabilnosc-margines">
-                <dt>{T.werdyktMargines}</dt>
-                <dd className="mvd-num">
-                  {wiersz.clearing_margin_ms != null
-                    ? `${fmtMs(wiersz.clearing_margin_ms)} ${T.jednMs}`
-                    : T.kreska}
-                </dd>
-              </div>
-              <div className="mvd-stabilnosc-wartosc" data-testid="mvd-stabilnosc-czynnik">
-                <dt>{T.werdyktCzynnik}</dt>
-                <dd>{wiersz.limiting_factor ? kryteriumPL(wiersz.limiting_factor) : T.kreska}</dd>
-              </div>
-              <div className="mvd-stabilnosc-wartosc" data-testid="mvd-stabilnosc-naruszone">
-                <dt>{T.werdyktNaruszone}</dt>
-                <dd>{naruszoneKryteriaPL(wiersz)}</dd>
-              </div>
-            </dl>
-            {/* F-K4 faza 3 (znalezisko Z4): utrata stabilności prowadzi do elementu
-                w modelu — najpierw miejsce zwarcia, potem źródło. Typ elementu
-                pochodzi z KONTRAKTU (`*_kind` rozstrzygnięte ze snapshotu biegu);
-                brak rodzaju = brak akcji, bo prowadziłaby w nikąd. */}
-            {wiersz.status !== 'STABLE' &&
-              (() => {
-                const element = elementWerdyktuStabilnosci(wiersz);
-                if (!element) return null;
-                return (
-                  <button
-                    type="button"
-                    className="mvd-stabilnosc-popraw"
-                    data-testid="mvd-stabilnosc-popraw"
-                    title={akcjaNaprawcza().opis}
-                    onClick={() => poprawWModelu(element.ref, element.typ, element.ref)}
-                  >
-                    {akcjaNaprawcza().etykieta}
-                  </button>
-                );
-              })()}
-          </section>
-
-          <section className="mvd-stabilnosc-sekcja" data-testid="mvd-stabilnosc-wielkosci">
-            <h4>{T.wielkosciTytul}</h4>
-            <p className="mvd-stabilnosc-nota">{T.wielkosciOpis}</p>
+          <section className="mvd-stabilnosc-sekcja" data-testid="mvd-stabilnosc-echo">
+            <h4>{T.echoTytul}</h4>
+            <p className="mvd-stabilnosc-nota">{T.echoOpis}</p>
             <table className="mvd-stabilnosc-tabela">
               <thead>
                 <tr>
                   <th scope="col">{T.kolWielkosc}</th>
                   <th scope="col">{T.kolWartosc}</th>
-                  <th scope="col">{T.kolStatus}</th>
                 </tr>
               </thead>
               <tbody>
-                {naWielkosciStabilnosci(wiersz).map((poz) => (
-                  <tr key={poz.klucz} data-testid={`mvd-stabilnosc-wielkosc-${poz.klucz}`}>
+                {naEchoScenariusza(wiersz).map((poz) => (
+                  <tr key={poz.klucz} data-testid={`mvd-stabilnosc-echo-${poz.klucz}`}>
                     <td>{poz.wielkosc}</td>
-                    <td className="mvd-num">
-                      {poz.wartosc === T.kreska ? poz.wartosc : `${poz.wartosc} ${poz.jednostka}`}
-                    </td>
-                    <td>
-                      {poz.spelnione === undefined ? (
-                        T.kreska
-                      ) : (
-                        <span
-                          className="mvd-stabilnosc-chip"
-                          data-stan={poz.spelnione ? 'ok' : 'brak'}
-                        >
-                          {poz.spelnione ? T.statusSpelnione : T.statusNaruszone}
-                        </span>
-                      )}
-                    </td>
+                    <td className="mvd-num">{poz.wartosc}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {/* Nota o braku szeregu — TYLKO gdy bieg go nie ma (starszy zapis).
-                Dla biegów z szeregiem sekcja „Przebieg czasowy" niesie wykres. */}
-            {!maSzereg && (
-              <p className="mvd-stabilnosc-nota" data-testid="mvd-stabilnosc-brak-szeregu">
-                {T.brakSzereguCzasowego}
-              </p>
-            )}
           </section>
-
-          {/* Kryteria oceny progowej JAWNIE nazwane (karta W2 pkt 1) — starszy wiersz
-              bez pola nie renderuje sekcji (uczciwy brak, zero zgadywania progów). */}
-          {naKryteriaOcenyProgowej(wiersz).length > 0 && (
-            <section className="mvd-stabilnosc-sekcja" data-testid="mvd-stabilnosc-kryteria">
-              <h4>{T.kryteriaTytul}</h4>
-              <p className="mvd-stabilnosc-nota">{T.kryteriaOpis}</p>
-              <table className="mvd-stabilnosc-tabela">
-                <thead>
-                  <tr>
-                    <th scope="col">{T.kolKryterium}</th>
-                    <th scope="col">{T.kolProg}</th>
-                    <th scope="col">{T.kolPochodzenie}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {naKryteriaOcenyProgowej(wiersz).map((kryterium) => (
-                    <tr key={kryterium.key} data-testid={`mvd-stabilnosc-kryterium-${kryterium.key}`}>
-                      <td>{kryterium.label_pl}</td>
-                      <td className="mvd-num">
-                        {fmtWskaznik(kryterium.value)} {kryterium.unit}
-                      </td>
-                      <td>{kryterium.source_pl}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
-          )}
 
           <section className="mvd-stabilnosc-sekcja" data-testid="mvd-stabilnosc-przebieg">
             <h4>{T.przebiegTytul}</h4>
@@ -329,7 +207,17 @@ export function EkranStabilnosci() {
                   {T.przebiegBlad}
                 </p>
               ) : maSzereg ? (
-                <WykresPrzebieguChart punkty={punktyPrzebiegu} serie={seriePrzebiegu} />
+                <>
+                  {przebiegDane.przebieg?.uwaga_pl && (
+                    <p
+                      className="mvd-stabilnosc-nota"
+                      data-testid="mvd-stabilnosc-przebieg-uwaga"
+                    >
+                      {przebiegDane.przebieg.uwaga_pl}
+                    </p>
+                  )}
+                  <WykresPrzebieguChart punkty={punktyPrzebiegu} serie={seriePrzebiegu} />
+                </>
               ) : (
                 <p className="mvd-stabilnosc-nota" data-testid="mvd-stabilnosc-przebieg-brak">
                   {T.przebiegBrak}
@@ -350,47 +238,37 @@ export function EkranStabilnosci() {
               {sladWidoczny ? T.sladUkryj : T.sladPokaz}
             </button>
             {sladWidoczny &&
-              (zdarzenia === null ? (
-                <p className="mvd-stabilnosc-nota" data-testid="mvd-stabilnosc-slad-brak">
-                  {T.sladBrak}
-                </p>
-              ) : zdarzenia.length === 0 ? (
-                <p className="mvd-stabilnosc-nota" data-testid="mvd-stabilnosc-slad-brak">
-                  {T.sladBrak}
+              (!dane?.sladDostepny ? (
+                <p className="mvd-stabilnosc-nota" role="alert" data-testid="mvd-stabilnosc-slad-blad">
+                  {T.sladBladPobrania}
                 </p>
               ) : (
                 <>
-                  <table className="mvd-stabilnosc-tabela" data-testid="mvd-stabilnosc-zdarzenia">
-                    <thead>
-                      <tr>
-                        <th scope="col">{T.sladKolLp}</th>
-                        <th scope="col">{T.sladKolZdarzenie}</th>
-                        <th scope="col">{T.sladKolElement}</th>
-                        <th scope="col">{T.sladKolOpis}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {zdarzenia.map((z) => (
-                        <tr key={`${z.event_seq}::${z.event_type}`}>
-                          <td className="mvd-num">{z.event_seq}</td>
-                          <td>{zdarzeniePL(z.event_type)}</td>
-                          <td className="mvd-num">{z.element_id ?? T.kreska}</td>
-                          <td>{z.detail || T.kreska}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {dane?.efektTopologii && (
-                    <dl className="mvd-stabilnosc-siatka" data-testid="mvd-stabilnosc-topologia">
-                      <div className="mvd-stabilnosc-wartosc">
-                        <dt>{T.sladStanSieci}</dt>
-                        <dd>{dane.efektTopologii.network_state ?? T.kreska}</dd>
-                      </div>
-                      <div className="mvd-stabilnosc-wartosc">
-                        <dt>{T.sladZakresWylaczen}</dt>
-                        <dd>{dane.efektTopologii.outage_scope ?? T.kreska}</dd>
-                      </div>
-                    </dl>
+                  <p className="mvd-stabilnosc-nota" data-testid="mvd-stabilnosc-slad-brak">
+                    {T.sladBrak}
+                  </p>
+                  {dane.efektTopologii && (
+                    <div data-testid="mvd-stabilnosc-topologia">
+                      <p className="mvd-stabilnosc-nota">{T.sladTopologiaTytul}</p>
+                      <dl className="mvd-stabilnosc-siatka">
+                        <div className="mvd-stabilnosc-wartosc">
+                          <dt>{T.sladStanSieci}</dt>
+                          <dd>{dane.efektTopologii.network_state ?? T.kreska}</dd>
+                        </div>
+                        <div className="mvd-stabilnosc-wartosc">
+                          <dt>{T.sladZakresWylaczen}</dt>
+                          <dd>{dane.efektTopologii.outage_scope ?? T.kreska}</dd>
+                        </div>
+                        <div className="mvd-stabilnosc-wartosc">
+                          <dt>{T.sladOtwarte}</dt>
+                          <dd className="mvd-num">
+                            {(dane.efektTopologii.opened_element_ids ?? []).length > 0
+                              ? (dane.efektTopologii.opened_element_ids ?? []).join(', ')
+                              : T.kreska}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
                   )}
                 </>
               ))}

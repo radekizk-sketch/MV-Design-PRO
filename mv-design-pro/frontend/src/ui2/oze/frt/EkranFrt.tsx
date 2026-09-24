@@ -4,13 +4,15 @@
  * `ui2/oze/pulpit`; `der_ref` = typ przekształtnika modułu), operatora OSD z katalogu
  * NC RfG (`GET /api/ncrfg-tests/catalog`) i rodzaju testu (LVRT/HVRT) → JAWNY bieg
  * `GET /api/oze-analysis/frt-trajectories` → prezentacja:
- *   1. wykres trajektorii U(t) na tle obwiedni profilu (+ serie P(t)/Iq(t)),
- *   2. tabela scenariuszy na wzorcu `TabelaWynikow` (tagi + marginesy),
- *   3. werdykt całości PL (prezentacyjna agregacja najgorszego werdyktu scenariusza).
+ *   1. rekord oceny z backendu („Ocena niewykonana": zdanie, braki, akcja naprawcza),
+ *   2. wykres trajektorii U(t) na tle obwiedni WYMAGANEJ (informacja, opis z backendu),
+ *   3. tabela scenariuszy (echo zapadu + etykieta oceny),
+ *   4. zwinięta sekcja audytowa pól solvera pod nagłówkiem z backendu.
  *
- * Zero fizyki, zero ocen lokalnych — trajektorie, marginesy i werdykty pochodzą
- * WYŁĄCZNIE z backendu. Identyfikatory (der_ref, operator_id, scenario_id) wyłącznie
- * w trybie eksperckim; nazwy PL modułów/operatorów na pierwszym planie.
+ * UCZCIWOŚĆ (2026-09-23): trajektoria jest zadana profilem wejściowym, a kryterium
+ * utrzymania wobec tego samego profilu jest tautologią — okno nie wystawia werdyktu ani
+ * koloru ok/err. Zero fizyki, zero ocen lokalnych. Identyfikatory (der_ref,
+ * operator_id, scenario_id) wyłącznie w trybie eksperckim.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -18,6 +20,7 @@ import './frt.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { isModeAtLeast } from '../../shell/modeModel';
 import { SladWywodu, TabelaWynikow } from '../../wyniki/wzorzec';
+import { OcenaNiewykonana, SekcjaAudytowa } from '../../wyniki/wzorzec/OcenaNiewykonana';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
 import { notify } from '../../../ui/notifications/store';
 import { useNcRfgStore } from '../ncRfgStore';
@@ -31,12 +34,13 @@ import {
 import { WykresTrajektoriiChart } from './WykresTrajektoriiChart';
 import { SekcjaSekwencjiZapadow } from './SekcjaSekwencjiZapadow';
 import {
+  kolumnyAudytuFrt,
   kolumnyTabeliFrt,
   opcjeModulowFrt,
   opcjeOperatorowFrt,
   punktyObwiedniFrt,
   punktyTrajektoriiFrt,
-  werdyktCalosciFrt,
+  wierszeAudytuFrt,
   wierszeTabeliFrt,
   type OpcjaModuluFrt,
   type OpcjaOperatoraFrt,
@@ -87,7 +91,7 @@ function StanPanel({
 }
 
 // ---------------------------------------------------------------------------
-// Wynik: werdykt + założenia + wykres + tabela + identyfikatory eksperckie
+// Wynik: ocena + założenia + wykres + tabela + audyt + identyfikatory eksperckie
 // ---------------------------------------------------------------------------
 
 function WynikTrajektorii({
@@ -101,10 +105,11 @@ function WynikTrajektorii({
 }) {
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
 
-  const werdykt = useMemo(() => werdyktCalosciFrt(dane), [dane]);
   const obwiednia = useMemo(() => punktyObwiedniFrt(dane), [dane]);
   const kolumny = useMemo(() => kolumnyTabeliFrt(), []);
   const wiersze = useMemo(() => wierszeTabeliFrt(dane), [dane]);
+  const kolumnyAudytu = useMemo(() => kolumnyAudytuFrt(), []);
+  const wierszeAudytu = useMemo(() => wierszeAudytuFrt(dane), [dane]);
 
   // Serie trajektorii — pierwszy scenariusz odpowiedzi (bieg per rodzaj testu).
   const pierwszy = dane.scenariusze[0];
@@ -118,13 +123,7 @@ function WynikTrajektorii({
 
   return (
     <div data-testid="mvd-frt-wynik">
-      <div
-        className={`mvd-frt-werdykt mvd-frt-werdykt--${werdykt.istotnosc}`}
-        data-testid="mvd-frt-werdykt"
-      >
-        <span className="mvd-frt-werdykt-tytul">{werdykt.tekst}</span>
-        <span className="mvd-frt-werdykt-opis">{FRT_STRINGS.werdyktOpisAgregacja}</span>
-      </div>
+      {dane.ocena && <OcenaNiewykonana ocena={dane.ocena} testid="mvd-frt-ocena" />}
 
       <dl className="mvd-frt-zalozenia" data-testid="mvd-frt-zalozenia">
         <div className="mvd-frt-zal-para">
@@ -149,10 +148,6 @@ function WynikTrajektorii({
           <dt>{FRT_STRINGS.zalozeniaUn}</dt>
           <dd className="mvd-num">{fmtPuFrt(dane.modul_der.un_kv)} kV</dd>
         </div>
-        <div className="mvd-frt-zal-para">
-          <dt>{FRT_STRINGS.zalozeniaStatusSolvera}</dt>
-          <dd>{etykietaStatusuFrt(dane.status_solvera)}</dd>
-        </div>
         {dane.ocena_dowodowa && (
           <div className="mvd-frt-zal-para" data-testid="mvd-frt-ocena-dowodowa">
             <dt>{FRT_STRINGS.zalozeniaPodstawa}</dt>
@@ -163,6 +158,11 @@ function WynikTrajektorii({
 
       <div className="mvd-frt-wykres-blok">
         <WykresTrajektoriiChart trajektoria={trajektoria} obwiednia={obwiednia} />
+        {dane.obwiednia_profilu && (
+          <p className="mvd-frt-pole-opis" data-testid="mvd-frt-obwiednia-opis">
+            {dane.obwiednia_profilu.opis}
+          </p>
+        )}
       </div>
 
       <TabelaWynikow
@@ -171,6 +171,23 @@ function WynikTrajektorii({
         onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
       />
+
+      {dane.sekcja_audytowa_pl && (
+        <SekcjaAudytowa naglowek={dane.sekcja_audytowa_pl} testid="mvd-frt-audyt">
+          <dl className="mvd-frt-zalozenia">
+            <div className="mvd-frt-zal-para">
+              <dt>{FRT_STRINGS.audytStatusSolvera}</dt>
+              <dd>{etykietaStatusuFrt(dane.status_solvera)}</dd>
+            </div>
+          </dl>
+          <TabelaWynikow
+            kolumny={kolumnyAudytu}
+            wiersze={wierszeAudytu}
+            onOtworzDowod={onOtworzDowod}
+            trybZaawansowania={trybZaawansowania}
+          />
+        </SekcjaAudytowa>
+      )}
 
       {/* Ślad obliczeń na żądanie per scenariusz — wywód {tekst, latex} z backendu
           (zasada KaTeX 2026-07-22); pusta lista = uczciwy brak przycisku. */}
@@ -437,28 +454,31 @@ export function EkranFrt({ trybZaawansowania, onOtworzDowod }: EkranFrtProps) {
                 trybZaawansowania={trybZaawansowania}
                 onOtworzDowod={onOtworzDowod}
               />
-              {/* K5-B (H-3 pkt 4): pętla werdykt → zgodność. Klucz = id modułu
+              {/* K5-B (H-3 pkt 4): pętla ocena → zgodność. Klucz = id modułu
                   DER (`wybranyModul`) — ta sama tożsamość co kolumny macierzy
-                  NC RfG (`zbudujModuly` → der.id). Werdykt POCHODZI z biegu
-                  (agregacja słownikowa pól solvera — `werdyktCalosciFrt`). */}
-              <button
-                type="button"
-                className="mvd-frt-oblicz"
-                title={FRT_STRINGS.zapiszWynikOpis}
-                onClick={() => {
-                  const werdykt = werdyktCalosciFrt(stan.dane);
-                  useNcRfgStore.getState().zapiszWynikFrt(wybranyModul, {
-                    testKind: stan.dane.test_kind,
-                    tekst: werdykt.tekst,
-                    istotnosc: werdykt.istotnosc,
-                    operatorId: stan.dane.operator.id,
-                  });
-                  notify(FRT_STRINGS.zapiszWynikZapisano, 'success');
-                }}
-                data-testid="mvd-frt-zapisz-wynik"
-              >
-                {FRT_STRINGS.zapiszWynik}
-              </button>
+                  NC RfG (`zbudujModuly` → der.id). Zapisywany jest STAN OCENY z
+                  rekordu backendu (etykieta + semantyka), nie werdykt z UI. */}
+              {stan.dane.ocena && (
+                <button
+                  type="button"
+                  className="mvd-frt-oblicz"
+                  title={FRT_STRINGS.zapiszWynikOpis}
+                  onClick={() => {
+                    const ocena = stan.dane.ocena;
+                    if (!ocena) return;
+                    useNcRfgStore.getState().zapiszWynikFrt(wybranyModul, {
+                      testKind: stan.dane.test_kind,
+                      tekst: ocena.etykieta.etykieta_pl,
+                      istotnosc: ocena.etykieta.semantyka,
+                      operatorId: stan.dane.operator.id,
+                    });
+                    notify(FRT_STRINGS.zapiszWynikZapisano, 'success');
+                  }}
+                  data-testid="mvd-frt-zapisz-wynik"
+                >
+                  {FRT_STRINGS.zapiszWynik}
+                </button>
+              )}
             </>
           )}
 

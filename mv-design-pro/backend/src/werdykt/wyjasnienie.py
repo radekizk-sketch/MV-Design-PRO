@@ -379,7 +379,19 @@ def brak_metody_dopuszczalnej(dowod: StatusDowodu, dopuszczalne: Iterable[Metoda
     )
 
 
-def brak_wyniku() -> str:
+def brak_wyniku(*, jest_metoda: bool) -> str:
+    """Brak wielkości ocenianej; akcja naprawcza WYŁĄCZNIE, gdy istnieje metoda, która ją wyznaczy.
+
+    Bez metody dowodu (``BRAK_METODY``) ponowny bieg ani uzupełnienie danych nie dostarczą
+    wyniku — rada „wykonaj bieg" byłaby akcją bez celu (rozstrzygnięcie zarządcy 2026-09-23:
+    akcja bez celu jest kasowana), więc brak jest nazwany bez niej; metodę właściwą nazywa
+    brak z kroku METODA.
+    """
+    if not jest_metoda:
+        return (
+            "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg "
+            "ani uzupełnienie danych wejściowych go nie dostarczą."
+        )
     return (
         "Wynik wielkości ocenianej: brak biegu obliczeń albo symulacji, bieg nieaktualny lub "
         "nieudany albo brak danych wejściowych — wykonaj bieg na aktualnym modelu albo uzupełnij "

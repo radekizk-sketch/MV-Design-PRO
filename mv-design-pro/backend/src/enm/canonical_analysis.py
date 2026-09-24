@@ -14,10 +14,7 @@ from analysis.obciazenie_galezi import (
     prad_zacisku_do_a,
     prad_zacisku_od_a,
 )
-from application.automation.trace import (
-    build_automation_trace,
-    build_post_fault_topology_effect,
-)
+from application.automation.trace import build_post_fault_topology_effect
 from application.contracts.resultset_dynamic_v2 import (
     ResultSetDynamicV2,
     dziedzina_fizyki_dynamiki,
@@ -28,19 +25,19 @@ from application.proof_engine.packs.phase_state_sn import (
     PhaseStateSNProofPackInput,
 )
 from application.stability.dynamic_stability import (
-    DynamicStabilityThresholds,
+    WERSJA_KONTRAKTU_ECHA,
     FaultClearScenario,
     FaultClearSourceState,
-    evaluate_fault_clear_dynamic_stability,
+    echo_scenariusza_stabilnosci,
 )
 from application.stability.voltage_trajectory import (
     TrajectoryGenerationParams,
     generate_voltage_trajectory,
 )
 from application.v126_artifacts import (
-    bez_rankingu_n1,
     build_v126_proof_artifact,
     build_v126_report_artifact,
+    wynik_v126_dla_powierzchni,
 )
 from domain.canonical_operations import READINESS_CODES
 from enm.adapter_dynamiki import (
@@ -250,7 +247,8 @@ def _oznacz_wiersz_bez_odniesienia(payload: dict[str, Any]) -> dict[str, Any]:
     wartości oddane przez odwrócenie osobliwej macierzy są szumem biblioteki, nie
     prądem zwarciowym (patrz ``_wezly_bez_impedancji_do_odniesienia``).
     """
-    wiersz, pola = _zeruj_liczby_wyniku(payload, zachowaj=_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA)
+    wyzerowany, pola = _zeruj_liczby_wyniku(payload, zachowaj=_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA)
+    wiersz: dict[str, Any] = wyzerowany
     ograniczenia = list(wiersz.get("reporting_limitations") or [])
     if OGRANICZENIE_WYNIK_NIEFIZYCZNY not in ograniczenia:
         ograniczenia.append(OGRANICZENIE_WYNIK_NIEFIZYCZNY)
@@ -1593,29 +1591,24 @@ def _brakujace_pola_scenariusza_stabilnosci(
     return tuple(brakujace_klucze), "; ".join(brakujace_opisy)
 
 
-def _progi_oceny_stabilnosci_z_opcji(options: Mapping[str, Any]) -> DynamicStabilityThresholds:
-    """Progi oceny progowej — kryteria PRZYJĘTE w opcjach biegu, edytowalne, NIE
-    zaszyte na stałe (karta W2 pkt 1). Repo nie niesie cytatu normy dla tych
-    czterech liczb: brak w opcjach biegu spada na dotychczasową wartość
-    `DynamicStabilityThresholds` (odczytaną z klasy, nie zaszytą tu drugi raz),
-    a NIE na twardą stałą tej funkcji — pole podane w opcjach biegu wygrywa.
-    """
-    domyslne = DynamicStabilityThresholds()
-    return DynamicStabilityThresholds(
-        max_clearing_time_ms=float(
-            options.get("max_clearing_time_ms", domyslne.max_clearing_time_ms)
-        ),
-        max_angle_swing_deg=float(options.get("max_angle_swing_deg", domyslne.max_angle_swing_deg)),
-        min_voltage_recovery_pu=float(
-            options.get("min_voltage_recovery_pu", domyslne.min_voltage_recovery_pu)
-        ),
-        min_frequency_recovery_pu=float(
-            options.get("min_frequency_recovery_pu", domyslne.min_frequency_recovery_pu)
-        ),
-    )
+#: Charakter szeregu czasowego toru — opis PRZY liczbach (widoczny dla projektanta), bo
+#: przebieg jest funkcją wartości wpisanych przez użytkownika, nie rozwiązaniem sieci.
+UWAGA_PRZEBIEGU_ZADANEGO_PL = (
+    "Przebieg zadany: funkcja wykładnicza odbudowy do napięcia i częstotliwości po zwarciu "
+    "wpisanych przez użytkownika, ze stałą czasową z opcji biegu — nie jest rozwiązaniem "
+    "sieci ani przebiegiem zmierzonym."
+)
 
 
 def _execute_dynamic_stability(run: CanonicalRun) -> None:
+    """Bieg toru „stabilność po wyłączeniu zwarcia" — ECHO scenariusza, BEZ werdyktu.
+
+    Kąty, napięcie i częstotliwość po zwarciu oraz czas wyłączenia wpisuje użytkownik;
+    tor nie rozwiązuje sieci, więc nie wydaje werdyktu STABLE/UNSTABLE i nie opowiada
+    zadziałania zabezpieczeń (uczciwość natychmiastowa 2026-09-23). Bieg zwraca: echo
+    scenariusza z oceną niewykonaną (`result.ocena`), efekt topologiczny ZADEKLAROWANY
+    w opcjach, przebieg zadany z jawną uwagą i ślad White Box z jednym krokiem echa.
+    """
     snapshot = run.snapshot or {}
     brakujace_klucze, opis_brakow = _brakujace_pola_scenariusza_stabilnosci(run.options)
     if brakujace_klucze:
@@ -1626,7 +1619,6 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
             pola=brakujace_klucze,
         )
     source_ref = _pick_dynamic_source_ref(snapshot, run.options)
-    progi = _progi_oceny_stabilnosci_z_opcji(run.options)
     scenario = FaultClearScenario(
         scenario_id=str(run.options.get("scenario_id") or f"dyn-{run.id}"),
         faulted_element_id=str(run.options["faulted_element_id"]),
@@ -1640,29 +1632,26 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
             post_fault_voltage_pu=float(run.options["post_fault_voltage_pu"]),
             post_fault_frequency_pu=float(run.options["post_fault_frequency_pu"]),
         ),
-        thresholds=progi,
     )
-    stability_result = evaluate_fault_clear_dynamic_stability(scenario)
+    echo = echo_scenariusza_stabilnosci(scenario)
+    ocena = echo.ocena
     topology_effect = build_post_fault_topology_effect(
-        source_id=stability_result.source_id,
-        faulted_element_id=stability_result.faulted_element_id,
-        cleared_by_element_ids=stability_result.cleared_by_element_ids,
+        source_id=echo.source_id,
+        faulted_element_id=echo.faulted_element_id,
+        cleared_by_element_ids=echo.cleared_by_element_ids,
         isolated_element_ids=tuple(run.options.get("isolated_element_ids") or ()),
         additionally_opened_element_ids=tuple(
             run.options.get("additionally_opened_element_ids") or ()
         ),
         disconnected_source_ids=tuple(run.options.get("disconnected_source_ids") or ()),
     )
-    automation_trace = build_automation_trace(stability_result, topology_effect)
-    proof_ref = _dynamic_stability_proof_ref(run=run, scenario_id=stability_result.scenario_id)
-    result_payload = stability_result.to_dict()
+    proof_ref = _dynamic_stability_proof_ref(run=run, scenario_id=echo.scenario_id)
+    result_payload = echo.to_dict()
     topology_payload = topology_effect.to_dict()
-    # Szereg czasowy U(t)/f(t) przebiegu — istniejący, deterministyczny generator
-    # trajektorii FRT (application/stability/voltage_trajectory.py) sparametryzowany
-    # scenariuszem wyłączenia zwarcia. ZERO nowej fizyki: równania modelu odbudowy
-    # napięcia/częstotliwości nietknięte, tu jedynie wystawiamy istniejący przebieg.
-    # Przechowywane addytywnie (klucz `time_series` obok `result`) — starsze biegi
-    # bez tego klucza; osobny endpoint wystawia go na żądanie (nie pompuje wyniku).
+    # Szereg czasowy U(t)/f(t) — istniejący, deterministyczny generator przebiegu
+    # (`application/stability/voltage_trajectory.py`) sparametryzowany scenariuszem
+    # WPISANYM przez użytkownika. To przebieg ZADANY, nie rozwiązanie sieci — niesie
+    # to jawna uwaga w odpowiedzi (`uwaga_pl`), czytana wprost przez ekran.
     trajectory = generate_voltage_trajectory(
         TrajectoryGenerationParams(
             clearing_time_ms=scenario.clearing_time_ms,
@@ -1673,7 +1662,8 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
     )
     time_series_payload = {
         "time_unit": "s",
-        "criteria_version": stability_result.criteria_version,
+        "contract_version": WERSJA_KONTRAKTU_ECHA,
+        "uwaga_pl": UWAGA_PRZEBIEGU_ZADANEGO_PL,
         "quantities": [
             {"key": "voltage_pu", "label_pl": "Napięcie", "unit": "p.u."},
             {"key": "frequency_pu", "label_pl": "Częstotliwość", "unit": "p.u."},
@@ -1682,11 +1672,9 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
     }
     # Karta S-1 (W6-0): stopien dowodowy WYPROWADZANY z rejestru dowodowego
     # (`solver_input.provenance.classify_dynamic_capability`), nie zaszyty na
-    # sztywno. `dynamic_stability.fault_clear` jest dzis UNVALIDATED_MODEL: katy
-    # wirnika i wielkosci pozwarciowe pochodza z opcji biegu (z wartosciami
-    # domyslnymi), a werdykt jest porownaniem progowym wzgledem tych katow, nie
-    # wykazaniem stabilnosci calkowaniem rownan ruchu ukladu — wiec wynik NIE
-    # jest dowodem regulacyjnym, dopoki zdolnosc nie zostanie zwalidowana (OD-20).
+    # sztywno. `dynamic_stability.fault_clear` jest UNVALIDATED_MODEL: katy
+    # wirnika i wielkosci pozwarciowe pochodza z opcji biegu — wynik NIE jest
+    # dowodem regulacyjnym.
     ewidencja = classify_dynamic_capability("dynamic_stability.fault_clear")
     proof_status = "complete" if ewidencja.regulatory_evidence_eligible else "incomplete"
     reporting_status = "reportable" if ewidencja.regulatory_evidence_eligible else "not_reportable"
@@ -1697,12 +1685,11 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
         "analysis_type": "dynamic_stability",
         "scenario": scenario.to_dict(),
         "result": result_payload,
-        # Karta W2 pkt 1: progi oceny progowej JAWNIE nazwani w wyniku (nie tylko
-        # zaszyci w `result.max_clearing_time_ms`) — etykieta PL, jednostka i
-        # nota o pochodzeniu (kryterium przyjęte w opcjach biegu, nie z normy).
-        "threshold_criteria": progi.kryteria_oceny_progowej(),
+        "ocena": ocena,
         "time_series": time_series_payload,
-        "automation_trace": automation_trace.to_dict(),
+        # Narracja automatyki SKASOWANA — zostaje wyłącznie efekt topologiczny
+        # ZADEKLAROWANY w opcjach biegu (echo), pod tym samym kluczem odpowiedzi.
+        "automation_trace": {"topology_effect": topology_payload, "events": []},
         "topology_effect": topology_payload,
         "proof_ref": proof_ref,
         "proof_status": proof_status,
@@ -1717,18 +1704,19 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
     }
     run.white_box_trace = [
         {
-            "step": index,
-            "key": event.event_type,
-            "title": event.detail or event.event_type,
-            "target_id": event.element_id,
-            "element_id": event.element_id,
-            "method_basis": "DYNAMIC_STABILITY_FAULT_CLEAR_V1",
-            "result": event.payload,
+            "step": 1,
+            "key": "SCENARIUSZ_WPISANY",
+            "title": (
+                "Echo scenariusza wpisanego przez użytkownika. " + ocena["wyjasnienie"]["zdanie_pl"]
+            ),
+            "target_id": echo.source_id,
+            "element_id": echo.faulted_element_id,
+            "method_basis": "DYNAMIC_STABILITY_FAULT_CLEAR_ECHO_V2",
+            "result": result_payload,
             "proof_ref": proof_ref,
             "proof_status": proof_status,
             "reporting_status": reporting_status,
         }
-        for index, event in enumerate(automation_trace.events, start=1)
     ]
     run.power_flow_trace = None
 
@@ -1941,17 +1929,16 @@ def _execute_v126(run: CanonicalRun) -> None:
     options = run.options or {}
     model = V126AcademicInput.model_validate(options["model"])
     solver = V126AcademicSolver()
-    result = solver.run(analysis_type, model)
-    # Karta W3-E (KARTA_W3 §0 rodzina E, 9 #2): `reliability_contingency` traci
-    # ranking N-1/N-2 (pochodny od `_branch_current_a`, bez sprzężenia sieci) z
-    # powierzchni odpowiedzi — JEDNA funkcja aplikacyjna, wywołana TUTAJ raz,
-    # zasila jednocześnie końcówkę `results` (czyta `run_record["result"]`
-    # wprost) i `report` (`build_v126_report_artifact` czyta `result["result"]`
-    # — ten sam słownik po tej linii); `proof` nigdy nie niósł klucza rankingu
-    # (czyta wyłącznie `white_box_trace`), więc jest czysty z konstrukcji.
-    # Solver FROZEN (B-01) NIETKNIĘTY — postprocess wyniku, zero fizyki.
-    if analysis_type == V126AnalysisType.RELIABILITY_CONTINGENCY:
-        result = {**result, "result": bez_rankingu_n1(result["result"])}
+    # JEDNA granica „wynik solvera → wynik powierzchni" (`wynik_v126_dla_powierzchni`),
+    # wywołana TUTAJ raz: zasila jednocześnie końcówkę `results` (czyta
+    # `run_record["result"]` wprost) i `report` (`build_v126_report_artifact` czyta
+    # `result["result"]` — ten sam słownik po tej linii); `proof` czyta wyłącznie
+    # `white_box_trace`, którego granica nie zmienia. Zakres: etykieta pasma
+    # wiarygodności dla KAŻDEGO rodzaju, ranking N-1/N-2 zdjęty z niezawodności
+    # (karta W3-E), ocena niewykonana dla jakości energii (liczby tylko w sekcji
+    # audytowej) i SSCI (uczciwość natychmiastowa 2026-09-23). Solver FROZEN (B-01)
+    # NIETKNIĘTY — odcisk `deterministic_hash` liczony przez solver przed granicą.
+    result = wynik_v126_dla_powierzchni(analysis_type.value, solver.run(analysis_type, model))
     run_record: dict[str, Any] = {
         "run_id": str(run.id),
         "case_id": run.case_id,
@@ -2608,16 +2595,16 @@ def _run_oltc_study(
 
     if study == "sweep":
         positions = run_options.get("oltc_sweep_positions")
-        result = sweep_tap_positions(
+        przemiatanie = sweep_tap_positions(
             pf_input,
             solve_once,
             branch_id=branch_id,
             positions=positions,
         )
-        return ("oltc_sweep", result.to_dict())
+        return ("oltc_sweep", przemiatanie.to_dict())
 
     if study == "optimize":
-        result = optimize_tap_positions(
+        optymalizacja = optimize_tap_positions(
             pf_input,
             solve_once,
             branch_id=branch_id,
@@ -2625,7 +2612,7 @@ def _run_oltc_study(
             target_kv=run_options.get("oltc_target_kv"),
             switch_penalty_mw_per_step=float(run_options.get("oltc_switch_penalty_mw", 0.0)),
         )
-        return ("oltc_optimization", result.to_dict())
+        return ("oltc_optimization", optymalizacja.to_dict())
 
     return None
 
@@ -3099,14 +3086,19 @@ def _build_power_flow_trace_steps(
                 "phase": phase,
                 "inputs": {
                     "max_mismatch_pu": {
-                        "value": float(iteration.get("max_mismatch_pu", 0.0)),
+                        "value": float(cast(float, iteration.get("max_mismatch_pu", 0.0))),
                         "unit": "pu",
                     },
                 },
                 "result": {
                     "norm_mismatch": {
                         "value": float(
-                            iteration.get("mismatch_norm", iteration.get("max_mismatch_pu", 0.0))
+                            cast(
+                                float,
+                                iteration.get(
+                                    "mismatch_norm", iteration.get("max_mismatch_pu", 0.0)
+                                ),
+                            )
                         ),
                         "unit": "pu",
                     },
@@ -3272,24 +3264,36 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                     "table_id": "dynamic_stability",
                     "label_pl": "Stabilnosc dynamiczna",
                     "row_count": 1 if raw_result.get("result") else 0,
+                    # Echo scenariusza wpisanego przez użytkownika + status oceny
+                    # (NIE_OCENIONO) — bez marginesu, wychylenia i wskaźnika, które
+                    # były składowymi werdyktu progowego (uczciwość natychmiastowa).
                     "columns": [
                         {"key": "source_id", "label_pl": "Zrodlo"},
                         {"key": "faulted_element_id", "label_pl": "Element zaklocenia"},
-                        {"key": "status", "label_pl": "Status"},
+                        {"key": "status", "label_pl": "Status oceny"},
                         {"key": "clearing_time_ms", "label_pl": "Czas wylaczenia", "unit": "ms"},
-                        {"key": "clearing_margin_ms", "label_pl": "Margines", "unit": "ms"},
-                        {"key": "angle_swing_deg", "label_pl": "Wychylenie kata", "unit": "deg"},
+                        {"key": "pre_fault_angle_deg", "label_pl": "Kat przed", "unit": "deg"},
+                        {
+                            "key": "during_fault_angle_deg",
+                            "label_pl": "Kat w czasie",
+                            "unit": "deg",
+                        },
+                        {"key": "post_fault_angle_deg", "label_pl": "Kat po", "unit": "deg"},
                         {
                             "key": "post_fault_voltage_pu",
                             "label_pl": "Napiecie po zakloceniu",
                             "unit": "pu",
                         },
-                        {"key": "stability_index", "label_pl": "Wskaznik stabilnosci"},
+                        {
+                            "key": "post_fault_frequency_pu",
+                            "label_pl": "Czestotliwosc po zakloceniu",
+                            "unit": "pu",
+                        },
                     ],
                 },
                 {
                     "table_id": "automation_trace",
-                    "label_pl": "Slad automatyki",
+                    "label_pl": "Slad automatyki (brak zdarzen — zabezpieczenia niesymulowane)",
                     "row_count": len(
                         (raw_result.get("automation_trace") or {}).get("events") or []
                     ),
@@ -4086,9 +4090,6 @@ def build_dynamic_stability_results(run: CanonicalRun) -> dict[str, Any]:
                 "faulted_element_kind": rodzaj_elementu(
                     result.get("faulted_element_id"), indeks=indeks_rodzajow
                 ),
-                # Karta W2 pkt 1: progi JAWNIE nazwani w wierszu wyniku (nie tylko
-                # w raw_result nieosiagalnym dla FE) — addytywnie, obok `**result`.
-                "threshold_criteria": (run.raw_result or {}).get("threshold_criteria", []),
                 "proof_ref": (run.raw_result or {}).get("proof_ref"),
                 "proof_status": (run.raw_result or {}).get("proof_status"),
                 "proof_status_pl": (run.raw_result or {}).get("proof_status_pl"),
@@ -4128,22 +4129,31 @@ def build_dynamic_stability_time_series(run: CanonicalRun) -> dict[str, Any]:
         "run_id": str(run.id),
         "has_time_series": True,
         "time_unit": time_series.get("time_unit", "s"),
-        "criteria_version": time_series.get("criteria_version"),
+        "contract_version": time_series.get("contract_version"),
+        # Charakter przebiegu (zadany, nie rozwiązanie sieci) — przy liczbach, z backendu.
+        "uwaga_pl": time_series.get("uwaga_pl"),
         "quantities": list(time_series.get("quantities") or []),
         "points": list(time_series.get("points") or []),
     }
 
 
 def build_automation_trace_results(run: CanonicalRun) -> dict[str, Any]:
+    """Ślad automatyki biegu `dynamic_stability` — BEZ narracji zdarzeń.
+
+    Tor nie symuluje zabezpieczeń, więc zdarzeń „zwarcie wyłączone przez
+    zabezpieczenia" nie ma skąd wziąć (narracja z czasu wpisanego przez użytkownika
+    skasowana 2026-09-23): `rows` jest puste, obok idzie efekt topologiczny
+    ZADEKLAROWANY w opcjach biegu i ocena niewykonana z wyjaśnieniem.
+    """
     if run.analysis_type != "dynamic_stability":
         return {"run_id": str(run.id), "rows": []}
-    trace = (run.raw_result or {}).get("automation_trace") or {}
-    rows = list(trace.get("events") or [])
-    rows.sort(key=lambda row: (row.get("event_seq", 0), str(row.get("event_type") or "")))
+    raw = run.raw_result or {}
+    trace = raw.get("automation_trace") or {}
     return {
         "run_id": str(run.id),
         "topology_effect": trace.get("topology_effect"),
-        "rows": rows,
+        "rows": [],
+        "ocena": raw.get("ocena"),
     }
 
 

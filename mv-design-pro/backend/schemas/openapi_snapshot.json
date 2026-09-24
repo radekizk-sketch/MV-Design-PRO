@@ -18029,7 +18029,7 @@
   },
   "/api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability": {
    "get": {
-    "description": "Werdykt stabilności SSCI (kryterium impedancyjne Nyquista) dla gotowego\nprzebiegu ``ssci_impedance``.\n\nWarstwa analizy (Sun 2011 / Wen 2016) odczytuje tablice Z_grid(f)/Z_conv(f)/L(f)\nz przebiegu i wydaje werdykt (stabilny / ryzyko SSCI / niestabilny / brak danych)\nz metrykami (max|L|, margines różnicy faz, częstotliwość winna, bliskość −1,\nokrążenia) i wywodem White Box. ZERO fizyki w API — analiza tylko interpretuje\ngotowy wynik solvera. Uczciwy stan zerowy: brak przekształtnika/DER lub braki\nkarty falownika → werdykt „brak danych\" (bez fabrykacji).\n\n404 gdy przebieg nie istnieje; 409 gdy rodzaj przebiegu to nie ``ssci_impedance``;\n422 gdy przebieg nie niesie payloadu solvera SSCI.",
+    "description": "Stabilność SSCI (kryterium impedancyjne Nyquista) dla gotowego przebiegu\n``ssci_impedance`` — ocena niewykonana z wyjaśnieniem.\n\nWarstwa analizy (Sun 2011 / Wen 2016) odczytuje tablice Z_grid(f)/Z_conv(f)/L(f)\nz przebiegu i liczy metryki (max|L|, margines różnicy faz, częstotliwość najgorszego\nmarginesu, bliskość −1, okrążenia) z wywodem White Box jako materiał audytowy.\nWerdykt NIE jest wydawany (`ocena.status_maszynowy` = `NIE_OCENIONO`): Z_grid(f)\nsolvera liczone jest bez przekładni transformatora. Wskaźnik strefy ujemnej\nrezystancji przekształtnika (Re_min, częstotliwość) zostaje. ZERO fizyki w API.\n\n404 gdy przebieg nie istnieje; 409 gdy rodzaj przebiegu to nie ``ssci_impedance``;\n422 gdy przebieg nie niesie payloadu solvera SSCI.",
     "operationId": "get_v126_ssci_stability_api_analysis_runs__run_id__results_v126_ssci_impedance_stability_get",
     "parameters": [
      {

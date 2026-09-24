@@ -35,6 +35,17 @@ import {
 } from './atrapyV126';
 
 const karta = (kod: string) => KATALOG.find((k) => k.kod === kod)!;
+
+/** Nazwa obiektu z migawki modelu (ta sama, którą ekran pokazuje zamiast referencji). */
+function nazwaZMigawki(ref: string): string {
+  const migawka = migawkaSieciZlotej() as Record<string, unknown>;
+  for (const kolekcja of Object.values(migawka)) {
+    if (!Array.isArray(kolekcja)) continue;
+    const obiekt = (kolekcja as Array<{ ref_id?: string; name?: string }>).find((o) => o.ref_id === ref);
+    if (obiekt?.name) return obiekt.name;
+  }
+  throw new Error(`Migawka nie ma obiektu ${ref}`);
+}
 const gotowosc = (kod: string) => GOTOWOSC.analizy.find((a) => a.kod === kod)!;
 
 /** Klik natywny w kartę katalogu → widok analizy A–G. */
@@ -230,7 +241,13 @@ describe('EkranAnalizAkademickich — widok analizy A–G', () => {
     expect(g.uwagi.length).toBeGreaterThan(0);
     const uwagi = screen.getByTestId('mvd-akad-gotowosc-uwagi-lista');
     expect(uwagi).toHaveTextContent(g.uwagi[0].opis_pl);
-    expect(uwagi).toHaveTextContent('Sprzęgło Q1');
+    // Nazwa z modelu (migawka z fikstury nazw generowanej z tej samej sieci), nie ręczna
+    // kopia i nie referencja maszynowa.
+    expect(g.uwagi[0].elementy.length).toBeGreaterThan(0);
+    for (const ref of g.uwagi[0].elementy) {
+      expect(uwagi).toHaveTextContent(nazwaZMigawki(ref));
+      expect(uwagi).not.toHaveTextContent(ref);
+    }
     expect(screen.getByTestId('mvd-akad-uruchom')).toBeDisabled();
     expect(screen.getByTestId('mvd-akad-uruchom-blokada')).toHaveTextContent(S.uruchomZablokowane);
   });
@@ -396,7 +413,7 @@ describe('EkranAnalizAkademickich — ranking N-1 nieprezentowany (karta W3-E)',
       potwierdzone: ['reliability_contingency'],
       wynik: {
         indices: { saidi_min_per_year: 10.8, saifi_per_year: 0.015, caidi_min_per_interruption: 720.0, maifi_per_year: 0.0018 },
-        sanity: { status: 'zweryfikowany', checks_total: 4, checks_passed: 4, violations: [] },
+        sanity: { status: 'w paśmie wiarygodności', checks_total: 4, checks_passed: 4, violations: [] },
         ranking_n1: {
           status: 'NIEPREZENTOWANY',
           powod_pl: 'ranking liczony z prądu gałęzi bez rozpływu (V12.6); ranking kanoniczny = pełny re-solve',

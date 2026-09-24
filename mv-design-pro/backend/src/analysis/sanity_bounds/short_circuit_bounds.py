@@ -26,7 +26,12 @@ _VOLTAGE_BANDS: tuple[tuple[str, float, float, float, float], ...] = (
     ("NN", 150.0, 1000.0, 1.0, 80.0),
 )
 
-CREDIBLE = "zweryfikowany"
+#: Liczba leży w paśmie fizycznie możliwym dla poziomu napięcia. Etykieta „zweryfikowany"
+#: (do 2026-09-23) twierdziła weryfikację — wyrocznię albo pomiar — której ta kontrola NIE
+#: wykonuje: sprawdza wyłącznie pasmo wiarygodności (uczciwość natychmiastowa, audyt
+#: harmonicznych 2026-09-23). Jedna stała dla całej rodziny pasm — rozpływ i blok wiarygodności
+#: analiz V12.6 (`application/v126_artifacts.py`) biorą ją importem.
+CREDIBLE = "w paśmie wiarygodności"
 OUT_OF_RANGE = "poza zakresem wiarygodności"
 INCOMPLETE = "dane niekompletne"
 

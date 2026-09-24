@@ -237,7 +237,7 @@ def test_skanuj_py_docstring_nie_maskuje_zwyklego_literalu_pod_nim(tmp_path: Pat
 
 
 def test_wyjatki_znane_jedyny_wpis_nie_jest_osierocony() -> None:
-    # Wpis realny (v126_katalog.py:444) musi ISTNIEC i nadal PRODUKOWAC
+    # Wpis realny (v126_katalog.py:453) musi ISTNIEC i nadal PRODUKOWAC
     # trafienie w tej linii — inaczej jest martwy i nalezy go usunac.
     assert guard.wyjatki_osierocone(guard.ROOT) == []
 

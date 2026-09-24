@@ -1,7 +1,15 @@
 """Testy serwisu trajektorii FRT/HVRT z obwiednią profilu operatora (D6).
 
 Warstwa APPLICATION — bieg FROZEN solvera FRT/HVRT + obwiednia z profilu NC RfG.
-Werdykty PL WYŁĄCZNIE z pól solvera (stayed_connected / margin_to_curve_pu).
+
+Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): dawne werdykty „w obwiedni" /
+„poza obwiednią" / „moduł wypadł" z pól solvera (stayed_connected / margin_to_curve_pu)
+były tautologią — napięcie trajektorii jest ZADANE profilem wejściowym, a margines to
+min(v − 0,05) wobec tego profilu, nie wobec krzywej operatora. Każdy scenariusz niesie
+teraz rekord ``NIE_OCENIONO`` (``ocena``), a pola solvera zostają materiałem audytowym.
+Intencja zachowana: trajektoria, obwiednia, echo wejścia, wywód, determinizm, granica
+``no_module`` i stopień dowodowy — bez zmian; testy werdyktu ODWRÓCONE (żadna kombinacja
+pól solvera nie daje werdyktu).
 """
 
 from __future__ import annotations
@@ -10,11 +18,10 @@ from unittest.mock import patch
 
 import pytest
 from application.analyses.frt_trajektorie import (
-    _WERDYKT_MODUL_WYPADL,
-    _WERDYKT_POZA_OBWIEDNIA,
-    _WERDYKT_W_OBWIEDNI,
+    BRAKI_OCENY_FRT,
     KOD_GOTOWOSCI_BRAK_MODELU_DYNAMICZNEGO,
-    _verdict_pl,
+    POWOD_BRAKU_OCENY_FRT_PL,
+    WERDYKT_NIE_OCENIONO_PL,
     build_frt_trajectories_view,
 )
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile
@@ -104,19 +111,11 @@ def test_hvrt_echoes_solver_input_params() -> None:
     assert echo["fault_duration_s"] == FRT_FAULT_DURATION_S
 
 
-def test_verdict_pl_is_from_solver_fields() -> None:
-    view = build_frt_trajectories_view(_converter(), _PROFILE, "lvrt")
-    werdykt = view["scenariusze"][0]["werdykt_pl"]
-    assert werdykt in {
-        _WERDYKT_W_OBWIEDNI,
-        _WERDYKT_POZA_OBWIEDNIA,
-        _WERDYKT_MODUL_WYPADL,
-    }
-
-
-def _scenario_result(stayed_connected: bool, margin: float | None) -> FrtScenarioResult:
+def _scenario_result(
+    scenario_id: str, stayed_connected: bool, margin: float | None
+) -> FrtScenarioResult:
     return FrtScenarioResult(
-        scenario_id="s",
+        scenario_id=scenario_id,
         status="ok" if stayed_connected else "der_dropped",
         stayed_connected=stayed_connected,
         trajectory=[
@@ -126,17 +125,37 @@ def _scenario_result(stayed_connected: bool, margin: float | None) -> FrtScenari
     )
 
 
-def test_verdict_pl_module_dropped() -> None:
-    assert _verdict_pl(_scenario_result(False, 0.5)) == _WERDYKT_MODUL_WYPADL
-
-
-def test_verdict_pl_outside_envelope_when_margin_negative() -> None:
-    assert _verdict_pl(_scenario_result(True, -0.1)) == _WERDYKT_POZA_OBWIEDNIA
-
-
-def test_verdict_pl_inside_envelope_when_margin_non_negative() -> None:
-    assert _verdict_pl(_scenario_result(True, 0.0)) == _WERDYKT_W_OBWIEDNI
-    assert _verdict_pl(_scenario_result(True, None)) == _WERDYKT_W_OBWIEDNI
+# ILOCZYN CECH: rodzaj testu × pola solvera (utrzymanie w pracy × znak marginesu × brak
+# marginesu). Dawniej każda kombinacja dawała werdykt („w obwiedni" / „poza obwiednią" /
+# „moduł wypadł"); teraz ŻADNA — pola solvera zostają audytem, ocena NIE_OCENIONO.
+@pytest.mark.parametrize("kind", ["lvrt", "hvrt"])
+@pytest.mark.parametrize(
+    ("stayed_connected", "margin"),
+    [(False, 0.5), (True, -0.1), (True, 0.0), (True, None)],
+)
+def test_solver_fields_never_produce_a_verdict(
+    kind: str, stayed_connected: bool, margin: float | None
+) -> None:
+    scenario_id = f"{kind}_conv-test-der"
+    with patch(
+        "application.analyses.frt_trajektorie.FrtHvrtSolverAdapter.run",
+        return_value=FrtHvrtResult(
+            status="ok" if stayed_connected else "der_dropped",
+            scenario_results=[_scenario_result(scenario_id, stayed_connected, margin)],
+        ),
+    ):
+        view = build_frt_trajectories_view(_converter(), _PROFILE, kind)
+    sc = view["scenariusze"][0]
+    assert sc["werdykt_pl"] == WERDYKT_NIE_OCENIONO_PL
+    assert sc["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
+    assert sc["ocena"]["kryterium_id"] == f"frt_hvrt.{kind}.conv-test-der.{scenario_id}"
+    for brak in BRAKI_OCENY_FRT:
+        assert brak in sc["ocena"]["wyjasnienie"]["czego_brakuje"]
+    # Pola solvera zostają (materiał audytowy), bez interpretacji.
+    assert sc["stayed_connected"] is stayed_connected
+    assert sc["margin_to_curve_pu"] == margin
+    assert view["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
+    assert view["ocena"]["kryterium_id"] == f"frt_hvrt.{kind}.conv-test-der"
 
 
 def test_invalid_test_kind_raises_valueerror() -> None:
@@ -163,55 +182,21 @@ def test_der_and_operator_metadata_present() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_wywod_has_formula_data_substitution_and_verdict() -> None:
+def test_wywod_echo_character_and_reason_without_margin_or_verdict() -> None:
+    """Intencja zachowana: wywód {tekst, latex} per scenariusz, echo wejścia solvera na
+    początku. Zmiana kanonu: bez wzoru i podstawienia marginesu (tautologia wobec profilu
+    wejściowego) i bez kroku „Werdykt:" — ostatni krok podaje powód braku oceny."""
     view = build_frt_trajectories_view(_converter(), _PROFILE, "lvrt")
     sc = view["scenariusze"][0]
     kroki = sc["wywod"]
     assert kroki and all(set(k) == {"tekst", "latex"} for k in kroki)
-    # Wzor ogolny marginesu (LaTeX).
-    latexy = [k["latex"] for k in kroki if k["latex"]]
-    assert any(r"m_{U} = \min_{t \ge t_{z}}" in latex for latex in latexy)
-    # Podstawienie liczbowe z JUZ policzonego marginesu solvera.
-    margin = sc["margin_to_curve_pu"]
-    assert margin is not None
-    assert any(f"m_{{U}} = {margin:.6f}" in latex for latex in latexy)
-    # Kroki danych i werdyktu tekstowe (latex=None).
-    # K10: asercja na semantykę kroku (echo wejścia solvera), nie na nazwę
-    # kontraktu — treść dla inżyniera bez nazw API.
-    assert kroki[0]["latex"] is None and "echo wejscia solvera" in kroki[0]["tekst"]
-    assert kroki[-1]["latex"] is None and kroki[-1]["tekst"].startswith("Werdykt:")
-    assert sc["werdykt_pl"] in kroki[-1]["tekst"]
-
-
-def test_wywod_module_dropped_is_honest_without_margin_math() -> None:
-    from application.analyses.frt_trajektorie import _wywod_scenariusza
-
-    kroki = _wywod_scenariusza(_scenario_result(False, 0.5), None, _WERDYKT_MODUL_WYPADL)
-    # Bez podstawien marginesu — uczciwy opis wypadniecia i werdykt tekstowy.
     assert all(k["latex"] is None for k in kroki)
-    # K10: semantyka zamiast nazwy pola API — krok ma uczciwie mówić o utracie
-    # pracy ciągłej modułu.
-    assert any("nie utrzymal sie w pracy" in k["tekst"] for k in kroki)
-    assert kroki[-1]["tekst"] == f"Werdykt: {_WERDYKT_MODUL_WYPADL}."
-
-
-def test_wywod_margin_none_is_honest() -> None:
-    from application.analyses.frt_trajektorie import _wywod_scenariusza
-
-    kroki = _wywod_scenariusza(_scenario_result(True, None), None, _WERDYKT_W_OBWIEDNI)
-    # K10: semantyka zamiast nazwy pola API — krok ma uczciwie mówić o braku
-    # marginesu w wyniku solvera.
-    assert any("nie zwrocil marginesu do krzywej" in k["tekst"] for k in kroki)
-    assert kroki[-1]["tekst"] == f"Werdykt: {_WERDYKT_W_OBWIEDNI}."
-
-
-def test_wywod_negative_margin_uses_strict_inequality() -> None:
-    from application.analyses.frt_trajektorie import _wywod_scenariusza
-
-    kroki = _wywod_scenariusza(_scenario_result(True, -0.1), None, _WERDYKT_POZA_OBWIEDNIA)
-    podstawienie = [k for k in kroki if k["latex"] and "p.u." in k["latex"]][0]
-    assert "< 0" in podstawienie["latex"]
-    assert "NIESPELNIONE" in podstawienie["tekst"]
+    # K10: asercja na semantykę kroku (echo wejścia solvera), nie na nazwę kontraktu.
+    assert "echo wejscia solvera" in kroki[0]["tekst"]
+    assert any("zadane profilem wejsciowym" in k["tekst"] for k in kroki)
+    assert kroki[-1]["tekst"] == f"Ocena niewykonana: {POWOD_BRAKU_OCENY_FRT_PL}."
+    assert not any(k["tekst"].startswith("Werdykt:") for k in kroki)
+    assert not any("m_{U}" in (k["latex"] or "") for k in kroki)
 
 
 def test_no_module_status_mapped_to_blocked_at_boundary() -> None:

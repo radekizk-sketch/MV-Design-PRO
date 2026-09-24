@@ -232,7 +232,7 @@ WYJATKI_ZNANE: frozenset[tuple[str, int]] = frozenset(
         # trzy uzycia, wszystkie w `key={...}`), nigdy nie renderowany jako
         # tekst. Widoczny zapis symbolu idzie WYLACZNIE przez `symbol_latex`
         # (pole obok, patrz `WielkoscGlowna.to_dict`).
-        ("backend/src/application/analyses/v126_katalog.py", 444),
+        ("backend/src/application/analyses/v126_katalog.py", 453),
     }
 )
 

@@ -3,9 +3,14 @@
  * uczciwy stan „brak modułów DER", wczytanie katalogu operatorów i jego błąd, dobór
  * modułu (typ przekształtnika) + operatora + rodzaju testu i JAWNY bieg, uczciwy stan
  * „moduł bez typu przekształtnika" (bieg zablokowany, bez API), wykres trajektorii,
- * tabelę scenariuszy z tagiem utrzymania, werdykt całości (agregacja) oraz
+ * tabelę scenariuszy z etykietą oceny z rekordu, sekcję audytową pól solvera oraz
  * odsłanianie identyfikatorów wyłącznie w trybie eksperckim. API mockowane; moduły
  * DER czytane z realnego store'a; fixtures 1:1 z backendem.
+ *
+ * Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): werdykt FRT, baner „werdyktu
+ * całości" i odznaka sekwencji skasowane — pełny iloczyn cech „brak werdyktu" pilnuje
+ * `uczciwosc.test.tsx`; tu testy przepisane zachowują intencję (co ekran pokazuje
+ * i gdzie), odwrócone tam, gdzie przypinały fałszywy werdykt.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -16,12 +21,13 @@ import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import type { ExecutionAnalysisType, ExecutionRun, RunStatus } from '../../../../ui/study-cases/types';
 import { EkranFrt } from '../EkranFrt';
 import {
+  REKORDY_OCENY_FRT,
   katalogNcRfgFixture,
   widokBrakModeluFixture,
-  widokLvrtWObwiedniFixture,
-  widokModulWypadlFixture,
-  widokSekwencjiNiezaliczonaFixture,
-  widokSekwencjiZaliczonaFixture,
+  widokLvrtFixture,
+  widokModulOdlaczonyFixture,
+  widokSekwencjiFixture,
+  widokSekwencjiZKontekstemFixture,
 } from './fixtures';
 
 const pobierzKatalog = vi.fn();
@@ -141,7 +147,7 @@ describe('EkranFrt — moduł bez typu przekształtnika (kryterium 1)', () => {
 
 describe('EkranFrt — jawny bieg (kryterium 1)', () => {
   it('moduł z typem + operator + rodzaj → klik woła API z parametrami', async () => {
-    pobierzTrajektorie.mockResolvedValue(widokLvrtWObwiedniFixture());
+    pobierzTrajektorie.mockResolvedValue(widokLvrtFixture());
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
     expect(await screen.findByTestId('mvd-frt-wynik')).toBeInTheDocument();
@@ -153,7 +159,7 @@ describe('EkranFrt — jawny bieg (kryterium 1)', () => {
   });
 
   it('rodzaj HVRT jest przekazywany do biegu', async () => {
-    pobierzTrajektorie.mockResolvedValue(widokLvrtWObwiedniFixture());
+    pobierzTrajektorie.mockResolvedValue(widokLvrtFixture());
     await wczytajISkonfiguruj();
     fireEvent.change(screen.getByTestId('mvd-frt-rodzaj'), { target: { value: 'hvrt' } });
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
@@ -195,41 +201,46 @@ describe('EkranFrt — jawny bieg (kryterium 1)', () => {
 
 describe('EkranFrt — prezentacja wyniku (kryteria 2, 3, 4)', () => {
   it('renderuje wykres trajektorii', async () => {
-    pobierzTrajektorie.mockResolvedValue(widokLvrtWObwiedniFixture());
+    pobierzTrajektorie.mockResolvedValue(widokLvrtFixture());
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
     expect(await screen.findByTestId('mvd-frt-wykres')).toBeInTheDocument();
   });
 
-  it('tabela scenariuszy pokazuje werdykt i tag utrzymania pracy', async () => {
-    pobierzTrajektorie.mockResolvedValue(widokModulWypadlFixture());
+  // Intencja zachowana: tabela pierwszego planu i pola solvera są dostępne.
+  // Zmiana kanonu: werdykt „moduł wypadł" i tag ostrzegawczy (odwrócone) — pierwszy
+  // plan niesie etykietę oceny z rekordu, pola solvera są w sekcji audytowej bez tagów.
+  it('tabela scenariuszy: etykieta oceny z rekordu; meldunek solvera tylko w audycie, bez tagu', async () => {
+    pobierzTrajektorie.mockResolvedValue(widokModulOdlaczonyFixture());
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
     const tabela = await screen.findByTestId('mvd-wyn-tabela');
-    expect(tabela).toHaveTextContent('moduł wypadł');
-    expect(tabela).toHaveTextContent('Nie');
-    expect(screen.getAllByTestId('mvd-wyn-tag-ostrzezenie').length).toBeGreaterThan(0);
+    expect(tabela).toHaveTextContent('Ocena niewykonana');
+    expect(tabela).not.toHaveTextContent('Nie');
+    fireEvent.click(screen.getByTestId('mvd-frt-audyt-przelacz'));
+    expect(screen.getByTestId('mvd-frt-audyt-tresc')).toHaveTextContent('Nie');
+    expect(screen.queryAllByTestId('mvd-wyn-tag-ostrzezenie')).toHaveLength(0);
   });
 
-  it('werdykt całości „w obwiedni" → baner ok', async () => {
-    pobierzTrajektorie.mockResolvedValue(widokLvrtWObwiedniFixture());
+  // Odwrócone: dawny baner „werdyktu całości" (ok/err) nie istnieje; zamiast niego
+  // rekord oceny z backendu.
+  it('zamiast banera werdyktu całości — rekord oceny z backendu', async () => {
+    pobierzTrajektorie.mockResolvedValue(widokLvrtFixture());
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
-    const werdykt = await screen.findByTestId('mvd-frt-werdykt');
-    expect(werdykt.className).toContain('mvd-frt-werdykt--ok');
-    expect(werdykt).toHaveTextContent('odzwierciedla wymagania profilu');
+    await screen.findByTestId('mvd-frt-wynik');
+    expect(screen.queryByTestId('mvd-frt-werdykt')).not.toBeInTheDocument();
+    const rekord = REKORDY_OCENY_FRT.trajektoria_lvrt.widok;
+    expect(
+      screen.getByTestId(`mvd-werdykt-${rekord.kryterium_id}-zdanie`),
+    ).toHaveTextContent(rekord.wyjasnienie.zdanie_pl);
   });
 
-  it('werdykt całości „moduł wypadł" → baner błędu', async () => {
-    pobierzTrajektorie.mockResolvedValue(widokModulWypadlFixture());
-    await wczytajISkonfiguruj();
-    fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
-    const werdykt = await screen.findByTestId('mvd-frt-werdykt');
-    expect(werdykt.className).toContain('mvd-frt-werdykt--err');
-  });
-
-  it('wywód z backendu → ślad obliczeń na żądanie z wzorami KaTeX (zasada 2026-07-22)', async () => {
-    pobierzTrajektorie.mockResolvedValue(widokLvrtWObwiedniFixture());
+  // Intencja zachowana: wywód z backendu dostępny na żądanie (zasada 2026-07-22).
+  // Zmiana kanonu: wywód nie liczy marginesu ani werdyktu — echo wejścia, charakter
+  // trajektorii i powód braku oceny (same kroki tekstowe, bez wzorów).
+  it('wywód z backendu → ślad na żądanie: echo, charakter trajektorii, powód braku oceny', async () => {
+    pobierzTrajektorie.mockResolvedValue(widokLvrtFixture());
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
     await screen.findByTestId('mvd-frt-wynik');
@@ -237,17 +248,15 @@ describe('EkranFrt — prezentacja wyniku (kryteria 2, 3, 4)', () => {
     expect(screen.queryByTestId('mvd-frt-slad-0')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-frt-slad-0-btn'));
     const slad = screen.getByTestId('mvd-frt-slad-0');
-    const wzory = slad.querySelectorAll('[data-testid="math-rendered"]');
-    expect(wzory.length).toBe(2);
-    // Wzór ogólny marginesu i podstawienie liczbowe z pól solvera (LaTeX).
-    expect(wzory[0].getAttribute('data-latex')).toContain('m_{U} = \\min_{t \\ge t_{z}}');
-    expect(wzory[1].getAttribute('data-latex')).toContain('m_{U} = 0.000000');
-    // Kroki danych/werdyktu tekstowe (latex=null).
-    expect(slad).toHaveTextContent('Werdykt: w obwiedni.');
+    expect(slad.querySelectorAll('[data-testid="math-rendered"]')).toHaveLength(0);
+    expect(slad).toHaveTextContent('echo wejscia solvera');
+    expect(slad).toHaveTextContent('nie rozwiazanie sieci');
+    expect(slad).toHaveTextContent('Ocena niewykonana:');
+    expect(slad).not.toHaveTextContent('Werdykt');
   });
 
   it('brak wywodu w odpowiedzi → uczciwy brak przycisku śladu', async () => {
-    pobierzTrajektorie.mockResolvedValue(widokModulWypadlFixture());
+    pobierzTrajektorie.mockResolvedValue(widokModulOdlaczonyFixture());
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
     await screen.findByTestId('mvd-frt-wynik');
@@ -257,7 +266,7 @@ describe('EkranFrt — prezentacja wyniku (kryteria 2, 3, 4)', () => {
 
 describe('EkranFrt — tryb ekspercki (identyfikatory)', () => {
   it('tryb podstawowy ukrywa identyfikatory modułu i operatora', async () => {
-    pobierzTrajektorie.mockResolvedValue(widokLvrtWObwiedniFixture());
+    pobierzTrajektorie.mockResolvedValue(widokLvrtFixture());
     await wczytajISkonfiguruj('basic');
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
     await screen.findByTestId('mvd-frt-wynik');
@@ -265,7 +274,7 @@ describe('EkranFrt — tryb ekspercki (identyfikatory)', () => {
   });
 
   it('tryb ekspercki odsłania der_ref i operator_id', async () => {
-    pobierzTrajektorie.mockResolvedValue(widokLvrtWObwiedniFixture());
+    pobierzTrajektorie.mockResolvedValue(widokLvrtFixture());
     await wczytajISkonfiguruj('expert');
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
     await screen.findByTestId('mvd-frt-wynik');
@@ -305,7 +314,7 @@ describe('EkranFrt — sekcja „Sekwencja zapadów"', () => {
   });
 
   it('uruchomienie serializuje zapady i woła API z modułem oraz operatorem', async () => {
-    pobierzSekwencja.mockResolvedValue(widokSekwencjiZaliczonaFixture());
+    pobierzSekwencja.mockResolvedValue(widokSekwencjiFixture());
     await wczytajISkonfiguruj();
     fireEvent.change(screen.getByTestId('mvd-frt-sekw-glebokosc-0'), { target: { value: '0.3' } });
     fireEvent.change(screen.getByTestId('mvd-frt-sekw-czas-0'), { target: { value: '0.2' } });
@@ -318,13 +327,17 @@ describe('EkranFrt — sekcja „Sekwencja zapadów"', () => {
     });
   });
 
-  it('werdykt sekwencji zaliczonej → odznaka ok, założenia i tabela zapadów', async () => {
-    pobierzSekwencja.mockResolvedValue(widokSekwencjiZaliczonaFixture());
+  // Odwrócone: dawna odznaka „sekwencja w obwiedni" (ok) — sekwencja nie jest oceniana.
+  it('sekwencja: rekord oceny zamiast odznaki, założenia i tabela zapadów', async () => {
+    pobierzSekwencja.mockResolvedValue(widokSekwencjiFixture());
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
-    const werdykt = await screen.findByTestId('mvd-frt-sekw-werdykt');
-    expect(werdykt.className).toContain('mvd-frt-sekw-odznaka--ok');
-    expect(werdykt).toHaveTextContent('sekwencja w obwiedni');
+    await screen.findByTestId('mvd-frt-sekw-wynik');
+    expect(screen.queryByTestId('mvd-frt-sekw-werdykt')).not.toBeInTheDocument();
+    const rekord = REKORDY_OCENY_FRT.sekwencja_bez_kontekstu.widok;
+    expect(
+      screen.getByTestId(`mvd-werdykt-${rekord.kryterium_id}-etykieta`),
+    ).toHaveTextContent('Ocena niewykonana');
     expect(screen.getByTestId('mvd-frt-sekw-zalozenia')).toHaveTextContent(
       'nie jest modelowany',
     );
@@ -334,20 +347,21 @@ describe('EkranFrt — sekcja „Sekwencja zapadów"', () => {
     );
   });
 
-  it('werdykt sekwencji niezaliczonej → odznaka błędu i kontekst siły sieci (SCR)', async () => {
-    pobierzSekwencja.mockResolvedValue(widokSekwencjiNiezaliczonaFixture());
+  // Odwrócone: dawna odznaka „sekwencja niezaliczona — zapad 2" (err). Intencja
+  // zachowana: kontekst siły sieci (SCR) z backendu obok sekwencji.
+  it('sekwencja z kontekstem: bez odznaki werdyktu, kontekst siły sieci (SCR) z backendu', async () => {
+    pobierzSekwencja.mockResolvedValue(widokSekwencjiZKontekstemFixture());
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
-    const werdykt = await screen.findByTestId('mvd-frt-sekw-werdykt');
-    expect(werdykt.className).toContain('mvd-frt-sekw-odznaka--err');
-    expect(werdykt).toHaveTextContent('zapad 2');
+    await screen.findByTestId('mvd-frt-sekw-wynik');
+    expect(screen.queryByTestId('mvd-frt-sekw-werdykt')).not.toBeInTheDocument();
     const kontekst = screen.getByTestId('mvd-frt-sekw-kontekst-dane');
     expect(kontekst).toHaveTextContent('2,250');
     expect(kontekst).toHaveTextContent('sieć słaba');
   });
 
   it('ślad WHITE BOX kontekstu siły sieci — domyślnie zwinięty, klik odsłania kroki wywodu', async () => {
-    pobierzSekwencja.mockResolvedValue(widokSekwencjiNiezaliczonaFixture());
+    pobierzSekwencja.mockResolvedValue(widokSekwencjiZKontekstemFixture());
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
     await screen.findByTestId('mvd-frt-sekw-wynik');
@@ -370,7 +384,7 @@ describe('EkranFrt — sekcja „Sekwencja zapadów"', () => {
   });
 
   it('kontekst bez kroków śladu → brak przycisku (zero fabrykacji wywodu w UI)', async () => {
-    const widok = widokSekwencjiNiezaliczonaFixture();
+    const widok = widokSekwencjiZKontekstemFixture();
     pobierzSekwencja.mockResolvedValue({
       ...widok,
       kontekst_sily_sieci: widok.kontekst_sily_sieci
@@ -422,7 +436,7 @@ describe('EkranFrt — kontekst siły sieci sekwencji (run_id / bus_ref)', () =>
     useExecutionRunsStore.setState({
       runs: [biegFixture({ id: 'sc-done', analysis_type: 'SC_3F', status: 'DONE' })],
     });
-    pobierzSekwencja.mockResolvedValue(widokSekwencjiZaliczonaFixture());
+    pobierzSekwencja.mockResolvedValue(widokSekwencjiFixture());
     await wczytajISkonfiguruj();
     fireEvent.change(screen.getByTestId('mvd-frt-sekw-run'), { target: { value: 'sc-done' } });
     fireEvent.change(screen.getByTestId('mvd-frt-sekw-bus'), { target: { value: 'SZYNA-GPZ' } });
@@ -441,7 +455,7 @@ describe('EkranFrt — kontekst siły sieci sekwencji (run_id / bus_ref)', () =>
     useExecutionRunsStore.setState({
       runs: [biegFixture({ id: 'sc-done', analysis_type: 'SC_3F', status: 'DONE' })],
     });
-    pobierzSekwencja.mockResolvedValue(widokSekwencjiZaliczonaFixture());
+    pobierzSekwencja.mockResolvedValue(widokSekwencjiFixture());
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
     await screen.findByTestId('mvd-frt-sekw-wynik');
@@ -453,11 +467,13 @@ describe('EkranFrt — kontekst siły sieci sekwencji (run_id / bus_ref)', () =>
   });
 });
 
-describe('EkranFrt — zapis wyniku do zgodności NC RfG (K5-B / H-3 pkt 4)', () => {
-  it('„Zapisz wynik do zgodności NC RfG" zapisuje werdykt per MODUŁ (id modułu, nie typ przekształtnika)', async () => {
+describe('EkranFrt — zapis stanu oceny do zgodności NC RfG (K5-B / H-3 pkt 4)', () => {
+  // Intencja zachowana: zapis per MODUŁ (id modułu, nie typ przekształtnika).
+  // Zmiana kanonu: zapisywany jest stan oceny z rekordu (etykieta + semantyka), nie werdykt.
+  it('„Zapisz wynik do zgodności NC RfG" zapisuje stan oceny per MODUŁ (id modułu, nie typ przekształtnika)', async () => {
     const { useNcRfgStore } = await import('../../ncRfgStore');
     useNcRfgStore.getState().reset();
-    pobierzTrajektorie.mockResolvedValue(widokLvrtWObwiedniFixture());
+    pobierzTrajektorie.mockResolvedValue(widokLvrtFixture());
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
     await screen.findByTestId('mvd-frt-wynik');
@@ -467,25 +483,26 @@ describe('EkranFrt — zapis wyniku do zgodności NC RfG (K5-B / H-3 pkt 4)', ()
 
     const zapisany = useNcRfgStore.getState().wynikiFrt['der-1']?.lvrt;
     expect(zapisany).toBeDefined();
-    expect(zapisany?.istotnosc).toBe('ok');
+    expect(zapisany?.tekst).toBe('Ocena niewykonana');
+    expect(zapisany?.istotnosc).toBe('neutralna');
     expect(zapisany?.operatorId).toBe('pse');
     // Klucz to id MODUŁU (tożsamość kolumn macierzy), nie ref typu z katalogu.
     expect(useNcRfgStore.getState().wynikiFrt[DER_REF]).toBeUndefined();
     useNcRfgStore.getState().reset();
   });
 
-  it('werdykty LVRT i HVRT trwają niezależnie (dwa rodzaje testu, jeden moduł)', async () => {
+  it('stany oceny LVRT i HVRT trwają niezależnie (dwa rodzaje testu, jeden moduł)', async () => {
     const { useNcRfgStore } = await import('../../ncRfgStore');
     useNcRfgStore.getState().reset();
-    pobierzTrajektorie.mockResolvedValue(widokLvrtWObwiedniFixture());
+    pobierzTrajektorie.mockResolvedValue(widokLvrtFixture());
     await wczytajISkonfiguruj();
     fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
     await screen.findByTestId('mvd-frt-wynik');
     fireEvent.click(screen.getByTestId('mvd-frt-zapisz-wynik'));
 
-    // Drugi bieg: HVRT z werdyktem „moduł wypadł" (istotność err).
+    // Drugi bieg: HVRT, w którym solver meldował odłączenie modułu — nadal ocena niewykonana.
     pobierzTrajektorie.mockResolvedValue({
-      ...widokModulWypadlFixture(),
+      ...widokModulOdlaczonyFixture(),
       test_kind: 'hvrt',
     });
     fireEvent.change(screen.getByTestId('mvd-frt-rodzaj'), { target: { value: 'hvrt' } });
@@ -494,8 +511,10 @@ describe('EkranFrt — zapis wyniku do zgodności NC RfG (K5-B / H-3 pkt 4)', ()
     fireEvent.click(screen.getByTestId('mvd-frt-zapisz-wynik'));
 
     const wyniki = useNcRfgStore.getState().wynikiFrt['der-1'];
-    expect(wyniki?.lvrt?.istotnosc).toBe('ok');
-    expect(wyniki?.hvrt?.istotnosc).toBe('err');
+    expect(wyniki?.lvrt?.testKind).toBe('lvrt');
+    expect(wyniki?.hvrt?.testKind).toBe('hvrt');
+    expect(wyniki?.lvrt?.istotnosc).toBe('neutralna');
+    expect(wyniki?.hvrt?.istotnosc).toBe('neutralna');
     useNcRfgStore.getState().reset();
   });
 });

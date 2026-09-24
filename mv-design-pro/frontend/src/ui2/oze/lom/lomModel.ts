@@ -2,7 +2,8 @@
  * Model i adaptery okna „Praca wyspowa" (ochrona LoM, P46). Czyste, read-only
  * odwzorowanie odpowiedzi końcówki lom-protection (`../api`) na model wspólnego
  * wzorca ekranu analizy (`../../wyniki/wzorzec`): kolumny/wiersze tabeli pól,
- * sekcja założeń. Statusy pochodzą WYŁĄCZNIE z backendu (ZERO oceny w UI).
+ * sekcja założeń. Statusy i ich etykiety pochodzą WYŁĄCZNIE z rekordu werdyktu pola
+ * (`ocena.etykieta`, ZERO oceny w UI) — pole bez porównań ma etykietę „Ocena niewykonana".
  *
  * Nazwy adapterów/kolumn sufiksowane `Lom`, bo barrel OZE robi `export *`
  * (kolizja nazw TS2308). Zero fizyki, zero mutacji, zero wołań API stąd.
@@ -14,7 +15,7 @@ import type {
   WierszTabeli,
   WierszZalozenia,
 } from '../../wyniki/wzorzec/wzorzecModel';
-import { LOM_STRINGS, statusLomPL } from './strings';
+import { LOM_STRINGS } from './strings';
 
 /** Klucz kolumny identyfikatora pola (React key + wybór wiersza). */
 export const KLUCZ_WIERSZA_LOM = 'identyfikator';
@@ -33,14 +34,18 @@ export const KOLUMNY_LOM: DefinicjaKolumny[] = [
   },
 ];
 
-/** Adapter: pole LoM → wiersz tabeli wzorca (status wyłącznie z backendu). */
+/** Adapter: pole LoM → wiersz tabeli wzorca (etykieta i semantyka z rekordu pola). */
 export function mapujWierszLom(pole: PoleLom): WierszTabeli {
-  const ostrzezenie = pole.status === 'WARN' || pole.status === 'ERROR';
+  const { etykieta } = pole.ocena;
+  // Znacznik „Poza zakresem" wzorca tabeli wyłącznie dla semantyki negatywnej (naruszenie):
+  // stan ostrzegawczy rekordu (brak podstawy, brak dowodu, niejednoznaczny) nie jest
+  // przekroczeniem — nazywa go sama etykieta rekordu.
+  const ostrzezenie = etykieta.semantyka === 'negatywna';
   return {
     pole: { wartosc: pole.bay_name },
     szyna: { wartosc: pole.bus_ref },
     moduly: { wartosc: pole.generating_module_refs.length, sortKey: pole.generating_module_refs.length },
-    status: { wartosc: statusLomPL(pole.status), ostrzezenie },
+    status: { wartosc: etykieta.etykieta_pl, ostrzezenie },
     [KLUCZ_WIERSZA_LOM]: { wartosc: pole.bay_ref },
   };
 }

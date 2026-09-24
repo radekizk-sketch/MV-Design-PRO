@@ -86,8 +86,12 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # `nn_circuit_sheet.py`) — kolejne 7 ⇒ 247/39 (różnica zbiorów błędów HEAD/drzewo =
     # dokładnie te 19, zero nowych).
     # Integracja AB-1b.1a na HEAD z AB-H0 (2026-09-24): pomiar na scalonym drzewie 249/43 -> 230/36.
-    assert modul.BASELINE_ERRORS == 230
-    assert modul.BASELINE_FILES == 36
+    # 2026-09-23 (Pakiet 0): `enm/canonical_analysis.py` bez bledow typow (kolizja nazwy
+    # `result` w `_run_oltc_study` — 2x assignment; `float(object)` w
+    # `_build_power_flow_trace_steps` — 2x arg-type) ⇒ 266/46 → 262/45.
+    # Ponowne złożenie Pakietu 0 na HEAD `1b422cdd` (2026-09-24): 230/36 → 226/35.
+    assert modul.BASELINE_ERRORS == 226
+    assert modul.BASELINE_FILES == 35
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

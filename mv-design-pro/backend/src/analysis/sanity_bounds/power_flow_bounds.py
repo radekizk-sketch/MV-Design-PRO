@@ -1,7 +1,7 @@
 """Sanity-bounds dla rozpływu mocy: napięcia, obciążenia gałęzi, straty (K-08).
 
 Warstwa INTERPRETACJI (Z15), siostra ``short_circuit_bounds.py`` — ten sam
-werdykt trójstanowy (zweryfikowany / poza zakresem wiarygodności / dane
+werdykt trójstanowy (w paśmie wiarygodności / poza zakresem wiarygodności / dane
 niekompletne), ta sama zasada: czyta GOTOWY wynik solvera (rozpływu, FROZEN) i
 ocenia jego WIARYGODNOŚĆ, NIE liczy fizyki. Karta W3-G2 (KARTA_W3_KONWERGENCJA_
 FIZYKI_2026-09.md §0.17, mapa aneks D4): do tej karty ``analysis/sanity_bounds/``
@@ -31,8 +31,8 @@ Trzy niezależne oceny (§0.17, dosłownie):
 Różnica wobec ``analysis/energy_validation`` (istniejący, ODDZIELNY moduł —
 NIE duplikat, inna klasa): tamten ocenia ZGODNOŚĆ PROJEKTOWĄ (PASS/WARNING/FAIL
 wobec progów jakości 80 %/100 %/5 %/10 %, cel: czy sieć spełnia kryteria
-inżynierskie). Ten moduł ocenia KREDYBILNOŚĆ WYNIKU SOLVERA (zweryfikowany/poza
-zakresem wiarygodności/dane niekompletne, cel: czy liczba w ogóle jest
+inżynierskie). Ten moduł ocenia KREDYBILNOŚĆ WYNIKU SOLVERA (w paśmie
+wiarygodności/poza zakresem wiarygodności/dane niekompletne, cel: czy liczba w ogóle jest
 wiarygodna fizycznie, zanim trafi do pakietu OSD) — dokładnie ta sama różnica
 celu, która już istnieje między tym pakietem a ``energy_validation`` dla zwarć
 (Ik'' ma OBA: „poza zakresem wiarygodności" tutaj ORAZ osobne progi jakości

@@ -1,8 +1,15 @@
 """Testy serwisu sekwencji zapadów FRT z kontekstem siły sieci (D9).
 
 Warstwa APPLICATION — bieg FROZEN solvera FRT dla N scenariuszy LVRT w jednym
-wejściu, werdykty PL per zapad WYŁĄCZNIE z pól solvera oraz werdykt sekwencji jako
-koniunkcja. Kontekst SCR/WSCR dołączany z widoku siły sieci D1 (golden network).
+wejściu. Kontekst SCR/WSCR dołączany z widoku siły sieci D1 (golden network).
+
+Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): dawne werdykty per zapad („w
+obwiedni" / „moduł wypadł") i werdykt sekwencji jako koniunkcja („sekwencja niezaliczona —
+zapad N") były tautologią wobec profilu wejściowego (sonda audytu: zapad do 0,06 p.u.
+przez 3 s dawał „sekwencja w obwiedni"). Każdy zapad i cała sekwencja niosą rekord
+``NIE_OCENIONO``; pola solvera zostają audytem. Intencja zachowana: kolejność zapadów,
+echo wejścia, obwiednia, założenia, determinizm, walidacja, kontekst siły sieci, granica
+``no_module``, stopień dowodowy; testy werdyktu ODWRÓCONE.
 """
 
 from __future__ import annotations
@@ -12,13 +19,12 @@ from unittest.mock import patch
 import pytest
 from application.analyses.frt_sekwencja import (
     _MAX_ZAPADY,
-    _WERDYKT_SEKWENCJA_W_OBWIEDNI,
     build_frt_sekwencja_view,
 )
 from application.analyses.frt_trajektorie import (
-    _WERDYKT_MODUL_WYPADL,
-    _WERDYKT_W_OBWIEDNI,
+    BRAKI_OCENY_FRT,
     KOD_GOTOWOSCI_BRAK_MODELU_DYNAMICZNEGO,
+    WERDYKT_NIE_OCENIONO_PL,
 )
 from application.analyses.grid_strength import build_grid_strength_view
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile
@@ -32,10 +38,13 @@ from tests.cgmes.golden_enm import build_golden_enm
 
 _PROFILE = load_nc_rfg_profile("pse")
 
-# Zapad zaliczony (głębokość > 0.05 p.u.) i niezaliczony (moduł wypada, v < 0.05).
+# Zapady z utrzymaniem w pracy wg solvera (głębokość > 0.05 p.u.) i z meldunkiem
+# odłączenia (v < 0.05) — obie klasy dawniej dawały werdykt, dziś ocenę niewykonaną.
 _ZAPAD_OK = (0.30, 0.15)
 _ZAPAD_OK_2 = (0.40, 0.20)
 _ZAPAD_WYPADA = (0.02, 0.20)
+# Sonda audytu 2026-09-23: 0,06 p.u. przez 3 s — dawniej „sekwencja w obwiedni".
+_ZAPAD_SONDA = (0.06, 3.0)
 
 
 def _converter() -> ConverterType:
@@ -56,19 +65,46 @@ def _converter() -> ConverterType:
 # --------------------------------------------------------------------------
 
 
-def test_sequence_of_two_dips_has_per_dip_verdicts() -> None:
+def _sprawdz_bez_werdyktu(view: dict) -> None:
+    assert view["werdykt_sekwencji_pl"] == WERDYKT_NIE_OCENIONO_PL
+    assert view["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
+    assert view["ocena"]["kryterium_id"] == "frt_hvrt.sekwencja.conv-test-der"
+    for zapad in view["zapady"]:
+        assert zapad["werdykt_pl"] == WERDYKT_NIE_OCENIONO_PL
+        assert zapad["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
+        assert zapad["ocena"]["kryterium_id"] == (
+            f"frt_hvrt.sekwencja.conv-test-der.{zapad['scenario_id']}"
+        )
+        for brak in BRAKI_OCENY_FRT:
+            assert brak in zapad["ocena"]["wyjasnienie"]["czego_brakuje"]
+
+
+def test_sequence_of_two_dips_has_per_dip_records() -> None:
     view = build_frt_sekwencja_view(_converter(), _PROFILE, [_ZAPAD_OK, _ZAPAD_OK_2])
     assert view["liczba_zapadow"] == 2
     assert len(view["zapady"]) == 2
     for zapad in view["zapady"]:
-        assert zapad["werdykt_pl"]
         assert "glebokosc_pu" in zapad and "czas_s" in zapad
+    _sprawdz_bez_werdyktu(view)
 
 
-def test_sequence_of_three_dips_all_in_envelope() -> None:
-    view = build_frt_sekwencja_view(_converter(), _PROFILE, [_ZAPAD_OK, _ZAPAD_OK_2, _ZAPAD_OK])
-    assert all(z["werdykt_pl"] == _WERDYKT_W_OBWIEDNI for z in view["zapady"])
-    assert view["werdykt_sekwencji_pl"] == _WERDYKT_SEKWENCJA_W_OBWIEDNI
+# ILOCZYN CECH: skład sekwencji (same „utrzymane" / z meldunkiem odłączenia na różnych
+# pozycjach / sonda audytu 0,06 p.u. przez 3 s). Dawniej: „w obwiedni" albo „sekwencja
+# niezaliczona — zapad N"; teraz żaden skład nie daje werdyktu sekwencji ani zapadu.
+@pytest.mark.parametrize(
+    "zapady",
+    [
+        [_ZAPAD_OK, _ZAPAD_OK_2, _ZAPAD_OK],
+        [_ZAPAD_OK, _ZAPAD_WYPADA, _ZAPAD_OK_2],
+        [_ZAPAD_WYPADA, _ZAPAD_WYPADA],
+        [_ZAPAD_SONDA],
+    ],
+)
+def test_no_composition_of_dips_produces_a_verdict(zapady: list[tuple[float, float]]) -> None:
+    view = build_frt_sekwencja_view(_converter(), _PROFILE, zapady)
+    _sprawdz_bez_werdyktu(view)
+    assert "niezaliczona" not in str(view)
+    assert "w obwiedni" not in str(view)
 
 
 def test_dip_order_preserved() -> None:
@@ -79,21 +115,13 @@ def test_dip_order_preserved() -> None:
     assert [z["scenario_id"] for z in view["zapady"]] == ["zapad_1", "zapad_2", "zapad_3"]
 
 
-# --------------------------------------------------------------------------
-# Koniunkcja werdyktu sekwencji
-# --------------------------------------------------------------------------
-
-
-def test_sequence_fails_with_dip_number_when_one_out_of_envelope() -> None:
-    # Drugi zapad wypada (v < 0.05) → sekwencja niezaliczona z numerem zapadu.
-    view = build_frt_sekwencja_view(_converter(), _PROFILE, [_ZAPAD_OK, _ZAPAD_WYPADA, _ZAPAD_OK_2])
-    assert view["zapady"][1]["werdykt_pl"] == _WERDYKT_MODUL_WYPADL
-    assert view["werdykt_sekwencji_pl"] == "sekwencja niezaliczona — zapad 2"
-
-
-def test_sequence_reports_first_failing_dip() -> None:
-    view = build_frt_sekwencja_view(_converter(), _PROFILE, [_ZAPAD_WYPADA, _ZAPAD_WYPADA])
-    assert view["werdykt_sekwencji_pl"] == "sekwencja niezaliczona — zapad 1"
+def test_solver_disconnect_report_stays_audit_field() -> None:
+    """Meldunek solvera o odłączeniu (v < 0,05 p.u.) zostaje polem audytowym zapadu —
+    bez interpretacji w werdykt (dawniej „moduł wypadł" i „sekwencja niezaliczona")."""
+    view = build_frt_sekwencja_view(_converter(), _PROFILE, [_ZAPAD_OK, _ZAPAD_WYPADA])
+    assert view["zapady"][0]["stayed_connected"] is True
+    assert view["zapady"][1]["stayed_connected"] is False
+    _sprawdz_bez_werdyktu(view)
 
 
 # --------------------------------------------------------------------------
@@ -130,7 +158,10 @@ def test_envelope_matches_operator_lvrt_profile() -> None:
 def test_zalozenia_pl_documents_between_dip_limitation() -> None:
     view = build_frt_sekwencja_view(_converter(), _PROFILE, [_ZAPAD_OK])
     assert "MIĘDZY zapadami" in view["zalozenia_pl"]
-    assert "niezależnie" in view["zalozenia_pl"]
+    # Zmiana kanonu (2026-09-23): dawne „każdy zapad oceniany niezależnie" → zapady liczone
+    # od stanu ustalonego i NIEoceniane (trajektoria zadana profilem wejściowym).
+    assert "od stanu ustalonego" in view["zalozenia_pl"]
+    assert "nie są oceniane" in view["zalozenia_pl"]
 
 
 # --------------------------------------------------------------------------

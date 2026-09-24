@@ -36,7 +36,7 @@ export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
       lower_ka: 0.1,
       upper_ka: 50.0,
       in_range: true,
-      status: 'zweryfikowany',
+      status: 'w paśmie wiarygodności',
       why_pl: "Ik'' = 12.5 kA mieści się w zakresie [0.1; 50.0] kA dla SN (15.0 kV).",
       blocks_osd_package: false,
     },
@@ -315,7 +315,7 @@ export const PASMA_ROZPLYWU_FIXTURE: PasmaRozplywuResponse = {
         upper_kv: 16.5,
         deviation_pct: 1.3333,
         in_range: true,
-        status: 'zweryfikowany',
+        status: 'w paśmie wiarygodności',
         why_pl: 'U = 15.2 kV mieści się w paśmie [13.500; 16.500] kV (Un = 15.0 kV ± 10 %).',
       },
       {
@@ -348,7 +348,7 @@ export const PASMA_ROZPLYWU_FIXTURE: PasmaRozplywuResponse = {
         rated_current_a: 400.0,
         loading_pct: 25.0,
         in_range: true,
-        status: 'zweryfikowany',
+        status: 'w paśmie wiarygodności',
         why_pl: 'I = 0.1000 kA nie przekracza In = 0.4000 kA (obciążenie 25.0 %).',
       },
       {
@@ -375,7 +375,7 @@ export const PASMA_ROZPLYWU_FIXTURE: PasmaRozplywuResponse = {
       + 'projektowa) — powyżej niej wynik prawdopodobnie sygnalizuje błąd modelu (zawyżona '
       + 'impedancja gałęzi, błędna topologia), a nie rzeczywistą fizykę sieci.',
     in_range: true,
-    status: 'zweryfikowany',
+    status: 'w paśmie wiarygodności',
     why_pl:
       'Straty czynne 0.0500 MW = 1.00 % sumy mocy czynnej odbiorów (5.0000 MW) — poniżej progu '
       + 'wiarygodności 10.0 %.',

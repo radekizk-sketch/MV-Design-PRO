@@ -37,6 +37,11 @@ import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { opisSwiezosci } from '../../freshness';
 import { InformacjeAudytowe, PrzyciskAkcjiStanu, useAkcjaPrzejdzDoPrzypadkow } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
+import {
+  OcenaNiewykonana,
+  SekcjaAudytowa,
+  type RekordOcenyNiewykonanej,
+} from '../wzorzec/OcenaNiewykonana';
 import { MathBlock, MathInline } from '../../../ui/proof';
 import {
   pobierzDowod,
@@ -76,6 +81,7 @@ import {
   SCIEZKA_BRAKOW,
   SCIEZKA_WIARYGODNOSCI,
   odczytaj,
+  type SekcjaAudytowaRodzaju,
   type TabelaObiektow,
 } from './prezentacja';
 import { rodzajPrezentowany, type RodzajPrezentowany } from './nieprezentowane';
@@ -880,6 +886,24 @@ function SekcjaZakres({ karta }: { karta: KartaKatalogu }) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Czy wartość z odpowiedzi jest rekordem oceny niewykonanej — rekord K kontraktu werdyktu
+ * (identyfikator kryterium, status `NIE_OCENIONO`, wyjaśnienie ze zdaniem). Kształt, nie ocena.
+ */
+function czyRekordOceny(wartosc: unknown): wartosc is RekordOcenyNiewykonanej {
+  if (typeof wartosc !== 'object' || wartosc === null) return false;
+  const rekord = wartosc as {
+    kryterium_id?: unknown;
+    status_maszynowy?: unknown;
+    wyjasnienie?: { zdanie_pl?: unknown } | null;
+  };
+  return (
+    typeof rekord.kryterium_id === 'string'
+    && rekord.status_maszynowy === 'NIE_OCENIONO'
+    && typeof rekord.wyjasnienie?.zdanie_pl === 'string'
+  );
+}
+
+/**
  * Wynik oceny analizy — CYTAT pola statusu z odpowiedzi solvera. Zero ocen w UI:
  * dla oceny zbiorczej okno zlicza wystąpienia wartości statusu (jak licznik
  * wierszy tabeli), a nie porównuje liczb z progiem. Podstawa oceny pochodzi
@@ -889,6 +913,23 @@ function PanelWerdyktu({ rodzaj, payload, karta }: { rodzaj: string; payload: un
   const projekt = PREZENTACJA[rodzaj as RodzajPrezentowany];
   if (!projekt) return null;
   const w = projekt.werdykt;
+
+  // Uczciwość natychmiastowa: rodzaj bez oceny — rekord `NIE_OCENIONO` z backendu
+  // wprost (zdanie, braki, akcja); bez chipu werdyktu i bez wierszy podstawy oceny,
+  // bo ocena wobec tej podstawy NIE została wykonana.
+  if (w.rodzaj === 'ocena') {
+    const rekord = odczytaj(payload, w.sciezka);
+    return (
+      <section className="mvd-akad-sekcja mvd-akad-werdykt" data-testid="mvd-akad-werdykt">
+        <h3 className="mvd-akad-sekcja-tytul">{S.ocenaTytul}</h3>
+        {czyRekordOceny(rekord) ? (
+          <OcenaNiewykonana ocena={rekord} testid="mvd-akad-ocena" />
+        ) : (
+          <Chip tekst={S.werdyktBrak} istotnosc="neutral" testid="mvd-akad-werdykt-chip" />
+        )}
+      </section>
+    );
+  }
 
   let tresc: React.ReactNode;
   if (w.rodzaj === 'pojedynczy') {
@@ -1172,6 +1213,54 @@ function PanelWiarygodnosci({ payload }: { payload: unknown }) {
         </ul>
       )}
     </section>
+  );
+}
+
+/**
+ * Sekcja audytowa rodzaju z oceną niewykonaną — liczby solvera, który NIE jest podstawą
+ * oceny, pod nagłówkiem Z BACKENDU, zwinięte na starcie. Mieści powody niezwalidowania,
+ * tabele obiektów, blok wiarygodności oraz (przez `children`) ślad, dowód, raport
+ * i zapis techniczny — każdy z nich niesie te same liczby. Odpowiedź bez nagłówka
+ * (bieg sprzed uczciwości natychmiastowej) → artefakty renderowane bez sekcji.
+ */
+function PanelAudytu({
+  sekcja,
+  payload,
+  nazwaObiektu,
+  children,
+}: {
+  sekcja: SekcjaAudytowaRodzaju;
+  payload: unknown;
+  nazwaObiektu: (ref: string) => string;
+  children: React.ReactNode;
+}) {
+  const naglowek = odczytaj(payload, sekcja.naglowekSciezka);
+  const powodySurowe = odczytaj(payload, sekcja.powodySciezka);
+  const powody = Array.isArray(powodySurowe) ? powodySurowe.map(String) : [];
+  if (typeof naglowek !== 'string') return <>{children}</>;
+  return (
+    <SekcjaAudytowa naglowek={naglowek} testid="mvd-akad-audyt">
+      {powody.length > 0 && (
+        <section className="mvd-akad-sekcja" data-testid="mvd-akad-audyt-powody">
+          <h3 className="mvd-akad-sekcja-tytul">{S.audytPowodyTytul}</h3>
+          <ul className="mvd-akad-naruszenia">
+            {powody.map((powod) => (
+              <li key={powod}>{powod}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {sekcja.tabele.map((tabela) => (
+        <PanelObiektow
+          key={tabela.sciezka}
+          tabela={tabela}
+          payload={payload}
+          nazwaObiektu={nazwaObiektu}
+        />
+      ))}
+      <PanelWiarygodnosci payload={{ sanity: odczytaj(payload, sekcja.wiarygodnoscSciezka) }} />
+      {children}
+    </SekcjaAudytowa>
   );
 }
 
@@ -1971,10 +2060,28 @@ export function EkranAnalizAkademickich({
                   <p className="mvd-akad-opis">{PREZENTACJA[wybrany as RodzajPrezentowany].nastepnyKrok}</p>
                 </section>
               )}
-              <PanelSladu slad={stan.dane.slad} />
-              <PanelDowodu dowod={stan.dane.dowod} />
-              <PanelRaportu raport={stan.dane.raport} />
-              <PanelZapisuTechnicznego wynik={stan.dane.wynik} />
+              {(() => {
+                const artefakty = (
+                  <>
+                    <PanelSladu slad={stan.dane.slad} />
+                    <PanelDowodu dowod={stan.dane.dowod} />
+                    <PanelRaportu raport={stan.dane.raport} />
+                    <PanelZapisuTechnicznego wynik={stan.dane.wynik} />
+                  </>
+                );
+                const sekcjaAudytowa = PREZENTACJA[wybrany as RodzajPrezentowany]?.sekcjaAudytowa;
+                return sekcjaAudytowa ? (
+                  <PanelAudytu
+                    sekcja={sekcjaAudytowa}
+                    payload={stan.dane.wynik.result.result}
+                    nazwaObiektu={nazwaObiektu}
+                  >
+                    {artefakty}
+                  </PanelAudytu>
+                ) : (
+                  artefakty
+                );
+              })()}
             </div>
           )}
         </>

@@ -1,14 +1,19 @@
-"""Serwis aplikacyjny: trajektorie FRT/HVRT modułu OZE z obwiednią profilu operatora.
+"""Serwis aplikacyjny: trajektorie FRT/HVRT modułu OZE z WYMAGANĄ obwiednią profilu operatora.
 
 Warstwa APPLICATION (ZERO fizyki). Dla wskazanego modułu DER (typ katalogowy
 przekształtnika) i profilu operatora NC RfG:
 - uruchamia FROZEN solver ``FrtHvrtSolverAdapter`` (``network_model.solvers.frt_hvrt``)
-  przez współdzieloną budowę wejścia ``build_frt_hvrt_input`` (ta sama ścieżka co
-  ``ncrfg_compliance.checker``),
-- dokłada OBWIEDNIĘ profilu operatora — punkty krzywej LVRT/HVRT (czas→napięcie)
-  z ``NcRfgProfile.voltage_levels`` (``catalog.profiles.nc_rfg.loader``),
-- buduje werdykt PL per scenariusz WYŁĄCZNIE z pól solvera (``stayed_connected`` /
-  ``margin_to_curve_pu``) — bez własnej oceny numerycznej.
+  przez współdzieloną budowę wejścia ``build_frt_hvrt_input``,
+- dokłada obwiednię profilu operatora — punkty krzywej LVRT/HVRT (czas→napięcie)
+  z ``NcRfgProfile.voltage_levels`` (``catalog.profiles.nc_rfg.loader``) — WYŁĄCZNIE jako
+  informację o wymaganiu,
+- NIE wydaje werdyktu: trajektoria solvera jest funkcją ZADANĄ scenariuszem (napięcie =
+  profil wejściowy), a „utrzymanie pracy" i „margines do krzywej" liczy on z kryterium
+  v > 0,05 p.u. wobec TEGO SAMEGO profilu wejściowego — tautologia (sonda audytu
+  2026-09-23: zapad do 0,06 p.u. przez 3 s był uznawany za dotrzymanie obwiedni). Każdy
+  scenariusz i widok niosą rekord kontraktu werdyktu (`ocena`, ``werdykt.OcenaKryterium``
+  o statusie ``NIE_OCENIONO`` z podstawą = obwiednia profilu z jej stanem źródła), a pola
+  solvera zostają w odpowiedzi jako materiał audytowy (sekcja `sekcja_audytowa_pl`).
 
 Odwzorowania (plik:linia w kodzie źródłowym):
 - trajektoria + status + margines ← ``FrtScenarioResult``
@@ -23,11 +28,13 @@ from __future__ import annotations
 from typing import Any, Literal, cast
 
 from application.ncrfg_compliance.frt_input import build_frt_hvrt_input
+from application.ocena_niewykonana import ocena_niewykonana, rekord_json
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from network_model.catalog.types import ConverterType
 from network_model.solvers.frt_hvrt import FrtHvrtSolverAdapter
-from network_model.solvers.frt_hvrt.contracts import FrtHvrtResult, FrtScenario, FrtScenarioResult
+from network_model.solvers.frt_hvrt.contracts import FrtHvrtResult, FrtScenario
 from solver_input.provenance import classify_dynamic_capability
+from werdykt import ClaimKind, PodstawaWymagania, Przedmiot, ZakresWaznosci
 
 # Zaokrąglenie wartości wyjściowych — determinizm i czytelność.
 _ROUND = 6
@@ -67,31 +74,138 @@ def _widok_bez_modelu_dynamicznego(
     }
 
 
-# Werdykty PL per scenariusz — WYŁĄCZNIE z pól solvera.
-_WERDYKT_W_OBWIEDNI = "w obwiedni"
-_WERDYKT_POZA_OBWIEDNIA = "poza obwiednią"
-_WERDYKT_MODUL_WYPADL = "moduł wypadł"
+#: Wartość dawnego pola werdyktu (kontrakt `str` zachowany) — JEDYNA do czasu biegu
+#: dynamiki na silniku kanonicznym. Dawne „w obwiedni / poza obwiednią / moduł wypadł"
+#: skasowane (tautologia kryterium v > 0,05 p.u. wobec profilu wejściowego).
+WERDYKT_NIE_OCENIONO_PL = "nie oceniono"
+
+#: Nagłówek sekcji audytowej pól solvera (trajektoria, utrzymanie, margines, odzysk).
+SEKCJA_AUDYTOWA_FRT_PL = (
+    "Wynik uproszczonego solvera trajektorii — nie jest wynikiem inżynierskim "
+    "(napięcie zadane profilem wejściowym, kryterium utrzymania wobec tego samego profilu)"
+)
+
+#: Powód braku oceny — JEDNO miejsce dla wywodu scenariusza, braków rekordu i wykluczeń
+#: zakresu ważności (tekst o stanie solvera, nie werdykt).
+POWOD_BRAKU_OCENY_FRT_PL = (
+    "trajektoria obecnego solvera nie jest rozwiązaniem sieci — napięcie jest zadane profilem "
+    "wejściowym scenariusza, a kryterium v > 0,05 p.u. liczone wobec tego samego profilu jest "
+    "tautologią (sonda audytu 2026-09-23: zapad do 0,06 p.u. trwający 3 s był uznawany za "
+    "dotrzymanie obwiedni)"
+)
+#: Konkretne braki powierzchni FRT (po brakach nazwanych przez regułę K) — co trzeba dostarczyć.
+BRAKI_OCENY_FRT: tuple[str, ...] = (
+    "Bieg dynamiki RMS modułu na silniku kanonicznym z modelem sieci, zweryfikowany wyrocznią "
+    "— " + POWOD_BRAKU_OCENY_FRT_PL + ".",
+    "Ocena trajektorii z rozwiązania sieci wobec obwiedni profilu operatora i nastaw "
+    "zabezpieczeń modułu.",
+    "Do czasu biegu kanonicznego: certyfikat albo raport z badań modułu wykazujący zdolność "
+    "przejścia przez zakłócenie (trajektoria tego okna nie jest takim dowodem).",
+)
+#: Wykluczenia zakresu ważności trajektorii (wchodzą do zastrzeżeń rekordu).
+WYKLUCZENIA_TRAJEKTORII_FRT: tuple[str, ...] = (
+    "trajektoria wyznaczona z rozwiązania sieci",
+    "kryterium utrzymania pracy niezależne od profilu wejściowego",
+)
+#: Stopień dowodowy trajektorii — z rejestru zdolności dynamicznych (jedno źródło).
+_ZDOLNOSC_TRAJEKTORII = "frt_hvrt.trajectory"
+_NAZWA_RODZAJU_PL = {
+    "lvrt": "Zdolność przejścia przez zapad napięcia (LVRT) nad obwiednią profilu operatora",
+    "hvrt": "Zdolność przejścia przez wzrost napięcia (HVRT) pod obwiednią profilu operatora",
+}
+
+
+def _podstawa_obwiedni(profile: NcRfgProfile, rodzaj: Literal["lvrt", "hvrt"]) -> PodstawaWymagania:
+    """Podstawa kryterium FRT = obwiednia z profilu operatora, ze stanem źródła NAZWANYM wprost.
+
+    Profil operatora nie wskazuje dokumentu źródłowego obwiedni (wydania ani jednostki
+    redakcyjnej), więc podstawa ma rodzaj ``NIEUSTALONA`` i stan ``NIEUSTALONE`` — kontrakt
+    werdyktu nie pozwala podnieść stanu bez dokumentu. Tożsamość podstawy (operator, rewizja
+    pliku profilu, rodzaj obwiedni) pochodzi z danych profilu, nie jest dopisana ręcznie.
+    """
+    return PodstawaWymagania(
+        rodzaj="NIEUSTALONA",
+        dokument=(
+            f"Profil wymagań przyłączeniowych operatora {profile.operator_name_pl}, rewizja pliku "
+            f"{profile.last_revision} — obwiednia {rodzaj.upper()}"
+        ),
+        status="NIEUSTALONE",
+        uwagi_pl=(
+            "profil nie wskazuje dokumentu źródłowego obwiedni — wydanie i jednostka "
+            "redakcyjna nieustalone"
+        ),
+    )
+
+
+def ocena_frt_niewykonana(
+    *,
+    converter: ConverterType,
+    profile: NcRfgProfile,
+    rodzaj: Literal["lvrt", "hvrt"],
+    kryterium_id: str,
+    opis_przedmiotu_pl: str,
+) -> dict[str, Any]:
+    """Rekord ``NIE_OCENIONO`` (``werdykt.OcenaKryterium``) trajektorii albo sekwencji FRT.
+
+    Podstawa kryterium = obwiednia profilu operatora (``_podstawa_obwiedni``); dowód
+    ``BRAK_METODY`` na zdolności o poziomie z rejestru (trajektoria MVP); model przekształtnika
+    bez walidacji (``UNVALIDATED_MODEL``).
+    """
+    podstawa = _podstawa_obwiedni(profile, rodzaj)
+    ewidencja = classify_dynamic_capability(_ZDOLNOSC_TRAJEKTORII)
+    return rekord_json(
+        ocena_niewykonana(
+            kryterium_id=kryterium_id,
+            przedmiot=Przedmiot(
+                element_ref=converter.id,
+                nazwa_pl=converter.name,
+                opis_pl=opis_przedmiotu_pl,
+            ),
+            opis_kryterium_pl=_NAZWA_RODZAJU_PL[rodzaj],
+            podstawa=podstawa,
+            powod_stosowalnosci_pl=(
+                "obwiednia "
+                + rodzaj.upper()
+                + " z profilu operatora "
+                + profile.operator_name_pl
+                + " dla badanego modułu DER (stosowalność wg typu modułu rozstrzyga ocena "
+                "zgodności NC RfG)"
+            ),
+            rodzaj_twierdzenia=ClaimKind.DYNAMIC_PERFORMANCE,
+            poziom=ewidencja.tier,
+            status_modelu="UNVALIDATED_MODEL",
+            zakres_waznosci=ZakresWaznosci(
+                opis_pl=(
+                    "Trajektoria uproszczonego solvera prób FRT/HVRT — napięcie zadane profilem "
+                    "wejściowym scenariusza"
+                ),
+                technologia=converter.kind.value,
+                wykluczenia=WYKLUCZENIA_TRAJEKTORII_FRT,
+            ),
+            powod_braku_niepewnosci_pl=(
+                "brak wielkości rozstrzygającej — trajektoria nie jest wynikiem oceny, więc "
+                "niepewność wyniku nie dotyczy"
+            ),
+            czego_brakuje=BRAKI_OCENY_FRT,
+        )
+    )
+
 
 _VALID_TEST_KINDS = ("lvrt", "hvrt")
 
 
+def opis_obwiedni_wymaganej(rodzaj: str) -> str:
+    """Opis obwiedni profilu — informacja o WYMAGANIU, nigdy podstawa oceny."""
+    return (
+        "Wymagana obwiednia "
+        + rodzaj.upper()
+        + " profilu operatora (informacja): dozwolony przebieg napięcia (czas→napięcie) wg "
+        "profilu NC RfG — nie jest podstawą oceny, bo trajektoria nie jest rozwiązaniem sieci."
+    )
+
+
 def _round(value: float) -> float:
     return round(float(value), _ROUND)
-
-
-def _verdict_pl(scenario_result: FrtScenarioResult) -> str:
-    """Werdykt PL na podstawie pól solvera (bez własnej oceny numerycznej).
-
-    - ``stayed_connected`` == False → „moduł wypadł",
-    - margines do krzywej < 0 → „poza obwiednią" (solver umieścił trajektorię pod krzywą),
-    - w przeciwnym razie → „w obwiedni".
-    """
-    if not scenario_result.stayed_connected:
-        return _WERDYKT_MODUL_WYPADL
-    margin = scenario_result.margin_to_curve_pu
-    if margin is not None and margin < 0:
-        return _WERDYKT_POZA_OBWIEDNIA
-    return _WERDYKT_W_OBWIEDNI
 
 
 def _krok(tekst: str, latex: str | None = None) -> dict[str, Any]:
@@ -103,16 +217,13 @@ def _krok(tekst: str, latex: str | None = None) -> dict[str, Any]:
     return {"tekst": tekst, "latex": latex}
 
 
-def _wywod_scenariusza(
-    scenario_result: FrtScenarioResult,
-    scenario: FrtScenario | None,
-    werdykt: str,
-) -> list[dict[str, Any]]:
-    """Wywod dyplomowy scenariusza: wzor marginesu -> dane -> podstawienie -> werdykt.
+def _wywod_scenariusza(scenario: FrtScenario | None) -> list[dict[str, Any]]:
+    """Wywód scenariusza: echo wejścia → charakter trajektorii → ocena niewykonana.
 
-    Czysty formatter (ZERO fizyki): wszystkie liczby pochodza z pol JUZ policzonych
-    przez FROZEN solver (``margin_to_curve_pu``, ``stayed_connected``) i z echa
-    wejscia solvera (zapad, czas trwania). Formaty stale (determinizm), ASCII-PL.
+    Czysty formatter (ZERO fizyki, ZERO werdyktu): liczby pochodzą z echa wejścia solvera
+    (zapad/wzrost, czas trwania). Dawny wywód „wzór marginesu → podstawienie → SPEŁNIONE"
+    skasowany — margines solvera to min(v − 0,05) liczony wobec profilu wejściowego, nie
+    wobec krzywej profilu operatora. Formaty stałe (determinizm), ASCII-PL.
     """
     kroki: list[dict[str, Any]] = []
     if scenario is not None:
@@ -123,58 +234,13 @@ def _wywod_scenariusza(
                 f"przez {scenario.fault_duration_s:.4f} s (echo wejscia solvera prob FRT/HVRT)."
             )
         )
-    if not scenario_result.stayed_connected:
-        kroki.append(
-            _krok(
-                "Dane: modul nie utrzymal sie w pracy podczas zaklocenia "
-                "(pole wyniku solvera) — marginesy nie podlegaja ocenie."
-            )
-        )
-        kroki.append(_krok(f"Werdykt: {werdykt}."))
-        return kroki
     kroki.append(
         _krok(
-            "Wzor: margines napieciowy trajektorii wzgledem krzywej minimalnej "
-            "(minimum roznicy napiecia trajektorii i krzywej od poczatku zaklocenia)",
-            r"m_{U} = \min_{t \ge t_{z}}\bigl(u(t) - u_{kr}(t)\bigr)",
+            "Trajektoria: napiecie zadane profilem wejsciowym scenariusza (nie rozwiazanie "
+            "sieci); prad bierny i moc czynna z odpowiedzi inercyjnej uproszczonego modelu."
         )
     )
-    margin_pu = scenario_result.margin_to_curve_pu
-    if margin_pu is None:
-        kroki.append(
-            _krok(
-                "Dane: solver nie zwrocil marginesu do krzywej (brak wartosci w "
-                "wyniku) — werdykt na podstawie utrzymania sie modulu w pracy."
-            )
-        )
-        kroki.append(_krok(f"Werdykt: {werdykt}."))
-        return kroki
-    kroki.append(
-        _krok(
-            f"Dane: margines z wyniku solvera m_U = {margin_pu:.6f} p.u., "
-            f"liczba punktow trajektorii: "
-            f"{len(scenario_result.trajectory)}."
-        )
-    )
-    spelnione = margin_pu >= 0
-    znak_latex = r"\ge" if spelnione else "<"
-    znak_ascii = ">=" if spelnione else "<"
-    kroki.append(
-        _krok(
-            f"Podstawienie: warunek utrzymania w obwiedni m_U >= 0: "
-            f"{margin_pu:.6f} {znak_ascii} 0 "
-            f"{'SPELNIONE' if spelnione else 'NIESPELNIONE'}",
-            rf"m_{{U}} = {margin_pu:.6f}\ \text{{p.u.}} {znak_latex} 0",
-        )
-    )
-    if scenario_result.p_recovery_time_s is not None:
-        kroki.append(
-            _krok(
-                f"Dane: czas odzysku mocy czynnej po zakloceniu t_odz = "
-                f"{scenario_result.p_recovery_time_s:.6f} s (pole wyniku solvera)."
-            )
-        )
-    kroki.append(_krok(f"Werdykt: {werdykt}."))
+    kroki.append(_krok(f"Ocena niewykonana: {POWOD_BRAKU_OCENY_FRT_PL}."))
     return kroki
 
 
@@ -258,10 +324,11 @@ def build_frt_trajectories_view(
             }
             for pt in sc.trajectory
         ]
-        werdykt = _verdict_pl(sc)
         scenariusze.append(
             {
                 "scenario_id": sc.scenario_id,
+                # Pola solvera poniżej (status, utrzymanie, marginesy, odzysk) są
+                # materiałem AUDYTOWYM — tautologia wobec profilu wejściowego.
                 "status": sc.status,
                 "stayed_connected": sc.stayed_connected,
                 "margin_to_curve_s": (
@@ -273,13 +340,23 @@ def build_frt_trajectories_view(
                 "p_recovery_time_s": (
                     None if sc.p_recovery_time_s is None else _round(sc.p_recovery_time_s)
                 ),
-                "werdykt_pl": werdykt,
+                "werdykt_pl": WERDYKT_NIE_OCENIONO_PL,
+                "ocena": ocena_frt_niewykonana(
+                    converter=converter,
+                    profile=profile,
+                    rodzaj=kind,
+                    kryterium_id=f"frt_hvrt.{kind}.{converter.id}.{sc.scenario_id}",
+                    opis_przedmiotu_pl=(
+                        f"Moduł DER {converter.name} w scenariuszu {sc.scenario_id} testu "
+                        f"{kind.upper()} profilu operatora {profile.operator_name_pl}"
+                    ),
+                ),
                 "liczba_punktow_trajektorii": len(trajektoria),
                 # Ślad WHITE BOX — parametry wejścia solvera dla tego scenariusza.
                 "wejscie_solvera": _wejscie_solvera_echo(scenarios_by_id.get(sc.scenario_id)),
-                # Addytywny wywod dyplomowy {tekst, latex} (zasada KaTeX 2026-07-22)
-                # — margines wzgledem obwiedni z pol JUZ policzonych przez solver.
-                "wywod": _wywod_scenariusza(sc, scenarios_by_id.get(sc.scenario_id), werdykt),
+                # Wywód {tekst, latex} (zasada KaTeX 2026-07-22): echo wejścia, charakter
+                # trajektorii i powód braku oceny — bez marginesu i bez werdyktu.
+                "wywod": _wywod_scenariusza(scenarios_by_id.get(sc.scenario_id)),
                 "trajektoria": trajektoria,
             }
         )
@@ -293,14 +370,20 @@ def build_frt_trajectories_view(
         # funkcją zadaną parametryzowaną scenariuszem, nie rozwiązaniem sieci —
         # UNVALIDATED_MODEL, nieprzydatne jako dowód regulacyjny (fail-closed).
         "ocena_dowodowa": classify_dynamic_capability("frt_hvrt.trajectory").to_dict(),
+        "ocena": ocena_frt_niewykonana(
+            converter=converter,
+            profile=profile,
+            rodzaj=kind,
+            kryterium_id=f"frt_hvrt.{kind}.{converter.id}",
+            opis_przedmiotu_pl=(
+                f"Moduł DER {converter.name} w teście {kind.upper()} profilu operatora "
+                f"{profile.operator_name_pl}"
+            ),
+        ),
+        "sekcja_audytowa_pl": SEKCJA_AUDYTOWA_FRT_PL,
         "obwiednia_profilu": {
             "rodzaj": kind,
-            "opis": (
-                "Krzywa "
-                + kind.upper()
-                + " operatora: dozwolony przebieg napięcia (czas→napięcie) "
-                "wg profilu NC RfG."
-            ),
+            "opis": opis_obwiedni_wymaganej(kind),
             "punkty": obwiednia,
         },
         "scenariusze": scenariusze,

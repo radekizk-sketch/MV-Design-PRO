@@ -13,6 +13,11 @@ testy jako ILOCZYN CECH {napięcie w paśmie / poza} × {In katalogu obecne / br
 przypadku bazowego (golden PF run) — dowodzi też, że osie są NIEZALEŻNE
 (zmiana jednej nie zmienia werdyktu pozostałych, reguła KLASA NIE INSTANCJA
 „predykaty parami").
+
+Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): status wyniku w paśmie to
+„w paśmie wiarygodności" (dawniej „zweryfikowany") — kontrola sprawdza wyłącznie, czy
+liczba leży w paśmie fizycznie możliwym, nie jest weryfikacją wyrocznią. Intencja
+wszystkich asercji bez zmian.
 """
 
 from __future__ import annotations
@@ -93,7 +98,7 @@ def test_credible_ikss_within_sn_band() -> None:
     assert item["element_id"] == "bus_sn"
     assert item["voltage_band"] == "SN"
     assert item["ikss_ka"] == pytest.approx(8.0)
-    assert item["status"] == "zweryfikowany"
+    assert item["status"] == "w paśmie wiarygodności"
     assert item["in_range"] is True
     assert item["blocks_osd_package"] is False
 
@@ -220,7 +225,7 @@ def test_real_short_circuit_run_produces_verdicts() -> None:
     # Y_Q = 1/Z_Q) wszystkie węzły sieci wzorcowej mieszczą się w granicach
     # wiarygodności, więc pakiet OSD nie jest blokowany. Ścieżkę werdyktu
     # „poza zakresem" pokrywa test syntetyczny (116 kA na SN 15 kV) wyżej.
-    assert statuses == {"zweryfikowany"}
+    assert statuses == {"w paśmie wiarygodności"}
     assert view["summary"]["blocks_osd_package_count"] == 0
 
 
@@ -268,7 +273,7 @@ def test_pf_real_run_all_dimensions_credible() -> None:
     assert view["analysis_id"] == str(run.id)
     assert view["converged"] is True
     assert len(view["napiecia"]["items"]) >= 5
-    assert {item["status"] for item in view["napiecia"]["items"]} == {"zweryfikowany"}
+    assert {item["status"] for item in view["napiecia"]["items"]} == {"w paśmie wiarygodności"}
     assert view["napiecia"]["summary"] == {
         "credible_count": len(view["napiecia"]["items"]),
         "out_of_range_count": 0,
@@ -277,8 +282,8 @@ def test_pf_real_run_all_dimensions_credible() -> None:
     assert view["napiecia"]["band_pct"] == 10.0
     assert "PN-EN 50160" in view["napiecia"]["norm_ref"]
     assert len(view["obciazenia"]["items"]) >= 1
-    assert {item["status"] for item in view["obciazenia"]["items"]} == {"zweryfikowany"}
-    assert view["straty"]["status"] == "zweryfikowany"
+    assert {item["status"] for item in view["obciazenia"]["items"]} == {"w paśmie wiarygodności"}
+    assert view["straty"]["status"] == "w paśmie wiarygodności"
     assert view["straty"]["threshold_pct"] == 10.0
     assert view["straty"]["threshold_why_pl"]  # uzasadnienie progu nienazwane pustym
 
@@ -307,11 +312,11 @@ def test_pf_voltage_out_of_range_is_isolated_to_that_bus() -> None:
     assert view["napiecia"]["summary"]["out_of_range_count"] == 1
 
     inne = [i for i in view["napiecia"]["items"] if i["target_id"] != node_id]
-    assert all(i["status"] == "zweryfikowany" for i in inne), "reszta szyn nietknięta"
+    assert all(i["status"] == "w paśmie wiarygodności" for i in inne), "reszta szyn nietknięta"
     assert view["obciazenia"]["items"] and all(
-        i["status"] == "zweryfikowany" for i in view["obciazenia"]["items"]
+        i["status"] == "w paśmie wiarygodności" for i in view["obciazenia"]["items"]
     ), "obciążenia gałęzi nietknięte przez zmianę napięcia jednej szyny"
-    assert view["straty"]["status"] == "zweryfikowany", "straty nietknięte"
+    assert view["straty"]["status"] == "w paśmie wiarygodności", "straty nietknięte"
 
 
 def test_pf_branch_missing_catalog_current_is_incomplete_not_zero_or_inf() -> None:
@@ -339,11 +344,11 @@ def test_pf_branch_missing_catalog_current_is_incomplete_not_zero_or_inf() -> No
     assert item["current_do_ka"] is not None
 
     inne = [i for i in view["obciazenia"]["items"] if i["target_name"] != branch_name]
-    assert all(i["status"] == "zweryfikowany" for i in inne), "reszta gałęzi nietknięta"
+    assert all(i["status"] == "w paśmie wiarygodności" for i in inne), "reszta gałęzi nietknięta"
     assert {i["status"] for i in view["napiecia"]["items"]} == {
-        "zweryfikowany"
+        "w paśmie wiarygodności"
     }, "napięcia nietknięte"
-    assert view["straty"]["status"] == "zweryfikowany", "straty nietknięte"
+    assert view["straty"]["status"] == "w paśmie wiarygodności", "straty nietknięte"
 
 
 def test_pf_branch_loading_out_of_range_is_isolated_to_that_branch() -> None:
@@ -372,11 +377,13 @@ def test_pf_branch_loading_out_of_range_is_isolated_to_that_branch() -> None:
     assert view["obciazenia"]["summary"]["out_of_range_count"] == 1
 
     inne = [i for i in view["obciazenia"]["items"] if i["target_id"] != branch_id]
-    assert inne and all(i["status"] == "zweryfikowany" for i in inne), "reszta gałęzi nietknięta"
+    assert inne and all(
+        i["status"] == "w paśmie wiarygodności" for i in inne
+    ), "reszta gałęzi nietknięta"
     assert {i["status"] for i in view["napiecia"]["items"]} == {
-        "zweryfikowany"
+        "w paśmie wiarygodności"
     }, "napięcia nietknięte"
-    assert view["straty"]["status"] == "zweryfikowany", "straty nietknięte"
+    assert view["straty"]["status"] == "w paśmie wiarygodności", "straty nietknięte"
 
 
 def test_pf_transformers_and_lines_are_assessed_by_terminal_current_band() -> None:
@@ -443,7 +450,7 @@ def test_pf_out_of_service_line_is_not_assessed_and_rest_untouched() -> None:
     assert id_wylaczonej not in ocenione_po
     assert id_wylaczonej in {i["target_id"] for i in przed["obciazenia"]["items"]}
     assert ocenione_po == {i["target_id"] for i in przed["obciazenia"]["items"]} - {id_wylaczonej}
-    assert all(i["status"] == "zweryfikowany" for i in po["obciazenia"]["items"])
+    assert all(i["status"] == "w paśmie wiarygodności" for i in po["obciazenia"]["items"])
     assert po["napiecia"] == przed["napiecia"], "napięcia nietknięte"
     assert po["straty"] == przed["straty"], "straty nietknięte"
 
@@ -466,10 +473,10 @@ def test_pf_losses_out_of_range_is_isolated() -> None:
     assert "wątpliwy" in view["straty"]["why_pl"]
 
     assert {i["status"] for i in view["napiecia"]["items"]} == {
-        "zweryfikowany"
+        "w paśmie wiarygodności"
     }, "napięcia nietknięte"
     assert {i["status"] for i in view["obciazenia"]["items"]} == {
-        "zweryfikowany"
+        "w paśmie wiarygodności"
     }, "obciążenia nietknięte"
 
 

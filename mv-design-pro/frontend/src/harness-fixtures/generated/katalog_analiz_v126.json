@@ -9,7 +9,7 @@
         "nazwa_pl": "Jakość energii i stabilność przekształtników"
       },
       "pytanie_pl": "Czy odkształcenie napięcia i prądu w węzłach sieci mieści się w granicach kompatybilności elektromagnetycznej?",
-      "zakres_pl": "Wszystkie szyny modelu; źródła odkształcające = przekształtniki z widmem harmonicznym (karta katalogowa albo widmo podane ręcznie); harmoniczne rzędów 2–49; skan impedancji węzłów w paśmie 50–2500 Hz z wykrywaniem rezonansów.",
+      "zakres_pl": "Wszystkie szyny modelu; źródła odkształcające = przekształtniki z widmem harmonicznym (karta katalogowa albo widmo podane ręcznie); 18 zaszytych rzędów harmonicznych (pozostałe rzędy widma są pomijane); skan modułu impedancji węzłów w paśmie 50–2500 Hz. Wynik solvera jest niezwalidowany — ocena kompatybilności nie jest wykonywana, liczby są dostępne wyłącznie w sekcji audytowej.",
       "wielkosci_glowne": [
         {
           "symbol": "THD_U",
@@ -90,10 +90,6 @@
             "elementy_pl": "transformatory (S_n, u_k)"
           },
           {
-            "nazwa_pl": "Moc zwarciowa źródła zasilania",
-            "elementy_pl": "źródło sieci nadrzędnej"
-          },
-          {
             "nazwa_pl": "Widmo harmoniczne i moc znamionowa przekształtników",
             "elementy_pl": "karty katalogowe przekształtników PV/BESS/wiatrowych"
           }
@@ -112,7 +108,17 @@
       "prezentowany": true,
       "powod_wycofania_pl": null,
       "katalog_odniesienia": "harmonic-limits",
-      "uwagi_metody_pl": [],
+      "uwagi_metody_pl": [
+        "Brak przekładni transformatora: szyny różnych poziomów napięcia liczone są w omach bez sprowadzenia do wspólnej bazy.",
+        "Rezystancja transformatora zaniżona o czynnik kwadratu napięcia znamionowego.",
+        "Sieć nadrzędna zastąpiona admitancją 1e6 S na pierwszej szynie modelu; moc zwarciowa źródła zasilania nie wchodzi do obliczeń harmonicznych.",
+        "Kondensatory, odbiory i admitancja przekształtnika nie są modelowane.",
+        "Liczonych jest wyłącznie 18 zaszytych rzędów (2, 3, 5, 7, 11, 13, 17, 19, 23, 25, 29, 31, 35, 37, 41, 43, 47, 49); pozostałe rzędy widma są cicho pomijane.",
+        "Wszystkie źródła mają fazę zerową — prądy harmoniczne sumują się koherentnie.",
+        "Współczynnik THD odniesiony jest do napięcia znamionowego, nie do składowej podstawowej z rozpływu.",
+        "„Rezonans” to każdy punkt skanu z modułem impedancji ponad 10 razy większym niż przy 50 Hz — jeden rezonans daje dziesiątki wpisów.",
+        "Żadna wielkość nie ma niezależnej wyroczni (obliczenia ręcznego ani programu zewnętrznego)."
+      ],
       "zakres_oceny": "kryterium"
     },
     {
@@ -123,7 +129,7 @@
         "nazwa_pl": "Jakość energii i stabilność przekształtników"
       },
       "pytanie_pl": "Czy przekształtnik przyłączony do sieci o danej sztywności nie wejdzie w interakcję podsynchroniczną (rezonans regulacyjny)?",
-      "zakres_pl": "Jeden przekształtnik — wskazany parametrem albo pierwszy przekształtnik modelu; impedancja sieci widziana z jego szyny i impedancja wyjściowa przekształtnika w paśmie podsynchronicznym; werdykt kryterium Nyquista wystawia okno „Stabilność SSCI”.",
+      "zakres_pl": "Jeden przekształtnik — wskazany parametrem albo pierwszy przekształtnik modelu; impedancja sieci widziana z jego szyny i impedancja wyjściowa przekształtnika w paśmie podsynchronicznym. Ocena stabilności kryterium Nyquista nie jest wykonywana: impedancja sieci liczona jest bez przekładni transformatora.",
       "wielkosci_glowne": [
         {
           "symbol": "Z_grid(f)",
@@ -151,7 +157,7 @@
         }
       ],
       "podstawa_oceny": [],
-      "bez_podstawy_pl": "Ta analiza dostarcza tablice impedancji; werdykt stabilności (kryterium impedancyjne Nyquista wg Sun 2011 / Wen 2016) wystawia osobne okno „Stabilność SSCI” z własnym kontraktem.",
+      "bez_podstawy_pl": "Ta analiza dostarcza tablice impedancji. Ocena stabilności (kryterium impedancyjne Nyquista wg Sun 2011 / Wen 2016) nie jest wykonywana — impedancja sieci Z_grid(f) liczona jest bez przekładni transformatora; okno „Stabilność SSCI” pokazuje wyjaśnienie i metryki wyłącznie jako materiał audytowy.",
       "dane": {
         "z_modelu": [
           {

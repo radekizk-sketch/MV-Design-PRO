@@ -1,27 +1,32 @@
 /*
  * Klient API okna „Stabilność SSCI" (ui2/wyniki/ssci). Typy TS odwzorowują 1:1
- * kształt odpowiedzi końcówki werdyktu, wyznaczony z kodu źródłowego
+ * kształt odpowiedzi końcówki stabilności SSCI, wyznaczony z kodu źródłowego
  * (mapowanie plik:linia):
  *
- * - Werdykt stabilności SSCI — `GET /api/analysis-runs/{run_id}/results/v126/
+ * - Widok stabilności SSCI — `GET /api/analysis-runs/{run_id}/results/v126/
  *   ssci_impedance/stability`:
  *   `backend/src/api/v126_academic.py::get_v126_ssci_stability`
  *   → `application/analyses/ssci_stability/service.py::build_ssci_stability_view`
  *   → `analysis/ssci_stability/serializer.py::view_to_dict` (kształt `analysis_id`/
- *   `context`/`gain_crossover_mag`/`pm_risk_deg`/`pm_unstable_deg`/`verdict`).
- *   Werdykt, metryki (max|L|, margines różnicy faz, częstotliwość winna, bliskość
- *   punktu −1, okrążenia, rezystancja ujemna), proweniencja i ślad WHITE BOX
- *   pochodzą WYŁĄCZNIE z buildera warstwy analizy — ZERO fizyki w UI.
+ *   `context`/`gain_crossover_mag`/`verdict`/`ocena`/
+ *   `sekcja_audytowa_pl`). UCZCIWOŚĆ (2026-09-23): werdyktu nie ma — `verdict.verdict`
+ *   ma jedyną wartość „nie oceniono", `is_risk` = null, a rekord `ocena` niesie powód
+ *   (Z_grid(f) bez przekładni transformatora, brak wyroczni). Metryki (max|L|, margines
+ *   różnicy faz, częstotliwość winna, bliskość punktu −1, okrążenia) są materiałem
+ *   audytowym; wskaźnik strefy ujemnej rezystancji przekształtnika zostaje informacją.
+ *   Wszystko pochodzi WYŁĄCZNIE z buildera warstwy analizy — ZERO fizyki w UI.
  * - Utworzenie przebiegu SSCI — `POST /api/cases/{case_id}/runs/v126/ssci_impedance`:
  *   `v126_academic.py::run_v126_analysis` (wzór doboru przebiegu z
  *   `ui2/wyniki/akademickie`). Przebieg powstaje z committed
  *   ENM aktywnego przypadku; brak przekształtnika/DER → solver „dane niekompletne"
- *   → werdykt „brak danych" (uczciwy stan zerowy, bez fabrykacji).
+ *   → ocena niewykonana z brakami karty (uczciwy stan zerowy, bez fabrykacji).
  *
- * Warstwa PREZENTACJI: klient tworzy przebieg i odbiera gotowy widok werdyktu;
+ * Warstwa PREZENTACJI: klient tworzy przebieg i odbiera gotowy widok (ocena + metryki audytowe);
  * niczego nie liczy. Pola pozostają w snake_case, bo to kontrakt API. Klient
  * błędów: wariant z odczytem pola `detail` (wzór `ui2/wyniki/estymacja/api.ts`).
  */
+
+import type { RekordOcenyNiewykonanej } from '../wzorzec/OcenaNiewykonana';
 
 // ---------------------------------------------------------------------------
 // Wspólny kontekst przebiegu (pochodzenie wyniku) — pola opcjonalne.
@@ -39,7 +44,7 @@ export interface KontekstSsci {
 }
 
 // ---------------------------------------------------------------------------
-// Proweniencja werdyktu (najgorsza jakość pól karty falownika)
+// Proweniencja metryk (najgorsza jakość pól karty falownika)
 // ---------------------------------------------------------------------------
 
 /** Etykieta proweniencji (DATASHEET ≻ ESTIMATED ≻ SYSTEM_DEFAULT). */
@@ -80,19 +85,22 @@ export interface KrokWhiteBox {
 }
 
 // ---------------------------------------------------------------------------
-// Werdykt SSCI (kryterium impedancyjne Nyquista)
+// Wynik SSCI (ocena niewykonana + metryki kryterium impedancyjnego)
 // ---------------------------------------------------------------------------
 
-/** Kody werdyktu (kontrakt backendu `analysis/ssci_stability/models.py`). */
-export type WerdyktKod = 'stabilny' | 'ryzyko SSCI' | 'niestabilny' | 'brak danych';
+/** Rekord oceny SSCI — status `NIE_OCENIONO` z powodem (`ocena_ssci_niewykonana`). */
+export type RekordOcenySsci = RekordOcenyNiewykonanej;
 
-/** Werdykt stabilności SSCI dla przekształtnika (`verdict_to_dict`). */
+/** Wynik SSCI dla przekształtnika (`verdict_to_dict`) — bez werdyktu. */
 export interface WerdyktSsci {
   readonly converter_ref: string | null;
   readonly bus_ref: string | null;
-  readonly verdict: WerdyktKod;
-  readonly is_risk: boolean;
+  /** Dawne pole werdyktu (kontrakt `str`) — jedyna wartość „nie oceniono". */
+  readonly verdict: string;
+  /** Dawna flaga ryzyka — `null` (ocena niewykonana). */
+  readonly is_risk: boolean | null;
   readonly why_pl: string;
+  readonly ocena: RekordOcenySsci;
   readonly max_minor_loop_gain: number | null;
   readonly has_magnitude_crossover: boolean;
   readonly gain_crossover: PunktPrzeciecia | null;
@@ -103,6 +111,8 @@ export interface WerdyktSsci {
   readonly encirclement_count: number;
   readonly negative_resistance_present: boolean;
   readonly negative_resistance_f_hz: number | null;
+  /** Najmniejsza wartość Re(Z_conv) w strefie ujemnej rezystancji [Ω]; null = brak strefy. */
+  readonly negative_resistance_re_min_ohm: number | null;
   readonly provenance: ProweniencjaSsci | null;
   readonly missing_data: readonly string[];
   readonly white_box: readonly KrokWhiteBox[];
@@ -113,9 +123,11 @@ export interface WidokStabilnosciSsci {
   readonly analysis_id: string;
   readonly context: KontekstSsci | null;
   readonly gain_crossover_mag: number;
-  readonly pm_risk_deg: number;
-  readonly pm_unstable_deg: number;
   readonly verdict: WerdyktSsci;
+  /** Rekord oceny na poziomie widoku (ten sam co `verdict.ocena`). */
+  readonly ocena: RekordOcenySsci;
+  /** Nagłówek sekcji audytowej metryk L(f) — z backendu. */
+  readonly sekcja_audytowa_pl: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -177,7 +189,7 @@ async function postJsonZDetalem<T>(url: string, body: unknown): Promise<T> {
 /**
  * Tworzy przebieg SSCI (`ssci_impedance`) na committed ENM aktywnego przypadku.
  * Parametry puste — przekształtniki i pola karty falownika pochodzą z ENM
- * (bez fabrykacji). Zwraca `run_id`, którym pobiera się werdykt stabilności.
+ * (bez fabrykacji). Zwraca `run_id`, którym pobiera się widok stabilności.
  */
 export function utworzPrzebiegSsci(caseId: string): Promise<PrzebiegSsci> {
   return postJsonZDetalem<PrzebiegSsci>(
@@ -186,7 +198,7 @@ export function utworzPrzebiegSsci(caseId: string): Promise<PrzebiegSsci> {
   );
 }
 
-/** Pobiera werdykt stabilności SSCI dla gotowego przebiegu `ssci_impedance`. */
+/** Pobiera widok stabilności SSCI (ocena + metryki audytowe) dla przebiegu `ssci_impedance`. */
 export function fetchStabilnoscSsci(runId: string): Promise<WidokStabilnosciSsci> {
   return getJsonZDetalem<WidokStabilnosciSsci>(
     `/api/analysis-runs/${encodeURIComponent(runId)}/results/v126/${ANALIZA_SSCI}/stability`,

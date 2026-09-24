@@ -1604,7 +1604,36 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # Integracja B+C+D2 na HEAD z AB-H0 i AB-1b.1a (2026-09-24): 3929 -> 4024 — POMIAR guardem
     # na scalonym drzewie int/c (korzen `werdykt/dokument.py` + pola kontraktow B+C nieobecne
     # jeszcze w mapie; `werdykt/kontrakt.py` juz byl z AB-H0).
-    assert "Pol kontraktow wejsciowych: 4024." in wyjscie, wyjscie
+    # Karta AB-1a Pakiet 0 (2026-09-23): 3750 -> 3825. POMIAR: zbior `contract_fields()`
+    # guarda liczony na drzewie `bbcc8555` (czysty HEAD) i `bbcc8555` + Pakiet 0 PRZY TEJ
+    # SAMEJ liscie `CONTRACT_SOURCES`, roznica zbiorow na posortowanych nazwach. Dwa skladniki:
+    # (1) pin mapy zazadal decyzji dla dwoch korzeni czytanych przez zakres od wpiecia rekordow
+    # oceny niewykonanej — `analysis/ssci_stability/models.py` i `werdykt/kontrakt.py` weszly
+    # do mapy (precedens `analysis/sanity_bounds/*`): +85 nazw na kodzie HEAD (3750 -> 3835),
+    # zero nowych trafien; (2) kod Pakietu 0 na tej samej mapie: 3835 -> 3824 — ubyly pola
+    # werdyktu progowego toru T1 i progow SSCI skasowane RAZEM z nimi (`angle_swing_deg`,
+    # `clearing_margin_ms`, `criteria_version`, `limiting_factor`, `max_angle_swing_deg`,
+    # `max_clearing_time_ms`, `min_frequency_recovery_pu`, `min_voltage_recovery_pu`,
+    # `pm_risk_deg`, `pm_unstable_deg`, `stability_index`, `stable`, `topology_effect`,
+    # `violated_checks`), doszly `granica`, `negative_resistance_re_min_ohm`, `ocena`;
+    # (3) 3824 -> 3825: `podstawa_sposobu_wykazania` rekordu W kontraktu werdyktu (pole, ktore
+    # typ interfejsu `WynikWymagania` deklarowal, a backend nie serializowal). PASS bramki
+    # niezmieniony (zero podstawien).
+    # Ponowne zlozenie Pakietu 0 na HEAD `1b422cdd` (B+C+D2, AB-H0, AB-1b.1a, #135;
+    # 2026-09-24): 4024 -> 4033 — POMIAR `contract_fields()` na drzewie #135 i na drzewie
+    # po zlozeniu, roznica zbiorow na posortowanych nazwach: +21 (pola widoku stabilnosci
+    # SSCI z korzenia `analysis/ssci_stability/models.py`: `consumed_fields`, `converter_ref`,
+    # `distance_to_minus_one`, `encirclement_count`, `gain_crossover`, `gain_crossover_mag`,
+    # `has_magnitude_crossover`, `is_risk`, `mag`, `max_minor_loop_gain`,
+    # `nearest_to_minus_one`, `negative_resistance_f_hz`, `negative_resistance_present`,
+    # `negative_resistance_re_min_ohm`, `offending_frequency_hz`, `phase_deg`, `phase_l_deg`,
+    # `phase_margin_deg`, `worst_phase_margin_deg`, `worst_phase_margin_f_hz`, `granica`),
+    # -12 (pola werdyktu progowego toru T1 skasowane razem z nim: `angle_swing_deg`,
+    # `clearing_margin_ms`, `criteria_version`, `limiting_factor`, `max_angle_swing_deg`,
+    # `max_clearing_time_ms`, `min_frequency_recovery_pu`, `min_voltage_recovery_pu`,
+    # `stability_index`, `stable`, `topology_effect`, `violated_checks`). `werdykt/kontrakt.py`
+    # byl juz w mapie (B+C), wiec jego pola nie wchodza do roznicy.
+    assert "Pol kontraktow wejsciowych: 4033." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -1726,7 +1755,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Zapadka dlugu i wykluczenia BEZ ZMIANY.
         # Uzupelnienie odbioru Pakietu C (§0 pkt 7-9): 539 -> 540 (+1 `enm/deklaracje_modulu.py`
         # — blok deklaracji modulu i jeden walidator pol NC RfG generatora dla obu pisarzy).
-        "Przeskanowano 540 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta AB-1a Pakiet 0 (2026-09-23): 529 -> 530 (+1 `application/ocena_niewykonana.py`
+        # — cienka fabryka rekordu oceny niewykonanej na regule K kontraktu werdyktu; zero
+        # wpisow w zapadce i wykluczeniach). POMIAR guardem na drzewie `bbcc8555` + Pakiet 0.
+        # Pakiet 0 (zlozenie na `1b422cdd`): +1 plik `application/ocena_niewykonana.py`.
+        "Przeskanowano 541 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1766,7 +1799,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # podgladu i dokumentu DER-SN (dawne zaszyte 0,95 w dokumencie).
     # Integracja na HEAD 06e8ef79 (Pakiet L + docs) 2026-09-24: liczby ponizej z POMIARU
     # guardem na scalonym drzewie int/h0 (roznice L i AB-H0 sie sumuja).
-    assert "Zapadka dlugu (fizyczne): 54 plikow, suma 248." in wyjscie, wyjscie
+    # Karta AB-1a Pakiet 0 (2026-09-23): 55/254 -> 55/253 — wpis ZASTANE
+    # `enm/canonical_analysis.py` ("F:dictget:row.event_seq": 1, sortowanie wierszy sladu
+    # automatyki) zdjety RAZEM z narracja zdarzen toru T1. Pomiar guardem.
+    # Pakiet 0 (zlozenie na `1b422cdd`): 248 -> 247 — budzet `F:dictget:row.event_seq`
+    # (`enm/canonical_analysis.py`) zdjety razem z narracja zdarzen toru T1.
+    assert "Zapadka dlugu (fizyczne): 54 plikow, suma 247." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 13 plikow, suma 31." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -1844,7 +1882,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # koordynacji daja NIE_OCENIONO z nazwanym brakiem); dlug/wykluczenia BEZ ZMIANY.
         # Uzupelnienie odbioru Pakietu C (§0 pkt 7-9): enm 49 -> 50 (+1
         # `enm/deklaracje_modulu.py`); dlug/wykluczenia BEZ ZMIANY.
-        "  enm: pliki_skanowane=52, dlug=7 plikow/suma 72, wykluczenia=0 plikow/suma 0",
+        # Karta AB-1a Pakiet 0 (2026-09-23): enm dlug 7/73 -> 7/72 (wpis `row.event_seq`
+        # w `enm/canonical_analysis.py` zdjety razem z narracja zdarzen toru T1).
+        "  enm: pliki_skanowane=52, dlug=7 plikow/suma 71, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -1880,7 +1920,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # ncrfg_compliance/ocena_wymagan.py`, `application/analyses/sekcja_zgodnosci_ncrfg.py`;
         # -1 skasowany `application/analyses/dowod_certyfikatu.py`); dlug 30/91 i
         # wykluczenia 4/10 BEZ ZMIANY.
-        "  application: pliki_skanowane=239, dlug=30 plikow/suma 91, "
+        # Karta AB-1a Pakiet 0 (2026-09-23): application 235 -> 236 (+1
+        # `application/ocena_niewykonana.py`; zero wpisow w zapadce i wykluczeniach).
+        "  application: pliki_skanowane=240, dlug=30 plikow/suma 91, "
         "wykluczenia=4 plikow/suma 10",
         "  api: pliki_skanowane=63, dlug=3 plikow/suma 6, wykluczenia=6 plikow/suma 15",
     ]

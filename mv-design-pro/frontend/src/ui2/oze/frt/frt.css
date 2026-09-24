@@ -113,41 +113,6 @@
   outline-offset: 2px;
 }
 
-/* Werdykt całości */
-.mvd-frt-werdykt {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  border: 1px solid var(--mvd-line);
-  border-left-width: 4px;
-  border-radius: 8px;
-  padding: 12px 16px;
-}
-
-.mvd-frt-werdykt--ok {
-  border-left-color: var(--mvd-ok);
-  background: var(--mvd-ok-bg);
-}
-
-.mvd-frt-werdykt--warn {
-  border-left-color: var(--mvd-warn);
-  background: var(--mvd-warn-bg);
-}
-
-.mvd-frt-werdykt--err {
-  border-left-color: var(--mvd-err);
-  background: var(--mvd-err-bg);
-}
-
-.mvd-frt-werdykt-tytul {
-  font-weight: 600;
-}
-
-.mvd-frt-werdykt-opis {
-  color: var(--mvd-muted);
-  font-size: 13px;
-}
-
 /* Założenia (część wyniku) */
 .mvd-frt-zalozenia {
   display: flex;
@@ -355,26 +320,6 @@
   background: var(--mvd-chip);
   color: var(--mvd-ink);
   cursor: pointer;
-}
-
-.mvd-frt-sekw-odznaka {
-  display: inline-flex;
-  align-self: flex-start;
-  padding: 4px 12px;
-  border: 1px solid var(--mvd-line);
-  border-radius: 999px;
-  font-weight: 600;
-  font-size: 13px;
-}
-
-.mvd-frt-sekw-odznaka--ok {
-  border-color: var(--mvd-ok);
-  background: var(--mvd-ok-bg);
-}
-
-.mvd-frt-sekw-odznaka--err {
-  border-color: var(--mvd-err);
-  background: var(--mvd-err-bg);
 }
 
 .mvd-frt-sekw-zalozenia {

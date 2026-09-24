@@ -26,24 +26,51 @@ TRZY STANY, NIGDY DWA (kontrakt ekranu prowadzacego, punkt 4):
   NARUSZONE      — kryterium sprawdzone i przekroczone,
   NIESPRAWDZONE  — BRAK PODSTAWY do oceny (brak biegu, bieg nieaktualny, brak
                    danych wejsciowych). Nie wolno tego mylic ze spelnieniem.
+Stan NIEJEDNOZNACZNE (kontrakt werdyktu §2.1: dane nie pozwalaja na wniosek binarny)
+niesie pozycja, ktorej element dostal od dostawcy OSTRZEZENIE bez wniosku binarnego
+(patrz nizej) — nie jest ani spelnieniem, ani naruszeniem, ani brakiem biegu.
 Czwarty stan NIE_DOTYCZY jest jawnie odrozniony i NIE zastepuje zadnego z trzech:
 oznacza, ze kryterium nie ma zastosowania do tego projektu (np. tor DER-SN w
 projekcie bez zrodla wytworczego). Projekt bez OZE nie moze byc na wieki
 „niesprawdzony" z powodu kryterium, ktorego nie ma jak naruszyc.
 
-ZASADA ZACHOWAWCZOSCI AGREGACJI. Kryterium obejmujace WIELE elementow (np.
-obciazenie gałęzi) skleja sie tak:
+ZASADA ZACHOWAWCZOSCI AGREGACJI (kolejnosc §2.3 kontraktu werdyktu, pkt 4–7 —
+`_KOLEJNOSC_WYNIKOW`, jedno zrodlo dla pozycji, werdyktu calosciowego i porzadku
+elementow). Kryterium obejmujace WIELE elementow (np. obciazenie gałęzi) skleja sie tak:
   - jakiekolwiek naruszenie  => NARUSZONE (naruszenie jest zawsze dzialaniem do
     wykonania, niezaleznie od tego, ile pozycji zostalo niesprawdzonych),
-  - brak naruszen, ale jakakolwiek pozycja niesprawdzona => NIESPRAWDZONE
-    (bo „50 z 51 gałęzi w normie" NIE znaczy „kryterium spelnione" — o
-    pozostalej gałęzi nie wiemy nic),
+  - brak naruszen, ale jakikolwiek wynik niejednoznaczny => NIEJEDNOZNACZNE,
+  - brak naruszen i niejednoznacznosci, ale jakakolwiek pozycja niesprawdzona =>
+    NIESPRAWDZONE (bo „50 z 51 gałęzi w normie" NIE znaczy „kryterium spelnione" —
+    o pozostalej gałęzi nie wiemy nic),
   - wszystkie pozycje sprawdzone i dotrzymane => SPELNIONE.
+Agregat NIGDY nie jest lepszy niz najgorsza skladowa — ta sama kolejnosc sklada werdykt
+calosciowy z pozycji (NIE_DOTYCZY pomijane; komplet pozycji NIE_DOTYCZY to brak podstawy,
+nie spelnienie).
 
 OSTRZEZENIE (WARNING z walidacji energetycznej) NIE jest czwartym stanem
 kryterium: limit nie zostal przekroczony, wiec kryterium JEST spelnione, ale
 margines jest maly. Liczba ostrzezen jedzie osobnym polem ``liczba_ostrzezen``,
 zeby informacja nie zginela, a stan pozostal jednoznaczny.
+
+OSTRZEZENIE DOSTAWCY MA WLASNA SEMANTYKE (uczciwosc natychmiastowa, 2026-09-23).
+Raport doborow toru DER-SN melduje ``WARN`` dla BRAKU DANYCH (aparat pola bez
+powiazania katalogowego — ``kaskada_prad_pole_brak``), dla odstepstwa od propozycji
+doboru i dla biegu w toku: to NIE jest sprawdzenie dotrzymanego kryterium, a komunikat
+dostawcy nie daje wniosku binarnego — ``WARN`` tego dostawcy daje ``NIEJEDNOZNACZNY``
+(kontrakt werdyktu §2.1; rozstrzygniecie zarzadcy 2026-09-23: ostrzezenie dostawcy to
+NIEJEDNOZNACZNY w ocenie elementu, agregat wg §2.3), nigdy SPELNIA. Agregat nie
+interpretuje TRESCI ostrzezenia (brak danych / odstepstwo / bieg w toku) — wynik niesie
+status dostawcy, uzasadnienie niesie jego komunikat. Walidacja energetyczna ``WARNING``
+to co innego: dostawca POLICZYL wartosc i sam stwierdza, ze granica jest dotrzymana
+(„zbliza sie do limitu", `analysis/energy_validation/builder.py::_threshold_check`) —
+to SPELNIA z uwaga o malym zapasie (kontrakt §2.1: kryterium sprawdzone i dotrzymane).
+Dawniej JEDNA mapa „status -> wynik" obslugiwala czterech dostawcow i zamieniala kazde
+``WARN``/``WARNING`` w SPELNIA, a wiarygodnosc Ik'' dawala SPELNIA dla KAZDEGO statusu
+spoza mapy. Teraz kazdy dostawca ma WLASNA mape, status spoza mapy daje
+``BRAK_PODSTAW`` z nazwanym powodem, a stan pozycji liczy sie z wynikow JEJ elementow
+(jedno zrodlo prawdy — element bez podstaw albo niejednoznaczny nie moze stac pod
+pozycja „spelnione").
 
 BIEG NIEAKTUALNY = NIESPRAWDZONE (regula 4 kanonu: „Model change invalidates ALL
 case results"). Werdykt porownuje hash snapshotu biegu z hashem BIEZACEGO modelu.
@@ -68,7 +95,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from analysis.sanity_bounds.short_circuit_bounds import INCOMPLETE, OUT_OF_RANGE
+from analysis.sanity_bounds.short_circuit_bounds import CREDIBLE, INCOMPLETE, OUT_OF_RANGE
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
 from application.analyses.raport_zgodnosci import build_compliance_report
@@ -87,6 +114,7 @@ from enm.store import get_enm
 
 STAN_SPELNIONE = "SPELNIONE"
 STAN_NARUSZONE = "NARUSZONE"
+STAN_NIEJEDNOZNACZNE = "NIEJEDNOZNACZNE"
 STAN_NIESPRAWDZONE = "NIESPRAWDZONE"
 STAN_NIE_DOTYCZY = "NIE_DOTYCZY"
 
@@ -137,7 +165,25 @@ GRUPY_KRYTERIOW: tuple[tuple[str, str], ...] = (
 
 WYNIK_SPELNIA = "SPELNIA"
 WYNIK_NIE_SPELNIA = "NIE_SPELNIA"
+#: Ostrzezenie dostawcy bez wniosku binarnego (kontrakt werdyktu §2.1 ``NIEJEDNOZNACZNY``).
+WYNIK_NIEJEDNOZNACZNY = "NIEJEDNOZNACZNY"
 WYNIK_BRAK_PODSTAW = "BRAK_PODSTAW"
+
+#: Kolejnosc agregacji wg §2.3 kontraktu werdyktu (``werdykt.decyzja``, pkt 4–7): naruszenie
+#: przed niejednoznacznoscia, niejednoznacznosc przed brakiem podstaw, spelnienie na koncu.
+#: JEDNO zrodlo dla stanu pozycji (najgorszy element), werdyktu calosciowego (najgorsza
+#: pozycja) i porzadku elementow w pozycji (najgorsze pierwsze) — agregat nigdy nie jest
+#: lepszy niz najgorsza skladowa. ``BRAK_PODSTAW`` tego rejestru obejmuje oba statusy
+#: kontraktu z pkt 6–7 (``NIE_OCENIONO`` — brak biegu albo danych; ``BRAK_PODSTAWY``).
+_KOLEJNOSC_WYNIKOW: tuple[tuple[str, str], ...] = (
+    (WYNIK_NIE_SPELNIA, STAN_NARUSZONE),
+    (WYNIK_NIEJEDNOZNACZNY, STAN_NIEJEDNOZNACZNE),
+    (WYNIK_BRAK_PODSTAW, STAN_NIESPRAWDZONE),
+    (WYNIK_SPELNIA, STAN_SPELNIONE),
+)
+_RANGA_WYNIKU: dict[str, int] = {wynik: nr for nr, (wynik, _) in enumerate(_KOLEJNOSC_WYNIKOW)}
+_RANGA_STANU: dict[str, int] = {stan: nr for nr, (_, stan) in enumerate(_KOLEJNOSC_WYNIKOW)}
+_STAN_Z_WYNIKU: dict[str, str] = dict(_KOLEJNOSC_WYNIKOW)
 
 # Kierunek warunku kryterium — steruje zdaniem wniosku i znakiem zapasu.
 WARUNEK_NIE_WIECEJ = "nie_wiecej_niz"
@@ -462,7 +508,7 @@ class OcenaElementu:
     #: (`MathInline`, obok liczby). Pusty, gdy `margines` jest `None` (pasmo,
     #: zgodność, brak podstaw) — ten sam warunek co brak liczby marginesu.
     margines_wzor_latex: str = ""
-    #: Uwaga przy wyniku SPELNIA (np. margines w pasmie ostrzegawczym).
+    #: Uwaga przy wyniku SPELNIA (np. margines w pasmie ostrzegawczym) — wylacznie SPELNIA.
     uwaga_pl: str | None = None
     #: Uzasadnienie dostawcy (``why_pl`` / ``opis_pl`` / ``powod_decyzji_pl``).
     uzasadnienie_pl: str | None = None
@@ -510,6 +556,11 @@ class PozycjaWerdyktu:
     #: Karta B-02 / W3-E: oceny per element (puste, gdy brak podstawy calego kryterium).
     elementy: tuple[OcenaElementu, ...] = ()
 
+    @property
+    def liczba_niejednoznacznych(self) -> int:
+        """Elementy z wynikiem NIEJEDNOZNACZNY — wyprowadzone z elementow (jedno zrodlo)."""
+        return sum(1 for element in self.elementy if element.wynik == WYNIK_NIEJEDNOZNACZNY)
+
     def to_dict(self) -> dict[str, Any]:
         payload = self.definicja.to_dict()
         payload.update(
@@ -518,6 +569,7 @@ class PozycjaWerdyktu:
                 "liczba_ocenionych": self.liczba_ocenionych,
                 "liczba_naruszen": self.liczba_naruszen,
                 "liczba_niesprawdzonych": self.liczba_niesprawdzonych,
+                "liczba_niejednoznacznych": self.liczba_niejednoznacznych,
                 "liczba_ostrzezen": self.liczba_ostrzezen,
                 "wiodacy_element_id": self.wiodacy_element_id,
                 "wiodacy_opis_pl": self.wiodacy_opis_pl,
@@ -569,6 +621,7 @@ class WerdyktProjektowy:
         return {
             "spelnione": sum(1 for p in self.pozycje if p.stan == STAN_SPELNIONE),
             "naruszone": sum(1 for p in self.pozycje if p.stan == STAN_NARUSZONE),
+            "niejednoznaczne": sum(1 for p in self.pozycje if p.stan == STAN_NIEJEDNOZNACZNE),
             "niesprawdzone": sum(1 for p in self.pozycje if p.stan == STAN_NIESPRAWDZONE),
             "nie_dotyczy": sum(1 for p in self.pozycje if p.stan == STAN_NIE_DOTYCZY),
             "razem": len(self.pozycje),
@@ -576,15 +629,22 @@ class WerdyktProjektowy:
 
     @property
     def ocena(self) -> dict[str, int]:
-        """Liczniki PER ELEMENT (naglowek ekranu oceny): OCENIONO = SPELNIA + NIE_SPELNIA."""
+        """Liczniki PER ELEMENT (naglowek ekranu oceny).
+
+        OCENIONO = SPELNIA + NIE_SPELNIA + NIEJEDNOZNACZNY — element, dla ktorego dostawca
+        wydal ocene (takze ostrzezenie bez wniosku binarnego); BRAK_PODSTAW to element bez
+        oceny. OCENIONO + BRAK_PODSTAW = wszystkie elementy (podzial rozlaczny).
+        """
         elementy = [element for pozycja in self.pozycje for element in pozycja.elementy]
         spelnia = sum(1 for e in elementy if e.wynik == WYNIK_SPELNIA)
         nie_spelnia = sum(1 for e in elementy if e.wynik == WYNIK_NIE_SPELNIA)
+        niejednoznaczny = sum(1 for e in elementy if e.wynik == WYNIK_NIEJEDNOZNACZNY)
         brak = sum(1 for e in elementy if e.wynik == WYNIK_BRAK_PODSTAW)
         return {
-            "oceniono": spelnia + nie_spelnia,
+            "oceniono": spelnia + nie_spelnia + niejednoznaczny,
             "spelnia": spelnia,
             "nie_spelnia": nie_spelnia,
+            "niejednoznaczny": niejednoznaczny,
             "brak_podstaw": brak,
         }
 
@@ -599,7 +659,7 @@ class WerdyktProjektowy:
         (`tests/ci/test_fixtury_harnessu.py`): szum solvera ~1e-10 względnie
         przekracza ziarno 1e-9, więc obie warstwy działają razem.
         """
-        return kwantyzuj_kontrakt(
+        kontrakt: dict[str, Any] = kwantyzuj_kontrakt(
             {
                 "werdykt": self.werdykt,
                 "case_id": self.case_id,
@@ -612,6 +672,7 @@ class WerdyktProjektowy:
                 "zakres_poza_automatem": [dict(wpis) for wpis in ZAKRES_POZA_AUTOMATEM],
             }
         )
+        return kontrakt
 
 
 def _definicja(kryterium_id: str) -> DefinicjaKryterium:
@@ -634,15 +695,6 @@ def _niesprawdzona(
         powod_pl=powod_pl,
         run_id=run_id,
     )
-
-
-def _stan_z_licznikow(*, naruszenia: int, niesprawdzone: int) -> str:
-    """Zachowawcza agregacja stanu (patrz naglowek modulu)."""
-    if naruszenia > 0:
-        return STAN_NARUSZONE
-    if niesprawdzone > 0:
-        return STAN_NIESPRAWDZONE
-    return STAN_SPELNIONE
 
 
 # --- Elementy: liczby, zapas, wniosek (karta B-02 / W3-E) -------------------
@@ -737,6 +789,9 @@ def _wniosek(
     if wynik == WYNIK_BRAK_PODSTAW:
         powod = uzasadnienie_pl or "dostawca nie zwrócił wartości ani granicy dla tego elementu"
         return f"Brak podstaw do oceny spełnienia wymagania: {powod.rstrip('.')}."
+    if wynik == WYNIK_NIEJEDNOZNACZNY:
+        powod = uzasadnienie_pl or "dostawca zgłosił ostrzeżenie, które nie daje wniosku binarnego"
+        return f"Wynik niejednoznaczny — wymaga weryfikacji: {powod.rstrip('.')}."
     if (
         warunek == WARUNEK_ZGODNOSC
         or wartosc is None
@@ -852,14 +907,73 @@ def _ocena_elementu(
     )
 
 
-_WYNIK_Z_STATUSU: dict[str, str] = {
+# Mapy „status dostawcy -> wynik elementu" — JEDNA na dostawce, bo dostawcy maja rozna
+# semantyke ostrzezenia (patrz naglowek modulu). Status spoza mapy daje BRAK_PODSTAW
+# z nazwanym powodem (`_wynik_i_uzasadnienie`), nigdy SPELNIA.
+
+#: Warunki przylaczenia OSD i wytrzymalosc cieplna przewodow: PASS/FAIL/UNAVAILABLE.
+_WYNIK_OCENY_Z_GRANICA: dict[str, str] = {
     _STATUS_PASS: WYNIK_SPELNIA,
-    "WARNING": WYNIK_SPELNIA,
-    "WARN": WYNIK_SPELNIA,
     _STATUS_FAIL: WYNIK_NIE_SPELNIA,
     _STATUS_UNAVAILABLE: WYNIK_BRAK_PODSTAW,
+}
+#: Walidacja energetyczna: WARNING = wartosc policzona, granica dotrzymana, maly zapas
+#: (`analysis/energy_validation/builder.py` — prog ostrzegawczy lezy PRZED granica).
+_WYNIK_WALIDACJI_ENERGETYCZNEJ: dict[str, str] = {
+    _STATUS_PASS: WYNIK_SPELNIA,
+    "WARNING": WYNIK_SPELNIA,
+    _STATUS_FAIL: WYNIK_NIE_SPELNIA,
     "NOT_COMPUTED": WYNIK_BRAK_PODSTAW,
 }
+#: Dobory toru DER-SN: WARN = brak danych / odstepstwo / bieg w toku — ostrzezenie bez
+#: wniosku binarnego, wiec NIEJEDNOZNACZNY (kontrakt werdyktu §2.1; tresc ostrzezenia
+#: niesie uzasadnienie, agregat jej nie interpretuje).
+_WYNIK_DOBOROW_DER_SN: dict[str, str] = {
+    _STATUS_PASS: WYNIK_SPELNIA,
+    "WARN": WYNIK_NIEJEDNOZNACZNY,
+    _STATUS_FAIL: WYNIK_NIE_SPELNIA,
+}
+#: Wiarygodnosc Ik'': pasmo fizyczne dotrzymane / przekroczone / dane niekompletne.
+_WYNIK_WIARYGODNOSCI: dict[str, str] = {
+    CREDIBLE: WYNIK_SPELNIA,
+    OUT_OF_RANGE: WYNIK_NIE_SPELNIA,
+    INCOMPLETE: WYNIK_BRAK_PODSTAW,
+}
+
+
+def _wynik_i_uzasadnienie(
+    mapa: Mapping[str, str], status: str, uzasadnienie_pl: str | None
+) -> tuple[str, str | None]:
+    """Wynik elementu z mapy dostawcy; status spoza mapy = BRAK_PODSTAW z powodem.
+
+    Status nieznany nie jest ani spelnieniem, ani naruszeniem — dostawca powiedzial
+    cos, czego ta mapa nie rozumie, wiec jedyne uczciwe rozstrzygniecie to brak
+    podstaw do oceny z nazwanym statusem.
+    """
+    wynik = mapa.get(status)
+    if wynik is not None:
+        return wynik, uzasadnienie_pl
+    powod = (
+        f"Dostawca zwrócił status „{status}” spoza słownika oceny tego kryterium — "
+        "brak podstaw do rozstrzygnięcia"
+    )
+    if uzasadnienie_pl:
+        return WYNIK_BRAK_PODSTAW, f"{uzasadnienie_pl.rstrip('.')}. {powod}."
+    return WYNIK_BRAK_PODSTAW, f"{powod}."
+
+
+def _stan_z_elementow(elementy: Sequence[OcenaElementu]) -> str:
+    """Stan pozycji = stan NAJGORSZEGO elementu wg kolejnosci §2.3 (`_KOLEJNOSC_WYNIKOW`).
+
+    Jedno zrodlo prawdy dla elementu i pozycji (predykaty parami). Pozycja BEZ elementow
+    nie jest spelniona — zero sprawdzen to brak podstawy do oceny, nie dowod dotrzymania
+    kryterium (puste != spelnia).
+    """
+    if not elementy:
+        return STAN_NIESPRAWDZONE
+    najgorszy = min(elementy, key=lambda element: _RANGA_WYNIKU[element.wynik])
+    return _STAN_Z_WYNIKU[najgorszy.wynik]
+
 
 _UWAGA_OSTRZEZENIE_PL = "Margines jest niewielki — wartość leży w paśmie ostrzegawczym"
 
@@ -901,7 +1015,9 @@ def _pozycje_warunkow_przylaczenia(
             continue
         status = str(surowa.get("status"))
         definicja = _definicja(kryterium_id)
-        opis = str(surowa.get("opis_pl") or "") or None
+        wynik, opis = _wynik_i_uzasadnienie(
+            _WYNIK_OCENY_Z_GRANICA, status, str(surowa.get("opis_pl") or "") or None
+        )
         wartosc = _liczba(surowa.get("wartosc"))
         # Kryterium mocy dotyczy MODULU mocy czynnej (oba kierunki) — tak jak dostawca.
         if kryterium_id == KRYTERIUM_PWP_MOC and wartosc is not None:
@@ -910,38 +1026,27 @@ def _pozycje_warunkow_przylaczenia(
             definicja,
             element_id=punkt,
             element_nazwa=None,
-            wynik=_WYNIK_Z_STATUSU.get(status, WYNIK_BRAK_PODSTAW),
+            wynik=wynik,
             wartosc=wartosc,
             odniesienie=surowa.get("wymagana"),
             jednostka=str(surowa.get("jednostka") or definicja.jednostka),
             uzasadnienie_pl=opis,
             run_id=run_id,
         )
-        if status == _STATUS_UNAVAILABLE:
-            kody = [str(kod) for kod in (surowa.get("readiness_codes") or [])]
-            pozycje.append(
-                PozycjaWerdyktu(
-                    definicja=definicja,
-                    stan=STAN_NIESPRAWDZONE,
-                    liczba_niesprawdzonych=1,
-                    wiodacy_element_id=punkt,
-                    wiodacy_opis_pl=opis,
-                    powod_kod=kody[0] if kody else POWOD_BRAK_DANYCH,
-                    powod_pl=opis,
-                    run_id=run_id,
-                    elementy=(element,),
-                )
-            )
-            continue
-        naruszone = status == _STATUS_FAIL
+        # Stan pozycji z TEJ SAMEJ agregacji co u pozostalych dostawcow (jedno zrodlo).
+        bez_podstaw = element.wynik == WYNIK_BRAK_PODSTAW
+        kody = [str(kod) for kod in (surowa.get("readiness_codes") or [])]
         pozycje.append(
             PozycjaWerdyktu(
                 definicja=definicja,
-                stan=STAN_NARUSZONE if naruszone else STAN_SPELNIONE,
-                liczba_ocenionych=1,
-                liczba_naruszen=1 if naruszone else 0,
+                stan=_stan_z_elementow((element,)),
+                liczba_ocenionych=0 if bez_podstaw else 1,
+                liczba_naruszen=1 if element.wynik == WYNIK_NIE_SPELNIA else 0,
+                liczba_niesprawdzonych=1 if bez_podstaw else 0,
                 wiodacy_element_id=punkt,
                 wiodacy_opis_pl=opis,
+                powod_kod=(kody[0] if kody else POWOD_BRAK_DANYCH) if bez_podstaw else None,
+                powod_pl=opis if bez_podstaw else None,
                 run_id=run_id,
                 elementy=(element,),
             )
@@ -989,8 +1094,13 @@ def _pozycje_walidacji_energetycznej(
                 )
             )
             continue
-        naruszenia = [w for w in wiersze if str(w.get("status")) == "FAIL"]
-        niesprawdzone = [w for w in wiersze if str(w.get("status")) == "NOT_COMPUTED"]
+        # Jedno źródło prawdy dla elementu i pozycji: wynik wiersza z mapy dostawcy.
+        wynik_wiersza = [
+            (_WYNIK_WALIDACJI_ENERGETYCZNEJ.get(str(w.get("status")), WYNIK_BRAK_PODSTAW), w)
+            for w in wiersze
+        ]
+        naruszenia = [w for wynik, w in wynik_wiersza if wynik == WYNIK_NIE_SPELNIA]
+        niesprawdzone = [w for wynik, w in wynik_wiersza if wynik == WYNIK_BRAK_PODSTAW]
         ostrzezenia = [w for w in wiersze if str(w.get("status")) == "WARNING"]
         wiodacy = _wiodacy_wiersz_walidacji(naruszenia or niesprawdzone or ostrzezenia)
         definicja = _definicja(kryterium_id)
@@ -1001,9 +1111,7 @@ def _pozycje_walidacji_energetycznej(
         pozycje.append(
             PozycjaWerdyktu(
                 definicja=definicja,
-                stan=_stan_z_licznikow(
-                    naruszenia=len(naruszenia), niesprawdzone=len(niesprawdzone)
-                ),
+                stan=_stan_z_elementow(elementy),
                 liczba_ocenionych=len(wiersze) - len(niesprawdzone),
                 liczba_naruszen=len(naruszenia),
                 liczba_niesprawdzonych=len(niesprawdzone),
@@ -1063,6 +1171,11 @@ def _element_walidacji(
     wartosc (dla wielkosci w % sa to punkty procentowe).
     """
     status = str(wiersz.get("status"))
+    wynik, uzasadnienie = _wynik_i_uzasadnienie(
+        _WYNIK_WALIDACJI_ENERGETYCZNEJ,
+        status,
+        str(wiersz.get("why_pl")) if wiersz.get("why_pl") else None,
+    )
     margines = _liczba(wiersz.get("margin_pct"))
     # Jednostka dostawcy; „cos(phi)" nie jest jednostka fizyczna — definicja
     # kryterium niesie bezwymiarowe „-" (na ekranie: bez jednostki).
@@ -1074,7 +1187,7 @@ def _element_walidacji(
         definicja,
         element_id=str(wiersz.get("target_id")) if wiersz.get("target_id") is not None else None,
         element_nazwa=(str(wiersz.get("target_name")) if wiersz.get("target_name") else None),
-        wynik=_WYNIK_Z_STATUSU.get(status, WYNIK_BRAK_PODSTAW),
+        wynik=wynik,
         wartosc=wiersz.get("observed_value"),
         odniesienie=wiersz.get("limit_fail"),
         odniesienie_ostrzegawcze=wiersz.get("limit_warn"),
@@ -1084,7 +1197,7 @@ def _element_walidacji(
             ("pkt proc." if jednostka == "%" else jednostka) if margines is not None else None
         ),
         uwaga_pl=_UWAGA_OSTRZEZENIE_PL if status == "WARNING" else None,
-        uzasadnienie_pl=(str(wiersz.get("why_pl")) if wiersz.get("why_pl") else None),
+        uzasadnienie_pl=uzasadnienie,
         run_id=run_id,
     )
 
@@ -1117,8 +1230,13 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
             powod_pl="Bieg zwarciowy nie zwrocil zadnej galezi do oceny cieplnej.",
             run_id=run_id,
         )
-    naruszenia = [w for w in wiersze if str(w.get("status")) == _STATUS_FAIL]
-    niesprawdzone = [w for w in wiersze if str(w.get("status")) == _STATUS_UNAVAILABLE]
+    # Jedno źródło prawdy dla elementu i pozycji: wynik wiersza z mapy dostawcy.
+    wynik_wiersza = [
+        (_wynik_i_uzasadnienie(_WYNIK_OCENY_Z_GRANICA, str(w.get("status")), _opis_galezi(w)), w)
+        for w in wiersze
+    ]
+    naruszenia = [w for (wynik, _), w in wynik_wiersza if wynik == WYNIK_NIE_SPELNIA]
+    niesprawdzone = [w for (wynik, _), w in wynik_wiersza if wynik == WYNIK_BRAK_PODSTAW]
     wiodacy = _wiodaca_galaz(naruszenia or niesprawdzone)
     definicja = _definicja(KRYTERIUM_PRZEWOD_CIEPLNY)
     elementy = tuple(
@@ -1126,25 +1244,25 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
             definicja,
             element_id=str(wiersz.get("branch_id")) if wiersz.get("branch_id") else None,
             element_nazwa=(str(wiersz.get("branch_name")) if wiersz.get("branch_name") else None),
-            wynik=_WYNIK_Z_STATUSU.get(str(wiersz.get("status")), WYNIK_BRAK_PODSTAW),
+            wynik=wynik,
             wartosc=wiersz.get("i2t_a2s"),
             odniesienie=wiersz.get("i2t_dopuszczalne_a2s"),
             margines=wiersz.get("margines_procent"),
             margines_jednostka="%" if _liczba(wiersz.get("margines_procent")) is not None else None,
-            uzasadnienie_pl=_opis_galezi(wiersz),
+            uzasadnienie_pl=uzasadnienie,
             run_id=run_id,
         )
-        for wiersz in sorted(
-            wiersze,
-            key=lambda w: (
-                {"FAIL": 0, "UNAVAILABLE": 1, "PASS": 2}.get(str(w.get("status")), 3),
-                str(w.get("branch_id") or ""),
+        for (wynik, uzasadnienie), wiersz in sorted(
+            wynik_wiersza,
+            key=lambda para: (
+                _RANGA_WYNIKU[para[0][0]],
+                str(para[1].get("branch_id") or ""),
             ),
         )
     )
     return PozycjaWerdyktu(
         definicja=definicja,
-        stan=_stan_z_licznikow(naruszenia=len(naruszenia), niesprawdzone=len(niesprawdzone)),
+        stan=_stan_z_elementow(elementy),
         liczba_ocenionych=len(wiersze) - len(niesprawdzone),
         liczba_naruszen=len(naruszenia),
         liczba_niesprawdzonych=len(niesprawdzone),
@@ -1202,18 +1320,27 @@ def _pozycja_wiarygodnosci(widok: Mapping[str, Any], *, run_id: str) -> PozycjaW
             powod_pl="Bieg zwarciowy nie zwrocil zadnego wezla do oceny wiarygodnosci.",
             run_id=run_id,
         )
-    podsumowanie = widok.get("summary") or {}
-    poza_zakresem = int(podsumowanie.get("out_of_range_count") or 0)
-    niekompletne = int(podsumowanie.get("incomplete_count") or 0)
+    # Jedno źródło prawdy dla elementu i pozycji: wynik wiersza z mapy dostawcy. Dawniej
+    # KAŻDY status spoza {poza zakresem, dane niekompletne} dawał SPEŁNIA, a liczniki
+    # pozycji szły z podsumowania dostawcy — dwa niezależne warunki (KLASA §3).
+    wynik_wiersza = [
+        (
+            _wynik_i_uzasadnienie(
+                _WYNIK_WIARYGODNOSCI,
+                str(w.get("status")),
+                str(w.get("why_pl")) if w.get("why_pl") else None,
+            ),
+            w,
+        )
+        for w in wiersze
+    ]
+    poza_zakresem = sum(1 for (wynik, _), _w in wynik_wiersza if wynik == WYNIK_NIE_SPELNIA)
+    niekompletne = sum(1 for (wynik, _), _w in wynik_wiersza if wynik == WYNIK_BRAK_PODSTAW)
     wiodacy = next(
-        (w for w in wiersze if str(w.get("status")) in (OUT_OF_RANGE, INCOMPLETE)),
+        (w for (wynik, _), w in wynik_wiersza if wynik != WYNIK_SPELNIA),
         None,
     )
     definicja = _definicja(KRYTERIUM_WIARYGODNOSC_SC)
-    wynik_ze_statusu = {
-        OUT_OF_RANGE: WYNIK_NIE_SPELNIA,
-        INCOMPLETE: WYNIK_BRAK_PODSTAW,
-    }
     elementy = tuple(
         _ocena_elementu(
             definicja,
@@ -1221,24 +1348,24 @@ def _pozycja_wiarygodnosci(widok: Mapping[str, Any], *, run_id: str) -> PozycjaW
             # zostaje identyfikatorem zapasowym, gdy dostawca jej nie zna.
             element_id=str(wiersz.get("element_id") or wiersz.get("target_id") or "") or None,
             element_nazwa=(str(wiersz.get("target_name")) if wiersz.get("target_name") else None),
-            wynik=wynik_ze_statusu.get(str(wiersz.get("status")), WYNIK_SPELNIA),
+            wynik=wynik,
             wartosc=wiersz.get("ikss_ka"),
             odniesienie=wiersz.get("upper_ka"),
             odniesienie_dolne=wiersz.get("lower_ka"),
-            uzasadnienie_pl=(str(wiersz.get("why_pl")) if wiersz.get("why_pl") else None),
+            uzasadnienie_pl=uzasadnienie,
             run_id=run_id,
         )
-        for wiersz in sorted(
-            wiersze,
-            key=lambda w: (
-                {OUT_OF_RANGE: 0, INCOMPLETE: 1}.get(str(w.get("status")), 2),
-                str(w.get("target_id") or ""),
+        for (wynik, uzasadnienie), wiersz in sorted(
+            wynik_wiersza,
+            key=lambda para: (
+                _RANGA_WYNIKU[para[0][0]],
+                str(para[1].get("target_id") or ""),
             ),
         )
     )
     return PozycjaWerdyktu(
         definicja=definicja,
-        stan=_stan_z_licznikow(naruszenia=poza_zakresem, niesprawdzone=niekompletne),
+        stan=_stan_z_elementow(elementy),
         liczba_ocenionych=len(wiersze) - niekompletne,
         liczba_naruszen=poza_zakresem,
         liczba_niesprawdzonych=niekompletne,
@@ -1261,40 +1388,57 @@ def _pozycja_der_sn(raport: Mapping[str, Any] | None) -> PozycjaWerdyktu:
             powod_pl="Projekt nie zawiera toru przylaczenia zrodla wytworczego (DER-SN).",
         )
     pozycje = [p for p in (raport.get("pozycje") or []) if isinstance(p, Mapping)]
-    podsumowanie = raport.get("podsumowanie") or {}
-    liczba_fail = int(podsumowanie.get("fail") or 0)
-    liczba_warn = int(podsumowanie.get("warn") or 0)
+    liczba_warn = sum(1 for p in pozycje if str(p.get("status")) == "WARN")
     wiodacy = next((p for p in pozycje if str(p.get("status")) == _STATUS_FAIL), None)
     if wiodacy is None:
-        wiodacy = next((p for p in pozycje if str(p.get("status")) == "WARN"), None)
+        wiodacy = next(
+            (p for p in pozycje if str(p.get("status")) not in (_STATUS_PASS, _STATUS_FAIL)),
+            None,
+        )
     zrodlo_ref = str(raport.get("source_ref")) if raport.get("source_ref") else None
     zrodlo_nazwa = str(raport.get("source_name")) if raport.get("source_name") else None
-    elementy = tuple(
-        _ocena_elementu(
-            definicja,
-            element_id=zrodlo_ref,
-            element_nazwa=(
-                f"{zrodlo_nazwa or zrodlo_ref or ''} — {_nazwa_kontroli_der(pozycja)}".strip(" —")
-            ),
-            wynik=_WYNIK_Z_STATUSU.get(str(pozycja.get("status")), WYNIK_BRAK_PODSTAW),
-            uwaga_pl=(
-                "Pozycja z uwagą (odstępstwo lub ostrzeżenie kaskady prądowej)"
-                if str(pozycja.get("status")) == "WARN"
-                else None
-            ),
-            uzasadnienie_pl=_komunikat_der(pozycja),
+    elementy: list[OcenaElementu] = []
+    for pozycja in pozycje:
+        # WARN tego dostawcy = brak danych / odstępstwo / bieg w toku → NIEJEDNOZNACZNY
+        # z komunikatem dostawcy jako uzasadnieniem (nigdy SPEŁNIA).
+        wynik, uzasadnienie = _wynik_i_uzasadnienie(
+            _WYNIK_DOBOROW_DER_SN, str(pozycja.get("status")), _komunikat_der(pozycja)
         )
-        for pozycja in pozycje
-    )
+        elementy.append(
+            _ocena_elementu(
+                definicja,
+                element_id=zrodlo_ref,
+                element_nazwa=(
+                    f"{zrodlo_nazwa or zrodlo_ref or ''} — {_nazwa_kontroli_der(pozycja)}".strip(
+                        " —"
+                    )
+                ),
+                wynik=wynik,
+                uzasadnienie_pl=uzasadnienie,
+            )
+        )
+    liczba_fail = sum(1 for e in elementy if e.wynik == WYNIK_NIE_SPELNIA)
+    liczba_bez_podstaw = sum(1 for e in elementy if e.wynik == WYNIK_BRAK_PODSTAW)
     return PozycjaWerdyktu(
         definicja=definicja,
-        stan=STAN_NARUSZONE if liczba_fail > 0 else STAN_SPELNIONE,
-        liczba_ocenionych=len(pozycje),
+        stan=_stan_z_elementow(elementy),
+        liczba_ocenionych=len(elementy) - liczba_bez_podstaw,
         liczba_naruszen=liczba_fail,
+        liczba_niesprawdzonych=liczba_bez_podstaw,
         liczba_ostrzezen=liczba_warn,
         wiodacy_element_id=zrodlo_ref,
         wiodacy_opis_pl=(str(wiodacy.get("message_pl")) if wiodacy else None),
-        elementy=elementy,
+        powod_kod=None if elementy else POWOD_BRAK_DANYCH,
+        powod_pl=(
+            None
+            if elementy
+            else (
+                "Raport doborów toru przyłączenia źródła nie zawiera żadnej kontroli — "
+                "brak danych toru (napięcia falownika i szyny SN, transformator blokowy) "
+                "do oceny doborów."
+            )
+        ),
+        elementy=tuple(elementy),
     )
 
 
@@ -1454,11 +1598,15 @@ def _niesprawdzone_kryteria(
 
 
 def _werdykt_calosciowy(pozycje: Sequence[PozycjaWerdyktu]) -> str:
-    if any(pozycja.stan == STAN_NARUSZONE for pozycja in pozycje):
-        return STAN_NARUSZONE
-    if any(pozycja.stan == STAN_NIESPRAWDZONE for pozycja in pozycje):
+    """Werdykt projektu = stan NAJGORSZEJ pozycji wg kolejnosci §2.3 (`_KOLEJNOSC_WYNIKOW`).
+
+    Pozycje NIE_DOTYCZY nie uczestnicza; komplet pozycji NIE_DOTYCZY (zadne kryterium nie
+    ma zastosowania) to brak podstawy do oceny, nie spelnienie (puste != spelnia).
+    """
+    stany = [pozycja.stan for pozycja in pozycje if pozycja.stan != STAN_NIE_DOTYCZY]
+    if not stany:
         return STAN_NIESPRAWDZONE
-    return STAN_SPELNIONE
+    return min(stany, key=lambda stan: _RANGA_STANU[stan])
 
 
 def zbuduj_werdykt_projektowy(

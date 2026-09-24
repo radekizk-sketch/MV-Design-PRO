@@ -21,23 +21,27 @@ import { create } from 'zustand';
 import { pobierzKatalogNcRfg, uruchomBiegNcRfg } from './ncrfg/api';
 import type { BiegNcRfg, KatalogNcRfg, WejscieModuluNcRfg } from './ncrfg/typy';
 import { MACIERZ_STRINGS } from './macierz/strings';
+import type { SemantykaKoloru } from '../wyniki/wzorzec/werdykt';
 
 /** Status biegu NC RfG (spójny z lokalnym stanem sprzed przeniesienia). */
 export type StatusBieguNcRfg = 'idle' | 'running' | 'ready' | 'error';
 
 /**
- * K5-B (H-3 pkt 4): wynik walidacji FRT/HVRT zapisany z okna „Walidacja modelu
- * falownika" (EkranFrt). Werdykt POCHODZI z biegu solvera trajektorii — store
- * tylko go przechowuje per moduł (klucz = id modułu DER, ta sama tożsamość co
- * kolumny macierzy `zbudujModuly` → `der.id`), żeby macierz NC RfG pokazywała
- * wynik FRT obok werdyktów testów PTPiREE.
+ * K5-B (H-3 pkt 4): stan oceny FRT/HVRT zapisany z okna „Walidacja modelu
+ * falownika" (EkranFrt). Tekst i istotność POCHODZĄ z rekordu oceny backendu —
+ * store tylko je przechowuje per moduł (klucz = id modułu DER, ta sama tożsamość
+ * co kolumny macierzy `zbudujModuly` → `der.id`), żeby macierz NC RfG pokazywała
+ * stan FRT obok werdyktów testów PTPiREE. Od 2026-09-23 (uczciwość natychmiastowa)
+ * EkranFrt zapisuje wyłącznie „Ocena niewykonana" z semantyką `neutralna` —
+ * trajektoria jest zadana profilem wejściowym, więc werdyktu FRT nie ma.
  */
 export interface ZapisanyWynikFrt {
-  /** Rodzaj testu, z którego pochodzi werdykt. */
+  /** Rodzaj testu, którego dotyczy stan oceny. */
   readonly testKind: 'lvrt' | 'hvrt';
-  /** Tekst werdyktu PL (agregacja słownikowa z pól solvera — frtModel). */
+  /** Etykieta PL stanu oceny — z rekordu backendu (`ocena.etykieta.etykieta_pl`). */
   readonly tekst: string;
-  readonly istotnosc: 'ok' | 'warn' | 'err';
+  /** Semantyka koloru Z REKORDU backendu (`ocena.etykieta.semantyka`) — bez przemapowania. */
+  readonly istotnosc: SemantykaKoloru;
   /** Operator OSD, wobec którego przeprowadzono walidację. */
   readonly operatorId: string;
 }

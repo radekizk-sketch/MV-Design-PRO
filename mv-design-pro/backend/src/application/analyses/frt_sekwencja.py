@@ -8,18 +8,20 @@ zapadów napięcia (para głębokość_pu + czas_s):
   przez NOWĄ budowę wejścia ``build_frt_sekwencja_input``
   (``application.ncrfg_compliance.frt_input.build_frt_sekwencja_input``) — sekwencja =
   N scenariuszy LVRT w JEDNYM wejściu solvera, każdy zapad liczony od stanu ustalonego,
-- dokłada OBWIEDNIĘ LVRT profilu operatora (punkty krzywej czas→napięcie z
-  ``NcRfgProfile.voltage_levels.lvrt``, jak D6),
-- buduje werdykt PL per zapad WYŁĄCZNIE z pól solvera (reużywa ``_verdict_pl`` z D6,
-  ``application.analyses.frt_trajektorie:46``) oraz werdykt sekwencji jako KONIUNKCJĘ
-  werdyktów zapadów (kompozycja wyników solvera, nie nowa fizyka),
+- dokłada obwiednię LVRT profilu operatora (punkty krzywej czas→napięcie z
+  ``NcRfgProfile.voltage_levels.lvrt``, jak D6) WYŁĄCZNIE jako informację o wymaganiu,
+- NIE wydaje werdyktu ani dla zapadu, ani dla sekwencji: trajektoria solvera jest funkcją
+  zadaną profilem wejściowym, a kryterium utrzymania v > 0,05 p.u. wobec tego samego profilu
+  jest tautologią (sonda audytu 2026-09-23: 0,06 p.u. przez 3 s → „sekwencja zaliczona").
+  Każdy zapad i cały widok niosą rekord kontraktu werdyktu (`ocena`, `NIE_OCENIONO`),
+  a pola solvera zostają jako materiał audytowy,
 - opcjonalnie dołącza wiersz SCR/WSCR węzła przyłączenia z widoku siły sieci D1
   (``application.analyses.grid_strength.build_grid_strength_view:128``) — klasyfikacja
   słaba/silna sieć Z WIDOKU D1, zero własnej oceny.
 
 OGRANICZENIE (rozstrzygnięcie zarządcy §0.1, pole odpowiedzi ``zalozenia_pl``):
 stan modułu MIĘDZY zapadami (nagrzewanie, niepełny odzysk) NIE jest modelowany —
-każdy zapad oceniany niezależnie; werdykt sekwencji = koniunkcja werdyktów zapadów.
+każdy zapad liczony od stanu ustalonego.
 
 Odwzorowania (plik:linia w kodzie źródłowym):
 - status/margines/połączenie per zapad ← ``FrtScenarioResult``
@@ -36,9 +38,11 @@ import json
 from typing import Any
 
 from application.analyses.frt_trajektorie import (
-    _WERDYKT_W_OBWIEDNI,
-    _verdict_pl,
+    SEKCJA_AUDYTOWA_FRT_PL,
+    WERDYKT_NIE_OCENIONO_PL,
     _widok_bez_modelu_dynamicznego,
+    ocena_frt_niewykonana,
+    opis_obwiedni_wymaganej,
 )
 from application.ncrfg_compliance.frt_input import build_frt_sekwencja_input
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
@@ -52,14 +56,10 @@ _ROUND = 6
 # Rozsądny limit długości sekwencji (ochrona przed nadużyciem wejścia).
 _MAX_ZAPADY = 10
 
-# Werdykt sekwencji — koniunkcja werdyktów zapadów (pola solvera, bez własnej oceny).
-_WERDYKT_SEKWENCJA_W_OBWIEDNI = "sekwencja w obwiedni"
-
 _ZALOZENIA_PL = (
     "Stan modułu MIĘDZY zapadami (nagrzewanie, niepełny odzysk) nie jest modelowany: "
-    "każdy zapad liczony od stanu ustalonego i oceniany niezależnie. Werdykt sekwencji "
-    "to koniunkcja werdyktów poszczególnych zapadów — kompozycja wyników solvera, "
-    "nie nowa fizyka."
+    "każdy zapad liczony od stanu ustalonego. Trajektoria każdego zapadu jest zadana "
+    "profilem wejściowym, więc ani zapad, ani sekwencja nie są oceniane."
 )
 
 _KONTEKST_POWOD_BRAK = (
@@ -70,15 +70,6 @@ _KONTEKST_POWOD_BRAK = (
 
 def _round(value: float) -> float:
     return round(float(value), _ROUND)
-
-
-def _werdykt_sekwencji_pl(werdykty: list[str]) -> str:
-    """Koniunkcja werdyktów zapadów: sekwencja zaliczona tylko gdy KAŻDY zapad
-    jest „w obwiedni"; w przeciwnym razie numer pierwszego niezaliczonego zapadu."""
-    for indeks, werdykt in enumerate(werdykty, start=1):
-        if werdykt != _WERDYKT_W_OBWIEDNI:
-            return f"sekwencja niezaliczona — zapad {indeks}"
-    return _WERDYKT_SEKWENCJA_W_OBWIEDNI
 
 
 def _compute_input_hash(
@@ -165,11 +156,8 @@ def build_frt_sekwencja_view(
     ]
 
     zapady_view: list[dict[str, Any]] = []
-    werdykty: list[str] = []
     for scenario in solver_input.scenarios:
         sc = results_by_id[scenario.scenario_id]
-        werdykt = _verdict_pl(sc)
-        werdykty.append(werdykt)
         zapady_view.append(
             {
                 "scenario_id": scenario.scenario_id,
@@ -186,7 +174,19 @@ def build_frt_sekwencja_view(
                 "p_recovery_time_s": (
                     None if sc.p_recovery_time_s is None else _round(sc.p_recovery_time_s)
                 ),
-                "werdykt_pl": werdykt,
+                "werdykt_pl": WERDYKT_NIE_OCENIONO_PL,
+                "ocena": ocena_frt_niewykonana(
+                    converter=converter,
+                    profile=profile,
+                    rodzaj="lvrt",
+                    kryterium_id=f"frt_hvrt.sekwencja.{converter.id}.{scenario.scenario_id}",
+                    opis_przedmiotu_pl=(
+                        f"Moduł DER {converter.name}, zapad {len(zapady_view) + 1} sekwencji "
+                        f"(głębokość {_round(scenario.voltage_dip_depth_pu)} p.u., czas "
+                        f"{_round(scenario.fault_duration_s)} s) wobec profilu operatora "
+                        f"{profile.operator_name_pl}"
+                    ),
+                ),
                 # Ślad WHITE BOX — parametry wejścia solvera dla tego zapadu.
                 "wejscie_solvera": {
                     "test_kind": scenario.test_kind,
@@ -215,17 +215,25 @@ def build_frt_sekwencja_view(
         "status_solvera": result.status,
         # Stopień dowodowy trajektorii (karta S-1 §0.9) — jak w D6 (trajektorie).
         "ocena_dowodowa": classify_dynamic_capability("frt_hvrt.trajectory").to_dict(),
+        "ocena": ocena_frt_niewykonana(
+            converter=converter,
+            profile=profile,
+            rodzaj="lvrt",
+            kryterium_id=f"frt_hvrt.sekwencja.{converter.id}",
+            opis_przedmiotu_pl=(
+                f"Moduł DER {converter.name} w sekwencji {len(zapady_view)} zapadów napięcia "
+                f"wobec profilu operatora {profile.operator_name_pl}"
+            ),
+        ),
+        "sekcja_audytowa_pl": SEKCJA_AUDYTOWA_FRT_PL,
         "obwiednia_profilu": {
             "rodzaj": "lvrt",
-            "opis": (
-                "Krzywa LVRT operatora: dozwolony przebieg napięcia (czas→napięcie) "
-                "wg profilu NC RfG."
-            ),
+            "opis": opis_obwiedni_wymaganej("lvrt"),
             "punkty": obwiednia,
         },
         "liczba_zapadow": len(zapady_view),
         "zapady": zapady_view,
-        "werdykt_sekwencji_pl": _werdykt_sekwencji_pl(werdykty),
+        "werdykt_sekwencji_pl": WERDYKT_NIE_OCENIONO_PL,
         "zalozenia_pl": _ZALOZENIA_PL,
         "kontekst_sily_sieci": kontekst_sily_sieci,
         "kontekst_sily_sieci_powod_pl": kontekst_powod_pl,

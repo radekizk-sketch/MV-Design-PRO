@@ -798,7 +798,10 @@ export const SCREEN_MATRIX: Record<WorkspaceScreenCode, WorkspaceScreenMatrixEnt
   'E-37': screen('E-37', 'report', ['zakres', 'podglad', 'eksport', 'uzasadnienia'], 'zakres', ['analysis_case_context'], 'E-35'),
   'E-38': screen('E-38', null, ['katalogi', 'wyszukiwarka', 'powiazania'], 'katalogi', [], 'catalog_admin'),
   // E-39 skasowane karta K2 (2026-09-09) — patrz screenCanonRegistry.ts.
-  'E-40': screen('E-40', 'analysis_run', ['widmo', 'z-f', 'flicker', 'trace'], 'widmo', ['analysis_case_context'], 'E-35'),
+  // E-40: zakładki „widmo / skan Z(f) / migotanie" skasowane (uczciwość natychmiastowa
+  // 2026-09-23) — solver harmoniczny jest niezwalidowany (ocena niewykonana, liczby
+  // wyłącznie w sekcji audytowej), a migotania nie liczy w ogóle.
+  'E-40': screen('E-40', 'analysis_run', ['ocena', 'trace'], 'ocena', ['analysis_case_context'], 'E-35'),
   'E-41': screen('E-41', 'analysis_run', ['pv', 'qv', 'modalna', 'l-index'], 'pv', ['analysis_case_context'], 'E-35'),
   'E-42': screen('E-42', 'analysis_run', ['n-1', 'n-2', 'saidi-saifi', 'monte-carlo'], 'n-1', ['analysis_case_context'], 'E-35'),
   'E-43': screen('E-43', 'analysis_run', ['gleba', 'rg-gpr', 'dotykowe-krokowe'], 'gleba', ['analysis_case_context'], 'E-35'),

@@ -1,17 +1,19 @@
 /*
  * SekcjaSekwencjiZapadow — sekcja „Sekwencja zapadów" okna „Walidacja modelu
- * falownika" (P43 / strumień OZE). Edytor listy zapadów (głębokość p.u. + czas s,
+ * falownika" (strumień OZE). Edytor listy zapadów (głębokość p.u. + czas s,
  * dodaj/usuń wiersz) + JAWNY bieg `GET /api/oze-analysis/frt-sequence` (moduł DER
  * i operator reużyte z górnej części ekranu) → prezentacja:
- *   1. odznaka werdyktu sekwencji (koniunkcja werdyktów zapadów — z backendu),
+ *   1. rekord oceny z backendu („Ocena niewykonana" — sekwencja nie jest oceniana,
+ *      bo każdy zapad liczony jest trajektorią zadaną profilem wejściowym),
  *   2. założenia ZAWSZE widoczne (brak modelu stanu między zapadami — uczciwość),
- *   3. tabela zapadów na wzorcu `TabelaWynikow` (parametry, marginesy, werdykt),
+ *   3. tabela zapadów (echo wejścia + etykieta oceny) i zwinięta sekcja audytowa
+ *      pól solvera pod nagłówkiem z backendu,
  *   4. kontekst siły sieci (SCR/WSCR węzła) albo uczciwy powód jego braku;
  *      uzasadnienie `why_pl` + rozwijany ślad WHITE BOX (`white_box` z backendu,
  *      reużyty `SladAnalizy` z pulpitu — kroki tekstowe, zero LaTeX-a doklejanego w UI).
  *
- * Zero fizyki, zero ocen lokalnych — werdykty, marginesy i kontekst pochodzą
- * WYŁĄCZNIE z backendu. Serializacja (kropka dziesiętna) należy do klienta;
+ * Zero fizyki, zero ocen lokalnych — pola solvera i kontekst pochodzą WYŁĄCZNIE
+ * z backendu. Serializacja (kropka dziesiętna) należy do klienta;
  * edytor prezentuje z przecinkiem PL. Identyfikator wejścia (hash) — tryb ekspercki.
  */
 
@@ -19,6 +21,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { isModeAtLeast } from '../../shell/modeModel';
 import { TabelaWynikow } from '../../wyniki/wzorzec';
+import { OcenaNiewykonana, SekcjaAudytowa } from '../../wyniki/wzorzec/OcenaNiewykonana';
 import { SladAnalizy } from '../pulpit';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { ANALYSIS_TYPE_LABELS, type ExecutionRun } from '../../../ui/study-cases/types';
@@ -29,8 +32,9 @@ import {
   type ZapytanieSekwencjiFrt,
 } from '../api';
 import {
+  kolumnyAudytuSekwencji,
   kolumnyTabeliSekwencji,
-  werdyktSekwencji,
+  wierszeAudytuSekwencji,
   wierszeTabeliSekwencji,
 } from './sekwencjaModel';
 import { FRT_STRINGS, fmtPuFrt, fmtSFrt } from './strings';
@@ -79,7 +83,7 @@ function StanPanel({
 }
 
 // ---------------------------------------------------------------------------
-// Wynik sekwencji: odznaka werdyktu + założenia + tabela + kontekst siły sieci
+// Wynik sekwencji: ocena + założenia + tabela + audyt + kontekst siły sieci
 // ---------------------------------------------------------------------------
 
 function WynikSekwencji({
@@ -94,20 +98,15 @@ function WynikSekwencji({
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
   // Ślad WHITE BOX kontekstu siły sieci — NA ŻĄDANIE (domyślnie zwinięty).
   const [sladWidoczny, setSladWidoczny] = useState(false);
-  const werdykt = useMemo(() => werdyktSekwencji(dane), [dane]);
   const kolumny = useMemo(() => kolumnyTabeliSekwencji(), []);
   const wiersze = useMemo(() => wierszeTabeliSekwencji(dane), [dane]);
+  const kolumnyAudytu = useMemo(() => kolumnyAudytuSekwencji(), []);
+  const wierszeAudytu = useMemo(() => wierszeAudytuSekwencji(dane), [dane]);
   const kontekst = dane.kontekst_sily_sieci;
 
   return (
     <div data-testid="mvd-frt-sekw-wynik">
-      <span
-        className={`mvd-frt-sekw-odznaka mvd-frt-sekw-odznaka--${werdykt.istotnosc}`}
-        data-testid="mvd-frt-sekw-werdykt"
-      >
-        {werdykt.tekst}
-      </span>
-      <p className="mvd-frt-sekw-opis">{FRT_STRINGS.sekwWerdyktOpis}</p>
+      {dane.ocena && <OcenaNiewykonana ocena={dane.ocena} testid="mvd-frt-sekw-ocena" />}
 
       <p className="mvd-frt-sekw-zalozenia" data-testid="mvd-frt-sekw-zalozenia">
         {dane.zalozenia_pl}
@@ -119,6 +118,17 @@ function WynikSekwencji({
         onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
       />
+
+      {dane.sekcja_audytowa_pl && (
+        <SekcjaAudytowa naglowek={dane.sekcja_audytowa_pl} testid="mvd-frt-sekw-audyt">
+          <TabelaWynikow
+            kolumny={kolumnyAudytu}
+            wiersze={wierszeAudytu}
+            onOtworzDowod={onOtworzDowod}
+            trybZaawansowania={trybZaawansowania}
+          />
+        </SekcjaAudytowa>
+      )}
 
       <section className="mvd-frt-sekw-kontekst" data-testid="mvd-frt-sekw-kontekst">
         <h4 className="mvd-frt-sekw-kontekst-tytul">{FRT_STRINGS.sekwKontekstTytul}</h4>
