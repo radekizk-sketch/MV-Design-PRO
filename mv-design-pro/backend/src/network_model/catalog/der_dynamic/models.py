@@ -331,14 +331,14 @@ class WindTurbineDynamicProfile(BaseModel):
                 )
             przeksztaltnik = PrzeksztaltnikGFL(
                 proweniencja=self.proweniencja,
-                s_n_mva=s_n_mva,  # type: ignore[arg-type]
-                i_max_pu=i_max_pu,  # type: ignore[arg-type]
-                priorytet_ogranicznika=priorytet_ogranicznika,  # type: ignore[arg-type]
-                pll_kp=pll_kp,  # type: ignore[arg-type]
-                pll_ki=pll_ki,  # type: ignore[arg-type]
-                reg_pradu_kp=reg_pradu_kp,  # type: ignore[arg-type]
-                reg_pradu_ki=reg_pradu_ki,  # type: ignore[arg-type]
-                k_frt=k_frt,  # type: ignore[arg-type]
+                s_n_mva=s_n_mva,
+                i_max_pu=i_max_pu,
+                priorytet_ogranicznika=priorytet_ogranicznika,
+                pll_kp=pll_kp,
+                pll_ki=pll_ki,
+                reg_pradu_kp=reg_pradu_kp,
+                reg_pradu_ki=reg_pradu_ki,
+                k_frt=k_frt,
                 prog_frt_pu=self.v_min_continuous_pu,
                 tp_s=self.tp_s,
                 tiq_s=self.tq_s,

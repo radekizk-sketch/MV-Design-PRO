@@ -118,34 +118,34 @@ ZIAD_DEVICES = ("ZIAD_ZPRO",)
 
 
 def build_siemens_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="SIEMENS", prefix="SIPROTEC", device_ids=SIEMENS_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="SIEMENS", prefix="SIPROTEC", device_ids=SIEMENS_DEVICES)
 
 
 def build_schneider_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="SCHNEIDER", prefix="EASERGY", device_ids=SCHNEIDER_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="SCHNEIDER", prefix="EASERGY", device_ids=SCHNEIDER_DEVICES)
 
 
 def build_sel_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="SEL", prefix="SEL", device_ids=SEL_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="SEL", prefix="SEL", device_ids=SEL_DEVICES)
 
 
 def build_ge_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="GE", prefix="GE_MULTILIN", device_ids=GE_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="GE", prefix="GE_MULTILIN", device_ids=GE_DEVICES)
 
 
 def build_zpas_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="ZPAS", prefix="ZPAS", device_ids=ZPAS_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="ZPAS", prefix="ZPAS", device_ids=ZPAS_DEVICES)
 
 
 def build_elester_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="ELESTER", prefix="ELESTER", device_ids=ELESTER_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="ELESTER", prefix="ELESTER", device_ids=ELESTER_DEVICES)
 
 
 def build_energotest_adapter() -> VendorAdapter:
     return GenericVendorAdapter(
         vendor="ENERGOTEST", prefix="ENERGOTEST", device_ids=ENERGOTEST_DEVICES
-    )  # type: ignore[return-value]
+    )
 
 
 def build_ziad_adapter() -> VendorAdapter:
-    return GenericVendorAdapter(vendor="ZIAD", prefix="ZIAD", device_ids=ZIAD_DEVICES)  # type: ignore[return-value]
+    return GenericVendorAdapter(vendor="ZIAD", prefix="ZIAD", device_ids=ZIAD_DEVICES)

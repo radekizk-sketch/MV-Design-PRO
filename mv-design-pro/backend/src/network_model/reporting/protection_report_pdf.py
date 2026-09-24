@@ -40,7 +40,7 @@ try:
     _PDF_AVAILABLE = True
 except ImportError:
     _PDF_AVAILABLE = False
-    rl_config = None  # type: ignore
+    rl_config = None
 
 
 # =============================================================================

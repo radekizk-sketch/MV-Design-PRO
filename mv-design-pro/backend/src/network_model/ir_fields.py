@@ -53,7 +53,7 @@ def wymagany_float(data: dict[str, Any], field: str, *, context: str | None = No
     """Odczytaj wymagane pole liczbowe (float) — brak klucza/``None`` podnosi wyjątek."""
     if field not in data or data[field] is None:
         raise BrakujacePoleIRError(field, context=context)
-    return float(data[field])  # type: ignore[arg-type]
+    return float(data[field])
 
 
 def wymagany_float_lub_nieznany(
@@ -71,14 +71,14 @@ def wymagany_float_lub_nieznany(
         raise BrakujacePoleIRError(field, context=context)
     if data[field] is None:
         return None
-    return float(data[field])  # type: ignore[arg-type]
+    return float(data[field])
 
 
 def wymagany_int(data: dict[str, Any], field: str, *, context: str | None = None) -> int:
     """Odczytaj wymagane pole całkowite (int) — brak klucza/``None`` podnosi wyjątek."""
     if field not in data or data[field] is None:
         raise BrakujacePoleIRError(field, context=context)
-    return int(data[field])  # type: ignore[arg-type]
+    return int(data[field])
 
 
 def wymagany_str(data: dict[str, Any], field: str, *, context: str | None = None) -> str:

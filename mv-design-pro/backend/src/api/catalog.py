@@ -99,10 +99,10 @@ class SlownikiUziemienia(BaseModel):
 def slowniki_uziemienia() -> SlownikiUziemienia:
     """Zamkniete slowniki uziemienia — jedno zrodlo dla modelu, walidatora, OpenAPI i frontu."""
     return SlownikiUziemienia(
-        typy_punktu_neutralnego=list(TYPY_PUNKTU_NEUTRALNEGO),  # type: ignore[arg-type]
-        uklady_sieci_nn=list(UKLADY_SIECI_NN),  # type: ignore[arg-type]
-        uziemienia_ekranu_kabla=list(UZIEMIENIA_EKRANU_KABLA),  # type: ignore[arg-type]
-        role_uziemnika=list(ROLE_UZIEMNIKA),  # type: ignore[arg-type]
+        typy_punktu_neutralnego=list(TYPY_PUNKTU_NEUTRALNEGO),
+        uklady_sieci_nn=list(UKLADY_SIECI_NN),
+        uziemienia_ekranu_kabla=list(UZIEMIENIA_EKRANU_KABLA),
+        role_uziemnika=list(ROLE_UZIEMNIKA),
     )
 
 

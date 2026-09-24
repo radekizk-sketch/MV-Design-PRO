@@ -58,7 +58,7 @@ def _wymagana_moc_znamionowa(params: dict, field: str, *, type_id: object) -> fl
             f"catalog.type_incomplete: brak pola '{field}' w rekordzie konwertera "
             f"id={type_id!r} — derywacja typu falownika odrzucona (nie 0)."
         )
-    return float(wartosc)  # type: ignore[arg-type]
+    return float(wartosc)
 
 
 def _copy_catalog_quality(record: dict) -> dict:

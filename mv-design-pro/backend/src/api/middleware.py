@@ -18,7 +18,7 @@ logger = logging.getLogger("mv_design_pro")
 class RequestIdMiddleware(BaseHTTPMiddleware):
     """Adds X-Request-Id header to every request/response for error correlation."""
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:  # type: ignore[type-arg]
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         request_id = request.headers.get("X-Request-Id") or str(uuid.uuid4())
         request.state.request_id = request_id
 

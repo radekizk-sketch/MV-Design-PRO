@@ -60,7 +60,7 @@ jobs:
       # `api_lifecycle_guard.py`, ktorego test kontraktu jest wlasnie w tym
       # zbiorze. Jeden z tych testow zdazyl w tym czasie zgnic (rejestr decyzji
       # w atrapie nie nadazyl za kanonem V12D-036) — nikt tego nie widzial,
-      # bo test sie nie wykonywal. Czas biegu zmierzony 2026-09-23: ~7 min (1128 samotestów; samotesty strażnika werdyktu i bramki mypy uruchamiają prawdziwy parser TS i prawdziwe mypy).
+      # bo test sie nie wykonywal. Czas biegu zmierzony 2026-09-24: ~6 min (2343 samotesty; samotesty strażnika werdyktu i bramki mypy uruchamiają prawdziwy parser TS i prawdziwe mypy).
       # Karta AB-1a Pakiet E1: samotest `werdykt_wyjasnialny_guard` (w kroku ponizej) parsuje
       # AST TypeScript pakietem `typescript` z `frontend/node_modules`. Bez `npm ci` ten test
       # padalby na braku parsera (blad srodowiska), a pominiecie go warunkowo byloby
@@ -172,6 +172,14 @@ jobs:
       - name: Inwentarz Katalogow Guard
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/inwentarz_katalogow_guard.py
+      # Plan A/B §12.1 (decyzja O-43, karta AB-1a Pakiet E): bramka danych wlasciciela —
+      # tabela podstaw profilu NC RfG o stanie NIEUSTALONE (dokument, wydanie, jednostka
+      # redakcyjna, co odblokowuje) jest GENEROWANA z profilu efektywnego kazdego operatora;
+      # guard porownuje tabele w planie z pomiarem. Importuje loader profilu (pydantic,
+      # yaml), wiec biegnie tu, w venv backendu, a nie w docs-guard.yml.
+      - name: Bramka Danych Profilu Guard
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/bramka_danych_profilu.py
       - name: Transformer Catalog Voltage Guard
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/transformer_catalog_voltage_guard.py

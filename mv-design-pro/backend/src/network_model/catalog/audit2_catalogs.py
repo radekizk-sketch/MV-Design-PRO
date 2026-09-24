@@ -1397,7 +1397,7 @@ def ocen_wytrzymalosc_aparatu(
     else:
         message = (
             f"OK: aparatura „{etykieta_pl}” wytrzymała "
-            f"(wykorzystanie I_dyn {util_dyn:.0f}%, I_th {util_th:.0f}%)."  # type: ignore[str-format]
+            f"(wykorzystanie I_dyn {util_dyn:.0f}%, I_th {util_th:.0f}%)."
         )
 
     return {

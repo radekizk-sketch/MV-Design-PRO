@@ -47,7 +47,7 @@ def _project_id_przypadku(case_id: str, uow_factory: Callable[[], object]) -> UU
             f"case_id {case_id!r} nie jest identyfikatorem przypadku (UUID)"
         ) from exc
     with uow_factory() as uow:  # type: ignore[attr-defined]
-        study_case = uow.cases.get_study_case(parsed)  # type: ignore[attr-defined]
+        study_case = uow.cases.get_study_case(parsed)
     if study_case is None:
         raise PrzypadekBezProjektuError(
             f"przypadek {case_id} nie istnieje w bazie — nie należy do żadnego projektu"
@@ -129,7 +129,7 @@ def migruj_projekt_z_legacy(
     if klucz in _zmigrowane_projekty:
         return WynikMigracjiProjektu(klucz, ())
     with uow_factory() as uow:  # type: ignore[attr-defined]
-        return migruj_projekt_z_legacy_z_repozytorium(project_id, uow.cases)  # type: ignore[attr-defined]
+        return migruj_projekt_z_legacy_z_repozytorium(project_id, uow.cases)
 
 
 def klucz_twin_dla_przypadku(case_id: str, uow_factory: Callable[[], object] | None) -> str:
