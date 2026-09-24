@@ -43,12 +43,13 @@ function nextEntitySuffix(): string {
 
 type DomainOpResponse = {
   error?: string | null;
+  changes?: { created_element_ids?: string[] };
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
     branches?: Array<{ ref_id: string; type?: string }>;
     transformers?: Array<{ ref_id: string }>;
     buses?: Array<{ ref_id: string; voltage_kv: number }>;
-    substations?: Array<{ ref_id: string; bus_refs?: string[] }>;
+    substations?: Array<{ ref_id: string; bus_refs?: string[]; station_type?: string }>;
   };
 };
 
@@ -152,6 +153,45 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
 
 /** Buduje przez API kompletną, gotową do obliczeń sieć (wzorzec deep-link-wyniki).
  *  Zwraca refy szyn SN należących do stacji (kontekst formularza źródła OZE). */
+/**
+ * Realny odbiór nN kanonicznymi operacjami (pole odpływowe + odbiór) — bez niego
+ * rozpływ mocy jest słusznie niedostępny (W003: brak odbiorów i generatorów).
+ * Spec dawniej przechodził tylko dzięki FANTOMOWEMU odbiorowi 30 kW, który odczyt
+ * modelu materializował z pól nN; ta fabrykacja została usunięta (zero danych
+ * spoza modelu), więc fixture opisuje teraz sieć, którą projektant naprawdę
+ * buduje: stacja z zadeklarowanym układem TN-C-S (IEC 60364, E063) i jeden
+ * odbiór na szynie nN.
+ */
+async function dolozOdbiorNn(
+  request: APIRequestContext,
+  caseId: string,
+  snapshot: DomainOpResponse['snapshot'],
+): Promise<void> {
+  const napiecia = new Map((snapshot?.buses ?? []).map((bus) => [bus.ref_id, bus.voltage_kv]));
+  const stacja = (snapshot?.substations ?? []).find(
+    (substation) =>
+      substation.station_type !== 'gpz'
+      && (substation.bus_refs ?? []).some((ref) => (napiecia.get(ref) ?? Infinity) < 1.0),
+  );
+  expect(stacja, 'stacja SN/nN z szyną nN').toBeTruthy();
+  const szynaNn = (stacja?.bus_refs ?? []).find((ref) => (napiecia.get(ref) ?? Infinity) < 1.0);
+  const pole = await executeDomainOp(request, caseId, 'add_nn_outgoing_field', {
+    station_ref: stacja?.ref_id,
+    bus_nn_ref: szynaNn,
+    field_name: 'Odpływ nN 1',
+    catalog_ref: 'cb_nn_630a',
+  });
+  const feederRef = pole.changes?.created_element_ids?.[0];
+  expect(feederRef, 'pole odpływowe nN utworzone').toBeTruthy();
+  await executeDomainOp(request, caseId, 'add_nn_load', {
+    feeder_ref: feederRef,
+    active_power_kw: 150.0,
+    cos_phi: 0.95,
+    load_name: 'Odbiór nN 1',
+    catalog_ref: 'load_przem_75kw',
+  });
+}
+
 async function zbudujSiecGotowaDoObliczen(
   request: APIRequestContext,
   caseId: string,
@@ -183,7 +223,7 @@ async function zbudujSiecGotowaDoObliczen(
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
     insert_at: { value: 0.5 },
-    station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
+    station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4, nn_earthing: { lv_system: 'TN-C-S' } },
     // KOMPLETNOSC-POLA-TR (klasa A): stacja SN/nN Z transformatorem — pole roli
     // 'TR' dopisane, bo realna rozdzielnia realizuje odejscie do transformatora
     // polem transformatorowym. Kreator stacji tworzy je domyslnie, wiec fixture
@@ -235,6 +275,7 @@ async function zbudujSiecGotowaDoObliczen(
       },
     });
   }
+  await dolozOdbiorNn(request, caseId, op.snapshot);
 
   // Domknięcie ewentualnych blokerów gotowości (katalogi / impedancje).
   let readiness: OdczytGotowosci | null = null;
