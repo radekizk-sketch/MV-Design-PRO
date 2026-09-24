@@ -244,7 +244,7 @@
      },
      "report_pl": {
       "default": "",
-      "description": "Czytelny raport roznic w jezyku polskim",
+      "description": "Czytelny raport różnic w języku polskim",
       "title": "Report Pl",
       "type": "string"
      },
@@ -871,7 +871,7 @@
       "type": "string"
      },
      "file_b": {
-      "description": "Archiwum B (ZIP) — porownywane",
+      "description": "Archiwum B (ZIP) — porównywane",
       "format": "binary",
       "title": "File B",
       "type": "string"
