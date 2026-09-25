@@ -53,9 +53,11 @@ import { selectStationDistributionTransformers } from '../../network-build/stati
 import type {
   Bay,
   EnergyNetworkModel,
+  LogicalViewsV1,
   Substation,
   Transformer,
 } from '../../../types/enm';
+import { wierszPolaLiniowego } from '../../network-build/zajetoscPol';
 import { buildOperationContext } from '../../network-build/operationContext';
 import { BAY_ROLE_TO_PORT_KIND, type PortKind } from '../../sld/v2/core/ports';
 import { canonicalFieldRole } from '../../sld/v2/station-rozdzielnia/contract';
@@ -443,11 +445,35 @@ function isPortExpectedToBeBound(kind: PortKind): boolean {
   return kind !== 'sn_reserve' && !kind.startsWith('nn_');
 }
 
+/**
+ * Karta POLE-ZAJĘTE: port pola przyłączającego odcinek terenowy (pole liniowe wejściowe,
+ * wyjściowe, odgałęźne) jest zajęty WYŁĄCZNIE wtedy, gdy backend tak mówi
+ * (`logical_views.line_fields`). Dawniej port wejściowy i odgałęźny były „zajęte” z samej
+ * roli pola — wolne pole odgałęźne wyglądało na zajęte. Zajęte pole pokazuje nazwę odcinka.
+ */
+function occupiedLabelForLineFieldPort(
+  kind: PortKind,
+  fieldRef: string | null,
+  snapshot: EnergyNetworkModel | null,
+  logicalViews: LogicalViewsV1 | null,
+): string | null {
+  if (kind !== 'sn_input' && kind !== 'sn_output' && kind !== 'sn_branch') {
+    return occupiedLabelForPort(kind);
+  }
+  const wiersz = wierszPolaLiniowego(logicalViews, fieldRef);
+  if (!wiersz?.occupied) return null;
+  const odcinek = (snapshot?.branches ?? []).find(
+    (branch) => wiersz.segment_refs.includes(branch.ref_id),
+  );
+  return odcinek?.name?.trim() || occupiedLabelForPort(kind);
+}
+
 function deriveStationPortRows(
   snapshot: EnergyNetworkModel | null,
   station: Substation | null,
   nominalVoltageKv: number,
   stationDers: readonly StationDerConnection[] = [],
+  logicalViews: LogicalViewsV1 | null = null,
 ): StationConfigPortRow[] {
   if (!station) return [];
 
@@ -492,7 +518,12 @@ function deriveStationPortRows(
       kind,
       nominalVoltageKv,
       bayDesignation: String(field.name ?? `Pole ${index + 1}`),
-      occupiedByLabelPl: occupiedLabelForPort(kind),
+      occupiedByLabelPl: occupiedLabelForLineFieldPort(
+        kind,
+        typeof field.field_ref === 'string' ? field.field_ref : null,
+        snapshot,
+        logicalViews,
+      ),
     };
   });
   return [...stationFieldPorts, ...derPorts];
@@ -792,8 +823,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     return bus?.voltage_kv ?? stationTransformers[0]?.uhvKv ?? 15;
   }, [snapshot?.buses, station?.bus_refs, stationTransformers]);
   const stationPorts = useMemo(
-    () => deriveStationPortRows(snapshot, station, stationSnVoltageKv, ders),
-    [snapshot, station, stationSnVoltageKv, ders],
+    () => deriveStationPortRows(snapshot, station, stationSnVoltageKv, ders, logicalViews),
+    [snapshot, station, stationSnVoltageKv, ders, logicalViews],
   );
 
   const stationName = useMemo(() => {

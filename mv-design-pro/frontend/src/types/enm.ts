@@ -2095,11 +2095,28 @@ export interface SecondaryConnectorViewV1 {
   segment_ref: string;
 }
 
+/**
+ * Karta POLE-ZAJĘTE: zajętość pola rozdzielnicy SN liczona JEDNĄ funkcją backendu
+ * (`enm/zajetosc_pol.py`). Front czyta ją stąd i nie liczy zajętości sam.
+ */
+export interface LineFieldViewV1 {
+  field_ref: string;
+  station_ref: string;
+  bay_role: string;
+  /** Punkt przyłączenia odcinka: własny zacisk pola albo szyna pola. */
+  attachment_bus_ref: string | null;
+  occupied: boolean;
+  segment_refs: string[];
+  corridor_refs: string[];
+}
+
 export interface LogicalViewsV1 {
   trunks: TrunkViewV1[];
   branches: BranchViewV1[];
   secondary_connectors: SecondaryConnectorViewV1[];
   terminals: TerminalRef[];
+  /** Brak pola (odpowiedź bez modelu odczytu zajętości) = zajętość nieznana, nigdy „wolne”. */
+  line_fields?: LineFieldViewV1[];
 }
 
 export interface MaterializedCatalogParams {

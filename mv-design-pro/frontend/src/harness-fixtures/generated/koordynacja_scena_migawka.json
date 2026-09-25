@@ -256,10 +256,7 @@
         "x_ohm_per_km": 0.1
       },
       "meta": {
-        "catalog_item_version": "legacy",
-        "origin_apparatus_kind": "cable_head",
-        "origin_bay_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/bay/001/001",
-        "origin_port_role": "OUTGOING_HEAD"
+        "catalog_item_version": "legacy"
       },
       "n_parallel": null,
       "name": "Magistrala GPZ (2) (2)",
@@ -430,10 +427,7 @@
         "x_ohm_per_km": 0.1
       },
       "meta": {
-        "catalog_item_version": "legacy",
-        "origin_apparatus_kind": "cable_head",
-        "origin_bay_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/bay/001/001",
-        "origin_port_role": "OUTGOING_HEAD"
+        "catalog_item_version": "legacy"
       },
       "n_parallel": null,
       "name": "Magistrala GPZ (2) (1)",

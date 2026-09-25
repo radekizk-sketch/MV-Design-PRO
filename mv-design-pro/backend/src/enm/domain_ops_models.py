@@ -1496,6 +1496,35 @@ class SecondaryConnectorViewV1(_FrozenBase):
     """Identyfikator segmentu zamykającego pierścień."""
 
 
+class LineFieldV1(_FrozenBase):
+    """Zajętość pola rozdzielnicy SN — pochodna Snapshot (karta POLE-ZAJĘTE).
+
+    Liczona JEDNĄ funkcją backendu (`enm.zajetosc_pol`); front czyta ją, żeby rozstrzygnąć
+    dostępność punktu startu ciągu, i nie liczy zajętości sam.
+    """
+
+    field_ref: str
+    """Identyfikator pola (specyfikacja `meta.field_specs` stacji albo GPZ)."""
+
+    station_ref: str
+    """Stacja albo GPZ, do której należy pole."""
+
+    bay_role: str
+    """Rola pola w modelu (IN/OUT/FEEDER/TR/…)."""
+
+    attachment_bus_ref: str | None = None
+    """Punkt przyłączenia odcinka: własny zacisk pola albo szyna pola."""
+
+    occupied: bool
+    """Czy pole ma już przyłączony odcinek albo przydzielony ciąg."""
+
+    segment_refs: list[str] = []
+    """Odcinki terenowe przyłączone fizycznie do pola (więcej niż jeden = błąd modelu)."""
+
+    corridor_refs: list[str] = []
+    """Ciągi przydzielone polu deklaratywnie (przydział pola GPZ)."""
+
+
 class LogicalViewsV1(_FrozenBase):
     """Pełne widoki logiczne — deterministyczna pochodna Snapshot.
 
@@ -1514,6 +1543,9 @@ class LogicalViewsV1(_FrozenBase):
 
     terminals: list[TerminalRef] = []
     """Wszystkie terminale dostępne w sieci (agregat)."""
+
+    line_fields: list[LineFieldV1] = []
+    """Zajętość pól rozdzielnic SN (karta POLE-ZAJĘTE)."""
 
 
 # ===========================================================================

@@ -109,6 +109,19 @@ Kazda operacja domenowa zwraca **jednolity kontrakt odpowiedzi**:
     ],
     "terminals": [
       /* agregat wszystkich terminali z magistral i odgalezien */
+    ],
+    "line_fields": [
+      /* karta POLE-ZAJĘTE: zajętość KAŻDEGO pola rozdzielnicy SN (meta.field_specs) z jednej
+         funkcji backendu `enm/zajetosc_pol.py`; front czyta ją i nie liczy zajętości sam */
+      {
+        "field_ref": "<ref pola>",
+        "station_ref": "<ref stacji albo GPZ>",
+        "bay_role": "IN | OUT | FEEDER | TR | ...",
+        "attachment_bus_ref": "<zacisk pola albo szyna pola>",
+        "occupied": true,
+        "segment_refs": ["<odcinek przyłączony fizycznie>"],
+        "corridor_refs": ["<ciąg przydzielony polu GPZ>"]
+      }
     ]
   },
 
@@ -603,7 +616,18 @@ LogicalViews
   |     |-- segment_ref
   |
   |-- terminals[]           // agregat WSZYSTKICH terminali
+  |
+  |-- line_fields[]         // zajętość pól rozdzielnic SN (karta POLE-ZAJĘTE)
+  |     |-- field_ref, station_ref, bay_role, attachment_bus_ref
+  |     |-- occupied        // przyłączony odcinek albo przydzielony ciąg
+  |     |-- segment_refs[]  // więcej niż jeden = błąd modelu E022
+  |     |-- corridor_refs[]
 ```
+
+Operacja przyłączająca odcinek do ZAJĘTEGO pola (`continue_trunk_segment_sn`,
+`start_branch_segment_sn` z pola stacji, `connect_secondary_ring_sn` na zacisku pola) kończy
+się odmową `field.line_field_occupied` (zdanie po polsku z nazwą pola, stacji i odcinka).
+Odgałęzienie z zajętego pola GPZ nie jest odmową: kanon przydziela inne wolne albo nowe pole.
 
 ### 6.2 Algorytm obliczania
 

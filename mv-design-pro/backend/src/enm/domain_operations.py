@@ -105,6 +105,12 @@ from .topology_ops import (
 )
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
 from .validator import ENMValidator
+from .zajetosc_pol import (
+    KOD_POLE_ZAJETE,
+    pole_dla_zacisku,
+    widok_pol_liniowych,
+    zajetosc_pola,
+)
 from .zrodlo_zwarcie import PASMO_U_SET_PU, u_set_pu_w_pasmie
 
 logger = logging.getLogger(__name__)
@@ -1417,37 +1423,62 @@ def _gpz_substation_for_field_ref(
     return None
 
 
-def _gpz_field_spec_occupied(enm: dict[str, Any], spec: dict[str, Any]) -> bool:
-    """Pole liniowe GPZ jest ZAJĘTE, gdy zasila istniejący, niepusty ciąg.
+def _pole_liniowe_zajete(enm: dict[str, Any], spec: dict[str, Any]) -> bool:
+    """Pole liniowe GPZ jest ZAJĘTE — rozstrzyga JEDNO źródło prawdy `enm.zajetosc_pol`.
 
-    Kanon (dyrektywa właściciela, 2026-07-17): z jednego pola liniowego NIGDY
-    nie wychodzą dwa kable — każde wyprowadzenie na sieć ma dedykowane pole.
-    Zajętość:
-      (a) jawna: `spec.meta.assigned_corridor_ref` wskazuje ISTNIEJĄCY korytarz
-          z niepustym `ordered_segment_refs` (przydział z tej operacji;
-          korytarz skasowany/opróżniony ⇒ pole samoczynnie wolne);
-      (b) dziedziczona (snapshoty sprzed przydziałów): pole o indeksie 0
-          zasila magistralę — zajęte, gdy JAKIKOLWIEK korytarz magistrali GPZ
-          (`gpz/⟨id⟩/corridor_*`) ma segmenty.
+    Kanon (dyrektywa właściciela, 2026-07-17): z jednego pola liniowego NIGDY nie wychodzą
+    dwa kable. Reguły (przyłączenie fizyczne do zacisku pola, jawny przydział korytarza,
+    indeks 0 migawek sprzed przydziałów) opisuje moduł `zajetosc_pol` — karta POLE-ZAJĘTE
+    przeniosła je tam, żeby operacje, walidator i widoki logiczne czytały jedną funkcję.
     """
-    meta_raw = spec.get("meta")
-    meta = meta_raw if isinstance(meta_raw, dict) else {}
-    assigned = meta.get("assigned_corridor_ref")
-    if isinstance(assigned, str) and assigned.strip():
-        corridor = _find_corridor_by_ref(enm, assigned)
-        if corridor and corridor.get("ordered_segment_refs"):
-            return True
-    field_index = meta.get("gpz_line_field_index")
-    if field_index == 0:
-        field_ref = str(spec.get("field_ref") or "")
-        gpz_prefix = "/".join(field_ref.split("/")[:2])
-        for corridor in enm.get("corridors", []):
-            if not isinstance(corridor, dict):
-                continue
-            ref = str(corridor.get("ref_id") or "")
-            if ref.startswith(f"{gpz_prefix}/corridor_") and corridor.get("ordered_segment_refs"):
-                return True
-    return False
+    zajetosc = zajetosc_pola(enm, _napis_lub_none(spec.get("field_ref")))
+    return bool(zajetosc and zajetosc.zajete)
+
+
+def _napis_lub_none(value: object) -> str | None:
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _odmowa_pole_zajete(enm: dict[str, Any], field_ref: str) -> dict[str, Any]:
+    """Nazwana odmowa przyłączenia odcinka do zajętego pola (karta POLE-ZAJĘTE).
+
+    Zdanie po polsku z nazwami pola, stacji i odcinka z modelu — bez identyfikatorów."""
+    zajetosc = zajetosc_pola(enm, field_ref)
+    spec = _field_spec_for_ref(enm, field_ref) or {}
+    stacja = next(
+        (
+            s
+            for s in enm.get("substations", [])
+            if isinstance(s, dict) and zajetosc and s.get("ref_id") == zajetosc.station_ref
+        ),
+        {},
+    )
+    nazwy_pol = {
+        bay.get("ref_id"): bay.get("name") for bay in enm.get("bays", []) if isinstance(bay, dict)
+    }
+    nazwa_pola = nazwa_pola_ze_specyfikacji(spec, nazwy_pol)
+    nazwa_stacji = opis_nazwy(stacja.get("name"), "stacji")
+    odcinek = next(
+        (
+            b
+            for b in enm.get("branches", [])
+            if isinstance(b, dict)
+            and zajetosc
+            and b.get("ref_id") in (zajetosc.odcinki_fizyczne or ())
+        ),
+        None,
+    )
+    przylaczony = (
+        f" — przyłączony jest do niego {opis_nazwy(odcinek.get('name'), 'odcinek SN')}"
+        if odcinek
+        else " — zasila już ciąg SN"
+    )
+    return _error_response(
+        f"{nazwa_pola} w {nazwa_stacji} jest zajęte{przylaczony}. Z jednego pola liniowego "
+        "nie wolno wyprowadzić drugiego kabla — wybierz wolne pole liniowe albo dodaj nowe "
+        "pole w rozdzielnicy.",
+        KOD_POLE_ZAJETE,
+    )
 
 
 def _allocate_gpz_line_field_for_branch(
@@ -1516,7 +1547,7 @@ def _allocate_gpz_line_field_for_branch(
                 spec_meta["assigned_corridor_ref"] = trunk.get("ref_id")
 
     candidates = [origin_spec] + [s for s in section_specs if s is not origin_spec]
-    chosen = next((s for s in candidates if not _gpz_field_spec_occupied(enm, s)), None)
+    chosen = next((s for s in candidates if not _pole_liniowe_zajete(enm, s)), None)
     created_spec: dict[str, Any] | None = None
     if chosen is None:
         if len(section_specs) >= MAX_GPZ_LINE_FIELDS_PER_SECTION:
@@ -1940,15 +1971,17 @@ def _resolve_initial_trunk_start_field(
             if isinstance(bus_ref, str)
         }
     )
+
+    # Karta POLE-ZAJĘTE: automatyczny wybór startu pomija pola zajęte (jedno źródło prawdy).
+    def _wolne_pole_startu(spec: dict[str, Any]) -> bool:
+        return _is_trunk_start_field_spec(spec) and not _pole_liniowe_zajete(enm, spec)
+
     for bus_ref in source_bus_refs:
         for spec in field_specs_by_bus.get(bus_ref, []):
-            if _is_trunk_start_field_spec(spec):
+            if _wolne_pole_startu(spec):
                 return spec
     all_specs = [
-        spec
-        for specs in field_specs_by_bus.values()
-        for spec in specs
-        if _is_trunk_start_field_spec(spec)
+        spec for specs in field_specs_by_bus.values() for spec in specs if _wolne_pole_startu(spec)
     ]
     if all_specs:
         return sorted(
@@ -2475,6 +2508,9 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
         "branches": branch_views,
         "secondary_connectors": secondary_connectors,
         "terminals": all_terminals,
+        # Karta POLE-ZAJĘTE: zajętość pól rozdzielnic SN z JEDNEGO źródła prawdy — front
+        # czyta ją stąd (dostępność punktu startu ciągu), zamiast liczyć własnym predykatem.
+        "line_fields": widok_pol_liniowych(enm),
     }
 
 
@@ -2823,6 +2859,14 @@ def _apply_materialized_branch_fields(
             target[key] = value.strip().upper()
 
 
+#: Metadane odcinka opisujące jego wyprowadzenie z pola rozdzielnicy (`continue_trunk_segment_sn`).
+_KLUCZE_POCHODZENIA_Z_POLA: tuple[str, ...] = (
+    "origin_bay_ref",
+    "origin_apparatus_kind",
+    "origin_port_role",
+)
+
+
 def _copy_split_segment_fields(target: dict[str, Any], source: dict[str, Any]) -> None:
     """Zachowaj dane katalogowe i elektryczne przy podziale odcinka SN."""
     for key in (
@@ -2871,6 +2915,15 @@ def _copy_split_segment_fields(target: dict[str, Any], source: dict[str, Any]) -
 
     if isinstance(source.get("meta"), dict):
         target.setdefault("meta", {}).update(copy.deepcopy(source["meta"]))
+        # Karta POLE-ZAJĘTE: pochodzenie z pola (`origin_bay_ref` + port) należy WYŁĄCZNIE do
+        # części odcinka, która nadal kończy się w punkcie początkowym odcinka źródłowego.
+        # Dawniej obie połówki podziału dziedziczyły je, więc połówka odległa od pola
+        # „wychodziła” z pola, do którego nie jest przyłączona (zajętość pól i rysunek SLD
+        # czytały fałszywe przyłączenie).
+        poczatek = source.get("from_bus_ref")
+        if poczatek not in (target.get("from_bus_ref"), target.get("to_bus_ref")):
+            for klucz in _KLUCZE_POCHODZENIA_Z_POLA:
+                target["meta"].pop(klucz, None)
 
 
 def _apply_explicit_segment_zero_sequence(
@@ -4797,11 +4850,19 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             "trunk.from_terminal_not_found",
         )
 
+    # Karta POLE-ZAJĘTE: start wskazany zaciskiem pola (bez `field_ref`) to TO pole.
+    if not field_ref:
+        field_ref = pole_dla_zacisku(enm, from_terminal_id)
     if field_ref and not _is_line_continuation_field(enm, field_ref):
         return _error_response(
             "Odcinek SN może wychodzić wyłącznie z pola liniowego stacji albo GPZ.",
             "trunk.source_field_not_line_bay",
         )
+    # Karta POLE-ZAJĘTE: z zajętego pola nie wychodzi drugi kabel — jedno źródło prawdy
+    # zajętości (`enm.zajetosc_pol`), to samo, które czyta front przez `line_fields`.
+    zajetosc_startu = zajetosc_pola(enm, field_ref)
+    if field_ref and zajetosc_startu is not None and zajetosc_startu.zajete:
+        return _odmowa_pole_zajete(enm, field_ref)
     if not field_ref and _is_station_main_bus_ref(enm, from_terminal_id):
         return _error_response(
             "Odcinek SN nie może wychodzić bezpośrednio z szyny stacyjnej. "
@@ -8082,6 +8143,17 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
             "branch.from_bus_not_found",
         )
 
+    # Karta POLE-ZAJĘTE: odgałęzienie z pola stacji wychodzi tylko z WOLNEGO pola (jedno
+    # źródło prawdy `enm.zajetosc_pol`). Pole GPZ zajęte nie jest odmową: kanon GPZ przydziela
+    # feederowi inne wolne albo nowe pole (`_allocate_gpz_line_field_for_branch` niżej).
+    origin_element_ref = from_ref.split(".", 1)[0]
+    pole_zrodlowe = origin_element_ref if _field_spec_for_ref(enm, origin_element_ref) else None
+    pole_zrodlowe_gpz = _gpz_substation_for_field_ref(enm, pole_zrodlowe) is not None
+    if pole_zrodlowe and not pole_zrodlowe_gpz:
+        zajetosc_zrodla = zajetosc_pola(enm, pole_zrodlowe)
+        if zajetosc_zrodla is not None and zajetosc_zrodla.zajete:
+            return _odmowa_pole_zajete(enm, pole_zrodlowe)
+
     # CV-4.3 K1 (KLASA NIE INSTANCJA — patrz identyczny komentarz w
     # continue_trunk_segment_sn): catalog_ref/nazwa dopisane, żeby dwa
     # RÓŻNE odgałęzienia z tej samej szyny (różny typ katalogowy/nazwa) nie
@@ -8140,6 +8212,25 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
 
     branch_type = "cable" if rodzaj == "KABEL" else "line_overhead"
     origin_element_ref, origin_port_id = from_ref.split(".", 1)
+
+    # Kanon dedykowanych pól (dyrektywa właściciela, 2026-07-17): feeder wyprowadzany z GPZ
+    # dostaje WŁASNE pole liniowe — wskazane w `from_ref`, jeśli wolne, inaczej pierwsze wolne,
+    # inaczej NOWE pole (limit sekcji pilnowany). Karta POLE-ZAJĘTE: przydział PRZED
+    # utworzeniem odcinka, a odcinek wychodzi z punktu przyłączenia PRZYDZIELONEGO pola —
+    # dawniej przydział szedł po utworzeniu, więc przy zajętym polu wskazanym kabel wisiał
+    # fizycznie na zacisku zajętego pola, a przydział deklarował inne pole.
+    branch_run_seed = _compute_seed(
+        {"op": "start_branch_run", "from_ref": from_ref, "branch_ref": branch_ref}
+    )
+    branch_corridor_ref = _make_id("corridor", branch_run_seed, "branch")
+    gpz_field_ref, created_gpz_field, alloc_error = _allocate_gpz_line_field_for_branch(
+        new_enm, origin_element_ref, branch_corridor_ref
+    )
+    if alloc_error is not None:
+        return alloc_error
+    if gpz_field_ref:
+        pole_zrodlowe = gpz_field_ref
+        from_bus_ref = _field_ref_to_bus_ref(new_enm, gpz_field_ref) or from_bus_ref
     origin_branch_point = next(
         (bp for bp in enm.get("branch_points", []) if bp.get("ref_id") == origin_element_ref),
         None,
@@ -8179,6 +8270,10 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         "x_ohm_per_km": 0.0,
         "status": "closed",
     }
+    if pole_zrodlowe:
+        # Pochodzenie z pola — ta sama postać co w `continue_trunk_segment_sn` (reguła R1
+        # zajętości pól czyta ją z jednego miejsca).
+        branch_data["meta"] = {"origin_bay_ref": pole_zrodlowe}
     materialization = _materialize_catalog_payload(
         catalog_ref=branch_catalog_ref,
         catalog_binding=branch_catalog_binding,
@@ -8220,10 +8315,6 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
                 )
                 break
 
-    branch_run_seed = _compute_seed(
-        {"op": "start_branch_run", "from_ref": from_ref, "branch_ref": branch_ref}
-    )
-    branch_corridor_ref = _make_id("corridor", branch_run_seed, "branch")
     branch_type_label = "kablowe" if branch_type == "cable" else "napowietrzne"
     if not any(c.get("ref_id") == branch_corridor_ref for c in new_enm.setdefault("corridors", [])):
         new_corridor: dict[str, Any] = {
@@ -8237,15 +8328,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
             "starting_port_ref": from_ref,
             "meta": {},
         }
-        # Kanon dedykowanych pól (dyrektywa właściciela, 2026-07-17): feeder
-        # wyprowadzany z GPZ dostaje WŁASNE pole liniowe — wskazane w
-        # `from_ref` jeśli wolne, inaczej pierwsze wolne, inaczej NOWE pole
-        # (limit sekcji pilnowany). Z jednego pola nigdy dwa kable.
-        gpz_field_ref, created_gpz_field, alloc_error = _allocate_gpz_line_field_for_branch(
-            new_enm, origin_element_ref, branch_corridor_ref
-        )
-        if alloc_error is not None:
-            return alloc_error
+        # Przydział pola GPZ policzony wyżej (przed utworzeniem odcinka).
         if gpz_field_ref:
             new_corridor["meta"]["gpz_field_ref"] = gpz_field_ref
             if created_gpz_field is not None:
@@ -8562,6 +8645,13 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             "nie istnieje w modelu sieci.",
             "ring.to_not_found",
         )
+    # Karta POLE-ZAJĘTE: koniec pierścienia na zacisku pola to przyłączenie odcinka do pola —
+    # zajęte pole odmawia drugiego kabla (jedno źródło prawdy `enm.zajetosc_pol`).
+    for koniec_pierscienia in (from_bus_ref, to_bus_ref):
+        pole_konca = pole_dla_zacisku(enm, koniec_pierscienia)
+        zajetosc_konca = zajetosc_pola(enm, pole_konca)
+        if pole_konca and zajetosc_konca is not None and zajetosc_konca.zajete:
+            return _odmowa_pole_zajete(enm, pole_konca)
 
     rodzaj = segment.get("rodzaj", "KABEL")
     dlugosc_m = segment.get("dlugosc_m") or 0

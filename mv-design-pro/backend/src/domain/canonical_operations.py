@@ -935,6 +935,17 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         message_pl="Stacja nie ma wymaganego pola SN",
         fix_navigation={"panel": "inspector", "tab": "pola"},
     ),
+    # Karta POLE-ZAJĘTE: z jednego pola liniowego SN wychodzi więcej niż jeden odcinek (stan
+    # zastany modelu — operacje odmawiają drugiego kabla kodem `field.line_field_occupied`).
+    # Emiter: `enm/validator.py` E022 przez odwzorowanie w `domain/readiness_bridge.py`.
+    "station.line_field_multiple_segments": ReadinessCodeSpec(
+        code="station.line_field_multiple_segments",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Z jednego pola liniowego SN wychodzi więcej niż jeden odcinek",
+        fix_navigation={"panel": "inspector", "tab": "pola"},
+    ),
     # Transformer
     "transformer.catalog_missing": ReadinessCodeSpec(
         code="transformer.catalog_missing",

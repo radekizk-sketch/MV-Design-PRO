@@ -28,7 +28,9 @@
   "logical_views": {
     "trunks": [],
     "branches": [],
-    "secondary_connectors": []
+    "secondary_connectors": [],
+    "terminals": [],
+    "line_fields": []
   },
   "readiness": {
     "ready": true,

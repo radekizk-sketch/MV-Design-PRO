@@ -425,10 +425,11 @@ function TrunksSection({
 function StationsSection({ stations }: { stations: StationSummary[] }) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
   const snapshot = useSnapshotStore((state) => state.snapshot);
+  const logicalViews = useSnapshotStore((state) => state.logicalViews);
 
   const branchContextForStation = useCallback(
     (stationId: string): Record<string, unknown> | null => {
-      const fromRef = resolveBranchSourceRef(snapshot, stationId, stationId, null);
+      const fromRef = resolveBranchSourceRef(snapshot, logicalViews, stationId, stationId, null);
       if (!fromRef) return null;
 
       const sourceContext = resolveBranchSourceContext(snapshot, fromRef);
@@ -444,7 +445,7 @@ function StationsSection({ stations }: { stations: StationSummary[] }) {
         source_port_label: sourceContext.portLabel,
       };
     },
-    [snapshot],
+    [logicalViews, snapshot],
   );
 
   const handleStartBranch = useCallback(
