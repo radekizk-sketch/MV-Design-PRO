@@ -9,15 +9,30 @@ polskim opisem rodzaju („Szyna bez nazwy", „Kabel bez nazwy"), NIGDY identyf
 jego fragmentem. Identyfikator zostaje w polach rekordu (`ref_id`, `element_ref`,
 `element_id`), z których interfejs wiąże wybór i nawigację.
 
-WARSTWA: interpretacja migawki ENM (słownik albo model pydantic). Zero fizyki, zero mutacji,
-zero importów z pakietu — moduł-liść, jak `enm/element_kind.py` (indeks rodzajów), którego
-jest siostrą (indeks nazw).
+WARSTWA: interpretacja migawki ENM (słownik albo model pydantic). Zero fizyki, zero mutacji;
+importuje wyłącznie liście (`network_model/nazwy.py`, `enm/rola_pola_sn.py`) — siostra
+`enm/element_kind.py` (indeks rodzajów).
+
+JEDEN PREDYKAT (karta NAZWY-JEDNO-ZRODLO). Na pytanie „czy ta wartość jest nazwą nadaną przez
+projektanta" odpowiada wyłącznie `jest_nazwa`/`nazwa_nadana` z liścia `network_model/nazwy.py`
+(jedyna ścieżka importu predykatu — ten moduł go nie re-eksportuje; o powodzie położenia
+mówi nagłówek liścia) i zbudowane na nich funkcje tego modułu — tak samo w nazwie nadawanej
+przez operację, w etykiecie wyniku, w zdaniu komunikatu (słownik `enm/slownik_komunikatow.py`
+składa zdanie, ale o istnienie nazwy pyta tutaj) i w nazwie pozycji katalogu. Nazwa to
+niepusty napis po obcięciu spacji — BEZ oceny kształtu: „T_1", „QF-03_zrodlo" czy „RGN-2"
+wpisane przez projektanta są jego nazwami. Pomiar karty
+wykazał, że żadna operacja, importer ani generator nie nadaje dziś nazwy o kształcie
+identyfikatora albo kodu (tę klasę zamyka strażnik `scripts/nazwa_bez_identyfikatora_guard.py`),
+a danych zapisanych przed zasadą się nie migruje — predykat kształtu byłby warstwą zgodności.
+Jedność predykatu przypina test AST `tests/enm/test_nazwy_jedno_zrodlo.py` (zapadka).
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from typing import Any
+
+from network_model.nazwy import nazwa_nadana
 
 from .rola_pola_sn import nazwa_roli_pola_sn
 
@@ -77,14 +92,9 @@ def _pole(element: object, klucz: str) -> object:
     return getattr(element, klucz, None)
 
 
-def jest_nazwa(wartosc: object) -> bool:
-    """Czy wartość jest nazwą: napis niepusty po obcięciu spacji.
-
-    Jedno źródło predykatu „nazwa jest / nazwy brak" dla indeksu nazw, prymitywów topologii
-    i operacji domenowych nadających nazwę z kontekstu — ten sam brak (brak pola, `None`,
-    pusty napis, same spacje) daje wszędzie ten sam opis rodzaju (reguła predykatów parami).
-    """
-    return isinstance(wartosc, str) and bool(wartosc.strip())
+def nazwa_nadana_elementu(element: object) -> str | None:
+    """Nazwa nadana elementowi (pole `name` słownika migawki albo obiektu modelu) albo `None`."""
+    return nazwa_nadana(_pole(element, "name")) if element is not None else None
 
 
 def nazwa_galezi_bez_nazwy(branch_type: object) -> str:
@@ -105,10 +115,25 @@ def opis_bez_nazwy(kolekcja: str, element: object = None) -> str:
 
 def nazwa_elementu(element: object, kolekcja: str) -> str:
     """Nazwa elementu z modelu albo opis rodzaju, gdy nazwy brak lub jest pusta."""
-    nazwa = _pole(element, "name")
-    if jest_nazwa(nazwa):
-        return str(nazwa)
-    return opis_bez_nazwy(kolekcja, element)
+    return nazwa_nadana_elementu(element) or opis_bez_nazwy(kolekcja, element)
+
+
+def _elementy_migawki(model: object) -> Iterator[tuple[str, str, object]]:
+    """`(kolekcja, ref_id, element)` każdego elementu migawki w kolejności `_KOLEKCJE_INDEKSU`.
+
+    Jedno przejście dla indeksu nazw i wyszukania po identyfikatorze — oba widzą ten sam zbiór
+    elementów w tej samej kolejności (przy niedozwolonym duplikacie wygrywa pierwszy).
+    """
+    if model is None:
+        return
+    for kolekcja in _KOLEKCJE_INDEKSU:
+        elementy = _pole(model, kolekcja)
+        if not isinstance(elementy, list | tuple):
+            continue
+        for element in elementy:
+            ref = _pole(element, "ref_id")
+            if ref:
+                yield kolekcja, str(ref), element
 
 
 def zbuduj_indeks_nazw(model: object) -> dict[str, str]:
@@ -117,26 +142,44 @@ def zbuduj_indeks_nazw(model: object) -> dict[str, str]:
     `model` to migawka ENM jako słownik albo `EnergyNetworkModel`; `None` daje pusty indeks.
     """
     indeks: dict[str, str] = {}
-    if model is None:
-        return indeks
-    for kolekcja in _KOLEKCJE_INDEKSU:
-        elementy = _pole(model, kolekcja)
-        if not isinstance(elementy, list | tuple):
-            continue
-        for element in elementy:
-            ref = _pole(element, "ref_id")
-            if not ref:
-                continue
-            indeks.setdefault(str(ref), nazwa_elementu(element, kolekcja))
+    for kolekcja, ref, element in _elementy_migawki(model):
+        indeks.setdefault(ref, nazwa_elementu(element, kolekcja))
     return indeks
 
 
-def nazwa_pozycji_katalogu(rekord: Mapping[str, Any]) -> str:
-    """Nazwa pozycji katalogu (`rekord["name"]`) albo opis braku — nigdy `rekord["id"]`."""
-    nazwa = rekord.get("name")
-    if jest_nazwa(nazwa):
-        return str(nazwa)
-    return POZYCJA_KATALOGU_BEZ_NAZWY
+def nazwa_nadana_po_identyfikatorze(model: object, element_ref: object) -> str | None:
+    """Nazwa nadana elementowi o identyfikatorze `element_ref` albo `None` (elementu nie ma
+    w migawce albo nie ma nazwy). Postać dla zdań komunikatów, które same dobierają słowo
+    rodzaju (`slownik_komunikatow.opis_elementu`); etykiety wyników używają
+    `nazwa_po_identyfikatorze` (opis rodzaju albo jawny brak elementu)."""
+    if not isinstance(element_ref, str) or not element_ref:
+        return None
+    for _kolekcja, ref, element in _elementy_migawki(model):
+        if ref == element_ref:
+            return nazwa_nadana_elementu(element)
+    return None
+
+
+#: Pola nazwy pozycji katalogu w kolejności pierwszeństwa (typy katalogu niosą `name`,
+#: część typów i szablonów — wyłącznie `name_pl`).
+_POLA_NAZWY_POZYCJI_KATALOGU: tuple[str, ...] = ("name", "name_pl")
+
+
+def nazwa_nadana_pozycji_katalogu(pozycja: object) -> str | None:
+    """Nazwa pozycji katalogu (rekord-słownik albo typ katalogu) albo `None` — nigdy jej
+    identyfikator."""
+    if pozycja is None:
+        return None
+    for pole in _POLA_NAZWY_POZYCJI_KATALOGU:
+        nazwa = nazwa_nadana(_pole(pozycja, pole))
+        if nazwa is not None:
+            return nazwa
+    return None
+
+
+def nazwa_pozycji_katalogu(rekord: object) -> str:
+    """Nazwa pozycji katalogu albo opis braku („Pozycja katalogu bez nazwy") — nigdy `id`."""
+    return nazwa_nadana_pozycji_katalogu(rekord) or POZYCJA_KATALOGU_BEZ_NAZWY
 
 
 def nazwy_wezlow_grafu(raw_result: Mapping[str, Any] | None) -> dict[str, str]:
@@ -155,8 +198,7 @@ def nazwy_wezlow_grafu(raw_result: Mapping[str, Any] | None) -> dict[str, str]:
     for identyfikator, wezel in wezly.items():
         if not isinstance(wezel, Mapping):
             continue
-        nazwa = wezel.get("name")
-        wynik[str(identyfikator)] = str(nazwa) if jest_nazwa(nazwa) else opis_bez_nazwy("buses")
+        wynik[str(identyfikator)] = nazwa_nadana(wezel.get("name")) or opis_bez_nazwy("buses")
     return wynik
 
 
@@ -179,9 +221,8 @@ def nazwy_galezi_grafu(raw_result: Mapping[str, Any] | None) -> dict[str, str]:
     for identyfikator, wpis in galezie.items():
         if not isinstance(wpis, Mapping):
             continue
-        nazwa = wpis.get("name")
-        wynik[str(identyfikator)] = (
-            str(nazwa) if jest_nazwa(nazwa) else opis_galezi_grafu_bez_nazwy(wpis)
+        wynik[str(identyfikator)] = nazwa_nadana(wpis.get("name")) or opis_galezi_grafu_bez_nazwy(
+            wpis
         )
     return wynik
 
@@ -215,7 +256,8 @@ def nazwa_pola_ze_specyfikacji(
     polska nazwa roli z kanonu ról pól SN (`enm.rola_pola_sn`, karta #141). Nigdy
     identyfikator pola (karta #144). `nazwy_elementow_pol`: `Bay.ref_id → Bay.name`.
     """
-    for nazwa in (spec.get("name"), nazwy_elementow_pol.get(spec.get("bay_ref"))):
-        if jest_nazwa(nazwa):
-            return str(nazwa).strip()
-    return nazwa_roli_pola_sn(spec.get("field_role") or spec.get("bay_role"))
+    return (
+        nazwa_nadana(spec.get("name"))
+        or nazwa_nadana(nazwy_elementow_pol.get(spec.get("bay_ref")))
+        or nazwa_roli_pola_sn(spec.get("field_role") or spec.get("bay_role"))
+    )

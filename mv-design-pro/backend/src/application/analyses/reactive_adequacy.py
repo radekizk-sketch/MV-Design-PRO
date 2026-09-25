@@ -30,6 +30,7 @@ from analysis.reactive_adequacy.models import (
 )
 from enm.canonical_analysis import CanonicalRun, build_bus_results
 from enm.nazwy_elementow import zbuduj_indeks_nazw
+from network_model.nazwy import nazwa_nadana
 
 # Pola Q-granic karty przekształtnika (proweniencja werdyktu).
 _Q_LIMIT_CARD_FIELDS = ("qmin_mvar", "qmax_mvar")
@@ -133,7 +134,7 @@ def _load_inputs(snapshot: dict[str, Any]) -> list[LoadReactiveInput]:
 def _context(run: CanonicalRun) -> ReactiveAdequacyContext:
     header = (run.snapshot or {}).get("header") or {}
     return ReactiveAdequacyContext(
-        project_name=str(header.get("name")) if header.get("name") else None,
+        project_name=nazwa_nadana(header.get("name")),
         case_name=None,
         case_id=str(run.case_id) if run.case_id else None,
         run_timestamp=run.created_at,

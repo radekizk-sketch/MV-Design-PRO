@@ -22,6 +22,8 @@ from collections.abc import Callable, Mapping
 from typing import Any
 from uuid import UUID
 
+from network_model.nazwy import nazwa_nadana
+
 #: Model biegu bez nazwy w nagłówku migawki.
 PROJEKT_BEZ_NAZWY = "Projekt bez nazwy"
 #: Przypadek istnieje w bazie, ale jego nazwa jest pusta.
@@ -33,10 +35,8 @@ PRZYPADEK_NIEOBECNY = "Przypadek nieobecny w projekcie"
 def nazwa_projektu_z_migawki(snapshot: Mapping[str, Any] | None) -> str:
     """Nazwa projektu = nazwa modelu z nagłówka migawki biegu albo opis braku."""
     naglowek = (snapshot or {}).get("header") or {}
-    nazwa = naglowek.get("name") if isinstance(naglowek, Mapping) else None
-    if isinstance(nazwa, str) and nazwa.strip():
-        return nazwa.strip()
-    return PROJEKT_BEZ_NAZWY
+    nazwa = nazwa_nadana(naglowek.get("name")) if isinstance(naglowek, Mapping) else None
+    return nazwa or PROJEKT_BEZ_NAZWY
 
 
 def nazwa_przypadku_z_bazy(case_id: object, uow_factory: Callable[[], Any]) -> str:
@@ -49,5 +49,4 @@ def nazwa_przypadku_z_bazy(case_id: object, uow_factory: Callable[[], Any]) -> s
         przypadek = uow.cases.get_study_case(identyfikator)
     if przypadek is None:
         return PRZYPADEK_NIEOBECNY
-    nazwa = str(przypadek.name or "").strip()
-    return nazwa or PRZYPADEK_BEZ_NAZWY
+    return nazwa_nadana(przypadek.name) or PRZYPADEK_BEZ_NAZWY

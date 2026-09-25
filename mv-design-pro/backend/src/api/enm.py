@@ -80,6 +80,7 @@ from enm.dziennik_zmian import wpisy_od as wpisy_dziennika_od
 from enm.hash import compute_enm_hash
 from enm.katalog_projektu import katalog_dla_modelu
 from enm.models import EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_nadana_pozycji_katalogu
 from enm.rewizje import RewizjaNieistniejeError, RewizjaUszkodzonaError
 from enm.severity import empty_severity_counts
 from enm.slownik_komunikatow import NAZWY_KOLEKCJI_PL, opis_elementu
@@ -107,7 +108,7 @@ from enm.topology_ops import (
 from enm.v2_projection import project_enm_v1_to_v2
 from enm.validator import ENMValidator
 from fastapi import APIRouter, HTTPException, Request
-from network_model.catalog.materialization import nazwa_pozycji_w_katalogu
+from network_model.catalog.materialization import pozycja_w_katalogu
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -1204,7 +1205,9 @@ def rozbieznosc_wobec_bramy(
         return None
     # Pozycję katalogu nazywa jej nazwa w katalogu MODELU (statyczny + projekt), nigdy
     # identyfikator (karta #142).
-    nazwa_pozycji = nazwa_pozycji_w_katalogu(katalog_dla_modelu(migawka), None, pozycja)
+    nazwa_pozycji = nazwa_nadana_pozycji_katalogu(
+        pozycja_w_katalogu(katalog_dla_modelu(migawka), None, pozycja)
+    )
     opis_pozycji = f"„{nazwa_pozycji}”" if nazwa_pozycji else "wskazanej pozycji katalogowej"
     return {
         "code": "catalog.gate_result_mismatch",

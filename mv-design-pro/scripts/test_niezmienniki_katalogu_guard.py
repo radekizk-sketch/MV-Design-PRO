@@ -57,6 +57,39 @@ def test_straznik_podprocesem_konczy_sie_zerem() -> None:
     assert "regul twardych" in wynik.stdout
 
 
+def test_rejestr_importuje_z_projektu_wylacznie_lisc_predykatu_nazwy() -> None:
+    """Gołe `python3` CI udźwignie rejestr tylko wtedy, gdy jego jedynym importem projektu
+    jest liść `network_model/nazwy.py` (biblioteka standardowa) ładowany przez strażnika."""
+    import ast
+
+    from niezmienniki_katalogu_guard import MODUL_PREDYKATU_NAZWY, PLIK_PREDYKATU_NAZWY
+
+    importy_projektu = set()
+    for plik in (KATALOG_DIR / "niezmienniki_katalogu.py", PLIK_PREDYKATU_NAZWY):
+        for wezel in ast.walk(ast.parse(plik.read_text(encoding="utf-8"))):
+            if isinstance(wezel, ast.ImportFrom) and wezel.module:
+                if wezel.level or wezel.module.split(".")[0] in {"network_model", "enm"}:
+                    importy_projektu.add((plik.name, wezel.module))
+            elif isinstance(wezel, ast.Import):
+                for alias in wezel.names:
+                    if alias.name.split(".")[0] in {"network_model", "enm"}:
+                        importy_projektu.add((plik.name, alias.name))
+    assert importy_projektu == {("niezmienniki_katalogu.py", MODUL_PREDYKATU_NAZWY)}
+
+
+def test_straznik_dziala_bez_bibliotek_zewnetrznych() -> None:
+    """Podproces z izolowanym interpreterem (`-I`, bez site-packages) — tak jak gołe `python3`
+    w CI: rejestr i liść predykatu ładują się bez `networkx`/`pydantic`."""
+    wynik = subprocess.run(
+        [sys.executable, "-I", "-S", str(REPO / "scripts" / "niezmienniki_katalogu_guard.py")],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+    )
+    assert wynik.returncode == 0, wynik.stdout + wynik.stderr
+    assert "regul twardych" in wynik.stdout
+
+
 def test_iniekcja_surowy_raise_w_pliku_typow(tmp_path: Path) -> None:
     """CZERWIEN 1/4: jakikolwiek `raise ValueError` w `types.py` — nawet poza walidacja."""
     katalog = _katalog_syntetyczny(

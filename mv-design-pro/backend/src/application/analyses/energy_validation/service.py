@@ -28,12 +28,13 @@ from analysis.energy_validation.models import (
 )
 from application.analyses.power_flow_reconstruction import graf_z_biegu, wynik_rozplywu_z_biegu
 from enm.canonical_analysis import CanonicalRun
+from network_model.nazwy import nazwa_nadana
 
 
 def _context(run: CanonicalRun) -> EnergyValidationContext:
     header = (run.snapshot or {}).get("header") or {}
     return EnergyValidationContext(
-        project_name=str(header.get("name")) if header.get("name") else None,
+        project_name=nazwa_nadana(header.get("name")),
         case_name=None,
         case_id=str(run.case_id) if run.case_id else None,
         run_timestamp=run.created_at,

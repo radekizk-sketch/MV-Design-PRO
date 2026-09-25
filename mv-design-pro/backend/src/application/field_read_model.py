@@ -42,6 +42,7 @@ from enm.models import (
 from enm.nazwy_elementow import nazwa_pola_ze_specyfikacji
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
 from network_model.core.uziemienie import TypPunktuNeutralnego
+from network_model.nazwy import nazwa_nadana
 
 #: Rola pola w modelu (`Bay.bay_role`) → rola kanoniczna read-modelu (`field_role`). Wyprowadzona
 #: z kanonu `enm.rola_pola_sn.ROLA_POLA_SN_Z_ALIASU` — tej samej tablicy, z której backend nazywa
@@ -354,7 +355,7 @@ def _iter_field_specs(substation: Any) -> list[dict[str, Any]]:
         synthesized.append(
             {
                 "field_ref": field_ref,
-                "name": section.line_field_name or f"Pole GPZ {section.order + 1}",
+                "name": nazwa_nadana(section.line_field_name) or f"Pole GPZ {section.order + 1}",
                 "bay_role": "FEEDER",
                 "bus_ref": section.bus_ref,
                 "gpz_section_id": section.section_id,

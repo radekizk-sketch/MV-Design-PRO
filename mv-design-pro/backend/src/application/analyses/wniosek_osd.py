@@ -63,6 +63,7 @@ from application.ncrfg_compliance import (
 )
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.nazwy_elementow import opis_bez_nazwy
+from network_model.nazwy import nazwa_nadana
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from pydantic import BaseModel, Field
@@ -275,7 +276,7 @@ def _zwarcia_sekcja(sc_run: CanonicalRun, bus_ref: str) -> dict[str, Any]:
     assert row is not None  # gwarantowane przez bramkę braków
     return {
         "bus_ref": bus_ref,
-        "nazwa_wezla": row.get("target_name") or opis_bez_nazwy("buses"),
+        "nazwa_wezla": nazwa_nadana(row.get("target_name")) or opis_bez_nazwy("buses"),
         "ik_ss_ka": row.get("ikss_ka"),
         "sk_mva": row.get("sk_mva"),
         "ip_ka": row.get("ip_ka"),

@@ -48,7 +48,10 @@ from typing import Any, Literal
 
 from application.analyses.protection.catalog.catalog_store import load_device_capability
 from domain.canonical_operations import READINESS_CODES
+from enm.nazwy_elementow import SPOZA_MODELU, nazwa_po_identyfikatorze
+from enm.slownik_komunikatow import opis_nazwy
 from network_model.catalog.repository import get_default_mv_catalog
+from network_model.nazwy import nazwa_nadana
 
 Zacisk = Literal["od", "do"]
 ZrodloZacisku = Literal["model", "wskazanie"]
@@ -157,12 +160,13 @@ def _odmowa(kod: str, szczegol: str) -> OdmowaZacisku:
 
 
 def _nazwy_szyn(snapshot: dict[str, Any]) -> dict[str, str]:
-    nazwy: dict[str, str] = {}
-    for szyna in snapshot.get("buses") or []:
-        if isinstance(szyna, dict) and isinstance(szyna.get("ref_id"), str):
-            nazwa = szyna.get("name")
-            nazwy[szyna["ref_id"]] = nazwa if isinstance(nazwa, str) and nazwa else szyna["ref_id"]
-    return nazwy
+    """Szyna → nazwa w etykiecie zacisku: nazwa z modelu albo „bez nazwy" — nigdy
+    identyfikator szyny (karta NAZWY-JEDNO-ZRODLO, klasa karty #144)."""
+    return {
+        szyna["ref_id"]: nazwa_nadana(szyna.get("name")) or "bez nazwy"
+        for szyna in snapshot.get("buses") or []
+        if isinstance(szyna, dict) and isinstance(szyna.get("ref_id"), str)
+    }
 
 
 def zaciski_galezi(snapshot: dict[str, Any] | None, galaz_ref: str) -> ZaciskiGalezi | None:
@@ -193,8 +197,8 @@ def _zaciski(galaz_ref: str, od: str, do: str, nazwy: dict[str, str]) -> Zaciski
         galaz_ref=galaz_ref,
         szyna_od_ref=od,
         szyna_do_ref=do,
-        etykieta_od_pl=f"Zacisk początkowy — szyna {nazwy.get(od, od)}",
-        etykieta_do_pl=f"Zacisk końcowy — szyna {nazwy.get(do, do)}",
+        etykieta_od_pl=f"Zacisk początkowy — szyna {nazwy.get(od, SPOZA_MODELU)}",
+        etykieta_do_pl=f"Zacisk końcowy — szyna {nazwy.get(do, SPOZA_MODELU)}",
     )
 
 
@@ -650,9 +654,11 @@ def odmowy_zaciskow_urzadzen(
         zacisk = urzadzenie.get("zacisk")
         if zacisk is None:
             continue
-        nazwa = urzadzenie.get("name") or klucz[len(PREFIKS_URZADZENIA_KOORDYNACJI) :]
+        # Urządzenie nazywa jego nazwa z ekranu koordynacji albo opis braku — nigdy klucz
+        # urządzenia w nastawach przypadku (karta NAZWY-JEDNO-ZRODLO).
+        urzadzenie_pl = opis_nazwy(urzadzenie.get("name"), "Urządzenie")
         if zacisk not in ZACISKI:
-            powody.append(f"Urządzenie {nazwa}: zacisk {zacisk!r} — dozwolone 'od' albo 'do'.")
+            powody.append(f"{urzadzenie_pl}: zacisk {zacisk!r} — dozwolone 'od' albo 'do'.")
             continue
         if snapshot is None:
             continue
@@ -664,11 +670,12 @@ def odmowy_zaciskow_urzadzen(
         )
         if wynik is None:
             powody.append(
-                f"Urządzenie {nazwa}: zacisk podany dla lokalizacji bez zacisków "
-                f"({lokalizacja!r}) — zacisk dotyczy gałęzi albo łącznika."
+                f"{urzadzenie_pl}: zacisk podany dla lokalizacji bez zacisków "
+                f"({nazwa_po_identyfikatorze(lokalizacja, snapshot)}) — zacisk dotyczy gałęzi "
+                "albo łącznika."
             )
         elif isinstance(wynik, OdmowaZacisku):
-            powody.append(f"Urządzenie {nazwa}: {wynik.powod_pl}")
+            powody.append(f"{urzadzenie_pl}: {wynik.powod_pl}")
     return powody
 
 

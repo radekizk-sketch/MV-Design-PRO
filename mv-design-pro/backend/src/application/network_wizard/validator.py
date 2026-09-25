@@ -13,6 +13,7 @@ from typing import Any
 
 from enm.nazwy_elementow import nazwa_elementu
 from enm.zrodlo_zwarcie import dane_zerowe, tryb_danych
+from network_model.nazwy import jest_nazwa
 
 from .schema import (
     AnalysisReadiness,
@@ -31,8 +32,7 @@ def _eval_k1(enm: dict[str, Any]) -> StepState:
     issues: list[WizardIssue] = []
     completion = 0
     header = enm.get("header", {})
-    name = header.get("name", "")
-    if name and name.strip():
+    if jest_nazwa(header.get("name")):
         completion += 50
     else:
         issues.append(

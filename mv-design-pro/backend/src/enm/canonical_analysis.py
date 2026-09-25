@@ -20,6 +20,7 @@ from application.contracts.resultset_dynamic_v2 import (
     dziedzina_fizyki_dynamiki,
     zbuduj_resultset_dynamiczny_v2,
 )
+from application.nazwy_biegu import nazwa_projektu_z_migawki
 from application.proof_engine.packs.phase_state_sn import (
     PhaseStateSNProofPack,
     PhaseStateSNProofPackInput,
@@ -106,6 +107,7 @@ from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
 from network_model.core.branch import Branch
 from network_model.core.graph import NetworkGraph
 from network_model.core.voltage_factor import c_for_node
+from network_model.nazwy import nazwa_nadana
 from network_model.pochodne import (
     a_na_ka,
     calka_joule_ka2s,
@@ -1476,11 +1478,11 @@ def _execute_phase_state_sn(run: CanonicalRun) -> None:
             case_id=run.case_id,
             run_id=str(run.id),
             snapshot_id=run.snapshot_hash,
-            project_name=str((snapshot.get("header") or {}).get("name") or "Projekt"),
-            case_name=str(run.options.get("case_name") or "Stan fazowy SN"),
+            project_name=nazwa_projektu_z_migawki(snapshot),
+            case_name=nazwa_nadana(run.options.get("case_name")) or "Stan fazowy SN",
             run_timestamp=run.started_at or run.created_at,
             solver_input=solver_input,
-            scenario_name=str(run.options.get("scenario_name") or "radial_reference"),
+            scenario_name=nazwa_nadana(run.options.get("scenario_name")) or "radial_reference",
         ),
         solver_result=solver_result,
     )
@@ -3386,7 +3388,7 @@ def build_bus_results(run: CanonicalRun) -> dict[str, Any]:
             {
                 "element_id": node.get("element_id") or bus_id,
                 "bus_id": bus_id,
-                "name": node.get("name") or opis_bez_nazwy("buses"),
+                "name": nazwa_nadana(node.get("name")) or opis_bez_nazwy("buses"),
                 "un_kv": node.get("voltage_level"),
                 "u_kv": node_voltage_kv.get(bus_id),
                 "u_pu": item.get("v_pu"),
@@ -3495,7 +3497,7 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
             {
                 "element_id": branch.get("element_id") or branch_id,
                 "branch_id": branch_id,
-                "name": branch.get("name") or opis_galezi_grafu_bez_nazwy(branch),
+                "name": nazwa_nadana(branch.get("name")) or opis_galezi_grafu_bez_nazwy(branch),
                 "from_bus": branch.get("from_node_id", ""),
                 "to_bus": branch.get("to_node_id", ""),
                 "i_a": i_a,
@@ -3652,12 +3654,13 @@ def _sc_rozplyw_galeziowy(
                 # fizyki. Brak wpisu grafu (starszy zapis) → uczciwy fallback na klucz
                 # wewnętrzny (zachowanie sprzed naprawy, nie regresja pustego pola).
                 "branch_id": branch.get("element_id") or branch_key,
-                "branch_name": branch.get("name") or opis_galezi_grafu_bez_nazwy(branch),
+                "branch_name": nazwa_nadana(branch.get("name"))
+                or opis_galezi_grafu_bez_nazwy(branch),
                 "source_id": entry.get("source_id"),
                 "from_node_id": from_wpis.get("element_id") or from_key,
-                "from_node_name": from_wpis.get("name") or opis_bez_nazwy("buses"),
+                "from_node_name": nazwa_nadana(from_wpis.get("name")) or opis_bez_nazwy("buses"),
                 "to_node_id": to_wpis.get("element_id") or to_key,
-                "to_node_name": to_wpis.get("name") or opis_bez_nazwy("buses"),
+                "to_node_name": nazwa_nadana(to_wpis.get("name")) or opis_bez_nazwy("buses"),
                 "i_ka": i_ka,
                 "direction": (
                     "brak"
@@ -3695,7 +3698,7 @@ def build_short_circuit_results(
             {
                 "target_id": target_id,
                 "element_id": node.get("element_id") or target_id,
-                "target_name": node.get("name") or opis_bez_nazwy("buses"),
+                "target_name": nazwa_nadana(node.get("name")) or opis_bez_nazwy("buses"),
                 "ikss_ka": _amps_to_ka(item.get("ikss_a")),
                 "ip_ka": _amps_to_ka(item.get("ip_a")),
                 "ith_ka": _amps_to_ka(item.get("ith_a")),

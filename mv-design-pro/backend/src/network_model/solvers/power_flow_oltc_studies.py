@@ -19,6 +19,7 @@ from dataclasses import dataclass, field, replace
 from typing import Any
 
 from network_model.core.branch import TransformerBranch
+from network_model.nazwy import nazwa_nadana
 from network_model.solvers.power_flow_oltc import solve_with_oltc
 from network_model.solvers.power_flow_types import PowerFlowInput
 
@@ -62,7 +63,7 @@ _SZYNA_BEZ_NAZWY = "Szyna bez nazwy"
 
 
 def _nazwa_transformatora(trafo: TransformerBranch) -> str:
-    return trafo.name.strip() if trafo.name and trafo.name.strip() else _TRANSFORMATOR_BEZ_NAZWY
+    return nazwa_nadana(trafo.name) or _TRANSFORMATOR_BEZ_NAZWY
 
 
 def _nazwa_szyny(graph: Any, node_id: str | None) -> str | None:
@@ -70,8 +71,7 @@ def _nazwa_szyny(graph: Any, node_id: str | None) -> str | None:
     if node_id is None:
         return None
     wezel = graph.nodes.get(node_id)
-    nazwa = getattr(wezel, "name", None)
-    return nazwa.strip() if isinstance(nazwa, str) and nazwa.strip() else _SZYNA_BEZ_NAZWY
+    return nazwa_nadana(getattr(wezel, "name", None)) or _SZYNA_BEZ_NAZWY
 
 
 def _losses_mw(solution: Any, base_mva: float) -> float:

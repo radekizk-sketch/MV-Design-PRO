@@ -42,6 +42,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, NoReturn
 
+from network_model.nazwy import jest_nazwa
+
 
 class KlasaNiezmiennika(StrEnum):
     """Moc reguly — rozstrzyga, czy zlamanie jest odmowa, czy ostrzezeniem."""
@@ -145,7 +147,7 @@ class RegulaKatalogu:
     klasa_docelowa: KlasaNiezmiennika | None = None
 
     def __post_init__(self) -> None:
-        if not self.nazwa.strip():
+        if not jest_nazwa(self.nazwa):
             raise BladRejestruNiezmiennikow(f"{self.kod}: reguła bez nazwy.")
         if not self.podstawa.strip():
             raise BladRejestruNiezmiennikow(f"{self.kod}: reguła bez podstawy.")

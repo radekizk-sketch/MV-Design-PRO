@@ -252,17 +252,17 @@ def _lookup_catalog_item(
     return None
 
 
-def nazwa_pozycji_w_katalogu(
+def pozycja_w_katalogu(
     catalog: CatalogRepository,
     namespace: str | None,
     item_id: str,
-) -> str | None:
-    """Nazwa pozycji katalogu do treści komunikatu dla projektanta (karta #142).
+) -> Any | None:
+    """Pozycja katalogu o identyfikatorze ``item_id`` albo ``None`` (pozycji nie ma).
 
-    ``None`` — pozycji nie ma w katalogu; ``""`` — pozycja istnieje, ale nie niesie
-    nazwy. Bez kategorii przeszukiwane są wszystkie kategorie w stałej kolejności
-    słownika akcesorów (deterministycznie). Identyfikator pozycji nigdy nie jest
-    zwracany jako nazwa.
+    Bez kategorii przeszukiwane są wszystkie kategorie w stałej kolejności słownika
+    akcesorów (deterministycznie). Nazwę pozycji do treści dla projektanta daje
+    ``enm.nazwy_elementow.nazwa_nadana_pozycji_katalogu`` (jedno źródło reguły nazwy,
+    karta NAZWY-JEDNO-ZRODLO) — ten moduł tylko wyszukuje.
     """
     kategorie = (
         [namespace]
@@ -271,13 +271,8 @@ def nazwa_pozycji_w_katalogu(
     )
     for kategoria in kategorie:
         pozycja = _lookup_catalog_item(catalog, kategoria, item_id)
-        if pozycja is None:
-            continue
-        for atrybut in ("name", "name_pl"):
-            nazwa = getattr(pozycja, atrybut, None)
-            if isinstance(nazwa, str) and nazwa.strip() and nazwa.strip() != item_id:
-                return nazwa.strip()
-        return ""
+        if pozycja is not None:
+            return pozycja
     return None
 
 

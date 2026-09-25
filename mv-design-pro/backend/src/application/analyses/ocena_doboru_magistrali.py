@@ -46,6 +46,7 @@ from analysis.normative.kryteria_napiecia import (
 from enm.slownik_komunikatow import NAZWY_STATUSOW_WERYFIKACJI_PL
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CableType, LineType
+from network_model.nazwy import nazwa_nadana
 from network_model.pochodne import kv_na_v, m_na_km
 from network_model.solvers.cable_ampacity_derating import (
     WARUNKI_KATALOGOWE,
@@ -290,8 +291,8 @@ def _liczba_odcinkow_pl(n: int) -> str:
 
 
 def _nazwa_odcinka(r: _Rozwiazany) -> str:
-    nazwa = (r.odcinek.nazwa or "").strip()
-    return f"Odcinek {r.indeks} magistrali SN" + (f" „{nazwa}”" if nazwa else "")
+    nazwa = nazwa_nadana(r.odcinek.nazwa)
+    return f"Odcinek {r.indeks} magistrali SN" + (f" „{nazwa}”" if nazwa is not None else "")
 
 
 def _opis_odcinka(r: _Rozwiazany, napiecie_kv: float) -> str:

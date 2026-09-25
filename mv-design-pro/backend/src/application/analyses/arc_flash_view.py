@@ -30,6 +30,7 @@ from analysis.arc_flash import (
     EnclosureType,
 )
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
+from network_model.nazwy import nazwa_nadana
 
 
 def _voltage_by_target(run: CanonicalRun) -> dict[str, float | None]:
@@ -46,7 +47,7 @@ def _voltage_by_target(run: CanonicalRun) -> dict[str, float | None]:
 def _context(run: CanonicalRun) -> ArcFlashContext:
     header = (run.snapshot or {}).get("header") or {}
     return ArcFlashContext(
-        project_name=str(header.get("name")) if header.get("name") else None,
+        project_name=nazwa_nadana(header.get("name")),
         case_name=None,
         case_id=str(run.case_id) if run.case_id else None,
         run_timestamp=run.created_at,

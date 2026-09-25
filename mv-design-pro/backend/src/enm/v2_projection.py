@@ -22,7 +22,9 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from enm.nazwy_elementow import nazwa_elementu
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
+from network_model.nazwy import nazwa_nadana
 from pydantic import BaseModel, Field
 
 ProjectionQuality = Literal["pelna", "czesciowa", "wymaga_decyzji"]
@@ -336,7 +338,8 @@ def _build_operator_profiles(enm: EnergyNetworkModel) -> list[dict]:
         )
         profiles_by_ref[profile_ref] = {
             "ref_id": profile_ref,
-            "name": str(operator_profile.get("name") or f"Profil operatora {generator.name}"),
+            "name": nazwa_nadana(operator_profile.get("name"))
+            or f"Profil operatora {nazwa_elementu(generator, 'generators')}",
             "source_ref": generator.ref_id,
             "quality_status": "pelna",
             "profile_source": _profile_source(generator),

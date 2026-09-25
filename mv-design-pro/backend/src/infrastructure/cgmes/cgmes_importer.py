@@ -40,6 +40,7 @@ from enm.models import (
     Source,
     SwitchBranch,
 )
+from enm.nazwy_elementow import NAZWA_MODELU_BEZ_NAZWY
 from enm.validator import ENMValidator, ValidationResult
 from network_model.catalog.governance import brakuje_wymaganej_referencji, wymagalnosc_katalogu
 from network_model.pochodne import m_na_km
@@ -158,7 +159,7 @@ def import_from_eq_tp(
     tp_bytes: bytes,
     *,
     refmap: CgmesRefMap | None = None,
-    model_name: str = "Imported CGMES",
+    model_name: str = NAZWA_MODELU_BEZ_NAZWY,
 ) -> CgmesImportResult:
     """Build a minimal ENM from EQ + TP profiles alone (no side-car).
 

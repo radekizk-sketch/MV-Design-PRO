@@ -55,6 +55,7 @@ from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from enm.canonical_analysis import CanonicalRun
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from network_model.catalog.types import ConverterType
+from network_model.nazwy import nazwa_nadana
 from network_model.pochodne import mw_na_kw
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
@@ -190,7 +191,7 @@ def _ograniczenie_pl(binding: dict[str, Any]) -> str:
         return "Brak ograniczenia w zakresie przeglądu."
     if kind == "non_convergence":
         return "Rozpływ mocy nie osiągnął zbieżności."
-    element = binding.get("element_name") or "—"
+    element = nazwa_nadana(binding.get("element_name")) or "—"
     if kind == "voltage":
         return f"Kryterium napięciowe — węzeł „{element}”."
     if kind == "loading":

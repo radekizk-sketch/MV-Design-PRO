@@ -22,11 +22,13 @@ import textwrap
 from pathlib import Path
 from typing import Any
 
+from network_model.nazwy import jest_nazwa
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.protection_tcc_presentation import (
     etykieta_tms,
     etykieta_typu_krzywej_pl,
     nazwa_urzadzenia,
+    nazwa_wpisu_urzadzenia,
     nazwy_urzadzen,
     powod_braku_pl,
 )
@@ -210,7 +212,7 @@ def export_protection_coordination_to_pdf(
     # Metadata
     if metadata:
         meta_parts = []
-        if metadata.get("project_name"):
+        if jest_nazwa(metadata.get("project_name")):
             meta_parts.append(f"Projekt: {metadata['project_name']}")
         if metadata.get("created_at"):
             meta_parts.append(f"Data: {metadata['created_at'][:19]}")
@@ -264,7 +266,9 @@ def export_protection_coordination_to_pdf(
     nazwy = nazwy_urzadzen(result)
     if devices:
         # Sort by device name for deterministic order
-        sorted_devices = sorted(devices, key=lambda d: d.get("name", d.get("id", "")))
+        sorted_devices = sorted(
+            devices, key=lambda d: (nazwa_wpisu_urzadzenia(d), str(d.get("id", "")))
+        )
         dev_cols = [35 * mm, 25 * mm, 25 * mm, 25 * mm, 25 * mm]
         draw_table_row(
             ["Nazwa", "Typ", "I_pickup [A]", "TMS", "Krzywa"], dev_cols, left_margin, bold=True
@@ -279,7 +283,7 @@ def export_protection_coordination_to_pdf(
 
             draw_table_row(
                 [
-                    dev.get("name", "—")[:12],
+                    nazwa_wpisu_urzadzenia(dev)[:12],
                     dev.get("device_type", "—")[:10],
                     _format_value(stage_51.get("pickup_current_a")),
                     _format_value(curve_settings.get("time_multiplier")),
@@ -458,7 +462,7 @@ def export_protection_coordination_to_pdf(
             y = check_page_break(line_height)
             draw_table_row(
                 [
-                    curve.get("device_name", "—")[:20],
+                    nazwa_wpisu_urzadzenia(curve, "device_name")[:20],
                     etykieta_typu_krzywej_pl(curve),
                     _format_value(curve.get("pickup_current_a")),
                     etykieta_tms(curve, _format_value(curve.get("time_multiplier"))),

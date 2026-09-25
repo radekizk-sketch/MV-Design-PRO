@@ -14,6 +14,8 @@ from __future__ import annotations
 from collections import deque
 from typing import Any
 
+from enm.nazwy_elementow import nazwa_elementu
+
 from .wymagane import pole_wymagane
 
 _LINE_TYPES = {"cable", "line_overhead"}
@@ -158,7 +160,7 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
         stations.append(
             {
                 "id": ref_to_id[ref],
-                "name": s.get("name", ref),
+                "name": nazwa_elementu(s, "substations"),
                 "kind": "trunk" if s.get("station_type") == "branch" else "lateral",
                 "depth": d,
                 "parent": ref_to_id.get(parent_ref) if parent_ref else None,

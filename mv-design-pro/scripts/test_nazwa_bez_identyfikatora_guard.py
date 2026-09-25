@@ -51,15 +51,27 @@ def _polozenia(kod: str) -> list[tuple[str, str, str]]:
     ("kod", "oczekiwane"),
     [
         ('def f(b):\n    return {"name": b.ref_id}\n', ("klucz", "name", ".ref_id")),
-        ("def f(b):\n    return Szyna(name=b.ref_id)\n", ("argument", "name", ".ref_id")),
-        ('def f(d, b):\n    d["name"] = b["ref_id"]\n', ("indeks", "name", '["ref_id"]')),
+        (
+            "def f(b):\n    return Szyna(name=b.ref_id)\n",
+            ("argument", "name", ".ref_id"),
+        ),
+        (
+            'def f(d, b):\n    d["name"] = b["ref_id"]\n',
+            ("indeks", "name", '["ref_id"]'),
+        ),
         ("def f(o, b):\n    o.name = b.ref_id\n", ("atrybut", "name", ".ref_id")),
-        ("def f(b):\n    nazwa_szyny = b.ref_id\n", ("zmienna", "nazwa_szyny", ".ref_id")),
+        (
+            "def f(b):\n    nazwa_szyny = b.ref_id\n",
+            ("zmienna", "nazwa_szyny", ".ref_id"),
+        ),
         (
             "def _nazwa_odcinka(seg):\n    return seg['ref_id']\n",
             ("zwrot", "_nazwa_odcinka", '["ref_id"]'),
         ),
-        ('def f(n, bus_id):\n    return n.get("name", bus_id)\n', ("zapas_get", "name", "bus_id")),
+        (
+            'def f(n, bus_id):\n    return n.get("name", bus_id)\n',
+            ("zapas_get", "name", "bus_id"),
+        ),
         (
             'def f(n, bus_id):\n    return getattr(n, "name", bus_id)\n',
             ("zapas_get", "name", "bus_id"),
@@ -88,6 +100,17 @@ def _polozenia(kod: str) -> list[tuple[str, str, str]]:
         (
             "def f(o, b):\n    o.why_pl = f'w wezle {b.bus_ref}'\n",
             ("tekst_atrybut", "why_pl", ".bus_ref"),
+        ),
+        # Karta NAZWY-JEDNO-ZRODLO: klucze nazw w liczbie mnogiej (lista nazw) i kolumna
+        # „wyszczególnienie" arkusza obwodów — dwie drogi, którymi identyfikator trafiał do
+        # nazwy obok strażnika (`upstream_source_names`, `wyszczegolnienie` arkusza nN).
+        (
+            "def f(s, m, ids):\n    s['upstream_source_names'] = [m.get(ref, ref) for ref in ids]\n",
+            ("indeks", "upstream_source_names", "ref"),
+        ),
+        (
+            "def f(b, root_ref):\n    wyszczegolnienie = b.name if b else root_ref\n",
+            ("zmienna", "wyszczegolnienie", "root_ref"),
         ),
     ],
 )

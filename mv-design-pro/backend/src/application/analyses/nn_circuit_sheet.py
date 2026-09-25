@@ -147,7 +147,7 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
-from enm.nazwy_elementow import nazwa_elementu
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from enm.uklad_sieci_nn import uklad_nn_stacji
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
 from network_model.pochodne import ka_na_a, km_na_m, prad_roboczy_a
@@ -893,8 +893,10 @@ def _build_row(
     else:
         delta_u_sekcja = _delta_u_dla_trasy(load_flow_run, path.branches, worst_bus_ref)
 
+    # Wiersz arkusza nazywa obwód nazwą odpływu z modelu albo opisem rodzaju — nigdy
+    # identyfikatorem gałęzi (ten zostaje w `feeder_root_branch_ref`).
     wyszczegolnienie = (
-        root_branch.name if root_branch is not None and root_branch.name else root_branch_ref
+        nazwa_elementu(root_branch, "branches") if root_branch is not None else ELEMENT_SPOZA_MODELU
     )
 
     return {

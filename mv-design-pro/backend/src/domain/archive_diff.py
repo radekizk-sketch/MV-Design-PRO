@@ -27,6 +27,7 @@ from domain.project_archive import (
     canonicalize,
     compute_hash,
 )
+from network_model.nazwy import nazwa_nadana
 
 # ============================================================================
 # STALE
@@ -648,8 +649,7 @@ def _compare_fields(
 
 def _nazwa_elementu(element: dict[str, Any]) -> str | None:
     """Nazwa elementu nadana przez projektanta (`name`), jesli jest niepustym tekstem."""
-    nazwa = element.get("name")
-    return nazwa if isinstance(nazwa, str) and nazwa.strip() else None
+    return nazwa_nadana(element.get("name"))
 
 
 # Etykiety PL rodzajow elementow porownania (`ElementDiff.element_type`):
@@ -1207,7 +1207,7 @@ def format_diff_report_pl(diff_result: ArchiveDiffResult) -> str:
             # (raport jest też zapisem audytowym), sam — gdy elementu nie nazwano.
             podpis = (
                 f"'{ed.element_name}' ({ed.element_id})"
-                if ed.element_name
+                if ed.element_name is not None
                 else f"'{ed.element_id}'"
             )
             lines.append(f"    [{_status_pl(ed.status)}] {ed.element_type_label_pl} {podpis}")

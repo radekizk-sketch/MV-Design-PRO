@@ -64,6 +64,7 @@ from enm.models import EnergyNetworkModel
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.nazwy import nazwa_nadana
 from pydantic import ValidationError
 
 router = APIRouter()
@@ -236,7 +237,7 @@ def _proof_latex_response(run: CanonicalRun) -> Response:
             lines.append(
                 " & ".join(
                     [
-                        _latex_escape(row.get("target_name") or "brak danych"),
+                        _latex_escape(nazwa_nadana(row.get("target_name")) or "brak danych"),
                         _latex_escape(
                             f"{i_dyn:.4g}" if isinstance(i_dyn, int | float) else "brak danych"
                         ),

@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
+from network_model.nazwy import nazwa_nadana
 from sqlalchemy import Engine, inspect, text
 
 #: Tabele legacy w kolejności KASACJI (dzieci przed rodzicami).
@@ -143,7 +144,7 @@ def migruj_i_usun_tabele_legacy(engine: Engine) -> RaportMigracjiLegacy:
             projekt = projekty.get(project_id)
             # Nazwa modelu (nagłówek ENM) z projektu; wiersze bez projektu dostają opis
             # rodzaju — identyfikator projektu zostaje kluczem manifestu (karta #144).
-            nazwa = str(projekt["name"]) if projekt and projekt.get("name") else "Projekt bez nazwy"
+            nazwa = (nazwa_nadana(projekt.get("name")) if projekt else None) or "Projekt bez nazwy"
             klucz = klucz_twin_projektu(UUID(project_id))
             if has_enm(klucz):
                 raport.pominiete[project_id] = (

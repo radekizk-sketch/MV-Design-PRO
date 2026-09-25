@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from enm.kopia_graniczna import kopia_graniczna_enm
+from network_model.nazwy import jest_nazwa, nazwa_nadana
 
 from .schema import (
     IssueSeverity,
@@ -106,8 +107,7 @@ def _preconditions_k2(enm: dict[str, Any]) -> list[WizardIssue]:
     """K2 requires K1 to have project name."""
     issues: list[WizardIssue] = []
     header = enm.get("header", {})
-    name = header.get("name", "")
-    if not name or not name.strip():
+    if not jest_nazwa(header.get("name")):
         issues.append(
             WizardIssue(
                 code="PRE_K2_NAME_MISSING",
@@ -264,7 +264,7 @@ def _apply_k2(enm: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
     bi = next((i for i, b in enumerate(buses) if b.get("ref_id") == bus_ref), None)
     bus_data = {
         "ref_id": bus_ref,
-        "name": data.get("bus_name", "Szyna główna SN"),
+        "name": nazwa_nadana(data.get("bus_name")) or "Szyna główna SN",
         "voltage_kv": data.get("voltage_kv", 15),
         "tags": ["source"],
         "meta": {},
@@ -280,7 +280,7 @@ def _apply_k2(enm: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
     si = next((i for i, s in enumerate(sources) if s.get("ref_id") == src_ref), None)
     src_data = {
         "ref_id": src_ref,
-        "name": data.get("source_name", "Sieć zasilająca"),
+        "name": nazwa_nadana(data.get("source_name")) or "Sieć zasilająca",
         "bus_ref": bus_ref,
         "model": data.get("model", "short_circuit_power"),
         "sk3_mva": data.get("sk3_mva", 250),

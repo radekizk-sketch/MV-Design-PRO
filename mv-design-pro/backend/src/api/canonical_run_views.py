@@ -48,6 +48,7 @@ from enm.canonical_analysis import (
     dobierz_pasmo_min_max_zwarcia,
     galezie_modelu_biegu,
 )
+from network_model.nazwy import nazwa_nadana
 from network_model.pochodne import a_na_ka
 
 
@@ -419,9 +420,8 @@ def build_power_flow_interpretation(run: CanonicalRun) -> dict[str, Any]:
     # dawniej `f"Projekt {project_id}"`/`f"Przypadek {case_id}"`, nazwy z identyfikatorów
     # (karta #144).
     naglowek = (run.snapshot or {}).get("header") or {}
-    nazwa_modelu = naglowek.get("name") if isinstance(naglowek, dict) else None
     context = InterpretationContext(
-        project_name=str(nazwa_modelu) if nazwa_modelu else None,
+        project_name=nazwa_nadana(naglowek.get("name")) if isinstance(naglowek, dict) else None,
         case_name=None,
         run_timestamp=run.created_at,
         snapshot_id=run.snapshot_hash,

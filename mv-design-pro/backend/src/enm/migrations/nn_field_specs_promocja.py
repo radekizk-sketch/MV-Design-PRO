@@ -58,6 +58,7 @@ from enm.models import Bus, EnergyNetworkModel, Substation, SwitchBranch
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding
+from network_model.nazwy import nazwa_nadana
 
 MIGRATION_VERSION = "nn_field_specs_promocja_001"
 
@@ -212,7 +213,7 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
 
             nowa_szyna = Bus(
                 ref_id=downstream_bus_ref,
-                name=str(spec.get("name") or "Szyna odpływu nN"),
+                name=nazwa_nadana(spec.get("name")) or "Szyna odpływu nN",
                 voltage_kv=station_bus.voltage_kv,
                 meta={"visual_role": "NN_FEEDER_BUS", META_KLUCZ_GALAZ_ZRODLO_FIELD_REF: field_ref},
             )
@@ -233,7 +234,7 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
 
             aparat = SwitchBranch(
                 ref_id=apparatus_ref,
-                name=str(spec.get("name") or "Aparat pola nN"),
+                name=nazwa_nadana(spec.get("name")) or "Aparat pola nN",
                 type="breaker",
                 from_bus_ref=station_bus.ref_id,
                 to_bus_ref=downstream_bus_ref,

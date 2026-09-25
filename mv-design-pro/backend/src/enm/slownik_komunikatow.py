@@ -13,7 +13,9 @@ w systemie, są reużyte, nie kopiowane: role pól SN (``domain_operations.nazwa
 typy punktu neutralnego, układy uziemienia ekranu i role uziemnika
 (``network_model.core.uziemienie``). Tu żyją wyłącznie mapy, których nie było nigdzie.
 
-Moduł nie importuje nic z ``enm`` — liść grafu importów dla obu plików operacji,
+Z pakietu ``enm`` moduł importuje wyłącznie liść ``enm.nazwy_elementow`` — jedyne źródło
+odpowiedzi, CZY element ma nazwę (karta NAZWY-JEDNO-ZRODLO); słownik składa z niej zdanie
+(słowo rodzaju, cudzysłów). Pozostaje liściem grafu importów dla obu plików operacji,
 walidatora i warstwy API.
 
 Strażnik klasy: ``tests/enm/test_komunikaty_operacji_bez_kodow.py`` (AST na literałach
@@ -23,10 +25,17 @@ i f-stringach modułów komunikatów operacji + wykonanie operacji w iloczynie c
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 
 from network_model.catalog.types import etykieta_pola_katalogu_pl, nazwa_kategorii_katalogu_pl
+from network_model.nazwy import nazwa_nadana
 from pydantic import ValidationError
+
+from .nazwy_elementow import (
+    nazwa_nadana_elementu,
+    nazwa_nadana_po_identyfikatorze,
+    nazwa_nadana_pozycji_katalogu,
+)
 
 # ---------------------------------------------------------------------------
 # Nazwy pól kontraktu operacji → nazwa pola formularza
@@ -539,98 +548,31 @@ def lista_pl(nazwy: Iterable[str], spojnik: str = "albo") -> str:
 
 
 # ---------------------------------------------------------------------------
-# Nazwa elementu z modelu — nigdy identyfikator
+# Nazwa elementu z modelu w zdaniu — o tym, CZY jest nazwa, pyta moduł nazw
 # ---------------------------------------------------------------------------
 
 
-def wyglada_na_identyfikator(wartosc: str) -> bool:
-    """Tekst o kształcie identyfikatora (``prefiks/ziarno/ścieżka`` albo długi ciąg hex).
-
-    Identyfikator nie zawiera białych znaków (ziarno to skrót, ścieżka to kody) — tekst
-    ze spacją jest nazwą, także gdy niesie ukośnik („PCS BESS 2 MW / 0.4 kV nN”,
-    „Transformator 15/0,4 kV”).
-    """
-    if any(znak.isspace() for znak in wartosc.strip()):
-        return False
-    zwarty = wartosc.replace("-", "")
-    return "/" in wartosc or (
-        len(zwarty) >= 24 and all(znak in "0123456789abcdefABCDEF" for znak in zwarty)
-    )
-
-
-#: Kształt kodu w nazwie: znak ``_`` między znakami słowa (``tr_sn_nn``, ``QF-03_zrodlo``).
-_KSZTALT_KODU = re.compile(r"\w_\w")
-
-
-def _nazwa_do_zdania(wartosc: object) -> str | None:
-    """Nazwa z modelu, którą wolno wstawić w zdanie (albo ``None``).
-
-    Odrzucone: pusta, o kształcie identyfikatora (``prefiks/…``, długi hex) i o kształcie
-    kodu (znak ``_`` między znakami słowa: ``tr_sn_nn``, ``QF-03_zrodlo``) — to nazwy
-    przepisane z identyfikatora, których projektant nie nadał. Nazwa RÓWNA identyfikatorowi,
-    ale bez tych kształtów (oznaczenie z arkusza importu, np. „RGN-2”), JEST nazwą, którą
-    projektant widzi na schemacie — komunikat jej używa, żeby dało się element odnaleźć.
-    """
-    if not isinstance(wartosc, str):
-        return None
-    tekst = wartosc.strip()
-    if not tekst or wyglada_na_identyfikator(tekst) or _KSZTALT_KODU.search(tekst):
-        return None
-    return tekst
-
-
-def _pole_elementu(element: object, klucz: str) -> object:
-    """Pole elementu migawki (słownik) albo modelu (obiekt ``enm.models``)."""
-    if isinstance(element, Mapping):
-        return element.get(klucz)
-    return getattr(element, klucz, None)
-
-
-def _elementy(enm: object) -> Iterable[object]:
-    """Elementy wszystkich kolekcji migawki (słownik) albo modelu (obiekt ``enm.models``)."""
-    kolekcje = enm.values() if isinstance(enm, Mapping) else vars(enm).values()
-    for kolekcja in kolekcje:
-        if isinstance(kolekcja, list):
-            yield from kolekcja
-
-
-def _nazwa_czytelna(element: object) -> str | None:
-    """Nazwa elementu, jeśli nie jest identyfikatorem ani kodem (albo ``None``)."""
-    return _nazwa_do_zdania(_pole_elementu(element, "name"))
-
-
-def nazwa_elementu(enm: object, ref: object) -> str | None:
-    """Nazwa elementu z modelu dla treści komunikatu albo ``None``.
-
-    ``enm`` — migawka (słownik) albo model (``EnergyNetworkModel``). ``None``, gdy
-    elementu nie ma, nie ma nazwy albo nazwa jest identyfikatorem (dane sprzed zasady
-    „nazwa nigdy z identyfikatora") — komunikat opisuje wtedy element rodzajem, nigdy
-    identyfikatorem.
-    """
-    if not isinstance(ref, str) or not ref or enm is None:
-        return None
-    for element in _elementy(enm):
-        if _pole_elementu(element, "ref_id") == ref:
-            return _nazwa_czytelna(element)
-    return None
+def _zdanie(rodzaj: str, nazwa: str | None) -> str:
+    """„Szyna „Sekcja 1”" albo „Szyna bez nazwy" — słowo rodzaju + nazwa w cudzysłowie."""
+    return f"{rodzaj} „{nazwa}”" if nazwa is not None else f"{rodzaj} bez nazwy"
 
 
 def opis_elementu(enm: object, ref: object, rodzaj: str) -> str:
-    """„Szyna „Sekcja 1”" albo „Szyna bez nazwy" — rodzaj elementu + jego nazwa z modelu."""
-    nazwa = nazwa_elementu(enm, ref)
-    return f"{rodzaj} „{nazwa}”" if nazwa else f"{rodzaj} bez nazwy"
+    """Rodzaj elementu + jego nazwa z modelu (``enm`` — migawka albo ``EnergyNetworkModel``).
+
+    Element nieobecny w migawce albo bez nazwy opisuje słowo rodzaju — nigdy identyfikator.
+    """
+    return _zdanie(rodzaj, nazwa_nadana_po_identyfikatorze(enm, ref))
 
 
 def opis_obiektu(element: object, rodzaj: str) -> str:
     """Jak ``opis_elementu``, gdy element jest już w ręku (słownik albo obiekt modelu)."""
-    nazwa = _nazwa_czytelna(element) if element is not None else None
-    return f"{rodzaj} „{nazwa}”" if nazwa else f"{rodzaj} bez nazwy"
+    return _zdanie(rodzaj, nazwa_nadana_elementu(element))
 
 
 def opis_nazwy(nazwa: object, rodzaj: str) -> str:
     """Jak ``opis_elementu``, gdy nazwa jest już w ręku (element spoza migawki)."""
-    tekst = _nazwa_do_zdania(nazwa)
-    return f"{rodzaj} „{tekst}”" if tekst else f"{rodzaj} bez nazwy"
+    return _zdanie(rodzaj, nazwa_nadana(nazwa))
 
 
 # ---------------------------------------------------------------------------
@@ -638,33 +580,21 @@ def opis_nazwy(nazwa: object, rodzaj: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def nazwa_pozycji_katalogu(ref: object, kategoria: object = None) -> str | None:
-    """Nazwa pozycji katalogu bieżącej operacji (statyczny + pozycje projektu).
+def opis_pozycji_katalogu(ref: object, kategoria: object = None, rodzaj: str = "pozycja") -> str:
+    """„typ „ABB VD4 17.5 kV 630 A”", „typ bez nazwy" albo „typ spoza katalogu".
 
-    ``None`` — pozycji nie ma w katalogu; ``""`` — pozycja jest, ale bez nazwy.
-
-    Import leniwy: katalog operacji żyje w ``enm.katalog_projektu``, który importuje
-    moduły ``enm`` — słownik pozostaje liściem grafu importów.
+    Katalog bieżącej operacji (statyczny + pozycje projektu). Identyfikator pozycji nigdy nie
+    trafia do treści. Import leniwy: katalog operacji żyje w ``enm.katalog_projektu``, który
+    importuje moduły ``enm`` — słownik pozostaje liściem grafu importów.
     """
     if not isinstance(ref, str) or not ref.strip():
-        return None
-    from network_model.catalog.materialization import nazwa_pozycji_w_katalogu
+        return f"{rodzaj} spoza katalogu"
+    from network_model.catalog.materialization import pozycja_w_katalogu
 
     from .katalog_projektu import katalog_biezacy
 
     klucz = getattr(kategoria, "value", kategoria)
-    nazwa = nazwa_pozycji_w_katalogu(katalog_biezacy(), str(klucz) if klucz else None, ref.strip())
-    if nazwa is not None and wyglada_na_identyfikator(nazwa):
-        return ""
-    return nazwa
-
-
-def opis_pozycji_katalogu(ref: object, kategoria: object = None, rodzaj: str = "pozycja") -> str:
-    """„typ „ABB VD4 17.5 kV 630 A”", „typ bez nazwy" albo „typ spoza katalogu".
-
-    Identyfikator pozycji katalogu nigdy nie trafia do treści.
-    """
-    nazwa = nazwa_pozycji_katalogu(ref, kategoria)
-    if nazwa is None:
+    pozycja = pozycja_w_katalogu(katalog_biezacy(), str(klucz) if klucz else None, ref.strip())
+    if pozycja is None:
         return f"{rodzaj} spoza katalogu"
-    return f"{rodzaj} „{nazwa}”" if nazwa else f"{rodzaj} bez nazwy"
+    return _zdanie(rodzaj, nazwa_nadana_pozycji_katalogu(pozycja))

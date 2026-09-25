@@ -38,6 +38,7 @@ from network_model.catalog.repository import CatalogRepository, get_default_mv_c
 from pydantic import ValidationError
 
 from .katalog_projektu import STATUS_KATALOGU_PROJEKTU, STATUS_WERYFIKACJI_ARKUSZA
+from .nazwy_elementow import nazwa_nadana_pozycji_katalogu
 from .slownik_komunikatow import (
     NAZWY_STATUSOW_KATALOGU_PL,
     NAZWY_STATUSOW_WERYFIKACJI_PL,
@@ -71,11 +72,13 @@ def _opis_karty(karta: KartaWidmowa) -> str:
 
 def _opis_typu(katalog: CatalogRepository, ref: object, rodzaj: str) -> str:
     """Typ katalogu w treści komunikatu: nazwa typu z katalogu modelu — nie identyfikator."""
-    typ = katalog.get_converter_type(str(ref)) if ref else None
-    nazwa = getattr(typ, "name", None) if typ is not None else None
-    if isinstance(nazwa, str) and nazwa.strip() and nazwa.strip() != ref:
-        return f"{rodzaj} „{nazwa.strip()}”"
-    return f"{rodzaj} spoza katalogu przekształtników modelu" if ref else f"{rodzaj} bez wskazania"
+    if not ref:
+        return f"{rodzaj} bez wskazania"
+    typ = katalog.get_converter_type(str(ref))
+    if typ is None:
+        return f"{rodzaj} spoza katalogu przekształtników modelu"
+    nazwa = nazwa_nadana_pozycji_katalogu(typ)
+    return f"{rodzaj} „{nazwa}”" if nazwa is not None else f"{rodzaj} bez nazwy"
 
 
 def przestrzen_karty(karta_id: str) -> PrzestrzenKarty:

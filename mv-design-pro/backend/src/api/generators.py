@@ -46,6 +46,7 @@ from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
+from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.pochodne import kv_na_v, kva_na_mva, mw_na_kw, v_na_kv
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from network_model.solvers.equipment_checks.ct_burden_saturation import CtDeviceBurden
@@ -591,8 +592,8 @@ def _build_domain_payload(
     }
     # Nazwa źródła wyłącznie od projektanta; bez niej nazwę nadaje operacja domenowa
     # (opis rodzaju, np. „Blok PV") — nigdy rodzaj DER z identyfikatorem stacji (karta #144).
-    if req.source_name:
-        payload["source_name"] = req.source_name
+    if jest_nazwa(req.source_name):
+        payload["source_name"] = nazwa_nadana(req.source_name)
 
     if req.nc_rfg_module is not None:
         payload["nc_rfg_module"] = req.nc_rfg_module

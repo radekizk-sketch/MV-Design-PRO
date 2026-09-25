@@ -27,6 +27,7 @@ from io import BytesIO
 from typing import Any
 
 from enm.nazwy_elementow import opis_bez_nazwy
+from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.reporting.czcionki import ustaw_czcionki_stylow, zarejestruj_czcionki
 
 # Publiczny próg granicy łuku (definicja fizyczna IEEE 1584): E = 1,2 cal/cm².
@@ -56,8 +57,7 @@ def _results(ctx: ArcFlashReportContext) -> list[dict[str, Any]]:
 def _nazwa_szyny(wynik: dict[str, Any]) -> str:
     """Nazwa szyny wiersza (`bus_name` widoku: nazwa z modelu albo opis rodzaju) — nigdy
     `bus_ref`, który jest identyfikatorem węzła grafu wyniku zwarciowego (karta #144)."""
-    nazwa = wynik.get("bus_name")
-    return str(nazwa) if isinstance(nazwa, str) and nazwa.strip() else opis_bez_nazwy("buses")
+    return nazwa_nadana(wynik.get("bus_name")) or opis_bez_nazwy("buses")
 
 
 def _fmt(value: Any, digits: int = 2) -> str:
@@ -158,7 +158,7 @@ def render_arc_flash_report_text(ctx: ArcFlashReportContext) -> str:
     lines.append(
         f"PODSUMOWANIE: {summary['bus_count']} szyn, "
         f"najwyższa energia incydentu {_fmt(summary['worst_incident_energy_cal_cm2'])} cal/cm²"
-        + (f" (szyna {summary['worst_bus_name']})" if summary["worst_bus_name"] else "")
+        + (f" (szyna {summary['worst_bus_name']})" if jest_nazwa(summary["worst_bus_name"]) else "")
         + f", szyny z brakami danych: {summary['buses_with_missing_data']}."
     )
     lines.append(f"Granica łuku (próg AFB): {_AFB_THRESHOLD_CAL_CM2} cal/cm².")
@@ -224,7 +224,7 @@ def render_arc_flash_report_pdf(ctx: ArcFlashReportContext) -> bytes:
             "Najwyższa energia incydentu [cal/cm²]",
             _fmt(summary["worst_incident_energy_cal_cm2"]),
         ],
-        ["Szyna krytyczna", str(summary["worst_bus_name"] or "—")],
+        ["Szyna krytyczna", nazwa_nadana(summary["worst_bus_name"]) or "—"],
         ["Szyny z brakami danych", str(summary["buses_with_missing_data"])],
         ["Próg granicy łuku [cal/cm²]", _fmt(_AFB_THRESHOLD_CAL_CM2)],
     ]
@@ -319,7 +319,7 @@ def render_arc_flash_report_docx(ctx: ArcFlashReportContext) -> bytes:
             "Najwyższa energia incydentu [cal/cm²]",
             _fmt(summary["worst_incident_energy_cal_cm2"]),
         ),
-        ("Szyna krytyczna", str(summary["worst_bus_name"] or "—")),
+        ("Szyna krytyczna", nazwa_nadana(summary["worst_bus_name"]) or "—"),
         ("Szyny z brakami danych", str(summary["buses_with_missing_data"])),
         ("Próg granicy łuku [cal/cm²]", _fmt(_AFB_THRESHOLD_CAL_CM2)),
     ]
@@ -382,7 +382,11 @@ def render_arc_flash_report_latex(ctx: ArcFlashReportContext) -> str:
     lines.append(
         rf"\textbf{{Liczba szyn:}} {summary['bus_count']}, "
         rf"najwyższa energia incydentu {_fmt(summary['worst_incident_energy_cal_cm2'])} cal/cm\textsuperscript{{2}}"
-        + (rf" (szyna {esc(summary['worst_bus_name'])})" if summary["worst_bus_name"] else "")
+        + (
+            rf" (szyna {esc(summary['worst_bus_name'])})"
+            if jest_nazwa(summary["worst_bus_name"])
+            else ""
+        )
         + rf", szyny z brakami danych: {summary['buses_with_missing_data']}.\par"
     )
     if results:

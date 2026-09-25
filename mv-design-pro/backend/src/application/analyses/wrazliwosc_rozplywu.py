@@ -66,6 +66,7 @@ from enm.canonical_analysis import CanonicalRun
 from enm.nazwy_elementow import nazwa_galezi_bez_nazwy, opis_bez_nazwy
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.nazwy import nazwa_nadana
 
 
 def _wymagaj_biegu_rozplywu(run: CanonicalRun) -> None:
@@ -83,8 +84,7 @@ def _wymagaj_biegu_rozplywu(run: CanonicalRun) -> None:
 
 def _nazwa_projektu(run: CanonicalRun) -> str | None:
     header = (run.snapshot or {}).get("header") or {}
-    nazwa = header.get("name")
-    return str(nazwa) if nazwa else None
+    return nazwa_nadana(header.get("name"))
 
 
 def _kontekst_profilu(run: CanonicalRun) -> VoltageProfileContext:
@@ -102,8 +102,9 @@ def _kontekst_profilu(run: CanonicalRun) -> VoltageProfileContext:
 
 def _nazwa_galezi_grafu(branch: Any) -> str:
     """Nazwa gałęzi grafu biegu (z modelu) albo opis jej rodzaju — nigdy identyfikator."""
-    if branch.name:
-        return str(branch.name)
+    nazwa = nazwa_nadana(branch.name)
+    if nazwa is not None:
+        return nazwa
     if branch.branch_type == BranchType.TRANSFORMER:
         return opis_bez_nazwy("transformers")
     if branch.branch_type == BranchType.CABLE:
@@ -139,7 +140,7 @@ def _zloz_wejscie_dowodu(
                 u_ll_kv=u_ll,
                 u_nom_kv=u_nom,
                 # Nazwa szyny z grafu biegu (z modelu) albo opis rodzaju (karta #144).
-                nazwa=node.name or opis_bez_nazwy("buses"),
+                nazwa=nazwa_nadana(node.name) or opis_bez_nazwy("buses"),
             )
         )
 
@@ -248,7 +249,7 @@ def build_wrazliwosc_view(run: CanonicalRun, *, nazwa_przypadku: str) -> dict[st
     # w UI; identyfikator zostaje dla trybu eksperckiego).
     wezly = {
         node_id: {
-            "name": node.name or None,
+            "name": nazwa_nadana(node.name),
             "u_nom_kv": float(node.voltage_level) if node.voltage_level > 0 else None,
         }
         for node_id, node in sorted(graph.nodes.items())

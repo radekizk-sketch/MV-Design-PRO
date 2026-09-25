@@ -19,7 +19,10 @@ from typing import Any
 
 from enm import slownik_komunikatow
 from enm.domain_operations import execute_domain_operation
+from enm.katalog_projektu import katalog_biezacy
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+from enm.nazwy_elementow import nazwa_nadana_pozycji_katalogu
+from network_model.catalog.materialization import pozycja_w_katalogu
 
 CATALOG_LINE_70 = "line-base-al-st-70"
 CATALOG_TRAFO_630 = "tr-sn-nn-15-04-630kva-dyn11"
@@ -180,7 +183,9 @@ def test_insert_station_uses_explicit_apparatus_ref_per_field() -> None:
         assert "jawnie wskazanej" in message
         # Karta #142: pozycję nazywa jej nazwa katalogowa, identyfikator zostaje w
         # `catalog_ref` (dane maszynowe) — nie w treści.
-        nazwa = slownik_komunikatow.nazwa_pozycji_katalogu(breaker["catalog_ref"])
+        nazwa = nazwa_nadana_pozycji_katalogu(
+            pozycja_w_katalogu(katalog_biezacy(), None, breaker["catalog_ref"])
+        )
         assert nazwa and f"„{nazwa}”" in message
         assert breaker["catalog_ref"] not in message
 

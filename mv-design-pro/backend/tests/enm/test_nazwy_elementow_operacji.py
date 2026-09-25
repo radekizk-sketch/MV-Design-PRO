@@ -37,7 +37,6 @@ from typing import Any
 
 import pytest
 from enm.domain_operations import execute_domain_operation
-from enm.nazwy_elementow import jest_nazwa
 from enm.topology_ops import (
     attach_protection,
     create_branch,
@@ -45,6 +44,7 @@ from enm.topology_ops import (
     create_measurement,
     create_node,
 )
+from network_model.nazwy import jest_nazwa
 
 from tests.enm.test_enm_api import _valid_enm_with_field_specs
 from tests.enm.test_nazwy_polowek_odcinka import (

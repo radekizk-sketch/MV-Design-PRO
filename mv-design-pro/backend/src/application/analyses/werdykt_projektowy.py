@@ -110,6 +110,7 @@ from enm.canonical_analysis import CanonicalRun, list_runs_for_case
 from enm.hash import compute_enm_hash
 from enm.nazwy_elementow import opis_bez_nazwy
 from enm.store import get_enm
+from network_model.nazwy import nazwa_nadana
 
 # --- Stany kryterium ---------------------------------------------------------
 
@@ -1187,7 +1188,7 @@ def _element_walidacji(
     return _ocena_elementu(
         definicja,
         element_id=str(wiersz.get("target_id")) if wiersz.get("target_id") is not None else None,
-        element_nazwa=(str(wiersz.get("target_name")) if wiersz.get("target_name") else None),
+        element_nazwa=nazwa_nadana(wiersz.get("target_name")),
         wynik=wynik,
         wartosc=wiersz.get("observed_value"),
         odniesienie=wiersz.get("limit_fail"),
@@ -1244,7 +1245,7 @@ def _pozycja_cieplna(widok: Mapping[str, Any], *, run_id: str) -> PozycjaWerdykt
         _ocena_elementu(
             definicja,
             element_id=str(wiersz.get("branch_id")) if wiersz.get("branch_id") else None,
-            element_nazwa=(str(wiersz.get("branch_name")) if wiersz.get("branch_name") else None),
+            element_nazwa=nazwa_nadana(wiersz.get("branch_name")),
             wynik=wynik,
             wartosc=wiersz.get("i2t_a2s"),
             odniesienie=wiersz.get("i2t_dopuszczalne_a2s"),
@@ -1300,7 +1301,8 @@ def _opis_galezi(wiersz: Mapping[str, Any] | None) -> str | None:
     zastosowany = wiersz.get("applied_cross_section_mm2")
     if wymagany is not None and zastosowany is not None:
         return (
-            f"Gałąź {wiersz.get('branch_name') or opis_bez_nazwy('branches')}: wymagany przekrój "
+            f"Gałąź {nazwa_nadana(wiersz.get('branch_name')) or opis_bez_nazwy('branches')}: "
+            "wymagany przekrój "
             f"{float(wymagany):.1f} mm2 wobec zastosowanego {float(zastosowany):.1f} mm2."
         )
     kody = [str(kod) for kod in (wiersz.get("missing_codes") or [])]
@@ -1348,7 +1350,7 @@ def _pozycja_wiarygodnosci(widok: Mapping[str, Any], *, run_id: str) -> PozycjaW
             # Element = referencja ENM szyny (`element_id`), a `target_id` biegu
             # zostaje identyfikatorem zapasowym, gdy dostawca jej nie zna.
             element_id=str(wiersz.get("element_id") or wiersz.get("target_id") or "") or None,
-            element_nazwa=(str(wiersz.get("target_name")) if wiersz.get("target_name") else None),
+            element_nazwa=nazwa_nadana(wiersz.get("target_name")),
             wynik=wynik,
             wartosc=wiersz.get("ikss_ka"),
             odniesienie=wiersz.get("upper_ka"),
@@ -1397,7 +1399,7 @@ def _pozycja_der_sn(raport: Mapping[str, Any] | None) -> PozycjaWerdyktu:
             None,
         )
     zrodlo_ref = str(raport.get("source_ref")) if raport.get("source_ref") else None
-    zrodlo_nazwa = str(raport.get("source_name")) if raport.get("source_name") else None
+    zrodlo_nazwa = nazwa_nadana(raport.get("source_name"))
     elementy: list[OcenaElementu] = []
     for pozycja in pozycje:
         # WARN tego dostawcy = brak danych / odstępstwo / bieg w toku → NIEJEDNOZNACZNY

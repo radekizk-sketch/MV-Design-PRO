@@ -54,6 +54,7 @@ from typing import Any, Literal
 import networkx as nx
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_elementu
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, apply_scenario
 from network_model.core.node import NodeType
 from network_model.solvers.power_flow_newton import (
@@ -442,7 +443,7 @@ def select_ring_maintenance_scenario(enm: EnergyNetworkModel) -> OperatingScenar
         for station_ref, bus_refs in station_bus_refs.items()
         for bus_ref in bus_refs
     }
-    station_name_by_ref = {s["ref_id"]: str(s.get("name") or s["ref_id"]) for s in stations}
+    station_name_by_ref = {s["ref_id"]: nazwa_elementu(s, "substations") for s in stations}
 
     def stranded_stations_if_removed(
         sn_bus: str, branch_ref_ids: tuple[str, ...]

@@ -1,7 +1,7 @@
 {
   "_meta": {
     "analysis_type": "short_circuit_3f",
-    "builder_snapshot_hash": "b4b2e8b7de489f43cccf677064508f37351833d91191a61b90f5e75853233a25",
+    "builder_snapshot_hash": "ae05a2de202f386a32a95d1dae0b2e15ae9e011139c42076c6ab187912c1513e",
     "c_factor": 1.1,
     "note": "Realny bieg zwarciowy; Ik''/ip/Ith/Sk 1:1 z solvera. Regeneracja: scripts/generate-demo-oze-sc.py.",
     "source": "SC IEC 60909 (FROZEN solver) per szyna SN — tor kanoniczny",
@@ -9,8 +9,8 @@
   },
   "bus_count": 15,
   "bus_short_circuit": {
-    "bess/b54a505b36c27382912f318bad26cc6e/der/block_hv_bus": {
-      "bus_ref": "bess/b54a505b36c27382912f318bad26cc6e/der/block_hv_bus",
+    "bess/856cc4b6e0d379b5b28aa4ae75cb45ee/der/block_hv_bus": {
+      "bus_ref": "bess/856cc4b6e0d379b5b28aa4ae75cb45ee/der/block_hv_bus",
       "ikss_a": 7538.211,
       "ip_a": 13655.27,
       "ith_a": 7567.837,
@@ -25,8 +25,8 @@
       "sk_mva": 265.106,
       "voltage_kv": 15.0
     },
-    "pv/93bc9b2c6cfa1a5284d0d5e156c5768f/der/block_hv_bus": {
-      "bus_ref": "pv/93bc9b2c6cfa1a5284d0d5e156c5768f/der/block_hv_bus",
+    "pv/c5b3ff6eb9e66ed7bc6702bc26b389d3/der/block_hv_bus": {
+      "bus_ref": "pv/c5b3ff6eb9e66ed7bc6702bc26b389d3/der/block_hv_bus",
       "ikss_a": 9128.206,
       "ip_a": 18505.959,
       "ith_a": 9182.654,

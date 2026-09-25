@@ -41,6 +41,7 @@ from network_model.catalog.types import (
     ProtectionDeviceType,
     ProtectionSettingTemplate,
 )
+from network_model.nazwy import nazwa_nadana
 from network_model.solvers.protection_iec60255 import compute_idmt_generic
 
 if TYPE_CHECKING:
@@ -674,8 +675,8 @@ def _resolve_effective_settings(
     effective = {}
 
     for setting_field in template.setting_fields or []:
-        field_name = setting_field.get("name", "")
-        if not field_name:
+        field_name = nazwa_nadana(setting_field.get("name"))
+        if field_name is None:
             continue
 
         # Check override first

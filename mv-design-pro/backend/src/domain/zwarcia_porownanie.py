@@ -35,6 +35,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from enm.nazwy_elementow import opis_bez_nazwy
+from network_model.nazwy import nazwa_nadana
+
 #: Znaczniki obecnosci punktu w przebiegach.
 OBECNY_W_OBU = "AB"
 OBECNY_TYLKO_A = "A"
@@ -237,7 +240,9 @@ def zbuduj_porownanie_zwarc(
             tylko_b += 1
 
         zrodlo = a or b or {}
-        nazwa = str(zrodlo.get("target_name") or klucz)
+        # Wiersz bez nazwy celu (starszy wynik) nazywa opis rodzaju — nigdy klucz wiersza,
+        # który jest identyfikatorem węzła (karta NAZWY-JEDNO-ZRODLO, klasa karty #144).
+        nazwa = nazwa_nadana(zrodlo.get("target_name")) or opis_bez_nazwy("buses")
         # Ref schematu: `element_id` wiersza; brak pola (starszy wynik) ⇒ None,
         # a konsument nakladki schodzi wtedy na `target_id` — JEDNA regula,
         # ta sama co w akcji „Pokaz na schemacie" ekranu zwarc.

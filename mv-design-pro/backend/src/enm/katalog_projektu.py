@@ -46,7 +46,9 @@ from typing import Any
 from network_model.catalog.niezmienniki_katalogu import OdmowaKatalogu
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.ir_fields import BrakujacePoleIRError
+from network_model.nazwy import nazwa_nadana
 
+from .nazwy_elementow import nazwa_nadana_pozycji_katalogu
 from .slownik_komunikatow import etykieta_parametru
 
 logger = logging.getLogger(__name__)
@@ -126,11 +128,11 @@ def klucz_sekcji(sekcja: Mapping[str, list[dict[str, Any]]]) -> str:
 
 def _nazwa_typu(typ: object) -> str:
     """Nazwa typu katalogu statycznego do treści komunikatu (nigdy jego identyfikator)."""
-    for atrybut in ("name", "model_urzadzenia"):
-        nazwa = getattr(typ, atrybut, None)
-        if isinstance(nazwa, str) and nazwa.strip():
-            return nazwa.strip()
-    return "bez nazwy"
+    return (
+        nazwa_nadana_pozycji_katalogu(typ)
+        or nazwa_nadana(getattr(typ, "model_urzadzenia", None))
+        or "bez nazwy"
+    )
 
 
 @lru_cache(maxsize=32)

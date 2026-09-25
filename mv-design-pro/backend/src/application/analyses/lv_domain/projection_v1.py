@@ -50,6 +50,7 @@ from application.result_mapping.canonical_run_to_resultset_v1 import (
 from enm.canonical_analysis import CanonicalRun, build_bus_results
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.models import EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 
 from .audit import collect_validation_messages
 from .energization import upstream_source_refs_by_system
@@ -359,7 +360,9 @@ def build_lv_domain_projection_v1(
     if graph.get("status") == "OK":
         domain_bus_refs = {str(b["ref_id"]) for b in graph.get("buses", [])}
         sources_by_system = upstream_source_refs_by_system(enm, domain_bus_refs)
-        source_name_by_ref = {s.ref_id: s.name for s in enm.sources}
+        # Nazwa źródła z modelu albo opis rodzaju; źródło spoza migawki — jawny brak, nigdy
+        # identyfikator (karta NAZWY-JEDNO-ZRODLO, klasa karty #144).
+        indeks_nazw = zbuduj_indeks_nazw(enm)
         for transformer in graph.get("transformers", []):
             transformer_ref = transformer.get("ref_id")
             if not transformer_ref:
@@ -380,7 +383,7 @@ def build_lv_domain_projection_v1(
             snapshot["upstream_system_id"] = system_id
             snapshot["upstream_source_ids"] = source_ids
             snapshot["upstream_source_names"] = [
-                source_name_by_ref.get(ref, ref) for ref in source_ids
+                nazwa_po_identyfikatorze(ref, indeks=indeks_nazw) for ref in source_ids
             ]
             upstream_equivalents.append(snapshot)
 

@@ -1829,7 +1829,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta PASMO-1KV na partii 4 (2026-09-25): 548 -> 549 (+1
         # `network_model/pochodne/pasma_napieciowe.py` — jedno źródło granic pasm napięć;
         # zbiór pól kontraktów bez zmian, 4103). POMIAR guardem na drzewie integracji.
-        "Przeskanowano 549 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta NAZWY-JEDNO-ZRODLO na partii 4 (2026-09-25): 549 -> 550 (+1
+        # `network_model/nazwy.py` — jedyny predykat nazwy `jest_nazwa`/`nazwa_nadana`, liść
+        # stdlib-only); zbiór pól kontraktów bez zmian (4103). POMIAR guardem na drzewie partii.
+        "Przeskanowano 550 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1929,7 +1932,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `urzadzenia/czesciowe.py`, `urzadzenia/zrodlo_testowe.py`); dlug i wykluczenia BEZ ZMIAN.
         # Karta PASMO-1KV (2026-09-25): network_model 178 -> 179 (+1
         # `pochodne/pasma_napieciowe.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
-        "  network_model: pliki_skanowane=179, dlug=12 plikow/suma 71, "
+        # Karta NAZWY-JEDNO-ZRODLO (2026-09-25): network_model 179 -> 180 (+1 `nazwy.py`).
+        "  network_model: pliki_skanowane=180, dlug=12 plikow/suma 71, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;

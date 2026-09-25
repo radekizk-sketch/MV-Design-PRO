@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 
 from dziedziny.karta_widmowa import KartaWidmowa
+from network_model.nazwy import nazwa_nadana
 from network_model.pochodne import mva_na_kva, mw_na_kw
 
 from .karty_widmowe import karta_widmowa_z_rekordu
@@ -107,7 +108,7 @@ def _certyfikat_ptpiree_z_memo(record: dict) -> PtpireeGeneratorCertificate:
     klucz = (
         str(record.get("id")),
         str(params.get("document_number") or ""),
-        str(params.get("model") or record.get("name") or ""),
+        nazwa_nadana(params.get("model")) or nazwa_nadana(record.get("name")) or "",
     )
     obiekt = _PTPIREE_CERT_MEMO.get(klucz)
     if obiekt is None:

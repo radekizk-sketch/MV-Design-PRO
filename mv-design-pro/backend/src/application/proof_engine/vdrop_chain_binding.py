@@ -55,6 +55,7 @@ from application.solvers.voltage_drop_binding import (
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwy_wezlow_grafu, opis_bez_nazwy
 from network_model.core.branch import BranchType
 from network_model.core.graph import NetworkGraph
+from network_model.nazwy import nazwa_nadana
 from network_model.solvers.power_flow_result import PowerFlowResultV1
 
 
@@ -198,7 +199,7 @@ def lancuch_spadku_napiecia(
             kroki.append(
                 OdcinekLancucha(
                     segment_id=segment.branch_id,
-                    nazwa=branch.name or opis_bez_nazwy("transformers"),
+                    nazwa=nazwa_nadana(branch.name) or opis_bez_nazwy("transformers"),
                     from_bus=_pretty(segment.from_bus),
                     to_bus=_pretty(segment.to_bus),
                     jest_transformatorem=True,

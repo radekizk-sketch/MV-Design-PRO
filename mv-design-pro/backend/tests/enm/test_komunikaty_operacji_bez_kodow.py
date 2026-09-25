@@ -44,6 +44,7 @@ from enm.katalog_projektu_karty import KLUCZ_KART_WIDMOWYCH
 from enm.load_zip_model import KLUCZE_ODNIESIENIA_ZIP, KLUCZE_ZIP_ODBIORU
 from enm.models import BayPrimaryDevice, Generator
 from enm.nastawy_modulu import POLA_NASTAW
+from enm.nazwy_elementow import nazwa_nadana_elementu, nazwa_nadana_pozycji_katalogu
 from enm.rola_pola_sn import NAZWA_ROLI_POLA_SN_PL
 from network_model.catalog.switchgear.complete_mv_bay_template import (
     NAZWY_RODZAJOW_POLA_KATALOGOWEGO_PL,
@@ -1079,12 +1080,17 @@ _HEX = "0f3a9c2e7b1d4f6a8c0e2b4d6f8a1c3e"
         ("stn-1", "  Stacja 1 ", "Stacja „Stacja 1”"),
         # Nazwa ze spacją i ukośnikiem (zapis napięć) to nazwa, nie identyfikator.
         ("stn-5", "Stacja 15/0,4 kV", "Stacja „Stacja 15/0,4 kV”"),
-        # Nazwa przepisana z identyfikatora albo kodu — element opisany rodzajem.
-        ("tr_sn_nn", "tr_sn_nn", "Stacja bez nazwy"),
-        ("stn-2", "QF-03_zrodlo", "Stacja bez nazwy"),
-        ("stn/abc/1", "stn/abc/1", "Stacja bez nazwy"),
-        (_HEX, _HEX, "Stacja bez nazwy"),
+        # Kanon karty NAZWY-JEDNO-ZRODLO: nazwa nadana przez projektanta jest nazwą bez względu
+        # na kształt (kod, ukośnik, długi hex) — ta sama odpowiedź co w etykiecie wyniku
+        # (`enm.nazwy_elementow`). Dawny predykat kształtu (#142) chował ją w zdaniu jako „bez
+        # nazwy", choć schemat i tabele wyników ją pokazywały. Intencja przypięta: brak nazwy
+        # (pusta, same spacje, brak pola) = słowo rodzaju, nigdy identyfikator.
+        ("tr_sn_nn", "tr_sn_nn", "Stacja „tr_sn_nn”"),
+        ("stn-2", "QF-03_zrodlo", "Stacja „QF-03_zrodlo”"),
+        ("stn/abc/1", "stn/abc/1", "Stacja „stn/abc/1”"),
+        (_HEX, _HEX, f"Stacja „{_HEX}”"),
         ("stn-3", "", "Stacja bez nazwy"),
+        ("stn-6", "   ", "Stacja bez nazwy"),
         ("stn-4", None, "Stacja bez nazwy"),
     ],
 )
@@ -1099,22 +1105,22 @@ def test_nazwa_w_zdaniu_z_modelu_nigdy_z_identyfikatora_ani_kodu(
     assert slownik.opis_obiektu(slownikowy, "Stacja") == oczekiwany
     assert slownik.opis_elementu({"substations": [slownikowy]}, ref_id, "Stacja") == oczekiwany
     assert slownik.opis_nazwy(nazwa, "Stacja") == oczekiwany
-    if nazwa:
+    if nazwa is not None:
         obiekt = Substation(ref_id=ref_id, name=nazwa, station_type="mv_lv", bus_refs=[])
         assert slownik.opis_obiektu(obiekt, "Stacja") == oczekiwany
 
 
 def _identyfikatory(snapshot: dict[str, Any] | None) -> set[str]:
-    """Identyfikatory elementów migawki — z wyjątkiem identyfikatora RÓWNEGO nazwie, którą
-    słownik wolno wstawić w zdanie (oznaczenie projektanta, np. „RGN-2” z arkusza importu):
-    wtedy w treści stoi nazwa, którą projektant widzi na schemacie."""
+    """Identyfikatory elementów migawki — z wyjątkiem identyfikatora RÓWNEGO nazwie nadanej
+    elementowi (oznaczenie projektanta, np. „RGN-2” z arkusza importu): wtedy w treści stoi
+    nazwa, którą projektant widzi na schemacie."""
     wynik: set[str] = set()
     for kolekcja in (snapshot or {}).values():
         if isinstance(kolekcja, list):
             for element in kolekcja:
                 if not (isinstance(element, dict) and isinstance(element.get("ref_id"), str)):
                     continue
-                if element["ref_id"] == slownik._nazwa_czytelna(element):
+                if element["ref_id"] == nazwa_nadana_elementu(element):
                     continue
                 wynik.add(element["ref_id"])
     return wynik
@@ -1373,7 +1379,10 @@ def test_ostrzezenia_i_podpowiedzi_gotowosci_bez_kodow(
     for transformator in zepsuty["transformers"]:
         transformator["vector_group"] = None  # W004 — ostrzeżenie
     for szyna in zepsuty["buses"]:
-        szyna["name"] = szyna["ref_id"]  # nazwa = identyfikator: komunikat nie może jej cytować
+        # Szyny bez nazwy: komunikat opisuje je słowem rodzaju, nigdy identyfikatorem (dawniej
+        # nazwa = identyfikator ukrywana predykatem kształtu — kanon NAZWY-JEDNO-ZRODLO: nazwa
+        # nadana jest nazwą, brak nazwy jest brakiem).
+        szyna["name"] = ""
     wynik = execute_domain_operation(zepsuty, "refresh_snapshot", {})
     gotowosc = wynik.get("readiness") or {}
     teksty = [
@@ -1692,6 +1701,11 @@ def test_nazwa_pozycji_katalogu_z_ukosnikiem_jest_nazwa(
     ref: str, kategoria: str | None, nazwa: str
 ) -> None:
     """Nazwa pozycji katalogu z ukośnikiem w zapisie napięć trafia do treści — dawniej
-    kształt „ma ukośnik = identyfikator” zamieniał ją na „typ bez nazwy”."""
-    assert slownik.nazwa_pozycji_katalogu(ref, kategoria) == nazwa
+    kształt „ma ukośnik = identyfikator” zamieniał ją na „typ bez nazwy”. Nazwę pozycji daje
+    moduł nazw (`nazwa_nadana_pozycji_katalogu`), słownik składa z niej zdanie."""
+    from enm.katalog_projektu import katalog_biezacy
+    from network_model.catalog.materialization import pozycja_w_katalogu
+
+    pozycja = pozycja_w_katalogu(katalog_biezacy(), kategoria, ref)
+    assert nazwa_nadana_pozycji_katalogu(pozycja) == nazwa
     assert slownik.opis_pozycji_katalogu(ref, kategoria, "typ") == f"typ „{nazwa}”"

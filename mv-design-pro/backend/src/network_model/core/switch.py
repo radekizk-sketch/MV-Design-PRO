@@ -16,6 +16,7 @@ from enum import Enum
 from typing import Any
 
 from network_model.ir_fields import wymagany_float
+from network_model.nazwy import jest_nazwa
 
 
 class SwitchType(Enum):
@@ -174,7 +175,7 @@ class Switch:
         """
         if not self.id or not isinstance(self.id, str):
             return False
-        if not self.name or not isinstance(self.name, str):
+        if not jest_nazwa(self.name):
             return False
         if not self.from_node_id or not isinstance(self.from_node_id, str):
             return False

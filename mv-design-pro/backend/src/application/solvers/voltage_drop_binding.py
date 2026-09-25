@@ -78,7 +78,8 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-from enm.nazwy_elementow import jest_nazwa, nazwa_elementu
+from enm.nazwy_elementow import nazwa_elementu
+from network_model.nazwy import jest_nazwa
 
 #: Rodzaj wyniku, jaki zapisuje tor rozpływu (``enm.canonical_analysis``).
 RODZAJ_WYNIKU_ROZPLYWU = "load_flow"

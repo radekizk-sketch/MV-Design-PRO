@@ -24,6 +24,7 @@ from application.ncrfg_compliance import (
     NcRfgDerPominiety,
     OcenaWymaganModulu,
 )
+from network_model.nazwy import nazwa_nadana
 from network_model.solvers.ncrfg_ptpiree.contracts import (
     DowodCertyfikatu,
     NcRfgPtpireeModuleResult,
@@ -90,7 +91,7 @@ def wiersze_dowodu(
 def _nazwa_modulu(der_name: str | None) -> str:
     """Nazwa źródła DER w dokumencie: nazwa z modelu albo opis rodzaju — identyfikator
     modułu (`der_ref`) nie jest nazwą pokazywaną projektantowi (karta #144)."""
-    return der_name.strip() if der_name and der_name.strip() else "Źródło DER bez nazwy"
+    return nazwa_nadana(der_name) or "Źródło DER bez nazwy"
 
 
 def _wiersze_modulu(

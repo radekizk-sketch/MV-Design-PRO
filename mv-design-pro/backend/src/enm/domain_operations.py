@@ -37,6 +37,7 @@ from network_model.core.uziemienie import (
     TYPY_PUNKTU_NEUTRALNEGO,
     UZIEMIENIA_EKRANU_KABLA,
 )
+from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.pochodne import (
     PROWENIENCJA_WYPROWADZONE,
     impedancja_punktu_neutralnego_ohm,
@@ -67,7 +68,7 @@ from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_parametrow_materializacji
 from .migrations.nn_field_specs_promocja import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
 from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, UKLADY_SIECI_NN, EnergyNetworkModel
-from .nazwy_elementow import ODCINEK_BEZ_NAZWY, jest_nazwa, nazwa_pola_ze_specyfikacji
+from .nazwy_elementow import ODCINEK_BEZ_NAZWY, nazwa_pola_ze_specyfikacji
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     NiezgodnoscKonfiguracjiError,
@@ -92,7 +93,6 @@ from .slownik_komunikatow import (
     opis_operacji,
     opis_pozycji_katalogu,
     pole,
-    wyglada_na_identyfikator,
 )
 from .topology_ops import (
     create_branch,
@@ -172,10 +172,9 @@ def _make_id(prefix: str, seed: str, local_path: str) -> str:
 
 
 def _branch_point_public_label(branch_point: dict[str, Any]) -> str:
-    name = str(branch_point.get("name") or "").strip()
-    if name and not wyglada_na_identyfikator(name):
-        return name
-    return "ZKSN" if branch_point.get("branch_point_type") == "zksn" else "Słup rozgałęźny SN"
+    return nazwa_nadana(branch_point.get("name")) or (
+        "ZKSN" if branch_point.get("branch_point_type") == "zksn" else "Słup rozgałęźny SN"
+    )
 
 
 def _normalize_branch_point_switch_state(value: Any) -> str:
@@ -611,25 +610,15 @@ def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, An
         except (TypeError, ValueError):
             order = index
 
-        section_name = entry.get("name")
-        if not isinstance(section_name, str) or not section_name.strip():
-            section_name = None
-
-        bus_name = entry.get("bus_name")
-        if not isinstance(bus_name, str) or not bus_name.strip():
-            bus_name = None
-
-        line_field_name = entry.get("line_field_name")
-        if not isinstance(line_field_name, str) or not line_field_name.strip():
-            line_field_name = None
+        section_name = nazwa_nadana(entry.get("name"))
+        bus_name = nazwa_nadana(entry.get("bus_name"))
+        line_field_name = nazwa_nadana(entry.get("line_field_name"))
 
         raw_field_names = entry.get("line_field_names")
         line_field_names = []
         if isinstance(raw_field_names, list):
             line_field_names = [
-                str(name).strip()
-                for name in raw_field_names
-                if isinstance(name, str) and name.strip()
+                nazwa for nazwa in map(nazwa_nadana, raw_field_names) if nazwa is not None
             ]
 
         line_fields_count = _read_gpz_line_fields_count(entry, payload)
@@ -646,11 +635,7 @@ def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, An
                     continue
                 bays.append(
                     {
-                        "name": (
-                            str(bay["name"]).strip()
-                            if isinstance(bay.get("name"), str) and bay["name"].strip()
-                            else None
-                        ),
+                        "name": nazwa_nadana(bay.get("name")),
                         "bay_role": (
                             str(bay["bay_role"]).strip()
                             if isinstance(bay.get("bay_role"), str) and bay["bay_role"].strip()
@@ -827,18 +812,16 @@ def _resolve_gpz_wn_sn_transformer_catalog_ref(
 def _build_gpz_line_field_names(section_entry: dict[str, Any], count: int) -> list[str]:
     explicit_names = section_entry.get("line_field_names")
     names = (
-        [name for name in explicit_names if isinstance(name, str) and name.strip()]
+        [nazwa for nazwa in map(nazwa_nadana, explicit_names) if nazwa is not None]
         if isinstance(explicit_names, list)
         else []
     )
-    base_name = section_entry.get("line_field_name")
-    if not isinstance(base_name, str) or not base_name.strip():
-        base_name = "Pole liniowe GPZ"
+    base_name = nazwa_nadana(section_entry.get("line_field_name")) or "Pole liniowe GPZ"
 
     result: list[str] = []
     for index in range(count):
         if index < len(names):
-            result.append(names[index].strip())
+            result.append(names[index])
         elif count == 1:
             result.append(base_name.strip())
         else:
@@ -3863,8 +3846,8 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     source_identity_raw = (
         payload.get("source_id")
         or payload.get("solution_ref")
-        or payload.get("source_name")
-        or payload.get("name_pl")
+        or nazwa_nadana(payload.get("source_name"))
+        or nazwa_nadana(payload.get("name_pl"))
     )
     source_identity = (
         source_identity_raw.strip()
@@ -3873,14 +3856,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     )
     # Nazwa jawna z ładunku (ten sam predykat braku co tożsamość wyżej i indeks nazw —
     # `jest_nazwa`), inaczej nazwa domyślna z rodzaju, napięcia i numeru porządkowego.
-    nazwa_jawna = next(
-        (
-            str(wartosc)
-            for wartosc in (payload.get("source_name"), payload.get("name_pl"))
-            if jest_nazwa(wartosc)
-        ),
-        None,
-    )
+    nazwa_jawna = nazwa_nadana(payload.get("source_name")) or nazwa_nadana(payload.get("name_pl"))
     display_name = nazwa_jawna or _domyslna_nazwa_gpz(enm, voltage_kv)
 
     existing_sources = [source for source in enm.get("sources", []) if isinstance(source, dict)]
@@ -4077,8 +4053,10 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         order = idx + 1
         section_ref = _make_id("gpz", seed, f"section/{order:03d}")
         section_bus_ref = _make_id("gpz", seed, f"section/{order:03d}/bus_sn")
-        section_bus_name = entry.get("bus_name") or f"Szyna GPZ S{order} {voltage_kv:g} kV"
-        section_name = entry.get("name") or f"Sekcja {idx + 1}"
+        section_bus_name = (
+            nazwa_nadana(entry.get("bus_name")) or f"Szyna GPZ S{order} {voltage_kv:g} kV"
+        )
+        section_name = nazwa_nadana(entry.get("name")) or f"Sekcja {idx + 1}"
         line_fields_count = int(entry.get("line_fields_count") or 1)
         line_field_names = _build_gpz_line_field_names(entry, line_fields_count)
         gpz_sections.append(
@@ -4284,8 +4262,8 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     source_data = {
         "device_type": "source",
         "ref_id": source_ref,
-        "name": payload.get("source_name")
-        or payload.get("name_pl")
+        "name": nazwa_nadana(payload.get("source_name"))
+        or nazwa_nadana(payload.get("name_pl"))
         or f"Źródło GPZ {voltage_kv:g} kV",
         "bus_ref": source_bus_ref,
         "substation_ref": substation_ref,
@@ -4376,7 +4354,9 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         left_section = gpz_sections[idx - 1]
         right_section = gpz_sections[idx]
         coupler_ref = _make_id("gpz", seed, f"coupler/{idx:03d}")
-        coupler_name = payload.get("gpz_coupler_name") or f"Sprzęgło sekcji GPZ {idx}-{idx + 1}"
+        coupler_name = (
+            nazwa_nadana(payload.get("gpz_coupler_name")) or f"Sprzęgło sekcji GPZ {idx}-{idx + 1}"
+        )
         new_enm.setdefault("branches", []).append(
             {
                 "ref_id": coupler_ref,
@@ -4428,7 +4408,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 f"bay/{idx + 1:03d}/{field_index + 1:03d}/apparatus",
             )
             bay_name = (
-                bay_spec.get("name")
+                nazwa_nadana(bay_spec.get("name"))
                 or (
                     section_field_names[field_index]
                     if field_index < len(section_field_names)
@@ -4742,10 +4722,10 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     if isinstance(catalog_ref, dict):
         return catalog_ref
     segment_name = segment.get("name")
-    # Nazwa jawna z ładunku (predykat braku z jednego źródła, `nazwy_elementow.jest_nazwa`);
+    # Nazwa jawna z ładunku (predykat braku z jednego źródła, `network_model.nazwy.jest_nazwa`);
     # bez niej odcinek dostaje nazwę z ciągu. Seed niżej czyta surowe pole — ten sam ładunek
     # daje ten sam identyfikator co przed kartą #144.
-    ma_nazwe_odcinka = jest_nazwa(segment_name)
+    nazwa_odcinka = nazwa_nadana(segment_name)
     # CV-4.3 K1 (KLASA NIE INSTANCJA — ta sama naprawa w start_branch_segment_sn
     # niżej): `segment.bus_name` OPCJONALNE — bez niego zero zmiany zachowania
     # (nowa szyna zostaje anonimowym, ukrytym punktem technicznym `helper_bus`,
@@ -4761,7 +4741,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     # w `append_station_on_endpoint` (Step 5: zdjęcie `helper_bus`, ustawienie
     # `render_on_sld`/`show_in_project_tree`).
     bus_name = segment.get("bus_name")
-    is_named_bus = bool(bus_name)
+    is_named_bus = jest_nazwa(bus_name)
 
     # CV-4.3 K1 (KLASA NIE INSTANCJA — ta sama naprawa w 3 operacjach budowy
     # odcinka SN, patrz start_branch_segment_sn/connect_secondary_ring_sn
@@ -4808,10 +4788,10 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         new_enm,
         {
             "ref_id": new_bus_ref,
-            "name": bus_name
+            "name": nazwa_nadana(bus_name)
             or (
-                f"Zacisk końcowy {segment_name}"
-                if ma_nazwe_odcinka
+                f"Zacisk końcowy {nazwa_odcinka}"
+                if nazwa_odcinka is not None
                 else "Zacisk końcowy odcinka SN"
             ),
             "voltage_kv": voltage_kv,
@@ -4858,7 +4838,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         "ref_id": branch_ref,
         # Bez nazwy w ładunku nazwę nadaje ciąg (niżej, po dopisaniu odcinka do ciągu):
         # nazwa ciągu + numer odcinka w ciągu — nigdy fragment identyfikatora (karta #144).
-        "name": segment_name if ma_nazwe_odcinka else ODCINEK_BEZ_NAZWY,
+        "name": nazwa_odcinka or ODCINEK_BEZ_NAZWY,
         "type": branch_type,
         "from_bus_ref": from_terminal_id,
         "to_bus_ref": new_bus_ref,
@@ -4932,7 +4912,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
             starting_port_ref=from_terminal_id,
         )
         _append_line_run_segment(line_run, branch_ref)
-        if not ma_nazwe_odcinka:
+        if nazwa_odcinka is None:
             nowy_odcinek = _find_branch(new_enm, branch_ref)
             if nowy_odcinek is not None:
                 nowy_odcinek["name"] = _nazwa_odcinka_w_ciagu(
@@ -5009,7 +4989,7 @@ def _domyslna_nazwa_gpz(enm: dict[str, Any], voltage_kv: object) -> str:
     rozróżnieniu GPZ w modelu — nie jest nazwą pokazywaną projektantowi (karta #144)."""
     bazowa = f"GPZ {voltage_kv:g} kV"
     zajete = {
-        str(stacja.get("name") or "")
+        nazwa_nadana(stacja.get("name"))
         for stacja in enm.get("substations", [])
         if isinstance(stacja, dict)
     }
@@ -5686,7 +5666,7 @@ def _materialize_station_auxiliary_load(
     new_enm.setdefault("loads", []).append(
         {
             "ref_id": load_ref,
-            "name": aux.get("name") or "Potrzeby własne stacji",
+            "name": nazwa_nadana(aux.get("name")) or "Potrzeby własne stacji",
             "bus_ref": nn_bus_id,
             "p_mw": kw_na_mw(p_kw),
             "q_mvar": kvar_na_mvar(q_kvar),
@@ -5991,7 +5971,7 @@ def _materialize_nn_source(
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": generator_ref,
-            "name": nn_block.get("source_converter_name")
+            "name": nazwa_nadana(nn_block.get("source_converter_name"))
             or f"Źródło {pasmo_napieciowe(float(nn_voltage_kv))} stacji",
             "bus_ref": nn_bus_id,
             "p_mw": p_mw,
@@ -6621,12 +6601,12 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     # The semantic station_type stored in substation record
     substation_semantic_type = substation_type_map.get(station_type_raw, "mv_lv")
     station_display_name = (
-        station.get("station_name")
-        or station.get("name")
-        or station.get("name_pl")
-        or payload.get("station_name")
-        or payload.get("name")
-        or payload.get("name_pl")
+        nazwa_nadana(station.get("station_name"))
+        or nazwa_nadana(station.get("name"))
+        or nazwa_nadana(station.get("name_pl"))
+        or nazwa_nadana(payload.get("station_name"))
+        or nazwa_nadana(payload.get("name"))
+        or nazwa_nadana(payload.get("name_pl"))
         # Recenzja NO-GO 2026-07-17 pkt 14: nazwa domyślna z UNIKATOWYM kodem
         # stacji (Sxx) u ŹRÓDŁA — dawny fallback "Stacja {typ}" produkował
         # duplikaty ("Stacja B" ×N), a kod na rysunku (frontend
@@ -7638,10 +7618,10 @@ def _insert_branch_point_on_segment_sn(
     # opis rodzaju. Dawny filtr nazw z „seg/", „/segment" i „branch" zniknął razem
     # z przyczyną: żadna operacja nie nadaje już odcinkowi nazwy z identyfikatora
     # (karta #144; `continue_trunk_segment_sn` nazywa odcinek z ciągu).
-    raw_segment_name = str(segment.get("name") or "").strip()
+    raw_segment_name = nazwa_nadana(segment.get("name"))
     base_segment_name = (
         raw_segment_name
-        if raw_segment_name
+        if raw_segment_name is not None
         and "punktu rozgałęzienia" not in raw_segment_name.lower()
         and "punktem rozgałęzienia" not in raw_segment_name.lower()
         else "Odcinek SN"
@@ -7680,7 +7660,7 @@ def _insert_branch_point_on_segment_sn(
         new_enm,
         {
             "ref_id": bp_bus_ref,
-            "name": payload.get("name")
+            "name": nazwa_nadana(payload.get("name"))
             or ("Słup rozgałęźny" if branch_point_type == "branch_pole" else "ZKSN"),
             "voltage_kv": bus_voltage,
         },
@@ -7803,7 +7783,7 @@ def _insert_branch_point_on_segment_sn(
     new_enm.setdefault("branch_points", []).append(
         {
             "ref_id": bp_ref,
-            "name": payload.get("name")
+            "name": nazwa_nadana(payload.get("name"))
             or ("Słup rozgałęźny SN" if branch_point_type == "branch_pole" else "ZKSN SN"),
             "branch_point_type": branch_point_type,
             "parent_segment_id": segment_id,
@@ -7981,7 +7961,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     # nazwana szyna" co w `continue_trunk_segment_sn` (patrz jego docstring
     # dla pełnego uzasadnienia); bez niego zero zmiany zachowania.
     bus_name = segment.get("bus_name")
-    is_named_bus = bool(bus_name)
+    is_named_bus = jest_nazwa(bus_name)
     seed = _compute_seed(
         {
             "op": "start_branch",
@@ -8012,7 +7992,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         new_enm,
         {
             "ref_id": new_bus_ref,
-            "name": bus_name or "Szyna odgałęzienia",
+            "name": nazwa_nadana(bus_name) or "Szyna odgałęzienia",
             "voltage_kv": voltage_kv,
             "tags": ["topology_terminal"] if is_named_bus else ["helper_bus", "topology_terminal"],
             "meta": {
@@ -8061,7 +8041,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         # wołający jawnie podał nazwę. Ten sam wzorzec fallbacku co tam
         # (jawna nazwa > domyślna), zero zmiany zachowania dla wywołań bez
         # `segment.name` (istniejące testy/fikstury nie podają tego pola).
-        "name": segment.get("name") or "Odgałęzienie",
+        "name": nazwa_nadana(segment.get("name")) or "Odgałęzienie",
         "type": branch_type,
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": new_bus_ref,
@@ -8320,7 +8300,7 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
         new_enm,
         {
             "ref_id": switch_ref,
-            "name": payload.get("switch_name") or "Łącznik sekcyjny",
+            "name": nazwa_nadana(payload.get("switch_name")) or "Łącznik sekcyjny",
             "type": sw_type,
             "from_bus_ref": switch_bus_ref,
             "to_bus_ref": switch_bus_ref,
@@ -8351,7 +8331,7 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     # Redo: switch between two buses
     switch_data: dict[str, Any] = {
         "ref_id": switch_ref,
-        "name": payload.get("switch_name") or "Łącznik sekcyjny",
+        "name": nazwa_nadana(payload.get("switch_name")) or "Łącznik sekcyjny",
         "type": sw_type,
         "from_bus_ref": switch_bus_ref,
         "to_bus_ref": switch_bus2_ref,
@@ -8491,7 +8471,7 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     branch_type = "cable" if rodzaj == "KABEL" else "line_overhead"
     ring_data: dict[str, Any] = {
         "ref_id": ring_ref,
-        "name": payload.get("ring_name") or "Zamknięcie pierścienia",
+        "name": nazwa_nadana(payload.get("ring_name")) or "Zamknięcie pierścienia",
         "type": branch_type,
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": to_bus_ref,
@@ -9835,10 +9815,10 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
         "order": int(order),
         "bus_ref": bus_ref,
     }
-    if payload.get("name"):
-        new_section["name"] = payload["name"]
-    if payload.get("line_field_name"):
-        new_section["line_field_name"] = payload["line_field_name"]
+    if jest_nazwa(payload.get("name")):
+        new_section["name"] = nazwa_nadana(payload.get("name"))
+    if jest_nazwa(payload.get("line_field_name")):
+        new_section["line_field_name"] = nazwa_nadana(payload.get("line_field_name"))
 
     new_enm = kopia_graniczna_enm(enm)
     new_sub = _find_substation(new_enm, substation_ref)
@@ -10122,7 +10102,11 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     endpoint_bus_ref = payload.get("endpoint_bus_ref")
     run_ref = payload.get("run_ref")
     station_payload = payload.get("station", {})
-    station_name = station_payload.get("name") or payload.get("station_name") or "Nowa stacja"
+    station_name = (
+        nazwa_nadana(station_payload.get("name"))
+        or nazwa_nadana(payload.get("station_name"))
+        or "Nowa stacja"
+    )
     transformer_payload = payload.get("transformer") or {}
     # nn_voltage_kv: explicit z payload (None → fallback 0.4; 0 → walidacja niżej rzuca błąd)
     nn_voltage_raw = station_payload.get("nn_voltage_kv")

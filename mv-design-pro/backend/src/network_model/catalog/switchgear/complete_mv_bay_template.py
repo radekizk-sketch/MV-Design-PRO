@@ -29,6 +29,7 @@ import json
 from typing import Literal
 
 from enm.rola_pola_sn import nazwa_roli_pola_sn_z_okresleniem
+from network_model.nazwy import nazwa_nadana
 from pydantic import BaseModel, Field
 
 from ..bay_templates import BayTemplate
@@ -142,8 +143,9 @@ class CompleteMvBayTemplate(BaseModel):
         „pole „Nazwa katalogowa”" albo rodzaj pola małą literą („pole liniowe wyjściowe"),
         z dopiskiem „rodziny X", gdy wołający zna nazwę rodziny i zdanie jej nie niesie.
         """
-        if self.template_name_pl and self.template_name_pl.strip():
-            opis = f"pole „{self.template_name_pl.strip()}”"
+        nazwa = nazwa_nadana(self.template_name_pl)
+        if nazwa is not None:
+            opis = f"pole „{nazwa}”"
         else:
             rodzaj = nazwa_rodzaju_pola_katalogowego_pl(self.bay_kind)
             opis = rodzaj[:1].lower() + rodzaj[1:]

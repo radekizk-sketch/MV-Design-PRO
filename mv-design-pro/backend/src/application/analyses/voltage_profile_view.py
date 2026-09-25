@@ -46,6 +46,7 @@ from analysis.voltage_profile.segment_decomposition import (
 # dedykowanego modułu, żeby nie zostawiać duplikatu mechanizmu w trzecim miejscu).
 from application.analyses.power_flow_reconstruction import graf_z_biegu, wynik_rozplywu_z_biegu
 from enm.canonical_analysis import CanonicalRun
+from network_model.nazwy import nazwa_nadana
 from network_model.solvers.power_flow_result import (
     PowerFlowBranchResult,
     PowerFlowBusResult,
@@ -69,8 +70,7 @@ def _wymagaj_biegu_rozplywu(run: CanonicalRun) -> None:
 
 def _nazwa_projektu(run: CanonicalRun) -> str | None:
     header = (run.snapshot or {}).get("header") or {}
-    nazwa = header.get("name")
-    return str(nazwa) if nazwa else None
+    return nazwa_nadana(header.get("name"))
 
 
 def _fizyczna_lub_nan(row: dict[str, Any], klucz: str) -> float:

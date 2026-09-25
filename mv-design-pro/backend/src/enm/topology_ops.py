@@ -37,9 +37,10 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from network_model.core.topologia import ma_cykl, polaczone, poziomy, przeglad_wszerz
+from network_model.nazwy import jest_nazwa
 
 from .load_zip_model import zip_odbioru_z_parametrow_materializacji
-from .nazwy_elementow import jest_nazwa, nazwa_galezi_bez_nazwy, opis_bez_nazwy
+from .nazwy_elementow import nazwa_galezi_bez_nazwy, opis_bez_nazwy
 from .slownik_komunikatow import (
     NAZWY_KOLEKCJI_PL,
     NAZWY_RODZAJOW_ZABEZPIECZENIA_PL,

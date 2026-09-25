@@ -33,6 +33,7 @@ from __future__ import annotations
 from typing import Any
 
 from enm.canonical_analysis import CanonicalRun
+from network_model.nazwy import nazwa_nadana
 
 
 def zbuduj_kontekst_widoku(run: CanonicalRun, *, ze_znacznikiem_czasu: bool) -> dict[str, Any]:
@@ -61,7 +62,7 @@ def zbuduj_kontekst_widoku(run: CanonicalRun, *, ze_znacznikiem_czasu: bool) -> 
 
     header = (run.snapshot or {}).get("header") or {}
     return {
-        "project_name": str(header.get("name")) if header.get("name") else None,
+        "project_name": nazwa_nadana(header.get("name")),
         # `case_name` zostaje w kopercie jako JAWNE „nazwa nieznana". Kanoniczny
         # przebieg niesie tylko `case_id`; wcześniej wpisywano tu ten identyfikator,
         # czyli nazwę FABRYKOWANO z identyfikatora. Pominięcie klucza byłoby drugim

@@ -29,8 +29,11 @@ Obok rodziny NAZWY strażnik pilnuje rodziny TEKSTU rekordów, wyników i ślad�
 oraz `czego_brakuje`, `zastrzezenia`, `substitution`, `podstawienie`, `przedmiot`, `zakres` —
 BEZ pól komunikatu (`message`, `message_pl`, `detail`, `error*`, `fix_message_pl`,
 `komunikat*`), które są osobną klasą (karta #142).
-Klucz/zmienna/funkcja „nazwy" = token `name|nazwa|label|etykieta|title|tytul` rozdzielony
-podkreśleniem (`name`, `source_name`, `label_pl`, `nazwa_wezla`, `_nazwa_odcinka`), z wyjątkiem
+Klucz/zmienna/funkcja „nazwy" = token `name|names|nazwa|nazwy|label|labels|etykieta|etykiety|
+title|tytul|wyszczegolnienie` rozdzielony podkreśleniem (`name`, `source_name`, `label_pl`,
+`nazwa_wezla`, `_nazwa_odcinka`, `upstream_source_names`, kolumna `wyszczegolnienie` arkusza
+obwodów nN — liczba mnoga i kolumna arkusza dopisane w karcie NAZWY-JEDNO-ZRODLO po dwóch
+instancjach, które strażnik przepuszczał), z wyjątkiem
 nazw PROGRAMOWYCH (`WYKLUCZONE_NAZWY`: plik, arkusz, kolumna, operacja, klasa, moduł, pole
 kontraktu — to nie są nazwy elementów sieci).
 
@@ -75,6 +78,11 @@ CZEGO NIE WYKRYWA (nazwane, żeby zieleń nie znaczyła więcej, niż znaczy —
     (`_zbuduj(ref)` z `name` wewnątrz — trafienie jest wtedy WEWNĄTRZ tamtej funkcji, jeśli
     jej parametr ma token identyfikatora);
   * aliasu nośnika przez strukturę (`t = (ref,)`, `d = {"x": ref}` i odczyt `d["x"]`);
+  * identyfikatora w zmiennej BEZ tokenu identyfikatora (`od`, `do`, `lokalizacja`, `klucz`)
+    jako zapasu odczytu mapy nazw (`nazwy.get(od, od)`) albo przypisania do słownika pod
+    kluczem dynamicznym (`nazwy[ref] = … else ref`) — tak znalezione ręcznie i naprawione
+    w karcie NAZWY-JEDNO-ZRODLO: etykiety zacisków zabezpieczeń, lista odmów zacisków, klucz
+    wiersza porównania zwarć;
   * nazw pokazywanych przez frontend (osobna warstwa, strażnik `no_raw_ids_in_ui_guard`).
 
 TRYBY: domyślny (porównanie z `DOZWOLONE`); `--zmierz` wypisuje każde trafienie z `plik:linia`.
@@ -101,7 +109,10 @@ WZORZEC_IDENTYFIKATORA = re.compile(
 #: Kolekcja identyfikatorów (zmienna pętli po niej jest nośnikiem identyfikatora).
 WZORZEC_KOLEKCJI_IDENTYFIKATOROW = re.compile(r"(^|_)(refs|ids|identyfikatory)$", re.IGNORECASE)
 #: Token nazwy pokazywanej człowiekowi (klucz, argument, atrybut, zmienna, funkcja).
-WZORZEC_NAZWY = re.compile(r"(^|_)(name|nazwa|label|etykieta|title|tytul)(_|$)", re.IGNORECASE)
+WZORZEC_NAZWY = re.compile(
+    r"(^|_)(name|names|nazwa|nazwy|label|labels|etykieta|etykiety|title|tytul|wyszczegolnienie)(_|$)",
+    re.IGNORECASE,
+)
 #: Nazwy programowe — plik, arkusz, kolumna, operacja, klasa, moduł, pole kontraktu —
 #: nie są nazwami elementów sieci pokazywanymi projektantowi.
 WYKLUCZONE_NAZWY = frozenset(
@@ -133,7 +144,14 @@ WYKLUCZONE_NAZWY = frozenset(
 #: Pola TREŚCI rekordów, wyników i śladów dla człowieka (rodzina „tekst"): klucz `*_pl`
 #: (jak reguła 5 `werdykt_wyjasnialny_guard`) oraz listy wyjaśnień i linie śladu.
 POLA_TEKSTU_DOSLOWNE = frozenset(
-    {"czego_brakuje", "zastrzezenia", "substitution", "podstawienie", "przedmiot", "zakres"}
+    {
+        "czego_brakuje",
+        "zastrzezenia",
+        "substitution",
+        "podstawienie",
+        "przedmiot",
+        "zakres",
+    }
 )
 #: Pola KOMUNIKATU (błąd/ostrzeżenie operacji, walidacji, gotowości, odpowiedzi HTTP) —
 #: osobna klasa „komunikat nie niesie identyfikatora" (karta #142), nie ten strażnik.
@@ -153,7 +171,17 @@ POLA_KOMUNIKATU = frozenset(
 )
 #: Metody napisu, przez które nazwa przenosi identyfikator bez zmiany jego natury.
 METODY_NAPISU = frozenset(
-    {"strip", "lstrip", "rstrip", "upper", "lower", "title", "capitalize", "replace", "format"}
+    {
+        "strip",
+        "lstrip",
+        "rstrip",
+        "upper",
+        "lower",
+        "title",
+        "capitalize",
+        "replace",
+        "format",
+    }
 )
 
 
@@ -555,22 +583,24 @@ DOZWOLONE: dict[str, tuple[int, str]] = {
         "nazwy (ma ją wyłącznie arkusz szyn, czytany jako `nazwa`); identyfikator maszynowy "
         "modelu nadaje dopiero operacja kompilatora grafu.",
     ),
+    (
+        "application/analyses/ocena_doboru_magistrali.py:_ocena_spadku_odcinka:"
+        "tekst_argument:opis_pl:slad_opis"
+    ): (
+        1,
+        "`slad_opis` składa `wynik_solvera.formula_ref` wyniku "
+        "`network_model/solvers/cable_voltage_drop.py`, który niesie TREŚĆ wzoru "
+        "(„ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ)”), nie identyfikator — token „ref” pochodzi "
+        "z nazwy pola kontraktu; ta sama podstawa co wpis `dobor_przekladnika`. Wpis dopisany "
+        "w karcie NAZWY-JEDNO-ZRODLO: strażnik był czerwony na czubku `0a4a3eff` po "
+        "wejściu karty MAGISTRALA-OCENA.",
+    ),
     "domain/dobor_przekladnika.py:sprawdz_dobor_ct:tekst_argument:podstawa_pl:.formula_ref": (
         1,
         "`formula_ref` wyniku `equipment_checks/ct_burden_saturation` niesie TREŚĆ wzoru "
         "(„S2obl = S_aparatow + I2n²·Rp; ALF_eff = …”), nie identyfikator — token „ref” "
         "pochodzi z nazwy pola kontraktu wyniku; wartość jest dokładnie tym, co pozycja "
         "podstawy pokazuje projektantowi.",
-    ),
-    (
-        "application/analyses/ocena_doboru_magistrali.py:_ocena_spadku_odcinka:"
-        "tekst_argument:opis_pl:slad_opis"
-    ): (
-        1,
-        "`slad_opis` składa `formula_ref` wyniku `cable_voltage_drop` — TREŚĆ wzoru "
-        "(„ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ)”), nie identyfikator — z wielkościami wejścia "
-        "odcinka opisanego numerem porządkowym w ciągu magistrali; token „ref” pochodzi z nazwy "
-        "pola kontraktu wyniku (ten sam przypadek co `dobor_przekladnika`).",
     ),
     "enm/kompilator_grafu.py:_nazwa_krawedzi:zwrot:_nazwa_krawedzi:.edge_id": (
         1,

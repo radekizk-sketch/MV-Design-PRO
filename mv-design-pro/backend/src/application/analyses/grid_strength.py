@@ -29,6 +29,7 @@ from analysis.grid_strength.models import (
 )
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
+from network_model.nazwy import nazwa_nadana
 
 # Źródła falownikowe (Inverter-Based Generation) — SCR dotyczy punktu przyłączenia
 # źródeł energoelektronicznych; zbiór = kanoniczny `GEN_TYPES_PRZEKSZTALTNIKOWE`
@@ -142,7 +143,7 @@ def _modules_by_bus(snapshot: dict[str, Any]) -> dict[str, tuple[BusSourceModule
         name = gen.get("name")
         module = BusSourceModule(
             ref=ref,
-            name=str(name) if isinstance(name, str) and name else None,
+            name=nazwa_nadana(name),
             sn_mva=_installed_mva_for_generator(gen),
         )
         grouped.setdefault(bus_ref, []).append(module)
@@ -179,7 +180,7 @@ def _nominal_kv_by_bus(snapshot: dict[str, Any]) -> dict[str, float | None]:
 def _context(run: CanonicalRun) -> GridStrengthContext:
     header = (run.snapshot or {}).get("header") or {}
     return GridStrengthContext(
-        project_name=str(header.get("name")) if header.get("name") else None,
+        project_name=nazwa_nadana(header.get("name")),
         case_name=None,
         case_id=str(run.case_id) if run.case_id else None,
         run_timestamp=run.created_at,

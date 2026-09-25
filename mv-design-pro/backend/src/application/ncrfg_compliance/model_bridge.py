@@ -96,7 +96,7 @@ from typing import Any, Literal, get_args
 from catalog.profiles.nc_rfg import NcRfgProfile, TypModulu, load_nc_rfg_profile
 from enm.deklaracje_modulu import POLA_DEKLARACJI, DeklaracjeModulu
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel, Generator
-from enm.nazwy_elementow import nazwa_elementu
+from enm.nazwy_elementow import nazwa_elementu, nazwa_nadana_pozycji_katalogu
 from network_model.catalog.mv_ptpiree_catalog import get_all_ptpiree_generator_certificates
 from network_model.pochodne import mw_na_kw, udzial_mocy_biernej_pu
 from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeModuleInput
@@ -288,7 +288,7 @@ def weryfikacja_certyfikatu(
     parametry = _slownik(rekord.get("params"))
     # Rekord wykazu nazywa jego nazwa z rejestru (producent, rodzaj, typ), nie klucz rekordu —
     # klucz zostaje w `rekord_ref` odmowy (karta #144).
-    nazwa_rekordu = str(rekord.get("name") or "").strip() or "rekord wykazu bez nazwy"
+    nazwa_rekordu = nazwa_nadana_pozycji_katalogu(rekord) or "rekord wykazu bez nazwy"
     rozjazdy = [
         f"{nazwa}: tabliczka „{tabliczka[pole_tabliczki]}”, rejestr „{parametry.get(pole_rekordu)}”"
         for pole_tabliczki, pole_rekordu, nazwa in _POLA_SPOJNOSCI

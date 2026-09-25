@@ -51,6 +51,11 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 KATALOG_DIR = PROJECT_ROOT / "backend" / "src" / "network_model" / "catalog"
 PLIK_TYPOW = KATALOG_DIR / "types.py"
 PLIK_REJESTRU = KATALOG_DIR / "niezmienniki_katalogu.py"
+#: Liść predykatu nazwy (`network_model/nazwy.py`, tylko biblioteka standardowa) — jedyny
+#: import projektu w rejestrze (karta NAZWY-JEDNO-ZRODLO: nazwa reguły sprawdzana tym samym
+#: `jest_nazwa` co każda nazwa w `src`).
+PLIK_PREDYKATU_NAZWY = PROJECT_ROOT / "backend" / "src" / "network_model" / "nazwy.py"
+MODUL_PREDYKATU_NAZWY = "network_model.nazwy"
 
 #: Funkcje, ktorych zadaniem jest ROZSTRZYGNIECIE o dopuszczalnosci rekordu
 #: katalogu. Prefiks `_validate`/`validate` obejmuje rowniez pomocnicze walidatory
@@ -62,17 +67,34 @@ PREFIKSY_WALIDACJI_REKORDU: tuple[str, ...] = ("validate_", "_validate_", "walid
 PLIKI_ZWOLNIONE: frozenset[str] = frozenset({"niezmienniki_katalogu.py"})
 
 
+def _zaladuj_lisc_predykatu_nazwy() -> None:
+    """Rejestr importuje `network_model.nazwy`. Samo `backend/src` na `sys.path` NIE wystarcza
+    pod gołym `python3` CI: import `network_model.nazwy` wykonuje `network_model/__init__.py`
+    → `core` → `networkx` (`ModuleNotFoundError`, zmierzone w karcie NAZWY-JEDNO-ZRODLO).
+    Liść ładowany jest więc JAWNIE z pliku pod swoją pełną nazwą modułu — mechanizm importu
+    zwraca go z `sys.modules` bez wykonywania pakietu nadrzędnego."""
+    if MODUL_PREDYKATU_NAZWY in sys.modules:
+        return
+    spec = importlib.util.spec_from_file_location(MODUL_PREDYKATU_NAZWY, PLIK_PREDYKATU_NAZWY)
+    assert spec and spec.loader
+    modul = importlib.util.module_from_spec(spec)
+    sys.modules[MODUL_PREDYKATU_NAZWY] = modul
+    spec.loader.exec_module(modul)
+
+
 def modul_rejestru() -> ModuleType:
     """Zaladuj rejestr regul bez wykonywania `network_model/__init__.py`.
 
     Ten sam wzorzec co `readiness_codes_guard.py::modul_rejestru`: guard ma
-    dzialac golym `python3` w CI, a rejestr potrzebuje wylacznie stdlib.
+    dzialac golym `python3` w CI, a rejestr potrzebuje wylacznie stdlib i liscia
+    `network_model/nazwy.py` (ladowanego jawnie z pliku, patrz `_zaladuj_lisc_predykatu_nazwy`).
     """
     juz = sys.modules.get("network_model.catalog.niezmienniki_katalogu") or sys.modules.get(
         "_rejestr_niezmiennikow_katalogu"
     )
     if juz is not None:
         return juz
+    _zaladuj_lisc_predykatu_nazwy()
     spec = importlib.util.spec_from_file_location("_rejestr_niezmiennikow_katalogu", PLIK_REJESTRU)
     assert spec and spec.loader
     modul = importlib.util.module_from_spec(spec)

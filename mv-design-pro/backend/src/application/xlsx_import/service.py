@@ -46,6 +46,7 @@ from enm.kompilator_grafu import (
     kompiluj_graf,
 )
 from enm.models import EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
 from enm.severity import SEVERITY_BLOCKER
 from enm.store import ZrodloZmiany, set_enm
 from enm.validator import ENMValidator
@@ -223,6 +224,9 @@ class XlsxImportService:
             ]
         model = EnergyNetworkModel.model_validate(kompilacja.enm)
         nazwy = _nazwy_z_arkusza(kompilacja)
+        # Element spoza arkusza (utworzony przez kompilator grafu) nazywa model, nie
+        # identyfikator (karta NAZWY-JEDNO-ZRODLO, klasa karty #144).
+        indeks_nazw = zbuduj_indeks_nazw(model)
         blokady = [
             BladArkusza(
                 arkusz=ARKUSZ_MODELU,
@@ -230,7 +234,10 @@ class XlsxImportService:
                     f"{issue.code}: {issue.message_pl}"
                     + (
                         " (elementy: "
-                        + ", ".join(nazwy.get(ref, ref) for ref in issue.element_refs)
+                        + ", ".join(
+                            nazwy.get(ref) or nazwa_po_identyfikatorze(ref, indeks=indeks_nazw)
+                            for ref in issue.element_refs
+                        )
                         + ")"
                         if issue.element_refs
                         else ""

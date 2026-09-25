@@ -70,6 +70,7 @@ from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
 from enm.nazwy_elementow import nazwa_po_identyfikatorze
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
+from network_model.nazwy import nazwa_nadana
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -411,10 +412,10 @@ def _arc_flash_report_context(zadanie: ArcFlashReportZadanie) -> ArcFlashReportC
     # identyfikatorem przebiegu ani stacji (karta #144). Raport bez wskazanej stacji
     # obejmuje wszystkie szyny przebiegu i tak go nazywa.
     migawka = run.snapshot or {}
-    nazwa_modelu = str((migawka.get("header") or {}).get("name") or "").strip()
+    nazwa_modelu = nazwa_nadana((migawka.get("header") or {}).get("name"))
     station_id = zadanie.station_id or str(view.get("analysis_id") or zadanie.run_id)
     return ArcFlashReportContext(
-        project_name=zadanie.project_name or nazwa_modelu or "Projekt bez nazwy",
+        project_name=nazwa_nadana(zadanie.project_name) or nazwa_modelu or "Projekt bez nazwy",
         station_id=station_id,
         station_name=(
             nazwa_po_identyfikatorze(zadanie.station_id, migawka)

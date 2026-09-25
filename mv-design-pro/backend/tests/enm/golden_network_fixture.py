@@ -330,33 +330,33 @@ def build_golden_network() -> EnergyNetworkModel:
 
     cable_defs = [
         # Magistrala 1 (z sekcji S1 GPZ)
-        ("cab_gpz_s01", "bus_gpz_15_s1", "bus_s01_15", 2.1),
-        ("cab_s01_s02", "bus_s01_15", "bus_s02_15", 1.3),
-        ("cab_s02_s03", "bus_s02_15", "bus_s03_15", 0.8),
-        ("cab_s03_t1", "bus_s03_15", "bus_t1_15", 0.5),
-        ("cab_t1_s04", "bus_t1_15", "bus_s04_15", 1.1),
-        ("cab_s04_s05", "bus_s04_15", "bus_s05_15", 0.9),
-        ("cab_t1_s06", "bus_t1_15", "bus_s06_15", 0.7),
-        ("cab_s06_s07", "bus_s06_15", "bus_s07_15", 1.2),
+        ("cab_gpz_s01", "bus_gpz_15_s1", "bus_s01_15", 2.1, "Kabel GPZ – S01"),
+        ("cab_s01_s02", "bus_s01_15", "bus_s02_15", 1.3, "Kabel S01 – S02"),
+        ("cab_s02_s03", "bus_s02_15", "bus_s03_15", 0.8, "Kabel S02 – S03"),
+        ("cab_s03_t1", "bus_s03_15", "bus_t1_15", 0.5, "Kabel S03 – T1"),
+        ("cab_t1_s04", "bus_t1_15", "bus_s04_15", 1.1, "Kabel T1 – S04"),
+        ("cab_s04_s05", "bus_s04_15", "bus_s05_15", 0.9, "Kabel S04 – S05"),
+        ("cab_t1_s06", "bus_t1_15", "bus_s06_15", 0.7, "Kabel T1 – S06"),
+        ("cab_s06_s07", "bus_s06_15", "bus_s07_15", 1.2, "Kabel S06 – S07"),
         # Odgałęzienie od S1 GPZ
-        ("cab_gpz_s08", "bus_gpz_15_s1", "bus_s08_15", 3.0),
-        ("cab_s08_s09", "bus_s08_15", "bus_s09_15", 1.5),
-        ("cab_s09_s10", "bus_s09_15", "bus_s10_15", 2.0),
+        ("cab_gpz_s08", "bus_gpz_15_s1", "bus_s08_15", 3.0, "Kabel GPZ – S08"),
+        ("cab_s08_s09", "bus_s08_15", "bus_s09_15", 1.5, "Kabel S08 – S09"),
+        ("cab_s09_s10", "bus_s09_15", "bus_s10_15", 2.0, "Kabel S09 – S10"),
         # Magistrala 2 (z sekcji S2 GPZ)
-        ("cab_gpz_s11", "bus_gpz_15_s2", "bus_s11_15", 1.8),
-        ("cab_s11_s12", "bus_s11_15", "bus_s12_15", 1.0),
-        ("cab_s12_t2", "bus_s12_15", "bus_t2_15", 0.6),
-        ("cab_t2_s13", "bus_t2_15", "bus_s13_15", 0.9),
-        ("cab_s13_s14", "bus_s13_15", "bus_s14_15", 1.4),
-        ("cab_t2_s15", "bus_t2_15", "bus_s15_15", 0.5),
+        ("cab_gpz_s11", "bus_gpz_15_s2", "bus_s11_15", 1.8, "Kabel GPZ – S11"),
+        ("cab_s11_s12", "bus_s11_15", "bus_s12_15", 1.0, "Kabel S11 – S12"),
+        ("cab_s12_t2", "bus_s12_15", "bus_t2_15", 0.6, "Kabel S12 – T2"),
+        ("cab_t2_s13", "bus_t2_15", "bus_s13_15", 0.9, "Kabel T2 – S13"),
+        ("cab_s13_s14", "bus_s13_15", "bus_s14_15", 1.4, "Kabel S13 – S14"),
+        ("cab_t2_s15", "bus_t2_15", "bus_s15_15", 0.5, "Kabel T2 – S15"),
         # Odgałęzienie M2
-        ("cab_gpz_s16", "bus_gpz_15_s2", "bus_s16_15", 2.2),
-        ("cab_s16_s17", "bus_s16_15", "bus_s17_15", 1.1),
-        ("cab_s17_t3", "bus_s17_15", "bus_t3_15", 0.8),
-        ("cab_t3_s18", "bus_t3_15", "bus_s18_15", 1.3),
-        ("cab_s18_s19", "bus_s18_15", "bus_s19_15", 0.9),
+        ("cab_gpz_s16", "bus_gpz_15_s2", "bus_s16_15", 2.2, "Kabel GPZ – S16"),
+        ("cab_s16_s17", "bus_s16_15", "bus_s17_15", 1.1, "Kabel S16 – S17"),
+        ("cab_s17_t3", "bus_s17_15", "bus_t3_15", 0.8, "Kabel S17 – T3"),
+        ("cab_t3_s18", "bus_t3_15", "bus_s18_15", 1.3, "Kabel T3 – S18"),
+        ("cab_s18_s19", "bus_s18_15", "bus_s19_15", 0.9, "Kabel S18 – S19"),
         # NO point — pierścień M2
-        ("cab_t3_s14", "bus_t3_15", "bus_s14_15", 2.5),
+        ("cab_t3_s14", "bus_t3_15", "bus_s14_15", 2.5, "Kabel T3 – S14"),
     ]
 
     # Szyny T-node (junction buses)
@@ -364,11 +364,14 @@ def build_golden_network() -> EnergyNetworkModel:
     buses.append(Bus(ref_id="bus_t2_15", name="Szyna T2 15 kV", voltage_kv=15.0))
     buses.append(Bus(ref_id="bus_t3_15", name="Szyna T3 15 kV", voltage_kv=15.0))
 
-    for ref, from_bus, to_bus, length in cable_defs:
+    # Nazwa kabla = oznaczenie odcinka jak na schemacie projektanta (stacja początkowa –
+    # końcowa), zapisane wprost — nigdy przepisane z identyfikatora `cab_…` (karta
+    # NAZWY-JEDNO-ZRODLO: budowniczy fikstur był producentem nazw o kształcie kodu).
+    for ref, from_bus, to_bus, length, nazwa in cable_defs:
         cables.append(
             Cable(
                 ref_id=ref,
-                name=f"Kabel {ref.replace('cab_', '').upper()}",
+                name=nazwa,
                 from_bus_ref=from_bus,
                 to_bus_ref=to_bus,
                 type="cable",
@@ -395,21 +398,21 @@ def build_golden_network() -> EnergyNetworkModel:
         buses.append(Bus(ref_id=ref, name=name, voltage_kv=15.0))
 
     extra_cables = [
-        ("cab_s01_s08", "bus_s01_15", "bus_s08_15", 2.8),
-        ("cab_s03_s12", "bus_s03_15", "bus_s12_15", 3.5),
-        ("cab_s07_s15", "bus_s07_15", "bus_s15_15", 4.0),
-        ("cab_s10_s19", "bus_s10_15", "bus_s19_15", 3.2),
-        ("cab_s05_pv", "bus_s05_15", "bus_s05_pv_15", 0.05),
-        ("cab_s10_wind", "bus_s10_15", "bus_s10_wind_15", 0.03),
-        ("cab_s14_uni", "bus_s14_15", "bus_s14_uni_15", 0.04),
-        ("cab_s17_fab", "bus_s17_15", "bus_s17_fab_15", 0.06),
+        ("cab_s01_s08", "bus_s01_15", "bus_s08_15", 2.8, "Kabel S01 – S08"),
+        ("cab_s03_s12", "bus_s03_15", "bus_s12_15", 3.5, "Kabel S03 – S12"),
+        ("cab_s07_s15", "bus_s07_15", "bus_s15_15", 4.0, "Kabel S07 – S15"),
+        ("cab_s10_s19", "bus_s10_15", "bus_s19_15", 3.2, "Kabel S10 – S19"),
+        ("cab_s05_pv", "bus_s05_15", "bus_s05_pv_15", 0.05, "Kabel S05 – PV"),
+        ("cab_s10_wind", "bus_s10_15", "bus_s10_wind_15", 0.03, "Kabel S10 – FW"),
+        ("cab_s14_uni", "bus_s14_15", "bus_s14_uni_15", 0.04, "Kabel S14 – OZE"),
+        ("cab_s17_fab", "bus_s17_15", "bus_s17_fab_15", 0.06, "Kabel S17 – OZE"),
     ]
 
-    for ref, from_bus, to_bus, length in extra_cables:
+    for ref, from_bus, to_bus, length, nazwa in extra_cables:
         cables.append(
             Cable(
                 ref_id=ref,
-                name=f"Kabel {ref.replace('cab_', '').upper()}",
+                name=nazwa,
                 from_bus_ref=from_bus,
                 to_bus_ref=to_bus,
                 type="cable",

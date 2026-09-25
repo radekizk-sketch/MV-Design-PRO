@@ -20,6 +20,7 @@ import json
 import zipfile
 from typing import TYPE_CHECKING, Any
 
+from enm.nazwy_elementow import NAZWA_MODELU_BEZ_NAZWY
 from infrastructure.cgmes.cgmes_exporter import export_eq_tp_bytes
 from infrastructure.cgmes.cgmes_importer import (
     CgmesImportResult,
@@ -41,6 +42,7 @@ from infrastructure.cgmes.refmap import (
     REFMAP_SCHEMA_VERSION,
     CgmesRefMap,
 )
+from network_model.nazwy import nazwa_nadana
 
 if TYPE_CHECKING:
     from enm.models import EnergyNetworkModel
@@ -218,10 +220,10 @@ def import_cgmes(archive_bytes: bytes, *, prefer_side_car: bool = True) -> Cgmes
             refmap: CgmesRefMap | None = None
             if _REFMAP_NAME in names:
                 refmap = CgmesRefMap.from_dict(json.loads(zf.read(_REFMAP_NAME)))
-            model_name = "Imported CGMES"
+            model_name = NAZWA_MODELU_BEZ_NAZWY
             if _MANIFEST_NAME in names:
                 manifest = json.loads(zf.read(_MANIFEST_NAME))
-                model_name = manifest.get("model_name", model_name)
+                model_name = nazwa_nadana(manifest.get("model_name")) or NAZWA_MODELU_BEZ_NAZWY
     except zipfile.BadZipFile:
         return CgmesImportResult(
             status=CgmesImportStatus.FAILED,

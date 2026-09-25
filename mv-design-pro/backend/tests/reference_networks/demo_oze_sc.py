@@ -272,7 +272,10 @@ def _attach_ders(
     records: list[dict[str, Any]] = []
     errors: list[str] = []
     for di, (tech, variant, cat, ns, power) in enumerate(config["ders"], start=1):
-        name = f"{config['key']}_{tech}_{seq}_{di}"
+        # Nazwa źródła jak u projektanta: technologia + stacja + numer porządkowy. Dawniej
+        # sklejka kluczy konfiguracji (`BESS_SN_BLOCK_BESS_8_1`) — nazwa o kształcie kodu, która
+        # wędrowała do nazw aparatu, kabla i szyny bloku (karta NAZWY-JEDNO-ZRODLO).
+        name = f"{tech} stacji S{seq} nr {di}"
         if variant == "block_transformer":
             new_enm, err = _add_der_sn_block(enm, station_ref, tech, cat, ns, power, name)
         else:

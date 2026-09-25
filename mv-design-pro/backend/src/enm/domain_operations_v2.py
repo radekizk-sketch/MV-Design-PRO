@@ -43,6 +43,7 @@ from network_model.catalog.switchgear import (
 from network_model.catalog.switchgear.family_validation import nazwa_rodziny_pl
 from network_model.catalog.types import CatalogBinding, pola_karty_obecne
 from network_model.core.uziemienie import ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA
+from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.pochodne import (
     km_na_m,
     kvar_na_mvar,
@@ -104,7 +105,12 @@ from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
 from .migrations.nn_field_specs_promocja import META_KLUCZ_GALAZ_ZRODLO_FIELD_REF
 from .models import liczba_torow
-from .nazwy_elementow import jest_nazwa, nazwa_elementu, nazwa_pola_ze_specyfikacji
+from .nazwy_elementow import (
+    nazwa_elementu,
+    nazwa_nadana_pozycji_katalogu,
+    nazwa_pola_ze_specyfikacji,
+    opis_bez_nazwy,
+)
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     PlanPolaKatalogowego,
@@ -267,8 +273,7 @@ def _nazwa_pola(enm: dict[str, Any], field_ref: str) -> str:
         for spec in _substation_meta_specs(sub, "nn_field_specs")
     )
     if pole_nn:
-        nazwa = record.get("name")
-        return str(nazwa).strip() if jest_nazwa(nazwa) else "Pole nN bez nazwy"
+        return nazwa_nadana(record.get("name")) or "Pole nN bez nazwy"
     return nazwa_pola_ze_specyfikacji(record, nazwy_elementow_pol)
 
 
@@ -858,7 +863,7 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         roboczy,
         {
             "ref_id": measurement_ref,
-            "name": payload.get("name") or f"CT pola {_nazwa_pola(enm, field_ref)}",
+            "name": nazwa_nadana(payload.get("name")) or f"CT pola {_nazwa_pola(enm, field_ref)}",
             "measurement_type": "CT",
             "bus_ref": bus_ref,
             "bay_ref": field_ref,
@@ -1017,7 +1022,7 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         roboczy,
         {
             "ref_id": measurement_ref,
-            "name": payload.get("name") or f"VT pola {_nazwa_pola(enm, field_ref)}",
+            "name": nazwa_nadana(payload.get("name")) or f"VT pola {_nazwa_pola(enm, field_ref)}",
             "measurement_type": "VT",
             "bus_ref": bus_ref,
             "bay_ref": field_ref,
@@ -1248,7 +1253,8 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         roboczy,
         {
             "ref_id": protection_ref,
-            "name": payload.get("name") or f"Zabezpieczenie pola {_nazwa_pola(enm, field_ref)}",
+            "name": nazwa_nadana(payload.get("name"))
+            or f"Zabezpieczenie pola {_nazwa_pola(enm, field_ref)}",
             "breaker_ref": breaker_ref,
             "ct_ref": ct_ref,
             "vt_ref": vt_ref,
@@ -2189,12 +2195,11 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                 None,
             )
     apparatus_kind = payload.get("apparatus_kind")
-    field_name_raw = payload.get("field_name")
     existing_name = existing_field.get("name") if isinstance(existing_field, dict) else None
     field_name: str = (
-        field_name_raw.strip()
-        if isinstance(field_name_raw, str) and field_name_raw.strip()
-        else (existing_name if isinstance(existing_name, str) else _default_sn_bay_name(bay_role))
+        nazwa_nadana(payload.get("field_name"))
+        or nazwa_nadana(existing_name)
+        or _default_sn_bay_name(bay_role)
     )
     terminal_bus_ref = _make_id("sn", seed, "bay_terminal")
     apparatus_ref = _make_id("sn", seed, "bay_device")
@@ -2753,7 +2758,7 @@ def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]
     feeder_ref = _make_id("nn", seed, "outgoing")
     field_spec = _build_field_spec(
         field_ref=feeder_ref,
-        name=payload.get("field_name")
+        name=nazwa_nadana(payload.get("field_name"))
         or _nazwa_z_klasa_szyny(enm, bus_nn_ref, "Odpływ", "{klasa}"),
         bay_role="FEEDER",
         bus_ref=bus_nn_ref,
@@ -2826,7 +2831,7 @@ def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -
     field_ref = _make_id("nn", seed, "source_field")
     field_spec = _build_field_spec(
         field_ref=field_ref,
-        name=payload.get("field_name")
+        name=nazwa_nadana(payload.get("field_name"))
         or _nazwa_z_klasa_szyny(enm, bus_nn_ref, "Pole źródłowe", "{klasa}", f"({kind})"),
         bay_role="OZE",
         bus_ref=bus_nn_ref,
@@ -2964,7 +2969,7 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
     nowy_odbior: dict[str, Any] = {
         "ref_id": load_ref,
-        "name": payload.get("load_name")
+        "name": nazwa_nadana(payload.get("load_name"))
         or _nazwa_z_klasa_szyny(enm, feeder_bus_ref, "Odbiór", "{klasa}"),
         "bus_ref": feeder_bus_ref,
         "p_mw": kw_na_mw(active_power_kw),
@@ -3147,7 +3152,7 @@ def _add_nn_cable_segment_internal(
             new_enm,
             {
                 "ref_id": to_bus_ref,
-                "name": payload.get("to_bus_name") or "Szyna nN",
+                "name": nazwa_nadana(payload.get("to_bus_name")) or "Szyna nN",
                 "voltage_kv": from_voltage,
                 "meta": {"visual_role": "NN_CABLE_END"},
             },
@@ -3189,7 +3194,7 @@ def _add_nn_cable_segment_internal(
 
     branch_data: dict[str, Any] = {
         "ref_id": branch_ref,
-        "name": payload.get("name") or "Kabel nN",
+        "name": nazwa_nadana(payload.get("name")) or "Kabel nN",
         "type": "cable",
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": to_bus_ref,
@@ -3270,7 +3275,7 @@ def add_nn_distribution_board(enm: dict[str, Any], payload: dict[str, Any]) -> d
             "nn.board_voltage_not_nn",
         )
 
-    name = payload.get("name") or "Rozdzielnica nN"
+    name = nazwa_nadana(payload.get("name")) or "Rozdzielnica nN"
     seed = _compute_seed({"op": "nn_distribution_board", "name": name, "voltage_kv": voltage_kv})
     station_ref = _make_id("nn", seed, "board")
     bus_ref = _make_id("nn", seed, "board_bus")
@@ -3444,7 +3449,7 @@ def add_nn_switch_device(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
 
     branch_data: dict[str, Any] = {
         "ref_id": branch_ref,
-        "name": payload.get("name")
+        "name": nazwa_nadana(payload.get("name"))
         or ("Wyłącznik nN" if branch_type == "switch" else "Bezpiecznik nN"),
         "type": branch_type,
         "from_bus_ref": from_bus_ref,
@@ -3608,8 +3613,8 @@ def add_nn_section_coupler(enm: dict[str, Any], payload: dict[str, Any]) -> dict
         new_enm,
         {
             "ref_id": new_bus_ref,
-            "name": payload.get("name")
-            or f"Sekcja {last_order + 1} — {station.get('name') or 'Stacja bez nazwy'}",
+            "name": nazwa_nadana(payload.get("name"))
+            or f"Sekcja {last_order + 1} — {nazwa_elementu(station, 'substations')}",
             "voltage_kv": voltage_kv,
             "meta": {"visual_role": "NN_SECTION_BUS"},
         },
@@ -3780,7 +3785,7 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
 
     left_data: dict[str, Any] = {
         "ref_id": left_ref,
-        "name": f"{segment.get('name') or 'Odcinek kabla nN'} (A)",
+        "name": f"{nazwa_nadana(segment.get('name')) or 'Odcinek kabla nN'} (A)",
         "type": "cable",
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": mid_bus_ref,
@@ -3801,7 +3806,7 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
 
     right_data: dict[str, Any] = {
         "ref_id": right_ref,
-        "name": f"{segment.get('name') or 'Odcinek kabla nN'} (B)",
+        "name": f"{nazwa_nadana(segment.get('name')) or 'Odcinek kabla nN'} (B)",
         "type": "cable",
         "from_bus_ref": mid_bus_ref,
         "to_bus_ref": to_bus_ref,
@@ -3989,7 +3994,9 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
 
     merged_data: dict[str, Any] = {
         "ref_id": merged_ref,
-        "name": segment_a.get("name") or segment_b.get("name") or "Kabel nN (scalony)",
+        "name": nazwa_nadana(segment_a.get("name"))
+        or nazwa_nadana(segment_b.get("name"))
+        or "Kabel nN (scalony)",
         "type": "cable",
         "from_bus_ref": zewnetrzna_a,
         "to_bus_ref": zewnetrzna_b,
@@ -4297,7 +4304,7 @@ def copy_nn_feeder(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
         )
     bus_refs, branch_refs = poddrzewo
 
-    nazwa_prefix = payload.get("name") or "Kopia"
+    nazwa_prefix = nazwa_nadana(payload.get("name")) or "Kopia"
     seed = _compute_seed(
         {"op": "copy_nn_feeder", "root": feeder_apparatus_ref, "name": nazwa_prefix}
     )
@@ -4553,7 +4560,7 @@ def _certyfikat_ptpiree_z_katalogu(namespace: str, catalog_ref: str) -> dict[str
                     "id": str(dane.get("id") or catalog_ref),
                     # Nazwa rekordu przechodzi przez adnotację bez użycia (wołający bierze
                     # wyłącznie `params`) — nie zastępuje się jej identyfikatorem pozycji.
-                    "name": str(dane.get("model") or dane.get("name") or ""),
+                    "name": nazwa_nadana(dane.get("model")) or nazwa_nadana(dane.get("name")) or "",
                     "params": {
                         "manufacturer": dane.get("manufacturer"),
                         "model": dane.get("model"),
@@ -4907,7 +4914,7 @@ def _resolve_converter_defaults(
             payload.get("power_setpoint_mw"),
             moc_czynna_jednostki_mw("PV", materialized_params),
         )
-        name = str(payload.get("source_name") or "Blok PV")
+        name = nazwa_nadana(payload.get("source_name")) or "Blok PV"
         return (
             name,
             "pv_inverter",
@@ -4953,7 +4960,7 @@ def _resolve_converter_defaults(
             payload.get("power_setpoint_mw"),
             moc_czynna_jednostki_mw("BESS", materialized_params),
         )
-        name = str(payload.get("source_name") or "Blok BESS")
+        name = nazwa_nadana(payload.get("source_name")) or "Blok BESS"
         return (
             name,
             "bess",
@@ -5022,7 +5029,7 @@ def _resolve_converter_defaults(
         moc_czynna_jednostki_mw("FW", materialized_params),
     )
     return (
-        str(payload.get("source_name") or "Blok FW"),
+        nazwa_nadana(payload.get("source_name")) or "Blok FW",
         "wind_inverter",
         "FW_INVERTER_CREATED",
         {
@@ -5117,10 +5124,8 @@ def _append_converter_field_if_needed(
 
     field_spec = _build_field_spec(
         field_ref=field_ref,
-        name=str(
-            source_field_payload.get("field_name")
-            or _nazwa_z_klasa_szyny(new_enm, bus_nn_ref, "Pole", technology, "{klasa}")
-        ),
+        name=nazwa_nadana(source_field_payload.get("field_name"))
+        or _nazwa_z_klasa_szyny(new_enm, bus_nn_ref, "Pole", technology, "{klasa}"),
         bay_role="OZE",
         bus_ref=bus_nn_ref,
         tags=["nn_source_field"],
@@ -5272,8 +5277,8 @@ def _der_cable_laying_conditions(
         raw = {"set_name": raw}
     if not isinstance(raw, dict):
         return None, "Warunki ułożenia kabla SN muszą być nazwą zestawu albo obiektem opisu."
-    set_name = str(raw.get("set_name") or "").strip()
-    if not set_name:
+    set_name = nazwa_nadana(raw.get("set_name"))
+    if set_name is None:
         # Współczynniki BEZ nazwy zestawu nie mogą zostać cicho pominięte — projektant je
         # podał, więc milczące przyjęcie warunków katalogowych zmieniłoby jego dobór.
         if any(raw.get(pole) is not None for pole in ("f_grunt", "f_wiazka", "f_grupa")):
@@ -5368,8 +5373,8 @@ def _nn_cable_laying_conditions(
     if raw is None:
         return None, None
     if isinstance(raw, str):
-        set_name = raw.strip()
-        if not set_name or set_name == cable_derating.NAZWA_WARUNKI_KATALOGOWE:
+        set_name = nazwa_nadana(raw)
+        if set_name is None or set_name == cable_derating.NAZWA_WARUNKI_KATALOGOWE:
             # Warunki katalogowe = brak korekty; nie zaśmiecamy modelu domyślną
             # wartością (determinizm seedów, zachowanie dotychczasowe co do bitu).
             return None, None
@@ -5877,7 +5882,9 @@ def _add_converter_source_der_sn(
         if bool(mv_field_cfg.get("protection_relay", True))
         else []
     )
-    field_name = str(mv_field_cfg.get("field_name") or nazwa_pola_zrodlowego_sn(technology))
+    field_name = nazwa_nadana(mv_field_cfg.get("field_name")) or nazwa_pola_zrodlowego_sn(
+        technology
+    )
     field_spec = _build_field_spec(
         field_ref=field_ref,
         name=field_name,
@@ -6564,7 +6571,7 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": gen_ref,
-            "name": genset_spec.get("source_name") or "Agregat",
+            "name": nazwa_nadana(genset_spec.get("source_name")) or "Agregat",
             "bus_ref": bus_nn_ref,
             "gen_type": "synchronous",
             "p_mw": p_mw,
@@ -6628,7 +6635,7 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": ups_ref,
-            "name": ups_spec.get("source_name") or "UPS",
+            "name": nazwa_nadana(ups_spec.get("source_name")) or "UPS",
             "bus_ref": bus_nn_ref,
             "gen_type": "bess",
             "p_mw": p_mw,
@@ -6722,7 +6729,9 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     new_enm.setdefault("shunt_capacitors", []).append(
         {
             "ref_id": shunt_ref,
-            "name": payload.get("name") or catalog_type.name,
+            "name": nazwa_nadana(payload.get("name"))
+            or nazwa_nadana_pozycji_katalogu(catalog_type)
+            or opis_bez_nazwy("shunt_capacitors"),
             "bus_ref": bus_ref,
             "rated_mvar": rated_mvar,
             "rated_kv": rated_kv,
@@ -6832,7 +6841,7 @@ def add_load_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
     nowy_odbior: dict[str, Any] = {
         "ref_id": load_ref,
-        "name": payload.get("load_name") or "Odbiór",
+        "name": nazwa_nadana(payload.get("load_name")) or "Odbiór",
         "bus_ref": bus_ref,
         "p_mw": kw_na_mw(active_power_kw),
         "q_mvar": kvar_na_mvar(float(reactive_power_kvar)),
@@ -6983,7 +6992,9 @@ def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
 
     nowy_generator: dict[str, Any] = {
         "ref_id": gen_ref,
-        "name": payload.get("name") or payload.get("source_name") or "Generator synchroniczny",
+        "name": nazwa_nadana(payload.get("name"))
+        or nazwa_nadana(payload.get("source_name"))
+        or "Generator synchroniczny",
         "bus_ref": bus_ref,
         "p_mw": p_mw,
         "q_mvar": q_mvar_field,
@@ -7557,7 +7568,7 @@ def rename_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
         return _error_response(
             "Nie wskazano elementu, którego nazwa ma zostać zmieniona.", "rename.ref_missing"
         )
-    if not new_name:
+    if not jest_nazwa(new_name):
         return _error_response("Brak nowej nazwy.", "rename.name_missing")
     if legacy_field_collection is not None:
         return _error_legacy_field_write_disabled(enm, element_ref, legacy_field_collection)
@@ -7568,7 +7579,7 @@ def rename_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
 
     new_enm = kopia_graniczna_enm(enm)
     coll, idx = loc
-    new_enm[coll][idx]["name"] = new_name
+    new_enm[coll][idx]["name"] = nazwa_nadana(new_name)
 
     return _response(
         new_enm,
