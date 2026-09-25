@@ -65,7 +65,7 @@ Pełna klasyfikacja per zdolność i domenę: `docs/plan/MAPA_DOMKNIECIA_PRODUKT
 | `no_module` liczony jak gotowość (`calculation_readiness/service.py:91`); literał w 21 + 13 miejscach | synteza §0 p. 2 | **S-4** (W6-0) |
 | Trzy implementacje NC RfG (solver T01–T20, `checker.py` T1–T18, martwa wyspa kliencka) | synteza §0 p. 3 | **S-3** (W6-0) |
 | `k_sc = 1,1` jako domyślka dopuszczona do doboru/nastaw/dowodu; liczby zwarciowe z żądania jako dowód (`equipment-proof/pack`, koordynacja) | synteza §0 p. 4–5 | **S-2** (W6-0), OD-22 |
-| Dynamika = fasada (progi z opcji biegu; `stability_rms` bez sieci; `frt_hvrt` trajektoria = wejście); BESS bez stanu energii; brak QSTS; flicker w złej warstwie; brak EN 50160 | mapa §3 dom. 5/6, synteza §2 | **W6-1…W6-8** |
+| Dynamika = fasada (progi z opcji biegu — tor T1 SKASOWANY w AB-P1; `stability_rms` bez sieci — rdzeń B-01, kasacja wymaga zdjęcia wpisu z `scripts/rdzenie_b01.py`; `frt_hvrt` trajektoria = wejście); BESS bez stanu energii; brak QSTS; flicker w złej warstwie; brak EN 50160 | mapa §3 dom. 5/6, synteza §2 | **W6-1…W6-8** |
 | Zabezpieczenia poza modelem; brak 67/67N/21/87/25/50BF/grup/TRIP; brak relacji zabezpieczenie → chroniona gałąź | mapa dom. 4, synteza §1 p. 20 | W4 |
 | Uziemienie ×6, `meta.field_specs`, TT/IT bez fizyki, rozpływ niesymetryczny bez konsumenta | mapa dom. 1/7 | W5 |
 | SLD: semantyka w kliencie, trzy magazyny nadpisań | mapa dom. 8 | W7 |

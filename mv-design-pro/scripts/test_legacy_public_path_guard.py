@@ -2497,3 +2497,137 @@ def test_guard_accepts_current_repo_state_pakiet_l() -> None:
     """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo (bez monkeypatch)
     musi byc czysta PO kasacji karty AB-1a Pakiet L."""
     assert guard.check_pakiet_l_resurrection() == []
+
+
+# --- Karta AB-P1 (2026-09-24): tor T1 i druga obwiednia FRT ---------------------------------
+
+
+@pytest.mark.parametrize("sciezka", guard.ABP1_SCIEZKI_BACKEND)
+def test_guard_rejects_resurrected_abp1_backend_path(tmp_path, monkeypatch, sciezka) -> None:
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(src / sciezka / "nowy.py", "X_ZYWE = 1\n")
+
+    naruszenia = guard.check_abp1_dynamika_resurrection()
+    assert any(f"backend/src/{sciezka}" in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize("sciezka", guard.ABP1_SCIEZKI_FRONTEND)
+def test_guard_rejects_resurrected_abp1_frontend_path(tmp_path, monkeypatch, sciezka) -> None:
+    _, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    cel = fe / sciezka if sciezka.endswith(".json") else fe / sciezka / "EkranNowy.tsx"
+    _zapisz(cel, "{}\n")
+
+    naruszenia = guard.check_abp1_dynamika_resurrection()
+    assert any(f"frontend/src/{sciezka}" in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize("symbol", sorted(guard.ABP1_DEFINICJE_BACKEND))
+def test_guard_rejects_abp1_definition_under_other_path(tmp_path, monkeypatch, symbol) -> None:
+    """Definicja wraca pod INNA sciezka niz skasowana (np. do `application/analyses`)."""
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(src / "application" / "analyses" / "nowy_tor.py", _py_definicja(symbol))
+
+    naruszenia = guard.check_abp1_dynamika_resurrection()
+    assert any(f": {symbol} (" in n for n in naruszenia), naruszenia
+
+
+def test_guard_abp1_file_scoped_definition(tmp_path, monkeypatch) -> None:
+    """`_check_stability` zakazane w bramce gotowosci, dozwolone gdzie indziej."""
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(src / "analysis" / "ssci_stability" / "ocena.py", _py_definicja("_check_stability"))
+    assert guard.check_abp1_dynamika_resurrection() == []
+
+    _zapisz(
+        src / "application" / "calculation_readiness" / "service.py",
+        _py_definicja("_check_stability"),
+    )
+    naruszenia = guard.check_abp1_dynamika_resurrection()
+    assert any("_check_stability" in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize(
+    "kod",
+    [
+        'class ExecutionAnalysisType:\n    DYNAMIC_STABILITY = "X"\n',
+        "def f(t):\n    return t.DYNAMIC_STABILITY\n",
+        "DYNAMIC_STABILITY = 1\n",
+    ],
+)
+def test_guard_rejects_abp1_run_kind_identifier(tmp_path, monkeypatch, kod) -> None:
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(src / "domain" / "execution.py", kod)
+
+    naruszenia = guard.check_abp1_dynamika_resurrection()
+    assert any("DYNAMIC_STABILITY" in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize("napis", guard.ABP1_NAPISY)
+def test_guard_rejects_abp1_string_in_backend_code(tmp_path, monkeypatch, napis) -> None:
+    """Trasa/kod/proweniencja T1 jako literal w kodzie backendu (dekorator trasy,
+    klucz slownika) — nie tylko jako definicja."""
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(
+        src / "api" / "analysis_runs.py",
+        f'TRASY = {{"x": "/analysis-runs/{{run_id}}/results/{napis}"}}\n',
+    )
+
+    naruszenia = guard.check_abp1_dynamika_resurrection()
+    assert any("[resurrected-string]" in n and repr(napis) in n for n in naruszenia), naruszenia
+
+
+@pytest.mark.parametrize("napis", guard.ABP1_NAPISY + guard.ABP1_NAPISY_FRONTEND)
+def test_guard_rejects_abp1_pattern_in_frontend_code(tmp_path, monkeypatch, napis) -> None:
+    _, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(fe / "ui" / "study-cases" / "types.ts", f"export const RODZAJ = '{napis}';\n")
+
+    naruszenia = guard.check_abp1_dynamika_resurrection()
+    assert any("[resurrected-pattern]" in n and repr(napis) in n for n in naruszenia), naruszenia
+
+
+def test_guard_does_not_fire_on_abp1_names_in_comments_or_docstrings(tmp_path, monkeypatch) -> None:
+    """Dokstring/komentarz OPISUJACY kasacje nie jest naruszeniem (historia zostaje
+    czytelna), a dokstring klasy i funkcji tez jest dokstringiem."""
+    src, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    wszystko = " ".join(sorted(guard.ABP1_DEFINICJE_BACKEND) + list(guard.ABP1_NAPISY))
+    _zapisz(
+        src / "enm" / "canonical_analysis.py",
+        f'"""Skasowane w AB-P1: {wszystko}."""\n# {wszystko}\n'
+        f'class A:\n    """{wszystko}"""\n\n\ndef f():\n    """{wszystko}"""\n',
+    )
+    _zapisz(
+        fe / "ui" / "sld" / "v3" / "canvas" / "overlay.ts",
+        f"// {wszystko}\n/* {wszystko} stabilnosc_scena_ */\nexport const x = 1;\n",
+    )
+
+    assert guard.check_abp1_dynamika_resurrection() == []
+
+
+def test_guard_ignores_orphaned_pycache_only_directory_abp1(tmp_path, monkeypatch) -> None:
+    src, _ = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    pycache = src / "application" / "stability" / "__pycache__"
+    pycache.mkdir(parents=True)
+    (pycache / "dynamic_stability.cpython-311.pyc").write_bytes(b"\x00")
+
+    assert guard.check_abp1_dynamika_resurrection() == []
+
+
+def test_guard_accepts_clean_tree_without_abp1_resurrection(tmp_path, monkeypatch) -> None:
+    """Zywe sasiedztwo: kanoniczny bieg `dynamika_rms`, ekran `ui2/wyniki/dynamika`,
+    stabilnosc SSCI (`stabilnosc` jako klucz wyniku akademickiego) zostaja zielone."""
+    src, fe = _patch_pakiet_l_tree(monkeypatch, tmp_path)
+    _zapisz(
+        src / "domain" / "execution.py",
+        'class ExecutionAnalysisType:\n    DYNAMIKA_RMS = "DYNAMIKA_RMS"\n',
+    )
+    _zapisz(
+        src / "api" / "analysis_runs.py", 'TRASA = "/analysis-runs/{run_id}/results/dynamika"\n'
+    )
+    _zapisz(src / "api" / "v126.py", 'KLUCZ = "stabilnosc"\n')
+    _zapisz(fe / "ui2" / "wyniki" / "dynamika" / "api.ts", "export const T = 'DYNAMIKA_RMS';\n")
+
+    assert guard.check_abp1_dynamika_resurrection() == []
+
+
+def test_guard_accepts_current_repo_state_abp1() -> None:
+    """Integracyjny pin: bramka na PRAWDZIWYM drzewie repo musi byc czysta po karcie AB-P1."""
+    assert guard.check_abp1_dynamika_resurrection() == []

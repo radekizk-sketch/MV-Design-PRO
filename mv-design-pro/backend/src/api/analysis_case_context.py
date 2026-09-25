@@ -24,8 +24,9 @@ def _infer_case_kind(run: CanonicalRun) -> str:
         return "ZWARCIOWY_MAKS"
     if run.analysis_type == "phase_state_sn":
         return "STAN_FAZOWY_SN"
-    if run.analysis_type == "dynamic_stability":
-        return "PRACA_PO_ZAKLOCENIU"
+    if run.analysis_type == "dynamika_rms":
+        # Karta AB-P1: bieg czasowy RMS (tryb sieci) na punkcie pracy wskazanego rozpływu.
+        return "DYNAMIKA_CZASOWA"
     return "RAPORTOWY_BAZOWY"
 
 
@@ -53,8 +54,10 @@ def _infer_applicability_scope(run: CanonicalRun) -> list[str]:
         return ["SC", "REPORT"]
     if run.analysis_type == "phase_state_sn":
         return ["PHASE_STATE_SN", "REPORT"]
-    if run.analysis_type == "dynamic_stability":
-        return ["DYNAMIC_STABILITY", "AUTOMATION", "REPORT"]
+    if run.analysis_type == "dynamika_rms":
+        # Bez "REPORT": stopień dowodowy biegu (`UNVALIDATED_MODEL`) nie dopuszcza wyniku
+        # do dokumentu raportowego jako dowodu.
+        return ["DYNAMIKA_RMS"]
     return ["REPORT"]
 
 
@@ -69,8 +72,8 @@ def _build_assumptions(run: CanonicalRun) -> dict[str, Any]:
                 "phase_state_source_snapshot"
                 if run.analysis_type == "phase_state_sn"
                 else (
-                    "dynamic_fault_source_state"
-                    if run.analysis_type == "dynamic_stability"
+                    "punkt_pracy_rozplywu"
+                    if run.analysis_type == "dynamika_rms"
                     else "pf_source_nominal"
                 )
             )
@@ -82,7 +85,11 @@ def _build_assumptions(run: CanonicalRun) -> dict[str, Any]:
             else (
                 "phase_state_load_snapshot"
                 if run.analysis_type == "phase_state_sn"
-                else "sc_load_snapshot"
+                else (
+                    "punkt_pracy_rozplywu"
+                    if run.analysis_type == "dynamika_rms"
+                    else "sc_load_snapshot"
+                )
             )
         ),
         # CV-2 (H3): brak jawnej migawki lacznikowej = `None`, nie etykieta

@@ -56,7 +56,6 @@ MAPA_DZIEDZIN: Mapping[str, tuple[DziedzinaFizyki, ...] | PozaDziedzinami] = Map
         "PF_UNBALANCED": ("POWER_FLOW", "SEQUENCE_DOMAIN"),
         # Stan fazowy SN — wartości fazowe A/B/C w stanie ustalonym scenariusza radialnego.
         "PHASE_STATE_SN": ("POWER_FLOW", "SEQUENCE_DOMAIN"),
-        "DYNAMIC_STABILITY": ("RMS_DYNAMICS",),
         "DYNAMIKA_RMS": ("RMS_DYNAMICS",),
         # Koordynacja zabezpieczeń nadprądowych — czasy zadziałania z prądów zwarciowych.
         "PROTECTION": ("SHORT_CIRCUIT",),

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { COVERAGE_MATRIX } from '../coverageMatrix';
-import { hasRegisteredDebt } from '../technicalDebtRegistry';
 import { hasTechnicalIcon } from '../../icons/technicalIconRegistry';
 
 const REQUIRED_SCOPES = [
@@ -32,7 +31,7 @@ const REQUIRED_SCOPES = [
   'GS diagnostyczny',
   'FD wydajnościowy',
   'stan fazowy SN',
-  'stabilność dynamiczna',
+  'dynamika czasowa RMS',
   'zabezpieczenia',
   'automatyka SPZ/SZR/SCO/FDIR',
   'selektywność',
@@ -58,11 +57,9 @@ describe('coverage-matrix - zakres obowiązkowy', () => {
       expect(row.click).toBeTruthy();
       expect(row.result).toBeTruthy();
       expect(row.report).toBeTruthy();
-      expect(row.status).toBeTruthy();
-      if (row.status.startsWith('dług techniczny')) {
-        expect(row.debtCode).toBeTruthy();
-        expect(hasRegisteredDebt(row.debtCode!)).toBe(true);
-      }
+      // Typ `CoverageStatus` dopuszcza wyłącznie pełne pokrycie — wiersz z długiem technicznym
+      // (dawna gałąź `debtCode`) nie istnieje w kontrakcie, więc nie ma czego rejestrować.
+      expect(row.status).toBe('pełne pokrycie');
     }
   });
 });

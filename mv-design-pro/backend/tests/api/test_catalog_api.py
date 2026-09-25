@@ -184,8 +184,9 @@ def test_source_and_converter_catalog_api_expose_quality_metadata(
 
 def test_der_dynamic_profiles_endpoint_exposes_white_box_parameters(client: TestClient) -> None:
     """Karta FAB-L: `catalogs.ts::DER_DYNAMIC_MODEL_CATALOG` (nazwy pól zmyślone,
-    zero konsumenta solvera) zastąpiony jedynym źródłem — `der_dynamic` — z
-    parametrami, które faktycznie czyta `stability_rms`/`frt_hvrt`."""
+    zero konsumenta solvera) zastąpiony jedynym źródłem — `der_dynamic`. Karta AB-P1:
+    profil niesie komplet pól trybu sterowania, z którego materializacja wiązania
+    buduje kopię `Generator.dynamika` czytaną przez bieg `dynamika_rms`."""
     response = client.get("/api/catalog/der-dynamic-profiles")
     assert response.status_code == 200
     payload = response.json()
@@ -205,6 +206,13 @@ def test_der_dynamic_profiles_endpoint_exposes_white_box_parameters(client: Test
         assert item["tq_s"] > 0
         assert item["frt_response_time_ms"] > 0
         assert item["p_recovery_rate_pu_per_s"] > 0
+        # Pola trybu sterowania: GFL — PLL, regulator prądu, k FRT; GFM — tworzenie napięcia.
+        if item["control_mode"] == "grid_following":
+            assert item["pll_kp"] > 0 and item["current_ki"] > 0 and item["frt_k_factor"] >= 0
+            assert item["gfm_control"] is None
+        else:
+            assert item["gfm_control"] in ("droop", "vsm")
+            assert item["virtual_inertia_h_s"] is not None and item["pll_kp"] is None
 
     for item in wind_profiles:
         assert item["profile_id"]

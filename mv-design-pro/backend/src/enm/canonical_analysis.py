@@ -14,7 +14,6 @@ from analysis.obciazenie_galezi import (
     prad_zacisku_do_a,
     prad_zacisku_od_a,
 )
-from application.automation.trace import build_post_fault_topology_effect
 from application.contracts.resultset_dynamic_v2 import (
     ResultSetDynamicV2,
     dziedzina_fizyki_dynamiki,
@@ -25,22 +24,11 @@ from application.proof_engine.packs.phase_state_sn import (
     PhaseStateSNProofPack,
     PhaseStateSNProofPackInput,
 )
-from application.stability.dynamic_stability import (
-    WERSJA_KONTRAKTU_ECHA,
-    FaultClearScenario,
-    FaultClearSourceState,
-    echo_scenariusza_stabilnosci,
-)
-from application.stability.voltage_trajectory import (
-    TrajectoryGenerationParams,
-    generate_voltage_trajectory,
-)
 from application.v126_artifacts import (
     build_v126_proof_artifact,
     build_v126_report_artifact,
     wynik_v126_dla_powierzchni,
 )
-from domain.canonical_operations import READINESS_CODES
 from enm.adapter_dynamiki import (
     KLUCZ_BIEGU_ROZPLYWU,
     KOD_PUNKT_PRACY_BRAK,
@@ -65,7 +53,7 @@ from enm.assembler import (
     zloz_wejscie_rozplywu_niesymetrycznego,
     zloz_wejscie_zwarcia,
 )
-from enm.element_kind import rodzaj_elementu, zbuduj_indeks_rodzajow
+from enm.dynamika_z_katalogu import odmow_gdy_kopia_nieaktualna
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from enm.models import EnergyNetworkModel
@@ -526,17 +514,6 @@ def _phase_state_proof_ref(*, run: CanonicalRun, target_id: str) -> str:
     return f"proof:phase-state-sn:{hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
 
 
-def _dynamic_stability_proof_ref(*, run: CanonicalRun, scenario_id: str) -> str:
-    payload = {
-        "analysis_type": "dynamic_stability",
-        "input_hash": run.input_hash,
-        "run_id": str(run.id),
-        "scenario_id": scenario_id,
-    }
-    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return f"proof:dynamic-stability:{hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
-
-
 def _power_flow_proof_ref(*, run: CanonicalRun, solver_method: str) -> str:
     payload = {
         "analysis_type": "PF",
@@ -562,8 +539,6 @@ def _execution_analysis_type_for_run(run: CanonicalRun) -> str:
         return _execution_analysis_type_for_fault(_short_circuit_type_from_options(run.options))
     if run.analysis_type == "phase_state_sn":
         return "PHASE_STATE_SN"
-    if run.analysis_type == "dynamic_stability":
-        return "DYNAMIC_STABILITY"
     if run.analysis_type == "dynamika_rms":
         return "DYNAMIKA_RMS"
     if run.analysis_type == "protection_sn":
@@ -635,8 +610,6 @@ class CanonicalRun:
             return "short_circuit_sn"
         if self.analysis_type == "phase_state_sn":
             return "phase_state_sn"
-        if self.analysis_type == "dynamic_stability":
-            return "dynamic_stability"
         return self.analysis_type
 
     def to_execution_dict(self) -> dict[str, Any]:
@@ -1014,8 +987,6 @@ def create_run(
             raise ValueError("Zwarcie 1F/2F+Z wymaga kompletnej składowej zerowej Z0 w ENM")
     if analysis_type == "phase_state_sn" and not enm_liczony.buses:
         raise ValueError("Stan fazowy SN wymaga co najmniej jednej szyny w ENM")
-    if analysis_type == "dynamic_stability" and not (enm_liczony.sources or enm_liczony.generators):
-        raise ValueError("Stabilność dynamiczna wymaga co najmniej jednego źródła w ENM")
     if analysis_type == "protection_sn":
         _validate_protection_sc_reference(
             normalized_options=normalized_options,
@@ -1105,8 +1076,6 @@ def _wykonaj_analize_biegu(
         _execute_short_circuit(run, uow_factory=uow_factory)
     elif run.analysis_type == "phase_state_sn":
         _execute_phase_state_sn(run)
-    elif run.analysis_type == "dynamic_stability":
-        _execute_dynamic_stability(run)
     elif run.analysis_type == "dynamika_rms":
         _execute_dynamika_rms(run)
     elif run.analysis_type == "protection_sn":
@@ -1370,24 +1339,6 @@ def run_phase_state_now(
     return execute_run(run.id, uow_factory=uow_factory)
 
 
-def run_dynamic_stability_now(
-    *,
-    case_id: str,
-    klucz_twin: str,
-    project_id: str | None = None,
-    options: dict[str, Any] | None = None,
-    uow_factory: Callable[[], Any] | None = None,
-) -> CanonicalRun:
-    run = create_run(
-        case_id=case_id,
-        klucz_twin=klucz_twin,
-        analysis_type="dynamic_stability",
-        project_id=project_id,
-        options=options,
-    )
-    return execute_run(run.id, uow_factory=uow_factory)
-
-
 def _phase_value_from_options(
     options: dict[str, Any],
     key: str,
@@ -1433,17 +1384,6 @@ def _pick_phase_state_target(snapshot: dict[str, Any], options: dict[str, Any]) 
         if isinstance(raw_bus, dict) and raw_bus.get("ref_id"):
             return str(raw_bus["ref_id"])
     return "bus-phase-state"
-
-
-def _pick_dynamic_source_ref(snapshot: dict[str, Any], options: dict[str, Any]) -> str:
-    explicit = options.get("source_ref") or options.get("source_id")
-    if explicit:
-        return str(explicit)
-    for collection in ("sources", "generators"):
-        for raw_element in snapshot.get(collection) or []:
-            if isinstance(raw_element, dict) and raw_element.get("ref_id"):
-                return str(raw_element["ref_id"])
-    return "source-dynamic"
 
 
 # USUNIETE (karta W3-D, 2026-09-09): `_pick_compliance_source_ref`, `_execute_source_compliance`,
@@ -1596,206 +1536,6 @@ def _execute_phase_state_sn(run: CanonicalRun) -> None:
     run.power_flow_trace = None
 
 
-#: Kod gotowości odmowy biegu stabilności dynamicznej: brak KOMPLETU jawnych pól
-#: scenariusza wyłączenia zwarcia w opcjach biegu (karta W2 pkt 1, zero fabrykacji).
-#: Rejestr: `domain/canonical_operations.py::READINESS_CODES`.
-KOD_SCENARIUSZ_STABILNOSCI_NIEPELNY = "analysis.dynamic_stability_scenario_incomplete"
-
-#: Pola scenariusza `FaultClearScenario`/`FaultClearSourceState` + parametr
-#: trajektorii `recovery_time_constant_s`, KOMPLET jawny wymagany w opcjach
-#: biegu (`run.options`) — (klucz opcji, opis PL do komunikatu odmowy). Brak
-#: JAKIEGOKOLWIEK z nich = odmowa (patrz `_brakujace_pola_scenariusza_stabilnosci`).
-#: Zero wartości domyślnych: żadne z tych pól nie ma fallbacku w tym module.
-_POLA_SCENARIUSZA_STABILNOSCI_DYNAMICZNEJ: tuple[tuple[str, str], ...] = (
-    ("faulted_element_id", "element objęty zwarciem (faulted_element_id)"),
-    ("clearing_time_ms", "czas wyłączenia zwarcia w ms (clearing_time_ms)"),
-    ("cleared_by_element_ids", "elementy wyłączające zwarcie (cleared_by_element_ids)"),
-    ("pre_fault_angle_deg", "kąt mocy przed zwarciem w stopniach (pre_fault_angle_deg)"),
-    (
-        "during_fault_angle_deg",
-        "kąt mocy w czasie zwarcia w stopniach (during_fault_angle_deg)",
-    ),
-    ("post_fault_angle_deg", "kąt mocy po zwarciu w stopniach (post_fault_angle_deg)"),
-    ("post_fault_voltage_pu", "napięcie po zwarciu w p.u. (post_fault_voltage_pu)"),
-    (
-        "post_fault_frequency_pu",
-        "częstotliwość po zwarciu w p.u. (post_fault_frequency_pu)",
-    ),
-    (
-        "recovery_time_constant_s",
-        "stała czasowa odbudowy napięcia/częstotliwości w s (recovery_time_constant_s)",
-    ),
-)
-
-
-class OdmowaBieguStabilnosciDynamicznej(ValueError):
-    """Odmowa biegu stabilności dynamicznej z kodem gotowości kanonu (`READINESS_CODES`).
-
-    Ta sama droga odmowy co rozpływ przy dwóch źródłach sieciowych w jednej
-    wyspie (`enm/assembler.py::OdmowaWejsciaRozplywu` / `KOD_WIELE_ZRODEL_W_WYSPIE`):
-    `kod` trafia do komunikatu wyjątku, `execute_run` łapie go ogólnym
-    `except Exception`, zapisuje status FAILED i `error_message` niosący
-    komunikat PL wraz z kodem — bez liczenia i bez zapisu żadnego wyniku.
-    """
-
-    def __init__(self, kod: str, komunikat: str, *, pola: tuple[str, ...] = ()) -> None:
-        super().__init__(f"{komunikat} (kod gotowości: {kod})")
-        self.kod = kod
-        self.pola = pola
-
-
-def _brakujace_pola_scenariusza_stabilnosci(
-    options: Mapping[str, Any],
-) -> tuple[tuple[str, ...], str]:
-    """(klucze_brakujące, opis_pl) pól scenariusza NIEOBECNYCH w opcjach biegu.
-
-    "Brakujące" = klucz nieobecny, `None`, pusty string albo pusta sekwencja —
-    pole OBECNE, ale puste, nie jest jawnym scenariuszem tak samo jak pole
-    nieobecne (karta W2 pkt 1: KOMPLET jawnych pól, nie samo istnienie klucza).
-    """
-    brakujace_klucze: list[str] = []
-    brakujace_opisy: list[str] = []
-    for klucz, opis in _POLA_SCENARIUSZA_STABILNOSCI_DYNAMICZNEJ:
-        wartosc = options.get(klucz)
-        pusta = (
-            wartosc is None
-            or (isinstance(wartosc, str) and not wartosc.strip())
-            or (isinstance(wartosc, list | tuple) and len(wartosc) == 0)
-        )
-        if pusta:
-            brakujace_klucze.append(klucz)
-            brakujace_opisy.append(opis)
-    return tuple(brakujace_klucze), "; ".join(brakujace_opisy)
-
-
-#: Charakter szeregu czasowego toru — opis PRZY liczbach (widoczny dla projektanta), bo
-#: przebieg jest funkcją wartości wpisanych przez użytkownika, nie rozwiązaniem sieci.
-UWAGA_PRZEBIEGU_ZADANEGO_PL = (
-    "Przebieg zadany: funkcja wykładnicza odbudowy do napięcia i częstotliwości po zwarciu "
-    "wpisanych przez użytkownika, ze stałą czasową z opcji biegu — nie jest rozwiązaniem "
-    "sieci ani przebiegiem zmierzonym."
-)
-
-
-def _execute_dynamic_stability(run: CanonicalRun) -> None:
-    """Bieg toru „stabilność po wyłączeniu zwarcia" — ECHO scenariusza, BEZ werdyktu.
-
-    Kąty, napięcie i częstotliwość po zwarciu oraz czas wyłączenia wpisuje użytkownik;
-    tor nie rozwiązuje sieci, więc nie wydaje werdyktu STABLE/UNSTABLE i nie opowiada
-    zadziałania zabezpieczeń (uczciwość natychmiastowa 2026-09-23). Bieg zwraca: echo
-    scenariusza z oceną niewykonaną (`result.ocena`), efekt topologiczny ZADEKLAROWANY
-    w opcjach, przebieg zadany z jawną uwagą i ślad White Box z jednym krokiem echa.
-    """
-    snapshot = run.snapshot or {}
-    brakujace_klucze, opis_brakow = _brakujace_pola_scenariusza_stabilnosci(run.options)
-    if brakujace_klucze:
-        raise OdmowaBieguStabilnosciDynamicznej(
-            KOD_SCENARIUSZ_STABILNOSCI_NIEPELNY,
-            f"{READINESS_CODES[KOD_SCENARIUSZ_STABILNOSCI_NIEPELNY].message_pl} "
-            f"— brakuje: {opis_brakow}",
-            pola=brakujace_klucze,
-        )
-    source_ref = _pick_dynamic_source_ref(snapshot, run.options)
-    scenario = FaultClearScenario(
-        scenario_id=str(run.options.get("scenario_id") or f"dyn-{run.id}"),
-        faulted_element_id=str(run.options["faulted_element_id"]),
-        clearing_time_ms=float(run.options["clearing_time_ms"]),
-        cleared_by_element_ids=tuple(str(x) for x in run.options["cleared_by_element_ids"]),
-        source_state=FaultClearSourceState(
-            source_id=source_ref,
-            pre_fault_angle_deg=float(run.options["pre_fault_angle_deg"]),
-            during_fault_angle_deg=float(run.options["during_fault_angle_deg"]),
-            post_fault_angle_deg=float(run.options["post_fault_angle_deg"]),
-            post_fault_voltage_pu=float(run.options["post_fault_voltage_pu"]),
-            post_fault_frequency_pu=float(run.options["post_fault_frequency_pu"]),
-        ),
-    )
-    echo = echo_scenariusza_stabilnosci(scenario, nazwy=zbuduj_indeks_nazw(snapshot))
-    ocena = echo.ocena
-    topology_effect = build_post_fault_topology_effect(
-        source_id=echo.source_id,
-        faulted_element_id=echo.faulted_element_id,
-        cleared_by_element_ids=echo.cleared_by_element_ids,
-        isolated_element_ids=tuple(run.options.get("isolated_element_ids") or ()),
-        additionally_opened_element_ids=tuple(
-            run.options.get("additionally_opened_element_ids") or ()
-        ),
-        disconnected_source_ids=tuple(run.options.get("disconnected_source_ids") or ()),
-    )
-    proof_ref = _dynamic_stability_proof_ref(run=run, scenario_id=echo.scenario_id)
-    result_payload = echo.to_dict()
-    topology_payload = topology_effect.to_dict()
-    # Szereg czasowy U(t)/f(t) — istniejący, deterministyczny generator przebiegu
-    # (`application/stability/voltage_trajectory.py`) sparametryzowany scenariuszem
-    # WPISANYM przez użytkownika. To przebieg ZADANY, nie rozwiązanie sieci — niesie
-    # to jawna uwaga w odpowiedzi (`uwaga_pl`), czytana wprost przez ekran.
-    trajectory = generate_voltage_trajectory(
-        TrajectoryGenerationParams(
-            clearing_time_ms=scenario.clearing_time_ms,
-            post_fault_voltage_pu=scenario.source_state.post_fault_voltage_pu,
-            post_fault_frequency_pu=scenario.source_state.post_fault_frequency_pu,
-            recovery_time_constant_s=float(run.options["recovery_time_constant_s"]),
-        )
-    )
-    time_series_payload = {
-        "time_unit": "s",
-        "contract_version": WERSJA_KONTRAKTU_ECHA,
-        "uwaga_pl": UWAGA_PRZEBIEGU_ZADANEGO_PL,
-        "quantities": [
-            {"key": "voltage_pu", "label_pl": "Napięcie", "unit": "p.u."},
-            {"key": "frequency_pu", "label_pl": "Częstotliwość", "unit": "p.u."},
-        ],
-        "points": [point.to_dict() for point in trajectory],
-    }
-    # Karta S-1 (W6-0): stopien dowodowy WYPROWADZANY z rejestru dowodowego
-    # (`solver_input.provenance.classify_dynamic_capability`), nie zaszyty na
-    # sztywno. `dynamic_stability.fault_clear` jest UNVALIDATED_MODEL: katy
-    # wirnika i wielkosci pozwarciowe pochodza z opcji biegu — wynik NIE jest
-    # dowodem regulacyjnym.
-    ewidencja = classify_dynamic_capability("dynamic_stability.fault_clear")
-    proof_status = "complete" if ewidencja.regulatory_evidence_eligible else "incomplete"
-    reporting_status = "reportable" if ewidencja.regulatory_evidence_eligible else "not_reportable"
-    reporting_limitations: list[str] = (
-        [] if ewidencja.regulatory_evidence_eligible else [ewidencja.rationale_pl]
-    )
-    run.raw_result = {
-        "analysis_type": "dynamic_stability",
-        "scenario": scenario.to_dict(),
-        "result": result_payload,
-        "ocena": ocena,
-        "time_series": time_series_payload,
-        # Narracja automatyki SKASOWANA — zostaje wyłącznie efekt topologiczny
-        # ZADEKLAROWANY w opcjach biegu (echo), pod tym samym kluczem odpowiedzi.
-        "automation_trace": {"topology_effect": topology_payload, "events": []},
-        "topology_effect": topology_payload,
-        "proof_ref": proof_ref,
-        "proof_status": proof_status,
-        "proof_status_pl": ETYKIETY_UZASADNIENIA_PL[proof_status],
-        "reporting_status": reporting_status,
-        "reporting_status_pl": ETYKIETY_RAPORTOWALNOSCI_PL[reporting_status],
-        "dopuszczalnosc_raportowa": ewidencja.regulatory_evidence_eligible,
-        "reporting_limitations": reporting_limitations,
-        "evidence": ewidencja.to_dict(),
-    }
-    run.white_box_trace = [
-        {
-            "step": 1,
-            "key": "SCENARIUSZ_WPISANY",
-            "title": (
-                "Echo scenariusza wpisanego przez użytkownika. " + ocena["wyjasnienie"]["zdanie_pl"]
-            ),
-            "target_id": echo.source_id,
-            "element_id": echo.faulted_element_id,
-            "method_basis": "DYNAMIC_STABILITY_FAULT_CLEAR_ECHO_V2",
-            "result": result_payload,
-            "proof_ref": proof_ref,
-            "proof_status": proof_status,
-            "reporting_status": reporting_status,
-        }
-    ]
-    run.power_flow_trace = None
-
-
 #: Identyfikator zdolności dowodowej biegu czasowego w rejestrze proweniencji
 #: (`solver_input/provenance.py`). Stopień dowodowy WYNIKU bierze się STAMTĄD —
 #: solver, który sam sobie nadaje stopień, jest dokładnie tym, czego zakazuje
@@ -1876,6 +1616,9 @@ def _execute_dynamika_rms(run: CanonicalRun) -> None:
     # wyprzedzenia projektant dostałby komunikat mapowania zamiast kodu biegu
     # czasowego. Ten sam predykat, co bramka gotowości.
     odmow_gdy_braki_modelu(EnergyNetworkModel.model_validate(snapshot))
+    # Karta AB-P1: kopia `Generator.dynamika` z wiązania katalogowego musi być równa
+    # materializacji tego wiązania — ten sam predykat, co bramka gotowości `dynamika_rms`.
+    odmow_gdy_kopia_nieaktualna(snapshot)
     wejscie = zloz_wejscie_dynamiki(
         snapshot,
         run.options or {},
@@ -3337,6 +3080,48 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                 ],
             }
         )
+    if run.analysis_type == "dynamika_rms":
+        # Karta AB-P1: raport biegu czasowego niesie zdarzenia WYKONANE (ze skutkami
+        # topologicznymi), przekroczenia progów detektorów scenariusza i metryki rdzenia — szeregi czasowe zostają poza raportem
+        # (PERF-SC-50: osobna tabela, odczyt na żądanie).
+        tables.extend(
+            [
+                {
+                    "table_id": "dynamika_zdarzenia",
+                    "label_pl": "Zdarzenia wykonane biegu czasowego",
+                    "row_count": len(raw_result.get("zdarzenia_wykonane") or []),
+                    "columns": [
+                        {"key": "t_wykonany_s", "label_pl": "Chwila", "unit": "s"},
+                        {"key": "rodzaj", "label_pl": "Rodzaj zdarzenia"},
+                        {"key": "ref", "label_pl": "Element"},
+                        {"key": "obszary_odciete", "label_pl": "Szyny beznapięciowe"},
+                    ],
+                },
+                {
+                    "table_id": "dynamika_przekroczenia",
+                    "label_pl": "Przekroczenia progów detektorów (bez działania na sieć)",
+                    "row_count": len(raw_result.get("przekroczenia") or []),
+                    "columns": [
+                        {"key": "t_s", "label_pl": "Chwila", "unit": "s"},
+                        {"key": "dozor", "label_pl": "Detektor"},
+                        {"key": "wielkosc", "label_pl": "Wielkość"},
+                        {"key": "prog", "label_pl": "Próg"},
+                        {"key": "kierunek", "label_pl": "Kierunek"},
+                    ],
+                },
+                {
+                    "table_id": "dynamika_metryki",
+                    "label_pl": "Metryki przebiegu",
+                    "row_count": len(raw_result.get("metryki") or []),
+                    "columns": [
+                        {"key": "klucz", "label_pl": "Metryka"},
+                        {"key": "wartosc", "label_pl": "Wartość"},
+                        {"key": "jednostka", "label_pl": "Jednostka"},
+                        {"key": "element_ref", "label_pl": "Element"},
+                    ],
+                },
+            ]
+        )
     if run.analysis_type == "phase_state_sn":
         tables.append(
             {
@@ -3356,55 +3141,6 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                     {"key": "proof_status", "label_pl": "Status uzasadnienia"},
                 ],
             }
-        )
-    if run.analysis_type == "dynamic_stability":
-        tables.extend(
-            [
-                {
-                    "table_id": "dynamic_stability",
-                    "label_pl": "Stabilność dynamiczna",
-                    "row_count": 1 if raw_result.get("result") else 0,
-                    # Echo scenariusza wpisanego przez użytkownika + status oceny
-                    # (NIE_OCENIONO) — bez marginesu, wychylenia i wskaźnika, które
-                    # były składowymi werdyktu progowego (uczciwość natychmiastowa).
-                    "columns": [
-                        {"key": "source_id", "label_pl": "Zrodlo"},
-                        {"key": "faulted_element_id", "label_pl": "Element zakłócenia"},
-                        {"key": "status", "label_pl": "Status oceny"},
-                        {"key": "clearing_time_ms", "label_pl": "Czas wyłączenia", "unit": "ms"},
-                        {"key": "pre_fault_angle_deg", "label_pl": "Kąt przed", "unit": "deg"},
-                        {
-                            "key": "during_fault_angle_deg",
-                            "label_pl": "Kąt w czasie",
-                            "unit": "deg",
-                        },
-                        {"key": "post_fault_angle_deg", "label_pl": "Kąt po", "unit": "deg"},
-                        {
-                            "key": "post_fault_voltage_pu",
-                            "label_pl": "Napięcie po zakłóceniu",
-                            "unit": "pu",
-                        },
-                        {
-                            "key": "post_fault_frequency_pu",
-                            "label_pl": "Częstotliwość po zakłóceniu",
-                            "unit": "pu",
-                        },
-                    ],
-                },
-                {
-                    "table_id": "automation_trace",
-                    "label_pl": "Ślad automatyki (brak zdarzeń — zabezpieczenia niesymulowane)",
-                    "row_count": len(
-                        (raw_result.get("automation_trace") or {}).get("events") or []
-                    ),
-                    "columns": [
-                        {"key": "event_seq", "label_pl": "Lp."},
-                        {"key": "event_type", "label_pl": "Typ zdarzenia"},
-                        {"key": "element_id", "label_pl": "Element"},
-                        {"key": "detail", "label_pl": "Opis"},
-                    ],
-                },
-            ]
         )
     tables.append(
         {
@@ -4172,104 +3908,6 @@ def build_phase_state_results(run: CanonicalRun) -> dict[str, Any]:
     return {"run_id": str(run.id), "rows": rows}
 
 
-def build_dynamic_stability_results(run: CanonicalRun) -> dict[str, Any]:
-    if run.analysis_type != "dynamic_stability":
-        return {"run_id": str(run.id), "rows": []}
-    result = (run.raw_result or {}).get("result") or {}
-    if not result:
-        return {"run_id": str(run.id), "rows": []}
-    # Karta F-K4 faza 3: wynik niesie IDENTYFIKATORY elementow, ale nie ich RODZAJ,
-    # a bez rodzaju warstwa prezentacji nie moze zaznaczyc elementu w modelu (petla
-    # decyzji „od wyniku do przyczyny" byla przez to niemozliwa). Rozstrzygamy rodzaj
-    # ze snapshotu biegu — addytywnie, bez dotykania kontraktu solvera. Brak wpisu w
-    # snapshocie daje None, nigdy rodzaj domyslny (zero zgadywania).
-    # `getattr`, bo widok jest wolany takze na atrapach biegu w testach kontraktu
-    # (SimpleNamespace bez snapshotu) — brak snapshotu daje pusty indeks, czyli None.
-    indeks_rodzajow = zbuduj_indeks_rodzajow(getattr(run, "snapshot", None))
-    # Karta #144: ta sama droga dla NAZW — wiersz niesie nazwę źródła i elementu objętego
-    # zwarciem z modelu biegu, identyfikatory zostają w `source_id`/`faulted_element_id`.
-    indeks_nazw = zbuduj_indeks_nazw(getattr(run, "snapshot", None))
-    return {
-        "run_id": str(run.id),
-        "rows": [
-            {
-                **result,
-                "source_kind": rodzaj_elementu(result.get("source_id"), indeks=indeks_rodzajow),
-                "faulted_element_kind": rodzaj_elementu(
-                    result.get("faulted_element_id"), indeks=indeks_rodzajow
-                ),
-                "source_name": nazwa_po_identyfikatorze(
-                    result.get("source_id"), indeks=indeks_nazw
-                ),
-                "faulted_element_name": nazwa_po_identyfikatorze(
-                    result.get("faulted_element_id"), indeks=indeks_nazw
-                ),
-                "proof_ref": (run.raw_result or {}).get("proof_ref"),
-                "proof_status": (run.raw_result or {}).get("proof_status"),
-                "reporting_status": (run.raw_result or {}).get("reporting_status"),
-                **etykiety_raportowe_pl(run.raw_result or {}),
-                "dopuszczalnosc_raportowa": (run.raw_result or {}).get(
-                    "dopuszczalnosc_raportowa", True
-                ),
-                "reporting_limitations": (run.raw_result or {}).get("reporting_limitations", []),
-                "evidence": (run.raw_result or {}).get("evidence"),
-            }
-        ],
-    }
-
-
-def build_dynamic_stability_time_series(run: CanonicalRun) -> dict[str, Any]:
-    """Szereg czasowy przebiegu stabilności (U(t)/f(t)) — na żądanie.
-
-    Zwraca przebieg zapisany w `raw_result.time_series` dla biegów, które go
-    posiadają. Starsze biegi (sprzed wystawienia szeregu) → `has_time_series=False`
-    z pustym przebiegiem (uczciwy stan zerowy w UI). Nie wchodzi do domyślnej
-    odpowiedzi wyników — endpoint dedykowany, by nie pompować rozmiaru payloadu.
-    """
-    empty: dict[str, Any] = {
-        "run_id": str(run.id),
-        "has_time_series": False,
-        "time_unit": "s",
-        "quantities": [],
-        "points": [],
-    }
-    if run.analysis_type != "dynamic_stability":
-        return empty
-    time_series = (run.raw_result or {}).get("time_series")
-    if not time_series or not time_series.get("points"):
-        return empty
-    return {
-        "run_id": str(run.id),
-        "has_time_series": True,
-        "time_unit": time_series.get("time_unit", "s"),
-        "contract_version": time_series.get("contract_version"),
-        # Charakter przebiegu (zadany, nie rozwiązanie sieci) — przy liczbach, z backendu.
-        "uwaga_pl": time_series.get("uwaga_pl"),
-        "quantities": list(time_series.get("quantities") or []),
-        "points": list(time_series.get("points") or []),
-    }
-
-
-def build_automation_trace_results(run: CanonicalRun) -> dict[str, Any]:
-    """Ślad automatyki biegu `dynamic_stability` — BEZ narracji zdarzeń.
-
-    Tor nie symuluje zabezpieczeń, więc zdarzeń „zwarcie wyłączone przez
-    zabezpieczenia" nie ma skąd wziąć (narracja z czasu wpisanego przez użytkownika
-    skasowana 2026-09-23): `rows` jest puste, obok idzie efekt topologiczny
-    ZADEKLAROWANY w opcjach biegu i ocena niewykonana z wyjaśnieniem.
-    """
-    if run.analysis_type != "dynamic_stability":
-        return {"run_id": str(run.id), "rows": []}
-    raw = run.raw_result or {}
-    trace = raw.get("automation_trace") or {}
-    return {
-        "run_id": str(run.id),
-        "topology_effect": trace.get("topology_effect"),
-        "rows": [],
-        "ocena": raw.get("ocena"),
-    }
-
-
 def _amps_to_ka(value: float | None) -> float | None:
     if value is None:
         return None
@@ -4767,27 +4405,6 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
         global_results = {
             "count": len(element_results),
             "analysis_type": "phase_state_sn",
-            "proof_status": (run.raw_result or {}).get("proof_status"),
-            "reporting_status": (run.raw_result or {}).get("reporting_status"),
-        }
-    elif run.analysis_type == "dynamic_stability":
-        stability_rows = build_dynamic_stability_results(run).get("rows", [])
-        for row in stability_rows:
-            element_results.append(
-                {
-                    "element_ref": row.get("source_id") or row.get("faulted_element_id"),
-                    "element_type": "Source",
-                    "solver_ref": row.get("scenario_id"),
-                    "values": row,
-                    "proof_ref": row.get("proof_ref"),
-                    "proof_status": row.get("proof_status"),
-                    "reporting_status": row.get("reporting_status"),
-                }
-            )
-        global_results = {
-            "count": len(element_results),
-            "analysis_type": "dynamic_stability",
-            "automation_event_count": len(build_automation_trace_results(run).get("rows", [])),
             "proof_status": (run.raw_result or {}).get("proof_status"),
             "reporting_status": (run.raw_result or {}).get("reporting_status"),
         }

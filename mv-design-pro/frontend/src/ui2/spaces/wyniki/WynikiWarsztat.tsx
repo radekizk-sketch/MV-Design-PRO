@@ -60,7 +60,7 @@ import { EkranEstymacji } from '../../wyniki/estymacja';
 import { EkranSkladowych } from '../../wyniki/skladowe';
 import { EkranSsci } from '../../wyniki/ssci';
 import { EkranAnalizAkademickich } from '../../wyniki/akademickie';
-import { EkranStabilnosci } from '../../wyniki/stabilnosc';
+import { EkranDynamiki } from '../../wyniki/dynamika';
 import { EkranStanuFazowego } from '../../wyniki/stan-fazowy';
 import { EkranOdbioru } from '../../wyniki/odbior';
 import { EkranPorownania } from '../../wyniki/porownanie';
@@ -156,6 +156,7 @@ export function WynikiWarsztat({
   const [elementDowodu, setElementDowodu] = useState<string | null>(null);
   const [modulNcRfg, setModulNcRfg] = useState<string | null>(null);
   const [elementRozplywu, setElementRozplywu] = useState<string | null>(null);
+  const [elementDynamiki, setElementDynamiki] = useState<string | null>(null);
   useEffect(() => {
     if (!wynikiTab) return;
     // V126-JEZYK: deep-link nie może obejść bramy trybu — żądanie zakładki
@@ -178,6 +179,11 @@ export function WynikiWarsztat({
         // P-1 (akcja SLD „Pokaż zgodność przyłączeniową"): kontekst modułu
         // wytwórczego — macierz pre-selekcjonuje kolumnę wskazanego DER.
         setModulNcRfg(wynikiTabElement);
+      }
+      if (wynikiTab === 'dynamika') {
+        // Karta AB-P1 (akcja naprawcza `der.dynamika_missing`, fokus `dynamic_model_ref`):
+        // kontekst = wytwórca, którego wiersz modelu dynamicznego ekran wyróżnia.
+        setElementDynamiki(wynikiTabElement ?? null);
       }
       if (wynikiTab === 'rozplyw' && wynikiTabElement) {
         // D-2 (akcja SLD „Pokaż wyniki"): kontekst elementu klikniętego na
@@ -352,7 +358,11 @@ export function WynikiWarsztat({
         )}
         {zakladka === 'skladowe' && <EkranSkladowych />}
         {zakladka === 'stan-fazowy' && <EkranStanuFazowego />}
-        {zakladka === 'stabilnosc' && <EkranStabilnosci />}
+        {/* Karta AB-P1: bieg kanoniczny dynamiki czasowej RMS (tryb sieci, bez werdyktu);
+            kontekst deep-linku = wytwórca wskazany akcją naprawczą `der.dynamika_missing`. */}
+        {zakladka === 'dynamika' && (
+          <EkranDynamiki trybZaawansowania={trybZaawansowania} wskazanyElement={elementDynamiki} />
+        )}
         {zakladka === 'zwarcia' && (
           <EkranZwarc trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}

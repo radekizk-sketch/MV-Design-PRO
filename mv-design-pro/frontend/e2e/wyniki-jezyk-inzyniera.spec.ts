@@ -723,6 +723,11 @@ const SCENY: Record<string, Prowadzenie> = {
   diagnoza: zwykla,
   'wyniki-warsztat': zwykla,
   akademickie: zwykla,
+  // Karta AB-P1: ekran dynamiki czasowej RMS (E-32) zastąpił ekran toru T1 stabilności —
+  // wynik biegu kanonicznego (oceny, oś zdarzeń, przekroczenia, wielkości, przebiegi)
+  // i wariant z odmową modelu przed biegiem (brak modelu dynamicznego źródła).
+  'wyniki-dynamika': zwykla,
+  'wyniki-dynamika-brak': zwykla,
 };
 
 /**
@@ -732,10 +737,6 @@ const SCENY: Record<string, Prowadzenie> = {
  * mierzona, albo tu nazwana.
  */
 const SCENY_POZA_KLASA: Readonly<Record<string, string>> = {
-  'wyniki-stabilnosc':
-    'ekran toru T1 stabilności dynamicznej kasowany i zastępowany nowym modułem dynamiki '
-    + '(dyrektywa właściciela: rdzeń dynamiki w produkcji) — nowy moduł wchodzi '
-    + 'do pomiaru razem ze swoją sceną',
   pulpit: 'pulpit projektu (etap E1) — przegląd pracy, nie ekran wyniku',
   swiezosc: 'pasek aktywnego przypadku powłoki — znacznik świeżości, nie ekran wyniku',
   dokumentacja: 'centrum dokumentów projektu — wytwarzanie dokumentów, nie ekran wyniku',

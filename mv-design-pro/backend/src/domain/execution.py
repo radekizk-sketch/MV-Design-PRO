@@ -82,7 +82,6 @@ class ExecutionAnalysisType(StrEnum):
     #: Człon ADDYTYWNY — istniejące wartości i ich kolejność nietknięte.
     PF_UNBALANCED = "PF_UNBALANCED"
     PHASE_STATE_SN = "PHASE_STATE_SN"
-    DYNAMIC_STABILITY = "DYNAMIC_STABILITY"
     PROTECTION = "PROTECTION"
     #: Rodzaj biegu `dynamika_rms` (karta W6-1 rejestracja, W6-2 rdzeń DAE,
     #: W6-3 urządzenia i adapter). Wykonanie kończy się WYNIKIEM

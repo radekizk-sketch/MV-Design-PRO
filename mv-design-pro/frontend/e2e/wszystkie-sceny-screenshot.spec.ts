@@ -72,7 +72,7 @@ const SCENY = [
   'oltc', 'pole-nn', 'pomiar', 'porownanie', 'przekaznik', 'przypisanie-katalogu', 'pulpit',
   'pulpit-oze',
   'rozplyw', 'sila-sieci', 'slup-odgalezny', 'ssci', 'swiezosc', 'uwaga', 'walidacja',
-  'wniosek', 'wniosek-braki', 'wyniki-skladowe', 'wyniki-stabilnosc', 'wyniki-stan-fazowy',
+  'wniosek', 'wniosek-braki', 'wyniki-skladowe', 'wyniki-dynamika', 'wyniki-dynamika-brak', 'wyniki-stan-fazowy',
   'wyniki-zbieznosc', 'zksn',
   'zrodlo', 'zrodlo-dyspozycyjne', 'zwarcia', 'zwarcia-rozplyw',
 ].filter((s) => !JUZ_KADROWANE.has(s));
@@ -135,6 +135,15 @@ test.describe('sceny:screenshot', () => {
             'ok',
           );
           await expect(badge).toContainText('aktualne');
+        }
+        if (scena === 'wyniki-dynamika') {
+          // Karta AB-P1: wynik biegu dynamiki niesie znacznik świeżości wspólnej derywacji
+          // (kontrakt przebiegu rew. 1 = migawka rew. 1 → „aktualne").
+          const badge = page.getByTestId('mvd-dynamika-swiezosc').locator('[data-mvd-fresh]');
+          await expect(badge, 'scena wyniki-dynamika: brak znacznika świeżości').toHaveAttribute(
+            'data-mvd-fresh',
+            'ok',
+          );
         }
         if (scena === 'cieplna') {
           const badge = page.locator('[data-mvd-fresh="stale"]').first();

@@ -1057,8 +1057,8 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
     # resolvera profili dynamicznych (`network_model/catalog/der_dynamic/
     # resolver.py`) ALBO resolver zwrócił `source="brak"` (brak jawnego
     # wskazania — kasacja dawnego cichego fallbacku do profilu domyślnego,
-    # W6-1) — BLOKUJE stabilność RMS/FRT-HVRT, bo solver nie ma z czego
-    # zbudować modelu dynamicznego.
+    # W6-1) — BLOKUJE FRT-HVRT, bo tor nie ma z czego zbudować modelu dynamicznego
+    # (bramka skasowanego solvera stabilności RMS zniknęła w karcie AB-P1).
     "der.dynamic_profile_missing": ReadinessCodeSpec(
         code="der.dynamic_profile_missing",
         area=ReadinessArea.GENERATORS,
@@ -1066,16 +1066,20 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl=(
             "Rodzaj źródła DER nie ma mapowania na profil dynamiczny, albo profil "
-            "nie został wskazany jawnie — stabilność RMS i FRT/LVRT/HVRT nie mogą "
-            "zbudować modelu tego generatora"
+            "nie został wskazany jawnie — FRT/LVRT/HVRT nie może zbudować modelu "
+            "tego generatora"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "gen_type"},
     ),
     # Karta W6-1 SS0 p.3/p.7: brak kompletnego bloku `Generator.dynamika`
     # (kontrakt kanoniczny `enm.dynamika_modele.ParametryDynamiczne`) dla
     # ŹRÓDŁA DYNAMICZNEGO dowolnej rodziny (maszyna synchroniczna, GFL, GFM,
-    # magazyn, turbina wiatrowa) — używane przez readiness `stability`
-    # (maszyny synchroniczne, P0-10) i `dynamika_rms` (wszystkie rodziny).
+    # magazyn, turbina wiatrowa) — używane przez readiness `dynamika_rms`
+    # (wszystkie rodziny). Karta AB-P1: nawigacja prowadzi do WIĄZANIA z katalogowym
+    # modelem dynamicznym na ekranie dynamiki (`ui2/wyniki/dynamika`, sekcja modeli
+    # źródeł) — tam akcja naprawcza wykonuje `set_der_catalog_bindings`, a operacja
+    # materializuje kopię bloku (`enm.dynamika_z_katalogu`). Dawny cel
+    # `focus: "dynamika"` w inspektorze nie miał obsługi w interfejsie.
     # Zastępuje skasowany WARNING `der.dynamic_profile_default`: pod nowym
     # kontraktem albo blok jest kompletny (z proweniencją), albo go nie ma —
     # nie ma stanu pośredniego "podstawiono domyślny".
@@ -1088,7 +1092,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Brak bloku parametrów dynamicznych (Generator.dynamika) dla tego "
             "źródła — obliczenia czasowe nie mogą zbudować modelu dynamicznego"
         ),
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "dynamika"},
+        fix_navigation={"panel": "analizy", "tab": "dynamika", "focus": "dynamic_model_ref"},
     ),
     # Karta FAB-D2 (D3): Q generatora nieznany i niewyprowadzalny z jawnego
     # Q-set-pointu karty katalogowej — 0 Mvar podstawione za brak byłoby
@@ -2554,30 +2558,6 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.INFO,
         message_pl="Agregat nie ma określonego rodzaju paliwa",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "fuel_type"},
-    ),
-    # Karta W2 pkt 1 (zero fabrykacji — uczciwość ekranów, 2026-09-09): bieg
-    # stabilności dynamicznej (`enm/canonical_analysis.py::_execute_dynamic_stability`)
-    # liczył werdykt STABLE/UNSTABLE ze scenariusza zaszytego w kodzie (kąty
-    # 10/75/28°, napięcie 0,97 p.u., częstotliwość 0,99 p.u., czas wyłączenia
-    # 120 ms, stała czasowa odbudowy τ=0,3 s), gdy opcje biegu ich nie niosły —
-    # inżynier nie widział, że ocena dotyczy fikcyjnego scenariusza, nie jego
-    # sieci. Ta sama droga odmowy co `source.multiple_grid_sources_in_island`:
-    # brak KOMPLETU jawnych pól scenariusza w opcjach biegu = odmowa tym kodem,
-    # przechwycona przez ogólny `except Exception` w `execute_run` (status
-    # FAILED), zero wartości domyślnych podstawionych za brak.
-    "analysis.dynamic_stability_scenario_incomplete": ReadinessCodeSpec(
-        code="analysis.dynamic_stability_scenario_incomplete",
-        area=ReadinessArea.ANALYSIS,
-        priority=2,
-        level=ReadinessLevel.BLOCKER,
-        message_pl=(
-            "Ocena progowa stabilności dynamicznej wymaga jawnego scenariusza wyłączenia "
-            "zwarcia (element zwarty, czas wyłączenia, elementy wyłączające, kąty mocy "
-            "przed/w czasie/po zwarciu, napięcie i częstotliwość po zwarciu, stała czasowa "
-            "odbudowy) — podaj komplet pól w opcjach biegu, solver nie ma dla nich wartości "
-            "domyślnych"
-        ),
-        fix_navigation={"panel": "analizy", "tab": "stabilnosc"},
     ),
     # Decyzja O-51 (klasa P9, miejsce 12): pomiar mocy gałęzi niesie zacisk, na którym go
     # wykonano (`od` / `do`) — gałąź z przekładnią albo susceptancją ma na końcach inne

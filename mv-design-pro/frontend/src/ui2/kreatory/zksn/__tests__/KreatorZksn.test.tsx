@@ -62,8 +62,11 @@ vi.mock('../../../../ui/catalog/api', () => ({
 }));
 
 async function pick(id = 'zk-2') {
+  // Czekamy na OPCJĘ wariantu, nie tylko na listę: katalog ładuje się asynchronicznie, więc
+  // lista bywa w DOM przed pozycjami (wyścig widoczny pod obciążeniem pełnego biegu vitest).
   await waitFor(() => {
-    expect(screen.getByTestId('mvd-kreator-zksn-katalog')).toBeInTheDocument();
+    const lista = screen.getByTestId('mvd-kreator-zksn-katalog') as HTMLSelectElement;
+    expect([...lista.options].map((o) => o.value)).toContain(id);
   });
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-zksn-katalog'), id);
 }

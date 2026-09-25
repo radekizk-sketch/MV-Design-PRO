@@ -16,11 +16,8 @@ from api.analysis_run_exports import (
 from api.canonical_run_views import (
     build_analysis_run_detail,
     build_analysis_run_summary,
-    build_automation_trace_results_response,
     build_branch_results_response,
     build_bus_results_response,
-    build_dynamic_stability_results_response,
-    build_dynamic_stability_time_series_response,
     build_dynamika_results_response,
     build_dynamika_time_series_response,
     build_extended_trace_response,
@@ -808,20 +805,6 @@ def get_power_flow_unbalanced_results(run_id: UUID) -> dict[str, Any]:
     )
 
 
-@router.get("/analysis-runs/{run_id}/results/dynamic-stability")
-def get_dynamic_stability_results(run_id: UUID) -> dict[str, Any]:
-    return canonicalize_json(
-        build_dynamic_stability_results_response(_require_canonical_run(run_id))
-    )
-
-
-@router.get("/analysis-runs/{run_id}/results/dynamic-stability/time-series")
-def get_dynamic_stability_time_series(run_id: UUID) -> dict[str, Any]:
-    return canonicalize_json(
-        build_dynamic_stability_time_series_response(_require_canonical_run(run_id))
-    )
-
-
 @router.get("/analysis-runs/{run_id}/results/dynamika")
 def get_dynamika_results(run_id: UUID) -> dict[str, Any]:
     """Metadane wyniku `dynamika_rms` (karta W6-1) — BEZ próbek szeregów
@@ -848,13 +831,6 @@ def get_dynamika_time_series(
         return canonicalize_json(build_dynamika_time_series_response(run, klucze))
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-
-
-@router.get("/analysis-runs/{run_id}/results/automation-trace")
-def get_automation_trace_results(run_id: UUID) -> dict[str, Any]:
-    return canonicalize_json(
-        build_automation_trace_results_response(_require_canonical_run(run_id))
-    )
 
 
 @router.get("/analysis-runs/{run_id}/results/trace")

@@ -1044,182 +1044,10 @@ def test_phase_state_sn_run_exposes_canonical_results_and_trace(client: TestClie
     assert trace_payload.json()["white_box_trace"][0]["proof_status"] == "complete"
 
 
-def test_dynamic_stability_run_exposes_results_and_automation_trace(client: TestClient) -> None:
-    case_id = _nowy_przypadek(client)
-    _seed_power_flow_enm(client, case_id)
-
-    create_run = client.post(
-        f"/api/execution/study-cases/{case_id}/runs",
-        json={
-            "analysis_type": "DYNAMIC_STABILITY",
-            "solver_input": {
-                "scenario_id": "dyn-api-1",
-                "source_ref": "src-grid",
-                "faulted_element_id": "branch-load",
-                "cleared_by_element_ids": ["cb-a", "cb-b"],
-                "clearing_time_ms": 120.0,
-                "pre_fault_angle_deg": 10.0,
-                "during_fault_angle_deg": 75.0,
-                "post_fault_angle_deg": 28.0,
-                "post_fault_voltage_pu": 0.97,
-                "post_fault_frequency_pu": 0.99,
-                "recovery_time_constant_s": 0.3,
-                "isolated_element_ids": ["load-1"],
-            },
-        },
-    )
-    assert create_run.status_code == 201
-    run_id = create_run.json()["id"]
-
-    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
-    assert execute_run.status_code == 200
-    assert execute_run.json()["analysis_type"] == "DYNAMIC_STABILITY"
-
-    result_set = client.get(f"/api/execution/runs/{run_id}/results")
-    assert result_set.status_code == 200
-    assert result_set.json()["global_results"]["analysis_type"] == "dynamic_stability"
-
-    stability = client.get(f"/api/analysis-runs/{run_id}/results/dynamic-stability")
-    assert stability.status_code == 200
-    stability_payload = stability.json()
-    assert stability_payload["analysis_case_context"]["rodzaj_przypadku"] == "PRACA_PO_ZAKLOCENIU"
-    # Zmiana kanonu (uczciwość natychmiastowa 2026-09-23): wiersz to echo scenariusza
-    # z rekordem oceny NIE_OCENIONO (dawniej werdykt „STABLE" z kątów wpisanych ręcznie).
-    assert stability_payload["rows"][0]["status"] == "NIE_OCENIONO"
-    assert stability_payload["rows"][0]["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
-    assert stability_payload["rows"][0]["proof_ref"].startswith("proof:dynamic-stability:")
-    # Karta S-1 (W6-0): stopien dowodowy WYPROWADZANY z rejestru — echo scenariusza
-    # z katow opcji biegu NIE jest dowodem regulacyjnym (UNVALIDATED_MODEL).
-    row = stability_payload["rows"][0]
-    assert row["proof_status"] == "incomplete"
-    assert row["reporting_status"] == "not_reportable"
-    assert row["reporting_status_pl"] == "nieraportowalny"
-    assert row["dopuszczalnosc_raportowa"] is False
-    assert row["reporting_limitations"]
-    assert row["evidence"]["tier"] == "UNVALIDATED_MODEL"
-    assert row["evidence"]["capability_id"] == "dynamic_stability.fault_clear"
-    assert row["evidence"]["regulatory_evidence_eligible"] is False
-
-    trace_payload_stability = client.get(f"/api/analysis-runs/{run_id}/results/trace")
-    assert trace_payload_stability.status_code == 200
-    for step in trace_payload_stability.json()["white_box_trace"]:
-        assert step["proof_status"] == "incomplete"
-        assert step["reporting_status"] == "not_reportable"
-
-    automation_trace = client.get(f"/api/analysis-runs/{run_id}/results/automation-trace")
-    assert automation_trace.status_code == 200
-    automation_payload = automation_trace.json()
-    # Zmiana kanonu (2026-09-23): ślad automatyki BEZ narracji zdarzeń (dawniej pięć
-    # zdarzeń z czasu wyłączenia wpisanego ręcznie, zakończonych DYNAMIC_STABILITY_EVALUATED);
-    # zostaje efekt topologii zadeklarowany w opcjach biegu i rekord oceny.
-    assert automation_payload["rows"] == []
-    assert automation_payload["topology_effect"]["opened_element_ids"] == ["cb-a", "cb-b"]
-    assert automation_payload["ocena"]["status_maszynowy"] == "NIE_OCENIONO"
-
-    # Domyślna odpowiedź wyników NIE niesie szeregu czasowego (na żądanie).
-    assert "time_series" not in stability_payload["rows"][0]
-
-    # Szereg czasowy przebiegu — osobny endpoint, na żądanie.
-    time_series = client.get(f"/api/analysis-runs/{run_id}/results/dynamic-stability/time-series")
-    assert time_series.status_code == 200
-    ts_payload = time_series.json()
-    assert ts_payload["has_time_series"] is True
-    assert ts_payload["time_unit"] == "s"
-    assert {q["key"] for q in ts_payload["quantities"]} == {"voltage_pu", "frequency_pu"}
-    assert {q["unit"] for q in ts_payload["quantities"]} == {"p.u."}
-    assert len(ts_payload["points"]) > 0
-    assert set(ts_payload["points"][0].keys()) == {"t_s", "voltage_pu", "frequency_pu"}
-
-    # Determinizm: powtórne pobranie daje bajt-w-bajt identyczny przebieg.
-    time_series_repeat = client.get(
-        f"/api/analysis-runs/{run_id}/results/dynamic-stability/time-series"
-    )
-    assert time_series_repeat.json()["points"] == ts_payload["points"]
-
-
-#: Scenariusz KOMPLETNY (wszystkie 9 pól jawnych) — punkt odniesienia dla testu
-#: klasy poniżej: iloczyn {brak KAŻDEGO pola z osobna} × {bieg przez
-#: `execution_runs`}. Karta W2 pkt 1 (zero fabrykacji).
-_KOMPLETNY_SCENARIUSZ_STABILNOSCI: dict[str, object] = {
-    "scenario_id": "dyn-brak-pola",
-    "source_ref": "src-grid",
-    "faulted_element_id": "branch-load",
-    "cleared_by_element_ids": ["cb-a", "cb-b"],
-    "clearing_time_ms": 120.0,
-    "pre_fault_angle_deg": 10.0,
-    "during_fault_angle_deg": 75.0,
-    "post_fault_angle_deg": 28.0,
-    "post_fault_voltage_pu": 0.97,
-    "post_fault_frequency_pu": 0.99,
-    "recovery_time_constant_s": 0.3,
-}
-
-#: Pola WYMAGANE (`scenario_id`/`source_ref` mają dostawcę zastępczy — patrz
-#: `_pick_dynamic_source_ref` — więc NIE są w tym zbiorze; te dziewięć nie mają
-#: żadnego fallbacku w `_execute_dynamic_stability`).
-_POLA_WYMAGANE_SCENARIUSZA = (
-    "faulted_element_id",
-    "clearing_time_ms",
-    "cleared_by_element_ids",
-    "pre_fault_angle_deg",
-    "during_fault_angle_deg",
-    "post_fault_angle_deg",
-    "post_fault_voltage_pu",
-    "post_fault_frequency_pu",
-    "recovery_time_constant_s",
-)
-
-
-@pytest.mark.parametrize("brakujace_pole", _POLA_WYMAGANE_SCENARIUSZA)
-def test_dynamic_stability_run_odmawia_bez_kompletu_scenariusza(
-    client: TestClient, brakujace_pole: str
-) -> None:
-    """Karta W2 pkt 1 (zero fabrykacji — uczciwość ekranów): brak KAŻDEGO z 9 pól
-    scenariusza z osobna (iloczyn cech, nie przykład z karty) daje odmowę NAZWANYM
-    kodem gotowości — bieg kończy się FAILED, zero policzonego wyniku, zero
-    zapisanego jako wynik (ta sama droga co `source.multiple_grid_sources_in_island`
-    dla rozpływu: `execute_run` łapie `OdmowaBieguStabilnosciDynamicznej` ogólnym
-    `except Exception`)."""
-    case_id = _nowy_przypadek(client)
-    _seed_power_flow_enm(client, case_id)
-
-    niepelny_scenariusz = dict(_KOMPLETNY_SCENARIUSZ_STABILNOSCI)
-    del niepelny_scenariusz[brakujace_pole]
-
-    create_run = client.post(
-        f"/api/execution/study-cases/{case_id}/runs",
-        json={"analysis_type": "DYNAMIC_STABILITY", "solver_input": niepelny_scenariusz},
-    )
-    assert create_run.status_code == 201
-    run_id = create_run.json()["id"]
-
-    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
-    assert execute_run.status_code == 200
-    payload = execute_run.json()
-    assert payload["status"] == "FAILED", f"pole {brakujace_pole}: bieg powinien odmówić"
-    assert payload["error_message"] is not None
-    assert (
-        "kod gotowości: analysis.dynamic_stability_scenario_incomplete" in payload["error_message"]
-    )
-    assert brakujace_pole in payload["error_message"], (
-        f"komunikat odmowy nie wymienia brakującego pola {brakujace_pole}: "
-        f"{payload['error_message']}"
-    )
-
-    # Nic nie policzone: kontrakt wyników FROZEN odmawia biegu bez statusu FINISHED.
-    result_set = client.get(f"/api/execution/runs/{run_id}/results")
-    assert result_set.status_code == 409
-
-    # Nic nie zapisane jako wynik: widok stabilności czyta pusty raw_result — brak
-    # wiersza, nie werdykt fabrykowany z domyślnego scenariusza.
-    stability = client.get(f"/api/analysis-runs/{run_id}/results/dynamic-stability")
-    assert stability.status_code == 200
-    assert stability.json()["rows"] == []
-
-
-def test_dynamic_stability_run_odmawia_gdy_wszystkie_pola_brakuja(client: TestClient) -> None:
-    """Kontrola dodatnia iloczynu cech: KOMPLETNY brak scenariusza (nie tylko
-    jedno pole) odmawia tym samym kodem — nie różną ścieżką dla „zero pól"."""
+def test_tor_stabilnosci_z_katow_wpisanych_recznie_nie_istnieje(client: TestClient) -> None:
+    """Karta AB-P1: tor echa kątów (`DYNAMIC_STABILITY`) skasowany razem z końcówkami —
+    rodzaj biegu jest odrzucany nazwanym 400, a dawne trasy wyniku nie odpowiadają. Dynamikę
+    czasową liczy wyłącznie bieg kanoniczny `DYNAMIKA_RMS` (`tests/api/test_dynamika_api.py`)."""
     case_id = _nowy_przypadek(client)
     _seed_power_flow_enm(client, case_id)
 
@@ -1227,15 +1055,10 @@ def test_dynamic_stability_run_odmawia_gdy_wszystkie_pola_brakuja(client: TestCl
         f"/api/execution/study-cases/{case_id}/runs",
         json={"analysis_type": "DYNAMIC_STABILITY", "solver_input": {}},
     )
-    assert create_run.status_code == 201
-    run_id = create_run.json()["id"]
-
-    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
-    assert execute_run.status_code == 200
-    payload = execute_run.json()
-    assert payload["status"] == "FAILED"
-    for pole in _POLA_WYMAGANE_SCENARIUSZA:
-        assert pole in payload["error_message"], pole
+    assert create_run.status_code == 400
+    assert "DYNAMIKA_RMS" in create_run.json()["detail"]
+    for trasa in ("dynamic-stability", "dynamic-stability/time-series", "automation-trace"):
+        assert client.get(f"/api/analysis-runs/{uuid4()}/results/{trasa}").status_code == 404
 
 
 def test_legacy_snapshot_and_analysis_index_routes_are_disabled_in_main_app(

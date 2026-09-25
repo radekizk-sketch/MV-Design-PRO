@@ -1,21 +1,27 @@
-"""Schematy profili dynamicznych DER (PV / BESS / FW).
+"""Schematy profili dynamicznych DER (PV / BESS / FW) — szablony katalogu.
 
-Konsumowane przez dwie generacje kontraktu:
-- `network_model.solvers.stability_rms.engine` / `network_model.solvers.frt_hvrt.engine`
-  (`to_stability_parameters`/`to_frt_parameters`) — silniki FROZEN do kasacji
-  po W6-5 (OD-20), NIETKNIĘTE tą kartą (B-01).
-- `enm.dynamika_modele.ParametryDynamiczne` (kontrakt kanoniczny W6-1,
-  `to_parametry_dynamiczne`) — jedyny kontrakt konsumowany przez przyszły
-  solver W6-2/W6-3.
+Konsument: WYŁĄCZNIE materializacja katalog -> ENM (`enm.dynamika_z_katalogu`), która
+przez `to_parametry_dynamiczne` robi z profilu KOPIĘ `Generator.dynamika` (kontrakt
+kanoniczny `enm.dynamika_modele.ParametryDynamiczne`, karta W6-1), czytaną przez
+adapter biegu `dynamika_rms`. Dawne rzuty profilu na słowniki drugiego, skasowanego
+solvera stabilności zniknęły razem z nim (karta AB-P1; bramka wskrzeszenia
+w `scripts/legacy_public_path_guard.py`).
 
-Karta W6-1 SS0 p.3 (zero fabrykacji — dopelnienie precedensu k_sc DEFAULT_FORBIDDEN,
-S-2): pola fizyczne NIE MAJA JUZ `default=` — profil bez jawnie podanej wartosci
-odmawia sie zbudowac (Pydantic `ValidationError`), zamiast cicho przyjac liczbe,
-ktorej nikt nie zadeklarowal. Kazdy profil niesie `proweniencja` WYMAGANA
-(`enm.dynamika_modele.ProweniencjaParametrow`) — 8 profili katalogu
-(`defaults.py`) ma `zrodlo="profil_typowy_normy"` z odniesieniem do SANKCJONOWANEJ
-normy (IEEE 1547-2018 dla PV/BESS, IEC 61400-27-1:2020 dla wiatru, NC RfG
-2016/631 gdzie dotyczy) — NIGDY fikcyjnej "praktyki producenta" bez zrodla.
+PROFIL JEST KOMPLETNY (karta AB-P1 §0.3). Do tej karty `to_parametry_dynamiczne`
+wymagało od wołającego pięciu parametrów regulacji (wzmocnienia PLL i regulatora
+prądu, współczynnik k FRT) i nie miało ani jednego wołającego — bo żadne źródło tych
+liczb nie istniało. Profil katalogowy, który nie wystarcza do zbudowania modelu, nie
+jest szablonem modelu. Pola regulacji są więc CZĘŚCIĄ profilu, wymagane zależnie od
+trybu sterowania (walidator `_pola_trybu_sterowania`): grid-following wymaga PLL,
+regulatora prądu i k FRT, grid-forming — sposobu tworzenia napięcia, impedancji
+i tłumienia wirtualnego oraz strategii ograniczenia prądu. Pole spoza trybu jest
+BŁĘDEM profilu, nie ignorowanym nadmiarem.
+
+Zero fabrykacji (karta W6-1 SS0 p.3, S-2): żadne pole fizyczne nie ma liczbowej
+domyślki — profil bez wartości odmawia się zbudować (Pydantic `ValidationError`).
+Każdy profil niesie WYMAGANĄ `proweniencja` (`enm.dynamika_modele.ProweniencjaParametrow`);
+osiem profili katalogu (`defaults.py`) ma `zrodlo="profil_typowy_normy"` — wartości
+TYPOWE klasy urządzenia (jakość `ESTIMATED`), nigdy „zmierzone na urządzeniu".
 """
 
 from __future__ import annotations
@@ -26,14 +32,17 @@ from enm.dynamika_modele import (
     PriorytetOgranicznika,
     ProweniencjaParametrow,
     PrzeksztaltnikGFL,
+    PrzeksztaltnikGFM,
+    StrategiaOgraniczeniaGfm,
     TurbinaWiatrowa,
 )
 from network_model.pochodne import ms_na_s
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 DerKind = Literal["PV", "BESS", "FW"]
 InverterControlMode = Literal["grid_following", "grid_forming"]
 WindIecType = Literal["type_1", "type_2", "type_3", "type_4"]
+GfmControl = Literal["droop", "vsm"]
 
 #: Rodzina `ParametryDynamiczne` (`enm.dynamika_modele`) docelowa dla `to_parametry_dynamiczne`
 #: per `iec_type` turbiny — jedno zrodlo prawdy dla mapowania IEC 61400-27 -> rodzina kanonu.
@@ -45,6 +54,59 @@ _WIND_IEC_TO_RODZINA: dict[
     "type_3": "wiatr_typ_3",
     "type_4": "wiatr_typ_4",
 }
+
+#: Typy turbin z przekształtnikiem mocy (częściowym — typ 3, pełnym — typ 4); tylko one
+#: niosą pola regulacji przekształtnika (`TurbinaWiatrowa.przeksztaltnik` jest dla nich
+#: WYMAGANY, dla typu 1/2 ZABRONIONY — ta sama reguła co kontrakt ENM).
+TYPY_Z_PRZEKSZTALTNIKIEM: frozenset[WindIecType] = frozenset({"type_3", "type_4"})
+
+#: Pola regulacji przekształtnika nadążnego — wymagane dla GFL i dla turbin typu 3/4.
+POLA_REGULACJI_GFL: tuple[str, ...] = (
+    "pll_kp",
+    "pll_ki",
+    "current_kp",
+    "current_ki",
+    "frt_k_factor",
+)
+
+#: Pola przekształtnika tworzącego sieć — wymagane dla GFM (razem z inercją wirtualną).
+POLA_REGULACJI_GFM: tuple[str, ...] = (
+    "gfm_control",
+    "virtual_inertia_h_s",
+    "virtual_damping_pu",
+    "virtual_resistance_pu",
+    "virtual_reactance_pu",
+    "current_limit_strategy",
+)
+
+#: Pola przekształtnika turbiny typu 3/4 poza regulacją GFL — wymagane dla typu 3/4.
+POLA_PRZEKSZTALTNIKA_TURBINY: tuple[str, ...] = (
+    "converter_i_max_pu",
+    "iq_priority_during_fault",
+    "p_f_droop_pu",
+    "p_f_dead_band_hz",
+    "q_u_droop_pu",
+    "q_u_dead_band_pu",
+    *POLA_REGULACJI_GFL,
+)
+
+
+def priorytet_z_profilu(iq_priority_during_fault: bool) -> PriorytetOgranicznika:
+    """Priorytet składowej ogranicznika prądu z deklaracji profilu (A-9).
+
+    Profil deklaruje wprost, czy przy zakłóceniu prąd bierny ma pierwszeństwo przed
+    czynnym (NC RfG art. 20 ust. 2 lit. b — szybki prąd zwarciowy). Kontrakt ENM zapisuje
+    TO SAMO pytanie jako nazwę składowej: `True` -> `"bierna"`, `False` -> `"czynna"`.
+    """
+    return "bierna" if iq_priority_during_fault else "czynna"
+
+
+def _brakujace_i_nadmiarowe(
+    profil: BaseModel, wymagane: tuple[str, ...], zabronione: tuple[str, ...]
+) -> tuple[list[str], list[str]]:
+    brakujace = [pole for pole in wymagane if getattr(profil, pole) is None]
+    nadmiarowe = [pole for pole in zabronione if getattr(profil, pole) is not None]
+    return brakujace, nadmiarowe
 
 
 class InverterDynamicProfile(BaseModel):
@@ -94,7 +156,7 @@ class InverterDynamicProfile(BaseModel):
     """Maksymalny prąd bierny podczas FRT (% nominal)."""
 
     iq_priority_during_fault: bool
-    """Priorytetyzacja Iq nad Ip podczas zakłócenia (NC RfG art. 13)."""
+    """Priorytetyzacja Iq nad Ip podczas zakłócenia (NC RfG art. 20)."""
 
     # Odzysk mocy czynnej po zakłóceniu
     p_recovery_rate_pu_per_s: float = Field(ge=0.1, le=10.0)
@@ -103,88 +165,103 @@ class InverterDynamicProfile(BaseModel):
     p_recovery_delay_ms: float = Field(ge=0.0, le=5000.0)
     """Opóźnienie startu odzysku po wyzwoleniu zakłócenia (ms)."""
 
-    # Stała inercji wirtualnej (tylko GFM)
+    # --- Regulacja przekształtnika nadążnego (tylko grid_following) ---------------
+    pll_kp: float | None = Field(default=None, gt=0.0, le=500.0)
+    """Wzmocnienie proporcjonalne pętli PLL (tylko GFL)."""
+
+    pll_ki: float | None = Field(default=None, gt=0.0, le=50000.0)
+    """Wzmocnienie całkujące pętli PLL (tylko GFL)."""
+
+    current_kp: float | None = Field(default=None, gt=0.0, le=100.0)
+    """Wzmocnienie proporcjonalne regulatora prądu (tylko GFL)."""
+
+    current_ki: float | None = Field(default=None, gt=0.0, le=100000.0)
+    """Wzmocnienie całkujące regulatora prądu (tylko GFL)."""
+
+    frt_k_factor: float | None = Field(default=None, ge=0.0, le=10.0)
+    """Współczynnik k dodatkowego prądu biernego przy zapadzie ΔI_q = k·ΔU (tylko GFL)."""
+
+    # --- Przekształtnik tworzący sieć (tylko grid_forming) -------------------------
+    gfm_control: GfmControl | None = None
+    """Sposób tworzenia napięcia: statyzm (`droop`) albo maszyna wirtualna (`vsm`)."""
+
     virtual_inertia_h_s: float | None = Field(default=None, ge=0.0, le=20.0)
-    """Stała inercji wirtualnej (s). None dla GFL, 2-8 s dla GFM."""
+    """Stała inercji wirtualnej (s) — tylko GFM."""
 
-    # Identyfikator zgodny z `DynamicModelKind` w stability contract
-    @property
-    def stability_model_kind(self) -> str:
-        if self.der_kind == "PV":
-            return (
-                "pv_inverter_grid_forming"
-                if self.control_mode == "grid_forming"
-                else "pv_inverter_grid_following"
+    virtual_damping_pu: float | None = Field(default=None, ge=0.0, le=100.0)
+    """Tłumienie wirtualne (pu) — tylko GFM."""
+
+    virtual_resistance_pu: float | None = Field(default=None, ge=0.0, le=1.0)
+    """Rezystancja wirtualna wyjścia (pu) — tylko GFM."""
+
+    virtual_reactance_pu: float | None = Field(default=None, ge=0.0, le=1.0)
+    """Reaktancja wirtualna wyjścia (pu) — tylko GFM."""
+
+    current_limit_strategy: StrategiaOgraniczeniaGfm | None = None
+    """Strategia ograniczenia prądu GFM — tylko GFM."""
+
+    @model_validator(mode="after")
+    def _pola_trybu_sterowania(self) -> InverterDynamicProfile:
+        """Komplet pól trybu sterowania — ani brak, ani nadmiar (predykat JEDEN dla obu)."""
+        if self.control_mode == "grid_following":
+            brakujace, nadmiarowe = _brakujace_i_nadmiarowe(
+                self, POLA_REGULACJI_GFL, POLA_REGULACJI_GFM
             )
-        return (
-            "bess_pcs_grid_forming"
-            if self.control_mode == "grid_forming"
-            else "bess_pcs_grid_following"
-        )
+        else:
+            brakujace, nadmiarowe = _brakujace_i_nadmiarowe(
+                self, POLA_REGULACJI_GFM, POLA_REGULACJI_GFL
+            )
+        if brakujace or nadmiarowe:
+            raise ValueError(
+                f"InverterDynamicProfile '{self.profile_id}' ({self.control_mode}): "
+                f"brak pól trybu: {', '.join(brakujace) or '—'}; "
+                f"pola spoza trybu: {', '.join(nadmiarowe) or '—'}."
+            )
+        return self
 
-    def to_stability_parameters(self) -> dict[str, float]:
-        """Słownik konsumowany przez `stability_rms.engine._model_derivative`.
+    def to_parametry_dynamiczne(self, *, s_n_mva: float) -> PrzeksztaltnikGFL | PrzeksztaltnikGFM:
+        """Mapowanie 1:1 na kontrakt kanoniczny przekształtnika (karta W6-1 SS0 p.3).
 
-        Klucze odpowiadają parametrom oczekiwanym przez engine dla
-        pv_inverter_grid_following/forming i bess_pcs_grid_following/forming:
-        Tp, Tq, Q_droop, V_ref, P_ref.
+        Grid-following -> `PrzeksztaltnikGFL`, grid-forming -> `PrzeksztaltnikGFM` (do
+        karty AB-P1 oba tryby mapowały się na GFL — profil tworzący sieć stawał się
+        przekształtnikiem nadążnym bez śladu). Jedyna dana spoza profilu to baza mocy
+        `s_n_mva` — cecha URZĄDZENIA (tabliczka × liczba jednostek), nie typu regulacji;
+        dostarcza ją materializacja z tabliczki elementu.
         """
-        return {
-            "Tp": self.tp_s,
-            "Tq": self.tq_s,
-            "Q_droop": self.q_u_droop_pu,
-            "V_ref": 1.0,
-            "P_ref": 1.0,
-            "I_max_pu": self.i_max_pu,
-            "P_f_droop": self.p_f_droop_pu,
-            "Iq_max_fault": self.iq_max_during_fault_pu,
-            "P_recovery_rate": self.p_recovery_rate_pu_per_s,
-            "FRT_response_ms": self.frt_response_time_ms,
-            "H_virtual": self.virtual_inertia_h_s or 0.0,
-        }
-
-    def to_frt_parameters(self) -> dict[str, float]:
-        """Parametry konsumowane przez `frt_hvrt.engine` dla pojedynczego DER."""
-        return {
-            "iq_max_during_fault_pu": self.iq_max_during_fault_pu,
-            "frt_response_time_s": ms_na_s(self.frt_response_time_ms),
-            "p_recovery_rate_pu_per_s": self.p_recovery_rate_pu_per_s,
-            "p_recovery_delay_s": ms_na_s(self.p_recovery_delay_ms),
-            "v_min_continuous_pu": self.v_min_continuous_pu,
-            "v_max_continuous_pu": self.v_max_continuous_pu,
-            "iq_priority": 1.0 if self.iq_priority_during_fault else 0.0,
-        }
-
-    def to_parametry_dynamiczne(
-        self,
-        *,
-        priorytet_ogranicznika: PriorytetOgranicznika,
-        s_n_mva: float,
-        pll_kp: float,
-        pll_ki: float,
-        reg_pradu_kp: float,
-        reg_pradu_ki: float,
-        k_frt: float,
-    ) -> PrzeksztaltnikGFL:
-        """Mapowanie 1:1 na kontrakt kanoniczny `PrzeksztaltnikGFL` (karta W6-1 SS0 p.3).
-
-        Pola BEZ odpowiednika w tym profilu (priorytet ogranicznika — A-9, baza
-        mocy, wzmocnienia PLL/regulatora pradu, wzmocnienie Iq FRT) są WYMAGANE
-        argumentami tej funkcji — nie maja tu zrodla i nie wolno ich zgadywac
-        (zero fabrykacji). Wolajacy (resolver/materializacja katalogu) dostarcza
-        je z WLASNEGO zrodla (karta katalogowa przeksztaltnika) albo funkcja nie
-        jest wywolywana (brak = odmowa nazwana wyzej w lancuchu).
-        """
+        if self.control_mode == "grid_forming":
+            # Walidator trybu gwarantuje komplet pól GFM.
+            assert self.gfm_control is not None and self.virtual_inertia_h_s is not None
+            assert self.virtual_damping_pu is not None and self.virtual_resistance_pu is not None
+            assert self.virtual_reactance_pu is not None
+            assert self.current_limit_strategy is not None
+            return PrzeksztaltnikGFM(
+                proweniencja=self.proweniencja,
+                s_n_mva=s_n_mva,
+                tryb=self.gfm_control,
+                mp_pu=self.p_f_droop_pu,
+                mq_pu=self.q_u_droop_pu,
+                h_wirtualne_s=self.virtual_inertia_h_s,
+                d_wirtualne_pu=self.virtual_damping_pu,
+                r_wirtualne_pu=self.virtual_resistance_pu,
+                x_wirtualne_pu=self.virtual_reactance_pu,
+                i_max_pu=self.i_max_pu,
+                strategia_ograniczenia=self.current_limit_strategy,
+                tp_s=self.tp_s,
+                tiq_s=self.tq_s,
+            )
+        assert self.pll_kp is not None and self.pll_ki is not None
+        assert self.current_kp is not None and self.current_ki is not None
+        assert self.frt_k_factor is not None
         return PrzeksztaltnikGFL(
             proweniencja=self.proweniencja,
             s_n_mva=s_n_mva,
             i_max_pu=self.i_max_pu,
-            priorytet_ogranicznika=priorytet_ogranicznika,
-            pll_kp=pll_kp,
-            pll_ki=pll_ki,
-            reg_pradu_kp=reg_pradu_kp,
-            reg_pradu_ki=reg_pradu_ki,
-            k_frt=k_frt,
+            priorytet_ogranicznika=priorytet_z_profilu(self.iq_priority_during_fault),
+            pll_kp=self.pll_kp,
+            pll_ki=self.pll_ki,
+            reg_pradu_kp=self.current_kp,
+            reg_pradu_ki=self.current_ki,
+            k_frt=self.frt_k_factor,
             prog_frt_pu=self.v_min_continuous_pu,
             tp_s=self.tp_s,
             tiq_s=self.tq_s,
@@ -223,6 +300,10 @@ class WindTurbineDynamicProfile(BaseModel):
     drive_train_stiffness_pu: float = Field(ge=10.0, le=300.0)
     """Sztywność wału p.u. (typowa 80 dla DFIG, 50 dla PMSG)."""
 
+    drive_train_damping_pu: float = Field(ge=0.0, le=10.0)
+    """Tłumienie wału p.u. Do karty AB-P1 zaszyte w mapowaniu jako 0,0 — teraz dana
+    profilu, widoczna i z proweniencją profilu."""
+
     # Filtry pomiarowe (type 3/4)
     tp_s: float = Field(ge=0.001, le=2.0)
     tq_s: float = Field(ge=0.001, le=2.0)
@@ -246,108 +327,81 @@ class WindTurbineDynamicProfile(BaseModel):
     v_min_continuous_pu: float = Field(ge=0.5, le=1.0)
     v_max_continuous_pu: float = Field(ge=1.0, le=1.5)
 
-    @property
-    def stability_model_kind(self) -> str:
-        return f"wind_{self.iec_type}"
+    # --- Przekształtnik turbiny (tylko type_3/type_4) -----------------------------
+    converter_i_max_pu: float | None = Field(default=None, ge=1.0, le=3.0)
+    """Maksymalny prąd przekształtnika (pu) — tylko typ 3/4."""
 
-    def to_stability_parameters(self) -> dict[str, float]:
-        if self.iec_type in ("type_1", "type_2"):
-            return {
-                "Tw": self.h_total_s,
-                "omega_ref_pu": 1.0,
-                "slip_steady": self.slip_steady_pu,
-                "K_drive_train": self.drive_train_stiffness_pu,
-                "Iq_max_fault": self.iq_max_during_fault_pu,
-                "P_recovery_rate": self.p_recovery_rate_pu_per_s,
-                "FRT_response_ms": self.frt_response_time_ms,
-            }
-        # type_3 (DFIG) i type_4 (full converter)
-        return {
-            "Tp": self.tp_s,
-            "Tq": self.tq_s,
-            "P_ref": 1.0,
-            "Q_ref": 0.0,
-            "H": self.h_total_s,
-            "K_drive_train": self.drive_train_stiffness_pu,
-            "Pitch_rate": self.pitch_rate_deg_per_s,
-            "Iq_max_fault": self.iq_max_during_fault_pu,
-            "P_recovery_rate": self.p_recovery_rate_pu_per_s,
-            "FRT_response_ms": self.frt_response_time_ms,
-        }
+    iq_priority_during_fault: bool | None = None
+    """Priorytet prądu biernego przy zakłóceniu — tylko typ 3/4."""
 
-    def to_frt_parameters(self) -> dict[str, float]:
-        return {
-            "iq_max_during_fault_pu": self.iq_max_during_fault_pu,
-            "frt_response_time_s": ms_na_s(self.frt_response_time_ms),
-            "p_recovery_rate_pu_per_s": self.p_recovery_rate_pu_per_s,
-            "p_recovery_delay_s": ms_na_s(self.p_recovery_delay_ms),
-            "v_min_continuous_pu": self.v_min_continuous_pu,
-            "v_max_continuous_pu": self.v_max_continuous_pu,
-            "iq_priority": 1.0,
-        }
+    p_f_droop_pu: float | None = Field(default=None, ge=0.0, le=0.2)
+    """Statyzm P/f przekształtnika (pu); 0 = regulacja wyłączona — tylko typ 3/4."""
 
-    def to_parametry_dynamiczne(
-        self,
-        *,
-        i_max_pu: float | None = None,
-        priorytet_ogranicznika: PriorytetOgranicznika | None = None,
-        s_n_mva: float | None = None,
-        pll_kp: float | None = None,
-        pll_ki: float | None = None,
-        reg_pradu_kp: float | None = None,
-        reg_pradu_ki: float | None = None,
-        k_frt: float | None = None,
-    ) -> TurbinaWiatrowa:
+    p_f_dead_band_hz: float | None = Field(default=None, ge=0.0, le=1.0)
+    q_u_droop_pu: float | None = Field(default=None, ge=0.0, le=0.2)
+    """Statyzm Q/U przekształtnika (pu); 0 = regulacja wyłączona — tylko typ 3/4."""
+
+    q_u_dead_band_pu: float | None = Field(default=None, ge=0.0, le=0.2)
+    pll_kp: float | None = Field(default=None, gt=0.0, le=500.0)
+    pll_ki: float | None = Field(default=None, gt=0.0, le=50000.0)
+    current_kp: float | None = Field(default=None, gt=0.0, le=100.0)
+    current_ki: float | None = Field(default=None, gt=0.0, le=100000.0)
+    frt_k_factor: float | None = Field(default=None, ge=0.0, le=10.0)
+
+    @model_validator(mode="after")
+    def _pola_przeksztaltnika(self) -> WindTurbineDynamicProfile:
+        """Typ 3/4 wymaga KOMPLETU pól przekształtnika, typ 1/2 nie dopuszcza żadnego."""
+        if self.iec_type in TYPY_Z_PRZEKSZTALTNIKIEM:
+            brakujace, nadmiarowe = _brakujace_i_nadmiarowe(self, POLA_PRZEKSZTALTNIKA_TURBINY, ())
+        else:
+            brakujace, nadmiarowe = _brakujace_i_nadmiarowe(self, (), POLA_PRZEKSZTALTNIKA_TURBINY)
+        if brakujace or nadmiarowe:
+            raise ValueError(
+                f"WindTurbineDynamicProfile '{self.profile_id}' ({self.iec_type}): "
+                f"brak pól przekształtnika: {', '.join(brakujace) or '—'}; "
+                f"pola przekształtnika niedopuszczalne dla typu: {', '.join(nadmiarowe) or '—'}."
+            )
+        return self
+
+    def to_parametry_dynamiczne(self, *, s_n_mva: float) -> TurbinaWiatrowa:
         """Mapowanie 1:1 na kontrakt kanoniczny `TurbinaWiatrowa` (karta W6-1 SS0 p.3).
 
-        typ_1/typ_2 (bez przekształtnika mocy pełnej/częściowej w tym modelu) nie
-        przyjmują żadnego z argumentów przekształtnika (kontrakt `TurbinaWiatrowa`
-        odrzuca `przeksztaltnik` dla tych typów — spójność rodziny pilnowana w
-        `enm.dynamika_modele`). typ_3/typ_4 WYMAGAJĄ kompletu argumentów
-        przekształtnika — brak jest błędem wywołania (zero fabrykacji), nie cichym
-        pominięciem bloku.
+        Typ 1/2 nie ma przekształtnika (kontrakt ENM go odrzuca); typ 3/4 dostaje
+        `PrzeksztaltnikGFL` z pól profilu — do karty AB-P1 statyzmy P/f i Q/U oraz
+        tłumienie wału były tu stałymi 0,0 zaszytymi w kodzie, a pięć parametrów
+        regulacji musiał podać wołający, którego nie było. `s_n_mva` (baza mocy
+        przekształtnika) to cecha URZĄDZENIA z tabliczki, nie profilu.
         """
         rodzina = _WIND_IEC_TO_RODZINA[self.iec_type]
         przeksztaltnik = None
-        if self.iec_type in ("type_3", "type_4"):
-            brakujace = [
-                nazwa
-                for nazwa, wartosc in (
-                    ("i_max_pu", i_max_pu),
-                    ("priorytet_ogranicznika", priorytet_ogranicznika),
-                    ("s_n_mva", s_n_mva),
-                    ("pll_kp", pll_kp),
-                    ("pll_ki", pll_ki),
-                    ("reg_pradu_kp", reg_pradu_kp),
-                    ("reg_pradu_ki", reg_pradu_ki),
-                    ("k_frt", k_frt),
-                )
-                if wartosc is None
-            ]
-            if brakujace:
-                raise ValueError(
-                    f"WindTurbineDynamicProfile.to_parametry_dynamiczne({self.iec_type}): "
-                    f"brak argumentów przekształtnika: {', '.join(brakujace)}."
-                )
+        if self.iec_type in TYPY_Z_PRZEKSZTALTNIKIEM:
+            # Walidator `_pola_przeksztaltnika` gwarantuje komplet pól.
+            assert self.converter_i_max_pu is not None
+            assert self.iq_priority_during_fault is not None
+            assert self.pll_kp is not None and self.pll_ki is not None
+            assert self.current_kp is not None and self.current_ki is not None
+            assert self.frt_k_factor is not None
+            assert self.p_f_droop_pu is not None and self.p_f_dead_band_hz is not None
+            assert self.q_u_droop_pu is not None and self.q_u_dead_band_pu is not None
             przeksztaltnik = PrzeksztaltnikGFL(
                 proweniencja=self.proweniencja,
                 s_n_mva=s_n_mva,
-                i_max_pu=i_max_pu,
-                priorytet_ogranicznika=priorytet_ogranicznika,
-                pll_kp=pll_kp,
-                pll_ki=pll_ki,
-                reg_pradu_kp=reg_pradu_kp,
-                reg_pradu_ki=reg_pradu_ki,
-                k_frt=k_frt,
+                i_max_pu=self.converter_i_max_pu,
+                priorytet_ogranicznika=priorytet_z_profilu(self.iq_priority_during_fault),
+                pll_kp=self.pll_kp,
+                pll_ki=self.pll_ki,
+                reg_pradu_kp=self.current_kp,
+                reg_pradu_ki=self.current_ki,
+                k_frt=self.frt_k_factor,
                 prog_frt_pu=self.v_min_continuous_pu,
                 tp_s=self.tp_s,
                 tiq_s=self.tq_s,
                 p_odbudowa_pu_na_s=self.p_recovery_rate_pu_per_s,
                 p_odbudowa_opoznienie_s=ms_na_s(self.p_recovery_delay_ms),
-                droop_p_f_pu=0.0,
-                martwa_strefa_f_hz=0.0,
-                droop_q_u_pu=0.0,
-                martwa_strefa_u_pu=0.0,
+                droop_p_f_pu=self.p_f_droop_pu,
+                martwa_strefa_f_hz=self.p_f_dead_band_hz,
+                droop_q_u_pu=self.q_u_droop_pu,
+                martwa_strefa_u_pu=self.q_u_dead_band_pu,
                 u_min_ciagle_pu=self.v_min_continuous_pu,
                 u_max_ciagle_pu=self.v_max_continuous_pu,
             )
@@ -356,7 +410,7 @@ class WindTurbineDynamicProfile(BaseModel):
             proweniencja=self.proweniencja,
             h_calkowite_s=self.h_total_s,
             sztywnosc_walu_pu=self.drive_train_stiffness_pu,
-            tlumienie_walu_pu=0.0,
+            tlumienie_walu_pu=self.drive_train_damping_pu,
             poslizg_ustalony_pu=self.slip_steady_pu,
             pitch_tempo_deg_s=self.pitch_rate_deg_per_s,
             pitch_min_deg=self.pitch_min_deg,

@@ -237,7 +237,7 @@ export type ExecutionAnalysisType =
   | 'LOAD_FLOW'
   | 'PHASE_STATE_SN'
   | 'PF_UNBALANCED'
-  | 'DYNAMIC_STABILITY';
+  | 'DYNAMIKA_RMS';
 
 /**
  * Run lifecycle status.
@@ -302,7 +302,7 @@ export const ANALYSIS_TYPE_LABELS: Record<ExecutionAnalysisType, string> = {
   LOAD_FLOW: 'Rozpływ mocy',
   PHASE_STATE_SN: 'Stan fazowy SN',
   PF_UNBALANCED: 'Rozpływ niesymetryczny',
-  DYNAMIC_STABILITY: 'Stabilność dynamiczna',
+  DYNAMIKA_RMS: 'Dynamika czasowa RMS',
 };
 
 /**
@@ -331,6 +331,11 @@ export const RUN_STATUS_COLORS: Record<RunStatus, string> = {
 export interface CreateRunRequest {
   analysis_type: ExecutionAnalysisType;
   solver_input?: Record<string, unknown>;
+  /**
+   * Scenariusz nazwany projektu (magazyn scenariuszy) — migawka biegu i projekcja
+   * scenariusza na opcje biegu (np. harmonogram zdarzeń dynamiki, karta AB-P1).
+   */
+  scenario_id?: string;
   readiness?: Record<string, unknown>;
   eligibility?: Record<string, unknown>;
 }

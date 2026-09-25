@@ -822,14 +822,14 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
   }),
   'E-32': screen({
     id: 'E-32',
-    labelFull: 'Stabilność dynamiczna',
-    labelShort: 'Stabilność',
+    labelFull: 'Dynamika czasowa RMS',
+    labelShort: 'Dynamika',
     areaId: 'WYNIKI_ANALIZY',
     icon: 'ikona-ekran-stabilnosc-dynamiczna',
-    canonicalRoute: '/workspace/results/dynamic-stability',
-    legacyAliases: ['dynamic_stability'],
-    componentKey: 'EkranStabilnosci', // realny dostawca ui2 (karta P-3; podmiana Opcja 1)
-    testId: 'screen-E-32-dynamic-stability',
+    canonicalRoute: '/workspace/results/dynamika',
+    legacyAliases: [],
+    componentKey: 'EkranDynamiki', // realny dostawca ui2 (karta AB-P1; podmiana Opcja 1)
+    testId: 'screen-E-32-dynamika',
     implemented: true,
     requiresProject: true,
     requiresSelection: false,

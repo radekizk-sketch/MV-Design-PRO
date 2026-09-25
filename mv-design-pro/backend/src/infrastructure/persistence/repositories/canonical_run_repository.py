@@ -385,7 +385,7 @@ class CanonicalRunRepository:
         ROZNY stan od "kanal zadany w `klucze_kanalow` nie istnieje wsrod
         zapisanych" (ten drugi po prostu nie trafia do zwroconego slownika;
         warstwa API tlumaczy oba stany na nazwany 404, patrz
-        `api/analysis_runs_dynamika.py`).
+        `api/analysis_runs.py::get_dynamika_time_series`).
         """
         stmt = select(
             CanonicalRunTimeSeriesORM.klucz_kanalu,

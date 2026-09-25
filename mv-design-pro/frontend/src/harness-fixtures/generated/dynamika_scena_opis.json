@@ -1,0 +1,866 @@
+{
+  "kontrakt": "opis_scenariusza_dynamicznego_v1",
+  "pola_scenariusza": [
+    {
+      "nazwa": "horyzont_s",
+      "etykieta_pl": "Horyzont symulacji",
+      "jednostka": "s",
+      "wymagane": true,
+      "dopuszcza_brak": false,
+      "typ": "liczba",
+      "minimum_wylaczne": 0.0,
+      "maksimum": 600.0
+    },
+    {
+      "nazwa": "krok_wyjscia_s",
+      "etykieta_pl": "Krok zapisu przebiegu",
+      "jednostka": "s",
+      "wymagane": true,
+      "dopuszcza_brak": false,
+      "typ": "liczba",
+      "minimum_wylaczne": 0.0,
+      "maksimum": 600.0
+    },
+    {
+      "nazwa": "detektory",
+      "etykieta_pl": "Detektory przekroczeń progu (bez działania na sieć)",
+      "jednostka": null,
+      "wymagane": false,
+      "dopuszcza_brak": false,
+      "typ": "lista",
+      "pola": [
+        {
+          "nazwa": "ident",
+          "etykieta_pl": "Nazwa detektora",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "tekst"
+        },
+        {
+          "nazwa": "wielkosc",
+          "etykieta_pl": "Obserwowana wielkość",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "unia",
+          "warianty": [
+            {
+              "rodzaj": "modul_napiecia",
+              "etykieta_pl": "Moduł napięcia szyny [pu]",
+              "pola": [
+                {
+                  "nazwa": "bus_ref",
+                  "etykieta_pl": "Szyna",
+                  "jednostka": null,
+                  "wymagane": true,
+                  "dopuszcza_brak": false,
+                  "typ": "referencja",
+                  "kolekcje": [
+                    {
+                      "kolekcja": "buses",
+                      "etykieta_pl": "szyny"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "rodzaj": "czestotliwosc",
+              "etykieta_pl": "Częstotliwość szyny [Hz]",
+              "pola": [
+                {
+                  "nazwa": "bus_ref",
+                  "etykieta_pl": "Szyna",
+                  "jednostka": null,
+                  "wymagane": true,
+                  "dopuszcza_brak": false,
+                  "typ": "referencja",
+                  "kolekcje": [
+                    {
+                      "kolekcja": "buses",
+                      "etykieta_pl": "szyny"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "rodzaj": "modul_pradu_zacisku",
+              "etykieta_pl": "Moduł prądu zacisku gałęzi [pu bazy układu]",
+              "pola": [
+                {
+                  "nazwa": "element_ref",
+                  "etykieta_pl": "Element",
+                  "jednostka": null,
+                  "wymagane": true,
+                  "dopuszcza_brak": false,
+                  "typ": "referencja",
+                  "kolekcje": [
+                    {
+                      "kolekcja": "branches",
+                      "etykieta_pl": "linie, kable i łączniki"
+                    },
+                    {
+                      "kolekcja": "transformers",
+                      "etykieta_pl": "transformatory"
+                    }
+                  ]
+                },
+                {
+                  "nazwa": "zacisk",
+                  "etykieta_pl": "Zacisk gałęzi",
+                  "jednostka": null,
+                  "wymagane": true,
+                  "dopuszcza_brak": false,
+                  "typ": "wybor",
+                  "wartosci": [
+                    {
+                      "wartosc": "od",
+                      "etykieta_pl": "zacisk początkowy (od)",
+                      "wykonywana_przez_rdzen": true
+                    },
+                    {
+                      "wartosc": "do",
+                      "etykieta_pl": "zacisk końcowy (do)",
+                      "wykonywana_przez_rdzen": true
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "rodzaj": "stan_urzadzenia",
+              "etykieta_pl": "Zmienna stanu urządzenia [jednostka stanu]",
+              "pola": [
+                {
+                  "nazwa": "ref_id",
+                  "etykieta_pl": "Element",
+                  "jednostka": null,
+                  "wymagane": true,
+                  "dopuszcza_brak": false,
+                  "typ": "referencja",
+                  "kolekcje": [
+                    {
+                      "kolekcja": "generators",
+                      "etykieta_pl": "wytwórcy"
+                    },
+                    {
+                      "kolekcja": "sources",
+                      "etykieta_pl": "źródła sieciowe"
+                    }
+                  ]
+                },
+                {
+                  "nazwa": "stan",
+                  "etykieta_pl": "Nazwa zmiennej stanu urządzenia",
+                  "jednostka": null,
+                  "wymagane": true,
+                  "dopuszcza_brak": false,
+                  "typ": "tekst"
+                }
+              ]
+            },
+            {
+              "rodzaj": "moc_urzadzenia",
+              "etykieta_pl": "Moc oddawana przez urządzenie [pu bazy układu]",
+              "pola": [
+                {
+                  "nazwa": "ref_id",
+                  "etykieta_pl": "Element",
+                  "jednostka": null,
+                  "wymagane": true,
+                  "dopuszcza_brak": false,
+                  "typ": "referencja",
+                  "kolekcje": [
+                    {
+                      "kolekcja": "generators",
+                      "etykieta_pl": "wytwórcy"
+                    },
+                    {
+                      "kolekcja": "sources",
+                      "etykieta_pl": "źródła sieciowe"
+                    }
+                  ]
+                },
+                {
+                  "nazwa": "skladowa",
+                  "etykieta_pl": "Składowa mocy",
+                  "jednostka": null,
+                  "wymagane": true,
+                  "dopuszcza_brak": false,
+                  "typ": "wybor",
+                  "wartosci": [
+                    {
+                      "wartosc": "p",
+                      "etykieta_pl": "moc czynna P",
+                      "wykonywana_przez_rdzen": true
+                    },
+                    {
+                      "wartosc": "q",
+                      "etykieta_pl": "moc bierna Q",
+                      "wykonywana_przez_rdzen": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "nazwa": "prog",
+          "etykieta_pl": "Próg (w jednostce obserwowanej wielkości)",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba"
+        },
+        {
+          "nazwa": "kierunek",
+          "etykieta_pl": "Kierunek przekroczenia",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "wybor",
+          "wartosci": [
+            {
+              "wartosc": "w_dol",
+              "etykieta_pl": "spadek poniżej progu",
+              "wykonywana_przez_rdzen": true
+            },
+            {
+              "wartosc": "w_gore",
+              "etykieta_pl": "wzrost powyżej progu",
+              "wykonywana_przez_rdzen": true
+            }
+          ]
+        },
+        {
+          "nazwa": "jednorazowy",
+          "etykieta_pl": "Tylko pierwsze przekroczenie",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "logiczna"
+        }
+      ]
+    }
+  ],
+  "rodzaje_zdarzen": [
+    {
+      "rodzaj": "zwarcie",
+      "etykieta_pl": "Zwarcie",
+      "wykonywany_przez_rdzen": true,
+      "pola": [
+        {
+          "nazwa": "t_s",
+          "etykieta_pl": "Chwila zdarzenia",
+          "jednostka": "s",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": 0.0,
+          "maksimum": 600.0
+        },
+        {
+          "nazwa": "bus_ref",
+          "etykieta_pl": "Szyna",
+          "jednostka": null,
+          "wymagane": false,
+          "dopuszcza_brak": true,
+          "typ": "referencja",
+          "kolekcje": [
+            {
+              "kolekcja": "buses",
+              "etykieta_pl": "szyny"
+            }
+          ]
+        },
+        {
+          "nazwa": "element_ref",
+          "etykieta_pl": "Element",
+          "jednostka": null,
+          "wymagane": false,
+          "dopuszcza_brak": true,
+          "typ": "referencja",
+          "kolekcje": [
+            {
+              "kolekcja": "branches",
+              "etykieta_pl": "linie, kable i łączniki"
+            }
+          ]
+        },
+        {
+          "nazwa": "polozenie_wzgledne",
+          "etykieta_pl": "Położenie miejsca zwarcia x (ułamek długości od zacisku początkowego)",
+          "jednostka": null,
+          "wymagane": false,
+          "dopuszcza_brak": true,
+          "typ": "liczba",
+          "minimum_wylaczne": 0.0,
+          "maksimum_wylaczne": 1.0
+        },
+        {
+          "nazwa": "typ",
+          "etykieta_pl": "Rodzaj zwarcia",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "wybor",
+          "wartosci": [
+            {
+              "wartosc": "3F",
+              "etykieta_pl": "trójfazowe (3F)",
+              "wykonywana_przez_rdzen": true
+            },
+            {
+              "wartosc": "2F",
+              "etykieta_pl": "dwufazowe (2F)",
+              "wykonywana_przez_rdzen": false
+            },
+            {
+              "wartosc": "1F",
+              "etykieta_pl": "jednofazowe doziemne (1F)",
+              "wykonywana_przez_rdzen": false
+            },
+            {
+              "wartosc": "2FZ",
+              "etykieta_pl": "dwufazowe doziemne (2FZ)",
+              "wykonywana_przez_rdzen": false
+            }
+          ]
+        },
+        {
+          "nazwa": "r_f_ohm",
+          "etykieta_pl": "Rezystancja przejścia R_f",
+          "jednostka": "Ω",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": 0.0,
+          "maksimum": 100000.0
+        },
+        {
+          "nazwa": "x_f_ohm",
+          "etykieta_pl": "Reaktancja przejścia X_f",
+          "jednostka": "Ω",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": 0.0,
+          "maksimum": 100000.0
+        },
+        {
+          "nazwa": "t_usuniecia_s",
+          "etykieta_pl": "Chwila usunięcia zwarcia",
+          "jednostka": "s",
+          "wymagane": false,
+          "dopuszcza_brak": true,
+          "typ": "liczba",
+          "minimum": 0.0,
+          "maksimum": 600.0
+        },
+        {
+          "nazwa": "sposob_usuniecia",
+          "etykieta_pl": "Sposób usunięcia zwarcia",
+          "jednostka": null,
+          "wymagane": false,
+          "dopuszcza_brak": true,
+          "typ": "wybor",
+          "wartosci": [
+            {
+              "wartosc": "izolacja",
+              "etykieta_pl": "izolacja miejsca zwarcia aparatami",
+              "wykonywana_przez_rdzen": true
+            },
+            {
+              "wartosc": "samoczynne",
+              "etykieta_pl": "samoczynne zgaśnięcie (idealizacja)",
+              "wykonywana_przez_rdzen": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rodzaj": "wylaczenie_galezi",
+      "etykieta_pl": "Otwarcie gałęzi lub łącznika",
+      "wykonywany_przez_rdzen": true,
+      "pola": [
+        {
+          "nazwa": "t_s",
+          "etykieta_pl": "Chwila zdarzenia",
+          "jednostka": "s",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": 0.0,
+          "maksimum": 600.0
+        },
+        {
+          "nazwa": "element_ref",
+          "etykieta_pl": "Element",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "referencja",
+          "kolekcje": [
+            {
+              "kolekcja": "branches",
+              "etykieta_pl": "linie, kable i łączniki"
+            },
+            {
+              "kolekcja": "transformers",
+              "etykieta_pl": "transformatory"
+            },
+            {
+              "kolekcja": "shunt_capacitors",
+              "etykieta_pl": "baterie kondensatorów"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rodzaj": "zalaczenie_galezi",
+      "etykieta_pl": "Zamknięcie gałęzi lub łącznika",
+      "wykonywany_przez_rdzen": true,
+      "pola": [
+        {
+          "nazwa": "t_s",
+          "etykieta_pl": "Chwila zdarzenia",
+          "jednostka": "s",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": 0.0,
+          "maksimum": 600.0
+        },
+        {
+          "nazwa": "element_ref",
+          "etykieta_pl": "Element",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "referencja",
+          "kolekcje": [
+            {
+              "kolekcja": "branches",
+              "etykieta_pl": "linie, kable i łączniki"
+            },
+            {
+              "kolekcja": "transformers",
+              "etykieta_pl": "transformatory"
+            },
+            {
+              "kolekcja": "shunt_capacitors",
+              "etykieta_pl": "baterie kondensatorów"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rodzaj": "odlaczenie_zrodla",
+      "etykieta_pl": "Odłączenie źródła",
+      "wykonywany_przez_rdzen": true,
+      "pola": [
+        {
+          "nazwa": "t_s",
+          "etykieta_pl": "Chwila zdarzenia",
+          "jednostka": "s",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": 0.0,
+          "maksimum": 600.0
+        },
+        {
+          "nazwa": "ref_id",
+          "etykieta_pl": "Element",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "referencja",
+          "kolekcje": [
+            {
+              "kolekcja": "generators",
+              "etykieta_pl": "wytwórcy"
+            },
+            {
+              "kolekcja": "sources",
+              "etykieta_pl": "źródła sieciowe"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rodzaj": "skok_obciazenia",
+      "etykieta_pl": "Skokowa zmiana mocy odbioru",
+      "wykonywany_przez_rdzen": true,
+      "pola": [
+        {
+          "nazwa": "t_s",
+          "etykieta_pl": "Chwila zdarzenia",
+          "jednostka": "s",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": 0.0,
+          "maksimum": 600.0
+        },
+        {
+          "nazwa": "ref_id",
+          "etykieta_pl": "Element",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "referencja",
+          "kolekcje": [
+            {
+              "kolekcja": "loads",
+              "etykieta_pl": "odbiory"
+            }
+          ]
+        },
+        {
+          "nazwa": "delta_p_mw",
+          "etykieta_pl": "Zmiana mocy czynnej ΔP",
+          "jednostka": "MW",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": -100000.0,
+          "maksimum": 100000.0
+        },
+        {
+          "nazwa": "delta_q_mvar",
+          "etykieta_pl": "Zmiana mocy biernej ΔQ",
+          "jednostka": "Mvar",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": -100000.0,
+          "maksimum": 100000.0
+        }
+      ]
+    },
+    {
+      "rodzaj": "odlaczenie_odbioru",
+      "etykieta_pl": "Odłączenie odbioru",
+      "wykonywany_przez_rdzen": true,
+      "pola": [
+        {
+          "nazwa": "t_s",
+          "etykieta_pl": "Chwila zdarzenia",
+          "jednostka": "s",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": 0.0,
+          "maksimum": 600.0
+        },
+        {
+          "nazwa": "ref_id",
+          "etykieta_pl": "Element",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "referencja",
+          "kolekcje": [
+            {
+              "kolekcja": "loads",
+              "etykieta_pl": "odbiory"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rodzaj": "zalaczenie_odbioru",
+      "etykieta_pl": "Ponowne załączenie odbioru",
+      "wykonywany_przez_rdzen": true,
+      "pola": [
+        {
+          "nazwa": "t_s",
+          "etykieta_pl": "Chwila zdarzenia",
+          "jednostka": "s",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": 0.0,
+          "maksimum": 600.0
+        },
+        {
+          "nazwa": "ref_id",
+          "etykieta_pl": "Element",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "referencja",
+          "kolekcje": [
+            {
+              "kolekcja": "loads",
+              "etykieta_pl": "odbiory"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rodzaj": "komenda_regulacji",
+      "etykieta_pl": "Zmiana nastawy regulatora źródła",
+      "wykonywany_przez_rdzen": true,
+      "pola": [
+        {
+          "nazwa": "t_s",
+          "etykieta_pl": "Chwila zdarzenia",
+          "jednostka": "s",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": 0.0,
+          "maksimum": 600.0
+        },
+        {
+          "nazwa": "ref_id",
+          "etykieta_pl": "Element",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "referencja",
+          "kolekcje": [
+            {
+              "kolekcja": "generators",
+              "etykieta_pl": "wytwórcy"
+            },
+            {
+              "kolekcja": "sources",
+              "etykieta_pl": "źródła sieciowe"
+            }
+          ]
+        },
+        {
+          "nazwa": "nastawa",
+          "etykieta_pl": "Nowa nastawa",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "obiekt",
+          "pola": [
+            {
+              "nazwa": "p_mw",
+              "etykieta_pl": "Moc czynna P",
+              "jednostka": "MW",
+              "wymagane": false,
+              "dopuszcza_brak": true,
+              "typ": "liczba"
+            },
+            {
+              "nazwa": "q_mvar",
+              "etykieta_pl": "Moc bierna Q",
+              "jednostka": "Mvar",
+              "wymagane": false,
+              "dopuszcza_brak": true,
+              "typ": "liczba"
+            },
+            {
+              "nazwa": "u_pu",
+              "etykieta_pl": "Napięcie odniesienia U",
+              "jednostka": "pu",
+              "wymagane": false,
+              "dopuszcza_brak": true,
+              "typ": "liczba",
+              "minimum_wylaczne": 0.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "rodzaj": "utrata_czesciowa_zrodla",
+      "etykieta_pl": "Częściowa utrata jednostek źródła",
+      "wykonywany_przez_rdzen": true,
+      "pola": [
+        {
+          "nazwa": "t_s",
+          "etykieta_pl": "Chwila zdarzenia",
+          "jednostka": "s",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": 0.0,
+          "maksimum": 600.0
+        },
+        {
+          "nazwa": "ref_id",
+          "etykieta_pl": "Element",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "referencja",
+          "kolekcje": [
+            {
+              "kolekcja": "generators",
+              "etykieta_pl": "wytwórcy"
+            }
+          ]
+        },
+        {
+          "nazwa": "udzial_pozostaly",
+          "etykieta_pl": "Udział jednostek pracujących dalej (względem stanu początkowego)",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum_wylaczne": 0.0,
+          "maksimum_wylaczne": 1.0
+        }
+      ]
+    },
+    {
+      "rodzaj": "synchronizacja",
+      "etykieta_pl": "Synchronizacja źródła z siecią",
+      "wykonywany_przez_rdzen": false,
+      "pola": [
+        {
+          "nazwa": "t_s",
+          "etykieta_pl": "Chwila zdarzenia",
+          "jednostka": "s",
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "liczba",
+          "minimum": 0.0,
+          "maksimum": 600.0
+        },
+        {
+          "nazwa": "ref_id",
+          "etykieta_pl": "Element",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "referencja",
+          "kolekcje": [
+            {
+              "kolekcja": "generators",
+              "etykieta_pl": "wytwórcy"
+            },
+            {
+              "kolekcja": "sources",
+              "etykieta_pl": "źródła sieciowe"
+            }
+          ]
+        },
+        {
+          "nazwa": "bus_ref",
+          "etykieta_pl": "Szyna",
+          "jednostka": null,
+          "wymagane": true,
+          "dopuszcza_brak": false,
+          "typ": "referencja",
+          "kolekcje": [
+            {
+              "kolekcja": "buses",
+              "etykieta_pl": "szyny"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "nastawy_solvera": [
+    {
+      "nazwa": "dt_s",
+      "etykieta_pl": "Krok całkowania",
+      "jednostka": "s",
+      "wymagane": true,
+      "dopuszcza_brak": false,
+      "typ": "liczba"
+    },
+    {
+      "nazwa": "dt_min_s",
+      "etykieta_pl": "Najmniejszy krok całkowania",
+      "jednostka": "s",
+      "wymagane": true,
+      "dopuszcza_brak": false,
+      "typ": "liczba"
+    },
+    {
+      "nazwa": "dt_max_s",
+      "etykieta_pl": "Największy krok całkowania",
+      "jednostka": "s",
+      "wymagane": true,
+      "dopuszcza_brak": false,
+      "typ": "liczba"
+    },
+    {
+      "nazwa": "tolerancja",
+      "etykieta_pl": "Tolerancja residuum równań",
+      "jednostka": null,
+      "wymagane": true,
+      "dopuszcza_brak": false,
+      "typ": "liczba"
+    },
+    {
+      "nazwa": "tolerancja_kroku",
+      "etykieta_pl": "Tolerancja błędu lokalnego kroku",
+      "jednostka": null,
+      "wymagane": true,
+      "dopuszcza_brak": false,
+      "typ": "liczba"
+    },
+    {
+      "nazwa": "eps_init",
+      "etykieta_pl": "Tolerancja stanu początkowego",
+      "jednostka": null,
+      "wymagane": true,
+      "dopuszcza_brak": false,
+      "typ": "liczba"
+    },
+    {
+      "nazwa": "max_iteracji_newtona",
+      "etykieta_pl": "Największa liczba iteracji Newtona w kroku",
+      "jednostka": null,
+      "wymagane": true,
+      "dopuszcza_brak": false,
+      "typ": "calkowita"
+    },
+    {
+      "nazwa": "max_nawrotow",
+      "etykieta_pl": "Największa liczba nawrotów kroku",
+      "jednostka": null,
+      "wymagane": true,
+      "dopuszcza_brak": false,
+      "typ": "calkowita"
+    },
+    {
+      "nazwa": "integrator",
+      "etykieta_pl": "Metoda całkowania",
+      "jednostka": null,
+      "wymagane": true,
+      "dopuszcza_brak": false,
+      "typ": "wybor",
+      "wartosci": [
+        {
+          "wartosc": "trapez_niejawny",
+          "etykieta_pl": "trapezów, niejawna",
+          "wykonywana_przez_rdzen": true
+        },
+        {
+          "wartosc": "rk4_jawny",
+          "etykieta_pl": "Rungego-Kutty 4. rzędu, jawna",
+          "wykonywana_przez_rdzen": true
+        }
+      ]
+    },
+    {
+      "nazwa": "tolerancja_lokalizacji_zdarzen_s",
+      "etykieta_pl": "Tolerancja lokalizacji chwili przekroczenia (wymagana, gdy są detektory)",
+      "jednostka": "s",
+      "wymagane": true,
+      "dopuszcza_brak": true,
+      "typ": "liczba"
+    }
+  ]
+}

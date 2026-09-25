@@ -50,10 +50,10 @@ sys.path.insert(0, str(BACKEND_DIR))
 
 from api.analysis_runs import _catalog_completed_snapshot  # noqa: E402
 from api.canonical_run_views import (  # noqa: E402
-    build_automation_trace_results_response,
     build_branch_results_response,
     build_bus_results_response,
-    build_dynamic_stability_results_response,
+    build_dynamika_results_response,
+    build_dynamika_time_series_response,
     build_extended_trace_response,
     build_phase_state_results_response,
     build_power_flow_run_header,
@@ -146,6 +146,8 @@ from application.analysis_run.read_model import canonicalize_json  # noqa: E402
 from application.autorytet_biegu_zwarciowego import (  # noqa: E402
     wejscie_koordynacji_z_biegow,
 )
+from application.dynamika.gotowosc import gotowosc_dynamiki  # noqa: E402
+from application.dynamika.opis_scenariusza import opis_scenariusza_dynamicznego  # noqa: E402
 from application.ncrfg_compliance import (  # noqa: E402
     NcRfgWejsciaPrzypadkuResponse,
     bieg_ncrfg,
@@ -198,6 +200,13 @@ from enm.models import (  # noqa: E402
     Generator,
     TapChanger,
 )
+from enm.scenariusze import (  # noqa: E402
+    OperatingScenario,
+    RodzajScenariusza,
+    ScenariuszDynamiczny,
+    usun_wszystkie_scenariusze,
+    zapisz_scenariusz,
+)
 from enm.store import get_enm, reset_enm_store, set_enm  # noqa: E402
 from infrastructure.persistence.db import (  # noqa: E402
     create_engine_from_url,
@@ -217,6 +226,11 @@ from solver_input.v126_contracts import (  # noqa: E402
 )
 
 from tests.cgmes.golden_enm import build_golden_enm  # noqa: E402
+from tests.golden.enm_builders.dynamika_projektanta import (  # noqa: E402
+    build_dynamika_projektanta_enm,
+    refy_sieci,
+    scenariusz_zwarcia_w_odcinku,
+)
 
 FIXTURES_DIR = BACKEND_DIR.parent / "frontend" / "src" / "harness-fixtures" / "generated"
 
@@ -1575,13 +1589,13 @@ def falowniki_rozplyw_scena_gpz_feeder_wynik() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Karta HARNESS-RESZTA (2026-09-16) — sceny „wyniki-stan-fazowy" i
-# „wyniki-stabilnosc" (E-31/E-32 ekranu wynikow), karmione WYLACZNIE realnymi
-# biegami backendu (phase_state_sn / dynamic_stability) na sieci zlotej.
+# Karta HARNESS-RESZTA (2026-09-16) — scena „wyniki-stan-fazowy" (E-31 ekranu
+# wynikow), karmiona WYLACZNIE realnym biegiem backendu (phase_state_sn) na sieci
+# zlotej. Scena „wyniki-stabilnosc" (E-32, echo katow wpisanych recznie) skasowana
+# w karcie AB-P1 — zastepuje ja scena „wyniki-dynamika" (bieg kanoniczny, nizej).
 # ---------------------------------------------------------------------------
 
 RUN_ID_SCENY_STAN_FAZOWY = "run-ps-scena-stan-fazowy"
-RUN_ID_SCENY_STABILNOSC = "run-dyn-scena-stabilnosc"
 
 #: `id` PRZYPIĘTY (uuid5 deterministyczny) obu biegów — jak `_UUID_KOTWICY_
 #: SCENY_ZWARCIA` powyżej: `proof_ref`/`reproducibility.result_hash` HASHUJĄ
@@ -1589,10 +1603,8 @@ RUN_ID_SCENY_STABILNOSC = "run-dyn-scena-stabilnosc"
 #: różnicy w WYNIKU hashowania dwóch RÓŻNYCH losowych `uuid4()` — bez tego
 #: `test_atrapa_jest_deterministyczna` jest czerwony (zmierzone bezpośrednio).
 _UUID_SCENY_STAN_FAZOWY = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_STAN_FAZOWY)
-_UUID_SCENY_STABILNOSC = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_STABILNOSC)
 
-#: Znacznik czasu STAŁY biegów `phase_state_sn`/`dynamic_stability` — obie
-#: analizy znakują `CanonicalRun.created_at` (`create_run`) i `.started_at`
+#: Znacznik czasu STAŁY biegów kotwic scen — analizy znakują `CanonicalRun.created_at` (`create_run`) i `.started_at`
 #: (`execute_run`) przez `datetime.now(UTC)`, a `phase_state_sn` DODATKOWO
 #: przenosi `run.started_at` do `PhaseStateSNProofPackInput.run_timestamp`,
 #: który wchodzi w `reproducibility.result_hash` — bez zamrożenia zegara
@@ -1647,7 +1659,7 @@ def _zamrozona_tozsamosc_biegu(uuid_kotwicy: UUID) -> Iterator[None]:
 #: asymetria pradow fazowych (opcje ponizej) ma widoczny wplyw na straty per
 #: faza. Pradyw fazowe A/B/C sa DANYMI WEJSCIOWYMI sceny (zalozenie
 #: projektanta — scenariusz obciazenia niezrownowazonego, TAKI SAM status jak
-#: katy, napiecie i czestotliwosc po zwarciu w opcjach sceny stabilnosci nizej),
+#: nastawy numeryczne sceny dynamiki nizej),
 #: nie wynikiem solvera; wynik (napiecia/straty/asymetrie/flagi) liczy REALNIE
 #: `PhaseStateSNSolver` (`_execute_phase_state_sn`, `enm/canonical_analysis.py`)
 #: — zero fabrykacji wyniku.
@@ -1689,69 +1701,194 @@ def stan_fazowy_scena_wyniki() -> dict[str, Any]:
     return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_STAN_FAZOWY})
 
 
-#: Elementy sceny stabilnosci — siec zlota: zwarcie na galezi `line_b_c`
-#: (odcinek Stacja B -> Stacja C), wylaczane bezpiecznikiem `fuse_c`, zrodlem
-#: obserwowanym jest maszyna synchroniczna `gen_sync` (jedyne zrodlo wirujace
-#: sieci zlotej — `PhaseClearSourceState` opisuje WYLACZNIE zrodla wirujace,
-#: falownik `gen_pv` fizycznie nie ma kata mocy). Katy/napiecie/czestotliwosc
-#: po zwarciu i stala czasowa odbudowy SA SCENARIUSZEM PRZYJETYM W OPCJACH
-#: BIEGU tej analizy — tor nie rozwiazuje sieci, wiec bieg
-#: (`_execute_dynamic_stability`) zwraca ECHO scenariusza z ocena niewykonana
-#: (`NIE_OCENIONO`, bez werdyktu STABLE/UNSTABLE i bez narracji zadzialania
-#: zabezpieczen — uczciwosc natychmiastowa 2026-09-23), efekt topologiczny
-#: zadeklarowany w opcjach i przebieg zadany z jawna uwaga; zero fabrykacji wyniku.
-_OPCJE_SCENY_STABILNOSC: dict[str, Any] = {
-    "scenario_id": "dyn-scena-stabilnosc",
-    "source_ref": "gen_sync",
-    "faulted_element_id": "line_b_c",
-    "cleared_by_element_ids": ["fuse_c"],
-    "clearing_time_ms": 120.0,
-    "pre_fault_angle_deg": 10.0,
-    "during_fault_angle_deg": 65.0,
-    "post_fault_angle_deg": 28.0,
-    "post_fault_voltage_pu": 0.97,
-    "post_fault_frequency_pu": 0.99,
-    "recovery_time_constant_s": 0.3,
+# ---------------------------------------------------------------------------
+# Karta AB-P1 — scena „wyniki-dynamika" (ekran dynamiki czasowej): REALNY bieg
+# kanoniczny `dynamika_rms` na sieci zbudowanej operacjami domenowymi z katalogu, z modelem
+# dynamicznym PV ZWIĄZANYM z katalogiem operacją domenową (ta sama ścieżka co u
+# projektanta), punktem pracy z rozpływu i scenariuszem NAZWANYM z magazynu.
+# Zastępuje skasowaną scenę „wyniki-stabilnosc" (echo kątów wpisanych ręcznie).
+# ---------------------------------------------------------------------------
+
+RUN_ID_SCENY_DYNAMIKA = "run-dyn-scena-dynamika"
+RUN_ID_SCENY_DYNAMIKA_PF = "run-pf-scena-dynamika"
+SCENARIO_ID_SCENY_DYNAMIKA = "scen-dyn-scena-dynamika"
+_UUID_SCENY_DYNAMIKA = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_DYNAMIKA)
+_UUID_SCENY_DYNAMIKA_PF = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_DYNAMIKA_PF)
+
+
+def _scenariusz_sceny_dynamika() -> dict[str, Any]:
+    """Scenariusz sceny: zwarcie trójfazowe w połowie „Odcinek 2" (x·L = 0,5, reaktancja
+    przejścia 1 Ω) usunięte IZOLACJĄ i wyłączenie odcinka — koniec magistrali z odbiorem
+    zostaje odcięty, PV zasilone od GPZ; detektor zapadu napięcia szyny PV zapisuje chwilę
+    przekroczenia progu (`tests/golden/enm_builders/dynamika_projektanta.py`)."""
+    refy = refy_sieci(build_dynamika_projektanta_enm(z_modelem_pv=False))
+    return scenariusz_zwarcia_w_odcinku(refy.odcinek_zwarcia, szyna_detektora=refy.szyna_pv)
+
+
+#: Nastawy numeryczne sceny — wpisane przez projektanta (kontrakt solvera nie ma domyślnych).
+NASTAWY_SCENY_DYNAMIKA: dict[str, Any] = {
+    "dt_s": 0.002,
+    "dt_min_s": 0.002,
+    "dt_max_s": 0.002,
+    "tolerancja": 1.0e-10,
+    "tolerancja_kroku": 1.0e-6,
+    "eps_init": 1.0e-6,
+    "max_iteracji_newtona": 40,
+    "max_nawrotow": 30,
+    "integrator": "trapez_niejawny",
+    # Scenariusz sceny ma detektor przekroczenia — tolerancja lokalizacji chwili jest wtedy
+    # wymagana (bez detektorów kontrakt dopuszcza brak wartości).
+    "tolerancja_lokalizacji_zdarzen_s": 1.0e-4,
 }
 
 
-def _bieg_sceny_stabilnosc() -> Any:
-    """Bieg `dynamic_stability` KOTWICY sceny „wyniki-stabilnosc" — tor
-    kanoniczny, na sieci zlotej. `reset_*` PRZED i PO."""
+class _ZegarObliczenStaly:
+    """Zamiennik modułu `time` w rdzeniu dynamiki na czas biegu kotwicy — `czas_obliczen_s`
+    jest POMIAREM zegara (nie wielkością fizyczną), więc bez zamrożenia fixtura różniłaby
+    się między dwoma przeliczeniami (jedyne użycie w rdzeniu: `time.perf_counter()`)."""
+
+    @staticmethod
+    def perf_counter() -> float:
+        return 0.0
+
+
+def _enm_sceny_dynamika(*, z_modelem_pv: bool) -> EnergyNetworkModel:
+    """Sieć toku pracy dynamiki projektanta (`tests/golden/enm_builders/dynamika_projektanta.py`
+    — to samo źródło co test HTTP toku): sieć z operacji domenowych i katalogu (GPZ, magistrala,
+    stacja SN/nN z PV, odbiór), bez modelu dynamicznego PV albo z kopią profilu (wiązanie operacją
+    `set_der_catalog_bindings`, materializacja `enm/dynamika_z_katalogu.py`)."""
+    return EnergyNetworkModel.model_validate(
+        build_dynamika_projektanta_enm(z_modelem_pv=z_modelem_pv)
+    )
+
+
+def _biegi_rozplywu_sceny(bieg_pf: Any) -> list[dict[str, Any]]:
+    return [
+        {
+            "run_id": str(bieg_pf.id),
+            "created_at": bieg_pf.created_at.isoformat(),
+            "finished_at": bieg_pf.finished_at.isoformat() if bieg_pf.finished_at else None,
+        }
+    ]
+
+
+def _bieg_sceny_dynamika() -> dict[str, Any]:
+    """Pełny tok sceny: model z wiązaniem -> rozpływ -> scenariusz nazwany -> bieg czasowy.
+
+    Zwraca widoki TYMI SAMYMI funkcjami, które wołają końcówki API (gotowość, scenariusze,
+    wynik z opisem i ocenami, szeregi czasowe). `reset_*` PRZED i PO."""
     reset_canonical_runs()
     reset_enm_store()
+    usun_wszystkie_scenariusze()
     try:
-        set_enm(CASE_ID_HARNESSU, build_golden_enm())
-        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_STABILNOSC):
-            return execute_run(
+        enm = _enm_sceny_dynamika(z_modelem_pv=True)
+        set_enm(CASE_ID_HARNESSU, enm)
+        with _zamrozona_tozsamosc_biegu(_UUID_SCENY_DYNAMIKA_PF):
+            bieg_pf = execute_run(
                 create_run(
                     case_id=CASE_ID_HARNESSU,
                     klucz_twin=CASE_ID_HARNESSU,
-                    analysis_type="dynamic_stability",
-                    options=_OPCJE_SCENY_STABILNOSC,
+                    analysis_type="PF",
+                    options={},
                 ).id
             )
+        scenariusz = zapisz_scenariusz(
+            CASE_ID_HARNESSU,
+            OperatingScenario(
+                scenario_id=SCENARIO_ID_SCENY_DYNAMIKA,
+                name="Zwarcie w odcinku 2 (x = 0,5)",
+                kind=RodzajScenariusza.CUSTOM,
+                dynamika=ScenariuszDynamiczny.model_validate(_scenariusz_sceny_dynamika()),
+            ),
+        )
+        with (
+            _zamrozona_tozsamosc_biegu(_UUID_SCENY_DYNAMIKA),
+            patch("network_model.solvers.dynamika.silnik.time", _ZegarObliczenStaly),
+        ):
+            bieg = execute_run(
+                create_run(
+                    case_id=CASE_ID_HARNESSU,
+                    klucz_twin=CASE_ID_HARNESSU,
+                    analysis_type="dynamika_rms",
+                    options={
+                        "pf_run_id": str(bieg_pf.id),
+                        "nastawy_solvera": NASTAWY_SCENY_DYNAMIKA,
+                    },
+                    scenariusz=scenariusz,
+                ).id
+            )
+        if bieg.status != "FINISHED":
+            raise RuntimeError(
+                f"Scena dynamiki: bieg nie zakończył się wynikiem: {bieg.error_message}"
+            )
+        mapa = {str(bieg.id): RUN_ID_SCENY_DYNAMIKA, str(bieg_pf.id): RUN_ID_SCENY_DYNAMIKA_PF}
+        return {
+            "gotowosc": _ustabilizuj_identyfikatory(
+                gotowosc_dynamiki(enm, _biegi_rozplywu_sceny(bieg_pf)), mapa
+            ),
+            "scenariusze": {
+                "scenariusze": [
+                    {
+                        "scenario_id": scenariusz.scenario_id,
+                        "name": scenariusz.name,
+                        "revision": scenariusz.revision,
+                        "hash": scenariusz.hash,
+                        "dynamika": _harmonogram_sceny_dynamika_json(),
+                    }
+                ],
+                "count": 1,
+            },
+            "wyniki": _ustabilizuj_identyfikatory(build_dynamika_results_response(bieg), mapa),
+            "przebiegi": _ustabilizuj_identyfikatory(
+                build_dynamika_time_series_response(bieg, None), mapa
+            ),
+        }
     finally:
         reset_canonical_runs()
         reset_enm_store()
+        usun_wszystkie_scenariusze()
 
 
-def stabilnosc_scena_wyniki() -> dict[str, Any]:
-    """Odpowiedź `GET /api/analysis-runs/{id}/results/dynamic-stability`
-    (`build_dynamic_stability_results_response` — TA SAMA funkcja, którą woła
-    końcówka `api/analysis_runs.py::get_dynamic_stability_results`)."""
-    run = _bieg_sceny_stabilnosc()
-    widok = build_dynamic_stability_results_response(run)
-    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_STABILNOSC})
+def _harmonogram_sceny_dynamika_json() -> dict[str, Any]:
+    """Harmonogram sceny w postaci zapisu magazynu (pola `None` jawnie, jak odpowiedź API)."""
+    return ScenariuszDynamiczny.model_validate(_scenariusz_sceny_dynamika()).model_dump(mode="json")
 
 
-def stabilnosc_scena_slad() -> dict[str, Any]:
-    """Odpowiedź `GET /api/analysis-runs/{id}/results/automation-trace`
-    (`build_automation_trace_results_response` — TA SAMA funkcja, którą woła
-    końcówka `api/analysis_runs.py::get_automation_trace_results`)."""
-    run = _bieg_sceny_stabilnosc()
-    widok = build_automation_trace_results_response(run)
-    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_STABILNOSC})
+def dynamika_scena_opis() -> dict[str, Any]:
+    """Odpowiedź `GET /api/dynamika/opis-scenariusza` (ta sama funkcja co końcówka)."""
+    return opis_scenariusza_dynamicznego()
+
+
+def dynamika_scena_migawka() -> dict[str, Any]:
+    """Migawka modelu sceny dynamiki PO wiązaniu modelu PV (`useSnapshotStore`) — edytor
+    scenariusza wybiera z niej elementy po nazwie, a przeglądarka zaznacza je na schemacie."""
+    return canonicalize_json(_enm_sceny_dynamika(z_modelem_pv=True).model_dump(mode="json"))
+
+
+def dynamika_scena_gotowosc_brak() -> dict[str, Any]:
+    """Odpowiedź `GET …/gotowosc` dla sieci sceny PRZED wiązaniem modelu PV (bez rozpływu):
+    PV bez bloku dynamiki z akcją naprawczą `der.dynamika_missing`."""
+    return gotowosc_dynamiki(_enm_sceny_dynamika(z_modelem_pv=False), [])
+
+
+def dynamika_scena_gotowosc() -> dict[str, Any]:
+    """Odpowiedź `GET …/gotowosc` sieci sceny PO wiązaniu i rozpływie."""
+    return _bieg_sceny_dynamika()["gotowosc"]
+
+
+def dynamika_scena_scenariusze() -> dict[str, Any]:
+    """Odpowiedź `GET …/scenariusze` sceny (jeden scenariusz nazwany z harmonogramem)."""
+    return _bieg_sceny_dynamika()["scenariusze"]
+
+
+def dynamika_scena_wyniki() -> dict[str, Any]:
+    """Odpowiedź `GET /api/analysis-runs/{id}/results/dynamika` (z opisem i ocenami)."""
+    return _bieg_sceny_dynamika()["wyniki"]
+
+
+def dynamika_scena_przebiegi() -> dict[str, Any]:
+    """Odpowiedź `GET …/results/dynamika/time-series` bez filtra (wszystkie kanały biegu)."""
+    return _bieg_sceny_dynamika()["przebiegi"]
 
 
 # ---------------------------------------------------------------------------
@@ -4703,8 +4840,13 @@ FIXTURY: dict[str, Any] = {
     "zwarcia_pasmo_scena_zwarcia": zwarcia_pasmo_scena_zwarcia,
     "falowniki_rozplyw_scena_gpz_feeder_wynik": falowniki_rozplyw_scena_gpz_feeder_wynik,
     "stan_fazowy_scena_wyniki": stan_fazowy_scena_wyniki,
-    "stabilnosc_scena_wyniki": stabilnosc_scena_wyniki,
-    "stabilnosc_scena_slad": stabilnosc_scena_slad,
+    "dynamika_scena_opis": dynamika_scena_opis,
+    "dynamika_scena_migawka": dynamika_scena_migawka,
+    "dynamika_scena_gotowosc_brak": dynamika_scena_gotowosc_brak,
+    "dynamika_scena_gotowosc": dynamika_scena_gotowosc,
+    "dynamika_scena_scenariusze": dynamika_scena_scenariusze,
+    "dynamika_scena_wyniki": dynamika_scena_wyniki,
+    "dynamika_scena_przebiegi": dynamika_scena_przebiegi,
     "sila_sieci_scena_wynik": sila_sieci_scena_wynik,
     "oze_analiz_scena_migawka": oze_analiz_scena_migawka,
     "migotanie_scena_wynik": migotanie_scena_wynik,

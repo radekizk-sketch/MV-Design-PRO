@@ -1,0 +1,47 @@
+{
+  "scenariusze": [
+    {
+      "scenario_id": "scen-dyn-scena-dynamika",
+      "name": "Zwarcie w odcinku 2 (x = 0,5)",
+      "revision": 1,
+      "hash": "54ca03a452d57f104556e181248723093afd948e5a7171b77fcfcb90da3147b8",
+      "dynamika": {
+        "horyzont_s": 0.3,
+        "krok_wyjscia_s": 0.02,
+        "zdarzenia": [
+          {
+            "rodzaj": "zwarcie",
+            "t_s": 0.05,
+            "bus_ref": null,
+            "element_ref": "seg/fab0e40bf1455775b1286ab17b598f58/segment",
+            "polozenie_wzgledne": 0.5,
+            "typ": "3F",
+            "r_f_ohm": 0.0,
+            "x_f_ohm": 1.0,
+            "t_usuniecia_s": 0.15,
+            "sposob_usuniecia": "izolacja"
+          },
+          {
+            "rodzaj": "wylaczenie_galezi",
+            "t_s": 0.15,
+            "element_ref": "seg/fab0e40bf1455775b1286ab17b598f58/segment"
+          }
+        ],
+        "stanowisko": null,
+        "detektory": [
+          {
+            "ident": "Zapad napięcia szyny PV",
+            "wielkosc": {
+              "rodzaj": "modul_napiecia",
+              "bus_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/nn_bus"
+            },
+            "prog": 0.8,
+            "kierunek": "w_dol",
+            "jednorazowy": false
+          }
+        ]
+      }
+    }
+  ],
+  "count": 1
+}

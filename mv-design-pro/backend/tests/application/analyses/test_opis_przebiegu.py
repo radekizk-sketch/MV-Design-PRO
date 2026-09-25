@@ -100,7 +100,9 @@ def _widoki() -> list[tuple[str, object, str]]:
 def test_komunikat_bramki_widoku_bez_identyfikatora_i_kodow(przypadek: str) -> None:
     for nazwa, widok, rodzaj in _widoki():
         bieg = (
-            _bieg("dynamic_stability", "FINISHED")
+            # Rodzaj obcy każdemu widokowi z listy (karta AB-P1: dawny przykład — tor
+            # `dynamic_stability` — skasowany; intencja bez zmian: zły rodzaj przebiegu).
+            _bieg("phase_state_sn", "FINISHED")
             if przypadek == "zly_rodzaj"
             else _bieg(rodzaj, "RUNNING")
         )
@@ -110,7 +112,7 @@ def test_komunikat_bramki_widoku_bez_identyfikatora_i_kodow(przypadek: str) -> N
             widok(bieg)  # type: ignore[operator]
         komunikat = str(blad.value)
         assert str(bieg.id) not in komunikat, nazwa
-        for kod in ("dynamic_stability", "RUNNING", "status=", "short_circuit_sn", "(PF)"):
+        for kod in ("phase_state_sn", "RUNNING", "status=", "short_circuit_sn", "(PF)"):
             assert kod not in komunikat, (nazwa, kod, komunikat)
 
 

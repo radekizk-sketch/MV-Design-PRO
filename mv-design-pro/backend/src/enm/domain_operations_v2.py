@@ -90,6 +90,12 @@ from .domain_operations import (
     szyna_prowadzi_tranzyt_sn,
     wybor_bloku_fabrycznego,
 )
+from .dynamika_z_katalogu import (
+    BladMaterializacjiDynamiki,
+    materializuj_dynamike,
+    sprawdz_zgodnosc,
+    wiazanie_dynamiki,
+)
 from .exceptions import DomainInvariantError
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
 from .katalog_projektu import katalog_biezacy, sekcja_katalogu_projektu
@@ -7447,11 +7453,43 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
             "der_bindings.materialized_params_invalid",
         )
 
+    # Karta AB-P1 §0.3: profil dynamiczny musi opisywać TEN rodzaj wytwórcy (profil PV na
+    # turbinie wiatrowej to błąd danych, nie wiązanie) — ten sam predykat, który buduje listę
+    # wyboru w interfejsie (`enm.dynamika_z_katalogu.profile_zgodne`).
+    profil_dynamiki = obecne_wiazania.get("dynamic_model_ref")
+    # Czy blok `dynamika` był dotąd KOPIĄ katalogu — tylko taki blok znika przy odwiązaniu;
+    # blok własny wytwórcy (karta producenta, certyfikat) bez wiązania zostaje nietknięty.
+    kopia_katalogu_przed = wiazanie_dynamiki(generator) is not None
+    if profil_dynamiki is not None:
+        try:
+            sprawdz_zgodnosc(
+                str(profil_dynamiki),
+                generator.get("gen_type"),
+                nazwa_elementu(generator, "generators"),
+            )
+        except BladMaterializacjiDynamiki as blad:
+            return _error_response(blad.komunikat, blad.kod)
+
     for klucz, wartosc in obecne_wiazania.items():
         if wartosc is None:
             materialized.pop(klucz, None)
         else:
             materialized[klucz] = wartosc
+
+    # Kopia `Generator.dynamika` z wiązania: odwiązanie usuwa kopię razem z wiązaniem;
+    # nowe wiązanie materializuje ją (albo — gdy tabliczka nie pozwala — zostawia wytwórcę
+    # bez bloku, a powód podaje `stan_dynamiki_generatorow`). `_response` i tak przelicza
+    # kopie wszystkich wiązań, ale odwiązanie musi być tutaj: po nim nie ma już wiązania,
+    # z którego synchronizacja wiedziałaby, że blok był kopią katalogu.
+    if "dynamic_model_ref" in obecne_wiazania:
+        if profil_dynamiki is None:
+            if kopia_katalogu_przed:
+                generator.pop("dynamika", None)
+        else:
+            try:
+                generator["dynamika"] = materializuj_dynamike(str(profil_dynamiki), generator)
+            except BladMaterializacjiDynamiki:
+                generator.pop("dynamika", None)
 
     # Karty widmowe: ZMATERIALIZOWANA kopia modeli z proweniencją w polu typowanym
     # `Generator.modele_widmowe` — referencja NIE trafia do `materialized_params`.

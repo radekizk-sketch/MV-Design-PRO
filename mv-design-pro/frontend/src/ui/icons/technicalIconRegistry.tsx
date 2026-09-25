@@ -103,7 +103,7 @@ export const screenIconRegistry = {
   'ikona-ekran-siec-zerowa': 'Sieć zerowa i składowe symetryczne',
   'ikona-ekran-rozplyw-mocy': 'Rozpływ mocy',
   'ikona-ekran-stan-fazowy': 'Stan fazowy SN',
-  'ikona-ekran-stabilnosc-dynamiczna': 'Stabilność dynamiczna',
+  'ikona-ekran-stabilnosc-dynamiczna': 'Dynamika czasowa RMS',
   'ikona-ekran-wklady-zrodel': 'Wkłady źródeł',
   'ikona-ekran-weryfikacja-cieplna-dynamiczna': 'Weryfikacja cieplna i dynamiczna',
   'ikona-ekran-wyniki-porownania': 'Wyniki i porównania',

@@ -48,7 +48,7 @@ import { EkranFrt } from '../../ui2/oze/frt';
 import { EkranZabezpieczenAutomatyki } from '../../ui2/model/zabezpieczenia-automatyka';
 import { EkranKoordynacji } from '../../ui2/wyniki/koordynacja';
 import { EkranSkladowych } from '../../ui2/wyniki/skladowe';
-import { EkranStabilnosci } from '../../ui2/wyniki/stabilnosc';
+import { EkranDynamiki } from '../../ui2/wyniki/dynamika';
 import { EkranStanuFazowego } from '../../ui2/wyniki/stan-fazowy';
 import { EkranZbieznosci } from '../../ui2/wyniki/zbieznosc';
 import { useShellStore } from '../../ui2/shell/useShellStore';
@@ -1027,7 +1027,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
-            label="Stabilność dynamiczna"
+            label="Dynamika czasowa RMS"
             onClick={() =>
               openChildSurface('analysis', {
                 screenCode: 'E-32',
@@ -1899,7 +1899,7 @@ function ComplianceSurface() {
 // Moduł kontraktu analizy (`wyniki/kontrakt-analizy`, karta F-E5a) WYGASZONY
 // po fali P-1…P-3: wszystkie dawne kody kontraktu mają realnych dostawców —
 // E-29 `wyniki/skladowe`, E-30 `wyniki/zbieznosc`, E-31 `wyniki/stan-fazowy`,
-// E-32 `wyniki/stabilnosc`, a E-33/E-34 prowadzą deep-linkiem do zakładki
+// E-32 `wyniki/dynamika`, a E-33/E-34 prowadzą deep-linkiem do zakładki
 // zwarć warsztatu Wyników (brak powierzchni trasowej).
 
 function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDescriptor }) {
@@ -2969,9 +2969,10 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
       // zastępczego dostawcy kontraktu analizy).
       return <EkranStanuFazowego />;
     case 'E-32':
-      // E-32 „Stabilność dynamiczna" — REALNY ekran ui2 (karta P-3): scenariusz
-      // zakłócenia → werdykt backendu → wielkości z kryteriami → ślad automatyki.
-      return <EkranStabilnosci />;
+      // E-32 „Dynamika czasowa RMS" — REALNY ekran ui2 (karta AB-P1): modele dynamiczne
+      // źródeł z katalogu → punkt pracy rozpływu → scenariusz zdarzeń → bieg kanoniczny
+      // → przebiegi sprzężone ze schematem; bez werdyktu (rekordy „nie oceniono").
+      return <EkranDynamiki />;
     // E-33/E-34 (P-1): zdolności prowadzą do realnego dostawcy — zakładki
     // zwarć warsztatu Wyników (deep-link `setWynikiTab('zwarcia')` z huba
     // analiz, nawigacji analitycznej i raportu) — brak powierzchni trasowej.

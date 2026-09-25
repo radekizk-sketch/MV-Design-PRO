@@ -70,7 +70,15 @@ DEFAULT_PV_GFL = InverterDynamicProfile(
     iq_priority_during_fault=True,
     p_recovery_rate_pu_per_s=0.80,  # 80%/s typowy
     p_recovery_delay_ms=100.0,
-    virtual_inertia_h_s=None,  # GFL = brak inercji wirtualnej
+    # Regulacja GFL (karta AB-P1 §0.3): wzmocnienia PLL i regulatora prądu — normy nie
+    # podają ich wartości; to typowe nastawy klasy modelu generycznego (jakość ESTIMATED),
+    # te same, które niesie sieć wzorcowa G16 z tą samą proweniencją. k FRT = 2 — wartość
+    # typowa zakresu nastaw k = 2…6 (EN 50549-2:2019 §4.7.4, VDE-AR-N 4110:2018 §10.2.3).
+    pll_kp=50.0,
+    pll_ki=500.0,
+    current_kp=1.0,
+    current_ki=100.0,
+    frt_k_factor=2.0,
 )
 
 DEFAULT_PV_GFM = InverterDynamicProfile(
@@ -93,7 +101,15 @@ DEFAULT_PV_GFM = InverterDynamicProfile(
     iq_priority_during_fault=True,
     p_recovery_rate_pu_per_s=2.0,  # GFM odzyskuje szybciej
     p_recovery_delay_ms=50.0,
-    virtual_inertia_h_s=4.0,  # 4 s typowa inercja wirtualna (wartosc ESTIMATED)
+    # Przekształtnik tworzący sieć (karta AB-P1 §0.3): maszyna wirtualna z inercją
+    # wirtualną profilu; tłumienie, impedancja wirtualna i strategia ograniczenia prądu —
+    # typowe nastawy klasy modelu generycznego GFM (jakość ESTIMATED).
+    gfm_control="vsm",
+    virtual_inertia_h_s=4.0,
+    virtual_damping_pu=20.0,
+    virtual_resistance_pu=0.02,
+    virtual_reactance_pu=0.15,
+    current_limit_strategy="impedancja_wirtualna",
 )
 
 # =============================================================================
@@ -120,7 +136,15 @@ DEFAULT_BESS_GFL = InverterDynamicProfile(
     iq_priority_during_fault=True,
     p_recovery_rate_pu_per_s=1.0,  # BESS odzyskuje szybciej niż PV
     p_recovery_delay_ms=80.0,
-    virtual_inertia_h_s=None,
+    # Regulacja GFL (karta AB-P1 §0.3): wzmocnienia PLL i regulatora prądu — normy nie
+    # podają ich wartości; to typowe nastawy klasy modelu generycznego (jakość ESTIMATED),
+    # te same, które niesie sieć wzorcowa G16 z tą samą proweniencją. k FRT = 2 — wartość
+    # typowa zakresu nastaw k = 2…6 (EN 50549-2:2019 §4.7.4, VDE-AR-N 4110:2018 §10.2.3).
+    pll_kp=50.0,
+    pll_ki=500.0,
+    current_kp=1.0,
+    current_ki=100.0,
+    frt_k_factor=2.0,
 )
 
 DEFAULT_BESS_GFM = InverterDynamicProfile(
@@ -143,7 +167,15 @@ DEFAULT_BESS_GFM = InverterDynamicProfile(
     iq_priority_during_fault=True,
     p_recovery_rate_pu_per_s=4.0,
     p_recovery_delay_ms=20.0,
-    virtual_inertia_h_s=6.0,  # wartosc ESTIMATED, wieksza inercja niz PV GFM
+    # Przekształtnik tworzący sieć (karta AB-P1 §0.3): maszyna wirtualna z inercją
+    # wirtualną profilu; tłumienie, impedancja wirtualna i strategia ograniczenia prądu —
+    # typowe nastawy klasy modelu generycznego GFM (jakość ESTIMATED).
+    gfm_control="vsm",
+    virtual_inertia_h_s=6.0,
+    virtual_damping_pu=20.0,
+    virtual_resistance_pu=0.02,
+    virtual_reactance_pu=0.15,
+    current_limit_strategy="impedancja_wirtualna",
 )
 
 # =============================================================================
@@ -157,6 +189,9 @@ DEFAULT_WIND_TYPE_1 = WindTurbineDynamicProfile(
     proweniencja=_profil_typowy_normy(_ODNIESIENIE_WIATR),
     h_total_s=3.5,  # SCIG ma niższą inercję
     drive_train_stiffness_pu=60.0,
+    # Tłumienie wału — do karty AB-P1 stała 0,0 zaszyta w mapowaniu; ta sama wartość
+    # jest teraz daną profilu (najsłabiej tłumiony mod skrętny, wariant zachowawczy).
+    drive_train_damping_pu=0.0,
     tp_s=0.20,  # wolniejsze niż konwertery
     tq_s=0.20,
     pitch_rate_deg_per_s=4.0,  # SCIG ma wolniejszy pitch
@@ -178,6 +213,9 @@ DEFAULT_WIND_TYPE_2 = WindTurbineDynamicProfile(
     proweniencja=_profil_typowy_normy(_ODNIESIENIE_WIATR),
     h_total_s=4.0,
     drive_train_stiffness_pu=70.0,
+    # Tłumienie wału — do karty AB-P1 stała 0,0 zaszyta w mapowaniu; ta sama wartość
+    # jest teraz daną profilu (najsłabiej tłumiony mod skrętny, wariant zachowawczy).
+    drive_train_damping_pu=0.0,
     tp_s=0.15,
     tq_s=0.15,
     pitch_rate_deg_per_s=5.0,
@@ -199,6 +237,9 @@ DEFAULT_WIND_TYPE_3 = WindTurbineDynamicProfile(
     proweniencja=_profil_typowy_normy(_ODNIESIENIE_WIATR),
     h_total_s=5.0,
     drive_train_stiffness_pu=80.0,
+    # Tłumienie wału — do karty AB-P1 stała 0,0 zaszyta w mapowaniu; ta sama wartość
+    # jest teraz daną profilu (najsłabiej tłumiony mod skrętny, wariant zachowawczy).
+    drive_train_damping_pu=0.0,
     tp_s=0.10,
     tq_s=0.10,
     pitch_rate_deg_per_s=8.0,
@@ -211,6 +252,21 @@ DEFAULT_WIND_TYPE_3 = WindTurbineDynamicProfile(
     slip_steady_pu=0.02,
     v_min_continuous_pu=0.85,
     v_max_continuous_pu=1.10,
+    # Przekształtnik turbiny (karta AB-P1 §0.3). Prąd maksymalny i priorytet prądu
+    # biernego (NC RfG art. 20 ust. 2 lit. b) — typowe dla klasy; statyzmy P/f i Q/U = 0
+    # (profil typowy NIE deklaruje regulacji mocy — do karty AB-P1 te same zera były
+    # zaszyte w mapowaniu); regulacja PLL/prądu i k FRT jak w profilach falowników.
+    converter_i_max_pu=1.2,
+    iq_priority_during_fault=True,
+    p_f_droop_pu=0.0,
+    p_f_dead_band_hz=0.0,
+    q_u_droop_pu=0.0,
+    q_u_dead_band_pu=0.0,
+    pll_kp=50.0,
+    pll_ki=500.0,
+    current_kp=1.0,
+    current_ki=100.0,
+    frt_k_factor=2.0,
 )
 
 DEFAULT_WIND_TYPE_4 = WindTurbineDynamicProfile(
@@ -220,6 +276,9 @@ DEFAULT_WIND_TYPE_4 = WindTurbineDynamicProfile(
     proweniencja=_profil_typowy_normy(_ODNIESIENIE_WIATR),
     h_total_s=6.0,  # PMSG ma większą efektywną inercję
     drive_train_stiffness_pu=50.0,
+    # Tłumienie wału — do karty AB-P1 stała 0,0 zaszyta w mapowaniu; ta sama wartość
+    # jest teraz daną profilu (najsłabiej tłumiony mod skrętny, wariant zachowawczy).
+    drive_train_damping_pu=0.0,
     tp_s=0.08,
     tq_s=0.08,
     pitch_rate_deg_per_s=10.0,
@@ -232,6 +291,21 @@ DEFAULT_WIND_TYPE_4 = WindTurbineDynamicProfile(
     slip_steady_pu=0.0,  # PMSG nie ma slip-u
     v_min_continuous_pu=0.85,
     v_max_continuous_pu=1.10,
+    # Przekształtnik turbiny (karta AB-P1 §0.3). Prąd maksymalny i priorytet prądu
+    # biernego (NC RfG art. 20 ust. 2 lit. b) — typowe dla klasy; statyzmy P/f i Q/U = 0
+    # (profil typowy NIE deklaruje regulacji mocy — do karty AB-P1 te same zera były
+    # zaszyte w mapowaniu); regulacja PLL/prądu i k FRT jak w profilach falowników.
+    converter_i_max_pu=1.2,
+    iq_priority_during_fault=True,
+    p_f_droop_pu=0.0,
+    p_f_dead_band_hz=0.0,
+    q_u_droop_pu=0.0,
+    q_u_dead_band_pu=0.0,
+    pll_kp=50.0,
+    pll_ki=500.0,
+    current_kp=1.0,
+    current_ki=100.0,
+    frt_k_factor=2.0,
 )
 
 # =============================================================================

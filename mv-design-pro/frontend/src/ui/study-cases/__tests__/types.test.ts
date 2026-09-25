@@ -176,7 +176,8 @@ describe('ANALYSIS_TYPE_LABELS', () => {
     'SC_2F_G',
     'LOAD_FLOW',
     'PHASE_STATE_SN',
-    'DYNAMIC_STABILITY',
+    'PF_UNBALANCED',
+    'DYNAMIKA_RMS',
   ];
 
   it('should have labels for all analysis types', () => {
@@ -194,7 +195,7 @@ describe('ANALYSIS_TYPE_LABELS', () => {
     expect(ANALYSIS_TYPE_LABELS.SC_2F_G).toContain('warcie');
     expect(ANALYSIS_TYPE_LABELS.LOAD_FLOW).toContain('mocy');
     expect(ANALYSIS_TYPE_LABELS.PHASE_STATE_SN).toContain('Stan');
-    expect(ANALYSIS_TYPE_LABELS.DYNAMIC_STABILITY).toContain('dynamiczna');
+    expect(ANALYSIS_TYPE_LABELS.DYNAMIKA_RMS).toContain('Dynamika');
   });
 });
 

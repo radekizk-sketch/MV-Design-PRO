@@ -145,3 +145,25 @@ def test_scan_pomija_plik_testowy_na_frontendzie(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(guard, "FRONTEND_SRC", frontend_src)
     violations, _stale = guard.scan()
     assert violations == []
+
+
+def test_scan_zglasza_martwy_prefiks_katalogu(tmp_path, monkeypatch) -> None:
+    """Karta AB-P1 (iniekcja czerwona): prefiks katalogu bez trafienia jest MARTWYM wpisem
+    — dawniej prefiksy były wyłączone z kontroli, więc zezwolenie dla skasowanego katalogu
+    trwałoby po cichu. Drzewo z literałem wyłącznie w `frt_hvrt/` zgłasza pozostałe wpisy,
+    a sam prefiks `frt_hvrt/` (mający trafienie) nie jest martwy."""
+    import no_module_zero_guard as guard
+
+    backend_src = tmp_path / "backend_src"
+    solver_dir = backend_src / "network_model" / "solvers" / "frt_hvrt"
+    solver_dir.mkdir(parents=True)
+    (solver_dir / "contracts.py").write_text('STATUS = "no_module"\n', encoding="utf-8")
+    monkeypatch.setattr(guard, "BACKEND_SRC", backend_src)
+    monkeypatch.setattr(guard, "FRONTEND_SRC", tmp_path / "brak_frontendu")
+    monkeypatch.setattr(
+        guard,
+        "_ALLOWLIST_BACKEND",
+        ("network_model/solvers/frt_hvrt/", "network_model/solvers/skasowany/"),
+    )
+    _violations, stale = guard.scan()
+    assert stale == ["  backend/src/network_model/solvers/skasowany/"]

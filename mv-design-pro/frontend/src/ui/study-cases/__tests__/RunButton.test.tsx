@@ -45,7 +45,7 @@ describe('RunButton — labels per analysis type', () => {
     ['SC_2F', 'Zwarcie dwufazowe (2F)'],
     ['SC_2F_G', 'Zwarcie dwufazowe z ziemią (2F+Z)'],
     ['PHASE_STATE_SN', 'Stan fazowy SN'],
-    ['DYNAMIC_STABILITY', 'Stabilność dynamiczna'],
+    ['DYNAMIKA_RMS', 'Dynamika czasowa RMS'],
   ])('renders Polish label for %s', (analysisType, expectedLabel) => {
     render(<RunButton readinessReady analysisType={analysisType} onRun={vi.fn()} />);
     expect(screen.getByRole('button')).toHaveTextContent(`Oblicz: ${expectedLabel}`);

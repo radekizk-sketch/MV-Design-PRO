@@ -11,10 +11,10 @@
  *                      + tabela pętli OLTC + ślad iteracji OTWARTY,
  *  - e31-stan-fazowy — tabela napięć/prądów per faza + asymetrie z werdyktem
  *                      (przekroczenie z flagi solvera),
- *  - e32-stabilnosc  — rekord oceny NIE_OCENIONO (uczciwość natychmiastowa
- *                      2026-09-23: kąty wpisane przez użytkownika, dawny werdykt
- *                      STABILNY był porównaniem wpisanych liczb z progami) + echo
- *                      scenariusza + ślad OTWARTY bez narracji zdarzeń.
+ *  - e32-dynamika    — bieg kanoniczny dynamiki czasowej RMS (karta AB-P1): rekordy
+ *                      oceny NIE_OCENIONO, poziom dowodowy „model niezwalidowany",
+ *                      oś zdarzeń z nazwami elementów, wielkości z jednostkami
+ *                      i przebiegi napięć szyn na wspólnej osi czasu.
  * Wyjście: docs/audit/visual/flow-ekspert/e29..e32-<scena>-<motyw>.png (oba motywy).
  */
 import { test, expect, type Page } from '@playwright/test';
@@ -38,7 +38,7 @@ const SCENY: readonly Scena[] = [
   { creator: 'wyniki-skladowe', plik: 'e29-skladowe' },
   { creator: 'wyniki-zbieznosc', plik: 'e30-zbieznosc' },
   { creator: 'wyniki-stan-fazowy', plik: 'e31-stan-fazowy' },
-  { creator: 'wyniki-stabilnosc', plik: 'e32-stabilnosc' },
+  { creator: 'wyniki-dynamika', plik: 'e32-dynamika' },
 ];
 
 const FIXTURY_DIR = path.resolve(_dirname, '../src/harness-fixtures/generated');
@@ -212,19 +212,24 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     await expect(asymetrie).toContainText(pl(wierszFaz.current_unbalance_percent, 2));
     await expect(asymetrie).toContainText('przekroczenie');
   } else {
-    // wyniki-stabilnosc (zmiana kanonu 2026-09-23): rekord oceny NIE_OCENIONO z
-    // REALNEGO biegu backendu (scena stabilnosc) zamiast werdyktu STABILNY, echo
-    // scenariusza wpisanego przez użytkownika, ślad OTWARTY natywnym klikiem — bez
-    // narracji zdarzeń zabezpieczeń (efekt topologii zadeklarowany w opcjach).
-    const wiersz = fixtura('stabilnosc_scena_wyniki').rows[0];
-    const ocena = page.getByTestId('mvd-stabilnosc-ocena');
-    await expect(ocena).toHaveAttribute('data-status', 'NIE_OCENIONO');
-    await expect(ocena).toContainText(wiersz.ocena.wyjasnienie.zdanie_pl);
-    await expect(page.getByTestId('mvd-stabilnosc-echo')).toBeVisible();
-    await expect(page.getByTestId('mvd-stabilnosc')).not.toContainText('STABILNY');
-    await page.getByTestId('mvd-stabilnosc-slad-btn').click();
-    await expect(page.getByTestId('mvd-stabilnosc-topologia')).toBeVisible();
-    await expect(page.getByTestId('mvd-stabilnosc-zdarzenia')).toHaveCount(0);
+    // wyniki-dynamika (karta AB-P1): wynik REALNEGO biegu `dynamika_rms` sceny —
+    // rekordy NIE_OCENIONO (bieg w trybie sieci nie wydaje werdyktu), poziom dowodowy
+    // nazwany, oś zdarzeń z NAZWAMI elementów, wielkości z jednostkami, przebiegi.
+    const wynik = fixtura('dynamika_scena_wyniki');
+    const oceny = page.getByTestId('mvd-dynamika-oceny');
+    await expect(oceny.getByTestId(/^mvd-dynamika-ocena-/)).toHaveCount(wynik.oceny.length);
+    await expect(page.getByTestId('mvd-dynamika-poziom')).toHaveAttribute(
+      'data-tier',
+      'UNVALIDATED_MODEL',
+    );
+    const os = page.getByTestId('mvd-dynamika-os-zdarzen');
+    await expect(os).toContainText(wynik.opis_wyniku.zdarzenia[0].rodzaj_pl);
+    await expect(os).toContainText(wynik.opis_wyniku.elementy[wynik.zdarzenia_wykonane[0].ref].nazwa);
+    await expect(page.getByTestId('mvd-dynamika-metryki')).toContainText(
+      wynik.opis_wyniku.metryki[0].opis_pl,
+    );
+    await expect(page.getByTestId('mvd-dynamika-wykres-pu')).toBeVisible();
+    await expect(page.getByTestId('mvd-dynamika-wynik')).not.toContainText('SPEŁNIA');
   }
 }
 

@@ -1,0 +1,215 @@
+{
+  "bieg_1": [
+    {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "BRAK_METODY",
+        "odniesienie": "bieg bieg-1",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+        "status_danych": {
+          "dane_przyjete": [
+            {
+              "jakosc": "ESTIMATED",
+              "nazwa_pl": "Parametry dynamiczne źródła Farma PV Zachód",
+              "powod_pl": "wartości typowe klasy urządzenia z profilu katalogowego — nie karta producenta ani wynik testu tego urządzenia (EN 50549-2:2019)",
+              "wartosc": null
+            }
+          ],
+          "stan": "UNVALIDATED_INPUT"
+        },
+        "status_modelu": "UNVALIDATED_MODEL",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Ocena niewykonana",
+        "semantyka": "neutralna"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryterium": {
+        "opis_pl": "Zgodność modułów wytwórczych z wymaganiami FRT",
+        "relacja": "LOGICZNE",
+        "warunek_latex": "",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "kryterium_id": "dynamika_rms.zgodnosc_frt.bieg-1",
+      "limit": null,
+      "margines": null,
+      "niepewnosc": {
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "brak kryterium — przebieg nie jest porównywany z żadnym limitem, więc niepewność wyniku oceny nie dotyczy",
+        "wartosc": null
+      },
+      "podstawa": {
+        "dokument": "Rozporządzenie (UE) 2016/631 (NC RfG) art. 14, 17 i 20",
+        "jednostka_redakcyjna": null,
+        "rodzaj": "ROZPORZADZENIE_UE",
+        "status": "NIEUSTALONE",
+        "uwagi_pl": "kryteria nie są odniesione do przebiegu w tym biegu",
+        "wydanie": null
+      },
+      "powody_niepelnosci": [
+        "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
+        "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji nie stanowi pełnego dowodu zgodności (wymagany: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany).",
+        "Dana przyjęta bez walidacji: Parametry dynamiczne źródła Farma PV Zachód (bez wartości liczbowej), jakość danej: oszacowane — wartości typowe klasy urządzenia z profilu katalogowego — nie karta producenta ani wynik testu tego urządzenia (EN 50549-2:2019).",
+        "Podstawa „Rozporządzenie (UE) 2016/631 (NC RfG) art. 14, 17 i 20” (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+      ],
+      "przedmiot": {
+        "element_ref": null,
+        "nazwa_pl": "Sieć testowa dynamiki",
+        "opis_pl": "Sieć w biegu dynamiki czasowej RMS (tryb sieci, scenariusz zdarzeń)"
+      },
+      "slad": [],
+      "status_maszynowy": "NIE_OCENIONO",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "bieg zawiera moduły wytwórcze i zdarzenie zakłóceniowe",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Metoda dowodu właściwa dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+          "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+          "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Rozporządzenie (UE) 2016/631 (NC RfG) art. 14, 17 i 20” (rozporządzenie UE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: kryteria nie są odniesione do przebiegu w tym biegu).",
+          "Kryteria zdolności do pozostania w pracy i wsparcia napięcia (NC RfG art. 14, 17, 20) odniesione do przebiegu: obwiednia napięcia z profilu operatora, prąd bierny dodatkowy i odbudowa mocy czynnej mierzone na zaciskach modułu.",
+          "Model przekształtnika zweryfikowany wyrocznią (poziom „symulacja zwalidowana”) — parametry z profilu typowego normy są deklaracją, nie dowodem zachowania urządzenia.",
+          "Zdarzenia zależne od przebiegu (zabezpieczenie podnapięciowe modułu, działanie automatyki) — bieg wykonuje wyłącznie zdarzenia zadane w harmonogramie."
+        ],
+        "przyczyna_pl": "brak metody dowodu, która wykazuje zachowania dynamicznego",
+        "zastrzezenia": [
+          "Podstawa „Rozporządzenie (UE) 2016/631 (NC RfG) art. 14, 17 i 20” (rozporządzenie UE): stan źródła „nieustalone” — pochodzenie wartości nieustalone (kryteria nie są odniesione do przebiegu w tym biegu).",
+          "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
+          "Dana przyjęta bez walidacji: Parametry dynamiczne źródła Farma PV Zachód (bez wartości liczbowej), jakość danej: oszacowane — wartości typowe klasy urządzenia z profilu katalogowego — nie karta producenta ani wynik testu tego urządzenia (EN 50549-2:2019).",
+          "Zakres ważności: Przebiegi czasowe RMS składowej zgodnej na punkcie pracy wskazanego rozpływu — wynik nie obejmuje: zwarcia niesymetryczne i składowe przeciwna oraz zerowa; zdarzenia warunkowe wyzwalane przebiegiem."
+        ],
+        "zdanie_pl": "Zgodność modułów wytwórczych z wymaganiami FRT (Sieć testowa dynamiki) — ocena niewykonana: brak metody dowodu, która wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar."
+      },
+      "wynik": null,
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Przebiegi czasowe RMS składowej zgodnej na punkcie pracy wskazanego rozpływu",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": null,
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "zwarcia niesymetryczne i składowe przeciwna oraz zerowa",
+          "zdarzenia warunkowe wyzwalane przebiegiem"
+        ]
+      }
+    },
+    {
+      "dowod": {
+        "domena_pl": null,
+        "metoda": "BRAK_METODY",
+        "odniesienie": "bieg bieg-1",
+        "poziom": "UNVALIDATED_MODEL",
+        "rodzaj_twierdzenia": "DYNAMIC_PERFORMANCE",
+        "status_danych": {
+          "dane_przyjete": [
+            {
+              "jakosc": "ESTIMATED",
+              "nazwa_pl": "Parametry dynamiczne źródła Farma PV Zachód",
+              "powod_pl": "wartości typowe klasy urządzenia z profilu katalogowego — nie karta producenta ani wynik testu tego urządzenia (EN 50549-2:2019)",
+              "wartosc": null
+            }
+          ],
+          "stan": "UNVALIDATED_INPUT"
+        },
+        "status_modelu": "UNVALIDATED_MODEL",
+        "w_domenie_walidacji": null
+      },
+      "etykieta": {
+        "etykieta_pl": "Ocena niewykonana",
+        "semantyka": "neutralna"
+      },
+      "kompletnosc_dowodu": "NIEPELNY",
+      "kryterium": {
+        "opis_pl": "Stabilność kątowa po zakłóceniu (czas krytyczny)",
+        "relacja": "LOGICZNE",
+        "warunek_latex": "",
+        "warunek_wstepny_pl": null,
+        "warunek_wstepny_podstawa": null
+      },
+      "kryterium_id": "dynamika_rms.stabilnosc_katowa.bieg-1",
+      "limit": null,
+      "margines": null,
+      "niepewnosc": {
+        "metoda_pl": null,
+        "nie_dotyczy": true,
+        "powod_pl": "brak kryterium — przebieg nie jest porównywany z żadnym limitem, więc niepewność wyniku oceny nie dotyczy",
+        "wartosc": null
+      },
+      "podstawa": {
+        "dokument": "Kryterium utraty synchronizmu — nieustalone dla tego biegu",
+        "jednostka_redakcyjna": null,
+        "rodzaj": "NIEUSTALONA",
+        "status": "NIEUSTALONE",
+        "uwagi_pl": "bieg nie wyznacza czasu krytycznego",
+        "wydanie": null
+      },
+      "powody_niepelnosci": [
+        "Brak metody dowodu — właściwa metoda dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja na silniku o poziomie dowodowym „symulacja zwalidowana” (bieg w zadeklarowanej domenie walidacji) z modelem urządzenia: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany albo pomiar.",
+        "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji nie stanowi pełnego dowodu zgodności (wymagany: model urządzenia zwalidowany wynikiem testu albo model urządzenia certyfikowany).",
+        "Dana przyjęta bez walidacji: Parametry dynamiczne źródła Farma PV Zachód (bez wartości liczbowej), jakość danej: oszacowane — wartości typowe klasy urządzenia z profilu katalogowego — nie karta producenta ani wynik testu tego urządzenia (EN 50549-2:2019).",
+        "Podstawa „Kryterium utraty synchronizmu — nieustalone dla tego biegu” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+      ],
+      "przedmiot": {
+        "element_ref": null,
+        "nazwa_pl": "Sieć testowa dynamiki",
+        "opis_pl": "Sieć w biegu dynamiki czasowej RMS (tryb sieci, scenariusz zdarzeń)"
+      },
+      "slad": [],
+      "status_maszynowy": "NIE_OCENIONO",
+      "stosowalnosc": {
+        "dotyczy": true,
+        "modul_istniejacy": null,
+        "podstawa": null,
+        "powod_pl": "bieg zawiera zdarzenie zakłóceniowe w sieci",
+        "technologia": null,
+        "typ_modulu": null,
+        "warunek_wstepny_nieuruchomiony": false
+      },
+      "wyjasnienie": {
+        "czego_brakuje": [
+          "Metoda dowodu właściwa dla twierdzenia o zachowaniu dynamicznym: certyfikat urządzenia, raport z testu, symulacja albo pomiar — metoda „brak metody” jest niedopuszczalna (wynik pokazywany wyłącznie informacyjnie).",
+          "Wynik wielkości ocenianej: narzędzie nie ma metody, która go wyznacza — ponowny bieg ani uzupełnienie danych wejściowych go nie dostarczą.",
+          "Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Kryterium utraty synchronizmu — nieustalone dla tego biegu” (warstwa o nieustalonym pochodzeniu) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: bieg nie wyznacza czasu krytycznego).",
+          "Kryterium utraty synchronizmu i wyznaczenie czasu krytycznego wyłączenia zwarcia (seria biegów z rosnącym czasem usunięcia zwarcia) — pojedynczy przebieg nie jest oceną stabilności.",
+          "Model sieci zweryfikowany wyrocznią dla wszystkich rodzin urządzeń w biegu — rdzeń ma wyrocznie analityczne wyłącznie dla układu maszyna–szyna sztywna."
+        ],
+        "przyczyna_pl": "brak metody dowodu, która wykazuje zachowania dynamicznego",
+        "zastrzezenia": [
+          "Podstawa „Kryterium utraty synchronizmu — nieustalone dla tego biegu” (warstwa o nieustalonym pochodzeniu): stan źródła „nieustalone” — pochodzenie wartości nieustalone (bieg nie wyznacza czasu krytycznego).",
+          "Model urządzenia niezwalidowany — model konkretnego urządzenia bez walidacji; wynik nie stanowi pełnego dowodu zgodności urządzenia.",
+          "Dana przyjęta bez walidacji: Parametry dynamiczne źródła Farma PV Zachód (bez wartości liczbowej), jakość danej: oszacowane — wartości typowe klasy urządzenia z profilu katalogowego — nie karta producenta ani wynik testu tego urządzenia (EN 50549-2:2019).",
+          "Zakres ważności: Przebiegi czasowe RMS składowej zgodnej na punkcie pracy wskazanego rozpływu — wynik nie obejmuje: zwarcia niesymetryczne i składowe przeciwna oraz zerowa; zdarzenia warunkowe wyzwalane przebiegiem."
+        ],
+        "zdanie_pl": "Stabilność kątowa po zakłóceniu (czas krytyczny) (Sieć testowa dynamiki) — ocena niewykonana: brak metody dowodu, która wykazuje zachowania dynamicznego; właściwa metoda: certyfikat urządzenia, raport z testu, symulacja albo pomiar."
+      },
+      "wynik": null,
+      "zakres_waznosci": {
+        "model_urzadzenia": null,
+        "ograniczniki": [],
+        "opis_pl": "Przebiegi czasowe RMS składowej zgodnej na punkcie pracy wskazanego rozpływu",
+        "parametry_sieci": [],
+        "regulator": null,
+        "rodzaj_analizy": null,
+        "symetria_zaklocenia": null,
+        "technologia": null,
+        "wykluczenia": [
+          "zwarcia niesymetryczne i składowe przeciwna oraz zerowa",
+          "zdarzenia warunkowe wyzwalane przebiegiem"
+        ]
+      }
+    }
+  ]
+}

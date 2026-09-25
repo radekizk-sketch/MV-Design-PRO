@@ -28,6 +28,7 @@ from enm.canonical_analysis import (
 from enm.canonical_analysis import (
     list_runs_for_case as list_canonical_runs_for_case,
 )
+from enm.scenariusze import ScenariuszNieistniejeError, wczytaj_scenariusz
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
@@ -39,10 +40,17 @@ class CreateRunRequest(BaseModel):
         ...,
         description=(
             "Typ analizy: SC_3F, SC_1F, SC_2F, SC_2F_G, LOAD_FLOW, PF_UNBALANCED, "
-            "PHASE_STATE_SN, DYNAMIC_STABILITY"
+            "PHASE_STATE_SN, DYNAMIKA_RMS"
         ),
     )
     solver_input: dict[str, Any] = Field(default_factory=dict, description="Opcje solvera")
+    scenario_id: str | None = Field(
+        None,
+        description=(
+            "Scenariusz nazwany projektu (magazyn scenariuszy) — migawka biegu i jego "
+            "projekcja na opcje (np. harmonogram dynamiki) pochodzą ze scenariusza"
+        ),
+    )
     readiness: dict[str, Any] | None = Field(None, description="Legacy - ignorowane")
     eligibility: dict[str, Any] | None = Field(None, description="Legacy - ignorowane")
 
@@ -120,8 +128,6 @@ def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
         return "short_circuit_sn"
     if value == ExecutionAnalysisType.PHASE_STATE_SN:
         return "phase_state_sn"
-    if value == ExecutionAnalysisType.DYNAMIC_STABILITY:
-        return "dynamic_stability"
     if value == ExecutionAnalysisType.DYNAMIKA_RMS:
         return "dynamika_rms"
     # V12K-025: PROTECTION ma osobny endpoint (architektoniczna separacja
@@ -187,6 +193,16 @@ def create_run(
     _parse_uuid(case_id, "case_id")
     analysis_type = _parse_analysis_type(request.analysis_type)
 
+    # Karta AB-P1: scenariusz NAZWANY (np. harmonogram zdarzeń biegu `dynamika_rms`)
+    # wchodzi do biegu istniejącym mechanizmem `create_run(scenariusz=...)` — migawka
+    # efektywna, projekcja `opcje_biegu_ze_scenariusza` i koperta rewizji ze scenariuszem.
+    scenariusz = None
+    if request.scenario_id is not None:
+        try:
+            scenariusz = wczytaj_scenariusz(klucz, request.scenario_id)
+        except ScenariuszNieistniejeError as exc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
     try:
         run = create_canonical_run(
             case_id=case_id,
@@ -194,6 +210,7 @@ def create_run(
             project_id=_resolve_project_id(case_id, http_request),
             analysis_type=_canonical_analysis_type(analysis_type),
             options=_normalize_solver_input(analysis_type, request.solver_input),
+            scenariusz=scenariusz,
         )
         return run.to_execution_dict()
     except ValueError as exc:

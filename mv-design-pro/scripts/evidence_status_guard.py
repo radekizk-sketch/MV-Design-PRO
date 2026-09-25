@@ -2,7 +2,8 @@
 """EVIDENCE STATUS GUARD — zakaz literałów "reportable"/"complete" poza rejestrem.
 
 Karta S-1 (W6-0, `SYNTEZA_DOMKNIECIA_PRODUKTU_2026-09.md` A-2/A-6): przed tą
-kartą `_execute_dynamic_stability` (`enm/canonical_analysis.py`) wpisywał
+kartą wykonawca toru „stabilność po wyłączeniu zwarcia" (`enm/canonical_analysis.py`,
+skasowany w karcie AB-P1) wpisywał
 ``proof_status="complete"`` / ``reporting_status="reportable"`` NA SZTYWNO dla
 wyniku o zdolności bez ustalonej poprawności fizycznej — dowód regulacyjny
 bez bezpiecznika. Naprawa: te dwie wartości muszą być WYPROWADZANE z rejestru
@@ -89,13 +90,6 @@ _ALLOWLIST: tuple[tuple[str, str, str], ...] = (
         "Wartość WARUNKOWA na rzeczywistej fladze zbieżności solvera FROZEN BFS "
         "(`wynik.converged`, wszystkie wyspy zasilone) — rozpływ niesymetryczny (W5-D), "
         "wynik statyczny z kompletnymi danymi, nie zdolność dynamiczna.",
-    ),
-    (
-        "enm/canonical_analysis.py",
-        "_execute_dynamic_stability",
-        "Wartość WYPROWADZONA z rejestru dowodowego "
-        "(`classify_dynamic_capability('dynamic_stability.fault_clear')."
-        "regulatory_evidence_eligible`) — karta S-1, koniec tautologii.",
     ),
 )
 

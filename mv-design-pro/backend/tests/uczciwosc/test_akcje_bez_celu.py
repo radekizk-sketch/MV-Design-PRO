@@ -22,10 +22,7 @@ from collections.abc import Callable, Iterator
 from typing import Any
 
 import pytest
-from enm.canonical_analysis import create_run, execute_run
-from enm.store import set_enm
 
-from tests.cgmes.golden_enm import build_golden_enm
 from tests.uczciwosc import generuj_fixtury_ocen_fe as fixtury
 from tests.werdykt import fabryki as f
 
@@ -36,7 +33,7 @@ _POLA_AKCJI = ("akcja", "akcja_naprawcza_pl", "fix_action", "fix_navigation", "c
 #: Budowniczowie odpowiedzi powierzchni — TE SAME funkcje, z których powstają fixtury frontu.
 _POWIERZCHNIE: dict[str, Callable[[], Any]] = {
     "frt": fixtury._frt,
-    "stabilnosc": fixtury._stabilnosc,
+    "dynamika": fixtury._dynamika,
     "ssci": fixtury._ssci,
     "widoki_lom": fixtury._widoki_lom,
     "akademickie": fixtury._akademickie,
@@ -109,32 +106,38 @@ def test_porownanie_lom_bez_nastawy_zachowuje_rade_z_celem() -> None:
     assert "DEKLARACJA" in metody, metody
 
 
-def test_rekord_toru_t1_z_koncowki_nie_oferuje_akcji_bez_celu(app_client: Any) -> None:
-    """Ścieżka użytkownika: bieg T1 z KOMPLETEM danych scenariusza → końcówka wyniku."""
-    set_enm("c-akcje", build_golden_enm())
-    bieg = execute_run(
-        create_run(
-            case_id="c-akcje",
-            klucz_twin="c-akcje",
-            analysis_type="dynamic_stability",
-            options={
-                "scenario_id": "dyn-akcje",
-                "faulted_element_id": "cab_main_b",
-                "cleared_by_element_ids": ["cb-a"],
-                "clearing_time_ms": 90.0,
-                "pre_fault_angle_deg": 8.0,
-                "during_fault_angle_deg": 48.0,
-                "post_fault_angle_deg": 18.0,
-                "post_fault_voltage_pu": 0.98,
-                "post_fault_frequency_pu": 0.995,
-                "recovery_time_constant_s": 0.3,
-            },
-        ).id
+def test_rekordy_biegu_dynamiki_z_koncowki_nie_oferuja_akcji_bez_celu(app_client: Any) -> None:
+    """Ścieżka użytkownika (karta AB-P1, zastępuje skasowany tor T1): bieg kanoniczny
+    `dynamika_rms` ze scenariuszem nazwanym → końcówka wyniku → rekordy `NIE_OCENIONO`
+    bez metody dowodu i bez rady „wykonaj bieg" ani pól akcji."""
+    from tests.api.test_dynamika_api import (
+        REFY,
+        SCENARIUSZ_IZOLACJI,
+        _bieg,
+        _operacja,
+        _siec_bez_modelu_pv,
     )
-    assert bieg.status == "FINISHED", bieg.error_message
-    odpowiedz = app_client.get(f"/api/analysis-runs/{bieg.id}/results/dynamic-stability")
+    from tests.test_dynamika_rms_run import _nowy_przypadek, _uruchom_rozplyw
+
+    case_id = _nowy_przypadek(app_client)
+    _siec_bez_modelu_pv(app_client, case_id)
+    _operacja(
+        app_client,
+        case_id,
+        "set_der_catalog_bindings",
+        {"generator_ref": REFY.pv, "dynamic_model_ref": "default_pv_gfl"},
+    )
+    scenariusz = app_client.post(
+        f"/api/dynamika/study-cases/{case_id}/scenariusze",
+        json={"name": "Zwarcie w odcinku", "dynamika": SCENARIUSZ_IZOLACJI},
+    ).json()
+    bieg = _bieg(
+        app_client, case_id, scenariusz["scenario_id"], _uruchom_rozplyw(app_client, case_id)
+    )
+    assert bieg["status"] == "DONE", bieg["error_message"]
+    odpowiedz = app_client.get(f"/api/analysis-runs/{bieg['run_id']}/results/dynamika")
     assert odpowiedz.status_code == 200, odpowiedz.text
-    metody = {_sprawdz_rekord(r) for r in _rekordy_niewykonane(odpowiedz.json())}
+    metody = {_sprawdz_rekord(r) for r in _rekordy_niewykonane(odpowiedz.json()["oceny"])}
     assert metody == {"BRAK_METODY"}, metody
 
 

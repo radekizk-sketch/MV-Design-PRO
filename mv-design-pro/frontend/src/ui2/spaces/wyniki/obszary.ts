@@ -32,7 +32,7 @@ export const ZAKLADKI = [
   { id: 'zwarcia', etykieta: T.zakladkaZwarcia },
   { id: 'skladowe', etykieta: T.zakladkaSkladowe },
   { id: 'koordynacja', etykieta: T.zakladkaKoordynacja },
-  { id: 'stabilnosc', etykieta: T.zakladkaStabilnosc },
+  { id: 'dynamika', etykieta: T.zakladkaDynamika },
   { id: 'ssci', etykieta: T.zakladkaSsci },
   { id: 'akademickie', etykieta: T.zakladkaAkademickie },
   { id: 'ncrfg', etykieta: T.zakladkaNcRfg },
@@ -56,7 +56,7 @@ export type ObszarId =
   | 'ocena-i-przeglad'
   | 'rozplyw'
   | 'zwarcia'
-  | 'stabilnosc'
+  | 'dynamika'
   | 'specjalistyczne'
   | 'oze'
   | 'klasyczne';
@@ -70,7 +70,7 @@ export interface ObszarWynikow {
 
 /**
  * Obszary w kolejności toku pracy projektanta: od oceny wyników, przez rozpływ
- * i zwarcia, po stabilność, analizy specjalistyczne (tryb ekspercki), strumień
+ * i zwarcia, po dynamikę i stabilność, analizy specjalistyczne (tryb ekspercki), strumień
  * OZE i widoki klasyczne mostu.
  */
 export const OBSZARY: readonly ObszarWynikow[] = [
@@ -93,7 +93,7 @@ export const OBSZARY: readonly ObszarWynikow[] = [
     ],
   },
   { id: 'zwarcia', etykieta: T.obszarZwarcia, zakladki: ['zwarcia', 'skladowe', 'koordynacja'] },
-  { id: 'stabilnosc', etykieta: T.obszarStabilnosc, zakladki: ['stabilnosc', 'ssci'] },
+  { id: 'dynamika', etykieta: T.obszarDynamika, zakladki: ['dynamika', 'ssci'] },
   { id: 'specjalistyczne', etykieta: T.obszarSpecjalistyczne, zakladki: ['akademickie'] },
   {
     id: 'oze',
