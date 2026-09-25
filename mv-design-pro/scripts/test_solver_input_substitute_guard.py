@@ -1664,10 +1664,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zastapiony `delta_x_nieprzypisane_max`, karta AB-1b.1 S19). PASS niezmieniony (zero
     # podstawien liczby za nieobecna dana).
     # Partia integracji 3 (2026-09-25): 4042 -> 4051 — POMIAR `contract_fields()` na `d5f66b6a`
-    # i na `bfbb3698`, roznica zbiorow: +9 (karta #144: `_nazwy_lokalizacji`,
+    # i na `103963a2`, roznica zbiorow: +9 (karta #144: `_nazwy_lokalizacji`,
     # `nazwy_lokalizacji`, `nazwa_odcinka`, `projekt`, `przypadek`, `source_nazwa`,
     # `target_nazwa`; karta ETYKIETY-TR: `source_bus_name`, `target_bus_name`), -0; pin nie
-    # byl podniesiony przy integracji #144 (czerwony samotest na `b24144d5`/`bfbb3698`).
+    # byl podniesiony przy integracji #144 (czerwony samotest na `a0262d73`/`103963a2`).
     # Po AB-1b.1b na tej samej partii: 4051 -> 4090 (+40, -1 jak wyzej). PASS niezmieniony.
     # Karta MAGISTRALA-OCENA (2026-09-25): 4032 -> 4055 — POMIAR `contract_fields()` na
     # drzewie bazowym karty `73d435c2` (4042: +10 nazw z kart scalonych po Pakiecie E2 bez
@@ -1818,7 +1818,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `solvers/dynamika/urzadzenia/zrodlo_testowe.py`; zero wpisow w zapadce i wykluczeniach).
         # Partia integracji 3 (2026-09-25): 542 -> 544 (+1 `enm/nazwy_elementow.py`, +1
         # `application/nazwy_biegu.py` — karta #144), potem +3 AB-1b.1b: 544 -> 547.
-        # POMIAR guardem na `bfbb3698` i na drzewie integracji.
+        # POMIAR guardem na `103963a2` i na drzewie integracji.
         # Karta MAGISTRALA-OCENA (2026-09-25): 540 -> 543 — POMIAR guardem na drzewie karty:
         # +2 enm z kart scalonych przed baza `73d435c2` bez aktualizacji pinu (`enm/
         # rola_pola_sn.py` karta #141, `enm/slownik_komunikatow.py` karta #142; ten test byl
@@ -1956,7 +1956,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 2 (2026-09-25): enm 52 -> 54 (`rola_pola_sn.py` — #141,
         # `slownik_komunikatow.py` — #142); dlug/wykluczenia BEZ ZMIANY.
         # Partia integracji 3 (2026-09-25): enm 54 -> 55 (`nazwy_elementow.py` — karta #144);
-        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na `bfbb3698`.
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na `103963a2`.
         # MAGISTRALA-OCENA (pomiar na drzewie karty): enm 52 -> 54 (`enm/rola_pola_sn.py`
         # karta #141, `enm/slownik_komunikatow.py` karta #142 — scalone przed baza bez pinu).
         "  enm: pliki_skanowane=55, dlug=7 plikow/suma 71, wykluczenia=0 plikow/suma 0",
@@ -2001,7 +2001,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/analyses/run_index.py`; plik nie mial wpisu w zapadce ani w
         # wykluczeniach, wiec ubyl tylko z licznika skanu).
         # Partia integracji 3 (2026-09-25): application 239 -> 240 (`nazwy_biegu.py` — karta
-        # #144); dlug 30/91 i wykluczenia 4/10 BEZ ZMIANY. POMIAR guardem na `bfbb3698`.
+        # #144); dlug 30/91 i wykluczenia 4/10 BEZ ZMIANY. POMIAR guardem na `103963a2`.
         # MAGISTRALA-OCENA: application 239 -> 240 (`application/analyses/
         # ocena_doboru_magistrali.py`).
         # Integracja MAGISTRALA-OCENA na partii 3: application 240 -> 241
