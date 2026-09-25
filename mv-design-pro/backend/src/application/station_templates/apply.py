@@ -29,6 +29,7 @@ from application.station_templates.schema import (
 )
 from enm.domain_operations import execute_domain_operation, nazwa_roli_pola_sn
 from enm.models import EnergyNetworkModel
+from enm.pole_transformatorowe import pasmo_napieciowe
 from enm.rola_pola_sn import kanoniczna_rola_pola_sn
 from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu, opis_pozycji_katalogu
 from enm.store import blokada_twin
@@ -423,7 +424,7 @@ def _zastosuj_szablon_pod_blokada(
                     "bus_nn_ref": nn_bus_ref,
                     "station_ref": station_ref,
                     "field_role": "OUTGOING",
-                    "field_name": f"Odpływ nN {i + 2}",
+                    "field_name": f"Odpływ {pasmo_napieciowe(nn_voltage_kv)} {i + 2}",
                     "catalog_ref": cb_catalog or "cb_nn_400a",
                 },
             )

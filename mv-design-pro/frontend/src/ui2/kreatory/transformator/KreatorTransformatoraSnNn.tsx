@@ -222,7 +222,7 @@ export function KreatorTransformatoraSnNn() {
       closeForm();
       selekcjaPoOperacji(response, {
         type: 'TransformerBranch',
-        name: dane.nazwa.trim() || 'Transformator SN/nN',
+        name: dane.nazwa.trim() || 'Transformator',
       });
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);

@@ -1011,7 +1011,7 @@
     "scenario_id": "MAX",
     "station_ref": "stDER"
   },
-  "projection_hash": "ef3f0578fb6fe6de818b6d46acf9b20b712da8374295d86b8003c8f84c059977",
+  "projection_hash": "ccb412feca040655b6e30df0ad172903b4676fe5c271027067cd7daaaae1e703",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -1056,7 +1056,7 @@
                       "x_ohm": 0.0032
                     },
                     {
-                      "label": "Transformator SN/nN T1",
+                      "label": "T1",
                       "magnitude_ohm": 0.0101587302,
                       "r_ohm": 0.00261627614,
                       "x_ohm": 0.00981605306
@@ -1088,7 +1088,7 @@
                           "x_ohm": 0.0032
                         },
                         {
-                          "label": "Transformator SN/nN T1",
+                          "label": "T1",
                           "r_ohm": 0.00261627614,
                           "x_ohm": 0.00981605306
                         },
@@ -1144,7 +1144,7 @@
                       "x_ohm": 0.0
                     },
                     {
-                      "label": "Transformator SN/nN T1",
+                      "label": "T1",
                       "magnitude_ohm": 0.0101587302,
                       "r_ohm": 0.00261627614,
                       "x_ohm": 0.00981605306
@@ -1176,7 +1176,7 @@
                           "x_ohm": 0.0
                         },
                         {
-                          "label": "Transformator SN/nN T1",
+                          "label": "T1",
                           "r_ohm": 0.00261627614,
                           "x_ohm": 0.00981605306
                         },
@@ -1236,7 +1236,7 @@
                     "x_ohm": 0.0032
                   },
                   {
-                    "label": "Transformator SN/nN T1",
+                    "label": "T1",
                     "magnitude_ohm": 0.0101587302,
                     "r_ohm": 0.00261627614,
                     "x_ohm": 0.00981605306
@@ -1268,7 +1268,7 @@
                         "x_ohm": 0.0032
                       },
                       {
-                        "label": "Transformator SN/nN T1",
+                        "label": "T1",
                         "r_ohm": 0.00261627614,
                         "x_ohm": 0.00981605306
                       },
@@ -1384,7 +1384,7 @@
                       "x_ohm": 0.004
                     },
                     {
-                      "label": "Transformator SN/nN T1",
+                      "label": "T1",
                       "magnitude_ohm": 0.0101587302,
                       "r_ohm": 0.00261627614,
                       "x_ohm": 0.00981605306
@@ -1416,7 +1416,7 @@
                           "x_ohm": 0.004
                         },
                         {
-                          "label": "Transformator SN/nN T1",
+                          "label": "T1",
                           "r_ohm": 0.00261627614,
                           "x_ohm": 0.00981605306
                         },
@@ -1472,7 +1472,7 @@
                       "x_ohm": 0.0
                     },
                     {
-                      "label": "Transformator SN/nN T1",
+                      "label": "T1",
                       "magnitude_ohm": 0.0101587302,
                       "r_ohm": 0.00261627614,
                       "x_ohm": 0.00981605306
@@ -1504,7 +1504,7 @@
                           "x_ohm": 0.0
                         },
                         {
-                          "label": "Transformator SN/nN T1",
+                          "label": "T1",
                           "r_ohm": 0.00261627614,
                           "x_ohm": 0.00981605306
                         },
@@ -1564,7 +1564,7 @@
                     "x_ohm": 0.004
                   },
                   {
-                    "label": "Transformator SN/nN T1",
+                    "label": "T1",
                     "magnitude_ohm": 0.0101587302,
                     "r_ohm": 0.00261627614,
                     "x_ohm": 0.00981605306
@@ -1596,7 +1596,7 @@
                         "x_ohm": 0.004
                       },
                       {
-                        "label": "Transformator SN/nN T1",
+                        "label": "T1",
                         "r_ohm": 0.00261627614,
                         "x_ohm": 0.00981605306
                       },
@@ -1696,7 +1696,7 @@
                       "x_ohm": 0.0032
                     },
                     {
-                      "label": "Transformator SN/nN T1",
+                      "label": "T1",
                       "magnitude_ohm": 0.0101587302,
                       "r_ohm": 0.00261627614,
                       "x_ohm": 0.00981605306
@@ -1728,7 +1728,7 @@
                           "x_ohm": 0.0032
                         },
                         {
-                          "label": "Transformator SN/nN T1",
+                          "label": "T1",
                           "r_ohm": 0.00261627614,
                           "x_ohm": 0.00981605306
                         },
@@ -1784,7 +1784,7 @@
                       "x_ohm": 0.0
                     },
                     {
-                      "label": "Transformator SN/nN T1",
+                      "label": "T1",
                       "magnitude_ohm": 0.0101587302,
                       "r_ohm": 0.00261627614,
                       "x_ohm": 0.00981605306
@@ -1816,7 +1816,7 @@
                           "x_ohm": 0.0
                         },
                         {
-                          "label": "Transformator SN/nN T1",
+                          "label": "T1",
                           "r_ohm": 0.00261627614,
                           "x_ohm": 0.00981605306
                         },
@@ -1876,7 +1876,7 @@
                     "x_ohm": 0.0032
                   },
                   {
-                    "label": "Transformator SN/nN T1",
+                    "label": "T1",
                     "magnitude_ohm": 0.0101587302,
                     "r_ohm": 0.00261627614,
                     "x_ohm": 0.00981605306
@@ -1908,7 +1908,7 @@
                         "x_ohm": 0.0032
                       },
                       {
-                        "label": "Transformator SN/nN T1",
+                        "label": "T1",
                         "r_ohm": 0.00261627614,
                         "x_ohm": 0.00981605306
                       },
@@ -2008,7 +2008,7 @@
                       "x_ohm": 0.0032
                     },
                     {
-                      "label": "Transformator SN/nN T1",
+                      "label": "T1",
                       "magnitude_ohm": 0.0101587302,
                       "r_ohm": 0.00261627614,
                       "x_ohm": 0.00981605306
@@ -2040,7 +2040,7 @@
                           "x_ohm": 0.0032
                         },
                         {
-                          "label": "Transformator SN/nN T1",
+                          "label": "T1",
                           "r_ohm": 0.00261627614,
                           "x_ohm": 0.00981605306
                         },
@@ -2096,7 +2096,7 @@
                       "x_ohm": 0.0
                     },
                     {
-                      "label": "Transformator SN/nN T1",
+                      "label": "T1",
                       "magnitude_ohm": 0.0101587302,
                       "r_ohm": 0.00261627614,
                       "x_ohm": 0.00981605306
@@ -2128,7 +2128,7 @@
                           "x_ohm": 0.0
                         },
                         {
-                          "label": "Transformator SN/nN T1",
+                          "label": "T1",
                           "r_ohm": 0.00261627614,
                           "x_ohm": 0.00981605306
                         },
@@ -2188,7 +2188,7 @@
                     "x_ohm": 0.0032
                   },
                   {
-                    "label": "Transformator SN/nN T1",
+                    "label": "T1",
                     "magnitude_ohm": 0.0101587302,
                     "r_ohm": 0.00261627614,
                     "x_ohm": 0.00981605306
@@ -2220,7 +2220,7 @@
                         "x_ohm": 0.0032
                       },
                       {
-                        "label": "Transformator SN/nN T1",
+                        "label": "T1",
                         "r_ohm": 0.00261627614,
                         "x_ohm": 0.00981605306
                       },

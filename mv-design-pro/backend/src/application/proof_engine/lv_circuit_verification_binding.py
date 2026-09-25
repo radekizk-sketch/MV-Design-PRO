@@ -59,6 +59,7 @@ from application.analyses.fault_loop.service import (
     _find_station,
     _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
+    oblicz_petle_na_trasie,
     odmowa_ukladu_nn,
     resolve_transformer_for_bus,
     uklad_nn_transformatora,
@@ -77,11 +78,8 @@ from network_model.pochodne import kv_na_v, napiecie_fazowe_v
 from network_model.solvers.cable_ampacity_derating import WspolczynnikiObciazalnosciNN
 from network_model.solvers.conductor_thermal_withstand import ConductorThermalResult
 from network_model.solvers.fault_loop_builder import (
-    FaultLoopBuildRequest,
-    build_fault_loop_input,
     sum_phase_and_return_route,
 )
-from network_model.solvers.fault_loop_iec60364 import compute_fault_loop
 from solver_input.uklad_sieci_nn import typ_sieci_solvera
 
 
@@ -275,25 +273,17 @@ def _petla_zwarcia_min(
     net_type, protection = typ_sieci_solvera(system)
     u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
-    request = FaultLoopBuildRequest(
+    loop_result = oblicz_petle_na_trasie(
+        trafo=trafo,
         fault_node_id=bus_ref,
-        u_nom_v=u_phase_v,
-        network_type=net_type,
-        protection_arrangement=protection,
-        phase_conductor_r_ohm=phase_component.r_ohm,
-        phase_conductor_x_ohm=phase_component.x_ohm,
-        return_conductor_r_ohm=return_component.r_ohm,
-        return_conductor_x_ohm=return_component.x_ohm,
-        transformer_r_ohm=z_tr.r_ohm,
-        transformer_x_ohm=z_tr.x_ohm,
-        transformer_label=f"Transformator SN/nN {trafo.name}",
-        upstream_r_ohm=upstream.r_ohm,
-        upstream_x_ohm=upstream.x_ohm,
-        upstream_label=upstream.label,
-        phase_label=phase_component.label,
-        return_label=return_component.label,
+        u_phase_v=u_phase_v,
+        net_type=net_type,
+        protection=protection,
+        z_tr=z_tr,
+        upstream=upstream,
+        phase_component=phase_component,
+        return_component=return_component,
     )
-    loop_result = compute_fault_loop(build_fault_loop_input(request))
     return Ik1MinPetla(fault_loop=loop_result, u0_v=u_phase_v, system=system), [], None
 
 

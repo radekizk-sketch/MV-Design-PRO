@@ -274,7 +274,7 @@ def _uziemienie_z_modelu(enm: EnergyNetworkModel) -> tuple[str, str] | None:
             if konfiguracja is not None and 1.0 < float(napiecie) <= 60.0:
                 return (
                     konfiguracja.type,
-                    f"punkt neutralny transformatora {tr.name} po stronie {strona} "
+                    f"punkt neutralny transformatora „{tr.name}” po stronie {strona} "
                     f"({_OPIS_UZIEMIENIA_PL[konfiguracja.type]})",
                 )
     return None

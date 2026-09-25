@@ -147,7 +147,7 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   transformer2W: def('transformer2W', 32, 40, [
     { name: 'hv', x: 16, y: 0, dir: 'N' },
     { name: 'lv', x: 16, y: 40, dir: 'S' },
-  ], 'Transformator SN/nN'),
+  ], 'Transformator dwuuzwojeniowy'),
   cableHead: def('cableHead', 16, 16, [
     { name: 'line', x: 8, y: 16, dir: 'S' },
   ], 'Głowica kablowa'),

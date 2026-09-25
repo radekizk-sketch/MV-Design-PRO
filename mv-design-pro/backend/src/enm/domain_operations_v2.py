@@ -111,6 +111,7 @@ from .pole_katalogowe import (
     rozwiaz_aparaty_pola,
     rozwiaz_plan_pola,
 )
+from .pole_transformatorowe import pasmo_napieciowe
 from .rola_pola_sn import (
     kanoniczna_rola_pola_sn,
     nazwa_pola_zrodlowego_sn,
@@ -425,6 +426,19 @@ def _bus_voltage_kv(enm: dict[str, Any], bus_ref: str) -> float | None:
         if isinstance(voltage, int | float) and voltage > 0:
             return float(voltage)
     return None
+
+
+def _nazwa_z_klasa_szyny(enm: dict[str, Any], bus_ref: object, *czlony: str) -> str:
+    """Domyślna nazwa elementu na szynie z klasą napięciową wyprowadzoną z modelu.
+
+    Człon ``"{klasa}"`` w ``czlony`` jest zastępowany pasmem napięcia szyny
+    (`pole_transformatorowe.pasmo_napieciowe`) — operacje nN piszą też na szynę strony
+    dolnej stacji, której napięcie model podaje wprost (stacja 15/6 kV ma ją w paśmie
+    SN). Szyna bez napięcia → człon pominięty, nigdy domysł „nN".
+    """
+    napiecie = _bus_voltage_kv(enm, bus_ref) if isinstance(bus_ref, str) else None
+    klasa = pasmo_napieciowe(napiecie) if napiecie is not None else ""
+    return " ".join(c for c in (klasa if c == "{klasa}" else c for c in czlony) if c)
 
 
 def _same_nominal_voltage(left_kv: float, right_kv: float, tolerance_kv: float = 1e-6) -> bool:
@@ -2688,7 +2702,8 @@ def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]
     feeder_ref = _make_id("nn", seed, "outgoing")
     field_spec = _build_field_spec(
         field_ref=feeder_ref,
-        name=payload.get("field_name") or "Odpływ nN",
+        name=payload.get("field_name")
+        or _nazwa_z_klasa_szyny(enm, bus_nn_ref, "Odpływ", "{klasa}"),
         bay_role="FEEDER",
         bus_ref=bus_nn_ref,
         tags=list(payload.get("tags") or []),
@@ -2757,7 +2772,8 @@ def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -
     field_ref = _make_id("nn", seed, "source_field")
     field_spec = _build_field_spec(
         field_ref=field_ref,
-        name=payload.get("field_name") or f"Pole źródłowe nN ({kind})",
+        name=payload.get("field_name")
+        or _nazwa_z_klasa_szyny(enm, bus_nn_ref, "Pole źródłowe", "{klasa}", f"({kind})"),
         bay_role="OZE",
         bus_ref=bus_nn_ref,
         tags=["nn_source_field"],
@@ -2891,7 +2907,8 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
     nowy_odbior: dict[str, Any] = {
         "ref_id": load_ref,
-        "name": payload.get("load_name") or "Odbiór nN",
+        "name": payload.get("load_name")
+        or _nazwa_z_klasa_szyny(enm, feeder_bus_ref, "Odbiór", "{klasa}"),
         "bus_ref": feeder_bus_ref,
         "p_mw": kw_na_mw(active_power_kw),
         "q_mvar": kvar_na_mvar(reactive_power_kvar),
@@ -5028,7 +5045,10 @@ def _append_converter_field_if_needed(
 
     field_spec = _build_field_spec(
         field_ref=field_ref,
-        name=str(source_field_payload.get("field_name") or f"Pole {technology} nN"),
+        name=str(
+            source_field_payload.get("field_name")
+            or _nazwa_z_klasa_szyny(new_enm, bus_nn_ref, "Pole", technology, "{klasa}")
+        ),
         bay_role="OZE",
         bus_ref=bus_nn_ref,
         tags=["nn_source_field"],
@@ -5648,7 +5668,7 @@ def _add_converter_source_der_sn(
         new_enm,
         {
             "ref_id": producer_bus_ref,
-            "name": f"Szyna nN producenta {name}",
+            "name": f"Szyna {pasmo_napieciowe(inverter_output_kv)} producenta {name}",
             "voltage_kv": inverter_output_kv,
             "tags": ["nn", "der_producer_lv"],
             "meta": {
@@ -5673,7 +5693,7 @@ def _add_converter_source_der_sn(
         new_enm,
         {
             "ref_id": block_hv_bus_ref,
-            "name": f"Szyna SN TR blokowego {name}",
+            "name": f"Szyna {pasmo_napieciowe(block_primary_kv)} TR blokowego {name}",
             "voltage_kv": block_primary_kv,
             "tags": ["sn", "der_block_hv"],
             "meta": {

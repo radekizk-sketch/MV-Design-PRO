@@ -467,7 +467,7 @@ function readStationTransformers(snapshot: unknown, stationId: string | null): S
     }
     return [{
       ref,
-      name: typeof transformer.name === 'string' ? transformer.name : 'Transformator SN/nN',
+      name: typeof transformer.name === 'string' ? transformer.name : ref,
       snMva,
       hvKv: typeof transformer.uhv_kv === 'number' ? transformer.uhv_kv : null,
       lvKv: typeof transformer.ulv_kv === 'number' ? transformer.ulv_kv : null,

@@ -965,7 +965,7 @@ const INTERNAL_STATION_DEVICE_LABELS_PL: Readonly<Record<string, string>> = {
   fuse: 'Bezpiecznik',
   'earthing-switch': 'Uziemnik',
   'cable-head': 'Głowica kablowa',
-  'transformer-device': 'Transformator SN/nN',
+  'transformer-device': 'Transformator',
   breaker: 'Wyłącznik',
   disconnector: 'Odłącznik',
   vt: 'Przekładnik napięciowy',
@@ -1378,7 +1378,7 @@ function buildSemanticConverterSections(
         id: 'station_link',
         label: 'Powiązanie ze stacją',
         fields: [
-          { key: 'station_transformer', label: 'Transformator SN/nN', value: transformerLabel(transformer) },
+          { key: 'station_transformer', label: 'Transformator stacji', value: transformerLabel(transformer) },
           {
             key: 'converter_catalog',
             label: 'Katalog falownika',
@@ -1615,7 +1615,7 @@ function buildAdvancedConverterSections(
         label: 'Punkt przyłączenia i tor mocy',
         fields: [
           { key: 'connection_point', label: 'PCC', value: hasPcc ? 'szyna nN stacji' : 'do konfiguracji' },
-          { key: 'station_transformer', label: 'Transformator SN/nN', value: transformerLabel(transformer) },
+          { key: 'station_transformer', label: 'Transformator stacji', value: transformerLabel(transformer) },
           {
             key: 'power_path',
             label: 'Tor od strony SN do falownika',

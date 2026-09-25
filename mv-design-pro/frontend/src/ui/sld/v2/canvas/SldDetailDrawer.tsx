@@ -1216,7 +1216,7 @@ function detailObjectContext(data: SldDetailDrawerData): string {
   }
   if (data.kind === 'bay') return isPublicEngineeringLabel(data.label) ? data.label : 'Pole SN';
   if (data.kind === 'apparatus') return isPublicEngineeringLabel(data.label) ? data.label : 'Aparat pola';
-  if (data.kind === 'transformer') return isPublicEngineeringLabel(data.label) ? data.label : 'Transformator SN/nN';
+  if (data.kind === 'transformer') return isPublicEngineeringLabel(data.label) ? data.label : 'Transformator';
   if (data.kind === 'der') return isPublicEngineeringLabel(data.label) ? data.label : 'Źródło przyłączone';
   if (data.kind === 'cable_run') return isPublicEngineeringLabel(data.label) ? data.label : 'Ciąg SN';
   if (data.kind === 'node') return data.nodeSpec?.rolePl ?? (isPublicEngineeringLabel(data.label) ? data.label : 'Węzeł sieci SN');
@@ -1280,7 +1280,7 @@ function transformerVoltageLabel(
   fallbackVoltageKv: number | null,
 ): string | null {
   const uhv = spec?.uhvKv ?? fallbackVoltageKv;
-  const ulv = spec?.ulvKv ?? 0.4;
+  const ulv = spec?.ulvKv ?? null;
   if (uhv == null || ulv == null) return null;
   return `${formatKvPl(uhv)} / ${formatKvPl(ulv)}`;
 }

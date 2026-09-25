@@ -66,11 +66,14 @@ class FaultLoopBuildRequest:
     upstream_r_ohm: float | None = None
     upstream_x_ohm: float | None = None
 
-    # Opisowe labelki (po polsku) dla audytu — opcjonalne, defaults bezpieczne
+    # Opisowe etykiety (po polsku) dla audytu — opcjonalne. Wartości domyślne niosą
+    # wyłącznie ROLĘ składowej, bez klasy napięciowej: builder nie zna napięć stron
+    # transformatora, więc „SN/nN” byłoby domysłem (karta ETYKIETY-TR). Klasę i nazwę
+    # urządzenia podaje wywołujący z modelu (`fault_loop.service.oblicz_petle_na_trasie`).
     phase_label: str = "Przewód fazowy L"
     return_label: str = "Przewód powrotny (PE/PEN)"
-    transformer_label: str = "Transformator SN/NN"
-    upstream_label: str = "Sieć SN (upstream Thevenin)"
+    transformer_label: str = "Transformator"
+    upstream_label: str = "Sieć zasilająca (upstream Thevenin)"
 
 
 def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
@@ -269,7 +272,7 @@ def refer_upstream_impedance_to_lv_ohm(
     z_hv_ohm: complex,
     uhv_kv: float,
     ulv_kv: float,
-    label: str = "Sieć SN (upstream Thevenin, sprowadzone do nN)",
+    label: str = "Sieć zasilająca (upstream Thevenin, sprowadzona na stronę dolną)",
 ) -> LoopImpedanceComponent:
     """Sprowadza impedancję Thevenina zmierzoną w Ω na zaciskach HV transformatora
     do strony nN przez kwadrat przekładni: Z_LV = Z_HV · (U_LV / U_HV)².

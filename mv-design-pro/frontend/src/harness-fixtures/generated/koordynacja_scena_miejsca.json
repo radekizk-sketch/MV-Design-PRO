@@ -35,14 +35,14 @@
       "lokalizacja_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/wn_sn",
       "odmowa_zacisku": {
         "kod": "protection.relay_terminal_indication_missing",
-        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/wn_sn: Zacisk początkowy — szyna Szyna 110 kV TR1 albo Zacisk końcowy — szyna Szyna GPZ S1 15.0 kV."
+        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/wn_sn: Zacisk początkowy — szyna Szyna 110 kV TR1 albo Zacisk końcowy — szyna Szyna GPZ S1 15 kV."
       },
       "rodzaj_lokalizacji": "galaz",
       "wymaga_wskazania_zacisku": true,
       "zacisk": null,
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Szyna GPZ S1 15.0 kV",
+          "etykieta_pl": "Zacisk końcowy — szyna Szyna GPZ S1 15 kV",
           "szyna_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn"
         },
         "od": {
@@ -61,7 +61,7 @@
       "zacisk": "do",
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Szyna GPZ S1 15.0 kV",
+          "etykieta_pl": "Zacisk końcowy — szyna Szyna GPZ S1 15 kV",
           "szyna_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn"
         },
         "od": {
@@ -80,7 +80,7 @@
       "zacisk": "od",
       "zaciski": {
         "do": {
-          "etykieta_pl": "Zacisk końcowy — szyna Szyna GPZ S1 15.0 kV",
+          "etykieta_pl": "Zacisk końcowy — szyna Szyna GPZ S1 15 kV",
           "szyna_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn"
         },
         "od": {
@@ -95,7 +95,7 @@
       "lokalizacja_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L",
       "odmowa_zacisku": {
         "kod": "protection.relay_terminal_indication_missing",
-        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_L: Zacisk początkowy — szyna Szyna GPZ S1 15.0 kV albo Zacisk końcowy — szyna Stacja S01."
+        "powod_pl": "Model nie wskazuje, przy którym zacisku gałęzi stoi zabezpieczenie (żaden wyłącznik z przypiętym zabezpieczeniem nie stoi w szeregu z zaciskiem) — wskaż zacisk początkowy albo końcowy — gałąź seg/9704d44d1ae3394b377910d77a80b97c/segment_L: Zacisk początkowy — szyna Szyna GPZ S1 15 kV albo Zacisk końcowy — szyna Stacja S01."
       },
       "rodzaj_lokalizacji": "galaz",
       "wymaga_wskazania_zacisku": true,
@@ -106,7 +106,7 @@
           "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Szyna GPZ S1 15.0 kV",
+          "etykieta_pl": "Zacisk początkowy — szyna Szyna GPZ S1 15 kV",
           "szyna_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn"
         }
       },
@@ -125,7 +125,7 @@
           "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Szyna GPZ S1 15.0 kV",
+          "etykieta_pl": "Zacisk początkowy — szyna Szyna GPZ S1 15 kV",
           "szyna_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn"
         }
       },
@@ -144,7 +144,7 @@
           "szyna_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/sn_bus"
         },
         "od": {
-          "etykieta_pl": "Zacisk początkowy — szyna Szyna GPZ S1 15.0 kV",
+          "etykieta_pl": "Zacisk początkowy — szyna Szyna GPZ S1 15 kV",
           "szyna_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn"
         }
       },

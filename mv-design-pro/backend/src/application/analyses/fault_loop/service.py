@@ -40,6 +40,7 @@ from typing import Any
 
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel, Substation, Transformer
+from enm.pole_transformatorowe import pasmo_napieciowe
 from enm.zero_sequence_transformer import (
     ZeroSeqConnection,
     build_transformer_zero_seq_model,
@@ -247,7 +248,6 @@ class UpstreamHvThevenin:
 
     hv_bus_ref: str
     z_hv_ohm: complex
-    source_label: str
 
 
 def restrict_graph_to_island_of(graph: NetworkGraph, node_id: str) -> bool:
@@ -344,7 +344,6 @@ def compute_upstream_hv_thevenin(
         UpstreamHvThevenin(
             hv_bus_ref=hv_node_id,
             z_hv_ohm=z_kk_hv_ohm,
-            source_label="Sieć SN (upstream Thevenin)",
         ),
         [],
     )
@@ -424,6 +423,7 @@ def _upstream_thevenin_lv_component(
         z_hv_ohm=hv_equiv.z_hv_ohm,
         uhv_kv=trafo.uhv_kv,
         ulv_kv=trafo.ulv_kv,
+        label=etykieta_sieci_zasilajacej_petli(trafo),
     )
     return component, []
 
@@ -463,18 +463,50 @@ def odmowa_ukladu_nn(context: dict[str, Any], uklad: str | None) -> dict[str, An
     return None
 
 
-def _build_fault_loop_at_route(
+def etykieta_transformatora_petli(trafo: Transformer) -> str:
+    """Etykieta składowej transformatora w pętli zwarcia: nazwa urządzenia z modelu.
+
+    Rolę składowej (transformator) niesie pole wejścia solvera
+    (`FaultLoopInput.transformer_impedance`) i stała kolejność składowych wyniku, więc
+    etykieta jej nie powtarza: sklejanie „Transformator SN/nN {nazwa}” dawało
+    „Transformator SN/nN Transformator SN/nN” dla nazwy domyślnej stacji i przypisywało
+    klasę SN/nN transformatorowi, którego napięcia jej nie potwierdzały. Pusta nazwa →
+    identyfikator (jak etykiety odcinków trasy w `route.py`), nigdy stała.
+    """
+    return trafo.name or trafo.ref_id
+
+
+def etykieta_sieci_zasilajacej_petli(trafo: Transformer) -> str:
+    """Etykieta składowej sieci zasilającej (Thevenin w węźle GN, sprowadzony na stronę DN).
+
+    Pasma obu stron z jednego źródła (`pole_transformatorowe.pasmo_napieciowe`) zastosowanego
+    do napięć znamionowych transformatora — nie ze stałej „SN”/„nN” domyślnej etykiety
+    `refer_upstream_impedance_to_lv_ohm`.
+    """
+    return (
+        f"Sieć {pasmo_napieciowe(trafo.uhv_kv)} (upstream Thevenin, "
+        f"sprowadzone do {pasmo_napieciowe(trafo.ulv_kv)})"
+    )
+
+
+def oblicz_petle_na_trasie(
     *,
+    trafo: Transformer,
     fault_node_id: str,
     u_phase_v: float,
     net_type: NetworkType,
     protection: ProtectionArrangement,
     z_tr: TransformerLoopImpedance,
-    upstream: LoopImpedanceComponent | None,
+    upstream: LoopImpedanceComponent,
     phase_component: LoopImpedanceComponent,
     return_component: LoopImpedanceComponent,
-    transformer_label: str,
 ) -> FaultLoopResult:
+    """Pętla zwarcia na trasie punkt → transformator: JEDNO złożenie wejścia solvera.
+
+    Dzielone przez widoki pętli zwarcia, SWZ, dobór aparatów nN i dowód weryfikacji obwodu
+    nN — dotąd każdy z czterech modułów składał `FaultLoopBuildRequest` osobno, z własną
+    kopią etykiety transformatora.
+    """
     request = FaultLoopBuildRequest(
         fault_node_id=fault_node_id,
         u_nom_v=u_phase_v,
@@ -486,10 +518,10 @@ def _build_fault_loop_at_route(
         return_conductor_x_ohm=return_component.x_ohm,
         transformer_r_ohm=z_tr.r_ohm,
         transformer_x_ohm=z_tr.x_ohm,
-        transformer_label=transformer_label,
-        upstream_r_ohm=upstream.r_ohm if upstream is not None else None,
-        upstream_x_ohm=upstream.x_ohm if upstream is not None else None,
-        upstream_label=upstream.label if upstream is not None else "Sieć SN (upstream Thevenin)",
+        transformer_label=etykieta_transformatora_petli(trafo),
+        upstream_r_ohm=upstream.r_ohm,
+        upstream_x_ohm=upstream.x_ohm,
+        upstream_label=upstream.label,
         phase_label=phase_component.label,
         return_label=return_component.label,
     )
@@ -543,7 +575,8 @@ def build_station_fault_loop_view(
     u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
     zero_component = LoopImpedanceComponent(label="—", r_ohm=0.0, x_ohm=0.0)
 
-    result = _build_fault_loop_at_route(
+    result = oblicz_petle_na_trasie(
+        trafo=trafo,
         fault_node_id=trafo.lv_bus_ref,
         u_phase_v=u_phase_v,
         net_type=net_type,
@@ -552,7 +585,6 @@ def build_station_fault_loop_view(
         upstream=upstream,
         phase_component=zero_component,
         return_component=zero_component,
-        transformer_label=f"Transformator SN/nN {trafo.name}",
     )
 
     return {
@@ -643,7 +675,8 @@ def build_fault_loop_view_at_point(
     net_type, protection = typ_sieci_solvera(system)
     u_phase_v = napiecie_fazowe_v(kv_na_v(trafo.ulv_kv))
 
-    result = _build_fault_loop_at_route(
+    result = oblicz_petle_na_trasie(
+        trafo=trafo,
         fault_node_id=bus_ref,
         u_phase_v=u_phase_v,
         net_type=net_type,
@@ -652,7 +685,6 @@ def build_fault_loop_view_at_point(
         upstream=upstream,
         phase_component=phase_component,
         return_component=return_component,
-        transformer_label=f"Transformator SN/nN {trafo.name}",
     )
 
     return {
@@ -793,7 +825,8 @@ def build_feeder_fault_loop_view_for_transformer(
                 )
                 continue
             phase_component, return_component = sum_phase_and_return_route(segments)
-            result = _build_fault_loop_at_route(
+            result = oblicz_petle_na_trasie(
+                trafo=trafo,
                 fault_node_id=bus_ref,
                 u_phase_v=u_phase_v,
                 net_type=net_type,
@@ -802,7 +835,6 @@ def build_feeder_fault_loop_view_for_transformer(
                 upstream=upstream,
                 phase_component=phase_component,
                 return_component=return_component,
-                transformer_label=f"Transformator SN/nN {trafo.name}",
             )
             points.append(
                 LvPointResult(

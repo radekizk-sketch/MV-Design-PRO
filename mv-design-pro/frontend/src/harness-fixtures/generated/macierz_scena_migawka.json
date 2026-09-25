@@ -252,7 +252,7 @@
         "gpz_section_order": 0,
         "gpz_substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation"
       },
-      "name": "Szyna GPZ S1 15.0 kV",
+      "name": "Szyna GPZ S1 15 kV",
       "nominal_limits": null,
       "phase_system": "3ph",
       "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",

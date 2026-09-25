@@ -845,8 +845,14 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # aparatów pól SN („…pozycji katalogu APARAT_SN: sw-cb-abb-vd4-17kv-630a." → „…pozycji
     # katalogu — typ „ABB VD4 17.5 kV 630 A"."), czyli komunikat karty #142 zapisany w
     # modelu. Wynik kontyngencji identyczny; gn03 bez zmiany (jej pola nie niosą tego komunikatu).
-    "gn01_promieniowa": "db8480a0f6ee933b36689615706bba20809d85e3dd5e74019e1f6d65c7379a11",
-    "gn03_pierscien": "0b3792fb96de36bf14a76b032a7839a7b8957392f25c2c78a199d7b6b300ee61",
+    # 2026-09-25 (karta ETYKIETY-TR na czubku partii 2): gn01 db8480a0… → 9a2933f5…, gn03
+    # 0b3792fb… → 70f8393a…. Pełne widoki z kodu czubka sprzed karty (odtwarzają dokładnie
+    # poprzednie piny) i po karcie porównane liść po liściu: różnią się WYŁĄCZNIE
+    # `snapshot_hash` i `input_hash`; jedyna różnica modeli wejściowych obu sieci to nazwa
+    # szyny sekcji GPZ „Szyna GPZ S1 15.0 kV" → „Szyna GPZ S1 15 kV" (napięcie przez `:g`).
+    # Wynik kontyngencji identyczny.
+    "gn01_promieniowa": "9a2933f595b709eafedc6d81654218259ad5df7c564bc976c79eb341846cc822",
+    "gn03_pierscien": "70f8393a3d08d0b16df492a31ddfd09620fba574fe2e60ccd0e8be39d6b429e7",
 }
 
 

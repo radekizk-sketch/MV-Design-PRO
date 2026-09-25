@@ -523,7 +523,7 @@ function TransformerSymbol(props: TransformerSymbolProps): JSX.Element {
         stroke={COLOR_LINE_PRIMARY}
         strokeWidth={1.4}
       />
-      <title>{`Transformator 110/SN — ${designation}`}</title>
+      <title>{`Transformator ${designation}`}</title>
       {/* Etykieta TR po prawej stronie */}
       <text
         x={cx + TR_RADIUS + 4}

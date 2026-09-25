@@ -1311,7 +1311,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       stage: 'stations',
       label: 'Etap 4 Stacje',
       status: snapshotCounts.substations > 0 && snapshotCounts.transformers > 0 ? 'gotowe' : 'brak_danych',
-      dataSummary: `${snapshotCounts.substations} stacji, ${snapshotCounts.transformers} transformatorów SN/nN`,
+      dataSummary: `${snapshotCounts.substations} stacji, ${snapshotCounts.transformers} transformatorów`,
       missingFields: snapshotCounts.substations > 0 && snapshotCounts.transformers > 0 ? [] : ['typ stacji', 'transformator z katalogu', 'strona nN'],
       sourceRef: 'ENM / katalog stacji',
       fixAction: { label: 'Konfiguruj stacje', onClick: openConfigurationOverview },

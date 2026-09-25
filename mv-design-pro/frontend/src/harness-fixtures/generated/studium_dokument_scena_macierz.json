@@ -21,7 +21,7 @@
     },
     "przebieg_bazowy": {
       "run_id": "bea90c9a-33e0-543b-b4e3-9514eca3921a",
-      "snapshot_hash": "adceb551d1f3e0c7a7378956cb184d74ad41b0ff31227a13f113896e56df14d3"
+      "snapshot_hash": "28198eac111b59d7935163cd19d00f92394bb37691f6f902dbe7dd080d838c76"
     },
     "liczba_wariantow": 1,
     "dowod_certyfikatu": {
@@ -73,7 +73,7 @@
   "warianty": [
     {
       "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-      "nazwa_wezla": "Szyna GPZ S1 15.0 kV",
+      "nazwa_wezla": "Szyna GPZ S1 15 kV",
       "napiecie_kv": 15.0,
       "zdolnosc": {
         "status": "ok",
@@ -238,13 +238,13 @@
         },
         "podstawa_pl": "dokument: „Wymogi ogólnego stosowania wynikające z rozporządzenia Komisji (UE) 2016/631 (NC RfG), zatwierdzone decyzją Prezesa URE”; wydanie: 2018; jednostka redakcyjna: nie wskazano; rodzaj: wymogi ogólnego stosowania (WOS); stan źródła: nieustalone; uwagi: wartości progów wg decyzji właściciela O-1 (plan AB §2.1); jednostka redakcyjna dokumentu WOS do wskazania (plan AB §12.1)"
       },
-      "odcisk_sekcji_sha256": "8cea4f40db294e50d9905cf5af77351c5fc223031b766a4af17ee898ecf73520"
+      "odcisk_sekcji_sha256": "7686bbfb310d78303c109b59d7b404853020213f0ced858eb25633f515965a51"
     }
   ],
   "podsumowanie": [
     {
       "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-      "nazwa_wezla": "Szyna GPZ S1 15.0 kV",
+      "nazwa_wezla": "Szyna GPZ S1 15 kV",
       "max_moc_mw": 20.0,
       "klasa": "C",
       "pokrycie_pl": "Brak zweryfikowanej podstawy wymagania",
@@ -254,15 +254,15 @@
   "zalozenia_pl": [
     "Dokument zestawia gotowe wyniki obliczeń — nie przelicza żadnej wielkości i nie zastępuje uzgodnień z operatorem systemu dystrybucyjnego.",
     "Sekwencja per wariant: zdolność przyłączeniowa → obszar pracy P–Q → pokrycie wymagań P–Q (ta sama, którą liczy kreator studium).",
-    "Przebieg bazowy rozpływu mocy (run_id: bea90c9a-33e0-543b-b4e3-9514eca3921a, odcisk snapshotu: adceb551d1f3e0c7a7378956cb184d74ad41b0ff31227a13f113896e56df14d3).",
+    "Przebieg bazowy rozpływu mocy (run_id: bea90c9a-33e0-543b-b4e3-9514eca3921a, odcisk snapshotu: 28198eac111b59d7935163cd19d00f92394bb37691f6f902dbe7dd080d838c76).",
     "Typ katalogowy przekształtnika: Karta falownika string PV Huawei SUN2000-215KTL-H3 0.215 MW / 0.8 kV (conv-pv-card-huawei-sun2000-215ktl).",
     "Profil operatora: Enea Operator (enea).",
     "Typ modułu NC RfG wyznaczony klasyfikacją art. 5 (progi warstwy WOS) z mocy przyłączalnej i napięcia węzła wariantu."
   ],
   "odciski_sekcji_sha256": {
-    "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn": "8cea4f40db294e50d9905cf5af77351c5fc223031b766a4af17ee898ecf73520",
-    "zalozenia": "64b6dc8efa1afc984da894ec6e89aaa98c89c1b70b5e2c7eb00abf5f6925f6cf",
-    "podsumowanie": "1083520bc01da0866defeed8f1f0fb87e7db13d1ac3546ee3ddd1436f4cb3b53"
+    "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn": "7686bbfb310d78303c109b59d7b404853020213f0ced858eb25633f515965a51",
+    "zalozenia": "6ac9384ee09ab824f53ca17306bcc32347c8470901c766bedbbdb7f90b457322",
+    "podsumowanie": "19dd6c727e84267bfb274c2368018912c4fff1a2d5339153f455033b34a9254c"
   },
-  "input_hash": "e296ce6c2a13b366bd114ddcc5f326dba3ef8a99777be86cf52dd92002de7ffc"
+  "input_hash": "60f2b1d30a93eca50355eed76d93e1c8b11687f47bacc5886e4cecc69380cb54"
 }

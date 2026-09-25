@@ -727,7 +727,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                         data-transformer-circle-overlap-px={7.2}
                         role={primaryTransformerRef && handleSymbolClick ? 'button' : undefined}
                         tabIndex={primaryTransformerRef && handleSymbolClick ? 0 : undefined}
-                        aria-label={primaryTransformerRef && handleSymbolClick ? 'Transformator SN/nN stacji' : undefined}
+                        aria-label={primaryTransformerRef && handleSymbolClick ? 'Transformator stacji' : undefined}
                         onClick={primaryTransformerRef ? handleSymbolClick?.(primaryTransformerRef) : undefined}
                         onDoubleClick={primaryTransformerRef ? handleSymbolClick?.(primaryTransformerRef) : undefined}
                         onContextMenu={primaryTransformerRef && handleSymbolClick ? (event) => {
@@ -1221,7 +1221,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                     data-transformer-circle-overlap-px={2 * 5 - 5}
                     role={primaryTransformerRef && handleSymbolClick ? 'button' : undefined}
                     tabIndex={primaryTransformerRef && handleSymbolClick ? 0 : undefined}
-                    aria-label={primaryTransformerRef && handleSymbolClick ? 'Transformator SN/nN stacji' : undefined}
+                    aria-label={primaryTransformerRef && handleSymbolClick ? 'Transformator stacji' : undefined}
                     onClick={primaryTransformerRef ? handleSymbolClick?.(primaryTransformerRef) : undefined}
                     onDoubleClick={primaryTransformerRef ? handleSymbolClick?.(primaryTransformerRef) : undefined}
                     onContextMenu={primaryTransformerRef && handleSymbolClick ? (event) => {
@@ -2023,7 +2023,7 @@ function CompactDirectionalBayColumn(props: CompactDirectionalBayColumnProps): J
           data-hit-area={transformerClickHandler ? 'true' : undefined}
           role={transformerClickHandler ? 'button' : undefined}
           tabIndex={transformerClickHandler ? 0 : undefined}
-          aria-label={transformerClickHandler ? 'Transformator SN/nN stacji' : undefined}
+          aria-label={transformerClickHandler ? 'Transformator stacji' : undefined}
           onClick={transformerClickHandler}
           onDoubleClick={transformerClickHandler}
           onContextMenu={transformerClickHandler ? (event) => {

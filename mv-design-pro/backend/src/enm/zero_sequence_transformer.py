@@ -201,7 +201,7 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
     if not trafo.vector_group:
         tracer.add(
             key=f"tr_z0_open[{trafo.ref_id}]",
-            title=f"Transformator {trafo.name or trafo.ref_id}: brak grupy wektorowej",
+            title=f"Transformator „{trafo.name or trafo.ref_id}”: brak grupy wektorowej",
             formula_latex=r"\text{brak vector\_group} \Rightarrow Z_0\ \text{otwarte}",
             inputs={"ref_id": trafo.ref_id, "vector_group": None},
             substitution="brak danych grupy → brak ścieżki I0",
@@ -237,7 +237,7 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
 
     tracer.add(
         key=f"tr_z0_parse[{trafo.ref_id}]",
-        title=f"Transformator {trafo.name or trafo.ref_id}: klasyfikacja uzwojeń (składowa zerowa)",
+        title=f"Transformator „{trafo.name or trafo.ref_id}”: klasyfikacja uzwojeń (składowa zerowa)",
         formula_latex=r"\text{vector\_group} \rightarrow (\text{HV}, \text{LV})",
         inputs={
             "ref_id": trafo.ref_id,
@@ -267,7 +267,7 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
 
     tracer.add(
         key=f"tr_z0_zt[{trafo.ref_id}]",
-        title=f"Transformator {trafo.name or trafo.ref_id}: impedancja zerowa Z_T0",
+        title=f"Transformator „{trafo.name or trafo.ref_id}”: impedancja zerowa Z_T0",
         formula_latex=(
             r"Z_{T0} = Z_T = \left(\frac{p_k}{S_{rT}} + j\sqrt{"
             r"\left(\frac{u_k}{100}\right)^2 - \left(\frac{p_k}{S_{rT}}\right)^2}\right)"
@@ -289,7 +289,7 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
 
     tracer.add(
         key=f"tr_z0_conn[{trafo.ref_id}]",
-        title=f"Transformator {trafo.name or trafo.ref_id}: połączenie sekwencji zerowej",
+        title=f"Transformator „{trafo.name or trafo.ref_id}”: połączenie sekwencji zerowej",
         formula_latex=(
             r"(\text{HV},\text{LV}) \rightarrow \text{połączenie},\ " r"Z_0 = Z_{T0} + 3Z_{N}"
         ),

@@ -361,7 +361,6 @@ export const toastBus = new ToastBus();
 export const COMMAND_FEEDBACK_PL = {
   bayCreated: (designation: string) => `Utworzono pole ${designation}.`,
   segmentSplit: 'Odcinek podzielono na dwa odcinki end-to-end.',
-  transformerAdded: (designation: string) => `Dodano transformator SN/nN ${designation}.`,
   derAttached: (kind: 'PV' | 'BESS' | 'FW', name: string) =>
     `Dodano źródło ${kind} "${name}" z punktem przyłączenia.`,
   missingInverterData: 'Brakuje danych falownika do obliczeń zwarciowych.',

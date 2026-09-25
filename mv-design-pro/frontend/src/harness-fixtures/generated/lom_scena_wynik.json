@@ -6,7 +6,7 @@
   },
   "fields": [
     {
-      "bay_name": "Pole PV nN",
+      "bay_name": "Pole PV SN",
       "bay_ref": "nn/3821c319753930c3ae26e6814b072bb7/source_field",
       "bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
       "checks": [
@@ -19,7 +19,7 @@
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "kody zabezpieczeń pola „Pole PV nN”",
+              "odniesienie": "kody zabezpieczeń pola „Pole PV SN”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -72,7 +72,7 @@
             ],
             "przedmiot": {
               "element_ref": "nn/3821c319753930c3ae26e6814b072bb7/source_field",
-              "nazwa_pl": "Pole PV nN",
+              "nazwa_pl": "Pole PV SN",
               "opis_pl": "Pole przyłączeniowe — obecność funkcji ochrony od pracy wyspowej"
             },
             "slad": [
@@ -103,7 +103,7 @@
                 "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
+              "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV SN) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
             },
             "wynik": {
               "chwila_s": null,
@@ -145,7 +145,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "DEKLARACJA",
-          "odniesienie": "nastawy zabezpieczeń pola „Pole PV nN”",
+          "odniesienie": "nastawy zabezpieczeń pola „Pole PV SN”",
           "poziom": "DECLARATION",
           "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
           "status_danych": {
@@ -162,13 +162,13 @@
         "kompletnosc_dowodu": "NIEPELNY",
         "kryteria_naruszone": [],
         "kryterium_najblizej_granicy": null,
-        "nazwa_pl": "Ochrona od pracy wyspowej pola Pole PV nN",
+        "nazwa_pl": "Ochrona od pracy wyspowej pola Pole PV SN",
         "oceny_skladowe": [
           {
             "dowod": {
               "domena_pl": null,
               "metoda": "DEKLARACJA",
-              "odniesienie": "kody zabezpieczeń pola „Pole PV nN”",
+              "odniesienie": "kody zabezpieczeń pola „Pole PV SN”",
               "poziom": "DECLARATION",
               "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
               "status_danych": {
@@ -221,7 +221,7 @@
             ],
             "przedmiot": {
               "element_ref": "nn/3821c319753930c3ae26e6814b072bb7/source_field",
-              "nazwa_pl": "Pole PV nN",
+              "nazwa_pl": "Pole PV SN",
               "opis_pl": "Pole przyłączeniowe — obecność funkcji ochrony od pracy wyspowej"
             },
             "slad": [
@@ -252,7 +252,7 @@
                 "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
                 "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
               ],
-              "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
+              "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV SN) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
             },
             "wynik": {
               "chwila_s": null,
@@ -293,7 +293,7 @@
         "pokrycie_programu_pl": "wymaganie wykazywane porównaniem nastaw zadeklarowanych — program badań nie dotyczy",
         "powody_niepelnosci": [
           "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV SN): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
         ],
         "slad": [
           {
@@ -316,17 +316,17 @@
         },
         "wyjasnienie": {
           "czego_brakuje": [
-            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
-            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
+            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV SN): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
+            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV SN): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
+            "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV SN): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna)."
           ],
-          "przyczyna_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN) — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”",
+          "przyczyna_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV SN) — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”",
           "zastrzezenia": [
             "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
             "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
           ],
-          "zdanie_pl": "Ochrona od pracy wyspowej pola Pole PV nN („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — werdykt zgodności niewydany: brak ustalonej podstawy parametru. Kryteria bez ustalonej podstawy: Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN) — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”."
+          "zdanie_pl": "Ochrona od pracy wyspowej pola Pole PV SN („Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)”) — werdykt zgodności niewydany: brak ustalonej podstawy parametru. Kryteria bez ustalonej podstawy: Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV SN) — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”."
         },
         "wymaganie_id": "lom.nn/3821c319753930c3ae26e6814b072bb7/source_field",
         "zakres_waznosci": {
@@ -2338,7 +2338,7 @@
           "dowod": {
             "domena_pl": null,
             "metoda": "DEKLARACJA",
-            "odniesienie": "kody zabezpieczeń pola „Pole PV nN”",
+            "odniesienie": "kody zabezpieczeń pola „Pole PV SN”",
             "poziom": "DECLARATION",
             "rodzaj_twierdzenia": "DECLARED_CONFIGURATION",
             "status_danych": {
@@ -2391,7 +2391,7 @@
           ],
           "przedmiot": {
             "element_ref": "nn/3821c319753930c3ae26e6814b072bb7/source_field",
-            "nazwa_pl": "Pole PV nN",
+            "nazwa_pl": "Pole PV SN",
             "opis_pl": "Pole przyłączeniowe — obecność funkcji ochrony od pracy wyspowej"
           },
           "slad": [
@@ -2422,7 +2422,7 @@
               "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego): stan źródła „nieustalone” — pochodzenie wartości nieustalone (dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
               "Zakres ważności: Porównanie nastaw zabezpieczeń pola z oknami normatywnymi i z przerwą SPZ — nie wykazuje zachowania funkcji LoM przy utracie sieci — wynik nie obejmuje: zachowanie dynamiczne funkcji LoM przy utracie sieci (wymaga badania albo symulacji)."
             ],
-            "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
+            "zdanie_pl": "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV SN) — werdykt zgodności niewydany: brak ustalonej podstawy parametru — podstawa kryterium „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone”. Wynik informacyjny: funkcja ochrony od pracy wyspowej w polu: brak funkcji 81R, 78, 81U i 81O w kodach zabezpieczeń pola i w nastawach przypisanego zabezpieczenia."
           },
           "wynik": {
             "chwila_s": null,
@@ -3204,7 +3204,7 @@
       "pokrycie_programu_pl": "wymaganie wykazywane porównaniem nastaw zadeklarowanych — program badań nie dotyczy",
       "powody_niepelnosci": [
         "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-        "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+        "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV SN): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
         "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
         "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole liniowe wyjściowe 2): Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
         "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
@@ -3269,8 +3269,8 @@
       },
       "wyjasnienie": {
         "czego_brakuje": [
-          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
-          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
+          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV SN): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
+          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV SN): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
           "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
           "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
           "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole liniowe wyjściowe 2): Podstawa limitu o ustalonym pochodzeniu: obecna podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: wartość 2 Hz/s bez dokumentu źródłowego z wydaniem i jednostką redakcyjną).",
@@ -3282,7 +3282,7 @@
           "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3): Podstawa kryterium o ustalonym pochodzeniu: obecna podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — potrzebny dokument źródłowy z wydaniem i jednostką redakcyjną (uwagi: dokument operatora z wydaniem i jednostką redakcyjną nieustalony w rejestrze podstaw).",
           "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole transformatorowe 3): Funkcja ochrony od pracy wyspowej w polu (81R, 78, 81U albo 81O) z nastawami w przypisaniu zabezpieczeń.",
           "Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
-          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV nN): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
+          "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole PV SN): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
           "Pole modułu wytwórczego ma co najmniej jedną funkcję ochrony od pracy wyspowej (81R, 78, 81U albo 81O) (Pole liniowe wejściowe 1): Podstawa „Wymagania operatora systemu dystrybucyjnego dla ochrony od pracy wyspowej modułów wytwórczych (IRiESD)” (wymagania operatora systemu dystrybucyjnego) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
           "Nastawa df/dt funkcji 81R nie niższa niż dolna krawędź okna normatywnego — funkcja nie może wyłączać modułu przy ogólnosystemowych zmianach częstotliwości (Pole liniowe wyjściowe 2): Podstawa „Wartość krajowa PTPiREE wytrzymałości na zmiany częstotliwości (odwołanie: rozporządzenie Komisji (UE) 2016/631, art. 13 ust. 1 lit. b)” (procedura PTPiREE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",
           "Próg funkcji 81U nie wyższy niż dolna krawędź pasma pozostawania w pracy — funkcja nie może wyłączać modułu wewnątrz pasma (Pole liniowe wyjściowe 2): Podstawa „Rozporządzenie Komisji (UE) 2016/631 (NC RfG) — pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz”, art. 13 ust. 1 lit. a (rozporządzenie UE) ma stan źródła „nieustalone” — wymagany stan źródła zweryfikowane albo wskazane (dokument, wydanie i jednostka redakcyjna).",

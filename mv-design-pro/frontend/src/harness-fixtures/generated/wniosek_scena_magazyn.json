@@ -27,7 +27,7 @@
   },
   "zwarcia_punkt_przylaczenia": {
     "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-    "nazwa_wezla": "Szyna GPZ S1 15.0 kV",
+    "nazwa_wezla": "Szyna GPZ S1 15 kV",
     "ik_ss_ka": 9.6923058,
     "sk_mva": 251.813491,
     "ip_ka": 23.9324123,
@@ -2242,7 +2242,7 @@
   ],
   "odciski_sekcji_sha256": {
     "bilans_mocy": "e42162195984c0ca37ac9acebe0a058c1105568308094b589d1113d5102a0431",
-    "zwarcia_punkt_przylaczenia": "c8a4254a3bab9c8eb7fdd658d6c97a245d6ac66603c7e69b0d6667ae12b325a9",
+    "zwarcia_punkt_przylaczenia": "e3acf60acec186540437e897e9dccf1340a7d02ac9a8c6ff1e09e915ef88da58",
     "zgodnosc_nc_rfg": "500574a176bd1644760c187b3bc99ba1de56bd74bdc3fb6cbba546782dac2802"
   },
   "zrodla": {

@@ -226,11 +226,11 @@ export function buildStationDetailDrawerData(
       : null;
     transformerSpec = {
       ref: stationForDrawer.transformerRefs?.[0] ?? null,
-      name: stationForDrawer.transformerRefs?.[0] ? 'Transformator SN/nN stacji' : null,
+      name: stationForDrawer.transformerRefs?.[0] ? 'Transformator stacji' : null,
       vectorGroup: stationForDrawer.transformerVectorGroup ?? null,
       snMva: fallbackSnMva,
       uhvKv: stationForDrawer.busVoltageKv ?? null,
-      ulvKv: 0.4,
+      ulvKv: null,
       ukPercent: null,
       pkKw: null,
       catalogRef: null,
@@ -355,7 +355,7 @@ const INTERNAL_STATION_DEVICE_LABELS_PL: Readonly<Record<string, string>> = {
   fuse: 'Bezpiecznik',
   'earthing-switch': 'Uziemnik',
   'cable-head': 'Głowica kablowa',
-  'transformer-device': 'Transformator SN/nN',
+  'transformer-device': 'Transformator',
   breaker: 'Wyłącznik',
   disconnector: 'Odłącznik',
   vt: 'Przekładnik napięciowy',
@@ -470,7 +470,7 @@ export function describeStationInternalElement(
     return {
       id,
       type: 'TransformerBranch',
-      name: `Transformator SN/nN - ${stationName}`,
+      name: `Transformator - ${stationName}`,
     };
   }
 
@@ -910,17 +910,17 @@ export function buildStationBranchDetailDrawerData(
         dataQuality: 'model',
         blockers: transformerBlockers,
       };
-      transformerLabelOverride = tr.name ?? internalElementDescription?.name ?? 'Transformator SN/nN';
+      transformerLabelOverride = tr.name ?? internalElementDescription?.name ?? 'Transformator';
     } else if (stationForInternalElement?.transformerRatedKva != null || stationForInternalElement?.transformerRefs?.length) {
       transformerSpec = {
         ref: stationForInternalElement.transformerRefs?.[0] ?? id,
-        name: internalElementDescription?.name ?? 'Transformator SN/nN stacji',
+        name: internalElementDescription?.name ?? 'Transformator stacji',
         vectorGroup: stationForInternalElement.transformerVectorGroup ?? null,
         snMva: stationForInternalElement.transformerRatedKva != null
           ? stationForInternalElement.transformerRatedKva / 1000
           : null,
         uhvKv: stationForInternalElement.busVoltageKv ?? null,
-        ulvKv: 0.4,
+        ulvKv: null,
         ukPercent: null,
         pkKw: null,
         catalogRef: null,
@@ -929,11 +929,11 @@ export function buildStationBranchDetailDrawerData(
           'Widok SLD ma dane transformatora, ale rekord ENM/katalog nie został znaleziony.',
         ],
       };
-      transformerLabelOverride = internalElementDescription?.name ?? 'Transformator SN/nN';
+      transformerLabelOverride = internalElementDescription?.name ?? 'Transformator';
     } else {
       transformerSpec = {
         ref: id,
-        name: internalElementDescription?.name ?? 'Transformator SN/nN',
+        name: internalElementDescription?.name ?? 'Transformator',
         vectorGroup: null,
         snMva: null,
         uhvKv: null,
@@ -944,7 +944,7 @@ export function buildStationBranchDetailDrawerData(
         dataQuality: 'missing',
         blockers: ['Brak rekordu transformatora w ENM/katalogu.'],
       };
-      transformerLabelOverride = internalElementDescription?.name ?? 'Transformator SN/nN';
+      transformerLabelOverride = internalElementDescription?.name ?? 'Transformator';
     }
   }
   // K30-89: cable run spec (gdy drawer kind='cable_run')

@@ -3842,7 +3842,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         payload.get("source_name")
         or payload.get("name_pl")
         or (f"GPZ {source_identity}" if source_identity else None)
-        or f"GPZ {voltage_kv} kV"
+        or f"GPZ {voltage_kv:g} kV"
     )
 
     existing_sources = [source for source in enm.get("sources", []) if isinstance(source, dict)]
@@ -4039,7 +4039,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         order = idx + 1
         section_ref = _make_id("gpz", seed, f"section/{order:03d}")
         section_bus_ref = _make_id("gpz", seed, f"section/{order:03d}/bus_sn")
-        section_bus_name = entry.get("bus_name") or f"Szyna GPZ S{order} {voltage_kv} kV"
+        section_bus_name = entry.get("bus_name") or f"Szyna GPZ S{order} {voltage_kv:g} kV"
         section_name = entry.get("name") or f"Sekcja {idx + 1}"
         line_fields_count = int(entry.get("line_fields_count") or 1)
         line_field_names = _build_gpz_line_field_names(entry, line_fields_count)
@@ -4248,7 +4248,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         "ref_id": source_ref,
         "name": payload.get("source_name")
         or payload.get("name_pl")
-        or f"Źródło GPZ {voltage_kv} kV",
+        or f"Źródło GPZ {voltage_kv:g} kV",
         "bus_ref": source_bus_ref,
         "substation_ref": substation_ref,
         "gpz_section_id": (
@@ -5597,9 +5597,14 @@ def _build_nn_field_specs(
     *,
     nn_block: dict[str, Any],
     nn_bus_id: str,
+    nn_voltage_kv: float,
     station_seed: str,
 ) -> list[dict[str, Any]]:
     """Zbuduj specyfikacje pól nN (wyłącznik główny + odpływy) z ``nn_block``.
+
+    Klasa napięciowa w nazwach pól pochodzi z napięcia szyny strony dolnej
+    (`pole_transformatorowe.pasmo_napieciowe`), nie ze stałej „nN": stacja wstawiana
+    z transformatorem 15/6 kV ma szynę strony dolnej w paśmie SN.
 
     Wspólny builder dla ``insert_station_on_segment_sn`` i
     ``append_station_on_endpoint`` — determinizm wynika ze ``station_seed``
@@ -5640,13 +5645,14 @@ def _build_nn_field_specs(
     pozostaje zielony bez modyfikacji. Brak klucza = zero odpływów — nic nie
     powstaje, więc nie ma czego migrować.
     """
+    klasa_dn = pasmo_napieciowe(float(nn_voltage_kv))
     nn_main_ref = _make_id("stn", station_seed, "nn_main_breaker")
     feeders = nn_block.get("outgoing_feeders_nn", [])
     feeder_count = nn_block.get("outgoing_feeders_nn_count", len(feeders))
     nn_field_specs = [
         _build_field_spec(
             field_ref=nn_main_ref,
-            name="Wyłącznik główny nN",
+            name=f"Wyłącznik główny {klasa_dn}",
             bay_role="IN",
             bus_ref=nn_bus_id,
             tags=["nn_main_breaker"],
@@ -5665,7 +5671,7 @@ def _build_nn_field_specs(
         nn_field_specs.append(
             _build_field_spec(
                 field_ref=feeder_ref,
-                name=f"Odpływ nN {idx + 1}",
+                name=f"Odpływ {klasa_dn} {idx + 1}",
                 bay_role="FEEDER",
                 bus_ref=nn_bus_id,
                 meta=feeder_meta,
@@ -5695,6 +5701,7 @@ def _materialize_nn_source(
     nn_block: dict[str, Any],
     station_seed: str,
     nn_bus_id: str,
+    nn_voltage_kv: float,
     station_id: str,
     transformer_ref: str,
     transformer_created: bool,
@@ -5871,7 +5878,8 @@ def _materialize_nn_source(
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": generator_ref,
-            "name": nn_block.get("source_converter_name") or "Źródło nN stacji",
+            "name": nn_block.get("source_converter_name")
+            or f"Źródło {pasmo_napieciowe(float(nn_voltage_kv))} stacji",
             "bus_ref": nn_bus_id,
             "p_mw": p_mw,
             "q_mvar": 0.0,
@@ -5921,7 +5929,8 @@ def _materialize_nn_source(
         new_enm.setdefault("protection_assignments", []).append(
             {
                 "ref_id": protection_ref,
-                "name": source_protection.get("device_label") or "Zabezpieczenie źródła nN",
+                "name": source_protection.get("device_label")
+                or f"Zabezpieczenie źródła {pasmo_napieciowe(float(nn_voltage_kv))}",
                 "breaker_ref": breaker_ref,
                 "ct_ref": None,
                 "vt_ref": None,
@@ -6953,6 +6962,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     nn_field_specs = _build_nn_field_specs(
         nn_block=nn_block,
         nn_bus_id=nn_bus_id,
+        nn_voltage_kv=nn_voltage_kv,
         station_seed=station_seed,
     )
 
@@ -7002,7 +7012,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             new_enm,
             {
                 "ref_id": nn_bus_id,
-                "name": "Szyna nN stacji",
+                "name": f"Szyna {pasmo_napieciowe(float(nn_voltage_kv))} stacji",
                 "voltage_kv": nn_voltage_kv,
             },
         )
@@ -7040,7 +7050,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         tr_data = {
             "device_type": "transformer",
             "ref_id": tr_id,
-            "name": "Transformator SN/nN",
+            "name": f"Transformator {_rodzaj_transformatora(sn_voltage_kv, nn_voltage_kv)}".rstrip(),
             "hv_bus_ref": sn_bus_id,
             "lv_bus_ref": nn_bus_id,
             "sn_mva": 0.001,  # Wartosc inicjalna — materializacja z katalogu
@@ -7108,6 +7118,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         nn_block=nn_block,
         station_seed=station_seed,
         nn_bus_id=nn_bus_id,
+        nn_voltage_kv=nn_voltage_kv,
         station_id=stn_id,
         transformer_ref=tr_id,
         transformer_created=bool(transformer.get("create", True)),
@@ -10483,7 +10494,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         # Bus nN
         bus_nn: dict[str, Any] = {
             "ref_id": bus_nn_ref,
-            "name": f"Szyna nN {station_name}",
+            "name": f"Szyna {pasmo_napieciowe(float(nn_voltage_kv))} {station_name}",
             "voltage_kv": nn_voltage_kv,
             "phase_system": "3ph",
             "tags": [],
@@ -10671,7 +10682,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             new_enm.setdefault("buses", []).append(
                 {
                     "ref_id": bus_nn_ref,
-                    "name": f"Szyna nN {station_name}",
+                    "name": f"Szyna {pasmo_napieciowe(float(nn_voltage_kv))} {station_name}",
                     "voltage_kv": nn_voltage_kv,
                     "phase_system": "3ph",
                     "tags": [],
@@ -10689,6 +10700,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         nn_field_specs = _build_nn_field_specs(
             nn_block=nn_block,
             nn_bus_id=bus_nn_ref,
+            nn_voltage_kv=nn_voltage_kv,
             station_seed=seed,
         )
         if target_sub is not None:
@@ -10703,6 +10715,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             nn_block=nn_block,
             station_seed=seed,
             nn_bus_id=bus_nn_ref,
+            nn_voltage_kv=nn_voltage_kv,
             station_id=substation_ref,
             transformer_ref=transformer_ref,
             transformer_created=bool(transformer_catalog_ref),
