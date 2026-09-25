@@ -38,6 +38,29 @@
       "x_ohm": 0.0
     },
     {
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_bus",
+      "id": "11cf45d2-e159-5866-81f6-1125c4340189",
+      "materialized_params": null,
+      "meta": {
+        "nn_field_migrowana_rola": "IN",
+        "nn_field_migrowany_z": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_main_breaker",
+        "nn_promocja_bez_wiazania_katalogowej": true
+      },
+      "name": "Wyłącznik główny nN",
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/32d9d46bb2e6b3dc2dff4599f3f2cd3c/feeder_device",
+      "source_mode": "MIGRACJA",
+      "status": "closed",
+      "tags": [],
+      "to_bus_ref": "nn/32d9d46bb2e6b3dc2dff4599f3f2cd3c/feeder_bus",
+      "type": "breaker",
+      "x_ohm": null
+    },
+    {
       "b0_siemens_per_km": null,
       "b_siemens_per_km": 0.00012252211349000195,
       "cable_joints": [],
@@ -117,6 +140,52 @@
       "type": "cable",
       "x0_ohm_per_km": 0.3,
       "x_ohm_per_km": 0.1
+    },
+    {
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_bus",
+      "id": "5820484a-11fb-598c-b763-bac7b3be4486",
+      "materialized_params": null,
+      "meta": {
+        "nn_field_migrowana_rola": "FEEDER",
+        "nn_field_migrowany_z": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_feeder/000",
+        "nn_promocja_bez_wiazania_katalogowej": true
+      },
+      "name": "Odpływ nN 1",
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/b9ff5405cf14fc83d07764e6561423ac/feeder_device",
+      "source_mode": "MIGRACJA",
+      "status": "closed",
+      "tags": [],
+      "to_bus_ref": "nn/b9ff5405cf14fc83d07764e6561423ac/feeder_bus",
+      "type": "breaker",
+      "x_ohm": null
+    },
+    {
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
+      "id": "5d9c63d4-ae1a-539b-af5b-c1bda21f36e0",
+      "materialized_params": null,
+      "meta": {
+        "nn_field_migrowana_rola": "OZE",
+        "nn_field_migrowany_z": "nn/3821c319753930c3ae26e6814b072bb7/source_field",
+        "nn_promocja_bez_wiazania_katalogowej": true
+      },
+      "name": "Pole PV SN",
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/dcc4dcf0e74de7cd650c38702b33a886/feeder_device",
+      "source_mode": "MIGRACJA",
+      "status": "closed",
+      "tags": [],
+      "to_bus_ref": "nn/dcc4dcf0e74de7cd650c38702b33a886/feeder_bus",
+      "type": "breaker",
+      "x_ohm": null
     },
     {
       "catalog_namespace": "APARAT_SN",
@@ -413,6 +482,51 @@
       "tags": [],
       "voltage_kv": 0.4,
       "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "26980e59-edcb-5bf8-8323-b6ea816246dd",
+      "meta": {
+        "nn_field_migrowany_z": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_main_breaker",
+        "visual_role": "NN_FEEDER_BUS"
+      },
+      "name": "Wyłącznik główny nN",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "nn/32d9d46bb2e6b3dc2dff4599f3f2cd3c/feeder_bus",
+      "tags": [],
+      "voltage_kv": 0.4,
+      "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "561a3947-bfbf-5cae-a480-aff81cf5a296",
+      "meta": {
+        "nn_field_migrowany_z": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_feeder/000",
+        "visual_role": "NN_FEEDER_BUS"
+      },
+      "name": "Odpływ nN 1",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "nn/b9ff5405cf14fc83d07764e6561423ac/feeder_bus",
+      "tags": [],
+      "voltage_kv": 0.4,
+      "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "49ba1818-507c-581e-87cd-ecf165d1dfc2",
+      "meta": {
+        "nn_field_migrowany_z": "nn/3821c319753930c3ae26e6814b072bb7/source_field",
+        "visual_role": "NN_FEEDER_BUS"
+      },
+      "name": "Pole PV SN",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "nn/dcc4dcf0e74de7cd650c38702b33a886/feeder_bus",
+      "tags": [],
+      "voltage_kv": 15.0,
+      "zone": null
     }
   ],
   "connection_nodes": [],
@@ -434,7 +548,7 @@
   "generators": [
     {
       "blocking_transformer_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/transformer",
-      "bus_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/sn_bus",
+      "bus_ref": "nn/dcc4dcf0e74de7cd650c38702b33a886/feeder_bus",
       "catalog_namespace": "ZRODLO_NN_PV",
       "catalog_ref": "conv-pv-1mw-15kv",
       "connection_variant": "block_transformer",
@@ -510,9 +624,9 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "",
+    "hash_sha256": "cee84244191f794010dae6127b3fe884c979d472473d3e9fe2314e56bd60b065",
     "name": "Pole wytwórcy — scena LoM",
-    "revision": 1,
+    "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
   },
   "junctions": [],
@@ -536,7 +650,50 @@
       "stations": []
     }
   ],
-  "loads": [],
+  "loads": [
+    {
+      "bus_ref": "nn/b9ff5405cf14fc83d07764e6561423ac/feeder_bus",
+      "catalog_namespace": "OBCIAZENIE",
+      "catalog_ref": "load_uslugi_30kw",
+      "id": "c596504c-1330-582c-bf04-ae94acf26eba",
+      "materialized_params": {
+        "catalog_item_id": "load_uslugi_30kw",
+        "cos_phi": 0.92,
+        "cos_phi_mode": "IND",
+        "p_kw": 30.0,
+        "q_kvar": 12.77994648408614,
+        "q_source": "KATALOG_COS_PHI"
+      },
+      "meta": {
+        "catalog_binding": {
+          "catalog_item_id": "load_uslugi_30kw",
+          "catalog_item_version": "2024.1",
+          "catalog_namespace": "OBCIAZENIE",
+          "materialize": true,
+          "snapshot_mapping_version": "1.0"
+        },
+        "completion_source": "station_catalog_migration",
+        "connection_type": "TROJFAZOWY",
+        "cos_phi": 0.92,
+        "cos_phi_mode": "IND",
+        "feeder_ref": "stn/08e2a34a1c6bfc326e866fc48e952d93/nn_feeder/000",
+        "load_kind": "SKUPIONY",
+        "q_kvar": 12.77994648408614,
+        "q_source": "KATALOG_COS_PHI"
+      },
+      "model": "pq",
+      "name": "Odbiór nN 1 - Stacja wytwórcy",
+      "overrides": [],
+      "p_mw": 0.03,
+      "parameter_source": "CATALOG",
+      "phases": null,
+      "q_mvar": 0.012779946484086141,
+      "quantity": null,
+      "ref_id": "load/adba9f4bf0ca9ef07987fad098c413cd/nn",
+      "source_mode": "KATALOG",
+      "tags": []
+    }
+  ],
   "measurements": [],
   "protection_assignments": [
     {
@@ -865,6 +1022,7 @@
             ]
           }
         ],
+        "nn_fields_promoted": true,
         "station_type_semantic": "B",
         "station_type_sn": "B"
       },

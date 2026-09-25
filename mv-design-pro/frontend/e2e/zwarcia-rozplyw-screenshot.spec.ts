@@ -35,6 +35,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { nazwaElementu } from './nazwyModelu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -47,7 +48,7 @@ const ZWARCIA_ROZPLYW = JSON.parse(
     path.resolve(_dirname, '../src/harness-fixtures/generated/zwarcia_rozplyw_scena_zwarcia.json'),
     'utf-8',
   ),
-) as { branch_contributions: { branch_name: string; i_ka: number }[] };
+) as { branch_contributions: { branch_name: string; source_id: string; i_ka: number }[] };
 /** Największy prąd gałęzi o danej nazwie [kA] (tor dominujący przez tę gałąź). */
 const pradToru = (nazwa: string): number =>
   Math.max(
@@ -92,9 +93,15 @@ test.describe('zwarcia-rozplyw:screenshot', () => {
       await expect(sekcja.getByTestId('mvd-wyn-th-zrodlo')).toBeVisible();
       // Wiersz sieci nadrzędnej (Thevenin, `source_id="THEVENIN_GRID"` -> PL).
       await expect(tabela).toContainText('sieć nadrzędna');
-      // Wiersz maszyny (identyfikator falownika `gen_pv`, jak w kontrakcie backendu
-      // — `zrodloRozplywuPL` pokazuje surowy `source_id`, gdy nie jest THEVENIN_GRID).
-      await expect(tabela).toContainText('gen_pv');
+      // Wiersz maszyny: źródło toru falownika (`source_id="gen_pv"` w kontrakcie
+      // backendu) ekran nazywa NAZWĄ z modelu sceny (karta #145, most nazw
+      // `zrodloRozplywuPL`) — nazwa czytana z tej samej migawki, którą harness zasiewa
+      // scenę, nie literał. Surowy identyfikator nie może wyjść na ekran.
+      const ZRODLO_FALOWNIKA = ZWARCIA_ROZPLYW.branch_contributions.find(
+        (wklad) => wklad.source_id !== 'THEVENIN_GRID',
+      )!.source_id;
+      await expect(tabela).toContainText(nazwaElementu('siec_zlota_scena_migawka', ZRODLO_FALOWNIKA));
+      await expect(tabela).not.toContainText(ZRODLO_FALOWNIKA);
       // Prąd sieci nadrzędnej [kA] w torze dominującym (gałąź TR 110/15) — format PL.
       await expect(tabela).toContainText(kaPl(pradToru('TR 110/15')));
       // Prąd falownika [kA] w torze TR 15/0.4.

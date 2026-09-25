@@ -622,8 +622,9 @@ def macierz_scena_migawka() -> dict[str, Any]:
     którego policzono `ncrfg_zgodnosc_przekrojowa_scena_macierz`. Moduły do
     warsztatu wytwórców front wyprowadza z niej odwzorowaniem produkcyjnym
     (`station-der/zModelu.ts::deryZModelu`), więc zasiew sceny nie jest już
-    drugim opisem tych samych wytwórców."""
-    return canonicalize_json(enm_sceny_macierz().model_dump(mode="json"))
+    drugim opisem tych samych wytwórców. Model SERWOWANY przez magazyn
+    (`_model_serwowany`) — ten, który zwraca `GET /api/cases/{id}/enm`."""
+    return canonicalize_json(_model_serwowany(enm_sceny_macierz()).model_dump(mode="json"))
 
 
 def zgodnosc_przekrojowa_sceny_macierz() -> dict[str, Any]:
@@ -807,8 +808,9 @@ def enm_sceny_magazyn() -> EnergyNetworkModel:
 
 def magazyn_scena_migawka() -> dict[str, Any]:
     """Migawka modelu sceny `certyfikat`/`wniosek` (`useSnapshotStore`) — moduły warsztatu
-    wytwórców front wyprowadza z niej odwzorowaniem produkcyjnym (`deryZModelu`)."""
-    return canonicalize_json(enm_sceny_magazyn().model_dump(mode="json"))
+    wytwórców front wyprowadza z niej odwzorowaniem produkcyjnym (`deryZModelu`). Model
+    SERWOWANY przez magazyn (`_model_serwowany`) — ten, który zwraca `GET …/enm`."""
+    return canonicalize_json(_model_serwowany(enm_sceny_magazyn()).model_dump(mode="json"))
 
 
 def ncrfg_zgodnosc_przekrojowa_scena_magazyn() -> dict[str, Any]:
@@ -1861,8 +1863,11 @@ def dynamika_scena_opis() -> dict[str, Any]:
 
 def dynamika_scena_migawka() -> dict[str, Any]:
     """Migawka modelu sceny dynamiki PO wiązaniu modelu PV (`useSnapshotStore`) — edytor
-    scenariusza wybiera z niej elementy po nazwie, a przeglądarka zaznacza je na schemacie."""
-    return canonicalize_json(_enm_sceny_dynamika(z_modelem_pv=True).model_dump(mode="json"))
+    scenariusza wybiera z niej elementy po nazwie, a przeglądarka zaznacza je na schemacie.
+    Model SERWOWANY przez magazyn (`_model_serwowany`) — ten, na którym liczy się bieg."""
+    return canonicalize_json(
+        _model_serwowany(_enm_sceny_dynamika(z_modelem_pv=True)).model_dump(mode="json")
+    )
 
 
 def dynamika_scena_gotowosc_brak() -> dict[str, Any]:
@@ -2716,9 +2721,16 @@ def koordynacja_scena_galezie() -> dict[str, Any]:
 
 def koordynacja_scena_migawka() -> dict[str, Any]:
     """Migawka modelu przypadku (`GET /api/cases/{id}/enm`) — źródło LISTY
-    WYBORU lokalizacji zabezpieczenia na ekranie (`lokalizacjeZModelu.ts`)."""
+    WYBORU lokalizacji zabezpieczenia na ekranie (`lokalizacjeZModelu.ts`).
+
+    Model SERWOWANY przez magazyn (`_model_serwowany`), nie zrzut sprzed zapisu: biegi
+    sceny liczą się na odczycie magazynu, który promuje pola nN do realnych szyn
+    i aparatów, a wyniki (zwarcia, porównanie zabezpieczeń) nazywają właśnie je
+    (np. „Wyłącznik główny nN”). Zrzut sprzed zapisu tych elementów nie zna, więc ekran
+    pokazywał „obiekt modelu bez nazwy” (klasa karty #145)."""
     with _biegi_sceny_koordynacja() as (_bieg_max, _bieg_min, _bieg_pf, model, _linia):
-        return canonicalize_json(model.model_dump(mode="json"))
+        zbudowany = model.model_copy(deep=True)
+    return canonicalize_json(_model_serwowany(zbudowany).model_dump(mode="json"))
 
 
 def koordynacja_scena_pakiet_dostepnosc_max() -> dict[str, Any]:
@@ -3809,8 +3821,9 @@ def lom_scena_wynik() -> dict[str, Any]:
 def lom_scena_migawka() -> dict[str, Any]:
     """Migawka modelu sceny „lom" (`_enm_sceny_lom`) — zasiew `useSnapshotStore` sceny:
     ekran ochrony od pracy wyspowej nazywa pola, szyny i moduły mostem nazw wyników
-    z modelu, na którym policzono widok (karta #145)."""
-    return canonicalize_json(_enm_sceny_lom().model_dump(mode="json"))
+    z modelu, na którym policzono widok (karta #145). Model SERWOWANY przez magazyn
+    (`_model_serwowany`) — ten, który zwraca `GET …/enm`."""
+    return canonicalize_json(_model_serwowany(_enm_sceny_lom()).model_dump(mode="json"))
 
 
 # ---------------------------------------------------------------------------
@@ -4396,8 +4409,9 @@ def stacja_demo_scena_migawka() -> dict[str, Any]:
     for transformator in model.transformers:
         if transformator.ulv_kv < 1.0 and transformator.lv_earthing_system is None:
             transformator.lv_earthing_system = "TN-C-S"
-    _fiksuj_niedeterminizm_sceny_zwarcia(model)
-    return canonicalize_json(model.model_dump(mode="json"))
+    # Model SERWOWANY przez magazyn (`_model_serwowany`, który sam przypina identyfikatory
+    # i zegar) — ten, który zwraca `GET …/enm` projektu zbudowanego tymi operacjami.
+    return canonicalize_json(_model_serwowany(model).model_dump(mode="json"))
 
 
 # ---------------------------------------------------------------------------

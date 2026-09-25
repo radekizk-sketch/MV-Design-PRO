@@ -16,6 +16,7 @@
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
+import { nazwaElementuZBackendu } from './nazwyModelu';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -512,10 +513,17 @@ test('CV-3.3-B2: porównanie dwóch biegów zabezpieczeń — tabela ekranu = po
   expect(wierszZmienny, 'zmiana długości odcinka musi dać niezerową deltę prądu').toBeTruthy();
   expect(wierszZmienny!.i_fault_a_b!).toBeLessThan(wierszZmienny!.i_fault_a_a!);
 
-  // TO, CO WIDAĆ, = TO, CO ZWRÓCIŁ BACKEND: ref elementu chronionego z pierwszego
-  // wiersza backendu jest widoczny w tabeli „Zmiany stanu” ekranu.
+  // TO, CO WIDAĆ, = TO, CO ZWRÓCIŁ BACKEND: element chroniony z pierwszego wiersza
+  // backendu jest widoczny w tabeli „Zmiany stanu” ekranu — pod NAZWĄ z modelu
+  // przypadku (karta #145: most nazw ekranu tłumaczy identyfikator grafu na nazwę
+  // z migawki), czytaną z tego samego `GET …/enm`, a surowy identyfikator na ekran
+  // nie wychodzi.
   const tabela = page.getByTestId('mvd-porzab-wynik');
-  await expect(tabela).toContainText(porownanie.rows[0].protected_element_ref);
+  const elementChroniony = porownanie.rows[0].protected_element_ref;
+  await expect(tabela).toContainText(
+    await nazwaElementuZBackendu(request, BACKEND_BASE, caseId, elementChroniony),
+  );
+  await expect(tabela).not.toContainText(elementChroniony);
 
   // ------------------------------------------- zrzuty do oceny (bramka 6)
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });

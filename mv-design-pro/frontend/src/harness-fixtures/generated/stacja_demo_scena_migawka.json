@@ -154,6 +154,29 @@
       "x_ohm_per_km": 0.1
     },
     {
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/nn_bus",
+      "id": "c71f0fcf-3059-5920-a8f2-daed0bec0f02",
+      "materialized_params": null,
+      "meta": {
+        "nn_field_migrowana_rola": "IN",
+        "nn_field_migrowany_z": "stn/684df5fd0b6bdc2f779f62c4db799e50/nn_main_breaker",
+        "nn_promocja_bez_wiazania_katalogowej": true
+      },
+      "name": "Wyłącznik główny nN",
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/96503b2ec9d195fbcd6ae113fa37bb06/feeder_device",
+      "source_mode": "MIGRACJA",
+      "status": "closed",
+      "tags": [],
+      "to_bus_ref": "nn/96503b2ec9d195fbcd6ae113fa37bb06/feeder_bus",
+      "type": "breaker",
+      "x_ohm": null
+    },
+    {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
       "from_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/sn_bus",
@@ -268,6 +291,29 @@
       "type": "cable",
       "x0_ohm_per_km": 0.3,
       "x_ohm_per_km": 0.1
+    },
+    {
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/nn_bus",
+      "id": "f7694713-9c92-5078-b667-7c143e5d9424",
+      "materialized_params": null,
+      "meta": {
+        "nn_field_migrowana_rola": "FEEDER",
+        "nn_field_migrowany_z": "stn/684df5fd0b6bdc2f779f62c4db799e50/nn_feeder/000",
+        "nn_promocja_bez_wiazania_katalogowej": true
+      },
+      "name": "Odpływ nN 1",
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/5820057e3af41f320969fd379542962e/feeder_device",
+      "source_mode": "MIGRACJA",
+      "status": "closed",
+      "tags": [],
+      "to_bus_ref": "nn/5820057e3af41f320969fd379542962e/feeder_bus",
+      "type": "breaker",
+      "x_ohm": null
     }
   ],
   "buses": [
@@ -413,6 +459,36 @@
       "tags": [],
       "voltage_kv": 0.4,
       "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "cd3d7475-3882-52bf-ba32-966e24db12a1",
+      "meta": {
+        "nn_field_migrowany_z": "stn/684df5fd0b6bdc2f779f62c4db799e50/nn_main_breaker",
+        "visual_role": "NN_FEEDER_BUS"
+      },
+      "name": "Wyłącznik główny nN",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "nn/96503b2ec9d195fbcd6ae113fa37bb06/feeder_bus",
+      "tags": [],
+      "voltage_kv": 0.4,
+      "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "30e2642c-26e2-599d-ab9d-82a458d3d080",
+      "meta": {
+        "nn_field_migrowany_z": "stn/684df5fd0b6bdc2f779f62c4db799e50/nn_feeder/000",
+        "visual_role": "NN_FEEDER_BUS"
+      },
+      "name": "Odpływ nN 1",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "nn/5820057e3af41f320969fd379542962e/feeder_bus",
+      "tags": [],
+      "voltage_kv": 0.4,
+      "zone": null
     }
   ],
   "connection_nodes": [],
@@ -442,9 +518,9 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "",
+    "hash_sha256": "9826c94fdd5e06aff7bf90c324f9302dc60ed0062f9fae42e2b20dc84a534a1c",
     "name": "Projekt demonstracyjny",
-    "revision": 1,
+    "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
   },
   "junctions": [],
@@ -468,7 +544,50 @@
       "stations": []
     }
   ],
-  "loads": [],
+  "loads": [
+    {
+      "bus_ref": "nn/5820057e3af41f320969fd379542962e/feeder_bus",
+      "catalog_namespace": "OBCIAZENIE",
+      "catalog_ref": "load_uslugi_30kw",
+      "id": "b18a1b1a-ae66-5fc7-964e-e31ca12c6219",
+      "materialized_params": {
+        "catalog_item_id": "load_uslugi_30kw",
+        "cos_phi": 0.92,
+        "cos_phi_mode": "IND",
+        "p_kw": 30.0,
+        "q_kvar": 12.77994648408614,
+        "q_source": "KATALOG_COS_PHI"
+      },
+      "meta": {
+        "catalog_binding": {
+          "catalog_item_id": "load_uslugi_30kw",
+          "catalog_item_version": "2024.1",
+          "catalog_namespace": "OBCIAZENIE",
+          "materialize": true,
+          "snapshot_mapping_version": "1.0"
+        },
+        "completion_source": "station_catalog_migration",
+        "connection_type": "TROJFAZOWY",
+        "cos_phi": 0.92,
+        "cos_phi_mode": "IND",
+        "feeder_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/nn_feeder/000",
+        "load_kind": "SKUPIONY",
+        "q_kvar": 12.77994648408614,
+        "q_source": "KATALOG_COS_PHI"
+      },
+      "model": "pq",
+      "name": "Odbiór nN 1 - Rozdzielnia GPZ-01",
+      "overrides": [],
+      "p_mw": 0.03,
+      "parameter_source": "CATALOG",
+      "phases": null,
+      "q_mvar": 0.012779946484086141,
+      "quantity": null,
+      "ref_id": "load/5126419b3205e7da6e12351150af3b05/nn",
+      "source_mode": "KATALOG",
+      "tags": []
+    }
+  ],
   "measurements": [],
   "protection_assignments": [],
   "shunt_capacitors": [],
@@ -708,6 +827,7 @@
             "tags": []
           }
         ],
+        "nn_fields_promoted": true,
         "station_type_semantic": "B",
         "station_type_sn": "B"
       },

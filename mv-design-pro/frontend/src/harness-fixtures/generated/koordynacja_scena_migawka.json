@@ -3,6 +3,29 @@
   "branch_points": [],
   "branches": [
     {
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_bus",
+      "id": "21c41eab-3d42-5e7e-b7e4-aab5b211d883",
+      "materialized_params": null,
+      "meta": {
+        "nn_field_migrowana_rola": "IN",
+        "nn_field_migrowany_z": "stn/01bb98b8035012aa5698e4fc47869f83/nn_main_breaker",
+        "nn_promocja_bez_wiazania_katalogowej": true
+      },
+      "name": "Wyłącznik główny nN",
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/2f39a65f39de991048ec48520d37e059/feeder_device",
+      "source_mode": "MIGRACJA",
+      "status": "closed",
+      "tags": [],
+      "to_bus_ref": "nn/2f39a65f39de991048ec48520d37e059/feeder_bus",
+      "type": "breaker",
+      "x_ohm": null
+    },
+    {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
       "from_bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_bus",
@@ -36,6 +59,29 @@
       "to_bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/sn_field_terminal/001",
       "type": "breaker",
       "x_ohm": 0.0
+    },
+    {
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_bus",
+      "id": "3246aaf4-99b6-55b0-8b1b-68425b7638d8",
+      "materialized_params": null,
+      "meta": {
+        "nn_field_migrowana_rola": "FEEDER",
+        "nn_field_migrowany_z": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_feeder/000",
+        "nn_promocja_bez_wiazania_katalogowej": true
+      },
+      "name": "Odpływ nN 1",
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/133d6a7bb08c13e91aa5cb3796d3ef27/feeder_device",
+      "source_mode": "MIGRACJA",
+      "status": "closed",
+      "tags": [],
+      "to_bus_ref": "nn/133d6a7bb08c13e91aa5cb3796d3ef27/feeder_bus",
+      "type": "breaker",
+      "x_ohm": null
     },
     {
       "catalog_namespace": "APARAT_SN",
@@ -143,6 +189,29 @@
       "x_ohm": 0.0
     },
     {
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_bus",
+      "id": "722b3a1e-c070-59a8-b43e-a522be7a21c1",
+      "materialized_params": null,
+      "meta": {
+        "nn_field_migrowana_rola": "IN",
+        "nn_field_migrowany_z": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_main_breaker",
+        "nn_promocja_bez_wiazania_katalogowej": true
+      },
+      "name": "Wyłącznik główny nN",
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/69c475718a63e9514b29e811faf73892/feeder_device",
+      "source_mode": "MIGRACJA",
+      "status": "closed",
+      "tags": [],
+      "to_bus_ref": "nn/69c475718a63e9514b29e811faf73892/feeder_bus",
+      "type": "breaker",
+      "x_ohm": null
+    },
+    {
       "b0_siemens_per_km": null,
       "b_siemens_per_km": 0.00012252211349000195,
       "cable_joints": [],
@@ -222,6 +291,29 @@
       "type": "cable",
       "x0_ohm_per_km": 0.3,
       "x_ohm_per_km": 0.1
+    },
+    {
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_bus",
+      "id": "949f95ff-1cb2-5363-881b-d94d1cb9a865",
+      "materialized_params": null,
+      "meta": {
+        "nn_field_migrowana_rola": "FEEDER",
+        "nn_field_migrowany_z": "stn/01bb98b8035012aa5698e4fc47869f83/nn_feeder/000",
+        "nn_promocja_bez_wiazania_katalogowej": true
+      },
+      "name": "Odpływ nN 1",
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/2388714eac616638daaf7cdd5319b935/feeder_device",
+      "source_mode": "MIGRACJA",
+      "status": "closed",
+      "tags": [],
+      "to_bus_ref": "nn/2388714eac616638daaf7cdd5319b935/feeder_bus",
+      "type": "breaker",
+      "x_ohm": null
     },
     {
       "catalog_namespace": "APARAT_SN",
@@ -686,6 +778,66 @@
       "tags": [],
       "voltage_kv": 0.4,
       "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "1c4a4d21-7b12-55eb-b3b8-7b2fdd3799e8",
+      "meta": {
+        "nn_field_migrowany_z": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_main_breaker",
+        "visual_role": "NN_FEEDER_BUS"
+      },
+      "name": "Wyłącznik główny nN",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "nn/69c475718a63e9514b29e811faf73892/feeder_bus",
+      "tags": [],
+      "voltage_kv": 0.4,
+      "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "5fdb7f97-03c7-54b4-a06b-56d4afb65c2b",
+      "meta": {
+        "nn_field_migrowany_z": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_feeder/000",
+        "visual_role": "NN_FEEDER_BUS"
+      },
+      "name": "Odpływ nN 1",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "nn/133d6a7bb08c13e91aa5cb3796d3ef27/feeder_bus",
+      "tags": [],
+      "voltage_kv": 0.4,
+      "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "73879d6a-0648-52a4-b7d0-f26f7ff5b506",
+      "meta": {
+        "nn_field_migrowany_z": "stn/01bb98b8035012aa5698e4fc47869f83/nn_main_breaker",
+        "visual_role": "NN_FEEDER_BUS"
+      },
+      "name": "Wyłącznik główny nN",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "nn/2f39a65f39de991048ec48520d37e059/feeder_bus",
+      "tags": [],
+      "voltage_kv": 0.4,
+      "zone": null
+    },
+    {
+      "frequency_hz": null,
+      "id": "c26419ab-c4e7-5f7d-b93c-20e40d8a8bd9",
+      "meta": {
+        "nn_field_migrowany_z": "stn/01bb98b8035012aa5698e4fc47869f83/nn_feeder/000",
+        "visual_role": "NN_FEEDER_BUS"
+      },
+      "name": "Odpływ nN 1",
+      "nominal_limits": null,
+      "phase_system": "3ph",
+      "ref_id": "nn/2388714eac616638daaf7cdd5319b935/feeder_bus",
+      "tags": [],
+      "voltage_kv": 0.4,
+      "zone": null
     }
   ],
   "connection_nodes": [],
@@ -716,9 +868,9 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "",
+    "hash_sha256": "085cdc45ea65f96bffa401345419f782917e5d8bef582dd13623cfdbc7b75620",
     "name": "Magistrala SN — scena koordynacji",
-    "revision": 1,
+    "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
   },
   "junctions": [],
@@ -789,6 +941,90 @@
       "quantity": null,
       "ref_id": "load/08229ff7350ea47289cf37a6c8c45b59/sn",
       "source_mode": "EKSPERCKI_RECZNY",
+      "tags": []
+    },
+    {
+      "bus_ref": "nn/133d6a7bb08c13e91aa5cb3796d3ef27/feeder_bus",
+      "catalog_namespace": "OBCIAZENIE",
+      "catalog_ref": "load_uslugi_30kw",
+      "id": "6d06660e-a9d9-5ee5-b4df-a2ff61b24d65",
+      "materialized_params": {
+        "catalog_item_id": "load_uslugi_30kw",
+        "cos_phi": 0.92,
+        "cos_phi_mode": "IND",
+        "p_kw": 30.0,
+        "q_kvar": 12.77994648408614,
+        "q_source": "KATALOG_COS_PHI"
+      },
+      "meta": {
+        "catalog_binding": {
+          "catalog_item_id": "load_uslugi_30kw",
+          "catalog_item_version": "2024.1",
+          "catalog_namespace": "OBCIAZENIE",
+          "materialize": true,
+          "snapshot_mapping_version": "1.0"
+        },
+        "completion_source": "station_catalog_migration",
+        "connection_type": "TROJFAZOWY",
+        "cos_phi": 0.92,
+        "cos_phi_mode": "IND",
+        "feeder_ref": "stn/f7bb7f68cd42e41fbb3ed5b9781194c6/nn_feeder/000",
+        "load_kind": "SKUPIONY",
+        "q_kvar": 12.77994648408614,
+        "q_source": "KATALOG_COS_PHI"
+      },
+      "model": "pq",
+      "name": "Odbiór nN 1 - Stacja S01",
+      "overrides": [],
+      "p_mw": 0.03,
+      "parameter_source": "CATALOG",
+      "phases": null,
+      "q_mvar": 0.012779946484086141,
+      "quantity": null,
+      "ref_id": "load/781fa0eb4372125e87586a96bad1d7aa/nn",
+      "source_mode": "KATALOG",
+      "tags": []
+    },
+    {
+      "bus_ref": "nn/2388714eac616638daaf7cdd5319b935/feeder_bus",
+      "catalog_namespace": "OBCIAZENIE",
+      "catalog_ref": "load_uslugi_30kw",
+      "id": "7c767fe5-3542-5b40-8a78-37b221192e64",
+      "materialized_params": {
+        "catalog_item_id": "load_uslugi_30kw",
+        "cos_phi": 0.92,
+        "cos_phi_mode": "IND",
+        "p_kw": 30.0,
+        "q_kvar": 12.77994648408614,
+        "q_source": "KATALOG_COS_PHI"
+      },
+      "meta": {
+        "catalog_binding": {
+          "catalog_item_id": "load_uslugi_30kw",
+          "catalog_item_version": "2024.1",
+          "catalog_namespace": "OBCIAZENIE",
+          "materialize": true,
+          "snapshot_mapping_version": "1.0"
+        },
+        "completion_source": "station_catalog_migration",
+        "connection_type": "TROJFAZOWY",
+        "cos_phi": 0.92,
+        "cos_phi_mode": "IND",
+        "feeder_ref": "stn/01bb98b8035012aa5698e4fc47869f83/nn_feeder/000",
+        "load_kind": "SKUPIONY",
+        "q_kvar": 12.77994648408614,
+        "q_source": "KATALOG_COS_PHI"
+      },
+      "model": "pq",
+      "name": "Odbiór nN 1 - Stacja S02",
+      "overrides": [],
+      "p_mw": 0.03,
+      "parameter_source": "CATALOG",
+      "phases": null,
+      "q_mvar": 0.012779946484086141,
+      "quantity": null,
+      "ref_id": "load/7c2b1f498466104b6083be21a206bf57/nn",
+      "source_mode": "KATALOG",
       "tags": []
     }
   ],
@@ -1031,6 +1267,7 @@
             "tags": []
           }
         ],
+        "nn_fields_promoted": true,
         "station_type_semantic": "B",
         "station_type_sn": "B"
       },
@@ -1163,6 +1400,7 @@
             "tags": []
           }
         ],
+        "nn_fields_promoted": true,
         "station_type_semantic": "B",
         "station_type_sn": "B"
       },

@@ -357,8 +357,25 @@ test.describe('Pasmo MIN/MAX zwarcia — karta W3-G3', () => {
     await expect(blokMax).toContainText('Bieg zapisany');
     await expect(blokMax).not.toContainText('Policzone na żądanie');
     await expect(blokMin).toContainText('Bieg zapisany');
-    await expect(blokMin).toContainText(biegMin.id);
     await expect(blokMin).not.toContainText('Policzone na żądanie');
+    // Karta #145: identyfikator biegu nie stoi w pierwszym planie — tylko w „Informacjach
+    // audytowych” strony pasma, widocznych w trybie eksperckim (przełącznik powłoki,
+    // realny klik). Intencja bez zmian: strona MIN to WŁASNY zapisany bieg MIN
+    // (`biegMin.id`), inny niż bieg kotwicy po stronie MAX.
+    await expect(blokMin).not.toContainText(biegMin.id);
+    const przyciskEkspercki = page.locator('[data-mvd-mode="expert"]');
+    await expect(przyciskEkspercki).toBeVisible({ timeout: 15000 });
+    if ((await przyciskEkspercki.getAttribute('aria-pressed')) !== 'true') {
+      await przyciskEkspercki.click();
+      await expect(przyciskEkspercki).toHaveAttribute('aria-pressed', 'true');
+    }
+    await blokMin.getByTestId('mvd-zwarcia-pasmo-min-informacje-audytowe-przelacz').click();
+    const audytMin = blokMin.getByTestId('mvd-zwarcia-pasmo-min-informacje-audytowe-lista');
+    await expect(audytMin).toContainText(biegMin.id);
+    await blokMax.getByTestId('mvd-zwarcia-pasmo-max-informacje-audytowe-przelacz').click();
+    const audytMax = blokMax.getByTestId('mvd-zwarcia-pasmo-max-informacje-audytowe-lista');
+    await expect(audytMax).toBeVisible();
+    await expect(audytMax).not.toContainText(biegMin.id);
 
     // Ta sama migawka modelu (żadna zmiana między biegami) → bez ostrzeżenia świeżości.
     await expect(page.getByTestId('mvd-zwarcia-pasmo-swiezosc')).toHaveCount(0);

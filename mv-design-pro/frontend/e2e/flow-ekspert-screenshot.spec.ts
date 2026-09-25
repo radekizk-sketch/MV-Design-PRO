@@ -17,6 +17,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
+import { nazwaElementu } from './nazwyModelu';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('creator-harness.html');
@@ -56,7 +57,24 @@ const WALIDACJA_SCENA_WYNIK = JSON.parse(
     path.resolve(_dirname, '../src/harness-fixtures/generated/walidacja_scena_wynik.json'),
     'utf-8',
   ),
-) as { items: { check_type: string; status: string; observed_value: number | null }[] };
+) as {
+  items: {
+    check_type: string;
+    status: string;
+    observed_value: number | null;
+    target_name: string;
+    why_pl: string;
+  }[];
+};
+/**
+ * Pozycja walidacji „odchylenie napięcia” z przekroczeniem limitu — wiersz, którego ślad
+ * spec otwiera. Werdykt sprawdzany ZDANIEM backendu (`why_pl`), nie kodem statusu: po
+ * karcie #145 ekran nie pokazuje kodów (`FAIL`, „PRZEKROCZENIE”), tylko ocenę w języku
+ * inżyniera, którą liczy backend.
+ */
+const WALIDACJA_ODCHYLENIE_PRZEKROCZONE = WALIDACJA_SCENA_WYNIK.items.find(
+  (pozycja) => pozycja.check_type === 'VOLTAGE_DEVIATION' && pozycja.status === 'FAIL',
+)!;
 const ROZPLYW_OBCIAZENIE_TR_PCT = WALIDACJA_SCENA_WYNIK.items.find(
   (pozycja) => pozycja.check_type === 'TRANSFORMER_LOADING' && pozycja.status === 'FAIL',
 )!.observed_value!;
@@ -113,12 +131,22 @@ const POROWNANIE_WYNIK_PF = JSON.parse(
   run_b_id: string;
   bus_diffs: { bus_id: string; delta_v_pu: number; delta_angle_deg: number }[];
 };
-const POROWNANIE_SZYNA_ZE_ZMIANA = POROWNANIE_WYNIK_PF.bus_diffs.find(
-  (szyna) => szyna.delta_v_pu !== 0 || szyna.delta_angle_deg !== 0,
-)!.bus_id;
-const POROWNANIE_SZYNA_BEZ_ZMIAN = POROWNANIE_WYNIK_PF.bus_diffs.find(
-  (szyna) => szyna.delta_v_pu === 0 && szyna.delta_angle_deg === 0,
-)!.bus_id;
+/**
+ * Szyny porównania z backendu nazwane tak, jak widzi je projektant: most nazw ekranu
+ * (karta #145) czyta nazwę z migawki modelu sceny „porownanie” (sieć złota + scena
+ * koordynacji). Spec czyta ją z tej samej fikstury — nie literał, nie identyfikator.
+ */
+const nazwaSzynyPorownania = (ref: string): string => nazwaElementu('siec_zlota_scena_migawka', ref);
+const POROWNANIE_SZYNA_ZE_ZMIANA = nazwaSzynyPorownania(
+  POROWNANIE_WYNIK_PF.bus_diffs.find(
+    (szyna) => szyna.delta_v_pu !== 0 || szyna.delta_angle_deg !== 0,
+  )!.bus_id,
+);
+const POROWNANIE_SZYNA_BEZ_ZMIAN = nazwaSzynyPorownania(
+  POROWNANIE_WYNIK_PF.bus_diffs.find(
+    (szyna) => szyna.delta_v_pu === 0 && szyna.delta_angle_deg === 0,
+  )!.bus_id,
+);
 
 /**
  * Tryb „Zabezpieczenia" ekranu porównań — REALNE biegi `protection_sn` na dwóch
@@ -226,9 +254,16 @@ test.describe('flow-ekspert:screenshot', () => {
           // realnie najniższe napięcie sieci — szyna nN za przeciążonym
           // transformatorem 15/0.4).
           await expect(page.getByTestId('mvd-jakosc-walidacja')).toBeVisible();
-          await page.getByRole('row').filter({ hasText: 'Odchylenie napięcia' }).first().click();
+          await page
+            .getByRole('row')
+            .filter({ hasText: 'Odchylenie napięcia' })
+            .filter({ hasText: WALIDACJA_ODCHYLENIE_PRZEKROCZONE.target_name })
+            .first()
+            .click();
           await page.getByTestId('mvd-jakosc-wal-slad-otworz').click();
-          await expect(page.getByTestId('mvd-jakosc-wal-slad')).toContainText('Werdykt: PRZEKROCZENIE');
+          const sladWalidacji = page.getByTestId('mvd-jakosc-wal-slad');
+          await expect(sladWalidacji).toContainText(WALIDACJA_ODCHYLENIE_PRZEKROCZONE.why_pl);
+          await expect(sladWalidacji).not.toContainText('PRZEKROCZENIE');
         } else if (scena === 'rozplyw') {
           // R3-A: podzakladka Galezie -> kolumna "Obciazenie [%]" z werdyktem
           // backendu (HARNESS-RESZTA-kontynuacja: scena "rozplyw" karmiona
@@ -337,12 +372,16 @@ test.describe('flow-ekspert:screenshot', () => {
           await page.getByTestId('mvd-porzab-przycisk').click();
           const wynikZab = page.getByTestId('mvd-porzab-wynik');
           await expect(wynikZab).toBeVisible();
+          // Element chroniony i element problemu z rankingu — NAZWY z modelu, na którym
+          // policzono biegi zabezpieczeń (migawka sceny koordynacji serwowana przez magazyn
+          // ENM, z promowanymi polami nN), nie identyfikatory grafu z odpowiedzi.
           await expect(wynikZab).toContainText(
-            POROWNANIE_WYNIK_ZAB.rows[0].protected_element_ref,
+            nazwaElementu('koordynacja_scena_migawka', POROWNANIE_WYNIK_ZAB.rows[0].protected_element_ref),
           );
+          await expect(wynikZab).not.toContainText(POROWNANIE_WYNIK_ZAB.rows[0].protected_element_ref);
           await page.getByTestId('mvd-porzab-tab-ranking').click();
           await expect(wynikZab).toContainText(
-            POROWNANIE_WYNIK_ZAB.ranking[0].element_ref,
+            nazwaElementu('koordynacja_scena_migawka', POROWNANIE_WYNIK_ZAB.ranking[0].element_ref),
           );
           const zrzutZab = path.join(OUTPUT_DIR, `porownanie-zabezpieczenia-${theme}.png`);
           await root.screenshot({ path: zrzutZab });
