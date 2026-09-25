@@ -47,11 +47,14 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import type { EnergyNetworkModel, LogicalViewsV1 } from '../../../types/enm';
 import type { ElementType } from '../../types';
 import {
+  SLD_MENU_REGISTRY,
+  powodBrakuStartuCiagu,
   toastBus,
   type SldElementKindForMenu,
 } from '../v2/command/SldCommandService';
 import { useShellStore } from '../../../ui2/shell/useShellStore';
 import { powyzejPasmaNn } from '../../../ui2/model/pasmaNapieciowe';
+import { maStartOperacjiCiagu } from '../../../ui2/kreatory/magistrala/magistralaModel';
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
@@ -162,10 +165,10 @@ export function routeSurfaceLabelPl(screenCode: string): string {
  * `extend-trunk`, `start-branch`, `insert-station`, `insert-zksn`,
  * `insert-sectional`, `insert-pole`, `add-source` (branch 1b, kind==='station'
  * zawsze prawdziwe dla jedynego wpisu rejestru menu), `add-load`,
- * `continue-trunk` (predykat `trunkStartFieldAvailable` w menu i fieldRef-check
- * w `buildSldOperationContext` czytają TEN SAM resolver
- * `resolveGpzTrunkStartFieldRef` — predykaty parami, nie ma stanu, w którym
- * pozycja jest klikalna, a operacja odmawia), `set-switch-state`,
+ * `continue-trunk` (predykat `trunkStartAvailable` w menu i kontekst operacji
+ * pochodzą z JEDNEGO rozstrzygnięcia `resolveTrunkStartAvailability` →
+ * `buildSldOperationContext` — predykaty parami dla KAŻDEGO rodzaju obiektu, nie ma
+ * stanu, w którym pozycja jest klikalna, a operacja odmawia), `set-switch-state`,
  * `delete-bay`, `delete-segment`, `delete-station`, `delete-pv`,
  * `delete-bess`, `delete-fw`.
  *
@@ -509,6 +512,39 @@ export function resolveBranchStartAvailability(
   return resolveBranchStartOperationContext(snapshot, elementId, elementType).fromRef.trim().length > 0;
 }
 
+/** Akcje menu/szuflady SLD → operacja domenowa formularza. */
+const opByAction: Readonly<Partial<Record<string, NetworkBuildOperationName>>> = {
+  'add-bay': 'add_sn_bay',
+  'extend-trunk': 'continue_trunk_segment_sn',
+  'continue-trunk': 'continue_trunk_segment_sn',
+  'continue-trunk-from-endpoint': 'continue_trunk_segment_sn',
+  'append-station-on-endpoint': 'continue_trunk_segment_sn',
+  'start-branch': 'start_branch_segment_sn',
+  'insert-station': 'insert_station_on_segment_sn',
+  'conscious-split-on-segment': 'insert_station_on_segment_sn',
+  'insert-zksn': 'insert_zksn_on_segment_sn',
+  'insert-pole': 'insert_branch_pole_on_segment_sn',
+  'insert-sectional': 'insert_section_switch_sn',
+  'add-load': 'add_nn_load',
+  'set-switch-state': 'set_normal_open_point',
+  // K5-A (H-4): trzy kreatory-wyspy dostają wejścia z żywego menu kanwy —
+  // realne operacje domenowe (operationFormRegistry + operationContext już
+  // je obsługują; brakowało WYŁĄCZNIE tych wpisów).
+  'add-compensator': 'add_shunt_compensator_sn',
+  'add-arrester': 'add_surge_arrester_sn',
+  'add-genset': 'add_genset_nn',
+  'add-ups': 'add_ups_nn',
+};
+
+/**
+ * KARTA S95-START: czy akcja jest KONTYNUACJĄ CIĄGU SN (formularz
+ * `continue_trunk_segment_sn`) — zbiór wyprowadzony z tej samej tablicy, z której
+ * wykonawca bierze operację, więc nowa pozycja kontynuacji nie może ominąć bramki.
+ */
+export function isTrunkContinuationAction(actionId: string): boolean {
+  return opByAction[actionId] === 'continue_trunk_segment_sn';
+}
+
 export function buildSldOperationContext(
   actionId: string,
   kind: SldElementKindForMenu,
@@ -550,28 +586,6 @@ export function buildSldOperationContext(
   const elementType = elementTypeForSldKind(operationKind);
   if (!elementType) return null;
 
-  const opByAction: Partial<Record<string, NetworkBuildOperationName>> = {
-    'add-bay': 'add_sn_bay',
-    'extend-trunk': 'continue_trunk_segment_sn',
-    'continue-trunk': 'continue_trunk_segment_sn',
-    'continue-trunk-from-endpoint': 'continue_trunk_segment_sn',
-    'append-station-on-endpoint': 'continue_trunk_segment_sn',
-    'start-branch': 'start_branch_segment_sn',
-    'insert-station': 'insert_station_on_segment_sn',
-    'conscious-split-on-segment': 'insert_station_on_segment_sn',
-    'insert-zksn': 'insert_zksn_on_segment_sn',
-    'insert-pole': 'insert_branch_pole_on_segment_sn',
-    'insert-sectional': 'insert_section_switch_sn',
-    'add-load': 'add_nn_load',
-    'set-switch-state': 'set_normal_open_point',
-    // K5-A (H-4): trzy kreatory-wyspy dostają wejścia z żywego menu kanwy —
-    // realne operacje domenowe (operationFormRegistry + operationContext już
-    // je obsługują; brakowało WYŁĄCZNIE tych wpisów).
-    'add-compensator': 'add_shunt_compensator_sn',
-    'add-arrester': 'add_surge_arrester_sn',
-    'add-genset': 'add_genset_nn',
-    'add-ups': 'add_ups_nn',
-  };
   const op = opByAction[actionId];
   if (!op) return null;
 
@@ -606,19 +620,64 @@ export function buildSldOperationContext(
     if (!fieldRef) return null;
     extraContext.field_ref = fieldRef;
   }
+  // KARTA S95-START: na widoku przeglądowym (LOD 0) cała rozdzielnia GPZ jest
+  // rysowana symbolem STACJI, więc jej menu ma kategorię `station`. Pola liniowe
+  // GPZ rozpoznaje ten sam resolver co wyżej (po realnych danych operacji
+  // `add_grid_source_sn`, nie po typie stacji) — dla zwykłej stacji SN/nN zwraca
+  // `null` i punkt startu rozstrzyga resolver pól stacji (`network-build`).
+  // Zmierzone: bez tej gałęzi GPZ sieci referencyjnej na LOD 0 otwierał kreator
+  // magistrali bez punktu startu (ta sama klasa co stacja).
+  if (actionId === 'continue-trunk' && kind === 'station') {
+    const fieldRef = resolveGpzTrunkStartFieldRef(snapshot, operationElementId);
+    if (fieldRef) extraContext.field_ref = fieldRef;
+  }
+
+  const context = buildOperationContext({
+    canonicalOp: op,
+    elementId: operationElementId,
+    elementType,
+    snapshot,
+    logicalViews,
+    extraContext,
+  });
+  // KARTA S95-START (predykaty PARAMI): kontekst kontynuacji ciągu bez punktu startu
+  // to NIE jest operacja — kreator magistrali zablokowałby zapis tym samym predykatem
+  // (`maStartOperacjiCiagu`). Brak startu = brak operacji dla KAŻDEGO rodzaju obiektu
+  // (dotąd tylko GPZ/sekcja; stacja bez wolnego pola liniowego otwierała martwy kreator).
+  if (op === 'continue_trunk_segment_sn' && !maStartOperacjiCiagu(context)) return null;
 
   return {
     op,
-    context: buildOperationContext({
-      canonicalOp: op,
-      elementId: operationElementId,
-      elementType,
-      snapshot,
-      logicalViews,
-      extraContext,
-    }),
+    context,
     messagePl: operationOpenMessage(op, actionId),
   };
+}
+
+/**
+ * KARTA S95-START — dostępność punktu startu ciągu SN dla pozycji menu obiektu.
+ *
+ * Dla KAŻDEJ pozycji kontynuacji ciągu zarejestrowanej w menu danego rodzaju obiektu
+ * (`SLD_MENU_REGISTRY[kind]`) liczymy TO SAMO rozstrzygnięcie, które wykonawca poda
+ * kreatorowi (`buildSldOperationContext`): pozycja jest dostępna ⇔ operacja ma punkt
+ * startu ⇔ kreator magistrali może zapisać. Jedno źródło prawdy zamiast pary
+ * niezależnych warunków „dziś zgodnych" (S9-5 sparował wyłącznie GPZ i sekcję).
+ *
+ * `undefined` = brak migawki albo refu (brak pomiaru nie jest dowodem — bez blokady).
+ */
+export function resolveTrunkStartAvailability(
+  snapshot: EnergyNetworkModel | null,
+  logicalViews: LogicalViewsV1 | null,
+  kind: SldElementKindForMenu,
+  elementId: string | null,
+): Readonly<Partial<Record<string, boolean>>> | undefined {
+  if (!snapshot || !elementId) return undefined;
+  const dostepnosc: Record<string, boolean> = {};
+  for (const akcja of SLD_MENU_REGISTRY[kind] ?? []) {
+    if (!isTrunkContinuationAction(akcja.id)) continue;
+    dostepnosc[akcja.id] =
+      buildSldOperationContext(akcja.id, kind, elementId, snapshot, logicalViews) !== null;
+  }
+  return dostepnosc;
 }
 
 /**
@@ -776,6 +835,13 @@ export function useSldActionExecutor(
       if (operationContext) {
         openOperationForm(operationContext.op, operationContext.context);
         notify(operationContext.messagePl, 'info');
+        return;
+      }
+      // KARTA S95-START: kontynuacja ciągu bez punktu startu — uczciwy powód (ten sam
+      // tekst co przy zablokowanej pozycji menu), nigdy kreator z trwale zablokowanym
+      // zapisem ani komunikat techniczny z identyfikatorem akcji.
+      if (isTrunkContinuationAction(actionId)) {
+        notify(powodBrakuStartuCiagu(kind), 'warning');
         return;
       }
 

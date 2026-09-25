@@ -85,6 +85,21 @@ const backendServerEnv: Record<string, string> = useRealBackend
     DATABASE_URL: process.env.PLAYWRIGHT_BACKEND_DATABASE_URL
       ?? `sqlite+pysqlite:///${path.join(e2eTempDir(), 'mv_design_pro_e2e.db')}`,
     ENM_STORE_DIR: process.env.PLAYWRIGHT_ENM_STORE_DIR ?? path.join(e2eTempDir(), 'enm_store'),
+    // KARTA S95-START (klasa FE-HIGIENA: KAŻDY trwały magazyn backendu w katalogu biegu).
+    // Szablony stacji użytkownika (`application/station_templates/user_store.py`) miały
+    // domyślny katalog W DRZEWIE (`backend/.station_templates`), więc szablon zapisany
+    // przez spec kreatora stacji przeżywał bieg i trafiał na listę kroku 0 KAŻDEGO
+    // późniejszego biegu w tym drzewie. Zmierzone 2026-09-25: drzewa integracji niosły
+    // szablon „Stacja K9-B MAX" (stacja odgałęźna z jednym polem wejściowym), spec S9-5
+    // wybierał go jako pierwszą pozycję listy i ogniwo 4 padało — na czystym runnerze CI
+    // ten sam spec był zielony. Kopie zapasowe w trybie LOCAL domyślnie lądują we
+    // wspólnym `/tmp/mv-design-pro-backups` (wspólnym dla wszystkich drzew i biegów) —
+    // ta sama klasa, ten sam środek.
+    STATION_USER_TEMPLATES_DIR: process.env.PLAYWRIGHT_STATION_USER_TEMPLATES_DIR
+      ?? path.join(e2eTempDir(), 'station_templates'),
+    CLOUD_BACKUP_BACKEND: 'LOCAL',
+    CLOUD_BACKUP_BUCKET: process.env.PLAYWRIGHT_CLOUD_BACKUP_BUCKET
+      ?? path.join(e2eTempDir(), 'cloud_backups'),
   }
   : {};
 const frontendServerCommand = process.env.PLAYWRIGHT_DISABLE_WEBSERVER

@@ -28,6 +28,7 @@ import {
 import { formatStationSwitchgearLayoutLabelPl } from '../shared/stationTypeLabels';
 import { resolveBranchPointBranchPortOccupancy } from '../network-build/operationContextResolvers';
 import { selectStationDistributionTransformerRefs } from '../network-build/stationTransformerSelection';
+import { stationSnFieldSpecs, stationSnapshotBays } from '../network-build/stationSnFields';
 import type {
   BayCanonicalRole,
   BranchPointSN,
@@ -263,13 +264,21 @@ function buildStationSubject(
   const { displayName, typeLabel } = stationPublicIdentity(snapshot, station);
   const switchgearLabel = formatStationSwitchgearLayoutLabelPl(station.station_type);
 
-  const bays = (snapshot.bays ?? []).filter(
-    (bay) => bay.substation_ref === station.ref_id || bay.substation_ref === station.id,
-  );
+  // Pola rozdzielni SN — TA SAMA kolejność źródeł co liczność pól na karcie stacji
+  // (`stationSnFieldCount`): specyfikacje pól stacji (`meta.field_specs`, jedyna postać pól
+  // stacji zbudowanych operacjami domenowymi), a dopiero przy ich braku pola `bays`.
+  // Karta S95-START (znalezisko uboczne, zmierzone na stacji wstawionej na odcinku): karta
+  // techniczna liczyła wyłącznie `bays`, więc taka stacja pokazywała zero pól każdej roli
+  // obok „1 pól SN" w sekcji struktury — dwa odczyty tych samych danych.
+  const specyPol = stationSnFieldSpecs(station);
+  const rolePol: readonly (string | null)[] = (specyPol.length > 0
+    ? specyPol.map((spec) => spec.bay_role)
+    : stationSnapshotBays(snapshot.bays, station).map((bay) => bay.bay_role as unknown)
+  ).map((rola) => (typeof rola === 'string' ? rola : null));
   // Liczność pól wg ROLI kanonicznej (kanon słownictwa ról pól, karta #141): rola modelu
   // przechodzi na rolę kanonu, więc pole odgałęźne (FEEDER) nie miesza się z wyjściowym (OUT).
   const liczbaPol = (rola: BayCanonicalRole): number =>
-    bays.filter((bay) => canonicalFieldRole(bay.bay_role) === rola).length;
+    rolePol.filter((rolaPola) => canonicalFieldRole(rolaPola) === rola).length;
   const grouped = {
     in: liczbaPol('LINIA_IN'),
     out: liczbaPol('LINIA_OUT'),
@@ -277,7 +286,7 @@ function buildStationSubject(
     tr: liczbaPol('TRANSFORMATOROWE'),
     coupler: liczbaPol('SPRZEGLO'),
     measurement: liczbaPol('POMIAROWE'),
-    oze: bays.filter((bay) => isSourceFieldRole(bay.bay_role)).length,
+    oze: rolePol.filter((rolaPola) => isSourceFieldRole(rolaPola)).length,
   };
   const etykietaPol = (rola: StationFieldRole): string =>
     `${fieldLabelPluralPl(FIELD_ROLE_LABEL_PL[rola])} (${FIELD_ROLE_SHORT_TAG[rola]})`;

@@ -60,6 +60,7 @@ import { buildOperationContext } from '../../network-build/operationContext';
 import { BAY_ROLE_TO_PORT_KIND, type PortKind } from '../../sld/v2/core/ports';
 import { canonicalFieldRole } from '../../sld/v2/station-rozdzielnia/contract';
 import { powyzejPasmaNn } from '../../../ui2/model/pasmaNapieciowe';
+import { maStartOperacjiCiagu } from '../../../ui2/kreatory/magistrala/magistralaModel';
 
 interface StationConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
@@ -607,14 +608,6 @@ function stationDefaultCard(surface: WorkspaceSurfaceDescriptor): StationConfigC
   return 'basic';
 }
 
-function hasContinuationStart(context: Record<string, unknown>): boolean {
-  const keys = ['from_terminal_id', 'terminal_id', 'terminalId', 'field_ref'];
-  return keys.some((key) => {
-    const value = context[key];
-    return typeof value === 'string' && value.trim().length > 0;
-  });
-}
-
 function hasBranchStart(context: Record<string, unknown>): boolean {
   const fromRef = context.from_ref;
   const fromBusRef = context.from_bus_ref;
@@ -822,7 +815,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         station_name: stationName,
       },
     });
-    return hasContinuationStart(context) ? context : null;
+    // KARTA S95-START: ten sam predykat startu ciągu co kreator magistrali i menu kanwy.
+    return maStartOperacjiCiagu(context) ? context : null;
   }, [logicalViews, snapshot, stationName, stationRef]);
 
   const handleOpenDer = useCallback(

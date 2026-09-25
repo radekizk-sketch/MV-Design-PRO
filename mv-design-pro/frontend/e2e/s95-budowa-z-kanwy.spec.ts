@@ -566,10 +566,18 @@ async function zapiszStacje(page: Page, numer: number): Promise<void> {
   // odczyt `.all()` zaraz po `toBeVisible` bywał wyścigiem (pomiar: 1 opcja
   // w chwili odczytu, komplet ułamek sekundy później). Czekamy na realny
   // stan zamiast liczyć na szczęśliwy timing.
-  await expect
-    .poll(async () => wybor.locator('option').count(), { timeout: 60000 })
-    .toBeGreaterThan(1);
-  await wybor.selectOption({ index: 1 });
+  //
+  // S95-START: szablon WBUDOWANY wskazany po źródle w etykiecie, nie „pozycja nr 1".
+  // Lista miesza bibliotekę wbudowaną z szablonami użytkownika i obie dojeżdżają
+  // osobnymi żądaniami; pozycja nr 1 bywała szablonem użytkownika zapisanym przez
+  // inny spec (zmierzone: stacja odgałęźna z jednym polem wejściowym, bez pola
+  // wyjściowego — ogniwo 4 nie miałoby z czego kontynuować ciągu). Ten sam wzorzec
+  // co w `kreator-stacji-max.spec.ts`.
+  const szablonWbudowany = wybor.locator('option', { hasText: '(wbudowany)' }).first();
+  await expect(szablonWbudowany).toHaveCount(1, { timeout: 60000 });
+  const idSzablonu = await szablonWbudowany.getAttribute('value');
+  expect(idSzablonu, 'lista ma szablon wbudowany').toBeTruthy();
+  await wybor.selectOption(idSzablonu!);
   await page.getByTestId('mvd-kreator-stacja-szablon-zastosuj').click();
   await expect(page.getByTestId('mvd-kreator-stacja-szablon-zastosowany')).toBeVisible({
     timeout: 30000,

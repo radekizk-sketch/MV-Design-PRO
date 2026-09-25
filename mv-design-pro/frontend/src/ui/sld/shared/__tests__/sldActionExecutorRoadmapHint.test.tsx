@@ -241,10 +241,11 @@ describe('sldActionExecutor — klasa ACTION_ROADMAP_HINT_PL usunięta (Karta W2
       { actionId: 'insert-pole', kind: 'overhead_line_sn', elementId: 'line/L-2', oczekiwanyOp: 'insert_branch_pole_on_segment_sn' },
       { actionId: 'add-load', kind: 'station', elementId: 'stn/ST-1/station', oczekiwanyOp: 'add_nn_load' },
       { actionId: 'set-switch-state', kind: 'bay', elementId: 'bay/B-1', oczekiwanyOp: 'set_normal_open_point' },
-      // continue-trunk z kind='station': predykat trunkStartFieldAvailable/fieldRef
-      // dotyczy WYŁĄCZNIE kind gpz/section (S9-5) — dla stacji ścieżka jest
-      // generyczna i zawsze zwraca operację.
-      { actionId: 'continue-trunk', kind: 'station', elementId: 'stn/ST-1/station', oczekiwanyOp: 'continue_trunk_segment_sn' },
+      // continue-trunk: od karty S95-START operacja powstaje WYŁĄCZNIE z punktem
+      // startu ciągu (dla KAŻDEGO rodzaju obiektu, także stacji — dawniej tu
+      // przypięte „dla stacji zawsze zwraca operację" było właśnie defektem).
+      // Pokrycie iloczynem {rodzaj} × {stan pól} × {droga wejścia}:
+      // `sld/shared/__tests__/punktStartuCiagu.test.tsx`.
     ];
 
     it.each(OPERACJE_DOMENOWE)(

@@ -31,6 +31,7 @@ import {
   buildSldOperationContext,
   resolveBranchStartAvailability,
   resolveGpzTrunkStartFieldRef,
+  resolveTrunkStartAvailability,
 } from '../../../shared/sldActionExecutor';
 import { getMenuActions } from '../../../v2/command/SldCommandService';
 import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/buildScene';
@@ -429,11 +430,23 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
    */
   it('pokrycie łańcucha na sieci referencyjnej: ≥ 15 stacji i ≥ 15 odcinków z realnym wejściem budowy', async () => {
     const kanwa = renderKanwe(0);
+    // S95-START: „realne wejście" = temat menu stacji ORAZ punkt startu ciągu z
+    // TEGO SAMEGO rozstrzygnięcia, którego użyje kreator (predykaty parami).
+    // Rozdzielnia GPZ rysowana na LOD 0 symbolem stacji ma tu jedyne pole
+    // liniowe zajęte — nie jest wejściem, a jej pozycja jest uczciwie zablokowana.
     const stacjeZWejsciem = kanwa.obszary.filter((a) => {
       if (a.klasa !== 'stacja') return false;
       const wynik = resolveCanvasMenuSubject(wejscieTematu(kanwa, a), indexModelu);
-      return wynik.stan === 'temat' && wynik.temat.menuKind === 'station';
+      return wynik.stan === 'temat'
+        && wynik.temat.menuKind === 'station'
+        && resolveTrunkStartAvailability(enm, null, 'station', wynik.temat.modelRef)?.['continue-trunk'] === true;
     });
+    const gpzJakoStacja = kanwa.obszary.find((a) => a.klasa === 'stacja' && a.ownerRef?.startsWith('gpz/'));
+    if (gpzJakoStacja) {
+      const menuGpz = await prawyKlik(kanwa, gpzJakoStacja.testId);
+      expect(pozycjaAktywna(menuGpz!, 'continue-trunk'), 'GPZ bez wolnego pola liniowego').toBe(false);
+      await zamknijMenu();
+    }
     const odcinkiZWejsciem = kanwa.obszary.filter((a) => {
       if (a.klasa !== 'tor' && a.klasa !== 'lacznik-wiersza') return false;
       const wynik = resolveCanvasMenuSubject(wejscieTematu(kanwa, a), indexModelu);
@@ -447,7 +460,7 @@ describe('S9-5 B — operacje budowy ciągu SN dostępne z rysunku', () => {
     for (const stacja of stacjeZWejsciem.slice(0, 15)) {
       const menu = await prawyKlik(kanwa, stacja.testId);
       expect(menu, `stacja ${stacja.ownerRef} otwiera menu`).toBeTruthy();
-      expect(pozycjaAktywna(menu!, 'continue-trunk')).toBe(true);
+      expect(pozycjaAktywna(menu!, 'continue-trunk'), `stacja ${stacja.ownerRef}: kontynuuj ciąg`).toBe(true);
       // S9-10: „Rozpocznij odgałęzienie" jest OBECNE, a jego aktywność
       // SPAROWANA z resolverem kreatora (jedno źródło prawdy; na tej sieci
       // żadna stacja nie ma wolnego pola FEEDER, więc pozycja jest uczciwie
@@ -575,9 +588,11 @@ describe('S9-5 D — pierwsze ogniwo budowy na świeżo wstawionym GPZ', () => {
 
     // Predykaty PARAMI (reguła KLASA pkt 3): warunek WEJŚCIA (menu odblokowuje
     // pozycję) i warunek WYJŚCIA (operacja dostaje punkt startu) pochodzą z
-    // JEDNEGO źródła — `resolveGpzTrunkStartFieldRef`. Tu sprawdzamy, że oba
-    // mówią to samo na tym samym modelu.
-    const pozycja = getMenuActions(kind, { trunkStartFieldAvailable: true })
+    // JEDNEGO źródła — `resolveTrunkStartAvailability` → `buildSldOperationContext`
+    // (karta S95-START). Tu sprawdzamy, że oba mówią to samo na tym samym modelu.
+    const dostepnosc = resolveTrunkStartAvailability(gpzSwiezy, null, kind, elementId);
+    expect(dostepnosc?.['continue-trunk']).toBe(true);
+    const pozycja = getMenuActions(kind, { trunkStartAvailable: dostepnosc })
       .find((akcja) => akcja.id === 'continue-trunk');
     expect(pozycja?.disabled ?? false).toBe(false);
   });

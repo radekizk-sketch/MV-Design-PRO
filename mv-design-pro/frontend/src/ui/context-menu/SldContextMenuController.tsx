@@ -50,8 +50,10 @@ export interface SldMenuContext {
   readonly apparatusKind?: string;
   /** K5-A: czy stacja ma szynę nN (warunek agregatu/UPS w menu stacji). */
   readonly stationHasNnBus?: boolean;
-  /** Karta S9-5: czy rozdzielnia ma wolne pole liniowe (punkt startu ciągu). */
-  readonly trunkStartFieldAvailable?: boolean;
+  /** Karta S9-5 → S95-START: dostępność punktu startu ciągu SN per pozycja kontynuacji
+   *  ciągu (klucz = id pozycji), z JEDNEGO rozstrzygnięcia z kontekstem operacji
+   *  (`resolveTrunkStartAvailability`, `shared/sldActionExecutor.ts`). */
+  readonly trunkStartAvailable?: Readonly<Partial<Record<string, boolean>>>;
 }
 
 export interface SldContextMenuControllerProps {
