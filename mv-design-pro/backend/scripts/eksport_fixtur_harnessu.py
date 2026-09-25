@@ -67,6 +67,10 @@ from api.generators import (  # noqa: E402
     get_der_instrument_transformers,
     get_der_protection_functions,
 )
+from api.grid_source_preview import (  # noqa: E402
+    OcenaDoboruMagistraliRequest,
+    assess_trunk_sizing,
+)
 from api.ncrfg_ptpiree_tests import get_ncrfg_test_catalog  # noqa: E402
 from api.oze_analysis_runs import WniosekOsdRequest  # noqa: E402
 from api.proof_pack import SCContributionsRequest, sc3f_contributions  # noqa: E402
@@ -3358,6 +3362,103 @@ def odbior_scena_prad_znamionowy() -> dict[str, Any]:
     )
 
 
+#: Scena „magistrala" (kreator magistrali SN, karta MAGISTRALA-OCENA): odpowiedzi
+#: `POST /api/solver/trunk-sizing-assessment` liczone TĄ SAMĄ funkcją trasy
+#: (`assess_trunk_sizing`) — rekordy werdyktu (`OcenaKryterium`) nie są pisane ręcznie.
+#: Kabel o statusie weryfikacji „zweryfikowany" (limit I_z z ustaloną podstawą, więc
+#: kryterium obciążalności rozstrzyga się na SPELNIA / NIE_SPELNIA) i kabel bazowy
+#: „częściowo zweryfikowany" (podstawa limitu nieustalona → BRAK_PODSTAWY).
+_KABEL_MAGISTRALI_ZWERYFIKOWANY = "cable-nkt-n2xs2y-1x150"
+_KABEL_MAGISTRALI_BAZOWY = "cable-base-epr-al-1c-120"
+
+
+def _ocena_magistrali(zadanie: dict[str, Any]) -> dict[str, Any]:
+    odpowiedz = assess_trunk_sizing(OcenaDoboruMagistraliRequest.model_validate(zadanie))
+    return canonicalize_json(odpowiedz.model_dump(mode="json"))
+
+
+def magistrala_ocena_scena_przekroczenie() -> dict[str, Any]:
+    """15 kV, kabel zweryfikowany, prąd roboczy 400 A ponad obciążalność typu — obciążalność
+    naruszona; spadek odcinka 500 m policzony (podstawa limitu spadku nieustalona)."""
+    return _ocena_magistrali(
+        {
+            "napiecie_kv": 15.0,
+            "odcinek": {
+                "rodzaj": "KABEL",
+                "catalog_ref": _KABEL_MAGISTRALI_ZWERYFIKOWANY,
+                "dlugosc_m": 500.0,
+                "prad_roboczy_a": 400.0,
+                "cos_phi": 0.95,
+            },
+        }
+    )
+
+
+def magistrala_ocena_scena_ciag() -> dict[str, Any]:
+    """20 kV, ciąg dwóch odcinków kabla zweryfikowanego (1200 m + 800 m), prąd roboczy
+    200 A — obciążalność spełniona, spadek skumulowany ciągu policzony w solverze."""
+    odcinek = {
+        "rodzaj": "KABEL",
+        "catalog_ref": _KABEL_MAGISTRALI_ZWERYFIKOWANY,
+        "prad_roboczy_a": 200.0,
+        "cos_phi": 0.9,
+    }
+    return _ocena_magistrali(
+        {
+            "napiecie_kv": 20.0,
+            "odcinek": {**odcinek, "dlugosc_m": 800.0},
+            "odcinki_zbudowane": [{**odcinek, "dlugosc_m": 1200.0, "nazwa": "odcinek A"}],
+        }
+    )
+
+
+def magistrala_ocena_scena_granica() -> dict[str, Any]:
+    """20 kV, kabel zweryfikowany, prąd roboczy RÓWNY obciążalności typu — margines 0 A,
+    kryterium spełnione na granicy (m ≥ 0)."""
+    typ = get_default_mv_catalog().get_cable_type(_KABEL_MAGISTRALI_ZWERYFIKOWANY)
+    assert typ is not None
+    return _ocena_magistrali(
+        {
+            "napiecie_kv": 20.0,
+            "odcinek": {
+                "rodzaj": "KABEL",
+                "catalog_ref": _KABEL_MAGISTRALI_ZWERYFIKOWANY,
+                "dlugosc_m": 1000.0,
+                "prad_roboczy_a": typ.rated_current_a,
+                "cos_phi": 0.95,
+            },
+        }
+    )
+
+
+def magistrala_ocena_scena_brak_danych() -> dict[str, Any]:
+    """20 kV, odcinek bez typu z katalogu i bez prądu roboczego — trzy rekordy
+    `NIE_OCENIONO` z nazwanymi brakami (nigdy „spełnia")."""
+    return _ocena_magistrali(
+        {
+            "napiecie_kv": 20.0,
+            "odcinek": {"rodzaj": "KABEL", "dlugosc_m": 500.0, "cos_phi": 0.95},
+        }
+    )
+
+
+def magistrala_ocena_scena_katalog_bazowy() -> dict[str, Any]:
+    """15 kV, kabel bazowy (status weryfikacji „częściowo zweryfikowany"), bez prądu
+    roboczego — obciążalność nieoceniona, spadek liczony przy prądzie przyjętym równym
+    obciążalności (dana przyjęta, dowód niepełny)."""
+    return _ocena_magistrali(
+        {
+            "napiecie_kv": 15.0,
+            "odcinek": {
+                "rodzaj": "KABEL",
+                "catalog_ref": _KABEL_MAGISTRALI_BAZOWY,
+                "dlugosc_m": 2500.0,
+                "cos_phi": 0.95,
+            },
+        }
+    )
+
+
 #: Transformator stacji sceny LoM — 2 MVA, bo pole wytwórcy tej sceny niesie
 #: falownik 1,1 MVA: brama katalogowa `add_converter_source` odmawia przyłączenia
 #: źródła o mocy większej niż transformator stacji (zmierzone).
@@ -4526,6 +4627,11 @@ FIXTURY: dict[str, Any] = {
     "frt_scena_sekwencja": frt_scena_sekwencja,
     "lom_scena_wynik": lom_scena_wynik,
     "odbior_scena_prad_znamionowy": odbior_scena_prad_znamionowy,
+    "magistrala_ocena_scena_przekroczenie": magistrala_ocena_scena_przekroczenie,
+    "magistrala_ocena_scena_ciag": magistrala_ocena_scena_ciag,
+    "magistrala_ocena_scena_granica": magistrala_ocena_scena_granica,
+    "magistrala_ocena_scena_brak_danych": magistrala_ocena_scena_brak_danych,
+    "magistrala_ocena_scena_katalog_bazowy": magistrala_ocena_scena_katalog_bazowy,
     "akademickie_scena_biegi": akademickie_scena_biegi,
     "stacja_demo_scena_migawka": stacja_demo_scena_migawka,
     "siec_zlota_scena_migawka": siec_zlota_scena_migawka,

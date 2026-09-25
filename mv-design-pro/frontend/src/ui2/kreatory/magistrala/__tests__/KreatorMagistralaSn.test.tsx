@@ -6,11 +6,19 @@
  * ContinueTrunkForm do kanonu kreatory/rama.
  */
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorMagistralaSn } from '../KreatorMagistralaSn';
+import type { OcenaDoboruMagistraliResponse } from '../ocenaDoboruApi';
+// Odpowiedzi trasy oceny policzone BACKENDEM (`scripts/eksport_fixtur_harnessu.py`, ta sama
+// funkcja trasy) — rekordy werdyktu nie są pisane ręcznie w teście.
+import scenaPrzekroczenie from '../../../../harness-fixtures/generated/magistrala_ocena_scena_przekroczenie.json';
+import scenaCiag from '../../../../harness-fixtures/generated/magistrala_ocena_scena_ciag.json';
+import scenaGranica from '../../../../harness-fixtures/generated/magistrala_ocena_scena_granica.json';
+import scenaBrakDanych from '../../../../harness-fixtures/generated/magistrala_ocena_scena_brak_danych.json';
+import scenaKatalogBazowy from '../../../../harness-fixtures/generated/magistrala_ocena_scena_katalog_bazowy.json';
 
 const closeFormMock = vi.fn();
 const openOperationFormMock = vi.fn();
@@ -118,10 +126,19 @@ vi.mock('../../../../ui/catalog/api', () => ({
   fetchLineTypes: () => fetchLineTypesMock(),
 }));
 
-vi.mock('../../../../ui/network-build/forms/cableVoltageDropApi', () => ({
-  fetchCableVoltageDrop: () =>
-    Promise.resolve({ delta_u_v: 120, delta_u_pct: 0.8, r_total_ohm: 0.126, x_total_ohm: 0.059 }),
+const { fetchOcenaMock } = vi.hoisted(() => ({ fetchOcenaMock: vi.fn() }));
+
+vi.mock('../ocenaDoboruApi', () => ({
+  fetchOcenaDoboruMagistrali: (...args: unknown[]) => fetchOcenaMock(...args),
 }));
+
+const SCENY: Record<string, OcenaDoboruMagistraliResponse> = {
+  przekroczenie: scenaPrzekroczenie as unknown as OcenaDoboruMagistraliResponse,
+  ciag: scenaCiag as unknown as OcenaDoboruMagistraliResponse,
+  granica: scenaGranica as unknown as OcenaDoboruMagistraliResponse,
+  brak_danych: scenaBrakDanych as unknown as OcenaDoboruMagistraliResponse,
+  katalog_bazowy: scenaKatalogBazowy as unknown as OcenaDoboruMagistraliResponse,
+};
 
 async function pickCable() {
   await waitFor(() => {
@@ -150,6 +167,8 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
     // i kolejne testy dostałyby katalog `undefined`.
     fetchCableTypesMock.mockClear();
     fetchLineTypesMock.mockClear();
+    fetchOcenaMock.mockReset();
+    fetchOcenaMock.mockResolvedValue(SCENY.przekroczenie);
   });
 
   afterEach(() => cleanup());
@@ -362,5 +381,101 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
 
     expect(screen.getByTestId('mvd-kreator-magistrala-zapisz')).toBeEnabled();
     expect(screen.getByTestId('mvd-kreator-magistrala')).toHaveAttribute('data-status', 'gotowy');
+  });
+});
+
+/**
+ * Karta MAGISTRALA-OCENA — warstwa „render kreatora" iloczynu cech: kryterium {obciążalność,
+ * spadek odcinka, spadek ciągu} × stan {spełnia (scena ciągu 20 kV), nie spełnia (15 kV),
+ * na granicy (20 kV, I_B = I_z), brak danych (20 kV), podstawa nieustalona (15 kV)}.
+ * Kreator NIE rozstrzyga niczego: każda etykieta i semantyka jest przepisana z rekordu,
+ * a w DOM nie ma gołego „OK" ani progu.
+ */
+describe('KreatorMagistralaSn — ocena doboru z backendu (rekordy werdyktu)', () => {
+  beforeEach(() => {
+    appState.activeCaseId = 'case-1';
+    context = { terminal_id: 'bus-gpz-1', terminal_voltage_label: 'SN' };
+    fetchOcenaMock.mockReset();
+    executeDomainOperationMock.mockReset();
+  });
+
+  afterEach(() => cleanup());
+
+  for (const [nazwa, scena] of Object.entries(SCENY)) {
+    it(`scena „${nazwa}": karty i plakietki przepisują status, etykietę i semantykę z rekordów`, async () => {
+      fetchOcenaMock.mockResolvedValue(scena);
+      render(<KreatorMagistralaSn />);
+      await pickCable();
+      await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+
+      const rekordy = [...scena.oceny_odcinka, scena.ocena_ciagu];
+      for (const rekord of rekordy) {
+        const karta = await screen.findByTestId(`mvd-werdykt-${rekord.kryterium_id}`);
+        expect(karta).toHaveAttribute('data-semantyka', rekord.etykieta.semantyka);
+        expect(within(karta).getByTestId(`mvd-werdykt-${rekord.kryterium_id}-etykieta`).textContent).toBe(
+          rekord.etykieta.etykieta_pl,
+        );
+        expect(karta.textContent).toContain(rekord.wyjasnienie.zdanie_pl);
+        for (const brak of rekord.wyjasnienie.czego_brakuje) expect(karta.textContent).toContain(brak);
+        const plakietka = screen.getByTestId(`mvd-kreator-magistrala-ocena-${rekord.kryterium_id}`);
+        expect(plakietka).toHaveAttribute('data-status', rekord.status_maszynowy);
+        expect(plakietka.textContent).toBe(rekord.etykieta.etykieta_pl);
+      }
+      // Zero werdyktu spoza rekordu: żadnego gołego „OK" ani „Do sprawdzenia".
+      const ocena = screen.getByTestId('mvd-kreator-magistrala-ocena');
+      expect(ocena.textContent).not.toMatch(/\bOK\b|Do sprawdzenia|Przekroczona/);
+      expect(screen.getByTestId('mvd-kreator-magistrala-gotowosc').textContent).not.toMatch(/\bOK\b|Przekroczona/);
+    });
+  }
+
+  it('żądanie oceny niesie wartości pól (prąd roboczy wprost, brak = null), nie próg ani sumę', async () => {
+    fetchOcenaMock.mockResolvedValue(SCENY.przekroczenie);
+    render(<KreatorMagistralaSn />);
+    await pickCable();
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+    await waitFor(() => expect(fetchOcenaMock).toHaveBeenCalled());
+    const bezPradu = fetchOcenaMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(bezPradu).toMatchObject({
+      napiecie_kv: 15,
+      odcinek: { rodzaj: 'KABEL', catalog_ref: 'kab-120', dlugosc_m: 500, prad_roboczy_a: null },
+      odcinki_zbudowane: [],
+    });
+    await userEvent.type(screen.getByTestId('mvd-kreator-magistrala-prad'), '300');
+    await waitFor(() => {
+      const ostatnie = fetchOcenaMock.mock.calls.at(-1)?.[0] as { odcinek: { prad_roboczy_a: number | null } };
+      expect(ostatnie.odcinek.prad_roboczy_a).toBe(300);
+    });
+  });
+
+  it('builder: po „Kolejny odcinek" ocena ciągu dostaje zapisany odcinek, liczby ciągu z backendu', async () => {
+    fetchOcenaMock.mockResolvedValue(SCENY.ciag);
+    executeDomainOperationMock.mockResolvedValue(successResponse);
+    render(<KreatorMagistralaSn />);
+    await pickCable();
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-magistrala-prad'), '200');
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-magistrala-next'), 'continue');
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
+    await waitFor(() => {
+      const ostatnie = fetchOcenaMock.mock.calls.at(-1)?.[0] as { odcinki_zbudowane: unknown[] };
+      expect(ostatnie.odcinki_zbudowane).toEqual([
+        { rodzaj: 'KABEL', catalog_ref: 'kab-120', dlugosc_m: 500, prad_roboczy_a: 200, cos_phi: 0.95, nazwa: null },
+      ]);
+    });
+    const builder = screen.getByTestId('mvd-kreator-magistrala-builder');
+    // Długość i spadek ciągu przepisane z odpowiedzi backendu (scena: 2000 m, ΔU ciągu).
+    expect(builder.textContent).toContain('2.00 km');
+    expect(builder.textContent).toContain(`${SCENY.ciag.ciag.delta_u_pct?.toFixed(2)} %`);
+  });
+
+  it('błąd trasy oceny: komunikat zamiast rekordów, bez rozstrzygnięcia w UI', async () => {
+    fetchOcenaMock.mockRejectedValue(new Error('Ocena doboru odcinka niedostępna — backend nie odpowiedział.'));
+    render(<KreatorMagistralaSn />);
+    await pickCable();
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-magistrala-ocena').textContent).toContain('niedostępna'),
+    );
+    expect(screen.queryByTestId('mvd-werdykt-magistrala_sn.obciazalnosc_odcinka')).toBeNull();
   });
 });

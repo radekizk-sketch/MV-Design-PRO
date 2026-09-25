@@ -34,6 +34,36 @@ Wzorce ponizej sa rozszerzone o te wlasnie rodziny wielkosci; kod, ktory je
 uruchamial, zostal przeniesiony do backendu albo usuniety (patrz
 `docs/uiux/DLUG_FIZYKA_W_UI_2026-07.md` §7).
 
+MAGISTRALA-OCENA (2026-09-25) — DLACZEGO STRAZNIK NIE ZLAPAL OCENY W KREATORZE.
+Kreator magistrali SN wystawial werdykt doboru przekroju w UI
+(`magistralaModel.ts`: `pradRoboczy > izA`, `deltaUPct > limitPct` z zaszytym
+`LIMIT_SPADKU_PCT = 5`, `sumaZnanychPct += odcinek.delta_u_pct`), a guard byl
+zielony z TRZECH niezaleznych powodow: (1) wzorce widzialy wylacznie MNOZENIE
+i DZIELENIE (`[*/]`) — porownanie (`>`, `<`, `>=`, `<=`) i sumowanie (`+`, `+=`)
+wielkosci fizycznej nie byly w ogole wzorcem; (2) rodzina spadku napiecia
+znala tylko dokladny token `deltaU` (`\bdeltaU\b`), wiec `deltaUPct`
+i `delta_u_pct` przechodzily; (3) obciazalnosc wystepowala jako
+`rated_current_a` / `izA`, a rodzina doboru znala tylko `ampacity`. Klasa
+defektu to nie „ta funkcja", tylko WERDYKT ALBO SUMA wielkosci fizycznej
+liczona w warstwie prezentacji — dlatego doszla osobna rodzina wzorcow
+OCENA_PATTERNS: porownanie i sumowanie KAZDEJ rodziny fizycznej guarda
+(impedancja, zwarcie/wytrzymalosc, IDMT, dobor, THD) oraz nowej rodziny
+spadku napiecia i obciazalnosci pradowej, plus deklaracja stalej progu
+(`LIMIT_*_PCT = 5`). Wzorce oceny dzialaja na linii z WYCIETYMI literalami
+napisow (`'...'`, `"..."`, `` `...` ``) — w napisach nie ma obliczen, a
+lacznik w `data-testid` albo nawias ostry JSX nie moga udawac operatora.
+Porownanie z literalem `0` (dodatniosc danej wejsciowej) nie jest ocena.
+Pomiar po karcie: ui/** 8 surowych trafien (w tym 1 nowe: granica stron stacji
+`STATION_LV_VOLTAGE_LIMIT_KV`, klasa b), ui2/** 2 (w tym 1 nowe: wartosc
+domyslna polecenia OSD `DOMYSLNY_LIMIT_P_PCT`, klasa b); jedyne trafienie
+klasy a poza kreatorem (`sldCanonKit.tsx`: `ipOk = ip <= idyn`, znak ✓/✗
+w odczycie wezla SLD) zostalo usuniete u zrodla w tej samej karcie.
+Czego te wzorce NIE widza (nazwane): porownania na odchyleniu napiecia
+`deviation_percent` w rendererach SLD (`Math.abs(v.deviation_percent) <= 5`,
+wiersz F8 planu AB §8) — pilnuje ich zapadka `werdykt_wyjasnialny_guard`
+(sprawdzenie 3b, MIGRACJA F8, fala WW-1), nie ten guard; porownania wewnatrz
+wstawek `${...}` szablonow (wycinane razem z napisem).
+
 WHAT IS DETECTED — strong, unambiguous network-physics computation signals:
   - Math.sqrt(3) / √3 used in an arithmetic expression (3-phase line math).
   - Math.sqrt(2) used in an arithmetic expression (peak / RMS conversion,
@@ -188,6 +218,16 @@ ALLOWLIST: dict[tuple[str, str], str] = {
         "frontend/src/ui2/wyniki/zwarcia/api.ts",
         "pradKA: c.ikss_partial_a / 1000,",
     ): "b: przeliczenie jednostki A→kA wartości otrzymanej z backendu (ikss_partial_a / 1000) — wprost dozwolone skalowanie jednostek",
+    # MAGISTRALA-OCENA (2026-09-25): trafienia wzorca deklaracji stalej progu, ktore NIE
+    # sa kryterium oceny wyniku sieci.
+    (
+        "frontend/src/ui/sld/shared/stationBusResolution.ts",
+        "export const STATION_LV_VOLTAGE_LIMIT_KV = 0.5;",
+    ): "b: granica stron stacji (klasyfikacja rekordu Bus jako szyny SN albo nN po zadeklarowanym voltage_kv) — semantyka topologii, nie kryterium oceny wyniku sieci",
+    (
+        "frontend/src/ui2/oze/osd/EkranOsd.tsx",
+        "const DOMYSLNY_LIMIT_P_PCT = 60;",
+    ): "b: wartosc domyslna pola formularza polecenia OSD (nastawa ograniczenia mocy czynnej wysylana do backendu), nie prog oceny wyniku",
 }
 
 # Impedance-family electrical quantities (matched inside identifiers too, e.g.
@@ -285,6 +325,63 @@ PHYSICS_PATTERNS = [
     re.compile(r"[*/+]\s*\bthd\w*\b"),
 ]
 
+# MAGISTRALA-OCENA (2026-09-25): rodzina spadku napiecia i obciazalnosci pradowej —
+# identyfikatory, ktorymi kreator magistrali wystawial werdykt w UI (`deltaUPct`,
+# `delta_u_pct`, `sumaZnanychPct` przez `skumulowanySpadek`, `rated_current_a`, `izA`).
+_VERDICT_QUANTITY_FAMILY = (
+    r"\w*(?:delta_?u|spadek|spadku|rated_?current|ampacity|obciazalnosc|iznam)\w*" r"|iz(?:_?a)?"
+)
+# Porownanie i suma dotycza KAZDEJ rodziny fizycznej guarda, nie tylko nowej.
+_OCENA_FAMILY = "|".join(
+    (
+        _VERDICT_QUANTITY_FAMILY,
+        _IMPEDANCE_FAMILY,
+        _FAULT_FAMILY,
+        _SIZING_FAMILY,
+        r"thd\w*",
+    )
+)
+_ACCESS_PATH = r"(?:[A-Za-z_$][\w$]*\??\.)*"
+# Literal `0` (a nie `0.5`) — porownanie z zerem to dodatniosc danej, nie ocena.
+_NOT_ZERO_AFTER = r"(?!0(?![.\d]))"
+_COMPARE = r"(?:>=|<=|>|<)"
+_PLUS = r"(?:\+=|(?<!\+)\+(?![+=]))"
+
+# Wzorce OCENY (werdykt albo suma wielkosci fizycznej w UI). Dzialaja na linii
+# z wycietymi literalami napisow (`_bez_napisow`). Porownanie wymaga odstepow wokol
+# operatora (styl prettier) — to odroznia je od typow generycznych (`Promise<X>`)
+# i znacznikow JSX (`<StanSpadku />`).
+OCENA_PATTERNS = [
+    # wielkosc fizyczna PRZED porownaniem (`deltaUPct > limitPct`, `izA >= prad`)
+    re.compile(
+        rf"\b(?:{_OCENA_FAMILY})\b\s*\)*\s+{_COMPARE}\s+{_NOT_ZERO_AFTER}",
+        re.IGNORECASE,
+    ),
+    # wielkosc fizyczna PO porownaniu (`prad > params.rated_current_a`, `ip <= idyn`)
+    re.compile(
+        rf"(?<!\b0)\s+{_COMPARE}\s+\(*\s*{_ACCESS_PATH}\b(?:{_OCENA_FAMILY})\b",
+        re.IGNORECASE,
+    ),
+    # suma: wielkosc fizyczna jako skladnik (`suma += o.delta_u_pct`, `s + o.deltaUPct`)
+    re.compile(rf"{_PLUS}\s*{_ACCESS_PATH}\b(?:{_OCENA_FAMILY})\b", re.IGNORECASE),
+    # (`licznik += 1` nie jest suma wielkosci — calkowity krok licznika pominiety)
+    re.compile(rf"\b(?:{_OCENA_FAMILY})\b\s*\)*\s*{_PLUS}(?!\s*\d+(?![.\w]))", re.IGNORECASE),
+    # deklaracja stalej progu z jednostka fizyczna (`const LIMIT_SPADKU_PCT = 5`)
+    re.compile(
+        r"\b(?:const|let|var)\s+[A-Z0-9_]*(?:LIMIT|PROG)[A-Z0-9_]*"
+        r"_(?:PCT|PROC|PROCENT|A|KA|V|KV|MVA|MW|KW|OHM|PU)\s*(?::[^=]*)?=\s*-?\d"
+    ),
+]
+
+# Literaly napisow wycinane przed wzorcami oceny (napis nie liczy; lacznik w testid
+# ani nawias w tekscie nie sa operatorem).
+_STRING_LITERAL = re.compile(r"'(?:[^'\\]|\\.)*'|\"(?:[^\"\\]|\\.)*\"|`(?:[^`\\]|\\.)*`")
+
+
+def _bez_napisow(line: str) -> str:
+    return _STRING_LITERAL.sub("''", line)
+
+
 # Lines to skip (comments, imports, type declarations, JSDoc, description fields).
 SKIP_LINE_PATTERNS = [
     re.compile(r"^\s*//"),  # Single-line comment
@@ -361,6 +458,10 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
             continue
         for pattern in PHYSICS_PATTERNS:
             if pattern.search(line):
+                violations.append((line_no, line.strip(), pattern.pattern))
+        bez_napisow = _bez_napisow(line)
+        for pattern in OCENA_PATTERNS:
+            if pattern.search(bez_napisow):
                 violations.append((line_no, line.strip(), pattern.pattern))
 
     return violations

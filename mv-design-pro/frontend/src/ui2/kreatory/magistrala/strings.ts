@@ -32,8 +32,10 @@ export const MAGISTRALA_STRINGS = {
   nazwaPlaceholder: 'np. Magistrala A / odcinek 1',
   dlugosc: 'Długość odcinka',
   napiecie: 'Napięcie ciągu',
-  prad: 'Prąd obciążenia (do podglądu ΔU)',
-  pradPomoc: 'Domyślnie prąd znamionowy typu. Podaj przewidywane obciążenie, aby zobaczyć realny spadek.',
+  prad: 'Prąd roboczy odcinka I_B',
+  pradPomoc:
+    'Prąd płynący przez odcinek (z odbiorami dalej w ciągu). Bez niego obciążalność nie zostanie '
+    + 'oceniona, a spadek napięcia backend policzy przy prądzie równym obciążalności typu.',
   cosPhi: 'Współczynnik mocy cosφ',
 
   // Parametry katalogu (odczyt).
@@ -53,25 +55,22 @@ export const MAGISTRALA_STRINGS = {
 
   // Podgląd (backend R1).
   podgladTytul: 'Podgląd doboru (backend)',
+  podgladPrad: 'Prąd obliczeniowy',
+  podgladPradZObciazalnosci:
+    'Prąd roboczy nie podany — spadek policzony przy prądzie równym obciążalności typu (dana przyjęta).',
   podgladDeltaU: 'Spadek napięcia ΔU',
   podgladDeltaUpct: 'ΔU względne',
   podgladRtotal: 'R odcinka',
   podgladXtotal: 'X odcinka',
   podgladZrodlo: 'Źródło wyniku',
-  podgladZrodloWartosc: 'Obliczenie ΔU po stronie serwera (R1)',
+  podgladZrodloWartosc: 'Obliczenie ΔU po stronie serwera (solver spadku napięcia)',
   podgladBrak: 'Uzupełnij typ i długość, aby zobaczyć podgląd ΔU.',
-  podgladBlad: 'Nie udało się wyznaczyć podglądu ΔU.',
-  podgladOstrzezenieIznam: 'Prąd obciążenia przekracza prąd znamionowy typu — dobierz większy przekrój.',
 
   // Kontrola / gotowość.
   kontrolaTytul: 'Kontrola odcinka',
   wierszTyp: 'Typ z katalogu',
   wierszDlugosc: 'Długość',
   wierszDeltaU: 'Spadek ΔU',
-  wierszObciazenie: 'Obciążalność',
-  stanKompletne: 'Kompletne',
-  stanBrak: 'Do uzupełnienia',
-  stanOstrzezenie: 'Sprawdź',
 
   nastepnyOpis:
     'Po zapisie odcinka aplikacja od razu otworzy wybrany krok na jego końcu — '
@@ -99,23 +98,15 @@ export const MAGISTRALA_STRINGS = {
   builderZakoncz: 'Zakończ budowę',
   builderZakonczTitle: 'Zakończ budowę magistrali i wróć do schematu',
   builderDodaj: 'Dodaj odcinek',
-  builderSkumulowany: 'Skumulowany spadek ΔU',
-  builderSkumulowanyOstrzezenie: (limit: number) => `Skumulowany spadek przekracza ${limit}% — rozważ większy przekrój lub krótszy ciąg.`,
-  builderSkumulowanyNiepelny: (bez: number) =>
-    `Ocena niepełna: ${bez} ${bez === 1 ? 'odcinek nie ma' : 'odcinki nie mają'} policzonego spadku `
-    + 'napięcia, więc suma jest zaniżona i limitu nie da się sprawdzić.',
+  builderSkumulowany: 'Skumulowany spadek ΔU (z odcinkiem bieżącym)',
 
-  // Asystent doboru przekroju (M3, V12K-072).
+  // Ocena doboru przekroju (karta MAGISTRALA-OCENA): rekordy werdyktu z backendu —
+  // interfejs nie zna progu, nie porównuje i nie sumuje; etykiety niesie rekord.
   ocenaTytul: 'Ocena doboru przekroju',
-  ocenaObciazalnosc: 'Obciążalność (Iz ≥ prąd)',
-  ocenaSpadek: 'Spadek napięcia (≤ limit)',
-  ocenaOK: 'OK',
-  ocenaOstrzezenie: 'Do sprawdzenia',
-  ocenaBrak: 'Podaj prąd i długość',
-  ocenaObciazalnoscZle: (prad: number, iz: number) =>
-    `Prąd roboczy ${prad.toFixed(0)} A przekracza obciążalność ${iz.toFixed(0)} A — dobierz większy przekrój.`,
-  ocenaSpadekZle: (pct: number, limit: number) =>
-    `Spadek ${pct.toFixed(2)}% przekracza limit ${limit}% — większy przekrój lub krótszy odcinek.`,
+  ocenaKartyTytul: 'Ocena doboru przekroju — kryteria, wyniki, limity i podstawy (backend)',
+  ocenaPusto: 'Ocena doboru pojawi się po odpowiedzi backendu (typ z katalogu, długość i prąd roboczy odcinka).',
+  ocenaBlad: 'Nie udało się pobrać oceny doboru odcinka.',
+  ocenaWskazowka: 'Pełne karty oceny (wynik, limit z podstawą, margines, zakres ważności): krok „Długość i podgląd".',
   ocenaIthPomoc:
     'Wytrzymałość cieplna zwarciowa ($I_{th} \\ge I_k \\cdot \\sqrt{t_k}$) — sprawdzana po biegu zwarciowym; katalog podaje Ith żyły powrotnej.',
 

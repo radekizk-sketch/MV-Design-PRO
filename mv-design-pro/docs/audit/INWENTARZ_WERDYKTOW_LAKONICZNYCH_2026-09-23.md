@@ -440,7 +440,7 @@ Modules without verdict: SC3F, VDROP, P16 losses (`overall_status` "COMPUTED"), 
 
 ### Kreatory
 64. `kreatory/zrodlo-oze/PodsumowanieAutoBieg.tsx:15-31,67-101` + `strings.ts:486-491` "Projekt zgodny / zgodny z uwagami / niezgodny" + ✓/⚠️/❌ + "Spełnione: N…"; `parametr`, `zastosowano`, `propozycja` in contract not rendered; verdict too broad. **MIGRACJA.**
-65. `kreatory/magistrala/magistralaModel.ts:298-337` `ocenaDoboru` with hard-coded `LIMIT_SPADKU_PCT=5`; `KreatorMagistralaSn.tsx:497-515` "OK / Do sprawdzenia"; `:301-303,450-454` `iznamPrzekroczony` UI comparison. **MIGRACJA.**
+65. `kreatory/magistrala/magistralaModel.ts:298-337` `ocenaDoboru` with hard-coded `LIMIT_SPADKU_PCT=5`; `KreatorMagistralaSn.tsx:497-515` "OK / Do sprawdzenia"; `:301-303,450-454` `iznamPrzekroczony` UI comparison. **MIGRACJA.** **ZAMKNIĘTE 2026-09-25 (karta MAGISTRALA-OCENA):** ocena liczona w backendzie (`POST /api/solver/trunk-sizing-assessment`, `application/analyses/ocena_doboru_magistrali.py`, rekordy `OcenaKryterium`: obciążalność odcinka, spadek odcinka, spadek ciągu; limit z `kryteria_napiecia` kryterium 4), kreator renderuje `KartaWerdyktu`; `ocenaDoboru`, `lacznySpadekPct`, `LIMIT_SPADKU_PCT`, `iznamPrzekroczony` skasowane, wpisy D65/F24 usunięte z listy dozwolonej strażnika.
 66. `kreatory/ogranicznik/ogranicznikModel.ts:75-84` + `KreatorOgranicznikaSn.tsx:213-217` "Niezgodne" replaces U_m (UI rule U_m ≥ U_n). **MIGRACJA.**
 67. `kreatory/kompensator/kompensatorModel.ts:78-87` + `KreatorKompensatoraSn.tsx:235-239` "Niezgodne" from UI tolerance 0.5 kV. **MIGRACJA.**
 68. `kreatory/stacja/PodgladRozdzielnicySn.tsx:72-80,97-106` VALID/INVALID → "Konfiguracja przyjęta / odrzucona"; reason only in tooltip. **MIGRACJA.**

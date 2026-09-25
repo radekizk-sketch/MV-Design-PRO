@@ -17,6 +17,7 @@ from network_model.solvers.cable_voltage_drop import (
     CableVoltageDropInput,
     compute_cable_rated_current,
     compute_cable_voltage_drop,
+    compute_trunk_voltage_drop,
 )
 
 
@@ -271,3 +272,49 @@ def test_rejects_unknown_direction_flags() -> None:
     for kwargs in ({"flow_direction": "oze"}, {"reactive_character": "pojemnosciowy"}):
         with pytest.raises(ValueError):
             compute_cable_voltage_drop(CableVoltageDropInput(**_BASE, **kwargs))
+
+
+# --------------------------------------------------------------------------------------
+# Spadek wzdłuż ciągu (karta MAGISTRALA-OCENA): suma w solverze, nie w interfejsie
+# --------------------------------------------------------------------------------------
+
+
+def _odcinek(length_km: float, current_a: float, u_v: float = 15_000.0) -> CableVoltageDropInput:
+    return CableVoltageDropInput(
+        current_a=current_a,
+        length_km=length_km,
+        r_ohm_per_km=0.253,
+        x_ohm_per_km=0.118,
+        cos_phi=0.95,
+        line_voltage_v=u_v,
+    )
+
+
+@pytest.mark.parametrize("u_v", [15_000.0, 20_000.0])
+def test_trunk_drop_is_sum_of_segment_drops_with_white_box(u_v: float) -> None:
+    odcinki = (_odcinek(1.2, 200.0, u_v), _odcinek(0.8, 150.0, u_v), _odcinek(0.5, 90.0, u_v))
+    wynik = compute_trunk_voltage_drop(odcinki)
+    pojedyncze = [compute_cable_voltage_drop(o) for o in odcinki]
+    assert wynik.segments == tuple(pojedyncze)
+    assert wynik.delta_u_v == pytest.approx(sum(p.delta_u_v for p in pojedyncze), rel=1e-12)
+    assert wynik.delta_u_pct == pytest.approx(sum(p.delta_u_pct for p in pojedyncze), rel=1e-12)
+    assert wynik.line_voltage_v == u_v
+    assert wynik.assumptions and "Σ" in wynik.formula_ref
+
+
+def test_trunk_of_one_segment_equals_segment() -> None:
+    odcinek = _odcinek(2.5, 300.0)
+    wynik = compute_trunk_voltage_drop((odcinek,))
+    assert wynik.delta_u_pct == compute_cable_voltage_drop(odcinek).delta_u_pct
+
+
+def test_trunk_drop_rejects_empty_and_mixed_voltages() -> None:
+    with pytest.raises(ValueError, match="co najmniej jeden"):
+        compute_trunk_voltage_drop(())
+    with pytest.raises(ValueError, match="różne napięcia"):
+        compute_trunk_voltage_drop((_odcinek(1.0, 100.0, 15_000.0), _odcinek(1.0, 100.0, 20_000.0)))
+
+
+def test_trunk_drop_propagates_segment_domain_errors() -> None:
+    with pytest.raises(ValueError, match="Prad obciazenia"):
+        compute_trunk_voltage_drop((_odcinek(1.0, 100.0), _odcinek(1.0, 0.0)))

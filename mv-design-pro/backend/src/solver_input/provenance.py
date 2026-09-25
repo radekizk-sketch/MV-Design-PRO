@@ -254,6 +254,33 @@ _DYNAMIC_CAPABILITY_EVIDENCE: dict[str, CapabilityEvidence] = {
             audit_ref="odbiór Pakietu C §0 pkt 4 (plan AB O-50)",
         ),
         CapabilityEvidence(
+            capability_id="magistrala_sn.obciazalnosc_dlugotrwala",
+            tier=EvidenceTier.DECLARATION,
+            claim_kind=ClaimKind.DECLARED_CONFIGURATION,
+            rationale_pl=(
+                "Obciążalność długotrwała odcinka magistrali SN: prąd roboczy podany przez "
+                "projektanta porównany z obciążalnością z karty katalogowej typu kabla albo "
+                "przewodu w warunkach odniesienia producenta — fakt katalogowy porównany "
+                "z deklaracją, bez obliczenia cieplnego (application/analyses/"
+                "ocena_doboru_magistrali.py)."
+            ),
+            audit_ref="karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4)",
+        ),
+        CapabilityEvidence(
+            capability_id="magistrala_sn.spadek_napiecia",
+            tier=EvidenceTier.UNVALIDATED_MODEL,
+            claim_kind=ClaimKind.STATIC_CALCULATION,
+            rationale_pl=(
+                "Spadek napięcia odcinka i ciągu magistrali SN liczony przybliżeniem składowej "
+                "podłużnej ΔU = √3·I·(R·cosφ + X·sinφ) z sumą po odcinkach "
+                "(network_model/solvers/cable_voltage_drop.py) — obliczenie jest wykonywane, "
+                "ale jego zgodności z rozpływem mocy na sieci referencyjnej nie wykazano, więc "
+                "wynik nie jest dowodem regulacyjnym; rzeczywisty profil napięcia daje rozpływ "
+                "zapisanego modelu."
+            ),
+            audit_ref="karta MAGISTRALA-OCENA (plan AB §8 F24, fala WW-4)",
+        ),
+        CapabilityEvidence(
             capability_id="dynamic_stability.fault_clear",
             tier=EvidenceTier.UNVALIDATED_MODEL,
             rationale_pl=(

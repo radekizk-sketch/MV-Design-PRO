@@ -169,3 +169,55 @@ def compute_cable_rated_current(data: CableRatedCurrentInput) -> CableRatedCurre
         rated_current_a=rated_current,
         apparent_power_kva=apparent_va / 1000.0,
     )
+
+
+@dataclass(frozen=True)
+class TrunkVoltageDropResult:
+    """Spadek napiecia wzdluz ciagu odcinkow SN (magistrali) — WHITE BOX.
+
+    ``segments`` niesie wynik KAZDEGO odcinka (skladowe R/X, impedancje), a suma jest
+    liczona tu, w solverze — warstwa prezentacji ani aplikacji nie sumuje spadkow.
+    """
+
+    segments: tuple[CableVoltageDropResult, ...]
+    delta_u_v: float
+    delta_u_pct: float
+    line_voltage_v: float
+    formula_ref: str = "ΔU_ciągu = Σ ΔU_i;  ΔU_ciągu% = ΔU_ciągu / U_linii · 100"
+    assumptions: tuple[str, ...] = field(
+        default_factory=lambda: (
+            "Ciąg promieniowy zasilany z jednego końca; odcinki w kolejności od zasilania.",
+            "Każdy odcinek liczony przy prądzie roboczym podanym dla TEGO odcinka "
+            "(prąd płynący przez odcinek, obejmujący odbiory dalej w ciągu).",
+            "Spadki odcinków sumowane algebraicznie (składowa podłużna; kąt między "
+            "napięciami końców odcinka pominięty — to samo przybliżenie co dla odcinka).",
+            "Jedno napięcie międzyfazowe ciągu (U_linii) dla wszystkich odcinków.",
+        )
+    )
+
+
+def compute_trunk_voltage_drop(
+    segments: tuple[CableVoltageDropInput, ...],
+) -> TrunkVoltageDropResult:
+    """Spadek napiecia wzdluz ciagu: suma spadkow odcinkow liczonych `compute_cable_voltage_drop`.
+
+    Odcinki musza miec jedno napiecie miedzyfazowe — suma procentow liczonych wzgledem
+    roznych napiec nie jest spadkiem ciagu (ValueError, fail-closed).
+    """
+    if not segments:
+        raise ValueError("Ciąg musi zawierać co najmniej jeden odcinek.")
+    napiecia = {s.line_voltage_v for s in segments}
+    if len(napiecia) != 1:
+        raise ValueError(
+            "Odcinki ciągu mają różne napięcia międzyfazowe — spadek ciągu wymaga jednego "
+            "napięcia."
+        )
+    line_voltage_v = segments[0].line_voltage_v
+    results = tuple(compute_cable_voltage_drop(s) for s in segments)
+    delta_u_v = sum(r.delta_u_v for r in results)
+    return TrunkVoltageDropResult(
+        segments=results,
+        delta_u_v=delta_u_v,
+        delta_u_pct=delta_u_v / line_voltage_v * 100.0,
+        line_voltage_v=line_voltage_v,
+    )

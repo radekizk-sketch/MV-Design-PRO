@@ -7,7 +7,8 @@ miejscach backendu i frontendu, z roznymi liczbami i roznymi (czesem blednymi)
 podstawami normatywnymi — m.in. frontend cytowal "EN 50160 / IRiESD ±5 %" dla
 pasma 0,95-1,05, podczas gdy PN-EN 50160 w rzeczywistosci dopuszcza ±10 % Un.
 
-Trzy kryteria, KAZDE z osobna, uczciwie nazwana podstawa (`podstawa_pl`):
+Trzy kryteria, KAZDE z osobna, uczciwie nazwana podstawa (`podstawa_pl`), oraz
+czwarte WYPROWADZONE z drugiego (spadek wzdluz ciagu SN, sekcja 4 ponizej):
 
 1. ``PASMO_WIARYGODNOSCI_PROCENT`` (10,0 %) — pasmo WIARYGODNOSCI wyniku
    solvera rozplywu (`analysis/sanity_bounds/power_flow_bounds.py`): PN-EN
@@ -45,11 +46,15 @@ W3-J dla pelnego inwentarza przed/po):
     rozplywu per bieg, pole addytywne `kryteria_napiecia`)
   - `application/analyses/voltage_profile_view.py::build_voltage_profile_view`
     (widok profilu napiec, pole addytywne `kryteria_napiecia`)
+  - `application/analyses/ocena_doboru_magistrali.py` (kryterium 4 ponizej:
+    limit spadku napiecia odcinka i ciagu magistrali SN w rekordach oceny
+    doboru przekroju kreatora magistrali — karta MAGISTRALA-OCENA)
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Final
 
 #: Cytat normy PN-EN 50160 (jedno miejsce zrodlowe tresci normy w tym module —
 #: cytowane przez DWA rozne kryteria o tej samej liczbie 10 %, patrz docstring
@@ -95,6 +100,46 @@ KRYTERIUM_OSTRZEZENIE_PODSTAWA_PL = PODSTAWA_KRYTERIUM_OSTRZEZENIE_PL
 #: Prog przekroczenia [%] wokol Un — PN-EN 50160 ±10 % Un wprost.
 KRYTERIUM_PRZEKROCZENIE_PROCENT: float = 10.0
 KRYTERIUM_PRZEKROCZENIE_PODSTAWA_PL = PODSTAWA_PN_EN_50160_PL
+
+
+# =============================================================================
+# 4. Kryterium SPADKU NAPIECIA wzdluz ciagu SN (magistrali) — karta MAGISTRALA-OCENA
+# =============================================================================
+
+#: Dopuszczalny spadek napiecia wzdluz ciagu SN liczony od szyn SN GPZ [% Un].
+#: WYPROWADZONY z kryterium 2 (ta sama liczba, ta sama podstawa projektowa), nie
+#: druga niezalezna kopia: napiecie w wezle SN nie moze odchylac sie od Un o wiecej
+#: niz ``KRYTERIUM_OSTRZEZENIE_PROCENT``, wiec przy napieciu szyn SN GPZ rownym Un
+#: spadek wzdluz ciagu do dowolnego jego punktu nie moze przekroczyc tej samej
+#: wartosci. Zalozenie „szyny SN GPZ = Un" jest czescia podstawy i trafia do zakresu
+#: waznosci kazdego rekordu oceny, ktory ten limit stosuje (dawniej ta liczba zyla
+#: jako `LIMIT_SPADKU_PCT = 5` w module kreatora magistrali we frontendzie — prog
+#: zaszyty w interfejsie bez podstawy).
+KRYTERIUM_SPADKU_CIAGU_SN_PROCENT: float = KRYTERIUM_OSTRZEZENIE_PROCENT
+#: Nazwa dokumentu podstawy (pole `dokument` podstawy rekordu oceny).
+KRYTERIUM_SPADKU_CIAGU_SN_DOKUMENT_PL = (
+    "Praktyka projektowa sieci SN / IRiESD — kryterium odchylenia napięcia ± 5 % Un "
+    "zastosowane do spadku napięcia wzdłuż ciągu SN"
+)
+KRYTERIUM_SPADKU_CIAGU_SN_PODSTAWA_PL = (
+    "zapas na spadek napięcia w sieci nN (napięcie u odbiorcy w paśmie PN-EN 50160 "
+    "± 10 % Un) przy napięciu szyn SN GPZ równym Un; to nie jest zapis PN-EN 50160 wprost, "
+    "a dokument operatora z wydaniem i jednostką redakcyjną nie jest ustalony w rejestrze "
+    "podstaw"
+)
+#: Rodzaj podstawy w slowniku kontraktu werdyktu (`werdykt.kontrakt.RodzajPodstawy`):
+#: kryterium projektowe, nie norma — uczciwie, jak kryterium 2.
+KRYTERIUM_SPADKU_CIAGU_SN_RODZAJ_PODSTAWY: Final = "ZALOZENIE_PROJEKTOWE"
+#: Wydanie i jednostka redakcyjna dokumentu podstawy — NIEUSTALONE (brak cytowalnego
+#: dokumentu operatora z wydaniem i punktem). Kontrakt werdyktu (§1) wymaga obu pol dla
+#: stanu `WSKAZANE`/`ZWERYFIKOWANE`; bez nich stan zrodla jest `NIEUSTALONE`, a regula K
+#: daje `BRAK_PODSTAWY` — wynik, limit i margines sa nadal pokazywane, ale kryterium nie
+#: jest rozstrzygane na podstawie, ktorej nikt nie wskazal. Wpisanie wydania i jednostki
+#: redakcyjnej (z dokumentem operatora) w TYM miejscu podnosi stan dla wszystkich ocen.
+KRYTERIUM_SPADKU_CIAGU_SN_WYDANIE: str | None = None
+KRYTERIUM_SPADKU_CIAGU_SN_JEDNOSTKA_REDAKCYJNA: str | None = None
+#: Stan zrodla podstawy (`werdykt.kontrakt.StanZrodla`).
+KRYTERIUM_SPADKU_CIAGU_SN_STAN_ZRODLA: Final = "NIEUSTALONE"
 
 
 def pasmo_pu(procent: float) -> tuple[float, float]:

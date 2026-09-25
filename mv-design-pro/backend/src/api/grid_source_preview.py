@@ -3,6 +3,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, Literal, cast
 
+from application.analyses.ocena_doboru_magistrali import (
+    OdcinekMagistrali,
+    ocen_dobor_magistrali,
+)
 from domain.generator_validation import (
     BEZ_REDUKCJI,
     JawneWejsciaKontroliMocy,
@@ -58,6 +62,7 @@ from network_model.solvers.transformer_rated_currents import (
     compute_transformer_rated_currents,
 )
 from pydantic import BaseModel, Field, model_validator
+from werdykt import OcenaKryterium
 
 router = APIRouter(tags=["grid-source-preview"])
 
@@ -334,6 +339,132 @@ def preview_cable_rated_current(
         apparent_power_kva=result.apparent_power_kva,
         formula_ref=result.formula_ref,
         assumptions=list(result.assumptions),
+    )
+
+
+class OdcinekMagistraliRequest(BaseModel):
+    """Odcinek magistrali SN z kreatora: typ z katalogu, długość, prąd roboczy, cosφ.
+
+    Parametry R, X i obciążalność NIE przychodzą z klienta — backend czyta je z katalogu po
+    `catalog_ref` (reguła katalogu). Pole puste = projektant nie podał wartości; ocena nazywa
+    brak (`NIE_OCENIONO`), niczego nie zgaduje.
+    """
+
+    rodzaj: Literal["KABEL", "LINIA"]
+    catalog_ref: str | None = None
+    dlugosc_m: float | None = Field(default=None, gt=0)
+    prad_roboczy_a: float | None = Field(default=None, gt=0)
+    cos_phi: float = Field(gt=0, le=1)
+    nazwa: str | None = None
+
+
+class OcenaDoboruMagistraliRequest(BaseModel):
+    """Ocena doboru przekroju odcinka bieżącego i ciągu (karta MAGISTRALA-OCENA).
+
+    `odcinki_zbudowane` — odcinki zapisane wcześniej w tej sesji kreatora, w kolejności od
+    startu ciągu; odcinek bieżący domyka ciąg.
+    """
+
+    napiecie_kv: float = Field(gt=0)
+    odcinek: OdcinekMagistraliRequest
+    odcinki_zbudowane: list[OdcinekMagistraliRequest] = Field(default_factory=list)
+
+
+class SpadekOdcinkaMagistraliResponse(BaseModel):
+    """Spadek napięcia odcinka bieżącego (WHITE BOX solvera) i prąd, przy którym policzony."""
+
+    prad_obliczeniowy_a: float
+    prad_z_obciazalnosci: bool
+    delta_u_v: float
+    delta_u_pct: float
+    r_total_ohm: float
+    x_total_ohm: float
+    delta_u_resistive_v: float
+    delta_u_reactive_v: float
+    formula_ref: str
+    assumptions: list[str]
+
+
+class CiagMagistraliResponse(BaseModel):
+    """Ciąg budowany w kreatorze: liczba odcinków, długość i spadek skumulowany (albo brak)."""
+
+    liczba_odcinkow: int
+    dlugosc_m: float | None
+    delta_u_v: float | None
+    delta_u_pct: float | None
+    formula_ref: str | None
+    assumptions: list[str]
+
+
+class OcenaDoboruMagistraliResponse(BaseModel):
+    """Podgląd liczb odcinka i ciągu + rekordy werdyktu wyjaśnialnego (poziom K).
+
+    `oceny_odcinka`: obciążalność długotrwała i spadek napięcia odcinka bieżącego;
+    `ocena_ciagu`: spadek skumulowany ciągu. Interfejs renderuje rekordy kartą werdyktu —
+    nie liczy statusu, progu ani sumy.
+    """
+
+    spadek_odcinka: SpadekOdcinkaMagistraliResponse | None
+    ciag: CiagMagistraliResponse
+    oceny_odcinka: list[OcenaKryterium]
+    ocena_ciagu: OcenaKryterium
+
+
+def _odcinek_magistrali(odcinek: OdcinekMagistraliRequest) -> OdcinekMagistrali:
+    return OdcinekMagistrali(
+        rodzaj=odcinek.rodzaj,
+        catalog_ref=odcinek.catalog_ref,
+        dlugosc_m=odcinek.dlugosc_m,
+        prad_roboczy_a=odcinek.prad_roboczy_a,
+        cos_phi=odcinek.cos_phi,
+        nazwa=odcinek.nazwa,
+    )
+
+
+@router.post(
+    "/api/solver/trunk-sizing-assessment",
+    response_model=OcenaDoboruMagistraliResponse,
+)
+def assess_trunk_sizing(request: OcenaDoboruMagistraliRequest) -> OcenaDoboruMagistraliResponse:
+    """Ocena doboru przekroju odcinka i ciągu magistrali SN rekordami werdyktu wyjaśnialnego."""
+    try:
+        ocena = ocen_dobor_magistrali(
+            napiecie_kv=request.napiecie_kv,
+            odcinek=_odcinek_magistrali(request.odcinek),
+            odcinki_zbudowane=[_odcinek_magistrali(o) for o in request.odcinki_zbudowane],
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    spadek = ocena.spadek_odcinka
+    ciag = ocena.ciag
+    return OcenaDoboruMagistraliResponse(
+        spadek_odcinka=(
+            SpadekOdcinkaMagistraliResponse(
+                prad_obliczeniowy_a=spadek.prad_obliczeniowy_a,
+                prad_z_obciazalnosci=spadek.prad_z_obciazalnosci,
+                delta_u_v=spadek.wynik.delta_u_v,
+                delta_u_pct=spadek.wynik.delta_u_pct,
+                r_total_ohm=spadek.wynik.r_total_ohm,
+                x_total_ohm=spadek.wynik.x_total_ohm,
+                delta_u_resistive_v=spadek.wynik.delta_u_resistive_v,
+                delta_u_reactive_v=spadek.wynik.delta_u_reactive_v,
+                formula_ref=spadek.wynik.formula_ref,
+                assumptions=list(spadek.wynik.assumptions),
+            )
+            if spadek is not None
+            else None
+        ),
+        ciag=CiagMagistraliResponse(
+            liczba_odcinkow=ciag.liczba_odcinkow,
+            dlugosc_m=ciag.dlugosc_m,
+            delta_u_v=ciag.spadek.delta_u_v if ciag.spadek is not None else None,
+            delta_u_pct=ciag.spadek.delta_u_pct if ciag.spadek is not None else None,
+            formula_ref=ciag.spadek.formula_ref if ciag.spadek is not None else None,
+            assumptions=list(ciag.spadek.assumptions) if ciag.spadek is not None else [],
+        ),
+        oceny_odcinka=list(ocena.oceny_odcinka),
+        ocena_ciagu=ocena.ocena_ciagu,
     )
 
 

@@ -83,7 +83,14 @@ def test_ui_allowlist_matches_measured_baseline():
     (6 raw hits / 3 allowlist entries; zero production importers measured by
     symbol reachability from `main.tsx` and every harness entry). All
     re-measurements lowered the baseline BY MEASUREMENT, never by widening
-    tolerance.
+    tolerance. MAGISTRALA-OCENA (2026-09-25) is the one INCREASE, and it is a
+    pattern widening, not drift: the guard learned the verdict shape (comparison
+    and summation of a physical quantity, threshold constant) after it stayed
+    green over the trunk-sizing verdict computed in `ui2/kreatory/magistrala`.
+    Measured 8 = previous 7 + `STATION_LV_VOLTAGE_LIMIT_KV` (class b, allowlisted:
+    bus-side classification, not an assessment threshold); the only class-a hit
+    of the new patterns in ui/** (`sldCanonKit.tsx` `ipOk = ip <= idyn`) was
+    removed at the source in the same card.
     """
     scan_dir = ui_no_physics_guard.REPO_ROOT / "frontend" / "src" / "ui"
     raw = 0
@@ -93,7 +100,7 @@ def test_ui_allowlist_matches_measured_baseline():
         if ui_no_physics_guard._should_exclude_file(path):
             continue
         raw += len(ui_no_physics_guard.scan_file(path))
-    assert raw == 7
+    assert raw == 8
 
 
 def test_ui_allowlist_entries_are_not_stale():
@@ -469,3 +476,85 @@ def test_guard_lapie_kazdy_rachunek_usuniety_karta_k7b(
     violations = ui_no_physics_guard.scan_tree([plik.parent])
 
     assert violations, f"guard PRZEPUSCIL rachunek, ktory K7-B usunela z ui/**: {opis}"
+
+
+# ---------------------------------------------------------------------------
+# MAGISTRALA-OCENA (2026-09-25): werdykt i suma wielkosci fizycznej w UI
+# ---------------------------------------------------------------------------
+
+# Linie DOSLOWNIE z usunietej oceny kreatora magistrali (`magistralaModel.ts`,
+# `KreatorMagistralaSn.tsx` sprzed karty) — iniekcja: przywrocona funkcja = czerwony.
+_MAGISTRALA_PRZED = (
+    "export const LIMIT_SPADKU_PCT = 5;\n"
+    "export function ocenaDoboru(params: P, deltaUPct: number | null, pradRoboczy: number | null) {\n"
+    "  const izA = params?.rated_current_a ?? null;\n"
+    "  const obciazalnosc =\n"
+    "    izA == null || pradRoboczy == null ? 'brak' : pradRoboczy > izA ? 'ostrzezenie' : 'ok';\n"
+    "  const spadek =\n"
+    "    deltaUPct == null ? 'brak' : deltaUPct > limitPct ? 'ostrzezenie' : 'ok';\n"
+    "  return { obciazalnosc, spadek };\n"
+    "}\n"
+    "export function lacznySpadekPct(odcinki: O[]) {\n"
+    "  let sumaZnanychPct = 0;\n"
+    "  for (const odcinek of odcinki) {\n"
+    "    sumaZnanychPct += odcinek.delta_u_pct;\n"
+    "  }\n"
+    "}\n"
+    "const iznamPrzekroczony = Boolean(\n"
+    "  params && dane.prad_a && dane.prad_a > params.rated_current_a,\n"
+    ");\n"
+)
+
+
+def test_guard_lapie_ocene_doboru_magistrali_w_ui(tmp_path: Path):
+    plik = tmp_path / "frontend" / "src" / "ui2" / "kreatory" / "magistrala" / "model.ts"
+    plik.parent.mkdir(parents=True, exist_ok=True)
+    plik.write_text(_MAGISTRALA_PRZED, encoding="utf-8")
+
+    linie = {ln for _p, ln, _l, _w in ui_no_physics_guard.scan_tree([plik.parent])}
+
+    # prog (1), porownanie z Iz (5), porownanie ze spadkiem (7), suma spadkow (13),
+    # porownanie pradu z pradem znamionowym (17).
+    assert {1, 5, 7, 13, 17} <= linie
+    # deklaracja typu parametru, inicjalizacja zerem i odczyt Iz nie sa ocena
+    assert not {2, 3, 11} & linie
+
+
+def test_guard_lapie_porownanie_dwoch_wielkosci_zwarciowych(tmp_path: Path):
+    """Klasa `ipOk = ip <= idyn` (sldCanonKit, usunieta w tej karcie): porownanie DWOCH
+    wartosci nie-stalych — luka nazwana przez `werdykt_wyjasnialny_guard` (3b nie widzi
+    `pst > pst_limit`) — lapie ten guard."""
+    plik = tmp_path / "frontend" / "src" / "ui" / "sld" / "kit.tsx"
+    plik.parent.mkdir(parents=True, exist_ok=True)
+    plik.write_text(
+        "const ipOk = ip <= idyn;\n"
+        "const zapas = i_th_1s_ka >= wymaganeIth;\n"
+        "const suma = ikss_a + ikss_b;\n",
+        encoding="utf-8",
+    )
+    linie = {ln for _p, ln, _l, _w in ui_no_physics_guard.scan_tree([plik.parent])}
+    assert linie == {1, 2, 3}
+
+
+def test_guard_ocena_nie_zglasza_walidacji_typow_jsx_i_napisow(tmp_path: Path):
+    plik = tmp_path / "frontend" / "src" / "ui2" / "kreatory" / "x" / "Widok.tsx"
+    plik.parent.mkdir(parents=True, exist_ok=True)
+    plik.write_text(
+        "if (data.prad_a > 0) ok();\n"
+        "): Promise<CableAmpacityDeratingResponse> {\n"
+        '<div data-testid="mvd-kreator-magistrala-spadek-stan">\n'
+        "<StanSpadkuNapiecia />\n"
+        "odcinkiBezSpadku += 1;\n"
+        "const opis = 'Spadek > 5 % + obciazalnosc';\n"
+        "<RzadWartosci etykieta={T.podgladDeltaU} wartosc={fmtV(podglad.delta_u_v)} />\n",
+        encoding="utf-8",
+    )
+    assert ui_no_physics_guard.scan_tree([plik.parent]) == []
+
+
+def test_guard_ocena_prog_z_liczba_ulamkowa_nie_jest_zerem(tmp_path: Path):
+    """`x > 0.5` to prog, nie dodatniosc — wylaczenie zera nie moze polknac `0.5`."""
+    plik = tmp_path / "frontend" / "src" / "ui2" / "y" / "p.ts"
+    plik.parent.mkdir(parents=True, exist_ok=True)
+    plik.write_text("const zle = deltaUPct > 0.5;\n", encoding="utf-8")
+    assert {ln for _p, ln, _l, _w in ui_no_physics_guard.scan_tree([plik.parent])} == {1}

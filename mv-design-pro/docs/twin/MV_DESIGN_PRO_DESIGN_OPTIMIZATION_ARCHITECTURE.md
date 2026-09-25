@@ -246,7 +246,7 @@ Zaczepy: `OutageData` (λ, r per typ elementu) jako opcjonalne dane katalogu; `R
 | `werdykt_projektowy.py` | REPLACE agregator → ewaluatory `ConstraintEngine` + `Remedy` | EF-047/048 |
 | `analysis/recommendations` (legacy, `study_scenario`) | DELETE (bez trasy API; semantyka w `Recommendation`) | A4 §1.5 |
 | `application/analyses/design_synth` (557 LOC, niewpięty) | DELETE lub wchłonąć do `ReinforcementPlanner` po przeglądzie | A9 §2.1 |
-| filtr TR w `stacjaModel.ts:415-429`, `ocenaDoboru` w `KreatorMagistralaSn.tsx` | DELETE (logika doboru w UI) | `SizingResult` z backendu |
+| filtr TR w `stacjaModel.ts:415-429`, `ocenaDoboru` w `KreatorMagistralaSn.tsx` (usunięte 2026-09-25, karta MAGISTRALA-OCENA — ocena w backendzie) | DELETE (logika doboru w UI) | `SizingResult` z backendu |
 | `dry_run` stacji | KEEP → `ImpactPreview` | EF-015 |
 
 ---

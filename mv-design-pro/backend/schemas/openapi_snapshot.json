@@ -2296,6 +2296,76 @@
     "title": "CertyfikatZgodnosciRequest",
     "type": "object"
    },
+   "CiagMagistraliResponse": {
+    "description": "Ciąg budowany w kreatorze: liczba odcinków, długość i spadek skumulowany (albo brak).",
+    "properties": {
+     "assumptions": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Assumptions",
+      "type": "array"
+     },
+     "delta_u_pct": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta U Pct"
+     },
+     "delta_u_v": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Delta U V"
+     },
+     "dlugosc_m": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dlugosc M"
+     },
+     "formula_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Formula Ref"
+     },
+     "liczba_odcinkow": {
+      "title": "Liczba Odcinkow",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "liczba_odcinkow",
+     "dlugosc_m",
+     "delta_u_v",
+     "delta_u_pct",
+     "formula_ref",
+     "assumptions"
+    ],
+    "title": "CiagMagistraliResponse",
+    "type": "object"
+   },
    "ClaimKind": {
     "description": "Rodzaj twierdzenia, ktore wynik zdolnosci wspiera.\n\n- ``DYNAMIC_PERFORMANCE``: narzedzie orzeka, jak modul ZACHOWUJE SIE w\n  czasie (LVRT/HVRT, odbudowa mocy czynnej, odpowiedz czestotliwosciowa,\n  praca wyspowa, stabilnosc). Wylacznie zwalidowana symulacja moze\n  wspierac takie twierdzenie.\n- ``DECLARED_CONFIGURATION``: narzedzie orzeka ZADEKLAROWANY albo\n  katalogowy FAKT o module (tryb regulacji, telemechanika, THD z rekordu\n  katalogowego) porownany z wymaganiem. Deklaracja jest wlasciwa\n  podstawa takiego twierdzenia.\n- ``STATIC_CALCULATION``: narzedzie orzeka wielkosc z OBLICZENIA STATYCZNEGO\n  sieci (zwarcia IEC 60909, obciazalnosc i wytrzymalosc przewodow, spadki\n  napiec, rozplyw). Obliczenie solverem o poziomie ``VALIDATED_SIMULATION``\n  jest wlasciwa podstawa takiego twierdzenia; obliczenie bez ustalonej\n  poprawnosci — nie.\n\nDomyslnie ``DYNAMIC_PERFORMANCE`` — SUROWSZE odczytanie, zeby zdolnosc\nzarejestrowana bez przemyslenia nie stala sie dopuszczalna przez pominiecie.",
     "enum": [
@@ -8798,6 +8868,68 @@
     "title": "ObciazenieAparatu",
     "type": "object"
    },
+   "OcenaDoboruMagistraliRequest": {
+    "description": "Ocena doboru przekroju odcinka bieżącego i ciągu (karta MAGISTRALA-OCENA).\n\n`odcinki_zbudowane` — odcinki zapisane wcześniej w tej sesji kreatora, w kolejności od\nstartu ciągu; odcinek bieżący domyka ciąg.",
+    "properties": {
+     "napiecie_kv": {
+      "exclusiveMinimum": 0.0,
+      "title": "Napiecie Kv",
+      "type": "number"
+     },
+     "odcinek": {
+      "$ref": "#/components/schemas/OdcinekMagistraliRequest"
+     },
+     "odcinki_zbudowane": {
+      "items": {
+       "$ref": "#/components/schemas/OdcinekMagistraliRequest"
+      },
+      "title": "Odcinki Zbudowane",
+      "type": "array"
+     }
+    },
+    "required": [
+     "napiecie_kv",
+     "odcinek"
+    ],
+    "title": "OcenaDoboruMagistraliRequest",
+    "type": "object"
+   },
+   "OcenaDoboruMagistraliResponse": {
+    "description": "Podgląd liczb odcinka i ciągu + rekordy werdyktu wyjaśnialnego (poziom K).\n\n`oceny_odcinka`: obciążalność długotrwała i spadek napięcia odcinka bieżącego;\n`ocena_ciagu`: spadek skumulowany ciągu. Interfejs renderuje rekordy kartą werdyktu —\nnie liczy statusu, progu ani sumy.",
+    "properties": {
+     "ciag": {
+      "$ref": "#/components/schemas/CiagMagistraliResponse"
+     },
+     "ocena_ciagu": {
+      "$ref": "#/components/schemas/OcenaKryterium"
+     },
+     "oceny_odcinka": {
+      "items": {
+       "$ref": "#/components/schemas/OcenaKryterium"
+      },
+      "title": "Oceny Odcinka",
+      "type": "array"
+     },
+     "spadek_odcinka": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SpadekOdcinkaMagistraliResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "spadek_odcinka",
+     "ciag",
+     "oceny_odcinka",
+     "ocena_ciagu"
+    ],
+    "title": "OcenaDoboruMagistraliResponse",
+    "type": "object"
+   },
    "OcenaKryterium": {
     "additionalProperties": false,
     "description": "Rekord poziomu K: JEDNO kryterium na JEDNYM przedmiocie (§4.1).\n\nKonstrukcja właściwa: ``werdykt.decyzja.ocen_kryterium``. Konstrukcja bezpośrednia (także\nodczyt z JSON) przechodzi te same wyprowadzenia i jest odrzucana, gdy którekolwiek\nwyprowadzone pole różni się od wyniku reguły.",
@@ -9088,6 +9220,77 @@
      "wymagania"
     ],
     "title": "OcenaWymaganModulu",
+    "type": "object"
+   },
+   "OdcinekMagistraliRequest": {
+    "description": "Odcinek magistrali SN z kreatora: typ z katalogu, długość, prąd roboczy, cosφ.\n\nParametry R, X i obciążalność NIE przychodzą z klienta — backend czyta je z katalogu po\n`catalog_ref` (reguła katalogu). Pole puste = projektant nie podał wartości; ocena nazywa\nbrak (`NIE_OCENIONO`), niczego nie zgaduje.",
+    "properties": {
+     "catalog_ref": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Catalog Ref"
+     },
+     "cos_phi": {
+      "exclusiveMinimum": 0.0,
+      "maximum": 1.0,
+      "title": "Cos Phi",
+      "type": "number"
+     },
+     "dlugosc_m": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dlugosc M"
+     },
+     "nazwa": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nazwa"
+     },
+     "prad_roboczy_a": {
+      "anyOf": [
+       {
+        "exclusiveMinimum": 0.0,
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Prad Roboczy A"
+     },
+     "rodzaj": {
+      "enum": [
+       "KABEL",
+       "LINIA"
+      ],
+      "title": "Rodzaj",
+      "type": "string"
+     }
+    },
+    "required": [
+     "rodzaj",
+     "cos_phi"
+    ],
+    "title": "OdcinekMagistraliRequest",
     "type": "object"
    },
    "OdniesienieAmplitudy": {
@@ -14023,6 +14226,68 @@
      "trace"
     ],
     "title": "SolverInputResponse",
+    "type": "object"
+   },
+   "SpadekOdcinkaMagistraliResponse": {
+    "description": "Spadek napięcia odcinka bieżącego (WHITE BOX solvera) i prąd, przy którym policzony.",
+    "properties": {
+     "assumptions": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Assumptions",
+      "type": "array"
+     },
+     "delta_u_pct": {
+      "title": "Delta U Pct",
+      "type": "number"
+     },
+     "delta_u_reactive_v": {
+      "title": "Delta U Reactive V",
+      "type": "number"
+     },
+     "delta_u_resistive_v": {
+      "title": "Delta U Resistive V",
+      "type": "number"
+     },
+     "delta_u_v": {
+      "title": "Delta U V",
+      "type": "number"
+     },
+     "formula_ref": {
+      "title": "Formula Ref",
+      "type": "string"
+     },
+     "prad_obliczeniowy_a": {
+      "title": "Prad Obliczeniowy A",
+      "type": "number"
+     },
+     "prad_z_obciazalnosci": {
+      "title": "Prad Z Obciazalnosci",
+      "type": "boolean"
+     },
+     "r_total_ohm": {
+      "title": "R Total Ohm",
+      "type": "number"
+     },
+     "x_total_ohm": {
+      "title": "X Total Ohm",
+      "type": "number"
+     }
+    },
+    "required": [
+     "prad_obliczeniowy_a",
+     "prad_z_obciazalnosci",
+     "delta_u_v",
+     "delta_u_pct",
+     "r_total_ohm",
+     "x_total_ohm",
+     "delta_u_resistive_v",
+     "delta_u_reactive_v",
+     "formula_ref",
+     "assumptions"
+    ],
+    "title": "SpadekOdcinkaMagistraliResponse",
     "type": "object"
    },
    "StageSettingsRequest": {
@@ -30811,6 +31076,48 @@
      }
     },
     "summary": "Preview Transformer Rated Currents",
+    "tags": [
+     "grid-source-preview"
+    ]
+   }
+  },
+  "/api/solver/trunk-sizing-assessment": {
+   "post": {
+    "description": "Ocena doboru przekroju odcinka i ciągu magistrali SN rekordami werdyktu wyjaśnialnego.",
+    "operationId": "assess_trunk_sizing_api_solver_trunk_sizing_assessment_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OcenaDoboruMagistraliRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OcenaDoboruMagistraliResponse"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Assess Trunk Sizing",
     "tags": [
      "grid-source-preview"
     ]

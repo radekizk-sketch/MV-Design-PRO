@@ -1102,13 +1102,6 @@
   },
   {
    "sprawdzenie": "3b_frontend_prog",
-   "tozsamosc": "frontend/src/ui2/kreatory/magistrala/magistralaModel.ts:ocenaDoboru.spadek",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Stan zastany; inwentarz D65 (MIGRACJA): migracja (plan §8).",
-   "wiersz_inwentarza": "D65"
-  },
-  {
-   "sprawdzenie": "3b_frontend_prog",
    "tozsamosc": "frontend/src/ui2/kreatory/pomiar/KreatorPomiaru.tsx:KreatorPomiaru.przekladniaOk",
    "klasa": "ENUM_WEWNETRZNY",
    "uzasadnienie_pl": "Plan AB §8 F19: kompletność danych budowy sieci / walidacja pola kreatora (liczność elementów > 0, przekładnia > 0, etapy zapisu), nie ocena wobec kryterium inżynierskiego — klasa tonu z porównania z zerem opisuje stan danych.",
@@ -1463,13 +1456,6 @@
    "klasa": "MIGRACJA",
    "uzasadnienie_pl": "Stan zastany; inwentarz E9 (MIGRACJA): migracja (plan §8). Tożsamość wykryta regułą 6 / otypowaniem HTTP (karta AB-1a Pakiet E2, 2026-09-24).",
    "wiersz_inwentarza": "E9"
-  },
-  {
-   "sprawdzenie": "6a_ladunek_werdyktu",
-   "tozsamosc": "frontend/src/ui2/kreatory/magistrala/strings.ts:MAGISTRALA_STRINGS.ocenaOK",
-   "klasa": "MIGRACJA",
-   "uzasadnienie_pl": "Etykieta „OK” oceny spadku napięcia magistrali w kreatorze (klasa `ok`/`ostrzezenie` liczona w interfejsie) — werdykt liczony w UI, fala WW-4 (kreatory), plan AB §8 F24.",
-   "wiersz_inwentarza": null
   },
   {
    "sprawdzenie": "6a_ladunek_werdyktu",
