@@ -8,13 +8,17 @@ formatował napięcie bez `:g` („Szyna GPZ S1 15.0 kV”), inaczej niż każda
 
 Ta sama klasa w polach strony dolnej: wyłącznik główny i odpływy budowane przez obie operacje
 stacyjne, pola dopisywane operacją `add_nn_outgoing_field` (odpływ, pole źródłowe), odbiór
-`add_nn_load` i pole falownika `add_converter_source` nosiły stałe „nN” także na szynie 6 kV.
+`add_nn_load` i pole falownika `add_converter_source` nosiły stałe „nN”. Po bramce pasma
+(`pole_transformatorowe.w_pasmie_nn`) stacja SN/nN i operacje strony dolnej odmawiają szyny
+spoza pasma nN (`test_bramka_pasma_nn.py`), więc nazwa z klasą szyny pozostaje prawdziwa z
+konstrukcji; klasę SN niosą nazwy toru DER-SN i pola falownika na szynie SN.
 
 Iloczyn cech: operacja {wstawienie stacji w odcinek, dołączenie stacji na końcu, GPZ, tor
-DER-SN, pole strony dolnej dopisane później, odbiór, pole falownika} × napięcie strony dolnej
-{0,4 kV (nN), 6 kV (SN)} × nazwa {transformatora, szyny strony dolnej, wyłącznika głównego,
-odpływu, pola źródłowego, odbioru, szyny sekcji GPZ, źródła GPZ, stacji GPZ, szyn toru DER} ×
-warunek {klasa z `pasmo_napieciowe`, brak kropki dziesiętnej przy całkowitym napięciu}.
+DER-SN, pole strony dolnej dopisane później, pole falownika} × napięcie szyny {0,4 kV (nN);
+szyny SN toru DER} × nazwa {transformatora, szyny strony dolnej, wyłącznika głównego,
+odpływu, pola źródłowego, szyny sekcji GPZ, źródła GPZ, stacji GPZ, szyn toru DER} × warunek
+{klasa z `pasmo_napieciowe`, brak kropki dziesiętnej przy całkowitym napięciu}; helper nazw
+dla napięć {0,4, 6, brak}.
 """
 
 from __future__ import annotations
@@ -37,9 +41,12 @@ from tests.enm.test_station_field_apparatus_explicit import (
 )
 
 #: (napięcie strony dolnej, pozycja katalogowa transformatora 15/U kV, oczekiwany rodzaj).
+#: Stacja SN/nN ze stroną dolną spoza pasma nN (np. 15/6 kV) jest odrzucana bramką pasma
+#: (`station.*.nn_voltage_not_nn_band`, test w
+#: `tests/application/analyses/fault_loop/test_bramka_pasma_nn.py`), więc nazwy strony
+#: dolnej stacji sprawdzamy w paśmie nN; klasa SN w nazwach pochodzi z toru DER-SN niżej.
 _STRONY_DOLNE = [
     (0.4, "tr-sn-nn-15-04-630kva-dyn11", "SN/nN"),
-    (6.0, "tr-sn-nn-15-6-1mva-dyn11-inverter", "SN/SN"),
 ]
 
 #: Napięcie zapisane z kropką dziesiętną przy wartości całkowitej („15.0 kV”).

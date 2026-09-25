@@ -28,7 +28,7 @@ from application.analyses.fault_loop.service import (
     _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
     oblicz_petle_na_trasie,
-    odmowa_ukladu_nn,
+    odmowa_analizy_nn,
     resolve_station_transformer,
     resolve_transformer_for_bus,
     uklad_nn_transformatora,
@@ -173,7 +173,7 @@ def build_swz_view(
     # W5-A: układ sieci nN z transformatora ZASILAJĄCEGO; brak/TT/IT = odmowa nazwana.
     system = uklad_nn_transformatora(trafo)
     context["network_system"] = system
-    odmowa = odmowa_ukladu_nn(context, system)
+    odmowa = odmowa_analizy_nn(context, trafo)
     if odmowa is not None:
         return odmowa
     assert system is not None

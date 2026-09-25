@@ -41,7 +41,8 @@ from typing import Any
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel, Substation, Transformer
 from enm.nazwy_elementow import nazwa_elementu
-from enm.pole_transformatorowe import pasmo_napieciowe
+from enm.pole_transformatorowe import pasmo_napieciowe, w_pasmie_nn
+from enm.slownik_komunikatow import opis_obiektu
 from enm.zero_sequence_transformer import (
     ZeroSeqConnection,
     build_transformer_zero_seq_model,
@@ -464,6 +465,54 @@ def odmowa_ukladu_nn(context: dict[str, Any], uklad: str | None) -> dict[str, An
     return None
 
 
+#: Nazwana odmowa analiz nN: strona dolna transformatora zasilającego spoza pasma nN
+#: (albo bez napięcia). Wartość addytywna — istniejące kody bez zmian.
+KOD_ODMOWY_PASMA_NN = "nn.transformer_lv_not_nn_band"
+
+
+def odmowa_pasma_nn(context: dict[str, Any], trafo: Transformer) -> dict[str, Any] | None:
+    """Odmowa NAZWANA, gdy strona dolna transformatora zasilającego nie leży w paśmie nN.
+
+    Analizy nN (pętla zwarcia TN wg IEC 60364-4-41, SWZ, dobór aparatów nN, dowód
+    obwodu nN, arkusz obwodów nN) liczone dla transformatora 110/15 kV dawały „OK,
+    U0 = 8660 V” — wynik fabrykowany. Predykat pasma: `pole_transformatorowe.w_pasmie_nn`
+    (ten sam co w bramkach operacji strony dolnej). Zwraca gotową odpowiedź widoku albo
+    ``None`` (strona dolna w paśmie nN — licz dalej).
+    """
+    napiecie = trafo.ulv_kv
+    if w_pasmie_nn(napiecie):
+        return None
+    opis = opis_obiektu(trafo, "Transformator")
+    if napiecie <= 0:
+        powod = (
+            f"{opis} nie ma dodatniego napięcia strony dolnej — "
+            "przynależności do pasma nN nie da się potwierdzić, więc analiza nN nie jest "
+            "liczona. Uzupełnij napięcie strony dolnej z pozycji katalogowej transformatora."
+        )
+    else:
+        powod = (
+            f"{opis} ma stronę dolną {napiecie:g} kV "
+            f"(pasmo {pasmo_napieciowe(napiecie)}) — analiza nN (pętla zwarcia TN, "
+            "samoczynne wyłączenie zasilania, dobór aparatów nN) dotyczy wyłącznie sieci "
+            "poniżej 1 kV i nie jest liczona. Wskaż stację z transformatorem SN/nN albo "
+            "sprawdź napięcie strony dolnej w pozycji katalogowej transformatora."
+        )
+    return {
+        **context,
+        "status": "nie dotyczy",
+        "kod_odmowy": KOD_ODMOWY_PASMA_NN,
+        "reason_pl": powod,
+        "missing_data": [],
+    }
+
+
+def odmowa_analizy_nn(context: dict[str, Any], trafo: Transformer) -> dict[str, Any] | None:
+    """Jedno wejście odmów analiz nN: najpierw pasmo strony dolnej, potem układ sieci."""
+    return odmowa_pasma_nn(context, trafo) or odmowa_ukladu_nn(
+        context, uklad_nn_transformatora(trafo)
+    )
+
+
 def etykieta_transformatora_petli(trafo: Transformer) -> str:
     """Etykieta składowej transformatora w pętli zwarcia: nazwa urządzenia z modelu.
 
@@ -560,7 +609,7 @@ def build_station_fault_loop_view(
 
     system = uklad_nn_transformatora(trafo)
     context["network_system"] = system
-    odmowa = odmowa_ukladu_nn(context, system)
+    odmowa = odmowa_analizy_nn(context, trafo)
     if odmowa is not None:
         return odmowa
     assert system is not None
@@ -649,7 +698,7 @@ def build_fault_loop_view_at_point(
 
     system = uklad_nn_transformatora(trafo)
     context["network_system"] = system
-    odmowa = odmowa_ukladu_nn(context, system)
+    odmowa = odmowa_analizy_nn(context, trafo)
     if odmowa is not None:
         return odmowa
     assert system is not None
@@ -768,7 +817,7 @@ def build_feeder_fault_loop_view_for_transformer(
 
     system = uklad_nn_transformatora(trafo)
     context["network_system"] = system
-    odmowa = odmowa_ukladu_nn(context, system)
+    odmowa = odmowa_analizy_nn(context, trafo)
     if odmowa is not None:
         return {**odmowa, "feeders": []}
     assert system is not None
@@ -943,7 +992,11 @@ def build_feeder_fault_loop_view(enm: EnergyNetworkModel, station_ref: str) -> d
             f"{trafo.ref_id}:{item}"
             for trafo, view in zip(transformers, per_transformer, strict=True)
             if view.get("status") != "OK"
-            for item in view.get("missing_data", [])
+            # Odmowa nazwana transformatora (strona dolna spoza pasma nN) nie ma braków
+            # danych — jej kod trafia do braków stacji, żeby nie znikała po cichu.
+            for item in (
+                view.get("missing_data") or ([view["kod_odmowy"]] if view.get("kod_odmowy") else [])
+            )
         }
     )
 

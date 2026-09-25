@@ -59,9 +59,9 @@ from application.analyses.fault_loop.service import (
     _find_station as find_station,  # reeksport publiczny (dzielony z upstream_equivalent.py)
 )
 from enm.models import Branch, Bus, EnergyNetworkModel, Substation, Transformer
+from enm.pole_transformatorowe import w_pasmie_nn
 from enm.uklad_sieci_nn import uklad_nn_stacji
 from network_model.core.topologia import poziomy, przeglad_wszerz_od
-from network_model.core.voltage_factor import LV_BAND_LIMIT_KV
 
 from .energization import EnergizationView, TerminalState, build_energization_view
 
@@ -124,7 +124,11 @@ class BoundaryLink:
 
 def _is_lv(bus_by_ref: dict[str, Bus], bus_ref: str) -> bool:
     bus = bus_by_ref.get(bus_ref)
-    return bus is not None and bus.voltage_kv <= LV_BAND_LIMIT_KV
+    # Przynależność do domeny nN z JEDNEGO predykatu pasma (`w_pasmie_nn`) — tego
+    # samego co bramki analiz nN i operacji strony dolnej. Dotąd próg współczynnika
+    # c IEC 60909 (`LV_BAND_LIMIT_KV`, ≤ 1 kV) wpuszczał szynę 1 kV do grafu nN,
+    # którą walidator i analizy nN klasyfikują jako SN.
+    return bus is not None and w_pasmie_nn(bus.voltage_kv)
 
 
 def _bus_dict(bus: Bus, depth: int, terminal: TerminalState, *, is_board: bool) -> dict[str, Any]:
@@ -295,7 +299,7 @@ def build_lv_domain_view(enm: EnergyNetworkModel, station_ref: str) -> dict[str,
             "station_ref": station_ref,
             "station_name": root.name,
             "reason_pl": (
-                "Stacja nie ma żadnej szyny w paśmie nN (≤1 kV) ani w "
+                "Stacja nie ma żadnej szyny w paśmie nN (< 1 kV) ani w "
                 "bus_refs, ani na stronie nN zadeklarowanego transformatora "
                 "— brak domeny nN do wyprowadzenia."
             ),

@@ -87,6 +87,22 @@ def pasmo_napieciowe(voltage_kv: float) -> str:
     return "WN"
 
 
+def w_pasmie_nn(voltage_kv: float | None) -> bool:
+    """Czy napięcie NA PEWNO leży w paśmie nN — jedyny predykat bramek strony nN.
+
+    Wspólny dla wejść analiz nN (pętla zwarcia, SWZ, dobór aparatów, dowód obwodu,
+    arkusz obwodów, graf domeny nN) i operacji strony dolnej (pola, odbiory, kable,
+    aparaty, źródła nN, stacje SN/nN), żeby bramka wejścia i wyjścia miała jedno
+    źródło prawdy (reguła KLASA §3). Brak napięcia albo wartość niedodatnia ⇒ ``False``:
+    przynależności do pasma nN nie da się potwierdzić, więc bramka odmawia — odwrotnie
+    niż `szyna_poza_pasmem_sn`, gdzie brak danej nie dyskwalifikuje ostrzeżenia.
+    """
+    if voltage_kv is None:
+        return False
+    napiecie = float(voltage_kv)
+    return napiecie > 0.0 and pasmo_napieciowe(napiecie) == "nN"
+
+
 def szyna_poza_pasmem_sn(voltage_kv: float | None) -> bool:
     """Czy szyna NA PEWNO leży poza pasmem SN.
 

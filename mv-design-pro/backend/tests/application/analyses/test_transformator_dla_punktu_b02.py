@@ -114,8 +114,8 @@ class TestIk1MinDoboruAparatu:
     @pytest.mark.parametrize("sprzeglo", ["open", "closed"])
     def test_ik1_min_liczone_od_tr2(self, sprzeglo: str) -> None:
         enm = _stacja(sprzeglo)
-        ik, u0, missing, reason = _ik1_min_i_u0(enm, REF_STACJA, PUNKT_B)
-        assert (missing, reason) == ([], None)
+        ik, u0, missing, reason, kod_odmowy = _ik1_min_i_u0(enm, REF_STACJA, PUNKT_B)
+        assert (missing, reason, kod_odmowy) == ([], None, None)
         assert ik is not None and u0 is not None
         assert ik == pytest.approx(_ik_min_od(enm, "tr2"))
 
@@ -124,8 +124,8 @@ class TestPakietDowodowyObwodu:
     @pytest.mark.parametrize("sprzeglo", ["open", "closed"])
     def test_petla_min_liczona_od_tr2(self, sprzeglo: str) -> None:
         enm = _stacja(sprzeglo)
-        petla, missing, reason = _petla_zwarcia_min(enm, REF_STACJA, PUNKT_B)
-        assert (missing, reason) == ([], None)
+        petla, missing, reason, kod_odmowy = _petla_zwarcia_min(enm, REF_STACJA, PUNKT_B)
+        assert (missing, reason, kod_odmowy) == ([], None, None)
         assert petla is not None
         assert petla.fault_loop.ik_min_a == pytest.approx(_ik_min_od(enm, "tr2"))
 
@@ -213,8 +213,8 @@ class TestOdcietaPodszynaNieUniewaznaStacji:
     def test_punkt_na_odcietej_podszynie_to_brak_trasy_nie_osobliwosc(self) -> None:
         enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open", wyspa_odcieta=True)
         assert build_fault_loop_view_at_point(enm, REF_STACJA, "wyspa")["missing_data"] == ["route"]
-        ik, u0, missing, reason = _ik1_min_i_u0(enm, REF_STACJA, "wyspa")
-        assert (ik, u0, missing) == (None, None, ["route"])
+        ik, u0, missing, reason, kod_odmowy = _ik1_min_i_u0(enm, REF_STACJA, "wyspa")
+        assert (ik, u0, missing, kod_odmowy) == (None, None, ["route"], None)
         assert reason
 
 

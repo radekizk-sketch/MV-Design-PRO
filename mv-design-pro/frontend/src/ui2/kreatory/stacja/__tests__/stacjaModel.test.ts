@@ -709,7 +709,7 @@ describe('stacjaModel — pełny parytet nN (5 wariantów vs legacy)', () => {
 
   it('payload CUSTOM_NN: własne napięcie nN w payloadzie, bez źródła i pola źródłowego', () => {
     const payload = zbudujPayload(
-      dane({ nn_configuration: 'CUSTOM_NN', nn_voltage_kv: 6.3, catalog_ref: 'trafo-630-15-04' }),
+      dane({ nn_configuration: 'CUSTOM_NN', nn_voltage_kv: 0.69, catalog_ref: 'trafo-630-15-04' }),
       kontekst({ snVoltageKv: 15 }),
       rozdzielnica('branch'),
     );
@@ -718,7 +718,7 @@ describe('stacjaModel — pełny parytet nN (5 wariantów vs legacy)', () => {
     expect(nnBlock).not.toHaveProperty('source_converter_catalog_ref');
     expect(nnBlock).not.toHaveProperty('source_protection');
     // Własne napięcie strony nN spływa do station.nn_voltage_kv (nie z falownika).
-    expect((payload.station as Record<string, unknown>).nn_voltage_kv).toBe(6.3);
+    expect((payload.station as Record<string, unknown>).nn_voltage_kv).toBe(0.69);
     const feeders = nnBlock.outgoing_feeders_nn as Array<{ feeder_role: string }>;
     expect(feeders.every((f) => f.feeder_role === 'ODPLYW_NN')).toBe(true);
   });

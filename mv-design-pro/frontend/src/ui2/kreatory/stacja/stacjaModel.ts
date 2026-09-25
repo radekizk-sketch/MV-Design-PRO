@@ -369,6 +369,19 @@ export function kontekstKompletny(kontekst: KontekstStacji): boolean {
     : Boolean(kontekst.segmentId);
 }
 
+/** Górna granica pasma nN [kV] (wyłącznie) — lustro `PASMO_NN_MAX_KV`
+ *  (`backend/src/enm/pole_transformatorowe.py`). */
+const PASMO_NN_MAX_KV = 1.0;
+
+/**
+ * Czy napięcie leży w paśmie nN — lustro backendowego `w_pasmie_nn`, które bramkuje
+ * stacje SN/nN (`station.*.nn_voltage_not_nn_band`), operacje strony dolnej i analizy nN.
+ * Parytet pilnuje wspólna tablica `backend/schemas/pasmo_nn_parytet_v1.json`.
+ */
+export function wPasmieNn(napiecieKv: number | null | undefined): boolean {
+  return napiecieKv != null && Number.isFinite(napiecieKv) && napiecieKv > 0 && napiecieKv < PASMO_NN_MAX_KV;
+}
+
 /** Ogranicza liczbę odpływów nN do sensownego zakresu (1..8). */
 export function ogranicznikOdplywow(value: number): number {
   if (!Number.isFinite(value)) return 1;
@@ -385,6 +398,12 @@ export function walidujFormularz(
   }
   if (!(Number.isFinite(data.nn_voltage_kv) && data.nn_voltage_kv > 0)) {
     errors.push({ field: 'nn_voltage_kv', message: 'Podaj napięcie nN odbioru większe od zera.' });
+  } else if (!wPasmieNn(data.nn_voltage_kv)) {
+    errors.push({
+      field: 'nn_voltage_kv',
+      message:
+        'Napięcie strony nN musi być mniejsze od 1 kV (pasmo nN) — stacja SN/nN nie ma strony dolnej w paśmie SN.',
+    });
   }
   if (ogranicznikOdplywow(data.outgoing_feeders_nn_count) < 1) {
     errors.push({

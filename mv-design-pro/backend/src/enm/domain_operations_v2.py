@@ -112,7 +112,7 @@ from .pole_katalogowe import (
     rozwiaz_aparaty_pola,
     rozwiaz_plan_pola,
 )
-from .pole_transformatorowe import pasmo_napieciowe
+from .pole_transformatorowe import pasmo_napieciowe, w_pasmie_nn
 from .rola_pola_sn import (
     kanoniczna_rola_pola_sn,
     nazwa_pola_zrodlowego_sn,
@@ -443,6 +443,36 @@ def _bus_voltage_kv(enm: dict[str, Any], bus_ref: str) -> float | None:
         if isinstance(voltage, int | float) and voltage > 0:
             return float(voltage)
     return None
+
+
+#: Odmowa domenowa operacji strony dolnej wskazującej szynę spoza pasma nN (albo bez
+#: napięcia). Kod addytywny — istniejące kody bramek nN (`nn.*_not_nn*`) bez zmian.
+KOD_SZYNA_POZA_PASMEM_NN = "nn.bus_not_nn_band"
+
+
+def _odmowa_szyny_poza_pasmem_nn(
+    enm: dict[str, Any], bus_ref: str, operacja_pl: str
+) -> dict[str, Any] | None:
+    """Odmowa, gdy operacja strony dolnej wskazuje szynę spoza pasma nN.
+
+    Predykat pasma: `pole_transformatorowe.w_pasmie_nn` — ten sam co bramki analiz nN
+    (`fault_loop.service.odmowa_pasma_nn`) i pozostałe bramki `nn.*` tego modułu. Pola,
+    odbiory, aparaty i źródła nN na szynie 6 kV/15 kV były dotąd zapisywane po cichu
+    (z katalogiem aparatów nN i rolą ODPLYW_NN na szynie SN).
+    """
+    napiecie = _bus_voltage_kv(enm, bus_ref)
+    if w_pasmie_nn(napiecie):
+        return None
+    opis = (
+        "nie ma dodatniego napięcia znamionowego"
+        if napiecie is None
+        else f"ma napięcie {napiecie:g} kV (pasmo {pasmo_napieciowe(napiecie)})"
+    )
+    return _error_response(
+        f"{operacja_pl}: {opis_elementu(enm, bus_ref, 'szyna')} {opis} — operacja dotyczy "
+        "wyłącznie strony nN (napięcie znamionowe poniżej 1 kV). Wskaż szynę nN stacji SN/nN.",
+        KOD_SZYNA_POZA_PASMEM_NN,
+    )
 
 
 def _nazwa_z_klasa_szyny(enm: dict[str, Any], bus_ref: object, *czlony: str) -> str:
@@ -2699,6 +2729,9 @@ def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]
     station = _resolve_station_for_field_write(enm, station_ref=station_ref, bus_ref=bus_nn_ref)
     if station is None:
         return _error_response("Nie znaleziono stacji dla szyny nN.", "nn.station_not_found")
+    odmowa_pasma = _odmowa_szyny_poza_pasmem_nn(enm, bus_nn_ref, "Odpływ nN")
+    if odmowa_pasma is not None:
+        return odmowa_pasma
 
     raw_specs = _substation_meta_specs(station, "nn_field_specs")
     feeder_index = len(
@@ -2767,6 +2800,9 @@ def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -
     station = _resolve_station_for_field_write(enm, station_ref=station_ref, bus_ref=bus_nn_ref)
     if station is None:
         return _error_response("Nie znaleziono stacji dla szyny nN.", "nn.station_not_found")
+    odmowa_pasma = _odmowa_szyny_poza_pasmem_nn(enm, bus_nn_ref, "Pole źródłowe nN")
+    if odmowa_pasma is not None:
+        return odmowa_pasma
 
     raw_specs = _substation_meta_specs(station, "nn_field_specs")
     source_index = len(
@@ -2892,6 +2928,9 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             f"Szyna nN wskazana w formularzu nie jest szyną odpływu z pola {pole('feeder_ref')}.",
             "nn.feeder_bus_mismatch",
         )
+    odmowa_pasma = _odmowa_szyny_poza_pasmem_nn(enm, feeder_bus_ref, "Odbiór nN")
+    if odmowa_pasma is not None:
+        return odmowa_pasma
 
     # Model obciążenia (ZIP) deklarowany przez projektanta. Rozpływ czyta go z
     # `materialized_params`, więc kreator ma tu jedyną drogę zapisu; brak
@@ -2972,7 +3011,7 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 # P0.1 nN — topologia obwodow nN (karta P0.1, C §4.1)
 #
 # Siec nN = ISTNIEJACE generyczne elementy ENM (Bus/Cable/SwitchBranch/
-# FuseBranch/Load) w pasmie <=1 kV. ZERO nowych klas Lv* (C §0 pkt 1).
+# FuseBranch/Load) w pasmie nN (< 1 kV, `w_pasmie_nn`). ZERO nowych klas Lv* (C §0 pkt 1).
 # Konwencja kierunku KAZDEJ galezi tworzonej w tej sekcji: from_bus_ref =
 # UPSTREAM (strona zrodla), to_bus_ref = DOWNSTREAM (strona odbioru) — ta sama
 # konwencja co continue_trunk_segment_sn / aparat pola SN / migracja pol nN.
@@ -3014,7 +3053,7 @@ def _add_nn_cable_segment_internal(
             "w modelu sieci albo nie ma napięcia znamionowego.",
             "nn.cable_from_bus_not_found",
         )
-    if from_voltage > 1.0:
+    if not w_pasmie_nn(from_voltage):
         return _error_response(
             f"{opis_elementu(enm, from_bus_ref, 'Szyna źródłowa')} nie jest szyną nN "
             f"(U = {from_voltage} kV).",
@@ -3087,7 +3126,7 @@ def _add_nn_cable_segment_internal(
                 "Wskazana szyna docelowa odcinka nie istnieje w modelu sieci.",
                 "nn.cable_to_bus_not_found",
             )
-        if to_voltage > 1.0 or not _same_nominal_voltage(from_voltage, to_voltage):
+        if not w_pasmie_nn(to_voltage) or not _same_nominal_voltage(from_voltage, to_voltage):
             return _error_response(
                 f"{opis_elementu(enm, to_bus_ref, 'Szyna docelowa')} ma inne napięcie "
                 f"({to_voltage} kV) niż szyna źródłowa ({from_voltage} kV).",
@@ -3224,9 +3263,9 @@ def add_nn_distribution_board(enm: dict[str, Any], payload: dict[str, Any]) -> d
             "większe od zera.",
             "nn.board_voltage_invalid",
         )
-    if voltage_kv > 1.0:
+    if not w_pasmie_nn(voltage_kv):
         return _error_response(
-            "Rozdzielnica nN może mieć napięcie znamionowe wyłącznie w paśmie nN (do 1 kV).",
+            "Rozdzielnica nN może mieć napięcie znamionowe wyłącznie w paśmie nN (poniżej 1 kV).",
             "nn.board_voltage_not_nn",
         )
 
@@ -3348,9 +3387,9 @@ def add_nn_switch_device(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "w modelu sieci.",
             "nn.switch_to_bus_not_found",
         )
-    if from_voltage > 1.0 or to_voltage > 1.0:
+    if not (w_pasmie_nn(from_voltage) and w_pasmie_nn(to_voltage)):
         return _error_response(
-            "Aparat nN musi łączyć dwie szyny w paśmie nN (do 1 kV).", "nn.switch_not_nn_band"
+            "Aparat nN musi łączyć dwie szyny w paśmie nN (poniżej 1 kV).", "nn.switch_not_nn_band"
         )
     if not _same_nominal_voltage(from_voltage, to_voltage):
         return _error_response(
@@ -3533,6 +3572,9 @@ def add_nn_section_coupler(enm: dict[str, Any], payload: dict[str, Any]) -> dict
             "napięcia znamionowego.",
             "nn.coupler_bus_not_found",
         )
+    odmowa_pasma = _odmowa_szyny_poza_pasmem_nn(enm, last_bus_ref, "Sprzęgło sekcji nN")
+    if odmowa_pasma is not None:
+        return odmowa_pasma
 
     catalog_ref = _require_catalog_ref(
         payload_ref=payload.get("catalog_ref"),
@@ -3677,7 +3719,7 @@ def split_nn_segment(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
     to_bus_ref = segment.get("to_bus_ref")
     from_voltage = _bus_voltage_kv(enm, from_bus_ref) if isinstance(from_bus_ref, str) else None
     to_voltage = _bus_voltage_kv(enm, to_bus_ref) if isinstance(to_bus_ref, str) else None
-    if from_voltage is None or to_voltage is None or from_voltage > 1.0 or to_voltage > 1.0:
+    if not (w_pasmie_nn(from_voltage) and w_pasmie_nn(to_voltage)):
         return _error_response(
             "Podzielić można wyłącznie odcinek, którego oba końce leżą w paśmie nN.",
             "nn.split_segment_not_nn_band",
@@ -3862,7 +3904,7 @@ def merge_nn_segments(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
 
     for bus_ref in (zewnetrzna_a, wspolna_szyna, zewnetrzna_b):
         voltage = _bus_voltage_kv(enm, bus_ref)
-        if voltage is None or voltage > 1.0:
+        if not w_pasmie_nn(voltage):
             return _error_response(
                 "Scalane odcinki muszą mieć oba końce w paśmie nN.",
                 "nn.merge_not_nn_band",
@@ -4004,6 +4046,15 @@ def set_nn_cable_laying_conditions(enm: dict[str, Any], payload: dict[str, Any])
         )
     if segment.get("type") != "cable":
         return _error_response("Warunki ułożenia dotyczą wyłącznie kabli.", "nn.laying_wrong_type")
+    # Warunki ułożenia nN (tablice PN-HD 60364-5-52 dla nN) tylko dla kabla nN: oba
+    # końce w paśmie nN — ta sama bramka co split/merge/remove odcinka nN.
+    for koniec in ("from_bus_ref", "to_bus_ref"):
+        szyna_konca = segment.get(koniec)
+        odmowa_pasma = _odmowa_szyny_poza_pasmem_nn(
+            enm, szyna_konca if isinstance(szyna_konca, str) else "", "Warunki ułożenia kabla nN"
+        )
+        if odmowa_pasma is not None:
+            return odmowa_pasma
 
     if "cable_laying_conditions" not in payload:
         return _error_response(
@@ -4086,7 +4137,7 @@ def remove_nn_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
         to_ref = element.get("to_bus_ref")
         from_voltage = _bus_voltage_kv(enm, from_ref) if isinstance(from_ref, str) else None
         to_voltage = _bus_voltage_kv(enm, to_ref) if isinstance(to_ref, str) else None
-        if from_voltage is None or to_voltage is None or from_voltage > 1.0 or to_voltage > 1.0:
+        if not (w_pasmie_nn(from_voltage) and w_pasmie_nn(to_voltage)):
             return _error_response(
                 "Tą operacją usuwa się wyłącznie gałęzie w paśmie nN.",
                 "nn.remove_element_not_nn_band",
@@ -4100,7 +4151,7 @@ def remove_nn_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
         new_enm = result.enm
     elif kind == "bus":
         voltage = _bus_voltage_kv(enm, element_ref)
-        if voltage is None or voltage > 1.0:
+        if not w_pasmie_nn(voltage):
             return _error_response(
                 "Tą operacją usuwa się wyłącznie szyny w paśmie nN.",
                 "nn.remove_element_not_nn_band",
@@ -4126,7 +4177,7 @@ def remove_nn_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     else:  # load
         bus_ref = element.get("bus_ref")
         voltage = _bus_voltage_kv(enm, bus_ref) if isinstance(bus_ref, str) else None
-        if voltage is None or voltage > 1.0:
+        if not w_pasmie_nn(voltage):
             return _error_response(
                 "Tą operacją usuwa się wyłącznie odbiory w paśmie nN.",
                 "nn.remove_element_not_nn_band",
@@ -4229,7 +4280,7 @@ def copy_nn_feeder(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
     upstream_voltage = (
         _bus_voltage_kv(enm, upstream_bus_ref) if isinstance(upstream_bus_ref, str) else None
     )
-    if upstream_voltage is None or upstream_voltage > 1.0:
+    if not w_pasmie_nn(upstream_voltage):
         return _error_response(
             "Kopiowany odpływ musi zaczynać się od aparatu w paśmie nN.",
             "nn.copy_feeder_not_nn_band",
@@ -6220,6 +6271,12 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     station = _resolve_station_for_field_write(enm, station_ref=station_ref, bus_ref=bus_nn_ref)
     if station is None:
         return _error_response("Nie znaleziono stacji dla szyny nN.", "nn.station_not_found")
+    if connection_variant == "nn_side":
+        odmowa_pasma = _odmowa_szyny_poza_pasmem_nn(
+            enm, bus_nn_ref, f"Źródło {technology} po stronie nN"
+        )
+        if odmowa_pasma is not None:
+            return odmowa_pasma
     if connection_variant == "nn_side" and not _has_transformer_in_path(enm, station):
         return _error_response(
             f"Źródło {technology} wymaga transformatora w ścieżce zasilania stacji.",
@@ -6446,6 +6503,9 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
             "przyłączony agregat.",
             "genset.bus_missing",
         )
+    odmowa_pasma = _odmowa_szyny_poza_pasmem_nn(enm, bus_nn_ref, "Agregat prądotwórczy nN")
+    if odmowa_pasma is not None:
+        return odmowa_pasma
 
     seed = _compute_seed(
         {"op": "genset_nn", "bus": bus_nn_ref, "p": genset_spec.get("rated_power_kw", 0)}
@@ -6533,6 +6593,9 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "przyłączony UPS.",
             "ups.bus_missing",
         )
+    odmowa_pasma = _odmowa_szyny_poza_pasmem_nn(enm, bus_nn_ref, "UPS nN")
+    if odmowa_pasma is not None:
+        return odmowa_pasma
 
     seed = _compute_seed(
         {"op": "ups_nn", "bus": bus_nn_ref, "p": ups_spec.get("rated_power_kw", 0)}

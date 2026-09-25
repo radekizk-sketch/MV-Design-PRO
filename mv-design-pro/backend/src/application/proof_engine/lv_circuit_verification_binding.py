@@ -60,7 +60,7 @@ from application.analyses.fault_loop.service import (
     _transformer_loop_impedance,
     _upstream_thevenin_lv_component,
     oblicz_petle_na_trasie,
-    odmowa_ukladu_nn,
+    odmowa_analizy_nn,
     resolve_transformer_for_bus,
     uklad_nn_transformatora,
 )
@@ -236,39 +236,44 @@ class Ik1MinPetla:
 
 def _petla_zwarcia_min(
     enm: EnergyNetworkModel, station_ref: str, bus_ref: str
-) -> tuple[Ik1MinPetla | None, list[str], str | None]:
+) -> tuple[Ik1MinPetla | None, list[str], str | None, str | None]:
     """Rozwiąż pętlę zwarcia minimalnego dla obwodu (REUSE dokładnie tej samej
     sekwencji co ``swz.service.build_swz_view``/``nn_device_selection._ik1_min_i_u0``)."""
     station = _find_station(enm, station_ref)
     if station is None:
-        return None, ["station"], None
+        return None, ["station"], None, None
 
     # Transformator ZASILAJĄCY punkt obwodu (właściciel szyny po zamkniętych
     # gałęziach), nie „pierwszy transformator stacji" — klasa B-02 (2×TR).
     trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
-        return None, transformer_missing, None
+        return None, transformer_missing, None, None
 
     # W5-A: układ sieci nN z transformatora zasilającego; brak/TT/IT = odmowa nazwana.
     system = uklad_nn_transformatora(trafo)
-    odmowa = odmowa_ukladu_nn({}, system)
+    odmowa = odmowa_analizy_nn({}, trafo)
     if odmowa is not None:
-        return None, list(odmowa.get("missing_data", [])), odmowa.get("reason_pl")
+        return (
+            None,
+            list(odmowa.get("missing_data", [])),
+            odmowa.get("reason_pl"),
+            odmowa.get("kod_odmowy"),
+        )
     assert system is not None
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
-        return None, missing, None
+        return None, missing, None, None
 
     upstream, upstream_missing = _upstream_thevenin_lv_component(enm, trafo)
     if upstream is None:
-        return None, upstream_missing, None
+        return None, upstream_missing, None, None
 
     try:
         path = path_to_bus(enm, trafo.lv_bus_ref, bus_ref)
         segments = route_segments_min_scenario(path)
     except RouteExtractionError as exc:
-        return None, ["route"], str(exc)
+        return None, ["route"], str(exc), None
 
     phase_component, return_component = sum_phase_and_return_route(segments)
     net_type, protection = typ_sieci_solvera(system)
@@ -285,7 +290,7 @@ def _petla_zwarcia_min(
         phase_component=phase_component,
         return_component=return_component,
     )
-    return Ik1MinPetla(fault_loop=loop_result, u0_v=u_phase_v, system=system), [], None
+    return Ik1MinPetla(fault_loop=loop_result, u0_v=u_phase_v, system=system), [], None, None
 
 
 def zbuduj_wejscie_dowodu_obwodu_nn(
@@ -320,7 +325,9 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
     ``nn_device_selection.wybierz_aparat_dla_obwodu_nn`` stosuje dla Ib/Iz′/Ik″max).
 
     Zwraca ``{"status": "OK", "wejscie": LVCircuitVerificationInput}`` albo
-    ``{"status": "brak danych", "missing_data": [...], "reason_pl": ...}``.
+    ``{"status": "brak danych", "missing_data": [...], "reason_pl": ...}`` albo — gdy
+    strona dolna transformatora zasilającego leży poza pasmem nN —
+    ``{"status": "nie dotyczy", "kod_odmowy": ..., "reason_pl": ...}``.
     """
     breaker = _find_branch(enm, breaker_ref)
     if breaker is None:
@@ -336,7 +343,14 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
             "reason_pl": reason,
         }
 
-    petla, missing, reason_pl = _petla_zwarcia_min(enm, station_ref, bus_ref)
+    petla, missing, reason_pl, kod_odmowy = _petla_zwarcia_min(enm, station_ref, bus_ref)
+    if kod_odmowy is not None:
+        return {
+            "status": "nie dotyczy",
+            "kod_odmowy": kod_odmowy,
+            "missing_data": missing,
+            "reason_pl": reason_pl,
+        }
     if petla is None:
         return {"status": "brak danych", "missing_data": missing, "reason_pl": reason_pl}
 

@@ -7,9 +7,8 @@ wstawiany ze stacją ma domyślną nazwę „Transformator SN/nN”, więc etyki
 stron. Etykieta sieci zasilającej brała klasę „SN” ze stałej domyślnej solvera.
 
 Iloczyn cech (KLASA, NIE INSTANCJA): nazwa transformatora {domyślna nazwa stacji, nazwa
-własna projektanta, pusta} × rodzaj transformatora {SN/nN 15/0,4 kV, WN/nN 110/0,4 kV,
-WN/SN 110/15 kV — ścieżki nN nie bramkują pasma strony dolnej, więc etykieta musi być prawdziwa
-także wtedy} × ścieżka {pętla u
+własna projektanta, pusta} × rodzaj transformatora {SN/nN 15/0,4 kV, WN/nN 110/0,4 kV; WN/SN
+110/15 kV — tylko funkcja etykiety, bo ścieżki nN odmawiają go bramką pasma} × ścieżka {pętla u
 źródła, pętla w punkcie, pętle odpływów, SWZ, dobór aparatów nN, dowód obwodu nN} ×
 składowa {transformator, sieć zasilająca}. Każda ścieżka jest przechwycona na wejściu
 solvera (`compute_fault_loop`), więc test nie zależy od tego, co dana ścieżka zwraca.
@@ -64,10 +63,12 @@ _NAZWY = [_NAZWA_DOMYSLNA, _NAZWA_WLASNA, ""]
 #: klasy i bez stałej) bez zmian.
 _TR_BEZ_NAZWY = "Transformator bez nazwy"
 #: (napięcie GN, napięcie DN, oczekiwana etykieta sieci zasilającej).
+#: Transformator WN/SN (110/15 kV) nie wchodzi do ścieżek nN — bramka pasma odmawia go
+#: przed solverem (`test_bramka_pasma_nn.py`); jego etykietę sieci zasilającej sprawdza
+#: test funkcji etykiety niżej.
 _RODZAJE = [
     (15.0, 0.4, "Sieć SN (upstream Thevenin, sprowadzone do nN)"),
     (110.0, 0.4, "Sieć WN (upstream Thevenin, sprowadzone do nN)"),
-    (110.0, 15.0, "Sieć WN (upstream Thevenin, sprowadzone do SN)"),
 ]
 
 

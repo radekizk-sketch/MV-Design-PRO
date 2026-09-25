@@ -1666,6 +1666,7 @@ def build_nn_circuit_report_section(
     )
     from application.analyses.fault_loop.service import (
         _find_station,
+        odmowa_pasma_nn,
         resolve_transformer_for_bus,
         uklad_nn_transformatora,
     )
@@ -1688,6 +1689,11 @@ def build_nn_circuit_report_section(
     trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
         return {"status": "brak danych", "missing_data": transformer_missing, "reason_pl": None}
+    # Sekcja obwodu nN wyłącznie dla transformatora ze stroną dolną w paśmie nN — ta sama
+    # bramka co pętla zwarcia/SWZ/dobór (`odmowa_pasma_nn`), bez sekcji z fikcyjnym U0.
+    odmowa = odmowa_pasma_nn({}, trafo)
+    if odmowa is not None:
+        return {**odmowa, "provenance": provenance}
 
     dane_zrodlowe = {
         "stacja": station.name,

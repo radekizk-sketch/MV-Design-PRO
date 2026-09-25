@@ -41,6 +41,7 @@ from .pole_transformatorowe import (
     komunikat_braku_pola,
     pasmo_napieciowe,
     transformatory_bez_pola_sn,
+    w_pasmie_nn,
 )
 from .severity import (
     SEVERITY_BLOCKER,
@@ -463,7 +464,7 @@ class ENMValidator:
             if not bus_ref:
                 continue
             bus_voltage = bus_voltage_map.get(bus_ref)
-            if bus_voltage is not None and bus_voltage > 1.0:
+            if bus_voltage is not None and _voltage_band(bus_voltage) != "nN":
                 issues.append(
                     ValidationIssue(
                         code="E029",
@@ -2133,9 +2134,7 @@ class ENMValidator:
 
         def _bus_w_pasmie_nn(bus_ref: str) -> bool:
             bus = bus_by_ref.get(bus_ref)
-            if bus is None or bus.voltage_kv is None or bus.voltage_kv <= 0:
-                return False
-            return _voltage_band(bus.voltage_kv) == "nN"
+            return bus is not None and w_pasmie_nn(bus.voltage_kv)
 
         # --- E060: ciaglosc zasilania odbiorow/generatorow nN ---------------
         # Jedyny serwis topologii (CV-4.3): te same wyspy co E003 i mapowanie ENM → IR.

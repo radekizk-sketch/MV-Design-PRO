@@ -326,11 +326,13 @@ def test_kolejne_gpz_bez_nazwy_dostaja_numer_porzadkowy_nie_tozsamosc(
     brak_nazwy: dict[str, Any],
 ) -> None:
     """GPZ bez nazwy: rodzaj + napięcie, kolejny o tym samym napięciu — pierwszy wolny numer.
-    Tożsamość źródła (`source_id`) rozróżnia GPZ w modelu, nie jest nazwą."""
+    Tożsamość źródła (`source_id`) rozróżnia GPZ w modelu, nie jest nazwą. Napięcie w nazwie
+    w formacie `:g` („15 kV”) — karta ETYKIETY-TR; intencja testu (numer porządkowy zamiast
+    tożsamości) bez zmian."""
     snap = _gpz(**brak_nazwy)
     snap = _gpz(snap, source_id="GPZ-POLNOC", **brak_nazwy)
     snap = _gpz(snap, source_id="GPZ-POLUDNIE", **brak_nazwy)
-    assert _nazwy_gpz(snap) == ["GPZ 15.0 kV", "GPZ 15.0 kV (2)", "GPZ 15.0 kV (3)"]
+    assert _nazwy_gpz(snap) == ["GPZ 15 kV", "GPZ 15 kV (2)", "GPZ 15 kV (3)"]
     for nazwa in (
         [s["name"] for s in snap["substations"]]
         + [s["name"] for s in snap["sources"]]
@@ -349,7 +351,7 @@ def test_gpz_o_innym_napieciu_i_gpz_z_nazwa_jawna() -> None:
         catalog_ref="src-gpz-20kv-250mva-rx010",
     )
     snap = _gpz(snap, source_id="GPZ-3", source_name="GPZ Północ")
-    assert _nazwy_gpz(snap) == ["GPZ 15.0 kV", "GPZ 20.0 kV", "GPZ Północ"]
+    assert _nazwy_gpz(snap) == ["GPZ 15 kV", "GPZ 20 kV", "GPZ Północ"]
     _bez_fragmentow_identyfikatorow(snap)
 
 

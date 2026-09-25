@@ -581,6 +581,15 @@ def _seed_station_z_szyna_110kv(case_id: str) -> None:
                     "tags": [],
                     "meta": {},
                 },
+                {
+                    # Druga szyna nN stacji (sekcja rozdzielnicy) — cel jawnego `bus_ref`
+                    # w teście pierwszeństwa; różna od szyny nN wyprowadzanej z wariantu.
+                    "ref_id": "station/1/nn_bus_2",
+                    "name": "Szyna nN sekcja 2",
+                    "voltage_kv": 0.4,
+                    "tags": [],
+                    "meta": {},
+                },
             ],
             "branches": [],
             "sources": [],
@@ -609,7 +618,12 @@ def _seed_station_z_szyna_110kv(case_id: str) -> None:
                     "ref_id": "station/1",
                     "name": "GPZ 1",
                     "station_type": "mv_lv",
-                    "bus_refs": ["station/1/wn_bus", "station/1/sn_bus", "station/1/nn_bus"],
+                    "bus_refs": [
+                        "station/1/wn_bus",
+                        "station/1/sn_bus",
+                        "station/1/nn_bus",
+                        "station/1/nn_bus_2",
+                    ],
                     "transformer_refs": ["station/1/tr"],
                     "tags": [],
                     "meta": {},
@@ -736,17 +750,46 @@ class TestWeryfikacjaModuluNcRfgPrzyTworzeniuGeneratora:
 
     def test_bus_ref_jawny_ma_pierwszenstwo_nad_szyna_nn_wariantu(self, app_client) -> None:
         """`bus_ref` jawny (kreator/szuflada wskazały konkretną szynę) kieruje
-        klasyfikację na WSKAZANĄ szynę, nie na domyślnie wyprowadzoną szynę nN
-        stacji — sprawdzone tym, że wybór szyny SN (15 kV, zgodnej z katalogiem
-        źródła) faktycznie zmienia miejsce przyłączenia generatora w modelu.
+        przyłączenie i klasyfikację na WSKAZANĄ szynę, nie na domyślnie wyprowadzoną
+        szynę nN stacji — sprawdzone tym, że wybór drugiej szyny nN (sekcja 2)
+        faktycznie zmienia miejsce przyłączenia generatora w modelu.
+
+        Do karty ETYKIETY-TR (bramka pasma nN) ten test wskazywał szynę SN 15 kV w
+        wariancie `nn_side` i oczekiwał 201 — czyli utrwalał źródło „po stronie nN”
+        zapisane wprost na szynie SN (to samo, co walidator blokuje kodem E029).
+        Intencja (pierwszeństwo jawnej szyny) zachowana na szynie nN; wariant `nn_side`
+        na szynie SN ma teraz własny test odmowy niżej.
         Kryterium napięcia ≥110 kV samego resolvera ma dedykowany test
-        jednostkowy `TestNapiecicPrzylaczeniaKv` niżej (żaden typ w katalogu
-        przekształtników nie jest dziś homologowany na ≥110 kV, więc pełna
-        ścieżka HTTP nie może fizycznie skonstruować tego przypadku — regułę
-        walidacji „napięcie katalogowe = napięcie szyny" sprawdza inna karta).
+        jednostkowy `TestNapiecicPrzylaczeniaKv` niżej.
         """
         project_id, case_id = _create_project_and_case(app_client)
         _seed_station_z_szyna_110kv(case_id)
+
+        response = app_client.post(
+            f"/api/projects/{project_id}/cases/{case_id}/generators",
+            json={
+                "station_ref": "station/1",
+                "der_kind": "PV",
+                "power_mw": 0.5,
+                "connection_variant": "nn_side",
+                "bus_ref": "station/1/nn_bus_2",
+                "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+                "nc_rfg_module": "B",
+            },
+        )
+        assert response.status_code == 201, response.text
+        assert response.json()["snapshot"]["generators"][0]["bus_ref"] == "station/1/nn_bus_2"
+
+    def test_wariant_nn_side_na_szynie_sn_jest_odmowa_pasma_bez_zapisu(self, app_client) -> None:
+        """Źródło „po stronie nN” wskazane jawnie na szynę SN 15 kV: odmowa domenowa
+        `nn.bus_not_nn_band` (bramka pasma `w_pasmie_nn`), model bez zmian."""
+        from enm.store import get_enm
+
+        from tests.test_execution_api import _klucz_modelu
+
+        project_id, case_id = _create_project_and_case(app_client)
+        _seed_station_z_szyna_110kv(case_id)
+        przed = get_enm(_klucz_modelu(case_id)).model_dump(mode="json")
 
         response = app_client.post(
             f"/api/projects/{project_id}/cases/{case_id}/generators",
@@ -760,8 +803,9 @@ class TestWeryfikacjaModuluNcRfgPrzyTworzeniuGeneratora:
                 "nc_rfg_module": "B",
             },
         )
-        assert response.status_code == 201, response.text
-        assert response.json()["snapshot"]["generators"][0]["bus_ref"] == "station/1/sn_bus"
+        assert response.status_code == 422, response.text
+        assert response.json()["detail"]["code"] == "nn.bus_not_nn_band"
+        assert get_enm(_klucz_modelu(case_id)).model_dump(mode="json") == przed
 
     def test_brak_modulu_ncrfg_w_zadaniu_pomija_weryfikacje(self, app_client) -> None:
         """Pole opcjonalne: brak deklaracji nie ma z czym porównać, więc nie blokuje."""

@@ -68,7 +68,7 @@ from .pole_katalogowe import (
     aparaty_pola_z_referencji,
     rozwiaz_aparaty_pola,
 )
-from .pole_transformatorowe import pasmo_napieciowe
+from .pole_transformatorowe import pasmo_napieciowe, w_pasmie_nn
 from .rola_pola_sn import ROLA_POLA_SN_Z_ALIASU, kanoniczna_rola_pola_sn, nazwa_roli_pola_sn
 from .slownik_komunikatow import (
     NAZWY_FUNKCJI_POMIARU_PL,
@@ -2991,6 +2991,27 @@ def _opt_float_any(value: object) -> float | None:
         return float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return None
+
+
+def _odmowa_strony_nn_stacji(nn_voltage_kv: float, kod: str) -> dict[str, Any] | None:
+    """Odmowa stacji SN/nN, której strona dolna nie leży w paśmie nN.
+
+    Stacja SN/nN materializuje po stronie dolnej strukturę nN — wyłącznik główny i
+    odpływy nN (`nn_field_specs`, rola ODPLYW_NN), źródło nN stacji — którą operacje
+    strony dolnej (`domain_operations_v2`, kod `nn.bus_not_nn_band`) i analizy nN
+    (`fault_loop.service.odmowa_pasma_nn`) przyjmują wyłącznie w paśmie nN. Predykat z
+    tego samego źródła (`pole_transformatorowe.w_pasmie_nn`), inaczej stacja tworzyłaby
+    pola, których żadna operacja strony dolnej nie przyjmie (reguła KLASA §3).
+    """
+    if w_pasmie_nn(nn_voltage_kv):
+        return None
+    return _error_response(
+        f"Napięcie strony dolnej stacji {float(nn_voltage_kv):g} kV leży w paśmie "
+        f"{pasmo_napieciowe(float(nn_voltage_kv))}, a stacja SN/nN wymaga strony dolnej "
+        "w paśmie nN (poniżej 1 kV). Podaj napięcie strony nN z tabliczki transformatora "
+        "(np. 0,4 kV).",
+        kod,
+    )
 
 
 def _rodzaj_transformatora(napiecie_gn_kv: float | None, napiecie_dn_kv: float | None) -> str:
@@ -6641,6 +6662,11 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             f"Brak napięcia nN stacji — uzupełnij pole {pole('station.nn_voltage_kv')}.",
             "station.insert.nn_voltage_missing",
         )
+    odmowa_strony_nn = _odmowa_strony_nn_stacji(
+        nn_voltage_kv, "station.insert.nn_voltage_not_nn_band"
+    )
+    if odmowa_strony_nn is not None:
+        return odmowa_strony_nn
 
     # --- Krok 1: Topologia segmentu ---
     from_bus_ref = segment.get("from_bus_ref")
@@ -10143,6 +10169,11 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             "wartością większą od zera.",
             "station.append.nn_voltage_missing",
         )
+    odmowa_strony_nn = _odmowa_strony_nn_stacji(
+        nn_voltage_kv, "station.append.nn_voltage_not_nn_band"
+    )
+    if odmowa_strony_nn is not None:
+        return odmowa_strony_nn
 
     # Walidacja station_type
     station_type_raw = (

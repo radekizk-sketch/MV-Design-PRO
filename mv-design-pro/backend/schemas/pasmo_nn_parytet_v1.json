@@ -1,0 +1,25 @@
+{
+  "$id": "pasmo_nn_parytet_v1",
+  "tytul": "Parytet predykatu 'napiecie w pasmie nN' — backend (bramki nN) <-> kreator stacji SN/nN",
+  "karta": "ETYKIETY-TR (bramka pasma nN)",
+  "opis_pl": [
+    "WSPOLNA tablica decyzyjna dwoch implementacji tego samego predykatu:",
+    "  * BACKEND  — enm/pole_transformatorowe.py::w_pasmie_nn (analizy nN, operacje strony dolnej, stacje SN/nN),",
+    "  * FRONTEND — ui2/kreatory/stacja/stacjaModel.ts::wPasmieNn (walidacja napiecia strony nN kreatora stacji).",
+    "Granica: pasmo nN to napiecie dodatnie PONIZEJ 1 kV (pole_transformatorowe.PASMO_NN_MAX_KV, wylacznie).",
+    "Brak napiecia albo wartosc niedodatnia — przynaleznosci do pasma nN nie da sie potwierdzic (false)."
+  ],
+  "wiersze": [
+    { "napiecie_kv": 0.23, "w_pasmie_nn": true },
+    { "napiecie_kv": 0.4, "w_pasmie_nn": true },
+    { "napiecie_kv": 0.69, "w_pasmie_nn": true },
+    { "napiecie_kv": 0.999, "w_pasmie_nn": true },
+    { "napiecie_kv": 1.0, "w_pasmie_nn": false },
+    { "napiecie_kv": 6.0, "w_pasmie_nn": false },
+    { "napiecie_kv": 15.0, "w_pasmie_nn": false },
+    { "napiecie_kv": 110.0, "w_pasmie_nn": false },
+    { "napiecie_kv": 0.0, "w_pasmie_nn": false },
+    { "napiecie_kv": -0.4, "w_pasmie_nn": false },
+    { "napiecie_kv": null, "w_pasmie_nn": false }
+  ]
+}

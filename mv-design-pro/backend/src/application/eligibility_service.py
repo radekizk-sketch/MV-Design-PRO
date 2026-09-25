@@ -39,7 +39,8 @@ from enm.models import (
     OverheadLine,
     SwitchBranch,
 )
-from enm.pole_transformatorowe import pasmo_napieciowe
+from enm.pole_transformatorowe import pasmo_napieciowe, w_pasmie_nn
+from enm.slownik_komunikatow import opis_obiektu
 from enm.uklad_sieci_nn import transformatory_bez_ukladu_nn
 from enm.validator import ReadinessResult
 from enm.zrodlo_zwarcie import dane_zwarciowe_zrodla
@@ -873,6 +874,33 @@ class EligibilityService:
                             element_ref=station.ref_id,
                             modal_type="TransformerModal",
                             payload_hint={"required": "transformer"},
+                        ),
+                    )
+                )
+                continue
+
+            # Ta sama bramka pasma co analizy nN (`fault_loop.service.odmowa_pasma_nn`,
+            # predykat `w_pasmie_nn`): transformator ze stroną dolną spoza pasma nN nie
+            # zasila sieci nN — pre-kontrola nie może zgłaszać gotowości, której analiza
+            # potem odmówi.
+            if not w_pasmie_nn(trafo.ulv_kv):
+                blockers.append(
+                    AnalysisEligibilityIssue(
+                        code="ELIG_FLNN_TRANSFORMER_LV_NOT_NN_BAND",
+                        severity=IssueSeverity.BLOCKER,
+                        message_pl=(
+                            f"{opis_obiektu(trafo, 'Transformator')} "
+                            f"({opis_obiektu(station, 'stacja')}) ma stronę dolną "
+                            f"{trafo.ulv_kv:g} kV — poza pasmem nN (poniżej 1 kV). Pętla zwarcia "
+                            "nN i SWZ dotyczą wyłącznie sieci nN."
+                        ),
+                        element_ref=trafo.ref_id,
+                        element_type="transformer",
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=trafo.ref_id,
+                            modal_type="TransformerModal",
+                            payload_hint={"required": "ulv_kv"},
                         ),
                     )
                 )

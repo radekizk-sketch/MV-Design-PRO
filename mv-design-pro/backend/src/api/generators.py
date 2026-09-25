@@ -41,6 +41,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.nastawy_modulu import NastawyZabezpieczenModulu
 from enm.nazwy_elementow import nazwa_elementu
+from enm.pole_transformatorowe import w_pasmie_nn
 from enm.store import blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
@@ -461,7 +462,7 @@ def _resolve_nn_bus_ref(enm: dict[str, Any], station: dict[str, Any]) -> str | N
 
     voltages = _bus_voltage_index(enm)
     for bus_ref in station.get("bus_refs", []):
-        if isinstance(bus_ref, str) and voltages.get(bus_ref, 999.0) < 1.0:
+        if isinstance(bus_ref, str) and w_pasmie_nn(voltages.get(bus_ref)):
             return bus_ref
     return None
 

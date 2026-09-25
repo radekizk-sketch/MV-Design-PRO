@@ -114,6 +114,7 @@ from application.analyses.fault_loop.service import (
     _find_station,
     assign_station_lv_buses,
     build_feeder_fault_loop_view,
+    odmowa_pasma_nn,
     resolve_transformer_for_bus,
     station_transformers,
     uklad_nn_transformatora,
@@ -1010,6 +1011,26 @@ def build_nn_circuit_sheet(
             "reason_pl": None,
         }
 
+    # Arkusz obwodów nN liczy wyłącznie odpływy transformatorów ze stroną dolną w paśmie
+    # nN (ta sama bramka co pętla zwarcia/SWZ/dobór — `odmowa_pasma_nn`). Transformator
+    # spoza pasma nie znika po cichu: jego kod odmowy trafia do `missing_data`.
+    odmowy_pasma = {
+        t.ref_id: odmowa for t in transformatory if (odmowa := odmowa_pasma_nn({}, t)) is not None
+    }
+    if len(odmowy_pasma) == len(transformatory):
+        pierwsza = odmowy_pasma[transformatory[0].ref_id]
+        return {
+            "status": "nie dotyczy",
+            "kod_odmowy": pierwsza["kod_odmowy"],
+            "station_ref": station_ref,
+            "station_name": station.name,
+            "wiersze": [],
+            "missing_data": [],
+            "reason_pl": pierwsza["reason_pl"],
+        }
+    braki_pasma = sorted(f"{ref}:{o['kod_odmowy']}" for ref, o in odmowy_pasma.items())
+    transformatory = [t for t in transformatory if t.ref_id not in odmowy_pasma]
+
     system = uklad_nn_stacji(enm, station)
     provenance = _build_provenance(
         enm=enm,
@@ -1074,7 +1095,7 @@ def build_nn_circuit_sheet(
             "station_name": station.name,
             "network_system": system,
             "wiersze": [],
-            "missing_data": [],
+            "missing_data": braki_pasma,
             "reason_pl": None,
             "provenance": provenance,
         }
@@ -1105,7 +1126,7 @@ def build_nn_circuit_sheet(
         "station_name": station.name,
         "network_system": system,
         "wiersze": wiersze,
-        "missing_data": [],
+        "missing_data": braki_pasma,
         "reason_pl": None,
         "provenance": provenance,
     }
@@ -1138,6 +1159,9 @@ def build_nn_circuit_sheet_row_for_breaker(
     trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
         return {"status": "brak danych", "missing_data": transformer_missing, "reason_pl": None}
+    odmowa = odmowa_pasma_nn({}, trafo)
+    if odmowa is not None:
+        return odmowa
     system = uklad_nn_transformatora(trafo)
     try:
         hop_count = len(path_to_bus(enm, trafo.lv_bus_ref, bus_ref).branches)
