@@ -57,6 +57,7 @@ import {
   appendLateralBranch,
 } from './syntheticNetworks';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
+import { czasProcesoraMs } from '../../../../../test/czasProcesora';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bigFixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -250,19 +251,22 @@ describe('RECENZJA EKSPERCKA — fixtury wielkoskalowe rodzina H (~100/250/500 s
 
       it(`czas budowy 3×LOD w budżecie ${sc.budgetMs} ms (raport, WYTYCZNE §10)`, () => {
         buildSceneV3(enm, 2); // rozgrzewka JIT (poza pomiarem)
-        const start = Date.now();
+        // Czas PROCESORA (`src/test/czasProcesora.ts`), nie zegara — budżet łapie złożoność
+        // kodu, nie obciążenie maszyny współdzielonej.
         const perLod: number[] = [];
         let stations = 0;
         for (const lod of LODS) {
-          const t = Date.now();
-          const scene = buildSceneV3(enm, lod as SceneLod);
-          stations = scene.meta.stationCount;
-          perLod.push(Date.now() - t);
+          perLod.push(
+            czasProcesoraMs(() => {
+              stations = buildSceneV3(enm, lod as SceneLod).meta.stationCount;
+            }),
+          );
         }
-        const elapsed = Date.now() - start;
+        const elapsed = perLod.reduce((suma, ms) => suma + ms, 0);
+        const ms = (wartosc: number): string => `${Math.round(wartosc)}ms`;
         console.log(
-          `[RECENZJA EKSPERCKA §10 wydajność] H ${sc.nazwa}: ${stations} stacji · ` +
-            `L0=${perLod[0]}ms L1=${perLod[1]}ms L2=${perLod[2]}ms total=${elapsed}ms (budżet ${sc.budgetMs}ms)`,
+          `[RECENZJA EKSPERCKA §10 wydajność] H ${sc.nazwa}: ${stations} stacji · czas procesora ` +
+            `L0=${ms(perLod[0])} L1=${ms(perLod[1])} L2=${ms(perLod[2])} total=${ms(elapsed)} (budżet ${sc.budgetMs}ms)`,
         );
         expect(elapsed).toBeLessThan(sc.budgetMs);
       });

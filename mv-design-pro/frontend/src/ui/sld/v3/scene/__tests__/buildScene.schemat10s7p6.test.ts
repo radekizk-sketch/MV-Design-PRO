@@ -20,6 +20,7 @@ import { MIN_SUBTREE_CLEARANCE } from '../../layout/clearances';
 import { GRID } from '../../core/grid';
 import { LODS, loadEnm as loadEnmH, synthLargeTrunk } from './syntheticNetworks';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
+import { czasProcesoraMs } from '../../../../../test/czasProcesora';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bigFixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -188,13 +189,16 @@ describe('SCHEMAT-10 S7.6 — kompresja generalizuje na rodzinę H (106/265/530 
   for (const sc of SCALES) {
     it(`H ${sc.nazwa}: zero pasm z nadmiarem światła, 3×LOD, w budżecie ${sc.budgetMs} ms`, () => {
       const enm = synthLargeTrunk(hFixtureEnm, sc.copies);
-      const t0 = performance.now();
-      for (const lod of LODS) {
-        const shelves = buildSceneV3(enm, lod).meta.lateralShelves ?? [];
-        expect(shelves.length).toBeGreaterThan(0);
-        expect(excessShelves(shelves)).toEqual([]);
-      }
-      expect(performance.now() - t0).toBeLessThan(sc.budgetMs);
+      // Budżet w CZASIE PROCESORA (`src/test/czasProcesora.ts`) — zegar ścienny mierzy też
+      // obciążenie maszyny, a bramka łapie niekontrolowaną złożoność kodu.
+      const ms = czasProcesoraMs(() => {
+        for (const lod of LODS) {
+          const shelves = buildSceneV3(enm, lod).meta.lateralShelves ?? [];
+          expect(shelves.length).toBeGreaterThan(0);
+          expect(excessShelves(shelves)).toEqual([]);
+        }
+      });
+      expect(ms).toBeLessThan(sc.budgetMs);
     });
   }
 });

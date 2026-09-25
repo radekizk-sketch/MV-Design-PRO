@@ -46,6 +46,7 @@ import { declutterLabels } from '../../layout/declutter';
 import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../buildScene';
 import { synthLargeTrunk } from './syntheticNetworks';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
+import { czasProcesoraMs } from '../../../../../test/czasProcesora';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURA = resolve(
@@ -467,13 +468,12 @@ describe('S9-9 — tożsamość bajtowa sceny, declutteru i planu etykiet', () =
 });
 
 describe('S9-9 — budżet przeliczeń synchronicznych ścieżki gestu', () => {
-  /** Mediana z kilku przebiegów — odporniejsza na chwilowe zajęcie maszyny CI. */
+  /** Mediana CZASU PROCESORA z kilku przebiegów (`src/test/czasProcesora.ts`: zegar ścienny
+   *  liczy też czekanie w kolejce planisty systemu, czyli obciążenie maszyny, nie koszt kodu). */
   function mediana(fn: () => unknown, powtorzenia = 5): number {
     const czasy: number[] = [];
     for (let i = 0; i < powtorzenia; i++) {
-      const t0 = performance.now();
-      fn();
-      czasy.push(performance.now() - t0);
+      czasy.push(czasProcesoraMs(fn));
     }
     czasy.sort((a, b) => a - b);
     return czasy[Math.floor(czasy.length / 2)];
@@ -518,6 +518,14 @@ describe('S9-9 — budżet przeliczeń synchronicznych ścieżki gestu', () => {
     // też jest ~4× i próg łapie go tak samo pewnie jak wcześniej; zmienia się
     // tylko odporność na pojedynczy wyskok. Zmierzone mediany: 2,07 · 2,28
     // (drzewo po karcie) i 2,45 · 2,61 (drzewo sprzed karty).
+    //
+    // CZAS PROCESORA ZAMIAST ZEGARA ŚCIENNEGO (partia integracji 3, 2026-09-25). Mediana
+    // nie wystarczyła: pełny vitest przy obciążeniu ~10 na 4 CPU dał medianę 3,28 i czerwień
+    // bez żadnej zmiany na mierzonej ścieżce. Szum siedział w KAŻDYM pomiarze — zegar
+    // ścienny liczy czekanie procesu w kolejce planisty. Dziewięć prób na tej samej maszynie:
+    // iloraz z zegara 0,28 … 5,03, z czasu procesora 2,03 … 2,28. Próg 3× i mediana zostają;
+    // koszt kwadratowy daje ~4× czasu procesora tak samo jak zegara, więc moc detekcyjna
+    // jest nietknięta.
     const PROBEK_ILORAZU = 5;
     const ilorazy: number[] = [];
     for (let i = 0; i < PROBEK_ILORAZU; i++) {

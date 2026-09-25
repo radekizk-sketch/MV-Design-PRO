@@ -39,6 +39,7 @@ import { TOP_LEVEL_FIELD_CLEARANCE } from '../../layout/clearances';
 import { GRID } from '../../core/grid';
 import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
 import type { EnergyNetworkModel as Enm } from '../../../../../types/enm';
+import { czasProcesoraMs } from '../../../../../test/czasProcesora';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bigFixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -404,12 +405,14 @@ describe('SCHEMAT-10 S7 etap 4 §9 pkt 7 — fixtura H (~100 stacji, syntetyczna
   });
 
   it('H: czas budowy w budżecie (WYTYCZNE §10 — duża sieć < 15 s / 3 LOD) + raport', () => {
-    const start = Date.now();
     let stations = 0;
-    for (const lod of LODS) stations = buildSceneV3(hEnm, lod).meta.stationCount;
-    const elapsed = Date.now() - start;
+    // Czas PROCESORA (`src/test/czasProcesora.ts`), nie zegara — budżet łapie złożoność
+    // kodu, nie obciążenie maszyny współdzielonej.
+    const elapsed = czasProcesoraMs(() => {
+      for (const lod of LODS) stations = buildSceneV3(hEnm, lod).meta.stationCount;
+    });
     // Raport wydajności (widoczny w --reporter verbose / CI log).
-    console.log(`[S7 etap 4 §9 pkt 7] fixtura H: ${stations} stacji, 3 LOD, ${elapsed} ms`);
+    console.log(`[S7 etap 4 §9 pkt 7] fixtura H: ${stations} stacji, 3 LOD, ${Math.round(elapsed)} ms procesora`);
     expect(elapsed).toBeLessThan(15000);
   });
 });

@@ -251,8 +251,12 @@ describe('workspace shell V12.5 surfaces', () => {
     render(<WorkspaceSurfaceRouter region="main" />);
 
     expect(screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-37'].titlePl })).toBeInTheDocument();
-    expect(await screen.findByRole('heading', { level: 3, name: /Kontrakt raportu i eksportu/i })).toBeInTheDocument();
-    expect(screen.getAllByText('JSON').length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { level: 3, name: /Kontrakt raportu i eksportu/i })).toBeInTheDocument();
+    // Nagłówek panelu kontraktu rysuje `SectionCard` od razu, PRZED pobraniem kontraktu
+    // obliczenia (`useAnalysisRunContract`), więc czekanie na nagłówek niczego nie
+    // synchronizowało: asercje niżej ścigały się z odpowiedzią i pod obciążeniem maszyny
+    // przegrywały (pełny vitest partii integracji 3). Czekamy na treść zależną od danych.
+    expect((await screen.findAllByText('JSON')).length).toBeGreaterThan(0);
     expect(screen.getByText('pole statusu')).toBeInTheDocument();
     expect(screen.queryByText('proof-pack-1')).not.toBeInTheDocument();
     expect(screen.getAllByText('Zapisane w śladzie audytu').length).toBeGreaterThan(0);
