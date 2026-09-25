@@ -3,26 +3,26 @@
     "id": "bea90c9a-33e0-543b-b4e3-9514eca3921a",
     "study_case_id": "case-demo",
     "analysis_type": "LOAD_FLOW",
-    "solver_input_hash": "32f21675e51958f204ae37488d0d7dd47ed9cc5a75c704da70eeaaabb193eebd",
+    "solver_input_hash": "40775ec6b04d8062db72bc43b7feb47c8e8572583b551720954a6feaf7be0f2c",
     "status": "DONE",
     "started_at": "2026-09-16T09:00:00+00:00",
     "finished_at": "2026-09-16T09:00:00+00:00",
     "error_message": null,
     "model_revision": 1,
     "created_at": "2026-09-16T09:00:00+00:00",
-    "snapshot_hash": "f904355bc28f4cbfc126b902686e11dc469a42f84301319fe8b366259bc8254c"
+    "snapshot_hash": "93a2d4ee6ca0487e57412adc3d4fbae9a0027922ce99da919a652380fbac8d27"
   },
   {
     "id": "009c7838-7031-5d60-b828-58a66256da21",
     "study_case_id": "case-demo",
     "analysis_type": "SC_3F",
-    "solver_input_hash": "34d5a9b8650e33b6e29db5fe274f1c9e550be83d71e404bb7013f11eb7805e3f",
+    "solver_input_hash": "2a97ed7181cad677c70591aab137f47ea45bf7b0ddc09335332867fc5b924a9c",
     "status": "DONE",
     "started_at": "2026-09-16T09:00:00+00:00",
     "finished_at": "2026-09-16T09:00:00+00:00",
     "error_message": null,
     "model_revision": 1,
     "created_at": "2026-09-16T09:00:00+00:00",
-    "snapshot_hash": "f904355bc28f4cbfc126b902686e11dc469a42f84301319fe8b366259bc8254c"
+    "snapshot_hash": "93a2d4ee6ca0487e57412adc3d4fbae9a0027922ce99da919a652380fbac8d27"
   }
 ]
