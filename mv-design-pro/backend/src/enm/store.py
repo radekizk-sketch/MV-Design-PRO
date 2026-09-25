@@ -63,8 +63,17 @@ from enm.scenariusze import (
     usun_wszystkie_scenariusze,
 )
 from enm.uziemienie import RaportMigracjiUziemienia, raport_migracji_uziemienia
+from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
+
+#: Nazwane awarie ZAPISU modelu po operacji (karta #151) — jedno źródło dla każdego
+#: miejsca, które tłumaczy nieudany zapis na komunikat „model pozostał bez zmian"
+#: (`api/enm.py`, `api/generators.py`, `application/station_templates/apply.py`):
+#: migawka niezgodna z kontraktem ENM (`pydantic.ValidationError` z `model_validate`)
+#: albo nośnik odmówił zapisu (`OSError`: ENOSPC/EACCES/EIO — `set_enm` wycofuje wtedy
+#: zapis i rzuca dalej). Każdy inny wyjątek jest błędem programu i wybucha (500).
+BLEDY_ZAPISU_MODELU: tuple[type[Exception], ...] = (ValidationError, OSError)
 
 
 @dataclass(frozen=True)

@@ -25,6 +25,19 @@ if TYPE_CHECKING:
     from application.proof_engine.types import ProofDocument
 
 
+class BladKompilacjiLatex(RuntimeError):
+    """pdflatex odrzucił dokument (kod wyjścia ≠ 0) albo nie wytworzył pliku PDF."""
+
+
+#: Nazwane awarie kompilacji PDF (karta #151): odmowa pdflatex, przekroczony czas
+#: kompilacji, awaria systemu plików/procesu (`OSError`). Inny wyjątek = błąd programu.
+BLEDY_KOMPILACJI_PDF: tuple[type[Exception], ...] = (
+    BladKompilacjiLatex,
+    subprocess.TimeoutExpired,
+    OSError,
+)
+
+
 @dataclass(frozen=True)
 class ExportResult:
     """
@@ -88,22 +101,15 @@ class InspectorExporter:
         Returns:
             ExportResult z zawartoscia JSON
         """
-        try:
-            # Uzyj json_representation z ProofDocument (juz deterministyczny)
-            content = self._document.json_representation
-            return ExportResult(
-                format="json",
-                content=content,
-                success=True,
-                filename_hint=self._generate_filename("json"),
-            )
-        except Exception as e:
-            return ExportResult(
-                format="json",
-                content="",
-                success=False,
-                error_message=str(e),
-            )
+        # Odczyt reprezentacji dokumentu nie ma odmowy danych — wyjątek tutaj jest
+        # błędem programu i wybucha (karta #151: dawne `except Exception` robiło z
+        # niego „eksport nieudany" bez śladu w dzienniku).
+        return ExportResult(
+            format="json",
+            content=self._document.json_representation,
+            success=True,
+            filename_hint=self._generate_filename("json"),
+        )
 
     def export_tex(self) -> ExportResult:
         """
@@ -115,22 +121,13 @@ class InspectorExporter:
         Returns:
             ExportResult z zawartoscia LaTeX
         """
-        try:
-            # Uzyj latex_representation z ProofDocument
-            content = self._document.latex_representation
-            return ExportResult(
-                format="tex",
-                content=content,
-                success=True,
-                filename_hint=self._generate_filename("tex"),
-            )
-        except Exception as e:
-            return ExportResult(
-                format="tex",
-                content="",
-                success=False,
-                error_message=str(e),
-            )
+        # Jak w `export_json`: brak odmowy danych, wyjątek = błąd programu (karta #151).
+        return ExportResult(
+            format="tex",
+            content=self._document.latex_representation,
+            success=True,
+            filename_hint=self._generate_filename("tex"),
+        )
 
     def export_pdf(self) -> ExportResult:
         """
@@ -181,12 +178,12 @@ class InspectorExporter:
                 success=True,
                 filename_hint=self._generate_filename("pdf"),
             )
-        except Exception as e:
+        except BLEDY_KOMPILACJI_PDF as e:
             return ExportResult(
                 format="pdf",
                 content=b"",
                 success=False,
-                error_message=f"PDF compilation failed: {e}",
+                error_message=f"Kompilacja PDF nie powiodła się: {e}",
             )
 
     def export_docx(self) -> ExportResult:
@@ -225,97 +222,90 @@ class InspectorExporter:
                 ),
             )
 
-        try:
-            from io import BytesIO
+        # Budowa dokumentu nie ma odmowy danych — wyjątek = błąd programu (karta #151).
+        from io import BytesIO
 
-            from network_model.reporting.docx_determinism import (
-                make_docx_bytes_deterministic,
-            )
+        from network_model.reporting.docx_determinism import (
+            make_docx_bytes_deterministic,
+        )
 
-            doc = self._document
-            docx_obj = Document()
+        doc = self._document
+        docx_obj = Document()
 
-            # Header (light_technical)
-            title = docx_obj.add_heading(doc.title_pl, level=0)
-            for run in title.runs:
-                run.font.size = Pt(16)
+        # Header (light_technical)
+        title = docx_obj.add_heading(doc.title_pl, level=0)
+        for run in title.runs:
+            run.font.size = Pt(16)
 
-            # Metadata
-            meta_table = docx_obj.add_table(rows=4, cols=2)
-            meta_table.style = "Light Grid Accent 1"
-            meta_rows = [
-                ("Typ dowodu", doc.proof_type.value),
-                ("Identyfikator artefaktu", str(doc.artifact_id)),
-                ("Data utworzenia", doc.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")),
-                ("Liczba kroków", str(len(doc.steps))),
-            ]
-            for row_idx, (label, value) in enumerate(meta_rows):
-                cells = meta_table.rows[row_idx].cells
-                cells[0].text = label
-                cells[1].text = value
+        # Metadata
+        meta_table = docx_obj.add_table(rows=4, cols=2)
+        meta_table.style = "Light Grid Accent 1"
+        meta_rows = [
+            ("Typ dowodu", doc.proof_type.value),
+            ("Identyfikator artefaktu", str(doc.artifact_id)),
+            ("Data utworzenia", doc.created_at.strftime("%Y-%m-%d %H:%M:%S UTC")),
+            ("Liczba kroków", str(len(doc.steps))),
+        ]
+        for row_idx, (label, value) in enumerate(meta_rows):
+            cells = meta_table.rows[row_idx].cells
+            cells[0].text = label
+            cells[1].text = value
 
-            docx_obj.add_paragraph()
+        docx_obj.add_paragraph()
 
-            # Steps — każdy krok jako sekcja
-            docx_obj.add_heading("Kroki dowodowe", level=1)
-            for step in doc.steps:
-                docx_obj.add_heading(f"Krok {step.step_number}: {step.title_pl}", level=2)
+        # Steps — każdy krok jako sekcja
+        docx_obj.add_heading("Kroki dowodowe", level=1)
+        for step in doc.steps:
+            docx_obj.add_heading(f"Krok {step.step_number}: {step.title_pl}", level=2)
 
-                # Formula (LaTeX, monospace)
-                eq_para = docx_obj.add_paragraph()
-                eq_run = eq_para.add_run("Wzór: ")
-                eq_run.bold = True
-                formula_run = eq_para.add_run(step.equation.latex)
-                formula_run.font.name = "Consolas"
+            # Formula (LaTeX, monospace)
+            eq_para = docx_obj.add_paragraph()
+            eq_run = eq_para.add_run("Wzór: ")
+            eq_run.bold = True
+            formula_run = eq_para.add_run(step.equation.latex)
+            formula_run.font.name = "Consolas"
 
-                # Substitution
-                if step.substitution_latex:
-                    sub_para = docx_obj.add_paragraph()
-                    sub_run = sub_para.add_run("Podstawienie: ")
-                    sub_run.bold = True
-                    sub_value_run = sub_para.add_run(step.substitution_latex)
-                    sub_value_run.font.name = "Consolas"
+            # Substitution
+            if step.substitution_latex:
+                sub_para = docx_obj.add_paragraph()
+                sub_run = sub_para.add_run("Podstawienie: ")
+                sub_run.bold = True
+                sub_value_run = sub_para.add_run(step.substitution_latex)
+                sub_value_run.font.name = "Consolas"
 
-                # Result
-                result_para = docx_obj.add_paragraph()
-                result_label = result_para.add_run("Wynik: ")
-                result_label.bold = True
-                result_para.add_run(f"{step.result.value} {step.result.unit}")
+            # Result
+            result_para = docx_obj.add_paragraph()
+            result_label = result_para.add_run("Wynik: ")
+            result_label.bold = True
+            result_para.add_run(f"{step.result.value} {step.result.unit}")
 
-                # Unit check — derywacja jednostek (ta sama treść co krok w LaTeX-u,
-                # `latex_renderer._render_step`), nie plakietka „OK/BŁĄD” (inwentarz
-                # werdyktów C44, plan AB §8 F2: flaga bywa zaszyta na `True`).
-                if step.unit_check:
-                    uc_para = docx_obj.add_paragraph()
-                    uc_label = uc_para.add_run("Weryfikacja jednostek: ")
-                    uc_label.bold = True
-                    uc_para.add_run(
-                        f"{step.unit_check.derivation} "
-                        f"(jednostka wyniku: {step.unit_check.expected_unit})"
-                    )
+            # Unit check — derywacja jednostek (ta sama treść co krok w LaTeX-u,
+            # `latex_renderer._render_step`), nie plakietka „OK/BŁĄD” (inwentarz
+            # werdyktów C44, plan AB §8 F2: flaga bywa zaszyta na `True`).
+            if step.unit_check:
+                uc_para = docx_obj.add_paragraph()
+                uc_label = uc_para.add_run("Weryfikacja jednostek: ")
+                uc_label.bold = True
+                uc_para.add_run(
+                    f"{step.unit_check.derivation} "
+                    f"(jednostka wyniku: {step.unit_check.expected_unit})"
+                )
 
-            # Summary
-            docx_obj.add_paragraph()
-            docx_obj.add_heading("Podsumowanie", level=1)
-            summary_para = docx_obj.add_paragraph()
-            summary_para.add_run(f"Łączna liczba kroków: {doc.summary.total_steps}")
+        # Summary
+        docx_obj.add_paragraph()
+        docx_obj.add_heading("Podsumowanie", level=1)
+        summary_para = docx_obj.add_paragraph()
+        summary_para.add_run(f"Łączna liczba kroków: {doc.summary.total_steps}")
 
-            # Zapisz do bytes, normalizuj przez docx_determinism dla determinizmu binarnego
-            buf = BytesIO()
-            docx_obj.save(buf)
-            return ExportResult(
-                format="docx",
-                content=make_docx_bytes_deterministic(buf.getvalue()),
-                success=True,
-                filename_hint=self._generate_filename("docx"),
-            )
-        except Exception as exc:
-            return ExportResult(
-                format="docx",
-                content=b"",
-                success=False,
-                error_message=f"DOCX export failed: {exc}",
-            )
+        # Zapisz do bytes, normalizuj przez docx_determinism dla determinizmu binarnego
+        buf = BytesIO()
+        docx_obj.save(buf)
+        return ExportResult(
+            format="docx",
+            content=make_docx_bytes_deterministic(buf.getvalue()),
+            success=True,
+            filename_hint=self._generate_filename("docx"),
+        )
 
     def export_all(self) -> dict[str, ExportResult]:
         """
@@ -365,7 +355,7 @@ class InspectorExporter:
             Zawartosc PDF jako bytes
 
         Raises:
-            RuntimeError: Jesli kompilacja sie nie powiodla
+            BladKompilacjiLatex: Jesli kompilacja sie nie powiodla
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
@@ -401,11 +391,11 @@ class InspectorExporter:
                             if line.startswith("!"):
                                 error_msg = line
                                 break
-                    raise RuntimeError(error_msg)
+                    raise BladKompilacjiLatex(error_msg)
 
             # Odczytaj PDF
             if not pdf_file.exists():
-                raise RuntimeError("PDF file not generated")
+                raise BladKompilacjiLatex("pdflatex nie wytworzył pliku PDF")
 
             return pdf_file.read_bytes()
 

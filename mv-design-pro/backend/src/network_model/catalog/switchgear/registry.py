@@ -21,6 +21,8 @@ UI (PR 5 frontend):
 
 from __future__ import annotations
 
+from network_model.brak_zasobu import BrakZasobuError
+
 from .manufacturer import Manufacturer
 
 # ---------------------------------------------------------------------------
@@ -160,7 +162,9 @@ def get_manufacturer(manufacturer_ref: str) -> Manufacturer:
     """Pobiera producenta po ref. Raises KeyError gdy brak."""
     if manufacturer_ref not in MANUFACTURER_REGISTRY:
         available = ", ".join(sorted(MANUFACTURER_REGISTRY.keys()))
-        raise KeyError(f"Unknown manufacturer_ref: {manufacturer_ref}. Available: {available}")
+        raise BrakZasobuError(
+            f"Unknown manufacturer_ref: {manufacturer_ref}. Available: {available}"
+        )
     return MANUFACTURER_REGISTRY[manufacturer_ref]
 
 

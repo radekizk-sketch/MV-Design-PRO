@@ -71,7 +71,7 @@ from domain.run_batch import (
     compute_batch_input_hash,
     new_run_batch,
 )
-from enm.canonical_analysis import CanonicalRun
+from enm.canonical_analysis import ODMOWY_OBLICZENIA_BIEGU, CanonicalRun
 from enm.canonical_analysis import create_run as _create_canonical_run
 from enm.canonical_analysis import execute_run as _execute_canonical_run
 from enm.envelope import zbuduj_koperte
@@ -89,6 +89,15 @@ logger = logging.getLogger(__name__)
 
 class BatchExecutionError(Exception):
     """Błąd bazowy orkiestracji serii przebiegów."""
+
+
+#: Nazwane awarie POZYCJI serii (karta #151): odmowa serii (`BatchExecutionError` —
+#: scenariusz usunięty/zmieniony, brama uprawnień) i nazwana odmowa obliczenia biegu.
+#: Każdy inny wyjątek jest błędem programu (`execute_batch` domyka serię i rzuca dalej).
+ODMOWY_POZYCJI_SERII: tuple[type[Exception], ...] = (
+    BatchExecutionError,
+    *ODMOWY_OBLICZENIA_BIEGU,
+)
 
 
 class BatchNotFoundError(BatchExecutionError):
@@ -315,7 +324,34 @@ class BatchExecutionService:
         self._zapisz(batch)
 
         for pozycja in batch.sorted_items():
-            zaktualizowana = self._wykonaj_pozycje(klucz_twin, batch, pozycja, uow_factory)
+            try:
+                zaktualizowana = self._wykonaj_pozycje(klucz_twin, batch, pozycja, uow_factory)
+            except Exception as exc:
+                # Błąd PROGRAMU (karta #151) nie jest awarią pozycji: seria nie może
+                # zostać w RUNNING, więc bieżąca i wszystkie niewykonane pozycje dostają
+                # FAILED z nazwą błędu wewnętrznego, seria dostaje status końcowy, a
+                # wyjątek leci dalej (500 + pełny ślad w dzienniku).
+                logger.exception("Seria %s przerwana błędem wewnętrznym programu", batch_id)
+                komunikat = (
+                    f"Seria przerwana błędem wewnętrznym programu ({type(exc).__name__}) "
+                    "— szczegóły są w dzienniku serwera."
+                )
+                for niewykonana in batch.sorted_items():
+                    if niewykonana.position >= pozycja.position:
+                        batch = batch.with_item(
+                            RunBatchItem(
+                                position=niewykonana.position,
+                                scenario_id=niewykonana.scenario_id,
+                                analysis_type=niewykonana.analysis_type,
+                                options_hash=niewykonana.options_hash,
+                                canonical_run_id=None,
+                                status=ITEM_STATUS_FAILED,
+                                error_message=komunikat,
+                            )
+                        )
+                batch = batch.finalize(finished_at=datetime.now(UTC))
+                self._zapisz(batch)
+                raise
             batch = batch.with_item(zaktualizowana)
             self._zapisz(batch)
 
@@ -337,9 +373,14 @@ class BatchExecutionService:
         pozycja: RunBatchItem,
         uow_factory: Callable[[], Any] | None,
     ) -> RunBatchItem:
-        """Wykonaj JEDNĄ pozycję — zawsze zwraca pozycję w stanie KOŃCOWYM
-        (FINISHED/FAILED), nigdy nie podnosi wyjątku (awaria = FAILED, zero
-        przerwania pętli wołającego — karta §0 C2)."""
+        """Wykonaj JEDNĄ pozycję — zwraca pozycję w stanie KOŃCOWYM (FINISHED/FAILED).
+
+        Awaria POZYCJI = FAILED z powodem, bez przerwania pętli wołającego (karta §0
+        C2): odmowa serii (`BatchExecutionError` — scenariusz usunięty/zmieniony,
+        brama uprawnień) albo nazwana odmowa obliczenia (`ODMOWY_OBLICZENIA_BIEGU`
+        z `create_run`). Każdy inny wyjątek jest błędem programu i leci do
+        `execute_batch` (karta #151 — dawne `except Exception` robiło z niego
+        „scenariusz nieudany")."""
         try:
             wpis = self._pobierz_zweryfikowany_scenariusz(klucz_twin, pozycja)
             scenario = wpis.fault_spec
@@ -377,7 +418,7 @@ class BatchExecutionService:
                 status=ITEM_STATUS_FINISHED,
                 error_message=None,
             )
-        except Exception as exc:
+        except ODMOWY_POZYCJI_SERII as exc:
             logger.warning(
                 "Seria %s: pozycja %d (scenariusz %s) FAILED: %s",
                 batch.id,

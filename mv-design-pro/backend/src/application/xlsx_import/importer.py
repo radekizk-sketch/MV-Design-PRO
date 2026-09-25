@@ -64,6 +64,7 @@ from __future__ import annotations
 
 import io
 import re
+import zipfile
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -273,10 +274,23 @@ class XlsxNetworkImporter:
         (`source_reference = arkusz:<plik>#<arkusz>:<wiersz>`).
         """
         import openpyxl  # zaleznosc glowna (pyproject) — brak = blad srodowiska, nie danych
+        from openpyxl.utils.exceptions import InvalidFileException
 
+        # Nazwane odmowy odczytu pliku (karta #151, zmierzone na openpyxl): bajty spoza
+        # ZIP (`BadZipFile`), ZIP bez części pakietu OOXML (`KeyError` „There is no item
+        # named ..."), pakiet bez części skoroszytu (`OSError` „no valid workbook part"),
+        # uszkodzony XML części (`SyntaxError` — `ParseError` ElementTree i
+        # `XMLSyntaxError` lxml), odrzucony format (`InvalidFileException`). Inny
+        # wyjątek jest błędem programu i wybucha, nie udaje „pliku uszkodzonego".
         try:
             wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
-        except Exception as e:
+        except (
+            zipfile.BadZipFile,
+            KeyError,
+            OSError,
+            SyntaxError,
+            InvalidFileException,
+        ) as e:
             return XlsxImportResult(
                 success=False,
                 bledy=[

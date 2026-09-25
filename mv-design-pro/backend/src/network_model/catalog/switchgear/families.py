@@ -50,6 +50,8 @@ zamiast dostać zmyślone liczby.
 
 from __future__ import annotations
 
+from network_model.brak_zasobu import BrakZasobuError
+
 from .switchgear_family import SwitchgearFamily
 
 # =============================================================================
@@ -1331,7 +1333,7 @@ def get_switchgear_family(switchgear_family_ref: str) -> SwitchgearFamily:
     """Pobiera rodzinę po ref. KeyError gdy brak."""
     if switchgear_family_ref not in SWITCHGEAR_FAMILY_REGISTRY:
         available = ", ".join(sorted(SWITCHGEAR_FAMILY_REGISTRY.keys()))
-        raise KeyError(
+        raise BrakZasobuError(
             f"Unknown switchgear_family_ref: {switchgear_family_ref}. " f"Available: {available}"
         )
     return SWITCHGEAR_FAMILY_REGISTRY[switchgear_family_ref]

@@ -7,6 +7,7 @@ import traceback
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from network_model.brak_zasobu import BrakZasobuError
 
 logger = logging.getLogger("mv_design_pro")
 
@@ -54,11 +55,16 @@ def register_exception_handlers(app: FastAPI) -> None:
             headers={"X-Request-Id": request_id},
         )
 
-    @app.exception_handler(KeyError)
-    async def key_error_handler(request: Request, exc: KeyError) -> JSONResponse:
+    # Karta #151: 404 daje WYŁĄCZNIE nazwana odmowa `BrakZasobuError` (jawne wyszukanie
+    # po identyfikatorze bez wyniku). Dawny handler `KeyError` → 404 przebierał KAŻDY
+    # `KeyError` — także odczyt słownika w kodzie, czyli błąd programu — za „nie znaleziono
+    # zasobu", z ostrzeżeniem bez śladu w dzienniku. Zwykły `KeyError` idzie teraz do
+    # handlera `Exception` wyżej: 500 i pełny ślad.
+    @app.exception_handler(BrakZasobuError)
+    async def key_error_handler(request: Request, exc: BrakZasobuError) -> JSONResponse:
         request_id = getattr(request.state, "request_id", "unknown")
         logger.warning(
-            "KeyError rid=%s path=%s: %s",
+            "BrakZasobuError rid=%s path=%s: %s",
             request_id,
             request.url.path,
             str(exc),

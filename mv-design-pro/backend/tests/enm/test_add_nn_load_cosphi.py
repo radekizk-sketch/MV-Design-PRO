@@ -12,15 +12,23 @@ import math
 import pytest
 from enm.domain_operations import execute_domain_operation
 
+from tests.enm.model_minimalny import model_minimalny
+
 
 def _enm_with_feeder() -> dict:
     """Minimalny ENM ze stacją, szyną nN i odpływem nN (feeder)."""
-    enm: dict = {
-        "buses": [{"ref_id": "bus-nn", "name": "Szyna nN", "voltage_kv": 0.4}],
-        "substations": [
-            {"ref_id": "st-1", "name": "ST-1", "bus_refs": ["bus-nn"], "field_specs": []}
+    enm: dict = model_minimalny(
+        buses=[{"ref_id": "bus-nn", "name": "Szyna nN", "voltage_kv": 0.4}],
+        substations=[
+            {
+                "ref_id": "st-1",
+                "name": "ST-1",
+                "station_type": "mv_lv",
+                "bus_refs": ["bus-nn"],
+                "field_specs": [],
+            }
         ],
-    }
+    )
     feeder = execute_domain_operation(
         enm, "add_nn_outgoing_field", {"station_ref": "st-1", "bus_nn_ref": "bus-nn"}
     )

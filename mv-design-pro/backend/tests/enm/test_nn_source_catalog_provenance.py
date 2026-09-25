@@ -24,6 +24,9 @@ def _base_enm() -> dict:
         {
             "ref_id": "sub/1",
             "name": "Stacja SN/nN 1",
+            # Rodzaj stacji jest polem wymaganym kontraktu ENM (karta #151: wynik
+            # operacji jest walidowany kontraktem — fikstura musi być modelem poprawnym).
+            "station_type": "mv_lv",
             "bus_refs": ["bus/nn/1"],
             "transformer_refs": ["tr/1"],
             "tags": [],

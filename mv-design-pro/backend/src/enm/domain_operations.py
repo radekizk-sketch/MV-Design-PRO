@@ -17,7 +17,7 @@ import logging
 import math
 import re
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from domain.readiness_bridge import opis_kanoniczny
 from enm.assembler import czestotliwosc_studium_hz
@@ -27,9 +27,6 @@ from network_model.catalog.audit2_catalogs import (
 )
 from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
 from network_model.catalog.materialization import materialize_catalog_binding
-
-if TYPE_CHECKING:
-    from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import CatalogBinding
 from network_model.core.uziemienie import (
     ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
@@ -58,6 +55,7 @@ from network_model.pochodne.pasma_napieciowe import (
     powyzej_pasma_nn,
     w_pasmie_nn,
 )
+from pydantic import ValidationError
 
 from .deklaracje_modulu import POLA_NC_RFG_GENERATORA, pola_nc_rfg_generatora
 from .dynamika_z_katalogu import synchronizuj_dynamike_z_wiazan
@@ -93,9 +91,9 @@ from .slownik_komunikatow import (
     lista_pl,
     nazwa_kategorii_katalogu,
     nazwa_rodzaju_galezi,
+    opis_bledu_walidacji,
     opis_elementu,
     opis_nazwy,
-    opis_operacji,
     opis_pozycji_katalogu,
     pole,
 )
@@ -199,14 +197,13 @@ def _branch_point_catalog_item(catalog_ref: str | None) -> dict[str, Any] | None
     """
     if not isinstance(catalog_ref, str) or not catalog_ref.strip():
         return None
-    try:
-        from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
+    # Katalog statyczny — odczyt bez odmowy danych; dawne `except Exception: return None`
+    # (karta #151) robiło z błędu programu „pozycji nie ma w katalogu".
+    from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
 
-        for item in get_all_branch_point_types():
-            if isinstance(item, dict) and item.get("id") == catalog_ref.strip():
-                return item
-    except Exception:
-        return None
+    for item in get_all_branch_point_types():
+        if isinstance(item, dict) and item.get("id") == catalog_ref.strip():
+            return item
     return None
 
 
@@ -1989,307 +1986,309 @@ def _wzbogac_o_kanon(zgloszenia: list[dict[str, Any]]) -> None:
 
 def _build_readiness(
     enm: dict[str, Any],
+    enm_model: EnergyNetworkModel | None = None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Oblicz gotowość i blokery z walidatora."""
-    try:
+    """Oblicz gotowość i blokery z walidatora.
+
+    `enm_model` — ta sama migawka zwalidowana już kontraktem ENM (`_response` przekazuje
+    ją, żeby nie walidować dwa razy). Bez niej migawka jest walidowana tutaj, a
+    `ValidationError` WYBUCHA (karta #151 — dawne `except Exception` → „nie gotowe, zero
+    blokad" meldowało stan, którego nikt nie policzył)."""
+    if enm_model is None:
         enm_model = EnergyNetworkModel.model_validate(enm)
-        validator = ENMValidator()
-        validation = validator.validate(enm_model)
-        readiness = validator.readiness(validation)
+    validator = ENMValidator()
+    validation = validator.validate(enm_model)
+    readiness = validator.readiness(validation)
 
-        blockers = []
-        warnings = []
-        fix_actions = []
+    blockers = []
+    warnings = []
+    fix_actions = []
 
-        for issue in validation.issues:
-            entry = {
+    for issue in validation.issues:
+        entry = {
+            "code": issue.code,
+            "message_pl": issue.message_pl,
+            "element_ref": issue.element_refs[0] if issue.element_refs else None,
+        }
+        fa = None
+        if issue.fix_action:
+            fa = {
                 "code": issue.code,
-                "message_pl": issue.message_pl,
-                "element_ref": issue.element_refs[0] if issue.element_refs else None,
+                "action_type": issue.fix_action.action_type,
+                "element_ref": issue.fix_action.element_ref,
+                "panel": issue.fix_action.modal_type,
+                "step": issue.wizard_step_hint or None,
+                "focus": issue.fix_action.element_ref,
+                "message_pl": issue.suggested_fix or issue.message_pl,
             }
-            fa = None
-            if issue.fix_action:
-                fa = {
-                    "code": issue.code,
-                    "action_type": issue.fix_action.action_type,
-                    "element_ref": issue.fix_action.element_ref,
-                    "panel": issue.fix_action.modal_type,
-                    "step": issue.wizard_step_hint or None,
-                    "focus": issue.fix_action.element_ref,
-                    "message_pl": issue.suggested_fix or issue.message_pl,
-                }
-                fix_actions.append(fa)
+            fix_actions.append(fa)
 
-            if issue.severity == "BLOCKER":
-                entry["severity"] = "BLOKUJACE"
-                blockers.append(entry)
-            elif issue.severity == "IMPORTANT":
-                entry["severity"] = "OSTRZEZENIE"
-                warnings.append(entry)
+        if issue.severity == "BLOCKER":
+            entry["severity"] = "BLOKUJACE"
+            blockers.append(entry)
+        elif issue.severity == "IMPORTANT":
+            entry["severity"] = "OSTRZEZENIE"
+            warnings.append(entry)
 
-        # Domain-level check: DER przeksztaltnikowy bez transformatora w sciezce.
-        # Predykat = kanoniczny zbior GEN_TYPES_PRZEKSZTALTNIKOWE (enm/models.py),
-        # nie podciagi nazw — dopasowanie podciagiem gubilo farmy fw_pmsg/fw_dfig/
-        # fw_scig (przylaczane na nN tak samo jak PV/BESS).
-        for gen in enm.get("generators", []):
-            gen_type = (gen.get("gen_type") or "").lower()
-            if gen_type in _GEN_TYPES_PRZEKSZTALTNIKOWE:
-                has_trafo = bool(gen.get("blocking_transformer_ref")) or _station_has_transformer(
-                    enm,
-                    gen.get("station_ref"),
+    # Domain-level check: DER przeksztaltnikowy bez transformatora w sciezce.
+    # Predykat = kanoniczny zbior GEN_TYPES_PRZEKSZTALTNIKOWE (enm/models.py),
+    # nie podciagi nazw — dopasowanie podciagiem gubilo farmy fw_pmsg/fw_dfig/
+    # fw_scig (przylaczane na nN tak samo jak PV/BESS).
+    for gen in enm.get("generators", []):
+        gen_type = (gen.get("gen_type") or "").lower()
+        if gen_type in _GEN_TYPES_PRZEKSZTALTNIKOWE:
+            has_trafo = bool(gen.get("blocking_transformer_ref")) or _station_has_transformer(
+                enm,
+                gen.get("station_ref"),
+            )
+            cv = gen.get("connection_variant") or ""
+            if not has_trafo and "direct" not in cv.lower():
+                blockers.append(
+                    {
+                        "code": "pv_bess.transformer_required",
+                        "message_pl": (
+                            f"{opis_nazwy(gen.get('name'), 'Generator OZE')} wymaga "
+                            "transformatora w ścieżce zasilania — źródło przekształtnikowe "
+                            "przyłącza się po stronie nN transformatora."
+                        ),
+                        "element_ref": gen.get("ref_id"),
+                        "severity": "BLOKUJACE",
+                    }
                 )
-                cv = gen.get("connection_variant") or ""
-                if not has_trafo and "direct" not in cv.lower():
-                    blockers.append(
-                        {
-                            "code": "pv_bess.transformer_required",
-                            "message_pl": (
-                                f"{opis_nazwy(gen.get('name'), 'Generator OZE')} wymaga "
-                                "transformatora w ścieżce zasilania — źródło przekształtnikowe "
-                                "przyłącza się po stronie nN transformatora."
-                            ),
-                            "element_ref": gen.get("ref_id"),
-                            "severity": "BLOKUJACE",
-                        }
-                    )
-                    fix_actions.append(
-                        {
-                            "code": "pv_bess.transformer_required",
-                            "action_type": "add_transformer_sn_nn",
-                            "element_ref": gen.get("ref_id"),
-                            "panel": "transformer_panel",
-                            "step": None,
-                            "focus": gen.get("ref_id"),
-                            "message_pl": "Dodaj transformator dla generatora OZE.",
-                        }
-                    )
+                fix_actions.append(
+                    {
+                        "code": "pv_bess.transformer_required",
+                        "action_type": "add_transformer_sn_nn",
+                        "element_ref": gen.get("ref_id"),
+                        "panel": "transformer_panel",
+                        "step": None,
+                        "focus": gen.get("ref_id"),
+                        "message_pl": "Dodaj transformator dla generatora OZE.",
+                    }
+                )
 
-        # Certyfikat PTPiREE przetwornicy DER (karta P2) — OSTRZEZENIE, nie blokada.
-        #
-        # Status i nota pochodza WYLACZNIE z tabliczki urzadzenia, ktora zapisal
-        # kreator DER z rekordu katalogowego (`annotate_with_ptpiree_status`).
-        # ZERO drugiej definicji statusu: ten tor NIE pyta katalogu ponownie i
-        # NIE wyprowadza wlasnych regul waznosci certyfikatow — cytuje note
-        # rekordu tak, jak ja zapisano.
-        for gen in enm.get("generators", []):
-            if (gen.get("gen_type") or "") not in _GEN_TYPES_PRZEKSZTALTNIKOWE:
-                continue
-            tabliczka = gen.get("materialized_params") or {}
-            status_ptpiree = tabliczka.get("ptpiree_status")
-            nota_ptpiree = str(tabliczka.get("ptpiree_note") or "").strip()
-            # Styk P1/P2 (V12K-321): nota istnieje dla KAZDEGO dopasowania
-            # (opis dowodowy wykazu), wiec „warunkowo" kluczujemy na OSOBNYM
-            # polu warunku albo na przejsciowym WOS 2018 — nigdy na samej nocie.
-            warunek_ptpiree = str(tabliczka.get("ptpiree_certificate_condition") or "").strip()
-            wos_przejsciowy = tabliczka.get("ptpiree_wos_version") == "WOS 2018"
-            zrodlo_der = opis_nazwy(gen.get("name"), "źródła DER")
-            if status_ptpiree != "POWIAZANY":
-                kod = "der.inverter_certificate_unlinked"
-                komunikat = (
-                    f"Przetwornica {zrodlo_der} nie ma powiązanego "
-                    f"certyfikatu PTPiREE — wniosek do OSD może zostać odrzucony. "
-                    f"Ostateczna akceptacja przyłączeniowa pozostaje po stronie "
-                    f"właściwego OSD."
-                )
-                naprawa = "Wskaż przetwornicę z powiązanym certyfikatem PTPiREE."
-            elif warunek_ptpiree or wos_przejsciowy:
-                kod = "der.inverter_certificate_conditional"
-                powod = (
-                    f"Warunek ważności certyfikatu: „{warunek_ptpiree}”"
-                    if warunek_ptpiree
-                    else f"Certyfikat WOS 2018 w okresie przejściowym. Nota wykazu: „{nota_ptpiree}”"
-                )
-                komunikat = (
-                    f"Certyfikat PTPiREE przetwornicy {zrodlo_der} jest "
-                    f"powiązany warunkowo. {powod}"
-                )
-                naprawa = "Potwierdź warunki noty wykazu PTPiREE dla tego urządzenia."
-            else:
-                continue
-            warnings.append(
+    # Certyfikat PTPiREE przetwornicy DER (karta P2) — OSTRZEZENIE, nie blokada.
+    #
+    # Status i nota pochodza WYLACZNIE z tabliczki urzadzenia, ktora zapisal
+    # kreator DER z rekordu katalogowego (`annotate_with_ptpiree_status`).
+    # ZERO drugiej definicji statusu: ten tor NIE pyta katalogu ponownie i
+    # NIE wyprowadza wlasnych regul waznosci certyfikatow — cytuje note
+    # rekordu tak, jak ja zapisano.
+    for gen in enm.get("generators", []):
+        if (gen.get("gen_type") or "") not in _GEN_TYPES_PRZEKSZTALTNIKOWE:
+            continue
+        tabliczka = gen.get("materialized_params") or {}
+        status_ptpiree = tabliczka.get("ptpiree_status")
+        nota_ptpiree = str(tabliczka.get("ptpiree_note") or "").strip()
+        # Styk P1/P2 (V12K-321): nota istnieje dla KAZDEGO dopasowania
+        # (opis dowodowy wykazu), wiec „warunkowo" kluczujemy na OSOBNYM
+        # polu warunku albo na przejsciowym WOS 2018 — nigdy na samej nocie.
+        warunek_ptpiree = str(tabliczka.get("ptpiree_certificate_condition") or "").strip()
+        wos_przejsciowy = tabliczka.get("ptpiree_wos_version") == "WOS 2018"
+        zrodlo_der = opis_nazwy(gen.get("name"), "źródła DER")
+        if status_ptpiree != "POWIAZANY":
+            kod = "der.inverter_certificate_unlinked"
+            komunikat = (
+                f"Przetwornica {zrodlo_der} nie ma powiązanego "
+                f"certyfikatu PTPiREE — wniosek do OSD może zostać odrzucony. "
+                f"Ostateczna akceptacja przyłączeniowa pozostaje po stronie "
+                f"właściwego OSD."
+            )
+            naprawa = "Wskaż przetwornicę z powiązanym certyfikatem PTPiREE."
+        elif warunek_ptpiree or wos_przejsciowy:
+            kod = "der.inverter_certificate_conditional"
+            powod = (
+                f"Warunek ważności certyfikatu: „{warunek_ptpiree}”"
+                if warunek_ptpiree
+                else f"Certyfikat WOS 2018 w okresie przejściowym. Nota wykazu: „{nota_ptpiree}”"
+            )
+            komunikat = (
+                f"Certyfikat PTPiREE przetwornicy {zrodlo_der} jest "
+                f"powiązany warunkowo. {powod}"
+            )
+            naprawa = "Potwierdź warunki noty wykazu PTPiREE dla tego urządzenia."
+        else:
+            continue
+        warnings.append(
+            {
+                "code": kod,
+                "message_pl": komunikat,
+                "element_ref": gen.get("ref_id"),
+                "severity": "OSTRZEZENIE",
+            }
+        )
+        fix_actions.append(
+            {
+                "code": kod,
+                "action_type": "SELECT_CATALOG",
+                "element_ref": gen.get("ref_id"),
+                "panel": "catalog",
+                "step": None,
+                "focus": gen.get("ref_id"),
+                "message_pl": naprawa,
+            }
+        )
+
+    # Domain-level check: branch points (slup rozgałęźny / ZKSN)
+    for bp in enm.get("branch_points", []):
+        bp_ref = bp.get("ref_id")
+        bp_type = bp.get("branch_point_type")
+        bp_label = _branch_point_public_label(bp)
+        parent_segment_id = bp.get("parent_segment_id")
+        main_in = bp.get("ports", {}).get("MAIN_IN")
+        main_out = bp.get("ports", {}).get("MAIN_OUT")
+        branch_ports = bp.get("ports", {}).get("BRANCH", [])
+
+        parent = _find_branch_or_split_child(enm, parent_segment_id) if parent_segment_id else None
+        if not parent:
+            blockers.append(
                 {
-                    "code": kod,
-                    "message_pl": komunikat,
-                    "element_ref": gen.get("ref_id"),
-                    "severity": "OSTRZEZENIE",
+                    "code": "branch_point.invalid_parent_medium",
+                    "message_pl": f"{bp_label} wymaga poprawnego odcinka nadrzędnego.",
+                    "element_ref": bp_ref,
+                    "severity": "BLOKUJACE",
+                }
+            )
+        else:
+            if bp_type == "branch_pole" and parent.get("type") != "line_overhead":
+                blockers.append(
+                    {
+                        "code": "branch_point.invalid_parent_medium",
+                        "message_pl": (
+                            "Słup rozgałęźny SN może być osadzony tylko na linii napowietrznej."
+                        ),
+                        "element_ref": bp_ref,
+                        "severity": "BLOKUJACE",
+                    }
+                )
+            if bp_type == "zksn" and parent.get("type") != "cable":
+                blockers.append(
+                    {
+                        "code": "branch_point.invalid_parent_medium",
+                        "message_pl": "ZKSN może być osadzony tylko na odcinku kablowym SN.",
+                        "element_ref": bp_ref,
+                        "severity": "BLOKUJACE",
+                    }
+                )
+
+        if not main_in or not main_out:
+            blockers.append(
+                {
+                    "code": "branch_point.required_port_missing",
+                    "message_pl": (
+                        f"{bp_label} wymaga portu wejściowego i wyjściowego toru głównego."
+                    ),
+                    "element_ref": bp_ref,
+                    "severity": "BLOKUJACE",
+                }
+            )
+
+        if not bp.get("catalog_ref"):
+            blockers.append(
+                {
+                    "code": "branch_point.catalog_ref_missing",
+                    "message_pl": f"{bp_label} wymaga wariantu katalogowego.",
+                    "element_ref": bp_ref,
+                    "severity": "BLOKUJACE",
                 }
             )
             fix_actions.append(
                 {
-                    "code": kod,
+                    "code": "branch_point.catalog_ref_missing",
                     "action_type": "SELECT_CATALOG",
-                    "element_ref": gen.get("ref_id"),
+                    "element_ref": bp_ref,
                     "panel": "catalog",
-                    "step": None,
-                    "focus": gen.get("ref_id"),
-                    "message_pl": naprawa,
+                    "step": "branch_point",
+                    "focus": bp_ref,
+                    "message_pl": "Wybierz pozycję katalogową dla punktu rozgałęzienia.",
                 }
             )
 
-        # Domain-level check: branch points (slup rozgałęźny / ZKSN)
-        for bp in enm.get("branch_points", []):
-            bp_ref = bp.get("ref_id")
-            bp_type = bp.get("branch_point_type")
-            bp_label = _branch_point_public_label(bp)
-            parent_segment_id = bp.get("parent_segment_id")
-            main_in = bp.get("ports", {}).get("MAIN_IN")
-            main_out = bp.get("ports", {}).get("MAIN_OUT")
-            branch_ports = bp.get("ports", {}).get("BRANCH", [])
-
-            parent = (
-                _find_branch_or_split_child(enm, parent_segment_id) if parent_segment_id else None
+        if bp_type == "zksn" and len(branch_ports) not in (1, 2):
+            blockers.append(
+                {
+                    "code": "zksn.branch_count_invalid",
+                    "message_pl": "ZKSN wymaga jednego albo dwóch portów odgałęźnych.",
+                    "element_ref": bp_ref,
+                    "severity": "BLOKUJACE",
+                }
             )
-            if not parent:
-                blockers.append(
-                    {
-                        "code": "branch_point.invalid_parent_medium",
-                        "message_pl": f"{bp_label} wymaga poprawnego odcinka nadrzędnego.",
-                        "element_ref": bp_ref,
-                        "severity": "BLOKUJACE",
-                    }
-                )
-            else:
-                if bp_type == "branch_pole" and parent.get("type") != "line_overhead":
-                    blockers.append(
-                        {
-                            "code": "branch_point.invalid_parent_medium",
-                            "message_pl": (
-                                "Słup rozgałęźny SN może być osadzony tylko na linii napowietrznej."
-                            ),
-                            "element_ref": bp_ref,
-                            "severity": "BLOKUJACE",
-                        }
-                    )
-                if bp_type == "zksn" and parent.get("type") != "cable":
-                    blockers.append(
-                        {
-                            "code": "branch_point.invalid_parent_medium",
-                            "message_pl": "ZKSN może być osadzony tylko na odcinku kablowym SN.",
-                            "element_ref": bp_ref,
-                            "severity": "BLOKUJACE",
-                        }
-                    )
 
-            if not main_in or not main_out:
-                blockers.append(
-                    {
-                        "code": "branch_point.required_port_missing",
-                        "message_pl": (
-                            f"{bp_label} wymaga portu wejściowego i wyjściowego toru głównego."
-                        ),
-                        "element_ref": bp_ref,
-                        "severity": "BLOKUJACE",
-                    }
-                )
+        if bp_type == "zksn" and not bp.get("switch_state"):
+            blockers.append(
+                {
+                    "code": "branch_point.switch_state_missing",
+                    "message_pl": "ZKSN wymaga wskazania stanu normalnego łącznika.",
+                    "element_ref": bp_ref,
+                    "severity": "BLOKUJACE",
+                }
+            )
 
-            if not bp.get("catalog_ref"):
-                blockers.append(
-                    {
-                        "code": "branch_point.catalog_ref_missing",
-                        "message_pl": f"{bp_label} wymaga wariantu katalogowego.",
-                        "element_ref": bp_ref,
-                        "severity": "BLOKUJACE",
-                    }
-                )
-                fix_actions.append(
-                    {
-                        "code": "branch_point.catalog_ref_missing",
-                        "action_type": "SELECT_CATALOG",
-                        "element_ref": bp_ref,
-                        "panel": "catalog",
-                        "step": "branch_point",
-                        "focus": bp_ref,
-                        "message_pl": "Wybierz pozycję katalogową dla punktu rozgałęzienia.",
-                    }
-                )
+    # Domain-level check: switches/breakers without catalog_ref
+    #
+    # WYJATEK (naprawa regresji #472, karta CI-D): galaz nN z automigracji
+    # promocji pol (`enm/migrations/nn_field_specs_promocja.py`, meta
+    # `nn_promocja_bez_wiazania_katalogowej`) jest JUZ policzona przez
+    # ENMValidator wyzej w tej funkcji jako W061 (OSTRZEZENIE, nie BLOKER —
+    # dane historyczne, ktorych katalog nigdy nie widzial, `validator.py`
+    # E061/W061). Ten ODREBNY, domenowy check duplikowal generyczny warunek
+    # "lacznik bez catalog_ref = BLOKER" bez znajomosci tego wyjatku, wiec
+    # TA SAMA galaz dostawala DRUGI, sprzeczny wpis (BLOKER) — odpowiedz
+    # operacji domenowej (zrodlo chromu powloki, `useSnapshotStore.readiness`)
+    # mowila "w budowie" dokladnie wtedy, gdy `/engineering-readiness`
+    # (ENMValidator w izolacji) juz mowila "gotowe". Predykat wejscia
+    # (ENMValidator: wyjatek migracji) i predykat tego bloku MUSZA pochodzic
+    # z JEDNEGO zrodla prawdy (reguła KLASA, NIE INSTANCJA) — stad ten sam
+    # klucz meta, zaimportowany z modulu migracji, nie osobny warunek.
+    for b in enm.get("branches", []):
+        b_type = b.get("type", "")
+        b_meta = b.get("meta") if isinstance(b.get("meta"), dict) else {}
+        if (
+            b_type in ("switch", "breaker")
+            and not b.get("catalog_ref")
+            and b_meta.get("requires_catalog_binding") is not False
+            and not b_meta.get(META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA)
+        ):
+            b_ref = b.get("ref_id", "")
+            blockers.append(
+                {
+                    "code": "switch.catalog_ref_missing",
+                    "message_pl": (
+                        f"{opis_nazwy(b.get('name'), 'Łącznik')} "
+                        "nie ma przypisanej pozycji katalogowej."
+                    ),
+                    "element_ref": b_ref,
+                    "severity": "BLOKUJACE",
+                }
+            )
+            fix_actions.append(
+                {
+                    "code": "switch.catalog_ref_missing",
+                    "action_type": "SELECT_CATALOG",
+                    "element_ref": b_ref,
+                    "panel": "catalog",
+                    "step": "switch",
+                    "focus": b_ref,
+                    "message_pl": "Wybierz pozycję katalogową dla łącznika.",
+                }
+            )
 
-            if bp_type == "zksn" and len(branch_ports) not in (1, 2):
-                blockers.append(
-                    {
-                        "code": "zksn.branch_count_invalid",
-                        "message_pl": "ZKSN wymaga jednego albo dwóch portów odgałęźnych.",
-                        "element_ref": bp_ref,
-                        "severity": "BLOKUJACE",
-                    }
-                )
+    # V12K-271 (karta PULPIT-NBA): DROGA kanonu do odpowiedzi operacji domenowej.
+    # Wzbogacenie jest ADDYTYWNE (dokladamy tylko klucze `canonical_*`, zadnego
+    # istniejacego nie zmieniamy) i wykonuje sie JEDNYM przebiegiem po CALYCH
+    # listach — swiadomie na koncu funkcji, nie w petli walidatora. Zgloszenia
+    # domenowe (PV/BESS, punkty odgalezne, laczniki) dokladane sa nizej, wiec
+    # wzbogacenie w petli walidatora pokryloby tylko czesc klasy i kazdy nowy
+    # emiter cicho wypadalby z kanonu.
+    _wzbogac_o_kanon(blockers)
+    _wzbogac_o_kanon(warnings)
 
-            if bp_type == "zksn" and not bp.get("switch_state"):
-                blockers.append(
-                    {
-                        "code": "branch_point.switch_state_missing",
-                        "message_pl": "ZKSN wymaga wskazania stanu normalnego łącznika.",
-                        "element_ref": bp_ref,
-                        "severity": "BLOKUJACE",
-                    }
-                )
-
-        # Domain-level check: switches/breakers without catalog_ref
-        #
-        # WYJATEK (naprawa regresji #472, karta CI-D): galaz nN z automigracji
-        # promocji pol (`enm/migrations/nn_field_specs_promocja.py`, meta
-        # `nn_promocja_bez_wiazania_katalogowej`) jest JUZ policzona przez
-        # ENMValidator wyzej w tej funkcji jako W061 (OSTRZEZENIE, nie BLOKER —
-        # dane historyczne, ktorych katalog nigdy nie widzial, `validator.py`
-        # E061/W061). Ten ODREBNY, domenowy check duplikowal generyczny warunek
-        # "lacznik bez catalog_ref = BLOKER" bez znajomosci tego wyjatku, wiec
-        # TA SAMA galaz dostawala DRUGI, sprzeczny wpis (BLOKER) — odpowiedz
-        # operacji domenowej (zrodlo chromu powloki, `useSnapshotStore.readiness`)
-        # mowila "w budowie" dokladnie wtedy, gdy `/engineering-readiness`
-        # (ENMValidator w izolacji) juz mowila "gotowe". Predykat wejscia
-        # (ENMValidator: wyjatek migracji) i predykat tego bloku MUSZA pochodzic
-        # z JEDNEGO zrodla prawdy (reguła KLASA, NIE INSTANCJA) — stad ten sam
-        # klucz meta, zaimportowany z modulu migracji, nie osobny warunek.
-        for b in enm.get("branches", []):
-            b_type = b.get("type", "")
-            b_meta = b.get("meta") if isinstance(b.get("meta"), dict) else {}
-            if (
-                b_type in ("switch", "breaker")
-                and not b.get("catalog_ref")
-                and b_meta.get("requires_catalog_binding") is not False
-                and not b_meta.get(META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA)
-            ):
-                b_ref = b.get("ref_id", "")
-                blockers.append(
-                    {
-                        "code": "switch.catalog_ref_missing",
-                        "message_pl": (
-                            f"{opis_nazwy(b.get('name'), 'Łącznik')} "
-                            "nie ma przypisanej pozycji katalogowej."
-                        ),
-                        "element_ref": b_ref,
-                        "severity": "BLOKUJACE",
-                    }
-                )
-                fix_actions.append(
-                    {
-                        "code": "switch.catalog_ref_missing",
-                        "action_type": "SELECT_CATALOG",
-                        "element_ref": b_ref,
-                        "panel": "catalog",
-                        "step": "switch",
-                        "focus": b_ref,
-                        "message_pl": "Wybierz pozycję katalogową dla łącznika.",
-                    }
-                )
-
-        # V12K-271 (karta PULPIT-NBA): DROGA kanonu do odpowiedzi operacji domenowej.
-        # Wzbogacenie jest ADDYTYWNE (dokladamy tylko klucze `canonical_*`, zadnego
-        # istniejacego nie zmieniamy) i wykonuje sie JEDNYM przebiegiem po CALYCH
-        # listach — swiadomie na koncu funkcji, nie w petli walidatora. Zgloszenia
-        # domenowe (PV/BESS, punkty odgalezne, laczniki) dokladane sa nizej, wiec
-        # wzbogacenie w petli walidatora pokryloby tylko czesc klasy i kazdy nowy
-        # emiter cicho wypadalby z kanonu.
-        _wzbogac_o_kanon(blockers)
-        _wzbogac_o_kanon(warnings)
-
-        has_any_blocker = len(blockers) > 0
-        return {
-            "ready": readiness.ready and not has_any_blocker,
-            "blockers": blockers,
-            "warnings": warnings,
-        }, fix_actions
-    except Exception:
-        return {"ready": False, "blockers": [], "warnings": []}, []
+    has_any_blocker = len(blockers) > 0
+    return {
+        "ready": readiness.ready and not has_any_blocker,
+        "blockers": blockers,
+        "warnings": warnings,
+    }, fix_actions
 
 
 def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
@@ -2586,7 +2585,7 @@ def _resolve_branch_from_ref(enm: dict[str, Any], from_ref: str) -> tuple[str | 
             return None, "branch_connection.invalid_source_port"
         try:
             idx = int(port_id.split("_", 1)[1]) - 1
-        except Exception:
+        except ValueError:  # „BRANCH_x" z nieliczbowym numerem portu
             return None, "branch_connection.invalid_source_port"
         branch_ports = ports.get("BRANCH", [])
         if idx < 0 or idx >= len(branch_ports):
@@ -2669,15 +2668,6 @@ def _lookup_branch_from_ref_for_bus(
     return None, "branch_connection.source_not_branch_capable"
 
 
-def _get_catalog_safe() -> CatalogRepository | None:
-    """Katalog bieżącej operacji (statyczny + pozycje projektu — `enm/katalog_projektu.py`);
-    bezpieczne — zwraca None, gdy katalogu nie da się załadować."""
-    try:
-        return katalog_biezacy()
-    except Exception:
-        return None
-
-
 def _build_catalog_binding_payload(
     catalog_ref: str,
     catalog_binding: object,
@@ -2706,12 +2696,10 @@ def _materialize_catalog_payload(
     default_version: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]] | dict[str, Any]:
     """Zmaterializuj pozycję katalogową do trwałych pól snapshotu."""
-    catalog = _get_catalog_safe()
-    if catalog is None:
-        return _error_response(
-            "Nie udało się załadować repozytorium katalogowego.",
-            "catalog.materialization_incomplete",
-        )
+    # Katalog bieżącej operacji (statyczny + pozycje projektu) nie ma odmowy danych:
+    # dawne `_get_catalog_safe` (karta #151) zamieniało błąd programu w komunikat
+    # „nie udało się załadować repozytorium katalogowego".
+    catalog = katalog_biezacy()
 
     binding_payload = _build_catalog_binding_payload(
         catalog_ref,
@@ -3245,8 +3233,7 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
     transformers_sn_nn: dict[str, Any] = {}
     sources_sn: dict[str, Any] = {}
 
-    # Try loading catalog for actual parameter resolution
-    catalog = _get_catalog_safe()
+    catalog = katalog_biezacy()
 
     for b in enm.get("branches", []):
         btype = b.get("type", "")
@@ -3272,17 +3259,16 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
                 (b.get("rating") or {}).get("in_a") if isinstance(b.get("rating"), dict) else None
             )
 
-            if catalog:
-                is_cable = btype == "cable"
-                type_data = (
-                    catalog.get_cable_type(catalog_ref)
-                    if is_cable
-                    else catalog.get_line_type(catalog_ref)
-                )
-                if type_data:
-                    r_ohm_per_km = type_data.r_ohm_per_km
-                    x_ohm_per_km = type_data.x_ohm_per_km
-                    i_max_a = type_data.rated_current_a
+            is_cable = btype == "cable"
+            type_data = (
+                catalog.get_cable_type(catalog_ref)
+                if is_cable
+                else catalog.get_line_type(catalog_ref)
+            )
+            if type_data:
+                r_ohm_per_km = type_data.r_ohm_per_km
+                x_ohm_per_km = type_data.x_ohm_per_km
+                i_max_a = type_data.rated_current_a
 
         lines_sn[b["ref_id"]] = {
             "catalog_item_id": catalog_ref,
@@ -3320,13 +3306,12 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
             pk_kw = t.get("pk_kw")
             s_n_kva = mva_na_kva(float(t["sn_mva"])) if t.get("sn_mva") else None
 
-            if catalog:
-                typ_transformatora = catalog.get_transformer_type(catalog_ref)
-                if typ_transformatora:
-                    uk_percent = typ_transformatora.uk_percent
-                    p0_kw = typ_transformatora.p0_kw
-                    pk_kw = typ_transformatora.pk_kw
-                    s_n_kva = mva_na_kva(typ_transformatora.rated_power_mva)
+            typ_transformatora = catalog.get_transformer_type(catalog_ref)
+            if typ_transformatora:
+                uk_percent = typ_transformatora.uk_percent
+                p0_kw = typ_transformatora.p0_kw
+                pk_kw = typ_transformatora.pk_kw
+                s_n_kva = mva_na_kva(typ_transformatora.rated_power_mva)
 
         transformers_sn_nn[t["ref_id"]] = {
             "catalog_item_id": catalog_ref,
@@ -3361,18 +3346,15 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
             sk3_min_mva = s.get("sk3_min_mva")
             ik3_min_ka = s.get("ik3_min_ka")
             rx_ratio_min = s.get("rx_ratio_min")
-            if catalog:
-                type_data = getattr(catalog, "get_source_system_type", lambda _id: None)(
-                    catalog_ref
-                )
-                if type_data:
-                    voltage_rating_kv = type_data.voltage_rating_kv
-                    sk3_mva = type_data.sk3_mva
-                    ik3_ka = type_data.ik3_ka
-                    rx_ratio = type_data.rx_ratio
-                    sk3_min_mva = type_data.sk3_min_mva
-                    ik3_min_ka = type_data.ik3_min_ka
-                    rx_ratio_min = type_data.rx_ratio_min
+            type_data = getattr(catalog, "get_source_system_type", lambda _id: None)(catalog_ref)
+            if type_data:
+                voltage_rating_kv = type_data.voltage_rating_kv
+                sk3_mva = type_data.sk3_mva
+                ik3_ka = type_data.ik3_ka
+                rx_ratio = type_data.rx_ratio
+                sk3_min_mva = type_data.sk3_min_mva
+                ik3_min_ka = type_data.ik3_min_ka
+                rx_ratio_min = type_data.rx_ratio_min
 
         sources_sn[s["ref_id"]] = {
             "catalog_item_id": catalog_ref,
@@ -3440,7 +3422,21 @@ def _response(
     """
     enm = _complete_catalog_branch_point_defaults(enm)
     enm = synchronizuj_dynamike_z_wiazan(enm)
-    readiness, fix_actions = _build_readiness(enm)
+    # KONTRAKT WYNIKU OPERACJI (karta #151): migawka, którą operacja chce oddać, musi być
+    # zgodna z kontraktem ENM — to JEDYNY punkt, przez który przechodzi każdy sukces
+    # handlera. Dawniej `_build_readiness` połykał `ValidationError` (`except Exception` →
+    # „brak gotowości bez blokad"), migawka szła dalej, a odmowa wychodziła dopiero przy
+    # zapisie jako „nie udało się zapisać modelu" (np. ujemna długość obwodu wtórnego
+    # przekładnika). Teraz to odmowa NAZWANA z opisem pola, model bez zmian.
+    try:
+        enm_model = EnergyNetworkModel.model_validate(enm)
+    except ValidationError as blad:
+        return _error_response(
+            "Operacja odrzucona — dane nie spełniają kontraktu modelu sieci: "
+            f"{opis_bledu_walidacji(blad)}.",
+            KOD_MODELU_NIEZGODNEGO_Z_KONTRAKTEM,
+        )
+    readiness, fix_actions = _build_readiness(enm, enm_model)
     logical_views = _compute_logical_views(enm)
     materialized_params = _compute_materialized_params(enm)
     layout_hash = _compute_layout_hash(enm)
@@ -3505,6 +3501,96 @@ def _error_response(
     if kod_reguly_katalogu is not None:
         odpowiedz["kod_reguly_katalogu"] = kod_reguly_katalogu
     return odpowiedz
+
+
+#: Kod odmowy pola ładunku operacji o niepoprawnym TYPIE wartości (karta #151). Ładunek
+#: operacji to słownik bez schematu (`DomainOpEnvelopeModel.operation.payload`), więc typ
+#: pola sprawdza handler, zanim go użyje — dawniej `"abc"` w polu liczbowym albo napis w
+#: miejscu słownika kończyło się `TypeError`/`AttributeError`, który dyspozytor połykał
+#: jako „błąd wewnętrzny systemu". Pilnuje test sondy wszystkich handlerów
+#: (`tests/enm/test_ksztalt_ladunku_operacji.py`).
+KOD_TYPU_POLA_LADUNKU = "payload.invalid_type"
+
+#: Kod odmowy operacji, której wynik łamie kontrakt ENM (karta #151, `_response`).
+KOD_MODELU_NIEZGODNEGO_Z_KONTRAKTEM = "operation.model_contract_violated"
+
+_OCZEKIWANY_TYP_PL: dict[str, str] = {
+    "slownik": "obiektu z polami",
+    "lista": "listy",
+    "ref": "identyfikatora (tekstu)",
+    "liczba": "liczby",
+    "liczba_lub_tekst": "liczby",
+    "calkowita": "liczby całkowitej",
+}
+
+
+def _odmowa_typu_segmentu(payload: dict[str, Any], operacja: str) -> dict[str, Any] | None:
+    """Typy pól odcinka SN wspólne dla operacji budujących odcinek (magistrala, odgałęzienie,
+    pierścień): `segment` jest słownikiem, długość liczbą — w ładunku i w słowniku odcinka."""
+    odmowa = _odmowa_typu_ladunku(payload, operacja, {"segment": "slownik", "dlugosc_m": "liczba"})
+    if odmowa is not None:
+        return odmowa
+    return _odmowa_typu_ladunku(payload.get("segment") or {}, operacja, {"dlugosc_m": "liczba"})
+
+
+def _pasuje_typ(wartosc: object, rodzaj: str) -> bool:
+    if rodzaj == "slownik":
+        return isinstance(wartosc, dict)
+    if rodzaj == "lista":
+        return isinstance(wartosc, list)
+    if rodzaj == "ref":
+        return isinstance(wartosc, str)
+    if isinstance(wartosc, bool):
+        return False
+    if rodzaj == "liczba":
+        return isinstance(wartosc, int | float)
+    if rodzaj == "calkowita":
+        if isinstance(wartosc, int):
+            return True
+        if isinstance(wartosc, str):
+            try:
+                int(wartosc)
+            except ValueError:
+                return False
+            return True
+        return False
+    if rodzaj == "liczba_lub_tekst":
+        if isinstance(wartosc, int | float):
+            return True
+        if isinstance(wartosc, str):
+            try:
+                float(wartosc)
+            except ValueError:
+                return False
+            return True
+        return False
+    raise AssertionError(f"Nieznany rodzaj typu pola ładunku: {rodzaj!r}")
+
+
+def _odmowa_typu_ladunku(
+    zrodlo: dict[str, Any],
+    operacja: str,
+    wymagania: dict[str, str],
+    *,
+    sekcja: str | None = None,
+) -> dict[str, Any] | None:
+    """Pierwsze pole `zrodlo` o niepoprawnym typie → odpowiedź `payload.invalid_type`.
+
+    `wymagania`: klucz → rodzaj (`slownik`/`lista`/`ref`/`liczba`/`liczba_lub_tekst`/
+    `calkowita`). `sekcja` — słownik zagnieżdżony ładunku (np. `station`): nazwa pola
+    pochodzi wtedy z wpisu `sekcja.klucz` mapy nazw. Pole nieobecne albo `None` nie jest
+    tu oceniane — brak ocenia handler własnym kodem.
+    """
+    for klucz, rodzaj in wymagania.items():
+        wartosc = zrodlo.get(klucz)
+        if wartosc is not None and not _pasuje_typ(wartosc, rodzaj):
+            nazwa = pole(f"{sekcja}.{klucz}") if sekcja else pole(klucz, operacja)
+            return _error_response(
+                f"Pole {nazwa} ma niepoprawny typ wartości — oczekiwano "
+                f"{_OCZEKIWANY_TYP_PL[rodzaj]}.",
+                KOD_TYPU_POLA_LADUNKU,
+            )
+    return None
 
 
 def _require_catalog_ref(
@@ -3789,6 +3875,11 @@ def _resolve_manual_source_equivalent(
 
 def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj źródło zasilania (GPZ) — pierwszy krok budowy sieci SN."""
+    odmowa = _odmowa_typu_ladunku(
+        payload, "add_grid_source_sn", {"voltage_kv": "liczba", "sections_count": "calkowita"}
+    )
+    if odmowa is not None:
+        return odmowa
     voltage_kv = payload.get("voltage_kv")
     manual_equivalent = _resolve_manual_source_equivalent(payload)
     if isinstance(manual_equivalent, dict) and manual_equivalent.get("error"):
@@ -4651,6 +4742,9 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
 
 def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Kontynuuj magistralę SN — dodaj kolejny odcinek."""
+    odmowa = _odmowa_typu_segmentu(payload, "continue_trunk_segment_sn")
+    if odmowa is not None:
+        return odmowa
     trunk_id = payload.get("trunk_id")
     from_terminal_id = payload.get("from_terminal_id")
     raw_field_ref = payload.get("field_ref")
@@ -4662,7 +4756,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         terminal_as_field_bus = _field_ref_to_bus_ref(enm, raw_terminal_id.strip())
         if terminal_as_field_bus:
             field_ref = raw_terminal_id.strip()
-    segment = payload.get("segment", {})
+    segment = payload.get("segment") or {}
 
     if isinstance(from_terminal_id, str) and from_terminal_id.strip():
         from_terminal_id = from_terminal_id.strip()
@@ -6463,13 +6557,26 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     + electrical_impact, ale NIE mutuje ENM. Wymagane dla Phase 0C
     "Conscious split with preview".
     """
+    odmowa = _odmowa_typu_ladunku(
+        payload,
+        "insert_station_on_segment_sn",
+        {
+            "insert_at": "slownik",
+            "station": "slownik",
+            "sn_fields": "lista",
+            "transformer": "slownik",
+            "nn_block": "slownik",
+        },
+    )
+    if odmowa is not None:
+        return odmowa
     dry_run = bool(payload.get("dry_run", False))
     segment_id = payload.get("segment_id") or payload.get("segment_ref")
-    insert_at = payload.get("insert_at", {})
-    station = payload.get("station", {})
-    sn_fields_raw = payload.get("sn_fields", [])
-    transformer = payload.get("transformer", {})
-    nn_block = payload.get("nn_block", {})
+    insert_at = payload.get("insert_at") or {}
+    station = payload.get("station") or {}
+    sn_fields_raw = payload.get("sn_fields") or []
+    transformer = payload.get("transformer") or {}
+    nn_block = payload.get("nn_block") or {}
 
     if dry_run:
         # Wykonaj na deep-copy, NIE mutując oryginalnego ENM (`copy` zaimportowane na poziomie modułu).
@@ -6532,6 +6639,13 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         "terminal": "terminal",
         "sectional": "sectional",
     }
+    odmowa = _odmowa_typu_ladunku(
+        station, "insert_station_on_segment_sn", {"station_type": "ref"}, sekcja="station"
+    ) or _odmowa_typu_ladunku(
+        payload, "insert_station_on_segment_sn", {"station_type": "ref"}, sekcja="station"
+    )
+    if odmowa is not None:
+        return odmowa
     station_type_raw = station.get("station_type") or payload.get("station_type", "")
     # Map semantic → legacy for internal logic
     station_type = semantic_to_legacy.get(station_type_raw, station_type_raw)
@@ -7893,9 +8007,12 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     from_bus_ref jest obsługiwane wyłącznie jako pole kompatybilności
     i musi mapować się 1:1 do bus_ref rozwiązanego z from_ref.
     """
+    odmowa = _odmowa_typu_segmentu(payload, "start_branch_segment_sn")
+    if odmowa is not None:
+        return odmowa
     from_ref = payload.get("from_ref")
     from_bus_ref = payload.get("from_bus_ref")
-    segment = payload.get("segment", {})
+    segment = payload.get("segment") or {}
 
     rodzaj = segment.get("rodzaj", "KABEL")
     dlugosc_m = segment.get("dlugosc_m") or payload.get("dlugosc_m") or 0
@@ -8410,9 +8527,14 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
 
     Wymaga jawnych from_bus_ref i to_bus_ref — brak auto-detekcji.
     """
+    odmowa = _odmowa_typu_segmentu(payload, "connect_secondary_ring_sn") or _odmowa_typu_ladunku(
+        payload, "connect_secondary_ring_sn", {"from_bus_ref": "ref", "to_bus_ref": "ref"}
+    )
+    if odmowa is not None:
+        return odmowa
     from_bus_ref = payload.get("from_bus_ref")
     to_bus_ref = payload.get("to_bus_ref")
-    segment = payload.get("segment", {})
+    segment = payload.get("segment") or {}
 
     if not from_bus_ref:
         return _error_response(
@@ -9196,6 +9318,9 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
 
 def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Aktualizuj parametry elementu."""
+    odmowa = _odmowa_typu_ladunku(payload, "update_element_parameters", {"parameters": "slownik"})
+    if odmowa is not None:
+        return odmowa
     element_ref = payload.get("element_ref")
     parameters = payload.get("parameters", {})
     legacy_field_collection = _find_legacy_field_element_collection(enm, element_ref or "")
@@ -9237,6 +9362,13 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                     "Element fizyczny wymaga przypiętego katalogu.", "catalog.ref_required"
                 )
 
+        odmowa = _odmowa_typu_ladunku(
+            parameters,
+            "update_element_parameters",
+            {"source_mode": "ref", "catalog_namespace": "ref"},
+        )
+        if odmowa is not None:
+            return odmowa
         effective_source_mode = parameters.get("source_mode", current_element.get("source_mode"))
         effective_namespace = parameters.get(
             "catalog_namespace", current_element.get("catalog_namespace")
@@ -9783,6 +9915,14 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
       name: str (optional)       — etykieta sekcji
       line_field_name: str (optional)
     """
+    odmowa = _odmowa_typu_ladunku(
+        payload,
+        "add_gpz_section",
+        {"section_id": "ref", "bus_ref": "ref", "order": "calkowita"},
+        sekcja="gpz_section",
+    )
+    if odmowa is not None:
+        return odmowa
     substation_ref = payload.get("substation_ref")
     if not substation_ref:
         return _error_response(
@@ -10131,10 +10271,15 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     Operacja addytywna — nie modyfikuje istniejących Bus, Branch ani innych
     Substation. Endpoint_bus staje się pierwszą szyną SN nowej stacji.
     """
+    odmowa = _odmowa_typu_ladunku(
+        payload, "append_station_on_endpoint", {"station": "slownik", "transformer": "slownik"}
+    )
+    if odmowa is not None:
+        return odmowa
     dry_run = bool(payload.get("dry_run", False))
     endpoint_bus_ref = payload.get("endpoint_bus_ref")
     run_ref = payload.get("run_ref")
-    station_payload = payload.get("station", {})
+    station_payload = payload.get("station") or {}
     station_name = (
         nazwa_nadana(station_payload.get("name"))
         or nazwa_nadana(payload.get("station_name"))
@@ -11079,28 +11224,20 @@ def execute_domain_operation(
         # operacji, która ją wykryła. Bez tego przejścia wyjątek wpadłby niżej
         # i wrócił jako bezradne „nieobsłużony wyjątek".
         return _error_response(str(blad), KOD_BLEDU_POLA_KATALOGOWEGO)
-    except Exception:
-        # Szczegół techniczny (typ wyjątku, treść z kluczami kontraktu) idzie do dziennika
-        # serwera, nie do komunikatu projektanta — ten sam wzorzec co zapis modelu w API.
-        logger.exception("Operacja domenowa %r zakończyła się wyjątkiem", canonical_name)
-        return _error_response(
-            f"Operacja {opis_operacji(canonical_name)} nie powiodła się z powodu błędu "
-            "wewnętrznego systemu — model sieci pozostał bez zmian. Szczegóły są w dzienniku "
-            "serwera.",
-            "dispatcher.unhandled_exception",
-        )
+    # Karta #151: dawne `except Exception` → `dispatcher.unhandled_exception` połykało
+    # KAŻDY błąd programu jako odpowiedź 200 „błąd wewnętrzny systemu". Odmowy danych
+    # handlery zwracają same (`_error_response`, także `payload.invalid_type` dla pola o
+    # złym typie — sonda wszystkich handlerów w `tests/enm/test_ksztalt_ladunku_operacji.py`);
+    # wyjątek, który tu dociera, jest błędem programu i wybucha (500 + pełny ślad).
 
     # Post-hook: walidacja semantyczna ENM po operacji (PR-C konsolidacji UI).
     # Reguły z network_model/validation/semantic_rules.py sprawdzają spójność
     # semantyki (kabel/słup, ZKSN/overhead, DER/pole). Wyniki trafiają do
     # response jako `semantic_issues: list[dict]` — frontend pokazuje je w
-    # SemanticIssuesBanner. Nie blokujemy response w razie wyjątku walidatora —
-    # ewentualne błędy idą do logu, ale operacja przechodzi.
+    # SemanticIssuesBanner. Wyjątek walidatora jest błędem programu i wybucha (karta
+    # #151) — dawne ciche `semantic_issues = []` meldowało „brak naruszeń semantyki".
     if isinstance(result, dict) and not result.get("error"):
-        try:
-            from network_model.validation import validate_semantic_as_dicts
+        from network_model.validation import validate_semantic_as_dicts
 
-            result["semantic_issues"] = validate_semantic_as_dicts(enm_dict)
-        except Exception:
-            result.setdefault("semantic_issues", [])
+        result["semantic_issues"] = validate_semantic_as_dicts(enm_dict)
     return result

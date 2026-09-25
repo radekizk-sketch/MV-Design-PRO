@@ -47,7 +47,12 @@ from typing import Any
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
-from enm.canonical_analysis import CanonicalRun, bieg_wariantu, wykonaj_bieg_w_pamieci
+from enm.canonical_analysis import (
+    ODMOWY_OBLICZENIA_BIEGU,
+    CanonicalRun,
+    bieg_wariantu,
+    wykonaj_bieg_w_pamieci,
+)
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, Wstrzyk, apply_scenario
 
@@ -153,14 +158,15 @@ def _evaluate_scenario(
 ) -> tuple[bool, dict[str, Any]]:
     """Uruchom rozpływ dla scenariusza i oceń dopuszczalność.
 
-    Zwraca ``(acceptable, scenario_record)``. Niezbieżność lub błąd solvera →
-    scenariusz niedopuszczalny z kryterium ``non_convergence``.
+    Zwraca ``(acceptable, scenario_record)``. Niezbieżność albo nazwana odmowa
+    obliczenia (``ODMOWY_OBLICZENIA_BIEGU``) → scenariusz niedopuszczalny z kryterium
+    ``non_convergence``; inny wyjątek jest błędem programu i wybucha (karta #151).
     """
     migawka = apply_scenario(enm_bazowy, _hc_scenario(bus_ref, added_mw, krok))
     run = bieg_wariantu(base_run, migawka, analysis_type="PF")
     try:
         wykonaj_bieg_w_pamieci(run, uow_factory=uow_factory)
-    except Exception:  # noqa: BLE001 — niezbieżność/osobliwość = twardy koniec pasma
+    except ODMOWY_OBLICZENIA_BIEGU:  # nazwana odmowa obliczenia = twardy koniec pasma
         record = {
             "added_power_mw": _round_power(added_mw),
             "converged": False,

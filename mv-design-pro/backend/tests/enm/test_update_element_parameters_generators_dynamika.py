@@ -18,6 +18,9 @@ konstrukcji modelu w Pythonie.
 
 from __future__ import annotations
 
+import copy
+
+import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.dynamika_modele import MaszynaSynchroniczna
 from enm.models import EnergyNetworkModel
@@ -136,17 +139,14 @@ def test_update_element_parameters_generator_dynamika_enforces_cross_validator()
         },
     )
 
-    # `execute_domain_operation` samo nie waliduje pydantic (surowy dict) —
-    # blad zglasza sie dopiero na `EnergyNetworkModel.model_validate`, tak jak
-    # naprawde dzieje sie to na granicy API.
-    assert result.get("error_code") is None
-    try:
-        EnergyNetworkModel.model_validate(result["snapshot"])
-    except ValidationError as exc:
-        assert "xd_bis_pu" in str(exc)
-    else:
-        raise AssertionError(
-            "EnergyNetworkModel.model_validate przyjelo niespojna dynamike "
-            "(xd_bis_pu > xd_prim_pu) — walidator krzyzowy nie dziala przez "
-            "sciezke update_element_parameters."
+    # Karta #151 (nowy kanon, intencja bez zmian): wynik operacji jest walidowany
+    # kontraktem ENM w `_response` — walidator krzyzowy odmawia NA OPERACJI (kod +
+    # zdanie walidatora), a nie dopiero przy zapisie migawki na granicy API.
+    assert result.get("error_code") == "operation.model_contract_violated", result
+    assert result.get("snapshot") is None
+    with pytest.raises(ValidationError, match="xd_bis_pu"):
+        wynik_bez_kontroli = copy.deepcopy(enm)
+        wynik_bez_kontroli["generators"][0]["dynamika"] = _maszyna_synchroniczna_payload(
+            xd_bis_pu=0.35, xd_prim_pu=0.30, xd_pu=1.8
         )
+        EnergyNetworkModel.model_validate(wynik_bez_kontroli)

@@ -141,20 +141,20 @@ def test_protection_run_routes_are_registered(app_client) -> None:
 # analysis.get_run` zwraca stan wprost, bez odpowiednika tej metody.
 
 
-def test_protection_catalog_lookup_uses_default_reference_catalog() -> None:
+def test_protection_catalog_lookup_uses_default_reference_catalog(uow_factory) -> None:
     """CV-3.3-B: te same trzy odczyty katalogu, wydzielone z (usuniętego)
     `ProtectionAnalysisService` do wolnych funkcji dzielonych z torem
     kanonicznym (`application/protection_analysis/catalog_lookup.py`,
-    użyte przez `enm.canonical_analysis._execute_protection`)."""
+    użyte przez `enm.canonical_analysis._execute_protection`).
 
-    class UnitOfWork:
-        session = None
-
-    uow = UnitOfWork()
-
-    template = get_protection_template(uow, "template_ref_oc_ef_500")
-    curve = get_protection_curve(uow, "curve_iec_normal_inverse")
-    device = get_protection_device_type(uow, "REF-OC-EF-500")
+    Karta #151: dawna wersja testu podawała atrapę jednostki pracy (`session = None`)
+    i przechodziła WYŁĄCZNIE dzięki połkniętemu `TypeError` z nieistniejącego
+    repozytorium sesji — test maskował defekt (biblioteka bazy nigdy nie była
+    czytana). Teraz: REALNA jednostka pracy, pusta biblioteka → katalog referencyjny."""
+    with uow_factory() as uow:
+        template = get_protection_template(uow, "template_ref_oc_ef_500")
+        curve = get_protection_curve(uow, "curve_iec_normal_inverse")
+        device = get_protection_device_type(uow, "REF-OC-EF-500")
 
     assert template is not None
     assert template.id == "template_ref_oc_ef_500"
@@ -162,3 +162,71 @@ def test_protection_catalog_lookup_uses_default_reference_catalog() -> None:
     assert curve.id == "curve_iec_normal_inverse"
     assert device is not None
     assert device.id == "REF-OC-EF-500"
+
+
+def test_biblioteka_zabezpieczen_z_bazy_ma_pierwszenstwo_przed_referencyjna(uow_factory) -> None:
+    """Karta #151: wpis zaimportowany do biblioteki projektu (tabele `protection_*`)
+    jest tym, co widzi bieg zabezpieczeń — także gdy przesłania identyfikator katalogu
+    referencyjnego. Iloczyn: {szablon, krzywa, typ urządzenia} × {wpis w bazie}."""
+    with uow_factory() as uow:
+        uow.protection_catalog.upsert_protection_setting_template(
+            {
+                "id": "template_ref_oc_ef_500",
+                "name_pl": "Szablon z biblioteki projektu",
+                "params": {
+                    "curve_ref": "krzywa-projektu",
+                    "device_type_ref": "urzadzenie-projektu",
+                },
+            }
+        )
+        uow.protection_catalog.upsert_protection_curve(
+            {
+                "id": "krzywa-projektu",
+                "name_pl": "Krzywa projektu",
+                "params": {"standard": "IEC", "curve_kind": "inverse", "parameters": {"a": 0.14}},
+            }
+        )
+        uow.protection_catalog.upsert_protection_device_type(
+            {
+                "id": "urzadzenie-projektu",
+                "name_pl": "Przekaźnik projektu",
+                "params": {"vendor": "Producent", "rated_current_a": 5.0},
+            }
+        )
+    with uow_factory() as uow:
+        template = get_protection_template(uow, "template_ref_oc_ef_500")
+        curve = get_protection_curve(uow, "krzywa-projektu")
+        device = get_protection_device_type(uow, "urzadzenie-projektu")
+        brak = get_protection_curve(uow, "krzywa-ktorej-nie-ma")
+
+    assert template is not None and template.name_pl == "Szablon z biblioteki projektu"
+    assert template.curve_ref == "krzywa-projektu"
+    assert curve is not None and curve.parameters == {"a": 0.14}
+    assert device is not None and device.vendor == "Producent" and device.rated_current_a == 5.0
+    assert brak is None
+
+
+@pytest.mark.parametrize(
+    ("funkcja", "metoda"),
+    [
+        (get_protection_template, "get_protection_setting_template"),
+        (get_protection_curve, "get_protection_curve"),
+        (get_protection_device_type, "get_protection_device_type"),
+    ],
+)
+def test_awaria_bazy_przy_odczycie_biblioteki_wybucha(
+    uow_factory, monkeypatch, funkcja, metoda
+) -> None:
+    """Awaria bazy nie może po cichu podmienić biblioteki projektu na referencyjną."""
+    from sqlalchemy import exc as sa_exc
+
+    def _awaria(self, ref):
+        raise sa_exc.OperationalError("SELECT", {}, Exception("baza niedostępna"))
+
+    from infrastructure.persistence.repositories.protection_catalog_repository import (
+        ProtectionCatalogRepository,
+    )
+
+    monkeypatch.setattr(ProtectionCatalogRepository, metoda, _awaria)
+    with uow_factory() as uow, pytest.raises(sa_exc.OperationalError):
+        funkcja(uow, "cokolwiek")

@@ -20,6 +20,12 @@ import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
+#: Identyfikator wytwórcy — UUID jak w każdym elemencie ENM (karta #151: operacja oddaje
+#: wynik zgodny z kontraktem modelu, więc fikstura musi być modelem, który system może
+#: zawierać; dawne `"id": "gen_pv_1"` przechodziło tylko dzięki połkniętemu
+#: `ValidationError` w wyliczaniu gotowości).
+ID_WYTWORCY = "00000000-0000-0000-0000-0000000000a1"
+
 
 def _enm_z_wytworca() -> dict:
     enm = EnergyNetworkModel(
@@ -27,7 +33,7 @@ def _enm_z_wytworca() -> dict:
     ).model_dump(mode="json")
     enm["generators"] = [
         {
-            "id": "gen_pv_1",
+            "id": ID_WYTWORCY,
             "ref_id": "gen_pv_1",
             "name": "Falownik PV",
             "tags": [],
@@ -108,7 +114,7 @@ class TestWiazaniaTrafiajaDoModelu:
         enm = _enm_z_wytworca()
         enm["generators"][0]["ref_id"] = "inny_ref"
         wynik = _wykonaj(
-            {"generator_ref": "gen_pv_1", "ct_catalog_ref": "ct_150_1_0_5_10va_abb"}, enm
+            {"generator_ref": ID_WYTWORCY, "ct_catalog_ref": "ct_150_1_0_5_10va_abb"}, enm
         )
 
         assert wynik.get("error") is None

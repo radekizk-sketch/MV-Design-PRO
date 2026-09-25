@@ -18,9 +18,13 @@ from network_model.solvers.shunt_compensator_preview import (
     compute_shunt_compensator_preview,
 )
 
+from tests.enm.model_minimalny import model_minimalny
+
 
 def _enm_with_sn_bus(voltage_kv: float = 15.0) -> dict:
-    return {"buses": [{"ref_id": "bus-sn-1", "name": "Szyna SN", "voltage_kv": voltage_kv}]}
+    return model_minimalny(
+        buses=[{"ref_id": "bus-sn-1", "name": "Szyna SN", "voltage_kv": voltage_kv}]
+    )
 
 
 def _binding(item_id: str) -> dict:

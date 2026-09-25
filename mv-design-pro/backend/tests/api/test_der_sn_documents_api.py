@@ -370,6 +370,52 @@ def test_brak_przekroju_kabla_pomija_sekcje_d2_nie_fabrykuje_zera(app_client) ->
     assert resp.status_code == 200, resp.text
     pozycja = _odstepstwo_przekroju(resp.json())
     assert pozycja is None, "brak danych zastosowanego przekroju nie może dać pozycji odstępstw"
+    # Karta #151: sekcja nieoceniona jest NAZWANA (⚠ z powodem), nie przemilczana —
+    # dawne `except Exception` → `None` chowało tu także błąd programu.
+    nieocenione = [p for p in resp.json()["pozycje"] if p.get("check_id") == "d2.nieoceniono"]
+    assert len(nieocenione) == 1
+    assert nieocenione[0]["status"] == "WARN"
+    assert nieocenione[0]["code"] == "der_sn.d2.nieoceniono"
+    assert "cross_section_mm2" in nieocenione[0]["message_pl"]
+
+
+def test_blad_programu_przy_propozycji_d2_wybucha_zamiast_pominiecia_sekcji(
+    app_client, monkeypatch
+) -> None:
+    """Karta #151, iloczyn {odmowa danych, obcy wyjątek} × trasa raportu: obcy wyjątek
+    solvera doboru nie znika w „sekcja D2 pominięta" — dociera do wołającego (500)."""
+    import network_model.solvers.der_selection_preview as dobor
+
+    def _zepsuty(*args, **kwargs):
+        raise AttributeError("błąd programu")
+
+    monkeypatch.setattr(dobor, "propose_block_transformer", _zepsuty)
+    case_id = _nowy_przypadek(app_client)
+    _seed_case_4mva(
+        app_client, case_id, cable_ref="cable-polish-yhakxs-1c-50", laying_conditions=None
+    )
+    with pytest.raises(AttributeError, match="błąd programu"):
+        app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
+
+
+def test_odmowa_solvera_doboru_to_sekcja_d2_nieoceniona_z_powodem(app_client, monkeypatch) -> None:
+    import network_model.solvers.der_selection_preview as dobor
+
+    def _odmowa(*args, **kwargs):
+        raise ValueError("ΣS falowników musi być dodatnie.")
+
+    monkeypatch.setattr(dobor, "propose_block_transformer", _odmowa)
+    case_id = _nowy_przypadek(app_client)
+    _seed_case_4mva(
+        app_client, case_id, cable_ref="cable-polish-yhakxs-1c-50", laying_conditions=None
+    )
+    resp = app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
+    assert resp.status_code == 200, resp.text
+    nieocenione = [p for p in resp.json()["pozycje"] if p.get("check_id") == "d2.nieoceniono"]
+    assert [p["message_pl"] for p in nieocenione] == [
+        "⚠️ Zgodności z propozycją D2 nie oceniono: ΣS falowników musi być dodatnie."
+    ]
+    assert resp.json()["werdykt"] != "ZGODNY"
 
 
 def test_tor_bez_zapisu_warunkow_liczy_sie_jak_dotad(app_client) -> None:
@@ -387,3 +433,30 @@ def test_tor_bez_zapisu_warunkow_liczy_sie_jak_dotad(app_client) -> None:
     assert pozycja is not None
     assert pozycja["propozycja"] == pytest.approx(50.0)
     assert pozycja["status"] == "PASS"
+
+
+def test_zapis_warunkow_ulozenia_uszkodzony_to_d2_nieoceniona_nie_warunki_katalogowe(
+    app_client,
+) -> None:
+    """Karta #151: nieznany zestaw warunków ułożenia w modelu (zastanym/uszkodzonym —
+    kreator go nie wpuści) dawał po cichu propozycję dla warunków KATALOGOWYCH, których
+    projektant nie wybrał. Teraz sekcja D2 jest nieoceniona z powodem."""
+    case_id = _nowy_przypadek(app_client)
+    result = execute_domain_operation(
+        _sn_station_enm(),
+        "add_converter_source",
+        _der_payload_4mva(cable_ref="cable-polish-yhakxs-1c-50", laying_conditions=None),
+    )
+    assert not result.get("error"), result.get("error")
+    for branch in result["snapshot"].get("branches", []):
+        if branch.get("type") == "cable":
+            branch.setdefault("meta", {})["cable_laying_conditions"] = {
+                "set_name": "zestaw-nieznany"
+            }
+    set_enm(_klucz(app_client, case_id), EnergyNetworkModel.model_validate(result["snapshot"]))
+    resp = app_client.get(f"/api/der-sn/{case_id}/compliance-report", params={"run_status": "DONE"})
+    assert resp.status_code == 200, resp.text
+    assert _odstepstwo_przekroju(resp.json()) is None
+    nieocenione = [p for p in resp.json()["pozycje"] if p.get("check_id") == "d2.nieoceniono"]
+    assert len(nieocenione) == 1
+    assert "Nieznany zestaw warunków ułożenia" in nieocenione[0]["message_pl"]

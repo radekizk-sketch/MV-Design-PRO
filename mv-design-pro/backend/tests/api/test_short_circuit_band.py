@@ -277,9 +277,13 @@ def test_kotwica_wariant_scenariusza_odmowa_nazwana(
     assert pasmo[scenariusz_kotwicy]["zrodlo"] == "biegu_zapisanego"
 
 
+@pytest.mark.parametrize("typ", [ValueError, ZeroDivisionError])
 @pytest.mark.parametrize("scenariusz_kotwicy", ["max", "min"])
 def test_blad_solvera_wariantu_odmowa_nazwana(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch, scenariusz_kotwicy: str
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    scenariusz_kotwicy: str,
+    typ: type[Exception],
 ) -> None:
     """Gałąź `blad_solvera_wariantu:<Wyjątek>` (`enm/canonical_analysis.py`,
     `pasmo_min_max_zwarcia`): wariant przeciwnego scenariusza liczony w pamięci
@@ -292,8 +296,11 @@ def test_blad_solvera_wariantu_odmowa_nazwana(
     run_id = uuid4()
     _zapisz_bieg(run_id, scenario=scenariusz_kotwicy)
 
+    # Karta #151: odmowa NAZWANA to `ODMOWY_OBLICZENIA_BIEGU` (`ValueError` — konwencja
+    # odmów solvera — i `ArithmeticError`). Dawna atrapa rzucała `RuntimeError`, który
+    # przechodził tylko dzięki `except Exception`; obcy wyjątek pinuje test niżej (500).
     def _wykonaj_z_bledem(*_args: object, **_kwargs: object) -> None:
-        raise RuntimeError("symulowana niezbieznosc wariantu")
+        raise typ("symulowana niezbieznosc wariantu")
 
     # Atrapa DOPIERO po zapisaniu kotwicy — `_zapisz_bieg` liczy ją realnym
     # solverem; podmieniamy wyłącznie wykonanie wariantu w pamięci.
@@ -302,12 +309,29 @@ def test_blad_solvera_wariantu_odmowa_nazwana(
 
     scenariusz_brakujacy = "MIN" if scenariusz_kotwicy == "max" else "MAX"
     assert pasmo["brakujacy_scenariusz"] == scenariusz_brakujacy
-    assert pasmo["powod_niedostepnosci"] == "blad_solvera_wariantu:RuntimeError"
+    assert pasmo["powod_niedostepnosci"] == f"blad_solvera_wariantu:{typ.__name__}"
     assert "błędem solvera" in pasmo["powod_niedostepnosci_pl"]
     assert pasmo[scenariusz_brakujacy.lower()] is None
     # Strona kotwicy zostaje dostępna mimo błędu wariantu (odmowa dotyczy pary).
     assert pasmo[scenariusz_kotwicy]["zrodlo"] == "biegu_zapisanego"
     assert pasmo[scenariusz_kotwicy]["run_id"] == str(run_id)
+
+
+@pytest.mark.parametrize("typ", [RuntimeError, AttributeError, KeyError])
+def test_blad_programu_przy_wariancie_pasma_to_500_nie_odmowa(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, typ: type[Exception]
+) -> None:
+    """Karta #151: obcy wyjątek wariantu nie jest „błędem solvera" — wybucha (500)."""
+    run_id = uuid4()
+    _zapisz_bieg(run_id, scenario="max")
+
+    def _wykonaj_z_bledem(*_args: object, **_kwargs: object) -> None:
+        raise typ("błąd programu")
+
+    monkeypatch.setattr(canonical_analysis, "wykonaj_bieg_w_pamieci", _wykonaj_z_bledem)
+    surowy = TestClient(client.app, raise_server_exceptions=False)
+    odpowiedz = surowy.get(f"/api/analysis-runs/{run_id}/results/short-circuit/pasmo")
+    assert odpowiedz.status_code == 500
 
 
 def test_oba_biegi_zapisane_ta_sama_rewizja(client: TestClient) -> None:

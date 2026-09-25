@@ -46,6 +46,7 @@ from dziedziny.sekcje import (
     status_sekcji,
 )
 from dziedziny.widmo import ModelZrodlaWidmowego
+from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
 from network_model.catalog.repository import CatalogRepository
 from pydantic import BaseModel, ConfigDict
@@ -840,11 +841,11 @@ def dane_typu(repozytorium: CatalogRepository, przestrzen: str, typ_id: str) -> 
     """Dane urządzenia typu katalogowego (``KeyError`` — przestrzeń bez sekcji albo brak typu)."""
     if przestrzen not in PRZESTRZENIE_Z_SEKCJAMI:
         powod = PRZESTRZENIE_BEZ_SEKCJI.get(przestrzen, "przestrzeń nieznana")
-        raise KeyError(f"Przestrzeń {przestrzen!r} nie ma widoku sekcji modelu: {powod}.")
+        raise BrakZasobuError(f"Przestrzeń {przestrzen!r} nie ma widoku sekcji modelu: {powod}.")
     klasa, akcesor = PRZESTRZENIE_Z_SEKCJAMI[przestrzen]
     typ = getattr(repozytorium, akcesor)(typ_id)
     if typ is None:
-        raise KeyError(f"Typ {typ_id!r} nie istnieje w przestrzeni {przestrzen}.")
+        raise BrakZasobuError(f"Typ {typ_id!r} nie istnieje w przestrzeni {przestrzen}.")
     pola = _pola_typu(typ)
     karty = tuple(repozytorium.list_karty_widmowe(urzadzenie_ref=str(typ_id)))
     dowod_ptpiree = dowod_certyfikatu_ptpiree(pola)

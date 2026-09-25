@@ -1011,3 +1011,104 @@ def test_seria_przekazuje_fabryke_uow_zadania_do_kazdego_biegu_pozycji(monkeypat
     assert done["status"] == "FINISHED", done
     assert len(widziane) == 2
     assert all(fabryka is app.state.uow_factory for fabryka in widziane)
+
+
+# =============================================================================
+# Karta #151 — awaria pozycji (nazwana) ≠ błąd programu (wybucha, seria domknięta)
+# =============================================================================
+
+
+def _seria_z_wstrzyknietym_wyjatkiem(monkeypatch, typ, na_pozycji: int):
+    """Seria dwóch pozycji; bieg pozycji nr `na_pozycji` (1 albo 2) rzuca `typ`."""
+    from api import batch_execution as api_batch
+    from application.batch_execution_service import BatchExecutionService
+    from enm.canonical_analysis import execute_run
+
+    licznik = {"n": 0}
+
+    def _wykonaj(run_id, **kwargs):
+        licznik["n"] += 1
+        if licznik["n"] == na_pozycji:
+            raise typ("wstrzyknięty wyjątek")
+        return execute_run(run_id, **kwargs)
+
+    monkeypatch.setattr(
+        api_batch,
+        "_batch_service",
+        BatchExecutionService(
+            api_batch.get_fault_scenario_service(), execute_canonical_run=_wykonaj
+        ),
+    )
+    case_id = _nowy_przypadek()
+    _seed_valid_enm(case_id)
+    s1 = _create_scenario(case_id, name="A", element_ref="bus-main")
+    s2 = _create_scenario(case_id, name="B", element_ref="bus-1")
+    return client.post(
+        f"{BASE_URL}/study-cases/{case_id}/batches",
+        json={"scenario_ids": [s1["scenario_id"], s2["scenario_id"]]},
+    ).json()
+
+
+@pytest.mark.parametrize("typ", [ValueError, ZeroDivisionError])
+@pytest.mark.parametrize("na_pozycji", [1, 2])
+def test_odmowa_nazwana_pozycji_to_failed_pozycji_a_seria_dalej(monkeypatch, typ, na_pozycji):
+    batch = _seria_z_wstrzyknietym_wyjatkiem(monkeypatch, typ, na_pozycji)
+    done = client.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute")
+    assert done.status_code == 200, done.text
+    body = done.json()
+    assert body["status"] == "PARTIAL"
+    nieudana = body["items"][na_pozycji - 1]
+    assert nieudana["status"] == "FAILED"
+    assert "wstrzyknięty wyjątek" in nieudana["error_message"]
+    assert body["items"][2 - na_pozycji]["status"] == "FINISHED"
+
+
+@pytest.mark.parametrize("typ", [AttributeError, KeyError, TypeError])
+@pytest.mark.parametrize("na_pozycji", [1, 2])
+def test_blad_programu_w_pozycji_wybucha_500_a_seria_ma_status_koncowy(
+    monkeypatch, typ, na_pozycji
+):
+    """Dawniej `except Exception` robiło z błędu programu „scenariusz nieudany"; teraz
+    500, a seria NIE zostaje w RUNNING: bieżąca i niewykonane pozycje FAILED z nazwą
+    błędu wewnętrznego (bez treści wyjątku), wcześniejsze zachowują wynik."""
+    batch = _seria_z_wstrzyknietym_wyjatkiem(monkeypatch, typ, na_pozycji)
+    # Bez `with`: lifespan modułowego klienta już związał `app.state` (drugi lifespan
+    # podmieniłby fabrykę bazy); ten klient tylko NIE przepuszcza wyjątku serwera.
+    surowy = TestClient(app, raise_server_exceptions=False)
+    done = surowy.post(f"{BASE_URL}/batches/{batch['batch_id']}/execute")
+    assert done.status_code == 500
+    stan = client.get(f"{BASE_URL}/batches/{batch['batch_id']}").json()
+    assert stan["status"] == ("FAILED" if na_pozycji == 1 else "PARTIAL")
+    for pozycja in stan["items"][na_pozycji - 1 :]:
+        assert pozycja["status"] == "FAILED"
+        assert typ.__name__ in pozycja["error_message"]
+        assert "wstrzyknięty wyjątek" not in pozycja["error_message"]
+    if na_pozycji == 2:
+        assert stan["items"][0]["status"] == "FINISHED"
+
+
+@pytest.mark.parametrize(
+    ("typ", "kod_http"),
+    [(ValueError, 409), (AttributeError, 500), (KeyError, 500), (TypeError, 500)],
+)
+def test_bieg_ze_scenariusza_odmowa_409_a_blad_programu_500_przez_handler_globalny(
+    monkeypatch, typ, kod_http
+):
+    """Karta #151: dawny `except Exception` → HTTPException 500 z treścią wyjątku chował
+    ślad (HTTPException nie trafia do dziennika). Teraz odmowa `ValueError` = 409, a błąd
+    programu idzie do globalnego handlera: 500 „Wewnętrzny błąd serwera" + ślad w logu."""
+    import enm.canonical_analysis as kanon
+
+    def _zepsuty(**kwargs):
+        raise typ("wstrzyknięty wyjątek")
+
+    case_id = _nowy_przypadek()
+    _seed_valid_enm(case_id)
+    scenariusz = _create_scenario(case_id, element_ref="bus-main")
+    monkeypatch.setattr(kanon, "create_run", _zepsuty)
+    surowy = TestClient(app, raise_server_exceptions=False)
+    odpowiedz = surowy.post(f"{BASE_URL}/fault-scenarios/{scenariusz['scenario_id']}/runs")
+    assert odpowiedz.status_code == kod_http, odpowiedz.text
+    if kod_http == 500:
+        assert odpowiedz.json()["detail"] == "Wewnętrzny błąd serwera"
+        assert odpowiedz.json()["error_type"] == typ.__name__

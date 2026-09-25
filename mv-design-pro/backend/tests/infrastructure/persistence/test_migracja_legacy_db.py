@@ -309,3 +309,68 @@ def test_kasacja_tabel_legacy_dziala_na_dialekcie_produkcyjnym(postgres_url: str
         assert not _klucze_obce_projektow(engine) & {"fk_projects_connection_node"}
     finally:
         engine.dispose()
+
+
+# ---------------------------------------------------------------------------
+# Karta #151 — odmowa kompilacji projektu (nazwana) vs błąd programu
+# ---------------------------------------------------------------------------
+
+
+def _odmowa(rodzaj: str) -> Exception:
+    from application.migracja_legacy import OdmowaMigracji
+    from enm.kompilator_grafu import BenchmarkBuildError, BladGrafuWejsciowego
+
+    if rodzaj == "OdmowaMigracji":
+        return OdmowaMigracji("gałąź: brak wartości 'r_ohm_per_km'")
+    if rodzaj == "BladGrafuWejsciowego":
+        return BladGrafuWejsciowego("graf bez źródła systemowego")
+    if rodzaj == "BenchmarkBuildError":
+        return BenchmarkBuildError("add_grid_source_sn: odmowa operacji")
+    try:
+        from enm.models import EnergyNetworkModel
+
+        EnergyNetworkModel.model_validate({"header": "zly"})
+    except ValueError as blad:
+        return blad
+    raise AssertionError(rodzaj)
+
+
+@pytest.mark.parametrize(
+    "rodzaj", ["OdmowaMigracji", "BladGrafuWejsciowego", "BenchmarkBuildError", "ValidationError"]
+)
+def test_nazwana_odmowa_kompilacji_trafia_do_manifestu(silnik, monkeypatch, rodzaj):
+    import infrastructure.persistence.migracja_legacy_db as migracja
+
+    init_db(silnik)
+    pid = _projekt(silnik, "Odmowa nazwana")
+    _wstaw_model_legacy(silnik, pid)
+    blad = _odmowa(rodzaj)
+
+    def _kompiluj(**kwargs):
+        raise blad
+
+    monkeypatch.setattr(migracja, "_skompiluj_projekt", _kompiluj)
+    raport = migruj_i_usun_tabele_legacy(silnik)
+    assert str(pid) in raport.odmowione
+    assert not has_enm(klucz_twin_projektu(pid))
+    assert not (_tabele(silnik) & set(TABELE_LEGACY))
+
+
+@pytest.mark.parametrize("typ", [AttributeError, KeyError, TypeError])
+def test_blad_programu_przy_kompilacji_wybucha_a_tabele_legacy_zostaja(silnik, monkeypatch, typ):
+    """Dawniej `except Exception` wpisywało błąd programu do manifestu jako „odmowę", a
+    tabele legacy były KASOWANE — dane projektu znikały z bazy, zostając tylko w zrzucie.
+    Teraz wyjątek wychodzi z transakcji: DROP się nie wykonuje, migracja ponowi się."""
+    import infrastructure.persistence.migracja_legacy_db as migracja
+
+    init_db(silnik)
+    pid = _projekt(silnik, "Błąd programu")
+    _wstaw_model_legacy(silnik, pid)
+
+    def _kompiluj(**kwargs):
+        raise typ("błąd programu")
+
+    monkeypatch.setattr(migracja, "_skompiluj_projekt", _kompiluj)
+    with pytest.raises(typ):
+        migruj_i_usun_tabele_legacy(silnik)
+    assert {"network_nodes", "network_branches"} <= _tabele(silnik)

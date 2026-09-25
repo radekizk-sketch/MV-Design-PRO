@@ -28,7 +28,6 @@ magazynu ENM projektu, przetłumaczony z `case_id` zależnością `KluczTwin`
 
 from __future__ import annotations
 
-import logging
 from typing import Any
 from uuid import UUID
 
@@ -40,8 +39,6 @@ from enm.mapping import map_enm_to_network_graph
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException
 from network_model.core.graph import NetworkGraph
-
-logger = logging.getLogger("mv_design_pro.api.diagnostics")
 
 router = APIRouter(prefix="/api", tags=["diagnostics"])
 
@@ -55,21 +52,12 @@ def _get_graph_for_case(klucz: str) -> NetworkGraph:
     który pójdzie do solvera. `klucz` to klucz magazynu ENM (Canonical
     Project Twin, CV-1-W) — tłumaczenie `case_id -> klucz` (404 gdy przypadek
     nie należy do żadnego projektu) już się odbyło w zależności `KluczTwin`
-    handlera, więc `get_enm` poniżej realnie nie ma już czego odrzucić; blok
-    zostaje jako obrona w głąb dla innych, nienazwanych awarii odczytu.
+    handlera, więc `get_enm` poniżej nie ma czego odrzucić (brak modelu = model
+    domyślny). Dawny blok `except Exception` → 404 „Nie znaleziono modelu" przebierał
+    KAŻDĄ awarię odczytu (uszkodzony plik migawki, błąd programu) za brak zasobu —
+    karta #151 go usunęła: awaria odczytu wybucha jako 500 z pełnym śladem w dzienniku.
     """
-    try:
-        enm = get_enm(klucz)
-    except Exception as exc:
-        logger.warning(
-            "Nie udało się wczytać modelu ENM dla klucza=%s: %s",
-            klucz,
-            exc,
-        )
-        raise HTTPException(
-            status_code=404,
-            detail=f"Nie znaleziono modelu sieci dla przypadku '{klucz}'",
-        ) from exc
+    enm = get_enm(klucz)
     return map_enm_to_network_graph(enm)
 
 

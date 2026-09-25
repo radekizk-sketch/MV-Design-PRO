@@ -619,8 +619,6 @@ def create_run_from_scenario(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(exc),
         ) from exc
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Błąd tworzenia przebiegu: {exc}",
-        ) from exc
+    # Dawny `except Exception` → HTTPException 500 z treścią wyjątku (karta #151) chował
+    # ślad: HTTPException nie trafia do dziennika. Błąd programu idzie teraz do
+    # globalnego handlera (`api/exception_handlers.py`): 500 + pełny ślad w dzienniku.

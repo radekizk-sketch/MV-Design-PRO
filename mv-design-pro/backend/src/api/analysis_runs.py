@@ -61,6 +61,7 @@ from enm.models import EnergyNetworkModel
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.brak_zasobu import BrakZasobuError
 from network_model.nazwy import nazwa_nadana
 from pydantic import ValidationError
 
@@ -767,7 +768,7 @@ def get_short_circuit_rozplyw(
         return canonicalize_json(
             build_short_circuit_rozplyw_response(run, target_id, uow_factory=uow_factory)
         )
-    except KeyError as exc:
+    except BrakZasobuError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Brak punktu zwarcia {target_id} w wynikach obliczenia {run_id}",
@@ -812,7 +813,7 @@ def get_dynamika_results(run_id: UUID) -> dict[str, Any]:
     run = _require_canonical_run(run_id)
     try:
         return canonicalize_json(build_dynamika_results_response(run))
-    except KeyError as exc:
+    except BrakZasobuError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
@@ -829,7 +830,7 @@ def get_dynamika_time_series(
     klucze = [k.strip() for k in kanaly.split(",") if k.strip()] if kanaly else None
     try:
         return canonicalize_json(build_dynamika_time_series_response(run, klucze))
-    except KeyError as exc:
+    except BrakZasobuError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 

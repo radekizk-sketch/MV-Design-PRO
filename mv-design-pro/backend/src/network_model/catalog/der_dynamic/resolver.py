@@ -22,6 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.der_dynamic.defaults import (
     INVERTER_DYNAMIC_PROFILES,
     WIND_DYNAMIC_PROFILES,
@@ -172,7 +173,7 @@ def get_profile(profile_id: str) -> DerDynamicProfile:
     if profile_id in WIND_DYNAMIC_PROFILES:
         return WIND_DYNAMIC_PROFILES[profile_id]
     available = ", ".join(list_all_profile_ids())
-    raise KeyError(f"Profil dynamiczny '{profile_id}' nieznany. Dostępne: {available}")
+    raise BrakZasobuError(f"Profil dynamiczny '{profile_id}' nieznany. Dostępne: {available}")
 
 
 # Re-export używany przez konsumentów

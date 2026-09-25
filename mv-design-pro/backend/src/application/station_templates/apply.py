@@ -31,7 +31,7 @@ from enm.domain_operations import execute_domain_operation, nazwa_roli_pola_sn
 from enm.models import EnergyNetworkModel
 from enm.rola_pola_sn import kanoniczna_rola_pola_sn
 from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu, opis_pozycji_katalogu
-from enm.store import blokada_twin
+from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from network_model.pochodne import mva_na_kva
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
@@ -245,7 +245,7 @@ def _zastosuj_gpz_pod_blokada(
         new_enm = EnergyNetworkModel.model_validate(enm_dict)
         saved = _set_enm(klucz, new_enm)
         enm_dict = saved.model_dump(mode="json")
-    except Exception as exc:
+    except BLEDY_ZAPISU_MODELU as exc:
         logger.exception("Zapis modelu po zastosowaniu szablonu '%s' nie powiódł się", template.id)
         raise TemplateApplyError(
             code="template.persist_failed",
@@ -657,7 +657,7 @@ def _zastosuj_szablon_pod_blokada(
         new_enm = EnergyNetworkModel.model_validate(enm_dict)
         saved = _set_enm(klucz, new_enm)
         enm_dict = saved.model_dump(mode="json")
-    except Exception as exc:
+    except BLEDY_ZAPISU_MODELU as exc:
         # Szczegol techniczny (typ wyjatku, sciezka pliku) idzie do dziennika
         # serwera, a NIE do komunikatu inzyniera: dotychczasowe `f"...{exc}"`
         # wypychalo na ekran bezwzgledna sciezke systemu plikow backendu.
@@ -1096,10 +1096,8 @@ def _ct_ratio_from_catalog(catalog_ref: str) -> tuple[float, float] | None:
     rekordu katalogu — zero fabrykacji: `add_ct` odrzuca payload, którego
     przekładnia nie zgadza się z pozycją katalogową, więc liczby muszą
     pochodzić z TEGO SAMEGO źródła, które sprawdzi operacja domenowa."""
-    try:
-        from network_model.catalog import get_default_mv_catalog
-    except ImportError:
-        return None
+    from network_model.catalog import get_default_mv_catalog
+
     item = get_default_mv_catalog().get_ct_type(catalog_ref)
     if item is None:
         return None
@@ -1109,10 +1107,8 @@ def _ct_ratio_from_catalog(catalog_ref: str) -> tuple[float, float] | None:
 def _vt_ratio_from_catalog(catalog_ref: str) -> tuple[float, float] | None:
     """Przekładnia VT (`ratio_primary_v`, `ratio_secondary_v`) z REALNEGO
     rekordu katalogu — jak `_ct_ratio_from_catalog`."""
-    try:
-        from network_model.catalog import get_default_mv_catalog
-    except ImportError:
-        return None
+    from network_model.catalog import get_default_mv_catalog
+
     item = get_default_mv_catalog().get_vt_type(catalog_ref)
     if item is None:
         return None

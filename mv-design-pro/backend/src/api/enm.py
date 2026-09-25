@@ -84,7 +84,7 @@ from enm.nazwy_elementow import nazwa_nadana_pozycji_katalogu
 from enm.rewizje import RewizjaNieistniejeError, RewizjaUszkodzonaError
 from enm.severity import empty_severity_counts
 from enm.slownik_komunikatow import NAZWY_KOLEKCJI_PL, opis_elementu
-from enm.store import ZrodloZmiany, blokada_twin
+from enm.store import BLEDY_ZAPISU_MODELU, ZrodloZmiany, blokada_twin
 from enm.store import checkout as _checkout_rewizji
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
@@ -1348,7 +1348,7 @@ def _domain_ops_pod_blokada(case_id: str, klucz: str, req: DomainOpEnvelopeModel
             )
             saved = _set_enm(klucz, new_enm, zrodlo_zmiany=zrodlo)
             result["snapshot"] = saved.model_dump(mode="json")
-        except Exception:
+        except BLEDY_ZAPISU_MODELU:
             # Szczegół techniczny (typ wyjątku, ścieżka pliku) idzie do dziennika
             # serwera, nie do komunikatu inżyniera — dotychczasowe f"...{e}"
             # wypychało na ekran bezwzględną ścieżkę systemu plików backendu

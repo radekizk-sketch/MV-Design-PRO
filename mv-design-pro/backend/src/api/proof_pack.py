@@ -381,7 +381,10 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
             c_factor=payload.c_factor,
             t_min_s=payload.t_min_s,
         )
-    except (KeyError, ValueError) as exc:
+    # Karta #151: odmowa danych solvera/walidacji to `ValueError` (w tym brak węzła
+    # zwarcia w indeksie Z-bus); dawny `KeyError` w krotce przebierał błąd programu
+    # (odczyt słownika) za 422 „nie udało się wyznaczyć" — teraz wybucha (500).
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Nie udało się wyznaczyć wkładów zwarciowych: {exc}",
@@ -427,7 +430,7 @@ def download_sc3f_pack(payload: SC3FPackRequest) -> Response:
     )
     try:
         content = SC3FProofPack.generate_zip(pack_input, context)
-    except (KeyError, ValueError) as exc:
+    except ValueError as exc:  # jak wyżej: `KeyError` = błąd programu (karta #151)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Nie udało się zbudować pakietu dowodowego SC3F: {exc}",

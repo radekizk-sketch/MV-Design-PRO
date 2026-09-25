@@ -113,7 +113,15 @@ def _jsonb(wartosc: Any) -> Any:
 def migruj_i_usun_tabele_legacy(engine: Engine) -> RaportMigracjiLegacy:
     """Zrzut → kompilacja do ENM (projekty bez modelu) → DROP tabel legacy."""
     from enm.klucz_twin import klucz_twin_projektu
+    from enm.kompilator_grafu import BenchmarkBuildError
     from enm.store import ZrodloZmiany, _store_dir, has_enm, set_enm
+
+    # Nazwane odmowy kompilacji projektu zastanego (karta #151): `OdmowaMigracji` i
+    # `BladGrafuWejsciowego` (dane legacy nie dają się odwzorować bez zgadywania),
+    # `pydantic.ValidationError` (wynik niezgodny z kontraktem ENM) — wszystkie to
+    # `ValueError` — oraz `BenchmarkBuildError` (operacja domenowa odrzuciła krok budowy).
+    # Powód trafia do manifestu `odmowione`; inny wyjątek jest błędem programu i wybucha.
+    odmowy_kompilacji: tuple[type[Exception], ...] = (ValueError, BenchmarkBuildError)
 
     inspektor = inspect(engine)
     istniejace = set(inspektor.get_table_names())
@@ -172,7 +180,7 @@ def migruj_i_usun_tabele_legacy(engine: Engine) -> RaportMigracjiLegacy:
                     ],
                     proweniencja=f"legacy:{project_id}",
                 )
-            except Exception as blad:  # noqa: BLE001 — każda przyczyna idzie do manifestu
+            except odmowy_kompilacji as blad:
                 raport.odmowione[project_id] = f"{nazwa}: {blad}"
                 continue
             zapisany = set_enm(

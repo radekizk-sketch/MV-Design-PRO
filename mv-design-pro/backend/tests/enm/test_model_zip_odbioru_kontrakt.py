@@ -44,6 +44,7 @@ from network_model.catalog.types import MATERIALIZATION_CONTRACTS
 from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 
 from tests.catalog_test_helpers import gpz_source_record
+from tests.enm.model_minimalny import model_minimalny
 
 BASE_MVA = 10.0
 U_KV = 15.0
@@ -133,12 +134,18 @@ def test_domyslne_kontraktu_sa_domyslnymi_solvera() -> None:
 
 
 def _enm_z_odplywem() -> tuple[dict, str]:
-    enm: dict = {
-        "buses": [{"ref_id": "bus-nn", "name": "Szyna nN", "voltage_kv": 0.4}],
-        "substations": [
-            {"ref_id": "st-1", "name": "ST-1", "bus_refs": ["bus-nn"], "field_specs": []}
+    enm: dict = model_minimalny(
+        buses=[{"ref_id": "bus-nn", "name": "Szyna nN", "voltage_kv": 0.4}],
+        substations=[
+            {
+                "ref_id": "st-1",
+                "name": "ST-1",
+                "station_type": "mv_lv",
+                "bus_refs": ["bus-nn"],
+                "field_specs": [],
+            }
         ],
-    }
+    )
     odplyw = execute_domain_operation(
         enm, "add_nn_outgoing_field", {"station_ref": "st-1", "bus_nn_ref": "bus-nn"}
     )
@@ -474,7 +481,7 @@ def _szyna(run, ref_id: str) -> dict:
 
 
 def _enm_z_szyna() -> dict:
-    return {"buses": [{"ref_id": "b1", "name": "B1", "voltage_kv": 15.0}], "loads": []}
+    return model_minimalny(buses=[{"ref_id": "b1", "name": "B1", "voltage_kv": 15.0}], loads=[])
 
 
 @pytest.mark.parametrize("tabliczka", [dict(ZIP_STALA_IMPEDANCJA), None])

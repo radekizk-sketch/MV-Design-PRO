@@ -1525,25 +1525,12 @@ def validate_and_materialize_catalog_binding(
             {},
         )
 
-    try:
-        binding = CatalogBinding.from_dict(binding_data)
-    except Exception:
-        return (
-            CatalogPolicyError(
-                code="catalog.ref_required",
-                message_pl="Powiązanie katalogowe ma nieprawidłowy format",
-                errors=[
-                    {
-                        "code": "catalog.ref_required",
-                        "message_pl": (
-                            "Nie można odczytać wskazania pozycji katalogu — wybierz pozycję "
-                            "ponownie."
-                        ),
-                    }
-                ],
-            ),
-            {},
-        )
+    # Odczyt jest tolerancyjny (`CatalogBinding.from_dict`: brak pola = "") i te same
+    # dane przeszły już przez `validate_catalog_binding`, który czyta je tą samą metodą.
+    # Dawny `except Exception` → `catalog.ref_required` („nieprawidłowy format") był
+    # martwy dla danych i żywy wyłącznie dla błędu programu, który przebierał za błąd
+    # projektanta (karta #151) — usunięty: błąd programu wybucha (500).
+    binding = CatalogBinding.from_dict(binding_data)
 
     # Katalog MODELU (statyczny + pozycje projektu) — jak w `_blad_referencji_dodatkowej`.
     from enm.katalog_projektu import katalog_biezacy

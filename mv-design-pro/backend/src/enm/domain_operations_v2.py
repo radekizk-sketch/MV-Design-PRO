@@ -79,6 +79,7 @@ from .domain_operations import (
     _find_legacy_field_element_collection,
     _make_id,
     _materialize_catalog_payload,
+    _odmowa_typu_ladunku,
     _opt_float_any,
     _require_catalog_ref,
     _require_transformer_fields,
@@ -2072,6 +2073,9 @@ def _resolve_bay_template_protection_codes(
 
 def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj pole SN do istniejącej rozdzielnicy bez zapisu do legacy bays."""
+    odmowa_typu = _odmowa_typu_ladunku(payload, "add_sn_bay", {"tags": "lista"})
+    if odmowa_typu is not None:
+        return odmowa_typu
     existing_field_ref = payload.get("existing_field_ref") or payload.get("field_ref")
     existing_field_ref = (
         existing_field_ref.strip()
@@ -6778,6 +6782,11 @@ def add_load_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     z tabliczką producenta), semantyka P/Q/cosφ/ZIP reużywa `add_nn_load`
     (`zip_odbioru_z_payloadu`, ta sama derywacja Q z cosφ).
     """
+    odmowa_typu = _odmowa_typu_ladunku(
+        payload, "add_load_sn", {"active_power_kw": "liczba_lub_tekst", "p_mw": "liczba_lub_tekst"}
+    )
+    if odmowa_typu is not None:
+        return odmowa_typu
     bus_ref_raw = payload.get("bus_ref")
     bus_ref = bus_ref_raw.strip() if isinstance(bus_ref_raw, str) else None
     if not bus_ref:
@@ -6899,6 +6908,9 @@ def add_generator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
     znamionowa (moc pozorna, napięcie, granice mocy biernej); moc czynna
     WYJŚCIOWA jest nastawą STUDIUM (payload `p_mw`), nie polem katalogu.
     """
+    odmowa_typu = _odmowa_typu_ladunku(payload, "add_generator_sn", {"p_mw": "liczba_lub_tekst"})
+    if odmowa_typu is not None:
+        return odmowa_typu
     bus_ref_raw = payload.get("bus_ref")
     bus_ref = bus_ref_raw.strip() if isinstance(bus_ref_raw, str) else None
     if not bus_ref:
@@ -7174,8 +7186,11 @@ def set_source_operating_mode(enm: dict[str, Any], payload: dict[str, Any]) -> d
 
 def set_dynamic_profile(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Ustaw profil dynamiczny (czasowy) dla elementu."""
+    odmowa_typu = _odmowa_typu_ladunku(payload, "set_dynamic_profile", {"profile": "slownik"})
+    if odmowa_typu is not None:
+        return odmowa_typu
     element_ref = payload.get("element_ref") or payload.get("applies_to_element_id")
-    profile = payload.get("profile", {})
+    profile = payload.get("profile") or {}
 
     if not element_ref:
         return _error_response(

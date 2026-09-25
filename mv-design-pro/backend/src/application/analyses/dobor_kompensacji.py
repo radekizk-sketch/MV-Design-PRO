@@ -97,6 +97,7 @@ from application.analyses.konwencja_mocy import (
 )
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import (
+    ODMOWY_OBLICZENIA_BIEGU,
     CanonicalRun,
     _graph_id_from_ref,
     bieg_wariantu,
@@ -298,7 +299,7 @@ def _point_cos_phi(
     run = bieg_wariantu(base_run, migawka, analysis_type="PF")
     try:
         wykonaj_bieg_w_pamieci(run)
-    except Exception:  # noqa: BLE001 — niezbieżność/osobliwość = scenariusz nieoceniony
+    except ODMOWY_OBLICZENIA_BIEGU:  # nazwana odmowa obliczenia = scenariusz nieoceniony
         return _pusty_pomiar()
 
     result_v1 = (run.raw_result or {}).get("result_v1") or {}

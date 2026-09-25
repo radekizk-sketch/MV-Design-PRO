@@ -72,9 +72,12 @@ def _cable_derating_from_model(cable: dict[str, Any]) -> Any:
     """Warunki UŁOŻENIA zapisane przy kablu w modelu → współczynniki doboru (V12K-207).
 
     Brak zapisu = warunki katalogowe (tory zbudowane przed tą kartą liczą się identycznie
-    jak dotąd). Nieznany/uszkodzony zapis też daje warunki katalogowe: sekcja odstępstw
-    jest interpretacją, więc nie może wywrócić raportu — a walidacja nazwy stoi tam, gdzie
-    dane wchodzą do modelu (`_der_cable_laying_conditions`).
+    jak dotąd). Nieznany/uszkodzony zapis (walidacja nazwy stoi tam, gdzie dane wchodzą do
+    modelu — `_der_cable_laying_conditions` — więc to model zastany albo uszkodzony) daje
+    `ValueError` z powodem: sekcja D2 jest wtedy NIEOCENIONA z tym powodem
+    (`_compute_d2_deviations`), a nie liczona po cichu dla warunków katalogowych, których
+    projektant nie wybrał (karta #151 — dawne `except ValueError: return
+    WARUNKI_KATALOGOWE`).
     """
     from network_model.solvers.cable_ampacity_derating import (
         WARUNKI_KATALOGOWE,
@@ -84,16 +87,13 @@ def _cable_derating_from_model(cable: dict[str, Any]) -> Any:
     opis = (cable.get("meta") or {}).get("cable_laying_conditions")
     if not isinstance(opis, dict):
         return WARUNKI_KATALOGOWE
-    try:
-        return wspolczynniki_z_opisu(
-            opis.get("set_name"),
-            f_grunt=opis.get("f_grunt"),
-            f_wiazka=opis.get("f_wiazka"),
-            f_grupa=opis.get("f_grupa"),
-            opis_pl=opis.get("opis_pl"),
-        )
-    except ValueError:
-        return WARUNKI_KATALOGOWE
+    return wspolczynniki_z_opisu(
+        opis.get("set_name"),
+        f_grunt=opis.get("f_grunt"),
+        f_wiazka=opis.get("f_wiazka"),
+        f_grupa=opis.get("f_grupa"),
+        opis_pl=opis.get("opis_pl"),
+    )
 
 
 def _zastosowana_wartosc(payload: dict[str, Any], klucz: str, etykieta: str) -> float:
@@ -101,10 +101,10 @@ def _zastosowana_wartosc(payload: dict[str, Any], klucz: str, etykieta: str) -> 
     porównania z propozycją D2.
 
     Brak pola nie może być cichym zerem (FAB-E, E1): fabrykowana wartość 0.0
-    zgłosiłaby FAŁSZYWE odstępstwo („zastosowano 0 MVA/mm²") zamiast uczciwego
-    pominięcia sekcji, które ta funkcja już robi dla katalogu niekompletnego
-    (``except Exception`` w ``_compute_d2_deviations`` poniżej) — podniesienie
-    wyjątku tutaj trafia w TĘ SAMĄ, już istniejącą, udokumentowaną ścieżkę.
+    zgłosiłaby FAŁSZYWE odstępstwo („zastosowano 0 MVA/mm²") zamiast uczciwej
+    pozycji „sekcja D2 nieoceniona" z powodem (``except ValueError`` w
+    ``_compute_d2_deviations`` poniżej) — podniesienie wyjątku tutaj trafia w TĘ SAMĄ
+    nazwaną reakcję co odmowa solvera doboru.
     """
     wartosc = payload.get(klucz)
     if wartosc is None:
@@ -116,7 +116,14 @@ def _zastosowana_wartosc(payload: dict[str, Any], klucz: str, etykieta: str) -> 
 
 
 def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
-    """Odstępstwa zastosowanego doboru od propozycji D2 (⚠). ``None`` gdy brak danych.
+    """Odstępstwa zastosowanego doboru od propozycji D2 (⚠). ``None`` gdy tor nie ma
+    elementów do porównania.
+
+    Odmowa danych (``ValueError``: brak pola zastosowanego elementu, wejście odrzucone
+    przez solver doboru) daje JEDNĄ pozycję ``{"nieoceniono": True, "powod_pl": ...}``
+    — raport pokazuje ją jako ⚠ „sekcja D2 nieoceniona" z powodem (karta #151: dawne
+    ``except Exception`` → ``None`` chowało KAŻDY błąd, także programu, w cichym
+    pominięciu sekcji). Inny wyjątek jest błędem programu i wybucha (500).
 
     Reużywa kandydatów katalogu (``grid_source_preview``) i solvera doboru
     (``der_selection_preview``). Porównuje: przekrój kabla, moc TR, grupę połączeń.
@@ -223,9 +230,8 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
                     }
                 )
         return deviations or None
-    except Exception:
-        # Katalog niekompletny/niedostępny — sekcja D2 pominięta jawnie (bez fabrykacji).
-        return None
+    except ValueError as exc:
+        return [{"nieoceniono": True, "powod_pl": str(exc)}]
 
 
 @router.get("/api/der-sn/{case_id}/compliance-report")

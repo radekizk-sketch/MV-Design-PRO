@@ -704,13 +704,12 @@ def export_coordination_pdf(run_id: str) -> Response:
             detail=f"Coordination result not found: {run_id}",
         )
 
-    try:
-        from network_model.reporting.protection_report_pdf import (
-            _PDF_AVAILABLE,
-            export_protection_coordination_to_pdf,
-        )
-    except ImportError:
-        _PDF_AVAILABLE = False
+    # Brak reportlab rozstrzyga sam moduł raportu (`_PDF_AVAILABLE`); `ImportError` modułu
+    # pakietu byłby defektem wydania, nie „eksport niedostępny" (karta #151).
+    from network_model.reporting.protection_report_pdf import (
+        _PDF_AVAILABLE,
+        export_protection_coordination_to_pdf,
+    )
 
     if not _PDF_AVAILABLE:
         raise HTTPException(
@@ -754,13 +753,11 @@ def export_coordination_docx(run_id: str) -> Response:
             detail=f"Coordination result not found: {run_id}",
         )
 
-    try:
-        from network_model.reporting.protection_report_docx import (
-            _DOCX_AVAILABLE,
-            export_protection_coordination_to_docx,
-        )
-    except ImportError:
-        _DOCX_AVAILABLE = False
+    # Jak wyżej dla PDF: brak python-docx rozstrzyga `_DOCX_AVAILABLE` (karta #151).
+    from network_model.reporting.protection_report_docx import (
+        _DOCX_AVAILABLE,
+        export_protection_coordination_to_docx,
+    )
 
     if not _DOCX_AVAILABLE:
         raise HTTPException(

@@ -372,3 +372,47 @@ def test_kazdy_szablon_20kv_poza_gpz_odmawia_na_magistrali_15kv() -> None:
             )
         assert wyjatek.value.code, f"{template.id}: odmowa musi mieć kod"
         assert wyjatek.value.message_pl, f"{template.id}: odmowa musi mieć komunikat po polsku"
+
+
+# ---------------------------------------------------------------------------
+# Karta #151 — nieudany zapis po zastosowaniu szablonu: nazwana awaria vs błąd programu.
+# Iloczyn: {korzeń modelu (GPZ), wcięcie w odcinek} × {OSError, ValidationError, obcy}.
+# ---------------------------------------------------------------------------
+
+_SZABLONY_ZAPISU = (("tpl_gpz_110_15_2x16mva_h5", 0.0), ("tpl_abonencka_250kva_pomiar", 15.0))
+
+
+def _awaria_zapisu(typ: str) -> Any:
+    def _set_enm(klucz: str, enm: Any, **kwargs: Any) -> Any:
+        if typ == "OSError":
+            raise OSError(28, "No space left on device")
+        if typ == "ValidationError":
+            EnergyNetworkModel.model_validate({"header": "zly"})
+        raise AttributeError("błąd programu")
+
+    return _set_enm
+
+
+@pytest.mark.parametrize(("tpl_id", "voltage_kv"), _SZABLONY_ZAPISU)
+@pytest.mark.parametrize("typ", ["OSError", "ValidationError"])
+def test_nazwana_awaria_zapisu_szablonu_to_persist_failed(
+    monkeypatch: pytest.MonkeyPatch, tpl_id: str, voltage_kv: float, typ: str
+) -> None:
+    import api.enm as api_enm
+
+    monkeypatch.setattr(api_enm, "_set_enm", _awaria_zapisu(typ))
+    with pytest.raises(TemplateApplyError) as wyjatek:
+        _zastosuj(tpl_id, voltage_kv, klucz_suffix=f"-zapis-{typ}")
+    assert wyjatek.value.code == "template.persist_failed"
+    assert "No space left" not in wyjatek.value.message_pl
+
+
+@pytest.mark.parametrize(("tpl_id", "voltage_kv"), _SZABLONY_ZAPISU)
+def test_blad_programu_przy_zapisie_szablonu_wybucha(
+    monkeypatch: pytest.MonkeyPatch, tpl_id: str, voltage_kv: float
+) -> None:
+    import api.enm as api_enm
+
+    monkeypatch.setattr(api_enm, "_set_enm", _awaria_zapisu("AttributeError"))
+    with pytest.raises(AttributeError, match="błąd programu"):
+        _zastosuj(tpl_id, voltage_kv, klucz_suffix="-zapis-obcy")

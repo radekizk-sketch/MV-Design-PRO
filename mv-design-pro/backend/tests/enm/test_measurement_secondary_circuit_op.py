@@ -212,10 +212,13 @@ def test_set_measurement_secondary_circuit_nieznany_ref_404_domenowo() -> None:
 
 
 def test_set_measurement_secondary_circuit_odrzuca_ujemna_dlugosc_przy_zapisie() -> None:
-    """Kontrakt walidowany PRZY ZAPISIE migawki (`Measurement.obwod_wtorny`,
-    `gt=0`) — operacja domenowa nie omija reguły modelu."""
-    from enm.models import EnergyNetworkModel
+    """Kontrakt modelu (`Measurement.obwod_wtorny`, `gt=0`) — operacja domenowa nie omija
+    reguły modelu.
 
+    Karta #151 (nowy kanon, intencja bez zmian): wynik KAŻDEJ operacji jest walidowany
+    kontraktem ENM w `_response`, więc ujemna długość jest odmową NAZWANĄ samej operacji
+    (kod + opis pola), a nie migawką oddaną z „brakiem gotowości bez blokad" i odrzuconą
+    dopiero przy zapisie jako „nie udało się zapisać modelu"."""
     enm = _enm_with_ct()
     result = execute_domain_operation(
         enm_dict=enm,
@@ -225,10 +228,5 @@ def test_set_measurement_secondary_circuit_odrzuca_ujemna_dlugosc_przy_zapisie()
             "obwod_wtorny": {"dlugosc_przewodu_m": -5.0},
         },
     )
-    assert result.get("error_code") is None  # operacja SAMA nie waliduje kształtu
-    try:
-        EnergyNetworkModel.model_validate(result["snapshot"])
-        raised = False
-    except Exception:
-        raised = True
-    assert raised, "ujemna dlugosc powinna byc odrzucona przy walidacji migawki"
+    assert result.get("error_code") == "operation.model_contract_violated"
+    assert result.get("snapshot") is None

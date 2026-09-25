@@ -39,6 +39,7 @@ wypełnia `width_mm`:
 from __future__ import annotations
 
 from enm.rola_pola_sn import nazwa_roli_pola_sn_z_okresleniem
+from network_model.brak_zasobu import BrakZasobuError
 from pydantic import BaseModel, Field, computed_field
 
 from .complete_mv_bay_template import BayKind
@@ -735,7 +736,7 @@ def get_factory_configuration(configuration_ref: str) -> FactoryConfiguration:
     """Konfiguracja po ref. `KeyError` gdy brak (spójnie z resztą pakietu)."""
     if configuration_ref not in FACTORY_CONFIGURATION_REGISTRY:
         available = ", ".join(sorted(FACTORY_CONFIGURATION_REGISTRY))
-        raise KeyError(
+        raise BrakZasobuError(
             f"Unknown factory configuration_ref: {configuration_ref}. Available: {available}"
         )
     return FACTORY_CONFIGURATION_REGISTRY[configuration_ref]

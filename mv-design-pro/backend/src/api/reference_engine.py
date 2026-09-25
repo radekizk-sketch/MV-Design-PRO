@@ -14,6 +14,7 @@ from typing import Any
 from api.klucz_twin_dep import KluczTwin
 from enm.store import get_enm as _get_enm
 from fastapi import APIRouter, HTTPException, Query
+from network_model.brak_zasobu import BrakZasobuError
 from reference_engine import evaluate_enm, get_reference_pack, list_reference_packs
 
 router = APIRouter(prefix="/api", tags=["reference-engine"])
@@ -41,7 +42,7 @@ async def get_pack(pack_id: str) -> dict[str, Any]:
     """Pełny pakiet referencyjny (profile pól, słownik symboli, reguły)."""
     try:
         pack = get_reference_pack(pack_id)
-    except KeyError as exc:
+    except BrakZasobuError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return pack.model_dump(mode="json")
 
@@ -63,7 +64,7 @@ def get_reference_compliance(
         try:
             for pack_id in pack_ids:
                 get_reference_pack(pack_id)
-        except KeyError as exc:
+        except BrakZasobuError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
     report = evaluate_enm(enm, pack_ids=pack_ids)
     return report.model_dump(mode="json")

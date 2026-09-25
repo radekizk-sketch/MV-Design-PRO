@@ -1510,3 +1510,65 @@ def test_dobor_przekladnikow_bez_wiazania_nie_udaje_werdyktu(app_client) -> None
 
     assert dane["przekladnik_pradowy"] == {"catalog_ref": None, "nazwa": None, "wynik": None}
     assert dane["przekladnik_napieciowy"] == {"catalog_ref": None, "nazwa": None, "wynik": None}
+
+
+# ---------------------------------------------------------------------------
+# Karta #151 — nieudany zapis modelu: nazwane awarie vs błąd programu
+# ---------------------------------------------------------------------------
+
+
+def _awaria_zapisu(typ: str):
+    def _set_enm(klucz, enm, **kwargs):
+        if typ == "OSError":
+            raise OSError(28, "No space left on device")
+        if typ == "ValidationError":
+            from enm.models import EnergyNetworkModel
+
+            EnergyNetworkModel.model_validate({"header": "zly"})
+        raise AttributeError("błąd programu")
+
+    return _set_enm
+
+
+def _wolaj_koncowke(app_client, koncowka: str, monkeypatch, typ: str):
+    import api.generators as modul
+
+    if koncowka == "utworz":
+        project_id, case_id = _create_project_and_case(app_client)
+        _seed_station_enm(case_id)
+        monkeypatch.setattr(modul, "_set_enm", _awaria_zapisu(typ))
+        return app_client.post(
+            f"/api/projects/{project_id}/cases/{case_id}/generators",
+            json={
+                "station_ref": "station/1",
+                "der_kind": "PV",
+                "power_mw": 0.5,
+                "connection_variant": "nn_side",
+                "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+                "source_name": "PV wiązania",
+            },
+        )
+    project_id, case_id, ref = _utworz_wytworce(app_client)
+    monkeypatch.setattr(modul, "_set_enm", _awaria_zapisu(typ))
+    return app_client.patch(
+        f"/api/projects/{project_id}/cases/{case_id}/generators/{ref}/bindings",
+        json={"protection_catalog_ref": "REF-OC-200"},
+    )
+
+
+@pytest.mark.parametrize("koncowka", ["utworz", "wiazania"])
+@pytest.mark.parametrize("typ", ["OSError", "ValidationError"])
+def test_nazwana_awaria_zapisu_to_kod_snapshot_validation_failed(
+    app_client, monkeypatch, koncowka: str, typ: str
+) -> None:
+    odpowiedz = _wolaj_koncowke(app_client, koncowka, monkeypatch, typ)
+    assert odpowiedz.status_code == 500
+    assert odpowiedz.json()["detail"]["code"] == "api.snapshot_validation_failed"
+
+
+@pytest.mark.parametrize("koncowka", ["utworz", "wiazania"])
+def test_blad_programu_przy_zapisie_wybucha_nie_udaje_awarii_zapisu(
+    app_client, monkeypatch, koncowka: str
+) -> None:
+    with pytest.raises(AttributeError, match="błąd programu"):
+        _wolaj_koncowke(app_client, koncowka, monkeypatch, "AttributeError")

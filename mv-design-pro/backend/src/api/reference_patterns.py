@@ -129,23 +129,22 @@ def list_pattern_a_fixtures() -> list[FixtureMetadata]:
         return fixtures
 
     for filepath in sorted(fixtures_dir.glob("*.json")):
-        try:
-            with open(filepath, encoding="utf-8") as f:
-                data = json.load(f)
+        # Fikstury wzorca są częścią produktu (karta #151): plik nieczytelny albo
+        # niepoprawny JSON to defekt wydania, nie powód do cichego pominięcia pozycji
+        # z listy — wybucha (500 z pełnym śladem w dzienniku).
+        with open(filepath, encoding="utf-8") as f:
+            data = json.load(f)
 
-            fixture_id = filepath.stem
-            fixtures.append(
-                FixtureMetadata(
-                    fixture_id=fixture_id,
-                    filename=filepath.name,
-                    description=data.get("_description"),
-                    expected_verdict=data.get("_expected_verdict"),
-                    notes_pl=data.get("_notes_pl"),
-                )
+        fixture_id = filepath.stem
+        fixtures.append(
+            FixtureMetadata(
+                fixture_id=fixture_id,
+                filename=filepath.name,
+                description=data.get("_description"),
+                expected_verdict=data.get("_expected_verdict"),
+                notes_pl=data.get("_notes_pl"),
             )
-        except (json.JSONDecodeError, OSError):
-            # Skip invalid files
-            continue
+        )
 
     return fixtures
 
@@ -229,14 +228,9 @@ def run_pattern(request: PatternRunRequest) -> PatternRunResponse:
         return result_to_response(result, run_id)
 
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Błąd wykonania wzorca: {str(e)}",
-        )
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/fixtures/{fixture_file}", response_model=PatternRunResponse)
@@ -256,14 +250,9 @@ def run_pattern_with_fixture(fixture_file: str) -> PatternRunResponse:
         result = run_pattern_a(fixture_file=fixture_file)
         return result_to_response(result, run_id)
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Błąd wykonania wzorca: {str(e)}",
-        )
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 # =============================================================================
@@ -290,24 +279,19 @@ def export_pattern_result_pdf(fixture_file: str) -> Response:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
         from reportlab.pdfgen import canvas
-    except ImportError:
+    except ImportError as exc:
         raise HTTPException(
             status_code=501,
             detail="Eksport PDF wymaga biblioteki reportlab. Zainstaluj: pip install reportlab",
-        )
+        ) from exc
 
     try:
         result = run_pattern_a(fixture_file=fixture_file)
         data = result.to_dict()
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Błąd wykonania wzorca: {str(e)}",
-        )
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     # Create PDF in memory
     buffer = io.BytesIO()
@@ -456,24 +440,19 @@ def export_pattern_result_docx(fixture_file: str) -> Response:
         from docx import Document
         from docx.enum.text import WD_ALIGN_PARAGRAPH
         from docx.shared import Pt
-    except ImportError:
+    except ImportError as exc:
         raise HTTPException(
             status_code=501,
             detail="Eksport DOCX wymaga biblioteki python-docx. Zainstaluj: pip install python-docx",
-        )
+        ) from exc
 
     try:
         result = run_pattern_a(fixture_file=fixture_file)
         data = result.to_dict()
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Błąd wykonania wzorca: {str(e)}",
-        )
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     # Create DOCX document
     doc = Document()

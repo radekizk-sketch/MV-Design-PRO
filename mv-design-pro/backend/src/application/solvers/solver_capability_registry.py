@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Literal
 
+from network_model.brak_zasobu import BrakZasobuError
 from network_model.solvers.dynamika import WERSJA_SOLVERA as WERSJA_SOLVERA_DYNAMIKI
 from network_model.solvers.phase_state_sn import PHASE_STATE_SN_SOLVER_VERSION
 from network_model.solvers.power_flow_trace import POWER_FLOW_SOLVER_VERSION
@@ -459,7 +460,7 @@ def list_solver_capabilities() -> list[SolverCapability]:
 def get_solver_capability(capability: AnalysisCapability | str) -> SolverCapability:
     key = str(capability)
     if key not in SOLVER_CAPABILITY_REGISTRY:
-        raise KeyError(f"Unknown solver capability: {key}")
+        raise BrakZasobuError(f"Unknown solver capability: {key}")
     return SOLVER_CAPABILITY_REGISTRY[key]  # type: ignore[index]
 
 

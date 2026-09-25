@@ -90,8 +90,13 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # `result` w `_run_oltc_study` — 2x assignment; `float(object)` w
     # `_build_power_flow_trace_steps` — 2x arg-type) ⇒ 266/46 → 262/45.
     # Ponowne złożenie Pakietu 0 na HEAD `1b422cdd` (2026-09-24): 230/36 → 226/35.
-    assert modul.BASELINE_ERRORS == 226
-    assert modul.BASELINE_FILES == 35
+    # Karta #151 (2026-09-25): `application/protection_analysis/catalog_lookup.py` czyta
+    # bibliotekę zabezpieczeń przez `uow.protection_catalog` zamiast wywołania
+    # `CatalogRepository(uow.session)`, które zawsze kończyło się połkniętym `TypeError`
+    # (3 błędy `call-arg`) ⇒ 226/35 → 223/34; pomiar na scalonym drzewie partii 5 (AB-P1,
+    # PROOFPACK-KONTRAKT, S95-START, #151): 223/34.
+    assert modul.BASELINE_ERRORS == 223
+    assert modul.BASELINE_FILES == 34
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

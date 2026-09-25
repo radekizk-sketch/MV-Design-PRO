@@ -149,10 +149,16 @@ def test_validate_selectivity_operation_uses_compute_tcc_point() -> None:
     ) as spy:
         result = domain_operations_v2.validate_selectivity(enm, {"test_current_a": 1000.0})
     assert spy.call_count == 2  # downstream + upstream
-    selectivity_results = result["snapshot"]["meta"]["selectivity_results"]
-    assert len(selectivity_results) == 1
-    assert selectivity_results[0]["t_downstream_s"] > 0
-    assert selectivity_results[0]["t_upstream_s"] > selectivity_results[0]["t_downstream_s"]
+    # Karta #151 — stan zmierzony, NIE naprawiony tutaj: operacja czyta `settings` jako
+    # słownik (`Ipickup_a`/`time_dial`), a kontrakt ENM ma `settings: list[ProtectionSetting]`
+    # (dług A4-04 `docs/twin/MV_DESIGN_PRO_DIGITAL_TWIN_AUDIT.md`, plan P8 „DELETE" w
+    # `docs/twin/MV_DESIGN_PRO_PROTECTION_ARCHITECTURE.md`). Fikstura tego testu nie jest
+    # więc modelem, który system może zawierać, i wynik operacji jest teraz NAZWANĄ odmową
+    # kontraktu (`_response`) zamiast migawki przepuszczonej dzięki połkniętej walidacji.
+    # Na modelu poprawnym operacja rzuca `AttributeError` (lista nie ma `.get`) — 500 z
+    # pełnym śladem, a nie dawne „błąd wewnętrzny systemu" w odpowiedzi 200.
+    assert result["error_code"] == "operation.model_contract_violated"
+    assert result["snapshot"] is None
 
 
 # =============================================================================

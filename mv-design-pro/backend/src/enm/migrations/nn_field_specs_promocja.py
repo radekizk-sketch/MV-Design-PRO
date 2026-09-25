@@ -130,8 +130,11 @@ def _materializuj_aparat(
     """Zmaterializuj wiązanie katalogowe aparatu pola (APARAT_NN), gdy dane są.
 
     Zwraca (materialized_params, catalog_item_id) albo (None, None), gdy
-    wiązania brak lub materializacja się nie powiodła — migracja NIGDY nie
-    podnosi wyjątku (przebiega przy KAŻDYM odczycie modelu, `enm/store.py`).
+    wiązania brak lub materializacja odmówiła (`wynik.success is False` — pozycji nie ma
+    w katalogu, wiązanie niekompletne). Odmowa danych nie przerywa migracji (przebiega
+    przy KAŻDYM odczycie modelu, `enm/store.py`); wyjątek materializacji jest błędem
+    programu i wybucha (karta #151 — dawne `except Exception` gubiło po cichu wiązanie
+    aparatu, a model szedł dalej bez jego parametrów).
     """
     if not isinstance(catalog_binding_raw, dict):
         return None, None
@@ -150,10 +153,7 @@ def _materializuj_aparat(
             "materialize": True,
         }
     )
-    try:
-        wynik = materialize_catalog_binding(binding, get_default_mv_catalog())
-    except Exception:
-        return None, None
+    wynik = materialize_catalog_binding(binding, get_default_mv_catalog())
     if not wynik.success:
         return None, None
     parametry = {

@@ -11,14 +11,16 @@ from __future__ import annotations
 
 from enm.domain_operations import execute_domain_operation
 
+from tests.enm.model_minimalny import model_minimalny
+
 
 def _enm_two_buses() -> dict:
-    return {
-        "buses": [
+    return model_minimalny(
+        buses=[
             {"ref_id": "bus-sn", "name": "Szyna SN", "voltage_kv": 15.0},
             {"ref_id": "bus-nn", "name": "Szyna nN", "voltage_kv": 0.4},
         ]
-    }
+    )
 
 
 def _binding() -> dict:
@@ -156,7 +158,7 @@ def test_dwa_transformatory_z_tej_samej_szyny_hv_auto_lv_bez_kolizji() -> None:
     `continue_trunk_segment_sn`/`start_branch_segment_sn`/
     `connect_secondary_ring_sn` (seed bez catalog_ref/nazwy). Znalezisko:
     sieć IEEE 39-bus (BR40/BR41, oba B18->345 kV, różny katalog/zaczep)."""
-    enm = {"buses": [{"ref_id": "bus-hv", "name": "Szyna HV", "voltage_kv": 345.0}]}
+    enm = model_minimalny(buses=[{"ref_id": "bus-hv", "name": "Szyna HV", "voltage_kv": 345.0}])
     wspolny_payload = {
         "hv_bus_ref": "bus-hv",
         "lv_voltage_kv": 345.0,

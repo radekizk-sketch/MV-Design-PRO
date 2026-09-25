@@ -1103,9 +1103,13 @@ def test_jedna_budowa_grafu_na_kontyngencje(monkeypatch) -> None:
     grafy_rozplywu: list[object] = []
     oryginal_bieg = modul.wykonaj_bieg_w_pamieci
 
-    def _z_grafem(bieg, graf=None):  # type: ignore[no-untyped-def]
+    # Karta #151: atrapa przyjmuje i przekazuje `uow_factory` — dawna sygnatura
+    # (`bieg, graf=None`) rzucała `TypeError` przy KAŻDYM biegu, który `except Exception`
+    # zamieniał w status „przerwany błędem solvera"; test liczył budowy grafu, a żaden
+    # rozpływ kontyngencji realnie się nie wykonał.
+    def _z_grafem(bieg, graf=None, **kwargs):  # type: ignore[no-untyped-def]
         grafy_rozplywu.append(graf)
-        return oryginal_bieg(bieg, graf=graf)
+        return oryginal_bieg(bieg, graf=graf, **kwargs)
 
     monkeypatch.setattr(modul, "wykonaj_bieg_w_pamieci", _z_grafem)
     widok = build_kontyngencje_n1_view(_bieg(_pierscien()))

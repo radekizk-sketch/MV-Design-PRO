@@ -154,7 +154,12 @@ from analysis.energy_validation.models import EnergyValidationConfig
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
-from enm.canonical_analysis import CanonicalRun, bieg_wariantu, wykonaj_bieg_w_pamieci
+from enm.canonical_analysis import (
+    ODMOWY_OBLICZENIA_BIEGU,
+    CanonicalRun,
+    bieg_wariantu,
+    wykonaj_bieg_w_pamieci,
+)
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu
@@ -534,7 +539,7 @@ def _kontyngencja(
     blad: str | None = None
     try:
         wykonaj_bieg_w_pamieci(bieg, graf=graf_wariantu, uow_factory=uow_factory)
-    except Exception as exc:  # noqa: BLE001 — niezbieżność/osobliwość = STATUS, nie wyjątek
+    except ODMOWY_OBLICZENIA_BIEGU as exc:  # nazwana odmowa obliczenia = STATUS, nie wyjątek
         blad = f"{type(exc).__name__}: {exc}"
 
     dane_biegu = _pusty_bieg() if blad is not None else _dane_biegu(bieg)
@@ -613,7 +618,7 @@ def _przypadek_bazowy(
     blad: str | None = None
     try:
         wykonaj_bieg_w_pamieci(bieg, graf=graf_bazowy, uow_factory=uow_factory)
-    except Exception as exc:  # noqa: BLE001 — jak wyżej: stan bazowy to WYNIK, nie wyjątek
+    except ODMOWY_OBLICZENIA_BIEGU as exc:  # jak wyżej: stan bazowy to WYNIK, nie wyjątek
         blad = f"{type(exc).__name__}: {exc}"
     dane_biegu = _pusty_bieg() if blad is not None else _dane_biegu(bieg)
     zbiegl = bool(dane_biegu["zbieznosc"])

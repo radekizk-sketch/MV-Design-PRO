@@ -209,6 +209,25 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "ulv_kv": "Napięcie DN",  # ui/property-grid/field-definitions.ts voltage_lv_kv
     "v0_pu": "Napięcie odniesienia modelu obciążenia [p.u.]",  # wielkość odniesienia ZIP (bez pola w kreatorze)
     "add_grid_source_sn:voltage_kv": "Napięcie SN",  # zrodlo/strings.ts napiecieSn
+    "add_grid_source_sn:sections_count": "Liczba sekcji szyn SN",  # zrodlo/strings.ts liczbaSekcji
+    # Karta #151 — pola STRUKTURALNE ładunku (słownik/lista, bez jednego pola formularza),
+    # nazywane w odmowie `payload.invalid_type` (`enm/domain_operations._odmowa_typu_ladunku`).
+    "continue_trunk_segment_sn:segment": "Parametry odcinka",
+    "start_branch_segment_sn:segment": "Parametry odgałęzienia",
+    "connect_secondary_ring_sn:segment": "Parametry odcinka pierścienia",
+    "insert_station_on_segment_sn:station": "Dane stacji",
+    "insert_station_on_segment_sn:sn_fields": "Pola SN stacji",
+    "insert_station_on_segment_sn:transformer": "Transformator stacji",
+    "insert_station_on_segment_sn:nn_block": "Rozdzielnica nN stacji",
+    "append_station_on_endpoint:station": "Dane stacji",
+    "append_station_on_endpoint:transformer": "Transformator stacji",
+    "add_sn_bay:tags": "Znaczniki pola",
+    "add_load_sn:active_power_kw": "Moc czynna P",
+    "add_load_sn:p_mw": "Moc czynna P",
+    "add_generator_sn:p_mw": "Moc czynna P",
+    "set_dynamic_profile:profile": "Profil dynamiczny",
+    "update_element_parameters:source_mode": "Pochodzenie parametrów",
+    "update_element_parameters:catalog_namespace": "Kategoria katalogu",
     "add_nn_distribution_board:voltage_kv": "Napięcie znamionowe",  # rozdzielnica-nn/strings.ts napiecie
     "vt_catalog_ref": "Przekładnik napięciowy (VT)",  # zrodlo-oze/strings.ts aparaturaVt
     "wymagany_cos_phi": "Wymagany cosφ (OSD)",  # ui2/spaces/projekt/strings.ts osdCosPhi

@@ -41,7 +41,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.nastawy_modulu import NastawyZabezpieczenModulu
 from enm.nazwy_elementow import nazwa_elementu
-from enm.store import blokada_twin
+from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
 from fastapi import APIRouter, HTTPException, Request, status
@@ -702,7 +702,7 @@ def _utworz_wytworce_pod_blokada(klucz: str, req: DerGeneratorCreateRequest) -> 
         try:
             saved = _set_enm(klucz, EnergyNetworkModel.model_validate(result["snapshot"]))
             result["snapshot"] = saved.model_dump(mode="json")
-        except Exception as exc:  # pragma: no cover - defensive validation guard
+        except BLEDY_ZAPISU_MODELU as exc:
             logger.exception("Zapis modelu ENM po konfiguracji DER nie powiódł się")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -771,7 +771,7 @@ def _zapisz_wiazania_pod_blokada(klucz: str, payload: dict[str, Any]) -> dict[st
         try:
             saved = _set_enm(klucz, EnergyNetworkModel.model_validate(result["snapshot"]))
             result["snapshot"] = saved.model_dump(mode="json")
-        except Exception as exc:  # pragma: no cover - defensive validation guard
+        except BLEDY_ZAPISU_MODELU as exc:
             logger.exception("Zapis modelu ENM po konfiguracji DER nie powiódł się")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

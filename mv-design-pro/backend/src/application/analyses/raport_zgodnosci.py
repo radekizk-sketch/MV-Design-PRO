@@ -167,6 +167,21 @@ def _d2_items(d2_deviations: list[dict[str, Any]] | None) -> list[dict[str, Any]
         return []
     items: list[dict[str, Any]] = []
     for deviation in d2_deviations:
+        if deviation.get("nieoceniono"):
+            # Odmowa danych przy liczeniu propozycji D2 (karta #151) — sekcja nie
+            # została oceniona i raport mówi to wprost, z powodem, zamiast milczeć.
+            items.append(
+                {
+                    "check_id": "d2.nieoceniono",
+                    "kategoria": "zgodnosc_D2",
+                    "status": _STATUS_WARN,
+                    "code": "der_sn.d2.nieoceniono",
+                    "message_pl": (
+                        "⚠️ Zgodności z propozycją D2 nie oceniono: " f"{deviation.get('powod_pl')}"
+                    ),
+                }
+            )
+            continue
         parametr = str(deviation.get("parametr") or "")
         zastosowano = deviation.get("zastosowano")
         propozycja = deviation.get("propozycja")

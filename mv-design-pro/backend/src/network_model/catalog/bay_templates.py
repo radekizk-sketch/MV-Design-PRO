@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from enm.rola_pola_sn import nazwa_roli_pola_sn, nazwa_roli_pola_sn_z_okresleniem
+from network_model.brak_zasobu import BrakZasobuError
 from pydantic import BaseModel, Field
 
 
@@ -523,7 +524,7 @@ def get_bay_template(template_id: str) -> BayTemplate:
 
     if template_id not in BAY_TEMPLATE_REGISTRY:
         available = ", ".join(sorted(BAY_TEMPLATE_REGISTRY.keys()))
-        raise KeyError(f"Unknown bay_template_id: {template_id}. Available: {available}")
+        raise BrakZasobuError(f"Unknown bay_template_id: {template_id}. Available: {available}")
     return BAY_TEMPLATE_REGISTRY[template_id]
 
 

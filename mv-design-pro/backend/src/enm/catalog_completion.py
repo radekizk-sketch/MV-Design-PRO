@@ -53,15 +53,12 @@ def complete_catalog_defaults(enm: EnergyNetworkModel) -> tuple[EnergyNetworkMod
 def _branch_point_catalog_params(catalog_ref: str | None) -> dict[str, Any]:
     if not isinstance(catalog_ref, str) or not catalog_ref.strip():
         return {}
-    try:
-        from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
-    except ImportError:
-        # Karta FAB-D1 (D8): wyjątek ZAWĘŻONY do importu modułu katalogu — jedyna
-        # operacja w tym bloku, która realnie może go nie znaleźć (np. w trakcie
-        # refaktoru). Każdy INNY wyjątek (błąd w danych, literówka w atrybucie)
-        # propaguje zamiast cicho zwracać {} — `except Exception` maskował takie
-        # błędy tak samo, jak brak kanonu katalogu.
-        return {}
+    # Karta #151: moduł katalogu jest częścią pakietu — jego brak przy imporcie to
+    # defekt wydania, nie „pozycja bez parametrów". Dawne `except ImportError: return {}`
+    # (karta FAB-D1 zawęziła wcześniejsze `except Exception`) nadal zamieniało go w ciche
+    # puste parametry punktu rozgałęzienia; teraz wybucha jak każdy inny błąd programu.
+    from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
+
     for item in get_all_branch_point_types():
         if item.get("id") == catalog_ref:
             params = item.get("params")

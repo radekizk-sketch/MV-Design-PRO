@@ -1032,3 +1032,48 @@ def test_status_importu_to_dokladnie_stale_uslugi() -> None:
     """Typ kontraktu HTTP i stałe usługi to jeden słownik (predykaty parami, plan AB §8 F12)."""
     assert set(get_args(StatusImportu)) == {STATUS_ZAIMPORTOWANO, STATUS_ODRZUCONO}
     assert len(get_args(StatusImportu)) == 2
+
+
+# ---------------------------------------------------------------------------
+# Karta #151 — plik nieczytelny: nazwane odmowy odczytu vs błąd programu
+# ---------------------------------------------------------------------------
+
+
+def _zip(pliki: dict[str, str]) -> bytes:
+    import io
+    import zipfile
+
+    bufor = io.BytesIO()
+    with zipfile.ZipFile(bufor, "w") as archiwum:
+        for nazwa, tresc in pliki.items():
+            archiwum.writestr(nazwa, tresc)
+    return bufor.getvalue()
+
+
+@pytest.mark.parametrize(
+    "dane",
+    [
+        pytest.param(b"to nie jest arkusz" * 10, id="bajty_spoza_zip"),
+        pytest.param(b"", id="pusty_plik"),
+        pytest.param(_zip({}), id="zip_bez_czesci_pakietu"),
+        pytest.param(_zip({"[Content_Types].xml": "<Types/>"}), id="pakiet_bez_skoroszytu"),
+        pytest.param(_zip({"[Content_Types].xml": "nie xml"}), id="uszkodzony_xml"),
+    ],
+)
+def test_plik_nieczytelny_to_nazwany_blad_importu(dane: bytes) -> None:
+    wynik = XlsxNetworkImporter().import_from_bytes(dane)
+    assert wynik.success is False
+    assert len(wynik.bledy) == 1
+    assert wynik.bledy[0].komunikat.startswith("Nie można otworzyć pliku jako arkusza XLSX")
+
+
+@pytest.mark.parametrize("typ", [AttributeError, TypeError, RuntimeError])
+def test_blad_programu_przy_otwieraniu_arkusza_wybucha(monkeypatch, typ) -> None:
+    import openpyxl
+
+    def _zepsuty(*args, **kwargs):
+        raise typ("błąd programu")
+
+    monkeypatch.setattr(openpyxl, "load_workbook", _zepsuty)
+    with pytest.raises(typ, match="błąd programu"):
+        XlsxNetworkImporter().import_from_bytes(b"cokolwiek")

@@ -233,8 +233,10 @@ def _enm_z_odcinkiem() -> dict[str, Any]:
                 "from_bus_ref": "bus-a",
                 "to_bus_ref": "bus-b",
                 "length_km": 1.0,
-                "r_ohm": 0.2,
-                "x_ohm": 0.1,
+                # Karta #151: pola kontraktu ENM kabla to r/x NA KILOMETR (dawne "r_ohm"/"x_ohm"
+                # nie istnieją w modelu — fikstura przechodziła dzięki połkniętej walidacji).
+                "r_ohm_per_km": 0.2,
+                "x_ohm_per_km": 0.1,
             }
         ],
         "transformers": [],

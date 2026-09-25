@@ -6,11 +6,13 @@ from enm.domain_operations import execute_domain_operation
 
 
 def _enm_with_station() -> dict:
+    # Karta #151: identyfikatory elementów to UUID (kontrakt ENM) — wynik operacji jest
+    # walidowany kontraktem, a „id": "st-1" przechodziło tylko dzięki połkniętej walidacji.
     return {
         "header": {"name": "Substation Update Test", "revision": 1, "defaults": {}},
         "buses": [
             {
-                "id": "bus/sn",
+                "id": "00000000-0000-0000-0000-00000000b501",
                 "ref_id": "bus/sn",
                 "name": "Szyna SN",
                 "tags": [],
@@ -19,7 +21,7 @@ def _enm_with_station() -> dict:
                 "type": "bus",
             },
             {
-                "id": "bus/nn",
+                "id": "00000000-0000-0000-0000-00000000b502",
                 "ref_id": "bus/nn",
                 "name": "Szyna nN",
                 "tags": [],
@@ -35,7 +37,7 @@ def _enm_with_station() -> dict:
         "generators": [],
         "substations": [
             {
-                "id": "st-1",
+                "id": "00000000-0000-0000-0000-00000000b503",
                 "ref_id": "st-1",
                 "name": "Stacja bazowa",
                 "tags": [],

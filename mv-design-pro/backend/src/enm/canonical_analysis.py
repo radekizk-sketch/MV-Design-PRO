@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -91,6 +92,7 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
     KLUCZE_ROZPLYWU,
     canonical_run_repository_scope,
 )
+from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
 from network_model.core.branch import Branch
 from network_model.core.graph import NetworkGraph
@@ -144,6 +146,8 @@ from network_model.solvers.short_circuit_iec60909 import (
 from network_model.solvers.v126_academic import V126AcademicSolver
 from solver_input.provenance import classify_dynamic_capability
 from solver_input.v126_contracts import V126AcademicInput, V126AnalysisType
+
+logger = logging.getLogger(__name__)
 
 
 def _canonicalize(value: Any) -> Any:
@@ -1086,6 +1090,22 @@ def _wykonaj_analize_biegu(
         raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
 
 
+#: Nazwana ODMOWA OBLICZENIA biegu (karta #151) — JEDNO źródło dla każdego miejsca,
+#: które zamienia nieudane obliczenie biegu (persystowanego w `execute_run` albo wariantu
+#: w pamięci: kontyngencje N-1, zdolność przyłączeniowa, obszar PQ, dobór kompensacji,
+#: odpowiedź OSD, dokument studium, nastawy zabezpieczeń, pasmo min/max zwarcia) na
+#: STATUS z powodem zamiast wyjątku. `ValueError` to konwencja odmów dziedziny i solverów
+#: w tym repo: walidacja wejścia, brak wyspy bilansującej, `OdmowaWejsciaRozplywu`,
+#: `OdmowaWejsciaDynamiki`, `OdmowaDynamiki`, `OdmowaBieguStabilnosciDynamicznej`,
+#: `ObservabilityError`, `pydantic.ValidationError`, `numpy.linalg.LinAlgError` (podklasa
+#: `ValueError`). `ArithmeticError` to osobliwość liczbowa DANYCH (`ZeroDivisionError`
+#: przy zerowej impedancji transformatora, `OverflowError` przy rozbieżności). Każdy
+#: INNY wyjątek (`AttributeError`, `TypeError`, `KeyError`...) jest błędem programu:
+#: wariant w pamięci po prostu wybucha, a bieg persystowany dostaje FAILED z nazwą
+#: błędu wewnętrznego i wyjątek leci dalej (500 + pełny ślad w dzienniku).
+ODMOWY_OBLICZENIA_BIEGU: tuple[type[Exception], ...] = (ValueError, ArithmeticError)
+
+
 def wykonaj_bieg_w_pamieci(
     run: CanonicalRun,
     graf: NetworkGraph | None = None,
@@ -1277,12 +1297,26 @@ def execute_run(run_id: UUID, uow_factory: Callable[[], Any] | None = None) -> C
         run.finished_at = datetime.now(UTC)
         _save_run(run)
         return run
-    except Exception as exc:
+    except ODMOWY_OBLICZENIA_BIEGU as exc:
+        # Nazwana odmowa obliczenia = WYNIK biegu (FAILED z komunikatem PL i kodem).
         run.status = "FAILED"
         run.error_message = str(exc)
         run.finished_at = datetime.now(UTC)
         _save_run(run)
         return run
+    except Exception as exc:
+        # Błąd programu (karta #151): bieg NIE zostaje w RUNNING (atomowe przejęcie
+        # zablokowałoby ponowne uruchomienie), dostaje FAILED z nazwą błędu wewnętrznego
+        # — bez treści wyjątku na ekranie — a wyjątek leci dalej: 500 i pełny ślad.
+        logger.exception("Bieg %s przerwany błędem wewnętrznym programu", run_id)
+        run.status = "FAILED"
+        run.error_message = (
+            f"Błąd wewnętrzny programu ({type(exc).__name__}) — bieg przerwany. "
+            "Szczegóły są w dzienniku serwera."
+        )
+        run.finished_at = datetime.now(UTC)
+        _save_run(run)
+        raise
 
 
 def run_short_circuit_now(
@@ -1679,9 +1713,9 @@ def build_dynamika_results(run: CanonicalRun) -> dict[str, Any]:
     pustym wynikiem) → `KeyError` (API tłumaczy na 404 nazwany, ten sam wzorzec
     co `build_short_circuit_rozplyw`)."""
     if run.analysis_type != "dynamika_rms":
-        raise KeyError(f"Przebieg nie jest biegiem dynamiki czasowej: {run.id}")
+        raise BrakZasobuError(f"Przebieg nie jest biegiem dynamiki czasowej: {run.id}")
     if not run.raw_result:
-        raise KeyError(f"Brak wyniku dynamiki czasowej dla biegu {run.id}")
+        raise BrakZasobuError(f"Brak wyniku dynamiki czasowej dla biegu {run.id}")
     return {"run_id": str(run.id), **run.raw_result}
 
 
@@ -1698,7 +1732,7 @@ def build_dynamika_time_series(
     biegu tego typu, brak zapisanych szeregów, albo ŻADEN z żądanych kluczy nie
     istnieje → `KeyError` (API: 404 nazwany, zero cichej pustej odpowiedzi)."""
     if run.analysis_type != "dynamika_rms":
-        raise KeyError(f"Przebieg nie jest biegiem dynamiki czasowej: {run.id}")
+        raise BrakZasobuError(f"Przebieg nie jest biegiem dynamiki czasowej: {run.id}")
     from infrastructure.persistence.repositories.canonical_run_repository import (
         canonical_run_repository_scope,
     )
@@ -1706,15 +1740,17 @@ def build_dynamika_time_series(
     with canonical_run_repository_scope() as repository:
         wynik = repository.get_szeregi_dynamiczne(run.id, klucze_kanalow)
     if wynik is None:
-        raise KeyError(f"Brak zapisanych szeregów czasowych dla biegu {run.id}")
+        raise BrakZasobuError(f"Brak zapisanych szeregów czasowych dla biegu {run.id}")
     os_czasu_s, strona_probki, probki = wynik
     if strona_probki is None:
-        raise KeyError(
+        raise BrakZasobuError(
             f"Szeregi biegu {run.id} zapisano przed kontraktem resultset_dynamic_v2 (brak "
             "strony próbek) — przelicz bieg dynamiki, żeby odczytać przebieg"
         )
     if klucze_kanalow and not probki:
-        raise KeyError(f"Żaden z żądanych kanałów {klucze_kanalow} nie istnieje w biegu {run.id}")
+        raise BrakZasobuError(
+            f"Żaden z żądanych kanałów {klucze_kanalow} nie istnieje w biegu {run.id}"
+        )
     return {
         "run_id": str(run.id),
         "os_czasu_s": os_czasu_s,
@@ -3575,7 +3611,7 @@ def build_short_circuit_rozplyw(
     osobna tabela) — kontrakt odpowiedzi bez zmian.
     """
     if run.analysis_type != "short_circuit_sn":
-        raise KeyError(f"Przebieg nie jest analizą zwarciową: {run.id}")
+        raise BrakZasobuError(f"Przebieg nie jest analizą zwarciową: {run.id}")
     raw_result = run.raw_result or {}
     graph_nodes = (raw_result.get("graph") or {}).get("nodes", {})
     graph_branches = (raw_result.get("graph") or {}).get("branches", {})
@@ -3593,7 +3629,7 @@ def build_short_circuit_rozplyw(
                 # `pobierz_slad_rozplywu_biegu`).
                 "branch_flow_trace": slad,
             }
-    raise KeyError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
+    raise BrakZasobuError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
 
 
 def _scenariusz_z_opcji(options: Mapping[str, Any]) -> str | None:
@@ -3736,7 +3772,7 @@ def dobierz_pasmo_min_max_zwarcia(
                     options=opcje_wariantu,
                 )
                 wykonaj_bieg_w_pamieci(wariant, uow_factory=uow_factory)
-            except Exception as exc:  # noqa: BLE001 — niezbieznosc/blad wariantu = odmowa nazwana
+            except ODMOWY_OBLICZENIA_BIEGU as exc:
                 powod_niedostepnosci = f"blad_solvera_wariantu:{type(exc).__name__}"
             else:
                 strony[scenariusz_brakujacy] = wariant

@@ -1876,7 +1876,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta PROOFPACK-KONTRAKT (2026-09-25): 552 -> 553 (+1 `application/proof_engine/
         # packs/audit2_skladanie.py` — skladanie pakietu dowodow audytu 2). POMIAR guardem.
         # Partia integracji 5: 552 + 3 (AB-P1) + 1 (PROOFPACK) = 556. POMIAR guardem.
-        "Przeskanowano 556 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta #151 (2026-09-25): 552 -> 553 (+1 `network_model/brak_zasobu.py` — nazwana
+        # odmowa „zasobu nie ma" dla 404, liść stdlib-only). POMIAR guardem.
+        # Partia integracji 5 z karta #151: 556 + 1 (`network_model/brak_zasobu.py`) = 557.
+        # POMIAR guardem na drzewie partii.
+        "Przeskanowano 557 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -1994,7 +1998,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta AB-P1 na partii 4: network_model dlug 12/70 -> 11/69 (wpis
         # `catalog/der_dynamic/models.py` zdjety z martwym rzutem `to_stability_parameters`;
         # solver `stability_rms/**` zostaje — rdzen B-01). Pliki 181 bez zmiany. Pomiar.
-        "  network_model: pliki_skanowane=181, dlug=11 plikow/suma 69, "
+        # Karta #151 (2026-09-25): network_model 181 -> 182 (+1 `brak_zasobu.py`); dlug i
+        # wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Partia integracji 5: network_model pliki 181 + 1 (#151) = 182, dlug 11/69 (AB-P1).
+        # POMIAR guardem na drzewie partii.
+        "  network_model: pliki_skanowane=182, dlug=11 plikow/suma 69, "
         "wykluczenia=3 plikow/suma 6",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;

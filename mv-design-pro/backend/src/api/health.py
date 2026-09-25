@@ -2,12 +2,27 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
 from fastapi import APIRouter, Request
+from sqlalchemy import exc as sa_exc
+from sqlalchemy import text
 
 router = APIRouter(prefix="/api/health", tags=["health"])
+
+logger = logging.getLogger("mv_design_pro.api.health")
+
+#: Błędy BRAKU POŁĄCZENIA z bazą (karta #151): serwer niedostępny/odrzucił połączenie
+#: (`OperationalError`), zerwany interfejs sterownika (`InterfaceError`), wyczerpana
+#: pula połączeń (`TimeoutError` SQLAlchemy). To jedyna nazwana reakcja sondy — „baza
+#: niedostępna" = `db_ok: false`. Każdy inny wyjątek (błąd programu) wybucha jako 500.
+BLEDY_POLACZENIA_BAZY: tuple[type[Exception], ...] = (
+    sa_exc.OperationalError,
+    sa_exc.InterfaceError,
+    sa_exc.TimeoutError,
+)
 
 _start_time = time.monotonic()
 
@@ -38,28 +53,24 @@ def health_check(request: Request) -> dict[str, Any]:
 
     # Check DB connectivity
     db_ok = False
-    try:
-        engine = getattr(request.app.state, "engine", None)
-        if engine is not None:
-            from sqlalchemy import text
-
+    engine = getattr(request.app.state, "engine", None)
+    if engine is not None:
+        try:
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             db_ok = True
-    except Exception:
-        pass
+        except BLEDY_POLACZENIA_BAZY as exc:
+            logger.warning("Sonda zdrowia: baza niedostępna (%s): %s", type(exc).__name__, exc)
 
-    # Engine check — verify solver imports
-    engine_ok = False
-    try:
-        from network_model.solvers import (  # noqa: F401
-            PowerFlowNewtonSolver,
-            ShortCircuitIEC60909Solver,
-        )
+    # Engine check — solvery są częścią pakietu: ich import nie ma odmowy danych. Dawne
+    # `except Exception` (a po zawężeniu `except ImportError`) meldowało „silniki
+    # niegotowe" przy defekcie wydania; teraz taki defekt wybucha (500) — karta #151.
+    from network_model.solvers import (  # noqa: F401
+        PowerFlowNewtonSolver,
+        ShortCircuitIEC60909Solver,
+    )
 
-        engine_ok = True
-    except Exception:
-        pass
+    engine_ok = True
 
     overall_status = "ok" if db_ok and engine_ok else "degraded"
 

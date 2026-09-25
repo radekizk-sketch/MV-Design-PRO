@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+import numpy as np
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -79,15 +80,10 @@ def _canonicalize(value: Any) -> Any:
         return [_canonicalize(item) for item in value]
     if isinstance(value, set):
         return sorted((_canonicalize(item) for item in value), key=_stable_sort_key)
-    try:
-        import numpy as np
-
-        if isinstance(value, np.ndarray):
-            return _canonicalize(value.tolist())
-        if isinstance(value, np.generic):
-            return value.item()
-    except ImportError:
-        pass
+    if isinstance(value, np.ndarray):
+        return _canonicalize(value.tolist())
+    if isinstance(value, np.generic):
+        return value.item()
     return value
 
 
@@ -103,15 +99,10 @@ def _kanoniczna_wartosc_spoza_json(value: Any) -> Any:
     """
     if isinstance(value, set | frozenset):
         return sorted((_canonicalize(item) for item in value), key=_stable_sort_key)
-    try:
-        import numpy as np
-
-        if isinstance(value, np.ndarray):
-            return _canonicalize(value.tolist())
-        if isinstance(value, np.generic):
-            return value.item()
-    except ImportError:
-        pass
+    if isinstance(value, np.ndarray):
+        return _canonicalize(value.tolist())
+    if isinstance(value, np.generic):
+        return value.item()
     raise TypeError(f"Typ nieobsługiwany w kolumnie JSON: {type(value)!r}")
 
 

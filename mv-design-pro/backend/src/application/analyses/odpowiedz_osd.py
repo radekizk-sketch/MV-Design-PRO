@@ -59,6 +59,7 @@ from typing import Any
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from enm.canonical_analysis import (
+    ODMOWY_OBLICZENIA_BIEGU,
     CanonicalRun,
     _graph_id_from_ref,
     bieg_wariantu,
@@ -187,7 +188,7 @@ def _run_power_flow(run: CanonicalRun, label: str) -> dict[str, Any]:
     CV-3-W) i zwróć jego wynik surowy."""
     try:
         wykonaj_bieg_w_pamieci(run)
-    except Exception as exc:  # noqa: BLE001 — niezbieżność/osobliwość = twardy błąd wejścia
+    except ODMOWY_OBLICZENIA_BIEGU as exc:  # nazwana odmowa obliczenia = twardy błąd wejścia
         raise ValueError(f"Rozpływ mocy ({label}) nie mógł zostać policzony: {exc}.") from exc
     return run.raw_result or {}
 

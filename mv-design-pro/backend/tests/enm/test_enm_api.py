@@ -691,6 +691,10 @@ class TestDomainOpsCatalogPolicy:
         body = response.json()
         assert body.get("error") is not None
         assert body.get("snapshot") is None
+        # Karta #151: odmowa NAZWANA wynikiem operacji (kontrakt ENM, opis pola), nie
+        # „nie udało się zapisać modelu" z warstwy zapisu — dawniej `_build_readiness`
+        # połykał `ValidationError` i odmowa wychodziła dopiero przy zapisie.
+        assert body.get("error_code") == "operation.model_contract_violated"
 
         after = client.get(f"/api/cases/{case_id}/enm").json()
         assert after["measurements"] == before["measurements"]
@@ -879,3 +883,98 @@ class TestDomainOpsCatalogPolicy:
         after = client.get(f"/api/cases/{case_id}/enm").json()
         assert after["header"]["hash_sha256"] == before_hash
         assert after["branches"] == before["branches"]
+
+
+# ---------------------------------------------------------------------------
+# Karta #151 — zapis modelu po operacji domenowej: nazwana awaria vs błąd programu
+# ---------------------------------------------------------------------------
+
+
+def _awaria_zapisu_modelu(typ: str):
+    def _set_enm(klucz, enm, **kwargs):
+        if typ == "OSError":
+            raise OSError(13, "Permission denied: /var/lib/mv/enm.json")
+        if typ == "ValidationError":
+            from enm.models import EnergyNetworkModel
+
+            EnergyNetworkModel.model_validate({"header": "zly"})
+        raise AttributeError("błąd programu")
+
+    return _set_enm
+
+
+def _operacja_gpz(client) -> tuple[str, Any]:
+    case_id = _nowy_przypadek(client)
+    przed = client.get(f"/api/cases/{case_id}/enm").json()
+    return case_id, przed
+
+
+@pytest.mark.parametrize("typ", ["OSError", "ValidationError"])
+def test_nazwana_awaria_zapisu_po_operacji_to_kod_bez_sciezki_i_model_bez_zmian(
+    client, monkeypatch, typ
+):
+    import api.enm as api_enm
+
+    case_id, przed = _operacja_gpz(client)
+    monkeypatch.setattr(api_enm, "_set_enm", _awaria_zapisu_modelu(typ))
+    odpowiedz = client.post(
+        f"/api/cases/{case_id}/enm/domain-ops",
+        json={
+            "operation": {
+                "name": "add_grid_source_sn",
+                "payload": gpz_payload(voltage_kv=15.0, sk3_mva=250.0),
+            }
+        },
+    )
+    monkeypatch.undo()
+    body = odpowiedz.json()
+    assert body["error_code"] == "api.snapshot_validation_failed"
+    assert body["snapshot"] is None
+    assert "/var/lib" not in body["error"]
+    po = client.get(f"/api/cases/{case_id}/enm").json()
+    assert po["header"]["hash_sha256"] == przed["header"]["hash_sha256"]
+
+
+def test_blad_programu_przy_zapisie_po_operacji_wybucha(client, monkeypatch):
+    import api.enm as api_enm
+
+    case_id, _ = _operacja_gpz(client)
+    monkeypatch.setattr(api_enm, "_set_enm", _awaria_zapisu_modelu("AttributeError"))
+    with pytest.raises(AttributeError, match="błąd programu"):
+        client.post(
+            f"/api/cases/{case_id}/enm/domain-ops",
+            json={
+                "operation": {
+                    "name": "add_grid_source_sn",
+                    "payload": gpz_payload(voltage_kv=15.0, sk3_mva=250.0),
+                }
+            },
+        )
+
+
+def test_brama_katalogu_blad_programu_przy_odczycie_wiazania_wybucha(monkeypatch):
+    """`validate_and_materialize_catalog_binding`: dawne `except Exception` →
+    `catalog.ref_required` („nieprawidłowy format") przebierało błąd programu za błąd
+    projektanta; odczyt wiązania nie ma odmowy danych (tolerancyjny `from_dict`)."""
+    from api.domain_ops_policy import validate_and_materialize_catalog_binding
+    from network_model.catalog.types import CatalogBinding
+
+    def _zepsuty(cls, data):
+        raise AttributeError("błąd programu")
+
+    monkeypatch.setattr(CatalogBinding, "from_dict", classmethod(_zepsuty))
+    with pytest.raises(AttributeError, match="błąd programu"):
+        validate_and_materialize_catalog_binding(
+            "continue_trunk_segment_sn",
+            {
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 100.0,
+                    "catalog_binding": {
+                        "catalog_namespace": "KABEL_SN",
+                        "catalog_item_id": "cable-tfk-yakxs-3x120",
+                        "catalog_item_version": "2024.1",
+                    },
+                }
+            },
+        )

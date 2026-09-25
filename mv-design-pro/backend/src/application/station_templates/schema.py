@@ -253,10 +253,8 @@ def transformer_voltages_kv(transformer_ref: str | None) -> tuple[float | None, 
     """
     if not isinstance(transformer_ref, str) or not transformer_ref.strip():
         return None, None
-    try:
-        from network_model.catalog import get_default_mv_catalog
-    except ImportError:
-        return None, None
+    from network_model.catalog import get_default_mv_catalog
+
     catalog = get_default_mv_catalog()
     item = catalog.get_transformer_type(transformer_ref)
     if item is None:
@@ -525,10 +523,8 @@ def shunt_capacitor_rated_kv(shunt_ref: str | None) -> float | None:
     """
     if not isinstance(shunt_ref, str) or not shunt_ref.strip():
         return None
-    try:
-        from network_model.catalog import get_default_mv_catalog
-    except ImportError:
-        return None
+    from network_model.catalog import get_default_mv_catalog
+
     item = get_default_mv_catalog().get_shunt_capacitor_type(shunt_ref)
     if item is None:
         return None

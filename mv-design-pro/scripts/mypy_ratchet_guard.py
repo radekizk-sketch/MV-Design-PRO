@@ -201,8 +201,14 @@ BACKEND = ROOT / "backend"
 # 4 bledy, zero nowych => 262/45.
 # Ponowne zlozenie Pakietu 0 na HEAD `1b422cdd` (B+C+D2 i #135, 2026-09-24): pomiar guardem na
 # scalonym drzewie 230/36 -> 226/35 (te same 4 bledy `enm/canonical_analysis.py`, zero nowych).
-BASELINE_ERRORS = 226
-BASELINE_FILES = 35
+# Karta #151 (2026-09-25, baza `4199d528`): 226/35 -> 223/34. Znikneły 3 bledy `call-arg`
+# w `application/protection_analysis/catalog_lookup.py` („Missing positional arguments ...
+# in call to CatalogRepository") — mypy od poczatku widzial defekt, ktory `except Exception:
+# pass` ukrywal w runtime (biblioteka zabezpieczen z bazy nigdy nie byla czytana); plik
+# przepisany na `uow.protection_catalog`. Zero nowych bledow (roznica zbiorow `mypy src` baza
+# vs drzewo karty = dokladnie te 3 wiersze).
+BASELINE_ERRORS = 223
+BASELINE_FILES = 34
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 #: Sukces też niesie liczbę sprawdzonych plików — bieg „Success" na garstce plików

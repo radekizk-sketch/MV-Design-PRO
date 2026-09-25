@@ -518,10 +518,19 @@ def test_zrodlo_za_kablem_nn_sprawdzane_z_transformatorem_stacji(
 def test_wariant_aliasowy_nn_nie_wylacza_kontroli(wariant: str) -> None:
     snapshot = _baza(TR_1000)
     generator = snapshot["generators"][-1]
+    parametry: dict = {"connection_variant": wariant}
+    if wariant == "LV_BEHIND_STATION_TRANSFORMER":
+        # Karta #151: kontrakt ENM (`Generator` — walidator wariantu) wymaga przy wariancie
+        # aliasowym wskazania transformatora stacji; wynik operacji jest walidowany
+        # kontraktem, więc stan pośredni musi być modelem poprawnym (dawniej przechodził
+        # dzięki połkniętej walidacji). Transformator = ten, który zasila szynę źródła.
+        parametry["blocking_transformer_ref"] = next(
+            t["ref_id"] for t in snapshot["transformers"] if t["lv_bus_ref"] == generator["bus_ref"]
+        )
     snapshot = h._wykonaj(
         snapshot,
         "update_element_parameters",
-        {"element_ref": generator["ref_id"], "parameters": {"connection_variant": wariant}},
+        {"element_ref": generator["ref_id"], "parameters": parametry},
     )
     # 2 × 0,55 = 1,1 MVA > 1,0 MVA — ta sama odmowa niezależnie od zapisu wariantu.
     wynik = execute_domain_operation(

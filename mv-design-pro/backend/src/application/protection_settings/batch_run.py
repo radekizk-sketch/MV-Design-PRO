@@ -86,6 +86,7 @@ from application.protection_settings.zacisk_zabezpieczenia import (
     rozstrzygnij_zacisk,
 )
 from enm.canonical_analysis import (
+    ODMOWY_OBLICZENIA_BIEGU,
     CanonicalRun,
     bieg_wariantu,
     build_branch_results,
@@ -429,7 +430,7 @@ def zbuduj_wejscie_nastaw(
     )
     try:
         wykonaj_bieg_w_pamieci(wariant_3f_cmin, uow_factory=uow_factory)
-    except Exception as exc:  # noqa: BLE001 — niezbieznosc/blad solvera = odmowa z powodem
+    except ODMOWY_OBLICZENIA_BIEGU as exc:  # nazwana odmowa obliczenia = odmowa z powodem
         raise BrakDanychNastawError(
             f"Wariant zwarcia trójfazowego przy c_min={c_min} przerwany błędem "
             f"solvera: {type(exc).__name__}: {exc}"
@@ -450,7 +451,7 @@ def zbuduj_wejscie_nastaw(
     )
     try:
         wykonaj_bieg_w_pamieci(wariant_2f_cmin, uow_factory=uow_factory)
-    except Exception as exc:  # noqa: BLE001 — jak wyzej
+    except ODMOWY_OBLICZENIA_BIEGU as exc:  # jak wyzej
         raise BrakDanychNastawError(
             f"Wariant zwarcia dwufazowego przy c_min={c_min} przerwany błędem "
             f"solvera: {type(exc).__name__}: {exc}"
@@ -477,7 +478,7 @@ def zbuduj_wejscie_nastaw(
     )
     try:
         wykonaj_bieg_w_pamieci(wariant_pf, uow_factory=uow_factory)
-    except Exception as exc:  # noqa: BLE001 — niezbieznosc rozplywu = odmowa z powodem
+    except ODMOWY_OBLICZENIA_BIEGU as exc:  # nazwana odmowa rozplywu = odmowa z powodem
         raise BrakDanychNastawError(
             f"Wariant rozpływu mocy migawki kotwicy przerwany błędem solvera: "
             f"{type(exc).__name__}: {exc}"

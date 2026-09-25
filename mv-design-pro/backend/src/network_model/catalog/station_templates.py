@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import Literal
 
 from enm.rola_pola_sn import nazwa_roli_pola_sn
+from network_model.brak_zasobu import BrakZasobuError
 from pydantic import BaseModel, Field
 
 
@@ -277,7 +278,7 @@ def get_station_template(template_id: str) -> StationTemplate:
 
     if template_id not in STATION_TEMPLATE_REGISTRY:
         available = ", ".join(sorted(STATION_TEMPLATE_REGISTRY.keys()))
-        raise KeyError(f"Unknown station_template_id: {template_id}. Available: {available}")
+        raise BrakZasobuError(f"Unknown station_template_id: {template_id}. Available: {available}")
     return STATION_TEMPLATE_REGISTRY[template_id]
 
 

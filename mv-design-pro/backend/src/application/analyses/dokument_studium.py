@@ -53,7 +53,7 @@ from application.analyses.sekcja_zgodnosci_ncrfg import wiersze_dowodu
 from application.ncrfg_compliance import NcRfgCertyfikatOdrzucony
 from catalog.profiles.nc_rfg import klasyfikacja_modulu
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
-from enm.canonical_analysis import CanonicalRun
+from enm.canonical_analysis import ODMOWY_OBLICZENIA_BIEGU, CanonicalRun
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
 from network_model.catalog.types import ConverterType
 from network_model.nazwy import nazwa_nadana
@@ -293,7 +293,7 @@ def _wariant_sekcja(
             "ograniczenie_pl": _ograniczenie_pl(node["binding_criterion"]),
             "komunikat_bledu": None,
         }
-    except Exception as exc:  # noqa: BLE001 — błąd wariantu nie przerywa dokumentu
+    except ODMOWY_OBLICZENIA_BIEGU as exc:  # odmowa obliczenia wariantu nie przerywa dokumentu
         zdolnosc = {
             "status": "blad",
             "max_moc_mw": None,
@@ -310,7 +310,7 @@ def _wariant_sekcja(
             "liczba_wierzcholkow": len(pq_view.get("vertices") or []),
             "komunikat_bledu": None,
         }
-    except Exception as exc:  # noqa: BLE001
+    except ODMOWY_OBLICZENIA_BIEGU as exc:
         obszar = {
             "status": "blad",
             "pasmo_q_pl": None,
