@@ -20,12 +20,18 @@
  *   M. POST validate-hosting-capacity-export: ratio 1.2 -> normal
  *   N. POST validate-hosting-capacity-export: ratio 5 -> requires_ramp_down
  *   O. POST build-station-payload: deterministic z DERs
- *   P. POST generate-proof-pack: pelen pakiet 5 typow walidacji
+ *   P. Pakiet dowodow walidacji rozszerzen na sciezce PRODUKTU: projekt + model sieci
+ *      (operacje domenowe + zrodlo BESS) + konfiguracja stacji przez API + bieg rozplywu
+ *      + natywny klik „Generuj dowody walidacji" na ekranie uzasadnien (Dokumentacja →
+ *      Pakiet dowodowy). Piec rodzajow walidacji, determinizm pakietu (te same bajty).
+ *      Karta PROOFPACK-KONTRAKT: dawna koncowka `generate-proof-pack` (nietypowane
+ *      specyfikacje rozpakowywane `**spec` → HTTP 500 po karcie #144) USUNIETA.
  */
 
-import { test, expect, type APIRequestContext } from '@playwright/test';
+import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
+const FRONTEND_BASE = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
 
 async function backendUp(request: APIRequestContext): Promise<boolean> {
   try {
@@ -268,54 +274,146 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     expect(body1.solver_extensions.power_flow_extensions).toBeDefined();
   });
 
-  test('P. generate-proof-pack pelny pakiet z 5 walidacji', async ({ request }) => {
-    const payload = {
-      station_id: 'station_e2e_002',
-      bess_modes_specs: [
-        {
-          der_id: 'der_001',
-          pcs_four_quadrant: true,
-          pcs_grid_forming: false,
-          nc_rfg_module: 'B',
-          selected_mode_refs: ['mode_voltage_support'],
-        },
-      ],
-      tap_changer_specs: [
-        {
-          transformer_id: 'tr_001',
-          transformer_type: 'transformer_110_15',
-          tap_changer_ref: 'tc_oltc_110sn_19_125',
-          requires_avr: true,
-        },
-      ],
-      hosting_capacity_specs: [
-        { station_id: 'station_e2e_002', p_export_kw: 1200, p_import_kw: 1000 },
-      ],
-      device_withstand_specs: [
-        {
-          device_id: 'wstd_breaker_vacuum_15_25',
-          i_peak_calculated_ka: 50,
-          i_thermal_calculated_ka: 20,
-          t_clearing_s: 1.0,
-        },
-      ],
-      vt_grounding_specs: [
-        {
-          bay_designation: 'POLE-01',
-          vt_voltage_factor: 1.9,
-          grounding_type: 'petersen_coil',
-        },
-      ],
-      generated_at_iso: '2026-04-01T00:00:00Z',
-    };
-    const res = await request.post(
-      `${BACKEND_BASE}/api/v1/catalog/audit2/generate-proof-pack`,
-      { data: payload },
+  test('P. pakiet dowodow walidacji: model + konfiguracja stacji + natywny klik', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(300000);
+    const projektNazwa = `E2E Pakiet dowodow ${Date.now()}`;
+    const projectRes = await request.post(`${BACKEND_BASE}/api/projects`, {
+      data: { name: projektNazwa },
+    });
+    expect(projectRes.status()).toBe(201);
+    const pid = (await projectRes.json()).id as string;
+    const caseRes = await request.post(`${BACKEND_BASE}/api/study-cases`, {
+      data: { project_id: pid, name: 'Zakres pakiet dowodow', description: '', config: {}, set_active: true },
+    });
+    expect(caseRes.ok()).toBeTruthy();
+    const caseId = (await caseRes.json()).id as string;
+
+    // Model sieci operacjami domenowymi: GPZ + magistrala + stacja SN/nN z transformatorem.
+    const snapshot = await zbudujSiecZeStacja(request, caseId, 'e2e-pakiet');
+    const stacja = snapshot.substations.find((s) => s.station_type !== 'gpz' && (s.bus_refs ?? []).length > 0);
+    expect(stacja, 'stacja SN/nN w modelu').toBeTruthy();
+    const transformator = snapshot.transformers.find(
+      (t) => (stacja!.bus_refs ?? []).includes(t.lv_bus_ref) || (stacja!.bus_refs ?? []).includes(t.hv_bus_ref),
     );
-    const body = await res.json();
-    expect(body.station_id).toBe('station_e2e_002');
-    expect(body.proof_count).toBe(5);
-    expect(body.all_pass).toBeTruthy();
+    expect(transformator, 'transformator stacji w modelu').toBeTruthy();
+
+    // Magazyn energii po stronie nN stacji — operacja domenowa katalog-first
+    // (`add_converter_source` z `catalog_binding`), ten sam pisarz co kreator źródła.
+    const szynaNn = snapshot.buses.find(
+      (b) => (stacja!.bus_refs ?? []).includes(b.ref_id) && b.voltage_kv < 1.0,
+    );
+    expect(szynaNn, 'szyna nN stacji w modelu').toBeTruthy();
+    const poMagazynie = await operacjaDomenowa(request, caseId, 'e2e-pakiet-bess', 'add_converter_source', {
+      source_technology: 'BESS',
+      connection_variant: 'nn_side',
+      station_ref: stacja!.ref_id,
+      bus_nn_ref: szynaNn!.ref_id,
+      source_name: 'Magazyn E2E',
+      bess_mode: 'DWUKIERUNKOWY',
+      power_setpoint_mw: 0.01,
+      catalog_binding: {
+        catalog_namespace: 'ZRODLO_NN_BESS',
+        catalog_item_id: 'conv-bess-nn-0p5mw-0p4kv',
+        catalog_item_version: '2024.1',
+      },
+      source_field: { field_name: 'Pole magazynu nN', source_field_kind: 'BESS' },
+    });
+    const magazyn = poMagazynie.generators.find((g) => g.name === 'Magazyn E2E');
+    expect(magazyn, 'magazyn w modelu').toBeTruthy();
+
+    // Moc eksportu dobrana tak, by bilans był „eksportem normalnym" (1,2 × import stacji):
+    // import to suma odbiorów na szynach stacji w modelu (potrzeby własne).
+    const szynyStacji = new Set(stacja!.bus_refs ?? []);
+    const importKw =
+      poMagazynie.loads.filter((l) => szynyStacji.has(l.bus_ref)).reduce((suma, l) => suma + l.p_mw, 0) * 1000;
+    expect(importKw).toBeGreaterThan(0);
+
+    const cfgRes = await request.put(
+      `${BACKEND_BASE}/api/v1/projects/${pid}/audit2-station-config/${encodeURIComponent(stacja!.ref_id)}`,
+      {
+        data: {
+          mv_neutral_grounding_ref: 'mng_petersen',
+          tap_changer_refs: [],
+          der_specs: [
+            {
+              der_id: magazyn!.ref_id,
+              der_kind: 'BESS',
+              bess_operation_mode_refs: ['mode_voltage_support'],
+              device_catalog_ref: 'conv-bess-nn-0p5mw-0p4kv',
+              nominal_power_kw: importKw * 1.2,
+            },
+          ],
+          transformer_tap_changers: { [transformator!.ref_id]: 'tc_detc_snnn_5_25' },
+          bay_vts: { 'Pole 01': 'vt_15kv_100v_05_abb' },
+          bay_device_withstand: {
+            'Pole 02': {
+              device_id: 'wstd_breaker_vacuum_15_25',
+              i_peak_calculated_ka: 50,
+              i_thermal_calculated_ka: 20,
+              t_clearing_s: 1.0,
+            },
+          },
+        },
+      },
+    );
+    expect(cfgRes.ok(), await cfgRes.text()).toBeTruthy();
+
+    // Kontrakt backendu: piec rodzajow dla stacji, zero brakow, determinizm bajtowy.
+    const pakietUrl = `${BACKEND_BASE}/api/v1/projects/${pid}/audit2-station-config/_validate-all`;
+    const pierwszy = await request.post(pakietUrl);
+    const drugi = await request.post(pakietUrl);
+    expect(pierwszy.status()).toBe(200);
+    expect(await pierwszy.body()).toEqual(await drugi.body());
+    const pakiet = (await pierwszy.json()) as {
+      per_station: Array<{
+        station_id: string;
+        station_nazwa: string;
+        all_pass: boolean;
+        proofs: Array<{ proof_type: string; summary_pl: string }>;
+        braki_danych: unknown[];
+      }>;
+    };
+    const pakietStacji = pakiet.per_station.find((p) => p.station_id === stacja!.ref_id)!;
+    expect(new Set(pakietStacji.proofs.map((d) => d.proof_type))).toEqual(
+      new Set([
+        'AUDIT2_BESS_OPERATION_MODES',
+        'AUDIT2_TAP_CHANGER_PLAN',
+        'AUDIT2_HOSTING_CAPACITY_EXPORT',
+        'AUDIT2_DEVICE_WITHSTAND',
+        'AUDIT2_VT_GROUNDING_VALIDATION',
+      ]),
+    );
+    expect(pakietStacji.braki_danych).toEqual([]);
+    expect(pakietStacji.all_pass).toBeTruthy();
+    expect(pakietStacji.station_nazwa).toBe(stacja!.name);
+
+    // Bieg rozpływu — karta „Pakiet dowodowy" huba Dokumentacji wymaga przebiegu.
+    const runId = await uruchomRozplyw(request, caseId, {});
+
+    // ŚCIEŻKA UŻYTKOWNIKA: Dokumentacja → Pakiet dowodowy → „Generuj dowody walidacji".
+    await otworzAplikacje(page, { pid, projektNazwa, caseId, runId });
+    await page.getByRole('button', { name: /^Dokumentacja/ }).click();
+    await expect(page.getByTestId('mvd-dokumentacja-hub')).toBeVisible({ timeout: 30000 });
+    await page.getByTestId('mvd-dok-karta-dowod').getByRole('button', { name: 'Otwórz dowód' }).click();
+    const przycisk = page.getByTestId('audit2-proof-generate');
+    await expect(przycisk).toBeEnabled({ timeout: 30000 });
+    await przycisk.click();
+    const sekcjaStacji = page.locator(
+      `[data-testid="audit2-pakiet-stacji"][data-station-name="${stacja!.name}"]`,
+    );
+    await expect(sekcjaStacji).toBeVisible({ timeout: 30000 });
+    await expect(sekcjaStacji.getByTestId('audit2-proof')).toHaveCount(5);
+    await expect(sekcjaStacji.getByTestId('audit2-brak-danych')).toHaveCount(0);
+    await expect(sekcjaStacji.getByTestId('audit2-pakiet-status')).toHaveText('Weryfikacja pozytywna');
+    const tekst = (await page.getByTestId('audit2-proof-result').textContent()) ?? '';
+    expect(tekst).toContain('Magazyn E2E');
+    expect(tekst).toContain('Tryby pracy magazynu energii');
+    expect(tekst).not.toContain(stacja!.ref_id);
+    expect(tekst).not.toContain(magazyn!.ref_id);
+    expect(tekst).not.toMatch(/AUDIT2_|aggregate/);
   });
 
   test('Q. bieg kanoniczny LOAD_FLOW z audit2_project_id/audit2_station_id stosuje config z DB', async ({ request }) => {
@@ -483,3 +581,145 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     expect(applied).not.toHaveProperty('grounding_z0_z1_ratio');
   });
 });
+
+// =============================================================================
+// Pomocnicze: model sieci operacjami domenowymi, bieg rozpływu, otwarcie aplikacji
+// =============================================================================
+
+interface SnapshotSieci {
+  buses: Array<{ ref_id: string; voltage_kv: number }>;
+  substations: Array<{ ref_id: string; name: string; station_type?: string; bus_refs?: string[] }>;
+  transformers: Array<{ ref_id: string; name: string; hv_bus_ref: string; lv_bus_ref: string }>;
+  generators: Array<{ ref_id: string; name: string }>;
+  loads: Array<{ bus_ref: string; p_mw: number }>;
+  corridors?: Array<{ ordered_segment_refs?: string[] }>;
+}
+
+/** GPZ (SLACK) + magistrala kablowa + stacja B z transformatorem SN/nN i potrzebami własnymi. */
+async function zbudujSiecZeStacja(
+  request: APIRequestContext,
+  caseId: string,
+  prefiks: string,
+): Promise<SnapshotSieci> {
+  let licznik = 0;
+  async function operacja(name: string, payload: Record<string, unknown>): Promise<SnapshotSieci> {
+    licznik += 1;
+    return operacjaDomenowa(request, caseId, `${prefiks}-${licznik}`, name, payload);
+  }
+  await operacja('add_grid_source_sn', {
+    voltage_kv: 15.0,
+    sk3_mva: 250.0,
+    rx_ratio: 0.1,
+    catalog_binding: {
+      catalog_namespace: 'ZRODLO_SN',
+      catalog_item_id: 'src-gpz-15kv-250mva-rx010',
+      catalog_item_version: '2024.1',
+    },
+    hv_voltage_kv: 110.0,
+    transformer_sn_mva: 25.0,
+  });
+  const magistrala = await operacja('continue_trunk_segment_sn', {
+    segment: {
+      rodzaj: 'KABEL',
+      dlugosc_m: 500,
+      catalog_binding: {
+        catalog_namespace: 'KABEL_SN',
+        catalog_item_id: 'cable-tfk-yakxs-3x120',
+        catalog_item_version: '2024.1',
+      },
+    },
+  });
+  const segmentRefs = magistrala.corridors?.[0]?.ordered_segment_refs ?? [];
+  expect(segmentRefs.length).toBeGreaterThan(0);
+  return operacja('insert_station_on_segment_sn', {
+    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
+    segment_id: segmentRefs[segmentRefs.length - 1],
+    station_type: 'B',
+    insert_at: { value: 0.5 },
+    station: {
+      sn_voltage_kv: 15.0,
+      nn_voltage_kv: 0.4,
+      station_auxiliary: { active_power_kw: 10.0, cos_phi: 0.95 },
+      nn_earthing: { lv_system: 'TN-S' },
+    },
+    sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
+    transformer: {
+      create: true,
+      catalog_binding: {
+        catalog_namespace: 'TRAFO_SN_NN',
+        catalog_item_id: 'tr-sn-nn-15-04-630kva-dyn11',
+        catalog_item_version: '2024.1',
+      },
+    },
+  });
+}
+
+/** Jedna operacja domenowa na przypadku; zwraca migawkę modelu po operacji. */
+async function operacjaDomenowa(
+  request: APIRequestContext,
+  caseId: string,
+  klucz: string,
+  name: string,
+  payload: Record<string, unknown>,
+): Promise<SnapshotSieci> {
+  const res = await request.post(`${BACKEND_BASE}/api/cases/${caseId}/enm/domain-ops`, {
+    data: {
+      project_id: '',
+      snapshot_base_hash: '',
+      operation: { name, idempotency_key: `${klucz}-${Date.now()}`, payload },
+    },
+  });
+  expect(res.ok()).toBeTruthy();
+  const body = (await res.json()) as Record<string, unknown>;
+  expect(body.error ?? null).toBeNull();
+  return body.snapshot as SnapshotSieci;
+}
+
+/** Bieg LOAD_FLOW kanonicznym torem (createRun → execute); zwraca identyfikator biegu. */
+async function uruchomRozplyw(
+  request: APIRequestContext,
+  caseId: string,
+  solverInput: Record<string, unknown>,
+): Promise<string> {
+  const createRunRes = await request.post(
+    `${BACKEND_BASE}/api/execution/study-cases/${caseId}/runs`,
+    { data: { analysis_type: 'LOAD_FLOW', solver_input: solverInput } },
+  );
+  expect(createRunRes.ok()).toBeTruthy();
+  const runId = (await createRunRes.json()).id as string;
+  const executeRes = await request.post(`${BACKEND_BASE}/api/execution/runs/${runId}/execute`);
+  expect(executeRes.ok()).toBeTruthy();
+  expect((await executeRes.json()).status).toBe('DONE');
+  return runId;
+}
+
+/** Zimne wejście do aplikacji z kontekstem projektu/przypadku/biegu z persistu. */
+async function otworzAplikacje(
+  page: Page,
+  kontekst: { pid: string; projektNazwa: string; caseId: string; runId: string },
+): Promise<void> {
+  await page.addInitScript((dane) => {
+    localStorage.setItem(
+      'mv-design-app-state',
+      JSON.stringify({
+        state: {
+          activeProjectId: dane.pid,
+          activeProjectName: dane.projektNazwa,
+          activeCaseId: dane.caseId,
+          activeCaseName: 'Zakres pakiet dowodow',
+          activeCaseKind: 'ShortCircuitCase',
+          activeCaseResultStatus: 'FRESH',
+          activeSnapshotId: null,
+          activeMode: 'MODEL_EDIT',
+          activeRunId: dane.runId,
+          activeAnalysisType: 'LOAD_FLOW',
+          caseManagerOpen: false,
+          issuePanelOpen: false,
+        },
+        version: 1,
+      }),
+    );
+  }, kontekst);
+  await page.goto(FRONTEND_BASE, { waitUntil: 'commit' });
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
+}

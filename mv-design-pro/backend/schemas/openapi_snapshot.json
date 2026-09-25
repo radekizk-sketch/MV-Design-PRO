@@ -666,20 +666,25 @@
     "type": "object"
    },
    "BayDeviceWithstandSpec": {
+    "description": "Prady zwarciowe w miejscu pola i czas wylaczenia — dane wejscia dowodu wytrzymalosci.\n\nOgraniczenia sa te same co w specyfikacji dowodu (`SpecDowoduWytrzymalosciAparatu`):\nzapis przyjmuje wylacznie dane, z ktorych dowod da sie zlozyc (prady nieujemne i\nskonczone, czas wylaczenia dodatni) — odmowa 422 przy zapisie zamiast bledu przy\nskladaniu pakietu.",
     "properties": {
      "device_id": {
+      "minLength": 1,
       "title": "Device Id",
       "type": "string"
      },
      "i_peak_calculated_ka": {
+      "minimum": 0.0,
       "title": "I Peak Calculated Ka",
       "type": "number"
      },
      "i_thermal_calculated_ka": {
+      "minimum": 0.0,
       "title": "I Thermal Calculated Ka",
       "type": "number"
      },
      "t_clearing_s": {
+      "exclusiveMinimum": 0.0,
       "title": "T Clearing S",
       "type": "number"
      }
@@ -5911,69 +5916,6 @@
     ],
     "title": "FreshnessReason",
     "type": "string"
-   },
-   "GenerateAudit2ProofPackRequest": {
-    "properties": {
-     "bess_modes_specs": {
-      "default": [],
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Bess Modes Specs",
-      "type": "array"
-     },
-     "device_withstand_specs": {
-      "default": [],
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Device Withstand Specs",
-      "type": "array"
-     },
-     "generated_at_iso": {
-      "default": "1970-01-01T00:00:00Z",
-      "title": "Generated At Iso",
-      "type": "string"
-     },
-     "hosting_capacity_specs": {
-      "default": [],
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Hosting Capacity Specs",
-      "type": "array"
-     },
-     "station_id": {
-      "title": "Station Id",
-      "type": "string"
-     },
-     "tap_changer_specs": {
-      "default": [],
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Tap Changer Specs",
-      "type": "array"
-     },
-     "vt_grounding_specs": {
-      "default": [],
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Vt Grounding Specs",
-      "type": "array"
-     }
-    },
-    "required": [
-     "station_id"
-    ],
-    "title": "GenerateAudit2ProofPackRequest",
-    "type": "object"
    },
    "GenerateAudit2ReportRequest": {
     "properties": {
@@ -32655,50 +32597,6 @@
     ]
    }
   },
-  "/api/v1/catalog/audit2/generate-proof-pack": {
-   "post": {
-    "description": "Naprawy Phase 4: generuje ProofPack audytu 2 dla stacji.\nZwraca all_pass + lista dowodow (5 typow walidacji).",
-    "operationId": "generate_audit2_proof_pack_endpoint_api_v1_catalog_audit2_generate_proof_pack_post",
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/GenerateAudit2ProofPackRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Generate Audit2 Proof Pack Endpoint Api V1 Catalog Audit2 Generate Proof Pack Post",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Generate Audit2 Proof Pack Endpoint",
-    "tags": [
-     "Audit2 Catalogs"
-    ]
-   }
-  },
   "/api/v1/catalog/audit2/generate-report": {
    "post": {
     "description": "Naprawy Phase 5: generuje raport audytu 2 w wybranych formatach.\nZwraca JSON struktury + text PL + LaTeX (defaults). PDF/DOCX dostepne\nprzez osobne endpointy `/generate-report.pdf` i `/generate-report.docx`.",
@@ -33058,7 +32956,7 @@
   },
   "/api/v1/projects/{project_id}/audit2-station-config/_validate-all": {
    "post": {
-    "description": "Phase 13: walidacja audytu 2 dla wszystkich stacji projektu (parallel to physics).\n\nWywoluje walidatory + proof packs dla kazdej zapisanej stacji w projekcie.\nZwraca agregat: per-station + global pass/fail.\n\nBezpieczne: nie modyfikuje physics solvers, dziala obok istniejacego pipeline'u.",
+    "description": "Pakiet dowodów walidacji rozszerzeń dla KAŻDEJ stacji z zapisaną konfiguracją.\n\nJedyna droga produktu do pakietu (karta PROOFPACK-KONTRAKT): pakiet składa backend\nz utrwalonych konfiguracji stacji i z modelu sieci projektu\n(`application.proof_engine.packs.audit2_skladanie`) — nazwy z modelu, bilans mocy\nw backendzie, rodzaj bez danych jawnie oznaczony z przyczyną. Dawna końcówka\n`POST /api/v1/catalog/audit2/generate-proof-pack` (nietypowane specyfikacje\nskładane przez interfejs) została usunięta.\n\nBezpieczne: nie modyfikuje modelu ani konfiguracji; te same dane dają te same bajty.",
     "operationId": "validate_all_audit2_api_v1_projects__project_id__audit2_station_config__validate_all_post",
     "parameters": [
      {

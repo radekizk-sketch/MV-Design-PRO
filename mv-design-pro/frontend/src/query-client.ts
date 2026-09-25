@@ -32,4 +32,6 @@ export const audit2QueryKeys = {
     [...audit2QueryKeys.all, 'station-config', projectId, stationId] as const,
   stationConfigList: (projectId: string) =>
     [...audit2QueryKeys.all, 'station-config-list', projectId] as const,
+  projectProofPack: (projectId: string) =>
+    [...audit2QueryKeys.all, 'project-proof-pack', projectId] as const,
 };

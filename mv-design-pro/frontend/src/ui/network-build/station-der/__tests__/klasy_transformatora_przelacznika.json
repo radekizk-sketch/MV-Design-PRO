@@ -1,0 +1,20 @@
+{
+  "opis": "Tabela przypadkow JEDNEJ reguly klasy transformatora dla przelacznikow zaczepow (karta PROOFPACK-KONTRAKT). Czytaja ja oba testy: frontu (catalogs.test.ts, oferta przelacznikow) i backendu (test_klasa_transformatora_przelacznika.py, dowod planu zaczepow).",
+  "przypadki": [
+    {"uhv_kv": 110, "ulv_kv": 15, "klasa": "transformer_110_15"},
+    {"uhv_kv": 115, "ulv_kv": 15.75, "klasa": "transformer_110_15"},
+    {"uhv_kv": 110, "ulv_kv": 20, "klasa": "transformer_110_20"},
+    {"uhv_kv": 110, "ulv_kv": 21, "klasa": null},
+    {"uhv_kv": 110, "ulv_kv": 30, "klasa": null},
+    {"uhv_kv": 130, "ulv_kv": 15, "klasa": null},
+    {"uhv_kv": 15, "ulv_kv": 0.4, "klasa": "transformer_15_04"},
+    {"uhv_kv": 20, "ulv_kv": 0.4, "klasa": "transformer_15_04"},
+    {"uhv_kv": 15, "ulv_kv": 0.69, "klasa": "transformer_15_04"},
+    {"uhv_kv": 30, "ulv_kv": 1.0, "klasa": "transformer_15_04"},
+    {"uhv_kv": 15, "ulv_kv": 6.3, "klasa": null},
+    {"uhv_kv": 0.4, "ulv_kv": 0.23, "klasa": null},
+    {"uhv_kv": 15, "ulv_kv": 0, "klasa": null},
+    {"uhv_kv": null, "ulv_kv": 0.4, "klasa": null},
+    {"uhv_kv": 15, "ulv_kv": null, "klasa": null}
+  ]
+}

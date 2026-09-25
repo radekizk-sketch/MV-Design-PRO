@@ -32,16 +32,17 @@ import {
   buildAggregatedReadiness,
   computeDerReadinessMatrix,
   summarizeReadiness,
-  sumStationLoadImportKw,
   wzbogacDeryOKlaseCt,
   zlozZBramkaModelu,
   type BramkaModelu,
-  useGenerateAudit2ProofPack,
-  useGenerateAudit2Report,
+  type HostingCapacityExportResponse,
+  useAudit2ProjectProofPack,
+  useGenerateAudit2ProjectReport,
+  useGenerateProjectAudit2ProofPack,
   useRunExtendedPowerFlow,
   useStationAudit2ConfigList,
-  validateHostingCapacityExport,
 } from '../network-build/station-der';
+import { PakietDowodowProjektu } from './PakietDowodowRozszerzen';
 import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { EkranFrt } from '../../ui2/oze/frt';
@@ -101,7 +102,6 @@ import {
 // calculationScopeDisplayName: używane przez displayScopeLabel w routerPureHelpers
 import {
   displayProjectLabel,
-  publicAuditExtensionLabel,
   publicProofTypeTag,
   formatDateTime,
 } from './routerDisplayHelpers';
@@ -121,7 +121,6 @@ import {
   derAxisStatusLabel,
 } from './routerFixActionHelpers';
 import {
-  auditProofPackStatus,
   resolveLatestCompletedRun,
   displayScopeLabel,
   resolveRunLabel,
@@ -159,7 +158,8 @@ interface WorkspaceSurfaceRouterProps {
 
 // findElementName, payloadString moved to routerLabelHelpers.ts
 
-// publicEntityTypeLabel, publicAuditExtensionLabel moved to routerDisplayHelpers.ts
+// publicEntityTypeLabel moved to routerDisplayHelpers.ts (publicAuditExtensionLabel usunięty:
+// pakiet dowodów niesie polską nazwę rodzaju `rodzaj_pl` z backendu)
 
 // publicProofTypeTag moved to routerDisplayHelpers.ts
 
@@ -1122,10 +1122,9 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const setActiveSpace = useShellStore((state) => state.setActiveSpace);
   const [scope, setScope] = useState<'siec' | 'ciag' | 'stacja' | 'pole' | 'zrodlo'>('siec');
   const [detailLevel, setDetailLevel] = useState<'standard' | 'pelny'>('standard');
-  // Phase 11: integracja audit2 report.
-  const audit2ProofPack = useGenerateAudit2ProofPack();
-  const audit2Report = useGenerateAudit2Report();
-  const audit2ConfigList = useStationAudit2ConfigList(activeProjectId);
+  // Raport walidacji rozszerzeń z pakietu złożonego przez backend (karta PROOFPACK-KONTRAKT).
+  const audit2ProofPack = useGenerateProjectAudit2ProofPack();
+  const audit2Report = useGenerateAudit2ProjectReport();
 
   const markDirty = () =>
     patchSurfaceSession(surface.surfaceId, {
@@ -1670,10 +1669,11 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         eyebrow="JSON · tekst PL · LaTeX"
       >
         <p className="mb-2 text-xs text-slate-700">
-          Generuje raport walidacji układów źródłowych i stacyjnych: tryby pracy BESS,
-          regulację zaczepów, zdolność przyłączeniową, wytrzymałość aparatury i uziemienie
-          przekładników napięciowych. Format: JSON dla integracji, tekst PL dla audytu
-          i LaTeX do dołączenia do uzasadnienia inżynierskiego.
+          Generuje raport walidacji rozszerzeń dla każdej stacji w zakresie projektu: tryby
+          pracy magazynu energii, regulację zaczepów, zdolność przyłączeniową, wytrzymałość
+          aparatury i uziemienie przekładników napięciowych. Rodzaje bez danych raport wymienia
+          z przyczyną. Format: JSON dla integracji, tekst PL dla audytu i LaTeX do dołączenia
+          do uzasadnienia inżynierskiego.
         </p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -1681,42 +1681,8 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             data-testid="audit2-report-generate-pack"
             disabled={!activeProjectId || audit2ProofPack.isPending}
             onClick={() => {
-              const configs = audit2ConfigList.data ?? [];
-              const derSpecs = configs.flatMap((config) =>
-                config.der_specs.map((spec) => ({ stationId: config.station_id, spec })),
-              );
-              const missingNominalPower = derSpecs.find(({ spec }) =>
-                typeof spec.nominal_power_kw !== 'number' || spec.nominal_power_kw <= 0,
-              );
-              if (missingNominalPower) {
-                notify(
-                  'Nie można wygenerować pakietu uzasadnienia: układ źródłowy nie ma mocy znamionowej z katalogu.',
-                  'error',
-                );
-                return;
-              }
-              const hostingCapacitySpecs = configs
-                .map((c) => ({
-                  station_id: c.station_id,
-                  p_export_kw: c.der_specs.reduce(
-                    (sum: number, spec) => sum + (spec.nominal_power_kw ?? 0),
-                    0,
-                  ),
-                  p_import_kw: 0,
-                }))
-                .filter((spec) => spec.p_export_kw > 0);
-              if (hostingCapacitySpecs.length === 0) {
-                notify(
-                  'Brak układów źródłowych z katalogową mocą znamionową do wygenerowania pakietu uzasadnienia.',
-                  'warning',
-                );
-                return;
-              }
-              audit2ProofPack.mutate({
-                station_id: configs[0]?.station_id ?? 'aggregate',
-                hosting_capacity_specs: hostingCapacitySpecs,
-                generated_at_iso: '1970-01-01T00:00:00Z',
-              });
+              if (!activeProjectId) return;
+              audit2ProofPack.mutate(activeProjectId);
             }}
             className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs hover:bg-slate-50 disabled:opacity-50"
           >
@@ -1725,21 +1691,16 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           <button
             type="button"
             data-testid="audit2-report-render"
-            disabled={!audit2ProofPack.data || audit2Report.isPending}
+            disabled={
+              !audit2ProofPack.data
+              || audit2ProofPack.data.per_station.length === 0
+              || audit2Report.isPending
+            }
             onClick={() => {
               if (!audit2ProofPack.data) return;
-              const stationId = audit2ProofPack.data.station_id;
               audit2Report.mutate({
-                project_name: activeProjectName ?? 'project',
-                station_id: stationId,
-                // Raport nazywa stację nazwą z modelu, nigdy identyfikatorem.
-                station_name:
-                  snapshot?.substations?.find((stacja) => stacja.ref_id === stationId)?.name
-                  || 'Stacja bez nazwy',
-                proof_pack: audit2ProofPack.data,
-                operator_pl: 'PSE',
-                generated_at_iso: '1970-01-01T00:00:00Z',
-                formats: ['json', 'text_pl', 'latex'],
+                projectName: activeProjectName ?? 'Projekt bez nazwy',
+                pakiety: audit2ProofPack.data.per_station,
               });
             }}
             className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs hover:bg-slate-50 disabled:opacity-50"
@@ -1747,18 +1708,29 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             {audit2Report.isPending ? 'Generowanie raportu...' : '2. Renderuj raport'}
           </button>
         </div>
+        {audit2ProofPack.data && <PakietDowodowProjektu dane={audit2ProofPack.data} />}
+        {audit2ProofPack.isError && (
+          <div className="mt-2 text-xs text-rose-700">
+            Błąd generowania pakietu: {audit2ProofPack.error.message}
+          </div>
+        )}
         {audit2Report.data && (
           <div data-testid="audit2-report-preview" className="mt-3 space-y-2">
-            {audit2Report.data.text_pl && (
-              <div>
+            {audit2Report.data.map((raport) => (
+              <div key={raport.stationId}>
                 <div className="text-[10px] font-medium uppercase tracking-widest text-slate-500">
-                  Tekst PL (podgląd)
+                  Tekst PL (podgląd) — {raport.stationNazwa}
                 </div>
                 <pre className="max-h-[300px] overflow-auto rounded bg-slate-50 p-2 text-[11px] text-slate-800">
-                  {audit2Report.data.text_pl}
+                  {raport.textPl}
                 </pre>
               </div>
-            )}
+            ))}
+          </div>
+        )}
+        {audit2Report.isError && (
+          <div className="mt-2 text-xs text-rose-700">
+            Błąd renderowania raportu: {audit2Report.error.message}
           </div>
         )}
       </SectionCard>
@@ -1904,6 +1876,7 @@ function ComplianceSurface() {
 
 function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const readiness = useSnapshotStore((state) => state.readiness);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const fixActions = useSnapshotStore((state) => state.fixActions);
@@ -1997,39 +1970,46 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
     };
   });
 
-  // Naprawa eng.15: walidacja hosting capacity (export vs import) per stacja.
-  //
-  // V12K-226: import stacji liczy `sumStationLoadImportKw` na REALNYCH polach
-  // kontraktu (Substation.bus_refs ∋ Load.bus_ref, moc z `p_mw`). Poprzednia wersja
-  // filtrowała odbiory po `station_ref` i sumowała `nominal_power_kw ?? 0` — obu pól
-  // `Load` NIE MA, a rzutowania `as` wyłączyły kontrolę typów, więc import był
-  // ZAWSZE zerowy i KAŻDA stacja z DER dostawała werdykt „krytyczny eksport".
-  //
-  // Import NIEZNANY (brak snapshotu, stacja nieobecna w modelu) NIE jest zerem:
-  // wtedy oceny nie liczymy wcale, bo zero importu jest twierdzeniem o sieci.
-  const hostingCapacityRows = useMemo(() => {
-    const stationIds = Array.from(new Set(allDers.map((d) => d.station_id)));
-    return stationIds.flatMap((stationId) => {
-      const stationDers = allDers.filter((d) => d.station_id === stationId);
-      const p_export_kw = stationDers.reduce((sum, d) => sum + (d.nominal_power_kw ?? 0), 0);
-      const p_import_kw = sumStationLoadImportKw(snapshot, stationId);
-      if (p_import_kw === null) return [];
-      return [
-        validateHostingCapacityExport({
-          station_id: stationId,
-          p_export_kw,
-          p_import_kw,
-        }),
-      ];
-    });
-  }, [allDers, snapshot]);
+  // Naprawa eng.15: bilans eksportu wobec importu per stacja — Z PAKIETU DOWODÓW BACKENDU
+  // (karta PROOFPACK-KONTRAKT). Dawniej ekran sumował moce źródeł (`nominal_power_kw`)
+  // i odbiorów stacji oraz wydawał werdykt progami 0,8/1,5/3,0 we własnej kopii reguły
+  // (`validateHostingCapacityExport` w `catalogs.ts`, usunięta) i pokazywał identyfikator
+  // stacji. Teraz sumy, stosunek i werdykt liczy backend (`validate_hosting_capacity_export`
+  // na mocach z konfiguracji stacji i odbiorach z modelu), a stacja, dla której bilansu
+  // nie da się policzyć, przychodzi jako jawny brak z przyczyną — brak nie jest zerem.
+  const audit2ProjektPakiet = useAudit2ProjectProofPack(activeProjectId);
+  const hostingCapacityRows = useMemo(
+    () => (audit2ProjektPakiet.data?.per_station ?? []).flatMap((pakiet) =>
+      pakiet.proofs
+        .filter((dowod) => dowod.proof_type === 'AUDIT2_HOSTING_CAPACITY_EXPORT')
+        .map((dowod) => ({
+          stationId: pakiet.station_id,
+          stationNazwa: pakiet.station_nazwa,
+          summaryPl: dowod.summary_pl,
+          details: dowod.details as unknown as HostingCapacityExportResponse,
+        })),
+    ),
+    [audit2ProjektPakiet.data],
+  );
 
-  // Stacje, dla ktorych oceny kierunku przeplywu NIE DA SIE policzyc — pokazywane
-  // wprost, zeby brak nie wygladal na brak problemu (kontrakt uczciwych stanow zerowych).
+  // Stacje ze źródłami, dla których bilansu NIE DA SIĘ policzyć — pokazywane wprost, żeby
+  // brak nie wyglądał na brak problemu (kontrakt uczciwych stanów zerowych). Zakres jak
+  // dotąd: stacje, do których przyłączono źródła; pełną listę braków każdej stacji
+  // pokazuje pakiet uzasadnień.
   const hostingCapacityNieznane = useMemo(() => {
-    const stationIds = Array.from(new Set(allDers.map((d) => d.station_id)));
-    return stationIds.filter((stationId) => sumStationLoadImportKw(snapshot, stationId) === null);
-  }, [allDers, snapshot]);
+    const stacjeZeZrodlami = new Set(allDers.map((der) => der.station_id));
+    return (audit2ProjektPakiet.data?.per_station ?? [])
+      .filter((pakiet) => stacjeZeZrodlami.has(pakiet.station_id))
+      .flatMap((pakiet) =>
+        pakiet.braki_danych
+          .filter((brak) => brak.proof_type === 'AUDIT2_HOSTING_CAPACITY_EXPORT')
+          .map((brak, indeks) => ({
+            klucz: `${pakiet.station_id}-${indeks}`,
+            stationNazwa: pakiet.station_nazwa,
+            przyczynaPl: brak.przyczyna_pl,
+          })),
+      );
+  }, [allDers, audit2ProjektPakiet.data]);
 
   const fixActionByElement = (elementRef: string | null) => {
     if (!elementRef) return null;
@@ -2219,7 +2199,7 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
                       {der.der_kind}
                     </span>
                     <span className="ml-1 text-[11px] text-slate-500">
-                      stacja przyłączenia: {resolveElementNameForFixAction(snapshot, der.station_id)}
+                      stacja przyłączenia: {publicElementLabel(snapshot, der.station_id)}
                     </span>
                   </div>
                   <div className="text-[11px] text-slate-600">
@@ -2253,29 +2233,26 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
         </SectionCard>
       )}
 
-      {/* Naprawa eng.15: hosting capacity export check per stacja. */}
+      {/* Naprawa eng.15: bilans eksportu wobec importu per stacja (z pakietu backendu). */}
       {hostingCapacityNieznane.length > 0 && (
         <SectionCard
-          title={`Kierunek przepływu — nie sprawdzono dla ${hostingCapacityNieznane.length} stacji`}
+          title={`Kierunek przepływu — nie sprawdzono (${hostingCapacityNieznane.length})`}
           eyebrow="NC RfG Art. 17"
         >
           {/*
             V12K-226: brak oceny musi być WIDOCZNY. Milczenie w tym miejscu czytałoby się
-            jako „bez zastrzeżeń", a przyczyną jest brak danej: odbiorów nie da się
-            przypisać do stacji (stacja nieobecna w modelu albo brak szyn).
+            jako „bez zastrzeżeń", a przyczyną jest brak danej — nazwana przez backend.
           */}
           <div data-testid="hosting-capacity-nieznane" className="space-y-2">
-            {hostingCapacityNieznane.map((stationId) => (
+            {hostingCapacityNieznane.map((wiersz) => (
               <div
-                key={stationId}
-                data-testid={`hosting-capacity-nieznane-${stationId}`}
+                key={wiersz.klucz}
+                data-testid="hosting-capacity-nieznane-stacja"
                 className="rounded border border-slate-600 bg-slate-900/40 p-3 text-sm text-slate-300"
               >
-                <div className="font-semibold">Stacja: {stationId}</div>
+                <div className="font-semibold">Stacja: {wiersz.stationNazwa}</div>
                 <div className="mt-1 text-[11px]">
-                  Nie sprawdzono kierunku przepływu — w modelu nie da się przypisać odbiorów
-                  do tej stacji (brak stacji albo brak przypisanych szyn). Uzupełnij model,
-                  aby ocenić eksport wobec importu.
+                  Nie sprawdzono kierunku przepływu — {wiersz.przyczynaPl}
                 </div>
               </div>
             ))}
@@ -2290,26 +2267,26 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
           <div data-testid="hosting-capacity-export-rows" className="space-y-2">
             {hostingCapacityRows.map((row) => (
               <div
-                key={row.station_id}
-                data-testid={`hosting-capacity-${row.station_id}`}
-                data-status={row.status}
+                key={row.stationId}
+                data-testid="hosting-capacity-stacja"
+                data-status={row.details.status}
                 className={
                   'rounded border p-3 text-sm '
-                  + (row.status === 'requires_ramp_down'
+                  + (row.details.status === 'requires_ramp_down'
                     ? 'border-sygnal-blokada bg-sygnal-blokada-tlo text-sygnal-blokada-tusz'
-                    : row.status === 'high_export_warning'
+                    : row.details.status === 'high_export_warning'
                       ? 'border-sygnal-uwaga bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz'
-                      : row.status === 'normal_export'
+                      : row.details.status === 'normal_export'
                         ? 'border-sygnal-info bg-sygnal-info-tlo text-sygnal-info-tusz'
                         : 'border-sygnal-ok bg-sygnal-ok-tlo text-sygnal-ok-tusz')
                 }
               >
-                <div className="font-semibold">Stacja: {row.station_id}</div>
-                <div className="mt-1 text-[11px]">{row.message_pl}</div>
+                <div className="font-semibold">Stacja: {row.stationNazwa}</div>
+                <div className="mt-1 text-[11px]">{row.summaryPl}</div>
                 <div className="mt-1 grid grid-cols-3 gap-2 font-mono text-[10px]">
-                  <span>P_export: {row.p_export_kw.toFixed(0)} kW</span>
-                  <span>P_import: {row.p_import_kw.toFixed(0)} kW</span>
-                  <span>P_net: {row.p_net_export_kw.toFixed(0)} kW</span>
+                  <span>P_export: {row.details.p_export_kw.toFixed(0)} kW</span>
+                  <span>P_import: {row.details.p_import_kw.toFixed(0)} kW</span>
+                  <span>P_net: {row.details.p_net_export_kw.toFixed(0)} kW</span>
                 </div>
               </div>
             ))}
@@ -2377,9 +2354,19 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   // Faza F: kontekst stacja+DER w uzasadnieniu inżynierskim.
   const allDers = useStationDerStore((state) => selectAllDers(state));
   const stationCount = new Set(allDers.map((d) => d.station_id)).size;
-  // Phase 10: integracja audit2 ProofPack.
-  const generateProofPack = useGenerateAudit2ProofPack();
+  // Pakiet dowodów walidacji rozszerzeń — składa go backend (karta PROOFPACK-KONTRAKT).
+  const generateProofPack = useGenerateProjectAudit2ProofPack();
   const stationConfigList = useStationAudit2ConfigList(projectId);
+  // Rozpływ rozszerzony stosuje konfigurację JEDNEJ stacji — wskazanej przez projektanta,
+  // nie „pierwszej z listy" (karta PROOFPACK-KONTRAKT). Nazwy stacji z pakietu backendu.
+  const pakietProjektu = useAudit2ProjectProofPack(projectId);
+  const [stacjaRozplywuId, setStacjaRozplywuId] = useState('');
+  const stacjeRozplywu = useMemo(() => {
+    const skonfigurowane = new Set((stationConfigList.data ?? []).map((c) => c.station_id));
+    return (pakietProjektu.data?.per_station ?? [])
+      .filter((pakiet) => skonfigurowane.has(pakiet.station_id))
+      .map((pakiet) => ({ id: pakiet.station_id, nazwa: pakiet.station_nazwa }));
+  }, [stationConfigList.data, pakietProjektu.data]);
   // Integracja rozszerzonego rozpływu mocy — bieg kanoniczny na przypadku aktywnym.
   const runPowerFlow = useRunExtendedPowerFlow();
   const proofCandidateRefs = useMemo(
@@ -2448,88 +2435,32 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           </div>
         </SectionCard>
       )}
-      {/* Pakiet uzasadnienia dla rozszerzonej walidacji technicznej. */}
+      {/* Pakiet uzasadnienia dla rozszerzonej walidacji technicznej — składa go backend. */}
       <SectionCard
         title="Uzasadnienia rozszerzonej walidacji"
         eyebrow="Pakiet walidacji rozszerzeń"
       >
         <p className="mb-2 text-xs text-slate-700">
-          Generuje pakiet pięciu uzasadnień: tryby pracy BESS, plan regulacji zaczepów,
-          zdolność przyłączeniową źródeł, wytrzymałość aparatury oraz uziemienie
-          przekładników napięciowych.
+          Generuje pakiet dla każdej stacji modelu i każdej stacji z zapisaną konfiguracją
+          rozszerzeń. Dla każdej stacji sprawdza pięć rodzajów uzasadnień: tryby pracy
+          magazynu energii, plan regulacji zaczepów transformatora, zdolność przyłączeniową
+          (eksport wobec importu), wytrzymałość zwarciową aparatury oraz przekładniki
+          napięciowe wobec uziemienia sieci. Rodzaj, dla którego konfiguracja stacji albo
+          model sieci nie ma danych, jest wskazany z przyczyną i nie jest liczony jako spełniony.
         </p>
         <button
           type="button"
           data-testid="audit2-proof-generate"
-          disabled={!projectId || generateProofPack.isPending || (stationConfigList.data ?? []).length === 0}
+          disabled={!projectId || generateProofPack.isPending}
           onClick={() => {
             if (!projectId) return;
-            const configs = stationConfigList.data ?? [];
-            const derSpecs = configs.flatMap((config) =>
-              config.der_specs.map((spec) => ({ stationId: config.station_id, spec })),
-            );
-            const missingNominalPower = derSpecs.find(({ spec }) =>
-              typeof spec.nominal_power_kw !== 'number' || spec.nominal_power_kw <= 0,
-            );
-            if (missingNominalPower) {
-              notify(
-                'Nie można wygenerować dowodów: układ źródłowy nie ma mocy znamionowej z katalogu.',
-                'error',
-              );
-              return;
-            }
-            const hostingSpecs = configs
-              .filter((c) => c.der_specs.length > 0)
-              .map((c) => ({
-                station_id: c.station_id,
-                p_export_kw: c.der_specs.reduce(
-                  (sum: number, spec) => sum + (spec.nominal_power_kw ?? 0),
-                  0,
-                ),
-                p_import_kw: 0,
-              }))
-              .filter((spec) => spec.p_export_kw > 0);
-            if (hostingSpecs.length === 0) {
-              notify('Brak układów źródłowych z katalogową mocą znamionową do wygenerowania dowodów.', 'warning');
-              return;
-            }
-            generateProofPack.mutate({
-              station_id: configs[0]?.station_id ?? 'aggregate',
-              hosting_capacity_specs: hostingSpecs,
-            });
+            generateProofPack.mutate(projectId);
           }}
           className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {generateProofPack.isPending ? 'Generowanie...' : 'Generuj dowody walidacji'}
         </button>
-        {generateProofPack.data && (
-          <div data-testid="audit2-proof-result" className="mt-3 space-y-2">
-            <div className="text-xs">
-              <strong>Wynik:</strong>{' '}
-              <span className={auditProofPackStatus(generateProofPack.data).className}>
-                {auditProofPackStatus(generateProofPack.data).label}
-              </span>{' '}
-              · {generateProofPack.data.proof_count} dowodów,{' '}
-              {generateProofPack.data.fail_count} pozycji kontroli.
-            </div>
-            <div className="space-y-1">
-              {generateProofPack.data.proofs.map((p) => (
-                <div
-                  key={p.proof_id}
-                  data-testid={`audit2-proof-${p.proof_type}`}
-                  className={
-                    'rounded border px-2 py-1 text-[11px] '
-                    + (p.pass_status
-                      ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                      : 'border-rose-300 bg-rose-50 text-rose-800')
-                  }
-                >
-                  <span className="font-medium">{publicAuditExtensionLabel(p.proof_type)}</span>: {p.summary_pl}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {generateProofPack.data && <PakietDowodowProjektu dane={generateProofPack.data} />}
         {generateProofPack.isError && (
           <div className="mt-2 text-xs text-rose-700">
             Błąd generowania: {generateProofPack.error.message}
@@ -2561,19 +2492,34 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             </>
           )}
         </div>
+        <label className="mb-2 block text-[11px] text-slate-700">
+          Stacja, której konfigurację zastosować
+          <select
+            data-testid="audit2-power-flow-station"
+            value={stacjaRozplywuId}
+            onChange={(event) => setStacjaRozplywuId(event.target.value)}
+            className="ml-2 rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+          >
+            <option value="">
+              {stacjeRozplywu.length === 0 ? 'Brak stacji z zapisaną konfiguracją' : 'Wybierz stację'}
+            </option>
+            {stacjeRozplywu.map((stacja) => (
+              <option key={stacja.id} value={stacja.id}>
+                {stacja.nazwa}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="button"
           data-testid="audit2-power-flow-run"
-          disabled={!activeCaseId || runPowerFlow.isPending || (stationConfigList.data ?? []).length === 0}
+          disabled={!activeCaseId || runPowerFlow.isPending || !stacjaRozplywuId}
           onClick={() => {
-            if (!projectId || !activeCaseId) return;
-            const configs = stationConfigList.data ?? [];
-            const stationId = configs[0]?.station_id ?? '';
-            if (!stationId) return;
+            if (!projectId || !activeCaseId || !stacjaRozplywuId) return;
             runPowerFlow.mutate({
               caseId: activeCaseId,
               audit2ProjectId: projectId,
-              audit2StationId: stationId,
+              audit2StationId: stacjaRozplywuId,
               baseMva: 100.0,
             });
           }}

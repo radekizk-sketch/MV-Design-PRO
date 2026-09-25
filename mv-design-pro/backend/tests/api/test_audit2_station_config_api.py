@@ -187,10 +187,11 @@ def test_isolation_between_projects(app_client):
     assert res2.json() == []
 
 
-def test_validate_all_uses_real_p_import_from_snapshot_loads(app_client):
-    """Phase 49: validate_all uzywa real loads z snapshot, nie placeholder 0.0."""
+def test_validate_all_projekt_bez_modelu_import_nieznany_to_brak_nie_zero(app_client):
+    """Phase 49 → karta PROOFPACK-KONTRAKT: projekt bez modelu nie ma odbiorow ANI zrodel
+    w modelu — dawniej import stawal sie zerem, a bilans oglaszal „krytyczny eksport".
+    Teraz rodzaj „zdolnosc przylaczeniowa" jest jawnym brakiem z przyczyna."""
     pid = _create_project(app_client)
-    # Setup config z DER (p_export = 2 * 1000 kW = 2000 kW, w/o real nominal_power_kw).
     app_client.put(
         f"/api/v1/projects/{pid}/audit2-station-config/station-real-loads",
         json={
@@ -200,33 +201,27 @@ def test_validate_all_uses_real_p_import_from_snapshot_loads(app_client):
                 {"der_id": "der_1", "der_kind": "PV", "nominal_power_kw": 1000},
                 {"der_id": "der_2", "der_kind": "PV", "nominal_power_kw": 1000},
             ],
-            "transformer_tap_changers": {},
-            "bay_hv_fuses": {},
-            "bay_vts": {},
-            "bay_device_withstand": {},
         },
     )
-    # Run validate-all — bez snapshotu w DB, p_import = 0 (no loads found).
     res = app_client.post(f"/api/v1/projects/{pid}/audit2-station-config/_validate-all")
     assert res.status_code == 200
-    body = res.json()
-    # Hosting capacity proof istnieje dla station-real-loads.
-    station_result = next(s for s in body["per_station"] if s["station_id"] == "station-real-loads")
-    hosting_proofs = [
-        p for p in station_result["proofs"] if p["proof_type"] == "AUDIT2_HOSTING_CAPACITY_EXPORT"
+    stacja = next(s for s in res.json()["per_station"] if s["station_id"] == "station-real-loads")
+    assert stacja["proofs"] == []
+    assert stacja["station_nazwa"] == "Stacja spoza modelu"
+    przyczyny = [
+        b["przyczyna_pl"]
+        for b in stacja["braki_danych"]
+        if b["proof_type"] == "AUDIT2_HOSTING_CAPACITY_EXPORT"
     ]
-    assert len(hosting_proofs) > 0
-    # p_export_kw = 2000, p_import_kw = 0 (no snapshot).
-    proof = hosting_proofs[0]
-    assert proof["details"]["p_export_kw"] == 2000.0
-    assert proof["details"]["p_import_kw"] == 0.0
-    # Status: requires_ramp_down (ratio inf).
+    assert any("odbiorów stacji nie da się zsumować" in p for p in przyczyny)
+    # Zrodla spoza modelu tez sa nazwane (po jednej pozycji na zrodlo).
+    assert sum("nie istnieje w modelu sieci" in p for p in przyczyny) == 2
 
 
 def _model_stacji_z_odbiorami():
     """Model ENM: dwie stacje, trzy odbiory (dwa w stacji A, jeden w B) i odbiór na
     szynie spoza stacji, który nie może być doliczony nigdzie."""
-    from enm.models import Bus, EnergyNetworkModel, ENMHeader, Load, Substation
+    from enm.models import Bus, EnergyNetworkModel, ENMHeader, Generator, Load, Substation
 
     return EnergyNetworkModel(
         header=ENMHeader(name="Audyt 2 — agregacja odbiorów"),
@@ -239,6 +234,10 @@ def _model_stacji_z_odbiorami():
             Substation(ref_id="st-A", name="Stacja A", station_type="mv_lv", bus_refs=["bus-a"]),
             Substation(ref_id="st-B", name="Stacja B", station_type="mv_lv", bus_refs=["bus-b"]),
         ],
+        generators=[
+            Generator(ref_id="gen-a", name="PV A", bus_ref="bus-a", p_mw=2.0),
+            Generator(ref_id="gen-b", name="PV B", bus_ref="bus-b", p_mw=2.0),
+        ],
         loads=[
             Load(ref_id="ld-1", name="Odbiór 1", bus_ref="bus-a", p_mw=1.5, q_mvar=0.3),
             Load(ref_id="ld-2", name="Odbiór 2", bus_ref="bus-a", p_mw=0.5, q_mvar=0.1),
@@ -248,60 +247,35 @@ def _model_stacji_z_odbiorami():
     )
 
 
-def test_aggregate_loads_per_station_helper_no_model(app_client):
-    """Projekt bez modelu ENM ⇒ pusty słownik (uczciwy brak, nie zgadywanie)."""
+def test_validate_all_bilans_kazdej_stacji_z_jej_odbiorow_w_modelu(app_client):
+    """W1 + karta PROOFPACK-KONTRAKT: moce odbiorów sumują się per stacja z JEDYNEJ prawdy
+    sieci (ENM: `Load.bus_ref` → `Substation.bus_refs`), MW→kW; odbiór na szynie spoza
+    stacji nie jest doliczany nigdzie; KAŻDA stacja ma własny bilans (nie pierwsza)."""
     from uuid import UUID
 
-    from api.audit2_station_config import _aggregate_loads_per_station_for_project
-
-    pid = _create_project(app_client)
-    uow_factory = app_client.app.state.uow_factory  # type: ignore[attr-defined]
-    assert _aggregate_loads_per_station_for_project(UUID(pid), uow_factory) == {}
-
-
-def test_aggregate_loads_per_station_from_enm(app_client):
-    """W1: moce odbiorów sumują się per stacja z JEDYNEJ prawdy sieci (ENM:
-    `Load.bus_ref` → `Substation.bus_refs`), MW→kW; odbiór na szynie spoza stacji
-    nie jest doliczany nigdzie."""
-    from uuid import UUID
-
-    from api.audit2_station_config import _aggregate_loads_per_station_for_project
     from enm.klucz_twin import klucz_twin_projektu
     from enm.store import set_enm
 
     pid = _create_project(app_client)
     set_enm(klucz_twin_projektu(UUID(pid)), _model_stacji_z_odbiorami())
-    uow_factory = app_client.app.state.uow_factory  # type: ignore[attr-defined]
-
-    assert _aggregate_loads_per_station_for_project(UUID(pid), uow_factory) == {
-        "st-A": 2000.0,
-        "st-B": 2000.0,
+    for stacja, zrodlo, moc in (("st-A", "gen-a", 2500), ("st-B", "gen-b", 1000)):
+        app_client.put(
+            f"/api/v1/projects/{pid}/audit2-station-config/{stacja}",
+            json={"der_specs": [{"der_id": zrodlo, "der_kind": "PV", "nominal_power_kw": moc}]},
+        )
+    res = app_client.post(f"/api/v1/projects/{pid}/audit2-station-config/_validate-all")
+    assert res.status_code == 200
+    body = res.json()
+    bilans = {
+        s["station_nazwa"]: next(
+            d["details"] for d in s["proofs"] if d["proof_type"] == "AUDIT2_HOSTING_CAPACITY_EXPORT"
+        )
+        for s in body["per_station"]
     }
-
-
-def test_aggregate_loads_zero_power_load_is_counted(app_client):
-    """Odbiór z p_mw = 0 zostaje w agregacie jako 0.0 — ta sama klasa defektu
-    (or-łańcuch gubiący zero), której pilnował dawny test na migawce legacy."""
-    from uuid import UUID
-
-    from api.audit2_station_config import _aggregate_loads_per_station_for_project
-    from enm.klucz_twin import klucz_twin_projektu
-    from enm.models import Bus, EnergyNetworkModel, ENMHeader, Load, Substation
-    from enm.store import set_enm
-
-    pid = _create_project(app_client)
-    model = EnergyNetworkModel(
-        header=ENMHeader(name="Audyt 2 — odbiór zerowy"),
-        buses=[Bus(ref_id="bus-1", name="Szyna 1", voltage_kv=0.4)],
-        substations=[
-            Substation(ref_id="st-1", name="Stacja 1", station_type="mv_lv", bus_refs=["bus-1"])
-        ],
-        loads=[Load(ref_id="ld-0", name="Odbiór zerowy", bus_ref="bus-1", p_mw=0.0, q_mvar=0.0)],
-    )
-    set_enm(klucz_twin_projektu(UUID(pid)), model)
-    uow_factory = app_client.app.state.uow_factory  # type: ignore[attr-defined]
-
-    assert _aggregate_loads_per_station_for_project(UUID(pid), uow_factory) == {"st-1": 0.0}
+    assert bilans["Stacja A"]["p_import_kw"] == 2000.0
+    assert bilans["Stacja A"]["p_export_kw"] == 2500.0
+    assert bilans["Stacja B"]["p_import_kw"] == 2000.0
+    assert bilans["Stacja B"]["p_export_kw"] == 1000.0
 
 
 def test_validate_all_returns_pack_per_station(app_client):
@@ -345,9 +319,55 @@ def test_validate_all_returns_pack_per_station(app_client):
     body = res.json()
     assert body["station_count"] == 2
     assert len(body["per_station"]) == 2
-    # Both stations should have proofs (per logic).
     station_ids = {s["station_id"] for s in body["per_station"]}
     assert station_ids == {"station-V-A", "station-V-B"}
+    # Kazdy z pieciu rodzajow ma w kazdej stacji dowod albo jawny brak (nic nie znika).
+    for stacja in body["per_station"]:
+        rodzaje = {d["proof_type"] for d in stacja["proofs"]} | {
+            b["proof_type"] for b in stacja["braki_danych"]
+        }
+        assert len(rodzaje) == 5
+    stacja_b = next(s for s in body["per_station"] if s["station_id"] == "station-V-B")
+    assert [d["proof_type"] for d in stacja_b["proofs"]] == ["AUDIT2_DEVICE_WITHSTAND"]
+    assert stacja_b["proofs"][0]["summary_pl"].startswith("Pole POLE-01: ")
+
+
+@pytest.mark.parametrize(
+    "wytrzymalosc",
+    [
+        {
+            "device_id": "wstd_breaker_vacuum_15_25",
+            "i_peak_calculated_ka": 50,
+            "i_thermal_calculated_ka": 20,
+            "t_clearing_s": 0,
+        },
+        {
+            "device_id": "wstd_breaker_vacuum_15_25",
+            "i_peak_calculated_ka": -1,
+            "i_thermal_calculated_ka": 20,
+            "t_clearing_s": 1,
+        },
+        {
+            "device_id": "",
+            "i_peak_calculated_ka": 50,
+            "i_thermal_calculated_ka": 20,
+            "t_clearing_s": 1,
+        },
+        {"device_id": "wstd_breaker_vacuum_15_25", "i_peak_calculated_ka": 50},
+    ],
+    ids=["czas_zero", "prad_ujemny", "bez_aparatu", "niepelne"],
+)
+def test_put_odrzuca_dane_wytrzymalosci_z_ktorych_dowodu_nie_da_sie_zlozyc(
+    app_client, wytrzymalosc
+):
+    """Zapis przyjmuje wylacznie dane, z ktorych dowod da sie zlozyc — odmowa 422 przy
+    zapisie (ta sama klasa ograniczen co specyfikacja dowodu), nie blad przy skladaniu."""
+    pid = _create_project(app_client)
+    res = app_client.put(
+        f"/api/v1/projects/{pid}/audit2-station-config/station-W",
+        json={"bay_device_withstand": {"Pole 1": wytrzymalosc}},
+    )
+    assert res.status_code == 422
 
 
 def test_persistence_round_trip_complex_der_spec(app_client):

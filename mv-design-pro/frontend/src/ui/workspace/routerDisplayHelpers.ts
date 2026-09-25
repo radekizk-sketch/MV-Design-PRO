@@ -66,18 +66,6 @@ export function publicEntityTypeLabel(value: string | null | undefined): string 
   return ENTITY_TYPE_LABELS[normalized] ?? normalized.replace(/_/g, ' ');
 }
 
-const AUDIT_EXTENSION_LABELS: Record<string, string> = {
-  power_flow_extensions: 'rozszerzony rozpływ mocy',
-  tap_position_changes: 'regulacja zaczepów transformatorów',
-  grounding_z0_z1_ratio: 'konfiguracja uziemienia punktu neutralnego',
-  bess_reserved_capacity: 'rezerwa mocy magazynu BESS',
-  pf_droop: 'charakterystyka P(f)',
-};
-
-export function publicAuditExtensionLabel(value: string): string {
-  return AUDIT_EXTENSION_LABELS[value] ?? value.replace(/_/g, ' ');
-}
-
 const PROOF_TYPE_TAGS: Record<string, string> = {
   SC3F_IEC60909: 'SC3F · IEC 60909',
   SC1F_IEC60909: 'SC1F · IEC 60909',

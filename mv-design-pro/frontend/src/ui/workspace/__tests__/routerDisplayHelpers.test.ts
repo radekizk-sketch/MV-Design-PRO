@@ -4,7 +4,6 @@ import {
   displayValueOrAuditTrace,
   displayProjectLabel,
   publicEntityTypeLabel,
-  publicAuditExtensionLabel,
   publicProofTypeTag,
   formatDateTime,
   payloadString,
@@ -50,17 +49,6 @@ describe('publicEntityTypeLabel', () => {
   it('fallback "Aktywny kontekst" gdy puste', () => {
     expect(publicEntityTypeLabel(null)).toBe('Aktywny kontekst układu');
     expect(publicEntityTypeLabel('')).toBe('Aktywny kontekst układu');
-  });
-});
-
-describe('publicAuditExtensionLabel', () => {
-  it('mapuje extensions na PL', () => {
-    expect(publicAuditExtensionLabel('power_flow_extensions')).toContain('rozpływ');
-    expect(publicAuditExtensionLabel('tap_position_changes')).toContain('zaczepów');
-  });
-
-  it('fallback dla nieznanego', () => {
-    expect(publicAuditExtensionLabel('unknown_extension')).toBe('unknown extension');
   });
 });
 

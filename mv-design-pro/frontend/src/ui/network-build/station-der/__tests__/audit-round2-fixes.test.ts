@@ -13,7 +13,6 @@ import { describe, it, expect } from 'vitest';
 import {
   computeDerReadinessMatrix,
   buildAggregatedReadiness,
-  validateHostingCapacityExport,
 } from '..';
 import type { StationDerConnection } from '../types';
 
@@ -285,46 +284,11 @@ describe('eng.10 — BessOperationModeCatalog (selektor przeniesiony do catalogs
 // Pakiet D — eng.15 (Hosting capacity export check)
 // =============================================================================
 
-describe('eng.15 — Hosting capacity export check', () => {
-  it('Lokalna autokonsumpcja (P_DER < P_load) → no_export', () => {
-    const result = validateHostingCapacityExport({
-      station_id: 'st1',
-      p_export_kw: 500,
-      p_import_kw: 1000,
-    });
-    expect(result.status).toBe('no_export');
-    expect(result.p_net_export_kw).toBe(-500);
-  });
+// Karta PROOFPACK-KONTRAKT: frontowa kopia reguły (`validateHostingCapacityExport`)
+// usunięta — progi 0,8/1,5/3,0 i stan „stacja bez odbiorów" przypinają testy backendu
+// (`tests/api/test_audit2_catalogs_api.py::test_validate_hosting_capacity_*`,
+// `tests/proof_engine/test_audit2_skladanie.py`), jedynego miejsca tego rachunku.
 
-  it('Eksport normalny (P_DER ≈ 1.2 × P_load) → normal_export', () => {
-    const result = validateHostingCapacityExport({
-      station_id: 'st1',
-      p_export_kw: 1200,
-      p_import_kw: 1000,
-    });
-    expect(result.status).toBe('normal_export');
-  });
-
-  it('Wysoki eksport (P_DER ≈ 2.5 × P_load) → high_export_warning', () => {
-    const result = validateHostingCapacityExport({
-      station_id: 'st1',
-      p_export_kw: 2500,
-      p_import_kw: 1000,
-    });
-    expect(result.status).toBe('high_export_warning');
-    expect(result.message_pl.toLowerCase()).toContain('curtailment');
-  });
-
-  it('Krytyczny eksport (P_DER > 3 × P_load) → requires_ramp_down', () => {
-    const result = validateHostingCapacityExport({
-      station_id: 'st1',
-      p_export_kw: 5000,
-      p_import_kw: 1000,
-    });
-    expect(result.status).toBe('requires_ramp_down');
-    expect(result.message_pl).toContain('ramp-down');
-  });
-});
 
 // =============================================================================
 // Pakiet F — eng.17: katalog PRZENIESIONY DO BACKENDU (karta FAB-M)

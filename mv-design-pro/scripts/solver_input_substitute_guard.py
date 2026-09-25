@@ -1374,11 +1374,11 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # gwarantowany) — MERYTORYCZNIE bliskie zabezpieczeniu dzielenia (jak
     # `trafo.sn_mva` w `enm/zero_sequence_transformer.py` wyzej), zamrozone tu
     # bo forma jest nieodroznialna dla skanera od podstawienia.
-    "api/audit2_station_config.py": {
-        "F:dictget:spec.i_peak_calculated_ka": 1,
-        "F:dictget:spec.i_thermal_calculated_ka": 1,
-        "F:dictget:spec.t_clearing_s": 1,
-    },
+    # `api/audit2_station_config.py` (3 x `spec.get(..., 0)` / `spec.get("t_clearing_s", 1.0)`
+    # w dowodzie wytrzymalosci aparatury pol) ZDJETE karta PROOFPACK-KONTRAKT (2026-09-25):
+    # pakiet dowodow sklada `application/proof_engine/packs/audit2_skladanie.py` z TYPOWANEJ
+    # konfiguracji (`BayDeviceWithstandSpec`: prady >= 0, czas wylaczenia > 0, zapis 422
+    # przy braku) — brak danej nie staje sie zerem ani sekunda.
     # Decyzja O-53 (2026-09-24): klucz "B:ifexp:request.cos_phi" -> "B:ifexp:zrodlo.cos_phi"
     # (budzet BEZ ZMIANY, 1). To samo podstawienie cosφ = 1,0 za brak cosφ w doborze kabla,
     # teraz w JEDNEJ funkcji `_cos_phi_doboru_kabla` wolanej przez podglad kreatora ORAZ

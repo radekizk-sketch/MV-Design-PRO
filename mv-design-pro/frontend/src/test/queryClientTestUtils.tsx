@@ -2,13 +2,21 @@
  * Test utilities for React Query (Phase 8 backend integration).
  *
  * Wraps tested components with QueryClientProvider so hooks like
- * useStationAudit2Config, useGenerateAudit2ProofPack work in vitest.
+ * useStationAudit2Config, useGenerateProjectAudit2ProofPack work in vitest.
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render as rtlRender, type RenderOptions } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
 import { vi } from 'vitest';
+
+/** Pusty pakiet dowodów projektu (`POST …/audit2-station-config/_validate-all`). */
+const EMPTY_AUDIT2_PROJECT_PACK = {
+  project_id: 'stub',
+  all_pass: true,
+  station_count: 0,
+  per_station: [],
+};
 
 const EMPTY_AUDIT2_SNAPSHOT = {
   bess_operation_modes: [],
@@ -32,6 +40,9 @@ export function stubAudit2Fetch(): void {
         ok: true,
         json: async () => EMPTY_AUDIT2_SNAPSHOT,
       });
+    }
+    if (urlStr.endsWith('/audit2-station-config/_validate-all')) {
+      return Promise.resolve({ ok: true, json: async () => EMPTY_AUDIT2_PROJECT_PACK });
     }
     // GET list /audit2-station-config (no station_id) -> empty array.
     // Pattern: /api/v1/projects/{pid}/audit2-station-config (no trailing /<sid>)
@@ -68,6 +79,9 @@ export function renderWithQueryClient(
     const urlStr = url.toString();
     if (urlStr.includes('audit2/snapshot')) {
       return Promise.resolve({ ok: true, json: async () => EMPTY_AUDIT2_SNAPSHOT });
+    }
+    if (urlStr.endsWith('/audit2-station-config/_validate-all')) {
+      return Promise.resolve({ ok: true, json: async () => EMPTY_AUDIT2_PROJECT_PACK });
     }
     const matchListEnd = urlStr.match(/\/audit2-station-config\/?$/);
     const isGet = !init || init.method === undefined || init.method === 'GET';
